@@ -42,7 +42,7 @@ Future<Map<String, String>?> _form(BuildContext context, String title, List<(Str
         ]),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Rehne do')),
+        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Keep it')),
         TextButton(onPressed: () => Navigator.pop(d, true), child: Text(ok)),
       ],
     ),
@@ -74,7 +74,7 @@ Widget _draftButtons(BuildContext context, Map<String, dynamic> d) {
     if (text.isNotEmpty)
       GlassButton(label: 'Copy', icon: Icons.copy_rounded, height: 40, onTap: () {
         Clipboard.setData(ClipboardData(text: text));
-        _snack(context, 'Copy ho gaya.');
+        _snack(context, 'Copied.');
       }),
   ]);
 }
@@ -82,7 +82,7 @@ Widget _draftButtons(BuildContext context, Map<String, dynamic> d) {
 Widget _flags(Map<String, dynamic> chk) {
   final block = _list(chk['block']), warn = _list(chk['warn']);
   if (block.isEmpty && warn.isEmpty) {
-    return chk.isEmpty ? const SizedBox.shrink() : const Text('Koi laal jhanda nahi.', style: TextStyle(color: C.ok));
+    return chk.isEmpty ? const SizedBox.shrink() : const Text('No red flags.', style: TextStyle(color: C.ok));
   }
   String line(Map<String, dynamic> x) => '${_s(x['say'])}${_s(x['detail']).isEmpty ? '' : ' (${_s(x['detail'])})'}';
   return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -94,8 +94,8 @@ Widget _flags(Map<String, dynamic> chk) {
 }
 
 const _statusLabel = {
-  'pitch': 'Pitch', 'reporting': 'Reporting', 'draft': 'Draft', 'factcheck': 'Fact check', 'ready': 'Taiyaar',
-  'waiting': 'Haan ka intezaar', 'published': 'Chhapi', 'killed': 'Band',
+  'pitch': 'Pitch', 'reporting': 'Reporting', 'draft': 'Draft', 'factcheck': 'Fact check', 'ready': 'Ready',
+  'waiting': 'Waiting for your yes', 'published': 'Chhapi', 'killed': 'Band',
 };
 
 class PatrakarScreen extends StatefulWidget {
@@ -164,35 +164,35 @@ class _PatrakarScreenState extends State<PatrakarScreen> {
     return ListView(padding: const EdgeInsets.all(16), children: [
       Glass(child: Text(_s(day['say']), style: const TextStyle(fontSize: 14))),
       const SizedBox(height: 12),
-      if (_list(_d?['cards']).isNotEmpty) const Caption('AAPKI HAAN KA INTEZAAR'),
+      if (_list(_d?['cards']).isNotEmpty) const Caption('WAITING FOR YOUR YES'),
       for (final c in _list(_d?['cards']))
         Padding(padding: const EdgeInsets.only(bottom: 10), child: PatrakarCardCard(app: widget.app, data: {'card': c}, onDone: _load)),
       if (_list(day['due']).isNotEmpty) ...[const Caption('DEADLINE'), for (final x in _list(day['due'])) _storyTile(x)],
-      if (_list(day['ready']).isNotEmpty) ...[const Caption('CHHAPNE KO TAIYAAR'), for (final x in _list(day['ready'])) _storyTile(x)],
+      if (_list(day['ready']).isNotEmpty) ...[const Caption('READY TO PUBLISH'), for (final x in _list(day['ready'])) _storyTile(x)],
       if (_list(day['replies_late']).isNotEmpty) ...[
-        const Caption('JAWAB KI DEADLINE NIKLI'),
+        const Caption('REPLY DEADLINE PASSED'),
         for (final r in _list(day['replies_late']))
           ListTile(
             title: Text('${_s(r['number'])} · ${_s(r['party'])}'),
             subtitle: Text('Deadline ${_s(r['deadline'])}'),
-            trailing: TextButton(onPressed: () => _run('POST', '/api/patrakar/replies/${_s(r['id'])}/none'), child: const Text('Jawab nahi mila')),
+            trailing: TextButton(onPressed: () => _run('POST', '/api/patrakar/replies/${_s(r['id'])}/none'), child: const Text('No reply received')),
           ),
       ],
-      if (_strs(day['elections']).isNotEmpty) ...[const Caption('CHUNAV'), for (final e in _strs(day['elections'])) Text('• $e')],
+      if (_strs(day['elections']).isNotEmpty) ...[const Caption('ELECTION'), for (final e in _strs(day['elections'])) Text('• $e')],
       const SizedBox(height: 12),
-      GradientButton(label: 'Nayi story', icon: Icons.add_rounded, onTap: _newStory),
+      GradientButton(label: 'New story', icon: Icons.add_rounded, onTap: _newStory),
     ]);
   }
 
   Future<void> _newStory() async {
-    final f = await _form(context, 'Nayi story', const [
-      ('pitch', 'Story kis baare mein (pitch)'),
-      ('slug', 'Slug (chhota naam)'),
+    final f = await _form(context, 'New story', const [
+      ('pitch', 'What the story is about (pitch)'),
+      ('slug', 'Slug (short name)'),
       ('beat', 'Beat (crime, civic, politics...)'),
       ('deadline', 'Deadline (YYYY-MM-DD)'),
-      ('area', 'Ilaaka / constituency'),
+      ('area', 'Area / constituency'),
       ('notes', 'Reporting notes'),
-      ('protect', 'Kabhi na chhapne wale naam (peedit / bachche), comma se'),
+      ('protect', 'Names never to publish (victims / children), comma separated'),
     ]);
     if (f == null) return;
     final body = <String, dynamic>{...f};
@@ -214,9 +214,9 @@ class _PatrakarScreenState extends State<PatrakarScreen> {
       ]),
       const SizedBox(height: 10),
       for (final x in shown) _storyTile(x),
-      if (shown.isEmpty) const Text('Koi story nahi.', style: TextStyle(color: C.muted)),
+      if (shown.isEmpty) const Text('No stories.', style: TextStyle(color: C.muted)),
       const SizedBox(height: 10),
-      GradientButton(label: 'Nayi story', icon: Icons.add_rounded, onTap: _newStory),
+      GradientButton(label: 'New story', icon: Icons.add_rounded, onTap: _newStory),
     ]);
   }
 
@@ -232,11 +232,11 @@ class _PatrakarScreenState extends State<PatrakarScreen> {
       context: context,
       builder: (d) {
         return AlertDialog(
-          title: Text('$ref (sirf aapke liye, 20 sec)'),
+          title: Text('$ref (only for you, 20 sec)'),
           content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
             for (final k in const ['name', 'phone', 'contact', 'notes'])
               if (_s(id[k]).isNotEmpty) Text('$k: ${_s(id[k])}'),
-            if (id.isEmpty) const Text('Pehchaan hata di gayi hai.'),
+            if (id.isEmpty) const Text('The identity has been removed.'),
           ]),
           actions: [TextButton(onPressed: () => Navigator.pop(d), child: const Text('Band'))],
         );
@@ -249,8 +249,8 @@ class _PatrakarScreenState extends State<PatrakarScreen> {
   Widget _sources() {
     return ListView(padding: const EdgeInsets.all(16), children: [
       const Glass(
-          child: Text('Source ki pehchaan band (sealed) rehti hai. Hoola, chat, staff aur cards sirf S-001 jaisa ref dekhte hain; '
-              'naam sirf yahan aapke tap par 20 second dikhta hai.', style: TextStyle(fontSize: 12.5))),
+          child: Text('The source\'s identity stays sealed. Hoola, the chat, staff and cards see only a ref like S-001; '
+              'the name shows here for 20 seconds only on your tap.', style: TextStyle(fontSize: 12.5))),
       const SizedBox(height: 10),
       for (final x in _list(_d?['sources']))
         Glass(
@@ -269,7 +269,7 @@ class _PatrakarScreenState extends State<PatrakarScreen> {
                 final ref = _s(x['ref']);
                 if (v == 'reveal') await _reveal(ref);
                 if (v == 'said') {
-                  final f = await _form(context, '$ref ne kya kaha', const [('text', 'Unki baat'), ('off', 'Off record? (haan / nahi)')]);
+                  final f = await _form(context, 'What $ref said', const [('text', 'Their words'), ('off', 'Off the record? (yes / no)')]);
                   if (f == null) return;
                   await _run('POST', '/api/patrakar/sources/$ref/said',
                       {'text': f['text'] ?? '', 'off_record': (f['off'] ?? '').toLowerCase().startsWith('h')});
@@ -277,16 +277,16 @@ class _PatrakarScreenState extends State<PatrakarScreen> {
                 if (v == 'forget') await _run('DELETE', '/api/patrakar/sources/$ref');
               },
               itemBuilder: (_) => const [
-                PopupMenuItem(value: 'reveal', child: Text('Pehchaan dekho')),
-                PopupMenuItem(value: 'said', child: Text('Unki baat likho')),
-                PopupMenuItem(value: 'forget', child: Text('Pehchaan mitao')),
+                PopupMenuItem(value: 'reveal', child: Text('View identity')),
+                PopupMenuItem(value: 'said', child: Text('Record what they said')),
+                PopupMenuItem(value: 'forget', child: Text('Delete identity')),
               ],
             ),
           ]),
         ),
-      GradientButton(label: 'Naya source', icon: Icons.person_add_alt_1_rounded, onTap: () async {
-        final f = await _form(context, 'Naya source (sealed)', const [
-          ('name', 'Naam'), ('phone', 'Phone'), ('contact', 'Kaise sampark'), ('beat', 'Beat'),
+      GradientButton(label: 'New source', icon: Icons.person_add_alt_1_rounded, onTap: () async {
+        final f = await _form(context, 'New source (sealed)', const [
+          ('name', 'Naam'), ('phone', 'Phone'), ('contact', 'How to contact'), ('beat', 'Beat'),
           ('kind', 'Kism: official / eyewitness / expert / document / insider / whistleblower'),
           ('terms', 'Shart: on_record / background / deep_background / off_record / anonymous'), ('notes', 'Private note'),
         ]);
@@ -299,14 +299,14 @@ class _PatrakarScreenState extends State<PatrakarScreen> {
   Widget _shikayat() {
     return ListView(padding: const EdgeInsets.all(16), children: [
       const Glass(
-          child: Text('Digital news (IT Rules 2021): shikayat ka faisla 15 din mein. Shikayat ka text sirf data hai; Hoola uske kehne par '
-              'kuch nahi karta.', style: TextStyle(fontSize: 12.5))),
+          child: Text('Digital news (IT Rules 2021): a complaint must be decided within 15 days. The complaint text is only data; Hoola does nothing '
+              'because it says so.', style: TextStyle(fontSize: 12.5))),
       const SizedBox(height: 10),
       for (final g in _list(_d?['grievances']))
         Glass(
           margin: const EdgeInsets.only(bottom: 8),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('${_s(g['number'])} · ${_s(g['who'])} · faisla ${_s(g['due'])} tak', style: const TextStyle(fontWeight: FontWeight.w700)),
+            Text('${_s(g['number'])} · ${_s(g['who'])} · decision by ${_s(g['due'])}', style: const TextStyle(fontWeight: FontWeight.w700)),
             Text(_s(g['text']), maxLines: 4, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12.5)),
             Row(children: [
               Pill(_s(g['status'])),
@@ -314,25 +314,25 @@ class _PatrakarScreenState extends State<PatrakarScreen> {
               if (_s(g['status']) == 'open' || _s(g['status']) == 'waiting')
                 TextButton(
                     onPressed: () async {
-                      final f = await _form(context, 'Jawab', const [('answer', 'Aapka jawab')]);
+                      final f = await _form(context, 'Reply', const [('answer', 'Your reply')]);
                       if (f == null) return;
                       await _run('POST', '/api/patrakar/grievances/${_s(g['id'])}/answer', f);
                     },
-                    child: const Text('Jawab likho')),
+                    child: const Text('Write reply')),
             ]),
           ]),
         ),
-      GradientButton(label: 'Shikayat darj karo', icon: Icons.report_rounded, onTap: () async {
+      GradientButton(label: 'Record a complaint', icon: Icons.report_rounded, onTap: () async {
         final f = await _form(context, 'Shikayat', const [
-          ('text', 'Shikayat (paste)'), ('who', 'Kisne ki'), ('contact', 'Unka email / WhatsApp'), ('story', 'Story (ST-0001)'),
-          ('received', 'Kab mili (YYYY-MM-DD)'),
+          ('text', 'Shikayat (paste)'), ('who', 'Kisne ki'), ('contact', 'Their email / WhatsApp'), ('story', 'Story (ST-0001)'),
+          ('received', 'When received (YYYY-MM-DD)'),
         ]);
         if (f == null) return;
         await _run('POST', '/api/patrakar/grievances', f);
       }),
       const SizedBox(height: 14),
       if (_list(_d?['corrections']).isNotEmpty) ...[
-        const Caption('SUDHAAR (CORRECTIONS LOG)'),
+        const Caption('CORRECTIONS LOG'),
         for (final c in _list(_d?['corrections'])) Text('• ${_s(c['story'])}: ${_s(c['line'])}', style: const TextStyle(fontSize: 12.5)),
       ],
     ]);
@@ -346,21 +346,21 @@ class _PatrakarScreenState extends State<PatrakarScreen> {
     return ListView(padding: const EdgeInsets.all(16), children: [
       Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(_s(st['outlet']).isEmpty ? 'Sansthan ka naam nahi diya' : _s(st['outlet']), style: const TextStyle(fontWeight: FontWeight.w800)),
+          Text(_s(st['outlet']).isEmpty ? 'No organisation name given' : _s(st['outlet']), style: const TextStyle(fontWeight: FontWeight.w800)),
           Text('${_s(st['reporter'])} · ${_s(st['place'])} · ${_s(st['kind'])}', style: const TextStyle(color: C.muted)),
           Text('Grievance officer: ${_s(st['gro_name']).isEmpty ? '-' : _s(st['gro_name'])} ${_s(st['gro_contact'])}',
               style: const TextStyle(fontSize: 12.5)),
-          Text('Jawab ke liye ${_s(st['reply_days'])} din', style: const TextStyle(fontSize: 12.5)),
+          Text('${_s(st['reply_days'])} days to reply', style: const TextStyle(fontSize: 12.5)),
           for (final n in _strs(st['notes'])) Text('• $n', style: const TextStyle(fontSize: 11.5, color: C.faint)),
         ]),
       ),
       const SizedBox(height: 10),
       Wrap(spacing: 8, runSpacing: 8, children: [
-        GlassButton(label: 'Sansthan / byline', icon: Icons.badge_rounded, height: 40, onTap: () async {
-          final f = await _form(context, 'Sansthan', const [
+        GlassButton(label: 'Organisation / byline', icon: Icons.badge_rounded, height: 40, onTap: () async {
+          final f = await _form(context, 'Organisation', const [
             ('outlet', 'Portal / channel / akhbaar'), ('kind', 'portal / youtube / stringer / print / freelance'), ('reporter', 'Byline naam'),
-            ('place', 'Dateline (shahar)'), ('contact', 'Sampark (letters par)'), ('gro_name', 'Grievance officer'),
-            ('gro_contact', 'Grievance officer sampark'), ('reply_days', 'Jawab ke liye din (1-14)'), ('morning_time', 'Subah ka note (HH:MM)'),
+            ('place', 'Dateline (city)'), ('contact', 'Contact (on letters)'), ('gro_name', 'Grievance officer'),
+            ('gro_contact', 'Grievance officer contact'), ('reply_days', 'Days to reply (1-14)'), ('morning_time', 'Morning note (HH:MM)'),
           ], initial: {for (final k in keys) k: _s(st[k])});
           if (f == null) return;
           final body = <String, dynamic>{...f};
@@ -369,7 +369,7 @@ class _PatrakarScreenState extends State<PatrakarScreen> {
           await _run('PUT', '/api/patrakar/settings', body);
         }),
         GlassButton(label: 'Style sheet', icon: Icons.spellcheck_rounded, height: 40, onTap: () async {
-          final f = await _form(context, 'Style (har line: galat = sahi)', const [('text', 'chor = aaropi')], initial: {'text': style});
+          final f = await _form(context, 'Style (each line: wrong = right)', const [('text', 'chor = aaropi')], initial: {'text': style});
           if (f == null) return;
           final rows = <Map<String, String>>[];
           for (final l in _lines(f['text'])) {
@@ -379,14 +379,14 @@ class _PatrakarScreenState extends State<PatrakarScreen> {
           await _run('PUT', '/api/patrakar/settings', {'style': rows});
         }),
         GlassButton(label: 'Mana shabd', icon: Icons.block_rounded, height: 40, onTap: () async {
-          final f = await _form(context, 'Kabhi na likhein (comma se)', const [('text', 'shabd')],
+          final f = await _form(context, 'Never write (comma separated)', const [('text', 'shabd')],
               initial: {'text': _strs(st['avoid']).join(', ')});
           if (f == null) return;
           await _run('PUT', '/api/patrakar/settings', {'avoid': f['text'] ?? ''});
         }),
-        GlassButton(label: 'Chunav ki tareekh', icon: Icons.how_to_vote_rounded, height: 40, onTap: () async {
-          final f = await _form(context, 'Matdan (RP Act s.126: 48 ghante khamoshi)', const [
-            ('area', 'Ilaaka / constituency'), ('start', 'Matdan shuru (YYYY-MM-DD HH:MM)'), ('end', 'Matdan khatam (YYYY-MM-DD HH:MM)'),
+        GlassButton(label: 'Election date', icon: Icons.how_to_vote_rounded, height: 40, onTap: () async {
+          final f = await _form(context, 'Voting (RP Act s.126: 48 hours of silence)', const [
+            ('area', 'Area / constituency'), ('start', 'Voting starts (YYYY-MM-DD HH:MM)'), ('end', 'Voting ends (YYYY-MM-DD HH:MM)'),
           ]);
           final end = f?['end'];
           if (f == null || end == null) return;
@@ -404,7 +404,7 @@ class _PatrakarScreenState extends State<PatrakarScreen> {
       ]),
       if (els.isNotEmpty) ...[
         const SizedBox(height: 10),
-        const Caption('CHUNAV'),
+        const Caption('ELECTION'),
         for (final e in els)
           Text('• ${_s(e['area'])}: ${_list(e['phases']).map((p) => '${_s(p['start'])} - ${_s(p['end'])}').join(', ')}'),
       ],
@@ -501,7 +501,7 @@ class _PatrakarStoryPageState extends State<PatrakarStoryPage> {
     final color = switch (st) { 'supported' || 'attributed' => C.ok, 'contradicted' => C.bad, 'cut' => C.faint, _ => C.warn };
     String ev(Map<String, dynamic> e) {
       final where = _s(e['url']).isNotEmpty ? _s(e['url']) : (_s(e['ref']).isNotEmpty ? _s(e['ref']) : _s(e['note']));
-      final how = e['found'] == true ? ' · padha, mila' : (e['read'] == true ? ' · padha, nahi mila' : (e['read'] == false ? ' · khula nahi' : ''));
+      final how = e['found'] == true ? ' · read, found' : (e['read'] == true ? ' · read, not found' : (e['read'] == false ? ' · did not open' : ''));
       return '↳ $where$how';
     }
 
@@ -517,17 +517,17 @@ class _PatrakarStoryPageState extends State<PatrakarStoryPage> {
             onSelected: (v) async {
               final id = _s(c['id']);
               if (v == 'url') {
-                final f = await _form(context, 'Kis page par hai? (Hoola khud kholega)', const [('url', 'https://...')]);
+                final f = await _form(context, 'Which page is it on? (Hoola will open it itself)', const [('url', 'https://...')]);
                 if (f == null) return;
                 await _run('POST', '/api/patrakar/claims/$id/check', f);
               } else if (v == 'search') {
                 await _run('POST', '/api/patrakar/claims/$id/check', <String, dynamic>{});
               } else if (v == 'source') {
-                final f = await _form(context, 'Kis source ne pakka kiya', const [('source', 'S-001')]);
+                final f = await _form(context, 'Which source confirmed it', const [('source', 'S-001')]);
                 if (f == null) return;
                 await _run('POST', '/api/patrakar/claims/$id/mark', {'status': 'supported', ...f});
               } else if (v == 'mine') {
-                final f = await _form(context, 'Aapne kaise pakka kiya', const [('note', 'Maine khud dekha / document...')]);
+                final f = await _form(context, 'How you confirmed it', const [('note', 'I saw it myself / document...')]);
                 if (f == null) return;
                 await _run('POST', '/api/patrakar/claims/$id/mark', {'status': 'supported', ...f});
               } else {
@@ -535,11 +535,11 @@ class _PatrakarStoryPageState extends State<PatrakarStoryPage> {
               }
             },
             itemBuilder: (_) => const [
-              PopupMenuItem(value: 'url', child: Text('Link se jaancho')),
-              PopupMenuItem(value: 'search', child: Text('Web par dhoondho')),
-              PopupMenuItem(value: 'source', child: Text('Source ne pakka kiya')),
-              PopupMenuItem(value: 'mine', child: Text('Maine pakka kiya')),
-              PopupMenuItem(value: 'attributed', child: Text('Sirf aarop / attribution')),
+              PopupMenuItem(value: 'url', child: Text('Check from a link')),
+              PopupMenuItem(value: 'search', child: Text('Search the web')),
+              PopupMenuItem(value: 'source', child: Text('Confirmed by the source')),
+              PopupMenuItem(value: 'mine', child: Text('I confirmed it')),
+              PopupMenuItem(value: 'attributed', child: Text('Allegation / attribution only')),
               PopupMenuItem(value: 'contradicted', child: Text('Galat nikla')),
               PopupMenuItem(value: 'cut', child: Text('Copy se hataya')),
             ],
@@ -557,7 +557,7 @@ class _PatrakarStoryPageState extends State<PatrakarStoryPage> {
       context: context,
       builder: (d) => StatefulBuilder(
         builder: (d, set) => AlertDialog(
-          title: const Text('Kahan chhapein?'),
+          title: const Text('Where to publish?'),
           content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
             Wrap(spacing: 6, children: [
               ChoiceChip(label: const Text('Copy (main daalungi)'), selected: dest == 'copy', onSelected: (_) => set(() => dest = 'copy')),
@@ -569,11 +569,11 @@ class _PatrakarStoryPageState extends State<PatrakarStoryPage> {
                 ChoiceChip(label: const Text('Seedha chhapo'), selected: mode == 'publish', onSelected: (_) => set(() => mode = 'publish')),
               ]),
             const SizedBox(height: 6),
-            const Text('Card banega; chhapna sirf aapki haan se.', style: TextStyle(fontSize: 12, color: C.muted)),
+            const Text('A card will be made; publishing only with your yes.', style: TextStyle(fontSize: 12, color: C.muted)),
           ]),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Rehne do')),
-            TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Card banao')),
+            TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Keep it')),
+            TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Make card')),
           ],
         ),
       ),
@@ -588,11 +588,11 @@ class _PatrakarStoryPageState extends State<PatrakarStoryPage> {
     final yes = await showDialog<bool>(
         context: context,
         builder: (d) => AlertDialog(
-              title: const Text('Style badlav'),
+              title: const Text('Style change'),
               content: Text(_strs(r['changes']).join('\n')),
               actions: [
-                TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Nahi')),
-                TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Lagao')),
+                TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('No')),
+                TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Apply')),
               ],
             ));
     if (yes == true) await _run('PATCH', _p, {'headline': _s(r['headline']), 'body': _s(r['body'])});
@@ -610,7 +610,7 @@ class _PatrakarStoryPageState extends State<PatrakarStoryPage> {
                 if (f == null) return;
                 await _run('POST', '/api/patrakar/interviews/${_s(i['id'])}/quote', f);
               },
-              child: const Text('Quote chuno')),
+              child: const Text('Choose a quote')),
         ]),
       );
 
@@ -620,11 +620,11 @@ class _PatrakarStoryPageState extends State<PatrakarStoryPage> {
         trailing: _s(r['status']) == 'sent'
             ? TextButton(
                 onPressed: () async {
-                  final f = await _form(context, 'Unka jawab', const [('response', 'Jawab (paste)')]);
+                  final f = await _form(context, 'Their reply', const [('response', 'Reply (paste)')]);
                   if (f == null) return;
                   await _run('POST', '/api/patrakar/replies/${_s(r['id'])}/answer', f);
                 },
-                child: const Text('Jawab aaya'))
+                child: const Text('Reply received'))
             : null,
       );
 
@@ -651,7 +651,7 @@ class _PatrakarStoryPageState extends State<PatrakarStoryPage> {
             ]),
             if (_s(v['pitch']).isNotEmpty) Text(_s(v['pitch']), style: const TextStyle(fontSize: 12.5, color: C.muted)),
             if (_s(pub['url']).isNotEmpty)
-              TextButton(onPressed: () => Native.openExternal(url: _s(pub['url'])), child: const Text('Chhapi story kholo')),
+              TextButton(onPressed: () => Native.openExternal(url: _s(pub['url'])), child: const Text('Open the published story')),
           ]),
         ),
         const SizedBox(height: 10),
@@ -663,11 +663,11 @@ class _PatrakarStoryPageState extends State<PatrakarStoryPage> {
           GlassButton(label: 'Save', icon: Icons.save_rounded, height: 40,
               onTap: _busy ? null : () => _run('PATCH', _p, {'headline': _head.text, 'body': _body.text})),
           GlassButton(label: 'Hoola draft likhe', icon: Icons.edit_note_rounded, height: 40, onTap: _busy ? null : () async {
-            final f = await _form(context, 'Draft kaise?', const [('ask', 'Jaise: 300 shabd, seedhi khabar')]);
+            final f = await _form(context, 'What kind of draft?', const [('ask', 'For example: 300 words, straight news')]);
             if (f == null) return;
             await _run('POST', '$_p/write', f);
           }),
-          GlassButton(label: 'Jaancho', icon: Icons.fact_check_rounded, height: 40, onTap: _busy ? null : () => _run('POST', '$_p/check')),
+          GlassButton(label: 'Check', icon: Icons.fact_check_rounded, height: 40, onTap: _busy ? null : () => _run('POST', '$_p/check')),
           GlassButton(label: 'Style', icon: Icons.spellcheck_rounded, height: 40, onTap: _styleSuggest),
         ]),
         const SizedBox(height: 8),
@@ -675,7 +675,7 @@ class _PatrakarStoryPageState extends State<PatrakarStoryPage> {
         const SizedBox(height: 14),
         Row(children: [
           const Expanded(child: Caption('FACT SHEET')),
-          TextButton(onPressed: _busy ? null : () => _run('POST', '$_p/claims/extract'), child: const Text('Copy se daave nikalo')),
+          TextButton(onPressed: _busy ? null : () => _run('POST', '$_p/claims/extract'), child: const Text('Pull claims out of the copy')),
         ]),
         for (final c in _list(v['claims'])) _claimTile(c),
         const SizedBox(height: 10),
@@ -684,8 +684,8 @@ class _PatrakarStoryPageState extends State<PatrakarStoryPage> {
           TextButton(
               onPressed: () async {
                 final f = await _form(context, 'Interview', const [
-                  ('transcript', 'Transcript (paste)'), ('file_id', 'Ya audio file_id (chat mein bheji)'), ('who', 'Kaun'),
-                  ('source', 'Source ref (S-001, agar gupt)'), ('consent', 'Recording ki ijazat mili? (haan / nahi)'),
+                  ('transcript', 'Transcript (paste)'), ('file_id', 'Or audio file_id (sent in the chat)'), ('who', 'Who'),
+                  ('source', 'Source ref (S-001, if confidential)'), ('consent', 'Permission to record received? (yes / no)'),
                 ]);
                 if (f == null) return;
                 await _run('POST', '$_p/interviews', {...f, 'consent': (f['consent'] ?? '').toLowerCase().startsWith('h')});
@@ -694,44 +694,44 @@ class _PatrakarStoryPageState extends State<PatrakarStoryPage> {
         ]),
         for (final i in _list(v['interviews'])) _interviewTile(i),
         const SizedBox(height: 10),
-        const Caption('JAWAB KA MAUKA (RIGHT OF REPLY)'),
+        const Caption('CHANCE TO REPLY (RIGHT OF REPLY)'),
         for (final r in _list(v['replies'])) _replyTile(r),
         const SizedBox(height: 10),
         Wrap(spacing: 8, runSpacing: 8, children: [
-          GlassButton(label: 'Jawab maango', icon: Icons.question_answer_rounded, height: 40, onTap: () async {
+          GlassButton(label: 'Ask for a reply', icon: Icons.question_answer_rounded, height: 40, onTap: () async {
             final f = await _form(context, 'Right of reply', const [
-              ('party', 'Kisse (jis par aarop)'), ('phone', 'WhatsApp'), ('email', 'Email'),
-              ('allegations', 'Aarop (har line ek)'), ('questions', 'Sawal (har line ek)'),
+              ('party', 'To whom (the person accused)'), ('phone', 'WhatsApp'), ('email', 'Email'),
+              ('allegations', 'Allegations (one per line)'), ('questions', 'Questions (one per line)'),
             ]);
             if (f == null) return;
             await _run('POST', '$_p/reply', {...f, 'allegations': _lines(f['allegations']), 'questions': _lines(f['questions'])});
           }),
-          GlassButton(label: 'Pitch bhejo', icon: Icons.send_rounded, height: 40, onTap: () async {
+          GlassButton(label: 'Send pitch', icon: Icons.send_rounded, height: 40, onTap: () async {
             final f = await _form(context, 'Editor ko pitch',
-                const [('to', 'Editor'), ('phone', 'WhatsApp'), ('email', 'Email'), ('text', 'Pitch (khaali = Hoola banaye)')]);
+                const [('to', 'Editor'), ('phone', 'WhatsApp'), ('email', 'Email'), ('text', 'Pitch (blank = Hoola writes it)')]);
             if (f == null) return;
             await _run('POST', '$_p/pitch', f);
           }),
-          GradientButton(label: 'Chhapne ka card', icon: Icons.publish_rounded, height: 44, onTap: _busy ? null : _publish),
+          GradientButton(label: 'Card to publish', icon: Icons.publish_rounded, height: 44, onTap: _busy ? null : _publish),
           if (_s(v['status']) == 'published')
-            GlassButton(label: 'Sudhaar', icon: Icons.edit_rounded, height: 40, onTap: () async {
-              final f = await _form(context, 'Sudhaar', const [
-                ('wrong', 'Pehle kya likha tha'), ('right', 'Sahi kya hai'),
+            GlassButton(label: 'Correction', icon: Icons.edit_rounded, height: 40, onTap: () async {
+              final f = await _form(context, 'Correction', const [
+                ('wrong', 'What was written before'), ('right', 'What is correct'),
                 ('kind', 'correction / clarification / update / retraction / apology'), ('why', 'Wajah'),
               ]);
               if (f == null) return;
               await _run('POST', '$_p/correction', f);
             }),
           if (pub.isNotEmpty && _s(v['status']) != 'published')
-            GlassButton(label: 'Daal diya', icon: Icons.done_all_rounded, height: 40, onTap: () async {
-              final f = await _form(context, 'Kahan chhapi? (link)', const [('url', 'https://...')]);
+            GlassButton(label: 'Added', icon: Icons.done_all_rounded, height: 40, onTap: () async {
+              final f = await _form(context, 'Where was it published? (link)', const [('url', 'https://...')]);
               if (f == null) return;
               await _run('POST', '$_p/published', f);
             }),
           GlassButton(label: 'Word + fact sheet', icon: Icons.description_rounded, height: 40, onTap: () => _run('POST', '$_p/files')),
         ]),
         const SizedBox(height: 10),
-        const Text('Hoola khud kuch chhapta / bhejta nahi; quote, ank, naam kabhi gadhta nahi. Laal jhande kanooni salah nahi hain.',
+        const Text('Hoola publishes or sends nothing by itself; it never invents quotes, figures or names. Red flags are not legal advice.',
             style: TextStyle(fontSize: 11, color: C.faint)),
       ]),
     );
@@ -757,7 +757,7 @@ class _PatrakarCardCardState extends State<PatrakarCardCard> {
     final id = _s(_c['id']);
     String reason = '';
     if (!yes) {
-      final f = await _form(context, 'Kyun nahi?', const [('reason', 'Wajah (optional)')], ok: 'Nahi');
+      final f = await _form(context, 'Why not?', const [('reason', 'Reason (optional)')], ok: 'No');
       if (f == null) return;
       reason = f['reason'] ?? '';
     }
@@ -808,24 +808,24 @@ class _PatrakarCardCardState extends State<PatrakarCardCard> {
           }, color: C.accent),
           const SizedBox(width: 8),
           Expanded(child: Text('${_s(c['title'])} · $ref', style: const TextStyle(fontWeight: FontWeight.w800))),
-          Pill(switch (st) { 'waiting' => 'aapki haan?', 'approved' => 'haan', 'rejected' => 'nahi', 'stale' => 'purana', _ => st },
+          Pill(switch (st) { 'waiting' => 'your yes?', 'approved' => 'yes', 'rejected' => 'no', 'stale' => 'old', _ => st },
               fg: st == 'waiting' ? C.accent : C.chip),
         ]),
         if (kind == 'publish')
           Text('${_s(sh['dest'])} · ${_s(sh['mode'])} · ${_s(sh['words'])} shabd · ${_s(sh['byline'])}',
               style: const TextStyle(fontSize: 12, color: C.muted)),
-        if (kind == 'reply') Text('${_s(sh['party'])} · jawab ${_s(sh['deadline'])} tak', style: const TextStyle(fontSize: 12, color: C.muted)),
+        if (kind == 'reply') Text('${_s(sh['party'])} · reply by ${_s(sh['deadline'])}', style: const TextStyle(fontSize: 12, color: C.muted)),
         const SizedBox(height: 6),
         Text(preview, maxLines: 10, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12.5)),
         const SizedBox(height: 8),
         if (st == 'waiting')
           Wrap(spacing: 8, runSpacing: 6, children: [
-            GradientButton(label: 'Haan', height: 42, onTap: _busy ? null : () => _decide(true)),
-            GlassButton(label: 'Nahi', height: 42, onTap: _busy ? null : () => _decide(false)),
+            GradientButton(label: 'Yes', height: 42, onTap: _busy ? null : () => _decide(true)),
+            GlassButton(label: 'No', height: 42, onTap: _busy ? null : () => _decide(false)),
           ]),
         if (draft.isNotEmpty) _draftButtons(context, draft),
         if (draft.isEmpty && text.isNotEmpty) _draftButtons(context, {'text': text}),
-        const Text('Hoola khud kuch nahi chhapta / bhejta: aapki haan ke baad draft aap bhejti hain.',
+        const Text('Hoola publishes or sends nothing by itself: you send the draft after your yes.',
             style: TextStyle(fontSize: 11, color: C.faint)),
       ]),
     );
@@ -853,7 +853,7 @@ class PatrakarNoteCard extends StatelessWidget {
             if (story.startsWith('ST-'))
               TextButton(
                 onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => PatrakarStoryPage(app: app, ref: story))),
-                child: Text('$story kholo'),
+                child: Text('Open $story'),
               ),
           ]),
         ),

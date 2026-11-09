@@ -46,7 +46,7 @@ Future<Map<String, String>?> _ask(BuildContext context, String title, List<(Stri
         ]),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Rehne do')),
+        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Keep it')),
         TextButton(onPressed: () => Navigator.pop(d, true), child: Text(ok)),
       ],
     ),
@@ -65,7 +65,7 @@ class FilmdeskProducerPage extends StatefulWidget {
 }
 
 class _FilmdeskProducerPageState extends State<FilmdeskProducerPage> {
-  static const _tabs = ['Script', 'Shots', 'Schedule', 'Paisa', 'Sales', 'Delivery'];
+  static const _tabs = ['Script', 'Shots', 'Schedule', 'Money', 'Sales', 'Delivery'];
   late int _tab = widget.tab;
   bool _busy = false;
   bool _loading = true;
@@ -193,16 +193,16 @@ class _FilmdeskProducerPageState extends State<FilmdeskProducerPage> {
   // ------------------------------------------------------------ tabs
   List<Widget> _script() {
     final c = _m(_d['coverage']);
-    if (c.isEmpty) return [_line('Coverage nahi khuli.', muted: true)];
+    if (c.isEmpty) return [_line('Coverage could not be opened.', muted: true)];
     if ((c['scenes'] ?? 0) == 0) return [_line(_s(c['note']), muted: true)];
     return [
-      _box('Script ki ginti', [
+      _box('Script count', [
         _line('${_s(c['scenes'])} scenes · ~${_s(c['estimated_minutes'])} min · ${_s(c['characters_n'])} kirdaar · ${_s(c['places_n'])} jagah'),
-        _line('Raat ke ${_s(c['night_scenes'])} scene (${_s(c['night_pct'])}%) · jagah badalna ${_s(c['company_moves'])} baar'),
-        _line('Dialogue ${_s(c['dialogue_pct'])}% · sabse zyada bolne wala: ${_s(c['most_dialogue'])}', muted: true),
+        _line('Night ${_s(c['night_scenes'])} scene (${_s(c['night_pct'])}%) · location changes ${_s(c['company_moves'])} times'),
+        _line('Dialogue ${_s(c['dialogue_pct'])}% · most dialogue: ${_s(c['most_dialogue'])}', muted: true),
         _line(_s(c['kind_note']), muted: true),
       ]),
-      _box('Flags', _flags(c['flags'], 'Kuch flag nahi hua.')),
+      _box('Flags', _flags(c['flags'], 'Nothing was flagged.')),
       _box('Kirdaar', [
         for (final x in _list(c['cast_table']))
           _line('${_s(x['name'])}: ${_s(x['lines'])} lines · ${_s(x['dialogue_pct'])}% · ${_s(x['scenes_n'])} scenes'),
@@ -212,15 +212,15 @@ class _FilmdeskProducerPageState extends State<FilmdeskProducerPage> {
 
   List<Widget> _shots() {
     final v = _m(_d['previs']);
-    if (v.isEmpty) return [_line('Previs nahi khula.', muted: true)];
+    if (v.isEmpty) return [_line('Previs could not be opened.', muted: true)];
     if ((v['shots'] ?? 0) == 0) return [_line(_s(v['note']), muted: true)];
     return [
       _box('Shot list', [
         _line('${_s(v['shots'])} shots · ${_s(v['total_seconds'])} s'),
         _line(_s(v['note']), muted: true),
       ]),
-      _box('Flags', _flags(v['flags'], 'Shot list mein koi dikkat nahi mili.')),
-      _box('Scene ke hisaab se', [
+      _box('Flags', _flags(v['flags'], 'No problem was found in the shot list.')),
+      _box('By scene', [
         for (final x in _list(v['per_scene']))
           _line('Scene ${_s(x['n'])}: ${_s(x['shots'])} shots, ${_s(x['shot_seconds'])} s (script ${_s(x['script_seconds'])} s)'),
       ]),
@@ -231,16 +231,16 @@ class _FilmdeskProducerPageState extends State<FilmdeskProducerPage> {
     final s = _m(_d['schedule']);
     final d = _m(_d['dood']);
     final plan = GlassButton(
-        label: s.isEmpty ? 'Shoot plan banao' : 'Dobara plan',
+        label: s.isEmpty ? 'Make shoot plan' : 'Plan again',
         icon: Icons.event_note_rounded,
         height: 38,
-        onTap: _busy ? null : () => _add('schedule', 'Shoot ka plan (apne asli number)', const [
-              ('start_date', 'Shuru tareekh (YYYY-MM-DD)'),
-              ('day_hours', 'Ghante ek din mein'),
+        onTap: _busy ? null : () => _add('schedule', 'Shoot plan (your real numbers)', const [
+              ('start_date', 'Start date (YYYY-MM-DD)'),
+              ('day_hours', 'Hours in a day'),
               ('setup_hours', 'Set-up ghante'),
-              ('hours_per_screen_minute', 'Ghante har screen minute par'),
+              ('hours_per_screen_minute', 'Hours per screen minute'),
             ], const {}));
-    if (s.isEmpty) return [_box('Schedule', [_line('Abhi plan nahi bana. Ghante andaaze hote hain jab tak aap apne number na dein.', muted: true), plan])];
+    if (s.isEmpty) return [_box('Schedule', [_line('No plan yet. Hours are estimates until you give your own numbers.', muted: true), plan])];
     return [
       _box('Shoot din', [
         plan,
@@ -249,12 +249,12 @@ class _FilmdeskProducerPageState extends State<FilmdeskProducerPage> {
         for (final x in _list(s['days']))
           _line('Din ${_s(x['order'])} · ${_s(x['date']).isEmpty ? '[tareekh]' : _s(x['date'])} · ${_s(x['part'])} · '
               '${((x['places'] as List?) ?? const []).join(', ')} · ${((x['scenes'] as List?) ?? const []).length} scenes · ${_s(x['hours'])} ghante'),
-        _line('Call sheet chat se banti hai ("call sheet din 2"); jo aapko hi pata hai woh [khaali] rehta hai.', muted: true),
+        _line('The call sheet is made from the chat ("call sheet day 2"); anything only you know stays [blank].', muted: true),
       ]),
       if (d.isNotEmpty)
         _box('Day-out-of-days', [
           for (final x in _list(d['summary']))
-            _line('${_s(x['who'])}: ${_s(x['work_days'])} din kaam, ${_s(x['hold_days'])} hold (din ${_s(x['first_day'])}-${_s(x['last_day'])})'),
+            _line('${_s(x['who'])}: ${_s(x['work_days'])} working days, ${_s(x['hold_days'])} hold (days ${_s(x['first_day'])}-${_s(x['last_day'])})'),
           _line(_s(d['note']), muted: true),
         ]),
     ];
@@ -266,37 +266,37 @@ class _FilmdeskProducerPageState extends State<FilmdeskProducerPage> {
     final r = _m(_d['royalties']);
     const termsPath = 'royalties';
     return [
-      _box('Budget (aapke rate card se)', b.isEmpty
-          ? [_line('Pehle schedule banaiye, phir chat mein apne rate dijiye ("budget plan: crew 8000 roz ..."). Sirf aapke number lagte hain.', muted: true)]
+      _box('Budget (from your rate card)', b.isEmpty
+          ? [_line('Make a schedule first, then give your rates in the chat ("budget plan: crew 8000 per day ..."). Only your numbers are used.', muted: true)]
           : [
-              _line('Kam se kam ${_inr(b['total_inr'])} (subtotal ${_inr(b['subtotal_inr'])}, contingency ${_inr(b['contingency_inr'])})'),
+              _line('At least ${_inr(b['total_inr'])} (subtotal ${_inr(b['subtotal_inr'])}, contingency ${_inr(b['contingency_inr'])})'),
               for (final l in _list(b['lines']))
-                _line('${_s(l['head'])}: ${_s(l['qty'])} × ${l['rate_inr'] == null ? 'rate nahi di' : _inr(l['rate_inr'])} = ${_inr(l['amount_inr'])}', muted: l['rate_inr'] == null),
+                _line('${_s(l['head'])}: ${_s(l['qty'])} × ${l['rate_inr'] == null ? 'no rate given' : _inr(l['rate_inr'])} = ${_inr(l['amount_inr'])}', muted: l['rate_inr'] == null),
               _line(_s(b['note']), muted: true),
             ]),
       _box('Waterfall', w.isEmpty
-          ? [_line('Abhi nahi bana (chat: "waterfall: gross 5 lakh ...").', muted: true)]
+          ? [_line('Not made yet (chat: "waterfall: gross 5 lakh ...").', muted: true)]
           : [
-              _line('Gross ${_inr(w['gross_inr'])} · gross se milta hai: ${w['ties_to_gross'] == true ? 'haan' : 'NAHI'}'),
+              _line('Gross ${_inr(w['gross_inr'])} · matches gross: ${w['ties_to_gross'] == true ? 'yes' : 'NO'}'),
               for (final t in _list(w['tiers'])) _line('${_s(t['tier'])} · ${_s(t['name'])}: ${_inr(t['amount_inr'])} (bacha ${_inr(t['left_inr'])})'),
             ]),
-      _box('Royalty (aapke contract ki shartein)', [
+      _box('Royalty (your contract terms)', [
         Wrap(spacing: 8, runSpacing: 6, children: [
           GlassButton(label: 'Shart jodo', icon: Icons.gavel_rounded, height: 38, onTap: _busy ? null : () => _add(termsPath, 'Contract ki shart', const [
                 ('party', 'Kis ko'),
                 ('role', 'Role (writer / director / actor / composer ...)'),
                 ('basis', 'flat_inr / percent_of_gross / percent_of_net / per_unit'),
                 ('rate', 'Dar'),
-                ('threshold_inr', 'Is rupaye ke upar (ya khaali)'),
-                ('cap_inr', 'Adhiktam rupaye (ya khaali)'),
-                ('applies_to', 'Medium (svod, tv ... ya all)'),
-                ('source', 'Contract ka clause (zaroori)'),
+                ('threshold_inr', 'Above this amount (or blank)'),
+                ('cap_inr', 'Maximum rupees (or blank)'),
+                ('applies_to', 'Medium (svod, tv ... or all)'),
+                ('source', 'Contract clause (required)'),
               ], const {'op': 'add'})),
-          GlassButton(label: 'Aay jodo', icon: Icons.payments_rounded, height: 38, onTap: _busy ? null : () => _add(termsPath, 'Mili hui aay', const [
+          GlassButton(label: 'Add income', icon: Icons.payments_rounded, height: 38, onTap: _busy ? null : () => _add(termsPath, 'Income received', const [
                 ('medium', 'Medium (svod / avod / tv / theatrical / music ...)'),
-                ('amount_inr', 'Rupaye'),
-                ('net_inr', 'Net rupaye (ya khaali)'),
-                ('units', 'Ginti (ya khaali)'),
+                ('amount_inr', 'Rupees'),
+                ('net_inr', 'Net rupees (or blank)'),
+                ('units', 'Count (or blank)'),
                 ('period', 'Tareekh (YYYY-MM-DD)'),
               ], const {'op': 'receipt'})),
         ]),
@@ -307,7 +307,7 @@ class _FilmdeskProducerPageState extends State<FilmdeskProducerPage> {
           _row('${_s(x['id'])} · ${_s(x['medium'])} ${_inr(x['amount_inr'])}', trailing: _remove(termsPath, 'unreceipt', _s(x['id']))),
         for (final l in _list(r['lines']))
           _line('${_s(l['party'])}: ${_inr(l['amount_inr'])}${_s(l['problem']).isEmpty ? '' : ' (${_s(l['problem'])})'}'),
-        if (r.isNotEmpty) _line('Kul ${_inr(r['total_inr'])} (aay ${_inr(r['gross_receipts_inr'])})'),
+        if (r.isNotEmpty) _line('Total ${_inr(r['total_inr'])} (income ${_inr(r['gross_receipts_inr'])})'),
         if (r.isNotEmpty) _line(_s(r['note']), muted: true),
       ]),
     ];
@@ -323,8 +323,8 @@ class _FilmdeskProducerPageState extends State<FilmdeskProducerPage> {
               ('name', 'Naam'),
               ('country', 'Desh'),
               ('deadline', 'Deadline (YYYY-MM-DD)'),
-              ('event_date', 'Festival ki tareekh'),
-              ('fee_inr', 'Fee rupaye'),
+              ('event_date', 'Festival date'),
+              ('fee_inr', 'Fee in rupees'),
               ('requires', 'Premiere niyam: regional / national / international / world / none'),
             ], const {'op': 'add'})),
         const SizedBox(height: 6),
@@ -338,9 +338,9 @@ class _FilmdeskProducerPageState extends State<FilmdeskProducerPage> {
       _box('Release windows', [
         GlassButton(label: 'Window jodo', icon: Icons.calendar_month_rounded, height: 38, onTap: _busy ? null : () => _add('windows', 'Release window', const [
               ('medium', 'Medium (theatrical / svod / avod / tv ...)'),
-              ('territory', 'Territory (india, uae ya world)'),
-              ('start', 'Shuru (YYYY-MM-DD)'),
-              ('end', 'Khatam (ya khaali)'),
+              ('territory', 'Territory (india, uae or world)'),
+              ('start', 'Start (YYYY-MM-DD)'),
+              ('end', 'Ends (or blank)'),
               ('licensee', 'Licensee'),
             ], const {'op': 'add'})),
         const SizedBox(height: 6),
@@ -379,9 +379,9 @@ class _FilmdeskProducerPageState extends State<FilmdeskProducerPage> {
               trailing: _remove('deliverables', 'remove', _s(x['id']))),
         _line(_s(d['note']), muted: true),
       ]),
-      _box('Subtitles aur dub (${_s(l['done'])}/${_s(l['total'])})', [
-        GlassButton(label: 'Bhasha jodo', icon: Icons.translate_rounded, height: 38, onTap: _busy ? null : () => _add('localisation', 'Bhasha', const [
-              ('language', 'Bhasha'),
+      _box('Subtitles and dub (${_s(l['done'])}/${_s(l['total'])})', [
+        GlassButton(label: 'Add a language', icon: Icons.translate_rounded, height: 38, onTap: _busy ? null : () => _add('localisation', 'Language', const [
+              ('language', 'Language'),
               ('kind', 'subtitles / dub / both'),
               ('dub_mode', 'human / ai_voice'),
               ('voice_person', 'AI awaaz ho to register number (P-001)'),

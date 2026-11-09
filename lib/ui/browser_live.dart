@@ -13,14 +13,14 @@ class BrowserLive {
 
   static String label(Map<String, dynamic> v) => switch (v['status'] as String? ?? 'running') {
         'running' || 'starting' => 'LIVE',
-        'done' => 'HO GAYA',
+        'done' => 'DONE',
         'partial' => 'ADHURA',
-        'needs_confirm' => 'MANZOORI',
-        'needs_payment' => 'PAYMENT AAP',
-        'needs_user' => 'AAPKA STEP',
+        'needs_confirm' => 'APPROVAL',
+        'needs_payment' => 'YOU PAY',
+        'needs_user' => 'YOUR STEP',
         'cancelled' => 'ROKA',
         'blocked' => 'BLOCKED',
-        _ => 'NAHI HUA',
+        _ => 'NOT DONE',
       };
 
   static Color color(Map<String, dynamic> v) => switch (v['status'] as String? ?? 'running') {
@@ -122,7 +122,7 @@ Widget _frameBox(Uint8List? frame, {BoxFit fit = BoxFit.cover}) => frame == null
         child: const Column(mainAxisSize: MainAxisSize.min, children: [
           SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.4, color: C.accent)),
           SizedBox(height: 8),
-          Text('Browser khul raha hai…', style: TextStyle(color: C.muted, fontSize: 12.5)),
+          Text('Opening the browser…', style: TextStyle(color: C.muted, fontSize: 12.5)),
         ]),
       )
     : Image.memory(frame, gaplessPlayback: true, fit: fit, alignment: Alignment.topCenter, filterQuality: FilterQuality.medium);
@@ -153,7 +153,7 @@ class BrowserLiveCard extends StatelessWidget {
                     color: l['source'] == 'pc' ? const Color(0xFFC026D3) : C.accent, size: 20),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: Text(l['source'] == 'pc' ? 'Aapka PC · Chrome / apps' : (site.isEmpty ? '${app.aName} ka browser' : '${app.aName} ka browser · $site'),
+                  child: Text(l['source'] == 'pc' ? 'Your PC · Chrome / apps' : (site.isEmpty ? '${app.aName} ka browser' : '${app.aName} ka browser · $site'),
                       maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
                 ),
                 Pill(run ? '● ${BrowserLive.label(l)}' : BrowserLive.label(l), fg: Colors.white, bg: BrowserLive.color(l).withOpacity(.85)),
@@ -190,7 +190,7 @@ class BrowserLiveCard extends StatelessWidget {
                 ],
                 for (final st in _lastSteps(l, 2))
                   Text('✓ ${st['action']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: C.faint, fontSize: 11.5)),
-                Text((l['thinking'] == true) ? 'Soch raha hoon…' : (action.isEmpty ? 'Page padh raha hoon…' : '▶ $action'),
+                Text((l['thinking'] == true) ? 'Thinking…' : (action.isEmpty ? 'Reading the page…' : '▶ $action'),
                     maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: C.warn, fontSize: 12.5, fontWeight: FontWeight.w600)),
               ]
               else if (summary.isNotEmpty)
@@ -200,14 +200,14 @@ class BrowserLiveCard extends StatelessWidget {
                 TextButton.icon(
                   onPressed: () => BrowserLive.open(context, app, {...v, ...l}),
                   icon: const Icon(Icons.fullscreen_rounded, size: 18),
-                  label: const Text('Bada dekho'),
+                  label: const Text('View larger'),
                 ),
                 const Spacer(),
                 if (run)
                   TextButton.icon(
                     onPressed: () => _stop(context, app, v['session_id'] as String? ?? ''),
                     icon: const Icon(Icons.stop_circle_outlined, size: 18, color: C.bad),
-                    label: const Text('Rok do', style: TextStyle(color: C.bad)),
+                    label: const Text('Stop', style: TextStyle(color: C.bad)),
                   ),
               ]),
             ]),
@@ -223,7 +223,7 @@ Future<void> _stop(BuildContext context, Santosh app, String sid) async {
     await app.api?.browserStop(sid);
   } catch (_) {}
   if (context.mounted) {
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Browser rok diya')));
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Browser stopped')));
   }
 }
 
@@ -242,7 +242,7 @@ class _Timeline extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (steps.isEmpty) {
-      return const Center(child: Text('Steps yahan dikhenge…', style: TextStyle(color: C.faint, fontSize: 12.5)));
+      return const Center(child: Text('Steps will show here…', style: TextStyle(color: C.faint, fontSize: 12.5)));
     }
     return ListView.builder(
       reverse: true,
@@ -300,7 +300,7 @@ class BrowserLiveScreen extends StatelessWidget {
           backgroundColor: const Color(0xFF070912),
           appBar: AppBar(
             backgroundColor: const Color(0xFF0E1220),
-            title: Text(sid.startsWith('pcop_') ? 'Aapka PC · live' : '${app.aName} ka browser · live'),
+            title: Text(sid.startsWith('pcop_') ? 'Your PC · live' : '${app.aName} ka browser · live'),
           ),
           body: _LiveFeed(
             app: app,
@@ -342,24 +342,24 @@ class BrowserLiveScreen extends StatelessWidget {
                   child: SafeArea(
                     top: false,
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                      Text(run ? 'Abhi kya kar raha hoon · step ${l['step'] ?? 0}' : 'Nateeja',
+                      Text(run ? 'What I am doing now · step ${l['step'] ?? 0}' : 'Result',
                           style: const TextStyle(color: C.faint, fontSize: 12, fontWeight: FontWeight.w700)),
                       const SizedBox(height: 4),
                       Text(run
-                              ? ((l['thinking'] == true) ? 'Soch raha hoon…' : (action.isEmpty ? 'Page padh raha hoon…' : action))
+                              ? ((l['thinking'] == true) ? 'Thinking…' : (action.isEmpty ? 'Reading the page…' : action))
                               : (summary.isEmpty ? BrowserLive.label(l) : summary),
                           maxLines: 6, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14.5, height: 1.35)),
                       if (run) ...[
                         const SizedBox(height: 10),
                         Row(children: [
                           const Expanded(
-                            child: Text('Password, OTP aur payment Hoola kabhi nahi bharta. Submit se pehle aapse poochega.',
+                            child: Text('Hoola never fills in passwords, OTPs or payments. It will ask you before submitting.',
                                 style: TextStyle(color: C.muted, fontSize: 11.5)),
                           ),
                           FilledButton.tonalIcon(
                             onPressed: () => _stop(context, app, sid),
                             icon: const Icon(Icons.stop_rounded),
-                            label: const Text('Rok do'),
+                            label: const Text('Stop'),
                           ),
                         ]),
                       ],

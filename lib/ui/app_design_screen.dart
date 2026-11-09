@@ -1,6 +1,6 @@
 /// Profile > "<name> · App designer" (v0.128 App Sahayak, part 1): a few words -> plan of every screen (her Haan) ->
 /// 3 Home-screen looks (her choice) -> every screen designed while she watches (tiles with real screenshots) ->
-/// checks on Android + iPhone -> tap-through prototype -> changes in her words -> "Design pakka" (her tap, exact hash).
+/// checks on Android + iPhone -> tap-through prototype -> changes in her words -> "Confirm design" (her tap, exact hash).
 /// One chat card per app design, updated in place (also inside calls).
 library;
 
@@ -36,8 +36,8 @@ Map<String, dynamic> _map(dynamic m) => Map<String, dynamic>.from((m as Map?) ??
 void _snack(BuildContext c, String t) => ScaffoldMessenger.of(c).showSnackBar(SnackBar(content: Text(t)));
 
 const _statusUi = {
-  'draft': 'Shuru', 'planned': 'Plan: aapki haan', 'looks': 'Look chuniye', 'designing': 'Screens ban rahi', 'checking': 'Jaanch',
-  'ready': 'Design taiyaar', 'approved': 'Design pakka', 'failed': 'Dikkat', 'stopped': 'Ruka hua',
+  'draft': 'Start', 'planned': 'Plan: your yes', 'looks': 'Choose a look', 'designing': 'Making screens', 'checking': 'Checking',
+  'ready': 'Design ready', 'approved': 'Design confirmed', 'failed': 'Problem', 'stopped': 'Stopped',
 };
 Color _stCol(String s) => switch (s) {
       'ready' => C.accent, 'approved' => C.ok, 'planned' || 'looks' => C.accent, 'failed' => C.bad,
@@ -97,7 +97,7 @@ class AppScreenGrid extends StatelessWidget {
     final w = compact ? 64.0 : 96.0;
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       if (_s(b['now']).isNotEmpty)
-        Text('Abhi: ${b['now']}', style: const TextStyle(color: C.ink, fontWeight: FontWeight.w700, fontSize: 13)),
+        Text('Now: ${b['now']}', style: const TextStyle(color: C.ink, fontWeight: FontWeight.w700, fontSize: 13)),
       const SizedBox(height: 6),
       ClipRRect(
         borderRadius: BorderRadius.circular(99),
@@ -158,7 +158,7 @@ class _AppLooksState extends State<AppLooks> {
   Widget build(BuildContext context) {
     final looks = _list(widget.v['looks']);
     final id = _s(widget.v['id']);
-    if (looks.isEmpty) return const Text('Looks ban rahe hain…', style: TextStyle(color: C.faint));
+    if (looks.isEmpty) return const Text('Making the looks…', style: TextStyle(color: C.faint));
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       SizedBox(
         height: 410,
@@ -189,9 +189,9 @@ class _AppLooksState extends State<AppLooks> {
                 ],
                 const Spacer(),
                 Row(children: [
-                  Expanded(child: GlassButton(label: 'Yeh wala', height: 34, color: C.accent, onTap: _busy ? null : () => _choose(i))),
+                  Expanded(child: GlassButton(label: 'This one', height: 34, color: C.accent, onTap: _busy ? null : () => _choose(i))),
                   IconButton(
-                    tooltip: 'Iske rang',
+                    tooltip: 'Its colours',
                     onPressed: () => setState(() => _colorsFrom = _colorsFrom == i ? null : i),
                     icon: Icon(Icons.palette_rounded, color: _colorsFrom == i ? C.accent : C.faint, size: 20),
                   ),
@@ -201,7 +201,7 @@ class _AppLooksState extends State<AppLooks> {
           },
         ),
       ),
-      if (_colorsFrom != null) Text('Rang look ${_colorsFrom! + 1} ke lagenge', style: const TextStyle(color: C.accent, fontSize: 12)),
+      if (_colorsFrom != null) Text('The colours of look ${_colorsFrom! + 1} will be used', style: const TextStyle(color: C.accent, fontSize: 12)),
     ]);
   }
 
@@ -209,7 +209,7 @@ class _AppLooksState extends State<AppLooks> {
     setState(() => _busy = true);
     try {
       await widget.app.api!.appAct(_s(widget.v['id']), 'look', {'index': i, if (_colorsFrom != null) 'colors_from': _colorsFrom});
-      if (mounted) _snack(context, 'Screens banana shuru! Har screen ban-te hi dikhegi.');
+      if (mounted) _snack(context, 'Started making screens! Each screen shows as soon as it is ready.');
     } catch (e) {
       if (mounted) _snack(context, '$e');
     } finally {
@@ -220,16 +220,16 @@ class _AppLooksState extends State<AppLooks> {
 
 Future<void> _approve(BuildContext context, Santosh app, Map<String, dynamic> v) async {
   final yes = await showDialog<bool>(context: context, builder: (c) => AlertDialog(
-        title: const Text('Design pakka karein?'),
-        content: Text('${v['board']?['total'] ?? ''} screens ka yeh design (v${v['version']}) asli Android / iPhone app ka naksha ban jayega. '
-            'Baad mein badlav ho sakte hain, phir dobara pakka karna hoga.'),
-        actions: [TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Abhi nahi')),
-          FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('Haan, pakka'))],
+        title: const Text('Confirm the design?'),
+        content: Text('This ${v['board']?['total'] ?? ''}-screen design (v${v['version']}) will become the blueprint of the real Android / iPhone app. '
+            'You can change it later, but you will have to confirm again.'),
+        actions: [TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Not now')),
+          FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('Yes, confirm'))],
       ));
   if (yes != true) return;
   try {
     final r = await app.api!.appAct(_s(v['id']), 'approve', {'hash': _s(v['hash'])});
-    if (context.mounted) _snack(context, _s(r['say']).isEmpty ? 'Design pakka!' : _s(r['say']));
+    if (context.mounted) _snack(context, _s(r['say']).isEmpty ? 'Design confirmed!' : _s(r['say']));
   } catch (e) {
     if (context.mounted) _snack(context, '$e');
   }
@@ -273,12 +273,12 @@ class AppBoardCard extends StatelessWidget {
           ]),
           const SizedBox(height: 8),
           Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-            TextButton(onPressed: open, child: const Text('Dekho / jawab do')),
+            TextButton(onPressed: open, child: const Text('View / reply')),
             const SizedBox(width: 6),
-            GlassButton(label: 'Haan, 3 looks banao', height: 38, color: C.accent, onTap: () async {
+            GlassButton(label: 'Yes, make 3 looks', height: 38, color: C.accent, onTap: () async {
               try {
                 await app.api!.appAct(id, 'plan');
-                if (context.mounted) _snack(context, 'Home screen ke 3 looks ban rahe hain.');
+                if (context.mounted) _snack(context, 'Making 3 looks of the home screen.');
               } catch (e) {
                 if (context.mounted) _snack(context, '$e');
               }
@@ -301,10 +301,10 @@ class AppBoardCard extends StatelessWidget {
           const SizedBox(height: 6),
           Wrap(alignment: WrapAlignment.end, spacing: 6, runSpacing: 6, children: [
             TextButton.icon(onPressed: () => _openPreview(context, app, v), icon: const Icon(Icons.touch_app_rounded, size: 18),
-                label: const Text('Tap karke dekho')),
-            TextButton(onPressed: open, child: const Text('Badlav')),
+                label: const Text('Tap to try')),
+            TextButton(onPressed: open, child: const Text('Change')),
             if (st == 'ready')
-              GlassButton(label: 'Design pakka', height: 36, color: C.accent, onTap: () async {
+              GlassButton(label: 'Confirm design', height: 36, color: C.accent, onTap: () async {
                 final full = await app.api!.appGet(id);
                 if (context.mounted) await _approve(context, app, full);
               }),
@@ -369,14 +369,14 @@ class _AppDesignScreenState extends State<AppDesignScreen> {
       child: Scaffold(
         appBar: AppBar(
           title: Text('${app.aName} · App designer'),
-          bottom: const TabBar(isScrollable: true, tabs: [Tab(text: 'Meri apps'), Tab(text: '1 crore ideas'), Tab(text: 'Briefs (1 lakh)')]),
+          bottom: const TabBar(isScrollable: true, tabs: [Tab(text: 'My apps'), Tab(text: '1 crore ideas'), Tab(text: 'Briefs (1 lakh)')]),
         ),
         floatingActionButton: FloatingActionButton.extended(
           backgroundColor: C.accent,
           foregroundColor: C.onAccent,
           onPressed: () => _newApp(context),
           icon: const Icon(Icons.add_rounded),
-          label: const Text('Nayi app'),
+          label: const Text('New app'),
         ),
         body: TabBarView(children: [
           RefreshIndicator(
@@ -384,9 +384,9 @@ class _AppDesignScreenState extends State<AppDesignScreen> {
             child: ListView(padding: const EdgeInsets.fromLTRB(14, 14, 14, 100), children: [
               if (_d == null) const Center(child: Padding(padding: EdgeInsets.all(30), child: CircularProgressIndicator())),
               if (_d != null && apps.isEmpty)
-                Glass(child: Text('Do-teen shabd boliye, jaise "kirana dukaan ki app, ghar pe delivery". ${app.aName} har screen '
-                    'pehle design karega (Android aur iPhone dono), aap tap karke chalaengi, pasand ho to "Design pakka". '
-                    'Asli app usi design se banegi.', style: const TextStyle(color: C.chip))),
+                Glass(child: Text('Say two or three words, like "app for a kirana shop, home delivery". ${app.aName} will design every screen '
+                    'will design first (both Android and iPhone), you try it by tapping, and if you like it, "Confirm design". '
+                    'The real app will be built from this design.', style: const TextStyle(color: C.chip))),
               for (final a in apps)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 10),
@@ -433,15 +433,15 @@ class _AppDesignScreenState extends State<AppDesignScreen> {
       builder: (c) => Padding(
         padding: EdgeInsets.fromLTRB(16, 16, 16, MediaQuery.of(c).viewInsets.bottom + 16),
         child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          Text('Nayi app', style: display(18)),
+          Text('New app', style: display(18)),
           const SizedBox(height: 8),
           TextField(controller: b, minLines: 2, maxLines: 4,
-              decoration: const InputDecoration(labelText: 'Kis kaam ki app? (apne shabdon mein)', hintText: 'kirana dukaan, ghar pe delivery')),
-          TextField(controller: name, decoration: const InputDecoration(labelText: 'App / business ka naam')),
+              decoration: const InputDecoration(labelText: 'What kind of app? (in your own words)', hintText: 'kirana shop, home delivery')),
+          TextField(controller: name, decoration: const InputDecoration(labelText: 'App / business name')),
           TextField(controller: phone, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'Phone / WhatsApp')),
-          TextField(controller: upi, decoration: const InputDecoration(labelText: 'Payment ka UPI ID (sirf ID, PIN kabhi nahi)')),
+          TextField(controller: upi, decoration: const InputDecoration(labelText: 'UPI ID for payments (only the ID, never the PIN)')),
           const SizedBox(height: 12),
-          FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('Plan banao')),
+          FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('Make plan')),
         ]),
       ),
     );
@@ -532,7 +532,7 @@ class _AppIdeaFinderState extends State<AppIdeaFinder> {
           ],
           Align(
             alignment: Alignment.centerRight,
-            child: FilledButton.tonal(onPressed: () => widget.onStart(_s(it['id']), _asked), child: const Text('Yeh banao')),
+            child: FilledButton.tonal(onPressed: () => widget.onStart(_s(it['id']), _asked), child: const Text('Make this')),
           ),
         ]),
       ),
@@ -544,12 +544,12 @@ class _AppIdeaFinderState extends State<AppIdeaFinder> {
     final best = _map(_d?['best']);
     final near = _list(_d?['near']);
     return ListView(padding: const EdgeInsets.fromLTRB(14, 14, 14, 100), children: [
-      Text('${_num(_d?['all_ideas'] ?? 0)} app ideas: 1,000 kaam × app ka maqsad × kiske liye × ek khaas baat × '
-          'ek dukaan / branches / poora shahar × gaon se videsh tak. Do-teen shabd likhiye, sabse sahi idea upar aayega.',
+      Text('${_num(_d?['all_ideas'] ?? 0)} app ideas: 1,000 jobs × app goal × for whom × one special feature × '
+          'one shop / branches / a whole city × village to overseas. Write two or three words and the best-fitting idea will come first.',
           style: const TextStyle(color: C.muted, fontSize: 12.5)),
       const SizedBox(height: 8),
       TextField(controller: _q, onSubmitted: (_) => _load(),
-          decoration: InputDecoration(hintText: 'jaise: kirana, roz doodh, WhatsApp se order',
+          decoration: InputDecoration(hintText: 'e.g. kirana, daily milk, orders by WhatsApp',
               prefixIcon: const Icon(Icons.lightbulb_outline_rounded),
               suffixIcon: IconButton(icon: const Icon(Icons.arrow_forward_rounded), onPressed: _load))),
       const SizedBox(height: 10),
@@ -559,16 +559,16 @@ class _AppIdeaFinderState extends State<AppIdeaFinder> {
       for (final n in near) _card(_map(n)),
       if (_more.isNotEmpty) ...[
         const SizedBox(height: 6),
-        Text(_asked.isEmpty ? 'Saare ideas' : 'Is kaam ke aur ideas · ${_num(_d?['total'] ?? 0)}', style: display(13)),
+        Text(_asked.isEmpty ? 'All ideas' : 'More ideas for this job · ${_num(_d?['total'] ?? 0)}', style: display(13)),
         const SizedBox(height: 6),
         for (final it in _more)
           ListTile(
             contentPadding: EdgeInsets.zero,
             title: Text(_s(it['name']), style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5)),
             subtitle: Text(_s(it['special']), style: const TextStyle(color: C.muted, fontSize: 12)),
-            trailing: TextButton(onPressed: () => widget.onStart(_s(it['id']), _asked), child: const Text('Banao')),
+            trailing: TextButton(onPressed: () => widget.onStart(_s(it['id']), _asked), child: const Text('Make')),
           ),
-        Center(child: TextButton(onPressed: _busy ? null : () => _load(more: true), child: Text(_busy ? '…' : 'Aur dikhao'))),
+        Center(child: TextButton(onPressed: _busy ? null : () => _load(more: true), child: Text(_busy ? '…' : 'Show more'))),
       ],
     ]);
   }
@@ -607,12 +607,12 @@ class _AppIdeasState extends State<_AppIdeas> {
     final fields = _list(_d?['fields']);
     final c = _map(_d?['counts']);
     return ListView(padding: const EdgeInsets.fromLTRB(14, 14, 14, 100), children: [
-      Text('${c['fields'] ?? 1000} kaam × ${c['goals'] ?? 10} app maqsad × ${c['styles'] ?? 10} premium style = '
-          '${c['briefs'] ?? 100000} taiyaar app briefs · ${c['screen_designs'] ?? 306} screen designs',
+      Text('${c['fields'] ?? 1000} jobs × ${c['goals'] ?? 10} app goals × ${c['styles'] ?? 10} premium styles = '
+          '${c['briefs'] ?? 100000} ready app briefs · ${c['screen_designs'] ?? 306} screen designs',
           style: const TextStyle(color: C.muted, fontSize: 12.5)),
       const SizedBox(height: 8),
       TextField(controller: _q, onSubmitted: (_) => _load(),
-          decoration: InputDecoration(hintText: 'Dhoondho: kirana, clinic, gym, coaching…', prefixIcon: const Icon(Icons.search_rounded),
+          decoration: InputDecoration(hintText: 'Search: kirana, clinic, gym, coaching…', prefixIcon: const Icon(Icons.search_rounded),
               suffixIcon: IconButton(icon: const Icon(Icons.arrow_forward_rounded), onPressed: _load))),
       const SizedBox(height: 8),
       Wrap(spacing: 6, runSpacing: 6, children: [
@@ -626,7 +626,7 @@ class _AppIdeasState extends State<_AppIdeas> {
           contentPadding: EdgeInsets.zero,
           title: Text(_s(f['en']), style: const TextStyle(fontWeight: FontWeight.w700)),
           subtitle: Text('${f['hi']} · ${f['goal_label']}', style: const TextStyle(color: C.muted)),
-          trailing: TextButton(onPressed: () => widget.onPick('${f['en']} ki app'), child: const Text('Shuru')),
+          trailing: TextButton(onPressed: () => widget.onPick('${f['en']} ki app'), child: const Text('Start')),
         ),
     ]);
   }
@@ -712,9 +712,9 @@ class _AppDesignPageState extends State<AppDesignPage> {
           PopupMenuButton<String>(onSelected: (a) async {
             if (a == 'delete') {
               final yes = await showDialog<bool>(context: context, builder: (c) => AlertDialog(
-                    title: const Text('App design hata dein?'),
-                    actions: [TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Nahi')),
-                      TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Haan, hatao'))]));
+                    title: const Text('Remove this app design?'),
+                    actions: [TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('No')),
+                      TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Yes, remove'))]));
               if (yes == true) {
                 await app.api!.appDelete(widget.id);
                 if (context.mounted) Navigator.pop(context);
@@ -724,7 +724,7 @@ class _AppDesignPageState extends State<AppDesignPage> {
               await launchUrl(u, mode: LaunchMode.externalApplication);
             }
           }, itemBuilder: (_) => const [
-            PopupMenuItem(value: 'link', child: Text('Prototype browser mein kholo')),
+            PopupMenuItem(value: 'link', child: Text('Open the prototype in the browser')),
             PopupMenuItem(value: 'delete', child: Text('Hatao')),
           ]),
         ],
@@ -740,14 +740,14 @@ class _AppDesignPageState extends State<AppDesignPage> {
             // v0.138 what she asked for, and whose app it is (her own business's details only when it is for her business)
             if (_s(_map(plan['scope'])['request']).isNotEmpty) ...[
               const SizedBox(height: 6),
-              Text('Aapne kaha: "${_s(_map(plan['scope'])['request'])}"', style: const TextStyle(fontSize: 12.5, fontStyle: FontStyle.italic)),
+              Text('You said: "${_s(_map(plan['scope'])['request'])}"', style: const TextStyle(fontSize: 12.5, fontStyle: FontStyle.italic)),
             ],
             if (_s(_map(plan['scope'])['product_label']).isNotEmpty)
-              Text('Banega: ${_s(_map(plan['scope'])['product_label'])}'
-                  '${_s(_map(plan['scope'])['like']).isNotEmpty ? ' (${_s(_map(plan['scope'])['like'])} jaisa kaam, apna naam aur design)' : ''}',
+              Text('Will be made: ${_s(_map(plan['scope'])['product_label'])}'
+                  '${_s(_map(plan['scope'])['like']).isNotEmpty ? ' (works like ${_s(_map(plan['scope'])['like'])}, with its own name and design)' : ''}',
                   style: const TextStyle(color: C.muted, fontSize: 12.5)),
             if (_s(_map(plan['scope'])['not_for']).isNotEmpty)
-              Text('${_s(_map(plan['scope'])['not_for'])} ki details is app mein nahi daali (alag app hai).',
+              Text('${_s(_map(plan['scope'])['not_for'])} details are not included in this app (it is a separate app).',
                   style: const TextStyle(color: C.muted, fontSize: 12)),
             const SizedBox(height: 8),
             SiteStages(v: v),
@@ -766,9 +766,9 @@ class _AppDesignPageState extends State<AppDesignPage> {
               Text('Plan: ${_list(plan['screens']).length + _list(plan['code_screens']).length} screens', style: display(16)),
               const SizedBox(height: 4),
               Text('Neeche tabs: ${(plan['tabs'] as List? ?? const []).join(' · ')}', style: const TextStyle(color: C.muted, fontSize: 12.5)),
-              Text('Raasta: ${(plan['flow'] as List? ?? const []).join(' → ')}', style: const TextStyle(color: C.muted, fontSize: 12.5)),
+              Text('Route: ${(plan['flow'] as List? ?? const []).join(' → ')}', style: const TextStyle(color: C.muted, fontSize: 12.5)),
               const SizedBox(height: 8),
-              const Text('Jo screen nahi chahiye uska nishaan hatao:', style: TextStyle(color: C.faint, fontSize: 12)),
+              const Text('Remove the tick from any screen you do not want:', style: TextStyle(color: C.faint, fontSize: 12)),
               Wrap(spacing: 6, runSpacing: 4, children: [
                 for (final s in _list(plan['screens']))
                   FilterChip(
@@ -782,17 +782,17 @@ class _AppDesignPageState extends State<AppDesignPage> {
                 Text('⚖ ${s['label']}: ${s['why']}', style: const TextStyle(color: C.faint, fontSize: 11.5)),
               if (qs.isNotEmpty) ...[
                 const SizedBox(height: 10),
-                Text('Thode sawaal (jitne pata hain utne)', style: display(14)),
+                Text('A few questions (answer what you know)', style: display(14)),
                 for (var i = 0; i < qs.length; i++)
                   TextField(controller: _answers.putIfAbsent(i, () => TextEditingController()), decoration: InputDecoration(labelText: qs[i])),
                 Align(alignment: Alignment.centerRight, child: TextButton(onPressed: _busy ? null : () => _act('answers', {
                       'answers': {for (final e in _answers.entries) if (e.value.text.trim().isNotEmpty) '${e.key}': e.value.text.trim()}
-                    }, 'Jawab rakh liye'), child: const Text('Jawab bhejo'))),
+                    }, 'Answers saved'), child: const Text('Send answers'))),
               ],
               const SizedBox(height: 8),
               Align(alignment: Alignment.centerRight,
-                  child: GlassButton(label: 'Haan, 3 looks banao', color: C.accent,
-                      onTap: _busy ? null : () => _act('plan', {'drop': _drop.toList()}, 'Looks ban rahe hain…'))),
+                  child: GlassButton(label: 'Yes, make 3 looks', color: C.accent,
+                      onTap: _busy ? null : () => _act('plan', {'drop': _drop.toList()}, 'Making the looks…'))),
             ])),
           if (st == 'looks') Glass(child: AppLooks(app: app, v: v)),
           if (overview.isNotEmpty) ...[
@@ -822,17 +822,17 @@ class _AppDesignPageState extends State<AppDesignPage> {
               ),
               const SizedBox(height: 8),
               Row(children: [
-                Expanded(child: GlassButton(label: 'Tap karke chalaiye', onTap: () => _openPreview(context, app, v))),
+                Expanded(child: GlassButton(label: 'Try it by tapping', onTap: () => _openPreview(context, app, v))),
                 if (st == 'ready') ...[
                   const SizedBox(width: 8),
-                  Expanded(child: GlassButton(label: 'Design pakka', color: C.accent, onTap: _busy ? null : () async {
+                  Expanded(child: GlassButton(label: 'Confirm design', color: C.accent, onTap: _busy ? null : () async {
                     await _approve(context, app, v);
                     await _load();
                   })),
                 ],
               ]),
               if (st == 'approved') const Padding(padding: EdgeInsets.only(top: 8),
-                  child: Text('✓ Design pakka. Asli Android app isi naksha se banegi (neeche).', style: TextStyle(color: C.ok, fontSize: 12.5))),
+                  child: Text('✓ Design confirmed. The real Android app will be built from this blueprint (below).', style: TextStyle(color: C.ok, fontSize: 12.5))),
             ])),
             const SizedBox(height: 10),
           ],
@@ -893,22 +893,22 @@ class _AppDesignPageState extends State<AppDesignPage> {
           ],
           if (_list(checks['blocking']).isNotEmpty || _list(checks['warnings']).isNotEmpty || checks['passed'] == true)
             Glass(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('Jaanch (Android + iPhone, chhota phone)', style: display(15)),
+              Text('Check (Android + iPhone, small phone)', style: display(15)),
               const SizedBox(height: 6),
               for (final c in _list(checks['blocking']).take(6))
                 Text('⛔ ${c['screen']}: ${c['text']}', style: const TextStyle(color: C.bad, fontSize: 12)),
               for (final c in _list(checks['warnings']).take(6))
                 Text('⚠ ${_s(c['screen']).isEmpty ? '' : '${c['screen']}: '}${c['text']}', style: const TextStyle(color: C.warn, fontSize: 12)),
               if (_list(checks['blocking']).isEmpty && checks['passed'] == true)
-                const Text('✓ Sab zaroori jaanch paas', style: TextStyle(color: C.ok, fontSize: 12.5)),
+                const Text('✓ All important checks passed', style: TextStyle(color: C.ok, fontSize: 12.5)),
             ])),
           const SizedBox(height: 10),
           if (st == 'ready' || st == 'approved' || st == 'stopped' || st == 'failed' || st == 'designing' || st == 'checking')
             Glass(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('Badlav bolo', style: display(15)),
+              Text('Say a change', style: display(15)),
               const SizedBox(height: 6),
               TextField(controller: _change, minLines: 1, maxLines: 4,
-                  decoration: const InputDecoration(hintText: 'cart mein coupon hatao, rang halka, offers ka tab, booking screen add karo…')),
+                  decoration: const InputDecoration(hintText: 'remove the coupon from the cart, lighter colour, an offers tab, add a booking screen…')),
               const SizedBox(height: 8),
               Align(alignment: Alignment.centerRight, child: GlassButton(label: 'Badlo', color: C.accent, onTap: _busy ? null : () async {
                 final t = _change.text.trim();
@@ -916,7 +916,7 @@ class _AppDesignPageState extends State<AppDesignPage> {
                 await _act('change', {'instruction': t});
                 _change.clear();
               })),
-              if (_i(v['queued']) > 0) Text('${v['queued']} badlav line mein hain', style: const TextStyle(color: C.faint, fontSize: 12)),
+              if (_i(v['queued']) > 0) Text('${v['queued']} changes are in the queue', style: const TextStyle(color: C.faint, fontSize: 12)),
             ])),
           const SizedBox(height: 10),
           for (final ver in _list(v['versions']))
@@ -936,7 +936,7 @@ class _AppDesignPageState extends State<AppDesignPage> {
 }
 
 /// The design system of the chosen look in plain words: navigation, FAB, cards, header, motion, fonts, light / dark
-/// colours, the open side bar / FAB menu pictures, and one-tap structure changes (sent as her words, like 'Badlav bolo').
+/// colours, the open side bar / FAB menu pictures, and one-tap structure changes (sent as her words, like 'Say a change').
 class AppDesignSystemCard extends StatelessWidget {
   const AppDesignSystemCard({super.key, required this.app, required this.v, required this.onAsk, this.busy = false});
   final Santosh app;
@@ -945,13 +945,13 @@ class AppDesignSystemCard extends StatelessWidget {
   final bool busy;
 
   static const _quick = [
-    ('Side bar', 'side bar (drawer) wala navigation do, neeche tabs bhi rahein'),
+    ('Side bar', 'use side bar (drawer) navigation, and keep the bottom tabs too'),
     ('Floating bar', 'neeche floating pill navigation bar do'),
     ('Bottom bar', 'normal bottom navigation bar do'),
-    ('Speed-dial FAB', 'plus button dabane par 3 kaam khulein (speed dial FAB)'),
-    ('Glass cards', 'cards glass jaise (frosted) karo'),
-    ('Dark mode', 'app dark mode mein ho'),
-    ('Light + dark', 'app light aur dark dono mode mein chale'),
+    ('Speed-dial FAB', 'tapping the plus button opens 3 actions (speed dial FAB)'),
+    ('Glass cards', 'make the cards glass-like (frosted)'),
+    ('Dark mode', 'make the app dark mode'),
+    ('Light + dark', 'make the app work in both light and dark mode'),
   ];
 
   Widget _swatches(List cols) => Row(children: [
@@ -965,7 +965,7 @@ class AppDesignSystemCard extends StatelessWidget {
     final d = _map(v['design']);
     final ex = _map(_map(v['board'])['extras']);
     final id = _s(v['id']);
-    final mode = switch (_s(d['mode'])) { 'dark' => 'Sirf dark', 'light' => 'Sirf light', _ => 'Light + dark' };
+    final mode = switch (_s(d['mode'])) { 'dark' => 'Dark only', 'light' => 'Light only', _ => 'Light + dark' };
     Widget row(String k, String val) => val.isEmpty
         ? const SizedBox.shrink()
         : Padding(padding: const EdgeInsets.only(bottom: 3), child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -974,14 +974,14 @@ class AppDesignSystemCard extends StatelessWidget {
           ]));
     final fonts = (d['fonts'] as List? ?? const []).map((e) => '$e').where((e) => e.isNotEmpty).toSet().join(' + ');
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text('Design ka dhaancha', style: display(15)),
+      Text('Design structure', style: display(15)),
       const SizedBox(height: 8),
       row('Navigation', _s(d['nav'])),
       row('Button (FAB)', _s(d['fab'])),
       row('Cards', _s(d['card'])),
-      row('Upar ka hissa', _s(d['header'])),
+      row('Top part', _s(d['header'])),
       row('Button', _s(d['button'])),
-      row('Screen badalna', _s(d['transition'])),
+      row('Change screens', _s(d['transition'])),
       row('Texture', _s(d['texture'])),
       row('Font', fonts),
       row('Mode', mode),
@@ -1009,7 +1009,7 @@ class AppDesignSystemCard extends StatelessWidget {
         ])),
       ],
       const SizedBox(height: 8),
-      const Text('Ek tap mein badlo (screens wahi rahengi):', style: TextStyle(color: C.faint, fontSize: 12)),
+      const Text('Change in one tap (the screens stay the same):', style: TextStyle(color: C.faint, fontSize: 12)),
       const SizedBox(height: 4),
       Wrap(spacing: 6, runSpacing: 4, children: [
         for (final q in _quick) ActionChip(label: Text(q.$1), onPressed: busy ? null : () => onAsk(q.$2)),
@@ -1029,14 +1029,14 @@ class AppBlueprintCard extends StatelessWidget {
   final bool busy;
 
   static const _quick = [
-    ('Naya role', 'store keeper naam ka naya role jodo, staff jaisa'),
-    ('Zone level', 'region ke neeche zone level bhi chahiye'),
-    ('Passkey login', 'passkey se login bhi ho'),
-    ('Company SSO', 'company ke Microsoft / Google login (SSO) se bhi login ho'),
-    ('Offline', 'bina internet ke bhi kaam kare, baad mein sync ho'),
+    ('New role', 'add a new role called store keeper, like staff'),
+    ('Zone level', 'also add a zone level under region'),
+    ('Passkey login', 'also allow login with a passkey'),
+    ('Company SSO', 'also allow login through the company Microsoft / Google login (SSO)'),
+    ('Offline', 'work without internet too, and sync later'),
   ];
-  static const _actLabel = {'read': 'Dekhe', 'create': 'Banaye', 'update': 'Badle', 'delete': 'Hataye', 'approve': 'Manzoor', 'export': 'Export'};
-  static const _scopeLabel = {'none': '-', 'own': 'apna', 'unit': 'unit', 'parent': 'upar', 'all': 'sab'};
+  static const _actLabel = {'read': 'Viewed', 'create': 'Made', 'update': 'Changed', 'delete': 'Hataye', 'approve': 'Approved', 'export': 'Export'};
+  static const _scopeLabel = {'none': '-', 'own': 'own', 'unit': 'unit', 'parent': 'parent', 'all': 'all'};
 
   Color _playCol(String p) => switch (p) { 'ok' => C.ok, 'disclosure' => C.teal, 'declaration' => C.warn, _ => C.bad };
 
@@ -1044,7 +1044,7 @@ class AppBlueprintCard extends StatelessWidget {
     try {
       final t = await app.api!.appBlueprintText(_s(v['id']), 'schema.sql');
       await Clipboard.setData(ClipboardData(text: t));
-      if (context.mounted) _snack(context, 'Database schema copy ho gaya (${(t.length / 1024).toStringAsFixed(0)} KB)');
+      if (context.mounted) _snack(context, 'Database schema copied (${(t.length / 1024).toStringAsFixed(0)} KB)');
     } catch (e) {
       if (context.mounted) _snack(context, '$e');
     }
@@ -1071,14 +1071,14 @@ class AppBlueprintCard extends StatelessWidget {
         decoration: BoxDecoration(color: (c ?? C.chip).withOpacity(.14), borderRadius: BorderRadius.circular(8)),
         child: Text(t, style: TextStyle(fontSize: 11.5, color: c ?? C.ink)));
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text('Andar ka dhaancha${_s(b['archetype']).isEmpty ? '' : ' · ${b['archetype']}'}', style: display(15)),
+      Text('Inner structure${_s(b['archetype']).isEmpty ? '' : ' · ${b['archetype']}'}', style: display(15)),
       const SizedBox(height: 4),
       Text('${data['tables'] ?? 0} tables · ${data['relations'] ?? 0} rishte · ${roles.length} roles · '
-          '${(b['levels'] as List? ?? const []).length} levels${b['offline'] == true ? ' · offline bhi' : ''}',
+          '${(b['levels'] as List? ?? const []).length} levels${b['offline'] == true ? ' · offline too' : ''}',
           style: const TextStyle(color: C.muted, fontSize: 12.5)),
-      head('Sanstha ke level'),
+      head('Organisation levels'),
       Text((b['levels'] as List? ?? const []).join('  ›  '), style: const TextStyle(fontSize: 12.5)),
-      head('Kaun kya kar sakta hai'),
+      head('Who can do what'),
       for (final r in roles)
         Theme(data: Theme.of(context).copyWith(dividerColor: Colors.transparent), child: ExpansionTile(
           tilePadding: EdgeInsets.zero, childrenPadding: const EdgeInsets.only(bottom: 6),
@@ -1093,9 +1093,9 @@ class AppBlueprintCard extends StatelessWidget {
               ])),
           ])),
       if (_list(b['approvals']).isNotEmpty) ...[
-        head('Manzoori (rakam ke hisaab se)'),
+        head('Approval (by amount)'),
         for (final a in _list(b['approvals']))
-          Text(a['upto'] == null ? '• uske upar: ${a['role']}' : '• ₹${a['upto']} tak: ${a['role']}', style: const TextStyle(fontSize: 12)),
+          Text(a['upto'] == null ? '• above that: ${a['role']}' : '• up to ₹${a['upto']}: ${a['role']}', style: const TextStyle(fontSize: 12)),
       ],
       head('Login'),
       chips(_list(b['login']).map((m) => chip(_s(m['label']), C.accent))),
@@ -1115,7 +1115,7 @@ class AppBlueprintCard extends StatelessWidget {
           Expanded(child: Text((m.value as List).join(', '), style: const TextStyle(fontSize: 11.5, fontFamily: 'monospace'))),
         ])),
       if ((data['sensitive'] as List? ?? const []).isNotEmpty)
-        Text('🔒 Sensitive: ${(data['sensitive'] as List).join(', ')} (screenshot band, har dekhna log)',
+        Text('🔒 Sensitive: ${(data['sensitive'] as List).join(', ')} (screenshots off, every view logged)',
             style: const TextStyle(color: C.faint, fontSize: 11.5)),
       if (er.isNotEmpty) ...[
         const SizedBox(height: 8),
@@ -1131,7 +1131,7 @@ class AppBlueprintCard extends StatelessWidget {
       ]),
       if (onAsk != null) ...[
         const SizedBox(height: 8),
-        const Text('Ek tap mein jodo (screens wahi rahengi):', style: TextStyle(color: C.faint, fontSize: 12)),
+        const Text('Add in one tap (the screens stay the same):', style: TextStyle(color: C.faint, fontSize: 12)),
         const SizedBox(height: 4),
         Wrap(spacing: 6, runSpacing: 4, children: [
           for (final q in _quick) ActionChip(label: Text(q.$1), onPressed: busy ? null : () => onAsk!(q.$2)),
@@ -1238,19 +1238,19 @@ class AppArtCard extends StatelessWidget {
         Row(children: [
           const Icon(Icons.auto_awesome_rounded, color: C.accent, size: 18),
           const SizedBox(width: 6),
-          Expanded(child: Text(_s(art['concept']).isEmpty ? 'Design ki soch' : _s(art['concept']), style: display(15))),
+          Expanded(child: Text(_s(art['concept']).isEmpty ? 'Design thinking' : _s(art['concept']), style: display(15))),
           if (_s(v['model']).isNotEmpty) Pill(_s(v['model']), fg: C.accent),
         ]),
         if (_s(art['idea']).isNotEmpty)
           Padding(padding: const EdgeInsets.only(top: 4), child: Text(_s(art['idea']), style: const TextStyle(fontStyle: FontStyle.italic, fontSize: 12.5))),
-        line('Pehchaan', _s(art['signature'])),
+        line('Identity', _s(art['signature'])),
         line('Layout', _s(art['layout'])),
         line('Shuruaat', _s(art['hero'])),
         line('Motion', _s(art['motion'])),
-        if (art['three_d'] == true) line('3D', (art['scenes'] as List? ?? const []).join(', ').isEmpty ? 'haan' : (art['scenes'] as List).join(', ')),
+        if (art['three_d'] == true) line('3D', (art['scenes'] as List? ?? const []).join(', ').isEmpty ? 'yes' : (art['scenes'] as List).join(', ')),
         if (scores.isNotEmpty) ...[
           const SizedBox(height: 8),
-          const Text('Opus ne apni screens dekh kar number diye', style: TextStyle(color: C.muted, fontSize: 12)),
+          const Text('Opus scored its own screens after looking at them', style: TextStyle(color: C.muted, fontSize: 12)),
           const SizedBox(height: 4),
           Wrap(spacing: 6, runSpacing: 6, children: [
             for (final e in scores.entries)

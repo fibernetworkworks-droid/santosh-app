@@ -77,8 +77,8 @@ class _ThekaScreenState extends State<ThekaScreen> {
   }
 
   Future<void> _tender([Map<String, dynamic>? t]) async {
-    final f = await _form(context, t == null ? 'Naya tender' : _s(t['name']), [
-      if (t == null) ('name', 'Kaam ka naam'),
+    final f = await _form(context, t == null ? 'New tender' : _s(t['name']), [
+      if (t == null) ('name', 'Kaam name'),
       if (t == null) ('dept', 'Department'),
       if (t == null) ('portal', 'Portal (mahatenders / CPPP / GeM)'),
       if (t == null) ('ref', 'Tender ID'),
@@ -91,12 +91,12 @@ class _ThekaScreenState extends State<ThekaScreen> {
   }
 
   Future<void> _project() async {
-    final f = await _form(context, 'Naya kaam', const [
-      ('name', 'Kaam ka naam'),
+    final f = await _form(context, 'New job', const [
+      ('name', 'Kaam name'),
       ('client', 'Department / client'),
       ('value', 'Agreement value'),
-      ('start', 'Shuru'),
-      ('end', 'Poora karne ki tareekh'),
+      ('start', 'Start'),
+      ('end', 'Completion date'),
       ('retention_pct', 'Retention % (agreement se)'),
       ('mob_advance', 'Mobilisation advance (ho to)'),
     ]);
@@ -123,7 +123,7 @@ class _ThekaScreenState extends State<ThekaScreen> {
   }
 
   Widget _tenders() => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        GlassButton(label: 'Naya tender', icon: Icons.gavel_rounded, onTap: _busy ? null : () => _tender()),
+        GlassButton(label: 'New tender', icon: Icons.gavel_rounded, onTap: _busy ? null : () => _tender()),
         const SizedBox(height: 8),
         for (final t in _list(_d?['tenders']))
           Padding(
@@ -142,7 +142,7 @@ class _ThekaScreenState extends State<ThekaScreen> {
                       style: const TextStyle(color: C.muted, fontSize: 12.5)),
                   if (_s(t['alert']).isNotEmpty) Text(_s(t['alert']), style: const TextStyle(color: C.warn, fontSize: 12.5)),
                   if (((t['missing'] as List?) ?? const []).isNotEmpty && (t['status'] == 'watching' || t['status'] == 'preparing'))
-                    Text('Baaki kaagaz: ${(t['missing'] as List).take(4).join(', ')}${(t['missing'] as List).length > 4 ? '...' : ''}',
+                    Text('Papers left: ${(t['missing'] as List).take(4).join(', ')}${(t['missing'] as List).length > 4 ? '...' : ''}',
                         style: const TextStyle(fontSize: 12)),
                 ]),
               ),
@@ -151,7 +151,7 @@ class _ThekaScreenState extends State<ThekaScreen> {
       ]);
 
   Widget _projects() => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        GlassButton(label: 'Naya kaam', icon: Icons.engineering_rounded, onTap: _busy ? null : _project),
+        GlassButton(label: 'New job', icon: Icons.engineering_rounded, onTap: _busy ? null : _project),
         const SizedBox(height: 8),
         for (final p in _list(_d?['projects']))
           Padding(
@@ -162,7 +162,7 @@ class _ThekaScreenState extends State<ThekaScreen> {
                 padding: const EdgeInsets.all(12),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text(_s(p['name']), style: const TextStyle(fontWeight: FontWeight.w800)),
-                  Text('${_s(p['client'])} · ${rs(p['value'])} · kaam ${p['progress_pct']}% · bill ${rs(p['billed'])}',
+                  Text('${_s(p['client'])} · ${rs(p['value'])} · work ${p['progress_pct']}% · bill ${rs(p['billed'])}',
                       style: const TextStyle(color: C.muted, fontSize: 12.5)),
                   if (p['delay'] != null) Text(_s((p['delay'] as Map)['say']), style: const TextStyle(fontSize: 12.5)),
                 ]),
@@ -189,7 +189,7 @@ class _ThekaScreenState extends State<ThekaScreen> {
               if (_d == null) const Center(child: CircularProgressIndicator()) else [_today(), _tenders(), _projects()][_tab],
               const SizedBox(height: 14),
               const Text(
-                  'Bid aap apne DSC se portal par daalti hain. Naap jaisa liya waisa likha jaata hai. Bill aur chitthi department ko aapki haan se. Paisa Hoola nahi deta / leta.',
+                  'You submit the bid on the portal with your own DSC. Measurements are written exactly as taken. Bills and letters go to the department only with your yes. Hoola does not pay or receive money.',
                   style: TextStyle(color: C.faint, fontSize: 11.5)),
             ]),
           ),
@@ -258,28 +258,28 @@ class _ThekaProjectPageState extends State<ThekaProjectPage> {
                 const SizedBox(height: 8),
                 Wrap(spacing: 8, runSpacing: 8, children: [
                   GlassButton(
-                      label: 'Naap likho',
+                      label: 'Record measurement',
                       icon: Icons.straighten_rounded,
                       onTap: _busy
                           ? null
                           : () async {
-                              final f = await _form(context, 'Naap (MB)', const [('item', 'BOQ item no'), ('qty', 'Maatra'), ('detail', 'L x B x D / chainage'), ('by', 'Kisne liya')]);
+                              final f = await _form(context, 'Measurement (MB)', const [('item', 'BOQ item no'), ('qty', 'Quantity'), ('detail', 'L x B x D / chainage'), ('by', 'Who took it')]);
                               if (f != null) await _act('measure', {...f, 'qty': _n(f['qty'])});
                             }),
-                  GlassButton(label: 'RA bill banao', icon: Icons.receipt_long_rounded, onTap: _busy ? null : () => _act('ra_bill', const {})),
+                  GlassButton(label: 'Make RA bill', icon: Icons.receipt_long_rounded, onTap: _busy ? null : () => _act('ra_bill', const {})),
                   GlassButton(
                       label: 'Site diary',
                       icon: Icons.edit_calendar_rounded,
                       onTap: _busy
                           ? null
                           : () async {
-                              final f = await _form(context, 'Aaj ki site', const [('labour', 'Mazdoor'), ('work', 'Kya kaam hua'), ('hindrance', 'Rukawat (ho to)'), ('by_client', 'Department ki wajah se? (haan / nahi)')]);
+                              final f = await _form(context, 'Today\'s site', const [('labour', 'Labour'), ('work', 'Work done'), ('hindrance', 'Hindrance (if any)'), ('by_client', 'Due to the department? (yes / no)')]);
                               if (f != null) {
                                 await _act('diary', {...f, 'labour': int.tryParse(f['labour'] ?? '') ?? 0, 'by_client': (f['by_client'] ?? '').toLowerCase().startsWith('h')});
                               }
                             }),
                   GlassButton(
-                      label: 'EOT chitthi',
+                      label: 'EOT letter',
                       icon: Icons.mail_rounded,
                       onTap: _busy
                           ? null
@@ -289,7 +289,7 @@ class _ThekaProjectPageState extends State<ThekaProjectPage> {
                                 await showDialog<void>(
                                   context: context,
                                   builder: (d) => AlertDialog(
-                                    title: const Text('EOT arzi (draft)'),
+                                    title: const Text('EOT application (draft)'),
                                     content: SingleChildScrollView(child: SelectableText(_s(r['text']), style: const TextStyle(fontSize: 12.5))),
                                     actions: [TextButton(onPressed: () => Clipboard.setData(ClipboardData(text: _s(r['text']))), child: const Text('Copy'))],
                                   ),
@@ -323,7 +323,7 @@ class _ThekaProjectPageState extends State<ThekaProjectPage> {
                   ),
                 const SizedBox(height: 12),
                 for (final m in _list(p['stock']))
-                  Text('${_s(m['item'])}: aaya ${m['in']}, kharch ${m['used']}, bacha ${m['balance']}', style: const TextStyle(fontSize: 12.5)),
+                  Text('${_s(m['item'])}: received ${m['in']}, spent ${m['used']}, bacha ${m['balance']}', style: const TextStyle(fontSize: 12.5)),
               ]),
       ),
     );
@@ -380,21 +380,21 @@ class _ThekaCardState extends State<ThekaCard> {
           Expanded(child: Text('${_s(v['project'])} ${_s(v['label'])}'.trim(), style: const TextStyle(fontWeight: FontWeight.w800))),
           Pill(_status),
         ]),
-        Text('Haath mein ~${rs(v['net'] ?? 0)}${(v['passed'] ?? 0) > 0 ? ' · pass ${rs(v['passed'])}' : ''}', style: const TextStyle(fontSize: 12.5)),
+        Text('In hand ~${rs(v['net'] ?? 0)}${(v['passed'] ?? 0) > 0 ? ' · passed ${rs(v['passed'])}' : ''}', style: const TextStyle(fontSize: 12.5)),
         const SizedBox(height: 8),
-        if (_status == 'draft') GradientButton(label: 'Haan, department ko diya', icon: Icons.check_rounded, onTap: _busy ? null : () => _set('submitted')),
+        if (_status == 'draft') GradientButton(label: 'Yes, given to the department', icon: Icons.check_rounded, onTap: _busy ? null : () => _set('submitted')),
         if (_status == 'submitted')
           GlassButton(
-              label: 'Pass hua',
+              label: 'Passed',
               icon: Icons.verified_rounded,
               onTap: _busy
                   ? null
                   : () async {
-                      final f = await _form(context, 'Kitna pass hua', const [('amount', 'Net pass (khaali = poora)')]);
+                      final f = await _form(context, 'How much passed', const [('amount', 'Net passed (blank = full)')]);
                       if (f != null) await _set('passed', _n(f['amount']));
                     }),
         if (_status == 'passed' || _status == 'submitted')
-          Padding(padding: const EdgeInsets.only(top: 6), child: GlassButton(label: 'Paisa aaya', icon: Icons.account_balance_rounded, onTap: _busy ? null : () => _set('paid'))),
+          Padding(padding: const EdgeInsets.only(top: 6), child: GlassButton(label: 'Money received', icon: Icons.account_balance_rounded, onTap: _busy ? null : () => _set('paid'))),
       ]),
     );
   }

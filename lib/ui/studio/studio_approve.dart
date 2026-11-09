@@ -25,7 +25,7 @@ List<PriceRow> quoteRows(Map<String, dynamic> e, {String language = ''}) {
   rows.add(PriceRow(Icons.videocam_rounded, SC.teal, 'Video · ${e['shots'] ?? 0} shots',
       '${names.isEmpty ? 'AI video' : names} · ${e['seconds'] ?? 0} sec', sInt(e['video_inr'] ?? e['inr'])));
   if (sInt(e['keyframes']) > 0) {
-    rows.add(PriceRow(Icons.image_rounded, SC.violet, 'Pehli tasveerein · ${e['keyframes']}', 'Nano Banana Pro · same chehra har shot mein',
+    rows.add(PriceRow(Icons.image_rounded, SC.violet, 'First pictures · ${e['keyframes']}', 'Nano Banana Pro · same face in every shot',
         sInt(e['keyframes_inr'])));
   }
   if (sInt(e['lipsync_shots']) > 0) {
@@ -36,7 +36,7 @@ List<PriceRow> quoteRows(Map<String, dynamic> e, {String language = ''}) {
     rows.add(PriceRow(Icons.music_note_rounded, SC.violet, 'Music', 'Google Lyria · ${moodLabel['${e['music']}'] ?? e['music']}',
         sInt(e['music_inr'])));
   }
-  rows.add(const PriceRow(Icons.mic_rounded, C.ok, 'Awaaz, captions, AI jaanch', 'Hoola ki awaaz · jodna', 0, free: true));
+  rows.add(const PriceRow(Icons.mic_rounded, C.ok, 'Voice, captions, AI check', 'Hoola ki awaaz · jodna', 0, free: true));
   return rows;
 }
 
@@ -110,7 +110,7 @@ Future<String?> askAndApprove(Santosh app, Future<Map<String, dynamic>> Function
   final id = '${r['waiting_owner'] ?? ''}';
   if (id.isEmpty) return null;
   final d = await app.api!.studioDecide(id, true);
-  if ('${d['status']}' == 'failed') throw '${d['error'] ?? 'Shuru nahi ho paya'}';
+  if ('${d['status']}' == 'failed') throw '${d['error'] ?? 'Could not start'}';
   return id;
 }
 
@@ -143,7 +143,7 @@ Widget monthBar(Map<String, dynamic> month, int price) {
   final frac = limit <= 0 ? 0.0 : ((spent + price) / limit).clamp(0, 1).toDouble();
   return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
     Row(children: [
-      Expanded(child: Text('Is mahine bachega', style: body(12, color: C.muted))),
+      Expanded(child: Text('Left this month', style: body(12, color: C.muted))),
       Text('${rupees(left < 0 ? 0 : left)} / ${rupees(limit)}', style: body(12, w: FontWeight.w800, color: left < 0 ? C.bad : C.ink)),
     ]),
     const SizedBox(height: 8),
@@ -154,7 +154,7 @@ Widget monthBar(Map<String, dynamic> month, int price) {
     if (left < 0)
       Padding(
         padding: const EdgeInsets.only(top: 6),
-        child: Text('Is mahine ki seema se zyada hai. Kam quality ya kam shots chuniye.', style: body(11.5, color: C.bad)),
+        child: Text('This is above this month\'s limit. Choose a lower quality or fewer shots.', style: body(11.5, color: C.bad)),
       ),
   ]);
 }
@@ -216,12 +216,12 @@ class _GenerateSheetState extends State<_GenerateSheet> {
       ),
       const SizedBox(height: 16),
       if (_partial)
-        Text('Sirf chune hue shots banenge. Daam card par dikhega, phir yahi haan maani jayegi.', style: body(13, color: C.muted, height: 1.4))
+        Text('Only the chosen shots will be made. The price shows on the card, and this yes will count for that.', style: body(13, color: C.muted, height: 1.4))
       else ...[
         Row(crossAxisAlignment: CrossAxisAlignment.baseline, textBaseline: TextBaseline.alphabetic, children: [
           Text(rupees(inr), style: sora(40, w: FontWeight.w700)),
           const SizedBox(width: 10),
-          Flexible(child: Text('lagbhag · ${qualityWhat[_q] ?? ''}', maxLines: 2, style: body(12.5, color: C.faint))),
+          Flexible(child: Text('about · ${qualityWhat[_q] ?? ''}', maxLines: 2, style: body(12.5, color: C.faint))),
         ]),
         const SizedBox(height: 14),
         PriceList(rows: quoteRows(e, language: '${widget.v['language'] ?? ''}')),
@@ -229,17 +229,17 @@ class _GenerateSheetState extends State<_GenerateSheet> {
         monthBar(sMap(widget.v['month']), inr ?? 0),
       ],
       const SizedBox(height: 14),
-      Text('Asli kharcha jitna laga utna hi katega, isse zyada kabhi nahi. Koi shot fail hua to uska paisa nahi.',
+      Text('Only the actual cost is charged, never more. If a shot fails, you are not charged for it.',
           style: body(12, color: C.faint, height: 1.45)),
       if (_err.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 10), child: Text(_err, style: body(12.5, color: C.bad))),
       const SizedBox(height: 16),
       Row(children: [
-        Expanded(child: SButton(label: 'Abhi nahi', primary: false, onTap: () => Navigator.pop(context, false))),
+        Expanded(child: SButton(label: 'Not now', primary: false, onTap: () => Navigator.pop(context, false))),
         const SizedBox(width: 10),
         Expanded(
           flex: 2,
           child: SButton(
-            label: _partial ? 'Haan, banao' : 'Haan, ${rupees(inr)} mein banao',
+            label: _partial ? 'Yes, make it' : 'Yes, make it for ${rupees(inr)}',
             icon: Icons.check_rounded,
             busy: _busy,
             onTap: _go,
@@ -295,9 +295,9 @@ class _SimpleSheetState extends State<_SimpleSheet> {
         if (_err.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 10), child: Text(_err, style: body(12.5, color: C.bad))),
         const SizedBox(height: 16),
         Row(children: [
-          Expanded(child: SButton(label: 'Abhi nahi', primary: false, onTap: () => Navigator.pop(context, false))),
+          Expanded(child: SButton(label: 'Not now', primary: false, onTap: () => Navigator.pop(context, false))),
           const SizedBox(width: 10),
-          Expanded(flex: 2, child: SButton(label: 'Haan, ${rupees(widget.inr)}', icon: Icons.check_rounded, busy: _busy, onTap: _go)),
+          Expanded(flex: 2, child: SButton(label: 'Yes, ${rupees(widget.inr)}', icon: Icons.check_rounded, busy: _busy, onTap: _go)),
         ]),
       ]);
 }
@@ -328,7 +328,7 @@ class _StudioApprovalCardState extends State<StudioApprovalCard> {
   List<PriceRow> _rows(Map<String, dynamic> v) {
     switch ('${v['kind']}') {
       case 'keyframes':
-        return [PriceRow(Icons.image_rounded, SC.violet, 'Pehli tasveerein · ${v['shots'] ?? 0}', 'Nano Banana Pro', sInt(v['inr']))];
+        return [PriceRow(Icons.image_rounded, SC.violet, 'First pictures · ${v['shots'] ?? 0}', 'Nano Banana Pro', sInt(v['inr']))];
       case 'music':
         return [PriceRow(Icons.music_note_rounded, SC.violet, 'Music', 'Google Lyria · ${moodLabel['${v['mood']}'] ?? v['mood'] ?? ''}', sInt(v['inr']))];
       case 'character':
@@ -360,7 +360,7 @@ class _StudioApprovalCardState extends State<StudioApprovalCard> {
           const SizedBox(width: 8),
           Expanded(child: Text('Video Studio · ${v['project'] ?? ''}', style: body(13.5, w: FontWeight.w800))),
           if (!pending)
-            Tag(status == 'approved' ? 'Haan kaha' : status == 'rejected' ? 'Mana kiya' : status == 'failed' ? 'Ruk gaya' : status,
+            Tag(status == 'approved' ? 'Approved' : status == 'rejected' ? 'Declined' : status == 'failed' ? 'Stopped' : status,
                 fg: status == 'approved' ? C.ok : status == 'failed' ? C.bad : C.faint),
         ]),
         const SizedBox(height: 10),
@@ -370,7 +370,7 @@ class _StudioApprovalCardState extends State<StudioApprovalCard> {
         if (v['month_left_usd'] != null)
           Padding(
             padding: const EdgeInsets.only(top: 8),
-            child: Text('Is mahine bacha: ~${rupees((v['month_left_usd'] as num) * 85)}', style: body(11.5, color: C.faint)),
+            child: Text('Left this month: ~${rupees((v['month_left_usd'] as num) * 85)}', style: body(11.5, color: C.faint)),
           ),
         if ('${v['error'] ?? ''}'.isNotEmpty)
           Padding(padding: const EdgeInsets.only(top: 8), child: Text('${v['error']}', style: body(12.5, color: C.bad))),
@@ -379,10 +379,10 @@ class _StudioApprovalCardState extends State<StudioApprovalCard> {
           Row(children: [
             Expanded(child: SButton(label: 'Mana', primary: false, height: 48, onTap: _busy ? null : () => _decide(false))),
             const SizedBox(width: 10),
-            Expanded(flex: 2, child: SButton(label: 'Haan, banao', height: 48, busy: _busy, onTap: () => _decide(true))),
+            Expanded(flex: 2, child: SButton(label: 'Yes, make it', height: 48, busy: _busy, onTap: () => _decide(true))),
           ]),
           const SizedBox(height: 8),
-          Text('Asli kharcha jitna laga utna hi likha jayega (isse zyada kabhi nahi).', style: body(11.5, color: C.faint)),
+          Text('Only the actual cost is recorded (never more).', style: body(11.5, color: C.faint)),
         ],
       ]),
     );

@@ -14,7 +14,7 @@ import 'deal_screen.dart';
 import 'dosti_screen.dart';
 import 'hoola_samaj_screen.dart';
 
-const _relations = {'family': 'Parivar', 'team': 'Team', 'business': 'Business', 'friend': 'Dost'};
+const _relations = {'family': 'Family', 'team': 'Team', 'business': 'Business', 'friend': 'Dost'};
 
 /// Hoola Network: my Hoola ID + QR, connections and requests, what other avatars sent, and avatar-to-avatar talks.
 class HoolaNetScreen extends StatefulWidget {
@@ -95,11 +95,11 @@ class _HoolaNetScreenState extends State<HoolaNetScreen> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Hoola ID badliye'),
+        title: const Text('Change Hoola ID'),
         content: Column(mainAxisSize: MainAxisSize.min, children: [
           TextField(controller: c, decoration: const InputDecoration(prefixText: '@', hintText: 'meghana.fnw')),
           const SizedBox(height: 8),
-          const Text('Chhote angrezi akshar, number, . ya _. Pehle hafte mein kabhi bhi; uske baad saal mein ek baar.',
+          const Text('Small English letters, numbers, . or _. Changeable any time in the first week; after that, once a year.',
               style: TextStyle(fontSize: 12, color: C.muted)),
         ]),
         actions: [
@@ -124,16 +124,16 @@ class _HoolaNetScreenState extends State<HoolaNetScreen> {
       final ok = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: const Text('Number se dhoondhne dein'),
+          title: const Text('Allow finding me by number'),
           content: Column(mainAxisSize: MainAxisSize.min, children: [
-            TextField(controller: c, keyboardType: TextInputType.phone, decoration: const InputDecoration(hintText: 'Aapka mobile number')),
+            TextField(controller: c, keyboardType: TextInputType.phone, decoration: const InputDecoration(hintText: 'Your mobile number')),
             const SizedBox(height: 8),
-            const Text('Number chhupa (hashed) rakha jata hai. Jo aapka number jaante hain, wahi aapka Hoola dhoondh payenge; '
-                'judne ke liye phir bhi aapki haan chahiye.', style: TextStyle(fontSize: 12, color: C.muted)),
+            const Text('Your number is kept hidden (hashed). Only people who know your number can find your Hoola; '
+                'they still need your yes to connect.', style: TextStyle(fontSize: 12, color: C.muted)),
           ]),
           actions: [
             TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
-            TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Chalu karein')),
+            TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Turn on')),
           ],
         ),
       );
@@ -163,20 +163,20 @@ class _HoolaNetScreenState extends State<HoolaNetScreen> {
               icon: const Icon(Icons.copy_rounded, size: 18, color: C.muted),
               onPressed: () {
                 Clipboard.setData(ClipboardData(text: _me['handle_display'] as String? ?? ''));
-                _snack('Hoola ID copy ho gaya');
+                _snack('Hoola ID copied');
               },
             ),
           ]),
-          Text('${_me['connections'] ?? 0} jude · ${_me['requests'] ?? 0} requests · ${_me['inbox'] ?? 0} intezaar mein',
+          Text('${_me['connections'] ?? 0} connected · ${_me['requests'] ?? 0} requests · ${_me['inbox'] ?? 0} waiting',
               style: const TextStyle(color: C.muted, fontSize: 12.5)),
         ]),
       ),
       const SizedBox(height: 14),
       Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          const Text('QR / link se jodiye', style: TextStyle(fontWeight: FontWeight.w700)),
+          const Text('Connect by QR / link', style: TextStyle(fontWeight: FontWeight.w700)),
           const SizedBox(height: 4),
-          const Text('Saamne wale ko QR dikhaiye ya link bhejiye. Ek baar chalta hai, 7 din tak. Judne se pehle aapko haan kehna hoga.',
+          const Text('Show the QR to the other person or send them the link. It works once, for 7 days. You must say yes before connecting.',
               style: TextStyle(color: C.muted, fontSize: 12.5)),
           const SizedBox(height: 10),
           if (qr.isNotEmpty)
@@ -193,23 +193,23 @@ class _HoolaNetScreenState extends State<HoolaNetScreen> {
               alignment: Alignment.centerRight,
               child: TextButton.icon(
                 onPressed: () {
-                  Clipboard.setData(ClipboardData(text: 'Mere Hoola se judiye: ${inv['url']}'));
-                  _snack('Link copy ho gaya, WhatsApp / SMS par bhej dijiye');
+                  Clipboard.setData(ClipboardData(text: 'Connect with my Hoola: ${inv['url']}'));
+                  _snack('Link copied, send it on WhatsApp / SMS');
                 },
                 icon: const Icon(Icons.share_rounded, size: 18),
                 label: const Text('Link copy'),
               ),
             ),
           ],
-          GradientButton(label: inv == null ? 'QR banaiye' : 'Naya QR', icon: Icons.qr_code_2_rounded, height: 46, onTap: _makeInvite),
+          GradientButton(label: inv == null ? 'QR banaiye' : 'New QR', icon: Icons.qr_code_2_rounded, height: 46, onTap: _makeInvite),
         ]),
       ),
       const SizedBox(height: 14),
       Glass(
         child: SwitchListTile(
           contentPadding: EdgeInsets.zero,
-          title: const Text('Mobile number se mujhe dhoondh sakein'),
-          subtitle: const Text('Band rakhenge to sirf Hoola ID / QR se', style: TextStyle(fontSize: 12)),
+          title: const Text('Let people find me by mobile number'),
+          subtitle: const Text('If turned off, people can connect only with a Hoola ID / QR', style: TextStyle(fontSize: 12)),
           value: _me['discoverable'] == true,
           onChanged: _discover,
         ),
@@ -226,10 +226,10 @@ class _HoolaNetScreenState extends State<HoolaNetScreen> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, set) => AlertDialog(
-          title: const Text('Kisi ke Hoola se jodiye'),
+          title: const Text('Connect to someone\'s Hoola'),
           content: SingleChildScrollView(
             child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-              TextField(controller: to, decoration: const InputDecoration(labelText: 'Hoola ID (@kunal.raj, doosre server par @kunal@server.in) ya mobile number')),
+              TextField(controller: to, decoration: const InputDecoration(labelText: 'Hoola ID (@kunal.raj, on another server @kunal@server.in) or mobile number')),
               const SizedBox(height: 10),
               Wrap(spacing: 6, children: [
                 for (final e in _relations.entries)
@@ -242,12 +242,12 @@ class _HoolaNetScreenState extends State<HoolaNetScreen> {
                     onSelected: (_) => set(() => rel = e.key),
                   ),
               ]),
-              TextField(controller: note, decoration: const InputDecoration(labelText: 'Chhota sa note (optional)')),
+              TextField(controller: note, decoration: const InputDecoration(labelText: 'A short note (optional)')),
             ]),
           ),
           actions: [
             TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
-            TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Request bhejo')),
+            TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Send request')),
           ],
         ),
       ),
@@ -255,7 +255,7 @@ class _HoolaNetScreenState extends State<HoolaNetScreen> {
     if (ok != true || to.text.trim().isEmpty) return;
     try {
       final r = await app.api!.netConnect(to: to.text.trim(), relation: rel, note: note.text.trim());
-      _snack(r['status'] == 'active' ? 'Jud gaye ✓' : 'Request bhej di. Unki haan ka intezaar.');
+      _snack(r['status'] == 'active' ? 'Connected ✓' : 'Request sent. Waiting for their yes.');
       _load();
     } catch (e) {
       _snack(e.toString());
@@ -292,18 +292,18 @@ class _HoolaNetScreenState extends State<HoolaNetScreen> {
               Text('@${l['handle'] ?? ''}', style: const TextStyle(color: C.muted)),
               if (l['safety_code'] != null) ...[
                 const SizedBox(height: 10),
-                const Text('Safety code (dono phone par same hona chahiye)', style: TextStyle(color: C.muted, fontSize: 12.5)),
+                const Text('Safety code (must be the same on both phones)', style: TextStyle(color: C.muted, fontSize: 12.5)),
                 Text(l['safety_code'] as String, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, letterSpacing: 2)),
               ],
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
-                title: const Text('Code mil gaya (verified)'),
+                title: const Text('Code matches (verified)'),
                 value: l['verified'] == true,
                 onChanged: (v) => patch({'verified': v}),
               ),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
-                title: const Text('VIP (hamesha pahunchein)'),
+                title: const Text('VIP (always reach me)'),
                 value: l['vip'] == true,
                 onChanged: (v) => patch({'vip': v}),
               ),
@@ -348,7 +348,7 @@ class _HoolaNetScreenState extends State<HoolaNetScreen> {
           trailing: Wrap(spacing: 4, crossAxisAlignment: WrapCrossAlignment.center, children: [
             if (l['status'] == 'active')
               IconButton(
-                tooltip: 'Baat kijiye',
+                tooltip: 'Talk',
                 visualDensity: VisualDensity.compact,
                 onPressed: () => _startChat(l),
                 icon: const Icon(Icons.chat_bubble_rounded, color: C.accent, size: 20),
@@ -360,19 +360,19 @@ class _HoolaNetScreenState extends State<HoolaNetScreen> {
           onTap: () => _linkSheet(l),
         );
     return ListView(padding: const EdgeInsets.all(16), children: [
-      GradientButton(label: 'Kisi ko jodiye', icon: Icons.person_add_alt_1_rounded, height: 46, onTap: _addDialog),
+      GradientButton(label: 'Connect someone', icon: Icons.person_add_alt_1_rounded, height: 46, onTap: _addDialog),
       const SizedBox(height: 12),
       for (final l in incoming) HoolaConnectCard(v: l, app: app),
-      if (active.isNotEmpty) const Text('Jude hue', style: TextStyle(fontWeight: FontWeight.w700)),
+      if (active.isNotEmpty) const Text('Connected', style: TextStyle(fontWeight: FontWeight.w700)),
       for (final l in active) tile(l, '@${l['handle']} · ${_relations[l['relation']] ?? ''}'),
-      if (waiting.isNotEmpty) const Padding(padding: EdgeInsets.only(top: 12), child: Text('Haan ka intezaar', style: TextStyle(fontWeight: FontWeight.w700))),
-      for (final l in waiting) tile(l, '@${l['handle']} · request bheji'),
+      if (waiting.isNotEmpty) const Padding(padding: EdgeInsets.only(top: 12), child: Text('Waiting for your yes', style: TextStyle(fontWeight: FontWeight.w700))),
+      for (final l in waiting) tile(l, '@${l['handle']} · request sent'),
       if (other.isNotEmpty) const Padding(padding: EdgeInsets.only(top: 12), child: Text('Band', style: TextStyle(fontWeight: FontWeight.w700))),
       for (final l in other) tile(l, l['status'] == 'blocked' ? 'Block' : 'Mana kiya'),
       if (_links.isEmpty)
         const Padding(
           padding: EdgeInsets.all(20),
-          child: Text('Abhi koi nahi juda. Apna QR dikhaiye ya kisi ka Hoola ID daal kar jodiye.', style: TextStyle(color: C.muted)),
+          child: Text('Nobody is connected yet. Show your QR or enter someone\'s Hoola ID to connect.', style: TextStyle(color: C.muted)),
         ),
     ]);
   }
@@ -390,10 +390,10 @@ class _HoolaNetScreenState extends State<HoolaNetScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text('${l['label'] ?? ''} se baat'),
-        content: TextField(controller: c, minLines: 2, maxLines: 5, decoration: InputDecoration(hintText: '${app.aName} unke Hoola se kya kahe?')),
+        content: TextField(controller: c, minLines: 2, maxLines: 5, decoration: InputDecoration(hintText: 'What should ${app.aName} say to their Hoola?')),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Bhejo')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Send')),
         ],
       ),
     );
@@ -414,7 +414,7 @@ class _HoolaNetScreenState extends State<HoolaNetScreen> {
         if (_inbox.isEmpty)
           const Padding(
             padding: EdgeInsets.all(20),
-            child: Text('Koi request intezaar mein nahi. Doosre Hoola jo bhi bhejenge, aapke niyam se yahan aayega.', style: TextStyle(color: C.muted)),
+            child: Text('No requests waiting. Whatever other Hoolas send will come here, according to your rules.', style: TextStyle(color: C.muted)),
           ),
         for (final m in _inbox) HoolaKnockCard(key: ValueKey(m['id']), v: m, app: app),
       ]);
@@ -423,7 +423,7 @@ class _HoolaNetScreenState extends State<HoolaNetScreen> {
         if (_threads.isEmpty)
           const Padding(
             padding: EdgeInsets.all(20),
-            child: Text('Abhi koi baat-cheet nahi. Chat mein boliye: "Kunal ke Hoola se poochho kal free hain?"', style: TextStyle(color: C.muted)),
+            child: Text('No conversations yet. Say in the chat: "Ask Kunal\'s Hoola if he is free tomorrow".', style: TextStyle(color: C.muted)),
           ),
         for (final t in _threads)
           ListTile(
@@ -462,12 +462,12 @@ class _HoolaNetScreenState extends State<HoolaNetScreen> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, set) => AlertDialog(
-          title: const Text('Nayi Mandali'),
+          title: const Text('New group'),
           content: SingleChildScrollView(
             child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-              TextField(controller: name, decoration: const InputDecoration(labelText: 'Naam (jaise FNW Field, Ghar)')),
+              TextField(controller: name, decoration: const InputDecoration(labelText: 'Name (e.g. FNW Field, Home)')),
               const SizedBox(height: 10),
-              const Text('Kise bulana hai (jude hue log)', style: TextStyle(color: C.muted, fontSize: 12.5)),
+              const Text('Whom to invite (connected people)', style: TextStyle(color: C.muted, fontSize: 12.5)),
               for (final l in active)
                 CheckboxListTile(
                   dense: true,
@@ -476,7 +476,7 @@ class _HoolaNetScreenState extends State<HoolaNetScreen> {
                   title: Text(l['label'] as String? ?? ''),
                   onChanged: (v) => set(() => v == true ? picked.add(l['peer'] as String) : picked.remove(l['peer'])),
                 ),
-              if (active.isEmpty) const Text('Pehle logon ko jodiye.', style: TextStyle(color: C.faint)),
+              if (active.isEmpty) const Text('Connect some people first.', style: TextStyle(color: C.faint)),
             ]),
           ),
           actions: [
@@ -489,7 +489,7 @@ class _HoolaNetScreenState extends State<HoolaNetScreen> {
     if (ok != true || name.text.trim().isEmpty) return;
     try {
       final r = await app.api!.netGroupCreate(name.text.trim(), picked.toList());
-      _snack('Mandali ban gayi; ${(r['invited'] as List? ?? const []).length} logon ko invite gaya');
+      _snack('Group created; invited ${(r['invited'] as List? ?? const []).length} people');
       _load();
     } catch (e) {
       _snack(e.toString());
@@ -497,20 +497,20 @@ class _HoolaNetScreenState extends State<HoolaNetScreen> {
   }
 
   Widget _groupsTab() => ListView(padding: const EdgeInsets.all(16), children: [
-        GradientButton(label: 'Nayi Mandali', icon: Icons.group_add_rounded, height: 46, onTap: _newGroup),
+        GradientButton(label: 'New group', icon: Icons.group_add_rounded, height: 46, onTap: _newGroup),
         const SizedBox(height: 12),
         for (final g in _groups)
           ListTile(
             contentPadding: EdgeInsets.zero,
             leading: Text(g['emoji'] as String? ?? '👥', style: const TextStyle(fontSize: 26)),
             title: Text(g['name'] as String? ?? ''),
-            subtitle: Text(g['status'] == 'invited' ? 'Invite aaya hai' : '${g['count']} log · ${g['role'] == 'admin' ? 'aap admin' : g['hub']}'),
+            subtitle: Text(g['status'] == 'invited' ? 'You have an invite' : '${g['count']} log · ${g['role'] == 'admin' ? 'aap admin' : g['hub']}'),
             onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => HoolaGroupScreen(app: app, gid: g['gid'] as String))),
           ),
         if (_groups.isEmpty)
           const Padding(
             padding: EdgeInsets.all(20),
-            child: Text('Team, parivar ya partners ke Hoola ek group mein: sab ke avatar baat karte, kaam baant-te aur seekhte hain.',
+            child: Text('The Hoolas of a team, family or partners in one group: everyone\'s avatars talk, share work and learn.',
                 style: TextStyle(color: C.muted)),
           ),
       ]);
@@ -530,7 +530,7 @@ class _HoolaNetScreenState extends State<HoolaNetScreen> {
                 onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => DostiScreen(app: app))),
               ),
               IconButton(
-                tooltip: 'Khareed aur bikri',
+                tooltip: 'Buy and sell',
                 icon: const Icon(Icons.shopping_bag_rounded),
                 onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => DealsScreen(app: app))),
               ),
@@ -541,12 +541,12 @@ class _HoolaNetScreenState extends State<HoolaNetScreen> {
               ),
             ],
             bottom: TabBar(isScrollable: true, tabs: [
-              const Tab(text: 'Mera ID'),
-              Tab(text: 'Jude log${(_me['requests'] ?? 0) > 0 ? ' (${_me['requests']})' : ''}'),
+              const Tab(text: 'My ID'),
+              Tab(text: 'Connected people${(_me['requests'] ?? 0) > 0 ? ' (${_me['requests']})' : ''}'),
               Tab(text: 'Inbox${_inbox.isNotEmpty ? ' (${_inbox.length})' : ''}'),
-              const Tab(text: 'Baatein'),
-              const Tab(text: 'Mandali'),
-              const Tab(text: 'Samaj'),
+              const Tab(text: 'Conversations'),
+              const Tab(text: 'Groups'),
+              const Tab(text: 'Community'),
             ]),
           ),
           body: Aurora(
@@ -647,7 +647,7 @@ class _HoolaThreadScreenState extends State<HoolaThreadScreen> {
     try {
       final r = await app.api!.netUpload(f.name, f.bytes, threadId: widget.threadId, text: caption);
       _text.clear();
-      if (r['status'] == 'declined' || r['status'] == 'refused') _snack('Unke Hoola ne nahi liya: ${r['reason'] ?? ''}');
+      if (r['status'] == 'declined' || r['status'] == 'refused') _snack('Their Hoola did not accept it: ${r['reason'] ?? ''}');
       await _load();
     } catch (e) {
       _snack(e.toString());
@@ -665,12 +665,12 @@ class _HoolaThreadScreenState extends State<HoolaThreadScreen> {
           ListTile(leading: const Icon(Icons.photo_rounded, color: C.accent), title: const Text('Photo'), onTap: () => Navigator.pop(ctx, 'image')),
           ListTile(leading: const Icon(Icons.videocam_rounded, color: C.accent), title: const Text('Video'), onTap: () => Navigator.pop(ctx, 'video')),
           ListTile(leading: const Icon(Icons.audiotrack_rounded, color: C.accent), title: const Text('Audio'), onTap: () => Navigator.pop(ctx, 'audio')),
-          ListTile(leading: const Icon(Icons.attach_file_rounded, color: C.accent), title: const Text('PDF / document / koi bhi file'), onTap: () => Navigator.pop(ctx, 'any')),
+          ListTile(leading: const Icon(Icons.attach_file_rounded, color: C.accent), title: const Text('PDF / document / any file'), onTap: () => Navigator.pop(ctx, 'any')),
           const Divider(height: 1),
           ListTile(
               leading: const Icon(Icons.auto_awesome_rounded, color: C.teal),
               title: Text('${app.aName} se banwaiye'),
-              subtitle: const Text('PDF (quotation, note, agenda) ya tasveer'),
+              subtitle: const Text('PDF (quotation, note, agenda) or picture'),
               onTap: () => Navigator.pop(ctx, 'make')),
         ]),
       ),
@@ -698,11 +698,11 @@ class _HoolaThreadScreenState extends State<HoolaThreadScreen> {
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, set) => AlertDialog(
           backgroundColor: C.bgBottom,
-          title: Text('${app.aName} banayega'),
+          title: Text('${app.aName} will make it'),
           content: SingleChildScrollView(
             child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
               Wrap(spacing: 8, children: [
-                for (final e in const {'pdf': '📄 Document (PDF)', 'image': '🖼️ Tasveer'}.entries)
+                for (final e in const {'pdf': '📄 Document (PDF)', 'image': '🖼️ Picture'}.entries)
                   ChoiceChip(
                     label: Text(e.value),
                     selected: kind == e.key,
@@ -718,19 +718,19 @@ class _HoolaThreadScreenState extends State<HoolaThreadScreen> {
                 minLines: 3,
                 maxLines: 8,
                 decoration: InputDecoration(
-                    hintText: kind == 'pdf' ? 'Kya likhna hai? (rates, points, note…)' : 'Tasveer mein kya ho? (jaise: Diwali greeting, FNW ka naam)'),
+                    hintText: kind == 'pdf' ? 'What should it say? (rates, points, note…)' : 'What should the picture show? (e.g. Diwali greeting, FNW name)'),
               ),
             ]),
           ),
           actions: [
             TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-            TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Banao')),
+            TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Make')),
           ],
         ),
       ),
     );
     if (ok != true || content.text.trim().isEmpty) return;
-    setState(() => _sending = kind == 'pdf' ? 'Document ban raha hai…' : 'Tasveer ban rahi hai…');
+    setState(() => _sending = kind == 'pdf' ? 'Making the document…' : 'Making the picture…');
     Map<String, dynamic>? f;
     try {
       f = await app.api!.netMake(kind, title.text.trim(), content.text.trim());
@@ -744,15 +744,15 @@ class _HoolaThreadScreenState extends State<HoolaThreadScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: C.bgBottom,
-        title: const Text('Yeh bhejein?'),
+        title: const Text('Send this?'),
         content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
           HoolaMediaTile(body: {'local': made}, app: app, maxWidth: 280),
           const SizedBox(height: 6),
-          Text('${_t['peer_avatar'] ?? _t['with'] ?? ''} ko jayega.', style: const TextStyle(color: C.muted, fontSize: 12.5)),
+          Text('${_t['peer_avatar'] ?? _t['with'] ?? ''} will receive it.', style: const TextStyle(color: C.muted, fontSize: 12.5)),
         ]),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Mat bhejo')),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Bhejo')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Do not send')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Send')),
         ],
       ),
     );
@@ -774,15 +774,15 @@ class _HoolaThreadScreenState extends State<HoolaThreadScreen> {
         context: context,
         builder: (ctx) => AlertDialog(
           backgroundColor: C.bgBottom,
-          title: Text('${app.aName}, tum sambhalo'),
+          title: Text('${app.aName}, you handle it'),
           content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('${app.aName} aapke niyam ke andar khud baat karega (max 6 baar), aur atakne par aapko bulayega. '
-                'Paise, files aur private jaankari kabhi khud nahi deta.', style: const TextStyle(color: C.muted, fontSize: 12.5)),
-            TextField(controller: c, minLines: 2, maxLines: 4, decoration: const InputDecoration(hintText: 'Lakshya: jaise "kal 5 baje meeting fix karo"')),
+            Text('${app.aName} will talk by itself within your rules (up to 6 turns), and will call you if it gets stuck. '
+                'It never gives money, files or private information on its own.', style: const TextStyle(color: C.muted, fontSize: 12.5)),
+            TextField(controller: c, minLines: 2, maxLines: 4, decoration: const InputDecoration(hintText: 'Goal: e.g. "fix a meeting tomorrow at 5"')),
           ]),
           actions: [
             TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-            TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Shuru karo')),
+            TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Start')),
           ],
         ),
       );
@@ -808,7 +808,7 @@ class _HoolaThreadScreenState extends State<HoolaThreadScreen> {
     final msgs = List<Map<String, dynamic>>.from((_t['messages'] as List? ?? const []).map((e) => Map<String, dynamic>.from(e as Map)));
     final peer = (_t['peer_avatar'] as String? ?? '').trim();
     final owner = (_t['peer_owner'] as String? ?? '').trim();
-    final title = peer.isNotEmpty ? peer : (_t['with'] as String? ?? 'Baat-cheet');
+    final title = peer.isNotEmpty ? peer : (_t['with'] as String? ?? 'Conversations');
     final handling = _t['mode'] == 'handle';
     final lastIn = msgs.lastWhere((m) => m['direction'] == 'in', orElse: () => const <String, dynamic>{});
     final showIdeas = msgs.isNotEmpty && msgs.last['direction'] == 'in' && !handling;
@@ -840,7 +840,7 @@ class _HoolaThreadScreenState extends State<HoolaThreadScreen> {
         ]),
         actions: [
           IconButton(
-            tooltip: handling ? 'Khud sambhalna band karo' : '${app.aName}, tum sambhalo',
+            tooltip: handling ? 'Stop handling it automatically' : '${app.aName}, you handle it',
             onPressed: _toggleHandle,
             icon: Icon(Icons.smart_toy_rounded, color: handling ? C.teal : C.muted),
           ),
@@ -857,7 +857,7 @@ class _HoolaThreadScreenState extends State<HoolaThreadScreen> {
                 const Icon(Icons.smart_toy_rounded, size: 18, color: C.teal),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: Text('${app.aName} khud baat kar raha hai · Lakshya: ${_t['goal'] ?? ''}',
+                  child: Text('${app.aName} is talking by itself · Goal: ${_t['goal'] ?? ''}',
                       style: const TextStyle(color: C.teal, fontSize: 12.5)),
                 ),
                 TextButton(onPressed: _toggleHandle, child: const Text('Rokiye')),
@@ -867,7 +867,7 @@ class _HoolaThreadScreenState extends State<HoolaThreadScreen> {
             child: _loading
                 ? const Center(child: CircularProgressIndicator())
                 : msgs.isEmpty
-                    ? Center(child: Text('Abhi koi baat nahi. ${app.aName} se kahiye kya bolna hai.', style: const TextStyle(color: C.muted)))
+                    ? Center(child: Text('No messages yet. Tell ${app.aName} what to say.', style: const TextStyle(color: C.muted)))
                     : RefreshIndicator(
                         onRefresh: _load,
                         child: ListView.builder(
@@ -911,7 +911,7 @@ class _HoolaThreadScreenState extends State<HoolaThreadScreen> {
               padding: const EdgeInsets.fromLTRB(6, 4, 10, 10),
               child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
                 IconButton(
-                  tooltip: 'Photo, video, PDF bhejiye',
+                  tooltip: 'Send a photo, video or PDF',
                   onPressed: _sending != null ? null : _attachMenu,
                   icon: const Icon(Icons.add_circle_rounded, color: C.accent, size: 28),
                 ),
@@ -921,7 +921,7 @@ class _HoolaThreadScreenState extends State<HoolaThreadScreen> {
                     minLines: 1,
                     maxLines: 5,
                     textCapitalization: TextCapitalization.sentences,
-                    decoration: InputDecoration(hintText: '${title.isEmpty ? 'Unke Hoola' : title} se ${app.aName} kya kahe…'),
+                    decoration: InputDecoration(hintText: 'What should ${app.aName} say to ${title.isEmpty ? 'their Hoola' : title}…'),
                   ),
                 ),
                 IconButton(onPressed: _busy ? null : _send, icon: const Icon(Icons.send_rounded, color: C.accent)),
@@ -943,18 +943,18 @@ class _Bubble extends StatelessWidget {
   final ValueChanged<String> onDecide;
 
   static const _kindText = {
-    'dosti_msg': '🤝 dosti', 'doc_ask': '📄 document request', 'ask': '❓ sawaal', 'meeting': '📅 meeting', 'task': '✅ kaam', 'reminder': '⏰ reminder', 'voice_note': '🎙️ voice note',
+    'dosti_msg': '🤝 friendship', 'doc_ask': '📄 document request', 'ask': '❓ question', 'meeting': '📅 meeting', 'task': '✅ task', 'reminder': '⏰ reminder', 'voice_note': '🎙️ voice note',
     'email': '✉️ email', 'link': '🔗 link', 'presentation': '📊 presentation', 'payment_request': '₹ payment request',
-    'contact_card': '👤 contact', 'location': '📍 jagah', 'meeting_ok': '📅 meeting pakki', 'meeting_no': '📅 meeting nahi',
+    'contact_card': '👤 contact', 'location': '📍 place', 'meeting_ok': '📅 meeting confirmed', 'meeting_no': '📅 meeting declined',
   };
 
   String _status(String s) => switch (s) {
-        'pending' => 'aapke faisle ka intezaar',
-        'snoozed' => 'baad mein',
+        'pending' => 'waiting for your decision',
+        'snoozed' => 'later',
         'declined' => 'mana kiya',
-        'blocked' => 'roka gaya',
-        'refused' => 'unke Hoola ne nahi liya',
-        'accepted' => 'haan kaha ✓',
+        'blocked' => 'blocked',
+        'refused' => 'their Hoola did not accept it',
+        'accepted' => 'said yes ✓',
         'handled' => 'Hoola ne sambhala',
         _ => '',
       };
@@ -983,7 +983,7 @@ class _Bubble extends StatelessWidget {
         if (e is Map) '🧠 ${e['title'] ?? ''}${(e['learned'] ?? '') != '' ? '\n   seekha: ${e['learned']}' : ''}',
       for (final k in (b['skills'] as List? ?? const []))
         if (k is Map) '🎓 skill: ${k['name'] ?? ''}',
-      if (b['doc'] is Map && ((b['doc'] as Map)['what'] ?? '') != '') '📄 maanga: ${(b['doc'] as Map)['what']}',
+      if (b['doc'] is Map && ((b['doc'] as Map)['what'] ?? '') != '') '📄 asked for: ${(b['doc'] as Map)['what']}',
     ];
     final st = _status(status);
     return Padding(
@@ -992,7 +992,7 @@ class _Bubble extends StatelessWidget {
         if (showName)
           Padding(
             padding: const EdgeInsets.only(left: 6, right: 6, bottom: 3),
-            child: Text(out ? 'Aapka $name' : name,
+            child: Text(out ? 'Your $name' : name,
                 style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: out ? C.accentSoft : C.teal)),
           ),
         Container(
@@ -1014,15 +1014,15 @@ class _Bubble extends StatelessWidget {
             if (lines.isNotEmpty) Padding(padding: EdgeInsets.only(top: hasMedia ? 6 : 0), child: Text(lines.join('\n'), style: const TextStyle(fontSize: 14, height: 1.3))),
             if (!out) HoolaSeen(app: app, v: {'seen': b['seen'], 'summary': b['summary']}),
             if (!out && b['scan'] is Map && (b['scan'] as Map)['verdict'] == 'danger')
-              const Padding(padding: EdgeInsets.only(top: 4), child: Text('⛔ Jaanch mein khatarnak laga', style: TextStyle(color: C.bad, fontSize: 12))),
+              const Padding(padding: EdgeInsets.only(top: 4), child: Text('⛔ Looked dangerous on checking', style: TextStyle(color: C.bad, fontSize: 12))),
             if (pending)
               Padding(
                 padding: const EdgeInsets.only(top: 6),
                 child: Wrap(spacing: 6, children: [
-                  FilledButton.tonal(onPressed: () => onDecide('accept'), child: const Text('Haan')),
+                  FilledButton.tonal(onPressed: () => onDecide('accept'), child: const Text('Yes')),
                   TextButton(onPressed: () => onDecide('decline'), child: const Text('Mana', style: TextStyle(color: C.bad))),
                   if (const {'message', 'ask', 'meeting', 'task', 'reminder', 'voice_note'}.contains(m['kind']))
-                    TextButton(onPressed: () => onDecide('handle'), child: Text('${app.aName}, sambhalo', style: const TextStyle(color: C.teal))),
+                    TextButton(onPressed: () => onDecide('handle'), child: Text('${app.aName}, handle it', style: const TextStyle(color: C.teal))),
                 ]),
               ),
             const SizedBox(height: 2),
@@ -1084,7 +1084,7 @@ class _HoolaGroupScreenState extends State<HoolaGroupScreen> {
     final t = _text.text.trim();
     if (t.isEmpty) return;
     if (_kind == 'task' && _assign == null) {
-      _snack('Kaam kise dena hai? Member chuniye.');
+      _snack('Who should get the task? Choose a member.');
       return;
     }
     setState(() => _busy = true);
@@ -1130,17 +1130,17 @@ class _HoolaGroupScreenState extends State<HoolaGroupScreen> {
     final members = List<Map<String, dynamic>>.from((_g['members'] as List? ?? const []).map((e) => Map<String, dynamic>.from(e as Map)));
     return Scaffold(
       appBar: AppBar(
-        title: Text('${_g['emoji'] ?? '👥'} ${_g['name'] ?? 'Mandali'}'),
+        title: Text('${_g['emoji'] ?? '👥'} ${_g['name'] ?? 'Groups'}'),
         backgroundColor: Colors.transparent,
         actions: [
-          IconButton(icon: const Icon(Icons.summarize_rounded), tooltip: 'Kya hua', onPressed: _digest),
+          IconButton(icon: const Icon(Icons.summarize_rounded), tooltip: 'What happened', onPressed: _digest),
           PopupMenuButton<String>(
             onSelected: (v) => v.startsWith('mute:') ? _act('mute', mute: v.substring(5)) : _act(v),
             itemBuilder: (_) => [
-              PopupMenuItem(value: 'mute:all', child: Text('Sab dikhao${_g['mute'] == 'all' ? ' ✓' : ''}')),
-              PopupMenuItem(value: 'mute:mentions', child: Text('Sirf mera zikr / kaam${_g['mute'] == 'mentions' ? ' ✓' : ''}')),
-              PopupMenuItem(value: 'mute:digest', child: Text('Sirf digest${_g['mute'] == 'digest' ? ' ✓' : ''}')),
-              if (_g['role'] != 'admin') const PopupMenuItem(value: 'leave', child: Text('Group chhodiye')),
+              PopupMenuItem(value: 'mute:all', child: Text('Show all${_g['mute'] == 'all' ? ' ✓' : ''}')),
+              PopupMenuItem(value: 'mute:mentions', child: Text('Only my mentions / tasks${_g['mute'] == 'mentions' ? ' ✓' : ''}')),
+              PopupMenuItem(value: 'mute:digest', child: Text('Digest only${_g['mute'] == 'digest' ? ' ✓' : ''}')),
+              if (_g['role'] != 'admin') const PopupMenuItem(value: 'leave', child: Text('Leave group')),
             ],
           ),
         ],
@@ -1159,7 +1159,7 @@ class _HoolaGroupScreenState extends State<HoolaGroupScreen> {
               onRefresh: _load,
               child: ListView(padding: const EdgeInsets.all(12), children: [
                 for (final p in posts) HoolaGroupPostCard(key: ValueKey(p['id']), v: {...p, 'group': ''}, app: app),
-                if (posts.isEmpty) const Padding(padding: EdgeInsets.all(20), child: Text('Abhi koi post nahi.', style: TextStyle(color: C.muted))),
+                if (posts.isEmpty) const Padding(padding: EdgeInsets.all(20), child: Text('No posts yet.', style: TextStyle(color: C.muted))),
               ]),
             ),
           ),
@@ -1169,7 +1169,7 @@ class _HoolaGroupScreenState extends State<HoolaGroupScreen> {
               padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
               child: Column(children: [
                 Row(children: [
-                  for (final k in const {'message': 'Baat', 'ask': 'Sawaal', 'task': 'Kaam do'}.entries)
+                  for (final k in const {'message': 'Baat', 'ask': 'Question', 'task': 'Kaam do'}.entries)
                     Padding(
                       padding: const EdgeInsets.only(right: 6),
                       child: ChoiceChip(
@@ -1186,7 +1186,7 @@ class _HoolaGroupScreenState extends State<HoolaGroupScreen> {
                       child: DropdownButton<String>(
                         isExpanded: true,
                         value: _assign,
-                        hint: const Text('Kise?'),
+                        hint: const Text('Who?'),
                         items: [
                           for (final m in members)
                             DropdownMenuItem(value: m['address'] as String, child: Text(m['label'] as String? ?? '', overflow: TextOverflow.ellipsis)),
@@ -1198,7 +1198,7 @@ class _HoolaGroupScreenState extends State<HoolaGroupScreen> {
                 Row(children: [
                   Expanded(
                     child: TextField(controller: _text, minLines: 1, maxLines: 4,
-                        decoration: InputDecoration(hintText: '${app.aName} group mein bhejega…')),
+                        decoration: InputDecoration(hintText: '${app.aName} will send to the group…')),
                   ),
                   IconButton(onPressed: _busy ? null : _post, icon: const Icon(Icons.send_rounded, color: C.accent)),
                 ]),

@@ -122,7 +122,7 @@ def test_phone_opens_the_call_from_the_notification():
 
 def test_kaam_list_surfaces():
     sheet = (ROOT / "lib/ui/kaam_sheet.dart").read_text()
-    assert "kaamList()" in sheet and "Pichhle 7 din mein hua" in sheet and "remember: !call" in sheet
+    assert "kaamList()" in sheet and "Done in the last 7 days" in sheet and "remember: !call" in sheet
     assert "showKaamSheet(context, app)" in (ROOT / "lib/ui/chat_screen.dart").read_text()
     js = (ROOT / "server/app/static/console/v2.js").read_text()
     assert "drawTodayWork()" in js and "/api/kaam/list" in js and "Done in the last 7 days" in js

@@ -41,14 +41,14 @@ const _kindIcon = {
   'quality': Icons.grade_rounded,
   'placement': Icons.place_rounded,
 };
-const _chKind = {'pause': 'Rokna', 'resume': 'Chalu karna', 'budget': 'Budget', 'negative': 'Negative keyword', 'other': 'Badlav'};
+const _chKind = {'pause': 'Rokna', 'resume': 'Turn on', 'budget': 'Budget', 'negative': 'Negative keyword', 'other': 'Change'};
 const _chStatus = {
-  'waiting': 'Haan ka intezaar',
-  'applied': 'Meta par laga',
-  'manual': 'Aap karein',
-  'done': 'Ho gaya',
+  'waiting': 'Waiting for your yes',
+  'applied': 'Applied on Meta',
+  'manual': 'You do it',
+  'done': 'Done',
   'rejected': 'Mana',
-  'failed': 'Nahi laga',
+  'failed': 'Not applied',
   'stale': 'Purana'
 };
 
@@ -131,7 +131,7 @@ class _AdsScreenState extends State<AdsScreen> {
             title: Text('${app.aName} · Performance marketer'),
             bottom: const TabBar(isScrollable: true, tabAlignment: TabAlignment.start, tabs: [
               Tab(text: 'Hisaab'),
-              Tab(text: 'Badlav'),
+              Tab(text: 'Change'),
               Tab(text: 'Copy'),
               Tab(text: 'Niyam'),
             ]),
@@ -177,7 +177,7 @@ class _ReportTab extends StatelessWidget {
       onRefresh: () async => run(() => app.api!.adsReport(30)),
       child: ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 96), children: [
         Row(children: [
-          Expanded(child: GlassButton(label: 'Report daalo', icon: Icons.upload_file_rounded, height: 44, onTap: busy ? null : onImport)),
+          Expanded(child: GlassButton(label: 'Add a report', icon: Icons.upload_file_rounded, height: 44, onTap: busy ? null : onImport)),
           const SizedBox(width: 8),
           Expanded(
             child: GlassButton(
@@ -193,7 +193,7 @@ class _ReportTab extends StatelessWidget {
         if (empty)
           Glass(
             child: Text(_s(rep['say']).isEmpty
-                ? 'Meta Ads Manager ya Google Ads se report export kariye (Reports > Export > CSV / Excel) aur yahan daaliye.'
+                ? 'Export a report from Meta Ads Manager or Google Ads (Reports > Export > CSV / Excel) and add it here.'
                 : _s(rep['say'])),
           )
         else ...[
@@ -204,17 +204,17 @@ class _ReportTab extends StatelessWidget {
               Wrap(spacing: 14, runSpacing: 10, children: [
                 _stat('Kharcha', rs(total['spend'])),
                 _stat('Result', '${_d(total['results']).round()}'),
-                _stat('Ek result', rs(cpl), color: over ? C.bad : C.ok),
+                _stat('One result', rs(cpl), color: over ? C.bad : C.ok),
                 if (target != null) _stat('Target', rs(target)),
                 if (total['ctr'] != null) _stat('CTR', '${total['ctr']}%'),
-                if (_d(rep['waste']) > 0) _stat('Beh raha', rs(rep['waste']), color: C.bad),
+                if (_d(rep['waste']) > 0) _stat('Being wasted', rs(rep['waste']), color: C.bad),
               ]),
               if (_s(rep['target_from']).isNotEmpty)
                 Padding(padding: const EdgeInsets.only(top: 6), child: Text('Target: ${rep['target_from']}', style: const TextStyle(color: C.faint, fontSize: 12))),
               if (money.isNotEmpty) ...[
                 const SizedBox(height: 8),
                 if (money['cost_per_sale'] != null)
-                  Text('Asli sale: ${money['sales']} · ek sale ${rs(money['cost_per_sale'])}${money['real_roas'] != null ? ' · ROAS ${money['real_roas']}x' : ''}',
+                  Text('Actual sales: ${money['sales']} · one sale ${rs(money['cost_per_sale'])}${money['real_roas'] != null ? ' · ROAS ${money['real_roas']}x' : ''}',
                       style: const TextStyle(color: C.chip)),
                 if (money['telecall'] != null)
                   Text('Telecaller: ${_map(money['telecall'])['leads']} ad lead, ${_map(money['telecall'])['converted']} bike'
@@ -222,13 +222,13 @@ class _ReportTab extends StatelessWidget {
                       style: const TextStyle(color: C.chip, fontSize: 13)),
               ],
               const SizedBox(height: 10),
-              GradientButton(label: 'Budget plan banao', icon: Icons.tune_rounded, height: 46, onTap: busy ? null : () => run(() => app.api!.adsPlan())),
+              GradientButton(label: 'Make budget plan', icon: Icons.tune_rounded, height: 46, onTap: busy ? null : () => run(() => app.api!.adsPlan())),
               const SizedBox(height: 4),
-              const Text('Plan sirf sujhav hai: har badlav aapki Haan par hi lagega.', style: TextStyle(color: C.faint, fontSize: 12)),
+              const Text('The plan is only a suggestion: every change is made only with your yes.', style: TextStyle(color: C.faint, fontSize: 12)),
             ]),
           ),
           if (leaks.isNotEmpty) ...[
-            Padding(padding: const EdgeInsets.fromLTRB(4, 16, 4, 6), child: Text('Paisa yahan beh raha hai', style: display(16))),
+            Padding(padding: const EdgeInsets.fromLTRB(4, 16, 4, 6), child: Text('Money is being wasted here', style: display(16))),
             for (final l in leaks)
               Padding(
                 padding: const EdgeInsets.only(bottom: 8),
@@ -248,7 +248,7 @@ class _ReportTab extends StatelessWidget {
               ),
           ],
           if (wins.isNotEmpty) ...[
-            Padding(padding: const EdgeInsets.fromLTRB(4, 12, 4, 6), child: Text('Achha chal raha', style: display(16))),
+            Padding(padding: const EdgeInsets.fromLTRB(4, 12, 4, 6), child: Text('Doing well', style: display(16))),
             for (final w in wins)
               ListTile(
                 contentPadding: EdgeInsets.zero,
@@ -262,10 +262,10 @@ class _ReportTab extends StatelessWidget {
               child: Glass(child: Row(children: [const Icon(Icons.lightbulb_rounded, color: C.accent2, size: 18), const SizedBox(width: 8), Expanded(child: Text(_s(n['text'])))])),
             ),
           const SizedBox(height: 10),
-          Text('India ka andaaza (${_map(rep['benchmark'])['segment']}): ${_map(rep['benchmark'])['note']}', style: const TextStyle(color: C.faint, fontSize: 11.5)),
+          Text('India estimate (${_map(rep['benchmark'])['segment']}): ${_map(rep['benchmark'])['note']}', style: const TextStyle(color: C.faint, fontSize: 11.5)),
         ],
         const SizedBox(height: 12),
-        GlassButton(label: 'Asli sale likho', icon: Icons.point_of_sale_rounded, height: 40, onTap: () => _sale(context)),
+        GlassButton(label: 'Enter actual sales', icon: Icons.point_of_sale_rounded, height: 40, onTap: () => _sale(context)),
       ]),
     );
   }
@@ -282,11 +282,11 @@ class _ReportTab extends StatelessWidget {
     final ok = await showDialog<bool>(
       context: context,
       builder: (c) => AlertDialog(
-        title: const Text('Ads se kitni sale hui?'),
+        title: const Text('How many sales came from ads?'),
         content: Column(mainAxisSize: MainAxisSize.min, children: [
           TextField(controller: camp, decoration: const InputDecoration(labelText: 'Campaign (optional)')),
-          TextField(controller: count, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Kitni sale')),
-          TextField(controller: value, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Kul rakam (₹)')),
+          TextField(controller: count, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'How many sales')),
+          TextField(controller: value, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Total amount (₹)')),
         ]),
         actions: [FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('Save'))],
       ),
@@ -311,10 +311,10 @@ class _ChangesTab extends StatelessWidget {
       onRefresh: onChanged,
       child: ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 96), children: [
         if (changes.isEmpty)
-          const Padding(padding: EdgeInsets.all(20), child: Text('Abhi koi badlav nahi. Hisaab mein "Budget plan banao" dabaiye.', style: TextStyle(color: C.muted))),
-        if (waiting.isNotEmpty) Padding(padding: const EdgeInsets.fromLTRB(4, 4, 4, 8), child: Text('Aapki Haan chahiye (${waiting.length})', style: display(16))),
+          const Padding(padding: EdgeInsets.all(20), child: Text('No changes yet. In the report, tap "Make budget plan".', style: TextStyle(color: C.muted))),
+        if (waiting.isNotEmpty) Padding(padding: const EdgeInsets.fromLTRB(4, 4, 4, 8), child: Text('Needs your yes (${waiting.length})', style: display(16))),
         for (final c in waiting) Padding(padding: const EdgeInsets.only(bottom: 10), child: AdsChangeTile(app: app, c: c, onDone: onChanged)),
-        if (rest.isNotEmpty) Padding(padding: const EdgeInsets.fromLTRB(4, 12, 4, 8), child: Text('Pehle ke', style: display(16))),
+        if (rest.isNotEmpty) Padding(padding: const EdgeInsets.fromLTRB(4, 12, 4, 8), child: Text('Earlier', style: display(16))),
         for (final c in rest) Padding(padding: const EdgeInsets.only(bottom: 10), child: AdsChangeTile(app: app, c: c, onDone: onChanged)),
       ]),
     );
@@ -362,14 +362,14 @@ class _AdsChangeTileState extends State<AdsChangeTile> {
       final ok = await showDialog<bool>(
         context: context,
         builder: (d) => AlertDialog(
-          title: Text('${c['target']}: roz ka budget'),
+          title: Text('${c['target']}: daily budget'),
           content: Column(mainAxisSize: MainAxisSize.min, children: [
-            Text('Abhi ${rs(c['before'])}. Sujhav ${rs(c['after'])}.', style: const TextStyle(fontSize: 13)),
+            Text('Now ${rs(c['before'])}. Sujhav ${rs(c['after'])}.', style: const TextStyle(fontSize: 13)),
             TextField(controller: ctl, keyboardType: TextInputType.number, decoration: const InputDecoration(prefixText: '₹ ')),
           ]),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Rehne do')),
-            FilledButton(onPressed: () => Navigator.pop(d, true), child: const Text('Haan, lagao')),
+            TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Keep it')),
+            FilledButton(onPressed: () => Navigator.pop(d, true), child: const Text('Yes, apply')),
           ],
         ),
       );
@@ -392,7 +392,7 @@ class _AdsChangeTileState extends State<AdsChangeTile> {
         if (c['kind'] == 'budget')
           Padding(
             padding: const EdgeInsets.only(top: 4),
-            child: Text('${rs(c['before'])} → ${rs(c['after'])} roz', style: TextStyle(color: c['spends_more'] == true ? C.accent : C.ok, fontWeight: FontWeight.w700)),
+            child: Text('${rs(c['before'])} → ${rs(c['after'])} per day', style: TextStyle(color: c['spends_more'] == true ? C.accent : C.ok, fontWeight: FontWeight.w700)),
           ),
         const SizedBox(height: 4),
         Text(_s(c['reason']), style: const TextStyle(color: C.chip, fontSize: 13)),
@@ -402,7 +402,7 @@ class _AdsChangeTileState extends State<AdsChangeTile> {
           Text(_s(c['steps']), style: const TextStyle(color: C.accent2, fontSize: 12.5)),
           if (_s(c['error']).isNotEmpty) Text(_s(c['error']), style: const TextStyle(color: C.bad, fontSize: 12)),
         ],
-        if (oc.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 6), child: Text('Asar: ${oc['say']}', style: const TextStyle(color: C.teal, fontSize: 12.5))),
+        if (oc.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 6), child: Text('Impact: ${oc['say']}', style: const TextStyle(color: C.teal, fontSize: 12.5))),
         const SizedBox(height: 8),
         if (_busy)
           const LinearProgressIndicator()
@@ -410,14 +410,14 @@ class _AdsChangeTileState extends State<AdsChangeTile> {
           Row(children: [
             Expanded(child: GlassButton(label: 'Mana', color: C.bad, height: 42, onTap: () => _do(() => widget.app.api!.adsDecide(_s(c['id']), false)))),
             const SizedBox(width: 8),
-            Expanded(child: GradientButton(label: c['spends_more'] == true ? 'Haan (kharcha badhega)' : 'Haan', height: 42, onTap: _yes)),
+            Expanded(child: GradientButton(label: c['spends_more'] == true ? 'Yes (cost will rise)' : 'Yes', height: 42, onTap: _yes)),
           ])
         else if (st == 'manual' || st == 'failed')
-          GlassButton(label: 'Maine kar diya', icon: Icons.check_rounded, height: 40, onTap: () => _do(() => widget.app.api!.adsDone(_s(c['id'])))),
+          GlassButton(label: 'I did it', icon: Icons.check_rounded, height: 40, onTap: () => _do(() => widget.app.api!.adsDone(_s(c['id'])))),
         if (st == 'waiting' && c['can_apply'] != true)
           const Padding(
             padding: EdgeInsets.only(top: 6),
-            child: Text('Haan ke baad Ads Manager ke steps milenge (Meta account juda ho to Hoola khud laga dega).', style: TextStyle(color: C.faint, fontSize: 11.5)),
+            child: Text('After your yes you will get the Ads Manager steps (if your Meta account is linked, Hoola will apply it itself).', style: TextStyle(color: C.faint, fontSize: 11.5)),
           ),
       ]),
     );
@@ -458,18 +458,18 @@ class _CopyTabState extends State<_CopyTab> {
   Widget build(BuildContext context) => ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 96), children: [
         Glass(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('Naye ad copy (test ke liye)', style: display(16)),
+            Text('New ad copy (to test)', style: display(16)),
             const SizedBox(height: 8),
             Wrap(spacing: 6, children: [
               ChoiceChip(label: const Text('Meta (FB / Insta)'), selected: _platform == 'meta', onSelected: (_) => setState(() => _platform = 'meta')),
               ChoiceChip(label: const Text('Google search'), selected: _platform == 'google', onSelected: (_) => setState(() => _platform = 'google')),
             ]),
-            TextField(controller: _brief, minLines: 2, maxLines: 5, decoration: const InputDecoration(labelText: 'Kya bechna hai / offer (apne shabdon mein)')),
+            TextField(controller: _brief, minLines: 2, maxLines: 5, decoration: const InputDecoration(labelText: 'What to sell / offer (in your own words)')),
             TextField(controller: _campaign, decoration: const InputDecoration(labelText: 'Campaign (optional)')),
             const SizedBox(height: 10),
-            _busy ? const Center(child: CircularProgressIndicator()) : GradientButton(label: 'Copy likho', icon: Icons.edit_rounded, height: 46, onTap: _write),
+            _busy ? const Center(child: CircularProgressIndicator()) : GradientButton(label: 'Write copy', icon: Icons.edit_rounded, height: 46, onTap: _write),
             const SizedBox(height: 4),
-            Text('${widget.app.aName} sirf aapke facts se likhta hai; ad aap khud Ads Manager mein daaliye.', style: const TextStyle(color: C.faint, fontSize: 12)),
+            Text('${widget.app.aName} writes only from your facts; you put the ad into Ads Manager yourself.', style: const TextStyle(color: C.faint, fontSize: 12)),
           ]),
         ),
         for (final t in widget.tests) Padding(padding: const EdgeInsets.only(top: 12), child: AdsTestCard(app: widget.app, t: t, onChanged: widget.onChanged)),
@@ -502,7 +502,7 @@ class AdsTestCard extends StatelessWidget {
     final ok = await showDialog<bool>(
       context: context,
       builder: (d) => AlertDialog(
-        title: const Text('Har copy ke number'),
+        title: const Text('Numbers for each copy'),
         content: SingleChildScrollView(
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             for (final e in ctl.entries) ...[
@@ -514,7 +514,7 @@ class AdsTestCard extends StatelessWidget {
             ],
           ]),
         ),
-        actions: [FilledButton(onPressed: () => Navigator.pop(d, true), child: const Text('Jaancho'))],
+        actions: [FilledButton(onPressed: () => Navigator.pop(d, true), child: const Text('Check'))],
       ),
     );
     if (ok != true) return;
@@ -543,7 +543,7 @@ class AdsTestCard extends StatelessWidget {
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Expanded(child: Text('${t['number']} · ${t['platform'] == 'google' ? 'Google' : 'Meta'}${_s(t['campaign']).isNotEmpty ? ' · ${t['campaign']}' : ''}', style: display(15))),
-          Pill(_s(t['status']) == 'decided' ? 'Faisla' : (_s(t['status']) == 'running' ? 'Chal raha' : 'Draft'), fg: C.accent),
+          Pill(_s(t['status']) == 'decided' ? 'Decided' : (_s(t['status']) == 'running' ? 'Running' : 'Draft'), fg: C.accent),
         ]),
         if (_s(plan['say']).isNotEmpty) Text(_s(plan['say']), style: const TextStyle(color: C.muted, fontSize: 12)),
         if (_s(t['verdict']).isNotEmpty) Padding(padding: const EdgeInsets.only(top: 4), child: Text(_s(t['verdict']), style: const TextStyle(color: C.teal, fontSize: 13))),
@@ -564,7 +564,7 @@ class AdsTestCard extends StatelessWidget {
                     icon: const Icon(Icons.copy_rounded, size: 18),
                     onPressed: () {
                       Clipboard.setData(ClipboardData(text: copyText(c)));
-                      _snack(context, 'Copy ${c['label']} copy ho gaya');
+                      _snack(context, 'Copy ${c['label']} copied');
                     },
                   ),
                 ]),
@@ -579,7 +579,7 @@ class AdsTestCard extends StatelessWidget {
           if (_s(t['status']) == 'draft')
             Expanded(
               child: GlassButton(
-                label: 'Maine live kar diye',
+                label: 'I made them live',
                 height: 40,
                 onTap: () async {
                   try {
@@ -594,7 +594,7 @@ class AdsTestCard extends StatelessWidget {
             ),
           if (_s(t['status']) != 'decided') ...[
             const SizedBox(width: 8),
-            Expanded(child: GlassButton(label: 'Number daalo', height: 40, onTap: () => _result(context))),
+            Expanded(child: GlassButton(label: 'Enter a number', height: 40, onTap: () => _result(context))),
           ],
         ]),
       ]),
@@ -624,17 +624,17 @@ class _RulesTab extends StatelessWidget {
     final ok = await showDialog<bool>(
       context: context,
       builder: (c) => AlertDialog(
-        title: const Text('Meta ad account jodiye'),
+        title: const Text('Connect Meta ad account'),
         content: SingleChildScrollView(
           child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Text('Meta Business Settings > Users > System users > "Hoola" banaiye, ad account do (Manage campaigns), phir Generate '
-                'token: ads_read + ads_management. Token yahin daaliye; chat mein kabhi nahi.', style: TextStyle(fontSize: 12.5)),
+            const Text('Meta Business Settings > Users > System users > "Hoola" and give it the ad account (Manage campaigns), then Generate '
+                'token: ads_read + ads_management. Enter the token here; never in the chat.', style: TextStyle(fontSize: 12.5)),
             TextField(controller: acct, decoration: const InputDecoration(labelText: 'Ad account ID (act_...)')),
             TextField(controller: tok, obscureText: true, enableSuggestions: false, autocorrect: false, decoration: const InputDecoration(labelText: 'Token')),
           ]),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Rehne do')),
+          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Keep it')),
           FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('Jodo')),
         ],
       ),
@@ -675,30 +675,30 @@ class _RulesTab extends StatelessWidget {
     return ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 96), children: [
       Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('Ek lead aapke liye kitne ki hai', style: display(16)),
+          Text('What one lead is worth to you', style: display(16)),
           const SizedBox(height: 4),
-          Text(st['max_cpl'] != null ? 'Is hisaab se ek lead ${rs(st['max_cpl'])} se mehngi = ghaata.' : 'Order, margin aur kitne leads bikte hain bataiye; phir Hoola sahi target nikalega.',
+          Text(st['max_cpl'] != null ? 'By this math, a lead costing more than ${rs(st['max_cpl'])} means a loss.' : 'Tell Hoola the order value, margin and how many leads turn into sales; it will then work out the right target.',
               style: const TextStyle(color: C.muted, fontSize: 12.5)),
-          row('avg_order', 'Ek sale kitne ki (₹)', '${st['avg_order']}', number: true),
+          row('avg_order', 'Value of one sale (₹)', '${st['avg_order']}', number: true),
           row('margin_pct', 'Margin %', '${st['margin_pct']}', number: true),
-          row('close_pct', '100 leads mein kitne kharidte hain (%)', '${st['close_pct']}', number: true),
-          row('target_cpl', 'Mera target: ek result (₹)', '${st['target_cpl']}', number: true),
-          row('month_budget', 'Mahine ka ad budget (₹)', '${st['month_budget']}', number: true),
-          row('max_step_pct', 'Ek baar mein budget kitna badle (%)', '${st['max_step_pct']}', number: true),
-          if (_s(st['target_from']).isNotEmpty) Text('Abhi target: ${rs(st['target'])} (${st['target_from']})', style: const TextStyle(color: C.faint, fontSize: 12)),
+          row('close_pct', 'How many of 100 leads buy (%)', '${st['close_pct']}', number: true),
+          row('target_cpl', 'My target: cost of one result (₹)', '${st['target_cpl']}', number: true),
+          row('month_budget', 'Monthly ad budget (₹)', '${st['month_budget']}', number: true),
+          row('max_step_pct', 'How much the budget may change at once (%)', '${st['max_step_pct']}', number: true),
+          if (_s(st['target_from']).isNotEmpty) Text('Current target: ${rs(st['target'])} (${st['target_from']})', style: const TextStyle(color: C.faint, fontSize: 12)),
         ]),
       ),
       const SizedBox(height: 12),
       Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           row('business', 'Business', _s(st['business'])),
-          row('offer', 'Kya bechte hain / offer', _s(st['offer']), lines: 3),
+          row('offer', 'What you sell / offer', _s(st['offer']), lines: 3),
           const SizedBox(height: 6),
           Wrap(spacing: 6, runSpacing: 4, children: [
             for (final e in segs.entries)
               ChoiceChip(label: Text(_s(e.value)), selected: st['segment'] == e.key, onSelected: (_) => _save(context, {'segment': e.key})),
           ]),
-          row('report_time', 'Roz ki jaanch / hafte ki report kab', _s(st['report_time'])),
+          row('report_time', 'When for the daily check / weekly report', _s(st['report_time'])),
         ]),
       ),
       const SizedBox(height: 12),
@@ -708,16 +708,16 @@ class _RulesTab extends StatelessWidget {
             const Icon(Icons.campaign_rounded, color: C.accent),
             const SizedBox(width: 8),
             Expanded(child: Text('Meta ad account', style: display(16))),
-            Pill(meta['ready'] == true ? 'Juda hai' : 'Nahi juda', fg: meta['ready'] == true ? C.ok : C.faint),
+            Pill(meta['ready'] == true ? 'Juda hai' : 'Not connected', fg: meta['ready'] == true ? C.ok : C.faint),
           ]),
           if (meta['ready'] == true) Text('${meta['name']} · ${meta['account']} · ${meta['currency']}', style: const TextStyle(color: C.muted, fontSize: 12.5)),
           if (meta['linked'] == true && meta['ready'] != true)
-            const Text('Facebook se juda - ab ad account chuniye (Facebook & Instagram ads).', style: TextStyle(color: C.warn, fontSize: 12.5)),
+            const Text('Connected to Facebook - now choose the ad account (Facebook & Instagram ads).', style: TextStyle(color: C.warn, fontSize: 12.5)),
           const SizedBox(height: 8),
           Row(children: [
             Expanded(
                 child: GlassButton(
-                    label: meta['linked'] == true ? 'Dobara jodo' : 'Facebook se jodo',
+                    label: meta['linked'] == true ? 'Connect again' : 'Facebook se jodo',
                     icon: Icons.link_rounded,
                     height: 42,
                     onTap: () async {
@@ -742,13 +742,13 @@ class _RulesTab extends StatelessWidget {
             if (meta['linked'] == true)
               TextButton(
                   onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => MetaAdsScreen(app: app))),
-                  child: const Text('Naya ad banao')),
+                  child: const Text('Make a new ad')),
             const Spacer(),
             TextButton(onPressed: () => _meta(context), child: const Text('Token se jodo', style: TextStyle(fontSize: 12))),
           ]),
           const SizedBox(height: 6),
-          const Text('Juda ho to Hoola roz hisaab laata hai; budget / rokna sirf aapki Haan par. Naya ad Meta mein PAUSED banta hai, Start sirf aapke tap par. '
-              'Google Ads: report export karke daaliye.', style: TextStyle(color: C.faint, fontSize: 12)),
+          const Text('Once linked, Hoola brings the report every day; budget changes / pausing only with your yes. A new ad is created PAUSED in Meta, and Start happens only on your tap. '
+              'Google Ads: export a report and add it here.', style: TextStyle(color: C.faint, fontSize: 12)),
         ]),
       ),
     ]);
@@ -768,7 +768,7 @@ class AdsPlanCard extends StatelessWidget {
         Row(children: [
           const Icon(Icons.tune_rounded, color: C.accent, size: 20),
           const SizedBox(width: 8),
-          Expanded(child: Text('Ads badlav: aapki Haan', style: display(16))),
+          Expanded(child: Text('Ad changes: your yes', style: display(16))),
           if (_d(v['daily_saved']) > 0) Pill('${rs(v['daily_saved'])}/din bachat', fg: C.ok),
         ]),
         if (_s(v['say']).isNotEmpty) Padding(padding: const EdgeInsets.only(top: 4), child: Text(_s(v['say']), style: const TextStyle(color: C.muted, fontSize: 12.5))),
@@ -790,15 +790,15 @@ class AdsReportCard extends StatelessWidget {
         Row(children: [
           const Icon(Icons.campaign_rounded, color: C.accent, size: 20),
           const SizedBox(width: 8),
-          Expanded(child: Text(v['kind'] == 'weekly' ? 'Hafte ka ads hisaab' : 'Ads ka hisaab', style: display(16))),
-          if (_d(v['waste']) > 0) Pill('${rs(v['waste'])} beh raha', fg: C.bad),
+          Expanded(child: Text(v['kind'] == 'weekly' ? 'Weekly ads report' : 'Ads ka hisaab', style: display(16))),
+          if (_d(v['waste']) > 0) Pill('${rs(v['waste'])} being wasted', fg: C.bad),
         ]),
         const SizedBox(height: 6),
         Text(_s(v['say']), style: const TextStyle(color: C.chip, height: 1.35)),
         for (final l in leaks.take(3)) Padding(padding: const EdgeInsets.only(top: 4), child: Text('• ${l['text']}', style: const TextStyle(fontSize: 12.5, color: C.muted))),
         Align(
           alignment: Alignment.centerRight,
-          child: TextButton(onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => AdsScreen(app: app))), child: const Text('Poora dekho')),
+          child: TextButton(onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => AdsScreen(app: app))), child: const Text('View all')),
         ),
       ]),
     );

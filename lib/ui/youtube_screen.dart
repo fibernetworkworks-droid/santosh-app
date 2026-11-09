@@ -148,17 +148,17 @@ class _YouTubeScreenState extends State<YouTubeScreen> {
         child: RefreshIndicator(
           onRefresh: _load,
           child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
-            const Text('YouTube ke official tareeke se: video dhoondhna, views / subscribers, comments, aur Google Gemini se video '
-                'dekh kar summary ya sawaal ka jawab. Apna channel jodne par: aapke videos, analytics, playlists. Comment ka jawab, '
-                'video badalna aur upload aapke tap ke baad hi.',
+            const Text('Through YouTube\'s official routes: find videos, views / subscribers, comments, and a summary or answer from Google Gemini '
+                'after watching a video. Once you link your channel: your videos, analytics, playlists. Replying to comments, '
+                'editing videos and uploading happen only after your tap.',
                 style: TextStyle(color: C.muted, fontSize: 13)),
             const SizedBox(height: 12),
             if (_err != null) Text(_err!, style: const TextStyle(color: C.bad)),
             if (!_loaded) const Padding(padding: EdgeInsets.all(30), child: Center(child: CircularProgressIndicator())),
             if (_loaded) Glass(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              _flag(_st['public_search'] == true || accounts.isNotEmpty, 'Video / channel dhoondhna aur stats'),
-              _flag(_st['can_watch'] == true, 'Video dekh kar summary / jawab (Gemini)'),
-              _flag(accounts.isNotEmpty, 'Mera channel: videos, analytics, playlists, comments ka jawab, upload'),
+              _flag(_st['public_search'] == true || accounts.isNotEmpty, 'Find videos / channels and stats'),
+              _flag(_st['can_watch'] == true, 'Watch a video and give a summary / answer (Gemini)'),
+              _flag(accounts.isNotEmpty, 'My channel: videos, analytics, playlists, replies to comments, upload'),
             ])),
             const SizedBox(height: 12),
             for (final a in accounts)
@@ -184,17 +184,17 @@ class _YouTubeScreenState extends State<YouTubeScreen> {
                 ])),
               ),
             if (_loaded && accounts.isEmpty)
-              GradientButton(label: 'Apna YouTube channel jodiye', icon: Icons.smart_display_rounded, height: 50, onTap: canLink ? _link : null),
+              GradientButton(label: 'Link your YouTube channel', icon: Icons.smart_display_rounded, height: 50, onTap: canLink ? _link : null),
             const SizedBox(height: 18),
-            const Text('Bolkar dekhiye', style: TextStyle(fontWeight: FontWeight.w700)),
+            const Text('Try saying', style: TextStyle(fontWeight: FontWeight.w700)),
             const SizedBox(height: 6),
             for (final t in const [
-              '"GPON setup ke Hindi videos dikhao, is mahine ke"',
-              '"Is video ka summary do" (link bhejiye)',
-              '"Is video mein ONU add karne ke steps kya bataye?"',
-              '"Mere channel ke is hafte ke views aur subscribers?"',
-              '"Mere FNW Flow demo video par aaye comments ka jawab likho"',
-              '"Is video ko notebook mein jodo"',
+              '"Show this month\'s Hindi videos on GPON setup"',
+              '"Give me a summary of this video" (send the link)',
+              '"What steps does this video show for adding an ONU?"',
+              '"My channel\'s views and subscribers this week?"',
+              '"Write replies to the comments on my FNW Flow demo video"',
+              '"Add this video to the notebook"',
             ])
               Padding(padding: const EdgeInsets.symmetric(vertical: 2), child: Text(t, style: const TextStyle(color: C.chip, fontSize: 13))),
           ]),

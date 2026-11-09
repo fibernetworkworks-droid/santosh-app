@@ -44,7 +44,7 @@ Future<Map<String, String>?> _form(BuildContext context, String title, List<(Str
         ]),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Rehne do')),
+        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Keep it')),
         TextButton(onPressed: () => Navigator.pop(d, true), child: Text(ok)),
       ],
     ),
@@ -112,16 +112,16 @@ class _RentdeskScreenState extends State<RentdeskScreen> {
       .then((_) => _load());
 
   Future<void> _addUnit() async {
-    final f = await _form(context, 'Naya unit', const [
+    final f = await _form(context, 'New unit', const [
       ('label', 'Naam (Flat 302 / Shop 4 / Bed B2)'),
       ('building', 'Building / society'),
       ('kind', 'flat / house / room / pg_bed / shop / office / godown'),
       ('address', 'Pata'),
       ('pin', 'PIN code'),
-      ('area_sqft', 'Area sq ft (aapka number)'),
-      ('rent_ask', 'Kiraya (aapka)'),
-      ('deposit_ask', 'Deposit (aapka)'),
-      ('inventory', 'Saamaan: "2 fan, 1 geyser"'),
+      ('area_sqft', 'Area sq ft (your number)'),
+      ('rent_ask', 'Rent (yours)'),
+      ('deposit_ask', 'Deposit (yours)'),
+      ('inventory', 'Items: "2 fans, 1 geyser"'),
     ], ok: 'Jodo');
     if (f == null || (f['label'] ?? '').isEmpty) return;
     final body = <String, dynamic>{...f};
@@ -132,19 +132,19 @@ class _RentdeskScreenState extends State<RentdeskScreen> {
   }
 
   Future<void> _newTenancy() async {
-    final f = await _form(context, 'Naya kirayedar', const [
-      ('unit', 'Unit (U-001 / naam)'),
-      ('name', 'Kirayedar ka naam'),
+    final f = await _form(context, 'New tenant', const [
+      ('unit', 'Unit (U-001 / name)'),
+      ('name', 'Kirayedar name'),
       ('phone', 'Mobile'),
-      ('aadhaar', 'Aadhaar (Pehchaan Locker mein jayega, ho to)'),
-      ('start', 'Shuru (DD-MM-YYYY)'),
-      ('months', 'Kitne mahine (11)'),
-      ('rent', 'Kiraya / licence fee mahina'),
+      ('aadhaar', 'Aadhaar (goes to the ID Locker, if any)'),
+      ('start', 'Start (DD-MM-YYYY)'),
+      ('months', 'How many months (11)'),
+      ('rent', 'Rent / licence fee per month'),
       ('deposit', 'Deposit'),
-      ('due_day', 'Kis taarikh ko (1-28, khaali = shuru wala din)'),
-      ('escalation_pct', 'Har saal badhotri % (agreement)'),
-      ('notice_months', 'Notice kitne mahine (1)'),
-    ], ok: 'Draft banao');
+      ('due_day', 'On which date (1-28, blank = the start day)'),
+      ('escalation_pct', 'Yearly increase % (agreement)'),
+      ('notice_months', 'Notice months (1)'),
+    ], ok: 'Make draft');
     if (f == null || (f['unit'] ?? '').isEmpty || (f['name'] ?? '').isEmpty) return;
     setState(() => _busy = true);
     final p = await _call(context, widget.app, 'POST', '/api/rentdesk/people',
@@ -167,7 +167,7 @@ class _RentdeskScreenState extends State<RentdeskScreen> {
   }
 
   Future<void> _newRepair() async {
-    final f = await _form(context, 'Repair', const [('unit', 'Unit (U-001 / naam)'), ('text', 'Kya kharab hai')], ok: 'Darj karo');
+    final f = await _form(context, 'Repair', const [('unit', 'Unit (U-001 / name)'), ('text', 'What is broken')], ok: 'Save');
     if (f == null || (f['unit'] ?? '').isEmpty) return;
     await _run('POST', '/api/rentdesk/requests', f);
   }
@@ -185,18 +185,18 @@ class _RentdeskScreenState extends State<RentdeskScreen> {
   Future<void> _settings() async {
     final st = _m(_d?['settings']);
     final f = await _form(context, 'Niyam', const [
-      ('landlord_name', 'Aapka naam (receipt par)'),
-      ('landlord_address', 'Aapka pata'),
-      ('state', 'Rajya code (MH, KA, DL...)'),
-      ('city', 'Shehar'),
-      ('upi_id', 'UPI ID (khaali = Employee wala)'),
-      ('pan', 'PAN (Pehchaan Locker mein jayega)'),
+      ('landlord_name', 'Your name (on the receipt)'),
+      ('landlord_address', 'Your address'),
+      ('state', 'State code (MH, KA, DL...)'),
+      ('city', 'City'),
+      ('upi_id', 'UPI ID (blank = the Employee\'s)'),
+      ('pan', 'PAN (goes to the ID Locker)'),
       ('gstin', 'GSTIN (ho to)'),
-      ('remind_before', 'Due se kitne din pehle reminder draft'),
-      ('grace_days', 'Due ke kitne din baad late draft'),
-      ('minor_repair_limit', 'Chhote repair kirayedar ka (Rs tak)'),
+      ('remind_before', 'Reminder draft how many days before due'),
+      ('grace_days', 'Late draft how many days after due'),
+      ('minor_repair_limit', 'Small repairs paid by the tenant (up to Rs)'),
       ('morning_time', 'Subah ka note (HH:MM)'),
-      ('rules', 'Aapke niyam'),
+      ('rules', 'Your rules'),
     ], initial: {
       for (final k in ['landlord_name', 'landlord_address', 'state', 'city', 'upi_id', 'gstin', 'remind_before', 'grace_days', 'morning_time', 'rules'])
         k: _s(st[k]),
@@ -217,7 +217,7 @@ class _RentdeskScreenState extends State<RentdeskScreen> {
     return ListView(padding: const EdgeInsets.all(14), children: [
       Glass(child: Text(_s(d['say']), style: const TextStyle(fontWeight: FontWeight.w700))),
       const SizedBox(height: 10),
-      if (aps.isNotEmpty) const Caption('AAPKI HAAN CHAHIYE'),
+      if (aps.isNotEmpty) const Caption('NEEDS YOUR YES'),
       for (final a in aps)
         Padding(padding: const EdgeInsets.only(bottom: 8), child: RentdeskApprovalCard(app: widget.app, data: {'approval': a}, onDone: _load)),
       if (_list(d['overdue']).isNotEmpty) const Caption('BAAKI KIRAYA'),
@@ -228,7 +228,7 @@ class _RentdeskScreenState extends State<RentdeskScreen> {
           child: Text('${_s(o['tenancy'])} ${_s(o['who'])} · ${_s(o['what'])} · ₹${_s(o['left'])} · ${_s(o['days'])} din',
               style: const TextStyle(fontSize: 13, color: C.warn)),
         ),
-      if (msgs.isNotEmpty) const Caption('MESSAGE DRAFT (AAPKE TAP SE JAYENGE)'),
+      if (msgs.isNotEmpty) const Caption('MESSAGE DRAFTS (SENT ONLY ON YOUR TAP)'),
       for (final m in msgs.take(10))
         Padding(padding: const EdgeInsets.only(bottom: 8), child: RentdeskMessageCard(app: widget.app, data: {'message': m}, onDone: _load)),
       for (final r in _list(d['renewals']))
@@ -240,7 +240,7 @@ class _RentdeskScreenState extends State<RentdeskScreen> {
   }
 
   Widget _unitsTab() => ListView(padding: const EdgeInsets.all(14), children: [
-        GradientButton(label: 'Naya unit', icon: Icons.add_home_rounded, height: 46, onTap: _busy ? null : _addUnit),
+        GradientButton(label: 'New unit', icon: Icons.add_home_rounded, height: 46, onTap: _busy ? null : _addUnit),
         const SizedBox(height: 10),
         for (final u in _list(_d?['units']))
           Glass(
@@ -256,14 +256,14 @@ class _RentdeskScreenState extends State<RentdeskScreen> {
                       style: const TextStyle(fontSize: 12.5, color: C.muted)),
                 ]),
               ),
-              Pill(_s(u['status']) == 'vacant' ? 'khali' : (_s(u['status']) == 'notice' ? 'notice' : 'kiraye par'),
+              Pill(_s(u['status']) == 'vacant' ? 'vacant' : (_s(u['status']) == 'notice' ? 'notice' : 'rented'),
                   fg: _s(u['status']) == 'vacant' ? C.warn : C.ok),
             ]),
           ),
       ]);
 
   Widget _tenanciesTab() => ListView(padding: const EdgeInsets.all(14), children: [
-        GradientButton(label: 'Naya kirayedar', icon: Icons.person_add_alt_1_rounded, height: 46, onTap: _busy ? null : _newTenancy),
+        GradientButton(label: 'New tenant', icon: Icons.person_add_alt_1_rounded, height: 46, onTap: _busy ? null : _newTenancy),
         const SizedBox(height: 10),
         for (final t in _list(_d?['tenancies']))
           Press(
@@ -278,7 +278,7 @@ class _RentdeskScreenState extends State<RentdeskScreen> {
                       child: Text('${_s(t['number'])} · ${_s(t['tenant_name'])}', style: const TextStyle(fontWeight: FontWeight.w800))),
                   Pill(_s(t['status_label'])),
                 ]),
-                Text('${_s(t['unit_label'])} · ${_s(t['rent_text'])}/mahina · ${_s(t['start'])} se ${_s(t['end'])}',
+                Text('${_s(t['unit_label'])} · ${_s(t['rent_text'])}/month · ${_s(t['start'])} se ${_s(t['end'])}',
                     style: const TextStyle(fontSize: 12.5, color: C.muted)),
                 if (_s(t['due_now_text']).isNotEmpty && t['due_now'] != 0)
                   Text('Baaki ${_s(t['due_now_text'])}', style: const TextStyle(fontSize: 12.5, color: C.warn)),
@@ -291,7 +291,7 @@ class _RentdeskScreenState extends State<RentdeskScreen> {
         const Caption('CARDS'),
         for (final a in _list(_d?['approvals']))
           Padding(padding: const EdgeInsets.only(bottom: 8), child: RentdeskApprovalCard(app: widget.app, data: {'approval': a}, onDone: _load)),
-        if (_list(_d?['approvals']).isEmpty) const Text('Koi card baaki nahi.', style: TextStyle(color: C.faint)),
+        if (_list(_d?['approvals']).isEmpty) const Text('No cards pending.', style: TextStyle(color: C.faint)),
         const SizedBox(height: 10),
         const Caption('MESSAGE DRAFT'),
         for (final m in _list(_d?['messages']))
@@ -317,27 +317,27 @@ class _RentdeskScreenState extends State<RentdeskScreen> {
       Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           _line('Naam', _s(st['landlord_name'])),
-          _line('Rajya', _s(st['state_label'])),
+          _line('State', _s(st['state_label'])),
           _line('UPI', _s(st['upi_used'])),
           _line('PAN', _s(st['pan'])),
-          _line('Reminder', '${_s(st['remind_before'])} din pehle, ${_s(st['grace_days'])} din baad'),
+          _line('Reminder', '${_s(st['remind_before'])} days before, ${_s(st['grace_days'])} days after'),
           const SizedBox(height: 8),
           GlassButton(label: 'Badlo', icon: Icons.tune_rounded, onTap: _busy ? null : _settings),
         ]),
       ),
       const SizedBox(height: 10),
-      const Caption('HOOLA KABHI NAHI'),
+      const Caption('HOOLA NEVER'),
       for (final n in _strs(_d?['never'])) Text('• $n', style: const TextStyle(fontSize: 12.5, color: C.muted)),
       const SizedBox(height: 10),
       GlassButton(label: 'Register (Excel)', icon: Icons.table_chart_rounded, onTap: _busy ? null : () => _run('POST', '/api/rentdesk/register')),
       const SizedBox(height: 8),
-      GlassButton(label: 'IGR Maharashtra kholo', icon: Icons.open_in_new_rounded, onTap: () => Native.openExternal(url: 'https://igrmaharashtra.gov.in')),
+      GlassButton(label: 'Open IGR Maharashtra', icon: Icons.open_in_new_rounded, onTap: () => Native.openExternal(url: 'https://igrmaharashtra.gov.in')),
     ]);
   }
 
   @override
   Widget build(BuildContext context) {
-    const tabs = ['Aaj', 'Units', 'Kirayedar', 'Haan', 'Repair', 'Niyam'];
+    const tabs = ['Aaj', 'Units', 'Kirayedar', 'Yes', 'Repair', 'Niyam'];
     return Scaffold(
       backgroundColor: C.bgTop,
       appBar: AppBar(
@@ -385,9 +385,9 @@ class _RepairTile extends StatelessWidget {
 
   Future<void> _assign(BuildContext context) async {
     final f = await _form(context, 'Vendor + quote', const [
-      ('vendor', 'Vendor ka naam / mobile'),
-      ('quote', 'Unka quote (Rs)'),
-      ('who_pays', 'Kaun dega: owner / tenant'),
+      ('vendor', 'Vendor name / mobile'),
+      ('quote', 'Their quote (Rs)'),
+      ('who_pays', 'Who pays: owner / tenant'),
     ]);
     if (f == null) return;
     await _call(context, app, 'POST', '/api/rentdesk/requests/${_s(r['id'])}/assign',
@@ -416,7 +416,7 @@ class _RepairTile extends StatelessWidget {
           if (_s(r['vendor_wa']).isNotEmpty)
             GlassButton(label: 'Vendor ko WhatsApp', height: 38, icon: Icons.chat_rounded, onTap: () => Native.openExternal(url: _s(r['vendor_wa']))),
           if (st == 'approved' || ((r['quote'] == null) && st != 'done'))
-            GlassButton(label: 'Kaam ho gaya', height: 38, icon: Icons.check_rounded, onTap: () async {
+            GlassButton(label: 'Job done', height: 38, icon: Icons.check_rounded, onTap: () async {
               await _call(context, app, 'POST', '/api/rentdesk/requests/${_s(r['id'])}/done', {});
               onDone();
             }),
@@ -466,26 +466,26 @@ class _RentdeskTenancyPageState extends State<RentdeskTenancyPage> {
   }
 
   Future<void> _receive() async {
-    final f = await _form(context, 'Paisa mila', const [
-      ('amount', 'Kitna mila'),
+    final f = await _form(context, 'Money received', const [
+      ('amount', 'How much was received'),
       ('mode', 'upi / bank / cash / cheque'),
-      ('ref', 'UTR / cheque no (aakhri ank)'),
+      ('ref', 'UTR / cheque no (last digits)'),
       ('on', 'Kab (DD-MM-YYYY, khaali = aaj)'),
-    ], initial: {'amount': _s(_t?['due_now']), 'mode': 'upi'}, ok: 'Darj karo');
+    ], initial: {'amount': _s(_t?['due_now']), 'mode': 'upi'}, ok: 'Save');
     if (f == null) return;
     await _post('receive', {'amount': _n(f['amount']), 'mode': f['mode'] ?? 'upi', 'ref': f['ref'] ?? '', 'on': f['on'] ?? ''});
   }
 
   Future<void> _rentChange() async {
-    final f = await _form(context, 'Kiraya badlav', const [('new_rent', 'Naya kiraya'), ('from', 'Kab se (DD-MM-YYYY)'), ('why', 'Kyon')]);
+    final f = await _form(context, 'Rent change', const [('new_rent', 'New rent'), ('from', 'Kab se (DD-MM-YYYY)'), ('why', 'Kyon')]);
     if (f == null) return;
     await _post('rent_change', {'new_rent': _n(f['new_rent']), 'from': f['from'] ?? '', 'why': f['why'] ?? ''});
   }
 
   Future<void> _notice(String kind) async {
     final f = kind == 'vacate'
-        ? await _form(context, 'Khali karne ka notice', const [('vacate_on', 'Kab tak (DD-MM-YYYY)'), ('reason', 'Wajah (chitthi mein)')])
-        : await _form(context, 'Renewal', const [('new_rent', 'Naya kiraya (ho to)'), ('from', 'Kab se')]);
+        ? await _form(context, 'Notice to vacate', const [('vacate_on', 'By when (DD-MM-YYYY)'), ('reason', 'Reason (in the letter)')])
+        : await _form(context, 'Renewal', const [('new_rent', 'New rent (if any)'), ('from', 'Kab se')]);
     if (f == null) return;
     await _post('notice', {'kind': kind, 'vacate_on': f['vacate_on'] ?? '', 'reason': f['reason'] ?? '', 'new_rent': _n(f['new_rent']),
       'from': f['from'] ?? ''});
@@ -494,7 +494,7 @@ class _RentdeskTenancyPageState extends State<RentdeskTenancyPage> {
   Future<void> _check(Map<String, dynamic> it) async {
     String ref = '';
     if (_s(it['id']) == 'registration' || _s(it['id']) == 'police') {
-      final f = await _form(context, _s(it['what']).split(' (').first, const [('ref', 'Document / reference no'), ('on', 'Taarikh')]);
+      final f = await _form(context, _s(it['what']).split(' (').first, const [('ref', 'Document / reference no'), ('on', 'Date')]);
       if (f == null) return;
       ref = f['ref'] ?? '';
     }
@@ -529,7 +529,7 @@ class _RentdeskTenancyPageState extends State<RentdeskTenancyPage> {
   }
 
   Future<void> _closeInspection() async {
-    final f = await _form(context, 'Meter / chaabi', const [('electricity', 'Bijli meter'), ('water', 'Paani meter'), ('keys', 'Chaabiyan')]);
+    final f = await _form(context, 'Meter / key', const [('electricity', 'Electricity meter'), ('water', 'Paani meter'), ('keys', 'Keys')]);
     final r = await _call(context, widget.app, 'PATCH', '/api/rentdesk/inspections/${_s(_insp?['id'])}', {
       'meters': {if (f?['electricity'] != null) 'electricity': _n(f?['electricity']), if (f?['water'] != null) 'water': _n(f?['water'])},
       'keys': _n(f?['keys']),
@@ -545,7 +545,7 @@ class _RentdeskTenancyPageState extends State<RentdeskTenancyPage> {
   }
 
   Future<void> _deduct() async {
-    final f = await _form(context, 'Katauti', const [('what', 'Kis cheez ki'), ('amount', 'Rakam (aapka number / bill)'), ('reason', 'Wajah')]);
+    final f = await _form(context, 'Deduction', const [('what', 'For what'), ('amount', 'Amount (your number / bill)'), ('reason', 'Reason')]);
     if (f == null) return;
     final r = await _call(context, widget.app, 'POST', '/api/rentdesk/settlements/${_s(_settle?['id'])}/line',
         {'what': f['what'] ?? '', 'amount': _n(f['amount']), 'reason': f['reason'] ?? ''});
@@ -566,7 +566,7 @@ class _RentdeskTenancyPageState extends State<RentdeskTenancyPage> {
   }
 
   Future<void> _refundPaid() async {
-    final f = await _form(context, 'Maine deposit wapas de diya', const [('amount', 'Kitna diya'), ('ref', 'UTR (aakhri ank)')],
+    final f = await _form(context, 'I returned the deposit', const [('amount', 'How much was given'), ('ref', 'UTR (last digits)')],
         initial: {'amount': _s(_settle?['refund'])});
     if (f == null) return;
     final r = await _call(context, widget.app, 'POST', '/api/rentdesk/settlements/${_s(_settle?['id'])}/paid',
@@ -599,8 +599,8 @@ class _RentdeskTenancyPageState extends State<RentdeskTenancyPage> {
             ]),
           ),
         const SizedBox(height: 8),
-        GradientButton(label: 'Inspection band karo', height: 42, onTap: _busy ? null : _closeInspection),
-        const Text('Photo se location / camera ki jaankari hata di jaati hai.', style: TextStyle(fontSize: 11, color: C.faint)),
+        GradientButton(label: 'Close inspection', height: 42, onTap: _busy ? null : _closeInspection),
+        const Text('Location / camera details are removed from the photo.', style: TextStyle(fontSize: 11, color: C.faint)),
       ]),
     );
   }
@@ -612,24 +612,24 @@ class _RentdeskTenancyPageState extends State<RentdeskTenancyPage> {
       border: C.accent,
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         const Text('Deposit hisaab', style: TextStyle(fontWeight: FontWeight.w800)),
-        _line('Deposit paas', _s(x['held_text'])),
+        _line('Deposit held', _s(x['held_text'])),
         _line('Baaki kiraya / bill', _s(x['dues_text'])),
-        for (final l in _list(x['lines'])) _line('Katauti ${_s(l['what'])}', '₹${_s(l['amount'])} ${_s(l['reason'])}', color: C.warn),
-        _line(x['tenant_owes'] == true ? 'Kirayedar ko dena' : 'Wapas dena', _s(x['refund_text']), color: C.ink),
+        for (final l in _list(x['lines'])) _line('Deduction ${_s(l['what'])}', '₹${_s(l['amount'])} ${_s(l['reason'])}', color: C.warn),
+        _line(x['tenant_owes'] == true ? 'Give to the tenant' : 'Give back', _s(x['refund_text']), color: C.ink),
         for (final g in _list(x['suggest']))
-          Text('• ${_s(g['room'])} ${_s(g['item'])}: ${_s(g['was'])} -> ${_s(g['now'])} (rakam aap likhiye)',
+          Text('• ${_s(g['room'])} ${_s(g['item'])}: ${_s(g['was'])} -> ${_s(g['now'])} (you write the amount)',
               style: const TextStyle(fontSize: 12, color: C.faint)),
         const SizedBox(height: 8),
         Wrap(spacing: 8, runSpacing: 6, children: [
-          if (st == 'draft' || st == 'waiting') GlassButton(label: 'Katauti jodo', height: 40, onTap: _busy ? null : _deduct),
-          if (st == 'draft' || st == 'waiting') GradientButton(label: 'Haan ke liye card', height: 40, onTap: _busy ? null : _settleRequest),
-          if (st == 'approved') GradientButton(label: 'Maine de diya', height: 40, onTap: _busy ? null : _refundPaid),
+          if (st == 'draft' || st == 'waiting') GlassButton(label: 'Add a deduction', height: 40, onTap: _busy ? null : _deduct),
+          if (st == 'draft' || st == 'waiting') GradientButton(label: 'Card for your yes', height: 40, onTap: _busy ? null : _settleRequest),
+          if (st == 'approved') GradientButton(label: 'I gave it', height: 40, onTap: _busy ? null : _refundPaid),
           GlassButton(
               label: 'PDF',
               height: 40,
               onTap: () => _call(context, widget.app, 'POST', '/api/rentdesk/settlements/${_s(x['id'])}/file')),
         ]),
-        const Text('Aam ghisaav deposit se nahi katta. Paise aap khud bhejti hain.', style: TextStyle(fontSize: 11, color: C.faint)),
+        const Text('Normal wear and tear is not deducted from the deposit. You send the money yourself.', style: TextStyle(fontSize: 11, color: C.faint)),
       ]),
     );
   }
@@ -650,21 +650,21 @@ class _RentdeskTenancyPageState extends State<RentdeskTenancyPage> {
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Text('${_s(t['unit_label'])} · ${_s(t['kind_label'])}', style: const TextStyle(fontWeight: FontWeight.w800)),
                     _line('Status', _s(t['status_label'])),
-                    _line('Samay', '${_s(t['start'])} se ${_s(t['end'])} (${_s(t['months'])} mahine)'),
-                    _line('Kiraya', '${_s(t['rent_text'])}/mahina'),
-                    _line('Deposit', '${_s(t['deposit_text'])} (paas: ₹${_s(t['deposit_held'])})'),
-                    _line('Abhi baaki', _s(t['due_now_text']), color: C.warn),
-                    _line('Lock-in tak', _s(t['lock_in_until'])),
-                    _line('Badhotri', _strs(t['escalations']).join(', ')),
+                    _line('Time', '${_s(t['start'])} se ${_s(t['end'])} (${_s(t['months'])} months)'),
+                    _line('Kiraya', '${_s(t['rent_text'])}/month'),
+                    _line('Deposit', '${_s(t['deposit_text'])} (held: ₹${_s(t['deposit_held'])})'),
+                    _line('Still pending', _s(t['due_now_text']), color: C.warn),
+                    _line('Lock-in until', _s(t['lock_in_until'])),
+                    _line('Increase', _strs(t['escalations']).join(', ')),
                   ]),
                 ),
                 const SizedBox(height: 8),
                 Wrap(spacing: 8, runSpacing: 8, children: [
-                  if (_s(t['status']) == 'draft') GradientButton(label: 'Chalu karo', height: 42, onTap: _busy ? null : () => _post('activate')),
+                  if (_s(t['status']) == 'draft') GradientButton(label: 'Activate', height: 42, onTap: _busy ? null : () => _post('activate')),
                   GlassButton(label: 'Agreement draft', icon: Icons.description_rounded, height: 42, onTap: _busy ? null : () => _post('agreement')),
                   if (_s(t['status']) != 'draft') ...[
-                    GradientButton(label: 'Paisa mila', height: 42, onTap: _busy ? null : _receive),
-                    GlassButton(label: 'Kiraya badlav', height: 42, onTap: _busy ? null : _rentChange),
+                    GradientButton(label: 'Money received', height: 42, onTap: _busy ? null : _receive),
+                    GlassButton(label: 'Rent change', height: 42, onTap: _busy ? null : _rentChange),
                     GlassButton(label: 'Renewal', height: 42, onTap: _busy ? null : () => _notice('renewal')),
                     GlassButton(label: 'Notice', height: 42, onTap: _busy ? null : () => _notice('vacate')),
                     GlassButton(label: 'Move-in', height: 42, onTap: _busy ? null : () => _inspection('move_in')),
@@ -678,7 +678,7 @@ class _RentdeskTenancyPageState extends State<RentdeskTenancyPage> {
                           final url = _s(r?['url']);
                           if (url.isNotEmpty) {
                             await _call(context, widget.app, 'POST', '/api/rentdesk/tenancies/$_tid/message',
-                                {'kind': 'custom', 'text': 'Kiraya ₹${_s(r?['amount'])} is UPI ID par: ${_s(r?['upi_id'])}'});
+                                {'kind': 'custom', 'text': 'Kiraya ₹${_s(r?['amount'])} to this UPI ID: ${_s(r?['upi_id'])}'});
                           }
                         }),
                   ],
@@ -695,7 +695,7 @@ class _RentdeskTenancyPageState extends State<RentdeskTenancyPage> {
                     title: Text(_s(it['what']), style: const TextStyle(fontSize: 12.5)),
                     subtitle: _s(it['done']).isEmpty ? null : Text(_s(it['done']), style: const TextStyle(fontSize: 11)),
                   ),
-                const Caption('KANOON / TAX (CA / VAKIL SE PAKKA)'),
+                const Caption('LAW / TAX (CONFIRM WITH A CA / LAWYER)'),
                 for (final n in _strs(t['notes'])) Text('• $n', style: const TextStyle(fontSize: 12, color: C.muted)),
                 const SizedBox(height: 10),
                 const Caption('HISAAB'),
@@ -735,13 +735,13 @@ class _RentdeskApprovalCardState extends State<RentdeskApprovalCard> {
   Future<Map<String, dynamic>> _proof(String id) async {
     final ch = _m(await widget.app.api!.call('POST', '/api/rentdesk/approvals/$id/challenge'));
     final show = _m(ch['show']);
-    final r = await Native.approveKeySign(_s(ch['message']), _s(show['title']).isEmpty ? 'Aapki haan' : _s(show['title']),
+    final r = await Native.approveKeySign(_s(ch['message']), _s(show['title']).isEmpty ? 'Your yes' : _s(show['title']),
         [show['amount'], show['payee']].where((x) => x != null && '$x'.isNotEmpty).join(' · '));
     if (r['signature'] == null) {
       throw ApiException(428, switch (_s(r['error'])) {
-        'cancelled' => 'Fingerprint nahi diya, isliye haan nahi hui.',
-        'key_invalidated' => 'Phone mein naya fingerprint juda hai: Profile > Fingerprint se haan mein phone phir se jodiye.',
-        _ => 'Fingerprint se haan nahi ho payi (${_s(r['error'])}).',
+        'cancelled' => 'No fingerprint was given, so it was not approved.',
+        'key_invalidated' => 'A new fingerprint was added to the phone: link this phone again in Profile > Fingerprint approval.',
+        _ => 'Could not approve with fingerprint (${_s(r['error'])}).',
       });
     }
     return {'challenge_id': ch['challenge_id'], 'device_id': r['device_id'], 'signature': r['signature']};
@@ -751,7 +751,7 @@ class _RentdeskApprovalCardState extends State<RentdeskApprovalCard> {
     final id = _s(_a['id']);
     String reason = '';
     if (!yes) {
-      final f = await _form(context, 'Kyon nahi', const [('reason', 'Wajah (aapke liye)')]);
+      final f = await _form(context, 'Why not', const [('reason', 'Reason (for you)')]);
       if (f == null) return;
       reason = f['reason'] ?? '';
     }
@@ -791,21 +791,21 @@ class _RentdeskApprovalCardState extends State<RentdeskApprovalCard> {
           Icon(a['money'] == true ? Icons.payments_rounded : Icons.gavel_rounded, color: C.accent),
           const SizedBox(width: 8),
           Expanded(child: Text('${_s(a['number'])} · ${_s(a['kind_label'])}', style: const TextStyle(fontWeight: FontWeight.w800))),
-          Pill(switch (st) { 'waiting' => 'aapki haan?', 'approved' => 'maana', 'rejected' => 'nahi', 'stale' => 'purana', _ => st },
+          Pill(switch (st) { 'waiting' => 'your yes?', 'approved' => 'approved', 'rejected' => 'no', 'stale' => 'old', _ => st },
               fg: st == 'waiting' ? C.accent : (st == 'rejected' || st == 'stale' ? C.bad : C.ok)),
         ]),
         Text(_s(show['title']), style: const TextStyle(fontSize: 13)),
-        for (final l in _list(show['lines'])) _line('Katauti ${_s(l['what'])}', '₹${_s(l['amount'])} ${_s(l['reason'])}'),
-        if (show['refund'] != null) _line('Wapas', '₹${_s(show['refund'])}'),
+        for (final l in _list(show['lines'])) _line('Deduction ${_s(l['what'])}', '₹${_s(l['amount'])} ${_s(l['reason'])}'),
+        if (show['refund'] != null) _line('Returned', '₹${_s(show['refund'])}'),
         for (final c in _strs(show['checks'])) Text('⚠ $c', style: const TextStyle(fontSize: 12.5, color: C.warn)),
         const SizedBox(height: 8),
         if (st == 'waiting')
           Row(children: [
-            Expanded(child: GradientButton(label: 'Haan', height: 42, onTap: _busy ? null : () => _decide(true))),
+            Expanded(child: GradientButton(label: 'Yes', height: 42, onTap: _busy ? null : () => _decide(true))),
             const SizedBox(width: 8),
-            GlassButton(label: 'Nahi', height: 42, onTap: _busy ? null : () => _decide(false)),
+            GlassButton(label: 'No', height: 42, onTap: _busy ? null : () => _decide(false)),
           ]),
-        const Text('Hoola paise nahi leta / deta; message bhi aapke tap se hi jaata hai.', style: TextStyle(fontSize: 11, color: C.faint)),
+        const Text('Hoola does not pay or receive money; messages go only after your tap.', style: TextStyle(fontSize: 11, color: C.faint)),
       ]),
     );
   }
@@ -830,7 +830,7 @@ class _RentdeskMessageCardState extends State<RentdeskMessageCard> {
     try {
       if (via == 'self') {
         final link = _s(_x['wa']).isNotEmpty ? _s(_x['wa']) : _s(_x['sms']);
-        if (link.isEmpty) throw Exception('Kirayedar ka mobile nahi.');
+        if (link.isEmpty) throw Exception('The tenant has no mobile number.');
         await Native.openExternal(url: link);
       }
       final m = _m(await widget.app.api!.call('POST', '/api/rentdesk/messages/${_s(_x['id'])}/send', body: {'via': via, 'hash': _s(_x['hash'])}));
@@ -868,14 +868,14 @@ class _RentdeskMessageCardState extends State<RentdeskMessageCard> {
           const Icon(Icons.sms_rounded, color: C.accent),
           const SizedBox(width: 8),
           Expanded(child: Text('${_s(x['to'])} ko · ${_s(x['kind'])}', style: const TextStyle(fontWeight: FontWeight.w800))),
-          Pill(st == 'draft' ? 'draft' : (st == 'sent' ? 'bheja' : st), fg: st == 'sent' ? C.ok : C.chip),
+          Pill(st == 'draft' ? 'draft' : (st == 'sent' ? 'sent' : st), fg: st == 'sent' ? C.ok : C.chip),
         ]),
         Text(_s(x['text']), style: const TextStyle(fontSize: 13)),
         if (x['no_messages'] == true) const Text('⚠ Inhone message mana kiya hai.', style: TextStyle(fontSize: 12, color: C.warn)),
         const SizedBox(height: 8),
         if (st == 'draft')
           Wrap(spacing: 8, runSpacing: 6, children: [
-            GradientButton(label: 'Apne WhatsApp se', icon: Icons.send_rounded, height: 40, onTap: _busy ? null : () => _send('self')),
+            GradientButton(label: 'From my WhatsApp', icon: Icons.send_rounded, height: 40, onTap: _busy ? null : () => _send('self')),
             GlassButton(label: 'Business number se', height: 40, onTap: _busy ? null : () => _send('business')),
             GlassButton(label: 'Badlo', height: 40, onTap: _busy ? null : _edit),
             GlassButton(
@@ -954,12 +954,12 @@ class RentdeskDayCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('Aaj ka kiraya note', style: TextStyle(fontWeight: FontWeight.w800)),
+          const Text('Today\'s rent note', style: TextStyle(fontWeight: FontWeight.w800)),
           const SizedBox(height: 4),
           Text(_s(data['say']), style: const TextStyle(fontSize: 13)),
           const SizedBox(height: 6),
           GlassButton(
-              label: 'Kholo',
+              label: 'Open',
               height: 38,
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => RentdeskScreen(app: app)))),
         ]),

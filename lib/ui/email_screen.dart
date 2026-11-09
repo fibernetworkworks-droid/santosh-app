@@ -96,26 +96,26 @@ class _EmailScreenState extends State<EmailScreen> {
       context: context,
       builder: (ctx) => StatefulBuilder(builder: (ctx, setD) => AlertDialog(
         backgroundColor: C.bgBottom,
-        title: const Text('Koi bhi email jodiye'),
+        title: const Text('Connect any email'),
         content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
           TextField(controller: addr, keyboardType: TextInputType.emailAddress, decoration: const InputDecoration(labelText: 'Email address')),
           TextField(controller: pass, obscureText: true, decoration: const InputDecoration(labelText: 'App password')),
           const SizedBox(height: 6),
-          const Text('Apna login password nahi, "app password" daaliye. Gmail: myaccount.google.com/apppasswords · '
+          const Text('Enter an "app password", not your login password. Gmail: myaccount.google.com/apppasswords · '
               'Yahoo / Zoho / Outlook: Security settings > App password.',
               style: TextStyle(color: C.muted, fontSize: 12)),
-          TextField(controller: name, decoration: const InputDecoration(labelText: 'Bhejne wale ka naam (optional)')),
+          TextField(controller: name, decoration: const InputDecoration(labelText: 'Bhejne wale name (optional)')),
           TextButton(onPressed: () => setD(() => advanced = !advanced),
-              child: Text(advanced ? 'Server settings chhupaiye' : 'Server settings (company email ke liye)')),
+              child: Text(advanced ? 'Hide server settings' : 'Server settings (for company email)')),
           if (advanced) ...[
             TextField(controller: imapHost, decoration: const InputDecoration(labelText: 'IMAP host (jaise imap.company.in)')),
             TextField(controller: smtpHost, decoration: const InputDecoration(labelText: 'SMTP host (jaise smtp.company.in)')),
-            TextField(controller: smtpPort, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'SMTP port (587 ya 465)')),
+            TextField(controller: smtpPort, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'SMTP port (587 or 465)')),
           ],
         ])),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Rehne do')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Jodiye')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Keep it')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Connect')),
         ],
       )),
     );
@@ -128,7 +128,7 @@ class _EmailScreenState extends State<EmailScreen> {
         'smtp_port': int.tryParse(smtpPort.text.trim()) ?? 0,
       });
       setState(() => _apply(r));
-      _snack('Email jud gaya ✓');
+      _snack('Email connected ✓');
     } catch (e) {
       _snack(e.toString());
     } finally {
@@ -146,7 +146,7 @@ class _EmailScreenState extends State<EmailScreen> {
         content: TextField(controller: c, minLines: 3, maxLines: 6,
             decoration: const InputDecoration(hintText: 'Meghana Ingle\nDirector, Newtika Pvt Ltd\n+91 …')),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Rehne do')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Keep it')),
           FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Save')),
         ],
       ),
@@ -198,26 +198,26 @@ class _EmailScreenState extends State<EmailScreen> {
       context: context,
       builder: (ctx) => StatefulBuilder(builder: (ctx, setD) => AlertDialog(
         backgroundColor: C.bgBottom,
-        title: const Text('Naya rule'),
+        title: const Text('New rule'),
         content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-          TextField(controller: name, decoration: const InputDecoration(labelText: 'Rule ka naam')),
-          TextField(controller: from, decoration: const InputDecoration(labelText: 'Kisase aaye to (jaise hdfcbank)')),
-          TextField(controller: subject, decoration: const InputDecoration(labelText: 'Vishay mein shabd (jaise bill, invoice)')),
+          TextField(controller: name, decoration: const InputDecoration(labelText: 'Rule name')),
+          TextField(controller: from, decoration: const InputDecoration(labelText: 'If it comes from (e.g. hdfcbank)')),
+          TextField(controller: subject, decoration: const InputDecoration(labelText: 'Word in the subject (e.g. bill, invoice)')),
           const SizedBox(height: 10),
-          const Text('Kya karein', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+          const Text('What to do', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
           CheckboxListTile(dense: true, value: archive, onChanged: (v) => setD(() => archive = v ?? false),
-              title: const Text('Archive karo')), 
+              title: const Text('Archive')), 
           CheckboxListTile(dense: true, value: star, onChanged: (v) => setD(() => star = v ?? false),
-              title: const Text('Star laga do')),
+              title: const Text('Add a star')),
           CheckboxListTile(dense: true, value: markRead, onChanged: (v) => setD(() => markRead = v ?? false),
-              title: const Text('Padha hua mark karo')),
-          TextField(controller: label, decoration: const InputDecoration(labelText: 'Label lagao (naam)')),
+              title: const Text('Mark as read')),
+          TextField(controller: label, decoration: const InputDecoration(labelText: 'Apply a label (name)')),
           const SizedBox(height: 6),
-          const Text('Rule nayi mail par chalte hain; bhejna hamesha aapke Bhejo par.',
+          const Text('Rules run on new mail; sending always waits for your Send tap.',
               style: TextStyle(color: C.muted, fontSize: 12)),
         ])),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Rehne do')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Keep it')),
           FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Banaiye')),
         ],
       )),
@@ -235,7 +235,7 @@ class _EmailScreenState extends State<EmailScreen> {
     };
     try {
       await app.api!.mailRuleCreate(name.text.trim(), match, actions);
-      _snack('Rule chalu hai. Ab se aane wali nayi mail par chalega.');
+      _snack('The rule is on. It will run on new mail from now on.');
       _load();
     } catch (e) {
       _snack(e.toString());
@@ -257,9 +257,9 @@ class _EmailScreenState extends State<EmailScreen> {
       builder: (ctx) => AlertDialog(
         backgroundColor: C.bgBottom,
         title: Text('Rule "${r['name']}" hatayein?'),
-        content: const Text('Rule hi hatega; mail par koi asar nahi.'),
+        content: const Text('Only the rule will be removed; mail is not affected.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Rehne do')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Keep it')),
           FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Hataiye')),
         ],
       ),
@@ -278,17 +278,17 @@ class _EmailScreenState extends State<EmailScreen> {
     final a = Map<String, dynamic>.from(r['actions'] as Map? ?? const {});
     final parts = <String>[
       if (m['from'] != null) '${m['from']} se',
-      if (m['subject'] != null) '"${m['subject']}" vishay',
-      if (m['has_attachment'] == true) 'attachment wali',
+      if (m['subject'] != null) '"${m['subject']}" subject',
+      if (m['has_attachment'] == true) 'with an attachment',
       if (m['bulk'] == true) 'bulk',
     ];
     final acts = <String>[
       if (a['label'] != null) 'label ${a['label']}',
       if (a['archive'] == true) 'archive',
       if (a['star'] == true) 'star',
-      if (a['mark_read'] == true) 'padha hua',
+      if (a['mark_read'] == true) 'marked as read',
       if (a['mute'] == true) 'shant',
-      if (a['notify'] == true) 'khabar',
+      if (a['notify'] == true) 'news',
       if (a['forward_to'] != null) '${a['forward_to']} ko draft',
     ];
     return '${parts.join(' + ')} → ${acts.join(', ')}';
@@ -299,8 +299,8 @@ class _EmailScreenState extends State<EmailScreen> {
     return [
       if (m['query'] != null) '“${m['query']}”',
       if (m['from'] != null) '${m['from']} se',
-      if (m['subject'] != null) '“${m['subject']}” vishay',
-      if (m['has_attachment'] == true) 'attachment wali',
+      if (m['subject'] != null) '“${m['subject']}” subject',
+      if (m['has_attachment'] == true) 'with an attachment',
       if (m['bulk'] == true) 'bulk',
     ].join(' + ');
   }
@@ -311,9 +311,9 @@ class _EmailScreenState extends State<EmailScreen> {
       builder: (ctx) => AlertDialog(
         backgroundColor: C.bgBottom,
         title: const Text('Email hataiye?'),
-        content: Text('${a['address']} Hoola se hat jayega. Aapki mail par koi asar nahi.'),
+        content: Text('${a['address']} will be removed from Hoola. Your mail is not affected.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Rehne do')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Keep it')),
           FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Hataiye')),
         ],
       ),
@@ -348,7 +348,7 @@ class _EmailScreenState extends State<EmailScreen> {
         if (bad && (a['error'] as String? ?? '').isNotEmpty)
           Padding(padding: const EdgeInsets.only(top: 6), child: Text(a['error'] as String, style: const TextStyle(color: C.bad, fontSize: 12))),
         const SizedBox(height: 8),
-        Text(sig.isEmpty ? 'Signature: nahi hai' : 'Signature:\n$sig', style: const TextStyle(color: C.chip, fontSize: 12.5)),
+        Text(sig.isEmpty ? 'Signature: none' : 'Signature:\n$sig', style: const TextStyle(color: C.chip, fontSize: 12.5)),
         Wrap(spacing: 4, children: [
           TextButton(onPressed: () => _signature(a), child: const Text('Signature')),
           if (a['default'] != true && a['removable'] == true) TextButton(onPressed: () => _makeDefault(a), child: const Text('Default banaiye')),
@@ -368,8 +368,8 @@ class _EmailScreenState extends State<EmailScreen> {
         child: RefreshIndicator(
           onRefresh: _load,
           child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
-            const Text('Hoola aapki mail padhta, chhaant-ta, jawab likhta, attachment kholta, follow-up yaad dilata aur '
-                'bulk mail bhejta hai. Bhejna, delete aur bulk mail hamesha aapke tap ke baad hi.',
+            const Text('Hoola reads and sorts your mail, writes replies, opens attachments, reminds you of follow-ups and '
+                'sends bulk mail. Sending, deleting and bulk mail happen only after your tap.',
                 style: TextStyle(color: C.muted, fontSize: 13)),
             const SizedBox(height: 10),
             // v0.184.0 "Gmail, poora" — the one help card that says what Hoola now covers end to end
@@ -377,19 +377,19 @@ class _EmailScreenState extends State<EmailScreen> {
               tilePadding: const EdgeInsets.symmetric(horizontal: 12),
               childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
               iconColor: C.accent, collapsedIconColor: C.accent,
-              title: Text(app.g('Gmail, poora'), style: const TextStyle(fontWeight: FontWeight.w700)),
-              subtitle: Text(app.g('Gmail ke saare kaam, chat se — hifazat ke saath'), style: const TextStyle(color: C.muted, fontSize: 12.5)),
+              title: Text(app.g('Gmail, full'), style: const TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: Text(app.g('All Gmail tasks, from chat — safely'), style: const TextStyle(color: C.muted, fontSize: 12.5)),
               children: [
                 for (final t in [
-                  app.g('Padhna, chhaantna: inbox, thread poora, attachments (PDF, Excel, photos bhi), Gmail ke apne snoozed folder samet.'),
-                  app.g('Likhte waqt: rich mail, Drive file attach, schedule, undo window, alias se bhejna (verified aliases).'),
-                  app.g('Khud sambhale: rules, saved searches, labels (rang aur nesting ke saath), snooze, follow-up yaad, bulk mail.'),
-                  app.g('Gmail ke apne filters bhi — Gmail ke andar hi chalte hain, Hoola band ho to bhi.'),
-                  app.g('Gmail ke drafts: dekhna, wahin badalna (attachments bane rehte hain), seedha bhejna — card ke baad.'),
-                  app.g('Poore conversations ek saath, aur delete hamesha ke liye tabhi jab card par likha ho.'),
-                  app.g('Gmail ki apni settings: vacation auto-reply, signature, send-as aliases (jodna, hatana, unse bhejna), forwarding addresses, IMAP / POP, language, auto-forward — sab aapke tap par.'),
-                  app.g('Nayi mail ki khabar har minute, zaroori ka pehle; OTP codes kabhi nahi batata.'),
-                  app.g('Settings ke liye Gmail ek baar dobara jodna pade to is screen par “Jodiye” dabaiye — mail pehle jaisi chalti hai.'),
+                  app.g('Read and sort: inbox, whole threads, attachments (PDF, Excel, photos too), including Gmail\'s own snoozed folder.'),
+                  app.g('While writing: rich mail, attach Drive files, schedule, undo window, send from an alias (verified aliases).'),
+                  app.g('Handled by itself: rules, saved searches, labels (with colours and nesting), snooze, follow-up reminders, bulk mail.'),
+                  app.g('Gmail\'s own filters too — they run inside Gmail, even when Hoola is off.'),
+                  app.g('Gmail drafts: view, edit in place (attachments stay), and send directly — after a card.'),
+                  app.g('Whole conversations at once, and delete for good only when the card says so.'),
+                  app.g('Gmail\'s own settings: vacation auto-reply, signature, send-as aliases (add, remove, send from them), forwarding addresses, IMAP / POP, language, auto-forward — all on your tap.'),
+                  app.g('News of new mail every minute, important first; OTP codes are never read out.'),
+                  app.g('If you need to reconnect Gmail once for settings, tap “Connect” on this screen — mail keeps working as before.'),
                 ])
                   Padding(padding: const EdgeInsets.symmetric(vertical: 2), child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     const Padding(padding: EdgeInsets.only(top: 2), child: Icon(Icons.check_circle_outline_rounded, size: 15, color: C.accent)),
@@ -401,35 +401,35 @@ class _EmailScreenState extends State<EmailScreen> {
             if (_err != null) Padding(padding: const EdgeInsets.only(bottom: 10), child: Text(_err!, style: const TextStyle(color: C.bad))),
             if (!_loaded) const Padding(padding: EdgeInsets.all(30), child: Center(child: CircularProgressIndicator())),
             if (_loaded && _accounts.isEmpty)
-              const Padding(padding: EdgeInsets.only(bottom: 12), child: Text('Abhi koi email juda nahi hai.', style: TextStyle(fontWeight: FontWeight.w700))),
+              const Padding(padding: EdgeInsets.only(bottom: 12), child: Text('No email is connected yet.', style: TextStyle(fontWeight: FontWeight.w700))),
             for (final a in _accounts) _account(a),
             const SizedBox(height: 6),
-            GlassButton(label: 'Gmail jodiye', icon: Icons.mark_email_unread_rounded, height: 48,
+            GlassButton(label: 'Connect Gmail', icon: Icons.mark_email_unread_rounded, height: 48,
                 onTap: google && !_busy ? () => _link('google') : null),
             const SizedBox(height: 8),
-            GlassButton(label: 'Outlook / Hotmail / Office 365 jodiye', icon: Icons.business_center_rounded, height: 48,
+            GlassButton(label: 'Connect Outlook / Hotmail / Office 365', icon: Icons.business_center_rounded, height: 48,
                 onTap: ms && !_busy ? () => _link('microsoft') : null),
             const SizedBox(height: 8),
-            GlassButton(label: _busy ? 'Jod raha hoon…' : 'Koi aur email (Yahoo, Zoho, Rediff, company)', icon: Icons.alternate_email_rounded,
+            GlassButton(label: _busy ? 'Connecting…' : 'Another email (Yahoo, Zoho, Rediff, company)', icon: Icons.alternate_email_rounded,
                 height: 48, onTap: _busy ? null : _imap),
             if (_loaded && (!google || !ms))
               Padding(
                 padding: const EdgeInsets.only(top: 10),
                 child: Text(
-                    '${!google ? 'Gmail sign-in' : ''}${!google && !ms ? ' aur ' : ''}${!ms ? 'Outlook sign-in' : ''} is server par abhi chalu nahi hai. '
-                    'Tab tak "Koi aur email" se app password daal kar jodiye (Gmail aur Outlook bhi chalte hain).',
+                    '${!google ? 'Gmail sign-in' : ''}${!google && !ms ? ' and ' : ''}${!ms ? 'Outlook sign-in' : ''} is not turned on for this server yet. '
+                    'Until then, connect with an app password under "Another email" (Gmail and Outlook work there too).',
                     style: const TextStyle(color: C.faint, fontSize: 12)),
               ),
             if (_accounts.isNotEmpty) ...[
               const SizedBox(height: 18),
-              Text(app.g('Nayi mail ki khabar'), style: const TextStyle(fontWeight: FontWeight.w700)),
+              Text(app.g('News of new mail'), style: const TextStyle(fontWeight: FontWeight.w700)),
               const SizedBox(height: 6),
-              Text(app.g('Hoola har minute aapka inbox dekhta hai. Zaroori mail ya apne logon ki mail aaye to chat mein bata deta hai; '
-                  'newsletters chup rehte hain. OTP codes kabhi nahi batata.'),
+              Text(app.g('Hoola checks your inbox every minute. If an important mail or a mail from your people arrives, it tells you in the chat; '
+                  'newsletters stay quiet. OTP codes are never read out.'),
                   style: const TextStyle(color: C.muted, fontSize: 12.5)),
               const SizedBox(height: 8),
               Wrap(spacing: 6, children: [
-                for (final m in const [('off', 'Shant'), ('vip', 'Zaroori'), ('all', 'Sab')])
+                for (final m in const [('off', 'Shant'), ('vip', 'Important'), ('all', 'Sab')])
                   ChoiceChip(
                     label: Text(app.g(m.$2)),
                     selected: _watchMode == m.$1,
@@ -439,11 +439,11 @@ class _EmailScreenState extends State<EmailScreen> {
               const SizedBox(height: 18),
               Row(children: [
                 Expanded(child: Text(app.g('Mail rules'), style: const TextStyle(fontWeight: FontWeight.w700))),
-                IconButton(tooltip: app.g('Naya rule'), onPressed: _addRule,
+                IconButton(tooltip: app.g('New rule'), onPressed: _addRule,
                     icon: const Icon(Icons.add_circle_outline_rounded, color: C.accent)),
               ]),
               if (_rules.isEmpty)
-                Text(app.g('Koi rule nahi. Bolo "bank ki mail aaye to archive karo" jaisa rule chat mein.'),
+                Text(app.g('No rules. Say a rule in the chat like "archive mails from the bank".'),
                     style: const TextStyle(color: C.muted, fontSize: 12.5)),
               for (final r in _rules)
                 Padding(
@@ -455,7 +455,7 @@ class _EmailScreenState extends State<EmailScreen> {
                       Text(_ruleSummary(r), style: const TextStyle(color: C.chip, fontSize: 12.5)),
                       if ((r['hits'] as int? ?? 0) > 0)
                         Padding(padding: const EdgeInsets.only(top: 2),
-                            child: Text('${r['hits']} baar chala', style: const TextStyle(color: C.muted, fontSize: 11.5))),
+                            child: Text('${r['hits']} times run', style: const TextStyle(color: C.muted, fontSize: 11.5))),
                     ])),
                     Switch(value: r['enabled'] == true, onChanged: (_) => _toggleRule(r)),
                     IconButton(onPressed: () => _delRule(r), icon: const Icon(Icons.delete_outline_rounded, color: C.muted)),
@@ -478,25 +478,25 @@ class _EmailScreenState extends State<EmailScreen> {
                       ])),
                     ])),
                   ),
-                Text(app.g('Chat mein boliye “<naam> dikhao” — yeh sirf dikhata hai, kuch nahi badalta.'),
+                Text(app.g('Say “show <name>” in the chat — this only shows, it changes nothing.'),
                     style: const TextStyle(color: C.muted, fontSize: 11.5)),
               ],
             ],
             const SizedBox(height: 18),
-            const Text('Bolkar dekhiye', style: TextStyle(fontWeight: FontWeight.w700)),
+            const Text('Try saying', style: TextStyle(fontWeight: FontWeight.w700)),
             const SizedBox(height: 6),
             for (final t in const [
-              '"Aaj ki zaroori mails batao"',
-              '"Ramesh ki mail ka jawab do, quotation attach karke"',
-              '"Bijli bill wali PDF padho, kitna dena hai?"',
-              '"Har subah 9 baje inbox summary bhejo"',
-              '"Har Somvaar ko weekly inbox digest do"',
-              '"Bank wali mails save karo search mein"',
-              '"hello@newtika.in se bhejo yeh mail"',
-              '"Snoozed mails dikhao"',
-              '"Bills label ko green rang do"',
-              '"Is Excel ki list mein sabko Diwali offer mail karo"',
-              '"Kal subah 9 baje Swati ko yeh mail bhejna"',
+              '"Tell me today\'s important mails"',
+              '"Reply to Ramesh\'s mail, attaching the quotation"',
+              '"Read the electricity bill PDF, how much do I owe?"',
+              '"Send an inbox summary every morning at 9"',
+              '"Send me a weekly inbox digest every Monday"',
+              '"Save the bank mails as a search"',
+              '"Send this mail from hello@newtika.in"',
+              '"Show snoozed mails"',
+              '"Make the Bills label green"',
+              '"Mail the Diwali offer to everyone in this Excel list"',
+              '"Send this mail to Swati tomorrow at 9 am"',
             ])
               Padding(padding: const EdgeInsets.symmetric(vertical: 2), child: Text(t, style: const TextStyle(color: C.chip, fontSize: 13))),
           ]),

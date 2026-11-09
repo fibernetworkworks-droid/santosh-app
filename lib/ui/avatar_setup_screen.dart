@@ -10,16 +10,16 @@ import 'glass.dart';
 const _names = ['Santosh', 'Raju', 'Arjun', 'Veer', 'Priya', 'Meera', 'Sakhi', 'Kavya'];
 
 const _knock = {
-  'id_or_qr': 'Jinke paas mera Hoola ID / QR ho',
-  'verified': 'Sirf verified log',
-  'anyone': 'Koi bhi',
-  'nobody': 'Abhi koi nahi',
+  'id_or_qr': 'Anyone who has my Hoola ID / QR',
+  'verified': 'Verified people only',
+  'anyone': 'Anyone',
+  'nobody': 'Nobody for now',
 };
 const _kinds = {
   'message': 'Message',
   'voice_note': 'Voice note',
   'file': 'File (PDF, photo, Excel)',
-  'app_file': 'APK / EXE (App Jaanch ke baad)',
+  'app_file': 'APK / EXE (after App Check)',
   'email': 'Email',
   'link': 'Website link',
   'presentation': 'Presentation',
@@ -30,24 +30,24 @@ const _kinds = {
 };
 const _alwaysAsk = {'payment_request', 'app_file'};
 const _share = {
-  'free_busy': 'Main free hoon ya busy',
-  'office_hours': 'Office ka samay',
-  'business_info': 'Business ki jaankari',
+  'free_busy': 'Whether I am free or busy',
+  'office_hours': 'Office hours',
+  'business_info': 'Business information',
   'price_list': 'Price list',
-  'phone': 'Mera phone number',
-  'email_address': 'Mera email ID',
-  'address': 'Mera pata',
+  'phone': 'My phone number',
+  'email_address': 'My email ID',
+  'address': 'My address',
 };
 const _aboutKeys = {'business_info', 'office_hours', 'price_list'};
 const _aboutHint = {
-  'business_info': 'Business ke baare mein: kya karte hain, kahan, kaise sampark (sirf jo sab ko batana theek ho)',
-  'office_hours': 'Jaise: Som-Shani 10 se 7, Ravivar band',
-  'price_list': 'Jaise: ONT 1200, installation 500, 100 Mbps plan 599/mahina',
+  'business_info': 'About the business: what it does, where, how to contact (only what is fine to tell everyone)',
+  'office_hours': 'For example: Mon-Sat 10 to 7, closed Sunday',
+  'price_list': 'For example: ONT 1200, installation 500, 100 Mbps plan 599/month',
 };
 const _alone = {
-  'fix_meetings': 'Khaali samay mein meeting khud fix kare',
-  'answer_faq': 'Business ke aam sawaalon ka jawab khud de',
-  'accept_files_from_vip': 'VIP ki file khud le le',
+  'fix_meetings': 'Fix meetings by itself in free time',
+  'answer_faq': 'Answer common business questions by itself',
+  'accept_files_from_vip': 'Take the VIP\'s file by itself',
 };
 const _langs = {
   'hinglish': 'Hinglish', 'hindi': 'हिंदी', 'marathi': 'मराठी', 'english': 'English', 'gujarati': 'ગુજરાતી',
@@ -182,7 +182,7 @@ class _AvatarSetupScreenState extends State<AvatarSetupScreen> {
         _vip.text = List<String>.from(_rules['vip'] as List? ?? const []).join(', ');
         _blocked.text = List<String>.from(_rules['blocked_topics'] as List? ?? const []).join(', ');
       });
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Samajh gaye. Neeche dekh lijiye, phir Aage dabaiye.')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Understood. Look below, then tap Next.')));
     } catch (e) {
       if (mounted) setState(() => _err = e.toString());
     } finally {
@@ -201,10 +201,10 @@ class _AvatarSetupScreenState extends State<AvatarSetupScreen> {
 
   // ---------------------------------------------------------------- pages
   Widget _namePage() => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Text('Apne Hoola ko naam dijiye', style: display(26)),
+        Text('Give your Hoola a name', style: display(26)),
         const SizedBox(height: 6),
-        const Text('Yeh aapka AI saathi hai. Naam aap rakhiye: wo isi naam se aapse baat karega, aur doosron ke Hoola '
-            'use "aapka" isi naam se jaanenge.', style: TextStyle(color: C.muted, fontSize: 13.5)),
+        const Text('This is your AI companion. You choose the name: it will talk to you by this name, and other people\'s Hoolas '
+            'will know it as "yours" by this name.', style: TextStyle(color: C.muted, fontSize: 13.5)),
         const SizedBox(height: 18),
         Glass(
           child: TextField(
@@ -229,7 +229,7 @@ class _AvatarSetupScreenState extends State<AvatarSetupScreen> {
             ),
         ]),
         const SizedBox(height: 14),
-        const Text('Hindi, Marathi ya kisi bhi bhasha mein naam likh sakte hain. Bank, police ya sarkari naam nahi chalenge.',
+        const Text('You can write the name in Hindi, Marathi or any language. Bank, police or government names are not allowed.',
             style: TextStyle(color: C.faint, fontSize: 12)),
       ]);
 
@@ -272,12 +272,12 @@ class _AvatarSetupScreenState extends State<AvatarSetupScreen> {
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text('$_n ka roop', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
             const SizedBox(height: 2),
-            Text(_gender == 'f' ? '100 roop, duniya bhar se. Call, chat aur Hoola Network par yahi dikhegi.'
-                : '100 roop, duniya bhar se, ya asli Santosh. Call, chat aur Hoola Network par yahi dikhega.', style: const TextStyle(color: C.muted, fontSize: 12.5)),
+            Text(_gender == 'f' ? '100 voices, from all over the world. This is what will show on calls, chat and the Hoola Network.'
+                : '100 voices, from all over the world, or the original Santosh. This is what will show on calls, chat and the Hoola Network.', style: const TextStyle(color: C.muted, fontSize: 12.5)),
             const SizedBox(height: 8),
             OutlinedButton.icon(
               icon: const Icon(Icons.palette_outlined, size: 18),
-              label: const Text('Roop badliye'),
+              label: const Text('Change the look'),
               onPressed: () async {
                 final id = await Navigator.of(context).push<String>(
                     MaterialPageRoute(builder: (_) => LookPickerScreen(initial: l, avatarName: _n, gender: _gender)));
@@ -294,19 +294,19 @@ class _AvatarSetupScreenState extends State<AvatarSetupScreen> {
     final voices = List<Map<String, dynamic>>.from(((app.avatar['voices'] as Map?)?[_gender] as List? ?? const [])
         .map((e) => Map<String, dynamic>.from(e as Map)));
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      Text('$_n kaisa / kaisi ho?', style: display(24)),
+      Text('Is $_n male or female?', style: display(24)),
       const SizedBox(height: 6),
-      const Text('Isse Hindi mein bolne ka tareeka aur awaaz tay hoti hai.', style: TextStyle(color: C.muted, fontSize: 13.5)),
+      const Text('This decides the voice and the way it speaks.', style: TextStyle(color: C.muted, fontSize: 13.5)),
       const SizedBox(height: 16),
       Row(children: [
-        _genderCard('m', 'Purush', '"$_n kaam kar raha hai"', Icons.face_rounded),
+        _genderCard('m', 'Male', '"$_n is working on it"', Icons.face_rounded),
         const SizedBox(width: 12),
-        _genderCard('f', 'Mahila', '"$_n kaam kar rahi hai"', Icons.face_3_rounded),
+        _genderCard('f', 'Female', '"$_n is working on it"', Icons.face_3_rounded),
       ]),
       const SizedBox(height: 14),
       _lookCard(),
       const SizedBox(height: 18),
-      Text('$_n ki awaaz (call par)', style: const TextStyle(fontWeight: FontWeight.w700)),
+      Text('$_n\'s voice (on calls)', style: const TextStyle(fontWeight: FontWeight.w700)),
       const SizedBox(height: 8),
       Wrap(spacing: 8, runSpacing: 8, children: [
         for (final v in voices)
@@ -347,15 +347,15 @@ class _AvatarSetupScreenState extends State<AvatarSetupScreen> {
     final sell = _sub('selling');
     String inr(dynamic v) => '₹${(v is num ? v : num.tryParse('$v') ?? 0).toInt()}';
     return [
-      _section('Bechna (Hoola Network)', _gv('List aane par $_n quote kab khud bheje. Order hamesha graahak ki haan se.')),
+      _section('Selling (Hoola Network)', _gv('When a list arrives, when $_n may send a quote by itself. An order always needs the customer\'s yes.')),
       Wrap(spacing: 8, runSpacing: 8, children: [
-        _chip('Har baar poochho', (sell['auto_quote'] ?? 'off') == 'off', () => setState(() => sell['auto_quote'] = 'off')),
-        _chip('Bharose walon ko khud', sell['auto_quote'] == 'trusted', () => setState(() => sell['auto_quote'] = 'trusted')),
-        _chip('Sab jude logon ko khud', sell['auto_quote'] == 'connected', () => setState(() => sell['auto_quote'] = 'connected')),
+        _chip('Ask every time', (sell['auto_quote'] ?? 'off') == 'off', () => setState(() => sell['auto_quote'] = 'off')),
+        _chip('By itself to trusted people', sell['auto_quote'] == 'trusted', () => setState(() => sell['auto_quote'] = 'trusted')),
+        _chip('By itself to all connected people', sell['auto_quote'] == 'connected', () => setState(() => sell['auto_quote'] = 'connected')),
       ]),
       if ((sell['auto_quote'] ?? 'off') != 'off') ...[
         const SizedBox(height: 6),
-        Text('Sirf poore stock wala quote, is rakam tak: ${inr(sell['auto_quote_max'])}', style: const TextStyle(color: C.muted, fontSize: 12.5)),
+        Text('Only quotes with full stock, up to this amount: ${inr(sell['auto_quote_max'])}', style: const TextStyle(color: C.muted, fontSize: 12.5)),
         Wrap(spacing: 8, runSpacing: 8, children: [
           for (final x in const [5000, 25000, 100000]) _chip(inr(x), sell['auto_quote_max'] == x, () => setState(() => sell['auto_quote_max'] = x)),
         ]),
@@ -363,30 +363,30 @@ class _AvatarSetupScreenState extends State<AvatarSetupScreen> {
       SwitchListTile(
         dense: true,
         contentPadding: EdgeInsets.zero,
-        title: Text('Graahak ki haan ke baad order khud pakka (stock ho to, ${inr(sell['auto_accept_max'])} tak)'),
+        title: Text('Confirm the order by itself after the customer\'s yes (if in stock, up to ${inr(sell['auto_accept_max'])})'),
         value: sell['auto_accept'] == true,
         onChanged: (v) => setState(() => sell['auto_accept'] = v),
       ),
       SwitchListTile(
         dense: true,
         contentPadding: EdgeInsets.zero,
-        title: const Text('Pack hote hi graahak ko pickup code'),
+        title: const Text('Send the customer a pickup code as soon as it is packed'),
         value: sell['auto_ready'] != false,
         onChanged: (v) => setState(() => sell['auto_ready'] = v),
       ),
       const SizedBox(height: 4),
-      const Text('Price list kise dikhe:', style: TextStyle(color: C.muted, fontSize: 12.5)),
+      const Text('Who sees the price list:', style: TextStyle(color: C.muted, fontSize: 12.5)),
       const SizedBox(height: 6),
       Wrap(spacing: 8, runSpacing: 8, children: [
-        _chip('Kisi ko nahi', sell['catalog'] == 'off', () => setState(() => sell['catalog'] = 'off')),
-        _chip('Jude logon ko', (sell['catalog'] ?? 'connected') == 'connected', () => setState(() => sell['catalog'] = 'connected')),
-        _chip('Sab ko', sell['catalog'] == 'public', () => setState(() => sell['catalog'] = 'public')),
+        _chip('No one', sell['catalog'] == 'off', () => setState(() => sell['catalog'] = 'off')),
+        _chip('To connected people', (sell['catalog'] ?? 'connected') == 'connected', () => setState(() => sell['catalog'] = 'connected')),
+        _chip('To everyone', sell['catalog'] == 'public', () => setState(() => sell['catalog'] = 'public')),
       ]),
       const SizedBox(height: 8),
       Glass(
         child: TextFormField(
           initialValue: List<String>.from(sell['trusted'] as List? ?? const []).join(', '),
-          decoration: const InputDecoration(border: InputBorder.none, labelText: 'Bharose wale graahak (naam / Hoola ID)'),
+          decoration: const InputDecoration(border: InputBorder.none, labelText: 'Trusted customers (name / Hoola ID)'),
           onChanged: (t) => sell['trusted'] = _split(t),
         ),
       ),
@@ -394,7 +394,7 @@ class _AvatarSetupScreenState extends State<AvatarSetupScreen> {
       Glass(
         child: TextFormField(
           initialValue: List<String>.from(sell['packers'] as List? ?? const []).join(', '),
-          decoration: const InputDecoration(border: InputBorder.none, labelText: 'Packing kaun karega (khaali = team ke manager + packing wale)'),
+          decoration: const InputDecoration(border: InputBorder.none, labelText: 'Who will pack (blank = team manager + packers)'),
           onChanged: (t) => sell['packers'] = _split(t),
         ),
       ),
@@ -408,22 +408,22 @@ class _AvatarSetupScreenState extends State<AvatarSetupScreen> {
     final quiet = _sub('quiet');
     final learning = _sub('learning');
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      Text('Mere Niyam', style: display(26)),
+      Text('My Rules', style: display(26)),
       const SizedBox(height: 6),
-      Text(_gv('Doosre logon ke Hoola aapse sirf $_n ke zariye baat karenge. $_n in niyamon se tay karega ki kya aapko '
-          'batana hai, kya khud sambhalna hai aur kya mana karna hai.'), style: const TextStyle(color: C.muted, fontSize: 13.5)),
+      Text(_gv('Other people\'s Hoolas will talk to you only through $_n. With these rules, $_n decides what to tell you, '
+          'what to handle itself and what to refuse.'), style: const TextStyle(color: C.muted, fontSize: 13.5)),
       const SizedBox(height: 14),
       Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          const Text('Apne shabdon mein boliye / likhiye', style: TextStyle(fontWeight: FontWeight.w700)),
+          const Text('Say or write it in your own words', style: TextStyle(fontWeight: FontWeight.w700)),
           TextField(
             controller: _words,
             minLines: 2,
             maxLines: 5,
             decoration: const InputDecoration(
                 border: InputBorder.none,
-                hintText: 'Jaise: "Family aur Swati hamesha pahunche. Loan wale mana. Raat 11 ke baad disturb mat karna. '
-                    'Meeting khaali samay mein khud fix kar lo."'),
+                hintText: 'For example: "Family and Swati can always reach me. Refuse loan callers. Do not disturb me after 11 pm. '
+                    'Fix meetings by yourself in free time."'),
           ),
           Align(
             alignment: Alignment.centerRight,
@@ -432,15 +432,15 @@ class _AvatarSetupScreenState extends State<AvatarSetupScreen> {
           ),
         ]),
       ),
-      _section('Kaun request bhej sakta hai'),
+      _section('Who can send a request'),
       Wrap(spacing: 8, runSpacing: 8, children: [
         for (final e in _knock.entries) _chip(e.value, _rules['knock'] == e.key, () => setState(() => _rules['knock'] = e.key)),
       ]),
-      _section('VIP: hamesha pahunchenge', 'Naam ya Hoola ID, comma se alag'),
+      _section('VIPs: can always reach me', 'Name or Hoola ID, comma separated'),
       Glass(child: TextField(controller: _vip, decoration: const InputDecoration(border: InputBorder.none, hintText: 'Family, Swati, @kunal.raj'))),
-      _section('Seedha mana', 'Jin baaton ki request $_n khud mana kar de'),
+      _section('Seedha mana', 'Requests $_n should refuse by itself'),
       Glass(child: TextField(controller: _blocked, decoration: const InputDecoration(border: InputBorder.none, hintText: 'loan, insurance, sales pitch'))),
-      _section('Kya aa sakta hai', 'Seedha = $_n le lega · Poochho = pehle aapse · Mana = nahi'),
+      _section('What can come in', 'Direct = $_n takes it · Ask = asks you first · Refuse = no'),
       for (final e in _kinds.entries)
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 4),
@@ -449,12 +449,12 @@ class _AvatarSetupScreenState extends State<AvatarSetupScreen> {
             Wrap(spacing: 6, children: [
               if (!_alwaysAsk.contains(e.key))
                 _chip('Seedha', accept[e.key] == 'auto', () => setState(() => accept[e.key] = 'auto')),
-              _chip('Poochho', (accept[e.key] ?? 'ask') == 'ask', () => setState(() => accept[e.key] = 'ask')),
+              _chip('Ask', (accept[e.key] ?? 'ask') == 'ask', () => setState(() => accept[e.key] = 'ask')),
               _chip('Mana', accept[e.key] == 'never', () => setState(() => accept[e.key] = 'never')),
             ]),
           ]),
         ),
-      _section(_gv('$_n doosron ko kya bata sakta hai')),
+      _section(_gv('What $_n may tell others')),
       for (final e in _share.entries) ...[
         SwitchListTile(
           dense: true,
@@ -474,7 +474,7 @@ class _AvatarSetupScreenState extends State<AvatarSetupScreen> {
             ),
           ),
       ],
-      _section(_gv('$_n khud kya kar sakta hai'), 'Baaki sab pehle aapse poochhega. Paise kabhi aapke tap ke bina nahi.'),
+      _section(_gv('What $_n may do by itself'), 'It will ask you first about everything else. Never any money without your tap.'),
       for (final e in _alone.entries)
         SwitchListTile(
           dense: true,
@@ -483,28 +483,28 @@ class _AvatarSetupScreenState extends State<AvatarSetupScreen> {
           value: alone[e.key] == true,
           onChanged: (v) => setState(() => alone[e.key] = v),
         ),
-      _section('Shaant samay'),
+      _section('Quiet hours'),
       SwitchListTile(
         dense: true,
         contentPadding: EdgeInsets.zero,
-        title: const Text('Is samay disturb mat karna'),
+        title: const Text('Do not disturb at this time'),
         value: quiet['on'] == true,
         onChanged: (v) => setState(() => quiet['on'] = v),
       ),
       if (quiet['on'] == true) ...[
         Row(children: [
           TextButton(onPressed: () => _pickTime('from'), child: Text('Se ${quiet['from'] ?? '22:00'}')),
-          TextButton(onPressed: () => _pickTime('to'), child: Text('Tak ${quiet['to'] ?? '08:00'}')),
+          TextButton(onPressed: () => _pickTime('to'), child: Text('Until ${quiet['to'] ?? '08:00'}')),
         ]),
         SwitchListTile(
           dense: true,
           contentPadding: EdgeInsets.zero,
-          title: const Text('VIP tab bhi pahunch sakte hain'),
+          title: const Text('VIPs can still reach me'),
           value: quiet['vip_can_ring'] == true,
           onChanged: (v) => setState(() => quiet['vip_can_ring'] = v),
         ),
       ],
-      _section(_gv('$_n aapko kis bhasha mein batayega')),
+      _section(_gv('In which language $_n tells you')),
       Wrap(spacing: 8, runSpacing: 8, children: [
         for (final e in _langs.entries) _chip(e.value, (_rules['language'] ?? 'hinglish') == e.key, () => setState(() => _rules['language'] = e.key)),
       ]),
@@ -512,21 +512,21 @@ class _AvatarSetupScreenState extends State<AvatarSetupScreen> {
       SwitchListTile(
         dense: true,
         contentPadding: EdgeInsets.zero,
-        title: Text(_gv('$_n mere kaam se seekhta rahe')),
+        title: Text(_gv('Let $_n keep learning from my work')),
         value: learning['learn_from_my_work'] == true,
         onChanged: (v) => setState(() => learning['learn_from_my_work'] = v),
       ),
       const SizedBox(height: 4),
-      const Text('Seekhi baatein doosron ke saath (bina personal jaankari):', style: TextStyle(color: C.muted, fontSize: 12.5)),
+      const Text('Share what it has learned with others (without personal details):', style: TextStyle(color: C.muted, fontSize: 12.5)),
       const SizedBox(height: 6),
       Wrap(spacing: 8, runSpacing: 8, children: [
-        _chip('Kabhi nahi', learning['share_lessons'] == 'never', () => setState(() => learning['share_lessons'] = 'never')),
-        _chip('Pehle poochho', (learning['share_lessons'] ?? 'ask') == 'ask', () => setState(() => learning['share_lessons'] = 'ask')),
-        _chip('Mere groups mein', learning['share_lessons'] == 'groups', () => setState(() => learning['share_lessons'] = 'groups')),
+        _chip('Never', learning['share_lessons'] == 'never', () => setState(() => learning['share_lessons'] = 'never')),
+        _chip('Ask first', (learning['share_lessons'] ?? 'ask') == 'ask', () => setState(() => learning['share_lessons'] = 'ask')),
+        _chip('In my groups', learning['share_lessons'] == 'groups', () => setState(() => learning['share_lessons'] = 'groups')),
       ]),
       ..._sellingSection(),
       const SizedBox(height: 14),
-      const Text('Yeh hamesha rahega: paise sirf aapke tap se. PIN, OTP, password kabhi kisi ko nahi.',
+      const Text('This always stays: money only with your tap. PINs, OTPs and passwords never go to anyone.',
           style: TextStyle(color: C.teal, fontSize: 12.5, fontWeight: FontWeight.w600)),
     ]);
   }
@@ -534,7 +534,7 @@ class _AvatarSetupScreenState extends State<AvatarSetupScreen> {
   Widget _confirmPage() => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Text('Namaste! Main $_n.', style: display(26)),
         const SizedBox(height: 6),
-        Text(_gv('Aapke niyam yeh hain. $_n inhi ke hisaab se doosre Hoola se baat karega. Profile > Mere Niyam mein kabhi bhi badal sakte hain.'),
+        Text(_gv('These are your rules. $_n will talk to other Hoolas according to them. You can change them any time in Profile > My Rules.'),
             style: const TextStyle(color: C.muted, fontSize: 13.5)),
         const SizedBox(height: 14),
         Glass(
@@ -561,7 +561,7 @@ class _AvatarSetupScreenState extends State<AvatarSetupScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         automaticallyImplyLeading: !widget.firstRun,
-        title: Text(widget.firstRun ? appName : (widget.rulesOnly ? 'Mere Niyam' : 'Mera Hoola')),
+        title: Text(widget.firstRun ? appName : (widget.rulesOnly ? 'My Rules' : 'My Hoola')),
       ),
       body: Aurora(
         child: SafeArea(
@@ -595,7 +595,7 @@ class _AvatarSetupScreenState extends State<AvatarSetupScreen> {
                   ),
                 Expanded(
                   child: GradientButton(
-                    label: _busy ? 'Ruk jaiye…' : (last ? 'Shuru karein' : 'Aage'),
+                    label: _busy ? 'Please wait…' : (last ? 'Start' : 'Next'),
                     icon: last ? Icons.check_rounded : Icons.arrow_forward_rounded,
                     onTap: _busy ? null : _next,
                   ),

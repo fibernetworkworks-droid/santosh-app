@@ -21,7 +21,7 @@ String _q(dynamic v) {
 }
 
 String _rs(dynamic v) {
-  if (v == null) return 'daam pata nahi';
+  if (v == null) return 'price not known';
   final d = v is num ? v.toDouble() : double.tryParse('$v') ?? 0;
   final neg = d < 0;
   final s = d.abs().round().toString();
@@ -57,7 +57,7 @@ Future<Map<String, String>?> _form(BuildContext context, String title, List<(Str
         ]),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Rehne do')),
+        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Keep it')),
         TextButton(onPressed: () => Navigator.pop(d, true), child: Text(ok)),
       ],
     ),
@@ -123,23 +123,23 @@ class _WarehouseScreenState extends State<WarehouseScreen> {
       for (final a in _list(d['adjusts']))
         Padding(padding: const EdgeInsets.only(bottom: 8), child: WarehouseAdjustCard(app: widget.app, data: {'adjust': a}, onDone: _load)),
       if (_list(d['due']).isNotEmpty) ...[
-        Text('Ginne ka samay', style: display(14)),
+        Text('Counting time', style: display(14)),
         for (final x in _list(d['due']).take(10))
-          Text('• [${_s(x['abc'])}] ${_s(x['name'])}${_s(x['last_counted']).isEmpty ? ' (kabhi nahi gina)' : ' (aakhri: ${_s(x['last_counted'])})'}',
+          Text('• [${_s(x['abc'])}] ${_s(x['name'])}${_s(x['last_counted']).isEmpty ? ' (never counted)' : ' (last: ${_s(x['last_counted'])})'}',
               style: const TextStyle(fontSize: 12.5)),
         const SizedBox(height: 6),
-        GlassButton(label: 'Aaj ki ginti banao', icon: Icons.fact_check_rounded, height: 42, onTap: _busy ? null : () => _run('POST', '/api/warehouse/counts', {})),
+        GlassButton(label: 'Make today\'s count', icon: Icons.fact_check_rounded, height: 42, onTap: _busy ? null : () => _run('POST', '/api/warehouse/counts', {})),
         const SizedBox(height: 10),
       ],
       for (final l in _list(ne['expired']))
         Text('• EXPIRED: ${_s(l['name'])} ${_s(l['batch'])} (${_s(l['bin'])}) ${_q(l['qty'])}', style: const TextStyle(fontSize: 12.5, color: C.bad)),
       for (final l in _list(ne['near']).take(10))
-        Text('• ${_s(l['name'])} ${_s(l['batch'])} (${_s(l['bin'])}): ${l['days_left']} din mein expiry', style: const TextStyle(fontSize: 12.5, color: C.warn)),
+        Text('• ${_s(l['name'])} ${_s(l['batch'])} (${_s(l['bin'])}): ${l['days_left']} days to expiry', style: const TextStyle(fontSize: 12.5, color: C.warn)),
       for (final r in _list(d['recon']).take(10))
-        Text('• ${_s(r['name'])}: bin mein ${_q(r['in_bins'])}, stock list mein ${_q(r['stock_list'])}', style: const TextStyle(fontSize: 12.5, color: C.muted)),
+        Text('• ${_s(r['name'])}: in bins ${_q(r['in_bins'])}, in the stock list ${_q(r['stock_list'])}', style: const TextStyle(fontSize: 12.5, color: C.muted)),
       const SizedBox(height: 10),
       Wrap(spacing: 8, runSpacing: 8, children: [
-        for (final (w, label) in const [('stock', 'Stock Excel'), ('ledger', 'Ledger'), ('abc', 'ABC'), ('expiry', 'Expiry'), ('slow', 'Pada maal')])
+        for (final (w, label) in const [('stock', 'Stock Excel'), ('ledger', 'Ledger'), ('abc', 'ABC'), ('expiry', 'Expiry'), ('slow', 'Stock on hand')])
           ActionChip(label: Text(label), onPressed: _busy ? null : () => _run('POST', '/api/warehouse/export', {'what': w})),
       ]),
     ]);
@@ -149,10 +149,10 @@ class _WarehouseScreenState extends State<WarehouseScreen> {
   Future<void> _newBins() async {
     final f = await _form(context, 'Naye bin', const [
       ('zone', 'Zone (jaise A)'),
-      ('aisles', 'Kitne aisle'),
-      ('racks', 'Har aisle mein rack'),
-      ('capacity', 'Ek bin mein kitna maal (units)'),
-    ], ok: 'Banao');
+      ('aisles', 'How many aisles'),
+      ('racks', 'Racks per aisle'),
+      ('capacity', 'How much stock per bin (units)'),
+    ], ok: 'Make');
     if (f == null) return;
     await _run('POST', '/api/warehouse/bins', {
       'many': true,
@@ -164,21 +164,21 @@ class _WarehouseScreenState extends State<WarehouseScreen> {
   }
 
   Future<void> _move() async {
-    final f = await _form(context, 'Maal hilao', const [('item', 'Item'), ('from_bin', 'Kis bin se'), ('to_bin', 'Kis bin mein'), ('qty', 'Kitna'), ('batch', 'Batch (ho to)')],
-        ok: 'Hilao');
+    final f = await _form(context, 'Move stock', const [('item', 'Item'), ('from_bin', 'From which bin'), ('to_bin', 'To which bin'), ('qty', 'How much'), ('batch', 'Batch (if any)')],
+        ok: 'Move');
     if (f == null) return;
     await _run('POST', '/api/warehouse/move', {...f, 'qty': _n(f['qty'])});
   }
 
   Future<void> _writeoff() async {
-    final f = await _form(context, 'Toota / expire / gum maal', const [
+    final f = await _form(context, 'Damaged / expired / lost goods', const [
       ('item', 'Item'),
       ('bin', 'Bin'),
-      ('qty', 'Kitna'),
-      ('batch', 'Batch (ho to)'),
-      ('reason', 'Wajah: damaged / expired / lost / theft / sample / other'),
+      ('qty', 'How much'),
+      ('batch', 'Batch (if any)'),
+      ('reason', 'Reason: damaged / expired / lost / theft / sample / other'),
       ('note', 'Note'),
-    ], ok: 'Card banao');
+    ], ok: 'Make card');
     if (f == null) return;
     await _run('POST', '/api/warehouse/writeoff', {...f, 'qty': _n(f['qty'])});
   }
@@ -186,13 +186,13 @@ class _WarehouseScreenState extends State<WarehouseScreen> {
   Widget _bins() => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Wrap(spacing: 8, runSpacing: 8, children: [
           GlassButton(label: 'Naye bin', icon: Icons.grid_view_rounded, height: 42, onTap: _busy ? null : _newBins),
-          GlassButton(label: 'Maal hilao', icon: Icons.swap_horiz_rounded, height: 42, onTap: _busy ? null : _move),
+          GlassButton(label: 'Move stock', icon: Icons.swap_horiz_rounded, height: 42, onTap: _busy ? null : _move),
           GlassButton(label: 'Write-off card', icon: Icons.delete_sweep_rounded, height: 42, onTap: _busy ? null : _writeoff),
           GlassButton(label: 'Bin labels', icon: Icons.qr_code_2_rounded, height: 42, onTap: _busy ? null : () => _run('POST', '/api/warehouse/labels', {'what': 'bins'})),
           GlassButton(label: 'SKU labels', icon: Icons.qr_code_rounded, height: 42, onTap: _busy ? null : () => _run('POST', '/api/warehouse/labels', {'what': 'skus'})),
         ]),
         const SizedBox(height: 10),
-        if (_list(_d?['bins']).isEmpty) const Text('Abhi koi bin nahi.', style: TextStyle(color: C.muted)),
+        if (_list(_d?['bins']).isEmpty) const Text('No bins yet.', style: TextStyle(color: C.muted)),
         for (final b in _list(_d?['bins']))
           Padding(
             padding: const EdgeInsets.only(bottom: 6),
@@ -215,19 +215,19 @@ class _WarehouseScreenState extends State<WarehouseScreen> {
 
   // ---------------------------------------------------------------- Aamad (GRN)
   Future<void> _grn() async {
-    final f = await _form(context, 'Maal aaya (GRN)', const [
-      ('text', 'Kya aaya (jaise: atta 50 bori, biscuit 20 ctn)'),
+    final f = await _form(context, 'Goods received (GRN)', const [
+      ('text', 'What arrived (e.g. flour 50 bags, biscuits 20 ctn)'),
       ('supplier', 'Supplier'),
       ('doc', 'Challan / PO / bill no'),
-    ], ok: 'Darj karo');
+    ], ok: 'Save');
     if (f == null || (f['text'] ?? '').isEmpty) return;
     await _run('POST', '/api/warehouse/grns', f);
   }
 
   Widget _inward() => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        GradientButton(label: 'Maal aaya', icon: Icons.move_to_inbox_rounded, height: 46, onTap: _busy ? null : _grn),
+        GradientButton(label: 'Goods received', icon: Icons.move_to_inbox_rounded, height: 46, onTap: _busy ? null : _grn),
         const SizedBox(height: 6),
-        const Text('Challan ki photo ho to chat mein bhejiye: Hoola padh kar yahan darj karega (batch / expiry ke saath).',
+        const Text('If you have a photo of the challan, send it in the chat: Hoola will read it and record it here (with batch / expiry).',
             style: TextStyle(fontSize: 12, color: C.muted)),
         const SizedBox(height: 10),
         for (final g in _list(_d?['grns']))
@@ -237,7 +237,7 @@ class _WarehouseScreenState extends State<WarehouseScreen> {
   // ---------------------------------------------------------------- Pick
   Future<void> _pick(String source) async {
     if (source == 'list') {
-      final f = await _form(context, 'Pick list', const [('text', 'Kya nikalna hai (atta 10 bori, biscuit 5 ctn)'), ('party', 'Kiske liye')], ok: 'Banao');
+      final f = await _form(context, 'Pick list', const [('text', 'What to pick (flour 10 bags, biscuits 5 ctn)'), ('party', 'For whom')], ok: 'Make');
       if (f == null || (f['text'] ?? '').isEmpty) return;
       await _run('POST', '/api/warehouse/picks', {'source': 'list', ...f});
     } else {
@@ -247,12 +247,12 @@ class _WarehouseScreenState extends State<WarehouseScreen> {
 
   Widget _picks() => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Wrap(spacing: 8, runSpacing: 8, children: [
-          GlassButton(label: 'Apni list', icon: Icons.list_alt_rounded, height: 42, onTap: _busy ? null : () => _pick('list')),
+          GlassButton(label: 'Your own list', icon: Icons.list_alt_rounded, height: 42, onTap: _busy ? null : () => _pick('list')),
           GlassButton(label: 'Hoola Deals orders', icon: Icons.storefront_rounded, height: 42, onTap: _busy ? null : () => _pick('deal')),
           GlassButton(label: 'Thok bills', icon: Icons.receipt_long_rounded, height: 42, onTap: _busy ? null : () => _pick('thok')),
         ]),
         const SizedBox(height: 10),
-        if (_list(_d?['picks']).isEmpty) const Text('Koi khuli pick list nahi.', style: TextStyle(color: C.muted)),
+        if (_list(_d?['picks']).isEmpty) const Text('No open pick lists.', style: TextStyle(color: C.muted)),
         for (final p in _list(_d?['picks']))
           Padding(padding: const EdgeInsets.only(bottom: 8), child: WarehousePickCard(app: widget.app, data: {'pick': p}, onDone: _load)),
       ]);
@@ -260,23 +260,23 @@ class _WarehouseScreenState extends State<WarehouseScreen> {
   // ---------------------------------------------------------------- Ginti
   Widget _counts() => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Wrap(spacing: 8, runSpacing: 8, children: [
-          GradientButton(label: 'Aaj ki ginti', icon: Icons.fact_check_rounded, height: 44, onTap: _busy ? null : () => _run('POST', '/api/warehouse/counts', {})),
+          GradientButton(label: 'Today\'s count', icon: Icons.fact_check_rounded, height: 44, onTap: _busy ? null : () => _run('POST', '/api/warehouse/counts', {})),
           GlassButton(
-              label: 'Bin chunkar',
+              label: 'Choose bins',
               icon: Icons.pin_drop_rounded,
               height: 44,
               onTap: _busy
                   ? null
                   : () async {
-                      final f = await _form(context, 'Kaun se bin gine', const [('bins', 'Bin (comma se: A-1-1, A-1-2)')], ok: 'Banao');
+                      final f = await _form(context, 'Which bins to count', const [('bins', 'Bin (comma se: A-1-1, A-1-2)')], ok: 'Make');
                       if (f == null) return;
                       await _run('POST', '/api/warehouse/counts',
                           {'bins': (f['bins'] ?? '').split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList()});
                     }),
-          GlassButton(label: 'ABC dobara', icon: Icons.sort_rounded, height: 44, onTap: _busy ? null : () => _run('POST', '/api/warehouse/classify')),
+          GlassButton(label: 'Redo ABC', icon: Icons.sort_rounded, height: 44, onTap: _busy ? null : () => _run('POST', '/api/warehouse/classify')),
         ]),
         const SizedBox(height: 6),
-        const Text('Ginti "blind" hoti hai: sheet par system ki maatra nahi dikhti. Farak mila to badlav ka card aapke tap ka intezaar karega.',
+        const Text('The count is "blind": the sheet does not show the system quantity. If there is a difference, a change card will wait for your tap.',
             style: TextStyle(fontSize: 12, color: C.muted)),
         const SizedBox(height: 10),
         for (final c in _list(_d?['counts']))
@@ -287,13 +287,13 @@ class _WarehouseScreenState extends State<WarehouseScreen> {
   Future<void> _settings() async {
     final st = _m(_d?['settings']);
     final cd = _m(st['count_days']);
-    final f = await _form(context, 'Godown ke niyam', [
-      ('name', 'Godown ka naam (${_s(st['name'])})'),
-      ('A', 'A item kitne din mein gine (${_s(cd['A'])})'),
+    final f = await _form(context, 'Godown rules', [
+      ('name', 'Godown name (${_s(st['name'])})'),
+      ('A', 'Count A items every how many days (${_s(cd['A'])})'),
       ('B', 'B item (${_s(cd['B'])})'),
       ('C', 'C item (${_s(cd['C'])})'),
-      ('near_expiry_days', 'Expiry kitne din pehle batayein (${_s(st['near_expiry_days'])})'),
-      ('count_bins_per_day', 'Roz kitne bin gine (${_s(st['count_bins_per_day'])})'),
+      ('near_expiry_days', 'Warn about expiry how many days before (${_s(st['near_expiry_days'])})'),
+      ('count_bins_per_day', 'How many bins to count each day (${_s(st['count_bins_per_day'])})'),
       ('morning_time', 'Subah ka note (${_s(st['morning_time'])})'),
     ], ok: 'Save');
     if (f == null) return;
@@ -314,7 +314,7 @@ class _WarehouseScreenState extends State<WarehouseScreen> {
       const SizedBox(height: 8),
       SwitchListTile(
         contentPadding: EdgeInsets.zero,
-        title: const Text('Khaane ka maal rakhte hain (FSSAI)'),
+        title: const Text('We keep food items (FSSAI)'),
         value: st['food'] == true,
         onChanged: _busy ? null : (v) => _run('PUT', '/api/warehouse/settings', {'food': v}),
       ),
@@ -332,14 +332,14 @@ class _WarehouseScreenState extends State<WarehouseScreen> {
             onRefresh: _load,
             child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 60), children: [
               Wrap(spacing: 6, runSpacing: 6, children: [
-                for (final (i, t) in const [(0, 'Aaj'), (1, 'Bin'), (2, 'Aamad'), (3, 'Pick'), (4, 'Ginti'), (5, 'Niyam')])
+                for (final (i, t) in const [(0, 'Aaj'), (1, 'Bin'), (2, 'Receipts'), (3, 'Pick'), (4, 'Count'), (5, 'Niyam')])
                   ChoiceChip(label: Text(t), selected: _tab == i, onSelected: (_) => setState(() => _tab = i)),
               ]),
               const SizedBox(height: 10),
               if (_busy) const LinearProgressIndicator(),
               if (_d == null) const Center(child: CircularProgressIndicator()) else [_today(), _bins(), _inward(), _picks(), _counts(), _rules()][_tab],
               const SizedBox(height: 14),
-              const Text('Stock ki ginti badalna / write-off sirf aapke tap se. Daam stock list (Hoola Deals) se aate hain. Hoola paisa nahi deta.',
+              const Text('Changing stock counts / write-offs happen only with your tap. Prices come from the stock list (Hoola Deals). Hoola does not pay money.',
                   style: TextStyle(color: C.faint, fontSize: 11.5)),
             ]),
           ),
@@ -393,7 +393,7 @@ class _WarehouseBinPageState extends State<WarehouseBinPage> {
                       '${_s(l['expiry']).isNotEmpty ? ' · exp ${_s(l['expiry'])}' : ''}${(l['serials'] as List? ?? const []).isNotEmpty ? ' · ${(l['serials'] as List).length} serial' : ''}',
                       style: const TextStyle(fontSize: 13)),
                 const SizedBox(height: 12),
-                Text('Aakhri hal-chal', style: display(14)),
+                Text('Latest activity', style: display(14)),
                 for (final m in _list(b['moves']))
                   Text('${_s(m['day'])} ${_s(m['kind'])} ${_s(m['name'])} ${_q(m['qty'])} ${_s(m['ref'])} · ${_s(m['by'])}',
                       style: const TextStyle(fontSize: 12, color: C.muted)),
@@ -422,7 +422,7 @@ class _WarehouseAdjustCardState extends State<WarehouseAdjustCard> {
     final a = _m(widget.data['adjust']);
     String reason = '';
     if (!yes) {
-      final f = await _form(context, 'Kyun nahi? (zaroori nahi)', const [('reason', 'Wajah')], ok: 'Mana karo');
+      final f = await _form(context, 'Why not? (optional)', const [('reason', 'Reason')], ok: 'Decline');
       if (f == null) return;
       reason = f['reason'] ?? '';
     }
@@ -456,9 +456,9 @@ class _WarehouseAdjustCardState extends State<WarehouseAdjustCard> {
           Icon(_s(a['kind']) == 'writeoff' ? Icons.delete_sweep_rounded : Icons.inventory_rounded, color: C.accent),
           const SizedBox(width: 8),
           Expanded(
-              child: Text('Stock badlav · ${_s(a['number'])}${_s(a['count']).isNotEmpty ? ' (${_s(a['count'])})' : ''}',
+              child: Text('Stock change · ${_s(a['number'])}${_s(a['count']).isNotEmpty ? ' (${_s(a['count'])})' : ''}',
                   style: const TextStyle(fontWeight: FontWeight.w800))),
-          Pill(_s(a['kind']) == 'writeoff' ? 'write-off' : 'ginti'),
+          Pill(_s(a['kind']) == 'writeoff' ? 'write-off' : 'count'),
         ]),
         const SizedBox(height: 6),
         for (final l in _list(a['lines']))
@@ -468,24 +468,24 @@ class _WarehouseAdjustCardState extends State<WarehouseAdjustCard> {
               '${l['value'] != null ? ' · ${_rs(l['value'])}' : ''}${_s(l['note']).isNotEmpty ? ' · ${_s(l['note'])}' : ''}',
               style: TextStyle(fontSize: 12.5, color: (l['diff'] as num? ?? 0) < 0 ? C.warn : C.ok)),
         const SizedBox(height: 4),
-        Text('Kul: ${_rs(a['value'])}', style: const TextStyle(fontWeight: FontWeight.w700)),
-        if (first.isNotEmpty) Text('Had se zyada farak: ${first.join(', ')} - pehle dobara ginwana theek.', style: const TextStyle(fontSize: 12, color: C.warn)),
+        Text('Total: ${_rs(a['value'])}', style: const TextStyle(fontWeight: FontWeight.w700)),
+        if (first.isNotEmpty) Text('Difference beyond the limit: ${first.join(', ')} - better to recount first.', style: const TextStyle(fontSize: 12, color: C.warn)),
         if (_s(a['itc_note']).isNotEmpty) Text(_s(a['itc_note']), style: const TextStyle(fontSize: 11.5, color: C.muted)),
         const SizedBox(height: 8),
         if (_status == 'waiting') ...[
           Row(children: [
-            Expanded(child: GradientButton(label: 'Haan, stock badlo', icon: Icons.check_rounded, height: 44, onTap: _busy ? null : () => _decide(true))),
+            Expanded(child: GradientButton(label: 'Yes, change the stock', icon: Icons.check_rounded, height: 44, onTap: _busy ? null : () => _decide(true))),
             const SizedBox(width: 8),
             Expanded(child: GlassButton(label: 'Mana', icon: Icons.close_rounded, height: 44, onTap: _busy ? null : () => _decide(false))),
           ]),
           if (_s(a['count']).isNotEmpty)
-            TextButton(onPressed: _busy ? null : () => _recount(_s(a['count'])), child: const Text('Pehle dobara gino')),
+            TextButton(onPressed: _busy ? null : () => _recount(_s(a['count'])), child: const Text('Recount first')),
         ] else
           Text(
               switch (_status) {
-                'approved' => 'Aapki haan se stock badla.',
-                'rejected' => 'Mana kiya: stock waisa hi.',
-                'stale' => 'Card ke baad maal hila / dobara ginti: naya card aayega.',
+                'approved' => 'Stock changed with your yes.',
+                'rejected' => 'Declined: stock stays as it was.',
+                'stale' => 'Stock moved or was recounted after the card: a new card will come.',
                 _ => _status,
               },
               style: TextStyle(color: _status == 'approved' ? C.ok : C.muted, fontSize: 12.5)),
@@ -530,22 +530,22 @@ class _WarehouseGrnCardState extends State<WarehouseGrnCard> {
           const Icon(Icons.move_to_inbox_rounded, color: C.teal),
           const SizedBox(width: 8),
           Expanded(child: Text('${_s(g['number'])}${_s(g['supplier']).isNotEmpty ? ' · ${_s(g['supplier'])}' : ''}', style: const TextStyle(fontWeight: FontWeight.w800))),
-          Pill(_status == 'putaway' ? 'rakh diya' : 'rakhna baaki'),
+          Pill(_status == 'putaway' ? 'put away' : 'rakhna baaki'),
         ]),
         const SizedBox(height: 4),
         for (final l in _list(g['lines'])) ...[
           Text('• ${_s(l['name'])} ${_q(l['qty'])} ${_s(l['unit'])}${_s(l['batch']).isNotEmpty ? ' · ${_s(l['batch'])}' : ''}${_s(l['expiry']).isNotEmpty ? ' · exp ${_s(l['expiry'])}' : ''}',
               style: const TextStyle(fontSize: 12.5)),
           for (final p in _list(l['putaway']))
-            Text('    -> ${_s(p['bin']).isEmpty ? 'jagah nahi' : _s(p['bin'])} ${_q(p['qty'])} (${_s(p['why'])})', style: const TextStyle(fontSize: 12, color: C.muted)),
+            Text('    -> ${_s(p['bin']).isEmpty ? 'no place' : _s(p['bin'])} ${_q(p['qty'])} (${_s(p['why'])})', style: const TextStyle(fontSize: 12, color: C.muted)),
           for (final n in (l['notes'] as List? ?? const [])) Text('    ! $n', style: const TextStyle(fontSize: 12, color: C.warn)),
         ],
         for (final n in (g['notes'] as List? ?? const [])) Text('! $n', style: const TextStyle(fontSize: 12, color: C.warn)),
         if (_s(_m(g['draft'])['text']).isNotEmpty)
-          Text('Supplier ke liye draft (aap bhejiye): ${_s(_m(g['draft'])['text'])}', style: const TextStyle(fontSize: 12, color: C.muted)),
+          Text('Draft for the supplier (you send it): ${_s(_m(g['draft'])['text'])}', style: const TextStyle(fontSize: 12, color: C.muted)),
         if (_status != 'putaway') ...[
           const SizedBox(height: 8),
-          GradientButton(label: 'Haan, aise rakho', icon: Icons.check_rounded, height: 42, onTap: _busy ? null : _putaway),
+          GradientButton(label: 'Yes, keep it this way', icon: Icons.check_rounded, height: 42, onTap: _busy ? null : _putaway),
         ],
       ]),
     );
@@ -616,7 +616,7 @@ class _WarehousePickCardState extends State<WarehousePickCard> {
                 child: Text('${_s(t['bin'])} · ${_s(t['name'])} ${_q(t['qty'])}${_s(t['batch']).isNotEmpty ? ' (${_s(t['batch'])})' : ''}',
                     style: TextStyle(fontSize: 12.5, color: t['done'] == true ? C.muted : C.ink))),
             if (t['done'] == true)
-              Text('uthaya ${_q(t['picked'])}', style: TextStyle(fontSize: 12, color: (t['short'] ?? 0) > 0 ? C.warn : C.ok))
+              Text('picked ${_q(t['picked'])}', style: TextStyle(fontSize: 12, color: (t['short'] ?? 0) > 0 ? C.warn : C.ok))
             else if (open)
               SizedBox(
                 width: 64,
@@ -628,13 +628,13 @@ class _WarehousePickCardState extends State<WarehousePickCard> {
               ),
           ]),
         for (final l in _list(_p['lines']).where((l) => ((l['short'] ?? 0) as num) > 0))
-          Text('Kam: ${_s(l['name'])} ${_q(l['short'])}', style: const TextStyle(fontSize: 12, color: C.warn)),
+          Text('Short: ${_s(l['name'])} ${_q(l['short'])}', style: const TextStyle(fontSize: 12, color: C.warn)),
         for (final n in (_p['notes'] as List? ?? const [])) Text('! $n', style: const TextStyle(fontSize: 12, color: C.muted)),
         if (open) ...[
           const SizedBox(height: 8),
-          const Text('Khaali chhoda = poora uthaya. Kam mila to maatra likhiye.', style: TextStyle(fontSize: 11.5, color: C.faint)),
+          const Text('Blank = all of it was picked. If less was found, write the quantity.', style: TextStyle(fontSize: 11.5, color: C.faint)),
           Row(children: [
-            Expanded(child: GradientButton(label: 'Utha liya', icon: Icons.done_all_rounded, height: 42, onTap: _busy ? null : () => _confirm())),
+            Expanded(child: GradientButton(label: 'Picked', icon: Icons.done_all_rounded, height: 42, onTap: _busy ? null : () => _confirm())),
             const SizedBox(width: 8),
             Expanded(
                 child: GlassButton(
@@ -694,7 +694,7 @@ class _WarehouseCountCardState extends State<WarehouseCountCard> {
   }
 
   Future<void> _found() async {
-    final f = await _form(context, 'Bin mein aur mila', const [('bin', 'Bin'), ('item', 'Item'), ('batch', 'Batch (ho to)'), ('qty', 'Kitna')], ok: 'Likho');
+    final f = await _form(context, 'Found more in the bin', const [('bin', 'Bin'), ('item', 'Item'), ('batch', 'Batch (if any)'), ('qty', 'How much')], ok: 'Write');
     if (f == null || _n(f['qty']) == null || !mounted) return;
     await _call(context, widget.app, 'POST', '/api/warehouse/counts/${_s(_c['id'])}/enter', {
       'entries': [
@@ -713,7 +713,7 @@ class _WarehouseCountCardState extends State<WarehouseCountCard> {
         Row(children: [
           const Icon(Icons.fact_check_rounded, color: C.teal),
           const SizedBox(width: 8),
-          Expanded(child: Text('Ginti ${_s(_c['number'])} · ${_s(_c['kind'])}', style: const TextStyle(fontWeight: FontWeight.w800))),
+          Expanded(child: Text('Count ${_s(_c['number'])} · ${_s(_c['kind'])}', style: const TextStyle(fontWeight: FontWeight.w800))),
           Pill('${_c['counted'] ?? 0}/${_c['total'] ?? 0}'),
         ]),
         Text('Bin: ${(_c['bins'] as List? ?? const []).join(', ')}', style: const TextStyle(fontSize: 12, color: C.muted)),
@@ -731,24 +731,24 @@ class _WarehouseCountCardState extends State<WarehouseCountCard> {
                 child: TextField(
                   controller: _t.putIfAbsent(i, () => TextEditingController()),
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  decoration: const InputDecoration(isDense: true, hintText: 'kitna?'),
+                  decoration: const InputDecoration(isDense: true, hintText: 'how much?'),
                 ),
               ),
           ]),
         if (open) ...[
           const SizedBox(height: 8),
           Wrap(spacing: 8, runSpacing: 8, children: [
-            GlassButton(label: 'Likho', icon: Icons.save_rounded, height: 40, onTap: _busy ? null : () => _save()),
-            GlassButton(label: 'Aur mila', icon: Icons.add_rounded, height: 40, onTap: _busy ? null : _found),
+            GlassButton(label: 'Write', icon: Icons.save_rounded, height: 40, onTap: _busy ? null : () => _save()),
+            GlassButton(label: 'Found more', icon: Icons.add_rounded, height: 40, onTap: _busy ? null : _found),
             GlassButton(
                 label: 'Sheet (PDF)',
                 icon: Icons.picture_as_pdf_rounded,
                 height: 40,
                 onTap: _busy ? null : () => _call(context, widget.app, 'POST', '/api/warehouse/counts/${_s(_c['id'])}/sheet')),
-            GradientButton(label: 'Band karo', icon: Icons.done_rounded, height: 40, onTap: _busy ? null : () => _save(close: true)),
+            GradientButton(label: 'Close', icon: Icons.done_rounded, height: 40, onTap: _busy ? null : () => _save(close: true)),
           ]),
         ] else
-          const Text('Ginti band: farak hua to badlav ka card aapke tap ka intezaar karega.', style: TextStyle(fontSize: 12, color: C.muted)),
+          const Text('Count closed: if there is a difference, a change card will wait for your tap.', style: TextStyle(fontSize: 12, color: C.muted)),
       ]),
     );
   }
@@ -768,16 +768,16 @@ class WarehouseDayCard extends StatelessWidget {
         const Row(children: [
           Icon(Icons.warehouse_rounded, color: C.accent),
           SizedBox(width: 8),
-          Expanded(child: Text('Aaj ka godown note', style: TextStyle(fontWeight: FontWeight.w800))),
+          Expanded(child: Text('Today\'s godown note', style: TextStyle(fontWeight: FontWeight.w800))),
         ]),
         const SizedBox(height: 6),
         Text(_s(data['say']), style: const TextStyle(fontSize: 13)),
         for (final x in _list(data['due']).take(5)) Text('• ginna: [${_s(x['abc'])}] ${_s(x['name'])}', style: const TextStyle(fontSize: 12.5)),
         for (final l in _list(ne['near']).take(5))
-          Text('• ${_s(l['name'])} (${_s(l['bin'])}): ${l['days_left']} din mein expiry', style: const TextStyle(fontSize: 12.5, color: C.warn)),
+          Text('• ${_s(l['name'])} (${_s(l['bin'])}): ${l['days_left']} days to expiry', style: const TextStyle(fontSize: 12.5, color: C.warn)),
         const SizedBox(height: 8),
         GlassButton(
-            label: 'Godown kholo',
+            label: 'Open godown',
             icon: Icons.open_in_new_rounded,
             height: 40,
             onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => WarehouseScreen(app: app)))),

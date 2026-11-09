@@ -30,7 +30,7 @@ const _kinds = {
   'gbp': ('Google Business', Icons.storefront_rounded),
 };
 const _langs = {'hinglish': 'Hinglish', 'hi': 'हिंदी', 'en': 'English', 'mr': 'मराठी', 'gu': 'ગુજરાતી', 'ta': 'தமிழ்', 'te': 'తెలుగు', 'kn': 'ಕನ್ನಡ', 'bn': 'বাংলা'};
-const _statusLabel = {'draft': 'Draft', 'checked': 'Jaancha hua', 'waiting': 'Haan ka intezaar', 'published': 'Publish', 'rejected': 'Mana'};
+const _statusLabel = {'draft': 'Draft', 'checked': 'Checked', 'waiting': 'Waiting for your yes', 'published': 'Publish', 'rejected': 'Declined'};
 const _copyWhere = ['instagram', 'facebook', 'linkedin', 'whatsapp', 'amazon', 'flipkart', 'shopify', 'website', 'google business'];
 
 Color _statusCol(String s) => switch (s) {
@@ -96,10 +96,10 @@ class _KalamScreenState extends State<KalamScreen> {
             backgroundColor: Colors.transparent,
             title: Text('${app.aName} · Content writer'),
             bottom: const TabBar(isScrollable: true, tabAlignment: TabAlignment.start, tabs: [
-              Tab(text: 'Likho'),
-              Tab(text: 'Lekh'),
+              Tab(text: 'Write'),
+              Tab(text: 'Article'),
               Tab(text: 'Ideas'),
-              Tab(text: 'Aawaz'),
+              Tab(text: 'Voice'),
               Tab(text: 'Niyam'),
             ]),
           ),
@@ -143,11 +143,11 @@ class _WriteTabState extends State<_WriteTab> with AutomaticKeepAliveClientMixin
     for (final k in ['maker', 'generic_name', 'net_quantity', 'mrp', 'made_on', 'origin', 'care', 'fssai', 'best_before']) k: TextEditingController(),
   };
   static const _prodLabels = {
-    'maker': 'Banane / pack / import wale ka naam + pata',
-    'generic_name': 'Aam naam (jaise "Shrikhand")',
+    'maker': 'Banane / pack / import wale name + address',
+    'generic_name': 'Common name (e.g. "Shrikhand")',
     'net_quantity': 'Net quantity (500 g, 1 L, 2 pcs)',
-    'mrp': 'MRP (sab tax mila ke)',
-    'made_on': 'Banane ka mahina / saal',
+    'mrp': 'MRP (all taxes included)',
+    'made_on': 'Month / year of manufacture',
     'origin': 'Country of origin',
     'care': 'Consumer care (naam, phone, email)',
     'fssai': 'FSSAI licence no. (khane ki cheez)',
@@ -168,7 +168,7 @@ class _WriteTabState extends State<_WriteTab> with AutomaticKeepAliveClientMixin
 
   Future<void> _write() async {
     if (_brief.text.trim().isEmpty && _files.isEmpty && _links.text.trim().isEmpty) {
-      _snack(context, 'Kis baare mein likhna hai, ek line likhiye.');
+      _snack(context, 'Write one line about what to write.');
       return;
     }
     setState(() => _busy = true);
@@ -208,7 +208,7 @@ class _WriteTabState extends State<_WriteTab> with AutomaticKeepAliveClientMixin
     return ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 96), children: [
       Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('Kya likhna hai?', style: display(17)),
+          Text('What should I write?', style: display(17)),
           const SizedBox(height: 8),
           Wrap(spacing: 6, runSpacing: 6, children: [
             for (final e in _kinds.entries)
@@ -225,15 +225,15 @@ class _WriteTabState extends State<_WriteTab> with AutomaticKeepAliveClientMixin
             minLines: 3,
             maxLines: 8,
             decoration: const InputDecoration(
-                labelText: 'Apne shabdon mein bataiye', hintText: 'Jaise: Diwali par 20% chhoot ka email, 2 Nov tak, sirf purane graahakon ke liye'),
+                labelText: 'Tell us in your own words', hintText: 'For example: an email for 20% off at Diwali, until 2 Nov, for old customers only'),
           ),
-          TextField(controller: _keyword, decoration: const InputDecoration(labelText: 'Google keyword (blog / page ke liye, optional)')),
+          TextField(controller: _keyword, decoration: const InputDecoration(labelText: 'Google keyword (for a blog / page, optional)')),
           if (_kind == 'blog' || _kind == 'page')
-            TextField(controller: _exp, minLines: 1, maxLines: 3, decoration: const InputDecoration(labelText: 'Aapka apna anubhav / kissa (Google isse pasand karta hai)')),
-          TextField(controller: _links, decoration: const InputDecoration(labelText: 'Link (apni site / product page), optional')),
+            TextField(controller: _exp, minLines: 1, maxLines: 3, decoration: const InputDecoration(labelText: 'Your own experience / story (Google likes this)')),
+          TextField(controller: _links, decoration: const InputDecoration(labelText: 'Link (your site / product page), optional')),
           const SizedBox(height: 8),
           Wrap(spacing: 6, runSpacing: 4, children: [
-            ChoiceChip(label: const Text('Meri bhasha'), selected: _lang.isEmpty, onSelected: (_) => setState(() => _lang = '')),
+            ChoiceChip(label: const Text('My language'), selected: _lang.isEmpty, onSelected: (_) => setState(() => _lang = '')),
             for (final e in _langs.entries) ChoiceChip(label: Text(e.value), selected: _lang == e.key, onSelected: (_) => setState(() => _lang = e.key)),
           ]),
           if (_kind == 'social')
@@ -255,8 +255,8 @@ class _WriteTabState extends State<_WriteTab> with AutomaticKeepAliveClientMixin
         const SizedBox(height: 12),
         Glass(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('Zaroori jaankari (packed saamaan)', style: display(15)),
-            const Text('Legal Metrology niyam: online bechne par yeh dikhana zaroori. Jo nahi pata, khaali chhodiye: Hoola khud nahi bharega.',
+            Text('Required information (packaged goods)', style: display(15)),
+            const Text('Legal Metrology rule: these must be shown when selling online. Leave blank what you do not know: Hoola will not fill it in.',
                 style: TextStyle(color: C.faint, fontSize: 12)),
             for (final e in _prod.entries) TextField(controller: e.value, decoration: InputDecoration(labelText: _prodLabels[e.key])),
           ]),
@@ -265,9 +265,9 @@ class _WriteTabState extends State<_WriteTab> with AutomaticKeepAliveClientMixin
       const SizedBox(height: 14),
       _busy
           ? const Center(child: Padding(padding: EdgeInsets.all(12), child: CircularProgressIndicator()))
-          : GradientButton(label: 'Likho', icon: Icons.edit_rounded, onTap: _write),
+          : GradientButton(label: 'Write', icon: Icons.edit_rounded, onTap: _write),
       const SizedBox(height: 10),
-      Text('${widget.app.aName} sirf aapke diye facts se likhta hai; jo pata nahi woh [khaali] chhodta hai. Publish aapki haan se hi.',
+      Text('${widget.app.aName} writes only from the facts you give; anything unknown is left [blank]. Publishing is only with your yes.',
           style: const TextStyle(color: C.faint, fontSize: 12)),
     ]);
   }
@@ -296,7 +296,7 @@ class _PiecesTabState extends State<_PiecesTab> {
           for (final e in _statusLabel.entries) ChoiceChip(label: Text(e.value), selected: _status == e.key, onSelected: (_) => setState(() => _status = e.key)),
         ]),
         const SizedBox(height: 8),
-        if (rows.isEmpty) const Padding(padding: EdgeInsets.all(20), child: Text('Abhi koi lekh nahi. "Likho" se shuru kariye.', style: TextStyle(color: C.muted))),
+        if (rows.isEmpty) const Padding(padding: EdgeInsets.all(20), child: Text('No articles yet. Start with "Write".', style: TextStyle(color: C.muted))),
         for (final p in rows)
           Padding(
             padding: const EdgeInsets.only(top: 8),
@@ -371,11 +371,11 @@ class _IdeasTabState extends State<_IdeasTab> with AutomaticKeepAliveClientMixin
     return ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 96), children: [
       Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('Aage ke tyohar aur mauke', style: display(16)),
+          Text('Upcoming festivals and occasions', style: display(16)),
           const SizedBox(height: 4),
-          const Text('Aapke business aur aane wale dino ke hisaab se kya likhein.', style: TextStyle(color: C.faint, fontSize: 12)),
+          const Text('What to write, based on your business and the coming days.', style: TextStyle(color: C.faint, fontSize: 12)),
           const SizedBox(height: 10),
-          _busy ? const Center(child: CircularProgressIndicator()) : GlassButton(label: 'Ideas dikhao', icon: Icons.lightbulb_rounded, onTap: _load),
+          _busy ? const Center(child: CircularProgressIndicator()) : GlassButton(label: 'Show ideas', icon: Icons.lightbulb_rounded, onTap: _load),
         ]),
       ),
       if (dates.isNotEmpty)
@@ -399,7 +399,7 @@ class _IdeasTabState extends State<_IdeasTab> with AutomaticKeepAliveClientMixin
                 alignment: Alignment.centerRight,
                 child: _writing == _s(i['title'])
                     ? const Padding(padding: EdgeInsets.all(8), child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)))
-                    : TextButton(onPressed: _writing.isEmpty ? () => _write(i) : null, child: const Text('Yeh likho')),
+                    : TextButton(onPressed: _writing.isEmpty ? () => _write(i) : null, child: const Text('Write this')),
               ),
             ]),
           ),
@@ -423,12 +423,12 @@ class _VoiceTab extends StatelessWidget {
       context: context,
       builder: (c) => StatefulBuilder(
         builder: (c, set) => AlertDialog(
-          title: const Text('Apna likha hua dijiye'),
+          title: const Text('Give us your own writing'),
           content: SingleChildScrollView(
             child: Column(mainAxisSize: MainAxisSize.min, children: [
-              const Text('Purane post, email, website ka text: jitna aapka asli likha, utna achha.', style: TextStyle(fontSize: 12.5)),
-              TextField(controller: text, minLines: 4, maxLines: 10, decoration: const InputDecoration(labelText: 'Yahan paste kariye')),
-              TextField(controller: link, decoration: const InputDecoration(labelText: 'Ya apni website / blog ka link')),
+              const Text('Old posts, emails, website text: the more of your own real writing, the better.', style: TextStyle(fontSize: 12.5)),
+              TextField(controller: text, minLines: 4, maxLines: 10, decoration: const InputDecoration(labelText: 'Paste here')),
+              TextField(controller: link, decoration: const InputDecoration(labelText: 'Or a link to your website / blog')),
               const SizedBox(height: 8),
               Wrap(spacing: 6, children: [
                 for (final f in files) Chip(label: Text(_s(f['name']))),
@@ -449,8 +449,8 @@ class _VoiceTab extends StatelessWidget {
             ]),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Rehne do')),
-            FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('Seekho')),
+            TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Keep it')),
+            FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('Learn')),
           ],
         ),
       ),
@@ -475,10 +475,10 @@ class _VoiceTab extends StatelessWidget {
     final ok = await showDialog<bool>(
       context: context,
       builder: (c) => AlertDialog(
-        title: const Text('Pakki baat (fact)'),
+        title: const Text('Firm fact'),
         content: Column(mainAxisSize: MainAxisSize.min, children: [
-          TextField(controller: f, minLines: 1, maxLines: 4, decoration: const InputDecoration(labelText: 'Jaise: 100 Mbps plan Rs 499 mahina')),
-          TextField(controller: src, decoration: const InputDecoration(labelText: 'Kahan se (rate card, certificate...)')),
+          TextField(controller: f, minLines: 1, maxLines: 4, decoration: const InputDecoration(labelText: 'For example: 100 Mbps plan Rs 499 a month')),
+          TextField(controller: src, decoration: const InputDecoration(labelText: 'From where (rate card, certificate...)')),
         ]),
         actions: [FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('Jodo'))],
       ),
@@ -517,7 +517,7 @@ class _VoiceTab extends StatelessWidget {
               context: context,
               builder: (d) => AlertDialog(
                 title: Text(label),
-                content: TextField(controller: c, minLines: 3, maxLines: 8, decoration: const InputDecoration(helperText: 'Har line ek')),
+                content: TextField(controller: c, minLines: 3, maxLines: 8, decoration: const InputDecoration(helperText: 'One per line')),
                 actions: [FilledButton(onPressed: () => Navigator.pop(d, true), child: const Text('Save'))],
               ),
             );
@@ -534,7 +534,7 @@ class _VoiceTab extends StatelessWidget {
       Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
-            Expanded(child: Text('Aapki likhne ki aawaz', style: display(16))),
+            Expanded(child: Text('Your writing voice', style: display(16))),
             Pill('${st['samples'] ?? 0} namune', fg: C.accent2),
           ]),
           const SizedBox(height: 6),
@@ -548,30 +548,30 @@ class _VoiceTab extends StatelessWidget {
                   style: const TextStyle(color: C.muted, fontSize: 12.5)),
             ),
           for (final n in [..._strs(v['notes']), ..._strs(v['learned'])]) Text('• $n', style: const TextStyle(color: C.chip, fontSize: 13)),
-          if (_strs(v['phrases']).isNotEmpty) Text('Aapke shabd: ${_strs(v['phrases']).join(', ')}', style: const TextStyle(color: C.muted, fontSize: 12.5)),
+          if (_strs(v['phrases']).isNotEmpty) Text('Your words: ${_strs(v['phrases']).join(', ')}', style: const TextStyle(color: C.muted, fontSize: 12.5)),
           const SizedBox(height: 10),
-          GlassButton(label: 'Mera likha hua seekho', icon: Icons.school_rounded, onTap: () => _learn(context)),
+          GlassButton(label: 'Learn from my writing', icon: Icons.school_rounded, onTap: () => _learn(context)),
           const SizedBox(height: 4),
-          const Text('Aap draft khud badalti hain to bhi Hoola seekhta hai (upar "seekha" mein dikhega).', style: TextStyle(color: C.faint, fontSize: 12)),
+          const Text('Hoola also learns when you edit a draft yourself (it will show above under "learned").', style: TextStyle(color: C.faint, fontSize: 12)),
         ]),
       ),
       const SizedBox(height: 12),
       Glass(
         child: Column(children: [
-          words('tone', 'Andaaz (jaise: dosti wala, seedha, izzat se)', _strs(st['tone'])),
-          words('do_words', 'Yeh shabd pasand hain', _strs(st['do_words'])),
-          words('dont_words', 'Yeh kabhi mat likho', _strs(st['dont_words'])),
-          words('rules', 'Mere niyam', _strs(st['rules'])),
+          words('tone', 'Tone (e.g. friendly, direct, respectful)', _strs(st['tone'])),
+          words('do_words', 'Words I like', _strs(st['do_words'])),
+          words('dont_words', 'Never write these', _strs(st['dont_words'])),
+          words('rules', 'My rules', _strs(st['rules'])),
         ]),
       ),
       const SizedBox(height: 12),
       Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
-            Expanded(child: Text('Pakki baatein (${facts.length})', style: display(16))),
+            Expanded(child: Text('Firm facts (${facts.length})', style: display(16))),
             IconButton(onPressed: () => _addFact(context), icon: const Icon(Icons.add_circle_rounded, color: C.accent)),
           ]),
-          const Text('Daam, aankde, certificate, award: lekh mein sirf yahi ya aapke brief / file ki baatein jaati hain.',
+          const Text('Prices, figures, certificates, awards: only these, or what is in your brief / file, go into an article.',
               style: TextStyle(color: C.faint, fontSize: 12)),
           for (var i = 0; i < facts.length; i++)
             ListTile(
@@ -611,18 +611,18 @@ class _RulesTab extends StatelessWidget {
     final ok = await showDialog<bool>(
       context: context,
       builder: (c) => AlertDialog(
-        title: const Text('WordPress jodiye'),
+        title: const Text('Connect WordPress'),
         content: SingleChildScrollView(
           child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Text('WordPress > Users > Profile > Application Passwords mein "Hoola" naam se naya password banaiye (24 akshar). '
-                'Apna login password mat daaliye.', style: TextStyle(fontSize: 12.5)),
+            const Text('In WordPress > Users > Profile > Application Passwords, make a new password named "Hoola" (24 characters). '
+                'Do not enter your login password.', style: TextStyle(fontSize: 12.5)),
             TextField(controller: url, keyboardType: TextInputType.url, decoration: const InputDecoration(labelText: 'Site (https://...)')),
             TextField(controller: user, decoration: const InputDecoration(labelText: 'WordPress username')),
             TextField(controller: pw, obscureText: true, enableSuggestions: false, autocorrect: false, decoration: const InputDecoration(labelText: 'Application Password')),
           ]),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Rehne do')),
+          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Keep it')),
           FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('Jodo')),
         ],
       ),
@@ -662,19 +662,19 @@ class _RulesTab extends StatelessWidget {
     return ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 96), children: [
       Glass(
         child: Column(children: [
-          row('business', 'Business ka naam', _s(st['business'])),
-          row('about', 'Hum kya karte / bechte hain', _s(st['about']), lines: 4),
-          row('audience', 'Hamare graahak kaun hain', _s(st['audience']), lines: 3),
-          row('language', 'Bhasha (hinglish / hi / en / mr ...)', _s(st['language'])),
-          row('cta', 'Aakhir mein kya karne ko kahein (call karein / order karein)', _s(st['cta'])),
+          row('business', 'Business name', _s(st['business'])),
+          row('about', 'What we do / sell', _s(st['about']), lines: 4),
+          row('audience', 'Who our customers are', _s(st['audience']), lines: 3),
+          row('language', 'Language (hinglish / hi / en / mr ...)', _s(st['language'])),
+          row('cta', 'What to ask readers to do at the end (call / order)', _s(st['cta'])),
           row('contact', 'Phone / WhatsApp', _s(st['contact'])),
           row('website', 'Website', _s(st['website'])),
           row('address', 'Business ka pata (email footer)', _s(st['address']), lines: 3),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
             value: st['ai_note'] == true,
-            title: const Text('"AI ki madad se likha" line jodo'),
-            subtitle: const Text('Blog / page / newsletter ke neeche'),
+            title: const Text('Add a "written with AI help" line'),
+            subtitle: const Text('Below the blog / page / newsletter'),
             onChanged: (v) => _save(context, {'ai_note': v}),
           ),
         ]),
@@ -686,7 +686,7 @@ class _RulesTab extends StatelessWidget {
             const Icon(Icons.public_rounded, color: C.accent),
             const SizedBox(width: 8),
             Expanded(child: Text('WordPress', style: display(16))),
-            Pill(wp['ready'] == true ? 'Juda hai' : 'Nahi juda', fg: wp['ready'] == true ? C.ok : C.faint),
+            Pill(wp['ready'] == true ? 'Juda hai' : 'Not connected', fg: wp['ready'] == true ? C.ok : C.faint),
           ]),
           if (wp['ready'] == true) Text('${wp['url']} · ${wp['user']}', style: const TextStyle(color: C.muted, fontSize: 12.5)),
           const SizedBox(height: 8),
@@ -707,7 +707,7 @@ class _RulesTab extends StatelessWidget {
             ],
           ]),
           const SizedBox(height: 6),
-          const Text('Password band tijori mein rehta hai; Hoola post sirf aapki haan ke baad daalta hai.', style: TextStyle(color: C.faint, fontSize: 12)),
+          const Text('The password stays in a locked safe; Hoola posts only after your yes.', style: TextStyle(color: C.faint, fontSize: 12)),
         ]),
       ),
     ]);
@@ -773,8 +773,8 @@ class _KalamPiecePageState extends State<KalamPiecePage> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (d) => AlertDialog(
-        title: const Text('Kya badalna hai?'),
-        content: TextField(controller: c, minLines: 2, maxLines: 6, decoration: const InputDecoration(hintText: 'Jaise: chhota karo, aur dosti wali bhasha, offer upar likho')),
+        title: const Text('What should change?'),
+        content: TextField(controller: c, minLines: 2, maxLines: 6, decoration: const InputDecoration(hintText: 'For example: make it shorter, friendlier language, put the offer at the top')),
         actions: [FilledButton(onPressed: () => Navigator.pop(d, true), child: const Text('Badlo'))],
       ),
     );
@@ -788,7 +788,7 @@ class _KalamPiecePageState extends State<KalamPiecePage> {
     final body = TextEditingController(text: _s(_p!['body']));
     final ok = await Navigator.of(context).push<bool>(MaterialPageRoute(
       builder: (c) => Scaffold(
-        appBar: AppBar(title: const Text('Khud likhiye'), actions: [TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Save'))]),
+        appBar: AppBar(title: const Text('Write it yourself'), actions: [TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Save'))]),
         body: Padding(
           padding: const EdgeInsets.all(14),
           child: Column(children: [
@@ -808,13 +808,13 @@ class _KalamPiecePageState extends State<KalamPiecePage> {
       context: context,
       builder: (c) => StatefulBuilder(
         builder: (c, set) => AlertDialog(
-          title: const Text('Isi se aur kya banaun?'),
+          title: const Text('What else can I make from this?'),
           content: Wrap(spacing: 6, runSpacing: 6, children: [
             for (final e in _kinds.entries)
               if (e.key != _p!['kind'])
                 FilterChip(label: Text(e.value.$1), selected: pick.contains(e.key), onSelected: (v) => set(() => v ? pick.add(e.key) : pick.remove(e.key))),
           ]),
-          actions: [FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('Banao'))],
+          actions: [FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('Make'))],
         ),
       ),
     );
@@ -838,29 +838,29 @@ class _KalamPiecePageState extends State<KalamPiecePage> {
           padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + MediaQuery.of(c).viewInsets.bottom),
           child: SingleChildScrollView(
             child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('Kahan publish karna hai?', style: display(17)),
+              Text('Where to publish?', style: display(17)),
               const SizedBox(height: 8),
               Wrap(spacing: 6, runSpacing: 6, children: [
-                for (final d in const [('wordpress', 'Meri WordPress site'), ('email', 'Email'), ('page', 'Hoola page (link)'), ('copy', 'Main khud daalungi')])
+                for (final d in const [('wordpress', 'My WordPress site'), ('email', 'Email'), ('page', 'Hoola page (link)'), ('copy', 'Main khud daalungi')])
                   ChoiceChip(label: Text(d.$2), selected: dest == d.$1, onSelected: (_) => set(() => dest = d.$1)),
               ]),
               const SizedBox(height: 10),
               if (dest == 'wordpress')
                 Wrap(spacing: 6, children: [
-                  for (final s in const [('publish', 'Abhi live'), ('draft', 'Draft mein'), ('future', 'Time par')])
+                  for (final s in const [('publish', 'Live now'), ('draft', 'As draft'), ('future', 'At a set time')])
                     ChoiceChip(label: Text(s.$2), selected: status == s.$1, onSelected: (_) => set(() => status = s.$1)),
                 ]),
-              if (dest == 'wordpress' && status == 'future') TextField(controller: when, decoration: const InputDecoration(labelText: 'Kab (jaise: kal 10 baje, 25/10 9:30)')),
+              if (dest == 'wordpress' && status == 'future') TextField(controller: when, decoration: const InputDecoration(labelText: 'When (e.g. tomorrow 10 am, 25/10 9:30)')),
               if (dest == 'email')
-                TextField(controller: to, minLines: 1, maxLines: 4, keyboardType: TextInputType.emailAddress, decoration: const InputDecoration(labelText: 'Kisko (email, 50 tak; comma se)')),
+                TextField(controller: to, minLines: 1, maxLines: 4, keyboardType: TextInputType.emailAddress, decoration: const InputDecoration(labelText: 'To whom (emails, up to 50; comma separated)')),
               if (dest == 'copy')
                 Wrap(spacing: 6, runSpacing: 4, children: [
                   for (final w in _copyWhere) ChoiceChip(label: Text(w), selected: where == w, onSelected: (_) => set(() => where = w)),
                 ]),
               const SizedBox(height: 10),
-              const Text('Pehle saari jaanch hogi; phir ek card aayega, aapki Haan par hi publish.', style: TextStyle(color: C.faint, fontSize: 12)),
+              const Text('All checks run first; then a card will come, and it publishes only with your yes.', style: TextStyle(color: C.faint, fontSize: 12)),
               const SizedBox(height: 10),
-              GradientButton(label: 'Card banao', icon: Icons.verified_rounded, onTap: () => Navigator.pop(c, true)),
+              GradientButton(label: 'Make card', icon: Icons.verified_rounded, onTap: () => Navigator.pop(c, true)),
             ]),
           ),
         ),
@@ -884,7 +884,7 @@ class _KalamPiecePageState extends State<KalamPiecePage> {
         final go = await showDialog<bool>(
           context: context,
           builder: (d) => AlertDialog(
-            title: const Text('Pehle yeh dekhiye'),
+            title: const Text('Look at this first'),
             content: SingleChildScrollView(
               child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
                 for (final b in blockers)
@@ -895,8 +895,8 @@ class _KalamPiecePageState extends State<KalamPiecePage> {
               ]),
             ),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Theek karti hoon')),
-              TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Main jaanti hoon, phir bhi', style: TextStyle(color: C.bad))),
+              TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Let me fix it')),
+              TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('I know, publish anyway', style: TextStyle(color: C.bad))),
             ],
           ),
         );
@@ -919,12 +919,12 @@ class _KalamPiecePageState extends State<KalamPiecePage> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (d) => AlertDialog(
-        title: const Text('Kaisa chala?'),
+        title: const Text('How did it go?'),
         content: Column(mainAxisSize: MainAxisSize.min, children: [
-          TextField(controller: views, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Kitne logon ne dekha')),
+          TextField(controller: views, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'How many people saw it')),
           TextField(controller: clicks, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Clicks / reply')),
           TextField(controller: orders, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Order / enquiry')),
-          TextField(controller: url, decoration: const InputDecoration(labelText: 'Link (jahan daala)')),
+          TextField(controller: url, decoration: const InputDecoration(labelText: 'Link (where it was put)')),
         ]),
         actions: [FilledButton(onPressed: () => Navigator.pop(d, true), child: const Text('Save'))],
       ),
@@ -945,7 +945,7 @@ class _KalamPiecePageState extends State<KalamPiecePage> {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.transparent,
-        title: Text(p == null ? 'Lekh' : '${p['number']} · ${p['kind_label']}'),
+        title: Text(p == null ? 'Article' : '${p['number']} · ${p['kind_label']}'),
         actions: [
           if (p != null)
             PopupMenuButton<String>(
@@ -961,10 +961,10 @@ class _KalamPiecePageState extends State<KalamPiecePage> {
               },
               itemBuilder: (_) => [
                 const PopupMenuItem(value: 'files', child: Text('Word / HTML file')),
-                const PopupMenuItem(value: 'copy', child: Text('Nayi copy')),
-                const PopupMenuItem(value: 'result', child: Text('Kaisa chala (nateeja)')),
-                if (_s(p['page_url']).isNotEmpty) const PopupMenuItem(value: 'unpage', child: Text('Hoola page band karo')),
-                const PopupMenuItem(value: 'delete', child: Text('Mitao')),
+                const PopupMenuItem(value: 'copy', child: Text('New copy')),
+                const PopupMenuItem(value: 'result', child: Text('How it went (result)')),
+                if (_s(p['page_url']).isNotEmpty) const PopupMenuItem(value: 'unpage', child: Text('Turn off the Hoola page')),
+                const PopupMenuItem(value: 'delete', child: Text('Delete')),
               ],
             ),
         ],
@@ -991,7 +991,7 @@ class _KalamPiecePageState extends State<KalamPiecePage> {
                 child: _busy.isNotEmpty
                     ? const SizedBox(height: 48, child: Center(child: CircularProgressIndicator()))
                     : Row(children: [
-                        Expanded(child: GlassButton(label: 'Jaancho', icon: Icons.fact_check_rounded, height: 46, onTap: () => _do('check', () => app.api!.kalamDo(widget.id, 'check', {'conversation_id': app.conversationId ?? ''})))),
+                        Expanded(child: GlassButton(label: 'Check', icon: Icons.fact_check_rounded, height: 46, onTap: () => _do('check', () => app.api!.kalamDo(widget.id, 'check', {'conversation_id': app.conversationId ?? ''})))),
                         const SizedBox(width: 8),
                         Expanded(child: GlassButton(label: 'Badlo', icon: Icons.auto_fix_high_rounded, height: 46, onTap: _revise)),
                         const SizedBox(width: 8),
@@ -1020,12 +1020,12 @@ class _KalamPiecePageState extends State<KalamPiecePage> {
         if (blanks.isNotEmpty)
           Padding(
             padding: const EdgeInsets.only(top: 8),
-            child: Text('Bharna baaki: ${blanks.join(', ')}', style: const TextStyle(color: C.bad, fontSize: 13, fontWeight: FontWeight.w600)),
+            child: Text('Left to fill: ${blanks.join(', ')}', style: const TextStyle(color: C.bad, fontSize: 13, fontWeight: FontWeight.w600)),
           ),
         if (_s(pub['url']).isNotEmpty)
           Padding(
             padding: const EdgeInsets.only(top: 8),
-            child: GlassButton(label: 'Publish link kholo', icon: Icons.open_in_new_rounded, height: 40, onTap: () => Native.openExternal(url: _s(pub['url']))),
+            child: GlassButton(label: 'Open publish link', icon: Icons.open_in_new_rounded, height: 40, onTap: () => Native.openExternal(url: _s(pub['url']))),
           ),
         const SizedBox(height: 8),
         Wrap(spacing: 6, runSpacing: 6, children: [
@@ -1034,10 +1034,10 @@ class _KalamPiecePageState extends State<KalamPiecePage> {
             label: const Text('Copy'),
             onPressed: () {
               Clipboard.setData(ClipboardData(text: _fullText()));
-              _snack(context, 'Copy ho gaya');
+              _snack(context, 'Copied');
             },
           ),
-          if (p['status'] != 'published') ActionChip(avatar: const Icon(Icons.edit_rounded, size: 16), label: const Text('Khud likho'), onPressed: _edit),
+          if (p['status'] != 'published') ActionChip(avatar: const Icon(Icons.edit_rounded, size: 16), label: const Text('Write it myself'), onPressed: _edit),
           ActionChip(avatar: const Icon(Icons.transform_rounded, size: 16), label: const Text('Roop badlo'), onPressed: _repurpose),
         ]),
       ]),
@@ -1052,15 +1052,15 @@ class _KalamPiecePageState extends State<KalamPiecePage> {
     return Glass(
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
-          Expanded(child: Text('Jaanch', style: display(16))),
+          Expanded(child: Text('Check', style: display(16))),
           if (sm.isNotEmpty) ...[
-            Pill('${sm['blockers'] ?? 0} rukawat', fg: (sm['blockers'] ?? 0) == 0 ? C.ok : C.bad),
+            Pill('${sm['blockers'] ?? 0} blockers', fg: (sm['blockers'] ?? 0) == 0 ? C.ok : C.bad),
             const SizedBox(width: 6),
-            Pill('${sm['backed'] ?? 0}/${sm['claims'] ?? 0} daave pakke', fg: C.teal),
+            Pill('${sm['backed'] ?? 0}/${sm['claims'] ?? 0} claims confirmed', fg: C.teal),
           ],
         ]),
         if (p['fresh_check'] != true)
-          const Padding(padding: EdgeInsets.only(top: 4), child: Text('Web se facts abhi nahi jaanche: "Jaancho" dabaiye (publish se pehle apne aap bhi hoga).', style: TextStyle(color: C.faint, fontSize: 12))),
+          const Padding(padding: EdgeInsets.only(top: 4), child: Text('Facts have not been checked against the web yet: tap "Check" (it also happens automatically before publishing).', style: TextStyle(color: C.faint, fontSize: 12))),
         for (final i in items)
           Padding(
             padding: const EdgeInsets.only(top: 8),
@@ -1078,7 +1078,7 @@ class _KalamPiecePageState extends State<KalamPiecePage> {
           ),
         if (claims.isNotEmpty) ...[
           const SizedBox(height: 12),
-          Text('Daave (${claims.length})', style: display(14)),
+          Text('Claims (${claims.length})', style: display(14)),
           for (final c in claims)
             Padding(
               padding: const EdgeInsets.only(top: 6),
@@ -1102,11 +1102,11 @@ class _KalamPiecePageState extends State<KalamPiecePage> {
   }
 
   static String _verdict(String v) => switch (v) {
-        'backed' => 'aapki baat',
+        'backed' => 'your words',
         'supported' => 'web: sahi',
         'contradicted' => 'web: galat',
-        'unclear' => 'pakka nahi',
-        _ => 'jaancha nahi',
+        'unclear' => 'not sure',
+        _ => 'not checked',
       };
   static Color _verdictCol(String v) => switch (v) {
         'backed' || 'supported' => C.ok,
@@ -1158,11 +1158,11 @@ class KalamPieceCard extends StatelessWidget {
         if (sm.isNotEmpty)
           Padding(
             padding: const EdgeInsets.only(top: 6),
-            child: Text('${v['words']} shabd · ${sm['blockers'] ?? 0} rukawat · ${sm['warnings'] ?? 0} dhyan dene wali', style: const TextStyle(color: C.faint, fontSize: 12)),
+            child: Text('${v['words']} words · ${sm['blockers'] ?? 0} blockers · ${sm['warnings'] ?? 0} warnings', style: const TextStyle(color: C.faint, fontSize: 12)),
           ),
         Align(
           alignment: Alignment.centerRight,
-          child: TextButton(onPressed: () => openKalamPiece(context, app, _s(v['id'])), child: const Text('Kholo')),
+          child: TextButton(onPressed: () => openKalamPiece(context, app, _s(v['id'])), child: const Text('Open')),
         ),
       ]),
     );
@@ -1206,7 +1206,7 @@ class _KalamPublishCardState extends State<KalamPublishCard> {
         Row(children: [
           const Icon(Icons.publish_rounded, color: C.accent, size: 20),
           const SizedBox(width: 8),
-          Expanded(child: Text(decided.isEmpty ? 'Publish karein?' : (decided == 'yes' ? 'Publish ho gaya' : 'Publish nahi kiya'), style: display(16))),
+          Expanded(child: Text(decided.isEmpty ? 'Publish?' : (decided == 'yes' ? 'Published' : 'Not published'), style: display(16))),
         ]),
         const SizedBox(height: 6),
         Text('${v['number']} · ${v['title']}', style: const TextStyle(fontWeight: FontWeight.w700)),
@@ -1216,19 +1216,19 @@ class _KalamPublishCardState extends State<KalamPublishCard> {
         if (blockers.isNotEmpty)
           Padding(
             padding: const EdgeInsets.only(top: 8),
-            child: Text('Aapne in rukawaton ke saath bhi kaha: ${blockers.map((b) => b['text']).join('; ')}', style: const TextStyle(color: C.bad, fontSize: 12.5)),
+            child: Text('You said yes even with these blockers: ${blockers.map((b) => b['text']).join('; ')}', style: const TextStyle(color: C.bad, fontSize: 12.5)),
           ),
         if (_s(pub['url']).isNotEmpty)
           Padding(
             padding: const EdgeInsets.only(top: 8),
-            child: GlassButton(label: 'Link kholo', icon: Icons.open_in_new_rounded, height: 40, onTap: () => Native.openExternal(url: _s(pub['url']))),
+            child: GlassButton(label: 'Open link', icon: Icons.open_in_new_rounded, height: 40, onTap: () => Native.openExternal(url: _s(pub['url']))),
           ),
         if (decided.isEmpty) ...[
           const SizedBox(height: 10),
           if (copy)
             const Padding(
               padding: EdgeInsets.only(bottom: 8),
-              child: Text('Copy karke khud daaliye; daal diya to "Daal diya" dabaiye.', style: TextStyle(color: C.faint, fontSize: 12)),
+              child: Text('Copy it and put it in yourself; once you have, tap "Added".', style: TextStyle(color: C.faint, fontSize: 12)),
             ),
           _busy
               ? const Center(child: CircularProgressIndicator())
@@ -1245,7 +1245,7 @@ class _KalamPublishCardState extends State<KalamPublishCard> {
                           try {
                             final p = await widget.app.api!.kalamPiece(_s(v['id']));
                             await Clipboard.setData(ClipboardData(text: _s(p['body'])));
-                            if (context.mounted) _snack(context, 'Copy ho gaya');
+                            if (context.mounted) _snack(context, 'Copied');
                           } catch (e) {
                             if (context.mounted) _snack(context, '$e');
                           }
@@ -1254,12 +1254,12 @@ class _KalamPublishCardState extends State<KalamPublishCard> {
                     ),
                     const SizedBox(width: 8),
                   ],
-                  Expanded(child: GradientButton(label: copy ? 'Daal diya' : 'Haan, publish', height: 44, onTap: () => _decide(true))),
+                  Expanded(child: GradientButton(label: copy ? 'Added' : 'Yes, publish', height: 44, onTap: () => _decide(true))),
                 ]),
         ],
         Align(
           alignment: Alignment.centerRight,
-          child: TextButton(onPressed: () => openKalamPiece(context, widget.app, _s(v['id'])), child: const Text('Poora dekho')),
+          child: TextButton(onPressed: () => openKalamPiece(context, widget.app, _s(v['id'])), child: const Text('View all')),
         ),
       ]),
     );

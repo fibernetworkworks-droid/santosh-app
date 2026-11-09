@@ -52,7 +52,7 @@ Future<Map<String, String>?> _form(BuildContext context, String title, List<(Str
         ]),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Rehne do')),
+        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Keep it')),
         TextButton(onPressed: () => Navigator.pop(d, true), child: Text(ok)),
       ],
     ),
@@ -97,7 +97,7 @@ Future<Map<String, dynamic>?> _ticketSheet(BuildContext context, Santosh app, Ma
     ('bsnl', 'BSNL'),
     ('upstream', 'Upstream'),
     ('customer', 'Customer'),
-    ('electricity', 'Bijli'),
+    ('electricity', 'Power'),
     ('vendor', 'OLT vendor'),
   ];
   final ok = await showModalBottomSheet<bool>(
@@ -113,14 +113,14 @@ Future<Map<String, dynamic>?> _ticketSheet(BuildContext context, Santosh app, Ma
             Wrap(spacing: 6, runSpacing: 6, children: [
               for (final (k, l) in teams) ChoiceChip(label: Text(l), selected: team == k, onSelected: (_) => set(() => team = k)),
             ]),
-            TextField(controller: who, decoration: const InputDecoration(labelText: 'Kisko (khaali = team ka pehla aadmi)')),
+            TextField(controller: who, decoration: const InputDecoration(labelText: 'To whom (blank = the first person in the team)')),
             TextField(controller: phone, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'Mobile (ho to)')),
-            TextField(controller: eta, decoration: const InputDecoration(labelText: 'ETA: "2 ghante", "shaam 6 baje" (pata ho to)')),
+            TextField(controller: eta, decoration: const InputDecoration(labelText: 'ETA: "2 hours", "6 pm" (if known)')),
             if (team == 'bsnl' || team == 'upstream')
               TextField(controller: extRef, decoration: const InputDecoration(labelText: 'Docket / complaint number (ho to)')),
             TextField(controller: note, decoration: const InputDecoration(labelText: 'Note')),
             const SizedBox(height: 12),
-            GradientButton(label: 'Ticket banao', icon: Icons.assignment_rounded, height: 48, onTap: () => Navigator.pop(ctx, true)),
+            GradientButton(label: 'Make ticket', icon: Icons.assignment_rounded, height: 48, onTap: () => Navigator.pop(ctx, true)),
           ]),
         ),
       ),
@@ -146,14 +146,14 @@ Future<void> _customerMessage(BuildContext context, Santosh app, Map<String, dyn
   await showDialog<void>(
     context: context,
     builder: (d) => AlertDialog(
-      title: const Text('Customers ke liye message'),
+      title: const Text('Message for customers'),
       content: SingleChildScrollView(
         child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
           SelectableText(text),
           const SizedBox(height: 8),
           if (_strs(r['blanks']).isNotEmpty)
-            Text('Bharna baaki: ${_strs(r['blanks']).join(', ')}', style: const TextStyle(color: C.warn, fontSize: 12.5)),
-          Text('${phones.length} customer ke number. Aap apne WhatsApp / SMS / broadcast se bhejiye; Hoola khud nahi bhejta.',
+            Text('Left to fill: ${_strs(r['blanks']).join(', ')}', style: const TextStyle(color: C.warn, fontSize: 12.5)),
+          Text('${phones.length} customer numbers. Send it from your own WhatsApp / SMS / broadcast; Hoola does not send it.',
               style: const TextStyle(color: C.muted, fontSize: 12.5)),
         ]),
       ),
@@ -251,7 +251,7 @@ class _IspnocScreenState extends State<IspnocScreen> {
                     if (_s(f['pon']).isNotEmpty) 'PON ${_s(f['pon'])}',
                     '${f['n_affected']} customer',
                     _s(f['duration']),
-                    _list(f['tickets']).isEmpty ? 'ticket nahi' : 'ticket: ${_s(_list(f['tickets']).last['number'])}',
+                    _list(f['tickets']).isEmpty ? 'no ticket' : 'ticket: ${_s(_list(f['tickets']).last['number'])}',
                   ].join(' · '),
                   style: const TextStyle(color: C.muted, fontSize: 12)),
               Text(_s(f['explain']), maxLines: 3, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12.5, height: 1.3)),
@@ -267,13 +267,13 @@ class _IspnocScreenState extends State<IspnocScreen> {
       const SizedBox(height: 10),
       for (final c in _list(d['waiting_haan']))
         Padding(padding: const EdgeInsets.only(bottom: 8), child: IspnocChangeCard(app: widget.app, data: {'change': c}, onDone: _load)),
-      if (_list(d['faults']).isNotEmpty) Text('Khuli dikkat', style: display(15)),
+      if (_list(d['faults']).isNotEmpty) Text('Open problems', style: display(15)),
       const SizedBox(height: 6),
       for (final f in _list(d['faults'])) _faultTile(f),
       for (final t in _list(d['late']))
-        Text('• ${_s(t['number'])} ${_s(t['team_label'])}: SLA se der (due ${_s(t['due'])})', style: const TextStyle(fontSize: 12.5, color: C.bad)),
+        Text('• ${_s(t['number'])} ${_s(t['team_label'])}: late against SLA (due ${_s(t['due'])})', style: const TextStyle(fontSize: 12.5, color: C.bad)),
       for (final c in _list(d['collectors']).where((c) => c['online'] != true && _s(c['last_seen']).isNotEmpty))
-        Text('• Collector ${_s(c['name'])} band (aakhri baar ${_s(c['last_seen'])})', style: const TextStyle(fontSize: 12.5, color: C.warn)),
+        Text('• Collector ${_s(c['name'])} off (last seen ${_s(c['last_seen'])})', style: const TextStyle(fontSize: 12.5, color: C.warn)),
     ]);
   }
 
@@ -295,7 +295,7 @@ class _IspnocScreenState extends State<IspnocScreen> {
   Widget _alarms() {
     final olts = _list(_m(_d?['network'])['olts']);
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      const Text('OLT ka alarm log, syslog, NMS ki CSV ya alert email yahan daaliye. Hoola asli wajah dhoondhega.',
+      const Text('Paste the OLT alarm log, syslog, NMS CSV or alert email here. Hoola will find the real cause.',
           style: TextStyle(color: C.muted, fontSize: 12.5)),
       const SizedBox(height: 8),
       TextField(
@@ -306,7 +306,7 @@ class _IspnocScreenState extends State<IspnocScreen> {
         decoration: const InputDecoration(hintText: '2026-10-23 10:15:01 OLT-AKOT EPON0/1:12 ONU LOS ...', border: OutlineInputBorder()),
       ),
       const SizedBox(height: 8),
-      TextField(controller: _olt, decoration: const InputDecoration(labelText: 'Kaun sa OLT (log mein naam na ho to)')),
+      TextField(controller: _olt, decoration: const InputDecoration(labelText: 'Which OLT (if the log has no name)')),
       if (olts.isNotEmpty)
         Wrap(spacing: 6, children: [
           for (final o in olts) ActionChip(label: Text(_s(o['name'])), onPressed: () => setState(() => _olt.text = _s(o['name']))),
@@ -315,7 +315,7 @@ class _IspnocScreenState extends State<IspnocScreen> {
       Row(children: [
         Expanded(
             child: GradientButton(
-                label: 'Jaancho',
+                label: 'Check',
                 icon: Icons.search_rounded,
                 height: 48,
                 onTap: _busy
@@ -341,7 +341,7 @@ class _IspnocScreenState extends State<IspnocScreen> {
   Widget _tickets() {
     final all = _list(_d?['tickets']);
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      if (all.isEmpty) const Text('Koi khula ticket nahi.', style: TextStyle(color: C.muted)),
+      if (all.isEmpty) const Text('No open tickets.', style: TextStyle(color: C.muted)),
       for (final t in all) Padding(padding: const EdgeInsets.only(bottom: 8), child: IspnocTicketCard(app: widget.app, data: {'ticket': t}, onDone: _load)),
       const SizedBox(height: 8),
       GlassButton(
@@ -363,7 +363,7 @@ class _IspnocScreenState extends State<IspnocScreen> {
   }
 
   Future<void> _addOlt([Map<String, dynamic>? o]) async {
-    final f = await _form(context, o == null ? 'Naya OLT' : _s(o['name']), [
+    final f = await _form(context, o == null ? 'New OLT' : _s(o['name']), [
       if (o == null) ('name', 'Naam (jaise OLT-AKOT-1)'),
       ('make', 'Make: syrotech / vsol / cdata / bdcom / huawei / zte / other'),
       ('model', 'Model'),
@@ -373,7 +373,7 @@ class _IspnocScreenState extends State<IspnocScreen> {
       ('site', 'Site / POP'),
       ('pon_ports', 'PON ports'),
       ('uplinks', 'Uplink ports (comma se: ge0/9, xe0/1)'),
-      ('upstream', 'Uplink kahan jaata hai (BSNL / ISP)'),
+      ('upstream', 'Where the uplink goes (BSNL / ISP)'),
     ], initial: o == null
         ? null
         : {
@@ -392,7 +392,7 @@ class _IspnocScreenState extends State<IspnocScreen> {
   }
 
   Future<void> _findCustomer() async {
-    final f = await _form(context, 'Customer dhoondho', const [('q', 'Naam / mobile / SN / MAC / account')], ok: 'Dhoondho');
+    final f = await _form(context, 'Find a customer', const [('q', 'Naam / mobile / SN / MAC / account')], ok: 'Find');
     if (f == null || (f['q'] ?? '').isEmpty || !mounted) return;
     final r = await _call(context, widget.app, 'GET', '/api/ispnoc/onts?q=${Uri.encodeQueryComponent(f['q']!)}');
     if (r == null || !mounted) return;
@@ -423,22 +423,22 @@ class _IspnocScreenState extends State<IspnocScreen> {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Glass(
         child: Text(
-            '${_list(n['olts']).length} OLT · ${n['onts'] ?? 0} customer ONT · ${n['onts_down'] ?? 0} band · ${n['weak_rx'] ?? 0} ki light kam · '
+            '${_list(n['olts']).length} OLT · ${n['onts'] ?? 0} customer ONT · ${n['onts_down'] ?? 0} band · ${n['weak_rx'] ?? 0} low light · '
             '${_list(n['splitters']).length} splitter',
             style: const TextStyle(fontWeight: FontWeight.w700)),
       ),
       const SizedBox(height: 8),
       Wrap(spacing: 8, runSpacing: 8, children: [
-        GlassButton(label: 'Naya OLT', icon: Icons.add_rounded, onTap: _busy ? null : () => _addOlt()),
-        GlassButton(label: 'Sheet se daalo', icon: Icons.table_view_rounded, onTap: _busy ? null : _import),
-        GlassButton(label: 'Customer dhoondho', icon: Icons.search_rounded, onTap: _findCustomer),
+        GlassButton(label: 'New OLT', icon: Icons.add_rounded, onTap: _busy ? null : () => _addOlt()),
+        GlassButton(label: 'Import from a sheet', icon: Icons.table_view_rounded, onTap: _busy ? null : _import),
+        GlassButton(label: 'Find a customer', icon: Icons.search_rounded, onTap: _findCustomer),
         GlassButton(
             label: 'Light ka hisaab',
             icon: Icons.calculate_rounded,
             onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => _OpticsPage(app: widget.app)))),
       ]),
       const SizedBox(height: 6),
-      const Text('Sheet ke columns: customer, mobile, sn / mac, olt, pon, onu, splitter, route, address. Password ka column kabhi mat daaliye.',
+      const Text('Sheet columns: customer, mobile, sn / mac, olt, pon, onu, splitter, route, address. Never include a password column.',
           style: TextStyle(color: C.muted, fontSize: 12)),
       const SizedBox(height: 10),
       for (final o in _list(n['olts']))
@@ -468,15 +468,15 @@ class _IspnocScreenState extends State<IspnocScreen> {
   }
 
   Future<void> _newChange() async {
-    final f = await _form(context, 'Equipment par badlav (card banega)', const [
-      ('action', 'Kya: reboot_ont / pon_reset / ont_disable / ont_enable / uplink_reset / custom'),
-      ('olt', 'OLT (naam ya IP)'),
+    final f = await _form(context, 'Change on equipment (a card will be made)', const [
+      ('action', 'What: reboot_ont / pon_reset / ont_disable / ont_enable / uplink_reset / custom'),
+      ('olt', 'OLT (name or IP)'),
       ('pon', 'PON (jaise 0/1)'),
       ('onu', 'ONU number'),
-      ('port', 'Uplink port (uplink_reset ke liye)'),
-      ('commands', 'Apni lines (custom ho to, har line nayi line par)'),
-      ('reason', 'Kyun'),
-    ], ok: 'Card banao', multi: const {'commands'});
+      ('port', 'Uplink port (for uplink_reset)'),
+      ('commands', 'Your own lines (if custom, one command per line)'),
+      ('reason', 'Why'),
+    ], ok: 'Make card', multi: const {'commands'});
     if (f == null) return;
     await _run('POST', '/api/ispnoc/changes', {
       ...f,
@@ -487,12 +487,12 @@ class _IspnocScreenState extends State<IspnocScreen> {
   Widget _changes() {
     final all = _list(_d?['changes']);
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      const Text('OLT / ONT par koi bhi badlav sirf aapki haan se. Collector ho to wahi chalata hai, warna steps milte hain.',
+      const Text('Any change on an OLT / ONT happens only with your yes. If there is a collector it runs it, otherwise you get the steps.',
           style: TextStyle(color: C.muted, fontSize: 12.5)),
       const SizedBox(height: 8),
-      GlassButton(label: 'Naya badlav card', icon: Icons.add_task_rounded, onTap: _busy ? null : _newChange),
+      GlassButton(label: 'New change card', icon: Icons.add_task_rounded, onTap: _busy ? null : _newChange),
       const SizedBox(height: 10),
-      if (all.isEmpty) const Text('Koi badlav nahi.', style: TextStyle(color: C.muted)),
+      if (all.isEmpty) const Text('No changes.', style: TextStyle(color: C.muted)),
       for (final c in all) Padding(padding: const EdgeInsets.only(bottom: 8), child: IspnocChangeCard(app: widget.app, data: {'change': c}, onDone: _load)),
     ]);
   }
@@ -505,18 +505,18 @@ class _IspnocScreenState extends State<IspnocScreen> {
       return l.isEmpty ? '' : _s(l.first[k]);
     }
 
-    final f = await _form(context, 'ISP ki jaankari', [
-      ('isp_name', 'ISP / franchise ka naam'),
-      ('model', 'isp (apna licence) / franchise (BSNL TIP) / lco'),
-      ('upstream', 'Bandwidth kahan se (BSNL / Airtel / ...)'),
+    final f = await _form(context, 'ISP details', [
+      ('isp_name', 'ISP / franchise name'),
+      ('model', 'isp (own licence) / franchise (BSNL TIP) / lco'),
+      ('upstream', 'Where the bandwidth comes from (BSNL / Airtel / ...)'),
       ('optics', 'Optics: gpon_b+ / gpon_c+ / epon_px20 / epon_px20+'),
-      ('bsnl_sla_hours', 'BSNL agreement ke SLA ghante (agreement se)'),
+      ('bsnl_sla_hours', 'SLA hours from the BSNL agreement (from the agreement)'),
       ('field_name', 'Field fibre team: naam'),
       ('field_phone', 'Field fibre team: mobile'),
       ('noc_name', 'NOC: naam'),
       ('noc_phone', 'NOC: mobile'),
-      ('bsnl_name', 'BSNL sampark: naam (SDE / JTO)'),
-      ('bsnl_phone', 'BSNL sampark: mobile'),
+      ('bsnl_name', 'BSNL contact: name (SDE / JTO)'),
+      ('bsnl_phone', 'BSNL contact: mobile'),
       ('morning_time', 'Subah ka note (HH:MM)'),
     ], initial: {
       'isp_name': _s(st['isp_name']),
@@ -549,7 +549,7 @@ class _IspnocScreenState extends State<IspnocScreen> {
   }
 
   Future<void> _newCollector() async {
-    final f = await _form(context, 'Naya collector', const [('name', 'Naam (jaise Akot POP box)'), ('site', 'Site / POP')], ok: 'Banao');
+    final f = await _form(context, 'New collector', const [('name', 'Naam (jaise Akot POP box)'), ('site', 'Site / POP')], ok: 'Make');
     if (f == null || (f['name'] ?? '').isEmpty) return;
     final r = await _run('POST', '/api/ispnoc/collectors', f);
     if (r == null || !mounted) return;
@@ -559,15 +559,15 @@ class _IspnocScreenState extends State<IspnocScreen> {
       context: context,
       barrierDismissible: false,
       builder: (d) => AlertDialog(
-        title: const Text('Collector ka secret (sirf abhi)'),
+        title: const Text('Collector secret (shown only now)'),
         content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text('collector_id: ${_s(c['id'])}', style: const TextStyle(fontFamily: 'monospace', fontSize: 12)),
           const SizedBox(height: 6),
           SelectableText(secret, style: const TextStyle(fontFamily: 'monospace', fontSize: 12)),
           const SizedBox(height: 8),
           const Text(
-              'Ise apne POP / office ke computer par HOOLA_COLLECTOR_SECRET mein daaliye. Device ke password / SSH key wahi rahenge, Hoola ke paas nahi. '
-              'Yeh secret dobara nahi dikhega.',
+              'Put this in HOOLA_COLLECTOR_SECRET on your POP / office computer. Device passwords / SSH keys stay there, not with Hoola. '
+              'This secret will not be shown again.',
               style: TextStyle(fontSize: 12.5, color: C.muted)),
         ]),
         actions: [
@@ -576,7 +576,7 @@ class _IspnocScreenState extends State<IspnocScreen> {
                 Clipboard.setData(ClipboardData(text: 'collector_id=${_s(c['id'])}\nHOOLA_COLLECTOR_SECRET=$secret'));
                 Navigator.pop(d);
               },
-              child: const Text('Copy karke band')),
+              child: const Text('Copy and close')),
         ],
       ),
     );
@@ -593,7 +593,7 @@ class _IspnocScreenState extends State<IspnocScreen> {
           title: Text(_s(c['name'])),
           content: SingleChildScrollView(
             child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('Yeh collector kin OLT ke liye bolega:', style: TextStyle(fontSize: 12.5)),
+              const Text('This collector will speak for these OLTs:', style: TextStyle(fontSize: 12.5)),
               for (final o in olts)
                 CheckboxListTile(
                   dense: true,
@@ -604,14 +604,14 @@ class _IspnocScreenState extends State<IspnocScreen> {
               SwitchListTile(
                 dense: true,
                 value: changes,
-                title: const Text('Haan kiye hue badlav yeh chala sakta hai'),
-                subtitle: const Text('Band = sirf alarm aur "show" padhega'),
+                title: const Text('It may run changes you have approved'),
+                subtitle: const Text('Off = it will only read alarms and "show" output'),
                 onChanged: (v) => set(() => changes = v),
               ),
             ]),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Rehne do')),
+            TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Keep it')),
             TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Save')),
           ],
         ),
@@ -628,10 +628,10 @@ class _IspnocScreenState extends State<IspnocScreen> {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(_s(st['isp_name']).isEmpty ? 'ISP ka naam nahi diya' : _s(st['isp_name']), style: const TextStyle(fontWeight: FontWeight.w800)),
+          Text(_s(st['isp_name']).isEmpty ? 'No ISP name given' : _s(st['isp_name']), style: const TextStyle(fontWeight: FontWeight.w800)),
           Text('Roop: ${_s(st['model'])} · upstream: ${_s(st['upstream'])} · optics: ${_s(st['optics_label'])}',
               style: const TextStyle(color: C.muted, fontSize: 12.5)),
-          Text(st['bsnl_sla_hours'] == null ? 'BSNL SLA ghante: nahi diye (agreement se daaliye)' : 'BSNL SLA: ${_s(st['bsnl_sla_hours'])} ghante',
+          Text(st['bsnl_sla_hours'] == null ? 'BSNL SLA hours: not given (enter from the agreement)' : 'BSNL SLA: ${_s(st['bsnl_sla_hours'])} hours',
               style: const TextStyle(color: C.muted, fontSize: 12.5)),
           for (final e in _m(st['teams']).entries)
             Text('${_s(_m(_d?['teams_all'])[e.key])}: ${_list(e.value).map((p) => _s(p['name'])).join(', ')}', style: const TextStyle(fontSize: 12.5)),
@@ -640,8 +640,8 @@ class _IspnocScreenState extends State<IspnocScreen> {
       const SizedBox(height: 8),
       GlassButton(label: 'Badlo', icon: Icons.edit_rounded, onTap: _busy ? null : _settings),
       const SizedBox(height: 10),
-      Text('Collector (aapke network par)', style: display(14)),
-      const Text('Ek chhota script jo aapke POP ke computer par chalta hai: OLT ka syslog leta hai, sirf "show" commands chalata hai, Hoola ko signed bhejta hai.',
+      Text('Collector (on your network)', style: display(14)),
+      const Text('A small script that runs on your POP computer: it takes the OLT syslog, runs only "show" commands, and sends signed data to Hoola.',
           style: TextStyle(color: C.muted, fontSize: 12)),
       for (final c in _list(_d?['collectors']))
         ListTile(
@@ -649,25 +649,25 @@ class _IspnocScreenState extends State<IspnocScreen> {
           contentPadding: EdgeInsets.zero,
           leading: Icon(Icons.memory_rounded, color: c['online'] == true ? C.ok : C.muted),
           title: Text(_s(c['name'])),
-          subtitle: Text('${c['online'] == true ? 'juda hai' : 'band'} · ${_s(c['last_seen'])} · badlav: ${c['changes_ok'] == true ? 'haan' : 'nahi'}'),
+          subtitle: Text('${c['online'] == true ? 'connected' : 'off'} · ${_s(c['last_seen'])} · changes: ${c['changes_ok'] == true ? 'yes' : 'no'}'),
           onTap: () => _collectorOlts(c),
         ),
       Wrap(spacing: 8, runSpacing: 8, children: [
-        GlassButton(label: 'Naya collector', icon: Icons.add_link_rounded, onTap: _busy ? null : _newCollector),
+        GlassButton(label: 'New collector', icon: Icons.add_link_rounded, onTap: _busy ? null : _newCollector),
         GlassButton(
             label: 'Script ka link copy',
             icon: Icons.code_rounded,
             onTap: () {
               Clipboard.setData(const ClipboardData(text: '/api/ispnoc/collector-script'));
-              _snack(context, 'Apne Hoola server ke address ke aage yeh path jodkar script download kijiye (app ki key ke saath).');
+              _snack(context, 'Download the script by adding this path after your Hoola server address (with the app key).');
             }),
       ]),
       const SizedBox(height: 10),
-      Text('Theek karne ke ghante (shuruaati, aap badal sakti hain)', style: display(14)),
+      Text('Hours to fix (starting values, you can change them)', style: display(14)),
       Text(sla.entries.where((e) => (e.value is num) && (e.value as num) > 0).map((e) => '${e.key} ${e.value}h').join(' · '),
           style: const TextStyle(fontSize: 12, color: C.muted)),
       const SizedBox(height: 10),
-      Text('Niyam aur sources', style: display(14)),
+      Text('Rules and sources', style: display(14)),
       for (final v in facts.values) Padding(padding: const EdgeInsets.only(bottom: 4), child: Text('• ${_s(v)}', style: const TextStyle(fontSize: 12))),
       for (final src in _list(_d?['sources']))
         InkWell(
@@ -681,14 +681,14 @@ class _IspnocScreenState extends State<IspnocScreen> {
   Widget build(BuildContext context) => Scaffold(
         appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('NOC Sahayak (ISP network)')),
         floatingActionButton: _tab == 0
-            ? FloatingActionButton.extended(onPressed: () => setState(() => _tab = 1), icon: const Icon(Icons.notifications_active_rounded), label: const Text('Alarm daalo'))
+            ? FloatingActionButton.extended(onPressed: () => setState(() => _tab = 1), icon: const Icon(Icons.notifications_active_rounded), label: const Text('Add an alarm'))
             : null,
         body: Aurora(
           child: RefreshIndicator(
             onRefresh: _load,
             child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 90), children: [
               Wrap(spacing: 6, runSpacing: 6, children: [
-                for (final (i, t) in const [(0, 'Aaj'), (1, 'Alarm'), (2, 'Tickets'), (3, 'Network'), (4, 'Badlav'), (5, 'Niyam')])
+                for (final (i, t) in const [(0, 'Aaj'), (1, 'Alarm'), (2, 'Tickets'), (3, 'Network'), (4, 'Change'), (5, 'Niyam')])
                   ChoiceChip(label: Text(t), selected: _tab == i, onSelected: (_) => setState(() => _tab = i)),
               ]),
               const SizedBox(height: 12),
@@ -740,7 +740,7 @@ class _IspnocFaultPageState extends State<IspnocFaultPage> {
   Widget build(BuildContext context) {
     final f = _f;
     return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(f == null ? 'Dikkat' : '${_s(f['number'])} · ${_s(f['title'])}')),
+      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(f == null ? 'Problem' : '${_s(f['number'])} · ${_s(f['title'])}')),
       body: Aurora(
         child: f == null
             ? const Center(child: CircularProgressIndicator())
@@ -753,7 +753,7 @@ class _IspnocFaultPageState extends State<IspnocFaultPage> {
                   for (final e in _list(f['evidence']))
                     Text('${_s(e['at']).replaceFirst('T', ' ')}  ${_s(e['line'])}', style: const TextStyle(fontFamily: 'monospace', fontSize: 11)),
                   const SizedBox(height: 10),
-                  Text('Asar wale customer (${f['n_affected']})', style: display(14)),
+                  Text('Affected customers (${f['n_affected']})', style: display(14)),
                   for (final a in _list(f['affected']))
                     Text(
                         '• ${_s(a['customer']).isEmpty ? _s(a['label']) : _s(a['customer'])} ${_s(a['phone'])} ${_s(a['address'])}'
@@ -841,7 +841,7 @@ class _IspnocFaultCardState extends State<IspnocFaultCard> {
         Wrap(spacing: 8, runSpacing: 8, children: [
           if (open)
             GradientButton(
-                label: _list(f['tickets']).isEmpty ? 'Ticket banao' : 'Aur ticket',
+                label: _list(f['tickets']).isEmpty ? 'Make ticket' : 'Another ticket',
                 icon: Icons.assignment_rounded,
                 height: 40,
                 onTap: _busy
@@ -856,13 +856,13 @@ class _IspnocFaultCardState extends State<IspnocFaultCard> {
             GlassButton(label: 'Customer message', icon: Icons.campaign_rounded, height: 40, onTap: () => _customerMessage(context, widget.app, f)),
           if (open)
             GlassButton(
-                label: 'Theek ho gaya',
+                label: 'Fixed',
                 icon: Icons.check_circle_rounded,
                 height: 40,
                 onTap: _busy
                     ? null
                     : () async {
-                        final n = await _form(context, 'Kya kiya?', const [('note', 'Note (jaise "splice kiya")')], ok: 'Theek');
+                        final n = await _form(context, 'What was done?', const [('note', 'Note (jaise "splice kiya")')], ok: 'Theek');
                         if (n == null || !context.mounted) return;
                         await _after(await _call(context, widget.app, 'POST', '/api/ispnoc/faults/${_s(f['id'])}/resolve', n));
                       }),
@@ -874,7 +874,7 @@ class _IspnocFaultCardState extends State<IspnocFaultCard> {
                 onTap: () async => _after(await _call(context, widget.app, 'POST', '/api/ispnoc/changes', {...sg, 'fault': f['id'], 'reason': sg['why']}))),
           if (!widget.full)
             GlassButton(
-                label: 'Kholo',
+                label: 'Open',
                 icon: Icons.open_in_new_rounded,
                 height: 40,
                 onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => IspnocFaultPage(app: widget.app, id: _s(f['id']))))),
@@ -941,16 +941,16 @@ class _IspnocTicketCardState extends State<IspnocTicketCard> {
           GlassButton(label: 'WhatsApp', icon: Icons.chat_rounded, height: 40, onTap: () => _open(context, _s(t['wa_link']))),
           if (_s(t['tel']).isNotEmpty) GlassButton(label: 'Call', icon: Icons.call_rounded, height: 40, onTap: () => _open(context, _s(t['tel']))),
           if (open) ...[
-            GlassButton(label: 'Pahunch gaye', icon: Icons.place_rounded, height: 40, onTap: () => _patch({'status': 'on_site'})),
+            GlassButton(label: 'Arrived', icon: Icons.place_rounded, height: 40, onTap: () => _patch({'status': 'on_site'})),
             GlassButton(
                 label: 'ETA',
                 icon: Icons.schedule_rounded,
                 height: 40,
                 onTap: () async {
-                  final f = await _form(context, 'Naya ETA', const [('eta', '"2 ghante" / "shaam 6 baje" / "18:30"')], ok: 'Save');
+                  final f = await _form(context, 'New ETA', const [('eta', '"2 hours" / "6 pm" / "18:30"')], ok: 'Save');
                   if (f != null && (f['eta'] ?? '').isNotEmpty) await _patch({'eta': f['eta']});
                 }),
-            GradientButton(label: 'Theek ho gaya', icon: Icons.check_rounded, height: 40, onTap: () => _patch({'status': 'fixed'})),
+            GradientButton(label: 'Fixed', icon: Icons.check_rounded, height: 40, onTap: () => _patch({'status': 'fixed'})),
           ],
         ]),
       ]),
@@ -996,17 +996,17 @@ class _IspnocChangeCardState extends State<IspnocChangeCard> {
       final sure = await showDialog<bool>(
         context: context,
         builder: (d) => AlertDialog(
-          title: const Text('Pakka?'),
+          title: const Text('Sure?'),
           content: Text('${_s(_c['action_label'])} on ${_s(_c['olt'])}. ${_s(_c['risk'])}'),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Nahi')),
-            TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Haan, karo')),
+            TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('No')),
+            TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Yes, do it')),
           ],
         ),
       );
       if (sure != true) return;
     } else {
-      final f = await _form(context, 'Kyun nahi? (zaroori nahi)', const [('reason', 'Wajah')], ok: 'Mana karo');
+      final f = await _form(context, 'Why not? (optional)', const [('reason', 'Reason')], ok: 'Decline');
       if (f == null) return;
       reason = f['reason'] ?? '';
     }
@@ -1015,8 +1015,8 @@ class _IspnocChangeCardState extends State<IspnocChangeCard> {
   }
 
   Future<void> _edit() async {
-    final f = await _form(context, 'Lines badlo (har line nayi line par)', const [('commands', 'Commands'), ('rollback', 'Rollback')],
-        initial: {'commands': _strs(_c['commands']).join('\n'), 'rollback': _strs(_c['rollback']).join('\n')}, multi: const {'commands', 'rollback'}, ok: 'Naya card');
+    final f = await _form(context, 'Change the lines (one command per line)', const [('commands', 'Commands'), ('rollback', 'Rollback')],
+        initial: {'commands': _strs(_c['commands']).join('\n'), 'rollback': _strs(_c['rollback']).join('\n')}, multi: const {'commands', 'rollback'}, ok: 'New card');
     if (f == null || (f['commands'] ?? '').isEmpty) return;
     List<String> lines(String? v) => (v ?? '').split('\n').where((x) => x.trim().isNotEmpty).toList();
     await _post('/api/ispnoc/changes/${_s(_c['id'])}', {'commands': lines(f['commands']), 'rollback': lines(f['rollback'])}, method: 'PUT');
@@ -1034,7 +1034,7 @@ class _IspnocChangeCardState extends State<IspnocChangeCard> {
           const Icon(Icons.settings_suggest_rounded, color: C.accent),
           const SizedBox(width: 8),
           Expanded(
-              child: Text('${st == 'waiting' ? 'Aapki haan chahiye' : _s(c['status_label'])} · ${_s(c['number'])}',
+              child: Text('${st == 'waiting' ? 'Needs your yes' : _s(c['status_label'])} · ${_s(c['number'])}',
                   style: const TextStyle(fontWeight: FontWeight.w800))),
           Pill(_s(c['make']).isEmpty ? 'OLT' : _s(c['make'])),
         ]),
@@ -1043,8 +1043,8 @@ class _IspnocChangeCardState extends State<IspnocChangeCard> {
             '${_s(c['action_label'])} · ${_s(c['olt'])} ${_s(c['olt_ip'])}'
             '${_s(c['pon']).isNotEmpty ? ' · PON ${_s(c['pon'])}' : ''}${_s(c['onu']).isNotEmpty ? ' ONU ${_s(c['onu'])}' : ''}',
             style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-        if (_s(c['reason']).isNotEmpty) Text('Kyun: ${_s(c['reason'])}', style: const TextStyle(fontSize: 12, color: C.muted)),
-        if (_s(c['risk']).isNotEmpty) Text('Dhyaan: ${_s(c['risk'])}', style: const TextStyle(fontSize: 12, color: C.warn)),
+        if (_s(c['reason']).isNotEmpty) Text('Why: ${_s(c['reason'])}', style: const TextStyle(fontSize: 12, color: C.muted)),
+        if (_s(c['risk']).isNotEmpty) Text('Note: ${_s(c['risk'])}', style: const TextStyle(fontSize: 12, color: C.warn)),
         const SizedBox(height: 6),
         Container(
           width: double.infinity,
@@ -1054,7 +1054,7 @@ class _IspnocChangeCardState extends State<IspnocChangeCard> {
             for (final l in _strs(c['commands'])) Text(l, style: mono),
             if (_strs(c['rollback']).isNotEmpty) ...[
               const SizedBox(height: 6),
-              const Text('Wapas (rollback):', style: TextStyle(fontSize: 11, color: C.muted)),
+              const Text('Rollback:', style: TextStyle(fontSize: 11, color: C.muted)),
               for (final l in _strs(c['rollback'])) Text(l, style: mono),
             ],
           ]),
@@ -1068,7 +1068,7 @@ class _IspnocChangeCardState extends State<IspnocChangeCard> {
         const SizedBox(height: 8),
         if (st == 'waiting')
           Row(children: [
-            Expanded(child: GradientButton(label: 'Haan, karo', icon: Icons.check_rounded, height: 44, onTap: _busy ? null : () => _decide(true))),
+            Expanded(child: GradientButton(label: 'Yes, do it', icon: Icons.check_rounded, height: 44, onTap: _busy ? null : () => _decide(true))),
             const SizedBox(width: 8),
             Expanded(child: GlassButton(label: 'Mana', icon: Icons.close_rounded, height: 44, onTap: _busy ? null : () => _decide(false))),
             const SizedBox(width: 8),
@@ -1078,11 +1078,11 @@ class _IspnocChangeCardState extends State<IspnocChangeCard> {
           Row(children: [
             Expanded(
                 child: GradientButton(
-                    label: 'Maine kar diya', icon: Icons.done_all_rounded, height: 42, onTap: _busy ? null : () => _post('/api/ispnoc/changes/${_s(c['id'])}/done', {'ok': true}))),
+                    label: 'I did it', icon: Icons.done_all_rounded, height: 42, onTap: _busy ? null : () => _post('/api/ispnoc/changes/${_s(c['id'])}/done', {'ok': true}))),
             const SizedBox(width: 8),
             Expanded(
                 child: GlassButton(
-                    label: 'Nahi hua', icon: Icons.error_outline_rounded, height: 42, onTap: _busy ? null : () => _post('/api/ispnoc/changes/${_s(c['id'])}/done', {'ok': false}))),
+                    label: 'Not done', icon: Icons.error_outline_rounded, height: 42, onTap: _busy ? null : () => _post('/api/ispnoc/changes/${_s(c['id'])}/done', {'ok': false}))),
           ]),
       ]),
     );
@@ -1118,13 +1118,13 @@ class IspnocDayCard extends StatelessWidget {
           Row(children: [
             const Icon(Icons.lan_rounded, color: C.accent),
             const SizedBox(width: 8),
-            Expanded(child: Text('Aaj ka network', style: display(14))),
+            Expanded(child: Text('Today\'s network', style: display(14))),
           ]),
           const SizedBox(height: 6),
           Text(_s(data['text']).isEmpty ? _s(data['say']) : _s(data['text']), style: const TextStyle(fontSize: 12.5, height: 1.35)),
           const SizedBox(height: 8),
           GlassButton(
-              label: 'NOC kholo',
+              label: 'Open NOC',
               icon: Icons.open_in_new_rounded,
               height: 40,
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => IspnocScreen(app: app)))),
@@ -1182,14 +1182,14 @@ class _IspnocReportPageState extends State<_IspnocReportPage> {
             Glass(child: Text(_s(r['say']), style: const TextStyle(fontWeight: FontWeight.w700))),
             const SizedBox(height: 8),
             for (final k in _list(r['by_kind']))
-              Text('• ${_s(k['title'])}: ${k['count']} baar${k['mttr_hours'] != null ? ', ausat ${_s(k['mttr_hours'])} ghante' : ''}',
+              Text('• ${_s(k['title'])}: ${k['count']} times${k['mttr_hours'] != null ? ', ausat ${_s(k['mttr_hours'])} ghante' : ''}',
                   style: const TextStyle(fontSize: 12.5)),
             const SizedBox(height: 8),
             for (final t in _list(r['teams']))
-              Text('• ${_s(t['label'])}: ${t['tickets']} ticket, ${t['fixed']} theek${t['sla_pct'] != null ? ', SLA mein ${t['sla_pct']}%' : ''}',
+              Text('• ${_s(t['label'])}: ${t['tickets']} tickets, ${t['fixed']} fixed${t['sla_pct'] != null ? ', ${t['sla_pct']}% within SLA' : ''}',
                   style: const TextStyle(fontSize: 12.5)),
             const SizedBox(height: 8),
-            for (final p in _list(r['top_pons'])) Text('• ${_s(p['pon'])}: ${p['count']} baar', style: const TextStyle(fontSize: 12.5, color: C.warn)),
+            for (final p in _list(r['top_pons'])) Text('• ${_s(p['pon'])}: ${p['count']} times', style: const TextStyle(fontSize: 12.5, color: C.warn)),
             for (final tip in _strs(r['tips'])) Text(tip, style: const TextStyle(fontSize: 12.5, color: C.accentSoft)),
           ],
         ]),
@@ -1241,10 +1241,10 @@ class _OpticsPageState extends State<_OpticsPage> {
                 ChoiceChip(label: Text(c), selected: _cls == c, onSelected: (_) => setState(() => _cls = c)),
             ]),
             TextField(controller: _km, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Fibre km')),
-            TextField(controller: _splits, decoration: const InputDecoration(labelText: 'Splitter (jaise 8, 8 ya 4, 16)')),
-            TextField(controller: _rx, keyboardType: const TextInputType.numberWithOptions(signed: true, decimal: true), decoration: const InputDecoration(labelText: 'Naapa hua Rx dBm (ho to)')),
+            TextField(controller: _splits, decoration: const InputDecoration(labelText: 'Splitter (e.g. 8, 8 or 4, 16)')),
+            TextField(controller: _rx, keyboardType: const TextInputType.numberWithOptions(signed: true, decimal: true), decoration: const InputDecoration(labelText: 'Measured Rx dBm (if any)')),
             const SizedBox(height: 10),
-            GradientButton(label: 'Hisaab lagao', icon: Icons.calculate_rounded, height: 46, onTap: _go),
+            GradientButton(label: 'Calculate', icon: Icons.calculate_rounded, height: 46, onTap: _go),
             if (_out != null) ...[
               const SizedBox(height: 10),
               Glass(child: Text(_s(_out!['say']), style: const TextStyle(fontSize: 13, height: 1.35))),

@@ -14,7 +14,7 @@ IconData _vIcon(String v) => switch (v) {
 
 const _factLabels = {
   'app_name': 'App', 'package': 'Package', 'version': 'Version', 'signed_by': 'Sign kiya', 'company': 'Company',
-  'product': 'Product', 'description': 'Kaam', 'built_with': 'Bana hai', 'architecture': 'PC type', 'files_inside': 'Andar files',
+  'product': 'Product', 'description': 'Kaam', 'built_with': 'Made', 'architecture': 'PC type', 'files_inside': 'Files inside',
 };
 
 /// Chat card: App Jaanch verdict for an APK / EXE / file (never run, only read).
@@ -54,7 +54,7 @@ class AppCheckCard extends StatelessWidget {
                 ]),
               ),
             if (perms > 0)
-              Text('$perms permissions maangta hai', style: const TextStyle(color: C.muted, fontSize: 12.5)),
+              Text('Asks for $perms permissions', style: const TextStyle(color: C.muted, fontSize: 12.5)),
           ],
           if (flags.isNotEmpty) ...[
             const SizedBox(height: 8),
@@ -83,7 +83,7 @@ class AppCheckCard extends StatelessWidget {
             Padding(padding: const EdgeInsets.only(top: 4), child: Text(l, style: const TextStyle(color: C.faint, fontSize: 11.5))),
           const Padding(
             padding: EdgeInsets.only(top: 6),
-            child: Text('File chalayi nahi gayi, sirf padhi gayi (REA).', style: TextStyle(color: C.faint, fontSize: 11)),
+            child: Text('The file was not run, only read (REA).', style: TextStyle(color: C.faint, fontSize: 11)),
           ),
         ]),
       ),
@@ -153,22 +153,22 @@ class _AppCheckScreenState extends State<AppCheckScreen> {
     final history = List<Map<String, dynamic>>.from((_st['history'] as List? ?? const []).map((e) => Map<String, dynamic>.from(e as Map)));
     final last = _last;
     return Scaffold(
-      appBar: AppBar(title: const Text('App Jaanch'), backgroundColor: Colors.transparent),
+      appBar: AppBar(title: const Text('App Check'), backgroundColor: Colors.transparent),
       body: Aurora(
         child: RefreshIndicator(
           onRefresh: _load,
           child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
-            const Text('Kisi ne WhatsApp, SMS ya email par APK / EXE bheji hai? Install karne se pehle yahan jaanchiye. Hoola '
-                'file ko chalata nahi, sirf padhta hai: kaunsi permissions (SMS / OTP, screen control), icon chhupta hai kya, kisne '
-                'sign kiya, aur naam bank / KYC / challan wala fraud to nahi.',
+            const Text('Did someone send you an APK / EXE on WhatsApp, SMS or email? Check it here before installing. Hoola '
+                'does not run the file, it only reads it: which permissions it asks for (SMS / OTP, screen control), whether it hides its icon, who '
+                'signed it, and whether it is a fraud posing as a bank / KYC / challan app.',
                 style: TextStyle(color: C.muted, fontSize: 13)),
             const SizedBox(height: 12),
             if (!_loaded) const Padding(padding: EdgeInsets.all(30), child: Center(child: CircularProgressIndicator())),
             if (_loaded && !on)
-              const Glass(child: Text('App Jaanch abhi server par chalu nahi hai.', style: TextStyle(color: C.warn))),
+              const Glass(child: Text('App Check is not turned on for the server yet.', style: TextStyle(color: C.warn))),
             if (_loaded && on)
               GradientButton(
-                label: _busy ? 'Jaanch ho rahi hai...' : 'File chuniye aur jaanchiye',
+                label: _busy ? 'Checking...' : 'Choose a file and check it',
                 icon: Icons.shield_rounded, height: 50, onTap: _busy ? null : _pick),
             if (_busy) const Padding(padding: EdgeInsets.only(top: 10), child: LinearProgressIndicator()),
             if (_err != null) Padding(padding: const EdgeInsets.only(top: 10), child: Text(_err!, style: const TextStyle(color: C.bad))),
@@ -180,7 +180,7 @@ class _AppCheckScreenState extends State<AppCheckScreen> {
             ],
             if (history.isNotEmpty) ...[
               const SizedBox(height: 16),
-              const Text('Pichhli jaanch', style: TextStyle(fontWeight: FontWeight.w700)),
+              const Text('Previous check', style: TextStyle(fontWeight: FontWeight.w700)),
               const SizedBox(height: 6),
               for (final h in history)
                 ListTile(
@@ -193,7 +193,7 @@ class _AppCheckScreenState extends State<AppCheckScreen> {
                 ),
             ],
             const SizedBox(height: 18),
-            const Text('Yaad rakhiye: apps sirf Play Store se. Paise kat gaye hon to turant 1930 ya cybercrime.gov.in.',
+            const Text('Remember: install apps only from the Play Store. If money was deducted, call 1930 or visit cybercrime.gov.in at once.',
                 style: TextStyle(color: C.chip, fontSize: 12.5)),
           ]),
         ),

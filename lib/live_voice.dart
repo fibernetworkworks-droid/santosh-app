@@ -113,14 +113,14 @@ class LiveVoice {
       await Future.delayed(const Duration(milliseconds: 700));
       err = await _ch.invokeMethod<String>('voiceStart');
     }
-    if (err == 'permission') return 'Microphone ki permission chahiye.';
+    if (err == 'permission') return 'Microphone permission is needed.';
     if (err != null) return err;
     final WebSocket ws;
     try {
       ws = await _open();
     } catch (e) {
       await _ch.invokeMethod('voiceStop');
-      return 'Server se voice connect nahi hua: $e';
+      return 'Could not connect voice to the server: $e';
     }
     _current = this;
     _call.setMethodCallHandler((c) async {
@@ -158,7 +158,7 @@ class LiveVoice {
       }
     }, onError: (Object e) {
       // the phone's microphone failed and could not be restarted
-      onEvent({'type': 'error', 'message': 'Microphone mein dikkat aayi: $e'});
+      onEvent({'type': 'error', 'message': 'There was a problem with the microphone: $e'});
       stop();
     });
     _beat = Timer.periodic(const Duration(seconds: 8), (_) => _heartbeat());
@@ -208,7 +208,7 @@ class LiveVoice {
     try {
       ws.add(jsonEncode({'type': 'ping'}));
     } catch (_) {}
-    if (DateTime.now().difference(_lastRx) > const Duration(seconds: 24)) _lost(ws, 'network chala gaya');
+    if (DateTime.now().difference(_lastRx) > const Duration(seconds: 24)) _lost(ws, 'network lost');
   }
 
   void _onData(dynamic data) {
@@ -291,7 +291,7 @@ class LiveVoice {
       }
     }
     _reconnecting = false;
-    if (!_closed) _finish(reason == null || reason.isEmpty ? 'network wapas nahi aaya' : reason);
+    if (!_closed) _finish(reason == null || reason.isEmpty ? 'network did not come back' : reason);
   }
 
   /// Another app took the audio for a moment (a real phone call...) or the microphone / speaker failed for good.
@@ -320,7 +320,7 @@ class LiveVoice {
         _sendHold(false, 'phone_call');
         onEvent({'type': 'status', 'state': 'live'});
       case 'audio_error':
-        onEvent({'type': 'error', 'message': 'Microphone ya speaker band ho gaya, isliye call band ho gayi.'});
+        onEvent({'type': 'error', 'message': 'The microphone or speaker stopped, so the call ended.'});
         stop();
     }
   }

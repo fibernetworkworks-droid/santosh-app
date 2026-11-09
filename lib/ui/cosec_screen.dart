@@ -46,7 +46,7 @@ Future<Map<String, String>?> _form(BuildContext context, String title, List<(Str
         ]),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Rehne do')),
+        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Keep it')),
         TextButton(onPressed: () => Navigator.pop(d, true), child: Text(ok)),
       ],
     ),
@@ -78,7 +78,7 @@ Future<void> _showDrafts(BuildContext context, Map<String, dynamic> r) async {
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Caption('NOTICE BHEJIYE (AAP KHUD)'),
+          const Caption('SEND THE NOTICE (YOU DO IT)'),
           Flexible(
             child: ListView(shrinkWrap: true, children: [
               for (final d in drafts)
@@ -94,7 +94,7 @@ Future<void> _showDrafts(BuildContext context, Map<String, dynamic> r) async {
                 ),
             ]),
           ),
-          const Text('Hoola khud nahi bhejta. Kis tareekh ko bheja, record ke liye sambhal ke rakhiye.', style: TextStyle(fontSize: 11, color: C.faint)),
+          const Text('Hoola does not send anything itself. Keep the date it was sent for your records.', style: TextStyle(fontSize: 11, color: C.faint)),
         ]),
       ),
     ),
@@ -141,20 +141,20 @@ class _CosecScreenState extends State<CosecScreen> {
       .then((_) => _load());
 
   Future<void> _newEntity() async {
-    final f = await _form(context, 'Nayi company / LLP', const [
+    final f = await _form(context, 'New company / LLP', const [
       ('name', 'Naam'),
       ('kind', 'Kism: private / opc / public / listed / section8 / llp'),
       ('cin', 'CIN (company)'),
       ('llpin', 'LLPIN (LLP)'),
-      ('incorporated_on', 'Incorporation ki tareekh (YYYY-MM-DD)'),
+      ('incorporated_on', 'Incorporation date (YYYY-MM-DD)'),
       ('paid_up', 'Paid-up capital (jaise 25 lakh)'),
-      ('turnover', 'Pichhle saal ka turnover (jaise 3 crore)'),
+      ('turnover', 'Last year\'s turnover (e.g. 3 crore)'),
       ('registered_office', 'Registered office'),
       ('auditor_name', 'Auditor (firm)'),
       ('auditor_frn', 'Auditor FRN'),
-      ('auditor_term_to_agm', 'Auditor term kis FY ke AGM tak (jaise 2029-30)'),
+      ('auditor_term_to_agm', 'Auditor term until the AGM of which FY (e.g. 2029-30)'),
       ('last_agm', 'Pichhla AGM (YYYY-MM-DD)'),
-    ], ok: 'Banao');
+    ], ok: 'Make');
     if (f == null || (f['name'] ?? '').isEmpty) return;
     final r = await _run('POST', '/api/cosec/entities', f);
     if (r != null && _s(r['id']).isNotEmpty && mounted) _open(_s(r['id']));
@@ -165,13 +165,13 @@ class _CosecScreenState extends State<CosecScreen> {
     return ListView(padding: const EdgeInsets.all(16), children: [
       Glass(child: Text(_s(day['say']), style: const TextStyle(fontSize: 14.5, height: 1.4))),
       const SizedBox(height: 12),
-      GradientButton(label: 'Nayi company / LLP', icon: Icons.domain_add_rounded, height: 46, onTap: _busy ? null : _newEntity),
+      GradientButton(label: 'New company / LLP', icon: Icons.domain_add_rounded, height: 46, onTap: _busy ? null : _newEntity),
       const SizedBox(height: 12),
       for (final (key, title) in const [
-        ('overdue', 'DER HO GAYI'),
-        ('waiting', 'AAPKI HAAN BAAKI'),
-        ('soon', '30 DIN MEIN'),
-        ('meetings', 'NOTICE BHEJNA'),
+        ('overdue', 'LATE'),
+        ('waiting', 'YOUR YES PENDING'),
+        ('soon', 'WITHIN 30 DAYS'),
+        ('meetings', 'SEND THE NOTICE'),
         ('minutes', 'MINUTES SIGN'),
         ('board', 'BOARD MEETING'),
       ])
@@ -185,7 +185,7 @@ class _CosecScreenState extends State<CosecScreen> {
   }
 
   Widget _entitiesTab() => ListView(padding: const EdgeInsets.all(16), children: [
-        GradientButton(label: 'Nayi company / LLP', icon: Icons.add_rounded, height: 46, onTap: _busy ? null : _newEntity),
+        GradientButton(label: 'New company / LLP', icon: Icons.add_rounded, height: 46, onTap: _busy ? null : _newEntity),
         const SizedBox(height: 12),
         for (final e in _list(_d?['entities']))
           Padding(
@@ -213,28 +213,28 @@ class _CosecScreenState extends State<CosecScreen> {
               ),
             ),
           ),
-        if (_list(_d?['entities']).isEmpty) const Text('Abhi koi company nahi.', style: TextStyle(color: C.muted)),
+        if (_list(_d?['entities']).isEmpty) const Text('No companies yet.', style: TextStyle(color: C.muted)),
       ]);
 
   Widget _filingsTab() => ListView(padding: const EdgeInsets.all(16), children: [
-        const Caption('AGLE 60 DIN + DER WALE'),
+        const Caption('NEXT 60 DAYS + OVERDUE'),
         for (final f in _list(_d?['filings']))
           Padding(padding: const EdgeInsets.only(bottom: 8), child: CosecFilingCard(app: widget.app, data: {'filing': f}, onDone: _load)),
-        if (_list(_d?['filings']).isEmpty) const Text('Agle 60 din mein koi filing nahi.', style: TextStyle(color: C.muted)),
+        if (_list(_d?['filings']).isEmpty) const Text('No filings in the next 60 days.', style: TextStyle(color: C.muted)),
       ]);
 
   Future<void> _editSettings() async {
     final st = _m(_d?['settings']);
     const keys = ['firm', 'cs_name', 'membership_no', 'email', 'phone', 'windows', 'morning_time', 'rules'];
     final f = await _form(context, 'Niyam', const [
-      ('firm', 'Aapki firm / company'),
-      ('cs_name', 'CS ka naam'),
+      ('firm', 'Your firm / company'),
+      ('cs_name', 'CS name'),
       ('membership_no', 'Membership no. (ACS / FCS)'),
       ('email', 'Email'),
       ('phone', 'Mobile'),
-      ('windows', 'Yaad dilane ke din (jaise 30,15,7,1,0)'),
+      ('windows', 'Days to remind (e.g. 30,15,7,1,0)'),
       ('morning_time', 'Subah ka note (HH:MM)'),
-      ('rules', 'Aapke niyam'),
+      ('rules', 'Your rules'),
     ], ok: 'Save', initial: {for (final k in keys) k: _s(st[k])}, multi: const {'rules'});
     if (f == null) return;
     await _run('PUT', '/api/cosec/settings', f);
@@ -245,15 +245,15 @@ class _CosecScreenState extends State<CosecScreen> {
     return ListView(padding: const EdgeInsets.all(16), children: [
       Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(_s(st['firm']).isEmpty ? 'Firm ka naam daaliye' : _s(st['firm']), style: const TextStyle(fontWeight: FontWeight.w800)),
+          Text(_s(st['firm']).isEmpty ? 'Enter the firm name' : _s(st['firm']), style: const TextStyle(fontWeight: FontWeight.w800)),
           Text('${_s(st['cs_name'])} ${_s(st['membership_no'])}', style: const TextStyle(color: C.muted, fontSize: 12.5)),
-          Text('Yaad dilana: ${_s(st['windows'])} din pehle · subah ${_s(st['morning_time'])}', style: const TextStyle(color: C.muted, fontSize: 12.5)),
+          Text('Reminders: ${_s(st['windows'])} days before · morning ${_s(st['morning_time'])}', style: const TextStyle(color: C.muted, fontSize: 12.5)),
           const SizedBox(height: 8),
           GlassButton(label: 'Badlo', icon: Icons.edit_rounded, onTap: _editSettings),
         ]),
       ),
       const SizedBox(height: 12),
-      const Caption('HOOLA KABHI NAHI'),
+      const Caption('HOOLA NEVER'),
       for (final t in _strs(_d?['never'])) Padding(padding: const EdgeInsets.only(bottom: 6), child: Text('• $t', style: const TextStyle(fontSize: 13))),
     ]);
   }
@@ -335,7 +335,7 @@ class _CosecEntityPageState extends State<CosecEntityPage> {
   Future<void> _editMaster() async {
     final e = _m(_e);
     final aud = _m(e['auditor']);
-    final f = await _form(context, 'Company ki jaankari', const [
+    final f = await _form(context, 'Company details', const [
       ('name', 'Naam'),
       ('cin', 'CIN'),
       ('llpin', 'LLPIN'),
@@ -367,9 +367,9 @@ class _CosecEntityPageState extends State<CosecEntityPage> {
     final f = await _form(context, switch (role) { 'member' => 'Member', 'kmp' => 'KMP', 'partner' => 'Designated partner', _ => 'Director' }, [
       ('name', 'Naam'),
       if (role != 'member') ('din', role == 'partner' ? 'DPIN / DIN (8 ank)' : 'DIN (8 ank)'),
-      ('designation', 'Padh (designation)'),
+      ('designation', 'Position (designation)'),
       ('appointed_on', 'Kab se (YYYY-MM-DD)'),
-      if (role == 'director') ('kyc_on', 'Pichhli DIR-3 KYC kab (YYYY-MM-DD)'),
+      if (role == 'director') ('kyc_on', 'Last DIR-3 KYC date (YYYY-MM-DD)'),
       if (role == 'member') ('shares', 'Shares'),
       ('email', 'Email'),
       ('phone', 'Mobile'),
@@ -379,17 +379,17 @@ class _CosecEntityPageState extends State<CosecEntityPage> {
   }
 
   Future<void> _event() async {
-    final f = await _form(context, 'Kya badla? (apne shabdon mein)', const [
-      ('words', 'Jaise: naya director, istifa, shares allot, office shift, bank loan'),
-      ('on', 'Kab (YYYY-MM-DD)'),
-      ('name', 'Kaun (naam)'),
+    final f = await _form(context, 'What changed? (in your own words)', const [
+      ('words', 'For example: new director, resignation, share allotment, office shift, bank loan'),
+      ('on', 'When (YYYY-MM-DD)'),
+      ('name', 'Who (name)'),
       ('din', 'DIN (director ho to)'),
       ('shares', 'Shares (allotment / transfer)'),
       ('to', 'Kisko (transfer)'),
-      ('address', 'Naya pata (office shift)'),
+      ('address', 'New address (office shift)'),
       ('holder', 'Bank / charge holder'),
-      ('amount', 'Rakam (charge)'),
-    ], ok: 'Note karo');
+      ('amount', 'Amount (charge)'),
+    ], ok: 'Note it');
     if (f == null || (f['words'] ?? '').isEmpty) return;
     final det = <String, dynamic>{
       for (final k in ['name', 'din', 'address', 'holder', 'amount', 'to']) if (f[k] != null) k: f[k],
@@ -408,15 +408,15 @@ class _CosecEntityPageState extends State<CosecEntityPage> {
   }
 
   Future<void> _newMeeting() async {
-    final f = await _form(context, 'Nayi meeting', const [
-      ('kind', 'Kaunsi: board / agm / egm / committee'),
+    final f = await _form(context, 'New meeting', const [
+      ('kind', 'Which: board / agm / egm / committee'),
       ('on', 'Tareekh (YYYY-MM-DD)'),
-      ('time', 'Samay (jaise 11:00)'),
+      ('time', 'Time (e.g. 11:00)'),
       ('place', 'Jagah'),
       ('mode', 'physical / vc / hybrid'),
-      ('fy', 'AGM: kis FY ke accounts (jaise 2025-26)'),
-      ('agenda', 'Agenda (har line ek item; khaali = starter)'),
-    ], ok: 'Banao', multi: const {'agenda'});
+      ('fy', 'AGM: accounts of which FY (e.g. 2025-26)'),
+      ('agenda', 'Agenda (one item per line; blank = starter)'),
+    ], ok: 'Make', multi: const {'agenda'});
     if (f == null || (f['on'] ?? '').isEmpty) return;
     await _run('POST', '/api/cosec/entities/$_ref/meetings', {...f, 'agenda': _lines(f['agenda'])});
   }
@@ -433,7 +433,7 @@ class _CosecEntityPageState extends State<CosecEntityPage> {
           Text('${_s(e['kind_label'])}${e['small'] == true ? ' · small company' : ''}', style: const TextStyle(color: C.muted)),
           Text(_s(e['cin']).isNotEmpty ? 'CIN ${_s(e['cin'])}' : 'LLPIN ${_s(e['llpin'])}', style: const TextStyle(color: C.muted, fontSize: 12.5)),
           if (_s(e['registered_office']).isNotEmpty) Text(_s(e['registered_office']), style: const TextStyle(fontSize: 12.5)),
-          Text('Auditor: ${_s(aud['name']).isEmpty ? '—' : _s(aud['name'])}${_s(aud['term_to_agm']).isNotEmpty ? ' (term ${_s(aud['term_to_agm'])} AGM tak)' : ''}',
+          Text('Auditor: ${_s(aud['name']).isEmpty ? '—' : _s(aud['name'])}${_s(aud['term_to_agm']).isNotEmpty ? ' (term until AGM ${_s(aud['term_to_agm'])})' : ''}',
               style: const TextStyle(fontSize: 12.5)),
           Text('Pichhla AGM: ${_s(e['last_agm']).isEmpty ? '—' : _s(e['last_agm'])}', style: const TextStyle(fontSize: 12.5)),
           if (_s(sc['why']).isNotEmpty) Text(_s(sc['why']), style: const TextStyle(fontSize: 11.5, color: C.faint)),
@@ -445,18 +445,18 @@ class _CosecEntityPageState extends State<CosecEntityPage> {
       SwitchListTile(
           value: fl['deposits'] != false,
           onChanged: _busy ? null : (v) => _flag('deposits', v),
-          title: const Text('Loans / deposits hain (DPT-3)')),
+          title: const Text('Has loans / deposits (DPT-3)')),
       SwitchListTile(
           value: fl['msme_dues'] == true,
           onChanged: _busy ? null : (v) => _flag('msme_dues', v),
-          title: const Text('MSME supplier ka 45 din se zyada baaki (MSME-1)')),
+          title: const Text('MSME supplier payments pending over 45 days (MSME-1)')),
       SwitchListTile(value: fl['dormant'] == true, onChanged: _busy ? null : (v) => _flag('dormant', v), title: const Text('Dormant company')),
       SwitchListTile(value: fl['startup'] == true, onChanged: _busy ? null : (v) => _flag('startup', v), title: const Text('Registered startup')),
       if (_strs(e['board_issues']).isNotEmpty) ...[
-        const Caption('BOARD MEETING KI GINTI'),
+        const Caption('BOARD MEETING COUNT'),
         for (final t in _strs(e['board_issues'])) Text('• $t', style: const TextStyle(fontSize: 13, color: C.warn)),
       ],
-      if (_s(e['next_board_by']).isNotEmpty) Text('Agli Board meeting ${_s(e['next_board_by'])} se pehle (120 din).', style: const TextStyle(fontSize: 12.5)),
+      if (_s(e['next_board_by']).isNotEmpty) Text('Next Board meeting before ${_s(e['next_board_by'])} (120 days).', style: const TextStyle(fontSize: 12.5)),
       const SizedBox(height: 10),
       GlassButton(
           label: 'Registers Excel', icon: Icons.table_chart_rounded, height: 42, onTap: _busy ? null : () => _run('GET', '/api/cosec/entities/$_ref/registers')),
@@ -475,7 +475,7 @@ class _CosecEntityPageState extends State<CosecEntityPage> {
           subtitle: Text([
             _s(p['designation']),
             if (_s(p['appointed_on']).isNotEmpty) 'se ${_s(p['appointed_on'])}',
-            if (_s(p['ceased_on']).isNotEmpty) 'tak ${_s(p['ceased_on'])}',
+            if (_s(p['ceased_on']).isNotEmpty) 'until ${_s(p['ceased_on'])}',
             if (_s(p['role']) == 'member') '${_s(p['folio'])} · ${_s(p['shares'])} ${_s(p['share_class'])}',
           ].where((x) => x.isNotEmpty).join(' · ')),
         );
@@ -498,7 +498,7 @@ class _CosecEntityPageState extends State<CosecEntityPage> {
               style: const TextStyle(fontSize: 13)),
       ],
       const SizedBox(height: 8),
-      const Text('Sirf DIN rakha jaata hai. Aadhaar / PAN Pehchaan Locker mein.', style: TextStyle(fontSize: 11, color: C.faint)),
+      const Text('Only the DIN is kept. Aadhaar / PAN go in the ID Locker.', style: TextStyle(fontSize: 11, color: C.faint)),
     ]);
   }
 
@@ -507,8 +507,8 @@ class _CosecEntityPageState extends State<CosecEntityPage> {
     return ListView(padding: const EdgeInsets.all(16), children: [
       Wrap(spacing: 8, runSpacing: 8, children: [
         GlassButton(
-            label: 'Is saal ka calendar', icon: Icons.event_note_rounded, height: 40, onTap: _busy ? null : () => _run('POST', '/api/cosec/entities/$_ref/calendar', {})),
-        GlassButton(label: 'Kuch badla (event)', icon: Icons.bolt_rounded, height: 40, onTap: _busy ? null : _event),
+            label: 'This year\'s calendar', icon: Icons.event_note_rounded, height: 40, onTap: _busy ? null : () => _run('POST', '/api/cosec/entities/$_ref/calendar', {})),
+        GlassButton(label: 'What changed (event)', icon: Icons.bolt_rounded, height: 40, onTap: _busy ? null : _event),
       ]),
       const SizedBox(height: 12),
       for (final f in _list(e['filings']))
@@ -519,7 +519,7 @@ class _CosecEntityPageState extends State<CosecEntityPage> {
   Widget _meetingsTab() {
     final e = _m(_e);
     return ListView(padding: const EdgeInsets.all(16), children: [
-      if (_s(e['kind']) != 'llp') GradientButton(label: 'Nayi meeting', icon: Icons.groups_rounded, height: 46, onTap: _busy ? null : _newMeeting),
+      if (_s(e['kind']) != 'llp') GradientButton(label: 'New meeting', icon: Icons.groups_rounded, height: 46, onTap: _busy ? null : _newMeeting),
       const SizedBox(height: 12),
       for (final m in _list(e['meetings']))
         Padding(padding: const EdgeInsets.only(bottom: 8), child: CosecMeetingCard(app: widget.app, data: {'meeting': m}, onDone: _load)),
@@ -533,7 +533,7 @@ class _CosecEntityPageState extends State<CosecEntityPage> {
 
   @override
   Widget build(BuildContext context) {
-    final tabs = ['Jaankari', 'Log', 'Filings', 'Meetings'];
+    final tabs = ['Information', 'Log', 'Filings', 'Meetings'];
     return Scaffold(
       backgroundColor: C.bgTop,
       appBar: AppBar(backgroundColor: Colors.transparent, title: Text(_s(_e?['name']).isEmpty ? 'Company' : _s(_e?['name'])), actions: [
@@ -565,7 +565,7 @@ class _CosecEntityPageState extends State<CosecEntityPage> {
 }
 
 /// cosec_filing: one MCA form with its due date; "Card banao" -> her tap "Haan, file karo" (fingerprint once a phone key is
-/// active) -> MCA V3 steps she does herself -> "Ho gaya" with SRN. Also in calls.
+/// active) -> MCA V3 steps she does herself -> "Done" with SRN. Also in calls.
 class CosecFilingCard extends StatefulWidget {
   const CosecFilingCard({super.key, required this.app, required this.data, this.onDone});
   final Santosh app;
@@ -582,12 +582,12 @@ class _CosecFilingCardState extends State<CosecFilingCard> {
   Future<Map<String, dynamic>> _proof(String id) async {
     final ch = _m(await widget.app.api!.call('POST', '/api/cosec/filings/$id/challenge'));
     final show = _m(ch['show']);
-    final r = await Native.approveKeySign(_s(ch['message']), _s(show['title']).isEmpty ? 'Filing ki haan' : _s(show['title']), _s(show['subtitle']));
+    final r = await Native.approveKeySign(_s(ch['message']), _s(show['title']).isEmpty ? 'Filing approval' : _s(show['title']), _s(show['subtitle']));
     if (r['signature'] == null) {
       throw ApiException(428, switch (_s(r['error'])) {
-        'cancelled' => 'Fingerprint nahi diya, isliye haan nahi hui.',
-        'key_invalidated' => 'Phone mein naya fingerprint juda hai: Profile > Fingerprint se haan mein phone phir se jodiye.',
-        _ => 'Fingerprint se haan nahi ho payi (${_s(r['error'])}).',
+        'cancelled' => 'No fingerprint was given, so it was not approved.',
+        'key_invalidated' => 'A new fingerprint was added to the phone: link this phone again in Profile > Fingerprint approval.',
+        _ => 'Could not approve with fingerprint (${_s(r['error'])}).',
       });
     }
     return {'challenge_id': ch['challenge_id'], 'device_id': r['device_id'], 'signature': r['signature']};
@@ -623,14 +623,14 @@ class _CosecFilingCardState extends State<CosecFilingCard> {
   }
 
   Future<void> _done() async {
-    final f = await _form(context, '${_s(_f['form'])} file ho gaya', const [('srn', 'SRN'), ('filed_on', 'Kab (YYYY-MM-DD)'), ('fee', 'Fee bhari (Rs)')]);
+    final f = await _form(context, '${_s(_f['form'])} filed', const [('srn', 'SRN'), ('filed_on', 'When (YYYY-MM-DD)'), ('fee', 'Fee paid (Rs)')]);
     if (f == null) return;
     await _go(() => widget.app.api!.call('POST', '/api/cosec/filings/${_s(_f['id'])}/done',
         body: {'srn': f['srn'] ?? '', 'filed_on': f['filed_on'] ?? '', 'fee': num.tryParse(f['fee'] ?? '')}));
   }
 
   Future<void> _skip() async {
-    final f = await _form(context, 'Zaroori kyun nahi?', const [('reason', 'Wajah (record ke liye)')]);
+    final f = await _form(context, 'Why is it not needed?', const [('reason', 'Reason (for the record)')]);
     if (f == null || (f['reason'] ?? '').isEmpty) return;
     await _go(() => widget.app.api!.call('POST', '/api/cosec/filings/${_s(_f['id'])}/skip', body: {'reason': f['reason']}));
   }
@@ -650,7 +650,7 @@ class _CosecFilingCardState extends State<CosecFilingCard> {
           const Icon(Icons.assignment_rounded, color: C.accent),
           const SizedBox(width: 8),
           Expanded(child: Text('${_s(f['form'])} · ${_s(f['period'])}', style: const TextStyle(fontWeight: FontWeight.w800))),
-          Pill(st == 'waiting' ? 'aapki haan?' : st, fg: _stColor(st)),
+          Pill(st == 'waiting' ? 'your yes?' : st, fg: _stColor(st)),
         ]),
         if (_s(f['entity']).isNotEmpty) Text(_s(f['entity']), style: const TextStyle(fontSize: 12.5, color: C.muted)),
         Text(_s(f['label']), style: const TextStyle(fontSize: 12.5)),
@@ -668,7 +668,7 @@ class _CosecFilingCardState extends State<CosecFilingCard> {
         ],
         if (st == 'approved') ...[
           const SizedBox(height: 4),
-          const Caption('MCA V3 PAR AAP KHUD'),
+          const Caption('YOU DO THIS YOURSELF ON MCA V3'),
           for (final (i, s) in _strs(card['steps']).indexed) Text('${i + 1}. $s', style: const TextStyle(fontSize: 12.5)),
         ],
         if (_s(f['srn']).isNotEmpty) Text('SRN ${_s(f['srn'])} · ${_s(f['filed_on'])}', style: const TextStyle(fontSize: 12.5, color: C.ok)),
@@ -677,24 +677,24 @@ class _CosecFilingCardState extends State<CosecFilingCard> {
           Row(children: [
             Expanded(
                 child: GlassButton(
-                    label: 'Card banao',
+                    label: 'Make card',
                     icon: Icons.fact_check_rounded,
                     height: 40,
                     onTap: _busy ? null : () => _go(() => widget.app.api!.call('POST', '/api/cosec/filings/${_s(f['id'])}/request')))),
             const SizedBox(width: 8),
-            GlassButton(label: 'Zaroori nahi', height: 40, onTap: _busy ? null : _skip),
+            GlassButton(label: 'Not needed', height: 40, onTap: _busy ? null : _skip),
           ]),
         if (st == 'waiting')
           Row(children: [
             Expanded(
                 child: GradientButton(
-                    label: 'Haan, file karo', height: 42, onTap: _busy || _strs(card['blockers']).isNotEmpty ? null : () => _go(() => _decide(true)))),
+                    label: 'Yes, file', height: 42, onTap: _busy || _strs(card['blockers']).isNotEmpty ? null : () => _go(() => _decide(true)))),
             const SizedBox(width: 8),
-            GlassButton(label: 'Nahi', height: 42, onTap: _busy ? null : () => _go(() => _decide(false))),
+            GlassButton(label: 'No', height: 42, onTap: _busy ? null : () => _go(() => _decide(false))),
           ]),
         if (st == 'approved' || (st == 'todo' && (_s(f['form']).startsWith('DIR-3 KYC') || _s(f['form']) == 'ADT-3')))
-          GlassButton(label: 'Ho gaya (SRN)', icon: Icons.check_rounded, height: 40, onTap: _busy ? null : _done),
-        const Text('Login, DSC aur fee MCA par aap khud. Draft / jaankari - CS / vakil se pakka.', style: TextStyle(fontSize: 11, color: C.faint)),
+          GlassButton(label: 'Done (SRN)', icon: Icons.check_rounded, height: 40, onTap: _busy ? null : _done),
+        const Text('You do the login, DSC and fee on MCA yourself. The draft / information must be confirmed by a CS / lawyer.', style: TextStyle(fontSize: 11, color: C.faint)),
       ]),
     );
   }
@@ -742,21 +742,21 @@ class _CosecMeetingCardState extends State<CosecMeetingCard> {
     final short = await showDialog<bool>(
         context: context,
         builder: (d) => AlertDialog(
-              content: const Text('Shorter notice ki sahmati hai? (zaroori kaam / members ki likhit sahmati)'),
+              content: const Text('Is there consent for shorter notice? (urgent business / written consent of members)'),
               actions: [
-                TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Nahi')),
-                TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Haan, hai')),
+                TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('No')),
+                TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Yes, there is')),
               ],
             ));
     await _go('POST', '/api/cosec/meetings/$_id/notice', {...f, 'shorter_consent': short == true});
   }
 
   Future<void> _attendance() async {
-    final f = await _form(context, 'Kaun aaya', const [
-      ('present', 'Maujood (naam ya DIN, comma / line)'),
-      ('interested', 'Jinka hit juda tha (ho to)'),
+    final f = await _form(context, 'Who came', const [
+      ('present', 'Present (name or DIN, comma / line)'),
+      ('interested', 'Those with an interest (if any)'),
       ('chair', 'Chairperson'),
-      ('members_count', 'Kul members (general meeting)'),
+      ('members_count', 'Total members (general meeting)'),
     ], multi: const {'present'});
     if (f == null || (f['present'] ?? '').isEmpty) return;
     await _go('POST', '/api/cosec/meetings/$_id/attendance', {
@@ -791,7 +791,7 @@ class _CosecMeetingCardState extends State<CosecMeetingCard> {
       if (r == null || !mounted) return;
       mt = _mt;
     }
-    final f = await _form(context, 'Minutes', const [('text', 'Minutes (bhariye [..] wali jagah)')],
+    final f = await _form(context, 'Minutes', const [('text', 'Minutes (fill in the [..] places)')],
         ok: 'Save', initial: {'text': _s(mt['minutes'])}, multi: const {'text'});
     if (f == null || (f['text'] ?? '').isEmpty) return;
     await _go('PUT', '/api/cosec/meetings/$_id/minutes', {'text': f['text']});
@@ -816,18 +816,18 @@ class _CosecMeetingCardState extends State<CosecMeetingCard> {
           const Icon(Icons.groups_rounded, color: C.accent),
           const SizedBox(width: 8),
           Expanded(child: Text('${_s(m['number'])} · ${_s(m['kind_label'])} · ${_s(m['on'])} ${_s(m['time'])}', style: const TextStyle(fontWeight: FontWeight.w800))),
-          Pill(st.endsWith('waiting') ? 'aapki haan?' : st, fg: _stColor(st)),
+          Pill(st.endsWith('waiting') ? 'your yes?' : st, fg: _stColor(st)),
         ]),
         if (_s(card['entity']).isNotEmpty) Text(_s(card['entity']), style: const TextStyle(fontSize: 12.5, color: C.muted)),
         if (_s(m['place']).isNotEmpty) Text(_s(m['place']), style: const TextStyle(fontSize: 12.5, color: C.muted)),
         if (st == 'draft' && _s(m['latest_notice']).isNotEmpty)
-          Text('Notice ${_s(m['latest_notice'])} tak bhejna', style: const TextStyle(fontSize: 12.5, color: C.warn)),
-        if (_s(m['notice_sent_on']).isNotEmpty) Text('Notice gaya: ${_s(m['notice_sent_on'])}', style: const TextStyle(fontSize: 12.5)),
+          Text('Send notice by ${_s(m['latest_notice'])}', style: const TextStyle(fontSize: 12.5, color: C.warn)),
+        if (_s(m['notice_sent_on']).isNotEmpty) Text('Notice sent: ${_s(m['notice_sent_on'])}', style: const TextStyle(fontSize: 12.5)),
         if (q.isNotEmpty)
           Text('Quorum ${_s(q['present'])} / ${_s(q['need'])} ${q['ok'] == true ? '✓' : '✗'} · ${_s(q['note'])}',
               style: TextStyle(fontSize: 12.5, color: q['ok'] == true ? C.ok : C.bad)),
         if (['held', 'minutes_waiting'].contains(st) && _s(dl['sign_by']).isNotEmpty)
-          Text('Minutes ${_s(dl['sign_by'])} tak sign${_s(dl['draft_by']).isNotEmpty ? ' (draft ${_s(dl['draft_by'])} tak directors ko)' : ''}',
+          Text('Sign minutes by ${_s(dl['sign_by'])}${_s(dl['draft_by']).isNotEmpty ? ' (draft to directors by ${_s(dl['draft_by'])})' : ''}',
               style: const TextStyle(fontSize: 12, color: C.muted)),
         if (st.endsWith('waiting')) ...[
           for (final b in _strs(card['blockers'])) Text('✗ $b', style: const TextStyle(fontSize: 12.5, color: C.bad)),
@@ -835,7 +835,7 @@ class _CosecMeetingCardState extends State<CosecMeetingCard> {
           if (_s(card['text']).isNotEmpty)
             ExpansionTile(
               tilePadding: EdgeInsets.zero,
-              title: const Text('Poora text dekho', style: TextStyle(fontSize: 13)),
+              title: const Text('View full text', style: TextStyle(fontSize: 13)),
               children: [SelectableText(_s(card['text']), style: const TextStyle(fontSize: 12.5, height: 1.35))],
             ),
         ],
@@ -844,32 +844,32 @@ class _CosecMeetingCardState extends State<CosecMeetingCard> {
           if (st == 'draft') GlassButton(label: 'Notice card', icon: Icons.mail_rounded, height: 40, onTap: _busy ? null : _notice),
           if (st == 'notice_waiting') ...[
             GradientButton(
-                label: 'Haan, notice bhejo', height: 42, onTap: _busy || _strs(card['blockers']).isNotEmpty ? null : () => _decideNotice(true)),
-            GlassButton(label: 'Nahi', height: 42, onTap: _busy ? null : () => _decideNotice(false)),
+                label: 'Yes, send the notice', height: 42, onTap: _busy || _strs(card['blockers']).isNotEmpty ? null : () => _decideNotice(true)),
+            GlassButton(label: 'No', height: 42, onTap: _busy ? null : () => _decideNotice(false)),
           ],
           if (st == 'notice_sent' || st == 'held')
-            GlassButton(label: 'Kaun aaya', icon: Icons.how_to_reg_rounded, height: 40, onTap: _busy ? null : _attendance),
+            GlassButton(label: 'Who came', icon: Icons.how_to_reg_rounded, height: 40, onTap: _busy ? null : _attendance),
           if (st == 'held') ...[
             GlassButton(label: 'Resolution', icon: Icons.gavel_rounded, height: 40, onTap: _busy ? null : _resolution),
             GlassButton(label: 'Minutes', icon: Icons.edit_note_rounded, height: 40, onTap: _busy ? null : _editMinutes),
             GlassButton(
-                label: 'Sign ke liye card', icon: Icons.draw_rounded, height: 40, onTap: _busy ? null : () => _go('POST', '/api/cosec/meetings/$_id/minutes')),
+                label: 'Card for signing', icon: Icons.draw_rounded, height: 40, onTap: _busy ? null : () => _go('POST', '/api/cosec/meetings/$_id/minutes')),
           ],
           if (st == 'minutes_waiting') ...[
             GradientButton(
-                label: 'Haan, minutes pakke',
+                label: 'Yes, minutes are final',
                 height: 42,
                 onTap: _busy || _strs(card['blockers']).isNotEmpty
                     ? null
                     : () => _go('POST', '/api/cosec/meetings/$_id/minutes/decide', {'yes': true, 'hash': _s(m['minutes_hash'])})),
             GlassButton(
-                label: 'Nahi',
+                label: 'No',
                 height: 42,
                 onTap: _busy ? null : () => _go('POST', '/api/cosec/meetings/$_id/minutes/decide', {'yes': false, 'hash': _s(m['minutes_hash'])})),
           ],
         ]),
         const SizedBox(height: 4),
-        const Text('Notice / minutes ka draft: CS / vakil se pakka. Hoola khud kuch nahi bhejta.', style: TextStyle(fontSize: 11, color: C.faint)),
+        const Text('Notice / minutes draft: confirm with a CS / lawyer. Hoola sends nothing by itself.', style: TextStyle(fontSize: 11, color: C.faint)),
       ]),
     );
   }
