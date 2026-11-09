@@ -275,7 +275,7 @@ def test_not_configured_says_so(env, monkeypatch):
     composio.set_client(None)
     assert service.composio_apps("default")["configured"] is False
     from app.bazar.connectors.base import ToolError
-    with pytest.raises(ToolError, match="chalu nahi"):
+    with pytest.raises(ToolError, match="not on at the server"):
         service.composio_connect("default", "slack")
 
 
@@ -332,7 +332,7 @@ def test_v0294_self_check_has_no_secrets(cz):
 
 def test_v0296_key_app_her_key_goes_to_composio_never_to_hoola(cz):
     out = cz["svc"].composio_connect("default", "zendesk", cz["conv"]["default"])
-    assert out["status"] == "needs_key" and out["url"] == "" and "chat mein kabhi" in out["say"]
+    assert out["status"] == "needs_key" and out["url"] == "" and "Never send a key in chat" in out["say"]
     f = {x["name"]: x for x in out["fields"]}
     assert f["generic_api_key"]["secret"] is True and f["subdomain"]["secret"] is False and f["generic_api_key"]["label"] == "API Key"
     res = cz["svc"].composio_key("default", "zendesk", {"generic_api_key": "zd-secret-123", "subdomain": "newtika",

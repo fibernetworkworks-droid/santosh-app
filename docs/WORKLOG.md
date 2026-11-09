@@ -2574,3 +2574,10 @@ Task ID: v0.728.0 SAB ENGLISH wave 1
 Ask: make the entire Hoola English.
 Built: hoola_language switch; English reply rules; 644 English step labels; voice calls in Indian English. Next waves: server card/notification texts, phone app strings.
 Deploy: the usual vps-ops ritual; healthz must grep 0.728.0.
+
+
+---
+Task ID: v0.729.0 SAB ENGLISH wave 2
+Ask: GO WAVE 2 (server text she reads without the model).
+Built: notifications, server chat lines, cards / approvals / errors, approval titles + desk messages in English (~1,200 strings, 4 agents in worktrees, merged + diffed against the pre-wave tree).
+Deploy: the usual vps-ops ritual; healthz must grep 0.729.0.

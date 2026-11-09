@@ -69,4 +69,4 @@ def test_a_call_is_locked_to_indian_english(en):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION.startswith("0.728.0")
+    assert APP_VERSION.split(".")[1] >= "728"

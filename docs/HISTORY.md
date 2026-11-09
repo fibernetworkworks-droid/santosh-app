@@ -1,3 +1,26 @@
+## v0.729.0 SAB ENGLISH wave 2 — notifications, cards and server messages in English (9 Nov 2026; owner: "GO WAVE 2")
+
+Wave 2 = every text that reaches her WITHOUT passing through the model (the model already answers in English since
+v0.728). Done by four helper agents, each in its own git worktree on its own files, then merged here and checked:
+(A) `push.py` render: every phone notification title and body (~200 strings); (B) the chat lines the server writes
+itself - santosh.py errors / timeouts / outage / busy / too-long / credit-out / stop + pause confirmations / step-cap /
+empty-ending lines, goal.py plan card words + report labels, pakka / quick / kaamstop / kaam_followup lines (STATE_WORD,
+canned finish / failed / stopped lines), draftcheck notes (the English SAID notes are now the only ones; old marks kept so
+old notes still match), kaam_laws ledger words (the "(Kaam:" marker unchanged) (~60); (C) bazar/service.py card + payment
++ connect lines (EXPIRED_SAY, INTERRUPTED_SAY, order status, reminder icons), bahar.py, quicklane.py, docdesk.py,
+employee/inbox.py, main.py HTTP error details and greetings (~250; the two frozen /api/pc/* details left); (D) approval
+card titles, items and desk messages across the connectors (drive, calendar, slides, sheets, forms, photos, notebook,
+youtube, mail, upi, composio, mcp_remote, browser, commerce, native2), operator/browser.py and the rent / event /
+logistics / front-office / architecture desks (~700). LEFT ALONE ON PURPOSE: every regex / word list that reads HER
+words (stop, approval, money, done-claim detectors), dict keys and stored values (waiting_haan, idvault labels), text
+written to the model (wave 3), drafts addressed to Hindi-speaking third parties in the non-English branch, product names
+(Pehchaan Locker, Thok Sahayak), the frozen PC files (pc/, pc_tools.py, connectors/pc.py, connectors/pcop.py). CHECK:
+the 44 edited test files run on the merged tree AND on the pre-wave tree (a separate worktree at 3067ecb13): after
+moving 5 more stale assertions (composio x2, v0657 interrupted, v0187 x2, v0199 x2) the only failures left are the ones
+the pre-wave tree has too (test_email draft_needs_recipient, test_v0268 v0260 pin) plus test_v0410 / test_v0555 source
+pins that fail before this wave as well. NOT DONE: model-facing Hinglish (wave 3), the phone app's own strings,
+`yaad.py` "Haal ki files" line. NOT VERIFIED live.
+
 ## v0.728.0 SAB ENGLISH wave 1 — Hoola writes and speaks English (9 Nov 2026; owner: "MAKE ENTIRE HOOLA IN ENGLISH - MOST IMPORTANT")
 
 MEASURED first: lines carrying Hinglish words - ~18,700 in server code across ~950 files (prompts, tool status and

@@ -122,11 +122,11 @@ def test_app_version_story():
     assert f'APP_VERSION = "{APP_VERSION}"' in main    # v0.537: was a typed 0.535.0, two releases behind
     # story pin moved to the v0.555 story (the v0.476 precedent: the newest release's story carries the
     # marker; the older stories live in git history)
-    assert 'SAB ENGLISH v0.728' in main and '0.728.0' in main  # the newest-story precedent (v0.728.0 carries the marker; VAADA PAKKA v0.727 rides the Previous chain; older stories live in git history)
+    assert 'SAB ENGLISH wave 2 v0.729' in main and '0.729.0' in main  # the newest-story precedent (v0.729.0 carries the marker; SAB ENGLISH v0.728 rides the Previous chain; older stories live in git history)
 
 
 def test_pubspec_pin():
     pub = (ROOT.parents[0] / 'pubspec.yaml').read_text(encoding='utf-8') if (ROOT.parents[0] / 'pubspec.yaml').exists() else None
     if pub is None:  # tests dir is server/tests; pubspec is at repo root
         pub = (ROOT / 'pubspec.yaml').read_text(encoding='utf-8')
-    assert 'version: 0.728.0+727' in pub
+    assert 'version: 0.729.0+728' in pub

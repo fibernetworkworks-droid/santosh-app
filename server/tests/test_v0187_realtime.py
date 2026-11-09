@@ -257,7 +257,7 @@ def test_model_failure_falls_back_to_the_honest_line(fu, monkeypatch):
     kw.observe(conv, "video_job", {"id": "v2", "status": "done", "name": "Shaami ka video"})
     tick_drain()
     assert fu["notices"], "she is never left without the news"
-    assert "✅" in fu["notices"][0][1] and "ho gaya" in fu["notices"][0][1]
+    assert "✅" in fu["notices"][0][1] and "done" in fu["notices"][0][1]
 
 
 def test_failed_job_asks_for_her_word(fu, monkeypatch):
@@ -269,7 +269,7 @@ def test_failed_job_asks_for_her_word(fu, monkeypatch):
     monkeypatch.setattr(kf, "_model_line", dead_line)
     kw.observe(conv, "video_job", {"id": "v3", "status": "failed", "name": "Ad reel", "error": "render crash"})
     tick_drain()
-    assert fu["notices"] and "❌" in fu["notices"][0][1] and "ruk gaya" in fu["notices"][0][1]
+    assert fu["notices"] and "❌" in fu["notices"][0][1] and "stopped" in fu["notices"][0][1]
 
 
 def test_running_turn_postpones_the_report(fu, monkeypatch):
@@ -343,5 +343,5 @@ def test_enqueue_dedupes_same_job_and_state(fu):
 def test_version():
     from app.config import get_settings
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.728.0"
+    assert APP_VERSION == "0.729.0"
     assert get_settings().agent_ack_after_s == 5.0
