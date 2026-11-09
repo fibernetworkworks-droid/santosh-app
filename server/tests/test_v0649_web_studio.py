@@ -208,6 +208,8 @@ def test_studio_in_a_real_browser(arena_server, arch_env, monkeypatch):
     page.fill("#wsAsk", "hamare school ka portal - admission, fees, chhutti ki arzi, notices")
     page.keyboard.press("Enter")
     page.wait_for_selector("#ws .doc", timeout=30000)
+    page.wait_for_function("() => (document.querySelector('#ws .doc') || {}).innerText?.includes('Gyan Vidya Mandir')",
+                           timeout=30000)                  # v0.707 the skeleton doc shows first, the real plan after
     doc = page.inner_text("#ws .doc")
     assert "Gyan Vidya Mandir" in doc and "Admissions" in doc and "hamare school ka portal" in doc
     assert page.locator("#ws [data-act='approve-plan']").count() == 1
