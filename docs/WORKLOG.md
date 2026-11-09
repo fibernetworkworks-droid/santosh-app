@@ -2581,3 +2581,10 @@ Task ID: v0.729.0 SAB ENGLISH wave 2
 Ask: GO WAVE 2 (server text she reads without the model).
 Built: notifications, server chat lines, cards / approvals / errors, approval titles + desk messages in English (~1,200 strings, 4 agents in worktrees, merged + diffed against the pre-wave tree).
 Deploy: the usual vps-ops ritual; healthz must grep 0.729.0.
+
+---
+Task ID: v0.730.0 SAB ENGLISH wave 3 + phone
+Ask: GO PHONE and GO WAVE 3 -- in parallel.
+Built: phone app (Dart + Kotlin + manifest) English, model-facing prompts / tool descriptions / nudges / voice persona English; i18n lookup keys kept; 9 worktree agents, merged + compared against v0.729.0.
+Incident: shared /tmp/pytest-of-root filled the disk (0 MB); deleted with the owner's OK.
+Deploy: the usual vps-ops ritual; healthz must grep 0.730.0; the APK build is the first compile of the phone text.
