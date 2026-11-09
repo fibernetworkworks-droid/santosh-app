@@ -3325,3 +3325,7 @@ body.albon{overflow:hidden}
  #app #composer .qchips{order:9;flex-basis:100%}
  #app #composer .qc{font-size:12px;gap:5px;width:auto;padding:0 10px}
 }
+
+/* v0.720 HALKA NISHAAN: the sidebar / sign-in logo is the LIGHT mark (hoola-mark.png - the drawing on transparent, no navy
+   square) and carries no ring and no round crop; the v0.264-era magenta ring rule no longer reaches it. */
+#app .mk img[src*="hoola-mark"],.mk img[src*="hoola-mark"],.lcard .brand img[src*="hoola-mark"]{border-radius:0;box-shadow:none;background:none;object-fit:contain}

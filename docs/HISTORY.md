@@ -1,3 +1,13 @@
+## v0.720.0 HALKA NISHAAN — the console logo is the light mark, no ring (9 Nov 2026; owner, sidebar screenshot: "CHECK THE LOGO IS DARK -- MAKE IT LIGHT LOGO -- AS ALREADY DEVLOPED DONT KEEP THAT RING ON IT")
+
+The sidebar and sign-in card showed `hoola-logo.png` - the app icon, the mark on its navy square - cropped round, with the
+older magenta ring (`#app .mk img{box-shadow:... var(--mag)}`) around it. The fix keeps ONE drawing: `tool/make_mark.js`
+now also renders the mark on transparent to `server/app/static/hoola-mark.png` (256 px), the console's v2 / legacy pages and
+the Create studio fallback point at it, and a v2.css rule (after the ring rule, so it wins) removes the ring, the round crop
+and any background for it. The launcher icon, favicon and Apple touch icon keep the navy on purpose: a launcher masks the
+icon and needs a background. Checked in a real browser in light and dark. Tests: NEW test_v0720_halka_nishaan.py (2) +
+test_v0462_logo's brand pin moved to the light mark.
+
 ## v0.719.0 SAAF COMPOSER — the chat typing box stays intact with a side panel open (9 Nov 2026; owner, screenshot: "when any artifact, pdf, doc open in right side panel chat typing section icon gets misplaced ... all content must remain intact not misplaced"; their SEEKH MANCH ON THE CONSOLE took 0.718.0 first, both kept)
 
 Opening an artifact / PDF / doc in the right panel leaves the chat column about 250-560 px wide. The composer row was

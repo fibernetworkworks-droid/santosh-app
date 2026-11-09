@@ -2516,3 +2516,9 @@ Task ID: v0.719.0 SAAF COMPOSER
 Ask: with an artifact / PDF / doc open in the right panel, the chat typing box icons get misplaced - keep everything intact.
 Fixed: the composer is a CSS container; buttons never shrink, chips never break (icons / own line when narrow), Send stays inside the box, flush right. Checked in a real browser at 1180-1700 px.
 Deploy: the usual vps-ops ritual; healthz must grep 0.719.0; hard refresh.
+
+---
+Task ID: v0.720.0 HALKA NISHAAN
+Ask: the sidebar logo is dark with a ring - make it the light logo, no ring.
+Fixed: static/hoola-mark.png (the mark on transparent, from make_mark.js) in the console sidebar + sign-in; ring / crop removed. Checked light + dark.
+Deploy: the usual vps-ops ritual; healthz must grep 0.720.0; hard refresh.

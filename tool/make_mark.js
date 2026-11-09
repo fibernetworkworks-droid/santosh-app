@@ -1,6 +1,7 @@
 // v0.716 NAYA ROOP: render the Hoola mark (server/app/static/console/mark.js, the ONE drawing) into the files that
 // cannot be SVG:
 //   assets/images/hoola_logo.png         1024 master on the logo's navy  -> tool/make_logo.py builds every size from it
+//   server/app/static/hoola-mark.png      the LIGHT mark on transparent (console sidebar + sign-in, v0.720)
 //   assets/images/mark_{outer,inner,needle,core}.png   the four layers the phone's thinking mark animates
 //   tool/android/res/drawable/ic_stat_santosh.xml      the status-bar silhouette (Android keeps only the shape)
 // usage: node tool/make_mark.js   (from the repo root; uses the preinstalled Playwright Chromium)
@@ -30,6 +31,8 @@ const MARK = fs.readFileSync(path.join(ROOT, 'server/app/static/console/mark.js'
   // the master: the mark at 84% of the navy square
   const full = await p.evaluate(() => HoolaMark.svg());
   await shot(`<div style="box-sizing:border-box;padding:8%;width:100%;height:100%">${full}</div>`, '#090F32', 'assets/images/hoola_logo.png');
+  // v0.720 the LIGHT mark: the same drawing on transparent, no navy square, no ring - the console's sidebar / sign-in logo
+  await shot(`<div style="box-sizing:border-box;padding:2%;width:100%;height:100%">${full}</div>`, 'transparent', 'server/app/static/hoola-mark.png');
   for (const [k, parts] of [['outer', 'o'], ['inner', 'i'], ['needle', 'n'], ['core', 'c']]) {
     const s = await p.evaluate(pp => HoolaMark.svg({parts: pp}), parts);
     await p.setViewportSize({width: 256, height: 256});

@@ -81,7 +81,7 @@ def test_the_brand_mark_is_the_logo_and_the_avatar_is_still_the_avatar():
         brand = [l for l in t.splitlines() if 'class="brand"' in l or 'class="mk"' in l]
         assert brand, rel
         for line in brand:
-            assert "/static/hoola-logo.png" in line, f"{rel}: brand mark is not the logo: {line[:80]}"
+            assert "/static/hoola-mark.png" in line, f"{rel}: brand mark is not the light logo (v0.720): {line[:80]}"
         # the avatar rows are untouched: that picture is the person she named, not the product
         assert "/static/santosh-head.png" in t, f"{rel}: the avatar picture went missing"
 
