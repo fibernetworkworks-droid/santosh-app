@@ -90,12 +90,12 @@ def test_the_true_facts_are_kept_for_the_line_not_only_whispered():
 # ---------------------------------------------------------------- the opener, and no contradictions left
 def test_the_prompt_asks_for_the_opener_and_the_per_step_line():
     p = (ROOT / "server/app/agent/prompts.py").read_text()
-    assert "CHALTE CHALTE BOLO" in p
-    assert "bade kaam se PEHLE ek vaakya" in p                          # say it before touching a tool
-    assert "har tool ke baad ek chhoti line" in p
+    assert "TALK AS YOU WORK" in p
+    assert "BEFORE a big job, one sentence" in p                          # say it before touching a tool
+    assert "after every tool one short line" in p
     assert "har step ka koi line chat mein mat likho" not in p          # v0.240's order is gone
     # v0.268 reworded the ban list into the never-list; the bans themselves are stronger, not weaker
-    for ban in ("bullet / heading / emoji", "machine ke", "15-30 shabd"):
+    for ban in ("bullets / headings / emoji", "inside the\n  machine", "15-30 words"):
         assert ban in p, ban
 
 
