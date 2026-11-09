@@ -114,11 +114,11 @@ def test_operator_asks_before_moving_her_browser_job_to_her_pc(env, monkeypatch)
     # she said "apne browser mein": UIDAI refuses the server -> she is ASKED, nothing moves to her PC by itself
     ctx = Ctx(tenant_id="default", conversation_id=conv, place="hoola")
     r = asyncio.run(dispatch("computer_operator", {"action": "start", "task": "Aadhaar download karo"}, ctx))
-    assert r["status"] == "site_blocks_server" and r["say"].endswith("kar doon?") and not pc_tasks and not started
+    assert r["status"] == "site_blocks_server" and r["say"].endswith("on your PC?") and not pc_tasks and not started
     # she said "mere PC pe": straight to her PC, and the words say it was HER choice (not "the site refuses")
     ctx = Ctx(tenant_id="default", conversation_id=conv, place="pc")
     r = asyncio.run(dispatch("computer_operator", {"action": "start", "task": "IRCTC se ticket ka PDF download karo"}, ctx))
-    assert r["place"] == "pc" and "moved_to" not in r and r["say"].startswith("Aapke PC par") and len(pc_tasks) == 1
+    assert r["place"] == "pc" and "moved_to" not in r and r["say"].startswith("Started in Chrome on your PC") and len(pc_tasks) == 1
     # no place named + a site that works: Hoola's own browser, and it says so
     ctx = Ctx(tenant_id="default", conversation_id=conv)
     monkeypatch.setattr(reach, "probe", lambda host, **k: (True, ""))

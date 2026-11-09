@@ -257,7 +257,7 @@ def test_the_tool_tells_the_model_to_really_do_it(env):
     run(kaam_plan(ctx, action="set", goal="report", steps=[{"text": "PDF banao", "check": "file_pages>=2"}]))
     run(kaam_plan(ctx, action="step", n=1, state="done", reason="ban gaya"))
     out = run(kaam_plan(ctx, action="finish", outcome="done", reason="ho gaya", made=["report.pdf"]))
-    assert out["verified"] is False and "jaanch fail" in out["result"]
+    assert out["verified"] is False and "check failed" in out["result"]
     assert out["failures"] and "finish done" in out["note"]
     assert "card_shows" not in out                      # no four-part report for a job that did not finish
 

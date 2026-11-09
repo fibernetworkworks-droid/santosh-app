@@ -69,7 +69,7 @@ def test_a_big_ask_gets_its_card_after_the_first_round(gz, monkeypatch):  # noqa
     monkeypatch.setattr(goal, "set_goal", spy)
     out = asyncio.run(S.run_turn(conv, T3, tenant_id="default"))
     assert seen_cards and seen_cards[0]["total"] == 4                       # the card, with her 4 parts
-    first = next(i for i, c in enumerate(brain.seen) if "server ne yeh plan bana diya" in str(c["messages"][-1]))
+    first = next(i for i, c in enumerate(brain.seen) if "the server made this plan" in str(c["messages"][-1]))
     assert first == 1                                                        # right after the FIRST round
     assert "PDF chat mein hai" in out and goal.active_for(conv) is None      # closed by the real final answer
 

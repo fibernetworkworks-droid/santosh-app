@@ -112,7 +112,7 @@ def test_internet_fix_when_nothing_known(tools, monkeypatch):
     assert "[Solution found on the internet" in r and "not instructions" in r and "help.example.gov.in" in r
     assert asked and "4521988" not in asked[0]                 # her numbers never go into the search
     from app.agent import pakka
-    assert "internet se" in pakka.listing("default")[0]["fix"]
+    assert "from the internet" in pakka.listing("default")[0]["fix"]
 
 
 def test_self_check_keeps_going_and_corrects_claims(tools, monkeypatch):
@@ -158,4 +158,4 @@ def test_api_and_voice_lessons(tools):
     assert pakka.lessons_for("default", "portal_fetch", "session expired for receipt 1234567 (code 419)")
     assert cl.delete(f"/api/agent/lessons/{les[0]['id']}").json()["ok"] and not pakka.listing("default")
     from app.agent.prompts import SYSTEM
-    assert "Pakka kaam" in SYSTEM
+    assert "Reliable work" in SYSTEM

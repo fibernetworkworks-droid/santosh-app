@@ -43,9 +43,9 @@ def test_finish_no_longer_orders_the_four_part_reply(gz):  # noqa: F811
     # the old order is gone
     assert "chaar hisson mein do" not in note
     # and the new one forbids every shape of the dump, by name
-    for ban in ("Bullet list", "Kya hua", "Kya bana", "Kya baaki", "dohraao mat"):
+    for ban in ("No bullet list", "What happened", "What was made", "What is left", "Do not repeat"):
         assert ban in note, ban
-    assert "EK chhoti insaani line" in note and "ek ya do vaakya" in note
+    assert "ONE short human line" in note and "one or two sentences" in note
 
 
 def test_the_report_text_is_handed_over_as_what_she_already_sees(gz):  # noqa: F811
@@ -53,7 +53,7 @@ def test_the_report_text_is_handed_over_as_what_she_already_sees(gz):  # noqa: F
     # renamed: not a template called "report", but "what the card shows"
     assert "report" not in out
     assert "card_shows" in out and "✅ What was done" in out["card_shows"]
-    assert "CARD par pehle se dikh rahi hai" in out["note"]
+    assert "already shown on her CARD" in out["note"]
 
 
 def test_nothing_is_lost_from_the_card(gz):  # noqa: F811
@@ -82,9 +82,9 @@ def test_a_finished_step_asks_for_the_finding_not_a_dump(gz):  # noqa: F811
     out = _run(ctx, action="step", n=1, state="done", text="ho gaya")
     note = out["note"]
     assert "chat mein iska koi line mat likho" not in note       # the v0.240 silence is gone
-    assert "is step se jo asli cheez mili" in note               # ...replaced by the finding
-    assert "koi bullet ya heading nahi" in note                  # the dump stays banned
-    assert "agla tool" in note
+    assert "the real finding from this step" in note               # ...replaced by the finding
+    assert "no bullet or heading" in note                  # the dump stays banned
+    assert "Then the next tool" in note
 
 
 # ---------------------------------------------------------------- the progress line: rare, short, capped
@@ -146,7 +146,7 @@ def test_the_rulebook_demands_a_short_work_reply_on_both_surfaces():
     assert "Results of work, the short way" in c
     assert "one or two sentences" in c
     for ban in ("never repeat them in the reply", "never a bullet list of the steps you ran",
-                "Kya hua / Kya bana / Kya baaki"):
+                "What happened / What was made / What is left"):
         assert ban in c, ban
     assert "A twenty-step job gets the same short line as a one-step job" in c
     # the old wording that invited the dump is gone

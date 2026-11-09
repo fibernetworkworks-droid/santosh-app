@@ -148,7 +148,7 @@ def test_doc_options_effort_clamped_to_known_words():
 def test_doc_on_missing_id_refused():
     with pytest.raises(Exception) as e:
         _doc("oh_nope")
-    assert "nahi mila" in str(e.value)
+    assert "was not found" in str(e.value)
 
 
 def test_doc_on_decided_refused():
@@ -314,7 +314,7 @@ def test_tenant_isolation():
     assert other["total"] == 0
     with pytest.raises(Exception) as e:
         _run(oh.officehours_dekho(CTX2, what="doc", officehours_id=out["officehours_id"]))
-    assert "nahi mila" in str(e.value)
+    assert "was not found" in str(e.value)
 
 
 def test_disabled_switch(monkeypatch):
@@ -343,4 +343,4 @@ def test_nothing_autoruns_doc_is_advisory():
                             decision="karna hai", next_step="kal subah form"))
     row = oh.get_doc(CTX.tenant_id, out["officehours_id"])
     assert row["status"] == "decided" and row["next_step"] == "kal subah form"
-    assert d["note"] and "Haan" in d["note"]      # the honest line: real work waits for her Haan
+    assert d["note"] and "yes" in d["note"]      # the honest line: real work waits for her Haan

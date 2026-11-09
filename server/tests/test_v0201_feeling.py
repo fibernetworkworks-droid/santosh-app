@@ -121,15 +121,15 @@ def test_delivery_end_rides_last(env):
     from app.config import get_settings
     cfg = voice.live_config("Puck", "hi", "(nothing saved yet)", None, langst=ls)
     text = cfg.system_instruction.parts[0].text
-    assert text.rstrip().endswith("garmi.)")          # the VERY last line of the whole system prompt
-    assert "list kabhi ek saans mein nahi" in text and voice.DELIVERY_END in text
+    assert text.rstrip().endswith("some warmth.)")          # the VERY last line of the whole system prompt
+    assert "never a list in one breath" in text and voice.DELIVERY_END in text
 
 
 # ---------------- ack clips: a changed ask regenerates ----------------
 
 def test_ack_clip_filename_carries_generation():
     f = voice._ack_file("Puck", "m", 3)
-    assert f.name == "Puck_m_3_a3.pcm" and f.parent == voice.ACK_DIR
+    assert f.name == "Puck_m_3_a4.pcm" and f.parent == voice.ACK_DIR
     assert voice._ACK_GEN == "a4"   # v0.250 a2 -> a3: every clip re-rendered through the read-aloud check
 
 

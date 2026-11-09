@@ -462,7 +462,7 @@ def test_voice_slow_tool_is_cut_off_with_a_spoken_reason(env, monkeypatch):
         with c.websocket_connect(f"/api/voice/ws?conv={conv}") as ws:
             assert wait_until(lambda: len(fake.tool_responses) >= 1, timeout=9)
             ws.send_text(json.dumps({"type": "end"}))
-    assert "der le raha" in fake.tool_responses[0].response["error"]
+    assert "taking very long" in fake.tool_responses[0].response["error"]
 
 
 def test_voice_result_goes_in_as_a_note_when_the_session_moved_on(env, monkeypatch):

@@ -345,21 +345,21 @@ def test_late_result_tells_the_truth_never_a_fake_done(gz, monkeypatch):  # noqa
     santosh.LAST_OUTCOME[conv] = {"outcome": "partial", "left": "2/5 steps ho gaye", "goal": "Report banao"}
     c._late_result(_done_job("2/5 ho gaya"), "report banao")
     note = got[-1][1]
-    assert "abhi kaam chal raha hai" in note and "khatam hote hi bataunga" in note
+    assert "still running" in note and "as soon as it is done" in note
 
     santosh.LAST_OUTCOME[conv] = {"outcome": "stuck", "left": "OTP nahi mila", "goal": "Report banao"}
     c._late_result(_done_job("atka"), "report banao")
     note = got[-1][1]
-    assert "atka hai" in note and "'Ho gaya' bilkul mat kehna" in note
+    assert "is stuck" in note and "Do NOT say it is done" in note
 
     santosh.LAST_OUTCOME[conv] = {"outcome": "done", "left": "", "goal": "Report banao"}
     c._late_result(_done_job("poora ho gaya"), "report banao")
     note = got[-1][1]
-    assert "ho gaya" in note
+    assert "is done" in note
 
     # the exception branch is kept
     c._late_result(_failed_job(RuntimeError("x")), "report banao")
-    assert "poora nahi ho paya" in got[-1][1]
+    assert "could not be completed" in got[-1][1]
 
 
 def test_goal_events_reach_the_call_via_kaamwatch(gz, monkeypatch):  # noqa: F811

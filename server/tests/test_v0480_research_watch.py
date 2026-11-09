@@ -372,7 +372,7 @@ def test_the_wake_text_for_a_change_asks_for_a_short_message_and_is_a_held_check
     r = KF.KaamFollowup(tenant_id="t", conversation_id="c", key="research_watch:rr_abc", kind="research_watch", label="Research watch", title="watch 1234 · Corvane",
                         state="done", detail="1 badlaav mile - watch rw_1")
     txt = KF._wake_text(r)
-    assert runner.is_report_due(txt) and runner.is_change_due(txt) and 'run="rr_abc"' in txt and "research_watch tool" in txt and "run_id=rr_abc" in txt and "CHHOTA sandesh" in txt and "nahi dikha" in txt
+    assert runner.is_report_due(txt) and runner.is_change_due(txt) and 'run="rr_abc"' in txt and "research_watch tool" in txt and "run_id=rr_abc" in txt and "SHORT message" in txt and "not seen this time" in txt
     r.state = "stopped"
     assert not runner.is_report_due(KF._wake_text(r))                                           # a paused watch gets the ordinary news line
     j = kaamwatch.shape("research_watch", {"id": "rr_abc", "number": "watch 1234", "name": "Corvane", "status": "done", "say": "x", "watch": "rw_1"})

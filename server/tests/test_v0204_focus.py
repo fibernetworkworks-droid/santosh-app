@@ -45,7 +45,7 @@ def test_focus_words_are_verbatim(env):
     _say(conv, "Sharma Traders ko 12 kaam bhejne hain, file ka naam march.xlsx hai")
     _say(conv, "Ramesh ka number 98765 save kar lo, wo plumber hai")
     fb = yaad.focus_block("default", conv)
-    assert "uske APNE shabd" in fb
+    assert "EXACT words" in fb
     assert "march.xlsx" in fb and "98765" in fb          # the exact words, not a gist of them
     assert "Ramesh" in fb and "plumber" in fb
     assert "[/focus]" in fb
@@ -86,7 +86,7 @@ def test_voice_block_leads_with_words(env):
     conv = "c_focus_vb"
     _say(conv, "petrol pump ka bill 950 ka tha", voice=True)
     vb = yaad.voice_block("default", conv)
-    assert "uske APNE shabd" in vb
+    assert "EXACT words" in vb
     assert "petrol pump ka bill 950 ka tha" in vb         # verbatim before any one-line gist
 
 

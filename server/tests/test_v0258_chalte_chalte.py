@@ -46,7 +46,7 @@ def test_a_plain_multi_tool_ask_now_gets_lines_without_any_plan(gz, monkeypatch)
     before = STATS_LONG["narrate"]
     asyncio.run(run_turn(conv, "status dekho", tenant_id="default"))
     seen = _texts(brain)
-    assert "ab use EK chhoti line batao" in seen, "a plain multi-tool ask must talk too, not only a goal"
+    assert "now tell her ONE short line" in seen, "a plain multi-tool ask must talk too, not only a goal"
     assert STATS_LONG["narrate"] > before
 
 
@@ -70,11 +70,11 @@ def test_the_cadence_is_claudes_one_per_group_still_capped():
 def test_the_line_carries_the_tools_own_fact():
     from app.agent import goal as G
     bare = G.NARRATE
-    assert "asli number / id / naam / link" in bare and "banaya hua nahi" in bare
+    assert "real number / id / name / link" in bare and "nothing made up" in bare
     assert "koi number ya link nahi" not in bare                       # v0.240's ban, reversed
     withf = G.narrate_line(["12 naye mails aaye", "video taiyar - drive.google.com"])
     assert "12 naye mails aaye" in withf and "drive.google.com" in withf
-    assert "naya mat banao" in withf
+    assert "do not invent new ones" in withf
     assert G.narrate_line([]) == bare                                  # no fact -> the bare ask, never an empty tail
 
 
@@ -103,10 +103,10 @@ def test_no_prompt_contradicts_another_in_the_same_turn():
     """PLAN_FIRST asked for a line per step while prompts.py and kaam_plan forbade one - all three now agree."""
     from app.agent import goal as G
     from app.agent import goal_tools as GT  # noqa: F401
-    assert "har bade step ke baad ek chhoti line" in G.PLAN_FIRST
+    assert "after each big step say in one short line" in G.PLAN_FIRST
     gt = (ROOT / "server/app/agent/goal_tools.py").read_text()
     assert "chat mein iska koi line mat likho" not in gt
-    assert "is step se jo asli cheez mili" in gt
+    assert "the real finding from this step" in gt
 
 
 def test_the_rulebook_carries_both_rules_on_chat_only():
@@ -127,7 +127,7 @@ def test_the_final_answer_is_still_short_and_the_report_still_lives_on_the_card(
     assert "Results of work, the short way" in R.CHAT
     assert "never a bullet list of the steps you ran" in R.CHAT
     gt = (ROOT / "server/app/agent/goal_tools.py").read_text()
-    assert 'out["card_shows"]' in gt and "EK chhoti insaani line" in gt
+    assert 'out["card_shows"]' in gt and "ONE short human line" in gt
     p = (ROOT / "server/app/agent/prompts.py").read_text()
     assert "Aakhri jawab hamesha chaar hisson mein" not in p
 

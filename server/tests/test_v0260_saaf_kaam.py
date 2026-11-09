@@ -106,7 +106,7 @@ def test_the_between_step_narration_still_stands():
     from app.config import get_settings
     st = get_settings()
     assert st.agent_narrate_every == 1 and st.agent_narrate_max == 6
-    assert "asli number / id / naam / link" in G.NARRATE
+    assert "real number / id / name / link" in G.NARRATE
     assert "12 naye mails aaye" in G.narrate_line(["12 naye mails aaye"])
     p = (ROOT / "server/app/agent/prompts.py").read_text()
     assert "TALK AS YOU WORK" in p and "BEFORE a big job, one sentence" in p
