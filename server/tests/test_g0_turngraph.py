@@ -178,7 +178,8 @@ def test_step_cap(bz, monkeypatch):  # noqa: F811
 
 
 def test_checkpoint_is_written(bz, monkeypatch):  # noqa: F811
-    r = _run(monkeypatch, True, [[tu(1, "list_reminders")], txt("Aapke 3 reminder hain.")], "reminders batao")
+    r = _run(monkeypatch, True, [[tu(1, "list_reminders")], txt("Aapke 3 reminder hain.")], "reminders batao",
+             {"CHAT_GRAPH_KEEP_FINISHED": "true"})   # G1 deletes a finished turn's checkpoints unless kept
     from app.agent import turngraph
     from app.config import get_settings
     rows = asyncio.run(turngraph.checkpoints(get_settings(), r["conv"]))

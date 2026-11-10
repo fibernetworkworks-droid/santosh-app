@@ -2795,3 +2795,9 @@ Stage Summary: pushed; needs GSTINAPI_API_KEY on the VPS, then a live test.
 ---
 Task ID: v0.766.0 GSTIN SACH
 Task: her live GSTIN test - fallback answer passed off as compliance. Work: instead_of + note; 1 test; box suites 29 green. Stage: pushed.
+
+Task ID: v0.767.0 LANGGRAPH G1
+Ask: GO G1 (resume after restart + tool ledger).
+Built: turngraph resume, agent/toolledger.py, turn_inbox graph_resume sweep; chat_graph still off; 9 tests.
+Deploy: vps-ops deploy (langgraph pip install from v0.761 still needed if not done).
+

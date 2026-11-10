@@ -117,7 +117,7 @@ def test_soft_landing_and_mark_in_a_real_browser():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION.startswith("0.766.0")
+    assert APP_VERSION.startswith("0.767.0")
 
 
 def test_v0717_file_card_is_one_row_like_the_approved_design():

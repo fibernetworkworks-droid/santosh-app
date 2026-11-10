@@ -467,6 +467,9 @@ class Settings(BaseSettings):
                                            # as an official LangGraph StateGraph (agent/turngraph.py) over the SAME step
                                            # functions as the old loop, checkpointed per turn; off = the old loop only
     chat_graph_dir: str = "./data/turngraph"   # the graph's SQLite checkpoints (checkpoints.db)
+    chat_graph_keep_finished: bool = False   # G1: keep a finished turn's checkpoints (tests / debugging); off =
+                                           # deleted at END so the checkpoint file does not grow without limit
+    chat_graph_ledger_keep_h: float = 24.0   # G1: tool-ledger rows of turns that never finished are dropped after this
     chat_plain_loop: bool = True           # parity Phase 5b (the loop): the model's answer ends the turn. Kept checks
                                            # run BEFORE the answer is shown and a corrected answer REPLACES the draft
                                            # in place (one reply): a false ACTION claim (sent / paid / booked /

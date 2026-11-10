@@ -1924,6 +1924,11 @@ def small_prompt_on(settings, ctx) -> bool:
     return who in ("owner", "wake", "goal") or who.startswith("approved:")
 
 
+class ToolAmbiguous(Exception):
+    """G1 (graph path only): a non-read tool was started before a restart and its outcome is unknown - it is not run
+    again; the message is the tool_result the model sees."""
+
+
 class _Turn:
     """G0 (docs/LANGGRAPH_TURN_PLAN.md): the locals of one turn's think -> tools loop, held in one object so the SAME
     step functions serve the old while-loop (`_steps_inner`) and the LangGraph nodes (`agent/turngraph.py`) - the two
@@ -1936,6 +1941,7 @@ class _Turn:
     def __init__(self, **kw):
         self.blocks: list = []
         self.stop = ""
+        self.tool_runner = None   # G1: the graph path wraps each tool call in its ledger (None = _run_tool directly)
         for k in self._FIELDS:
             setattr(self, k, kw.get(k))
 
@@ -2398,7 +2404,8 @@ async def _turn_tools(t: "_Turn", blocks: list):
                                                   "args": livework.args_brief(args_in)})   # v0.171 masked, display-safe
             _work(conversation_id, b["id"], shown, label, "start", args_in)
             try:
-                out = await _watched(_run_tool(b["name"], args_in, ctx, settings, mcp_route), conversation_id, ctx, state)
+                out = await _watched(_run_tool(b["name"], args_in, ctx, settings, mcp_route) if t.tool_runner is None
+                                     else t.tool_runner(b, args_in, ctx, settings, mcp_route), conversation_id, ctx, state)
                 _PROGRESS[conversation_id] = time.time()   # v0.311 the turn is moving (read by _with_deadline)
                 _fail = tool_failure(out)   # v0.665 {"ok": False} / status failed is a failure too, not only "error"
                 fine = not _fail
@@ -2454,6 +2461,14 @@ async def _turn_tools(t: "_Turn", blocks: list):
                 _work(conversation_id, b["id"], shown, label, "stopped", args_in, error="Roka gaya")
                 return {"type": "tool_result", "tool_use_id": b["id"], "is_error": True,
                         "content": "Stopped by the owner while this step was running; it may have partly happened."}
+            except ToolAmbiguous as e:   # G1 graph resume: started before a restart, outcome unknown - never re-run
+                breaker.after(b["name"], False)
+                state["calls"].append({"tool": b["name"], "ok": False, "error": "outcome unknown after a restart",
+                                       "args": args_in, "key": _key(b["name"], args_in)})
+                bus.publish(conversation_id, "step", {"tool": shown, "label": label, "state": "error", "id": b["id"],
+                                                      "detail": "may already have run - check before retrying"})
+                _work(conversation_id, b["id"], shown, label, "error", args_in, error="Outcome unknown after a restart")
+                return {"type": "tool_result", "tool_use_id": b["id"], "content": str(e), "is_error": True}
             except ToolError as e:
                 breaker.after(b["name"], False)
                 help_ = await pakka.on_failure(tenant_id, b["name"], str(e), state.get("request", ""), state)

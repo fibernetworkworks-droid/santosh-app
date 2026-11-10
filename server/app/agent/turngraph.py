@@ -27,8 +27,16 @@ Context variables: LangGraph runs every node in its own task, so a ContextVar se
 model / reasoning / ASK_NOW) would be lost by the next one. Every node body therefore runs in ONE shared
 `contextvars.Context` taken when the turn starts - exactly the single-task semantics of the old loop.
 
-Checkpointer: an AsyncSqliteSaver at <chat_graph_dir>/checkpoints.db, thread_id = "<conversation>:<turn id>". G0
-writes the checkpoint; resuming from it after a restart is G1.
+Checkpointer: an AsyncSqliteSaver at <chat_graph_dir>/checkpoints.db, thread_id = "<conversation>:<turn id>".
+
+G1 (durability): the turn id is the turn_inbox row id when the turn came through the inbox (stable, so the restart
+sweep can find the thread), else a fresh id. Each node also checkpoints the turn's plain-data state (`data`: the
+_steps_begin dict minus live objects, the breaker's counters, the admitted families). `resume()` rebuilds the live
+objects from that (never re-saving her message, never re-running a finished node) and continues the graph from its
+last checkpoint. Tools on the graph path go through the tool ledger (`agent/toolledger.py`): intent before, done /
+failed after; on resume a done tool is reused, an interrupted read is re-run, an interrupted send / order / delete /
+payment is NOT re-run (the model is told the outcome is unknown). A turn that reaches END (or ends in an error reply)
+has its checkpoints and ledger rows deleted.
 """
 from __future__ import annotations
 
@@ -37,7 +45,10 @@ import contextvars
 import json
 import logging
 import os
+import time as _time
 import uuid
+from collections import Counter
+from contextlib import asynccontextmanager
 from typing import Any, TypedDict
 
 log = logging.getLogger("santosh.turngraph")
@@ -47,8 +58,14 @@ try:   # the official library (MIT). Missing on a box = the old loop answers, sa
     AVAILABLE = True
 except Exception:   # noqa: BLE001
     AVAILABLE = False
+try:
+    from langgraph.errors import NodeCancelledError as _NodeCancelled
+except Exception:   # noqa: BLE001
+    class _NodeCancelled(Exception):   # an older langgraph re-raises CancelledError itself
+        pass
 
-STATS = {"turns": 0, "fallback": 0, "no_checkpoint": 0}
+STATS = {"turns": 0, "fallback": 0, "no_checkpoint": 0, "resumed": 0, "cleaned": 0}
+_RESUMABLE = ("model", "tools", "check", "finish")
 
 
 class TurnState(TypedDict, total=False):
@@ -62,6 +79,9 @@ class TurnState(TypedDict, total=False):
     done: bool              # final_text is already the turn's answer (stopped / stuck / paused)
     final_text: str
     outcome: str
+    prepared: bool          # G1: prepare finished (a checkpoint before it has nothing worth resuming)
+    stop: str               # G1: the last model step's stop reason (the check node needs it on resume)
+    data: dict              # G1: the turn's plain-data state (see _data) - what resume rebuilds the live objects from
 
 
 class _Live:
@@ -73,6 +93,7 @@ class _Live:
         self.state: dict = {}
         self.t = None                                  # santosh._Turn
         self.cv = contextvars.copy_context()           # the ONE context every node body runs in
+        self.thread = ""                               # G1: the checkpoint thread (the ledger's key); '' = no ledger
 
 
 _RUNS: dict[str, _Live] = {}
@@ -84,6 +105,49 @@ def _snapshot(history: list) -> list:
         return json.loads(json.dumps(history, ensure_ascii=False, default=str))
     except Exception:   # noqa: BLE001
         return []
+
+
+def _breaker_data(b) -> dict:
+    out = {}
+    for k, v in vars(b).items():
+        if isinstance(v, Counter):
+            out[k] = dict(v)
+        elif isinstance(v, set):
+            out[k] = sorted(v)
+        elif isinstance(v, (str, int, float, bool)) or v is None:
+            out[k] = v
+        elif isinstance(v, list):
+            try:
+                out[k] = json.loads(json.dumps(v))
+            except Exception:   # noqa: BLE001
+                pass
+    return out
+
+
+def _data(live: _Live) -> dict:
+    """The turn's state as plain data (G1): every JSON-able key of the _steps_begin dict (live objects - the breaker,
+    the native tool list - are left out), the breaker's counters, the admitted tool families, the turn's final text."""
+    out: dict = {}
+    for k, v in (live.state or {}).items():
+        if k in ("breaker", "native_tools"):
+            continue
+        try:
+            out[k] = json.loads(json.dumps(v, ensure_ascii=False))
+        except Exception:   # noqa: BLE001
+            if isinstance(v, (list, dict)):
+                try:
+                    out[k] = json.loads(json.dumps(v, ensure_ascii=False, default=str))
+                except Exception:   # noqa: BLE001
+                    pass
+    b = (live.state or {}).get("breaker")
+    if b is not None:
+        out["__breaker"] = _breaker_data(b)
+    t = live.t
+    if t is not None:
+        out["__final_text"] = t.final_text or ""
+        if t.adm is not None:
+            out["__adm"] = sorted(t.adm.families)
+    return out
 
 
 def _node(fn):
@@ -101,7 +165,10 @@ async def _prepare(live: _Live, state: TurnState) -> dict:
                                       live.user_text)
     live.t = await S._turn_prepare(live.conversation_id, live.ctx, live.gender, live.history, live.settings,
                                    live.tenant_id, live.state)
-    return {"messages": _snapshot(live.history), "ran_steps": 0, "route": "model"}
+    if live.thread:
+        live.t.tool_runner = _ledger_runner(live.thread)
+    return {"messages": _snapshot(live.history), "ran_steps": 0, "route": "model", "prepared": True,
+            "data": _data(live)}
 
 
 async def _model(live: _Live, state: TurnState) -> dict:
@@ -113,20 +180,22 @@ async def _model(live: _Live, state: TurnState) -> dict:
     got = await S._turn_model(t)
     if isinstance(got, str):               # Rokiye / Pause landed during the model call
         return {"route": "finish", "done": True, "final_text": got, "ran_steps": t.ran_steps,
-                "messages": _snapshot(live.history)}
+                "messages": _snapshot(live.history), "data": _data(live)}
     blocks, stop = got
     t.blocks, t.stop = blocks, stop
     route = "check"
     if stop == "tool_use":                 # the step is recorded (saved + shown) before its tools run, as before
         route = await S._turn_after_model(t, blocks, stop)
-    return {"route": route, "ran_steps": t.ran_steps, "messages": _snapshot(live.history)}
+    return {"route": route, "ran_steps": t.ran_steps, "messages": _snapshot(live.history), "stop": stop or "",
+            "data": _data(live)}
 
 
 async def _check(live: _Live, state: TurnState) -> dict:
     from . import santosh as S
     t = live.t
     route = await S._turn_after_model(t, t.blocks, t.stop)
-    return {"route": route, "final_text": t.final_text or "", "messages": _snapshot(live.history)}
+    return {"route": route, "final_text": t.final_text or "", "messages": _snapshot(live.history),
+            "data": _data(live)}
 
 
 async def _tools(live: _Live, state: TurnState) -> dict:
@@ -134,8 +203,9 @@ async def _tools(live: _Live, state: TurnState) -> dict:
     t = live.t
     done = await S._turn_tools(t, t.blocks)
     if done is not None:                   # stuck (breaker) / stopped: the turn ends with this line
-        return {"route": "finish", "done": True, "final_text": done, "messages": _snapshot(live.history)}
-    return {"route": "model", "messages": _snapshot(live.history)}
+        return {"route": "finish", "done": True, "final_text": done, "messages": _snapshot(live.history),
+                "data": _data(live)}
+    return {"route": "model", "messages": _snapshot(live.history), "data": _data(live)}
 
 
 async def _finish(live: _Live, state: TurnState) -> dict:
@@ -197,35 +267,280 @@ def recursion_limit(settings) -> int:
     return 3 * cap + 10
 
 
-async def _invoke(app, inp: TurnState, settings, thread_id: str) -> dict:
-    cfg = {"configurable": {"thread_id": thread_id}, "recursion_limit": recursion_limit(settings)}
-    return await app.ainvoke(inp, cfg)
+def thread_id(conversation_id: str, turn_id: str) -> str:
+    """The checkpoint thread of one turn. Never empty, never 'default' (one shared thread would mix every turn)."""
+    c, t = str(conversation_id or "").strip(), str(turn_id or "").strip()
+    if not c or not t or c == "default" or t == "default":
+        raise ValueError(f"refusing a turn graph thread id from conversation={c!r} turn={t!r}")
+    return f"{c}:{t}"
+
+
+def _cfg(settings, thread: str) -> dict:
+    return {"configurable": {"thread_id": thread}, "recursion_limit": recursion_limit(settings)}
+
+
+async def _invoke(app, inp: TurnState | None, settings, thread_id: str) -> dict:
+    return await app.ainvoke(inp, _cfg(settings, thread_id))
+
+
+@asynccontextmanager
+async def _saver(settings, create: bool = True):
+    """The SQLite checkpointer (None when the file does not exist and create is False)."""
+    from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
+    path = checkpoint_path(settings)
+    if not create and not os.path.exists(path):
+        yield None
+        return
+    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+    async with AsyncSqliteSaver.from_conn_string(path) as saver:
+        yield saver
+
+
+async def _ledger(fn, *a):
+    """A ledger read / write never breaks a tool call (a failure = today's behaviour for that call). Run inline (one
+    small indexed row, like every _save of the turn): a thread hop would reorder a parallel batch's results."""
+    try:
+        return fn(*a)
+    except Exception:   # noqa: BLE001
+        log.exception("tool ledger %s failed", getattr(fn, "__name__", "?"))
+        return None
+
+
+def _ledger_runner(thread: str):
+    """The graph path's per-tool call: the ledger around santosh._run_tool (still the ONLY way a tool runs -
+    approvals, money-on-her-tap, redaction and logging all live there)."""
+    async def run(b: dict, args: dict, ctx, settings, mcp_route):
+        from . import santosh as S
+        from . import toolledger as L
+        from .tools import ToolError
+        name, tid = b["name"], b["id"]
+        h = L.args_hash(args)
+        row = await _ledger(L.get, thread, tid)
+        if row and row.get("args_hash") == h:
+            if row["state"] == "done":
+                L.STATS["reused"] += 1
+                try:
+                    return json.loads(row["result"])
+                except Exception:   # noqa: BLE001
+                    return row["result"]
+            if row["state"] == "failed":
+                L.STATS["reused"] += 1
+                kind, err = row.get("error_kind"), row.get("error") or ""
+                if kind == "tool_error":
+                    raise ToolError(err)
+                if kind == "timeout":
+                    raise asyncio.TimeoutError()
+                raise RuntimeError(err)
+            if not L.read_only(b):          # intent with no end: it may already have happened - never re-sent
+                L.STATS["ambiguous"] += 1
+                raise S.ToolAmbiguous(L.ambiguous_text(name))
+            L.STATS["rerun_read"] += 1      # a look-up: running it again changes nothing in the world
+        await _ledger(L.intent, thread, tid, name, h)
+        try:
+            out = await S._run_tool(name, args, ctx, settings, mcp_route)
+        except ToolError as e:
+            await _ledger(L.failed, thread, tid, "tool_error", str(e))
+            raise
+        except asyncio.TimeoutError:
+            await _ledger(L.failed, thread, tid, "timeout", "")
+            raise
+        except asyncio.CancelledError:
+            raise                            # cut off mid-call: stays `intent` (outcome unknown)
+        except Exception as e:   # noqa: BLE001
+            await _ledger(L.failed, thread, tid, "crash", f"{type(e).__name__}: {e}")
+            raise
+        await _ledger(L.done, thread, tid, out)
+        return out
+    return run
+
+
+async def _cleanup(saver, thread: str, settings, force: bool = False) -> None:
+    """The turn is over: its checkpoints and ledger rows go (the file must not grow without limit)."""
+    from . import toolledger as L
+    if saver is not None and (force or not getattr(settings, "chat_graph_keep_finished", False)):
+        try:
+            await saver.setup()               # adelete_thread does not create the tables on a fresh file
+            await saver.adelete_thread(thread)
+            STATS["cleaned"] += 1
+        except Exception:   # noqa: BLE001
+            log.exception("turn graph checkpoint cleanup failed")
+    await _ledger(L.forget, thread, float(getattr(settings, "chat_graph_ledger_keep_h", 24) or 0))
+
+
+async def forget_threads(settings, threads: list[str]) -> None:
+    """Housekeeping (turn_inbox sweep): threads whose inbox rows are long finished."""
+    from . import toolledger as L
+    if not AVAILABLE or not threads:
+        return
+    async with _saver(settings, create=False) as saver:
+        for th in threads:
+            if saver is not None:
+                try:
+                    await saver.setup()
+                    await saver.adelete_thread(th)
+                except Exception:   # noqa: BLE001
+                    log.debug("checkpoint forget failed", exc_info=True)
+            await _ledger(L.forget, th, 0)
+
+
+def _resumable_snap(snap) -> bool:
+    nxt = tuple(getattr(snap, "next", ()) or ())
+    vals = getattr(snap, "values", None) or {}
+    return bool(nxt) and nxt[0] in _RESUMABLE and bool(vals.get("prepared")) and bool(vals.get("messages"))
+
+
+async def resumable(settings, conversation_id: str, inbox_id: str) -> bool:
+    """Does the checkpointer hold an unfinished, resumable checkpoint for this inbox row's turn?"""
+    if not AVAILABLE or not inbox_id:
+        return False
+    th = thread_id(conversation_id, inbox_id)
+    async with _saver(settings, create=False) as saver:
+        if saver is None:
+            return False
+        snap = await _builder().compile(checkpointer=saver).aget_state({"configurable": {"thread_id": th}})
+        return _resumable_snap(snap)
+
+
+def _restore_state(data: dict, conversation_id: str, ctx, settings, user_text: str) -> dict:
+    """The _steps_begin dict rebuilt from the checkpoint - no hard-ask judge, no procedure lookup run again."""
+    from . import santosh as S
+    from . import goal as _goal
+    from .breaker import Breaker
+    hers = (getattr(ctx, "actor", "owner") or "owner")
+    S.ASK_NOW.set(user_text if (hers == "owner" or hers.startswith("approved:")) else "")
+    state = {k: v for k, v in (data or {}).items() if not k.startswith("__")}
+    state.setdefault("calls", [])
+    state.setdefault("used", [])
+    state.setdefault("request", user_text)
+    state.setdefault("t0", _time.time())
+    b = Breaker()
+    for k, v in (data.get("__breaker") or {}).items():
+        cur = getattr(b, k, None)
+        if isinstance(cur, Counter):
+            setattr(b, k, Counter(v or {}))
+        elif isinstance(cur, set):
+            setattr(b, k, set(v or []))
+        else:
+            setattr(b, k, v)
+    state["breaker"] = b
+    if "goal" in state and getattr(settings, "agent_goal", False):
+        g = _goal.active_for(conversation_id)
+        if g is not None:
+            state["goal"] = g
+    hw = state.get("hard_why") or {}
+    if isinstance(hw, dict) and state.get("hard"):
+        try:
+            ctx.research = "research" in (hw.get("why") or [])
+        except Exception:   # noqa: BLE001
+            pass
+    return state
+
+
+async def resume(conversation_id: str, inbox_id: str, ctx, gender: str, history: list, settings, tenant_id: str,
+                 user_text: str = "") -> str | None:
+    """Continue an interrupted turn from its last checkpoint. None = nothing to resume (the caller runs it fresh).
+
+    Rebuilds the live objects the nodes need (ctx comes from the new run_turn; settings; the breaker and the turn's
+    state from the checkpoint's data; the santosh _Turn via _turn_prepare on the CHECKPOINTED messages; the live
+    reply of this run) - her message is not saved again and no finished node runs again - then ainvoke(None)."""
+    from . import santosh as S
+    th = thread_id(conversation_id, inbox_id)
+    try:
+        cm = _saver(settings, create=False)
+        saver = await cm.__aenter__()
+    except Exception:   # noqa: BLE001
+        log.exception("turn graph checkpointer could not open for resume")
+        return None
+    try:
+        if saver is None:
+            return None
+        app = _builder().compile(checkpointer=saver)
+        snap = await app.aget_state({"configurable": {"thread_id": th}})
+        if not _resumable_snap(snap):
+            return None
+        vals = snap.values
+        nxt = snap.next[0]
+        saved = list(vals.get("messages") or [])
+        data = dict(vals.get("data") or {})
+        state = _restore_state(data, conversation_id, ctx, settings, user_text)
+        live = _Live(conversation_id, ctx, gender, history, settings, tenant_id, user_text)   # cv taken after ASK_NOW
+        live.thread = th
+        live.state = state
+        history[:] = json.loads(json.dumps(saved))
+        t = await asyncio.create_task(S._turn_prepare(conversation_id, ctx, gender, history, settings, tenant_id,
+                                                      state), context=live.cv)
+        history[:] = json.loads(json.dumps(saved))      # _turn_prepare's memory notes are already in the checkpoint
+        if "turn_start" in data:
+            state["turn_start"] = data["turn_start"]
+        t.ran_steps = int(vals.get("ran_steps") or 0)
+        t.stop = vals.get("stop") or ""
+        t.final_text = data.get("__final_text") or ""
+        t.ran_tools = bool(state.get("calls"))
+        if nxt in ("tools", "check"):
+            last = next((m for m in reversed(history) if m.get("role") == "assistant"), None)
+            c = (last or {}).get("content")
+            t.blocks = c if isinstance(c, list) else [{"type": "text", "text": str(c or "")}]
+        fams = set(data.get("__adm") or [])
+        if t.adm is not None and fams - set(t.adm.families):
+            try:
+                t.adm.admit_families(fams - set(t.adm.families))
+            except Exception:   # noqa: BLE001
+                log.debug("re-admitting families failed", exc_info=True)
+        t.tool_runner = _ledger_runner(th)
+        live.t = t
+        _RUNS[th] = live
+        STATS["resumed"] += 1
+        log.warning("turn graph: resuming %s at node %s (step %s)", th, nxt, t.ran_steps)
+        try:
+            out = await _invoke(app, None, settings, th)
+        except _NodeCancelled as e:   # a node body cancelled (the old loop let CancelledError through): keep it
+            raise asyncio.CancelledError() from e
+        except Exception:
+            await _cleanup(saver, th, settings)     # the turn ended in an error reply: nothing left to resume
+            raise
+        finally:
+            _RUNS.pop(th, None)
+        await _cleanup(saver, th, settings)
+        return out.get("final_text") or ""
+    finally:
+        try:
+            await cm.__aexit__(None, None, None)
+        except Exception:   # noqa: BLE001
+            log.debug("checkpointer close failed", exc_info=True)
 
 
 async def run_steps(conversation_id: str, ctx, gender: str, history: list, settings, tenant_id: str,
                     user_text: str = "") -> str:
     """`santosh._steps` on the graph: the same text back, the same rows, the same events."""
     from . import santosh as S
-    if not AVAILABLE:
+    _bad = str(conversation_id or "").strip() in ("", "default")
+    if not AVAILABLE or _bad:
         STATS["fallback"] += 1
-        log.warning("chat_graph is on but langgraph is not installed - the old loop answers")
+        log.warning("chat_graph is on but %s - the old loop answers",
+                    "this turn has no conversation id of its own" if _bad else "langgraph is not installed")
         state = await S._steps_begin(conversation_id, ctx, history, settings, tenant_id, user_text)
         text = await S._steps_inner(conversation_id, ctx, gender, history, settings, tenant_id, state)
         return await S._steps_end(conversation_id, ctx, history, settings, tenant_id, user_text, state, text)
+    from .. import turn_inbox
+    inbox_id, want_resume = turn_inbox.take_graph_turn(conversation_id)
+    if want_resume and inbox_id:
+        got = await resume(conversation_id, inbox_id, ctx, gender, history, settings, tenant_id, user_text)
+        if got is not None:
+            STATS["turns"] += 1
+            return got
+        log.warning("turn graph: nothing to resume for %s:%s - running the turn fresh", conversation_id, inbox_id)
     STATS["turns"] += 1
-    turn_id = uuid.uuid4().hex[:12]
-    run_key = f"{conversation_id}:{turn_id}"
-    _RUNS[run_key] = _Live(conversation_id, ctx, gender, history, settings, tenant_id, user_text)
+    turn_id = inbox_id or uuid.uuid4().hex[:12]
+    run_key = thread_id(conversation_id, turn_id)
+    live = _Live(conversation_id, ctx, gender, history, settings, tenant_id, user_text)
+    _RUNS[run_key] = live
     inp: TurnState = {"conversation_id": conversation_id, "turn_id": turn_id, "run_key": run_key,
                       "messages": [], "ran_steps": 0, "route": "", "capped": False, "done": False,
-                      "final_text": "", "outcome": ""}
+                      "final_text": "", "outcome": "", "prepared": False, "stop": "", "data": {}}
     try:
         saver_cm = None
         try:
-            from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
-            path = checkpoint_path(settings)
-            os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
-            saver_cm = AsyncSqliteSaver.from_conn_string(path)
+            saver_cm = _saver(settings)
             saver = await saver_cm.__aenter__()
         except Exception:   # noqa: BLE001 - a checkpoint store that cannot open never stops her turn
             log.exception("turn graph checkpointer could not open; running without a checkpoint")
@@ -233,7 +548,18 @@ async def run_steps(conversation_id: str, ctx, gender: str, history: list, setti
             saver_cm, saver = None, None
         try:
             app = _builder().compile(checkpointer=saver)
-            out = await _invoke(app, inp, settings, run_key)
+            if saver is not None:
+                live.thread = run_key           # the ledger only matters when a checkpoint can be resumed
+                if inbox_id:                    # an earlier attempt of this inbox row left a thread: start clean
+                    await _cleanup(saver, run_key, settings, force=True)
+            try:
+                out = await _invoke(app, inp, settings, run_key)
+            except _NodeCancelled as e:   # LangGraph wraps a node's own CancelledError; the old loop let it through -
+                raise asyncio.CancelledError() from e   # the checkpoint stays for a resume
+            except Exception:
+                await _cleanup(saver, run_key, settings)   # an error reply ends the turn: nothing to resume
+                raise
+            await _cleanup(saver, run_key, settings)
         finally:
             if saver_cm is not None:
                 try:
@@ -246,7 +572,7 @@ async def run_steps(conversation_id: str, ctx, gender: str, history: list, setti
 
 
 async def checkpoints(settings, conversation_id: str) -> list[dict[str, Any]]:
-    """The checkpoints written for this chat's turns (newest first) - for tests and a later resume (G1)."""
+    """The checkpoints written for this chat's turns (newest first) - for tests and diagnostics."""
     from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
     path = checkpoint_path(settings)
     if not os.path.exists(path):
