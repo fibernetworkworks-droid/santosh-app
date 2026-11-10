@@ -163,3 +163,12 @@ conftest pins it off so older suites see the old wording byte for byte).
 - NOT done (said plainly): her message's own time label (the hover Copy / Edit was already there).
 - Tests: tests/test_v0743_saaf_insaani.py (switch, old words kept when off, new words present, a real-browser walk of
   the home with a working job). Pre-existing reds stay: test_v0555 card CSS literal-colour check, test_v142 recent list.
+
+
+## v0.744.0 SEEDHA SEND (owner screenshot: "REMOVE THE AVATAR FACE AND CHAT PANEL SEND BUTTON IS GOING OUT OF PANEL")
+
+Measured in a real browser: at 1440 / 1180 / 1000 px the Send button's right edge sat 12 px past the composer's
+(1232 vs 1220). Cause: the v0.740 model chip is up to 200 px and v0.719 made every composer control `flex:none`, so
+nothing could give room. Now `#composer .row>.modelb{flex:0 1 auto;min-width:0}` - the chip name ellipses first,
+every other control keeps its size. The home greeting's avatar face (`.landing .halo`) is hidden under html.human.
+Test: tests/test_v0744_seedha_send.py (Send inside the box at 1440 / 1180 / 1000 / 760, no face) - fails on the old CSS.

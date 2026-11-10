@@ -2659,3 +2659,7 @@ Task ID: v0.743.0 SAAF INSAANI
 - Owner asked for a human, friendlier console without changing the existing design; showed two canvases, built the second on "GO".
 - Files: static/console/v2.js, v2.css, employees.js; app/config.py (console_human); app/main.py (config key); tests/conftest.py pin; tests/test_v0743_saaf_insaani.py.
 - Verified: new suite 3/3 incl. browser walk; console suites v0740 / v0721 / v163 / v164 / v0716 / v0719 / deploy green.
+
+---
+Task ID: v0.744.0 SEEDHA SEND
+- Owner screenshot: avatar face + Send outside the composer. Measured, fixed in v2.css, browser test added (red on old CSS).

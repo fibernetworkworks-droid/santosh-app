@@ -104,5 +104,5 @@ def test_vad_waits_at_most_about_four_seconds():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.743.0"
-    assert "0.743.0+742" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.744.0"
+    assert "0.744.0+743" in (ROOT / "pubspec.yaml").read_text()

@@ -3418,3 +3418,9 @@ html.human #app .sn .ct.hx{width:auto;min-width:0;padding:1px 8px;border-radius:
 html.human #app .hxnote{margin:10px 0 0;font-size:13px;color:var(--mut)}
 html.human #app .racts .ra span{font-size:12.5px}
 html.human #app .ae-role .ae-role-n{display:block;font-size:12.5px;color:var(--mut);margin-top:-2px}
+/* v0.744 SEEDHA SEND: the model chip (v0.740, up to 200px) could not shrink, so Send sat 12px past the composer's
+   edge at every width; now the chip gives up room first (name ellipsis), every other control keeps its size. */
+#app #composer .row>.modelb{flex:0 1 auto;min-width:0}
+#app #composer .modelb .mname{min-width:0}
+/* v0.744 no avatar face on the home greeting (owner, human console) */
+html.human #app .landing .halo{display:none}
