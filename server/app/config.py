@@ -372,6 +372,8 @@ class Settings(BaseSettings):
     # fails (claude_all_glm_fallback) or a call carries pictures / PDFs. For NVIDIA set GLM_BASE_URL to
     # https://integrate.api.nvidia.com/v1, GLM_MODEL=z-ai/glm-5.3-flash, GLM_API_KEY=nvapi-... and CHAT_LLM=glm.
     claude_all_glm: bool = False
+    api_box_enabled: bool = True             # v0.750 the free public-API box (api_box tool, /api/box)
+    api_box_check_per_day: int = 300         # v0.750 free APIs whose site is re-checked a day (all ~1,400 about monthly); 0 = off
     studio_build_architect: bool = True   # v0.711 Web Studio Build mode: every ask is planned by the architect first (not the library's page set for its business type)
     architect_opus: bool = False   # v0.735 ALL GLM (owner: "MOVE EVERYTHING ON GLM 5.3 FLASH"): off = the plan on GLM too. Was True since v0.710 - v0.710: the website architect's plan always on the Website Sahayak's Opus (the GLM door + claude_one_model stand aside for that one call)
     claude_all_glm_fallback: bool = False   # v0.735 ALL GLM: a failed GLM call is NOT re-asked on Claude (was True)

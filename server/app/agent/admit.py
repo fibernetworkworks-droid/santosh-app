@@ -280,7 +280,9 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
     "hoola": ("avatar", "hoola network", "samaj", "dosti", "community", "connection", "business page", "network pe"),
     "employee": ("employee", "staff", "naukar"),
     "pgdb": ("postgres", "sql", "database"),
-    "publicapi": ("api",),
+    "publicapi": ("api", "api box", "pincode", "pin code", "ifsc", "exchange rate", "currency rate", "dollar rate",
+                  "usd to inr", "air quality", "aqi", "earthquake", "bhukamp", "sunrise", "sunset", "mutual fund nav",
+                  "nav of", "bitcoin", "crypto price", "word meaning", "meaning of"),   # v0.750 the free API box's asks
     "handoff": ("digilocker", "ondc", "a2a", "consent"),
     "artifact": ("artifact", "tracker", "hisaab", "calculator", "planner", "checklist", "dashboard"),
     "army": ("army", "agent army"),
