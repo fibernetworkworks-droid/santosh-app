@@ -351,7 +351,7 @@ def test_registry_mount(env):
     from app.agent import tools
     assert "crew_run" in tools.HANDLERS and "crew_run" in tools.TOOL_LABELS
     assert any(t["name"] == "crew_run" for t in tools.TOOLS)
-    assert len(tools.TOOLS) == 554, ("541 (v0.502) + 1 magic21 (v0.512) + 1 dhara_dsl (their v0.514) "
+    assert len(tools.TOOLS) == 555, ("541 (v0.502) + 1 magic21 (v0.512) + 1 dhara_dsl (their v0.514)  + 1 image_edit (image editing)"
                                      "+ 10 construction (v0.522) + 1 crew_run (v0.523)")
 
 

@@ -394,7 +394,7 @@ def test_registry_553_and_dispatch(env):
     for n in ("const_store", "const_store_dekho", "const_labour", "const_labour_dekho", "const_customer",
               "const_customer_dekho", "const_quality", "const_quality_dekho", "const_meet", "const_meet_dekho"):
         assert n in names and n in HANDLERS and n in TOOL_LABELS, n
-    assert len(TOOLS) == 554, "553 (v0.522) + 1 crew_run (v0.523)"
+    assert len(TOOLS) == 555, "553 (v0.522) + 1 crew_run (v0.523) + 1 image_edit (image editing)"
 
 
 def test_const_store_tool_end_to_end(env):

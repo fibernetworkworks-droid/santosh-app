@@ -1072,6 +1072,16 @@ TOOL_LABELS.update(ZOO_LABELS)
 HANDLERS.update(ZOO_HANDLERS)
 del _seen
 
+# IMAGE EDIT: ONE image_edit tool (app/imgedit): local Pillow edits with no key + AI jobs (remove background, upscale,
+# object removal, background swap, restore...) routed to the engines the server really has. Additive: photo_banao (a NEW
+# picture), photo_clean and id_photo keep their exact specs.
+from .imgedit_tools import IMAGE_EDIT_HANDLERS, IMAGE_EDIT_LABELS, IMAGE_EDIT_TOOLS  # noqa: E402
+_seen = {t["name"] for t in TOOLS}
+TOOLS.extend(t for t in IMAGE_EDIT_TOOLS if t["name"] not in _seen)
+TOOL_LABELS.update(IMAGE_EDIT_LABELS)
+HANDLERS.update(IMAGE_EDIT_HANDLERS)
+del _seen
+
 # v0.477 HOOLA SELF-TEACH: ONE skill_manage tool (the coder/skills_tool surface) - Santosh can
 # author and improve reusable skills mid-conversation; the coder nudge resets its counter on use.
 from ..coder.skills_tool import SKILL_HANDLERS, SKILL_LABELS, SKILL_TOOLS  # noqa: E402

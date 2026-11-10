@@ -63,7 +63,7 @@ def _doc(did, **kw):
 
 def test_registry_531_and_wired():
     names = {t["name"] for t in TOOLS}
-    assert len(TOOLS) == 554, "541 (v0.502) + 1 magic21 (v0.512) + 1 dhara_dsl (their v0.514) + 10 construction (v0.522) + 1 crew_run (v0.523)"
+    assert len(TOOLS) == 555, "541 (v0.502) + 1 magic21 (v0.512) + 1 dhara_dsl (their v0.514) + 10 construction (v0.522) + 1 crew_run (v0.523) + 1 image_edit (image editing)"
     assert {"officehours", "officehours_dekho"} <= names
     assert {"officehours", "officehours_dekho"} <= set(HANDLERS)
     assert "officehours" in TOOL_LABELS and "officehours_dekho" in TOOL_LABELS

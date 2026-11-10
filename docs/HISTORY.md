@@ -19273,3 +19273,44 @@ re-applied coherently 0.521.0 -> 0.522.0 + +550 -> +551, both works kept, count-
 later version). NOT VERIFIED live: the first real site evening on voice, the first RA-bill week, the first demand letter - her
 pilot (one contractor, one project, Maharashtra) is the test. Mera PC freeze respected: nothing in server/app/pc/, desktop/
 or lib/ touched.
+
+## IMAGE EDIT (image_edit tool, `server/app/imgedit/`) - photo editing end to end (owner: "Image editing --- perfect work on it end to end deeply and perfectly for hoola", after the aixploria.com read: 4,863 AI tools mapped to Hoola capabilities, 210 of them image editing)
+
+Hoola already MADE pictures (photo_banao), put a product on white (photo_clean) and cut passport photos (id_photo), but had no
+general photo editor. ONE new tool, `image_edit` (registry 554 -> 555), in two honest layers; photo_banao / photo_clean / id_photo
+keep their exact specs.
+
+- LOCAL (`imgedit/ops.py`, Pillow + numpy, no key, no network, deterministic): resize (17 presets: Insta post / square / Story,
+  YouTube thumb / banner, FB cover, LinkedIn, WhatsApp DP, marketplace / Amazon 2000 px, A4 150 / 300 dpi, visiting card; fit
+  contain / cover / inside / stretch), crop (box or aspect + gravity), rotate, flip, adjust (brightness / contrast / saturation /
+  sharpness %, warmth, exposure stops, gamma), auto_enhance, filters (grayscale, sepia, invert, blur, sharpen, denoise, pixelate,
+  posterize, vignette, sketch, SCAN = photo of a paper -> flat white page), redact (blur / pixelate / black over regions: a number
+  plate, a face, an address), border, pad (square canvas, never crops), round_corners, bg_color, text + watermark (her own words;
+  Devanagari + Latin + rupee sign each drawn from a font that really has the glyph), upscale_local (plain enlargement, says so),
+  convert + compress to a target KB (forms), collage, before/after. Every output is RE-ENCODED, so camera EXIF / GPS never travels.
+  Guards: 50 MP input cap, 8192 px output side, 12 steps, every parameter range-checked with a plain Hinglish reason.
+- AI (`imgedit/ai.py`): remove_bg (transparent PNG), upscale, remove_object, replace_bg, restyle, restore, colorize, edit. Engines in
+  order, the first REALLY set up runs and the answer names it: rembg (local, if installed) / Gemini via photogen (GEMINI_API_KEY) /
+  the BYOK zoo gateways (ZOO_KIE_KEY, ZOO_MUAPI_KEY; model ids per job in `ai.ROUTES`, a test pins every id against
+  zoo_catalog.json). No engine = a sentence saying what to set; upscale alone falls back to the plain enlargement and says "no new
+  detail". An engine that fails moves on to the next and the failures are reported. Generative edits carry the "AI se bana" label.
+  Each generative job is an instruction template that ends "keep every face, identity, body and pose exactly as is".
+- SAFETY (before any engine is touched): photogen.problem(edit=True) (fake documents, nudity, face swap, famous people, emblems) +
+  NEW: removing a watermark / copyright / stock-agency mark / photographer's name / signature is refused; an AI edit of a file whose
+  NAME looks like an Aadhaar / PAN / marksheet / cheque / bank statement is refused (resizing / cropping / compressing her own ID
+  photo for a form is allowed - local ops only); body changes on a child's picture refused. Refusals say "never retry in other words".
+- PIPELINE (`imgedit/run.py`): local steps and AT MOST ONE AI step per photo, in order, everything validated before anything is
+  paid for; up to 10 photos per call, 5 for an AI step; one bad file never sinks the batch; routine / staff actors are usage-gated for
+  AI steps; the result reports each step, the engine, size and KB; optional before/after card; collage action.
+- WIRING: `agent/imgedit_tools.py`, registered in `agent/tools.py` (family `image_edit`), admit keys, the EDIT HER PHOTO line in
+  prompts.py. Voice: not declared to Live (a call routes it to santosh_kaam like every other heavy tool).
+- TESTS `tests/test_imgedit.py` (38): each op, EXIF / GPS stripped, bomb refusal, compress target, scan, redact touches only its
+  region, mixed-script glyph coverage, every ROUTES id in the zoo catalogue, plan() readiness with / without keys, every refusal,
+  order of local-before-AI, honest upscale fallback, engine fall-through + reported failures, zoo reference = flattened JPEG data URI
+  + topaz factor, batch / gate / cap / one-bad-file, registration + reachable from real Hinglish / English asks. Registry pins
+  554 -> 555 in 7 suites (their 10 protego crawl tests are red on pristine HEAD too: the sandbox lacks `protego`).
+- NOT VERIFIED (said plainly): no AI engine has answered a real call - no gateway / Gemini key is in this sandbox and rembg is not
+  installed. The kie / muapi request shapes (topaz `upscale_factor`, recraft remove-background, nano-banana-edit) come from
+  `zoo_catalog.json`; muapi takes a data-URI reference unverified (kie uploads it to its CDN), which is why kie models are first.
+  The first real "background hata do" on the VPS with ZOO_KIE_KEY set is the live proof. Quality of any AI result is that
+  engine's, not Hoola's. Version ritual (APP_VERSION / pubspec / pins) is NOT done here: this branch still has to merge origin/main.
