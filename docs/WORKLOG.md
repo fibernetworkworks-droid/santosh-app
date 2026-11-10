@@ -2599,3 +2599,9 @@ Task ID: v0.732.0 CLAUDE PARITY 0-6
 Ask: GLM 5.3 Flash primary + PHASE 0 + 1, then the large gaps of the parity table first.
 Built: parity card + request dump, one model per chat, small fixed prompt, core tools + web_fetch, work in the turn, answer only, direct artifacts; 6 worktree agents + the join; each switch default on, pinned off for old suites.
 Deploy: the usual vps-ops ritual; healthz must grep 0.732.0; then vps-ops parity_card_check (free) and parity_card (live) for the first baseline.
+
+---
+Task ID: v0.733.0 CLAUDE PARITY MEDIUM
+Ask: GO MEDIUM (gaps 4 thinking, 5 loop, 10 memory).
+Built: adaptive thinking, plain loop with in-place fixes, one memory; 3 worktree agents merged; compared with v0.732.0 (no new reds).
+Deploy: vps-ops deploy; healthz 0.733.0; then parity_card for the live score.

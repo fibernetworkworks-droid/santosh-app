@@ -124,5 +124,5 @@ def test_cli_ping_flag(monkeypatch, capsys):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.732.0"
+    assert APP_VERSION == "0.733.0"
     json.dumps({})
