@@ -7,8 +7,8 @@ CON = ROOT / "server" / "app" / "static" / "console"
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.751.0"
-    assert "0.751.0+750" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.752.0"
+    assert "0.752.0+751" in (ROOT / "pubspec.yaml").read_text()
 
 
 def test_pdfjs_vendored_and_loaded_lazily():

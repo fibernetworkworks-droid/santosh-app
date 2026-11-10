@@ -193,7 +193,8 @@ window.HoolaCreate = ctx => {
     ['l', 'Setup'], ['engines', 'Engines', 'sliders'],
   ];
   const TOOLS = [['video','Video','video'],['image','Image','image'],['music','Music','music'],['voice','Voice','mic'],['dubbing','Dubbing','dub'],['editor','Editor','cut']];
-  const TITLE = {engines:'Engines', studio:'Studio home', video:'Video', image:'Image', music:'Music studio', voice:'Voice studio', dubbing:'Dubbing', editor:'Video editor', director:'Director', script:'Script writer', casting:'AI casting', templates:'Templates', library:'My creations', projects:'Film projects', brand:'Brand kit', learn:'How-to guides'};
+  const tools = () => ctx.artcraft?.() ? [...TOOLS, ['artcraft', 'ArtCraft', 'spark']] : TOOLS;   // v0.752 ArtCraft when the server offers it
+  const TITLE = {artcraft:'ArtCraft', engines:'Engines', studio:'Studio home', video:'Video', image:'Image', music:'Music studio', voice:'Voice studio', dubbing:'Dubbing', editor:'Video editor', director:'Director', script:'Script writer', casting:'AI casting', templates:'Templates', library:'My creations', projects:'Film projects', brand:'Brand kit', learn:'How-to guides'};
   function shellHTML() {
     return `<link rel="stylesheet" href="/static/console/studio.css?v=${esc(ctx.version || '')}">
 <div id="shell">
@@ -224,7 +225,7 @@ ${SPRITE}`;
       if (n[0] === 'l') return `<div class="sl"${st()}>${n[1]}</div>`;
       if (n[0] === 'a') return `<button class="agent" data-go="${n[1]}"${st()}><span class="ai" style="background:${n[5]}">${I(n[4], 'width:16px;height:16px')}</span><div style="min-width:0;flex:1"><b>${n[2]}</b><small>${n[3]}</small></div><span class="ago" aria-hidden="true">${I('down', 'width:14px;height:14px;transform:rotate(-90deg)')}</span></button>`;
       // v0.318 tools are rows like every other item (one row style for the whole sidebar), not a bordered grid
-      if (n[0] === 't') return TOOLS.map(([k, t, ic]) => `<button class="sn" data-go="${k}"${st()}>${I(ic)}<span>${t}</span></button>`).join('');
+      if (n[0] === 't') return tools().map(([k, t, ic]) => `<button class="sn" data-go="${k}"${st()}>${I(ic)}<span>${t}</span></button>`).join('');
       return `<button class="sn" data-go="${n[0]}"${st()}>${I(n[2])}<span>${n[1]}</span></button>`;
     }).join('');
   }
@@ -417,7 +418,7 @@ ${SPRITE}`;
   <section><div class="sec-h"><h2>Direct your film</h2><a data-go="director">Open Director</a></div>
     ${rail(QUICK.map(([t, k, d], i) => `<button class="qcard" data-quick="${i}"><span class="thumb">${art(k, 'q' + i)}<span class="dur">${d}</span></span><b>${t}</b></button>`).join(''), 'qs')}</section>
   <section id="tools"><div class="sec-h"><h2>Studio tools</h2><span class="dim" style="font-size:14px">Every tool shares your cast and brand kit</span></div>
-    <div class="tools">${ALLTOOLS.map(([v, t, s, k, tag], i) => `<button class="tool" data-go="${v}"><span class="thumb">${art(k, 't' + i)}</span><div style="min-width:0"><b>${t}${tag ? ` <span class="tag ${tag}">${tag === 'hot' ? 'Popular' : 'New'}</span>` : ''}</b><small>${s}</small></div></button>`).join('')}</div></section>
+    <div class="tools">${(ctx.artcraft?.() ? [...ALLTOOLS, ['artcraft', 'ArtCraft', 'Seedance, Kling, Veo, FLUX… on your ArtCraft credits', 'abstract', 'new']] : ALLTOOLS).map(([v, t, s, k, tag], i) => `<button class="tool" data-go="${v}"><span class="thumb">${art(k, 't' + i)}</span><div style="min-width:0"><b>${t}${tag ? ` <span class="tag ${tag}">${tag === 'hot' ? 'Popular' : 'New'}</span>` : ''}</b><small>${s}</small></div></button>`).join('')}</div></section>
   <section><div class="sec-h"><h2>Your recent creations</h2><a data-go="library">See all</a></div><div class="row" id="recent"></div></section>
   <section><div class="sec-h"><h2>Start from a template</h2><a data-go="templates">See all</a></div>
     ${rail(STARTERS.map(([t, v, k], i) => `<button class="tpl" data-start="${i}"><span class="thumb">${art(k, 'tp' + i)}<span class="use">Use this</span></span><b>${t}</b><small>${TITLE[v]}</small></button>`).join(''), 'row')}</section>
@@ -536,6 +537,113 @@ ${SPRITE}`;
       if (b.id === 'imgGo') create();
     });
     if (o.autostart) create();
+  };
+
+  /* ---------------- v0.752 ARTCRAFT IN CREATE (owner: "now lets develop a artcraft in create section in hoola --- artcraft is
+     already developed in backend"): the v0.730 shilp lane as a Create tool. ArtCraft's Omni API makes the video / picture with
+     HER ArtCraft credits (the key sits in the server's settings, never here); Create = her tap, asked once more because it
+     spends credits. Running jobs refresh every few seconds; a finished file is copied once onto her shelf (My creations), so it
+     outlives ArtCraft's link. Model ids are ArtCraft's own (snake_case, e.g. seedance_2p0) - the catalog shows their names. */
+  const AC = {kind: 'video', model: '', prompt: '', seconds: 5, aspect: 'wide_sixteen_by_nine', res: 'seven_twenty_p', audio: true,
+    avoid: '', start: '', end: '', refs: '', ov: null};
+  const AC_ASP = [['wide_sixteen_by_nine', '16:9'], ['tall_nine_by_sixteen', '9:16'], ['square', '1:1']];
+  const AC_RES = [['seven_twenty_p', '720p'], ['ten_eighty_p', '1080p']];
+  const AC_ST = {pending: 'Waiting in ArtCraft’s queue', started: 'Making', attempt_failed: 'Retrying at ArtCraft', unknown: 'Checking'};
+  async function acLoad() { try { AC.ov = await api('GET', '/api/shilp'); } catch (e) { AC.ov = AC.ov || {error: e.message, jobs: [], catalog: {}}; } return AC.ov; }
+  function acTile(j) {
+    const title = esc((j.prompt || '').slice(0, 70) || (j.kind === 'video' ? 'ArtCraft video' : 'ArtCraft picture'));
+    const sub = [esc(j.model || ''), j.kind === 'video' ? 'Video' : 'Picture', when(j.created)].filter(Boolean).join(' · ');
+    if (!j.done) return `<div class="res gening tall"><span class="thumb">${art(j.kind === 'video' ? 'film' : 'portrait', 'ac' + j.token)}<span class="ring"></span><span class="pct">${esc(AC_ST[j.status] || 'Making')}${j.progress != null ? ' · ' + j.progress + '%' : ''}</span></span><b class="rt">${title}</b><small>${sub}</small></div>`;
+    if (j.ok && j.item_id) { const it = (D.items || []).find(x => x.id === j.item_id); if (it) return itemTile(it, true); }
+    if (j.ok) return `<div class="res tall"><span class="thumb"><span class="fail">${I(j.kind === 'video' ? 'video' : 'image', 'width:22px;height:22px')}<span>${j.save_error ? 'Made, but the copy for My creations failed: ' + esc(j.save_error) : 'Made - saving to My creations…'}</span></span></span><b class="rt">${title}</b><small>${sub}${j.cdn_url ? ` · <a class="lnk" href="${esc(j.cdn_url)}" target="_blank" rel="noopener noreferrer">Open at ArtCraft</a>` : ''} · <button class="lnk" data-acrm="${esc(j.token)}">Remove</button></small></div>`;
+    return `<div class="res failed tall"><span class="thumb"><span class="fail">${I('x', 'width:22px;height:22px')}<span>ArtCraft could not make it (${esc(j.failure || j.status)}). Their rules decide whether credits were used.</span></span></span><b class="rt">${title}</b><small>${sub} · <button class="lnk" data-acrm="${esc(j.token)}">Remove</button></small></div>`;
+  }
+  function acResults() {
+    const el = $('#acres'); if (!el) return; const o = AC.ov || {};
+    el.innerHTML = (o.jobs || []).map(acTile).join('') || `<div class="empty" style="grid-column:1/-1"><div><h2>Your ArtCraft work appears here</h2><p class="mut">Pick a model, describe it on the left and press Create.</p></div></div>`;
+    paintAll(el); hydrate(el);
+  }
+  V.artcraft = () => { const o = AC.ov || {}, ready = o.enabled && o.key_set, vid = AC.kind === 'video';
+    const used = (o.used_models || []).filter(u => u.kind === AC.kind).map(u => u.model);
+    const sugg = [...new Set([...used, ...(vid ? [o.documented_example || 'seedance_2p0'] : [])])];
+    if (!AC.model && sugg.length) AC.model = sugg[0];
+    const fam = o.catalog?.[vid ? 'video' : 'image'] || {};
+    return `<div class="gen">
+  <div class="panel"><div class="pbody">
+    <div class="seg" role="group" aria-label="Kind"><button aria-pressed="${vid}" data-ackind="video">Video</button><button aria-pressed="${!vid}" data-ackind="image">Picture</button></div>
+    <div class="prow"><span class="pi">${I('spark', 'width:16px;height:16px')}</span><div><small>Engine</small><b>ArtCraft · ${(o.counts?.video || 0) + (o.counts?.image || 0) || ''} models</b></div><span class="tag">Your ArtCraft credits</span></div>
+    ${o.error ? `<div class="box"><h3>ArtCraft could not be read</h3><p class="note">${esc(o.error)}</p></div>` : !o.enabled ? `<div class="box"><h3>ArtCraft is switched off</h3><p class="note">${esc(o.lane_error || 'The owner turns it on in the server settings.')}</p></div>` : !o.key_set ? `<div class="box"><h3>Connect ArtCraft first</h3><p class="note">${esc(o.setup || 'The owner adds the ArtCraft API key to the server settings.')}</p><p class="note">The key is never typed here or in the chat.</p></div>` : ''}
+    <div class="box">
+      <h3>Model</h3>
+      <label class="fld">ArtCraft model id<input id="acm" list="acml" maxlength="64" autocomplete="off" spellcheck="false" value="${esc(AC.model)}" placeholder="${vid ? 'seedance_2p0' : 'model id from your ArtCraft account'}"></label>
+      <datalist id="acml">${sugg.map(m => `<option value="${esc(m)}">`).join('')}</datalist>
+      <details class="adv"><summary>${I('down', 'width:14px;height:14px')}What ArtCraft has for ${vid ? 'video' : 'pictures'}</summary>
+        <div class="note" style="margin-top:6px">${Object.entries(fam).map(([f, ms]) => `<b>${esc(f)}</b>: ${ms.map(esc).join(', ')}`).join('<br>')}</div>
+        <p class="note">These are display names. ArtCraft takes a short id (letters, digits and _ like <b>seedance_2p0</b>); an id your account does not have comes back as ArtCraft’s own error.</p></details>
+    </div>
+    <div class="box">
+      <h3>Describe it <span class="dim num" style="font-size:12.5px;font-weight:400;margin-left:auto" id="acCount">${AC.prompt.length} / 8000</span></h3>
+      <textarea id="acq" rows="5" maxlength="8000" placeholder="${vid ? 'Slow dolly in on a clay kulhad of masala chai on a rainy Mumbai balcony, steam rising, warm evening light' : 'A premium product photo of a brass diya on marigold petals, soft morning light, shallow depth of field'}">${esc(AC.prompt)}</textarea>
+    </div>
+    ${vid ? `<div class="lbl">Shape</div><div class="grid-opts">${AC_ASP.map(([k, t]) => `<button class="go" aria-pressed="${k === AC.aspect}" data-acasp="${k}">${t}</button>`).join('')}</div>
+    <div class="lbl">Length and quality</div><div class="grid-opts" style="grid-template-columns:1fr 1fr 1fr">
+      <label class="fld" style="margin:0"><input id="acsec" type="number" min="1" max="30" value="${AC.seconds}" aria-label="Seconds"></label>
+      ${AC_RES.map(([k, t]) => `<button class="go" aria-pressed="${k === AC.res}" data-acres="${k}">${t}</button>`).join('')}</div>
+    <div class="btool" style="margin-top:4px"><span class="dim" style="font-size:13px">Sound from the model</span><span style="flex:1"></span><button class="sw" role="switch" aria-checked="${AC.audio}" data-acaudio aria-label="Sound from the model"><i></i></button></div>` : ''}
+    <details class="adv"${AC.avoid || AC.start || AC.end || AC.refs ? ' open' : ''}><summary>${I('down', 'width:14px;height:14px')}Advanced</summary>
+      ${vid ? `<label class="fld">Keep out<input id="acavoid" maxlength="200" value="${esc(AC.avoid)}" placeholder="text, watermark, blur"></label>
+      <label class="fld">First frame (public link to a picture)<input id="acstart" maxlength="2048" value="${esc(AC.start)}" placeholder="https://…"></label>
+      <label class="fld">Last frame (public link to a picture)<input id="acend" maxlength="2048" value="${esc(AC.end)}" placeholder="https://…"></label>` : ''}
+      <label class="fld">Reference pictures (public links, one per line)<textarea id="acrefs" rows="3" placeholder="https://…">${esc(AC.refs)}</textarea></label>
+      <p class="note">ArtCraft downloads these links itself, so they must be public web addresses. Links to private or local addresses are refused.</p></details>
+    <p class="note">Every Create spends credits on your ArtCraft account. The finished ${vid ? 'video' : 'picture'} is saved to My creations.</p>
+  </div>
+  <div class="pfoot">
+    <span style="flex:1"></span>
+    <button class="create" id="acGo"${ready ? '' : ' disabled'}>${I('spark', 'width:17px;height:17px')}Create <small>ArtCraft credits</small></button>
+  </div></div>
+  <div class="stage"><div class="sbar"><b>Your ArtCraft work</b><span class="sp"></span><button class="ib" data-acreload aria-label="Refresh">${I('redo', 'width:16px;height:16px')}</button></div>
+    <div class="sgrid" id="acres"></div></div></div>`; };
+  W.artcraft = el => {
+    const me = alive;
+    const keep = () => { const v = id => $('#' + id, el)?.value; AC.model = (v('acm') ?? AC.model).trim(); AC.prompt = v('acq') ?? AC.prompt;
+      AC.avoid = v('acavoid') ?? AC.avoid; AC.start = v('acstart') ?? AC.start; AC.end = v('acend') ?? AC.end; AC.refs = v('acrefs') ?? AC.refs;
+      const s = +(v('acsec') ?? AC.seconds); if (s > 0) AC.seconds = Math.round(s); };
+    const tick = async () => {
+      if (me !== alive || VIEW !== 'artcraft') return;
+      await acLoad(); if ((AC.ov.jobs || []).some(j => j.item_id && !(D.items || []).some(x => x.id === j.item_id))) await load('items', true);
+      if (me !== alive) return; acResults();
+      if ((AC.ov.jobs || []).some(j => !j.done || (j.ok && !j.item_id && !j.save_error))) poll = setTimeout(tick, 6000);
+    };
+    if (!AC.ov) { acLoad().then(() => { if (me === alive) go('artcraft'); }); }
+    else { load('items').then(() => { if (me === alive) acResults(); }); poll = setTimeout(tick, 1200); }
+    $('#acq', el)?.addEventListener('input', e => { $('#acCount', el).textContent = e.target.value.length + ' / 8000'; });
+    const create = async b => {
+      keep();
+      if (!AC.model) { $('#acm', el).focus(); toast('Type the ArtCraft model id first'); return; }
+      if (!AC.prompt.trim()) { $('#acq', el).focus(); toast('Describe what ArtCraft should make'); return; }
+      if (!confirm(`Start this on ArtCraft with ${AC.model}? It spends credits on your ArtCraft account.`)) return;
+      const refs = AC.refs.split(/\s+/).map(x => x.trim()).filter(Boolean);
+      const body = AC.kind === 'video'
+        ? {kind: 'video', model: AC.model, prompt: AC.prompt.trim(), duration_seconds: AC.seconds, aspect_ratio: AC.aspect, resolution: AC.res,
+           generate_audio: AC.audio, negative_prompt: AC.avoid.trim(), start_frame_image_url: AC.start.trim(), end_frame_image_url: AC.end.trim(),
+           reference_image_urls: refs, confirm: true}
+        : {kind: 'image', model: AC.model, prompt: AC.prompt.trim(), image_urls: refs, confirm: true};
+      b.disabled = true; b.classList.add('busy');
+      try { await api('POST', '/api/shilp/generate', body); toast('Started on ArtCraft'); await acLoad(); clearTimeout(poll); go('artcraft'); }
+      catch (er) { toast(er.message, true); b.disabled = false; b.classList.remove('busy'); }
+    };
+    el.addEventListener('click', async e => {
+      const b = e.target.closest('button'); if (!b) return;
+      if (await itemAction(b)) return;
+      if (b.dataset.ackind) { keep(); AC.kind = b.dataset.ackind; AC.model = ''; go('artcraft'); return; }
+      if (b.dataset.acasp) { AC.aspect = b.dataset.acasp; $$('[data-acasp]', el).forEach(x => x.setAttribute('aria-pressed', String(x === b))); return; }
+      if (b.dataset.acres) { AC.res = b.dataset.acres; $$('[data-acres]', el).forEach(x => x.setAttribute('aria-pressed', String(x === b))); return; }
+      if (b.hasAttribute('data-acaudio')) { AC.audio = !AC.audio; b.setAttribute('aria-checked', String(AC.audio)); return; }
+      if (b.hasAttribute('data-acreload')) { keep(); clearTimeout(poll); await tick(); return; }
+      if (b.dataset.acrm) { try { await api('DELETE', '/api/shilp/jobs/' + encodeURIComponent(b.dataset.acrm)); await acLoad(); acResults(); } catch (er) { toast(er.message, true); } return; }
+      if (b.id === 'acGo') create(b);
+    });
   };
 
   /* ---------------- v0.262 EVERY MODEL, PRICE FIRST (owner: "IT MUST INCLUDE ALL MODEL IN IT LETS USER CHOOSE THE RIGHT ONE

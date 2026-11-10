@@ -2701,3 +2701,8 @@ Task ID: v0.751.0 HOOLA FLOW (built as 0.749; their SAB PUBLIC APIS took 0.749.0
 Ask: a Wispr Flow for Hoola - check the code (it is the Kaan pack W0-W6), design (8-screen canvas), then "GO".
 Built: console page flow.js, /api/flow (kaan/flow.py), WAV-piece mic recorder, chat box dictation through Kaan.
 Deploy: vps-ops deploy (server only).
+
+Task ID: v0.752.0 ARTCRAFT IN CREATE
+Ask: develop ArtCraft in the Create section (backend = the v0.730 shilp lane).
+Built: Create studio ArtCraft tool (studio.js), /api/shilp page door (shilp/api.py), finished files onto My creations.
+Deploy: vps-ops deploy (server only); needs ARTCRAFT_API_KEY in the VPS .env for real jobs.

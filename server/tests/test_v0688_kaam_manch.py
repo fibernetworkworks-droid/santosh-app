@@ -250,9 +250,9 @@ def test_fresh_interpreter_import_inert():
 
 def test_app_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.751.0"                        # conscious-bump guard: moves with every release
+    assert APP_VERSION == "0.752.0"                        # conscious-bump guard: moves with every release
 
 
 def test_pubspec_pin():
     pub = (ROOT / "pubspec.yaml").read_text()
-    assert "version: 0.751.0+750" in pub
+    assert "version: 0.752.0+751" in pub

@@ -73,6 +73,7 @@ def _full_voice_menu(monkeypatch):
     monkeypatch.setenv("INTERACTIVE_PAGE", "false")    # v0.747 older suites pin the console without the Hoola Interactive row
     monkeypatch.setenv("HOOLA_CODE_PAGE", "false")     # v0.748 older suites pin the console without the Hoola Code row
     monkeypatch.setenv("FLOW_PAGE", "false")           # v0.751 older suites pin the console without the Hoola Flow row
+    monkeypatch.setenv("SHILP_PAGE", "false")          # v0.752 older suites pin the Create studio without the ArtCraft tool
     monkeypatch.setenv("ARCHITECT_OPUS", "true")       # v0.735 older suites pin the architect on Opus; test_v0735_all_glm checks GLM
     monkeypatch.setenv("CLAUDE_ALL_GLM_FALLBACK", "true")  # v0.735 older suites pin the Claude fallback at the SDK door
     monkeypatch.setenv("GLM_IMAGES", "false")          # v0.735 older suites pin pictures -> Claude (non-NVIDIA GLM)

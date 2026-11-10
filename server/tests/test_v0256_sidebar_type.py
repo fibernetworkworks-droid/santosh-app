@@ -9,8 +9,8 @@ CSS = (CON / "v2.css").read_text()
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.751.0"
-    assert "0.751.0+750" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.752.0"
+    assert "0.752.0+751" in (ROOT / "pubspec.yaml").read_text()
 
 
 def test_schibsted_is_the_interface_sans():
