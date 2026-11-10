@@ -1,3 +1,10 @@
+## v0.737.0 KEY LIMIT SAID — the real cause of the photo-test failure (10 Nov 2026; owner: "READ")
+
+vps-ops errors (04:27) showed it: `GLM (OpenRouter) error 403: Key limit exceeded (total limit) ... $10`. Her OpenRouter key has a $10 spending limit and it is used up. That made GLM fail twice and paused it, and the pause failed her photo turn (ref 228d25). Anthropic is also out of credit, so nothing could answer.
+- `santosh._friendly_error`: a "key limit exceeded", "insufficient credits" or 402 from the GLM / OpenRouter path now gives the owner a plain line telling her to raise the key's limit at openrouter.ai > Settings > Keys or add credit. Everyone else gets the outage line.
+- The OWNER must raise the limit herself; no code fixes it.
+- Seen in the same log: the coder observer (background session memory) also spends GLM calls on every chat.
+
 ## v0.736.0 GLM PAUSE FIX — a paused GLM no longer fails every chat (10 Nov 2026; owner's photo test: "WHOS IMAGE ID THIS" -> "Sorry, something went wrong just now (ref 228d25)")
 
 Live healthz read `chat_brain: claude` on 0.735.0, which is what the GLM safety switch shows during a pause (2 failures -> 10 minutes). With `chat_one_model` the chat stays on GLM during a pause, but `llm.openai_create` / `openai_stream` still refused every call ("glm paused after repeated failures - another brain answers"). That error has no status code and no "busy" word, so she saw "something went wrong". At the same time the SDK door moved every background call, the picture reading in `media.understand` included, to Claude, whose credit is out.

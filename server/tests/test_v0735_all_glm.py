@@ -178,3 +178,11 @@ def test_a_pause_reads_as_busy_not_something_went_wrong(glm):
     from app.agent import santosh
     line = santosh._friendly_error(RuntimeError("glm paused after repeated failures - another brain answers"))
     assert "busy or unreachable" in line
+
+
+def test_an_openrouter_key_limit_is_said_plainly(glm, monkeypatch):
+    from app.agent import santosh
+    monkeypatch.setattr(santosh, "_operator", lambda t: True)
+    e = RuntimeError('GLM (OpenRouter) error 403: {"error":{"message":"Key limit exceeded (total limit)."}}')
+    line = santosh._friendly_error(e, tenant_id="default")
+    assert "spending limit" in line and "openrouter.ai" in line and "something went wrong" not in line

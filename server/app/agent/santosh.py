@@ -1207,6 +1207,15 @@ def _friendly_error(e: BaseException, tenant_id: str | None = None, who: str = "
             head = "The Anthropic credit has run out - recharge it at console.anthropic.com > Plans & Billing, then try again."
         else:
             head = OUTAGE_TEXT
+    elif any(x in low for x in ("key limit exceeded", "insufficient credits", "error 402")) and ("glm" in low or "openrouter" in low):
+        # v0.736 her OpenRouter key reached its spending limit (403 "Key limit exceeded") or the account is empty (402):
+        # every GLM call fails until she raises it - not a bug, and waiting will not fix it
+        log.error("OPENROUTER KEY LIMIT / CREDIT IS OUT - every GLM call fails until it is raised")
+        if _operator(tenant_id) and (who or "owner") == "owner":
+            head = ("The OpenRouter key has reached its spending limit - raise it at openrouter.ai > Settings > Keys "
+                    "(or add credit), then try again.")
+        else:
+            head = OUTAGE_TEXT
     elif _ctx.is_overflow(s):
         head = "This chat has become too long. Start a new chat and say the same thing there - I will still remember the earlier parts."
     elif busy:

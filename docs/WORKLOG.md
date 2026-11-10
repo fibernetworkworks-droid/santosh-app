@@ -2622,3 +2622,8 @@ Task ID: v0.736.0 GLM PAUSE FIX
 Ask: her photo test answered "something went wrong" (ref 228d25); healthz showed chat_brain claude = GLM paused.
 Built: a paused GLM is still asked in one-model mode; the door keeps calls on GLM without the fallback; a pause reads as busy; healthz "(paused)".
 Deploy: vps-ops deploy; vps-ops errors for the first two GLM failures (ref 228d25).
+
+Task ID: v0.737.0 KEY LIMIT SAID
+Ask: READ (errors after the photo test).
+Found: OpenRouter key $10 limit exceeded (403) -> GLM paused -> her photo turn failed; Anthropic credit also out.
+Built: the owner reads a plain "raise the key limit" line.
