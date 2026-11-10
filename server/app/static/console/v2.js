@@ -139,7 +139,10 @@ let EMP = null;
 let SKH = null;         // v0.718 the HOOLA AI Video Learner (seekh.js) - opens from the AI Employees hub
 let HIV = null;         // v0.747 HOOLA INTERACTIVE (interactive.js) - the video studio, its own sidebar row
 let HCD = null;         // v0.748 HOOLA CODE (code.js) - Developer Sahayak as a console page
+let FLW = null;         // v0.751 HOOLA FLOW (flow.js) - the Kaan pack as a console page
+let FMIC = null;        // v0.751 the chat box mic through Kaan (flow.js HoolaFlowMic)
 IC.code = '<path d="M8 7l-5 5 5 5M16 7l5 5-5 5M13.5 5l-3 14"/>';
+IC.flow = '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M8 21h8"/>';   // v0.751 HOOLA FLOW
 IC.interactive = '<rect x="3" y="4" width="18" height="13" rx="2.5"/><circle cx="9" cy="10" r="2.2"/><path d="M5.8 15.2c.7-1.6 1.9-2.4 3.2-2.4s2.5.8 3.2 2.4"/><path d="M15 8.5l3 1.8-3 1.8z" fill="currentColor" stroke="none"/><path d="M8 20h8"/>';
 IC.seekh = '<path d="M2 5.5a2 2 0 0 1 2-2h9l2.5 2.5H20a2 2 0 0 1 2 2V16a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2z"/><path d="M10 9.5l4 2.5-4 2.5z" fill="currentColor" stroke="none"/>';   // v0.718 a video folder with a play
 let SK = null;         // v0.481 the Skill Desk (account menu > Skills)
@@ -199,6 +202,8 @@ function go(v, arg) {
   if (v !== 'interactive') HIV?.leave();
   if (v !== 'code') HCD?.leave();
   if (v === 'code') HCD?.open($('#code'));   // v0.748 HOOLA CODE
+  if (v !== 'flow') FLW?.leave();
+  if (v === 'flow') FLW?.open($('#flow'));   // v0.751 HOOLA FLOW
   if (v === 'seekh') SKH?.open($('#seekh'));   // v0.718 the HOOLA AI Video Learner (from the AI Employees hub)
   if (v === 'interactive') HIV?.open($('#interactive'));   // v0.747 HOOLA INTERACTIVE
   if (v === 'seodesk') EMP?.desk($('#seodesk'));
@@ -330,6 +335,15 @@ async function enter() {
     EMP = HoolaEmployees({api, esc, toast, changed: syncEmployees, open: (v, arg) => go(v, arg),   // v0.453 desks open Systems / a lab directly
                           say: text => { go('chat'); msg.value = text; msg.dispatchEvent(new Event('input')); composer.requestSubmit(); }});
     if (!NAV.some(([k]) => k === 'hire')) NAV.unshift(['hire', 'AI Employees']);   // v0.443 her AI staff is the FIRST section
+  }
+  if (CONFIG.flow && window.HoolaFlow && !FLW) {   // v0.751 HOOLA FLOW: a row right under Create (with Interactive / Code)
+    FLW = HoolaFlow({api, esc, toast, say: (text, send) => { go('chat'); msg.value = text; msg.dispatchEvent(new Event('input')); msg.focus(); if (send) composer.requestSubmit(); }});
+    if (!NAV.some(([k]) => k === 'flow')) NAV.splice(NAV.findIndex(([k]) => k === 'creative') + 1, 0, ['flow', 'Hoola Flow']);
+  }
+  if (CONFIG.flow_mic && window.HoolaFlowMic && !FMIC) {   // v0.751 the chat box mic dictates through Kaan when its engine is ready
+    FMIC = HoolaFlowMic({api, toast, onText: t => { msg.value = t; msg.dispatchEvent(new Event('input')); scrollDown(true); },
+      onState: (on, why) => { $('#micBtn').classList.toggle('on', !!on); $('#micBtn').classList.toggle('busy', why === 'writing');
+        $('#micBtn').title = on ? 'Hoola Flow is listening - click (or Ctrl + Space) to finish' : 'Speak to type (Hoola Flow) - Ctrl + Space'; }});
   }
   if (CONFIG.hoola_code && window.HoolaCode && !HCD) {   // v0.748 HOOLA CODE: a row right under Create / Hoola Interactive
     HCD = HoolaCode({api, esc, toast});
@@ -1920,7 +1934,18 @@ $('#toolsBtn').addEventListener('click', () => go('kaam'));
    stays on Baat. No speech recognition in this browser = the old jump to Baat, with a one-line why. */
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 let DICT = null;
-$('#micBtn').addEventListener('click', () => {
+async function flowMic() {   // v0.751 Kaan first (her own server), the browser's speech service only when Kaan cannot hear
+  if (FMIC?.on) { FMIC.stop(); return true; }
+  if (!FMIC || DICT || !(await FMIC.canUse())) return false;
+  try { await FMIC.start(msg.value); toast('Hoola Flow is listening. Click the microphone (or Ctrl + Space) to finish.'); return true; }
+  catch (e) { toast(/denied|NotAllowed|Permission/i.test(String(e?.message)) ? 'Allow the microphone for this site in your browser address bar.' : (e.message || 'The microphone could not start.'), true); return true; }
+}
+document.addEventListener('keydown', e => {   // v0.751 Ctrl + Space starts / finishes dictation while the chat box has focus
+  if (!FMIC || !e.ctrlKey || e.code !== 'Space' || document.activeElement !== msg) return;
+  e.preventDefault(); $('#micBtn').click();
+});
+$('#micBtn').addEventListener('click', async () => {
+  if (await flowMic()) return;
   if (!SR) { go('baat'); return; }
   if (DICT) { DICT.stop(); return; }
   const r = new SR();

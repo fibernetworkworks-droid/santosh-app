@@ -2696,3 +2696,8 @@ Task: owner "NOW CREATE A BOX FOR FREE APIS FIRST" (one call that picks + calls 
 Work: publicapis/box.py (13 live-tested starter recipes + learned calls, fallback, one answer, health table + daily
 check), tool api_box, POST /api/box/call + GET /api/box, family words, prompt line, registry 621; test_v0750_api_box.py (8).
 Deploy: vps-ops deploy; healthz must read 0.750.0; then python -m app.publicapis.box check for the first full check.
+
+Task ID: v0.751.0 HOOLA FLOW (built as 0.749; their SAB PUBLIC APIS took 0.749.0 and API BOX 0.750.0 - REBASE PROTOCOL twice, all kept)
+Ask: a Wispr Flow for Hoola - check the code (it is the Kaan pack W0-W6), design (8-screen canvas), then "GO".
+Built: console page flow.js, /api/flow (kaan/flow.py), WAV-piece mic recorder, chat box dictation through Kaan.
+Deploy: vps-ops deploy (server only).
