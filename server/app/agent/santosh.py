@@ -739,11 +739,39 @@ def effort_for(settings, long_job: bool, hard: bool) -> str:
     return ""
 
 
-def think_wanted(settings, goal_open: bool) -> bool:
+def think_wanted(settings, goal_open: bool, level: str = "") -> bool:
     """v0.232 PHASE C (fix 6 of the long-task report): she sees Hoola THINK - the Soch card on the phone and console.
-    chat_thinking = goal (default: only while a long job runs, short chats stay fast) | on | off."""
+    chat_thinking = goal (default: only while a long job runs, short chats stay fast) | on | off.
+    parity Phase 4: with chat_thinking_adaptive on and a turn level set, every chat turn may think (Claude decides how
+    much under the turn's effort); chat_thinking=off still means never."""
     mode = (getattr(settings, "chat_thinking", "goal") or "off").lower()
+    if level and mode != "off" and getattr(settings, "chat_thinking_adaptive", False):
+        return THINK["ok"]
     return THINK["ok"] and (mode == "on" or (mode == "goal" and goal_open))
+
+
+# parity Phase 4: a plain greeting / thanks / ok thinks at effort low (her Hinglish forms kept)
+_PLAIN = re.compile(
+    r"^\s*(hi+|hello+|hey+|hii+|namaste|namaskar|good\s+(morning|afternoon|evening|night)|gm|gn|thanks?|thank\s*you|"
+    r"thx|ty|shukriya|dhanyavaad|dhanyavad|ok+|okay|okk+|k|cool|nice|great|bye|alright|haan|han|ha|ji|haan\s*ji|"
+    r"theek\s*hai|thik\s*hai|achha|accha|acha|kaise\s+ho|how\s+are\s+you|sup|yo)[\s!.?,]*"
+    r"(hoola|ji|bhai|dear|santosh)?[\s!.?,]*$", re.I)
+
+
+def think_level(settings, text: str, long_job: bool, hard: bool) -> str:
+    """parity Phase 4 THINKING like Claude: the effort THIS turn thinks at - '' when chat_thinking_adaptive is off or
+    chat_thinking is off (today's behaviour), else high for a hard ask / long job / big ask, low for a plain greeting,
+    medium for everything else."""
+    if not getattr(settings, "chat_thinking_adaptive", False):
+        return ""
+    if (getattr(settings, "chat_thinking", "goal") or "off").lower() == "off":
+        return ""
+    if long_job or hard:
+        return "high"
+    t = (text or "").strip()
+    if not t or _PLAIN.match(t):
+        return "low"
+    return "medium"
 
 
 def _loop_ok(history: list[dict]) -> bool:
@@ -865,6 +893,9 @@ async def _call_brain_once(brain: str, system: str, history: list[dict], setting
         from . import context as _ctx   # v0.237 the gauge learns this brain's real chars-per-token
         _ctx.after_call(brain, system, tools, history, usage.get("prompt_tokens"), bool(usage.get("estimated")))
         return blocks, stop
+    _lvl = llm.REASONING_NOW.get()
+    if think and _lvl in ("low", "medium") and cap < 8000:
+        cap = int(cap) + llm.reasoning_room(_lvl)   # parity Phase 4: Claude's thinking counts inside max_tokens too
     over = _MODEL_NOW.get()
     stat = HARD_MODEL if over == str(getattr(settings, "agent_hard_model", "") or "") else SIMPLE_MODEL
     if over and over != settings.anthropic_model and stat["ok"]:
@@ -1949,9 +1980,17 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
             brain = "claude"   # v0.429 a hard reasoning ask runs on Claude even when a cheaper brain answers chat
         _EFFORT_NOW.set(effort_for(settings, _long_now, bool(state.get("hard"))))
         _MODEL_NOW.set(model_for(settings, bool(state.get("hard")), _long_now) if brain == "claude" else "")
+        # parity Phase 4 THINKING: every chat turn may think, at the effort its kind asks for (greeting low, ordinary
+        # medium, hard / long / big high); '' = the switch is off and every body below is today's
+        _lvl = think_level(settings, state.get("request") or "", _long_now, bool(state.get("hard")))
+        llm.REASONING_NOW.set(_lvl)
+        if _lvl and brain == "claude" and not _EFFORT_NOW.get():
+            _EFFORT_NOW.set(_lvl)          # an ordinary Claude turn: the turn's own effort (long / hard keep theirs)
         _THINK_NOW.set(think_wanted(settings, bool(state.get("goal") or state.get("big") or
-                                                   (state.get("hard") and getattr(settings, "hard_thinking", True)))))
+                                                   (state.get("hard") and getattr(settings, "hard_thinking", True))),
+                                    _lvl))
         if VOICE_BRAIN_NOW.get():
+            llm.REASONING_NOW.set("")      # parity Phase 4: a call's brain turn keeps today's reasoning body
             # v0.635 she is waiting on the line: a call's brain turn never thinks out loud or runs at a raised effort
             # (an open long job in the chat used to switch both on for EVERY call question)
             _EFFORT_NOW.set("")

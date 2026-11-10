@@ -53,6 +53,7 @@ class Settings(BaseSettings):
     agent_plan_after_steps: int = 4         # ... tool steps without a kaam_plan before the plan is asked for (v0.311: 6 -> 4)
     agent_auto_plan: bool = True            # v0.311 PLAN HAMESHA: still no plan 3 steps after the ask = the server writes a one-step plan
     chat_thinking: str = "goal"             # v0.232 PHASE C: Claude thinks out loud (adaptive) - goal = only while a long job runs, on = every turn, off = never
+    chat_thinking_adaptive: bool = True     # parity Phase 4: every chat turn may think, effort by the turn (greeting low / ordinary medium / hard + long high), shown folded; False = thinking only for long jobs / hard asks, GLM reasoning excluded
     hard_detect: bool = True                # v0.272 SOCH KE JAWAB: spot hard reasoning asks (agent/hard.py)
     hard_thinking: bool = True              # v0.272 a hard ask thinks (adaptive) from its first call, like a long job
     hard_judge: bool = True                 # v0.272 the 'not sure' zone asks one tiny model call (1 token, time-limited)
