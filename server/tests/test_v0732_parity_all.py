@@ -11,7 +11,8 @@ from app.config import get_settings
 from tests.test_bazar import bz  # noqa: F401
 
 SWITCHES = ("CHAT_ONE_MODEL", "CHAT_SMALL_PROMPT", "CHAT_CORE_TOOLS", "CHAT_WORK_IN_TURN", "CHAT_ANSWER_ONLY",
-            "CHAT_ARTIFACT_DIRECT", "CHAT_PLAIN_LOOP")
+            "CHAT_ARTIFACT_DIRECT", "CHAT_PLAIN_LOOP",
+            "CHAT_THINKING_ADAPTIVE", "CHAT_ONE_MEMORY")
 
 
 @pytest.fixture()
