@@ -31,10 +31,10 @@ Color _stColor(String st) => switch (st) {
 
 String _stLabel(String st) => switch (st) {
       'draft' => 'draft',
-      'waiting' => 'aapki haan?',
+      'waiting' => 'your yes?',
       'final' => 'final print',
-      'executed' => 'notarise ho gaya',
-      'rejected' => 'nahi',
+      'executed' => 'notarised',
+      'rejected' => 'no',
       _ => st,
     };
 
@@ -52,7 +52,7 @@ Future<Map<String, String>?> _form(BuildContext context, String title, List<(Str
         ]),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Rehne do')),
+        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Keep it')),
         TextButton(onPressed: () => Navigator.pop(d, true), child: Text(ok)),
       ],
     ),
@@ -88,15 +88,15 @@ Future<String?> _pick(BuildContext context, String title, Map<String, String> op
     );
 
 const _partyFields = [
-  ('name', 'Party ka naam'),
-  ('relation', 'Rishta: so / do / wo / ho'),
-  ('relative', 'Pita / pati ka naam'),
+  ('name', 'Party name'),
+  ('relation', 'Relation: so / do / wo / ho'),
+  ('relative', 'Father / husband name'),
   ('age', 'Umar'),
   ('occupation', 'Kaam / vyavsay'),
-  ('address', 'Pura pata'),
+  ('address', 'Full address'),
   ('gender', 'm / f'),
   ('phone', 'Mobile'),
-  ('id_number', 'Aadhaar / PAN (seedha locker mein jayega)'),
+  ('id_number', 'Aadhaar / PAN (goes straight to the locker)'),
 ];
 
 class NotaryScreen extends StatefulWidget {
@@ -142,18 +142,18 @@ class _NotaryScreenState extends State<NotaryScreen> {
 
   Future<void> _newDoc() async {
     final kinds = _m(_kinds['kinds']);
-    final kind = await _pick(context, 'Kaunsa document?', {for (final e in kinds.entries) e.key: _s(_m(e.value)['label'])});
+    final kind = await _pick(context, 'Which document?', {for (final e in kinds.entries) e.key: _s(_m(e.value)['label'])});
     if (kind == null || !mounted) return;
-    final lang = await _pick(context, 'Bhasha', const {'en': 'English', 'hi': 'हिन्दी', 'mr': 'मराठी'});
+    final lang = await _pick(context, 'Language', const {'en': 'English', 'hi': 'हिन्दी', 'mr': 'मराठी'});
     if (lang == null || !mounted) return;
-    final party = await _form(context, 'Party (jo sign karega)', _partyFields, ok: 'Aage');
+    final party = await _form(context, 'Party (who will sign)', _partyFields, ok: 'Aage');
     if (party == null || !mounted) return;
     final fields = _list(_m(kinds[kind])['fields']);
     final facts = await _form(
         context,
         _s(_m(kinds[kind])['label']),
         [for (final f in fields) (_s(f['key']), '${_s(f['label'])}${f['required'] == true ? ' *' : ''}')],
-        ok: 'Draft banao',
+        ok: 'Make draft',
         long: const {'statements', 'powers', 'matter', 'act'});
     if (facts == null) return;
     final r = await _run('POST', '/api/notary/docs', {'kind': kind, 'lang': lang, 'party': party, 'facts': facts});
@@ -162,8 +162,8 @@ class _NotaryScreenState extends State<NotaryScreen> {
   }
 
   Future<void> _fromWords() async {
-    final f = await _form(context, 'Apne shabdon mein', const [('words', 'Kaunsa document, kiske liye, kya baatein (jaisa bolti hain)')],
-        ok: 'Draft banao', long: const {'words'});
+    final f = await _form(context, 'In your own words', const [('words', 'Which document, for whom, what points (as you would say it)')],
+        ok: 'Make draft', long: const {'words'});
     if (f == null || (f['words'] ?? '').isEmpty) return;
     final r = await _run('POST', '/api/notary/docs', {'words': f['words']});
     final id = _s(_m(r?['doc'])['id']);
@@ -183,32 +183,32 @@ class _NotaryScreenState extends State<NotaryScreen> {
     return ListView(padding: const EdgeInsets.all(16), children: [
       Glass(child: Text(_s(day['say']), style: const TextStyle(fontSize: 14.5, height: 1.4))),
       const SizedBox(height: 12),
-      GradientButton(label: 'Naya document', icon: Icons.note_add_rounded, height: 46, onTap: _busy ? null : _newDoc),
+      GradientButton(label: 'New document', icon: Icons.note_add_rounded, height: 46, onTap: _busy ? null : _newDoc),
       const SizedBox(height: 8),
       Row(children: [
-        Expanded(child: GlassButton(label: 'Bolkar / likhkar', icon: Icons.record_voice_over_rounded, height: 42, onTap: _busy ? null : _fromWords)),
+        Expanded(child: GlassButton(label: 'Spoken / written', icon: Icons.record_voice_over_rounded, height: 42, onTap: _busy ? null : _fromWords)),
         const SizedBox(width: 8),
         Expanded(child: GlassButton(label: 'Rentdesk se', icon: Icons.home_work_rounded, height: 42, onTap: _busy ? null : _fromRentdesk)),
       ]),
       const SizedBox(height: 12),
       for (final (key, title) in const [
-        ('waiting', 'FINAL PRINT: AAPKI HAAN BAAKI'),
-        ('blanks', 'DRAFT MEIN KHAALI JAGAH'),
-        ('final_old', 'FINAL HAI, NOTARISE NAHI HUA'),
+        ('waiting', 'FINAL PRINT: YOUR YES PENDING'),
+        ('blanks', 'BLANKS IN THE DRAFT'),
+        ('final_old', 'FINAL, NOT YET NOTARISED'),
         ('apostille', 'APOSTILLE CASE'),
-        ('dates', 'TAREEKHEIN'),
+        ('dates', 'DATES'),
       ])
         if (_strs(day[key]).isNotEmpty) ...[
           Caption(title),
           for (final t in _strs(day[key])) Padding(padding: const EdgeInsets.only(bottom: 6), child: Text('• $t', style: const TextStyle(fontSize: 13))),
           const SizedBox(height: 8),
         ],
-      Text('Aaj register mein: ${_s(day['today_entries'])}', style: const TextStyle(color: C.muted, fontSize: 12.5)),
+      Text('In the register today: ${_s(day['today_entries'])}', style: const TextStyle(color: C.muted, fontSize: 12.5)),
     ]);
   }
 
   Widget _docsTab() => ListView(padding: const EdgeInsets.all(16), children: [
-        GradientButton(label: 'Naya document', icon: Icons.add_rounded, height: 46, onTap: _busy ? null : _newDoc),
+        GradientButton(label: 'New document', icon: Icons.add_rounded, height: 46, onTap: _busy ? null : _newDoc),
         const SizedBox(height: 12),
         for (final d in _list(_d?['docs']))
           Padding(
@@ -237,30 +237,30 @@ class _NotaryScreenState extends State<NotaryScreen> {
               ),
             ),
           ),
-        if (_list(_d?['docs']).isEmpty) const Text('Abhi koi document nahi.', style: TextStyle(color: C.muted)),
+        if (_list(_d?['docs']).isEmpty) const Text('No documents yet.', style: TextStyle(color: C.muted)),
       ]);
 
   Future<void> _addEntry() async {
-    final f = await _form(context, 'Register mein (bahar ka document)', const [
+    final f = await _form(context, 'Enter in the register (outside document)', const [
       ('act', 'Act: affidavit / attest / true_copy / translation / outside_attest / other'),
-      ('name', 'Executant ka naam'),
-      ('address', 'Executant ka pura pata'),
-      ('id_number', 'Aadhaar / PAN (seedha locker mein)'),
-      ('contents', 'Document mein kya hai'),
+      ('name', 'Executant name'),
+      ('address', 'Executant\'s full address'),
+      ('id_number', 'Aadhaar / PAN (straight to the locker)'),
+      ('contents', 'What the document contains'),
       ('stamp_text', 'Stamp (jaise ₹500 e-SBTR no.)'),
       ('fee', 'Notarial fee (₹)'),
       ('pages', 'Pages (true copy)'),
       ('typing', 'Typing charge (₹)'),
-    ], ok: 'Register mein likho');
+    ], ok: 'Write in register');
     if (f == null) return;
     final ok = await showDialog<bool>(
         context: context,
         builder: (d) => AlertDialog(
-              title: const Text('Notarise aapne kar diya?'),
-              content: const Text('Register line tabhi likhiye jab party aapke saamne sign kar chuki ho aur aapne seal / sign kar diya ho.'),
+              title: const Text('Did you notarise it?'),
+              content: const Text('Write the register line only after the party has signed in front of you and you have sealed / signed.'),
               actions: [
-                TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Abhi nahi')),
-                TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Haan, maine kiya')),
+                TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Not now')),
+                TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Yes, I did it')),
               ],
             ));
     if (ok != true) return;
@@ -286,7 +286,7 @@ class _NotaryScreenState extends State<NotaryScreen> {
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text('Register ${_s(reg['year'])}: ${_s(reg['total_acts'])} acts · fee ₹${_s(reg['fees_total'])}',
               style: const TextStyle(fontWeight: FontWeight.w800)),
-          const Text('Form XV (Notaries Rules 1956, Rule 11). Line kabhi badli nahi jaati: galti ho to correction line.',
+          const Text('Form XV (Notaries Rules 1956, Rule 11). A line is never changed: if there is a mistake, add a correction line.',
               style: TextStyle(fontSize: 11.5, color: C.faint)),
           const SizedBox(height: 8),
           Row(children: [
@@ -300,7 +300,7 @@ class _NotaryScreenState extends State<NotaryScreen> {
         ]),
       ),
       const SizedBox(height: 12),
-      if (mode != 'notary') const Text('Desk mode: notarial register sirf notary rakhte hain.', style: TextStyle(color: C.muted)),
+      if (mode != 'notary') const Text('Desk mode: only a notary keeps the notarial register.', style: TextStyle(color: C.muted)),
       for (final e in entries)
         Padding(
           padding: const EdgeInsets.only(bottom: 8),
@@ -321,7 +321,7 @@ class _NotaryScreenState extends State<NotaryScreen> {
                   alignment: Alignment.centerRight,
                   child: TextButton(
                       onPressed: () async {
-                        final f = await _form(context, 'Correction (${_s(e['serial'])})', const [('remarks', 'Kya galat tha, sahi kya hai')],
+                        final f = await _form(context, 'Correction (${_s(e['serial'])})', const [('remarks', 'What was wrong, and what is right')],
                             long: const {'remarks'});
                         if (f != null && (f['remarks'] ?? '').isNotEmpty) {
                           await _run('POST', '/api/notary/register/correct', {'serial': e['serial'], 'remarks': f['remarks']});
@@ -336,27 +336,27 @@ class _NotaryScreenState extends State<NotaryScreen> {
   }
 
   Future<void> _newApostille() async {
-    final type = await _pick(context, 'Document kaisa?', {for (final e in _m(_kinds['doc_types']).entries) e.key: _s(e.value)});
+    final type = await _pick(context, 'What kind of document?', {for (final e in _m(_kinds['doc_types']).entries) e.key: _s(e.value)});
     if (type == null || !mounted) return;
     final f = await _form(context, 'Apostille / attestation', const [
       ('doc_title', 'Document (jaise Birth certificate)'),
-      ('country', 'Kis desh ke liye'),
-      ('hague', 'Hague member? yes / no / (khaali = pata nahi)'),
-      ('party', 'Party ka naam'),
+      ('country', 'For which country'),
+      ('hague', 'Hague member? yes / no / (blank = not known)'),
+      ('party', 'Party name'),
       ('phone', 'Mobile'),
-      ('doc', 'Hoola ka document no. (ho to, ND-0001)'),
-    ], ok: 'Banao');
+      ('doc', 'Hoola document no. (if any, ND-0001)'),
+    ], ok: 'Make');
     if (f == null) return;
     await _run('POST', '/api/notary/apostilles', {...f, 'doc_type': type});
   }
 
   Widget _apostilleTab() => ListView(padding: const EdgeInsets.all(16), children: [
-        GradientButton(label: 'Naya apostille case', icon: Icons.public_rounded, height: 46, onTap: _busy ? null : _newApostille),
+        GradientButton(label: 'New apostille case', icon: Icons.public_rounded, height: 46, onTap: _busy ? null : _newApostille),
         const SizedBox(height: 12),
         for (final a in _list(_d?['apostilles'])) Padding(padding: const EdgeInsets.only(bottom: 8), child: _apCard(a)),
-        if (_list(_d?['apostilles']).isEmpty) const Text('Koi khula case nahi.', style: TextStyle(color: C.muted)),
+        if (_list(_d?['apostilles']).isEmpty) const Text('No open cases.', style: TextStyle(color: C.muted)),
         const SizedBox(height: 8),
-        const Text('MEA khud individuals se document nahi leta: MEA ki outsourced agency ke through. Fees MEA site par check karein.',
+        const Text('MEA does not take documents from individuals directly: it goes through MEA\'s outsourced agency. Check the fees on the MEA site.',
             style: TextStyle(fontSize: 11.5, color: C.faint)),
       ]);
 
@@ -371,7 +371,7 @@ class _NotaryScreenState extends State<NotaryScreen> {
           if (_s(a['hague']).isEmpty)
             Row(children: [
               TextButton(onPressed: () => _run('POST', '/api/notary/apostilles/${_s(a['id'])}', {'hague': 'yes'}), child: const Text('Hague member')),
-              TextButton(onPressed: () => _run('POST', '/api/notary/apostilles/${_s(a['id'])}', {'hague': 'no'}), child: const Text('Member nahi')),
+              TextButton(onPressed: () => _run('POST', '/api/notary/apostilles/${_s(a['id'])}', {'hague': 'no'}), child: const Text('Not a member')),
             ]),
           for (final st in _list(a['steps']))
             CheckboxListTile(
@@ -390,17 +390,17 @@ class _NotaryScreenState extends State<NotaryScreen> {
     final st = _m(_d?['settings']);
     const keys = ['mode', 'office', 'notary_name', 'reg_no', 'area', 'appointed_by', 'cop_valid_to', 'address', 'phone', 'state', 'default_lang', 'morning_time'];
     final f = await _form(context, 'Niyam', const [
-      ('mode', 'notary (main notary hoon) / desk (typing / documentation centre)'),
-      ('office', 'Office / desk ka naam'),
-      ('notary_name', 'Notary ka naam'),
-      ('reg_no', 'Registration no. (seal par)'),
+      ('mode', 'notary (I am a notary) / desk (typing / documentation centre)'),
+      ('office', 'Office / desk name'),
+      ('notary_name', 'Notary name'),
+      ('reg_no', 'Registration no. (on the seal)'),
       ('area', 'Area of practice'),
       ('appointed_by', 'Kisne appoint kiya (Central / State Govt)'),
       ('cop_valid_to', 'Certificate of practice valid till (YYYY-MM-DD)'),
       ('address', 'Office address'),
       ('phone', 'Office mobile'),
       ('state', 'State (MH / Maharashtra)'),
-      ('default_lang', 'Default bhasha: en / hi / mr'),
+      ('default_lang', 'Default language: en / hi / mr'),
       ('morning_time', 'Subah ka note (HH:MM)'),
     ], ok: 'Save', initial: {for (final k in keys) k: _s(st[k])});
     if (f == null) return;
@@ -413,8 +413,8 @@ class _NotaryScreenState extends State<NotaryScreen> {
     if (key == null || !mounted) return;
     final f = await _form(context, 'Stamp rate: $key', const [
       ('state', 'State (MH / DL / ...)'),
-      ('amount', 'Rakam ₹ (state ki official schedule se; 0 = stamp nahi; khaali = hatao)'),
-      ('mode', 'e_stamp / esbtr / franking / paper / kaveri (khaali = state ke hisaab se)'),
+      ('amount', 'Amount ₹ (from the state\'s official schedule; 0 = no stamp; blank = remove)'),
+      ('mode', 'e_stamp / esbtr / franking / paper / kaveri (blank = per state)'),
     ], ok: 'Save', initial: {'state': _s(st['state'])});
     if (f == null) return;
     await _run('POST', '/api/notary/stamp_rates', {'key': key, 'state': f['state'] ?? _s(st['state']), 'amount': _n(f['amount']), 'mode': f['mode'] ?? ''});
@@ -425,7 +425,7 @@ class _NotaryScreenState extends State<NotaryScreen> {
     final acts = _m(st['acts']);
     final act = await _pick(context, 'Kis act ki fee?', {for (final e in acts.entries) e.key: '${_s(_m(e.value)['label'])}${_m(e.value)['cap'] == null ? '' : ' (max ₹${_s(_m(e.value)['cap'])})'}'});
     if (act == null || !mounted) return;
-    final f = await _form(context, 'Aapki fee', const [('amount', 'Fee ₹')], ok: 'Save');
+    final f = await _form(context, 'Your fee', const [('amount', 'Fee ₹')], ok: 'Save');
     if (f == null) return;
     await _run('POST', '/api/notary/fees', {'act': act, 'amount': _n(f['amount'])});
   }
@@ -437,31 +437,31 @@ class _NotaryScreenState extends State<NotaryScreen> {
     return ListView(padding: const EdgeInsets.all(16), children: [
       Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(_s(st['notary_name']).isEmpty ? (_s(st['office']).isEmpty ? 'Naam daaliye' : _s(st['office'])) : _s(st['notary_name']),
+          Text(_s(st['notary_name']).isEmpty ? (_s(st['office']).isEmpty ? 'Enter the name' : _s(st['office'])) : _s(st['notary_name']),
               style: const TextStyle(fontWeight: FontWeight.w800)),
           Text('Mode: ${_s(st['mode'])} · Reg ${_s(st['reg_no']).isEmpty ? '—' : _s(st['reg_no'])} · ${_s(st['state_label'])}',
               style: const TextStyle(color: C.muted, fontSize: 12.5)),
           if (_s(st['cop_valid_to']).isNotEmpty)
-            Text('Certificate of practice: ${_s(st['cop_valid_to'])} tak', style: const TextStyle(color: C.muted, fontSize: 12.5)),
+            Text('Certificate of practice: valid until ${_s(st['cop_valid_to'])}', style: const TextStyle(color: C.muted, fontSize: 12.5)),
           const SizedBox(height: 8),
           GlassButton(label: 'Badlo', icon: Icons.edit_rounded, onTap: _editSettings),
         ]),
       ),
       const SizedBox(height: 12),
-      const Caption('AAPKI STAMP RATE TABLE'),
-      if (rates.isEmpty) const Text('Abhi khaali: stamp ki rakam documents par [stamp ₹ ?] dikhegi.', style: TextStyle(fontSize: 12.5, color: C.warn)),
+      const Caption('YOUR STAMP RATE TABLE'),
+      if (rates.isEmpty) const Text('Empty for now: documents will show [stamp ₹ ?] for the stamp amount.', style: TextStyle(fontSize: 12.5, color: C.warn)),
       for (final e in rates.entries)
         for (final r in _m(e.value).entries)
           Text('• ${e.key} · ${r.key}: ${r.value is Map ? '₹${_s(_m(r.value)['amount'])} (${_s(_m(r.value)['mode'])})' : '₹${_s(r.value)}'}',
               style: const TextStyle(fontSize: 13)),
       GlassButton(label: 'Stamp rate jodo / badlo', icon: Icons.approval_rounded, height: 40, onTap: _stampRate),
       const SizedBox(height: 12),
-      const Caption('AAPKI FEES'),
+      const Caption('YOUR FEES'),
       for (final e in fees.entries) Text('• ${_s(_m(_m(st['acts'])[e.key])['label'])}: ₹${_s(e.value)}', style: const TextStyle(fontSize: 13)),
       GlassButton(label: 'Fee jodo / badlo', icon: Icons.currency_rupee_rounded, height: 40, onTap: _fee),
       Text(_s(st['fee_source']), style: const TextStyle(fontSize: 11, color: C.faint)),
       const SizedBox(height: 12),
-      const Caption('HOOLA KABHI NAHI'),
+      const Caption('HOOLA NEVER'),
       for (final t in _strs(_d?['never'])) Padding(padding: const EdgeInsets.only(bottom: 6), child: Text('• $t', style: const TextStyle(fontSize: 13))),
       const SizedBox(height: 8),
       const Caption('SOURCES'),
@@ -563,7 +563,7 @@ class _NotaryDocPageState extends State<NotaryDocPage> {
   }
 
   Future<void> _editText() async {
-    final f = await _form(context, 'Khud likho (pura text)', const [('text', 'Text')], ok: 'Save', initial: {'text': _s(_d?['text'])}, long: const {'text'});
+    final f = await _form(context, 'Write it myself (full text)', const [('text', 'Text')], ok: 'Save', initial: {'text': _s(_d?['text'])}, long: const {'text'});
     if (f == null || (f['text'] ?? '').isEmpty) return;
     await _run('PATCH', '/api/notary/docs/$_id', {'text': f['text']});
   }
@@ -584,10 +584,10 @@ class _NotaryDocPageState extends State<NotaryDocPage> {
   }
 
   Future<void> _lang() async {
-    final l = await _pick(context, 'Kis bhasha mein copy?', const {'en': 'English', 'hi': 'हिन्दी', 'mr': 'मराठी', 'other': 'Doosri bhasha (Lekhak translation)'});
+    final l = await _pick(context, 'Copy in which language?', const {'en': 'English', 'hi': 'हिन्दी', 'mr': 'मराठी', 'other': 'Another language (translated by the writer)'});
     if (l == null || !mounted) return;
     if (l == 'other') {
-      final f = await _form(context, 'Translation', const [('to', 'Bhasha (jaise Gujarati)')]);
+      final f = await _form(context, 'Translation', const [('to', 'Language (e.g. Gujarati)')]);
       if (f == null || (f['to'] ?? '').isEmpty) return;
       await _run('POST', '/api/notary/docs/$_id/translate', f);
       return;
@@ -599,21 +599,21 @@ class _NotaryDocPageState extends State<NotaryDocPage> {
     final ok = await showDialog<bool>(
         context: context,
         builder: (d) => AlertDialog(
-              title: const Text('Notarise aapne kar diya?'),
-              content: const Text('Party ne aapke saamne sign kiya, aapne original ID dekhi aur seal / sign kar diya - tabhi register mein likhiye.'),
+              title: const Text('Did you notarise it?'),
+              content: const Text('Write in the register only when the party has signed in front of you, you have seen the original ID, and you have sealed / signed.'),
               actions: [
-                TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Abhi nahi')),
-                TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Haan, maine kiya')),
+                TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Not now')),
+                TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Yes, I did it')),
               ],
             ));
     if (ok != true || !mounted) return;
-    final f = await _form(context, 'Fee aur charges (aapne liye)', const [
-      ('fee', 'Notarial fee ₹ (khaali = aapki set fee)'),
+    final f = await _form(context, 'Fee and charges (what you took)', const [
+      ('fee', 'Notarial fee ₹ (blank = your set fee)'),
       ('typing', 'Typing / drafting ₹'),
       ('xerox', 'Xerox / print ₹'),
       ('mode', 'cash / upi'),
       ('ref', 'UPI ref (ho to)'),
-    ], ok: 'Register mein likho');
+    ], ok: 'Write in register');
     if (f == null) return;
     await _run('POST', '/api/notary/register', {
       'doc': _id,
@@ -657,14 +657,14 @@ class _NotaryDocPageState extends State<NotaryDocPage> {
               const SizedBox(height: 10),
               Glass(child: SelectableText(_s(d['text']), style: const TextStyle(fontSize: 13.5, height: 1.5))),
               const SizedBox(height: 12),
-              const Caption('STAMP KE STEPS (aap / party khud)'),
+              const Caption('STAMP STEPS (you / the party yourselves)'),
               for (final t in _strs(d['stamp_steps'])) Text('• $t', style: const TextStyle(fontSize: 12.5)),
               const SizedBox(height: 12),
               if (st == 'draft' || st == 'rejected') ...[
                 Wrap(spacing: 8, runSpacing: 8, children: [
                   GlassButton(label: 'Facts', icon: Icons.edit_note_rounded, height: 40, onTap: _busy ? null : _editFacts),
                   GlassButton(label: 'Party', icon: Icons.person_rounded, height: 40, onTap: _busy ? null : _editParty),
-                  GlassButton(label: 'Khud likho', icon: Icons.edit_rounded, height: 40, onTap: _busy ? null : _editText),
+                  GlassButton(label: 'Write it myself', icon: Icons.edit_rounded, height: 40, onTap: _busy ? null : _editText),
                   GlassButton(label: 'Stamp no.', icon: Icons.approval_rounded, height: 40, onTap: _busy ? null : _stamp),
                 ]),
                 const SizedBox(height: 10),
@@ -675,32 +675,32 @@ class _NotaryDocPageState extends State<NotaryDocPage> {
                 NotaryPrintCard(app: widget.app, data: _card ?? {'doc': d}, onDone: _load),
               ],
               if (st == 'final') ...[
-                GlassButton(label: 'Notarise ho gaya: register mein likho', icon: Icons.verified_rounded, height: 44, onTap: _busy ? null : _notarise),
+                GlassButton(label: 'Notarised: write in the register', icon: Icons.verified_rounded, height: 44, onTap: _busy ? null : _notarise),
                 const SizedBox(height: 6),
                 GlassButton(
-                    label: 'Desk: notary ne kar diya',
+                    label: 'Desk: the notary did it',
                     icon: Icons.done_all_rounded,
                     height: 40,
                     onTap: _busy
                         ? null
                         : () async {
-                            final f = await _form(context, 'Kis notary ne?', const [('notary', 'Notary ka naam'), ('on', 'Tareekh')]);
+                            final f = await _form(context, 'Kis notary ne?', const [('notary', 'Notary name'), ('on', 'Tareekh')]);
                             if (f != null) await _run('POST', '/api/notary/docs/$_id/executed', f);
                           }),
               ],
               const SizedBox(height: 10),
               Wrap(spacing: 8, runSpacing: 8, children: [
-                GlassButton(label: 'Doosri bhasha', icon: Icons.translate_rounded, height: 40, onTap: _busy ? null : _lang),
+                GlassButton(label: 'Another language', icon: Icons.translate_rounded, height: 40, onTap: _busy ? null : _lang),
                 GlassButton(label: 'Copy', icon: Icons.copy_rounded, height: 40, onTap: _busy ? null : () => _run('POST', '/api/notary/docs/$_id/copy', {})),
                 GlassButton(
-                    label: 'Details mitao (DPDP)',
+                    label: 'Delete details (DPDP)',
                     icon: Icons.delete_sweep_rounded,
                     height: 40,
                     color: C.bad,
                     onTap: _busy ? null : () => _run('POST', '/api/notary/docs/$_id/forget')),
               ]),
               const SizedBox(height: 10),
-              const Text('Draft / jaankari hai, kanooni salah nahi: vakil se pakka karwaiye. PDF / Word files chat mein aati hain.',
+              const Text('This is a draft / information, not legal advice: confirm with a lawyer. PDF / Word files come in the chat.',
                   style: TextStyle(fontSize: 11, color: C.faint)),
             ]),
     );
@@ -762,12 +762,12 @@ class _NotaryPrintCardState extends State<NotaryPrintCard> {
         const SizedBox(height: 8),
         if (st == 'waiting')
           Row(children: [
-            Expanded(child: GradientButton(label: 'Haan, final print', height: 42, onTap: _busy ? null : () => _decide(true))),
+            Expanded(child: GradientButton(label: 'Yes, final print', height: 42, onTap: _busy ? null : () => _decide(true))),
             const SizedBox(width: 8),
-            GlassButton(label: 'Nahi', height: 42, onTap: _busy ? null : () => _decide(false)),
+            GlassButton(label: 'No', height: 42, onTap: _busy ? null : () => _decide(false)),
           ]),
-        if (st == 'draft') const Text('Card ke baad document badla: naya card banaiye.', style: TextStyle(fontSize: 12, color: C.warn)),
-        const Text('Final = DRAFT mark ke bina PDF + Word. Sign / seal / notarise aapka kaam.', style: TextStyle(fontSize: 11, color: C.faint)),
+        if (st == 'draft') const Text('The document changed after the card: make a new card.', style: TextStyle(fontSize: 12, color: C.warn)),
+        const Text('Final = PDF + Word without the DRAFT mark. Signing / sealing / notarising is your job.', style: TextStyle(fontSize: 11, color: C.faint)),
       ]),
     );
   }
@@ -822,7 +822,7 @@ class NotaryEntryCard extends StatelessWidget {
         Text(_s(e['act_label']), style: const TextStyle(fontSize: 12.5, color: C.muted)),
         for (final x in _list(e['executants'])) Text(_s(x['name']), style: const TextStyle(fontSize: 12.5)),
         if (r.isNotEmpty) Text('Receipt ${_s(r['number'])} · ${_s(r['mode'])}', style: const TextStyle(fontSize: 12.5)),
-        const Text('Fee aapne li; Hoola ne sirf likha.', style: TextStyle(fontSize: 11, color: C.faint)),
+        const Text('You took the fee; Hoola only recorded it.', style: TextStyle(fontSize: 11, color: C.faint)),
       ]),
     );
   }

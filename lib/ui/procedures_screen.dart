@@ -69,20 +69,20 @@ class _ProceduresScreenState extends State<ProceduresScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: C.bgBottom,
-        title: const Text('Badliye'),
+        title: const Text('Edit'),
         content: SingleChildScrollView(
           child: Column(mainAxisSize: MainAxisSize.min, children: [
-            TextField(controller: title, decoration: const InputDecoration(labelText: 'Naam')),
+            TextField(controller: title, decoration: const InputDecoration(labelText: 'Name')),
             const SizedBox(height: 8),
             TextField(
                 controller: steps,
                 minLines: 3,
                 maxLines: 10,
-                decoration: const InputDecoration(labelText: 'Kadam (har line ek)', helperText: 'Apne shabdon mein; Hoola isi tarah karega')),
+                decoration: const InputDecoration(labelText: 'Steps (one per line)', helperText: 'In your words; Hoola will do it this way')),
           ]),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Rehne do')),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
           TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Save')),
         ],
       ),
@@ -102,10 +102,10 @@ class _ProceduresScreenState extends State<ProceduresScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: C.bgBottom,
-        title: Text('"${p['title']}" bhool jayein?'),
+        title: Text('Forget "${p['title']}"?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Nahi')),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Bhool jao', style: TextStyle(color: C.bad))),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('No')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Forget', style: TextStyle(color: C.bad))),
         ],
       ),
     );
@@ -123,27 +123,27 @@ class _ProceduresScreenState extends State<ProceduresScreen> {
     final rows = _rows;
     final name = widget.app.aName;
     return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Seekhe hue kaam')),
+      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Learned tasks')),
       body: Aurora(
         child: RefreshIndicator(
           onRefresh: _load,
           child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
             Glass(
               child: Text(
-                  'Jab $name koi lamba kaam (4+ kadam) theek se kar leta hai, woh tarika yahan yaad rakhta hai. Agli baar waisa kaam '
-                  'aaye to isi tarike se jaldi karta hai. Sirf kadam yaad rehte hain, aapki details (number, naam, paise) nahi. '
-                  'Jo tarika baar baar fail ho, woh apne aap band ho jata hai.',
+                  'When $name does a long task (4+ steps) well, it remembers the method here. When similar work comes next time,'
+                  'it does it faster this way. Only the steps are remembered, not your details (numbers, names, money).'
+                  'A method that fails again and again is turned off by itself.',
                   style: const TextStyle(color: C.chip, height: 1.35, fontSize: 13)),
             ),
             const SizedBox(height: 12),
             if (_tasks != null) _hisaab(_tasks!),
             if (_lessons.isNotEmpty) ...[
               const SizedBox(height: 4),
-              const Text('Seekhe hue hal', style: TextStyle(fontWeight: FontWeight.w800)),
+              const Text('Learned fixes', style: TextStyle(fontWeight: FontWeight.w800)),
               const SizedBox(height: 6),
               for (final l in _lessons.take(20)) _lesson(l),
               const SizedBox(height: 12),
-              const Text('Seekhe hue tarike', style: TextStyle(fontWeight: FontWeight.w800)),
+              const Text('Learned methods', style: TextStyle(fontWeight: FontWeight.w800)),
               const SizedBox(height: 6),
             ],
             if (_err != null) Text(_err!, style: const TextStyle(color: C.bad)),
@@ -152,7 +152,7 @@ class _ProceduresScreenState extends State<ProceduresScreen> {
               Padding(
                 padding: const EdgeInsets.all(30),
                 child: Center(
-                    child: Text('Abhi kuch nahi seekha. $name se koi lamba kaam karwaiye, jaise "kirana list banao aur har mahine yaad dilao".',
+                    child: Text('Nothing learned yet. Have $name do a long task, like "make a grocery list and remind me every month".',
                         textAlign: TextAlign.center, style: const TextStyle(color: C.muted))),
               ),
             for (final p in rows ?? const <Map<String, dynamic>>[]) _card(p),
@@ -169,15 +169,15 @@ class _ProceduresScreenState extends State<ProceduresScreen> {
         .toList();
     if (tasks.isEmpty) return const SizedBox.shrink();
     Color col(String o) => o == 'done' ? C.teal : (o == 'partial' ? C.warn : C.bad);
-    String word(String o) => const {'done': 'Poora', 'partial': 'Adhoora', 'stuck': 'Atka', 'stopped': 'Roka'}[o] ?? o;
+    String word(String o) => const {'done': 'Done', 'partial': 'Incomplete', 'stuck': 'Stuck', 'stopped': 'Stopped'}[o] ?? o;
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('Kaam ka hisaab', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+          const Text('Work summary', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
           const SizedBox(height: 4),
           Text(
-              '${sum['tasks'] ?? 0} kaam · ${sum['done_pct'] ?? '-'}% poore · ${sum['fixed_on_the_way'] ?? 0} mein atakne par khud hal dhoondha',
+              '${sum['tasks'] ?? 0} tasks · ${sum['done_pct'] ?? '-'}% completed · ${sum['fixed_on_the_way'] ?? 0} where it got stuck and found a fix by itself',
               style: const TextStyle(color: C.muted, fontSize: 12.5)),
           const SizedBox(height: 8),
           for (final x in tasks.take(6))
@@ -194,8 +194,8 @@ class _ProceduresScreenState extends State<ProceduresScreen> {
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Text('${x['request']}', maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12.5)),
                     if ('${x['left'] ?? ''}'.isNotEmpty)
-                      Text('Baaki: ${x['left']}', maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: C.warn, fontSize: 11.5)),
-                    Text('${x['steps']} kadam · ${x['seconds']} sec${(x['fixes'] as num? ?? 0) > 0 ? ' · ${x['fixes']} hal' : ''}',
+                      Text('Pending: ${x['left']}', maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: C.warn, fontSize: 11.5)),
+                    Text('${x['steps']} steps · ${x['seconds']} sec${(x['fixes'] as num? ?? 0) > 0 ? ' · ${x['fixes']} fixes' : ''}',
                         style: const TextStyle(color: C.faint, fontSize: 11)),
                   ]),
                 ),
@@ -216,13 +216,13 @@ class _ProceduresScreenState extends State<ProceduresScreen> {
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text('${l['label']}', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-                Text('Atka: ${l['problem']}', maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: C.muted, fontSize: 12)),
-                Text('Hal: ${l['fix']}', maxLines: 3, overflow: TextOverflow.ellipsis, style: const TextStyle(color: C.teal, fontSize: 12)),
-                Text('${l['helped']} baar kaam aaya', style: const TextStyle(color: C.faint, fontSize: 11)),
+                Text('Stuck: ${l['problem']}', maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: C.muted, fontSize: 12)),
+                Text('Fix: ${l['fix']}', maxLines: 3, overflow: TextOverflow.ellipsis, style: const TextStyle(color: C.teal, fontSize: 12)),
+                Text('Helped ${l['helped']} times', style: const TextStyle(color: C.faint, fontSize: 11)),
               ]),
             ),
             IconButton(
-                tooltip: 'Bhool jao',
+                tooltip: 'Forget',
                 icon: const Icon(Icons.delete_outline_rounded, size: 19, color: C.muted),
                 onPressed: () async {
                   try {
@@ -271,17 +271,17 @@ class _ProceduresScreenState extends State<ProceduresScreen> {
             if (watch.isNotEmpty) ...[
               const SizedBox(height: 4),
               for (final w in watch.take(3))
-                Text('Dhyan: $w', maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: C.warn, fontSize: 11.5)),
+                Text('Note: $w', maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: C.warn, fontSize: 11.5)),
             ],
             const SizedBox(height: 6),
             Row(children: [
               Expanded(
                 child: Text(
-                    '${p['uses']} baar kaam aaya · ${p['wins']} baar theek${(p['fails'] as num? ?? 0) > 0 ? ' · ${p['fails']} baar atka' : ''}',
+                    'Used ${p['uses']} times · worked ${p['wins']} times${(p['fails'] as num? ?? 0) > 0 ? ' · got stuck ${p['fails']} times' : ''}',
                     style: const TextStyle(color: C.faint, fontSize: 11.5)),
               ),
-              IconButton(tooltip: 'Badlo', icon: const Icon(Icons.edit_rounded, size: 19), onPressed: () => _edit(p)),
-              IconButton(tooltip: 'Bhool jao', icon: const Icon(Icons.delete_outline_rounded, size: 19, color: C.muted), onPressed: () => _delete(p)),
+              IconButton(tooltip: 'Edit', icon: const Icon(Icons.edit_rounded, size: 19), onPressed: () => _edit(p)),
+              IconButton(tooltip: 'Forget', icon: const Icon(Icons.delete_outline_rounded, size: 19, color: C.muted), onPressed: () => _delete(p)),
             ]),
           ]),
         ),
@@ -303,13 +303,13 @@ class ProcedureLearnedCard extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(v['event'] == 'lesson' ? '${app.aName} ne atakne ka hal seekh liya' : '${app.aName} ne yeh kaam karna seekh liya', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),
+              Text(v['event'] == 'lesson' ? '${app.aName} learned how to fix getting stuck' : '${app.aName} learned to do this task', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),
               Text('${v['title'] ?? ''}', maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: C.muted, fontSize: 12.5)),
             ]),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ProceduresScreen(app: app))),
-            child: const Text('Dekho'),
+            child: const Text('View'),
           ),
         ]),
       );

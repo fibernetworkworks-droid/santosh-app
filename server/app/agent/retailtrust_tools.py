@@ -40,13 +40,13 @@ def _sync(action: str, a: dict[str, Any]) -> dict[str, Any]:
         return E.override_rate(a.get("decisions") or [], a.get("alert_pct", 30))
     if action == "price_fairness":
         return E.price_fairness(a.get("quotes") or [], a.get("max_spread_pct", 5))
-    raise ToolError(f"action '{action}' nahi pehchana.")
+    raise ToolError(f"action '{action}' not recognised.")
 
 
 async def _retail_trust(ctx: Ctx, action: str = "", **a: Any) -> dict[str, Any]:
     actor = getattr(ctx, "actor", "owner") or "owner"
     if actor.startswith("customer:"):
-        raise ToolError("Yeh dukaan ke malik / team ke liye hai.")
+        raise ToolError("This is for the shop owner / team.")
     if action not in _ACTIONS:
         raise ToolError(f"action: {', '.join(_ACTIONS)}")
     try:

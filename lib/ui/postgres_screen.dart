@@ -27,11 +27,11 @@ class _PgWriteCardState extends State<PgWriteCard> {
       final ok = await showDialog<bool>(
           context: context,
           builder: (c) => AlertDialog(
-                title: const Text('Pakka chalaun?'),
+                title: const Text('Run it for sure?'),
                 content: Text(((widget.v['danger'] as List?) ?? const []).join('\n')),
                 actions: [
-                  TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Nahi')),
-                  FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('Haan, chalao')),
+                  TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('No')),
+                  FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('Yes, run it')),
                 ],
               ));
       if (ok != true) return;
@@ -41,7 +41,7 @@ class _PgWriteCardState extends State<PgWriteCard> {
       final r = await api.call('POST', '/api/pgdb/writes/${widget.v['id']}/decide', body: {'yes': yes, 'hash': widget.v['hash']});
       if (r is Map) setState(() => _now = Map<String, dynamic>.from(r));
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Nahi ho paya: $e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not do it: $e')));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -60,9 +60,9 @@ class _PgWriteCardState extends State<PgWriteCard> {
           const Icon(Icons.storage_rounded, color: C.accent, size: 20),
           const SizedBox(width: 8),
           Expanded(
-              child: Text('Database badlav ${v['number'] ?? ''} · ${v['database'] ?? ''}',
+              child: Text('Database change ${v['number'] ?? ''} · ${v['database'] ?? ''}',
                   style: const TextStyle(fontWeight: FontWeight.w700))),
-          Pill(st == 'pending' ? 'haan chahiye' : st == 'done' ? 'ho gaya' : st == 'failed' ? 'nahi hua' : st == 'rejected' ? 'mana' : st,
+          Pill(st == 'pending' ? 'needs approval' : st == 'done' ? 'done' : st == 'failed' ? 'did not happen' : st == 'rejected' ? 'declined' : st,
               fg: color),
         ]),
         if ('${v['reason'] ?? ''}'.isNotEmpty) ...[
@@ -91,15 +91,15 @@ class _PgWriteCardState extends State<PgWriteCard> {
         if (st == 'pending') ...[
           const SizedBox(height: 10),
           Row(children: [
-            Expanded(child: GlassButton(label: 'Mana', icon: Icons.close_rounded, onTap: _busy ? null : () => _decide(false))),
+            Expanded(child: GlassButton(label: 'Declined', icon: Icons.close_rounded, onTap: _busy ? null : () => _decide(false))),
             const SizedBox(width: 10),
             Expanded(
                 child: GradientButton(
-                    label: _busy ? 'Chal raha hai…' : 'Haan, chalao', icon: Icons.check_rounded, height: 48,
+                    label: _busy ? 'Running…' : 'Yes, run it', icon: Icons.check_rounded, height: 48,
                     onTap: _busy ? null : () => _decide(true))),
           ]),
           const SizedBox(height: 6),
-          const Text('Saare statements ek transaction mein: sab chalenge ya kuch nahi.',
+          const Text('All statements run in one transaction: either all run or none.',
               style: TextStyle(color: C.faint, fontSize: 11.5)),
         ],
       ]),
@@ -158,10 +158,10 @@ class _PostgresScreenState extends State<PostgresScreen> {
         context: context,
         builder: (c) => StatefulBuilder(
             builder: (c, set) => AlertDialog(
-                  title: const Text('Postgres database jodiye'),
+                  title: const Text('Link a Postgres database'),
                   content: SingleChildScrollView(
                     child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      TextField(controller: name, decoration: const InputDecoration(labelText: 'Naam (jaise Dukaan DB)')),
+                      TextField(controller: name, decoration: const InputDecoration(labelText: 'Name (e.g. Shop DB)')),
                       const SizedBox(height: 8),
                       TextField(
                         controller: dsn,
@@ -177,16 +177,16 @@ class _PostgresScreenState extends State<PostgresScreen> {
                       ),
                       const SizedBox(height: 10),
                       const Text(
-                          'Neon, Supabase, AWS RDS, DigitalOcean ya apne server ka. Sirf yahan daaliye, chat mein kabhi nahi. '
-                          'Server par band (encrypt) rehta hai, wapas kabhi nahi dikhta. Sirf public host + SSL.\n\n'
-                          'Sabse surakshit: database mein ek read-only user banaiye (sirf SELECT). Badlav tab bhi aapki haan '
-                          'se hi chalenge.',
+                          'Neon, Supabase, AWS RDS, DigitalOcean or your own server. Add it only here, never in chat.'
+                          'It is stored encrypted on the server and never shown again. Public host + SSL only.\n\n'
+                          'Safest: create a read-only user in the database (SELECT only). Changes still need your approval'
+                          'will run only after approval.',
                           style: TextStyle(fontSize: 12, color: C.muted)),
                     ]),
                   ),
                   actions: [
-                    TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Rehne do')),
-                    FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('Jodo aur jaancho')),
+                    TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancel')),
+                    FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('Link and check')),
                   ],
                 )));
     final s = dsn.text.trim();
@@ -195,13 +195,13 @@ class _PostgresScreenState extends State<PostgresScreen> {
     try {
       final r = await widget.app.api!.call('POST', '/api/pgdb/conns', body: {'name': name.text.trim(), 'dsn': s});
       final m = Map<String, dynamic>.from(r as Map);
-      _say('${m['say'] ?? 'Jud gaya'}');
+      _say('${m['say'] ?? 'Linked'}');
       for (final n in ((m['notes'] as List?) ?? const [])) {
         _say('$n');
       }
       _load();
     } catch (e) {
-      _say('Nahi juda: $e');
+      _say('Not linked: $e');
     }
   }
 
@@ -209,11 +209,11 @@ class _PostgresScreenState extends State<PostgresScreen> {
     final ok = await showDialog<bool>(
         context: context,
         builder: (x) => AlertDialog(
-              title: Text('${c['name']} hatayein?'),
-              content: const Text('Hoola ke paas iska password nahi rahega. Database ko kuch nahi hoga.'),
+              title: Text('Remove ${c['name']}?'),
+              content: const Text('Hoola will not keep this password. Nothing will happen to the database.'),
               actions: [
-                TextButton(onPressed: () => Navigator.pop(x, false), child: const Text('Nahi')),
-                FilledButton(onPressed: () => Navigator.pop(x, true), child: const Text('Hatao')),
+                TextButton(onPressed: () => Navigator.pop(x, false), child: const Text('No')),
+                FilledButton(onPressed: () => Navigator.pop(x, true), child: const Text('Remove')),
               ],
             ));
     if (ok != true) return;
@@ -233,18 +233,18 @@ class _PostgresScreenState extends State<PostgresScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Postgres database')),
       floatingActionButton:
-          FloatingActionButton.extended(onPressed: _add, icon: const Icon(Icons.add_rounded), label: const Text('Database jodo')),
+          FloatingActionButton.extended(onPressed: _add, icon: const Icon(Icons.add_rounded), label: const Text('Link database')),
       body: RefreshIndicator(
         onRefresh: _load,
         child: ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 96), children: [
           Glass(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('${widget.app.aName} aapka database padhta hai',
+              Text('${widget.app.aName} reads your database',
                   style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
               const SizedBox(height: 6),
               const Text(
-                  'Chat ya call mein poochhiye: "kal kitne order aaye?", "kaunse graahak 30 din se nahi aaye?", "app dheema kyun '
-                  'hai?". Hoola tables dekhkar sahi query chalata hai, explain / health se dheemapan dhoondhta hai.',
+                  'Ask in chat or on a call: "how many orders came yesterday?", "which customers have not come for 30 days?", "why is the app'
+                  'slow?". Hoola looks at the tables and runs the right query, and finds slowness using explain / health.',
                   style: TextStyle(color: C.muted, fontSize: 12.5)),
               const SizedBox(height: 8),
               for (final r in rules)
@@ -263,7 +263,7 @@ class _PostgresScreenState extends State<PostgresScreen> {
           if (_home != null && dbs.isEmpty)
             const Padding(
                 padding: EdgeInsets.all(20),
-                child: Text('Abhi koi database nahi juda. "Database jodo" dabaiye.', style: TextStyle(color: C.faint))),
+                child: Text('No database linked yet. Press "Link database".', style: TextStyle(color: C.faint))),
           for (final c in dbs)
             Glass(
               margin: const EdgeInsets.only(bottom: 10),
@@ -277,7 +277,7 @@ class _PostgresScreenState extends State<PostgresScreen> {
                       if (k == 'test') {
                         try {
                           final r = await widget.app.api!.call('POST', '/api/pgdb/conns/${c['id']}/test');
-                          _say('Jud raha hai: ${(r as Map)['version'] ?? ''}');
+                          _say('Connecting: ${(r as Map)['version'] ?? ''}');
                         } catch (e) {
                           _say('$e');
                         }
@@ -291,10 +291,10 @@ class _PostgresScreenState extends State<PostgresScreen> {
                       }
                     },
                     itemBuilder: (_) => const [
-                      PopupMenuItem(value: 'tables', child: Text('Tables dekho')),
-                      PopupMenuItem(value: 'health', child: Text('Sehat jaancho')),
-                      PopupMenuItem(value: 'test', child: Text('Connection jaancho')),
-                      PopupMenuItem(value: 'remove', child: Text('Hatao')),
+                      PopupMenuItem(value: 'tables', child: Text('See tables')),
+                      PopupMenuItem(value: 'health', child: Text('Check health')),
+                      PopupMenuItem(value: 'test', child: Text('Check connection')),
+                      PopupMenuItem(value: 'remove', child: Text('Remove')),
                     ],
                   ),
                 ]),
@@ -303,8 +303,8 @@ class _PostgresScreenState extends State<PostgresScreen> {
                 Wrap(spacing: 6, runSpacing: 4, children: [
                   Pill('PostgreSQL ${'${c['server_version'] ?? ''}'.split(' ').first}'),
                   Pill('SSL ${c['sslmode']}'),
-                  if (c['is_super'] == true) const Pill('superuser: read-only user behtar', fg: C.warn),
-                  if (c['can_write'] == false) const Pill('sirf padh sakta hai', fg: C.ok),
+                  if (c['is_super'] == true) const Pill('superuser: a read-only user is better', fg: C.warn),
+                  if (c['can_write'] == false) const Pill('read-only', fg: C.ok),
                 ]),
                 if ('${c['last_error'] ?? ''}'.isNotEmpty)
                   Padding(
@@ -314,7 +314,7 @@ class _PostgresScreenState extends State<PostgresScreen> {
             ),
           if (writes.isNotEmpty) ...[
             const SizedBox(height: 6),
-            const Caption('BADLAV KE CARD'),
+            const Caption('CARDS FOR CHANGES'),
             for (final w in writes) PgWriteCard(key: ValueKey('pgw${w['id']}${w['status']}'), v: w, app: widget.app),
           ],
         ]),
@@ -405,7 +405,7 @@ class _PgTablesPageState extends State<_PgTablesPage> {
         const SizedBox(height: 8),
         Glass(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Text('Padhne wala query (SELECT)', style: TextStyle(fontWeight: FontWeight.w700)),
+            const Text('Read query (SELECT)', style: TextStyle(fontWeight: FontWeight.w700)),
             const SizedBox(height: 6),
             TextField(
                 controller: _sql,
@@ -414,13 +414,13 @@ class _PgTablesPageState extends State<_PgTablesPage> {
                 style: const TextStyle(fontFamily: 'monospace', fontSize: 13),
                 decoration: const InputDecoration(hintText: 'select * from orders order by id desc limit 20')),
             const SizedBox(height: 8),
-            GradientButton(label: _busy ? 'Chal raha hai…' : 'Chalao (sirf padhna)', icon: Icons.play_arrow_rounded, height: 44,
+            GradientButton(label: _busy ? 'Running…' : 'Run (read only)', icon: Icons.play_arrow_rounded, height: 44,
                 onTap: _busy ? null : _run),
             if (_res?['error'] != null)
               Padding(padding: const EdgeInsets.only(top: 8), child: Text('${_res!['error']}', style: const TextStyle(color: C.bad))),
             if (cols.isNotEmpty) ...[
               const SizedBox(height: 10),
-              Text('${_res!['row_count']} rows · ${_res!['ms']} ms${_res!['more'] == true ? ' · aur bhi hain' : ''}',
+              Text('${_res!['row_count']} rows · ${_res!['ms']} ms${_res!['more'] == true ? ' · and more' : ''}',
                   style: const TextStyle(color: C.faint, fontSize: 12)),
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
@@ -485,7 +485,7 @@ class _PgHealthPageState extends State<_PgHealthPage> {
     final tips = ((_h?['tips'] as List?) ?? const []).map((e) => '$e').toList();
     final conn = Map<String, dynamic>.from((checks['connections'] as Map?) ?? const {});
     return Scaffold(
-      appBar: AppBar(title: Text('${widget.conn['name']} · sehat')),
+      appBar: AppBar(title: Text('${widget.conn['name']} · health')),
       body: ListView(padding: const EdgeInsets.all(16), children: [
         if (_err != null) Text(_err!, style: const TextStyle(color: C.bad)),
         if (_h == null && _err == null) const Center(child: Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator())),
@@ -498,7 +498,7 @@ class _PgHealthPageState extends State<_PgHealthPage> {
             ]),
           ),
           const SizedBox(height: 12),
-          if (tips.isEmpty) const Text('Sab theek dikh raha hai.', style: TextStyle(color: C.ok)),
+          if (tips.isEmpty) const Text('Everything looks fine.', style: TextStyle(color: C.ok)),
           for (final t in tips)
             Padding(
               padding: const EdgeInsets.only(bottom: 8),
@@ -509,7 +509,7 @@ class _PgHealthPageState extends State<_PgHealthPage> {
               ]),
             ),
           const SizedBox(height: 8),
-          const Text('Theek karwana ho to chat mein boliye: Hoola badlav ka card banayega, chalega aapki haan se.',
+          const Text('To get it fixed, tell me in chat: Hoola will make a card for the change, and it will run with your approval.',
               style: TextStyle(color: C.faint, fontSize: 12)),
         ],
       ]),

@@ -29,7 +29,7 @@ object UpiPay {
         val ref = generic.getQueryParameter("tr") ?: ""
         var intent = Intent(Intent.ACTION_VIEW, generic)
         if (pkg.isNotBlank() && installed(pkg)) intent.setPackage(pkg)
-        else intent = Intent.createChooser(intent, "Kis UPI app se pay karein?")
+        else intent = Intent.createChooser(intent, "Pay with which UPI app?")
         // NO FLAG_ACTIVITY_NEW_TASK: with it Android cancels the result at once
         try {
             remember(act, ref, pkg)
@@ -47,7 +47,7 @@ object UpiPay {
             }
         } catch (_: Exception) {}
         forget(act)
-        return "Is phone par koi UPI app ye link nahi khol paya"
+        return "No UPI app on this phone could open this link"
     }
 
     private fun remember(ctx: Context, ref: String, pkg: String) {

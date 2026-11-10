@@ -69,7 +69,7 @@ def test_a_big_ask_gets_its_card_after_the_first_round(gz, monkeypatch):  # noqa
     monkeypatch.setattr(goal, "set_goal", spy)
     out = asyncio.run(S.run_turn(conv, T3, tenant_id="default"))
     assert seen_cards and seen_cards[0]["total"] == 4                       # the card, with her 4 parts
-    first = next(i for i, c in enumerate(brain.seen) if "server ne yeh plan bana diya" in str(c["messages"][-1]))
+    first = next(i for i, c in enumerate(brain.seen) if "the server made this plan" in str(c["messages"][-1]))
     assert first == 1                                                        # right after the FIRST round
     assert "PDF chat mein hai" in out and goal.active_for(conv) is None      # closed by the real final answer
 
@@ -138,7 +138,7 @@ def test_a_refused_site_asks_before_her_pc(monkeypatch):
     monkeypatch.setattr(get_settings(), "operator_preflight", True, raising=False)
     r = asyncio.run(O.computer_operator(_ctx("c-site"), "start", task="iPhone price on amazon.in", where="auto"))
     assert called == [] and r["status"] == "site_blocks_server"
-    assert "Aapke PC par Chrome mein kar doon?" in r["say"] and "Never move it to her PC" in r["next"]
+    assert "Shall I do it in Chrome on your PC?" in r["say"] and "Never move it to her PC" in r["next"]
 
 
 def test_her_own_pc_word_still_goes_to_her_pc(monkeypatch):

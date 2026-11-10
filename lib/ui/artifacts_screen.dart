@@ -47,7 +47,7 @@ class _ArtifactsScreenState extends State<ArtifactsScreen> {
   Future<void> _load() async {
     final api = app.api;
     if (api == null) {
-      if (mounted) setState(() => _err = 'Hoola se connect nahi hai.');
+      if (mounted) setState(() => _err = 'Not connected to Hoola.');
       return;
     }
     try {
@@ -111,7 +111,7 @@ class _ArtifactsScreenState extends State<ArtifactsScreen> {
           if (status == 'building')
             const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2.2, color: C.accent))
           else if (status == 'failed')
-            const Pill('NAHI BANA', fg: C.bad)
+            const Pill('NOT MADE', fg: C.bad)
           else
             const Icon(Icons.chevron_right_rounded, color: C.muted),
         ]),
@@ -121,7 +121,7 @@ class _ArtifactsScreenState extends State<ArtifactsScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: const Text('Mere Artifacts'), backgroundColor: Colors.transparent),
+        appBar: AppBar(title: const Text('My Artifacts'), backgroundColor: Colors.transparent),
         body: Aurora(
           child: RefreshIndicator(
             onRefresh: _load,
@@ -134,10 +134,10 @@ class _ArtifactsScreenState extends State<ArtifactsScreen> {
                 if (_loaded && _items.isEmpty && _err == null)
                   const Glass(
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text('Abhi koi artifact nahi', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+                      Text('No artifacts yet', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
                       SizedBox(height: 6),
-                      Text('Hoola se boliye: "Mere kharche ka tracker banao", "EMI calculator bana do", '
-                          '"Kal ki meeting ka plan banao". Woh ek chhota app bana dega jo yahan dikhega.',
+                      Text('Tell Hoola: "Make my expense tracker", "Make an EMI calculator",'
+                          '"Make a plan for tomorrow\'s meeting". It will make a small app that shows up here.',
                           style: TextStyle(color: C.muted, fontSize: 13, height: 1.4)),
                     ]),
                   ),

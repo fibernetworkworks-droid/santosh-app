@@ -18,35 +18,35 @@ _ACTIONS = ["transcribe", "diarize", "minutes", "status", "list", "get", "search
 
 KAAN_TOOLS = [
     {"name": "kaan", "description": (
-        "Audio/video sun-kar likhawat (Whisper W0) + W1 diarize/minutes + W2 live captions + W3 styles/vocab "
+        "Audio/video transcription (Whisper W0) + W1 diarize/minutes + W2 live captions + W3 styles/vocab "
         "+ W4 exports/gyaan. "
         "transcribe: file_id + model (default small; turbo translate NAHI) + language + task transcribe|translate "
-        "(whisper X->English only) -> text, segments (per-word timing); vocab=true (default) tenant ke shabd "
-        "initial_prompt hint + fix_to deterministic replacement lagata hai (note mein count). "
-        "vocab_add (term, fix_to khaali ya replacement) / vocab_list / vocab_remove. "
-        "diarize: id YA file_id -> pauses se TURN kate hain (speaker pehchaan NAHI); names={\"1\": \"Gupta ji\"}. "
+        "(whisper X->English only) -> text, segments (per-word timing); vocab=true (default) applies the tenant's terms as an "
+        "initial_prompt hint + fix_to deterministic replacement (count in note). "
+        "vocab_add (term, fix_to empty or a replacement) / vocab_list / vocab_remove. "
+        "diarize: id OR file_id -> TURNS cut at pauses (NOT speaker recognition); names={\"1\": \"Gupta ji\"}. "
         "minutes: id -> turn stats, keywords, action CANDIDATES. "
         "style: id + verbatim|clean|subtitles|minutes|social -> deterministic render. "
         "export: id + fmt srt|vtt|txt|json -> deterministic caption/text export (read-only). "
-        "to_gyaan: id -> transcript ke apne shabd uski gyaan corpus mein (gyaan_khojo dhoondhega). "
-        "live_start (model base) -> kl_ session; live_chunk (id + audio bytes) -> naye captions; "
+        "to_gyaan: id -> the transcript's own words into her gyaan corpus (gyaan_khojo will find them). "
+        "live_start (model base) -> kl_ session; live_chunk (id + audio bytes) -> new captions; "
         "live_stop (id, finalize_model) -> kn_ transcript; live_get/live_list. "
-        "status: gate, engine, ladder, styles, vocab, exports, stored, privacy. Audio + text isi server par. "
-        "Badi file santosh_kaam par chalti hai."),
+        "status: gate, engine, ladder, styles, vocab, exports, stored, privacy. Audio + text stay on this server. "
+        "A big file runs via santosh_kaam."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": _ACTIONS}, "file_id": {"type": "string"},
          "model": {"type": "string", "enum": ["", "tiny", "base", "small", "medium", "turbo", "large-v3"]},
          "language": {"type": "string"}, "task": {"type": "string", "enum": ["transcribe", "translate"]},
          "word_timestamps": {"type": "boolean"}, "id": {"type": "string"}, "q": {"type": "string"},
-         "names": {"type": "object", "description": "diarize: turn number -> naam, jaise {\"1\": \"Gupta ji\"}"},
-         "pause_s": {"type": "number", "description": "diarize: turn cut ka pause threshold (default 0.8s)"},
+         "names": {"type": "object", "description": "diarize: turn number -> name, e.g. {\"1\": \"Gupta ji\"}"},
+         "pause_s": {"type": "number", "description": "diarize: pause threshold for a turn cut (default 0.8s)"},
          "style": {"type": "string", "enum": ["", "verbatim", "clean", "subtitles", "minutes", "social"],
-                   "description": "style action: kaunsa deterministic render"},
-         "term": {"type": "string", "description": "vocab_add/remove: kaunsa shabd"},
-         "fix_to": {"type": "string", "description": "vocab_add: khaali = sirf hint; warna deterministic replacement"},
+                   "description": "style action: which deterministic render"},
+         "term": {"type": "string", "description": "vocab_add/remove: which term"},
+         "fix_to": {"type": "string", "description": "vocab_add: empty = hint only; otherwise a deterministic replacement"},
          "fmt": {"type": "string", "enum": ["", "srt", "vtt", "txt", "json"],
                  "description": "export: which format"},
-         "vocab": {"type": "boolean", "description": "transcribe/live_start: tenant vocab lagana hai (default true)"},
+         "vocab": {"type": "boolean", "description": "transcribe/live_start: apply the tenant vocab (default true)"},
          "diarize": {"type": "string", "enum": ["", "pause_turns", "voiceprint"],
                      "description": "transcribe: name the speakers - pause_turns cuts turns at pauses; "
                                     "voiceprint matches her enrolled Awaaz Pehchaan prints (W6; needs "
@@ -88,7 +88,7 @@ def _sync(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         else:
             tid = str(a.get("id") or "")
             if not tid:
-                raise ValueError("diarize ke liye transcript ki id (id=) ya audio file (file_id=) dijiye.")
+                raise ValueError("For diarize give the transcript id (id=) or an audio file (file_id=).")
         names = a.get("names") if isinstance(a.get("names"), dict) else None
         pause_s = float(a.get("pause_s")) if a.get("pause_s") else None
         return KS.diarize_transcript(ctx.tenant_id, tid, names=names, pause_s=pause_s)
@@ -128,23 +128,23 @@ def _sync(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         return KS.export_transcript(ctx.tenant_id, str(a.get("id") or ""), str(a.get("fmt") or ""))
     if action == "to_gyaan":
         return KS.to_gyaan(ctx.tenant_id, str(a.get("id") or ""))
-    raise ValueError(f"action '{action}' nahi pehchana: {', '.join(_ACTIONS)}")
+    raise ValueError(f"action '{action}' not recognised: {', '.join(_ACTIONS)}")
 
 
 async def _kaan(ctx: Ctx, action: str = "", **a: Any) -> dict[str, Any]:
     actor = _actor(ctx)
     if actor.startswith("customer:"):
-        raise ToolError("Yeh kaam graahak ke liye nahi.")
+        raise ToolError("This work is not for customers.")
     if action not in _ACTIONS:
         raise ToolError(f"action: {', '.join(_ACTIONS)}")
     if action in ("transcribe", "live_start", "live_chunk", "live_stop") and actor not in ("owner",) and not actor.startswith("approved:"):
-        raise ToolError("Audio sun-kar likhna (live captions bhi) sirf owner ke liye (ya approved kaam).")
+        raise ToolError("Transcribing audio (live captions too) is for the owner only (or an approved job).")
     if action == "diarize" and actor not in ("owner",) and not actor.startswith("approved:"):
-        raise ToolError("Diarize sirf owner ke liye (ya approved kaam) - yeh transcript par likhta bhi hai.")
+        raise ToolError("Diarize is for the owner only (or an approved job) - it also writes onto the transcript.")
     if action in ("live_get", "live_list") and actor not in ("owner",) and not actor.startswith("approved:"):
-        raise ToolError("Live session ki jankari sirf owner ke liye (ya approved kaam).")
+        raise ToolError("Live session details are for the owner only (or an approved job).")
     if action in ("vocab_add", "vocab_remove", "to_gyaan") and actor not in ("owner",) and not actor.startswith("approved:"):
-        raise ToolError("Vocab badalna sirf owner ke liye (ya approved kaam) - yeh tenant ka data likhta hai.")
+        raise ToolError("Changing vocab is for the owner only (or an approved job) - it writes tenant data.")
     try:
         return await asyncio.to_thread(_sync, ctx, action, a)
     except ValueError as e:

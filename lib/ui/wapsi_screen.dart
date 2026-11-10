@@ -39,7 +39,7 @@ Future<Map<String, String>?> _form(BuildContext context, String title, List<(Str
         ]),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Rehne do')),
+        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Keep it')),
         TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Aage')),
       ],
     ),
@@ -68,7 +68,7 @@ Future<void> _openLink(BuildContext context, String url) async {
   final r = await Native.openExternal(url: url);
   if (r.isNotEmpty && r != 'ok' && context.mounted) {
     await Clipboard.setData(ClipboardData(text: url));
-    if (context.mounted) _snack(context, 'Link copy kar diya');
+    if (context.mounted) _snack(context, 'Link copied');
   }
 }
 
@@ -123,12 +123,12 @@ class _WapsiScreenState extends State<WapsiScreen> {
   }
 
   Future<void> _newReturn() async {
-    final f = await _form(context, 'Naya return', const [
-      ('name', 'Graahak ka naam'),
+    final f = await _form(context, 'New return', const [
+      ('name', 'Graahak name'),
       ('phone', 'Phone'),
-      ('items', 'Saamaan (jaise: Kurti x1 @ 899)'),
-      ('reason', 'Kya dikkat hai (graahak ke shabd)'),
-      ('delivered_on', 'Delivery ki tareekh (DD-MM-YYYY)'),
+      ('items', 'Goods (e.g. Kurti x1 @ 899)'),
+      ('reason', 'What is the problem (in the customer\'s words)'),
+      ('delivered_on', 'Delivery date (DD-MM-YYYY)'),
       ('order_ref', 'Order number'),
       ('pincode', 'PIN code'),
       ('address', 'Pickup ka pata'),
@@ -180,7 +180,7 @@ class _WapsiScreenState extends State<WapsiScreen> {
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           const Text('Aaj', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
           const SizedBox(height: 6),
-          if (parts.isEmpty) const Text('Sab theek. Koi return aapka intezaar nahi kar raha.', style: TextStyle(color: C.muted)),
+          if (parts.isEmpty) const Text('All good. No return is waiting for you.', style: TextStyle(color: C.muted)),
           for (final p in parts) Padding(padding: const EdgeInsets.only(top: 4), child: Text('• $p')),
         ]),
       ),
@@ -188,13 +188,13 @@ class _WapsiScreenState extends State<WapsiScreen> {
       for (final f in waiting) Padding(padding: const EdgeInsets.only(bottom: 10), child: WapsiRefundCard(app: widget.app, data: {'refund': f, 'return_number': f['return_number'], 'customer': f['customer']}, onDone: _load)),
       for (final r in _list(_d?['returns']).take(20)) _returnTile(r),
       const SizedBox(height: 8),
-      GradientButton(label: 'Naya return', icon: Icons.add_rounded, onTap: _busy ? null : _newReturn),
+      GradientButton(label: 'New return', icon: Icons.add_rounded, onTap: _busy ? null : _newReturn),
     ]);
   }
 
   Widget _returns() => ListView(padding: const EdgeInsets.all(16), children: [
         Wrap(spacing: 8, runSpacing: 8, children: [
-          for (final (k, l) in const [('open', 'Khule'), ('new', 'Naye'), ('refund_waiting', 'Refund baaki'), ('refunded', 'Ho gaye'), ('rejected', 'Mana'), ('', 'Sab')])
+          for (final (k, l) in const [('open', 'Khule'), ('new', 'Naye'), ('refund_waiting', 'Refund baaki'), ('refunded', 'Done'), ('rejected', 'Mana'), ('', 'Sab')])
             ChoiceChip(
               label: Text(l),
               selected: _filter == k,
@@ -205,7 +205,7 @@ class _WapsiScreenState extends State<WapsiScreen> {
             ),
         ]),
         const SizedBox(height: 12),
-        if (_all.isEmpty) const Text('Koi return nahi.', style: TextStyle(color: C.muted)),
+        if (_all.isEmpty) const Text('No returns.', style: TextStyle(color: C.muted)),
         for (final r in _all) _returnTile(r),
         const SizedBox(height: 8),
         GlassButton(label: 'Register (Excel)', icon: Icons.table_view_rounded, onTap: _busy ? null : () => _run(() => _call(widget.app, 'POST', '/api/wapsi/register'))),
@@ -216,7 +216,7 @@ class _WapsiScreenState extends State<WapsiScreen> {
         builder: (c, snap) {
           final rows = _list(_m(snap.data)['refunds']);
           return ListView(padding: const EdgeInsets.all(16), children: [
-            const Text('Har refund sirf aapki haan se. Paisa aap khud bhejti hain; Hoola UTR likhta hai.', style: TextStyle(color: C.muted, fontSize: 12.5)),
+            const Text('Every refund needs your yes. You send the money yourself; Hoola records the UTR.', style: TextStyle(color: C.muted, fontSize: 12.5)),
             const SizedBox(height: 10),
             if (snap.connectionState != ConnectionState.done) const Center(child: CircularProgressIndicator()),
             for (final f in rows)
@@ -235,14 +235,14 @@ class _WapsiScreenState extends State<WapsiScreen> {
     return ListView(padding: const EdgeInsets.all(16), children: [
       Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('Aapki return policy', style: TextStyle(fontWeight: FontWeight.w800)),
+          const Text('Your return policy', style: TextStyle(fontWeight: FontWeight.w800)),
           for (final l in lines) Padding(padding: const EdgeInsets.only(top: 4), child: Text('• $l', style: const TextStyle(fontSize: 13))),
           const SizedBox(height: 10),
           GlassButton(
-            label: 'Apne shabdon mein likhiye',
+            label: 'Write in your own words',
             icon: Icons.edit_note_rounded,
             onTap: () async {
-              final f = await _form(context, 'Return policy', const [('text', 'Jaise: 7 din return, innerwear wapas nahi, tag lage hon, man badalne par 10% fee')]);
+              final f = await _form(context, 'Return policy', const [('text', 'For example: 7-day returns, no innerwear returns, tags must be on, 10% fee if you change your mind')]);
               if (f?['text'] != null) await _run(() => _call(widget.app, 'POST', '/api/wapsi/policy', body: {'text': f!['text']}));
             },
           ),
@@ -251,7 +251,7 @@ class _WapsiScreenState extends State<WapsiScreen> {
       const SizedBox(height: 12),
       Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('Dukaan aur wapsi ka pata', style: TextStyle(fontWeight: FontWeight.w800)),
+          const Text('Shop and return address', style: TextStyle(fontWeight: FontWeight.w800)),
           Text('${_s(st['business'])} ${_s(st['gstin'])}'.trim(), style: const TextStyle(color: C.muted)),
           Text(_s(_m(st['warehouse'])['address']), style: const TextStyle(color: C.muted)),
           const SizedBox(height: 8),
@@ -261,8 +261,8 @@ class _WapsiScreenState extends State<WapsiScreen> {
             onTap: () async {
               final w = _m(st['warehouse']);
               final f = await _form(context, 'Dukaan / warehouse', const [
-                ('business', 'Business ka naam'), ('gstin', 'GSTIN'), ('state', 'State'), ('w_phone', 'Warehouse phone'),
-                ('w_address', 'Warehouse ka pata'), ('w_city', 'Shehar'), ('w_pincode', 'PIN'),
+                ('business', 'Business name'), ('gstin', 'GSTIN'), ('state', 'State'), ('w_phone', 'Warehouse phone'),
+                ('w_address', 'Warehouse ka pata'), ('w_city', 'City'), ('w_pincode', 'PIN'),
               ], init: {'business': _s(st['business']), 'gstin': _s(st['gstin']), 'state': _s(st['state']), 'w_phone': _s(w['phone']),
                 'w_address': _s(w['address']), 'w_city': _s(w['city']), 'w_pincode': _s(w['pincode'])});
               if (f == null) return;
@@ -280,14 +280,14 @@ class _WapsiScreenState extends State<WapsiScreen> {
       const SizedBox(height: 12),
       Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('Courier aur gateway (sirf yahan, chat mein kabhi nahi)', style: TextStyle(fontWeight: FontWeight.w800)),
+          const Text('Courier and gateway (only here, never in the chat)', style: TextStyle(fontWeight: FontWeight.w800)),
           Text('Courier: ${_s(st['courier'])}${st['courier_joined'] == true ? ' (juda)' : ''} · Gateway: ${_s(st['pg']).isEmpty ? '-' : _s(st['pg'])}${st['pg_joined'] == true ? ' (juda)' : ''}',
               style: const TextStyle(color: C.muted)),
           const SizedBox(height: 8),
           Wrap(spacing: 8, runSpacing: 8, children: [
             for (final (p, l, fields) in const [
               ('shiprocket', 'Shiprocket', [('email', 'API user email'), ('password', 'API user password')]),
-              ('delhivery', 'Delhivery', [('token', 'API token'), ('pickup_location', 'Registered warehouse ka naam')]),
+              ('delhivery', 'Delhivery', [('token', 'API token'), ('pickup_location', 'Registered warehouse name')]),
               ('razorpay', 'Razorpay', [('key_id', 'Key ID'), ('key_secret', 'Key secret')]),
               ('cashfree', 'Cashfree', [('key_id', 'App ID'), ('key_secret', 'Secret key')]),
             ])
@@ -296,13 +296,13 @@ class _WapsiScreenState extends State<WapsiScreen> {
                 icon: Icons.key_rounded,
                 height: 40,
                 onTap: () async {
-                  final f = await _secretForm(context, '$l jodiye', fields);
+                  final f = await _secretForm(context, 'Connect $l', fields);
                   if (f != null) await _run(() => _call(widget.app, 'PUT', '/api/wapsi/keys/$p', body: {'creds': f}));
                 },
               ),
           ]),
           const SizedBox(height: 6),
-          const Text('Gateway key se Hoola sirf refund ka haal padhta hai. Refund aap khud dashboard se karti hain.', style: TextStyle(fontSize: 12, color: C.faint)),
+          const Text('With the gateway key, Hoola only reads the refund status. You make the refund yourself from the dashboard.', style: TextStyle(fontSize: 12, color: C.faint)),
         ]),
       ),
       const SizedBox(height: 12),
@@ -362,11 +362,11 @@ Future<Map<String, String>?> _secretForm(BuildContext context, String title, Lis
         for (final (k, label) in fields)
           TextField(controller: c[k], obscureText: k.contains('secret') || k.contains('password') || k == 'token', decoration: InputDecoration(labelText: label)),
         const SizedBox(height: 8),
-        const Text('Chaabi band tijori mein rehti hai; Hoola ko bhi nahi dikhti.', style: TextStyle(fontSize: 12)),
+        const Text('The key stays in a locked safe; even Hoola cannot see it.', style: TextStyle(fontSize: 12)),
       ]),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Rehne do')),
-        TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Jodiye')),
+        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Keep it')),
+        TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Connect')),
       ],
     ),
   );
@@ -426,7 +426,7 @@ class _WapsiReturnPageState extends State<WapsiReturnPage> {
       builder: (c) => Padding(
         padding: const EdgeInsets.all(16),
         child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('Graahak ke liye message (aap bhejiye)', style: TextStyle(fontWeight: FontWeight.w800)),
+          const Text('Message for the customer (you send it)', style: TextStyle(fontWeight: FontWeight.w800)),
           const SizedBox(height: 8),
           SelectableText(_s(msg['text'])),
           const SizedBox(height: 12),
@@ -460,7 +460,7 @@ class _WapsiReturnPageState extends State<WapsiReturnPage> {
   Future<void> _decide(String d) async {
     var reason = '';
     if (d != 'approve') {
-      final f = await _form(context, d == 'reject' ? 'Mana kyon? (graahak ko dikhega)' : 'Graahak se kya chahiye?', const [('reason', 'Wajah / sawaal')]);
+      final f = await _form(context, d == 'reject' ? 'Why declined? (the customer will see this)' : 'What do you need from the customer?', const [('reason', 'Reason / question')]);
       if (f == null) return;
       reason = f['reason'] ?? '';
     }
@@ -476,7 +476,7 @@ class _WapsiReturnPageState extends State<WapsiReturnPage> {
       context: context,
       builder: (d) => StatefulBuilder(
         builder: (d, set) => AlertDialog(
-          title: const Text('QC: dabba kholte waqt video banaiye'),
+          title: const Text('QC: record a video while opening the box'),
           content: SingleChildScrollView(
             child: Column(mainAxisSize: MainAxisSize.min, children: [
               for (final x in list)
@@ -486,13 +486,13 @@ class _WapsiReturnPageState extends State<WapsiReturnPage> {
                   value: vals[_s(x['key'])] ?? true,
                   onChanged: (v) => set(() => vals[_s(x['key'])] = v),
                 ),
-              TextField(controller: ded, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Kataayi ₹ (sirf graahak ki kharabi)')),
-              TextField(controller: why, decoration: const InputDecoration(labelText: 'Kataayi ki wajah')),
+              TextField(controller: ded, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Deduction ₹ (only for customer-caused damage)')),
+              TextField(controller: why, decoration: const InputDecoration(labelText: 'Reason for the deduction')),
             ]),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Rehne do')),
-            TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('QC pakka')),
+            TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Keep it')),
+            TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('QC confirmed')),
           ],
         ),
       ),
@@ -556,18 +556,18 @@ class _WapsiReturnPageState extends State<WapsiReturnPage> {
         const SizedBox(height: 10),
         Glass(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(switch (verdict) { 'approve' => 'Policy: theek hai', 'ask_more' => 'Policy: pehle aur jaankari', _ => 'Policy: mana banta hai (faisla aapka)' },
+            Text(switch (verdict) { 'approve' => 'Policy: OK', 'ask_more' => 'Policy: more information first', _ => 'Policy: should be declined (your decision)' },
                 style: TextStyle(fontWeight: FontWeight.w800, color: verdict == 'approve' ? C.ok : verdict == 'ask_more' ? C.warn : C.bad)),
-            if (chk['fault'] == true) const Text('Galti dukaan ki taraf: kanoon mana karne nahi deta.', style: TextStyle(fontSize: 12.5, color: C.warn)),
+            if (chk['fault'] == true) const Text('The fault is the shop\'s: the law does not allow refusing.', style: TextStyle(fontSize: 12.5, color: C.warn)),
             for (final a in (chk['asks'] as List?) ?? const []) Text('? $a', style: const TextStyle(fontSize: 12.5)),
             for (final n in (chk['notes'] as List?) ?? const []) Text('• $n', style: const TextStyle(fontSize: 12.5, color: C.muted)),
-            for (final s in _list(r['signals'])) Text('⚑ ${_s(s['text'])} (signal, faisla aapka)', style: const TextStyle(fontSize: 12.5, color: C.warn)),
+            for (final s in _list(r['signals'])) Text('⚑ ${_s(s['text'])} (signal, your decision)', style: const TextStyle(fontSize: 12.5, color: C.warn)),
           ]),
         ),
         const SizedBox(height: 10),
         Glass(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Text('Photo / video (location hata kar rakhi)', style: TextStyle(fontWeight: FontWeight.w700)),
+            const Text('Photo / video (location removed)', style: TextStyle(fontWeight: FontWeight.w700)),
             const SizedBox(height: 6),
             if (ph.isNotEmpty) _photoStrip(ph),
             Wrap(spacing: 8, runSpacing: 8, children: [
@@ -590,14 +590,14 @@ class _WapsiReturnPageState extends State<WapsiReturnPage> {
         const SizedBox(height: 10),
         Wrap(spacing: 8, runSpacing: 8, children: [
           if (['new', 'need_info', 'qc_failed'].contains(st)) ...[
-            GradientButton(label: 'Manzoor', icon: Icons.check_rounded, height: 44, onTap: _busy ? null : () => _decide('approve')),
-            GlassButton(label: 'Jaankari maango', icon: Icons.help_outline_rounded, onTap: _busy ? null : () => _decide('ask')),
+            GradientButton(label: 'Approved', icon: Icons.check_rounded, height: 44, onTap: _busy ? null : () => _decide('approve')),
+            GlassButton(label: 'Ask for information', icon: Icons.help_outline_rounded, onTap: _busy ? null : () => _decide('ask')),
             GlassButton(label: 'Mana', icon: Icons.close_rounded, color: C.bad, onTap: _busy ? null : () => _decide('reject')),
           ],
           if (st == 'pickup_manual' || st == 'approved') ...[
             GlassButton(label: 'Pickup book', icon: Icons.local_shipping_rounded, onTap: _busy ? null : () => _run(() => _call(widget.app, 'POST', '$_base/pickup', body: {}))),
             GlassButton(
-              label: 'AWB likho',
+              label: 'Enter AWB',
               icon: Icons.numbers_rounded,
               onTap: () async {
                 final f = await _form(context, 'Tracking number', const [('awb', 'AWB'), ('courier', 'Courier')]);
@@ -607,14 +607,14 @@ class _WapsiReturnPageState extends State<WapsiReturnPage> {
           ],
           if (st == 'pickup_booked' || st == 'in_transit') GlassButton(label: 'Tracking', icon: Icons.route_rounded, onTap: _busy ? null : () => _run(() => _call(widget.app, 'POST', '$_base/track'))),
           if (['pickup_booked', 'pickup_manual', 'in_transit', 'approved'].contains(st))
-            GlassButton(label: 'Saamaan aa gaya', icon: Icons.inventory_2_rounded, onTap: _busy ? null : () => _run(() => _call(widget.app, 'POST', '$_base/received'))),
-          if (st == 'received') GradientButton(label: 'QC kijiye', icon: Icons.fact_check_rounded, height: 44, onTap: _busy ? null : _qc),
+            GlassButton(label: 'Goods received', icon: Icons.inventory_2_rounded, onTap: _busy ? null : () => _run(() => _call(widget.app, 'POST', '$_base/received'))),
+          if (st == 'received') GradientButton(label: 'Do QC', icon: Icons.fact_check_rounded, height: 44, onTap: _busy ? null : _qc),
           if (st == 'qc_passed' || (st == 'received' && chk['pickup_needed'] == false))
             GlassButton(
-              label: 'Refund banao',
+              label: 'Make refund',
               icon: Icons.currency_rupee_rounded,
               onTap: () async {
-                final f = await _form(context, 'Refund (card aapki haan ke liye)', const [('mode', 'original / upi / bank / store_credit (khaali = apne aap)'), ('upi', 'Graahak ka UPI ID (COD par)')]);
+                final f = await _form(context, 'Refund (card for your yes)', const [('mode', 'original / upi / bank / store_credit (blank = automatic)'), ('upi', 'Customer\'s UPI ID (for COD)')]);
                 if (f != null) await _run(() => _call(widget.app, 'POST', '$_base/refund', body: {'mode': f['mode'] ?? '', 'upi': f['upi'] ?? ''}));
               },
             ),
@@ -638,7 +638,7 @@ class _WapsiReturnPageState extends State<WapsiReturnPage> {
   }
 }
 
-/// Chat / call card for `wapsi_refund`: the amount worked out by code, line by line. "Haan" = her tap (fingerprint when
+/// Chat / call card for `wapsi_refund`: the amount worked out by code, line by line. "Yes" = her tap (fingerprint when
 /// her phone key is active); after that she sends the money herself and taps "Refund kar diya" with the UTR.
 class WapsiRefundCard extends StatefulWidget {
   const WapsiRefundCard({super.key, required this.app, required this.data, this.onDone});
@@ -695,7 +695,7 @@ class _WapsiRefundCardState extends State<WapsiRefundCard> {
             child: Text('Refund ${_s(f['number'])} · ${_s(widget.data['return_number'])} ${_s(widget.data['customer'])}'.trim(),
                 style: const TextStyle(fontWeight: FontWeight.w800)),
           ),
-          Pill(switch (st) { 'waiting' => 'Aapki haan baaki', 'approved' => 'Aap bhejiye', 'done' => 'Ho gaya', 'rejected' => 'Roka', _ => st }),
+          Pill(switch (st) { 'waiting' => 'Your yes pending', 'approved' => 'You send it', 'done' => 'Done', 'rejected' => 'Stopped', _ => st }),
         ]),
         const SizedBox(height: 6),
         for (final l in _list(calc['lines'])) Row(children: [
@@ -707,23 +707,23 @@ class _WapsiRefundCardState extends State<WapsiRefundCard> {
           Row(children: [Expanded(child: Text('− ${_s(d['what'])}', style: const TextStyle(fontSize: 12.5, color: C.warn))), Text(rs(d['amount']))]),
         const Divider(),
         Row(children: [
-          Expanded(child: Text('Kul · ${_s(f['mode'])}${_s(f['to']).isNotEmpty && _s(f['to']) != 'original' ? ' · ${_s(f['to'])}' : ''}', style: const TextStyle(fontWeight: FontWeight.w700))),
+          Expanded(child: Text('Total · ${_s(f['mode'])}${_s(f['to']).isNotEmpty && _s(f['to']) != 'original' ? ' · ${_s(f['to'])}' : ''}', style: const TextStyle(fontWeight: FontWeight.w700))),
           Text(rs(f['amount']), style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
         ]),
         for (final n in (calc['notes'] as List?) ?? const []) Text('• $n', style: const TextStyle(fontSize: 11.5, color: C.muted)),
         const SizedBox(height: 8),
         if (st == 'waiting')
           Row(children: [
-            Expanded(child: GradientButton(label: 'Haan, refund manzoor', icon: Icons.fingerprint_rounded, height: 46,
+            Expanded(child: GradientButton(label: 'Yes, refund approved', icon: Icons.fingerprint_rounded, height: 46,
                 onTap: _busy ? null : () => _do(() => wapsiDecideRefund(widget.app, f, true)))),
             const SizedBox(width: 8),
             GlassButton(
-              label: 'Nahi',
+              label: 'No',
               color: C.bad,
               onTap: _busy
                   ? null
                   : () async {
-                      final r = await _form(context, 'Kyon roka?', const [('reason', 'Wajah (aapke liye)')]);
+                      final r = await _form(context, 'Why stopped?', const [('reason', 'Reason (for you)')]);
                       if (r != null) await _do(() => wapsiDecideRefund(widget.app, f, false, reason: r['reason'] ?? ''));
                     },
             ),
@@ -732,15 +732,15 @@ class _WapsiRefundCardState extends State<WapsiRefundCard> {
           for (final s in (how['steps'] as List?) ?? const []) Text('• $s', style: const TextStyle(fontSize: 12.5)),
           const SizedBox(height: 6),
           Wrap(spacing: 8, runSpacing: 8, children: [
-            if (_s(how['dashboard']).isNotEmpty) GlassButton(label: 'Dashboard kholo', icon: Icons.open_in_new_rounded, height: 40, onTap: () => _openLink(context, _s(how['dashboard']))),
-            if (_s(how['upi_link']).isNotEmpty) GlassButton(label: 'UPI app kholo', icon: Icons.qr_code_rounded, height: 40, onTap: () => _openLink(context, _s(how['upi_link']))),
+            if (_s(how['dashboard']).isNotEmpty) GlassButton(label: 'Open dashboard', icon: Icons.open_in_new_rounded, height: 40, onTap: () => _openLink(context, _s(how['dashboard']))),
+            if (_s(how['upi_link']).isNotEmpty) GlassButton(label: 'Open UPI app', icon: Icons.qr_code_rounded, height: 40, onTap: () => _openLink(context, _s(how['upi_link']))),
             if (_s(how['to']).contains('@'))
               GlassButton(label: 'UPI ID copy', icon: Icons.copy_rounded, height: 40, onTap: () => Clipboard.setData(ClipboardData(text: _s(how['to'])))),
             if (how['can_check'] == true)
-              GlassButton(label: 'Jaanch karo', icon: Icons.sync_rounded, height: 40,
+              GlassButton(label: 'Check', icon: Icons.sync_rounded, height: 40,
                   onTap: _busy ? null : () => _do(() async => _m(await _call(widget.app, 'POST', '/api/wapsi/refunds/$id/pg_check')))),
             GradientButton(
-              label: 'Refund kar diya',
+              label: 'Refund done',
               icon: Icons.done_all_rounded,
               height: 40,
               onTap: _busy
@@ -787,7 +787,7 @@ class WapsiReturnCard extends StatelessWidget {
             Pill(_s(r['status_label']), fg: _statusColor(_s(r['status']))),
           ]),
           Text('${_list(r['items']).map((i) => _s(i['name'])).join(', ')} · ${_s(r['reason_label'])}', style: const TextStyle(fontSize: 12.5)),
-          Text(switch (v) { 'approve' => 'Policy: theek hai · kholiye aur manzoor kijiye', 'ask_more' => 'Pehle: ${((chk['asks'] as List?) ?? const []).take(1).join()}', _ => 'Policy: mana banta hai (faisla aapka)' },
+          Text(switch (v) { 'approve' => 'Policy: OK · open and approve', 'ask_more' => 'First: ${((chk['asks'] as List?) ?? const []).take(1).join()}', _ => 'Policy: should be declined (your decision)' },
               style: TextStyle(fontSize: 12, color: v == 'approve' ? C.ok : C.warn)),
           if (_list(r['signals']).isNotEmpty) Text('⚑ ${_s(_list(r['signals']).first['text'])}', style: const TextStyle(fontSize: 12, color: C.warn)),
         ]),

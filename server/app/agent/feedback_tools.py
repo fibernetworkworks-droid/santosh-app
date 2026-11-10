@@ -75,7 +75,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return S.add_text(t, _s(a.get("text")), _s(a.get("source")) or "text", a.get("stars"), _s(a.get("author")), conv, a.get("score"))
         if action == "import":
             if not a.get("file_id"):
-                raise ToolError("file_id chahiye (sheet / export chat mein bhejiye).")
+                raise ToolError("file_id needed (send the sheet / export in the chat).")
             return S.import_file(t, source=_s(a.get("source")), file_id=_s(a.get("file_id")), conv=conv)
         if action == "sync":
             w = _s(a.get("what"))
@@ -93,7 +93,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
                 return S.reply_drafts_all(t, 10, conv)
             out = S.reply_draft(t, _s(a.get("item_id")), conv, _s(a.get("note")))
             return {**out, "status": "needs_tap",
-                    "say": "Draft card par hai. Public jawab sirf uski 'Haan' se jaata hai; tum khud post nahi kar sakte."}
+                    "say": "The draft is on the card. A public reply goes only with her approval; you cannot post it yourself."}
         if action == "survey_new":
             return S.survey_new(t, _s(a.get("kind")) or "nps", _s(a.get("title")), _s(a.get("question")), "", _s(a.get("language")), conv)
         if action == "survey_close":
@@ -103,7 +103,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         if action == "report":
             return S.report_file(t, a.get("days") or None, conv)
         if action in ("settings", "forget", "google_forget") and not _owner(ctx):
-            raise ToolError("Sirf owner.")
+            raise ToolError("Only the owner can do this.")
         if action == "settings":
             return S.save_settings(t, **{k: a[k] for k in _SET if k in a})
         if action == "forget":

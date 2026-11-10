@@ -202,7 +202,9 @@ def page_source(tenant: str, aid: str, version: int = 0) -> dict[str, Any]:
     html = artifacts.latest_html(aid, v)
     if html is None:
         raise PanelError(404, "Yeh version nahi mila.")
-    return {"id": aid, "version": v, "title": a.title, "html": html}
+    src = artifacts.source_of(aid, v)   # parity Phase 6: what the chat model wrote (markdown / svg / mermaid / html)
+    kind, source = src if src else ("html", html)
+    return {"id": aid, "version": v, "title": a.title, "html": html, "kind": kind, "source": source}
 
 
 def page_view(tenant: str, aid: str, version: int = 0) -> dict[str, Any]:

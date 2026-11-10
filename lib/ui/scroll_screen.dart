@@ -114,7 +114,7 @@ class _ScrollScreenState extends State<ScrollScreen> with WidgetsBindingObserver
     try {
       final bytes = await File(f!.path!).readAsBytes();
       final r = await _api!.scrollImport(f.name, bytes);
-      _snack('${r['note'] ?? 'History padh li'}');
+      _snack('${r['note'] ?? 'History read'}');
       await _load();
     } catch (e) {
       _snack(e is ApiException ? e.message : '$e');
@@ -127,18 +127,18 @@ class _ScrollScreenState extends State<ScrollScreen> with WidgetsBindingObserver
     final yes = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Scroll data mitayein?'),
-        content: const Text('Hoola ke paas rakha saara scroll time, limit aur history ka saar mit jayega.'),
+        title: const Text('Delete scroll data?'),
+        content: const Text('All scroll time, limits and the history summary kept with Hoola will be deleted.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Rehne do')),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Mitao', style: TextStyle(color: C.bad))),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Delete', style: TextStyle(color: C.bad))),
         ],
       ),
     );
     if (yes != true) return;
     try {
       await _api!.scrollForget();
-      _snack('Mita diya');
+      _snack('Deleted');
       await _load();
     } catch (e) {
       _snack(e is ApiException ? e.message : '$e');
@@ -152,7 +152,7 @@ class _ScrollScreenState extends State<ScrollScreen> with WidgetsBindingObserver
   static String hm(num mins) {
     final m = mins.round();
     if (m < 60) return '$m min';
-    return m % 60 == 0 ? '${m ~/ 60} ghante' : '${m ~/ 60}h ${m % 60}m';
+    return m % 60 == 0 ? '${m ~/ 60} hours' : '${m ~/ 60}h ${m % 60}m';
   }
 
   static const _appColors = {
@@ -168,35 +168,35 @@ class _ScrollScreenState extends State<ScrollScreen> with WidgetsBindingObserver
         const Row(children: [
           Icon(Icons.insights_rounded, color: C.accent, size: 26),
           SizedBox(width: 10),
-          Expanded(child: Text('Apni reel ki aadat dekhiye', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17))),
+          Expanded(child: Text('See your reel habit', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17))),
         ]),
         const SizedBox(height: 10),
         const Text(
-            'Android ki "Usage access" chalu kijiye. Hoola sirf itna dekhega ki Instagram, YouTube, Facebook, Snapchat, Moj, '
-            'Josh, ShareChat kitni der khule rahe. Screen pe kya tha, woh kabhi nahi.',
+            'Turn on Android\'s "Usage access". Hoola will only see how long Instagram, YouTube, Facebook, Snapchat, Moj,'
+            'Josh, ShareChat were open. Never what was on the screen.',
             style: TextStyle(color: C.muted, fontSize: 13.5, height: 1.4)),
         const SizedBox(height: 12),
-        const Text('Settings khulegi → Hoola chuniye → "Allow usage access" on kijiye → wapas aaiye.',
+        const Text('Settings will open → pick Hoola → turn on "Allow usage access" → come back.',
             style: TextStyle(color: C.faint, fontSize: 12.5)),
         const SizedBox(height: 14),
-        GradientButton(label: 'Usage access chalu karo', icon: Icons.toggle_on_rounded, onTap: Native.usageSettings),
+        GradientButton(label: 'Turn on usage access', icon: Icons.toggle_on_rounded, onTap: Native.usageSettings),
       ]));
 
   Widget _week(Map<String, dynamic> r) {
     final daily = List<Map<String, dynamic>>.from((r['daily'] as List).map((e) => Map<String, dynamic>.from(e as Map)));
     final budget = (r['budget_min'] as num? ?? 0).toDouble();
     final top = [...daily.map((d) => (d['min'] as num).toDouble()), budget, 30.0].reduce((a, b) => a > b ? a : b);
-    const names = ['Som', 'Mangal', 'Budh', 'Guru', 'Shukra', 'Shani', 'Ravi'];
+    const names = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     final trend = r['trend_pct'] as num?;
     return _card(Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(hm(r['total_min'] as num), style: display(30, w: FontWeight.w800)),
-            Text('${r['period_days']} din mein · roz ~${hm(r['avg_min'] as num)} · ~${r['reels_est']} reels',
+            Text('In ${r['period_days']} days · ~${hm(r['avg_min'] as num)} a day · ~${r['reels_est']} reels',
                 style: const TextStyle(color: C.muted, fontSize: 12.5)),
             if (r['youtube_split'] == true)
-              Text('Reels / Shorts: ${r['short_form_text']} (YouTube ke lambe videos alag)',
+              Text('Reels / Shorts: ${r['short_form_text']} (long YouTube videos counted separately)',
                   style: const TextStyle(color: C.faint, fontSize: 11.5)),
           ]),
         ),
@@ -257,7 +257,7 @@ class _ScrollScreenState extends State<ScrollScreen> with WidgetsBindingObserver
     if (apps.isEmpty) return const SizedBox.shrink();
     final top = (apps.first['min'] as num).toDouble();
     return _card(Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      const Text('APP KE HISAAB SE', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12, color: C.faint, letterSpacing: .8)),
+      const Text('BY APP', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12, color: C.faint, letterSpacing: .8)),
       const SizedBox(height: 10),
       for (final a in apps)
         Padding(
@@ -280,7 +280,7 @@ class _ScrollScreenState extends State<ScrollScreen> with WidgetsBindingObserver
               ),
             ),
             const SizedBox(height: 4),
-            Text('${a['sessions']} baar khola · sabse lambi baar ${hm(a['longest'] as num)} · ${a['share']}%',
+            Text('Opened ${a['sessions']} times · longest ${hm(a['longest'] as num)} · ${a['share']}%',
                 style: const TextStyle(color: C.faint, fontSize: 11.5)),
             if (a['shorts_min'] != null) ...[
               const SizedBox(height: 6),
@@ -296,14 +296,14 @@ class _ScrollScreenState extends State<ScrollScreen> with WidgetsBindingObserver
                 ]),
               ),
               const SizedBox(height: 4),
-              Text('Shorts ~${hm(a['shorts_min'] as num)} · lambe videos ~${hm((a['min'] as num) - (a['shorts_min'] as num))} '
-                  '(${a['shorts_pct']}% Shorts, history se andaaza)',
+              Text('Shorts ~${hm(a['shorts_min'] as num)} · long videos ~${hm((a['min'] as num) - (a['shorts_min'] as num))}'
+                  '(${a['shorts_pct']}% Shorts, estimated from history)',
                   style: const TextStyle(color: C.muted, fontSize: 11.5)),
             ],
           ]),
         ),
       if (apps.any((a) => a['app'] == 'YouTube' && a['shorts_min'] == null))
-        const Text('YouTube mein Shorts aur lambe videos saath gine gaye. Neeche YouTube history daalein to alag dikhega.',
+        const Text('Shorts and long videos on YouTube were counted together. Add your YouTube history below to see them separately.',
             style: TextStyle(color: C.faint, fontSize: 11)),
     ]));
   }
@@ -313,7 +313,7 @@ class _ScrollScreenState extends State<ScrollScreen> with WidgetsBindingObserver
     final top = hours.reduce((a, b) => a > b ? a : b);
     if (top <= 0) return const SizedBox.shrink();
     return _card(Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      const Text('DIN MEIN KAB', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12, color: C.faint, letterSpacing: .8)),
+      const Text('TIME OF DAY', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12, color: C.faint, letterSpacing: .8)),
       const SizedBox(height: 12),
       SizedBox(
         height: 56,
@@ -366,12 +366,12 @@ class _ScrollScreenState extends State<ScrollScreen> with WidgetsBindingObserver
         mainAxisSpacing: 10,
         childAspectRatio: 1.55,
         children: [
-          _stat(Icons.bedtime_rounded, const Color(0xFFF87171), hm(r['late_min'] as num), 'raat 11 ke baad · ${r['late_days']} din'),
+          _stat(Icons.bedtime_rounded, const Color(0xFFF87171), hm(r['late_min'] as num), 'after 11 pm · ${r['late_days']} days'),
           _stat(Icons.hourglass_bottom_rounded, C.warn, hm(longest['min'] as num),
-              'sabse lambi sitting${'${longest['app']}'.isEmpty ? '' : ' · ${longest['app']}'}'),
-          _stat(Icons.schedule_rounded, C.teal, '${r['peak_text']}'.isEmpty ? '—' : '${r['peak_text']}', 'sabse zyada scroll'),
+              'longest sitting${'${longest['app']}'.isEmpty ? '' : ' · ${longest['app']}'}'),
+          _stat(Icons.schedule_rounded, C.teal, '${r['peak_text']}'.isEmpty ? '—' : '${r['peak_text']}', 'most scrolled'),
           _stat(Icons.today_rounded, C.accent, hm(r['today_min'] as num),
-              (r['budget_min'] as num? ?? 0) > 0 ? 'aaj · limit ${hm(r['budget_min'] as num)}' : 'aaj'),
+              (r['budget_min'] as num? ?? 0) > 0 ? 'today · limit ${hm(r['budget_min'] as num)}' : 'today'),
         ],
       ),
     );
@@ -381,7 +381,7 @@ class _ScrollScreenState extends State<ScrollScreen> with WidgetsBindingObserver
         const Row(children: [
           Icon(Icons.auto_awesome_rounded, color: C.accent, size: 18),
           SizedBox(width: 8),
-          Text('Hoola ki baat', style: TextStyle(fontWeight: FontWeight.w800)),
+          Text('Hoola\'s note', style: TextStyle(fontWeight: FontWeight.w800)),
         ]),
         const SizedBox(height: 10),
         for (final t in (r['insights'] as List))
@@ -397,12 +397,12 @@ class _ScrollScreenState extends State<ScrollScreen> with WidgetsBindingObserver
   Widget _budgetCard(Map<String, dynamic> r) {
     final cur = (r['budget_min'] as num? ?? 0).toInt();
     return _card(Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      const Text('ROZ KI LIMIT', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12, color: C.faint, letterSpacing: .8)),
+      const Text('DAILY LIMIT', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12, color: C.faint, letterSpacing: .8)),
       const SizedBox(height: 10),
       Wrap(spacing: 8, runSpacing: 8, children: [
         for (final m in const [0, 30, 60, 90, 120, 180])
           ChoiceChip(
-            label: Text(m == 0 ? 'Koi nahi' : hm(m)),
+            label: Text(m == 0 ? 'None' : hm(m)),
             selected: cur == m,
             selectedColor: C.accent,
             labelStyle: TextStyle(color: cur == m ? C.onAccent : C.ink, fontWeight: FontWeight.w700),
@@ -411,14 +411,14 @@ class _ScrollScreenState extends State<ScrollScreen> with WidgetsBindingObserver
           ),
       ]),
       const SizedBox(height: 8),
-      Text(cur > 0 ? 'Limit ke 80% pe, poori hone par, aur har 30 min upar jaane par Hoola notification bhejega.' : 'Limit lagaiye: paar hone par Hoola notification bhejega.',
+      Text(cur > 0 ? 'Hoola will send a notification at 80% of the limit, when it is reached, and every 30 min beyond it.' : 'Set a limit: Hoola will send a notification when you go over.',
           style: const TextStyle(color: C.faint, fontSize: 11.5)),
       SwitchListTile(
         contentPadding: EdgeInsets.zero,
         value: _bedtime,
         activeColor: C.accent,
-        title: const Text('Raat 11 ke baad yaad dilao', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
-        subtitle: const Text('15 min se zyada scroll hone par ek baar', style: TextStyle(color: C.faint, fontSize: 12)),
+        title: const Text('Remind me after 11 pm', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+        subtitle: const Text('Once after more than 15 min of scrolling', style: TextStyle(color: C.faint, fontSize: 12)),
         onChanged: (v) async {
           setState(() => _bedtime = v);
           await Native.scrollAlerts(bedtime: v);
@@ -437,18 +437,18 @@ class _ScrollScreenState extends State<ScrollScreen> with WidgetsBindingObserver
             color: source == 'youtube' ? const Color(0xFFFF4B4B) : const Color(0xFFE1306C)),
         const SizedBox(width: 8),
         Expanded(
-            child: Text(source == 'youtube' ? 'YouTube pe aap kya dekhte ho' : 'Instagram pe aap kya dekhte ho',
+            child: Text(source == 'youtube' ? 'What you watch on YouTube' : 'What you watch on Instagram',
                 style: const TextStyle(fontWeight: FontWeight.w800))),
       ]),
       const SizedBox(height: 4),
-      Text('${t['items']} videos · ${t['days']} din · roz ~${t['per_day']} · sabse zyada ${t['busiest_day']}'
-          '${(t['late_share'] as num? ?? 0) > 0 ? ' · ${t['late_share']}% raat mein' : ''}',
+      Text('${t['items']} videos · ${t['days']} days · ~${t['per_day']} a day · most ${t['busiest_day']}'
+          '${(t['late_share'] as num? ?? 0) > 0 ? ' · ${t['late_share']}% at night' : ''}',
           style: const TextStyle(color: C.faint, fontSize: 11.5)),
       if (source == 'youtube' && ((t['shorts'] as Map?)?['checked'] as num? ?? 0) > 0)
         Padding(
           padding: const EdgeInsets.only(top: 6),
-          child: Text('Shorts: ${(t['shorts'] as Map)['items_pct']}% videos, ~${(t['shorts'] as Map)['time_pct']}% waqt '
-              '(${(t['shorts'] as Map)['checked']} videos ki lambai YouTube se jaanchi)',
+          child: Text('Shorts: ${(t['shorts'] as Map)['items_pct']}% of videos, ~${(t['shorts'] as Map)['time_pct']}% of time'
+              '(length of ${(t['shorts'] as Map)['checked']} videos checked with YouTube)',
               style: const TextStyle(color: Color(0xFFFF8A8A), fontSize: 12, fontWeight: FontWeight.w700)),
         ),
       if ('${t['summary']}'.isNotEmpty) ...[
@@ -478,7 +478,7 @@ class _ScrollScreenState extends State<ScrollScreen> with WidgetsBindingObserver
       ],
       if (creators.isNotEmpty) ...[
         const SizedBox(height: 8),
-        const Text('Sabse zyada dekhe creators', style: TextStyle(color: C.muted, fontSize: 12, fontWeight: FontWeight.w700)),
+        const Text('Most watched creators', style: TextStyle(color: C.muted, fontSize: 12, fontWeight: FontWeight.w700)),
         const SizedBox(height: 6),
         Wrap(spacing: 6, runSpacing: 6, children: [for (final c in creators.take(8)) Pill('${c['name']} · ${c['count']}', fg: C.chip)]),
       ],
@@ -486,39 +486,39 @@ class _ScrollScreenState extends State<ScrollScreen> with WidgetsBindingObserver
       for (final w in strs('watch_out')) Padding(padding: const EdgeInsets.only(top: 8), child: Text('⚠ $w', style: const TextStyle(fontSize: 12.5, color: C.warn))),
       for (final s in strs('suggestions')) Padding(padding: const EdgeInsets.only(top: 8), child: Text('💡 $s', style: const TextStyle(fontSize: 12.5))),
       const SizedBox(height: 8),
-      Text('${t['ai_label'] ?? 'AI ka andaaza'}', style: const TextStyle(color: C.faint, fontSize: 10.5)),
+      Text('${t['ai_label'] ?? 'AI\'s estimate'}', style: const TextStyle(color: C.faint, fontSize: 10.5)),
     ]));
   }
 
   Widget _importCard(Map<String, dynamic> r) {
     final tastes = Map<String, dynamic>.from(r['tastes'] as Map? ?? const {});
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      const Padding(padding: EdgeInsets.fromLTRB(4, 8, 4, 10), child: Caption('AAP KYA DEKHTE HO')),
+      const Padding(padding: EdgeInsets.fromLTRB(4, 8, 4, 10), child: Caption('WHAT YOU WATCH')),
       for (final e in tastes.entries) _taste(e.key, Map<String, dynamic>.from(e.value as Map)),
       _card(Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(tastes.isEmpty ? 'Apni history Hoola ko dikhaiye' : 'History dobara daalein', style: const TextStyle(fontWeight: FontWeight.w800)),
+        Text(tastes.isEmpty ? 'Show your history to Hoola' : 'Add history again', style: const TextStyle(fontWeight: FontWeight.w800)),
         const SizedBox(height: 6),
-        const Text('Instagram aur YouTube aapko apni history download karne dete hain. Woh file Hoola ko dijiye: '
-            'Hoola topics, creators aur waqt ka saar banayega. Poori list save nahi hoti.',
+        const Text('Instagram and YouTube let you download your own history. Give that file to Hoola:'
+            'Hoola will make a summary of topics, creators and time. The full list is not saved.',
             style: TextStyle(color: C.muted, fontSize: 12.5, height: 1.4)),
         const SizedBox(height: 10),
         const ExpansionTile(
           tilePadding: EdgeInsets.zero,
-          title: Text('Instagram se kaise', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5)),
+          title: Text('How from Instagram', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5)),
           children: [
             Text('Instagram → Profile → ☰ → Accounts Center → Your information and permissions → Download your information → '
                 'Some of your information → "Your activity" (Ads & topics / Likes / Saved) → Download to device → '
-                'Format: JSON, Date range: Last 3 months → Create files. Email aane par zip download karke yahan chuniye.',
+                'Format: JSON, Date range: Last 3 months → Create files. When the email arrives, download the zip and pick it here.',
                 style: TextStyle(color: C.muted, fontSize: 12.5, height: 1.45)),
             SizedBox(height: 8),
           ],
         ),
         const ExpansionTile(
           tilePadding: EdgeInsets.zero,
-          title: Text('YouTube se kaise', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5)),
+          title: Text('How from YouTube', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5)),
           children: [
-            Text('takeout.google.com → "Deselect all" → sirf "YouTube and YouTube Music" chuniye → "All YouTube data included" '
-                'mein sirf "history" → Next → Create export. Zip download karke yahan chuniye.',
+            Text('takeout.google.com → "Deselect all" → choose only "YouTube and YouTube Music" → in "All YouTube data included"'
+                'choose only "history" → Next → Create export. Download the zip and pick it here.',
                 style: TextStyle(color: C.muted, fontSize: 12.5, height: 1.45)),
             SizedBox(height: 8),
           ],
@@ -526,7 +526,7 @@ class _ScrollScreenState extends State<ScrollScreen> with WidgetsBindingObserver
         const SizedBox(height: 6),
         _importing
             ? const Center(child: Padding(padding: EdgeInsets.all(8), child: CircularProgressIndicator()))
-            : GlassButton(label: 'History file chuniye (zip / json / html)', icon: Icons.upload_file_rounded, onTap: _import),
+            : GlassButton(label: 'Pick the history file (zip / json / html)', icon: Icons.upload_file_rounded, onTap: _import),
       ])),
     ]);
   }
@@ -546,10 +546,10 @@ class _ScrollScreenState extends State<ScrollScreen> with WidgetsBindingObserver
             }
           },
           itemBuilder: (_) => const [
-            PopupMenuItem(value: '7', child: Text('Pichhle 7 din')),
-            PopupMenuItem(value: '14', child: Text('Pichhle 14 din')),
-            PopupMenuItem(value: '30', child: Text('Pichhle 30 din')),
-            PopupMenuItem(value: 'forget', child: Text('Scroll data mitao')),
+            PopupMenuItem(value: '7', child: Text('Last 7 days')),
+            PopupMenuItem(value: '14', child: Text('Last 14 days')),
+            PopupMenuItem(value: '30', child: Text('Last 30 days')),
+            PopupMenuItem(value: 'forget', child: Text('Delete scroll data')),
           ],
         ),
       ]),
@@ -571,8 +571,8 @@ class _ScrollScreenState extends State<ScrollScreen> with WidgetsBindingObserver
               _insights(r),
               _importCard(r),
               const SizedBox(height: 8),
-              const Text('Hoola sirf yeh ginta hai ki reel apps kitni der khule rahe (Android Usage Access), aur aapki di hui history '
-                  'ka saar rakhta hai. Screen pe kya tha, DM, comments: kuch nahi padhta.',
+              const Text('Hoola only counts how long the reel apps were open (Android Usage Access), and keeps a summary of the history you give it.'
+                  'It reads nothing of what was on the screen, DMs or comments.',
                   style: TextStyle(color: C.faint, fontSize: 11, height: 1.4)),
             ],
           ]),

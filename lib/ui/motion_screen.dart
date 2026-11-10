@@ -84,7 +84,7 @@ class _MotionScreenState extends State<MotionScreen> {
         final wasBusy = _videos.where((v) => v['status'] != 'done' && v['status'] != 'failed').map((v) => v['id']).toSet();
         setState(() => _videos = vids);
         final justDone = vids.where((v) => wasBusy.contains(v['id']) && v['status'] == 'done').toList();
-        if (justDone.isNotEmpty) _snack('"${justDone.first['title']}" taiyaar hai 🎬');
+        if (justDone.isNotEmpty) _snack('"${justDone.first['title']}" is ready 🎬');
       } catch (_) {}
       _watch();
     });
@@ -96,7 +96,7 @@ class _MotionScreenState extends State<MotionScreen> {
 
   Future<void> _makePlan() async {
     if (_brief.text.trim().length < 3) {
-      _snack('Pehle do-teen line likhiye: kis baare mein video chahiye.');
+      _snack('First write two or three lines: what the video is about.');
       return;
     }
     setState(() => _busy = 'plan');
@@ -116,7 +116,7 @@ class _MotionScreenState extends State<MotionScreen> {
       final data = {...?_plan, if (_kind == 'logo' && _logo != null) 'logo': _logo};
       await _api!.motionMake(_kind, data: _kind == 'custom' ? {} : data, brief: _kind == 'custom' ? _brief.text.trim() : '',
           aspect: _aspect, music: _music);
-      _snack('Video ban rahi hai: 1-3 minute. Neeche dikhegi.');
+      _snack('The video is being made: 1-3 minutes. It will show below.');
       setState(() => _plan = null);
       await _load();
     } catch (e) {
@@ -138,12 +138,12 @@ class _MotionScreenState extends State<MotionScreen> {
       if (png == null) throw 'image';
       final b64 = base64Encode(png.buffer.asUint8List());
       if (b64.length > 650000) {
-        _snack('Logo bahut bada hai; chhoti photo chuniye.');
+        _snack('The logo is too big; choose a smaller photo.');
         return;
       }
       setState(() => _logo = 'data:image/png;base64,$b64');
     } catch (_) {
-      _snack('Yeh photo padh nahi paye.');
+      _snack('Could not read this photo.');
     }
   }
 
@@ -225,9 +225,9 @@ class _MotionScreenState extends State<MotionScreen> {
                 Text('${v['title']}', maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w800)),
                 const SizedBox(height: 4),
                 if (st == 'done')
-                  Text('${(v['duration'] as num? ?? 0).round()} sec · ${v['aspect']} · tap karke dekhiye', style: const TextStyle(color: C.muted, fontSize: 12)),
+                  Text('${(v['duration'] as num? ?? 0).round()} sec · ${v['aspect']} · tap to watch', style: const TextStyle(color: C.muted, fontSize: 12)),
                 if (st == 'queued' || st == 'rendering') ...[
-                  Text(st == 'queued' ? 'Line mein hai…' : 'Ban rahi hai… ${((v['progress'] as num? ?? 0) * 100).round()}%',
+                  Text(st == 'queued' ? 'In queue…' : 'Making… ${((v['progress'] as num? ?? 0) * 100).round()}%',
                       style: const TextStyle(color: C.muted, fontSize: 12)),
                   const SizedBox(height: 6),
                   ClipRRect(
@@ -267,7 +267,7 @@ class _MotionScreenState extends State<MotionScreen> {
         child: RefreshIndicator(
           onRefresh: _load,
           child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
-            const Text('Reel / Status ke liye animated video: Hoola khud code mein banata hai.', style: TextStyle(color: C.muted, fontSize: 13)),
+            const Text('Animated video for Reel / Status: Hoola makes it in code by itself.', style: TextStyle(color: C.muted, fontSize: 13)),
             const SizedBox(height: 12),
             if (_err != null) Text(_err!, style: const TextStyle(color: C.bad)),
             if (info == null && _err == null) const Padding(padding: EdgeInsets.all(30), child: Center(child: CircularProgressIndicator())),
@@ -275,7 +275,7 @@ class _MotionScreenState extends State<MotionScreen> {
               Glass(
                 radius: 18,
                 padding: const EdgeInsets.all(14),
-                child: Text('Server par video banane ka saamaan nahi hai (${info['missing']}). VPS par chalaiye:\n'
+                child: Text('The server does not have what is needed to make videos (${info['missing']}). Run on the VPS:\n'
                     'bash ~/santosh_app/server/deploy/setup_motion.sh', style: const TextStyle(color: C.warn, fontSize: 13)),
               ),
             if (info != null) ...[
@@ -292,7 +292,7 @@ class _MotionScreenState extends State<MotionScreen> {
                   minLines: 3,
                   style: const TextStyle(color: C.ink, fontSize: 14.5),
                   decoration: InputDecoration(
-                      hintText: 'Jaise: ${k['example'] ?? ''}',
+                      hintText: 'For example: ${k['example'] ?? ''}',
                       hintMaxLines: 4,
                       hintStyle: const TextStyle(color: C.faint, fontSize: 13),
                       border: InputBorder.none,
@@ -304,11 +304,11 @@ class _MotionScreenState extends State<MotionScreen> {
                 alignment: Alignment.centerLeft,
                 child: TextButton(
                     onPressed: () => setState(() => _brief.text = '${k['example'] ?? ''}'),
-                    child: const Text('Example bhar do', style: TextStyle(color: C.teal))),
+                    child: const Text('Fill an example', style: TextStyle(color: C.teal))),
               ),
               if (_kind == 'logo')
                 Row(children: [
-                  GlassButton(label: _logo == null ? 'Logo photo chuniye' : 'Logo badlo', icon: Icons.image_rounded, height: 42, onTap: _pickLogo),
+                  GlassButton(label: _logo == null ? 'Choose a logo photo' : 'Change logo', icon: Icons.image_rounded, height: 42, onTap: _pickLogo),
                   if (_logo != null) ...[
                     const SizedBox(width: 10),
                     ClipRRect(borderRadius: BorderRadius.circular(8), child: Image.memory(base64Decode(_logo!.split(',').last), width: 42, height: 42, fit: BoxFit.cover)),
@@ -324,33 +324,33 @@ class _MotionScreenState extends State<MotionScreen> {
               ]),
               const Caption('MUSIC'),
               Wrap(children: [
-                for (final m in const [('upbeat', '⚡ Upbeat'), ('calm', '🌙 Calm'), ('festive', '🪔 Festive'), ('none', '🔇 Nahi')])
+                for (final m in const [('upbeat', '⚡ Upbeat'), ('calm', '🌙 Calm'), ('festive', '🪔 Festive'), ('none', '🔇 No')])
                   _chip(m.$2, _music == m.$1, () => setState(() => _music = m.$1)),
               ]),
               const SizedBox(height: 8),
               if (_plan != null) ...[
-                const Caption('VIDEO MEIN KYA AAYEGA (badal sakte hain)'),
+                const Caption('WHAT WILL BE IN THE VIDEO (you can change it)'),
                 Glass(radius: 18, padding: const EdgeInsets.all(12), child: _PlanEditor(data: _plan!, onChanged: () => setState(() {}))),
                 const SizedBox(height: 12),
               ],
               if (_kind != 'custom' && _plan == null)
                 GradientButton(
-                    label: _busy == 'plan' ? 'Soch raha hoon…' : 'Plan banao',
+                    label: _busy == 'plan' ? 'Thinking…' : 'Make plan',
                     icon: Icons.auto_awesome_rounded,
                     onTap: _busy.isEmpty && ready ? _makePlan : null),
               if (_kind == 'custom' || _plan != null)
                 GradientButton(
-                    label: _busy == 'make' ? 'Bhej raha hoon…' : 'Video banao',
+                    label: _busy == 'make' ? 'Sending…' : 'Make video',
                     icon: Icons.movie_creation_rounded,
                     onTap: _busy.isEmpty && ready ? _render : null),
               if (_plan != null)
-                Center(child: TextButton(onPressed: () => setState(() => _plan = null), child: const Text('Plan dobara banao', style: TextStyle(color: C.muted)))),
+                Center(child: TextButton(onPressed: () => setState(() => _plan = null), child: const Text('Make the plan again', style: TextStyle(color: C.muted)))),
               const SizedBox(height: 22),
-              const Caption('MERI VIDEOS'),
-              if (_videos.isEmpty) const Text('Abhi koi video nahi.', style: TextStyle(color: C.faint)),
+              const Caption('MY VIDEOS'),
+              if (_videos.isEmpty) const Text('No videos yet.', style: TextStyle(color: C.faint)),
               for (final v in _videos) _videoTile(v),
               const SizedBox(height: 10),
-              const Text('Har video par "AI · Hoola" likha hota hai (IT Rules 2026). Phone number, daam, tareekh wahi aate hain jo aapne likhe.',
+              const Text('Every video says "AI · Hoola" (IT Rules 2026). Phone numbers, prices and dates are exactly what you wrote.',
                   style: TextStyle(color: C.faint, fontSize: 11, height: 1.4)),
             ],
           ]),
@@ -367,13 +367,13 @@ class _PlanEditor extends StatelessWidget {
   final VoidCallback onChanged;
 
   static const _labels = {
-    'brand': 'Naam', 'tagline': 'Tagline', 'emoji': 'Emoji', 'problem': 'Pareshani', 'solution': 'Hum kya karte hain',
-    'steps': 'Steps', 'steps_title': 'Steps ka title', 'proof': 'Bharosa', 'cta': 'Aakhri screen', 'title': 'Text', 'sub': 'Chhota text',
-    'tag': 'Label', 'big': 'Bada number / offer', 'offer': 'Offer', 'phone': 'Phone', 'place': 'Jagah', 'extra': 'Aur',
-    'dish': 'Dish', 'time': 'Samay', 'serves': 'Kitne log', 'level': 'Mushkil', 'ingredients': 'Saamaan', 'ingredients_title': 'Saamaan ka title',
-    'qty': 'Kitna', 'name': 'Naam', 'end': 'Aakhri line', 'credit': 'Credit', 'monogram': 'Akshar (logo na ho to)',
-    'festival': 'Tyohaar', 'headline': 'Headline', 'big_note': 'Offer ke neeche', 'items_title': 'List ka title', 'items': 'List',
-    'dates': 'Tareekh', 'upi': 'UPI', 'colors': 'Rang',
+    'brand': 'Name', 'tagline': 'Tagline', 'emoji': 'Emoji', 'problem': 'Trouble', 'solution': 'What we do',
+    'steps': 'Steps', 'steps_title': 'Steps title', 'proof': 'Trust', 'cta': 'Last screen', 'title': 'Text', 'sub': 'Short text',
+    'tag': 'Label', 'big': 'Big number / offer', 'offer': 'Offer', 'phone': 'Phone', 'place': 'Place', 'extra': 'More',
+    'dish': 'Dish', 'time': 'Time', 'serves': 'How many people', 'level': 'Difficult', 'ingredients': 'Goods', 'ingredients_title': 'Goods title',
+    'qty': 'How much', 'name': 'Name', 'end': 'Last line', 'credit': 'Credit', 'monogram': 'Letter (if no logo)',
+    'festival': 'Festival', 'headline': 'Headline', 'big_note': 'Below the offer', 'items_title': 'List title', 'items': 'List',
+    'dates': 'Date', 'upi': 'UPI', 'colors': 'Colour',
   };
 
   Widget _field(String label, String value, ValueChanged<String> set, {bool small = false}) => Padding(
@@ -398,7 +398,7 @@ class _PlanEditor extends StatelessWidget {
   Widget _colors(Map<String, dynamic> c) => Padding(
         padding: const EdgeInsets.only(bottom: 8),
         child: Row(children: [
-          const Text('Rang  ', style: TextStyle(color: C.faint, fontSize: 12)),
+          const Text('Colour  ', style: TextStyle(color: C.faint, fontSize: 12)),
           for (final e in c.entries)
             Container(
               width: 24,
@@ -489,7 +489,7 @@ class _MotionPlayerScreenState extends State<MotionPlayerScreen> {
       if (mounted) setState(() => _vc = vc);
     } catch (e) {
       await vc.dispose();
-      if (mounted) setState(() => _err = 'Video chal nahi rahi: $e');
+      if (mounted) setState(() => _err = 'Video is not playing: $e');
     }
   }
 
@@ -497,7 +497,7 @@ class _MotionPlayerScreenState extends State<MotionPlayerScreen> {
   Future<String> _file() async {
     if (_local != null && await File(_local!).exists()) return _local!;
     final res = await http.get(Uri.parse(_api!.absolute(_v['url'] as String))).timeout(const Duration(seconds: 120));
-    if (res.statusCode != 200) throw 'Download nahi hua (${res.statusCode})';
+    if (res.statusCode != 200) throw 'Download failed (${res.statusCode})';
     final dir = await getTemporaryDirectory();
     final safe = '${_v['title']}'.replaceAll(RegExp(r'[^A-Za-z0-9_-]+'), '_');
     final f = File('${dir.path}/hoola_${safe.isEmpty ? 'video' : safe}_${_v['id']}.mp4');
@@ -523,13 +523,13 @@ class _MotionPlayerScreenState extends State<MotionPlayerScreen> {
   }
 
   Future<void> _share() => _do('share', () async {
-        final err = await Native.shareFile(await _file(), title: 'Video bhejo');
+        final err = await Native.shareFile(await _file(), title: 'Send video');
         if (err != null) _snack(err);
       });
 
   Future<void> _save() => _do('save', () async {
         final err = await Native.saveVideo(await _file(), 'hoola_${_v['id']}.mp4');
-        _snack(err ?? 'Gallery mein save ho gayi (Movies/Hoola)');
+        _snack(err ?? 'Saved to gallery (Movies/Hoola)');
       });
 
   Future<void> _youtube() async {
@@ -539,11 +539,11 @@ class _MotionPlayerScreenState extends State<MotionPlayerScreen> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, set) => AlertDialog(
-          title: const Text('Apne YouTube par daalein?'),
+          title: const Text('Upload to your YouTube?'),
           content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
             TextField(controller: title, decoration: const InputDecoration(labelText: 'Title')),
             const SizedBox(height: 12),
-            for (final p in const [('private', 'Private (sirf aap)'), ('unlisted', 'Unlisted (link wale)'), ('public', 'Public (sab log)')])
+            for (final p in const [('private', 'Private (only you)'), ('unlisted', 'Unlisted (anyone with the link)'), ('public', 'Public (everyone)')])
               RadioListTile<String>(
                 contentPadding: EdgeInsets.zero,
                 dense: true,
@@ -552,11 +552,11 @@ class _MotionPlayerScreenState extends State<MotionPlayerScreen> {
                 title: Text(p.$2),
                 onChanged: (v) => set(() => privacy = v ?? 'private'),
               ),
-            const Text('YouTube par bataya jayega ki yeh AI se bani video hai.', style: TextStyle(fontSize: 12)),
+            const Text('YouTube will be told that this is an AI-made video.', style: TextStyle(fontSize: 12)),
           ]),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Rehne do')),
-            TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Haan, daalo')),
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Leave it')),
+            TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Yes, upload')),
           ],
         ),
       ),
@@ -566,11 +566,11 @@ class _MotionPlayerScreenState extends State<MotionPlayerScreen> {
       final r = await _api!.motionYoutube(_v['id'] as String, title: title.text.trim(), privacy: privacy);
       final id = r['approval_id'] as String?;
       if (id == null) {
-        _snack('${r['say'] ?? 'Chat mein manzoori dijiye'}');
+        _snack('${r['say'] ?? 'Give approval in the chat'}');
         return;
       }
       final done = await _api!.bazarDecide(id, 'approve');   // the owner's tap above is the approval
-      _snack('${done['say'] ?? done['message'] ?? 'YouTube par upload shuru ho gaya'}');
+      _snack('${done['say'] ?? done['message'] ?? 'YouTube upload has started'}');
     });
   }
 
@@ -578,10 +578,10 @@ class _MotionPlayerScreenState extends State<MotionPlayerScreen> {
     final yes = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Video hatayein?'),
+        title: const Text('Remove the video?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Nahi')),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Hatao', style: TextStyle(color: C.bad))),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('No')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Remove', style: TextStyle(color: C.bad))),
         ],
       ),
     );
@@ -640,7 +640,7 @@ class _MotionPlayerScreenState extends State<MotionPlayerScreen> {
           ),
           Padding(
             padding: const EdgeInsets.only(bottom: 10, top: 4),
-            child: Text('${_v['ai_label'] ?? 'AI se bani video · Hoola'}', style: const TextStyle(color: C.faint, fontSize: 11)),
+            child: Text('${_v['ai_label'] ?? 'AI-made video · Hoola'}', style: const TextStyle(color: C.faint, fontSize: 11)),
           ),
         ]),
       ),
@@ -684,11 +684,11 @@ class MotionCard extends StatelessWidget {
             const SizedBox(width: 12),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                const Text('🎬 Video taiyaar', style: TextStyle(color: C.accent, fontWeight: FontWeight.w800, fontSize: 12)),
+                const Text('🎬 Video ready', style: TextStyle(color: C.accent, fontWeight: FontWeight.w800, fontSize: 12)),
                 const SizedBox(height: 2),
                 Text('${v['title']}', maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w800)),
                 const SizedBox(height: 2),
-                Text('${(v['duration'] as num? ?? 0).round()} sec · dekhne / bhejne ke liye tap kijiye',
+                Text('${(v['duration'] as num? ?? 0).round()} sec · tap to watch / send',
                     style: const TextStyle(color: C.muted, fontSize: 12)),
               ]),
             ),

@@ -51,8 +51,8 @@ class _SiteBlogPageState extends State<SiteBlogPage> {
       await showDialog<bool>(
           context: context,
           builder: (c) => AlertDialog(content: Text(q), actions: [
-                TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Rehne do')),
-                TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Haan')),
+                TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Keep it')),
+                TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Yes')),
               ])) ==
       true;
 
@@ -90,7 +90,7 @@ class _SiteBlogPageState extends State<SiteBlogPage> {
     final max = (b?['max_extra'] is int) ? b!['max_extra'] as int : 4;
     final prev = _t(b?['preview']).replaceAll(RegExp(r'/$'), '');
     return Scaffold(
-      appBar: AppBar(title: Text(widget.name.isEmpty ? 'Blog aur bhashayen' : '${widget.name} · blog')),
+      appBar: AppBar(title: Text(widget.name.isEmpty ? 'Blog and languages' : '${widget.name} · blog')),
       body: RefreshIndicator(
         onRefresh: _load,
         child: ListView(padding: const EdgeInsets.all(14), children: [
@@ -100,17 +100,17 @@ class _SiteBlogPageState extends State<SiteBlogPage> {
             Glass(
               radius: 18,
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('Naya post', style: display(15)),
+                Text('New post', style: display(15)),
                 const SizedBox(height: 6),
-                const Text('Chat mein likhiye: "blog likho: <kis baare mein, aapki apni baatein>". Content writer aapki aawaz mein '
-                    'likhega, facts jaanchega, phir card par aapki Haan se website par lagega (abhi ya time par).',
+                const Text('Write in the chat: "write a blog: <topic, your own points>". The content writer will write in your voice, '
+                    'check the facts, and then publish it on the website after your yes on the card (now or at a set time).',
                     style: TextStyle(color: C.muted, fontSize: 13)),
               ]),
             ),
             const SizedBox(height: 12),
             Text('Posts (${posts.length})', style: display(15)),
             const SizedBox(height: 6),
-            if (posts.isEmpty) const Text('Abhi koi post nahi.', style: TextStyle(color: C.faint)),
+            if (posts.isEmpty) const Text('No posts yet.', style: TextStyle(color: C.faint)),
             for (final raw in posts)
               Builder(builder: (context) {
                 final p = raw is Map ? Map<String, dynamic>.from(raw) : <String, dynamic>{};
@@ -127,23 +127,23 @@ class _SiteBlogPageState extends State<SiteBlogPage> {
                     trailing: PopupMenuButton<String>(
                       enabled: !_busy,
                       onSelected: (a) => _act(slug, a, {
-                            'hide': 'Yeh post website se hata dein? Baad mein wapas laga sakte hain.',
-                            'show': 'Yeh post website par wapas lagayein?',
-                            'delete': 'Yeh post hamesha ke liye mita dein? Wapas nahi aayega.',
+                            'hide': 'Remove this post from the website? You can put it back later.',
+                            'show': 'Put this post back on the website?',
+                            'delete': 'Delete this post for good? It cannot be brought back.',
                           }[a]!),
                       itemBuilder: (_) => [
                         if (live) const PopupMenuItem(value: 'hide', child: Text('Hatao (chhupao)')),
-                        if (!live) const PopupMenuItem(value: 'show', child: Text('Wapas lagao')),
-                        const PopupMenuItem(value: 'delete', child: Text('Mitao', style: TextStyle(color: C.bad))),
+                        if (!live) const PopupMenuItem(value: 'show', child: Text('Put back')),
+                        const PopupMenuItem(value: 'delete', child: Text('Delete', style: TextStyle(color: C.bad))),
                       ],
                     ),
                   ),
                 );
               }),
             const SizedBox(height: 16),
-            Text('Website ki bhashayen', style: display(15)),
+            Text('Website languages', style: display(15)),
             const SizedBox(height: 4),
-            Text('Pehli bhasha: ${_t(b['language'])}. $max aur tak chuniye - har page aur har post Hoola anuvaad karega.',
+            Text('First language: ${_t(b['language'])}. Choose up to $max more - Hoola will translate every page and post.',
                 style: const TextStyle(color: C.muted, fontSize: 13)),
             const SizedBox(height: 8),
             Wrap(spacing: 8, runSpacing: 6, children: [
@@ -164,7 +164,7 @@ class _SiteBlogPageState extends State<SiteBlogPage> {
             const SizedBox(height: 8),
             Align(
               alignment: Alignment.centerRight,
-              child: FilledButton(onPressed: _busy ? null : _saveLangs, child: const Text('Bhashayen save karo')),
+              child: FilledButton(onPressed: _busy ? null : _saveLangs, child: const Text('Save languages')),
             ),
           ],
         ]),

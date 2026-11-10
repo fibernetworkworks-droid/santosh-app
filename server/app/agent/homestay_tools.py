@@ -101,9 +101,9 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
     t, conv = ctx.tenant_id, ctx.conversation_id
     actor = getattr(ctx, "actor", "owner") or "owner"
     if actor.startswith("customer:"):
-        raise ToolError("Homestay ka kaam graahak ke liye nahi.")
+        raise ToolError("Homestay work is not for customers.")
     if action in OWNER_ONLY and not _owner(ctx):
-        raise ToolError("Yeh sirf owner kar sakti hain.")
+        raise ToolError("Only the owner can do this.")
     bk = _s(a.get("booking"))
     try:
         if action == "settings":
@@ -157,11 +157,11 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         if action == "ota_email":
             text = _s(a.get("text")) or (S.file_text(t, _s(a.get("file_id")), 200_000) if a.get("file_id") else "")
             if not text.strip():
-                raise ToolError("OTA ka mail paste kijiye (text) ya file bhejiye.")
+                raise ToolError("Paste the OTA mail (text) or send the file.")
             return S.ota_email(t, text, _s(a.get("room")), actor, conv)
         if action == "ical":
             if not a.get("file_id"):
-                raise ToolError("OTA se export ki hui .ics file chat mein bhejiye (file_id).")
+                raise ToolError("Send the .ics file exported from the OTA in the chat (file_id).")
             return S.ical_import(t, S.file_text(t, _s(a.get("file_id"))), _s(a.get("room")), _s(a.get("source")), actor, conv)
         if action == "task_add":
             return S.task_add(t, _s(a.get("what")), _s(a.get("room")), _s(a.get("day")), _s(a.get("assigned")))
@@ -176,7 +176,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return S.forget(t, _s(a.get("guest")), actor)
     except (S.StayError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("action galat")
+    raise ToolError("invalid action")
 
 
 def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
@@ -184,7 +184,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
     from ..homestay import service as S
     t = ctx.tenant_id
     if (getattr(ctx, "actor", "owner") or "").startswith("customer:"):
-        raise ToolError("Homestay ki jaankari graahak ke liye nahi.")
+        raise ToolError("Homestay information is not for customers.")
     try:
         if what == "day":
             return S.day(t)
@@ -216,7 +216,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
             return {"never": list(R.NEVER), "sources": [{"what": w, "url": u, "date": d} for w, u, d in R.SOURCES]}
     except (S.StayError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("what galat")
+    raise ToolError("invalid what")
 
 
 async def homestay(ctx: Ctx, action, **a: Any):

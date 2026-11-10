@@ -70,7 +70,7 @@ class _PublicApisScreenState extends State<PublicApisScreen> {
   Future<void> _say(String t) async {
     final ok = await app.send(t);
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(ok ? 'Chat mein bhej diya: "$t"' : 'Bhej nahi paya')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(ok ? 'Sent to chat: "$t"' : 'Could not send')));
     }
   }
 
@@ -83,16 +83,16 @@ class _PublicApisScreenState extends State<PublicApisScreen> {
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, set) => AlertDialog(
           backgroundColor: C.bgBottom,
-          title: Text('${a['name']} ki key'),
+          title: Text('${a['name']} key'),
           content: SingleChildScrollView(
             child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('Key sirf server par band (encrypted) rehti hai. Hoola use kabhi dekhta ya bolta nahi.',
+              const Text('The key stays locked (encrypted) on the server only. Hoola never sees or says it.',
                   style: TextStyle(color: C.muted, fontSize: 12.5)),
               TextField(controller: key, obscureText: true, decoration: const InputDecoration(labelText: 'API key')),
               const SizedBox(height: 8),
-              const Text('Key kahan jaati hai? (docs mein likha hota hai)', style: TextStyle(color: C.muted, fontSize: 12.5)),
+              const Text('Where does the key go? (it is written in the docs)', style: TextStyle(color: C.muted, fontSize: 12.5)),
               Wrap(spacing: 8, children: [
-                for (final e in const {'query': 'URL mein (?apikey=)', 'header': 'Header mein'}.entries)
+                for (final e in const {'query': 'In the URL (?apikey=)', 'header': 'In the header'}.entries)
                   ChoiceChip(
                     label: Text(e.value),
                     selected: place == e.key,
@@ -104,7 +104,7 @@ class _PublicApisScreenState extends State<PublicApisScreen> {
               ]),
               TextField(
                 controller: field,
-                decoration: InputDecoration(labelText: place == 'header' ? 'Header ka naam (jaise X-Api-Key)' : 'Parameter ka naam (jaise apikey, appid, key)'),
+                decoration: InputDecoration(labelText: place == 'header' ? 'Header name (for example X-Api-Key)' : 'Parameter name (for example apikey, appid, key)'),
               ),
             ]),
           ),
@@ -118,7 +118,7 @@ class _PublicApisScreenState extends State<PublicApisScreen> {
     if (ok != true || key.text.trim().length < 4) return;
     try {
       await app.api!.publicApiKey('${a['id']}', key.text.trim(), place: place, field: field.text.trim());
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${a['name']} ki key save ho gayi')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${a['name']} key saved')));
       await _load();
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
@@ -145,17 +145,17 @@ class _PublicApisScreenState extends State<PublicApisScreen> {
             _badge(a),
             if (worked.isNotEmpty) ...[
               const SizedBox(height: 10),
-              Text('${worked.first['worked']} baar chal chuki hai — Hoola seedha use karega', style: const TextStyle(color: C.ok, fontSize: 12.5)),
+              Text('${worked.first['worked']} times used — Hoola will use it directly', style: const TextStyle(color: C.ok, fontSize: 12.5)),
             ],
             const SizedBox(height: 14),
             Wrap(spacing: 8, runSpacing: 8, children: [
               FilledButton.icon(
                 onPressed: () {
                   Navigator.pop(ctx);
-                  _say('${a['name']} API (api_id ${a['id']}) se ${a['desc']} — mujhe dikhao');
+                  _say('${a['name']} API (api_id ${a['id']}) from ${a['desc']} — show me');
                 },
                 icon: const Icon(Icons.auto_awesome_rounded, size: 18),
-                label: Text('${app.aName} se use karwaiye'),
+                label: Text('${app.aName} ask Hoola to use it'),
               ),
               if (!free)
                 OutlinedButton.icon(
@@ -164,7 +164,7 @@ class _PublicApisScreenState extends State<PublicApisScreen> {
                     _saveKey(a);
                   },
                   icon: Icon(saved ? Icons.key_rounded : Icons.key_off_rounded, size: 18),
-                  label: Text(saved ? 'Key badliye' : 'Apni key save kijiye'),
+                  label: Text(saved ? 'Change key' : 'Save your key'),
                 ),
               if (saved)
                 TextButton(
@@ -173,12 +173,12 @@ class _PublicApisScreenState extends State<PublicApisScreen> {
                     await app.api!.publicApiKeyDelete('${a['id']}');
                     await _load();
                   },
-                  child: const Text('Key hataiye', style: TextStyle(color: C.bad)),
+                  child: const Text('Remove key', style: TextStyle(color: C.bad)),
                 ),
               TextButton.icon(
                 onPressed: () => launchUrl(Uri.parse('${a['link']}'), mode: LaunchMode.externalApplication),
                 icon: const Icon(Icons.open_in_new_rounded, size: 18),
-                label: Text(free ? 'Docs' : 'Docs / free key yahan'),
+                label: Text(free ? 'Docs' : 'Docs / free key here'),
               ),
             ]),
           ]),
@@ -191,10 +191,10 @@ class _PublicApisScreenState extends State<PublicApisScreen> {
     final free = a['free_no_key'] == true;
     final saved = a['key_saved'] == true;
     final (String t, Color c) = free
-        ? ('Free · key nahi chahiye', C.ok)
+        ? ('Free · no key needed', C.ok)
         : saved
-            ? ('Key save hai', C.teal)
-            : ('Key chahiye (${a['auth']})', C.warn);
+            ? ('Key saved', C.teal)
+            : ('Key needed (${a['auth']})', C.warn);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(color: c.withOpacity(.15), borderRadius: BorderRadius.circular(8)),
@@ -212,13 +212,13 @@ class _PublicApisScreenState extends State<PublicApisScreen> {
               child: TextField(
                 onChanged: _search,
                 decoration: const InputDecoration(
-                    prefixIcon: Icon(Icons.search_rounded), hintText: 'Kya chahiye? mausam, IFSC, holidays, cricket, currency…'),
+                    prefixIcon: Icon(Icons.search_rounded), hintText: 'What do you need? weather, IFSC, holidays, cricket, currency…'),
               ),
             ),
             SizedBox(
               height: 42,
               child: ListView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.symmetric(horizontal: 12), children: [
-                for (final e in const {'any': 'Sab', 'none': 'Free (bina key)', 'key': 'Key wali'}.entries)
+                for (final e in const {'any': 'All', 'none': 'Free (no key)', 'key': 'With key'}.entries)
                   Padding(
                     padding: const EdgeInsets.only(right: 6),
                     child: ChoiceChip(
@@ -264,7 +264,7 @@ class _PublicApisScreenState extends State<PublicApisScreen> {
                       ),
                   ]),
                   const SizedBox(height: 14),
-                  const Caption('KUCH FREE APIs'),
+                  const Caption('SOME FREE APIs'),
                 ],
                 for (final a in _rows)
                   Padding(
@@ -295,9 +295,9 @@ class _PublicApisScreenState extends State<PublicApisScreen> {
                     ),
                   ),
                 if (!_busy && _rows.isEmpty && _err == null)
-                  const Padding(padding: EdgeInsets.all(20), child: Text('Kuch nahi mila. Dusre shabd try kijiye.', style: TextStyle(color: C.muted))),
+                  const Padding(padding: EdgeInsets.all(20), child: Text('Nothing found. Try other words.', style: TextStyle(color: C.muted))),
                 const SizedBox(height: 8),
-                const Text('Source: github.com/public-apis/public-apis (MIT). Hoola sirf padhne wali (GET) calls karta hai.',
+                const Text('Source: github.com/public-apis/public-apis (MIT). Hoola makes read-only (GET) calls only.',
                     style: TextStyle(color: C.faint, fontSize: 11)),
               ]),
             ),

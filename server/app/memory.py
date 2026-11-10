@@ -27,9 +27,11 @@ from typing import Any
 
 log = logging.getLogger("santosh.memory")
 
-CAPS = {"fact": 6, "chat": 6, "work": 4, "graph": 4, "page": 3}   # per-store share of one answer
+CAPS = {"fact": 6, "chat": 6, "work": 4, "graph": 4, "page": 3, "diary": 5}   # per-store share of one answer
 LABELS = {"fact": "saved fact", "chat": "past chat / call / job", "work": "work note (Coder memory)",
-          "graph": "knowledge graph", "page": "Mere baare mein"}
+          "graph": "knowledge graph", "page": "Mere baare mein",
+          "diary": "work diary (jobs, website jobs, files, calls)"}
+DIARY_SEARCH_DAYS = 30   # parity Phase 7: the diary left the chat turn, so its search looks further back than its 7 days
 
 
 def _words(q: str) -> set[str]:
@@ -48,8 +50,45 @@ def _chats(tenant: str, conv: str, query: str, days: int | None) -> list[dict]:
     if not prefs(tenant)["recall"]:        # her "Purani chats se yaad" switch
         return []
     hits = yaad.search(tenant, query, CAPS["chat"], days or None, None, conversation_id=conv)
+    titles = _titles({h.get("conversation_id") for h in hits if h.get("conversation_id")})
     return [{"source": "chat", "kind": h.get("kind"), "when": h.get("at"), "conversation_id": h.get("conversation_id"),
+             **({"chat_title": titles[h.get("conversation_id")]} if titles.get(h.get("conversation_id")) else {}),
              "text": str(h.get("text") or "")[:600]} for h in hits]
+
+
+def _titles(ids: set) -> dict:
+    """parity Phase 7: a past-chat hit names its chat, so she can be told where it was said ('your chat "Sharma
+    quotation"')."""
+    if not ids:
+        return {}
+    try:
+        from sqlalchemy import select
+        from .db import Conversation, session
+        with session() as s:
+            return {c.id: (c.title or "").strip() for c in
+                    s.scalars(select(Conversation).where(Conversation.id.in_(list(ids)))).all()}
+    except Exception:
+        return {}
+
+
+def _diary(tenant: str, conv: str, query: str, days: int | None) -> list[dict]:
+    """parity Phase 7: the work diary (her jobs, website jobs / orders, files, call receipts) used to ride every chat
+    turn; now it is searched like every other store. Fenced to this chat's Session like the diary itself."""
+    from . import semantic, yaad
+    d = yaad.diary(tenant, conv, days=min(int(days or DIARY_SEARCH_DAYS), 90))
+    lines = [(f"{k}:{i}", ln) for k in ("jobs", "web", "files", "calls") for i, ln in enumerate(d.get(k) or [])]
+    if not lines:
+        return []
+    want = _words(query)
+    scored = []
+    for key, ln in lines:
+        hit = len(want & _words(ln))
+        if hit:
+            scored.append((hit / max(1, len(want)), key, ln))
+    if not scored and semantic.available():
+        scored = [(sc, k, t) for k, t, sc in semantic.rank(query, lines, top=CAPS["diary"], floor=0.42)]
+    scored.sort(key=lambda x: -x[0])
+    return [{"source": "diary", "kind": key.split(":")[0], "text": ln} for _, key, ln in scored[:CAPS["diary"]]]
 
 
 def _work(tenant: str, conv: str, query: str) -> list[dict]:
@@ -114,6 +153,7 @@ def search_all(tenant: str, conversation_id: str, query: str, days: int | None =
     main = main_memory_ok(conversation_id)   # v0.609 a Session on its own memory: no main page, no main graph
     jobs = {"fact": lambda: _facts(tenant, conversation_id, query),
             "chat": lambda: _chats(tenant, conversation_id, query, days),
+            "diary": lambda: _diary(tenant, conversation_id, query, days),
             "work": lambda: _work(tenant, conversation_id, query),
             "graph": lambda: _graph(tenant, query) if main else [],
             "page": lambda: _page(tenant, query) if main else []}

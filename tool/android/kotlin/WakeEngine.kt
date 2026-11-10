@@ -144,12 +144,12 @@ class WakeEngine(
             AudioRecord(MediaRecorder.AudioSource.VOICE_RECOGNITION, SR, AudioFormat.CHANNEL_IN_MONO,
                 AudioFormat.ENCODING_PCM_16BIT, maxOf(min, CHUNK * 4))
         } catch (e: Exception) {
-            lastError = "Mic nahi mila: ${e.message}"
+            lastError = "Microphone not found: ${e.message}"
             return false
         }
         if (rec.state != AudioRecord.STATE_INITIALIZED) {
             rec.release()
-            lastError = "Mic abhi kisi aur app ke paas hai"
+            lastError = "The microphone is being used by another app"
             return false
         }
         running = true

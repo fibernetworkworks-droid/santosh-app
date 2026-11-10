@@ -145,7 +145,7 @@ def test_voice_builds_in_background_and_failures_are_reported(art):
         return r, bad
     r, bad = asyncio.run(go())
     assert art["mod"].get(art["tenant"], r["id"]).status == "ready"
-    assert bad["status"] == "failed" and "nahi ban paya" in bad["error"]
+    assert bad["status"] == "failed" and bad["error"] in ("The page maker had a problem.", "The page maker took too long and was stopped.", "The page came back incomplete twice.")  # v0.725 plain words
 
 
 def test_parse_handles_fences_and_missing_title(art):

@@ -53,11 +53,11 @@ def test_big_ask_gets_plan_first_short_ask_does_not(gz, monkeypatch):  # noqa: F
     before = STATS_LONG["plan_first"]
     asyncio.run(run_turn(conv, "Pehle sales data nikalo, phir report banao, phir sabko mail bhejo",
                          tenant_id="default"))
-    assert "Sabse PEHLA tool call `kaam_plan set`" in _texts(brain)
+    assert "FIRST tool call must be `kaam_plan set`" in _texts(brain)
     assert STATS_LONG["plan_first"] == before + 1
     brain.seen.clear()
     asyncio.run(run_turn(conv, "namaste", tenant_id="default"))
-    assert "Sabse PEHLA" not in _texts(brain)
+    assert "FIRST tool call must be" not in _texts(brain)
 
 
 def test_no_plan_after_four_steps_asks_for_it_once(gz, monkeypatch):  # noqa: F811
@@ -68,11 +68,11 @@ def test_no_plan_after_four_steps_asks_for_it_once(gz, monkeypatch):  # noqa: F8
     from app.agent.santosh import run_turn
     asyncio.run(run_turn(conv, "status dekho", tenant_id="default"))
     seen = _texts(brain)
-    assert seen.count("par plan nahi likha") >= 1
+    assert seen.count("have not written a plan") >= 1
     # asked exactly once (the message rides in every later call's history, so count the calls that first saw it)
-    first = next(i for i, c in enumerate(brain.seen) if "par plan nahi likha" in str(c["messages"]))
+    first = next(i for i, c in enumerate(brain.seen) if "have not written a plan" in str(c["messages"]))
     assert first == 4                                  # v0.311: after the 4th tool step (was 6), not at step 24
-    assert sum(str(c["messages"][-1]).count("par plan nahi likha") for c in brain.seen) == 1
+    assert sum(str(c["messages"][-1]).count("have not written a plan") for c in brain.seen) == 1
 
 
 # ---------------------------------------------------------------- (1) narrate
@@ -90,12 +90,12 @@ def test_silent_goal_rounds_ask_for_one_progress_line(gz, monkeypatch):  # noqa:
     before = STATS_LONG["narrate"]
     asyncio.run(run_turn(conv, "bada kaam karo", tenant_id="default"))
     seen = _texts(brain)
-    assert "ab use EK chhoti line batao" in seen
+    assert "now tell her ONE short line" in seen
     # every silent round asks, up to the cap of 6 (9 silent rounds here)
     assert STATS_LONG["narrate"] == before + 6
     # v0.257 a finished step asks for the line again - and asks for the FINDING, not a dump
     assert "chat mein iska koi line mat likho" not in seen
-    assert "is step se jo asli cheez mili" in seen
+    assert "the real finding from this step" in seen
 
 
 # ---------------------------------------------------------------- (3) milestones
@@ -111,7 +111,7 @@ def test_milestones_push_at_most_twice_never_every_step(gz):  # noqa: F811
     assert marks == ["2/6", "4/6"]                     # 1/3 and 2/3, never the last step
     pushed = [push.render("goal", e, "Hoola") for e in evs]
     sent = [p for p in pushed if p]
-    assert len(sent) == 2 and "2/6 steps ho gaye" in sent[0][1]
+    assert len(sent) == 2 and "2/6 steps done" in sent[0][1]
     v2 = goal.set_goal("default", conv, "Chhota", ["a", "b", "c", "d"], origin="owner")
     for n in range(1, 5):
         goal.mark_step("default", v2["id"], n, "done")
@@ -139,7 +139,7 @@ def test_finish_builds_the_four_part_report(gz):  # noqa: F811
     assert "report.pdf" in r["bana"]
     assert r["baaki"] == ["bhejo"] and r["aapka"] == "Report dekh ke haan bolo"
     text = goal.report_text(r)
-    for part in ("✅ Kya hua", "📎 Kya bana", "⏳ Kya baaki hai", "👉 Aapko kya karna hai"):
+    for part in ("✅ What was done", "📎 What was made", "⏳ What is left", "👉 What you need to do"):
         assert part in text
     last = _goal_events(conv)[-1]
     assert last["report"]["aapka"] == "Report dekh ke haan bolo"
@@ -149,7 +149,7 @@ def test_finish_builds_the_four_part_report(gz):  # noqa: F811
     v2 = goal.set_goal("default", conv, "Chhota", ["a"], origin="owner")
     goal.mark_step("default", v2["id"], 1, "done")
     r2 = goal.finish("default", v2["id"], "done", "ho gaya")["report"]
-    assert r2["baaki"] == [] and r2["aapka"].startswith("Kuch nahi")
+    assert r2["baaki"] == [] and r2["aapka"].startswith("Nothing")
 
 
 def test_kaam_plan_finish_returns_the_report_for_her_final_answer(gz):  # noqa: F811
@@ -162,29 +162,29 @@ def test_kaam_plan_finish_returns_the_report_for_her_final_answer(gz):  # noqa: 
     out = asyncio.run(kaam_plan(ctx, action="finish", outcome="blocked_on_her", reason="Aapka OTP chahiye",
                                 made=["draft-42"]))
     # v0.240 the four parts stay on her CARD; the chat gets one short human line
-    assert "👉 Aapko kya karna hai: Aapka OTP chahiye" in out["card_shows"]
+    assert "👉 What you need to do: Aapka OTP chahiye" in out["card_shows"]
     assert "report" not in out
     assert "chaar hisson" not in out["note"]
-    assert "EK chhoti insaani line" in out["note"] and "Bullet list" in out["note"]
+    assert "ONE short human line" in out["note"] and "No bullet list" in out["note"]
 
 
 # ---------------------------------------------------------------- the phone + console + wiring
 def test_phone_and_console_show_report_and_continue():
     card = (ROOT / "lib/ui/goal_card.dart").read_text()
-    assert "Aage badhao" in card and "continueGoal" in card and "KYA BANA" in card and "AAPKO KYA KARNA HAI" in card
+    assert "Move ahead" in card and "continueGoal" in card and "WHAT WAS MADE" in card and "WHAT YOU NEED TO DO" in card
     assert "continueGoal" in (ROOT / "lib/api.dart").read_text()
     js = (ROOT / "server/app/static/console/v2.js").read_text()
     assert "function goalReport" in js and "goalReport(p.report)" in js
     assert ".greport" in (ROOT / "server/app/static/console/v2.css").read_text()
     prompt = (ROOT / "server/app/agent/prompts.py").read_text()
     # v0.257 the prompt orders Claude's rhythm: say it first, then one finding-line per step
-    assert "CHALTE CHALTE BOLO" in prompt
-    assert "bade kaam se PEHLE ek vaakya" in prompt
+    assert "TALK AS YOU WORK" in prompt
+    assert "BEFORE a big job, one sentence" in prompt
     assert "har step ka koi line chat mein mat likho" not in prompt    # v0.240's silence is gone
     assert "Aakhri jawab hamesha chaar hisson mein" not in prompt      # ...and v0.228's bullet dump stays gone
 
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.715.0"
-    assert "0.715.0+714" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.749.0"
+    assert "0.749.0+748" in (ROOT / "pubspec.yaml").read_text()

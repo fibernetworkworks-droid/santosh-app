@@ -66,12 +66,12 @@ Future<Map<String, String>?> _form(BuildContext context, String title, List<(Str
             ),
           if (secret) ...[
             const SizedBox(height: 8),
-            const Text('Chaabi band tijori mein rehti hai; Hoola ko bhi nahi dikhti. Chat mein kabhi mat likhiye.', style: TextStyle(fontSize: 12)),
+            const Text('The key stays in a locked safe; even Hoola cannot see it. Never write it in the chat.', style: TextStyle(fontSize: 12)),
           ],
         ]),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Rehne do')),
+        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Keep it')),
         TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Aage')),
       ],
     ),
@@ -85,7 +85,7 @@ Future<void> _openLink(BuildContext context, String url) async {
   final r = await Native.openExternal(url: url);
   if (r.isNotEmpty && r != 'ok' && context.mounted) {
     await Clipboard.setData(ClipboardData(text: url));
-    if (context.mounted) _snack(context, 'Link copy kar diya');
+    if (context.mounted) _snack(context, 'Link copied');
   }
 }
 
@@ -165,18 +165,18 @@ class _CourierScreenState extends State<CourierScreen> {
       .then((_) => _load());
 
   Future<void> _newParcel() async {
-    final f = await _form(context, 'Naya parcel', const [
-      ('name', 'Graahak ka naam'),
-      ('phone', 'Graahak ka mobile'),
-      ('address', 'Poora pata'),
-      ('city', 'Shehar'),
-      ('state', 'Rajya'),
+    final f = await _form(context, 'New parcel', const [
+      ('name', 'Graahak name'),
+      ('phone', 'Customer mobile'),
+      ('address', 'Full address'),
+      ('city', 'City'),
+      ('state', 'State'),
       ('pincode', 'PIN code'),
-      ('items', 'Saamaan (jaise: Kurti x1 @ 899)'),
+      ('items', 'Goods (e.g. Kurti x1 @ 899)'),
       ('payment', 'prepaid / cod'),
-      ('cod_amount', 'COD rakam (₹)'),
-      ('weight_kg', 'Asli wazan (kg)'),
-      ('dims', 'Dabba L x B x H cm (jaise 30x25x5)'),
+      ('cod_amount', 'COD amount (₹)'),
+      ('weight_kg', 'Actual weight (kg)'),
+      ('dims', 'Box L x B x H cm (e.g. 30x25x5)'),
       ('order_ref', 'Order number'),
     ]);
     if (f == null) return;
@@ -229,7 +229,7 @@ class _CourierScreenState extends State<CourierScreen> {
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           const Text('Aaj', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
           const SizedBox(height: 6),
-          if (parts.isEmpty) const Text('Sab theek. Koi parcel aapka intezaar nahi kar raha.', style: TextStyle(color: C.muted)),
+          if (parts.isEmpty) const Text('All good. No parcel is waiting for you.', style: TextStyle(color: C.muted)),
           for (final p in parts) Padding(padding: const EdgeInsets.only(top: 4), child: Text('• $p')),
         ]),
       ),
@@ -237,7 +237,7 @@ class _CourierScreenState extends State<CourierScreen> {
       for (final c in cards)
         Padding(padding: const EdgeInsets.only(bottom: 10), child: CourierActionCard(app: widget.app, data: {'card': c}, onDone: _load)),
       Row(children: [
-        Expanded(child: GradientButton(label: 'Naya parcel', icon: Icons.add_rounded, onTap: _busy ? null : _newParcel)),
+        Expanded(child: GradientButton(label: 'New parcel', icon: Icons.add_rounded, onTap: _busy ? null : _newParcel)),
         const SizedBox(width: 8),
         GlassButton(
           label: 'Manifest',
@@ -253,13 +253,13 @@ class _CourierScreenState extends State<CourierScreen> {
   Widget _parcels() => ListView(padding: const EdgeInsets.all(16), children: [
         TextField(
           controller: _q,
-          decoration: const InputDecoration(labelText: 'Dhoondho: P-0001 / AWB / order / phone / naam', prefixIcon: Icon(Icons.search_rounded)),
+          decoration: const InputDecoration(labelText: 'Search: P-0001 / AWB / order / phone / name', prefixIcon: Icon(Icons.search_rounded)),
           onSubmitted: (_) => _load(),
         ),
         const SizedBox(height: 10),
         Wrap(spacing: 8, runSpacing: 8, children: [
           for (final (k, l) in const [
-            ('active', 'Raste mein'), ('draft', 'Book baaki'), ('waiting', 'Haan baaki'), ('exception', 'NDR'), ('rto', 'RTO'),
+            ('active', 'On the way'), ('draft', 'To be booked'), ('waiting', 'Yes pending'), ('exception', 'NDR'), ('rto', 'RTO'),
             ('delivered', 'Pahunche'), ('', 'Sab'),
           ])
             ChoiceChip(
@@ -272,19 +272,19 @@ class _CourierScreenState extends State<CourierScreen> {
             ),
         ]),
         const SizedBox(height: 12),
-        if (_all.isEmpty) const Text('Koi parcel nahi.', style: TextStyle(color: C.muted)),
+        if (_all.isEmpty) const Text('No parcels.', style: TextStyle(color: C.muted)),
         for (final p in _all) _tile(p),
         const SizedBox(height: 8),
         GlassButton(
-          label: 'Return label (graahak se wapas)',
+          label: 'Return label (back from the customer)',
           icon: Icons.assignment_return_rounded,
           onTap: _busy
               ? null
               : () async {
                   final f = await _form(context, 'Return label', const [
-                    ('ref', 'Pahunche parcel ka number (P-0001) ya'),
-                    ('wapsi_ref', 'Wapsi return number (R-0001)'),
-                    ('reason', 'Kyon wapas'),
+                    ('ref', 'Number of the received parcel (P-0001) or'),
+                    ('wapsi_ref', 'Return number (R-0001)'),
+                    ('reason', 'Why returned'),
                   ]);
                   if (f == null) return;
                   await _run(() => _call(widget.app, 'POST', '/api/courier/returns', body: {
@@ -323,19 +323,19 @@ class _CourierScreenState extends State<CourierScreen> {
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           const Text('COD ka hisaab', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
           const SizedBox(height: 6),
-          Text('Aana baaki: ${_s(cod['pending_count'])} parcel · ${_rs(cod['pending_amount'])}'),
-          Text('Aa gaya: ${_s(cod['remitted_count'])} parcel · ${_rs(cod['remitted_amount'])}', style: const TextStyle(color: C.muted)),
+          Text('Still to arrive: ${_s(cod['pending_count'])} parcel · ${_rs(cod['pending_amount'])}'),
+          Text('Received: ${_s(cod['remitted_count'])} parcels · ${_rs(cod['remitted_amount'])}', style: const TextStyle(color: C.muted)),
           const SizedBox(height: 6),
           Text(_s(cod['note']), style: const TextStyle(fontSize: 12, color: C.faint)),
           const SizedBox(height: 10),
-          GradientButton(label: 'Courier ki remittance sheet daalo', icon: Icons.upload_file_rounded, height: 46, onTap: _busy ? null : _remit),
+          GradientButton(label: 'Upload the courier\'s remittance sheet', icon: Icons.upload_file_rounded, height: 46, onTap: _busy ? null : _remit),
         ]),
       ),
       if (_list(cod['mismatch']).isNotEmpty) ...[
         const SizedBox(height: 12),
         Glass(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Text('Rakam alag (aaya / hona tha)', style: TextStyle(fontWeight: FontWeight.w700, color: C.warn)),
+            const Text('Amount differs (received / expected)', style: TextStyle(fontWeight: FontWeight.w700, color: C.warn)),
             for (final x in _list(cod['mismatch'])) line(x, diff: true),
           ]),
         ),
@@ -343,8 +343,8 @@ class _CourierScreenState extends State<CourierScreen> {
       const SizedBox(height: 12),
       Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('Delivered, COD abhi nahi aaya', style: TextStyle(fontWeight: FontWeight.w700)),
-          if (_list(cod['pending']).isEmpty) const Text('Kuch baaki nahi.', style: TextStyle(color: C.muted)),
+          const Text('Delivered, COD not received yet', style: TextStyle(fontWeight: FontWeight.w700)),
+          if (_list(cod['pending']).isEmpty) const Text('Nothing pending.', style: TextStyle(color: C.muted)),
           for (final x in _list(cod['pending'])) line(x),
         ]),
       ),
@@ -352,7 +352,7 @@ class _CourierScreenState extends State<CourierScreen> {
         const SizedBox(height: 12),
         Glass(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Text('Sheet mein AWB jo hamare record mein nahi', style: TextStyle(fontWeight: FontWeight.w700)),
+            const Text('AWBs in the sheet that are not in our records', style: TextStyle(fontWeight: FontWeight.w700)),
             for (final x in _list(cod['unknown'])) Text('${_s(x['awb'])} · ${_rs(x['amount'])} · ${_s(x['utr'])}', style: const TextStyle(fontSize: 12.5)),
           ]),
         ),
@@ -377,9 +377,9 @@ class _CourierScreenState extends State<CourierScreen> {
             icon: Icons.store_rounded,
             onTap: () async {
               final f = await _form(context, 'Pickup / dukaan', const [
-                ('business', 'Business ka naam'), ('gstin', 'GSTIN (e-way bill ke liye)'), ('phone', 'Pickup phone'),
-                ('address', 'Pickup ka pata'), ('city', 'Shehar'), ('state', 'Rajya'), ('pincode', 'PIN'),
-                ('remit_days', 'COD kitne din mein aana chahiye (aapka andaaza)'),
+                ('business', 'Business name'), ('gstin', 'GSTIN (for e-way bill)'), ('phone', 'Pickup phone'),
+                ('address', 'Pickup ka pata'), ('city', 'City'), ('state', 'State'), ('pincode', 'PIN'),
+                ('remit_days', 'Within how many days COD should arrive (your estimate)'),
               ], init: {
                 'business': _s(st['business']), 'gstin': _s(st['gstin']), 'phone': _s(wh['phone']), 'address': _s(wh['address']),
                 'city': _s(wh['city']), 'state': _s(wh['state']), 'pincode': _s(wh['pincode']),
@@ -402,14 +402,14 @@ class _CourierScreenState extends State<CourierScreen> {
       const SizedBox(height: 12),
       Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('Courier ke niyam', style: TextStyle(fontWeight: FontWeight.w800)),
+          const Text('Courier rules', style: TextStyle(fontWeight: FontWeight.w800)),
           for (final l in (st['rule_lines'] as List?) ?? const []) Padding(padding: const EdgeInsets.only(top: 4), child: Text('• $l')),
           const SizedBox(height: 8),
           GlassButton(
-            label: 'Apne shabdon mein',
+            label: 'In your own words',
             icon: Icons.edit_note_rounded,
             onTap: () async {
-              final f = await _form(context, 'Courier ke niyam', const [('text', 'Jaise: sabse sasta; COD par Delhivery; Ekart mat lena; 5 kg se upar Xpressbees')],
+              final f = await _form(context, 'Courier rules', const [('text', 'For example: cheapest; Delhivery for COD; do not use Ekart; Xpressbees above 5 kg')],
                   init: {'text': _s(st['rules_text'])});
               if (f?['text'] != null) await _run(() => _call(widget.app, 'POST', '/api/courier/rules', body: {'text': f!['text']}));
             },
@@ -419,7 +419,7 @@ class _CourierScreenState extends State<CourierScreen> {
       const SizedBox(height: 12),
       Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('Courier ki chaabi (sirf yahan, chat mein kabhi nahi)', style: TextStyle(fontWeight: FontWeight.w800)),
+          const Text('Courier keys (only here, never in the chat)', style: TextStyle(fontWeight: FontWeight.w800)),
           const SizedBox(height: 6),
           for (final c in carriers.where((c) => ((c['keys'] as List?) ?? const []).isNotEmpty))
             Padding(
@@ -437,13 +437,13 @@ class _CourierScreenState extends State<CourierScreen> {
                   height: 40,
                   onTap: () async {
                     final keys = ((c['keys'] as List?) ?? const []).map((e) => '$e').toList();
-                    final f = await _form(context, '${_s(c['label'])} jodiye', [for (final k in keys) (k, k.replaceAll('_', ' '))], secret: true);
+                    final f = await _form(context, 'Connect ${_s(c['label'])}', [for (final k in keys) (k, k.replaceAll('_', ' '))], secret: true);
                     if (f != null) await _run(() => _call(widget.app, 'PUT', '/api/courier/keys/${_s(c['id'])}', body: {'creds': f}));
                   },
                 ),
               ]),
             ),
-          const Text('DTDC / Ekart / Xpressbees / India Post: unke app mein book kijiye aur AWB yahan likhiye (ya Shiprocket se in sab ke rate).',
+          const Text('DTDC / Ekart / Xpressbees / India Post: book in their app and enter the AWB here (or get all their rates through Shiprocket).',
               style: TextStyle(fontSize: 12, color: C.faint)),
         ]),
       ),
@@ -545,11 +545,11 @@ class _CourierParcelPageState extends State<CourierParcelPage> {
       await showDialog<void>(
         context: context,
         builder: (d) => AlertDialog(
-          title: const Text('Graahak ke liye message'),
+          title: const Text('Message for the customer'),
           content: SingleChildScrollView(child: Text(_s(m['text']))),
           actions: [
             TextButton(onPressed: () => Clipboard.setData(ClipboardData(text: _s(m['text']))), child: const Text('Copy')),
-            if (_s(m['whatsapp']).isNotEmpty) TextButton(onPressed: () => _openLink(context, _s(m['whatsapp'])), child: const Text('WhatsApp kholo')),
+            if (_s(m['whatsapp']).isNotEmpty) TextButton(onPressed: () => _openLink(context, _s(m['whatsapp'])), child: const Text('Open WhatsApp')),
             TextButton(onPressed: () => Navigator.pop(d), child: const Text('Band')),
           ],
         ),
@@ -585,8 +585,8 @@ class _CourierParcelPageState extends State<CourierParcelPage> {
               Text(_s(p['phone_masked']), style: const TextStyle(color: C.faint, fontSize: 12)),
               const SizedBox(height: 6),
               Text('${_list(p['items']).map((i) => '${_s(i['name'])} x${_s(i['qty'])}').join(', ')} · keemat ${_rs(p['value'])}'),
-              Text(p['payment'] == 'cod' ? 'COD: ${_rs(p['cod_amount'])} lena hai' : 'Prepaid', style: const TextStyle(color: C.warn)),
-              Text('Wazan ${_s(w['dead_kg'])} kg · volumetric ${_s(w['volumetric_kg'])} kg · chargeable ${_s(w['chargeable_kg'])} kg',
+              Text(p['payment'] == 'cod' ? 'COD: ${_rs(p['cod_amount'])} to collect' : 'Prepaid', style: const TextStyle(color: C.warn)),
+              Text('Weight ${_s(w['dead_kg'])} kg · volumetric ${_s(w['volumetric_kg'])} kg · chargeable ${_s(w['chargeable_kg'])} kg',
                   style: const TextStyle(fontSize: 12.5, color: C.muted)),
               if (_s(p['eway_no']).isNotEmpty) Text('E-way bill ${_s(p['eway_no'])}', style: const TextStyle(fontSize: 12.5)),
             ]),
@@ -600,21 +600,21 @@ class _CourierParcelPageState extends State<CourierParcelPage> {
             Glass(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text('${_s(p['carrier'])} · AWB ${_s(p['awb'])}', style: const TextStyle(fontWeight: FontWeight.w800)),
-                if (_s(p['raw']).isNotEmpty) Text('Courier ne kaha: ${_s(p['raw'])}'),
+                if (_s(p['raw']).isNotEmpty) Text('Courier said: ${_s(p['raw'])}'),
                 if (_s(p['edd']).isNotEmpty) Text('Courier ki ummeed: ${_s(p['edd'])}', style: const TextStyle(color: C.muted)),
                 for (final e in _list(p['events']).take(8))
                   Text('${_s(e['at'])} · ${_s(e['what'])} ${_s(e['where'])}'.trim(), style: const TextStyle(fontSize: 11.5, color: C.faint)),
                 if (nd.isNotEmpty && st == 'exception') ...[
                   const Divider(),
-                  Text('Delivery nahi hui: ${_s(nd['label'])} (koshish ${_s(nd['attempts'])})', style: const TextStyle(color: C.bad)),
-                  const Text('Courier aam taur par 3 koshish ke baad wapas bhej deta hai.', style: TextStyle(fontSize: 11.5, color: C.faint)),
+                  Text('Not delivered: ${_s(nd['label'])} (attempts ${_s(nd['attempts'])})', style: const TextStyle(color: C.bad)),
+                  const Text('The courier usually sends it back after 3 attempts.', style: TextStyle(fontSize: 11.5, color: C.faint)),
                 ],
               ]),
             )
           else if (sv.isNotEmpty || pick.isNotEmpty)
             Glass(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(sv['ok'] == true ? 'PIN par delivery hoti hai${sv['cod'] == false ? ' (COD nahi)' : ''}' : 'PIN par delivery nahi',
+                Text(sv['ok'] == true ? 'Delivery is available at this PIN${sv['cod'] == false ? ' (no COD)' : ''}' : 'No delivery at this PIN',
                     style: TextStyle(fontWeight: FontWeight.w700, color: sv['ok'] == true ? C.ok : C.bad)),
                 for (final q in _list(p['quotes']).take(6))
                   Row(children: [
@@ -629,13 +629,13 @@ class _CourierParcelPageState extends State<CourierParcelPage> {
             Padding(padding: const EdgeInsets.only(bottom: 10), child: CourierActionCard(app: widget.app, data: {'card': card}, onDone: _load)),
           Wrap(spacing: 8, runSpacing: 8, children: [
             if (['draft', 'failed'].contains(st)) ...[
-              GlassButton(label: 'PIN + rate dekho', icon: Icons.price_check_rounded, onTap: _busy ? null : () => _run(() => _call(widget.app, 'POST', '$_base/check'))),
+              GlassButton(label: 'Check PIN + rate', icon: Icons.price_check_rounded, onTap: _busy ? null : () => _run(() => _call(widget.app, 'POST', '$_base/check'))),
               GradientButton(label: 'Booking card', icon: Icons.local_shipping_rounded, height: 44,
                   onTap: _busy ? null : () => _run(() => _call(widget.app, 'POST', '$_base/book', body: {}))),
             ],
             if (['draft', 'failed', 'manual', 'waiting'].contains(st))
               GlassButton(
-                label: 'Maine book kiya (AWB)',
+                label: 'I booked it (AWB)',
                 icon: Icons.numbers_rounded,
                 onTap: () async {
                   final f = await _form(context, 'Tracking number', const [('awb', 'AWB / article number'), ('carrier', 'Courier (DTDC / India Post / ...)')]);
@@ -647,9 +647,9 @@ class _CourierParcelPageState extends State<CourierParcelPage> {
                 label: 'Badlo',
                 icon: Icons.edit_rounded,
                 onTap: () async {
-                  final f = await _form(context, 'Badlav', const [
-                    ('weight_kg', 'Wazan (kg)'), ('pincode', 'PIN'), ('phone', 'Mobile'), ('address', 'Pata'), ('eway_no', 'E-way bill number'),
-                    ('cod_amount', 'COD rakam'),
+                  final f = await _form(context, 'Change', const [
+                    ('weight_kg', 'Weight (kg)'), ('pincode', 'PIN'), ('phone', 'Mobile'), ('address', 'Pata'), ('eway_no', 'E-way bill number'),
+                    ('cod_amount', 'COD amount'),
                   ]);
                   if (f == null) return;
                   await _run(() => _call(widget.app, 'PATCH', _base, body: {
@@ -669,23 +669,23 @@ class _CourierParcelPageState extends State<CourierParcelPage> {
               GlassButton(label: 'Tracking', icon: Icons.route_rounded, onTap: _busy ? null : () => _run(() => _call(widget.app, 'POST', '$_base/track'))),
             if (_s(p['track_link']).isNotEmpty) GlassButton(label: 'Courier ka page', icon: Icons.open_in_new_rounded, onTap: () => _openLink(context, _s(p['track_link']))),
             if (_s(_m(p['label'])['path']).isNotEmpty || _s(_m(p['label'])['file_id']).isNotEmpty)
-              GlassButton(label: 'Label aapki files mein', icon: Icons.picture_as_pdf_rounded, onTap: () => _snack(context, 'Label PDF chat ki files mein hai (Label-${_s(p['number'])}.pdf).')),
-            if (_s(p['awb']).isNotEmpty) GlassButton(label: 'Graahak ko message', icon: Icons.sms_rounded, onTap: () => _message(st == 'delivered' ? 'delivered' : 'shipped')),
+              GlassButton(label: 'Label in your files', icon: Icons.picture_as_pdf_rounded, onTap: () => _snack(context, 'The label PDF is in the chat files (Label-${_s(p['number'])}.pdf).')),
+            if (_s(p['awb']).isNotEmpty) GlassButton(label: 'Message to the customer', icon: Icons.sms_rounded, onTap: () => _message(st == 'delivered' ? 'delivered' : 'shipped')),
             if (st == 'exception') ...[
               GlassButton(label: 'NDR message', icon: Icons.sms_failed_rounded, onTap: () => _message('ndr')),
               GradientButton(
-                label: 'Dobara bhejo (card)',
+                label: 'Send again (card)',
                 icon: Icons.replay_rounded,
                 height: 44,
                 onTap: () async {
-                  final f = await _form(context, 'Dobara delivery', const [
-                    ('when', 'Din (YYYY-MM-DD)'), ('phone', 'Naya phone (agar)'), ('address', 'Sahi pata / landmark (agar)'), ('note', 'Note'),
+                  final f = await _form(context, 'Deliver again', const [
+                    ('when', 'Din (YYYY-MM-DD)'), ('phone', 'New phone (if any)'), ('address', 'Correct address / landmark (if any)'), ('note', 'Note'),
                   ]);
                   if (f == null) return;
                   await _run(() => _call(widget.app, 'POST', '$_base/ndr', body: {'action': 'reattempt', ...f}));
                 },
               ),
-              GlassButton(label: 'Wapas mangwao (RTO card)', icon: Icons.undo_rounded, color: C.bad,
+              GlassButton(label: 'Call it back (RTO card)', icon: Icons.undo_rounded, color: C.bad,
                   onTap: _busy ? null : () => _run(() => _call(widget.app, 'POST', '$_base/ndr', body: {'action': 'rto'}))),
             ],
             if (st == 'booked') GlassButton(label: 'Cancel (card)', icon: Icons.cancel_rounded, color: C.bad, onTap: _busy ? null : () => _run(() => _call(widget.app, 'POST', '$_base/cancel'))),
@@ -693,7 +693,7 @@ class _CourierParcelPageState extends State<CourierParcelPage> {
               GlassButton(label: 'Return label', icon: Icons.assignment_return_rounded,
                   onTap: _busy ? null : () => _run(() => _call(widget.app, 'POST', '/api/courier/returns', body: {'ref': _s(p['number'])}))),
             if (['delivered', 'cancelled', 'rto'].contains(st))
-              GlassButton(label: 'Graahak ki jaankari mitao', icon: Icons.delete_sweep_rounded, onTap: _busy ? null : () => _run(() => _call(widget.app, 'POST', '$_base/forget'))),
+              GlassButton(label: 'Delete customer details', icon: Icons.delete_sweep_rounded, onTap: _busy ? null : () => _run(() => _call(widget.app, 'POST', '$_base/forget'))),
           ]),
           const SizedBox(height: 14),
           for (final l in _list(p['log']).reversed.take(10))
@@ -728,7 +728,7 @@ class _CourierActionCardState extends State<CourierActionCard> {
   Future<void> _decide(bool yes) async {
     var reason = '';
     if (!yes) {
-      final f = await _form(context, 'Kyon roka?', const [('reason', 'Wajah (aapke liye)')]);
+      final f = await _form(context, 'Why stopped?', const [('reason', 'Reason (for you)')]);
       if (f == null) return;
       reason = f['reason'] ?? '';
     }
@@ -768,16 +768,16 @@ class _CourierActionCardState extends State<CourierActionCard> {
           Icon(icon, color: C.accent),
           const SizedBox(width: 8),
           Expanded(child: Text(_s(b['title']).isEmpty ? '${_s(c['number'])} · ${_s(b['parcel_number'])}' : _s(b['title']), style: const TextStyle(fontWeight: FontWeight.w800))),
-          Pill(switch (st) { 'waiting' => 'Aapki haan baaki', 'done' => 'Ho gaya', 'rejected' => 'Roka', 'stale' => 'Purana', 'failed' => 'Nahi hua', _ => st }),
+          Pill(switch (st) { 'waiting' => 'Your yes pending', 'done' => 'Done', 'rejected' => 'Roka', 'stale' => 'Purana', 'failed' => 'Not done', _ => st }),
         ]),
         const SizedBox(height: 6),
         if (_s(b['courier']).isNotEmpty || b['rate'] != null)
           Row(children: [
             Expanded(child: Text('${_s(b['courier'])}${b['days'] != null ? ' · ~${_s(b['days'])} din' : ''}')),
-            Text(b['rate'] == null ? 'rate courier batayega' : _rs(b['rate']), style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+            Text(b['rate'] == null ? 'the courier will tell the rate' : _rs(b['rate']), style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
           ]),
-        if (_s(b['to']).isNotEmpty) Text('Kahan: ${_s(b['to'])}', style: const TextStyle(fontSize: 12.5)),
-        if (_s(b['from']).isNotEmpty) Text('Kahan se: ${_s(b['from'])}', style: const TextStyle(fontSize: 12.5)),
+        if (_s(b['to']).isNotEmpty) Text('Where: ${_s(b['to'])}', style: const TextStyle(fontSize: 12.5)),
+        if (_s(b['from']).isNotEmpty) Text('From: ${_s(b['from'])}', style: const TextStyle(fontSize: 12.5)),
         if (b['payment'] == 'cod') Text('COD ${_rs(b['cod_amount'])} · ${_s(b['chargeable_kg'])} kg', style: const TextStyle(fontSize: 12.5, color: C.warn)),
         if (b['payment'] == 'prepaid') Text('Prepaid · ${_s(b['chargeable_kg'])} kg', style: const TextStyle(fontSize: 12.5)),
         if (_s(b['reason']).isNotEmpty) Text('Wajah: ${_s(b['reason'])}', style: const TextStyle(fontSize: 12.5)),
@@ -787,7 +787,7 @@ class _CourierActionCardState extends State<CourierActionCard> {
             if (_s(_m(b['fix'])['address']).isNotEmpty) 'pata: ${_s(_m(b['fix'])['address'])}',
             if (_s(_m(b['fix'])['note']).isNotEmpty) _s(_m(b['fix'])['note']),
           ].join(' · '), style: const TextStyle(fontSize: 12.5, color: C.muted)),
-        if (b['by'] == 'customer') const Text('Graahak ne WhatsApp par bataya', style: TextStyle(fontSize: 11.5, color: C.faint)),
+        if (b['by'] == 'customer') const Text('The customer told us on WhatsApp', style: TextStyle(fontSize: 11.5, color: C.faint)),
         for (final w in (b['warnings'] as List?) ?? const []) Text('⚠ $w', style: const TextStyle(fontSize: 12, color: C.warn)),
         if (_s(b['say']).isNotEmpty) Text(_s(b['say']), style: const TextStyle(fontSize: 11.5, color: C.faint)),
         const SizedBox(height: 8),
@@ -795,14 +795,14 @@ class _CourierActionCardState extends State<CourierActionCard> {
           Row(children: [
             Expanded(
               child: GradientButton(
-                label: switch (kind) { 'ndr' => 'Haan, courier ko bolo', 'cancel' => 'Haan, cancel karo', 'reverse' => 'Haan, pickup book karo', _ => 'Haan, book karo' },
+                label: switch (kind) { 'ndr' => 'Yes, tell the courier', 'cancel' => 'Yes, cancel', 'reverse' => 'Yes, book the pickup', _ => 'Yes, book it' },
                 icon: c['money'] == true ? Icons.fingerprint_rounded : Icons.check_rounded,
                 height: 46,
                 onTap: _busy ? null : () => _decide(true),
               ),
             ),
             const SizedBox(width: 8),
-            GlassButton(label: 'Nahi', color: C.bad, onTap: _busy ? null : () => _decide(false)),
+            GlassButton(label: 'No', color: C.bad, onTap: _busy ? null : () => _decide(false)),
           ]),
         if (st == 'failed' && _s(res['error']).isNotEmpty) Text('Courier: ${_s(res['error'])}', style: const TextStyle(fontSize: 12.5, color: C.bad)),
         if (st == 'done' && _s(res['awb']).isNotEmpty) Text('AWB ${_s(res['awb'])}', style: const TextStyle(fontSize: 12.5, color: C.ok)),
@@ -833,7 +833,7 @@ class CourierParcelCard extends StatelessWidget {
           ]),
           if (_s(p['awb']).isNotEmpty) Text('${_s(p['carrier'])} · AWB ${_s(p['awb'])}', style: const TextStyle(fontSize: 12.5)),
           if (_s(p['raw']).isNotEmpty) Text('Courier: ${_s(p['raw'])}', style: const TextStyle(fontSize: 12.5, color: C.muted)),
-          if (st == 'exception') Text('Delivery nahi hui: ${_s(_m(p['ndr'])['label'])} · graahak ke liye message taiyaar', style: const TextStyle(fontSize: 12, color: C.bad)),
+          if (st == 'exception') Text('Not delivered: ${_s(_m(p['ndr'])['label'])} · message for the customer is ready', style: const TextStyle(fontSize: 12, color: C.bad)),
           for (final b in ((p['blocking'] as List?) ?? const []).take(2)) Text('⛔ $b', style: const TextStyle(fontSize: 12, color: C.warn)),
         ]),
       ),

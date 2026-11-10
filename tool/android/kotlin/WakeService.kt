@@ -39,7 +39,7 @@ class WakeService : Service() {
         fun start(ctx: Context) {
             ctx.getSharedPreferences("santosh_native", Context.MODE_PRIVATE).edit().putBoolean("wake_on", true).apply()
             val i = Intent(ctx, WakeService::class.java)
-            if (!FgStart.launch(ctx, i, microphone = true)) status = "Hoola app ek baar kholiye, phir 'Hey Santosh' chalu hoga"
+            if (!FgStart.launch(ctx, i, microphone = true)) status = "Open the Hoola app once, then 'Hey Santosh' will start"
         }
 
         fun stop(ctx: Context) {
@@ -76,12 +76,12 @@ class WakeService : Service() {
         val pauseOrResume = intent?.action == ACTION_PAUSE || intent?.action == ACTION_RESUME
         if (pauseOrResume && !running) { stopSelf(); return START_NOT_STICKY }
         if (!running) try {        // already foreground: a pause / resume must not ask Android again (it may refuse)
-            val n = note("“Hey Santosh” sun raha hai", "Mic sirf wake word ke liye, phone par hi. Band karne ke liye Hoola app kholiye.")
+            val n = note("“Hey Santosh” is listening", "The mic is used only for the wake word, on this phone only. Open the Hoola app to turn it off.")
             if (Build.VERSION.SDK_INT >= 30) startForeground(NOTE_ID, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE)
             else startForeground(NOTE_ID, n)
         } catch (e: Throwable) {
             // Android 14+: a microphone service can only start while the app is on screen
-            status = "Hoola app ek baar kholiye, phir 'Hey Santosh' chalu hoga"
+            status = "Open the Hoola app once, then 'Hey Santosh' will start"
             running = false
             stopSelf()
             return START_NOT_STICKY
@@ -91,7 +91,7 @@ class WakeService : Service() {
             pause()
             main.removeCallbacks(fallbackResume)
             main.postDelayed(fallbackResume, 30 * 60_000L)   // safety: a forgotten call never mutes it for good
-            status = "Call chal rahi hai"
+            status = "A call is in progress"
         } else if (intent?.action == ACTION_RESUME) {
             main.removeCallbacks(fallbackResume)
             listen()
@@ -136,7 +136,7 @@ class WakeService : Service() {
             val t = threshold.coerceIn(0.2f, 0.95f)
             main.post { build(bytes, t) }
         } catch (e: Exception) {
-            status = "Wake model nahi mila: ${e.message ?: e.javaClass.simpleName}"
+            status = "Wake model not found: ${e.message ?: e.javaClass.simpleName}"
             main.post { stopSelf() }
         }
     }
@@ -159,14 +159,14 @@ class WakeService : Service() {
             engine = WakeEngine(applicationContext, model, threshold) { _ -> main.post { onWake() } }
             listen()
         } catch (e: Exception) {
-            status = "Wake word chalu nahi hua: ${e.message}"
+            status = "Could not start the wake word: ${e.message}"
             stopSelf()
         }
     }
 
     private fun listen() {
         val e = engine ?: return
-        status = if (e.start()) "Sun raha hai: “Hey Santosh”" else e.lastError
+        status = if (e.start()) "Listening: “Hey Santosh”" else e.lastError
     }
 
     private fun pause() {
@@ -192,8 +192,8 @@ class WakeService : Service() {
         val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         val b = builder(CH_HEARD)
             .setSmallIcon(R.drawable.ic_stat_santosh)
-            .setContentTitle("Haan ji, boliye…")
-            .setContentText("Hoola sun raha hai")
+            .setContentTitle("Yes, go ahead…")
+            .setContentText("Hoola is listening")
             .setCategory(Notification.CATEGORY_CALL)
             .setFullScreenIntent(pi, true)
             .setContentIntent(pi)
@@ -228,7 +228,7 @@ class WakeService : Service() {
             description = "Shows that Hoola is listening for “Hey Santosh” on this phone"
             setShowBadge(false)
         })
-        m.createNotificationChannel(NotificationChannel(CH_HEARD, "Hoola ne suna", NotificationManager.IMPORTANCE_HIGH).apply {
+        m.createNotificationChannel(NotificationChannel(CH_HEARD, "Hoola heard you", NotificationManager.IMPORTANCE_HIGH).apply {
             description = "Opens Hoola when you say “Hey Santosh”"
             setSound(null, null)
         })

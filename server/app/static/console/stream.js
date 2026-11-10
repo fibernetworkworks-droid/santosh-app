@@ -76,7 +76,8 @@ class Pacer {
       // 244 words a second (1.2 s), and even a properly streamed one at 165. Claude lands at roughly 40-80.
       // 20 ms a word, and the catch-up only once more than 80 words are waiting, capped at 2 extra a frame:
       // 300 words take 3.8 s instead of 1.2, while a 30-word reply is unchanged (0.5 s).
-      const n = Math.max(1, Math.floor((now - this.t) / 20) + Math.min(2, Math.floor(this.queue.length / 80)));
+      // v0.716 her pick "Calm": 34 ms a word (~29 words a second) - the reply reads like someone writing it.
+      const n = Math.max(1, Math.floor((now - this.t) / 34) + Math.min(2, Math.floor(this.queue.length / 80)));
       this.t = now;
       this.shown += this.queue.splice(0, n).join('');
       const fin = this.finalText !== null && !this.queue.length;

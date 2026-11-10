@@ -20,11 +20,11 @@ List<String> _ls(dynamic v) => v is List ? v.map((e) => '$e').toList() : <String
 String _s(dynamic v) => v == null ? '' : '$v';
 
 const _state = {
-  'waiting': 'Aapke Haan ka intezaar',
-  'approved': 'Haan ho chuki',
-  'built': 'Ban gaya',
-  'failed': 'Bana, par dikkat hai',
-  'changed': 'Banne ke baad badla hai',
+  'waiting': 'Waiting for your yes',
+  'approved': 'Approved',
+  'built': 'Built',
+  'failed': 'Built, but has a problem',
+  'changed': 'Changed after building',
 };
 
 class _Dim extends StatelessWidget {
@@ -83,11 +83,11 @@ class _AppNakshaPanelState extends State<AppNakshaPanel> {
       Row(children: [
         const Icon(Icons.account_tree_outlined, color: C.muted, size: 20),
         const SizedBox(width: 6),
-        Expanded(child: Text('App ka naksha', style: display(15))),
-        if (mods.isNotEmpty) _Dim('$built/${mods.length} bane'),
+        Expanded(child: Text('App blueprint', style: display(15))),
+        if (mods.isNotEmpty) _Dim('$built/${mods.length} built'),
       ]),
-      const _Dim('Aapki ek line se poori app ka naksha - kaun use karega, kya rakha jayega, kya hoga. Aap HAR MODULE '
-          'par alag se Haan kehti hain; jis par Haan nahi, wo banta hi nahi.'),
+      const _Dim('A blueprint of the whole app from your one line - who will use it, what will be kept, what will happen. You say Yes SEPARATELY to EVERY MODULE;'
+          'a module with no Yes is never built.'),
       if (_s(_v['one_line']).isNotEmpty)
         Padding(padding: const EdgeInsets.only(top: 4), child: Text(_s(_v['one_line']), style: const TextStyle(fontWeight: FontWeight.w600))),
       const SizedBox(height: 8),
@@ -96,7 +96,7 @@ class _AppNakshaPanelState extends State<AppNakshaPanel> {
         decoration: InputDecoration(
           isDense: true,
           border: const OutlineInputBorder(),
-          hintText: mods.isEmpty ? 'kirana dukaan ki app, ghar pe delivery' : 'badlav: riders ko bhi app chahiye',
+          hintText: mods.isEmpty ? 'a grocery shop app, home delivery' : 'change: riders need an app too',
         ),
       ),
       const SizedBox(height: 6),
@@ -104,13 +104,13 @@ class _AppNakshaPanelState extends State<AppNakshaPanel> {
         onPressed: _busy || _words.text.trim().isEmpty
             ? null
             : () => _do(mods.isEmpty ? 'plan' : 'revise', {'words': _words.text.trim()},
-                mods.isEmpty ? 'Naksha bana rahi hoon…' : 'Badal rahi hoon…'),
-        child: Text(mods.isEmpty ? 'Naksha banao' : 'Naksha badlo'),
+                mods.isEmpty ? 'Making the blueprint…' : 'Changing…'),
+        child: Text(mods.isEmpty ? 'Make blueprint' : 'Change blueprint'),
       ),
       if (qs.isNotEmpty) ...[
         const SizedBox(height: 10),
-        Text('Pehle ek baat', style: display(14)),
-        const _Dim('Sirf wahi sawaal jinke jawab se build badalta hai.'),
+        Text('One thing first', style: display(14)),
+        const _Dim('Only the questions whose answers change the build.'),
         for (final q in qs) Padding(padding: const EdgeInsets.only(top: 4), child: _Dim('• ${_s(q['ask'])}')),
       ],
       const SizedBox(height: 10),
@@ -125,19 +125,19 @@ class _AppNakshaPanelState extends State<AppNakshaPanel> {
                 _Dim(_state[_s(m['state'])] ?? _s(m['state'])),
               ]),
               if (_s(m['why']).isNotEmpty) _Dim(_s(m['why'])),
-              if (_ls(m['needs']).isNotEmpty) _Dim('Pehle chahiye: ${_ls(m['needs']).join(', ')}'),
-              if (_ls(m['setup']).isNotEmpty) _Dim('Aapse chahiye hoga: ${_ls(m['setup']).join('; ')}'),
+              if (_ls(m['needs']).isNotEmpty) _Dim('Needed first: ${_ls(m['needs']).join(', ')}'),
+              if (_ls(m['setup']).isNotEmpty) _Dim('Needed from you: ${_ls(m['setup']).join('; ')}'),
               if (_s(m['said']).isNotEmpty) _Dim(_s(m['said'])),
               const SizedBox(height: 4),
               Wrap(spacing: 8, children: [
                 if (m['state'] == 'waiting' || m['state'] == 'changed')
                   FilledButton(
                       onPressed: _busy ? null : () => _do('approve', {'module': _s(m['key']), 'hash': _s(_v['hash'])}, ''),
-                      child: const Text('Haan, yeh banao')),
+                      child: const Text('Yes, build this')),
                 if (m['state'] == 'approved' || m['state'] == 'failed')
                   FilledButton(
-                      onPressed: _busy ? null : () => _do('build', {'module': _s(m['key'])}, 'Bana rahi hoon…'),
-                      child: const Text('Ab banao')),
+                      onPressed: _busy ? null : () => _do('build', {'module': _s(m['key'])}, 'Building…'),
+                      child: const Text('Build now')),
               ]),
             ]),
           ),
@@ -145,7 +145,7 @@ class _AppNakshaPanelState extends State<AppNakshaPanel> {
       if (_out.isNotEmpty) _Dim(_out),
       if (_l(_v['changelog']).isNotEmpty) ...[
         const SizedBox(height: 8),
-        Text('Kya kya hua', style: display(14)),
+        Text('What happened', style: display(14)),
         for (final c in _l(_v['changelog']).take(6)) _Dim('• ${_s(c['said'])}'),
       ],
     ]);

@@ -56,11 +56,11 @@ class _ScreenLinkScreenState extends State<ScreenLinkScreen> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (c) => AlertDialog(
-        title: const Text('Saare link band karein?'),
-        content: const Text('Jin screens / browsers par purana link khula hai, wahan board ruk jayega. Is phone ke liye naya link apne aap banega.'),
+        title: const Text('Close all links?'),
+        content: const Text('The board will stop on the screens / browsers where the old link is open. A new link will be made for this phone automatically.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Rehne do')),
-          FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('Band karo')),
+          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('Close')),
         ],
       ),
     );
@@ -69,7 +69,7 @@ class _ScreenLinkScreenState extends State<ScreenLinkScreen> {
     try {
       await widget.app.screenRevoke();
       await _load(sync: true);
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Purane link band. Naya link taiyaar.')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Old links closed. New link ready.')));
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
     } finally {
@@ -108,14 +108,14 @@ class _ScreenLinkScreenState extends State<ScreenLinkScreen> {
             Icon(connected ? Icons.connected_tv_rounded : Icons.tv_off_rounded, size: 36, color: connected ? C.ok : C.faint),
             const SizedBox(width: 12),
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(connected ? 'Screen judi hai: ${_info['name'] ?? 'Screen'}' : 'Abhi koi screen nahi judi',
+              Text(connected ? 'Screen linked: ${_info['name'] ?? 'Screen'}' : 'No screen linked yet',
                   style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
               Text(
                   connected
                       ? (showing
-                          ? '${widget.app.aName} ka live board wahan dikh raha hai${_info['width'] != null ? ' (${_info['width']}x${_info['height']})' : ''}.'
-                          : on ? 'Board khul raha hai...' : 'Board band hai: neeche switch on kijiye.')
-                      : 'HDMI cable ya wireless display se screen jodte hi board apne aap dikhega.',
+                          ? '${widget.app.aName}\'s live board is showing there${_info['width'] != null ? ' (${_info['width']}x${_info['height']})' : ''}.'
+                          : on ? 'Board is opening...' : 'Board is off: turn the switch on below.')
+                      : 'The board will show by itself once you connect a screen by HDMI cable or wireless display.',
                   style: const TextStyle(color: C.muted, fontSize: 13)),
             ])),
           ]),
@@ -127,36 +127,36 @@ class _ScreenLinkScreenState extends State<ScreenLinkScreen> {
             SwitchListTile(
               value: on,
               onChanged: (v) => _set(on: v),
-              title: const Text('Judi screen par board dikhao'),
-              subtitle: const Text('Off = screen par phone ka mirror hi dikhega'),
+              title: const Text('Show the board on the linked screen'),
+              subtitle: const Text('Off = the screen will just mirror the phone'),
             ),
             SwitchListTile(
               value: _info['awake'] != false,
               onChanged: (v) => _set(awake: v),
-              title: const Text('Board chalte waqt phone ki screen on rakho'),
-              subtitle: const Text('Phone lock hone par Android board rok deta hai; isliye on rakhna behtar hai'),
+              title: const Text('Keep the phone screen on while the board runs'),
+              subtitle: const Text('Android stops the board when the phone locks; so keeping it on is better'),
             ),
           ]),
         ),
         const SizedBox(height: 12),
         Glass(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Text('Screen kaise jodein', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+            const Text('How to link a screen', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
             const SizedBox(height: 10),
-            _step('1', 'Cable (sabse pakka)', 'USB-C to HDMI adapter se mini screen / TV jodiye. Phone mein "DisplayPort over USB-C" hona chahiye (Samsung S / Tab, kai flagship). Kai budget phones mein nahi hota.'),
-            _step('2', 'Wireless display', 'Phone ka Cast / Screen Cast / Smart View kholkar screen chuniye. Jo screens Miracast leti hain unpar board dikhega; kuch phones sirf mirror karte hain.'),
-            _step('3', 'Koi bhi browser (bina taar)', 'Tablet, laptop, purana phone ya smart-TV ka browser: neeche ka link wahan kholiye. Same live board dikhega.'),
-            const Text('Board sirf dekhne ke liye hai. Haan, payment, OTP sab sirf is phone par.', style: TextStyle(color: C.warn, fontSize: 13)),
+            _step('1', 'Cable (most reliable)', 'Connect a mini screen / TV with a USB-C to HDMI adapter. The phone needs "DisplayPort over USB-C" (Samsung S / Tab, many flagships). Many budget phones do not have it.'),
+            _step('2', 'Wireless display', 'Open the phone\'s Cast / Screen Cast / Smart View and choose a screen. The board shows on screens that support Miracast; some phones only mirror.'),
+            _step('3', 'Any browser (wireless)', 'Tablet, laptop, old phone or a smart-TV browser: open the link below there. The same live board shows.'),
+            const Text('The board is view-only. Approvals, payments and OTPs are only on this phone.', style: TextStyle(color: C.warn, fontSize: 13)),
           ]),
         ),
         const SizedBox(height: 12),
         Glass(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Text('Browser ke liye link', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+            const Text('Link for browser', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
             const SizedBox(height: 6),
-            SelectableText(url.isEmpty ? 'Link ban raha hai...' : url, style: const TextStyle(color: C.muted, fontSize: 12)),
+            SelectableText(url.isEmpty ? 'Making the link...' : url, style: const TextStyle(color: C.muted, fontSize: 12)),
             const SizedBox(height: 4),
-            const Text('Link 30 din chalta hai. Jisko link milega woh board dekh sakta hai, isliye sirf apni screens par kholiye.',
+            const Text('The link works for 30 days. Anyone who gets the link can see the board, so open it only on your own screens.',
                 style: TextStyle(color: C.faint, fontSize: 12)),
             const SizedBox(height: 8),
             Wrap(spacing: 8, runSpacing: 8, children: [
@@ -165,7 +165,7 @@ class _ScreenLinkScreenState extends State<ScreenLinkScreen> {
                     ? null
                     : () {
                         Clipboard.setData(ClipboardData(text: url));
-                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Link copy ho gaya')));
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Link copied')));
                       },
                 icon: const Icon(Icons.copy_rounded, size: 18),
                 label: const Text('Copy'),
@@ -173,12 +173,12 @@ class _ScreenLinkScreenState extends State<ScreenLinkScreen> {
               OutlinedButton.icon(
                 onPressed: url.isEmpty ? null : () => Native.openExternal(url: url),
                 icon: const Icon(Icons.open_in_browser_rounded, size: 18),
-                label: const Text('Is phone par dekho'),
+                label: const Text('View on this phone'),
               ),
               OutlinedButton.icon(
                 onPressed: _busy ? null : _revoke,
                 icon: const Icon(Icons.link_off_rounded, size: 18),
-                label: const Text('Saare link band karo'),
+                label: const Text('Close all links'),
               ),
             ]),
           ]),
@@ -186,11 +186,11 @@ class _ScreenLinkScreenState extends State<ScreenLinkScreen> {
         const SizedBox(height: 12),
         Glass(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Text('Board par abhi', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+            const Text('On the board now', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
             const SizedBox(height: 6),
             if (b == null) const Text('...', style: TextStyle(color: C.muted)),
             if (b != null && now.isEmpty && cards.isEmpty)
-              const Text('Abhi khaali. Kuch kaam boliye, wahan live dikhega.', style: TextStyle(color: C.muted)),
+              const Text('Empty for now. Ask for some work and it will show live there.', style: TextStyle(color: C.muted)),
             for (final s in now)
               ListTile(dense: true, contentPadding: EdgeInsets.zero, leading: const Icon(Icons.autorenew_rounded, color: C.accent),
                   title: Text('${(s as Map)['label'] ?? ''}')),

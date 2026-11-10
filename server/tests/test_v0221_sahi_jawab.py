@@ -56,7 +56,7 @@ def test_slim_guide_is_much_smaller_and_indexes_the_rest():
     assert "GST work" in t[t.index("More skills you have"):]          # named in the index, guide not loaded
     assert "GST work (she" not in t
     # core rules always ride
-    for pin in ("How you answer", "WHERE a website opens", "LAMBA KAAM", "Internet:", "Your memory"):
+    for pin in ("How you answer", "WHERE a website opens", "LONG JOBS", "Internet:", "Your memory"):
         assert pin in t, pin
 
 
@@ -129,4 +129,4 @@ def test_prompt_slim_off_sends_the_full_guide(bz, monkeypatch):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.715.0"
+    assert APP_VERSION == "0.749.0"

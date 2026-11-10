@@ -6,8 +6,8 @@ import 'glass.dart';
 /// v0.158 one plain line above the chat while Hoola works: what is running, where, and Rokiye (stop).
 /// (It replaces the 3D Work Theatre, which is gone.)
 const _where = {
-  'email': 'Email', 'browser': 'Hoola ka browser', 'payment': 'Bill / Payment', 'bluetooth': 'Ghar / Bluetooth',
-  'network': 'Hoola Network', 'pc': 'Aapka PC', 'website': 'Website / App', 'work': 'Kaam',
+  'email': 'Email', 'browser': 'Hoola\'s browser', 'payment': 'Bill / Payment', 'bluetooth': 'Home / Bluetooth',
+  'network': 'Hoola Network', 'pc': 'Your PC', 'website': 'Website / App', 'work': 'Work',
 };
 const _icon = {
   'email': Icons.mail_rounded, 'browser': Icons.public_rounded, 'payment': Icons.currency_rupee_rounded,

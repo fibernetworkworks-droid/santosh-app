@@ -74,7 +74,8 @@ TOOLS = [
         "approval card and the user's words in this turn approve it in context ('haan karo', 'kar do', 'theek hai', "
         "any clear yes). Call this to approve THAT step: the job moves at once. ONLY when such a step card is really "
         "pending; if the tool says none, don't insist. NEVER for money / UPI / bank-OTP / password cards: those "
-        "approve only by tapping the card in the app; voice can never approve them - say so plainly."),
+        "approve only by tapping the card in the app; voice can never approve them - say so plainly. A bare 'yes' / 'haan' that answers the question or offer in "
+        "YOUR OWN last reply ('Want me to make a PDF report?') is NOT this tool's job: do what you offered."),
      "input_schema": {"type": "object", "properties": {
          "heard": {"type": "string", "description": "Her words that approved it (short quote)"}}}},
 ]
@@ -414,6 +415,22 @@ from .kala_tools import (  # noqa: E402  v0.681 KALA MANCH - the T5 knowledge-sk
 TOOLS.extend(KALA_TOOLS)
 TOOL_LABELS.update(KALA_LABELS)
 HANDLERS.update(KALA_HANDLERS)
+
+from .core_tools import (  # noqa: E402  Parity Phase 3 CLEAN TOOLS: web_fetch = the ONE web reader (mode fast | browser | stealth) over the readers that already exist; they stay registered, out of the core view, reachable by tool_search
+    WEBFETCH_HANDLERS, WEBFETCH_LABELS, WEBFETCH_TOOLS,
+)
+
+TOOLS.extend(WEBFETCH_TOOLS)
+TOOL_LABELS.update(WEBFETCH_LABELS)
+HANDLERS.update(WEBFETCH_HANDLERS)
+
+from .shilp_tools import (  # noqa: E402  v0.730 SHILP MANCH - the ArtCraft generation lane (their Omni API, api.storyteller.ai, BYOK): ONE door over their documented surface - video / image generation (job tokens, credits spent on her explicit ask) + job / jobs status polling + status / models (zero network), the key in the VPS .env only, reference urls behind the lane's own wall (http(s), no credentials, no private hosts), idempotency minted here, 402 PAYMENT final
+    SHILP_HANDLERS, SHILP_LABELS, SHILP_TOOLS,
+)
+
+TOOLS.extend(SHILP_TOOLS)
+TOOL_LABELS.update(SHILP_LABELS)
+HANDLERS.update(SHILP_HANDLERS)
 
 from .scrape_tools import SCRAPE_HANDLERS, SCRAPE_LABELS, SCRAPE_TOOLS  # noqa: E402  v0.474 Scrapling
 
@@ -1525,8 +1542,11 @@ TOOL_LANES: dict[str, str] = {
                    "document -> doc_studio.",
     "hoola_make": "LANE: a file made FOR a connected person and sent on the Hoola Network. A file for her own chat -> "
                   "doc_studio.",
-    "artifact_make": "LANE: an interactive page (calculator, tracker, quiz) she opens and shares. A document to read "
-                     "or print -> doc_studio.",
+    "artifact_make": "LANE: the POLISH builder for a studio-quality page she asked to be polished. A page you can write "
+                     "yourself -> artifact. A document to read or print -> doc_studio.",
+    "artifact": "LANE: a page / dashboard / chart / tracker / diagram you write yourself, edited in place with "
+                "update old_str -> new_str. A polished / studio-quality page she asked for -> artifact_make; a "
+                "document to read or print -> doc_studio.",
     "notebook_make": "LANE: a quick item made FROM her notebook's sources (summary, FAQ, timeline). A designed file -> "
                      "doc_studio.",
     # memory: what to search

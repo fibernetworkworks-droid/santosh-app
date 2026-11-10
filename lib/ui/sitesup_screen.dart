@@ -25,7 +25,7 @@ void _snack(BuildContext c, String t) {
 }
 
 Future<Map<String, String>?> _form(BuildContext context, String title, List<(String, String)> fields,
-    {String ok = 'Aage', Map<String, String> initial = const {}}) async {
+    {String ok = 'Continue', Map<String, String> initial = const {}}) async {
   final c = {for (final (k, _) in fields) k: TextEditingController(text: initial[k] ?? '')};
   final res = await showDialog<bool>(
     context: context,
@@ -41,7 +41,7 @@ Future<Map<String, String>?> _form(BuildContext context, String title, List<(Str
         ]),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Rehne do')),
+        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Cancel')),
         TextButton(onPressed: () => Navigator.pop(d, true), child: Text(ok)),
       ],
     ),
@@ -119,16 +119,16 @@ class _SitesupScreenState extends State<SitesupScreen> {
       .then((_) => _load());
 
   Future<void> _addSite() async {
-    final f = await _form(context, 'Nayi site', const [
-      ('name', 'Site ka naam'),
+    final f = await _form(context, 'New site', const [
+      ('name', 'Site name'),
       ('client', 'Client'),
-      ('client_phone', 'Client ka mobile'),
-      ('address', 'Pata'),
+      ('client_phone', 'Client mobile'),
+      ('address', 'Address'),
       ('engineer', 'Engineer / consultant'),
-      ('start', 'Shuru (DD-MM-YYYY)'),
-      ('finish', 'Khatam (DD-MM-YYYY)'),
-      ('theka_project', 'Theka kaam se jodna ho to uska naam'),
-    ], ok: 'Jodo');
+      ('start', 'Start (DD-MM-YYYY)'),
+      ('finish', 'End (DD-MM-YYYY)'),
+      ('theka_project', 'Contractor job name, if linking to one'),
+    ], ok: 'Add');
     if (f == null || (f['name'] ?? '').isEmpty || !mounted) return;
     final r = await _call(context, widget.app, 'POST', '/api/sitesup/sites', f);
     await _load();
@@ -142,7 +142,7 @@ class _SitesupScreenState extends State<SitesupScreen> {
     return ListView(padding: const EdgeInsets.all(14), children: [
       Glass(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Text('Aaj site par', style: TextStyle(fontWeight: FontWeight.w800)),
+        const Text('On site today', style: TextStyle(fontWeight: FontWeight.w800)),
         const SizedBox(height: 6),
         for (final p in _strs(day['parts'])) Padding(padding: const EdgeInsets.only(bottom: 4), child: Text('• $p', style: const TextStyle(fontSize: 13))),
       ])),
@@ -167,7 +167,7 @@ class _SitesupScreenState extends State<SitesupScreen> {
   Widget _sites() {
     final list = _list(_d!['sites']);
     return ListView(padding: const EdgeInsets.all(14), children: [
-      GradientButton(label: 'Nayi site', icon: Icons.add_rounded, height: 46, onTap: _addSite),
+      GradientButton(label: 'New site', icon: Icons.add_rounded, height: 46, onTap: _addSite),
       const SizedBox(height: 12),
       for (final s in list)
         Padding(
@@ -182,7 +182,7 @@ class _SitesupScreenState extends State<SitesupScreen> {
                 Expanded(
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text(_s(s['name']), style: const TextStyle(fontWeight: FontWeight.w800)),
-                  Text([_s(s['client']), if (_m(s['theka']).isNotEmpty) 'Theka: ${_s(_m(s['theka'])['name'])}'].where((x) => x.isNotEmpty).join(' · '),
+                  Text([_s(s['client']), if (_m(s['theka']).isNotEmpty) 'Contract: ${_s(_m(s['theka'])['name'])}'].where((x) => x.isNotEmpty).join(' · '),
                       style: const TextStyle(fontSize: 12.5, color: C.muted)),
                 ])),
                 Pill(_s(s['status']), fg: _s(s['status']) == 'stopped' ? C.bad : C.ok),
@@ -190,7 +190,7 @@ class _SitesupScreenState extends State<SitesupScreen> {
             ),
           ),
         ),
-      if (list.isEmpty) const Text('Abhi koi site nahi.', style: TextStyle(color: C.muted)),
+      if (list.isEmpty) const Text('No sites yet.', style: TextStyle(color: C.muted)),
     ]);
   }
 
@@ -202,30 +202,30 @@ class _SitesupScreenState extends State<SitesupScreen> {
       Glass(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text('Firm: ${_s(st['firm'])}  ·  Supervisor: ${_s(st['supervisor'])}'),
-        Text('Subah ka note ${_s(st['morning_time'])} · DPR yaad ${_s(st['dpr_time'])}'),
-        Text('Din ${_s(st['day_hours'])} ghante (uske baad overtime, dugni dar) · hafta ${_s(st['week_hours'])} ghante'),
-        Text('Look-ahead ${_s(st['lookahead_days'])} din · plan se ${_s(st['behind_pct'])}% peeche = deri'),
-        Text('Rate (sirf thekedar bill jaanch): ${rates.isEmpty ? 'nahi' : rates.entries.map((e) => '${e.key} ₹${e.value}').join(', ')}'),
-        Text('Cube niyam (QA plan): ${cl.isEmpty ? 'IS 456 Table 11 default' : cl.entries.map((e) => '${e.key} ${e.value}').join(', ')}'),
+        Text('Morning note ${_s(st['morning_time'])} · DPR reminder ${_s(st['dpr_time'])}'),
+        Text('Day ${_s(st['day_hours'])} hours (then overtime, double rate) · week ${_s(st['week_hours'])} hours'),
+        Text('Look-ahead ${_s(st['lookahead_days'])} days · ${_s(st['behind_pct'])}% behind plan = delay'),
+        Text('Rate (only for checking contractor bills): ${rates.isEmpty ? 'none' : rates.entries.map((e) => '${e.key} ₹${e.value}').join(', ')}'),
+        Text('Cube rules (QA plan): ${cl.isEmpty ? 'IS 456 Table 11 default' : cl.entries.map((e) => '${e.key} ${e.value}').join(', ')}'),
         for (final r in _strs(st['rules'])) Text('• $r', style: const TextStyle(fontSize: 12.5)),
       ])),
       const SizedBox(height: 10),
       GlassButton(
-          label: 'Badlo',
+          label: 'Edit',
           icon: Icons.tune_rounded,
           height: 44,
           onTap: () async {
-            final f = await _form(context, 'Site ke niyam', const [
+            final f = await _form(context, 'Site rules', const [
               ('firm', 'Firm'),
               ('supervisor', 'Supervisor'),
-              ('morning_time', 'Subah note (HH:MM)'),
-              ('dpr_time', 'DPR yaad (HH:MM)'),
-              ('day_hours', 'Din ke ghante'),
+              ('morning_time', 'Morning note (HH:MM)'),
+              ('dpr_time', 'DPR reminder (HH:MM)'),
+              ('day_hours', 'Hours in a day'),
               ('lookahead_days', 'Look-ahead din'),
-              ('mason', 'Mistri rate / din (₹)'),
+              ('mason', 'Mason rate / day (₹)'),
               ('helper', 'Beldar rate / din (₹)'),
-              ('individual_minus', 'Cube: ek cube fck se kitna kam chalega'),
-              ('mean_plus', 'Cube: 4 ka mean fck se kitna upar'),
+              ('individual_minus', 'Cube: how much below fck one cube may fall'),
+              ('mean_plus', 'Cube: how far the mean of 4 must be above fck'),
             ]);
             if (f == null || !mounted) return;
             final body = <String, dynamic>{
@@ -244,7 +244,7 @@ class _SitesupScreenState extends State<SitesupScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final tabs = const ['Aaj', 'Sites', 'Niyam'];
+    final tabs = const ['Today', 'Sites', 'Rules'];
     return Scaffold(
       backgroundColor: C.bgTop,
       appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Site supervisor'), actions: [
@@ -307,25 +307,25 @@ class _SitesupSitePageState extends State<SitesupSitePage> {
   }
 
   Future<void> _progress([Map<String, dynamic>? a]) async {
-    final f = await _form(context, a == null ? 'Aaj ka kaam' : _s(a['name']), const [
-      ('activity', 'Activity (naam / code)'),
-      ('qty', 'Kitna hua (jaisa naapa)'),
-      ('note', 'Kahan / note'),
-      ('delay', 'Ruka / dheema to wajah'),
-    ], initial: {'activity': a == null ? '' : _s(a['code'])}, ok: 'Likho');
+    final f = await _form(context, a == null ? 'Today\'s work' : _s(a['name']), const [
+      ('activity', 'Activity (name / code)'),
+      ('qty', 'How much done (as measured)'),
+      ('note', 'Where / note'),
+      ('delay', 'Stopped / slow, then the reason'),
+    ], initial: {'activity': a == null ? '' : _s(a['code'])}, ok: 'Write');
     if (f == null) return;
     await _do('POST', '$_p/progress', {...f, if (f['qty'] != null) 'qty': _n(f['qty'])});
   }
 
   Future<void> _plan() async {
     final f = await _form(context, 'Activity plan', const [
-      ('name', 'Activity (jaise RCC slab 1st floor)'),
+      ('name', 'Activity (e.g. RCC slab 1st floor)'),
       ('unit', 'Unit (cum / sqm / rmt / nos)'),
-      ('qty', 'Kul maatra'),
-      ('start', 'Shuru (DD-MM-YYYY)'),
-      ('finish', 'Khatam (DD-MM-YYYY)'),
-      ('contractor', 'Thekedar'),
-    ], ok: 'Jodo');
+      ('qty', 'Total quantity'),
+      ('start', 'Start (DD-MM-YYYY)'),
+      ('finish', 'End (DD-MM-YYYY)'),
+      ('contractor', 'Contractor'),
+    ], ok: 'Add');
     if (f == null) return;
     await _do('POST', '$_p/plan', {
       'items': [
@@ -335,41 +335,41 @@ class _SitesupSitePageState extends State<SitesupSitePage> {
   }
 
   Future<void> _hazri() async {
-    final f = await _form(context, 'Hazri', const [
-      ('rows', 'Har line: thekedar kaam log ghante\n(Ramesh beldar 12 8)'),
-      ('day', 'Tareekh (khaali = aaj)'),
-    ], ok: 'Likho');
+    final f = await _form(context, 'Attendance', const [
+      ('rows', 'One per line: contractor work log hours\n(Ramesh beldar 12 8)'),
+      ('day', 'Date (empty = today)'),
+    ], ok: 'Write');
     if (f == null) return;
     final rows = _gangs(f['rows'] ?? '');
     if (rows.isEmpty) {
-      if (mounted) _snack(context, 'Line samajh nahi aayi: "Ramesh beldar 12 8"');
+      if (mounted) _snack(context, 'Could not understand the line: "Ramesh beldar 12 8"');
       return;
     }
     await _do('POST', '$_p/attendance', {'rows': rows, if (f['day'] != null) 'day': f['day']});
   }
 
   Future<void> _material(String kind) async {
-    final f = await _form(context, kind == 'in' ? 'Maal aaya' : 'Maal laga', [
-      ('item', 'Maal (cement / ret / sariya...)'),
-      ('qty', 'Maatra'),
+    final f = await _form(context, kind == 'in' ? 'Material received' : 'Material used', [
+      ('item', 'Material (cement / sand / steel...)'),
+      ('qty', 'Quantity'),
       ('unit', 'Unit (bag / brass / t / nos)'),
       if (kind == 'in') ('supplier', 'Supplier'),
       if (kind == 'in') ('challan', 'Challan no'),
-      if (kind == 'in') ('vehicle', 'Gaadi no'),
-    ], ok: 'Likho');
+      if (kind == 'in') ('vehicle', 'Vehicle no.'),
+    ], ok: 'Write');
     if (f == null) return;
     await _do('POST', '$_p/material', {...f, 'kind': kind, if (f['qty'] != null) 'qty': _n(f['qty'])});
   }
 
   Future<void> _indent() async {
-    final f = await _form(context, 'Indent (aapki haan ke liye card)', const [
-      ('items', 'Har line: maal maatra unit (cement 100 bag)'),
-      ('need_by', 'Kab tak chahiye'),
+    final f = await _form(context, 'Indent (card for your approval)', const [
+      ('items', 'One per line: material qty unit (cement 100 bag)'),
+      ('need_by', 'Needed by'),
       ('supplier', 'Supplier'),
       ('supplier_phone', 'Supplier mobile'),
-      ('amount', 'Rakam (quote se, pata ho to)'),
-      ('reason', 'Kis kaam ke liye'),
-    ], ok: 'Card banao');
+      ('amount', 'Amount (from the quote, if known)'),
+      ('reason', 'What it is for'),
+    ], ok: 'Make card');
     if (f == null) return;
     await _do('POST', '$_p/indents', {...f, 'items': _items(f['items'] ?? ''), if (f['amount'] != null) 'amount': _n(f['amount'])});
   }
@@ -395,19 +395,19 @@ class _SitesupSitePageState extends State<SitesupSitePage> {
           title: Text(_s(_m(kinds[kind])['label'])),
           content: SingleChildScrollView(
             child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-              TextField(controller: area, decoration: const InputDecoration(labelText: 'Jagah (jaise 2nd floor slab edge)')),
+              TextField(controller: area, decoration: const InputDecoration(labelText: 'Place (e.g. 2nd floor slab edge)')),
               for (final i in items) ...[
                 const SizedBox(height: 8),
                 Text('${_s(i['q'])}${i['critical'] == true ? ' ⚠' : ''}', style: const TextStyle(fontSize: 13)),
                 Wrap(spacing: 6, children: [
-                  ChoiceChip(label: const Text('Haan'), selected: answers[_s(i['id'])] == true, onSelected: (_) => set(() => answers[_s(i['id'])] = true)),
-                  ChoiceChip(label: const Text('Nahi'), selected: answers[_s(i['id'])] == false, onSelected: (_) => set(() => answers[_s(i['id'])] = false)),
+                  ChoiceChip(label: const Text('Yes'), selected: answers[_s(i['id'])] == true, onSelected: (_) => set(() => answers[_s(i['id'])] = true)),
+                  ChoiceChip(label: const Text('No'), selected: answers[_s(i['id'])] == false, onSelected: (_) => set(() => answers[_s(i['id'])] = false)),
                 ]),
               ],
             ]),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Rehne do')),
+            TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Cancel')),
             TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Save')),
           ],
         ),
@@ -422,14 +422,14 @@ class _SitesupSitePageState extends State<SitesupSitePage> {
   }
 
   Future<void> _incident() async {
-    final f = await _form(context, 'Ghatna / near-miss', const [
-      ('text', 'Kya hua, kahan'),
+    final f = await _form(context, 'Incident / near-miss', const [
+      ('text', 'What happened, where'),
       ('kind', 'near_miss / first_aid / injury / death / dangerous'),
-      ('at', 'Kab (YYYY-MM-DD HH:MM, khaali = abhi)'),
-      ('people', 'Kitne log'),
-      ('names', 'Naam / thekedar'),
-      ('action', 'Kya kiya (first aid / hospital)'),
-    ], ok: 'Register mein');
+      ('at', 'When (YYYY-MM-DD HH:MM, empty = now)'),
+      ('people', 'How many people'),
+      ('names', 'Name / contractor'),
+      ('action', 'What was done (first aid / hospital)'),
+    ], ok: 'In the register');
     if (f == null) return;
     final r = await _do('POST', '$_p/incident', {...f, if (f['people'] != null) 'people': _n(f['people'])});
     final form = _s(r?['form_xi']);
@@ -437,15 +437,15 @@ class _SitesupSitePageState extends State<SitesupSitePage> {
       await showDialog<void>(
           context: context,
           builder: (d) => AlertDialog(
-              title: const Text('Form XI ka draft'),
+              title: const Text('Draft of Form XI'),
               content: SingleChildScrollView(child: SelectableText(form)),
-              actions: [TextButton(onPressed: () => Navigator.pop(d), child: const Text('Theek'))]));
+              actions: [TextButton(onPressed: () => Navigator.pop(d), child: const Text('OK'))]));
     }
   }
 
   Future<void> _pour() async {
     final f = await _form(context, 'Pour card', const [
-      ('element', 'Hissa (1st floor slab / column C3...)'),
+      ('element', 'Part (1st floor slab / column C3...)'),
       ('grade', 'Grade (M20 / M25)'),
       ('volume', 'Concrete (cum)'),
       ('cement', 'Cement (OPC 53 / PPC)'),
@@ -460,9 +460,9 @@ class _SitesupSitePageState extends State<SitesupSitePage> {
     final f = await _form(context, '${_s(p['number'])} cube result', const [
       ('age', 'Din (7 / 28 / 56)'),
       ('sample', 'Sample no (1, 2...)'),
-      ('results', 'N/mm2, comma se (18.2, 17.9, 18.6)'),
+      ('results', 'N/mm2, comma separated (18.2, 17.9, 18.6)'),
       ('lab', 'Lab'),
-    ], ok: 'Jaancho');
+    ], ok: 'Check');
     if (f == null) return;
     final res = (f['results'] ?? '').split(RegExp(r'[,\s]+')).map((x) => num.tryParse(x)).whereType<num>().toList();
     await _do('POST', '/api/sitesup/pours/${_s(p['id'])}/cubes',
@@ -470,7 +470,7 @@ class _SitesupSitePageState extends State<SitesupSitePage> {
   }
 
   Future<void> _snag() async {
-    final f = await _form(context, 'Snag (kami)', const [('text', 'Kya kami'), ('location', 'Kahan'), ('contractor', 'Kis thekedar ka')], ok: 'Jodo');
+    final f = await _form(context, 'Snag (defect)', const [('text', 'What is lacking'), ('location', 'Where'), ('contractor', 'Whose contractor')], ok: 'Add');
     if (f == null) return;
     await _do('POST', '$_p/snags', f);
   }
@@ -501,11 +501,11 @@ class _SitesupSitePageState extends State<SitesupSitePage> {
   }
 
   Future<void> _dpr() async {
-    final f = await _form(context, 'Aaj ki DPR', const [
-      ('weather', 'Mausam'),
-      ('tomorrow', 'Kal ka kaam'),
-      ('remarks', 'Aur kuch'),
-    ], ok: 'Banao (aapki haan ke baad hi jayegi)');
+    final f = await _form(context, 'Today\'s DPR', const [
+      ('weather', 'Weather'),
+      ('tomorrow', 'Tomorrow\'s work'),
+      ('remarks', 'Anything else'),
+    ], ok: 'Make (it goes only after your approval)');
     if (f == null) return;
     final r = await _do('POST', '$_p/dpr', f);
     final rep = _m(r?['report']);
@@ -547,11 +547,11 @@ class _SitesupSitePageState extends State<SitesupSitePage> {
               child: ListView(padding: const EdgeInsets.all(14), children: [
                 if (_busy) const LinearProgressIndicator(),
                 if (_m(v['stop']).isNotEmpty) SitesupStopCard(app: widget.app, data: {'stop': _m(v['stop'])}, onDone: _load),
-                Text([_s(v['client']), _s(v['address']), if (_m(v['theka']).isNotEmpty) 'Theka: ${_s(_m(v['theka'])['name'])}']
+                Text([_s(v['client']), _s(v['address']), if (_m(v['theka']).isNotEmpty) 'Contract: ${_s(_m(v['theka'])['name'])}']
                     .where((x) => x.isNotEmpty)
                     .join(' · '), style: const TextStyle(color: C.muted, fontSize: 12.5)),
                 const SizedBox(height: 10),
-                _sec('Kaam: plan vs hua', [
+                _sec('Work: plan vs done', [
                   for (final a in _list(v['activities']))
                     InkWell(
                       onTap: () => _progress(a),
@@ -559,39 +559,39 @@ class _SitesupSitePageState extends State<SitesupSitePage> {
                         padding: const EdgeInsets.symmetric(vertical: 4),
                         child: Row(children: [
                           Expanded(
-                              child: Text('${_s(a['code'])} ${_s(a['name'])}${_strs(a['reasons']).isNotEmpty ? '\n  wajah: ${_strs(a['reasons']).first}' : ''}',
+                              child: Text('${_s(a['code'])} ${_s(a['name'])}${_strs(a['reasons']).isNotEmpty ? '\n  reason: ${_strs(a['reasons']).first}' : ''}',
                                   style: const TextStyle(fontSize: 13))),
                           Pill('${_s(a['done_pct'])}%${a['planned_pct'] != null ? ' / ${_s(a['planned_pct'])}%' : ''}', fg: _stateColor(_s(a['state']))),
                         ]),
                       ),
                     ),
                 ], actions: [
-                  GlassButton(label: 'Aaj ka kaam', height: 38, onTap: () => _progress()),
-                  GlassButton(label: 'Activity jodo', height: 38, onTap: _plan),
+                  GlassButton(label: 'Today\'s work', height: 38, onTap: () => _progress()),
+                  GlassButton(label: 'Add activity', height: 38, onTap: _plan),
                   if (_s(v['theka_project_id']).isNotEmpty) GlassButton(label: 'BOQ se', height: 38, onTap: () => _do('POST', '$_p/plan', {'from_boq': true})),
                 ]),
-                _sec('Hazri (aaj ${_s(_m(v['labour_today'])['total'])} log)', [
+                _sec('Attendance (${_s(_m(v['labour_today'])['total'])} people today)', [
                   for (final c in _list(_m(v['labour_today'])['contractors']))
                     Text('${_s(c['contractor'])}: ${_list(c['trades']).map((t) => '${t['label']} ${t['people']}').join(', ')}'
-                        '${(c['ot_hours'] ?? 0) > 0 ? ' · OT ${c['ot_hours']} ghante' : ''}', style: const TextStyle(fontSize: 13)),
+                        '${(c['ot_hours'] ?? 0) > 0 ? ' · OT ${c['ot_hours']} hours' : ''}', style: const TextStyle(fontSize: 13)),
                 ], actions: [
-                  GlassButton(label: 'Hazri lagao', height: 38, onTap: _hazri),
+                  GlassButton(label: 'Mark attendance', height: 38, onTap: _hazri),
                   GlassButton(label: 'Register Excel', height: 38, onTap: () => _do('POST', '$_p/register_file', {})),
                 ]),
-                _sec('Material site par', [
+                _sec('Material at site', [
                   for (final b in _list(v['material']))
-                    Text('${_s(b['item'])}: ${_s(b['balance'])} ${_s(b['unit'])} (aaya ${_s(b['received'])}, laga ${_s(b['used'])})',
+                    Text('${_s(b['item'])}: ${_s(b['balance'])} ${_s(b['unit'])} (received ${_s(b['received'])}, used ${_s(b['used'])})',
                         style: TextStyle(fontSize: 13, color: (b['balance'] ?? 0) <= 0 ? C.bad : C.ink)),
                 ], actions: [
-                  GlassButton(label: 'Aaya', height: 38, onTap: () => _material('in')),
-                  GlassButton(label: 'Laga', height: 38, onTap: () => _material('used')),
+                  GlassButton(label: 'Arrived', height: 38, onTap: () => _material('in')),
+                  GlassButton(label: 'Used', height: 38, onTap: () => _material('used')),
                   GlassButton(label: 'Indent', height: 38, onTap: _indent),
                 ]),
                 _sec('Safety', [
                   for (final x in _list(v['safety']).take(8))
                     Text(
                         switch (_s(x['type'])) {
-                          'incident' => '⚠ ${_s(x['number'])} ${_s(x['label'])}${_s(x['reported']).isEmpty && _s(x['due_at']).isNotEmpty ? ' · notice baaki' : ''}',
+                          'incident' => '⚠ ${_s(x['number'])} ${_s(x['label'])}${_s(x['reported']).isEmpty && _s(x['due_at']).isNotEmpty ? ' · notice pending' : ''}',
                           'check' => '☑ ${_s(x['label'])} ${_s(x['score'])}%',
                           _ => '🗣 ${_s(x['topic'])} · ${_s(x['people'])} log',
                         },
@@ -601,17 +601,17 @@ class _SitesupSitePageState extends State<SitesupSitePage> {
                       label: 'Toolbox talk',
                       height: 38,
                       onTap: () async {
-                        final f = await _form(context, 'Toolbox talk', const [('topic', 'Vishay (khaali = aaj ka)'), ('people', 'Kitne log')]);
+                        final f = await _form(context, 'Toolbox talk', const [('topic', 'Topic (empty = today\'s)'), ('people', 'How many people')]);
                         if (f == null) return;
                         await _do('POST', '$_p/toolbox', {...f, 'people': _n(f['people'])});
                       }),
                   GlassButton(label: 'Checklist', height: 38, onTap: _checklist),
-                  GlassButton(label: 'Ghatna', height: 38, color: C.bad, onTap: _incident),
+                  GlassButton(label: 'Incident', height: 38, color: C.bad, onTap: _incident),
                   GlassButton(
-                      label: 'Kaam roko?',
+                      label: 'Stop the work?',
                       height: 38,
                       onTap: () async {
-                        final f = await _form(context, 'Stop-work card', const [('area', 'Kahan'), ('reason', 'Kyon')]);
+                        final f = await _form(context, 'Stop-work card', const [('area', 'Where'), ('reason', 'Why')]);
                         if (f == null) return;
                         await _do('POST', '$_p/stops', f);
                       }),
@@ -623,7 +623,7 @@ class _SitesupSitePageState extends State<SitesupSitePage> {
                       child: Padding(
                         padding: const EdgeInsets.symmetric(vertical: 3),
                         child: Text(
-                            '${_s(p['number'])} ${_s(p['element'])} ${_s(p['grade'])} ${_s(p['volume'])} cum · curing ${_s(p['curing_until'])} tak\n  '
+                            '${_s(p['number'])} ${_s(p['element'])} ${_s(p['grade'])} ${_s(p['volume'])} cum · curing until ${_s(p['curing_until'])}\n'
                             '${_list(p['cubes']).where((c) => _s(c['verdict']).isNotEmpty).map((c) => '${c['age']}d S${c['sample']}: ${c['verdict']}').join(', ')}',
                             style: const TextStyle(fontSize: 13)),
                       ),
@@ -633,26 +633,26 @@ class _SitesupSitePageState extends State<SitesupSitePage> {
                       Expanded(child: Text('${_s(n['number'])} ${_s(n['location'])}: ${_s(n['text'])}', style: const TextStyle(fontSize: 13))),
                       IconButton(icon: const Icon(Icons.add_a_photo_rounded, size: 18), onPressed: () => _photo(_s(n['id']), 'snag')),
                       if (_s(n['status']) == 'open')
-                        TextButton(onPressed: () => _photo(_s(n['id']), 'fixed'), child: const Text('Theek (photo)'))
+                        TextButton(onPressed: () => _photo(_s(n['id']), 'fixed'), child: const Text('Fixed (photo)'))
                       else
-                        TextButton(onPressed: () => _do('POST', '/api/sitesup/snags/${_s(n['id'])}/status', {'status': 'verified'}), child: const Text('Dekh liya')),
+                        TextButton(onPressed: () => _do('POST', '/api/sitesup/snags/${_s(n['id'])}/status', {'status': 'verified'}), child: const Text('Seen')),
                     ]),
                 ], actions: [
                   GlassButton(label: 'Pour card', height: 38, onTap: _pour),
                   GlassButton(label: 'Snag', height: 38, onTap: _snag),
                   GlassButton(label: 'Site photo', height: 38, onTap: () => _photo('', 'progress')),
                 ]),
-                _sec('Client ko report', [
+                _sec('Report to client', [
                   for (final r in _list(v['reports']).take(6))
                     Text('${_s(r['number'])} ${_s(r['day'])} · ${_s(r['status'])}', style: const TextStyle(fontSize: 13)),
-                  const Text('Client ko kuch bhi aapki haan ke baad hi jata hai.', style: TextStyle(fontSize: 11.5, color: C.faint)),
+                  const Text('Nothing goes to the client without your approval.', style: TextStyle(fontSize: 11.5, color: C.faint)),
                 ], actions: [
-                  GradientButton(label: 'Aaj ki DPR', height: 42, onTap: _dpr),
+                  GradientButton(label: 'Today\'s DPR', height: 42, onTap: _dpr),
                   GlassButton(
-                      label: 'Client ko message',
+                      label: 'Message to client',
                       height: 42,
                       onTap: () async {
-                        final f = await _form(context, 'Client ke liye message', const [('text', 'Message')], ok: 'Card banao');
+                        final f = await _form(context, 'Message for the client', const [('text', 'Message')], ok: 'Make card');
                         if (f == null) return;
                         await _do('POST', '$_p/message', f);
                       }),
@@ -666,13 +666,13 @@ class _SitesupSitePageState extends State<SitesupSitePage> {
 Future<Map<String, dynamic>> _fingerprint(Santosh app, String path) async {
   final ch = _m(await app.api!.call('POST', path));
   final show = _m(ch['show']);
-  final r = await Native.approveKeySign(_s(ch['message']), _s(show['title']).isEmpty ? 'Indent ki haan' : _s(show['title']),
+  final r = await Native.approveKeySign(_s(ch['message']), _s(show['title']).isEmpty ? 'Indent approval' : _s(show['title']),
       [show['amount'], show['payee']].where((x) => x != null && '$x'.isNotEmpty).join(' · '));
   if (r['signature'] == null) {
     throw ApiException(428, switch (_s(r['error'])) {
-      'cancelled' => 'Fingerprint nahi diya, isliye haan nahi hui.',
-      'key_invalidated' => 'Phone mein naya fingerprint juda hai: Profile > Fingerprint se haan mein phone phir se jodiye.',
-      _ => 'Fingerprint se haan nahi ho payi (${_s(r['error'])}).',
+      'cancelled' => 'No fingerprint given, so it was not approved.',
+      'key_invalidated' => 'A new fingerprint was added to the phone: re-link this phone in Profile > Fingerprint approval.',
+      _ => 'Could not approve with fingerprint (${_s(r['error'])}).',
     });
   }
   return {'challenge_id': ch['challenge_id'], 'device_id': r['device_id'], 'signature': r['signature']};
@@ -696,7 +696,7 @@ class _SitesupIndentCardState extends State<SitesupIndentCard> {
     final id = _s(_x['id']);
     String reason = '';
     if (!yes) {
-      final f = await _form(context, 'Kyon nahi', const [('reason', 'Wajah')]);
+      final f = await _form(context, 'Why not', const [('reason', 'Reason')]);
       if (f == null) return;
       reason = f['reason'] ?? '';
     }
@@ -735,25 +735,25 @@ class _SitesupIndentCardState extends State<SitesupIndentCard> {
           const Icon(Icons.inventory_2_rounded, color: C.accent),
           const SizedBox(width: 8),
           Expanded(child: Text('${_s(x['number'])} · ${_s(x['site'])}', style: const TextStyle(fontWeight: FontWeight.w800))),
-          Pill(switch (st) { 'waiting' => 'aapki haan?', 'approved' => 'maana', 'ordered' => 'order gaya', 'received' => 'aa gaya', 'rejected' => 'nahi', _ => st },
+          Pill(switch (st) { 'waiting' => 'your approval?', 'approved' => 'accepted', 'ordered' => 'order sent', 'received' => 'arrived', 'rejected' => 'no', _ => st },
               fg: st == 'waiting' ? C.accent : (st == 'rejected' ? C.bad : C.ok)),
         ]),
         for (final i in _list(x['items'])) Text('• ${_s(i['item'])} ${_s(i['qty'])} ${_s(i['unit'])}', style: const TextStyle(fontSize: 13)),
-        Text('Rakam: ${_s(x['amount_text'])}${_s(x['need_by']).isNotEmpty ? ' · chahiye ${_s(x['need_by'])} tak' : ''}', style: const TextStyle(fontSize: 12.5)),
+        Text('Amount: ${_s(x['amount_text'])}${_s(x['need_by']).isNotEmpty ? ' · needed by ${_s(x['need_by'])}' : ''}', style: const TextStyle(fontSize: 12.5)),
         if (_s(x['supplier']).isNotEmpty) Text('Supplier: ${_s(x['supplier'])}', style: const TextStyle(fontSize: 12.5, color: C.muted)),
         for (final c in _strs(x['checks'])) Text('⚠ $c', style: const TextStyle(fontSize: 12.5, color: C.warn)),
         const SizedBox(height: 8),
         if (st == 'waiting')
           Row(children: [
-            Expanded(child: GradientButton(label: 'Haan, mangwao', height: 42, onTap: _busy ? null : () => _decide(true))),
+            Expanded(child: GradientButton(label: 'Yes, order it', height: 42, onTap: _busy ? null : () => _decide(true))),
             const SizedBox(width: 8),
-            GlassButton(label: 'Nahi', height: 42, onTap: _busy ? null : () => _decide(false)),
+            GlassButton(label: 'No', height: 42, onTap: _busy ? null : () => _decide(false)),
           ]),
         if (st == 'approved')
           Wrap(spacing: 8, children: [
-            if (_s(x['wa']).isNotEmpty) GlassButton(label: 'Supplier ko WhatsApp', icon: Icons.chat_rounded, height: 40, onTap: () => Native.openExternal(url: _s(x['wa']))),
+            if (_s(x['wa']).isNotEmpty) GlassButton(label: 'WhatsApp the supplier', icon: Icons.chat_rounded, height: 40, onTap: () => Native.openExternal(url: _s(x['wa']))),
             GlassButton(
-                label: 'Order bhej diya',
+                label: 'Order sent',
                 height: 40,
                 onTap: () async {
                   final m = await _call(context, widget.app, 'POST', '/api/sitesup/indents/${_s(x['id'])}/ordered');
@@ -761,7 +761,7 @@ class _SitesupIndentCardState extends State<SitesupIndentCard> {
                   widget.onDone?.call();
                 }),
           ]),
-        const Text('Hoola khud order / payment nahi karta.', style: TextStyle(fontSize: 11, color: C.faint)),
+        const Text('Hoola never places an order or payment itself.', style: TextStyle(fontSize: 11, color: C.faint)),
       ]),
     );
   }
@@ -790,9 +790,9 @@ class _SitesupStopCardState extends State<SitesupStopCard> {
       if (notice.isNotEmpty) {
         await showDialog<void>(
             context: context,
-            builder: (d) => AlertDialog(title: const Text('Thekedar ko notice'), content: SelectableText(notice), actions: [
+            builder: (d) => AlertDialog(title: const Text('Notice to contractor'), content: SelectableText(notice), actions: [
                   TextButton(onPressed: () => Native.openExternal(url: 'https://wa.me/?text=${Uri.encodeComponent(notice)}'), child: const Text('WhatsApp')),
-                  TextButton(onPressed: () => Navigator.pop(d), child: const Text('Theek')),
+                  TextButton(onPressed: () => Navigator.pop(d), child: const Text('OK')),
                 ]));
       }
     }
@@ -810,28 +810,28 @@ class _SitesupStopCardState extends State<SitesupStopCard> {
         Row(children: [
           const Icon(Icons.front_hand_rounded, color: C.bad),
           const SizedBox(width: 8),
-          Expanded(child: Text('${_s(x['number'])} · Kaam roko: ${_s(x['area'])}', style: const TextStyle(fontWeight: FontWeight.w800))),
-          Pill(switch (st) { 'waiting' => 'aapki haan?', 'active' => 'laagu', 'lifted' => 'hata', 'rejected' => 'nahi roka', _ => st },
+          Expanded(child: Text('${_s(x['number'])} · Stop work: ${_s(x['area'])}', style: const TextStyle(fontWeight: FontWeight.w800))),
+          Pill(switch (st) { 'waiting' => 'your approval?', 'active' => 'in force', 'lifted' => 'lifted', 'rejected' => 'not stopped', _ => st },
               fg: st == 'lifted' || st == 'rejected' ? C.ok : C.bad),
         ]),
         Text(_s(x['site']), style: const TextStyle(fontSize: 12.5, color: C.muted)),
         Text(_s(x['reason']), style: const TextStyle(fontSize: 13)),
-        if (st == 'waiting') const Text('Jaan ka khatra ho to pehle logon ko door hataiye.', style: TextStyle(fontSize: 12, color: C.warn)),
+        if (st == 'waiting') const Text('If there is danger to life, move people away first.', style: TextStyle(fontSize: 12, color: C.warn)),
         const SizedBox(height: 8),
         if (st == 'waiting')
           Row(children: [
-            Expanded(child: GradientButton(label: 'Haan, kaam roko', height: 42, onTap: _busy ? null : () => _go('/api/sitesup/stops/${_s(x['id'])}/decide', {'yes': true, 'hash': _s(x['hash'])}))),
+            Expanded(child: GradientButton(label: 'Yes, stop the work', height: 42, onTap: _busy ? null : () => _go('/api/sitesup/stops/${_s(x['id'])}/decide', {'yes': true, 'hash': _s(x['hash'])}))),
             const SizedBox(width: 8),
-            GlassButton(label: 'Nahi', height: 42, onTap: _busy ? null : () => _go('/api/sitesup/stops/${_s(x['id'])}/decide', {'yes': false, 'hash': _s(x['hash'])})),
+            GlassButton(label: 'No', height: 42, onTap: _busy ? null : () => _go('/api/sitesup/stops/${_s(x['id'])}/decide', {'yes': false, 'hash': _s(x['hash'])})),
           ]),
         if (st == 'active')
           GlassButton(
-              label: 'Theek ho gaya, kaam shuru',
+              label: 'Fixed, restart work',
               height: 42,
               onTap: _busy
                   ? null
                   : () async {
-                      final f = await _form(context, 'Kya theek kiya', const [('note', 'Jaise: guard rail lag gayi, checklist 100%')]);
+                      final f = await _form(context, 'What was fixed', const [('note', 'e.g. guard rail fitted, checklist 100%')]);
                       if (f == null) return;
                       await _go('/api/sitesup/stops/${_s(x['id'])}/lift', {'note': f['note'] ?? ''});
                     }),
@@ -874,26 +874,26 @@ class _SitesupReportCardState extends State<SitesupReportCard> {
           Icon(_s(x['kind']) == 'dpr' ? Icons.summarize_rounded : Icons.message_rounded, color: C.accent),
           const SizedBox(width: 8),
           Expanded(child: Text('${_s(x['number'])} · ${_s(x['site'])}', style: const TextStyle(fontWeight: FontWeight.w800))),
-          Pill(switch (st) { 'waiting' => 'aapki haan?', 'approved' => 'maana', 'sent' => 'bheja', 'rejected' => 'nahi', 'stale' => 'purana', _ => st },
+          Pill(switch (st) { 'waiting' => 'your approval?', 'approved' => 'accepted', 'sent' => 'sent', 'rejected' => 'no', 'stale' => 'stale', _ => st },
               fg: st == 'waiting' ? C.accent : (st == 'rejected' || st == 'stale' ? C.faint : C.ok)),
         ]),
         const SizedBox(height: 4),
         Text(_s(x['text']), style: const TextStyle(fontSize: 12.5, height: 1.35)),
-        if (_s(x['to_phone']).isEmpty) const Text('Client ka phone nahi: site mein jodiye.', style: TextStyle(fontSize: 12, color: C.warn)),
+        if (_s(x['to_phone']).isEmpty) const Text('No client phone: add it in the site.', style: TextStyle(fontSize: 12, color: C.warn)),
         const SizedBox(height: 8),
         if (st == 'waiting')
           Wrap(spacing: 8, runSpacing: 8, children: [
-            GradientButton(label: 'Haan, bhejne do', height: 42, onTap: _busy ? null : () => _post('/api/sitesup/reports/$id/decide', {'yes': true, 'hash': _s(x['hash'])})),
+            GradientButton(label: 'Yes, let it go', height: 42, onTap: _busy ? null : () => _post('/api/sitesup/reports/$id/decide', {'yes': true, 'hash': _s(x['hash'])})),
             GlassButton(
                 label: 'Business WhatsApp se',
                 height: 42,
                 onTap: _busy ? null : () => _post('/api/sitesup/reports/$id/decide', {'yes': true, 'hash': _s(x['hash']), 'via': 'business'})),
-            GlassButton(label: 'Nahi', height: 42, onTap: _busy ? null : () => _post('/api/sitesup/reports/$id/decide', {'yes': false, 'hash': _s(x['hash'])})),
+            GlassButton(label: 'No', height: 42, onTap: _busy ? null : () => _post('/api/sitesup/reports/$id/decide', {'yes': false, 'hash': _s(x['hash'])})),
           ]),
         if (st == 'approved')
           Wrap(spacing: 8, children: [
-            if (_s(x['wa']).isNotEmpty) GlassButton(label: 'WhatsApp kholo', icon: Icons.chat_rounded, height: 40, onTap: () => Native.openExternal(url: _s(x['wa']))),
-            GlassButton(label: 'Maine bhej diya', height: 40, onTap: _busy ? null : () => _post('/api/sitesup/reports/$id/sent')),
+            if (_s(x['wa']).isNotEmpty) GlassButton(label: 'Open WhatsApp', icon: Icons.chat_rounded, height: 40, onTap: () => Native.openExternal(url: _s(x['wa']))),
+            GlassButton(label: 'I have sent it', height: 40, onTap: _busy ? null : () => _post('/api/sitesup/reports/$id/sent')),
           ]),
       ]),
     );
@@ -936,13 +936,13 @@ class SitesupDayCard extends StatelessWidget {
           const Row(children: [
             Icon(Icons.wb_sunny_rounded, color: C.accent),
             SizedBox(width: 8),
-            Text('Aaj ka site note', style: TextStyle(fontWeight: FontWeight.w800)),
+            Text('Today\'s site note', style: TextStyle(fontWeight: FontWeight.w800)),
           ]),
           const SizedBox(height: 6),
           for (final p in _strs(data['parts'])) Text('• $p', style: const TextStyle(fontSize: 13, height: 1.35)),
           if (_strs(data['parts']).isEmpty) Text(_s(data['say']), style: const TextStyle(fontSize: 13.5)),
           const SizedBox(height: 8),
-          GlassButton(label: 'Site kholo', height: 38, onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => SitesupScreen(app: app)))),
+          GlassButton(label: 'Open site', height: 38, onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => SitesupScreen(app: app)))),
         ]),
       );
 }

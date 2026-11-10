@@ -93,7 +93,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return S.recommend(t, _s(a.get("client")), a.get("options") or [], _s(a.get("note")), conv)
         if action == "approve":
             if not _owner(ctx):
-                raise ToolError("Graahak ko salah bhejne ki haan sirf owner.")
+                raise ToolError("Only the owner can say yes to sending advice to a customer.")
             return S.approve_advice(t, _s(a.get("advice_id")), bool(a.get("approve", True)))
         if action == "claim":
             return S.start_claim(t, _s(a.get("policy")), _s(a.get("kind")) or "other", _s(a.get("event_on")), a.get("amount"), by)
@@ -104,12 +104,12 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return S.book_file(t, conv)
         if action == "settings":
             if not _owner(ctx):
-                raise ToolError("Sirf owner.")
+                raise ToolError("Owner only.")
             keys = ("agent_name", "agent_code", "remind_days", "morning_time")
             return S.save_settings(t, **{k: a[k] for k in keys if k in a})
     except (S.InsError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("action galat")
+    raise ToolError("invalid action")
 
 
 def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
@@ -143,7 +143,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
             return S.settings(t)
     except (S.InsError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("what galat")
+    raise ToolError("invalid what")
 
 
 async def bima(ctx: Ctx, action, **a: Any):

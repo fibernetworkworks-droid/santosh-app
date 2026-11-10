@@ -56,18 +56,18 @@ class _IdLockerScreenState extends State<IdLockerScreen> {
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setD) => AlertDialog(
           backgroundColor: C.bgBottom,
-          title: const Text('Naya number'),
+          title: const Text('New number'),
           content: SingleChildScrollView(
             child: Column(mainAxisSize: MainAxisSize.min, children: [
               DropdownButtonFormField<String>(
                 value: person,
-                decoration: const InputDecoration(labelText: 'Kiska'),
-                items: [for (final e in (_people.isEmpty ? {'self': 'Aap'} : _people).entries) DropdownMenuItem(value: e.key, child: Text(e.value))],
+                decoration: const InputDecoration(labelText: 'Whose'),
+                items: [for (final e in (_people.isEmpty ? {'self': 'You'} : _people).entries) DropdownMenuItem(value: e.key, child: Text(e.value))],
                 onChanged: (v) => setD(() => person = v ?? 'self'),
               ),
               DropdownButtonFormField<String>(
                 value: kind,
-                decoration: const InputDecoration(labelText: 'Kaunsa'),
+                decoration: const InputDecoration(labelText: 'Which'),
                 items: [for (final e in (_kinds.isEmpty ? {'aadhaar': 'Aadhaar'} : _kinds).entries) DropdownMenuItem(value: e.key, child: Text(e.value))],
                 onChanged: (v) => setD(() => kind = v ?? 'aadhaar'),
               ),
@@ -76,14 +76,14 @@ class _IdLockerScreenState extends State<IdLockerScreen> {
                 textCapitalization: TextCapitalization.characters,
                 decoration: const InputDecoration(labelText: 'Number'),
               ),
-              TextField(controller: note, decoration: const InputDecoration(labelText: 'Note (zaroori nahi)')),
+              TextField(controller: note, decoration: const InputDecoration(labelText: 'Note (optional)')),
               const SizedBox(height: 8),
-              const Text('OTP, PIN, CVV, card number yahan mat daliye. Woh aap khud bharti hain.',
+              const Text('Do not put OTP, PIN, CVV or card numbers here. You enter those yourself.',
                   style: TextStyle(color: C.warn, fontSize: 11.5)),
             ]),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Rehne do')),
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
             TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Save')),
           ],
         ),
@@ -93,7 +93,7 @@ class _IdLockerScreenState extends State<IdLockerScreen> {
     try {
       await _api.idSave(kind: kind, number: num.text.trim(), person: person, note: note.text.trim());
       await _load();
-      _say('Locker mein rakh diya');
+      _say('Kept in the locker');
     } catch (e) {
       _say('$e');
     }
@@ -122,10 +122,10 @@ class _IdLockerScreenState extends State<IdLockerScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: C.bgBottom,
-        title: Text('${r['person_label']} ka ${r['kind_label']} hata dein?'),
+        title: Text('Remove ${r['person_label']}\'s ${r['kind_label']}?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Nahi')),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Hatao', style: TextStyle(color: C.bad))),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('No')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Remove', style: TextStyle(color: C.bad))),
         ],
       ),
     );
@@ -144,18 +144,18 @@ class _IdLockerScreenState extends State<IdLockerScreen> {
     final rows = _rows;
     final name = widget.app.aName;
     return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Pehchaan Locker')),
+      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('ID Locker')),
       floatingActionButton: FloatingActionButton.extended(
-          onPressed: _add, icon: const Icon(Icons.add_rounded), label: const Text('Number jodiye')),
+          onPressed: _add, icon: const Icon(Icons.add_rounded), label: const Text('Add number')),
       body: Aurora(
         child: RefreshIndicator(
           onRefresh: _load,
           child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 96), children: [
             Glass(
               child: Text(
-                  'Aadhaar, PAN, Voter ID jaise number yahan taala band (encrypted) rehte hain. $name chat mein sirf aakhri 4 ank dekhta hai. '
-                  'Form bharte waqt asli number seedha box mein bharta hai: sarkari site par turant, baaki site par aapke tap ke baad. '
-                  'Chat mein number bolengi to $name khud yahan rakh dega.',
+                  'Numbers like Aadhaar, PAN, Voter ID are kept locked (encrypted) here. In chat, $name sees only the last 4 digits.'
+                  'When filling a form, it types the real number directly into the box: at once on government sites, and on other sites after your tap.'
+                  'If you say a number in chat, $name will put it here by itself.',
                   style: const TextStyle(color: C.chip, height: 1.35, fontSize: 13)),
             ),
             const SizedBox(height: 12),
@@ -165,7 +165,7 @@ class _IdLockerScreenState extends State<IdLockerScreen> {
               const Padding(
                 padding: EdgeInsets.all(30),
                 child: Center(
-                    child: Text('Locker khaali hai. "Number jodiye" dabaiye, ya chat mein boliye: "mera aadhaar 1234 5678 9012 hai".',
+                    child: Text('The locker is empty. Press "Add number", or tell me in chat: "my aadhaar is 1234 5678 9012".',
                         textAlign: TextAlign.center, style: TextStyle(color: C.muted))),
               ),
             for (final r in rows ?? const <Map<String, dynamic>>[]) _card(r),
@@ -200,13 +200,13 @@ class _IdLockerScreenState extends State<IdLockerScreen> {
                 icon: const Icon(Icons.copy_rounded, size: 19),
                 onPressed: () {
                   Clipboard.setData(ClipboardData(text: shown));
-                  _say('Copy ho gaya');
+                  _say('Copied');
                 }),
           IconButton(
-              tooltip: shown == null ? 'Dikhao' : 'Chhupao',
+              tooltip: shown == null ? 'Show' : 'Hide',
               icon: Icon(shown == null ? Icons.visibility_rounded : Icons.visibility_off_rounded, size: 20),
               onPressed: () => _reveal(r)),
-          IconButton(tooltip: 'Hatao', icon: const Icon(Icons.delete_outline_rounded, size: 19, color: C.muted), onPressed: () => _delete(r)),
+          IconButton(tooltip: 'Remove', icon: const Icon(Icons.delete_outline_rounded, size: 19, color: C.muted), onPressed: () => _delete(r)),
         ]),
       ),
     );

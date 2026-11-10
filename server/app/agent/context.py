@@ -41,6 +41,8 @@ SQUEEZE_RESULT = 1500          # this turn's older tool results in the hard form
 
 RATIO: dict[str, float] = {}           # brain -> learned chars per token
 LIMIT_SEEN: dict[str, int] = {}        # brain -> a window a "too long" error named
+FIXED_SEEN: dict[str, int] = {}        # v0.724 brain -> tokens of the last request's system prompt + tools in view
+FIXED_GUESS_TOK = 35000                # before the first measured request (her server: ~33k+ with GLM)
 LAST: dict[str, dict[str, Any]] = {}   # conversation -> the last reading (for /api/conversations/{id}/context)
 CONV: ContextVar[str] = ContextVar("hoola_context_conv", default="")   # set around the step loop's model call only
 STATS: dict[str, int] = {"measured": 0, "full": 0, "net": 0, "net_dropped": 0, "overflow": 0, "squeezed": 0,
@@ -59,11 +61,19 @@ def full_mode(settings=None) -> bool:
 
 def limit(brain: str, settings=None) -> int:
     s = settings or _settings()
-    lim = {"glm": getattr(s, "chat_context_limit_glm", 200000),
-           "omniroute": getattr(s, "chat_context_limit_omniroute", 128000)}.get(
-        brain, getattr(s, "chat_context_limit_claude", 200000))
+    lim = {"glm": getattr(s, "chat_context_limit_glm", 1000000),
+           "omniroute": getattr(s, "chat_context_limit_omniroute", 1000000)}.get(
+        brain, getattr(s, "chat_context_limit_claude", 1000000))
     seen = LIMIT_SEEN.get(brain)
-    return max(8000, min(int(lim or 200000), seen or 10 ** 9))
+    if brain == "glm":
+        try:   # v0.739 the model's own window (OpenRouter's list) when it is smaller than the setting
+            from . import modelprofile as _mp
+            own = _mp.context()
+            if own > 0:
+                seen = min(seen or 10 ** 9, own)
+        except Exception:
+            pass
+    return max(8000, min(int(lim or 1000000), seen or 10 ** 9))
 
 
 def _share(s) -> float:
@@ -81,8 +91,13 @@ def window(brain: str, settings=None) -> int:
             from .. import glmdoor
             if glmdoor.active():
                 # v0.707 every Claude call is answered by GLM (no prompt cache): a long chat was re-sent whole on every
-                # step (165-182k chars); with GLM the chat compacts at this many tokens unless she set her own cap
-                cap = int(getattr(s, "chat_context_max_tokens_glm", 40000) or 0)
+                # step (165-182k chars); with GLM the chat compacts at this many tokens unless she set her own cap.
+                # v0.724 SAARI BAAT: that cap counted the system prompt + tool list (~33k tokens) too, leaving the
+                # CONVERSATION ~7k tokens - every real chat was shortened / dropped on every GLM turn and GLM answered
+                # half-blind. The setting is now the conversation's own room, on top of the fixed part.
+                room = int(getattr(s, "chat_context_max_tokens_glm", 0) or 0)
+                if room > 0:
+                    cap = room + FIXED_SEEN.get(brain, FIXED_GUESS_TOK)
         except Exception:
             pass
     return max(8000, min(lim, int(cap / _share(s)))) if cap > 0 else lim
@@ -190,14 +205,16 @@ def _exchanges(msgs: list[dict]) -> list[list[dict]]:
     return out
 
 
-def _short(ex: list[dict]) -> list[dict]:
+def _short(ex: list[dict], rich: bool = False) -> list[dict]:
+    """An old exchange shortened. `rich` = the exchange right before her message (v0.723): its reply is what she is
+    answering, so it keeps the longer rich form (steps + a longer reply, head AND end) when the net has to touch it."""
     from .. import yaad
     first = ex[0]
     if isinstance(first.get("content"), list):   # a merged start: its words as one plain text for compress
         words = " ".join(str(b.get("text", "")) for b in first["content"] if isinstance(b, dict)
                          and b.get("type") == "text")
         ex = [{"role": "user", "content": words}] + ex[1:]
-    return yaad.compress(ex)
+    return yaad.compress(ex, rich=rich)
 
 
 def _summary_msg(conversation_id: str) -> list[dict]:
@@ -263,6 +280,7 @@ def fit(history: list[dict], system: Any, tools: Any, brain: str, conversation_i
     `turn_start` = index where THIS turn's messages begin (never shortened)."""
     s = settings or _settings()
     fixed = size(system) + size(_in_view(tools))
+    FIXED_SEEN[brain] = tokens(brain, fixed)     # v0.724 the GLM cap is conversation room on top of this
     hist_chars = sum(size(m.get("content")) for m in history)
     est = tokens(brain, fixed + hist_chars)
     line = budget(brain, s)
@@ -288,7 +306,7 @@ def fit(history: list[dict], system: Any, tools: Any, brain: str, conversation_i
     i = 0
     while i < len(exs) and tokens(brain, total) > target:
         for j in range(i, min(i + BLOCK, len(exs))):
-            short[j] = _short(exs[j])
+            short[j] = _short(exs[j], rich=j == len(exs) - 1)
             total += size([m.get("content") for m in short[j]]) - sizes[j]
             sizes[j] = size([m.get("content") for m in short[j]])
         i += BLOCK
@@ -298,10 +316,11 @@ def fit(history: list[dict], system: Any, tools: Any, brain: str, conversation_i
     if tokens(brain, total) > target:   # even shortened it does not fit: the oldest blocks leave, the summary stays
         if not head:
             total += size([m.get("content") for m in summ])
-        while drop < len(kept) and tokens(brain, total) > target:
-            for j in range(drop, min(drop + BLOCK, len(kept))):
+        # v0.723 the exchange right before her message never leaves: her "YES" answers its question
+        while drop < len(kept) - 1 and tokens(brain, total) > target:
+            for j in range(drop, min(drop + BLOCK, len(kept) - 1)):
                 total -= sizes[j]
-            drop = min(drop + BLOCK, len(kept))
+            drop = min(drop + BLOCK, len(kept) - 1)
         STATS["net_dropped"] += 1
     out = (summ if (drop or head) else []) + _flat(kept[drop:]) + cur
     STATS["net"] += 1
@@ -320,7 +339,8 @@ def squeeze(history: list[dict], conversation_id: str = "", turn_start: int = 0)
     old, cur = history[:turn_start], history[turn_start:]
     head, old = _split_head(old)
     exs = _exchanges(old)
-    keep = [_short(ex) for ex in exs[-SQUEEZE_KEEP:]]
+    last = exs[-SQUEEZE_KEEP:]
+    keep = [_short(ex, rich=i == len(last) - 1) for i, ex in enumerate(last)]
     summ = head or (_summary_msg(conversation_id) if len(exs) > SQUEEZE_KEEP else [])
     out = summ + _flat(keep) + _trim_results(cur, SQUEEZE_RESULT)
     if conversation_id in LAST:

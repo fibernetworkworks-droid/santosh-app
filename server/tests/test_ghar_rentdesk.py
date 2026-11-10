@@ -108,7 +108,7 @@ def test_units_people_tenancy_and_ledger(rd, monkeypatch):
     pay = out["payment"]
     assert pay["receipt_no"].startswith("R/") and pay["receipt_no"].endswith("0001")
     assert pay["alloc"][0]["kind"] == "deposit" and pay["alloc"][1]["kind"] == "rent"
-    assert "Galla" in pay["hint"] and "ishaara" in pay["hint"]
+    assert "till" in pay["hint"] and "only a hint" in pay["hint"]
     assert out["message"]["status"] == "draft" and "rentdesk_receipt" in kinds(S)
     with pytest.raises(S.RentError):
         S.receive(T, t["number"], 100, actor="staff:x")                       # only she says money came
@@ -122,7 +122,7 @@ def test_units_people_tenancy_and_ledger(rd, monkeypatch):
     with pytest.raises(S.RentError):
         S.add_charge(T, t["number"], "electricity", 100, actor="staff:x")
     v = S.void_payment(T, pay["id"])
-    assert "radd" in v["say"] and S.statement(T, t["number"])["deposit_held"] == 0
+    assert "cancelled" in v["say"] and S.statement(T, t["number"])["deposit_held"] == 0
 
 
 def test_messages_only_on_her_tap(rd, monkeypatch):
@@ -183,7 +183,7 @@ def test_rent_change_notice_and_fingerprint(rd, monkeypatch):
     assert v["rent"] == 21000 and any(h["rent"] == 21000 for h in v["rent_history"]) and any(f["kind"] == "rent_revision" for f in v["files"])
     # notice: card, then letter + draft on tap; stale after a change
     n = S.notice_request(T, t["number"], "vacate", (S.today(T) + timedelta(days=10)).isoformat(), reason="khud rehna hai")
-    assert n["status"] == "needs_tap" and any("mahine ka notice" in c for c in n["approval"]["show"]["checks"])
+    assert n["status"] == "needs_tap" and any("-month notice" in c for c in n["approval"]["show"]["checks"])
     again = S.notice_request(T, t["number"], "vacate", (S.today(T) + timedelta(days=10)).isoformat(), reason="khud rehna hai")
     assert again.get("existing")
     S.tenant_notice(T, t["number"], (S.today(T) + timedelta(days=40)).isoformat())   # tenant gave notice meanwhile
@@ -258,7 +258,7 @@ def test_inspection_photos_settlement_forget(rd, monkeypatch):
     assert done["settlement"]["status"] == "paid" and S.tenancy_view(T, t["number"])["status"] == "ended"
     assert S.units(T)[0]["status"] == "vacant"
     f = S.forget(T, p["number"])
-    assert "mita di" in f["say"]
+    assert "erased" in f["say"]
     from app import idvault
     assert not any(x["person"].startswith("kirayedar") for x in idvault.list_(T))
     assert S.people(T) == [] and S.statement(T, t["number"])["paid"] > 0       # amounts kept

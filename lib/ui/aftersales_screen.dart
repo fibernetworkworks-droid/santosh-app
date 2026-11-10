@@ -59,8 +59,8 @@ Future<Map<String, String>?> _form(BuildContext context, String title, List<(Str
         ]),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Rehne do')),
-        TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Aage')),
+        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Leave it')),
+        TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Next')),
       ],
     ),
   );
@@ -133,17 +133,17 @@ class _AftersalesScreenState extends State<AftersalesScreen> {
   }
 
   Future<void> _addUnit() async {
-    final f = await _form(context, 'Nayi machine', const [
-      ('name', 'Graahak ka naam'),
-      ('phone', 'Mobile (10 ank)'),
-      ('area', 'Area / mohalla'),
+    final f = await _form(context, 'New machine', const [
+      ('name', 'Customer name'),
+      ('phone', 'Mobile (10 digits)'),
+      ('area', 'Area / locality'),
       ('pincode', 'Pincode'),
       ('ptype', 'Product (RO / AC / inverter / CCTV ...)'),
       ('brand', 'Brand'),
       ('model', 'Model'),
       ('serial', 'Serial no.'),
-      ('installed_on', 'Install ki tareekh (dd-mm-yyyy)'),
-      ('warranty_months', 'Warranty (mahine)'),
+      ('installed_on', 'Install date (dd-mm-yyyy)'),
+      ('warranty_months', 'Warranty (months)'),
     ]);
     if (f == null) return;
     await _run(() => _call(widget.app, 'POST', '/api/aftersales/units', body: {
@@ -164,12 +164,12 @@ class _AftersalesScreenState extends State<AftersalesScreen> {
   }
 
   Future<void> _addTech([Map<String, dynamic>? t]) async {
-    final f = await _form(context, t == null ? 'Naya technician' : _s(t['name']), const [
-      ('name', 'Naam'),
+    final f = await _form(context, t == null ? 'New technician' : _s(t['name']), const [
+      ('name', 'Name'),
       ('phone', 'Mobile'),
-      ('skills', 'Kaam (comma se: ro, ac, inverter, cctv...)'),
-      ('areas', 'Area / pincode (comma se; khaali = sab jagah)'),
-      ('per_day', 'Din mein kitne visit'),
+      ('skills', 'Jobs (comma separated: ro, ac, inverter, cctv...)'),
+      ('areas', 'Area / pincode (comma separated; blank = everywhere)'),
+      ('per_day', 'Visits per day'),
     ], initial: t == null
         ? null
         : {
@@ -216,7 +216,7 @@ class _AftersalesScreenState extends State<AftersalesScreen> {
             Text('${_s(v['when'])} · ${_s(_map(v['tech'])['name'])} · ${_s(u['label'])} ${_s(u['brand'])} · ${_s(c['area'])}',
                 style: const TextStyle(color: C.muted, fontSize: 12.5)),
             if (ch['status'] == 'pending' || ch['status'] == 'needs_price')
-              Text('Charge par aapki haan baaki', style: const TextStyle(color: C.warn, fontSize: 12.5)),
+              Text('Charge waiting for your yes', style: const TextStyle(color: C.warn, fontSize: 12.5)),
           ]),
         ),
       ),
@@ -228,13 +228,13 @@ class _AftersalesScreenState extends State<AftersalesScreen> {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Glass(child: Text(_s(day['say']), style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, height: 1.35))),
       const SizedBox(height: 10),
-      Text('Aaj ke visit', style: display(15)),
+      Text('Today\'s visits', style: display(15)),
       const SizedBox(height: 6),
-      if (_list(day['visits']).isEmpty) const Text('Aaj koi visit nahi.', style: TextStyle(color: C.muted)),
+      if (_list(day['visits']).isEmpty) const Text('No visits today.', style: TextStyle(color: C.muted)),
       for (final v in _list(day['visits'])) _visitTile(v),
       if (_list(_d?['drafts']).isNotEmpty) ...[
         const SizedBox(height: 10),
-        Text('Bhejne baaki (draft)', style: display(15)),
+        Text('To send (drafts)', style: display(15)),
         const SizedBox(height: 6),
         AftersalesRemindersCard(app: widget.app, data: {'messages': _d?['drafts'], 'say': '${_list(_d?['drafts']).length} draft'}),
       ],
@@ -248,7 +248,7 @@ class _AftersalesScreenState extends State<AftersalesScreen> {
       const SizedBox(height: 8),
       Wrap(spacing: 8, runSpacing: 8, children: [
         GlassButton(
-            label: 'Reminder draft banao',
+            label: 'Make reminder drafts',
             icon: Icons.notifications_active_rounded,
             onTap: _busy
                 ? null
@@ -264,7 +264,7 @@ class _AftersalesScreenState extends State<AftersalesScreen> {
                     }
                   }),
         GlassButton(
-            label: 'AMC khatam - draft',
+            label: 'AMC ended - draft',
             icon: Icons.event_repeat_rounded,
             onTap: _busy ? null : () => _run(() => _call(widget.app, 'POST', '/api/aftersales/remind', body: {'kind': 'amc'}))),
       ]),
@@ -282,7 +282,7 @@ class _AftersalesScreenState extends State<AftersalesScreen> {
                   Expanded(
                       child: Text('${_s(_map(u['customer'])['name'])} · ${_s(u['label'])} ${_s(u['brand'])}',
                           style: const TextStyle(fontWeight: FontWeight.w800))),
-                  if (u['booked'] != null) const Pill('booked') else if (u['reminded'] == true) const Pill('draft bana'),
+                  if (u['booked'] != null) const Pill('booked') else if (u['reminded'] == true) const Pill('draft made'),
                 ]),
                 Text('Due ${_s(u['next_due'])}${u['overdue'] == true ? ' (late)' : ''} · ${_s(_map(u['customer'])['area'])} ${_s(_map(u['customer'])['pincode'])}',
                     style: TextStyle(color: u['overdue'] == true ? C.bad : C.muted, fontSize: 12.5)),
@@ -302,13 +302,13 @@ class _AftersalesScreenState extends State<AftersalesScreen> {
 
   Widget _unitsTab() => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Wrap(spacing: 8, runSpacing: 8, children: [
-          GlassButton(label: 'Nayi machine', icon: Icons.add_rounded, onTap: _busy ? null : _addUnit),
-          GlassButton(label: 'Sheet se (Excel / CSV)', icon: Icons.upload_file_rounded, onTap: _busy ? null : _import),
+          GlassButton(label: 'New machine', icon: Icons.add_rounded, onTap: _busy ? null : _addUnit),
+          GlassButton(label: 'From sheet (Excel / CSV)', icon: Icons.upload_file_rounded, onTap: _busy ? null : _import),
         ]),
         const SizedBox(height: 8),
         TextField(
           controller: _q,
-          decoration: const InputDecoration(hintText: 'Naam, mobile, area, serial...', prefixIcon: Icon(Icons.search_rounded)),
+          decoration: const InputDecoration(hintText: 'Name, mobile, area, serial...', prefixIcon: Icon(Icons.search_rounded)),
           onSubmitted: (_) => _load(),
         ),
         const SizedBox(height: 8),
@@ -323,7 +323,7 @@ class _AftersalesScreenState extends State<AftersalesScreen> {
                   Text('${_s(_map(u['customer'])['name'])} · ${_s(u['label'])} ${_s(u['brand'])} ${_s(u['model'])}',
                       style: const TextStyle(fontWeight: FontWeight.w800)),
                   Text(
-                      'Sr ${_s(u['serial']).isEmpty ? '-' : _s(u['serial'])} · agli service ${_s(u['next_due'])}'
+                      'Sr ${_s(u['serial']).isEmpty ? '-' : _s(u['serial'])} · next service${_s(u['next_due'])}'
                       '${u['in_warranty'] == true ? ' · warranty' : ''}${_map(u['amc'])['active'] == true ? ' · AMC' : ''}',
                       style: const TextStyle(color: C.muted, fontSize: 12.5)),
                 ]),
@@ -333,7 +333,7 @@ class _AftersalesScreenState extends State<AftersalesScreen> {
       ]);
 
   Widget _teamTab() => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        GlassButton(label: 'Naya technician', icon: Icons.engineering_rounded, onTap: _busy ? null : () => _addTech()),
+        GlassButton(label: 'New technician', icon: Icons.engineering_rounded, onTap: _busy ? null : () => _addTech()),
         const SizedBox(height: 8),
         for (final t in _list(_d?['techs']))
           Padding(
@@ -345,13 +345,13 @@ class _AftersalesScreenState extends State<AftersalesScreen> {
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Row(children: [
                     Expanded(child: Text(_s(t['name']), style: const TextStyle(fontWeight: FontWeight.w800))),
-                    if (t['active'] != true) const Pill('chhutti'),
+                    if (t['active'] != true) const Pill('on leave'),
                   ]),
                   Text(
-                      'Kaam: ${((t['skills'] as List?) ?? const []).isEmpty ? 'sab' : (t['skills'] as List).join(', ')} · '
-                      'Area: ${((t['areas'] as List?) ?? const []).isEmpty ? 'sab jagah' : (t['areas'] as List).join(', ')} · ${t['per_day']}/din',
+                      'Jobs: ${((t['skills'] as List?) ?? const []).isEmpty ? 'all' : (t['skills'] as List).join(', ')} · '
+                      'Area: ${((t['areas'] as List?) ?? const []).isEmpty ? 'everywhere' : (t['areas'] as List).join(', ')} · ${t['per_day']}/day',
                       style: const TextStyle(color: C.muted, fontSize: 12.5)),
-                  Text('Visit poore ${t['visits_done'] ?? 0} · comeback ${t['comebacks'] ?? 0}', style: const TextStyle(fontSize: 12)),
+                  Text('Visits done ${t['visits_done'] ?? 0} · comeback ${t['comebacks'] ?? 0}', style: const TextStyle(fontSize: 12)),
                 ]),
               ),
             ),
@@ -365,11 +365,11 @@ class _AftersalesScreenState extends State<AftersalesScreen> {
       Glass(child: Text(_s(a['say']), style: const TextStyle(fontWeight: FontWeight.w700, height: 1.35))),
       const SizedBox(height: 8),
       for (final r in _list(a['active']).take(30))
-        Text('• ${_s(r['customer'])} · ${_s(r['label'])} · ${_s(r['plan'])} · ${_s(r['until'])} (${r['days_left']} din)${(r['price'] ?? 0) > 0 ? ' · ${_rs(r['price'])}' : ''}',
+        Text('• ${_s(r['customer'])} · ${_s(r['label'])} · ${_s(r['plan'])} · ${_s(r['until'])} (${r['days_left']} days)${(r['price'] ?? 0) > 0 ? ' · ${_rs(r['price'])}' : ''}',
             style: const TextStyle(fontSize: 12.5)),
       if (_list(a['unpaid']).isNotEmpty) ...[
         const SizedBox(height: 10),
-        Text('Charge baaki', style: display(15)),
+        Text('Charge pending', style: display(15)),
         for (final u in _list(a['unpaid'])) Text('• ${_s(u['number'])}: ${_rs(u['due'])} (${_s(u['on'])})', style: const TextStyle(fontSize: 12.5)),
       ],
       const SizedBox(height: 12),
@@ -382,8 +382,8 @@ class _AftersalesScreenState extends State<AftersalesScreen> {
             onTap: () async {
               final f = await _form(context, 'Claim ${_s(c['number'])}', const [
                 ('status', 'Status: raised / approved / part_received / rejected / settled'),
-                ('brand_ref', 'Brand ka complaint no.'),
-                ('settled', 'Brand se mila (₹)'),
+                ('brand_ref', 'Brand\'s complaint no.'),
+                ('settled', 'Received from brand (₹)'),
               ], initial: {'status': _s(c['status']), 'brand_ref': _s(c['brand_ref'])});
               if (f == null) return;
               await _run(() => _call(widget.app, 'POST', '/api/aftersales/claims/${c['id']}',
@@ -412,7 +412,7 @@ class _AftersalesScreenState extends State<AftersalesScreen> {
               onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => AsTemplatesPage(app: widget.app)))),
           IconButton(
               icon: const Icon(Icons.tune_rounded),
-              tooltip: 'Niyam',
+              tooltip: 'Rules',
               onPressed: () => Navigator.of(context)
                   .push(MaterialPageRoute(builder: (_) => AsSettingsPage(app: widget.app, data: _map(_d?['settings']), schedules: _list(_d?['schedules']))))
                   .then((_) => _load())),
@@ -422,7 +422,7 @@ class _AftersalesScreenState extends State<AftersalesScreen> {
             onRefresh: _load,
             child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
               Wrap(spacing: 6, runSpacing: 6, children: [
-                for (final (i, t) in const [(0, 'Aaj'), (1, 'Due'), (2, 'Visit'), (3, 'Machine'), (4, 'Team'), (5, 'AMC')])
+                for (final (i, t) in const [(0, 'Today'), (1, 'Due'), (2, 'Visit'), (3, 'Machine'), (4, 'Team'), (5, 'AMC')])
                   ChoiceChip(label: Text(t), selected: _tab == i, onSelected: (_) => setState(() => _tab = i)),
               ]),
               const SizedBox(height: 10),
@@ -430,8 +430,8 @@ class _AftersalesScreenState extends State<AftersalesScreen> {
               if (_d == null) const Center(child: CircularProgressIndicator()) else [_today, _dueTab, _visitsTab, _unitsTab, _teamTab, _amcTab][_tab](),
               const SizedBox(height: 14),
               const Text(
-                  'Graahak ko message aap bhejti hain (ya business WhatsApp aapke tap se). Graahak se charge aapki haan ke baad. '
-                  'Warranty install ki tareekh se. Hoola paisa nahi leta / deta.',
+                  'You send the message to the customer (or the business WhatsApp with your tap). The customer is charged only after your yes. '
+                  'Warranty counts from the install date. Hoola neither takes nor gives money.',
                   style: TextStyle(color: C.faint, fontSize: 11.5)),
             ]),
           ),
@@ -469,7 +469,7 @@ class _AsVisitsTabState extends State<_AsVisitsTab> {
   @override
   Widget build(BuildContext context) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         GlassButton(
-            label: 'Naya visit',
+            label: 'New visit',
             icon: Icons.add_task_rounded,
             onTap: () async {
               final id = await showModalBottomSheet<String>(
@@ -479,7 +479,7 @@ class _AsVisitsTabState extends State<_AsVisitsTab> {
             }),
         const SizedBox(height: 8),
         Wrap(spacing: 6, children: [
-          for (final (k, t) in const [('open', 'Khule'), ('done', 'Poore'), ('cancelled', 'Radd')])
+          for (final (k, t) in const [('open', 'Open'), ('done', 'Complete'), ('cancelled', 'Radd')])
             ChoiceChip(
                 label: Text(t),
                 selected: _filter == k,
@@ -589,12 +589,12 @@ class _AsBookSheetState extends State<AsBookSheet> {
         padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + MediaQuery.of(context).viewInsets.bottom),
         child: SingleChildScrollView(
           child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('Naya visit', style: display(17)),
+            Text('New visit', style: display(17)),
             const SizedBox(height: 8),
             if (_unit == null) ...[
               TextField(
                 controller: _q,
-                decoration: const InputDecoration(hintText: 'Graahak / mobile / serial', prefixIcon: Icon(Icons.search_rounded)),
+                decoration: const InputDecoration(hintText: 'Customer / mobile / serial', prefixIcon: Icon(Icons.search_rounded)),
                 onSubmitted: (_) => _search(),
               ),
               for (final u in _units.take(12))
@@ -612,7 +612,7 @@ class _AsBookSheetState extends State<AsBookSheet> {
                 for (final (k, t) in const [('service', 'Service'), ('repair', 'Repair'), ('install', 'Install'), ('amc', 'AMC visit'), ('warranty', 'Warranty')])
                   ChoiceChip(label: Text(t), selected: _kind == k, onSelected: (_) => setState(() => _kind = k)),
               ]),
-              TextField(controller: _problem, decoration: const InputDecoration(labelText: 'Shikayat (ho to)')),
+              TextField(controller: _problem, decoration: const InputDecoration(labelText: 'Complaint (if any)')),
               const SizedBox(height: 8),
               if (_busy) const LinearProgressIndicator(),
               if (_slots != null) ...[
@@ -642,10 +642,10 @@ class _AsBookSheetState extends State<AsBookSheet> {
                     onPressed: _busy
                         ? null
                         : () async {
-                            final f = await _form(context, 'Apna samay', const [('start', 'Samay (25-10-2026 11:00 / kal 4 baje)'), ('tech', 'Technician (naam)')]);
+                            final f = await _form(context, 'Your own time', const [('start', 'Time (25-10-2026 11:00 / tomorrow at 4)'), ('tech', 'Technician (name)')]);
                             if (f != null && f['start'] != null) await _book({'start': f['start'], 'tech_id': f['tech'] ?? ''});
                           },
-                    child: const Text('Apna samay likho')),
+                    child: const Text('Write your own time')),
               ],
             ],
           ]),
@@ -681,12 +681,12 @@ class _AsUnitPageState extends State<AsUnitPage> {
   }
 
   Future<void> _amc() async {
-    final f = await _form(context, 'AMC likho', const [
+    final f = await _form(context, 'Write AMC', const [
       ('plan', 'comprehensive (part + labour) / non_comprehensive'),
-      ('start', 'Shuru (dd-mm-yyyy)'),
-      ('months', 'Mahine'),
-      ('visits', 'Visit (saal mein)'),
-      ('price', 'Daam (₹)'),
+      ('start', 'Start (dd-mm-yyyy)'),
+      ('months', 'Months'),
+      ('visits', 'Visits (per year)'),
+      ('price', 'Price (₹)'),
     ]);
     if (f == null) return;
     try {
@@ -718,17 +718,17 @@ class _AsUnitPageState extends State<AsUnitPage> {
                         style: const TextStyle(fontWeight: FontWeight.w800)),
                     Text('${_s(c['name'])} · ${_s(c['phone'])} · ${_s(c['area'])} ${_s(c['pincode'])}', style: const TextStyle(color: C.muted)),
                     const SizedBox(height: 6),
-                    Text('Install ${_s(u['installed_on'])} · warranty ${_s(u['warranty_until'])}${u['in_warranty'] == true ? ' (chal rahi)' : ''}'),
+                    Text('Install ${_s(u['installed_on'])} · warranty ${_s(u['warranty_until'])}${u['in_warranty'] == true ? ' (running)' : ''}'),
                     if (_s(u['warranty_note']).isNotEmpty) Text(_s(u['warranty_note']), style: const TextStyle(fontSize: 12, color: C.warn)),
-                    if (amc.isNotEmpty) Text('AMC ${_s(amc['plan'])} ${_s(amc['start'])} - ${_s(amc['until'])}${amc['active'] == true ? '' : ' (khatam)'}'),
-                    Text('Pichhli service ${_s(u['last_service']).isEmpty ? '-' : _s(u['last_service'])} · agli ${_s(u['next_due'])} (${_s(u['due_why'])})',
+                    if (amc.isNotEmpty) Text('AMC ${_s(amc['plan'])} ${_s(amc['start'])} - ${_s(amc['until'])}${amc['active'] == true ? '' : ' (ended)'}'),
+                    Text('Previous service ${_s(u['last_service']).isEmpty ? '-' : _s(u['last_service'])} · next${_s(u['next_due'])} (${_s(u['due_why'])})',
                         style: const TextStyle(fontWeight: FontWeight.w700)),
                   ]),
                 ),
                 const SizedBox(height: 8),
                 Wrap(spacing: 8, runSpacing: 8, children: [
                   GradientButton(
-                      label: 'Visit book karo',
+                      label: 'Book visit',
                       icon: Icons.event_available_rounded,
                       height: 46,
                       onTap: () async {
@@ -739,7 +739,7 @@ class _AsUnitPageState extends State<AsUnitPage> {
                         }
                         await _load();
                       }),
-                  GlassButton(label: 'AMC likho', icon: Icons.verified_user_rounded, onTap: _amc),
+                  GlassButton(label: 'Write AMC', icon: Icons.verified_user_rounded, onTap: _amc),
                 ]),
                 const SizedBox(height: 12),
                 Text('Visit', style: display(15)),
@@ -892,25 +892,25 @@ class _AsVisitPageState extends State<AsVisitPage> {
       const SizedBox(height: 8),
       Wrap(spacing: 8, runSpacing: 8, children: [
         if (_s(card['wa_link']).isNotEmpty)
-          GlassButton(label: 'Technician ko bhejo', icon: Icons.send_rounded, onTap: () => Native.openExternal(url: _s(card['wa_link']))),
-        GlassButton(label: 'Raste mein', icon: Icons.directions_bike_rounded, onTap: _busy ? null : () => _act('on_way', const {})),
+          GlassButton(label: 'Send to technician', icon: Icons.send_rounded, onTap: () => Native.openExternal(url: _s(card['wa_link']))),
+        GlassButton(label: 'On the way', icon: Icons.directions_bike_rounded, onTap: _busy ? null : () => _act('on_way', const {})),
         GlassButton(
-            label: 'Samay badlo',
+            label: 'Change time',
             icon: Icons.edit_calendar_rounded,
             onTap: _busy
                 ? null
                 : () async {
-                    final f = await _form(context, 'Naya samay', const [('start', 'Samay (25-10-2026 11:00 / kal 4 baje)'), ('tech', 'Technician (khaali = wahi)')]);
+                    final f = await _form(context, 'New time', const [('start', 'Time (25-10-2026 11:00 / tomorrow at 4)'), ('tech', 'Technician (blank = same)')]);
                     if (f != null && f['start'] != null) await _act('reschedule', f);
                   }),
         GlassButton(label: 'Radd', icon: Icons.close_rounded, color: C.bad, onTap: _busy ? null : () => _act('cancel', const {})),
       ]),
       const SizedBox(height: 12),
-      Text('Kaam poora likho', style: display(15)),
+      Text('Complete the job', style: display(15)),
       for (final it in items)
         Row(children: [
           Expanded(child: Text(it, style: const TextStyle(fontSize: 13))),
-          for (final (k, t) in const [('ok', 'OK'), ('not_ok', 'Kharab'), ('na', 'N/A')])
+          for (final (k, t) in const [('ok', 'OK'), ('not_ok', 'Faulty'), ('na', 'N/A')])
             Padding(
               padding: const EdgeInsets.only(left: 4),
               child: ChoiceChip(
@@ -921,19 +921,19 @@ class _AsVisitPageState extends State<AsVisitPage> {
         ]),
       for (final e in _read.entries)
         TextField(controller: e.value, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: e.key.replaceAll('_', ' '))),
-      TextField(controller: _parts, decoration: const InputDecoration(labelText: 'Part (comma se, daam ho to: "Sediment filter 250")')),
-      TextField(controller: _labour, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Labour (₹, khaali = list se)')),
+      TextField(controller: _parts, decoration: const InputDecoration(labelText: 'Parts (comma separated, with price if any: "Sediment filter 250")')),
+      TextField(controller: _labour, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Labour (₹, blank = from the list)')),
       TextField(controller: _notes, maxLines: 2, decoration: const InputDecoration(labelText: 'Note')),
-      TextField(controller: _signedBy, decoration: const InputDecoration(labelText: 'Sign karne wale ka naam')),
+      TextField(controller: _signedBy, decoration: const InputDecoration(labelText: 'Name of the person signing')),
       const SizedBox(height: 8),
       Wrap(spacing: 8, runSpacing: 8, children: [
         GlassButton(label: 'Photo (camera)', icon: Icons.photo_camera_rounded, onTap: _busy ? null : () => _photo(ImageSource.camera, 'work')),
         GlassButton(label: 'Gallery', icon: Icons.photo_library_rounded, onTap: _busy ? null : () => _photo(ImageSource.gallery, 'work')),
-        GlassButton(label: v['signed'] == true ? 'Sign liya ✓' : 'Graahak ka sign', icon: Icons.draw_rounded, onTap: _busy ? null : _sign),
+        GlassButton(label: v['signed'] == true ? 'Signed ✓' : 'Customer\'s signature', icon: Icons.draw_rounded, onTap: _busy ? null : _sign),
       ]),
       Text('${((v['photos'] as List?) ?? const []).length} photo', style: const TextStyle(color: C.muted, fontSize: 12)),
       const SizedBox(height: 10),
-      GradientButton(label: 'Kaam poora', icon: Icons.task_alt_rounded, onTap: _busy ? null : _done),
+      GradientButton(label: 'Job complete', icon: Icons.task_alt_rounded, onTap: _busy ? null : _done),
     ]);
   }
 
@@ -942,12 +942,12 @@ class _AsVisitPageState extends State<AsVisitPage> {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('Poora: ${_s(v['done_on'])} · ${_s(_map(v['cover'])['say'])}', style: const TextStyle(fontWeight: FontWeight.w700)),
+          Text('Complete: ${_s(v['done_on'])} · ${_s(_map(v['cover'])['say'])}', style: const TextStyle(fontWeight: FontWeight.w700)),
           for (final e in _map(v['checklist']).entries) Text('${e.value == 'ok' ? '✓' : e.value == 'na' ? '–' : '✗'} ${e.key}', style: const TextStyle(fontSize: 12.5)),
           for (final e in _map(v['readings']).entries) Text('${e.key.replaceAll('_', ' ')}: ${e.value}', style: const TextStyle(fontSize: 12.5)),
           for (final p in _list(v['parts'])) Text('Part: ${_s(p['name'])} x${p['qty']}', style: const TextStyle(fontSize: 12.5)),
           if (_s(v['notes']).isNotEmpty) Text(_s(v['notes']), style: const TextStyle(fontSize: 12.5, color: C.muted)),
-          Text('${((v['photos'] as List?) ?? const []).length} photo · ${v['signed'] == true ? 'sign liya' : 'sign nahi'}', style: const TextStyle(fontSize: 12)),
+          Text('${((v['photos'] as List?) ?? const []).length} photo · ${v['signed'] == true ? 'signed' : 'not signed'}', style: const TextStyle(fontSize: 12)),
         ]),
       ),
       const SizedBox(height: 8),
@@ -982,12 +982,12 @@ class _AsVisitPageState extends State<AsVisitPage> {
                   }),
         if (ch['status'] == 'approved' && ((ch['paid'] ?? 0) as num) < ((ch['total'] ?? 0) as num))
           GlassButton(
-              label: 'Paisa mila',
+              label: 'Money received',
               icon: Icons.payments_rounded,
               onTap: _busy
                   ? null
                   : () async {
-                      final f = await _form(context, 'Kitna mila', const [('amount', 'Raqam (khaali = poora)'), ('how', 'Kaise (cash / UPI)')]);
+                      final f = await _form(context, 'How much was received', const [('amount', 'Amount (blank = full)'), ('how', 'How (cash / UPI)')]);
                       if (f != null) await _act('paid', {if (_n(f['amount']) != null) 'amount': _n(f['amount']), 'how': f['how'] ?? ''});
                     }),
         GlassButton(
@@ -996,7 +996,7 @@ class _AsVisitPageState extends State<AsVisitPage> {
             onTap: _busy
                 ? null
                 : () async {
-                    final f = await _form(context, 'Brand se claim', const [('part', 'Part (khaali = jo badla)'), ('fault', 'Kya kharab tha'), ('brand_ref', 'Brand complaint no.')]);
+                    final f = await _form(context, 'Claim from brand', const [('part', 'Part (blank = what was replaced)'), ('fault', 'What was faulty'), ('brand_ref', 'Brand complaint no.')]);
                     if (f != null) await _act('claim', f);
                   }),
       ]),
@@ -1070,7 +1070,7 @@ class _SignatureDialogState extends State<_SignatureDialog> {
 
   @override
   Widget build(BuildContext context) => AlertDialog(
-        title: const Text('Graahak ka sign'),
+        title: const Text('Customer\'s signature'),
         content: Container(
           width: _size.width,
           height: _size.height,
@@ -1082,8 +1082,8 @@ class _SignatureDialogState extends State<_SignatureDialog> {
           ),
         ),
         actions: [
-          TextButton(onPressed: () => setState(_strokes.clear), child: const Text('Mitao')),
-          TextButton(onPressed: _save, child: const Text('Rakho')),
+          TextButton(onPressed: () => setState(_strokes.clear), child: const Text('Delete')),
+          TextButton(onPressed: _save, child: const Text('Keep')),
         ],
       );
 }
@@ -1110,40 +1110,40 @@ class AsSettingsPage extends StatelessWidget {
     Future<void> save(Map<String, dynamic> body) async {
       try {
         await _call(app, 'POST', '/api/aftersales/settings', body: body);
-        if (context.mounted) _snack(context, 'Save ho gaya');
+        if (context.mounted) _snack(context, 'Saved');
       } catch (e) {
         if (context.mounted) _snack(context, '$e');
       }
     }
 
     return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('After-sales niyam')),
+      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('After-sales rules')),
       body: Aurora(
         child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
           Glass(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(_s(data['business']).isEmpty ? '(dukaan ka naam nahi)' : _s(data['business']), style: const TextStyle(fontWeight: FontWeight.w800)),
-              Text('Samay ${_s(data['day_start'])}-${_s(data['day_end'])} · aane-jaane ${data['travel_minutes']} min · reminder ${data['remind_days']} din pehle',
+              Text(_s(data['business']).isEmpty ? '(no shop name)' : _s(data['business']), style: const TextStyle(fontWeight: FontWeight.w800)),
+              Text('Time ${_s(data['day_start'])}-${_s(data['day_end'])} · travel${data['travel_minutes']} min · reminder ${data['remind_days']} days before',
                   style: const TextStyle(color: C.muted, fontSize: 12.5)),
-              Text('Visit charge: ${prices['visit'] == null ? 'nahi likha' : _rs(prices['visit'])}${data['gst_on'] == true ? ' · GST ${data['gst_pct']}%' : ''}',
+              Text('Visit charge: ${prices['visit'] == null ? 'not written' : _rs(prices['visit'])}${data['gst_on'] == true ? ' · GST ${data['gst_pct']}%' : ''}',
                   style: const TextStyle(fontSize: 12.5)),
             ]),
           ),
           const SizedBox(height: 8),
           GlassButton(
-              label: 'Badlo',
+              label: 'Change',
               icon: Icons.edit_rounded,
               onTap: () async {
-                final f = await _form(context, 'Niyam', const [
-                  ('business', 'Dukaan / company ka naam'),
+                final f = await _form(context, 'Rules', const [
+                  ('business', 'Shop / company name'),
                   ('phone', 'Phone'),
-                  ('address', 'Pata'),
+                  ('address', 'Address'),
                   ('visit', 'Visit charge (₹)'),
-                  ('day_start', 'Kaam shuru (09:30)'),
-                  ('day_end', 'Kaam band (18:30)'),
-                  ('travel_minutes', 'Do area ke beech (min)'),
-                  ('remind_days', 'Reminder kitne din pehle'),
-                  ('terms', 'Report par shartein'),
+                  ('day_start', 'Work starts (09:30)'),
+                  ('day_end', 'Work ends (18:30)'),
+                  ('travel_minutes', 'Between two areas (min)'),
+                  ('remind_days', 'Reminder how many days before'),
+                  ('terms', 'Terms on the report'),
                 ], initial: {
                   'business': _s(data['business']),
                   'phone': _s(data['phone']),
@@ -1164,15 +1164,15 @@ class AsSettingsPage extends StatelessWidget {
                 });
               }),
           const SizedBox(height: 12),
-          Text('Service kitne din mein (har product)', style: display(15)),
+          Text('Service within how many days (each product)', style: display(15)),
           for (final sc in schedules)
             ListTile(
               dense: true,
               title: Text(_s(sc['label'])),
-              subtitle: Text('Har ${sc['months']} mahine${sc['usage'] != null ? ' ya ${sc['usage']} ${_s(sc['usage_unit'])}' : ''}${sc['mine'] == true ? ' (aapka)' : ''}'),
+              subtitle: Text('Har ${sc['months']} months${sc['usage'] != null ? ' ya ${sc['usage']} ${_s(sc['usage_unit'])}' : ''}${sc['mine'] == true ? ' (yours)' : ''}'),
               trailing: const Icon(Icons.edit_rounded, size: 18),
               onTap: () async {
-                final f = await _form(context, _s(sc['label']), const [('months', 'Har kitne mahine'), ('usage', 'Ya kitne km / ghante (ho to)')],
+                final f = await _form(context, _s(sc['label']), const [('months', 'Every how many months'), ('usage', 'Or how many km / hours (if any)')],
                     initial: {'months': _s(sc['months'])});
                 if (f == null) return;
                 try {
@@ -1222,8 +1222,8 @@ class _AsTemplatesPageState extends State<AsTemplatesPage> {
         body: Aurora(
           child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
             const Text(
-                'Business number se 24 ghante ke baad sirf Meta-approved template jaata hai. Service / visit / report = UTILITY; '
-                'AMC renewal = MARKETING (sirf jinhone offers ki haan di).',
+                'From a business number, after 24 hours only a Meta-approved template can go. Service / visit / report = UTILITY; '
+                'AMC renewal = MARKETING (only for those who agreed to offers).',
                 style: TextStyle(color: C.muted, fontSize: 12.5)),
             const SizedBox(height: 8),
             for (final t in _t)
@@ -1251,7 +1251,7 @@ class _AsTemplatesPageState extends State<AsTemplatesPage> {
                               if (mounted) _snack(context, '$e');
                             }
                           },
-                          child: const Text('Meta ko bhejo')),
+                          child: const Text('Send to Meta')),
                   ]),
                 ),
               ),
@@ -1312,33 +1312,33 @@ class _AftersalesChargeCardState extends State<AftersalesChargeCard> {
           const Icon(Icons.request_quote_rounded, color: C.accent),
           const SizedBox(width: 8),
           Expanded(child: Text('${_s(d['number'])} · ${_s(d['customer'])} · ${_s(d['label'])}', style: const TextStyle(fontWeight: FontWeight.w800))),
-          Pill(waiting ? 'haan chahiye' : _status),
+          Pill(waiting ? 'needs your yes' : _status),
         ]),
         if (_s(d['cover']).isNotEmpty) Text(_s(d['cover']), style: const TextStyle(fontSize: 12, color: C.muted)),
         for (final l in _list(d['lines']))
           Row(children: [
             Expanded(child: Text(_s(l['what']), style: const TextStyle(fontSize: 12.5))),
-            Text(l['amount'] == null ? '[daam?]' : _rs(l['amount']), style: TextStyle(fontSize: 12.5, color: l['amount'] == null ? C.warn : C.ink)),
+            Text(l['amount'] == null ? '[price?]' : _rs(l['amount']), style: TextStyle(fontSize: 12.5, color: l['amount'] == null ? C.warn : C.ink)),
           ]),
         if ((d['gst'] ?? 0) is num && (d['gst'] ?? 0) > 0) Text('GST ${_rs(d['gst'])}', style: const TextStyle(fontSize: 12.5)),
         Text('Total ${_rs(_total)}', style: const TextStyle(fontWeight: FontWeight.w800)),
         const SizedBox(height: 8),
         if (waiting) ...[
           if (_status == 'pending')
-            GradientButton(label: 'Haan, ${_rs(_total)} lena hai', icon: Icons.check_rounded, height: 46, onTap: _busy ? null : () => _decide(true)),
+            GradientButton(label: 'Yes, ${_rs(_total)} to collect', icon: Icons.check_rounded, height: 46, onTap: _busy ? null : () => _decide(true)),
           const SizedBox(height: 6),
           Wrap(spacing: 8, runSpacing: 8, children: [
             GlassButton(
-                label: _status == 'needs_price' ? 'Total likho' : 'Total badlo',
+                label: _status == 'needs_price' ? 'Write total' : 'Change total',
                 icon: Icons.edit_rounded,
                 onTap: _busy
                     ? null
                     : () async {
-                        final f = await _form(context, 'Graahak se kitna', const [('total', 'Total (₹)')]);
+                        final f = await _form(context, 'How much from the customer', const [('total', 'Total (₹)')]);
                         final t = _n(f?['total']);
                         if (t != null) await _decide(true, t);
                       }),
-            GlassButton(label: 'Mana (free)', icon: Icons.money_off_rounded, color: C.bad, onTap: _busy ? null : () => _decide(false)),
+            GlassButton(label: 'Decline (free)', icon: Icons.money_off_rounded, color: C.bad, onTap: _busy ? null : () => _decide(false)),
           ]),
         ],
       ]),
@@ -1397,7 +1397,7 @@ class _AftersalesMessageTileState extends State<AftersalesMessageTile> {
             if (_s(m['sms_link']).isNotEmpty)
               GlassButton(label: 'SMS', icon: Icons.sms_rounded, height: 40, onTap: () => Native.openExternal(url: _s(m['sms_link']))),
             GlassButton(label: 'Copy', icon: Icons.copy_rounded, height: 40, onTap: () => Clipboard.setData(ClipboardData(text: _s(m['text'])))),
-            GlassButton(label: 'Bhej diya', icon: Icons.done_all_rounded, height: 40, onTap: _busy ? null : () => _post('/api/aftersales/messages/$id/sent')),
+            GlassButton(label: 'Sent', icon: Icons.done_all_rounded, height: 40, onTap: _busy ? null : () => _post('/api/aftersales/messages/$id/sent')),
             GlassButton(
                 label: 'Business WhatsApp',
                 icon: Icons.storefront_rounded,
@@ -1407,13 +1407,13 @@ class _AftersalesMessageTileState extends State<AftersalesMessageTile> {
                     : () async {
                         final via = await showDialog<String>(
                             context: context,
-                            builder: (d) => SimpleDialog(title: const Text('Business number se'), children: [
-                                  SimpleDialogOption(onPressed: () => Navigator.pop(d, 'template'), child: const Text('Approved template (kabhi bhi)')),
-                                  SimpleDialogOption(onPressed: () => Navigator.pop(d, 'business'), child: const Text('Seedha message (24 ghante ke andar)')),
+                            builder: (d) => SimpleDialog(title: const Text('From business number'), children: [
+                                  SimpleDialogOption(onPressed: () => Navigator.pop(d, 'template'), child: const Text('Approved template (anytime)')),
+                                  SimpleDialogOption(onPressed: () => Navigator.pop(d, 'business'), child: const Text('Direct message (within 24 hours)')),
                                 ]));
                         if (via != null) await _post('/api/aftersales/messages/$id/send', {'via': via});
                       }),
-            TextButton(onPressed: _busy ? null : () => _post('/api/aftersales/messages/$id/skipped'), child: const Text('Nahi bhejna')),
+            TextButton(onPressed: _busy ? null : () => _post('/api/aftersales/messages/$id/skipped'), child: const Text('Do not send')),
           ]),
         ],
       ]),
@@ -1437,7 +1437,7 @@ class AftersalesRemindersCard extends StatelessWidget {
       ]),
       const SizedBox(height: 6),
       for (final m in ms.take(15)) Padding(padding: const EdgeInsets.only(bottom: 6), child: AftersalesMessageTile(app: app, m: m)),
-      if (ms.length > 15) Text('+${ms.length - 15} aur (After-sales > Aaj)', style: const TextStyle(color: C.muted, fontSize: 12)),
+      if (ms.length > 15) Text('+${ms.length - 15} and (After-sales > Today)', style: const TextStyle(color: C.muted, fontSize: 12)),
     ]);
   }
 }
@@ -1465,7 +1465,7 @@ class AftersalesVisitCard extends StatelessWidget {
         if (msg['id'] != null) AftersalesMessageTile(app: app, m: msg),
         TextButton(
             onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => AsVisitPage(app: app, id: _s(data['visit_id'])))),
-            child: const Text('Visit kholo')),
+            child: const Text('Open visit')),
       ]),
     );
   }

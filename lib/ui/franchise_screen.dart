@@ -36,7 +36,7 @@ Future<Map<String, String>?> _form(BuildContext context, String title, List<(Str
           for (final (k, label) in fields) TextField(controller: c[k], decoration: InputDecoration(labelText: label)),
         ]),
       ),
-      actions: [TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Aage'))],
+      actions: [TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Next'))],
     ),
   );
   if (ok != true) return null;
@@ -102,13 +102,13 @@ class _FranchiseScreenState extends State<FranchiseScreen> {
     final f = await _form(context, 'Brand / agreement', const [
       ('brand', 'Brand'),
       ('franchisor', 'Franchisor company'),
-      ('contact', 'Report kise (email)'),
+      ('contact', 'Send report to (email)'),
       ('royalty_pct', 'Royalty %'),
       ('marketing_pct', 'Marketing %'),
-      ('min_guarantee', 'Minimum royalty / outlet / mahina'),
-      ('tech_fee', 'Tech fee / outlet / mahina'),
-      ('start', 'Agreement shuru (dd-mm-yyyy)'),
-      ('term_years', 'Kitne saal'),
+      ('min_guarantee', 'Minimum royalty / outlet / month'),
+      ('tech_fee', 'Tech fee / outlet / month'),
+      ('start', 'Agreement start (dd-mm-yyyy)'),
+      ('term_years', 'How many years'),
     ]);
     if (f == null) return;
     await _run(() => widget.app.api!.frAgreement({
@@ -119,19 +119,19 @@ class _FranchiseScreenState extends State<FranchiseScreen> {
   }
 
   Future<void> _outlet() async {
-    final f = await _form(context, 'Outlet', const [('name', 'Outlet ka naam'), ('brand', 'Brand'), ('city', 'Shehar'), ('rent', 'Kiraya / mahina'), ('lease_end', 'Lease kab tak')]);
+    final f = await _form(context, 'Outlet', const [('name', 'Outlet name'), ('brand', 'Brand'), ('city', 'City'), ('rent', 'Rent / month'), ('lease_end', 'Lease until')]);
     if (f == null) return;
     await _run(() => widget.app.api!.frOutlet({...f, if (f['rent'] != null) 'rent': _n(f['rent'])}));
   }
 
   Future<void> _sale(String outlet) async {
-    final f = await _form(context, '$outlet: sale', const [('net', 'Net sale (discount ke baad, GST ke bina)'), ('orders', 'Bill'), ('day', 'Tareekh (khaali = aaj)')]);
+    final f = await _form(context, '$outlet: sale', const [('net', 'Net sale (after discount, without GST)'), ('orders', 'Bill'), ('day', 'Date (blank = today)')]);
     if (f == null || f['net'] == null) return;
     await _run(() => widget.app.api!.frSale({'outlet': outlet, 'net': _n(f['net']), if (f['orders'] != null) 'orders': int.tryParse(f['orders']!), if (f['day'] != null) 'day': f['day']}));
   }
 
   Future<void> _cost(String outlet) async {
-    final f = await _form(context, '$outlet: kharcha', const [('kind', 'Kis cheez ka (maal / staff / bijli / swiggy...)'), ('amount', 'Rakam'), ('month', 'Mahina (YYYY-MM)')]);
+    final f = await _form(context, '$outlet: expense', const [('kind', 'For what (goods / staff / electricity / swiggy...)'), ('amount', 'Amount'), ('month', 'Month (YYYY-MM)')]);
     if (f == null || f['amount'] == null) return;
     await _run(() => widget.app.api!.frCost({'outlet': outlet, ...f, 'amount': _n(f['amount'])}));
   }
@@ -148,23 +148,23 @@ class _FranchiseScreenState extends State<FranchiseScreen> {
             padding: const EdgeInsets.all(10),
             child: Row(children: [
               Expanded(child: Text(_s(s['outlet']), style: const TextStyle(fontWeight: FontWeight.w700))),
-              Text(s['net'] == null ? 'kal ki sale nahi' : rs(s['net']), style: TextStyle(color: s['net'] == null ? C.warn : C.ink)),
+              Text(s['net'] == null ? 'no sale yesterday' : rs(s['net']), style: TextStyle(color: s['net'] == null ? C.warn : C.ink)),
               if (s['vs_last_week'] != null)
                 Padding(
                   padding: const EdgeInsets.only(left: 8),
                   child: Text('${(s['vs_last_week'] as num) >= 0 ? '+' : ''}${s['vs_last_week']}%',
                       style: TextStyle(color: (s['vs_last_week'] as num) >= 0 ? C.accent : C.bad, fontWeight: FontWeight.w700)),
                 ),
-              IconButton(icon: const Icon(Icons.add_rounded), tooltip: 'Sale likho', onPressed: _busy ? null : () => _sale(_s(s['outlet']))),
+              IconButton(icon: const Icon(Icons.add_rounded), tooltip: 'Write sale', onPressed: _busy ? null : () => _sale(_s(s['outlet']))),
             ]),
           ),
         ),
       for (final w in _list(d['watch']))
-        Text('• ${_s(w['what'])}: ${_s(w['on'])} (${w['days']} din)', style: const TextStyle(fontSize: 12.5, color: C.warn)),
+        Text('• ${_s(w['what'])}: ${_s(w['on'])} (${w['days']} days)', style: const TextStyle(fontSize: 12.5, color: C.warn)),
       const SizedBox(height: 10),
       Wrap(spacing: 8, runSpacing: 8, children: [
         GlassButton(label: 'Brand / agreement', icon: Icons.handshake_rounded, onTap: _busy ? null : _brand),
-        GlassButton(label: 'Naya outlet', icon: Icons.storefront_rounded, onTap: _busy ? null : _outlet),
+        GlassButton(label: 'New outlet', icon: Icons.storefront_rounded, onTap: _busy ? null : _outlet),
       ]),
     ]);
   }
@@ -172,7 +172,7 @@ class _FranchiseScreenState extends State<FranchiseScreen> {
   Widget _outlets() {
     final rows = _list(_cmp?['outlets']);
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text('Pichhla mahina: ${_s(_cmp?['say'])}', style: const TextStyle(fontSize: 13)),
+      Text('Last month: ${_s(_cmp?['say'])}', style: const TextStyle(fontSize: 13)),
       const SizedBox(height: 8),
       for (final o in rows)
         Padding(
@@ -185,10 +185,10 @@ class _FranchiseScreenState extends State<FranchiseScreen> {
                 Expanded(child: Text(_s(o['outlet']), style: const TextStyle(fontWeight: FontWeight.w800))),
                 Text(o['margin_pct'] == null ? '-' : '${o['margin_pct']}%', style: display(16, color: (o['profit'] ?? 0) < 0 ? C.bad : C.accent)),
               ]),
-              Text('Sale ${rs(o['net'])} · ${o['orders']} bill${o['aov'] != null ? ' · ausat ${rs(o['aov'])}' : ''} · munafa ${rs(o['profit'])}',
+              Text('Sale ${rs(o['net'])} · ${o['orders']} bill${o['aov'] != null ? ' · average${rs(o['aov'])}' : ''} · profit${rs(o['profit'])}',
                   style: const TextStyle(color: C.muted, fontSize: 12.5)),
               for (final f in (o['flags'] as List? ?? const [])) Text('• $f', style: const TextStyle(fontSize: 12, color: C.warn)),
-              Align(alignment: Alignment.centerRight, child: TextButton(onPressed: _busy ? null : () => _cost(_s(o['outlet'])), child: const Text('Kharcha likho'))),
+              Align(alignment: Alignment.centerRight, child: TextButton(onPressed: _busy ? null : () => _cost(_s(o['outlet'])), child: const Text('Write expense'))),
             ]),
           ),
         ),
@@ -203,7 +203,7 @@ class _FranchiseScreenState extends State<FranchiseScreen> {
       Wrap(spacing: 8, runSpacing: 8, children: [
         for (final a in ags)
           GlassButton(
-              label: '${_s(a['brand'])}: pichhle mahine ka statement',
+              label: '${_s(a['brand'])}: last month\'s statement',
               icon: Icons.receipt_long_rounded,
               onTap: _busy ? null : () => _run(() => widget.app.api!.frStatement({'brand': a['brand']}))),
       ]),
@@ -233,12 +233,12 @@ class _FranchiseScreenState extends State<FranchiseScreen> {
         ),
       Wrap(spacing: 8, runSpacing: 8, children: [
         GlassButton(
-            label: 'Licence jodo',
+            label: 'Add licence',
             icon: Icons.verified_rounded,
             onTap: _busy
                 ? null
                 : () async {
-                    final f = await _form(context, 'Licence', const [('outlet', 'Outlet'), ('kind', 'Kaun sa (fssai / fire noc / trade / shop act...)'), ('valid_to', 'Kab tak valid'), ('number', 'Number')]);
+                    final f = await _form(context, 'Licence', const [('outlet', 'Outlet'), ('kind', 'Which one (fssai / fire noc / trade / shop act...)'), ('valid_to', 'Valid until'), ('number', 'Number')]);
                     if (f != null) await _run(() => widget.app.api!.frLicence(f));
                   }),
         for (final o in outs)
@@ -248,7 +248,7 @@ class _FranchiseScreenState extends State<FranchiseScreen> {
               onTap: _busy
                   ? null
                   : () async {
-                      final f = await _form(context, '${_s(o['name'])} audit', const [('failed', 'Kya chooka? (comma se; sab theek ho to khaali)')]);
+                      final f = await _form(context, '${_s(o['name'])} audit', const [('failed', 'What was missed? (comma separated; blank if all is fine)')]);
                       if (f == null) return;
                       final failed = (f['failed'] ?? '').split(',').map((x) => x.trim()).where((x) => x.isNotEmpty).toList();
                       final r = await _run(() => widget.app.api!.frAudit({'outlet': o['name'], 'failed': failed}));
@@ -267,7 +267,7 @@ class _FranchiseScreenState extends State<FranchiseScreen> {
             onRefresh: _load,
             child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
               Wrap(spacing: 6, children: [
-                for (final (i, t) in const [(0, 'Aaj'), (1, 'Outlets'), (2, 'Royalty'), (3, 'Licence + audit')])
+                for (final (i, t) in const [(0, 'Today'), (1, 'Outlets'), (2, 'Royalty'), (3, 'Licence + audit')])
                   ChoiceChip(label: Text(t), selected: _tab == i, onSelected: (_) => setState(() => _tab = i)),
               ]),
               const SizedBox(height: 10),
@@ -275,8 +275,8 @@ class _FranchiseScreenState extends State<FranchiseScreen> {
               if (_day == null) const Center(child: CircularProgressIndicator()) else [_today(), _outlets(), _royalty(), _licAudit()][_tab],
               const SizedBox(height: 14),
               const Text(
-                  'Franchisor ko report aapki haan se. Royalty aap bank se bharti hain. Licence ka form aap / consultant bharte hain. '
-                  'Agreement ki shart ka matlab vakil / CA se pakka kariye.',
+                  'The report to the franchisor goes with your yes. You pay royalty from the bank. You / a consultant fill in the licence form. '
+                  'Confirm the meaning of agreement terms with a lawyer / CA.',
                   style: TextStyle(color: C.faint, fontSize: 11.5)),
             ]),
           ),
@@ -342,10 +342,10 @@ class _FrStatementCardState extends State<FrStatementCard> {
           Pill(_status),
         ]),
         const SizedBox(height: 4),
-        Text('Dena ${rs(v['payable'] ?? 0)}${_s(v['due']).isNotEmpty ? ' · ${_s(v['due'])} tak' : ''}', style: const TextStyle(fontWeight: FontWeight.w700)),
+        Text('To give ${rs(v['payable'] ?? 0)}${_s(v['due']).isNotEmpty ? ' · ${_s(v['due'])} until' : ''}', style: const TextStyle(fontWeight: FontWeight.w700)),
         const SizedBox(height: 8),
-        if (_status == 'draft') GradientButton(label: 'Haan, franchisor ko bhejo', icon: Icons.send_rounded, onTap: _busy ? null : () => _act('approve')),
-        if (_status == 'approved') GlassButton(label: 'Royalty bhar di', icon: Icons.check_rounded, onTap: _busy ? null : () => _act('paid')),
+        if (_status == 'draft') GradientButton(label: 'Yes, send to the franchisor', icon: Icons.send_rounded, onTap: _busy ? null : () => _act('approve')),
+        if (_status == 'approved') GlassButton(label: 'Royalty paid', icon: Icons.check_rounded, onTap: _busy ? null : () => _act('paid')),
       ]),
     );
   }

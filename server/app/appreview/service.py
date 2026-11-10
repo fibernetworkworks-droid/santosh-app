@@ -1,4 +1,4 @@
-"""App Review Sahayak: review HER app (APK / AAB / source ZIP / GitHub repo) or website -> risks in plain Hinglish with evidence and
+"""App Review Sahayak: review HER app (APK / AAB / source ZIP / GitHub repo) or website -> risks in plain English with evidence and
 a fix + code snippet each -> report PDF / Excel + a fix list for her developer or the Developer Sahayak -> re-review shows fixed /
 still open / new. Static reading only; nothing is run or uploaded to anyone. Sending the fix list to the Developer Sahayak waits
 for her tap (card + hash, POST /api/appreview/handoffs/{id}/decide)."""

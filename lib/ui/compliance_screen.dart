@@ -39,17 +39,17 @@ Color _stateColor(String st) => switch (st) {
 
 String _stateLabel(String st) => switch (st) {
       'late' => 'late',
-      'due' => 'is hafte',
-      'upcoming' => 'aage',
-      'no_date' => 'tareekh?',
-      'done' => 'ho gaya',
-      'na' => 'lagu nahi',
-      'file_ok' => 'file ki haan',
+      'due' => 'this week',
+      'upcoming' => 'upcoming',
+      'no_date' => 'date?',
+      'done' => 'done',
+      'na' => 'not applicable',
+      'file_ok' => 'filed with your yes',
       _ => st,
     };
 
 Future<Map<String, String>?> _form(BuildContext context, String title, List<(String, String)> fields,
-    {String ok = 'Aage', Map<String, String> initial = const {}}) async {
+    {String ok = 'Next', Map<String, String> initial = const {}}) async {
   final c = {for (final (k, _) in fields) k: TextEditingController(text: initial[k] ?? '')};
   final res = await showDialog<bool>(
     context: context,
@@ -62,7 +62,7 @@ Future<Map<String, String>?> _form(BuildContext context, String title, List<(Str
         ]),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Rehne do')),
+        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Leave it')),
         TextButton(onPressed: () => Navigator.pop(d, true), child: Text(ok)),
       ],
     ),
@@ -147,12 +147,12 @@ class _ComplianceScreenState extends State<ComplianceScreen> {
                 [
                   _s(v['area_label']),
                   if (_s(v['due_nice']).isNotEmpty) 'due ${_s(v['due_nice'])}',
-                  if (v['days'] != null && st != 'done' && st != 'na') (v['days'] as num) < 0 ? '${-(v['days'] as num)} din late' : '${v['days']} din',
+                  if (v['days'] != null && st != 'done' && st != 'na') (v['days'] as num) < 0 ? '${-(v['days'] as num)} days late' : '${v['days']} days',
                   if (_s(v['owner']).isNotEmpty) _s(v['owner']),
                 ].join(' · '),
                 style: const TextStyle(color: C.muted, fontSize: 12.5)),
             if (st == 'late' && pen['amount'] != null)
-              Text('Penalty andaaza ~Rs ${pen['amount']} (${_s(pen['basis'])})', style: const TextStyle(color: C.bad, fontSize: 12.5))
+              Text('Penalty estimate ~Rs ${pen['amount']} (${_s(pen['basis'])})', style: const TextStyle(color: C.bad, fontSize: 12.5))
             else if (st == 'late' && _s(pen['text']).isNotEmpty)
               Text(_s(pen['text']), style: const TextStyle(color: C.bad, fontSize: 12.5)),
           ]),
@@ -178,20 +178,20 @@ class _ComplianceScreenState extends State<ComplianceScreen> {
       Glass(child: Text(_s(day['say']), style: const TextStyle(fontSize: 14.5, height: 1.4))),
       const SizedBox(height: 10),
       Row(children: [
-        Expanded(child: GradientButton(label: 'Calendar banao', icon: Icons.event_repeat_rounded, height: 44, onTap: _busy ? null : () => _run('POST', '/api/compliance/build'))),
+        Expanded(child: GradientButton(label: 'Make calendar', icon: Icons.event_repeat_rounded, height: 44, onTap: _busy ? null : () => _run('POST', '/api/compliance/build'))),
         const SizedBox(width: 8),
         GlassButton(label: 'Register', icon: Icons.table_view_rounded, height: 44, onTap: _busy ? null : () => _run('POST', '/api/compliance/register')),
       ]),
       const SizedBox(height: 12),
       if (_list(day['late']).isNotEmpty) ...[const Caption('LATE'), for (final v in _list(day['late'])) _itemTile(v)],
-      if (_list(day['soon']).isNotEmpty) ...[const Caption('IS HAFTE'), for (final v in _list(day['soon'])) _itemTile(v)],
-      if (_list(day['linked_late']).isNotEmpty) ...[const Caption('DOOSRE SAHAYAK MEIN LATE'), for (final r in _list(day['linked_late'])) _linkedTile(r)],
+      if (_list(day['soon']).isNotEmpty) ...[const Caption('THIS WEEK'), for (final v in _list(day['soon'])) _itemTile(v)],
+      if (_list(day['linked_late']).isNotEmpty) ...[const Caption('LATE IN OTHER ASSISTANTS'), for (final r in _list(day['linked_late'])) _linkedTile(r)],
       for (final f in _list(_d?['filings']))
         Padding(padding: const EdgeInsets.only(bottom: 8), child: ComplianceFilingCard(app: widget.app, data: {'filing': f}, onDone: _load)),
       if (_strs(day['questions']).isNotEmpty) ...[
-        const Caption('AAPSE SAWAAL'),
+        const Caption('QUESTIONS FOR YOU'),
         for (final q in _strs(day['questions'])) Padding(padding: const EdgeInsets.only(bottom: 6), child: Text('• $q', style: const TextStyle(fontSize: 13))),
-        GlassButton(label: 'Jaankari bharo', icon: Icons.edit_note_rounded, onTap: _editFacts),
+        GlassButton(label: 'Fill in details', icon: Icons.edit_note_rounded, onTap: _editFacts),
       ],
       const SizedBox(height: 10),
       Text(_s(_d?['check']), style: const TextStyle(fontSize: 11, color: C.faint)),
@@ -206,7 +206,7 @@ class _ComplianceScreenState extends State<ComplianceScreen> {
       SizedBox(
         height: 40,
         child: ListView(scrollDirection: Axis.horizontal, children: [
-          Padding(padding: const EdgeInsets.only(right: 6), child: ChoiceChip(label: const Text('Sab'), selected: _area.isEmpty, onSelected: (_) => setState(() => _area = ''))),
+          Padding(padding: const EdgeInsets.only(right: 6), child: ChoiceChip(label: const Text('All'), selected: _area.isEmpty, onSelected: (_) => setState(() => _area = ''))),
           for (final e in areas.entries)
             Padding(
                 padding: const EdgeInsets.only(right: 6),
@@ -214,13 +214,13 @@ class _ComplianceScreenState extends State<ComplianceScreen> {
         ]),
       ),
       const SizedBox(height: 8),
-      GlassButton(label: 'Apna kaam jodo', icon: Icons.add_task_rounded, onTap: _addCustom),
+      GlassButton(label: 'Add your own task', icon: Icons.add_task_rounded, onTap: _addCustom),
       const SizedBox(height: 10),
       for (final v in items) _itemTile(v),
-      if (items.isEmpty) const Text('Is filter mein koi kaam nahi.', style: TextStyle(color: C.muted)),
+      if (items.isEmpty) const Text('No tasks in this filter.', style: TextStyle(color: C.muted)),
       if (_list(cal['linked']).isNotEmpty) ...[
         const SizedBox(height: 10),
-        const Caption('DOOSRE SAHAYAK SE (WAHIN PURA KARIYE)'),
+        const Caption('FROM OTHER ASSISTANTS (FINISH THERE)'),
         for (final r in _list(cal['linked'])) _linkedTile(r),
       ],
     ]);
@@ -239,22 +239,22 @@ class _ComplianceScreenState extends State<ComplianceScreen> {
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(children: [
                 Expanded(child: Text(_s(x['label']), style: const TextStyle(fontWeight: FontWeight.w800))),
-                if (_s(x['covered_by']).isNotEmpty) Pill('${_s(x['covered_by'])} mein', fg: C.accent),
-                if (x['verify'] == true) const Pill('pakka karwaiye', fg: C.warn),
+                if (_s(x['covered_by']).isNotEmpty) Pill('${_s(x['covered_by'])} in', fg: C.accent),
+                if (x['verify'] == true) const Pill('confirm with a professional', fg: C.warn),
               ]),
               Text('${_s(x['area_label'])} · ${_s(x['why'])}', style: const TextStyle(fontSize: 12.5, color: C.muted)),
               if (_s(_m(x['source'])['url']).isNotEmpty)
                 GestureDetector(
                   onTap: () => Native.openExternal(url: _s(_m(x['source'])['url'])),
-                  child: Text('Source: ${_s(_m(x['source'])['title'])} (padha ${_s(_m(x['source'])['read'])})',
+                  child: Text('Source: ${_s(_m(x['source'])['title'])} (read${_s(_m(x['source'])['read'])})',
                       style: const TextStyle(fontSize: 11.5, color: C.accent)),
                 )
               else
-                const Text('Source: [citation chahiye] - CA / CS se pakka', style: TextStyle(fontSize: 11.5, color: C.warn)),
+                const Text('Source: [citation needed] - confirm with your CA / CS', style: TextStyle(fontSize: 11.5, color: C.warn)),
             ]),
           ),
         ),
-      const Caption('LAGU NAHI'),
+      const Caption('NOT APPLICABLE'),
       for (final x in _list(ap['items']).where((x) => x['applies'] != true))
         Text('• ${_s(x['label'])}', style: const TextStyle(fontSize: 12, color: C.faint)),
     ]);
@@ -273,13 +273,13 @@ class _ComplianceScreenState extends State<ComplianceScreen> {
     final c = _cert;
     return ListView(padding: const EdgeInsets.all(16), children: [
       Row(children: [
-        Expanded(child: GlassButton(label: 'Pichhle mahine ka draft', icon: Icons.description_rounded, onTap: () => _loadCert(''))),
+        Expanded(child: GlassButton(label: 'Last month\'s draft', icon: Icons.description_rounded, onTap: () => _loadCert(''))),
         const SizedBox(width: 8),
         GlassButton(
-            label: 'Mahina chuno',
+            label: 'Choose month',
             icon: Icons.calendar_month_rounded,
             onTap: () async {
-              final f = await _form(context, 'Mahina', const [('month', 'YYYY-MM (jaise 2026-10)')]);
+              final f = await _form(context, 'Month', const [('month', 'YYYY-MM (for example 2026-10)')]);
               if (f != null && (f['month'] ?? '').isNotEmpty) await _loadCert(f['month']!);
             }),
       ]),
@@ -288,12 +288,12 @@ class _ComplianceScreenState extends State<ComplianceScreen> {
         Glass(child: Text(_s(c['text']), style: const TextStyle(fontSize: 13, height: 1.4))),
         const SizedBox(height: 8),
         for (final x in _list(c['items']))
-          Text('• ${_s(x['number'])} ${_s(x['label'])} · ${_s(x['due'])} · ${_stateLabel(_s(x['status']))}${x['carry'] == true ? ' (pichhla)' : ''}',
+          Text('• ${_s(x['number'])} ${_s(x['label'])} · ${_s(x['due'])} · ${_stateLabel(_s(x['status']))}${x['carry'] == true ? ' (previous)' : ''}',
               style: TextStyle(fontSize: 12.5, color: _s(x['status']) == 'done' ? C.muted : C.warn)),
         for (final x in _list(c['linked'])) Text('• ${_s(x['source'])}: ${_s(x['label'])} · ${_s(x['due'])}', style: const TextStyle(fontSize: 12, color: C.faint)),
         const SizedBox(height: 10),
         GradientButton(
-            label: 'Sign-off card banao',
+            label: 'Make sign-off card',
             icon: Icons.draw_rounded,
             height: 44,
             onTap: _busy ? null : () => _run('POST', '/api/compliance/certificate', {'month': _s(c['month'])})),
@@ -307,19 +307,19 @@ class _ComplianceScreenState extends State<ComplianceScreen> {
                 dense: true,
                 leading: Icon(Icons.verified_rounded, color: _stateColor(_s(x['status']))),
                 title: Text('${_s(x['number'])} · ${_s(x['month'])}'),
-                subtitle: Text(_s(x['status']) == 'signed' ? 'Sign kiya ${_s(x['signed_on'])}' : _s(x['status'])),
+                subtitle: Text(_s(x['status']) == 'signed' ? 'Signed ${_s(x['signed_on'])}' : _s(x['status'])),
               ),
     ]);
   }
 
   Future<void> _addCustom() async {
-    final f = await _form(context, 'Apna compliance kaam', const [
-      ('label', 'Kya kaam (jaise lift inspection, boiler certificate)'),
-      ('due', 'Tareekh (DD-MM-YYYY)'),
+    final f = await _form(context, 'Your own compliance task', const [
+      ('label', 'What task (for example lift inspection, boiler certificate)'),
+      ('due', 'Date (DD-MM-YYYY)'),
       ('area', 'Area: licence / labour / fire / pollution / custom'),
-      ('owner', 'Kaun karega'),
+      ('owner', 'Who will do it'),
       ('note', 'Note'),
-    ], ok: 'Jodo');
+    ], ok: 'Add');
     if (f == null || (f['label'] ?? '').isEmpty) return;
     await _run('POST', '/api/compliance/items', f);
   }
@@ -328,23 +328,23 @@ class _ComplianceScreenState extends State<ComplianceScreen> {
     final st = _m(_d?['settings']);
     final fx = _m(st['facts']);
     final lic = _m(fx['licences']);
-    final f = await _form(context, 'Business ki jaankari', const [
+    final f = await _form(context, 'Business details', const [
       ('entity', 'Type: proprietor / partnership / llp / pvt_ltd / public_ltd / opc / trust'),
       ('state', 'State (Maharashtra ya 27)'),
-      ('employees', 'Kitne log kaam karte hain'),
+      ('employees', 'How many people work here'),
       ('contract_workers', 'Contract workers'),
-      ('turnover', 'Pichhle saal ka turnover (Rs)'),
+      ('turnover', 'Last year\'s turnover (Rs)'),
       ('gstin', 'GSTIN (ho to)'),
       ('gst_scheme', 'GST: monthly / qrmp / composition'),
-      ('tan', 'TDS kaat-ti hain? (haan / nahi)'),
-      ('tcs', 'TCS collect karti hain? (haan / nahi)'),
-      ('pt_yearly', 'Staff ka saal ka PT (Rs)'),
-      ('sectors', 'Kaam: shop, office, restaurant, factory, food... (comma)'),
-      ('food_kind', 'Khana: none / manufacturer / trader / restaurant / milk...'),
+      ('tan', 'Do you deduct TDS? (yes / no)'),
+      ('tcs', 'Do you collect TCS? (yes / no)'),
+      ('pt_yearly', 'Staff\'s yearly PT (Rs)'),
+      ('sectors', 'Activity: shop, office, restaurant, factory, food... (comma)'),
+      ('food_kind', 'Food:none / manufacturer / trader / restaurant / milk...'),
       ('pollution', 'Pollution category: none / white / green / orange / red'),
-      ('fire_noc', 'Fire NOC chahiye? (haan / nahi)'),
-      ('msme_dues', 'MSE supplier ka 45 din se purana baaki? (haan / nahi)'),
-      ('agm_date', 'AGM ki tareekh (company)'),
+      ('fire_noc', 'Is a Fire NOC needed? (yes / no)'),
+      ('msme_dues', 'Any MSE supplier unpaid for over 45 days? (yes / no)'),
+      ('agm_date', 'AGM date (company)'),
       ('lic_fssai', 'FSSAI licence valid till'),
       ('lic_consent', 'Pollution consent valid till'),
       ('lic_fire', 'Fire NOC valid till'),
@@ -354,7 +354,7 @@ class _ComplianceScreenState extends State<ComplianceScreen> {
     ], ok: 'Save', initial: {
       for (final k in ['entity', 'state', 'employees', 'contract_workers', 'turnover', 'gstin', 'gst_scheme', 'pt_yearly', 'food_kind', 'pollution', 'agm_date']) k: _s(fx[k]),
       'sectors': _strs(fx['sectors']).join(', '),
-      for (final k in ['tan', 'tcs', 'fire_noc', 'msme_dues']) k: fx[k] == true ? 'haan' : (fx[k] == false ? 'nahi' : ''),
+      for (final k in ['tan', 'tcs', 'fire_noc', 'msme_dues']) k: fx[k] == true ? 'yes' : (fx[k] == false ? 'no' : ''),
       for (final k in ['fssai', 'consent', 'fire', 'shop', 'trade', 'factory']) 'lic_$k': _s(lic[k]),
     });
     if (f == null) return;
@@ -380,17 +380,17 @@ class _ComplianceScreenState extends State<ComplianceScreen> {
   Future<void> _editSettings() async {
     final st = _m(_d?['settings']);
     final owners = _m(st['owners']);
-    final f = await _form(context, 'Niyam', const [
-      ('firm', 'Business ka naam'),
-      ('signatory', 'Certificate par sign karne wala (aapka naam)'),
+    final f = await _form(context, 'Rules', const [
+      ('firm', 'Business name'),
+      ('signatory', 'Who signs the certificate (your name)'),
       ('designation', 'Pad (Director / Proprietor / Partner)'),
-      ('windows', 'Yaad dilane ke din (jaise 7,3,1,0)'),
-      ('morning_time', 'Subah ka note (HH:MM)'),
-      ('own_tds', 'TDS ka zimmedaar'),
-      ('own_gst', 'GST ka zimmedaar'),
-      ('own_labour', 'PF / ESIC / labour ka zimmedaar'),
-      ('own_licence', 'Licence ka zimmedaar'),
-      ('own_roc', 'ROC ka zimmedaar'),
+      ('windows', 'Reminder days (for example 7,3,1,0)'),
+      ('morning_time', 'Morning note (HH:MM)'),
+      ('own_tds', 'Who handles TDS'),
+      ('own_gst', 'Who handles GST'),
+      ('own_labour', 'Who handles PF / ESIC / labour'),
+      ('own_licence', 'Who handles licences'),
+      ('own_roc', 'Who handles ROC'),
     ], ok: 'Save', initial: {
       for (final k in ['firm', 'signatory', 'designation', 'morning_time']) k: _s(st[k]),
       'windows': _strs(st['windows']).join(','),
@@ -412,7 +412,7 @@ class _ComplianceScreenState extends State<ComplianceScreen> {
 
   Future<void> _addTeam() async {
     final st = _m(_d?['settings']);
-    final f = await _form(context, 'Team mein jodo', const [('name', 'Naam'), ('phone', 'Mobile')], ok: 'Jodo');
+    final f = await _form(context, 'Add to team', const [('name', 'Name'), ('phone', 'Mobile')], ok: 'Add');
     if (f == null || (f['name'] ?? '').isEmpty) return;
     await _run('PUT', '/api/compliance/settings', {
       'team': [..._list(st['team']), f]
@@ -425,20 +425,20 @@ class _ComplianceScreenState extends State<ComplianceScreen> {
     return ListView(padding: const EdgeInsets.all(16), children: [
       Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(_s(st['firm']).isEmpty ? 'Business ka naam daaliye' : _s(st['firm']), style: const TextStyle(fontWeight: FontWeight.w800)),
+          Text(_s(st['firm']).isEmpty ? 'Enter your business name' : _s(st['firm']), style: const TextStyle(fontWeight: FontWeight.w800)),
           Text(
               [
                 _s(_m(st['entities'])[_s(fx['entity'])]),
                 if (_s(fx['state']).isNotEmpty) 'state ${_s(fx['state'])}',
-                if (fx['employees'] != null) '${fx['employees']} log',
+                if (fx['employees'] != null) '${fx['employees']} people',
                 if (_s(fx['gstin']).isNotEmpty) 'GSTIN ${_s(fx['gstin'])}',
               ].where((x) => x.isNotEmpty).join(' · '),
               style: const TextStyle(color: C.muted, fontSize: 12.5)),
           Text('Sign-off: ${_s(st['signatory']).isEmpty ? '—' : _s(st['signatory'])}', style: const TextStyle(color: C.muted, fontSize: 12.5)),
           const SizedBox(height: 8),
           Wrap(spacing: 8, runSpacing: 8, children: [
-            GlassButton(label: 'Business ki jaankari', icon: Icons.business_rounded, onTap: _editFacts),
-            GlassButton(label: 'Niyam / zimmedaar', icon: Icons.edit_rounded, onTap: _editSettings),
+            GlassButton(label: 'Business details', icon: Icons.business_rounded, onTap: _editFacts),
+            GlassButton(label: 'Rules / responsible', icon: Icons.edit_rounded, onTap: _editSettings),
             GlassButton(label: 'Team', icon: Icons.group_add_rounded, onTap: _addTeam),
           ]),
         ]),
@@ -447,14 +447,14 @@ class _ComplianceScreenState extends State<ComplianceScreen> {
       const Caption('TEAM'),
       for (final m in _list(st['team'])) Text('• ${_s(m['name'])} ${_s(m['phone'])}', style: const TextStyle(fontSize: 13)),
       const SizedBox(height: 12),
-      const Caption('HOOLA KABHI NAHI'),
+      const Caption('HOOLA NEVER DOES'),
       for (final t in _strs(_d?['never'])) Padding(padding: const EdgeInsets.only(bottom: 6), child: Text('• $t', style: const TextStyle(fontSize: 13))),
     ]);
   }
 
   @override
   Widget build(BuildContext context) {
-    final tabs = ['Aaj', 'Calendar', 'Lagu kya', 'Certificate', 'Niyam'];
+    final tabs = ['Today', 'Calendar', 'What applies', 'Certificate', 'Rules'];
     return Scaffold(
       backgroundColor: C.bgTop,
       appBar: AppBar(
@@ -526,7 +526,7 @@ class _ComplianceItemPageState extends State<ComplianceItemPage> {
   Future<String?> _pickFile() async {
     final conv = widget.app.conversationId;
     if (conv == null) {
-      _snack(context, 'Pehle chat khulne dijiye.');
+      _snack(context, 'Let the chat open first.');
       return null;
     }
     final files = await pickAttachmentsOfType(context, FileType.any);
@@ -547,8 +547,8 @@ class _ComplianceItemPageState extends State<ComplianceItemPage> {
   }
 
   Future<void> _done({required bool word}) async {
-    final f = await _form(context, word ? 'Maine kar diya (bina file)' : 'Ho gaya', const [('ack', 'ARN / SRN / challan no. (ho to)'), ('note', 'Note')],
-        ok: 'Ho gaya');
+    final f = await _form(context, word ? 'I did it (without a file)' : 'Done', const [('ack', 'ARN / SRN / challan no. (ho to)'), ('note', 'Note')],
+        ok: 'Done');
     if (f == null) return;
     String? fid;
     if (!word && (_list(_v?['evidence']).isEmpty)) {
@@ -559,14 +559,14 @@ class _ComplianceItemPageState extends State<ComplianceItemPage> {
   }
 
   Future<void> _na() async {
-    final f = await _form(context, 'Lagu nahi', const [('reason', 'Kyun lagu nahi (certificate mein jaayega)')], ok: 'Save');
+    final f = await _form(context, 'Not applicable', const [('reason', 'Why it does not apply (goes into the certificate)')], ok: 'Save');
     if (f == null || (f['reason'] ?? '').isEmpty) return;
     await _run('POST', '/api/compliance/items/${widget.itemRef}/na', f);
   }
 
   Future<void> _edit() async {
     final v = _m(_v);
-    final f = await _form(context, 'Tareekh / zimmedaar', const [('due', 'Aapki tareekh (DD-MM-YYYY)'), ('owner', 'Kaun karega'), ('note', 'Note')],
+    final f = await _form(context, 'Date / responsible', const [('due', 'Your date (DD-MM-YYYY)'), ('owner', 'Who will do it'), ('note', 'Note')],
         ok: 'Save', initial: {'owner': _s(v['owner']), 'note': _s(v['note'])});
     if (f == null) return;
     await _run('PATCH', '/api/compliance/items/${widget.itemRef}', f);
@@ -586,7 +586,7 @@ class _ComplianceItemPageState extends State<ComplianceItemPage> {
     final open = st != 'done' && st != 'na';
     return Scaffold(
       backgroundColor: C.bgTop,
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(_s(v['number']).isEmpty ? 'Kaam' : _s(v['number']))),
+      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(_s(v['number']).isEmpty ? 'Task' : _s(v['number']))),
       body: _v == null
           ? const Center(child: CircularProgressIndicator())
           : ListView(padding: const EdgeInsets.all(16), children: [
@@ -596,13 +596,13 @@ class _ComplianceItemPageState extends State<ComplianceItemPage> {
                     Expanded(child: Text(_s(v['label']), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15))),
                     Pill(_stateLabel(st), fg: _stateColor(st)),
                   ]),
-                  Text('${_s(v['area_label'])} · due ${_s(v['due_nice']).isEmpty ? '?' : _s(v['due_nice'])}${v['due_own'] == true ? ' (aapki tareekh)' : ''}',
+                  Text('${_s(v['area_label'])} · due ${_s(v['due_nice']).isEmpty ? '?' : _s(v['due_nice'])}${v['due_own'] == true ? ' (your date)' : ''}',
                       style: const TextStyle(color: C.muted, fontSize: 12.5)),
-                  if (_s(v['owner']).isNotEmpty) Text('Zimmedaar: ${_s(v['owner'])}', style: const TextStyle(fontSize: 12.5)),
+                  if (_s(v['owner']).isNotEmpty) Text('Responsible: ${_s(v['owner'])}', style: const TextStyle(fontSize: 12.5)),
                   if (_s(v['portal']).isNotEmpty) Text('Portal: ${_s(v['portal'])}', style: const TextStyle(fontSize: 12.5)),
-                  Text('Saboot: ${_s(v['evidence_hint'])}', style: const TextStyle(fontSize: 12.5, color: C.muted)),
+                  Text('Proof: ${_s(v['evidence_hint'])}', style: const TextStyle(fontSize: 12.5, color: C.muted)),
                   if (_s(pen['text']).isNotEmpty)
-                    Text('Penalty (starter): ${_s(pen['text'])}${pen['amount'] != null ? ' · andaaza ~Rs ${pen['amount']}' : ''}',
+                    Text('Penalty (starter): ${_s(pen['text'])}${pen['amount'] != null ? ' · estimate ~Rs${pen['amount']}' : ''}',
                         style: TextStyle(fontSize: 12.5, color: st == 'late' ? C.bad : C.muted)),
                   if (_s(src['url']).isNotEmpty)
                     GestureDetector(
@@ -610,10 +610,10 @@ class _ComplianceItemPageState extends State<ComplianceItemPage> {
                         child: Text('Source: ${_s(src['title'])}', style: const TextStyle(fontSize: 11.5, color: C.accent)))
                   else
                     Text('Source: ${_s(src['title'])}', style: const TextStyle(fontSize: 11.5, color: C.warn)),
-                  if (v['verify'] == true) const Text('CA / CS / vakil se pakka karwaiye.', style: TextStyle(fontSize: 11.5, color: C.warn)),
+                  if (v['verify'] == true) const Text('Confirm with your CA / CS / lawyer.', style: TextStyle(fontSize: 11.5, color: C.warn)),
                   if (_s(v['ack']).isNotEmpty) Text('Ack: ${_s(v['ack'])}', style: const TextStyle(fontSize: 12.5)),
                   if (_s(v['done_how']).isNotEmpty)
-                    Text(_s(v['done_how']) == 'evidence' ? 'Ho gaya: saboot ke saath' : 'Ho gaya: aapke kehne par',
+                    Text(_s(v['done_how']) == 'evidence' ? 'Done: with proof' : 'Done: on your word',
                         style: const TextStyle(fontSize: 12.5, color: C.ok)),
                   if (_s(v['note']).isNotEmpty) Text(_s(v['note']), style: const TextStyle(fontSize: 12.5)),
                 ]),
@@ -621,25 +621,25 @@ class _ComplianceItemPageState extends State<ComplianceItemPage> {
               const SizedBox(height: 10),
               if (open)
                 Wrap(spacing: 8, runSpacing: 8, children: [
-                  GradientButton(label: 'Ho gaya (file ke saath)', icon: Icons.task_alt_rounded, height: 42, onTap: _busy ? null : () => _done(word: false)),
-                  GlassButton(label: 'Maine kar diya', icon: Icons.record_voice_over_rounded, height: 42, onTap: _busy ? null : () => _done(word: true)),
-                  GlassButton(label: 'Saboot jodo', icon: Icons.attach_file_rounded, height: 42, onTap: _busy ? null : _evidence),
-                  GlassButton(label: 'File karne ka card', icon: Icons.upload_file_rounded, height: 42,
+                  GradientButton(label: 'Done (with file)', icon: Icons.task_alt_rounded, height: 42, onTap: _busy ? null : () => _done(word: false)),
+                  GlassButton(label: 'I did it', icon: Icons.record_voice_over_rounded, height: 42, onTap: _busy ? null : () => _done(word: true)),
+                  GlassButton(label: 'Add proof', icon: Icons.attach_file_rounded, height: 42, onTap: _busy ? null : _evidence),
+                  GlassButton(label: 'Card to file', icon: Icons.upload_file_rounded, height: 42,
                       onTap: _busy ? null : () => _run('POST', '/api/compliance/items/${widget.itemRef}/filing')),
-                  GlassButton(label: 'Tareekh / zimmedaar', icon: Icons.edit_calendar_rounded, height: 42, onTap: _busy ? null : _edit),
-                  GlassButton(label: 'Yaad dilao (draft)', icon: Icons.chat_rounded, height: 42, onTap: _busy ? null : _nudge),
-                  GlassButton(label: 'Lagu nahi', icon: Icons.block_rounded, height: 42, onTap: _busy ? null : _na),
+                  GlassButton(label: 'Date / responsible', icon: Icons.edit_calendar_rounded, height: 42, onTap: _busy ? null : _edit),
+                  GlassButton(label: 'Remind (draft)', icon: Icons.chat_rounded, height: 42, onTap: _busy ? null : _nudge),
+                  GlassButton(label: 'Not applicable', icon: Icons.block_rounded, height: 42, onTap: _busy ? null : _na),
                 ])
               else
-                GlassButton(label: 'Dobara kholo', icon: Icons.undo_rounded, onTap: _busy ? null : () => _run('POST', '/api/compliance/items/${widget.itemRef}/reopen')),
+                GlassButton(label: 'Reopen', icon: Icons.undo_rounded, onTap: _busy ? null : () => _run('POST', '/api/compliance/items/${widget.itemRef}/reopen')),
               const SizedBox(height: 12),
               if (_list(v['evidence']).isNotEmpty) ...[
-                const Caption('SABOOT'),
+                const Caption('PROOF'),
                 for (final e in _list(v['evidence'])) Text('• ${_s(e['name'])} · ${_s(e['at'])} · ${_s(e['by'])}', style: const TextStyle(fontSize: 12.5)),
                 const SizedBox(height: 10),
               ],
               if (_strs(v['steps']).isNotEmpty) ...[
-                const Caption('PORTAL PAR (AAP KHUD)'),
+                const Caption('ON THE PORTAL (YOU DO IT)'),
                 for (final t in _strs(v['steps'])) Text('• $t', style: const TextStyle(fontSize: 12.5)),
                 const SizedBox(height: 10),
               ],
@@ -695,19 +695,19 @@ class _ComplianceFilingCardState extends State<ComplianceFilingCard> {
           const Icon(Icons.upload_file_rounded, color: C.accent),
           const SizedBox(width: 8),
           Expanded(child: Text('${_s(_f['number'])} · ${_s(show['label'])}', style: const TextStyle(fontWeight: FontWeight.w800))),
-          Pill(switch (st) { 'waiting' => 'aapki haan?', 'approved' => 'haan', 'stale' => 'purana', 'rejected' => 'nahi', _ => st }, fg: _stateColor(st)),
+          Pill(switch (st) { 'waiting' => 'your yes?', 'approved' => 'yes', 'stale' => 'old', 'rejected' => 'no', _ => st }, fg: _stateColor(st)),
         ]),
         Text('Due ${_s(show['due'])} · ${_s(show['portal'])}', style: const TextStyle(fontSize: 12.5, color: C.muted)),
         for (final t in _strs(show['steps'])) Text('• $t', style: const TextStyle(fontSize: 12.5)),
         const SizedBox(height: 8),
         if (st == 'waiting')
           Row(children: [
-            Expanded(child: GradientButton(label: 'Haan, file karungi', height: 42, onTap: _busy ? null : () => _decide(true))),
+            Expanded(child: GradientButton(label: 'Yes, I will file', height: 42, onTap: _busy ? null : () => _decide(true))),
             const SizedBox(width: 8),
-            GlassButton(label: 'Abhi nahi', height: 42, onTap: _busy ? null : () => _decide(false)),
+            GlassButton(label: 'Not now', height: 42, onTap: _busy ? null : () => _decide(false)),
           ]),
-        if (st == 'stale') const Text('Kaam badal gaya: naya card banaiye.', style: TextStyle(fontSize: 12, color: C.warn)),
-        const Text('Login, OTP, payment aur submit aap khud karti hain; Hoola nahi.', style: TextStyle(fontSize: 11, color: C.faint)),
+        if (st == 'stale') const Text('The task has changed: make a new card.', style: TextStyle(fontSize: 12, color: C.warn)),
+        const Text('You do the login, OTP, payment and submit yourself; Hoola does not.', style: TextStyle(fontSize: 11, color: C.faint)),
       ]),
     );
   }
@@ -761,22 +761,22 @@ class _ComplianceCertCardState extends State<ComplianceCertCard> {
           Expanded(
               child: Text('${_s(_c['number'])} · Compliance certificate ${_s(content['month_label']).isEmpty ? _s(_c['month']) : _s(content['month_label'])}',
                   style: const TextStyle(fontWeight: FontWeight.w800))),
-          Pill(switch (st) { 'waiting' => 'sign-off?', 'signed' => 'sign kiya', 'stale' => 'purana', 'rejected' => 'nahi', _ => st }, fg: _stateColor(st)),
+          Pill(switch (st) { 'waiting' => 'sign-off?', 'signed' => 'signed', 'stale' => 'old', 'rejected' => 'no', _ => st }, fg: _stateColor(st)),
         ]),
         if (counts.isNotEmpty)
-          Text('Kul ${_s(counts['total'])} · ho gaye ${(counts['done_evidence'] ?? 0) + (counts['done_word'] ?? 0)} · baaki ${_s(counts['open'])} · lagu nahi ${_s(counts['na'])}',
+          Text('Total ${_s(counts['total'])} · done${(counts['done_evidence'] ?? 0) + (counts['done_word'] ?? 0)} · pending${_s(counts['open'])} · not applicable ${_s(counts['na'])}',
               style: const TextStyle(fontSize: 12.5, color: C.muted)),
         for (final e in _strs(content['exceptions']).take(6)) Text('• $e', style: const TextStyle(fontSize: 12.5, color: C.warn)),
         if (_s(content['text']).isNotEmpty) Text(_s(content['text']), maxLines: 6, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12)),
         const SizedBox(height: 8),
         if (st == 'waiting')
           Row(children: [
-            Expanded(child: GradientButton(label: 'Haan, sign-off', height: 42, onTap: _busy ? null : () => _decide(true))),
+            Expanded(child: GradientButton(label: 'Yes, sign off', height: 42, onTap: _busy ? null : () => _decide(true))),
             const SizedBox(width: 8),
-            GlassButton(label: 'Nahi', height: 42, onTap: _busy ? null : () => _decide(false)),
+            GlassButton(label: 'No', height: 42, onTap: _busy ? null : () => _decide(false)),
           ]),
-        if (st == 'stale') const Text('Card ke baad kaam badle: naya draft banaiye.', style: TextStyle(fontSize: 12, color: C.warn)),
-        const Text('App mein tap = sign-off (digital signature nahi). Draft / jaankari: CA / CS se pakka karwaiye.',
+        if (st == 'stale') const Text('The task changed after the card: make a new draft.', style: TextStyle(fontSize: 12, color: C.warn)),
+        const Text('A tap in the app = sign-off (not a digital signature). Draft / information: confirm with your CA / CS.',
             style: TextStyle(fontSize: 11, color: C.faint)),
       ]),
     );

@@ -170,7 +170,8 @@ def _after_turn(tenant, user_text, calls, used, ok, actor):
     from .agent.tools import TOOL_LABELS
 
     def label_for(tool: str) -> str:
-        return TOOL_LABELS.get(tool, tool.replace("_", " "))
+        from . import lang as _lang
+        return _lang.label(tool)
     steps, seen = [], set()
     for c in good:                                         # each tool once, in the order it first worked
         if c["tool"] in seen:
@@ -244,6 +245,20 @@ def update(tenant: str, pid: str, active: bool | None = None, title: str | None 
                 raise ProcedureError("Kam se kam ek kadam likhiye.")
             p.steps = json.dumps([{"tool": "", "label": x} for x in clean], ensure_ascii=False)
             p.edited = True
+        return view(p)
+
+
+def record_run(tenant: str, pid: str, ok: bool) -> dict[str, Any]:
+    """v0.745 her own verdict after a real run from the Video Learner: worked = a win, wrong = a fail."""
+    with session() as s:
+        p = s.get(Procedure, pid)
+        if p is None or p.tenant_id != tenant:
+            raise ProcedureError("Yeh seekha hua kaam nahi mila.")
+        p.uses += 1
+        if ok:
+            p.wins += 1
+        else:
+            p.fails += 1
         return view(p)
 
 

@@ -31,7 +31,7 @@ from .events import notify
 
 log = logging.getLogger("santosh.kaam_followup")
 
-STATE_WORD = {"done": "poora ho gaya", "failed": "ruk gaya, dikkat aayi", "stopped": "band kar diya gaya"}
+STATE_WORD = {"done": "finished", "failed": "stopped, ran into a problem", "stopped": "was stopped"}
 _LOCK = threading.Lock()
 _SENDING: set[int] = set()
 STATS: dict[str, int] = {"enqueued": 0, "sent": 0, "fallback": 0, "skipped": 0, "postponed": 0, "dup": 0,
@@ -156,30 +156,43 @@ def _wake_text(r: KaamFollowup) -> str:
     these words too, so the tools the result talks about (mail, sheet, video...) are loaded for the follow-up."""
     if r.kind == "research_watch" and r.state == "done":    # v0.480 R9: a watched topic CHANGED - a short message, from the diff
         rid = r.key.split(":", 1)[-1]
-        return (f"[Santosh worker update, not the user] <research_change_due run=\"{rid}\">\nJis topic par nazar rakhi thi usme badlaav mila ({r.title}): {r.detail}\n"
-                f"Pehle research_watch tool se action=result, run_id={rid} lo - usme badlaav ka digest hai. Phir uski bhasha mein CHHOTA sandesh likho (3-8 lines): "
-                f"kya badla (pehle kya tha -> ab kya, kis period ka), kya naya mila, aur jo is baar nahi dikha (use 'nahi dikha' likho, 'badal gaya' nahi). Kaaran apne se mat jodo. "
-                f"Naye aankde [n] source ke saath; purana aankda bina [n] ke 'pehle' likh kar. Ant mein poochho: poori report chahiye (research_status result) ya watch rok dein.\n</research_change_due>")
+        return (f"[Santosh worker update, not the user] <research_change_due run=\"{rid}\">\nThe topic you were watching has changed ({r.title}): {r.detail}\n"
+                f"First call the research_watch tool with action=result, run_id={rid} - it holds the digest of the change. Then write a SHORT message (3-8 lines): "
+                f"what changed (what it was before -> what it is now, for which period), what is new, and what was not seen this time (write 'not seen this time', never 'changed'). Do not add reasons of your own. "
+                f"Give new figures with their [n] source; give an old figure without [n], marked 'before'. End by asking: does she want the full report (research_status result) or should the watch be stopped.\n</research_change_due>")
     if r.kind == "research_run" and r.state == "done":     # v0.475 R4: the report is WRITTEN here, from the dossier
         rid = r.key.split(":", 1)[-1]
-        return (f"[Santosh worker update, not the user] <research_report_due run=\"{rid}\">\nResearch poora ho gaya ({r.title}): {r.detail}\n"
-                f"Ab uski REPORT likho: pehle research_status tool se action=result, id={rid} lo - usme dossier hai. Report sirf us dossier "
-                f"se likho (research_run dobara mat chalao): har number uske note ke source ke saath [n] aur date ke saath, jo confirm nahi hua "
-                f"woh alag section mein 'jo confirm nahi ho paya', aur sources ki list. Uski bhasha mein likho. Lamba ya file maangi ho to "
-                f"research_document tool se PDF / Word banao (uske liye apni final report `report` mein do) aur chat mein saar + file do.\n</research_report_due>")
+        return (f"[Santosh worker update, not the user] <research_report_due run=\"{rid}\">\nThe research is finished ({r.title}): {r.detail}\n"
+                f"Now write her REPORT: first call the research_status tool with action=result, id={rid} - it holds the dossier. Write the report only from that dossier "
+                f"(do not run research_run again): every number with its note's source [n] and date; what could not be confirmed goes "
+                f"in a separate section 'Not confirmed', then the list of sources. Write in clear simple English. If she asked for something long or a file, "
+                f"make a PDF / Word with the research_document tool (pass your final report as `report`) and give a summary + the file in the chat.\n</research_report_due>")
+    if r.kind == "agent_team" and r.state in ("done", "failed"):
+        # v0.722 JAWAB HI JAWAB: a background crew's deliverable (up to 24k chars, AgentTeam.result) never reached the chat -
+        # the follow-up carried a 400-char snippet + "1-3 lines", so her question ("5 million dollar AI SaaS idea dhundo")
+        # got a status survey of her whole desk and "the result should be in your chat above" instead of the answer
+        tid = r.key.split(":", 1)[-1]
+        return (f"[Santosh worker update, not the user] <team_result_due team=\"{tid}\">\nThe team she started: "
+                f"{STATE_WORD.get(r.state, r.state)} ({r.label} {r.title}).".replace("( ", "(") + (f"\nDetails: {r.detail}" if r.detail else "") + f"\nFirst call the agent_status tool with action=check, id={tid} - it holds "
+                f"the team's COMPLETE deliverables. Now write the ACTUAL ANSWER TO HER QUESTION right here in the chat from them - complete, "
+                f"clear, in simple English (as much as the question needs; if she asked for three ideas, give all three, each with "
+                f"the key points). This IS the answer for this chat: do not list other jobs / projects / cards, do not run kaam_status, "
+                f"do not write 'the answer is above'. Do not add anything that is not in the deliverables; if something is unfinished, "
+                f"say so in one line.\n</team_result_due>")
     head = f"{r.label} {r.title}".strip()
-    digest = f"Kaam: {head}\nNatija: {STATE_WORD.get(r.state, r.state)}"
+    digest = f"Job: {head}\nResult: {STATE_WORD.get(r.state, r.state)}"
     if r.detail:
-        digest += f"\nVivaran: {r.detail}"
+        digest += f"\nDetails: {r.detail}"
     if r.link:
         digest += f"\nLink: {r.link}"
-    return ("[Santosh worker update, not the user] Ek background kaam ka natija abhi aaya hai:\n" + digest +
-            "\n\nIsko apni awaaz mein 1-3 chhoti lines mein batao - kya hua, asli natija kya hai. Bole jaise phone "
-            "par bolte hain: chhote vaakya, comma ka matlab chhota pause, aur energy natije ke hisaab se (sahi nikla "
-            "to thodi khushi awaaz mein, adhura ya galat to dheemi aur seedhi). Agar natija adhura "
-            "ya galat lag raha hai, ya usme jo bataya gaya usse zyada kaam baaki hai, to tools se haalat check kar ke "
-            "sahi jaankari do (jo tools dikhe unse; jo nahi dikhe tool_search se lao). Jo pata hai wahi bolo, kuch "
-            "apne aap se mat jodo.")
+    return ("[Santosh worker update, not the user] The result of a background job has just come in:\n" + digest +
+            "\n\nTell her this in your own voice in 1-3 short lines - what happened, what the real result is. Speak the way "
+            "people talk on the phone: short sentences, a comma is a short pause, energy to match the result (a little "
+            "pleased if it worked, slower and plainer if it is incomplete or wrong). If the result looks incomplete "
+            "or wrong, or there is more work left than what was reported, check the real state with tools "
+            "and give the right information (use the tools you can see; load others with tool_search). Say only what you know, "
+            "add nothing of your own. Talk ONLY about THIS job - do not list other jobs / projects / cards. "
+            "Write 'the result is above in the chat' only if it really is written above in this chat.")
 
 
 async def _wake_turn(r: KaamFollowup, settings) -> bool:
@@ -228,21 +241,21 @@ def _canned(r: KaamFollowup) -> str:
 def _canned_raw(r: KaamFollowup) -> str:
     head = f"{r.label} {r.title}".strip()
     if r.state == "failed":
-        return f"❌ {head}: ruk gaya, dikkat aayi." + (f" ({r.detail})" if r.detail else "") + \
-            " Bataiye to dobara koshish karun ya doosra raasta lun."
+        return f"❌ {head}: stopped, ran into a problem." + (f" ({r.detail})" if r.detail else "") + \
+            " Tell me if you want me to try again or take another route."
     if r.state == "stopped":
-        return f"⏹ {head}: band kar diya gaya." + (f" ({r.detail})" if r.detail else "") + \
-            " Jab chahiye, bas bol dena - phir shuru kar dunga."
-    return f"✅ {head}: ho gaya." + (f" {r.detail}" if r.detail else "") + (f" {r.link}" if r.link else "")
+        return f"⏹ {head}: was stopped." + (f" ({r.detail})" if r.detail else "") + \
+            " Whenever you want it, just say so and I will start it again."
+    return f"✅ {head}: done." + (f" {r.detail}" if r.detail else "") + (f" {r.link}" if r.link else "")
 
 
 _ONE_SHOT_SYSTEM = (   # v0.193 the delivery brief lives in ONE place so tests pin it
-    "Tum Hoola ho, ek Bharatiya AI coworker. Tumhari malik ke ek kaam ka natija abhi aaya hai. "
-    "Usko 1-2 chhoti Hinglish lines mein batao: kya poora hua, ruk gaya, ya band kar diya gaya, asli "
-    "natija kya hai. Jaise phone par bolti hai waise likho: chhote vaakya, comma ka matlab chhota pause, "
-    "energy natije ke hisaab se (sahi nikla to thodi khushi, ruk gaya ya band hua to dheemi aur seedhi "
-    "awaaz). Sirf wahi fact bolo jo neeche diya hai - kuch apne aap se jodna mat. Link ho to ek "
-    "baar saaf likho. Koi emoji nahi, koi markdown nahi, koi ✅ ❌ jaise symbol nahi.")
+    "You are Hoola, an Indian AI coworker. The result of one of your owner's jobs has just come in. "
+    "Tell her in 1-2 short lines of clear simple English: whether it finished, stopped, or was cancelled, and what the real "
+    "result is. Write the way you would say it on the phone: short sentences, a comma is a short pause, "
+    "energy to match the result (a little pleased if it worked, slower and plainer if it stopped or was cancelled). "
+    "Say only the facts given below - add nothing of your own. If there is a link, write it clearly once. "
+    "No emoji, no markdown, no symbols like ✅ ❌.")
 
 
 def _spoken(line: str) -> str:
@@ -258,7 +271,7 @@ async def _model_line(r: KaamFollowup, settings) -> str:
     from .agent.pakka import _ask
     system = _ONE_SHOT_SYSTEM
     text = f"Kaam: {r.label} {r.title}\nNatija: {STATE_WORD.get(r.state, r.state)}" + \
-           (f"\nVivaran: {r.detail}" if r.detail else "") + (f"\nLink: {r.link}" if r.link else "")
+           (f"\nDetails: {r.detail}" if r.detail else "") + (f"\nLink: {r.link}" if r.link else "")
     try:
         out = (await _ask(system, text, settings) or "").strip()
     except Exception as e:

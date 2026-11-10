@@ -23,7 +23,7 @@ class _BaharScreenState extends State<BaharScreen> {
 
   static const _fields = {
     'whatsapp': <List<String>>[],
-    'telegram': [['token', 'Bot token (@BotFather se)']],
+    'telegram': [['token', 'Bot token (from @BotFather)']],
     'slack': [['bot_token', 'Bot token (xoxb-...)'], ['signing_secret', 'Signing secret']],
     'teams': [['app_id', 'Microsoft App ID'], ['app_password', 'Client secret'], ['app_tenant', 'Tenant ID (single-tenant bot ho to)']],
   };
@@ -69,11 +69,11 @@ class _BaharScreenState extends State<BaharScreen> {
     final ok = await showDialog<bool>(
         context: context,
         builder: (c) => AlertDialog(
-              title: Text('$label se Hoola hataayein?'),
-              content: const Text('Wahan se Hoola ab jawab nahi dega. Us chat ki baatein Hoola app mein rahengi.'),
+              title: Text('Remove Hoola from $label?'),
+              content: const Text('Hoola will stop replying there. The chat history stays in the Hoola app.'),
               actions: [
-                TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Nahi')),
-                TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Hataiye')),
+                TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('No')),
+                TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Remove')),
               ],
             ));
     if (ok != true) return;
@@ -93,10 +93,10 @@ class _BaharScreenState extends State<BaharScreen> {
     final ok = await showDialog<bool>(
         context: context,
         builder: (c) => AlertDialog(
-              title: Text('$label jodiye'),
+              title: Text('Connect $label'),
               content: SingleChildScrollView(
                 child: Column(mainAxisSize: MainAxisSize.min, children: [
-                  const Text('Yeh keys sirf yahan daaliye - chat mein kabhi nahi. Server par band (encrypted) rehti hain.',
+                  const Text('Enter these keys only here - never in chat. They are kept locked (encrypted) on the server.',
                       style: TextStyle(fontSize: 12, color: C.faint)),
                   for (final f in fields)
                     TextField(controller: ctrls[f[0]], obscureText: f[0] != 'app_id' && f[0] != 'app_tenant',
@@ -104,8 +104,8 @@ class _BaharScreenState extends State<BaharScreen> {
                 ]),
               ),
               actions: [
-                TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Rehne dijiye')),
-                TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Jodiye')),
+                TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Leave it')),
+                TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Connect')),
               ],
             ));
     final creds = {for (final e in ctrls.entries) e.key: e.value.text.trim()};
@@ -129,15 +129,15 @@ class _BaharScreenState extends State<BaharScreen> {
             Icon(_icons[ch] ?? Icons.chat_bubble_outline, color: linked ? C.ok : C.muted),
             const SizedBox(width: 10),
             Expanded(child: Text(label, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15))),
-            Text(linked ? 'Juda hai' : status == 'pairing' ? 'Code ka intezaar' : 'Band',
+            Text(linked ? 'Connected' : status == 'pairing' ? 'Waiting for the code' : 'Off',
                 style: TextStyle(color: linked ? C.ok : C.faint, fontSize: 12)),
           ]),
           const SizedBox(height: 6),
           if (ch == 'whatsapp')
-            const Text('Aapke WhatsApp Business number se (Meta ka official API). Personal WhatsApp kabhi nahi. '
-                'Graahak pehle jaise business inbox mein hi rahenge.', style: TextStyle(color: C.faint, fontSize: 12)),
+            const Text('From your WhatsApp Business number (Meta\'s official API). Never personal WhatsApp. '
+                'Customers stay in the business inbox as before.', style: TextStyle(color: C.faint, fontSize: 12)),
           if (linked && '${r['paired_with'] ?? ''}'.isNotEmpty)
-            Text('Sirf aap: ${r['paired_with']}', style: const TextStyle(color: C.muted, fontSize: 12)),
+            Text('Only you: ${r['paired_with']}', style: const TextStyle(color: C.muted, fontSize: 12)),
           if (r['webhook'] != null && !linked) ...[
             const SizedBox(height: 6),
             SelectableText('${r['webhook']}', style: const TextStyle(fontSize: 11.5, color: C.chip)),
@@ -150,7 +150,7 @@ class _BaharScreenState extends State<BaharScreen> {
                   icon: const Icon(Icons.copy_rounded, size: 18),
                   onPressed: () => Clipboard.setData(ClipboardData(text: 'HOOLA ${pair['code']}'))),
             ]),
-            Text('${pair['how'] ?? ''} (code ${pair['code_minutes'] ?? 15} minute chalega)',
+            Text('${pair['how'] ?? ''} (code ${pair['code_minutes'] ?? 15} minutes)',
                 style: const TextStyle(fontSize: 12.5, height: 1.4)),
           ],
           const SizedBox(height: 8),
@@ -160,8 +160,8 @@ class _BaharScreenState extends State<BaharScreen> {
             else
               FilledButton.tonal(
                   onPressed: () => _ask(ch, label),
-                  child: Text(status == 'off' ? 'Jodiye' : linked ? 'Naya code' : 'Code dobara')),
-            if (status != 'off') TextButton(onPressed: () => _remove(ch, label), child: const Text('Hataiye')),
+                  child: Text(status == 'off' ? 'Connect' : linked ? 'New code' : 'Code again')),
+            if (status != 'off') TextButton(onPressed: () => _remove(ch, label), child: const Text('Remove')),
           ]),
         ]),
       ),
@@ -171,7 +171,7 @@ class _BaharScreenState extends State<BaharScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Bahar se baat')),
+      appBar: AppBar(title: const Text('Talk from outside')),
       body: !_loaded
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
@@ -180,9 +180,9 @@ class _BaharScreenState extends State<BaharScreen> {
                 const Padding(
                   padding: EdgeInsets.only(bottom: 12),
                   child: Text(
-                      'Apne Hoola se WhatsApp, Telegram, Slack ya Teams par baat kijiye - wahi yaad, wahi kaam. '
-                      'Sirf aap: jodne ke baad jo code dikhe woh us app se bhejiye. Paisa / bhejna / delete ke card '
-                      'hamesha Hoola app mein hi tap honge.',
+                      'Talk to your Hoola on WhatsApp, Telegram, Slack or Teams - the same memory, the same work. '
+                      'Only you: after connecting, send the code shown from that app. Cards for money / sending / deleting '
+                      'are always tapped in the Hoola app.',
                       style: TextStyle(color: C.muted, fontSize: 13, height: 1.4)),
                 ),
                 for (final r in _rows) _card(r),

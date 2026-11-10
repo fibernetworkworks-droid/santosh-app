@@ -95,9 +95,9 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
     from ..itadmin import service as S
     t, conv, actor = ctx.tenant_id, ctx.conversation_id, _actor(ctx)
     if actor.startswith("customer:"):
-        raise ToolError("Office IT admin graahakon ke liye nahi hai.")
+        raise ToolError("Office IT admin is not for customers.")
     if action in _OWNER_ONLY and not _owner(ctx):
-        raise ToolError("Yeh sirf owner kar sakti hain.")
+        raise ToolError("Only the owner can do this.")
     try:
         if action == "licence":
             return S.save_licence(t, _s(a.get("licence")), **_pick(a, ("name", "kind", "vendor", "plan", "seats_bought", "seats_used", "cost",
@@ -150,7 +150,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return S.register_file(t, conv)
     except (S.ItadminError, K.ConnError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("action galat")
+    raise ToolError("invalid action")
 
 
 def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
@@ -159,7 +159,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
     from ..itadmin import service as S
     t = ctx.tenant_id
     if _actor(ctx).startswith("customer:"):
-        raise ToolError("Office IT admin graahakon ke liye nahi hai.")
+        raise ToolError("Office IT admin is not for customers.")
     try:
         if what == "day":
             return S.day(t)
@@ -194,12 +194,12 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
         if what == "rules":
             return {"change_kinds": R.CHANGE_KINDS, "never_by_api": sorted(R.NEVER_API), "practices": R.practices_list(),
                     "licence_kinds": R.LIC_KINDS,
-                    "never": ["password / OTP / PIN maangna, rakhna ya batana", "access / setting khud badalna (sirf uske tap se card)",
-                              "user banana ya password reset API se (password lagta hai: woh console mein khud)",
-                              "staff ka data naukri ke kaam ke alawa"]}
+                    "never": ["asking for, keeping or telling a password / OTP / PIN", "changing access / settings itself (only a card on her tap)",
+                              "creating a user or resetting a password through the API (a password is needed: she does that in the console herself)",
+                              "staff data beyond what the job needs"]}
     except (S.ItadminError, K.ConnError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("what galat")
+    raise ToolError("invalid what")
 
 
 async def it_admin(ctx: Ctx, action, **a: Any):

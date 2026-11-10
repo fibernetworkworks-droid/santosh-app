@@ -118,7 +118,7 @@ def test_vendor_quotes_compare_budget_quote_and_her_tap(ep):
     c = S.compare(T, e["id"], "catering")
     qs = c["heads"][0]["quotes"]
     assert qs[0]["vendor"] == "Annapurna Caterers" and qs[0].get("tag")      # only priced-with-GST one is tagged cheapest
-    assert "GST saaf nahi" in qs[1]["missing"] and "advance kitna" in qs[1]["missing"]
+    assert "GST not clear" in qs[1]["missing"] and "how much advance" in qs[1]["missing"]
     S.choose_quote(T, q1["id"])
     lq = [x for x in S.compare(T, e["id"], "venue")["heads"][0]["quotes"]][0]
     b = S.choose_quote(T, lq["id"])["budget"]
@@ -180,7 +180,7 @@ def test_booking_needs_her_tap_fingerprint_and_no_double_booking(ep, monkeypatch
     bk = S.booking_request(T, e["id"], quote=q["id"], arrive="16:00", advance_due=_future(10))
     b = bk["booking"]
     assert bk["status"] == "needs_tap" and b["amount"] == 136500 and b["advance"] == pytest.approx(40950)
-    assert any("Client ne abhi" in c for c in b["checks"]) and "eventplan_booking" in kinds(S)
+    assert any("client has not accepted" in c for c in b["checks"]) and "eventplan_booking" in kinds(S)
     assert S.booking_request(T, e["id"], quote=q["id"]).get("existing")
     with pytest.raises(S.EventError):
         S.decide_booking(T, b["id"], True, b["hash"])
@@ -211,7 +211,7 @@ def test_booking_needs_her_tap_fingerprint_and_no_double_booking(ep, monkeypatch
     assert any(x.get("kind") == "arrival" and x["time"] == "16:00" for x in tl)
     # spends: card, fingerprint, paid
     sp = S.spend_request(T, e["id"], "Police permission fee", 2000, "Police station", "permissions")
-    assert sp["status"] == "needs_tap" and any("budget mein nahi" in c for c in sp["spend"]["checks"])
+    assert sp["status"] == "needs_tap" and any("not in the budget" in c for c in sp["spend"]["checks"])
     with pytest.raises(S.EventError):
         S.decide_spend(T, sp["spend"]["id"], True, sp["spend"]["hash"], by_tap=True)
     ch = S.spend_challenge(T, sp["spend"]["id"])
@@ -265,7 +265,7 @@ def test_guests_rsvp_invites_show_report_invoice_forget_tick(ep, monkeypatch):
     with pytest.raises(S.EventError):
         S.forget(T, e["id"], actor="staff:s1")
     f = S.forget(T, e["id"])
-    assert "4 mehmaan" in f["say"] and S.guests(T, e["id"])["summary"]["total"] == 0
+    assert "4 guests" in f["say"] and S.guests(T, e["id"])["summary"]["total"] == 0
     assert S.event_view(T, e["id"])["client"] == "Client (hataya)"
 
 
@@ -279,7 +279,7 @@ def test_tick_once_each(ep, monkeypatch):
     o2 = S.tick(when)
     assert o1["alerts"] >= 1 and o2["alerts"] == 0 and o1["morning"] == 1 and o2["morning"] == 0
     assert "eventplan_alert" in kinds(S) and "eventplan_day" in kinds(S)
-    assert any("Kal" in p["say"] for k, p in S.EVENTS if k == "eventplan_alert")
+    assert any("Tomorrow" in p["say"] for k, p in S.EVENTS if k == "eventplan_alert")
     assert S.day(T)["upcoming"]
 
 

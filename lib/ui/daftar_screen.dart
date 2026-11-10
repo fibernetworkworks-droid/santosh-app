@@ -102,7 +102,7 @@ class _DaftarScreenState extends State<DaftarScreen> {
   Widget _hazri() => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         _classPicker(),
         const SizedBox(height: 8),
-        const Text('Gair-hazir bachchon par tap kijiye; baaki sab hazir maane jaayenge.', style: TextStyle(color: C.muted, fontSize: 12.5)),
+        const Text('Tap the absent children; everyone else will be counted present.', style: TextStyle(color: C.muted, fontSize: 12.5)),
         const SizedBox(height: 6),
         for (final l in _roster)
           CheckboxListTile(
@@ -110,13 +110,13 @@ class _DaftarScreenState extends State<DaftarScreen> {
             value: _absent.contains(_s(l['number'])),
             onChanged: l['usable'] == true ? (v) => setState(() => v == true ? _absent.add(_s(l['number'])) : _absent.remove(_s(l['number']))) : null,
             title: Text('${_s(l['roll']).isEmpty ? '' : '${_s(l['roll'])}. '}${_s(l['name'])}'),
-            subtitle: l['usable'] == true ? null : const Text('Guardian consent baaki', style: TextStyle(color: C.warn, fontSize: 11.5)),
+            subtitle: l['usable'] == true ? null : const Text('Guardian consent pending', style: TextStyle(color: C.warn, fontSize: 11.5)),
           ),
         const SizedBox(height: 8),
         Row(children: [
           Expanded(
               child: GradientButton(
-                  label: 'Hazri save karo',
+                  label: 'Save attendance',
                   height: 44,
                   onTap: _busy || _class.isEmpty
                       ? null
@@ -129,7 +129,7 @@ class _DaftarScreenState extends State<DaftarScreen> {
       ]);
 
   Widget _marks() => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('${_unsigned.length} marks teacher ke sign-off ke intezaar mein. Jo sahi hain unhe chun kar sign-off kijiye.',
+        Text('${_unsigned.length} marks are waiting for the teacher\'s sign-off. Select the correct ones and sign off.',
             style: const TextStyle(color: C.muted, fontSize: 12.5)),
         const SizedBox(height: 6),
         for (final m in _unsigned)
@@ -142,7 +142,7 @@ class _DaftarScreenState extends State<DaftarScreen> {
           ),
         if (_unsigned.isNotEmpty)
           GradientButton(
-              label: 'Chune hue marks sign-off',
+              label: 'Sign off selected marks',
               height: 44,
               onTap: _busy || _pick.isEmpty
                   ? null
@@ -155,7 +155,7 @@ class _DaftarScreenState extends State<DaftarScreen> {
   Widget _timetable() {
     final tt = _tt;
     if (tt == null) {
-      return const Text('Abhi koi timetable nahi. Chat mein kahiye: "9-A aur 10-A ka timetable banao: Maths Mrs Rao 6 period..."',
+      return const Text('No timetable yet. Tell me in chat: "Make a timetable for 9-A and 10-A: Maths Mrs Rao 6 periods..."',
           style: TextStyle(color: C.muted));
     }
     final grid = _map(tt['grid']);
@@ -188,7 +188,7 @@ class _DaftarScreenState extends State<DaftarScreen> {
   Widget _report() => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         _classPicker(),
         const SizedBox(height: 6),
-        const Text('Report card mein sirf sign-off hue marks aate hain.', style: TextStyle(color: C.muted, fontSize: 12.5)),
+        const Text('Only signed-off marks go into the report card.', style: TextStyle(color: C.muted, fontSize: 12.5)),
         for (final l in _roster.where((x) => x['usable'] == true))
           ListTile(
             contentPadding: EdgeInsets.zero,
@@ -210,14 +210,14 @@ class _DaftarScreenState extends State<DaftarScreen> {
               if (_s(_d?['say']).isNotEmpty) Glass(child: Text(_s(_d?['say']), style: const TextStyle(fontWeight: FontWeight.w700))),
               const SizedBox(height: 10),
               Wrap(spacing: 6, children: [
-                for (final (i, t) in const [(0, 'Hazri'), (1, 'Marks'), (2, 'Timetable'), (3, 'Report card')])
+                for (final (i, t) in const [(0, 'Attendance'), (1, 'Marks'), (2, 'Timetable'), (3, 'Report card')])
                   ChoiceChip(label: Text(t), selected: _tab == i, onSelected: (_) => setState(() => _tab = i)),
               ]),
               const SizedBox(height: 10),
               if (_busy) const LinearProgressIndicator(),
               if (_d == null) const Center(child: CircularProgressIndicator()) else [_hazri(), _marks(), _timetable(), _report()][_tab],
               const SizedBox(height: 14),
-              const Text('Hoola ke marks suggestion hain: teacher sign-off ke baad hi pakke. Guardian ko kuch bhi sirf aapke tap se.',
+              const Text('Hoola\'s marks are suggestions: they are final only after the teacher\'s sign-off. Anything to a guardian goes only with your tap.',
                   style: TextStyle(color: C.faint, fontSize: 11.5)),
             ]),
           ),
@@ -270,7 +270,7 @@ class _DaftarShareCardState extends State<DaftarShareCard> {
           Icon(absent ? Icons.event_busy_rounded : Icons.assignment_rounded, size: 18, color: C.accent),
           const SizedBox(width: 6),
           Expanded(
-              child: Text(absent ? '${_s(p['class'])}: ${(p['people'] as List? ?? const []).length} gair-hazir · ${_s(p['day'])}' : 'Report card: ${_s(p['name'])}',
+              child: Text(absent ? '${_s(p['class'])}: ${(p['people'] as List? ?? const []).length} absent · ${_s(p['day'])}' : 'Report card: ${_s(p['name'])}',
                   style: const TextStyle(fontWeight: FontWeight.w800))),
           Pill(_s(sh['status']).toUpperCase(), fg: waiting ? C.warn : (_s(sh['status']) == 'shared' ? C.ok : C.muted)),
         ]),
@@ -278,14 +278,14 @@ class _DaftarShareCardState extends State<DaftarShareCard> {
         const SizedBox(height: 8),
         if (waiting)
           Row(children: [
-            Expanded(child: GradientButton(label: 'Haan, drafts banao', height: 44, onTap: _busy ? null : () => _decide(true))),
+            Expanded(child: GradientButton(label: 'Yes, make the drafts', height: 44, onTap: _busy ? null : () => _decide(true))),
             const SizedBox(width: 8),
-            GlassButton(label: 'Mana', onTap: _busy ? null : () => _decide(false)),
+            GlassButton(label: 'Declined', onTap: _busy ? null : () => _decide(false)),
           ]),
         for (final d in _list(res['drafts']))
-          TextButton.icon(onPressed: () => _open(_s(d['link'])), icon: const Icon(Icons.chat_rounded, size: 18), label: Text('${_s(d['to'])} ko WhatsApp draft')),
+          TextButton.icon(onPressed: () => _open(_s(d['link'])), icon: const Icon(Icons.chat_rounded, size: 18), label: Text('WhatsApp draft to ${_s(d['to'])}')),
         for (final e in _map(res['links']).entries)
-          TextButton.icon(onPressed: () => _open(_s(e.value)), icon: const Icon(Icons.chat_rounded, size: 18), label: const Text('WhatsApp draft (file khud lagaiye)')),
+          TextButton.icon(onPressed: () => _open(_s(e.value)), icon: const Icon(Icons.chat_rounded, size: 18), label: const Text('WhatsApp draft (attach the file yourself)')),
       ]),
     );
   }

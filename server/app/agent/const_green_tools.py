@@ -15,26 +15,26 @@ GREEN_TOOLS = [
     {"name": "const_green", "description": (
         "Green & performance desk - energy, ECBC, daylight, carbon, water, credits, commissioning, T&C, "
         "M&V. Har certification INKAAR (audit/rating/sign-off insaan ka). action=meter_add: site, meter, "
-        "kwh, day, note. action=tariff_add: name, rows [{from_kwh, to_kwh, rate, fixed_rs}], source (AAPKA "
+        "kwh, day, note. action=tariff_add: name, rows [{from_kwh, to_kwh, rate, fixed_rs}], source (YOUR "
         "bill). action=bill: name, kwh_month -> slab-by-slab hisaab. action=benchmark: site, builtup_m2, "
         "benchmark_kwh_m2_mo, benchmark_source -> EPI kWh/m2/month. action=rule_add: family ecbc|daylight|"
-        "benchmark|other, rule_id, text, value, unit, direction, clause, source - bina clause ka rule nahi "
+        "benchmark|other, rule_id, text, value, unit, direction, clause, source - a rule without a clause is not "
         "bachta. action=check: project, rule_id, declared -> within/breach (ECBC assessor faisla). "
         "action=daylight: project, room, glazing_m2, floor_m2, rule_id (optional) -> WFR % (explained, not "
         "certified). action=model_inputs: project, rows [{param, value, unit, source}] -> modeller ka INPUT "
-        "register (EnergyPlus yahan nahi chalta). action=carbon_add: project, material, qty, unit, "
+        "register (EnergyPlus is not run here). action=carbon_add: project, material, qty, unit, "
         "factor_kgco2e, factor_source (EPD/LCA named) -> kgCO2e. action=carbon_hotspots: project -> ranked "
         "list (assessor decides). action=water_demand: project, name, occupants -> KLD (CPHEEO row). "
         "action=rwh: project, name, roof_m2, runoff_coeff, rainfall_mm, rain_source (IMD station) -> m3/yr. "
         "action=credit_add: project, rating IGBC|GRIHA|LEED, credit, points_available, points_claimed, "
         "evidence_ref, status planned|claimed|denied. action=credits_score: project -> claimed vs available "
-        "(sum AAPKI rows ka; rating assessor ki). action=cx_add: project, system, test, steps [..], season "
+        "(sum of YOUR rows; the rating is the assessor's). action=cx_add: project, system, test, steps [..], season "
         "first|seasonal -> Cx script. action=cx_issue: cx (id), severity minor|major|critical, note. "
         "action=cx_status: cx (id), status planned|done|failed. action=tc_add: project, system, cert_no, "
         "agency, tested_on, as_installed, design, tolerance_pct, unit -> ok/exceeds (acceptance T&C "
         "engineer ki). action=mv_add: project, option A|B|C|D, baseline rows [{driver, kwh}], report rows "
         "-> M&V job. action=mv_savings: mv (id) -> baseline model (a, b, r2 printed) + savings (IPMVP "
-        "routine, AAPKA option). action=day: desk summary."),
+        "routine, YOUR option). action=day: desk summary."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["meter_add", "tariff_add", "bill", "benchmark", "rule_add",
                                                "check", "daylight", "model_inputs", "carbon_add",

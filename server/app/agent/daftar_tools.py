@@ -53,7 +53,7 @@ def _s(v: Any) -> str:
 def _actor(ctx: Ctx) -> str:
     a = getattr(ctx, "actor", "owner") or "owner"
     if a.startswith("customer:"):
-        raise ToolError("Yeh school office ka kaam hai; graahak ke liye nahi.")
+        raise ToolError("This is school office work; not for customers.")
     return a
 
 

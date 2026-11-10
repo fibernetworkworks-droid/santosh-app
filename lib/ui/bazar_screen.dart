@@ -93,7 +93,7 @@ class _BazarScreenState extends State<BazarScreen> {
         'address': _addr.text.trim(),
         'phone': _phone.text.trim(),
       });
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Save ho gaya')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Saved')));
       _load();
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
@@ -127,35 +127,35 @@ class _BazarScreenState extends State<BazarScreen> {
     final city = TextEditingController();
     final pins = TextEditingController(text: _settings?['pincode'] as String? ?? '');
     final aliases = TextEditingController();
-    final slots = TextEditingController(text: 'Aaj shaam 6-7, Kal subah 9-10');
+    final slots = TextEditingController(text: 'Today 6-7 pm, Tomorrow 9-10 am');
     final items = TextEditingController(text: 'Atta, 53, kg\nTel, 145, l\nSakhar, 46, kg');
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => StatefulBuilder(builder: (ctx, setD) => AlertDialog(
-        title: const Text('Dukaan jodiye'),
+        title: const Text('Add a shop'),
         content: SingleChildScrollView(
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             DropdownButtonFormField<String>(
               value: tpl,
               isExpanded: true,
-              decoration: const InputDecoration(labelText: 'Dukaan ka prakaar'),
+              decoration: const InputDecoration(labelText: 'Type of shop'),
               items: [for (final p in shopPacks) DropdownMenuItem(value: p['pack_id'] as String, child: Text(p['name'] as String))],
               onChanged: (v) => setD(() => tpl = v ?? tpl),
             ),
-            TextField(controller: name, decoration: const InputDecoration(labelText: 'Dukaan ka naam')),
-            TextField(controller: aliases, decoration: const InputDecoration(labelText: 'Log kaise bulate hain (jaise: Ramesh bhau)')),
-            TextField(controller: phone, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'Maalik ka mobile')),
-            TextField(controller: upi, decoration: const InputDecoration(labelText: 'Dukaan ka UPI ID (paise yahin jayenge)')),
-            TextField(controller: city, decoration: const InputDecoration(labelText: 'Shehar')),
-            TextField(controller: pins, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Pincode (comma se)')),
-            TextField(controller: slots, decoration: const InputDecoration(labelText: 'Delivery samay (comma se)')),
+            TextField(controller: name, decoration: const InputDecoration(labelText: 'Shop name')),
+            TextField(controller: aliases, decoration: const InputDecoration(labelText: 'How people call them (e.g. Ramesh bhau)')),
+            TextField(controller: phone, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'Owner\'s mobile')),
+            TextField(controller: upi, decoration: const InputDecoration(labelText: 'Shop\'s UPI ID (money will go here)')),
+            TextField(controller: city, decoration: const InputDecoration(labelText: 'City')),
+            TextField(controller: pins, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Pincode (comma separated)')),
+            TextField(controller: slots, decoration: const InputDecoration(labelText: 'Delivery times (comma separated)')),
             TextField(controller: items, minLines: 3, maxLines: 10,
-                decoration: const InputDecoration(labelText: 'Saamaan: naam, daam, unit (har line ek)')),
+                decoration: const InputDecoration(labelText: 'Items: name, price, unit (one per line)')),
           ]),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Rehne do')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Jodiye')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Add')),
         ],
       )),
     );
@@ -170,9 +170,9 @@ class _BazarScreenState extends State<BazarScreen> {
       if (list.isNotEmpty) await app.api!.bazarShopItems(shop['id'] as String, list);
       if (!context.mounted) return;
       await showDialog(context: context, builder: (ctx) => AlertDialog(
-        title: Text('${shop['name']} jud gayi ✓'),
-        content: SelectableText('${list.length} saamaan add hue.\n\nDukaan ka merchant token (dukaan wale ko dijiye, sirf ek baar dikhega):\n\n${shop['merchant_token']}'),
-        actions: [FilledButton(onPressed: () => Navigator.pop(ctx), child: const Text('Theek hai'))],
+        title: Text('${shop['name']} linked ✓'),
+        content: SelectableText('${list.length} items added.\n\nThe shop\'s merchant token (give it to the shopkeeper, it is shown only once):\n\n${shop['merchant_token']}'),
+        actions: [FilledButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK'))],
       ));
       _load();
     } catch (e) {
@@ -217,11 +217,11 @@ class _BazarScreenState extends State<BazarScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: C.bgBottom,
-        title: Text('${a['name']} hatayein?'),
-        content: const Text('Hoola is account se order nahi kar payega jab tak aap dobara link na karein.'),
+        title: Text('Remove ${a['name']}?'),
+        content: const Text('Hoola will not be able to place orders from this account until you link it again.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Nahi')),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Hatao', style: TextStyle(color: C.bad))),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('No')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Remove', style: TextStyle(color: C.bad))),
         ],
       ),
     );
@@ -238,16 +238,16 @@ class _BazarScreenState extends State<BazarScreen> {
   // v0.277 IndiaMART (and any no-login app): connected for everyone, nothing to link or unlink
   Widget _appAction(Map<String, dynamic> a) => a['no_login'] == true
       ? PluginAction(kind: a['status'] == 'ready' ? ActionKind.linked : ActionKind.soon,
-          label: a['status'] == 'ready' ? 'Connected' : 'Abhi band hai')
+          label: a['status'] == 'ready' ? 'Connected' : 'Off for now')
       : switch (a['status'] as String? ?? '') {
-        'ready' => PluginAction(kind: ActionKind.linked, label: 'Juda hai', onTap: () => _unlink(a)),
-        'needs_link' => PluginAction(kind: ActionKind.add, label: 'Jodiye', onTap: () => _link(a['pack_id'] as String)),
-        _ => const PluginAction(kind: ActionKind.soon, label: 'Jald aa raha'),
+        'ready' => PluginAction(kind: ActionKind.linked, label: 'Linked', onTap: () => _unlink(a)),
+        'needs_link' => PluginAction(kind: ActionKind.add, label: 'Add', onTap: () => _link(a['pack_id'] as String)),
+        _ => const PluginAction(kind: ActionKind.soon, label: 'Coming soon'),
       };
 
   Widget _appCard(Map<String, dynamic> a) => PluginCard(
         name: a['name'] as String? ?? '',
-        does: (a['does'] as String?)?.isNotEmpty == true ? a['does'] as String : 'Order, cart aur tracking Hoola se',
+        does: (a['does'] as String?)?.isNotEmpty == true ? a['does'] as String : 'Orders, cart and tracking through Hoola',
         logo: a['logo'] as String?,
         category: a['no_login'] == true ? 'Business & SMB' : 'Food & Dining',
         executor: 'mcp',
@@ -261,13 +261,13 @@ class _BazarScreenState extends State<BazarScreen> {
     final st = p['status'] as String? ?? '';
     final ex = p['executor'] as String? ?? '';
     if (ex == 'mcp' && st == 'needs_link') {
-      return PluginAction(kind: ActionKind.add, label: 'Jodiye', height: 46, onTap: () {
+      return PluginAction(kind: ActionKind.add, label: 'Add', height: 46, onTap: () {
         Navigator.of(context).pop();
         _link(p['pack_id'] as String);
       });
     }
     if (ex == 'shop' && st == 'no_shop_yet') {
-      return PluginAction(kind: ActionKind.add, label: 'Dukaan jodiye', height: 46, onTap: () {
+      return PluginAction(kind: ActionKind.add, label: 'Add a shop', height: 46, onTap: () {
         Navigator.of(context).pop();
         _addShop(context);
       });
@@ -276,35 +276,35 @@ class _BazarScreenState extends State<BazarScreen> {
       // v0.320 the button does the job: UPI / cab apps open on the phone, everything else starts the work in chat
       final pkg = p['android_package'] as String? ?? '';
       if (pkg.isNotEmpty) {
-        return PluginAction(kind: ActionKind.add, label: '${p['name']} kholiye', height: 46, onTap: () async {
+        return PluginAction(kind: ActionKind.add, label: 'Open ${p['name']}', height: 46, onTap: () async {
           Navigator.of(context).pop();
           final res = await Native.openExternal(package: pkg);
           if (res != 'ok' && mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${p['name']} is phone par nahi mila. Play Store se install kijiye.')));
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${p['name']} was not found on this phone. Install it from the Play Store.')));
           }
         });
       }
       final ex = examplesFor(p);
       if (ex.isNotEmpty) {
-        return PluginAction(kind: ActionKind.add, label: 'Hoola se karwaiye', height: 46, onTap: () async {
+        return PluginAction(kind: ActionKind.add, label: 'Have Hoola do it', height: 46, onTap: () async {
           Navigator.of(context).pop();
           final ok = await app.send(ex.first);
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(ok ? 'Chat mein bhej diya: "${ex.first}"' : 'Bhej nahi paya, dobara try kijiye')));
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(ok ? 'Sent to chat: "${ex.first}"' : 'Could not send, try again')));
           }
         });
       }
-      return const PluginAction(kind: ActionKind.linked, label: 'Taiyaar hai · Hoola se kahiye', height: 46);
+      return const PluginAction(kind: ActionKind.linked, label: 'Ready · tell Hoola', height: 46);
     }
-    if (st == 'demo') return const PluginAction(kind: ActionKind.soon, label: 'Abhi demo: asli bill jald', height: 46);
-    if (st == 'not_connected') return const PluginAction(kind: ActionKind.soon, label: 'Main tab mein account jodiye', height: 46);
+    if (st == 'demo') return const PluginAction(kind: ActionKind.soon, label: 'Demo for now: real billing soon', height: 46);
+    if (st == 'not_connected') return const PluginAction(kind: ActionKind.soon, label: 'Link an account in the Main tab', height: 46);
     return null;
   }
 
   void _openSheet(Map<String, dynamic> p) => showPluginSheet(context, p, action: _sheetAction(p), onSay: (t) async {
         final ok = await app.send(t);
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(ok ? 'Chat mein bhej diya: "$t"' : 'Bhej nahi paya, dobara try kijiye')));
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(ok ? 'Sent to chat: "$t"' : 'Could not send, try again')));
         }
       });
 
@@ -330,7 +330,7 @@ class _BazarScreenState extends State<BazarScreen> {
           if (widget.embedded) ...[
             Text('Connectors', style: display(28)),
             const SizedBox(height: 4),
-            Text('$total plugins · jodiye, Hoola inse kaam poora karega', style: const TextStyle(color: C.muted, fontSize: 13.5)),
+            Text('$total plugins · link them, Hoola will finish the work with them', style: const TextStyle(color: C.muted, fontSize: 13.5)),
             const SizedBox(height: 16),
           ],
           if (_err != null) Padding(padding: const EdgeInsets.only(bottom: 10), child: Text(_err!, style: const TextStyle(color: C.bad))),
@@ -339,7 +339,7 @@ class _BazarScreenState extends State<BazarScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
             child: TextField(
               style: const TextStyle(color: C.ink, fontSize: 15),
-              decoration: const InputDecoration(prefixIcon: Icon(Icons.search_rounded, color: C.muted), hintText: 'Plugin dhoondhiye: bijli, kirana, Uber…',
+              decoration: const InputDecoration(prefixIcon: Icon(Icons.search_rounded, color: C.muted), hintText: 'Search plugins: electricity, kirana, Uber…',
                   border: InputBorder.none, enabledBorder: InputBorder.none, focusedBorder: InputBorder.none),
               onChanged: (v) => setState(() => _filter = v.trim()),
             ),
@@ -349,7 +349,7 @@ class _BazarScreenState extends State<BazarScreen> {
             scrollDirection: Axis.horizontal,
             child: Row(children: [
               // v0.303 SAAF CONNECT: only groups that still have working plugins (handoffs, demo bills, empty shops are hidden)
-              _chip('Sab', ''), _chip('Hoola karega', 'does'), _chip('SMS padhega', 'sms'),
+              _chip('All', ''), _chip('Hoola will do it', 'does'), _chip('Will read SMS', 'sms'),
               _chip('UPI', 'upi'), _chip('Cab', 'ride'),
             ]),
           ),
@@ -362,7 +362,7 @@ class _BazarScreenState extends State<BazarScreen> {
               ),
               const SizedBox(height: 20),
             ],
-            const Caption('APNE ACCOUNTS CONNECT KAREIN'),
+            const Caption('CONNECT YOUR ACCOUNTS'),
             PluginGrid(children: [
               for (final (i, a) in _apps.where((a) => a['custom'] != true).indexed) Stagger(index: i, child: _appCard(a)),
             ]),
@@ -372,7 +372,7 @@ class _BazarScreenState extends State<BazarScreen> {
                 contentPadding: EdgeInsets.zero,
                 leading: const Icon(Icons.live_tv_rounded, color: C.accent),
                 title: Text('Hoola TV · free live channels', style: display(15.5)),
-                subtitle: const Text('Doordarshan, Sansad TV, news, bhakti, music · phone pe ya TV pe'),
+                subtitle: const Text('Doordarshan, Sansad TV, news, devotional, music · on the phone or the TV'),
                 trailing: const Icon(Icons.chevron_right_rounded),
                 onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const TvScreen())),
               ),
@@ -383,7 +383,7 @@ class _BazarScreenState extends State<BazarScreen> {
                 contentPadding: EdgeInsets.zero,
                 leading: const Icon(Icons.slow_motion_video_rounded, color: C.accentSoft),
                 title: Text('Hoola Reels · saved reels', style: display(15.5)),
-                subtitle: const Text('Kisi bhi reel ko Share → Hoola: save, yaad, shopping, family, ye sach hai?'),
+                subtitle: const Text('Share any reel → Hoola: save, remember, shopping, family, is this true?'),
                 trailing: const Icon(Icons.chevron_right_rounded),
                 onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SavedReelsScreen())),
               ),
@@ -393,8 +393,8 @@ class _BazarScreenState extends State<BazarScreen> {
               child: ListTile(
                 contentPadding: EdgeInsets.zero,
                 leading: const Icon(Icons.insights_rounded, color: C.teal),
-                title: Text('Scroll report · reel ki aadat', style: display(15.5)),
-                subtitle: const Text('Kitni der reels, kab, kaunsi app, raat mein kitna · aap kya dekhte ho'),
+                title: Text('Scroll report · your reel habit', style: display(15.5)),
+                subtitle: const Text('How long you watch reels, when, which app, how much at night · what you watch'),
                 trailing: const Icon(Icons.chevron_right_rounded),
                 onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ScrollScreen())),
               ),
@@ -404,8 +404,8 @@ class _BazarScreenState extends State<BazarScreen> {
               child: ListTile(
                 contentPadding: EdgeInsets.zero,
                 leading: const Icon(Icons.movie_creation_rounded, color: C.accent2),
-                title: Text('Hoola Motion · reel banao', style: display(15.5)),
-                subtitle: const Text('Dukaan ki reel, recipe, logo intro, Diwali offer: animated video, WhatsApp / Insta / YouTube ke liye'),
+                title: Text('Hoola Motion · make a reel', style: display(15.5)),
+                subtitle: const Text('Shop reel, recipe, logo intro, Diwali offer: animated video for WhatsApp / Insta / YouTube'),
                 trailing: const Icon(Icons.chevron_right_rounded),
                 onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const MotionScreen())),
               ),
@@ -416,7 +416,7 @@ class _BazarScreenState extends State<BazarScreen> {
                 contentPadding: EdgeInsets.zero,
                 leading: const Icon(Icons.hub_rounded, color: C.teal),
                 title: Text('Apps · 1,600+', style: display(15.5)),
-                subtitle: const Text('Slack, Notion, Jira, HubSpot, Zoom, Tally… apne account se jodiye, koi naya account nahi'),
+                subtitle: const Text('Slack, Notion, Jira, HubSpot, Zoom, Tally… link your own account, no new account needed'),
                 trailing: const Icon(Icons.chevron_right_rounded),
                 onTap: () async {
                   await Navigator.of(context).push(MaterialPageRoute(builder: (_) => McpScreen(app: app)));
@@ -430,7 +430,7 @@ class _BazarScreenState extends State<BazarScreen> {
                 contentPadding: EdgeInsets.zero,
                 leading: const Icon(Icons.api_rounded, color: C.ok),
                 title: Text('Public APIs · 2,100+', style: display(15.5)),
-                subtitle: const Text('Free APIs: mausam, IFSC, pincode, holidays, cricket, currency, news… Hoola khud use karta hai'),
+                subtitle: const Text('Free APIs: weather, IFSC, pincode, holidays, cricket, currency, news… Hoola uses them itself'),
                 trailing: const Icon(Icons.chevron_right_rounded),
                 onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => PublicApisScreen(app: app))),
               ),
@@ -441,7 +441,7 @@ class _BazarScreenState extends State<BazarScreen> {
                 contentPadding: EdgeInsets.zero,
                 leading: const Icon(Icons.shopping_bag_rounded, color: C.accent),
                 title: Text('Hoola Shopping · orders', style: display(15.5)),
-                subtitle: const Text('ONDC, brand stores, paas ki dukaan · Claude / ChatGPT se bhi jodiye'),
+                subtitle: const Text('ONDC, brand stores, nearby shops · also link with Claude / ChatGPT'),
                 trailing: const Icon(Icons.chevron_right_rounded),
                 onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ShoppingScreen(app: app))),
               ),
@@ -449,17 +449,17 @@ class _BazarScreenState extends State<BazarScreen> {
             const SizedBox(height: 14),
             Glass(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('Kharch ki seema (auto-approve)', style: display(16)),
+                Text('Spending limit (auto-approve)', style: display(16)),
                 const SizedBox(height: 4),
-                const Text('0 = har kharch par aapka tap. Seema ke andar sirf pehle approve kiye hue dukaan/biller ka order apne aap hoga. '
-                    'Kisi insaan ko paise hamesha aapke tap aur UPI PIN se hi jayenge.', style: TextStyle(color: C.muted, fontSize: 12.5)),
+                const Text('0 = your tap for every expense. Within the limit, only orders to shops/billers you approved earlier go through by themselves.'
+                    'Money to a person always goes only with your tap and UPI PIN.', style: TextStyle(color: C.muted, fontSize: 12.5)),
                 Row(children: [
                   Expanded(child: TextField(controller: _order, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Ek order ₹ (max 5000)'))),
                   const SizedBox(width: 10),
                   Expanded(child: TextField(controller: _day, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Ek din ₹'))),
                 ]),
-                TextField(controller: _phone, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'Mobile number (dukaan ke bill ke liye)')),
-                TextField(controller: _pin, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Pincode (paas ki dukaan)')),
+                TextField(controller: _phone, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'Mobile number (for shop bills)')),
+                TextField(controller: _pin, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Pincode (nearby shops)')),
                 TextField(controller: _addr, minLines: 1, maxLines: 3, decoration: const InputDecoration(labelText: 'Delivery address')),
                 const SizedBox(height: 10),
                 GradientButton(label: 'Save', height: 46, onTap: _save),
@@ -470,18 +470,18 @@ class _BazarScreenState extends State<BazarScreen> {
               child: ListTile(
                 contentPadding: EdgeInsets.zero,
                 leading: const Icon(Icons.add_business_rounded, color: C.accent),
-                title: Text('Dukaan jodiye', style: display(15.5)),
-                subtitle: const Text('Kirana, dairy, medical, tiffin… apni ya paas ki dukaan Hoola par laaiye'),
+                title: Text('Add a shop', style: display(15.5)),
+                subtitle: const Text('Kirana, dairy, medical, tiffin… bring your own or a nearby shop to Hoola'),
                 trailing: const Icon(Icons.add_circle_rounded, color: C.accent),
                 onTap: () => _addShop(context),
               ),
             ),
             const SizedBox(height: 18),
           ],
-          Caption('SAB PLUGINS · ${packs.length}'),
+          Caption('ALL PLUGINS · ${packs.length}'),
           if (_cat == null && _err == null) const Padding(padding: EdgeInsets.all(24), child: Center(child: CircularProgressIndicator())),
           if (_cat != null && packs.isEmpty)
-            const Padding(padding: EdgeInsets.all(20), child: Center(child: Text('Kuch nahi mila', style: TextStyle(color: C.muted)))),
+            const Padding(padding: EdgeInsets.all(20), child: Center(child: Text('Nothing found', style: TextStyle(color: C.muted)))),
           for (final e in byCat.entries)
             Padding(
               padding: const EdgeInsets.only(top: 10),
@@ -507,7 +507,7 @@ class _BazarScreenState extends State<BazarScreen> {
               ),
             ),
           const SizedBox(height: 14),
-          const Text('Kisi bhi plugin par tap kijiye: woh kya karta hai aur Hoola se kaise kahein.',
+          const Text('Tap any plugin: see what it does and how to tell Hoola.',
               style: TextStyle(color: C.muted, fontSize: 12.5)),
         ]),
       );

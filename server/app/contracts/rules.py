@@ -1,6 +1,6 @@
 """Contracts Sahayak rules: contract kinds, clause finder (English + Hinglish words), value readers (durations, notice days,
 payment days, dates, parties, law, seat, courts), the starter playbook (her standard positions replace it), the risk review in
-plain Hinglish, redline suggestions (find / replace / insert / delete), stamp duty ONLY from her rates, renewal maths.
+plain English, redline suggestions (find / replace / insert / delete), stamp duty ONLY from her rates, renewal maths.
 
 Everything here is pure (no DB, no network) so it is tested directly. Hoola is not a lawyer: every output carries DRAFT_LINE."""
 from __future__ import annotations

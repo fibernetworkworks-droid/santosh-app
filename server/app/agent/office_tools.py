@@ -87,7 +87,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
     t, conv = ctx.tenant_id, ctx.conversation_id
     try:
         if action in _OWNER_ONLY and actor != "owner" and not actor.startswith("approved:"):
-            raise ToolError("Office ke niyam aur team sirf owner badal sakti hain.")
+            raise ToolError("Only the owner can change office rules and team.")
         if action == "item_add":
             return {"item": O.item_upsert(t, _s(a.get("name") or a.get("item")), a.get("qty"), _s(a.get("unit")), a.get("min_qty"),
                                           a.get("lead_days"), _s(a.get("vendor")), a.get("price"), _s(a.get("location")), by)}
@@ -140,7 +140,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         if action == "rules":
             keys = ("office_name", "morning_time", "note_day", "note_time", "windows", "lead_days", "safety_days",
                     "month_budget", "rules", "enabled")
-            return {"rules": O.save_settings(t, **{k: a[k] for k in keys if k in a}), "say": "Office ke niyam save."}
+            return {"rules": O.save_settings(t, **{k: a[k] for k in keys if k in a}), "say": "Office rules saved."}
     except O.OfficeError as e:
         raise ToolError(str(e))
     raise ToolError("action = item_add | use | restock | reorder | ticket_new | ticket_update | renewal_add | renewal_done | "
@@ -162,7 +162,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
             wd = a.get("within_days")
             return {"renewals": O.renewals(t, int(wd) if wd not in (None, "") else None)}
         if what == "starters":
-            return {"starters": O.starters(t), "say": "Common Indian office items; tareekh unke kagaz se lijiye."}
+            return {"starters": O.starters(t), "say": "Common Indian office items; take the dates from their paperwork."}
         if what == "deadlines":
             return {"deadlines": O.deadlines(t, _s(a.get("status")) or "open", _s(a.get("owner")))}
         if what == "vendors":

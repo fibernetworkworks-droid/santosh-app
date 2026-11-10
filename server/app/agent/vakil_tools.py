@@ -89,9 +89,9 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
     from ..vakil import service as S
     t, conv = ctx.tenant_id, ctx.conversation_id
     if _actor(ctx).startswith("customer:"):
-        raise ToolError("Yeh vakil office ka andar ka kaam hai (client ki baat privileged hai).")
+        raise ToolError("This is the law office's internal work (client matters are privileged).")
     if action in _OWNER_ONLY and not _owner(ctx):
-        raise ToolError("Sirf owner.")
+        raise ToolError("Owner only.")
     mt = _s(a.get("matter"))
     try:
         if action == "settings":
@@ -100,7 +100,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return S.save_client(t, _s(a.get("name")), _s(a.get("client")), **{k: a[k] for k in _CLIENT_KEYS if k in a})
         if action == "matter":
             if a.get("status") in ("closed", "disposed") and not _owner(ctx):
-                raise ToolError("Matter band karna sirf owner.")
+                raise ToolError("Only the owner can close a matter.")
             return S.save_matter(t, _s(a.get("title")), mt, **{k: a[k] for k in _MATTER_KEYS if k in a})
         if action == "hearing":
             return S.hearing(t, mt, _s(a.get("on")), _s(a.get("purpose")), _s(a.get("result")), _s(a.get("next_date")),
@@ -138,7 +138,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return S.forget(t, _s(a.get("client")))
     except (S.VakilError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("action galat")
+    raise ToolError("invalid action")
 
 
 def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
@@ -146,7 +146,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
     from ..vakil import service as S
     t, mt = ctx.tenant_id, _s(a.get("matter"))
     if _actor(ctx).startswith("customer:"):
-        raise ToolError("Yeh vakil office ka andar ka kaam hai (client ki baat privileged hai).")
+        raise ToolError("This is the law office's internal work (client matters are privileged).")
     try:
         if what == "day":
             return S.day(t)
@@ -169,7 +169,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
                     "ask_only": R.ASK_ONLY, "official": R.OFFICIAL, "sources": R.SOURCES, "never": R.NEVER, "check": R.CHECK}
     except (S.VakilError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("what galat")
+    raise ToolError("invalid what")
 
 
 async def vakil(ctx: Ctx, action, **a: Any):

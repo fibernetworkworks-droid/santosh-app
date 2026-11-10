@@ -158,7 +158,7 @@ class _CadDeskScreenState extends State<CadDeskScreen> {
             Padding(
               padding: const EdgeInsets.only(top: 8),
               child: Text(
-                  'Banane ki jaanch (${_s((v['dfm'] as Map)['process'])}): ${_s((v['dfm'] as Map)['fails'])} fail\n' +
+                  'Manufacturability check (${_s((v['dfm'] as Map)['process'])}): ${_s((v['dfm'] as Map)['fails'])} failed\n' +
                       _list((v['dfm'] as Map)['rows'])
                           .map((r) => '${r['status'] == 'fail' ? '✗' : r['status'] == 'pass' ? '✓' : '!'} ${_s(r['check'])}: ${_s(r['measured'])}')
                           .join('\n'),
@@ -169,7 +169,7 @@ class _CadDeskScreenState extends State<CadDeskScreen> {
               padding: const EdgeInsets.only(top: 6),
               child: Text((v['cam'] as Map)['ok'] == true
                   ? 'CNC: ${_strs((v['cam'] as Map)['ops']).join(', ')} · about ${_s((v['cam'] as Map)['minutes'])} min · simulate before cutting'
-                  : 'CNC G-code nahi bana: ${_s((v['cam'] as Map)['error'])}',
+                  : 'CNC G-code could not be made: ${_s((v['cam'] as Map)['error'])}',
                   style: const TextStyle(color: C.muted, fontSize: 13)),
             ),
           if (v != null && v['sheet'] is Map)

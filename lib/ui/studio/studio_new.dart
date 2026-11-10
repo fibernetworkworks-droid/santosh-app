@@ -77,7 +77,7 @@ class _NewVideoScreenState extends State<NewVideoScreen> {
       if ((s == 'done' || s == 'notListening') && mounted) setState(() => _listening = false);
     });
     if (!ok) {
-      if (mounted) studioSnack(context, 'Microphone ki permission chahiye.');
+      if (mounted) studioSnack(context, 'Microphone permission is needed.');
       return;
     }
     final before = _brief.text.trim();
@@ -93,7 +93,7 @@ class _NewVideoScreenState extends State<NewVideoScreen> {
 
   Future<void> _improve() async {
     if (_brief.text.trim().length < 4) {
-      studioSnack(context, 'Pehle thoda sa likhiye.');
+      studioSnack(context, 'Write a little first.');
       return;
     }
     setState(() => _improving = true);
@@ -108,7 +108,7 @@ class _NewVideoScreenState extends State<NewVideoScreen> {
 
   Future<void> _addPhoto() async {
     if (_photos.length >= 4) {
-      studioSnack(context, '4 photo tak');
+      studioSnack(context, 'Up to 4 photos');
       return;
     }
     final x = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 90, maxWidth: 2000);
@@ -133,11 +133,11 @@ class _NewVideoScreenState extends State<NewVideoScreen> {
                 ClipRRect(borderRadius: BorderRadius.circular(12),
                     child: Image.memory(p.bytes, width: 64, height: 64, fit: BoxFit.cover)),
                 const SizedBox(width: 12),
-                Expanded(child: Text('Yeh photo kiski hai?', style: sora(17))),
+                Expanded(child: Text('Whose photo is this?', style: sora(17))),
               ]),
               const SizedBox(height: 14),
               Wrap(spacing: 8, children: [
-                for (final k in const {'person': 'Insaan', 'product': 'Product / logo', 'place': 'Jagah'}.entries)
+                for (final k in const {'person': 'Person', 'product': 'Product / logo', 'place': 'Place'}.entries)
                   SChip(label: k.value, on: p.kind == k.key, onTap: () => set(() => p.kind = k.key)),
               ]),
               const SizedBox(height: 12),
@@ -146,7 +146,7 @@ class _NewVideoScreenState extends State<NewVideoScreen> {
                 onChanged: (_) => set(() {}),
                 style: body(15),
                 decoration: InputDecoration(
-                  labelText: p.kind == 'person' ? 'Naam (jaise Meera)' : p.kind == 'product' ? 'Naam (jaise Chai packet)' : 'Naam (jaise Nadi kinara)',
+                  labelText: p.kind == 'person' ? 'Name (e.g. Meera)' : p.kind == 'product' ? 'Name (e.g. Chai packet)' : 'Name (e.g. Riverside)',
                   filled: true,
                   fillColor: SC.field,
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
@@ -158,11 +158,11 @@ class _NewVideoScreenState extends State<NewVideoScreen> {
                   value: p.consent,
                   activeColor: C.accent,
                   onChanged: (v) => set(() => p.consent = v == true),
-                  title: Text('Is insaan ne video ke liye ijazat di hai', style: body(13.5)),
+                  title: Text('This person has given permission for the video', style: body(13.5)),
                 ),
               const SizedBox(height: 12),
               SButton(
-                label: 'Jodo',
+                label: 'Add',
                 onTap: p.name.text.trim().isEmpty || (p.kind == 'person' && !p.consent) ? null : () => Navigator.pop(ctx, true),
               ),
             ]),
@@ -172,11 +172,11 @@ class _NewVideoScreenState extends State<NewVideoScreen> {
 
   void _next() {
     if (_name.text.trim().length < 2) {
-      studioSnack(context, 'Video ka naam likhiye');
+      studioSnack(context, 'Write the video name');
       return;
     }
     if (_brief.text.trim().length < 8) {
-      studioSnack(context, 'Video kis baare mein hai, thoda likhiye');
+      studioSnack(context, 'Write a little about what the video is about');
       return;
     }
     setState(() => _step = 1);
@@ -185,7 +185,7 @@ class _NewVideoScreenState extends State<NewVideoScreen> {
   Future<void> _create() async {
     setState(() {
       _busy = true;
-      _stage = 'Project ban raha hai…';
+      _stage = 'Making the project…';
     });
     final name = _name.text.trim();
     try {
@@ -196,7 +196,7 @@ class _NewVideoScreenState extends State<NewVideoScreen> {
       final project = '${v['project']}';
       final conv = app.conversationId ?? '';
       for (final p in _photos) {
-        if (mounted) setState(() => _stage = '${p.name.text.trim()} ki photo jod raha hoon…');
+        if (mounted) setState(() => _stage = 'Adding the photo of ${p.name.text.trim()}…');
         final f = await app.api!.chatFile(conv, p.file.name.isEmpty ? 'photo.jpg' : p.file.name, p.bytes);
         await app.api!.studioCharacter(project, {
           'name': p.name.text.trim(), 'description': '', 'file_ids': ['${f['file_id']}'], 'consent': p.kind != 'person' || p.consent,
@@ -204,11 +204,11 @@ class _NewVideoScreenState extends State<NewVideoScreen> {
         });
       }
       if (_logo != null) {
-        if (mounted) setState(() => _stage = 'Logo jod raha hoon…');
+        if (mounted) setState(() => _stage = 'Adding the logo…');
         final f = await app.api!.chatFile(conv, _logo!.name.isEmpty ? 'logo.png' : _logo!.name, await _logo!.readAsBytes());
         await app.api!.studioLogo(project, '${f['file_id']}', 'top-right');
       }
-      if (mounted) setState(() => _stage = 'Storyboard shuru…');
+      if (mounted) setState(() => _stage = 'Starting the storyboard…');
       await app.api!.studioPlan(project, _brief.text.trim(), _secs);
       if (mounted) Navigator.pop(context, project);
     } catch (e) {
@@ -234,8 +234,8 @@ class _NewVideoScreenState extends State<NewVideoScreen> {
                     onPressed: () => _step == 1 ? setState(() => _step = 0) : Navigator.maybePop(context),
                     icon: Icon(_step == 1 ? Icons.chevron_left_rounded : Icons.close_rounded, size: _step == 1 ? 30 : 24),
                   ),
-                  Expanded(child: Text(_step == 0 ? 'Naya AI video' : 'Look aur quality', style: sora(18))),
-                  Text('Kadam ${_step + 1} / 2', style: body(12, w: FontWeight.w700, color: C.faint)),
+                  Expanded(child: Text(_step == 0 ? 'New AI video' : 'Look and quality', style: sora(18))),
+                  Text('Step ${_step + 1} / 2', style: body(12, w: FontWeight.w700, color: C.faint)),
                 ]),
               ),
               Padding(
@@ -251,10 +251,10 @@ class _NewVideoScreenState extends State<NewVideoScreen> {
               ),
               Expanded(child: _step == 0 ? _idea() : _look()),
               SBottomBar(
-                note: _step == 1 ? (_busy ? _stage : 'Storyboard free hai. Paisa tabhi lagega jab aap daam ke card par haan karenge.') : null,
+                note: _step == 1 ? (_busy ? _stage : 'The storyboard is free. Money is charged only when you approve the price card.') : null,
                 child: _step == 0
-                    ? SButton(label: 'Aage: look chuniye', icon: Icons.arrow_forward_rounded, onTap: _next)
-                    : SButton(label: 'Storyboard banao · free', icon: Icons.auto_awesome_rounded, busy: _busy, onTap: _create),
+                    ? SButton(label: 'Next: choose the look', icon: Icons.arrow_forward_rounded, onTap: _next)
+                    : SButton(label: 'Make storyboard · free', icon: Icons.auto_awesome_rounded, busy: _busy, onTap: _create),
               ),
             ]),
           ),
@@ -272,10 +272,10 @@ class _NewVideoScreenState extends State<NewVideoScreen> {
       );
 
   Widget _idea() => ListView(padding: const EdgeInsets.fromLTRB(20, 4, 20, 24), children: [
-        const SLabel('Naam'),
-        TextField(controller: _name, style: body(15), decoration: _box('Jaise: Gautam Buddha')),
+        const SLabel('Name'),
+        TextField(controller: _name, style: body(15), decoration: _box('e.g. Gautam Buddha')),
         const SizedBox(height: 22),
-        SLabel('Video kis baare mein hai?', trailing: '${_brief.text.length} / 2000'),
+        SLabel('What is the video about?', trailing: '${_brief.text.length} / 2000'),
         Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(color: SC.card, borderRadius: BorderRadius.circular(18), border: Border.all(color: C.accent)),
@@ -288,21 +288,21 @@ class _NewVideoScreenState extends State<NewVideoScreen> {
               onChanged: (_) => setState(() {}),
               style: body(14.5, w: FontWeight.w500, height: 1.5),
               decoration: InputDecoration.collapsed(
-                hintText: 'Kya dikhana hai, kisko, kya bolna hai, kya offer / sandesh. Jitna detail, utna achha.',
+                hintText: 'What to show, to whom, what to say, what offer / message. The more detail, the better.',
                 hintStyle: body(14, w: FontWeight.w500, color: C.faint, height: 1.5),
               ).copyWith(counterText: ''),
             ),
             const SizedBox(height: 12),
             Wrap(spacing: 8, runSpacing: 8, children: [
-              SChip(label: _listening ? 'Sun raha hoon…' : 'Bolkar likhein', icon: _listening ? Icons.stop_rounded : Icons.mic_rounded,
+              SChip(label: _listening ? 'Listening…' : 'Write by voice', icon: _listening ? Icons.stop_rounded : Icons.mic_rounded,
                   on: _listening, onTap: _mic),
-              SChip(label: _improving ? 'Likh raha hoon…' : 'Hoola se behtar karwao', icon: Icons.auto_awesome_rounded, on: false,
+              SChip(label: _improving ? 'Writing…' : 'Have Hoola improve it', icon: Icons.auto_awesome_rounded, on: false,
                   onTap: _improving ? null : _improve),
             ]),
           ]),
         ),
         const SizedBox(height: 22),
-        const SLabel('Photo (insaan, product, jagah)', trailing: 'har shot mein wahi chehra'),
+        const SLabel('Photo (person, product, place)', trailing: 'same face in every shot'),
         Wrap(spacing: 10, runSpacing: 10, children: [
           for (final p in _photos)
             Stack(children: [
@@ -321,11 +321,11 @@ class _NewVideoScreenState extends State<NewVideoScreen> {
           _dashed(Icons.add_rounded, 'Photo', _addPhoto),
         ]),
         const SizedBox(height: 22),
-        const SLabel('Lambai'),
+        const SLabel('Length'),
         SSegment<int>(items: const {15: '15s', 30: '30s', 60: '1m', 120: '2m', 300: '5m'}, value: _secs,
             onChanged: (v) => setState(() => _secs = v)),
         const SizedBox(height: 8),
-        Text('Lagbhag ${(_secs / 5).ceil()} shots · HD mein ~${rupees(_secs * (_perSec['final'] ?? 8.5))} · free preview pehle',
+        Text('About ${(_secs / 5).ceil()} shots · in HD ~${rupees(_secs * (_perSec['final'] ?? 8.5))} · free preview first',
             style: body(11.5, color: C.faint)),
         const SizedBox(height: 22),
         const SLabel('Shape'),
@@ -337,16 +337,16 @@ class _NewVideoScreenState extends State<NewVideoScreen> {
           _shape('1:1', '1:1 Post', 32, 32),
         ]),
         const SizedBox(height: 22),
-        const SLabel('Bhasha (bolna + captions)'),
+        const SLabel('Language (speech + captions)'),
         Wrap(spacing: 8, runSpacing: 8, children: [
           for (final l in langs) SChip(label: l[1], on: _lang == l[0], onTap: () => setState(() => _lang = l[0])),
         ]),
         const SizedBox(height: 22),
-        const SLabel('Awaaz'),
+        const SLabel('Voice'),
         Row(children: [
-          Expanded(child: _voiceTile('male', '${app.aFemale ? 'Purush' : app.aName}', 'purush · gambhir')),
+          Expanded(child: _voiceTile('male', '${app.aFemale ? 'Male' : app.aName}', 'male · serious')),
           const SizedBox(width: 10),
-          Expanded(child: _voiceTile('female', '${app.aFemale ? app.aName : 'Mahila'}', 'madhur · shaant')),
+          Expanded(child: _voiceTile('female', '${app.aFemale ? app.aName : 'Female'}', 'female · sweet · calm')),
         ]),
       ]);
 
@@ -458,26 +458,26 @@ class _NewVideoScreenState extends State<NewVideoScreen> {
           ],
         ),
         const SizedBox(height: 22),
-        SLabel('Quality ($_secs sec ke liye)', trailing: 'baad mein badal sakte hain'),
+        SLabel('Quality (for $_secs sec)', trailing: 'can be changed later'),
         for (final q in const ['preview', 'draft', 'final', 'premium']) ...[_qTile(q), const SizedBox(height: 8)],
         const SizedBox(height: 14),
         Container(
           decoration: BoxDecoration(color: SC.card, borderRadius: BorderRadius.circular(16), border: Border.all(color: SC.line)),
           child: Column(children: [
-            _switch('Captions', _captions ? '${langShown(_lang)} · ${const {'bold': 'bade akshar', 'words': 'shabd-shabd', 'plain': 'saada'}[_capStyle]}' : 'band',
+            _switch('Captions', _captions ? '${langShown(_lang)} · ${const {'bold': 'large letters', 'words': 'word by word', 'plain': 'plain'}[_capStyle]}' : 'band',
                 _captions, (v) => setState(() => _captions = v), onTap: () async {
-              final s = await pickOne<String>(context, 'Captions ka andaaz',
-                  const {'bold': 'Bade akshar (neeche)', 'words': 'Shabd-shabd (2-3 shabd)', 'plain': 'Saada (patti par)'}, current: _capStyle);
+              final s = await pickOne<String>(context, 'Caption style',
+                  const {'bold': 'Large letters (below)', 'words': 'Word by word (2-3 words)', 'plain': 'Simple (on a strip)'}, current: _capStyle);
               if (s != null) setState(() => _capStyle = s);
             }),
             const Divider(height: 1, color: Color(0x0FFFFFFF)),
-            _switch('Asli music (Google Lyria)', _music ? '${moodLabel[_mood]} · ~₹7' : 'bina music', _music, (v) => setState(() => _music = v),
+            _switch('Real music (Google Lyria)', _music ? '${moodLabel[_mood]} · ~₹7' : 'no music', _music, (v) => setState(() => _music = v),
                 onTap: () async {
-              final m = await pickOne<String>(context, 'Music ka mood', moodLabel, current: _mood);
+              final m = await pickOne<String>(context, 'Music mood', moodLabel, current: _mood);
               if (m != null) setState(() => _mood = m);
             }),
             const Divider(height: 1, color: Color(0x0FFFFFFF)),
-            _switch('Logo', _logo == null ? 'apni dukaan / brand ka logo' : 'upar daayein kone mein', _logo != null, (v) async {
+            _switch('Logo', _logo == null ? 'your shop / brand logo' : 'in the top right corner', _logo != null, (v) async {
               if (!v) {
                 setState(() => _logo = null);
                 return;
@@ -493,7 +493,7 @@ class _NewVideoScreenState extends State<NewVideoScreen> {
     final on = _quality == q;
     final price = q == 'preview' ? 'Free' : '~${rupees(_secs * (_perSec[q] ?? 0))}';
     return Press(
-      onTap: q == 'preview' ? () => studioSnack(context, 'Preview har project mein free hai; asli video ke liye quality chuniye.')
+      onTap: q == 'preview' ? () => studioSnack(context, 'Preview is free in every project; pick a quality for the real video.')
           : () => setState(() => _quality = q),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -513,7 +513,7 @@ class _NewVideoScreenState extends State<NewVideoScreen> {
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(children: [
                 Text(qualityLabel[q] ?? q, style: body(14, w: FontWeight.w800)),
-                if (q == 'final') ...[const SizedBox(width: 6), const Tag('SUJHAV', fg: C.onAccent, bg: C.accent, size: 9.5)],
+                if (q == 'final') ...[const SizedBox(width: 6), const Tag('SUGGESTIONS', fg: C.onAccent, bg: C.accent, size: 9.5)],
               ]),
               Text(qualityWhat[q] ?? '', style: body(11.5, color: C.faint)),
             ]),

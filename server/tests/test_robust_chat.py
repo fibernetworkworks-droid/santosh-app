@@ -121,7 +121,7 @@ def test_turn_that_runs_forever_releases_the_chat(bz, monkeypatch):  # noqa: F81
         return first, second
 
     first, second = asyncio.run(go())
-    assert "rok diya" in first and second == "Haan bataiye"
+    assert "stopped" in first and second == "Haan bataiye"
 
 
 def test_silent_model_never_leaves_an_empty_chat(bz, monkeypatch):  # noqa: F811
@@ -135,7 +135,7 @@ def test_friendly_error_for_a_busy_service():
     from app.agent.llm import LLMError
     from app.agent.santosh import _friendly_error
     assert "busy" in _friendly_error(LLMError("GLM error 503: x"))
-    assert "gadbad" in _friendly_error(ValueError("weird"))
+    assert "went wrong" in _friendly_error(ValueError("weird"))
 
 
 def test_retried_send_runs_once(env):

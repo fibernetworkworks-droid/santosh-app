@@ -24,7 +24,7 @@ Future<T?> _guard<T>(BuildContext context, Future<T> Function() fn) async {
   }
 }
 
-const _catWord = {'web': 'Web', 'technical': 'Technical', 'business': 'Business', 'creative': 'Creative', 'other': 'Aur kaam'};
+const _catWord = {'web': 'Web', 'technical': 'Technical', 'business': 'Business', 'creative': 'Creative', 'other': 'More tasks'};
 const _catColor = {'web': C.teal, 'technical': C.violet, 'business': C.accent, 'creative': C.accent2, 'other': C.chip};
 const _catIcon = {
   'web': Icons.public_rounded,
@@ -74,14 +74,14 @@ class _DostiCardState extends State<DostiCard> {
     final who = _s(v['with']);
     final tid = _s(v['thread_id']);
     final head = {
-          'doc_ask': 'Document maanga gaya',
-          'skill': 'Dost ki skill',
-          'paused': 'Dosti ki baat ruki',
-          'msg': 'Dost ke avatar ka message',
-          'info': 'Dosti',
-          'live': 'Dosti',
+          'doc_ask': 'Document requested',
+          'skill': 'Friend\'s skill',
+          'paused': 'Friend conversation paused',
+          'msg': 'Message from a friend\'s avatar',
+          'info': 'Friends',
+          'live': 'Friends',
         }[card] ??
-        'Dosti';
+        'Friends';
     return Glass(
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
@@ -98,22 +98,22 @@ class _DostiCardState extends State<DostiCard> {
           Align(
             alignment: Alignment.centerRight,
             child: Wrap(spacing: 8, children: [
-              TextButton(onPressed: () => openHoolaThread(context, app, tid), child: const Text('Baat dekho')),
+              TextButton(onPressed: () => openHoolaThread(context, app, tid), child: const Text('View conversation')),
               GlassButton(
-                  label: 'Chalu karo',
+                  label: 'Turn on',
                   icon: Icons.play_arrow_rounded,
-                  onTap: _busy || _done.isNotEmpty ? null : () => _run(() => app.api!.dostiThread(tid, 'resume'), 'Chalu kar diya')),
+                  onTap: _busy || _done.isNotEmpty ? null : () => _run(() => app.api!.dostiThread(tid, 'resume'), 'Turned on')),
             ]),
           ),
         if (card == 'msg')
           Align(
             alignment: Alignment.centerRight,
             child: Wrap(spacing: 8, children: [
-              TextButton(onPressed: () => openHoolaThread(context, app, tid), child: const Text('Jawab do')),
+              TextButton(onPressed: () => openHoolaThread(context, app, tid), child: const Text('Reply')),
               if (v['dosti_on'] != true)
                 TextButton(
                     onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => DostiScreen(app: app))),
-                    child: const Text('Dosti kholo')),
+                    child: const Text('Open Friends')),
             ]),
           ),
         if (_done.isNotEmpty)
@@ -129,9 +129,9 @@ class _DostiCardState extends State<DostiCard> {
     final closed = _done.isNotEmpty || _s(ask['status']) != 'waiting';
     return [
       if (_s(ask['why']).isNotEmpty)
-        Text('Kyun: ${_s(ask['why'])}', style: const TextStyle(color: C.muted, fontSize: 12.5)),
+        Text('Why: ${_s(ask['why'])}', style: const TextStyle(color: C.muted, fontSize: 12.5)),
       const SizedBox(height: 6),
-      const Text('Aapki haan ke bina kuch nahi jaata. Aadhaar / PAN / passport jaise kaagaz kabhi nahi.',
+      const Text('Nothing goes without your approval. Never documents like Aadhaar / PAN / passport.',
           style: TextStyle(color: C.faint, fontSize: 11.5)),
       const SizedBox(height: 6),
       for (final f in sug)
@@ -142,26 +142,26 @@ class _DostiCardState extends State<DostiCard> {
             const SizedBox(width: 6),
             Expanded(child: Text(_s(f['name']), maxLines: 1, overflow: TextOverflow.ellipsis)),
             GradientButton(
-                label: 'Haan, bhejo',
+                label: 'Yes, send',
                 icon: Icons.send_rounded,
                 height: 40,
-                onTap: _busy || closed ? null : () => _run(() => app.api!.dostiDoc(id, 'send', _s(f['file_id'])), 'Bhej diya')),
+                onTap: _busy || closed ? null : () => _run(() => app.api!.dostiDoc(id, 'send', _s(f['file_id'])), 'Sent')),
           ]),
         ),
       Wrap(spacing: 8, children: [
         GlassButton(
-            label: sug.isEmpty ? 'File chuno aur bhejo' : 'Doosri file chuno',
+            label: sug.isEmpty ? 'Choose file and send' : 'Choose another file',
             icon: Icons.attach_file_rounded,
             onTap: _busy || closed
                 ? null
                 : () async {
                     final fid = await _pickFile(context, app);
                     if (fid == null || fid.isEmpty || !mounted) return;
-                    await _run(() => app.api!.dostiDoc(id, 'send', fid), 'Bhej diya');
+                    await _run(() => app.api!.dostiDoc(id, 'send', fid), 'Sent');
                   }),
         TextButton(
-            onPressed: _busy || closed ? null : () => _run(() => app.api!.dostiDoc(id, 'decline'), 'Mana kar diya'),
-            child: const Text('Mana karo', style: TextStyle(color: C.muted))),
+            onPressed: _busy || closed ? null : () => _run(() => app.api!.dostiDoc(id, 'decline'), 'Declined'),
+            child: const Text('Decline', style: TextStyle(color: C.muted))),
       ]),
     ];
   }
@@ -172,21 +172,21 @@ class _DostiCardState extends State<DostiCard> {
     final steps = _l(d['steps']);
     final closed = _done.isNotEmpty || _s(it['status']) != 'new';
     return [
-      if (_s(d['when']).isNotEmpty) Text('Kab kaam aayegi: ${_s(d['when'])}', style: const TextStyle(color: C.muted, fontSize: 12.5)),
+      if (_s(d['when']).isNotEmpty) Text('When it will be useful: ${_s(d['when'])}', style: const TextStyle(color: C.muted, fontSize: 12.5)),
       for (var i = 0; i < steps.length; i++)
         Text('${i + 1}. ${_s(steps[i]['do'])}', style: const TextStyle(fontSize: 12.5)),
       const SizedBox(height: 4),
-      const Text('Skill aapke niyam, haan-card ya paise ka tap kabhi nahi badalti.', style: TextStyle(color: C.faint, fontSize: 11.5)),
+      const Text('A skill never changes your rules, approval cards or money taps.', style: TextStyle(color: C.faint, fontSize: 11.5)),
       const SizedBox(height: 6),
       Wrap(spacing: 8, children: [
         GradientButton(
-            label: 'Haan, seekho',
+            label: 'Yes, learn it',
             icon: Icons.school_rounded,
             height: 42,
-            onTap: _busy || closed ? null : () => _run(() => app.api!.dostiItem(_s(it['id']), 'learn'), 'Seekh liya')),
+            onTap: _busy || closed ? null : () => _run(() => app.api!.dostiItem(_s(it['id']), 'learn'), 'Learned')),
         TextButton(
-            onPressed: _busy || closed ? null : () => _run(() => app.api!.dostiItem(_s(it['id']), 'decline'), 'Nahi seekha'),
-            child: const Text('Nahi', style: TextStyle(color: C.muted))),
+            onPressed: _busy || closed ? null : () => _run(() => app.api!.dostiItem(_s(it['id']), 'decline'), 'Not learned'),
+            child: const Text('No', style: TextStyle(color: C.muted))),
       ]),
     ];
   }
@@ -234,12 +234,12 @@ class _DostiScreenState extends State<DostiScreen> {
         initialIndex: widget.tab,
         child: Scaffold(
           appBar: AppBar(
-            title: Text('${app.aName} ki Dosti'),
+            title: Text('${app.aName}\'s Friends'),
             backgroundColor: Colors.transparent,
             bottom: const TabBar(isScrollable: true, tabs: [
-              Tab(text: 'Dosti'),
-              Tab(text: 'Kaam ka anubhav'),
-              Tab(text: 'Doston se seekha'),
+              Tab(text: 'Friends'),
+              Tab(text: 'Work experience'),
+              Tab(text: 'Learned from friends'),
               Tab(text: 'Documents'),
             ]),
           ),
@@ -270,24 +270,24 @@ class _DostiScreenState extends State<DostiScreen> {
             contentPadding: EdgeInsets.zero,
             value: on,
             onChanged: (x) => _set({'on': x}),
-            title: const Text('Doston ke avatar se khud baat kare', style: TextStyle(fontWeight: FontWeight.w800)),
+            title: const Text('Talk to friends\' avatars by itself', style: TextStyle(fontWeight: FontWeight.w800)),
             subtitle: Text(
                 on
-                    ? '${app.aName} har message par aapse nahi poochhega; sirf kaam ki baat karega.'
-                    : 'Band hai: har message aapse poochh kar.',
+                    ? '${app.aName} will not ask you for every message; it will only talk about work.'
+                    : 'Off: asks you before every message.',
                 style: const TextStyle(color: C.muted, fontSize: 12.5)),
           ),
-          const Text('Kinse?', style: TextStyle(fontWeight: FontWeight.w700)),
+          const Text('Which ones?', style: TextStyle(fontWeight: FontWeight.w700)),
           const SizedBox(height: 6),
           Wrap(spacing: 8, children: [
-            for (final o in const [['trusted', 'Bharosemand'], ['connected', 'Sab jude log'], ['chosen', 'Chune hue']])
+            for (final o in const [['trusted', 'Trusted'], ['connected', 'All linked people'], ['chosen', 'Selected']])
               ChoiceChip(label: Text(o[1]), selected: who == o[0], onSelected: (_) => _set({'who': o[0]})),
           ]),
           if (who == 'chosen') ...[
             const SizedBox(height: 8),
             TextFormField(
               initialValue: (st['chosen'] as List? ?? const []).join(', '),
-              decoration: const InputDecoration(labelText: 'Naam ya @Hoola ID (comma se)'),
+              decoration: const InputDecoration(labelText: 'Name or @Hoola ID (comma separated)'),
               onFieldSubmitted: (x) => _set({'chosen': x.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList()}),
             ),
           ],
@@ -296,21 +296,21 @@ class _DostiScreenState extends State<DostiScreen> {
               contentPadding: EdgeInsets.zero,
               value: st['share_work'] != false,
               onChanged: (x) => _set({'share_work': x}),
-              title: const Text('Apna kaam ka anubhav bataye'),
-              subtitle: const Text('Web / technical / bade kaam, bina personal jaankari', style: TextStyle(color: C.faint, fontSize: 12))),
+              title: const Text('Share its work experience'),
+              subtitle: const Text('Web / technical / big tasks, without personal information', style: TextStyle(color: C.faint, fontSize: 12))),
           SwitchListTile(
               contentPadding: EdgeInsets.zero,
               value: st['share_skills'] != false,
               onChanged: (x) => _set({'share_skills': x}),
-              title: const Text('Seekhi hui skills share kare')),
+              title: const Text('Share learned skills')),
           SwitchListTile(
               contentPadding: EdgeInsets.zero,
               value: st['share_videos'] == 'auto',
               onChanged: (x) => _set({'share_videos': x ? 'auto' : 'ask'}),
-              title: const Text('Skill video bina poochhe bheje'),
-              subtitle: const Text('Band = har video aapke tap se', style: TextStyle(color: C.faint, fontSize: 12))),
+              title: const Text('Send skill videos without asking'),
+              subtitle: const Text('Off = every video needs your tap', style: TextStyle(color: C.faint, fontSize: 12))),
           Row(children: [
-            const Expanded(child: Text('Ek dost ko din mein jawab')),
+            const Expanded(child: Text('Reply to one friend per day')),
             DropdownButton<int>(
               value: ((st['daily_max'] as num?) ?? 30).toInt().clamp(5, 100).toInt(),
               items: [for (final n in {5, 10, 20, 30, 50, 100, ((st['daily_max'] as num?) ?? 30).toInt().clamp(5, 100).toInt()})
@@ -319,40 +319,40 @@ class _DostiScreenState extends State<DostiScreen> {
             ),
           ]),
           const SizedBox(height: 4),
-          const Text('Hamesha: document / file aapki haan se; dost ki skill aapki haan se; paise, OTP, PIN, Aadhaar kabhi nahi; '
-              'personal baat kabhi nahi.', style: TextStyle(color: C.faint, fontSize: 11.5)),
+          const Text('Always: documents / files need your approval; a friend\'s skill needs your approval; never money, OTP, PIN, Aadhaar;'
+              'never personal matters.', style: TextStyle(color: C.faint, fontSize: 11.5)),
         ]),
       ),
       Glass(
         child: Wrap(spacing: 8, runSpacing: 6, children: [
-          Pill('${c['experiences'] ?? 0} anubhav', fg: C.accent),
+          Pill('${c['experiences'] ?? 0} experiences', fg: C.accent),
           Pill('${c['web'] ?? 0} web', fg: C.teal),
           Pill('${c['technical'] ?? 0} technical', fg: C.violet),
-          Pill('${c['complex'] ?? 0} bade kaam', fg: C.accent2),
-          if ((c['skills_waiting'] ?? 0) != 0) Pill('${c['skills_waiting']} skill aapki haan ka intezaar', fg: C.warn),
+          Pill('${c['complex'] ?? 0} big tasks', fg: C.accent2),
+          if ((c['skills_waiting'] ?? 0) != 0) Pill('${c['skills_waiting']} skill waiting for your approval', fg: C.warn),
           if ((c['docs_waiting'] ?? 0) != 0) Pill('${c['docs_waiting']} document request', fg: C.warn),
         ]),
       ),
       Row(children: [
         Expanded(
             child: GradientButton(
-                label: 'Kisi dost se baat',
+                label: 'Talk to a friend',
                 icon: Icons.forum_rounded,
                 height: 46,
                 onTap: () => _talkDialog())),
         const SizedBox(width: 8),
         GlassButton(
-            label: 'Seekha hua batao',
+            label: 'Tell what was learned',
             icon: Icons.campaign_rounded,
             onTap: on
                 ? () async {
                     final r = await _guard(context, () => app.api!.dostiAct('share_now', {}));
-                    if (r != null && mounted) _snack(context, '${r['friends_told'] ?? 0} doston ko bataya');
+                    if (r != null && mounted) _snack(context, 'Told ${r['friends_told'] ?? 0} friends');
                   }
                 : null),
       ]),
-      const Text('Baat-cheet', style: TextStyle(fontWeight: FontWeight.w800)),
-      if (_l(_d['threads']).isEmpty) const Text('Abhi koi baat nahi hui.', style: TextStyle(color: C.muted)),
+      const Text('Conversation', style: TextStyle(fontWeight: FontWeight.w800)),
+      if (_l(_d['threads']).isEmpty) const Text('No conversations yet.', style: TextStyle(color: C.muted)),
       for (final t in _l(_d['threads']))
         Glass(
           padding: const EdgeInsets.all(12),
@@ -367,11 +367,11 @@ class _DostiScreenState extends State<DostiScreen> {
                   Text(_s(t['with']), style: const TextStyle(fontWeight: FontWeight.w700)),
                   Text(_s(t['last']), maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: C.muted, fontSize: 12.5)),
                   if (t['paused'] == true && _s(t['pause_why']).isNotEmpty)
-                    Text('Ruki: ${_s(t['pause_why'])}', style: const TextStyle(color: C.warn, fontSize: 11.5)),
+                    Text('Paused: ${_s(t['pause_why'])}', style: const TextStyle(color: C.warn, fontSize: 11.5)),
                 ]),
               ),
               IconButton(
-                  tooltip: t['paused'] == true ? 'Chalu karo' : 'Roko',
+                  tooltip: t['paused'] == true ? 'Turn on' : 'Stop',
                   icon: Icon(t['paused'] == true ? Icons.play_arrow_rounded : Icons.pause_rounded),
                   onPressed: () async {
                     await _guard(context, () => app.api!.dostiThread(_s(t['thread_id']), t['paused'] == true ? 'resume' : 'pause'));
@@ -391,19 +391,19 @@ class _DostiScreenState extends State<DostiScreen> {
       context: context,
       builder: (c) => StatefulBuilder(
         builder: (c, set) => AlertDialog(
-          title: const Text('Dost ke avatar se baat'),
+          title: const Text('Talk to a friend\'s avatar'),
           content: Column(mainAxisSize: MainAxisSize.min, children: [
-            TextField(controller: to, decoration: const InputDecoration(labelText: 'Naam ya @Hoola ID')),
-            TextField(controller: text, maxLines: 3, decoration: const InputDecoration(labelText: 'Kya poochhna / batana hai')),
+            TextField(controller: to, decoration: const InputDecoration(labelText: 'Name or @Hoola ID')),
+            TextField(controller: text, maxLines: 3, decoration: const InputDecoration(labelText: 'What to ask / tell')),
             CheckboxListTile(
                 contentPadding: EdgeInsets.zero,
                 value: share,
                 onChanged: (x) => set(() => share = x ?? false),
-                title: const Text('Mera naya anubhav aur skill bhi bhejo')),
+                title: const Text('Also send my new experience and skill')),
           ]),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Rehne do')),
-            TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Bhejo')),
+            TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancel')),
+            TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Send')),
           ],
         ),
       ),
@@ -411,7 +411,7 @@ class _DostiScreenState extends State<DostiScreen> {
     if (ok != true || to.text.trim().isEmpty) return;
     final r = await _guard(context, () => app.api!.dostiAct('talk', {'to': to.text.trim(), 'text': text.text.trim(), 'share': share}));
     if (r != null && mounted) {
-      _snack(context, r['free_talk'] == true ? 'Bhej diya; aage ${app.aName} khud baat karega.' : 'Bhej diya.');
+      _snack(context, r['free_talk'] == true ? 'Sent; ${app.aName} will continue the conversation.' : 'Sent.');
       _load();
     }
   }
@@ -420,12 +420,12 @@ class _DostiScreenState extends State<DostiScreen> {
     final exps = _l(_d['experiences']);
     final skills = _l(_d['skills']);
     return _list([
-      const Text('Jo kaam maine aapke liye kiye (personal kaam yahan nahi aate). Doston ko yahi general roop mein batata hoon.',
+      const Text('The work I did for you (personal work does not show here). I tell friends only the general form.',
           style: TextStyle(color: C.muted, fontSize: 12.5)),
-      GlassButton(label: 'Khud ek anubhav jodo', icon: Icons.add_rounded, onTap: _addDialog),
-      if (exps.isEmpty) const Text('Abhi diary khaali hai: kuch kaam karwaiye, yahan apne aap aayega.', style: TextStyle(color: C.muted)),
+      GlassButton(label: 'Add an experience yourself', icon: Icons.add_rounded, onTap: _addDialog),
+      if (exps.isEmpty) const Text('The diary is empty: get some work done and it will appear here by itself.', style: TextStyle(color: C.muted)),
       for (final e in exps) _expTile(e),
-      if (skills.isNotEmpty) const Text('Meri skills (doston ko de sakta hoon)', style: TextStyle(fontWeight: FontWeight.w800)),
+      if (skills.isNotEmpty) const Text('My skills (I can give them to friends)', style: TextStyle(fontWeight: FontWeight.w800)),
       for (final k in skills)
         Glass(
           padding: const EdgeInsets.all(12),
@@ -451,16 +451,16 @@ class _DostiScreenState extends State<DostiScreen> {
         const SizedBox(height: 4),
         Wrap(spacing: 6, runSpacing: 4, children: [
           Pill(_catWord[cat] ?? cat, fg: _catColor[cat] ?? C.chip),
-          if (e['complex'] == true) const Pill('bada kaam', fg: C.accent2),
-          if (e['shared'] != true) const Pill('sirf mere liye', fg: C.muted),
-          if ((e['told'] ?? 0) != 0) Pill('${e['told']} doston ko bataya', fg: C.teal),
+          if (e['complex'] == true) const Pill('big task', fg: C.accent2),
+          if (e['shared'] != true) const Pill('only for me', fg: C.muted),
+          if ((e['told'] ?? 0) != 0) Pill('Told ${e['told']} friends', fg: C.teal),
         ]),
         if (_s(e['summary']).isNotEmpty) Text(_s(e['summary']), style: const TextStyle(color: C.muted, fontSize: 12.5)),
-        if (_s(e['learned']).isNotEmpty) Text('Seekha: ${_s(e['learned'])}', style: const TextStyle(fontSize: 12.5)),
+        if (_s(e['learned']).isNotEmpty) Text('Learned: ${_s(e['learned'])}', style: const TextStyle(fontSize: 12.5)),
         Wrap(spacing: 4, children: [
           TextButton.icon(
               icon: const Icon(Icons.movie_creation_rounded, size: 18),
-              label: Text(_s(e['video_id']).isEmpty ? 'Skill video banao' : 'Video doston ko bhejo'),
+              label: Text(_s(e['video_id']).isEmpty ? 'Make skill video' : 'Send video to friends'),
               onPressed: () async {
                 if (_s(e['video_id']).isEmpty) {
                   final r = await _guard(context, () => app.api!.dostiVideo(_s(e['id']), 'video'));
@@ -470,7 +470,7 @@ class _DostiScreenState extends State<DostiScreen> {
                   final to = await _askTo();
                   if (to == null) return;
                   final r = await _guard(context, () => app.api!.dostiVideo(_s(e['id']), 'send_video', to));
-                  if (r != null && mounted) _snack(context, _s(r['say']).isEmpty ? 'Bhej diya' : _s(r['say']));
+                  if (r != null && mounted) _snack(context, _s(r['say']).isEmpty ? 'Sent' : _s(r['say']));
                 }
               }),
           TextButton(
@@ -478,13 +478,13 @@ class _DostiScreenState extends State<DostiScreen> {
                 await _guard(context, () => app.api!.dostiDiary(_s(e['id']), {'shared': e['shared'] != true}));
                 _load();
               },
-              child: Text(e['shared'] == true ? 'Doston se chhupao' : 'Doston ko batao')),
+              child: Text(e['shared'] == true ? 'Hide from friends' : 'Tell friends')),
           TextButton(
               onPressed: () async {
                 await _guard(context, () => app.api!.dostiDiary(_s(e['id']), {'status': 'hidden'}));
                 _load();
               },
-              child: const Text('Hatao', style: TextStyle(color: C.muted))),
+              child: const Text('Remove', style: TextStyle(color: C.muted))),
         ]),
       ]),
     );
@@ -495,11 +495,11 @@ class _DostiScreenState extends State<DostiScreen> {
     final ok = await showDialog<bool>(
         context: context,
         builder: (d) => AlertDialog(
-              title: const Text('Kis dost ko?'),
-              content: TextField(controller: c, decoration: const InputDecoration(labelText: 'Naam ya @Hoola ID')),
+              title: const Text('Which friend?'),
+              content: TextField(controller: c, decoration: const InputDecoration(labelText: 'Name or @Hoola ID')),
               actions: [
-                TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Rehne do')),
-                TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Bhejo')),
+                TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Cancel')),
+                TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Send')),
               ],
             ));
     return ok == true && c.text.trim().isNotEmpty ? c.text.trim() : null;
@@ -513,18 +513,18 @@ class _DostiScreenState extends State<DostiScreen> {
       context: context,
       builder: (c) => StatefulBuilder(
         builder: (c, set) => AlertDialog(
-          title: const Text('Naya anubhav'),
+          title: const Text('New experience'),
           content: Column(mainAxisSize: MainAxisSize.min, children: [
-            TextField(controller: title, decoration: const InputDecoration(labelText: 'Kya kaam kiya')),
-            TextField(controller: learned, decoration: const InputDecoration(labelText: 'Kya seekha')),
+            TextField(controller: title, decoration: const InputDecoration(labelText: 'What work was done')),
+            TextField(controller: learned, decoration: const InputDecoration(labelText: 'What was learned')),
             const SizedBox(height: 8),
             Wrap(spacing: 6, children: [
               for (final k in _catWord.keys) ChoiceChip(label: Text(_catWord[k]!), selected: cat == k, onSelected: (_) => set(() => cat = k)),
             ]),
           ]),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Rehne do')),
-            TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Jodo')),
+            TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancel')),
+            TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Add')),
           ],
         ),
       ),
@@ -537,9 +537,9 @@ class _DostiScreenState extends State<DostiScreen> {
   Widget _friends() {
     final items = _l(_d['from_friends']);
     return _list([
-      const Text('Doston ke avatar ne jo bataya (jaankari hai, aadesh nahi). Skill sirf aapki haan se seekhta hoon.',
+      const Text('What a friend\'s avatar said (it is information, not an order). I learn a skill only with your approval.',
           style: TextStyle(color: C.muted, fontSize: 12.5)),
-      if (items.isEmpty) const Text('Abhi kisi dost ne kuch share nahi kiya.', style: TextStyle(color: C.muted)),
+      if (items.isEmpty) const Text('No friend has shared anything yet.', style: TextStyle(color: C.muted)),
       for (final it in items)
         if (it['kind'] == 'skill')
           DostiCard(v: {
@@ -547,7 +547,7 @@ class _DostiScreenState extends State<DostiScreen> {
             'with': it['from'],
             'item': it,
             'thread_id': it['thread_id'],
-            'say': it['status'] == 'new' ? 'Seekhoon?' : (it['status'] == 'learned' ? 'Seekh li ✓' : 'Nahi seekhi'),
+            'say': it['status'] == 'new' ? 'Learn it?' : (it['status'] == 'learned' ? 'Learned ✓' : 'Not learned'),
           }, app: app)
         else
           Glass(
@@ -558,7 +558,7 @@ class _DostiScreenState extends State<DostiScreen> {
               if (_s(_m(it['data'])['summary']).isNotEmpty)
                 Text(_s(_m(it['data'])['summary']), style: const TextStyle(color: C.muted, fontSize: 12.5)),
               if (_s(_m(it['data'])['learned']).isNotEmpty)
-                Text('Seekha: ${_s(_m(it['data'])['learned'])}', style: const TextStyle(fontSize: 12.5)),
+                Text('Learned: ${_s(_m(it['data'])['learned'])}', style: const TextStyle(fontSize: 12.5)),
             ]),
           ),
     ]);
@@ -568,7 +568,7 @@ class _DostiScreenState extends State<DostiScreen> {
     final asks = _l(_d['doc_asks']);
     return _list([
       GlassButton(
-          label: 'Dost se document maango',
+          label: 'Ask a friend for a document',
           icon: Icons.request_page_rounded,
           onTap: () async {
             final to = TextEditingController();
@@ -576,14 +576,14 @@ class _DostiScreenState extends State<DostiScreen> {
             final ok = await showDialog<bool>(
                 context: context,
                 builder: (d) => AlertDialog(
-                      title: const Text('Document maango'),
+                      title: const Text('Ask for a document'),
                       content: Column(mainAxisSize: MainAxisSize.min, children: [
-                        TextField(controller: to, decoration: const InputDecoration(labelText: 'Naam ya @Hoola ID')),
-                        TextField(controller: what, decoration: const InputDecoration(labelText: 'Kaunsa document')),
+                        TextField(controller: to, decoration: const InputDecoration(labelText: 'Name or @Hoola ID')),
+                        TextField(controller: what, decoration: const InputDecoration(labelText: 'Which document')),
                       ]),
                       actions: [
-                        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Rehne do')),
-                        TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Maango')),
+                        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Cancel')),
+                        TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Ask')),
                       ],
                     ));
             if (ok != true) return;
@@ -591,10 +591,10 @@ class _DostiScreenState extends State<DostiScreen> {
             if (r != null && mounted) _snack(context, _s(r['say']));
             _load();
           }),
-      if (asks.isEmpty) const Text('Koi document request nahi.', style: TextStyle(color: C.muted)),
+      if (asks.isEmpty) const Text('No document requests.', style: TextStyle(color: C.muted)),
       for (final a in asks)
         if (a['direction'] == 'in' && a['status'] == 'waiting')
-          DostiCard(v: {'card': 'doc_ask', 'with': a['with'], 'ask': a, 'thread_id': a['thread_id'], 'say': '"${_s(a['what'])}" maanga hai'}, app: app)
+          DostiCard(v: {'card': 'doc_ask', 'with': a['with'], 'ask': a, 'thread_id': a['thread_id'], 'say': 'Asked for "${_s(a['what'])}"'}, app: app)
         else
           Glass(
             padding: const EdgeInsets.all(12),
@@ -602,9 +602,9 @@ class _DostiScreenState extends State<DostiScreen> {
               Icon(a['direction'] == 'in' ? Icons.call_received_rounded : Icons.call_made_rounded, color: C.muted),
               const SizedBox(width: 8),
               Expanded(
-                  child: Text('${a['direction'] == 'in' ? '${_s(a['with'])} ne maanga' : '${_s(a['with'])} se maanga'}: ${_s(a['what'])}',
+                  child: Text('${a['direction'] == 'in' ? '${_s(a['with'])} asked' : 'asked ${_s(a['with'])}'}: ${_s(a['what'])}',
                       style: const TextStyle(fontSize: 13))),
-              Pill({'waiting': 'intezaar', 'sent': 'bhej diya', 'declined': 'mana'}[_s(a['status'])] ?? _s(a['status']),
+              Pill({'waiting': 'waiting', 'sent': 'sent', 'declined': 'declined'}[_s(a['status'])] ?? _s(a['status']),
                   fg: a['status'] == 'sent' ? C.ok : C.muted),
             ]),
           ),

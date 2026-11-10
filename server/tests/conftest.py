@@ -56,6 +56,32 @@ def _full_voice_menu(monkeypatch):
     monkeypatch.setenv("CLAUDE_ONE_MODEL", "")        # v0.631 older suites pin each part's own model; test_v0631 checks the lock
     monkeypatch.setenv("CHAT_SIMPLE_MODEL", "")       # v0.630 older chat suites pin the chat model; test_v0630 checks Haiku
     monkeypatch.setenv("CHAT_ALONE", "false")         # v0.714 older suites pin "the chat she is in"; test_v0714 turns it on
+    monkeypatch.setenv("HOOLA_LANGUAGE", "auto")      # v0.728 older suites pin Hinglish text; test_v0728 checks English
+    monkeypatch.setenv("CHAT_ANSWER_ONLY", "false")   # parity Phase 5: older suites pin the stapled notes; test_parity5 checks on
+    monkeypatch.setenv("CHAT_PLAIN_LOOP", "false")    # parity Phase 5b: older suites pin the after-answer checks; test_parity5b_plain_loop checks on
+    monkeypatch.setenv("CHAT_WORK_IN_TURN", "false")  # PARITY Phase 4: older suites pin background crews / research + the 900 s turn; test_parity_p4 checks in-turn
+    monkeypatch.setenv("QUICK_LANE", "true")          # v0.724 older suites pin the quick lane; test_v0724 checks it is off
+    monkeypatch.setenv("CHAT_CORE_TOOLS", "false")    # Parity Phase 3: older suites pin the core families + old result text; test_v0733_clean_tools checks the core set
+    monkeypatch.setenv("CHAT_APPROVAL_WORDS", "true") # v0.724 older suites pin "haan" approving a card; test_v0724 checks off
+    monkeypatch.setenv("CHAT_ONE_MODEL", "false")      # v0.732 older suites pin the brain fallbacks; test_v0732_ek_model checks one model
+    monkeypatch.setenv("CHAT_MODEL_CHOICE", "false")   # v0.740 older suites pin one model for every turn; test_v0740 checks the dropdown
+    monkeypatch.setenv("MODEL_PROFILE", "false")       # v0.739 older suites pin the hand-written model abilities; test_v0739 checks the read profile
+    monkeypatch.setenv("CHAT_FILES_BY_CODE", "false")  # v0.738 older suites pin pylab keeping only png / csv / xlsx files
+    monkeypatch.setenv("CHAT_EVERY_MESSAGE", "false")  # v0.738 older suites pin the research-plan gate + canned stop line; test_v0738 checks every message reaches the model
+    monkeypatch.setenv("CONSOLE_HUMAN", "false")       # v0.743 older suites pin the old console wording; test_v0743 checks the friendlier one
+    monkeypatch.setenv("INTERACTIVE_PAGE", "false")    # v0.747 older suites pin the console without the Hoola Interactive row
+    monkeypatch.setenv("HOOLA_CODE_PAGE", "false")     # v0.748 older suites pin the console without the Hoola Code row
+    monkeypatch.setenv("ARCHITECT_OPUS", "true")       # v0.735 older suites pin the architect on Opus; test_v0735_all_glm checks GLM
+    monkeypatch.setenv("CLAUDE_ALL_GLM_FALLBACK", "true")  # v0.735 older suites pin the Claude fallback at the SDK door
+    monkeypatch.setenv("GLM_IMAGES", "false")          # v0.735 older suites pin pictures -> Claude (non-NVIDIA GLM)
+    monkeypatch.setenv("GLM_PDF", "false")             # v0.735 older suites pin PDFs -> Claude
+    monkeypatch.setenv("CHAT_CONTEXT_LIMIT_CLAUDE", "200000")   # v0.724 older gauge suites pin the 200k window
+    monkeypatch.setenv("CHAT_CONTEXT_LIMIT_GLM", "200000")
+    monkeypatch.setenv("CHAT_ONE_MEMORY", "false")    # parity Phase 7: older suites pin the per-turn memory blocks; test_parity_p7 checks one memory
+    monkeypatch.setenv("CHAT_SMALL_PROMPT", "false")  # parity Phase 2: older suites pin the long per-turn prompt; test_parity_p2 checks the small one
+    monkeypatch.setenv("CHAT_CONTEXT_MAX_TOKENS_GLM", "40000")  # v0.707 pin; test_v0724 checks the 1M / no-cap defaults
+    monkeypatch.setenv("CHAT_THINKING_ADAPTIVE", "false")  # parity Phase 4: older suites pin thinking only for long / hard turns; test_parity_p4_thinking checks adaptive
+    monkeypatch.setenv("CHAT_ARTIFACT_DIRECT", "false")  # parity Phase 6: older suites pin the builder-only pages line; test_parity6 turns it on
     get_settings.cache_clear()
     yield
     get_settings.cache_clear()

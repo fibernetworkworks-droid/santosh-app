@@ -68,7 +68,7 @@ async def video_studio(ctx: Ctx, action, **a: Any):
                                    a.get("language") or "Hindi", a.get("brief") or "", ctx.conversation_id)
         project = a.get("project") or ss.latest(t)
         if not project:
-            raise ToolError("Abhi koi video project nahi hai: pehle action=create.")
+            raise ToolError("There is no video project yet: do action=create first.")
         if action == "show":
             v = ss.view(t, ss._load(t, project))
             v["outputs"] = [{k: o.get(k) for k in ("seconds", "takes", "preview", "file_id")} for o in v["outputs"]]

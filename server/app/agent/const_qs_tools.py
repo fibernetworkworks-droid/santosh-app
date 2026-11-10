@@ -18,7 +18,7 @@ QS_TOOLS = [
         "check. action=rate: item, unit, components [{head, qty, unit, rate, source}], overhead_pct, profit_pct, source "
         "(SOR/quote) -> built-up rate. action=boq: project, item, unit, qty, rate, head. action=abstract: project. "
         "action=budget: project, head, budget, committed, actual (cost controller). action=retention: amount, pct "
-        "(contract ka %). action=pv: amount, workable_pct, base_index, current_index. Working paper kabhi certificate nahi. "
+        "(% of the contract). action=pv: amount, workable_pct, base_index, current_index. A working paper is never a certificate. "
         "Wave 4 #40: action=cost_plan: project, rows [head, planned, estimate] -> variance; action=ve_option: "
         "project, rows [option, saving(FED), risk_note]. #89: action=gst_row: project, ref (bill/RA), rows "
         "[taxable, rate_pct, rcm], source (ya india pack row) -> tax arithmetic; action=gst_sum: ref, itc, "

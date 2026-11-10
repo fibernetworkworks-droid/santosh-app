@@ -243,12 +243,12 @@ class McpExecutor:
                 ctx.session.commit()
                 self._cache.pop(pack.id + ":" + ctx.user.id, None)
             if pack.config.get("custom") and pack.config.get("auth") == "key":
-                raise ToolError(f"NOT_LINKED: {pack.name} ne aapki API key / token mana kar di (galat, purani ya band). "
-                                "Nayi key Hoola app > Connect > MCP servers mein daaliye (chat mein kabhi nahi).")
-            raise ToolError(f"NOT_LINKED: {pack.name} ka sign-in khatam ho gaya. App > Connect > MCP servers > {pack.name} "
-                            "par ek baar phir 'Link' dabaiye.")
+                raise ToolError(f"NOT_LINKED: {pack.name} rejected your API key / token (wrong, old or switched off). "
+                                "Enter a new key in Hoola app > Connect > MCP servers (never in the chat).")
+            raise ToolError(f"NOT_LINKED: your {pack.name} sign-in has ended. In the app go to Connect > MCP servers > {pack.name} "
+                            "and tap 'Link' once more.")
         except RemoteError as e:
-            raise ToolError(f"{pack.name} se baat nahi ho payi: {e}")
+            raise ToolError(f"Could not reach {pack.name}: {e}")
 
     def _remote(self, pack: Pack, ctx: Ctx, force: bool = False) -> RemoteTools:
         if pack.config.get("custom"):
@@ -311,8 +311,8 @@ class McpExecutor:
         if pack.config.get("custom"):
             from ...mcp_prefs import enabled
             if not enabled(ctx.user.id, pack.id, tool):
-                raise ToolError(f"Owner ne {pack.name} ka '{tool}' tool band kar rakha hai (Connect > MCP servers > Tools). "
-                                "Yeh nahi chalega; koi aur tarika batao ya owner se chalu karne ko kaho.")
+                raise ToolError(f"The owner has switched off the '{tool}' tool of {pack.name} (Connect > MCP servers > Tools). "
+                                "This will not run; suggest another way or ask the owner to switch it on.")
         tier = pack.tier_of(tool)
         if tier >= 2 and pack.config.get("custom"):
             # a server the user added: show exactly what will be sent, run only that frozen call after the tap
@@ -360,7 +360,7 @@ class McpExecutor:
             ctx.session.add(Transaction(user_id=ctx.user.id, task_id=ctx.task.id if ctx.task else "", kind="action",
                                         provider=pack.id, amount_paise=0, status="completed",
                                         meta={"tool": action, "args": args, "response": res.get("data") or res.get("text", "")[:2000]}))
-            return {"status": "done", "provider": pack.name, "message": f"{pack.name}: {action} ho gaya.",
+            return {"status": "done", "provider": pack.name, "message": f"{pack.name}: {action} done.",
                     "response": res.get("data") or res.get("text", "")[:2000]}
         last = ((ctx.task.result if ctx.task else {}).get("mcp_last") or {}).get(pack.id, {})
         total = _find_total(last.get("data")) or 0

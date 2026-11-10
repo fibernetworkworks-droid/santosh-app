@@ -47,7 +47,10 @@ def brain() -> str:
 
 def _ready(b: str) -> bool:
     st = _settings()
-    return bool(st.omniroute_url) if b == "omniroute" else bool(st.glm_api_key)
+    if b == "omniroute":
+        return bool(st.omniroute_url)
+    from .agent import llm
+    return llm.glm_ready()            # v0.742 GLM_MODEL may be another provider's model with its own key
 
 
 import contextvars as _cv
@@ -67,7 +70,9 @@ def active() -> bool:
         if not _ready(b):
             return False
         from .agent import llm
-        return not llm.brain_paused(b)       # the safety switch: a hung brain is skipped for a while, Claude answers
+        # the safety switch skips a hung brain for a while ONLY when Claude may answer instead (v0.736: with the Claude
+        # fallback off a pause sent every background call - picture reading too - to Claude, whose credit was out)
+        return not (llm.brain_paused(b) and _claude_ok())
     except Exception:
         return False
 
@@ -107,10 +112,14 @@ def has_media(messages: list) -> bool:
     """A call GLM cannot read well: PDFs always; pictures only when the GLM endpoint is not NVIDIA (which reads them)."""
     try:
         from .agent import llm
-        pics_ok = llm.is_nvidia() and brain() == "glm"
+        b = brain()
+        pics_ok = llm.glm_reads_images(b)          # v0.735: OpenRouter GLM-5.3-Flash reads pictures too
+        pdf_ok = llm.glm_reads_pdfs(b)             # v0.735: a PDF goes as its text / page pictures
     except Exception:
-        pics_ok = False
-    kinds = ("document",) if pics_ok else ("image", "document")
+        pics_ok = pdf_ok = False
+    kinds = tuple(k for k, ok in (("image", pics_ok), ("document", pdf_ok)) if not ok)
+    if not kinds:
+        return False
     for m in messages or []:
         c = m.get("content") if isinstance(m, dict) else None
         if isinstance(c, list) and any(isinstance(b, dict) and b.get("type") in kinds for b in c):

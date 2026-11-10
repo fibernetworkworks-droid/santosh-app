@@ -44,10 +44,10 @@ String nbMime(String name) {
 }
 
 /// Download one Studio file (signed link) into the cache and hand it to Android's share sheet, or the gallery.
-Future<void> nbShareFile(BuildContext context, Santosh app, String url, String name, {String title = 'Bhejo', bool gallery = false}) async {
+Future<void> nbShareFile(BuildContext context, Santosh app, String url, String name, {String title = 'Send', bool gallery = false}) async {
   try {
     final res = await http.get(Uri.parse(app.api!.absolute(url))).timeout(const Duration(seconds: 180));
-    if (res.statusCode >= 400) throw Exception('Download nahi hua (${res.statusCode})');
+    if (res.statusCode >= 400) throw Exception('Download failed (${res.statusCode})');
     final dir = await getTemporaryDirectory();
     final f = File('${dir.path}/shared/$name');
     await f.parent.create(recursive: true);
@@ -61,7 +61,7 @@ Future<void> nbShareFile(BuildContext context, Santosh app, String url, String n
     } else {
       err = await Native.shareFile(f.path, mime: nbMime(name), title: title);
     }
-    if (context.mounted) nbSnack(context, err ?? (gallery ? 'Gallery mein save ho gaya' : 'Share sheet khul gayi'));
+    if (context.mounted) nbSnack(context, err ?? (gallery ? 'Saved to gallery' : 'Share sheet opened'));
   } catch (e) {
     if (context.mounted) nbSnack(context, '$e');
   }
@@ -235,7 +235,7 @@ String nbClock(Duration d) {
 Future<String?> openNbOutput(BuildContext context, Santosh app, String nid, Map<String, dynamic> o) async {
   final kind = o['kind'] as String? ?? '';
   if (o['status'] != 'ready') {
-    nbSnack(context, o['status'] == 'failed' ? (o['error'] as String? ?? 'Nahi bana') : 'Abhi ban raha hai: ${o['stage'] ?? ''}');
+    nbSnack(context, o['status'] == 'failed' ? (o['error'] as String? ?? 'Not made') : 'Being made now: ${o['stage'] ?? ''}');
     return null;
   }
   Map<String, dynamic> full;
@@ -299,7 +299,7 @@ class _NbAudioScreenState extends State<NbAudioScreen> {
     final name = data['audio'] as String? ?? files.keys.firstWhere((n) => n.startsWith('overview.'), orElse: () => '');
     final url = files[name] as String?;
     if (url == null) {
-      _err = 'Audio file nahi mili';
+      _err = 'Audio file not found';
       return;
     }
     final c = VideoPlayerController.networkUrl(Uri.parse(widget.app.api!.absolute(url)));
@@ -389,11 +389,11 @@ class _NbAudioScreenState extends State<NbAudioScreen> {
               Text(widget.o['title'] as String? ?? '', textAlign: TextAlign.center,
                   style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 17)),
               const SizedBox(height: 4),
-              Text('Ravi aur Priya · ${(opts['format'] ?? '').toString().replaceAll('_', ' ')} · ${opts['language'] ?? ''}',
+              Text('Ravi and Priya · ${(opts['format'] ?? '').toString().replaceAll('_', ' ')} · ${opts['language'] ?? ''}',
                   style: const TextStyle(color: C.muted, fontSize: 12.5)),
               if (_clip != null) ...[
                 const SizedBox(height: 10),
-                const Pill('AAPKE SAWAAL KA JAWAB', fg: C.teal),
+                const Pill('ANSWER TO YOUR QUESTION', fg: C.teal),
               ],
               const SizedBox(height: 14),
               if (_err != null) Text(_err!, style: const TextStyle(color: C.bad)),
@@ -436,18 +436,18 @@ class _NbAudioScreenState extends State<NbAudioScreen> {
           ),
           const SizedBox(height: 14),
           GradientButton(
-            label: _joining ? 'Hosts soch rahe hain…' : 'Join karo: hosts se poochho',
+            label: _joining ? 'The hosts are thinking…' : 'Join: ask the hosts',
             icon: Icons.front_hand_rounded,
             onTap: _joining || !ready ? null : _join,
           ),
           const SizedBox(height: 6),
-          const Text('Podcast ke beech apna sawaal poochhiye: Ravi aur Priya sirf aapke sources se jawab dekar wapas show par aate hain.',
+          const Text('Ask your question in the middle of the podcast: Ravi and Priya answer only from your sources and return to the show.',
               textAlign: TextAlign.center, style: TextStyle(color: C.faint, fontSize: 12)),
           const SizedBox(height: 14),
           NbFileChips(app: widget.app, files: files),
           if (_joins.isNotEmpty) ...[
             const SizedBox(height: 16),
-            const Caption('AAPKE SAWAAL'),
+            const Caption('YOUR QUESTION'),
             for (final j in _joins)
               Glass(
                 margin: const EdgeInsets.only(bottom: 8),
@@ -466,7 +466,7 @@ class _NbAudioScreenState extends State<NbAudioScreen> {
                 child: Row(children: [
                   const Icon(Icons.subject_rounded, color: C.muted),
                   const SizedBox(width: 8),
-                  const Expanded(child: Text('Poori baatcheet (transcript)', style: TextStyle(fontWeight: FontWeight.w700))),
+                  const Expanded(child: Text('Full conversation (transcript)', style: TextStyle(fontWeight: FontWeight.w700))),
                   Icon(_showScript ? Icons.expand_less_rounded : Icons.expand_more_rounded),
                 ]),
               ),
@@ -477,7 +477,7 @@ class _NbAudioScreenState extends State<NbAudioScreen> {
                     padding: const EdgeInsets.only(bottom: 6),
                     child: Text.rich(TextSpan(children: [
                       TextSpan(text: ln.split(':').first, style: TextStyle(fontWeight: FontWeight.w800,
-                          color: ln.startsWith('Ravi') ? C.teal : C.accentSoft)),
+                          color: ln.startsWith('Sun') ? C.teal : C.accentSoft)),
                       TextSpan(text: ln.contains(':') ? ln.substring(ln.indexOf(':')) : '', style: const TextStyle(color: C.ink, height: 1.4)),
                     ])),
                   ),
@@ -507,7 +507,7 @@ class _JoinSheetState extends State<_JoinSheet> {
       if ((s == 'done' || s == 'notListening') && mounted) setState(() => _listening = false);
     });
     if (!ok) {
-      if (mounted) nbSnack(context, 'Microphone permission chahiye.');
+      if (mounted) nbSnack(context, 'Microphone permission is needed.');
       return;
     }
     setState(() => _listening = true);
@@ -524,16 +524,16 @@ class _JoinSheetState extends State<_JoinSheet> {
   Widget build(BuildContext context) => Padding(
         padding: EdgeInsets.fromLTRB(18, 18, 18, 18 + MediaQuery.of(context).viewInsets.bottom),
         child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          const Text('Hosts se poochhiye', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17)),
+          const Text('Ask the hosts', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17)),
           const SizedBox(height: 10),
           Row(children: [
             Expanded(child: TextField(controller: _t, autofocus: true, minLines: 1, maxLines: 4,
-                decoration: const InputDecoration(hintText: 'Jaise: iska matlab aasaan shabdon mein?'))),
+                decoration: const InputDecoration(hintText: 'For example: what does this mean in simple words?'))),
             IconButton(onPressed: _listening ? null : _mic,
                 icon: Icon(_listening ? Icons.graphic_eq_rounded : Icons.mic_rounded, color: C.accent)),
           ]),
           const SizedBox(height: 14),
-          GradientButton(label: 'Poochho', icon: Icons.send_rounded, onTap: () => Navigator.pop(context, _t.text)),
+          GradientButton(label: 'Ask', icon: Icons.send_rounded, onTap: () => Navigator.pop(context, _t.text)),
         ]),
       );
 }
@@ -577,7 +577,7 @@ class NbVideoScreen extends StatelessWidget {
               style: const TextStyle(color: C.muted, fontSize: 12.5)),
           const SizedBox(height: 12),
           Wrap(spacing: 8, runSpacing: 8, children: [
-            ActionChip(avatar: const Icon(Icons.download_rounded, size: 18, color: C.accent), label: const Text('Gallery mein save'),
+            ActionChip(avatar: const Icon(Icons.download_rounded, size: 18, color: C.accent), label: const Text('Save to gallery'),
                 onPressed: () => nbShareFile(context, app, files['overview.mp4'] as String, 'overview.mp4', gallery: true)),
           ]),
           const SizedBox(height: 8),
@@ -641,13 +641,13 @@ class _NbSlidesScreenState extends State<NbSlidesScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: C.bgBottom,
-        title: Text('Slide $n mein kya badlein?'),
+        title: Text('What should change in slide $n?'),
         content: TextField(controller: t, autofocus: true, minLines: 2, maxLines: 5,
-            decoration: const InputDecoration(hintText: 'Jaise: title chhota karo, ek number wali slide banao, Hindi mein likho')),
+            decoration: const InputDecoration(hintText: 'For example: shorten the title, make a one-number slide, write in Hindi')),
         actions: [
-          if (_edits.containsKey(n)) TextButton(onPressed: () { _edits.remove(n); Navigator.pop(ctx, false); }, child: const Text('Hatao')),
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Rehne do')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Line mein lagao')),
+          if (_edits.containsKey(n)) TextButton(onPressed: () { _edits.remove(n); Navigator.pop(ctx, false); }, child: const Text('Remove')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Leave it')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Add to queue')),
         ],
       ),
     );
@@ -665,7 +665,7 @@ class _NbSlidesScreenState extends State<NbSlidesScreen> {
         _edits.clear();
         _bust++;
       });
-      if (mounted) nbSnack(context, 'Slides badal di. PDF / PowerPoint bhi naye hain.');
+      if (mounted) nbSnack(context, 'Slides changed. The PDF / PowerPoint are new too.');
     } catch (e) {
       if (mounted) nbSnack(context, '$e');
     } finally {
@@ -706,9 +706,9 @@ class _NbSlidesScreenState extends State<NbSlidesScreen> {
           Row(children: [
             Text('Slide ${_at + 1} / ${sl.length}', style: const TextStyle(color: C.muted)),
             const Spacer(),
-            if (_edits.containsKey(_at + 1)) const Pill('BADLAV LINE MEIN', fg: C.warn),
+            if (_edits.containsKey(_at + 1)) const Pill('CHANGES IN QUEUE', fg: C.warn),
             const SizedBox(width: 6),
-            GlassButton(label: 'Badlo', icon: Icons.edit_rounded, height: 40, onTap: _busy ? null : () => _edit(_at + 1)),
+            GlassButton(label: 'Change', icon: Icons.edit_rounded, height: 40, onTap: _busy ? null : () => _edit(_at + 1)),
           ]),
           if ((cur['notes'] as String? ?? '').isNotEmpty) ...[
             const SizedBox(height: 10),
@@ -720,7 +720,7 @@ class _NbSlidesScreenState extends State<NbSlidesScreen> {
           ],
           if (_edits.isNotEmpty) ...[
             const SizedBox(height: 12),
-            GradientButton(label: _busy ? 'Badal raha hoon…' : 'Badlav lagao (${_edits.length})', icon: Icons.auto_fix_high_rounded,
+            GradientButton(label: _busy ? 'Changing…' : 'Apply changes (${_edits.length})', icon: Icons.auto_fix_high_rounded,
                 onTap: _busy ? null : _apply),
           ],
           const SizedBox(height: 14),
@@ -766,13 +766,13 @@ class NbImageScreen extends StatelessWidget {
     return Scaffold(
       appBar: nbBar(o['title'] as String? ?? '', actions: [
         if (url != null) IconButton(tooltip: 'Gallery', icon: const Icon(Icons.download_rounded), onPressed: () => nbShareFile(context, app, url, name, gallery: true)),
-        if (url != null) IconButton(tooltip: 'Bhejo', icon: const Icon(Icons.share_rounded), onPressed: () => nbShareFile(context, app, url, name)),
+        if (url != null) IconButton(tooltip: 'Send', icon: const Icon(Icons.share_rounded), onPressed: () => nbShareFile(context, app, url, name)),
       ]),
       body: Aurora(
         child: Column(children: [
           Expanded(
             child: url == null
-                ? const Center(child: Text('Tasveer nahi mili'))
+                ? const Center(child: Text('Image not found'))
                 : InteractiveViewer(maxScale: 6, child: Center(child: Image.network(app.api!.absolute(url), fit: BoxFit.contain))),
           ),
           Padding(padding: const EdgeInsets.all(12), child: NbFileChips(app: app, files: files)),
@@ -830,11 +830,11 @@ class _NbMindMapScreenState extends State<NbMindMapScreen> {
               ),
             ),
             IconButton(
-              tooltip: 'Chat mein poochho',
+              tooltip: 'Ask in chat',
               visualDensity: VisualDensity.compact,
               icon: const Icon(Icons.forum_rounded, size: 18, color: C.muted),
               onPressed: () => Navigator.pop(context,
-                  'Notebook ke sources ke hisaab se samjhaiye: ${here.length > 1 ? here.sublist(1).join(' → ') : label}'),
+                  'Explain from the notebook\'s sources: ${here.length > 1 ? here.sublist(1).join(' → ') : label}'),
             ),
           ]),
         ),
@@ -851,7 +851,7 @@ class _NbMindMapScreenState extends State<NbMindMapScreen> {
     final files = nbMap(widget.o['files']);
     return Scaffold(
       appBar: nbBar(widget.o['title'] as String? ?? 'Mind map', actions: [
-        IconButton(tooltip: 'Sab kholo', icon: const Icon(Icons.unfold_more_rounded), onPressed: () {
+        IconButton(tooltip: 'Open all', icon: const Icon(Icons.unfold_more_rounded), onPressed: () {
           void walk(Map<String, dynamic> n, String p) {
             _open.add(p);
             final k = nbList(n['children']);
@@ -862,7 +862,7 @@ class _NbMindMapScreenState extends State<NbMindMapScreen> {
           setState(() => walk(root, '0'));
         }),
         if (files['mindmap.png'] != null)
-          IconButton(tooltip: 'Tasveer', icon: const Icon(Icons.image_rounded), onPressed: () => Navigator.of(context).push(
+          IconButton(tooltip: 'Picture', icon: const Icon(Icons.image_rounded), onPressed: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => NbImageScreen(app: widget.app, o: widget.o, name: 'mindmap.png')))),
       ]),
       body: Aurora(
@@ -873,7 +873,7 @@ class _NbMindMapScreenState extends State<NbMindMapScreen> {
             child: ConstrainedBox(
               constraints: BoxConstraints(minWidth: MediaQuery.of(context).size.width - 28, maxWidth: math.max(MediaQuery.of(context).size.width * 1.6, 560.0)),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                const Text('Branch par tap karke kholiye; 💬 se us baat par chat mein sawaal.', style: TextStyle(color: C.faint, fontSize: 12)),
+                const Text('Tap a branch to open it; use 💬 to ask about it in chat.', style: TextStyle(color: C.faint, fontSize: 12)),
                 const SizedBox(height: 10),
                 _node(root, '0', 0, const Color(0xFF3D2F7A), const []),
               ]),
@@ -900,7 +900,7 @@ class NbReportScreen extends StatelessWidget {
       appBar: nbBar(o['title'] as String? ?? 'Report', actions: [
         IconButton(tooltip: 'Copy', icon: const Icon(Icons.copy_rounded), onPressed: () {
           Clipboard.setData(ClipboardData(text: md));
-          nbSnack(context, 'Copy ho gaya');
+          nbSnack(context, 'Copied');
         }),
       ]),
       body: Aurora(
@@ -918,12 +918,12 @@ class NbReportScreen extends StatelessWidget {
                 title: Text('${s['title']}', maxLines: 2, overflow: TextOverflow.ellipsis),
                 subtitle: Text('${s['url']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: C.faint, fontSize: 11.5)),
                 trailing: IconButton(
-                  tooltip: 'Source jodo',
+                  tooltip: 'Add source',
                   icon: const Icon(Icons.add_circle_outline_rounded, color: C.accent),
                   onPressed: () async {
                     try {
                       await app.api!.notebookAddSource(nid, {'url': s['url']});
-                      if (context.mounted) nbSnack(context, 'Source jud gaya');
+                      if (context.mounted) nbSnack(context, 'Source added');
                     } catch (e) {
                       if (context.mounted) nbSnack(context, '$e');
                     }
@@ -965,7 +965,7 @@ class _NbFlashcardsScreenState extends State<NbFlashcardsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_cards.isEmpty) return Scaffold(appBar: nbBar('Flashcards'), body: const Center(child: Text('Koi card nahi')));
+    if (_cards.isEmpty) return Scaffold(appBar: nbBar('Flashcards'), body: const Center(child: Text('No cards')));
     final c = _cards[_i];
     final done = _known.length + _again.length;
     return Scaffold(
@@ -1024,12 +1024,12 @@ class _NbFlashcardsScreenState extends State<NbFlashcardsScreen> {
                             boxShadow: const [BoxShadow(color: Color(0x66000000), blurRadius: 30, offset: Offset(0, 12))],
                           ),
                           child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                            Pill(showBack ? 'JAWAB' : 'SAWAAL', fg: showBack ? Colors.white : C.accent),
+                            Pill(showBack ? 'ANSWER' : 'QUESTIONS', fg: showBack ? Colors.white : C.accent),
                             const SizedBox(height: 18),
                             Text(showBack ? '${c['back']}' : '${c['front']}', textAlign: TextAlign.center,
                                 style: TextStyle(fontSize: showBack ? 19 : 23, fontWeight: FontWeight.w700, height: 1.35)),
                             const SizedBox(height: 18),
-                            Text(showBack ? (c['source'] != null ? 'Source ${c['source']}' : '') : 'Tap karke palto',
+                            Text(showBack ? (c['source'] != null ? 'Source ${c['source']}' : '') : 'Tap to flip',
                                 style: const TextStyle(color: C.muted, fontSize: 12)),
                           ]),
                         ),
@@ -1041,9 +1041,9 @@ class _NbFlashcardsScreenState extends State<NbFlashcardsScreen> {
             ),
             const SizedBox(height: 16),
             Row(children: [
-              Expanded(child: GlassButton(label: 'Dobara dekhna', icon: Icons.refresh_rounded, onTap: () => _next(false))),
+              Expanded(child: GlassButton(label: 'Review again', icon: Icons.refresh_rounded, onTap: () => _next(false))),
               const SizedBox(width: 10),
-              Expanded(child: GradientButton(label: 'Pata tha', icon: Icons.check_rounded, height: 48, onTap: () => _next(true))),
+              Expanded(child: GradientButton(label: 'Knew', icon: Icons.check_rounded, height: 48, onTap: () => _next(true))),
             ]),
             const SizedBox(height: 10),
             NbFileChips(app: widget.app, files: nbMap(widget.o['files'])),
@@ -1081,7 +1081,7 @@ class _NbQuizScreenState extends State<NbQuizScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_qs.isEmpty) return Scaffold(appBar: nbBar('Quiz'), body: const Center(child: Text('Koi sawaal nahi')));
+    if (_qs.isEmpty) return Scaffold(appBar: nbBar('Quiz'), body: const Center(child: Text('No questions')));
     if (_done) {
       final pct = (_score * 100 / _qs.length).round();
       return Scaffold(
@@ -1094,10 +1094,10 @@ class _NbQuizScreenState extends State<NbQuizScreen> {
                 Text(pct >= 80 ? '🏆' : pct >= 50 ? '👏' : '📚', style: const TextStyle(fontSize: 64)),
                 const SizedBox(height: 10),
                 Text('$_score / ${_qs.length}', style: const TextStyle(fontSize: 40, fontWeight: FontWeight.w800)),
-                Text(pct >= 80 ? 'Shaandaar!' : pct >= 50 ? 'Achha hai, thoda aur!' : 'Ek baar aur padhiye, phir try kijiye',
+                Text(pct >= 80 ? 'Wonderful!' : pct >= 50 ? 'Good, a little more!' : 'Read once more, then try',
                     style: const TextStyle(color: C.muted)),
                 const SizedBox(height: 22),
-                GradientButton(label: 'Phir se karo', icon: Icons.replay_rounded, onTap: () => setState(() {
+                GradientButton(label: 'Do it again', icon: Icons.replay_rounded, onTap: () => setState(() {
                       _i = 0;
                       _picked = null;
                       _score = 0;
@@ -1120,7 +1120,7 @@ class _NbQuizScreenState extends State<NbQuizScreen> {
           LinearProgressIndicator(value: (_i + 1) / _qs.length, color: C.accent, backgroundColor: C.panel, minHeight: 6,
               borderRadius: BorderRadius.circular(4)),
           const SizedBox(height: 10),
-          Text('Sawaal ${_i + 1} / ${_qs.length}  ·  Score $_score', style: const TextStyle(color: C.muted)),
+          Text('Question ${_i + 1} / ${_qs.length}  ·  Score $_score', style: const TextStyle(color: C.muted)),
           const SizedBox(height: 14),
           Text('${q['q']}', style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w800, height: 1.35)),
           const SizedBox(height: 16),
@@ -1156,11 +1156,11 @@ class _NbQuizScreenState extends State<NbQuizScreen> {
             ),
           if (_picked != null) ...[
             const SizedBox(height: 6),
-            Glass(child: Text('${_picked == ans ? '✅ Sahi!' : '❌ Sahi jawab: ${String.fromCharCode(65 + ans)}'}\n${q['why'] ?? ''}',
+            Glass(child: Text('${_picked == ans ? '✅ Correct!' : '❌ Correct answer: ${String.fromCharCode(65 + ans)}'}\n${q['why'] ?? ''}',
                 style: const TextStyle(height: 1.4))),
             const SizedBox(height: 14),
             GradientButton(
-              label: _i < _qs.length - 1 ? 'Agla sawaal' : 'Nateeja dekho',
+              label: _i < _qs.length - 1 ? 'Next question' : 'See result',
               icon: Icons.arrow_forward_rounded,
               onTap: () => setState(() {
                 if (_i < _qs.length - 1) {

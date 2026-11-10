@@ -35,7 +35,7 @@ async def hoola_seekha(ctx: Ctx, action: str, term: str = "", heard: str = "", m
     from .. import voicestyle as vs
     t = ctx.tenant_id
     if action != "show" and not _owner(ctx):
-        raise ToolError("Sirf maalkin yeh badal sakti hain")
+        raise ToolError("Only the owner can change this")
     try:
         if action == "show":
             v = await asyncio.to_thread(vs.view, t)

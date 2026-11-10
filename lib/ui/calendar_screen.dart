@@ -18,13 +18,13 @@ class CalendarEventCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final status = v['status'] as String? ?? 'added';
     final (chip, fg) = switch (status) {
-      'added' => ('CALENDAR MEIN', C.ok),
-      'updated' => ('BADAL DIYA', C.ok),
+      'added' => ('IN CALENDAR', C.ok),
+      'updated' => ('CHANGED', C.ok),
       'cancelled' => ('CANCEL', C.muted),
       'declined' => ('MANA KIYA', C.muted),
-      'accepted' => ('HAAN KAHA', C.ok),
-      'tentative' => ('SHAYAD', C.warn),
-      'soon' => ('JALDI SHURU', C.warn),
+      'accepted' => ('SAID YES', C.ok),
+      'tentative' => ('MAYBE', C.warn),
+      'soon' => ('STARTING SOON', C.warn),
       _ => (status.toUpperCase(), C.chip),
     };
     final title = v['title'] as String? ?? '';
@@ -57,10 +57,10 @@ class CalendarEventCard extends StatelessWidget {
             const SizedBox(height: 10),
             Row(children: [
               if (meet.isNotEmpty)
-                Expanded(child: GradientButton(label: 'Meet join karein', icon: Icons.videocam_rounded, height: 42, onTap: () => _open(meet))),
+                Expanded(child: GradientButton(label: 'Join Meet', icon: Icons.videocam_rounded, height: 42, onTap: () => _open(meet))),
               if (meet.isNotEmpty && link.isNotEmpty) const SizedBox(width: 8),
               if (link.isNotEmpty)
-                Expanded(child: GlassButton(label: 'Calendar mein dekhein', icon: Icons.open_in_new_rounded, height: 42, onTap: () => _open(link))),
+                Expanded(child: GlassButton(label: 'View in Calendar', icon: Icons.open_in_new_rounded, height: 42, onTap: () => _open(link))),
             ]),
           ],
         ]),
@@ -149,9 +149,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
         child: RefreshIndicator(
           onRefresh: _load,
           child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
-            const Text('Hoola aapka Google Calendar dekhta hai, meeting banata hai (Google Meet link ke saath), samay badalta hai, '
-                'khaali samay dhoondhta hai aur meeting se pehle yaad dilata hai. Doosre logon ko invite / badlav / cancel '
-                'hamesha aapke tap ke baad hi.',
+            const Text('Hoola reads your Google Calendar, creates meetings (with a Google Meet link), changes times, '
+                'finds free time and reminds you before a meeting. Inviting others, changes and cancellations '
+                'happen only after your tap.',
                 style: TextStyle(color: C.muted, fontSize: 13)),
             const SizedBox(height: 14),
             if (_err != null) Padding(padding: const EdgeInsets.only(bottom: 10), child: Text(_err!, style: const TextStyle(color: C.bad))),
@@ -164,7 +164,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   const SizedBox(width: 10),
                   Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Text(a['address'] as String? ?? '', style: const TextStyle(fontWeight: FontWeight.w700)),
-                    Text(a['full'] == true ? 'Google Calendar' : 'Purana connection (app password): sirf dekhna, banana, hatana',
+                    Text(a['full'] == true ? 'Google Calendar' : 'Old connection (app password): view, create, delete only',
                         style: const TextStyle(color: C.muted, fontSize: 12.5)),
                     if (a['status'] == 'error') Text(a['error'] as String? ?? 'Login fail', style: const TextStyle(color: C.bad, fontSize: 12)),
                   ])),
@@ -174,19 +174,19 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 ])),
               ),
             if (_loaded && (accounts.isEmpty || onlyOld)) ...[
-              GradientButton(label: 'Google Calendar jodiye', icon: Icons.event_rounded, height: 50, onTap: canLink ? _link : null),
+              GradientButton(label: 'Link Google Calendar', icon: Icons.event_rounded, height: 50, onTap: canLink ? _link : null),
               if (!canLink)
                 const Padding(
                   padding: EdgeInsets.only(top: 8),
-                  child: Text('Is server par Google sign-in abhi chalu nahi hai (GOOGLE_OAUTH_CLIENT_ID / SECRET).',
+                  child: Text('Google sign-in is not turned on for this server yet (GOOGLE_OAUTH_CLIENT_ID / SECRET).',
                       style: TextStyle(color: C.faint, fontSize: 12)),
                 ),
               const SizedBox(height: 14),
             ] else if (_loaded)
               Padding(padding: const EdgeInsets.only(bottom: 14),
-                  child: GlassButton(label: 'Doosra Google account jodiye', icon: Icons.add_rounded, height: 44, onTap: canLink ? _link : null)),
+                  child: GlassButton(label: 'Link another Google account', icon: Icons.add_rounded, height: 44, onTap: canLink ? _link : null)),
             if (cals.isNotEmpty) ...[
-              const Text('Hoola kaunse calendar dekhe', style: TextStyle(fontWeight: FontWeight.w700)),
+              const Text('Which calendars Hoola reads', style: TextStyle(fontWeight: FontWeight.w700)),
               const SizedBox(height: 4),
               Glass(child: Column(children: [
                 for (final c in cals)
@@ -195,8 +195,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     title: Text(c['name'] as String? ?? ''),
                     subtitle: Text([
                       if (c['primary'] == true) 'main',
-                      if (c['default'] == true) 'naye event yahan',
-                      if (c['role'] == 'reader') 'sirf padhna',
+                      if (c['default'] == true) 'new events here',
+                      if (c['role'] == 'reader') 'read-only',
                     ].join(' · '), style: const TextStyle(color: C.muted, fontSize: 12)),
                     value: c['reading'] == true,
                     onChanged: (on) {
@@ -206,7 +206,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   ),
               ])),
               const SizedBox(height: 14),
-              const Text('Naye event kis calendar mein', style: TextStyle(fontWeight: FontWeight.w700)),
+              const Text('Which calendar for new events', style: TextStyle(fontWeight: FontWeight.w700)),
               const SizedBox(height: 6),
               Wrap(spacing: 8, runSpacing: 8, children: [
                 for (final c in cals.where((c) => c['role'] != 'reader' && c['role'] != 'freeBusyReader'))
@@ -222,7 +222,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
               const SizedBox(height: 14),
             ],
             if (accounts.isNotEmpty) ...[
-              const Text('Meeting se pehle yaad dilaye', style: TextStyle(fontWeight: FontWeight.w700)),
+              const Text('Remind before a meeting', style: TextStyle(fontWeight: FontWeight.w700)),
               const SizedBox(height: 6),
               Wrap(spacing: 8, runSpacing: 8, children: [
                 for (final m in const [0, 5, 10, 15, 30])
@@ -237,15 +237,15 @@ class _CalendarScreenState extends State<CalendarScreen> {
               ]),
             ],
             const SizedBox(height: 18),
-            const Text('Bolkar dekhiye', style: TextStyle(fontWeight: FontWeight.w700)),
+            const Text('Try saying', style: TextStyle(fontWeight: FontWeight.w700)),
             const SizedBox(height: 6),
             for (final t in const [
-              '"Kal mera schedule kya hai?"',
-              '"Is hafte 1 ghante ka free slot batao"',
-              '"Friday 4 baje Swati ke saath sales review, Meet link ke saath"',
-              '"Dentist wali appointment 11 baje kar do"',
-              '"Har Monday 10 baje team standup daal do"',
-              '"BSNL meeting ka invite accept kar do"',
+              '"What is my schedule tomorrow?"',
+              '"Find a free 1-hour slot this week"',
+              '"Sales review with Swati on Friday at 4, with a Meet link"',
+              '"Move the dentist appointment to 11"',
+              '"Add a team standup every Monday at 10"',
+              '"Accept the BSNL meeting invite"',
             ])
               Padding(padding: const EdgeInsets.symmetric(vertical: 2), child: Text(t, style: const TextStyle(color: C.chip, fontSize: 13))),
           ]),

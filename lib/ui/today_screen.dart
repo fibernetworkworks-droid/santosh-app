@@ -7,7 +7,7 @@ import 'glass.dart';
 import 'home_sections.dart';
 import 'live_santosh.dart';
 
-const _days = ['Somvar', 'Mangalvar', 'Budhvar', 'Guruvar', 'Shukravar', 'Shanivar', 'Ravivar'];
+const _days = ['Somvar', 'Mangalvar', 'Budhvar', 'Guruvar', 'Shukravar', 'Shanivar', 'Sunday'];
 const _months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
 /// Aaj: Hoola's home — she greets the owner, shows what needs their tap, what she is doing right now,
@@ -98,10 +98,10 @@ class _TodayScreenState extends State<TodayScreen> {
     final app = widget.app;
     final pend = app.pendingApprovals.length;
     final line = pend > 0
-        ? '$pend kaam aapke approval ka intezaar kar raha hai.'
+        ? '$pend tasks are waiting for your approval.'
         : app.reminders.isNotEmpty
-            ? 'Agla reminder: ${app.reminders.first['text'] ?? ''}'
-            : 'Kuch bhi boliye: bill, dukaan, cab, email, reminder.';
+            ? 'Next reminder: ${app.reminders.first['text'] ?? ''}'
+            : 'Say anything: bill, shop, cab, email, reminder.';
     final onDuty = _extra.employee != null &&
         (_extra.employee!['status'] as Map?)?['paused'] != true &&
         ((_extra.employee!['status'] as Map?)?['enabled'] == true);
@@ -112,19 +112,19 @@ class _TodayScreenState extends State<TodayScreen> {
         SizedBox(width: 132, height: 170, child: Align(alignment: Alignment.bottomCenter, child: LiveSantosh(feeling: app.mood, size: 150))),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(app.mood == Mood.idle ? 'Main taiyaar hoon' : moodStyles[app.mood]!.label, style: display(18)),
+            Text(app.mood == Mood.idle ? 'I am ready' : moodStyles[app.mood]!.label, style: display(18)),
             const SizedBox(height: 6),
             Text(line, maxLines: 3, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13.5, height: 1.45, color: C.chip)),
             const SizedBox(height: 12),
-            GradientButton(label: 'Baat karein', height: 42, icon: Icons.mic_rounded, onTap: () => widget.onTab?.call(2)),
+            GradientButton(label: 'Talk', height: 42, icon: Icons.mic_rounded, onTap: () => widget.onTab?.call(2)),
             const SizedBox(height: 8),
-            SizedBox(width: double.infinity, child: GlassButton(label: 'Likh ke boliye', height: 40, onTap: () => widget.onTab?.call(1))),
+            SizedBox(width: double.infinity, child: GlassButton(label: 'Type it', height: 40, onTap: () => widget.onTab?.call(1))),
             const SizedBox(height: 10),
             Row(children: [
               Container(width: 7, height: 7, decoration: const BoxDecoration(color: C.ok, shape: BoxShape.circle)),
               const SizedBox(width: 6),
               Expanded(
-                child: Text(onDuty ? 'Online · dukaan pe duty pe, yahan bhi nazar' : 'Online · sab kaamon pe nazar',
+                child: Text(onDuty ? 'Online · on shop duty, watching here too' : 'Online · watching all your tasks',
                     style: const TextStyle(fontSize: 11.5, color: C.muted), maxLines: 1, overflow: TextOverflow.ellipsis),
               ),
             ]),
@@ -172,7 +172,7 @@ class _TodayScreenState extends State<TodayScreen> {
           const SizedBox(height: 12),
           if (app.pendingApprovals.isNotEmpty) ...[
             Stagger(index: 1, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              HomeLabel('AAPKI HAAN CHAHIYE', count: app.pendingApprovals.length),
+              HomeLabel('NEEDS YOUR YES', count: app.pendingApprovals.length),
               for (final a in app.pendingApprovals)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 10),
@@ -199,28 +199,28 @@ class _TodayScreenState extends State<TodayScreen> {
           Stagger(index: 3, child: DayTilesSection(extra: _extra, app: app)),
           const SizedBox(height: 20),
           Stagger(index: 4, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const HomeLabel('JALDI SE KARO'),
+            const HomeLabel('DO SOON'),
             Row(children: [
-              _action(Icons.receipt_long_rounded, const [Color(0xFFFB923C), Color(0xFFF97316)], const Color(0x59F97316), app.g('Bill bharo'), 'Mera bijli bill bhar do'),
+              _action(Icons.receipt_long_rounded, const [Color(0xFFFB923C), Color(0xFFF97316)], const Color(0x59F97316), app.g('Bill bharo'), 'Pay my electricity bill'),
               const SizedBox(width: 10),
-              _action(Icons.storefront_rounded, const [Color(0xFFA78BFA), Color(0xFF7C5CFF)], const Color(0x597C5CFF), app.g('Dukaan'), 'Paas ki kirana dukaan se saamaan mangwana hai'),
+              _action(Icons.storefront_rounded, const [Color(0xFFA78BFA), Color(0xFF7C5CFF)], const Color(0x597C5CFF), app.g('Dukaan'), 'I want to order supplies from the nearby kirana shop'),
               const SizedBox(width: 10),
-              _action(Icons.near_me_rounded, const [Color(0xFF2DD4BF), Color(0xFF0D9488)], const Color(0x592DD4BF), app.g('Rasta'), 'Paas mein kya khula hai aur rasta batao'),
+              _action(Icons.near_me_rounded, const [Color(0xFF2DD4BF), Color(0xFF0D9488)], const Color(0x592DD4BF), app.g('Rasta'), 'Tell me what is open nearby and the way there'),
               const SizedBox(width: 10),
-              _action(Icons.local_taxi_rounded, const [Color(0xFFFB7185), Color(0xFFE11D48)], const Color(0x59FB7185), app.g('Cab'), 'Mere liye cab book karni hai'),
+              _action(Icons.local_taxi_rounded, const [Color(0xFFFB7185), Color(0xFFE11D48)], const Color(0x59FB7185), app.g('Cab'), 'I want to book a cab'),
             ]),
             const SizedBox(height: 10),
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               clipBehavior: Clip.none,
               child: Row(children: [
-                _chip(Icons.auto_fix_high_rounded, const [Color(0xFFA78BFA), Color(0xFF7C5CFF)], app.g('Photo banao'), 'Meri ek photo edit karni hai'),
+                _chip(Icons.auto_fix_high_rounded, const [Color(0xFFA78BFA), Color(0xFF7C5CFF)], app.g('Photo banao'), 'I want to edit a photo'),
                 const SizedBox(width: 8),
-                _chip(Icons.movie_rounded, const [Color(0xFFFB7185), Color(0xFFE11D48)], app.g('Video banao'), 'Mere liye ek reel video banani hai'),
+                _chip(Icons.movie_rounded, const [Color(0xFFFB7185), Color(0xFFE11D48)], app.g('Video banao'), 'I want to make a reel video'),
                 const SizedBox(width: 8),
-                _chip(Icons.mail_rounded, const [Color(0xFF2DD4BF), Color(0xFF0D9488)], app.g('Email likho'), 'Ek email likhna hai'),
+                _chip(Icons.mail_rounded, const [Color(0xFF2DD4BF), Color(0xFF0D9488)], app.g('Email likho'), 'I want to write an email'),
                 const SizedBox(width: 8),
-                _chip(Icons.smart_display_rounded, const [Color(0xFFFFB15C), Color(0xFFFB923C)], app.g('TV'), 'TV pe kuch chalao'),
+                _chip(Icons.smart_display_rounded, const [Color(0xFFFFB15C), Color(0xFFFB923C)], app.g('TV'), 'Play something on the TV'),
               ]),
             ),
           ])),
@@ -279,7 +279,7 @@ class ReminderSection extends StatelessWidget {
   final Santosh app;
   final ValueChanged<int>? onTab;
 
-  static const Map<String, String> repeatLabel = {'daily': 'Roz', 'weekdays': 'Mon–Fri', 'weekly': 'Har hafte', 'monthly': 'Har mahine'};
+  static const Map<String, String> repeatLabel = {'daily': 'Daily', 'weekdays': 'Mon–Fri', 'weekly': 'Every week', 'monthly': 'Every month'};
 
   /// Time-of-day look: subah / dopahar / shaam / raat — icon + gradient.
   static (IconData, List<Color>) _look(int hour) {
@@ -445,7 +445,7 @@ class ReminderSection extends StatelessWidget {
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           for (final g in const ['today', 'tom', 'later'])
             if (groups[g]!.isNotEmpty) ...[
-              _groupHead(g == 'today' ? 'AAJ' : g == 'tom' ? 'KAL' : 'BAAD MEIN'),
+              _groupHead(g == 'today' ? 'AAJ' : g == 'tom' ? 'KAL' : 'LATER'),
               for (final r in groups[g]!) _row(context, r, isNext: '${r['id']}' == nextId),
             ],
         ]),
@@ -464,7 +464,7 @@ class RoutinesSection extends StatelessWidget {
   final Santosh app;
   final ValueChanged<int>? onTab;
 
-  static const Map<String, String> repeatLabel = {'none': 'Ek baar', 'hourly': 'Har ghante', 'daily': 'Roz', 'weekdays': 'Mon–Fri', 'weekly': 'Har hafte', 'monthly': 'Har mahine'};
+  static const Map<String, String> repeatLabel = {'none': 'Once', 'hourly': 'Every hour', 'daily': 'Daily', 'weekdays': 'Mon–Fri', 'weekly': 'Every week', 'monthly': 'Every month'};
 
   /// Cadence look: har rhythm ka apna rang — one glance and you know the beat.
   static (IconData, List<Color>) _look(String? repeat) {
@@ -846,7 +846,7 @@ class ListsSection extends StatelessWidget {
         Glass(
           padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            _groupHead('AAJ POORE KIYE', count: done.length, pill: const Color(0xFF34D399)),
+            _groupHead('DONE TODAY', count: done.length, pill: const Color(0xFF34D399)),
             for (final item in done)
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),

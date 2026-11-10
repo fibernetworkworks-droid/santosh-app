@@ -54,7 +54,7 @@ class _AppTrackPanelState extends State<AppTrackPanel> {
     setState(() => _busy = true);
     try {
       await widget.app.api!.call('PUT', '$_base/track', body: {'on': on, 'coll': _coll, 'statuses': _st.toList()});
-      _say(on ? 'Live tracking chalu. Phones par aane ke liye app dobara build kijiye.' : 'Live tracking band.');
+      _say(on ? 'Live tracking is on. Build the app again for it to reach phones.' : 'Live tracking is off.');
     } catch (e) {
       _say('$e');
     }
@@ -73,11 +73,11 @@ class _AppTrackPanelState extends State<AppTrackPanel> {
       Row(children: [
         Icon(Icons.delivery_dining_rounded, color: on ? C.ok : C.muted, size: 20),
         const SizedBox(width: 6),
-        Expanded(child: Text('Live tracking${on ? ' · chalu' : ''}', style: display(15))),
-        IconButton(onPressed: _load, icon: const Icon(Icons.refresh_rounded, color: C.muted, size: 20), tooltip: 'Taaza karo'),
+        Expanded(child: Text('Live tracking${on ? ' · on' : ''}', style: display(15))),
+        IconButton(onPressed: _load, icon: const Icon(Icons.refresh_rounded, color: C.muted, size: 20), tooltip: 'Refresh'),
       ]),
-      const Text('Staff app mein Start shift dabate hain; location sirf shift ke dauraan jaati hai. Graahak sirf apna order laane wale rider ko dekhta hai, '
-          'aur sirf jab order raaste mein ho.', style: TextStyle(color: C.muted, fontSize: 12)),
+      const Text('Staff tap Start shift in the app; location is shared only during the shift. A customer sees only the rider bringing their own order, '
+          'and only while the order is on the way.', style: TextStyle(color: C.muted, fontSize: 12)),
       const SizedBox(height: 8),
       DropdownButton<String>(
         value: _s(cur['key']),
@@ -85,35 +85,35 @@ class _AppTrackPanelState extends State<AppTrackPanel> {
         items: [for (final x in lists) DropdownMenuItem(value: _s(x['key']), child: Text(_s(x['label'])))],
         onChanged: (v) => setState(() { _coll = v ?? _coll; _st = {}; }),
       ),
-      const Text('Raaste mein kab maanein:', style: TextStyle(color: C.muted, fontSize: 12)),
+      const Text('When to count it as on the way:', style: TextStyle(color: C.muted, fontSize: 12)),
       Wrap(spacing: 6, children: [
         for (final s in (cur['statuses'] as List).map(_s))
           FilterChip(label: Text(s), selected: _st.contains(s), onSelected: (v) => setState(() => v ? _st.add(s) : _st.remove(s))),
       ]),
       if (cur['location'] != true)
-        const Text('Is list mein location field nahi hai: map par rider dikhega, graahak ki jagah nahi.', style: TextStyle(color: C.muted, fontSize: 12)),
+        const Text('This list has no location field: the map will show the rider, not the customer\'s place.', style: TextStyle(color: C.muted, fontSize: 12)),
       const SizedBox(height: 8),
       Row(children: [
-        FilledButton(onPressed: _busy || _st.isEmpty ? null : () => _save(true), child: Text(on ? 'Save' : 'Tracking chalu karo')),
+        FilledButton(onPressed: _busy || _st.isEmpty ? null : () => _save(true), child: Text(on ? 'Save' : 'Turn tracking on')),
         const SizedBox(width: 8),
-        if (on) TextButton(onPressed: _busy ? null : () => _save(false), child: const Text('Band karo')),
+        if (on) TextButton(onPressed: _busy ? null : () => _save(false), child: const Text('Turn off')),
       ]),
       if (on) ...[
         const SizedBox(height: 8),
-        Text(riders.isEmpty ? 'Abhi koi shift par nahi.' : 'Shift par: ${riders.length}', style: display(13.5)),
+        Text(riders.isEmpty ? 'Nobody is on shift right now.' : 'On shift: ${riders.length}', style: display(13.5)),
         for (final r in riders)
           ListTile(
             dense: true,
             contentPadding: EdgeInsets.zero,
             leading: Icon(Icons.circle, size: 12, color: r['fresh'] == true ? C.ok : C.muted),
             title: Text(_s(r['name']), style: const TextStyle(color: C.ink)),
-            subtitle: Text('${_s(r['orders'])} order raaste mein${_s(r['at']).length >= 16 ? ' · ${_s(r['at']).substring(11, 16)} UTC' : ''}',
+            subtitle: Text('${_s(r['orders'])} orders on the way${_s(r['at']).length >= 16 ? ' · ${_s(r['at']).substring(11, 16)} UTC' : ''}',
                 style: const TextStyle(color: C.muted, fontSize: 12)),
             trailing: r['lat'] == null
                 ? null
                 : IconButton(
                     icon: const Icon(Icons.map_rounded, color: C.muted),
-                    tooltip: 'Map mein dekho',
+                    tooltip: 'View on map',
                     onPressed: () => launchUrl(Uri.parse('https://www.google.com/maps/search/?api=1&query=${r['lat']},${r['lng']}'),
                         mode: LaunchMode.externalApplication)),
           ),

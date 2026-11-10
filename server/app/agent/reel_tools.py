@@ -30,16 +30,16 @@ async def reel(ctx: Ctx, action, link="", reel_id="", query="", note="", days=7,
     try:
         if action == "look":
             if not link:
-                raise ToolError("Reel ka link do (share kiya hua poora text bhi chalega).")
+                raise ToolError("Give the reel link (the whole shared text works too).")
             v = await asyncio.to_thread(rs.look_link, ctx.tenant_id, str(link))
             return _short(v)
         if action == "saved":
             items = await asyncio.to_thread(rs.saved, ctx.tenant_id, str(query or ""), 8)
             return {"reels": [_short(v) for v in items],
-                    "note": "" if items else "Koi saved reel nahi mili. Reel ko Hoola pe share karke 'Save' dabaiye."}
+                    "note": "" if items else "No saved reel found. Share a reel to Hoola and press 'Save'."}
         if action == "save":
             if not reel_id:
-                raise ToolError("reel_id do (look se milta hai).")
+                raise ToolError("Give reel_id (it comes from look).")
             return _short(await asyncio.to_thread(rs.save, ctx.tenant_id, str(reel_id), str(note or "")))
         if action == "scroll":
             from ..reels import scroll
@@ -51,11 +51,11 @@ async def reel(ctx: Ctx, action, link="", reel_id="", query="", note="", days=7,
             out["watching"] = {src: {k: t.get(k) for k in ("summary", "topics", "watch_out", "suggestions")}
                                for src, t in r["tastes"].items()}
             if not r["has_data"]:
-                out["how"] = "Hoola app > Connect > Hoola Reels > Scroll report: Usage Access chalu kijiye."
+                out["how"] = "Hoola app > Connect > Hoola Reels > Scroll report: turn on Usage Access."
             return out
         if action == "check":
             if not reel_id:
-                raise ToolError("reel_id do (look se milta hai).")
+                raise ToolError("Give reel_id (it comes from look).")
             return await rs.fact_check(ctx.tenant_id, str(reel_id))
     except rs.ReelError as e:
         raise ToolError(str(e))

@@ -69,6 +69,23 @@ def make_router(require_key) -> APIRouter:
         return {"free": {k: v for k, v in card.items() if k != "rows"}, "lines": RC.lines(card),
                 "rows": card["rows"], "cards": RC.saved(), "verdicts": RC.verdicts()}
 
+    @r.get("/parity")
+    async def parity_card():
+        """v0.732 CLAUDE PARITY Phase 0: the free check now (set, calibrated scorer, tools in view) + the saved cards
+        (python -m app.quality parity --live) + the newest saved card's lines."""
+        from . import paritycard as PC
+        card = await asyncio.to_thread(PC.free_card)
+        cards = await asyncio.to_thread(PC.saved)
+        newest = None
+        if cards:
+            try:
+                newest = await asyncio.to_thread(PC.load, cards[0]["file"])
+            except Exception:
+                newest = None
+        return {"check": {k: v for k, v in card.items() if k not in ("rows", "calibration")}, "lines": PC.lines(card),
+                "cards": cards, "newest": newest, "newest_lines": PC.lines(newest) if newest else [],
+                "how": "live: python -m app.quality parity --live [--judge] [--only id,id] [--cat c]"}
+
     @r.get("/report/{name}")
     async def report(name: str):
         try:

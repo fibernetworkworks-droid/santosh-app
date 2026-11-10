@@ -17,42 +17,42 @@ from .tools import Ctx, ToolError
 
 HOME_TOOLS = [
     {"name": "home_link", "description": (
-        "[GHAR] Home Assistant link ka status, aur jab juda na ho to poori setup guide. Bina koi call ke "
-        "bata deta hai: ghar ka control ON hai ya nahi (home_control switch), HA URL set hai ya nahi, token "
-        "mask hone ke baad dikhata hai. Setup owner VPS .env mein karta hai (HOME_ASSISTANT_URL + "
-        "HOME_ASSISTANT_TOKEN) - token chat mein kabhi mat maango."),
+        "[HOME] Home Assistant link status, and the full setup guide when not linked. Without any call it "
+        "tells: whether home control is ON (home_control switch), whether the HA URL is set, and shows the token "
+        "masked. The owner does setup in the VPS .env (HOME_ASSISTANT_URL + "
+        "HOME_ASSISTANT_TOKEN) - never ask for the token in chat."),
      "input_schema": {"type": "object", "properties": {}}},
     {"name": "home_devices", "description": (
-        "[GHAR] Home Assistant ke devices: naam, entity_id, domain, state (on/off, temperature, brightness...). "
-        "'drawing room ki light' jaise naam ko entity se milane ke liye pehle yehi poochein. domain=light|switch|"
-        "fan|cover|media_player|climate|scene|script|button se filter, q=naam se search. Bahut saare devices "
-        "ho to q/domain se seedha karein."),
+        "[HOME] Home Assistant devices: name, entity_id, domain, state (on/off, temperature, brightness...). "
+        "Ask this first to match a name like 'drawing room light' to an entity. Filter with domain=light|switch|"
+        "fan|cover|media_player|climate|scene|script|button, search by name with q. With many devices "
+        "narrow down with q/domain."),
      "input_schema": {"type": "object", "properties": {
-         "domain": {"type": "string", "description": "sirf isi domain ke devices"},
-         "q": {"type": "string", "description": "naam ya entity_id mein search"},
+         "domain": {"type": "string", "description": "only devices of this domain"},
+         "q": {"type": "string", "description": "search in name or entity_id"},
          "limit": {"type": "number"}}},
      },
     {"name": "home_on", "description": (
-        "[GHAR] Ek device ON (light/fan/switch/scene/script/button/cover=kholna; climate ko temperature do; "
-        "lock=band karna, SIRF user se poochne ke baad confirm=true). extra mein light brightness (1-255), "
-        "climate temperature (20-28, isse bahar refuse), media volume_level (0.0-1.0, 90 % se upar clamp). "
-        "Fridge / washing machine / geyser / heater main kabhi nahi chalata. Jawab mein Hinglish 'say' aata hai."),
+        "[HOME] Turn ONE device ON (light/fan/switch/scene/script/button; cover=open; give climate a temperature; "
+        "lock=lock, ONLY after asking the user, with confirm=true). extra: light brightness (1-255), "
+        "climate temperature (20-28, outside it is refused), media volume_level (0.0-1.0, clamped above 90 %). "
+        "Never operates a fridge / washing machine / geyser / heater. The answer has a 'say' line."),
      "input_schema": {"type": "object", "properties": {
-         "entity": {"type": "string", "description": "entity_id (light.hall) ya device ka naam"},
-         "confirm": {"type": "boolean", "description": "locks ke liye: user ne kaha 'haan' tab hi true"},
+         "entity": {"type": "string", "description": "entity_id (light.hall) or the device name"},
+         "confirm": {"type": "boolean", "description": "for locks: true only after the user said yes"},
          "extra": {"type": "object", "description": "brightness / temperature / volume_level"}},
          "required": ["entity"]}},
     {"name": "home_off", "description": (
-        "[GHAR] Ek device OFF (light/fan/switch/cover=band karna; climate off = HVAC off; lock kholna SIRF "
-        "user se poochne ke baad confirm=true). Fridge / washing machine / geyser / heater main kabhi nahi "
-        "chalata. Jawab mein Hinglish 'say' aata hai."),
+        "[HOME] Turn ONE device OFF (light/fan/switch; cover=close; climate off = HVAC off; unlock ONLY "
+        "after asking the user, with confirm=true). Never operates a fridge / washing machine / geyser / heater. "
+        "The answer has a 'say' line."),
      "input_schema": {"type": "object", "properties": {
          "entity": {"type": "string"},
-         "confirm": {"type": "boolean", "description": "locks ke liye hi"}},
+         "confirm": {"type": "boolean", "description": "for locks only"}},
          "required": ["entity"]}},
     {"name": "home_state", "description": (
-        "[GHAR] Ek device ka abhi ka haal (state, temperature, humidity, brightness...). entity_id ya naam "
-        "dono chalte hain. Sensors bhi isse padhe jaate hain - unhe control karne ki koshish mat karo."),
+        "[HOME] Current state of one device (state, temperature, humidity, brightness...). Either entity_id or name "
+        "works. Sensors are read with this too - do not try to control them."),
      "input_schema": {"type": "object", "properties": {"entity": {"type": "string"}}, "required": ["entity"]}},
 ]
 
@@ -74,24 +74,24 @@ def _gate_or_none() -> str:
 async def home_link(ctx: Ctx) -> dict:
     gate = _gate_or_none()
     st = home.link_status()
-    out = {"gate_on": not gate, "gate_note": gate or ("Ghar ka control ON hai."), **st}
+    out = {"gate_on": not gate, "gate_note": gate or ("Home control is ON."), **st}
     if not st.get("linked"):
-        out["say"] = "Ghar abhi juda nahi hai. Setup steps bata deta hoon."
+        out["say"] = "The home is not linked yet. I can explain the setup steps."
     elif gate:
-        out["say"] = "Link juda hua hai, par home_control switch OFF hai - owner VPS .env mein HOME_CONTROL=1 karein."
+        out["say"] = "The link is set, but the home_control switch is OFF - the owner should set HOME_CONTROL=1 in the VPS .env."
     else:
         ping = await home.ping()
         out["connected"] = ping.get("ok", False)
-        out["say"] = ("Ghar juda hua hai aur Home Assistant jawab de raha hai." if ping.get("ok")
-                      else f"Link set hai par HA tak pahunch nahi: {ping.get('why', 'wajah nahi mili')}")
+        out["say"] = ("The home is linked and Home Assistant is answering." if ping.get("ok")
+                      else f"The link is set but HA could not be reached: {ping.get('why', 'no reason found')}")
     return out
 
 
 async def home_devices(ctx: Ctx, domain: str = "", q: str = "", limit: int = 200, **_: Any) -> dict:
     r = await home.states(domain=domain, q=q, limit=limit)   # reads are gate-free; the gate guards switching
     if not r.get("ok"):
-        raise ToolError(r.get("why", "HA se devices nahi mile."))
-    r["say"] = f"{r.get('count', 0)} device mile." if r.get("count") else "Is naam/domain ka koi device nahi mila."
+        raise ToolError(r.get("why", "Could not get devices from HA."))
+    r["say"] = f"Found {r.get('count', 0)} device(s)." if r.get("count") else "No device found for this name/domain."
     return r
 
 
@@ -100,7 +100,7 @@ async def home_on(ctx: Ctx, entity: str, confirm: bool = False, extra: dict | No
     r = await home.switch(entity, True, ctx.tenant_id, ctx.conversation_id, actor=ctx.actor,
                           confirm=confirm, extra=extra)
     if not r.get("ok"):
-        raise ToolError(r.get("why", "on nahi ho paya."))
+        raise ToolError(r.get("why", "Could not turn it on."))
     return r
 
 
@@ -108,14 +108,14 @@ async def home_off(ctx: Ctx, entity: str, confirm: bool = False, **_: Any) -> di
     r = await home.switch(entity, False, ctx.tenant_id, ctx.conversation_id, actor=ctx.actor,
                           confirm=confirm, extra=None)
     if not r.get("ok"):
-        raise ToolError(r.get("why", "off nahi ho paya."))
+        raise ToolError(r.get("why", "Could not turn it off."))
     return r
 
 
 async def home_state(ctx: Ctx, entity: str, **_: Any) -> dict:
     r = await home.state_one(entity)
     if not r.get("ok"):
-        raise ToolError(r.get("why", "device ka haal nahi mila."))
+        raise ToolError(r.get("why", "Could not get the device state."))
     return r
 
 

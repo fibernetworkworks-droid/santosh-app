@@ -204,9 +204,18 @@ async def build(ask: str, settings, note: str = "", tenant: str = "") -> dict[st
             "note": note[:600]}
 
 
+def _english() -> bool:
+    """wave 3: with hoola_language=en every plan card / reply is English, whatever she typed."""
+    try:
+        from .. import lang
+        return lang.english()
+    except Exception:
+        return False
+
+
 def card_text(p: dict[str, Any]) -> str:
     """The plan as one chat message, in her language. Ends with the one thing she has to say."""
-    hi = bool(p.get("hinglish"))
+    hi = bool(p.get("hinglish")) and not _english()
     est = p["est"]
     money = f"~Rs {int(est['inr']):,}" if est.get("inr") is not None else ("kharcha andaza nahi laga paaya" if hi else
                                                                           "cost could not be estimated")
@@ -298,7 +307,7 @@ async def gate(tenant: str, conv: str, text: str, settings) -> dict[str, Any] | 
         plan = json.loads(wait.plan or "{}")
         if AW.is_pure_rejection(t):
             _close(wait.id, "cancelled")
-            hi = plan.get("hinglish", True)
+            hi = plan.get("hinglish", True) and not _english()
             return {"action": "say", "words": t,
                     "text": "Theek hai, research nahi kar raha. Jab chahein phir bol dijiye." if hi
                     else "Okay, I won't run that research. Tell me whenever you want it."}

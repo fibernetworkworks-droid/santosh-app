@@ -28,12 +28,12 @@ class GoalCard extends StatelessWidget {
     final hold = '${v['hold'] ?? ''}';
     final report = v['report'] is Map ? Map<String, dynamic>.from(v['report'] as Map) : const <String, dynamic>{};
     final head = <String, String>{
-      'working': 'LAMBA KAAM CHAL RAHA HAI',
-      'done': 'LAMBA KAAM POORA HUA',
-      'blocked': 'AAPKE JAWAB KA INTEZAAR',
-      'failed': 'LAMBA KAAM ADHOORA RAHA',
-      'stopped': 'LAMBA KAAM ROK DIYA GAYA',
-    }[status] ?? 'LAMBA KAAM';
+      'working': 'LONG TASK IN PROGRESS',
+      'done': 'LONG TASK DONE',
+      'blocked': 'WAITING FOR YOUR REPLY',
+      'failed': 'LONG TASK INCOMPLETE',
+      'stopped': 'LONG TASK STOPPED',
+    }[status] ?? 'LONG TASK';
     final headCol = switch (status) { 'done' => C.ok, 'blocked' => C.accent, 'failed' => C.bad, 'stopped' => C.faint, _ => C.violet };
     return Glass(
       flat: true,
@@ -48,7 +48,7 @@ class GoalCard extends StatelessWidget {
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(head, style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, letterSpacing: .6, color: C.faint)),
             const SizedBox(height: 2),
-            Text('${v['title'] ?? v['goal'] ?? 'Lamba kaam'}',
+            Text('${v['title'] ?? v['goal'] ?? 'Long task'}',
                 maxLines: 3, overflow: TextOverflow.ellipsis,
                 style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w800, color: C.ink)),
           ])),
@@ -107,19 +107,19 @@ class GoalCard extends StatelessWidget {
                 await api.continueGoal(id);
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Theek hai, kaam aage badha raha hoon.'), duration: Duration(seconds: 2)));
+                      const SnackBar(content: Text('OK, I am moving the work forward.'), duration: Duration(seconds: 2)));
                 }
               } catch (_) {
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Abhi aage nahi badha paya, phir try karein.'), duration: Duration(seconds: 2)));
+                      const SnackBar(content: Text('Could not move ahead right now, try again.'), duration: Duration(seconds: 2)));
                 }
               }
             },
             style: FilledButton.styleFrom(backgroundColor: C.accent, foregroundColor: C.onAccent,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
             icon: const Icon(Icons.play_arrow_rounded, size: 20),
-            label: const Text('Aage badhao', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13)))),
+            label: const Text('Move ahead', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13)))),
         ],
         if (status == 'working' || status == 'blocked') ...[
           const SizedBox(height: 12),
@@ -132,12 +132,12 @@ class GoalCard extends StatelessWidget {
                 await api.stopGoal(id);
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Lamba kaam rok diya gaya.'), duration: Duration(seconds: 2)));
+                      const SnackBar(content: Text('The long task was stopped.'), duration: Duration(seconds: 2)));
                 }
               } catch (_) {
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Rok nahi paya, phir try karein.'), duration: Duration(seconds: 2)));
+                      const SnackBar(content: Text('Could not stop it, try again.'), duration: Duration(seconds: 2)));
                 }
               }
             },
@@ -145,7 +145,7 @@ class GoalCard extends StatelessWidget {
               foregroundColor: C.bad, side: BorderSide(color: C.bad.withOpacity(.45)),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
             icon: const Icon(Icons.stop_circle_outlined, size: 18),
-            label: const Text('Rokiye', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12.5)))),
+            label: const Text('Stop', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12.5)))),
         ],
       ]),
     );
@@ -181,10 +181,10 @@ class _Report extends StatelessWidget {
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         if (summary.isNotEmpty)
           Text(summary, style: TextStyle(fontSize: 13, color: col, fontWeight: FontWeight.w700)),
-        if (_list('hua').isNotEmpty) _part('✅ KYA HUA', _list('hua')),
-        if (_list('bana').isNotEmpty) _part('📎 KYA BANA', _list('bana')),
-        if (_list('baaki').isNotEmpty) _part('⏳ KYA BAAKI HAI', _list('baaki')),
-        if (aapka.isNotEmpty) _part('👉 AAPKO KYA KARNA HAI', [aapka]),
+        if (_list('hua').isNotEmpty) _part('✅ WHAT HAPPENED', _list('hua')),
+        if (_list('bana').isNotEmpty) _part('📎 WHAT WAS MADE', _list('bana')),
+        if (_list('pending').isNotEmpty) _part('⏳ WHAT IS LEFT', _list('pending')),
+        if (aapka.isNotEmpty) _part('👉 WHAT YOU NEED TO DO', [aapka]),
       ]),
     );
   }

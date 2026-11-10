@@ -13,16 +13,16 @@ LAND_TOOLS = [
         "Land & feasibility desk (#1-#6) - parcel register, title checklist, land-record "
         "reconciliation, FSI worksheet, cost/funding totals, JV entitlement. action=parcel_add: "
         "project, survey_no, village, area, area_unit, area_source (7/12/mutation/agreement - "
-        "bina source ka area nahi). action=item_add: project, kind title|record|criterion|worksheet|"
-        "finance|funding|jv, rows, by (title marks ke saath naam zaroori), source (worksheet/"
+        "no area without a source). action=item_add: project, kind title|record|criterion|worksheet|"
+        "finance|funding|jv, rows, by (a name is required with title marks), source (worksheet/"
         "finance/jv ka source zaroori). title rows [doc, status]; record rows [doc_no, area, date]; "
-        "criterion rows [criterion, weight, score] (weights/scores AAPKE); worksheet rows [use, "
+        "criterion rows [criterion, weight, score] (weights/scores are YOURS); worksheet rows [use, "
         "builtup]; finance rows [head, amount]; funding rows [source, amount]; jv rows [party, "
         "share_pct] (deed se). action=recon: project, parcel -> records total vs claimed. "
         "action=feasibility: project, plot_area, fsi, fsi_source -> permissible vs programme. "
-        "action=jv_calc: project, developable_area -> party-wise share (deed ke % par). "
+        "action=jv_calc: project, developable_area -> party-wise share (on the deed's %). "
         "action=finance_sum: project, interest_rate_pct, rate_source, years -> totals + equity:debt "
-        "+ simple interest. Title ka opinion, funding ka structure, JV par sign - SAB insaan ke "
+        "+ simple interest. Title opinion, funding structure, JV signing - ALL are for a human "
         "(tier C)."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["parcel_add", "item_add", "recon", "feasibility",

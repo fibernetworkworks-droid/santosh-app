@@ -33,7 +33,7 @@ log = logging.getLogger("santosh.draftcheck")
 STATS = {"fake_done": 0, "fake_done_said": 0, "gated": 0, "checked": 0, "missed": 0, "unsupported": 0,
          "skipped_cap": 0, "quiet": 0}
 
-NOTE_MARKS = ("(Saaf baat:", "(Dhyaan:", "(Ek baat reh gayi:")
+NOTE_MARKS = ("(Saaf baat:", "(Dhyaan:", "(Ek baat reh gayi:", "(To be clear:", "(Please note:", "(One thing left:")
 
 # ---------------------------------------------------------------- 1. a claim with nothing behind it
 
@@ -157,6 +157,22 @@ _FAMILIES = (
 # a tool that can do ANY of these on her behalf (a sub-agent, a browser, a workflow) backs every family
 _ANY_TOOL = re.compile(r"delegate|crew|team|agent|santosh_kaam|dhara|workflow|browse|browser|pc_|operator|computer"
                        r"|composio|mcp|zapier|kaam_run|bazar_do|connector", re.I)
+
+
+# parity Phase 5: the claims that are real ACTIONS on her behalf - only these may still get a correction message after
+# the model's own retry (a false "sent" / "paid" / "booked" / "deleted" / "published" must never stand)
+ACTION_FAMILIES = ("send", "money", "book", "publish")
+_DELETE = re.compile(r"delet|remov|cancel|hata\s*di|mita\s*di", re.I)
+
+
+def is_action(phrase: str, family: str = "") -> bool:
+    """True when a claimed phrase is a real action (a family above, or a delete / cancel)."""
+    return (family or family_of(phrase, "")[0]) in ACTION_FAMILIES or bool(_DELETE.search(phrase or ""))
+
+
+def action_claim(text: str) -> bool:
+    """True when the reply claims at least one real ACTION was done."""
+    return any(is_action(p, family_of(p, w)[0]) for p, w, _c in all_claims(text))
 
 
 def family_of(phrase: str, window: str) -> tuple[str, "re.Pattern | None"]:
@@ -319,25 +335,26 @@ NUDGE_CARD = ("[System check, not the user] Your message says it is already done
 NUDGE_PART = ("[System check, not the user] Your message says \"{what}\" is done, but no tool that does THAT ran - "
               "the tools this turn did other parts of the ask. Either do that part NOW with the right tool (every card, "
               "approval and OTP rule as usual), or say plainly which part is done and which is NOT done yet.")
-SAID_CARD = "(Saaf baat: yeh abhi hua nahi hai - card / draft aapki haan (tap) ke intezaar mein hai.)"
 SAID_CARD_EN = "(To be clear: nothing has happened yet - the card / draft is waiting for your tap.)"
-SAID = "(Saaf baat: yeh kaam abhi hua nahi hai - ab bhi karna baaki hai.)"
 # v0.287: the note followed her into English conversations as a Hinglish line. v0.260 made HER LANGUAGE the first
 # rule of a reply, and this note is part of the reply.
 SAID_EN = "(To be clear: this is not done yet - it still has to be carried out.)"
+# owner: everything in English - the English twins are the only notes used; the old names stay as aliases
+SAID = SAID_EN
+SAID_CARD = SAID_CARD_EN
 _HINGLISH = re.compile(r"[ऀ-ॿ]|\b(hai|hain|nahi|kar|karo|kiya|aap|main|maine|diya|gaya|raha|rahi|ho|ka|ki|ke)\b", re.I)
 
 
 def said_line(text: str) -> str:
     """The honest line, in the language the reply is written in."""
-    return SAID if _HINGLISH.search(text or "") else SAID_EN
+    return SAID_EN
 
 
 _PROMISE_REMIND = re.compile(r"(yaad\s*dila\s*(?:dunga|dungi|doonga|doongi|denge|deta|deti)|i'?ll\s+remind\s+you"
                              r"|remind\s+you\s+(?:tomorrow|at|in|later))", re.I)
-NUDGE_PROMISE = ("[Sach ki jaanch] Tumne yaad dilane ka WAADA kiya, par koi reminder laga nahi hai - Hoola reminder ke bina "
-                 "kuch yaad nahi rakhta. Abhi create_reminder se sahi samay par laga do (phir batao kab ka laga), ya waada "
-                 "mat karo.")
+NUDGE_PROMISE = ("[Truth check] You PROMISED to remind her, but no reminder is set - Hoola remembers nothing without a "
+                 "reminder. Set it now with create_reminder at the right time (then say what time you set), or do not "
+                 "make the promise.")
 
 
 def fake_done(state: dict, text: str, conv: str = "", since=None) -> str:
@@ -360,7 +377,7 @@ def fake_done(state: dict, text: str, conv: str = "", since=None) -> str:
         return ""
     calls = state.get("calls") or []
     report = (state.get("actor") == "wake") or bool(_STATUS_ASK.search(str(state.get("request") or "")))
-    bad, card = [], False
+    bad, card, act = [], False, False
     for phrase, window, clause in claims:
         _fam, tools = family_of(phrase, window)
         mine = [c for c in calls if _backs_claim(c, tools)]
@@ -371,9 +388,11 @@ def fake_done(state: dict, text: str, conv: str = "", since=None) -> str:
         if conv and (report or _PAST.search(clause)) and ran_before(conv, tools):
             continue                       # v0.665 a true report of work done earlier ("haan, bhej diya tha")
         bad.append(phrase)
+        act = act or is_action(phrase, _fam)
         card = card or any(effect(c) == "card" for c in mine)
     if not bad:
         return ""
+    state["false_action"] = act
     seen = state.get("fake_done", 0) + 1
     state["fake_done"] = seen
     if seen == 1:
@@ -386,8 +405,13 @@ def fake_done(state: dict, text: str, conv: str = "", since=None) -> str:
             return NUDGE_PART.format(what=", ".join(dict.fromkeys(bad))[:120])
         return NUDGE
     if seen == 2 and not state.get("correct"):
+        if state.get("answer_only") and not state.get("false_action"):
+            # parity Phase 5: the model was asked once to correct itself; a claim that is not a real ACTION
+            # (sent / paid / booked / deleted / published) gets no note stapled on - the reply stays its own words
+            STATS["said_dropped"] = STATS.get("said_dropped", 0) + 1
+            return ""
         STATS["fake_done_said"] += 1
-        state["correct"] = ((SAID_CARD if _HINGLISH.search(text or "") else SAID_CARD_EN) if card else said_line(text))
+        state["correct"] = (SAID_CARD_EN if card else said_line(text))
     return ""
 
 
@@ -546,11 +570,11 @@ def note_of(v: dict, loose: list[str], sources: str = "") -> str:
     uns = [u for u in (v.get("unsupported") or []) if _backs(u, seen, low)]
     if uns:
         STATS["unsupported"] += 1
-        return ("(Dhyaan: " + " aur ".join(uns[:2])
-                + " - yeh mujhe kisi pakke source se nahi mila; ek baar khud dekh lijiye.)")
+        return ("(Please note: " + " and ".join(uns[:2])
+                + " - I could not find this in any reliable source; please check it yourself once.)")
     if v.get("missed"):
         STATS["missed"] += 1
-        return "(Ek baat reh gayi: " + v["missed"] + " - bataun?)"
+        return "(One thing left: " + v["missed"] + " - shall I tell you?)"
     return ""
 
 
@@ -582,7 +606,7 @@ async def after_turn(conversation_id: str, tenant_id: str | None, ask: str, repl
     from .santosh import _stopped
     if not getattr(settings, "draft_check", True) or conversation_id in _stopped or state.get("halted"):
         return ""
-    if str(reply or "").startswith(("Maaf kijiye", "Yeh kaam lamba", "Theek, rok")):
+    if str(reply or "").startswith(("Maaf kijiye", "Yeh kaam lamba", "Theek, rok", "Sorry", "This task has become long", "Okay, I stopped", "Okay, stopped")):
         return ""
     g = worth_checking(ask, reply, state.get("calls"), state.get("chat_tail", ""))
     if not g or not may_speak(conversation_id, settings):

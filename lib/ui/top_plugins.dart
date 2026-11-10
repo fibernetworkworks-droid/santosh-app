@@ -84,8 +84,8 @@ class _TopPluginsState extends State<TopPlugins> {
           const SizedBox(width: 10),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('Roz ke kaam', style: display(18)),
-              const Text('Sabse zyada use hone wale · ek tap mein', style: TextStyle(color: C.faint, fontSize: 11.5)),
+              Text('Everyday tasks', style: display(18)),
+              const Text('Most used · in one tap', style: TextStyle(color: C.faint, fontSize: 11.5)),
             ]),
           ),
         ]),
@@ -128,10 +128,10 @@ class _TopPluginsState extends State<TopPlugins> {
             padding: const EdgeInsets.only(top: 2),
             child: Text(
                 ready == items.length
-                    ? 'Sab taiyaar · Hoola se bas kahiye'
+                    ? 'All ready · just tell Hoola'
                     : items.any((p) => _state(p) == _Mark.install)
-                        ? '$ready / ${items.length} taiyaar · baaki apps is phone par install karein'
-                        : '$ready / ${items.length} taiyaar · baaki ek tap mein jodiye',
+                        ? '$ready / ${items.length} ready · install the other apps on this phone'
+                        : '$ready / ${items.length} ready · link the rest in one tap',
                 style: const TextStyle(color: C.faint, fontSize: 11.5)),
           ),
       ]),

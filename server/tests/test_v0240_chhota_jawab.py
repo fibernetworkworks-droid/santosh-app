@@ -43,17 +43,17 @@ def test_finish_no_longer_orders_the_four_part_reply(gz):  # noqa: F811
     # the old order is gone
     assert "chaar hisson mein do" not in note
     # and the new one forbids every shape of the dump, by name
-    for ban in ("Bullet list", "Kya hua", "Kya bana", "Kya baaki", "dohraao mat"):
+    for ban in ("No bullet list", "What happened", "What was made", "What is left", "Do not repeat"):
         assert ban in note, ban
-    assert "EK chhoti insaani line" in note and "ek ya do vaakya" in note
+    assert "ONE short human line" in note and "one or two sentences" in note
 
 
 def test_the_report_text_is_handed_over_as_what_she_already_sees(gz):  # noqa: F811
     out = _finish_out(gz["conv"])
     # renamed: not a template called "report", but "what the card shows"
     assert "report" not in out
-    assert "card_shows" in out and "✅ Kya hua" in out["card_shows"]
-    assert "CARD par pehle se dikh rahi hai" in out["note"]
+    assert "card_shows" in out and "✅ What was done" in out["card_shows"]
+    assert "already shown on her CARD" in out["note"]
 
 
 def test_nothing_is_lost_from_the_card(gz):  # noqa: F811
@@ -69,7 +69,7 @@ def test_nothing_is_lost_from_the_card(gz):  # noqa: F811
     assert rep["aapka"]                                   # her part
     # and the card's own text still renders all four (the phone / console read this dict)
     txt = G.report_text(rep)
-    for part in ("✅ Kya hua", "📎 Kya bana", "⏳ Kya baaki hai", "👉 Aapko kya karna hai"):
+    for part in ("✅ What was done", "📎 What was made", "⏳ What is left", "👉 What you need to do"):
         assert part in txt, part
 
 
@@ -82,9 +82,9 @@ def test_a_finished_step_asks_for_the_finding_not_a_dump(gz):  # noqa: F811
     out = _run(ctx, action="step", n=1, state="done", text="ho gaya")
     note = out["note"]
     assert "chat mein iska koi line mat likho" not in note       # the v0.240 silence is gone
-    assert "is step se jo asli cheez mili" in note               # ...replaced by the finding
-    assert "koi bullet ya heading nahi" in note                  # the dump stays banned
-    assert "agla tool" in note
+    assert "the real finding from this step" in note               # ...replaced by the finding
+    assert "no bullet or heading" in note                  # the dump stays banned
+    assert "Then the next tool" in note
 
 
 # ---------------------------------------------------------------- the progress line: rare, short, capped
@@ -101,17 +101,17 @@ def test_narrate_text_asks_for_the_real_finding_plus_what_is_next():
     """v0.240 forbade numbers and links, which left the line empty filler. Claude's line IS the number."""
     n = G.NARRATE
     # v0.268 rewrote this ask into the measured two halves; the demand for the REAL figure only got stronger
-    assert "do vaakya" in n
-    assert "asli number / id / naam / link" in n and "banaya hua nahi" in n
-    assert "AB KYA" in n and "KYA MILA" in n                     # what it found + what it is doing now
+    assert "two sentences" in n
+    assert "real number / id / name / link" in n and "nothing made up" in n
+    assert "WHAT NEXT" in n and "WHAT WAS FOUND" in n                     # what it found + what it is doing now
     assert "koi number ya link nahi" not in n                    # the v0.240 ban is still gone
-    assert "Bina number wali line bekaar hai" in n               # ...and the opposite is now demanded
-    for ban in ("bullet, heading, emoji",):
+    assert "A line without a number is useless" in n               # ...and the opposite is now demanded
+    for ban in ("bullets, headings, emoji",):
         assert ban in n, ban
-    assert "kaam ab POORA ho gaya hai to yeh line mat likho" in n   # never filler right before the answer
+    assert "If the work is now COMPLETE do not write this line" in n   # never filler right before the answer
     # the true facts the tools returned ride into the ask (app/agent/say.py), never invented
     with_fact = G.narrate_line(["12 naye mails aaye", "site v0.256.0 par hai"])
-    assert "12 naye mails aaye" in with_fact and "naya mat banao" in with_fact
+    assert "12 naye mails aaye" in with_fact and "do not invent new ones" in with_fact
     assert G.narrate_line([]) == n and G.narrate_line(None) == n
 
 
@@ -146,7 +146,7 @@ def test_the_rulebook_demands_a_short_work_reply_on_both_surfaces():
     assert "Results of work, the short way" in c
     assert "one or two sentences" in c
     for ban in ("never repeat them in the reply", "never a bullet list of the steps you ran",
-                "Kya hua / Kya bana / Kya baaki"):
+                "What happened / What was made / What is left"):
         assert ban in c, ban
     assert "A twenty-step job gets the same short line as a one-step job" in c
     # the old wording that invited the dump is gone
@@ -168,4 +168,4 @@ def test_the_rulebook_still_rides_in_the_prompt():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.715.0"
+    assert APP_VERSION == "0.749.0"

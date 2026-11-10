@@ -479,7 +479,7 @@ class Native2Executor(NativeExecutor):
         day = self._date(a["date"], "date") if a.get("date") else ist_now().date()
         staff = self._staff(ctx)
         if not staff:
-            raise ToolError("Add your staff first, e.g. 'Raju staff hai, salary 12000'.")
+            raise ToolError("Add your staff first, e.g. 'Raju is staff, salary 12000'.")
         done, unknown = {}, []
         for status, key in (("present", "present"), ("absent", "absent"), ("half", "half_day")):
             for n in a.get(key) or []:

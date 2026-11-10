@@ -148,7 +148,7 @@ def test_done_job_wakes_the_brain_when_idle(fu, monkeypatch):  # noqa: F811
     kw.observe(conv, "video_job", {"id": "vW", "status": "done", "name": "Ad reel", "url": "https://cdn.f.mp4/w.mp4"})
     tick_drain()
     assert len(calls) == 1 and calls[0]["actor"] == "wake" and calls[0]["conv"] == conv
-    assert "Ad reel" in calls[0]["text"] and "poora ho gaya" in calls[0]["text"]
+    assert "Ad reel" in calls[0]["text"] and "finished" in calls[0]["text"]
     assert not fu["notices"]                 # the wake turn replaced the one-shot line: no dry notify
     assert fu["voices"] and "Reel poora" in fu["voices"][0]   # the call heard it too
     with session() as sdb:                   # exactly once: the row is sent, nothing pending remains
@@ -359,7 +359,7 @@ def test_sweep_leaves_live_turns_alone_and_decides_save_user(env, monkeypatch):
 
 def test_version_and_config():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.715.0"
+    assert APP_VERSION == "0.749.0"
     s = get_settings()
     assert s.agent_tool_admission is True
     assert s.agent_wake_turns is True

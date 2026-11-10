@@ -42,7 +42,7 @@ class _CallsSheetState extends State<_CallsSheet> {
       if (!mounted) return;
       setState(() {
         _calls = const [];
-        _err = 'Calls abhi nahi khul payi. Thodi der baad dobara dekhiye.';
+        _err = 'Calls could not be opened right now. Please try again in a little while.';
       });
     }
   }
@@ -72,12 +72,12 @@ class _CallsSheetState extends State<_CallsSheet> {
             child: Row(children: [
               const Icon(Icons.call_rounded, color: C.accent, size: 20),
               const SizedBox(width: 8),
-              Expanded(child: Text(app.g('Aapki calls'), style: display(18, w: FontWeight.w700))),
+              Expanded(child: Text(app.g('Your calls'), style: display(18, w: FontWeight.w700))),
             ]),
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(18, 0, 18, 8),
-            child: Text(app.g('Har call ka apna hisaab. Chat alag rehti hai, yaad dono ki ek hai.'),
+            child: Text(app.g('Each call has its own record. The chat stays separate, and both share one memory.'),
                 style: const TextStyle(color: C.muted, fontSize: 13)),
           ),
           Expanded(
@@ -87,7 +87,7 @@ class _CallsSheetState extends State<_CallsSheet> {
                     ? Center(
                         child: Padding(
                           padding: const EdgeInsets.all(24),
-                          child: Text(_err.isNotEmpty ? _err : app.g('Abhi koi call nahi hai.'),
+                          child: Text(_err.isNotEmpty ? _err : app.g('There are no calls yet.'),
                               textAlign: TextAlign.center, style: const TextStyle(color: C.muted)),
                         ),
                       )

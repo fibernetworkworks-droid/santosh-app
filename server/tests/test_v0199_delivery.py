@@ -59,10 +59,10 @@ def test_ack_ask_energy_flavours():
 # ---------------- canned lines: chat keeps its shape, the voice gets speech ----------------
 
 def test_canned_chat_lines_keep_their_shape():
-    assert "✅" in _canned(_row("done")) and "ho gaya" in _canned(_row("done"))
-    assert "❌" in _canned(_row("failed")) and "ruk gaya, dikkat aayi" in _canned(_row("failed"))
-    assert "⏹" in _canned(_row("stopped")) and "band kar diya gaya" in _canned(_row("stopped")) \
-        and "bol dena" in _canned(_row("stopped"))                       # the v0.189 pins stay true
+    assert "✅" in _canned(_row("done")) and "done" in _canned(_row("done"))
+    assert "❌" in _canned(_row("failed")) and "stopped, ran into a problem" in _canned(_row("failed"))
+    assert "⏹" in _canned(_row("stopped")) and "was stopped" in _canned(_row("stopped")) \
+        and "just say so" in _canned(_row("stopped"))                       # the v0.189 pins stay true
 
 
 def test_spoken_shape_strips_symbols_and_colon():
@@ -70,7 +70,7 @@ def test_spoken_shape_strips_symbols_and_colon():
         s = _spoken(_canned(_row(state)))
         assert not re.search(r"[✅❌⏹▶🔄⚠⏳]", s), s                     # symbols never reach her ears
         assert ": " not in s.split(",")[0], s                            # the flat "title: state" reads as a comma
-        assert "band kar diya gaya" in s or "ho gaya" in s or "ruk gaya" in s
+        assert "stopped" in s or "done" in s   # v0.729 English canned lines
     assert _spoken("✅ Mera reel: ho gaya. (2 files)") == "Mera reel, ho gaya. (2 files)"
     assert _spoken(None) == "" and _spoken("") == ""
 
@@ -79,17 +79,17 @@ def test_spoken_shape_strips_symbols_and_colon():
 
 def test_wake_text_carries_delivery():
     t = _wake_text(_row(state="done", detail="4 shots ban gaye", link="https://x.y"))
-    assert "apni awaaz mein 1-3 chhoti lines" in t                        # the v0.192 instruction stays
-    assert "energy natije ke hisaab se" in t                              # v0.193: energy matches the result
-    assert "comma ka matlab chhota pause" in t
+    assert "in your own voice in 1-3 short lines" in t                        # the v0.192 instruction stays
+    assert "energy to match the result" in t                              # v0.193: energy matches the result
+    assert "a comma is a short pause" in t
     assert "https://x.y" in t and "4 shots ban gaye" in t                 # the digest is untouched
 
 
 def test_one_shot_system_carries_delivery():
-    assert "Jaise phone par bolti hai waise likho" in _ONE_SHOT_SYSTEM
-    assert "energy natije ke hisaab se" in _ONE_SHOT_SYSTEM
-    assert "koi ✅ ❌ jaise symbol nahi" in _ONE_SHOT_SYSTEM              # the old rules all survive
-    assert "kuch apne aap se jodna mat" in _ONE_SHOT_SYSTEM
+    assert "Write the way you would say it on the phone" in _ONE_SHOT_SYSTEM
+    assert "energy to match the result" in _ONE_SHOT_SYSTEM
+    assert "No emoji, no markdown, no symbols like ✅ ❌" in _ONE_SHOT_SYSTEM              # the old rules all survive
+    assert "add nothing of your own" in _ONE_SHOT_SYSTEM
 
 
 def test_kaamwatch_voice_note_rides_with_delivery(env, monkeypatch):
@@ -137,4 +137,4 @@ def test_followup_sends_spoken_line_to_the_call(env, monkeypatch):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.715.0"
+    assert APP_VERSION == "0.749.0"

@@ -34,8 +34,8 @@ Color _lvColor(String lv) => switch (lv) {
 
 const _kinds = <String, String>{
   'due_diligence': 'Business due diligence',
-  'doc_check': 'Document jaanch',
-  'fraud_file': 'Dhokhe ki saboot file',
+  'doc_check': 'Document check',
+  'fraud_file': 'Fraud evidence file',
   'employee_verify': 'Employee verification (consent se)',
 };
 
@@ -57,7 +57,7 @@ Future<Map<String, String>?> _form(BuildContext context, String title, List<(Str
         ]),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Rehne do')),
+        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Keep it')),
         TextButton(onPressed: () => Navigator.pop(d, true), child: Text(ok)),
       ],
     ),
@@ -98,16 +98,16 @@ Future<void> _showText(BuildContext context, String title, String text, {Map<Str
               padding: const EdgeInsets.only(bottom: 6),
               child: GlassButton(
                   label: switch (e.key) {
-                    'whatsapp' => 'WhatsApp draft kholo',
-                    'email' => 'Email draft kholo',
-                    'call_1930' => '1930 par call',
-                    'portal' => 'cybercrime.gov.in kholo',
+                    'whatsapp' => 'Open WhatsApp draft',
+                    'email' => 'Open email draft',
+                    'call_1930' => 'Call 1930',
+                    'portal' => 'Open cybercrime.gov.in',
                     _ => e.key,
                   },
                   icon: Icons.open_in_new_rounded,
                   onTap: () => Native.openExternal(url: _s(e.value))),
             ),
-          const Text('Hoola khud kuch nahi bhejta / file nahi karta: aap kijiye.', style: TextStyle(fontSize: 11, color: C.faint)),
+          const Text('Hoola sends or files nothing by itself: you do it.', style: TextStyle(fontSize: 11, color: C.faint)),
         ]),
       ),
     );
@@ -172,15 +172,15 @@ class _PideskScreenState extends State<PideskScreen> {
     );
     if (kind == null || !mounted) return;
     final fields = <(String, String)>[
-      ('title', 'Case ka naam'),
-      if (kind != 'fraud_file') ('subject_name', kind == 'employee_verify' ? 'Candidate ka naam' : 'Business ka naam'),
-      if (kind == 'due_diligence' || kind == 'doc_check') ('subject_kind', 'Kaun: company / firm / llp / vendor / supplier / customer / dealer'),
+      ('title', 'Case name'),
+      if (kind != 'fraud_file') ('subject_name', kind == 'employee_verify' ? 'Candidate name' : 'Business name'),
+      if (kind == 'due_diligence' || kind == 'doc_check') ('subject_kind', 'Who: company / firm / llp / vendor / supplier / customer / dealer'),
       if (kind == 'due_diligence') ('identifiers', 'GSTIN / CIN / Udyam / FSSAI (comma se)'),
-      if (kind == 'employee_verify') ('role', 'Kis naukri ke liye'),
-      ('purpose', 'Maksad (kyon jaanch?)'),
+      if (kind == 'employee_verify') ('role', 'For which job'),
+      ('purpose', 'Purpose (why check?)'),
     ];
     final f = await _form(context, _kinds[kind]!, fields,
-        ok: 'Kholo', note: 'Sirf business, aapke kaagaz aur aapke saboot. Kisi insaan ka pata / nigrani / profiling yeh desk nahi karta.');
+        ok: 'Open', note: 'Only businesses, your papers and your evidence. This desk does not trace, watch or profile any person.');
     if (f == null) return;
     final body = <String, dynamic>{...f, 'kind': kind};
     if ((f['identifiers'] ?? '').isNotEmpty) {
@@ -195,13 +195,13 @@ class _PideskScreenState extends State<PideskScreen> {
     return ListView(padding: const EdgeInsets.all(16), children: [
       Glass(child: Text(_s(day['say']), style: const TextStyle(fontSize: 14.5, height: 1.4))),
       const SizedBox(height: 12),
-      GradientButton(label: 'Naya case', icon: Icons.add_rounded, height: 46, onTap: _busy ? null : _newCase),
+      GradientButton(label: 'New case', icon: Icons.add_rounded, height: 46, onTap: _busy ? null : _newCase),
       const SizedBox(height: 12),
       for (final (key, title) in const [
-        ('waiting', 'AAPKI HAAN BAAKI'),
+        ('waiting', 'YOUR YES PENDING'),
         ('not_reported', '1930 / CYBERCRIME REPORT BAAKI'),
         ('need_consent', 'CONSENT BAAKI'),
-        ('forget_due', 'DATA MITANE KA SAMAY'),
+        ('forget_due', 'TIME TO DELETE DATA'),
       ])
         if (_strs(day[key]).isNotEmpty) ...[
           Caption(title),
@@ -212,7 +212,7 @@ class _PideskScreenState extends State<PideskScreen> {
   }
 
   Widget _casesTab() => ListView(padding: const EdgeInsets.all(16), children: [
-        GradientButton(label: 'Naya case', icon: Icons.add_rounded, height: 46, onTap: _busy ? null : _newCase),
+        GradientButton(label: 'New case', icon: Icons.add_rounded, height: 46, onTap: _busy ? null : _newCase),
         const SizedBox(height: 12),
         for (final c in _list(_d?['cases']))
           Padding(
@@ -233,25 +233,25 @@ class _PideskScreenState extends State<PideskScreen> {
                         _s(c['kind_label']),
                         _s(_m(c['subject'])['name']),
                         '${_s(_m(c['counts'])['findings'])} tathya',
-                        if ((_m(c['counts'])['flags'] ?? 0) != 0) '${_s(_m(c['counts'])['flags'])} red flag',
+                        if ((_m(c['counts'])['flags'] ?? 0) != 0) '${_s(_m(c['counts'])['flags'])} red flags',
                       ].where((x) => x.isNotEmpty).join(' · '),
                       style: const TextStyle(color: C.muted, fontSize: 12.5)),
                 ]),
               ),
             ),
           ),
-        if (_list(_d?['cases']).isEmpty) const Text('Abhi koi case nahi.', style: TextStyle(color: C.muted)),
+        if (_list(_d?['cases']).isEmpty) const Text('No cases yet.', style: TextStyle(color: C.muted)),
       ]);
 
   Future<void> _editSettings() async {
     final st = _m(_d?['settings']);
     final f = await _form(context, 'Niyam / firm', const [
-      ('name', 'Aapka naam'),
+      ('name', 'Your name'),
       ('firm', 'Firm'),
-      ('address', 'Pata (complaint draft mein)'),
+      ('address', 'Address (in the complaint draft)'),
       ('phone', 'Mobile'),
       ('email', 'Email'),
-      ('retention_days', 'Band case ka data kitne din baad mitaana (30-3650)'),
+      ('retention_days', 'Delete closed-case data after how many days (30-3650)'),
     ], ok: 'Save', initial: {for (final k in ['name', 'firm', 'address', 'phone', 'email', 'retention_days']) k: _s(st[k])});
     if (f == null) return;
     final body = <String, dynamic>{...f};
@@ -264,16 +264,16 @@ class _PideskScreenState extends State<PideskScreen> {
     return ListView(padding: const EdgeInsets.all(16), children: [
       Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(_s(st['firm']).isEmpty ? (_s(st['name']).isEmpty ? 'Apna naam / firm daaliye' : _s(st['name'])) : _s(st['firm']),
+          Text(_s(st['firm']).isEmpty ? (_s(st['name']).isEmpty ? 'Enter your name / firm' : _s(st['name'])) : _s(st['firm']),
               style: const TextStyle(fontWeight: FontWeight.w800)),
-          Text('Band case ka data ${_s(st['retention_days'])} din baad mitane ki yaad · mana kiye gaye kaam: ${_s(st['refused'])}',
+          Text('Closed-case data is set to be deleted after ${_s(st['retention_days'])} days · refused requests: ${_s(st['refused'])}',
               style: const TextStyle(color: C.muted, fontSize: 12.5)),
           const SizedBox(height: 8),
           GlassButton(label: 'Badlo', icon: Icons.edit_rounded, onTap: _editSettings),
         ]),
       ),
       const SizedBox(height: 12),
-      const Caption('YEH DESK KABHI NAHI KARTA'),
+      const Caption('THIS DESK NEVER DOES'),
       for (final t in _strs(_d?['never'])) Padding(padding: const EdgeInsets.only(bottom: 6), child: Text('• $t', style: const TextStyle(fontSize: 13))),
       const SizedBox(height: 8),
       Text(_s(_d?['disclaimer']), style: const TextStyle(fontSize: 12, color: C.faint)),
@@ -356,7 +356,7 @@ class _PideskCasePageState extends State<PideskCasePage> {
   Future<String?> _pickFile() async {
     final conv = widget.app.conversationId;
     if (conv == null) {
-      _snack(context, 'Pehle chat khulne dijiye.');
+      _snack(context, 'Let the chat open first.');
       return null;
     }
     final files = await pickAttachmentsOfType(context, FileType.any);
@@ -371,33 +371,33 @@ class _PideskCasePageState extends State<PideskCasePage> {
   }
 
   Future<void> _ids() async {
-    final f = await _form(context, 'GSTIN / CIN / LLPIN / Udyam / FSSAI', const [('ids', 'Number (comma se)')], ok: 'Jaancho');
+    final f = await _form(context, 'GSTIN / CIN / LLPIN / Udyam / FSSAI', const [('ids', 'Number (comma se)')], ok: 'Check');
     if (f == null || (f['ids'] ?? '').isEmpty) return;
     await _run('POST', '$_base/ids', {'identifiers': f['ids']!.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList()});
   }
 
   Future<void> _page() async {
-    final f = await _form(context, 'Official page padho', const [('url', 'Link (https://...)')],
-        ok: 'Padho', note: 'GST search, MCA master data, Udyam verify, FoSCoS, eCourts ya business ki apni website. Social media nahi.');
+    final f = await _form(context, 'Read the official page', const [('url', 'Link (https://...)')],
+        ok: 'Read', note: 'GST search, MCA master data, Udyam verify, FoSCoS, eCourts or the business\'s own website. Not social media.');
     if (f == null || (f['url'] ?? '').isEmpty) return;
     await _run('POST', '$_base/page', {'url': f['url']});
   }
 
   Future<void> _paste() async {
-    final f = await _form(context, 'Result paste kijiye', const [('where', 'Kahan se (GST / MCA / eCourts)'), ('source_url', 'Link'), ('text', 'Text')],
-        ok: 'Jodo', note: 'CAPTCHA wale page aap khud kholiye, result copy karke yahan daaliye.');
+    final f = await _form(context, 'Paste the result', const [('where', 'From where (GST / MCA / eCourts)'), ('source_url', 'Link'), ('text', 'Text')],
+        ok: 'Add', note: 'Open pages with a CAPTCHA yourself, then copy the result and paste it here.');
     if (f == null || (f['text'] ?? '').isEmpty) return;
     await _run('POST', '$_base/paste', f);
   }
 
   Future<void> _news() async {
-    final f = await _form(context, 'Web / news khoj', const [('query', 'Aur shabd (business ka naam apne aap judega)')], ok: 'Khojo');
+    final f = await _form(context, 'Web / news search', const [('query', 'More words (the business name is added automatically)')], ok: 'Search');
     if (f == null) return;
     await _run('POST', '$_base/news', {'query': f['query'] ?? ''});
   }
 
   Future<void> _note() async {
-    final f = await _form(context, 'Tathya jodo', const [('fact', 'Kya pata chala'), ('source_url', 'Source link (ho to)')], ok: 'Jodo');
+    final f = await _form(context, 'Tathya jodo', const [('fact', 'What was found'), ('source_url', 'Source link (ho to)')], ok: 'Add');
     if (f == null || (f['fact'] ?? '').isEmpty) return;
     await _run('POST', '$_base/note', f);
   }
@@ -415,7 +415,7 @@ class _PideskCasePageState extends State<PideskCasePage> {
             ('bank_sms', 'Bank SMS / statement'),
             ('email', 'Email'),
             ('document', 'Document'),
-            ('other', 'Kuch aur'),
+            ('other', 'Something else'),
           ])
             ListTile(title: Text(l), onTap: () => Navigator.pop(d, k)),
         ]),
@@ -424,19 +424,19 @@ class _PideskCasePageState extends State<PideskCasePage> {
     if (kind == null) return;
     final fid = await _pickFile();
     if (fid == null || fid.isEmpty) return;
-    final f = await _form(context, 'Saboot ke baare mein', const [('note', 'Note'), ('happened_at', 'Kab hua (DD-MM-YYYY)')], ok: 'Jodo');
+    final f = await _form(context, 'About the evidence', const [('note', 'Note'), ('happened_at', 'When it happened (DD-MM-YYYY)')], ok: 'Add');
     await _run('POST', '$_base/evidence', {'file_id': fid, 'kind': kind, ...?f});
   }
 
   Future<void> _docCheck() async {
     final fid = await _pickFile();
     if (fid == null || fid.isEmpty) return;
-    final f = await _form(context, 'Kaagaz par kya likha hai (milaane ke liye)', const [
-      ('claimed_date', 'Kaagaz ki tareekh (DD-MM-YYYY)'),
+    final f = await _form(context, 'What the paper says (to compare)', const [
+      ('claimed_date', 'Date on the paper (DD-MM-YYYY)'),
       ('gstin', 'GSTIN'),
       ('doc_no', 'Bill number'),
       ('total', 'Total'),
-    ], ok: 'Jaancho');
+    ], ok: 'Check');
     final exp = <String, dynamic>{
       if ((f?['gstin'] ?? '').isNotEmpty) 'gstin': f!['gstin'],
       if ((f?['doc_no'] ?? '').isNotEmpty) 'doc_no': f!['doc_no'],
@@ -463,19 +463,19 @@ class _PideskCasePageState extends State<PideskCasePage> {
       );
 
   Future<void> _event() async {
-    final f = await _form(context, 'Ghatna jodo', const [('at', 'Kab (DD-MM-YYYY HH:MM)'), ('what', 'Kya hua'), ('amount', 'Rakam'), ('ref', 'UTR / ref')],
-        ok: 'Jodo');
+    final f = await _form(context, 'Add an incident', const [('at', 'When (DD-MM-YYYY HH:MM)'), ('what', 'What happened'), ('amount', 'Amount'), ('ref', 'UTR / ref')],
+        ok: 'Add');
     if (f == null || (f['what'] ?? '').isEmpty) return;
     await _run('POST', '$_base/event', {...f, 'amount': _n(f['amount'])});
   }
 
   Future<void> _money() async {
-    final f = await _form(context, 'Nuksaan', const [
-      ('lost', 'Kitna paisa gaya'),
-      ('mode', 'Kaise (UPI / card / netbanking / cash)'),
+    final f = await _form(context, 'Loss', const [
+      ('lost', 'How much money was lost'),
+      ('mode', 'How (UPI / card / netbanking / cash)'),
       ('refs', 'UTR / ref (comma se)'),
-      ('suspect', 'Saamne wale ki jo pehchaan dikhi (naam / UPI ID / number / website)'),
-    ], ok: 'Save', note: 'Hoola saamne wale ko khud nahi dhoondhta; yeh police complaint ke liye hai.');
+      ('suspect', 'The other party\'s identity as seen (name / UPI ID / number / website)'),
+    ], ok: 'Save', note: 'Hoola does not trace the other party; this is for a police complaint.');
     if (f == null) return;
     await _run('POST', '$_base/money', {
       'lost': _n(f['lost']),
@@ -493,7 +493,7 @@ class _PideskCasePageState extends State<PideskCasePage> {
   }
 
   Future<void> _reported() async {
-    final f = await _form(context, 'Report darj hua', const [('where', 'Kahan: cyber / police / bank'), ('ref', 'Complaint / acknowledgement number')],
+    final f = await _form(context, 'Report filed', const [('where', 'Where: cyber / police / bank'), ('ref', 'Complaint / acknowledgement number')],
         ok: 'Save');
     if (f == null) return;
     await _run('POST', '$_base/reported', f);
@@ -501,15 +501,15 @@ class _PideskCasePageState extends State<PideskCasePage> {
 
   Future<void> _consent() async {
     final txt = await _call(context, widget.app, 'GET', '$_base/consent_text');
-    if (txt != null && mounted) await _showText(context, 'Consent form (candidate sign karein)', _s(txt['text']));
+    if (txt != null && mounted) await _showText(context, 'Consent form (the candidate signs)', _s(txt['text']));
     if (!mounted) return;
     final fid = await _pickFile();
     if (fid == null || fid.isEmpty) return;
     final f = await _form(context, 'Signed consent', const [
-      ('signed_on', 'Sign ki tareekh (DD-MM-YYYY)'),
-      ('checks', 'Kaunsi jaanch: identity, education, employment, address'),
-      ('days', 'Data kitne din rakhna (30-730)'),
-    ], ok: 'Jodo');
+      ('signed_on', 'Date of signing (DD-MM-YYYY)'),
+      ('checks', 'Which check: identity, education, employment, address'),
+      ('days', 'How many days to keep the data (30-730)'),
+    ], ok: 'Add');
     if (f == null) return;
     await _run('POST', '$_base/consent', {
       'file_id': fid,
@@ -520,16 +520,16 @@ class _PideskCasePageState extends State<PideskCasePage> {
   }
 
   Future<void> _reference() async {
-    final f = await _form(context, 'Pushti ka draft', const [('about', 'education / employment'), ('to_name', 'Kisko'), ('to_contact', 'Email')], ok: 'Banao');
+    final f = await _form(context, 'Pushti ka draft', const [('about', 'education / employment'), ('to_name', 'Kisko'), ('to_contact', 'Email')], ok: 'Make');
     if (f == null) return;
     final r = await _run('POST', '$_base/reference', f);
-    if (r != null && mounted) await _showText(context, 'Draft (aap bhejiye)', _s(r['text']), links: {'email': _s(r['link'])});
+    if (r != null && mounted) await _showText(context, 'Draft (you send it)', _s(r['text']), links: {'email': _s(r['link'])});
   }
 
   Future<void> _share() async {
     final files = _m(_c?['files']);
     if (files.isEmpty) {
-      _snack(context, 'Pehle report / pack / complaint banaiye.');
+      _snack(context, 'Make a report / pack / complaint first.');
       return;
     }
     final what = await showModalBottomSheet<String>(
@@ -542,8 +542,8 @@ class _PideskCasePageState extends State<PideskCasePage> {
       ),
     );
     if (what == null || !mounted) return;
-    final f = await _form(context, 'Kisko bhejna hai', const [('to_name', 'Naam (vakil / police / client)'), ('to_contact', 'Email / mobile')],
-        ok: 'Card banao', note: 'Bhejne se pehle aapki haan ka card aayega.');
+    final f = await _form(context, 'Whom to send to', const [('to_name', 'Naam (vakil / police / client)'), ('to_contact', 'Email / mobile')],
+        ok: 'Make card', note: 'A card for your yes will come before anything is sent.');
     if (f == null || (f['to_name'] ?? '').isEmpty) return;
     await _run('POST', '$_base/share', {'what': what, ...f});
   }
@@ -559,34 +559,34 @@ class _PideskCasePageState extends State<PideskCasePage> {
     final b = <(String, IconData, Future<void> Function())>[];
     if (_kind == 'due_diligence') {
       b.addAll([
-        ('Number jaancho', Icons.pin_rounded, _ids),
-        ('Official page padho', Icons.account_balance_rounded, _page),
+        ('Check a number', Icons.pin_rounded, _ids),
+        ('Read the official page', Icons.account_balance_rounded, _page),
         ('Result paste', Icons.content_paste_rounded, _paste),
-        ('News khoj', Icons.newspaper_rounded, _news),
+        ('News search', Icons.newspaper_rounded, _news),
       ]);
     }
     if (_kind == 'employee_verify') {
       b.addAll([('Consent jodo', Icons.how_to_reg_rounded, _consent), ('Pushti ka draft', Icons.mail_rounded, _reference)]);
     }
-    b.add(('Kaagaz jaancho', Icons.fact_check_rounded, _docCheck));
+    b.add(('Check a paper', Icons.fact_check_rounded, _docCheck));
     if (_kind == 'fraud_file') {
       b.addAll([
-        ('Saboot jodo', Icons.attach_file_rounded, _evidence),
-        ('Ghatna jodo', Icons.timeline_rounded, _event),
-        ('Nuksaan', Icons.currency_rupee_rounded, _money),
+        ('Add evidence', Icons.attach_file_rounded, _evidence),
+        ('Add an incident', Icons.timeline_rounded, _event),
+        ('Loss', Icons.currency_rupee_rounded, _money),
         ('1930 complaint', Icons.local_police_rounded, () => _complaint('cyber')),
         ('Thana complaint', Icons.description_rounded, () => _complaint('police')),
         ('Bank complaint', Icons.account_balance_wallet_rounded, () => _complaint('bank')),
-        ('Report darj hua', Icons.task_alt_rounded, _reported),
-        ('Saboot ZIP', Icons.archive_rounded, () async => _run('POST', '$_base/pack')),
+        ('Report filed', Icons.task_alt_rounded, _reported),
+        ('Evidence ZIP', Icons.archive_rounded, () async => _run('POST', '$_base/pack')),
       ]);
     } else {
-      b.add(('Saboot jodo', Icons.attach_file_rounded, _evidence));
+      b.add(('Add evidence', Icons.attach_file_rounded, _evidence));
     }
     b.addAll([
       ('Note jodo', Icons.edit_note_rounded, _note),
-      ('Report banao', Icons.picture_as_pdf_rounded, () async => _run('POST', '$_base/report')),
-      ('Bhejo (card)', Icons.send_rounded, _share),
+      ('Make report', Icons.picture_as_pdf_rounded, () async => _run('POST', '$_base/report')),
+      ('Send (card)', Icons.send_rounded, _share),
       ('Custody check', Icons.verified_user_rounded, _custody),
     ]);
     return [
@@ -613,10 +613,10 @@ class _PideskCasePageState extends State<PideskCasePage> {
                     context: context,
                     builder: (d) => AlertDialog(
                           title: const Text('Data mitaaye?'),
-                          content: const Text('Saboot ki files aur personal details hamesha ke liye mit jayengi.'),
+                          content: const Text('The evidence files and personal details will be deleted for good.'),
                           actions: [
-                            TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Nahi')),
-                            TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Haan, mitao')),
+                            TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('No')),
+                            TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Yes, wipe')),
                           ],
                         ));
                 if (ok == true) {
@@ -626,8 +626,8 @@ class _PideskCasePageState extends State<PideskCasePage> {
               }
             },
             itemBuilder: (_) => const [
-              PopupMenuItem(value: 'close', child: Text('Case band karo')),
-              PopupMenuItem(value: 'forget', child: Text('Data mitao (band case)')),
+              PopupMenuItem(value: 'close', child: Text('Close case')),
+              PopupMenuItem(value: 'forget', child: Text('Delete data (closed case)')),
             ],
           ),
         ],
@@ -646,11 +646,11 @@ class _PideskCasePageState extends State<PideskCasePage> {
                     if (_kind == 'employee_verify')
                       Padding(
                         padding: const EdgeInsets.only(top: 6),
-                        child: Pill(c['consent_ok'] == true ? 'Consent juda: ${_strs(_m(c['consent'])['checks']).join(', ')}' : 'Consent baaki: koi jaanch nahi',
+                        child: Pill(c['consent_ok'] == true ? 'Consent linked: ${_strs(_m(c['consent'])['checks']).join(', ')}' : 'Consent pending: no check',
                             fg: c['consent_ok'] == true ? C.ok : C.warn),
                       ),
                     if (_m(c['money'])['lost'] != null)
-                      Text('Nuksaan: Rs ${_s(_m(c['money'])['lost'])} · report: ${_m(_m(c['money'])['reported']).keys.join(', ').isEmpty ? 'abhi nahi' : _m(_m(c['money'])['reported']).keys.join(', ')}',
+                      Text('Loss: Rs ${_s(_m(c['money'])['lost'])} · report: ${_m(_m(c['money'])['reported']).keys.join(', ').isEmpty ? 'not yet' : _m(_m(c['money'])['reported']).keys.join(', ')}',
                           style: const TextStyle(color: C.warn, fontSize: 12.5)),
                   ]),
                 ),
@@ -658,7 +658,7 @@ class _PideskCasePageState extends State<PideskCasePage> {
                 ..._actions(),
                 const SizedBox(height: 14),
                 for (final w in _list(c['waiting_shares'])) PideskShareCard(app: widget.app, data: {'share': w}),
-                if (_list(c['findings']).isNotEmpty) const Caption('TATHYA (HAR EK KA SOURCE)'),
+                if (_list(c['findings']).isNotEmpty) const Caption('FACTS (SOURCE FOR EACH)'),
                 for (final f in _list(c['findings']))
                   Padding(
                     padding: const EdgeInsets.only(bottom: 6),
@@ -679,7 +679,7 @@ class _PideskCasePageState extends State<PideskCasePage> {
                       ]),
                     ),
                   ),
-                if (_list(c['evidence']).isNotEmpty) const Caption('SABOOT (SHA-256)'),
+                if (_list(c['evidence']).isNotEmpty) const Caption('EVIDENCE (SHA-256)'),
                 for (final e in _list(c['evidence']))
                   ListTile(
                     contentPadding: EdgeInsets.zero,
@@ -698,7 +698,7 @@ class _PideskCasePageState extends State<PideskCasePage> {
                     child: Text('${_s(t['at']).replaceAll('T', ' ')} · ${_s(t['what'])}', style: const TextStyle(fontSize: 12.5)),
                   ),
                 const SizedBox(height: 16),
-                const Text('Jaankari / signals, not verdicts. Vakil / police se pakka karwaiye.', style: TextStyle(fontSize: 11, color: C.faint)),
+                const Text('Information / signals, not verdicts. Confirm with a lawyer / the police.', style: TextStyle(fontSize: 11, color: C.faint)),
               ]),
             ),
     );
@@ -731,7 +731,7 @@ class _PideskShareCardState extends State<PideskShareCard> {
       if (r != null) _state = _s(_m(r['share'])['status']);
     });
     if (r != null && yes && _m(r['links']).isNotEmpty && mounted) {
-      await _showText(context, 'Aap bhejiye', _s(r['text']), links: _m(r['links']));
+      await _showText(context, 'You send it', _s(r['text']), links: _m(r['links']));
     }
   }
 
@@ -754,9 +754,9 @@ class _PideskShareCardState extends State<PideskShareCard> {
           if (st == 'waiting') ...[
             const SizedBox(height: 8),
             Row(children: [
-              Expanded(child: GradientButton(label: 'Haan, bhejne do', height: 42, onTap: _busy ? null : () => _decide(true))),
+              Expanded(child: GradientButton(label: 'Yes, let it be sent', height: 42, onTap: _busy ? null : () => _decide(true))),
               const SizedBox(width: 8),
-              GlassButton(label: 'Nahi', height: 42, onTap: _busy ? null : () => _decide(false)),
+              GlassButton(label: 'No', height: 42, onTap: _busy ? null : () => _decide(false)),
             ]),
           ],
         ]),
@@ -782,7 +782,7 @@ class PideskReportCard extends StatelessWidget {
                 const Icon(Icons.picture_as_pdf_rounded, color: C.accent, size: 18),
                 const SizedBox(width: 8),
                 Expanded(child: Text('${_s(data['case'])} report DRAFT', style: const TextStyle(fontWeight: FontWeight.w800))),
-                if ((data['flags'] ?? 0) != 0) Pill('${_s(data['flags'])} red flag', fg: C.bad),
+                if ((data['flags'] ?? 0) != 0) Pill('${_s(data['flags'])} red flags', fg: C.bad),
               ]),
               const SizedBox(height: 4),
               Text(_s(data['summary']), style: const TextStyle(fontSize: 13)),

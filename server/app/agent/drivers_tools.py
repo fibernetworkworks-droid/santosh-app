@@ -79,12 +79,12 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
     from ..drivers import service as S
     t, conv, actor = ctx.tenant_id, ctx.conversation_id, _actor(ctx)
     if actor.startswith("customer:"):
-        raise ToolError("Yeh kaam graahak ke liye nahi.")
+        raise ToolError("This work is not for customers.")
     staff = actor.startswith("staff:")
     if staff and action != "trip":
-        raise ToolError("Team member sirf apni trip sheet bhej sakte hain; baaki owner karti hain.")
+        raise ToolError("A team member can only send their own trip sheet; the owner does the rest.")
     if action in _OWNER_ONLY and not _owner(ctx):
-        raise ToolError("Sirf owner.")
+        raise ToolError("Only the owner can do this.")
     try:
         if action == "driver":
             return S.save_driver(t, _s(a.get("name")), _s(a.get("driver")), **{k: a[k] for k in _DKEYS if k in a})
@@ -133,14 +133,14 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
     from ..drivers import service as S
     t, actor = ctx.tenant_id, _actor(ctx)
     if actor.startswith("customer:"):
-        raise ToolError("Yeh jaankari graahak ke liye nahi.")
+        raise ToolError("This information is not for customers.")
     if actor.startswith("staff:"):            # a driver on the team: only their own duties
         if what != "duties":
-            raise ToolError("Team member sirf apni duty dekh sakte hain.")
+            raise ToolError("A team member can only see their own duty.")
         mid = actor.split(":", 1)[1]
         mine = [d for d in S.drivers(t) if d["member_id"] == mid]
         if not mine:
-            raise ToolError("Aap driver list mein nahi.")
+            raise ToolError("You are not in the driver list.")
         return {"duties": [{k: x[k] for k in ("number", "day", "start", "end", "vehicle", "route", "status")}
                            for x in S.duties(t, driver=mine[0]["id"], start=S.today(t))]}
     try:

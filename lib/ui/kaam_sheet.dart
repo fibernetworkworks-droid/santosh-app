@@ -42,7 +42,7 @@ class _KaamSheetState extends State<_KaamSheet> {
       if (!mounted) return;
       setState(() {
         _d = const {};
-        _err = 'Kaam ki list abhi nahi khul payi. Thodi der baad dobara dekhiye.';
+        _err = 'Your work list could not be opened right now. Please try again in a little while.';
       });
     }
   }
@@ -134,7 +134,7 @@ class _KaamSheetState extends State<_KaamSheet> {
             child: Row(children: [
               const Icon(Icons.task_alt_rounded, color: C.accent, size: 20),
               const SizedBox(width: 8),
-              Expanded(child: Text(app.g('Aapka kaam'), style: display(18, w: FontWeight.w700))),
+              Expanded(child: Text(app.g('Your work'), style: display(18, w: FontWeight.w700))),
             ]),
           ),
           Expanded(
@@ -144,16 +144,16 @@ class _KaamSheetState extends State<_KaamSheet> {
                     ? Center(
                         child: Padding(
                           padding: const EdgeInsets.all(24),
-                          child: Text(_err.isNotEmpty ? _err : app.g('Is hafte abhi koi kaam nahi hua.'),
+                          child: Text(_err.isNotEmpty ? _err : app.g('No work has been done this week yet.'),
                               textAlign: TextAlign.center, style: const TextStyle(color: C.muted)),
                         ),
                       )
                     : ListView(
                         padding: const EdgeInsets.fromLTRB(10, 0, 10, 16),
                         children: [
-                          if (waiting.isNotEmpty) ...[_head(app.g('Aapka jawab chahiye'), waiting.length), ...waiting.map(_row)],
-                          if (running.isNotEmpty) ...[_head(app.g('Abhi chal raha hai'), running.length), ...running.map(_row)],
-                          if (done.isNotEmpty) ...[_head(app.g('Pichhle 7 din mein hua'), done.length), ...done.map(_row)],
+                          if (waiting.isNotEmpty) ...[_head(app.g('Needs your answer'), waiting.length), ...waiting.map(_row)],
+                          if (running.isNotEmpty) ...[_head(app.g('In progress'), running.length), ...running.map(_row)],
+                          if (done.isNotEmpty) ...[_head(app.g('Done in the last 7 days'), done.length), ...done.map(_row)],
                         ],
                       ),
           ),

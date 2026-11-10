@@ -1,4 +1,9 @@
 # HOOLA — Multi-Session Worklog
+Task ID: v0.730.0 SHILP MANCH (the ArtCraft generation lane, W0)
+Agent: main (shilp lane)
+Task: owner "MAKE A PLAN FOR HOOLA AI THUS HOOLA USER CAN USE THIS" after the READ of github.com/storytold/artcraft; the plan's W0 (the lane, six actions, two doors, BYOK, ~43 tests; W1 SEVAK worker + W2 BHANDAR store wait on a real key).
+Work Log: REBASE PROTOCOL (planned v0.686, rebuilt on their v0.729 tip 53ab8a366, their base kept whole); agent/shilp_tools.py NEW (envelope, _http seam, _call status table, _ref_url wall, _no_tokens media-token refusal, _gen_body, _generate, _act_job/_act_jobs, _map_state, _act_status/_act_models, _error_of, _sync, SHILP_TOOLS spec); agent/tools.py registry 617 -> 618; config.py shilp_enabled + artcraft_api_key + artcraft_base_url; app/shilp/mcp_server.py NEW (the kaan wire, serverInfo hoola-shilp); test_v0730_shilp.py NEW (43, offline, the seam fake records calls); ritual_v0730.py swept (parser-stamp guard), pubspec 0.730.0+729, console stamps, APP_VERSION story, CLAUDE.md + HISTORY.md + WORKLOG mirrors.
+Stage Summary: pushed to main as v0.730.0 + tag; vps-ops deploy fired; live test = action=status zero-network + her first real generation once ARTCRAFT_API_KEY is in the VPS .env.
 Task ID: v0.694.0 WEB CLONE (rebuilt-from-spec lane)
 Agent: lane (webclone rebuild)
 Task: owner "DOES ALL WORK DONE -- DOES NOW HOOLA AI WILL CLONE ANY WEBSITE PERFECTLY" -> the deploy ask "PERFECT IS IT DEPLOYED".
@@ -2491,3 +2496,194 @@ Work: taxonomy.SCREENS (9 types), architect main_screen + SCREENS FIRST prompt +
 main screen, looks show screens (APP_LOOK_NOTE), SCREEN_NOTE for the writer, [data-sample] counted + launch blocker,
 Studio "Main screen" pill; test_v0714_screens_first.py (5), v0709 fixture updated.
 Deploy: vps-ops deploy; healthz must read 0.715.0.
+
+
+---
+Task ID: v0.716.0 NAYA ROOP
+Ask: her new logo as the 3D thinking icon + app logo everywhere, and the chat feel picked on the preview page.
+Built: mark.js (one drawing) + make_mark.js -> every logo size; 3D thinking mark (console + phone); Calm pace; soft-focus word landing; file card; live steps folding into Worked for; Plan card; small motions.
+Not verified live; phone compiles on CI.
+
+---
+Task ID: v0.717.0 FILE CARD SAHI
+Ask: her live PDF card stacked in a column - make it like the approved design.
+Fixed: row direction (the old .cd column rule won), Open + download icon, no Use as reference, doubled name cleaned. Checked in a browser.
+
+---
+Task ID: v0.718.0 SEEKH MANCH ON THE CONSOLE (re-ship; built as 0.716, their NAYA ROOP took 0.716 and FILE CARD SAHI took 0.717 - REBASE PROTOCOL onto their 5964cdda7 tip, all kept)
+Agent: Claude (web session)
+Ask: "NOW WE WILL DEVELOP A CONSOLE PAGE FOR IT ... IN AI EMPLOYEE SECTION BUILD THE HOOLA AI VIDEO LEARNER ... load a video and HOOLA AI will see this and note in REALTIME ... prepare a MEMORY ... IN THIS PAGE ONLY user will tell HOOLA to PERFORM THIS TASK NOW - then HOOLA will use HIS BROWSER" + "PERFECT START THE DEPLOYMENT" on the prototype shown in chat.
+Built: the #v-seekh console view + seekh.js (load video -> live five-step stepper + HOOLA KI NOTES paced in -> the memory card -> Perform-this-task-NOW on the same page through one chat turn, the operator's own browser); the AI Employees hub card (employees.js); NEW server/app/seekh_console.py (/api/seekh/console/*: watch job + progress pulse + watches list; key-protected, tenant-scoped, one watch at a time, adoption on reload); seekh.watch grew only an additive on_stage callback (no-op for the tool and the old tests); no new tool (617), no new pip/keys/settings; frozen PC zone untouched (pinned). 25 tests (born v0716, ships v0718) + v0713 re-run 40/40; live browser-verified before the push (panel walk, honest 422 + the no-Gemini error surfaced in the notes area, zero page errors).
+Deploy: the owner's vps-ops dispatch; healthz must grep 0.718.0.
+
+---
+Task ID: v0.719.0 SAAF COMPOSER
+Ask: with an artifact / PDF / doc open in the right panel, the chat typing box icons get misplaced - keep everything intact.
+Fixed: the composer is a CSS container; buttons never shrink, chips never break (icons / own line when narrow), Send stays inside the box, flush right. Checked in a real browser at 1180-1700 px.
+Deploy: the usual vps-ops ritual; healthz must grep 0.719.0; hard refresh.
+
+---
+Task ID: v0.720.0 HALKA NISHAAN
+Ask: the sidebar logo is dark with a ring - make it the light logo, no ring.
+Fixed: static/hoola-mark.png (the mark on transparent, from make_mark.js) in the console sidebar + sign-in; ring / crop removed. Checked light + dark.
+Deploy: the usual vps-ops ritual; healthz must grep 0.720.0; hard refresh.
+
+---
+Task ID: v0.721.0 EK HI KAAM-ROW
+Ask: two 'working' things in the chat - one row only, backend feed hidden behind a dropdown arrow (no step count).
+Built: one working row (mark, current step words, clock, arrow); steps folded under it; 'Worked for Ns' + arrow at the end. Browser walk with real events.
+Deploy: the usual vps-ops ritual; healthz must grep 0.721.0; hard refresh.
+
+---
+Task ID: v0.722.0 JAWAB HI JAWAB
+Ask: her $5M AI SaaS prompt got a desk survey instead of the answer - find root cause and fix.
+Built: finished agent-team wake fetches agent_status check and writes the answer; wake text stays on its own job; kaam_status in a wake = this chat only.
+Deploy: the usual vps-ops ritual; healthz must grep 0.722.0.
+
+---
+Task ID: v0.723.0 PICHHLA SAWAAL
+Ask: she said YES to Hoola's own "Want me to make a PDF report?" and Hoola asked what the YES was for - root cause.
+Built: shortened replies keep their end; the exchange before her message stays rich and is never dropped; haan_karo text.
+Deploy: the usual vps-ops ritual; healthz must grep 0.723.0.
+
+---
+Task ID: v0.724.0 CLAUDE JAISA
+Ask: GLM fine, check our code; 1M context for every chat; message handling exactly like Claude chat.
+Built: measured the GLM cap starving the chat (~7k tokens); 1M window, no GLM cap, later tool-result clearing; quick lane + bare-haan shortcut off.
+Deploy: the usual vps-ops ritual; healthz must grep 0.724.0.
+
+
+---
+Task ID: v0.725.0 PAGE CARD
+Ask: the page card had no timing / progress - premium card (preview approved, GO).
+Built: builder steps + start + duration + Stop + plain failure reasons; console pageCard in all three states; browser walk.
+Deploy: the usual vps-ops ritual; healthz must grep 0.725.0; hard refresh the console.
+
+
+---
+Task ID: v0.726.0 PAGE CARD NARROW
+Ask: page card messy when the side panel narrows the chat.
+Built: card sizes by its own width (container query); browser test at 4 widths that fails on the old CSS.
+Deploy: the usual vps-ops ritual; healthz must grep 0.726.0; hard refresh the console.
+
+
+---
+Task ID: v0.727.0 VAADA PAKKA
+Ask: no card when she asked for the rebuild - Hoola only said "starting".
+Built: promise guard catches subject-less English promises and runs on tool-less turns too.
+Deploy: the usual vps-ops ritual; healthz must grep 0.727.0.
+
+
+---
+Task ID: v0.728.0 SAB ENGLISH wave 1
+Ask: make the entire Hoola English.
+Built: hoola_language switch; English reply rules; 644 English step labels; voice calls in Indian English. Next waves: server card/notification texts, phone app strings.
+Deploy: the usual vps-ops ritual; healthz must grep 0.728.0.
+
+
+---
+Task ID: v0.729.0 SAB ENGLISH wave 2
+Ask: GO WAVE 2 (server text she reads without the model).
+Built: notifications, server chat lines, cards / approvals / errors, approval titles + desk messages in English (~1,200 strings, 4 agents in worktrees, merged + diffed against the pre-wave tree).
+Deploy: the usual vps-ops ritual; healthz must grep 0.729.0.
+
+---
+Task ID: v0.731.0 SAB ENGLISH wave 3 + phone (built as 0.730; their SHILP MANCH took 0.730.0)
+Ask: GO PHONE and GO WAVE 3 -- in parallel.
+Built: phone app (Dart + Kotlin + manifest) English, model-facing prompts / tool descriptions / nudges / voice persona English; i18n lookup keys kept; 9 worktree agents, merged + compared against v0.729.0.
+Incident: shared /tmp/pytest-of-root filled the disk (0 MB); deleted with the owner's OK.
+Deploy: the usual vps-ops ritual; healthz must grep 0.731.0; the APK build is the first compile of the phone text.
+
+---
+Task ID: v0.732.0 CLAUDE PARITY 0-6
+Ask: GLM 5.3 Flash primary + PHASE 0 + 1, then the large gaps of the parity table first.
+Built: parity card + request dump, one model per chat, small fixed prompt, core tools + web_fetch, work in the turn, answer only, direct artifacts; 6 worktree agents + the join; each switch default on, pinned off for old suites.
+Deploy: the usual vps-ops ritual; healthz must grep 0.732.0; then vps-ops parity_card_check (free) and parity_card (live) for the first baseline.
+
+---
+Task ID: v0.733.0 CLAUDE PARITY MEDIUM
+Ask: GO MEDIUM (gaps 4 thinking, 5 loop, 10 memory).
+Built: adaptive thinking, plain loop with in-place fixes, one memory; 3 worktree agents merged; compared with v0.732.0 (no new reds).
+Deploy: vps-ops deploy; healthz 0.733.0; then parity_card for the live score.
+
+---
+Task ID: v0.734.0 TRAPS + LIVE FIXES
+Ask: FIX TRAPS (after the first live parity card, 88.1/100).
+Built: three core-prompt rules (unclear ask, impossible ask, reshaping = no tool), request dump sweep fix, card rubric v2 + set v2.
+Found live: Anthropic credit out; Google sign-in dead.
+Deploy: vps-ops deploy; healthz 0.734.0; recharge Anthropic; then parity_card.
+
+Task ID: v0.735.0 ALL GLM
+Ask: WE WILL TEST ONE BY ONE MOVE EVERY THINH ON GLM 5.3 FLASH.
+Built: glm_images, glm_pdf (text / scanned pages), architect_opus False, claude_all_glm_fallback False - one switch each.
+Deploy: vps-ops deploy; test one by one; any switch back in .env.
+
+Task ID: v0.736.0 GLM PAUSE FIX
+Ask: her photo test answered "something went wrong" (ref 228d25); healthz showed chat_brain claude = GLM paused.
+Built: a paused GLM is still asked in one-model mode; the door keeps calls on GLM without the fallback; a pause reads as busy; healthz "(paused)".
+Deploy: vps-ops deploy; vps-ops errors for the first two GLM failures (ref 228d25).
+
+Task ID: v0.737.0 KEY LIMIT SAID
+Ask: READ (errors after the photo test).
+Found: OpenRouter key $10 limit exceeded (403) -> GLM paused -> her photo turn failed; Anthropic credit also out.
+Built: the owner reads a plain "raise the key limit" line.
+
+Task ID: v0.738.0 PARITY 1 + 9a + 12
+Ask: TILL I TOPUP -- CONTINUE OUR THIS WORK (the parity table).
+Built: chat_every_message, chat_files_by_code (pylab docx/pptx/pdf), phone Edit message + Ask again.
+Deploy: vps-ops deploy (+ the APK from build CI).
+
+Task ID: v0.739.0 MODEL PROFILE
+Ask: WHY EVERY NEW MODEL NEED UPDATE IN CODE -> GO.
+Built: agent/modelprofile.py (OpenRouter model list read + disk + learned errors), wired into pictures / PDF / reasoning / window; GET /api/model/profile.
+Deploy: vps-ops deploy; a model swap = GLM_MODEL in .env + restart.
+
+
+Task ID: v0.740.0 MODEL DROPDOWN
+Ask: IN WEB CONSOLE LETS USER CHOOSE THE MODEL VIA DROPDOWN.
+Built: composer model chip + menu, app/modelchoice.py (owner's list, per-user pick), MODEL_NOW per turn, per-model profiles.
+Deploy: vps-ops deploy; list = GLM_MODEL + CHAT_MODELS in .env.
+
+Task ID: v0.741.0 MORE PROVIDERS
+Ask: CHECK ALL MORE FREE POWERFUL OPTION -> GO.
+Built: agent/providers.py, <provider>:<model> in chat_models, catalogue-matched profiles, per-provider keys in .env.
+Deploy: add keys + CHAT_MODELS in .env, vps-ops deploy.
+
+Task ID: v0.742.0 AIHUBMIX
+Ask: AIHubMix -- LETS DO IT.
+Built: aihubmix provider, GLM_MODEL may be <provider>:<model>, name matching, free flag, plain limit line.
+Deploy: AIHUBMIX_API_KEY + GLM_MODEL=aihubmix:coding-glm-5.3-flash-free in .env, vps-ops deploy.
+
+---
+Task ID: v0.743.0 SAAF INSAANI
+- Owner asked for a human, friendlier console without changing the existing design; showed two canvases, built the second on "GO".
+- Files: static/console/v2.js, v2.css, employees.js; app/config.py (console_human); app/main.py (config key); tests/conftest.py pin; tests/test_v0743_saaf_insaani.py.
+- Verified: new suite 3/3 incl. browser walk; console suites v0740 / v0721 / v163 / v164 / v0716 / v0719 / deploy green.
+
+---
+Task ID: v0.744.0 SEEDHA SEND
+- Owner screenshot: avatar face + Send outside the composer. Measured, fixed in v2.css, browser test added (red on old CSS).
+
+---
+Task ID: v0.746.0 VIDEO LEARNER REDESIGN (built as 0.745.0)
+- Canvas approved ("go"); seekh.py live notes / stop / task / forget / mark / failures, seekh_console routes, seekh.js rewrite, CSP for YouTube, tests.
+
+Task ID: v0.747.0 HOOLA INTERACTIVE
+Ask: a perfect Hoola Interactive page in console, like HeyGen, HyperFrames end to end (design canvas first, then "go").
+Built: console video studio (home / studio / making / ready / photo avatars), looks in the avatar-film composition, real-render fixes (GSAP loader, bundled font, closing card).
+Deploy: vps-ops deploy (server only; needs hyperframes on the VPS - vps-ops hf_setup).
+
+Task ID: v0.748.0 HOOLA CODE
+Ask: check the existing Hoola Code (Developer Sahayak), design it like Claude Code (6-screen canvas), then "GO".
+Built: console page code.js, structured loop steps, notes while working, Stop, background start, plan / PR / merge / review / settings.
+Deploy: vps-ops deploy (server only).
+
+
+---
+Task ID: v0.749.0 SAB PUBLIC APIS
+Agent: Claude (web studio session)
+Task: owner "NOW CONSOLIDATE ALL PUBLIC APIS FIRST" after publicapis.dev.
+Work: publicapis/build.py reads public-apis README + marcelscruz/public-apis resources.json, merges with dedupe
+(name / own host), keeps old ids (kept or aka alias), 3,014 APIs; service.by_id resolves aliases; source credits
+both; counts 3,000+; test_v0749_public_apis.py (5).
+Deploy: vps-ops deploy; healthz must read 0.749.0.

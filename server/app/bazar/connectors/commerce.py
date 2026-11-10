@@ -139,13 +139,13 @@ class CommerceExecutor:
                      + f" — {x['price']} · {x['seller']} ({x['seller_network']})"
                      + (" · on store app" if x["buy_mode"] == "handoff" else "") + (" · DEMO" if x.get("demo") else "")
                      for i, x in enumerate(r["results"], 1)]
-            return {**r, "message": "Cheapest first:\n" + "\n".join(lines) + "\nSay e.g. '1 number 2 cart mein daalo'."}
+            return {**r, "message": "Cheapest first:\n" + "\n".join(lines) + "\nSay e.g. 'add 1 and 2 to the cart'."}
         if tool == "add_to_cart":
             r = s.add_to_cart(u, self._pick(ctx, args.get("pick")), int(args.get("quantity") or 1))
             if r.get("added") is False:
                 return self._link(r)
             return {**r, "message": f"Cart at {r['seller']}: " + ", ".join(f"{i['name']} × {i['qty']}" for i in r["items"])
-                    + f" ({r['items_total']} before delivery). Say 'order karo' to see the final price."}
+                    + f" ({r['items_total']} before delivery). Say 'place the order' to see the final price."}
         if tool == "view_cart":
             carts = s.list_carts(u)
             if not carts:

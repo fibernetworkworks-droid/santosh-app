@@ -43,7 +43,7 @@ Future<Map<String, String>?> _form(BuildContext context, String title, List<(Str
         ]),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Rehne do')),
+        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Keep it')),
         TextButton(onPressed: () => Navigator.pop(d, true), child: Text(ok)),
       ],
     ),
@@ -71,7 +71,7 @@ Widget _draftButtons(Map<String, dynamic> draft) {
     if (wa.isNotEmpty) GlassButton(label: 'WhatsApp draft', icon: Icons.chat_rounded, height: 40, onTap: () => Native.openExternal(url: wa)),
     if (sms.isNotEmpty) GlassButton(label: 'SMS draft', icon: Icons.sms_rounded, height: 40, onTap: () => Native.openExternal(url: sms)),
     if (mail.isNotEmpty) GlassButton(label: 'Email draft', icon: Icons.mail_rounded, height: 40, onTap: () => Native.openExternal(url: mail)),
-    if (upi.isNotEmpty) const Pill('UPI link aapke UPI ID ka'),
+    if (upi.isNotEmpty) const Pill('UPI link for your UPI ID'),
   ]);
 }
 
@@ -151,26 +151,26 @@ class _MotiondeskScreenState extends State<MotiondeskScreen> {
     return ListView(padding: const EdgeInsets.all(16), children: [
       Glass(child: Text(_s(day['say']), style: const TextStyle(fontSize: 14))),
       const SizedBox(height: 12),
-      if (_list(_d?['cards']).isNotEmpty) const Caption('AAPKI HAAN KA INTEZAAR'),
+      if (_list(_d?['cards']).isNotEmpty) const Caption('WAITING FOR YOUR YES'),
       for (final c in _list(_d?['cards']))
         Padding(padding: const EdgeInsets.only(bottom: 10), child: MotiondeskCardCard(app: widget.app, data: {'card': c}, onDone: _load)),
-      for (final (k, label) in const [('late', 'DEADLINE NIKAL GAYI'), ('due', '2 DIN MEIN DEADLINE'), ('unpaid', 'PAISE BAAKI'), ('expiring', 'LICENCE KHATAM HONE WALE')])
+      for (final (k, label) in const [('late', 'DEADLINE PASSED'), ('due', 'DEADLINE IN 2 DAYS'), ('unpaid', 'PAISE BAAKI'), ('expiring', 'LICENCE KHATAM HONE WALE')])
         if (_strs(day[k]).isNotEmpty) ...[Caption(label), for (final x in _strs(day[k])) Text('• $x'), const SizedBox(height: 8)],
     ]);
   }
 
   Future<void> _newJob() async {
     final clients = _list(_d?['clients']);
-    final f = await _form(context, 'Naya kaam', [
+    final f = await _form(context, 'New job', [
       ('client', 'Client (naam / C-number)${clients.isEmpty ? '' : ': ${clients.map((c) => _s(c['name'])).take(4).join(', ')}'}'),
-      ('title', 'Kaam ka naam'),
-      ('brief', 'Brief (client ke shabd: kya, kis ke liye, kahan chalega)'),
+      ('title', 'Kaam name'),
+      ('brief', 'Brief (client\'s words: what, for whom, where it will run)'),
       ('engine', 'Engine: motion / blender3d / brand / photo'),
       ('kind', 'Motion type: explainer / logo / offer / recipe / custom'),
       ('deliverables', 'Platforms (comma se): insta_reel, youtube, square ...'),
       ('deadline', 'Deadline (DD-MM-YYYY)'),
-      ('rate', 'Aapka daam (₹, khaali = baad mein)'),
-    ], ok: 'Banao');
+      ('rate', 'Your price (₹, blank = later)'),
+    ], ok: 'Make');
     if (f == null) return;
     final r = await _run('POST', '/api/motiondesk/jobs', {
       ...f,
@@ -184,10 +184,10 @@ class _MotiondeskScreenState extends State<MotiondeskScreen> {
   }
 
   Widget _kaam() => ListView(padding: const EdgeInsets.all(16), children: [
-        GradientButton(label: 'Naya kaam', icon: Icons.add_rounded, height: 46, onTap: _busy ? null : _newJob),
+        GradientButton(label: 'New job', icon: Icons.add_rounded, height: 46, onTap: _busy ? null : _newJob),
         const SizedBox(height: 12),
         if (_list(_d?['templates']).isNotEmpty) ...[
-          const Caption('MERE TEMPLATE'),
+          const Caption('MY TEMPLATES'),
           Wrap(spacing: 8, runSpacing: 6, children: [
             for (final t in _list(_d?['templates']))
               ActionChip(
@@ -195,7 +195,7 @@ class _MotiondeskScreenState extends State<MotiondeskScreen> {
                   onPressed: _busy
                       ? null
                       : () async {
-                          final f = await _form(context, 'Template se kaam', const [('client', 'Client'), ('brief', 'Naya brief (optional)')]);
+                          final f = await _form(context, 'Job from a template', const [('client', 'Client'), ('brief', 'New brief (optional)')]);
                           if (f == null) return;
                           await _run('POST', '/api/motiondesk/jobs', {...f, 'template': _s(t['id'])});
                         }),
@@ -207,22 +207,22 @@ class _MotiondeskScreenState extends State<MotiondeskScreen> {
 
   Widget _clients() => ListView(padding: const EdgeInsets.all(16), children: [
         GradientButton(
-            label: 'Naya client',
+            label: 'New client',
             icon: Icons.person_add_rounded,
             height: 46,
             onTap: _busy
                 ? null
                 : () async {
-                    final f = await _form(context, 'Client aur unka brand kit', const [
+                    final f = await _form(context, 'Client and their brand kit', const [
                       ('name', 'Naam'),
                       ('contact', 'Contact person'),
                       ('phone', 'Mobile'),
                       ('email', 'Email'),
                       ('gstin', 'GSTIN'),
-                      ('primary', 'Main rang (#hex ya laal / neela ...)'),
-                      ('accent', 'Accent rang'),
-                      ('font', 'Font ka naam'),
-                      ('font_source', 'Font kahan se: google_fonts / adobe_fonts / client / own'),
+                      ('primary', 'Main colour (#hex or red / blue ...)'),
+                      ('accent', 'Accent colour'),
+                      ('font', 'Font name'),
+                      ('font_source', 'Font source: google_fonts / adobe_fonts / client / own'),
                       ('tone', 'Tone (jaise warm, premium)'),
                     ], ok: 'Save');
                     if (f == null) return;
@@ -258,7 +258,7 @@ class _MotiondeskScreenState extends State<MotiondeskScreen> {
               if (c['forgotten'] != true)
                 TextButton(
                     onPressed: _busy ? null : () => _run('POST', '/api/motiondesk/clients/${_s(c['id'])}/forget'),
-                    child: const Text('Jaankari hatao (DPDP)')),
+                    child: const Text('Delete details (DPDP)')),
             ]),
           ),
       ]);
@@ -273,11 +273,11 @@ class _MotiondeskScreenState extends State<MotiondeskScreen> {
                 : () async {
                     final f = await _form(context, 'Licence register', const [
                       ('name', 'Naam'),
-                      ('kind', 'Kya: font / music / sfx / stock_video / stock_image / template / 3d_model'),
-                      ('source', 'Kahan se: google_fonts / adobe_fonts / envato / artlist / epidemic / pixabay / own / client'),
+                      ('kind', 'What: font / music / sfx / stock_video / stock_image / template / 3d_model'),
+                      ('source', 'From where: google_fonts / adobe_fonts / envato / artlist / epidemic / pixabay / own / client'),
                       ('licence_ref', 'Licence ID / invoice no.'),
                       ('credit', 'Credit line (CC BY ho to)'),
-                      ('valid_until', 'Licence kab tak (DD-MM-YYYY)'),
+                      ('valid_until', 'Licence valid until (DD-MM-YYYY)'),
                     ], ok: 'Save');
                     if (f == null) return;
                     await _run('POST', '/api/motiondesk/assets', f);
@@ -294,7 +294,7 @@ class _MotiondeskScreenState extends State<MotiondeskScreen> {
               Text(_s(a['say']), style: const TextStyle(fontSize: 12, color: C.muted)),
               if (_s(a['licence_ref']).isNotEmpty) Text('Ref: ${_s(a['licence_ref'])}', style: const TextStyle(fontSize: 12)),
               if (_s(a['valid_until']).isNotEmpty)
-                Text('Kab tak: ${_s(a['valid_until'])}${a['expired'] == true ? ' (khatam)' : ''}', style: const TextStyle(fontSize: 12)),
+                Text('Valid until: ${_s(a['valid_until'])}${a['expired'] == true ? ' (expired)' : ''}', style: const TextStyle(fontSize: 12)),
             ]),
           ),
       ]);
@@ -304,10 +304,10 @@ class _MotiondeskScreenState extends State<MotiondeskScreen> {
     return ListView(padding: const EdgeInsets.all(16), children: [
       Glass(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(_s(st['studio']).isEmpty ? 'Studio ka naam nahi' : _s(st['studio']), style: const TextStyle(fontWeight: FontWeight.w800)),
+        Text(_s(st['studio']).isEmpty ? 'No studio name' : _s(st['studio']), style: const TextStyle(fontWeight: FontWeight.w800)),
         Text('GSTIN ${_s(st['gstin']).isEmpty ? '-' : _s(st['gstin'])} · GST ${_s(st['gst_pct'])}% · SAC ${_s(st['sac'])}'),
-        Text('UPI ${_s(st['upi_id']).isEmpty ? '-' : _s(st['upi_id'])} · Shamil round ${_s(st['rounds'])} · Extra round ${_rs(st['round_fee'])}'),
-        Text('Advance ${_s(st['advance_pct'])}% · Bill ${_s(st['pay_days'])} din mein · Haq: ${_s(st['rights'])}'),
+        Text('UPI ${_s(st['upi_id']).isEmpty ? '-' : _s(st['upi_id'])} · Rounds included ${_s(st['rounds'])} · Extra round ${_rs(st['round_fee'])}'),
+        Text('Advance ${_s(st['advance_pct'])}% · Bill in ${_s(st['pay_days'])} days · Rights: ${_s(st['rights'])}'),
         const SizedBox(height: 8),
         GlassButton(
             label: 'Badlo',
@@ -320,19 +320,19 @@ class _MotiondeskScreenState extends State<MotiondeskScreen> {
                         context,
                         'Studio niyam',
                         const [
-                          ('studio', 'Studio ka naam'),
+                          ('studio', 'Studio name'),
                           ('gstin', 'GSTIN'),
                           ('upi_id', 'UPI ID'),
                           ('gst_pct', 'GST %'),
                           ('sac', 'SAC'),
-                          ('rounds', 'Shamil badlav round'),
+                          ('rounds', 'Change rounds included'),
                           ('round_fee', 'Extra round ka daam (₹)'),
                           ('advance_pct', 'Advance %'),
-                          ('pay_days', 'Bill kitne din mein'),
-                          ('rights', 'Haq: licence / assign'),
-                          ('rights_years', 'Assign ho to kitne saal'),
-                          ('rights_territory', 'Kis desh mein'),
-                          ('terms', 'Shartein'),
+                          ('pay_days', 'Bill within how many days'),
+                          ('rights', 'Rights: licence / assign'),
+                          ('rights_years', 'If assigned, for how many years'),
+                          ('rights_territory', 'In which country'),
+                          ('terms', 'Terms'),
                         ],
                         ok: 'Save',
                         initial: {for (final e in st.entries) if (e.value != null && e.value is! Map && e.value is! List) e.key: _s(e.value)});
@@ -345,7 +345,7 @@ class _MotiondeskScreenState extends State<MotiondeskScreen> {
         if (_s(st[k]).isNotEmpty) Padding(padding: const EdgeInsets.only(bottom: 8), child: Glass(child: Text(_s(st[k]), style: const TextStyle(fontSize: 12.5)))),
       const Caption('PLATFORM SPEC (STARTER)'),
       for (final p in _list(_d?['platforms']))
-        Text('• ${_s(p['label'])}: ${_s(p['aspect'])} ${_s(p['px'])}, ${_s(p['fps'])} fps${p['max_s'] == null ? '' : ', ${_s(p['max_s'])} s tak'}',
+        Text('• ${_s(p['label'])}: ${_s(p['aspect'])} ${_s(p['px'])}, ${_s(p['fps'])} fps${p['max_s'] == null ? '' : ', ${_s(p['max_s'])} s max'}',
             style: const TextStyle(fontSize: 12)),
     ]);
   }
@@ -454,17 +454,17 @@ class _MotiondeskJobPageState extends State<MotiondeskJobPage> {
                 child: Text('${_s(f['n'])}. [${_s(f['seconds'])}s] ${_s(f['visual'])}\n“${_s(f['text'])}” ${_s(f['motion'])} ${_s(f['audio'])}',
                     style: const TextStyle(fontSize: 12.5))),
           Wrap(spacing: 8, runSpacing: 6, children: [
-            _btn('Storyboard banao', Icons.view_carousel_rounded, 'storyboard'),
-            if (_list(j['frames']).isNotEmpty) _btn('Client ko bhejne ka card', Icons.send_rounded, 'storyboard_send'),
+            _btn('Make storyboard', Icons.view_carousel_rounded, 'storyboard'),
+            if (_list(j['frames']).isNotEmpty) _btn('Card to send to the client', Icons.send_rounded, 'storyboard_send'),
             if (_list(j['frames']).isNotEmpty && j['storyboard_approved'] != true)
               GlassButton(
-                  label: 'Client ne maana',
+                  label: 'Client approved',
                   icon: Icons.thumb_up_rounded,
                   height: 40,
                   onTap: _busy
                       ? null
                       : () async {
-                          final f = await _form(context, 'Client ki haan', const [('by', 'Kisne, kaise (jaise: Mr Sharma, WhatsApp)')]);
+                          final f = await _form(context, 'Client\'s yes', const [('by', 'Who, and how (e.g. Mr Sharma, WhatsApp)')]);
                           if (f != null) _act('client_ok', f);
                         }),
           ]),
@@ -481,16 +481,16 @@ class _MotiondeskJobPageState extends State<MotiondeskJobPage> {
           Wrap(spacing: 8, runSpacing: 6, children: [
             _btn('Render', Icons.movie_creation_rounded, 'render'),
             GlassButton(
-                label: 'Client ke notes',
+                label: 'Client notes',
                 icon: Icons.comment_rounded,
                 height: 40,
                 onTap: _busy
                     ? null
                     : () async {
-                        final f = await _form(context, 'Client ke notes (har line: 0:12 kya badalna)', const [('text', 'Notes'), ('by', 'Kisne')]);
+                        final f = await _form(context, 'Client notes (each line: 0:12 what to change)', const [('text', 'Notes'), ('by', 'Who')]);
                         if (f != null) _act('feedback', f);
                       }),
-            _btn('Badlav render', Icons.autorenew_rounded, 'revise'),
+            _btn('Render the change', Icons.autorenew_rounded, 'revise'),
             if (rounds['left'] == 0) _btn('Extra round card', Icons.add_card_rounded, 'extra_round'),
           ]),
           for (final n in _list(j['feedback']))
@@ -520,7 +520,7 @@ class _MotiondeskJobPageState extends State<MotiondeskJobPage> {
                 onTap: _busy
                     ? null
                     : () async {
-                        final f = await _form(context, 'Template ka naam', const [('name', 'Naam')]);
+                        final f = await _form(context, 'Template name', const [('name', 'Naam')]);
                         if (f != null) _act('template', f);
                       }),
           ]),
@@ -534,14 +534,14 @@ class _MotiondeskJobPageState extends State<MotiondeskJobPage> {
             ListTile(
               dense: true,
               title: Text('${_s(i['number'])} · ${_s(i['kind'])} · ${_s(i['total_text'])}'),
-              subtitle: Text('Mila ${_rs(i['paid'])} · ${_s(i['status'])} · due ${_s(i['due'])}'),
+              subtitle: Text('Received ${_rs(i['paid'])} · ${_s(i['status'])} · due ${_s(i['due'])}'),
               trailing: i['status'] == 'paid'
                   ? const Icon(Icons.check_rounded, color: C.ok)
                   : TextButton(
                       onPressed: _busy
                           ? null
                           : () async {
-                              final f = await _form(context, 'Paise mile', const [('amount', 'Kitne (₹)'), ('ref', 'UTR / ref (aakhri ank)')]);
+                              final f = await _form(context, 'Paise mile', const [('amount', 'How much (₹)'), ('ref', 'UTR / ref (aakhri ank)')]);
                               if (f == null) return;
                               if (!context.mounted) return;
                               await _call(context, widget.app, 'POST', '/api/motiondesk/invoices/${_s(i['id'])}/paid',
@@ -578,9 +578,9 @@ class _MotiondeskCardCardState extends State<MotiondeskCardCard> {
         [show['amount'], show['payee']].where((x) => x != null && '$x'.isNotEmpty).join(' · '));
     if (r['signature'] == null) {
       throw ApiException(428, switch (_s(r['error'])) {
-        'cancelled' => 'Fingerprint nahi diya, isliye haan nahi hui.',
-        'key_invalidated' => 'Phone mein naya fingerprint juda hai: Profile > Fingerprint se haan mein phone phir se jodiye.',
-        _ => 'Fingerprint se haan nahi ho payi (${_s(r['error'])}).',
+        'cancelled' => 'No fingerprint was given, so it was not approved.',
+        'key_invalidated' => 'A new fingerprint was added to the phone: link this phone again in Profile > Fingerprint approval.',
+        _ => 'Could not approve with fingerprint (${_s(r['error'])}).',
       });
     }
     return {'challenge_id': ch['challenge_id'], 'device_id': r['device_id'], 'signature': r['signature']};
@@ -590,7 +590,7 @@ class _MotiondeskCardCardState extends State<MotiondeskCardCard> {
     final id = _s(_c['id']);
     String reason = '';
     if (!yes) {
-      final f = await _form(context, 'Kyun nahi?', const [('reason', 'Wajah (optional)')], ok: 'Nahi');
+      final f = await _form(context, 'Why not?', const [('reason', 'Reason (optional)')], ok: 'No');
       if (f == null) return;
       reason = f['reason'] ?? '';
     }
@@ -640,7 +640,7 @@ class _MotiondeskCardCardState extends State<MotiondeskCardCard> {
           }, color: C.accent),
           const SizedBox(width: 8),
           Expanded(child: Text('${_s(c['title'])} · ${_s(sh['job'])}', style: const TextStyle(fontWeight: FontWeight.w800))),
-          Pill(switch (st) { 'waiting' => 'aapki haan?', 'approved' => 'haan', 'rejected' => 'nahi', 'stale' => 'purana', _ => st },
+          Pill(switch (st) { 'waiting' => 'your yes?', 'approved' => 'yes', 'rejected' => 'no', 'stale' => 'old', _ => st },
               fg: st == 'waiting' ? C.accent : C.chip),
         ]),
         Text('${_s(sh['client'])} · ${_s(sh['title'])}', style: const TextStyle(fontSize: 12.5)),
@@ -661,11 +661,11 @@ class _MotiondeskCardCardState extends State<MotiondeskCardCard> {
         const SizedBox(height: 8),
         if (st == 'waiting')
           Wrap(spacing: 8, runSpacing: 6, children: [
-            GradientButton(label: money ? 'Haan (fingerprint)' : 'Haan', height: 42, onTap: (_busy || blocks.isNotEmpty) ? null : () => _decide(true)),
-            GlassButton(label: 'Nahi', height: 42, onTap: _busy ? null : () => _decide(false)),
+            GradientButton(label: money ? 'Yes (fingerprint)' : 'Yes', height: 42, onTap: (_busy || blocks.isNotEmpty) ? null : () => _decide(true)),
+            GlassButton(label: 'No', height: 42, onTap: _busy ? null : () => _decide(false)),
           ]),
         if (_draft.isNotEmpty) ...[const SizedBox(height: 6), _draftButtons(_draft)],
-        const Text('Hoola khud kuch nahi bhejta, paise nahi leta / deta: message aap bhejti hain.', style: TextStyle(fontSize: 11, color: C.faint)),
+        const Text('Hoola sends nothing by itself and does not pay or receive money: you send the messages.', style: TextStyle(fontSize: 11, color: C.faint)),
       ]),
     );
   }
@@ -690,7 +690,7 @@ class MotiondeskNoteCard extends StatelessWidget {
           if (job.isNotEmpty)
             TextButton(
               onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => MotiondeskJobPage(app: app, ref: job))),
-              child: Text('$job kholo'),
+              child: Text('Open $job'),
             ),
         ])),
       ]),

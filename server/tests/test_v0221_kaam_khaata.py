@@ -47,7 +47,7 @@ def test_very_long_job_drops_only_the_middle():
     steps = [f"s{i}" for i in range(1, 101)]
     kept = yaad.keep_steps(steps, 80)
     assert kept[:2] == ["s1", "s2"] and kept[-1] == "s100" and len(kept) == 80
-    assert "beech ke" in kept[2]
+    assert "steps in between" in kept[2]
     assert yaad.keep_steps(steps, 14)[-1] == "s100"   # even the short form keeps the newest progress
 
 
@@ -113,12 +113,12 @@ def test_step_cap_line_is_saved_when_long_mode_is_off(gz, monkeypatch):  # noqa:
         _set_brain(monkeypatch, FakeBrain([([tu(i, "kaam_status", q=f"s{i}")], "tool_use") for i in range(1, 30)]))
         from app.agent.santosh import run_turn
         out = asyncio.run(run_turn(conv, "lamba kaam", tenant_id="default"))
-        assert "Yeh kaam lamba" in out
+        assert "This task has become long" in out
         from app.db import Message, session
         from sqlalchemy import select
         with session() as s:
             last = s.scalars(select(Message).where(Message.conversation_id == conv).order_by(Message.id.desc())).first()
-        assert last.role == "assistant" and "Yeh kaam lamba" in (last.display or "")
+        assert last.role == "assistant" and "This task has become long" in (last.display or "")
     finally:
         get_settings.cache_clear()
 
@@ -182,4 +182,4 @@ def test_waiting_time_never_counts_against_the_goal(gz):  # noqa: F811
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.715.0"
+    assert APP_VERSION == "0.749.0"

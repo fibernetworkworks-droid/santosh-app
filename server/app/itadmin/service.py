@@ -1126,11 +1126,11 @@ def _fallback_steps(words: str) -> list[str]:
 
 
 def model_steps(topic: str, words: str) -> list[str] | None:
-    """Claude / cheap brain turns HER setup words into short Hinglish steps. None = no model (fallback used)."""
+    """Claude / cheap brain turns HER setup words into short English steps. None = no model (fallback used)."""
     from ..config import get_settings
     from ..agent import pakka
     import asyncio
-    system = ("You write a how-to guide for office staff in simple Hinglish (Roman script). Use ONLY the facts in the owner's words: "
+    system = ("You write a how-to guide for office staff in simple English (Roman script). Use ONLY the facts in the owner's words: "
               "never add a website, email, phone number, menu name, setting value or number that is not in her words; where a fact "
               "is missing write [?]. Never include a password, PIN or OTP (write 'apna password'). Output one step per line, max 15 "
               "steps, each starting with a verb, no numbering, no intro.")

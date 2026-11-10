@@ -16,34 +16,34 @@ from .tools import Ctx, ToolError
 
 LEADS_TOOLS = [
     {"name": "leads_run", "description": (
-        "Leads ka run chalao (Leads Sahayak). Paanch actions:\n"
-        "- action=her_data: uski apni rows (CSV/Excel/purani campaign list) store mein - har row ke saath source, "
+        "Run a leads job (Leads Sahayak). Six actions:\n"
+        "- action=her_data: her own rows (CSV/Excel/old campaign list) go into the store - each row with its source, "
         "dedupe, E.164 phone.\n"
-        "- action=indiamart: IndiaMART ke SELLERS (official IndiaMART MCP server, muft) - search_term (jaise "
-        "'cement', 'LED bulb'), city ya cities (max 5), biztype (manufacturer/exporter/wholesaler/retailer), "
-        "max_rows (default 200). Har row ke saath seller ka IndiaMART page (source), ek business = ek row.\n"
-        "- action=places: Google Places EXISTING maps tools se - kinds (Google place types, jaise pharmacy, "
-        "hardware_store), near (jaise 'Pune'), sweep_km (default 5, 20-ka-Nearby-ceiling tiles se toota), "
-        "details (default false - phone/website mehenge hain, sirf details_max jagahon ke liye kharide jaate "
-        "hain, mapsbill cap ke neeche), max_rows. Har row ke saath Google Maps link (source).\n"
-        "- action=scrape: Google Maps PUBLIC LISTING grid (P3, SCRAPE lane) - query (jaise 'dentists'), near YA "
+        "- action=indiamart: IndiaMART SELLERS (official IndiaMART MCP server, free) - search_term (e.g. "
+        "'cement', 'LED bulb'), city or cities (max 5), biztype (manufacturer/exporter/wholesaler/retailer), "
+        "max_rows (default 200). Each row carries the seller's IndiaMART page (source); one business = one row.\n"
+        "- action=places: Google Places through the EXISTING maps tools - kinds (Google place types, e.g. pharmacy, "
+        "hardware_store), near (e.g. 'Pune'), sweep_km (default 5, split into tiles under the Nearby ceiling of 20), "
+        "details (default false - phone/website are costly, bought only for details_max places, "
+        "under the mapsbill cap), max_rows. Each row carries a Google Maps link (source).\n"
+        "- action=scrape: Google Maps PUBLIC LISTING grid (P3, SCRAPE lane) - query (e.g. 'dentists'), near OR "
         "center {lat,lng}, sweep_km (default 3), zoom (ladder 13-17, default 15 = 1 km cells), max_rows. "
-        "Per-tenant opt-in OFF hai - pehli baar pehle REFUSE hoga aur bolega ki aapki haan se on karna hai "
-        "(action=scrape_optin on=true). Opt-in ho to: politeness 1 req/s, max 400 cells (plan-time cap), 20 "
-        "listings/page, block page par run ruk jaata hai, har row FACTS only (review text/photos kabhi nahi), "
-        "source = jis search page se read hua, resume_run_id se grid wahin se continue hota hai.\n"
-        "- action=vendor: LICENSED LEAD-DATA VENDOR (P4, VENDOR lane) - query (jaise 'dentists Pune'), city, "
-        "max_rows. Config-gated: jab tak aapne vendor ka naam/base/key/price/terms set nahi kiya, lane card par "
-        "bhi nahi aur refusal exact config batata hai (plan 12.4 - vendor ka naam aap leti hain). Config ho to: "
-        "plan card run ko PEHLE price karta hai (rows x LEADS_VENDOR_PRICE_PER_ROW_INR) - estimate "
-        "LEADS_VENDOR_RUN_CAP_INR paar to REFUSE, run shuru nahi hota. Ek hi vendor call per run, dobara nahi "
-        "mangi jaati (vendor per call bill kar sakta hai). Har row ke saath vendor ka apna record page hota hi "
-        "hai - bina source ki row store nahi hoti. Bill vendor ke apne reported cost par, warna ESTIMATE - aur "
-        "karte hain.\n"
-        "- action=scrape_optin: SCRAPE lane ka per-tenant switch - on=true par walls quote hoti hain (CLAUDE.md "
-        "ka amended rule), off=false par lane phir band. Yeh aapka apna act hai - engine khud kabhi nahi karega.\n"
-        "Plan PEHLE banta hai (caps: per-run rows, per-day 20,000) - cap paar hua to refuse, cap ka naam batate "
-        "hue. Yeh engine kabhi khud kisi ko message NAHI bhejta - outreach sirf aapke tap par, campaign desk se."),
+        "Per-tenant opt-in is OFF - the first time it REFUSES and says it needs her yes to turn on "
+        "(action=scrape_optin on=true). Once opted in: politeness 1 req/s, max 400 cells (plan-time cap), 20 "
+        "listings/page, the run stops at a block page, every row is FACTS only (never review text/photos), "
+        "source = the search page it was read from, resume_run_id continues the grid from where it stopped.\n"
+        "- action=vendor: LICENSED LEAD-DATA VENDOR (P4, VENDOR lane) - query (e.g. 'dentists Pune'), city, "
+        "max_rows. Config-gated: until she has set the vendor name/base/key/price/terms the lane is not even on the "
+        "card and the refusal names the exact config (plan 12.4 - she picks the vendor). Once configured: "
+        "the plan card PRICES the run first (rows x LEADS_VENDOR_PRICE_PER_ROW_INR) - an estimate above "
+        "LEADS_VENDOR_RUN_CAP_INR is REFUSED and the run does not start. One vendor call per run, never repeated "
+        "(the vendor may bill per call). Each row carries the vendor's own record page - "
+        "a row without a source is not stored. Billed at the vendor's own reported cost, else an ESTIMATE - and "
+        "marked as such.\n"
+        "- action=scrape_optin: the per-tenant switch of the SCRAPE lane - on=true quotes the walls (the amended rule "
+        "in CLAUDE.md), off=false closes the lane again. This is HER own act - the engine never does it itself.\n"
+        "The plan is made FIRST (caps: per-run rows, per-day 20,000) - over the cap it refuses and names the cap. "
+        "This engine NEVER messages anyone itself - outreach happens only on her tap, from the campaign desk."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["her_data", "indiamart", "places", "scrape", "vendor", "scrape_optin"]},
          "ask": {"type": "string"}, "place": {"type": "string"},
@@ -57,25 +57,25 @@ LEADS_TOOLS = [
          "resume_run_id": {"type": "string"}, "on": {"type": "boolean"},
          "max_rows": {"type": "integer"}}, "required": ["action", "ask"]}},
     {"name": "leads_status", "description": (
-        "Ek leads run ya poore store ka haal (kuch nahi badalta). run_id do to uska card: status, found/kept/"
-        "duped/refused, lanes, cap check. run_id na do to store ka summary: kitni rows, kitni phone/email waali, "
-        "lane-wise count, aaj ka cap usage."),
+        "Status of one leads run or of the whole store (changes nothing). With run_id: its card - status, found/kept/"
+        "duped/refused, lanes, cap check. Without run_id: the store summary - how many rows, how many with phone/email, "
+        "count per lane, today's cap usage."),
      "input_schema": {"type": "object", "properties": {"run_id": {"type": "string"}}, "required": []}},
     {"name": "leads_list", "description": (
-        "Leads store khojo (kuch nahi badalta). q (naam/category/address mein), city, category, lane (HER_DATA ...), "
-        "has_phone, has_email, limit -> rows with key_type/key_value aur provenance."),
+        "Search the leads store (changes nothing). q (in name/category/address), city, category, lane (HER_DATA ...), "
+        "has_phone, has_email, limit -> rows with key_type/key_value and provenance."),
      "input_schema": {"type": "object", "properties": {
          "q": {"type": "string"}, "city": {"type": "string"}, "category": {"type": "string"},
          "lane": {"type": "string"}, "has_phone": {"type": "boolean"}, "has_email": {"type": "boolean"},
          "limit": {"type": "integer"}, "offset": {"type": "integer"}}, "required": []}},
     {"name": "leads_export", "description": (
-        "Leads bahar bhejo. action=csv: filters (q/city/category/lane/has_phone/has_email/run_id) -> CSV file "
-        "(har row ke saath source_lane + source_url + parser_version - bina provenance ki row ho to export REFUSE). "
-        "opt_out rows default se bahar. action=campaign_list: WhatsApp campaign desk ke liye LeadList - PEHLE TAP "
-        "sirf CONFIRM CARD laata hai (rows, rows_without_phone, opt_out_excluded - kuch nahi banta); uske tap par "
-        "confirm=true doosra tap jo list banata hai (sirf phone waali rows, consent har row par False; engine khud "
-        "kuch NAHI bhejta - bhejna campaign desk ke consent machinery se, aapke tap par). action=outreach_log: "
-        "lead_outreach hisaab - kaunsi row kab, kis desk (campaign/email), kis list/campaign/draft ke saath gayi."),
+        "Export leads. action=csv: filters (q/city/category/lane/has_phone/has_email/run_id) -> CSV file "
+        "(each row with source_lane + source_url + parser_version - the export REFUSES any row without provenance). "
+        "opt_out rows are excluded by default. action=campaign_list: a LeadList for the WhatsApp campaign desk - the FIRST TAP "
+        "only brings a CONFIRM CARD (rows, rows_without_phone, opt_out_excluded - nothing is made); on her tap, "
+        "confirm=true is the second tap that makes the list (only rows with a phone, consent False on every row; the engine "
+        "sends NOTHING itself - sending goes through the campaign desk's consent machinery, on her tap). action=outreach_log: "
+        "the lead_outreach ledger - which row went out when, through which desk (campaign/email), with which list/campaign/draft."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["csv", "campaign_list", "outreach_log"]},
          "name": {"type": "string"}, "q": {"type": "string"}, "city": {"type": "string"},
@@ -84,23 +84,23 @@ LEADS_TOOLS = [
          "kind": {"type": "string", "enum": ["campaign_list", "campaign_sent", "email_sent"]},
          "limit": {"type": "integer"}}, "required": ["action"]}},
     {"name": "leads_forget", "description": (
-        "Leads mitao (DPO duty: purpose limitation + erasure). run_id ya row_ids [] ya all_rows=true. Jo din ka "
-        "cap ledger hai woh rehta hai (din ka hisaab, personal data nahi). Engine ke paas jo row thi woh jaati hai "
-        "aur uski campaign-list copy bhi."),
+        "Delete leads (DPO duty: purpose limitation + erasure). run_id or row_ids [] or all_rows=true. The daily "
+        "cap ledger stays (a day's count, not personal data). Every row the engine held goes, "
+        "and its campaign-list copy too."),
      "input_schema": {"type": "object", "properties": {
          "run_id": {"type": "string"}, "row_ids": {"type": "array", "items": {"type": "string"}},
          "all_rows": {"type": "boolean"}}, "required": []}},
     {"name": "leads_enrich", "description": (
-        "Store ki kept rows ENRICH karo (P2, chalu hai). Har row ke apni WEBSITE ka ek chhota crawl-brain pass: "
-        "email (mailto + page text), socials (uski site ke links - linkedin/twitter/instagram/facebook/youtube), "
-        "email_grade (DNS -> MX -> disposable: pakka / sadak_tak / galat; SMTP probe NAHI hota). Sabse accha "
-        "email ek chhota model call chunta hai (bill run card par) - use_model=false par rule rank. Robots.txt "
-        "maane jaate hain, site par 1 req/second, max 3 page/site; mari hui site galat dikhata hai, crash nahi. "
-        "Cap: LEADS_ENRICH_ROWS_PER_RUN (100/pass) - usse zyada eligible rows par REFUSE (filter ghatao ya "
-        "row_ids do). Naya email sirf KHAALI email slot mein jaata hai - kisi aur ka bhara hua email overwrite "
-        "nahi hota. fanout=true (P4 scale): wahi per-row kaam HOOLA GRAPH par bikharta hai (dispatch -> chunks "
-        "-> join barrier) - sabse zyada leads_enrich_fanout_max site passes ek saath, likhna barrier ke baad ek "
-        "writer se. Social PLATFORMS scrape nahi hote, engine khud kisi se baat nahi karta."),
+        "ENRICH the kept rows in the store (P2, live). A small crawl-brain pass over each row's own WEBSITE: "
+        "email (mailto + page text), socials (links on its site - linkedin/twitter/instagram/facebook/youtube), "
+        "email_grade (DNS -> MX -> disposable: pakka / sadak_tak / galat; NO SMTP probe). A small model call picks the best "
+        "email (billed on the run card) - with use_model=false a rule ranks them. Robots.txt "
+        "is obeyed, 1 req/second per site, max 3 pages/site; a dead site shows as bad, no crash. "
+        "Cap: LEADS_ENRICH_ROWS_PER_RUN (100/pass) - more eligible rows than that is REFUSED (narrow the filter or give "
+        "row_ids). A new email goes only into an EMPTY email slot - nobody else's filled email is overwritten. "
+        "fanout=true (P4 scale): the same per-row work is spread on HOOLA GRAPH (dispatch -> chunks "
+        "-> join barrier) - at most leads_enrich_fanout_max site passes at once, writing after the barrier by one "
+        "writer. Social PLATFORMS are not scraped, and the engine never talks to anyone itself."),
      "input_schema": {"type": "object", "properties": {
          "row_ids": {"type": "array", "items": {"type": "string"}}, "run_id": {"type": "string"},
          "q": {"type": "string"}, "city": {"type": "string"}, "category": {"type": "string"},
@@ -121,7 +121,7 @@ def _s(v: Any) -> str:
 def _actor(ctx: Ctx) -> str:
     a = getattr(ctx, "actor", "owner") or "owner"
     if a.startswith("customer:"):
-        raise ToolError("Yeh aapke dhandhe ka leads kaam hai; graahak ke liye nahi.")
+        raise ToolError("This is lead work for her own business, not for customers.")
     return a
 
 
@@ -183,7 +183,7 @@ async def leads_status(ctx: Ctx, **a: Any):
         if rid:
             card = S.run_card(rid)
             if card is None or card.get("tenant") != t:
-                raise ToolError("run nahi mila")
+                raise ToolError("run not found")
             return card
         from ..leads import scale as _scale
         return {"store": S.store_summary(t), "usage": leadscap.usage(t), "runs": S.runs(t, 5),

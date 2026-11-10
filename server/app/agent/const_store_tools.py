@@ -12,10 +12,10 @@ STORE_TOOLS = [
     {"name": "const_store", "description": (
         "Material store / saaman ka hisaab (construction store in-charge's desk). action=lot: item, unit, min_qty "
         "(reorder level), max_qty (storage cap). action=grn: item, qty, rate, vendor, invoice_no (challan), vehicle, "
-        "site, day, ok (quantity / quality checked), note - stock badhta hai. action=issue: item, qty, site, gang, "
-        "purpose, day, waste (true = written-off), note - stock ghatta hai (stock se zyada nahi leta). action=reconcile: "
-        "item (optional) - aaya vs gaya vs bacha, wastage %, DOBARA MANGWAO alerts. Paisa Hoola nahi deta; order aapki "
-        "haan se (indent card sitesup mein)."),
+        "site, day, ok (quantity / quality checked), note - stock goes up. action=issue: item, qty, site, gang, "
+        "purpose, day, waste (true = written-off), note - stock goes down (never takes more than the stock). action=reconcile: "
+        "item (optional) - received vs issued vs left, wastage %, REORDER alerts. Hoola does not pay; the order goes only on your "
+        "approval (indent card in sitesup)."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["lot", "grn", "issue", "reconcile"]},
          "item": {"type": "string"}, "unit": {"type": "string"}, "min_qty": {"type": "number"}, "max_qty": {"type": "number"},

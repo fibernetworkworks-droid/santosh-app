@@ -50,7 +50,7 @@ def test_her_tap_reaches_the_call(env, monkeypatch):
     assert voice.card_news("c1", "bazar_approval", _card("pending")) == 1     # the call is told the card waits
     assert fake.notes and "Card aaya" in fake.notes[0]
     assert voice.card_news("c1", "bazar_approval", _card("approved")) == 1    # her tap on the phone
-    assert fake.answered == [("Swiggy order", "approve")]                     # named by the card's own title
+    assert fake.answered == [("Swiggy order", "approved")]                     # named by the card's own title
     assert not voice._CARD_ASKED                                              # answered once, forgotten
     assert voice.card_news("c1", "bazar_approval", _card("approved")) == 0    # an echo says nothing
 
@@ -74,7 +74,7 @@ def test_a_split_call_is_told_once(env, monkeypatch):
     voice._CARD_TOLD.clear()
     voice.card_news("c3", "bazar_approval", _card("pending"))
     voice.card_news("c3", "bazar_approval", _card("rejected"))
-    assert len(fake.answered) == 1 and fake.answered[0][1] == "mana"
+    assert len(fake.answered) == 1 and fake.answered[0][1] == "rejected"
 
 
 def test_the_call_drops_the_unspoken_note_and_learns_quietly():
@@ -95,7 +95,7 @@ def test_the_call_drops_the_unspoken_note_and_learns_quietly():
     asyncio.run(go())
     assert fake._news == ["(Website ka kaam ho gaya)"]              # the stale ask is never spoken
     assert fake.stats["card_notes_dropped"] == 1
-    assert quiet and "Card ka jawab mil gaya" in quiet[0] and "kabhi mat kehna" in quiet[0]
+    assert quiet and "Card ka jawab mil gaya" in quiet[0] and "Never tell her" in quiet[0]
 
 
 def test_the_brain_reads_which_cards_really_wait(env):
@@ -106,10 +106,10 @@ def test_the_brain_reads_which_cards_really_wait(env):
     convs.mark(T, "c4")
     bus.publish("c4", "bazar_approval", _card("pending"))
     blk = events.cards_block(T)
-    assert "CARDS ABHI USKI HAAN KE INTEZAAR MEIN" in blk and "Swiggy order" in blk
+    assert "CARDS NOW WAITING FOR HER YES" in blk and "Swiggy order" in blk
     bus.publish("c4", "bazar_approval", _card("approved"))                   # she tapped Approve
     blk = events.cards_block(T)
-    assert "abhi koi card uski haan ke intezaar mein NAHI hai" in blk and "Swiggy" not in blk
+    assert "no card is waiting for her yes right now" in blk and "Swiggy" not in blk
 
 
 def test_wired_into_the_call_brain_and_the_voice():

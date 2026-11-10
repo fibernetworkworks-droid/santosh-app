@@ -215,9 +215,9 @@ class Santosh extends ChangeNotifier {
     try {
       final r = await api!.netConnect(invite: code);
       final who = ((r['link'] as Map?)?['label'] as String?) ?? 'Hoola';
-      feed.add(FeedItem('note', {'text': r['status'] == 'active' ? '$who se jud gaye ✓' : 'Request bhej di: $who haan kahenge to dono Hoola baat kar sakenge.'}));
+      feed.add(FeedItem('note', {'text': r['status'] == 'active' ? 'Linked with $who ✓' : 'Request sent: once $who says yes, both Hoolas can talk.'}));
     } catch (e) {
-      feed.add(FeedItem('note', {'text': 'Connect nahi hua: $e'}));
+      feed.add(FeedItem('note', {'text': 'Could not connect: $e'}));
     }
     hoolaTick++;
     notifyListeners();
@@ -251,7 +251,7 @@ class Santosh extends ChangeNotifier {
         await api!.operatorAnswer(id, true, answer: code);
       } catch (_) {}
     } else if (r['error'] == 'bank') {
-      Device.instance.showNow('$aName', 'Yeh bank / payment ka OTP lagta hai: main nahi bharunga, aap khud live screen mein bhariye.');
+      Device.instance.showNow('$aName', 'This looks like a bank / payment OTP: I will not enter it, please enter it yourself on the live screen.');
     }
   }
   bool backgroundRunning = false;
@@ -558,9 +558,9 @@ class Santosh extends ChangeNotifier {
       connected = false;
       _keyRefused = e is ApiException && e.status == 401;
       if (_keyRefused) {
-        error = 'API key galat hai. Settings mein theek kijiye.';
+        error = 'The API key is wrong. Please fix it in Settings.';
       } else {
-        error = 'Hoola server se jud raha hoon… (server abhi update / restart ho raha ho sakta hai, main khud dobara koshish kar raha hoon. Abhi try karne ke liye yahan tap kijiye.)';
+        error = 'Connecting to the Hoola server… (the server may be updating / restarting; I am trying again by myself. Tap here to try now.)';
         _scheduleRetry();
       }
       notifyListeners();
@@ -688,7 +688,7 @@ class Santosh extends ChangeNotifier {
       await api!.sendMessage(conversationId!, text, voice: spoken, files: files);
       return true;
     } catch (e) {
-      error = 'Message nahi gaya: $e';
+      error = 'Message was not sent: $e';
       notifyListeners();
       return false;
     }
@@ -696,14 +696,14 @@ class Santosh extends ChangeNotifier {
 
   /// The chat paperclip (v0.44.1): any file goes up and waits in the box until the message is sent.
   Future<Map<String, dynamic>> attachChatFile(String name, List<int> bytes, {void Function(double)? onProgress}) async {
-    if (api == null || conversationId == null) throw Exception('Abhi server se nahi jude');
+    if (api == null || conversationId == null) throw Exception('Not connected to the server right now');
     return api!.chatFile(conversationId!, name, bytes, onProgress: onProgress);
   }
 
   Future<String?> uploadLeads(String name, List<int> bytes) async {
     try {
       final r = await api!.uploadLeads(conversationId!, name, bytes);
-      await send('Maine file upload ki hai: $name (list id: ${r['list_id']}, ${r['valid']} sahi number).');
+      await send('I uploaded a file: $name (list id: ${r['list_id']}, ${r['valid']} valid numbers).');
       return null;
     } catch (e) {
       return e.toString();
@@ -767,7 +767,7 @@ class Santosh extends ChangeNotifier {
     if (what == 'forms') formsLinkedTick++;
     final name = {'sheets': 'Google Sheets', 'drive': 'Google Drive', 'forms': 'Google Forms', 'slides': 'Google Slides',
       'photos': 'Google Photos', 'youtube': 'YouTube'}[what] ?? what;
-    feed.add(FeedItem('note', {'text': ok ? '$name jud gaya ✓' : '$name nahi jud paya, dobara koshish kijiye.'}));
+    feed.add(FeedItem('note', {'text': ok ? '$name connected ✓' : '$name could not be connected, please try again.'}));
     notifyListeners();
   }
 
@@ -776,14 +776,14 @@ class Santosh extends ChangeNotifier {
   final Map<String, FeedItem> _picks = {};
   void onCalendarLinked(bool ok) {
     calendarLinkedTick++;
-    feed.add(FeedItem('note', {'text': ok ? g('Google Calendar jud gaya ✓ Ab $aName aapka schedule dekh aur bana sakta hai.') : 'Calendar nahi jud paya, dobara koshish kijiye.'}));
+    feed.add(FeedItem('note', {'text': ok ? g('Google Calendar connected ✓ Now $aName can see and make your schedule.') : 'Calendar could not be connected, please try again.'}));
     notifyListeners();
   }
 
   int mailLinkedTick = 0;                      // bumps when a mailbox got connected (Email screen refreshes)
   void onMailLinked(bool ok) {
     mailLinkedTick++;
-    feed.add(FeedItem('note', {'text': ok ? g('Email jud gaya ✓ Ab $aName aapki mail padh aur likh sakta hai.') : 'Email nahi jud paya, dobara koshish kijiye.'}));
+    feed.add(FeedItem('note', {'text': ok ? g('Email connected ✓ Now $aName can read and write your mail.') : 'Email could not be connected, please try again.'}));
     notifyListeners();
   }
 
@@ -977,7 +977,7 @@ class Santosh extends ChangeNotifier {
 
   void onBazarLinked(bool ok) {
     bazarLinkedTick++;
-    feed.add(FeedItem('note', {'text': ok ? g('App jud gaya ✓ Ab $aName order kar sakta hai.') : 'App link nahi ho paya, dobara koshish kijiye.'}));
+    feed.add(FeedItem('note', {'text': ok ? g('App connected ✓ Now $aName can place orders.') : 'The app could not be linked, please try again.'}));
     notifyListeners();
   }
 
@@ -1118,10 +1118,10 @@ class Santosh extends ChangeNotifier {
       connected = false;
       if (e is ApiException && e.status == 401) {
         _keyRefused = true;
-        error = 'API key galat hai. Settings mein theek kijiye.';
+        error = 'The API key is wrong. Please fix it in Settings.';
       } else {
         // v0.158.1 e.g. the chat is gone after a server change: open again by itself (a fresh chat if needed)
-        error = 'Hoola server se dobara jud raha hoon…';
+        error = 'Reconnecting to the Hoola server…';
         if (e is ApiException && e.status == 404) _prefs.remove('conv');
         _scheduleRetry();
       }
@@ -1205,6 +1205,33 @@ class Santosh extends ChangeNotifier {
 
   /// Open one of her old chats.
   /// v0.646 `remember: false` = a call record from the Calls section: shown now, but the app still reopens on her chat.
+  /// v0.738 parity gap 12: her earlier message edited -> the chat continues from there (the old version is kept on
+  /// the server); the chat is read again so the hidden old replies leave the screen.
+  Future<String?> editMessage(int eventId, String text) async {
+    final id = conversationId;
+    if (id == null || api == null || text.trim().isEmpty) return null;
+    try {
+      await api!.editMessage(id, eventId, text.trim());
+    } catch (e) {
+      return '$e';
+    }
+    await _openStory(reload: true);
+    return null;
+  }
+
+  /// v0.738 the last reply asked again (Dobara): a new answer replaces it on screen; the old one is kept on the server.
+  Future<String?> retryLastReply() async {
+    final id = conversationId;
+    if (id == null || api == null) return null;
+    try {
+      await api!.retryReply(id);
+    } catch (e) {
+      return '$e';
+    }
+    await _openStory(reload: true);
+    return null;
+  }
+
   Future<void> openChat(String id, {bool remember = true}) async {
     if (id == conversationId || api == null) return;
     conversationId = id;
@@ -1382,7 +1409,7 @@ class Santosh extends ChangeNotifier {
         _campaign(p);
         break;
       case 'upload':
-        feed.add(FeedItem('note', {'text': '${p['filename']} · ${p['valid']} sahi number'}));
+        feed.add(FeedItem('note', {'text': '${p['filename']} · ${p['valid']} valid numbers'}));
         break;
       case 'reminders':
         reminders = List<Map<String, dynamic>>.from(p['reminders'] as List? ?? const []);
@@ -1572,7 +1599,7 @@ class Santosh extends ChangeNotifier {
           _goals[gid] = FeedItem('goal', Map<String, dynamic>.from(p));
           feed.add(_goals[gid]!);
           if (inBackground && !_replaying && !pushOn && p['status'] == 'blocked') {
-            Device.instance.showNow(aName, 'Lamba kaam aapke jawab par ruka hai: ${p['title'] ?? ''}');
+            Device.instance.showNow(aName, 'The long task is waiting for your reply: ${p['title'] ?? ''}');
           }
         }
         if (!_replaying && p['status'] == 'blocked') setMood(Mood.think, hold: const Duration(seconds: 8));
@@ -1588,7 +1615,7 @@ class Santosh extends ChangeNotifier {
         } else {
           _bazar[id] = FeedItem('bazar', Map<String, dynamic>.from(p));
           feed.add(_bazar[id]!);
-          if (inBackground && !_replaying && !pushOn) Device.instance.showNow('$aName: approve karein', '${p['title'] ?? ''} ${p['amount'] ?? ''}');
+          if (inBackground && !_replaying && !pushOn) Device.instance.showNow('$aName: please approve', '${p['title'] ?? ''} ${p['amount'] ?? ''}');
           if (!_replaying) setMood(Mood.think, hold: const Duration(seconds: 10));
         }
         break;
@@ -1600,7 +1627,7 @@ class Santosh extends ChangeNotifier {
         } else if (p['status'] == 'pending') {
           _empAsks[eid] = FeedItem('employee_ask', Map<String, dynamic>.from(p));
           feed.add(_empAsks[eid]!);
-          if (inBackground && !_replaying && !pushOn) Device.instance.showNow('Aapki haan chahiye', '${p['what'] ?? ''} · ${p['who'] ?? ''}');
+          if (inBackground && !_replaying && !pushOn) Device.instance.showNow('Needs your OK', '${p['what'] ?? ''} · ${p['who'] ?? ''}');
         }
         employeeTick++;
         break;
@@ -1617,7 +1644,7 @@ class Santosh extends ChangeNotifier {
         break;
       case 'google_reconnect':
         feed.add(FeedItem('google_reconnect', Map<String, dynamic>.from(p)));
-        if (inBackground && !_replaying && !pushOn) Device.instance.showNow('Google dobara jodiye', '${p['text'] ?? ''}');
+        if (inBackground && !_replaying && !pushOn) Device.instance.showNow('Reconnect Google', '${p['text'] ?? ''}');
         break;
       case 'studio_approval':
         final sa = '${p['id']}';
@@ -1627,7 +1654,7 @@ class Santosh extends ChangeNotifier {
         } else if (p['status'] == 'pending') {
           _studioAsks[sa] = FeedItem('studio_approval', Map<String, dynamic>.from(p));
           feed.add(_studioAsks[sa]!);
-          if (inBackground && !_replaying && !pushOn) Device.instance.showNow('Video ka kharcha ₹${p['inr'] ?? ''}', 'Haan dabaiye tabhi banega');
+          if (inBackground && !_replaying && !pushOn) Device.instance.showNow('Video cost ₹${p['inr'] ?? ''}', 'It will be made only when you press Yes');
         }
         studioTick++;
         break;
@@ -1651,7 +1678,7 @@ class Santosh extends ChangeNotifier {
         } else if (p['status'] == 'pending') {
           _opAsks[qid] = FeedItem('operator_ask', Map<String, dynamic>.from(p));
           feed.add(_opAsks[qid]!);
-          if (inBackground && !_replaying && !pushOn) Device.instance.showNow('$aName: aapki zaroorat hai', '${p['reason'] ?? ''}');
+          if (inBackground && !_replaying && !pushOn) Device.instance.showNow('$aName: needs you', '${p['reason'] ?? ''}');
           if (p['kind'] == 'otp' && !_replaying) _otpFromSms(qid, (p['digits'] as num?)?.toInt() ?? 0);
         }
         operatorTick++;
@@ -1665,7 +1692,7 @@ class Santosh extends ChangeNotifier {
           _pgCards[pid] = FeedItem('pg_write', Map<String, dynamic>.from(p));
           feed.add(_pgCards[pid]!);
           if (p['status'] == 'pending' && inBackground && !_replaying && !pushOn) {
-            Device.instance.showNow('$aName: database badlav ke liye haan chahiye', '${p['say'] ?? ''}');
+            Device.instance.showNow('$aName: your approval is needed for a database change', '${p['say'] ?? ''}');
           }
         }
         break;
@@ -1679,7 +1706,7 @@ class Santosh extends ChangeNotifier {
           feed.add(_nbCards[noid]!);
         }
         if (p['push'] == true && inBackground && !_replaying && !pushOn) {
-          Device.instance.showNow(p['status'] == 'ready' ? '${p['label'] ?? 'Notebook'} taiyaar' : 'Notebook Studio', '${p['say'] ?? p['title'] ?? ''}');
+          Device.instance.showNow(p['status'] == 'ready' ? '${p['label'] ?? 'Notebook'} ready' : 'Notebook Studio', '${p['say'] ?? p['title'] ?? ''}');
         }
         notebookTick++;
         break;
@@ -1693,7 +1720,7 @@ class Santosh extends ChangeNotifier {
           feed.add(_b3dCards[bid]!);
         }
         if (p['status'] == 'done' && p['push'] == true && inBackground && !_replaying && !pushOn) {
-          Device.instance.showNow('$aName ne 3D banaya', '${p['say'] ?? p['title'] ?? ''}');
+          Device.instance.showNow('$aName made a 3D model', '${p['say'] ?? p['title'] ?? ''}');
         }
         break;
       case 'video_job':
@@ -1706,7 +1733,7 @@ class Santosh extends ChangeNotifier {
           feed.add(_videoJobs[vid]!);
         }
         if (p['status'] == 'done' && inBackground && !_replaying && !pushOn) {
-          Device.instance.showNow('Video taiyaar', '${p['title'] ?? 'Aapka video'} — dekhiye');
+          Device.instance.showNow('Video ready', '${p['title'] ?? 'Your video'} — watch it');
         }
         videoTick++;
         break;
@@ -1721,7 +1748,7 @@ class Santosh extends ChangeNotifier {
           feed.add(_darziCards[dk]!);
         }
         if (ev.kind == 'darzi_quote' && p['status'] == 'pending' && inBackground && !_replaying && !pushOn) {
-          Device.instance.showNow('$aName: naya daam, aapki haan?', '${p['customer'] ?? ''} · ${p['label'] ?? ''}: ${p['price'] ?? ''}');
+          Device.instance.showNow('$aName: new price, your approval?', '${p['customer'] ?? ''} · ${p['label'] ?? ''}: ${p['price'] ?? ''}');
         }
         darziTick++;
         break;
@@ -1788,7 +1815,7 @@ class Santosh extends ChangeNotifier {
           }
         }
         if (p['decided'] == null && inBackground && !_replaying && !pushOn) {
-          Device.instance.showNow('$aName: ads mein badlav ki haan?', '${p['say'] ?? ''}');
+          Device.instance.showNow('$aName: approve the change in ads?', '${p['say'] ?? ''}');
         }
         adsTick++;
         break;
@@ -2165,7 +2192,7 @@ class Santosh extends ChangeNotifier {
           feed.add(it);
         }
         if (ev.kind == 'brand_approval' && inBackground && !_replaying && !pushOn) {
-          Device.instance.showNow('$aName: poster final karein?', '${bd['number'] ?? ''} ${bd['title'] ?? ''}');
+          Device.instance.showNow('$aName: finalise the poster?', '${bd['number'] ?? ''} ${bd['title'] ?? ''}');
         }
         brandTick++;
         break;
@@ -2246,7 +2273,7 @@ class Santosh extends ChangeNotifier {
       case 'site_lead':
         feed.add(FeedItem('site_lead', Map<String, dynamic>.from(p)));
         if (inBackground && !_replaying && !pushOn) {
-          Device.instance.showNow('$aName: website par enquiry', '${p['say'] ?? ''}');
+          Device.instance.showNow('$aName: enquiry on your website', '${p['say'] ?? ''}');
         }
         siteTick++;
         break;
@@ -2270,7 +2297,7 @@ class Santosh extends ChangeNotifier {
           feed.add(_kalamCards[kKey]!);
         }
         if (ev.kind == 'kalam_publish' && p['decided'] == null && inBackground && !_replaying && !pushOn) {
-          Device.instance.showNow('$aName: publish karne ki haan?', '${p['number'] ?? ''} ${p['title'] ?? ''}');
+          Device.instance.showNow('$aName: approve publishing?', '${p['number'] ?? ''} ${p['title'] ?? ''}');
         }
         kalamTick++;
         break;
@@ -2369,7 +2396,7 @@ class Santosh extends ChangeNotifier {
           feed.add(_officeCards[officeKey]!);
         }
         if (ev.kind == 'office_spend' && p['status'] == 'pending' && inBackground && !_replaying && !pushOn) {
-          Device.instance.showNow('$aName: kharcha, aapki haan?', '${p['number'] ?? ''} ${p['title'] ?? ''}: ${p['amount'] ?? ''}');
+          Device.instance.showNow('$aName: expense, your approval?', '${p['number'] ?? ''} ${p['title'] ?? ''}: ${p['amount'] ?? ''}');
         }
         officeTick++;
         break;
@@ -2392,7 +2419,7 @@ class Santosh extends ChangeNotifier {
           feed.add(_lekhakCards[lekhakKey]!);
         }
         if (ev.kind == 'lekhak_sign' && p['status'] == 'waiting_sign' && inBackground && !_replaying && !pushOn) {
-          Device.instance.showNow('$aName: letter sign karna hai?', '${p['number'] ?? ''} ${p['title'] ?? ''}');
+          Device.instance.showNow('$aName: sign the letter?', '${p['number'] ?? ''} ${p['title'] ?? ''}');
         }
         lekhakTick++;
         break;
@@ -2417,7 +2444,7 @@ class Santosh extends ChangeNotifier {
           feed.add(_deskCards[dKey]!);
         }
         if (p['status'] == 'ready' && inBackground && !_replaying && !pushOn) {
-          Device.instance.showNow(ev.kind == 'sheet_milaan' ? '$aName: Sheet Milaan taiyaar' : '$aName: file mein badlav taiyaar',
+          Device.instance.showNow(ev.kind == 'sheet_milaan' ? '$aName: Sheet Match is ready' : '$aName: file changes are ready',
               '${p['name'] ?? ''}: ${p['say'] ?? ''}');
         }
         break;
@@ -2449,7 +2476,7 @@ class Santosh extends ChangeNotifier {
         if (p['handover'] == true) {
           feed.add(FeedItem('biz_handover', Map<String, dynamic>.from(p)));
           if (inBackground && !_replaying && !pushOn) {
-            Device.instance.showNow('WhatsApp: aapki zaroorat hai', '${(p['contact'] as Map?)?['name'] ?? ''}: ${p['reason'] ?? ''}');
+            Device.instance.showNow('WhatsApp: needs you', '${(p['contact'] as Map?)?['name'] ?? ''}: ${p['reason'] ?? ''}');
           }
         }
         break;
@@ -2468,13 +2495,13 @@ class Santosh extends ChangeNotifier {
       case 'photo_made':
         feed.add(FeedItem('photo_made', Map<String, dynamic>.from(p)));
         if (inBackground && !_replaying && !pushOn) {
-          Device.instance.showNow('$aName ne photo ${p['edit'] == true ? 'badli' : 'banayi'}', p['prompt'] as String? ?? '');
+          Device.instance.showNow('$aName ${p['edit'] == true ? 'edited' : 'made'} a photo', p['prompt'] as String? ?? '');
         }
         break;
       case 'pc_file':
         feed.add(FeedItem('pc_file', Map<String, dynamic>.from(p)));
         if (inBackground && !_replaying && !pushOn) {
-          Device.instance.showNow(p['source'] == 'bazar' ? '$aName ne PDF banaya' : 'PC se file aayi', p['name'] as String? ?? '');
+          Device.instance.showNow(p['source'] == 'bazar' ? '$aName made a PDF' : 'A file came from the PC', p['name'] as String? ?? '');
         }
         break;
       case 'artifact':
@@ -2492,7 +2519,7 @@ class Santosh extends ChangeNotifier {
         if (!_replaying) {
           latestArtifact = {...Map<String, dynamic>.from(_artifacts[aid]!.data), '_call': ev.call ?? _artifacts[aid]!.call};
           artifactTick++;
-          if (nowReady && inBackground && !pushOn) Device.instance.showNow('$aName ne banaya', p['title'] as String? ?? '');
+          if (nowReady && inBackground && !pushOn) Device.instance.showNow('$aName made it', p['title'] as String? ?? '');
         }
         break;
       case 'browser':
@@ -2516,8 +2543,8 @@ class Santosh extends ChangeNotifier {
         break;
       case 'device_action_result':
         if (p['status'] == 'done') {
-          final what = {'set_alarm': 'Alarm laga diya', 'set_timer': 'Timer shuru', 'add_calendar_event': 'Calendar khul gaya', 'open_url': 'Phone par khul gaya', 'youtube_play': 'YouTube par chal raha hai', 'tv_play': 'Channel chal raha hai'};
-          feed.add(FeedItem('note', {'text': '${what[p['type']] ?? 'Ho gaya'} ✓'}));
+          final what = {'set_alarm': 'Alarm set', 'set_timer': 'Timer started', 'add_calendar_event': 'Calendar opened', 'open_url': 'Opened on the phone', 'youtube_play': 'Playing on YouTube', 'tv_play': 'Channel is playing'};
+          feed.add(FeedItem('note', {'text': '${what[p['type']] ?? 'Done'} ✓'}));
         }
         break;
       case 'home_device':
@@ -2564,10 +2591,10 @@ class Santosh extends ChangeNotifier {
     var res = await Native.homeRun(a);
     if (res == 'permission') {
       await Native.homeAskBluetooth();
-      res = 'TV ke liye "Nearby devices" ki permission dijiye, phir dobara boliye.';
+      res = 'Give the "Nearby devices" permission for the TV, then say it again.';
     }
     final ok = res == 'ok';
-    if (!ok) feed.add(FeedItem('note', {'text': 'Ghar: ${btWhy(res)}'}));
+    if (!ok) feed.add(FeedItem('note', {'text': 'Home: ${btWhy(res)}'}));
     try {
       await api?.homeResult(id, ok, ok ? '' : res);
     } catch (_) {}
@@ -2711,13 +2738,13 @@ class Santosh extends ChangeNotifier {
     final args = Map<String, dynamic>.from(a['args'] as Map? ?? const {});
     final action = a['action'] as String? ?? 'status';
     if (action == 'scan' || action == 'pair' || action == 'tv_pair') {
-      feed.add(FeedItem('note', {'text': {'scan': 'Bluetooth: aas-paas ke device dhoondh raha hoon…',
-          'pair': 'Bluetooth: jod raha hoon, Android ka "Pair" dabaiye', 'tv_pair': 'Bluetooth: TV se jod raha hoon…'}[action]}));
+      feed.add(FeedItem('note', {'text': {'scan': 'Bluetooth: searching for nearby devices…',
+          'pair': 'Bluetooth: connecting, press "Pair" on Android', 'tv_pair': 'Bluetooth: connecting to the TV…'}[action]}));
       notifyListeners();
     }
     final r = await Native.btRun(action, args);
     final err = r['error'] as String? ?? '';
-    if (err == 'permission') feed.add(FeedItem('note', {'text': 'Bluetooth ke liye "Nearby devices" ki permission dijiye.'}));
+    if (err == 'permission') feed.add(FeedItem('note', {'text': 'Give the "Nearby devices" permission for Bluetooth.'}));
     try {
       await api?.btResult(id, r['ok'] == true, Map<String, dynamic>.from(r['result'] as Map? ?? const {}), err);
     } catch (_) {}
@@ -2932,7 +2959,7 @@ String kalaCardKey(String kind, Map<String, dynamic> p) {
 }
 
 /// v0.550 EK JAISA: kinds that are stream plumbing, never a card; everything else with something to say is shown.
-const Set<String> _notCards = {'resync', 'replay_end', 'ping', 'heartbeat', 'presence', 'reply_chunk'};
+const Set<String> _notCards = {'resync', 'replay_end', 'ping', 'heartbeat', 'presence', 'reply_chunk', 'ledger'};
 
 /// Should an event of a kind this app does not know be drawn as a plain card? Only when it carries something to read.
 bool anyCardWorthShowing(String kind, Map<String, dynamic> p) {

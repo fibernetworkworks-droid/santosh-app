@@ -31,7 +31,7 @@ def test_only_memory_the_reply_really_used_is_named(env):
     yaad.note_used(c, [{"source": "fact", "id": 1, "text": "Godown ka pata Plot 44 Bhosari MIDC"},
                        {"source": "fact", "id": 2, "text": "Riya is her daughter; class 5 at DPS"}])
     got = yaad.used_sources(c, "Theek hai, maal Plot 44 Bhosari wale godown se jayega.")
-    assert [g["id"] for g in got] == [1] and got[0]["label"] == "Yaad rakha fact"
+    assert [g["id"] for g in got] == [1] and got[0]["label"] == "Remembered fact"
     assert yaad.used_sources(c, "anything") == []                      # read once per turn
 
 
@@ -125,4 +125,4 @@ def test_both_clients_draw_the_note():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.715.0"
+    assert APP_VERSION == "0.749.0"

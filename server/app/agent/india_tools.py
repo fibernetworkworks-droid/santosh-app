@@ -52,7 +52,7 @@ def _day(s: str) -> date:
     try:
         return date.fromisoformat(s[:10])
     except ValueError:
-        raise ToolError("date YYYY-MM-DD mein dijiye")
+        raise ToolError("give the date as YYYY-MM-DD")
 
 
 def _india(action: str, a: dict[str, Any]) -> dict[str, Any]:
@@ -63,7 +63,7 @@ def _india(action: str, a: dict[str, Any]) -> dict[str, Any]:
         y = int(a.get("year") or d.year)
         items = days.holidays_for(y, state, city, a.get("month"))
         return {"year": y, "state": days.state_code(state, city), "holidays": items[:60],
-                "note": "Gazetted + state ki chhutti (holidays library). Bank ki pakki list RBI ki hoti hai."}
+                "note": "Gazetted + state holidays (holidays library). The firm bank list is RBI's."}
     if action == "day":
         return days.day_info(_day(a.get("date") or ""), state, city)
     if action == "panchang":
@@ -72,14 +72,14 @@ def _india(action: str, a: dict[str, Any]) -> dict[str, Any]:
         out = days.next_tithi(a.get("what") or "ekadashi", _day(a.get("date") or ""), int(a.get("count") or 3), city)
         if not out:
             raise ToolError("what = ekadashi | purnima | amavasya | sankashti | pradosh | shivratri | chaturthi | ashtami")
-        return {"what": a.get("what") or "ekadashi", "dates": out, "hint": "Chahein to inke reminder laga sakte hain."}
+        return {"what": a.get("what") or "ekadashi", "dates": out, "hint": "Reminders can be set for these if she wants."}
     if action == "ifsc":
         return ifsc.lookup(a.get("code") or "")
     if action == "pincode":
         return pincode.info(a.get("code") or "")
     if action in ("words", "format"):
         if a.get("amount") is None:
-            raise ToolError("amount chahiye")
+            raise ToolError("amount is needed")
         amt = float(a["amount"])
         return {"amount": amt, "inr": money.inr(amt), "short": money.short(amt),
                 "words": money.rupees_words(amt, a.get("lang") or "hinglish"), "words_en": money.rupees_words(amt, "en")}
@@ -103,7 +103,7 @@ def _pdf(ctx: Ctx, action: str, file_id: str, file_ids: list, pages: str, degree
             base = name or (files[0][0].rsplit(".", 1)[0] + " + " + str(len(files) - 1))
         else:
             if not file_id:
-                raise ToolError("file_id chahiye")
+                raise ToolError("file_id is needed")
             fname, src = _owner_bytes(ctx, str(file_id))
             if action == "info":
                 return pdftools.info(src) | {"name": fname}
@@ -118,7 +118,7 @@ def _pdf(ctx: Ctx, action: str, file_id: str, file_ids: list, pages: str, degree
             elif action == "smaller":
                 data = pdftools.shrink(src)
                 if len(data) >= len(src):
-                    return {"name": fname, "size": len(src), "say": "Isse chhoti nahi ho paayi (photos pehle se chhoti hain)."}
+                    return {"name": fname, "size": len(src), "say": "Could not make it smaller (the photos are already small)."}
                 base = name or f"{fname.rsplit('.', 1)[0]} (chhoti)"
             else:
                 raise ToolError("action = merge | pages | rotate | smaller | info | verify")

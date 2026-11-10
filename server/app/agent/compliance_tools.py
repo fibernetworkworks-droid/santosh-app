@@ -1,4 +1,4 @@
-"""Compliance Sahayak tools (compliance officer). `compliance_dekho` only reads; `compliance` does the work. 'Portal par file karo'
+"""Compliance Sahayak tools (compliance officer). `compliance_dekho` only reads; `compliance` does the work. 'File on the portal'
 and the monthly certificate sign-off only become CARDS here: her app tap decides. Marking a duty done needs an evidence file or the
 owner's own word. Hoola never logs in to a portal, never pays a challan, never submits a return. Jaankari only, not legal advice."""
 from __future__ import annotations
@@ -78,15 +78,15 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
     from ..compliance import service as S
     t, conv, actor = ctx.tenant_id, ctx.conversation_id, _actor(ctx)
     if actor.startswith("customer:"):
-        raise ToolError("Yeh business ka andar ka compliance kaam hai.")
+        raise ToolError("This is internal compliance work of the business.")
     if action in _OWNER_ONLY and not _owner(ctx):
-        raise ToolError("Sirf owner.")
+        raise ToolError("Only the owner can do this.")
     it = _s(a.get("item"))
     try:
         if action == "facts":
             facts = {k: a[k] for k in _FACT_ARGS if k in a}
             if not facts:
-                raise ToolError("Koi fact nahi diya.")
+                raise ToolError("No fact was given.")
             v = S.save_settings(t, facts)
             ap = S.applicability(t)
             return {"facts": v["facts"], "applies": [x["label"] for x in ap["items"] if x["applies"]], "questions": ap["questions"],
@@ -104,7 +104,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return S.add_evidence(t, it, _s(a.get("file_id")), _s(a.get("note")), actor)
         if action == "done":
             if a.get("her_word") and not _owner(ctx):
-                raise ToolError("Bina saboot 'ho gaya' sirf owner keh sakti hain; file bhejiye.")
+                raise ToolError("Only the owner can say 'done' without proof; send the file.")
             return S.mark_done(t, it, _s(a.get("file_id")), _s(a.get("note")), bool(a.get("her_word")), _s(a.get("ack")),
                                _s(a.get("on")), actor)
         if action == "na":
@@ -131,7 +131,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
     from ..compliance import service as S
     t = ctx.tenant_id
     if _actor(ctx).startswith("customer:"):
-        raise ToolError("Yeh business ka andar ka compliance kaam hai.")
+        raise ToolError("This is internal compliance work of the business.")
     try:
         if what == "day":
             return S.day(t)

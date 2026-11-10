@@ -105,7 +105,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             urls = [str(u) for u in (a.get("urls") or []) if str(u).strip()] or ([_s(a.get("url"))] if a.get("url") else None)
             rows = S.gsc_inspect(t, site, urls, limit=20)
             ok = [x for x in rows if not x.get("error")]
-            return {"pages": rows, "say": f"Google ke hisaab se {sum(1 for x in ok if x['indexed'])} / {len(ok)} page index mein."}
+            return {"pages": rows, "say": f"According to Google, {sum(1 for x in ok if x['indexed'])} / {len(ok)} pages are indexed."}
         if action == "crux":
             return S.crux_history(t, site)
         if action == "gbp_post":
@@ -114,7 +114,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return S.review_reply(t, _s(a.get("review")), int(a.get("stars") or 0), _s(a.get("reviewer")), site, conv)
         if action == "approve":
             if not _owner(ctx):
-                raise ToolError("Draft final karne ki haan sirf owner.")
+                raise ToolError("Only the owner can say yes to finalising a draft.")
             return S.approve_draft(t, _s(a.get("draft_id")), _s(a.get("text")))
         if action == "task":
             return S.close_task(t, _s(a.get("task_id")), _s(a.get("status")) or "done")
@@ -122,7 +122,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return S.report_file(t, site, conv)
         if action == "settings":
             if not _owner(ctx):
-                raise ToolError("Sirf owner.")
+                raise ToolError("Owner only.")
             return S.save_settings(t, **{k: a[k] for k in ("weekday", "morning_time") if k in a})
         if action in INTEL_ACTIONS:
             return _intel_act(ctx, action, a)
@@ -130,20 +130,20 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             from ..employee import hire
             from ..seo import desk as D
             if not hire.is_hired(t, D.KEY):
-                raise ToolError("SEO Specialist hired nahi hai: Employees mein hire karne ke baad yeh kaam hota hai.")
+                raise ToolError("SEO Specialist is not hired: this work happens after hiring one in Employees.")
             if action == "plan_item":
                 return D.set_item(t, _s(a.get("item_id")), _s(a.get("status")))
             if action == "indexnow":
                 return D.indexnow_key(t, site)
             sid = D.desk_view(t, site).get("site", {}).get("id")
             if not sid:
-                raise ToolError("Pehle onboarding: Employees > SEO Specialist mein website jodiye.")
+                raise ToolError("Onboarding first: add the website in Employees > SEO Specialist.")
             if action == "roadmap":
                 return D.build_roadmap(t, sid)
             return D.monthly_report(t, sid, conv)
     except (S.SeoError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("action galat")
+    raise ToolError("invalid action")
 
 
 INTEL_ACTIONS = ("track", "rank_check", "keyword_ideas", "ai_prompts", "ai_suggest", "ai_run", "maps_grid", "competitors",
@@ -159,7 +159,7 @@ def _bg(fn, *args) -> dict[str, Any]:
         except Exception:   # noqa: BLE001 - the result / error is on the SEO desk view
             pass
     threading.Thread(target=go, daemon=True).start()
-    return {"started": True, "say": "Kaam shuru - natija SEO desk (Search intel) par aayega; thodi der baad seo_dekho se dekhiye."}
+    return {"started": True, "say": "Work started - the result will arrive on the SEO desk (Search intel); check with seo_dekho shortly."}
 
 
 def _intel_act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
@@ -196,11 +196,11 @@ def _intel_act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return {**dfs.domain_overview(t, sv["id"], dom), "spend": dfs.status(t, sv["id"])}
         if action == "gap":
             if not a.get("competitor"):
-                raise ToolError("Kis competitor se milaana hai? (domain)")
+                raise ToolError("Which competitor to compare with? (domain)")
             return {**dfs.gap(t, sv["id"], sv["domain"], _s(a.get("competitor"))), "spend": dfs.status(t, sv["id"])}
     except (I.IntelError, dfs.DfsError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("action galat")
+    raise ToolError("invalid action")
 
 
 def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
@@ -241,7 +241,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
         if what == "changes":
             pro = S.pro_view(t, site)
             return {"at": pro.get("at"), "changes": pro.get("drift") or [],
-                    "say": f"Pichhli jaanch se {len(pro.get('drift') or [])} badlav." if pro.get("drift") else "Pichhli jaanch se koi badlav nahi."}
+                    "say": f"{len(pro.get('drift') or [])} change(s) since the last check." if pro.get("drift") else "No change since the last check."}
         if what in ("ranks", "ai", "maps", "intel"):
             from ..seo import intel as I
             try:
@@ -269,7 +269,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
                     "source": "Google Search Status Dashboard / Search Central (confirmed updates only)"}
     except (S.SeoError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("what galat")
+    raise ToolError("invalid what")
 
 
 async def seo(ctx: Ctx, action, **a: Any):

@@ -229,9 +229,9 @@ def test_every_failure_exit_stamps_failed():
 
 # ---------------------------------------------------------------- 12 timeout words
 def test_the_timeout_line_warns_about_a_half_done_step():
-    assert "aadha" in santosh.TIMEOUT_TEXT and "do baar" in santosh.TIMEOUT_TEXT
+    assert "half done" in santosh.TIMEOUT_TEXT and "twice" in santosh.TIMEOUT_TEXT
     assert "chhota karke phir bolein" not in santosh.TIMEOUT_TEXT
-    assert "dobara bolne ki zaroorat nahi" in santosh.TIMEOUT_GOAL
+    assert "you do not need to say anything again" in santosh.TIMEOUT_GOAL
 
 
 # ---------------------------------------------------------------- 5 approval cards
@@ -301,5 +301,5 @@ def test_a_run_cut_by_a_restart_is_said_plainly_never_nothing_ordered(bz):
         assert s.get(Approval, pay["approval_id"]).decision == "interrupted"
     with session() as s:
         said = [m.display or "" for m in s.scalars(select(Message).where(Message.conversation_id == conv)).all()]
-    assert any("pakka nahi pata" in m for m in said)
+    assert any("I am not sure whether" in m for m in said)
     assert not any("kuch order ya payment nahi hua" in m and "purana" in m for m in said)

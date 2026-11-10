@@ -72,7 +72,7 @@ object HoolaBubble {
     private fun channel(ctx: Context) {
         if (Build.VERSION.SDK_INT < 26) return
         nm(ctx).createNotificationChannel(NotificationChannel(CH, "Hoola bubble", NotificationManager.IMPORTANCE_HIGH).apply {
-            description = "Hoola ka floating head (bubble) aur uske jawab"
+            description = "Hoola's floating head (bubble) and its replies"
             setSound(null, null)
             enableVibration(false)
             setShowBadge(false)
@@ -88,7 +88,7 @@ object HoolaBubble {
         val open = Intent(ctx, BubbleActivity::class.java).setAction(Intent.ACTION_VIEW)
         val b = ShortcutInfo.Builder(ctx, SHORTCUT)
             .setShortLabel(name(ctx))
-            .setLongLabel("${name(ctx)} se baat")
+            .setLongLabel("Talk to ${name(ctx)}")
             .setIcon(Icon.createWithResource(ctx, R.mipmap.ic_launcher))
             .setIntent(open)
             .setPerson(hoola(ctx))
@@ -104,7 +104,7 @@ object HoolaBubble {
         shortcut(ctx)
         val me = Person.Builder().setName("Aap").setKey("me").build()
         val style = Notification.MessagingStyle(me)
-        val line = text.replace(Regex("[*_#`]"), "").ifBlank { "Main yahan hoon. Kuch bhi poochhiye." }
+        val line = text.replace(Regex("[*_#`]"), "").ifBlank { "I am here. Ask me anything." }
         style.addMessage(Notification.MessagingStyle.Message(line, System.currentTimeMillis(), hoola(ctx)))
         val pi = PendingIntent.getActivity(ctx, 31, Intent(ctx, BubbleActivity::class.java),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE)      // bubbles need a mutable intent
@@ -172,7 +172,7 @@ class BubbleActivity : Activity() {
             setTextColor(Color.WHITE); textSize = 18f; typeface = Typeface.DEFAULT_BOLD
         }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
         head.addView(Button(this).apply {
-            text = "App kholo"; isAllCaps = false; textSize = 12f
+            text = "Open app"; isAllCaps = false; textSize = 12f
             setOnClickListener { startActivity(Intent(this@BubbleActivity, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
         })
         root.addView(head)
@@ -183,7 +183,7 @@ class BubbleActivity : Activity() {
         root.addView(scroll, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
         val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
         input = EditText(this).apply {
-            hint = "Hoola se kahiye…"; setHintTextColor(Color.parseColor("#9C96C2")); setTextColor(Color.WHITE)
+            hint = "Say something to Hoola…"; setHintTextColor(Color.parseColor("#9C96C2")); setTextColor(Color.WHITE)
             background = round(Color.parseColor("#221A47"), 22); setPadding(dp(14), dp(10), dp(14), dp(10))
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES or InputType.TYPE_TEXT_FLAG_MULTI_LINE
             maxLines = 4; imeOptions = EditorInfo.IME_ACTION_SEND
@@ -235,11 +235,11 @@ class BubbleActivity : Activity() {
     }
 
     private fun load() {
-        if (!ready()) { status.text = "Pehle Hoola app kholkar sign in kijiye."; return }
+        if (!ready()) { status.text = "Please open the Hoola app and sign in first."; return }
         Thread {
             val txt = http("GET", "/api/conversations/${Store.chatConv(this)}/messages?limit=14")
             main.post {
-                if (txt == null) { status.text = "Server se nahi jud paye. Internet dekhiye."; return@post }
+                if (txt == null) { status.text = "Could not reach the server. Please check your internet."; return@post }
                 val arr = try { JSONObject(txt).optJSONArray("messages") } catch (_: Exception) { null } ?: JSONArray()
                 val lastRole = if (arr.length() > 0) arr.getJSONObject(arr.length() - 1).optString("role") else ""
                 if (lastRole != "user") status.text = ""
@@ -277,7 +277,7 @@ class BubbleActivity : Activity() {
         input.setText("")
         bubble(true, text)
         scroll.post { scroll.fullScroll(View.FOCUS_DOWN) }
-        status.text = "${HoolaBubble.name(this)} soch raha hai…"
+        status.text = "${HoolaBubble.name(this)} is thinking…"
         Thread {
             val body = JSONObject().put("text", text).put("client_id", "bubble-" + UUID.randomUUID().toString().take(18))
             var ok = false
@@ -286,7 +286,7 @@ class BubbleActivity : Activity() {
                 Thread.sleep(1200L * (i + 1))
             }
             main.post {
-                if (!ok) { status.text = "Bhej nahi paye. Dobara koshish kijiye."; input.setText(text); return@post }
+                if (!ok) { status.text = "Could not send. Please try again."; input.setText(text); return@post }
                 pollUntil = System.currentTimeMillis() + 120_000
                 poll()
             }

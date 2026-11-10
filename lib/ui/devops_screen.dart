@@ -55,7 +55,7 @@ Future<Map<String, String>?> _form(BuildContext context, String title, List<(Str
         ]),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Rehne do')),
+        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Keep it')),
         TextButton(onPressed: () => Navigator.pop(d, true), child: Text(ok)),
       ],
     ),
@@ -120,7 +120,7 @@ class _DevopsScreenState extends State<DevopsScreen> {
       for (final e in _list(day['down']))
         Text('• Band: ${_s(e['name'])} (${_s(e['problem'])})', style: const TextStyle(fontSize: 12.5, color: C.bad)),
       for (final e in _list(day['ssl_soon']))
-        Text('• SSL: ${_s(e['name'])} ${_s(e['ssl_days'])} din mein khatam', style: const TextStyle(fontSize: 12.5, color: C.warn)),
+        Text('• SSL: ${_s(e['name'])} expires in ${_s(e['ssl_days'])} days', style: const TextStyle(fontSize: 12.5, color: C.warn)),
       for (final d in _list(day['high_disk']))
         Text('• Disk: ${_s(d['server'])} ${_s(d['mount'])} ${_s(d['used_pct'])}%', style: const TextStyle(fontSize: 12.5, color: C.warn)),
       for (final c in _list(day['new_errors']).take(5)) _ClusterTile(app: widget.app, c: c, onDone: _load),
@@ -134,25 +134,25 @@ class _DevopsScreenState extends State<DevopsScreen> {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       if (!joined)
         Glass(
-          child: const Text('GitHub abhi juda nahi. Niyam tab mein apna fine-grained token jodiye (sirf yahan, chat mein kabhi nahi).',
+          child: const Text('GitHub is not linked yet. Add your fine-grained token in the Rules tab (only there, never in the chat).',
               style: TextStyle(fontSize: 12.5)),
         ),
       Wrap(spacing: 8, runSpacing: 8, children: [
-        GlassButton(label: 'Abhi dekho', icon: Icons.sync_rounded, onTap: _busy || !joined ? null : () => _run('POST', '/api/devops/sync')),
+        GlassButton(label: 'Check now', icon: Icons.sync_rounded, onTap: _busy || !joined ? null : () => _run('POST', '/api/devops/sync')),
         GlassButton(label: 'Build log samjhao', icon: Icons.manage_search_rounded, onTap: _busy ? null : _pasteCiLog),
       ]),
       const SizedBox(height: 10),
       if (repos.isNotEmpty) Text('Repos: ${repos.map((r) => _s(r['full_name'])).join(', ')}', style: const TextStyle(color: C.muted, fontSize: 12)),
       const SizedBox(height: 6),
       for (final r in _list(_d?['runs'])) Padding(padding: const EdgeInsets.only(bottom: 8), child: _RunTile(app: widget.app, run: r, onDone: _load)),
-      if (_list(_d?['runs']).isEmpty) const Text('Abhi koi run nahi dikha.', style: TextStyle(color: C.muted)),
+      if (_list(_d?['runs']).isEmpty) const Text('No runs to show yet.', style: TextStyle(color: C.muted)),
       const SizedBox(height: 8),
       _HealthPanel(app: widget.app),
     ]);
   }
 
   Future<void> _pasteCiLog() async {
-    final f = await _form(context, 'Build / CI ka log', const [('text', 'Log yahan chipkaiye')], ok: 'Samjhao', multi: {'text'});
+    final f = await _form(context, 'Build / CI log', const [('text', 'Paste the log here')], ok: 'Samjhao', multi: {'text'});
     if (f == null || (f['text'] ?? '').isEmpty) return;
     final r = await _run('POST', '/api/devops/ci-log', {'text': f['text']});
     if (r != null && mounted) {
@@ -174,14 +174,14 @@ class _DevopsScreenState extends State<DevopsScreen> {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('Delivery ke number (30 din)', style: display(14)),
+          Text('Delivery numbers (30 days)', style: display(14)),
           const SizedBox(height: 4),
           Text(_s(dora['say']), style: const TextStyle(fontSize: 12.5, height: 1.3)),
           const SizedBox(height: 6),
           Wrap(spacing: 6, runSpacing: 6, children: [
-            Pill('Hafte mein ${_s(dora['per_week'])}'),
+            Pill('${_s(dora['per_week'])} per week'),
             if (dora['lead_time_h'] != null) Pill('Lead ${_s(dora['lead_time_h'])} h'),
-            if (dora['change_failure_pct'] != null) Pill('Toota ${_s(dora['change_failure_pct'])}%'),
+            if (dora['change_failure_pct'] != null) Pill('Failed ${_s(dora['change_failure_pct'])}%'),
             if (dora['recovery_h'] != null) Pill('Theek ${_s(dora['recovery_h'])} h'),
             if (dora['rework_pct'] != null) Pill('Hotfix ${_s(dora['rework_pct'])}%'),
           ]),
@@ -189,7 +189,7 @@ class _DevopsScreenState extends State<DevopsScreen> {
       ),
       const SizedBox(height: 10),
       if (repos.isEmpty)
-        const Text('Deploy ke liye Niyam > Repos mein deploy workflow (jaise deploy.yml) chuniye.', style: TextStyle(color: C.muted, fontSize: 12.5))
+        const Text('For deploys, choose the deploy workflow (e.g. deploy.yml) in Rules > Repos.', style: TextStyle(color: C.muted, fontSize: 12.5))
       else
         Wrap(spacing: 8, runSpacing: 8, children: [
           for (final r in repos) ...[
@@ -199,7 +199,7 @@ class _DevopsScreenState extends State<DevopsScreen> {
           ],
         ]),
       const SizedBox(height: 6),
-      const Text('Card par aapka tap hi production chalata hai. Checks hare na hon to wajah likhni padti hai.', style: TextStyle(color: C.faint, fontSize: 11.5)),
+      const Text('Only your tap on the card runs production. If the checks are not green, you must give a reason.', style: TextStyle(color: C.faint, fontSize: 11.5)),
       const SizedBox(height: 10),
       for (final d in _list(_d?['deploys']))
         Padding(padding: const EdgeInsets.only(bottom: 8), child: DevopsDeployCard(app: widget.app, data: {'deploy': d}, onDone: _load)),
@@ -209,8 +209,8 @@ class _DevopsScreenState extends State<DevopsScreen> {
   Future<void> _newDeploy(Map<String, dynamic> r) async {
     final f = await _form(context, 'Deploy: ${_s(r['full_name'])}', [
       ('ref', 'Branch / tag / commit (khaali = ${_s(r['default_branch'])})'),
-      ('note', 'Kya ja raha hai (zaroori nahi)'),
-    ], ok: 'Card banao');
+      ('note', 'What is going out (optional)'),
+    ], ok: 'Make card');
     if (f == null) return;
     await _run('POST', '/api/devops/deploys', {'repo': r['full_name'], ...f});
   }
@@ -222,7 +222,7 @@ class _DevopsScreenState extends State<DevopsScreen> {
           GlassButton(label: 'Collector', icon: Icons.dns_rounded, onTap: _busy ? null : _newCollector),
         ]),
         const SizedBox(height: 6),
-        const Text('Logs DATA hain: Hoola unke andar likhi baat nahi maanta. Password / token khud hi chhupa diye jaate hain.',
+        const Text('Logs are DATA: Hoola does not follow instructions written inside them. Passwords / tokens are hidden automatically.',
             style: TextStyle(color: C.faint, fontSize: 11.5)),
         const SizedBox(height: 10),
         for (final c in _list(_d?['collectors']))
@@ -232,26 +232,26 @@ class _DevopsScreenState extends State<DevopsScreen> {
             leading: Icon(Icons.dns_rounded, color: c['active'] == true ? C.ok : C.muted),
             title: Text('${_s(c['name'])} ${_s(c['host']).isEmpty ? '' : '· ${_s(c['host'])}'}'),
             subtitle: Text([
-              if (_s(c['last_seen_local']).isNotEmpty) 'aakhri ${_s(c['last_seen_local'])}' else 'abhi tak kuch nahi aaya',
+              if (_s(c['last_seen_local']).isNotEmpty) 'last ${_s(c['last_seen_local'])}' else 'nothing received yet',
               for (final d in _list(c['disk'])) '${_s(d['mount'])} ${_s(d['used_pct'])}%',
             ].join(' · ')),
             trailing: c['active'] == true
-                ? IconButton(icon: const Icon(Icons.block_rounded), tooltip: 'Band karo', onPressed: () => _run('DELETE', '/api/devops/collectors/${_s(c['id'])}'))
+                ? IconButton(icon: const Icon(Icons.block_rounded), tooltip: 'Turn off', onPressed: () => _run('DELETE', '/api/devops/collectors/${_s(c['id'])}'))
                 : null,
           ),
         for (final c in _list(_d?['clusters'])) _ClusterTile(app: widget.app, c: c, onDone: _load),
-        if (_list(_d?['clusters']).isEmpty) const Text('Koi khuli error nahi.', style: TextStyle(color: C.muted)),
+        if (_list(_d?['clusters']).isEmpty) const Text('No open errors.', style: TextStyle(color: C.muted)),
       ]);
 
   Future<void> _pasteLogs() async {
-    final f = await _form(context, 'Server ka log', const [('source', 'Server / app ka naam'), ('text', 'pm2 / nginx / journalctl / docker log')],
-        ok: 'Padho', multi: {'text'});
+    final f = await _form(context, 'Server log', const [('source', 'Server / app name'), ('text', 'pm2 / nginx / journalctl / docker log')],
+        ok: 'Read', multi: {'text'});
     if (f == null || (f['text'] ?? '').isEmpty) return;
     await _run('POST', '/api/devops/logs', f);
   }
 
   Future<void> _newCollector() async {
-    final f = await _form(context, 'Naya collector (aapke server par)', const [('name', 'Server ka naam')], ok: 'Banao');
+    final f = await _form(context, 'New collector (on your server)', const [('name', 'Server name')], ok: 'Make');
     if (f == null) return;
     final r = await _run('POST', '/api/devops/collectors', f);
     if (r == null || !mounted) return;
@@ -263,10 +263,10 @@ class _DevopsScreenState extends State<DevopsScreen> {
     await showDialog<void>(
       context: context,
       builder: (d) => AlertDialog(
-        title: const Text('Collector ka secret (sirf abhi)'),
+        title: const Text('Collector secret (shown only now)'),
         content: SingleChildScrollView(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-            const Text('Ye apne server ki /etc/hoola-agent.env (chmod 600) mein rakhiye. Chat mein mat bhejiye.', style: TextStyle(fontSize: 12.5)),
+            const Text('Keep this in your server\'s /etc/hoola-agent.env (chmod 600). Do not send it in the chat.', style: TextStyle(fontSize: 12.5)),
             const SizedBox(height: 8),
             SelectableText(setup, style: const TextStyle(fontFamily: 'monospace', fontSize: 11.5)),
             const SizedBox(height: 8),
@@ -277,7 +277,7 @@ class _DevopsScreenState extends State<DevopsScreen> {
           TextButton(
               onPressed: () {
                 Clipboard.setData(ClipboardData(text: setup));
-                _snack(context, 'Copy ho gaya');
+                _snack(context, 'Copied');
               },
               child: const Text('Copy')),
           TextButton(
@@ -285,13 +285,13 @@ class _DevopsScreenState extends State<DevopsScreen> {
                 try {
                   final t = await widget.app.api!.call('GET', _s(r['script_path']));
                   await Clipboard.setData(ClipboardData(text: '$t'));
-                  if (context.mounted) _snack(context, 'Script copy ho gayi (hoola_log_agent.py)');
+                  if (context.mounted) _snack(context, 'Script copied (hoola_log_agent.py)');
                 } catch (e) {
                   if (context.mounted) _snack(context, '$e');
                 }
               },
               child: const Text('Script copy')),
-          TextButton(onPressed: () => Navigator.pop(d), child: const Text('Rakh liya')),
+          TextButton(onPressed: () => Navigator.pop(d), child: const Text('Kept')),
         ],
       ),
     );
@@ -302,12 +302,12 @@ class _DevopsScreenState extends State<DevopsScreen> {
     final tpl = _list(_d?['templates']);
     final ck = _m(_d?['checklist_kinds']);
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text('Script / config banao (aap padh kar khud chalayengi)', style: display(14)),
+      Text('Make a script / config (you read it and run it yourself)', style: display(14)),
       const SizedBox(height: 6),
       Wrap(spacing: 6, runSpacing: 6, children: [
         for (final t in tpl) ActionChip(label: Text(_s(t['label'])), onPressed: _busy ? null : () => _makeScript(t)),
-        ActionChip(label: const Text('Apne shabdon mein'), onPressed: _busy ? null : _customScript),
-        ActionChip(label: const Text('Meri script jaancho'), onPressed: _busy ? null : _checkMine),
+        ActionChip(label: const Text('In your own words'), onPressed: _busy ? null : _customScript),
+        ActionChip(label: const Text('Check my script'), onPressed: _busy ? null : _checkMine),
       ]),
       const SizedBox(height: 10),
       for (final s in _list(_d?['scripts'])) Padding(padding: const EdgeInsets.only(bottom: 8), child: DevopsScriptCard(app: widget.app, data: {'script': s})),
@@ -323,22 +323,22 @@ class _DevopsScreenState extends State<DevopsScreen> {
 
   Future<void> _makeScript(Map<String, dynamic> t) async {
     final params = _m(t['params']);
-    final f = await _form(context, _s(t['label']), [for (final e in params.entries) (e.key, '${e.key} (${_s(e.value)})')], ok: 'Banao');
+    final f = await _form(context, _s(t['label']), [for (final e in params.entries) (e.key, '${e.key} (${_s(e.value)})')], ok: 'Make');
     if (f == null) return;
     final r = await _run('POST', '/api/devops/scripts', {'kind': t['kind'], 'params': f});
     if (r != null && mounted) _openScript(r);
   }
 
   Future<void> _customScript() async {
-    final f = await _form(context, 'Kaunsi script chahiye?', const [('ask', 'Jaise: har raat uploads folder ka backup, 14 din rakho')], ok: 'Banao', multi: {'ask'});
+    final f = await _form(context, 'Which script do you need?', const [('ask', 'For example: back up the uploads folder every night, keep for 14 days')], ok: 'Make', multi: {'ask'});
     if (f == null || (f['ask'] ?? '').isEmpty) return;
     final r = await _run('POST', '/api/devops/scripts', {'kind': 'custom', 'ask': f['ask']});
     if (r != null && mounted) _openScript(r);
   }
 
   Future<void> _checkMine() async {
-    final f = await _form(context, 'Aapki script', const [('name', 'File ka naam (deploy.sh / ci.yml / Dockerfile)'), ('content', 'Script yahan')],
-        ok: 'Jaancho', multi: {'content'});
+    final f = await _form(context, 'Your script', const [('name', 'File name (deploy.sh / ci.yml / Dockerfile)'), ('content', 'Script here')],
+        ok: 'Check', multi: {'content'});
     if (f == null || (f['content'] ?? '').isEmpty) return;
     final r = await _run('POST', '/api/devops/scripts/check', f);
     if (r != null && mounted) _openScript(r);
@@ -356,12 +356,12 @@ class _DevopsScreenState extends State<DevopsScreen> {
           Row(children: [
             Icon(Icons.hub_rounded, color: gh['joined'] == true ? C.ok : C.muted),
             const SizedBox(width: 8),
-            Expanded(child: Text(gh['joined'] == true ? 'GitHub: @${_s(gh['login'])}' : 'GitHub juda nahi', style: const TextStyle(fontWeight: FontWeight.w800))),
+            Expanded(child: Text(gh['joined'] == true ? 'GitHub: @${_s(gh['login'])}' : 'GitHub not linked', style: const TextStyle(fontWeight: FontWeight.w800))),
           ]),
           const SizedBox(height: 4),
           const Text(
-              'Fine-grained token, sirf apne repos: Actions read/write, Contents read, Checks + Commit statuses read, Deployments read/write. '
-              'Token sirf yahan likhiye; Hoola use band (encrypted) rakhta hai aur kabhi dikhata nahi.',
+              'Fine-grained token, your own repos only: Actions read/write, Contents read, Checks + Commit statuses read, Deployments read/write. '
+              'Enter the token only here; Hoola keeps it locked (encrypted) and never shows it.',
               style: TextStyle(fontSize: 12, color: C.muted)),
           const SizedBox(height: 8),
           Wrap(spacing: 8, runSpacing: 8, children: [
@@ -381,13 +381,13 @@ class _DevopsScreenState extends State<DevopsScreen> {
           dense: true,
           title: Text(_s(r['full_name'])),
           subtitle: Text(_s(r['deploy_workflow']).isEmpty
-              ? 'Sirf builds dekhe jaate hain'
+              ? 'Only builds are viewed'
               : 'Deploy: ${_s(r['deploy_workflow'])} -> ${_s(r['environment'])}${_s(r['rollback_workflow']).isEmpty ? '' : ' · rollback ${_s(r['rollback_workflow'])}'}'),
           trailing: IconButton(icon: const Icon(Icons.delete_outline_rounded), onPressed: () => _run('DELETE', '/api/devops/repos/${_s(r['full_name'])}')),
         ),
       const SizedBox(height: 10),
       Row(children: [
-        Expanded(child: Text('Website / API ki nigrani', style: display(14))),
+        Expanded(child: Text('Website / API monitoring', style: display(14))),
         TextButton.icon(onPressed: _busy ? null : _addEndpoint, icon: const Icon(Icons.add_rounded), label: const Text('Address')),
       ]),
       for (final e in _list(_d?['endpoints']))
@@ -408,7 +408,7 @@ class _DevopsScreenState extends State<DevopsScreen> {
       Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text('Subah ka note: ${_s(st['morning_time'])}', style: const TextStyle(fontWeight: FontWeight.w700)),
-          if (_s(st['rules']).isNotEmpty) Text('Deploy ke niyam:\n${_s(st['rules'])}', style: const TextStyle(fontSize: 12.5, color: C.muted)),
+          if (_s(st['rules']).isNotEmpty) Text('Deploy rules:\n${_s(st['rules'])}', style: const TextStyle(fontSize: 12.5, color: C.muted)),
           const SizedBox(height: 6),
           GlassButton(label: 'Badlo', icon: Icons.edit_rounded, onTap: _busy ? null : _settings),
         ]),
@@ -417,7 +417,7 @@ class _DevopsScreenState extends State<DevopsScreen> {
   }
 
   Future<void> _token() async {
-    final f = await _form(context, 'GitHub token', const [('token', 'github_pat_...')], ok: 'Jodo', hidden: {'token'});
+    final f = await _form(context, 'GitHub token', const [('token', 'github_pat_...')], ok: 'Add', hidden: {'token'});
     if (f == null || (f['token'] ?? '').isEmpty) return;
     await _run('PUT', '/api/devops/github', {'token': f['token']});
   }
@@ -425,16 +425,16 @@ class _DevopsScreenState extends State<DevopsScreen> {
   Future<void> _addRepo() async {
     final f = await _form(context, 'Repo jodo', const [
       ('repo', 'owner/repo'),
-      ('deploy_workflow', 'Deploy workflow file (deploy.yml; khaali = sirf builds)'),
+      ('deploy_workflow', 'Deploy workflow file (deploy.yml; blank = builds only)'),
       ('environment', 'Environment (production)'),
-      ('rollback_workflow', 'Rollback workflow (zaroori nahi)'),
-    ], ok: 'Jodo');
+      ('rollback_workflow', 'Rollback workflow (optional)'),
+    ], ok: 'Add');
     if (f == null || (f['repo'] ?? '').isEmpty) return;
     await _run('POST', '/api/devops/repos', f);
   }
 
   Future<void> _addEndpoint() async {
-    final f = await _form(context, 'Address dekho', const [('url', 'https://...'), ('name', 'Naam'), ('keyword', 'Page mein ye shabd ho (zaroori nahi)')], ok: 'Jodo');
+    final f = await _form(context, 'Watch an address', const [('url', 'https://...'), ('name', 'Name'), ('keyword', 'Word the page should contain (optional)')], ok: 'Add');
     if (f == null || (f['url'] ?? '').isEmpty) return;
     await _run('POST', '/api/devops/endpoints', f);
   }
@@ -443,7 +443,7 @@ class _DevopsScreenState extends State<DevopsScreen> {
     final f = await _form(context, 'Niyam', const [
       ('morning_time', 'Subah ka note (HH:MM)'),
       ('team', 'Team / company'),
-      ('rules', 'Deploy ke niyam (har line ek; checklist mein judte hain)'),
+      ('rules', 'Deploy rules (one per line; they join the checklist)'),
     ], ok: 'Save', multi: {'rules'});
     if (f == null || f.isEmpty) return;
     await _run('PUT', '/api/devops/settings', f);
@@ -451,7 +451,7 @@ class _DevopsScreenState extends State<DevopsScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('DevOps Sahayak')),
+        appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('DevOps Assistant')),
         body: Aurora(
           child: RefreshIndicator(
             onRefresh: _load,
@@ -465,8 +465,8 @@ class _DevopsScreenState extends State<DevopsScreen> {
               if (_d == null) const Center(child: CircularProgressIndicator()) else [_today(), _builds(), _deploy(), _logs(), _scripts(), _rules()][_tab],
               const SizedBox(height: 14),
               const Text(
-                  'Hoola builds aur logs padhta hai, scripts likhta hai; koi command / script khud nahi chalata, aapke server mein login nahi karta. '
-                  'Production deploy sirf aapke tap se.',
+                  'Hoola reads builds and logs and writes scripts; it never runs a command / script itself and never logs in to your server. '
+                  'Production deploys only with your tap.',
                   style: TextStyle(color: C.faint, fontSize: 11.5)),
             ]),
           ),
@@ -487,10 +487,10 @@ class _Diagnosis extends StatelessWidget {
       if (_s(diag['job']).isNotEmpty || _s(diag['step']).isNotEmpty)
         Text('Job: ${_s(diag['job'])}${_s(diag['step']).isEmpty ? '' : '  ·  Step: ${_s(diag['step'])}'}', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5)),
       if (_s(diag['why']).isNotEmpty) Text(_s(diag['why']), style: const TextStyle(fontSize: 12.5, height: 1.3)),
-      if (_s(diag['fix']).isNotEmpty) Text('Theek kaise: ${_s(diag['fix'])}', style: const TextStyle(fontSize: 12.5, color: C.accentSoft, height: 1.3)),
-      if (_s(diag['hint']).isNotEmpty) Text('Andaaza: ${_s(diag['hint'])}', style: const TextStyle(fontSize: 12, color: C.muted)),
+      if (_s(diag['fix']).isNotEmpty) Text('How to fix: ${_s(diag['fix'])}', style: const TextStyle(fontSize: 12.5, color: C.accentSoft, height: 1.3)),
+      if (_s(diag['hint']).isNotEmpty) Text('Estimate: ${_s(diag['hint'])}', style: const TextStyle(fontSize: 12, color: C.muted)),
       if (_s(diag['note']).isNotEmpty) Text(_s(diag['note']), style: const TextStyle(fontSize: 12, color: C.warn)),
-      if (diag['flaky_likely'] == true) const Text('Flaky jaisa: wahi commit dobara chala ke dekhiye.', style: TextStyle(fontSize: 12, color: C.warn)),
+      if (diag['flaky_likely'] == true) const Text('Looks flaky: run the same commit again.', style: TextStyle(fontSize: 12, color: C.warn)),
       for (final t in tests.take(5)) Text('✗ $t', style: const TextStyle(fontSize: 11.5, color: C.bad)),
       if (lines.isNotEmpty)
         Container(
@@ -527,10 +527,10 @@ class _RunTile extends StatelessWidget {
                 if (diag.isNotEmpty) _Diagnosis(diag: diag),
                 const SizedBox(height: 10),
                 Wrap(spacing: 8, runSpacing: 8, children: [
-                  if (_s(run['url']).isNotEmpty) GlassButton(label: 'GitHub par', icon: Icons.open_in_new_rounded, onTap: () => Native.openExternal(url: _s(run['url']))),
+                  if (_s(run['url']).isNotEmpty) GlassButton(label: 'On GitHub', icon: Icons.open_in_new_rounded, onTap: () => Native.openExternal(url: _s(run['url']))),
                   if (const ['failure', 'timed_out', 'cancelled', 'startup_failure'].contains(conc) && run['is_deploy'] != true && run['is_rollback'] != true)
                     GlassButton(
-                        label: 'Fail jobs dobara chalao',
+                        label: 'Re-run failed jobs',
                         icon: Icons.replay_rounded,
                         onTap: () async {
                           await _call(context, app, 'POST', '/api/devops/runs/${_s(run['key'])}/rerun');
@@ -592,7 +592,7 @@ class _HealthPanelState extends State<_HealthPanel> {
             style: TextStyle(fontSize: 12.5, color: _m(w['time'])['slower'] == true ? C.warn : C.muted)),
       if (_list(h['flaky_tests']).isNotEmpty) ...[
         const SizedBox(height: 6),
-        const Text('Flaky tests (kabhi fail, kabhi paas)', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5)),
+        const Text('Flaky tests (sometimes fail, sometimes pass)', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5)),
         for (final t in _list(h['flaky_tests']).take(8)) Text('• ${_s(t['name'])} (${_s(t['flips'])}x)', style: const TextStyle(fontSize: 12, color: C.warn)),
       ],
     ]);
@@ -616,12 +616,12 @@ class _ClusterTile extends StatelessWidget {
                 padding: const EdgeInsets.all(16),
                 child: SingleChildScrollView(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text('${_s(c['label'])} · ${_s(c['count'])} baar', style: display(15)),
+                    Text('${_s(c['label'])} · ${_s(c['count'])} times', style: display(15)),
                     Text('${_s(c['source'])} · ${_s(c['format'])} · pehli ${_s(c['first_seen'])} · aakhri ${_s(c['last_seen'])}',
                         style: const TextStyle(color: C.muted, fontSize: 12)),
                     const SizedBox(height: 6),
                     Text(_s(c['why']), style: const TextStyle(fontSize: 12.5)),
-                    Text('Theek kaise: ${_s(c['fix'])}', style: const TextStyle(fontSize: 12.5, color: C.accentSoft)),
+                    Text('How to fix: ${_s(c['fix'])}', style: const TextStyle(fontSize: 12.5, color: C.accentSoft)),
                     for (final x in _strs(c['samples']).take(2))
                       Container(
                         margin: const EdgeInsets.only(top: 6),
@@ -655,7 +655,7 @@ class _ClusterTile extends StatelessWidget {
                                 );
                               } catch (_) {}
                             }),
-                      for (final (st, label) in const [('fixed', 'Theek ho gaya'), ('ignored', 'Chhodo'), ('seen', 'Dekh liya')])
+                      for (final (st, label) in const [('fixed', 'Fixed'), ('ignored', 'Ignore'), ('seen', 'Seen')])
                         GlassButton(
                             label: label,
                             onTap: () async {
@@ -676,7 +676,7 @@ class _ClusterTile extends StatelessWidget {
               Row(children: [
                 Expanded(child: Text(_s(c['label']), style: const TextStyle(fontWeight: FontWeight.w800))),
                 Pill('${_s(c['count'])}x'),
-                if (_s(c['status']) == 'new') const Padding(padding: EdgeInsets.only(left: 4), child: Pill('nayi', fg: C.warn)),
+                if (_s(c['status']) == 'new') const Padding(padding: EdgeInsets.only(left: 4), child: Pill('new', fg: C.warn)),
               ]),
               Text(_s(c['pattern']), maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontFamily: 'monospace', fontSize: 11, color: C.muted)),
               Text(_s(c['source']), style: const TextStyle(fontSize: 11.5, color: C.faint)),
@@ -713,7 +713,7 @@ class _ChecklistTile extends StatelessWidget {
             TextButton.icon(
                 onPressed: () {
                   Clipboard.setData(ClipboardData(text: _s(c['text'])));
-                  _snack(context, 'Copy ho gaya');
+                  _snack(context, 'Copied');
                 },
                 icon: const Icon(Icons.copy_rounded, size: 16),
                 label: const Text('Text copy')),
@@ -735,7 +735,7 @@ class DevopsScriptPage extends StatelessWidget {
         child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
           Glass(
             border: _levelColor(_s(script['verdict']) == 'ok' ? '' : _s(script['verdict'])),
-            child: Text(_s(script['say']).isEmpty ? 'Safety jaanch: ${_s(script['verdict'])}' : _s(script['say']),
+            child: Text(_s(script['say']).isEmpty ? 'Safety check: ${_s(script['verdict'])}' : _s(script['say']),
                 style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
           ),
           const SizedBox(height: 8),
@@ -758,13 +758,13 @@ class DevopsScriptPage extends StatelessWidget {
                 icon: Icons.copy_rounded,
                 onTap: () {
                   Clipboard.setData(ClipboardData(text: _s(script['content'])));
-                  _snack(context, 'Copy ho gaya');
+                  _snack(context, 'Copied');
                 }),
             if (_s(script['id']).isNotEmpty)
-              GlassButton(label: 'Padh li', icon: Icons.done_all_rounded, onTap: () => _call(context, app, 'POST', '/api/devops/scripts/${_s(script['id'])}/reviewed')),
+              GlassButton(label: 'Read it', icon: Icons.done_all_rounded, onTap: () => _call(context, app, 'POST', '/api/devops/scripts/${_s(script['id'])}/reviewed')),
           ]),
           const SizedBox(height: 10),
-          const Text('Hoola ise kabhi nahi chalata. Padh kar, test server par pehle, khud chalaiye.', style: TextStyle(color: C.faint, fontSize: 11.5)),
+          const Text('Hoola never runs this. Read it, and run it yourself, first on a test server.', style: TextStyle(color: C.faint, fontSize: 11.5)),
         ]),
       ),
     );
@@ -795,9 +795,9 @@ class DevopsBuildCard extends StatelessWidget {
         _Diagnosis(diag: diag),
         const SizedBox(height: 6),
         Wrap(spacing: 8, runSpacing: 8, children: [
-          if (_s(run['url']).isNotEmpty) GlassButton(label: 'GitHub par', icon: Icons.open_in_new_rounded, height: 40, onTap: () => Native.openExternal(url: _s(run['url']))),
+          if (_s(run['url']).isNotEmpty) GlassButton(label: 'On GitHub', icon: Icons.open_in_new_rounded, height: 40, onTap: () => Native.openExternal(url: _s(run['url']))),
           if (run['is_deploy'] != true && run['is_rollback'] != true)
-            GlassButton(label: 'Dobara chalao', icon: Icons.replay_rounded, height: 40, onTap: () => _call(context, app, 'POST', '/api/devops/runs/${_s(run['key'])}/rerun')),
+            GlassButton(label: 'Run again', icon: Icons.replay_rounded, height: 40, onTap: () => _call(context, app, 'POST', '/api/devops/runs/${_s(run['key'])}/rerun')),
         ]),
       ]),
     );
@@ -829,8 +829,8 @@ class _DevopsDeployCardState extends State<DevopsDeployCard> {
     final checks = _m(_d['checks']);
     final green = _s(checks['state']) == 'success' || _s(checks['state']) == 'skip';
     if (!yes || (!green && _s(_d['kind']) != 'rollback')) {
-      final f = await _form(context, yes ? 'Checks hare nahi: phir bhi kyun?' : 'Kyun nahi? (zaroori nahi)', const [('reason', 'Wajah')],
-          ok: yes ? 'Haan, phir bhi' : 'Mana karo');
+      final f = await _form(context, yes ? 'Checks are not green: why go ahead anyway?' : 'Why not? (optional)', const [('reason', 'Reason')],
+          ok: yes ? 'Yes, anyway' : 'Decline');
       if (f == null) return;
       reason = f['reason'] ?? '';
     }
@@ -838,11 +838,11 @@ class _DevopsDeployCardState extends State<DevopsDeployCard> {
       final sure = await showDialog<bool>(
         context: context,
         builder: (d) => AlertDialog(
-          title: Text(_s(_d['kind']) == 'rollback' ? 'Rollback karein?' : 'Production par bhejein?'),
+          title: Text(_s(_d['kind']) == 'rollback' ? 'Roll back?' : 'Send to production?'),
           content: Text('${_s(_d['repo'])} @ ${_s(_d['sha'])} -> ${_s(_d['environment'])}'),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Ruko')),
-            TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Haan')),
+            TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Wait')),
+            TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Yes')),
           ],
         ),
       );
@@ -884,24 +884,24 @@ class _DevopsDeployCardState extends State<DevopsDeployCard> {
         Text('Workflow: ${_s(d['workflow'])}', style: const TextStyle(color: C.muted, fontSize: 12)),
         if (cs.isNotEmpty && cs != 'skip')
           Text(
-              'Checks: ${switch (cs) { 'success' => 'sab hare (${_s(checks['ok'])})', 'failure' => 'FAIL: ${_strs(checks['failed']).join(', ')}', 'pending' => 'abhi chal rahe: ${_strs(checks['pending']).join(', ')}', _ => 'koi check nahi' }}',
+              'Checks: ${switch (cs) { 'success' => 'all green (${_s(checks['ok'])})', 'failure' => 'FAIL: ${_strs(checks['failed']).join(', ')}', 'pending' => 'running now: ${_strs(checks['pending']).join(', ')}', _ => 'koi check nahi' }}',
               style: TextStyle(fontSize: 12.5, color: cs == 'success' ? C.ok : (cs == 'failure' ? C.bad : C.warn))),
         if (_s(changes['say']).isNotEmpty) Text(_s(changes['say']), style: TextStyle(fontSize: 12.5, color: changes['migration'] == true ? C.warn : C.ink)),
         for (final c in _list(changes['commits']).take(6))
           Text('• ${_s(c['sha'])} ${_s(c['msg'])}${_s(c['by']).isEmpty ? '' : ' (${_s(c['by'])})'}', style: const TextStyle(fontSize: 11.5, color: C.muted)),
-        if (_s(rb['how']).isNotEmpty) Text('Wapas: ${_s(rb['how'])}', style: const TextStyle(fontSize: 12, color: C.muted)),
-        if (_s(d['forced']).isNotEmpty) Text('Aapki wajah: ${_s(d['forced'])}', style: const TextStyle(fontSize: 12, color: C.warn)),
+        if (_s(rb['how']).isNotEmpty) Text('Rollback: ${_s(rb['how'])}', style: const TextStyle(fontSize: 12, color: C.muted)),
+        if (_s(d['forced']).isNotEmpty) Text('Your reason: ${_s(d['forced'])}', style: const TextStyle(fontSize: 12, color: C.warn)),
         if (_s(d['error']).isNotEmpty) Text(_s(d['error']), style: const TextStyle(fontSize: 12, color: C.bad)),
         const SizedBox(height: 8),
         if (status == 'card')
           Row(children: [
-            Expanded(child: GradientButton(label: kind == 'env_review' ? 'Haan, approve' : 'Haan, chalao', icon: Icons.check_rounded, height: 44,
+            Expanded(child: GradientButton(label: kind == 'env_review' ? 'Yes, approve' : 'Yes, run it', icon: Icons.check_rounded, height: 44,
                 onTap: _busy ? null : () => _decide(true))),
             const SizedBox(width: 8),
             Expanded(child: GlassButton(label: 'Mana', icon: Icons.close_rounded, height: 44, onTap: _busy ? null : () => _decide(false))),
           ])
         else if (_s(d['run_url']).isNotEmpty)
-          GlassButton(label: 'GitHub par dekho', icon: Icons.open_in_new_rounded, height: 40, onTap: () => Native.openExternal(url: _s(d['run_url']))),
+          GlassButton(label: 'View on GitHub', icon: Icons.open_in_new_rounded, height: 40, onTap: () => Native.openExternal(url: _s(d['run_url']))),
       ]),
     );
   }
@@ -924,12 +924,12 @@ class DevopsAlertCard extends StatelessWidget {
           Icon(switch (kind) { 'up' => Icons.check_circle_rounded, 'ssl' => Icons.lock_clock_rounded, 'disk' => Icons.storage_rounded, 'log' => Icons.bug_report_rounded, _ => Icons.error_rounded },
               color: up ? C.ok : C.bad),
           const SizedBox(width: 8),
-          Expanded(child: Text(switch (kind) { 'up' => 'Phir chal raha', 'ssl' => 'SSL', 'disk' => 'Disk', 'log' => 'Logs mein error', _ => 'Band hai' },
+          Expanded(child: Text(switch (kind) { 'up' => 'Running again', 'ssl' => 'SSL', 'disk' => 'Disk', 'log' => 'Error in logs', _ => 'Down' },
               style: const TextStyle(fontWeight: FontWeight.w800))),
         ]),
         const SizedBox(height: 4),
         Text(_s(data['say']), style: const TextStyle(fontSize: 12.5, height: 1.3)),
-        if (_s(cl['fix']).isNotEmpty) Text('Theek kaise: ${_s(cl['fix'])}', style: const TextStyle(fontSize: 12, color: C.accentSoft)),
+        if (_s(cl['fix']).isNotEmpty) Text('How to fix: ${_s(cl['fix'])}', style: const TextStyle(fontSize: 12, color: C.accentSoft)),
         if (cl.isNotEmpty && _strs(cl['samples']).isNotEmpty)
           Padding(
             padding: const EdgeInsets.only(top: 4),
@@ -968,9 +968,9 @@ class DevopsScriptCard extends StatelessWidget {
               Text('${_s(s['label'])} · ${_s(s['name'])}', style: const TextStyle(fontWeight: FontWeight.w800)),
               Text(
                   switch (v) {
-                    'block' => '${_s(s['blocks'])} khatarnaak cheezein: chalane se pehle badliye',
-                    'warn' => '${_s(s['warns'])} baatein sudhaariye',
-                    _ => 'Jaanch saaf'
+                    'block' => '${_s(s['blocks'])} dangerous items: change them before running',
+                    'warn' => '${_s(s['warns'])} things to fix',
+                    _ => 'Check is clean'
                   },
                   style: TextStyle(fontSize: 12, color: v == 'block' ? C.bad : C.muted)),
             ]),
@@ -993,14 +993,14 @@ class DevopsDayCard extends StatelessWidget {
           Row(children: [
             const Icon(Icons.wb_sunny_rounded, color: C.accentSoft),
             const SizedBox(width: 8),
-            Expanded(child: Text('Aaj ka DevOps note', style: display(14))),
+            Expanded(child: Text('Today\'s DevOps note', style: display(14))),
           ]),
           const SizedBox(height: 4),
           Text(_s(data['say']), style: const TextStyle(fontSize: 12.5, height: 1.35)),
           const SizedBox(height: 6),
           TextButton(
               onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => DevopsScreen(app: app))),
-              child: const Text('DevOps kholo')),
+              child: const Text('Open DevOps')),
         ]),
       );
 }

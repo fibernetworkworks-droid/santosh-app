@@ -58,20 +58,20 @@ class _SiteLaunchCardState extends State<SiteLaunchCard> {
         Row(children: [
           Icon(rollback ? Icons.history_rounded : Icons.rocket_launch_rounded, color: C.accent, size: 20),
           const SizedBox(width: 8),
-          Expanded(child: Text(rollback ? 'Purana version live karein?' : 'Website live karein?', style: display(15))),
+          Expanded(child: Text(rollback ? 'Go back to the old version?' : 'Make the website live?', style: display(15))),
         ]),
         const SizedBox(height: 6),
         Text('${site['number'] ?? ''} ${site['name'] ?? ''} · v${v['version'] ?? ''}', style: const TextStyle(color: C.muted, fontSize: 12.5)),
         for (final h in (v['hosts'] as List? ?? const [])) Text('🌐 $h', style: const TextStyle(color: C.ink, fontSize: 13)),
         if (_s(v['preview']).isNotEmpty)
-          TextButton(onPressed: () => _open(widget.app.api!.absolute(_s(v['preview']))), child: const Text('Pehle preview dekh lo')),
+          TextButton(onPressed: () => _open(widget.app.api!.absolute(_s(v['preview']))), child: const Text('Check the preview first')),
         for (final b in blockers) Text('⛔ $b', style: const TextStyle(color: C.bad, fontSize: 12.5)),
         if (_done.isNotEmpty) Text(_done, style: const TextStyle(color: C.ok, fontWeight: FontWeight.w700)),
         if (blockers.isEmpty && _done.isEmpty)
           Align(
             alignment: Alignment.centerRight,
             child: GlassButton(
-              label: rollback ? 'Haan, wapas karo' : 'Haan, live karo',
+              label: rollback ? 'Yes, go back' : 'Yes, go live',
               color: C.accent,
               onTap: _busy ? null : _go,
             ),
@@ -123,7 +123,7 @@ class _SiteDnsCardState extends State<SiteDnsCard> {
           const Icon(Icons.dns_rounded, color: C.teal, size: 20),
           const SizedBox(width: 8),
           Expanded(child: Text('${p['domain'] ?? ''}: ${p['purpose'] == 'email' ? 'email' : 'website'} DNS', style: display(15))),
-          Pill(applied ? 'Lag gaya' : (manual ? 'Aap daaliye' : 'Aapki haan'), fg: applied ? C.ok : C.accent),
+          Pill(applied ? 'Applied' : (manual ? 'You add it' : 'Your approval'), fg: applied ? C.ok : C.accent),
         ]),
         const SizedBox(height: 6),
         Text(_s(widget.v['say']), style: const TextStyle(color: C.chip, fontSize: 13)),
@@ -134,9 +134,9 @@ class _SiteDnsCardState extends State<SiteDnsCard> {
         if (_note.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 6), child: Text(_note, style: const TextStyle(color: C.ok))),
         const SizedBox(height: 8),
         Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-          TextButton(onPressed: _busy ? null : _check, child: Text(manual ? 'Maine daal diya, jaancho' : 'Jaancho')),
+          TextButton(onPressed: _busy ? null : _check, child: Text(manual ? 'I have added it, please check' : 'Check')),
           if (!manual && !applied)
-            GlassButton(label: 'Haan, badlo', color: C.accent, height: 38, onTap: _busy ? null : _apply),
+            GlassButton(label: 'Yes, change it', color: C.accent, height: 38, onTap: _busy ? null : _apply),
         ]),
       ]),
     );
@@ -240,58 +240,58 @@ class _SiteHostingPanelState extends State<SiteHostingPanel> {
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [Text('Live / hosting', style: display(16)), const Spacer(),
           IconButton(icon: const Icon(Icons.refresh_rounded, size: 20), onPressed: _load)]),
-        if (hosts.isEmpty) const Text('Abhi live nahi.', style: TextStyle(color: C.faint)),
+        if (hosts.isEmpty) const Text('Not live yet.', style: TextStyle(color: C.faint)),
         for (final x in hosts) _hostTile(x),
         const SizedBox(height: 6),
         Wrap(spacing: 8, runSpacing: 8, children: [
           if (widget.ready)
-            GlassButton(label: hosts.isEmpty ? 'Live karo' : 'Naya version live karo', icon: Icons.rocket_launch_rounded,
+            GlassButton(label: hosts.isEmpty ? 'Go live' : 'Make the new version live', icon: Icons.rocket_launch_rounded,
                 color: C.accent, height: 40,
                 onTap: _busy ? null : () => showLaunchSheet(context, widget.app, widget.siteId, 'launch-request', const {})),
           if (hosts.isNotEmpty)
-            TextButton(onPressed: _busy ? null : _takedown, child: const Text('Band karo')),
+            TextButton(onPressed: _busy ? null : _takedown, child: const Text('Close')),
         ]),
         const Divider(height: 24),
-        Text('Apna domain', style: display(14)),
+        Text('Your own domain', style: display(14)),
         Row(children: [
           Expanded(child: TextField(controller: _domain, decoration: const InputDecoration(hintText: 'sharmasweets.in'))),
           TextButton(onPressed: _busy ? null : () {
             final d = _domain.text.trim();
             if (d.isEmpty) return;
             _run(() => widget.app.api!.siteAct(widget.siteId, 'domain', {'domain': d, 'primary': _wwwMain ? 'www' : 'root'}));
-          }, child: const Text('Jodo')),
+          }, child: const Text('Add')),
         ]),
         if (h['direct'] == true)
           Wrap(spacing: 8, crossAxisAlignment: WrapCrossAlignment.center, children: [
             const Text('Main address:', style: TextStyle(fontSize: 12, color: C.muted)),
-            ChoiceChip(label: const Text('bina www'), selected: !_wwwMain, onSelected: (_) => setState(() => _wwwMain = false)),
+            ChoiceChip(label: const Text('without www'), selected: !_wwwMain, onSelected: (_) => setState(() => _wwwMain = false)),
             ChoiceChip(label: const Text('www'), selected: _wwwMain, onSelected: (_) => setState(() => _wwwMain = true)),
           ]),
         const SizedBox(height: 6),
         Row(children: [
           Icon(hasCf ? Icons.verified_rounded : Icons.key_rounded, color: hasCf ? C.ok : C.faint, size: 18),
           const SizedBox(width: 6),
-          Expanded(child: Text(hasCf ? 'Aapka Cloudflare juda hai (${keys.firstWhere((k) => k['provider'] == 'cloudflare')['label']})'
-              : 'Domain ka DNS Cloudflare par hai? Token jodiye, Hoola badlav aapki haan par khud lagayega.',
+          Expanded(child: Text(hasCf ? 'Your Cloudflare is linked (${keys.firstWhere((k) => k['provider'] == 'cloudflare')['label']})'
+              : 'Is the domain\'s DNS on Cloudflare? Add a token, and Hoola will apply the changes itself once you approve.',
               style: const TextStyle(fontSize: 12, color: C.muted))),
-          TextButton(onPressed: _busy ? null : () => hasCf ? _forgetKey() : _addKey(), child: Text(hasCf ? 'Hatao' : 'Jodo')),
+          TextButton(onPressed: _busy ? null : () => hasCf ? _forgetKey() : _addKey(), child: Text(hasCf ? 'Remove' : 'Add')),
         ]),
         TextButton.icon(onPressed: _busy ? null : () => showDomainSheet(context, widget.app, widget.siteId),
-            icon: const Icon(Icons.travel_explore_rounded, size: 18), label: const Text('Naya domain chuno (daam ke saath)')),
+            icon: const Icon(Icons.travel_explore_rounded, size: 18), label: const Text('Pick a new domain (with prices)')),
         TextButton.icon(onPressed: _busy ? null : _email, icon: const Icon(Icons.alternate_email_rounded, size: 18),
-            label: const Text('Domain par email (Google / Zoho)')),
+            label: const Text('Email on your domain (Google / Zoho)')),
         for (final p in _list(h['dns']).take(5))
           ListTile(
             dense: true,
             contentPadding: EdgeInsets.zero,
             title: Text('${p['domain']} · ${p['purpose']}', style: const TextStyle(fontSize: 13)),
-            subtitle: Text('${p['status']} · ${p['todo']} badlav', style: const TextStyle(fontSize: 11.5, color: C.muted)),
+            subtitle: Text('${p['status']} · ${p['todo']} changes', style: const TextStyle(fontSize: 11.5, color: C.muted)),
             onTap: () => _showPlan(p),
             trailing: Wrap(children: [
-              IconButton(tooltip: 'Jaancho', icon: const Icon(Icons.travel_explore_rounded, size: 20),
+              IconButton(tooltip: 'Check', icon: const Icon(Icons.travel_explore_rounded, size: 20),
                   onPressed: () => _run(() => widget.app.api!.siteDnsCheck(_s(p['id'])))),
               if (p['status'] == 'applied')
-                IconButton(tooltip: 'Wapas karo', icon: const Icon(Icons.undo_rounded, size: 20),
+                IconButton(tooltip: 'Undo', icon: const Icon(Icons.undo_rounded, size: 20),
                     onPressed: () => _run(() => widget.app.api!.siteDns(_s(p['id']), 'undo', {}))),
             ]),
           ),
@@ -310,7 +310,7 @@ class _SiteHostingPanelState extends State<SiteHostingPanel> {
     final lines = <String>[
       '$stage${x['primary'] == true ? ' · Main' : ''}${(x['live_version'] ?? 0) == 0 ? '' : ' · v${x['live_version']}'}',
       if (_s(x['problem']).isNotEmpty) _s(x['problem']),
-      if (waiting && recs.isNotEmpty) 'Domain company mein yeh records daaliye (DNS only):',
+      if (waiting && recs.isNotEmpty) 'Add these records at your domain company (DNS only):',
       if (waiting) for (final r in recs) '  ${r['type']}  ${r['name']}  ->  ${r['value']}',
     ];
     return ListTile(
@@ -323,7 +323,7 @@ class _SiteHostingPanelState extends State<SiteHostingPanel> {
       trailing: Wrap(children: [
         if (x['kind'] == 'custom' && x['primary'] != true)
           TextButton(onPressed: _busy ? null : () => _run(() => widget.app.api!.siteAct(widget.siteId, 'primary', {'host': _s(x['host'])})),
-              child: const Text('Main banao')),
+              child: const Text('Make primary')),
         if (live) IconButton(icon: const Icon(Icons.open_in_new_rounded), onPressed: () => _open('https://${x['host']}/')),
       ]),
     );
@@ -331,10 +331,10 @@ class _SiteHostingPanelState extends State<SiteHostingPanel> {
 
   Future<void> _takedown() async {
     final yes = await showDialog<bool>(context: context, builder: (c) => AlertDialog(
-          title: const Text('Website band karein?'),
-          content: const Text('Live address par site dikhna band ho jayega. Versions aur preview rahenge.'),
-          actions: [TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Nahi')),
-            TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Haan, band karo'))]));
+          title: const Text('Take the website offline?'),
+          content: const Text('The site will stop showing at the live address. Versions and preview stay.'),
+          actions: [TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('No')),
+            TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Yes, take it offline'))]));
     if (yes == true) _run(() => widget.app.api!.siteAct(widget.siteId, 'takedown', {}));
   }
 
@@ -343,12 +343,12 @@ class _SiteHostingPanelState extends State<SiteHostingPanel> {
     final ok = await showDialog<bool>(context: context, builder: (c) => AlertDialog(
           title: const Text('Cloudflare token'),
           content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Text('Cloudflare > My Profile > API Tokens > "Edit zone DNS" template, sirf apna domain chuniye. '
-                'Token yahin daaliye (chat mein kabhi nahi). Hoola ise tala-band rakhega.', style: TextStyle(fontSize: 12.5)),
+            const Text('Cloudflare > My Profile > API Tokens > "Edit zone DNS" template, select only your domain.'
+                'Add the token here (never in chat). Hoola keeps it locked.', style: TextStyle(fontSize: 12.5)),
             TextField(controller: t, obscureText: true, autocorrect: false, enableSuggestions: false,
                 decoration: const InputDecoration(labelText: 'API token')),
           ]),
-          actions: [TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Jodo'))]));
+          actions: [TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Add'))]));
     if (ok == true && t.text.trim().isNotEmpty) {
       await _run(() => widget.app.api!.siteKeySet('cloudflare', {'token': t.text.trim()}));
     }
@@ -361,16 +361,16 @@ class _SiteHostingPanelState extends State<SiteHostingPanel> {
     final to = TextEditingController();
     String provider = 'google';
     final ok = await showDialog<bool>(context: context, builder: (c) => StatefulBuilder(builder: (c, set) => AlertDialog(
-          title: const Text('Domain par email'),
+          title: const Text('Email on your domain'),
           content: Column(mainAxisSize: MainAxisSize.min, children: [
             TextField(controller: d, decoration: const InputDecoration(labelText: 'Domain')),
             Wrap(spacing: 6, children: [
               ChoiceChip(label: const Text('Google Workspace'), selected: provider == 'google', onSelected: (_) => set(() => provider = 'google')),
               ChoiceChip(label: const Text('Zoho Mail'), selected: provider == 'zoho', onSelected: (_) => set(() => provider = 'zoho')),
             ]),
-            TextField(controller: to, decoration: const InputDecoration(labelText: 'Report kis email par (optional)')),
+            TextField(controller: to, decoration: const InputDecoration(labelText: 'Which email for the report (optional)')),
           ]),
-          actions: [TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Plan banao'))])));
+          actions: [TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Make plan'))])));
     if (ok == true && d.text.trim().isNotEmpty) {
       try {
         final plan = await widget.app.api!.siteAct(widget.siteId, 'email-dns',
@@ -388,7 +388,7 @@ class _SiteHostingPanelState extends State<SiteHostingPanel> {
       context: context,
       isScrollControlled: true,
       builder: (c) => SafeArea(child: SingleChildScrollView(padding: const EdgeInsets.all(12),
-          child: SiteDnsCard(app: widget.app, v: {'plan': plan, 'say': '${plan['todo']} DNS badlav, aapki haan se.'}))),
+          child: SiteDnsCard(app: widget.app, v: {'plan': plan, 'say': '${plan['todo']} DNS changes, with your approval.'}))),
     );
   }
 }
@@ -413,7 +413,7 @@ class _SiteDomainCardState extends State<SiteDomainCard> {
     setState(() => _busy = true);
     try {
       final r = await f();
-      if (mounted) setState(() => _done = _s(r['say']).isEmpty ? 'Ho gaya.' : _s(r['say']));
+      if (mounted) setState(() => _done = _s(r['say']).isEmpty ? 'Done.' : _s(r['say']));
     } catch (e) {
       if (mounted) _snack(context, '$e');
     } finally {
@@ -438,7 +438,7 @@ class _SiteDomainCardState extends State<SiteDomainCard> {
           if (kyc && _done.isEmpty)
             Align(alignment: Alignment.centerRight, child: TextButton(
                 onPressed: _busy ? null : () => _go(() => widget.app.api!.siteDomainKyc(_s(v['domain']))),
-                child: const Text('KYC ho gaya'))),
+                child: const Text('KYC done'))),
         ]),
       );
     }
@@ -460,9 +460,9 @@ class _SiteDomainCardState extends State<SiteDomainCard> {
         else
           Row(children: [
             TextButton(onPressed: _busy ? null : () => _go(() => widget.app.api!.siteDomainCancel(_s(v['id']))),
-                child: const Text('Nahi')),
+                child: const Text('No')),
             const Spacer(),
-            GlassButton(label: 'Haan, le lo', icon: Icons.fingerprint_rounded, color: C.accent, height: 40,
+            GlassButton(label: 'Yes, buy it', icon: Icons.fingerprint_rounded, color: C.accent, height: 40,
                 onTap: _busy ? null : () => _go(() => widget.app.api!.siteDomainBuy(_s(v['id']), _s(v['hash'])))),
           ]),
       ]),
@@ -526,19 +526,19 @@ class _DomainSheetState extends State<_DomainSheet> {
     final ok = await showDialog<bool>(context: context, builder: (c) => AlertDialog(
           title: Text(cf ? 'Cloudflare Registrar' : 'Porkbun'),
           content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(cf ? 'Cloudflare > My Profile > API Tokens: Registrar permission wala token, aur Account ID (dashboard mein). '
-                    '.com / .shop / .store jaise domain; .in nahi.'
-                : 'porkbun.com > Account > API Access: API key + Secret key; domain par "API access" chalu kijiye. .in bhi milta hai.',
+            Text(cf ? 'Cloudflare > My Profile > API Tokens: a token with Registrar permission, and the Account ID (on the dashboard).'
+                    'Domains like .com / .shop / .store; not .in.'
+                : 'porkbun.com > Account > API Access: API key + Secret key; turn on "API access" on the domain. .in is available too.',
                 style: const TextStyle(fontSize: 12.5)),
             TextField(controller: a, obscureText: true, autocorrect: false, enableSuggestions: false,
                 decoration: InputDecoration(labelText: cf ? 'API token' : 'API key')),
             TextField(controller: b, obscureText: !cf, autocorrect: false, enableSuggestions: false,
                 decoration: InputDecoration(labelText: cf ? 'Account ID' : 'Secret API key')),
             const SizedBox(height: 6),
-            const Text('Sirf yahan daaliye, chat mein kabhi nahi. Hoola tala-band rakhta hai aur kabhi nahi dikhata.',
+            const Text('Add it only here, never in chat. Hoola keeps it locked and never shows it.',
                 style: TextStyle(fontSize: 11.5, color: C.faint)),
           ]),
-          actions: [TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Jodo'))]));
+          actions: [TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Add'))]));
     if (ok == true && a.text.trim().isNotEmpty) {
       await _go(() async {
         final r = await widget.app.api!.siteKeySet(provider, {'token': a.text.trim(), 'secret': b.text.trim()});
@@ -563,8 +563,8 @@ class _DomainSheetState extends State<_DomainSheet> {
         final res = _list(r['results']);
         if (mounted) setState(() {
           _ideas = res.where((x) => x['available'] == true).toList();
-          _say = res.isEmpty ? 'Yeh naam check nahi ho paya.' : res.map((x) => x['available'] == true
-              ? '${x['domain']}: khaali, ₹${x['inr']} (phir ₹${x['renew_inr']}/saal)' : '${x['domain']}: khaali nahi').join('\n');
+          _say = res.isEmpty ? 'Could not check this name.' : res.map((x) => x['available'] == true
+              ? '${x['domain']}: available, ₹${x['inr']} (then ₹${x['renew_inr']}/year)' : '${x['domain']}: not available').join('\n');
         });
       });
 
@@ -582,9 +582,9 @@ class _DomainSheetState extends State<_DomainSheet> {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
       child: SingleChildScrollView(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-        Text('Naya domain', style: display(18)),
+        Text('New domain', style: display(18)),
         const SizedBox(height: 4),
-        Text('Domain aapke naam par, aapke account mein. Is mahine: ₹${_info?['month_spent_inr'] ?? 0} / ₹${_info?['month_limit_inr'] ?? ''}',
+        Text('The domain is in your name, in your account. This month: ₹${_info?['month_spent_inr'] ?? 0} / ₹${_info?['month_limit_inr'] ?? ''}',
             style: const TextStyle(fontSize: 12, color: C.muted)),
         const SizedBox(height: 10),
         Wrap(spacing: 8, runSpacing: 6, children: [
@@ -598,17 +598,17 @@ class _DomainSheetState extends State<_DomainSheet> {
         ]),
         if (_info != null && !_hasAccount)
           const Padding(padding: EdgeInsets.only(top: 8), child: Text(
-              'Daam dekhne aur lene ke liye pehle ek registrar account jodiye (domain usi account mein aapke naam par rahega).',
+              'To see prices and buy, first link a registrar account (the domain will stay in your name in that account).',
               style: TextStyle(fontSize: 12.5))),
         const SizedBox(height: 10),
         Row(children: [
-          Expanded(child: GlassButton(label: 'Mere business ke naam', icon: Icons.auto_awesome_rounded, height: 40,
+          Expanded(child: GlassButton(label: 'Based on my business name', icon: Icons.auto_awesome_rounded, height: 40,
               onTap: _busy || !_hasAccount ? null : _ideasNow)),
         ]),
         const SizedBox(height: 8),
         Row(children: [
-          Expanded(child: TextField(controller: _own, decoration: const InputDecoration(hintText: 'apna naam: sharmasweets.in'))),
-          TextButton(onPressed: _busy || !_hasAccount ? null : _check, child: const Text('Dekho')),
+          Expanded(child: TextField(controller: _own, decoration: const InputDecoration(hintText: 'your own name: sharmasweets.in'))),
+          TextButton(onPressed: _busy || !_hasAccount ? null : _check, child: const Text('View')),
         ]),
         if (_busy) const Padding(padding: EdgeInsets.all(12), child: Center(child: CircularProgressIndicator())),
         if (_say.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 8),
@@ -617,16 +617,16 @@ class _DomainSheetState extends State<_DomainSheet> {
           ListTile(
             contentPadding: EdgeInsets.zero,
             title: Text(_s(x['domain']), style: display(15)),
-            subtitle: Text('Pehla saal ₹${x['inr']} · phir ₹${x['renew_inr']}/saal'
-                '${x['renew_jump'] == true ? ' (renew mehenga!)' : ''}${x['kyc'] == true ? ' · .in KYC aapko karni hogi' : ''}',
+            subtitle: Text('First year ₹${x['inr']} · then ₹${x['renew_inr']}/year'
+                '${x['renew_jump'] == true ? ' (renewal is expensive!)' : ''}${x['kyc'] == true ? ' · you will need to complete .in KYC' : ''}',
                 style: const TextStyle(fontSize: 12)),
-            trailing: TextButton(onPressed: _busy ? null : () => _take(_s(x['domain'])), child: const Text('Yeh lo')),
+            trailing: TextButton(onPressed: _busy ? null : () => _take(_s(x['domain'])), child: const Text('Take this')),
           ),
         SwitchListTile(contentPadding: EdgeInsets.zero, value: _renew, onChanged: (b) => setState(() => _renew = b),
-            title: const Text('Har saal apne aap renew', style: TextStyle(fontSize: 13)),
-            subtitle: const Text('Band rahe to Hoola 60 / 30 / 7 / 1 din pehle yaad dilayega.', style: TextStyle(fontSize: 11.5))),
-        const Text('"Yeh lo" sirf card bhejta hai; domain tab hi liya jayega jab aap card par fingerprint se haan karengi. '
-            'Domain ka paisa wapas nahi hota.', style: TextStyle(fontSize: 11.5, color: C.faint)),
+            title: const Text('Renews itself every year', style: TextStyle(fontSize: 13)),
+            subtitle: const Text('If it is off, Hoola will remind you 60 / 30 / 7 / 1 days before.', style: TextStyle(fontSize: 11.5))),
+        const Text('"Take this" only sends a card; the domain is bought only when you approve the card with your fingerprint.'
+            'Domain money is not refundable.', style: TextStyle(fontSize: 11.5, color: C.faint)),
       ])),
     );
   }
@@ -651,7 +651,7 @@ class SiteCareCard extends StatelessWidget {
         Wrap(spacing: 14, runSpacing: 6, children: [
           _stat('Visit', _s(v['views']), _s(v['views_prev'])),
           _stat('Enquiry', _s(v['leads']), _s(v['leads_prev'])),
-          if (v['uptime_pct'] != null) _stat('Chalu rahi', '${v['uptime_pct']}%', ''),
+          if (v['uptime_pct'] != null) _stat('Running', '${v['uptime_pct']}%', ''),
         ]),
         for (final t in ((v['tips'] as List?) ?? const []))
           Padding(padding: const EdgeInsets.only(top: 4), child: Text('• $t', style: const TextStyle(fontSize: 12.5, color: C.muted))),
@@ -662,7 +662,7 @@ class SiteCareCard extends StatelessWidget {
 
 Widget _stat(String label, String value, String prev) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Text(value, style: display(18)),
-      Text(prev.isEmpty ? label : '$label (pehle $prev)', style: const TextStyle(fontSize: 11.5, color: C.faint)),
+      Text(prev.isEmpty ? label : '$label (before: $prev)', style: const TextStyle(fontSize: 11.5, color: C.faint)),
     ]);
 
 class SiteGithubCard extends StatefulWidget {
@@ -681,7 +681,7 @@ class _SiteGithubCardState extends State<SiteGithubCard> {
     setState(() => _busy = true);
     try {
       final r = await f();
-      if (mounted) setState(() => _done = _s(r['say']).isEmpty ? 'Ho gaya.' : _s(r['say']));
+      if (mounted) setState(() => _done = _s(r['say']).isEmpty ? 'Done.' : _s(r['say']));
     } catch (e) {
       if (mounted) _snack(context, '$e');
     } finally {
@@ -707,8 +707,8 @@ class _SiteGithubCardState extends State<SiteGithubCard> {
             Text('${v['files']} files · ${v['size_kb']} KB', style: const TextStyle(fontSize: 12, color: C.faint)),
             const Spacer(),
             TextButton(onPressed: _busy ? null : () => _go(() => widget.app.api!.siteGithubCancel(_s(v['id']))),
-                child: const Text('Nahi')),
-            GlassButton(label: 'Haan, daalo', icon: Icons.upload_rounded, color: C.accent, height: 40,
+                child: const Text('No')),
+            GlassButton(label: 'Yes, add it', icon: Icons.upload_rounded, color: C.accent, height: 40,
                 onTap: _busy ? null : () => _go(() => widget.app.api!.siteGithubPush(_s(v['id']), _s(v['hash'])))),
           ]),
       ]),
@@ -760,7 +760,7 @@ class _SiteCarePanelState extends State<SiteCarePanel> {
     final ok = await showDialog<bool>(context: context, builder: (c) => AlertDialog(
           title: Text(title),
           content: TextField(controller: t, decoration: InputDecoration(hintText: hint)),
-          actions: [TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Theek'))]));
+          actions: [TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('OK'))]));
     return ok == true ? t.text.trim() : null;
   }
 
@@ -768,16 +768,16 @@ class _SiteCarePanelState extends State<SiteCarePanel> {
     final t = TextEditingController();
     bool private = true;
     final ok = await showDialog<bool>(context: context, builder: (c) => StatefulBuilder(builder: (c, set) => AlertDialog(
-          title: const Text('GitHub mein daalo'),
+          title: const Text('Add to GitHub'),
           content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Text('Pehli baar: GitHub > Settings > Developer settings > Fine-grained token (Contents + Administration: write; '
-                'QA tester ke bug GitHub issue banane ho to Issues: write bhi). Token sirf yahan, chat mein kabhi nahi.', style: TextStyle(fontSize: 12)),
+            const Text('First time: GitHub > Settings > Developer settings > Fine-grained token (Contents + Administration: write; '
+                'If QA tester bugs should become GitHub issues, give Issues: write as well). Add the token only here, never in chat.', style: TextStyle(fontSize: 12)),
             TextField(controller: t, obscureText: true, autocorrect: false, enableSuggestions: false,
-                decoration: const InputDecoration(labelText: 'GitHub token (agar pehle se juda hai to khaali chhodiye)')),
+                decoration: const InputDecoration(labelText: 'GitHub token (leave empty if already linked)')),
             SwitchListTile(contentPadding: EdgeInsets.zero, value: private, onChanged: (b) => set(() => private = b),
                 title: const Text('Private repo', style: TextStyle(fontSize: 13))),
           ]),
-          actions: [TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Card banao'))])));
+          actions: [TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Make card'))])));
     if (ok != true) return;
     await _run(() async {
       if (t.text.trim().isNotEmpty) await widget.app.api!.siteKeySet('github', {'token': t.text.trim()});
@@ -791,7 +791,7 @@ class _SiteCarePanelState extends State<SiteCarePanel> {
     final site = _map(r?['site']);
     return Glass(
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [Text('Dekh-bhaal (30 din)', style: display(16)), const Spacer(),
+        Row(children: [Text('Care (30 days)', style: display(16)), const Spacer(),
           IconButton(icon: const Icon(Icons.refresh_rounded, size: 20), onPressed: _load)]),
         if (r == null)
           const Text('...', style: TextStyle(color: C.faint))
@@ -799,29 +799,29 @@ class _SiteCarePanelState extends State<SiteCarePanel> {
           Wrap(spacing: 14, runSpacing: 6, children: [
             _stat('Visit', _s(r['views']), _s(r['views_prev'])),
             _stat('Enquiry', _s(r['leads']), _s(r['leads_prev'])),
-            if (r['uptime_pct'] != null) _stat('Chalu rahi', '${r['uptime_pct']}%', ''),
+            if (r['uptime_pct'] != null) _stat('Running', '${r['uptime_pct']}%', ''),
           ]),
           for (final p in ((r['top_pages'] as List?) ?? const []).take(4))
             Text('${(p as List)[0]} · ${p[1]}', style: const TextStyle(fontSize: 12, color: C.muted)),
           for (final t in ((r['tips'] as List?) ?? const []))
             Padding(padding: const EdgeInsets.only(top: 4), child: Text('• $t', style: const TextStyle(fontSize: 12.5))),
           const SizedBox(height: 4),
-          const Text('Visit hum khud ginte hain: na cookie, na IP, na koi tracker.', style: TextStyle(fontSize: 11, color: C.faint)),
+          const Text('We count visits ourselves: no cookies, no IP, no trackers.', style: TextStyle(fontSize: 11, color: C.faint)),
         ],
         const Divider(height: 22),
         Wrap(spacing: 8, runSpacing: 6, children: [
           ActionChip(avatar: const Icon(Icons.business_center_rounded, size: 18),
-              label: Text(_s(site['client']).isEmpty ? 'Client batao' : 'Client: ${site['client']}'),
+              label: Text(_s(site['client']).isEmpty ? 'Tell client' : 'Client: ${site['client']}'),
               onPressed: _busy ? null : () async {
-                final c = await _ask('Kis client ki website?', 'Sharma ji', initial: _s(site['client']));
+                final c = await _ask('Whose website is it?', 'Sharma ji', initial: _s(site['client']));
                 if (c != null) _run(() => widget.app.api!.siteAssign(widget.siteId, client: c));
               }),
-          ActionChip(avatar: const Icon(Icons.badge_rounded, size: 18), label: const Text('Staff ko do'),
+          ActionChip(avatar: const Icon(Icons.badge_rounded, size: 18), label: const Text('Give to staff'),
               onPressed: _busy ? null : () async {
-                final c = await _ask('Kaun staff is par kaam karega? (Team ka id, khaali = sirf aap)', 'asha');
+                final c = await _ask('Which staff member will work on this? (Team id, empty = only you)', 'asha');
                 if (c != null) _run(() => widget.app.api!.siteAssign(widget.siteId, staff: c));
               }),
-          ActionChip(avatar: const Icon(Icons.code_rounded, size: 18), label: const Text('GitHub mein daalo'),
+          ActionChip(avatar: const Icon(Icons.code_rounded, size: 18), label: const Text('Add to GitHub'),
               onPressed: _busy ? null : _github),
         ]),
       ]),

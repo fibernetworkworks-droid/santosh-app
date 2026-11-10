@@ -53,6 +53,7 @@ class Settings(BaseSettings):
     agent_plan_after_steps: int = 4         # ... tool steps without a kaam_plan before the plan is asked for (v0.311: 6 -> 4)
     agent_auto_plan: bool = True            # v0.311 PLAN HAMESHA: still no plan 3 steps after the ask = the server writes a one-step plan
     chat_thinking: str = "goal"             # v0.232 PHASE C: Claude thinks out loud (adaptive) - goal = only while a long job runs, on = every turn, off = never
+    chat_thinking_adaptive: bool = True     # parity Phase 4: every chat turn may think, effort by the turn (greeting low / ordinary medium / hard + long high), shown folded; False = thinking only for long jobs / hard asks, GLM reasoning excluded
     hard_detect: bool = True                # v0.272 SOCH KE JAWAB: spot hard reasoning asks (agent/hard.py)
     hard_thinking: bool = True              # v0.272 a hard ask thinks (adaptive) from its first call, like a long job
     hard_judge: bool = True                 # v0.272 the 'not sure' zone asks one tiny model call (1 token, time-limited)
@@ -150,17 +151,29 @@ class Settings(BaseSettings):
     # tool families her words (and any open goal) actually need; the rest stay one tool_search away. Stable for the
     # WHOLE turn, so the Anthropic prompt cache holds; a family admitted mid-turn re-caches once, by design.
     agent_tool_admission: bool = True
+    # Parity Phase 2: a chat turn sends a small FIXED system prompt (core + a small per-chat block, ~10k chars, the same
+    # every turn so the prompt cache holds); facts / sites / apps / desks are fetched with tools, per-turn notes ride on
+    # her newest message (false = the old ~50-60k per-turn prompt). Calls (voice brain) and routines keep the old shape.
+    chat_small_prompt: bool = True
+    # Parity Phase 7: ONE memory, Claude style - a chat turn carries only the short memory summary (her page + pinned facts,
+    # in the per-chat block) plus a capped 'since your last reply' note (job state, card news) and her skill NAMES; the diary,
+    # her recent words, the coder primer and the full skills list are fetched with yaad_khojo / skill_manage instead
+    # (false = today's per-turn memory blocks). Calls (voice brain) and routines keep their own shape.
+    chat_one_memory: bool = True
     prompt_slim: bool = True               # v0.473 PATLA PROMPT: only the admitted families' guides ride in the system prompt (false = the full ~130 KB guide, as before)
     # v0.237 FULL CLAUDE MODE Phase 1 (agent/context.py): the whole chat word for word while it fits the model's window
     chat_context: str = "claude"           # claude = whole chat, gauge + safety net | hoola = the v0.108 40-49 exchange window (instant rollback)
-    chat_context_limit_glm: int = 200000   # GLM's context window in tokens (check your Z.ai plan)
-    chat_context_limit_claude: int = 200000
-    chat_context_limit_omniroute: int = 128000   # the smallest window your OmniRoute combo can land on
+    chat_context_limit_glm: int = 1000000  # v0.724 owner: 1M for every chat (a smaller real window is learned from its "too long" error)
+    chat_context_limit_claude: int = 1000000   # v0.724 owner: "MAKE IT 1 MILLION CONTEXT WINDOW FOR EVERY CHAT"
+    chat_context_limit_omniroute: int = 1000000  # v0.724 1M; a smaller real window is learned from its error
     chat_context_full_at: float = 0.75     # the request may fill this share of the window; above it the safety net runs
-    chat_context_max_tokens_glm: int = 40000   # v0.707 the same cap while the GLM door answers (no prompt cache)
+    chat_context_max_tokens_glm: int = 0       # v0.724 owner: 1M window, no GLM cost cap (0 = off); v0.707 cap while the GLM door answers (no prompt cache); v0.724 = tokens
+                                               # of CONVERSATION on top of the system prompt + tools (was the whole request)
     chat_context_max_tokens: int = 0       # v0.244 cost cap: compact at this many tokens whatever the model's window (0 = off)
     # v0.242 FULL CLAUDE MODE Phase 2 (agent/compact.py): Claude-style compaction at the full_at line
     about_me: bool = True                  # v0.250 "Mere baare mein" page rebuilt daily for active owners (false = never rebuilt)
+    request_dump: bool = True              # v0.732 PARITY Phase 0: every chat model call's request (system text, tool NAMES, messages, brain/model, max_tokens) kept per conversation, secrets masked - GET /api/conversations/{id}/request[/{turn}]
+    request_dump_turns: int = 20           # newest turns kept per conversation (older ones dropped)
     chat_alone: bool = True                # v0.714 HAR CHAT ALAG: background / daily messages go to her pinned 'Hoola updates' chat (never the chat she has open), and a chat turn reads only ITS OWN chat's jobs / cards / diary; false = the old shared behaviour
     memory_fence: bool = True              # v0.246 PHASE 3C: Hoola's own memory stays inside its Session (fence.py); false = all chats share
     chat_compact: bool = True              # false = Phase 1 only (the safety net shortens instead of a summary)
@@ -168,6 +181,12 @@ class Settings(BaseSettings):
     chat_compact_keep: int = 4             # newest exchanges that always stay word for word
     chat_compact_max_chars: int = 8000     # the checkpoint summary's size
     tool_admit_cap: int = 220               # admitted specs above this = router over-matched: send the FULL set instead
+    # Parity Phase 3 CLEAN TOOLS (docs/CLAUDE_PARITY_PLAN.md): a turn starts from ~22 core tools (agent/core_tools.py:
+    # web_search, ONE web reader web_fetch, pylab, artifact, file, one memory search, chats, mail, calendar, drive,
+    # plan, agents, form, status) with clear English descriptions; a family joins only when her words clearly name it
+    # (whole-word keys), everything else stays one tool_search away; big results keep head + tail; no raw Python errors.
+    # false = the old always-on core families (~55 tools a plain turn) and the old result / error text
+    chat_core_tools: bool = True
     # v0.191 HARNESS-2: job-completion WAKE turns (dsh completionDelivery + maxConsecutiveWakes) - a finished job whose
     # chat is idle wakes the real brain (tools allowed) instead of only the v0.187 one-shot line; budget keeps it finite.
     agent_wake_turns: bool = True
@@ -192,6 +211,15 @@ class Settings(BaseSettings):
     team_tenant_inline_max: int = 8      # CALL PAR TEAM: inline agents running at once for one user, across all her asks
     team_bg_max_running: int = 2            # running background crews per tenant
     team_bg_timeout_s: int = 1200           # a whole background crew's wall clock
+    # PARITY Phase 4 (docs/CLAUDE_PARITY_PLAN.md): long work stays IN the chat turn, like Claude - deploy_agents crews
+    # and Hoola's own research_run run inside her turn and the answer is the reply (no background crew, no wake turn).
+    # Background jobs stay only for work that outlives the turn (video renders, app / website builds). False = the old
+    # behaviour (crews / research may go to the background, 900 s turn, 300 s tool clock).
+    chat_work_in_turn: bool = True
+    chat_turn_s: int = 1200                 # her chat turn's budget with work in the turn (20 min; was agent_turn_timeout_s 900)
+    chat_max_calls: int = 200               # tool calls one chat turn may make (breaker cap; was 48 / 150 in goal mode)
+    chat_long_tool_s: int = 1080            # tool clock for deploy_agents / research_run inside a chat turn (was 300 s)
+    team_inturn_timeout_s: int = 900        # an in-turn crew's clock: slow agents are cut, finished agents keep their work
     agent_event_log: bool = True            # the harness session log (harness_events; best-effort writes, never breaks a turn)
     event_log_retain_days: int = 14         # the daily worker sweep drops older rows
     tv_refresh: bool = True                # Hoola TV: download + check the free channel list nightly
@@ -293,6 +321,15 @@ class Settings(BaseSettings):
 
     # --- low-cost chat brain: any OpenAI-compatible API (Z.ai GLM, or GLM self-hosted in India) ---
     chat_llm: str = "auto"                  # auto (OmniRoute, else GLM, else Claude) | omniroute | glm | claude
+    # v0.732 PARITY PHASE 1 EK MODEL (owner: "WE WILL KEEP GLM 5.3 FLASH AS PRIMARY FOR ALL FOR NOW --- PHASE 0 + 1"): a
+    # chat turn runs on ONE model from start to end, like Claude chat - the configured chat brain (GLM-5.3-Flash on her
+    # server). No silent switch to Claude when GLM fails or is paused, no Haiku / Sonnet / Opus split by ask size: the
+    # same model is asked again (chat_model_retries, chat_model_retry_s apart), then the turn says plainly that the model
+    # is busy. The ONE exception: a PDF / picture the chat brain cannot read goes to Claude (llm.choose). Background
+    # work (summaries, reviewers, Studio steps) keeps its own routes. Off = the old fallbacks.
+    chat_one_model: bool = True
+    chat_model_retries: int = 2
+    chat_model_retry_s: float = 3.0
     # --- OmniRoute: open-source LLM gateway on this VPS (switches providers, fallback, cost routing) ---
     omniroute_url: str = ""                 # e.g. http://127.0.0.1:20128/v1
     omniroute_key: str = ""                 # an endpoint API key made in the OmniRoute dashboard
@@ -308,10 +345,19 @@ class Settings(BaseSettings):
     browser_wait_seconds: int = 20          # v0.86 how long a chat turn waits before "I'll message you when done" (was 150)
     pc_wait_seconds: int = 12               # v0.86 same for the PC operator (the chat stays free for new questions)
     artifact_wait_seconds: int = 20         # v0.86 same for pages (the card opens when ready)
-    quick_lane: bool = True                 # v0.86 answer new chat messages at once while a long job runs
+    chat_artifact_direct: bool = True       # parity Phase 6: the chat model writes pages itself (tool `artifact`: create /
+                                            # update old->new / rewrite, a version per change, streamed into the panel);
+                                            # artifact_make (the separate builder) only for a 'polish / studio quality' ask
+    hoola_language: str = "en"              # v0.728 SAB ENGLISH: en = Hoola writes and speaks English; auto = her own language
+    quick_lane: bool = False                # v0.86 answer new chat messages at once while a long job runs. v0.724 CLAUDE
+                                            # JAISA: off - a smaller no-tools brain answered from 10 lines and the pair was
+                                            # kept OUT of the history; now her message reaches the running job / waits
+    chat_approval_words: bool = False       # v0.724 CLAUDE JAISA: a bare "haan" no longer approves a waiting PC / browser
+                                            # card before the model reads it; the model sees the card + its own last reply
     quick_model: str = ""                   # v0.86 model for the quick lane ('' = anthropic_model; a cheap brain is used first)
     prompt_cache: bool = True               # v0.86 Anthropic prompt caching on tools + conversation (faster replies)
     console_v2: bool = True                 # v0.170 Console v2 master switch: the Night-Glass v2 shell serves /console (?legacy=1 = the old page) and turns the four chat phases on below in one go
+    console_human: bool = True             # v0.743 SAAF INSAANI: the console talks like a person (same design)
     console_stream: bool = False            # v0.161 replies stream word by word (live-only delta events, /live, retry, thumbs)
     chat_sessions: bool = False             # v0.162 many chats: titles, pin / archive / delete, search, edit + branches
     side_panel: bool = False                # v0.163 finished work (pages, files, videos, sites, apps) opens beside the chat
@@ -327,8 +373,14 @@ class Settings(BaseSettings):
     # https://integrate.api.nvidia.com/v1, GLM_MODEL=z-ai/glm-5.3-flash, GLM_API_KEY=nvapi-... and CHAT_LLM=glm.
     claude_all_glm: bool = False
     studio_build_architect: bool = True   # v0.711 Web Studio Build mode: every ask is planned by the architect first (not the library's page set for its business type)
-    architect_opus: bool = True   # v0.710: the website architect's plan always on the Website Sahayak's Opus (the GLM door + claude_one_model stand aside for that one call)
-    claude_all_glm_fallback: bool = True
+    architect_opus: bool = False   # v0.735 ALL GLM (owner: "MOVE EVERYTHING ON GLM 5.3 FLASH"): off = the plan on GLM too. Was True since v0.710 - v0.710: the website architect's plan always on the Website Sahayak's Opus (the GLM door + claude_one_model stand aside for that one call)
+    claude_all_glm_fallback: bool = False   # v0.735 ALL GLM: a failed GLM call is NOT re-asked on Claude (was True)
+    # v0.735 ALL GLM - every job on GLM, one switch per piece so the owner can test them one by one:
+    glm_images: bool = True     # pictures go to GLM (OpenRouter lists z-ai/glm-5.3-flash with text + image + video input)
+    glm_pause_one_model: bool = False   # v0.736 true = a paused GLM refuses chat calls again (old)
+    glm_pdf: bool = True        # a PDF reaches GLM as its own text (pypdf); a scanned PDF as page pictures (pypdfium2)
+    glm_pdf_max_chars: int = 60000
+    glm_pdf_max_pages: int = 8  # pages rendered as pictures for a scanned PDF
     claude_all_brain: str = ""              # "" = OmniRoute when OMNIROUTE_URL is set, else GLM | "glm" | "omniroute"
     omniroute_timeout_s: float = 90.0       # one OmniRoute request (it may try two providers inside it)
     glm_reasoning_effort: str = "low"     # NVIDIA GLM-5.3-Flash: low | high | max (its default max is slow)
@@ -372,14 +424,57 @@ class Settings(BaseSettings):
     kala_catalog_ttl_seconds: int = 300    # tool, the google/skills catalog) - index.json fetched byte-exact
                                            # behind this in-process TTL; documents fetched fresh every read;
                                            # off means off (honest NEED_SETUP)
+    shilp_enabled: bool = True             # v0.730 SHILP MANCH: the ArtCraft generation lane (the `shilp` tool,
+                                           # their Omni API api.storyteller.ai) - video + image generation and
+                                           # job status; off means off (honest NEED_SETUP)
+    artcraft_api_key: str = ""             # BYOK: VPS .env only (ARTCRAFT_API_KEY), never in chat or the repo -
+                                           # gated per account by the ArtCraft team (app.getartcraft.com)
+    artcraft_base_url: str = "https://api.storyteller.ai"  # their doc's own emphasis: NOT api.getartcraft.com
     kaam_enabled: bool = True              # v0.688 KAAM MANCH: the work-discipline layer (OWL-derived, IDEA-ONLY
                                            # from camel-ai/owl@2df367e, zero upstream code): the search/verify
                                            # tips on the system prompt + the done-needs-proof backstop + the
                                            # (Kaam: ...) ledger note - no tool, no key, no network
     kaam_ledger_enabled: bool = True       # ... the ledger note alone can go quiet without touching the rest
+    chat_answer_only: bool = True          # parity Phase 5: the reply is ONLY what the model wrote - the (Kaam: ...)
+                                           # ledger rides the turn's step data (event `ledger`, the console's folded
+                                           # steps row), honesty checks ask the model to correct itself once instead
+                                           # of stapling a note, and a correction message goes out only when a real
+                                           # ACTION claim (sent / paid / booked / deleted / published) stayed false
+                                           # after that retry. False = the old stapled notes.
+    # v0.741 more providers for the model dropdown: each key ONLY here (.env); "<provider>:<model>" in chat_models
+    gemini_chat_api_key: str = ""          # Google AI Studio key for CHAT (the voice GEMINI_API_KEY is never spent by chat)
+    groq_api_key: str = ""
+    mistral_api_key: str = ""
+    nvidia_api_key: str = ""
+    zai_api_key: str = ""
+    openrouter_api_key: str = ""           # only when GLM itself is not on OpenRouter
+    aihubmix_api_key: str = ""             # v0.742 AIHubMix (free "-free" models after a $1 top-up)
+    chat_model_choice: bool = True         # v0.740 each user picks the chat model in the console composer (owner's list)
+    chat_models: str = "nvidia/nemotron-3.5-super-vl:free,thinkingmachines/inkling-2-small:free,google/gemma-4-31b-it:free"
+                                           # the owner's list beside GLM_MODEL (OpenRouter slugs, comma-separated)
+    model_choice_dir: str = ""             # '' = data/model_choice
+    model_profile: bool = True             # v0.739 the chat model's abilities READ from OpenRouter's model list (pictures,
+                                           # reasoning, tools, window) - a new GLM_MODEL needs no code change; off = old
+    model_profile_dir: str = ""            # '' = data/modelprofile
+    chat_files_by_code: bool = True        # parity gap 9a (v0.738): ONE way to make a file, like Claude - pylab writes
+                                           # Word / Excel / PDF / PowerPoint with Python and they land in her chat
+    chat_every_message: bool = True        # parity gap 1 (v0.738): every message reaches the model - the research plan
+                                           # gate never answers for it, stop words still stop the work at once but the
+                                           # model writes the reply (the OTP / CAPTCHA hand-over stays before the model)
+    chat_plain_loop: bool = True           # parity Phase 5b (the loop): the model's answer ends the turn. Kept checks
+                                           # run BEFORE the answer is shown and a corrected answer REPLACES the draft
+                                           # in place (one reply): a false ACTION claim (sent / paid / booked /
+                                           # deleted / published with no tool), a reminder promised with none set,
+                                           # and research figures with no source (a dossier turn). Dropped: the
+                                           # generic pakka self-check model call and the reviewer call on ordinary
+                                           # hard answers. Kept as is: the goal nudge (only with an open kaam_plan
+                                           # goal) and the promise nudge (aage). False = the old checks.
     seekh_enabled: bool = True             # v0.713 SEEKH MANCH: learn a way of working from a video (the
     seekh_max_per_day: int = 20            # `seekh_video` tool): the Gemini eyes watch, Claude distills the
     seekh_file_max_mb: int = 200           # steps with [m:ss] evidence, and they land in the two memories
+    seekh_live_notes: bool = True          # v0.745 notes stream onto the Video Learner page as Gemini writes them
+    interactive_page: bool = True          # v0.747 HOOLA INTERACTIVE: the console's video studio (one line -> scenes -> HyperFrames MP4)
+    hoola_code_page: bool = True          # v0.748 HOOLA CODE: Developer Sahayak as a console page (sessions, live steps, plan, PR, reviews)
     seekh_file_max_s: int = 1800           # that already ship (procedures + operator recipe drafts) - off = off
     voice_adapt: bool = True               # v0.119 her own pauses / style / words / mis-hearings shape the call
     site_model: str = "claude-opus-5-5"     # v0.121 Website Sahayak: model that designs and writes every section

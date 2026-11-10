@@ -89,9 +89,9 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
     from ..pidesk import service as S
     t, conv, actor = ctx.tenant_id, ctx.conversation_id, _actor(ctx)
     if actor.startswith("customer:"):
-        raise ToolError("Yeh andar ka kaam hai.")
+        raise ToolError("This is internal work.")
     if action in _OWNER_ONLY and not _owner(ctx):
-        raise ToolError("Sirf owner.")
+        raise ToolError("Owner only.")
     cs = _s(a.get("case"))
     try:
         if action == "new":
@@ -141,7 +141,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         raise ToolError("REFUSED: " + str(ex))
     except (S.PiError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("action galat")
+    raise ToolError("invalid action")
 
 
 def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
@@ -149,7 +149,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
     from ..pidesk import service as S
     t, cs = ctx.tenant_id, _s(a.get("case"))
     if _actor(ctx).startswith("customer:"):
-        raise ToolError("Yeh andar ka kaam hai.")
+        raise ToolError("This is internal work.")
     try:
         if what == "day":
             return S.day(t)
@@ -171,7 +171,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
             return R.check_identifier(_s(a.get("kind")), _s(a.get("value")))
     except (S.PiError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("what galat")
+    raise ToolError("invalid what")
 
 
 async def pidesk(ctx: Ctx, action, **a: Any):

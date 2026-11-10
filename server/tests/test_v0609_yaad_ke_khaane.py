@@ -121,7 +121,7 @@ def test_the_prompt_teaches_the_claude_way(env):
 # ---------------------------------------------------------------- surfaces + the quiz job
 def test_phone_console_and_ops_wiring():
     page = (REPO / "lib" / "ui" / "memory_page_screen.dart").read_text()
-    assert "Saari yaad mitao" in page and "Sensitive baatein bhi" in page and "memoryReset" in page
+    assert "Delete all memory" in page and "Sensitive topics too" in page and "memoryReset" in page
     api = (REPO / "lib" / "api.dart").read_text()
     assert "/api/memory/reset" in api and "'confirm': 'RESET'" in api and "'sensitive': sensitive" in api
     pj = (REPO / "server" / "app" / "static" / "console" / "projects.js").read_text()
@@ -134,4 +134,4 @@ def test_phone_console_and_ops_wiring():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.715.0"
+    assert APP_VERSION == "0.749.0"

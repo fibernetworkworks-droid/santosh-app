@@ -11,7 +11,7 @@ import 'glass.dart';
 /// the console's Systems page) is the only door. The key is sent once, sealed server-side the instant it
 /// arrives, and no route ever returns it: after saving she only ever sees the masked form.
 ///
-/// "Jaanchiye" asks her real system, READ-ONLY, whether it works, and shows what it answered rather than a
+/// "Check" asks her real system, READ-ONLY, whether it works, and shows what it answered rather than a
 /// green tick: a wrong key (401) is not a missing permission (403), and a CSRF token that cannot be fetched
 /// means a write would fail later, so it is better said now.
 class EnterpriseScreen extends StatefulWidget {
@@ -34,15 +34,15 @@ class _EnterpriseScreenState extends State<EnterpriseScreen> {
   static const _kinds = {
     'bearer': 'Bearer token (OAuth)',
     'basic': 'Basic (user:pass, base64)',
-    'header': 'API key ek header mein',
+    'header': 'API key in one header',
   };
   // what goes in the address box, per system — guessing the API URL is the commonest reason a join fails
   static const _hint = {
-    'sap': 'https://<aapka-sap>/sap/opu/odata/sap/<SERVICE> — Basis team se poora OData address maangiye',
+    'sap': 'https://<your-sap>/sap/opu/odata/sap/<SERVICE> — ask your Basis team for the full OData address',
     'oracle': 'https://<account>.suitetalk.api.netsuite.com/services/rest/record/v1',
-    'salesforce': 'https://<aapki-org>.my.salesforce.com/services/data/v64.0',
-    'windchill': 'https://<aapka-windchill>/Windchill/servlet/odata — OAuth chalu ho to /Windchill/oauth/servlet/odata',
-    'teamcenter': 'Abhi sirf padhne ke liye: Siemens ka asli rasta SOA hai, aur Hoola woh nahi bolta',
+    'salesforce': 'https://<your-org>.my.salesforce.com/services/data/v64.0',
+    'windchill': 'https://<your-windchill>/Windchill/servlet/odata — if OAuth is on, use /Windchill/oauth/servlet/odata',
+    'teamcenter': 'Read-only for now: Siemens\' real route is SOA, which Hoola does not speak',
   };
 
   final _addr = TextEditingController();
@@ -101,7 +101,7 @@ class _EnterpriseScreenState extends State<EnterpriseScreen> {
   Future<void> _save(String system) async {
     final addr = _addr.text.trim();
     if (addr.isEmpty) {
-      _say('API ka address chahiye.');
+      _say('The API address is needed.');
       return;
     }
     setState(() => _busy = true);
@@ -146,10 +146,10 @@ class _EnterpriseScreenState extends State<EnterpriseScreen> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (c) => AlertDialog(
-        title: const Text('Address aur key hata denge?'),
-        content: const Text('Purane kaam aur kaagaz waise hi rahenge. Sirf andar jaane ka rasta hat jaayega.'),
+        title: const Text('Remove the address and key?'),
+        content: const Text('Past jobs and papers stay as they are. Only the way in will be removed.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Rehne dijiye')),
+          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Keep it')),
           TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Hataiye')),
         ],
       ),
@@ -172,7 +172,7 @@ class _EnterpriseScreenState extends State<EnterpriseScreen> {
   Widget build(BuildContext context) {
     final can = (_d?['jod_sakte_hain'] as List? ?? const []);
     return Scaffold(
-      appBar: AppBar(title: const Text('Apne system jodiye')),
+      appBar: AppBar(title: const Text('Connect your systems')),
       body: _err != null
           ? Center(child: Padding(padding: const EdgeInsets.all(24), child: Text(_err!)))
           : _d == null
@@ -184,10 +184,10 @@ class _EnterpriseScreenState extends State<EnterpriseScreen> {
                     children: [
                       Glass(
                         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: const [
-                          Text('Key kahan jaati hai', style: TextStyle(fontWeight: FontWeight.w600)),
+                          Text('Where the key goes', style: TextStyle(fontWeight: FontWeight.w600)),
                           SizedBox(height: 6),
-                          Text('Jo key aap yahan daalti hain woh aate hi encrypt ho jaati hai. Koi address use '
-                              'wapas nahi deta — na yeh screen, na chat, na AI. Aage sirf •••• dikhega.'),
+                          Text('A key you enter here is encrypted the moment it arrives. No address '
+                              'returns it - not this screen, not the chat, not the AI. Only •••• will show from now on.'),
                         ]),
                       ),
                       const SizedBox(height: 12),
@@ -211,8 +211,8 @@ class _EnterpriseScreenState extends State<EnterpriseScreen> {
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Wrap(spacing: 8, runSpacing: 4, crossAxisAlignment: WrapCrossAlignment.center, children: [
             Text((sys['label'] ?? key) as String, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
-            if (live == null) _chip('juda nahi') else _chip(live['verified'] == true ? 'jancha hua' : 'juda, jancha nahi', good: live['verified'] == true),
-            if (readOnly) _chip('sirf padhna'),
+            if (live == null) _chip('not connected') else _chip(live['verified'] == true ? 'verified' : 'connected, not verified', good: live['verified'] == true),
+            if (readOnly) _chip('read-only'),
             if (live != null) _chip((live['env'] ?? '') as String, warn: live['env'] == 'production'),
           ]),
           if ((sys['note'] ?? '').toString().isNotEmpty)
@@ -220,7 +220,7 @@ class _EnterpriseScreenState extends State<EnterpriseScreen> {
           if (live != null && !isOpen) ...[
             const SizedBox(height: 8),
             Text('Address: ${live['base_url']}', style: const TextStyle(fontSize: 12.5)),
-            Text('Key: ${live['auth'] ?? '••••'}  (seal ki hui)', style: const TextStyle(fontSize: 12.5)),
+            Text('Key: ${live['auth'] ?? '••••'}  (sealed)', style: const TextStyle(fontSize: 12.5)),
           ],
           if (isOpen) _form(key, live) else _buttons(key, live),
           if (_verdictFor == key && (_busy || _verdict != null)) _verdictBox(),
@@ -233,10 +233,10 @@ class _EnterpriseScreenState extends State<EnterpriseScreen> {
         padding: const EdgeInsets.only(top: 8),
         child: Wrap(spacing: 8, runSpacing: 8, children: [
           if (live == null)
-            FilledButton(onPressed: _busy ? null : () => _openForm(key), child: const Text('Jodiye'))
+            FilledButton(onPressed: _busy ? null : () => _openForm(key), child: const Text('Connect'))
           else ...[
-            FilledButton(onPressed: _busy ? null : () => _verify(key), child: const Text('Jaanchiye')),
-            OutlinedButton(onPressed: _busy ? null : () => _openForm(key), child: const Text('Badliye')),
+            FilledButton(onPressed: _busy ? null : () => _verify(key), child: const Text('Check')),
+            OutlinedButton(onPressed: _busy ? null : () => _openForm(key), child: const Text('Change')),
             OutlinedButton(onPressed: _busy ? null : () => _forget(key), child: const Text('Hataiye')),
           ],
         ]),
@@ -252,7 +252,7 @@ class _EnterpriseScreenState extends State<EnterpriseScreen> {
           ),
           Padding(
             padding: const EdgeInsets.only(top: 4),
-            child: Text(_hint[key] ?? 'System ka API address, https:// se', style: const TextStyle(fontSize: 12.5, height: 1.4)),
+            child: Text(_hint[key] ?? 'The system\'s API address, starting with https://', style: const TextStyle(fontSize: 12.5, height: 1.4)),
           ),
           const SizedBox(height: 10),
           DropdownButtonFormField<String>(
@@ -267,7 +267,7 @@ class _EnterpriseScreenState extends State<EnterpriseScreen> {
               child: TextField(
                 controller: _hdr,
                 autocorrect: false,
-                decoration: const InputDecoration(labelText: 'Header ka naam', hintText: 'X-API-Key'),
+                decoration: const InputDecoration(labelText: 'Header name', hintText: 'X-API-Key'),
               ),
             ),
           const SizedBox(height: 10),
@@ -278,29 +278,29 @@ class _EnterpriseScreenState extends State<EnterpriseScreen> {
             enableSuggestions: false,
             decoration: InputDecoration(
               labelText: 'Key / token',
-              hintText: live != null ? 'Waisi hi rakhni hai to khaali chhod dijiye' : 'Yahan daaliye',
+              hintText: live != null ? 'Leave blank to keep it as it is' : 'Enter it here',
             ),
           ),
           const SizedBox(height: 10),
           DropdownButtonFormField<String>(
             value: _env,
-            decoration: const InputDecoration(labelText: 'Kaunsa system hai'),
+            decoration: const InputDecoration(labelText: 'Which system it is'),
             items: const [
               DropdownMenuItem(value: 'test', child: Text('Test / sandbox')),
-              DropdownMenuItem(value: 'production', child: Text('PRODUCTION (asli)')),
+              DropdownMenuItem(value: 'production', child: Text('PRODUCTION (real)')),
             ],
             onChanged: (v) => setState(() => _env = v ?? 'test'),
           ),
           const Padding(
             padding: EdgeInsets.only(top: 6),
-            child: Text('Production chunne par bhi koi likhai aapki haan ke bina nahi jaati — aur haan ke saath '
-                "'production' likhna padta hai.",
+            child: Text('Even if you choose Production, nothing is written without your yes - and along with the yes '
+                "you must type 'production'.",
                 style: TextStyle(fontSize: 12.5, height: 1.4)),
           ),
           const SizedBox(height: 12),
           Wrap(spacing: 8, children: [
-            FilledButton(onPressed: _busy ? null : () => _save(key), child: Text(_busy ? 'Ruk jaiye…' : 'Save karke jaanchiye')),
-            OutlinedButton(onPressed: _busy ? null : () => setState(() => _open = null), child: const Text('Rehne dijiye')),
+            FilledButton(onPressed: _busy ? null : () => _save(key), child: Text(_busy ? 'Ruk jaiye…' : 'Save and check')),
+            OutlinedButton(onPressed: _busy ? null : () => setState(() => _open = null), child: const Text('Keep it')),
           ]),
         ]),
       );
@@ -312,7 +312,7 @@ class _EnterpriseScreenState extends State<EnterpriseScreen> {
         child: Row(children: [
           SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
           SizedBox(width: 8),
-          Expanded(child: Text('System se poochh rahe hain… (kuch likha nahi jaayega)', style: TextStyle(fontSize: 13))),
+          Expanded(child: Text('Asking the system… (nothing will be written)', style: TextStyle(fontSize: 13))),
         ]),
       );
     }
@@ -321,7 +321,7 @@ class _EnterpriseScreenState extends State<EnterpriseScreen> {
     return Padding(
       padding: const EdgeInsets.only(top: 12),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(ok ? 'Chal raha hai' : 'Abhi nahi chal raha', style: const TextStyle(fontWeight: FontWeight.w600)),
+        Text(ok ? 'Working' : 'Not working right now', style: const TextStyle(fontWeight: FontWeight.w600)),
         for (final j in rows)
           if (j is Map)
             Padding(

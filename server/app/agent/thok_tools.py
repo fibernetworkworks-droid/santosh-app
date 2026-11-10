@@ -70,7 +70,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
     try:
         if action == "settings":
             if not _owner(ctx):
-                raise ToolError("Sirf owner.")
+                raise ToolError("Owner only.")
             keys = ("firm", "gstin", "address", "phone", "bank", "terms", "aato", "last_fy_turnover", "prefix", "credit_days", "morning_time")
             return S.save_settings(t, **{k: a[k] for k in keys if k in a})
         if action == "party":
@@ -84,11 +84,11 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return S.take_order(t, _s(a.get("party")), _s(a.get("text")), a.get("lines"), _s(a.get("note")), conv)
         if action == "bill":
             if not _owner(ctx):
-                raise ToolError("Bill banane ki haan sirf owner.")
+                raise ToolError("Only the owner can say yes to making the bill.")
             return S.bill(t, _s(a.get("order_id")), _s(a.get("bill_date")), a.get("lines"), conv, by)
         if action == "cancel":
             if not _owner(ctx):
-                raise ToolError("Sirf owner.")
+                raise ToolError("Owner only.")
             return S.cancel_order(t, _s(a.get("order_id")), _s(a.get("reason")))
         if action == "receive":
             return S.receive(t, _s(a.get("party")), a.get("amount"), _s(a.get("mode")) or "cash", _s(a.get("on")), _s(a.get("cheque_no")),
@@ -108,7 +108,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return S.invoice_file(t, _s(a.get("order_id")), conv)
     except (S.ThokError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("action galat")
+    raise ToolError("invalid action")
 
 
 def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
@@ -147,7 +147,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
                     "cash_limit": R.CASH_LIMIT, "tds_purchase": R.TDS_PURCHASE, "msme_days": R.MSME_DAYS}
     except (S.ThokError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("what galat")
+    raise ToolError("invalid what")
 
 
 async def thok(ctx: Ctx, action, **a: Any):

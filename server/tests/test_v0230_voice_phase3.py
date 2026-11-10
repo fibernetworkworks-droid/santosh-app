@@ -56,7 +56,7 @@ def test_news_is_merged_and_never_told_twice(env):
         await asyncio.sleep(0.4)
         return c, _texts(c)
     c, texts = asyncio.run(go())
-    assert len(texts) == 1 and "blouse" in texts[0] and "bijli" in texts[0] and "ek-ek karke" in texts[0]
+    assert len(texts) == 1 and "blouse" in texts[0] and "bijli" in texts[0] and "one by one" in texts[0]
     assert c.stats["news_deduped"] == 2 and c.stats["news_merged"] == 1
 
 
@@ -177,4 +177,4 @@ def test_no_murmur_on_a_short_turn(env, monkeypatch):
 
 def test_version():
     from app import main
-    assert main.APP_VERSION == "0.715.0"
+    assert main.APP_VERSION == "0.749.0"

@@ -53,7 +53,7 @@ class _AppComponentsPanelState extends State<AppComponentsPanel> {
     try {
       await widget.app.api!.call('POST', '$_base/draft', body: {'words': _words.text.trim()}, timeout: const Duration(seconds: 180));
       _words.clear();
-      _say('Component likh diya - padh kar approve kijiye.');
+      _say('The component is written - read it and approve.');
     } catch (e) {
       _say('$e');
     }
@@ -66,10 +66,10 @@ class _AppComponentsPanelState extends State<AppComponentsPanel> {
       context: context,
       builder: (c) => AlertDialog(
         title: Text('Approve ${_s(x['name'])}?'),
-        content: Text('${_s(x['purpose'])}\n\nSirf dikhane wala hissa (internet / files nahi - code se jaancha gaya). Agle build mein app mein jaayega.'),
+        content: Text('${_s(x['purpose'])}\n\nDisplay-only part (no internet / files - checked by code). It will go into the app in the next build.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Nahi')),
-          FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('Haan')),
+          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('No')),
+          FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('Yes')),
         ],
       ),
     );
@@ -89,12 +89,12 @@ class _AppComponentsPanelState extends State<AppComponentsPanel> {
         const Icon(Icons.widgets_rounded, color: C.muted, size: 20),
         const SizedBox(width: 6),
         Expanded(child: Text('Custom components', style: display(15))),
-        IconButton(onPressed: _load, icon: const Icon(Icons.refresh_rounded, color: C.muted, size: 20), tooltip: 'Taaza karo'),
+        IconButton(onPressed: _load, icon: const Icon(Icons.refresh_rounded, color: C.muted, size: 20), tooltip: 'Refresh'),
       ]),
-      const Text('Jab koi taiyaar hissa fit na ho, likhiye - Hoola Android + iPhone dono ke liye ek component likhega. Aapke approve karne ke baad agle build mein.',
+      const Text('When no ready-made part fits, write it here - Hoola will write one component for both Android + iPhone. It goes in the next build after you approve.',
           style: TextStyle(color: C.muted, fontSize: 12)),
-      TextField(controller: _words, maxLength: 800, decoration: const InputDecoration(hintText: 'Jaise: har star ke liye ek bar, kitni rating aayi')),
-      FilledButton(onPressed: _busy ? null : _draft, child: Text(_busy ? 'Likh raha hoon…' : 'Likh do')),
+      TextField(controller: _words, maxLength: 800, decoration: const InputDecoration(hintText: 'e.g. one bar for each star, how many ratings came')),
+      FilledButton(onPressed: _busy ? null : _draft, child: Text(_busy ? 'Writing…' : 'Write it')),
       for (final x in _c)
         ListTile(
           dense: true,

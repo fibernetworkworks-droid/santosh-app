@@ -55,6 +55,21 @@ window.HoolaResults = ctx => {
     });
     s.el.appendChild(row);
   }
+  const KIND = [[/\.pdf$/i, 'PDF', '', 'PDF'], [/\.(docx?|odt|rtf)$/i, 'DOC', 'w', 'Word'], [/\.(xlsx?|ods|csv)$/i, 'XLS', 'x', 'Excel'],
+                [/\.(pptx?|odp|key)$/i, 'PPT', 's', 'Slides']];
+  function fileCard(el, view, info, item) {
+    // a name the model doubled ("Report_pdf.pdf") shows once
+    const name = String(info.name || item.title || 'File').replace(/[_ -](pdf|docx|xlsx|pptx)(\.\1)$/i, '$2');
+    const k = KIND.find(([re]) => re.test(name)) || (info.media === 'pdf' ? KIND[0] : [null, 'FILE', 'f', (info.media || 'File')]);
+    const kb = Math.max(1, Math.round((info.size || 0) / 1024));
+    const size = kb >= 1024 ? (kb / 1024).toFixed(1) + ' MB' : kb + ' KB';
+    const pages = info.pages ? ` · ${info.pages} page${info.pages > 1 ? 's' : ''}` : '';
+    el.classList.add('hmfile'); el.querySelector('.hd')?.remove();
+    el.tabIndex = 0; el.setAttribute('role', 'group'); el.setAttribute('aria-label', name);
+    view.className = 'hmfile-body'; view.style.display = 'contents';
+    view.innerHTML = `<div class="hmthumb" aria-hidden="true"><i></i><i></i><i style="width:80%"></i><i></i><i style="width:60%"></i><span class="tag ${k[2]}">${k[1]}</span></div>`
+      + `<div class="fmeta"><span class="fname">${esc(name)}</span><span class="fsub">${esc(k[3])}${pages} · ${size}</span></div>`;
+  }
   async function card(kind, p, el) {
     if (!KINDS.has(kind)) return false;
     const item = ctx.itemOf(kind, p);
@@ -91,9 +106,21 @@ window.HoolaResults = ctx => {
           else { m.controls = true; m.preload = 'metadata'; m.playsInline = true; }
           m.src = u; view.replaceChildren(m);
         } else {
-          view.innerHTML = `<div class="result-document"><span aria-hidden="true">▤</span><div><b>${esc(info.name || item.title)}</b><p>${Math.max(1, Math.round((info.size || 0) / 1024))} KB · ${esc(info.media || 'file')}</p></div></div>`;
+          // v0.716 NAYA ROOP (her pick 4): a made file is ONE clean card - a small page picture with its type tag,
+          // the name, what it is, and Open / Download; the whole card opens it in the workspace.
+          fileCard(el, view, info, item);
         }
         actions(s, item, base + '?download=1', info.name);
+        if (el.classList.contains('hmfile')) {
+          const row = el.querySelector('.result-actions');
+          const open = row?.querySelector('[data-expand]'); if (open) open.textContent = 'Open';
+          row?.querySelector('[data-reuse]')?.remove();          // the approved card: Open + download, nothing else
+          const dl = row?.querySelector('[data-download]');
+          if (dl) { dl.classList.add('hmico'); dl.setAttribute('aria-label', 'Download'); dl.title = 'Download';
+            dl.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>'; }
+          el.appendChild(row);
+          el.addEventListener('click', e => { if (!e.target.closest('button,a')) ctx.open(item); });
+        }
       }
       if (alive(s)) {
         const media = view.querySelector('img,video,audio');

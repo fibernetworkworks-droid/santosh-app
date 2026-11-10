@@ -343,7 +343,7 @@ def test_share_public_and_trash_wait_for_tap(d):
     contacts.learn("default", [("Swati Sirsath", "swati@fnw.in")], 1.0, sent=True)
     out = run("drive_share", {"file": "Quotation Sharma Traders", "people": ["Swati"], "role": "writer",
                               "message": "Please check"})
-    assert out["needs_approval"] and out["card"]["title"] == "File share karein?"
+    assert out["needs_approval"] and out["card"]["title"] == "Share this file?"
     assert "swati@fnw.in" in json.dumps(out["card"]) and not d.fake.perms           # nothing shared yet
     msg = _approve(d)["message"]
     assert d.fake.perms["doc1"][0] == {"type": "user", "role": "writer", "emailAddress": "swati@fnw.in", "notify": "true",
@@ -358,7 +358,7 @@ def test_share_public_and_trash_wait_for_tap(d):
     assert d.fake.perms["img1"][0]["type"] == "anyone"
     run("drive_trash", {"files": ["Invoices", "MSEDCL bill October.pdf"]})
     card = d.cards[-1][1]
-    assert card.title == "Trash mein daalein?" and any("Folder ke andar" in i["name"] for i in card.items)
+    assert card.title == "Move to Trash?" and any("inside the folder" in i["name"] for i in card.items)
     assert not d.fake.files["fold1"]["trashed"]
     _approve(d)
     assert d.fake.files["fold1"]["trashed"] and d.fake.files["pdf1"]["trashed"]
@@ -394,7 +394,7 @@ def test_trash_list_find_and_delete_forever(d):
     assert tr["count"] == 1 and tr["files"][0]["name"] == "Shop photo.jpg"
     ref = tl["items"][0]["id"]
     out = run("drive_delete", {"files": [ref]})
-    assert out["needs_approval"] and out["card"]["title"] == "Hamesha ke liye delete?"
+    assert out["needs_approval"] and out["card"]["title"] == "Delete forever?"
     assert "img1" in d.fake.files                                              # nothing deleted yet
     msg = _approve(d)["message"]
     assert "img1" not in d.fake.files and "hamesha" in msg.lower()
@@ -406,7 +406,7 @@ def test_empty_trash_card(d):
     run("drive_trash", {"files": ["Shop photo.jpg"]})
     _approve(d)
     out = run("drive_delete", {"empty": True})
-    assert out["card"]["title"] == "Poora Trash khaalein?"
+    assert out["card"]["title"] == "Empty the whole Trash?"
     assert "img1" in d.fake.files
     _approve(d)
     assert "img1" not in d.fake.files and not any(f["trashed"] for f in d.fake.files.values())
@@ -428,11 +428,11 @@ def test_details_and_access(d):
     assert who.get(ME) == "owner" and det["modified_by"] == "Meghana"
     out = run("drive_access", {"file": "Quotation Sharma Traders", "action": "role", "person": "swati",
                                "role": "reader"})
-    assert out["card"]["title"] == "Role badlein?" and d.fake.perms["doc1"][1]["role"] == "writer"
+    assert out["card"]["title"] == "Change role?" and d.fake.perms["doc1"][1]["role"] == "writer"
     _approve(d)
     assert d.fake.perms["doc1"][1]["role"] == "reader"
     out = run("drive_access", {"file": "Quotation Sharma Traders", "action": "remove", "person": "ramesh"})
-    assert out["card"]["title"] == "Sharing hata dein?"
+    assert out["card"]["title"] == "Remove sharing?"
     _approve(d)
     assert all(x["emailAddress"] != "ramesh@fnw.in" for x in d.fake.perms["doc1"])
     with pytest.raises(ToolError, match="Owner ki permission nahi hatati"):
@@ -443,7 +443,7 @@ def test_details_and_access(d):
     run("drive_share", {"file": "Quotation Sharma Traders", "people": ["Swati"], "role": "writer"})
     _approve(d)
     out = run("drive_access", {"file": "Quotation Sharma Traders", "action": "owner", "person": "swati"})
-    assert out["card"]["title"] == "Ownership de dein?"
+    assert out["card"]["title"] == "Transfer ownership?"
     _approve(d)
     sw = next(x for x in d.fake.perms["doc1"] if x["emailAddress"] == "swati@fnw.in")
     assert sw["role"] == "owner"
@@ -456,7 +456,7 @@ def test_comments(d):
     assert out["count"] == 0 and "manzoori" in out["note"]
     add = run("drive_comments", {"file": "Quotation Sharma Traders", "action": "add",
                                  "text": "Please check the rates"})
-    assert add["card"]["title"] == "Comment daalein?" and not d.fake.comments_store.get("doc1")
+    assert add["card"]["title"] == "Add comment?" and not d.fake.comments_store.get("doc1")
     _approve(d)
     assert d.fake.comments_store["doc1"][0]["content"] == "Please check the rates"
     lst = run("drive_comments", {"file": "Quotation Sharma Traders"})
@@ -464,7 +464,7 @@ def test_comments(d):
     cid = lst["comments"][0]["comment_id"]
     rep = run("drive_comments", {"file": "Quotation Sharma Traders", "action": "reply", "comment": cid,
                                  "text": "Done, rates are final"})
-    assert rep["card"]["title"] == "Reply daalein?" and "rates" in rep["card"]["items"][0]["name"]
+    assert rep["card"]["title"] == "Add reply?" and "rates" in rep["card"]["items"][0]["name"]
     _approve(d)
     lst = run("drive_comments", {"file": "Quotation Sharma Traders"})
     assert lst["comments"][0]["replies"][0]["text"] == "Done, rates are final"
@@ -473,7 +473,7 @@ def test_comments(d):
     run("drive_comments", {"file": "Quotation Sharma Traders", "action": "reopen", "comment": cid})
     assert not d.fake.comments_store["doc1"][0]["resolved"]
     dele = run("drive_comments", {"file": "Quotation Sharma Traders", "action": "delete", "comment": cid})
-    assert dele["card"]["title"] == "Comment hatayein?"
+    assert dele["card"]["title"] == "Delete comment?"
     _approve(d)
     assert d.fake.comments_store["doc1"] == []
     with pytest.raises(ToolError, match="card/Aadhaar"):

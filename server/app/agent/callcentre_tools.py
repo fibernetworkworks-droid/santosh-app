@@ -69,7 +69,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
     from ..callcentre import service as S
     t, conv = ctx.tenant_id, ctx.conversation_id
     if str(getattr(ctx, "actor", "")).startswith("customer:"):
-        raise ToolError("Yeh kaam sirf business ke andar se.")
+        raise ToolError("This work is only from inside the business.")
     try:
         if action == "script":
             text = ""
@@ -90,17 +90,17 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return _try(t, _s(a.get("question")), True)
         if action == "settings":
             if not _owner(ctx):
-                raise ToolError("Phone line ki settings sirf owner badal sakti hain.")
+                raise ToolError("Only the owner can change the phone line settings.")
             return S.save_settings(t, **{k: a[k] for k in _SETTING_KEYS if k in a})
         if action == "line":
             if not _owner(ctx):
-                raise ToolError("Line chalu / band sirf owner.")
+                raise ToolError("Only the owner can turn the line on / off.")
             return S.set_line(t, bool(a.get("on")))
         if action == "message_done":
             return S.message_done(t, _s(a.get("message_id")), _s(a.get("note")))
         if action == "forget":
             if not _owner(ctx):
-                raise ToolError("Sirf owner.")
+                raise ToolError("Only the owner can do this.")
             return S.forget_caller(t, _s(a.get("number")))
     except (S.CcError, ValueError) as ex:
         raise ToolError(str(ex))

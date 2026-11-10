@@ -23,17 +23,17 @@ double? _n(String? v) => v == null ? null : double.tryParse(v.replaceAll(',', ''
 
 const _priColor = {'urgent': C.bad, 'high': C.warn, 'normal': C.chip, 'low': C.faint};
 const _statusLabel = {
-  'new': 'Nayi',
-  'open': 'Kaam chalu',
-  'pending': 'Graahak se jawab',
-  'on_hold': 'Ruki hui',
-  'resolved': 'Theek hui',
-  'closed': 'Band',
-  'merged': 'Judi hui',
+  'new': 'New',
+  'open': 'Work in progress',
+  'pending': 'Reply from customer',
+  'on_hold': 'On hold',
+  'resolved': 'Fixed',
+  'closed': 'Closed',
+  'merged': 'Linked',
 };
 
 Future<Map<String, String>?> _form(BuildContext context, String title, List<(String, String)> fields,
-    {Map<String, String> initial = const {}, String ok = 'Aage'}) async {
+    {Map<String, String> initial = const {}, String ok = 'Next'}) async {
   final c = {for (final (k, _) in fields) k: TextEditingController(text: initial[k] ?? '')};
   final res = await showDialog<bool>(
     context: context,
@@ -47,7 +47,7 @@ Future<Map<String, String>?> _form(BuildContext context, String title, List<(Str
         ]),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Rehne do')),
+        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Leave it')),
         TextButton(onPressed: () => Navigator.pop(d, true), child: Text(ok)),
       ],
     ),
@@ -123,22 +123,22 @@ class _SevaScreenState extends State<SevaScreen> {
     final exc = _list(_d?['exceptions']);
     final dups = _list(_d?['duplicates']);
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Glass(child: Text(_s(day['say']).isEmpty ? 'Seva: sab theek.' : _s(day['say']),
+      Glass(child: Text(_s(day['say']).isEmpty ? 'Service: all fine.' : _s(day['say']),
           style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, height: 1.35))),
       const SizedBox(height: 10),
       Wrap(spacing: 8, runSpacing: 8, children: [
-        GlassButton(label: 'Nayi shikayat', icon: Icons.add_comment_rounded, onTap: _busy ? null : _newTicket),
-        GlassButton(label: 'Jawab jaancho', icon: Icons.quiz_rounded, onTap: _busy ? null : _askTest),
+        GlassButton(label: 'New complaint', icon: Icons.add_comment_rounded, onTap: _busy ? null : _newTicket),
+        GlassButton(label: 'Check the reply', icon: Icons.quiz_rounded, onTap: _busy ? null : _askTest),
       ]),
       if (exc.isNotEmpty) ...[
         const SizedBox(height: 14),
-        Text('Aapki haan chahiye', style: display(15)),
+        Text('Needs your yes', style: display(15)),
         for (final e in exc)
           Padding(padding: const EdgeInsets.only(top: 8), child: SevaExceptionCard(key: ValueKey('ex${e['id']}${e['status']}'), app: widget.app, data: e, onDone: _load)),
       ],
       if (dups.isNotEmpty) ...[
         const SizedBox(height: 14),
-        Text('Ek jaisi shikayat (ek hi graahak)', style: display(15)),
+        Text('Similar complaints (same customer)', style: display(15)),
         for (final d in dups)
           Padding(
             padding: const EdgeInsets.only(top: 6),
@@ -148,13 +148,13 @@ class _SevaScreenState extends State<SevaScreen> {
                 Expanded(child: Text('${_s(d['a'])} + ${_s(d['b'])} · ${_s(d['customer'])}', style: const TextStyle(fontSize: 13))),
                 TextButton(
                     onPressed: _busy ? null : () => _run(() => _call(widget.app, 'POST', '/api/seva/tickets/${d['b']}/merge', body: {'into': d['a']})),
-                    child: const Text('Jodo')),
+                    child: const Text('Add')),
               ]),
             ),
           ),
       ],
       const SizedBox(height: 14),
-      Text('Khuli shikayat', style: display(15)),
+      Text('Open complaints', style: display(15)),
       for (final t in _list(_d?['tickets']).take(8)) Padding(padding: const EdgeInsets.only(top: 8), child: _ticketTile(t)),
       const SizedBox(height: 14),
       for (final r in _list(_d?['rules'])) Text('• $r', style: const TextStyle(fontSize: 12, color: C.muted, height: 1.4)),
@@ -162,18 +162,18 @@ class _SevaScreenState extends State<SevaScreen> {
   }
 
   Future<void> _newTicket() async {
-    final f = await _form(context, 'Nayi shikayat', const [
-      ('name', 'Graahak ka naam'),
-      ('phone', 'Phone (WhatsApp ho to wahi)'),
-      ('text', 'Kya dikkat hai (unke shabdon mein)'),
-      ('channel', 'Kahan se: phone / walkin / email'),
+    final f = await _form(context, 'New complaint', const [
+      ('name', 'Customer name'),
+      ('phone', 'Phone (the WhatsApp number, if any)'),
+      ('text', 'What is the problem (in their words)'),
+      ('channel', 'From where: phone / walk-in / email'),
     ]);
     if (f == null || (f['text'] ?? '').isEmpty) return;
     await _run(() => _call(widget.app, 'POST', '/api/seva/tickets', body: {...f, 'channel': f['channel'] ?? 'phone'}));
   }
 
   Future<void> _askTest() async {
-    final f = await _form(context, 'Graahak poochhe to Hoola kya kahega?', const [('question', 'Sawaal')], ok: 'Dekho');
+    final f = await _form(context, 'What should Hoola say if the customer asks?', const [('question', 'Question')], ok: 'View');
     if (f == null || f['question'] == null) return;
     try {
       final r = _map(await _call(widget.app, 'POST', '/api/seva/kb/ask', body: {'question': f['question']}));
@@ -182,15 +182,15 @@ class _SevaScreenState extends State<SevaScreen> {
       await showDialog<void>(
         context: context,
         builder: (d) => AlertDialog(
-          title: Text(st == 'answered' ? 'Jawab milega' : st == 'clarify' ? 'Pakka nahi (poochhega)' : 'Gyaan mein nahi'),
+          title: Text(st == 'answered' ? 'Will get an answer' : st == 'clarify' ? 'Not sure (will ask)' : 'Not in knowledge base'),
           content: Text([
             if (_s(r['reply']).isNotEmpty) _s(r['reply']),
             if (_s(r['source']).isNotEmpty) 'Source: ${_s(r['source'])}',
-            'Bharosa: ${((r['confidence'] ?? 0) * 100).round()}%',
+            'Trust: ${((r['confidence'] ?? 0) * 100).round()}%',
             if (_s(r['say']).isNotEmpty) _s(r['say']),
             if (_s(r['exception']).isNotEmpty) _s(r['exception']),
           ].join('\n\n')),
-          actions: [TextButton(onPressed: () => Navigator.pop(d), child: const Text('Theek'))],
+          actions: [TextButton(onPressed: () => Navigator.pop(d), child: const Text('OK'))],
         ),
       );
     } catch (e) {
@@ -221,7 +221,7 @@ class _SevaScreenState extends State<SevaScreen> {
           Text(_s(t['text']), maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13)),
           Text(
               '${_s(t['category_label'])} · ${_s(t['channel'])}'
-              '${sla['paused'] == true ? ' · samay ruka (graahak ka jawab)' : left != null ? (late ? ' · SLA se late' : ' · ${(left as num).toStringAsFixed(1)} ghante baaki') : ''}',
+              '${sla['paused'] == true ? ' · time paused (waiting for customer\'s reply)' : left != null ? (late ? ' · late against SLA' : ' · ${(left as num).toStringAsFixed(1)} hours left') : ''}',
               style: TextStyle(fontSize: 12, color: late ? C.bad : C.muted)),
         ]),
       ),
@@ -230,7 +230,7 @@ class _SevaScreenState extends State<SevaScreen> {
 
   Widget _ticketsTab() => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Wrap(spacing: 8, runSpacing: 6, children: [
-          for (final (k, label) in const [('open', 'Khuli'), ('pending', 'Graahak se jawab'), ('resolved', 'Theek hui'), ('closed', 'Band'), ('', 'Sab')])
+          for (final (k, label) in const [('open', 'Open'), ('pending', 'Reply from customer'), ('resolved', 'Fixed'), ('closed', 'Closed'), ('', 'All')])
             ChoiceChip(
                 label: Text(label),
                 selected: _ticketFilter == k,
@@ -240,19 +240,19 @@ class _SevaScreenState extends State<SevaScreen> {
                 }),
         ]),
         const SizedBox(height: 8),
-        GlassButton(label: 'Nayi shikayat', icon: Icons.add_comment_rounded, onTap: _busy ? null : _newTicket),
+        GlassButton(label: 'New complaint', icon: Icons.add_comment_rounded, onTap: _busy ? null : _newTicket),
         const SizedBox(height: 8),
-        if (_tickets.isEmpty) const Text('Koi shikayat nahi.', style: TextStyle(color: C.muted)),
+        if (_tickets.isEmpty) const Text('No complaints.', style: TextStyle(color: C.muted)),
         for (final t in _tickets) Padding(padding: const EdgeInsets.only(bottom: 8), child: _ticketTile(t)),
       ]);
 
   // ---------------------------------------------------------------- Gyaan
   Future<void> _kbAdd([Map<String, dynamic>? e, String prefill = '']) async {
-    final f = await _form(context, e == null ? 'Naya sawaal-jawab' : 'Badlo', const [
-      ('question', 'Graahak kya poochhte hain'),
-      ('answer', 'Aapka jawab (sirf sach, jo aap kehti hain)'),
-      ('aliases', 'Aur kaise poochhte hain (comma se)'),
-      ('kind', 'faq ya policy (niyam)'),
+    final f = await _form(context, e == null ? 'New question and answer' : 'Change', const [
+      ('question', 'What customers ask'),
+      ('answer', 'Your answer (only the truth, what you say)'),
+      ('aliases', 'Other ways they ask (comma separated)'),
+      ('kind', 'faq or policy (rule)'),
     ], initial: e == null
         ? {if (prefill.isNotEmpty) 'question': prefill}
         : {'question': _s(e['question']), 'answer': _s(e['answer']), 'aliases': ((e['aliases'] as List?) ?? const []).join(', '), 'kind': _s(e['kind'])});
@@ -275,7 +275,7 @@ class _SevaScreenState extends State<SevaScreen> {
   }
 
   Future<void> _kbImportLink() async {
-    final f = await _form(context, 'Apni website ka page', const [('url', 'https://...')], ok: 'Padho');
+    final f = await _form(context, 'Your website page', const [('url', 'https://...')], ok: 'Read');
     if (f == null || f['url'] == null) return;
     await _run(() => _call(widget.app, 'POST', '/api/seva/kb/import_link', body: {'url': f['url']}));
   }
@@ -284,17 +284,17 @@ class _SevaScreenState extends State<SevaScreen> {
     final drafts = _kb.where((e) => e['status'] == 'draft').toList();
     final live = _kb.where((e) => e['status'] != 'draft').toList();
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      const Text('Hoola graahakon ko sirf yahin se jawab deta hai, source ke saath. Jo yahan nahi, woh aapko deta hai.',
+      const Text('Hoola answers customers only from here, with the source. What is not here, it gives to you.',
           style: TextStyle(fontSize: 12.5, color: C.muted)),
       const SizedBox(height: 8),
       Wrap(spacing: 8, runSpacing: 8, children: [
-        GlassButton(label: 'Likho', icon: Icons.edit_note_rounded, onTap: _busy ? null : () => _kbAdd()),
-        GlassButton(label: 'File se', icon: Icons.upload_file_rounded, onTap: _busy ? null : _kbImportFile),
-        GlassButton(label: 'Website se', icon: Icons.language_rounded, onTap: _busy ? null : _kbImportLink),
+        GlassButton(label: 'Write', icon: Icons.edit_note_rounded, onTap: _busy ? null : () => _kbAdd()),
+        GlassButton(label: 'From file', icon: Icons.upload_file_rounded, onTap: _busy ? null : _kbImportFile),
+        GlassButton(label: 'From website', icon: Icons.language_rounded, onTap: _busy ? null : _kbImportLink),
       ]),
       if (_gaps.isNotEmpty) ...[
         const SizedBox(height: 14),
-        Text('Graahakon ne poocha, Gyaan mein nahi', style: display(15)),
+        Text('Customers asked, not in knowledge base', style: display(15)),
         for (final g in _gaps)
           Padding(
             padding: const EdgeInsets.only(top: 6),
@@ -304,7 +304,7 @@ class _SevaScreenState extends State<SevaScreen> {
               child: Row(children: [
                 Expanded(child: Text('"${_s(g['question'])}" · ${g['times']}x', style: const TextStyle(fontSize: 13))),
                 TextButton(onPressed: _busy ? null : () => _kbAdd(null, _s(g['question'])),
-                    child: const Text('Jawab do')),
+                    child: const Text('Give answer')),
               ]),
             ),
           ),
@@ -312,15 +312,15 @@ class _SevaScreenState extends State<SevaScreen> {
       if (drafts.isNotEmpty) ...[
         const SizedBox(height: 14),
         Row(children: [
-          Expanded(child: Text('Draft (${drafts.length}): aapki haan ke baad hi', style: display(15))),
+          Expanded(child: Text('Draft (${drafts.length}): only after your yes', style: display(15))),
           TextButton(
               onPressed: _busy ? null : () => _run(() => _call(widget.app, 'POST', '/api/seva/kb/approve', body: {'ids': [for (final d in drafts) d['id']]})),
-              child: const Text('Sab haan')),
+              child: const Text('All yes')),
         ]),
         for (final e in drafts) _kbTile(e, draft: true),
       ],
       const SizedBox(height: 14),
-      Text('Gyaan (${live.length})', style: display(15)),
+      Text('Knowledge (${live.length})', style: display(15)),
       for (final e in live) _kbTile(e),
     ]);
   }
@@ -333,16 +333,16 @@ class _SevaScreenState extends State<SevaScreen> {
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
               Expanded(child: Text(_s(e['question']), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5))),
-              Pill(e['kind'] == 'policy' ? 'niyam' : 'faq'),
+              Pill(e['kind'] == 'policy' ? 'rule' : 'faq'),
             ]),
             const SizedBox(height: 4),
             Text(_s(e['answer']), style: const TextStyle(fontSize: 13, height: 1.35)),
-            Text('${_s(e['source'])}${(e['hits'] ?? 0) > 0 ? ' · ${e['hits']} baar kaam aaya' : ''}', style: const TextStyle(fontSize: 11.5, color: C.faint)),
+            Text('${_s(e['source'])}${(e['hits'] ?? 0) > 0 ? ' · ${e['hits']} times it helped' : ''}', style: const TextStyle(fontSize: 11.5, color: C.faint)),
             Row(children: [
               if (draft)
-                TextButton(onPressed: _busy ? null : () => _run(() => _call(widget.app, 'POST', '/api/seva/kb/approve', body: {'ids': [e['id']]})), child: const Text('Haan')),
-              TextButton(onPressed: _busy ? null : () => _kbAdd(e), child: const Text('Badlo')),
-              TextButton(onPressed: _busy ? null : () => _run(() => _call(widget.app, 'DELETE', '/api/seva/kb/${e['id']}')), child: const Text('Hatao')),
+                TextButton(onPressed: _busy ? null : () => _run(() => _call(widget.app, 'POST', '/api/seva/kb/approve', body: {'ids': [e['id']]})), child: const Text('Yes')),
+              TextButton(onPressed: _busy ? null : () => _kbAdd(e), child: const Text('Change')),
+              TextButton(onPressed: _busy ? null : () => _run(() => _call(widget.app, 'DELETE', '/api/seva/kb/${e['id']}')), child: const Text('Remove')),
             ]),
           ]),
         ),
@@ -350,18 +350,18 @@ class _SevaScreenState extends State<SevaScreen> {
 
   // ---------------------------------------------------------------- Jawab (macros)
   Widget _macrosTab() => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Text('Taiyaar jawab: aap ek bhasha mein likhiye, Hoola Hinglish / Hindi / Marathi / English bana deta hai. Manzoori ke baad hi istemaal.',
+        const Text('Ready replies: write in one language and Hoola makes it Hinglish / Hindi / Marathi / English. Used only after your approval.',
             style: TextStyle(fontSize: 12.5, color: C.muted)),
         const SizedBox(height: 8),
         GlassButton(
-            label: 'Naya taiyaar jawab',
+            label: 'New ready reply',
             icon: Icons.bolt_rounded,
             onTap: _busy
                 ? null
                 : () async {
-                    final f = await _form(context, 'Taiyaar jawab', const [
-                      ('name', 'Naam (jaise "technician aa raha")'),
-                      ('text', 'Text ({name}, {ticket}, {status} chal sakte hain)'),
+                    final f = await _form(context, 'Ready replies', const [
+                      ('name', 'Name (for example "technician is coming")'),
+                      ('text', 'Text ({name}, {ticket}, {status} can be used)'),
                     ]);
                     if (f != null) await _run(() => _call(widget.app, 'POST', '/api/seva/macros', body: f));
                   }),
@@ -374,14 +374,14 @@ class _SevaScreenState extends State<SevaScreen> {
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Row(children: [
                   Expanded(child: Text(_s(m['name']), style: const TextStyle(fontWeight: FontWeight.w800))),
-                  Pill(m['status'] == 'approved' ? 'manzoor' : 'draft'),
+                  Pill(m['status'] == 'approved' ? 'approved' : 'draft'),
                 ]),
                 for (final e in _map(m['texts']).entries)
                   Padding(padding: const EdgeInsets.only(top: 4), child: Text('${e.key}: ${e.value}', style: const TextStyle(fontSize: 12.5))),
                 Row(children: [
                   if (m['status'] != 'approved')
-                    TextButton(onPressed: _busy ? null : () => _run(() => _call(widget.app, 'POST', '/api/seva/macros/${m['id']}/approve')), child: const Text('Haan, manzoor')),
-                  TextButton(onPressed: _busy ? null : () => _run(() => _call(widget.app, 'DELETE', '/api/seva/macros/${m['id']}')), child: const Text('Hatao')),
+                    TextButton(onPressed: _busy ? null : () => _run(() => _call(widget.app, 'POST', '/api/seva/macros/${m['id']}/approve')), child: const Text('Yes, approve')),
+                  TextButton(onPressed: _busy ? null : () => _run(() => _call(widget.app, 'DELETE', '/api/seva/macros/${m['id']}')), child: const Text('Remove')),
                 ]),
               ]),
             ),
@@ -394,7 +394,7 @@ class _SevaScreenState extends State<SevaScreen> {
     final pol = _map(st['policy']);
     final sla = _map(st['sla']);
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text('Kaam ka prakaar (SLA)', style: display(15)),
+      Text('Type of work (SLA)', style: display(15)),
       Wrap(spacing: 8, children: [
         for (final k in ((st['presets'] as List?) ?? const ['shop', 'isp', 'ecommerce', 'clinic']))
           ChoiceChip(label: Text('$k'), selected: st['kind'] == k, onSelected: (_) => _run(() => _call(widget.app, 'PUT', '/api/seva/settings', body: {'kind': k}))),
@@ -404,7 +404,7 @@ class _SevaScreenState extends State<SevaScreen> {
         Press(
           onTap: () async {
             final v = (sla[p] as List?) ?? const [24, 72];
-            final f = await _form(context, 'SLA: $p', const [('fr', 'Pehla jawab (ghante)'), ('rs', 'Suljhaana (ghante)')],
+            final f = await _form(context, 'SLA: $p', const [('fr', 'First reply (hours)'), ('rs', 'Resolution (hours)')],
                 initial: {'fr': '${v[0]}', 'rs': '${v[1]}'});
             final fr = _n(f?['fr']), rsv = _n(f?['rs']);
             if (fr != null && rsv != null) {
@@ -415,30 +415,30 @@ class _SevaScreenState extends State<SevaScreen> {
           },
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 4),
-            child: Text('$p: pehla jawab ${((sla[p] as List?) ?? const ['-'])[0]} ghante · suljhana ${((sla[p] as List?) ?? const ['-', '-'])[1]} ghante  ✎',
+            child: Text('$p: first reply ${((sla[p] as List?) ?? const ['-'])[0]} hours · resolution ${((sla[p] as List?) ?? const ['-', '-'])[1]} hours  ✎',
                 style: const TextStyle(fontSize: 13)),
           ),
         ),
       const SizedBox(height: 12),
-      Text('Refund / exchange niyam (likhe hue)', style: display(15)),
+      Text('Refund / exchange rules (as written)', style: display(15)),
       Text(
-          'Refund: ${pol['refund_days'] ?? '-'} din tak, max ₹${pol['refund_max'] ?? '-'} · Badalna: ${pol['replace_days'] ?? '-'} din · Goodwill max ₹${pol['goodwill_max'] ?? '-'}'
+          'Refund: ${pol['refund_days'] ?? '-'} days, max ₹${pol['refund_max'] ?? '-'} · Exchange:${pol['replace_days'] ?? '-'} days · Goodwill max ₹${pol['goodwill_max'] ?? '-'}'
           '${_s(pol['refund_mode']).isNotEmpty ? ' · ${pol['refund_mode']}' : ''}',
           style: const TextStyle(fontSize: 13)),
-      const Text('In niyamon ke andar ho tab bhi har refund aapki tap se hi hota hai; bahar ho to card par saaf likha aata hai.',
+      const Text('Even within these rules, every refund happens only with your tap; if outside them, the card says so clearly.',
           style: TextStyle(fontSize: 12, color: C.muted)),
       GlassButton(
-          label: 'Niyam badlo',
+          label: 'Change rules',
           icon: Icons.rule_rounded,
           onTap: _busy
               ? null
               : () async {
-                  final f = await _form(context, 'Refund niyam', const [
-                    ('refund_days', 'Kitne din tak refund'),
-                    ('refund_max', 'Sabse zyada refund (₹)'),
-                    ('replace_days', 'Kitne din tak badal kar'),
-                    ('goodwill_max', 'Goodwill / chhoot seema (₹)'),
-                    ('refund_mode', 'Refund kaise (UPI / cash / credit note)'),
+                  final f = await _form(context, 'Refund rules', const [
+                    ('refund_days', 'Refund within how many days'),
+                    ('refund_max', 'Maximum refund (₹)'),
+                    ('replace_days', 'Exchange within how many days'),
+                    ('goodwill_max', 'Goodwill / discount limit (₹)'),
+                    ('refund_mode', 'Refund mode (UPI / cash / credit note)'),
                   ], initial: {for (final k in ['refund_days', 'refund_max', 'replace_days', 'goodwill_max', 'refund_mode']) if (pol[k] != null) k: '${pol[k]}'});
                   if (f == null) return;
                   await _run(() => _call(widget.app, 'PUT', '/api/seva/settings', body: {
@@ -448,27 +448,27 @@ class _SevaScreenState extends State<SevaScreen> {
       const SizedBox(height: 12),
       SwitchListTile(
           contentPadding: EdgeInsets.zero,
-          title: const Text('Online bechti hoon (E-Commerce Rules)'),
-          subtitle: const Text('48 ghante mein pavti, 1 mahine mein hal; grievance officer ka naam dikhana zaroori'),
+          title: const Text('I sell online (E-Commerce Rules)'),
+          subtitle: const Text('Acknowledge in 48 hours, resolve in 1 month; the grievance officer\'s name must be shown'),
           value: st['ecommerce'] == true,
           onChanged: (v) => _run(() => _call(widget.app, 'PUT', '/api/seva/settings', body: {'ecommerce': v}))),
       SwitchListTile(
           contentPadding: EdgeInsets.zero,
-          title: const Text('Band hone par rating poochho (1-5)'),
+          title: const Text('Ask for a rating (1-5) when closed'),
           value: st['csat_on'] != false,
           onChanged: (v) => _run(() => _call(widget.app, 'PUT', '/api/seva/settings', body: {'csat_on': v}))),
       SwitchListTile(
           contentPadding: EdgeInsets.zero,
-          title: const Text('Nayi shikayat par turant pavti'),
+          title: const Text('Acknowledge a new complaint at once'),
           value: st['auto_ack'] != false,
           onChanged: (v) => _run(() => _call(widget.app, 'PUT', '/api/seva/settings', body: {'auto_ack': v}))),
       GlassButton(
-          label: 'Grievance officer: ${_s(st['officer']).isEmpty ? 'set karo' : _s(st['officer'])}',
+          label: 'Grievance officer: ${_s(st['officer']).isEmpty ? 'set' : _s(st['officer'])}',
           icon: Icons.badge_rounded,
           onTap: _busy
               ? null
               : () async {
-                  final f = await _form(context, 'Grievance officer', const [('officer', 'Naam'), ('officer_contact', 'Phone / email')],
+                  final f = await _form(context, 'Grievance officer', const [('officer', 'Name'), ('officer_contact', 'Phone / email')],
                       initial: {'officer': _s(st['officer']), 'officer_contact': _s(st['officer_contact'])});
                   if (f != null) await _run(() => _call(widget.app, 'PUT', '/api/seva/settings', body: f));
                 }),
@@ -478,7 +478,7 @@ class _SevaScreenState extends State<SevaScreen> {
   // ---------------------------------------------------------------- Hisaab
   Widget _reportTab() {
     final r = _report ?? const {};
-    String h(dynamic v) => v == null ? '-' : '${(v as num).toStringAsFixed(1)} ghante';
+    String h(dynamic v) => v == null ? '-' : '${(v as num).toStringAsFixed(1)} hours';
     String pct(dynamic v) => v == null ? '-' : '$v%';
     final ex = _map(r['exceptions']);
     Widget tile(String label, String value) => Glass(
@@ -494,7 +494,7 @@ class _SevaScreenState extends State<SevaScreen> {
       Wrap(spacing: 8, children: [
         for (final d in const [7, 30, 90])
           ChoiceChip(
-              label: Text('$d din'),
+              label: Text('$d days'),
               selected: _days == d,
               onSelected: (_) {
                 setState(() => _days = d);
@@ -506,29 +506,29 @@ class _SevaScreenState extends State<SevaScreen> {
       const SizedBox(height: 8),
       Wrap(spacing: 8, runSpacing: 8, children: [
         tile('Ticket', '${r['tickets'] ?? 0}'),
-        tile('Pehla jawab (beech ka)', h(r['first_response_median_h'])),
-        tile('Suljhaana (beech ka)', h(r['resolution_median_h'])),
-        tile('Pehla jawab samay par', pct(r['first_response_sla_pct'])),
-        tile('Samay par suljhi', pct(r['resolution_sla_pct'])),
-        tile('Gyaan se seedha jawab', pct(r['deflection_pct'])),
-        tile('Khush graahak (4-5)', pct(r['csat_pct'])),
-        tile('Refund / exception manzoor', '${ex['approved'] ?? 0} / ${ex['asked'] ?? 0}'),
+        tile('First reply (middle)', h(r['first_response_median_h'])),
+        tile('Resolution (middle)', h(r['resolution_median_h'])),
+        tile('First reply on time', pct(r['first_response_sla_pct'])),
+        tile('Resolved on time', pct(r['resolution_sla_pct'])),
+        tile('Answered directly from knowledge base', pct(r['deflection_pct'])),
+        tile('Happy customers (4-5)', pct(r['csat_pct'])),
+        tile('Refund / exception approval', '${ex['approved'] ?? 0} / ${ex['asked'] ?? 0}'),
       ]),
       const SizedBox(height: 12),
-      Text('Sabse zyada poochhe gaye', style: display(15)),
+      Text('Most asked', style: display(15)),
       for (final q in _list(r['top_questions'])) Text('• ${_s(q['question'])} (${q['times']})', style: const TextStyle(fontSize: 12.5)),
       const SizedBox(height: 8),
-      Text('Kis baat ki shikayat', style: display(15)),
+      Text('What the complaint is about', style: display(15)),
       for (final c in _list(r['by_category'])) Text('• ${_s(c['label'])}: ${c['count']}', style: const TextStyle(fontSize: 12.5)),
     ]);
   }
 
   @override
   Widget build(BuildContext context) {
-    const tabs = ['Aaj', 'Shikayat', 'Gyaan', 'Jawab', 'Niyam', 'Hisaab'];
+    const tabs = ['Today', 'Complaint', 'Knowledge', 'Reply', 'Rules', 'Account'];
     final body = switch (_tab) { 0 => _today(), 1 => _ticketsTab(), 2 => _kbTab(), 3 => _macrosTab(), 4 => _rulesTab(), _ => _reportTab() };
     return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Seva sahayak')),
+      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Service assistant')),
       body: Aurora(
         child: RefreshIndicator(
           onRefresh: _load,
@@ -590,11 +590,11 @@ class _SevaTicketPageState extends State<SevaTicketPage> {
         final go = await showDialog<bool>(
           context: context,
           builder: (d) => AlertDialog(
-            title: const Text('Graahak ko aap bhejiye'),
+            title: const Text('You send it to the customer'),
             content: Text(_s(told['text'])),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Baad mein')),
-              TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('WhatsApp kholo')),
+              TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Later')),
+              TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Open WhatsApp')),
             ],
           ),
         );
@@ -613,7 +613,7 @@ class _SevaTicketPageState extends State<SevaTicketPage> {
     final t = _t;
     final sla = _map(t?['sla']);
     return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(_s(t?['number']).isEmpty ? 'Shikayat' : _s(t?['number']))),
+      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(_s(t?['number']).isEmpty ? 'Complaint' : _s(t?['number']))),
       body: Aurora(
         child: t == null
             ? const Center(child: CircularProgressIndicator())
@@ -630,80 +630,80 @@ class _SevaTicketPageState extends State<SevaTicketPage> {
                     Text('${_s(t['category_label'])} · ${_s(t['channel'])} · ${_statusLabel[_s(t['status'])] ?? _s(t['status'])}',
                         style: const TextStyle(fontSize: 12, color: C.muted)),
                     Text(
-                        'SLA: pehla jawab ${sla['first_response_h'] ?? '-'} ghante · suljhaana ${sla['resolve_h'] ?? '-'} ghante'
-                        '${sla['paused'] == true ? ' · samay ruka hai' : ''}${sla['late'] == true ? ' · LATE' : ''}',
+                        'SLA: first reply ${sla['first_response_h'] ?? '-'} hours · resolution ${sla['resolve_h'] ?? '-'} hours'
+                        '${sla['paused'] == true ? ' · time paused' : ''}${sla['late'] == true ? ' · LATE' : ''}',
                         style: TextStyle(fontSize: 12, color: sla['late'] == true ? C.bad : C.muted)),
                     const SizedBox(height: 6),
-                    Text('Graahak ko dikhta hai: ${_s(t['status_line'])}', style: const TextStyle(fontSize: 12.5, color: C.teal)),
+                    Text('The customer sees: ${_s(t['status_line'])}', style: const TextStyle(fontSize: 12.5, color: C.teal)),
                     for (final l in ((t['legal'] as List?) ?? const []))
                       Padding(padding: const EdgeInsets.only(top: 4), child: Text('ℹ $l', style: const TextStyle(fontSize: 12, color: C.warn))),
                   ]),
                 ),
                 const SizedBox(height: 10),
                 Wrap(spacing: 6, runSpacing: 6, children: [
-                  for (final (k, label) in const [('open', 'Kaam chalu'), ('pending', 'Graahak se jawab'), ('on_hold', 'Ruki'), ('resolved', 'Theek hui'), ('closed', 'Band')])
+                  for (final (k, label) in const [('open', 'Work in progress'), ('pending', 'Reply from customer'), ('on_hold', 'On hold'), ('resolved', 'Fixed'), ('closed', 'Closed')])
                     ChoiceChip(
                         label: Text(label),
                         selected: t['status'] == k,
                         onSelected: _busy
                             ? null
                             : (_) async {
-                                final f = await _form(context, label, const [('public', 'Graahak ko kya batayein (khaali chalega)')], ok: 'Badlo');
+                                final f = await _form(context, label, const [('public', 'What to tell the customer (can be left blank)')], ok: 'Change');
                                 if (f != null) await _act('update', {'status': k, ...f});
                               }),
                 ]),
                 const SizedBox(height: 8),
                 Wrap(spacing: 8, runSpacing: 8, children: [
                   GlassButton(
-                      label: 'Jawab bhejo',
+                      label: 'Send reply',
                       icon: Icons.send_rounded,
                       onTap: _busy
                           ? null
                           : () async {
-                              final f = await _form(context, 'Graahak ko', const [('text', 'Aapka jawab'), ('macro', 'Ya taiyaar jawab ka naam')]);
+                              final f = await _form(context, 'To customer', const [('text', 'Your reply'), ('macro', 'Or the name of a ready reply')]);
                               if (f != null) await _act('reply', f);
                             }),
                   GlassButton(
-                      label: 'Andar ka note',
+                      label: 'Internal note',
                       icon: Icons.sticky_note_2_rounded,
                       onTap: _busy
                           ? null
                           : () async {
-                              final f = await _form(context, 'Note (graahak ko nahi dikhta)', const [('text', 'Note')]);
+                              final f = await _form(context, 'Note (the customer does not see this)', const [('text', 'Note')]);
                               if (f != null) await _act('note', f);
                             }),
                   GlassButton(
-                      label: 'Refund / chhoot arzi',
+                      label: 'Refund / discount request',
                       icon: Icons.currency_rupee_rounded,
                       onTap: _busy
                           ? null
                           : () async {
-                              final f = await _form(context, 'Arzi (aapki haan ke liye card)', const [
+                              final f = await _form(context, 'Request (card for your yes)', const [
                                 ('kind', 'refund / waiver / goodwill / replacement / extension / other'),
-                                ('amount', 'Rakam (₹)'),
-                                ('reason', 'Kyun'),
+                                ('amount', 'Amount (₹)'),
+                                ('reason', 'Why'),
                               ]);
                               if (f != null) await _act('exception', {...f, 'amount': _n(f['amount']) ?? 0, 'kind': f['kind'] ?? 'refund'});
                             }),
                   GlassButton(
-                      label: 'Doosre ticket mein jodo',
+                      label: 'Link to another ticket',
                       icon: Icons.merge_rounded,
                       onTap: _busy
                           ? null
                           : () async {
-                              final f = await _form(context, 'Kis ticket mein (same graahak)', const [('into', 'Ticket number')]);
+                              final f = await _form(context, 'Which ticket (same customer)', const [('into', 'Ticket number')]);
                               if (f != null) await _act('merge', f);
                             }),
                 ]),
                 for (final e in _list(t['exceptions']))
                   Padding(padding: const EdgeInsets.only(top: 10), child: SevaExceptionCard(key: ValueKey('ex${e['id']}${e['status']}'), app: widget.app, data: e, onDone: _load)),
                 const SizedBox(height: 12),
-                Text('Hisaab', style: display(15)),
+                Text('Account', style: display(15)),
                 for (final n in _list(t['notes']).reversed)
                   Padding(
                     padding: const EdgeInsets.only(top: 6),
                     child: Text('${_s(n['at']).length >= 16 ? _s(n['at']).substring(5, 16).replaceFirst('T', ' ') : ''} · ${_s(n['by'])}'
-                        '${n['public'] == true ? ' (graahak ko)' : ''}: ${_s(n['text'])}',
+                        '${n['public'] == true ? ' (to customer)' : ''}: ${_s(n['text'])}',
                         style: TextStyle(fontSize: 12.5, color: n['public'] == true ? C.teal : C.ink)),
                   ),
               ]),
@@ -733,12 +733,12 @@ class _SevaExceptionCardState extends State<SevaExceptionCard> {
     final c = _map(await _call(widget.app, 'POST', '/api/seva/exceptions/$_id/challenge'));
     final show = _map(c['show']);
     final sub = [show['amount'], show['payee']].where((x) => x != null && '$x'.isNotEmpty).join(' · ');
-    final r = await Native.approveKeySign('${c['message']}', '${show['title'] ?? 'Haan dene ke liye fingerprint'}', sub);
+    final r = await Native.approveKeySign('${c['message']}', '${show['title'] ?? 'Fingerprint to give your yes'}', sub);
     if (r['signature'] == null) {
       throw ApiException(428, switch ('${r['error'] ?? ''}') {
-        'cancelled' => 'Fingerprint nahi diya, isliye haan nahi hui.',
-        'key_invalidated' => 'Phone mein naya fingerprint juda hai: Profile > Fingerprint se haan mein is phone ko phir se jodiye.',
-        _ => 'Yeh card fingerprint se hi haan hota hai; jude hue phone se haan kijiye.',
+        'cancelled' => 'Fingerprint was not given, so approval did not happen.',
+        'key_invalidated' => 'A new fingerprint was added on this phone: go to Profile > Approve with fingerprint and connect this phone again.',
+        _ => 'This card is approved only by fingerprint; approve from the connected phone.',
       });
     }
     return {'challenge_id': c['challenge_id'], 'device_id': r['device_id'], 'signature': r['signature']};
@@ -748,12 +748,12 @@ class _SevaExceptionCardState extends State<SevaExceptionCard> {
     String note = '';
     double? amount;
     if (!yes) {
-      final f = await _form(context, 'Mana karne ki wajah (graahak ko jayegi)', const [('note', 'Wajah (khaali chalega)')], ok: 'Mana karo');
+      final f = await _form(context, 'Reason for declining (the customer will see this)', const [('note', 'Reason (can be left blank)')], ok: 'Decline');
       if (f == null) return;
       note = f['note'] ?? '';
     } else if ((widget.data['amount'] ?? 0) > 0) {
-      final f = await _form(context, 'Kitna manzoor?', const [('amount', 'Rakam (₹)')],
-          initial: {'amount': '${widget.data['amount']}'}, ok: 'Haan');
+      final f = await _form(context, 'How much to approve?', const [('amount', 'Amount (₹)')],
+          initial: {'amount': '${widget.data['amount']}'}, ok: 'Yes');
       if (f == null) return;
       amount = _n(f['amount']);
     }
@@ -781,7 +781,7 @@ class _SevaExceptionCardState extends State<SevaExceptionCard> {
   }
 
   Future<void> _sent() async {
-    final f = await _form(context, 'Paise bhej diye?', const [('ref', 'UTR / ref (aakhri 4 ank kaafi)')], ok: 'Haan, bhej diye');
+    final f = await _form(context, 'Did you send the money?', const [('ref', 'UTR / ref (last 4 digits are enough)')], ok: 'Yes, I sent it');
     if (f == null) return;
     setState(() => _busy = true);
     try {
@@ -818,21 +818,21 @@ class _SevaExceptionCardState extends State<SevaExceptionCard> {
         const SizedBox(height: 4),
         Text('${_s(v['customer'])}: ${_s(v['reason'])}', style: const TextStyle(fontSize: 13, height: 1.35)),
         const SizedBox(height: 4),
-        Text(within ? 'Aapke likhe niyam ke andar (faisla phir bhi aapka)' : 'Niyam ke bahar', style: TextStyle(fontSize: 12.5, color: within ? C.ok : C.warn, fontWeight: FontWeight.w700)),
+        Text(within ? 'Within the rules you wrote (the decision is still yours)' : 'Outside the rules', style: TextStyle(fontSize: 12.5, color: within ? C.ok : C.warn, fontWeight: FontWeight.w700)),
         for (final r in ((chk['reasons'] as List?) ?? const [])) Text('• $r', style: const TextStyle(fontSize: 12)),
         const SizedBox(height: 8),
         if (_status == 'pending') ...[
-          if (money) const Text('Haan fingerprint se hogi. Hoola paise khud nahi bhejta.', style: TextStyle(fontSize: 11.5, color: C.muted)),
+          if (money) const Text('Yes, with fingerprint. Hoola does not send money itself.', style: TextStyle(fontSize: 11.5, color: C.muted)),
           const SizedBox(height: 6),
           Row(children: [
-            Expanded(child: GradientButton(label: 'Haan', icon: money ? Icons.fingerprint_rounded : Icons.check_rounded, height: 46, onTap: _busy ? null : () => _decide(true))),
+            Expanded(child: GradientButton(label: 'Yes', icon: money ? Icons.fingerprint_rounded : Icons.check_rounded, height: 46, onTap: _busy ? null : () => _decide(true))),
             const SizedBox(width: 8),
-            Expanded(child: GlassButton(label: 'Mana', icon: Icons.close_rounded, onTap: _busy ? null : () => _decide(false))),
+            Expanded(child: GlassButton(label: 'Decline', icon: Icons.close_rounded, onTap: _busy ? null : () => _decide(false))),
           ]),
         ] else if (_status == 'approved' && money)
-          GlassButton(label: 'Maine paise bhej diye', icon: Icons.done_all_rounded, onTap: _busy ? null : _sent)
+          GlassButton(label: 'I sent the money', icon: Icons.done_all_rounded, onTap: _busy ? null : _sent)
         else
-          Pill(switch (_status) { 'approved' => 'manzoor', 'rejected' => 'mana kiya', 'sent' => 'paise gaye', 'cancelled' => 'wapas li', _ => _status },
+          Pill(switch (_status) { 'approved' => 'approved', 'rejected' => 'declined', 'sent' => 'money sent', 'cancelled' => 'taken back', _ => _status },
               fg: _status == 'rejected' ? C.bad : C.ok),
       ]),
     );

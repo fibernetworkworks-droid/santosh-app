@@ -95,12 +95,12 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
     from ..logistics import service as S
     t, conv = ctx.tenant_id, ctx.conversation_id
     if _actor(ctx).startswith("customer:"):
-        raise ToolError("Yeh kaam graahak ke liye nahi.")
+        raise ToolError("This work is not for customers.")
     ref = _s(a.get("shipment"))
     try:
         if action == "settings":
             if not _owner(ctx):
-                raise ToolError("Sirf owner.")
+                raise ToolError("Owner only.")
             return S.save_settings(t, **{k: a[k] for k in S.SETTING_KEYS if k in a})
         if action == "party":
             keys = ("gstin", "address", "place", "pincode", "phone", "kind", "trans_id", "no_messages", "state")
@@ -135,22 +135,22 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return {"status": "needs_tap", "say": r["say"], "ask_id": r["ask"]["id"]}
         if action == "ewb_number":
             if not _owner(ctx):
-                raise ToolError("E-way bill number sirf owner daalti hai.")
+                raise ToolError("Only the owner enters the E-way bill number.")
             return S.ewb_set(t, ref, _s(a.get("ewb_no")), _s(a.get("valid_upto")), _s(a.get("generated")), conv)
         if action == "pod":
             if not _s(a.get("file_id")):
-                raise ToolError("POD ki photo chat mein bhejiye (file_id).")
+                raise ToolError("Send the POD photo in the chat (file_id).")
             return S.add_photo_file(t, ref, _s(a.get("file_id")), stage="pod", receiver=_s(a.get("receiver")), remarks=_s(a.get("remarks")),
                                     short=a.get("short"), damaged=bool(a.get("damaged")), conv=conv)
         if action == "cancel":
             if not _owner(ctx):
-                raise ToolError("Cancel sirf owner.")
+                raise ToolError("Only the owner can cancel.")
             return S.cancel(t, ref, _s(a.get("reason")), conv)
         if action == "register":
             return S.register_file(t, conv=conv)
     except (S.LogiError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("action galat")
+    raise ToolError("invalid action")
 
 
 def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
@@ -179,7 +179,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
                     "liability_x_freight": R.LIABILITY_X_FREIGHT, "gta_rates": R.GTA_RATES}
     except (S.LogiError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("what galat")
+    raise ToolError("invalid what")
 
 
 async def logistics(ctx: Ctx, action, **a: Any):

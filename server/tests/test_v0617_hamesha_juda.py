@@ -133,12 +133,12 @@ def test_reminder_briefing_and_routine_result_are_spoken_on_a_live_call(env, mon
         s.add(Reminder(tenant_id="default", conversation_id="conv_r", text="BP ki dawai lo",
                        due_at=now() - timedelta(seconds=5)))
     asyncio.run(worker.fire_reminders())
-    assert len(told) == 1 and "Reminder abhi due" in told[0][1] and "BP ki dawai" in told[0][1]
+    assert len(told) == 1 and "Reminder: it is due right now" in told[0][1] and "BP ki dawai" in told[0][1]
     asyncio.run(worker.fire_reminders())                            # fired once, told once
     assert len(told) == 1
     voice.card_news("conv_r", "briefing", {"text": "Aaj 2 meeting, baarish ka chance", "date": "2026-11-06"})
     voice.card_news("conv_r", "routine_done", {"id": "r1", "title": "GST check", "text": "Sab theek, 0 notice"})
-    assert "Subah ki briefing" in told[1][1] and "GST check" in told[2][1] and len(told) == 3
+    assert "morning briefing" in told[1][1] and "GST check" in told[2][1] and len(told) == 3
     assert "routine_done" in (REPO / "server" / "app" / "worker.py").read_text()
 
 
@@ -165,7 +165,7 @@ def test_phone_redials_after_a_server_update_and_keeps_trying():
     cs = (REPO / "lib" / "call_session.dart").read_text()
     assert "'resting' => null" in cs and "'restarting'" in cs
     src = (REPO / "server" / "app" / "voice.py").read_text()
-    assert "khud dobara jud jaayegi" in src
+    assert "reconnect by itself in a minute" in src
 
 
 def test_settings_defaults():
@@ -176,4 +176,4 @@ def test_settings_defaults():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.715.0"
+    assert APP_VERSION == "0.749.0"

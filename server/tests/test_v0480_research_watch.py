@@ -168,15 +168,15 @@ def test_delete_needs_a_yes_and_belongs_to_its_tenant_and_only_the_owner_may_wat
     wid = tool(**ADD, confirm=True)["id"]
     assert tool(action="delete", id=wid)["proposal"] is True and W.get(wid)["status"] == "active"
     assert tool(action="delete", id=wid, confirm=True)["done"] == "delete" and W.get(wid)["status"] == "deleted" and tool(action="list")["watches"] == []
-    with pytest.raises(ToolError, match="nahi mili"):
+    with pytest.raises(ToolError, match="was not found"):
         tool(action="pause", id=wid, tenant="t2")
-    with pytest.raises(ToolError, match="sirf malik"):
+    with pytest.raises(ToolError, match="Only the owner"):
         tool(action="list", actor="customer:3")
 
 
 def test_a_baseline_from_the_research_just_delivered_needs_one_and_waits_a_period(wx):
     from app.agent.tools import ToolError
-    with pytest.raises(ToolError, match="koi research nahi"):
+    with pytest.raises(ToolError, match="no research in this chat"):
         tool(**ADD, baseline="last", confirm=True)
     d, _ = deps(Script({"g": GOOD_PLAY}))
     E.remember("c1", run_(E.run("What is the Corvane Index?", ["g"], E.Policy(rounds=1), d)))
@@ -349,7 +349,7 @@ def test_the_result_tool_hands_over_the_digest_and_remembers_the_dossier_to_chec
     kept = E.recall("c1")
     assert kept is not None and any(f["id"].startswith("prior-c") for f in kept["fields"])
     from app.agent.tools import ToolError
-    with pytest.raises(ToolError, match="digest nahi mila"):
+    with pytest.raises(ToolError, match="No change digest found"):
         tool(action="result", run_id="rr_nope")
     with pytest.raises(ToolError):
         tool(action="result", run_id=rid, tenant="t2")
@@ -372,7 +372,7 @@ def test_the_wake_text_for_a_change_asks_for_a_short_message_and_is_a_held_check
     r = KF.KaamFollowup(tenant_id="t", conversation_id="c", key="research_watch:rr_abc", kind="research_watch", label="Research watch", title="watch 1234 · Corvane",
                         state="done", detail="1 badlaav mile - watch rw_1")
     txt = KF._wake_text(r)
-    assert runner.is_report_due(txt) and runner.is_change_due(txt) and 'run="rr_abc"' in txt and "research_watch tool" in txt and "run_id=rr_abc" in txt and "CHHOTA sandesh" in txt and "nahi dikha" in txt
+    assert runner.is_report_due(txt) and runner.is_change_due(txt) and 'run="rr_abc"' in txt and "research_watch tool" in txt and "run_id=rr_abc" in txt and "SHORT message" in txt and "not seen this time" in txt
     r.state = "stopped"
     assert not runner.is_report_due(KF._wake_text(r))                                           # a paused watch gets the ordinary news line
     j = kaamwatch.shape("research_watch", {"id": "rr_abc", "number": "watch 1234", "name": "Corvane", "status": "done", "say": "x", "watch": "rw_1"})

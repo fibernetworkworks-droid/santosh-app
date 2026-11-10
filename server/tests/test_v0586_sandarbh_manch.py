@@ -360,7 +360,7 @@ def test_unknown_kg_action():
 
 def test_registry_583():
     names = [t["name"] for t in TOOLS]
-    assert len(TOOLS) == 617, "616 + 1 seekh_video (v0.713 SEEKH MANCH: the learn-from-video bridge tool, owner 'GO' on the SEEKH MANCH plan). 608 + 1 kala (v0.681 KALA MANCH: the T5 knowledge-skill catalog family, owner 'GO' on the google/skills deploy plan). " "607 + 1 duniya (v0.667 DUNIYA MANCH: the T4 keyless-public-web family, owner 'T4'). " "606 + 1 jharokha (v0.665 JHAROKHA MANCH: the T3 local-browser family). " + ("581 (the v0.585 base incl. reach + speckit) + 2 sandarbh "
+    assert len(TOOLS) == 620, "617 + 1 shilp (v0.730 SHILP MANCH: the ArtCraft generation lane, their Omni API api.storyteller.ai, BYOK - owner 'MAKE A PLAN FOR HOOLA AI THUS HOOLA USER CAN USE THIS' -> the plan's W0). 616 + 1 seekh_video (v0.713 SEEKH MANCH: the learn-from-video bridge tool, owner 'GO' on the SEEKH MANCH plan). 608 + 1 kala (v0.681 KALA MANCH: the T5 knowledge-skill catalog family, owner 'GO' on the google/skills deploy plan). " "607 + 1 duniya (v0.667 DUNIYA MANCH: the T4 keyless-public-web family, owner 'T4'). " "606 + 1 jharokha (v0.665 JHAROKHA MANCH: the T3 local-browser family). " + ("581 (the v0.585 base incl. reach + speckit) + 2 sandarbh "
                                "(v0.586 SANDARBH MANCH: workspace + kgmemory, the T1 reference family)")
     assert names.count("workspace") == 1 and names.count("kgmemory") == 1
 
@@ -378,4 +378,4 @@ def test_tools_are_registered_with_families_and_handlers():
 
 def test_app_version_pin():
     import app.main as M
-    assert M.APP_VERSION == "0.715.0"
+    assert M.APP_VERSION == "0.749.0"

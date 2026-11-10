@@ -195,16 +195,16 @@ def _sync(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         return S.royalty_op(t, pr, _s(a.get("op")) or "add", actor, **{k: a[k] for k in keys if k in a})
     if action == "waterfall":
         return S.waterfall_run(t, pr, a.get("gross_inr"), a.get("deductions"), a.get("investors"), a.get("shares"), actor)
-    raise ToolError(f"action '{action}' nahi pehchana.")
+    raise ToolError(f"Unknown action '{action}'.")
 
 
 async def _film_desk(ctx: Ctx, action: str = "", **a: Any) -> dict[str, Any]:
     from ..filmdesk import service as S
     actor = _actor(ctx)
     if actor.startswith("customer:"):
-        raise ToolError("Yeh kaam graahak ke liye nahi.")
+        raise ToolError("This work is not for customers.")
     if action in _OWNER_ONLY and not _owner(ctx):
-        raise ToolError("Sirf owner.")
+        raise ToolError("Only the owner can do this.")
     t, conv, pr = ctx.tenant_id, ctx.conversation_id, _s(a.get("project"))
     try:
         if action == "storyboard":
@@ -275,9 +275,9 @@ def _see(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
         return S.previs_view(t, pr)
     if what == "royalties":
         if not _owner(ctx):
-            raise ToolError("Sirf owner.")
+            raise ToolError("Only the owner can do this.")
         return S.royalties_view(t, pr)
-    raise ToolError(f"what '{what}' nahi pehchana.")
+    raise ToolError(f"Unknown what '{what}'.")
 
 
 async def _film_desk_dekho(ctx: Ctx, what: str = "", **a: Any) -> dict[str, Any]:

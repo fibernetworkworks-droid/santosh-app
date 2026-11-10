@@ -58,7 +58,7 @@ def _device(request: Request):
     tok = request.headers.get("authorization", "").removeprefix("Bearer ").strip()
     dev = pcs.device_for_token(tok)
     if dev is None:
-        raise HTTPException(401, "Yeh device paired nahi hai (ya hata diya gaya). Dobara pair kijiye.")
+        raise HTTPException(401, "This device is not paired (or was removed). Pair it again.")
     return dev
 
 
@@ -104,12 +104,12 @@ def compose(text: str, url: str, title: str, selection: str) -> str:
     desktop doors, the extension, a future lane - lands the same shape in her conversation)."""
     parts: list[str] = []
     if url:
-        head = f'Is page ko dekhiye — "{title}"' if title else "Is page ko dekhiye:"
+        head = f'Please look at this page — "{title}"' if title else "Please look at this page:"
         parts.append(f"{head}\n{url}")
         if selection:
-            parts.append(f'Ismein se yeh chuna hai:\n"""\n{selection}\n"""')
+            parts.append(f'I selected this part:\n"""\n{selection}\n"""')
         if not text:
-            parts.append("Iske baare mein bataiye.")
+            parts.append("Tell me about it.")
     if text:
         parts.append(text)
     return "\n\n".join(parts).strip()
@@ -123,11 +123,11 @@ def quickask(body: QuickAsk, request: Request, background: BackgroundTasks) -> d
     title = (body.title or "").strip()
     selection = (body.selection or "").strip()
     if not text and not url:
-        raise HTTPException(422, "Kuch bhejiye - ek sawaal, ya ek page (url).")
+        raise HTTPException(422, "Send something - a question, or a page (url).")
     if url and not url.startswith(("http://", "https://")):
-        raise HTTPException(422, "Url http:// ya https:// se shuru hona chahiye.")
+        raise HTTPException(422, "The url must start with http:// or https://.")
     if not _rate_ok(dev.id):
-        raise HTTPException(429, f"Bahut jaldi bahut sawaal (seva {QUICK_ASK_PER_HOUR}/ghanta). Thodi der baad.")
+        raise HTTPException(429, f"Too many questions too fast (limit {QUICK_ASK_PER_HOUR}/hour). Try again in a little while.")
     tenant = dev.tenant_id
     conv = convs.current_or_new(tenant)          # the chat she is in, else her newest, else a new one
     if _already_sent(tenant, conv, body.client_id):
@@ -149,7 +149,7 @@ def quickask_messages(request: Request, conversation_id: str, after: int = 0, li
     dev = _device(request)
     conv = (conversation_id or "").strip()
     if not conv or convs.tenant_of(conv) != dev.tenant_id:
-        raise HTTPException(404, "Yeh conversation is device ke tenant ki nahi hai.")
+        raise HTTPException(404, "This conversation does not belong to this device's tenant.")
     lim = min(max(int(limit or 20), 1), 50)
     with session() as s:
         rows = list(reversed(s.scalars(

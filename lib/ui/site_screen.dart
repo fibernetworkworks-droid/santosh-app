@@ -25,8 +25,8 @@ Map<String, dynamic> _map(dynamic m) => Map<String, dynamic>.from((m as Map?) ??
 void _snack(BuildContext c, String t) => ScaffoldMessenger.of(c).showSnackBar(SnackBar(content: Text(t)));
 
 const _statusUi = {
-  'draft': 'Shuru', 'planned': 'Plan: aapki haan', 'looks': 'Look chuniye', 'building': 'Ban raha hai', 'checking': 'Jaanch',
-  'ready': 'Taiyaar', 'failed': 'Dikkat', 'stopped': 'Ruka hua',
+  'draft': 'Start', 'planned': 'Plan: your yes', 'looks': 'Choose a look', 'building': 'Building', 'checking': 'Checking',
+  'ready': 'Ready', 'failed': 'Problem', 'stopped': 'Stopped',
 };
 Color _stCol(String s) => switch (s) {
       'ready' => C.ok, 'planned' || 'looks' => C.accent, 'failed' => C.bad, 'building' || 'checking' => C.teal, _ => C.chip };
@@ -41,7 +41,7 @@ Color _hex(String h, [Color or = C.chip]) {
 Future<void> _openUrl(BuildContext context, Santosh app, String url) async {
   if (url.isEmpty) return;
   final u = Uri.parse(app.api!.absolute(url));
-  if (!await launchUrl(u, mode: LaunchMode.externalApplication) && context.mounted) _snack(context, 'Link nahi khula');
+  if (!await launchUrl(u, mode: LaunchMode.externalApplication) && context.mounted) _snack(context, 'The link did not open');
 }
 
 /// A screenshot from the server (needs the key).
@@ -111,7 +111,7 @@ class SiteBoard extends StatelessWidget {
     final pages = _list(b['pages']);
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       if (_s(b['now']).isNotEmpty)
-        Text('Abhi: ${b['now']}', style: const TextStyle(color: C.ink, fontWeight: FontWeight.w700, fontSize: 13)),
+        Text('Now: ${b['now']}', style: const TextStyle(color: C.ink, fontWeight: FontWeight.w700, fontSize: 13)),
       const SizedBox(height: 6),
       ClipRRect(
         borderRadius: BorderRadius.circular(99),
@@ -194,12 +194,12 @@ class SiteBoardCard extends StatelessWidget {
                 style: const TextStyle(fontSize: 12, color: C.muted), maxLines: 2, overflow: TextOverflow.ellipsis),
           const SizedBox(height: 8),
           Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-            TextButton(onPressed: open, child: const Text('Dekho / jawab do')),
+            TextButton(onPressed: open, child: const Text('View / reply')),
             const SizedBox(width: 6),
-            GlassButton(label: 'Haan, looks banao', height: 38, color: C.accent, onTap: () async {
+            GlassButton(label: 'Yes, make the looks', height: 38, color: C.accent, onTap: () async {
               try {
                 await app.api!.siteAct(id, 'plan');
-                if (context.mounted) _snack(context, '3 looks ban rahe hain, yahin dikhenge.');
+                if (context.mounted) _snack(context, 'Making 3 looks, they will show here.');
               } catch (e) {
                 if (context.mounted) _snack(context, '$e');
               }
@@ -225,8 +225,8 @@ class SiteBoardCard extends StatelessWidget {
           SiteScores(scores: _map(v['scores'])),
           const SizedBox(height: 8),
           Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-            TextButton(onPressed: () => _openUrl(context, app, _s(v['preview'])), child: const Text('Preview kholo')),
-            GlassButton(label: 'Badlav / dekho', height: 36, color: C.accent, onTap: open),
+            TextButton(onPressed: () => _openUrl(context, app, _s(v['preview'])), child: const Text('Open preview')),
+            GlassButton(label: 'Change / view', height: 36, color: C.accent, onTap: open),
           ]),
         ],
         if (st == 'failed' || st == 'stopped')
@@ -251,7 +251,7 @@ class _SiteLooksState extends State<SiteLooks> {
   Widget build(BuildContext context) {
     final looks = _list(widget.v['looks']);
     final id = _s(widget.v['id']);
-    if (looks.isEmpty) return const Text('Looks ban rahe hain…', style: TextStyle(color: C.faint));
+    if (looks.isEmpty) return const Text('Making the looks…', style: TextStyle(color: C.faint));
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       SizedBox(
         height: 300,
@@ -281,9 +281,9 @@ class _SiteLooksState extends State<SiteLooks> {
                     decoration: BoxDecoration(color: c, shape: BoxShape.circle, border: Border.all(color: const Color(0x44FFFFFF))))]),
                 const Spacer(),
                 Row(children: [
-                  Expanded(child: GlassButton(label: 'Yeh wala', height: 34, color: C.accent, onTap: _busy ? null : () => _choose(i))),
+                  Expanded(child: GlassButton(label: 'This one', height: 34, color: C.accent, onTap: _busy ? null : () => _choose(i))),
                   IconButton(
-                    tooltip: 'Iske rang',
+                    tooltip: 'Its colours',
                     onPressed: () => setState(() => _colorsFrom = _colorsFrom == i ? null : i),
                     icon: Icon(Icons.palette_rounded, color: _colorsFrom == i ? C.accent : C.faint, size: 20),
                   ),
@@ -294,7 +294,7 @@ class _SiteLooksState extends State<SiteLooks> {
         ),
       ),
       if (_colorsFrom != null)
-        Text('Rang look ${_colorsFrom! + 1} ke lagenge', style: const TextStyle(color: C.accent, fontSize: 12)),
+        Text('The colours of look ${_colorsFrom! + 1} will be used', style: const TextStyle(color: C.accent, fontSize: 12)),
     ]);
   }
 
@@ -302,7 +302,7 @@ class _SiteLooksState extends State<SiteLooks> {
     setState(() => _busy = true);
     try {
       await widget.app.api!.siteAct(_s(widget.v['id']), 'look', {'index': i, if (_colorsFrom != null) 'colors_from': _colorsFrom});
-      if (mounted) _snack(context, 'Banana shuru! Har section ban-te hi dikhega.');
+      if (mounted) _snack(context, 'Started building! Each section shows as soon as it is ready.');
     } catch (e) {
       if (mounted) _snack(context, '$e');
     } finally {
@@ -360,7 +360,7 @@ class _SiteLeadCardState extends State<SiteLeadCard> {
           Padding(
             padding: const EdgeInsets.only(top: 8),
             child: Row(children: [
-              Expanded(child: GlassButton(label: 'Pakka', icon: Icons.check_rounded, color: C.ok, height: 40,
+              Expanded(child: GlassButton(label: 'Confirmed', icon: Icons.check_rounded, color: C.ok, height: 40,
                   onTap: _busy ? null : () => _decide(true))),
               const SizedBox(width: 8),
               TextButton(onPressed: _busy ? null : () => _decide(false), child: const Text('Mana')),
@@ -368,7 +368,7 @@ class _SiteLeadCardState extends State<SiteLeadCard> {
           ),
         if (_done.isNotEmpty)
           Padding(padding: const EdgeInsets.only(top: 6),
-              child: Text(_done == 'confirmed' ? 'Pakka kar diya' : 'Mana kar diya', style: const TextStyle(color: C.muted, fontSize: 12.5))),
+              child: Text(_done == 'confirmed' ? 'Confirmed' : 'Declined', style: const TextStyle(color: C.muted, fontSize: 12.5))),
       ]),
     );
   }
@@ -426,14 +426,14 @@ class _SiteScreenState extends State<SiteScreen> {
       child: Scaffold(
         appBar: AppBar(
           title: Text('${app.aName} · Website'),
-          bottom: const TabBar(tabs: [Tab(text: 'Meri websites'), Tab(text: 'Ideas (1 lakh)')]),
+          bottom: const TabBar(tabs: [Tab(text: 'My websites'), Tab(text: 'Ideas (1 lakh)')]),
         ),
         floatingActionButton: FloatingActionButton.extended(
           backgroundColor: C.accent,
           foregroundColor: C.onAccent,
           onPressed: () => _newSite(context),
           icon: const Icon(Icons.add_rounded),
-          label: const Text('Nayi website'),
+          label: const Text('New website'),
         ),
         body: TabBarView(children: [
           RefreshIndicator(
@@ -441,8 +441,8 @@ class _SiteScreenState extends State<SiteScreen> {
             child: ListView(padding: const EdgeInsets.fromLTRB(14, 14, 14, 100), children: [
               if (_d == null) const Center(child: Padding(padding: EdgeInsets.all(30), child: CircularProgressIndicator())),
               if (_d != null && sites.isEmpty)
-                Glass(child: Text('Do-teen shabd boliye, jaise "mithai dukaan ki website, WhatsApp order". '
-                    '${app.aName} plan, design, motion graphics, jaanch, preview sab karega; aap har hissa banta dekhengi.',
+                Glass(child: Text('Say two or three words, like "website for a sweet shop, WhatsApp orders". '
+                    '${app.aName} will do the plan, design, motion graphics, checks and preview; you will see each part as it is built.',
                     style: const TextStyle(color: C.chip))),
               for (final s in sites)
                 Padding(
@@ -477,14 +477,14 @@ class _SiteScreenState extends State<SiteScreen> {
       builder: (c) => Padding(
         padding: EdgeInsets.fromLTRB(16, 16, 16, MediaQuery.of(c).viewInsets.bottom + 16),
         child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          Text('Nayi website', style: display(18)),
+          Text('New website', style: display(18)),
           const SizedBox(height: 8),
           TextField(controller: b, minLines: 2, maxLines: 4,
-              decoration: const InputDecoration(labelText: 'Kis cheez ki website? (apne shabdon mein)', hintText: 'mithai dukaan, WhatsApp order')),
-          TextField(controller: name, decoration: const InputDecoration(labelText: 'Business ka naam (agar alag ho)')),
+              decoration: const InputDecoration(labelText: 'A website for what? (in your own words)', hintText: 'sweet shop, WhatsApp orders')),
+          TextField(controller: name, decoration: const InputDecoration(labelText: 'Business name (if different)')),
           TextField(controller: phone, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'Phone / WhatsApp')),
           const SizedBox(height: 12),
-          FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('Plan banao')),
+          FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('Make plan')),
         ]),
       ),
     );
@@ -535,11 +535,11 @@ class _SiteIdeasState extends State<SiteIdeas> {
     final fields = _list(_d?['fields']);
     final c = _map(_d?['counts']);
     return ListView(padding: const EdgeInsets.fromLTRB(14, 14, 14, 100), children: [
-      Text('${c['fields'] ?? 1000} kaam × ${c['goals'] ?? 10} maqsad × ${c['styles'] ?? 10} design = ${c['briefs'] ?? 100000} taiyaar briefs',
+      Text('${c['fields'] ?? 1000} jobs × ${c['goals'] ?? 10} goals × ${c['styles'] ?? 10} designs = ${c['briefs'] ?? 100000} ready briefs',
           style: const TextStyle(color: C.muted, fontSize: 12.5)),
       const SizedBox(height: 8),
       TextField(controller: _q, onSubmitted: (_) => _load(),
-          decoration: InputDecoration(hintText: 'Dhoondho: clinic, coaching, bakery…', prefixIcon: const Icon(Icons.search_rounded),
+          decoration: InputDecoration(hintText: 'Search: clinic, coaching, bakery…', prefixIcon: const Icon(Icons.search_rounded),
               suffixIcon: IconButton(icon: const Icon(Icons.arrow_forward_rounded), onPressed: _load))),
       const SizedBox(height: 8),
       Wrap(spacing: 6, runSpacing: 6, children: [
@@ -553,7 +553,7 @@ class _SiteIdeasState extends State<SiteIdeas> {
           contentPadding: EdgeInsets.zero,
           title: Text(_s(f['en']), style: const TextStyle(fontWeight: FontWeight.w700)),
           subtitle: Text('${f['hi']}', style: const TextStyle(color: C.muted)),
-          trailing: TextButton(onPressed: () => widget.onPick('${f['en']} ki website'), child: const Text('Shuru')),
+          trailing: TextButton(onPressed: () => widget.onPick('${f['en']} ki website'), child: const Text('Start')),
         ),
     ]);
   }
@@ -629,9 +629,9 @@ class _SitePageState extends State<SitePage> {
     if (x == null || !mounted) return;
     final about = TextEditingController();
     final ok = await showDialog<bool>(context: context, builder: (c) => AlertDialog(
-          title: const Text('Yeh photo kya hai?'),
-          content: TextField(controller: about, decoration: const InputDecoration(hintText: 'dukaan ka front, meri photo, kaju katli…')),
-          actions: [TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Rakho'))],
+          title: const Text('What is this photo?'),
+          content: TextField(controller: about, decoration: const InputDecoration(hintText: 'shop front, my photo, kaju katli…')),
+          actions: [TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Keep'))],
         ));
     if (ok != true) return;
     try {
@@ -663,16 +663,16 @@ class _SitePageState extends State<SitePage> {
               await _act('export');
             } else if (a == 'delete') {
               final yes = await showDialog<bool>(context: context, builder: (c) => AlertDialog(
-                    title: const Text('Website hata dein?'),
-                    actions: [TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Nahi')),
-                      TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Haan, hatao'))]));
+                    title: const Text('Remove this website?'),
+                    actions: [TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('No')),
+                      TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Yes, remove'))]));
               if (yes == true) {
                 await app.api!.siteDelete(widget.id);
                 if (context.mounted) Navigator.pop(context);
               }
             }
           }, itemBuilder: (_) => const [
-            PopupMenuItem(value: 'export', child: Text('ZIP banao (kisi bhi hosting ke liye)')),
+            PopupMenuItem(value: 'export', child: Text('Make ZIP (for any hosting)')),
             PopupMenuItem(value: 'delete', child: Text('Hatao')),
           ]),
         ],
@@ -706,21 +706,21 @@ class _SitePageState extends State<SitePage> {
                     child: Text('• ${p['title']}: ${(p['sections'] as List? ?? const []).join(', ')}', style: const TextStyle(color: C.chip, fontSize: 13))),
               if (qs.isNotEmpty) ...[
                 const SizedBox(height: 10),
-                Text('Thode sawaal (jitne pata hain utne)', style: display(14)),
+                Text('A few questions (answer what you know)', style: display(14)),
                 for (var i = 0; i < qs.length; i++)
                   TextField(controller: _answers.putIfAbsent(i, () => TextEditingController()), decoration: InputDecoration(labelText: qs[i])),
                 Align(alignment: Alignment.centerRight, child: TextButton(onPressed: _busy ? null : () => _act('answers', {
                       'answers': {for (final e in _answers.entries) if (e.value.text.trim().isNotEmpty) '${e.key}': e.value.text.trim()}
-                    }, 'Jawab rakh liye'), child: const Text('Jawab bhejo'))),
+                    }, 'Answers saved'), child: const Text('Send answers'))),
               ],
               const SizedBox(height: 8),
               Align(alignment: Alignment.centerRight,
-                  child: GlassButton(label: 'Haan, 3 looks banao', color: C.accent, onTap: _busy ? null : () => _act('plan', const {}, 'Looks ban rahe hain…'))),
+                  child: GlassButton(label: 'Yes, make 3 looks', color: C.accent, onTap: _busy ? null : () => _act('plan', const {}, 'Making the looks…'))),
             ])),
           if (st == 'looks') Glass(child: SiteLooks(app: app, v: v)),
           if (st == 'ready' || _map(v['scores']).isNotEmpty) ...[
             Glass(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Row(children: [Text('Jaanch', style: display(16)), const Spacer(),
+              Row(children: [Text('Check', style: display(16)), const Spacer(),
                 Text(_s(checks['source']).contains('lighthouse') ? 'Lighthouse' : 'Hoola lab', style: const TextStyle(color: C.faint, fontSize: 11))]),
               const SizedBox(height: 8),
               SiteScores(scores: _map(v['scores'])),
@@ -729,13 +729,13 @@ class _SitePageState extends State<SitePage> {
               for (final c in _list(checks['warnings']).take(4))
                 Text('⚠ ${c['text']}', style: const TextStyle(color: C.warn, fontSize: 12)),
               if (_list(checks['blocking']).isEmpty && checks['passed'] == true)
-                const Text('✓ Sab zaroori jaanch paas', style: TextStyle(color: C.ok, fontSize: 12.5)),
+                const Text('✓ All important checks passed', style: TextStyle(color: C.ok, fontSize: 12.5)),
             ])),
             const SizedBox(height: 10),
           ],
           if (shots.isNotEmpty)
             Glass(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('Phone aur computer par', style: display(15)),
+              Text('On phone and computer', style: display(15)),
               const SizedBox(height: 8),
               Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Expanded(flex: 2, child: SiteShot(app: app, siteId: widget.id, name: _s(shots['home-390.jpg']), height: 330)),
@@ -749,10 +749,10 @@ class _SitePageState extends State<SitePage> {
           const SizedBox(height: 10),
           if (st == 'ready' || st == 'stopped' || st == 'failed' || st == 'building' || st == 'checking')
             Glass(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('Badlav bolo', style: display(15)),
+              Text('Say a change', style: display(15)),
               const SizedBox(height: 6),
               TextField(controller: _change, minLines: 1, maxLines: 4,
-                  decoration: const InputDecoration(hintText: 'hero mein meri photo, rang halka, price list hatao…')),
+                  decoration: const InputDecoration(hintText: 'my photo in the hero, lighter colour, remove the price list…')),
               const SizedBox(height: 8),
               Row(children: [
                 TextButton.icon(onPressed: _photo, icon: const Icon(Icons.add_a_photo_rounded), label: const Text('Photo')),
@@ -764,7 +764,7 @@ class _SitePageState extends State<SitePage> {
                   _change.clear();
                 }),
               ]),
-              if (_i(v['queued']) > 0) Text('${v['queued']} badlav line mein hain', style: const TextStyle(color: C.faint, fontSize: 12)),
+              if (_i(v['queued']) > 0) Text('${v['queued']} changes are in the queue', style: const TextStyle(color: C.faint, fontSize: 12)),
             ])),
           const SizedBox(height: 10),
           if (_i(v['version']) > 0) ...[
@@ -785,7 +785,7 @@ class _SitePageState extends State<SitePage> {
                   onPressed: () => Navigator.of(context).push(MaterialPageRoute(
                       builder: (_) => SiteBlogPage(app: app, id: widget.id, name: _s(v['name'])))),
                   icon: const Icon(Icons.article_rounded),
-                  label: const Text('Blog aur bhashayen')),
+                  label: const Text('Blog and languages')),
             ),
             const SizedBox(height: 10),
           ],
@@ -800,7 +800,7 @@ class _SitePageState extends State<SitePage> {
               trailing: Row(mainAxisSize: MainAxisSize.min, children: [
                 Icon(ver['passed'] == true ? Icons.verified_rounded : Icons.error_outline_rounded,
                     color: ver['passed'] == true ? C.ok : C.warn),
-                IconButton(tooltip: 'Yeh version live karo', icon: const Icon(Icons.history_rounded, size: 20),
+                IconButton(tooltip: 'Make this version live', icon: const Icon(Icons.history_rounded, size: 20),
                     onPressed: _busy ? null : () => showLaunchSheet(context, app, widget.id, 'rollback-request', {'version': ver['version']})),
               ]),
             ),
@@ -867,7 +867,7 @@ class _SitePreviewState extends State<SitePreview> {
       _tokens = _map(r['tokens']);
       setState(() => _edit = true);
       await _web.loadRequest(Uri.parse(widget.app.api!.absolute(_editUrl)));
-      _snack('Edit mode: kisi bhi shabd par tap karke likhiye. Free, bina AI.');
+      _snack('Edit mode: tap any word and type. Free, no AI.');
     } catch (e) {
       _snack('$e');
     }
@@ -887,7 +887,7 @@ class _SitePreviewState extends State<SitePreview> {
   Future<void> _send(Map<String, dynamic> body, String page, int y) async {
     try {
       final r = await widget.app.api!.siteAct(widget.siteId, 'edit', body);
-      _snack(_s(r['say']).isEmpty ? 'Badal diya.' : _s(r['say']));
+      _snack(_s(r['say']).isEmpty ? 'Changed.' : _s(r['say']));
     } catch (e) {
       _snack('$e');
     }
@@ -899,7 +899,7 @@ class _SitePreviewState extends State<SitePreview> {
     return showDialog<String>(context: context, builder: (d) => AlertDialog(
           title: Text(title),
           content: TextField(controller: c, autofocus: true, decoration: InputDecoration(hintText: hint)),
-          actions: [TextButton(onPressed: () => Navigator.pop(d), child: const Text('Rehne do')),
+          actions: [TextButton(onPressed: () => Navigator.pop(d), child: const Text('Keep it')),
             TextButton(onPressed: () => Navigator.pop(d, c.text.trim()), child: const Text('Save'))]));
   }
 
@@ -917,22 +917,22 @@ class _SitePreviewState extends State<SitePreview> {
         await _send({'k': k, 'e': e, 'op': 'text', 'value': _s(d['value'])}, page, y);
         break;
       case 'link':
-        final h = await _ask('Link kahan jaye?', _s(d['href']), 'https://… · tel:+91… · contact/');
+        final h = await _ask('Where should the link go?', _s(d['href']), 'https://… · tel:+91… · contact/');
         if (h != null && h.isNotEmpty) await _send({'k': k, 'e': e, 'op': 'link', 'value': h}, page, y);
         break;
       case 'remove':
         final yes = await showDialog<bool>(context: context, builder: (c) => AlertDialog(
-              title: const Text('Page se hata dein?'),
-              content: Text('"${_s(d['text'])}"\nUndo se wapas aa jayega.'),
-              actions: [TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Nahi')),
-                TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Haan, hatao'))]));
+              title: const Text('Remove from the page?'),
+              content: Text('"${_s(d['text'])}"\nUndo will bring it back.'),
+              actions: [TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('No')),
+                TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Yes, remove'))]));
         if (yes == true) await _send({'k': k, 'e': e, 'op': 'remove'}, page, y);
         break;
       case 'image':
         var pick = await showModalBottomSheet<String>(context: context, builder: (c) => SafeArea(
               child: ListView(shrinkWrap: true, children: [
-                const ListTile(title: Text('Kaunsi photo lagayein?')),
-                ListTile(leading: const Icon(Icons.upload_rounded), title: const Text('Nayi photo upload karein'),
+                const ListTile(title: Text('Which photo to use?')),
+                ListTile(leading: const Icon(Icons.upload_rounded), title: const Text('Upload a new photo'),
                     onTap: () => Navigator.pop(c, '\u0000upload')),
                 for (final p in _photos)
                   ListTile(leading: Icon(p['ai'] == true ? Icons.auto_awesome_rounded : Icons.photo_rounded),
@@ -946,11 +946,11 @@ class _SitePreviewState extends State<SitePreview> {
         await _add(k, e, page, y);
         break;
       case 'ai':
-        final w = await _ask('AI se kya badlein?', '"${_s(d['text'])}" ko ', 'jaise: aur chhota aur mazedaar likho');
+        final w = await _ask('What should the AI change?', 'Change "${_s(d['text'])}": ', 'e.g. make it shorter and more fun');
         if (w != null && w.isNotEmpty) {
           try {
             await widget.app.api!.siteAct(widget.siteId, 'change', {'instruction': w});
-            _snack('Hoola AI se badal raha hai; nayi version banegi.');
+            _snack('Hoola is changing it with AI; a new version will be made.');
           } catch (er) {
             _snack('$er');
           }
@@ -967,7 +967,7 @@ class _SitePreviewState extends State<SitePreview> {
     final res = await FilePicker.platform.pickFiles(withData: true, type: FileType.custom, allowedExtensions: _exts[kind]!);
     final f = (res == null || res.files.isEmpty) ? null : res.files.first;
     if (f == null || f.bytes == null) return null;
-    _snack('${f.name} upload ho rahi hai…');
+    _snack('Uploading ${f.name}…');
     try {
       final r = kind == 'photo'
           ? await widget.app.api!.sitePhoto(widget.siteId, f.name, f.bytes!, about)
@@ -988,14 +988,14 @@ class _SitePreviewState extends State<SitePreview> {
   Future<void> _add(String k, String e, String page, int y) async {
     final kind = await showModalBottomSheet<String>(context: context, builder: (c) => SafeArea(
           child: ListView(shrinkWrap: true, children: [
-            const ListTile(title: Text('Iske neeche kya jodein?')),
-            for (final o in const [['photo', 'Photo', Icons.photo_rounded], ['video', 'Video (60 MB tak)', Icons.videocam_rounded],
+            const ListTile(title: Text('What to add below this?')),
+            for (final o in const [['photo', 'Photo', Icons.photo_rounded], ['video', 'Video (up to 60 MB)', Icons.videocam_rounded],
                                    ['youtube', 'YouTube link', Icons.smart_display_rounded], ['audio', 'Audio', Icons.audiotrack_rounded],
                                    ['file', 'File (PDF, Word, Excel…)', Icons.description_rounded]])
               ListTile(leading: Icon(o[2] as IconData), title: Text(o[1] as String), onTap: () => Navigator.pop(c, o[0] as String)),
           ])));
     if (kind == null) return;
-    final cap = await _ask('Caption / button ka naam (optional)', '', 'jaise: Hamari dukaan ka video');
+    final cap = await _ask('Caption / button name (optional)', '', 'e.g. Video of our shop');
     if (cap == null) return;
     final spec = <String, dynamic>{'kind': kind, 'caption': cap};
     if (kind == 'youtube') {
@@ -1008,7 +1008,7 @@ class _SitePreviewState extends State<SitePreview> {
       if (have.isNotEmpty) {
         nm = await showModalBottomSheet<String>(context: context, builder: (c) => SafeArea(
               child: ListView(shrinkWrap: true, children: [
-                ListTile(leading: const Icon(Icons.upload_rounded), title: const Text('Nayi upload karein'),
+                ListTile(leading: const Icon(Icons.upload_rounded), title: const Text('Upload a new one'),
                     onTap: () => Navigator.pop(c, '')),
                 for (final m in have)
                   ListTile(title: Text(_s(m['about']).isEmpty ? _s(m['name']) : _s(m['about'])),
@@ -1026,7 +1026,7 @@ class _SitePreviewState extends State<SitePreview> {
   Future<void> _undo() async {
     try {
       final r = await widget.app.api!.siteAct(widget.siteId, 'undo');
-      _snack(_s(r['say']).isEmpty ? 'Wapas kar diya.' : _s(r['say']));
+      _snack(_s(r['say']).isEmpty ? 'Put back.' : _s(r['say']));
     } catch (e) {
       _snack('$e');
     }
@@ -1036,15 +1036,15 @@ class _SitePreviewState extends State<SitePreview> {
   Future<void> _colours() async {
     final p = TextEditingController(text: _s(_tokens['primary'])), a = TextEditingController(text: _s(_tokens['accent']));
     final ok = await showDialog<bool>(context: context, builder: (c) => AlertDialog(
-          title: const Text('Rang'),
+          title: const Text('Colour'),
           content: Column(mainAxisSize: MainAxisSize.min, children: [
-            TextField(controller: p, decoration: const InputDecoration(labelText: 'Mukhya rang (jaise #7C5CFF)')),
-            TextField(controller: a, decoration: const InputDecoration(labelText: 'Doosra rang (accent)')),
+            TextField(controller: p, decoration: const InputDecoration(labelText: 'Main colour (e.g. #7C5CFF)')),
+            TextField(controller: a, decoration: const InputDecoration(labelText: 'Second colour (accent)')),
             const SizedBox(height: 8),
-            const Text('Shabd hamesha padhne layak rahenge: Hoola text ka rang khud sambhalta hai.', style: TextStyle(fontSize: 12)),
+            const Text('Words will always stay readable: Hoola looks after the text colour itself.', style: TextStyle(fontSize: 12)),
           ]),
-          actions: [TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Rehne do')),
-            TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Lagao'))]));
+          actions: [TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Keep it')),
+            TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Apply'))]));
     if (ok != true) return;
     final want = <String, dynamic>{};
     if (p.text.trim().isNotEmpty && p.text.trim() != _s(_tokens['primary'])) want['primary'] = p.text.trim();
@@ -1053,7 +1053,7 @@ class _SitePreviewState extends State<SitePreview> {
     try {
       final r = await widget.app.api!.siteAct(widget.siteId, 'theme', {'tokens': want});
       _tokens = {..._tokens, ..._map(r['tokens'])};
-      _snack(_s(r['say']).isEmpty ? 'Rang badal diye.' : _s(r['say']));
+      _snack(_s(r['say']).isEmpty ? 'Colours changed.' : _s(r['say']));
     } catch (e) {
       _snack('$e');
     }
@@ -1065,7 +1065,7 @@ class _SitePreviewState extends State<SitePreview> {
         appBar: AppBar(title: Text(_edit ? 'Edit mode' : (widget.title.isEmpty ? 'Preview' : widget.title)), actions: [
           if (_edit) ...[
             IconButton(tooltip: 'Undo', icon: const Icon(Icons.undo_rounded), onPressed: _undo),
-            IconButton(tooltip: 'Rang', icon: const Icon(Icons.palette_rounded), onPressed: _colours),
+            IconButton(tooltip: 'Colour', icon: const Icon(Icons.palette_rounded), onPressed: _colours),
             TextButton(onPressed: _stopEdit, child: const Text('Done')),
           ] else ...[
             if (widget.canEdit && widget.siteId.isNotEmpty)

@@ -186,7 +186,7 @@ def _wa_number(tenant: str) -> tuple[str, str]:
 async def setup(tenant: str, channel: str, creds: dict[str, str] | None = None, base: str = "") -> dict[str, Any]:
     """Create / refresh a channel and hand out a fresh pairing code. Credentials are sealed on arrival."""
     if channel not in CHANNELS:
-        raise BaharError("Yeh channel nahi hai (whatsapp / telegram / slack / teams).")
+        raise BaharError("That is not a channel (whatsapp / telegram / slack / teams).")
     ensure_table()
     creds = {k: str(v).strip() for k, v in (creds or {}).items() if v and str(v).strip()}
     with session() as s:
@@ -197,18 +197,18 @@ async def setup(tenant: str, channel: str, creds: dict[str, str] | None = None, 
     if channel == "whatsapp":
         pnid, disp = _wa_number(tenant)
         if not pnid:
-            raise BaharError("Pehle apna WhatsApp Business number jodiye (Profile > WhatsApp Business). Hoola usi "
-                             "number se aapse baat karega - personal WhatsApp kabhi nahi.")
+            raise BaharError("First connect your WhatsApp Business number (Profile > WhatsApp Business). Hoola will talk to you "
+                             "from that number only - never from a personal WhatsApp.")
         meta.update(pnid=pnid, number=disp)
     elif channel == "telegram":
         if not sec.get("token"):
-            raise BaharError("Telegram mein @BotFather se naya bot banaiye aur uska token yahan daaliye.")
+            raise BaharError("In Telegram, make a new bot with @BotFather and enter its token here.")
         from .samudaay.adapters import AdapterError, tg_call
         sec.setdefault("header", secrets.token_urlsafe(24))
         try:
             me = await asyncio.to_thread(tg_call, sec["token"], "getMe", {})
         except AdapterError as e:
-            raise BaharError(f"Bot token kaam nahi kar raha: {e}") from None
+            raise BaharError(f"The bot token is not working: {e}") from None
         meta.update(bot_name="@" + str((me or {}).get("username") or ""))
     elif channel == "slack":
         if not sec.get("bot_token", "").startswith("xoxb-") or not sec.get("signing_secret"):
@@ -216,7 +216,7 @@ async def setup(tenant: str, channel: str, creds: dict[str, str] | None = None, 
         st, body = await _http("POST", "https://slack.com/api/auth.test",
                                headers={"Authorization": f"Bearer {sec['bot_token']}"})
         if st >= 400 or not (body or {}).get("ok"):
-            raise BaharError(f"Slack ne token nahi maana: {(body or {}).get('error') or st}")
+            raise BaharError(f"Slack did not accept the token: {(body or {}).get('error') or st}")
         meta.update(bot_name=str(body.get("user") or "Hoola"), team=str(body.get("team") or ""),
                     bot_user=str(body.get("user_id") or ""))
     elif channel == "teams":
@@ -243,21 +243,21 @@ async def setup(tenant: str, channel: str, creds: dict[str, str] | None = None, 
                                     {"url": f"{base}/webhooks/bahar/telegram/{hook}", "secret_token": sec["header"],
                                      "allowed_updates": ["message"]})
         except AdapterError as e:
-            raise BaharError(f"Telegram webhook nahi laga: {e}") from None
+            raise BaharError(f"Could not set the Telegram webhook: {e}") from None
     return {**view, "code": code, "code_minutes": int(CODE_TTL.total_seconds() // 60), "how": how(channel, view)}
 
 
 def how(channel: str, view: dict) -> str:
-    code_line = "Ab {where} se sirf yeh code bhejiye: HOOLA <code>. Uske baad sirf aap hi Hoola se baat kar sakengi."
+    code_line = "Now send only this code {where}: HOOLA <code>. After that only you can talk to Hoola."
     if channel == "whatsapp":
-        return code_line.format(where=f"apne phone ke WhatsApp se apne business number {view.get('number') or ''}".strip())
+        return code_line.format(where=f"from your phone's WhatsApp to your business number {view.get('number') or ''}".strip())
     if channel == "telegram":
-        return code_line.format(where=f"Telegram mein apne bot {view.get('bot_name') or ''} ko".strip())
+        return code_line.format(where=f"in Telegram to your bot {view.get('bot_name') or ''}".strip())
     if channel == "slack":
-        return ("Slack app settings > Event Subscriptions > Request URL mein yeh daaliye: " + view.get("webhook", "")
-                + " ; 'message.im' event jodiye, phir App Home > Messages tab on kijiye. " + code_line.format(where="bot ko DM mein"))
-    return ("Azure Bot > Configuration > Messaging endpoint mein yeh daaliye: " + view.get("webhook", "")
-            + " ; Channels mein Microsoft Teams on kijiye. " + code_line.format(where="Teams mein bot ko"))
+        return ("In Slack app settings > Event Subscriptions > Request URL, enter: " + view.get("webhook", "")
+                + " ; add the 'message.im' event, then turn on App Home > Messages tab. " + code_line.format(where="as a DM to the bot"))
+    return ("In Azure Bot > Configuration > Messaging endpoint, enter: " + view.get("webhook", "")
+            + " ; turn on Microsoft Teams under Channels. " + code_line.format(where="in Teams to the bot"))
 
 
 def remove(tenant: str, channel: str) -> bool:
@@ -339,7 +339,7 @@ async def incoming(link_id: str, sender: str, text: str, msg_id: str = "", meta:
             l.last_in_at = now()
             l.meta = {**(l.meta or {}), **(meta or {})}
             if not l.conversation_id:
-                c = Conversation(tenant_id=l.tenant_id, title=f"{LABEL[l.channel]} se baat")
+                c = Conversation(tenant_id=l.tenant_id, title=f"Chat on {LABEL[l.channel]}")
                 s.add(c)
                 s.flush()
                 l.conversation_id = c.id
@@ -351,11 +351,11 @@ async def incoming(link_id: str, sender: str, text: str, msg_id: str = "", meta:
         else:
             return "ignored"                                  # not her: Hoola talks only to its owner
     if not linked_to:
-        await _send(lid, f"Jud gaya ✓ Ab {LABEL[channel]} se aap seedhe Hoola se baat kar sakti hain. "
-                         "Paisa / bhejna / delete jaise card Hoola app mein hi tap honge.")
+        await _send(lid, f"Connected ✓ You can now talk to Hoola directly from {LABEL[channel]}. "
+                         "Cards for money / sending / deleting are tapped only in the Hoola app.")
         return "paired"
     if not text:
-        await _send(link_id, "Abhi main yahan sirf likha hua message samajhta hoon. Photo / voice ke liye Hoola app kholiye.")
+        await _send(link_id, "Right now I understand only written messages here. For photos / voice, open the Hoola app.")
         return "turn"
     await _turn(link_id, tenant, channel, text, msg_id)
     return "turn"
@@ -372,7 +372,7 @@ async def _turn(link_id: str, tenant: str, channel: str, text: str, msg_id: str)
             if c is None or c.deleted:
                 conv = None
         if not conv:
-            c = Conversation(tenant_id=tenant, title=f"{LABEL[channel]} se baat")
+            c = Conversation(tenant_id=tenant, title=f"Chat on {LABEL[channel]}")
             s.add(c)
             s.flush()
             conv = c.id
@@ -389,7 +389,7 @@ async def _turn(link_id: str, tenant: str, channel: str, text: str, msg_id: str)
                                    client_id=cid)
     except Exception:
         log.exception("bahar turn failed (%s)", channel)
-        await _send(link_id, "Maaf kijiye, abhi jawab nahi ban paaya. Hoola app mein dekhiye ya thodi der baad likhiye.")
+        await _send(link_id, "Sorry, I could not make a reply just now. Check in the Hoola app or write again in a little while.")
     await forward(link_id)
 
 
@@ -478,7 +478,7 @@ async def _send(link_id: str, text: str) -> bool:
         channel, to, meta, sec, tenant = l.channel, l.external_id, dict(l.meta or {}), _open(l.secret), l.tenant_id
     text = _clean(text, channel)
     if policy.secret_found(text):
-        text = "Is jawab mein OTP / PIN / card jaisi jaankari hai - woh bahar ke app par nahi bhejta. Hoola app mein dekhiye."
+        text = "This reply has information like an OTP / PIN / card - I do not send that over an outside app. See it in the Hoola app."
     ok = True
     for part in _chunks(text, MAX_OUT[channel]):
         try:
@@ -502,7 +502,7 @@ async def _send(link_id: str, text: str) -> bool:
                 tok = await _teams_token(sec)
                 url = str(meta.get("service_url") or "").rstrip("/")
                 if not url.startswith("https://") or not meta.get("conv"):
-                    raise BaharError("Teams conversation pata nahi")
+                    raise BaharError("Teams conversation not known")
                 st, body = await _http("POST", f"{url}/v3/conversations/{meta['conv']}/activities",
                                        headers={"Authorization": f"Bearer {tok}"},
                                        json_body={"type": "message", "text": part, "textFormat": "markdown"})
@@ -635,7 +635,7 @@ async def _teams_token(sec: dict, fresh: bool = False) -> str:
                                  "scope": "https://api.botframework.com/.default"})
     tok = (body or {}).get("access_token")
     if st >= 400 or not tok:
-        raise BaharError(f"Microsoft ne bot ka login nahi maana: {(body or {}).get('error_description') or (body or {}).get('error') or st}"[:240])
+        raise BaharError(f"Microsoft did not accept the bot login: {(body or {}).get('error_description') or (body or {}).get('error') or st}"[:240])
     _TEAMS_TOK[app_id] = (tok, time.time() + int((body or {}).get("expires_in") or 3000))
     return tok
 

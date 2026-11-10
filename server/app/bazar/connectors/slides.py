@@ -7,7 +7,7 @@ from typing import Any
 from ..packs.registry import Pack
 from .base import Ctx, NeedsApproval, ToolError, ToolSpec
 
-TITLES = {"delete": "Slides hatayein?", "share": "Presentation share karein?"}
+TITLES = {"delete": "Delete slides?", "share": "Share presentation?"}
 
 
 class SlidesExecutor:
@@ -23,12 +23,12 @@ class SlidesExecutor:
             raise ToolError(f"Unknown tool {tool}")
         p = sv.pending(ctx.user.id, str(args.get("pending_id", "")))
         if p is None or p["status"] != "pending":
-            raise ToolError("Yeh badlav taiyaar nahi hai; dobara boliye.")
+            raise ToolError("This change is not ready; please ask again.")
         sm = p["summary"]
         items = [{"name": sm.get("title", "")}] + [{"name": str(x)[:160]} for x in sm.get("lines", [])[:8]]
         if sm.get("note"):
             items.append({"name": sm["note"]})
-        return NeedsApproval(tier=2, title=TITLES.get(p["action"], "Slides badlein?"), payee="Google Slides", amount_paise=0,
+        return NeedsApproval(tier=2, title=TITLES.get(p["action"], "Change slides?"), payee="Google Slides", amount_paise=0,
                              items=[i for i in items if i["name"]], pay_method="Santosh Slides",
                              preview={"message": f"Approve to {p['action']} in '{sm.get('title', '')}'."},
                              action={"executor": "slides", "pack_id": pack.id, "name": "run", "args": {"pending_id": p["id"]}})

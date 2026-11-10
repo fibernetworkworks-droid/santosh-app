@@ -82,8 +82,8 @@ def test_console_uses_it_as_the_default_card():
 
 def test_phone_card_has_the_same_anatomy():
     d = DART.read_text()
-    for piece in ("static String stateOf", "static bool isMoney", "static String amountOf", "'Aapki haan chahiye'",
-                  "'Chal raha hai'", "'Taiyaar'", "Fingerprint se haan", "desk.toUpperCase()", "for (var i = 1; i <= 6; i++)",
+    for piece in ("static String stateOf", "static bool isMoney", "static String amountOf", "'Needs your OK'",
+                  "'Running'", "'Ready'", "Approve with fingerprint", "desk.toUpperCase()", "for (var i = 1; i <= 6; i++)",
                   "FontFeature.tabularFigures()", "launchUrl", "import 'dart:ui' show FontFeature;"):
         assert piece in d, piece
     chat = (ROOT.parent / "lib" / "ui" / "chat_screen.dart").read_text()

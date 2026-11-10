@@ -6,7 +6,7 @@
   2. Finds the REAL fault (rules.correlate): whole OLT down, uplink down / flapping, BNG / RADIUS, loop storm, rogue ONT, area
      power cut (dying gasp), feeder fibre cut / first splitter, one splitter branch, one customer's drop fibre / power / flap,
      optical (Rx) degradation of a whole PON or one ONT; with a timeline, reasons and a confidence.
-  3. Explains it in plain Hinglish for her, and drafts the message for the affected customers (ETA blank until someone gives one).
+  3. Explains it in plain English for her, and drafts the message for the affected customers (ETA blank until someone gives one).
   4. Opens a ticket with the right team (field fibre / NOC / BSNL / upstream / customer / electricity) with location (site,
      splitter, route, Maps), affected count + list, SLA from her own hours (her BSNL agreement's hours for BSNL), ETA, MTTR.
   5. Waits for her Haan on ANY CHANGE ON LIVE EQUIPMENT: ONT reboot, PON reset, ONT disable / enable, uplink reset, her own

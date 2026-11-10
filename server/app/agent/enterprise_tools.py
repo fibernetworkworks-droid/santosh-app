@@ -114,18 +114,18 @@ def _do_description(key: str, spec: dict[str, Any]) -> str:
               "confident as a right one) --- " + SUMS_HELP[key])
     js = R.jobs_of(key)
     if js:
-        d += (" Is desk ke hisse (action=draft mein `job`): "
+        d += (" Parts of this desk (`job` in action=draft): "
               + ", ".join(f"{k} ({v['label']})" for k, v in js.items()) + ".")
     if spec["cap"]:
-        d += " YAHAN TAK: " + spec["cap"]
+        d += " LIMIT: " + spec["cap"]
     if not spec["writes"]:
-        d += " Yeh kaam kisi bahar ke system mein kuch likhta nahi - sirf padhta aur kaagaz banata hai."
+        d += " This work writes nothing to any outside system - it only reads and makes papers."
     return d
 
 
 def _see_description(key: str, spec: dict[str, Any]) -> str:
-    return (f"Read {spec['label']} work (nothing changes). what=day (khule kaam, nikli tareekhen, bade khatre) | "
-            f"jobs (is desk ke saare hisse aur har hisse ke kaagaz) | "
+    return (f"Read {spec['label']} work (nothing changes). what=day (open work, passed dates, big risks) | "
+            f"jobs (all parts of this desk and the papers of each part) | "
             f"systems | projects (status) | papers (kind, project) | paper (ref) | items (kind, status, project) | "
             f"settings | rules.")
 
@@ -199,23 +199,23 @@ def _owner(ctx: Ctx) -> bool:
 def _act(ctx: Ctx, role: str, action: str, a: dict[str, Any]) -> dict[str, Any]:
     from ..enterprise import service as S
     if (getattr(ctx, "actor", "owner") or "owner").startswith("customer:"):
-        raise ToolError("Yeh kaam graahak ke liye nahi hai.")
+        raise ToolError("This work is not for customers.")
     t_id, conv = ctx.tenant_id, ctx.conversation_id
     t = t_id
     try:
         S.guard_secret(" ".join(_s(v) for v in a.values()))
         if action == "settings":
             if not _owner(ctx):
-                raise ToolError("Sirf owner.")
+                raise ToolError("Only the owner can do this.")
             keys = {k: a[k] for k in ("company", "env_default", "rules") if k in a}
             return S.save_settings(t, role, **keys) if keys else S.settings(t, role)
         if action == "connect":
             if not _owner(ctx):
-                raise ToolError("System sirf owner jodti hain.")
+                raise ToolError("Only the owner can connect a system.")
             return S.connect(t, role, _s(a.get("system")), _s(a.get("env")), _s(a.get("account")), _s(a.get("note")))
         if action == "disconnect":
             if not _owner(ctx):
-                raise ToolError("Sirf owner.")
+                raise ToolError("Only the owner can do this.")
             return S.disconnect(t, role, _s(a.get("system")))
         if action == "project":
             return S.new_project(t, role, _s(a.get("title")), _s(a.get("goal")))
@@ -237,7 +237,7 @@ def _act(ctx: Ctx, role: str, action: str, a: dict[str, Any]) -> dict[str, Any]:
         if action in ("critical_path", "capacity", "metrics", "raid", "readiness", "chase",
                       "reorder", "dead_stock", "bom", "where_used", "reconcile", "due_calendar"):
             if action not in SUMS.get(role, ()):
-                raise ToolError(f"'{action}' is kaam ka hisaab nahi hai.")
+                raise ToolError(f"'{action}' is not part of this work.")
             from ..enterprise import calc as CALC
             from ..enterprise import tpm as TPM
             try:
@@ -284,9 +284,9 @@ def _act(ctx: Ctx, role: str, action: str, a: dict[str, Any]) -> dict[str, Any]:
             try:
                 if action == "endpoint":
                     if not _owner(ctx):
-                        raise ToolError("Endpoint sirf owner jodti hain - aur credential app mein, chat mein nahi.")
-                    raise ToolError("System ka address aur key app se jodiye (Enterprise > System jodo). "
-                                    "Chat mein credential nahi li jaati.")
+                        raise ToolError("Only the owner can connect an endpoint - and the credential goes in the app, not in chat.")
+                    raise ToolError("Connect the system's address and key from the app (Enterprise > Connect system). "
+                                    "Credentials are not accepted in chat.")
                 if action == "read":
                     return RUN.read(t_id, role, _s(a.get("system")), _s(a.get("target")),
                                     a.get("query") if isinstance(a.get("query"), dict) else {},
@@ -299,10 +299,10 @@ def _act(ctx: Ctx, role: str, action: str, a: dict[str, Any]) -> dict[str, Any]:
                                     _s(a.get("api")) or "data", int(a.get("limit") or 200))
                 if action == "plan_write":
                     if not R.may_write(role):
-                        raise ToolError("Yeh kaam kahin bahar likhta hi nahi.")
+                        raise ToolError("This work never writes anywhere outside.")
                     rows = a.get("rows")
                     if not isinstance(rows, list):
-                        raise ToolError("rows ek list honi chahiye.")
+                        raise ToolError("rows must be a list.")
                     return RUN.plan_write(t_id, role, _s(a.get("system")), _s(a.get("target")), _s(a.get("verb")),
                                           rows, _s(a.get("key_field")), _s(a.get("job")), _s(a.get("project")),
                                           _s(a.get("title")), _s(a.get("api")) or "data")
@@ -310,7 +310,7 @@ def _act(ctx: Ctx, role: str, action: str, a: dict[str, Any]) -> dict[str, Any]:
                     return RUN.dry_run(t_id, _s(a.get("run")))
                 if action == "approve":
                     if not _owner(ctx):
-                        raise ToolError("Haan sirf owner deti hain.")
+                        raise ToolError("Only the owner can approve.")
                     return RUN.approve(t_id, _s(a.get("run")), "owner", _s(a.get("confirm_env")))
                 if action == "execute":
                     return RUN.execute(t_id, _s(a.get("run")), int(a.get("batch") or 25))
@@ -323,20 +323,20 @@ def _act(ctx: Ctx, role: str, action: str, a: dict[str, Any]) -> dict[str, Any]:
                 if action == "resolve":
                     # only SHE can say whether an unanswered row landed; this is that answer coming back
                     if not _owner(ctx):
-                        raise ToolError("Yeh sirf owner bata sakti hain - system mein dekhkar.")
+                        raise ToolError("Only the owner can tell this - by looking in the system.")
                     if "landed" not in a:
-                        raise ToolError("landed=true (chadh gayi thi) ya landed=false (nahi gayi) batana zaroori hai.")
+                        raise ToolError("You must say landed=true (it went through) or landed=false (it did not).")
                     return RUN.resolve(t_id, _s(a.get("run")), int(a.get("n") or 0), bool(a.get("landed")))
                 if action == "deploy_validate":
                     comps = a.get("components")
                     if not isinstance(comps, list):
-                        raise ToolError("components ek list honi chahiye: [{type, name, body}].")
+                        raise ToolError("components must be a list: [{type, name, body}].")
                     return RUN.deploy_validate(t_id, role, comps, _s(a.get("test_level")))
                 if action == "deploy_status":
                     return RUN.deploy_status(t_id, role, _s(a.get("deploy")))
                 if action == "deploy_go":
                     if not _owner(ctx):
-                        raise ToolError("Haan sirf owner deti hain.")
+                        raise ToolError("Only the owner can approve.")
                     return RUN.deploy_go(t_id, role, _s(a.get("deploy")), "owner", _s(a.get("confirm_env")))
             except RUN.RunError as ex:
                 raise ToolError(str(ex))

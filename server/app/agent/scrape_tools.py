@@ -81,13 +81,13 @@ def _guard_url(url: str) -> str:
         try:
             infos = socket.getaddrinfo(host, None)
         except socket.gaierror:
-            raise ToolError(f"Yeh address ({host}) resolve nahi hua — link check kar lein ya site down ho sakti hai")
+            raise ToolError(f"This address ({host}) did not resolve - check the link, or the site may be down")
         ips = [ipaddress.ip_address(i[4][0]) for i in infos] or []
         if not ips:
-            raise ToolError(f"Yeh address ({host}) resolve nahi hua")
+            raise ToolError(f"This address ({host}) did not resolve")
     for ip in ips:
         if not ip.is_global:
-            raise ToolError(f"Yeh address ({host}) andar ke network ka hai (private/loopback) — scraping sirf public websites par chalti hai")
+            raise ToolError(f"This address ({host}) is on an internal network (private/loopback) - scraping works only on public websites")
     return u.geturl()
 
 
@@ -464,7 +464,7 @@ async def _extract_brain(system: str, user: str) -> tuple[str, str]:
                                                   max_tokens=_BRAIN_MAX_TOKENS, system=system,
                                                   messages=[{"role": "user", "content": user}])
         return "".join(b.text for b in resp.content if getattr(b, "type", "") == "text"), "claude"
-    raise ToolError("Is VPS par extraction brain configured nahi hai — schema extraction ke liye ek brain chahiye")
+    raise ToolError("No extraction brain is configured on this VPS - schema extraction needs one")
 
 
 # --------------------------------------------------------------------------- handlers
@@ -476,7 +476,7 @@ async def scrape_page(ctx: Ctx, url, format="markdown", css=None, include_links=
     include_links always read the live page (they need the DOM). Successful reads write through."""
     url = await asyncio.to_thread(_guard_url, url)
     if not await _robots_ok(url):
-        raise ToolError("Is site ke robots.txt ne is page ke liye bots ko mana kiya hai (respect_robots on) — user se poochh kar scrape_stealth ya browse_web try kar sakte hain")
+        raise ToolError("This site's robots.txt disallows bots for this page (respect_robots on) - after asking the user, scrape_stealth or browse_web can be tried")
     limit = max(500, min(int(max_chars or _MAX_TEXT), _HARD_TEXT))
     fmt = str(format or "markdown").lower()
     if not css and not include_links:      # v0.481 cache read BEFORE the fetch — zero outbound when fresh
@@ -496,12 +496,12 @@ async def scrape_page(ctx: Ctx, url, format="markdown", css=None, include_links=
     except Exception as e:
         raise ToolError(f"Fetch failed: {str(e)[:300]}")
     if page.status >= 400:
-        raise ToolError(f"Site ne {page.status} bheja ({page.reason}) — page nahi mila")
+        raise ToolError(f"The site returned {page.status} ({page.reason}) - page not found")
     if css:
         hits = _pick(page, css)
         if not hits:
             return {"status": page.status, "url": page.url, "count": 0,
-                    "content": "", "note": "css selector se kuch nahi mila — selector check karein"}
+                    "content": "", "note": "Nothing matched the css selector - check the selector"}
         parts = [h.html_content if fmt == "html" else (h.markdown() if fmt == "markdown" and hasattr(h, "markdown") else h.get_all_text(separator="\n")) for h in hits[:20]]
         content = ("\n\n---\n\n").join(p for p in parts if p)
     elif fmt == "html":
@@ -568,7 +568,7 @@ async def scrape_extract(ctx: Ctx, url, selector, fields=None, attr=None, adapti
     """Structured rows out of one page: CSS/XPath selector (+ optional per-field map) -> JSON. Adaptive memory."""
     url = await asyncio.to_thread(_guard_url, url)
     if not await _robots_ok(url):
-        raise ToolError("Is site ke robots.txt ne is page ke liye bots ko mana kiya hai (respect_robots on)")
+        raise ToolError("This site's robots.txt disallows bots for this page (respect_robots on)")
     try:
         limit = max(1, min(int(limit or 100), 500))
     except Exception:
@@ -601,7 +601,7 @@ async def scrape_extract(ctx: Ctx, url, selector, fields=None, attr=None, adapti
         rows.append(row)
     return _masked({"status": page.status, "url": page.url, "selector": selector,
                     "count": len(rows), "rows": rows, "adaptive": bool(adaptive),
-                    "note": ("Adaptive memory: agle runs par site badle to bhi yeh selector khud doondh lega (per-tenant)." if adaptive and rows else "")})
+                    "note": ("Adaptive memory: on later runs this selector will find the element again even if the site changes (per-tenant)." if adaptive and rows else "")})
 
 
 async def scrape_many(ctx: Ctx, urls, selector, fields=None, attr=None, adaptive=False, identifier="items", limit_per_page=50, timeout=20, **_):
@@ -623,7 +623,7 @@ async def scrape_many(ctx: Ctx, urls, selector, fields=None, attr=None, adaptive
             host = urlparse(gu).hostname or ""
             if host not in seen_hosts:
                 if not await _robots_ok(gu):
-                    results.append({"url": u, "error": "robots.txt in path ko mana karta hai"})
+                    results.append({"url": u, "error": "robots.txt disallows this path"})
                     seen_hosts.add(host)
                     continue
                 seen_hosts.add(host)
@@ -654,7 +654,7 @@ async def scrape_site(ctx: Ctx, start_url, max_pages=15, include=None, max_chars
     """Polite same-host crawl (BFS, robots + caps): map a site / find where the data lives."""
     start = await asyncio.to_thread(_guard_url, start_url)
     if not await _robots_ok(start):
-        raise ToolError("Is site ke robots.txt ne bots ko mana kiya hai (respect_robots on)")
+        raise ToolError("This site's robots.txt disallows bots (respect_robots on)")
     try:
         want = max(1, min(int(max_pages or 15), _MAX_SITE_PAGES))
     except Exception:
@@ -668,7 +668,7 @@ async def scrape_site(ctx: Ctx, start_url, max_pages=15, include=None, max_chars
         try:
             pat = re.compile(str(include))
         except re.error:
-            raise ToolError("include pattern valid regex nahi hai")
+            raise ToolError("The include pattern is not a valid regex")
     start_host = urlparse(start).hostname or ""
     seen: set[str] = {start}
     queue = [start]
@@ -710,7 +710,7 @@ async def scrape_site(ctx: Ctx, start_url, max_pages=15, include=None, max_chars
         await asyncio.sleep(0.4)           # politeness
     return _masked({"start": start, "host": start_host, "pages_found": len(pages),
                     "skipped_by_robots": skipped_robots, "pages": pages[:want],
-                    "note": "Data jis page par hai uska url uthakar scrape_extract chalayein — rows JSON mein aayengi"})
+                    "note": "Take the url of the page that holds the data and run scrape_extract - rows come back as JSON"})
 
 
 async def scrape_stealth(ctx: Ctx, url, format="markdown", css=None, wait_selector=None,
@@ -719,15 +719,15 @@ async def scrape_stealth(ctx: Ctx, url, format="markdown", css=None, wait_select
     from ..config import get_settings
     s = get_settings()
     if not s.scrape_stealth_enabled:
-        raise ToolError("Stealth scraping is VPS par band hai (RAM guard). Owner 'scrape_stealth_enabled=true' setting on kare aur ek baar 'scrapling install' chalaye — uske baad Cloudflare/anti-bot sites bhi khulengi. Tab tak open_website/browse_web use karein.")
+        raise ToolError("Stealth scraping is off on this VPS (RAM guard). The owner must turn on the 'scrape_stealth_enabled=true' setting and run 'scrapling install' once - after that Cloudflare/anti-bot sites will open too. Until then use open_website/browse_web.")
     url = await asyncio.to_thread(_guard_url, url)
     limit = max(500, min(int(max_chars or _MAX_TEXT), _HARD_TEXT))
     try:
         from scrapling.fetchers import StealthyFetcher
     except Exception as e:
-        raise ToolError(f"Stealth engine load nahi hua: {str(e)[:200]}")
+        raise ToolError(f"The stealth engine did not load: {str(e)[:200]}")
     if _STEALTH_SEM.acquire(blocking=False) is False:
-        raise ToolError("Ek stealth browser already chal raha hai — ek minute baad try karein")
+        raise ToolError("A stealth browser is already running - try again in a minute")
     try:
         def _run():
             kw: dict[str, Any] = {"headless": True,
@@ -748,7 +748,7 @@ async def scrape_stealth(ctx: Ctx, url, format="markdown", css=None, wait_select
     except Exception as e:
         from ..crawl.steps import StepError
         if isinstance(e, StepError):
-            raise ToolError(f"steps script theek nahi hai — {e}")
+            raise ToolError(f"The steps script is not valid - {e}")
         raise ToolError(f"Stealth fetch failed: {str(e)[:300]}")
     finally:
         try:
@@ -781,14 +781,14 @@ async def scrape(ctx: Ctx, url, format="markdown", css=None, include_links=False
     s = get_settings()
     url = await asyncio.to_thread(_guard_url, url)
     if not await _robots_ok(url):
-        raise ToolError("Is site ke robots.txt ne is page ke liye bots ko mana kiya hai (respect_robots on)")
+        raise ToolError("This site's robots.txt disallows bots for this page (respect_robots on)")
     limit = max(500, min(int(max_chars or _MAX_TEXT), _HARD_TEXT))
     fmt = str(format or "markdown").lower()
     mode = str(stealth or "auto").lower()
     if mode not in ("auto", "never", "always"):
         mode = "auto"
     if mode == "always" and not s.scrape_stealth_enabled:
-        raise ToolError("Stealth scraping is VPS par band hai (RAM guard). Owner 'scrape_stealth_enabled=true' on kare aur ek baar 'scrapling install' chalaye.")
+        raise ToolError("Stealth scraping is off on this VPS (RAM guard). The owner must turn on 'scrape_stealth_enabled=true' and run 'scrapling install' once.")
     if mode != "always" and not css and not include_links:
         hit = await asyncio.to_thread(_cache_get, ctx.tenant_id, url,
                                       max_age if max_age is not None else s.scrape_cache_max_age)
@@ -814,7 +814,7 @@ async def scrape(ctx: Ctx, url, format="markdown", css=None, include_links=False
     escalate = (mode == "always") or (mode == "auto" and bool(block))
     if escalate and s.scrape_stealth_enabled:
         if _STEALTH_SEM.acquire(blocking=False) is False:
-            raise ToolError("Ek stealth browser already chal raha hai — ek minute baad try karein")
+            raise ToolError("A stealth browser is already running - try again in a minute")
         try:
             page = await asyncio.to_thread(_stealth_fetch, url, timeout)
             engine, escalated = "stealth", True
@@ -829,20 +829,20 @@ async def scrape(ctx: Ctx, url, format="markdown", css=None, include_links=False
     elif block and page is None:
         raise ToolError(f"Fetch failed: {block}")
     elif mode == "auto" and block and not s.scrape_stealth_enabled:
-        raise ToolError(f"Site ne block kiya ({block}) — stealth is VPS par band hai (RAM guard). Owner "
-                        "'scrape_stealth_enabled=true' on kare aur ek baar 'scrapling install' chalaye, phir yeh "
-                        "door khud advance mode mein khulega. Tab tak browse_web try karein.")
+        raise ToolError(f"The site blocked the request ({block}) - stealth is off on this VPS (RAM guard). The owner must turn on "
+                        "'scrape_stealth_enabled=true' and run 'scrapling install' once; then this "
+                        "door will switch to advanced mode by itself. Until then try browse_web.")
     if page is None:
-        raise ToolError("Fetch failed — site tak pahunch nahi paye")
+        raise ToolError("Fetch failed - could not reach the site")
     if page.status >= 400:
         if escalated:
-            raise ToolError(f"Site ne block kiya ({block}) — advance mode ne bhi nahi khola. browse_web try karein.")
-        raise ToolError(f"Site ne {page.status} bheja ({getattr(page, 'reason', '')}) — page nahi mila")
+            raise ToolError(f"The site blocked the request ({block}) - advanced mode could not open it either. Try browse_web.")
+        raise ToolError(f"The site returned {page.status} ({getattr(page, 'reason', '')}) - page not found")
     if css:
         hits = _pick(page, css)
         if not hits:
             return {"status": page.status, "url": page.url, "engine": engine, "escalated": escalated, "count": 0,
-                    "content": "", "note": "css selector se kuch nahi mila — selector check karein"}
+                    "content": "", "note": "Nothing matched the css selector - check the selector"}
         parts = [h.html_content if fmt == "html" else (h.markdown() if fmt == "markdown" and hasattr(h, "markdown") else h.get_all_text(separator="\n")) for h in hits[:20]]
         content = ("\n\n---\n\n").join(p for p in parts if p)
     elif fmt == "html":
@@ -892,7 +892,7 @@ async def scrape_map(ctx: Ctx, url, include=None, max_urls=100, max_pages=5, tim
     the difference between 8 pages' worth of links and the whole catalogue."""
     start = await asyncio.to_thread(_guard_url, url)
     if not await _robots_ok(start):
-        raise ToolError("Is site ke robots.txt ne bots ko mana kiya hai (respect_robots on)")
+        raise ToolError("This site's robots.txt disallows bots (respect_robots on)")
     if sources:
         try:
             want = max(1, min(int(max_urls or 100), _MAX_MAP_URLS))
@@ -901,7 +901,7 @@ async def scrape_map(ctx: Ctx, url, include=None, max_urls=100, max_pages=5, tim
         got = await _seed_urls(ctx, start, str(sources), want, include, newer_than)
         if got["count"]:
             return _masked({**got, "start": start, "engine": "index"})
-        got["note"] = ("Site ke index se kuch nahi mila — page-walk se dekh raha hoon"
+        got["note"] = ("Nothing found in the site's index - trying a page walk"
                        + (f" ({got['notes'][0]})" if got.get("notes") else ""))
         # fall through to the page walk rather than returning nothing
     try:
@@ -917,7 +917,7 @@ async def scrape_map(ctx: Ctx, url, include=None, max_urls=100, max_pages=5, tim
         try:
             pat = re.compile(str(include))
         except re.error:
-            raise ToolError("include pattern valid regex nahi hai")
+            raise ToolError("The include pattern is not a valid regex")
     start_host = urlparse(start).hostname or ""
     seen: set[str] = {start}
     queue = [start]
@@ -959,7 +959,7 @@ async def scrape_map(ctx: Ctx, url, include=None, max_urls=100, max_pages=5, tim
     urls = urls[:want_urls]
     return _masked({"start": start, "host": start_host, "pages_fetched": fetched,
                     "urls_found": len(urls), "urls": urls, "skipped_by_robots": skipped_robots,
-                    "note": "Jis url par data hai us par scrape_extract (css) ya scrape_extract_json (schema) chalayein"})
+                    "note": "Run scrape_extract (css) or scrape_extract_json (schema) on the url that holds the data"})
 
 
 async def scrape_extract_json(ctx: Ctx, url, schema=None, prompt=None, limit=50, max_chars=24000, timeout=25, **_):
@@ -968,7 +968,7 @@ async def scrape_extract_json(ctx: Ctx, url, schema=None, prompt=None, limit=50,
     import json as _json
     url = await asyncio.to_thread(_guard_url, url)
     if not await _robots_ok(url):
-        raise ToolError("Is site ke robots.txt ne is page ke liye bots ko mana kiya hai (respect_robots on)")
+        raise ToolError("This site's robots.txt disallows bots for this page (respect_robots on)")
     try:
         limit = max(1, min(int(limit or 50), 50))
     except Exception:
@@ -1001,8 +1001,8 @@ async def scrape_extract_json(ctx: Ctx, url, schema=None, prompt=None, limit=50,
     answer, brain = await _extract_brain("You turn web page text into strict JSON. Answer with JSON only.", "\n\n".join(parts))
     data = _json_loose(answer)
     if data is None:
-        raise ToolError("Brain ne JSON nahi bheja — page shayad bina structure ka hai. scrape_page ka content "
-                        "khud padh lein, ya scrape_extract (css selector) try karein.")
+        raise ToolError("The brain did not return JSON - the page may have no structure. Read the scrape_page content "
+                        "yourself, or try scrape_extract (css selector).")
     if isinstance(data, list):
         data = data[:limit]
         count = len(data)
@@ -1021,7 +1021,7 @@ async def scrape_tables(ctx: Ctx, url, which=None, as_csv=False, max_tables=5, t
     than returning nothing."""
     url = await asyncio.to_thread(_guard_url, url)
     if not await _robots_ok(url):
-        raise ToolError("Is site ke robots.txt ne bots ko mana kiya hai (respect_robots on)")
+        raise ToolError("This site's robots.txt disallows bots (respect_robots on)")
     try:
         page = await asyncio.to_thread(_fetch, url, ctx.tenant_id, timeout)
     except ToolError:
@@ -1029,24 +1029,24 @@ async def scrape_tables(ctx: Ctx, url, which=None, as_csv=False, max_tables=5, t
     except Exception as e:
         raise ToolError(f"Fetch failed: {str(e)[:300]}")
     if int(getattr(page, "status", 0) or 0) >= 400:
-        raise ToolError(f"Site ne {page.status} bheja — page nahi mila")
+        raise ToolError(f"The site returned {page.status} - page not found")
     blk = await asyncio.to_thread(_blocked, page)
     if blk:
-        raise ToolError(f"Yeh page bot-block nikla ({blk}) — scrape_stealth se try karein")
+        raise ToolError(f"This page turned out to be bot-blocked ({blk}) - try scrape_stealth")
     from ..crawl import tables as _tb
     got = await asyncio.to_thread(_tb.extract, getattr(page, "html_content", "") or "",
                                   7, max(1, min(int(max_tables or 5), 20)))
     if not got:
         return {"url": getattr(page, "url", url), "tables": 0,
-                "note": "Is page par koi DATA table nahi mili (sirf layout tables, ya koi table hi nahi). "
-                        "scrape_extract se CSS selector ke saath nikaal sakte hain."}
+                "note": "No DATA table on this page (only layout tables, or none at all). "
+                        "Use scrape_extract with a CSS selector instead."}
     if which is not None:
         try:
             i = int(which)
         except Exception:
-            raise ToolError("which ek number hona chahiye (0 = pehli table)")
+            raise ToolError("which must be a number (0 = first table)")
         if not (0 <= i < len(got)):
-            raise ToolError(f"is page par {len(got)} table hain; which 0..{len(got) - 1} ho")
+            raise ToolError(f"This page has {len(got)} tables; which must be 0..{len(got) - 1}")
         got = [got[i]]
     out = []
     for tb in got:
@@ -1057,8 +1057,8 @@ async def scrape_tables(ctx: Ctx, url, which=None, as_csv=False, max_tables=5, t
             row["csv"] = _cap(tb.as_csv(), _MAX_TEXT)
         out.append(row)
     return _masked({"url": getattr(page, "url", url), "tables": len(out), "data": out,
-                    "note": "Rows headers ke hisaab se aligned hain (rowspan/colspan khol diye gaye). "
-                            "data_note se Data Desk mein daal sakte hain."})
+                    "note": "Rows are aligned to the headers (rowspan/colspan expanded). "
+                            "data_note can put them into the Data Desk."})
 
 
 SCRAPE_TOOLS = [

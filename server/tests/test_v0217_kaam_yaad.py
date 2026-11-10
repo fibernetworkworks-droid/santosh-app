@@ -119,7 +119,7 @@ def test_brief_carries_the_work_discipline():
     assert "never ask again what is already settled" in brief
     assert "bring it up ONCE yourself at a natural pause" in brief
     assert "ONE short clarifying line" in brief and "standing silent or waiting helpdesk-style is failure" in brief
-    assert "par aapne yeh maanga tha" in brief                 # the result-check, in his own mouth
+    assert "but you had asked for that" in brief                 # the result-check, in his own mouth
 
 
 def test_run_wiring_pin_news_skip_newest():
@@ -130,13 +130,13 @@ def test_run_wiring_pin_news_skip_newest():
 
 def test_greeting_followup_points_at_kaam_ka_haal():
     g = " ".join(voice.greeting("default", followup="sheet ban gayi thi").split())
-    assert "KAAM KA HAAL" in g and "EK-EK karke" in g          # the rest of the pile gets a path to her ears
+    assert "KAAM KA HAAL" in g and "one by one" in g          # the rest of the pile gets a path to her ears
 
 
 def test_greeting_fresh_still_carries_the_kaam_line():
     g = " ".join(voice.greeting("default").split())
-    assert "if HOOLA KI YAAD shows a kaam still open" in g     # v0.214 continuity wording intact
+    assert "if HOOLA KI YAAD shows a job still open" in g     # v0.214 continuity wording intact
 
 
 def test_version():
-    assert APP_VERSION == "0.715.0"
+    assert APP_VERSION == "0.749.0"

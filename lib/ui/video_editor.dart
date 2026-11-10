@@ -16,14 +16,14 @@ import 'glass.dart';
 /// by Hoola: she downloads / shares it herself.
 
 const _stageWords = {
-  'queued': 'Line mein hai',
-  'watching': 'Video dekh raha hai',
-  'planning': 'Edit soch raha hai',
-  'rendering': 'Bana raha hai',
-  'checking': 'Khud check kar raha hai',
-  'done': 'Taiyaar',
-  'failed': 'Nahi ban paya',
-  'cancelled': 'Rok diya',
+  'queued': 'In the queue',
+  'watching': 'Watching the video',
+  'planning': 'Planning the edit',
+  'rendering': 'Rendering',
+  'checking': 'Checking its own work',
+  'done': 'Ready',
+  'failed': 'Could not be made',
+  'cancelled': 'Stopped',
 };
 const _active = {'queued', 'watching', 'planning', 'rendering', 'checking'};
 
@@ -73,9 +73,9 @@ class _VideoJobCardState extends State<VideoJobCard> {
       _fresh = await widget.app.api!.videoRevise('${v['id']}', t);
       _change.clear();
       _pick = null;
-      if (mounted) _snack(context, 'Theek hai, badal raha hoon. Naya version yahin aayega.');
+      if (mounted) _snack(context, 'Okay, making the change. The new version will appear here.');
     } catch (e) {
-      if (mounted) _snack(context, 'Nahi ho paya: $e');
+      if (mounted) _snack(context, 'Could not do it: $e');
     }
     if (mounted) setState(() => _busy = false);
   }
@@ -85,7 +85,7 @@ class _VideoJobCardState extends State<VideoJobCard> {
       _fresh = await widget.app.api!.videoCancel('${v['id']}');
       if (mounted) setState(() {});
     } catch (e) {
-      if (mounted) _snack(context, 'Nahi ruka: $e');
+      if (mounted) _snack(context, 'Could not stop: $e');
     }
   }
 
@@ -124,15 +124,15 @@ class _VideoJobCardState extends State<VideoJobCard> {
           const SizedBox(height: 6),
           Row(children: [
             Expanded(child: Text('${v['stage'] ?? ''}', style: const TextStyle(color: C.muted, fontSize: 12.5))),
-            TextButton(onPressed: _cancel, child: const Text('Rok do')),
+            TextButton(onPressed: _cancel, child: const Text('Stop')),
           ]),
           if ('${v['pending'] ?? ''}'.isNotEmpty)
-            Text('Badlav: ${v['pending']}', style: const TextStyle(color: C.faint, fontSize: 12)),
+            Text('Change: ${v['pending']}', style: const TextStyle(color: C.faint, fontSize: 12)),
         ],
         if (status == 'failed')
           Padding(
             padding: const EdgeInsets.only(top: 8),
-            child: Text('${v['error'] ?? 'Kuch gadbad hui.'}', style: const TextStyle(color: C.bad, fontSize: 13)),
+            child: Text('${v['error'] ?? 'Something went wrong.'}', style: const TextStyle(color: C.bad, fontSize: 13)),
           ),
         if (shown != null) ...[
           const SizedBox(height: 10),
@@ -148,7 +148,7 @@ class _VideoJobCardState extends State<VideoJobCard> {
           if ('${shown['change'] ?? ''}'.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(top: 6),
-              child: Text('Badlav: ${shown['change']}', style: const TextStyle(color: C.muted, fontSize: 12.5)),
+              child: Text('Change: ${shown['change']}', style: const TextStyle(color: C.muted, fontSize: 12.5)),
             ),
           if (versions.length > 1) ...[
             const SizedBox(height: 8),
@@ -179,7 +179,7 @@ class _VideoJobCardState extends State<VideoJobCard> {
                   final u = widget.app.api?.absolute('${shown['url']}');
                   if (u == null) return;
                   if (!await launchUrl(Uri.parse(u), mode: LaunchMode.externalApplication) && context.mounted) {
-                    _snack(context, 'Link nahi khula');
+                    _snack(context, 'The link did not open');
                   }
                 },
               ),
@@ -192,7 +192,7 @@ class _VideoJobCardState extends State<VideoJobCard> {
                 onTap: () {
                   final u = widget.app.api?.absolute('${shown['url']}') ?? '';
                   Clipboard.setData(ClipboardData(text: u));
-                  _snack(context, 'Link copy ho gaya (10 din chalega)');
+                  _snack(context, 'Link copied (works for 10 days)');
                 },
               ),
             ),
@@ -209,7 +209,7 @@ class _VideoJobCardState extends State<VideoJobCard> {
                 textInputAction: TextInputAction.send,
                 onSubmitted: (_) => _revise(),
                 decoration: InputDecoration(
-                  hintText: 'Kuch badalna hai? "title bada karo", "intro chhota"...',
+                  hintText: 'Want a change? "make the title bigger", "shorten the intro"...',
                   hintStyle: const TextStyle(color: C.faint, fontSize: 13),
                   isDense: true,
                   filled: true,
@@ -288,7 +288,7 @@ class _CaptionBox extends StatelessWidget {
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(color: C.panel, borderRadius: BorderRadius.circular(12)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Text('Post ke liye caption', style: TextStyle(color: C.faint, fontSize: 11.5)),
+        const Text('Caption for the post', style: TextStyle(color: C.faint, fontSize: 11.5)),
         const SizedBox(height: 4),
         SelectableText(all, style: const TextStyle(fontSize: 13, height: 1.35)),
         Align(
@@ -296,7 +296,7 @@ class _CaptionBox extends StatelessWidget {
           child: TextButton.icon(
             onPressed: () {
               Clipboard.setData(ClipboardData(text: all));
-              _snack(context, 'Caption copy ho gaya');
+              _snack(context, 'Caption copied');
             },
             icon: const Icon(Icons.copy_rounded, size: 16),
             label: const Text('Copy'),
@@ -339,7 +339,7 @@ class _VideoPlayScreenState extends State<VideoPlayScreen> {
       await c.play();
       setState(() {});
     } catch (e) {
-      if (mounted) setState(() => _err = 'Video nahi chala: $e');
+      if (mounted) setState(() => _err = 'The video did not play: $e');
     }
   }
 
@@ -442,17 +442,17 @@ class _VideoEditorScreenState extends State<VideoEditorScreen> {
         foregroundColor: C.onAccent,
         onPressed: _new,
         icon: const Icon(Icons.add_rounded),
-        label: const Text('Naya video'),
+        label: const Text('New video'),
       ),
       body: RefreshIndicator(
         onRefresh: _load,
         child: ListView(padding: const EdgeInsets.fromLTRB(16, 4, 16, 96), children: [
           Glass(
             child: Text(
-              'Kachcha video / photos dijiye aur ek line mein bataiye kya chahiye — "dukaan ki 30 sec reel, naya stock dikhao". '
-              '${app.aName} video dekhta hai, achhe hisse chunta hai, kaat-chhaant, text, captions, music, logo lagata hai, '
-              'phir khud dekh ke check karta hai aur galti ho to theek karta hai. Badlav seedhe shabdon mein boliye. '
-              'Post aap khud karti hain — ${app.aName} kuch bhi apne aap post nahi karta.',
+              'Give raw video / photos and say in one line what you want — "a 30 sec reel for the shop, show the new stock". '
+              '${app.aName} watches the video, picks the good parts, trims, and adds text, captions, music and a logo, '
+              'then watches and checks it itself and fixes any mistakes. Ask for changes in plain words. '
+              'You post it yourself — ${app.aName} never posts anything by itself.',
               style: const TextStyle(fontSize: 13, height: 1.4, color: C.muted),
             ),
           ),
@@ -462,7 +462,7 @@ class _VideoEditorScreenState extends State<VideoEditorScreen> {
           if (!_loading && _jobs.isEmpty && _err == null)
             const Padding(
               padding: EdgeInsets.all(30),
-              child: Center(child: Text('Abhi koi video nahi. "Naya video" dabaiye.', style: TextStyle(color: C.faint))),
+              child: Center(child: Text('No videos yet. Tap "New video".', style: TextStyle(color: C.faint))),
             ),
           for (final j in _jobs) VideoJobCard(key: ValueKey('vjl${j['id']}${j['updated_at']}'), v: j, app: app),
         ]),
@@ -534,14 +534,14 @@ class _NewVideoScreenState extends State<_NewVideoScreen> {
         if (mounted) setState(() {});
       }
     } catch (e) {
-      if (mounted) _snack(context, 'Upload nahi hua: $e');
+      if (mounted) _snack(context, 'Upload failed: $e');
     }
     if (mounted) setState(() => _uploading = false);
   }
 
   Future<void> _start() async {
     if (_files.isEmpty) {
-      _snack(context, 'Pehle video ya photos lagaiye');
+      _snack(context, 'Add a video or photos first');
       return;
     }
     setState(() => _starting = true);
@@ -550,10 +550,10 @@ class _NewVideoScreenState extends State<_NewVideoScreen> {
           platform: _platform, lengthS: _len.round(), captions: _captions, logoFileId: _logo?.id ?? '',
           musicFileId: _music?.id ?? '', conversationId: app.conversationId ?? '');
       if (!mounted) return;
-      _snack(context, '${app.aName} kaam pe lag gaya. Video taiyaar hote hi chat mein aayega.');
+      _snack(context, '${app.aName} has started. The video will arrive in the chat as soon as it is ready.');
       Navigator.of(context).pop(true);
     } catch (e) {
-      if (mounted) _snack(context, 'Shuru nahi hua: $e');
+      if (mounted) _snack(context, 'Could not start: $e');
     }
     if (mounted) setState(() => _starting = false);
   }
@@ -564,7 +564,7 @@ class _NewVideoScreenState extends State<_NewVideoScreen> {
     if (_len > max) _len = max;
     return Scaffold(
       backgroundColor: C.bgBottom,
-      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Naya video')),
+      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('New video')),
       body: ListView(padding: const EdgeInsets.fromLTRB(16, 4, 16, 28), children: [
         const Text('1. Footage', style: TextStyle(fontWeight: FontWeight.w700)),
         const SizedBox(height: 6),
@@ -573,20 +573,20 @@ class _NewVideoScreenState extends State<_NewVideoScreen> {
             InputChip(label: Text(f.name, overflow: TextOverflow.ellipsis), onDeleted: () => setState(() => _files.remove(f))),
           ActionChip(
             avatar: const Icon(Icons.video_library_rounded, size: 18),
-            label: Text(_files.isEmpty ? 'Video / photos chuniye' : 'Aur jodiye'),
+            label: Text(_files.isEmpty ? 'Choose video / photos' : 'Add more'),
             onPressed: _uploading || _files.length >= 8 ? null : () => _add(FileType.media),
           ),
         ]),
         if (_uploading) const Padding(padding: EdgeInsets.only(top: 8), child: LinearProgressIndicator(color: C.accent)),
         const SizedBox(height: 16),
-        const Text('2. Kya chahiye?', style: TextStyle(fontWeight: FontWeight.w700)),
+        const Text('2. What do you want?', style: TextStyle(fontWeight: FontWeight.w700)),
         const SizedBox(height: 6),
         TextField(
           controller: _brief,
           minLines: 3,
           maxLines: 6,
           decoration: InputDecoration(
-            hintText: 'Jaise: "Diwali sale ki reel, pehle 2 sec mein 50% off dikhao, energetic music, end mein dukaan ka pata"',
+            hintText: 'For example: "A Diwali sale reel, show 50% off in the first 2 sec, energetic music, the shop address at the end"',
             hintStyle: const TextStyle(color: C.faint, fontSize: 13),
             filled: true,
             fillColor: C.panel,
@@ -594,7 +594,7 @@ class _NewVideoScreenState extends State<_NewVideoScreen> {
           ),
         ),
         const SizedBox(height: 16),
-        const Text('3. Kahan ke liye?', style: TextStyle(fontWeight: FontWeight.w700)),
+        const Text('3. Where is it for?', style: TextStyle(fontWeight: FontWeight.w700)),
         const SizedBox(height: 6),
         Wrap(spacing: 6, runSpacing: 6, children: [
           for (final p in _pfs)
@@ -608,7 +608,7 @@ class _NewVideoScreenState extends State<_NewVideoScreen> {
             ),
         ]),
         const SizedBox(height: 12),
-        Text('Lambai: lagbhag ${_dur(_len)}', style: const TextStyle(color: C.muted)),
+        Text('Length: about ${_dur(_len)}', style: const TextStyle(color: C.muted)),
         Slider(value: _len.clamp(5, max), min: 5, max: max, divisions: ((max - 5) / 5).round().clamp(1, 200),
             activeColor: C.accent, onChanged: (x) => setState(() => _len = x)),
         SwitchListTile(
@@ -616,7 +616,7 @@ class _NewVideoScreenState extends State<_NewVideoScreen> {
           value: _captions,
           activeColor: C.accent,
           onChanged: (x) => setState(() => _captions = x),
-          title: const Text('Captions (jo bola gaya, video pe likha)'),
+          title: const Text('Captions (what is said, written on the video)'),
         ),
         const SizedBox(height: 4),
         Wrap(spacing: 6, runSpacing: 6, children: [
@@ -627,17 +627,17 @@ class _NewVideoScreenState extends State<_NewVideoScreen> {
           ),
           ActionChip(
             avatar: const Icon(Icons.music_note_rounded, size: 18),
-            label: Text(_music == null ? 'Apna music (optional)' : 'Music: ${_music!.name}'),
+            label: Text(_music == null ? 'Your own music (optional)' : 'Music: ${_music!.name}'),
             onPressed: _uploading ? null : () => _add(FileType.audio, slot: 'music'),
           ),
         ]),
         const Padding(
           padding: EdgeInsets.only(top: 6),
-          child: Text('Music sirf wahi lagaiye jiska haq aapke paas ho.', style: TextStyle(color: C.faint, fontSize: 11.5)),
+          child: Text('Use only music you have the rights to.', style: TextStyle(color: C.faint, fontSize: 11.5)),
         ),
         const SizedBox(height: 20),
         GradientButton(
-          label: _starting ? 'Shuru ho raha hai...' : 'Video banao',
+          label: _starting ? 'Starting...' : 'Make video',
           icon: Icons.auto_awesome_rounded,
           onTap: _starting || _uploading ? null : _start,
         ),

@@ -16,10 +16,10 @@ List<Map<String, dynamic>> _list(dynamic l) =>
 Map<String, dynamic> _map(dynamic m) => m is Map ? Map<String, dynamic>.from(m) : <String, dynamic>{};
 void _snack(BuildContext c, String t) => ScaffoldMessenger.of(c).showSnackBar(SnackBar(content: Text(t)));
 
-const _disclaimer = 'AI se bana draft: chhapne / baantne se pehle teacher padh kar approve karein. Board ka pattern aur '
-    'chapter sirf official source se; "ANDAAZA" wali baat source se pakki kijiye.';
+const _disclaimer = 'An AI-made draft: a teacher should read and approve it before printing / sharing. The board pattern and '
+    'chapters only from the official source; confirm "ESTIMATE" items with the source.';
 
-Future<Map<String, String>?> _form(BuildContext context, String title, List<(String, String)> fields, {String ok = 'Aage'}) async {
+Future<Map<String, String>?> _form(BuildContext context, String title, List<(String, String)> fields, {String ok = 'Next'}) async {
   final c = {for (final (k, _) in fields) k: TextEditingController()};
   final res = await showDialog<bool>(
     context: context,
@@ -32,7 +32,7 @@ Future<Map<String, String>?> _form(BuildContext context, String title, List<(Str
         ]),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Rehne do')),
+        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Leave it')),
         TextButton(onPressed: () => Navigator.pop(d, true), child: Text(ok)),
       ],
     ),
@@ -114,13 +114,13 @@ class _ShikshaScreenState extends State<ShikshaScreen> {
       Glass(child: Text(_s(d['say']), style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, height: 1.35))),
       const SizedBox(height: 10),
       Row(children: [
-        Expanded(child: GradientButton(label: 'Sawaal banao', icon: Icons.quiz_rounded, height: 46, onTap: _busy ? null : _generate)),
+        Expanded(child: GradientButton(label: 'Make questions', icon: Icons.quiz_rounded, height: 46, onTap: _busy ? null : _generate)),
         const SizedBox(width: 8),
-        Expanded(child: GlassButton(label: 'Paper banao', icon: Icons.description_rounded, onTap: _busy ? null : _newPaper)),
+        Expanded(child: GlassButton(label: 'Make paper', icon: Icons.description_rounded, onTap: _busy ? null : _newPaper)),
       ]),
       const SizedBox(height: 12),
       const Caption('Classes'),
-      if (classes.isEmpty) const Text('Abhi koi class nahi. Chat mein kahiye: "10-A class jodo, subject Maths".', style: TextStyle(color: C.muted)),
+      if (classes.isEmpty) const Text('No classes yet. Say in the chat: "Add class 10-A, subject Maths".', style: TextStyle(color: C.muted)),
       for (final c in classes)
         Padding(
           padding: const EdgeInsets.only(bottom: 6),
@@ -134,21 +134,21 @@ class _ShikshaScreenState extends State<ShikshaScreen> {
       if ((d['consent_pending'] ?? 0) is int && (d['consent_pending'] as int) > 0)
         Padding(
           padding: const EdgeInsets.only(top: 6),
-          child: Text('${d['consent_pending']} bachchon ki guardian consent baaki: tab tak unke marks / padhai ka koi kaam nahi.',
+          child: Text('${d['consent_pending']} students\' guardian consent is pending: until then no marks / study work for them.',
               style: const TextStyle(color: C.warn, fontSize: 12.5)),
         ),
     ]);
   }
 
   Future<void> _generate() async {
-    final f = await _form(context, 'Naye sawaal (draft)', const [
-      ('subject', 'Subject (jaise Mathematics)'),
-      ('grade', 'Class (jaise 10)'),
-      ('chapter', 'Chapter (jaise Real Numbers)'),
-      ('mcq', 'Kitne MCQ (1 mark)'),
-      ('short', 'Kitne short answer (3 marks)'),
-      ('notes', 'Kuch khaas (optional)'),
-    ], ok: 'Banao');
+    final f = await _form(context, 'New questions (draft)', const [
+      ('subject', 'Subject (for example Mathematics)'),
+      ('grade', 'Class (for example 10)'),
+      ('chapter', 'Chapter (for example Real Numbers)'),
+      ('mcq', 'How many MCQs (1 mark)'),
+      ('short', 'How many short answers (3 marks)'),
+      ('notes', 'Anything special (optional)'),
+    ], ok: 'Make');
     if (f == null) return;
     final counts = <String, int>{
       if ((int.tryParse(f['mcq'] ?? '') ?? 0) > 0) 'mcq': int.parse(f['mcq']!),
@@ -175,10 +175,10 @@ class _ShikshaScreenState extends State<ShikshaScreen> {
         SizedBox(width: 90, child: TextField(decoration: const InputDecoration(labelText: 'Class'), onSubmitted: (v) { _grade = v.trim(); _load(); })),
       ]),
       const SizedBox(height: 8),
-      Text('Kul ${_s(_bank['total'])} · draft ${_s(counts['draft'] ?? 0)} · approved ${_s(counts['approved'] ?? 0)}',
+      Text('Total ${_s(_bank['total'])} · draft ${_s(counts['draft'] ?? 0)} · approved ${_s(counts['approved'] ?? 0)}',
           style: const TextStyle(color: C.muted, fontSize: 12.5)),
       const SizedBox(height: 8),
-      if (qs.isEmpty) const Text('Bank khaali hai: "Sawaal banao" dabaiye.', style: TextStyle(color: C.muted)),
+      if (qs.isEmpty) const Text('The bank is empty: tap "Make questions".', style: TextStyle(color: C.muted)),
       for (final q in qs)
         Padding(
           padding: const EdgeInsets.only(bottom: 8),
@@ -225,7 +225,7 @@ class _ShikshaScreenState extends State<ShikshaScreen> {
               Text(_s(q['text'])),
               for (final (i, o) in (q['options'] as List? ?? const []).indexed) Text('(${'abcd'.length > i ? 'abcd'[i] : i + 1}) $o'),
               const SizedBox(height: 8),
-              Text('Jawab: ${_s(q['answer'])}', style: const TextStyle(fontWeight: FontWeight.w700)),
+              Text('Answer: ${_s(q['answer'])}', style: const TextStyle(fontWeight: FontWeight.w700)),
               for (final st in (q['steps'] as List? ?? const [])) Text('• $st', style: const TextStyle(fontSize: 12.5)),
               for (final sc in _list(q['scheme'])) Text('${_s(sc['point'])} (${_s(sc['marks'])})', style: const TextStyle(fontSize: 12.5, color: C.muted)),
               for (final c in (q['checks'] as List? ?? const [])) Text('• $c', style: const TextStyle(color: C.warn, fontSize: 12)),
@@ -239,7 +239,7 @@ class _ShikshaScreenState extends State<ShikshaScreen> {
                     }),
                   ),
                 if (draft) const SizedBox(width: 8),
-                GlassButton(label: 'Hatao', onTap: () async {
+                GlassButton(label: 'Remove', onTap: () async {
                   Navigator.pop(d);
                   await _run(() => widget.app.api!.call('POST', '/api/shiksha/bank/status', body: {'refs': [ref], 'status': 'retired'}));
                 }),
@@ -253,15 +253,15 @@ class _ShikshaScreenState extends State<ShikshaScreen> {
 
   // ------------------------------------------------------------------ Papers
   Future<void> _newPaper() async {
-    final f = await _form(context, 'Naya paper', const [
-      ('subject', 'Subject (jaise Mathematics)'),
-      ('grade', 'Class (jaise 10)'),
-      ('title', 'Naam (jaise Unit test 1)'),
-      ('chapters', 'Chapters, comma se (khaali = sab)'),
-      ('mcq', 'Section A: kitne MCQ (1 mark) - khaali = board ka pattern'),
-      ('short', 'Section B: kitne short (3 marks)'),
-      ('duration', 'Samay (minute)'),
-    ], ok: 'Banao');
+    final f = await _form(context, 'New paper', const [
+      ('subject', 'Subject (for example Mathematics)'),
+      ('grade', 'Class (for example 10)'),
+      ('title', 'Name (for example Unit test 1)'),
+      ('chapters', 'Chapters, comma separated (blank = all)'),
+      ('mcq', 'Section A: how many MCQs (1 mark) - blank = board pattern'),
+      ('short', 'Section B: how many short (3 marks)'),
+      ('duration', 'Time (minutes)'),
+    ], ok: 'Make');
     if (f == null) return;
     final mcq = int.tryParse(f['mcq'] ?? '') ?? 0;
     final sh = int.tryParse(f['short'] ?? '') ?? 0;
@@ -283,9 +283,9 @@ class _ShikshaScreenState extends State<ShikshaScreen> {
   Widget _papersTab() {
     final ps = _list(_d?['papers']);
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      GradientButton(label: 'Naya paper', icon: Icons.add_rounded, height: 46, onTap: _busy ? null : _newPaper),
+      GradientButton(label: 'New paper', icon: Icons.add_rounded, height: 46, onTap: _busy ? null : _newPaper),
       const SizedBox(height: 10),
-      if (ps.isEmpty) const Text('Abhi koi paper nahi.', style: TextStyle(color: C.muted)),
+      if (ps.isEmpty) const Text('No papers yet.', style: TextStyle(color: C.muted)),
       for (final p in ps)
         Padding(
           padding: const EdgeInsets.only(bottom: 8),
@@ -299,8 +299,8 @@ class _ShikshaScreenState extends State<ShikshaScreen> {
                 Expanded(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Text('${_s(p['number'])} · ${_s(p['title'])}', style: const TextStyle(fontWeight: FontWeight.w800)),
-                    Text('${_s(p['questions'])} sawaal · ${_s(p['total'])}/${_s(p['max_marks'])} marks'
-                        '${(p['drafts'] ?? 0) != 0 ? ' · ${p['drafts']} draft' : ''}${_list(p['gaps']).isNotEmpty ? ' · kami' : ''}',
+                    Text('${_s(p['questions'])} questions ·${_s(p['total'])}/${_s(p['max_marks'])} marks'
+                        '${(p['drafts'] ?? 0) != 0 ? ' · ${p['drafts']} draft' : ''}${_list(p['gaps']).isNotEmpty ? ' · gaps' : ''}',
                         style: const TextStyle(color: C.muted, fontSize: 12)),
                   ]),
                 ),
@@ -315,11 +315,11 @@ class _ShikshaScreenState extends State<ShikshaScreen> {
   // ------------------------------------------------------------------ Plans
   Future<void> _newPlan(String kind) async {
     final fields = switch (kind) {
-      'year' => const [('subject', 'Subject'), ('grade', 'Class'), ('chapters', 'Chapters kram se, comma se (khaali = NCERT list)')],
-      'lesson' => const [('subject', 'Subject'), ('grade', 'Class'), ('topic', 'Topic'), ('minutes', 'Period kitne minute (40)')],
-      _ => const [('task', 'Kis kaam ka rubric (project, essay...)'), ('subject', 'Subject'), ('grade', 'Class'), ('points', 'Kul points (20)')],
+      'year' => const [('subject', 'Subject'), ('grade', 'Class'), ('chapters', 'Chapters in order, comma separated (blank = NCERT list)')],
+      'lesson' => const [('subject', 'Subject'), ('grade', 'Class'), ('topic', 'Topic'), ('minutes', 'Period length in minutes (40)')],
+      _ => const [('task', 'Rubric for what work (project, essay...)'), ('subject', 'Subject'), ('grade', 'Class'), ('points', 'Total points (20)')],
     };
-    final f = await _form(context, kind == 'year' ? 'Year plan' : (kind == 'lesson' ? 'Lesson plan (5E)' : 'Rubric'), fields, ok: 'Banao');
+    final f = await _form(context, kind == 'year' ? 'Year plan' : (kind == 'lesson' ? 'Lesson plan (5E)' : 'Rubric'), fields, ok: 'Make');
     if (f == null) return;
     await _run(() => widget.app.api!.call('POST', '/api/pathyakram/plans/$kind', body: {
           'subject': f['subject'] ?? '',
@@ -341,7 +341,7 @@ class _ShikshaScreenState extends State<ShikshaScreen> {
         GlassButton(label: 'Rubric', icon: Icons.grid_on_rounded, onTap: _busy ? null : () => _newPlan('rubric')),
       ]),
       const SizedBox(height: 10),
-      if (ps.isEmpty) const Text('Abhi koi plan nahi.', style: TextStyle(color: C.muted)),
+      if (ps.isEmpty) const Text('No plans yet.', style: TextStyle(color: C.muted)),
       for (final p in ps)
         Padding(
           padding: const EdgeInsets.only(bottom: 8),
@@ -370,12 +370,12 @@ class _ShikshaScreenState extends State<ShikshaScreen> {
   Widget _niyam() {
     final d = _d ?? const {};
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      const Caption('Hoola kabhi nahi karega'),
+      const Caption('Hoola will never do'),
       for (final n in (d['never'] as List? ?? const [])) Padding(padding: const EdgeInsets.only(bottom: 4), child: Text('• $n', style: const TextStyle(fontSize: 13))),
       const SizedBox(height: 10),
-      const Caption('Bachchon ki jaankari (DPDP Act 2023)'),
-      const Text('18 se kam umar ke bachche ki padhai / marks ka kaam sirf tab, jab school guardian ki consent darj kare (kaise jaanchi, '
-          'woh bhi). Consent wapas lene par kaam ruk jaata hai; "data mitao" par marks aur jaankari hat jaati hai.',
+      const Caption('Children\'s information (DPDP Act 2023)'),
+      const Text('Study / marks work for a child under 18 happens only when the school records the guardian\'s consent (and how it was checked). '
+          'If consent is withdrawn the work stops; on "delete data" marks and information are removed.',
           style: TextStyle(fontSize: 12.5, color: C.muted)),
     ]);
   }
@@ -388,7 +388,7 @@ class _ShikshaScreenState extends State<ShikshaScreen> {
             onRefresh: _load,
             child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
               Wrap(spacing: 6, children: [
-                for (final (i, t) in const [(0, 'Aaj'), (1, 'Sawaal'), (2, 'Papers'), (3, 'Plans'), (4, 'Niyam')])
+                for (final (i, t) in const [(0, 'Today'), (1, 'Question'), (2, 'Papers'), (3, 'Plans'), (4, 'Rules')])
                   ChoiceChip(label: Text(t), selected: _tab == i, onSelected: (_) => setState(() => _tab = i)),
               ]),
               const SizedBox(height: 10),
@@ -447,8 +447,8 @@ class _PathyakramPaperPageState extends State<PathyakramPaperPage> {
   Future<void> _share() async {
     final via = await showDialog<String>(
       context: context,
-      builder: (d) => SimpleDialog(title: const Text('Kaise baantna hai?'), children: [
-        for (final (k, t) in const [('file', 'Sirf Word file (print ke liye)'), ('form', 'Google Forms quiz (objective sawaal)'),
+      builder: (d) => SimpleDialog(title: const Text('How to share?'), children: [
+        for (final (k, t) in const [('file', 'Word file only (for print)'), ('form', 'Google Forms quiz (objective questions)'),
           ('whatsapp', 'WhatsApp draft'), ('email', 'Email draft')])
           SimpleDialogOption(onPressed: () => Navigator.pop(d, k), child: Text(t)),
       ]),
@@ -456,7 +456,7 @@ class _PathyakramPaperPageState extends State<PathyakramPaperPage> {
     if (via == null || !mounted) return;
     String contact = '';
     if (via == 'whatsapp' || via == 'email') {
-      final f = await _form(context, 'Kisko', [('to_name', 'Naam'), ('to_contact', via == 'email' ? 'Email' : 'Phone')]);
+      final f = await _form(context, 'To whom', [('to_name', 'Name'), ('to_contact', via == 'email' ? 'Email' : 'Phone')]);
       if (f == null) return;
       contact = f['to_contact'] ?? '';
       await _run(() => widget.app.api!.call('POST', '/api/pathyakram/shares',
@@ -483,7 +483,7 @@ class _PathyakramPaperPageState extends State<PathyakramPaperPage> {
                         '${_s(p['duration_min']) != '0' ? ' · ${_s(p['duration_min'])} min' : ''}', style: const TextStyle(color: C.muted, fontSize: 12.5)),
                     Text(_s(_map(p['blueprint'])['say']), style: const TextStyle(fontSize: 12, color: C.muted)),
                     for (final g in _list(p['gaps']))
-                      Text('Section ${_s(g['section'])}: ${_s(g['have'])}/${_s(g['need'])} sawaal (${_s(g['qtype'])}, ${_s(g['marks_each'])} marks)',
+                      Text('Section ${_s(g['section'])}: ${_s(g['have'])}/${_s(g['need'])} questions (${_s(g['qtype'])}, ${_s(g['marks_each'])} marks)',
                           style: const TextStyle(color: C.warn, fontSize: 12)),
                   ]),
                 ),
@@ -493,7 +493,7 @@ class _PathyakramPaperPageState extends State<PathyakramPaperPage> {
                   if (draft) GradientButton(label: 'Approve', height: 42, onTap: () => _run(() => widget.app.api!.call('POST', '/api/pathyakram/papers/${widget.ref}/approve'))),
                   GlassButton(label: 'Word file', icon: Icons.description_rounded, onTap: () => _run(() => widget.app.api!.call('POST', '/api/pathyakram/papers/${widget.ref}/file', body: {'key': false}))),
                   GlassButton(label: 'Answer key', icon: Icons.key_rounded, onTap: () => _run(() => widget.app.api!.call('POST', '/api/pathyakram/papers/${widget.ref}/file', body: {'key': true}))),
-                  if (!draft) GlassButton(label: 'Baantna', icon: Icons.outbox_rounded, onTap: _share),
+                  if (!draft) GlassButton(label: 'Sharing', icon: Icons.outbox_rounded, onTap: _share),
                 ]),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
@@ -502,7 +502,7 @@ class _PathyakramPaperPageState extends State<PathyakramPaperPage> {
                     setState(() => _key = v);
                     _load();
                   },
-                  title: const Text('Jawab aur marking scheme dikhao'),
+                  title: const Text('Show answers and marking scheme'),
                 ),
                 for (final sec in _list(p['sections'])) ...[
                   Caption('Section ${_s(sec['name'])}'),
@@ -517,14 +517,14 @@ class _PathyakramPaperPageState extends State<PathyakramPaperPage> {
                             if (_s(q['status']) != 'approved') Pill('DRAFT', fg: C.warn),
                             if (draft)
                               IconButton(
-                                tooltip: 'Doosra sawaal',
+                                tooltip: 'Second question',
                                 icon: const Icon(Icons.swap_horiz_rounded, size: 20),
                                 onPressed: () => _run(() => widget.app.api!.call('POST', '/api/pathyakram/papers/${widget.ref}/swap', body: {'n': q['n']})),
                               ),
                           ]),
                           Text(_s(q['text']), style: const TextStyle(fontSize: 13)),
                           for (final (i, o) in (q['options'] as List? ?? const []).indexed) Text('(${i < 4 ? 'abcd'[i] : i + 1}) $o', style: const TextStyle(fontSize: 12.5)),
-                          if (_key) Text('Jawab: ${_s(q['answer'])}', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5)),
+                          if (_key) Text('Answer: ${_s(q['answer'])}', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5)),
                           if (_key) for (final sc in _list(q['scheme'])) Text('${_s(sc['point'])} (${_s(sc['marks'])})', style: const TextStyle(fontSize: 12, color: C.muted)),
                         ]),
                       ),
@@ -555,7 +555,7 @@ class PathyakramPaperCard extends StatelessWidget {
         if (_s(data['say']).isNotEmpty) Padding(padding: const EdgeInsets.only(top: 6), child: Text(_s(data['say']), style: const TextStyle(fontSize: 12.5, color: C.muted))),
         TextButton(
           onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => PathyakramPaperPage(app: app, ref: _s(p['number'])))),
-          child: const Text('Paper kholo'),
+          child: const Text('Open paper'),
         ),
       ]),
     );
@@ -610,17 +610,17 @@ class _PathyakramShareCardState extends State<PathyakramShareCard> {
         const SizedBox(height: 8),
         if (waiting)
           Row(children: [
-            Expanded(child: GradientButton(label: 'Haan, taiyaar karo', height: 44, onTap: _busy ? null : () => _decide(true))),
+            Expanded(child: GradientButton(label: 'Yes, prepare', height: 44, onTap: _busy ? null : () => _decide(true))),
             const SizedBox(width: 8),
-            GlassButton(label: 'Mana', onTap: _busy ? null : () => _decide(false)),
+            GlassButton(label: 'Decline', onTap: _busy ? null : () => _decide(false)),
           ]),
         if (_s(form['responder_link']).isNotEmpty)
-          TextButton.icon(onPressed: () => _open(context, _s(form['responder_link'])), icon: const Icon(Icons.quiz_rounded, size: 18), label: const Text('Quiz link kholo')),
+          TextButton.icon(onPressed: () => _open(context, _s(form['responder_link'])), icon: const Icon(Icons.quiz_rounded, size: 18), label: const Text('Open quiz link')),
         for (final e in links.entries)
           TextButton.icon(
               onPressed: () => _open(context, _s(e.value)),
               icon: Icon(e.key == 'email' ? Icons.mail_rounded : Icons.chat_rounded, size: 18),
-              label: Text(e.key == 'email' ? 'Email draft kholo' : 'WhatsApp draft kholo (file khud lagaiye)')),
+              label: Text(e.key == 'email' ? 'Open email draft' : 'Open WhatsApp draft (attach the file yourself)')),
       ]),
     );
   }

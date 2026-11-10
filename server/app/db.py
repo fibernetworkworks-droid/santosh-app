@@ -694,6 +694,10 @@ class Artifact(Base):
     deleted: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    # v0.725 PAGE CARD: the card's live step + clock (nullable: old rows have none)
+    stage: Mapped[str | None] = mapped_column(String(20), nullable=True, default="")      # writing | checking | done | stopped | failed
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    build_s: Mapped[int | None] = mapped_column(Integer, nullable=True)                 # seconds the last build took
 
 
 class ArtifactVersion(Base):
@@ -705,6 +709,10 @@ class ArtifactVersion(Base):
     html: Mapped[str] = mapped_column(Text)
     note: Mapped[str] = mapped_column(String(300), default="")         # what was asked for this version
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    # parity Phase 6 (artifacts the Claude way): what the chat model wrote itself - html | markdown | svg | mermaid -
+    # and its own text (the page served is built from it). Nullable: builder versions have neither.
+    kind: Mapped[str | None] = mapped_column(String(12), nullable=True)
+    source: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
 class ArtifactState(Base):
@@ -935,6 +943,7 @@ def init_db(url: str | None = None):
     from . import turn_inbox as _turn_inbox  # noqa: F401  (v0.192.0 the durable accepted-message inbox - registered
         # HERE on day one, the v0.190.1 lesson: a lazily-imported model never reaches create_all() and the live DB
         # stays without its table; turn_inbox.ensure_table() self-heals old DBs on the first accept/sweep too)
+    from . import reqdump as _reqdump  # noqa: F401  (v0.732 PARITY Phase 0 the request dump - registered here AND self-healing)
     from . import home as _home  # noqa: F401  (v0.479.0 HOOLA SMART HOME the home_audit table - registered
         # HERE on day one AND self-healing via home.ensure_table(), same lesson)
     from .agent import eventlog as _harness_eventlog  # noqa: F401  (v0.193.0 HARNESS-3 the event-sourced session

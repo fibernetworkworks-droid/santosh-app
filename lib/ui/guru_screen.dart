@@ -16,8 +16,8 @@ List<Map<String, dynamic>> _list(dynamic l) =>
 Map<String, dynamic> _map(dynamic m) => m is Map ? Map<String, dynamic>.from(m) : <String, dynamic>{};
 void _snack(BuildContext c, String t) => ScaffoldMessenger.of(c).showSnackBar(SnackBar(content: Text(t)));
 
-const _disclaimer = 'Hoola ek AI tutor hai: pehle ishaara deta hai, khud sochne deta hai. Jo jawab "code se jaancha" nahi '
-    'likha, use teacher se pakka kijiye.';
+const _disclaimer = 'Hoola is an AI tutor: it gives hints first and lets the learner think. Where an answer is not marked "checked by code"'
+    ', please confirm it with the teacher.';
 
 class GuruScreen extends StatefulWidget {
   const GuruScreen({super.key, required this.app});
@@ -58,10 +58,10 @@ class _GuruScreenState extends State<GuruScreen> {
             child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
               if (_s(_day['say']).isNotEmpty) Glass(child: Text(_s(_day['say']), style: const TextStyle(fontWeight: FontWeight.w700))),
               const SizedBox(height: 10),
-              const Caption('Kisko padhana hai?'),
+              const Caption('Who is it for?'),
               if (_learners == null) const Center(child: CircularProgressIndicator()),
               if (_learners != null && _learners!.isEmpty)
-                const Text('Abhi koi learner nahi. Chat mein kahiye: "Aarav ko 8-A mein jodo, guardian Sunita 98xxxxxxxx".',
+                const Text('No learners yet. Tell me in chat: "Add Aarav to 8-A, guardian Sunita 98xxxxxxxx".',
                     style: TextStyle(color: C.muted)),
               for (final l in _learners ?? const <Map<String, dynamic>>[])
                 Padding(
@@ -69,18 +69,18 @@ class _GuruScreenState extends State<GuruScreen> {
                   child: Press(
                     onTap: l['usable'] == true
                         ? () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => GuruLearnerPage(app: widget.app, learner: l)))
-                        : () => _snack(context, 'Pehle guardian ki consent darj kijiye (school ka kaam).'),
+                        : () => _snack(context, 'First record the guardian\'s consent (school\'s job).'),
                     child: Glass(
                       child: Row(children: [
                         Expanded(child: Text('${_s(l['number'])} · ${_s(l['name'])}${_s(l['class']).isNotEmpty ? ' (${_s(l['class'])})' : ''}',
                             style: const TextStyle(fontWeight: FontWeight.w800))),
-                        if (l['usable'] != true) const Pill('CONSENT BAAKI', fg: C.warn),
+                        if (l['usable'] != true) const Pill('CONSENT PENDING', fg: C.warn),
                       ]),
                     ),
                   ),
                 ),
               const SizedBox(height: 10),
-              const Caption('Hoola kabhi nahi karega'),
+              const Caption('Hoola will never'),
               for (final n in (_day['never'] as List? ?? const [])) Text('• $n', style: const TextStyle(fontSize: 12.5)),
               const SizedBox(height: 14),
               const Text(_disclaimer, style: TextStyle(color: C.faint, fontSize: 11.5)),
@@ -155,8 +155,8 @@ class _GuruLearnerPageState extends State<GuruLearnerPage> {
     if (r == null) return;
     setState(() {
       _turns
-        ..add(('Sawaal', t))
-        ..add(('Ishaara', _s(r['say'])));
+        ..add(('Question', t))
+        ..add(('Hint', _s(r['say'])));
       _next = _s(r['next']);
       _text.clear();
     });
@@ -166,9 +166,9 @@ class _GuruLearnerPageState extends State<GuruLearnerPage> {
     final r = await _call('POST', '/api/guru/sessions/$_session/hint', {'attempt': _text.text.trim()});
     if (r == null) return;
     setState(() {
-      final label = switch (_s(r['rung'])) { 'nudge' => 'Thoda aur', 'step' => 'Steps', 'answer' => 'Poora hal', _ => 'Tutor' };
+      final label = switch (_s(r['rung'])) { 'nudge' => 'A little more', 'step' => 'Steps', 'answer' => 'Full solution', _ => 'Tutor' };
       _turns.add((label, _s(r['say'])));
-      if (_s(r['check_question']).isNotEmpty) _turns.add(('Ab aap try kijiye', _s(r['check_question'])));
+      if (_s(r['check_question']).isNotEmpty) _turns.add(('Now you try', _s(r['check_question'])));
       _next = r['done'] == true ? '' : _s(r['next']);
       _text.clear();
     });
@@ -184,7 +184,7 @@ class _GuruLearnerPageState extends State<GuruLearnerPage> {
     final r = await _call('POST', '/api/guru/sessions/$_session/answer', {'given': given});
     if (r == null) return;
     setState(() {
-      _turns.add(('Jawab: $given', _s(r['say'])));
+      _turns.add(('Answer: $given', _s(r['say'])));
       for (final st in (r['solution_steps'] as List? ?? const [])) {
         _turns.add(('Step', '$st'));
       }
@@ -199,7 +199,7 @@ class _GuruLearnerPageState extends State<GuruLearnerPage> {
     if (r == null) return;
     setState(() {
       _turns
-        ..add(('Aap', t))
+        ..add(('You', t))
         ..add(('Tutor', _s(r['say'])));
       _text.clear();
     });
@@ -217,13 +217,13 @@ class _GuruLearnerPageState extends State<GuruLearnerPage> {
   Widget _pathBox() {
     final p = _path;
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      const Caption('Mastery path (chapter kram se, gate paar karke aage)'),
+      const Caption('Mastery path (in chapter order, move ahead after passing the gate)'),
       Row(children: [
         Expanded(child: TextField(controller: _subject, decoration: const InputDecoration(labelText: 'Subject'))),
         const SizedBox(width: 8),
-        GlassButton(label: 'Dekho', onTap: _busy ? null : () => _loadPath()),
+        GlassButton(label: 'View', onTap: _busy ? null : () => _loadPath()),
         const SizedBox(width: 6),
-        GlassButton(label: 'Banao', onTap: _busy ? null : () => _loadPath(build: true)),
+        GlassButton(label: 'Create', onTap: _busy ? null : () => _loadPath(build: true)),
       ]),
       if (p != null) ...[
         const SizedBox(height: 6),
@@ -270,13 +270,13 @@ class _GuruLearnerPageState extends State<GuruLearnerPage> {
   Widget _padhai() => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         _turnList(),
         TextField(controller: _text, minLines: 1, maxLines: 4,
-            decoration: InputDecoration(labelText: _next.isEmpty ? 'Sawaal likhiye' : 'Aapne kya try kiya? (optional)')),
+            decoration: InputDecoration(labelText: _next.isEmpty ? 'Write the question' : 'What did you try? (optional)')),
         const SizedBox(height: 8),
         Row(children: [
-          Expanded(child: GradientButton(label: 'Samjhao', icon: Icons.lightbulb_rounded, height: 44, onTap: _busy ? null : _ask)),
+          Expanded(child: GradientButton(label: 'Explain', icon: Icons.lightbulb_rounded, height: 44, onTap: _busy ? null : _ask)),
           if (_next.isNotEmpty) ...[
             const SizedBox(width: 8),
-            GlassButton(label: 'Aur batao', icon: Icons.arrow_downward_rounded, onTap: _busy ? null : _more),
+            GlassButton(label: 'Tell me more', icon: Icons.arrow_downward_rounded, onTap: _busy ? null : _more),
           ],
         ]),
       ]);
@@ -286,7 +286,7 @@ class _GuruLearnerPageState extends State<GuruLearnerPage> {
     final opts = (q?['options'] as List? ?? const []);
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       _turnList(),
-      if (q == null) GradientButton(label: 'Agla sawaal', icon: Icons.quiz_rounded, height: 44, onTap: _busy ? null : _practice),
+      if (q == null) GradientButton(label: 'Next question', icon: Icons.quiz_rounded, height: 44, onTap: _busy ? null : _practice),
       if (q != null)
         Glass(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -300,9 +300,9 @@ class _GuruLearnerPageState extends State<GuruLearnerPage> {
                 child: GlassButton(label: '(${i < 4 ? 'abcd'[i] : i + 1}) $o', onTap: _busy ? null : () => _answer('$o')),
               ),
             if (opts.isEmpty) ...[
-              TextField(controller: _typed, minLines: 1, maxLines: 5, decoration: const InputDecoration(labelText: 'Aapka jawab')),
+              TextField(controller: _typed, minLines: 1, maxLines: 5, decoration: const InputDecoration(labelText: 'Your answer')),
               const SizedBox(height: 8),
-              GradientButton(label: 'Jaancho', height: 42, onTap: _busy ? null : () { final g = _typed.text.trim(); _typed.clear(); _answer(g); }),
+              GradientButton(label: 'Check', height: 42, onTap: _busy ? null : () { final g = _typed.text.trim(); _typed.clear(); _answer(g); }),
             ],
           ]),
         ),
@@ -310,13 +310,13 @@ class _GuruLearnerPageState extends State<GuruLearnerPage> {
   }
 
   Widget _bhasha() => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Text('English bolne / likhne ka abhyas: likhiye, tutor jawab dega aur galti pyaar se sudhaarega.',
+        const Text('Practise speaking / writing English: write, and the tutor will answer and gently correct your mistakes.',
             style: TextStyle(color: C.muted, fontSize: 12.5)),
         const SizedBox(height: 8),
         _turnList(),
-        TextField(controller: _text, minLines: 1, maxLines: 3, decoration: const InputDecoration(labelText: 'Kuch English mein likhiye')),
+        TextField(controller: _text, minLines: 1, maxLines: 3, decoration: const InputDecoration(labelText: 'Write something in English')),
         const SizedBox(height: 8),
-        GradientButton(label: 'Bhejo', icon: Icons.send_rounded, height: 44, onTap: _busy ? null : _lang),
+        GradientButton(label: 'Send', icon: Icons.send_rounded, height: 44, onTap: _busy ? null : _lang),
       ]);
 
   Widget _pragati() {
@@ -324,14 +324,14 @@ class _GuruLearnerPageState extends State<GuruLearnerPage> {
     if (p == null) {
       return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         _pathBox(),
-        GlassButton(label: 'Pragati dekho', icon: Icons.insights_rounded, onTap: _loadProgress),
+        GlassButton(label: 'See progress', icon: Icons.insights_rounded, onTap: _loadProgress),
       ]);
     }
     final w = _map(p['week']);
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       _pathBox(),
-      Glass(child: Text('Is hafte: ${_s(w['minutes'])} min, ${_s(w['attempts'])} sawaal'
-          '${w['accuracy'] != null ? ', ${((w['accuracy'] as num) * 100).round()}% sahi' : ''}',
+      Glass(child: Text('This week: ${_s(w['minutes'])} min, ${_s(w['attempts'])} questions'
+          '${w['accuracy'] != null ? ', ${((w['accuracy'] as num) * 100).round()}% correct' : ''}',
           style: const TextStyle(fontWeight: FontWeight.w700))),
       const SizedBox(height: 8),
       for (final t in _list(p['topics']))
@@ -348,7 +348,7 @@ class _GuruLearnerPageState extends State<GuruLearnerPage> {
         ),
       const SizedBox(height: 8),
       GlassButton(
-          label: 'Guardian ke liye report (card)',
+          label: 'Report for the guardian (card)',
           icon: Icons.outbox_rounded,
           onTap: _busy
               ? null
@@ -365,7 +365,7 @@ class _GuruLearnerPageState extends State<GuruLearnerPage> {
         body: Aurora(
           child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
             Wrap(spacing: 6, children: [
-              for (final (i, t) in const [(0, 'Padhai'), (1, 'Practice'), (2, 'Bhasha'), (3, 'Pragati')])
+              for (final (i, t) in const [(0, 'Study'), (1, 'Practice'), (2, 'Language'), (3, 'Progress')])
                 ChoiceChip(label: Text(t), selected: _tab == i, onSelected: (_) => setState(() => _tab = i)),
             ]),
             const SizedBox(height: 10),
@@ -416,7 +416,7 @@ class _GuruReportCardState extends State<GuruReportCard> {
         Row(children: [
           const Icon(Icons.school_rounded, size: 18, color: C.accent),
           const SizedBox(width: 6),
-          Expanded(child: Text('Padhai ki report → ${_s(rep['to']).isEmpty ? 'guardian' : _s(rep['to'])}', style: const TextStyle(fontWeight: FontWeight.w800))),
+          Expanded(child: Text('Study report → ${_s(rep['to']).isEmpty ? 'guardian' : _s(rep['to'])}', style: const TextStyle(fontWeight: FontWeight.w800))),
           Pill(_s(sh['status']).toUpperCase(), fg: waiting ? C.warn : (_s(sh['status']) == 'shared' ? C.ok : C.muted)),
         ]),
         if (_s(rep['text']).isNotEmpty) Padding(padding: const EdgeInsets.only(top: 6), child: Text(_s(rep['text']), style: const TextStyle(fontSize: 12.5))),
@@ -424,9 +424,9 @@ class _GuruReportCardState extends State<GuruReportCard> {
         const SizedBox(height: 8),
         if (waiting)
           Row(children: [
-            Expanded(child: GradientButton(label: 'Haan, draft banao', height: 44, onTap: _busy ? null : () => _decide(true))),
+            Expanded(child: GradientButton(label: 'Yes, make the draft', height: 44, onTap: _busy ? null : () => _decide(true))),
             const SizedBox(width: 8),
-            GlassButton(label: 'Mana', onTap: _busy ? null : () => _decide(false)),
+            GlassButton(label: 'Declined', onTap: _busy ? null : () => _decide(false)),
           ]),
         for (final e in links.entries)
           TextButton.icon(
@@ -435,7 +435,7 @@ class _GuruReportCardState extends State<GuruReportCard> {
                 if (r.isNotEmpty && r != 'ok' && context.mounted) _snack(context, r);
               },
               icon: Icon(e.key == 'email' ? Icons.mail_rounded : Icons.chat_rounded, size: 18),
-              label: Text(e.key == 'email' ? 'Email draft kholo' : 'WhatsApp draft kholo')),
+              label: Text(e.key == 'email' ? 'Open email draft' : 'Open WhatsApp draft')),
       ]),
     );
   }

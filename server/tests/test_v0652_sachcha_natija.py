@@ -49,7 +49,7 @@ def test_the_call_never_reads_an_earlier_asks_done():
         f.set_result("Yeh kaam bahut der se chal raha tha, isliye maine ise rok diya.")
         voice.Call._late_result(fake, f, "website banao", time.time())
     asyncio.run(go(time.time() - 300))
-    assert said and "ho gaya:" not in said[0] and "jawab aaya" in said[0] and "'Ho gaya' sirf tab" in said[0]
+    assert said and "is done:" not in said[0] and "answer of that big job" in said[0] and "Say 'it is done' only if" in said[0]
 
 
 def test_a_fresh_stuck_outcome_is_said_as_stuck():
@@ -66,7 +66,7 @@ def test_a_fresh_stuck_outcome_is_said_as_stuck():
         f.set_result("rok diya")
         voice.Call._late_result(fake, f, "website banao", since)
     asyncio.run(go())
-    assert "atka hai: time limit par roka gaya" in said[0] and "'Ho gaya' bilkul mat kehna" in said[0]
+    assert "is stuck: time limit par roka gaya" in said[0] and "Do NOT say it is done" in said[0]
 
 
 # ---------------------------------------------------------------- 2. every job kind's own words are understood
@@ -112,8 +112,8 @@ def test_a_stuck_job_never_reads_as_running(env):
     _chat("c2")
     _job("c2", "site_board:s1", minutes_ago=40)
     blk = kaamwatch.block(T, "c2")
-    assert "ATKA HAI (40 min se aage nahi badha" in blk and "'chal raha hai' mat kehna" in blk
-    assert "atka hai" in kaamwatch.status(T)["say"]
+    assert "STUCK (40 min with no progress" in blk and "do not say 'in progress'" in blk
+    assert "stuck" in kaamwatch.status(T)["say"]
     row = kaamlist.listing(T)["running"][0]
     assert row["stuck"] is True and row["say"].startswith("atka hai")
 
@@ -128,7 +128,7 @@ def test_a_dead_job_is_said_once(env, monkeypatch):
     _job("c3", "site_board:s2", minutes_ago=3 * 24 * 60)
     kaamwatch.tick()
     kaamwatch.tick()
-    assert len(told) == 1 and "2 din se aage nahi badha" in told[0]
+    assert len(told) == 1 and "has not moved for 2 days" in told[0]
     with session() as s:
         r = s.query(kaamwatch.KaamJob).filter_by(key="site_board:s2").one()
         assert (r.state, r.status) == ("stopped", "stale")
@@ -161,7 +161,7 @@ def _checkin(monkeypatch, parked=False, cancelled=False):
 
 def test_a_long_call_ask_says_it_is_still_working(env, monkeypatch):
     said, fake = _checkin(monkeypatch)
-    assert len(said) == 3 and all("abhi bhi chal raha hai" in x and "'Ho gaya' bilkul mat kehna" in x for x in said)
+    assert len(said) == 3 and all("is still running" in x and "Do NOT say it is done" in x for x in said)
     assert fake.stats["still_working"] == 3
 
 

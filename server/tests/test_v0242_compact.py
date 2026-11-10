@@ -116,7 +116,7 @@ def test_second_checkpoint_builds_on_the_first(cm, monkeypatch):
         add_exchange(c, i, steps=1)
     m.summary = SUMMARY + "\n6. BAAKI - April wale bhi"
     v = asyncio.run(cm.run(c, "default", "manual"))
-    assert "PICHHLA SAAR:\n" + SUMMARY in m.writer[-1]  # the first summary is folded forward, never lost
+    assert "PREVIOUS SUMMARY:\n" + SUMMARY in m.writer[-1]  # the first summary is folded forward, never lost
     assert v["exchanges"] == 20 and "April" in v["summary"]
     assert len(cm.recent(c)) == 2 and cm.recent(c)[1]["status"] == "replaced"
 

@@ -62,17 +62,17 @@ def _sync(action: str, a: dict[str, Any]) -> dict[str, Any]:
         yrs = a.get("years")
         return credit.memo(a.get("borrower", ""), a.get("financials") or {}, a.get("purpose", ""), a.get("amount"),
                            yrs if isinstance(yrs, list) else None, a.get("policy"))
-    raise ToolError(f"action '{action}' nahi pehchana.")
+    raise ToolError(f"Unknown action '{action}'.")
 
 
 async def _vitt_sahayak(ctx: Ctx, action: str = "", **a: Any) -> dict[str, Any]:
     actor = getattr(ctx, "actor", "owner") or "owner"
     if actor.startswith("customer:"):
-        raise ToolError("Yeh kaam graahak ke liye nahi.")
+        raise ToolError("This work is not for customers.")
     if action not in _ACTIONS:
         raise ToolError(f"action: {', '.join(_ACTIONS)}")
     if action in _SENSITIVE and actor not in ("owner",) and not actor.startswith("approved:"):
-        raise ToolError("Yeh sirf owner ke liye.")
+        raise ToolError("This is for the owner only.")
     try:
         return await asyncio.to_thread(_sync, action, a)
     except ValueError as e:

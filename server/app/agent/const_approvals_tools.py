@@ -12,15 +12,15 @@ from .tools import Ctx, ToolError
 APPROVALS_TOOLS = [
     {"name": "const_approvals", "description": (
         "Approvals office (building permission, fire NOC, CTE/CTO, OC/CC, utility liaison). action=file: project, "
-        "authority, purpose, kind permission|noc|consent|certificate, licensee (jo file karega) -> checklist ke saath file. "
-        "action=checklist: file (id) ya purpose (starter list). action=check_mark: file, item, done, note. "
+        "authority, purpose, kind permission|noc|consent|certificate, licensee (who will file) -> file with its checklist. "
+        "action=checklist: file (id) or purpose (starter list). action=check_mark: file, item, done, note. "
         "action=doc_add: file, kind form|drawing|ownership|noc|undertaking|fee, name, ref. action=doc_needed: file, kind, "
-        "name (abhi missing). action=packet: file -> index + gaps + cover PDF (submission OWNER/licensee ki haan se). "
+        "name (still missing). action=packet: file -> index + gaps + cover PDF (submission only on the OWNER's / licensee's approval). "
         "action=file_mark: file, status draft|ready|submitted|queried|approved|rejected, ref_no, on, valid_till. "
         "action=cal_add: authority, item, due_on, last_done (statutory calendar). action=cal_done: cal (id), on. "
-        "action=cal_due: days (late pehle, phir aane wale). Wave 4 #33: action=screener_add: project, "
-        "rows [clearance, applies(yes/no/unsure AAPKA mark), trigger, documents], by (liaison ka "
-        "naam) - heritage/AAI/CRZ applicability register; Hoola kuch fetch/decide nahi karta. "
+        "action=cal_due: days (late ones first, then upcoming). Wave 4 #33: action=screener_add: project, "
+        "rows [clearance, applies(yes/no/unsure - YOUR mark), trigger, documents], by (liaison's "
+        "name) - heritage/AAI/CRZ applicability register; Hoola fetches / decides nothing. "
         "action=screener_list: project."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["file", "checklist", "check_mark", "doc_add", "doc_needed", "packet",

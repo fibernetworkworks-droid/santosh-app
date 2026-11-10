@@ -93,13 +93,13 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return F.report(t, _s(a.get("snapshot")), conv)
         if action == "share":
             if not _owner(ctx):
-                raise ToolError("Report bahar bhejne ki haan sirf owner.")
+                raise ToolError("Only the owner can approve sending a report outside.")
             return F.approve_share(t, _s(a.get("snapshot")), bool(a.get("approve")), _s(a.get("to")))
         if action == "reminders":
             return F.reminder_drafts(t)
         if action == "settings":
             if not _owner(ctx):
-                raise ToolError("Settings sirf owner.")
+                raise ToolError("Settings are for the owner only.")
             keys = ("business", "entity", "budget", "tax_paid", "morning_time")
             return {"settings": F.save_settings(t, **{k: a[k] for k in keys if k in a}), "say": "Save."}
     except (F.FinError, ValueError) as e:

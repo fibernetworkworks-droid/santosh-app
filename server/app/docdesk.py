@@ -159,9 +159,9 @@ def diary_lines(s, tenant: str, conversation_id: str, since: datetime) -> list[s
     edits = s.scalars(select(DeskEdit).where(DeskEdit.tenant_id == tenant, DeskEdit.created_at >= since)
                       .order_by(DeskEdit.created_at.desc()).limit(8)).all()
     for e in edits:
-        what = "Sheet Milaan" if e.mode == "sheet" else "badlav"
-        st = {"ready": "uski Haan ka intezaar", "saved": "PC par nayi copy save", "rejected": "usne mana kiya",
-              "failed": "nahi ho paya"}.get(e.status, e.status)
+        what = "Sheet compare" if e.mode == "sheet" else "edit"
+        st = {"ready": "waiting for her Yes", "saved": "new copy saved on the PC", "rejected": "she said no",
+              "failed": "could not be done"}.get(e.status, e.status)
         o = _obj(e.out)
         out.append(f"✎ {what} {e.id} · {e.name} → {st}" + (f" ({o.get('saved_path') or o.get('name')})" if o else ""))
     return out
@@ -174,12 +174,12 @@ async def _from_pc(tenant: str, path: str) -> tuple[str, bytes, str]:
     try:
         out = await hub.call(tenant, "send_file", {"path": path})
     except PcOffline:
-        raise DeskError("PC offline hai: PC on karke Santosh Desktop kholiye (ya file chat mein bhej dijiye).")
+        raise DeskError("The PC is offline: turn on the PC and open Santosh Desktop (or send the file in chat).")
     except PcError as e:
-        raise DeskError(f"PC se file nahi aayi: {e}")
+        raise DeskError(f"The file did not come from the PC: {e}")
     f = pcs.get_file(out.get("file_id", ""))
     if f is None or f.tenant_id != tenant:
-        raise DeskError("PC se file nahi aayi (dobara try kijiye).")
+        raise DeskError("The file did not come from the PC (try again).")
     return f.id, Path(f.stored_path).read_bytes(), f.name
 
 
@@ -191,7 +191,7 @@ def _from_file(tenant: str, file_id: str) -> tuple[str, bytes]:
         raise DeskError(str(e))
     p = Path(f.stored_path)
     if not p.exists():
-        raise DeskError("Yeh file server se hat chuki hai (24 ghante baad files hat jaati hain); dobara bhejiye.")
+        raise DeskError("This file has been removed from the server (files are removed after 24 hours); send it again.")
     return f.name, p.read_bytes()
 
 
@@ -242,10 +242,10 @@ async def download(url: str) -> tuple[str, bytes]:
                         raise DeskError("File 40 MB se badi hai")
                 break
         else:
-            raise DeskError("Link bahut baar ghooma (redirect)")
+            raise DeskError("The link redirected too many times")
     if "text/html" in ctype and not name.lower().endswith((".html", ".htm")):
-        raise DeskError("LOGIN_NEEDED: yeh link file nahi, ek web page / login page deta hai. Iske liye uske PC ke Chrome "
-                        "mein link kholkar download karna hoga (pc_do), phir doc_desk action=recent se file uthaiye.")
+        raise DeskError("LOGIN_NEEDED: this link gives a web page / login page, not a file. It has to be opened and downloaded in "
+                        "Chrome on her PC (pc_do), then pick the file up with doc_desk action=recent.")
     m = re.search(r"filename\*?=(?:UTF-8'')?\"?([^\";]+)", disp)
     if m:
         from urllib.parse import unquote
@@ -268,7 +268,7 @@ def extract(name: str, data: bytes, tenant: str = "") -> tuple[str, list[str]]:
             from pypdf import PdfReader
             rd = PdfReader(io.BytesIO(data))
             if rd.is_encrypted:
-                raise DeskError("PDF par password laga hai: Hoola password wali files nahi kholta")
+                raise DeskError("The PDF has a password: Hoola does not open password-protected files")
             pages = [f"--- page {i + 1} ---\n{(p.extract_text() or '').strip()}" for i, p in enumerate(rd.pages[:400])]
             text = "\n\n".join(pages)
             if len(re.sub(r"--- page \d+ ---|\s", "", text)) < 40 * max(1, len(pages)):
@@ -276,18 +276,18 @@ def extract(name: str, data: bytes, tenant: str = "") -> tuple[str, list[str]]:
                 r = ocr.read_pdf(data, _lang(tenant), max_pages=30)
                 if r and r.get("text"):
                     text = r["text"]
-                    notes.append("scan thi: OCR se padha (galti ho sakti hai)")
+                    notes.append("it was a scan: read with OCR (there may be mistakes)")
                 else:
-                    notes.append("scan wali PDF; OCR is server par nahi hai, isliye text kam mila")
+                    notes.append("scanned PDF; OCR is not on this server, so little text was found")
         except DeskError:
             raise
         except Exception as e:
-            notes.append(f"PDF theek se nahi padhi ({type(e).__name__})")
+            notes.append(f"The PDF could not be read properly ({type(e).__name__})")
     elif k == "image":
         from . import ocr
         r = ocr.read(data, _lang(tenant))
         text = (r or {}).get("text", "")
-        notes.append("photo: OCR se padha" if text else "photo mein padhne layak text nahi mila (OCR nahi hai ya photo saaf nahi)")
+        notes.append("photo: read with OCR" if text else "no readable text found in the photo (no OCR, or the photo is not clear)")
     elif k in ("text",):
         for enc in ("utf-8-sig", "utf-16", "cp1252"):
             try:
@@ -301,7 +301,7 @@ def extract(name: str, data: bytes, tenant: str = "") -> tuple[str, list[str]]:
             r = docread.read_text(name, "", data, limit=MAX_TEXT, max_pages=400)
             text = r.get("text", "")
         except Exception as e:
-            notes.append(f"file theek se nahi padhi ({type(e).__name__})")
+            notes.append(f"The file could not be read properly ({type(e).__name__})")
         if k == "excel" and not text:
             try:
                 from . import sheetmilaan
@@ -339,15 +339,15 @@ def docx_risks(name: str, data: bytes) -> list[str]:
     except Exception:
         return out
     if "<w:ins " in body or "<w:del " in body:
-        out.append("is Word file mein tracked changes hain: pehle Accept / Reject kar lein to badlav saaf rahega")
+        out.append("this Word file has tracked changes: Accept / Reject them first so the edit stays clean")
     if "txbxContent" in body:
-        out.append("text box ke andar ka likha Hoola nahi badal sakta (woh waisa hi rahega)")
+        out.append("Hoola cannot change text inside a text box (it will stay as it is)")
     if any(n.startswith("word/charts/") for n in names) or any(n.startswith("word/diagrams/") for n in names):
-        out.append("chart / SmartArt hai: unke andar ka text nahi badlega (baaki file theek rahegi)")
+        out.append("there is a chart / SmartArt: the text inside will not change (the rest of the file will be fine)")
     if name.lower().endswith(".docm") or any("vbaProject" in n for n in names):
-        out.append("macro wali Word file: naye copy mein macro nahi rahega")
+        out.append("Word file with macros: the new copy will not keep the macros")
     if "fldSimple" in body or "w:fldChar" in body:
-        out.append("auto fields (page number, date, table of contents) hain: Word mein F9 se update kijiye")
+        out.append("there are auto fields (page number, date, table of contents): update them in Word with F9")
     return out
 
 
@@ -369,7 +369,7 @@ async def _resolve_new(tenant: str, conversation_id: str, ref: str) -> DeskFile:
     """Anything she can point at -> a desk file (added to this chat's list)."""
     r = (ref or "").strip()
     if not r:
-        raise DeskError("Kaunsi file? Naam, PC ka rasta (path), file_id ya link dijiye.")
+        raise DeskError("Which file? Give a name, a PC path, a file_id or a link.")
     if re.match(r"^https?://", r, re.I):
         name, data = await download(r)
         return await asyncio.to_thread(_store, tenant, conversation_id, name, data, "link", url=r)
@@ -381,7 +381,7 @@ async def _resolve_new(tenant: str, conversation_id: str, ref: str) -> DeskFile:
         return await asyncio.to_thread(_store, tenant, conversation_id, name, data, "pc", pc_path=r, file_id=fid)
     hits = await pc_find(tenant, r)
     if not hits:
-        raise DeskError(f"'{r}' naam ki file PC par nahi mili. Poora naam / folder batayein ya file chat mein bhejiye.")
+        raise DeskError(f"No file named '{r}' was found on the PC. Give the full name / folder or send the file in chat.")
     best = hits[0]
     if len(hits) > 1 and hits[1].get("_score", 0) >= best.get("_score", 0) and hits[1]["name"] != best["name"]:
         raise DeskError("CHOOSE: kai files mili, kaunsi? " + "; ".join(f"{h['name']} ({h.get('modified', '')}) {h['path']}"
@@ -395,9 +395,9 @@ async def pc_find(tenant: str, query: str, limit: int = 8) -> list[dict[str, Any
     try:
         out = await hub.call(tenant, "search", {"query": query, "kind": "any", "limit": 20})
     except PcOffline:
-        raise DeskError("PC offline hai: PC on karke Santosh Desktop kholiye.")
+        raise DeskError("The PC is offline: turn on the PC and open Santosh Desktop.")
     except PcError as e:
-        raise DeskError(f"PC par dhoondh nahi paya: {e}")
+        raise DeskError(f"Could not search on the PC: {e}")
     q = re.sub(r"[^a-z0-9ऀ-ॿ]+", " ", query.lower()).split()
     res = []
     for h in out.get("results") or []:
@@ -416,7 +416,7 @@ async def recent_on_pc(tenant: str, kind: str = "", limit: int = 10) -> list[dic
         out = await hub.call(tenant, "recent", {"limit": 30, "days": 3})
         items = out.get("files") or []
     except PcOffline:
-        raise DeskError("PC offline hai: PC on karke Santosh Desktop kholiye.")
+        raise DeskError("The PC is offline: turn on the PC and open Santosh Desktop.")
     except PcError:        # an older Santosh Desktop: look at the top of each shared folder (Downloads etc.)
         items = []
         try:
@@ -425,7 +425,7 @@ async def recent_on_pc(tenant: str, kind: str = "", limit: int = 10) -> list[dic
                 lst = await hub.call(tenant, "list", {"path": r["path"]})
                 items += [e for e in lst.get("entries") or [] if not e.get("dir")]
         except Exception as e:
-            raise DeskError(f"PC ki nayi files nahi dekh paya: {e}")
+            raise DeskError(f"Could not see the new files on the PC: {e}")
         items.sort(key=lambda e: e.get("modified", ""), reverse=True)
     if exts:
         items = [e for e in items if str(e.get("name", "")).lower().endswith(exts)]
@@ -439,7 +439,7 @@ def _store(tenant: str, conversation_id: str, name: str, data: bytes, source: st
     from . import filecheck
     rt = filecheck.real_type(name, data)
     if rt.get("danger"):
-        raise DeskError(f"Yeh file khatarnak lag rahi hai: {rt.get('note')}. Hoola ne nahi kholi.")
+        raise DeskError(f"This file looks dangerous: {rt.get('note')}. Hoola did not open it.")
     if not file_id:
         from .mailbox import service as ms
         file_id = ms.store_bytes(tenant, name, data, "to_phone").id
@@ -727,7 +727,7 @@ def edit_xlsx(name: str, data: bytes, ops: list[dict]) -> tuple[bytes, list[dict
                 continue
             c = wb[sh][str(op["cell"]).upper()]
             if isinstance(c.value, str) and c.value.startswith("=") and not op.get("formula_ok"):
-                missing.append(f"{sh}!{c.coordinate} mein formula hai (nahi badla)")
+                missing.append(f"{sh}!{c.coordinate} has a formula (not changed)")
                 continue
             old = c.value
             from .sheetmilaan import _typed
@@ -812,16 +812,16 @@ def build(df: DeskFile, data: bytes, ops: list[dict], tenant: str = "") -> tuple
         t, ch, miss = edit_text(df.text or "", ops)
         t = re.sub(r"--- page \d+ ---\n?", "\n", t).strip()
         pdf = _text_pdf(t, tenant)
-        warnings.append("PDF ka design (logo, lines, columns) naye copy mein saada ho jayega: sirf sahi kiya hua text rahega. "
-                        "Asli Word / Excel file ho to woh dijiye, usme formatting ke saath badlunga.")
+        warnings.append("The PDF design (logo, lines, columns) will become plain in the new copy: only the corrected text stays. "
+                        "If you have the original Word / Excel file, give me that and I will edit it with the formatting kept.")
         if pdf is None:
             from .officegen import make_docx
-            warnings.append("PDF banane wala Chromium server par nahi mila: sahi kiya hua text Word file mein diya")
+            warnings.append("The Chromium that makes PDFs was not found on the server: the corrected text is given as a Word file")
             return make_docx(Path(df.name).stem, t), _out_name(df.name, ".docx"), ch, miss, warnings
         return pdf, _out_name(df.name, ".pdf"), ch, miss, warnings
     if k == "word":
-        raise DeskError("Purani .doc / .odt file: Word mein kholkar .docx mein 'Save As' kar dijiye, phir badlunga")
-    raise DeskError(f"{SHOWN.get(k, k)} file mein badlav Hoola nahi kar sakta (Word, Excel, PDF, CSV, text kar sakta hai)")
+        raise DeskError("Old .doc / .odt file: open it in Word and 'Save As' .docx, then I will edit it")
+    raise DeskError(f"{SHOWN.get(k, k)} file cannot be edited by Hoola (it can edit Word, Excel, PDF, CSV, text)")
 
 
 def _text_pdf(text: str, tenant: str = "") -> bytes | None:
@@ -858,16 +858,16 @@ def _publish(conversation_id: str, e: DeskEdit) -> None:
 
 async def propose_edit(tenant: str, conversation_id: str, ref: str, ops: list[dict]) -> dict[str, Any]:
     if not ops:
-        raise DeskError("Kya badalna hai? edits = [{find, replace}] / [{cell, value}] / [{after, insert}]")
+        raise DeskError("What should change? edits = [{find, replace}] / [{cell, value}] / [{after, insert}]")
     if len(ops) > 200:
-        raise DeskError("Ek baar mein 200 se zyada badlav nahi")
+        raise DeskError("No more than 200 changes at a time")
     df = await get(tenant, conversation_id, ref)
     data = await data_of(tenant, df, fresh=bool(df.pc_path))
     b, new_name, ch, miss, warn = await asyncio.to_thread(build, df, data, ops, tenant)
     if not ch:
-        raise DeskError("Kuch nahi badla: yeh shabd file mein nahi mile: " + "; ".join(miss[:8]))
-    say = f"{df.name}: {len(ch)} jagah badlav taiyaar" + (f", {len(miss)} nahi mile" if miss else "") + \
-        ". Aapki Haan par nayi copy PC ke Santosh Inbox mein save hogi aur khulegi; asli file waisi hi rahegi."
+        raise DeskError("Nothing was changed: these words were not found in the file: " + "; ".join(miss[:8]))
+    say = f"{df.name}: changes ready in {len(ch)} places" + (f", {len(miss)} not found" if miss else "") + \
+        ". On your Yes, the new copy will be saved in the Santosh Inbox on the PC and opened; the original file stays as it is."
     with session() as s:
         e = DeskEdit(tenant_id=tenant, conversation_id=conversation_id, mode="doc", file_ref=df.id, name=df.name, kind=df.kind,
                      ops=json.dumps(ops, ensure_ascii=False), sha=_sha(data),
@@ -889,7 +889,7 @@ async def sheet_compare(tenant: str, conversation_id: str, old_ref: str, new_ref
     old = await get(tenant, conversation_id, old_ref)
     new = await get(tenant, conversation_id, new_ref)
     if old.id == new.id:
-        raise DeskError("Dono ek hi file hain: purani aur nayi alag files batayein")
+        raise DeskError("Both are the same file: give a different old file and new file")
     od = await data_of(tenant, old, fresh=bool(old.pc_path))
     nd = await data_of(tenant, new)
     upd = [u for u in (update if isinstance(update, list) else [update] if update else []) if u]
@@ -928,7 +928,7 @@ def get_edit(tenant: str, edit_id: str) -> DeskEdit:
     with session() as s:
         e = s.get(DeskEdit, edit_id)
         if e is None or e.tenant_id != tenant:
-            raise DeskError("Yeh badlav nahi mila")
+            raise DeskError("This edit was not found")
         s.expunge(e)
         return e
 
@@ -945,7 +945,7 @@ async def save_to_pc(tenant: str, name: str, data: bytes, open_it: bool = True) 
         got = await hub.call(tenant, "save_file", {"file_id": row.id, "name": row.name, "url": f"/api/pc/fetch/{row.id}"})
     except (PcOffline, PcError) as e:
         return {**view, "where": "phone", "saved_path": "", "opened": False,
-                "say": f"PC tak nahi pahuncha ({'offline' if isinstance(e, PcOffline) else e}); nayi copy yahan phone par hai."}
+                "say": f"Could not reach the PC ({'offline' if isinstance(e, PcOffline) else e}); the new copy is here on the phone."}
     out = {**view, "where": "pc", "saved_path": got.get("saved_path", ""), "opened": False}
     if open_it and out["saved_path"]:
         try:
@@ -953,9 +953,8 @@ async def save_to_pc(tenant: str, name: str, data: bytes, open_it: bool = True) 
             out["opened"] = True
         except Exception as e:      # an older Santosh Desktop has no open_file: she opens it from the Inbox
             out["open_error"] = str(e)[:160]
-    out["say"] = (f"Nayi copy PC ke Santosh Inbox mein save: {out['saved_path']}" +
-                  (" aur khol di." if out["opened"] else " (PC par Santosh Inbox folder mein kholiye; khud kholne ke liye "
-                                                       "naya Santosh Desktop chahiye)."))
+    out["say"] = (f"New copy saved in the Santosh Inbox on the PC: {out['saved_path']}" +
+                  (" and opened it." if out["opened"] else " (open it from the Santosh Inbox folder on the PC; a newer Santosh Desktop is needed to open it automatically)."))
     STATS["saved"] += 1
     return out
 
@@ -971,11 +970,11 @@ async def decide(tenant: str, edit_id: str, yes: bool, options: dict | None = No
             row.status, row.decided_at = "rejected", now()
         e = get_edit(tenant, edit_id)
         _publish(e.conversation_id, e)
-        _chat_note(e, f"Aapne mana kiya: {e.name} mein kuch nahi badla.")
+        _chat_note(e, f"You said no: nothing was changed in {e.name}.")
         return _card(e)
     df = _by_id(tenant, e.file_ref)
     if df is None:
-        raise DeskError("Asli file ki jaankari nahi mili; dobara shuru kijiye")
+        raise DeskError("The original file details were not found; start again")
     data = await data_of(tenant, df, fresh=bool(df.pc_path))
     note = ""
     if _sha(data) != e.sha:
@@ -995,14 +994,14 @@ async def decide(tenant: str, edit_id: str, yes: bool, options: dict | None = No
                                               bool(opts.get("update", True)), str(opts.get("missing", "keep")),
                                               bool(opts.get("highlight", False)))
             new_name = _out_name(df.name)
-            summary = (f"{done['updated_cells']} cells update, {done['added_rows']} naye rows" +
-                       (f", {done['missing_marked']} rows par 'naye mein nahi' likha" if done["missing_marked"] else "") +
-                       (f", {done['missing_deleted']} rows hataye" if done["missing_deleted"] else "") +
-                       (f"; formula wale {len(done['skipped_formula'])} cells nahi chhede" if done["skipped_formula"] else ""))
+            summary = (f"{done['updated_cells']} cells updated, {done['added_rows']} new rows" +
+                       (f", {done['missing_marked']} rows marked 'not in the new one'" if done["missing_marked"] else "") +
+                       (f", {done['missing_deleted']} rows removed" if done["missing_deleted"] else "") +
+                       (f"; {len(done['skipped_formula'])} cells with formulas were left alone" if done["skipped_formula"] else ""))
         else:
             b, new_name, ch, miss, warn = await asyncio.to_thread(build, df, data, _lst(e.ops), tenant)
             done = {"changes": len(ch), "missing": miss}
-            summary = f"{len(ch)} jagah badla" + (f", {len(miss)} nahi mile" if miss else "")
+            summary = f"changed in {len(ch)} places" + (f", {len(miss)} not found" if miss else "")
     except Exception as ex:
         with session() as s:
             row = s.get(DeskEdit, edit_id)
@@ -1010,7 +1009,7 @@ async def decide(tenant: str, edit_id: str, yes: bool, options: dict | None = No
             row.out = json.dumps({"error": str(ex)[:300]}, ensure_ascii=False)
         e = get_edit(tenant, edit_id)
         _publish(e.conversation_id, e)
-        _chat_note(e, f"{e.name} ki nayi copy nahi ban payi: {str(ex)[:200]}")
+        _chat_note(e, f"The new copy of {e.name} could not be made: {str(ex)[:200]}")
         return _card(e)
     saved = await save_to_pc(tenant, new_name, b)
     saved["summary"] = note + summary

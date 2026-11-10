@@ -93,12 +93,13 @@ def test_tool_wiring():
 
 
 def test_prune_clears_sooner_for_glm(monkeypatch):
+    # v0.724 GLM clears at 30k (was 12k), still sooner than Claude (40k): three old 12k results pass it
     from app.agent import prune
     monkeypatch.setattr(prune, "_glm_on", lambda: True)
     hist = []
     for i in range(6):
         hist.append({"role": "assistant", "content": [{"type": "tool_use", "id": f"t{i}", "name": "email_check", "input": {}}]})
-        hist.append({"role": "user", "content": [{"type": "tool_result", "tool_use_id": f"t{i}", "content": "x" * 5000}]})
+        hist.append({"role": "user", "content": [{"type": "tool_result", "tool_use_id": f"t{i}", "content": "x" * 12000}]})
     out = prune.clear_old(hist)
     assert len(str(out)) < len(str(hist)) * 0.7
 
@@ -107,4 +108,6 @@ def test_glm_compacts_earlier(monkeypatch):
     from app.agent import context
     from app import glmdoor
     monkeypatch.setattr(glmdoor, "active", lambda: True)
-    assert context.window("claude") < 100000
+    monkeypatch.setattr(context, "FIXED_SEEN", {"claude": 30000})
+    # v0.724 the GLM cap (pinned 40k in conftest) is conversation room ON TOP of the system prompt + tools
+    assert abs(context.budget("claude") - (40000 + 30000)) <= 1 and context.window("claude") < 200000

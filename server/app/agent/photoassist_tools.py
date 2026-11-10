@@ -93,9 +93,9 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
     from ..photoassist import service as S
     t, conv, actor = ctx.tenant_id, ctx.conversation_id, _actor(ctx)
     if actor.startswith("customer:"):
-        raise ToolError("Yeh kaam graahak ke liye nahi.")
+        raise ToolError("This work is not for customers.")
     if action in _OWNER_ONLY and not _owner(ctx):
-        raise ToolError("Sirf owner.")
+        raise ToolError("Owner only.")
     sh = _s(a.get("shoot"))
     try:
         if action == "settings":
@@ -158,7 +158,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return S.forget(t, sh, actor)
     except S.PhotoError as e:
         raise ToolError(str(e))
-    raise ToolError(f"action '{action}' nahi pehchana.")
+    raise ToolError(f"action '{action}' not recognised.")
 
 
 def _dekho(ctx: Ctx, a: dict[str, Any]) -> dict[str, Any]:
@@ -187,7 +187,7 @@ def _dekho(ctx: Ctx, a: dict[str, Any]) -> dict[str, Any]:
             return S.settings(t)
     except S.PhotoError as e:
         raise ToolError(str(e))
-    raise ToolError(f"what '{w}' nahi pehchana.")
+    raise ToolError(f"what '{w}' not recognised.")
 
 
 async def _photo_assist(ctx: Ctx, **a: Any) -> dict[str, Any]:

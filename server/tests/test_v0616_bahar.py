@@ -83,7 +83,7 @@ def test_whatsapp_pair_then_only_she_reaches_hoola(fake_turn):
     asyncio.run(go())
     assert fake_turn and fake_turn[0]["text"] == "kal ka schedule batao" and "WhatsApp" in fake_turn[0]["context"]
     texts = [m["text"] for m in wa.sent_texts if m["to"] == HER]
-    assert texts[0].startswith("Jud gaya") and texts[-1] == "*Theek hai* - kal ka schedule batao"   # WhatsApp bold
+    assert texts[0].startswith("Connected") and texts[-1] == "*Theek hai* - kal ka schedule batao"   # WhatsApp bold
     with session() as s:
         assert [c.wa_id for c in s.scalars(select(BizContact)).all()] == ["919900000001"]
     view = bahar.links(T)
@@ -276,4 +276,4 @@ def test_phone_screen_and_wiring():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.715.0"
+    assert APP_VERSION == "0.749.0"

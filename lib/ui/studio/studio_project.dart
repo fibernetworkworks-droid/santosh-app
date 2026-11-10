@@ -100,12 +100,12 @@ class _StudioProjectScreenState extends State<StudioProjectScreen> {
 
   // ---- actions ----
   Future<void> _preview() => _run(() => app.api!.studioGenerate(name, 'preview'),
-      ok: 'Free preview ban raha hai: tasveeron se chalti kahani.');
+      ok: 'Free preview is being made: a story told with pictures.');
 
   Future<void> _make({List<String>? shots}) async {
     final ok = await approveGenerate(context, app, _v!, shots: shots);
     if (ok && mounted) {
-      studioSnack(context, 'Shuru ho gaya. App band kar sakti hain, taiyaar hote hi bataunga.');
+      studioSnack(context, 'Started. You can close the app; I will tell you when it is ready.');
       await _load();
       if (mounted) _push(RenderScreen(app: app, name: name));
     }
@@ -116,21 +116,21 @@ class _StudioProjectScreenState extends State<StudioProjectScreen> {
     final all = sList(v['shots']);
     final ids = shots ?? all.where((s) => '${s['keyframe']}'.isEmpty).map((s) => '${s['id']}').toList();
     if (ids.isEmpty) {
-      studioSnack(context, 'Sab shots ki tasveer ban chuki hai.');
+      studioSnack(context, 'Pictures of all the shots are done.');
       return;
     }
     final inr = (ids.length * 12);
     final ok = await approveSimple(context, app,
-        title: ids.length == 1 ? 'Shot ${ids.first} ki nayi tasveer' : '${ids.length} shots ki pehli tasveer',
+        title: ids.length == 1 ? 'New picture for shot ${ids.first}' : 'First picture for ${ids.length} shots',
         sub: '$name · Nano Banana Pro',
-        rows: [PriceRow(Icons.image_rounded, SC.violet, 'Pehli tasveerein · ${ids.length}', 'Har shot ka pehla frame, same chehra', inr)],
+        rows: [PriceRow(Icons.image_rounded, SC.violet, 'First pictures · ${ids.length}', 'First frame of every shot, same face', inr)],
         inr: inr,
         month: sMap(v['month']),
         ask: () => app.api!.studioKeyframes(name, shots: ids));
     if (ok) _load();
   }
 
-  Future<void> _assemble() => _run(() => app.api!.studioAssemble(name), ok: 'Final video jod raha hoon (1-3 minute).');
+  Future<void> _assemble() => _run(() => app.api!.studioAssemble(name), ok: 'Joining the final video (1-3 minutes).');
 
   Future<void> _replan() async {
     final v = _v!;
@@ -147,9 +147,9 @@ class _StudioProjectScreenState extends State<StudioProjectScreen> {
         builder: (ctx, set) => Padding(
           padding: EdgeInsets.fromLTRB(20, 18, 20, 20 + MediaQuery.of(ctx).viewInsets.bottom),
           child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            Text('Storyboard dobara likhein?', style: sora(18)),
+            Text('Rewrite the storyboard?', style: sora(18)),
             const SizedBox(height: 6),
-            Text('Purane shots hat jayenge (bane hue takes nahi).', style: body(12.5, color: C.faint)),
+            Text('Old shots will be removed (not the takes already made).', style: body(12.5, color: C.faint)),
             const SizedBox(height: 14),
             TextField(controller: brief, minLines: 3, maxLines: 7, style: body(14.5, w: FontWeight.w500),
                 decoration: InputDecoration(filled: true, fillColor: SC.field,
@@ -158,7 +158,7 @@ class _StudioProjectScreenState extends State<StudioProjectScreen> {
             SSegment<int>(items: const {15: '15s', 30: '30s', 60: '1m', 120: '2m', 300: '5m'},
                 value: const [15, 30, 60, 120, 300].contains(secs) ? secs : 30, onChanged: (x) => set(() => secs = x)),
             const SizedBox(height: 16),
-            SButton(label: 'Likho · free', icon: Icons.auto_awesome_rounded, onTap: () => Navigator.pop(ctx, true)),
+            SButton(label: 'Write · free', icon: Icons.auto_awesome_rounded, onTap: () => Navigator.pop(ctx, true)),
           ]),
         ),
       ),
@@ -178,20 +178,20 @@ class _StudioProjectScreenState extends State<StudioProjectScreen> {
         builder: (ctx, set) => Padding(
           padding: EdgeInsets.fromLTRB(20, 18, 20, 20 + MediaQuery.of(ctx).viewInsets.bottom),
           child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            Text('Naya shot', style: sora(18)),
+            Text('New shot', style: sora(18)),
             const SizedBox(height: 12),
             TextField(controller: prompt, minLines: 3, maxLines: 6, autofocus: true, style: body(14.5, w: FontWeight.w500),
-                decoration: InputDecoration(hintText: 'Kya dikhe: kaun, kya kar raha hai, kahan, kaisi roshni', filled: true,
+                decoration: InputDecoration(hintText: 'What shows: who, doing what, where, what lighting', filled: true,
                     fillColor: SC.field, border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none))),
             const SizedBox(height: 12),
             Row(children: [
-              Text('Lambai', style: body(13, color: C.muted)),
+              Text('Length', style: body(13, color: C.muted)),
               Expanded(child: Slider(value: dur.toDouble(), min: 2, max: 15, divisions: 13, activeColor: C.accent,
                   onChanged: (x) => set(() => dur = x.round()))),
               Text('$dur sec', style: body(13, w: FontWeight.w800)),
             ]),
             const SizedBox(height: 12),
-            SButton(label: 'Jodo', onTap: () => Navigator.pop(ctx, true)),
+            SButton(label: 'Add', onTap: () => Navigator.pop(ctx, true)),
           ]),
         ),
       ),
@@ -205,11 +205,11 @@ class _StudioProjectScreenState extends State<StudioProjectScreen> {
     final v = _v!;
     final hasOut = sList(v['outputs']).isNotEmpty;
     final k = await pickOne<String>(context, name, {
-      'replan': 'Storyboard dobara likho',
-      'pictures': 'Pehli tasveerein banao',
-      'look': 'Look badlo (${styleLabel['${v['style']}'] ?? v['style']})',
-      if (hasOut) 'final': 'Final video dekho',
-      'live': 'Kya ban raha hai (live)',
+      'replan': 'Rewrite storyboard',
+      'pictures': 'Make first pictures',
+      'look': 'Change look (${styleLabel['${v['style']}'] ?? v['style']})',
+      if (hasOut) 'final': 'See final video',
+      'live': 'What is being made (live)',
     });
     switch (k) {
       case 'replan':
@@ -218,7 +218,7 @@ class _StudioProjectScreenState extends State<StudioProjectScreen> {
         return _pictures();
       case 'look':
         final s = await pickOne<String>(context, 'Look', styleLabel, current: '${v['style']}');
-        if (s != null) await _run(() => app.api!.studioSettings(name, {'style': s}), ok: 'Look badal gaya; naye shots isi mein banenge.');
+        if (s != null) await _run(() => app.api!.studioSettings(name, {'style': s}), ok: 'The look has changed; new shots will be made in it.');
         return;
       case 'final':
         return _push(FinalScreen(app: app, name: name));
@@ -277,11 +277,11 @@ class _StudioProjectScreenState extends State<StudioProjectScreen> {
   Widget _planning(Map<String, dynamic> v) {
     final t = DateTime.now().difference(_opened).inSeconds;
     const steps = [
-      'Kahani samjhi',
-      'Shots mein baanta',
-      'Camera, roshni aur rang tay kar raha hoon',
-      'Bolne wali line + lip sync shot',
-      'Captions, music ka mood, sahi model har shot ko',
+      'Story understood',
+      'Splitting into shots',
+      'Deciding camera, lighting and colour',
+      'Spoken line + lip-sync shot',
+      'Captions, music mood, the right model for each shot',
     ];
     final at = (t ~/ 5).clamp(0, steps.length - 1);
     return Column(children: [
@@ -297,9 +297,9 @@ class _StudioProjectScreenState extends State<StudioProjectScreen> {
                 const SizedBox(width: 14),
                 Expanded(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text('Director kaam par hai', style: sora(16)),
+                    Text('The Director is working', style: sora(16)),
                     const SizedBox(height: 3),
-                    Text('Claude har shot ka drishya, camera aur bolna likh raha hai', style: body(12.5, color: C.muted)),
+                    Text('Claude is writing each shot\'s scene, camera and speech', style: body(12.5, color: C.muted)),
                   ]),
                 ),
               ]),
@@ -332,7 +332,7 @@ class _StudioProjectScreenState extends State<StudioProjectScreen> {
             ]),
           ),
           const SizedBox(height: 22),
-          Text('Shots aa rahe hain', style: sora(15)),
+          Text('Shots are coming in', style: sora(15)),
           const SizedBox(height: 10),
           for (var i = 0; i < 3; i++)
             Opacity(
@@ -365,7 +365,7 @@ class _StudioProjectScreenState extends State<StudioProjectScreen> {
               const Icon(Icons.schedule_rounded, color: C.muted, size: 20),
               const SizedBox(width: 12),
               Expanded(
-                child: Text('Lagbhag 20-60 second. App band kar sakti hain, taiyaar hote hi chat mein card aayega.',
+                child: Text('About 20-60 seconds. You can close the app; a card will come in chat when it is ready.',
                     style: body(12.5, color: C.muted, height: 1.4)),
               ),
             ]),
@@ -391,14 +391,14 @@ class _StudioProjectScreenState extends State<StudioProjectScreen> {
             if (shots.isNotEmpty) _timeline(v, shots),
             if (const ['painting', 'working', 'reviewing', 'assembling'].contains(phase))
               _banner(Icons.auto_awesome_motion_rounded, C.accent,
-                  phase == 'painting' ? 'Pehli tasveerein ban rahi hain…' : phase == 'reviewing' ? 'AI har take jaanch raha hai…'
-                      : phase == 'assembling' ? 'Final video jod raha hoon…' : 'Ban raha hai · ${prog['pct'] ?? 0}% · ${prog['done'] ?? 0}/${prog['total'] ?? 0} shots',
-                  'Live dekho', () => _push(RenderScreen(app: app, name: name)))
+                  phase == 'painting' ? 'First pictures are being made…' : phase == 'reviewing' ? 'AI is checking every take…'
+                      : phase == 'assembling' ? 'Joining the final video…' : 'Being made · ${prog['pct'] ?? 0}% · ${prog['done'] ?? 0}/${prog['total'] ?? 0} shots',
+                  'Watch live', () => _push(RenderScreen(app: app, name: name)))
             else if (outs.isNotEmpty)
               _banner(outs.last['preview'] == true ? Icons.slideshow_rounded : Icons.check_circle_rounded,
                   outs.last['preview'] == true ? C.muted : C.ok,
-                  outs.last['preview'] == true ? 'Free preview taiyaar' : 'Final video taiyaar · ${secs(outs.last['seconds'])}',
-                  'Dekho', () => _push(FinalScreen(app: app, name: name))),
+                  outs.last['preview'] == true ? 'Free preview ready' : 'Final video ready · ${secs(outs.last['seconds'])}',
+                  'View', () => _push(FinalScreen(app: app, name: name))),
             for (final a in sList(v['approvals'])) Padding(padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: StudioApprovalCard(key: ValueKey('ap${a['id']}'), v: a, app: app)),
             _tabs(),
@@ -440,7 +440,7 @@ class _StudioProjectScreenState extends State<StudioProjectScreen> {
                   SImage(app: app, url: '${sel['keyframe'] ?? ''}', radius: 14, tone: toneOf('$name${sel['id']}'),
                       icon: Icons.image_outlined),
                   if (sel.isNotEmpty) Positioned(left: 10, top: 10,
-                      child: Tag('${sel['id']} · ${'${sel['keyframe']}'.isEmpty ? 'tasveer baaki' : 'tasveer'}', fg: C.ink, bg: const Color(0xB306050F))),
+                      child: Tag('${sel['id']} · ${'${sel['keyframe']}'.isEmpty ? 'picture pending' : 'picture'}', fg: C.ink, bg: const Color(0xB306050F))),
                   if ('${sel['caption'] ?? ''}'.isNotEmpty)
                     Positioned(left: 8, right: 8, bottom: 26,
                         child: Text('${sel['caption']}', textAlign: TextAlign.center, style: body(13, w: FontWeight.w800,
@@ -452,12 +452,12 @@ class _StudioProjectScreenState extends State<StudioProjectScreen> {
         Column(mainAxisSize: MainAxisSize.min, children: [
           Text('${secs(start)} / ${secs(v['seconds'])}', style: body(12, w: FontWeight.w700, color: C.chip)),
           const SizedBox(height: 12),
-          _round(Icons.fullscreen_rounded, 'Poori screen', outs.isEmpty && '${take['url'] ?? ''}'.isEmpty ? null : () {
+          _round(Icons.fullscreen_rounded, 'Full screen', outs.isEmpty && '${take['url'] ?? ''}'.isEmpty ? null : () {
             final u = outs.isNotEmpty ? '${outs.last['url']}' : '${take['url']}';
             Navigator.of(context).push(MaterialPageRoute(builder: (_) => VideoPlayScreen(url: app.api!.absolute(u), title: name)));
           }),
           const SizedBox(height: 10),
-          _round(Icons.edit_rounded, 'Shot badlo', sel.isEmpty ? null : () => _push(ShotEditorScreen(app: app, name: name, shotId: '${sel['id']}'))),
+          _round(Icons.edit_rounded, 'Change shot', sel.isEmpty ? null : () => _push(ShotEditorScreen(app: app, name: name, shotId: '${sel['id']}'))),
         ]),
       ]),
     );
@@ -535,7 +535,7 @@ class _StudioProjectScreenState extends State<StudioProjectScreen> {
         ]),
         const SizedBox(height: 5),
         Row(children: [
-          label('BOL'),
+          label('SPEAK'),
           Expanded(
             child: SizedBox(
               height: 14,
@@ -568,7 +568,7 @@ class _StudioProjectScreenState extends State<StudioProjectScreen> {
                 borderRadius: BorderRadius.circular(4),
                 border: Border.all(color: music ? C.violet.withOpacity(.6) : Colors.white12),
               ),
-              child: Text(music ? 'Lyria · ${moodLabel[moodName] ?? moodName}' : 'music nahi', style: body(9, w: FontWeight.w700,
+              child: Text(music ? 'Lyria · ${moodLabel[moodName] ?? moodName}' : 'no music', style: body(9, w: FontWeight.w700,
                   color: music ? SC.violet : C.faint)),
             ),
           ),
@@ -599,7 +599,7 @@ class _StudioProjectScreenState extends State<StudioProjectScreen> {
   Widget _tabs() => Padding(
         padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
         child: Row(children: [
-          for (final t in const ['Shots', 'Cast', 'Awaaz', 'Brand'].asMap().entries) ...[
+          for (final t in const ['Shots', 'Cast', 'Voice', 'Brand'].asMap().entries) ...[
             Press(
               onTap: () => setState(() => _tab = t.key),
               child: Container(
@@ -624,11 +624,11 @@ class _StudioProjectScreenState extends State<StudioProjectScreen> {
               padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(color: SC.card, borderRadius: BorderRadius.circular(18)),
               child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                Text('Abhi storyboard nahi hai', style: sora(15)),
+                Text('No storyboard yet', style: sora(15)),
                 const SizedBox(height: 6),
-                Text('Hoola se likhwaiye (free) ya khud shot jodiye.', style: body(13, color: C.muted)),
+                Text('Have Hoola write it (free) or add shots yourself.', style: body(13, color: C.muted)),
                 const SizedBox(height: 12),
-                SButton(label: 'Storyboard likho · free', icon: Icons.auto_awesome_rounded, onTap: _replan),
+                SButton(label: 'Write storyboard · free', icon: Icons.auto_awesome_rounded, onTap: _replan),
               ]),
             ),
           for (final s in shots) ...[
@@ -649,7 +649,7 @@ class _StudioProjectScreenState extends State<StudioProjectScreen> {
               child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                 const Icon(Icons.add_rounded, color: C.chip),
                 const SizedBox(width: 8),
-                Text('Shot jodiye', style: body(13.5, w: FontWeight.w700, color: C.chip)),
+                Text('Add shot', style: body(13.5, w: FontWeight.w700, color: C.chip)),
               ]),
             ),
           ),
@@ -664,14 +664,14 @@ class _StudioProjectScreenState extends State<StudioProjectScreen> {
     if (shots.isEmpty) return const SizedBox.shrink();
     Widget primary;
     if (kind == 'wait') {
-      primary = SButton(label: 'Live dekho', icon: Icons.visibility_rounded, light: true, primary: false,
+      primary = SButton(label: 'Watch live', icon: Icons.visibility_rounded, light: true, primary: false,
           onTap: () => _push(RenderScreen(app: app, name: name)));
     } else if (kind == 'assemble') {
-      primary = SButton(label: 'Final video jodo · free', icon: Icons.movie_creation_rounded, busy: _busy, onTap: _assemble);
+      primary = SButton(label: 'Join final video · free', icon: Icons.movie_creation_rounded, busy: _busy, onTap: _assemble);
     } else if (kind == 'done') {
-      primary = SButton(label: 'Final dekho', icon: Icons.play_arrow_rounded, onTap: () => _push(FinalScreen(app: app, name: name)));
+      primary = SButton(label: 'See final', icon: Icons.play_arrow_rounded, onTap: () => _push(FinalScreen(app: app, name: name)));
     } else {
-      primary = SButton(label: 'Banao', icon: Icons.arrow_forward_rounded, busy: _busy, onTap: () => _make());
+      primary = SButton(label: 'Create', icon: Icons.arrow_forward_rounded, busy: _busy, onTap: () => _make());
     }
     return SBottomBar(
       child: Row(children: [
@@ -680,7 +680,7 @@ class _StudioProjectScreenState extends State<StudioProjectScreen> {
             flex: 3,
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
               Text('~${rupees(est['inr'])}', style: body(16, w: FontWeight.w800)),
-              Text('${qualityShort['${v['quality_pref']}'] ?? 'HD'} · ${v['seconds'] ?? 0}s · sab mila kar', style: body(11, color: C.faint)),
+              Text('${qualityShort['${v['quality_pref']}'] ?? 'HD'} · ${v['seconds'] ?? 0}s · everything included', style: body(11, color: C.faint)),
             ]),
           ),
         if (kind != 'done' && kind != 'wait') ...[
@@ -715,43 +715,43 @@ class ShotCard extends StatelessWidget {
     Color sc;
     switch (phase) {
       case 'paint':
-        state = 'tasveer ban rahi';
+        state = 'picture being made';
         sc = C.accentSoft;
         break;
       case 'queued':
-        state = 'line mein';
+        state = 'in queue';
         sc = C.faint;
         break;
       case 'video':
-        state = 'video ban raha${s['pct'] == null ? '' : ' · ${s['pct']}%'}';
+        state = 'video being made${s['pct'] == null ? '' : ' · ${s['pct']}%'}';
         sc = C.accentSoft;
         break;
       case 'lipsync':
-        state = 'lip sync ho raha';
+        state = 'lip sync in progress';
         sc = C.accentSoft;
         break;
       case 'retrying':
-        state = 'dobara koshish';
+        state = 'trying again';
         sc = C.warn;
         break;
       case 'failed':
-        state = 'nahi bana';
+        state = 'not made';
         sc = C.bad;
         break;
       case 'cancelled':
-        state = 'roka gaya';
+        state = 'stopped';
         sc = C.faint;
         break;
       case 'done':
-        state = '${qualityShort['${s['quality']}'] ?? ''} take taiyaar${s['score'] == null ? '' : ' · ${s['score']}/10'}';
+        state = '${qualityShort['${s['quality']}'] ?? ''} take ready${s['score'] == null ? '' : ' · ${s['score']}/10'}';
         sc = C.ok;
         break;
       case 'pictured':
-        state = 'tasveer taiyaar';
+        state = 'picture ready';
         sc = C.ok;
         break;
       default:
-        state = kind == 'talk' ? 'pehli tasveer chahiye' : 'tasveer baaki';
+        state = kind == 'talk' ? 'first picture needed' : 'picture pending';
         sc = kind == 'talk' ? C.accentSoft : C.faint;
     }
     return Press(
@@ -809,7 +809,7 @@ class ShotCard extends StatelessWidget {
                   padding: const EdgeInsets.only(top: 6),
                   child: GestureDetector(
                     onTap: onTakes,
-                    child: Text('${takes.length} take · dekho aur chuno ›', style: body(11.5, w: FontWeight.w800, color: C.accent)),
+                    child: Text('${takes.length} takes · view and choose ›', style: body(11.5, w: FontWeight.w800, color: C.accent)),
                   ),
                 ),
             ]),

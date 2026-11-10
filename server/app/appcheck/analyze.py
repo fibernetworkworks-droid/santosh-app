@@ -1,5 +1,5 @@
 """Pure-Python checks around REA's results: what kind of file it is, who signed an APK (as stated in the file), Windows
-version info, and the scam-pattern rules that turn facts into a plain Hinglish verdict. Nothing here runs the file."""
+version info, and the scam-pattern rules that turn facts into a plain English verdict. Nothing here runs the file."""
 from __future__ import annotations
 
 import hashlib

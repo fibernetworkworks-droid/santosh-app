@@ -178,7 +178,7 @@ def test_gmail_drafts_list_delete_card(bz, gbox):  # noqa: F811
     out = run("email_drafts", {"action": "delete", "id": f"mbx_test~{did}"}, Ctx("default", bz["conv"]))
     assert out["needs_approval"]
     card = _events(bz["conv"], "bazar_approval")[-1]
-    assert card["title"] == "Gmail draft delete karein?"
+    assert card["title"] == "Delete Gmail draft?"
     assert len(gbox.drafts) == 1                                     # nothing before the tap
     bz["svc"].decide("default", card["id"], "approve")
     assert gbox.drafts == []
@@ -194,7 +194,7 @@ def test_labels_crud_and_delete_card(bz, gbox):  # noqa: F811
     out = run("email_label", {"action": "delete", "name": "Bills 2026"}, ctx)
     assert out["needs_approval"]
     card = _events(bz["conv"], "bazar_approval")[-1]
-    assert card["title"] == "Label 'Bills 2026' hatayein?"
+    assert card["title"] == "Delete label 'Bills 2026'?"
     bz["svc"].decide("default", card["id"], "approve")
     assert "Bills 2026" not in [lb["name"] for lb in gbox.labels]
 
@@ -344,4 +344,4 @@ def test_gmail_drafts_needs_id(bz, gbox):  # noqa: F811
 
 def test_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.715.0"
+    assert APP_VERSION == "0.749.0"

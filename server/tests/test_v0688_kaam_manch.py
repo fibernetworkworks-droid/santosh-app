@@ -124,7 +124,7 @@ def test_ledger_plan_line():
 
 
 def test_ledger_left_over_beats_done_tick():
-    assert "baaki:" in K.ledger(_st(left="invoice bhejni hai"), 7, 24)
+    assert "left:" in K.ledger(_st(left="invoice bhejni hai"), 7, 24)
     assert "done" not in K.ledger(_st(left="invoice bhejni hai"), 7, 24)
     assert "done ✓" in K.ledger(_st(), 7, 24)        # clean close shows the tick
     assert "done ✓" not in K.ledger(_st(kept_going=1), 7, 24)
@@ -174,7 +174,7 @@ def test_done_note_quiet_on_plain_text():
 
 def test_done_note_hinglish_and_honest():
     note = K.done_note({"calls": [{"tool": "scrape", "ok": False}]}, "payment ho gaya")
-    assert "saaf" in note and "poora nahi" in note
+    assert "To be clear" in note and "not done" in note
 
 
 # ---------------------------------------------------------------- WIRING (switches + sources)
@@ -216,7 +216,7 @@ def test_ledger_switch_alone_can_go_quiet(monkeypatch):
 def test_registry_unchanged_615():
     # KAAM MANCH adds ZERO tools (it is a laws layer, not a family): the count the v0.681/v0.687
     # pins carry stays exactly what their ships left
-    assert len(TOOLS) == 617, "616 + 1 seekh_video (v0.713 SEEKH MANCH: the learn-from-video bridge tool, owner 'GO' on the SEEKH MANCH plan). v0.688 KAAM MANCH must not add tools"
+    assert len(TOOLS) == 620, "617 + 1 shilp (v0.730 SHILP MANCH: the ArtCraft generation lane, their Omni API api.storyteller.ai, BYOK - owner 'MAKE A PLAN FOR HOOLA AI THUS HOOLA USER CAN USE THIS' -> the plan's W0). 616 + 1 seekh_video (v0.713 SEEKH MANCH: the learn-from-video bridge tool, owner 'GO' on the SEEKH MANCH plan). v0.688 KAAM MANCH must not add tools"
 
 
 def test_no_kaam_tool_registered():
@@ -250,9 +250,9 @@ def test_fresh_interpreter_import_inert():
 
 def test_app_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.715.0"                        # conscious-bump guard: moves with every release
+    assert APP_VERSION == "0.749.0"                        # conscious-bump guard: moves with every release
 
 
 def test_pubspec_pin():
     pub = (ROOT / "pubspec.yaml").read_text()
-    assert "version: 0.715.0+714" in pub
+    assert "version: 0.749.0+748" in pub

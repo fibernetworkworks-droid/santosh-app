@@ -54,15 +54,15 @@ class _AppFamilyPanelState extends State<AppFamilyPanel> {
       context: context,
       builder: (c) => AlertDialog(
         title: Text('$label banayein?'),
-        content: const Text('Isi app ke data par ek nayi app: apna plan, design aur build; accounts aur orders wahi rahenge.'),
+        content: const Text('A new app on the same app data: its own plan, design and build; accounts and orders stay the same.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Nahi')),
-          FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('Haan')),
+          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('No')),
+          FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('Yes')),
         ],
       ),
     );
     if (ok != true) return;
-    await _run(() => widget.app.api!.call('POST', '$_base/face', body: {'kind': kind}), '$label ka plan ban gaya.');
+    await _run(() => widget.app.api!.call('POST', '$_base/face', body: {'kind': kind}), 'The $label plan is ready.');
   }
 
   Future<void> _decide(Map<String, dynamic> p, String action) async {
@@ -78,7 +78,7 @@ class _AppFamilyPanelState extends State<AppFamilyPanel> {
       final pick = await showDialog<String>(
         context: context,
         builder: (c) => SimpleDialog(
-          title: Text('${_s(p['name'])} kaunsi dukaan hai?'),
+          title: Text('${_s(p['name'])} which shop is it?'),
           children: [
             for (final sh in shops.take(60))
               SimpleDialogOption(onPressed: () => Navigator.pop(c, _s(sh['id'])), child: Text(_s(sh['name'] ?? sh['title'] ?? sh['id']))),
@@ -92,16 +92,16 @@ class _AppFamilyPanelState extends State<AppFamilyPanel> {
         context: context,
         builder: (c) => AlertDialog(
           title: Text('${_s(p['name'])} ko hatayein?'),
-          content: const Text('Unka sign-in band ho jayega aur unke khule kaam wapas sabke liye khul jayenge.'),
+          content: const Text('Their sign-in will stop and their open jobs will go back to everyone.'),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Nahi')),
-            FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('Haan, hatao')),
+            TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('No')),
+            FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('Yes, remove')),
           ],
         ),
       );
       if (ok != true) return;
     }
-    await _run(() => widget.app.api!.call('POST', '$_base/partners/${_s(p['id'])}', body: {'action': action, 'link_row': link}), 'Ho gaya.');
+    await _run(() => widget.app.api!.call('POST', '$_base/partners/${_s(p['id'])}', body: {'action': action, 'link_row': link}), 'Done.');
   }
 
   @override
@@ -118,10 +118,10 @@ class _AppFamilyPanelState extends State<AppFamilyPanel> {
         const Icon(Icons.apps_rounded, color: C.muted, size: 20),
         const SizedBox(width: 6),
         Expanded(child: Text('App parivaar (${faces.length}${waiting > 0 ? ' · $waiting ruke' : ''})', style: display(15))),
-        IconButton(onPressed: _load, icon: const Icon(Icons.refresh_rounded, color: C.muted, size: 20), tooltip: 'Taaza karo'),
+        IconButton(onPressed: _load, icon: const Icon(Icons.refresh_rounded, color: C.muted, size: 20), tooltip: 'Refresh'),
       ]),
-      const Text('Isi data par aur apps: delivery partner, partner dukaan (restaurant / seller), staff. Partner apni app se arzi dete hain; '
-          'haan sirf aap (ya app admin) karti hain.', style: TextStyle(color: C.muted, fontSize: 12)),
+      const Text('More apps on this same data: delivery partner, partner shop (restaurant / seller), staff. Partners apply from their own app; '
+          'only you (or the app admin) can approve.', style: TextStyle(color: C.muted, fontSize: 12)),
       for (final x in faces)
         ListTile(
           dense: true,
@@ -151,9 +151,9 @@ class _AppFamilyPanelState extends State<AppFamilyPanel> {
           subtitle: Text('${_s(p['label'])} · ${_s(p['state'])}${_s(p['link_name']).isNotEmpty ? ' · ${_s(p['link_name'])}' : ''}'),
           trailing: Wrap(spacing: 4, children: [
             if (p['state'] != 'approved')
-              TextButton(onPressed: _busy ? null : () => _decide(p, 'approve'), child: const Text('Haan')),
+              TextButton(onPressed: _busy ? null : () => _decide(p, 'approve'), child: const Text('Yes')),
             if (p['state'] == 'waiting')
-              TextButton(onPressed: _busy ? null : () => _decide(p, 'refuse'), child: const Text('Na')),
+              TextButton(onPressed: _busy ? null : () => _decide(p, 'refuse'), child: const Text('No')),
             if (p['state'] == 'approved')
               TextButton(onPressed: _busy ? null : () => _decide(p, 'remove'), child: const Text('Hatao')),
           ]),

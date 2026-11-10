@@ -75,11 +75,11 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
     from ..devops import service as S
     t, conv, actor = ctx.tenant_id, ctx.conversation_id, _actor(ctx)
     if actor.startswith("customer:"):
-        raise ToolError("DevOps ka kaam graahakon ke liye nahi hai.")
+        raise ToolError("DevOps work is not for customers.")
     if action in _OWNER_ONLY and not _owner(ctx):
-        raise ToolError("Yeh sirf owner kar sakti hain.")
+        raise ToolError("Only the owner can do this.")
     if action not in ("logs", "explain_log", "check_script") and R.has_secret(json.dumps(a, default=str)):
-        raise ToolError("Token / key chat mein nahi liya jaata. Use rotate kijiye; GitHub token app mein DevOps > Niyam mein jodiye.")
+        raise ToolError("Tokens / keys are not accepted in chat. Rotate it; add the GitHub token in the app under DevOps > Rules.")
     try:
         if action == "sync":
             return S.sync(t, conv)
@@ -107,10 +107,10 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return S.watch(t, conv)
         if action == "deploy":
             out = S.request_deploy(t, _s(a.get("repo")), _s(a.get("ref")), _s(a.get("environment")), _s(a.get("note")), conv)
-            return {**out, "needs_tap": True, "next": "Card bhej diya. Kaho 'aapki haan ka card bheja hai'; deploy sirf uske tap se hoga."}
+            return {**out, "needs_tap": True, "next": "Card sent. Say 'I have sent a card for your approval'; the deploy happens only on her tap."}
         if action == "rollback":
             out = S.request_rollback(t, _s(a.get("repo")), _s(a.get("to")), _s(a.get("note")), conv)
-            return {**out, "needs_tap": True, "next": "Rollback card bheja; sirf uske tap se chalega."}
+            return {**out, "needs_tap": True, "next": "Rollback card sent; it runs only on her tap."}
         if action == "repo_add":
             return S.add_repo(t, _s(a.get("repo")), _s(a.get("deploy_workflow")), _s(a.get("environment")), _s(a.get("rollback_workflow")))
         if action == "repo_remove":
@@ -130,7 +130,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
     from ..devops import templates as T
     t = ctx.tenant_id
     if _actor(ctx).startswith("customer:"):
-        raise ToolError("DevOps ka kaam graahakon ke liye nahi hai.")
+        raise ToolError("DevOps work is not for customers.")
     try:
         if what == "day":
             return S.day(t)
@@ -168,10 +168,10 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
         if what == "settings":
             return S.settings(t)
         if what == "rules":
-            return {"never": ["koi script / command khud chalana (sirf files banana)", "uske server mein SSH / login",
-                              "production deploy / approval / re-run uske tap ke bina", "token / password / key maangna ya dikhana"],
-                    "deploy_rules": ["card: repo, exact commit, environment, checks, kya badla, rollback plan", "checks hare nahi = uski likhi wajah ke bina nahi",
-                                     "card ke baad branch aage badhi = naya card"],
+            return {"never": ["running any script / command by itself (only making files)", "SSH / login to her server",
+                              "production deploy / approval / re-run without her tap", "asking for or showing a token / password / key"],
+                    "deploy_rules": ["card: repo, exact commit, environment, checks, what changed, rollback plan", "checks not green = not without her written reason",
+                                     "branch moved on after the card = a new card"],
                     "ci_kinds": R.CI_LABEL, "log_kinds": R.LOG_LABEL, "sources": R.SOURCES}
     except (S.DevopsError, ValueError) as ex:
         raise ToolError(str(ex))

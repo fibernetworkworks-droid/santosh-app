@@ -38,10 +38,10 @@ String _bytes(dynamic v) {
 
 // v0.426 MASTER ARCHITECT: the six kinds of job; assess / migrate read her repo first, so they need one
 const _kinds = {
-  'design': 'Naya design',
-  'assess': 'Jaanch (assess)',
+  'design': 'New design',
+  'assess': 'Assess',
   'migrate': 'Migration',
-  'decide': 'Faisla (decide)',
+  'decide': 'Decide',
   'threat': 'Threat model',
   'scale': 'Scale',
 };
@@ -49,13 +49,13 @@ const _needsRepo = ['assess', 'migrate'];
 
 const _busyStates = ['reading', 'designing', 'drawing'];
 const _stateLabel = {
-  'reading': 'Repo padh raha hai',
-  'designing': 'Design likh raha hai',
-  'drawing': 'Diagrams bana raha hai',
-  'waiting_her': 'Aapki haan chahiye',
+  'reading': 'Reading the repo',
+  'designing': 'Writing the design',
+  'drawing': 'Making diagrams',
+  'waiting_her': 'Needs your OK',
   'approved': 'Approved',
-  'failed': 'Nahi ban saka',
-  'cancelled': 'Roka gaya',
+  'failed': 'Could not be made',
+  'cancelled': 'Stopped',
 };
 
 class ArchDeskScreen extends StatefulWidget {
@@ -115,7 +115,7 @@ class _ArchDeskScreenState extends State<ArchDeskScreen> {
     if (brief.isEmpty) return;
     if (_needsRepo.contains(_kind) && _repo.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Is kaam ke liye GitHub repo chahiye (owner/naam) - pehle code padhega.')));
+          const SnackBar(content: Text('This task needs a GitHub repo (owner/name) - it will read the code first.')));
       return;
     }
     setState(() => _busy = true);
@@ -124,7 +124,7 @@ class _ArchDeskScreenState extends State<ArchDeskScreen> {
       final p = await widget.app.api!.archStart(brief, repo: _repo.text.trim(), dau: dau, kind: _kind);
       _brief.clear();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Design ban raha hai - kuch minute lagenge.')));
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('The design is being made - it will take a few minutes.')));
         await _open(_s(p['id']));
       }
     } catch (e) {
@@ -151,9 +151,9 @@ class _ArchDeskScreenState extends State<ArchDeskScreen> {
                 if (_err.isNotEmpty) Text(_err, style: const TextStyle(color: C.bad)),
                 Glass(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    const Text('Naya system design', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+                    const Text('New system design', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
                     const SizedBox(height: 4),
-                    const Text('System kya karega, kaun use karega, roz kitne log. Repo ho to owner/naam likhiye - pehle use padhega.',
+                    const Text('What the system will do, who will use it, how many people a day. If you have a repo, write owner/name - it will be read first.',
                         style: TextStyle(color: C.faint, fontSize: 12)),
                     const SizedBox(height: 8),
                     Wrap(spacing: 6, runSpacing: 4, children: [
@@ -167,25 +167,25 @@ class _ArchDeskScreenState extends State<ArchDeskScreen> {
                     if (_needsRepo.contains(_kind))
                       const Padding(
                         padding: EdgeInsets.only(top: 4),
-                        child: Text('Is kaam mein pehle aapka code padha jayega - GitHub repo zaroori hai.',
+                        child: Text('This task reads your code first - a GitHub repo is required.',
                             style: TextStyle(color: C.warn, fontSize: 12)),
                       ),
                     const SizedBox(height: 8),
                     TextField(controller: _brief, minLines: 3, maxLines: 8, maxLength: 6000,
-                        decoration: const InputDecoration(hintText: 'e.g. 3 shehron ke liye food delivery backend...', border: OutlineInputBorder())),
-                    TextField(controller: _repo, decoration: const InputDecoration(labelText: 'GitHub repo (optional) owner/naam')),
+                        decoration: const InputDecoration(hintText: 'e.g. a food delivery backend for 3 cities...', border: OutlineInputBorder())),
+                    TextField(controller: _repo, decoration: const InputDecoration(labelText: 'GitHub repo (optional) owner/name')),
                     TextField(controller: _dau, keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(labelText: 'Roz kitne log (users a day)')),
+                        decoration: const InputDecoration(labelText: 'How many people a day (users a day)')),
                     const SizedBox(height: 10),
                     FilledButton.icon(
                       onPressed: _busy ? null : _start,
                       icon: const Icon(Icons.architecture_rounded, size: 18),
-                      label: Text(_busy ? 'Shuru ho raha hai...' : 'Design banao'),
+                      label: Text(_busy ? 'Starting...' : 'Make design'),
                     ),
                   ]),
                 ),
                 const SizedBox(height: 14),
-                if (_ps.isEmpty) const Text('Abhi koi design nahi.', style: TextStyle(color: C.muted)),
+                if (_ps.isEmpty) const Text('No designs yet.', style: TextStyle(color: C.muted)),
                 for (final p in _ps)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 8),
@@ -299,21 +299,21 @@ class _ArchDesignScreenState extends State<ArchDesignScreen> {
     if (x['assessment'] is Map) {
       final a = _m(x['assessment']);
       final sr = _m(x['scorecard_result']);
-      out.add(_section('Jaanch (assessment)', [
+      out.add(_section('Assessment', [
         if (_s(a['as_is']).isNotEmpty) MdText(_s(a['as_is']), style: body),
         if (sr['average'] != null)
           _line('Score ${_s(sr['average'])}${sr['out_of'] != null ? ' / ${_s(sr['out_of'])}' : ''}'
-              '${_strs(sr['weakest']).isNotEmpty ? ' · kamzor: ${_strs(sr['weakest']).join(', ')}' : ''}',
+              '${_strs(sr['weakest']).isNotEmpty ? ' · weakest: ${_strs(sr['weakest']).join(', ')}' : ''}',
               const TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5)),
         for (final r in _list(a['scorecard'])) _line('${_s(r['dimension'])}: ${_s(r['score'])} - ${_s(r['why'])}', body),
-        if (_strs(a['strengths']).isNotEmpty) _line('Achha: ${_strs(a['strengths']).join(' · ')}', body),
+        if (_strs(a['strengths']).isNotEmpty) _line('Strengths: ${_strs(a['strengths']).join(' · ')}', body),
         for (final r in _list(a['problems']))
           Padding(
             padding: const EdgeInsets.only(top: 6),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text('${_s(r['severity'])} · ${_s(r['area'])}', style: TextStyle(color: _sevColor(r['severity']), fontSize: 12)),
               Text(_s(r['finding']), style: body),
-              if (_s(r['evidence']).isNotEmpty) Text('Saboot: ${_s(r['evidence'])}', style: small),
+              if (_s(r['evidence']).isNotEmpty) Text('Evidence: ${_s(r['evidence'])}', style: small),
               Text('→ ${_s(r['fix'])}', style: body),
             ]),
           ),
@@ -332,8 +332,8 @@ class _ArchDesignScreenState extends State<ArchDesignScreen> {
             padding: const EdgeInsets.only(top: 6),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text('Phase ${_s(r['phase'])}: ${_s(r['what'])}', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5)),
-              if (_s(r['rollback']).isNotEmpty) Text('Wapas (rollback): ${_s(r['rollback'])}', style: body),
-              if (_s(r['exit']).isNotEmpty) Text('Poora jab: ${_s(r['exit'])}', style: small),
+              if (_s(r['rollback']).isNotEmpty) Text('Rollback: ${_s(r['rollback'])}', style: body),
+              if (_s(r['exit']).isNotEmpty) Text('When complete: ${_s(r['exit'])}', style: small),
               if (_s(r['risk']).isNotEmpty) Text('Risk: ${_s(r['risk'])}', style: small),
             ]),
           ),
@@ -348,7 +348,7 @@ class _ArchDesignScreenState extends State<ArchDesignScreen> {
       final dr = _m(x['decision_result']);
       final crit = _list(dc['criteria']);
       final opts = _list(dc['options']);
-      out.add(_section('Faisla (decision)', [
+      out.add(_section('Decision', [
         if (_s(dc['question']).isNotEmpty) _line(_s(dc['question']), const TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5)),
         if (_s(dr['error']).isNotEmpty) _line(_s(dr['error']), const TextStyle(color: C.bad, fontSize: 12.5)),
         for (final t in _list(dr['totals']))
@@ -369,8 +369,8 @@ class _ArchDesignScreenState extends State<ArchDesignScreen> {
           _line('${dr['close'] == true ? 'Close call' : 'Winner'}: ${_s(dr['winner'])}'
               '${dr['margin'] != null ? ' (${_s(dr['margin'])} se)' : ''}',
               TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5, color: dr['close'] == true ? C.warn : C.ok)),
-        if (_strs(dr['flips']).isNotEmpty) _line('Badal jata hai jab: ${_strs(dr['flips']).join(' · ')}', small),
-        if (_strs(dr['missing']).isNotEmpty) _line('Score nahi diya: ${_strs(dr['missing']).join(' · ')}', small),
+        if (_strs(dr['flips']).isNotEmpty) _line('Changes when: ${_strs(dr['flips']).join(' · ')}', small),
+        if (_strs(dr['missing']).isNotEmpty) _line('Not scored: ${_strs(dr['missing']).join(' · ')}', small),
         if (crit.isNotEmpty && opts.isNotEmpty)
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
@@ -397,12 +397,12 @@ class _ArchDesignScreenState extends State<ArchDesignScreen> {
             title: Text(_s(o['name']), style: const TextStyle(fontSize: 13.5)),
             subtitle: _s(o['summary']).isEmpty ? null : Text(_s(o['summary']), style: small),
             children: [
-              if (_strs(o['pros']).isNotEmpty) _line('Fayde: ${_strs(o['pros']).join(' · ')}', body),
-              if (_strs(o['cons']).isNotEmpty) _line('Nuksaan: ${_strs(o['cons']).join(' · ')}', body),
+              if (_strs(o['pros']).isNotEmpty) _line('Pros: ${_strs(o['pros']).join(' · ')}', body),
+              if (_strs(o['cons']).isNotEmpty) _line('Cons: ${_strs(o['cons']).join(' · ')}', body),
               if (_s(o['cost_note']).isNotEmpty) _line(_s(o['cost_note']), small),
             ],
           ),
-        if (_s(dc['recommendation']).isNotEmpty) _line('Salah: ${_s(dc['recommendation'])}', body),
+        if (_s(dc['recommendation']).isNotEmpty) _line('Advice: ${_s(dc['recommendation'])}', body),
       ]));
     }
 
@@ -412,7 +412,7 @@ class _ArchDesignScreenState extends State<ArchDesignScreen> {
     if (x['threat_result'] is Map || threats.isNotEmpty) {
       out.add(_section('Threat model (STRIDE)', [
         if (tr['total'] != null)
-          _line('${_s(tr['total'])} threats${tr['open_high'] != null ? ' · ${_s(tr['open_high'])} high aur abhi khule' : ''}', body),
+          _line('${_s(tr['total'])} threats${tr['open_high'] != null ? ' · ${_s(tr['open_high'])} high and still open' : ''}', body),
         if (_strs(x['trust_boundaries']).isNotEmpty) _line('Trust boundaries: ${_strs(x['trust_boundaries']).join(' · ')}', small),
         for (final r in threats)
           Padding(
@@ -425,8 +425,8 @@ class _ArchDesignScreenState extends State<ArchDesignScreen> {
             ]),
           ),
         if (_strs(tr['letters_unused']).isNotEmpty)
-          _line('Abhi socha nahi gaya: ${_strs(tr['letters_unused']).join(', ')}', const TextStyle(color: C.warn, fontSize: 12.5)),
-        if (_strs(tr['uncovered']).isNotEmpty) _line('Bina threat ke hisse: ${_strs(tr['uncovered']).join(', ')}', small),
+          _line('Not considered yet: ${_strs(tr['letters_unused']).join(', ')}', const TextStyle(color: C.warn, fontSize: 12.5)),
+        if (_strs(tr['uncovered']).isNotEmpty) _line('Parts without a threat: ${_strs(tr['uncovered']).join(', ')}', small),
       ]));
     }
 
@@ -439,7 +439,7 @@ class _ArchDesignScreenState extends State<ArchDesignScreen> {
             padding: const EdgeInsets.only(bottom: 6),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text('${_s(r['at'])}: ${_s(r['breaks'])}', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-              if (_s(r['signal']).isNotEmpty) Text('Nishaan: ${_s(r['signal'])}', style: small),
+              if (_s(r['signal']).isNotEmpty) Text('Signal: ${_s(r['signal'])}', style: small),
               Text('→ ${_s(r['change'])}', style: body),
             ]),
           ),
@@ -451,12 +451,12 @@ class _ArchDesignScreenState extends State<ArchDesignScreen> {
     final scRows = _list(sc['rows']);
     final scBreaks = _list(sc['breaks']);
     if (scRows.isNotEmpty || scBreaks.isNotEmpty) {
-      out.add(_section('Growth scenarios (code se hisaab)', [
+      out.add(_section('Growth scenarios (calculated by code)', [
         for (final r in scRows)
           _line('${_s(r['x'])}x: ${_s(r['dau'])} log/din · peak ${_s(r['peak_rps'])} req/s · writes ${_s(r['write_rps'])}/s · '
               '${_s(r['servers'])} servers · storage ${_bytes(r['storage_bytes'])} · egress ${_bytes(r['egress_bps'])}/s', body),
         for (final b in scBreaks)
-          _line('Pehle tootega ${_s(b['at'])}: ${_s(b['what'])}${_s(b['why']).isNotEmpty ? ' - ${_s(b['why'])}' : ''}',
+          _line('Breaks first at ${_s(b['at'])}: ${_s(b['what'])}${_s(b['why']).isNotEmpty ? ' - ${_s(b['why'])}' : ''}',
               const TextStyle(color: C.warn, fontSize: 12.5)),
       ]));
     }
@@ -469,10 +469,10 @@ class _ArchDesignScreenState extends State<ArchDesignScreen> {
         for (final r in fr)
           _line('${_s(r['name'])}: ${_s(r['from'])} ✗ ${_strs(r['must_not_depend_on']).join(', ')}'
               '${_s(r['why']).isNotEmpty ? ' - ${_s(r['why'])}' : ''}', body),
-        if (fnow != null && fnow.isEmpty) _line('✓ Aaj code har rule maan raha hai.', const TextStyle(color: C.ok, fontSize: 12.5)),
+        if (fnow != null && fnow.isEmpty) _line('✓ The code follows every rule today.', const TextStyle(color: C.ok, fontSize: 12.5)),
         if (fnow != null)
           for (final r in fnow)
-            _line('Toota: ${_s(r['rule'])} · ${_s(r['from'])} → ${_s(r['to'])}', const TextStyle(color: C.bad, fontSize: 12.5)),
+            _line('Broken: ${_s(r['rule'])} · ${_s(r['from'])} → ${_s(r['to'])}', const TextStyle(color: C.bad, fontSize: 12.5)),
       ]));
     }
 
@@ -480,14 +480,14 @@ class _ArchDesignScreenState extends State<ArchDesignScreen> {
     final mm = _m(_m(_p['repo_facts'])['module_map']);
     if (mm.isNotEmpty) {
       final cycles = (mm['cycles'] is List ? mm['cycles'] as List : const []);
-      out.add(_section('Module map (asli imports se)', [
+      out.add(_section('Module map (from the real imports)', [
         _line('${(mm['modules'] is List ? (mm['modules'] as List).length : 0)} modules · '
             '${(mm['edges'] is List ? (mm['edges'] as List).length : 0)} links'
-            '${mm['files_scanned'] != null ? ' · ${_s(mm['files_scanned'])} files padhe' : ''}', small),
-        if (cycles.isEmpty) _line('✓ Koi import cycle nahi.', const TextStyle(color: C.ok, fontSize: 12.5)),
+            '${mm['files_scanned'] != null ? ' · ${_s(mm['files_scanned'])} files read' : ''}', small),
+        if (cycles.isEmpty) _line('✓ No import cycles.', const TextStyle(color: C.ok, fontSize: 12.5)),
         for (final c in cycles) _line('Cycle: ${_strs(c).join(' → ')}', const TextStyle(color: C.bad, fontSize: 12.5)),
         for (final h in _list(mm['hotspots']))
-          _line('${_s(h['module'])}: ${_s(h['fan_in'])} use karte, ${_s(h['fan_out'])} ko use karta, ${_s(h['lines'])} lines', body),
+          _line('${_s(h['module'])}: used by ${_s(h['fan_in'])}, uses ${_s(h['fan_out'])}, ${_s(h['lines'])} lines', body),
       ]));
     }
 
@@ -497,7 +497,7 @@ class _ArchDesignScreenState extends State<ArchDesignScreen> {
       final issues = _list(rv['issues']);
       out.add(_section('Peer review', [
         _line('${_s(rv['verdict']).isNotEmpty ? '${_s(rv['verdict'])} · ' : ''}${issues.length} issues'
-            '${rv['revised'] == true ? ' · is version mein theek kiya' : ''}',
+            '${rv['revised'] == true ? ' · fixed in this version' : ''}',
             TextStyle(fontSize: 13, color: rv['revised'] == true ? C.ok : C.muted)),
         for (final r in issues)
           Padding(
@@ -533,17 +533,17 @@ class _ArchDesignScreenState extends State<ArchDesignScreen> {
     if (ac.isNotEmpty || _s(_p['api_yaml']).isNotEmpty) {
       out.add(_section('API contract', [
         if (ac['skipped'] != null && ac['skipped'] != false)
-          _line('Check nahi hua${ac['skipped'] is String ? ': ${_s(ac['skipped'])}' : ''}.', small)
+          _line('Not checked${ac['skipped'] is String ? ': ${_s(ac['skipped'])}' : ''}.', small)
         else if (ac.isNotEmpty)
           _line(
               ac['ok'] == true
-                  ? '✓ Sahi OpenAPI: ${_s(ac['paths'])} paths, ${_s(ac['operations'])} operations'
-                  : '✗ Parse nahi hua: ${_s(ac['error'])}',
+                  ? '✓ Valid OpenAPI: ${_s(ac['paths'])} paths, ${_s(ac['operations'])} operations'
+                  : '✗ Could not be parsed: ${_s(ac['error'])}',
               TextStyle(color: ac['ok'] == true ? C.ok : C.bad, fontSize: 12.5)),
         if (_s(_p['api_yaml']).isNotEmpty)
           TextButton(
             onPressed: () => launchUrl(Uri.parse(_url(_s(_p['api_yaml']))), mode: LaunchMode.externalApplication),
-            child: const Text('api.yaml kholo'),
+            child: const Text('Open api.yaml'),
           ),
       ]));
     }
@@ -574,7 +574,7 @@ class _ArchDesignScreenState extends State<ArchDesignScreen> {
                 Wrap(spacing: 8, runSpacing: 4, children: [
                   if (status == 'waiting_her')
                     FilledButton(
-                      onPressed: _busy ? null : () => _do(() => api.archApprove(widget.id), 'Approve ho gaya.'),
+                      onPressed: _busy ? null : () => _do(() => api.archApprove(widget.id), 'Approved.'),
                       child: const Text('Approve design'),
                     ),
                   if (_s(_p['pdf']).isNotEmpty)
@@ -590,7 +590,7 @@ class _ArchDesignScreenState extends State<ArchDesignScreen> {
                 ]),
                 if (_s(_p['kind_title']).isNotEmpty)
                   Text(_s(_p['kind_title']), style: const TextStyle(color: C.faint, fontSize: 12)),
-                if (d['summary'] != null) _section('Saar', [MdText(_s(d['summary']), style: body)]),
+                if (d['summary'] != null) _section('Summary', [MdText(_s(d['summary']), style: body)]),
                 ..._master(body),
                 if (_list(_p['diagrams']).isNotEmpty)
                   _section('Diagrams', [
@@ -606,12 +606,12 @@ class _ArchDesignScreenState extends State<ArchDesignScreen> {
                               child: Container(color: Colors.white, child: Image.network(_url(_s(g['png'])), fit: BoxFit.contain)),
                             )
                           else
-                            Text('Diagram nahi ban saka: ${_s(g['error'])}', style: const TextStyle(color: C.muted, fontSize: 12)),
+                            Text('Diagram could not be made: ${_s(g['error'])}', style: const TextStyle(color: C.muted, fontSize: 12)),
                         ]),
                       ),
                   ]),
                 if (cap['rows'] != null || cap['error'] != null)
-                  _section('Capacity (code se hisaab)', [
+                  _section('Capacity (calculated by code)', [
                     if (cap['error'] != null) Text(_s(cap['error']), style: body),
                     for (final r in _list(cap['rows']))
                       Padding(
@@ -619,11 +619,11 @@ class _ArchDesignScreenState extends State<ArchDesignScreen> {
                         child: Text('${r['what']}: ${r['value']}', style: body),
                       ),
                     if ((cap['assumed'] as List?)?.isNotEmpty ?? false)
-                      Text('Andaaza (pakka kijiye): ${(cap['assumed'] as List).join(', ')}',
+                      Text('Estimate (please confirm): ${(cap['assumed'] as List).join(', ')}',
                           style: const TextStyle(color: C.muted, fontSize: 12)),
                   ]),
                 if (_list(d['adrs']).isNotEmpty)
-                  _section('Faisle (ADRs)', [
+                  _section('Decisions (ADRs)', [
                     for (final a in _list(d['adrs']))
                       ExpansionTile(
                         tilePadding: EdgeInsets.zero,
@@ -645,9 +645,9 @@ class _ArchDesignScreenState extends State<ArchDesignScreen> {
                       ),
                   ]),
                 if (!busy && (_p['version'] ?? 0) != 0)
-                  _section('Badlav', [
+                  _section('Change', [
                     TextField(controller: _words, maxLength: 2000, minLines: 1, maxLines: 4,
-                        decoration: const InputDecoration(hintText: 'e.g. MongoDB nahi, Postgres; 10 guna users ke liye')),
+                        decoration: const InputDecoration(hintText: 'e.g. Postgres, not MongoDB; for 10x users')),
                     OutlinedButton(
                       onPressed: _busy
                           ? null
@@ -655,9 +655,9 @@ class _ArchDesignScreenState extends State<ArchDesignScreen> {
                               final w = _words.text.trim();
                               if (w.isEmpty) return;
                               _words.clear();
-                              _do(() => api.archChange(widget.id, w), 'Agla version ban raha hai.');
+                              _do(() => api.archChange(widget.id, w), 'The next version is being made.');
                             },
-                      child: const Text('Agla version'),
+                      child: const Text('Next version'),
                     ),
                   ]),
                 if (status == 'approved' && _s(_p['repo']).isNotEmpty)
@@ -665,7 +665,7 @@ class _ArchDesignScreenState extends State<ArchDesignScreen> {
                     SwitchListTile(
                       contentPadding: EdgeInsets.zero,
                       value: _p['watch_prs'] == true,
-                      title: const Text('Naye PR khud dekhe (sirf draft notes)', style: TextStyle(fontSize: 13.5)),
+                      title: const Text('Review new PRs by itself (draft notes only)', style: TextStyle(fontSize: 13.5)),
                       onChanged: (v) => _do(() => api.archWatch(widget.id, v), ''),
                     ),
                     Row(children: [
@@ -677,9 +677,9 @@ class _ArchDesignScreenState extends State<ArchDesignScreen> {
                             : () {
                                 final n = int.tryParse(_pr.text.trim());
                                 if (n == null) return;
-                                _do(() => api.archReview(widget.id, n), 'PR dekh liya - notes draft hain.');
+                                _do(() => api.archReview(widget.id, n), 'PR reviewed - the notes are drafts.');
                               },
-                        child: const Text('Is PR ko dekho'),
+                        child: const Text('Review this PR'),
                       ),
                     ]),
                   ]),
@@ -695,12 +695,12 @@ class _ArchDesignScreenState extends State<ArchDesignScreen> {
                     if (r['status'] == 'draft')
                       Wrap(spacing: 8, children: [
                         FilledButton(
-                          onPressed: _busy ? null : () => _do(() => api.archPostReview(_s(r['id'])), 'PR par post ho gaya.'),
-                          child: const Text('PR par post karo'),
+                          onPressed: _busy ? null : () => _do(() => api.archPostReview(_s(r['id'])), 'Posted on the PR.'),
+                          child: const Text('Post on the PR'),
                         ),
                         TextButton(
                           onPressed: _busy ? null : () => _do(() => api.archDiscardReview(_s(r['id'])), ''),
-                          child: const Text('Hatao'),
+                          child: const Text('Remove'),
                         ),
                       ])
                     else

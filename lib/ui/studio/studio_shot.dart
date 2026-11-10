@@ -86,11 +86,11 @@ class _ShotEditorScreenState extends State<ShotEditorScreen> {
   Future<bool> _save({bool quiet = false}) async {
     if (!_dirty) return true;
     if (_prompt.text.trim().isEmpty && _line.text.trim().isEmpty) {
-      studioSnack(context, 'Kya dikhe, yeh likhiye');
+      studioSnack(context, 'Write what to show');
       return false;
     }
     if ((_kind == 'talk' || _kind == 'dialogue') && _line.text.trim().isEmpty) {
-      studioSnack(context, 'Bolne wali line likhiye');
+      studioSnack(context, 'Write the spoken line');
       return false;
     }
     setState(() => _busy = true);
@@ -105,7 +105,7 @@ class _ShotEditorScreenState extends State<ShotEditorScreen> {
           _v = v;
           _dirty = false;
         });
-        if (!quiet) studioSnack(context, 'Shot save ho gaya');
+        if (!quiet) studioSnack(context, 'Shot saved');
       }
       ok = true;
     } catch (e) {
@@ -128,14 +128,14 @@ class _ShotEditorScreenState extends State<ShotEditorScreen> {
     if (!await _save(quiet: true)) return;
     if (!mounted) return;
     final ok = await approveSimple(context, app,
-        title: 'Shot $_id ki nayi tasveer',
+        title: 'New picture for shot $_id',
         sub: '${widget.name} · Nano Banana Pro',
-        rows: const [PriceRow(Icons.image_rounded, SC.violet, 'Pehli tasveer · 1', 'Shot ka pehla frame', 12)],
+        rows: const [PriceRow(Icons.image_rounded, SC.violet, 'First picture · 1', 'First frame of the shot', 12)],
         inr: 12,
         month: sMap(_v?['month']),
         ask: () => app.api!.studioKeyframes(widget.name, shots: [_id]));
     if (ok && mounted) {
-      studioSnack(context, 'Tasveer ban rahi hai (lagbhag 30 sec)');
+      studioSnack(context, 'The picture is being made (about 30 sec)');
       Future.delayed(const Duration(seconds: 25), () => mounted ? _load(keep: true) : null);
     }
   }
@@ -145,7 +145,7 @@ class _ShotEditorScreenState extends State<ShotEditorScreen> {
     if (!mounted || _v == null) return;
     final ok = await approveGenerate(context, app, _v!, shots: [_id]);
     if (ok && mounted) {
-      studioSnack(context, 'Shot $_id ban raha hai');
+      studioSnack(context, 'Shot $_id is being made');
       Navigator.pop(context);
     }
   }
@@ -155,10 +155,10 @@ class _ShotEditorScreenState extends State<ShotEditorScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: SC.card,
-        title: Text('Shot $_id hatayein?', style: sora(17)),
+        title: Text('Delete shot $_id?', style: sora(17)),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Rehne do')),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Hatao', style: TextStyle(color: C.bad))),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Remove', style: TextStyle(color: C.bad))),
         ],
       ),
     );
@@ -190,9 +190,9 @@ class _ShotEditorScreenState extends State<ShotEditorScreen> {
           context: context,
           builder: (ctx) => AlertDialog(
             backgroundColor: SC.card,
-            title: Text('Badlav save karein?', style: sora(17)),
+            title: Text('Save changes?', style: sora(17)),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Chhod do')),
+              TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Skip')),
               TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Save')),
             ],
           ),
@@ -231,7 +231,7 @@ class _ShotEditorScreenState extends State<ShotEditorScreen> {
                       Expanded(child: SButton(label: _dirty ? 'Save' : 'Saved', primary: false, busy: _busy && _dirty,
                           onTap: _dirty ? () => _save() : null)),
                       const SizedBox(width: 10),
-                      Expanded(flex: 2, child: SButton(label: 'Sirf yeh shot banao', icon: Icons.movie_creation_outlined, onTap: _busy ? null : _makeThis)),
+                      Expanded(flex: 2, child: SButton(label: 'Make only this shot', icon: Icons.movie_creation_outlined, onTap: _busy ? null : _makeThis)),
                     ]),
                   ),
                 ]),
@@ -253,7 +253,7 @@ class _ShotEditorScreenState extends State<ShotEditorScreen> {
           height: (150 / ar).clamp(110.0, 270.0).toDouble(),
           child: Stack(fit: StackFit.expand, children: [
             SImage(app: app, url: '${s['keyframe'] ?? ''}', radius: 14, tone: toneOf('${widget.name}$_id'), icon: Icons.image_outlined),
-            Positioned(left: 8, top: 8, child: Tag('${s['keyframe']}'.isEmpty ? 'Tasveer baaki' : 'Pehli tasveer', fg: C.ink,
+            Positioned(left: 8, top: 8, child: Tag('${s['keyframe']}'.isEmpty ? 'Picture pending' : 'First picture', fg: C.ink,
                 bg: const Color(0xB306050F))),
             if (s['phase'] == 'paint')
               Container(color: Colors.black45, child: const Center(child: CircularProgressIndicator(color: C.accent))),
@@ -262,36 +262,36 @@ class _ShotEditorScreenState extends State<ShotEditorScreen> {
         const SizedBox(width: 14),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            Text('Video isi tasveer se shuru hoga. Chehra har shot mein yahi rahega.', style: body(11.5, color: C.faint, height: 1.4)),
+            Text('The video will start from this picture. The face will stay the same in every shot.', style: body(11.5, color: C.faint, height: 1.4)),
             const SizedBox(height: 10),
-            _act(Icons.auto_awesome_rounded, '${s['keyframe']}'.isEmpty ? 'Tasveer banao · ₹12' : 'Nayi tasveer · ₹12',
+            _act(Icons.auto_awesome_rounded, '${s['keyframe']}'.isEmpty ? 'Make picture · ₹12' : 'New picture · ₹12',
                 v['can_paint'] == true ? _picture : null),
             const SizedBox(height: 8),
-            _act(Icons.play_circle_outline_rounded, 'Pichhle takes (${takes.length})', takes.isEmpty ? null : () {
+            _act(Icons.play_circle_outline_rounded, 'Previous takes (${takes.length})', takes.isEmpty ? null : () {
               Navigator.of(context).push(MaterialPageRoute(builder: (_) => TakesScreen(app: app, name: widget.name, shotId: _id)));
             }),
           ]),
         ),
       ]),
       const SizedBox(height: 20),
-      const SLabel('Shot ka type'),
+      const SLabel('Shot type'),
       Wrap(spacing: 6, runSpacing: 6, children: [
         for (final k in kindLabel.entries) SChip(label: k.value, on: _kind == k.key, solid: true, onTap: () => _touch(() => _kind = k.key)),
       ]),
       const SizedBox(height: 18),
-      SLabel(_kind == 'talk' ? 'Peeche kya dikhe' : 'Kya dikhe'),
-      _box(_prompt, 'Kaun, kya kar raha hai, kahan, kaisi roshni', lines: 3),
+      SLabel(_kind == 'talk' ? 'What shows behind' : 'What shows'),
+      _box(_prompt, 'Who, doing what, where, what lighting', lines: 3),
       if (talking) ...[
         const SizedBox(height: 18),
         Row(children: [
-          const Expanded(child: SLabel('Kya bole (lip sync)')),
+          const Expanded(child: SLabel('What is said (lip sync)')),
           if ('${s['dialogue'] ?? ''}'.isNotEmpty && !_dirty)
             SoundButton(app: app, url: '${s['line_url'] ?? ''}', size: 34,
                 load: () async => '${(await app.api!.studioLine(widget.name, _id))['url']}'),
         ]),
-        _box(_line, 'Jaise: मन शांत ठेवा, तेच खरे सुख.', lines: 2),
+        _box(_line, 'e.g. मन शांत ठेवा, तेच खरे सुख.', lines: 2),
         Padding(padding: const EdgeInsets.only(top: 6),
-            child: Text('${langShown('${v['language']}')} mein, aapki chuni hui awaaz mein · Sync 3 hoth milata hai', style: body(11, color: C.faint))),
+            child: Text('In ${langShown('${v['language']}')}, in your chosen voice · Sync 3 matches the lips', style: body(11, color: C.faint))),
       ],
       const SizedBox(height: 18),
       SLabel('Camera', trailing: _allCams ? null : '8 / ${cameraLabel.length}'),
@@ -324,17 +324,17 @@ class _ShotEditorScreenState extends State<ShotEditorScreen> {
       ),
       if (!_allCams)
         Align(alignment: Alignment.centerLeft,
-            child: TextButton(onPressed: () => setState(() => _allCams = true), child: Text('Aur camera', style: body(12.5, color: C.accent)))),
+            child: TextButton(onPressed: () => setState(() => _allCams = true), child: Text('More camera', style: body(12.5, color: C.accent)))),
       const SizedBox(height: 14),
       Row(children: [
-        const Expanded(child: SLabel('Lambai')),
+        const Expanded(child: SLabel('Length')),
         Text('$_dur sec', style: body(14, w: FontWeight.w800)),
       ]),
       Slider(value: _dur.toDouble().clamp(2, 30).toDouble(), min: 2, max: 30, divisions: 28, activeColor: C.accent,
           onChanged: (x) => _touch(() => _dur = x.round())),
       if (chars.isNotEmpty) ...[
         const SizedBox(height: 8),
-        const SLabel('Is shot mein'),
+        const SLabel('In this shot'),
         Wrap(spacing: 8, runSpacing: 8, children: [
           for (final c in chars)
             Press(
@@ -365,9 +365,9 @@ class _ShotEditorScreenState extends State<ShotEditorScreen> {
       ],
       const SizedBox(height: 18),
       const SLabel('Caption'),
-      _box(_cap, 'Screen par 2-6 shabd (khaali = caption nahi)'),
+      _box(_cap, '2-6 words on screen (empty = no caption)'),
       const SizedBox(height: 18),
-      const SLabel('Agle shot tak'),
+      const SLabel('Until the next shot'),
       Wrap(spacing: 6, runSpacing: 6, children: [
         for (final t in const {'': 'Cut', 'fade': 'Fade', 'dissolve': 'Dissolve', 'slideleft': 'Slide'}.entries)
           SChip(label: t.value, on: _transition == t.key, onTap: () => _touch(() => _transition = t.key)),
@@ -379,13 +379,13 @@ class _ShotEditorScreenState extends State<ShotEditorScreen> {
         child: Row(children: [
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('MODEL (APNE AAP)', style: body(10.5, w: FontWeight.w800, color: C.faint)),
+              Text('MODEL (AUTOMATIC)', style: body(10.5, w: FontWeight.w800, color: C.faint)),
               const SizedBox(height: 2),
               Text('${s['model_label'] ?? ''} · ${qualityShort['${v['quality_pref']}'] ?? 'HD'}', style: body(14, w: FontWeight.w800)),
-              Text(_kind == 'talk' ? 'tasveer + aawaz se bolta chehra'
-                  : _kind == 'product' ? 'product ko saaf, chamakta dikhane ke liye sabse achha'
-                  : _kind == 'link' ? 'ek tasveer se doosri tak smooth'
-                  : 'kahani wale drishya ke liye sabse achha', style: body(11.5, color: C.faint)),
+              Text(_kind == 'talk' ? 'a face that speaks, from a picture + voice'
+                  : _kind == 'product' ? 'best for making a product look clean and shiny'
+                  : _kind == 'link' ? 'smooth from one picture to another'
+                  : 'best for story scenes', style: body(11.5, color: C.faint)),
               if (s['lipsync'] == true) Text('+ Sync 3 lip sync', style: body(11.5, w: FontWeight.w700, color: C.accentSoft)),
             ]),
           ),

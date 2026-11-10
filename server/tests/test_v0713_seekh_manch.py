@@ -72,7 +72,7 @@ def test_tool_registered_once():
 
 
 def test_registry_pin():
-    assert len(T.TOOLS) == 617, ("616 + 1 seekh_video (v0.713 SEEKH MANCH: learn a way of working from a "
+    assert len(T.TOOLS) == 620, ("617 + 1 shilp (v0.730 SHILP MANCH: the ArtCraft generation lane, their Omni API api.storyteller.ai, BYOK - owner 'MAKE A PLAN FOR HOOLA AI THUS HOOLA USER CAN USE THIS' -> the plan's W0). 616 + 1 seekh_video (v0.713 SEEKH MANCH: learn a way of working from a "
                                  "video - the owner's 'isse seekh lo'). Was 616 (v0.694 WEB CLONE: 615 + 1 "
                                  "web_clone), 615 (+ 1 kala v0.681 KALA MANCH), 606 (v0.665 JHAROKHA + "
                                  "duniya + sandarbh chains in between)")
@@ -125,7 +125,7 @@ def test_day_cap(env, monkeypatch):
     get_settings.cache_clear()
     for _ in range(2):
         K.watch("default", "https://youtu.be/dQw4w9WgXcQ")
-    with pytest.raises(K.SeekhError, match="2 video seekh liye"):
+    with pytest.raises(K.SeekhError, match="2 videos already learned today"):
         K.watch("default", "https://youtu.be/dQw4w9WgXcQ")
 
 
@@ -135,7 +135,7 @@ def test_switch_off_is_off(env, monkeypatch):
     get_settings.cache_clear()
     called = []
     monkeypatch.setattr(K, "_perceive_youtube", lambda vid, tenant: called.append(1) or "notes")
-    with pytest.raises(K.SeekhError, match="band"):
+    with pytest.raises(K.SeekhError, match="switched off"):
         K.watch("default", "https://youtu.be/dQw4w9WgXcQ")
     assert called == []
 
@@ -241,7 +241,7 @@ def test_watch_youtube_end_to_end(env, monkeypatch):
     assert seen["vid"] == "dQw4w9WgXcQ"
     assert out["learned"] == "Scholarship form" and out["kind"] == "website_work"
     assert out["procedure_id"] and out["recipe"]
-    assert "pehle ek baar" in out["say"] and "NOT proven" in out["note_for_you"]
+    assert "counts as proven once it has worked" in out["say"] and "NOT proven" in out["note_for_you"]
     assert [s["evidence"][0] for s in out["steps"]] == ["0:12", "1:04", "2:41"]
     # the two memories
     rows = pr.listing("default")
@@ -495,4 +495,4 @@ def test_no_network_at_import():
 def test_version_pins():
     """The house pins: pubspec and the console's version story must name SEEKH MANCH."""
     pub = (ROOT / "pubspec.yaml").read_text(encoding="utf-8")
-    assert "version: 0.715.0+714" in pub
+    assert "version: 0.749.0+748" in pub

@@ -34,7 +34,7 @@ Future<Map<String, String>?> _form(BuildContext context, String title, List<(Str
         ]),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Rehne do')),
+        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Keep it')),
         TextButton(onPressed: () => Navigator.pop(d, true), child: Text(ok)),
       ],
     ),
@@ -96,13 +96,13 @@ class _HelpdeskScreenState extends State<HelpdeskScreen> {
       .then((_) => _load());
 
   Future<void> _newTicket() async {
-    final f = await _form(context, 'Nayi IT dikkat', const [
-      ('text', 'Kya dikkat hai (apne shabdon mein)'),
+    final f = await _form(context, 'New IT problem', const [
+      ('text', 'What is the problem (in your own words)'),
       ('person', 'Kisko (naam)'),
-      ('asset', 'Kaun sa device (tag / naam, ho to)'),
-      ('error', 'Screen par error (jaisa likha hai)'),
+      ('asset', 'Which device (tag / name, if any)'),
+      ('error', 'Error on screen (as written)'),
       ('since', 'Kab se'),
-    ], ok: 'Darj karo');
+    ], ok: 'Save');
     if (f == null || (f['text'] ?? '').isEmpty) return;
     final r = await _run('POST', '/api/helpdesk/tickets', f);
     final t = _m(r?['ticket']);
@@ -134,8 +134,8 @@ class _HelpdeskScreenState extends State<HelpdeskScreen> {
                   if (_s(t['raised_by']).isNotEmpty) 'darj: ${_s(t['raised_by'])}',
                 ].join(' · '),
                 style: const TextStyle(color: C.muted, fontSize: 12)),
-            if (cur.isNotEmpty) Text('Abhi: ${_s(cur['title'])}', style: const TextStyle(fontSize: 12.5, color: C.accentSoft)),
-            if (t['late'] == true) const Text('Samay nikal gaya', style: TextStyle(fontSize: 12, color: C.bad)),
+            if (cur.isNotEmpty) Text('Now: ${_s(cur['title'])}', style: const TextStyle(fontSize: 12.5, color: C.accentSoft)),
+            if (t['late'] == true) const Text('Time has run out', style: TextStyle(fontSize: 12, color: C.bad)),
           ]),
         ),
       ),
@@ -155,9 +155,9 @@ class _HelpdeskScreenState extends State<HelpdeskScreen> {
       const SizedBox(height: 6),
       for (final t in _list(d['open'])) _ticketTile(t),
       for (final e in _list(d['expiring']))
-        Text('• ${_s(e['name'])}: ${_s(e['what'])} ${e['days']} din mein khatam (${_s(e['on'])})', style: const TextStyle(fontSize: 12.5, color: C.warn)),
+        Text('• ${_s(e['name'])}: ${_s(e['what'])} expires in ${e['days']} days (${_s(e['on'])})', style: const TextStyle(fontSize: 12.5, color: C.warn)),
       for (final r in _list(d['repeat']))
-        Text('• ${_s(r['name'])}: 90 din mein ${r['count_90d']} baar kharab (${_s(r['top_label'])})', style: const TextStyle(fontSize: 12.5, color: C.warn)),
+        Text('• ${_s(r['name'])}: broke ${r['count_90d']} times in 90 days (${_s(r['top_label'])})', style: const TextStyle(fontSize: 12.5, color: C.warn)),
       for (final w in _list(d['old_windows']))
         Text('• ${_s(w['name'])}: ${_s(w['os'])} (purana Windows)', style: const TextStyle(fontSize: 12.5, color: C.muted)),
     ]);
@@ -168,16 +168,16 @@ class _HelpdeskScreenState extends State<HelpdeskScreen> {
     final shown = _openOnly ? all.where((t) => const ['new', 'working', 'waiting_haan', 'waiting_tech'].contains(t['status'])).toList() : all;
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Row(children: [
-        Expanded(child: GradientButton(label: 'Nayi dikkat', icon: Icons.add_rounded, height: 48, onTap: _busy ? null : _newTicket)),
+        Expanded(child: GradientButton(label: 'New problem', icon: Icons.add_rounded, height: 48, onTap: _busy ? null : _newTicket)),
         const SizedBox(width: 8),
-        FilterChip(label: const Text('Sirf khule'), selected: _openOnly, onSelected: (v) => setState(() => _openOnly = v)),
+        FilterChip(label: const Text('Open only'), selected: _openOnly, onSelected: (v) => setState(() => _openOnly = v)),
       ]),
       const SizedBox(height: 10),
-      if (shown.isEmpty) const Text('Koi ticket nahi.', style: TextStyle(color: C.muted)),
+      if (shown.isEmpty) const Text('No tickets.', style: TextStyle(color: C.muted)),
       for (final t in shown) _ticketTile(t),
       if (_list(_d?['known']).isNotEmpty) ...[
         const SizedBox(height: 8),
-        Text('Is office mein kya kaam aaya', style: display(14)),
+        Text('What worked in this office', style: display(14)),
         for (final k in _list(_d?['known']).take(8))
           Text('• ${_s(k['label'])}: ${_s(k['title'])} (${k['fixed']}/${k['tried']})', style: const TextStyle(fontSize: 12.5, color: C.muted)),
       ],
@@ -185,18 +185,18 @@ class _HelpdeskScreenState extends State<HelpdeskScreen> {
   }
 
   Future<void> _addAsset([Map<String, dynamic>? a]) async {
-    final f = await _form(context, a == null ? 'Naya device' : _s(a['name']), [
+    final f = await _form(context, a == null ? 'New device' : _s(a['name']), [
       if (a == null) ('name', 'Naam (Accounts PC / Reception printer)'),
       if (a == null) ('kind', 'Kism: pc / laptop / printer / router / ups / cctv / projector / scanner / server'),
       ('brand', 'Brand'),
       ('model', 'Model'),
       ('serial', 'Serial no'),
-      ('user', 'Kaun chalata hai'),
+      ('user', 'Who runs it'),
       ('os', 'Windows version (PC ho to)'),
-      ('bought', 'Kab liya (dd-mm-yyyy)'),
-      ('warranty_until', 'Warranty kab tak'),
-      ('amc_until', 'AMC kab tak'),
-      ('vendor', 'Vendor (list mein jo hai)'),
+      ('bought', 'When bought (dd-mm-yyyy)'),
+      ('warranty_until', 'Warranty valid until'),
+      ('amc_until', 'AMC valid until'),
+      ('vendor', 'Vendor (from the list)'),
     ], ok: 'Save');
     if (f == null || f.isEmpty) return;
     if (a == null) {
@@ -212,8 +212,8 @@ class _HelpdeskScreenState extends State<HelpdeskScreen> {
       ('kind', 'Kism: amc / it / isp / printer / cctv / tally_partner / electrician / software'),
       ('phone', 'Phone (10 ank)'),
       ('email', 'Email'),
-      ('amc_until', 'AMC kab tak'),
-      ('sla_hours', 'Kitne ghante mein aane ka vaada'),
+      ('amc_until', 'AMC valid until'),
+      ('sla_hours', 'Promised response time in hours'),
     ], ok: 'Save');
     if (f == null || (f['name'] ?? '').isEmpty) return;
     await _run('POST', '/api/helpdesk/vendors', {...f, if (f['sla_hours'] != null) 'sla_hours': double.tryParse(f['sla_hours']!) ?? 0});
@@ -221,8 +221,8 @@ class _HelpdeskScreenState extends State<HelpdeskScreen> {
 
   Widget _devices() => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Wrap(spacing: 8, runSpacing: 8, children: [
-          GlassButton(label: 'Naya device', icon: Icons.devices_other_rounded, onTap: _busy ? null : () => _addAsset()),
-          GlassButton(label: 'Mere PC jodo', icon: Icons.computer_rounded, onTap: _busy ? null : () => _run('POST', '/api/helpdesk/assets/sync_pcs')),
+          GlassButton(label: 'New device', icon: Icons.devices_other_rounded, onTap: _busy ? null : () => _addAsset()),
+          GlassButton(label: 'Add my PC', icon: Icons.computer_rounded, onTap: _busy ? null : () => _run('POST', '/api/helpdesk/assets/sync_pcs')),
           GlassButton(label: 'Vendor', icon: Icons.engineering_rounded, onTap: _busy ? null : _addVendor),
         ]),
         const SizedBox(height: 10),
@@ -267,23 +267,23 @@ class _HelpdeskScreenState extends State<HelpdeskScreen> {
     final sender = TextEditingController();
     final did = <String, bool>{'clicked': false, 'entered_password': false, 'opened_attachment': false, 'money': false, 'gave_otp': false, 'remote_access': false, 'personal_data': false};
     const labels = {
-      'clicked': 'Link par click kiya',
-      'entered_password': 'Password bhar diya',
-      'opened_attachment': 'Attachment khola',
-      'money': 'Paise gaye',
-      'gave_otp': 'OTP bataya',
-      'remote_access': 'AnyDesk / remote diya',
-      'personal_data': 'Graahakon ka data gaya ho sakta hai',
+      'clicked': 'Clicked a link',
+      'entered_password': 'Entered a password',
+      'opened_attachment': 'Opened an attachment',
+      'money': 'Money was lost',
+      'gave_otp': 'Shared an OTP',
+      'remote_access': 'Gave AnyDesk / remote access',
+      'personal_data': 'Customer data may have been exposed',
     };
     final ok = await showDialog<bool>(
       context: context,
       builder: (d) => StatefulBuilder(
         builder: (d, set) => AlertDialog(
-          title: const Text('Shak wala mail / SMS'),
+          title: const Text('Suspicious mail / SMS'),
           content: SingleChildScrollView(
             child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('Text copy karke yahan daaliye. Link mat kholiye; Hoola bhi nahi kholta.', style: TextStyle(fontSize: 12, color: C.muted)),
-              TextField(controller: sender, decoration: const InputDecoration(labelText: 'Bhejne wala (email / number)')),
+              const Text('Copy the text and paste it here. Do not open the link; Hoola does not open it either.', style: TextStyle(fontSize: 12, color: C.muted)),
+              TextField(controller: sender, decoration: const InputDecoration(labelText: 'Sender (email / number)')),
               TextField(controller: text, maxLines: 5, decoration: const InputDecoration(labelText: 'Mail / message ka text')),
               const SizedBox(height: 6),
               for (final e in labels.entries)
@@ -297,8 +297,8 @@ class _HelpdeskScreenState extends State<HelpdeskScreen> {
             ]),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Rehne do')),
-            TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Jaancho')),
+            TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Keep it')),
+            TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Check')),
           ],
         ),
       ),
@@ -309,7 +309,7 @@ class _HelpdeskScreenState extends State<HelpdeskScreen> {
       await showDialog<void>(
         context: context,
         builder: (d) => AlertDialog(
-          title: const Text('Jaanch'),
+          title: const Text('Check'),
           content: SingleChildScrollView(child: HelpdeskAlertCard(app: widget.app, data: {'kind': 'security', ...r, 'incident': r['incident']})),
           actions: [TextButton(onPressed: () => Navigator.pop(d), child: const Text('Theek'))],
         ),
@@ -318,10 +318,10 @@ class _HelpdeskScreenState extends State<HelpdeskScreen> {
   }
 
   Widget _security() => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        GradientButton(label: 'Shak wala mail / SMS jaancho', icon: Icons.shield_rounded, onTap: _busy ? null : _phish),
+        GradientButton(label: 'Check a suspicious mail / SMS', icon: Icons.shield_rounded, onTap: _busy ? null : _phish),
         const SizedBox(height: 8),
         const Text(
-            'Paise gaye hon to turant 1930. Business ke computer par phishing se ghusna / virus / data leak = 6 ghante mein CERT-In ko report (incident@cert-in.org.in, 1800-11-4949).',
+            'If money was lost, call 1930 at once. A phishing break-in / virus / data leak on a business computer must be reported to CERT-In within 6 hours (incident@cert-in.org.in, 1800-11-4949).',
             style: TextStyle(fontSize: 12, color: C.muted)),
         const SizedBox(height: 10),
         for (final i in _list(_d?['incidents'])) Padding(padding: const EdgeInsets.only(bottom: 8), child: _IncidentTile(app: widget.app, i: i, onDone: _load)),
@@ -329,14 +329,14 @@ class _HelpdeskScreenState extends State<HelpdeskScreen> {
 
   Future<void> _settings() async {
     final st = _m(_d?['settings']);
-    final f = await _form(context, 'Office ki jaankari', [
-      ('office_name', 'Office ka naam (${_s(st['office_name'])})'),
+    final f = await _form(context, 'Office details', [
+      ('office_name', 'Office name (${_s(st['office_name'])})'),
       ('entity', 'Roop: company / llp / partnership / proprietor / trust / society / govt / individual (${_s(st['entity'])})'),
-      ('contact_name', 'Sampark vyakti'),
+      ('contact_name', 'Contact person'),
       ('contact_phone', 'Phone'),
       ('contact_email', 'Email'),
-      ('it_person', 'Admin password kiske paas (naam)'),
-      ('morning_time', 'Subah ka IT note (HH:MM, abhi ${_s(st['morning_time'])})'),
+      ('it_person', 'Who has the admin password (name)'),
+      ('morning_time', 'Morning IT note (HH:MM, now ${_s(st['morning_time'])})'),
     ], ok: 'Save');
     if (f == null || f.isEmpty) return;
     await _run('PUT', '/api/helpdesk/settings', f);
@@ -348,7 +348,7 @@ class _HelpdeskScreenState extends State<HelpdeskScreen> {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(_s(st['office_name']).isEmpty ? 'Office ka naam nahi diya' : _s(st['office_name']), style: const TextStyle(fontWeight: FontWeight.w800)),
+          Text(_s(st['office_name']).isEmpty ? 'No office name given' : _s(st['office_name']), style: const TextStyle(fontWeight: FontWeight.w800)),
           Text('Roop: ${_s(st['entity_label'])} · subah ka note ${_s(st['morning_time'])}', style: const TextStyle(color: C.muted, fontSize: 12.5)),
           if (_s(st['it_person']).isNotEmpty) Text('Admin: ${_s(st['it_person'])}', style: const TextStyle(color: C.muted, fontSize: 12.5)),
         ]),
@@ -359,9 +359,9 @@ class _HelpdeskScreenState extends State<HelpdeskScreen> {
         GlassButton(label: 'IT register Excel', icon: Icons.table_view_rounded, onTap: _busy ? null : () => _run('POST', '/api/helpdesk/register')),
       ]),
       const SizedBox(height: 10),
-      Text('Jawab / theek karne ka samay', style: display(14)),
+      Text('Response / fix time', style: display(14)),
       for (final p in const ['P1', 'P2', 'P3', 'P4'])
-        Text('$p: jawab ${_m(sla[p])['respond_h']} ghante, theek ${_m(sla[p])['resolve_h']} ghante', style: const TextStyle(fontSize: 12.5)),
+        Text('$p: response ${_m(sla[p])['respond_h']} hours, fix ${_m(sla[p])['resolve_h']} ghante', style: const TextStyle(fontSize: 12.5)),
       const SizedBox(height: 10),
       Text('Playbooks', style: display(14)),
       for (final p in _list(_d?['playbooks'])) Text('• ${_s(p['label'])} (${p['steps']} step, aage: ${_s(p['escalate'])})', style: const TextStyle(fontSize: 12.5, color: C.muted)),
@@ -371,7 +371,7 @@ class _HelpdeskScreenState extends State<HelpdeskScreen> {
   @override
   Widget build(BuildContext context) => Scaffold(
         appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('IT Helpdesk Sahayak')),
-        floatingActionButton: _tab <= 1 ? FloatingActionButton.extended(onPressed: _busy ? null : _newTicket, icon: const Icon(Icons.support_agent_rounded), label: const Text('Dikkat batao')) : null,
+        floatingActionButton: _tab <= 1 ? FloatingActionButton.extended(onPressed: _busy ? null : _newTicket, icon: const Icon(Icons.support_agent_rounded), label: const Text('Report a problem')) : null,
         body: Aurora(
           child: RefreshIndicator(
             onRefresh: _load,
@@ -385,7 +385,7 @@ class _HelpdeskScreenState extends State<HelpdeskScreen> {
               if (_d == null) const Center(child: CircularProgressIndicator()) else [_today(), _tickets(), _devices(), _security(), _rules()][_tab],
               const SizedBox(height: 14),
               const Text(
-                  'Hoola step-by-step batata hai; system ki setting badalna / install / reset sirf aapki haan ke baad. Password / OTP kabhi mat batayiye. Technician ko message aap bhejti hain; paisa Hoola nahi deta.',
+                  'Hoola guides you step by step; changing system settings / installing / resetting happens only after your yes. Never share passwords / OTPs. You send messages to the technician; Hoola does not pay money.',
                   style: TextStyle(color: C.faint, fontSize: 11.5)),
             ]),
           ),
@@ -414,18 +414,18 @@ class _IncidentTile extends StatelessWidget {
           Pill(_s(i['status'])),
         ]),
         if (_s(an['say']).isNotEmpty) Text(_s(an['say']), style: const TextStyle(fontSize: 12.5)),
-        Text('Mila: ${_s(i['detected_local'])}', style: const TextStyle(color: C.muted, fontSize: 12)),
-        if (due) Text('CERT-In report ${_s(i['report_due_local'])} tak (${i['hours_left'] ?? ''} ghante)', style: const TextStyle(color: C.bad, fontSize: 12.5)),
-        if (_s(i['reported_at']).isNotEmpty) Text('Report bheja${_s(i['reported_ref']).isNotEmpty ? ' (${_s(i['reported_ref'])})' : ''}', style: const TextStyle(color: C.ok, fontSize: 12.5)),
+        Text('Received: ${_s(i['detected_local'])}', style: const TextStyle(color: C.muted, fontSize: 12)),
+        if (due) Text('CERT-In report due by ${_s(i['report_due_local'])} (${i['hours_left'] ?? ''} hours left)', style: const TextStyle(color: C.bad, fontSize: 12.5)),
+        if (_s(i['reported_at']).isNotEmpty) Text('Report sent${_s(i['reported_ref']).isNotEmpty ? ' (${_s(i['reported_ref'])})' : ''}', style: const TextStyle(color: C.ok, fontSize: 12.5)),
         if (due)
           Padding(
             padding: const EdgeInsets.only(top: 8),
             child: GlassButton(
-                label: 'Maine CERT-In ko bhej diya',
+                label: 'I sent it to CERT-In',
                 icon: Icons.mark_email_read_rounded,
                 height: 40,
                 onTap: () async {
-                  final f = await _form(context, 'CERT-In report', const [('ref', 'Ticket / reference (ho to)')], ok: 'Ho gaya');
+                  final f = await _form(context, 'CERT-In report', const [('ref', 'Ticket / reference (if any)')], ok: 'Done');
                   if (f == null || !context.mounted) return;
                   await _call(context, app, 'POST', '/api/helpdesk/incidents/${_s(i['id'])}/reported', f);
                   onDone?.call();
@@ -506,10 +506,10 @@ class _HelpdeskTicketPageState extends State<HelpdeskTicketPage> {
                           style: const TextStyle(color: C.muted, fontSize: 12)),
                       for (final e in _m(t['details']).entries.where((e) => e.value is String && _s(e.value).isNotEmpty))
                         Text('${e.key}: ${e.value}', style: const TextStyle(fontSize: 12)),
-                      if (_s(t['parent_number']).isNotEmpty) Text('Wahi dikkat: ${_s(t['parent_number'])} ke saath', style: const TextStyle(fontSize: 12, color: C.warn)),
-                      if (((t['children'] as List?) ?? const []).isNotEmpty) Text('Saath jude: ${(t['children'] as List).join(', ')}', style: const TextStyle(fontSize: 12, color: C.warn)),
-                      if (t['late'] == true) const Text('Theek karne ka samay nikal gaya', style: TextStyle(fontSize: 12, color: C.bad)),
-                      if (_s(t['resolution']).isNotEmpty) Text('Hal: ${_s(t['resolution'])}', style: const TextStyle(fontSize: 12.5, color: C.ok)),
+                      if (_s(t['parent_number']).isNotEmpty) Text('Same problem: ${_s(t['parent_number'])} with', style: const TextStyle(fontSize: 12, color: C.warn)),
+                      if (((t['children'] as List?) ?? const []).isNotEmpty) Text('Linked: ${(t['children'] as List).join(', ')}', style: const TextStyle(fontSize: 12, color: C.warn)),
+                      if (t['late'] == true) const Text('The time to fix it has run out', style: TextStyle(fontSize: 12, color: C.bad)),
+                      if (_s(t['resolution']).isNotEmpty) Text('Status: ${_s(t['resolution'])}', style: const TextStyle(fontSize: 12.5, color: C.ok)),
                     ]),
                   ),
                   const SizedBox(height: 10),
@@ -520,27 +520,27 @@ class _HelpdeskTicketPageState extends State<HelpdeskTicketPage> {
                         Text('Step ${t['step_no']}/${t['total']}: ${_s(cur['title'])}', style: display(15)),
                         const SizedBox(height: 6),
                         Text(_s(cur['how']), style: const TextStyle(fontSize: 13.5, height: 1.35)),
-                        if (_s(cur['check']).isNotEmpty) Text('Dekhiye: ${_s(cur['check'])}', style: const TextStyle(fontSize: 12.5, color: C.accentSoft)),
+                        if (_s(cur['check']).isNotEmpty) Text('See: ${_s(cur['check'])}', style: const TextStyle(fontSize: 12.5, color: C.accentSoft)),
                         if (_s(cur['learned']).isNotEmpty) Text(_s(cur['learned']), style: const TextStyle(fontSize: 12, color: C.ok)),
                         const SizedBox(height: 10),
                         Wrap(spacing: 8, runSpacing: 8, children: [
-                          GradientButton(label: 'Theek hua', icon: Icons.check_rounded, height: 44, onTap: _busy ? null : () => _act('step', {'result': 'fixed'})),
-                          GlassButton(label: 'Nahi hua', icon: Icons.close_rounded, height: 44, onTap: _busy ? null : () => _act('step', {'result': 'not_fixed'})),
-                          GlassButton(label: 'Chhodo', height: 44, onTap: _busy ? null : () => _act('step', {'result': 'skipped'})),
+                          GradientButton(label: 'Fixed', icon: Icons.check_rounded, height: 44, onTap: _busy ? null : () => _act('step', {'result': 'fixed'})),
+                          GlassButton(label: 'Not fixed', icon: Icons.close_rounded, height: 44, onTap: _busy ? null : () => _act('step', {'result': 'not_fixed'})),
+                          GlassButton(label: 'Skip', height: 44, onTap: _busy ? null : () => _act('step', {'result': 'skipped'})),
                         ]),
                       ]),
                     ),
                   const SizedBox(height: 10),
                   if (open)
                     Wrap(spacing: 8, runSpacing: 8, children: [
-                      GlassButton(label: 'Technician ko bhejo', icon: Icons.engineering_rounded, onTap: _busy ? null : () => _act('escalate')),
+                      GlassButton(label: 'Send to the technician', icon: Icons.engineering_rounded, onTap: _busy ? null : () => _act('escalate')),
                       GlassButton(
                           label: 'Technician ne kiya',
                           icon: Icons.build_circle_rounded,
                           onTap: _busy
                               ? null
                               : () async {
-                                  final f = await _form(context, 'Technician', const [('note', 'Kya kiya'), ('cost', 'Kharcha (ho to)')], ok: 'Theek ho gaya');
+                                  final f = await _form(context, 'Technician', const [('note', 'What was done'), ('cost', 'Cost (if any)')], ok: 'Fixed');
                                   if (f != null) await _act('tech', {'note': f['note'] ?? '', 'fixed': true, if (f['cost'] != null) 'cost': double.tryParse(f['cost']!)});
                                 }),
                       GlassButton(
@@ -549,19 +549,19 @@ class _HelpdeskTicketPageState extends State<HelpdeskTicketPage> {
                           onTap: _busy
                               ? null
                               : () async {
-                                  final f = await _form(context, 'Detail', const [('error', 'Error ka text'), ('since', 'Kab se'), ('location', 'Kahan'), ('tried', 'Kya try kiya')]);
+                                  final f = await _form(context, 'Detail', const [('error', 'Error ka text'), ('since', 'Kab se'), ('location', 'Where'), ('tried', 'What was tried')]);
                                   if (f == null || f.isEmpty) return;
                                   setState(() => _busy = true);
                                   await _call(context, widget.app, 'PATCH', '/api/helpdesk/tickets/${widget.id}', f);
                                   await _load();
                                   if (mounted) setState(() => _busy = false);
                                 }),
-                      GlassButton(label: 'Theek ho gaya', icon: Icons.done_all_rounded, onTap: _busy ? null : () => _act('resolve')),
+                      GlassButton(label: 'Fixed', icon: Icons.done_all_rounded, onTap: _busy ? null : () => _act('resolve')),
                     ])
                   else
                     Wrap(spacing: 8, children: [
-                      GlassButton(label: 'Dobara kholo', icon: Icons.replay_rounded, onTap: _busy ? null : () => _act('status', {'status': 'reopen'})),
-                      if (t['status'] == 'resolved') GlassButton(label: 'Band karo', onTap: _busy ? null : () => _act('status', {'status': 'closed'})),
+                      GlassButton(label: 'Reopen', icon: Icons.replay_rounded, onTap: _busy ? null : () => _act('status', {'status': 'reopen'})),
+                      if (t['status'] == 'resolved') GlassButton(label: 'Close', onTap: _busy ? null : () => _act('status', {'status': 'closed'})),
                     ]),
                   if (esc.isNotEmpty) ...[
                     const SizedBox(height: 10),
@@ -576,7 +576,7 @@ class _HelpdeskTicketPageState extends State<HelpdeskTicketPage> {
                   Text('Steps', style: display(14)),
                   for (final st in _list(t['steps']))
                     Text(
-                        '${st['result'] == 'fixed' ? '✓' : st['result'] == null ? '○' : '✗'} ${_s(st['title'])}${_s(st['change']).isNotEmpty ? ' (aapki haan)' : ''}${_s(st['note']).isNotEmpty ? ' - ${_s(st['note'])}' : ''}',
+                        '${st['result'] == 'fixed' ? '✓' : st['result'] == null ? '○' : '✗'} ${_s(st['title'])}${_s(st['change']).isNotEmpty ? ' (your yes)' : ''}${_s(st['note']).isNotEmpty ? ' - ${_s(st['note'])}' : ''}',
                         style: TextStyle(fontSize: 12.5, color: st['result'] == null ? C.ink : C.muted)),
                   const SizedBox(height: 10),
                   Text('Log', style: display(14)),
@@ -608,7 +608,7 @@ class _HelpdeskTicketCardState extends State<HelpdeskTicketCard> {
     final r = await _call(context, widget.app, 'POST', '/api/helpdesk/tickets/${_s(widget.data['ticket'])}/step', {'result': result});
     if (mounted) setState(() {
       _busy = false;
-      if (r != null) _done = result == 'fixed' ? 'Theek ho gaya' : 'Agla step chat mein';
+      if (r != null) _done = result == 'fixed' ? 'Fixed' : 'The next step is in the chat';
     });
   }
 
@@ -636,15 +636,15 @@ class _HelpdeskTicketCardState extends State<HelpdeskTicketCard> {
             Text('Step ${d['step_no']}/${d['total']}: ${_s(cur['title'])}', style: const TextStyle(fontWeight: FontWeight.w700)),
             Text(_s(cur['how']), style: const TextStyle(fontSize: 12.5, height: 1.3)),
           ],
-          if (ch.isNotEmpty && ch['status'] == 'waiting') Text('Aapki haan ka card: ${_s(ch['number'])}', style: const TextStyle(fontSize: 12.5, color: C.warn)),
+          if (ch.isNotEmpty && ch['status'] == 'waiting') Text('Card for your yes: ${_s(ch['number'])}', style: const TextStyle(fontSize: 12.5, color: C.warn)),
           if (_done.isNotEmpty)
             Padding(padding: const EdgeInsets.only(top: 6), child: Text(_done, style: const TextStyle(color: C.ok, fontSize: 12.5)))
           else if (cur.isNotEmpty && open && !(ch.isNotEmpty && ch['status'] == 'waiting'))
             Padding(
               padding: const EdgeInsets.only(top: 8),
               child: Wrap(spacing: 8, runSpacing: 6, children: [
-                GlassButton(label: 'Theek hua', icon: Icons.check_rounded, height: 40, onTap: _busy ? null : () => _step('fixed')),
-                GlassButton(label: 'Nahi hua', icon: Icons.close_rounded, height: 40, onTap: _busy ? null : () => _step('not_fixed')),
+                GlassButton(label: 'Fixed', icon: Icons.check_rounded, height: 40, onTap: _busy ? null : () => _step('fixed')),
+                GlassButton(label: 'Not fixed', icon: Icons.close_rounded, height: 40, onTap: _busy ? null : () => _step('not_fixed')),
               ]),
             ),
         ]),
@@ -671,7 +671,7 @@ class _HelpdeskChangeCardState extends State<HelpdeskChangeCard> {
     final c = _m(widget.data['change']);
     String reason = '';
     if (!yes) {
-      final f = await _form(context, 'Kyun nahi? (zaroori nahi)', const [('reason', 'Wajah')], ok: 'Mana karo');
+      final f = await _form(context, 'Why not? (optional)', const [('reason', 'Reason')], ok: 'Decline');
       if (f == null) return;
       reason = f['reason'] ?? '';
     }
@@ -695,31 +695,31 @@ class _HelpdeskChangeCardState extends State<HelpdeskChangeCard> {
         Row(children: [
           Icon(careful ? Icons.warning_amber_rounded : Icons.settings_suggest_rounded, color: careful ? C.bad : C.accent),
           const SizedBox(width: 8),
-          Expanded(child: Text('Aapki haan chahiye · ${_s(c['number'])}', style: const TextStyle(fontWeight: FontWeight.w800))),
+          Expanded(child: Text('Needs your yes · ${_s(c['number'])}', style: const TextStyle(fontWeight: FontWeight.w800))),
           Pill(_s(c['kind_label'])),
         ]),
         const SizedBox(height: 6),
         Text(_s(c['what']), style: const TextStyle(fontWeight: FontWeight.w700)),
-        Text('Kahan: ${_s(c['where'])}', style: const TextStyle(fontSize: 12.5, color: C.muted)),
+        Text('Where: ${_s(c['where'])}', style: const TextStyle(fontSize: 12.5, color: C.muted)),
         const SizedBox(height: 4),
         Text(_s(c['how']), style: const TextStyle(fontSize: 12.5, height: 1.3)),
-        if (_s(c['risk']).isNotEmpty) Text('Dhyaan: ${_s(c['risk'])}', style: TextStyle(fontSize: 12, color: careful ? C.bad : C.warn)),
-        if (_s(c['undo']).isNotEmpty) Text('Wapas: ${_s(c['undo'])}', style: const TextStyle(fontSize: 12, color: C.muted)),
-        if (c['admin'] == true) const Text('Admin wale account se hoga.', style: TextStyle(fontSize: 12, color: C.muted)),
+        if (_s(c['risk']).isNotEmpty) Text('Note: ${_s(c['risk'])}', style: TextStyle(fontSize: 12, color: careful ? C.bad : C.warn)),
+        if (_s(c['undo']).isNotEmpty) Text('Rollback: ${_s(c['undo'])}', style: const TextStyle(fontSize: 12, color: C.muted)),
+        if (c['admin'] == true) const Text('It will be done from the admin account.', style: TextStyle(fontSize: 12, color: C.muted)),
         const SizedBox(height: 8),
         if (_status == 'waiting')
           Row(children: [
-            Expanded(child: GradientButton(label: 'Haan, karo', icon: Icons.check_rounded, height: 44, onTap: _busy ? null : () => _decide(true))),
+            Expanded(child: GradientButton(label: 'Yes, do it', icon: Icons.check_rounded, height: 44, onTap: _busy ? null : () => _decide(true))),
             const SizedBox(width: 8),
             Expanded(child: GlassButton(label: 'Mana', icon: Icons.close_rounded, height: 44, onTap: _busy ? null : () => _decide(false))),
           ])
         else
           Text(
               switch (_status) {
-                'approved' => 'Haan di: ab step karke batayiye theek hua ya nahi.',
+                'approved' => 'Approved: now do the step and tell us whether it worked.',
                 'rejected' => 'Mana kiya.',
-                'done' => 'Ho gaya.',
-                'failed' => 'Kiya, par theek nahi hua.',
+                'done' => 'Done.',
+                'failed' => 'Done, but it did not fix it.',
                 _ => _status,
               },
               style: TextStyle(color: _status == 'rejected' ? C.muted : C.ok, fontSize: 12.5)),
@@ -744,7 +744,7 @@ class HelpdeskEscalateCard extends StatelessWidget {
           const Icon(Icons.engineering_rounded, color: C.accent),
           const SizedBox(width: 8),
           Expanded(
-              child: Text('${_s(data['number'])} technician ke liye${v.isNotEmpty ? ' · ${_s(v['name'])}' : ''}',
+              child: Text('${_s(data['number'])} for the technician${v.isNotEmpty ? ' · ${_s(v['name'])}' : ''}',
                   style: const TextStyle(fontWeight: FontWeight.w800))),
         ]),
         const SizedBox(height: 6),
@@ -761,7 +761,7 @@ class HelpdeskEscalateCard extends StatelessWidget {
               height: 40,
               onTap: () {
                 Clipboard.setData(ClipboardData(text: _s(e['text'])));
-                _snack(context, 'Copy ho gaya');
+                _snack(context, 'Copied');
               }),
           for (final l in _list(e['links'])) GlassButton(label: _s(l['label']), icon: Icons.map_rounded, height: 40, onTap: () => Native.openExternal(url: _s(l['url']))),
         ]),
@@ -789,7 +789,7 @@ class HelpdeskAlertCard extends StatelessWidget {
           Icon(security ? Icons.gpp_maybe_rounded : Icons.alarm_rounded, color: security ? C.warn : C.bad),
           const SizedBox(width: 8),
           Expanded(
-              child: Text(security ? 'Suraksha jaanch${_s(data['number']).isNotEmpty ? ' · ${_s(data['number'])}' : ''}' : 'IT yaad dilana',
+              child: Text(security ? 'Security check${_s(data['number']).isNotEmpty ? ' · ${_s(data['number'])}' : ''}' : 'IT yaad dilana',
                   style: const TextStyle(fontWeight: FontWeight.w800))),
         ]),
         const SizedBox(height: 6),
@@ -806,7 +806,7 @@ class HelpdeskAlertCard extends StatelessWidget {
                 height: 40,
                 onTap: () {
                   Clipboard.setData(ClipboardData(text: draft));
-                  _snack(context, 'Draft copy ho gaya: apne email se bhejiye');
+                  _snack(context, 'Draft copied: send it from your own email');
                 }),
             GlassButton(label: '1930 call', icon: Icons.call_rounded, height: 40, onTap: () => Native.openExternal(url: 'tel:1930')),
           ]),

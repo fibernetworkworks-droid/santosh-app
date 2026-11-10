@@ -150,14 +150,14 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
     from ..site import service as S
     t, site = ctx.tenant_id, str(a.get("site") or "")
     if action in _OWNER_ONLY and not _owner(ctx):
-        raise ToolError("Sirf maalkin yeh kar sakti hain.")
+        raise ToolError("Only the owner can do this.")
     if action in _TAP_LIKE and not _owner(ctx):
-        raise ToolError("Plan / look sirf maalkin chunti hain (app ke card par).")
+        raise ToolError("Only the owner picks the plan / look (on the card in the app).")
     conv = ctx.conversation_id or ""
     if action not in _NO_SITE and str(ctx.actor).startswith("staff:"):
         from ..site import care as SC
         if not SC.staff_ok(t, site, ctx.actor):
-            raise ToolError("Yeh website aapko di nahi gayi; maalkin se kahiye ki aapko assign karein.")
+            raise ToolError("This website was not given to you; ask the owner to assign it to you.")
     if action == "new":
         v = S.new(t, str(a.get("brief") or ""), conv, str(a.get("name") or ""), "", str(a.get("goal") or ""),
                   str(a.get("style") or ""), a.get("answers") if isinstance(a.get("answers"), dict) else None,
@@ -205,13 +205,13 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             elif a.get("dataset"):
                 rows = CAT.from_dataset(t, str(a["dataset"]))
             else:
-                return {"error": "Google Sheet (sheet) ya dataset id chahiye; file ho to console > Website > App & data > Catalogue mein daaliye."}
+                return {"error": "A Google Sheet (sheet) or a dataset id is needed; for a file, upload it in console > Website > App & data > Catalogue."}
             v = CAT.preview(t, site, str(a.get("coll") or ""), rows, None, str(a.get("name") or ""), "", "chat")
         except CAT.CatalogError as e:
             return {"error": str(e)}
         return {k: v.get(k) for k in ("coll", "items", "new", "changed", "same", "rejected", "thin", "dup", "photos", "mapping")} | {
             "rejected_rows": v["rejected_rows"][:5],
-            "say": v["say"] + " Apply: console > Website > App & data > Catalogue (aapka tap). Phir nayi version banegi."}
+            "say": v["say"] + " Apply: console > Website > App & data > Catalogue (her tap). A new version is made after that."}
     if action == "grow":
         v = S.grow(t, site, int(a.get("page_count") or 0), str(a.get("instruction") or a.get("brief") or ""))
         return {k: v.get(k) for k in ("id", "number", "status", "mapping", "say")}
@@ -219,12 +219,12 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         return S.answer(t, site, a.get("answers") if isinstance(a.get("answers"), dict) else {})
     if action == "plan_ok":
         v = S.approve_plan(t, site, conv, a.get("pages") if isinstance(a.get("pages"), list) else None)
-        return {"status": v["status"], "say": "3 looks ban rahe hain; card par aa jayenge (poll mat kariye)."}
+        return {"status": v["status"], "say": "3 looks are being made; they will arrive on the card (do not poll)."}
     if action == "look":
         cf = a.get("colors_from")
         v = S.choose_look(t, site, int(a.get("index") or 0), int(cf) if cf is not None else None, conv)
         return {"status": v["status"], "preview": v["preview"],
-                "say": "Banana shuru. Har section ban-te hi live preview mein dikhega."}
+                "say": "Build started. Each section shows in the live preview as soon as it is made."}
     if action == "change":
         return S.change(t, site, str(a.get("instruction") or ""), conv)
     if action == "photo":
@@ -263,7 +263,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
     if action == "github":
         from ..site import github as GH
         c = GH.request(t, site, str(a.get("repo") or ""), a.get("private", True) is not False, conv)
-        return {"repo": c["repo"], "private": c["private"], "files": c["files"], "say": c["say"] + " (Card par haan unhe deni hai.)"}
+        return {"repo": c["repo"], "private": c["private"], "files": c["files"], "say": c["say"] + " (She must say yes on the card.)"}
     if action == "assign":
         from ..site import care as SC
         return SC.assign(t, site, a.get("client") if a.get("client") is not None else None,
@@ -318,7 +318,7 @@ def _domains(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         c = DM.buy_request(t, site, str(a.get("domain") or ""), bool(a.get("auto_renew")), conv,
                            a.get("registrant") if isinstance(a.get("registrant"), dict) else None)
         return {"card": c["id"], "amount": c["amount"], "renew_inr": c["renew_inr"], "lines": c["lines"],
-                "say": c["say"] + " (Card par fingerprint se haan unhe hi deni hai; aap khud nahi khareed sakte.)"}
+                "say": c["say"] + " (Only she can say yes on the card, with her fingerprint; you cannot buy it yourself.)"}
     return DM.kyc_done(t, str(a.get("domain") or ""))
 
 
@@ -330,7 +330,7 @@ def _hosting(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
     t, site, conv = ctx.tenant_id, str(a.get("site") or ""), ctx.conversation_id or ""
     if action == "launch":
         c = H.launch_request(t, site, a.get("free", True) is not False, conv)
-        return {"hosts": c["hosts"], "blockers": c["blockers"], "say": c["say"] + " (Card par 'Haan, live karo' unhe hi dabana hai.)"}
+        return {"hosts": c["hosts"], "blockers": c["blockers"], "say": c["say"] + " (Only she can press 'Haan, live karo' on the card.)"}
     if action == "domain":
         c = H.connect_domain(t, site, str(a.get("domain") or ""), conv, str(a.get("primary") or ""))
         return {"domain": c["domain"], "provider": c["plan"]["provider"], "changes": c["plan"]["words"],
@@ -343,8 +343,8 @@ def _hosting(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         d = D.norm_domain(str(a.get("domain") or ""))
         p = D.make_plan(t, sid, d, D.email_records(d, str(a.get("provider") or ""), str(a.get("report_to") or "")), "email")
         S._publish(t, "site_dns", {"kind": "dns", "domain": d, "plan": p, "push": True,
-                                   "say": f"{d} par email ke liye {p['todo']} DNS badlav; aapki haan se."}, conv)
-        return {"plan": p["id"], "changes": p["words"], "say": "Email DNS ka card bhej diya (haan unhe dena hai)."}
+                                   "say": f"{p['todo']} DNS changes for email on {d}; with her yes."}, conv)
+        return {"plan": p["id"], "changes": p["words"], "say": "The email DNS card was sent (she must say yes)."}
     if action == "rollback":
         c = H.rollback_request(t, site, int(a.get("version") or 0), conv)
         return {"say": c["say"]}

@@ -174,7 +174,7 @@ def dues(r: AppProject, w: W.Who) -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------- v0.375 KHATA YAAD (App Sahayak Phase 39): payment reminders
-# For customers who owe, a plain Hinglish reminder ready to go, two official ways, both started ONLY by her:
+# For customers who owe, a plain English reminder ready to go, two official ways, both started ONLY by her:
 #   * "phone": a wa.me link with the text filled in - she opens it and sends it herself from her own WhatsApp (nothing
 #     automated, no personal-WhatsApp automation ever);
 #   * "template": her official WhatsApp Business number (Meta Cloud API) with a UTILITY template SHE got approved, params

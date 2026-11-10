@@ -88,7 +88,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
     by = getattr(ctx, "actor", "owner") or "owner"
     try:
         if action in ("settings", "schedule", "amc", "paid") and not _owner(ctx):
-            raise ToolError("Yeh sirf owner kar sakti hain.")
+            raise ToolError("Only the owner can do this.")
         if action == "settings":
             return S.save_settings(t, **_pick(a, ("business", "phone", "address", "gstin", "gst_on", "gst_pct", "sac", "prices", "day_start",
                                                   "day_end", "work_days", "travel_minutes", "lead_minutes", "remind_days", "terms", "rule",
@@ -103,7 +103,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
                                               "customer", "status")))
         if action == "import":
             if not a.get("file_id"):
-                raise ToolError("file_id chahiye (sheet chat mein bhejiye).")
+                raise ToolError("file_id needed (send the sheet in the chat).")
             return S.import_units(t, file_id=_s(a.get("file_id")))
         if action == "amc":
             return S.set_amc(t, _s(a.get("unit")), _s(a.get("plan")) or "non_comprehensive", _s(a.get("start")), a.get("months") or 12,

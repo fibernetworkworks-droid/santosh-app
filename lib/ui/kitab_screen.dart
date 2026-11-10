@@ -39,7 +39,7 @@ Future<Map<String, String>?> _form(BuildContext context, String title, List<(Str
         ]),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Rehne do')),
+        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Keep it')),
         TextButton(onPressed: () => Navigator.pop(d, true), child: Text(ok)),
       ],
     ),
@@ -71,7 +71,7 @@ Widget _draftButtons(Map<String, dynamic> draft) {
 
 const _passLabel = {'proof': 'Proofread', 'copy': 'Copy edit', 'line': 'Line edit', 'developmental': 'Developmental'};
 const _statusLabel = {
-  'drafting': 'Likh rahi', 'editing': 'Edit', 'submission': 'Bheji', 'production': 'Chhapai', 'published': 'Chhapi', 'done': 'Poori'
+  'drafting': 'Writing', 'editing': 'Editing', 'submission': 'Submitted', 'production': 'Printing', 'published': 'Printed', 'done': 'Complete'
 };
 
 class KitabScreen extends StatefulWidget {
@@ -105,9 +105,9 @@ class _KitabScreenState extends State<KitabScreen> {
       .then((_) => _load());
 
   Future<void> _newBook() async {
-    final f = await _form(context, 'Nayi kitaab', const [
-      ('title', 'Naam (title)'), ('author', 'Lekhak'), ('lang', 'Bhasha: hi | mr | en'), ('kind', 'fiction | nonfiction | poetry | academic | children | translation'),
-      ('genre', 'Genre'), ('deadline', 'Deadline (YYYY-MM-DD)'), ('client', 'Client ka naam (agar kisi aur ki kitaab edit kar rahi hain)'),
+    final f = await _form(context, 'New book', const [
+      ('title', 'Naam (title)'), ('author', 'Lekhak'), ('lang', 'Language: hi | mr | en'), ('kind', 'fiction | nonfiction | poetry | academic | children | translation'),
+      ('genre', 'Genre'), ('deadline', 'Deadline (YYYY-MM-DD)'), ('client', 'Client name (if you are editing someone else\'s book)'),
     ]);
     if (f == null || !mounted) return;
     final body = <String, dynamic>{...f};
@@ -135,7 +135,7 @@ class _KitabScreenState extends State<KitabScreen> {
                 Text('${_s(b['chapters'])} chapter · ${_s(b['words'])} shabd · ${_statusLabel[_s(b['status'])] ?? _s(b['status'])}'
                     '${b['mine'] == false ? ' · client' : ''}', style: const TextStyle(fontSize: 12.5, color: C.muted)),
                 if ((b['open_suggestions'] ?? 0) != 0)
-                  Text('${_s(b['open_suggestions'])} sujhav aapki nazar ka intezaar', style: const TextStyle(fontSize: 12, color: C.accent)),
+                  Text('${_s(b['open_suggestions'])} suggestions waiting for your review', style: const TextStyle(fontSize: 12, color: C.accent)),
               ])),
               const Icon(Icons.chevron_right_rounded, color: C.faint),
             ]),
@@ -148,21 +148,21 @@ class _KitabScreenState extends State<KitabScreen> {
     return ListView(padding: const EdgeInsets.all(16), children: [
       Glass(child: Text(_s(day['say']), style: const TextStyle(fontSize: 14))),
       const SizedBox(height: 12),
-      if (_list(_d?['cards']).isNotEmpty) const Caption('AAPKI HAAN KA INTEZAAR'),
+      if (_list(_d?['cards']).isNotEmpty) const Caption('WAITING FOR YOUR YES'),
       for (final c in _list(_d?['cards']))
         Padding(padding: const EdgeInsets.only(bottom: 10), child: KitabCardCard(app: widget.app, data: {'card': c}, onDone: _load)),
-      if (_strs(day['due']).isNotEmpty) ...[const Caption('TAREEKHEIN'), for (final x in _strs(day['due'])) Text('• $x')],
+      if (_strs(day['due']).isNotEmpty) ...[const Caption('DATES'), for (final x in _strs(day['due'])) Text('• $x')],
       if (_strs(day['follow']).isNotEmpty) ...[const SizedBox(height: 8), const Caption('FOLLOW-UP'), for (final x in _strs(day['follow'])) Text('• $x')],
       const SizedBox(height: 16),
-      GradientButton(label: 'Nayi kitaab', icon: Icons.add_rounded, onTap: _newBook),
+      GradientButton(label: 'New book', icon: Icons.add_rounded, onTap: _newBook),
     ]);
   }
 
   Widget _kitaabein() => ListView(padding: const EdgeInsets.all(16), children: [
         for (final b in _list(_d?['books'])) _bookTile(b),
-        if (_list(_d?['books']).isEmpty) const Text('Abhi koi kitaab nahi.', style: TextStyle(color: C.muted)),
+        if (_list(_d?['books']).isEmpty) const Text('No books yet.', style: TextStyle(color: C.muted)),
         const SizedBox(height: 8),
-        GlassButton(label: 'Nayi kitaab', icon: Icons.add_rounded, onTap: _newBook),
+        GlassButton(label: 'New book', icon: Icons.add_rounded, onTap: _newBook),
       ]);
 
   Widget _niyam() {
@@ -171,17 +171,17 @@ class _KitabScreenState extends State<KitabScreen> {
     return ListView(padding: const EdgeInsets.all(16), children: [
       Glass(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text('${_s(st['name'])} · ${_s(st['role'])}', style: const TextStyle(fontWeight: FontWeight.w800)),
-        Text('Rate: ${rate.isEmpty ? 'tay nahi' : '${_s(rate['amount'])} per ${_s(rate['per'])}'}', style: const TextStyle(color: C.muted)),
-        Text('GSTIN: ${_s(st['gstin']).isEmpty ? 'nahi' : _s(st['gstin'])} · UPI: ${_s(st['upi_id'])}', style: const TextStyle(color: C.muted)),
-        Text('Follow-up: ${_s(st['follow_days'])} din baad · subah ka note ${_s(st['morning_time'])}', style: const TextStyle(color: C.muted)),
+        Text('Rate: ${rate.isEmpty ? 'not set' : '${_s(rate['amount'])} per ${_s(rate['per'])}'}', style: const TextStyle(color: C.muted)),
+        Text('GSTIN: ${_s(st['gstin']).isEmpty ? 'none' : _s(st['gstin'])} · UPI: ${_s(st['upi_id'])}', style: const TextStyle(color: C.muted)),
+        Text('Follow-up: after ${_s(st['follow_days'])} days · morning note at ${_s(st['morning_time'])}', style: const TextStyle(color: C.muted)),
       ])),
       const SizedBox(height: 10),
       GlassButton(label: 'Badlo', icon: Icons.edit_rounded, onTap: () async {
         final f = await _form(context, 'Niyam', const [
-          ('name', 'Aapka naam / pen name'), ('role', 'author | editor | publisher'), ('lang', 'Bhasha: hi | mr | en'),
+          ('name', 'Your name / pen name'), ('role', 'author | editor | publisher'), ('lang', 'Language: hi | mr | en'),
           ('rate_per', 'Rate per: word | page | hour | flat'), ('rate_amount', 'Rate (Rs)'), ('gstin', 'GSTIN (ho to)'),
-          ('sac', 'SAC (CA se)'), ('upi_id', 'UPI ID'), ('email', 'Email'), ('phone', 'Phone'), ('follow_days', 'Follow-up kitne din baad'),
-          ('morning_time', 'Subah ka note (HH:MM)'), ('rules', 'Aapke niyam'),
+          ('sac', 'SAC (from your CA)'), ('upi_id', 'UPI ID'), ('email', 'Email'), ('phone', 'Phone'), ('follow_days', 'Follow up after how many days'),
+          ('morning_time', 'Subah ka note (HH:MM)'), ('rules', 'Your rules'),
         ], initial: {
           'name': _s(st['name']), 'role': _s(st['role']), 'lang': _s(st['lang']), 'rate_per': _s(rate['per']),
           'rate_amount': _s(rate['amount']), 'gstin': _s(st['gstin']), 'sac': _s(st['sac']), 'upi_id': _s(st['upi_id']),
@@ -199,7 +199,7 @@ class _KitabScreenState extends State<KitabScreen> {
       const SizedBox(height: 14),
       for (final x in _strs(st['notes'])) Padding(padding: const EdgeInsets.only(bottom: 6),
           child: Text(x, style: const TextStyle(fontSize: 12, color: C.faint))),
-      const Caption('SROT (TAREEKH KE SAATH)'),
+      const Caption('SOURCES (WITH DATES)'),
       for (final s in (_d?['sources'] as List? ?? const []))
         if (s is List && s.length >= 3)
           Padding(padding: const EdgeInsets.only(bottom: 6),
@@ -284,14 +284,14 @@ class _KitabBookPageState extends State<KitabBookPage> {
   }
 
   Future<void> _import() async {
-    final f = await _form(context, 'Manuscript daaliye', const [('text', 'Poora text (Chapter / अध्याय heading se chapter bante hain)')]);
+    final f = await _form(context, 'Add the manuscript', const [('text', 'Full text (chapters are made from Chapter / अध्याय headings)')]);
     if (f == null || f['text'] == null) return;
     await _run('POST', '$_base/import', {'text': f['text']});
   }
 
   Future<void> _export(String what) async {
     final r = await _run('POST', '$_base/export', {'what': what});
-    if (r != null && mounted) _snack(context, '${_s(r['say'])} Chat mein file mili.');
+    if (r != null && mounted) _snack(context, '${_s(r['say'])} The file is in the chat.');
   }
 
   Widget _section(String title, List<Widget> children) => Padding(
@@ -304,7 +304,7 @@ class _KitabBookPageState extends State<KitabBookPage> {
     final b = _b;
     return Scaffold(
       backgroundColor: C.bgTop,
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(b == null ? 'Kitaab' : '${_s(b['number'])} · ${_s(b['title'])}')),
+      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(b == null ? 'Book' : '${_s(b['number'])} · ${_s(b['title'])}')),
       body: b == null
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
@@ -327,9 +327,9 @@ class _KitabBookPageState extends State<KitabBookPage> {
                           .then((_) => _load()),
                     ),
                   Wrap(spacing: 8, runSpacing: 6, children: [
-                    GlassButton(label: 'Manuscript daalo', icon: Icons.upload_file_rounded, height: 40, onTap: _busy ? null : _import),
-                    GlassButton(label: 'Naya chapter', icon: Icons.add_rounded, height: 40, onTap: _busy ? null : () async {
-                      final f = await _form(context, 'Naya chapter', const [('title', 'Naam'), ('text', 'Text')]);
+                    GlassButton(label: 'Add the manuscript', icon: Icons.upload_file_rounded, height: 40, onTap: _busy ? null : _import),
+                    GlassButton(label: 'New chapter', icon: Icons.add_rounded, height: 40, onTap: _busy ? null : () async {
+                      final f = await _form(context, 'New chapter', const [('title', 'Naam'), ('text', 'Text')]);
                       if (f != null) await _run('POST', '$_base/chapters', f);
                     }),
                   ]),
@@ -339,20 +339,20 @@ class _KitabBookPageState extends State<KitabBookPage> {
                   for (final e in _m(_m(b['style'])['spellings']).entries) Text('• ${e.key} -> ${e.value}', style: const TextStyle(fontSize: 12.5)),
                   Wrap(spacing: 8, runSpacing: 6, children: [
                     GlassButton(label: 'Naam jodo', height: 40, onTap: () async {
-                      final f = await _form(context, 'Paatra / naam', const [('name', 'Naam (sahi spelling)'), ('note', 'Note')]);
+                      final f = await _form(context, 'Paatra / naam', const [('name', 'Name (correct spelling)'), ('note', 'Note')]);
                       if (f != null) await _run('PUT', '$_base/style', {'characters': [f]});
                     }),
-                    GlassButton(label: 'Spelling tay karo', height: 40, onTap: () async {
-                      final f = await _form(context, 'Kaunsi spelling sahi?', const [('choose', 'Sahi wala shabd (baaki iske hisaab se badlenge)')]);
+                    GlassButton(label: 'Fix the spelling', height: 40, onTap: () async {
+                      final f = await _form(context, 'Which spelling is right?', const [('choose', 'The correct word (the rest will be changed to match)')]);
                       if (f != null) await _run('PUT', '$_base/style', f);
                     }),
                     GlassButton(label: 'Purn viram: । / .', height: 40, onTap: () async {
-                      final f = await _form(context, 'Purn viram', const [('full_stop', 'danda (।) ya period (.)')]);
+                      final f = await _form(context, 'Purn viram', const [('full_stop', 'danda (।) or period (.)')]);
                       if (f != null) await _run('PUT', '$_base/style', {'conventions': {'full_stop': f['full_stop']}});
                     }),
                   ]),
                 ]),
-                _section('ANUMATI (DOOSRON KE SHABD)', [
+                _section('PERMISSION (OTHERS\' WORDS)', [
                   Text(_s(_perms?['say']), style: const TextStyle(fontSize: 12.5)),
                   for (final p in _list(_perms?['permissions']))
                     ListTile(
@@ -363,8 +363,8 @@ class _KitabBookPageState extends State<KitabBookPage> {
                         onSelected: (v) async {
                           if (v == 'edit') {
                             final f = await _form(context, _s(p['number']), const [
-                              ('source', 'Kiski rachna'), ('holder', 'Hak kiske paas'), ('contact', 'Email / sampark'),
-                              ('death_year', 'Lekhak ki mrityu ka saal (public domain ke liye)'), ('credit', 'Credit line'),
+                              ('source', 'Kiski rachna'), ('holder', 'Who holds the rights'), ('contact', 'Email / contact'),
+                              ('death_year', 'Year of the author\'s death (for public domain)'), ('credit', 'Credit line'),
                               ('status', 'needed | asked | granted | refused | fair_dealing | public_domain | own | removed'),
                             ], initial: {'source': _s(p['source']), 'holder': _s(p['holder']), 'contact': _s(p['contact']),
                               'credit': _s(p['credit']), 'status': _s(p['status'])});
@@ -377,12 +377,12 @@ class _KitabBookPageState extends State<KitabBookPage> {
                           }
                         },
                         itemBuilder: (_) => const [
-                          PopupMenuItem(value: 'edit', child: Text('Likho / badlo')),
-                          PopupMenuItem(value: 'ask', child: Text('Anumati ki chitthi')),
+                          PopupMenuItem(value: 'edit', child: Text('Write / change')),
+                          PopupMenuItem(value: 'ask', child: Text('Permission letter')),
                         ],
                       ),
                     ),
-                  GlassButton(label: 'Manuscript mein dhoondho', icon: Icons.search_rounded, height: 40,
+                  GlassButton(label: 'Search the manuscript', icon: Icons.search_rounded, height: 40,
                       onTap: _busy ? null : () => _run('POST', '$_base/permissions/scan')),
                 ]),
                 _section('ISBN AUR CHECKLIST', [
@@ -393,7 +393,7 @@ class _KitabBookPageState extends State<KitabBookPage> {
                       dense: true,
                       value: _s(it['status']) == 'done',
                       title: Text(_s(it['label']), style: const TextStyle(fontSize: 12.5)),
-                      subtitle: Text([_s(it['due']).isEmpty ? '' : 'tak: ${_s(it['due'])}', _s(it['note']), _s(it['ref'])]
+                      subtitle: Text([_s(it['due']).isEmpty ? '' : 'by: ${_s(it['due'])}', _s(it['note']), _s(it['ref'])]
                           .where((x) => x.isNotEmpty).join(' · '), style: const TextStyle(fontSize: 11)),
                       onChanged: (v) => _run('POST', '$_base/checklist', {'item': it['key'], 'status': v == true ? 'done' : 'todo'}),
                     ),
@@ -423,16 +423,16 @@ class _KitabBookPageState extends State<KitabBookPage> {
                               final r = await _run('POST', '$_base/submissions/${_s(x['number'])}/pitch', {});
                               if (r != null && _s(r['status']) == 'blanks' && mounted) {
                                 final p = _m(r['pitch']);
-                                final f = await _form(context, 'Pitch ([blank] bhariye)', const [('subject', 'Subject'), ('letter', 'Letter'), ('synopsis', 'Synopsis')],
+                                final f = await _form(context, 'Pitch (fill the [blank])', const [('subject', 'Subject'), ('letter', 'Letter'), ('synopsis', 'Synopsis')],
                                     initial: {'subject': _s(p['subject']), 'letter': _s(p['letter']), 'synopsis': _s(p['synopsis'])}, ok: 'Save');
                                 if (f != null) await _run('POST', '$_base/submissions/${_s(x['number'])}/pitch', f);
                               }
                             }, child: const Text('Pitch'))
                           : null,
                     ),
-                  GlassButton(label: 'Nayi jagah', icon: Icons.send_rounded, height: 40, onTap: () async {
-                    final f = await _form(context, 'Kahan bhejna hai', const [
-                      ('to', 'Publisher / agent'), ('email', 'Email'), ('guidelines', 'Unke niyam (paste)'), ('exclusive', 'Exclusive maangte hain? haan / nahi'),
+                  GlassButton(label: 'New place', icon: Icons.send_rounded, height: 40, onTap: () async {
+                    final f = await _form(context, 'Where to send', const [
+                      ('to', 'Publisher / agent'), ('email', 'Email'), ('guidelines', 'Their guidelines (paste)'), ('exclusive', 'Do they ask for exclusive? yes / no'),
                     ]);
                     if (f == null) return;
                     final body = <String, dynamic>{...f, 'exclusive': (f['exclusive'] ?? '').toLowerCase().startsWith('h')};
@@ -442,12 +442,12 @@ class _KitabBookPageState extends State<KitabBookPage> {
                 _section('ROYALTY', [
                   Text(_s(_roy?['say'])),
                   for (final r in _list(_roy?['statements']))
-                    Text('${_s(r['period'])} ${_s(r['format'])}: ${_s(r['units'])} copies · banta ${_s(r['expected'])} · statement ${_s(r['stated'])}'
+                    Text('${_s(r['period'])} ${_s(r['format'])}: ${_s(r['units'])} copies · due ${_s(r['expected'])} · statement ${_s(r['stated'])}'
                         '${r['diff'] != null && (r['diff'] as num).abs() >= 1 ? ' · farq ${_s(r['diff'])}' : ''}', style: const TextStyle(fontSize: 12.5)),
                   GlassButton(label: 'Statement jodo', height: 40, onTap: () async {
                     final f = await _form(context, 'Royalty statement', const [
                       ('period', 'Avadhi (Apr-Sep 2026)'), ('period_end', 'Ant tareekh (YYYY-MM-DD)'), ('format', 'paperback | ebook ...'),
-                      ('units', 'Copies biki'), ('returns', 'Wapas'), ('price', 'MRP'), ('stated', 'Statement mein royalty'), ('tds', 'TDS kata'),
+                      ('units', 'Copies sold'), ('returns', 'Returned'), ('price', 'MRP'), ('stated', 'Royalty in the statement'), ('tds', 'TDS deducted'),
                     ]);
                     if (f == null) return;
                     final body = <String, dynamic>{...f};
@@ -462,7 +462,7 @@ class _KitabBookPageState extends State<KitabBookPage> {
                     Text(_s(_m(b['client'])['name'])),
                     Wrap(spacing: 8, runSpacing: 6, children: [
                       GlassButton(label: 'Invoice card', icon: Icons.receipt_long_rounded, height: 40, onTap: _busy ? null : () => _run('POST', '$_base/invoice', {})),
-                      GlassButton(label: 'Edit ki hui file bhejo', icon: Icons.outbox_rounded, height: 40, onTap: _busy ? null : () => _run('POST', '$_base/deliver')),
+                      GlassButton(label: 'Send the edited file', icon: Icons.outbox_rounded, height: 40, onTap: _busy ? null : () => _run('POST', '$_base/deliver')),
                     ]),
                   ]),
                 _section('FILES', [
@@ -535,8 +535,8 @@ class _KitabChapterPageState extends State<KitabChapterPage> {
     return Scaffold(
       backgroundColor: C.bgTop,
       appBar: AppBar(backgroundColor: Colors.transparent, title: Text(c == null ? 'Chapter' : '${_s(c['n'])}. ${_s(c['title'])}'), actions: [
-        IconButton(icon: const Icon(Icons.edit_note_rounded), tooltip: 'Khud likho', onPressed: c == null ? null : () async {
-          final f = await _form(context, 'Aapka text', const [('text', 'Text')], initial: {'text': _s(c['text'])}, ok: 'Save');
+        IconButton(icon: const Icon(Icons.edit_note_rounded), tooltip: 'Write it myself', onPressed: c == null ? null : () async {
+          final f = await _form(context, 'Your text', const [('text', 'Text')], initial: {'text': _s(c['text'])}, ok: 'Save');
           if (f != null) await _run('PUT', _base, {'text': f['text'] ?? ''});
         }),
       ]),
@@ -550,25 +550,25 @@ class _KitabChapterPageState extends State<KitabChapterPage> {
                 Wrap(spacing: 8, runSpacing: 6, children: [
                   for (final e in _passLabel.entries)
                     GlassButton(label: e.value, height: 38, onTap: _busy ? null : () => _run('POST', '$_base/pass', {'pass': e.key})),
-                  GlassButton(label: 'Anuvaad', icon: Icons.translate_rounded, height: 38, onTap: _busy ? null : () async {
-                    final f = await _form(context, 'Kis bhasha mein?', const [('to', 'Hindi / Marathi / English ...')]);
+                  GlassButton(label: 'Translation', icon: Icons.translate_rounded, height: 38, onTap: _busy ? null : () async {
+                    final f = await _form(context, 'In which language?', const [('to', 'Hindi / Marathi / English ...')]);
                     if (f != null) await _run('POST', '$_base/translate', f);
                   }),
                 ]),
                 const SizedBox(height: 10),
                 if (_s(c['letter']).isNotEmpty)
                   Glass(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    const Caption("EDITOR'S LETTER (SIRF RAAY, TEXT NAHI BADLA)"),
+                    const Caption("EDITOR\'S LETTER (OPINION ONLY, TEXT NOT CHANGED)"),
                     Text(_s(c['letter']), style: const TextStyle(fontSize: 13)),
                   ])),
                 const SizedBox(height: 10),
                 if (sugs.isNotEmpty) ...[
-                  Caption('SUJHAV (${sugs.length}) · AAPKA TEXT TABHI BADLEGA JAB AAP MAANENGI'),
+                  Caption('SUGGESTIONS (${sugs.length}) · YOUR TEXT CHANGES ONLY WHEN YOU ACCEPT'),
                   Row(children: [
                     TextButton(onPressed: () => setState(() => _picked
                       ..clear()
-                      ..addAll(changes.map((s) => _s(s['id'])))), child: const Text('Saare badlav chuno')),
-                    TextButton(onPressed: () => setState(_picked.clear), child: const Text('Koi nahi')),
+                      ..addAll(changes.map((s) => _s(s['id'])))), child: const Text('Choose all changes')),
+                    TextButton(onPressed: () => setState(_picked.clear), child: const Text('None')),
                   ]),
                   for (final s in sugs)
                     Glass(
@@ -599,14 +599,14 @@ class _KitabChapterPageState extends State<KitabChapterPage> {
                       ]),
                     ),
                   Wrap(spacing: 8, runSpacing: 6, children: [
-                    GradientButton(label: 'Chune hue maano (${_picked.length})', height: 44, onTap: _busy || _picked.isEmpty ? null : () => _decide(true)),
+                    GradientButton(label: 'Accept chosen (${_picked.length})', height: 44, onTap: _busy || _picked.isEmpty ? null : () => _decide(true)),
                     GlassButton(label: 'Hatao', height: 44, onTap: _busy || _picked.isEmpty ? null : () => _decide(false)),
-                    GlassButton(label: 'Hatao + dobara mat dikhana', height: 44,
+                    GlassButton(label: 'Remove + do not show again', height: 44,
                         onTap: _busy || _picked.isEmpty ? null : () => _decide(false, remember: true)),
                   ]),
                   const SizedBox(height: 12),
                 ],
-                const Caption('AAPKA TEXT'),
+                const Caption('YOUR TEXT'),
                 Glass(child: SelectableText(_s(c['text']), style: const TextStyle(fontSize: 14, height: 1.5))),
                 const SizedBox(height: 10),
                 for (final (i, v) in _list(c['versions']).indexed)
@@ -637,7 +637,7 @@ class _KitabCardCardState extends State<KitabCardCard> {
     final id = _s(_c['id']);
     String reason = '';
     if (!yes) {
-      final f = await _form(context, 'Kyun nahi?', const [('reason', 'Wajah (optional)')], ok: 'Nahi');
+      final f = await _form(context, 'Why not?', const [('reason', 'Reason (optional)')], ok: 'No');
       if (f == null) return;
       reason = f['reason'] ?? '';
     }
@@ -673,12 +673,12 @@ class _KitabCardCardState extends State<KitabCardCard> {
           }, color: C.accent),
           const SizedBox(width: 8),
           Expanded(child: Text('${_s(c['title'])} · ${_s(sh['book'])}', style: const TextStyle(fontWeight: FontWeight.w800))),
-          Pill(switch (st) { 'waiting' => 'aapki haan?', 'approved' => 'haan', 'rejected' => 'nahi', 'stale' => 'purana', _ => st },
+          Pill(switch (st) { 'waiting' => 'your yes?', 'approved' => 'yes', 'rejected' => 'no', 'stale' => 'old', _ => st },
               fg: st == 'waiting' ? C.accent : C.chip),
         ]),
         Text(_s(sh['title']), style: const TextStyle(fontSize: 12.5, color: C.muted)),
         if (kind == 'accept') ...[
-          Text('Chapter ${_s(sh['chapter'])}: ${_s(sh['count'])} badlav aapke text mein lagenge', style: const TextStyle(fontSize: 13)),
+          Text('Chapter ${_s(sh['chapter'])}: ${_s(sh['count'])} changes will be applied to your text', style: const TextStyle(fontSize: 13)),
           for (final it in _list(sh['items']).take(8))
             Text('• "${_s(it['from'])}" → "${_s(it['to'])}"  (${_s(it['why'])})', style: const TextStyle(fontSize: 12)),
         ],
@@ -698,16 +698,16 @@ class _KitabCardCardState extends State<KitabCardCard> {
           Text(_s(sh['tds_note']), style: const TextStyle(fontSize: 11, color: C.faint)),
         ],
         if (kind == 'deliver')
-          Text('${_s(sh['client'])} · ${_s(sh['chapters'])} chapter · ${_s(sh['open_suggestions'])} sujhav Track Changes mein',
+          Text('${_s(sh['client'])} · ${_s(sh['chapters'])} chapters · ${_s(sh['open_suggestions'])} suggestions in Track Changes',
               style: const TextStyle(fontSize: 12.5)),
         const SizedBox(height: 8),
         if (st == 'waiting')
           Wrap(spacing: 8, runSpacing: 6, children: [
-            GradientButton(label: 'Haan', height: 42, onTap: _busy ? null : () => _decide(true)),
-            GlassButton(label: 'Nahi', height: 42, onTap: _busy ? null : () => _decide(false)),
+            GradientButton(label: 'Yes', height: 42, onTap: _busy ? null : () => _decide(true)),
+            GlassButton(label: 'No', height: 42, onTap: _busy ? null : () => _decide(false)),
           ]),
         if (_draft.isNotEmpty) ...[const SizedBox(height: 6), _draftButtons(_draft)],
-        const Text('Hoola khud kuch nahi bhejta aur paise nahi leta / deta: bhejna aapke haath mein.',
+        const Text('Hoola sends nothing by itself and does not pay or receive money: sending is in your hands.',
             style: TextStyle(fontSize: 11, color: C.faint)),
       ]),
     );

@@ -45,7 +45,7 @@ def test_focus_words_are_verbatim(env):
     _say(conv, "Sharma Traders ko 12 kaam bhejne hain, file ka naam march.xlsx hai")
     _say(conv, "Ramesh ka number 98765 save kar lo, wo plumber hai")
     fb = yaad.focus_block("default", conv)
-    assert "uske APNE shabd" in fb
+    assert "EXACT words" in fb
     assert "march.xlsx" in fb and "98765" in fb          # the exact words, not a gist of them
     assert "Ramesh" in fb and "plumber" in fb
     assert "[/focus]" in fb
@@ -86,7 +86,7 @@ def test_voice_block_leads_with_words(env):
     conv = "c_focus_vb"
     _say(conv, "petrol pump ka bill 950 ka tha", voice=True)
     vb = yaad.voice_block("default", conv)
-    assert "uske APNE shabd" in vb
+    assert "EXACT words" in vb
     assert "petrol pump ka bill 950 ka tha" in vb         # verbatim before any one-line gist
 
 
@@ -171,10 +171,10 @@ def test_abandoned_dial_writes_no_note(env):
 
 def test_greeting_continuation_vs_fresh(env):
     cont = greeting("default", "m", continuation="aakhri poori baat: march.xlsx ke rows")
-    assert "NAYA CALL NAHI HAI" in cont and "march.xlsx" in cont
+    assert "NOT A NEW CALL" in cont and "march.xlsx" in cont
     assert "good morning" not in cont.lower()
     fresh = greeting("default", "m")
-    assert "NAYA CALL NAHI HAI" not in fresh
+    assert "NOT A NEW CALL" not in fresh
     assert "The call just connected" in fresh
 
 
@@ -186,4 +186,4 @@ def test_ensure_focus_table_idempotent(env):
 # ---------------- 3. the release pin ----------------
 
 def test_version(env):
-    assert APP_VERSION == "0.715.0"
+    assert APP_VERSION == "0.749.0"

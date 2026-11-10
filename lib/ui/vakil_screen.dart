@@ -20,7 +20,7 @@ List<Map<String, dynamic>> _list(dynamic l) =>
 List<String> _strs(dynamic l) => ((l as List?) ?? const []).map((e) => '$e').toList();
 num? _n(String? v) => (v == null || v.trim().isEmpty) ? null : num.tryParse(v.replaceAll(',', '').trim());
 
-const _check = 'Draft / andaaza hai, salah nahi: vakil sahab se pakka karwaiye.';
+const _check = 'This is a draft / estimate, not advice: confirm with your lawyer.';
 
 void _snack(BuildContext c, String t) {
   if (t.trim().isEmpty) return;
@@ -35,7 +35,7 @@ Color _stColor(String st) => switch (st) {
     };
 
 Future<Map<String, String>?> _form(BuildContext context, String title, List<(String, String)> fields,
-    {String ok = 'Aage', Map<String, String> initial = const {}, Set<String> big = const {}}) async {
+    {String ok = 'Continue', Map<String, String> initial = const {}, Set<String> big = const {}}) async {
   final c = {for (final (k, _) in fields) k: TextEditingController(text: initial[k] ?? '')};
   final res = await showDialog<bool>(
     context: context,
@@ -48,7 +48,7 @@ Future<Map<String, String>?> _form(BuildContext context, String title, List<(Str
         ]),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Rehne do')),
+        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Cancel')),
         TextButton(onPressed: () => Navigator.pop(d, true), child: Text(ok)),
       ],
     ),
@@ -89,9 +89,9 @@ Future<void> _openLinks(BuildContext context, Map<String, dynamic> r) async {
               padding: const EdgeInsets.only(bottom: 6),
               child: GlassButton(
                   label: switch (e.key) {
-                    'whatsapp' => 'WhatsApp draft kholo',
-                    'sms' => 'SMS draft kholo',
-                    'email' => 'Email draft kholo',
+                    'whatsapp' => 'Open WhatsApp draft',
+                    'sms' => 'Open SMS draft',
+                    'email' => 'Open email draft',
                     'upi' => 'UPI link',
                     _ => e.key
                   },
@@ -99,9 +99,9 @@ Future<void> _openLinks(BuildContext context, Map<String, dynamic> r) async {
                   onTap: () => Native.openExternal(url: _s(e.value))),
             ),
           if (_s(r['link']).isNotEmpty)
-            GlassButton(label: 'eFiling portal kholo', icon: Icons.gavel_rounded, onTap: () => Native.openExternal(url: _s(r['link']))),
+            GlassButton(label: 'Open eFiling portal', icon: Icons.gavel_rounded, onTap: () => Native.openExternal(url: _s(r['link']))),
           const SizedBox(height: 6),
-          const Text('Hoola khud nahi bhejta / file nahi karta: aap kijiye.', style: TextStyle(fontSize: 11, color: C.faint)),
+          const Text('Hoola does not send or file it itself: you do it.', style: TextStyle(fontSize: 11, color: C.faint)),
         ]),
       ),
     ),
@@ -150,19 +150,19 @@ class _VakilScreenState extends State<VakilScreen> {
       .then((_) => _load());
 
   Future<void> _newMatter() async {
-    final f = await _form(context, 'Naya matter', const [
+    final f = await _form(context, 'New matter', const [
       ('title', "Matter ('Patil vs Deshmukh')"),
-      ('client', 'Client ka naam'),
-      ('client_phone', 'Client ka mobile'),
+      ('client', 'Client name'),
+      ('client_phone', 'Client mobile'),
       ('kind', 'Kind: civil_suit / criminal / bail / cheque_138 / consumer / family / writ / appeal / other'),
-      ('side', 'Hum: plaintiff / defendant / petitioner / respondent / complainant / accused / appellant'),
-      ('opposite', 'Doosra paksh'),
+      ('side', 'Our side: plaintiff / defendant / petitioner / respondent / complainant / accused / appellant'),
+      ('opposite', 'Other side'),
       ('court', 'Court'),
       ('case', "Case number ('RCS 123/2024')"),
-      ('cnr', 'CNR (16 akshar, ho to)'),
-      ('next_date', 'Agli tareekh (DD-MM-YYYY)'),
-      ('next_purpose', 'Agli tareekh par kya'),
-    ], ok: 'Banao');
+      ('cnr', 'CNR (16 characters, if any)'),
+      ('next_date', 'Next date (DD-MM-YYYY)'),
+      ('next_purpose', 'What is next on the next date'),
+    ], ok: 'Create');
     if (f == null || (f['title'] ?? '').isEmpty) return;
     final r = await _run('POST', '/api/vakil/matters', f);
     if (r != null && _s(r['id']).isNotEmpty && mounted) _open(_s(r['id']));
@@ -184,10 +184,10 @@ class _VakilScreenState extends State<VakilScreen> {
               Text([_s(m['case']), _s(m['court']), _s(m['client'])].where((x) => x.isNotEmpty).join(' · '),
                   style: const TextStyle(color: C.muted, fontSize: 12.5)),
               if (_s(m['next_date']).isNotEmpty)
-                Text('Agli tareekh: ${_s(m['next_date'])}${_s(m['next_purpose']).isEmpty ? '' : ' (${_s(m['next_purpose'])})'}',
+                Text('Next date: ${_s(m['next_date'])}${_s(m['next_purpose']).isEmpty ? '' : ' (${_s(m['next_purpose'])})'}',
                     style: TextStyle(fontSize: 12.5, color: m['date_stale'] == true ? C.warn : C.ink)),
               if (m['date_stale'] == true)
-                const Text('Tareekh nikal gayi: haal / agli tareekh likhiye', style: TextStyle(fontSize: 12, color: C.warn)),
+                const Text('The date has passed: write the status / next date', style: TextStyle(fontSize: 12, color: C.warn)),
             ]),
           ),
         ),
@@ -199,9 +199,9 @@ class _VakilScreenState extends State<VakilScreen> {
     return ListView(padding: const EdgeInsets.all(16), children: [
       Glass(child: Text(_s(day['say']), style: const TextStyle(fontSize: 14.5, height: 1.4))),
       const SizedBox(height: 12),
-      GradientButton(label: 'Naya matter', icon: Icons.add_rounded, height: 46, onTap: _busy ? null : _newMatter),
+      GradientButton(label: 'New matter', icon: Icons.add_rounded, height: 46, onTap: _busy ? null : _newMatter),
       const SizedBox(height: 12),
-      for (final (key, title) in const [('today', 'AAJ KI TAREEKHEIN'), ('tomorrow', 'KAL'), ('stale', 'TAREEKH UPDATE KARNI HAI')])
+      for (final (key, title) in const [('today', 'TODAY\'S HEARING DATES'), ('tomorrow', 'TOMORROW'), ('stale', 'DATES TO UPDATE')])
         if (_list(day[key]).isNotEmpty) ...[
           Caption(title),
           for (final r in _list(day[key]))
@@ -216,14 +216,14 @@ class _VakilScreenState extends State<VakilScreen> {
           const SizedBox(height: 8),
         ],
       if (_list(day['limitation']).isNotEmpty) ...[
-        const Caption('LIMITATION PAAS (ANDAAZA)'),
+        const Caption('LIMITATION NEARING (ESTIMATE)'),
         for (final r in _list(day['limitation']))
           Text('• ${_s(r['matter'])} ${_s(r['label'])}: ${_s(r['last_date'])} (${_s(r['days_left'])} din)',
               style: TextStyle(fontSize: 13, color: (r['days_left'] is num && (r['days_left'] as num) <= 3) ? C.bad : C.ink)),
         const SizedBox(height: 8),
       ],
       if (cards.isNotEmpty) ...[
-        const Caption('AAPKI HAAN BAAKI'),
+        const Caption('YOUR APPROVAL PENDING'),
         for (final c in cards)
           Padding(padding: const EdgeInsets.only(bottom: 8), child: VakilCardCard(app: widget.app, data: {'card': c}, onDone: _load)),
       ],
@@ -234,10 +234,10 @@ class _VakilScreenState extends State<VakilScreen> {
   Widget _mattersTab() {
     final ms = _list(_d?['matters']);
     return ListView(padding: const EdgeInsets.all(16), children: [
-      GradientButton(label: 'Naya matter', icon: Icons.add_rounded, height: 46, onTap: _busy ? null : _newMatter),
+      GradientButton(label: 'New matter', icon: Icons.add_rounded, height: 46, onTap: _busy ? null : _newMatter),
       const SizedBox(height: 12),
       for (final m in ms) _matterTile(m),
-      if (ms.isEmpty) const Text('Abhi diary khaali hai.', style: TextStyle(color: C.muted)),
+      if (ms.isEmpty) const Text('The diary is empty.', style: TextStyle(color: C.muted)),
       const SizedBox(height: 8),
       GlassButton(
           label: 'Diary Excel',
@@ -247,15 +247,15 @@ class _VakilScreenState extends State<VakilScreen> {
   }
 
   Future<void> _tryLimit() async {
-    final f = await _form(context, 'Limitation (andaaza)', const [
-      ('kind', 'Kaunsa: appeal_hc_civil / appeal_other_civil / review / revision / money_loan / ... / custom'),
-      ('start', 'Shuruaat ki tareekh (order / decree / cause of action)'),
-      ('cc_applied', 'Certified copy maangi (tareekh, ho to)'),
-      ('cc_ready', 'Certified copy mili (tareekh, ho to)'),
-      ('n', 'Vakil ka bataya period (sirf custom / table mein na ho)'),
+    final f = await _form(context, 'Limitation (estimate)', const [
+      ('kind', 'Which: appeal_hc_civil / appeal_other_civil / review / revision / money_loan / ... / custom'),
+      ('start', 'Starting date (order / decree / cause of action)'),
+      ('cc_applied', 'Certified copy requested (date, if any)'),
+      ('cc_ready', 'Certified copy received (date, if any)'),
+      ('n', 'Period told by the lawyer (only for custom / not in the table)'),
       ('unit', 'Unit: d / m / y'),
-      ('matter', 'Matter (save karne ke liye, ho to)'),
-    ], ok: 'Nikaalo');
+      ('matter', 'Matter (to save, if any)'),
+    ], ok: 'Find');
     if (f == null || (f['kind'] ?? '').isEmpty) return;
     final body = <String, dynamic>{...f};
     if (f['n'] != null) body['n'] = _n(f['n']);
@@ -268,7 +268,7 @@ class _VakilScreenState extends State<VakilScreen> {
     final dl = _list(_d?['deadlines']);
     final r = _lastLimit;
     return ListView(padding: const EdgeInsets.all(16), children: [
-      GradientButton(label: 'Aakhri tareekh nikaalo', icon: Icons.event_busy_rounded, height: 46, onTap: _busy ? null : _tryLimit),
+      GradientButton(label: 'Find the last date', icon: Icons.event_busy_rounded, height: 46, onTap: _busy ? null : _tryLimit),
       const SizedBox(height: 12),
       if (r != null)
         Glass(
@@ -280,17 +280,17 @@ class _VakilScreenState extends State<VakilScreen> {
           ]),
         ),
       const SizedBox(height: 12),
-      const Caption('SAVE KI HUI DEADLINES'),
+      const Caption('SAVED DEADLINES'),
       for (final x in dl)
         ListTile(
           leading: Icon(Icons.timer_rounded, color: (x['days_left'] is num && (x['days_left'] as num) <= 7) ? C.bad : C.accent),
           title: Text('${_s(x['matter'])} · ${_s(x['label'])}'),
-          subtitle: Text('Aakhri tareekh (andaaza) ${_s(x['last_date'])} · ${_s(x['days_left'])} din · ${_s(x['source'])}'),
+          subtitle: Text('Last date (estimate) ${_s(x['last_date'])} · ${_s(x['days_left'])} days · ${_s(x['source'])}'),
           trailing: IconButton(
               icon: const Icon(Icons.check_circle_outline_rounded),
               onPressed: () => _run('POST', '/api/vakil/deadlines/${_s(x['id'])}', {'status': 'done'})),
         ),
-      if (dl.isEmpty) const Text('Koi khuli deadline nahi.', style: TextStyle(color: C.muted)),
+      if (dl.isEmpty) const Text('No open deadlines.', style: TextStyle(color: C.muted)),
       const SizedBox(height: 8),
       const Text(_check, style: TextStyle(fontSize: 11, color: C.faint)),
     ]);
@@ -299,11 +299,11 @@ class _VakilScreenState extends State<VakilScreen> {
   Future<void> _paste(bool cause) async {
     final f = await _form(
         context,
-        cause ? 'Cause list chipkaiye' : 'Case status chipkaiye',
+        cause ? 'Paste cause list' : 'Paste case status',
         cause
-            ? const [('text', 'eCourts app / court site se copy kiya cause list text'), ('on', 'Tareekh (agar text mein na ho)')]
-            : const [('text', 'eCourts app / site ka Case Status text'), ('matter', 'Matter (agar CNR na ho)')],
-        ok: 'Padho',
+            ? const [('text', 'Cause list text copied from the eCourts app / court site'), ('on', 'Date (if not in the text)')]
+            : const [('text', 'Case Status text from the eCourts app / site'), ('matter', 'Matter (if no CNR)')],
+        ok: 'Read',
         big: const {'text'});
     if (f == null || (f['text'] ?? '').isEmpty) return;
     final r = await _run('POST', cause ? '/api/vakil/paste/cause_list' : '/api/vakil/paste/status', f);
@@ -316,10 +316,10 @@ class _VakilScreenState extends State<VakilScreen> {
     return ListView(padding: const EdgeInsets.all(16), children: [
       Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('Official raaste se', style: TextStyle(fontWeight: FontWeight.w800)),
+          const Text('Through official routes', style: TextStyle(fontWeight: FontWeight.w800)),
           Text('• ${_s(off['app'])}', style: const TextStyle(fontSize: 12.5)),
           Text('• ${_s(off['sms'])}', style: const TextStyle(fontSize: 12.5)),
-          const Text('Wahan se case status / cause list copy karke yahan chipkaiye; Hoola padhkar diary bharta hai.',
+          const Text('Copy the case status / cause list from there and paste it here; Hoola reads it and fills the diary.',
               style: TextStyle(fontSize: 12.5, color: C.muted)),
           const SizedBox(height: 8),
           Wrap(spacing: 8, runSpacing: 8, children: [
@@ -332,9 +332,9 @@ class _VakilScreenState extends State<VakilScreen> {
         ]),
       ),
       const SizedBox(height: 12),
-      GradientButton(label: 'Case status chipkaiye', icon: Icons.content_paste_rounded, height: 46, onTap: _busy ? null : () => _paste(false)),
+      GradientButton(label: 'Paste case status', icon: Icons.content_paste_rounded, height: 46, onTap: _busy ? null : () => _paste(false)),
       const SizedBox(height: 8),
-      GradientButton(label: 'Cause list chipkaiye', icon: Icons.list_alt_rounded, height: 46, onTap: _busy ? null : () => _paste(true)),
+      GradientButton(label: 'Paste cause list', icon: Icons.list_alt_rounded, height: 46, onTap: _busy ? null : () => _paste(true)),
       const SizedBox(height: 12),
       if (r != null)
         Glass(
@@ -344,7 +344,7 @@ class _VakilScreenState extends State<VakilScreen> {
             for (final x in _list(r['found']))
               Text('• ${_s(x['matter'])} item ${_s(x['item'])} (${_s(x['case'])})', style: const TextStyle(fontSize: 12.5)),
             for (final x in _list(r['not_listed']))
-              Text('⚠ ${_s(x['matter'])} ${_s(x['title'])}: list mein nahi', style: const TextStyle(fontSize: 12.5, color: C.warn)),
+              Text('⚠ ${_s(x['matter'])} ${_s(x['title'])}: not in the list', style: const TextStyle(fontSize: 12.5, color: C.warn)),
           ]),
         ),
     ]);
@@ -352,20 +352,20 @@ class _VakilScreenState extends State<VakilScreen> {
 
   Future<void> _editSettings() async {
     final st = _m(_d?['settings']);
-    final f = await _form(context, 'Niyam / office', const [
-      ('advocate', 'Vakil ka naam'),
+    final f = await _form(context, 'Rules / office', const [
+      ('advocate', 'Lawyer name'),
       ('enrolment_no', 'Bar Council enrolment no.'),
-      ('office', 'Office / chamber ka naam'),
-      ('address', 'Pata'),
+      ('office', 'Office / chamber name'),
+      ('address', 'Address'),
       ('phone', 'Office mobile'),
       ('email', 'Email'),
-      ('upi_id', 'UPI ID (fee note par)'),
+      ('upi_id', 'UPI ID (on fee notes)'),
       ('state', 'State'),
-      ('place', 'Jagah (drafts par)'),
-      ('closed_dates', 'Court ki chhuttiyan (YYYY-MM-DD, comma se)'),
-      ('closed_weekdays', 'Band din (0=Som..6=Ravi, comma se)'),
-      ('remind_days', 'Limitation yaad (din, jaise 30,15,7,3,1,0)'),
-      ('morning_time', 'Subah ka note (HH:MM)'),
+      ('place', 'Place (on drafts)'),
+      ('closed_dates', 'Court holidays (YYYY-MM-DD, comma separated)'),
+      ('closed_weekdays', 'Closed days (0=Mon..6=Sun, comma separated)'),
+      ('remind_days', 'Limitation reminders (days, e.g. 30,15,7,3,1,0)'),
+      ('morning_time', 'Morning note (HH:MM)'),
     ], ok: 'Save', initial: {
       for (final k in ['advocate', 'enrolment_no', 'office', 'address', 'phone', 'email', 'upi_id', 'state', 'place', 'morning_time']) k: _s(st[k]),
       'closed_dates': _strs(st['closed_dates']).join(', '),
@@ -381,24 +381,24 @@ class _VakilScreenState extends State<VakilScreen> {
     return ListView(padding: const EdgeInsets.all(16), children: [
       Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(_s(st['advocate']).isEmpty ? 'Vakil ka naam daaliye' : _s(st['advocate']), style: const TextStyle(fontWeight: FontWeight.w800)),
+          Text(_s(st['advocate']).isEmpty ? 'Enter the lawyer name' : _s(st['advocate']), style: const TextStyle(fontWeight: FontWeight.w800)),
           Text('Enrolment: ${_s(st['enrolment_no']).isEmpty ? '—' : _s(st['enrolment_no'])} · ${_s(st['office'])}',
               style: const TextStyle(color: C.muted, fontSize: 12.5)),
-          Text('Court band: ${_strs(st['closed_dates']).length} chhuttiyan, din ${_strs(st['closed_weekdays']).join(',')}',
+          Text('Court closed: ${_strs(st['closed_dates']).length} holidays, days ${_strs(st['closed_weekdays']).join(',')}',
               style: const TextStyle(color: C.muted, fontSize: 12.5)),
           const SizedBox(height: 8),
-          GlassButton(label: 'Badlo', icon: Icons.edit_rounded, onTap: _editSettings),
+          GlassButton(label: 'Edit', icon: Icons.edit_rounded, onTap: _editSettings),
         ]),
       ),
       const SizedBox(height: 12),
-      const Caption('HOOLA KABHI NAHI'),
+      const Caption('HOOLA WILL NEVER DO'),
       for (final t in _strs(_d?['never'])) Padding(padding: const EdgeInsets.only(bottom: 6), child: Text('• $t', style: const TextStyle(fontSize: 13))),
     ]);
   }
 
   @override
   Widget build(BuildContext context) {
-    final tabs = ['Aaj', 'Matters', 'Limitation', 'eCourts', 'Niyam'];
+    final tabs = ['Today', 'Matters', 'Limitation', 'eCourts', 'Rules'];
     return Scaffold(
       backgroundColor: C.bgTop,
       appBar: AppBar(
@@ -471,19 +471,19 @@ class _VakilMatterPageState extends State<VakilMatterPage> {
 
   Future<void> _edit() async {
     final m = _m0 ?? {};
-    final f = await _form(context, 'Matter badlo', const [
+    final f = await _form(context, 'Edit matter', const [
       ('title', 'Matter'),
       ('court', 'Court'),
       ('court_no', 'Court hall / judge'),
       ('case', "Case number ('RCS 123/2024')"),
       ('cnr', 'CNR'),
       ('stage', 'Stage'),
-      ('next_date', 'Agli tareekh'),
-      ('next_purpose', 'Agli tareekh par kya'),
-      ('opposite', 'Doosra paksh'),
-      ('opposite_advocate', 'Doosre paksh ke vakil'),
-      ('opposite_contact', 'Unka phone / email'),
-      ('acts', 'Acts / sections (vakil ke bataye)'),
+      ('next_date', 'Next date'),
+      ('next_purpose', 'What is next on the next date'),
+      ('opposite', 'Other side'),
+      ('opposite_advocate', 'Opposing lawyer'),
+      ('opposite_contact', 'Their phone / email'),
+      ('acts', 'Acts / sections (as told by the lawyer)'),
       ('status', 'Status: pending / disposed / closed'),
     ], ok: 'Save', initial: {
       for (final k in ['title', 'court', 'court_no', 'cnr', 'stage', 'next_date', 'next_purpose', 'opposite', 'opposite_advocate', 'opposite_contact', 'acts', 'status'])
@@ -494,20 +494,20 @@ class _VakilMatterPageState extends State<VakilMatterPage> {
   }
 
   Future<void> _hearing() async {
-    final f = await _form(context, 'Sunwaai ka haal', const [
-      ('on', 'Kis din (DD-MM-YYYY)'),
-      ('purpose', 'Kis kaam ke liye laga tha'),
-      ('result', 'Kya hua'),
+    final f = await _form(context, 'Hearing status', const [
+      ('on', 'On which day (DD-MM-YYYY)'),
+      ('purpose', 'Purpose of the hearing'),
+      ('result', 'What happened'),
       ('stage', 'Ab stage'),
-      ('next_date', 'Agli tareekh (court ne di)'),
-      ('next_purpose', 'Agli tareekh par kya'),
-    ], ok: 'Likho');
+      ('next_date', 'Next date (given by the court)'),
+      ('next_purpose', 'What is next on the next date'),
+    ], ok: 'Write');
     if (f == null) return;
     await _run('POST', '/api/vakil/matters/$_ref/hearing', f);
   }
 
   Future<void> _event() async {
-    final f = await _form(context, 'List of dates mein jodo', const [('on', 'Tareekh'), ('what', 'Kya hua')], ok: 'Jodo', big: const {'what'});
+    final f = await _form(context, 'Add to list of dates', const [('on', 'Date'), ('what', 'What happened')], ok: 'Add', big: const {'what'});
     if (f == null) return;
     await _run('POST', '/api/vakil/matters/$_ref/event', f);
   }
@@ -523,7 +523,7 @@ class _VakilMatterPageState extends State<VakilMatterPage> {
             ('vakalatnama', 'Vakalatnama checklist'),
             ('dates_events', 'List of dates & events'),
             ('synopsis', 'Synopsis'),
-            ('notice_reply', 'Notice ka jawab (Lekhak)'),
+            ('notice_reply', 'Reply to notice (drafter)'),
             ('note', 'Brief note'),
           ])
             ListTile(title: Text(l), onTap: () => Navigator.pop(c, k)),
@@ -533,9 +533,9 @@ class _VakilMatterPageState extends State<VakilMatterPage> {
     if (kind == null) return;
     Map<String, String> f = {};
     if (kind == 'adjournment') {
-      f = await _form(context, 'Adjournment ki wajah', const [('reason', 'Wajah (aapke shabdon mein)')], big: const {'reason'}) ?? {};
+      f = await _form(context, 'Reason for adjournment', const [('reason', 'Reason (in your words)')], big: const {'reason'}) ?? {};
     } else if (kind == 'notice_reply' || kind == 'note' || kind == 'synopsis') {
-      final r = await _form(context, 'Aapke shabd', const [('words', 'Notice mein kya hai / jawab mein kya kehna hai'), ('to', 'Kisko')],
+      final r = await _form(context, 'Your words', const [('words', 'What the notice says / what the reply should say'), ('to', 'To')],
           big: const {'words'});
       if (r == null) return;
       f = r;
@@ -546,26 +546,26 @@ class _VakilMatterPageState extends State<VakilMatterPage> {
   Future<void> _message(String to) async {
     Map<String, String>? f = {};
     if (to != 'client') {
-      f = await _form(context, 'Doosre paksh ko kya bhejna hai', const [('text', 'Text (vakil sahab ka likha)'), ('phone', 'Phone'), ('email', 'Email')],
+      f = await _form(context, 'What to send to the other side', const [('text', 'Text (written by the lawyer)'), ('phone', 'Phone'), ('email', 'Email')],
           big: const {'text'});
       if (f == null) return;
     } else {
-      f = await _form(context, 'Client ko update', const [('text', 'Apna text (khaali = Hoola diary se banaye)')], big: const {'text'}, ok: 'Card banao');
+      f = await _form(context, 'Update to client', const [('text', 'Your own text (empty = Hoola writes from the diary)')], big: const {'text'}, ok: 'Make card');
       if (f == null) return;
     }
     await _run('POST', '/api/vakil/matters/$_ref/message', {'to': to, ...f});
   }
 
   Future<void> _filing() async {
-    final f = await _form(context, 'Filing ka card', const [('what', 'Kya file karna hai'), ('note', 'Note')]);
+    final f = await _form(context, 'Filing card', const [('what', 'What to file'), ('note', 'Note')]);
     if (f == null || (f['what'] ?? '').isEmpty) return;
     final op = await showDialog<bool>(
       context: context,
       builder: (d) => AlertDialog(
-        content: const Text('Haan ke baad Hoola ke browser mein eFiling portal khole? (login / OTP / court fee / eSign / Submit aap karengi)'),
+        content: const Text('After your yes, open the eFiling portal in Hoola\'s browser? (You do login / OTP / court fee / eSign / Submit.)'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Nahi, main khud')),
-          TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Haan, khole')),
+          TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('No, I will do it myself')),
+          TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Yes, open it')),
         ],
       ),
     );
@@ -574,12 +574,12 @@ class _VakilMatterPageState extends State<VakilMatterPage> {
 
   Future<void> _fee(bool request) async {
     if (request) {
-      final f = await _form(context, 'Fee maangna (card)', const [('amount', 'Rakam (aapki)'), ('for', 'Kis ke liye')]);
+      final f = await _form(context, 'Ask for fee (card)', const [('amount', 'Amount (yours)'), ('for', 'For what')]);
       if (f == null || _n(f['amount']) == null) return;
       await _run('POST', '/api/vakil/matters/$_ref/fee_request', {'amount': _n(f['amount']), 'for': f['for'] ?? ''});
       return;
     }
-    final f = await _form(context, 'Fee ka hisaab', const [('kind', 'agreed / received / expense'), ('amount', 'Rakam'), ('note', 'Note'), ('ref_no', 'UTR / ref')]);
+    final f = await _form(context, 'Fee account', const [('kind', 'agreed / received / expense'), ('amount', 'Amount'), ('note', 'Note'), ('ref_no', 'UTR / ref')]);
     if (f == null || _n(f['amount']) == null) return;
     await _run('POST', '/api/vakil/matters/$_ref/fee', {...f, 'amount': _n(f['amount'])});
   }
@@ -611,26 +611,26 @@ class _VakilMatterPageState extends State<VakilMatterPage> {
                     Text([_s(m['court']), _s(m['court_no'])].where((x) => x.isNotEmpty).join(' · '), style: const TextStyle(color: C.muted, fontSize: 12.5)),
                     if (_s(m['cnr']).isNotEmpty) Text('CNR ${_s(m['cnr'])}', style: const TextStyle(fontSize: 12.5)),
                     Text('Client: ${_s(m['client'])} ${_s(m['client_phone'])}', style: const TextStyle(fontSize: 12.5)),
-                    if (_s(m['opposite']).isNotEmpty) Text('Doosra paksh: ${_s(m['opposite'])} ${_s(m['opposite_advocate'])}', style: const TextStyle(fontSize: 12.5)),
-                    Text('Stage: ${_s(m['stage']).isEmpty ? '—' : _s(m['stage'])} · Agli tareekh: ${_s(m['next_date']).isEmpty ? '—' : _s(m['next_date'])} ${_s(m['next_purpose'])}',
+                    if (_s(m['opposite']).isNotEmpty) Text('Other side: ${_s(m['opposite'])} ${_s(m['opposite_advocate'])}', style: const TextStyle(fontSize: 12.5)),
+                    Text('Stage: ${_s(m['stage']).isEmpty ? '—' : _s(m['stage'])} · Next date: ${_s(m['next_date']).isEmpty ? '—' : _s(m['next_date'])} ${_s(m['next_purpose'])}',
                         style: TextStyle(fontSize: 12.5, color: m['date_stale'] == true ? C.warn : C.ink)),
                   ]),
                 ),
                 const SizedBox(height: 10),
                 Wrap(spacing: 8, runSpacing: 8, children: [
-                  GlassButton(label: 'Sunwaai ka haal', icon: Icons.event_note_rounded, onTap: _busy ? null : _hearing),
-                  GlassButton(label: 'Ghatna jodo', icon: Icons.timeline_rounded, onTap: _busy ? null : _event),
+                  GlassButton(label: 'Hearing status', icon: Icons.event_note_rounded, onTap: _busy ? null : _hearing),
+                  GlassButton(label: 'Add event', icon: Icons.timeline_rounded, onTap: _busy ? null : _event),
                   GlassButton(label: 'Draft', icon: Icons.description_rounded, onTap: _busy ? null : _draft),
-                  GlassButton(label: 'Client ko update', icon: Icons.chat_rounded, onTap: _busy ? null : () => _message('client')),
-                  GlassButton(label: 'Doosre paksh ko', icon: Icons.mark_email_unread_rounded, onTap: _busy ? null : () => _message('opposite')),
+                  GlassButton(label: 'Update to client', icon: Icons.chat_rounded, onTap: _busy ? null : () => _message('client')),
+                  GlassButton(label: 'To the other side', icon: Icons.mark_email_unread_rounded, onTap: _busy ? null : () => _message('opposite')),
                   GlassButton(label: 'Filing', icon: Icons.upload_file_rounded, onTap: _busy ? null : _filing),
-                  GlassButton(label: 'Fee maango', icon: Icons.request_quote_rounded, onTap: _busy ? null : () => _fee(true)),
-                  GlassButton(label: 'Fee hisaab', icon: Icons.account_balance_wallet_rounded, onTap: _busy ? null : () => _fee(false)),
+                  GlassButton(label: 'Ask for fee', icon: Icons.request_quote_rounded, onTap: _busy ? null : () => _fee(true)),
+                  GlassButton(label: 'Fee account', icon: Icons.account_balance_wallet_rounded, onTap: _busy ? null : () => _fee(false)),
                 ]),
                 const SizedBox(height: 12),
                 for (final c in _list(m['cards']).where((c) => _s(c['status']) == 'waiting' || _s(c['status']) == 'approved'))
                   Padding(padding: const EdgeInsets.only(bottom: 8), child: VakilCardCard(app: widget.app, data: {'card': c}, onDone: _load)),
-                const Caption('SUNWAIYAN'),
+                const Caption('HEARINGS'),
                 for (final h in _list(m['hearings']).reversed.take(20))
                   Text('• ${_s(h['on'])}: ${_s(h['result']).isEmpty ? _s(h['purpose']) : _s(h['result'])}${_s(h['next']).isEmpty ? '' : ' → ${_s(h['next'])}'}',
                       style: const TextStyle(fontSize: 12.5)),
@@ -638,7 +638,7 @@ class _VakilMatterPageState extends State<VakilMatterPage> {
                 const Caption('LIST OF DATES & EVENTS'),
                 for (final e in _list(m['events'])) Text('• ${_s(e['on'])}: ${_s(e['what'])}', style: const TextStyle(fontSize: 12.5)),
                 const SizedBox(height: 10),
-                const Caption('KAAGAZ (tap = have / na / missing)'),
+                const Caption('DOCUMENTS (tap = have / no / missing)'),
                 for (final d in _list(m['docs']))
                   ListTile(
                     dense: true,
@@ -660,7 +660,7 @@ class _VakilMatterPageState extends State<VakilMatterPage> {
                 Builder(builder: (_) {
                   final f = _m(m['fees']);
                   final t = _m(f['totals']);
-                  return Text('Tay ${_s(t['agreed'])} · maangi ${_s(t['requested'])} · mili ${_s(t['received'])} · kharcha ${_s(t['expense'])} · baaki ${_s(f['due_text'])}',
+                  return Text('Agreed ${_s(t['agreed'])} · asked ${_s(t['requested'])} · received ${_s(t['received'])} · expenses ${_s(t['expense'])} · due ${_s(f['due_text'])}',
                       style: const TextStyle(fontSize: 12.5));
                 }),
                 const SizedBox(height: 10),
@@ -689,13 +689,13 @@ class _VakilCardCardState extends State<VakilCardCard> {
   Future<Map<String, dynamic>> _proof(String id) async {
     final ch = _m(await widget.app.api!.call('POST', '/api/vakil/cards/$id/challenge'));
     final show = _m(ch['show']);
-    final r = await Native.approveKeySign(_s(ch['message']), _s(show['title']).isEmpty ? 'Fee ki haan' : _s(show['title']),
+    final r = await Native.approveKeySign(_s(ch['message']), _s(show['title']).isEmpty ? 'Fee approval' : _s(show['title']),
         [show['amount'], show['payee']].where((x) => x != null && '$x'.isNotEmpty).join(' · '));
     if (r['signature'] == null) {
       throw ApiException(428, switch (_s(r['error'])) {
-        'cancelled' => 'Fingerprint nahi diya, isliye haan nahi hui.',
-        'key_invalidated' => 'Phone mein naya fingerprint juda hai: Profile > Fingerprint se haan mein phone phir se jodiye.',
-        _ => 'Fingerprint se haan nahi ho payi (${_s(r['error'])}).',
+        'cancelled' => 'No fingerprint given, so it was not approved.',
+        'key_invalidated' => 'A new fingerprint was added to the phone: re-link this phone in Profile > Fingerprint approval.',
+        _ => 'Could not approve with fingerprint (${_s(r['error'])}).',
       });
     }
     return {'challenge_id': ch['challenge_id'], 'device_id': r['device_id'], 'signature': r['signature']};
@@ -731,7 +731,7 @@ class _VakilCardCardState extends State<VakilCardCard> {
   Future<void> _done() async {
     Map<String, String> f = {};
     if (_s(_c['kind']) == 'filing') {
-      f = await _form(context, 'File ho gaya', const [('ref_no', 'eFiling number')]) ?? {};
+      f = await _form(context, 'Filed', const [('ref_no', 'eFiling number')]) ?? {};
     }
     setState(() => _busy = true);
     try {
@@ -762,20 +762,20 @@ class _VakilCardCardState extends State<VakilCardCard> {
           Icon(icon, color: C.accent),
           const SizedBox(width: 8),
           Expanded(child: Text('${_s(c['number'])} · ${_s(c['title'])}', style: const TextStyle(fontWeight: FontWeight.w800))),
-          Pill(switch (st) { 'waiting' => 'aapki haan?', 'approved' => 'haan', 'stale' => 'purana', 'rejected' => 'nahi', _ => st }, fg: _stColor(st)),
+          Pill(switch (st) { 'waiting' => 'your approval?', 'approved' => 'yes', 'stale' => 'stale', 'rejected' => 'no', _ => st }, fg: _stColor(st)),
         ]),
         if (kind == 'message') ...[
-          Text('Kisko: ${_s(b['name'])} ${_s(b['phone']).isEmpty ? '' : '· ${_s(b['phone'])}'} ${_s(b['email'])}',
+          Text('To: ${_s(b['name'])} ${_s(b['phone']).isEmpty ? '' : '· ${_s(b['phone'])}'} ${_s(b['email'])}',
               style: const TextStyle(fontSize: 12.5, color: C.muted)),
           Text(_s(b['text']), style: const TextStyle(fontSize: 13)),
         ],
         if (kind == 'filing') ...[
           Text('${_s(b['what'])} · ${_s(b['court'])} · ${_s(b['case'])}', style: const TextStyle(fontSize: 12.5)),
-          for (final d in _list(b['deadlines'])) Text('⏱ ${_s(d['label'])}: ${_s(d['last_date'])} (andaaza)', style: const TextStyle(fontSize: 12.5, color: C.warn)),
+          for (final d in _list(b['deadlines'])) Text('⏱ ${_s(d['label'])}: ${_s(d['last_date'])} (estimate)', style: const TextStyle(fontSize: 12.5, color: C.warn)),
           if (_strs(b['missing_docs']).isNotEmpty)
-            Text('Kaagaz baaki: ${_strs(b['missing_docs']).take(5).join(', ')}', style: const TextStyle(fontSize: 12.5, color: C.warn)),
+            Text('Documents pending: ${_strs(b['missing_docs']).take(5).join(', ')}', style: const TextStyle(fontSize: 12.5, color: C.warn)),
           if (b['use_operator'] == true)
-            const Text('Haan ke baad Hoola ka browser portal kholega; login / OTP / fee / eSign / Submit aap.', style: TextStyle(fontSize: 12, color: C.muted)),
+            const Text('After your yes, Hoola\'s browser will open the portal; you do login / OTP / fee / eSign / Submit.', style: TextStyle(fontSize: 12, color: C.muted)),
         ],
         if (kind == 'fee') ...[
           Text('${_s(b['amount_text'])} · ${_s(b['for'])} · ${_s(b['client'])}', style: const TextStyle(fontSize: 13)),
@@ -786,22 +786,22 @@ class _VakilCardCardState extends State<VakilCardCard> {
           Row(children: [
             Expanded(
                 child: GradientButton(
-                    label: switch (kind) { 'filing' => 'Haan, filing shuru', 'fee' => 'Haan, fee note banao', _ => 'Haan, links do' },
+                    label: switch (kind) { 'filing' => 'Yes, start filing', 'fee' => 'Yes, make the fee note', _ => 'Yes, give the links' },
                     height: 42,
                     onTap: _busy ? null : () => _decide(true))),
             const SizedBox(width: 8),
-            GlassButton(label: 'Nahi', height: 42, onTap: _busy ? null : () => _decide(false)),
+            GlassButton(label: 'No', height: 42, onTap: _busy ? null : () => _decide(false)),
           ]),
         if (st == 'approved' && kind != 'fee')
           Row(children: [
             Expanded(child: GlassButton(label: 'Links / steps', icon: Icons.open_in_new_rounded, onTap: () => _openLinks(context, _m(c['result'])))),
             const SizedBox(width: 8),
-            GlassButton(label: kind == 'filing' ? 'File ho gaya' : 'Bhej diya', icon: Icons.check_rounded, onTap: _busy ? null : _done),
+            GlassButton(label: kind == 'filing' ? 'Filed' : 'Sent', icon: Icons.check_rounded, onTap: _busy ? null : _done),
           ]),
         if (st == 'approved' && kind == 'fee')
           GlassButton(label: 'Message / UPI link', icon: Icons.open_in_new_rounded, onTap: () => _openLinks(context, _m(c['result']))),
-        if (st == 'stale') const Text('Card banne ke baad details badli: naya card banaiye.', style: TextStyle(fontSize: 12, color: C.warn)),
-        const Text('Hoola khud kuch nahi bhejta, file nahi karta, paise nahi leta.', style: TextStyle(fontSize: 11, color: C.faint)),
+        if (st == 'stale') const Text('Details changed after the card was made: make a new card.', style: TextStyle(fontSize: 12, color: C.warn)),
+        const Text('Hoola does not send or file anything itself and does not take money.', style: TextStyle(fontSize: 11, color: C.faint)),
       ]),
     );
   }
@@ -827,13 +827,13 @@ class VakilDraftCard extends StatelessWidget {
             Expanded(child: Text('${_s(d['number'])} · ${_s(d['title'])}', style: const TextStyle(fontWeight: FontWeight.w800))),
             const Pill('DRAFT', fg: C.warn),
           ]),
-          if (blanks > 0) Text('$blanks jagah khaali: bhariye', style: const TextStyle(fontSize: 12.5, color: C.warn)),
+          if (blanks > 0) Text('$blanks blanks: fill them in', style: const TextStyle(fontSize: 12.5, color: C.warn)),
           if (_s(d['text']).isNotEmpty)
             Text(_s(d['text']).length > 400 ? '${_s(d['text']).substring(0, 400)}…' : _s(d['text']), style: const TextStyle(fontSize: 12)),
           if (_s(data['matter']).isNotEmpty)
             TextButton(
                 onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => VakilMatterPage(app: app, matterRef: _s(data['matter'])))),
-                child: const Text('Matter kholo')),
+                child: const Text('Open matter')),
           const Text(_check, style: TextStyle(fontSize: 11, color: C.faint)),
         ]),
       ),

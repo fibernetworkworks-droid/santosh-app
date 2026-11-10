@@ -110,9 +110,9 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
     t, conv = ctx.tenant_id, ctx.conversation_id
     actor = getattr(ctx, "actor", "owner") or "owner"
     if actor.startswith("customer:"):
-        raise ToolError("Property desk graahak ke liye nahi.")
+        raise ToolError("The property desk is not for customers.")
     if action in OWNER_ONLY and not _owner(ctx):
-        raise ToolError("Yeh sirf owner kar sakti hain.")
+        raise ToolError("Only the owner can do this.")
     try:
         if action == "settings":
             return S.save_settings(t, **{k: a[k] for k in S._SET_KEYS if k in a})
@@ -120,7 +120,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return S.save_listing(t, _s(a.get("listing")), _s(a.get("words")), actor, conv, **{k: a[k] for k in _LISTING_ARGS if k in a})
         if action == "photo":
             if not a.get("file_id"):
-                raise ToolError("file_id chahiye (photo).")
+                raise ToolError("file_id is needed (photo).")
             return S.attach_file(t, _s(a.get("listing")), _s(a.get("file_id")), _s(a.get("photo_kind") or "photo"))
         if action == "describe":
             return S.describe(t, _s(a.get("listing")))
@@ -171,7 +171,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return S.register_file(t, conv)
     except (S.PropError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("action galat")
+    raise ToolError("invalid action")
 
 
 def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
@@ -179,7 +179,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
     from ..propagent import service as S
     t = ctx.tenant_id
     if (getattr(ctx, "actor", "owner") or "").startswith("customer:"):
-        raise ToolError("Property desk ki jaankari graahak ke liye nahi.")
+        raise ToolError("Property desk information is not for customers.")
     try:
         if what == "day":
             return S.day(t)
@@ -215,7 +215,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
             return {"never": list(R.NEVER), "sources": [{"what": w, "url": u, "date": d} for w, u, d in R.SOURCES]}
     except (S.PropError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("what galat")
+    raise ToolError("invalid what")
 
 
 async def propagent(ctx: Ctx, action, **a: Any):

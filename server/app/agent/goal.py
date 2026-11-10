@@ -128,7 +128,7 @@ def _mutate(tenant: str, goal_id: str, fn, milestone: list[str] | None = None) -
     with session() as s:
         r = s.get(GoalRun, goal_id)
         if r is None or r.tenant_id != tenant:
-            raise ValueError(f"goal {goal_id} nahi mila")
+            raise ValueError(f"goal {goal_id} not found")
         fn(r)
         r.updated_at = now()
         view = _row_view(r)
@@ -169,11 +169,11 @@ def set_goal(tenant: str, conv: str, goal: str, steps: list[str], origin: str = 
     pairs = pairs[:MAX_STEPS]
     steps = [t for t, _ in pairs]
     if not goal.strip() or not steps:
-        raise ValueError("goal aur kam se kam ek step chahiye")
+        raise ValueError("a goal and at least one step are needed")
     _STOPPED.discard(conv)
     with session() as s:
         for r in s.scalars(select(GoalRun).where(GoalRun.conversation_id == conv, GoalRun.status == "working")).all():
-            r.status, r.reason, r.updated_at = "stopped", "naya plan ban gaya", now()
+            r.status, r.reason, r.updated_at = "stopped", "a new plan was made", now()
         r = GoalRun(tenant_id=tenant, conversation_id=conv, goal=goal.strip()[:500],
                     steps=json.dumps([{"n": i + 1, "text": t, "state": "pending", "note": "", "check": c}
                                       for i, (t, c) in enumerate(pairs)], ensure_ascii=False),
@@ -200,7 +200,7 @@ def mark_step(tenant: str, goal_id: str, n: int, state: str, note: str = "", con
             steps = []
         hit = next((x for x in steps if x.get("n") == n), None)
         if hit is None:
-            raise ValueError(f"step {n} plan mein nahi hai (1..{len(steps)})")
+            raise ValueError(f"step {n} is not in the plan (1..{len(steps)})")
         hit["state"], hit["note"] = state, str(note or "")[:200]
         if check:
             hit["check"] = str(check)[:60]      # v0.443 the step says HOW its own doneness is proved
@@ -238,7 +238,7 @@ def add_step(tenant: str, goal_id: str, text: str, conv: str = "", check: str = 
         except ValueError:
             steps = []
         if len(steps) >= MAX_STEPS:
-            raise ValueError(f"plan mein pehle hi {MAX_STEPS} steps hain")
+            raise ValueError(f"the plan already has {MAX_STEPS} steps")
         steps.append({"n": len(steps) + 1, "text": str(text).strip()[:200], "state": "pending", "note": "",
                       "check": str(check or "")[:60]})
         r.steps = json.dumps(steps, ensure_ascii=False)
@@ -255,7 +255,7 @@ def _load(tenant: str, goal_id: str) -> GoalRun | None:
 def show(tenant: str, goal_id: str) -> dict[str, Any]:
     r = _load(tenant, goal_id)
     if r is None:
-        raise ValueError(f"goal {goal_id} nahi mila")
+        raise ValueError(f"goal {goal_id} not found")
     return _row_view(r)
 
 
@@ -277,12 +277,12 @@ def build_report(steps: list[dict[str, Any]], status: str, summary: str = "", ma
             hit = hit.strip()[:240]
             if hit and hit not in bana:
                 bana.append(hit)
-    baaki = [f"{x['text']}" + (" (atka)" if x.get("state") == "failed" else "") for x in not_done][:10]
+    baaki = [f"{x['text']}" + (" (stuck)" if x.get("state") == "failed" else "") for x in not_done][:10]
     if left.strip():
         baaki.append(left.strip()[:300])
     turn = your_turn.strip()[:300] or (
-        "Kuch nahi — sab ho gaya." if status == "done" and not baaki else
-        "Aage badhane ke liye bas 'haan aage badho' likhiye ya boliye." if baaki and status != "blocked" else "")
+        "Nothing - everything is done." if status == "done" and not baaki else
+        "To carry on, just say or type 'yes, carry on'." if baaki and status != "blocked" else "")
     return {"summary": str(summary or "").strip()[:400], "hua": hua, "bana": bana[:10], "baaki": baaki[:10],
             "aapka": turn}
 
@@ -293,13 +293,13 @@ def report_text(rep: dict[str, Any]) -> str:
     if rep.get("summary"):
         out.append(rep["summary"])
     if rep.get("hua"):
-        out.append("✅ Kya hua:\n" + "\n".join(f"• {x}" for x in rep["hua"]))
+        out.append("✅ What was done:\n" + "\n".join(f"• {x}" for x in rep["hua"]))
     if rep.get("bana"):
-        out.append("📎 Kya bana:\n" + "\n".join(f"• {x}" for x in rep["bana"]))
+        out.append("📎 What was made:\n" + "\n".join(f"• {x}" for x in rep["bana"]))
     if rep.get("baaki"):
-        out.append("⏳ Kya baaki hai:\n" + "\n".join(f"• {x}" for x in rep["baaki"]))
+        out.append("⏳ What is left:\n" + "\n".join(f"• {x}" for x in rep["baaki"]))
     if rep.get("aapka"):
-        out.append("👉 Aapko kya karna hai: " + rep["aapka"])
+        out.append("👉 What you need to do: " + rep["aapka"])
     return "\n\n".join(out)
 
 
@@ -365,10 +365,10 @@ def _verify_done(tenant: str, goal_id: str, conv: str, made: list[str] | None,
             hit = (done[-1] if done else None) or (sts[0] if sts else None)
         if hit is not None:
             hit["state"] = "current"
-            hit["note"] = ("jaanch mein nahi mila: " + out["line"])[:200]
+            hit["note"] = ("not found in the check: " + out["line"])[:200]
         row.steps = json.dumps(sts, ensure_ascii=False)
         row.status, row.hold = "working", None
-        row.reason = ("Jaanch baaki: " + out["line"])[:400]
+        row.reason = ("Check pending: " + out["line"])[:400]
 
     view = _mutate(tenant, goal_id, fn)
     return {**view, "verified": False, "verify": out}
@@ -390,7 +390,7 @@ def active_for(conv: str) -> dict[str, Any] | None:
         hours = max(1, int(getattr(get_settings(), "agent_goal_resume_hours", 24) or 24))
         upd = _aware(r.updated_at)
         if r.paused_at is not None and upd is not None and upd < now() - timedelta(hours=hours):
-            r.status, r.reason = "blocked", "Kaafi der se ruka tha (aapke jawab ka intezaar) - aaram par rakha gaya"
+            r.status, r.reason = "blocked", "It had been waiting for a long time (for your answer) - put on hold"
             STATS["stale_rested"] = STATS.get("stale_rested", 0) + 1
             return None
         return _row_view(r)
@@ -408,7 +408,7 @@ def mark_stopped(conv: str) -> None:
     _STOPPED.add(conv)
     with session() as s:
         for r in s.scalars(select(GoalRun).where(GoalRun.conversation_id == conv, GoalRun.status == "working")).all():
-            r.status, r.reason, r.updated_at = "stopped", "aapne roka", now()
+            r.status, r.reason, r.updated_at = "stopped", "stopped by you", now()
             _publish(conv, _row_view(r))
 
 
@@ -420,11 +420,11 @@ def nudge_text(view: dict[str, Any]) -> str:
     """The continue nudge: what is left, and the ladder for a stuck step."""
     left = steps_left(view)
     lines = "; ".join(f"{x['n']}. {x['text']}" for x in left[:8])
-    return (f"[System: goal \"{view['goal']}\" ke yeh steps baaki hain: {lines}. Agle step par kaam karo tools se. "
-            "Atke ho to doosra tareeka: pichhla fix -> google_search/web_sources -> docs padho (open_website) -> "
-            "doosra tool/route. Har step hone par kaam_plan step n done/failed likho. Sirf sach mein uski zaroorat ho "
-            "tabhi kaam_plan finish blocked_on_her (uska tap / OTP / ek fact jo tumhare paas nahi). Text mein mat ruko. "
-            "Har bade step ke baad EK chhoti line likho (kya mila / kya bana, aur ab kya kar rahe ho), phir agla tool.]")
+    return (f"[System: goal \"{view['goal']}\" - these steps are still left: {lines}. Work on the next step with tools. "
+            "If you are stuck, try another way: the previous fix -> google_search/web_sources -> read the docs (open_website) -> "
+            "another tool/route. After each step write kaam_plan step n done/failed. Only if it is really needed "
+            "use kaam_plan finish blocked_on_her (her tap / OTP / a fact you do not have). Do not stop in text. "
+            "After each big step write ONE short line (what you found / what was made, and what you are doing now), then the next tool.]")
 
 
 # ---------------------------------------------------------------- v0.228 plan up front for clearly big asks
@@ -454,12 +454,11 @@ def looks_big(text: str) -> bool:
             or parts >= 3)
 
 
-PLAN_FIRST = ("[System: yeh kaam kai steps ka lagta hai. Sabse PEHLA tool call `kaam_plan set` ho — goal uske shabdon "
-              "mein, concrete steps. Phir step by step kaam karo, aur har bade step ke baad ek chhoti line mein batao "
-              "kya hua aur aage kya. Aakhir mein `kaam_plan finish` (made = links / files jo bane).]")
-PLAN_NOW = ("[System: tum kai steps se kaam kar rahe ho par plan nahi likha. Abhi `kaam_plan set` karo (jo ho chuka "
-            "use done likho), taaki use card par dikhe kya ho raha hai aur kya baaki hai. Phir aage badho.]")
-# v0.258 CHALTE CHALTE BOLO. v0.240 told this line to carry no number and no link, which left it empty filler
+PLAN_FIRST = ("[System: this looks like a job of many steps. Your FIRST tool call must be `kaam_plan set` - the goal in her words, "
+              "with concrete steps. Then work step by step, and after each big step say in one short line "
+              "what happened and what comes next. At the end `kaam_plan finish` (made = the links / files that were made).]")
+PLAN_NOW = ("[System: you are working through many steps but have not written a plan. Do `kaam_plan set` now (mark what is "
+            "already done as done), so the card shows what is happening and what is left. Then carry on.]")
 # ("Bills ban rahe hain"). Claude's between-step line IS the number - "the live site is on v0.256.0, the same commit
 # as main (213d505). Creating the checkpoint branch next." One sentence: what the tool really returned + what you are
 # doing now. Still no bullets, no headings, no step dumps - that part of CHHOTA JAWAB stands.
@@ -469,20 +468,20 @@ PLAN_NOW = ("[System: tum kai steps se kaam kar rahe ho par plan nahi likha. Abh
 # subject ("The live site is on v0.256.0"), the NEXT STEP is an -ing fragment ("Creating the checkpoint branch").
 # Her Hoola lines already matched on shape (median 20 words, 2 facts, 4 of 4 with a next action); what was missing
 # was the ban list, so the halves and the nevers are now spelled out instead of left to the model's taste.
-_NARRATE = ("[System: ab use EK chhoti line batao. Us line ke THEEK DO HISSE hain:\n"
-            "(1) KYA MILA — ek poora vaakya jiska subject CHEEZ ho, tum nahi, aur usmein asli number / id / naam / "
-            "link ho jo abhi tool ne diya (banaya hua nahi). Jaise: 'Live site v0.256.0 par hai, wahi commit jo main "
-            "par hai.' Bina number wali line bekaar hai.\n"
-            "(2) AB KYA — ek chhota tukda, '…kar raha hoon' / '…nikal raha hoon' par khatam. Jaise: 'Ab checkpoint "
-            "branch bana raha hoon.' 'Main karunga', 'chaliye ab', 'ek second' — nahi.\n"
-            "Bas itna: 15-30 shabd, do vaakya, ek hi baat. Teesra vaakya mat jodo.\n"
-            "KABHI NAHI: 'Bilkul!' / 'Perfect!' / 'Theek hai!' jaise shuruaati shabd; 'lagta hai' / 'shayad' jab "
-            "tumne dekh liya hai; bullet, heading, emoji; tool ke naam ya andar ki galti (kaam_plan, TypeError, "
-            "thread-level listing) — woh uske kaam ki baat nahi. Kharaab khabar bhi isi shaant tareeke se: "
-            "'Build abhi chal raha hai, isliye checkpoint ab likh raha hoon.' Maafi ya drama nahi.\n"
-            "Agar kaam ab POORA ho gaya hai to yeh line mat likho — seedha aakhri jawab do.\n"
-            "KAAM BAAKI HAI to yeh line aur AGLA TOOL CALL ek hi jawab mein do (pehle line, phir usi message mein "
-            "agla tool) - sirf line likh ke mat ruko, akeli line kaam ko wahin khatam kar deti hai.{fact}]")
+_NARRATE = ("[System: now tell her ONE short line. That line has EXACTLY TWO HALVES:\n"
+            "(1) WHAT WAS FOUND - one full sentence whose subject is the THING, not you, and it carries the real number / id / name / "
+            "link the tool just gave (nothing made up). For example: 'The live site is on v0.256.0, the same commit that is on "
+            "main.' A line without a number is useless.\n"
+            "(2) WHAT NEXT - one short piece, ending on '...I am doing it' / '...I am pulling it out'. For example: 'Now I am making the checkpoint "
+            "branch.' Not 'I will', 'let us now', 'one second'.\n"
+            "That is all: 15-30 words, two sentences, one single point. Do not add a third sentence.\n"
+            "NEVER: opening words like 'Sure!' / 'Perfect!' / 'Okay!'; 'it seems' / 'maybe' when "
+            "you have already seen it; bullets, headings, emoji; tool names or internal errors (kaam_plan, TypeError, "
+            "thread-level listing) - they are not her business. Bad news too in the same calm way: "
+            "'The build is still running, so I am writing the checkpoint now.' No apology or drama.\n"
+            "If the work is now COMPLETE do not write this line - give the final answer directly.\n"
+            "If WORK IS LEFT give this line and the NEXT TOOL CALL in one reply (the line first, then the next tool in the same message) "
+            "- do not stop after writing only the line, a lone line ends the work right there.{fact}]")
 
 
 def narrate_line(facts: object = None) -> str:
@@ -490,7 +489,7 @@ def narrate_line(facts: object = None) -> str:
     seen = [" ".join(str(f).split()) for f in (facts or []) if str(f or "").strip()]
     tail = ""
     if seen:
-        tail = " Abhi ke tool results se sach: " + " · ".join(seen[-2:]) + " — isi mein se lo, naya mat banao."
+        tail = " True facts from the latest tool results: " + " · ".join(seen[-2:]) + " — take from these, do not invent new ones."
     return _NARRATE.format(fact=tail)
 
 
@@ -507,13 +506,13 @@ def goal_block(conv: str) -> str:
     done = [x for x in (view.get("steps") or []) if x.get("state") == "done"]
     tried = [f"{x['n']}. {x['text']}" + (f" ({x['note']})" if x.get("note") else "")
              for x in (view.get("steps") or []) if x.get("state") in ("failed", "skipped")]
-    out = [f"GOAL JAARI HAI (aapka apna lamba kaam; ise poora karo, text par mat ruko): {view['goal']}",
-           f"- Ho chuke: {len(done)}/{view['total']} steps."]
+    out = [f"GOAL JAARI HAI (GOAL IN PROGRESS - your own long job; finish it, do not stop at text): {view['goal']}",
+           f"- Done: {len(done)}/{view['total']} steps."]
     if left:
-        out.append("- Baaki: " + "; ".join(f"{x['n']}. {x['text']}" for x in left[:10]))
+        out.append("- Left: " + "; ".join(f"{x['n']}. {x['text']}" for x in left[:10]))
     if tried:
-        out.append("- Inme dikkat aayi thi: " + "; ".join(tried[:4]) + " (doosra tareeka try karo).")
-    out.append("- Har step hone par kaam_plan step n done/failed likho; poora hone par kaam_plan finish done.")
+        out.append("- These had trouble: " + "; ".join(tried[:4]) + " (try another way).")
+    out.append("- After each step write kaam_plan step n done/failed; when all is done kaam_plan finish done.")
     return "\n".join(out)
 
 
@@ -634,16 +633,16 @@ def _schedule(conv: str, tenant: str, view: dict[str, Any], count_round: bool) -
         elif rounds < st.agent_goal_rounds and mins < st.agent_goal_minutes:
             r.rounds += 1
     if rounds >= st.agent_goal_rounds or mins >= st.agent_goal_minutes:
-        why = f"{rounds} rounds poore" if rounds >= st.agent_goal_rounds else f"{int(mins)} minute ho gaye"
+        why = f"{rounds} rounds used up" if rounds >= st.agent_goal_rounds else f"{int(mins)} minutes passed"
         if getattr(st, "agent_goal_ask_on_limit", True):
             _hold_for_limit(tenant, view)    # v0.223 like Claude: stop and ASK, never throw the job away
         else:
-            finish(tenant, view["id"], "failed", f"{why}; baaki: {view['stage'] or 'steps'}")
+            finish(tenant, view["id"], "failed", f"{why}; left: {view['stage'] or 'steps'}")
         return False
     left = steps_left(view)
     from .santosh import _bg, run_turn, LAST_OUTCOME
-    ask = f"[Goal jaari: {view['goal']} — baaki steps: " + "; ".join(f"{x['n']}. {x['text']}" for x in left[:8]) + \
-        ". Aage badho, har step kaam_plan se likho, poora hone par finish done.]"
+    ask = f"[Goal jaari: {view['goal']} — steps left: " + "; ".join(f"{x['n']}. {x['text']}" for x in left[:8]) + \
+        ". Carry on, write each step with kaam_plan, and when all is done finish done.]"
     _pend(view["id"], 1)
     # CALL PAR TEAM: a round scheduled from a CALL brain turn copied the call's context - every later round of the job
     # ran in quick-voice mode (Haiku voice brain, 8 exchanges, no thinking / hard / compaction). A round is chat work.
@@ -654,7 +653,7 @@ def _schedule(conv: str, tenant: str, view: dict[str, Any], count_round: bool) -
     finally:
         _s.VOICE_BRAIN_NOW.reset(_v)
         _s._MODEL_NOW.reset(_m)
-    LAST_OUTCOME[conv] = {"outcome": "continuing", "left": f"{view['done']}/{view['total']} steps done, {len(left)} baaki",
+    LAST_OUTCOME[conv] = {"outcome": "continuing", "left": f"{view['done']}/{view['total']} steps done, {len(left)} left",
                           "goal": view["goal"], "at": time.time()}
     STATS["continued"] += 1
     return True
@@ -712,9 +711,9 @@ async def _continuation(conv: str, tenant: str, ask: str, goal_id: str, actor: s
         from .santosh import run_turn, LAST_OUTCOME
         # wave 10: the step list is read NOW (her own turn may have finished some while this round waited for the chat)
         left0 = steps_left(v0)
-        ask = (f"[Goal jaari: {v0['goal']} — baaki steps: " + "; ".join(f"{x['n']}. {x['text']}" for x in left0[:8])
-               + ". Aage badho, har step kaam_plan se likho, poora hone par finish done.]") \
-            if (left0 and ask.startswith("[Goal jaari:") and "Owner ne kaha" not in ask) else ask
+        ask = (f"[Goal jaari: {v0['goal']} — steps left: " + "; ".join(f"{x['n']}. {x['text']}" for x in left0[:8])
+               + ". Carry on, write each step with kaam_plan, and when all is done finish done.]") \
+            if (left0 and ask.startswith("[Goal jaari:") and "The owner said keep going" not in ask) else ask
         out = await run_turn(conv, ask, tenant_id=tenant, actor=actor)
         v = active_for(conv)
         if v is not None and v.get("id") == goal_id and steps_left(v):
@@ -736,9 +735,9 @@ def _hold_for_limit(tenant: str, view: dict[str, Any]) -> None:
     """The rounds / minutes budget is used up: the job STOPS AND ASKS (status blocked, hold=limit) instead of being
     marked failed. Her "haan aage badho" (or the card's button) gives it a fresh budget from where it stopped."""
     left = steps_left(view)
-    reason = (f"Itna kaam ho gaya ({view['done']}/{view['total']} steps). Baaki: "
+    reason = (f"This much is done ({view['done']}/{view['total']} steps). Left: "
               + "; ".join(x["text"] for x in left[:3]) + (" ..." if len(left) > 3 else "")
-              + ". Aage badhaun? Bas 'haan aage badho' likhiye / boliye.")
+              + ". Shall I carry on? Just say or type 'yes, carry on'.")
 
     def fn(r: GoalRun):
         r.status, r.hold, r.reason = "blocked", LIMIT, reason[:400]
@@ -783,7 +782,7 @@ def resume_on_answer(tenant: str, conv: str, words: str) -> dict[str, Any] | Non
     _STOPPED.discard(conv)
 
     def fn(r: GoalRun):
-        r.status, r.reason, r.paused_at = "working", ("Uska jawab: " + str(words or ""))[:400], None
+        r.status, r.reason, r.paused_at = "working", ("Her answer: " + str(words or ""))[:400], None
     out = _mutate(tenant, view["id"], fn)
     STATS["answered_resumed"] = STATS.get("answered_resumed", 0) + 1
     return out
@@ -831,8 +830,8 @@ def continue_now(tenant: str, conv: str) -> dict[str, Any] | None:
     if not (conv in _locks and _locks[conv].locked()):
         who = "goal"                      # she pressed the button herself: this round carries her authority
         left = steps_left(view)
-        ask = f"[Goal jaari: {view['goal']} — baaki steps: " + "; ".join(f"{x['n']}. {x['text']}" for x in left[:8]) + \
-            ". Owner ne kaha aage badho. Aage badho, har step kaam_plan se likho, poora hone par finish done.]"
+        ask = f"[Goal jaari: {view['goal']} — steps left: " + "; ".join(f"{x['n']}. {x['text']}" for x in left[:8]) + \
+            ". The owner said keep going. Carry on, write each step with kaam_plan, and when all is done finish done.]"
         from .santosh import _bg
         _pend(view["id"], 1)
         # CALL PAR TEAM: a round scheduled from a CALL brain turn copied the call's context - every later round of the job
@@ -894,11 +893,11 @@ def recover_tick() -> int:
             # v0.667 "server dobara chalu hua" only when it really restarted (the job last moved before this process
             # began); a round that simply ended (a wake report, a cut turn) is said as what it is
             if upd < _BOOT_AT:
-                line = f"Server dobara chalu hua — aapka kaam \"{view['goal'][:80]}\" wahin se aage badha raha hoon " \
-                       f"({view['done']}/{view['total']} steps ho chuke)."
+                line = f"The server restarted - I am carrying on with your task \"{view['goal'][:80]}\" from where it stopped " \
+                       f"({view['done']}/{view['total']} steps done)."
             else:
-                line = f"Aapka kaam \"{view['goal'][:80]}\" kuch der se ruka tha — wahin se aage badha raha hoon " \
-                       f"({view['done']}/{view['total']} steps ho chuke)."
+                line = f"Your task \"{view['goal'][:80]}\" had paused for a while - I am carrying on from where it stopped " \
+                       f"({view['done']}/{view['total']} steps done)."
             with session() as s:
                 s.add(Message(conversation_id=conv, role="assistant", content=line, display=line,
                               in_history=False, delivered_to_agent=True))

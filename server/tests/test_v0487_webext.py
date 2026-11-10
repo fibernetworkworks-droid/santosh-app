@@ -88,7 +88,7 @@ def test_page_send_lands_a_turn_in_her_conversation(lane):
     assert s["tenant"] == TENANT and s["voice"] is False
     assert "https://example.com/article" in s["text"] and "Ek Page" in s["text"]
     assert '"""' in s["text"] and "yeh tukda chuna hai" in s["text"]
-    assert "Iske baare mein bataiye." in s["text"]      # the honest default ask
+    assert "Tell me about it." in s["text"]      # the honest default ask
 
 
 def test_ask_only_send_is_the_text_verbatim(lane):
@@ -102,7 +102,7 @@ def test_page_with_ask_composes_once(lane):
     assert r.status_code == 200
     t = lane["sent"][0]["text"]
     assert t.index("https://example.com/x") < t.index("Ismein GST kitna hai?")
-    assert "Iske baare mein bataiye." not in t          # her own ask replaces the default
+    assert "Tell me about it." not in t          # her own ask replaces the default
 
 
 def test_empty_and_bad_url_refused(lane):
@@ -135,7 +135,7 @@ def test_rate_cap_is_honest(lane, monkeypatch):
     assert _post(lane, text="1").status_code == 200
     assert _post(lane, text="2").status_code == 200
     r = _post(lane, text="3")
-    assert r.status_code == 429 and "ghanta" in r.json()["detail"]
+    assert r.status_code == 429 and "hour" in r.json()["detail"]
 
 
 def test_messages_read_back_tenant_checked(lane):
@@ -168,11 +168,11 @@ def test_lane_touches_no_pc_settings():
     assert "pc_" not in src.replace("quickask", "").replace("/api/pc/", "") or "pc_control" not in src
     from app import quicklane
     assert quicklane.QUICK_ASK_PER_HOUR == 30
-    # the compose shape is honest Hinglish and server-side (every client lands the same shape)
+    # the compose shape is honest English and server-side (every client lands the same shape)
     t = quicklane.compose("", "https://e.com/a", "", "")
-    assert t.startswith("Is page ko dekhiye:") and "Iske baare mein bataiye." in t
+    assert t.startswith("Please look at this page:") and "Tell me about it." in t
     t2 = quicklane.compose("sawaal", "https://e.com/a", "Shirshak", "tukda")
-    assert 'Is page ko dekhiye — "Shirshak"' in t2 and '"""\ntukda\n"""' in t2 and t2.endswith("sawaal")
+    assert 'Please look at this page — "Shirshak"' in t2 and '"""\ntukda\n"""' in t2 and t2.endswith("sawaal")
 
 
 # ================================================================ (2) the extension source
@@ -459,9 +459,9 @@ def test_spec_rides_the_ext_payload():
 
 def test_versions():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.715.0"
+    assert APP_VERSION == "0.749.0"
     pubspec = (ROOT / "pubspec.yaml").read_text(encoding="utf-8")
-    assert "version: 0.715.0+714" in pubspec
+    assert "version: 0.749.0+748" in pubspec
     import santosh_desktop
     assert santosh_desktop.__version__ == "1.9.0"           # desktop unchanged by W5 (server + extension files only)
     meta = json.loads((PLUGIN / "plugin.json").read_text(encoding="utf-8-sig"))

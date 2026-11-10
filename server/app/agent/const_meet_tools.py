@@ -1,6 +1,6 @@
 """v0.512.0 const_meet tools (#67 Meeting Secretary). `const_meet_dekho` only reads; `const_meet` does
 the work. Tier A: OAC / site / coordination meetings, minutes as said, action items chased till closed
-(closing is on the owner's / PM's word). Minutes PDF circulate karta hai - decisions Hoola nahi leta."""
+(closing is on the owner's / PM's word). Circulates the minutes PDF - Hoola does not take decisions."""
 from __future__ import annotations
 
 import asyncio
@@ -13,7 +13,7 @@ MEET_TOOLS = [
         "Meeting secretary (OAC / site / coordination). action=meet: title, kind oac|site|coord|client|weekly, day, "
         "site, project, attendees, minutes [{text, by}], actions [{what, who, due}] -> baithak record + chase. "
         "action=minute: meet (id), text, by. action=action: meet (id), what, who, due. action=action_done: action (id) "
-        "- OWNER ONLY, band karne ki haan. action=minutes_pdf: meet (id) -> the minutes PDF (file)."),
+        "- OWNER ONLY, approval to close. action=minutes_pdf: meet (id) -> the minutes PDF (file)."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["meet", "minute", "action", "action_done", "minutes_pdf"]},
          "title": {"type": "string"}, "kind": {"type": "string"}, "day": {"type": "string"}, "site": {"type": "string"},
@@ -56,7 +56,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             mid = _s(a.get("meet"))
             pdf = M.minutes_pdf(t, mid)
             f = chatfiles.store(t, f"Minutes-{mid[:8]}.pdf", pdf, "application/pdf")
-            return {"file": f, "say": "Minutes PDF ban gaya - circulate kijiye."}
+            return {"file": f, "say": "The minutes PDF is ready - please circulate it."}
     except (M.CstError, ValueError) as ex:
         raise ToolError(str(ex))
     raise ToolError("action galat")
@@ -77,7 +77,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
                 if what == "meet":
                     x = s.get(CMeet, _s(a.get("meet")))
                     if not x or x.tenant_id != t:
-                        raise M.CstError("Baithak nahi mili.")
+                        raise M.CstError("Meeting not found.")
                     acts = s.scalars(select(CActionItem).where(CActionItem.meet_id == x.id)).all()
                     return {"meet": {"title": x.title, "kind": x.kind, "day": x.day, "site": x.site, "project": x.project,
                                      "attendees": x.attendees, "minutes": _j(x.minutes, [])},

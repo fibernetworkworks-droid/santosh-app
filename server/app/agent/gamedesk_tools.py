@@ -446,10 +446,10 @@ async def game_desk(ctx: Ctx, action="", brief="", orientation="portrait", id=""
     from ..gamedesk import service as G
     t = ctx.tenant_id
     if not await asyncio.to_thread(hire.is_hired, t, KEY):
-        raise ToolError("Game Developer hired nahi hai: Employees (Hoola app / console) mein ek tap mein hire kijiye, "
-                        "phir game ban jayega.")
+        raise ToolError("Game Developer is not hired: hire it in Employees (Hoola app / console) with one tap, "
+                        "then the game can be made.")
     if action in ("new", "approve", "change", "cancel") and str(getattr(ctx, "actor", "owner")).startswith(("customer:", "staff:")):
-        raise ToolError("Game banana / badalna sirf owner ka kaam hai.")
+        raise ToolError("Making / changing a game is the owner's job only.")
     try:
         if action == "new":
             return _short(await asyncio.to_thread(G.start, t, ctx.conversation_id, brief, orientation, ctx.actor))
@@ -494,10 +494,10 @@ async def game_studio(ctx: Ctx, action="", id="", game="", brief="", orientation
     from ..gamedesk import studio as S
     t = ctx.tenant_id
     if not await asyncio.to_thread(hire.is_hired, t, KEY):
-        raise ToolError("Game Developer hired nahi hai: Employees mein ek tap mein hire kijiye, phir game project chalega.")
+        raise ToolError("Game Developer is not hired: hire it in Employees with one tap, then the game project will run.")
     reads = ("list", "status", "why", "summary")
     if action not in reads and str(getattr(ctx, "actor", "owner")).startswith(("customer:", "staff:")):
-        raise ToolError("Game project badalna sirf owner ka kaam hai.")
+        raise ToolError("Changing a game project is the owner's job only.")
     run = asyncio.to_thread
     try:
         if action == "new":
@@ -514,7 +514,7 @@ async def game_studio(ctx: Ctx, action="", id="", game="", brief="", orientation
             if len(mine) == 1:
                 id = mine[0]["id"]
             else:
-                raise ToolError("Kaunsa project? id / number (S-0001) dijiye; action=list se dekhiye.")
+                raise ToolError("Which project? Give the id / number (S-0001); see action=list.")
         if action == "status":
             return _brief_studio(await run(S.get, t, id))
         if action == "add":
@@ -562,7 +562,7 @@ async def game_studio(ctx: Ctx, action="", id="", game="", brief="", orientation
             try:
                 card = await run(GGH.request, t, id, repo, bool(private), ctx.conversation_id)
             except GithubError as e:
-                raise ToolError(f"GitHub: {e} (GitHub token Hoola app > Website > GitHub mein daaliye)")
+                raise ToolError(f"GitHub: {e} (add the GitHub token in the Hoola app > Website > GitHub)")
             return {"card": card["say"], "note": "The card is on her screen; only her tap pushes."}
         if action == "settings":
             return _brief_studio(await run(S.settings, t, id, title=title, goal=goal, auto=auto, nightly_on=nightly_on,
@@ -600,15 +600,15 @@ async def game_bible(ctx: Ctx, action="", id="", kind="", entity=None, eid="", s
     from ..gamedesk import studio as S
     t = ctx.tenant_id
     if not await asyncio.to_thread(hire.is_hired, t, KEY):
-        raise ToolError("Game Developer hired nahi hai: Employees mein ek tap mein hire kijiye.")
+        raise ToolError("Game Developer is not hired: hire it in Employees with one tap.")
     if action not in ("show", "template", "check", "simulate") and str(getattr(ctx, "actor", "owner")).startswith(("customer:", "staff:")):
-        raise ToolError("Game Bible badalna sirf owner ka kaam hai.")
+        raise ToolError("Changing the Game Bible is the owner's job only.")
     run = asyncio.to_thread
     try:
         if not id:
             mine = await run(S.studios, t)
             if len(mine) != 1:
-                raise ToolError("Kaunsa project? id (S-0001) dijiye; game_studio action=list se dekhiye.")
+                raise ToolError("Which project? Give the id (S-0001); see game_studio action=list.")
             id = mine[0]["id"]
         if action == "show":
             return _bible_short(await run(B.view, t, id))
@@ -664,15 +664,15 @@ async def game_assets(ctx: Ctx, action="", id="", kind="", key="", words="", siz
     from ..gamedesk import studio as S
     t = ctx.tenant_id
     if not await asyncio.to_thread(hire.is_hired, t, KEY):
-        raise ToolError("Game Developer hired nahi hai: Employees mein ek tap mein hire kijiye.")
+        raise ToolError("Game Developer is not hired: hire it in Employees with one tap.")
     if action not in ("list", "suggest") and str(getattr(ctx, "actor", "owner")).startswith(("customer:", "staff:")):
-        raise ToolError("Game assets badalna sirf owner ka kaam hai.")
+        raise ToolError("Changing game assets is the owner's job only.")
     run = asyncio.to_thread
     try:
         if not id:
             mine = await run(S.studios, t)
             if len(mine) != 1:
-                raise ToolError("Kaunsa project? id (S-0001) dijiye.")
+                raise ToolError("Which project? Give the id (S-0001).")
             id = mine[0]["id"]
         if action == "list":
             await run(A.collect_models, t, id)
@@ -709,15 +709,15 @@ async def game_qa(ctx: Ctx, action="", id="", bug="", title="", detail="", sever
     from ..gamedesk import studio as S
     t = ctx.tenant_id
     if not await asyncio.to_thread(hire.is_hired, t, KEY):
-        raise ToolError("Game Developer hired nahi hai: Employees mein ek tap mein hire kijiye.")
+        raise ToolError("Game Developer is not hired: hire it in Employees with one tap.")
     if action not in ("report", "bugs") and str(getattr(ctx, "actor", "owner")).startswith(("customer:", "staff:")):
-        raise ToolError("Game QA badalna sirf owner ka kaam hai.")
+        raise ToolError("Changing game QA is the owner's job only.")
     run = asyncio.to_thread
     try:
         if not id:
             mine = await run(S.studios, t)
             if len(mine) != 1:
-                raise ToolError("Kaunsa project? id (S-0001) dijiye.")
+                raise ToolError("Which project? Give the id (S-0001).")
             id = mine[0]["id"]
         if action == "run":
             res = await run(Q.start, t, id)
@@ -753,9 +753,9 @@ async def game_release(ctx: Ctx, action="", id="", platforms=None, android_forma
     from ..gamedesk import studio as S
     t = ctx.tenant_id
     if not await asyncio.to_thread(hire.is_hired, t, KEY):
-        raise ToolError("Game Developer hired nahi hai: Employees mein ek tap mein hire kijiye.")
+        raise ToolError("Game Developer is not hired: hire it in Employees with one tap.")
     if action not in ("targets", "list", "rating") and str(getattr(ctx, "actor", "owner")).startswith(("customer:", "staff:")):
-        raise ToolError("Game release sirf owner ka kaam hai.")
+        raise ToolError("Game release is the owner's job only.")
     run = asyncio.to_thread
     try:
         if action == "targets":
@@ -763,7 +763,7 @@ async def game_release(ctx: Ctx, action="", id="", platforms=None, android_forma
         if not id:
             mine = await run(S.studios, t)
             if len(mine) != 1:
-                raise ToolError("Kaunsa project? id (S-0001) dijiye.")
+                raise ToolError("Which project? Give the id (S-0001).")
             id = mine[0]["id"]
         if action == "build":
             v = await run(PF.release, t, id, list(platforms or []), android_format)
@@ -785,7 +785,7 @@ async def game_release(ctx: Ctx, action="", id="", platforms=None, android_forma
             d = await run(PF.releases, t, id)
             rel = next((x for x in d["releases"] if x["number"] == str(release).upper() or x["id"] == release), None)
             if rel is None:
-                raise ToolError("Kaunsi release? R-001 dijiye.")
+                raise ToolError("Which release? Give R-001.")
             card = await run(PF.itch_card, t, id, rel["id"], target)
             return {"card": card["say"], "note": "The card waits for her tap on the Release page; you cannot upload."}
     except G.GameError as e:
@@ -795,7 +795,7 @@ async def game_release(ctx: Ctx, action="", id="", platforms=None, android_forma
 
 def _owner_only(ctx: Ctx, what: str) -> None:
     if str(getattr(ctx, "actor", "owner")).startswith(("customer:", "staff:")):
-        raise ToolError(f"{what} sirf owner ka kaam hai.")
+        raise ToolError(f"{what} is the owner's job only.")
 
 
 def _world_short(v: dict) -> dict:
@@ -815,7 +815,7 @@ async def game_world(ctx: Ctx, action="", words="", kind="", params=None, seed=N
     from ..gamedesk import world as W
     t = ctx.tenant_id
     if not await asyncio.to_thread(hire.is_hired, t, W.KEY):
-        raise ToolError("Procedural World Engineer hired nahi hai: Employees mein ek tap mein hire kijiye.")
+        raise ToolError("Procedural World Engineer is not hired: hire it in Employees with one tap.")
     if action not in ("list", "status"):
         _owner_only(ctx, "World banana / badalna")
     run = asyncio.to_thread
@@ -862,7 +862,7 @@ async def game_physics(ctx: Ctx, action="", words="", inputs=None, id="", setup=
     from ..gamedesk import service as G
     t = ctx.tenant_id
     if not await asyncio.to_thread(hire.is_hired, t, P.KEY):
-        raise ToolError("Physics Engine Developer hired nahi hai: Employees mein ek tap mein hire kijiye.")
+        raise ToolError("Physics Engine Developer is not hired: hire it in Employees with one tap.")
     if action not in ("list", "status"):
         _owner_only(ctx, "Physics setup")
     run = asyncio.to_thread
@@ -902,7 +902,7 @@ async def game_audio(ctx: Ctx, action="", words="", plan=None, id="", setup="", 
     from ..gamedesk import service as G
     t = ctx.tenant_id
     if not await asyncio.to_thread(hire.is_hired, t, A.KEY):
-        raise ToolError("Spatial Audio Systems Programmer hired nahi hai: Employees mein ek tap mein hire kijiye.")
+        raise ToolError("Spatial Audio Systems Programmer is not hired: hire it in Employees with one tap.")
     if action not in ("list", "status"):
         _owner_only(ctx, "Audio setup")
     run = asyncio.to_thread
@@ -934,7 +934,7 @@ async def game_haptics(ctx: Ctx, action="", words="", patterns=None, actuator="p
     from ..gamedesk import service as G
     t = ctx.tenant_id
     if not await asyncio.to_thread(hire.is_hired, t, H.KEY):
-        raise ToolError("Haptic Feedback Systems Engineer hired nahi hai: Employees mein ek tap mein hire kijiye.")
+        raise ToolError("Haptic Feedback Systems Engineer is not hired: hire it in Employees with one tap.")
     if action not in ("list", "status"):
         _owner_only(ctx, "Haptics")
     run = asyncio.to_thread
@@ -972,7 +972,7 @@ async def _pack_tool(ctx: Ctx, mod_name: str, who: str, action: str, ref: str, m
     M = importlib.import_module(f"..gamedesk.{mod_name}", __package__)
     t = ctx.tenant_id
     if not await asyncio.to_thread(hire.is_hired, t, M.KEY):
-        raise ToolError(f"{who} hired nahi hai: Employees mein ek tap mein hire kijiye.")
+        raise ToolError(f"{who} is not hired: hire it in Employees with one tap.")
     if action not in ("list", "status"):
         _owner_only(ctx, who)
     run = asyncio.to_thread
@@ -1031,7 +1031,7 @@ async def game_scenes(ctx: Ctx, action="", id="", words="", name="", **_):
     from ..gamedesk import studio as S
     t = ctx.tenant_id
     if not await asyncio.to_thread(hire.is_hired, t, KEY):
-        raise ToolError("Game Developer hired nahi hai: Employees mein ek tap mein hire kijiye.")
+        raise ToolError("Game Developer is not hired: hire it in Employees with one tap.")
     if action in ("new", "approve", "reject"):
         _owner_only(ctx, "Scenes")
     run = asyncio.to_thread
@@ -1039,7 +1039,7 @@ async def game_scenes(ctx: Ctx, action="", id="", words="", name="", **_):
         if not id:
             mine = await run(S.studios, t)
             if len(mine) != 1:
-                raise ToolError("Kaunsa project? id (S-0001) dijiye.")
+                raise ToolError("Which project? Give the id (S-0001).")
             id = mine[0]["id"]
         if action == "list":
             v = await run(SC.view, t, id)
@@ -1047,7 +1047,7 @@ async def game_scenes(ctx: Ctx, action="", id="", words="", name="", **_):
                     "in_the_game": v["in_the_game"], "how": v["how"], "not_built": v["not_built"]}
         if action == "new":
             if len(str(words or "").strip()) < 3:
-                raise ToolError("Scene kaisa ho, ek line mein likhiye.")
+                raise ToolError("Describe the scene in one line.")
             return await run(SC.propose, t, id, words, name)
         if action == "approve":
             return await run(SC.approve, t, id, name)
@@ -1065,13 +1065,13 @@ async def game_provenance(ctx: Ctx, action="", id="", **_):
     from ..gamedesk import studio as S
     t = ctx.tenant_id
     if not await asyncio.to_thread(hire.is_hired, t, KEY):
-        raise ToolError("Game Developer hired nahi hai: Employees mein ek tap mein hire kijiye.")
+        raise ToolError("Game Developer is not hired: hire it in Employees with one tap.")
     run = asyncio.to_thread
     try:
         if not id:
             mine = await run(S.studios, t)
             if len(mine) != 1:
-                raise ToolError("Kaunsa project? id (S-0001) dijiye.")
+                raise ToolError("Which project? Give the id (S-0001).")
             id = mine[0]["id"]
         if action == "sheet":
             v = await run(P.sheet, t, id)
@@ -1097,7 +1097,7 @@ async def game_arena(ctx: Ctx, action="", n=8, seed=1, budget_inr=0, note="", id
     from ..gamedesk import service as G
     _owner_only(ctx, "Arena")
     if ctx.tenant_id != "default":
-        raise ToolError("Arena sirf owner ke liye hai.")
+        raise ToolError("The Arena is for the owner only.")
     run = asyncio.to_thread
     try:
         if action == "status":
@@ -1132,7 +1132,7 @@ async def game_bigstudio(ctx: Ctx, action="", project="", engine="", title="", e
     from ..gamedesk import service as G
     t = ctx.tenant_id
     if not await asyncio.to_thread(hire.is_hired, t, KEY):
-        raise ToolError("Game Developer hired nahi hai: Employees mein ek tap mein hire kijiye.")
+        raise ToolError("Game Developer is not hired: hire it in Employees with one tap.")
     if action in ("new_project", "add_task", "reopen"):
         _owner_only(ctx, "Studio project")
     run = asyncio.to_thread
@@ -1147,7 +1147,7 @@ async def game_bigstudio(ctx: Ctx, action="", project="", engine="", title="", e
         if action == "tasks":
             ps = [p for p in await run(B.projects, t) if not project or p["number"] == project.upper() or p["id"] == project]
             if not ps:
-                raise ToolError("Woh studio project nahi mila.")
+                raise ToolError("That studio project was not found.")
             return {"project": ps[0]["number"], "tasks": [{k: x[k] for k in ("number", "title", "status", "rounds", "files")} for x in ps[0]["tasks"]]}
         if action == "task":
             v = await run(B.task, t, project, task)
@@ -1170,7 +1170,7 @@ async def game_liveops(ctx: Ctx, action="", id="", key="", title="", goal="win",
     from ..gamedesk import studio as S
     t = ctx.tenant_id
     if not await asyncio.to_thread(hire.is_hired, t, KEY):
-        raise ToolError("Game Developer hired nahi hai: Employees mein ek tap mein hire kijiye.")
+        raise ToolError("Game Developer is not hired: hire it in Employees with one tap.")
     if action in ("experiment_add", "experiment_start", "experiment_stop", "event_add", "event_approve", "event_cancel",
                   "hotfix", "patch_check"):
         _owner_only(ctx, "Live ops")
@@ -1179,7 +1179,7 @@ async def game_liveops(ctx: Ctx, action="", id="", key="", title="", goal="win",
         if not id:
             mine = await run(S.studios, t)
             if len(mine) != 1:
-                raise ToolError("Kaunsa project? id (S-0001) dijiye.")
+                raise ToolError("Which project? Give the id (S-0001).")
             id = mine[0]["id"]
         if action == "status":
             v = await run(L.view, t, id)
@@ -1222,7 +1222,7 @@ async def game_runtime(ctx: Ctx, action="", id="", on=None, telemetry=None, **_)
     from ..gamedesk import studio as S
     t = ctx.tenant_id
     if not await asyncio.to_thread(hire.is_hired, t, KEY):
-        raise ToolError("Game Developer hired nahi hai: Employees mein ek tap mein hire kijiye.")
+        raise ToolError("Game Developer is not hired: hire it in Employees with one tap.")
     if action in ("replay_test", "set"):
         _owner_only(ctx, "Runtime")
     run = asyncio.to_thread
@@ -1230,7 +1230,7 @@ async def game_runtime(ctx: Ctx, action="", id="", on=None, telemetry=None, **_)
         if not id:
             mine = await run(S.studios, t)
             if len(mine) != 1:
-                raise ToolError("Kaunsa project? id (S-0001) dijiye.")
+                raise ToolError("Which project? Give the id (S-0001).")
             id = mine[0]["id"]
         if action == "status":
             st = await run(R.settings, t, id)

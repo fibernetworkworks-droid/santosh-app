@@ -18,8 +18,8 @@ Map<String, dynamic> _map(dynamic m) => Map<String, dynamic>.from((m as Map?) ??
 void _snack(BuildContext c, String t) => ScaffoldMessenger.of(c).showSnackBar(SnackBar(content: Text(t)));
 
 const _stUi = {
-  'writing': 'SwiftUI likh raha', 'building': 'Mac par compile', 'fixing': 'Galtiyan theek', 'uploading': 'TestFlight par ja rahi',
-  'ready': 'Taiyaar', 'zip': 'Xcode ZIP', 'failed': 'Dikkat', '': 'Shuru nahi',
+  'writing': 'Writing SwiftUI', 'building': 'Compiling on Mac', 'fixing': 'Fixing errors', 'uploading': 'Going to TestFlight',
+  'ready': 'Ready', 'zip': 'Xcode ZIP', 'failed': 'Problem', '': 'Not started',
 };
 
 class IosBuildPanel extends StatefulWidget {
@@ -57,12 +57,12 @@ class _IosBuildPanelState extends State<IosBuildPanel> {
   Future<void> _build(String kind) async {
     if (kind == 'testflight') {
       final yes = await showDialog<bool>(context: context, builder: (c) => AlertDialog(
-        title: const Text('TestFlight par bhejein?'),
-        content: const Text('Yeh build aapke Apple account ke TestFlight par jayegi (sirf testers dekhenge). App Store par bhejna '
-            'baad mein App Store Connect mein aapka tap hai.'),
+        title: const Text('Send to TestFlight?'),
+        content: const Text('This build will go to TestFlight on your Apple account (only testers will see it). Sending to the App Store'
+            'is your tap later in App Store Connect.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Abhi nahi')),
-          TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Haan, bhejo')),
+          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Not now')),
+          TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Yes, send')),
         ],
       ));
       if (yes != true) return;
@@ -110,17 +110,17 @@ class _IosBuildPanelState extends State<IosBuildPanel> {
         const SizedBox(height: 6),
         Text('Bundle ID: ${_s(v['bundle_id'])}', style: const TextStyle(color: C.muted, fontSize: 12)),
         if (scr.isNotEmpty) Text('Screens: $done/${scr.length}'
-            '${_i(_map(v['stats'])['code']) > 0 ? ' (${_i(_map(v['stats'])['code'])} saada)' : ''}', style: const TextStyle(color: C.muted, fontSize: 12)),
+            '${_i(_map(v['stats'])['code']) > 0 ? ' (${_i(_map(v['stats'])['code'])} plain)' : ''}', style: const TextStyle(color: C.muted, fontSize: 12)),
         if (qa['ran'] == true) ...[
           const SizedBox(height: 6),
           Row(children: [
             Icon(qa['passed'] == true ? Icons.verified_rounded : Icons.error_outline_rounded,
                 color: qa['passed'] == true ? C.ok : C.bad, size: 18),
             const SizedBox(width: 6),
-            Expanded(child: Text('iPhone simulator: ${_i(qa['opened'])}/${_i(qa['total'])} screens bina crash ke khuli', style: display(13))),
+            Expanded(child: Text('iPhone simulator: ${_i(qa['opened'])}/${_i(qa['total'])} screens opened without a crash', style: display(13))),
           ]),
           Wrap(spacing: 6, runSpacing: 6, children: [
-            if (_map(qa['perf'])['launch_ms'] != null) Pill('Khulti hai ${_map(qa['perf'])['launch_ms']} ms', fg: C.ok),
+            if (_map(qa['perf'])['launch_ms'] != null) Pill('Opens in ${_map(qa['perf'])['launch_ms']} ms', fg: C.ok),
             if (_map(qa['perf'])['app_mb'] != null) Pill('App ${_map(qa['perf'])['app_mb']} MB', fg: C.ok),
           ]),
           if (shots.isNotEmpty) ...[
@@ -135,17 +135,17 @@ class _IosBuildPanelState extends State<IosBuildPanel> {
         ],
         if (runner['ready'] != true) ...[
           const SizedBox(height: 6),
-          Text('iPhone app sirf Mac par compile hoti hai. Ek baar:', style: display(12.5)),
-          const Text('• Apne private GitHub builds repo mein server/app_builder/hoola-ios.yml daaliye (.github/workflows/).\n'
-              '• TestFlight ke liye usi repo ke Secrets mein: ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_P8, APPLE_TEAM_ID '
-              '(App Store Connect > Users and Access > Integrations; key yahan ya chat mein kabhi nahi).\n'
-              '• App Store Connect mein My Apps > + > New App, isi bundle ID se.', style: TextStyle(color: C.muted, fontSize: 11.5)),
+          Text('The iPhone app compiles only on a Mac. One time:', style: display(12.5)),
+          const Text('• Add server/app_builder/hoola-ios.yml to your private GitHub builds repo (.github/workflows/).\n'
+              '• For TestFlight, add to that repo\'s Secrets: ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_P8, APPLE_TEAM_ID'
+              '(App Store Connect > Users and Access > Integrations; never put the key here or in chat).\n'
+              '• In App Store Connect: My Apps > + > New App, with this same bundle ID.', style: TextStyle(color: C.muted, fontSize: 11.5)),
         ],
         const SizedBox(height: 8),
         Wrap(spacing: 8, runSpacing: 6, children: [
-          GlassButton(label: _s(v['build']) == '0' ? 'iPhone app banao' : 'iPhone app dobara banao', height: 36,
+          GlassButton(label: _s(v['build']) == '0' ? 'Make iPhone app' : 'Make iPhone app again', height: 36,
               onTap: _busy || working || !widget.approved ? null : () => _build('sim')),
-          GlassButton(label: 'TestFlight par bhejo', color: C.accent, height: 36,
+          GlassButton(label: 'Send to TestFlight', color: C.accent, height: 36,
               onTap: _busy || working || st != 'ready' || runner['ready'] != true ? null : () => _build('testflight')),
           if (_s(v['zip_url']).isNotEmpty)
             GlassButton(label: 'Xcode project (ZIP)', height: 36,
@@ -225,15 +225,15 @@ class _AppStorePanelState extends State<AppStorePanel> {
 
   Future<void> _submit() async {
     final yes = await showDialog<bool>(context: context, builder: (c) => AlertDialog(
-      title: const Text('Apple review ke liye bhejein?'),
-      content: const Text('Apple yeh version review karega (aam taur par 1-2 din). Approve hone ke baad App Store par release '
-          'bhi aapke haath mein hai. App Information, Age Rating aur App Privacy bhar diye hain na?'),
+      title: const Text('Send for Apple review?'),
+      content: const Text('Apple will review this version (usually 1-2 days). After it is approved, releasing to the App Store'
+          'is also in your hands. Have you filled in App Information, Age Rating and App Privacy?'),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Abhi nahi')),
-        TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Haan, bhejo')),
+        TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Not now')),
+        TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Yes, send')),
       ],
     ));
-    if (yes == true) await _act('submit', {'her_tap': true}, 'Apple review ke liye bhej rahi hoon');
+    if (yes == true) await _act('submit', {'her_tap': true}, 'Sending for Apple review');
   }
 
   @override
@@ -268,24 +268,24 @@ class _AppStorePanelState extends State<AppStorePanel> {
         for (final k in ['name', 'subtitle', 'keywords', 'promotionalText', 'description'])
           TextField(controller: _f[k], maxLines: k == 'description' ? 5 : 1, maxLength: _i(lim[k]) > 0 ? _i(lim[k]) : null,
               style: const TextStyle(color: C.ink, fontSize: 13),
-              decoration: InputDecoration(labelText: const {'name': 'Naam', 'subtitle': 'Subtitle', 'keywords': 'Keywords (comma se)',
+              decoration: InputDecoration(labelText: const {'name': 'Name', 'subtitle': 'Subtitle', 'keywords': 'Keywords (comma separated)',
                   'promotionalText': 'Promotional text', 'description': 'Description'}[k])),
         Wrap(spacing: 8, runSpacing: 6, children: [
-          GlassButton(label: d('listing') ? 'Listing dobara likho' : 'Listing banao', height: 36,
+          GlassButton(label: d('listing') ? 'Rewrite listing' : 'Make listing', height: 36,
               onTap: _busy || working ? null : () => _act('listing', {'regen': true})),
           if (d('listing'))
-            GlassButton(label: 'Badlav save karo', height: 36, onTap: _busy || working ? null : () => _act('listing',
+            GlassButton(label: 'Save changes', height: 36, onTap: _busy || working ? null : () => _act('listing',
                 {'edit': {for (final e in _f.entries) e.key: e.value.text.trim()}}, 'Listing save')),
-          GlassButton(label: 'App Store Connect par bhejo', height: 36,
-              onTap: _busy || working || !d('testflight') || !d('listing') ? null : () => _act('push', {}, 'Bhej rahi hoon (kuch minute)')),
-          GlassButton(label: 'Review ke liye bhejo', color: C.accent, height: 36,
+          GlassButton(label: 'Send to App Store Connect', height: 36,
+              onTap: _busy || working || !d('testflight') || !d('listing') ? null : () => _act('push', {}, 'Sending (a few minutes)')),
+          GlassButton(label: 'Send for review', color: C.accent, height: 36,
               onTap: _busy || working || !d('pushed') ? null : _submit),
         ]),
         const SizedBox(height: 8),
-        Text('App Store Connect mein aapko khud (ek baar):', style: display(12.5)),
+        Text('In App Store Connect you must do (once):', style: display(12.5)),
         for (final t in ((v['one_time'] as List?) ?? const [])) Text('• $t', style: const TextStyle(color: C.muted, fontSize: 11.5)),
         const SizedBox(height: 6),
-        Text('App Privacy ke jawab:', style: display(12.5)),
+        Text('Answers for App Privacy:', style: display(12.5)),
         for (final x in _list(v['privacy_answers']))
           Text('• ${_s(x['type'])} - ${_s(x['why'])}${x['linked'] == false ? ' (not linked)' : ''}',
               style: const TextStyle(color: C.muted, fontSize: 11.5)),
@@ -328,7 +328,7 @@ class _AppCodePanelState extends State<AppCodePanel> {
     setState(() => _busy = true);
     try {
       await widget.app.api!.call('POST', '/api/apps/${widget.id}/github', body: {'private': _private});
-      if (mounted) _snack(context, 'Card chat mein aa gaya: wahan haan dabaiye.');
+      if (mounted) _snack(context, 'The card is in the chat: press yes there.');
       _load();
     } catch (e) {
       if (mounted) _snack(context, '$e');
@@ -345,19 +345,19 @@ class _AppCodePanelState extends State<AppCodePanel> {
       Row(children: [
         const Icon(Icons.code_rounded, color: C.accent, size: 20),
         const SizedBox(width: 6),
-        Expanded(child: Text('Code aapke GitHub mein', style: display(15))),
+        Expanded(child: Text('Code in your GitHub', style: display(15))),
         if (commits.isNotEmpty) Pill('${commits.length} commits', fg: C.ok),
       ]),
       const SizedBox(height: 4),
-      const Text('Android + iPhone ka poora code, har build ek naya commit. Signing keys kabhi nahi jaati.',
+      const Text('Full Android + iPhone code, every build a new commit. Signing keys never go.',
           style: TextStyle(color: C.muted, fontSize: 12)),
       if (v != null && v['linked'] != true)
-        const Text('Pehle Website > Hosting mein apna GitHub token jodiye (sirf app mein).', style: TextStyle(color: C.warn, fontSize: 12)),
+        const Text('First add your GitHub token in Website > Hosting (only in the app).', style: TextStyle(color: C.warn, fontSize: 12)),
       Row(children: [
         Switch(value: _private, onChanged: (x) => setState(() => _private = x)),
-        Text(_private ? 'Private repo' : 'Public repo (sab dekh sakte hain)', style: const TextStyle(color: C.ink, fontSize: 12.5)),
+        Text(_private ? 'Private repo' : 'Public repo (everyone can see)', style: const TextStyle(color: C.ink, fontSize: 12.5)),
       ]),
-      GlassButton(label: 'Code GitHub mein daalo', height: 36,
+      GlassButton(label: 'Put code on GitHub', height: 36,
           onTap: _busy || v == null || v['linked'] != true || v['ready'] != true ? null : _card),
       for (final x in commits.take(3))
         Text('✓ build ${_s(x['build'])} · ${_s(x['repo'])} · ${_s(x['at']).substring(0, _s(x['at']).length >= 10 ? 10 : _s(x['at']).length)}',
@@ -398,11 +398,11 @@ class _MatchPanelState extends State<MatchPanel> {
   Future<void> _check(bool fix) async {
     if (fix) {
       final yes = await showDialog<bool>(context: context, builder: (c) => AlertDialog(
-        title: const Text('Yeh screens dobara banayein?'),
-        content: const Text('Jo screens design se kam mil rahi hain, sirf woh Opus dobara likhega (farak ki list ke saath). Baaki app wahi rahegi.'),
+        title: const Text('Rebuild these screens?'),
+        content: const Text('Only the screens that match the design less will be rewritten by Opus (with the list of differences). The rest of the app stays the same.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Abhi nahi')),
-          TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Haan')),
+          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Not now')),
+          TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Yes')),
         ],
       ));
       if (yes != true) return;
@@ -435,7 +435,7 @@ class _MatchPanelState extends State<MatchPanel> {
       InkWell(onTap: () => setState(() => _open = !_open), child: Row(children: [
         const Icon(Icons.compare_rounded, color: C.accent, size: 20),
         const SizedBox(width: 6),
-        Expanded(child: Text('Design se milaan', style: display(15))),
+        Expanded(child: Text('Match with design', style: display(15))),
         if (m['avg'] != null) Pill('${m['avg']}%', fg: _i(m['avg']) >= min ? C.ok : C.warn),
         Icon(_open ? Icons.expand_less : Icons.expand_more, color: C.muted),
       ])),
@@ -447,9 +447,9 @@ class _MatchPanelState extends State<MatchPanel> {
           ChoiceChip(label: const Text('iPhone'), selected: _plat == 'ios', onSelected: (_) => setState(() => _plat = 'ios')),
         ]),
         if (rows.isEmpty)
-          const Text('Device check ki screenshots aate hi har screen ka milaan yahan dikhega.', style: TextStyle(color: C.muted, fontSize: 12)),
+          const Text('As soon as the device check screenshots arrive, the match for every screen will show here.', style: TextStyle(color: C.muted, fontSize: 12)),
         if (rows.isNotEmpty)
-          Text(low == 0 ? 'Sab screens design se mil rahi hain.' : '$low screen design se kam mil rahi hain.',
+          Text(low == 0 ? 'All screens match the design.' : '$low screens match the design less.',
               style: TextStyle(color: low == 0 ? C.ok : C.warn, fontSize: 12.5)),
         for (final x in rows.take(12)) Padding(padding: const EdgeInsets.only(top: 10), child: Column(
             crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -468,8 +468,8 @@ class _MatchPanelState extends State<MatchPanel> {
         ])),
         const SizedBox(height: 8),
         Wrap(spacing: 8, runSpacing: 6, children: [
-          GlassButton(label: 'Opus se farak dekho', height: 36, onTap: _busy ? null : () => _check(false)),
-          GlassButton(label: 'Theek karo (dobara banao)', color: C.accent, height: 36,
+          GlassButton(label: 'See differences from Opus', height: 36, onTap: _busy ? null : () => _check(false)),
+          GlassButton(label: 'Fix (rebuild)', color: C.accent, height: 36,
               onTap: _busy || low == 0 ? null : () => _check(true)),
         ]),
       ],
@@ -508,7 +508,7 @@ class _BhashaPanelState extends State<BhashaPanel> {
     setState(() => _busy = true);
     try {
       await widget.app.api!.call('POST', '/api/apps/${widget.id}/bhasha', body: {'langs': _pick});
-      if (mounted) _snack(context, 'Agle build se app in bhashaon mein hogi.');
+      if (mounted) _snack(context, 'From the next build the app will be in these languages.');
       _load();
     } catch (e) {
       if (mounted) _snack(context, '$e');
@@ -525,10 +525,10 @@ class _BhashaPanelState extends State<BhashaPanel> {
       Row(children: [
         const Icon(Icons.translate_rounded, color: C.accent, size: 20),
         const SizedBox(width: 6),
-        Expanded(child: Text('App ki bhasha', style: display(15))),
-        if (_i(_v?['words']) > 0) Pill('${_i(_v?['words'])} shabd', fg: C.ok),
+        Expanded(child: Text('App language', style: display(15))),
+        if (_i(_v?['words']) > 0) Pill('${_i(_v?['words'])} words', fg: C.ok),
       ]),
-      const Text('Customer apne account mein bhasha chunega. Pehli bhasha se app khulti hai. Product ke naam, daam jaise aapka data waise hi rehta hai.',
+      const Text('Customers will pick a language in their account. The app opens in the first language. Your data, like product names and prices, stays as it is.',
           style: TextStyle(color: C.muted, fontSize: 12)),
       const SizedBox(height: 6),
       Wrap(spacing: 6, runSpacing: 6, children: [
@@ -540,7 +540,7 @@ class _BhashaPanelState extends State<BhashaPanel> {
                   })),
       ]),
       const SizedBox(height: 6),
-      GlassButton(label: 'Bhasha pakki karo', height: 36, onTap: _busy || _pick.isEmpty ? null : _save),
+      GlassButton(label: 'Confirm languages', height: 36, onTap: _busy || _pick.isEmpty ? null : _save),
     ]);
   }
 }

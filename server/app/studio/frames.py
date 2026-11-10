@@ -80,6 +80,9 @@ def _env() -> dict[str, str]:
         node_dir = str(Path(shutil.which("node") or "/usr/bin/node").parent)
     env = {"PATH": f"{node_dir}:/usr/local/bin:/usr/bin:/bin", "HOME": str(Path.home()),
            "LANG": "C.UTF-8", "NO_COLOR": "1", "CI": "1"}
+    for k in ("HYPERFRAMES_BROWSER_PATH", "PRODUCER_HEADLESS_SHELL_PATH"):   # v0.747 a browser the box already has
+        if os.environ.get(k):
+            env[k] = os.environ[k]
     return env
 
 
@@ -401,7 +404,7 @@ def _concat_wavs(padded: list[Path], dest: Path) -> None:
 
 
 def do_avatar_film(tenant: str, spec: dict, files: list[dict[str, Any]] | None = None,
-                   out_name: str = "film") -> dict[str, Any]:
+                   out_name: str = "film", on_stage: Any = None, cancel: Any = None) -> dict[str, Any]:
     """AVATAR FILMS: spec -> lab voice -> word-timed composition -> the normal check->render gate.
 
     The slow parts (TTS, alignment) run BEFORE the render lock, so a busy queue never
@@ -426,15 +429,29 @@ def do_avatar_film(tenant: str, spec: dict, files: list[dict[str, Any]] | None =
         raise FramesError(
             f"asset {', '.join(sorted(missing))} spec mein hai par file_id se aayi nahi - dobara bhejiye.")
 
+    def stage(k: str, detail: str = "") -> None:      # v0.747 HOOLA INTERACTIVE: the page shows each real step
+        if on_stage:
+            try:
+                on_stage(k, detail)
+            except Exception:
+                pass
+
+    def stopped() -> None:                              # v0.747 Stop: checked at every step boundary
+        if cancel is not None and cancel.is_set():
+            raise FramesError("Stopped. Nothing was kept.")
+
     tmp = _root() / f"_voice-{uuid.uuid4().hex[:10]}"
     tmp.mkdir(parents=True)
     try:
+        stage("voice", "no voice - timed at reading speed" if parts["silent"] else f"0 of {len(sentences)} lines")
         if parts["silent"]:
             # honest silent mode: no voice engine needed; scenes timed at reading speed
             has_cta = bool(parts["cta_text"] or parts["cta_image"])
             spans = [av.scene_span(len(s) / av.ESTIMATE_CPS, is_last=(i == len(sentences) - 1),
                                    has_cta=has_cta) for i, s in enumerate(sentences)]
-            speech, words, voice_asset = spans, None, None
+            # v0.747 the reading time, not the whole span: with speech == span the closing card started after the end
+            speech = [min(sp, len(s) / av.ESTIMATE_CPS) for sp, s in zip(spans, sentences)]
+            words, voice_asset = None, None
         else:
             from ..interactive import lab
             if not lab.configured():
@@ -444,6 +461,8 @@ def do_avatar_film(tenant: str, spec: dict, files: list[dict[str, Any]] | None =
                     "bhejo - wahi film, bina awaaz.")
             raw: list[Path] = []
             for i, s in enumerate(sentences):
+                stopped()
+                stage("voice", f"{i + 1} of {len(sentences)} lines")
                 try:
                     data = lab.voice(s, lang=parts["lang"], model=parts["voice_model"])
                 except Exception as e:
@@ -462,12 +481,16 @@ def do_avatar_film(tenant: str, spec: dict, files: list[dict[str, Any]] | None =
                 padded.append(q)
             voice = tmp / "voice.wav"
             _concat_wavs(padded, voice)
+            stopped()
+            stage("align", f"{sum(speech):.0f} s of speech")
             words = cap.whisper_words(str(voice), parts["lang"] if parts["lang"] not in ("hi", "en") else "hi")
             voice_asset = str(voice)
 
         plan = av.timing_plan(sentences, spans, speech, words)
         all_files = ([{"name": "assets/voice.wav", "path": voice_asset}] if voice_asset else []) + provided
         html = av.build_html(parts, plan)
+        stopped()
+        stage("draw", f"{len(plan['scenes'])} scenes, {plan['total']:.0f} s")
         res = do_render(tenant, html, all_files, out_name=out_name)
         if res.get("ok"):
             res |= {"avatar": True, "shape": parts["shape"], "scenes": len(plan["scenes"]),

@@ -51,11 +51,11 @@ class _AuditScreenState extends State<AuditScreen> {
       context: context,
       builder: (d) => StatefulBuilder(
         builder: (d, setS) => AlertDialog(
-          title: const Text('Naya audit'),
+          title: const Text('New audit'),
           content: SingleChildScrollView(
             child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
               TextField(controller: client, decoration: const InputDecoration(labelText: 'Client')),
-              TextField(controller: fy, decoration: const InputDecoration(labelText: 'Saal (2025-26)')),
+              TextField(controller: fy, decoration: const InputDecoration(labelText: 'Year (2025-26)')),
               const SizedBox(height: 8),
               Wrap(spacing: 6, children: [
                 for (final k in const ['tax', 'statutory', 'internal', 'stock'])
@@ -67,7 +67,7 @@ class _AuditScreenState extends State<AuditScreen> {
               ]),
             ]),
           ),
-          actions: [TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Shuru'))],
+          actions: [TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Start'))],
         ),
       ),
     );
@@ -90,7 +90,7 @@ class _AuditScreenState extends State<AuditScreen> {
           child: RefreshIndicator(
             onRefresh: _load,
             child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
-              GradientButton(label: 'Naya audit', icon: Icons.fact_check_rounded, onTap: _new),
+              GradientButton(label: 'New audit', icon: Icons.fact_check_rounded, onTap: _new),
               const SizedBox(height: 12),
               for (final e in _e)
                 Padding(
@@ -110,14 +110,14 @@ class _AuditScreenState extends State<AuditScreen> {
                             Text('${_s(e['kind_label'])} · FY ${_s(e['fy'])} · ${_s(e['status'])}', style: const TextStyle(color: C.muted, fontSize: 12.5)),
                           ]),
                         ),
-                        Pill('${(e['findings'] as Map?)?['open'] ?? 0} khule'),
+                        Pill('${(e['findings'] as Map?)?['open'] ?? 0} open'),
                       ]),
                     ),
                   ),
                 ),
               const Padding(
                 padding: EdgeInsets.only(top: 8),
-                child: Text('Hoola jaanch aur kaagaz taiyaar karta hai. Audit ki raay, sign aur UDIN CA ke.',
+                child: Text('Hoola does the checks and prepares the papers. The audit opinion, signature and UDIN are the CA\'s.',
                     style: TextStyle(color: C.faint, fontSize: 11.5)),
               ),
             ]),
@@ -180,7 +180,7 @@ class _AuditPageState extends State<AuditPage> {
       if (copy && _s(r['draft']).isNotEmpty) {
         await Clipboard.setData(ClipboardData(text: _s(r['draft'])));
       }
-      if (mounted) _snack(context, _s(r['say']).isEmpty ? 'Ho gaya' : _s(r['say']) + (copy ? ' (copy ho gaya)' : ''));
+      if (mounted) _snack(context, _s(r['say']).isEmpty ? 'Done' : _s(r['say']) + (copy ? ' (copied)' : ''));
       await _load();
     } catch (e) {
       if (mounted) _snack(context, '$e');
@@ -194,8 +194,8 @@ class _AuditPageState extends State<AuditPage> {
         builder: (d) => AlertDialog(
           content: Text(q),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Nahi')),
-            TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Haan')),
+            TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('No')),
+            TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Yes')),
           ],
         ),
       ) ==
@@ -214,15 +214,15 @@ class _AuditPageState extends State<AuditPage> {
           child: Glass(
             child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(_s(f['text']), style: const TextStyle(height: 1.3)),
-              TextField(controller: note, decoration: const InputDecoration(labelText: 'Aapka note / client ka jawab')),
+              TextField(controller: note, decoration: const InputDecoration(labelText: 'Your note / client\'s reply')),
               CheckboxListTile(
                 contentPadding: EdgeInsets.zero,
                 value: remember,
                 onChanged: (v) => setS(() => remember = v ?? false),
-                title: const Text('Is client ke liye yeh baat agli baar mat uthana'),
+                title: const Text('Do not raise this point again for this client'),
               ),
               Wrap(spacing: 8, runSpacing: 8, children: [
-                for (final st in const [('explained', 'Samjha diya'), ('adjusted', 'Entry theek ki'), ('reported', 'Report mein'), ('asked', 'Poochha')])
+                for (final st in const [('explained', 'Explained'), ('adjusted', 'Entry corrected'), ('reported', 'In report'), ('asked', 'Asked')])
                   GlassButton(label: st.$2, onTap: () => Navigator.pop(ctx, st.$1)),
               ]),
             ]),
@@ -261,8 +261,8 @@ class _AuditPageState extends State<AuditPage> {
                       Text('${_s(e['kind_label'])} · FY ${_s(e['fy'])}', style: display(15)),
                       const SizedBox(height: 8),
                       Wrap(spacing: 8, runSpacing: 8, children: [
-                        GlassButton(label: e['has_tb'] == true ? 'TB ✓' : 'Is saal ka TB', icon: Icons.upload_file_rounded, onTap: _busy ? null : () => _upload('tb')),
-                        GlassButton(label: e['has_prev'] == true ? 'Pichhla TB ✓' : 'Pichhle saal ka TB', icon: Icons.history_rounded, onTap: _busy ? null : () => _upload('tb_prev')),
+                        GlassButton(label: e['has_tb'] == true ? 'TB ✓' : 'This year\'s TB', icon: Icons.upload_file_rounded, onTap: _busy ? null : () => _upload('tb')),
+                        GlassButton(label: e['has_prev'] == true ? 'Previous TB ✓' : 'Last year\'s TB', icon: Icons.history_rounded, onTap: _busy ? null : () => _upload('tb_prev')),
                         GlassButton(label: (e['entries'] ?? 0) > 0 ? 'Day book ✓ (${e['entries']})' : 'Day book', icon: Icons.menu_book_rounded, onTap: _busy ? null : () => _upload('daybook')),
                       ]),
                     ]),
@@ -273,8 +273,8 @@ class _AuditPageState extends State<AuditPage> {
                       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                         Text('Materiality (SA 320)', style: display(15)),
                         Text('${rs(m['overall'])} = ${m['pct']}% ${_s(m['benchmark_label'])} (${rs(m['base'])})', style: const TextStyle(fontWeight: FontWeight.w700)),
-                        Text('Performance ${rs(m['performance'])} · chhota farak ${rs(m['trivial'])}', style: const TextStyle(color: C.muted, fontSize: 12.5)),
-                        Text('Kyun: ${_s(m['why'])}', style: const TextStyle(color: C.faint, fontSize: 12)),
+                        Text('Performance ${rs(m['performance'])} · trivial difference${rs(m['trivial'])}', style: const TextStyle(color: C.muted, fontSize: 12.5)),
+                        Text('Why: ${_s(m['why'])}', style: const TextStyle(color: C.faint, fontSize: 12)),
                       ]),
                     ),
                   ],
@@ -283,19 +283,19 @@ class _AuditPageState extends State<AuditPage> {
                     Glass(
                       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                         if (ta != null)
-                          Text('Tax audit: ${ta['required'] == true ? 'zaroori' : 'zaroori nahi'} · ${_s(ta['form'])} · due ${_s(ta['due'])} ${_s(ta['note'])}',
+                          Text('Tax audit: ${ta['required'] == true ? 'required' : 'not needed'} · ${_s(ta['form'])} · due ${_s(ta['due'])} ${_s(ta['note'])}',
                               style: const TextStyle(fontSize: 13)),
-                        if (caro != null) Text('CARO 2020: ${caro['applies'] == true ? 'lagu' : 'lagu nahi'} (${_s(caro['why'])})', style: const TextStyle(fontSize: 13)),
+                        if (caro != null) Text('CARO 2020: ${caro['applies'] == true ? 'applies' : 'not applicable'} (${_s(caro['why'])})', style: const TextStyle(fontSize: 13)),
                       ]),
                     ),
                   ],
                   const SizedBox(height: 10),
                   GradientButton(
-                      label: _busy ? 'Jaanch chal rahi...' : 'Jaanch chalao',
+                      label: _busy ? 'Check in progress...' : 'Run check',
                       icon: Icons.manage_search_rounded,
                       onTap: _busy || e['has_tb'] != true ? null : () => _act('run')),
                   const SizedBox(height: 10),
-                  if (open.isNotEmpty) Text('Dekhni hain (${open.length})', style: display(15)),
+                  if (open.isNotEmpty) Text('To review (${open.length})', style: display(15)),
                   for (final f in open)
                     Padding(
                       padding: const EdgeInsets.only(top: 6),
@@ -308,7 +308,7 @@ class _AuditPageState extends State<AuditPage> {
                             Icon(Icons.circle, size: 10, color: _lvl(_s(f['level']))),
                             const SizedBox(width: 8),
                             Expanded(child: Text(_s(f['text']), style: const TextStyle(fontSize: 13, height: 1.3))),
-                            if (f['status'] == 'asked') const Pill('poochha'),
+                            if (f['status'] == 'asked') const Pill('asked'),
                           ]),
                         ),
                       ),
@@ -316,34 +316,34 @@ class _AuditPageState extends State<AuditPage> {
                   if (closed.isNotEmpty)
                     Padding(
                       padding: const EdgeInsets.only(top: 8),
-                      child: Text('${closed.length} band ho chuki', style: const TextStyle(color: C.muted, fontSize: 12.5)),
+                      child: Text('${closed.length} closed', style: const TextStyle(color: C.muted, fontSize: 12.5)),
                     ),
                   const SizedBox(height: 12),
                   Wrap(spacing: 8, runSpacing: 8, children: [
                     GlassButton(label: 'Sample (MUS)', icon: Icons.casino_rounded, onTap: _busy ? null : () => _act('sample', {'method': 'mus'})),
                     GlassButton(label: 'Confirmation draft', icon: Icons.mark_email_read_rounded, onTap: _busy ? null : () => _act('confirmations')),
                     GlassButton(
-                        label: 'Confirmation bhejne do',
+                        label: 'Allow sending confirmations',
                         icon: Icons.send_rounded,
                         onTap: _busy
                             ? null
                             : () async {
-                                if (await _confirm('Balance confirmation letters bahar bhejne ki haan?')) _act('approve_confirmations', {'approve': true});
+                                if (await _confirm('Send the balance confirmation letters out?')) _act('approve_confirmations', {'approve': true});
                               }),
-                    GlassButton(label: 'Client ke sawaal', icon: Icons.help_center_rounded, onTap: _busy ? null : () => _act('queries', const {}, true)),
+                    GlassButton(label: 'Client\'s questions', icon: Icons.help_center_rounded, onTap: _busy ? null : () => _act('queries', const {}, true)),
                     GlassButton(
-                        label: 'Sawaal bhej diye',
+                        label: 'Questions sent',
                         icon: Icons.done_all_rounded,
                         onTap: _busy
                             ? null
                             : () async {
-                                if (await _confirm('Client ko sawaal bhej diye?')) _act('asked');
+                                if (await _confirm('Send the questions to the client?')) _act('asked');
                               }),
                     GlassButton(label: 'Rep letter (SA 580)', icon: Icons.description_rounded, onTap: _busy ? null : () => _act('rep_letter', const {}, true)),
                     GlassButton(label: 'Working papers', icon: Icons.folder_zip_rounded, onTap: _busy ? null : () => _act('workpapers')),
                   ]),
                   const SizedBox(height: 10),
-                  const Text('Raay, sign, UDIN aur Form 3CD / 26 filing CA ke. Letters aur sawaal aapki haan ke baad hi bahar jaate hain.',
+                  const Text('The opinion, signature, UDIN and Form 3CD / 26 filing are the CA\'s. Letters and questions go out only after your yes.',
                       style: TextStyle(color: C.faint, fontSize: 11.5)),
                 ]),
               ),
@@ -364,7 +364,7 @@ class AuditCard extends StatelessWidget {
           child: Row(children: [
             const Icon(Icons.manage_search_rounded, color: C.accent),
             const SizedBox(width: 10),
-            Expanded(child: Text('Audit jaanch poori: ${v['findings'] ?? 0} baatein dekhni hain', style: const TextStyle(fontWeight: FontWeight.w700))),
+            Expanded(child: Text('Audit check complete: ${v['findings'] ?? 0} points to review', style: const TextStyle(fontWeight: FontWeight.w700))),
             const Icon(Icons.chevron_right_rounded, color: C.muted),
           ]),
         ),

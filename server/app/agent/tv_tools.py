@@ -30,7 +30,7 @@ async def tv_channel(ctx: Ctx, action, query="", on="phone", tv="", country="", 
         if action == "find":
             hits = catalog.find(str(query or ""), limit=8, country=str(country or ""))
             return {"channels": [{k: h[k] for k in ("id", "name", "category_label", "country", "on_tv")} for h in hits],
-                    "note": "Free official channels only." if hits else "Koi free channel nahi mila."}
+                    "note": "Free official channels only." if hits else "No free channel found."}
         if action == "tvs":
             return await service.tvs(ctx.tenant_id, ctx.conversation_id)
         if action == "stop":
@@ -38,7 +38,7 @@ async def tv_channel(ctx: Ctx, action, query="", on="phone", tv="", country="", 
         if action == "play":
             q = str(query or "").strip()
             if not q:
-                raise ToolError("Kaunsa channel? query mein naam do.")
+                raise ToolError("Which channel? Give the name in query.")
             ch = catalog.get(q) or None
             cid = q if ch else service.pick(q, str(country or ""))["id"]
             if on == "tv":
@@ -46,7 +46,7 @@ async def tv_channel(ctx: Ctx, action, query="", on="phone", tv="", country="", 
             d = service.detail(cid)
             from .life_tools import _device_action
             return {"channel": d["name"], **_device_action(ctx, "tv_play", {"channel": d["id"], "name": d["name"]},
-                                                           f"{d['name']} Hoola app mein chal raha hai.")}
+                                                           f"{d['name']} is playing in the Hoola app.")}
     except service.TvError as e:
         raise ToolError(str(e))
     raise ToolError("action: find, play, stop ya tvs")

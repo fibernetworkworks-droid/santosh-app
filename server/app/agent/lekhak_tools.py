@@ -66,7 +66,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
     t, conv = ctx.tenant_id, ctx.conversation_id
     try:
         if action in _OWNER_ONLY and actor != "owner" and not actor.startswith("approved:"):
-            raise ToolError("Lekhak ki settings sirf owner badal sakti hain.")
+            raise ToolError("Only the owner can change Lekhak settings.")
         if action == "write":
             return L.write_letter(t, _s(a.get("dictation") or a.get("text")), _s(a.get("kind")), _s(a.get("lang")), _s(a.get("to")),
                                   a.get("to_lines"), _s(a.get("subject")), _s(a.get("reference")), a.get("enclosures"),
@@ -93,7 +93,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
                                               _s(a.get("lang")), _s(a.get("email")), _s(a.get("phone"))), "say": "Pata save."}
         if action == "glossary":
             return {"settings": L.glossary_add(t, _s(a.get("src") or a.get("text")), _s(a.get("dst")), _s(a.get("lang"))),
-                    "say": "Shabdkosh mein jod diya."}
+                    "say": "Added to the glossary."}
         if action == "settings":
             keys = ("my_name", "my_lines", "my_phone", "place", "gender", "lang", "letterhead", "keep", "rules", "digits")
             return {"settings": L.save_settings(t, **{k: a[k] for k in keys if k in a}), "say": "Save."}

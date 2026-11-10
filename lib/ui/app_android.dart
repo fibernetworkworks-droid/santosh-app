@@ -20,12 +20,12 @@ Map<String, dynamic> _map(dynamic m) => Map<String, dynamic>.from((m as Map?) ??
 void _snack(BuildContext c, String t) => ScaffoldMessenger.of(c).showSnackBar(SnackBar(content: Text(t)));
 
 const _stUi = {
-  'writing': 'Kotlin likh raha', 'building': 'Compile ho raha', 'fixing': 'Galtiyan theek', 'ready': 'APK taiyaar',
-  'zip': 'Project ZIP', 'failed': 'Dikkat', '': 'Shuru nahi',
+  'writing': 'Writing Kotlin', 'building': 'Compiling', 'fixing': 'Fixing errors', 'ready': 'APK ready',
+  'zip': 'Project ZIP', 'failed': 'Problem', '': 'Not started',
 };
 const _tileUi = {
-  'todo': ('…', C.faint), 'writing': ('likh raha', C.accent), 'written': ('likh di', C.teal), 'compiling': ('compile', C.teal),
-  'fixing': ('theek', C.warn), 'done': ('✓', C.ok), 'code': ('saada', C.warn),
+  'todo': ('…', C.faint), 'writing': ('writing', C.accent), 'written': ('written', C.teal), 'compiling': ('compile', C.teal),
+  'fixing': ('fixing', C.warn), 'done': ('✓', C.ok), 'code': ('simple', C.warn),
 };
 
 String _mb(dynamic b) => b == null ? '' : '${(_i(b) / 1024 / 1024).toStringAsFixed(1)} MB';
@@ -35,21 +35,21 @@ Future<void> installPreview(BuildContext context, Santosh app, Map<String, dynam
   final apk = _map(v['apk']);
   final url = _s(v['apk_url']);
   if (url.isEmpty || apk.isEmpty) {
-    _snack(context, 'APK link nahi mila (7 din purana ho gaya?). "Android app banao" dobara kahiye.');
+    _snack(context, 'APK link not found (is it older than 7 days?). Say "Make an Android app" again.');
     return;
   }
   final server = app.api!.absolute('/');
-  _snack(context, 'APK download ho raha hai (${_mb(apk['size'])})…');
+  _snack(context, 'APK is downloading (${_mb(apk['size'])})…');
   final r = await Native.previewDownload(app.api!.absolute(url), _s(apk['sha256']), _s(apk['package']), server);
   if (!context.mounted) return;
   if (_s(r['error']).isNotEmpty || _s(r['path']).isEmpty) {
-    _snack(context, _s(r['error']).isEmpty ? 'Download nahi hua.' : _s(r['error']));
+    _snack(context, _s(r['error']).isEmpty ? 'Download failed.' : _s(r['error']));
     return;
   }
   final res = await Native.previewInstall(_s(r['path']), _s(apk['package']));
   if (!context.mounted) return;
   if (res == 'permission') {
-    _snack(context, '"Install unknown apps" mein Hoola ko allow kijiye, phir dobara dabaiye.');
+    _snack(context, 'Allow Hoola under "Install unknown apps", then tap again.');
   } else if (res != null && res.isNotEmpty) {
     _snack(context, res);
   }
@@ -109,7 +109,7 @@ class _AndroidBuildPanelState extends State<AndroidBuildPanel> {
     setState(() => _busy = true);
     try {
       final r = await app.api!.appAct(widget.id, 'rollback', {'build': build});
-      if (mounted) _snack(context, _s(r['now']).isEmpty ? 'Build $build wapas aa rahi hai' : _s(r['now']));
+      if (mounted) _snack(context, _s(r['now']).isEmpty ? 'Build $build is coming back' : _s(r['now']));
       await _load();
     } catch (e) {
       if (mounted) _snack(context, '$e');
@@ -122,7 +122,7 @@ class _AndroidBuildPanelState extends State<AndroidBuildPanel> {
     setState(() => _busy = true);
     try {
       final r = await app.api!.appAct(widget.id, 'fix_crash', {'crash': crash});
-      if (mounted) _snack(context, _s(r['say']).isEmpty ? 'Crash theek ho raha hai' : _s(r['say']));
+      if (mounted) _snack(context, _s(r['say']).isEmpty ? 'Crash is being fixed' : _s(r['say']));
       await _load();
     } catch (e) {
       if (mounted) _snack(context, '$e');
@@ -135,7 +135,7 @@ class _AndroidBuildPanelState extends State<AndroidBuildPanel> {
     setState(() => _busy = true);
     try {
       final r = await app.api!.appAct(widget.id, 'android', {if (redo != null) 'redo': redo});
-      if (mounted) _snack(context, _s(r['say']).isEmpty ? 'Android app banna shuru' : _s(r['say']));
+      if (mounted) _snack(context, _s(r['say']).isEmpty ? 'Android app build started' : _s(r['say']));
       await _load();
     } catch (e) {
       if (mounted) _snack(context, '$e');
@@ -157,15 +157,15 @@ class _AndroidBuildPanelState extends State<AndroidBuildPanel> {
       Row(children: [
         const Icon(Icons.android_rounded, color: C.ok, size: 20),
         const SizedBox(width: 6),
-        Expanded(child: Text('Asli Android app', style: display(15))),
+        Expanded(child: Text('Real Android app', style: display(15))),
         if (st.isNotEmpty) Pill(_stUi[st] ?? st, fg: st == 'ready' ? C.ok : st == 'failed' ? C.bad : C.accent),
       ]),
       const SizedBox(height: 6),
       if (!widget.approved)
-        const Text('Pehle "Design pakka" kijiye: asli app usi naksha se banti hai.', style: TextStyle(color: C.muted, fontSize: 12.5))
+        const Text('First confirm the "Design": the real app is built from that same plan.', style: TextStyle(color: C.muted, fontSize: 12.5))
       else if (st.isEmpty)
-        Text('Kotlin + Jetpack Compose mein har screen likhunga, build machine par compile karke APK aapke phone par. '
-            '${runner['ready'] == true ? 'Build: ${runner['where']}.' : 'Build machine abhi set nahi hai: project ZIP milega.'}',
+        Text('I will write every screen in Kotlin + Jetpack Compose, compile it on the build machine, and get the APK to your phone. '
+            '${runner['ready'] == true ? 'Build: ${runner['where']}.' : 'The build machine is not set up yet: you will get the project ZIP.'}',
             style: const TextStyle(color: C.muted, fontSize: 12.5)),
       if (_s(v['now']).isNotEmpty) ...[
         const SizedBox(height: 4),
@@ -190,7 +190,7 @@ class _AndroidBuildPanelState extends State<AndroidBuildPanel> {
       ],
       if (_i(v['rounds']) > 0)
         Padding(padding: const EdgeInsets.only(top: 6),
-            child: Text('Compile ke ${v['rounds']} round mein galtiyan theek ki', style: const TextStyle(color: C.faint, fontSize: 11.5))),
+            child: Text('Fixed errors in ${v['rounds']} rounds of compile', style: const TextStyle(color: C.faint, fontSize: 11.5))),
       if (st == 'failed' && _s(v['error']).isNotEmpty)
         Padding(padding: const EdgeInsets.only(top: 6), child: Text(_s(v['error']), style: const TextStyle(color: C.bad, fontSize: 12.5))),
       if (_s(v['note']).isNotEmpty)
@@ -199,20 +199,20 @@ class _AndroidBuildPanelState extends State<AndroidBuildPanel> {
         const SizedBox(height: 10),
         Text('${apk['file']} · ${_mb(apk['size'])} · v${apk['version_name']}', style: const TextStyle(color: C.muted, fontSize: 12)),
         if (_i(stats['code']) > 0)
-          Text('${stats['code']} screen saada version mein (dobara likhne ke liye "In screens ko dobara likho")',
+          Text('${stats['code']} screens in a simple version (to rewrite them, say "Rewrite these screens")',
               style: const TextStyle(color: C.warn, fontSize: 11.5)),
         const SizedBox(height: 8),
         Row(children: [
-          Expanded(child: GlassButton(label: 'Phone pe install karo', color: C.accent,
+          Expanded(child: GlassButton(label: 'Install on phone', color: C.accent,
               onTap: _s(v['apk_url']).isEmpty ? null : () => installPreview(context, app, v))),
           const SizedBox(width: 8),
-          Expanded(child: GlassButton(label: 'Kholo', onTap: () async {
+          Expanded(child: GlassButton(label: 'Open', onTap: () async {
             final ok = await Native.previewOpen(_s(apk['package']));
-            if (!ok && context.mounted) _snack(context, 'Pehle install kijiye.');
+            if (!ok && context.mounted) _snack(context, 'Install first.');
           })),
         ]),
         const SizedBox(height: 4),
-        const Text('Yeh preview build hai (aapke phone ke liye). Play Store par daalna agla kadam hai, aapke apne developer account se.',
+        const Text('This is a preview build (for your phone). Putting it on the Play Store is the next step, from your own developer account.',
             style: TextStyle(color: C.faint, fontSize: 11.5)),
       ],
       if (_map(v['qa']).isNotEmpty) _QaBox(app: app, id: widget.id, qa: _map(v['qa'])),
@@ -226,47 +226,47 @@ class _AndroidBuildPanelState extends State<AndroidBuildPanel> {
             decoration: BoxDecoration(color: C.panel, borderRadius: BorderRadius.circular(10)),
             child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('v${_s(h['version_name'])} · build ${_i(h['build'])}${i == 0 ? ' · abhi wali' : ''}',
+                Text('v${_s(h['version_name'])} · build ${_i(h['build'])}${i == 0 ? ' · current' : ''}',
                     style: TextStyle(color: i == 0 ? C.ok : C.ink, fontWeight: FontWeight.w700, fontSize: 12.5)),
                 for (final n in ((h['notes'] as List?) ?? const []).take(3))
                   Text('• $n', style: const TextStyle(color: C.muted, fontSize: 11.5)),
               ])),
               if (i > 0 && !working && ((v['kept_builds'] as List?) ?? const []).contains(h['build']))
-                TextButton(onPressed: _busy ? null : () => _rollback(_i(h['build'])), child: const Text('Wapas lao')),
+                TextButton(onPressed: _busy ? null : () => _rollback(_i(h['build'])), child: const Text('Bring back')),
             ]),
           ),
       ],
       if (_crashes.isNotEmpty) ...[
         const SizedBox(height: 10),
-        Text('Users ke phone pe crash (${_crashes.length})', style: display(13)),
+        Text('Crash on users\' phones (${_crashes.length})', style: display(13)),
         for (final c in _crashes.take(5))
           Container(
             margin: const EdgeInsets.only(top: 6),
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(color: C.panel, borderRadius: BorderRadius.circular(10)),
             child: Row(children: [
-              Expanded(child: Text('${_s(c['exception']).split(':').first} · ${_i(c['count'])} baar'
+              Expanded(child: Text('${_s(c['exception']).split(':').first} · ${_i(c['count'])} times'
                   '${((c['screens'] as List?) ?? const []).isEmpty ? '' : ' · ${(c['screens'] as List).join(', ')}'} · ${_s(c['status'])}',
                   style: TextStyle(color: _s(c['status']) == 'fixing' ? C.muted : C.warn, fontSize: 12))),
               if (_s(c['status']) == 'new' || _s(c['status']) == 'back')
-                TextButton(onPressed: _busy ? null : () => _fixCrash(_s(c['id'])), child: const Text('Theek karo')),
+                TextButton(onPressed: _busy ? null : () => _fixCrash(_s(c['id'])), child: const Text('Fix')),
             ]),
           ),
       ],
       const SizedBox(height: 8),
       Wrap(spacing: 8, runSpacing: 6, children: [
         if (widget.approved && !working)
-          GlassButton(label: st.isEmpty ? 'Android app banao' : 'Phir se banao', color: st.isEmpty ? C.accent : C.ink, height: 36,
+          GlassButton(label: st.isEmpty ? 'Make Android app' : 'Make again', color: st.isEmpty ? C.accent : C.ink, height: 36,
               onTap: _busy ? null : () => _build()),
         if (widget.approved && !working && screens.any((s) => s['state'] == 'code'))
-          GlassButton(label: 'Saada screens dobara likho', height: 36,
+          GlassButton(label: 'Rewrite simple screens', height: 36,
               onTap: _busy ? null : () => _build([for (final s in screens) if (s['state'] == 'code') _s(s['id'])])),
         if (_s(v['zip_url']).isNotEmpty)
           GlassButton(label: 'Project ZIP (${_mb(v['zip_size'])})', height: 36, onTap: () async {
             final u = app.api!.absolute(_s(v['zip_url']));
             await Clipboard.setData(ClipboardData(text: u));
             await launchUrl(Uri.parse(u), mode: LaunchMode.externalApplication);
-            if (context.mounted) _snack(context, 'ZIP ka link copy bhi ho gaya (laptop par Android Studio mein kholiye).');
+            if (context.mounted) _snack(context, 'The ZIP link was also copied (open it in Android Studio on a laptop).');
           }),
       ]),
     ]);
@@ -284,7 +284,7 @@ class _QaBox extends StatelessWidget {
   Widget build(BuildContext context) {
     if (qa['ran'] != true) {
       return Padding(padding: const EdgeInsets.only(top: 8),
-          child: Text('Device check nahi chala: ${_s(qa['why'])}', style: const TextStyle(color: C.faint, fontSize: 11.5)));
+          child: Text('Device check did not run: ${_s(qa['why'])}', style: const TextStyle(color: C.faint, fontSize: 11.5)));
     }
     final perf = _map(qa['perf']);
     final budget = _map(qa['budget']);
@@ -297,24 +297,24 @@ class _QaBox extends StatelessWidget {
         Icon(qa['passed'] == true ? Icons.verified_rounded : Icons.error_outline_rounded,
             color: qa['passed'] == true ? C.ok : C.bad, size: 18),
         const SizedBox(width: 6),
-        Expanded(child: Text('Device check: ${_i(qa['opened'])}/${_i(qa['total'])} screens bina crash ke khuli', style: display(13))),
+        Expanded(child: Text('Device check: ${_i(qa['opened'])}/${_i(qa['total'])} screens opened without a crash', style: display(13))),
       ]),
       const SizedBox(height: 4),
       Wrap(spacing: 6, runSpacing: 6, children: [
-        if (perf['cold_ms'] != null) Pill('Khulti hai ${perf['cold_ms']} ms', fg: c('cold_ms')),
-        if (perf['jank_pct'] != null) Pill('Janky frames ${perf['jank_pct']}%', fg: c('jank_pct')),
+        if (perf['cold_ms'] != null) Pill('Opens ${perf['cold_ms']} ms', fg: c('cold_ms')),
+        if (perf['jank_pct'] != null) Pill('Choppy frames ${perf['jank_pct']}%', fg: c('jank_pct')),
         if (perf['apk_mb'] != null) Pill('APK ${perf['apk_mb']} MB', fg: c('apk_mb')),
         Pill('${_i(qa['a11y_count'])} accessibility', fg: _i(qa['a11y_count']) == 0 ? C.ok : C.warn),
       ]),
       if (((qa['crashed'] as List?) ?? const []).isNotEmpty)
-        Text('Crash: ${(qa['crashed'] as List).join(', ')} (inhe saada version mila)', style: const TextStyle(color: C.bad, fontSize: 12)),
+        Text('Crash: ${(qa['crashed'] as List).join(', ')} (these got the simple version)', style: const TextStyle(color: C.bad, fontSize: 12)),
       if (_i(_map(qa['flows'])['tapped']) > 0)                     // v0.345 every button tapped
-        Text('${_i(_map(qa['flows'])['tapped'])} button dabaye: '
-            '${((_map(qa['flows'])['crashed'] as List?) ?? const []).length} pe crash, '
-            '${((_map(qa['flows'])['dead'] as List?) ?? const []).length} se kuch nahi hua',
+        Text('${_i(_map(qa['flows'])['tapped'])} buttons tapped: '
+            '${((_map(qa['flows'])['crashed'] as List?) ?? const []).length} crashed on, '
+            '${((_map(qa['flows'])['dead'] as List?) ?? const []).length} did nothing',
             style: const TextStyle(color: C.muted, fontSize: 12)),
       for (final d in ((_map(qa['flows'])['dead'] as List?) ?? const []).take(4))
-        Text('• ${_s(_map(d)['screen'])}: "${_s(_map(d)['label'])}" dabane se kuch nahi hua', style: const TextStyle(color: C.muted, fontSize: 11.5)),
+        Text('• ${_s(_map(d)['screen'])}: "${_s(_map(d)['label'])}" did nothing', style: const TextStyle(color: C.muted, fontSize: 11.5)),
       for (final f in a11y.take(4))
         Text('• ${_s(f['screen'])}: ${_s(f['text'])}', style: const TextStyle(color: C.muted, fontSize: 11.5)),
       if (shots.isNotEmpty) ...[
@@ -356,7 +356,7 @@ class AndroidBuildCard extends StatelessWidget {
       ],
       if (st == 'ready') ...[
         const SizedBox(height: 8),
-        GlassButton(label: 'Phone pe install karo', color: C.accent, height: 36, onTap: () => installPreview(context, app, v)),
+        GlassButton(label: 'Install on phone', color: C.accent, height: 36, onTap: () => installPreview(context, app, v)),
       ],
     ]));
   }
@@ -459,18 +459,18 @@ class _AppDataPanelState extends State<AppDataPanel> {
       Row(children: [
         const Icon(Icons.storage_rounded, color: C.teal, size: 20),
         const SizedBox(width: 6),
-        Expanded(child: Text('App ka data', style: display(15))),
+        Expanded(child: Text('App data', style: display(15))),
         if (v != null) Pill('${_i(counts['members'])} accounts', fg: C.teal),
-        IconButton(onPressed: _load, icon: const Icon(Icons.refresh_rounded, color: C.muted, size: 20), tooltip: 'Taaza karo'),
+        IconButton(onPressed: _load, icon: const Icon(Icons.refresh_rounded, color: C.muted, size: 20), tooltip: 'Refresh'),
       ]),
       if (_err.isNotEmpty)
         Text(_err, style: const TextStyle(color: C.bad, fontSize: 12.5))
       else if (v == null)
-        const Text('Load ho raha hai…', style: TextStyle(color: C.muted, fontSize: 12.5))
+        const Text('Loading…', style: TextStyle(color: C.muted, fontSize: 12.5))
       else ...[
         Text(v['live'] == true
-            ? 'Aapki app ke log yahin order / booking karte hain; har nayi entry chat mein bhi aati hai.'
-            : 'Android app banne ke baad yahan asli orders / bookings aayengi.',
+            ? 'Your app\'s users place orders / bookings here; every new entry also comes in the chat.'
+            : 'Once the Android app is built, real orders / bookings will come here.',
             style: const TextStyle(color: C.muted, fontSize: 12.5)),
         const SizedBox(height: 8),
         SingleChildScrollView(scrollDirection: Axis.horizontal, child: Row(children: [
@@ -482,7 +482,7 @@ class _AppDataPanelState extends State<AppDataPanel> {
             )),
         ])),
         const SizedBox(height: 8),
-        if (_rows.isEmpty) const Text('Abhi koi entry nahi.', style: TextStyle(color: C.faint, fontSize: 12.5)),
+        if (_rows.isEmpty) const Text('No entries yet.', style: TextStyle(color: C.faint, fontSize: 12.5)),
         for (final r in _rows.take(30))
           Container(
             margin: const EdgeInsets.only(bottom: 8),
@@ -517,7 +517,7 @@ class _AppDataPanelState extends State<AppDataPanel> {
                   Expanded(child: Text('${_s(r['paid'])}${_s(r['utr']).isEmpty ? '' : ' · UTR ${_s(r['utr'])}'}',
                       style: TextStyle(color: _s(r['paid']) == 'Verified' ? C.ok : C.warn, fontSize: 12.5, fontWeight: FontWeight.w700))),
                   if (_s(r['paid']) == 'Customer says paid')
-                    TextButton(onPressed: _busy ? null : () => _set(r, {'paid': 'Verified'}), child: const Text('Bank mein mila: Verified')),
+                    TextButton(onPressed: _busy ? null : () => _set(r, {'paid': 'Verified'}), child: const Text('Received in bank: Verified')),
                 ]),
               // v0.353 RAAY: the customer's stars + note on her finished row
               if (r['rating'] is num && (r['rating'] as num) > 0)
@@ -526,13 +526,13 @@ class _AppDataPanelState extends State<AppDataPanel> {
                     style: TextStyle(color: (r['rating'] as num) <= 2 ? C.bad : C.ok, fontSize: 12.5, fontWeight: FontWeight.w700)),
               if (_staff.isNotEmpty)
                 Row(children: [
-                  const Text('Kiske paas: ', style: TextStyle(color: C.muted, fontSize: 12.5)),
+                  const Text('With whom: ', style: TextStyle(color: C.muted, fontSize: 12.5)),
                   DropdownButton<String>(
                     value: _staff.any((m) => _s(m['id']) == _s(r['assigned_to'])) ? _s(r['assigned_to']) : '',
                     dropdownColor: C.bgBottom,
                     style: const TextStyle(color: C.ink, fontSize: 12.5),
                     items: [
-                      const DropdownMenuItem(value: '', child: Text('Kisi ko nahi')),
+                      const DropdownMenuItem(value: '', child: Text('No one')),
                       for (final m in _staff)
                         DropdownMenuItem(value: _s(m['id']), child: Text(_s(m['name']).isEmpty ? _s(m['email']) : _s(m['name']))),
                     ],
@@ -556,7 +556,7 @@ class _AppDataPanelState extends State<AppDataPanel> {
         TextButton.icon(
           onPressed: _members == null ? _loadMembers : () => setState(() => _members = null),
           icon: const Icon(Icons.people_alt_rounded, size: 18),
-          label: Text(_members == null ? 'Accounts aur roles' : 'Accounts chhupao'),
+          label: Text(_members == null ? 'Accounts and roles' : 'Hide accounts'),
         ),
         if (_members != null)
           for (final m in _members!)
@@ -636,14 +636,14 @@ class _StorePanelState extends State<StorePanel> {
 
   Future<void> _production() async {
     final yes = await showDialog<bool>(context: context, builder: (c) => AlertDialog(
-      title: const Text('Production par bhejein?'),
-      content: const Text('Google ke review ke baad yeh app Play Store par SAB ke liye dikhegi. Pehle Internal testing mein dekh liya hai na?'),
+      title: const Text('Send to production?'),
+      content: const Text('After Google\'s review, this app will show on the Play Store for EVERYONE. Have you already checked it in Internal testing?'),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Abhi nahi')),
-        TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Haan, bhejo')),
+        TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Not now')),
+        TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Yes, send')),
       ],
     ));
-    if (yes == true) await _act('publish', {'track': 'production', 'her_tap': true}, 'Production par bhej rahi hoon');
+    if (yes == true) await _act('publish', {'track': 'production', 'her_tap': true}, 'Sending to production');
   }
 
   @override
@@ -677,24 +677,24 @@ class _StorePanelState extends State<StorePanel> {
           Text('${x['done'] == true ? '✓' : '○'} ${_s(x['label'])}${_s(x['value']).isEmpty ? '' : ' · ${_s(x['value'])}'}',
               style: TextStyle(color: x['done'] == true ? C.ok : C.muted, fontSize: 12.5)),
         const SizedBox(height: 10),
-        Text('Package name (hamesha ke liye - Play ise badalne nahi deta)', style: display(12.5)),
+        Text('Package name (forever - Play does not let you change it)', style: display(12.5)),
         TextField(controller: _pkg, enabled: v['locked'] != true, style: const TextStyle(color: C.ink),
             decoration: const InputDecoration(hintText: 'com.aapkidukaan.app')),
         if (v['locked'] != true)
-          TextButton(onPressed: _busy ? null : () => _act('setup', {'package': _pkg.text.trim()}, 'Package pakka'), child: const Text('Package pakka karo')),
+          TextButton(onPressed: _busy ? null : () => _act('setup', {'package': _pkg.text.trim()}, 'Package confirmed'), child: const Text('Confirm package')),
         const SizedBox(height: 6),
-        Text(_s(v['account']).isEmpty ? 'Aapka Play developer account' : 'Play account jud gaya: ${_s(v['account'])}', style: display(12.5)),
+        Text(_s(v['account']).isEmpty ? 'Your Play developer account' : 'Play account connected: ${_s(v['account'])}', style: display(12.5)),
         if (_s(v['account']).isEmpty) ...[
-          const Text('Play Console > Setup > API access > service account ki JSON key yahan paste kijiye (chat mein kabhi nahi). '
-              'Server par band (sealed) rahegi, dobara dikhegi nahi.', style: TextStyle(color: C.muted, fontSize: 12)),
+          const Text('In Play Console > Setup > API access, paste the service account\'s JSON key here (never in chat). '
+              'It will be kept sealed on the server and not shown again.', style: TextStyle(color: C.muted, fontSize: 12)),
           TextField(controller: _key, maxLines: 3, style: const TextStyle(color: C.ink, fontSize: 11),
               decoration: const InputDecoration(hintText: '{"type": "service_account", ...}')),
           TextButton(onPressed: _busy ? null : () async {
-            await _act('credentials', {'json': _key.text.trim()}, 'Play account jud gaya');
+            await _act('credentials', {'json': _key.text.trim()}, 'Play account connected');
             _key.clear();
-          }, child: const Text('Key jodo')),
+          }, child: const Text('Add key')),
         ] else
-          TextButton(onPressed: _busy ? null : () => _act('forget', {}, 'Key hata di'), child: const Text('Key hatao')),
+          TextButton(onPressed: _busy ? null : () => _act('forget', {}, 'Key removed'), child: const Text('Remove key')),
         const SizedBox(height: 6),
         if (_s(lst['title']).isNotEmpty) ...[
           Text(_s(lst['title']), style: display(13)),
@@ -702,21 +702,21 @@ class _StorePanelState extends State<StorePanel> {
           Text(_s(lst['full']), maxLines: 6, overflow: TextOverflow.ellipsis, style: const TextStyle(color: C.muted, fontSize: 12)),
         ],
         Wrap(spacing: 8, runSpacing: 6, children: [
-          GlassButton(label: _s(lst['title']).isEmpty ? 'Listing banao' : 'Listing dobara likho', height: 36,
+          GlassButton(label: _s(lst['title']).isEmpty ? 'Make listing' : 'Rewrite listing', height: 36,
               onTap: _busy || !d('package') ? null : () => _act('listing', {'regen': true})),
-          GlassButton(label: 'Store bundle banao', height: 36, onTap: _busy || working || !d('package') ? null : () => _act('build', {}, 'Bundle ban raha hai')),
-          GlassButton(label: 'Internal testing par bhejo', color: C.accent, height: 36,
-              onTap: _busy || working || !d('bundle') || !d('account') ? null : () => _act('publish', {'track': 'internal'}, 'Google Play par bhej rahi hoon')),
-          GlassButton(label: 'Production (sab ke liye)', height: 36,
+          GlassButton(label: 'Make store bundle', height: 36, onTap: _busy || working || !d('package') ? null : () => _act('build', {}, 'Bundle is being made')),
+          GlassButton(label: 'Send to Internal testing', color: C.accent, height: 36,
+              onTap: _busy || working || !d('bundle') || !d('account') ? null : () => _act('publish', {'track': 'internal'}, 'Sending to Google Play')),
+          GlassButton(label: 'Production (for everyone)', height: 36,
               onTap: _busy || working || !d('internal') ? null : _production),
         ]),
         const SizedBox(height: 8),
-        Text('Play Console mein aapko khud (ek baar):', style: display(12.5)),
+        Text('In Play Console you have to do this yourself (once):', style: display(12.5)),
         for (final c in ((v['console_steps'] as List?) ?? const []))
           Text('• $c', style: const TextStyle(color: C.muted, fontSize: 11.5)),
         if (_list(v['data_safety']).isNotEmpty) ...[
           const SizedBox(height: 6),
-          Text('Data safety form ke jawab:', style: display(12.5)),
+          Text('Answers for the Data safety form:', style: display(12.5)),
           for (final x in _list(v['data_safety']))
             Text('• ${_s(x['type'])} - ${_s(x['why'])}${x['optional'] == true ? ' (optional)' : ''}',
                 style: const TextStyle(color: C.muted, fontSize: 11.5)),

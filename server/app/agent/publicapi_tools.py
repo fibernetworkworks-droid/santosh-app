@@ -1,4 +1,4 @@
-"""v0.47 Hoola uses public / free web APIs (2,100+ from github.com/public-apis/public-apis)."""
+"""v0.47 Hoola uses public / free web APIs (3,000+ from github.com/public-apis/public-apis + publicapis.dev, v0.749)."""
 from __future__ import annotations
 
 import asyncio
@@ -8,7 +8,7 @@ from .tools import Ctx, ToolError
 
 PUBLICAPI_TOOLS = [
     {"name": "api_find", "description": (
-        "Find a free / public web API for a job from a catalog of 2,100+ (weather, currency, holidays, pincode / IFSC, "
+        "Find a free / public web API for a job from a catalog of 3,000+ (weather, currency, holidays, pincode / IFSC, "
         "cricket, news, dictionary, jokes, quotes, space, earthquakes, countries, books, food, crypto, transport, "
         "government open data, QR codes...). Use it when no built-in tool or connector does the job. Returns id, what "
         "it does, auth (none = works now; apiKey = the owner must save a key in the app first) and, when someone used "

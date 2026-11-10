@@ -9,8 +9,8 @@ from ..packs.registry import Pack
 from .base import Ctx, NeedsApproval, ToolError, ToolSpec
 
 # v0.210.0 grew from 3 to 6 confirm-card actions (added: clear / delete_tab / protect)
-TITLES = {"update": "Itni rows badlein?", "delete": "Rows hatayein?", "share": "Sheet share karein?",
-          "clear": "Values saaf karein?", "delete_tab": "Tab hatayein?", "protect": "Lock kar dein?"}
+TITLES = {"update": "Change these rows?", "delete": "Delete rows?", "share": "Share sheet?",
+          "clear": "Clear values?", "delete_tab": "Delete tab?", "protect": "Lock it?"}
 
 
 class SheetsExecutor:
@@ -26,13 +26,13 @@ class SheetsExecutor:
             raise ToolError(f"Unknown tool {tool}")
         p = ss.pending(ctx.user.id, str(args.get("pending_id", "")))
         if p is None or p["status"] != "pending":
-            raise ToolError("Yeh sheet badlav taiyaar nahi hai; dobara boliye.")
+            raise ToolError("This sheet change is not ready; please ask again.")
         sm = p["summary"]
         items = [{"name": f"{sm.get('title', '')} · {sm.get('tab', '')}".strip(" ·")}]
         for line in sm.get("lines", [])[:6]:
             items.append({"name": str(line)[:160]})
         if sm.get("more"):
-            items.append({"name": f"+ {sm['more']} aur"})
+            items.append({"name": f"+ {sm['more']} more"})
         if sm.get("note"):
             items.append({"name": sm["note"][:200]})
         return NeedsApproval(tier=2, title=TITLES.get(p["action"], "Sheet badlein?"), payee="Google Sheets", amount_paise=0,

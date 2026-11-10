@@ -114,6 +114,15 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
         ${team.length ? `<div class="ae-members">${team.map(e => { const d = deptOf(e.group); return `<button class="ae-member ae-pop ae-d-${d.id}" type="button" data-ae="role" data-key="${esc(e.key)}"><span class="ae-mono">${esc(ini(e.name))}<i class="${e.status === 'paused' ? 'ae-dot-paused' : 'ae-live'}"></i></span><span><b>${esc(e.name)}</b><small>${e.status === 'paused' ? 'Paused' : 'Working'} · ${esc((TRUST[e.trust] || TRUST.seekh)[0])}</small></span></button>`; }).join('')}</div>`
           : `<div class="ae-empty-team"><span class="ae-seats" aria-hidden="true"><i></i><i></i><i></i></span><p>No one hired yet. Open a department, pick a role and press Hire.</p>${ds[0] ? `<button class="btn soft ae-btn" type="button" data-ae="dept" data-id="${esc(ds[0].id)}">Start with ${esc(ds[0].name)}${arrow}</button>` : ''}</div>`}
       </section>
+      <section class="ae-team ae-up" style="animation-delay:.2s" aria-labelledby="aeSeekhH">
+        <div class="ae-row"><h3 id="aeSeekhH">HOOLA AI Video Learner</h3><span class="ae-mut">Learn any way of working from a video</span></div>
+        <button class="ae-seekh ae-pop" type="button" data-v="seekh" aria-label="Open the HOOLA AI Video Learner">
+          <span class="ae-seekh-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="14" height="14" rx="2"/><path d="M16 10l6-3v10l-6-3"/><path d="M6 13.5l2.5 2.5L13 11"/></svg></span>
+          <span class="ae-seekh-bd"><b>Teach Hoola any task from a video</b>
+            <small>Paste a YouTube link, a Short or upload a video. Hoola watches it, writes down every step, keeps them in memory — and then does the task for you in its own browser.</small></span>
+          <span class="ae-seekh-go">Open Video Learner${arrow}</span>
+        </button>
+      </section>
       ${q ? `<section class="ae-sec" aria-labelledby="aeResH"><h3 id="aeResH" class="ae-sech">${results.length} ${results.length === 1 ? 'role matches' : 'roles match'} “${esc(HS.q.trim())}”</h3>
           ${results.length ? `<div class="ae-roles">${results.map((e, i) => roleCard(e, i, true)).join('')}</div>` : '<p class="ae-mut">No role matches that yet. Try a job title or a word like “Instagram”, “3D” or “server”.</p>'}</section>`
         : `<section class="ae-sec" aria-labelledby="aeDeptH"><div class="ae-row ae-up" style="animation-delay:.22s"><h3 id="aeDeptH" class="ae-sech">Departments</h3><span class="ae-mut">Open one to meet its employees</span></div>
@@ -133,11 +142,17 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
       </button>`;
   }
 
+  function needLine(e) {   // v0.743 SAAF INSAANI: what a role needs before it starts, on the card itself
+    if (!document.documentElement.classList.contains('human') || isHired(e)) return '';
+    const n = Array.isArray(e.needs) ? e.needs[0] : '';
+    return n ? `<span class="ae-role-n">Needs: ${esc(String(n))}</span>` : '';
+  }
   function roleCard(e, i, withDept) {
     const d = deptOf(e.group), [sc, st] = status(e), on = HS.view === 'dept' && HS.sel === e.key;
     return `<button class="ae-role ae-up ae-d-${esc(d.id)}${on ? ' on' : ''}" type="button" data-ae="role" data-key="${esc(e.key)}" aria-pressed="${on}" style="animation-delay:${(.12 + i * .04).toFixed(2)}s">
         <span class="ae-role-h"><span class="ae-mono">${esc(ini(e.name))}${isHired(e) ? `<i class="${e.status === 'paused' ? 'ae-dot-paused' : 'ae-live'}"></i>` : ''}</span><span><b>${esc(e.name)}</b>${withDept ? `<small>${esc(d.name)}</small>` : ''}</span></span>
         <span class="ae-role-p">${esc(e.pitch || '')}</span>
+        ${needLine(e)}
         <span class="ae-role-ft"><span class="ae-chip ${sc}">${st}</span><span class="ae-more">Details${arrow}</span></span>
       </button>`;
   }

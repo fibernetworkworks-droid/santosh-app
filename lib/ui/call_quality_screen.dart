@@ -50,12 +50,12 @@ class _CallQualityScreenState extends State<CallQualityScreen> {
       final t = await showDialog<String>(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: const Text('Kya galat laga?'),
+          title: const Text('What felt wrong?'),
           content: TextField(controller: c, autofocus: true, maxLength: 300,
-              decoration: const InputDecoration(hintText: 'jaise: jawab der se aaya, beech mein kaat diya')),
+              decoration: const InputDecoration(hintText: 'for example: the reply came late, it cut me off')),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Rehne do')),
-            TextButton(onPressed: () => Navigator.pop(ctx, c.text.trim()), child: const Text('Fail likho')),
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Keep it')),
+            TextButton(onPressed: () => Navigator.pop(ctx, c.text.trim()), child: const Text('Mark as failed')),
           ],
         ),
       );
@@ -90,13 +90,13 @@ class _CallQualityScreenState extends State<CallQualityScreen> {
 
   String _ms(dynamic x) {
     final n = (x as num?)?.toDouble();
-    return n == null ? 'abhi pata nahi' : '${n.round()} ms';
+    return n == null ? 'not known yet' : '${n.round()} ms';
   }
 
-  String _n(dynamic x, {String unit = ''}) => x == null ? 'abhi pata nahi' : '$x$unit';
+  String _n(dynamic x, {String unit = ''}) => x == null ? 'not known yet' : '$x$unit';
 
   Color _gradeColor(String g) => g == 'good' ? C.ok : (g == 'bad' ? C.bad : C.warn);
-  String _gradeWord(String g) => g == 'good' ? 'Achhi' : (g == 'bad' ? 'Kharab' : 'Theek');
+  String _gradeWord(String g) => g == 'good' ? 'Good' : (g == 'bad' ? 'Bad' : 'Theek');
 
   Widget _grades(Map<String, dynamic> o) {
     final g = Map<String, dynamic>.from((o['grades'] as Map?) ?? const {});
@@ -117,37 +117,37 @@ class _CallQualityScreenState extends State<CallQualityScreen> {
         _grades(o),
         const SizedBox(height: 10),
         _row('Calls / minute', '${o['calls'] ?? 0} calls, ${o['minutes'] ?? 0} minute'),
-        _row('Jawab shuru (aam)', '${_ms(o['reply_start_ms_p50'])}  (lakshya ${t['reply_start_ms_p50'] ?? 1200} ms se kam)'),
-        _row('Jawab shuru (dheemi 10%)', '${_ms(o['reply_start_ms_p90'])}  (${t['reply_start_ms_p90'] ?? 2500} ms se kam)'),
-        _row('Jawab shuru (sabse dheema 1%)', '${_ms(o['reply_start_ms_p99'])}  (${t['reply_start_ms_p99'] ?? 4000} ms se kam)'),
-        _row('Khamoshi mein intezaar', '${o['dead_air_s'] ?? 0} s kul, ${_n(o['dead_air_s_per_call'])} s / call'),
-        _row('Aapke bolte hue bola / 100 baat', _n(o['talk_over_per_100'])),
-        _row('Ek hi baat dobara / 100 baat', _n(o['repeats_per_100'])),
-        _row('Beech mein tooti', '${o['broken_calls'] ?? 0}'),
-        _row('Connection badla', o['goaway'] == 0 || o['goaway'] == null
-            ? 'nahi badla'
-            : '${o['goaway']} baar, ${_n(o['goaway_graceful_pct'], unit: '%')} baat kate bina'),
-        _row('Chup hua (nudge / reconnect)', '${o['stall_nudges'] ?? 0} / ${o['stall_reconnects'] ?? 0}'),
-        _row('Khud doosra raasta', '${o['auto_rescues'] ?? 0}'),
-        _row('Kaam ki khabar (milayi / dohrayi nahi)', '${o['news_merged'] ?? 0} / ${o['news_deduped'] ?? 0}'),
-        _row('Line girne par bachi awaaz', '${o['gap_audio_kept_s'] ?? 0} s aapki, ${o['missed_replayed_s'] ?? 0} s uski'),
-        _row('Beech mein rokna / call', _n(o['interruptions_per_call'])),
-        _row('Bhasha badli / 100 baat', _n(o['lang_drifts_per_100'])),
-        _row('Dobara poochha / 100 baat', _n(o['asked_again_per_100'])),
-        _row('Bol kar haan', '${o['voice_approvals'] ?? 0}'),
+        _row('Reply start (typical)', '${_ms(o['reply_start_ms_p50'])}  (target under ${t['reply_start_ms_p50'] ?? 1200} ms)'),
+        _row('Reply start (slowest 10%)', '${_ms(o['reply_start_ms_p90'])}  (target under ${t['reply_start_ms_p90'] ?? 2500} ms)'),
+        _row('Reply start (slowest 1%)', '${_ms(o['reply_start_ms_p99'])}  (target under ${t['reply_start_ms_p99'] ?? 4000} ms)'),
+        _row('Waiting in silence', '${o['dead_air_s'] ?? 0} s total, ${_n(o['dead_air_s_per_call'])} s / call'),
+        _row('Spoke over you / 100 turns', _n(o['talk_over_per_100'])),
+        _row('Same thing repeated / 100 turns', _n(o['repeats_per_100'])),
+        _row('Calls that broke midway', '${o['broken_calls'] ?? 0}'),
+        _row('Connection changed', o['goaway'] == 0 || o['goaway'] == null
+            ? 'not changed'
+            : '${o['goaway']} baar, ${_n(o['goaway_graceful_pct'], unit: '%')} turns uninterrupted'),
+        _row('Went silent (nudge / reconnect)', '${o['stall_nudges'] ?? 0} / ${o['stall_reconnects'] ?? 0}'),
+        _row('Took another route by itself', '${o['auto_rescues'] ?? 0}'),
+        _row('Work news (merged / not repeated)', '${o['news_merged'] ?? 0} / ${o['news_deduped'] ?? 0}'),
+        _row('Audio saved when the line dropped', '${o['gap_audio_kept_s'] ?? 0} s yours, ${o['missed_replayed_s'] ?? 0} s the avatar\'s'),
+        _row('Interruptions / call', _n(o['interruptions_per_call'])),
+        _row('Language changed / 100 turns', _n(o['lang_drifts_per_100'])),
+        _row('Asked again / 100 turns', _n(o['asked_again_per_100'])),
+        _row('Approvals by voice', '${o['voice_approvals'] ?? 0}'),
         if (ends.isNotEmpty)
-          _row('Call kaise khatam hui', ends.entries.map((e) => '${_endWord(e.key)} ${e.value}').join(', ')),
+          _row('How calls ended', ends.entries.map((e) => '${_endWord(e.key)} ${e.value}').join(', ')),
       ]),
     );
   }
 
   String _endWord(String k) => const {
         'hung_up': 'aapne kaata',
-        'dropped': 'line toot gayi',
+        'dropped': 'line dropped',
         'error': 'error',
-        'stall': 'chup ho gaya',
+        'stall': 'went silent',
         'server_restart': 'server update',
-        'hold_timeout': 'hold lamba',
+        'hold_timeout': 'long hold',
       }[k] ?? k;
 
   Widget _versions(List vs) => Glass(
@@ -181,7 +181,7 @@ class _CallQualityScreenState extends State<CallQualityScreen> {
               subtitle: Text(
                   [
                     if ((c['problems'] as List?)?.isNotEmpty == true) ...(c['problems'] as List).map((e) => '$e'),
-                    if ((c['problems'] as List?)?.isEmpty != false) 'Sab theek',
+                    if ((c['problems'] as List?)?.isEmpty != false) 'All good',
                     if ('${c['end_say']}'.isNotEmpty) 'Ant: ${c['end_say']}',
                   ].join(' · '),
                   style: const TextStyle(fontSize: 12.5)),
@@ -210,7 +210,7 @@ class _CallQualityScreenState extends State<CallQualityScreen> {
           const Icon(Icons.warning_amber_rounded, color: C.bad, size: 20),
           const SizedBox(width: 10),
           Expanded(
-              child: Text('Dhyaan dijiye: ${((a['why'] as List?) ?? const []).join('; ')}',
+              child: Text('Please note: ${((a['why'] as List?) ?? const []).join('; ')}',
                   style: const TextStyle(fontSize: 13.5))),
         ]),
       );
@@ -219,11 +219,11 @@ class _CallQualityScreenState extends State<CallQualityScreen> {
     final rows = Map<String, dynamic>.from(((_ear?['compare'] as Map?)?['rows'] as Map?) ?? const {});
     switch (rows[id]) {
       case 'better':
-        return Pill('pehle se behtar', fg: C.ok, bg: C.ok.withOpacity(.16));
+        return Pill('better than before', fg: C.ok, bg: C.ok.withOpacity(.16));
       case 'worse':
-        return Pill('pehle se kharab', fg: C.bad, bg: C.bad.withOpacity(.16));
+        return Pill('worse than before', fg: C.bad, bg: C.bad.withOpacity(.16));
       case 'same':
-        return Pill('pehle jaisa', fg: C.muted, bg: C.muted.withOpacity(.16));
+        return Pill('same as before', fg: C.muted, bg: C.muted.withOpacity(.16));
     }
     return null;
   }
@@ -251,13 +251,13 @@ class _CallQualityScreenState extends State<CallQualityScreen> {
           if (before != null) before,
         ]),
         const SizedBox(height: 6),
-        Text('Kya karein: ${t['do']}', style: const TextStyle(fontSize: 13)),
+        Text('What to do: ${t['do']}', style: const TextStyle(fontSize: 13)),
         const SizedBox(height: 3),
-        Text('Achha hai agar: ${t['good']}', style: const TextStyle(color: C.muted, fontSize: 12.5)),
+        Text('Good if: ${t['good']}', style: const TextStyle(color: C.muted, fontSize: 12.5)),
         if ('${t['note'] ?? ''}'.isNotEmpty)
-          Padding(padding: const EdgeInsets.only(top: 4), child: Text('Aapne likha: ${t['note']}', style: const TextStyle(color: C.bad, fontSize: 12.5))),
+          Padding(padding: const EdgeInsets.only(top: 4), child: Text('You wrote: ${t['note']}', style: const TextStyle(color: C.bad, fontSize: 12.5))),
         const SizedBox(height: 8),
-        Wrap(children: [btn('pass', 'Sahi', C.ok), btn('fail', 'Galat', C.bad), btn('skip', 'Chhodo', C.muted)]),
+        Wrap(children: [btn('pass', 'Sahi', C.ok), btn('fail', 'Galat', C.bad), btn('skip', 'Skip', C.muted)]),
       ]),
     );
   }
@@ -274,7 +274,7 @@ class _CallQualityScreenState extends State<CallQualityScreen> {
     final alert = Map<String, dynamic>.from((q?['alert'] as Map?) ?? const {});
     final cmp = Map<String, dynamic>.from((ear?['compare'] as Map?) ?? const {});
     return Scaffold(
-      appBar: AppBar(title: const Text('Call ki jaanch')),
+      appBar: AppBar(title: const Text('Call quality')),
       body: q == null
           ? Center(child: _err == null ? const CircularProgressIndicator() : Padding(padding: const EdgeInsets.all(24), child: Text(_err!)))
           : RefreshIndicator(
@@ -292,24 +292,24 @@ class _CallQualityScreenState extends State<CallQualityScreen> {
                     ),
                 ]),
                 if (alert['on'] == true) _alert(alert),
-                _title('Kul milaakar'),
+                _title('In total'),
                 _overall(o, t),
-                if (vs.length > 1) ...[_title('Har version'), _versions(vs)],
-                if (rs.isNotEmpty) ...[_title('Pichhli calls'), _recent(rs)],
-                _title('Kaan-test · v${ear?['version'] ?? ''}',
+                if (vs.length > 1) ...[_title('Every version'), _versions(vs)],
+                if (rs.isNotEmpty) ...[_title('Previous calls'), _recent(rs)],
+                _title('Listening test · v${ear?['version'] ?? ''}',
                     trailing: Text('${ear?['passed'] ?? 0} sahi · ${ear?['failed'] ?? 0} galat · ${ear?['done'] ?? 0}/${ear?['total'] ?? 0}',
                         style: const TextStyle(color: C.muted, fontSize: 12.5))),
                 const Padding(
                   padding: EdgeInsets.only(bottom: 10),
-                  child: Text('Har cheez apne phone par call karke aazmaaiye, phir Sahi / Galat dabaaiye. Har naye version par yeh list nayi shuru hoti hai.',
+                  child: Text('Try each item with a call on your own phone, then tap Right / Wrong. This list starts fresh with every new version.',
                       style: TextStyle(color: C.muted, fontSize: 12.5)),
                 ),
                 if (cmp['against'] != null)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 10),
                     child: Text(
-                        'v${cmp['against']} ke muqable: ${(cmp['better'] as List?)?.length ?? 0} behtar, '
-                        '${(cmp['worse'] as List?)?.length ?? 0} kharab, ${cmp['same'] ?? 0} waisa hi.',
+                        'v${cmp['against']} ke muqable: ${(cmp['better'] as List?)?.length ?? 0} better, '
+                        '${(cmp['worse'] as List?)?.length ?? 0} worse, ${cmp['same'] ?? 0} same.',
                         style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
                   ),
                 for (final it in items) _earItem(it),

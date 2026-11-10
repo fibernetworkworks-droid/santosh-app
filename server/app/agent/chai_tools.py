@@ -21,7 +21,7 @@ CHAI_TOOLS = [
         "action=stock: milk_l, sugar_kg, tea_kg she has now. "
         "action=feedback: for_date, milk_left_l, ran_out_at (HH:MM), sugar_left_kg, tea_left_kg, cash, bought_milk_l: "
         "how the day really went (teaches milk per cup and the cash share). "
-        "action=decide: order_id, approve: ONLY when she herself clearly says haan / mana for that stock order. "
+        "action=decide: order_id, approve: ONLY when she herself clearly says yes / no for that stock order. "
         "action=setup: stall_name, menu [{name, price, milk_ml, sugar_g, tea_g, share %}], other_pct (sales that are "
         "not chai), cash_pct, safety_pct, milk_packet_ml, typical_cups, suppliers [{name, phone, items [milk|sugar|tea], "
         "site (blinkit / jiomart / bigbasket... for sugar / patti)}], rules [her sentences], plan_time (HH:MM), "
@@ -68,14 +68,14 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any], weather: dict | None) -> dict
             return G.add_cash(t, a.get("amount"), str(a.get("date") or ""), a.get("hour"), str(a.get("note") or ""))
         if action == "alerts":
             r = G.ingest_alerts(t, [x for x in (a.get("alerts") or []) if isinstance(x, dict)])
-            r["say"] = f"{r['added']} payment jode" + (f", {r['skipped']} chhode (credit nahi / dobara)" if r["skipped"] else "") + "."
+            r["say"] = f"{r['added']} payments added" + (f", {r['skipped']} skipped (not credit / duplicate)" if r["skipped"] else "") + "."
             return r
         if action == "statement":
             from ..mailbox import service as ms
             try:
                 name, _mime, data = ms.load_files(t, [{"type": "file", "file_id": str(a.get("file_id") or "")}])[0]
             except Exception as e:
-                raise ToolError(f"Statement file nahi mili: {e}")
+                raise ToolError(f"Statement file not found: {e}")
             return G.import_statement(t, name, data)
         if action == "void":
             return G.void(t, str(a.get("entry_id") or ""))
@@ -88,11 +88,11 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any], weather: dict | None) -> dict
                               a.get("sugar_left_kg"), a.get("tea_left_kg"), a.get("cash"), a.get("bought_milk_l"))
         if action == "decide":
             if not _owner(ctx):
-                raise ToolError("Stock order par haan sirf owner de sakti hain.")
+                raise ToolError("Only the owner can approve a stock order.")
             return C.decide_order(t, str(a.get("order_id") or ""), bool(a.get("approve")), ctx.conversation_id)
         if action == "setup":
             if not _owner(ctx):
-                raise ToolError("Menu, supplier aur niyam sirf owner badal sakti hain.")
+                raise ToolError("Only the owner can change the menu, suppliers and rules.")
             keys = ("stall_name", "menu", "other_pct", "cash_pct", "safety_pct", "milk_packet_ml", "typical_cups",
                     "suppliers", "rules", "plan_time")
             out = C.save_settings(t, **{k: a[k] for k in keys if k in a})
@@ -115,7 +115,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
         if what == "hours":
             return G.best_hours(t, int(a.get("days") or 28))
         if what == "plan":
-            return C.get_plan(t, str(a.get("date") or "")) or {"say": "Abhi koi plan nahi bana (chai action=plan)."}
+            return C.get_plan(t, str(a.get("date") or "")) or {"say": "No plan has been made yet (chai action=plan)."}
         if what == "recent":
             return {"payments": G.recent(t, 30)}
         if what == "settings":

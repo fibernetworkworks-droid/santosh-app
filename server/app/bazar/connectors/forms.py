@@ -7,8 +7,8 @@ from typing import Any
 from ..packs.registry import Pack
 from .base import Ctx, NeedsApproval, ToolError, ToolSpec
 
-TITLES = {"share": "Form share karein?", "delete_questions": "Jawab wale sawaal hatayein?",
-          "delete_form": "Form delete karein?"}   # v0.213 grew 2 -> 3 confirm-card actions
+TITLES = {"share": "Share form?", "delete_questions": "Delete questions that have answers?",
+          "delete_form": "Delete form?"}   # v0.213 grew 2 -> 3 confirm-card actions
 
 
 class FormsExecutor:
@@ -24,7 +24,7 @@ class FormsExecutor:
             raise ToolError(f"Unknown tool {tool}")
         p = fs.pending(ctx.user.id, str(args.get("pending_id", "")))
         if p is None or p["status"] != "pending":
-            raise ToolError("Yeh form badlav taiyaar nahi hai; dobara boliye.")
+            raise ToolError("This form change is not ready; please ask again.")
         sm = p["summary"]
         items = [{"name": f"Form: {sm.get('title', '')}"}, {"name": sm.get("what", "")}, {"name": sm.get("note", "")}]
         return NeedsApproval(tier=2, title=TITLES.get(p["action"], "Form badlav?"), payee="Google Forms", amount_paise=0,

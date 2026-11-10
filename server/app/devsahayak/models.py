@@ -81,6 +81,8 @@ class DevTask(Base):
     self_review: Mapped[str | None] = mapped_column(Text, nullable=True)     # v0.445 the last own review (JSON) + has_ci
     conv: Mapped[str] = mapped_column(String(40), default="")
     log: Mapped[str] = mapped_column(Text, default="[]")
+    steps: Mapped[str | None] = mapped_column(Text, nullable=True)          # v0.748 HOOLA CODE: structured steps (JSON) for the console
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)          # v0.748 her notes while it works, not yet read (JSON)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, index=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, onupdate=now)
 

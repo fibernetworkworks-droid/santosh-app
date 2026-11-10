@@ -13,17 +13,17 @@ class ShoppingScreen extends StatefulWidget {
 }
 
 const _statusHi = {
-  'payment_pending': 'Payment baaki',
-  'placed': 'Order ho gaya',
-  'accepted': 'Seller ne accept kiya',
-  'packed': 'Pack ho gaya',
-  'shipped': 'Raste mein',
-  'out_for_delivery': 'Delivery par nikla',
-  'delivered': 'Deliver ho gaya',
+  'payment_pending': 'Payment pending',
+  'placed': 'Order placed',
+  'accepted': 'Seller accepted',
+  'packed': 'Packed',
+  'shipped': 'On the way',
+  'out_for_delivery': 'Out for delivery',
+  'delivered': 'Delivered',
   'cancelled': 'Cancel',
-  'return_requested': 'Return maanga',
-  'returned': 'Return ho gaya',
-  'failed': 'Nahi hua',
+  'return_requested': 'Return asked',
+  'returned': 'Returned',
+  'failed': 'Did not happen',
 };
 
 class _ShoppingScreenState extends State<ShoppingScreen> {
@@ -68,11 +68,11 @@ class _ShoppingScreenState extends State<ShoppingScreen> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('AI assistant jodiye'),
-        content: TextField(controller: label, decoration: const InputDecoration(labelText: 'Naam (jaise Claude, ChatGPT)')),
+        title: const Text('Connect AI assistant'),
+        content: TextField(controller: label, decoration: const InputDecoration(labelText: 'Name (for example Claude, ChatGPT)')),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Rehne do')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Token banao')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Leave it')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Make token')),
         ],
       ),
     );
@@ -85,10 +85,10 @@ class _ShoppingScreenState extends State<ShoppingScreen> {
       await showDialog<void>(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: const Text('Token tayyar'),
+          title: const Text('Token ready'),
           content: SingleChildScrollView(
             child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('Yeh token sirf ek baar dikhega. Apne AI assistant mein MCP server jodiye:', style: TextStyle(fontSize: 13)),
+              const Text('This token will be shown only once. Connect the MCP server in your AI assistant:', style: TextStyle(fontSize: 13)),
               const SizedBox(height: 10),
               const Text('Address', style: TextStyle(fontSize: 12, color: C.muted)),
               SelectableText(url, style: const TextStyle(fontSize: 13)),
@@ -103,11 +103,11 @@ class _ShoppingScreenState extends State<ShoppingScreen> {
             TextButton(
               onPressed: () async {
                 await Clipboard.setData(ClipboardData(text: token));
-                if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(content: Text('Token copy ho gaya')));
+                if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(content: Text('Token copied')));
               },
               child: const Text('Token copy'),
             ),
-            FilledButton(onPressed: () => Navigator.pop(ctx), child: const Text('Ho gaya')),
+            FilledButton(onPressed: () => Navigator.pop(ctx), child: const Text('Done')),
           ],
         ),
       );
@@ -167,21 +167,21 @@ class _ShoppingScreenState extends State<ShoppingScreen> {
             onRefresh: _load,
             child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
               if (_err != null) Padding(padding: const EdgeInsets.only(bottom: 10), child: Text(_err!, style: const TextStyle(color: C.bad))),
-              const Caption('MERE ORDERS'),
+              const Caption('MY ORDERS'),
               if (_loading) const Padding(padding: EdgeInsets.all(24), child: Center(child: CircularProgressIndicator())),
               if (!_loading && _orders.isEmpty)
                 const Padding(
                   padding: EdgeInsets.only(bottom: 12),
-                  child: Text('Abhi koi order nahi. Chat mein boliye: "ONDC pe atta dhundo".', style: TextStyle(color: C.muted, fontSize: 13)),
+                  child: Text('No orders yet. Say in the chat: "Find atta on ONDC".', style: TextStyle(color: C.muted, fontSize: 13)),
                 ),
               for (final o in _orders) _order(o),
               const SizedBox(height: 12),
               Glass(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                  Text('Claude / ChatGPT se shopping', style: display(16)),
+                  Text('Shopping from Claude / ChatGPT', style: display(16)),
                   const SizedBox(height: 4),
-                  const Text('Apne AI assistant ko Hoola Shopping (MCP server) se jodiye. Har order par pehle poori keemat dikhegi, '
-                      'aapki haan ke bina order nahi hoga, aur paise sirf aapke UPI PIN se jayenge.',
+                  const Text('Connect your AI assistant to Hoola Shopping (MCP server). Every order shows the full price first, '
+                      'no order happens without your yes, and money goes only with your UPI PIN.',
                       style: TextStyle(color: C.muted, fontSize: 12.5, height: 1.4)),
                   const SizedBox(height: 10),
                   for (final t in active)
@@ -190,11 +190,11 @@ class _ShoppingScreenState extends State<ShoppingScreen> {
                       contentPadding: EdgeInsets.zero,
                       leading: const Icon(Icons.key_rounded, color: C.teal),
                       title: Text(t['label'] as String? ?? ''),
-                      subtitle: Text('Banaya: ${t['created_at'] ?? ''}', style: const TextStyle(fontSize: 12, color: C.muted)),
-                      trailing: TextButton(onPressed: () => _revoke(t), child: const Text('Hatao', style: TextStyle(color: C.bad))),
+                      subtitle: Text('Made: ${t['created_at'] ?? ''}', style: const TextStyle(fontSize: 12, color: C.muted)),
+                      trailing: TextButton(onPressed: () => _revoke(t), child: const Text('Remove', style: TextStyle(color: C.bad))),
                     ),
                   const SizedBox(height: 6),
-                  GlassButton(label: 'Naya token banao', icon: Icons.add_link_rounded, color: C.accentSoft, onTap: _newToken),
+                  GlassButton(label: 'Make a new token', icon: Icons.add_link_rounded, color: C.accentSoft, onTap: _newToken),
                 ]),
               ),
             ]),

@@ -20,27 +20,27 @@ List<Map<String, dynamic>> _list(dynamic l) =>
 void _snack(BuildContext c, String t) => ScaffoldMessenger.of(c).showSnackBar(SnackBar(content: Text(t)));
 
 const _quick = [
-  ('no_answer', 'Uthaya nahi', Icons.phone_missed_rounded),
+  ('no_answer', 'Did not pick up', Icons.phone_missed_rounded),
   ('busy', 'Busy', Icons.phone_locked_rounded),
   ('switched_off', 'Switch off', Icons.phone_disabled_rounded),
   ('interested', 'Interested', Icons.thumb_up_alt_rounded),
-  ('callback', 'Baad mein', Icons.schedule_rounded),
-  ('converted', 'Ho gaya', Icons.verified_rounded),
-  ('promised_pay', 'Paise ka vaada', Icons.currency_rupee_rounded),
-  ('not_interested', 'Interest nahi', Icons.thumb_down_alt_rounded),
-  ('wrong_number', 'Galat number', Icons.block_rounded),
-  ('dnd', 'Call mat karna', Icons.do_not_disturb_on_rounded),
+  ('callback', 'Later', Icons.schedule_rounded),
+  ('converted', 'Done', Icons.verified_rounded),
+  ('promised_pay', 'Promised payment', Icons.currency_rupee_rounded),
+  ('not_interested', 'Not interested', Icons.thumb_down_alt_rounded),
+  ('wrong_number', 'Wrong number', Icons.block_rounded),
+  ('dnd', 'Do not call', Icons.do_not_disturb_on_rounded),
 ];
-const _whenChips = ['2 ghante', 'aaj shaam', 'kal subah', 'kal shaam', 'parso', 'agle hafte'];
+const _whenChips = ['2 hours', 'this evening', 'tomorrow morning', 'tomorrow evening', 'day after tomorrow', 'next week'];
 const _purposes = {
-  'sales': 'Nayi enquiry',
+  'sales': 'New enquiry',
   'followup': 'Follow-up',
   'renewal': 'Renewal',
-  'dues': 'Bakaya',
+  'dues': 'Dues',
   'appointment': 'Appointment',
   'feedback': 'Feedback',
   'service': 'Service',
-  'reactivate': 'Purane graahak',
+  'reactivate': 'Past customers',
 };
 const _sources = {
   'enquiry': 'Enquiry',
@@ -49,9 +49,9 @@ const _sources = {
   'missed_call': 'Missed call',
   'whatsapp': 'WhatsApp',
   'referral': 'Referral',
-  'customer': 'Purana graahak',
+  'customer': 'Past customer',
   'ads_form': 'Ads form',
-  'bought': 'Kharidi list',
+  'bought': 'Purchase list',
 };
 
 Color _stageCol(String s) => switch (s) {
@@ -125,11 +125,11 @@ class _TelecallScreenState extends State<TelecallScreen> with WidgetsBindingObse
         final go = await showDialog<bool>(
           context: context,
           builder: (c) => AlertDialog(
-            title: const Text('Dhyan dijiye'),
+            title: const Text('Please note'),
             content: Text(_s(r['warn'])),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Rehne do')),
-              FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('Phir bhi call')),
+              TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Leave it')),
+              FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('Call anyway')),
             ],
           ),
         );
@@ -150,17 +150,17 @@ class _TelecallScreenState extends State<TelecallScreen> with WidgetsBindingObse
             backgroundColor: Colors.transparent,
             title: Text('${app.aName} · Telecaller'),
             bottom: const TabBar(isScrollable: true, tabAlignment: TabAlignment.start, tabs: [
-              Tab(text: 'Aaj'),
+              Tab(text: 'Today'),
               Tab(text: 'Log'),
               Tab(text: 'Report'),
-              Tab(text: 'Niyam'),
+              Tab(text: 'Rules'),
             ]),
           ),
           floatingActionButton: FloatingActionButton.extended(
             backgroundColor: C.accent,
             foregroundColor: C.onAccent,
             icon: const Icon(Icons.person_add_alt_1_rounded),
-            label: const Text('Naya naam', style: TextStyle(fontWeight: FontWeight.w800)),
+            label: const Text('New name', style: TextStyle(fontWeight: FontWeight.w800)),
             onPressed: () => _addLead(context),
           ),
           body: Aurora(
@@ -189,8 +189,8 @@ class _TelecallScreenState extends State<TelecallScreen> with WidgetsBindingObse
         Glass(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
-              Expanded(child: Text('Aaj $done / $goal call', style: display(18))),
-              Pill('${now.length} abhi', fg: C.accent),
+              Expanded(child: Text('Today $done / $goal calls', style: display(18))),
+              Pill('${now.length} now', fg: C.accent),
             ]),
             const SizedBox(height: 8),
             ClipRRect(
@@ -199,14 +199,14 @@ class _TelecallScreenState extends State<TelecallScreen> with WidgetsBindingObse
             ),
             if (_s(l['tip']).isNotEmpty) Padding(padding: const EdgeInsets.only(top: 8), child: Text(_s(l['tip']), style: const TextStyle(color: C.accent2))),
             const SizedBox(height: 6),
-            Text('Call aap khud karti hain: Call dabane par phone ka dialer khulega. Wapas aane par ${app.aName} poochhega kya hua.',
+            Text('You make the call yourself: tapping Call opens the phone\'s dialer. When you come back, ${app.aName} will ask what happened.',
                 style: const TextStyle(color: C.faint, fontSize: 12)),
           ]),
         ),
         if (now.isEmpty)
-          const Padding(padding: EdgeInsets.all(20), child: Text('Abhi kisi ko call karna baaki nahi. Naya naam jodiye ya sheet daaliye.', style: TextStyle(color: C.muted))),
+          const Padding(padding: EdgeInsets.all(20), child: Text('No one left to call right now. Add a new name or a sheet.', style: TextStyle(color: C.muted))),
         for (final x in now) Padding(padding: const EdgeInsets.only(top: 10), child: TeleLeadTile(lead: x, app: app, onCall: () => _call(x), onChanged: _load)),
-        if (later.isNotEmpty) Padding(padding: const EdgeInsets.fromLTRB(4, 18, 4, 6), child: Text('Baad mein (${later.length})', style: display(15))),
+        if (later.isNotEmpty) Padding(padding: const EdgeInsets.fromLTRB(4, 18, 4, 6), child: Text('Later (${later.length})', style: display(15))),
         for (final x in later.take(25))
           ListTile(
             contentPadding: EdgeInsets.zero,
@@ -216,7 +216,7 @@ class _TelecallScreenState extends State<TelecallScreen> with WidgetsBindingObse
             onTap: () => openTeleLead(context, app, _s(x['id'])),
           ),
         if (blocked.isNotEmpty) ...[
-          Padding(padding: const EdgeInsets.fromLTRB(4, 18, 4, 6), child: Text('Roke gaye (${blocked.length})', style: display(15))),
+          Padding(padding: const EdgeInsets.fromLTRB(4, 18, 4, 6), child: Text('Stopped (${blocked.length})', style: display(15))),
           Text(_s(blocked.first['risk']), style: const TextStyle(color: C.faint, fontSize: 12)),
           for (final x in blocked.take(15))
             ListTile(
@@ -241,12 +241,12 @@ class _TelecallScreenState extends State<TelecallScreen> with WidgetsBindingObse
       context: context,
       builder: (c) => StatefulBuilder(
         builder: (c, set) => AlertDialog(
-          title: const Text('Naya naam'),
+          title: const Text('New name'),
           content: SingleChildScrollView(
             child: Column(mainAxisSize: MainAxisSize.min, children: [
-              TextField(controller: name, decoration: const InputDecoration(labelText: 'Naam')),
+              TextField(controller: name, decoration: const InputDecoration(labelText: 'Name')),
               TextField(controller: phone, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'Mobile')),
-              TextField(controller: need, decoration: const InputDecoration(labelText: 'Kya chahiye / kis baare mein')),
+              TextField(controller: need, decoration: const InputDecoration(labelText: 'What they need / about what')),
               const SizedBox(height: 8),
               Wrap(spacing: 6, runSpacing: 4, children: [
                 for (final e in _sources.entries) ChoiceChip(label: Text(e.value), selected: source == e.key, onSelected: (_) => set(() => source = e.key)),
@@ -258,8 +258,8 @@ class _TelecallScreenState extends State<TelecallScreen> with WidgetsBindingObse
             ]),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Rehne do')),
-            FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('Jodo')),
+            TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Leave it')),
+            FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('Add')),
           ],
         ),
       ),
@@ -302,7 +302,7 @@ class TeleLeadTile extends StatelessWidget {
             if (_s(lead['interest']).isNotEmpty) Pill(_s(lead['interest']), fg: lead['interest'] == 'hot' ? C.bad : C.accent),
           ]),
           const SizedBox(height: 6),
-          Text('Kyun: ${lead['why']}', style: const TextStyle(color: C.chip, fontSize: 13)),
+          Text('Why: ${lead['why']}', style: const TextStyle(color: C.chip, fontSize: 13)),
           const SizedBox(height: 8),
           Row(children: [
             Expanded(child: GradientButton(label: 'Call', icon: Icons.call_rounded, height: 44, onTap: onCall)),
@@ -341,15 +341,15 @@ Future<void> showTeleScript(BuildContext context, Santosh app, Map<String, dynam
                   ]),
                 );
           return ListView(controller: sc, padding: const EdgeInsets.fromLTRB(20, 16, 20, 30), children: [
-            Text('${lead['name']} ke liye', style: display(18)),
+            Text('${lead['name']} for', style: display(18)),
             const SizedBox(height: 12),
             if (_s(s['warning']).isNotEmpty) Padding(padding: const EdgeInsets.only(bottom: 10), child: Text(_s(s['warning']), style: const TextStyle(color: C.bad))),
-            part('1. Shuruaat', _s(s['opener'])),
-            part('2. Ijazat', _s(s['permission'])),
-            part('3. Poochhiye', ((s['questions'] as List?) ?? const []).join('\n')),
-            part('4. Fayda', _s(s['value'])),
+            part('1. Opening', _s(s['opener'])),
+            part('2. Permission', _s(s['permission'])),
+            part('3. Ask', ((s['questions'] as List?) ?? const []).join('\n')),
+            part('4. Benefit', _s(s['value'])),
             if (((s['objections'] as List?) ?? const []).isNotEmpty) ...[
-              const Text('Agar woh kahein', style: TextStyle(color: C.muted, fontSize: 12)),
+              const Text('If they say', style: TextStyle(color: C.muted, fontSize: 12)),
               for (final o in _list(s['objections']))
                 Padding(
                   padding: const EdgeInsets.only(top: 6),
@@ -357,7 +357,7 @@ Future<void> showTeleScript(BuildContext context, Santosh app, Map<String, dynam
                 ),
               const SizedBox(height: 12),
             ],
-            part('5. Agla kadam', _s(s['next_step'])),
+            part('5. Next step', _s(s['next_step'])),
             part('6. Ant', _s(s['close'])),
             for (final n in ((s['notes'] as List?) ?? const [])) Text('• $n', style: const TextStyle(color: C.faint, fontSize: 12.5)),
           ]);
@@ -432,7 +432,7 @@ class _LogSheetState extends State<_LogSheet> {
 
   Future<void> _save() async {
     if (_out.isEmpty && _notes.text.trim().isEmpty && _voice == null) {
-      _snack(context, 'Kya hua? Ek button dabaiye ya boliye / likhiye');
+      _snack(context, 'What happened? Tap a button or speak / write');
       return;
     }
     setState(() => _busy = true);
@@ -461,7 +461,7 @@ class _LogSheetState extends State<_LogSheet> {
         child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
           child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('Likh liya', style: display(18)),
+            Text('Written', style: display(18)),
             const SizedBox(height: 8),
             Text(_s(done['say']), style: const TextStyle(height: 1.4)),
             if (_s(wa['text']).isNotEmpty) ...[
@@ -469,13 +469,13 @@ class _LogSheetState extends State<_LogSheet> {
               Text(_s(wa['text']), style: const TextStyle(color: C.muted, fontSize: 13)),
               const SizedBox(height: 8),
               Row(children: [
-                Expanded(child: GradientButton(label: 'WhatsApp par bhejo', icon: Icons.send_rounded, height: 44, onTap: () => Native.openExternal(url: _s(wa['wa_link'])))),
+                Expanded(child: GradientButton(label: 'Send on WhatsApp', icon: Icons.send_rounded, height: 44, onTap: () => Native.openExternal(url: _s(wa['wa_link'])))),
                 const SizedBox(width: 8),
                 GlassButton(label: 'SMS', height: 44, onTap: () => Native.openExternal(url: _s(wa['sms_link']))),
               ]),
             ],
             const SizedBox(height: 10),
-            Align(alignment: Alignment.centerRight, child: TextButton(onPressed: () => Navigator.pop(context), child: const Text('Theek'))),
+            Align(alignment: Alignment.centerRight, child: TextButton(onPressed: () => Navigator.pop(context), child: const Text('OK'))),
           ]),
         ),
       );
@@ -484,7 +484,7 @@ class _LogSheetState extends State<_LogSheet> {
       child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
         child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('${widget.lead['name']}: kya hua?', style: display(18)),
+          Text('${widget.lead['name']}: what happened?', style: display(18)),
           const SizedBox(height: 10),
           Wrap(spacing: 6, runSpacing: 6, children: [
             for (final q in _quick)
@@ -498,7 +498,7 @@ class _LogSheetState extends State<_LogSheet> {
           const SizedBox(height: 10),
           Row(children: [
             Expanded(
-              child: TextField(controller: _notes, minLines: 2, maxLines: 5, decoration: const InputDecoration(labelText: 'Kya baat hui (jaise boli waise likhiye)')),
+              child: TextField(controller: _notes, minLines: 2, maxLines: 5, decoration: const InputDecoration(labelText: 'What was said (write as you would speak)')),
             ),
             const SizedBox(width: 8),
             IconButton.filled(
@@ -507,15 +507,15 @@ class _LogSheetState extends State<_LogSheet> {
               icon: Icon(_rec.recording ? Icons.stop_rounded : Icons.mic_rounded, color: C.onAccent),
             ),
           ]),
-          if (_rec.recording) Text('Bol rahi hain... ${_rec.length.inSeconds}s', style: const TextStyle(color: C.bad, fontSize: 12)),
-          if (_voice != null && !_rec.recording) const Text('Awaaz mili', style: TextStyle(color: C.ok, fontSize: 12)),
+          if (_rec.recording) Text('Listening... ${_rec.length.inSeconds}s', style: const TextStyle(color: C.bad, fontSize: 12)),
+          if (_voice != null && !_rec.recording) const Text('Voice received', style: TextStyle(color: C.ok, fontSize: 12)),
           const SizedBox(height: 10),
-          TextField(controller: _when, decoration: const InputDecoration(labelText: 'Agli call kab (jaise kal 4 baje)')),
+          TextField(controller: _when, decoration: const InputDecoration(labelText: 'When is the next call (for example tomorrow at 4)')),
           Wrap(spacing: 6, children: [
             for (final w in _whenChips) ActionChip(label: Text(w), onPressed: () => setState(() => _when.text = w)),
           ]),
           const SizedBox(height: 14),
-          GradientButton(label: _busy ? 'Likh rahi hoon...' : 'Save', icon: Icons.check_rounded, onTap: _busy ? null : _save),
+          GradientButton(label: _busy ? 'Writing...' : 'Save', icon: Icons.check_rounded, onTap: _busy ? null : _save),
         ]),
       ),
     );
@@ -577,9 +577,9 @@ class _TeleLeadPageState extends State<TeleLeadPage> {
                 const SizedBox(height: 10),
                 Glass(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text('${l['phone']} · ${l['calls']} call, ${l['connects']} baat', style: const TextStyle(color: C.muted)),
-                    if (_s(l['need']).isNotEmpty) Text('Zaroorat: ${l['need']}'),
-                    if (_s(l['next_nice']).isNotEmpty) Text('Agli call: ${l['next_nice']} (${l['next_reason']})', style: const TextStyle(color: C.accent)),
+                    Text('${l['phone']} · ${l['calls']} call, ${l['connects']} connected', style: const TextStyle(color: C.muted)),
+                    if (_s(l['need']).isNotEmpty) Text('Need: ${l['need']}'),
+                    if (_s(l['next_nice']).isNotEmpty) Text('Next call: ${l['next_nice']} (${l['next_reason']})', style: const TextStyle(color: C.accent)),
                     if (_s(l['notes']).isNotEmpty) Padding(padding: const EdgeInsets.only(top: 6), child: Text(_s(l['notes']), style: const TextStyle(color: C.faint, fontSize: 12.5))),
                   ]),
                 ),
@@ -592,9 +592,9 @@ class _TeleLeadPageState extends State<TeleLeadPage> {
                       height: 42,
                       onTap: () => showTeleScript(context, widget.app, l),
                     ),
-                  GlassButton(label: 'Log likho', icon: Icons.edit_note_rounded, height: 42, onTap: () => showTeleLog(context, widget.app, lead: l, onDone: _load)),
+                  GlassButton(label: 'Write log', icon: Icons.edit_note_rounded, height: 42, onTap: () => showTeleLog(context, widget.app, lead: l, onDone: _load)),
                   GlassButton(
-                    label: 'Agli call',
+                    label: 'Next call',
                     icon: Icons.schedule_rounded,
                     height: 42,
                     onTap: () async {
@@ -602,28 +602,28 @@ class _TeleLeadPageState extends State<TeleLeadPage> {
                       final ok = await showDialog<bool>(
                         context: context,
                         builder: (d) => AlertDialog(
-                          title: const Text('Kab call karna hai?'),
-                          content: TextField(controller: c, decoration: const InputDecoration(labelText: 'kal 4 baje / Friday shaam')),
-                          actions: [FilledButton(onPressed: () => Navigator.pop(d, true), child: const Text('Theek'))],
+                          title: const Text('When to call?'),
+                          content: TextField(controller: c, decoration: const InputDecoration(labelText: 'tomorrow at 4 / Friday evening')),
+                          actions: [FilledButton(onPressed: () => Navigator.pop(d, true), child: const Text('OK'))],
                         ),
                       );
                       if (ok == true && c.text.trim().isNotEmpty) await _do(() => widget.app.api!.teleUpdate(widget.id, {'next_when': c.text.trim()}));
                     },
                   ),
-                  if (l['stage'] != 'dnd') GlassButton(label: 'Call mat karna', icon: Icons.do_not_disturb_on_rounded, height: 42, onTap: () => _do(() => widget.app.api!.teleDnd(widget.id))),
+                  if (l['stage'] != 'dnd') GlassButton(label: 'Do not call', icon: Icons.do_not_disturb_on_rounded, height: 42, onTap: () => _do(() => widget.app.api!.teleDnd(widget.id))),
                   GlassButton(
-                    label: 'Mita do',
+                    label: 'Delete',
                     icon: Icons.delete_outline_rounded,
                     height: 42,
                     onTap: () async {
                       final ok = await showDialog<bool>(
                         context: context,
                         builder: (d) => AlertDialog(
-                          title: const Text('Saara record mitaye?'),
-                          content: const Text('Naam, number, notes aur call history hamesha ke liye mit jayegi.'),
+                          title: const Text('Delete the whole record?'),
+                          content: const Text('The name, number, notes and call history will be deleted for good.'),
                           actions: [
-                            TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Nahi')),
-                            FilledButton(onPressed: () => Navigator.pop(d, true), child: const Text('Mitao')),
+                            TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('No')),
+                            FilledButton(onPressed: () => Navigator.pop(d, true), child: const Text('Delete')),
                           ],
                         ),
                       );
@@ -643,7 +643,7 @@ class _TeleLeadPageState extends State<TeleLeadPage> {
                   ListTile(
                     contentPadding: EdgeInsets.zero,
                     title: Text('${h['at']} · ${h['outcome_label']}${(h['seconds'] ?? 0) > 0 ? ' · ${((h['seconds'] as num) / 60).toStringAsFixed(1)} min' : ''}'),
-                    subtitle: Text([_s(h['summary']), if (_s(h['next_nice']).isNotEmpty) 'Agli: ${h['next_nice']}'].where((x) => x.isNotEmpty).join('\n')),
+                    subtitle: Text([_s(h['summary']), if (_s(h['next_nice']).isNotEmpty) 'Next: ${h['next_nice']}'].where((x) => x.isNotEmpty).join('\n')),
                   ),
               ]),
       ),
@@ -695,7 +695,7 @@ class _LeadsTabState extends State<_LeadsTab> {
     if (!mounted) return;
     source = await showDialog<String>(
           context: context,
-          builder: (c) => SimpleDialog(title: const Text('Yeh log kahan se aaye?'), children: [
+          builder: (c) => SimpleDialog(title: const Text('Where did these people come from?'), children: [
             for (final e in _sources.entries) SimpleDialogOption(onPressed: () => Navigator.pop(c, e.key), child: Text(e.value)),
           ]),
         ) ??
@@ -717,10 +717,10 @@ class _LeadsTabState extends State<_LeadsTab> {
   Widget build(BuildContext context) => RefreshIndicator(
         onRefresh: _load,
         child: ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 96), children: [
-          GlassButton(label: _busy ? 'Padh rahi hoon...' : 'Excel / CSV sheet daalo', icon: Icons.upload_file_rounded, onTap: _busy ? null : _import),
+          GlassButton(label: _busy ? 'Reading...' : 'Add Excel / CSV sheet', icon: Icons.upload_file_rounded, onTap: _busy ? null : _import),
           const SizedBox(height: 8),
           TextField(
-            decoration: const InputDecoration(prefixIcon: Icon(Icons.search_rounded), labelText: 'Naam / number / zaroorat'),
+            decoration: const InputDecoration(prefixIcon: Icon(Icons.search_rounded), labelText: 'Name / number / need'),
             onChanged: (v) {
               _q = v;
               _deb?.cancel();
@@ -729,7 +729,7 @@ class _LeadsTabState extends State<_LeadsTab> {
           ),
           const SizedBox(height: 6),
           Wrap(spacing: 6, children: [
-            for (final s in const [('open', 'Chalu'), ('interested', 'Interested'), ('callback', 'Callback'), ('converted', 'Ho gaya'), ('lost', 'Mana'), ('dnd', 'DND')])
+            for (final s in const [('open', 'In progress'), ('interested', 'Interested'), ('callback', 'Callback'), ('converted', 'Done'), ('lost', 'Decline'), ('dnd', 'DND')])
               ChoiceChip(
                 label: Text(s.$2),
                 selected: _stage == s.$1,
@@ -743,7 +743,7 @@ class _LeadsTabState extends State<_LeadsTab> {
             ListTile(
               contentPadding: EdgeInsets.zero,
               title: Text(_s(l['name'])),
-              subtitle: Text([_s(l['purpose_label']), if (_s(l['last_outcome_label']).isNotEmpty) _s(l['last_outcome_label']), if (_s(l['next_nice']).isNotEmpty) 'agli ${l['next_nice']}'].join(' · ')),
+              subtitle: Text([_s(l['purpose_label']), if (_s(l['last_outcome_label']).isNotEmpty) _s(l['last_outcome_label']), if (_s(l['next_nice']).isNotEmpty) 'next${l['next_nice']}'].join(' · ')),
               trailing: l['callable'] == true
                   ? IconButton(icon: const Icon(Icons.call_rounded, color: C.ok), onPressed: () => widget.onCall(l))
                   : Pill(_s(l['stage']), fg: _stageCol(_s(l['stage']))),
@@ -792,50 +792,50 @@ class _ReportTabState extends State<_ReportTab> {
         );
     return ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 96), children: [
       Wrap(spacing: 6, children: [
-        for (final d in const [(1, 'Aaj'), (7, '7 din'), (30, '30 din')]) ChoiceChip(label: Text(d.$2), selected: _days == d.$1, onSelected: (_) => _load(d.$1)),
+        for (final d in const [(1, 'Today'), (7, '7 days'), (30, '30 days')]) ChoiceChip(label: Text(d.$2), selected: _days == d.$1, onSelected: (_) => _load(d.$1)),
       ]),
       const SizedBox(height: 10),
       Row(children: [
         stat('Call', '${r['calls'] ?? 0}', C.chip),
         const SizedBox(width: 8),
-        stat('Baat hui', '${r['connect_pct'] ?? 0}%', C.ok),
+        stat('Spoke', '${r['connect_pct'] ?? 0}%', C.ok),
         const SizedBox(width: 8),
-        stat('Min baat', '${r['talk_min'] ?? 0}', C.accent2),
+        stat('Min talk', '${r['talk_min'] ?? 0}', C.accent2),
       ]),
       const SizedBox(height: 8),
       Row(children: [
         stat('Interested', '${r['interested'] ?? 0}', C.accent),
         const SizedBox(width: 8),
-        stat('Ho gaya', '${r['converted'] ?? 0}', C.teal),
+        stat('Done', '${r['converted'] ?? 0}', C.teal),
         const SizedBox(width: 8),
-        stat('Log baaki', '${r['unlogged'] ?? 0}', C.bad),
+        stat('People left', '${r['unlogged'] ?? 0}', C.bad),
       ]),
       const SizedBox(height: 12),
       if (_list(r['missed_followups']).isNotEmpty) ...[
-        Text('Chhoot gaye follow-up', style: display(15)),
+        Text('Missed follow-ups', style: display(15)),
         for (final m in _list(r['missed_followups']))
           ListTile(contentPadding: EdgeInsets.zero, title: Text(_s(m['name'])), subtitle: Text('${m['next_nice']} · ${m['next_reason']}'), onTap: () => openTeleLead(context, widget.app, _s(m['id']))),
       ],
       if (_list(r['best_hours']).isNotEmpty) ...[
         const SizedBox(height: 8),
-        Text('Aapke records mein sabse achha samay', style: display(15)),
-        for (final h in _list(r['best_hours'])) Text('${h['hour']}:00 baje · ${h['connect_pct']}% uthaate hain (${h['calls']} call)'),
+        Text('Best time in your records', style: display(15)),
+        for (final h in _list(r['best_hours'])) Text('${h['hour']}:00 ·${h['connect_pct']}% pick up (${h['calls']} call)'),
       ],
       if (_list(r['objections']).isNotEmpty) ...[
         const SizedBox(height: 12),
-        Text('Log kya kehte hain', style: display(15)),
+        Text('What people say', style: display(15)),
         for (final o in _list(r['objections']))
           Padding(
             padding: const EdgeInsets.only(top: 6),
-            child: Text('"${o['objection']}" · ${o['times']} baar · ${o['won_pct']}% phir bhi aage badhe${_s(o['worked']).isNotEmpty ? '\n  Kaam aaya: ${o['worked']}' : ''}'),
+            child: Text('"${o['objection']}" · ${o['times']} times ·${o['won_pct']}% still moved ahead${_s(o['worked']).isNotEmpty ? '\n  Helped: ${o['worked']}' : ''}'),
           ),
       ],
       if (_list(r['sources']).isNotEmpty) ...[
         const SizedBox(height: 12),
-        Text('Kahan se aaye log', style: display(15)),
-        for (final s in _list(r['sources'])) Text('${s['source']}: ${s['leads']} log, ${s['converted']} ho gaye (${s['pct']}%)'),
+        Text('Where people came from', style: display(15)),
+        for (final s in _list(r['sources'])) Text('${s['source']}: ${s['leads']} people, ${s['converted']} converted (${s['pct']}%)'),
       ],
-      if ((r['stale'] ?? 0) > 0) Padding(padding: const EdgeInsets.only(top: 12), child: Text('${r['stale']} purane band records: mita dene chahiye (DPDP).', style: const TextStyle(color: C.faint))),
+      if ((r['stale'] ?? 0) > 0) Padding(padding: const EdgeInsets.only(top: 12), child: Text('${r['stale']} old closed records: they should be deleted (DPDP).', style: const TextStyle(color: C.faint))),
     ]);
   }
 }
@@ -880,26 +880,26 @@ class _RulesTab extends StatelessWidget {
     return ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 96), children: [
       Glass(
         child: Column(children: [
-          row('business', 'Business ka naam', _s(st['business'])),
-          row('caller_name', 'Call karne wale ka naam', _s(st['caller_name'])),
-          row('pitch', 'Hum kya dete hain (script ke liye)', _s(st['pitch']), lines: 4),
-          row('start_hour', 'Call shuru (9 se pehle nahi)', _s(st['start_hour'])),
-          row('end_hour', 'Call band (9 baje raat ke baad nahi)', _s(st['end_hour'])),
-          row('daily_goal', 'Roz kitni call', '${st['daily_goal']}', number: true),
-          row('max_attempts', 'Ek vyakti ko kitni baar try', '${st['max_attempts']}', number: true),
-          row('morning_time', 'Subah ki list kab', _s(st['morning_time'])),
+          row('business', 'Business name', _s(st['business'])),
+          row('caller_name', 'Caller\'s name', _s(st['caller_name'])),
+          row('pitch', 'What we offer (for the script)', _s(st['pitch']), lines: 4),
+          row('start_hour', 'Calls start (not before 9)', _s(st['start_hour'])),
+          row('end_hour', 'Calls end (not after 9 pm)', _s(st['end_hour'])),
+          row('daily_goal', 'Calls per day', '${st['daily_goal']}', number: true),
+          row('max_attempts', 'How many times to try one person', '${st['max_attempts']}', number: true),
+          row('morning_time', 'Morning list time', _s(st['morning_time'])),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
             value: st['registered'] == true,
-            title: const Text('TRAI registered 140 line se call'),
-            subtitle: const Text('Band = kharidi / cold list waale log roke jayenge'),
+            title: const Text('Call from a TRAI-registered 140 number'),
+            subtitle: const Text('Off = people who bought / cold-list people will be stopped'),
             onChanged: (v) => _save(context, {'registered': v}),
           ),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
             value: st['record_calls'] == true,
-            title: const Text('Main phone par call record karti hoon'),
-            subtitle: const Text('Script mein "call record ho sakti hai" bolna jud jayega'),
+            title: const Text('I record calls on my phone'),
+            subtitle: const Text('The script will add "this call may be recorded"'),
             onChanged: (v) => _save(context, {'record_calls': v}),
           ),
         ]),
@@ -907,12 +907,12 @@ class _RulesTab extends StatelessWidget {
       const SizedBox(height: 12),
       Glass(
         child: Column(children: [
-          row('rules', 'Mere niyam (har line ek)', ((st['rules'] as List?) ?? const []).join('\n'), list: true, lines: 5),
-          row('dont_say', 'Yeh kabhi na bolein (har line ek)', ((st['dont_say'] as List?) ?? const []).join('\n'), list: true, lines: 5),
+          row('rules', 'My rules (one per line)', ((st['rules'] as List?) ?? const []).join('\n'), list: true, lines: 5),
+          row('dont_say', 'Never say these (one per line)', ((st['dont_say'] as List?) ?? const []).join('\n'), list: true, lines: 5),
         ]),
       ),
       const SizedBox(height: 10),
-      const Text('Hoola khud kabhi call nahi karta aur message nahi bhejta: dialer aur WhatsApp aapke tap se khulte hain.',
+      const Text('Hoola never calls or sends messages by itself: the dialer and WhatsApp open with your tap.',
           style: TextStyle(color: C.faint, fontSize: 12)),
     ]);
   }
@@ -929,8 +929,8 @@ class TeleDayCard extends StatelessWidget {
           Row(children: [
             const Icon(Icons.headset_mic_rounded, color: C.accent, size: 20),
             const SizedBox(width: 8),
-            Expanded(child: Text('Aaj ki call list', style: display(16))),
-            Pill('${v['count'] ?? 0} log', fg: C.accent),
+            Expanded(child: Text('Today\'s call list', style: display(16))),
+            Pill('${v['count'] ?? 0} people', fg: C.accent),
           ]),
           const SizedBox(height: 8),
           Text(_s(v['text']), style: const TextStyle(color: C.chip, height: 1.4)),
@@ -938,7 +938,7 @@ class TeleDayCard extends StatelessWidget {
             alignment: Alignment.centerRight,
             child: TextButton(
               onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => TelecallScreen(app: app))),
-              child: const Text('Call list kholo'),
+              child: const Text('Open call list'),
             ),
           ),
         ]),
@@ -962,12 +962,12 @@ class TeleLoggedCard extends StatelessWidget {
           Expanded(child: Text('${lead['name']}: ${call['outcome_label']}', style: display(15))),
         ]),
         if (_s(call['summary']).isNotEmpty) Padding(padding: const EdgeInsets.only(top: 6), child: Text(_s(call['summary']), style: const TextStyle(color: C.chip))),
-        if (_s(lead['next_nice']).isNotEmpty) Text('Agli call: ${lead['next_nice']}', style: const TextStyle(color: C.accent, fontSize: 12.5)),
+        if (_s(lead['next_nice']).isNotEmpty) Text('Next call: ${lead['next_nice']}', style: const TextStyle(color: C.accent, fontSize: 12.5)),
         if (_s(v['ask']).isNotEmpty) Text(_s(v['ask']), style: const TextStyle(color: C.accent2, fontSize: 12.5)),
         if (_s(wa['wa_link']).isNotEmpty)
           Padding(
             padding: const EdgeInsets.only(top: 8),
-            child: GlassButton(label: 'WhatsApp draft kholo', icon: Icons.send_rounded, height: 40, onTap: () => Native.openExternal(url: _s(wa['wa_link']))),
+            child: GlassButton(label: 'Open WhatsApp draft', icon: Icons.send_rounded, height: 40, onTap: () => Native.openExternal(url: _s(wa['wa_link']))),
           ),
       ]),
     );
