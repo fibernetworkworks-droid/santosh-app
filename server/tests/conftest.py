@@ -68,6 +68,7 @@ def _full_voice_menu(monkeypatch):
     monkeypatch.setenv("MODEL_PROFILE", "false")       # v0.739 older suites pin the hand-written model abilities; test_v0739 checks the read profile
     monkeypatch.setenv("CHAT_FILES_BY_CODE", "false")  # v0.738 older suites pin pylab keeping only png / csv / xlsx files
     monkeypatch.setenv("CHAT_EVERY_MESSAGE", "false")  # v0.738 older suites pin the research-plan gate + canned stop line; test_v0738 checks every message reaches the model
+    monkeypatch.setenv("CONSOLE_HUMAN", "false")       # v0.743 older suites pin the old console wording; test_v0743 checks the friendlier one
     monkeypatch.setenv("ARCHITECT_OPUS", "true")       # v0.735 older suites pin the architect on Opus; test_v0735_all_glm checks GLM
     monkeypatch.setenv("CLAUDE_ALL_GLM_FALLBACK", "true")  # v0.735 older suites pin the Claude fallback at the SDK door
     monkeypatch.setenv("GLM_IMAGES", "false")          # v0.735 older suites pin pictures -> Claude (non-NVIDIA GLM)

@@ -477,7 +477,7 @@ def test_crawl_results_masks_ids(monkeypatch):
 
 def test_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.742.0"
+    assert APP_VERSION == "0.743.0"
     from pathlib import Path
     pub = Path(__file__).resolve().parents[2] / "pubspec.yaml"
-    assert "0.742.0+741" in pub.read_text()
+    assert "0.743.0+742" in pub.read_text()

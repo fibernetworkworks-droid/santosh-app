@@ -142,11 +142,17 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
       </button>`;
   }
 
+  function needLine(e) {   // v0.743 SAAF INSAANI: what a role needs before it starts, on the card itself
+    if (!document.documentElement.classList.contains('human') || isHired(e)) return '';
+    const n = Array.isArray(e.needs) ? e.needs[0] : '';
+    return n ? `<span class="ae-role-n">Needs: ${esc(String(n))}</span>` : '';
+  }
   function roleCard(e, i, withDept) {
     const d = deptOf(e.group), [sc, st] = status(e), on = HS.view === 'dept' && HS.sel === e.key;
     return `<button class="ae-role ae-up ae-d-${esc(d.id)}${on ? ' on' : ''}" type="button" data-ae="role" data-key="${esc(e.key)}" aria-pressed="${on}" style="animation-delay:${(.12 + i * .04).toFixed(2)}s">
         <span class="ae-role-h"><span class="ae-mono">${esc(ini(e.name))}${isHired(e) ? `<i class="${e.status === 'paused' ? 'ae-dot-paused' : 'ae-live'}"></i>` : ''}</span><span><b>${esc(e.name)}</b>${withDept ? `<small>${esc(d.name)}</small>` : ''}</span></span>
         <span class="ae-role-p">${esc(e.pitch || '')}</span>
+        ${needLine(e)}
         <span class="ae-role-ft"><span class="ae-chip ${sc}">${st}</span><span class="ae-more">Details${arrow}</span></span>
       </button>`;
   }

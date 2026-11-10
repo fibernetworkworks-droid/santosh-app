@@ -2653,3 +2653,9 @@ Task ID: v0.742.0 AIHUBMIX
 Ask: AIHubMix -- LETS DO IT.
 Built: aihubmix provider, GLM_MODEL may be <provider>:<model>, name matching, free flag, plain limit line.
 Deploy: AIHUBMIX_API_KEY + GLM_MODEL=aihubmix:coding-glm-5.3-flash-free in .env, vps-ops deploy.
+
+---
+Task ID: v0.743.0 SAAF INSAANI
+- Owner asked for a human, friendlier console without changing the existing design; showed two canvases, built the second on "GO".
+- Files: static/console/v2.js, v2.css, employees.js; app/config.py (console_human); app/main.py (config key); tests/conftest.py pin; tests/test_v0743_saaf_insaani.py.
+- Verified: new suite 3/3 incl. browser walk; console suites v0740 / v0721 / v163 / v164 / v0716 / v0719 / deploy green.

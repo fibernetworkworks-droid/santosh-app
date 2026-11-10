@@ -142,3 +142,24 @@ Planned at v0.686.0; the dev chain ran on to v0.729.0 (SAB ENGLISH waves) while 
 - Version ritual: `scripts/ritual_v0730.py` — version tokens swept with the parser-stamp guard, pubspec 0.730.0+729, console stamps `?v=0.730.0`, the APP_VERSION story splice, the three mirrors.
 - Server-only deploy = owner's vps-ops dispatch; desktop untouched. NOT VERIFIED live: her first real generation — needs HER ArtCraft key in the VPS .env (`shilp` action=status shows the setup directions); the zero-network status/models ride the deploy. Next: W1 SHILP SEVAK (the job butler worker) once a real key exists.
 
+
+
+## v0.743.0 SAAF INSAANI - same console, friendlier (owner: "DO NOT CHANGE EXISTING DESIGN BUT MAKE IT MORE USER FRIENDLY AND HUMAN MADE NATIVE" -> "GO")
+
+The owner first saw a fresh "workroom" redesign on a canvas and asked to keep the EXISTING design instead; the second
+canvas kept layout, colours (white, #5B45E0 violet) and fonts (Schibsted Grotesk + Literata) and changed only how the
+screens read. Built behind `console_human` (default on; `/api/console/config` -> `human`; v2.js sets `html.human`;
+conftest pins it off so older suites see the old wording byte for byte).
+
+- Home: "Good morning / afternoon / evening, <name>" + `humanTagline()` - one sentence from the live queue / jobs
+  ("Santosh has one thing waiting for your OK. Review ->", "...is working on 2 jobs for you right now", else ready).
+- Work cards (`drawJobs`): a "Working / Waiting for you" tag, the real stage + `soFar(started_at)` ("6 min so far"),
+  and a progress bar ONLY when the job reports a real pct (0-100) - no made-up bar.
+- Sidebar Today badge in words ("1 needs you" / "2 working"); spend "Rs 412 of Rs 2,000" under "AI spend this month".
+- Reply actions: Retry -> Ask again, thumbs get "Good answer" / "Not right"; composer placeholder gives a real example.
+- `decisionRow` (every slide-to-approve card): "Slide to approve" / "Not now" + "Nothing happens until you approve."
+- No emoji in the long-job report headings or memory notes; the Plan card header mark is still (no spinner).
+- One-colour start-pill icons (CSS over the inline strokes); AI Employees role cards show "Needs: <first need>".
+- NOT done (said plainly): her message's own time label (the hover Copy / Edit was already there).
+- Tests: tests/test_v0743_saaf_insaani.py (switch, old words kept when off, new words present, a real-browser walk of
+  the home with a working job). Pre-existing reds stay: test_v0555 card CSS literal-colour check, test_v142 recent list.

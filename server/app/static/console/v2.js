@@ -53,12 +53,32 @@ function toast(msg, bad) { const t = $('#toast'); t.textContent = msg; t.classNa
 
 /* ================= login ================= */
 let CONFIG = {google: false, v2: true};
+/* v0.743 SAAF INSAANI (owner: "DO NOT CHANGE EXISTING DESIGN BUT MAKE IT MORE USER FRIENDLY AND HUMAN MADE" -> GO on the
+   canvas): same layout, colours and fonts; the screens talk like a person - her name + what happened on the home, the
+   real step and time on work cards, "1 needs you" in the sidebar, plain spend, Ask again / Good answer / Not right,
+   "Slide to approve / Not now", one-colour start icons, no emoji headings. Switch console_human (server) -> CONFIG.human. */
+let HUMAN = false;
+const HOUR_WORD = h => h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
+function soFar(iso) {   // "6 min so far" from a server time
+  const t = Date.parse(iso || ''); if (!t) return '';
+  const m = Math.max(0, Math.round((Date.now() - t) / 60000));
+  return m < 1 ? 'just started' : m < 60 ? m + ' min so far' : Math.floor(m / 60) + ' h ' + (m % 60) + ' min so far';
+}
+function humanTagline() {   // one plain sentence: what is waiting, what is running, else ready
+  if (!HUMAN) return; const el = document.querySelector('.tagline'); if (!el) return;
+  const w = QUEUE.length, r = JOBS.filter(j => j.state === 'working').length;
+  const n = (k, one, many) => k === 1 ? one : k + ' ' + many;
+  el.innerHTML = w ? `${esc(AV)} has ${n(w, 'one thing', 'things')} waiting for your OK. <button type="button" class="tlink" data-v="aaj">Review →</button>`
+    : r ? `${esc(AV)} is working on ${n(r, 'one job', 'jobs')} for you right now.`
+    : `${esc(AV)} is ready. Say what you need done, in your own words.`;
+}
 function showLogin(err) {
   $('#app').hidden = true; $('#login').hidden = false; if (err) { $('#lerr').textContent = err; $('#lerr').hidden = false; }
   $('#gbtn').disabled = false;
 }
 async function boot() {
   try { CONFIG = await api('GET', '/api/console/config'); } catch {}
+  HUMAN = !!CONFIG.human; document.documentElement.classList.toggle('human', HUMAN);   // v0.743 SAAF INSAANI
   const u = new URL(location.href), code = u.searchParams.get('code'), err = u.searchParams.get('error'), gApps = u.searchParams.get('google') === 'apps';
   if (code || err) history.replaceState(null, '', '/console/');
   if (code) {
@@ -143,6 +163,11 @@ IC.call = '<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2
 let JOBS = [];          // v0.222 her live jobs (working / waiting) for the home row and the Today badge
 function navBadge(k) {
   if (k !== 'aaj') return '';
+  if (HUMAN) {   // v0.743 words, not bare numbers
+    const r = JOBS.filter(j => j.state === 'working').length;
+    return (QUEUE.length ? `<span class="ct hx txt" title="Waiting for your approval">${QUEUE.length} need${QUEUE.length === 1 ? 's' : ''} you</span>`
+      : r ? `<span class="lv txt" title="${r} running now"><i></i>${r} working</span>` : '');
+  }
   const live = JOBS.length ? `<span class="lv txt" title="${JOBS.length} running now"><i></i>${JOBS.length}</span>` : '';
   return live + (QUEUE.length ? `<span class="ct txt" title="Waiting for your approval">${QUEUE.length}</span>` : '');
 }
@@ -290,7 +315,8 @@ async function enter() {
   $('#uname').textContent = ME.owner || ME.email || 'You'; $('#uhandle').textContent = `${AV} · ${ME.handle || ''}`;
   $('#uini').textContent = (ME.owner || ME.email || 'H').trim().charAt(0).toUpperCase();
   const h = new Date().getHours(), first = (ME.owner && ME.owner !== 'Hoola user') ? ME.owner.split(' ')[0] : '';
-  $('#greet').innerHTML = esc(h < 12 ? 'Good morning' : h < 17 ? 'Hello' : 'Good evening') + (first ? `, <span class="gname">${esc(first)}</span>` : '');
+  $('#greet').innerHTML = esc(HUMAN ? HOUR_WORD(h) : h < 12 ? 'Good morning' : h < 17 ? 'Hello' : 'Good evening') + (first ? `, <span class="gname">${esc(first)}</span>` : '');
+  humanTagline();
   loadModels();                                  // v0.740 the model dropdown in the composer
   if (window.HoolaEmployees && !EMP) {           // v0.317 Employees for everyone; a desk only once its employee is hired
     EMP = HoolaEmployees({api, esc, toast, changed: syncEmployees, open: (v, arg) => go(v, arg),   // v0.453 desks open Systems / a lab directly
@@ -401,7 +427,8 @@ $('#jump').addEventListener('click', () => { thread.scrollTo({top: thread.scroll
 function landing(on) {
   $('#landing').hidden = !on; $('#thread').hidden = on; $('#dock').hidden = on;
   (on ? $('#slotLand') : $('#slotDock')).appendChild(composer);
-  msg.placeholder = on ? 'Ask anything, attach a file, or describe what you want to create' : `Reply to ${AV}…  (/ for commands)`;
+  msg.placeholder = HUMAN ? (on ? `What should ${AV} do? For example: “Reply to my supplier and attach the invoice”` : `Reply to ${AV}…`)
+    : on ? 'Ask anything, attach a file, or describe what you want to create' : `Reply to ${AV}…  (/ for commands)`;
   drawHead();
 }
 /* v0.222 R3: the conversation header - title, its session, export and the chat's own menu */
@@ -801,9 +828,9 @@ function drawActs(R) {
   const can = !!CONFIG.stream, last = R.turn === LAST_TURN;
   a.innerHTML = `<button type="button" class="ra" data-act="copy" aria-label="Copy reply">${svg('<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/>')}<span>Copy</span></button>`
     + `<button type="button" class="ra" data-act="quote" aria-label="Quote" title="Quote in the composer">${svg('<path d="M4 5h16v11H8l-4 4z"/><path d="M8 9h8M8 12h5"/>')}<span>Quote</span></button>`
-    + (can && last ? `<button type="button" class="ra" data-act="retry" aria-label="Retry">${svg('<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/>')}<span>Retry</span></button>` : '')
-    + (can ? `<button type="button" class="ra" data-act="up" aria-label="Good reply" aria-pressed="${R.fb === 'up'}">${svg('<path d="M7 10v11H3V10zM7 10l5-8a3 3 0 0 1 3 3v4h5a2 2 0 0 1 2 2.3l-1.4 8A2 2 0 0 1 18.6 21H7"/>')}</button>`
-      + `<button type="button" class="ra" data-act="down" aria-label="Bad reply" aria-pressed="${R.fb === 'down'}">${svg('<path d="M17 14V3h4v11zM17 14l-5 8a3 3 0 0 1-3-3v-4H4a2 2 0 0 1-2-2.3l1.4-8A2 2 0 0 1 5.4 3H17"/>')}</button>` : '')
+    + (can && last ? `<button type="button" class="ra" data-act="retry" aria-label="Retry">${svg('<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/>')}<span>${HUMAN ? 'Ask again' : 'Retry'}</span></button>` : '')
+    + (can ? `<button type="button" class="ra" data-act="up" aria-label="Good reply" aria-pressed="${R.fb === 'up'}">${svg('<path d="M7 10v11H3V10zM7 10l5-8a3 3 0 0 1 3 3v4h5a2 2 0 0 1 2 2.3l-1.4 8A2 2 0 0 1 18.6 21H7"/>')}${HUMAN ? '<span>Good answer</span>' : ''}</button>`
+      + `<button type="button" class="ra" data-act="down" aria-label="Bad reply" aria-pressed="${R.fb === 'down'}">${svg('<path d="M17 14V3h4v11zM17 14l-5 8a3 3 0 0 1-3-3v-4H4a2 2 0 0 1-2-2.3l1.4-8A2 2 0 0 1 5.4 3H17"/>')}${HUMAN ? '<span>Not right</span>' : ''}</button>` : '')
     + (R.stopped ? '<span class="rstop">Stopped</span>' : '');
   a.addEventListener('click', e => { const b = e.target.closest('[data-act]'); if (b) replyAct(R, b.dataset.act, b); });
   R.t.bd.appendChild(a); R.acts = a;
@@ -947,6 +974,11 @@ function slider(label, onDone) {
   return w;
 }
 function decisionRow(el, {yes, no, yesLabel = 'Slide for Haan', noLabel = 'Mana'}) {
+  if (HUMAN) {   // v0.743 plain English on every approval, and the promise said once
+    if (yesLabel === 'Slide for Haan') yesLabel = 'Slide to approve';
+    if (noLabel === 'Mana') noLabel = 'Not now';
+    el.insertAdjacentHTML('beforeend', '<p class="hxnote">Nothing happens until you approve.</p>');
+  }
   const s = slider(yesLabel, async () => { try { await yes(); } catch (e) { toast(e.message, true); throw e; } });
   const a = document.createElement('div'); a.className = 'acts dec';
   a.innerHTML = `<button class="btn soft" type="button">${esc(noLabel)}</button>`;
@@ -962,8 +994,8 @@ function goalReport(r) {
   const part = (h, xs) => (Array.isArray(xs) && xs.length) ? `<div class="grep"><small>${h}</small>` +
     xs.slice(0, 10).map(x => { const u = safeLink(x); return `<div>\u2022 ${u ? `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(x)}</a>` : esc(x)}</div>`; }).join('') + `</div>` : '';
   return `<div class="greport">` + (r.summary ? `<div class="note">${esc(r.summary)}</div>` : '') +
-    part('✅ What was done', r.hua) + part('📎 What was made', r.bana) +
-    part('⏳ What is left', r.baaki) + (r.aapka ? part('👉 Your part', [r.aapka]) : '') + `</div>`;
+    part(HUMAN ? 'What was done' : '✅ What was done', r.hua) + part(HUMAN ? 'What was made' : '📎 What was made', r.bana) +
+    part(HUMAN ? 'What is left' : '⏳ What is left', r.baaki) + (r.aapka ? part(HUMAN ? 'Your part' : '👉 Your part', [r.aapka]) : '') + `</div>`;
 }
 
 /* v0.725 PAGE CARD (owner: "CHECK THE INTERACTIVE WEB UI BAR -- DONT HAVE A TIMING AND WORK IN PROGRESS" -> the
@@ -1063,7 +1095,7 @@ function renderCard(kind, p, at, live) {
     const total = p.total != null ? p.total : steps.length;
     const box = {done: `<span class="b hm-tick">${HM_TICK}</span>`, current: '<span class="b"><span class="hm-spin"></span></span>',
                  failed: '<span class="b">!</span>', skipped: '<span class="b">–</span>', pending: '<span class="b"><span class="r0"></span></span>'};
-    const mark = window.HoolaMark ? (st === 'working' ? HoolaMark.think(16) : `<span style="width:16px;height:16px;display:inline-block">${HoolaMark.svg()}</span>`) : '';
+    const mark = window.HoolaMark ? (st === 'working' && !HUMAN ? HoolaMark.think(16) : `<span style="width:16px;height:16px;display:inline-block">${HoolaMark.svg()}</span>`) : '';
     el.setAttribute('aria-label', HEAD[st] || HEAD.working);
     el.innerHTML = `<div class="ph">${mark}<span>Plan</span><span class="pc">${esc(SAY[st] || SAY.working)}${total ? ' · ' + done + ' of ' + total : ''}</span></div>` +
       `<div class="pt">${esc(p.title || p.goal || 'Long job')}</div>` +
@@ -1113,7 +1145,7 @@ function renderCard(kind, p, at, live) {
     turn().bd.appendChild(el); return;
   }
   if (kind === 'memory_saved' || kind === 'procedure') {
-    const el = document.createElement('div'); el.className = 'note'; el.textContent = (kind === 'memory_saved' ? '📌 Saved to memory: ' : '🎓 Learned: ') + (p.text || p.title || ''); turn().bd.appendChild(el); return;
+    const el = document.createElement('div'); el.className = 'note'; el.textContent = (kind === 'memory_saved' ? (HUMAN ? 'Saved to memory: ' : '📌 Saved to memory: ') : (HUMAN ? 'Learned: ' : '🎓 Learned: ')) + (p.text || p.title || ''); turn().bd.appendChild(el); return;
   }
   // v0.612 YAAD SE (Grok's "which memory did this use"): the memory this reply leaned on, each one forgettable
   if (kind === 'memory_used') {
@@ -1665,7 +1697,8 @@ async function loadGauge() {
     // v0.222 R2: the same numbers as a card at the bottom of the sidebar
     sp.hidden = false; sp.className = 'spend' + cls; sp.title = tip;
     $('#spMonth').textContent = new Date().toLocaleString('en-IN', {month: 'short'});
-    $('#spAmt').textContent = `${money(m.spent_usd, m.spent_inr)} / ${money(m.limit_usd, m.limit_inr)}`;
+    $('#spAmt').textContent = HUMAN ? `${money(m.spent_usd, m.spent_inr)} of ${money(m.limit_usd, m.limit_inr)}` : `${money(m.spent_usd, m.spent_inr)} / ${money(m.limit_usd, m.limit_inr)}`;
+    if (HUMAN) sp.querySelector('.sp1 span').textContent = 'AI spend this month';
     sp.querySelector('.spbar i').style.width = pct + '%';
   } catch {}
 }
@@ -1931,7 +1964,7 @@ const JOB_IC = {site_board: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12
 async function loadJobs() {
   let list = [];
   try { list = ((await api('GET', '/api/kaam')).jobs || []).filter(j => j.state === 'working' || j.state === 'waiting'); } catch { return; }
-  JOBS = list; drawJobs(); drawNav();
+  JOBS = list; drawJobs(); drawNav(); humanTagline();
 }
 function drawJobs() {
   const box = $('#liveJobs'); box.hidden = !JOBS.length; if (!JOBS.length) return;
@@ -1939,11 +1972,14 @@ function drawJobs() {
   $('#jobGrid').innerHTML = show.map(j => {
     const wait = j.state === 'waiting', pct = Math.max(4, Math.min(100, +j.pct || 0));
     const icon = wait ? '<path d="M12 8v5M12 16.5v.5"/><circle cx="12" cy="12" r="9"/>' : (JOB_IC[j.kind] || IC.kaam);
-    const sub = j.stage || j.detail || (wait ? 'Waiting for you' : 'Working…');
+    const sub = HUMAN ? [j.stage || j.detail || (wait ? 'Waiting for your OK' : 'Working'), wait ? '' : soFar(j.started_at)].filter(Boolean).join(' · ')
+                      : j.stage || j.detail || (wait ? 'Waiting for you' : 'Working…');
+    const real = +j.pct > 0 && +j.pct < 100;   // v0.743 a bar only when the job reports real progress
     return `<button type="button" class="job${wait ? ' wait' : ''}" data-job="${esc(j.conversation_id || '')}">
       <span class="jt"><span class="ji">${svg(icon)}</span><span class="jn"><b>${esc(j.title || j.label || 'Job')}</b><span>${esc(j.label && j.title ? j.label + ' · ' : '')}${esc(sub)}</span></span></span>
+      ${HUMAN ? `<span class="jtag">${wait ? 'Waiting for you' : 'Working'}</span>` : ''}
       ${wait ? '<span class="jact">Review &amp; approve</span>'
-             : `<span class="jbar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}" aria-label="Progress"><i style="width:${pct}%"></i></span>`}
+             : HUMAN && !real ? '' : `<span class="jbar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}" aria-label="Progress"><i style="width:${pct}%"></i></span>`}
     </button>`;
   }).join('');
 }
@@ -1969,7 +2005,7 @@ async function refreshPending() {
     const saveTurn = TURN; TURN = {bd: holder, steps: {}}; const k = q.kind + ':' + q.id; CARDS.delete(k);
     renderCard(q.kind, q.card || q); CARDS.delete(k); TURN = saveTurn;
   }
-  if (!TYPING) live(QUEUE.length ? 'ask' : 'idle'); drawNav();
+  if (!TYPING) live(QUEUE.length ? 'ask' : 'idle'); drawNav(); humanTagline();
 }
 
 /* ================= Today ================= */
