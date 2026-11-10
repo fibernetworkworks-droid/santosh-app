@@ -384,3 +384,12 @@ Recipes: news_india = newsdata.io /api/1/latest?country=in (+ optional q / langu
 gnews.io /api/v4/search?q=...&country=in&max=10 (+ lang), news_headlines = gnews.io /api/v4/top-headlines?country=in
 (+ category / lang). No key = skipped, naming the missing .env line. Tests: test_v0758_box_news.py 3; starter 15 -> 18.
 NOT VERIFIED: no live call with a real key yet - her first test on the VPS is it.
+
+
+## v0.759.0 NEWS SAAF (owner's v0.758 live test)
+
+Her first news test crashed in the test script because `data` was a STRING: newsdata / gnews answers run 30-60k chars,
+over service.MAX_OUT_CHARS (12k), so the box passed the model cut-off JSON text. A recipe may now carry
+`slim: {list, fields}`: the box calls service.call(full=True), takes the full answer (`_data`, never returned) and keeps
+the listed fields per item (a dict field -> its name / url, a list -> joined, text > 300 chars cut), at most 10 items, plus
+the scalar totals (`box._slim`). The three news recipes use it. Test: test_v0758_box_news.py +1.
