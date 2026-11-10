@@ -1635,9 +1635,65 @@ def _last_reply_at(conversation_id: str):
                         .order_by(Message.id.desc()).limit(1))
 
 
-async def _chat_memory(tenant_id: str, conversation_id: str, user_text: str, settings) -> str:
+ONE_MEMORY_NOTE_CAP = 1800     # parity Phase 7: the 'since your last reply' note (job state + card news + a cut call)
+ONE_MEMORY_KAAM_CAP = 1000
+ONE_MEMORY_CARDS_CAP = 700
+ONE_MEMORY_PAST_HINT = ("She points at something from before that you may not see here: look it up with yaad_khojo "
+                        "(one search over facts, past chats, jobs, files and work notes) before asking her.")
+
+
+def one_memory_on(settings, who: str) -> bool:
+    """parity Phase 7: one memory for her chat turns (her own, a wake / goal round, an approved run). A call's brain
+    turn and her scheduled routines keep their current memory blocks."""
+    if not getattr(settings, "chat_one_memory", False) or VOICE_BRAIN_NOW.get():
+        return False
+    who = str(who or "owner")
+    return who in ("owner", "wake", "goal") or who.startswith("approved:")
+
+
+def _clip_note(text: str, cap: int) -> str:
+    text = (text or "").strip()
+    return text if len(text) <= cap else text[:cap].rsplit("\n", 1)[0].rstrip() + "\n…"
+
+
+def _one_memory_parts(tenant_id: str, conversation_id: str, user_text: str) -> list:
+    """parity Phase 7: what still rides her newest message - the real job state and her card taps since the last reply
+    (both capped), a call cut off by the network, and her skill NAMES. Her facts by meaning, recalled chats, her recent
+    words, the diary and the coder primer are no longer pasted: yaad_khojo fetches them when the message needs them."""
+    from .. import yaad, kaamwatch, events as _ev
+    from .. import coder as _coder
+
+    def _since():
+        out = []
+        k = _clip_note(kaamwatch.block(tenant_id, conversation_id), ONE_MEMORY_KAAM_CAP)
+        if k:
+            out.append(k)
+        c = _clip_note(_ev.card_news_block(tenant_id, _last_reply_at(conversation_id), user_text or "",
+                                           conversation_id), ONE_MEMORY_CARDS_CAP)
+        if c:
+            out.append(c)
+        try:
+            drop = yaad.recent_call_drop(conversation_id, get_settings().voice_continuation_min)
+        except Exception:
+            drop = ""
+        if drop:
+            out.append("THE LAST CALL WAS CUT OFF BY THE NETWORK - carry on from there:\n" + _clip_note(drop, 400))
+        if len((user_text or "").split()) >= 2 and yaad.refers_to_past(user_text):
+            out.append(ONE_MEMORY_PAST_HINT)
+        if not out:
+            return ""
+        return _clip_note("SINCE YOUR LAST REPLY (background for this message, not her words):\n" + "\n\n".join(out),
+                          ONE_MEMORY_NOTE_CAP)
+
+    return [("since", _since),
+            ("skills", lambda: _coder.inject.skill_names(tenant_id, user_text or "", conv=conversation_id)
+             if getattr(get_settings(), "coder_enabled", True) else "")]
+
+
+async def _chat_memory(tenant_id: str, conversation_id: str, user_text: str, settings, one: bool = False) -> str:
     """v0.704 a chat turn's memory block: diary / facts (yaad), the real job state (kaamwatch), the coder primer and the
-    card news read IN PARALLEL, waiting at most `chat_memory_s` in all (they used to run one after another)."""
+    card news read IN PARALLEL, waiting at most `chat_memory_s` in all (they used to run one after another).
+    one=True (parity Phase 7, chat_one_memory): only the short 'since your last reply' note + her skill names."""
     from .. import yaad, kaamwatch, events as _ev
     from .. import coder as _coder
 
@@ -1648,6 +1704,8 @@ async def _chat_memory(tenant_id: str, conversation_id: str, user_text: str, set
              ("kaam", lambda: kaamwatch.block(tenant_id, conversation_id)),
              ("cards", _cards),
              ("coder", lambda: _coder.inject.turn_block(tenant_id, conversation_id, query=user_text or ""))]
+    if one:
+        parts = _one_memory_parts(tenant_id, conversation_id, user_text)
     tasks = {name: asyncio.ensure_future(asyncio.to_thread(fn)) for name, fn in parts}
     t0 = time.monotonic()
     done, pending = await asyncio.wait(tasks.values(), timeout=float(getattr(settings, "chat_memory_s", 6.0) or 6.0))
@@ -2896,7 +2954,8 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
                 # v0.704 the parts are read TOGETHER (one after another they added up on every chat turn, the shape
                 # v0.638 removed from calls) under one bounded wait; a part not ready is left out of THIS turn only.
                 # The card news rides with them: her taps (Send / Approve / Cancel) since the last reply.
-                block = await _chat_memory(tenant_id, conversation_id, user_text, settings)
+                block = await _chat_memory(tenant_id, conversation_id, user_text, settings,
+                                           one=one_memory_on(settings, who))
                 # v0.648: her recent calls reach a chat turn through the diary's "Pichhli calls" section (call records are
                 # in the same memory scope) - the separate v0.646 recent-calls block said the same thing twice
                 if settings.agent_goal:   # v0.187 an open goal rides above everything: this turn continues it

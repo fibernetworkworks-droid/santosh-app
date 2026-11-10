@@ -65,6 +65,7 @@ def _full_voice_menu(monkeypatch):
     monkeypatch.setenv("CHAT_ONE_MODEL", "false")      # v0.732 older suites pin the brain fallbacks; test_v0732_ek_model checks one model
     monkeypatch.setenv("CHAT_CONTEXT_LIMIT_CLAUDE", "200000")   # v0.724 older gauge suites pin the 200k window
     monkeypatch.setenv("CHAT_CONTEXT_LIMIT_GLM", "200000")
+    monkeypatch.setenv("CHAT_ONE_MEMORY", "false")    # parity Phase 7: older suites pin the per-turn memory blocks; test_parity_p7 checks one memory
     monkeypatch.setenv("CHAT_SMALL_PROMPT", "false")  # parity Phase 2: older suites pin the long per-turn prompt; test_parity_p2 checks the small one
     monkeypatch.setenv("CHAT_CONTEXT_MAX_TOKENS_GLM", "40000")  # v0.707 pin; test_v0724 checks the 1M / no-cap defaults
     monkeypatch.setenv("CHAT_ARTIFACT_DIRECT", "false")  # parity Phase 6: older suites pin the builder-only pages line; test_parity6 turns it on
