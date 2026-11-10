@@ -16,7 +16,7 @@ def web(env):
         yield c
 
 
-@pytest.mark.parametrize("path,slug", [("/", "home"), ("/employee", "employee"), ("/network", "network"), ("/studio", "studio")])
+@pytest.mark.parametrize("path,slug", [("/", "home"), ("/employee", "employee"), ("/network", "network"), ("/studio", "studio"), ("/websites", "websites"), ("/apps", "apps")])
 def test_pages_have_console_and_strict_csp(web, path, slug):
     r = web.get(path)
     assert r.status_code == 200 and r.headers["content-type"].startswith("text/html")
@@ -70,7 +70,17 @@ def test_old_web_chat_moved_and_console_links_back(web):
 
 
 def test_site_scripts_are_plain_files():
-    for slug in ("home", "employee", "network", "studio"):
+    for slug in ("home", "employee", "network", "studio", "websites", "apps"):
         js = (SITE / f"{slug}.js").read_text()
         assert "eval(" not in js and "new Function" not in js
     assert (SITE / "vendor" / "gsap.min.js").read_text().startswith("/*!\n * GSAP 3.12.5")
+
+
+def test_web_and_app_pages_deep_link_their_studios(web):
+    """v0.739 the Web/App Development pages point at the two studios the console sidebar opens."""
+    w = web.get("/websites").text; a = web.get("/apps").text
+    assert w.count('href="/console/web"') >= 1 and 'href="/console/apps"' not in w
+    assert a.count('href="/console/apps"') >= 1 and 'href="/console/web"' not in a
+    # the drawn studio chrome is present on both (no real screenshots yet)
+    assert 'hoola.ainewtika.com/console/web' in w and 'Three looks'.lower() in w.lower()
+    assert 'hoola.ainewtika.com/console/apps' in a and 'prototype' in a.lower()

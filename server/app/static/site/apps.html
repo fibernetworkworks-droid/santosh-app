@@ -1,0 +1,590 @@
+<!doctype html><html lang="en"><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Hoola App Studio — Apps</title>
+<link rel="icon" href="/static/favicon-32.png" sizes="32x32">
+<link rel="icon" href="/static/hoola-icon-192.png" sizes="192x192">
+<link rel="apple-touch-icon" href="/static/hoola-apple-touch.png">
+<meta name="description" content="Hoola App Studio: one line in, your own Android and iPhone app out. A plan you read first, three looks, a prototype you can tap, and the stores. Same data and logins as your Hoola website.">
+<link rel="stylesheet" href="/static/site/site.css?v=site1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Manrope:wght@400;500;600;700;800&display=swap">
+<style>
+/* Hoola App Studio: one line in, your own app out. The page walks the same road an app walks in the
+   App Studio (/console/apps): the brief types itself, the plan is written (screens, data, roles, phone
+   features), three looks of the Home screen appear, she taps through the prototype, and only then the
+   real Android and iPhone builds — the stores wait for her tap. The Web Studio's twin page. */
+:root{
+  --night:#0B0A1A; --night2:#120E2A; --panel:#17122F; --ink:#F4F2FF; --muted:#B9B3DA; --faint:#8F89B8;
+  --saffron:#FFB15C; --peach:#FFD9A8; --orange:#FF9A3C; --violet:#7C5CFF; --lav:#A78BFA; --magenta:#C055F5; --ok:#34D399; --plum:#1B1030;
+  --brand:linear-gradient(120deg,#FFD9A8 0%,#FF9A3C 45%,#C055F5 100%);
+  --display:"Sora",ui-sans-serif,system-ui,sans-serif;
+  --body:"Manrope",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+  --gut:max(20px,env(safe-area-inset-left,0px)); --gutr:max(20px,env(safe-area-inset-right,0px));
+  --sec:96px; color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{background:var(--night);scroll-padding-top:72px}
+body{margin:0;background:var(--night);color:var(--ink);font-family:var(--body);font-size:17px;line-height:1.55;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+img{max-width:100%;display:block}
+a{color:inherit}
+:focus-visible{outline:2px solid var(--saffron);outline-offset:3px;border-radius:8px}
+h1,h2,h3{font-family:var(--display);margin:0;text-wrap:balance;letter-spacing:-.035em}
+p{margin:0}
+[hidden]{display:none!important}
+.wrap{max-width:1240px;margin:0 auto;padding-left:var(--gut);padding-right:var(--gutr)}
+.eb{display:inline-flex;align-items:center;gap:8px;font-weight:800;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--saffron)}
+.eb i{width:8px;height:8px;border-radius:50%;background:var(--saffron);box-shadow:0 0 0 6px rgba(255,177,92,.16)}
+.h2{font-size:clamp(34px,4.6vw,64px);line-height:1;font-weight:800;margin-top:14px}
+.h2 em{font-style:normal;background:var(--brand);-webkit-background-clip:text;background-clip:text;color:transparent}
+.lead{margin-top:16px;font-size:clamp(16px,1.4vw,19px);max-width:58ch;color:var(--muted)}
+main,footer{position:relative;z-index:1}
+#glow{position:fixed;inset:0;z-index:0;pointer-events:none;background:
+  radial-gradient(900px 600px at 85% -10%,rgba(124,92,255,.22),transparent 60%),
+  radial-gradient(700px 500px at -10% 30%,rgba(255,154,60,.10),transparent 60%),var(--night)}
+
+/* header (same as every Hoola page) */
+.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:70;background:rgba(11,10,26,.74);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);padding-left:var(--gut);padding-right:var(--gutr);border-bottom:1px solid rgba(255,255,255,.05)}
+.bar .in{max-width:1240px;margin:0 auto;height:64px;display:flex;align-items:center;gap:24px}
+.mark{display:flex;align-items:center;gap:10px;text-decoration:none;font-family:var(--display);font-weight:800;font-size:21px;letter-spacing:-.03em}
+.mark img{width:34px;height:34px;border-radius:10px}
+.mark small{font-family:var(--body);font-weight:700;font-size:14px;color:var(--saffron);letter-spacing:0}
+.links{display:flex;gap:14px;margin-left:auto}
+.links a{text-decoration:none;font-weight:700;font-size:14px;color:var(--muted)}
+.links a:hover{color:var(--ink)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;border-radius:999px;font-weight:800;text-decoration:none;border:0;cursor:pointer;font-family:var(--body);transition:transform .18s ease,background .18s ease}
+.btn:active{transform:scale(.97)}
+.go{background:var(--saffron);color:var(--plum);padding:15px 26px;font-size:16px}.go:hover{background:var(--peach)}
+.go.sm{padding:10px 18px;font-size:14px}
+.ghost{padding:15px 6px;font-size:16px;color:var(--ink);background:none}
+@media (max-width:1280px){.links{display:none}}
+
+/* ---------- hero ---------- */
+.hero{padding-block:72px 40px}
+.hero .grid{display:grid;grid-template-columns:.92fr 1.08fr;gap:48px;align-items:center}
+.hero h1{font-size:clamp(44px,6.2vw,90px);line-height:.95;font-weight:800;letter-spacing:-.045em;margin-top:18px}
+.rot{display:block;color:var(--saffron);white-space:nowrap}
+.rot span{display:block;will-change:transform}
+.hero .lead{max-width:34em}
+.hero .ctas{display:flex;flex-wrap:wrap;gap:12px 22px;align-items:center;margin-top:30px}
+.hero .straight{font-size:14px;color:var(--faint);margin-top:10px}
+.hero .straight a{color:var(--lav);font-weight:700;text-decoration:none}
+.hero .straight a:hover{text-decoration:underline}
+.nums{display:flex;flex-wrap:wrap;gap:12px 22px;margin-top:34px;font-weight:700;font-size:15px;color:var(--muted)}
+.nums b{font-family:var(--display);font-size:26px;color:var(--ink);margin-right:6px}
+.stage{position:relative;aspect-ratio:16/11;min-width:0}
+.frame{position:relative;border-radius:18px;overflow:hidden;background:#100c22;border:1px solid rgba(255,255,255,.1);
+  box-shadow:0 50px 100px rgba(0,0,0,.5),0 0 0 1px rgba(124,92,255,.08),inset 0 1px 0 rgba(255,255,255,.06)}
+.frame .tb{display:flex;align-items:center;gap:7px;height:32px;padding:0 12px;background:#141029;border-bottom:1px solid rgba(255,255,255,.06);font-size:12px;color:var(--faint)}
+.frame .tb s{width:9px;height:9px;border-radius:50%;background:rgba(255,255,255,.14)}
+.frame .tb s:nth-child(1){background:#FF6B6B88}.frame .tb s:nth-child(2){background:#FFB15C88}.frame .tb s:nth-child(3){background:#34D39988}
+.frame .tb u{margin-left:10px;text-decoration:none;padding:3px 12px;border-radius:999px;background:rgba(255,255,255,.05);flex:1;max-width:320px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.frame .scr{position:relative;aspect-ratio:16/10;overflow:hidden}
+.stage .frame{position:absolute;left:0;top:0;right:8%}
+.float{position:absolute;border-radius:16px;background:rgba(23,18,47,.94);border:1px solid rgba(255,255,255,.12);box-shadow:0 24px 60px rgba(0,0,0,.5);padding:12px 14px;font-size:13px}
+.f-price{right:0;bottom:2%;width:250px;border-color:rgba(255,177,92,.45)}
+.f-price small{display:block;color:var(--faint);font-weight:700;font-size:11px;letter-spacing:.06em;text-transform:uppercase}
+.f-price b{display:flex;justify-content:space-between;align-items:baseline;font-family:var(--display);font-size:16px;margin:4px 0 10px}
+.f-price b em{font-style:normal;color:var(--saffron)}
+.f-price .row{display:flex;gap:8px}
+.f-price .row span{flex:1;text-align:center;padding:8px;border-radius:999px;font-weight:800;font-size:13px;background:rgba(255,255,255,.06)}
+.f-price .row span.y{background:var(--saffron);color:var(--plum)}
+.f-proto{left:-4%;bottom:-3%;width:158px;padding:8px;border-radius:22px}
+.f-proto .ph{border-radius:16px;overflow:hidden;border:1px solid rgba(255,255,255,.14)}
+.f-proto .tap{position:absolute;left:46%;top:38%;width:22px;height:22px;border-radius:50%;border:2px solid var(--saffron);box-shadow:0 0 0 3px rgba(255,177,92,.25)}
+.f-store{right:-3%;top:5%;display:grid;gap:6px;border-color:rgba(52,211,153,.45)}
+.f-store .st{display:flex;align-items:center;gap:8px;font-weight:700;font-size:12px}
+.f-store .st i{width:8px;height:8px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 4px rgba(52,211,153,.16)}
+.f-store .st b{font-family:var(--display);font-size:13px}
+@media (max-width:980px){.hero .grid{grid-template-columns:1fr}.stage{max-width:680px;width:100%;margin:10px auto 0}}
+@media (max-width:560px){.f-store{display:none}.f-price{width:200px;padding:10px}.f-proto{width:120px;left:-2%}}
+
+/* ---------- the drawn App Studio inside the frame ---------- */
+.as{display:grid;grid-template-columns:1fr 1.15fr;background:#141029;position:absolute;inset:0}
+.as-chat{border-right:1px solid rgba(255,255,255,.07);padding:12px;display:grid;gap:8px;align-content:start}
+.as-me{justify-self:end;max-width:88%;padding:8px 11px;border-radius:12px 12px 4px 12px;background:rgba(124,92,255,.28);font-size:11.5px;line-height:1.4}
+.as-ai{justify-self:start;max-width:92%;padding:8px 11px;border-radius:12px 12px 12px 4px;background:#1B1533;border:1px solid rgba(167,139,250,.3);font-size:11.5px;line-height:1.4;color:var(--muted)}
+.as-ai b{color:var(--ink)}
+.as-ai .car{display:inline-block;width:2px;height:1em;background:var(--saffron);vertical-align:-2px;animation:blink 1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+.as-plan{padding:12px;display:grid;gap:9px;align-content:start}
+.as-plan h4{margin:0;font-family:var(--display);font-size:12px;display:flex;justify-content:space-between;color:var(--ink)}
+.as-plan h4 em{font-style:normal;color:var(--saffron);font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase}
+.as-row{display:flex;justify-content:space-between;gap:8px;font-size:11.5px;color:var(--muted);padding-bottom:6px;border-bottom:1px dashed rgba(255,255,255,.07)}
+.as-row b{color:var(--ink);font-weight:700;text-align:right}
+.as-feats{display:flex;gap:5px;flex-wrap:wrap}
+.as-feats span{padding:3px 8px;border-radius:999px;background:rgba(255,255,255,.07);font-weight:700;font-size:10px;color:var(--muted)}
+.as-feats span.on{background:rgba(124,92,255,.3);color:#fff}
+@media (max-width:560px){.as{grid-template-columns:1fr}.as-chat{display:none}}
+
+/* drawn phone screens (the three looks of the Home screen) */
+.pn{position:relative;display:grid;grid-template-rows:7% 16% 1fr 11%;gap:4%;padding:6%;background:var(--sky,linear-gradient(#7C5CFF,#2a1f5c));aspect-ratio:9/15;border-radius:10px;overflow:hidden}
+.pn .st{display:flex;justify-content:space-between}
+.pn .st i{width:16%;height:5px;border-radius:99px;background:rgba(255,255,255,.5)}
+.pn .st i:last-child{width:9%}
+.pn .hd{border-radius:6px;background:rgba(255,255,255,.3)}
+.pn .bd{display:grid;grid-template-columns:1fr 1fr;gap:5%}
+.pn .bd i{border-radius:5px;background:rgba(255,255,255,.22)}
+.pn .bd i:first-child{grid-column:1/-1;background:rgba(255,255,255,.3)}
+.pn .tabs{display:flex;justify-content:space-around;align-items:center;border-radius:99px;background:rgba(0,0,0,.25)}
+.pn .tabs i{width:9%;aspect-ratio:1;border-radius:50%;background:rgba(255,255,255,.45)}
+.pn .tabs i.on{background:var(--saffron)}
+
+/* ---------- watch it work ---------- */
+.oneline{padding-block:var(--sec)}
+.ol-box{margin-top:40px;border-radius:28px;padding:clamp(18px,3vw,34px);background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.08);position:relative;overflow:hidden}
+.ol-comp{max-width:760px;margin:0 auto;border-radius:20px;background:#140f2b;border:1px solid rgba(167,139,250,.28);padding:18px 18px 14px;box-shadow:0 20px 60px rgba(124,92,255,.15)}
+.ol-type{min-height:56px;font-size:clamp(15px,1.6vw,19px);color:var(--ink)}
+.ol-type .car{display:inline-block;width:2px;height:1.1em;background:var(--saffron);vertical-align:-3px;margin-left:2px;animation:blink 1s steps(1) infinite}
+.ol-opts{display:flex;align-items:center;gap:8px;margin-top:12px;flex-wrap:wrap}
+.ol-opts span{padding:6px 12px;border-radius:999px;border:1px solid rgba(255,255,255,.12);font-size:13px;font-weight:700;color:var(--muted)}
+.ol-opts .send{margin-left:auto;width:40px;height:40px;border-radius:12px;background:var(--violet);display:grid;place-items:center;border:0;padding:0;color:#fff;font-size:18px}
+.ol-opts .send.hit{background:var(--saffron);color:var(--plum)}
+.ol-steps{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin:26px 0 18px}
+.ol-steps span{padding:7px 14px;border-radius:999px;font-weight:800;font-size:13px;background:rgba(255,255,255,.05);color:var(--faint);border:1px solid transparent;transition:all .3s ease}
+.ol-steps span.on{background:rgba(124,92,255,.22);color:#fff;border-color:rgba(167,139,250,.5)}
+.ol-steps span.done{color:var(--ok)}
+.ol-board{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;max-width:680px;margin:0 auto}
+.ol-pn{border-radius:14px;overflow:hidden;background:#1a1436;border:1px solid rgba(255,255,255,.08);opacity:.45}
+.ol-pn.sel{opacity:1;border-color:rgba(255,177,92,.55);box-shadow:0 0 22px rgba(255,177,92,.18)}
+.ol-pn.dim{opacity:.2}
+.ol-pn .pn{border-radius:0;aspect-ratio:9/13}
+.ol-pn p{padding:10px 12px 12px;font-size:13px;line-height:1.4;color:var(--muted)}
+.ol-pn p b{display:block;color:var(--ink);font-size:12px;margin-bottom:2px}
+.ol-build{max-width:680px;margin:14px auto 0;display:none;grid-template-columns:1fr 1fr;gap:12px}
+.ol-build.on{display:grid}
+.ol-rail{border-radius:14px;background:#1a1436;border:1px solid rgba(255,255,255,.08);padding:12px 14px;display:grid;gap:8px;align-content:start}
+.ol-rail li{list-style:none;display:flex;gap:9px;align-items:center;font-size:13px;color:var(--faint);font-weight:700}
+.ol-rail li:before{content:"";width:9px;height:9px;border-radius:50%;border:2px solid rgba(255,255,255,.2);flex-shrink:0}
+.ol-rail li.ok{color:var(--ink)}
+.ol-rail li.ok:before{content:"✓";border:0;color:var(--ok);font-size:12px}
+.ol-rail li.run{color:var(--saffron)}
+.ol-rail li.run:before{border-color:var(--saffron);border-right-color:transparent;animation:cspin 1s linear infinite}
+@keyframes cspin{to{transform:rotate(360deg)}}
+.ol-stores{border-radius:14px;background:#1a1436;border:1px solid rgba(255,255,255,.08);padding:12px 14px;display:grid;gap:8px;align-content:center}
+.ol-stores .st{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13px;font-weight:700;color:var(--muted);padding-bottom:6px;border-bottom:1px dashed rgba(255,255,255,.07)}
+.ol-stores .st:last-child{border:0;padding:0}
+.ol-stores .st b{color:var(--faint);font-size:12px}
+.ol-stores .st.ok b{color:var(--ok)}
+.ol-tl{margin-top:16px;height:8px;border-radius:999px;background:rgba(255,255,255,.06);position:relative;overflow:hidden}
+.ol-tl i{position:absolute;left:0;top:0;bottom:0;width:0;background:var(--brand);border-radius:999px}
+.ol-foot{display:flex;justify-content:space-between;gap:12px;margin-top:10px;font-size:13px;color:var(--faint);font-weight:700}
+@media (max-width:760px){.ol-board{grid-template-columns:1fr 1fr}.ol-pn:nth-child(3){display:none}.ol-build{grid-template-columns:1fr}}
+
+/* ---------- steps ---------- */
+.dir{padding-block:var(--sec)}
+.dir .grid{display:grid;grid-template-columns:.8fr 1.2fr;gap:48px;align-items:start;margin-top:40px}
+.dsteps{list-style:none;margin:0;padding:0;display:grid;gap:6px;position:relative}
+.dsteps:before{content:"";position:absolute;left:19px;top:20px;bottom:20px;width:2px;background:rgba(255,255,255,.08)}
+.dsteps .fill{position:absolute;left:19px;top:20px;width:2px;height:0;background:linear-gradient(var(--saffron),var(--magenta))}
+.dsteps li{position:relative;display:grid;grid-template-columns:40px 1fr;gap:14px;padding:12px 14px 12px 0;border-radius:16px;cursor:pointer}
+.dsteps li .n{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font-weight:800;font-family:var(--display);background:#17122F;border:2px solid rgba(255,255,255,.12);color:var(--faint);position:relative;z-index:1;transition:all .3s ease}
+.dsteps li b{display:block;font-family:var(--display);font-size:19px;letter-spacing:-.02em;color:var(--faint);transition:color .3s}
+.dsteps li p{font-size:15px;color:var(--faint);max-height:0;overflow:hidden;opacity:0;transition:max-height .4s ease,opacity .3s ease}
+.dsteps li .tag{display:inline-block;margin-top:6px;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:800;background:rgba(52,211,153,.14);color:var(--ok)}
+.dsteps li .tag.c{background:rgba(255,177,92,.16);color:var(--saffron)}
+.dsteps li.on{background:rgba(255,255,255,.04)}
+.dsteps li.on .n{background:var(--saffron);border-color:var(--saffron);color:var(--plum)}
+.dsteps li.done .n{border-color:var(--ok);color:var(--ok)}
+.dsteps li.on b{color:var(--ink)}
+.dsteps li.on p{max-height:140px;opacity:1;color:var(--muted)}
+.dview{position:sticky;top:96px}
+.dv-state{display:none}
+.dv-state.on{display:block}
+.dcap{display:flex;gap:10px;align-items:center;margin-top:14px;font-size:14px;color:var(--faint)}
+.dcap i{width:8px;height:8px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 5px rgba(52,211,153,.15)}
+@media (max-width:980px){.dir .grid{grid-template-columns:1fr}.dview{position:relative;top:0;order:-1}}
+
+/* the drawn workspace states in the sticky view */
+.dv-plan,.dv-proto,.dv-store{border-radius:14px;background:#1a1436;border:1px solid rgba(255,255,255,.08);padding:14px;display:grid;gap:9px;align-content:start}
+.dv-plan h4,.dv-proto h4,.dv-store h4{margin:0;font-family:var(--display);font-size:14px;display:flex;justify-content:space-between;color:var(--ink)}
+.dv-plan h4 em,.dv-proto h4 em,.dv-store h4 em{font-style:normal;color:var(--saffron);font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase}
+.dv-row{display:flex;justify-content:space-between;gap:10px;font-size:13px;color:var(--muted);padding-bottom:7px;border-bottom:1px dashed rgba(255,255,255,.07)}
+.dv-row b{color:var(--ink);font-weight:700;text-align:right}
+.dv-proto .pwrap{display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:center}
+.dv-proto .pn{width:110px}
+.dv-proto .tap{position:relative;width:20px;height:20px;border-radius:50%;border:2px solid var(--saffron);margin:10px auto 0}
+.dv-proto .tap:after{content:"";position:absolute;inset:-9px;border-radius:50%;border:2px solid rgba(255,177,92,.5);animation:ripple 1.6s ease-out infinite}
+@keyframes ripple{from{transform:scale(.5);opacity:1}to{transform:scale(1.6);opacity:0}}
+.dv-proto p{font-size:13px;color:var(--muted);line-height:1.5}
+.dv-store .st{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:13.5px;color:var(--muted);padding-bottom:8px;border-bottom:1px dashed rgba(255,255,255,.07)}
+.dv-store .st b{color:var(--ink)}
+.dv-store .st em{font-style:normal;font-weight:800;font-size:12px;color:var(--saffron)}
+.dv-store .st em.ok{color:var(--ok)}
+
+/* ---------- the plan ---------- */
+.plan{padding-block:var(--sec)}
+.pgrid{display:grid;grid-template-columns:1.05fr .95fr;gap:48px;align-items:center;margin-top:40px}
+.planbox{border-radius:24px;padding:clamp(18px,3vw,30px);background:#17122F;border:1px solid rgba(167,139,250,.3);box-shadow:0 30px 70px rgba(0,0,0,.4)}
+.planbox .hd{display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--faint);font-weight:700}
+.planbox .hd em{font-style:normal;padding:4px 10px;border-radius:999px;background:rgba(52,211,153,.14);color:var(--ok);font-weight:800}
+.planbox h3{font-size:22px;margin:10px 0 14px}
+.planbox .rows{display:grid;gap:9px;font-size:14.5px;color:var(--muted)}
+.planbox .rows div{display:flex;justify-content:space-between;gap:12px;padding-bottom:9px;border-bottom:1px dashed rgba(255,255,255,.08)}
+.planbox .rows div b{color:var(--ink);text-align:right;font-weight:700}
+.planbox .feats{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}
+.planbox .feats span{padding:5px 11px;border-radius:999px;background:rgba(124,92,255,.16);color:#EDE8FF;font-weight:700;font-size:12.5px}
+.rules{list-style:none;padding:0;margin:26px 0 0;display:grid;gap:14px}
+.rules li{display:flex;gap:14px;align-items:flex-start}
+.rules li i{flex-shrink:0;width:34px;height:34px;border-radius:11px;display:grid;place-items:center;font-style:normal;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1)}
+.rules li b{display:block;font-size:16.5px}
+.rules li span{display:block;font-size:15px;line-height:1.5;color:var(--muted)}
+@media (max-width:980px){.pgrid{grid-template-columns:1fr}}
+
+/* ---------- from your website / whole system ---------- */
+.system{padding-block:var(--sec)}
+.sgrid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:40px}
+.sys{border-radius:24px;padding:clamp(20px,3vw,32px);background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);transition:transform .25s ease,border-color .25s ease}
+.sys:hover{transform:translateY(-4px);border-color:rgba(255,177,92,.4)}
+.sys .icn{width:46px;height:46px;border-radius:14px;display:grid;place-items:center;font-size:20px;font-weight:800;background:var(--brand);color:var(--plum)}
+.sys b{display:block;font-family:var(--display);font-size:22px;margin-top:14px;letter-spacing:-.02em}
+.sys p{font-size:15.5px;color:var(--muted);margin-top:8px}
+.sys ul{list-style:none;padding:0;margin:16px 0 0;display:grid;gap:9px}
+.sys ul li{display:flex;gap:10px;align-items:flex-start;font-size:15px;color:#E6E0FA}
+.sys ul li:before{content:"";flex-shrink:0;width:8px;height:8px;margin-top:8px;border-radius:50%;background:var(--saffron)}
+.sys .apps{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+.sys .apps span{padding:7px 14px;border-radius:999px;font-weight:800;font-size:13px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1)}
+.sys .apps span.v{background:rgba(124,92,255,.22);border-color:rgba(167,139,250,.4)}
+@media (max-width:900px){.sgrid{grid-template-columns:1fr}}
+
+/* ---------- price first ---------- */
+.price{padding-block:var(--sec)}
+.price .grid{display:grid;grid-template-columns:1fr 1fr;gap:56px;align-items:center}
+.pcard{position:relative;max-width:440px;margin:0 auto;border-radius:24px;padding:24px;background:#17122F;border:1px solid rgba(255,177,92,.4);box-shadow:0 40px 80px rgba(0,0,0,.45)}
+.pcard .hd{display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--faint);font-weight:700}
+.pcard .hd em{font-style:normal;padding:4px 10px;border-radius:999px;background:rgba(255,177,92,.16);color:var(--saffron);font-weight:800}
+.pcard h3{font-size:24px;margin:10px 0 14px}
+.pcard .rows{display:grid;gap:8px;font-size:14.5px;color:var(--muted)}
+.pcard .rows div{display:flex;justify-content:space-between;padding-bottom:8px;border-bottom:1px dashed rgba(255,255,255,.08)}
+.pcard .rows div span:last-child{color:var(--ink);font-weight:700;font-variant-numeric:tabular-nums}
+.pcard .tot{display:flex;justify-content:space-between;align-items:baseline;margin:14px 0 18px;font-family:var(--display);font-size:20px;font-weight:800}
+.pcard .tot b{font-size:30px;color:var(--saffron)}
+.pcard .act{display:flex;gap:10px}
+.pcard .act span{flex:1;display:flex;align-items:center;justify-content:center;white-space:nowrap;padding:13px;border-radius:999px;font-weight:800;background:rgba(255,255,255,.06)}
+.pcard .act .y{background:var(--saffron);color:var(--plum);position:relative}
+.pcard .fp{position:absolute;inset:0;border-radius:24px;background:#120E26;display:grid;place-items:center;text-align:center;opacity:0;pointer-events:none}
+.pcard .fp .ring{width:84px;height:84px;margin:0 auto 12px;border-radius:50%;display:grid;place-items:center;font-size:36px;border:3px solid rgba(255,177,92,.3)}
+.pcard .fp b{display:block;font-family:var(--display);font-size:19px}
+.pcard .fp small{color:var(--muted);font-size:14px}
+.pcard .done{position:absolute;inset:0;border-radius:24px;background:#120E26;display:grid;place-items:center;text-align:center;opacity:0;pointer-events:none}
+.pcard .done .tick{width:72px;height:72px;margin:0 auto 12px;border-radius:50%;display:grid;place-items:center;background:rgba(52,211,153,.16);color:var(--ok);font-size:34px;font-weight:800}
+.rules li b{display:block;font-size:16.5px}
+.rules li span{display:block;font-size:15px;line-height:1.5;color:var(--muted)}
+@media (max-width:980px){.price .grid{grid-template-columns:1fr}}
+
+/* ---------- made for ---------- */
+.made{padding-block:var(--sec)}
+.mgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin-top:40px}
+.mcard{border-radius:22px;overflow:hidden;background:#17122F;border:1px solid rgba(255,255,255,.08);transition:transform .25s ease}
+.mcard:hover{transform:translateY(-4px)}
+.mcard .pic{position:relative;aspect-ratio:4/3}
+.mcard .bd{padding:14px 16px 18px}
+.mcard b{font-family:var(--display);font-size:18px}
+.mcard p{font-size:14px;color:var(--muted);margin-top:4px}
+@media (max-width:900px){.mgrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* drawn scenes (same family as the studio's art) */
+.art{position:absolute;inset:0;overflow:hidden;background:var(--sky,linear-gradient(#6d5bd0,#2a1f5c))}
+.art .sun{position:absolute;width:22%;aspect-ratio:1;border-radius:50%;left:var(--sx,58%);top:var(--sy,22%);background:#FFE7C2;box-shadow:0 0 40px 10px rgba(255,220,170,.35)}
+.art .hill{position:absolute;left:-10%;right:-10%;bottom:0;height:46%;background:var(--h1,rgba(30,20,70,.7));clip-path:polygon(0 60%,18% 30%,34% 52%,52% 18%,70% 46%,86% 28%,100% 50%,100% 100%,0 100%)}
+.art .hill.b{height:30%;background:var(--h2,rgba(15,10,40,.85));clip-path:polygon(0 50%,22% 22%,40% 48%,62% 26%,82% 52%,100% 30%,100% 100%,0 100%)}
+.art .city{position:absolute;left:0;right:0;bottom:0;height:52%;display:flex;align-items:flex-end;gap:3%;padding:0 4%}
+.art .city i{flex:1;background:var(--h2,rgba(15,10,40,.85));border-radius:2px 2px 0 0}
+.art .bottle{position:absolute;left:42%;width:16%;top:22%;bottom:12%;border-radius:10px 10px 6px 6px;background:linear-gradient(90deg,rgba(0,0,0,.25),rgba(255,255,255,.18) 40%,rgba(0,0,0,.2)),var(--pc,#c0406e)}
+.art .bottle:before{content:"";position:absolute;left:30%;right:30%;top:-14%;height:14%;background:var(--pc2,#f3b3c8);border-radius:3px}
+.art .bottle:after{content:"";position:absolute;left:12%;right:12%;top:44%;height:16%;background:rgba(255,255,255,.85);border-radius:2px}
+.art .disc{position:absolute;left:28%;top:20%;width:44%;aspect-ratio:1;border-radius:50%;background:repeating-radial-gradient(circle,#1a1030 0 3px,#24183f 3px 5px);box-shadow:0 10px 30px rgba(0,0,0,.4)}
+.art .disc:after{content:"";position:absolute;inset:36%;border-radius:50%;background:var(--pc,#ff7a59)}
+.art .who{position:absolute;left:30%;right:30%;bottom:0;height:62%}
+.art .who:before{content:"";position:absolute;left:28%;right:28%;top:0;aspect-ratio:1;border-radius:50%;background:var(--skin,#c98a5c)}
+.art .who:after{content:"";position:absolute;left:0;right:0;bottom:0;height:52%;border-radius:50% 50% 0 0;background:var(--pc,#3b2a74)}
+.art .diya{position:absolute;bottom:14%;width:9%;aspect-ratio:2/1;border-radius:0 0 50% 50%;background:#d9822b}
+.art .diya:before{content:"";position:absolute;left:38%;width:24%;height:110%;bottom:80%;border-radius:50% 50% 50% 50%/60% 60% 40% 40%;background:radial-gradient(#fff6c8,#ffb347 60%,transparent 70%)}
+.art .grain{position:absolute;inset:0;background:radial-gradient(120% 80% at 50% 0%,transparent 40%,rgba(0,0,0,.35))}
+.anim .sun{animation:sunb 6s ease-in-out infinite alternate}
+.anim .hill{animation:drift 9s ease-in-out infinite alternate}
+.anim .diya:before{animation:flick 1.4s ease-in-out infinite alternate}
+.anim .disc{animation:spin 6s linear infinite}
+@keyframes sunb{to{transform:translateY(-12%) scale(1.06)}}
+@keyframes drift{to{transform:translateX(4%)}}
+@keyframes flick{to{transform:scaleY(.82) translateY(6%);opacity:.85}}
+@keyframes spin{to{transform:rotate(360deg)}}
+.paused .anim *, .paused .anim *:before{animation-play-state:paused}
+
+/* ---------- questions ---------- */
+.faq{padding-block:var(--sec)}
+.qs{margin-top:34px;display:grid;gap:12px;max-width:880px}
+.qs details{border-radius:18px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);padding:4px 22px}
+.qs summary{cursor:pointer;list-style:none;padding:16px 0;font-weight:800;font-size:17px;display:flex;justify-content:space-between;gap:12px}
+.qs summary::-webkit-details-marker{display:none}
+.qs summary:after{content:"+";color:var(--saffron);font-size:22px;line-height:1;transition:transform .2s}
+.qs details[open] summary:after{transform:rotate(45deg)}
+.qs details p{padding:0 0 18px;color:var(--muted);font-size:15.5px}
+
+.close{padding-block:var(--sec);text-align:center}
+.close h2{font-size:clamp(38px,5.6vw,78px);line-height:.98;font-weight:800;max-width:15ch;margin:0 auto}
+.close p{color:var(--muted);margin:16px auto 0;max-width:52ch}
+.close .ctas{display:flex;justify-content:center;gap:12px;margin-top:26px;flex-wrap:wrap}
+footer{padding-block:26px 44px;color:var(--faint);font-size:14px;border-top:1px solid rgba(255,255,255,.06)}
+footer .wrap{display:flex;flex-wrap:wrap;gap:10px 26px;align-items:center}
+footer .mark{font-size:17px}footer .mark img{width:26px;height:26px;border-radius:8px}
+footer .end{margin-left:auto}
+@media (max-width:560px){:root{--sec:68px}.hero{padding-top:40px}}
+@media (prefers-reduced-motion:reduce){.anim *,.anim *:before,.ol-type .car,.as-ai .car{animation:none!important}}
+</style>
+</head><body>
+<div id="glow" aria-hidden="true"></div>
+
+<header class="bar">
+  <div class="in">
+    <a class="mark" href="/" aria-label="Hoola home"><img src="data:image/webp;base64,UklGRpgeAABXRUJQVlA4WAoAAAAQAAAAvwAAvwAAQUxQSJgDAAABoOvaturIWgccVtTMcakyhuwxfUaD89v0HSVZzRxRcUfOmj7BbsjxA0qy5LP3Xo+MJe+0ImICMNKQEwAs/HJt/WmLygmqbD1dv/bLAgCkHLBPYwZwrt5odzmxu+1G/RyAHPdDjMDRi80OSaqK6KRREVWS7DQvHgViHLeYgMU730lKUePENi1C8vudRSDFcQoRWF03sohx4psU0tZXgRjGJgHLz0gWoxOtkHy2DKQxyTi0RprQlWLk2iHkcYgRf7WpQneKsv0XYhxZAm6QhS4t5A0gjShj5hVN6VQ1vppBHknCyld26dguv64gjaCGihS6VsgKtaHVUFGUzlVhhdqQEioWo3utsEIaSg0Vi9HBVlihNoSEJYrRxSZcQhooYvqzKJ2s8nkacYCQ0zsK3Sx8l3LoL+MGu3R0lzeQ+8r4VQtdXfRX5D5CnPpk6iu1T1Mx9EposNDZhQ2kHgmzLHR34SxSr20Tf4lt90hhnkqHK+dD+h9ssXiscAv/iVgsQpdLWUQEMu6z+KzwPjJCOPbNzGdm346FkFFnodML68gpNE28JtYMCac7dHznNHCexW+F5xFum+fsdsAHqt+UH7Cwp+Y3072FH6h0vPKH6967/pLiOeHLJ9570qJ6Ttmi+9V7ygP/H/j/wP8H/j8QvHpP6f4W1XPK1hOK54RPXnrv5XWq55TXf/DeDwt7an4z3VvAB6rflB8QblvxW7HbAefpOZ4HTnfo+M5ppNA08ZpYM6SMOovXCuvIIRz7ZuYzs2/HQkDGfRafFd5HBiIWi/hMyiIigIQtFo8VbiHhP2Ge6jHlfPgfJGyb+EtsGwk9Zln8VTjbCwkNFm8VNpDQM8SpT6a+Uvs0FUMvZPyqxVdFf0VGvxk32PVUlzeQ0XfI6R3FT8J3KYf+EDH9WdRLKp+nETFowhLFfGTCJSQMXkPFYh6ywgo1DDOhYjH/WGGFhOHWUFHUOyqsUMOwa6hI8Y2QFWoYfsLKV3Y90+XXFSSMMmPmFU29osZXM8gYbQJukMUnhbwBJIw6RvzVpoo/RNn+CzFiDDMOrZEmvhAj1w4hYzwTsPyMZDEvWCH5bBlIGNcQgdV1I4vY5DMppK2vAjFgjGMCFu98JylFbXKZFiH5/c4ikCLGPEbg6MVmhyRVRXTSqIgqSXaaF48CMWIfxgzgXL3R7nJid9uN+jkAOWKfhpwAYOGXa+tPW9RJomw9Xb/2ywIApBwwUlZQOCDaGgAAMGQAnQEqwADAAD49HItEIiGhEsuGYCADxLGOAHuqLRlf9Vv1/m28j9sHwz7j+vuTorPzMOkfJd6q/1b7Bv6y+d762vMR+33rN/6b1hf4z1Bf7D1DPoI/th6d37q/C7/bP+X+7/tc+oB///UA//+si8jv0nh7+P/UP4j8u+alEg+W/d39X/fv3O9rPA35a/2fqEfkX81/y/5h/3T1Vd7Ja70DvcL7F/tv8P+8H+I+H/6/zx8QT9YP+Z5Y3hsee+wF/Rf71/6f8L7Fv/X/q/QZ9N/+P/VfAX/Of7D/yv8H+Tnzg+xH90v//7tn7IGU1uDMWAGj0IQhBKpSz/51eklDI5ktWgIvedte9pmVd2a1X6KhZwPQr6alX////HX/f76dt3YhigxrK6mqOvlL5v7B/76i1zV/iPlMha9q8UYD29aeVjSnuWnvtOHlAeY2lgm7SJK0T/cNkqRRbwytclbT+tEj/16ldxWLVNwIc/DqOa91GYoCZSW/PNwLqX2xynZdDNrluqcmSLBHUu8NVPMfS9T6YXwpaT/2jB0LbOM2lMXYumWM6lD/sLM0nCyXD7jokzJImpcR+NgE8Ey3+ScW8OOIwmsQpHrMiEgVnAF49vQ6MN1gdA5Ebtsav8CL0jTo6pK1YsPXtI8lljX08cB1kyM0ef/8x39eKYV1Te9WWNTKb6R2C/M9oMDnUE1NOqZ+rVWm05uyVDDvXhncUBTeIXr6aM7JPCHamG5cvR2t7n+LOOZz7gZcTwfUwqK5UGRY+z7oi9e6Dip28X/D8nWj50nKotBfz5beh8DXPy2KPn2Ix1ntpNjTGasSvi71pEEk1uV/1l9Y5g7dr/iLT/PV5K3VB3jAlw7FsdTw6xmJ2yukxJKQJtw2SLfxWgdz7Hjo+cm6a+0B2v5G5vyXi/soQ5PJM7ynlYdO3UVL5E7Z9go9fHJAIj5Ml1n2wuFRG/yYf0N5ow/eCZ1gYKjlyLOJvyrrVd/GGiiBwxiUEyIY/YhdNVjyP7eNHIkX/l9wOavvhKAySHaU/prqR98/QSGMF3MXDYuRU2ci1BTExOnv3aXqwEZf9GcNRHcAAP7/8Pi8//8k6XpwenKKLfjge446HMunC4vxJr8ICmEW7/dRqfxmsAJx0j0J3HroWI7ryDXt5G+66StxiV/eFT50zOBD9iNvSMg6XJ/VcyEog9de4g/epoCAAC9IAGhHQMtSxzsPJm8wtAzuZZd6wlCCQTj1JXobm9NTOOnymxnmX+7UmFA0g3SsKGAV+Q9//9pQ//2pOf//afY8NkdjQqaK+OZvvc/+V581yGu+zb7ToQFm8Q3/6wWZK9qMSZeUrLNMHAxCUbDyPZ6isJP2gxeOwJ7P0DQHQnKsx7AF7MXCcO2c0ZEN+rUNprwIS8dGzKqqAUKZ07M7NyE+/5CtmM+RHA7R6f3DDxqPfeB0VPjmQ0L4zLTamDXg/pjNBVT7y9yMiJt7NMd/7HWmLiAgg7JBSPH+FDMIeAeUrPxn4FAF9Tf1vLLFcZ3pyRqo0EX3i2pC96SVkMIRYRMgsctbm17i5/3yOUGfND7xLyDDsxUDpgCJ6sme3hvT7Ysc29jRyQXeFEZH7WZvhqwFJc0sMjwGnqeiRVHN2kxQq5euoGO20P8vj3/wFyFpaqng1i10WpOYoo31CSsycANKIw79bb/4YMjohWSsG2AH0sIlM33+F7c49DLR35/GFOQ7dW7wrRiwZg2XpH7MquTgReI00iOk5YbL6cnzU6wgUWoXHpIAje0UUpg8VCa0uw0iYTvPj1gQtyfjMiFSKj/5TAf7kNuHeVdkaaInLersTvlWNNHRjEqTgq1Yp/Hlil4dK8o8Y/hlhy1IuAlQ9ukv9A/7xJA7V3AyfV66gxFKt5eU321zhogXnwzqpZfKqjMqBhSSAGYEVqLU1qV/zYcpcXCSm0pnlo6rjdlIuC7+dMjqmMu3CrAIusbLTjL0U0JpRg4btihubQPf7aToR3sYp1teaiJ9yLg1++1OtpJAVezsyum8/fQJ+xWWH/8FaNDuysBV4D5aCWtUN87fpsqvJEJhsglVZbH+vYVsfwWXXzShMScyO6cIBFoZejbRvtWqCU6IlunelhFzFj02IwMULPPCB5aIw9qYMPcJm4RcnlQRGq3KKNKTj2MkGmVzJ/cBZZNYy7Y//AOD2jdERll7bH/j1jl+Z++cJYUnAyPwuhDLApPEHTq4Q/cR/Yj7/tfMtCbd0gD8Syz37xC7oRmuvMIINeG6I0qObMWae71P1QGtrudBZuvp4fYbQACMYbZM7SwOAbvtcmVKh1CVrGOCRJZh+gfa+zBxj9VorwQyXIJ8pvBo9kQ4aVZxWGse6eYlADb8f2f22DN/Z5fqhdg45l+zFgs3VAJpx9kimQ/ob8WuCrMlF+GuXE3w9f7mJfpcutCP7gjNg9Ht7jjZ/9mWSekOGmP7bVtmMyS1NZGXR4CAgOGF1uOqvIxbvfVmBQbHZDJqHUpDNdbh4yuUQ2BZIWs6Q2Em4Oz2xdThtY9RcBIWgiJen256GrbMege6lv9Nm75L+LkMqM5SdTMHOWJopSxNvcCZEtDnepJ8syVVoksP7k7xu0714/f3adqKaqfboRt1HsUX9YvnoAc5p5eTfpZfIaOmjI560E2SG6N9qceMoY3sGlkQUhO1oDv6u8OINv+V+5PWy0jkibEAJXOv4Q/qRoQueQt+jwkjkuUC42rWlkgEbR2XpBnTnC/CCa/CSMiFEUEOcjdAhRkZNOCkPLgl5oCEBqfCj88oe6SdC6T358NUHJRGmWLLTH2p49nAmX63b9rtCrGaTz47HtlAt68Ts/nAvwvjqOM4GKrqqwtzWlQc/3OQgW1U31Y1aHhFq/+O7DWd/BW88v8/uaWp0STfkSOI4gzM6j+YQzlS/l1D6a0g+oh6WO3gZHnd4E7k6nEFChF3wbiAoGf8j5vAFut5fX90+oWan/3o1gIDBkqZrpUT2++coQdYoPi4K2SQi8Q23xnydxbZlDmpbw/d/wzXubUrR8NeOdOdyZIHV8z9lIJmFkboon6cXKSGwrjWwDs5t1nu71ax0nluNs9i7qEWhYiVcPGEImO+UM1CWuBO69YEehVCUuZnNBaOsJId+F1/bUavbv6do2mYGXbsS5GsC1cwopS5cOz1GMImOaj1mDOLeyf+UOTR8uW5qs7EmRQnpJNMw/KqawHiKsjDW+pAPyrffV4+oKEVq5cdAI5ns7h6vvcr5FSoKhzbgA3BQ7ZqOvG3vjagAp94hsyMt/usfAgCMqU0T0VhBj7c/EmnuvGkzhPOCkUp3d9uCaMMprL7kZFVpCWIWSG2nU39ZPCgf3SrGwIArTVLPWxew0GokbK79TUtmv5ZveCgdifPZJ1rWDa1QS3hZZ2EEsq1L3RowPo6baEHs7RgZRoIrFIKS2O2jQEUCAc8UdmbrwVjyOyeBJfdLXA4qmNMJhbpKQEkg60uod7LW8p+oc8jLpQ57xwV5Fa9zp4dl/srJ7oRCNUfTD1N2eg3lFTApqMEKYdjPz55RjcUa2OCunrYsgymFruTKrC38fNwassvgUaZ+gMZYf40IzmVX/Mmhj6dvVXtEp/4oP/xAF1Qb12QWiLkE8hoDXKPPm6IPvv2WbArPiRcBGeugFIm/ANaxaVncmTkwwLp7VpXIhpz+bGfQNMIexOKR6Smp2jYomMlI9kW1mYj1TbXxLNJONZdHH9ZGTVKXlnCa+KgA2JVJtKBQV/ZtrzQH0kfCmpGR3jb095CBFaBUFHc9szPKK5PQRjKnxESwwVcUK07xeBKDuMhrI5B80stp/QSknybWWWIbU6pOc/nKsqDYBhlUky4s/CZHzvDvOAlMGf14unIdS8zrn0GXe1nap5biOYPLSHfVGkJitzSqCl0SR7KPw79hmUgx/CD9xaTqmESynl0hkyfI8KLE59FD4chf4Bt6XPwQddMuF6uRYf9sNRWeB2aDSm7utgv2asWhDqTrBzceH63sIxZD6MAj9ClD3JtjN7EZVGK5xzS3b5xxzC0TRvuPPfDBc5x0BXSWWnyoyYaajxxu09m9kZ3ucYXPIs9khl6CV8eYhJtFBUJWqjk3CitQmssJDQdNpcOZXyymW39PUYgaWG73+RM/ANJhCBX2BTVn8h9Pr1aVzIkaVZCqdJRIADi0OjTjZGa2I2n1Yu24Q8LURBcm6Emvc317FfyZDoMRdvjso0TYF4Zy0ex+ALZojc/XkYiAwEw+vs5KJSZpBLWwWBBJSFHJabGuih92z+Kb8mYJtIJpgcuQjYFw3g0zaSQ3DQZZzsfiSjdOeFDzR8n3z1dqK07jbc4ONf5v8O/xtHPz9i3inXDBCod8vrDPXL107Plic0sDd5KY/8eWxrevs4X4YY/XYrUOtPf82azA7XPkwpCpWVq8XIQVakH2mn2kOVkWF3UL36n6qCT2KAJRXGDPzxCLDDRMvJkUo2j2qDnVlXacPau0+B/+w8Ev69mtNH3MazMofR5y+YFtFej/2gQ0vOs8LoG6dVl1sqamb5DW9gyVmCIyblAWH7RJpHOQUGfjY2RC1wRqeMuarTO+uxvyjxiS9Sfx06fxFdUzzng8BrvkNhc3Tnpg8/3mHkMqDfxcXk5whctro6PF6QGJ7AxZPp0IokgBHxtx0SjEOYX1EKmAFs6f0dxAdN6UlP7rqa/KpIeIgVc1t8kq89XiQtBHHa+PgybgT03xGbUifYkx+pwkfGO+qyi3R1nYh2172JQcufvX+ATCWt5XmpJ4SMnV/HzRFFsdw+2GgomuogKAzuctyjjCXDm/xwOePjHt64+ELjMB7BAURBh1CONH2/gOOWUn0bS7mAt3tevvfm77oaI5eS8o3r6g0TvU3yM5vcegHs+G1R42sukjZDa+qetuiBw0IYnERso5WgMzpByKEQcCeqWC5vOsuiBXSVdEHNy8S1orawHQYIszzhJYFb11x7bVeaL7S/RRUP+LlxwStguUEgIHXQt9EEVn2+tk8Ni6GJdGPhqJbxy7grw4D1e9o1igUd+U6U/ZDScG4+km01TI8GSf4CDWpMuCBltzezh4iKIQXi+JUuZDD5EITl6+RZ1MsX6z5DQFJ+kAvUHFbZVdBdr9KnvB+mpYiwNqcaNOha8t8n62BluoygSNdHvj1+UX1xgbJ1lsSP3knxClR+Vsoyr1/uh4JG47Mw/zb10uAo1zVJWi0JXbgNrEfmuk3NDncHMQgdkqrO/4ufHJmx6DeboXnn8tz/F0H3PTJr9gZi+PKCYJA5STLgZ47GcncUN4b5qkR6ySyu0ipsng1vk97O9Zt93EkjGTE2CRhnCOjqkkkFnuQjpa/p3UkTd9WVPV8XPIuZxO4Phg2UXV4ivPbpaluJ2Noumnj7zizv4CAke94TMiQriihPypoUylaXO4YuKDdCkE9pFhYq5n6ZnN5ddpueYMvB7D0LvbEKEvwLHWh1VzolVuOLx7mBoMJRvw+3lBPLP7C6SgzZ5iQ4bqO9/w09SSH71IKNDw/Ftme3HiPKliAasJED6V+jG+KHf5ql6jCJLkm4B3wUmfkCtY5GiU+D4bQ2+Qq1E1WASGuW35FWuzt0oniS9DjIOGx9jvCoFw3hVr8Mpv2+Bwhf6xb4DCMx+NXJf1EDMfm9j+gr1a7cBh/TIr4XAUKosf9x4W7lwsAbW+ZM1lUlOG2XstciaYLiJw1vX55gtG42q58m0L/8Fvg3YHO9KlV30YGZ5JrwNN/pKO5VSavuIr8JkiNDYd7RrGyJuh0s73B6EZ13Z0mObGQmGAoMRIqqAaSZ9NmS7h+hZslsy1ZFjU6Hb+a7HXmRdAB8oT02nh/CiuOAueC8hldTWvaJ6Is0ULgnjZTVu7n6GpCorwk4v477KGwGvD0Bb8HsnOUPYgjR9p8xnvtNLVjCf988qDs1jG0xr4C/6lnhgDU/DUqXVCRmcLOXVyTI1XcO8MF3/z0fBZ7sEyjapZksE+0is93tX9ql8KMtT93Ps/GLRpvKYtsOYe9CXUXaIlObrKVGt1Z9DqQ98QMeBoYcv3wPAkTCphoBRqiU4pf/t7Pptu6Bodon0HWYhbTYFUspwYBFr4iyGkBTiMSdbcUJ+uPS8I7CjW5wTOxC0T1LMgUuWPV64GxEalwiJGDRcQ+tCorYqLX7CE+EbV07JI3J+cLzO7/QVQ465dJvhGD8SvvNWQYTbswzjnuW4fa47BEnbivJQNb234PyuaZO4fiLdR4/GZJxzeKTQT6WdccCYSW5w4+58s8TYmumgn7d2FXi1PNSkwbUfzfDm8OzocKtplhPkrZhiMsIqmliBHX+CgEn8M2/lVi+nt1fymZsNl1Bl/DWvCRF78PPVP3HoZHbq++o8i3Zdj84+5e+L3/+iAbYT9Y1MblKWTEF8Fe0hnmtC0rtBRRzYS+O9n4ioL7EGewBvzeGGfPwwD6IKbKHaUvz3np3lHm9a7hNIG1LvuGWCvGD82bSnsRJxHB6aeoMD50T42+9YR/ewxX5q0ghkbKK3UP9MNSSdoq3nqDzYGWXjWzgu9Ojn3oYjBbrSsNAyv6BEJ2rNg1E7f0flPnMzt/kc2Bi2dpgwml73h6hP+nZfawN3fijd6EGpuHNIHvCmtWu6cNjfqOal4GSfX+OVfEQQpDGnU1EjX0q/8FLs6Nqhmco9O+QrhX9qTAJYmtb8iJzF4nvdI3srm7M6jlRsfc+TP0VsIjiANV96HM+AB3gn5SoJgiFJgxqLKdMh5FniCYEtwG3he17CyernN+iQvlC6mENKXhtnn39HZAzlTk810TkfsBfjAaSKyvgvJZlc/crJFR+ybmaXgytxDEqZwTg1v8OWMt5WYR689Tb+Cpg1bgZuMAH7T29WmHT22MI6KrM6D2NSNxQGl1mlt1lKlaJHoVZJe+wAqyVVJvhaFJHP3r4gua9+RbZ49jOWlOpck2uzAba4hfnX5FhPCj7kcYFnLWV5EbtCmVUYc4Qge8NcRQrucnggb194u68as2eIL4epr4nJF9UlyMW8Pb6ClmTLJEyLFi4ic2PQ/y1eFmrOgO3n8pQbfxTPcoc6bV+NBRddvcL02iq4BtiSLMlbenQt/kphOciMLgDkbbnszPOgK5t00y5qCq+CCq5ElL+pBjSmHNhmec0PYhmtTOsr5zlSzb4JPFtMhfVumf2sODICWLMzDiSRdb0FX5cZ6LEbNXqTvPDhx/GxzXHT8qsbIg/UcNlUV14WPsQNT+khYCl2Wv2MQH9P7z2Q32yqdWOnAqk0DRFb6F8hIDKlJ8R1Cma2KVNpOWbkDGZiZlBIppvei7a1DE8A7b+jxOBv6jxAmwTd3OOEoNlIknwMxX/SImuB7A5evBfSVvdyArpyVgQl2lBj9e8EyNU+e4tBmp9RJaES58p1XBdPsSbVrLdYQM+8ybpYFhkNT9TxSDZJaNyma148j8UNH0tMw0AUUuePtCvG4FwhYvCB48XTrpTDY8fi1GjsojmZAESPAH/HazVJeQ9nWKVPN7K+xe5GiMghQT6f8QoFgDpe+CXWJabGPzcHw0MEWgQIJ2CegpNNMS7Imd/dKGMeLBNzuVh9g5CbwwKKMeed/HUx/FirZhj7HpcsLEzHD94XfuU/uzignyz2PA+f/PavCP/gDrKHKyl7avU3vp7kLjl2HE3FcfdUoGPUcqlf2rKHTQ7ul7NBN9/WPNi11ikK0ouJUvt4/Cf1eUA9Ipj8wwQwbGsoDqQDKaCFEqPsUPCElBelmlUt1FG7sEtZoaUWWBiXnbFHSxcElnLaRgz3VNZ/aqjlHaz83RXERDEYGltivkOLM/RycMDJhB74zgiW7m8r93uabNS4lX1xJ3LzqIc3r3oUwjFXcaTirNRCHvjLKdoETg8G6bxF16JVxBiEb28jdz6s1DBdtcaM+gKuajWomoYzTMvFhkRlqjEE71zBI7189hSJVhy3nbVXqJBqhpOvjdtOqHH/R5exaFvFhR86+oTwTEKJZoVZiTQQh/Rl5kMVc0qSwC7uDf+SoMJ4Bxr4crU8pQvERUvp3sQo2oKyf2lAJuUhT72otjb6L9WZkI9XwJGhBE3Xkcg9JGOqZIzn+6yVNsr07uq83lvHtP0LdXMLuAj0jYFbl2KidZlLkI9r1guxfsO6WdGOvwprxE1cCRDZL463TFg0LZrP8N/gp6kxd/IxCEz//jF2qW3CGgqT1pcpfLzHZQMl4ls0vkbSTv4pfg6PtcRKUTGTiL0ZlD158aGaHfSbf7Emx9rsFd38CxNG0ajMH7m35SC9yW2RM1dUzbGOWGQBOXZmwqFJ8ex3F9egtnUgXHRp2xPIGeHexYtAFNAN50JhY7qJDia4p9rTFjA0y7K9tsRRYJd7GaW6RhcmKNqvmhN5j+PhUKpA2Pvb4mHjiEOOJUxw6pkt+LuktXgxpA/73vXdgLXhgZxf8UVdfis4iYsAWr0Ru8bXzjZhErF6Sde8rY8UdkVhLCX1NM3C+4BW5QONxBmspB5+roH4caxL79P/2GpYwyihSu+5krIKSsbb8MDK3Pm/zXpEKfBuGzc61O25xtoKJLm0M1yvXRBEmmSkQEydf48vnAl/sCyZbFnHEI1aApJsu/3WDAkrwm8XetNDuOsM1sQ32N2HRW2Fr6DYS1WtUNhRn+QPzuacxqqi89d5Iawdg8VZM7/45RZCZkT8CwlLRkAAyjo+24kJPp6HLoumLCt6X/Jh3DQOzg16dBcRnxmBSlYMg86mqdhIwEbdQfkNzkAZ5NQf+wvPeYKem4H2AX6oSEC8lgVcP+OKuHbJIpDYJ4JAgR/BPKhhp0m7KUqIGuKbYS6c0WDMBYqRpDwv/5iXdLFzfi5q40eya7DlNbv0rjNdUxlIj1TyjkdSmKnfFs4Mdt+yUjtNqTRwH2u6ie9fzxgkHe7nFN+NlByoIJcHrlCUL12Fm/Inp64LEvPwcpgFrnBM4HGvwnwUqxkHarto7g85DOubpD6h2oJC01MZwNoSMDObLb5oznruM8z5cutWiCA0DizgodFbUGx9B4QI9ZDYiMcetMf3cvLnZLStK/+kWh3JWHLpt0CHnRXBSJeBfOJ+bW6ZNTyC9YWFmjRGfXQi2SzdMiz0mC+2APAGvGT/tyv//tKH/+0lT//7RoziakH9qqVOj+Px49blGUrOWus0QtqjgZDVUSgAAA==" alt="">Hoola <small>App Studio</small></a>
+    <nav class="links" aria-label="Sections"><a href="/">Hoola home</a><a href="/employee">Employee</a><a href="/studio">Studio</a><a href="/websites">Websites</a><a href="#watch">Watch</a><a href="#plan">Plan</a><a href="#system">System</a><a href="#price">Price</a><a href="#questions">Questions</a><a href="/console/">Console</a></nav>
+    <a class="cbtn" href="/console/"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="13" rx="2.5"/><path d="M8 21h8M12 17v4"/></svg><span class="ct">Hoola Console</span><span class="cs">Console</span></a><a class="btn go sm" href="/download">Get the app</a>
+  </div>
+</header>
+
+<main>
+<section class="hero" id="top">
+  <div class="wrap grid">
+    <div>
+      <span class="eb"><i></i>Hoola App Studio</span>
+      <h1>One line in.<br>Your own <span class="rot" id="rot"><span>app.</span></span></h1>
+      <p class="lead">Describe the app in one line. Hoola plans every screen, shows you three looks of the Home screen, designs the whole app, then builds the real Android and iPhone app. Nothing reaches the store until you tap.</p>
+      <div class="ctas"><a class="cgo" href="/console/">Open App Studio in Hoola Console →</a><a class="btn ghost" href="#watch">Watch an app being planned ↓</a></div>
+      <p class="straight">Already signed in? <a href="/console/apps">Go straight to the App Studio →</a></p>
+      <div class="nums"><span><b>1 crore+</b>app ideas</span><span><b>3</b>looks to pick</span><span><b>2</b>stores</span><span><b>1</b>backend for all your apps</span></div>
+    </div>
+    <div class="stage" id="stage" aria-label="The Hoola App Studio, drawn">
+      <div class="frame" data-depth="0.4"><div class="tb"><s></s><s></s><s></s><u>hoola.ainewtika.com/console/apps</u></div>
+        <div class="scr">
+          <div class="as" aria-hidden="true">
+            <div class="as-chat">
+              <div class="as-me" id="hbrief">An app for Sharma Kirana in Akola: order groceries, home delivery, pay by UPI, udhaar reminders</div>
+              <div class="as-ai"><b>Plan ready.</b> 6 screens, 4 data tables, 3 roles. Nothing is built until you say Haan.<span class="car"></span></div>
+            </div>
+            <div class="as-plan">
+              <h4>Plan · Sharma Kirana <em>Waiting for your Haan</em></h4>
+              <div class="as-row"><span>Screens</span><b>6 · Home, Orders, Cart, Udhaar, Profile, Staff</b></div>
+              <div class="as-row"><span>Data</span><b>4 tables · products, orders, customers, udhaar</b></div>
+              <div class="as-row"><span>Roles</span><b>Owner, staff, customer</b></div>
+              <div class="as-feats"><span class="on">Camera</span><span class="on">UPI</span><span class="on">Notifications</span><span>Location</span><span>Offline</span></div>
+            </div>
+          </div>
+        </div></div>
+      <div class="float f-proto" data-depth="1.4"><div class="ph" style="position:relative"><span class="pn" style="--sky:linear-gradient(#7C5CFF,#2a1f5c)"><span class="st"><i></i><i></i></span><span class="hd"></span><span class="bd"><i></i><i></i><i></i></span><span class="tabs"><i></i><i class="on"></i><i></i><i></i></span></span><span class="tap" aria-hidden="true"></span></div><small style="display:block;text-align:center;margin-top:6px;color:var(--faint);font-weight:700">Tap the prototype</small></div>
+      <div class="float f-store" data-depth="1.1"><div class="st"><i></i><div><b>Google Play</b><small style="color:var(--faint);display:block">Build ready · review next</small></div></div><div class="st"><i></i><div><b>App Store</b><small style="color:var(--faint);display:block">Waiting for the Android first</small></div></div></div>
+      <div class="float f-price" data-depth="0.9"><small>Price card · Sharma Kirana app</small><b>Build both apps <em>on the card</em></b><div class="row"><span class="y">Haan</span><span>Na</span></div></div>
+    </div>
+  </div>
+</section>
+
+<section class="oneline" id="watch">
+  <div class="wrap">
+    <span class="eb"><i></i>Watch it work</span>
+    <h2 class="h2">From a sentence to a <em>plan you can read</em>.</h2>
+    <p class="lead">This is the App Studio at work. You write the app in one line. Hoola writes the plan — every screen, every table, every role — shows three looks of the Home screen, and a prototype you can tap. Nothing is built until you say Haan.</p>
+    <div class="ol-box" id="olbox">
+      <div class="ol-comp">
+        <div class="ol-type" id="oltype" aria-live="off"></div>
+        <div class="ol-opts"><span>Android + iPhone</span><span>Hindi + English</span><span>Plan free</span><button class="send" id="olsend" aria-label="Start" tabindex="-1">↑</button></div>
+      </div>
+      <div class="ol-steps" id="olsteps"><span>Brief</span><span>Plan</span><span>Three looks</span><span>Pick</span><span>Prototype</span><span>Builds</span><span>Store</span></div>
+      <div class="ol-board" id="olboard">
+        <div class="ol-pn" id="olka"><span class="pn" style="--sky:linear-gradient(#ffcf8a,#e0884a)" aria-hidden="true"><span class="st"><i></i><i></i></span><span class="hd"></span><span class="bd"><i></i><i></i><i></i></span><span class="tabs"><i></i><i class="on"></i><i></i><i></i></span></span><p><b>Look A · Warm kirana</b>Cream and saffron, products on tiles.</p></div>
+        <div class="ol-pn" id="olkb"><span class="pn" style="--sky:linear-gradient(#7C5CFF,#2a1f5c)" aria-hidden="true"><span class="st"><i></i><i></i></span><span class="hd"></span><span class="bd"><i></i><i></i><i></i></span><span class="tabs"><i></i><i class="on"></i><i></i><i></i></span></span><p><b>Look B · Night market</b>Deep violet, big search, orders up top.</p></div>
+        <div class="ol-pn" id="olkc"><span class="pn" style="--sky:linear-gradient(#9fd8ff,#203a6e)" aria-hidden="true"><span class="st"><i></i><i></i></span><span class="hd"></span><span class="bd"><i></i><i></i><i></i></span><span class="tabs"><i></i><i class="on"></i><i></i><i></i></span></span><p><b>Look C · Clean counter</b>Light and simple, the list first.</p></div>
+      </div>
+      <div class="ol-build" id="olbuild">
+        <ul class="ol-rail" id="olrail"><li>Designing all 6 screens</li><li>Wiring cart, UPI and udhaar</li><li>Tapping through the prototype</li><li>Building the Android app</li><li>Building the iPhone app</li><li>Store listings ready for review</li></ul>
+        <div class="ol-stores" aria-hidden="true">
+          <div class="st" id="olgp"><span>Google Play</span><b>Build ready</b></div>
+          <div class="st" id="olas"><span>App Store</span><b>Build ready</b></div>
+          <div class="st ok" id="olst"><span>Store review</span><b>Waiting for your tap</b></div>
+        </div>
+      </div>
+      <div class="ol-tl"><i id="oltl"></i></div>
+      <div class="ol-foot"><span id="oltime">step 1 of 7</span><span>Sharma Kirana · Akola · Android + iPhone</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="dir" id="steps">
+  <div class="wrap">
+    <span class="eb"><i></i>The whole road</span>
+    <h2 class="h2">Brief to <em>the stores</em>, one clear step at a time.</h2>
+    <p class="lead">Eight steps, always in the same order, always on one screen. The plan comes first and you read every line. The prototype runs before a single build. And the store never sees anything until your tap.</p>
+    <div class="grid">
+      <ol class="dsteps" id="dsteps"><span class="fill" id="dfill"></span>
+        <li class="on"><span class="n">1</span><div><b>Brief</b><p>One line about the app, in Hindi, Hinglish or English. Or start from a crore of ready app ideas.</p><span class="tag">Free</span></div></li>
+        <li><span class="n">2</span><div><b>Plan</b><p>Every screen, every data table, every role and the phone features it needs — written out for you to read.</p><span class="tag">Free</span></div></li>
+        <li><span class="n">3</span><div><b>Three looks</b><p>Three designs of the Home screen, drawn while you watch. Pick one, or ask for another.</p><span class="tag">Free</span></div></li>
+        <li><span class="n">4</span><div><b>Your pick</b><p>"Design in this look." Hoola designs the whole app in it — every screen, every empty state.</p><span class="tag">Free</span></div></li>
+        <li><span class="n">5</span><div><b>Prototype</b><p>A real tap-through prototype on your phone: press the buttons, move between screens, feel the app before it exists.</p><span class="tag">Free to try</span></div></li>
+        <li><span class="n">6</span><div><b>Android & iPhone</b><p>The real builds: the Android APK and the iPhone app, made by the same engine that runs your Hoola.</p><span class="tag c">Price card</span></div></li>
+        <li><span class="n">7</span><div><b>Store</b><p>Play production and App Store review, step by step, with the listing pages written for you. Every step asks first.</p><span class="tag c">Price card</span></div></li>
+        <li><span class="n">8</span><div><b>Your users</b><p>The app goes to your customers and staff. Data, logins and payments stay yours; Hoola watches the health.</p><span class="tag">Launch</span></div></li>
+      </ol>
+      <div class="dview">
+        <div class="frame"><div class="tb"><s></s><s></s><s></s><u>App Studio · Sharma Kirana</u></div>
+          <div class="scr" style="aspect-ratio:16/10;background:#141029;display:grid;place-items:center;padding:4%">
+            <div class="dv-state on" id="dv1" style="width:100%">
+              <div class="dv-plan"><h4>Plan · Sharma Kirana <em>Waiting for your Haan</em></h4>
+                <div class="dv-row"><span>Screens</span><b>6 · Home, Orders, Cart, Udhaar, Profile, Staff</b></div>
+                <div class="dv-row"><span>Data</span><b>4 tables · products, orders, customers, udhaar</b></div>
+                <div class="dv-row"><span>Roles</span><b>Owner, staff, customer</b></div>
+                <div class="dv-row"><span>Phone features</span><b>Camera, UPI, notifications</b></div>
+              </div>
+            </div>
+            <div class="dv-state" id="dv2" style="width:100%">
+              <div class="dv-proto"><h4>Prototype <em>Tap through it</em></h4>
+                <div class="pwrap">
+                  <span class="pn" style="--sky:linear-gradient(#7C5CFF,#2a1f5c)" aria-hidden="true"><span class="st"><i></i><i></i></span><span class="hd"></span><span class="bd"><i></i><i></i><i></i></span><span class="tabs"><i></i><i class="on"></i><i></i><i></i></span></span>
+                  <div><p>Press the buttons like the real app: order, pay by UPI, mark an udhaar. The screens move; nothing is built yet.</p><span class="tap" aria-hidden="true"></span></div>
+                </div>
+              </div>
+            </div>
+            <div class="dv-state" id="dv3" style="width:100%">
+              <div class="dv-store"><h4>Stores <em>Step by step</em></h4>
+                <div class="st"><b>Android build</b><em class="ok">Ready</em></div>
+                <div class="st"><b>iPhone build</b><em class="ok">Ready</em></div>
+                <div class="st"><b>Google Play</b><em>Ask first</em></div>
+                <div class="st"><b>App Store review</b><em>Ask first</em></div>
+              </div>
+            </div>
+          </div></div>
+        <p class="dcap"><i></i>The App Studio workspace, drawn: the plan, the tap-through prototype and the store steps.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="plan" id="plan">
+  <div class="wrap">
+    <span class="eb"><i></i>The plan first</span>
+    <h2 class="h2">You read the plan <em>before anything is built</em>.</h2>
+    <p class="lead">In Plan mode the app stops at its plan card. Screens, data, roles and phone features, each on its own line. Change anything in plain words — add a screen, drop a table, rename a role — and say Haan when it reads right.</p>
+    <div class="pgrid">
+      <div class="planbox">
+        <div class="hd"><span>Sharma Kirana · plan</span><em>Waiting for your Haan</em></div>
+        <h3>What the plan card shows</h3>
+        <div class="rows">
+          <div><span>Screens</span><b>6 · Home, Orders, Cart, Udhaar, Profile, Staff</b></div>
+          <div><span>Data tables</span><b>4 · products, orders, customers, udhaar</b></div>
+          <div><span>Roles</span><b>Owner, staff, customer</b></div>
+          <div><span>Who uses it</span><b>Your customers and your staff</b></div>
+          <div><span>Open questions</span><b>1 · "Home delivery inside the city only?"</b></div>
+        </div>
+        <div class="feats"><span>Camera</span><span>UPI</span><span>Notifications</span><span>Location</span><span>Works offline</span></div>
+      </div>
+      <div>
+        <ul class="rules">
+          <li><i>☰</i><div><b>Every screen named</b><span>You know what the app does before a line is designed — and what it does not do.</span></div></li>
+          <li><i>⊙</i><div><b>Every table named</b><span>The data the app keeps, in words you can check against your business.</span></div></li>
+          <li><i>☺</i><div><b>Every role named</b><span>Who logs in and what they see — owner, staff, customer, delivery partner.</span></div></li>
+          <li><i>?</i><div><b>Open questions asked</b><span>When the plan is not sure, it asks you — one clear question, not a surprise later.</span></div></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="system" id="system">
+  <div class="wrap">
+    <span class="eb"><i></i>Two shortcuts</span>
+    <h2 class="h2">Start from your website. <em>Or build the whole system.</em></h2>
+    <div class="sgrid">
+      <div class="sys">
+        <span class="icn">⌂</span>
+        <b>Your website becomes the app</b>
+        <p>If Hoola built your website, the app starts ahead: the same products, the same customers, the same logins — nothing typed twice.</p>
+        <ul>
+          <li>Same data and logins as your Hoola website</li>
+          <li>Orders from the app and the site land in one place</li>
+          <li>Your brand colours and name carried over</li>
+        </ul>
+      </div>
+      <div class="sys">
+        <span class="icn">⁙</span>
+        <b>A whole system, one backend</b>
+        <p>Not just a customer app. Hoola can build the whole set your business needs — and they all speak to each other.</p>
+        <ul>
+          <li>One plan covers every app in the system</li>
+          <li>Roles keep each app's eyes on its own work</li>
+          <li>One backend, one place to watch the health</li>
+        </ul>
+        <div class="apps"><span class="v">Customer app</span><span>Staff app</span><span>Delivery partner app</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="price" id="price">
+  <div class="wrap grid">
+    <div>
+      <span class="eb"><i></i>Price first, always</span>
+      <h2 class="h2">You see the rupees <em>before</em> anything is spent.</h2>
+      <p class="lead">Nothing in the App Studio spends money on its own. The brief, the plan, the three looks and the prototype are free. A paid step comes to you as a price card.</p>
+      <ul class="rules">
+        <li><i>₹</i><div><b>Every price on the card</b><span>The builds and the store steps, written out before you decide anything.</span></div></li>
+        <li><i>✓</i><div><b>Haan, then your fingerprint</b><span>Money moves only after your tap, never by itself.</span></div></li>
+        <li><i>↺</i><div><b>Nothing reaches the store by mistake</b><span>Play production and App Store review ask first, every single time.</span></div></li>
+        <li><i>▮</i><div><b>Your app, your keys</b><span>The store accounts are yours. Hoola never keeps your signing keys or asks for them in chat.</span></div></li>
+      </ul>
+    </div>
+    <div class="pcard" id="pcard" aria-label="An example price card">
+      <div class="hd"><span>Sharma Kirana · step 6</span><em>Waiting for you</em></div>
+      <h3>Build both apps</h3>
+      <div class="rows"><div><span>Android + iPhone · both screens done</span><span>on the card</span></div><div><span>Backend + logins</span><span>on the card</span></div><div><span>Health watch</span><span>on the card</span></div></div>
+      <div class="tot"><span>Total</span><b>Before you tap</b></div>
+      <div class="act"><span class="y" id="pyes">Haan</span><span>Na</span></div>
+      <div class="fp" id="pfp"><div><div class="ring" id="pring">☝</div><b>Touch the sensor</b><small>Your phone confirms it is you</small></div></div>
+      <div class="done" id="pdone"><div><div class="tick">✓</div><b style="font-family:var(--display);font-size:20px">Building both apps</b><br><small style="color:var(--muted)">Prototype locked · 6 screens · ready for the stores</small></div></div>
+    </div>
+  </div>
+</section>
+
+<section class="made" id="made">
+  <div class="wrap">
+    <span class="eb"><i></i>Made for your work</span>
+    <h2 class="h2">Pick an app. <em>Hoola knows the screens.</em></h2>
+    <p class="lead">Each type starts with the right screens and tables already planned: orders for the delivery app, fees and batches for the classes, rooms and bills for the lodge.</p>
+    <div class="mgrid" id="mgrid"></div>
+  </div>
+</section>
+
+<section class="faq" id="questions">
+  <div class="wrap">
+    <span class="eb"><i></i>Questions</span>
+    <h2 class="h2">Good to know.</h2>
+    <div class="qs">
+      <details><summary>Where do I find App Studio?</summary><p>Open Hoola Console on your computer and press App Development in the sidebar — the studio opens full screen. You can also go straight to hoola.ainewtika.com/console/apps.</p></details>
+      <details><summary>Android and iPhone both?</summary><p>Yes. One plan, one design, two real builds — an Android APK you can install right away and an iPhone app for the App Store. You choose to build one or both.</p></details>
+      <details><summary>What does the plan show, exactly?</summary><p>Every screen by name, every data table, every role and the phone features the app needs — camera, UPI, notifications, location. If something is unclear, the plan asks you one clear question instead of guessing.</p></details>
+      <details><summary>Can it use my website's data?</summary><p>Yes — if Hoola built your website, the app can share the same products, customers and logins, and orders from both land in one place. Say "An app for my business with the same data and logins as my Hoola website".</p></details>
+      <details><summary>What about the stores?</summary><p>Play production and App Store review are separate, guided steps with the listing pages written for you. Both always ask first — nothing is ever submitted on its own — and the store accounts stay yours.</p></details>
+      <details><summary>Who owns the app and the data?</summary><p>You do. The app, the data and the store accounts are yours; Hoola built them for you and watches the health. Your customers' data stays in your business.</p></details>
+    </div>
+  </div>
+</section>
+
+<section class="close" id="get">
+  <div class="wrap">
+    <h2>Your app is one line away.</h2>
+    <p>Open Hoola Console, press App Development, write one line. The plan and the three looks are free, and nothing is built — or sent to a store — until you say Haan.</p>
+    <div class="ctas"><a class="cgo" href="/console/">Open App Studio in Hoola Console →</a><a class="btn go" href="/download">Download for Android</a></div>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span class="mark"><img src="data:image/webp;base64,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" alt="">Hoola</span>
+    <span>App Studio by Newtika Private Limited · Akot, Akola, Maharashtra</span>
+    <a class="end" href="/terms">Terms</a><a href="/privacy">Privacy</a>
+    <span>Every store step asks first. Nothing is submitted on its own.</span>
+  </div>
+</footer>
+
+<script src="/static/site/vendor/gsap.min.js"></script>
+<script src="/static/site/vendor/ScrollTrigger.min.js"></script>
+<script src="/static/site/apps.js?v=site1"></script>
+</body></html>
