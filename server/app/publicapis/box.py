@@ -114,6 +114,27 @@ STARTER: list[dict[str, Any]] = [
      "optional": {"category": "category", "lang": "lang"},
      "slim": {"list": "articles", "fields": ["title", "url", "description", "publishedAt", "source"]},
      "example": {"category": "business"}},
+    # v0.760 Indian share prices on ONE server key each (TWELVEDATA_API_KEY / ALPHAVANTAGE_API_KEY)
+    {"key": "stock_price", "api_id": "finance-twelve-data", "needs_key": True,
+     "need": "share stock price rate nse bse equity shares market quote company sensex nifty",
+     "url": "https://api.twelvedata.com/quote?symbol={symbol}&exchange={exchange}",
+     "params": {"symbol": "trading symbol (RELIANCE, TCS, INFY) - stock_search finds it", "exchange": "NSE or BSE"},
+     "defaults": {"exchange": "NSE"}, "example": {"symbol": "RELIANCE"}},
+    {"key": "stock_search", "api_id": "finance-twelve-data", "needs_key": True,
+     "need": "stock symbol search company share find ticker",
+     "url": "https://api.twelvedata.com/symbol_search?symbol={name}&outputsize=10",
+     "params": {"name": "company name or part of it"}, "example": {"name": "reliance"}},
+    {"key": "stock_history", "api_id": "finance-twelve-data", "needs_key": True,
+     "need": "share stock price history chart past days trend nse bse",
+     "url": "https://api.twelvedata.com/time_series?symbol={symbol}&exchange={exchange}&interval={interval}&outputsize={days}",
+     "params": {"symbol": "trading symbol", "exchange": "NSE or BSE", "interval": "1day / 1week / 1h",
+                "days": "how many points (default 30)"},
+     "defaults": {"exchange": "NSE", "interval": "1day", "days": "30"}, "example": {"symbol": "TCS"}},
+    {"key": "stock_price_bse", "api_id": "finance-alpha-vantage", "needs_key": True,
+     "need": "share stock price bse quote",
+     "url": "https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol={symbol}.BSE",
+     "params": {"symbol": "trading symbol (RELIANCE, TCS)"}, "example": {"symbol": "RELIANCE"},
+     "error_keys": ["Error Message", "Information", "Note"]},
     {"key": "india_gov_dataset", "api_id": "government-open-government-india", "needs_key": True,
      "need": "data.gov.in government india open data dataset resource sarkari",
      "url": "https://api.data.gov.in/resource/{resource_id}?format=json&limit={limit}&offset={offset}",
@@ -225,6 +246,21 @@ def _fill(url: str, params: dict[str, Any]) -> str | None:
         return quote(str(v).strip()[:200], safe="")
     out = re.sub(r"{([A-Za-z0-9_.-]+)}", put, url)
     return None if missing else out
+
+
+def _soft_error(data: Any, r: dict[str, Any]) -> str:
+    """v0.760: some APIs answer a refusal with HTTP 200 - Alpha Vantage puts it under "Error Message" / "Information"
+    / "Note", Twelve Data and NewsData say status "error". Read as a failure so the next recipe gets its turn."""
+    if not isinstance(data, dict):
+        return ""
+    for k in r.get("error_keys", ()):
+        if data.get(k):
+            return str(data[k])[:200]
+    if str(data.get("status", "")).lower() == "error":
+        msg = data.get("message") or (data.get("results") or {}).get("message") if isinstance(data.get("results"), dict) \
+            else data.get("message")
+        return str(msg or "the API said error")[:200]
+    return ""
 
 
 def _slim(data: dict[str, Any], spec: dict[str, Any], n: int = 10) -> dict[str, Any]:
@@ -355,6 +391,10 @@ async def call(tenant: str, need: str, params: dict[str, Any] | None = None, api
         if code >= 400 or (res.get("json") is None and not res.get("json_text") and not res.get("text")):
             mark(r["api_id"], code in (401, 403, 429), _classify(code) if code else "unreachable", code)
             tried.append({"recipe": r["key"], "error": res.get("error") or f"HTTP {code}"})
+            continue
+        soft = _soft_error(res.get("json"), r)
+        if soft:                       # a 200 that is really a refusal (limit, wrong symbol, plan) - try the next one
+            tried.append({"recipe": r["key"], "error": soft})
             continue
         mark(r["api_id"], True, "alive", code)
         full = res.pop("_data", None)
