@@ -225,7 +225,12 @@ def write(conv: str, turn_id: str, tenant: str, brain: str, model: str, max_toke
                                                     RequestDump.turn_no <= turn_no - keep))
             if STATS["written"] % SWEEP_EVERY == 0:     # chats no one reads again do not grow the DB for ever
                 from datetime import timedelta
-                s.execute(delete(RequestDump).where(RequestDump.created_at < now() - timedelta(days=KEEP_DAYS)))
+                # v0.734: synchronize_session=False - the in-session evaluator compared a naive row time with the
+                # aware cutoff and failed EVERY first write on her server ("can't compare offset-naive and
+                # offset-aware datetimes"), so no request was ever dumped live; the sweep is plain SQL now
+                cutoff = (now() - timedelta(days=KEEP_DAYS)).replace(tzinfo=None)
+                s.execute(delete(RequestDump).where(RequestDump.created_at < cutoff)
+                          .execution_options(synchronize_session=False))
         STATS["written"] += 1
         return rid
     except Exception as e:   # noqa: BLE001 - fail-open

@@ -200,3 +200,16 @@ def test_request_endpoints_need_the_key_and_the_tenant(gz, monkeypatch):  # noqa
     assert c.get("/api/quality/parity").status_code == 401
     q = c.get("/api/quality/parity", headers=h)
     assert q.status_code == 200 and q.json()["check"]["convs"] == 60 and q.json()["check"]["ok"] is True
+
+
+def test_request_dump_sweep_runs_with_an_older_row_loaded(gz, monkeypatch):  # noqa: F811
+    """v0.734: on her server EVERY dump failed with "can't compare offset-naive and offset-aware datetimes" - the
+    sweep (first write after a restart) ran with an older row loaded from the DB in the same session."""
+    from app import reqdump
+    conv = gz["conv"]
+    _run(conv, "first", [([txt("one")], "end_turn")], monkeypatch)
+    monkeypatch.setitem(reqdump.STATS, "written", 0)          # a restart: the next write runs the sweep
+    before = reqdump.STATS["failed"]
+    _run(conv, "second", [([txt("two")], "end_turn")], monkeypatch)
+    assert reqdump.STATS["failed"] == before
+    assert len(reqdump.turns(conv, "default")) == 2
