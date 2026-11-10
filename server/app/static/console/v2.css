@@ -3803,3 +3803,130 @@ html.human #app .landing .halo{display:none}
 #app .hcd-f input,#app .hcd-f select,#app .hcd-f textarea{min-height:36px;box-sizing:border-box;padding:6px 10px;border:1px solid var(--hair2);border-radius:9px;background:var(--bg);font:400 14px var(--fd);color:var(--ink)}
 @media (max-width:1100px){#app .hcd-aside{display:none}#app .hcd-home,#app .hcd-page{padding-top:72px}}
 @media (max-width:760px){#app .hcd{flex-direction:column}#app .hcd-side{flex:0 0 auto;max-height:190px;border-right:0;border-bottom:1px solid var(--line)}#app .hcd-sess-wrap{min-height:70vh}#app .hcd-facts,#app .hcd-grid{grid-template-columns:1fr}#app .hcd-page h1{margin-top:0}}
+
+/* v0.751 HOOLA FLOW - the Kaan pack as a console page (flow.js). Console tokens only, so dark mode follows. */
+#app .pad.hfl-pad{max-width:none;padding:0;overflow:hidden;display:flex}
+#app .hfl{flex:1;display:flex;min-height:0;min-width:0;color:var(--ink);font-family:var(--fd)}
+#app .hfl .hfl-sr{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+#app .hfl-side{flex:0 0 220px;border-right:1px solid var(--line);padding:18px 10px;overflow-y:auto;background:var(--sunk);display:flex;flex-direction:column;gap:2px}
+#app .hfl-brand{font-size:15px;font-weight:600;margin:0 10px 12px}
+#app .hfl-nv{display:flex;align-items:center;min-height:36px;padding:0 10px;border:0;border-radius:9px;background:transparent;font:400 14px var(--fd);color:var(--ink);text-align:left;cursor:pointer}
+#app .hfl-nv:hover{background:var(--hair)}
+#app .hfl-nv.on{background:var(--pri-soft);color:var(--pri-ink);font-weight:500}
+#app .hfl-side .hfl-fine{margin:auto 10px 0;padding-top:14px}
+#app .hfl-main{flex:1;min-width:0;overflow-y:auto;padding:30px 36px 44px}
+#app .hfl-wrap{max-width:1000px;margin:0 auto}
+#app .hfl-wrap.narrow{max-width:860px}
+#app .hfl-wrap.wide{max-width:1140px}
+#app .hfl-h1{margin:0 0 6px;font-family:var(--fr);font-weight:500;font-size:32px;line-height:1.2}
+#app .hfl-h1.sm{font-size:26px}
+#app .hfl-sub{margin:0 0 24px;font-size:15px;line-height:1.55;color:var(--mut);max-width:680px}
+#app .hfl-dim{color:var(--mut);font-size:13px;line-height:1.5}
+#app .hfl-fine{font-size:12.5px;line-height:1.5;color:var(--mut);margin:10px 0 0}
+#app .hfl-fine.c{text-align:center}
+#app .hfl-bad{color:var(--bad);font-size:14px}
+#app .hfl-empty{color:var(--mut);font-size:14px;padding:14px 0}
+#app .hfl .mono{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:12.5px}
+#app .hfl-warn{max-width:1000px;margin:0 auto 18px;padding:12px 16px;border-radius:12px;background:var(--warn-soft);color:var(--ink);font-size:13.5px;line-height:1.5}
+#app .hfl-starts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-bottom:28px}
+#app .hfl-start{display:flex;flex-direction:column;align-items:flex-start;gap:10px;padding:18px 20px;border:1px solid var(--line);border-radius:16px;background:var(--bg);color:var(--ink);font:400 14px var(--fd);text-align:left;cursor:pointer}
+#app .hfl-start:hover{border-color:var(--mut)}
+#app .hfl-start.main{border-color:rgba(var(--acc-rgb),.35);background:var(--pri-soft)}
+#app .hfl-start b{font-size:16px;font-weight:600}
+#app .hfl-start span{font-size:13.5px;line-height:1.5;color:var(--mut)}
+#app .hfl-start small{font-size:12px;color:var(--mut)}
+#app .hfl-ico{width:50px;height:50px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--pri-soft);color:var(--pri)}
+#app .hfl-ico.pri{background:var(--pri);color:var(--on-acc,#fff)}
+#app .hfl-ico.red{background:rgba(var(--bad-rgb),.12);color:var(--bad)}
+#app .hfl-ico svg,#app .hfl-drop svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+#app .hfl-two{display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start}
+#app .hfl-two>.grow{flex:999 1 520px;min-width:0}
+#app .hfl-col{flex:1 1 260px;max-width:340px;display:flex;flex-direction:column;gap:14px}
+#app .hfl-card{border:1px solid var(--line);border-radius:16px;padding:16px 20px;background:var(--bg)}
+#app .hfl-card+.hfl-card{margin-top:0}
+#app .grow>.hfl-card{margin-top:16px}
+#app .hfl-card h2{margin:0 0 8px;font-size:15px;font-weight:600}
+#app .hfl-ch{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:6px}
+#app .hfl-ch h2{margin:0}
+#app .hfl-in{min-height:38px;box-sizing:border-box;padding:0 12px;border:1px solid var(--hair2);border-radius:10px;background:var(--bg);color:var(--ink);font:400 14px var(--fd);width:100%}
+#app .hfl-ch .hfl-in{width:260px;max-width:55%}
+#app .hfl-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:14px;align-items:center;width:100%;padding:11px 2px;border:0;border-top:1px solid var(--line);background:transparent;color:var(--ink);font:400 14px var(--fd);text-align:left;cursor:pointer}
+#app .hfl-row:hover b{color:var(--pri-ink)}
+#app .hfl-row b{font-weight:500;display:block}
+#app .hfl-row small{display:block;font-size:12.5px;color:var(--mut);margin-top:2px}
+#app .hfl-chip{font-size:12px;font-weight:500;padding:3px 9px;border-radius:999px;background:var(--pri-soft);color:var(--pri-ink)}
+#app .hfl-chip.ok{background:var(--ok-soft);color:var(--ok)}
+#app .hfl-chip.live{background:rgba(var(--bad-rgb),.12);color:var(--bad)}
+#app .hfl-big{margin:0 0 4px;font-family:var(--fr);font-size:26px}
+#app .hfl-st{display:flex;align-items:center;gap:8px;font-size:13.5px;margin:0 0 6px}
+#app .hfl-dot{width:8px;height:8px;border-radius:50%;flex:none;background:var(--mut)}
+#app .hfl-dot.ok{background:var(--ok)}#app .hfl-dot.bad{background:var(--bad)}
+#app .hfl-dot.rec{width:9px;height:9px;background:var(--bad);animation:hflblink 1.2s steps(2,start) infinite}
+@keyframes hflblink{to{opacity:.35}}
+#app .hfl-top{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:18px;min-height:34px}
+#app .hfl-state{display:inline-flex;align-items:center;gap:8px;margin:0;font-size:13.5px;font-weight:500}
+#app .hfl-state.live{color:var(--bad);font-weight:600;margin-bottom:6px}
+#app .hfl-seg{display:flex;gap:6px;flex-wrap:wrap}
+#app .hfl-seg button{min-height:32px;padding:0 13px;border-radius:8px;border:1px solid var(--hair2);background:var(--bg);font:500 13px var(--fd);color:var(--ink);cursor:pointer}
+#app .hfl-seg button[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+#app .hfl-words{border:1px solid rgba(var(--acc-rgb),.3);border-radius:18px;padding:24px 28px;background:var(--pri-soft);min-height:240px;box-sizing:border-box;font-family:var(--fr);font-size:19px;line-height:1.65;white-space:normal}
+#app .hfl-caret{display:inline-block;width:2px;height:21px;background:var(--pri);vertical-align:-4px;margin-left:3px;animation:hflblink 1s steps(2,start) infinite}
+#app .hfl-meter{display:flex;align-items:center;justify-content:center;gap:4px;height:56px;margin:18px 0 14px}
+#app .hfl-meter span{width:4px;border-radius:2px;background:var(--pri);opacity:.85}
+#app .hfl-acts{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+#app .hfl-acts.r{justify-content:flex-end}
+#app .hfl-col .hfl-acts{justify-content:flex-start}
+#app .hfl-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:40px;padding:0 16px;border-radius:10px;border:1px solid var(--hair2);background:var(--bg);color:var(--ink);font:500 14px var(--fd);cursor:pointer;white-space:nowrap}
+#app .hfl-btn:hover{border-color:var(--mut)}
+#app .hfl-btn:disabled{opacity:.5;cursor:not-allowed}
+#app .hfl-btn.pri{background:var(--pri);border-color:var(--pri);color:var(--on-acc,#fff);min-width:130px}
+#app .hfl-btn.stop{background:var(--bad);border-color:var(--bad);color:#fff;min-width:130px}
+#app .hfl-btn.danger{color:var(--bad)}
+#app .hfl-btn.xs{min-height:28px;padding:0 9px;font-size:12.5px}
+#app .hfl-btn.wide{width:100%;margin-top:10px}
+#app .hfl-drop{display:flex;flex-direction:column;align-items:center;gap:8px;border:1.5px dashed rgba(var(--acc-rgb),.45);border-radius:18px;padding:36px 20px;background:var(--pri-soft);cursor:pointer;text-align:center;color:var(--pri)}
+#app .hfl-drop.over{border-style:solid;background:rgba(var(--acc-rgb),.16)}
+#app .hfl-drop b{font-size:15px;font-weight:500;color:var(--ink)}
+#app .hfl-drop span{font-size:13px;color:var(--mut)}
+#app .hfl-picked{font-size:13.5px;margin:10px 0 0;min-height:1px}
+#app .hfl-opts{display:flex;flex-direction:column;gap:4px}
+#app .hfl-lb{display:block;font-size:13px;font-weight:500;margin:8px 0 5px}
+#app .hfl-ck{display:flex;gap:10px;align-items:center;font-size:14px;margin:8px 0 2px}
+#app .hfl-ck input{accent-color:var(--pri);width:18px;height:18px}
+#app .hfl-opts .hfl-btn.pri{margin-top:12px}
+#app .hfl-spin{width:14px;height:14px;border-radius:50%;border:2px solid var(--pri);border-right-color:transparent;box-sizing:border-box;flex:none;animation:hflspin .9s linear infinite}
+@keyframes hflspin{to{transform:rotate(360deg)}}
+#app .hfl-crumb{font-size:13px;color:var(--mut);margin-bottom:10px}
+#app .hfl-crumb button{border:0;background:none;padding:0;color:var(--mut);font:inherit;cursor:pointer}
+#app .hfl-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-bottom:14px}
+#app .hfl-head .hfl-dim{margin:4px 0 0}
+#app .hfl-tabs{display:flex;gap:4px;flex-wrap:wrap;border-bottom:1px solid var(--line);margin-bottom:8px}
+#app .hfl-tabs button{min-height:36px;padding:0 12px;border:0;border-bottom:2px solid transparent;background:transparent;font:500 13.5px var(--fd);color:var(--mut);cursor:pointer}
+#app .hfl-tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--pri)}
+#app .hfl-body{padding-top:4px}
+#app .hfl-turn{display:grid;grid-template-columns:130px minmax(0,1fr);gap:14px;padding:12px 0;border-top:1px solid var(--line)}
+#app .hfl-turn>div{display:flex;flex-direction:column;align-items:flex-start;gap:3px}
+#app .hfl-turn p{margin:0;font-family:var(--fr);font-size:15.5px;line-height:1.6}
+#app .hfl-who{font-size:13px;font-weight:600;color:var(--pri-ink)}
+#app .hfl-who.s1{color:var(--warn)}#app .hfl-who.s2{color:var(--ok)}#app .hfl-who.s3{color:var(--bad)}
+#app .hfl-tm{color:var(--mut);font-size:11.5px}
+#app .hfl-rend{font-family:var(--fr);font-size:15.5px;line-height:1.7;padding:12px 0}
+#app .hfl-ai{display:flex;flex-direction:column;gap:2px;margin:0;padding:8px 0;border-top:1px solid var(--line);font-size:13.5px;line-height:1.45}
+#app .hfl-ai small{font-size:12px;color:var(--mut)}
+#app .hfl-grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+#app .hfl-grid2.big{gap:16px}
+#app .hfl-title{min-height:40px;width:min(420px,100%);box-sizing:border-box;padding:0 2px;border:0;border-bottom:1px solid var(--hair2);background:transparent;color:var(--ink);font:500 22px var(--fr)}
+#app .hfl-caps{border:1px solid var(--line);border-radius:18px;padding:10px 22px;min-height:380px;max-height:60vh;overflow-y:auto;box-sizing:border-box}
+#app .hfl-cap{display:grid;grid-template-columns:60px minmax(0,1fr);gap:12px;margin:0;padding:9px 0;font-family:var(--fr);font-size:16px;line-height:1.6;color:var(--mut)}
+#app .hfl-cap .mono{padding-top:4px;font-size:11.5px}
+#app .hfl-cap.now{color:var(--ink);font-size:18.5px}
+#app .hfl-add{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px}
+#app .hfl-add>div{flex:1 1 200px}
+#app .hfl-wr{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) 90px;gap:14px;align-items:center;padding:10px 0;border-top:1px solid var(--line);font-size:14px}
+#app .hfl-wr.hd{border-top:0;font-size:12.5px;font-weight:500;color:var(--mut)}
+#app .hfl-tg{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--line);font-size:14px}
+#app .hfl-tg small{display:block;font-size:12.5px;color:var(--mut);margin-top:2px}
+#app .hfl-on{font-size:12.5px;font-weight:600;color:var(--ok)}#app .hfl-off{font-size:12.5px;font-weight:600;color:var(--mut)}
+#app #micBtn.busy{opacity:.6}
+@media (max-width:860px){#app .hfl-starts,#app .hfl-grid2.big{grid-template-columns:1fr}#app .hfl-col{max-width:none}}
+@media (max-width:760px){#app .hfl{flex-direction:column}#app .hfl-side{flex:0 0 auto;flex-direction:row;flex-wrap:wrap;border-right:0;border-bottom:1px solid var(--line);padding:10px}#app .hfl-brand{width:100%;margin-bottom:6px}#app .hfl-side .hfl-fine{display:none}#app .hfl-main{padding:20px 16px 36px}#app .hfl-turn{grid-template-columns:1fr}#app .hfl-ch .hfl-in{width:100%;max-width:none}#app .hfl-ch{flex-wrap:wrap}}

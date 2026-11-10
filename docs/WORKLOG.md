@@ -2696,3 +2696,27 @@ Task: owner "NOW CREATE A BOX FOR FREE APIS FIRST" (one call that picks + calls 
 Work: publicapis/box.py (13 live-tested starter recipes + learned calls, fallback, one answer, health table + daily
 check), tool api_box, POST /api/box/call + GET /api/box, family words, prompt line, registry 621; test_v0750_api_box.py (8).
 Deploy: vps-ops deploy; healthz must read 0.750.0; then python -m app.publicapis.box check for the first full check.
+
+Task ID: v0.751.0 HOOLA FLOW (built as 0.749; their SAB PUBLIC APIS took 0.749.0 and API BOX 0.750.0 - REBASE PROTOCOL twice, all kept)
+Ask: a Wispr Flow for Hoola - check the code (it is the Kaan pack W0-W6), design (8-screen canvas), then "GO".
+Built: console page flow.js, /api/flow (kaan/flow.py), WAV-piece mic recorder, chat box dictation through Kaan.
+Deploy: vps-ops deploy (server only).
+
+Task ID: v0.752.0 ARTCRAFT IN CREATE
+Ask: develop ArtCraft in the Create section (backend = the v0.730 shilp lane).
+Built: Create studio ArtCraft tool (studio.js), /api/shilp page door (shilp/api.py), finished files onto My creations.
+Deploy: vps-ops deploy (server only); needs ARTCRAFT_API_KEY in the VPS .env for real jobs.
+
+Task ID: v0.753.0 SKILLS FIND + UIUX DATA
+Ask: check the awesome skills deployed in the backend, then fix what the audit found.
+Built: when_to_use trigger words on 42 pack skills + seed_when, stricter match for long descriptions, awesome rows on the skills card, UI/UX Pro Max data committed.
+Deploy: vps-ops deploy (server only).
+
+---
+Task ID: v0.754.0 KEYED BOX
+Agent: Claude (session 019P5N4a)
+Task: data.gov.in key for every Hoola user (server .env, not the app) + mandi / govt dataset recipes in the API box.
+Work Log:
+- SERVER_KEYS + server_key() in publicapis/service.py; config data_gov_in_api_key; box needs_key + optional filters.
+- Recipes mandi_price, india_gov_dataset; api_box tool text; 4 new tests, v0750 pin 13 -> 15; 17 passed.
+Stage Summary: server-only; owner adds DATA_GOV_IN_API_KEY to ~/apps/santosh-core/.env and restarts. Not yet live-verified.

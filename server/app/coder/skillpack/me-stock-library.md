@@ -1,6 +1,7 @@
 ---
 name: me-stock-library
 description: Stock library - free legal assets into photo lanes
+when_to_use: stock photos, free images, royalty free, music for video, b-roll, free assets, background music, icons
 ---
 GOAL: Hoola ko content chahiye - template me photo, film me b-roll,
 story me background track - aur internet pe sabse bada LEGAL goldmine

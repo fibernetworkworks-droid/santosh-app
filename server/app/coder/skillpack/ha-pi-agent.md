@@ -1,6 +1,7 @@
 ---
 name: ha-pi-agent
 description: Pi agent - always-on home agent, one job first
+when_to_use: raspberry pi, pi, home server, always on device, smart display, show prices on a screen, iot, arduino, home automation box
 ---
 GOAL: sapna ye hai ki Hoola ek Pi pe always-on home agent ban jaye -
 ghar ka chhota dimaag jo subah routine uthaye, AC/tv sambhale,

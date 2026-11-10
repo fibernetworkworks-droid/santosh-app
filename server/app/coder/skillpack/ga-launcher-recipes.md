@@ -1,6 +1,7 @@
 ---
 name: ga-launcher-recipes
 description: Steam/Deck recipes - launch, notes, playtime, approval
+when_to_use: steam, steam deck, game launcher, game settings, launch options, controller, playtime, pc game not working
 ---
 GOAL: Hoola launcher me har game apni RECIPE CARD ke saath khulta hai
 - launch path, flags, controller notes, known fixes - sab memory me.

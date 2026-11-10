@@ -1,6 +1,7 @@
 ---
 name: ne-diagnostics
 description: Diagnostics ladder - pc_status to PCAP, printed steps
+when_to_use: network, internet slow, wifi, wifi slow, net down, website not opening, connection problem, diagnose, ping, dns, latency, disconnect, connection drops
 ---
 GOAL: user bola "net down", "site nahi khul rahi", "call atak gayi"
 - Hoola ka kaam guess nahi, LADDER chalana hai: shallow check pehle,

@@ -1,6 +1,7 @@
 ---
 name: prog-windows-script-lane
 description: AHK/AutoIt/VBA scripts - the third automation lane
+when_to_use: autohotkey, ahk, autoit, vba, macro, excel macro, windows script, automate windows app, fill form automatically
 ---
 GOAL: reach the apps the other two lanes cannot - legacy Windows software, tray-only
 apps, Office files - by WRITING a script she can read, not by pressing keys.

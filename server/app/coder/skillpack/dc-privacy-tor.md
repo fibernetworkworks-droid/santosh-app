@@ -1,6 +1,7 @@
 ---
 name: dc-privacy-tor
 description: Privacy lane - outsider checks, no blockchain detours
+when_to_use: privacy, tor, anonymous browsing, vpn, is my data safe, tracking, blockchain, crypto, decentralized
 ---
 GOAL: awesome-tor jaise Tor/privacy catalogs syllabus hain - curated
 lists me onion routing, anonymity tooling, privacy guides milte hain.

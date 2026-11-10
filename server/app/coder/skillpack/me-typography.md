@@ -1,6 +1,7 @@
 ---
 name: me-typography
 description: Fonts and icons - template typography, license laws
+when_to_use: fonts, font pairing, typography, which font, free fonts, icons, hindi font, devanagari font
 ---
 GOAL: template ka look 90% typography decide karta hai - font sahi to
 card premium, font galat to puri mehnat bekaar. Do syllabus:

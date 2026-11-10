@@ -62,3 +62,56 @@ ASKS: list[dict] = [
 
 PACK = ("internal-comms", "theme-factory", "frontend-design", "canvas-design", "webapp-testing",
         "mcp-builder", "coauthor-docs", "skill-maker")
+
+
+# v0.753 THE AWESOME PACKS: the everyday asks the awesome-list skills must answer to (free card only - reachability).
+# `want` = a skill-name prefix; the right skill must be in the injected top 2. `tuned` = the 20 asks the plain trigger
+# words (`when_to_use`) were written against; `held` = 20 fresh asks written AFTER, scored first at 17/20 before three
+# words were added (that tuning is said here so the number stays honest). AWESOME_NEG must pull in no skill at all.
+AWESOME_SET_V = 1
+AWESOME: list[dict] = [
+    {"id": f"aw-{i:02d}", "set": s, "want": w, "text": t} for i, (s, t, w) in enumerate([
+        ("tuned", "make a 15 second sales chart video for reels", "fe-frames"),
+        ("tuned", "write a diwali offer email for my customers", "fe-email"),
+        ("tuned", "which python library should I use to read excel", "prog-library"),
+        ("tuned", "write an autohotkey script to fill this form", "prog-windows"),
+        ("tuned", "plan a small 2d game in godot", "ga-game"),
+        ("tuned", "my postgres database is getting slow, move from sqlite", "db-scale"),
+        ("tuned", "find royalty free stock photos and music for my video", "me-stock"),
+        ("tuned", "teach me python step by step", "le-mentor"),
+        ("tuned", "check my prompts for prompt injection", "se-injection"),
+        ("tuned", "set up a raspberry pi to show my shop prices", "ha-pi"),
+        ("tuned", "where should I post my product launch online", "bu-post"),
+        ("tuned", "my wifi network is slow, diagnose it", "ne-diag"),
+        ("tuned", "upcoming tech conferences and call for papers", "ev-cal"),
+        ("tuned", "write end to end tests for my website", "te-web"),
+        ("tuned", "brainstorm before building this feature", "sp-brainstorm"),
+        ("tuned", "debug this failing test systematically", "sp-"),
+        ("tuned", "benchmark these two models fairly", "bd-eval"),
+        ("tuned", "drive vs code command palette to rename a symbol", "ed-vscode"),
+        ("tuned", "set up a new laptop for development", "de-naya"),
+        ("tuned", "i feel stressed and overworked", "hs-well"),
+        ("held", "mere shop ke liye ek animated reel banao jisme sales badhte dikhe", "fe-frames"),
+        ("held", "customers ko naye saal ka greeting mail bhejna hai", "fe-email"),
+        ("held", "pdf se table nikalne ke liye kaunsa package use karu", "prog-library"),
+        ("held", "excel mein ek macro likh do jo rows colour kare", "prog-windows"),
+        ("held", "bachon ke liye ek chhota mobile game banana hai", "ga-game"),
+        ("held", "database bahut slow chal raha hai users badh gaye", "db-scale"),
+        ("held", "youtube video ke liye free background music chahiye", "me-stock"),
+        ("held", "mujhe javascript sikhao shuru se", "le-mentor"),
+        ("held", "is chatbot ko jailbreak se kaise bachaye", "se-injection"),
+        ("held", "ghar mein ek raspberry pi lagana hai jo hamesha on rahe", "ha-pi"),
+        ("held", "app launch ho gaya, kin directories mein list karu", "bu-post"),
+        ("held", "internet baar baar disconnect ho raha hai", "ne-diag"),
+        ("held", "is mahine kaun kaun se hackathon hain", "ev-cal"),
+        ("held", "meri website ka load test karna hai", "te-web"),
+        ("held", "kya naya video model aaya hai jo better ho", "cs-zoo"),
+        ("held", "vs code mein extension kaise lagaye", "ed-vscode"),
+        ("held", "office ka naya laptop hai, coding ke liye ready karo", "de-naya"),
+        ("held", "bahut thak gaya hoon, kaam ka pressure hai", "hs-well"),
+        ("held", "server pe ssh secure kaise karu, kisi ne hack karne ki koshish ki", "se-hard"),
+        ("held", "aaj subah kya kya karna hai, inbox bhi dekho", "wo-task"),
+    ])]
+AWESOME_NEG: list[str] = ["kal ka mausam kaisa rahega", "5 baje yaad dilana", "mummy ko call karo",
+                          "ek cab book karo station ke liye", "2+2 kitna hota hai", "is photo mein kya hai",
+                          "Ravi ko 500 rupaye bhejne hain", "aaj ki news batao"]

@@ -1,6 +1,7 @@
 ---
 name: fe-ui-kit
 description: Hoola UI kit tokens - har screen ek family
+when_to_use: brand colors, colours, fonts, theme, design tokens, consistent look, style guide, Hoola look
 ---
 GOAL: jo bhi Hoola likhti hai - HyperFrames composition, email, console card, HTML
 page - SAB ek hi family mein dikhe. Design-system ka rule: tokens pehle, naya rang

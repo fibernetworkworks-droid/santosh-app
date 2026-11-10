@@ -1,6 +1,7 @@
 ---
 name: me-ffmpeg-recipes
 description: ffmpeg recipes - compress numbers for video lanes
+when_to_use: compress video, video size, ffmpeg, convert video, reduce file size, video quality, encode, mp4 too big
 ---
 GOAL: Hoola ke video lanes - video_edit, video_studio, motion_video -
 khud encode karte hai, andar se encoder chalta hai. Lane ka kaam

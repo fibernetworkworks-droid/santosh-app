@@ -1,6 +1,7 @@
 ---
 name: db-gui-ops
 description: DB GUIs via ax tree - browse, query, export, approved
+when_to_use: pgadmin, dbeaver, tableplus, database GUI, run a query, export table, browse database, sql client, database tool
 ---
 GOAL: DB GUI tools (pgAdmin, DBeaver, TablePlus shapes; Beekeeper, Adminer,
 DataGrip jaise aur bhi) semantically controllable hain - unhe pixel se

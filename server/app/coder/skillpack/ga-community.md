@@ -1,6 +1,7 @@
 ---
 name: ga-community
 description: Discord-shaped community - samudaay lanes, consent laws
+when_to_use: discord, community, members, channels, roles, community events, group, weekly digest, fan community
 ---
 GOAL: Discord jaise shapes - channels, roles, events, weekly digest -
 Hoola APNE samudaay me banti hain, kisi bahar ke server pe nahi.

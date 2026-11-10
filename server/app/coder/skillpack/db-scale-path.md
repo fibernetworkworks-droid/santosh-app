@@ -1,6 +1,7 @@
 ---
 name: db-scale-path
 description: SQLite to Postgres - dbmove path, printed row proof
+when_to_use: postgres, move from sqlite, database slow, scale database, migrate database, too many users, database growing
 ---
 GOAL: mem-store filhaal SQLite hai (app/db.py) - ek user, ek file, kaam chalta
 hai. Jab multi-user ya traffic aaye, Postgres (app/pgdb + postgres tool)

@@ -199,6 +199,8 @@ def save_key(tenant: str, api_id: str, key: str, place: str = "query", field: st
     if len(key) < 4 or len(key) > 500:
         raise ApiError("Key sahi nahi lag rahi.")
     place = "header" if place == "header" else "query"
+    if r["id"] in KEY_PLACE and not field:
+        place, field = KEY_PLACE[r["id"]]
     field = re.sub(r"[^A-Za-z0-9_\-]", "", field or "")[:60] or ("X-Api-Key" if place == "header" else "apikey")
     with session() as s:
         row = s.scalars(select(PublicApiKey).where(PublicApiKey.tenant_id == tenant, PublicApiKey.api_id == r["id"])).first()
@@ -227,13 +229,41 @@ def list_keys(tenant: str) -> list[dict[str, Any]]:
         return out
 
 
+def server_key(api_id: str) -> tuple[str, str, str] | None:
+    """v0.754: a key the OWNER put in the VPS .env for Hoola itself - used for every user, never shown in any app,
+    never sent to the model."""
+    spec = SERVER_KEYS.get(api_id)
+    if not spec:
+        return None
+    from ..config import get_settings
+    v = str(getattr(get_settings(), spec[0], "") or "").strip()
+    return (v, spec[1], spec[2]) if v else None
+
+
 def _key_for(tenant: str, api_id: str) -> tuple[str, str, str] | None:
     from ..bazar.security import vault
+    sk = server_key(api_id)
+    if sk is not None:
+        return sk
     with session() as s:
         row = s.scalars(select(PublicApiKey).where(PublicApiKey.tenant_id == tenant, PublicApiKey.api_id == api_id)).first()
         if row is None:
             return None
-        return vault().open(row.sealed), row.place, row.field
+        place, field = KEY_PLACE.get(api_id, (row.place, row.field))
+        return vault().open(row.sealed), place, field
+
+
+# Where a known API reads its key (from its own docs) - wins over what was typed in the app, so a wrong field name
+# typed on the phone can never break the call.
+KEY_PLACE = {"government-open-government-india": ("query", "api-key")}
+# api_id -> (settings field = the .env name in lower case, place, field). One server key serves every user.
+SERVER_KEYS = {"government-open-government-india": ("data_gov_in_api_key", "query", "api-key")}
+
+
+def server_key_hint(api_id: str) -> str:
+    spec = SERVER_KEYS.get(api_id)
+    return (f"not set up on this Hoola server yet (the server owner adds {spec[0].upper()}=... to the VPS .env)"
+            if spec else "")
 
 
 # ---------------------------------------------------------------- calling
@@ -299,6 +329,8 @@ async def call(tenant: str, url: str, params: dict[str, Any] | None = None, api_
     if api_id:
         r = get(api_id)
         k = _key_for(tenant, r["id"])
+        if k is None and r["id"] in SERVER_KEYS:
+            raise ApiError(f"{r['name']} is {server_key_hint(r['id'])}. Never ask for the key in chat.")
         if k is None and r["auth"] not in ("none",):
             raise ApiError(f"{r['name']} ko key chahiye ({r['auth']}). Owner Connect > Public APIs mein '{r['name']}' "
                            f"kholkar apni key save karein ({r['link']} par free key milti hai). Chat mein key mat bhejiye.")

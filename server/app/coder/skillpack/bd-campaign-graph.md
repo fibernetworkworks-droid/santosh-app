@@ -1,6 +1,7 @@
 ---
 name: bd-campaign-graph
 description: Campaign graph analytics - segments from engagement edges
+when_to_use: campaign analytics, customer segments, who engaged, engagement graph, network analysis, best customers, clusters, influencers in my list
 ---
 GOAL: campaigns ke aas-paas ka data pehle se hi ek GRAPH hai - customer
 aur campaign nodes, engagement edges. Awesome-network-analysis ke

@@ -1,6 +1,7 @@
 ---
 name: wo-task-triage
 description: Task triage - email and kaam into one morning queue
+when_to_use: inbox, todo, task list, prioritise, morning tasks, what should I do today, kanban, triage email
 ---
 GOAL: subah ka pehla kaam - inbox aur kaamon ko EK pakki queue me
 torana, taaki din decision se shuru ho, dhundne se nahi. Syllabus:

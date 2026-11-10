@@ -637,7 +637,13 @@ _SKILL_STOP = frozenset((
     "the and for with this that from your you are was were have has had not but can will just into onto "
     "about please what when where which who how why mein hai hain hoon tha thi the aur par per ko ki ka ke "
     "se liye wala wali kya kaise kab kahan kyun nahi mera meri mere aap aapka aapki main hum tum yeh woh "
-    "iska iski uska uski abhi kuch koi sab bhi toh bas ek kar karo karna kiya hota hoti").split())
+    "iska iski uska uski abhi kuch koi sab bhi toh bas ek kar karo karna kiya hota hoti "
+    # v0.753: English helper words - "should" + "use" alone pulled internal-comms into "which python library should
+    # I use to read excel" (its description says "Claude should use this skill")
+    "should would could use using want need make get some any all its our their them then than also").split())
+
+
+LONG_DESC = 200                  # v0.753 descriptions longer than this need two of her words in name / description
 
 
 def skills_search(tenant: str, query: str, limit: int = 2, include_disabled: bool = False) -> list[dict]:
@@ -673,8 +679,13 @@ def skills_search(tenant: str, query: str, limit: int = 2, include_disabled: boo
                         body = str(r["body"] or "").lower()
                         top = {w for w in words if w in name_words or re.search(r"\b" + re.escape(w), desc)}
                         deep = {w for w in words if re.search(r"\b" + re.escape(w), body)}
-                        # at least one of her words in the skill's own name / description, and two in all
-                        if (top and len(top | deep) >= 2) or (top & name_words and len(words) <= 2):
+                        # at least one of her words in the skill's own name / description, and two in all.
+                        # v0.753: a LONG description (an imported Claude skill, 200+ chars of everyday words like
+                        # "write / reports / updates / pages") needs two of her words in the name / description
+                        # itself - one common word plus a body hit pulled internal-comms / theme-factory into
+                        # unrelated asks ("which python library reads excel", "set up a new laptop").
+                        need_top = 2 if len(desc) > LONG_DESC else 1
+                        if (len(top) >= need_top and len(top | deep) >= 2) or (top & name_words and len(words) <= 2):
                             out.append(dict(r))
                         if len(out) >= limit:
                             break

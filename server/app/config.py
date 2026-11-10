@@ -477,6 +477,9 @@ class Settings(BaseSettings):
     seekh_live_notes: bool = True          # v0.745 notes stream onto the Video Learner page as Gemini writes them
     interactive_page: bool = True          # v0.747 HOOLA INTERACTIVE: the console's video studio (one line -> scenes -> HyperFrames MP4)
     hoola_code_page: bool = True          # v0.748 HOOLA CODE: Developer Sahayak as a console page (sessions, live steps, plan, PR, reviews)
+    flow_page: bool = True                # v0.751 HOOLA FLOW: the Kaan pack as a console page (dictate, files, live captions, words, settings)
+    flow_composer_mic: bool = True        # v0.751 the chat box mic dictates through Kaan when its engine is ready (else the browser's own)
+    shilp_page: bool = True               # v0.752 ARTCRAFT IN CREATE: the Create studio's ArtCraft tool over the shilp lane (/api/shilp)
     seekh_file_max_s: int = 1800           # that already ship (procedures + operator recipe drafts) - off = off
     voice_adapt: bool = True               # v0.119 her own pauses / style / words / mis-hearings shape the call
     site_model: str = "claude-opus-5-5"     # v0.121 Website Sahayak: model that designs and writes every section
@@ -926,6 +929,7 @@ class Settings(BaseSettings):
     app_redirect_scheme: str = "santosh"    # deep link back into the phone app after sign-in
     hoola_signup: str = "open"              # who can make a NEW Hoola with Google sign-in: open (anyone) | invite
     hoola_signup_allow: str = ""            # invite mode: comma list of emails and/or @domain.com allowed to sign up
+    data_gov_in_api_key: str = ""           # v0.754 data.gov.in (Open Government Data India) - ONE server key for every user, VPS .env only
     google_maps_api_key: str = ""           # Maps Platform key: Places API (New), Routes API, Geocoding API
     # v0.449 PAISA PEHLE: Maps had no ceiling at all. These are the first ones.
     maps_daily_inr: float = 200.0           # per tenant per day; a call that would cross it is REFUSED, not billed. 0 = no cap

@@ -286,3 +286,53 @@ nothing older than 30 days re-checked, route + worker slot off at 0, her words o
 tool-count pins moved 620 -> 621.
 NOT VERIFIED: the daily health check on her VPS (first run after deploy logs `api box health: ...`); Open-Meteo weather
 was rate-limited from the sandbox's shared address that day.
+
+## v0.751.0 HOOLA FLOW — the Kaan pack (W0-W6) as a console page, like Wispr Flow (10 Nov 2026; built as 0.749 - their SAB PUBLIC APIS took 0.749.0 and API BOX 0.750.0, all kept; owner: "a wisperflow of hoola - check the code" -> "WISPERFLOW IS FULLY DEVELOPED, CHECK THE REPO" -> "first show me the design here" -> the 8-screen canvas -> "GO")
+
+The owner's "Wispr Flow" is the Kaan pack (WhisperAI feed plan, W0 v0.601 -> W6 v0.682: transcription, pause turns + minutes, live captions, word list + styles, exports + Gyaan + translate, HTTP / MCP / extension doors, quotas + retention + voiceprint). All 7 Kaan suites pass (154 tests). It had no page of its own; now it has one, riding the /api/kaan/* routes unchanged.
+- PAGE `static/console/flow.js` (`.hfl-` styles in v2.css, sidebar row "Hoola Flow" under Create, switch `flow_page`, pinned off in conftest for old suites): Home, Dictate, Files, one transcript, Live captions, My words, Settings (read from the server: the engine, the recording switch KAAN_AUDIO, speakers, voiceprint, the monthly limit, delete-after days, the other doors - changed in the server settings, not on the page).
+- MIC: `HoolaFlowRec` captures the mic with an AudioContext + ScriptProcessor and sends 16 kHz mono 16-bit WAV pieces every 2 s; every piece is a whole file, so `live._decode_chunk` (ffmpeg) reads each one on its own. `HoolaFlowSession` wraps live start / chunk (in order, one at a time) / stop. Proven in Chromium with a fake mic: 4 pieces, each decoded by the server's real ffmpeg, 3.25 s for 3.3 s recorded.
+- CHAT BOX: `HoolaFlowMic` - when `flow_composer_mic` is on and the engine is ready, the composer mic (and Ctrl + Space in the box) dictates through Kaan and puts the Clean text in the box (nothing sends by itself); otherwise the v0.173 browser speech service as before.
+- NEW `kaan/flow.py` -> /api/flow: overview (plain-English state + recent items with kind dictated / live / file), transcript with segments + turns, rename, pin (the W6 sweep keeps it), delete (her tap).
+- PROOF: `tests/test_v0751_hoola_flow.py` 6 (switch off = 404, overview / rename / keep / delete, a dictation round trip named as dictated + clean style, the page's WAV decoded by the real ffmpeg piece by piece, the page wiring, the page walked in a real browser: home + search, a transcript with turns, styles, action items -> the chat box, words, settings, dictate, files).
+- FOUND, NOT FIXED (frozen desktop/): the Chrome extension's offscreen.js sends MediaRecorder webm slices every 2 s; a webm slice after the first has no header, so ffmpeg likely refuses pieces 2+ of a tab caption. The console's own recorder avoids it with WAV pieces. The fix (restart the recorder per slice, or send WAV) is in desktop/ext, frozen - needs her word.
+- NOT VERIFIED: no real voice on her server yet (the engine is installed there per the W1 notes; this sandbox has no Whisper); the phone screen is not built; a file is answered in one go when the whole recording is written (no progress percent); no audio player on a transcript (Kaan keeps text, not audio).
+
+## v0.752.0 ARTCRAFT IN CREATE — the v0.730 SHILP lane as a Create studio tool (10 Nov 2026; owner: "now lets develop a artcraft in create section in hoola --- artcraft is already developed in backend")
+
+The backend (v0.730 SHILP MANCH, `agent/shilp_tools.py`) was a chat tool only: ArtCraft's Omni API (api.storyteller.ai, BYOK key in the VPS .env) for video + picture generation and job polling. Now the Create studio has it as a tool.
+- PAGE (studio.js `V.artcraft` / `W.artcraft`, sidebar row "ArtCraft" under Tools + a home tile; shown when the console config says `artcraft` = `shilp_page` and `shilp_enabled`): Video | Picture; the model id (ArtCraft's own snake_case ids - her used ids + the documented `seedance_2p0` as suggestions; the curated catalog by family under "What ArtCraft has"); the prompt; video shape 16:9 / 9:16 / 1:1, seconds, 720p / 1080p, model sound; Advanced: keep-out, first / last frame, reference picture links (public links only). Create = her tap plus one confirm ("spends credits on your ArtCraft account"). Results: running jobs (ArtCraft's own status + %), finished files as normal Create tiles (open / download / delete), failed jobs with ArtCraft's reason, Remove.
+- SERVER `server/app/shilp/api.py` -> /api/shilp (switch `shilp_page`, pinned off in conftest): GET (lane state - key set or the setup steps -, catalog, her jobs with running ones refreshed in ONE batch call, models she used), POST /generate (refused without confirm=true; rides the shilp tool, so the idempotency token, the reference-url wall and the 402-is-final law all hold), POST /jobs/{token}/check, DELETE /jobs/{token}. Jobs in data/shilp/<tenant>/jobs.json.
+- ON HER SHELF: the first time a job finishes, its file is fetched once from the cdn_url ArtCraft returned for THAT job (through the lane's wall: public https, no loopback / private hosts; 300 MB cap; must really be a video / picture) and kept with `create.jobs.keep` (meta source ArtCraft, model, job), so it is in My creations and outlives ArtCraft's link. A failed copy keeps the link ("Open at ArtCraft") and says why.
+- PROOF: `tests/test_v0752_artcraft_create.py` 6 (switch off / no key + setup steps, no confirm = no call, generate -> poll -> complete -> file on the shelf once -> remove keeps the file, 402 and a private reference link refused before anything is kept, a private file link never fetched, wiring, the tool walked in a real browser: running + failed tiles, model suggestion, Create sends confirm + shape, Picture mode). The shilp (43) and Create studio (18) suites re-run green.
+- NOT VERIFIED: no real ArtCraft call has ever been made from Hoola (no key in this sandbox; API access is gated per account by the ArtCraft team); the cdn host and the exact model ids her account has are only known after her first real job. Audio / 3D / worlds are not offered - their Omni API documents only video + picture.
+
+## v0.753.0 SKILLS FIND + UIUX DATA — the awesome-pack skills reached by everyday words, quieter Anthropic skills, the UI/UX Pro Max database committed (10 Nov 2026; owner: "now check the awsome skills deployed in backend" -> "go")
+
+THE AUDIT (before): 9 of 20 everyday Hinglish asks got the right awesome-pack skill in the injected top 2 (the descriptions were written in the packs' own vocabulary, not the words people type); internal-comms and theme-factory (long Anthropic descriptions full of everyday words) rode along on unrelated asks ("which python library should I use to read excel", "set up a new laptop"); `server/app/coder/uiux/data/` (the UI/UX Pro Max database, v0.486) had never been committed, so 6 UIUX tests failed and the uiux_design tool had nothing to search on a fresh checkout.
+- TRIGGER WORDS: each of the 42 awesome-pack files has a `when_to_use:` line (plain words people type, <= 240 chars here, WHEN_MAX 300). `skills_store.create(extra=)` keeps it on the strict lane; `_mirror` appends it to the searched description. `add_when` / `get_when` change only that frontmatter field. `skill_packs.seed_when` (own stamp = digest of every shipped line, so improving a line re-runs it once): a skill with no line gets one, a line Hoola shipped earlier (remembered by hash, `skills:whenmine:`) is replaced, a line she wrote is never touched; her description / body never change.
+- QUIETER MATCH (`store.skills_search`): a description over 200 chars (LONG_DESC) needs two of her words in the name / description, not one plus a body hit; English helper words (should / would / use / need / make / get / some / all ...) joined the stop list - "should" + "use" alone had matched internal-comms ("Claude should use this skill").
+- CARD (`python -m app.quality skills`): an Awesome packs line - 20 tuned asks, 20 fresh asks written before tuning (17/20 at first, three trigger words added after), 8 unrelated asks that must pull no skill. Clean tenant: tuned 20/20, fresh 19/20 (miss: "is mahine kaun kaun se hackathon hain"), unrelated 8/8; the original card rows stay 10/10 and 4/4.
+- UIUX DATA: restored from upstream nextlevelbuilder/ui-ux-pro-max-skill commit 6ae86f6 (`src/ui-ux-pro-max/data`, MIT, same LICENSE; the vendored scripts are byte-identical to that commit), phosphor-icons-upstream.json left out as PROVENANCE.md already said.
+- PROOF: `tests/test_v0753_skill_triggers.py` 7 + the skill suites (desk, byox, uiux, starter / packs, fe, omni, routines) re-run.
+- NOT VERIFIED: the free card proves the skill is offered, not that the model follows it (`--live` not run); a tenant's skills get the trigger words on its next chat turn / Skill Desk open.
+
+
+
+## v0.754.0 KEYED BOX - data.gov.in on one server key (owner: "Open Government India (data.gov.in) -- GOT THIS" -> "I HAVE NOT PUT ANY KEY IN APP --- IT SHOULD NOT SEEN IN APP --- IT IS FOR HOOLA FOR ALL USER")
+
+The v0.750 box held only free (no key) APIs. A recipe may now be `needs_key`. Keys come from two places, in order:
+1. a SERVER key the owner puts in the VPS `.env` for Hoola itself (`publicapis.service.SERVER_KEYS`: api_id ->
+   settings field, place, field). It serves every user, appears in no app, never reaches the model. data.gov.in =
+   `DATA_GOV_IN_API_KEY`, sent as the query parameter `api-key` (its own docs).
+2. else a user's own key saved in the app (the v0.4xx path; `KEY_PLACE` now overrides a wrong field typed on the phone).
+
+New recipes: `mandi_price` = data.gov.in resource 9ef84268-d588-465a-a308-a864a43d0070 (current daily mandi prices;
+optional filters commodity / state / district / market, added as `filters[...]` pairs only when given, urlencoded so a
+value can never become a parameter of its own) and `india_gov_dataset {resource_id}` (any data.gov.in resource).
+No key = the recipe is skipped and the answer says the server owner must add `DATA_GOV_IN_API_KEY`; the model is told
+never to ask for a key in chat. service.call says the same for a server-keyed API without a key.
+
+Tests: test_v0754_box_keyed.py (4, offline MockTransport) + test_v0750 starter count 13 -> 15.
+NOT VERIFIED: data.gov.in refuses this sandbox (connection reset), so the first live call is on the VPS; the filter
+names `filters[commodity]` etc. are from the platform's documented shape and are checked by that first call.

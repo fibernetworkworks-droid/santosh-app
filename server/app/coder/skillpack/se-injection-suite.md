@@ -1,6 +1,7 @@
 ---
 name: se-injection-suite
 description: Injection suite - attack our prompts before they do
+when_to_use: prompt injection, jailbreak, attack prompts, ai security, test prompts, malicious instructions, chatbot safety
 ---
 GOAL: awesome prompt-injection collections (curated attack catalogs,
 generically) syllabus hain - unse technique uthao, par shikaar Hoola

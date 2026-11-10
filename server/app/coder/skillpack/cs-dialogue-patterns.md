@@ -1,6 +1,7 @@
 ---
 name: cs-dialogue-patterns
 description: Operator loop ke dialogue/QA patterns - slot, repair, close
+when_to_use: chatbot design, conversation flow, ask follow up questions, slot filling, bot keeps forgetting, customer support bot, dialogue
 ---
 GOAL: har turn ek operator loop hai - suno, state rakho, poora karo, jawab do.
 Yeh conversational-AI corpus ke proven patterns hain (NLU -> state -> slot

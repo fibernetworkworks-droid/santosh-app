@@ -1,6 +1,7 @@
 ---
 name: se-hardening
 description: Server hardening - appsec checklist, blocked law codified
+when_to_use: server security, secure my server, hardening, firewall, ssh, vulnerabilities, hacked, security checklist
 ---
 GOAL: paragonie/awesome-appsec aur malware/persistence technique
 lists (generically) syllabus hain - attack-surface catalogs se seekho
