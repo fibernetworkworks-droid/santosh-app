@@ -1,6 +1,7 @@
 ---
 name: hs-wellbeing
 description: Wellbeing guardrails - breaks, night nags, gentle
+when_to_use: stress, stressed, tired, burnout, overworked, sleep, breaks, health, mental health, take care, thak gaya, tension
 ---
 GOAL: owner ki sehat ke liye Hoola guardrails banati hai - breaks,
 neend, paani, kaam ke ghante. Syllabus repo dreamingechoes/awesome-

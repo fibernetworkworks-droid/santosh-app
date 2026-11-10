@@ -1,4 +1,4 @@
-"""v0.750 HOOLA FLOW (built as 0.749; their SAB PUBLIC APIS took 0.752.0, both kept) (owner: "a wisperflow of hoola - check the code" -> "first show me the design here" -> the 8-screen
+"""v0.750 HOOLA FLOW (built as 0.749; their SAB PUBLIC APIS took 0.753.0, both kept) (owner: "a wisperflow of hoola - check the code" -> "first show me the design here" -> the 8-screen
 canvas -> "GO"): the Kaan pack (W0-W6) as a console page. The page rides the /api/kaan/* routes as they are; /api/flow adds
 only what a page needs (one overview, a transcript with its turns, rename / keep / delete). The mic sends 16 kHz mono WAV
 pieces - each a whole file the server's real ffmpeg decodes on its own - and the walk runs in a real browser."""

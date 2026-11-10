@@ -2706,3 +2706,8 @@ Task ID: v0.752.0 ARTCRAFT IN CREATE
 Ask: develop ArtCraft in the Create section (backend = the v0.730 shilp lane).
 Built: Create studio ArtCraft tool (studio.js), /api/shilp page door (shilp/api.py), finished files onto My creations.
 Deploy: vps-ops deploy (server only); needs ARTCRAFT_API_KEY in the VPS .env for real jobs.
+
+Task ID: v0.753.0 SKILLS FIND + UIUX DATA
+Ask: check the awesome skills deployed in the backend, then fix what the audit found.
+Built: when_to_use trigger words on 42 pack skills + seed_when, stricter match for long descriptions, awesome rows on the skills card, UI/UX Pro Max data committed.
+Deploy: vps-ops deploy (server only).

@@ -1,6 +1,7 @@
 ---
 name: wo-chatops
 description: ChatOps - ops from a chat, same approval laws
+when_to_use: slack, chatops, slash command, bot in slack, operations from chat, deploy from chat
 ---
 GOAL: ChatOps ka matlab - operations chat se chalana, dashboard ya
 terminal nahi kholna. matiassingers/awesome-slack syllabus hai (Slack

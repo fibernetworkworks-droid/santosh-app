@@ -1,6 +1,7 @@
 ---
 name: mi-bots-research
 description: Personas + research + metrics + regex, all printed
+when_to_use: bot persona, regex, regular expression, research a topic, campaign metrics, analytics, survey
 ---
 GOAL: chaar chhoti lanes, ek skill - bot ke personas banana, research
 chalana, campaign ke metrics padhna, regex likhna. Syllabus chaar

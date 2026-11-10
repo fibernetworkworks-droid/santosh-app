@@ -1,6 +1,7 @@
 ---
 name: re-awesome-search
 description: awesome-search over our index - the lists shelf
+when_to_use: awesome list, curated list, best tools list, find a list of tools, resources list, github awesome
 ---
 GOAL: awesomelists.top ka pattern - "the Related lists": ek curated
 list ke niche doosri curated lists jutti hoti hain, aur search raw

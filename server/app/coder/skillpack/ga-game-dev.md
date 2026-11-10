@@ -1,6 +1,7 @@
 ---
 name: ga-game-dev
 description: Game-dev assistant - Godot/Flame syllabus via game lanes
+when_to_use: game, make a game, 2d game, godot, flame, game idea, game design, mobile game, unity
 ---
 GOAL: Hoola ka game lane ek chhota studio hai - idea se launch tak
 wahi raasta jo jam teams chalte hain. Syllabus do curated awesome

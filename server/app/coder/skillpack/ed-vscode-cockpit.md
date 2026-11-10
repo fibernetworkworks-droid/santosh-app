@@ -1,6 +1,7 @@
 ---
 name: ed-vscode-cockpit
 description: VS Code cockpit - palette first, ax tree, never pixels
+when_to_use: vs code, vscode, editor, rename symbol, command palette, ide, extensions, problems panel
 ---
 GOAL: wo editor ke andar baithi hai, Hoola uske saath chalti hai -
 "drive Hoola from inside the IDE" ka matlab: VS Code pehle se hi

@@ -1,6 +1,7 @@
 ---
 name: fe-frames-templates
 description: HyperFrames MP4 template packs - charts + motion, cheap
+when_to_use: video, reel, reels, animated video, chart video, sales video, short video, motion graphics, explainer video, mp4
 ---
 GOAL: a new MP4 style is ASSEMBLED, not invented - pick a proven template block from
 this pack, swap her content in, check cheap, render once. Har baar scratch se likhna

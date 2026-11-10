@@ -1,6 +1,7 @@
 ---
 name: le-mentor
 description: Mentor mode - curated roadmap, routine, printed progress
+when_to_use: teach me, learn, learning, step by step, roadmap, course, how to become, study plan, beginner, sikhao, python, coding
 ---
 GOAL: ye mentor lane hai - "Hoola, mentor bano" par ek topic uthao aur
 roadmap syllabus se CURATE karo: liuchong/awesome-roadmaps (topic-wise

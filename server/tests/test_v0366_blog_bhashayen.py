@@ -218,5 +218,5 @@ def test_api_and_tools(site_env, kalam):
 def test_version():
     from pathlib import Path
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.752.0"
-    assert "0.752.0+751" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.753.0"
+    assert "0.753.0+752" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()

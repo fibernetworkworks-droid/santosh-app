@@ -1,6 +1,7 @@
 ---
 name: th-vision-lane
 description: Vision-lane syllabus - screenshot to action, ground first
+when_to_use: screenshot, vision model, computer use, click on screen, pc operator, screen reading
 ---
 GOAL: Hoola ka PC operator khud ek screenshot->action model hai -
 screenshot from the PC, Claude (vision) picks ONE action with a tool,

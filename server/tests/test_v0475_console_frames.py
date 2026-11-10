@@ -122,11 +122,11 @@ def test_app_version_story():
     assert f'APP_VERSION = "{APP_VERSION}"' in main    # v0.537: was a typed 0.535.0, two releases behind
     # story pin moved to the v0.555 story (the v0.476 precedent: the newest release's story carries the
     # marker; the older stories live in git history)
-    assert 'ARTCRAFT IN CREATE v0.752' in main and '0.752.0' in main  # the newest-story precedent (v0.752.0 carries the marker; older stories live in git history)
+    assert 'SKILLS FIND + UIUX DATA v0.753' in main and '0.753.0' in main  # the newest-story precedent (v0.753.0 carries the marker; older stories live in git history)
 
 
 def test_pubspec_pin():
     pub = (ROOT.parents[0] / 'pubspec.yaml').read_text(encoding='utf-8') if (ROOT.parents[0] / 'pubspec.yaml').exists() else None
     if pub is None:  # tests dir is server/tests; pubspec is at repo root
         pub = (ROOT / 'pubspec.yaml').read_text(encoding='utf-8')
-    assert 'version: 0.752.0+751' in pub
+    assert 'version: 0.753.0+752' in pub

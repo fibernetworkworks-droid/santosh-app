@@ -1,6 +1,7 @@
 ---
 name: de-naya-pc
 description: Naya PC setup - vetted bundle, visible installs, one pass
+when_to_use: new laptop, new pc, set up computer, install developer tools, fresh windows, setup for coding, naya laptop, apps to install
 ---
 GOAL: "Naya PC setup karo" ka matlab EK vetted bundle hai, random apps
 ki pile nahi. Syllabus repos: agarrharr/awesome-cli-apps (CLI tools ka

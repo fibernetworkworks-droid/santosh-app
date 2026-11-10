@@ -1,6 +1,7 @@
 ---
 name: cs-zoo-radar
 description: Zoo expansion radar - catalog first, never invented ids
+when_to_use: new AI model, better model, which model, image model, video model, model list, compare AI models, latest model
 ---
 GOAL: she asks "naya ya better model?" ya zoo search khaali aata hai - tab
 CATALOG pehle, radar baad mein. The zoo is a 436-model BYOK catalog

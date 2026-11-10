@@ -1,6 +1,7 @@
 ---
 name: mi-selfhost
 description: Self-host lens - alternatives first, free tiers next
+when_to_use: self host, open source alternative, free alternative, free tier, cheaper tool, replace paid software, saas alternative
 ---
 GOAL: Ainewtika ko jab bhi naya tool chahiye, pehle ye poochho -
 "khareedna hi kyun?" Syllabus do catalogs hain:

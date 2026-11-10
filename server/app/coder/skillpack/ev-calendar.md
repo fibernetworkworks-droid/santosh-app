@@ -1,6 +1,7 @@
 ---
 name: ev-calendar
 description: Event radar - CFPs and meetups into calendar
+when_to_use: events, conferences, tech conference, call for papers, cfp, meetups, hackathon, workshop dates, upcoming events, hackathons
 ---
 GOAL: owner ke liye event radar chalu - meetups, conferences, CFP
 deadlines sab uske calendar me pahunchein, bina double-booking ke.

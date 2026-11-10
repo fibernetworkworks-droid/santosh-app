@@ -1,6 +1,7 @@
 ---
 name: en-daily-brief
 description: Daily brief - podcasts/newsletters into one routine
+when_to_use: podcasts, newsletters, morning news, daily brief, summary every morning, what to listen, reading list, news digest
 ---
 GOAL: user ka din ek jagah se shuru ho - podcasts aur newsletters
 se bana ek chhota morning brief, Hoola khud banake push kare.

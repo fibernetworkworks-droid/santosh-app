@@ -1,6 +1,7 @@
 ---
 name: te-web-e2e
 description: Web E2E plan - Playwright, k6 load, frame diff
+when_to_use: end to end tests, e2e, playwright, load test, k6, website testing, visual regression, browser tests
 ---
 GOAL: Hoola ke web E2E ka upgrade PLAN likhna hai - filhaal Hoola ka apna
 E2E sirf the pytest suite hai (server tests, module lane path se);

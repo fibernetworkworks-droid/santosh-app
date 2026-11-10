@@ -1,6 +1,7 @@
 ---
 name: bd-eval-benchmarks
 description: Quality regression evals - public golden sets, scored runs
+when_to_use: benchmark models, compare two models fairly, evaluate answer quality, regression test the AI, golden set, score runs, is Hoola better now
 ---
 GOAL: "Hoola ab pehle se accha jawab deta hai?" - feel se nahi, SCORE se.
 Public datasets se golden set banao, har bade change ke baad wahi suite

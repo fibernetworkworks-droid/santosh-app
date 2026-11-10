@@ -1,6 +1,7 @@
 ---
 name: mg-21st-ui
 description: 21st.dev UI components - pehle catalog, phir craft
+when_to_use: ui component, react component, pricing section, hero section, navbar, dashboard ui, tailwind, shadcn, landing page section
 ---
 GOAL: jab bhi UI element banana/add karna ho (pricing section, hero, navbar,
 dashboard, form, testimonials), pehle 21st.dev ke CATALOG se dekho - 10,000+

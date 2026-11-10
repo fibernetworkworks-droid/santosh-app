@@ -1,6 +1,7 @@
 ---
 name: bu-billing-ledger
 description: Billing ledger - ai_kharcha, tally, sheets, printed
+when_to_use: billing, invoices, subscriptions, AI spend, how much did I spend, kharcha, tally export, expense sheet, usage cost report
 ---
 GOAL: billing-tools ka awesome-billing catalog syllabus hai - invoicing,
 subscriptions, tax, reconciliation ke patterns. Par lane Hoola ke

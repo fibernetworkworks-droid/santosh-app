@@ -1,6 +1,7 @@
 ---
 name: th-agent-research
 description: Agent architecture research - read, probe, ledger, adopt
+when_to_use: agent architecture, ai research, cognitive architecture, world model, new agent idea, research paper
 ---
 GOAL: agent architecture ka naya idea? Awesome-AGI-CoCoSci
 (SHI-Yu-Zhe ka curated catalog - AGI x computational cognitive

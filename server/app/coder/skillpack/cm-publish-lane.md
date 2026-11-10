@@ -1,6 +1,7 @@
 ---
 name: cm-publish-lane
 description: Campaign to CMS - publish via API or ax, approved
+when_to_use: publish to wordpress, CMS, blog post live, update website content, drupal, headless cms, publish campaign page
 ---
 GOAL: campaign content se live page tak ka safar - WordPress/Drupal/
 headless-CMS catalogs syllabus hai (generic CMS gyaan; WP-CLI ek named

@@ -22,7 +22,7 @@ import time
 from contextlib import contextmanager
 from typing import Any
 
-from .skills_asks import ASKS, PACK, SKILLS_SET_V
+from .skills_asks import ASKS, AWESOME, AWESOME_NEG, AWESOME_SET_V, PACK, SKILLS_SET_V
 
 log = logging.getLogger("santosh.quality.skills")
 CARD_TENANT = "__skillcard__"
@@ -83,7 +83,8 @@ def free_card(asks: list[dict] | None = None, tenant: str = CARD_TENANT) -> dict
         rows.append(row)
     pos = [r for r in rows if r["kind"] == "pos"]
     neg = [r for r in rows if r["kind"] == "neg"]
-    return {"kind": "free", "set": SKILLS_SET_V, "asks": len(rows), "skills_on_tenant": len(have),
+    aw = awesome_rows(tenant)
+    return {"kind": "free", "set": SKILLS_SET_V, "awesome": aw, "asks": len(rows), "skills_on_tenant": len(have),
             "pack_missing": [n for n in PACK if n not in have],
             "pos": len(pos), "in_top2": sum(r["in_top2"] for r in pos),
             "tool_in_view": sum(r["tool_in_view"] for r in pos),
@@ -91,6 +92,22 @@ def free_card(asks: list[dict] | None = None, tenant: str = CARD_TENANT) -> dict
             "neg_clean": sum(r["ok"] for r in neg),
             "neg_tool_forced": sum(1 for r in neg if r["admitted_by_match"]),
             "ok": sum(r["ok"] for r in rows), "rows": rows}
+
+
+def awesome_rows(tenant: str = CARD_TENANT) -> dict[str, Any]:
+    """v0.753: do the awesome-list packs come up for everyday asks? The right skill (by name prefix) must be in the
+    injected top 2; an unrelated ask must pull in no skill at all."""
+    from ..coder import inject
+    rows = []
+    for a in AWESOME:
+        top2 = [r["name"] for r in inject._matched(tenant, a["text"])]
+        rows.append({"id": a["id"], "set": a["set"], "want": a["want"], "top2": top2,
+                     "ok": any(n.startswith(a["want"]) for n in top2)})
+    neg = [{"text": t, "top2": [r["name"] for r in inject._matched(tenant, t)]} for t in AWESOME_NEG]
+    by = lambda k: [r for r in rows if r["set"] == k]  # noqa: E731
+    return {"set": AWESOME_SET_V, "tuned": len(by("tuned")), "tuned_ok": sum(r["ok"] for r in by("tuned")),
+            "held": len(by("held")), "held_ok": sum(r["ok"] for r in by("held")),
+            "neg": len(neg), "neg_clean": sum(1 for n in neg if not n["top2"]), "rows": rows, "neg_rows": neg}
 
 
 # ---------------------------------------------------------------- the live card
@@ -219,6 +236,16 @@ def lines(card: dict) -> list[str]:
                        else "skill_manage not callable" if r["kind"] == "pos" and not r["tool_in_view"]
                        else "file did not open" if r["kind"] == "pos" else f"pulled {r['pack_pulled']}")
                 out.append(f"  - {r['id']}: {why}")
+        aw = card.get("awesome") or {}
+        if aw:
+            out.append(f"Awesome packs (set v{aw['set']}): right skill in top 2 - tuned asks {aw['tuned_ok']}/{aw['tuned']}, "
+                       f"fresh asks {aw['held_ok']}/{aw['held']}; unrelated asks pulling no skill {aw['neg_clean']}/{aw['neg']}")
+            for r in aw["rows"]:
+                if not r["ok"]:
+                    out.append(f"  - {r['id']} ({r['set']}, wants {r['want']}): top 2 was {r['top2']}")
+            for n in aw["neg_rows"]:
+                if n["top2"]:
+                    out.append(f"  - unrelated '{n['text']}' pulled {n['top2']}")
         out.append("  (free card = reachability only; whether a model follows the skill needs --live)")
         return out
     out = [f"Skills card (live, set v{card['set']}): RIGHT {card['right']}/{card['answered']} "

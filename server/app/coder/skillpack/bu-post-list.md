@@ -1,6 +1,7 @@
 ---
 name: bu-post-list
 description: Where to post - startup targets as a ruled ledger
+when_to_use: where to post my startup, product launch, launch online, list my product, directories, product hunt, promote my app, kahan post karu
 ---
 GOAL: "Places to Post Your Startup" jaisi curated list + billing-tools
 ke awesome-billing catalog = syllabus. Har founder launch se pehle

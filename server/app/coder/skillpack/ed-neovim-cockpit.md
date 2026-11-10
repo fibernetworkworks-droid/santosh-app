@@ -1,6 +1,7 @@
 ---
 name: ed-neovim-cockpit
 description: Neovim cockpit - modal grammar, buffers, key lane
+when_to_use: neovim, vim, terminal editor, vim commands, buffers, edit in vim
 ---
 GOAL: wo terminal me Neovim chala rahi hai - Hoola ke liye editor
 modal grammar ki bhasha seekhni hai, mouse ka rasta nahi hai.

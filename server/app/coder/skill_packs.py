@@ -73,6 +73,19 @@ RE_STAMP = "skills:repack:{}"    # its OWN once-ever stamp (the v0.492 pattern):
 
 # ---------------------------------------------------------------- helpers
 
+WHEN_STAMP = "skills:when:{}"      # v0.753: <digest of the shipped trigger lines>:<tenant> - re-runs when a line changes
+
+
+def _when_of(f: Path) -> dict:
+    """v0.753: a shipped pack file's `when_to_use` (the plain words people type), for the strict create lane."""
+    try:
+        front, _ = skills_store.parse_front(f.read_text(encoding="utf-8"))
+        w = str(front.get("when_to_use") or "").strip()
+        return {"when_to_use": w} if w else {}
+    except Exception:
+        return {}
+
+
 def _now() -> str:
     return time.strftime("%Y-%m-%dT%H:%M:%S%z")
 
@@ -413,7 +426,7 @@ def seed_byox(tenant: str) -> dict:
     for f in byox_files():
         try:
             name, desc, body = parse_skill(f.read_text(encoding="utf-8"))
-            skills_store.create(tenant, name or f.stem, desc, body)
+            skills_store.create(tenant, name or f.stem, desc, body, extra=_when_of(f))
             store.skill_use_mark(tenant, name or f.stem, "installed", surface="seed")
             wrote += 1
         except SkillError:
@@ -523,7 +536,7 @@ def seed_progpack(tenant: str) -> dict:
     for f in prog_files():
         try:
             name, desc, body = parse_skill(f.read_text(encoding="utf-8"))
-            skills_store.create(tenant, name or f.stem, desc, body)
+            skills_store.create(tenant, name or f.stem, desc, body, extra=_when_of(f))
             store.skill_use_mark(tenant, name or f.stem, "installed", surface="seed")
             wrote += 1
         except SkillError:
@@ -562,7 +575,7 @@ def seed_sp(tenant: str) -> dict:
     for f in sp_files():
         try:
             name, desc, body = parse_skill(f.read_text(encoding="utf-8"))
-            skills_store.create(tenant, name or f.stem, desc, body)
+            skills_store.create(tenant, name or f.stem, desc, body, extra=_when_of(f))
             store.skill_use_mark(tenant, name or f.stem, "installed", surface="seed")
             wrote += 1
         except SkillError:
@@ -601,7 +614,7 @@ def seed_fepack(tenant: str) -> dict:
     for f in fe_files():
         try:
             name, desc, body = parse_skill(f.read_text(encoding="utf-8"))
-            skills_store.create(tenant, name or f.stem, desc, body)
+            skills_store.create(tenant, name or f.stem, desc, body, extra=_when_of(f))
             store.skill_use_mark(tenant, name or f.stem, "installed", surface="seed")
             wrote += 1
         except SkillError:
@@ -640,7 +653,7 @@ def seed_cspack(tenant: str) -> dict:
     for f in cs_files():
         try:
             name, desc, body = parse_skill(f.read_text(encoding="utf-8"))
-            skills_store.create(tenant, name or f.stem, desc, body)
+            skills_store.create(tenant, name or f.stem, desc, body, extra=_when_of(f))
             store.skill_use_mark(tenant, name or f.stem, "installed", surface="seed")
             wrote += 1
         except SkillError:
@@ -680,7 +693,7 @@ def seed_magicpack(tenant: str) -> dict:
     for f in mg_files():
         try:
             name, desc, body = parse_skill(f.read_text(encoding="utf-8"))
-            skills_store.create(tenant, name or f.stem, desc, body)
+            skills_store.create(tenant, name or f.stem, desc, body, extra=_when_of(f))
             store.skill_use_mark(tenant, name or f.stem, "installed", surface="seed")
             wrote += 1
         except SkillError:
@@ -720,7 +733,7 @@ def seed_bdpack(tenant: str) -> dict:
     for f in bd_files():
         try:
             name, desc, body = parse_skill(f.read_text(encoding="utf-8"))
-            skills_store.create(tenant, name or f.stem, desc, body)
+            skills_store.create(tenant, name or f.stem, desc, body, extra=_when_of(f))
             store.skill_use_mark(tenant, name or f.stem, "installed", surface="seed")
             wrote += 1
         except SkillError:
@@ -760,7 +773,7 @@ def seed_crewpack(tenant: str) -> dict:
     for f in cr_files():
         try:
             name, desc, body = parse_skill(f.read_text(encoding="utf-8"))
-            skills_store.create(tenant, name or f.stem, desc, body)
+            skills_store.create(tenant, name or f.stem, desc, body, extra=_when_of(f))
             store.skill_use_mark(tenant, name or f.stem, "installed", surface="seed")
             wrote += 1
         except SkillError:
@@ -800,7 +813,7 @@ def seed_thpack(tenant: str) -> dict:
     for f in th_files():
         try:
             name, desc, body = parse_skill(f.read_text(encoding="utf-8"))
-            skills_store.create(tenant, name or f.stem, desc, body)
+            skills_store.create(tenant, name or f.stem, desc, body, extra=_when_of(f))
             store.skill_use_mark(tenant, name or f.stem, "installed", surface="seed")
             wrote += 1
         except SkillError:
@@ -840,7 +853,7 @@ def seed_edpack(tenant: str) -> dict:
     for f in ed_files():
         try:
             name, desc, body = parse_skill(f.read_text(encoding="utf-8"))
-            skills_store.create(tenant, name or f.stem, desc, body)
+            skills_store.create(tenant, name or f.stem, desc, body, extra=_when_of(f))
             store.skill_use_mark(tenant, name or f.stem, "installed", surface="seed")
             wrote += 1
         except SkillError:
@@ -879,7 +892,7 @@ def seed_gapack(tenant: str) -> dict:
     for f in ga_files():
         try:
             name, desc, body = parse_skill(f.read_text(encoding="utf-8"))
-            skills_store.create(tenant, name or f.stem, desc, body)
+            skills_store.create(tenant, name or f.stem, desc, body, extra=_when_of(f))
             store.skill_use_mark(tenant, name or f.stem, "installed", surface="seed")
             wrote += 1
         except SkillError:
@@ -918,7 +931,7 @@ def seed_devpack(tenant: str) -> dict:
     for f in de_files():
         try:
             name, desc, body = parse_skill(f.read_text(encoding="utf-8"))
-            skills_store.create(tenant, name or f.stem, desc, body)
+            skills_store.create(tenant, name or f.stem, desc, body, extra=_when_of(f))
             store.skill_use_mark(tenant, name or f.stem, "installed", surface="seed")
             wrote += 1
         except SkillError:
@@ -957,7 +970,7 @@ def seed_enpack(tenant: str) -> dict:
     for f in en_files():
         try:
             name, desc, body = parse_skill(f.read_text(encoding="utf-8"))
-            skills_store.create(tenant, name or f.stem, desc, body)
+            skills_store.create(tenant, name or f.stem, desc, body, extra=_when_of(f))
             store.skill_use_mark(tenant, name or f.stem, "installed", surface="seed")
             wrote += 1
         except SkillError:
@@ -996,7 +1009,7 @@ def seed_dbpack(tenant: str) -> dict:
     for f in db_files():
         try:
             name, desc, body = parse_skill(f.read_text(encoding="utf-8"))
-            skills_store.create(tenant, name or f.stem, desc, body)
+            skills_store.create(tenant, name or f.stem, desc, body, extra=_when_of(f))
             store.skill_use_mark(tenant, name or f.stem, "installed", surface="seed")
             wrote += 1
         except SkillError:
@@ -1035,7 +1048,7 @@ def seed_mepack(tenant: str) -> dict:
     for f in me_files():
         try:
             name, desc, body = parse_skill(f.read_text(encoding="utf-8"))
-            skills_store.create(tenant, name or f.stem, desc, body)
+            skills_store.create(tenant, name or f.stem, desc, body, extra=_when_of(f))
             store.skill_use_mark(tenant, name or f.stem, "installed", surface="seed")
             wrote += 1
         except SkillError:
@@ -1074,7 +1087,7 @@ def seed_lepack(tenant: str) -> dict:
     for f in le_files():
         try:
             name, desc, body = parse_skill(f.read_text(encoding="utf-8"))
-            skills_store.create(tenant, name or f.stem, desc, body)
+            skills_store.create(tenant, name or f.stem, desc, body, extra=_when_of(f))
             store.skill_use_mark(tenant, name or f.stem, "installed", surface="seed")
             wrote += 1
         except SkillError:
@@ -1113,7 +1126,7 @@ def seed_secpack(tenant: str) -> dict:
     for f in se_files():
         try:
             name, desc, body = parse_skill(f.read_text(encoding="utf-8"))
-            skills_store.create(tenant, name or f.stem, desc, body)
+            skills_store.create(tenant, name or f.stem, desc, body, extra=_when_of(f))
             store.skill_use_mark(tenant, name or f.stem, "installed", surface="seed")
             wrote += 1
         except SkillError:
@@ -1152,7 +1165,7 @@ def seed_cmpack(tenant: str) -> dict:
     for f in cm_files():
         try:
             name, desc, body = parse_skill(f.read_text(encoding="utf-8"))
-            skills_store.create(tenant, name or f.stem, desc, body)
+            skills_store.create(tenant, name or f.stem, desc, body, extra=_when_of(f))
             store.skill_use_mark(tenant, name or f.stem, "installed", surface="seed")
             wrote += 1
         except SkillError:
@@ -1191,7 +1204,7 @@ def seed_hapack(tenant: str) -> dict:
     for f in ha_files():
         try:
             name, desc, body = parse_skill(f.read_text(encoding="utf-8"))
-            skills_store.create(tenant, name or f.stem, desc, body)
+            skills_store.create(tenant, name or f.stem, desc, body, extra=_when_of(f))
             store.skill_use_mark(tenant, name or f.stem, "installed", surface="seed")
             wrote += 1
         except SkillError:
@@ -1230,7 +1243,7 @@ def seed_bupack(tenant: str) -> dict:
     for f in bu_files():
         try:
             name, desc, body = parse_skill(f.read_text(encoding="utf-8"))
-            skills_store.create(tenant, name or f.stem, desc, body)
+            skills_store.create(tenant, name or f.stem, desc, body, extra=_when_of(f))
             store.skill_use_mark(tenant, name or f.stem, "installed", surface="seed")
             wrote += 1
         except SkillError:
@@ -1269,7 +1282,7 @@ def seed_wopack(tenant: str) -> dict:
     for f in wo_files():
         try:
             name, desc, body = parse_skill(f.read_text(encoding="utf-8"))
-            skills_store.create(tenant, name or f.stem, desc, body)
+            skills_store.create(tenant, name or f.stem, desc, body, extra=_when_of(f))
             store.skill_use_mark(tenant, name or f.stem, "installed", surface="seed")
             wrote += 1
         except SkillError:
@@ -1308,7 +1321,7 @@ def seed_nepack(tenant: str) -> dict:
     for f in ne_files():
         try:
             name, desc, body = parse_skill(f.read_text(encoding="utf-8"))
-            skills_store.create(tenant, name or f.stem, desc, body)
+            skills_store.create(tenant, name or f.stem, desc, body, extra=_when_of(f))
             store.skill_use_mark(tenant, name or f.stem, "installed", surface="seed")
             wrote += 1
         except SkillError:
@@ -1347,7 +1360,7 @@ def seed_dcpack(tenant: str) -> dict:
     for f in dc_files():
         try:
             name, desc, body = parse_skill(f.read_text(encoding="utf-8"))
-            skills_store.create(tenant, name or f.stem, desc, body)
+            skills_store.create(tenant, name or f.stem, desc, body, extra=_when_of(f))
             store.skill_use_mark(tenant, name or f.stem, "installed", surface="seed")
             wrote += 1
         except SkillError:
@@ -1386,7 +1399,7 @@ def seed_hspack(tenant: str) -> dict:
     for f in hs_files():
         try:
             name, desc, body = parse_skill(f.read_text(encoding="utf-8"))
-            skills_store.create(tenant, name or f.stem, desc, body)
+            skills_store.create(tenant, name or f.stem, desc, body, extra=_when_of(f))
             store.skill_use_mark(tenant, name or f.stem, "installed", surface="seed")
             wrote += 1
         except SkillError:
@@ -1425,7 +1438,7 @@ def seed_evpack(tenant: str) -> dict:
     for f in ev_files():
         try:
             name, desc, body = parse_skill(f.read_text(encoding="utf-8"))
-            skills_store.create(tenant, name or f.stem, desc, body)
+            skills_store.create(tenant, name or f.stem, desc, body, extra=_when_of(f))
             store.skill_use_mark(tenant, name or f.stem, "installed", surface="seed")
             wrote += 1
         except SkillError:
@@ -1464,7 +1477,7 @@ def seed_tepack(tenant: str) -> dict:
     for f in te_files():
         try:
             name, desc, body = parse_skill(f.read_text(encoding="utf-8"))
-            skills_store.create(tenant, name or f.stem, desc, body)
+            skills_store.create(tenant, name or f.stem, desc, body, extra=_when_of(f))
             store.skill_use_mark(tenant, name or f.stem, "installed", surface="seed")
             wrote += 1
         except SkillError:
@@ -1503,7 +1516,7 @@ def seed_mipack(tenant: str) -> dict:
     for f in mi_files():
         try:
             name, desc, body = parse_skill(f.read_text(encoding="utf-8"))
-            skills_store.create(tenant, name or f.stem, desc, body)
+            skills_store.create(tenant, name or f.stem, desc, body, extra=_when_of(f))
             store.skill_use_mark(tenant, name or f.stem, "installed", surface="seed")
             wrote += 1
         except SkillError:
@@ -1542,7 +1555,7 @@ def seed_repack(tenant: str) -> dict:
     for f in re_files():
         try:
             name, desc, body = parse_skill(f.read_text(encoding="utf-8"))
-            skills_store.create(tenant, name or f.stem, desc, body)
+            skills_store.create(tenant, name or f.stem, desc, body, extra=_when_of(f))
             store.skill_use_mark(tenant, name or f.stem, "installed", surface="seed")
             wrote += 1
         except SkillError:
@@ -1557,6 +1570,65 @@ def seed_repack(tenant: str) -> dict:
     if wrote:
         log.info("re seed: %d skills into %s", wrote, tenant)
     return {"re_seeded": wrote}
+
+
+def _when_pairs() -> list[tuple[str, str]]:
+    out = []
+    for f in sorted(set(seed_files()) | set(pack_files_all())):
+        w = _when_of(f).get("when_to_use")
+        if w:
+            try:
+                name, _, _ = parse_skill(f.read_text(encoding="utf-8"))
+            except Exception:
+                continue
+            out.append((name or f.stem, " ".join(w.split())))
+    return out
+
+
+def _h(text: str) -> str:
+    import hashlib
+    return hashlib.sha1(text.encode("utf-8")).hexdigest()[:16]
+
+
+def seed_when(tenant: str) -> dict:
+    """v0.753: the shipped trigger words (`when_to_use`) reach skills a tenant ALREADY holds - only that field, never her
+    description or body. A skill with no trigger line gets one; a trigger line Hoola itself shipped earlier is replaced
+    by the newer one; a line she wrote herself is never touched (each shipped line is remembered by its hash). The stamp
+    carries a digest of every shipped line, so improving one later re-runs this once for everybody."""
+    if not _seed_armed():
+        return {"when_added": 0}
+    pairs = _when_pairs()
+    stamp = WHEN_STAMP.format(_h(repr(pairs)) + ":" + str(tenant or "default"))
+    try:
+        store.ensure()
+        if store.is_consumed(stamp):
+            return {"when_added": 0}
+    except Exception:
+        return {"when_added": 0}
+    changed = 0
+    for name, w in pairs:
+        try:
+            cur = skills_store.get_when(tenant, name)
+            if cur is None:
+                continue                                         # she does not have (or deleted) this skill
+            mine = f"skills:whenmine:{tenant}:{name}:{{}}"
+            if cur == w:
+                pass
+            elif not cur:
+                changed += skills_store.add_when(tenant, name, w)
+            elif store.is_consumed(mine.format(_h(cur))):        # a line WE shipped earlier: replace with the new one
+                changed += skills_store.add_when(tenant, name, w, replace=True)
+            else:
+                continue                                         # her own words: leave them
+            store.mark_consumed(mine.format(_h(w)))
+        except Exception:
+            log.exception("when_to_use refresh of %s failed for %s", name, tenant)
+            _FAILED_STAMPS.add(stamp)
+    try:
+        _consume(stamp)
+    except Exception:
+        pass
+    return {"when_added": changed}
 
 
 def _pack_seeders() -> list:
@@ -1614,7 +1686,7 @@ def seed(tenant: str) -> dict:
             name, desc, body = parse_skill(raw)
             if not name:
                 name = f.stem
-            skills_store.create(tenant, name, desc, body)   # create-if-missing: hers win
+            skills_store.create(tenant, name, desc, body, extra=_when_of(f))   # create-if-missing: hers win
             store.skill_use_mark(tenant, name, "installed", surface="seed")
             wrote += 1
         except SkillError:
