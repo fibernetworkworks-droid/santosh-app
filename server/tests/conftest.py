@@ -64,6 +64,7 @@ def _full_voice_menu(monkeypatch):
     monkeypatch.setenv("CHAT_CORE_TOOLS", "false")    # Parity Phase 3: older suites pin the core families + old result text; test_v0733_clean_tools checks the core set
     monkeypatch.setenv("CHAT_APPROVAL_WORDS", "true") # v0.724 older suites pin "haan" approving a card; test_v0724 checks off
     monkeypatch.setenv("CHAT_ONE_MODEL", "false")      # v0.732 older suites pin the brain fallbacks; test_v0732_ek_model checks one model
+    monkeypatch.setenv("MODEL_PROFILE", "false")       # v0.739 older suites pin the hand-written model abilities; test_v0739 checks the read profile
     monkeypatch.setenv("CHAT_FILES_BY_CODE", "false")  # v0.738 older suites pin pylab keeping only png / csv / xlsx files
     monkeypatch.setenv("CHAT_EVERY_MESSAGE", "false")  # v0.738 older suites pin the research-plan gate + canned stop line; test_v0738 checks every message reaches the model
     monkeypatch.setenv("ARCHITECT_OPUS", "true")       # v0.735 older suites pin the architect on Opus; test_v0735_all_glm checks GLM

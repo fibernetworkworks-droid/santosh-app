@@ -2632,3 +2632,8 @@ Task ID: v0.738.0 PARITY 1 + 9a + 12
 Ask: TILL I TOPUP -- CONTINUE OUR THIS WORK (the parity table).
 Built: chat_every_message, chat_files_by_code (pylab docx/pptx/pdf), phone Edit message + Ask again.
 Deploy: vps-ops deploy (+ the APK from build CI).
+
+Task ID: v0.739.0 MODEL PROFILE
+Ask: WHY EVERY NEW MODEL NEED UPDATE IN CODE -> GO.
+Built: agent/modelprofile.py (OpenRouter model list read + disk + learned errors), wired into pictures / PDF / reasoning / window; GET /api/model/profile.
+Deploy: vps-ops deploy; a model swap = GLM_MODEL in .env + restart.

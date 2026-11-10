@@ -440,6 +440,9 @@ class Settings(BaseSettings):
                                            # of stapling a note, and a correction message goes out only when a real
                                            # ACTION claim (sent / paid / booked / deleted / published) stayed false
                                            # after that retry. False = the old stapled notes.
+    model_profile: bool = True             # v0.739 the chat model's abilities READ from OpenRouter's model list (pictures,
+                                           # reasoning, tools, window) - a new GLM_MODEL needs no code change; off = old
+    model_profile_dir: str = ""            # '' = data/modelprofile
     chat_files_by_code: bool = True        # parity gap 9a (v0.738): ONE way to make a file, like Claude - pylab writes
                                            # Word / Excel / PDF / PowerPoint with Python and they land in her chat
     chat_every_message: bool = True        # parity gap 1 (v0.738): every message reaches the model - the research plan

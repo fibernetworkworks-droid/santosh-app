@@ -221,6 +221,12 @@ def glm_reads_images(b: str = "glm") -> bool:
         st = get_settings()
         if b != "glm":
             return False
+        if not bool(getattr(st, "glm_images", False)) and not is_nvidia():
+            return False
+        from . import modelprofile as _mp          # v0.739 the model's own list says whether it reads pictures
+        r = _mp.reads("image")
+        if r is not None:
+            return r
         return is_nvidia() or bool(getattr(st, "glm_images", False))
     except Exception:
         return False
@@ -280,6 +286,9 @@ def pdf_parts(block: dict) -> list[dict]:
     words = len(re.findall(r"\w+", re.sub(r"\[page \d+\]", "", text)))
     if words >= 20 * max(1, min(pages, 3)):
         return [{"type": "text", "text": f"--- {title} ({pages} pages, its text) ---\n{text}"}]
+    if not glm_reads_images("glm"):   # v0.739 a model that cannot see pictures gets the little text there is, said plainly
+        return [{"type": "text", "text": f"--- {title}: a scanned PDF ({pages or '?'} pages); this model cannot read its "
+                 f"page pictures, so only its own text is here ---\n{text}"}]
     out: list[dict] = [{"type": "text", "text": f"--- {title}: a scanned PDF ({pages or '?'} pages), its pages as pictures ---"}]
     try:
         import pypdfium2 as pdfium
@@ -440,6 +449,14 @@ TRANSIENT_STATUS = {408, 409, 425, 429, 500, 502, 503, 504, 529}
 RETRY_DELAY = 0.6   # seconds; doubles each try (tests shorten it)
 
 
+def _learn(**facts) -> None:
+    try:
+        from . import modelprofile as _mp
+        _mp.learn(**facts)
+    except Exception:
+        pass
+
+
 async def _post_with_retry(url: str, body: dict, headers: dict, label: str) -> httpx.Response:
     tries = 1 + max(0, get_settings().llm_retries)
     last: LLMError | None = None
@@ -459,11 +476,23 @@ async def _post_with_retry(url: str, body: dict, headers: dict, label: str) -> h
                 return r
             last = LLMError(f"{label} error {r.status_code}: {r.text[:300]}")
             _rf = ("reasoning_effort", "chat_template_kwargs", "reasoning", "thinking")
-            if r.status_code in (400, 422) and any(k in body for k in _rf):
+            if r.status_code in (400, 422) and "mandatory" in r.text.lower() and "reasoning" in r.text.lower() \
+                    and "reasoning" not in body and is_openrouter():
+                # v0.739 the model says it cannot run without reasoning: ask again with it and remember it for this model
+                body = {**body, "reasoning": {"effort": get_settings().glm_reasoning_effort or "low", "exclude": True}}
+                _learn(reasoning_mandatory=True, reasoning_refused=False)
+                log.warning("%s needs the reasoning field - asking again with it (remembered)", label)
+                r = await _client().post(url, json=body, headers=headers)
+                if r.status_code < 400:
+                    return r
+                last = LLMError(f"{label} error {r.status_code}: {r.text[:300]}")
+            elif r.status_code in (400, 422) and any(k in body for k in _rf):
                 body = {k: v for k, v in body.items() if k not in _rf}
                 log.warning("%s refused the reasoning fields - asking again without them", label)
                 r = await _client().post(url, json=body, headers=headers)
                 if r.status_code < 400:
+                    if is_openrouter():
+                        _learn(reasoning_refused=True, reasoning_mandatory=False)
                     return r
                 last = LLMError(f"{label} error {r.status_code}: {r.text[:300]}")
             if r.status_code not in TRANSIENT_STATUS:
@@ -521,6 +550,8 @@ def _target(brain: str) -> tuple[str, str, str, dict, dict]:
             extra = {"reasoning": {"effort": lvl, "exclude": False}}
         else:
             extra = {"reasoning": {"effort": st.glm_reasoning_effort or "low", "exclude": True}}
+        if _reasoning_ok() is False:
+            extra = {}    # v0.739 the model's own list says it takes no reasoning field: never send one
         label = "GLM (OpenRouter)"
     else:
         lvl = REASONING_NOW.get()
@@ -541,6 +572,14 @@ def is_openrouter() -> bool:
     return "openrouter.ai" in (get_settings().glm_base_url or "")
 
 
+def _reasoning_ok() -> bool | None:
+    try:
+        from . import modelprofile as _mp
+        return _mp.supports("reasoning")
+    except Exception:
+        return None
+
+
 def room(max_tokens: int) -> int:
     """NVIDIA's GLM counts its (always-on) reasoning inside max_tokens: a 900-token reviewer would come back empty.
     Room for the reasoning is added on that endpoint only."""
@@ -549,6 +588,8 @@ def room(max_tokens: int) -> int:
         if lvl in ("medium", "high"):      # parity Phase 4: Z.ai with thinking on also counts it inside max_tokens
             return int(max_tokens) + reasoning_room(lvl)
         return max_tokens
+    if is_openrouter() and _reasoning_ok() is False:
+        return int(max_tokens)          # v0.739 a model that does not reason needs no room for it
     return int(max_tokens) + reasoning_room(lvl)
 
 

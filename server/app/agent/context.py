@@ -65,6 +65,14 @@ def limit(brain: str, settings=None) -> int:
            "omniroute": getattr(s, "chat_context_limit_omniroute", 1000000)}.get(
         brain, getattr(s, "chat_context_limit_claude", 1000000))
     seen = LIMIT_SEEN.get(brain)
+    if brain == "glm":
+        try:   # v0.739 the model's own window (OpenRouter's list) when it is smaller than the setting
+            from . import modelprofile as _mp
+            own = _mp.context()
+            if own > 0:
+                seen = min(seen or 10 ** 9, own)
+        except Exception:
+            pass
     return max(8000, min(int(lim or 1000000), seen or 10 ** 9))
 
 

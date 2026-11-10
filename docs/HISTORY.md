@@ -1,3 +1,20 @@
+## v0.739.0 MODEL PROFILE — a new model needs no code change (10 Nov 2026; owner: "WHY EVERY NEW MODEL NEED UPDATE IN CODE EVERY TIME --- WHY IT IS NOT GENERALIZE" -> "GO")
+
+The root cause: each model's abilities had been written into the code by hand, per provider. Examples: pictures were hard-coded off for GLM in v0.735; OpenRouter needed a reasoning field (v0.699 / v0.700); NVIDIA sent fields only GLM understands (v0.697). OpenRouter publishes every model's facts at GET {base}/models/{model}/endpoints: input kinds, accepted parameters, context length and price. Nothing read it until now.
+- `app/agent/modelprofile.py`: reads that list for the configured GLM_MODEL. It runs at start (`refresh_in_background` in the lifespan, off the event loop), again when the profile is more than a day old, or on POST /api/model/profile/refresh. The profile is kept in memory and on disk (`data/modelprofile/`, or `model_profile_dir`), so a restart without a network still knows the model. `reads(kind)` / `supports(param)` / `context()` return None when the profile is unknown, and callers then keep their old settings.
+- Wired in:
+  - `llm.glm_reads_images`: the list decides; GLM_IMAGES=false still turns pictures off.
+  - `llm.pdf_parts`: a scanned PDF is turned into page pictures only for a model that reads pictures. Otherwise the little text it has is sent, and the text says so plainly.
+  - `llm._target` (OpenRouter): no reasoning field for a model that takes none.
+  - `llm.room`: no reasoning room for such a model.
+  - `context.limit("glm")`: the model's own window when it is smaller than the setting.
+  - `_post_with_retry`: a model's own "reasoning is mandatory" 400 is retried with the field and LEARNED (saved for that model). A model that refuses the field is learned too.
+  - A model without tools is logged as an ERROR at start.
+  - GET /api/model/profile; healthz `chat_model_reads`; `python -m app.agent.modelprofile` prints what the model can do.
+- Switch `model_profile` (default on; conftest pins it off for the old suites). Claude keeps its own path.
+- Tests: `test_v0739_model_profile.py` has 10 tests, on fixtures that are OpenRouter's real answers for z-ai/glm-5.3-flash and deepseek/deepseek-chat-v3.1 (`tests/fixtures/`). Covered: a model swap with no code change, no reasoning field for a plain model, the window, a read failure keeping the old behaviour, the disk copy after a restart, learning "mandatory", a scanned PDF for a text-only model, the switch off, the endpoint and healthz.
+- NOT VERIFIED LIVE: her OpenRouter key limit is reached. Non-OpenRouter endpoints (NVIDIA, Z.ai, OmniRoute) have no such list and keep the old settings.
+
 ## v0.738.0 PARITY 1 + 9a + 12 — every message to the model, files by code, edit / ask again on the phone (10 Nov 2026; owner: "TILL I TOPUP -- CONTINUE OUR THIS WORK")
 
 The owner's parity table was out of date. Gaps 4, 5 and 10 were already done in v0.733, and gap 3's pictures / PDFs moved to GLM in v0.735. The small gaps left were 1, 9a and 12. Each change has its own switch: on by default, set to the old value in conftest for the old suites.
