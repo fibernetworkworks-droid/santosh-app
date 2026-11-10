@@ -2677,3 +2677,13 @@ Task ID: v0.748.0 HOOLA CODE
 Ask: check the existing Hoola Code (Developer Sahayak), design it like Claude Code (6-screen canvas), then "GO".
 Built: console page code.js, structured loop steps, notes while working, Stop, background start, plan / PR / merge / review / settings.
 Deploy: vps-ops deploy (server only).
+
+
+---
+Task ID: v0.749.0 SAB PUBLIC APIS
+Agent: Claude (web studio session)
+Task: owner "NOW CONSOLIDATE ALL PUBLIC APIS FIRST" after publicapis.dev.
+Work: publicapis/build.py reads public-apis README + marcelscruz/public-apis resources.json, merges with dedupe
+(name / own host), keeps old ids (kept or aka alias), 3,014 APIs; service.by_id resolves aliases; source credits
+both; counts 3,000+; test_v0749_public_apis.py (5).
+Deploy: vps-ops deploy; healthz must read 0.749.0.

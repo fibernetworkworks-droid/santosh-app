@@ -221,3 +221,32 @@ The coding agent (Developer Sahayak, `server/app/devsahayak/`) had a full server
 - PROOF: `tests/test_v0748_hoola_code.py` 5 (structured steps incl. the refused edit and its diff, a queued note reaching the model + Stop pushing nothing, routes + switch, the plain-callback contract, the page walked in a real browser: home, a live session's steps + diff + Stop + note box, the plan card). The 14 older Developer Sahayak suites re-run.
 - NOT VERIFIED: no live GitHub repo has run through the page yet; steps refresh every 2 s (polling), not word by word; the tasks run in this process's threads, so a server restart mid-job ends it (the row keeps its steps; start it again); deploy cards are not on the page yet (merge is).
 
+
+
+## v0.749.0 SAB PUBLIC APIS - every public API list in one catalog (owner: "NOW CONSOLIDATE ALL PUBLIC APIS FIRST")
+
+She read publicapis.dev. Its data is github.com/marcelscruz/public-apis (MIT, `db/resources.json`, 2,021 entries, with
+AI and Podcasts categories the older list lacks). Hoola's `api_find` / `api_docs` / `api_call` catalog (v0.47) was
+built from ONE list, github.com/public-apis/public-apis (2,161 rows at the time).
+
+`server/app/publicapis/build.py` now builds ONE catalog from both:
+1. Source 1, the public-apis README, parsed as before (refreshed: 2,343 rows). Its ids are `<category>-<name>` as
+   always, so saved keys (`PublicApiKey.api_id`) and remembered recipes (`PublicApiRecipe.api_id`) keep pointing at
+   the same API.
+2. `keep_old()`: a row of the catalog being replaced whose id the fresh README no longer has is KEPT (5 dropped
+   upstream: micro-user-service, micro-db, k-data-gate, hong-kong observatory, micro-weather); when the same name is
+   back under a new id (VedIntel AstroAPI moved Science & Math -> Personality) the old id becomes an `aka` alias on
+   the new row and `service.by_id()` resolves it.
+3. `parse_dev()` + `merge()`: a publicapis.dev API is added only when source 1 lacks it - not the same name (letters
+   and digits only) and not the same API-owned host (`SHARED_HOSTS` such as github.com, rapidapi.com, postman,
+   swaggerhub, docs sites never count as proof of sameness). Added ids are `dev-<category>-<name>`, so they can never
+   collide; an empty Auth means no key. 671 added.
+Result: 3,014 APIs, 53 categories, every row tagged `src` (public-apis / publicapis.dev); `find()`'s `source` credits
+both. Counts in the agent prompt, the api_find tool text, console Kaam and the website say 3,000+.
+
+Tests: NEW test_v0749_public_apis.py (5): both lists present + unique ids + an added API never repeats a source-1
+name, new APIs found + both sources credited + old ones still rank, the merge rules (same name / same own host /
+shared host is no proof / no link skipped), keep_old (dropped = kept, renamed = alias), every v0.47 id still resolves
+in the shipped catalog. test_publicapis + v0238 data desk + v0561 omnipack green beside it. Note found: source 1
+itself lists a few names twice across categories (e.g. Cat Facts) - upstream, left as is. Server + static text only;
+no new pip; rebuild with `python -m app.publicapis.build` (fetches both from GitHub).

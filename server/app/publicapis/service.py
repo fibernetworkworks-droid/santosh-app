@@ -1,4 +1,4 @@
-"""v0.47 Public APIs: Hoola knows 2,100+ free / public web APIs (github.com/public-apis/public-apis, MIT) and can use them.
+"""v0.47 Public APIs: Hoola knows 3,000+ free / public web APIs (v0.749: github.com/public-apis/public-apis + publicapis.dev, both MIT) and can use them.
 
   find(q, cat, auth)        search the catalog (name, what it does, category; Hinglish words understood); APIs that
                             already worked for someone come first, with their working call pattern
@@ -32,7 +32,7 @@ from .models import PublicApiKey, PublicApiRecipe
 CATALOG = Path(__file__).with_name("catalog.json.gz")
 MAX_BYTES = 2_000_000
 MAX_OUT_CHARS = 12_000
-SOURCE = "github.com/public-apis/public-apis (MIT)"
+SOURCE = "github.com/public-apis/public-apis + github.com/marcelscruz/public-apis (publicapis.dev), both MIT"
 
 # Hinglish / everyday words -> catalog words
 SYN = {
@@ -73,7 +73,11 @@ def catalog() -> tuple[dict[str, Any], ...]:
 
 @lru_cache(maxsize=1)
 def by_id() -> dict[str, dict[str, Any]]:
-    return {r["id"]: r for r in catalog()}
+    out = {r["id"]: r for r in catalog()}
+    for r in catalog():                          # v0.749 an id upstream renamed still finds its API (saved keys, recipes)
+        for a in r.get("aka") or []:
+            out.setdefault(a, r)
+    return out
 
 
 def categories() -> list[dict[str, Any]]:
