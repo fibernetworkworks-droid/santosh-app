@@ -428,3 +428,22 @@ quotes are not on Twelve Data's free plan; stock_price_bse (Alpha Vantage) ok, R
   next live test says WHY (e.g. a plan limit), not only the code.
 Tests: test_v0760_box_stocks.py +1 (and the 200-refusal test re-pointed at the new order); starter 22 -> 23.
 Limits said plainly: Alpha Vantage free is about 25 calls a day for every user together; NSE is not on Alpha Vantage.
+
+
+## v0.763.0 ADALAT (owner: "eCourtsIndia")
+
+Read first (ecourtsindia.com/api/docs v4.0 + /api/pricing): base https://webapi.ecourtsindia.com, auth
+`Authorization: Bearer eci_live_...` (41 chars), JSON {data, meta.request_id}; PAID per successful call - pay-as-you-go
+(3x base) Case Detail Rs 1.50, Case Search v2 Rs 0.60, Cause List Search Rs 3.00; Rs 200 free credits on signup; failed
+requests and empty results are not charged; limits 100/min, 3,000/h, 50,000/day; commercial use = a paid plan.
+- SERVER_KEYS entries may carry a 4th element, a prefix ("Bearer ") - government-ecourtsindia -> header Authorization.
+- Recipes: court_case GET /api/partner/case/{cnr} (CNR checked against [A-Z]{4}\d{12} and upper-cased BEFORE the
+  call; answer slimmed by the new `obj` mode: scalars, 5 items a list, 300-char text); court_search GET
+  /api/partner/v2/search (litigants / advocates / judges / query, at least one); cause_list GET
+  /api/partner/causelist/search (q / advocate / litigant, at least one; date, state).
+- Money guard: `patterns` + `need_one_of` refuse an unusable call for free; `daily_cap` = ECOURTS_DAILY_CALLS successful
+  calls a day (IST) for ALL users together (table public_api_daily; 0 = switched off); the cap answer names the .env line;
+  every eCourts answer tells the model the call was paid and not to repeat it.
+Tests: test_v0763_box_courts.py 3 (Bearer header + slim + paid note, free refusals, the cap across tenants); starter 23 -> 26.
+NOT VERIFIED: no live call yet; the search / cause-list result field names in the slim lists are read from the docs'
+examples and the first live answer may name them differently (unknown fields simply drop out - the owner's test will show).

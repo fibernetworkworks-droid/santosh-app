@@ -2770,3 +2770,10 @@ Agent: Claude (session 019P5N4a)
 Task: Twelve Data free refuses Indian quotes -> Alpha Vantage first + BSE history + API error text.
 Work Log: recipe bonus; stock_history_bse + _slim dict mode; error text; 1 test; 21 passed.
 Stage Summary: server-only; redeploy + rerun her stock test.
+
+---
+Task ID: v0.763.0 ADALAT
+Agent: Claude (session 019P5N4a)
+Task: eCourtsIndia (paid per call) as server-keyed box recipes with a daily cap.
+Work Log: SERVER_KEYS prefix; config key + cap; PublicApiDaily; recipes court_case / court_search / cause_list; patterns, need_one_of, daily_cap, obj/root slim; 3 tests; 24 passed.
+Stage Summary: server-only; owner adds ECOURTSINDIA_API_KEY (+ optional ECOURTS_DAILY_CALLS). Not yet live-verified.
