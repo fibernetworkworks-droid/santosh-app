@@ -345,3 +345,20 @@ v0.753 gave plain trigger words (`when_to_use`) to the 42 awesome-pack skills. T
 - PROOF: `tests/test_v0755_all_skill_triggers.py` 2 (every shipped file has a line within WHEN_MAX; 57/57 + negatives clean) + the skill suites re-run.
 - NOT VERIFIED: reachability only - whether the model then follows a skill needs the paid `--live` card.
 
+
+
+## v0.756.0 DATA.GOV.IN RELAY (built as 0.755; their EVERY SKILL FINDABLE took 0.755.0 - REBASE PROTOCOL, both kept)
+
+Her live test of v0.754: `mandi_price` -> ConnectTimeout. On the VPS: api.data.gov.in (164.100.61.198, IPv4 only) never
+answered in 40 s; data.gov.in, enam.gov.in and india.gov.in the same; agmarknet.gov.in and api.postalpincode.in answered
+in 0.05 s / 0.2 s; tracepath dies past hop 16. NIC's data centre drops connections from cloud servers - not the key, not
+the code.
+
+- `DATA_GOV_IN_BASE` (settings `data_gov_in_base`, https only): her own relay base. `publicapis.service.SERVER_BASES` +
+  `rebase()` swap https://api.data.gov.in for it inside service.call before the key is added; empty = direct.
+- `deploy/datagov-relay/worker.js`: a Cloudflare Worker (her account, free plan) forwarding only GET /resource/... and
+  /lists to api.data.gov.in; keeps and logs nothing; the key still lives in the VPS .env and only passes through.
+- box.plan: a `needs_key` recipe is never hidden by failures (the daily check covers free APIs only, so a hidden keyed
+  recipe could never come back); a starter recipe scoring under half the best one stays out of the fallbacks (her test
+  pulled in mutual_fund_nav and crypto_price on one shared word).
+Tests: test_v0754_box_keyed.py +2. NOT VERIFIED: whether NIC answers Cloudflare's addresses - her first relay call says.

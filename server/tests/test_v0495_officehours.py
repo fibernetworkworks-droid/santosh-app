@@ -73,7 +73,7 @@ def test_registry_531_and_wired():
 def test_story_and_prompts_pins():
     from app import main as main_mod
     from app.agent import prompts
-    assert main_mod.APP_VERSION == "0.755.0"
+    assert main_mod.APP_VERSION == "0.756.0"
     story = (Path(main_mod.__file__).read_text().split("APP_VERSION = ", 1)[1])[:20000]
     # story pin rides the NEWEST release's story (the v0.476 precedent); the OFFICE HOURS
     # story tokens live in git history (the v0.497 chain moved them here from v0.479)

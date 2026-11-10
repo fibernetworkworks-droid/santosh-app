@@ -258,11 +258,15 @@ def plan(need: str, params: dict[str, Any] | None = None, api: str = "") -> list
         pick = _BY_KEY.get(api) or next((r for r in STARTER if r["api_id"] == api), None)
         cands = [(9.0, pick)] if pick else []
     else:
-        cands = _starter_candidates(need, params) + _learned_candidates(need)
+        st = _starter_candidates(need, params)
+        top = max((sc for sc, _ in st), default=0)
+        st = [(sc, r) for sc, r in st if sc >= top / 2]     # v0.755: a recipe that shares one stray word stays out
+        cands = st + _learned_candidates(need)
     cands.sort(key=lambda x: -x[0])
     out, seen = [], set()
     for _, r in cands:
-        if r["key"] in seen or hidden(hm.get(r["api_id"])):
+        # a keyed recipe is never hidden by failures: the daily check covers free APIs only, so it could not come back
+        if r["key"] in seen or (hidden(hm.get(r["api_id"])) and not r.get("needs_key")):
             continue
         seen.add(r["key"])
         out.append(r)

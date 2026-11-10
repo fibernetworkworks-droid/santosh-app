@@ -260,6 +260,22 @@ KEY_PLACE = {"government-open-government-india": ("query", "api-key")}
 SERVER_KEYS = {"government-open-government-india": ("data_gov_in_api_key", "query", "api-key")}
 
 
+# api_id -> (settings field, the API's own base). A relay base set by the owner replaces it (v0.755: NIC's data centre
+# drops connections from cloud servers, so data.gov.in can be reached through her own relay).
+SERVER_BASES = {"government-open-government-india": ("data_gov_in_base", "https://api.data.gov.in")}
+
+
+def rebase(api_id: str, url: str) -> str:
+    spec = SERVER_BASES.get(api_id)
+    if not spec:
+        return url
+    from ..config import get_settings
+    relay = str(getattr(get_settings(), spec[0], "") or "").strip().rstrip("/")
+    if relay.startswith("https://") and url.startswith(spec[1] + "/"):
+        return relay + url[len(spec[1]):]
+    return url
+
+
 def server_key_hint(api_id: str) -> str:
     spec = SERVER_KEYS.get(api_id)
     return (f"not set up on this Hoola server yet (the server owner adds {spec[0].upper()}=... to the VPS .env)"
@@ -325,6 +341,8 @@ async def call(tenant: str, url: str, params: dict[str, Any] | None = None, api_
             hdrs[str(k)] = str(v)[:200]
     if any(SECRET_PARAM.search(k) for k, _ in parse_qsl(urlparse(url).query)) and not api_id:
         raise ApiError("Key wali API ke liye owner app mein key save karein; chat mein key kabhi nahi.")
+    if api_id:
+        url = rebase(api_id, url)
     secret_url = url
     if api_id:
         r = get(api_id)
