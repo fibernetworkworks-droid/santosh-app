@@ -2711,3 +2711,12 @@ Task ID: v0.753.0 SKILLS FIND + UIUX DATA
 Ask: check the awesome skills deployed in the backend, then fix what the audit found.
 Built: when_to_use trigger words on 42 pack skills + seed_when, stricter match for long descriptions, awesome rows on the skills card, UI/UX Pro Max data committed.
 Deploy: vps-ops deploy (server only).
+
+---
+Task ID: v0.754.0 KEYED BOX
+Agent: Claude (session 019P5N4a)
+Task: data.gov.in key for every Hoola user (server .env, not the app) + mandi / govt dataset recipes in the API box.
+Work Log:
+- SERVER_KEYS + server_key() in publicapis/service.py; config data_gov_in_api_key; box needs_key + optional filters.
+- Recipes mandi_price, india_gov_dataset; api_box tool text; 4 new tests, v0750 pin 13 -> 15; 17 passed.
+Stage Summary: server-only; owner adds DATA_GOV_IN_API_KEY to ~/apps/santosh-core/.env and restarts. Not yet live-verified.

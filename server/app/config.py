@@ -929,6 +929,7 @@ class Settings(BaseSettings):
     app_redirect_scheme: str = "santosh"    # deep link back into the phone app after sign-in
     hoola_signup: str = "open"              # who can make a NEW Hoola with Google sign-in: open (anyone) | invite
     hoola_signup_allow: str = ""            # invite mode: comma list of emails and/or @domain.com allowed to sign up
+    data_gov_in_api_key: str = ""           # v0.754 data.gov.in (Open Government Data India) - ONE server key for every user, VPS .env only
     google_maps_api_key: str = ""           # Maps Platform key: Places API (New), Routes API, Geocoding API
     # v0.449 PAISA PEHLE: Maps had no ceiling at all. These are the first ones.
     maps_daily_inr: float = 200.0           # per tenant per day; a call that would cross it is REFUSED, not billed. 0 = no cap

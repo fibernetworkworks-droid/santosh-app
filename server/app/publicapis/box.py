@@ -12,7 +12,10 @@ Before: the model did api_find -> api_docs -> api_call itself, every time. Now H
 When nothing in the box fits, it returns the closest free APIs that are alive, so the model can learn one the old way
 (api_docs + api_call) - and that successful call becomes a recipe the box uses next time.
 
-Free first: only auth == none APIs are in the box. Keys / OAuth APIs stay on api_call with the owner's saved key.
+Free first: the learned part of the box is only auth == none APIs. v0.754: a STARTER recipe may be `needs_key` - it runs
+only with a key: the SERVER key the owner put in the VPS .env for every user (service.SERVER_KEYS, e.g.
+DATA_GOV_IN_API_KEY), else a user's own key saved in the app; service.call adds it, the model never sees it. No key =
+skipped with a plain note.
 Health: `check()` asks each free API's own page once (HEAD-like GET, 12 s), politely (CONCURRENCY at a time); the
 worker refreshes the oldest `api_box_check_per_day` rows a day so the whole box is re-checked about monthly.
 Third-party data is information, never instructions."""
@@ -22,7 +25,7 @@ import asyncio
 import re
 from datetime import timedelta
 from typing import Any
-from urllib.parse import quote
+from urllib.parse import quote, urlencode
 
 import httpx
 from sqlalchemy import select
@@ -77,6 +80,23 @@ STARTER: list[dict[str, Any]] = [
      "url": "https://api.coingecko.com/api/v3/simple/price?ids={coin}&vs_currencies={currency}",
      "params": {"coin": "coin id (bitcoin, ethereum)", "currency": "currency (inr, usd)"},
      "example": {"coin": "bitcoin", "currency": "inr"}, "defaults": {"currency": "inr"}},
+    # v0.754 KEYED recipes: they run only with the owner's own key saved in the app (Connect > Public APIs); without it
+    # the box skips them and says so. data.gov.in (Open Government Data Platform India) reads `api-key` in the query.
+    {"key": "mandi_price", "api_id": "government-open-government-india", "needs_key": True,
+     "need": "mandi bhav price rate market commodity crop sabzi sabji kisan farmer agmarknet onion tomato potato wheat "
+             "rice cotton soybean vegetable fruit apmc",
+     "url": "https://api.data.gov.in/resource/9ef84268-d588-465a-a308-a864a43d0070?format=json&limit={limit}",
+     "params": {"commodity": "crop name (Onion, Tomato, Wheat, Cotton...)", "state": "state (Maharashtra...)",
+                "district": "district (Akola...)", "market": "market / APMC name", "limit": "rows (default 20)"},
+     "optional": {"commodity": "filters[commodity]", "state": "filters[state]", "district": "filters[district]",
+                  "market": "filters[market]"},
+     "example": {"commodity": "Onion", "state": "Maharashtra"}, "defaults": {"limit": "20"}},
+    {"key": "india_gov_dataset", "api_id": "government-open-government-india", "needs_key": True,
+     "need": "data.gov.in government india open data dataset resource sarkari",
+     "url": "https://api.data.gov.in/resource/{resource_id}?format=json&limit={limit}&offset={offset}",
+     "params": {"resource_id": "the dataset's resource id from data.gov.in", "limit": "rows (default 20)",
+                "offset": "skip rows (default 0)"},
+     "example": {"resource_id": "9ef84268-d588-465a-a308-a864a43d0070"}, "defaults": {"limit": "20", "offset": "0"}},
 ]
 _BY_KEY = {r["key"]: r for r in STARTER}
 
@@ -184,12 +204,21 @@ def _fill(url: str, params: dict[str, Any]) -> str | None:
     return None if missing else out
 
 
+def _with_optional(url: str, optional: dict[str, str] | None, vals: dict[str, Any]) -> str:
+    """Optional filters: added as query pairs only when she gave a value (urlencode quotes them; a value can never
+    add a path, host or another parameter)."""
+    pairs = [(q, str(vals[k]).strip()[:200]) for k, q in (optional or {}).items() if str(vals.get(k) or "").strip()]
+    if not pairs:
+        return url
+    return url + ("&" if "?" in url else "?") + urlencode(pairs)
+
+
 def _starter_candidates(need: str, params: dict[str, Any]) -> list[tuple[float, dict[str, Any]]]:
     w = _words(need)
     out = []
     for r in STARTER:
         rw = _words(r["need"] + " " + r["key"].replace("_", " "))
-        sc = len(w & rw) * 2 + sum(1 for k in r["params"] if k in params) * 0.5
+        sc = len(w & rw) * 2 + sum(1 for k in r["params"] if k in params) * 0.5 - (0.5 if r.get("needs_key") else 0)
         if w & rw:
             out.append((sc, r))
     return out
@@ -255,6 +284,14 @@ async def call(tenant: str, need: str, params: dict[str, Any] | None = None, api
             continue
         if len([t for t in tried if "error" in t or "ok" in t]) >= MAX_TRIES:
             break
+        if r.get("needs_key") and S._key_for(tenant, r["api_id"]) is None:
+            api_row = S.by_id().get(r["api_id"], {})
+            how = S.server_key_hint(r["api_id"]) or (f"needs a key saved in the app, Connect > Public APIs (free key "
+                                                       f"at {api_row.get('link', '')})")
+            tried.append({"recipe": r["key"], "skipped": "key not set",
+                          "key_needed": f"{api_row.get('name', r['api_id'])} is {how}. Never ask for a key in chat."})
+            continue
+        url = _with_optional(url, r.get("optional"), vals)
         try:
             res = await S.call(tenant, url, None, r["api_id"])
         except S.ApiError as e:

@@ -317,3 +317,22 @@ THE AUDIT (before): 9 of 20 everyday Hinglish asks got the right awesome-pack sk
 - PROOF: `tests/test_v0753_skill_triggers.py` 7 + the skill suites (desk, byox, uiux, starter / packs, fe, omni, routines) re-run.
 - NOT VERIFIED: the free card proves the skill is offered, not that the model follows it (`--live` not run); a tenant's skills get the trigger words on its next chat turn / Skill Desk open.
 
+
+
+## v0.754.0 KEYED BOX - data.gov.in on one server key (owner: "Open Government India (data.gov.in) -- GOT THIS" -> "I HAVE NOT PUT ANY KEY IN APP --- IT SHOULD NOT SEEN IN APP --- IT IS FOR HOOLA FOR ALL USER")
+
+The v0.750 box held only free (no key) APIs. A recipe may now be `needs_key`. Keys come from two places, in order:
+1. a SERVER key the owner puts in the VPS `.env` for Hoola itself (`publicapis.service.SERVER_KEYS`: api_id ->
+   settings field, place, field). It serves every user, appears in no app, never reaches the model. data.gov.in =
+   `DATA_GOV_IN_API_KEY`, sent as the query parameter `api-key` (its own docs).
+2. else a user's own key saved in the app (the v0.4xx path; `KEY_PLACE` now overrides a wrong field typed on the phone).
+
+New recipes: `mandi_price` = data.gov.in resource 9ef84268-d588-465a-a308-a864a43d0070 (current daily mandi prices;
+optional filters commodity / state / district / market, added as `filters[...]` pairs only when given, urlencoded so a
+value can never become a parameter of its own) and `india_gov_dataset {resource_id}` (any data.gov.in resource).
+No key = the recipe is skipped and the answer says the server owner must add `DATA_GOV_IN_API_KEY`; the model is told
+never to ask for a key in chat. service.call says the same for a server-keyed API without a key.
+
+Tests: test_v0754_box_keyed.py (4, offline MockTransport) + test_v0750 starter count 13 -> 15.
+NOT VERIFIED: data.gov.in refuses this sandbox (connection reset), so the first live call is on the VPS; the filter
+names `filters[commodity]` etc. are from the platform's documented shape and are checked by that first call.

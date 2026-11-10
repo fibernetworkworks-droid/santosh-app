@@ -22,10 +22,10 @@ def _mock(handler, monkeypatch):
 
 def test_the_box_is_free_apis_with_tested_starter_recipes(env):
     st = BX.stats()
-    assert st["free_apis"] >= 1300 and len(st["starter_recipes"]) == 13
+    assert st["free_apis"] >= 1300 and len(st["starter_recipes"]) == 15
     for r in BX.STARTER:
         row = S.by_id()[r["api_id"]]                                         # every recipe names a real catalog API
-        assert row["auth"] == "none", r["key"]                               # free first: no key ever
+        assert (row["auth"] == "none") != bool(r.get("needs_key")), r["key"]  # free, or marked as needing her key
         assert r["url"].startswith("https://") and BX._fill(r["url"], {**r.get("defaults", {}), **r["example"]})
     from app.agent import tools as T
     assert "api_box" in T.HANDLERS and T.TOOLS[[t["name"] for t in T.TOOLS].index("api_box")]["name"] == "api_box"
