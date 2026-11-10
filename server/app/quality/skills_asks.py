@@ -115,3 +115,38 @@ AWESOME: list[dict] = [
 AWESOME_NEG: list[str] = ["kal ka mausam kaisa rahega", "5 baje yaad dilana", "mummy ko call karo",
                           "ek cab book karo station ke liye", "2+2 kitna hota hai", "is photo mein kya hai",
                           "Ravi ko 500 rupaye bhejne hain", "aaj ki news batao"]
+
+# v0.755: every OTHER shipped skill (build-your-own-x, superpowers, the starter skills, UI/UX Pro Max) has its own
+# trigger words now - one plain ask each; the right skill (exact name) must be in the injected top 2.
+REST_SET_V = 1
+REST: dict[str, str] = {
+ 'byox-3d-renderer':'mujhe apna ray tracer banana hai', 'byox-ai-model':'apna chhota llm train karna hai scratch se',
+ 'byox-augmented-reality':'ek augmented reality app banao camera pe', 'byox-bittorrent':'torrent client khud likhna hai',
+ 'byox-blockchain':'apni cryptocurrency blockchain banana hai', 'byox-bot':'ek telegram bot banao jo orders le',
+ 'byox-cli-tool':'ek command line tool chahiye files rename karne ka', 'byox-database':'apna database engine banana seekhna hai',
+ 'byox-distributed-systems':'raft consensus samjhao aur implement karo', 'byox-docker':'container from scratch kaise banta hai docker jaisa',
+ 'byox-emulator':'chip-8 emulator banao', 'byox-frontend-framework':'apna chhota react framework banana hai virtual dom ke saath',
+ 'byox-game':'ek 2d game banana hai pygame mein', 'byox-git':'apna git clone likhna hai',
+ 'byox-memory-allocator':'malloc khud implement karna hai', 'byox-misc-systems':'load balancer from scratch banao',
+ 'byox-network-stack':'tcp/ip stack khud likhna hai', 'byox-neural-network':'neural network from scratch bina library ke',
+ 'byox-operating-system':'apna operating system banana hai', 'byox-physics-engine':'game ke liye physics engine banao',
+ 'byox-processor':'risc-v cpu verilog mein banana hai', 'byox-programming-language':'apni programming language aur interpreter banana hai',
+ 'byox-regex-engine':'regex engine khud likho', 'byox-search-engine':'apni website ke liye search engine banao',
+ 'byox-shell':'unix shell from scratch likhna hai', 'byox-template-engine':'template engine banana hai jinja jaisa',
+ 'byox-text-editor':'terminal text editor banana hai', 'byox-visual-recognition':'photo mein objects pehchanne wala image classifier',
+ 'byox-voxel-engine':'minecraft jaisa voxel engine', 'byox-web-browser':'apna web browser banana hai',
+ 'byox-web-server':'http server from scratch python mein',
+ 'deploy-flask-app':'meri fastapi app ko server pe deploy karo', 'excel-data-clean':'leads sheet mein duplicate phone numbers saaf karo',
+ 'gst-invoice':'customer ke liye gst invoice banao', 'hindi-reply-tone':'customer ko hindi mein reply likh do',
+ 'meeting-minutes':'kal ki meeting ke minutes bana do', 'morning-briefing':'subah ki report do aaj ka plan',
+ 'pdf-fill-form':'yeh government form fill karo pdf mein', 'seo-page-audit':'meri website ka seo check karo',
+ 'sp-brainstorming':'ek naya idea hai brainstorm karte hain', 'sp-diagnosing-superpowers':'kal ka session kharab gaya what went wrong',
+ 'sp-dispatching-parallel-agents':'yeh paanch kaam parallel agents se karwao', 'sp-executing-plans':'ab plan execute karo step by step',
+ 'sp-finishing-a-development-branch':'feature ho gaya ab branch merge karo', 'sp-receiving-code-review':'reviewer ke comments aaye hain pr pe',
+ 'sp-requesting-code-review':'mera code review karo', 'sp-subagent-driven-development':'plan ko subagents se implement karo',
+ 'sp-systematic-debugging':'yeh error aa raha hai, debug karo', 'sp-test-driven-development':'is function ke liye unit test likho',
+ 'sp-using-git-worktrees':'naye feature ke liye git worktree banao', 'sp-using-superpowers':'is kaam ke liye kaunsa skill use karu',
+ 'sp-verification-before-completion':'kya yeh sach mein done hai verify karo', 'sp-writing-plans':'iska implementation plan likho',
+ 'sp-writing-skills':'ek naya skill create karo', 'uiux-pro-max':'meri app ka ui design aur colour palette batao',
+ 'upi-payment-chase':'customer ka payment pending hai reminder bhejo', 'whatsapp-campaign':'whatsapp broadcast campaign chalana hai',
+}

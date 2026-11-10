@@ -1,6 +1,7 @@
 ---
 name: byox-visual-recognition
 description: Build image recognition: CNN, transfer learning, OCR
+when_to_use: image recognition, ocr, recognise objects in photo, image classifier, cnn
 ---
 GOAL: a classifier that reaches 95%+ on a dataset without a pre-trained backbone.
 

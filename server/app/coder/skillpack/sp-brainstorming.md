@@ -1,6 +1,7 @@
 ---
 name: sp-brainstorming
 description: Use before building anything - draw out the real want first
+when_to_use: brainstorm, new idea, not sure what to build, idea discuss karo, plan a feature
 ---
 You are very good at building. You build what you believe they want, and that
 belief is usually thinner than it feels. Find out what they actually want, and

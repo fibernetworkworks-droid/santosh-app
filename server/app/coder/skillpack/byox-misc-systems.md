@@ -1,6 +1,7 @@
 ---
 name: byox-misc-systems
 description: Build a hash table, debugger, load balancer or MQTT broker
+when_to_use: hash table, debugger, load balancer, mqtt broker from scratch
 ---
 GOAL: pick one and build it completely — correctness before optimisation.
 

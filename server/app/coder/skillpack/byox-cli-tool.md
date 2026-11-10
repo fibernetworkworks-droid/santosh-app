@@ -1,6 +1,7 @@
 ---
 name: byox-cli-tool
 description: Build a CLI tool: sub-commands, config, completions
+when_to_use: command line tool, cli tool, terminal command, cli app
 ---
 GOAL: a production-ready CLI with --help, sub-commands, config file, and shell completion.
 

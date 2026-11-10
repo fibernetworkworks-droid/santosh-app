@@ -1,6 +1,7 @@
 ---
 name: sp-writing-plans
 description: Use with an approved spec - exact bite-sized task plan
+when_to_use: write a plan, implementation plan, task plan, step by step plan
 ---
 Write implementation plans for an engineer who has NOT seen this codebase or
 the spec. Assume they write idiomatic code once they know the exact interface

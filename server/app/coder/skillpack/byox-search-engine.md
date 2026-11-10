@@ -1,6 +1,7 @@
 ---
 name: byox-search-engine
 description: Build a search engine: crawler, inverted index, BM25
+when_to_use: search engine, crawler, inverted index, own google, site search
 ---
 GOAL: a local search engine that indexes 1000 HTML pages and returns ranked results.
 

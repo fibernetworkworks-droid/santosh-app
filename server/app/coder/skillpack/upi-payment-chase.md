@@ -1,6 +1,7 @@
 ---
 name: upi-payment-chase
 description: Chase an unpaid invoice politely, one nudge a week
+when_to_use: payment pending, unpaid invoice, payment reminder, paise nahi aaye, chase payment, udhaar
 ---
 GOAL: the money comes in, the relationship survives.
 

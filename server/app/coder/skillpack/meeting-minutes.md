@@ -1,6 +1,7 @@
 ---
 name: meeting-minutes
 description: Turn a meeting or call into minutes with owners and dates
+when_to_use: meeting minutes, call notes, mom, minutes of meeting, action items from meeting
 ---
 GOAL: minutes someone can act on a week later.
 

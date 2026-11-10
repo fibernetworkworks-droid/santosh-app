@@ -1,6 +1,7 @@
 ---
 name: pdf-fill-form
 description: Fill a government PDF form from her data, as links
+when_to_use: fill pdf form, government form, application form bharna, form fill karo
 ---
 GOAL: the form filled from HER facts, returned as a file she can print.
 

@@ -1,6 +1,7 @@
 ---
 name: sp-writing-skills
 description: Use when creating or editing skills - TDD applied to docs
+when_to_use: write a skill, create skill, new skill, edit skill
 ---
 Writing a skill IS test-driven development applied to process documentation:
 write the tests (pressure scenarios), watch them fail (baseline agent

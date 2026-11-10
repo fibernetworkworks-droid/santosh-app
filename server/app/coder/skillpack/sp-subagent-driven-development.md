@@ -1,6 +1,7 @@
 ---
 name: sp-subagent-driven-development
 description: Use to run a plan via fresh implementer + reviewer per task
+when_to_use: subagents, implement plan with agents, agent per task
 ---
 Execute a plan by dispatching a FRESH implementer subagent per task, a task
 review (spec compliance + code quality) after each, and one broad

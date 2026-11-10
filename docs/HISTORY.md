@@ -336,3 +336,12 @@ never to ask for a key in chat. service.call says the same for a server-keyed AP
 Tests: test_v0754_box_keyed.py (4, offline MockTransport) + test_v0750 starter count 13 -> 15.
 NOT VERIFIED: data.gov.in refuses this sandbox (connection reset), so the first live call is on the VPS; the filter
 names `filters[commodity]` etc. are from the platform's documented shape and are checked by that first call.
+
+## v0.755.0 EVERY SKILL FINDABLE — trigger words on all 99 shipped skills (10 Nov 2026; built as 0.754, their KEYED BOX took 0.754.0 - REBASE PROTOCOL, both kept; owner: "ALL SKILLS DEVLOPED")
+
+v0.753 gave plain trigger words (`when_to_use`) to the 42 awesome-pack skills. The other 57 shipped skill files still had none: 31 build-your-own-x (byox-*), 15 superpowers (sp-*), the 10 starter skills (deploy-flask-app, excel-data-clean, gst-invoice, hindi-reply-tone, meeting-minutes, morning-briefing, pdf-fill-form, seo-page-audit, upi-payment-chase, whatsapp-campaign) and uiux-pro-max. Each now has one `when_to_use:` line (<= 240 chars) of the words people type ("telegram bot", "gst bill", "payment pending", "debug karo", "unit test likho", "colour palette"...). The 8 Anthropic skills under `skillpack/claude/` keep their own long descriptions (v0.753's stricter match governs them).
+- REACH: tenants who already hold these skills get the line through `seed_when` on their next chat turn / Skill Desk open (a line she wrote herself is never replaced).
+- CARD: `python -m app.quality skills` prints "Other shipped skills (set v1)" - one plain Hinglish ask per skill (`skills_asks.REST`), the exact skill in the injected top 2: 57/57 on a clean tenant (55/57 at first; "malloc" and "kaunsa skill" added). Awesome packs unchanged 20/20 + 19/20, unrelated asks 8/8 clean, the original rows 10/10 + 4/4.
+- PROOF: `tests/test_v0755_all_skill_triggers.py` 2 (every shipped file has a line within WHEN_MAX; 57/57 + negatives clean) + the skill suites re-run.
+- NOT VERIFIED: reachability only - whether the model then follows a skill needs the paid `--live` card.
+

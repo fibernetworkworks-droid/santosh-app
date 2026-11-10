@@ -1,6 +1,7 @@
 ---
 name: byox-voxel-engine
 description: Build a voxel engine: chunks, greedy meshing, Perlin terrain
+when_to_use: voxel engine, minecraft-like game, blocks world, terrain generation
 ---
 GOAL: an infinite procedural voxel world with greedy meshing and block placement.
 

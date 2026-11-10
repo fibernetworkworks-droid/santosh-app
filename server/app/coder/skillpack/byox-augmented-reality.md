@@ -1,6 +1,7 @@
 ---
 name: byox-augmented-reality
 description: Build an AR app with ArUco marker tracking and 3D overlay
+when_to_use: augmented reality, ar app, aruco marker, 3d overlay on camera
 ---
 GOAL: a live camera feed with a 3D cube rendered correctly on top of a printed marker.
 

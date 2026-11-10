@@ -1,6 +1,7 @@
 ---
 name: sp-test-driven-development
 description: Use when implementing anything - failing test first, always
+when_to_use: write tests, tdd, unit test, test first, add tests
 ---
 THE IRON LAW: NO PRODUCTION CODE WITHOUT A FAILING TEST FIRST.
 Wrote code before the test? DELETE it - don't keep it as "reference", don't

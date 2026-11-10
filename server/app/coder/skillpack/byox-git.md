@@ -1,6 +1,7 @@
 ---
 name: byox-git
 description: Build a Git clone: objects, refs, commit, diff, log, clone
+when_to_use: own git, git clone from scratch, version control system
 ---
 GOAL: a working `ugit` or `gitlet` that creates commits, reads history and clones.
 

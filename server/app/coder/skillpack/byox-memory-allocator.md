@@ -1,6 +1,7 @@
 ---
 name: byox-memory-allocator
 description: Build malloc/free: free-list, coalescing, segregated fits
+when_to_use: malloc, implement malloc, memory allocator, free list, heap allocator
 ---
 GOAL: a malloc/free that passes a correctness test suite with <10% fragmentation.
 

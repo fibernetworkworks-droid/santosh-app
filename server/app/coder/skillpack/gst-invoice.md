@@ -1,6 +1,7 @@
 ---
 name: gst-invoice
 description: Raise a GST invoice on her one series, the server's way
+when_to_use: gst invoice, gst bill, tax invoice, bill banao, invoice banana
 ---
 GOAL: a compliant tax invoice every time, no manual arithmetic.
 

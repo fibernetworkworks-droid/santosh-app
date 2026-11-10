@@ -1,6 +1,7 @@
 ---
 name: sp-receiving-code-review
 description: Use on review feedback - verify first, push back with proof
+when_to_use: review comments, reviewer feedback, pr feedback, address review
 ---
 Code review requires technical evaluation, not emotional performance. Verify
 before implementing. Ask before assuming. Technical correctness over social

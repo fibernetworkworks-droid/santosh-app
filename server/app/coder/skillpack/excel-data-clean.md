@@ -1,6 +1,7 @@
 ---
 name: excel-data-clean
 description: Clean an Indian leads sheet: phones, dupes, consent
+when_to_use: clean excel, leads sheet, duplicate phone numbers, clean contacts list, spreadsheet cleanup
 ---
 GOAL: a sheet safe to message from.
 

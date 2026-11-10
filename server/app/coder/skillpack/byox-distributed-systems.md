@@ -1,6 +1,7 @@
 ---
 name: byox-distributed-systems
 description: Build Raft consensus, queues or key-value stores
+when_to_use: raft, consensus, distributed system, key value store, message queue from scratch
 ---
 GOAL: a 3-node cluster that stays consistent when one node crashes.
 
