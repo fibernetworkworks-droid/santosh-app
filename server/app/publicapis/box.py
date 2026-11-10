@@ -98,18 +98,21 @@ STARTER: list[dict[str, Any]] = [
      "params": {"query": "topic words (optional)", "language": "hi / en / mr ... (optional)",
                 "category": "business / sports / politics / technology ... (optional)"},
      "optional": {"query": "q", "language": "language", "category": "category"},
+     "slim": {"list": "results", "fields": ["title", "link", "description", "pubDate", "source_name", "language", "category"]},
      "example": {"language": "hi"}},
     {"key": "news_search", "api_id": "news-gnews", "needs_key": True,
      "need": "news search khabar about topic articles samachar",
      "url": "https://gnews.io/api/v4/search?q={query}&country=in&max=10",
      "params": {"query": "what the news is about", "lang": "hi / en ... (optional)"},
      "optional": {"lang": "lang"},
+     "slim": {"list": "articles", "fields": ["title", "url", "description", "publishedAt", "source"]},
      "example": {"query": "monsoon"}},
     {"key": "news_headlines", "api_id": "news-gnews", "needs_key": True,
      "need": "news headlines top today khabar surkhiyan",
      "url": "https://gnews.io/api/v4/top-headlines?country=in&max=10",
      "params": {"category": "general / business / sports / technology ... (optional)", "lang": "hi / en ... (optional)"},
      "optional": {"category": "category", "lang": "lang"},
+     "slim": {"list": "articles", "fields": ["title", "url", "description", "publishedAt", "source"]},
      "example": {"category": "business"}},
     {"key": "india_gov_dataset", "api_id": "government-open-government-india", "needs_key": True,
      "need": "data.gov.in government india open data dataset resource sarkari",
@@ -224,6 +227,32 @@ def _fill(url: str, params: dict[str, Any]) -> str | None:
     return None if missing else out
 
 
+def _slim(data: dict[str, Any], spec: dict[str, Any], n: int = 10) -> dict[str, Any]:
+    """v0.758: a big answer (news is 30-60k chars) keeps only what she needs per item, so it never reaches the model
+    as cut-off JSON text: the listed fields, long text cut to 300 chars, at most n items, plus the totals."""
+    rows = data.get(spec["list"])
+    if not isinstance(rows, list):
+        return {k: v for k, v in data.items() if not isinstance(v, (list, dict))}   # e.g. an error answer
+    out = []
+    for row in rows[:n]:
+        if not isinstance(row, dict):
+            continue
+        item = {}
+        for f in spec["fields"]:
+            v = row.get(f)
+            if isinstance(v, dict):
+                v = v.get("name") or v.get("url")
+            elif isinstance(v, list):
+                v = ", ".join(str(x) for x in v[:4])
+            if isinstance(v, str) and len(v) > 300:
+                v = v[:300] + "…"
+            if v not in (None, ""):
+                item[f] = v
+        out.append(item)
+    meta = {k: v for k, v in data.items() if k != spec["list"] and isinstance(v, (int, float, str)) and k != "nextPage"}
+    return {**meta, spec["list"]: out, "shown": len(out)}
+
+
 def _with_optional(url: str, optional: dict[str, str] | None, vals: dict[str, Any]) -> str:
     """Optional filters: added as query pairs only when she gave a value (urlencode quotes them; a value can never
     add a path, host or another parameter)."""
@@ -317,7 +346,7 @@ async def call(tenant: str, need: str, params: dict[str, Any] | None = None, api
             continue
         url = _with_optional(url, r.get("optional"), vals)
         try:
-            res = await S.call(tenant, url, None, r["api_id"])
+            res = await S.call(tenant, url, None, r["api_id"], full=bool(r.get("slim")))
         except S.ApiError as e:
             mark(r["api_id"], False)
             tried.append({"recipe": r["key"], "error": str(e)[:200]})
@@ -328,6 +357,9 @@ async def call(tenant: str, need: str, params: dict[str, Any] | None = None, api
             tried.append({"recipe": r["key"], "error": res.get("error") or f"HTTP {code}"})
             continue
         mark(r["api_id"], True, "alive", code)
+        full = res.pop("_data", None)
+        if r.get("slim") and isinstance(full, dict):
+            res["json"], res["json_text"] = _slim(full, r["slim"]), None
         api_row = S.by_id().get(r["api_id"], {})
         return {"ok": True, "api": {"id": r["api_id"], "name": api_row.get("name", r["api_id"]), "recipe": r["key"],
                                     "link": api_row.get("link", "")},

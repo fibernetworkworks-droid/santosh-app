@@ -2744,3 +2744,10 @@ Agent: Claude (session 019P5N4a)
 Task: newsdata.io + gnews.io as server-keyed box recipes.
 Work Log: SERVER_KEYS + config keys; 3 recipes; api_box text; 3 tests; 22 passed.
 Stage Summary: server-only; owner adds NEWSDATA_API_KEY / GNEWS_API_KEY to the VPS .env. Not yet live-verified.
+
+---
+Task ID: v0.759.0 NEWS SAAF
+Agent: Claude (session 019P5N4a)
+Task: news answers too big for the box -> slim per recipe.
+Work Log: box._slim + recipe slim specs; 1 test; 18 passed.
+Stage Summary: server-only; redeploy + rerun her news test.

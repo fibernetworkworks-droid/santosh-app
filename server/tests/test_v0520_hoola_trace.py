@@ -651,10 +651,10 @@ def test_flags_default_off_and_redact_on():
 
 def test_version_pins():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.758.0"
-    assert "0.758.0+757" in (REPO_ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.759.0"
+    assert "0.759.0+758" in (REPO_ROOT / "pubspec.yaml").read_text()
     line = (SERVER / "app" / "main.py").read_text().splitlines()[35]
-    assert line.startswith('APP_VERSION = "0.758.0"')
+    assert line.startswith('APP_VERSION = "0.759.0"')
     # the story-token pin rides the NEWEST story (the newest-story precedent);
     # the v0.520 story tokens live in git history - the v0.530 story carries
     # the P3 markers AND names the trace layer it sits on
