@@ -434,6 +434,14 @@ class Settings(BaseSettings):
                                            # of stapling a note, and a correction message goes out only when a real
                                            # ACTION claim (sent / paid / booked / deleted / published) stayed false
                                            # after that retry. False = the old stapled notes.
+    chat_plain_loop: bool = True           # parity Phase 5b (the loop): the model's answer ends the turn. Kept checks
+                                           # run BEFORE the answer is shown and a corrected answer REPLACES the draft
+                                           # in place (one reply): a false ACTION claim (sent / paid / booked /
+                                           # deleted / published with no tool), a reminder promised with none set,
+                                           # and research figures with no source (a dossier turn). Dropped: the
+                                           # generic pakka self-check model call and the reviewer call on ordinary
+                                           # hard answers. Kept as is: the goal nudge (only with an open kaam_plan
+                                           # goal) and the promise nudge (aage). False = the old checks.
     seekh_enabled: bool = True             # v0.713 SEEKH MANCH: learn a way of working from a video (the
     seekh_max_per_day: int = 20            # `seekh_video` tool): the Gemini eyes watch, Claude distills the
     seekh_file_max_mb: int = 200           # steps with [m:ss] evidence, and they land in the two memories
