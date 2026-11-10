@@ -98,12 +98,12 @@ def test_key_protected(env, monkeypatch):
 def test_watch_needs_a_video(seekh_env):
     c = client()
     r = c.post("/api/seekh/console/watch", json={})
-    assert r.status_code == 422 and "Kaunsa video" in r.json()["detail"]
+    assert r.status_code == 422 and "Which video" in r.json()["detail"]
 
 
 def test_watch_junk_is_honest(seekh_env):
     r = client().post("/api/seekh/console/watch", json={"video": "yeh video dekho!! @#$"})
-    assert r.status_code == 422 and "samajh nahi aaya" in r.json()["detail"]
+    assert r.status_code == 422 and "does not look like a video" in r.json()["detail"]
 
 
 def test_watch_off_is_403(env, monkeypatch):
@@ -111,7 +111,7 @@ def test_watch_off_is_403(env, monkeypatch):
     monkeypatch.setenv("SEEKH_ENABLED", "false")
     get_settings.cache_clear()
     r = client().post("/api/seekh/console/watch", json={"video": "https://youtu.be/dQw4w9WgXcQ"})
-    assert r.status_code == 403 and "band" in r.json()["detail"]
+    assert r.status_code == 403 and "switched off" in r.json()["detail"]
 
 
 def test_unknown_progress_is_404(seekh_env):
@@ -169,13 +169,13 @@ def test_the_two_memories_are_written_once(seekh_env):
 
 def test_error_is_honest(seekh_env, monkeypatch):
     def boom(vid, tenant):
-        raise K.SeekhError("Video nahi dekh paya (file kharab)")
+        raise K.SeekhError("Could not watch the video (the file is broken)")
     monkeypatch.setattr(K, "_perceive_youtube", boom)
     c = client()
     r = c.post("/api/seekh/console/watch", json={"video": "https://youtu.be/dQw4w9WgXcQ"})
     out = wait_done(c, r.json()["id"])
     assert out["done"] and out["stage"] == "error"
-    assert "kharab" in out["error"] and out["result"] is None
+    assert "broken" in out["error"] and out["result"] is None
 
 
 def test_one_watch_at_a_time_adopts_the_running_job(seekh_env, monkeypatch):
@@ -259,20 +259,19 @@ def test_view_and_script_in_v2html():
 
 
 def test_the_panel_pins():
+    """v0.745 the redesigned page: the four screens, the real stages, the honest run and the limits."""
     js = (CONSOLE / "seekh.js").read_text(encoding="utf-8")
     assert "window.HoolaSeekh" in js
-    # the five real stages, the realtime notes, the memory, the perform-on-this-page
-    assert "'Pehchana'" in js and "'Video dekh rahi hoon'" in js and "'Notes likh rahi hoon'" in js
-    assert "HOOLA KI NOTES" in js and "Memory taiyar hai" in js
-    assert "Perform this task NOW" in js
-    # the perform turn: one honest chat turn that names the kaam and the operator's own browser
-    i = js.index("ab ek baar asli mein chala ke dekhna hai")
-    assert "Seekhe hue kaam" in js[i - 60:i] and "apne browser" in js[i:i + 700] and "recipe (draft)" in js[i:i + 700]
-    assert "pehle mujhse poochein" in js
+    assert "'Opened the video'" in js and "'Watching'" in js and "'Writing notes'" in js and "'Saving to memory'" in js
+    assert "Hoola's notes" in js and "Your learned tasks" in js and "The steps Hoola learned" in js
+    assert "Do it now" in js and "Did it work?" in js
+    # the run: one honest chat turn, her own browser, she is asked before anything is sent
+    i = js.index("Do the learned task")
+    assert "own browser" in js[i:i + 700] and "Ask me before sending or submitting anything" in js[i:i + 700]
     # the pulse and the honest limits
     assert "1200" in js and "25 MB" in js
     # every server value goes through esc()
-    assert "w.title" in js and "data-title=" in js
+    assert "esc(r.title" in js and "esc(t.title" in js
 
 
 def test_hub_card_inside_ai_employees():
@@ -281,8 +280,7 @@ def test_hub_card_inside_ai_employees():
     i = js.index("ae-seekh")
     card = js[i:i + 900]
     assert 'data-v="seekh"' in card and "Open Video Learner" in card
-    # the owner's words, on the card
-    assert "REALTIME" in card and "MEMORY" in card and "PERFORM THIS TASK NOW" in card and "APNE BROWSER" in card
+    assert "Teach Hoola any task from a video" in card and "its own browser" in card
 
 
 def test_v2js_wiring():
@@ -310,8 +308,8 @@ def test_no_new_tool_road_the_registry_stays():
 
 def test_version_pins():
     main = (SERVER / "app" / "main.py").read_text(encoding="utf-8")
-    assert 'APP_VERSION = "0.744.0"' in main and "SEEKH MANCH ON THE CONSOLE v0.718.0" in main
+    assert 'APP_VERSION = "0.746.0"' in main and "SEEKH MANCH ON THE CONSOLE v0.718.0" in main
     pub = ROOT / "pubspec.yaml"
-    assert "version: 0.744.0+743" in pub.read_text(encoding="utf-8")
+    assert "version: 0.746.0+745" in pub.read_text(encoding="utf-8")
     html = (CONSOLE / "v2.html").read_text(encoding="utf-8")
-    assert "console/seekh.js?v=0.744.0" in html and "console/v2.js?v=0.744.0" in html
+    assert "console/seekh.js?v=0.746.0" in html and "console/v2.js?v=0.746.0" in html

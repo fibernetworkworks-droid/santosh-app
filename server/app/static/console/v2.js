@@ -328,8 +328,9 @@ async function enter() {
                       send: async text => {        // one honest chat turn without leaving the panel
                         let id = CONV;
                         if (!id) { const c = await api('POST', '/api/conversations?reuse=1'); id = c.id; }
-                        return api('POST', `/api/conversations/${encodeURIComponent(id)}/messages`,
+                        const r = await api('POST', `/api/conversations/${encodeURIComponent(id)}/messages`,
                                    {text: String(text || ''), client_id: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random())), files: [], hints: []});
+                        return {...(r || {}), conversation_id: id};   // v0.745 the learner follows this run on its own page
                       },
                       upload: async file => {      // the panel's video picker rides the chat file lane (25 MB)
                         let id = CONV;

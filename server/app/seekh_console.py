@@ -51,7 +51,8 @@ def _snapshot(job: dict[str, Any]) -> dict[str, Any]:
     return {"id": job["id"], "stage": job["stage"], "stages": stages, "title": job.get("title", ""),
             "perception": job.get("perception", ""), "done": bool(job.get("done")),
             "error": job.get("error", ""), "elapsed": round(_now() - job["started"], 1),
-            "started": job["started_iso"], "result": job.get("result")}
+            "started": job["started_iso"], "result": job.get("result"), "ref": job.get("ref", ""),
+            "kind": job.get("kind", ""), "stopped": bool(job.get("stopped"))}
 
 
 def _prune() -> None:
@@ -83,9 +84,14 @@ def _start(tenant: str, ref: str, title: str) -> str:
     job: dict[str, Any] = {"id": jid, "tenant": tenant, "stage": "queue", "stages": [],
                            "started": _now(), "started_iso": time.strftime("%Y-%m-%dT%H:%M:%S"),
                            "title": str(title or ""), "perception": "", "done": False,
-                           "error": "", "result": None, "ended": 0.0}
+                           "error": "", "result": None, "ended": 0.0, "ref": str(ref or ""),
+                           "cancel": threading.Event(), "stopped": False}
 
     def on_stage(stage: str, data: dict[str, Any]) -> None:
+        if stage == "partial":                             # v0.745 live notes: text only, never a stage row
+            with _LOCK:
+                job["perception"] = str(data.get("perception") or "")
+            return
         with _LOCK:
             job["stages"].append((stage, _now() - job["started"]))
             job["stage"] = stage
@@ -100,13 +106,20 @@ def _start(tenant: str, ref: str, title: str) -> str:
 
     def run() -> None:
         try:
-            out = seekh.watch(tenant, ref, title, "owner", on_stage=on_stage)
+            out = seekh.watch(tenant, ref, title, "owner", on_stage=on_stage, cancel=job["cancel"])
             with _LOCK:
                 job["result"] = out
                 job["done"] = True
                 job["ended"] = _now()
         except Exception as e:                              # noqa: BLE001 - SeekhError and the honest rest
+            stopped = isinstance(e, seekh.SeekhStopped)
+            if not stopped:                                 # v0.745 a failed watch stays on her list with its reason
+                try:
+                    seekh.record_failure(tenant, ref, job.get("title", ""), str(e) or e.__class__.__name__)
+                except Exception:                           # noqa: BLE001
+                    log.exception("seekh failure row")
             with _LOCK:
+                job["stopped"] = stopped
                 job["error"] = str(e) or e.__class__.__name__
                 job["stage"] = "error"
                 job["done"] = True
@@ -132,7 +145,7 @@ def make_router(require_key: Callable, current_tenant: Callable) -> APIRouter:
         out = seekh.listing(tenant)
         today = time.strftime("%Y-%m-%d")
         return {**out, "enabled": bool(st.seekh_enabled), "max_per_day": int(st.seekh_max_per_day),
-                "today": sum(1 for w in out["watches"] if str(w.get("day", "")) == today),
+                "today": sum(1 for w in out["watches"] if str(w.get("day", "")) == today and w.get("status") != "failed"),
                 "running": _running_for(tenant)}
 
     @r.post("/watch")
@@ -142,11 +155,11 @@ def make_router(require_key: Callable, current_tenant: Callable) -> APIRouter:
         ref = str(b.get("video") or "").strip()
         title = str(b.get("title") or "").strip()
         if not ref:
-            raise HTTPException(422, "Kaunsa video? YouTube ka link, attach kiye video ka file_id, ya direct video URL dijiye.")
+            raise HTTPException(422, "Which video? Give a YouTube link, a video file you attached, or a direct video URL.")
         from . import seekh
         from .config import get_settings
         if not get_settings().seekh_enabled:
-            raise HTTPException(403, "Video se seekhna abhi band hai.")
+            raise HTTPException(403, "Learning from videos is switched off on this server.")
         running = _running_for(tenant)
         if running:
             return {"id": running, "already_running": True}   # 200: the panel adopts the live job
@@ -169,7 +182,47 @@ def make_router(require_key: Callable, current_tenant: Callable) -> APIRouter:
                 if len(mine) == 1:                           # a page reload mid-watch: adopt the running job
                     job = mine[0]
         if job is None:
-            raise HTTPException(404, "Yeh watch nahi mila (server restart hua hoga). Naya try kijiye - jo seekh liya tha woh memory mein hai.")
+            raise HTTPException(404, "This watch was not found (the server probably restarted). Start it again - anything already learned is kept.")
         return _snapshot(job)
+
+    @r.post("/stop")
+    async def stop(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        """v0.745 Stop a running watch: the pipeline stops at the next chunk / stage and keeps nothing."""
+        jid = str((body or {}).get("id") or "").strip()
+        with _LOCK:
+            job = _JOBS.get(jid)
+            if not job or job["tenant"] != tenant:
+                raise HTTPException(404, "This watch is not running.")
+            if not job.get("done"):
+                job["cancel"].set()
+        return {"ok": True}
+
+    @r.get("/task")
+    async def task(id: str = "", tenant: str = Depends(current_tenant)):
+        """v0.745 one learned task: steps with their video moments, what it needs, how it went."""
+        from . import seekh
+        try:
+            return seekh.task(tenant, str(id or ""))
+        except seekh.SeekhError as e:
+            raise HTTPException(404, str(e))
+
+    @r.delete("/task")
+    async def forget(id: str = "", tenant: str = Depends(current_tenant)):
+        """v0.745 Remove: the list row, its learned procedure and a never-run recipe draft."""
+        from . import seekh
+        try:
+            return {"ok": seekh.forget(tenant, str(id or ""))}
+        except seekh.SeekhError as e:
+            raise HTTPException(404, str(e))
+
+    @r.post("/proven")
+    async def proven(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        """v0.745 her answer after a run: {id, ok}. Worked = Proven; wrong = noted."""
+        from . import seekh
+        b = dict(body or {})
+        try:
+            return seekh.mark(tenant, str(b.get("id") or ""), bool(b.get("ok")))
+        except seekh.SeekhError as e:
+            raise HTTPException(404, str(e))
 
     return r

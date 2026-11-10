@@ -3424,3 +3424,132 @@ html.human #app .ae-role .ae-role-n{display:block;font-size:12.5px;color:var(--m
 #app #composer .modelb .mname{min-width:0}
 /* v0.744 no avatar face on the home greeting (owner, human console) */
 html.human #app .landing .halo{display:none}
+
+/* v0.745 VIDEO LEARNER REDESIGN (seekh.js, `skv-`): the approved canvas - home / watching / task / doing it, console
+   tokens only, one accent (violet = working), amber = needs you, green = proven. */
+#app .skv{max-width:1180px;margin:0 auto;padding:28px 28px 56px;color:var(--ink)}
+#app .skv .sr{position:absolute;left:-9999px}
+#app .skv-crumb{font-size:13px;color:var(--mut);margin-bottom:16px;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+#app .skv-crumb button{border:0;background:none;padding:0;font:inherit;color:var(--mut);cursor:pointer}
+#app .skv-crumb button:hover{color:var(--ink);text-decoration:underline}
+#app .skv-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:24px}
+#app .skv-headact{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+#app .skv-h1{margin:0;font-family:var(--fr);font-weight:500;font-size:30px;line-height:1.15;letter-spacing:-.01em}
+#app .skv-h1.sm{font-size:25px}
+#app .skv-h2{margin:0;font-family:var(--fr);font-weight:500;font-size:21px}
+#app .skv-h3{margin:0 0 6px;font-size:15.5px;font-weight:600}
+#app .skv-lede{margin:8px 0 0;max-width:620px;font-size:15.5px;line-height:1.55;color:var(--lit)}
+#app .skv-meta{font-size:13px;color:var(--mut)}
+#app .skv-fine{margin:12px 0 0;font-size:13px;line-height:1.5;color:var(--mut)}
+#app .skv-quiet{color:var(--mut);font-size:14px;margin:14px 0}
+#app .skv-opt{font-weight:400;color:var(--mut)}
+#app .skv-pill{display:inline-flex;align-items:center;gap:7px;height:26px;padding:0 10px;border-radius:999px;font-size:12.5px;font-weight:500;white-space:nowrap}
+#app .skv-pill.ok{background:var(--ok-soft);color:var(--ok)}
+#app .skv-pill.warn{background:var(--warn-soft);color:var(--warn)}
+#app .skv-pill.bad{background:rgb(var(--bad-rgb) / .1);color:var(--bad)}
+#app .skv-pill.mute{background:var(--sunk);color:var(--lit)}
+#app .skv-pill.live{background:var(--pri-soft);color:var(--pri-ink)}
+#app .skv-pill.live i{width:7px;height:7px;border-radius:50%;background:var(--pri)}
+#app .skv-teach{border:1px solid var(--hair2);border-radius:18px;padding:22px;background:var(--surface);box-shadow:var(--sh)}
+#app .skv-teach.over{border-color:var(--pri);box-shadow:0 0 0 3px var(--pri-soft)}
+#app .skv-teach h2{margin:0 0 14px;font-size:16px;font-weight:600}
+#app .skv-teachrow{display:flex;gap:10px;flex-wrap:wrap}
+#app .skv-link{flex:1 1 380px;display:flex;align-items:center;gap:10px;height:46px;padding:0 14px;border:1px solid var(--hair2);border-radius:12px;background:var(--bg)}
+#app .skv-link svg{width:18px;height:18px;color:var(--mut);flex:none}
+#app .skv-link input,#app .skv-name input{flex:1;min-width:0;border:0;outline:none;background:transparent;font:400 15px var(--fd);color:var(--ink)}
+#app .skv-name{flex:1 1 260px;display:flex;height:46px;padding:0 14px;border:1px solid var(--hair2);border-radius:12px;background:var(--bg)}
+#app .skv-link:focus-within,#app .skv-name:focus-within{border-color:var(--pri)}
+#app .skv .btn.skv-big{height:46px;padding:0 22px}
+#app .skv-teachfoot{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:14px}
+#app .skv-teachfoot .btn svg{width:15px;height:15px;margin-right:6px;vertical-align:-2px}
+#app .skv-teach .skv-fine{padding-top:12px;border-top:1px solid var(--line)}
+#app .skv-list{margin-top:40px}
+#app .skv-listhead{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:6px}
+#app .skv-filters{display:flex;gap:6px;flex-wrap:wrap}
+#app .skv-filters .btn{height:32px;padding:0 12px;font-size:13px}
+#app .skv-filters .btn.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+#app .skv-row{display:grid;grid-template-columns:132px minmax(0,1fr) auto;gap:18px;align-items:center;padding:14px 0;border-top:1px solid var(--line)}
+#app .skv-row:last-child{border-bottom:1px solid var(--line)}
+#app .skv-thumbbtn{border:0;padding:0;background:none;cursor:pointer;border-radius:10px}
+#app .skv-thumb{position:relative;display:grid;place-items:center;width:132px;height:76px;border-radius:10px;background:#23212E;overflow:hidden}
+#app .skv-thumb img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+#app .skv-thumb i{position:relative;display:grid;place-items:center;width:32px;height:32px;border-radius:50%;background:rgb(0 0 0 / .45);color:#fff}
+#app .skv-thumb i svg{width:16px;height:16px}
+#app .skv-thumb.fail{background:var(--warn-soft);color:var(--warn)}
+#app .skv-thumb.fail svg{width:24px;height:24px}
+#app .skv-rowbd{min-width:0}
+#app .skv-title{border:0;background:none;padding:0;font:600 16px var(--fd);color:var(--ink);cursor:pointer;text-align:left}
+#app .skv-title:hover{text-decoration:underline}
+#app .skv-rowmeta{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:7px}
+#app .skv-rowact{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+#app .skv-split{display:flex;flex-wrap:wrap;gap:28px;align-items:flex-start}
+#app .skv-main{flex:999 1 560px;min-width:0}
+#app .skv-side{flex:1 1 300px;max-width:380px;border:1px solid var(--line);border-radius:16px;padding:18px 20px;background:var(--surface)}
+#app .skv-doit{border-color:var(--hair2);box-shadow:var(--sh)}
+#app .skv-player{border-radius:16px;overflow:hidden;background:#23212E}
+#app .skv-frame{display:block;width:100%;aspect-ratio:16/9;border:0;background:#23212E}
+#app .skv-noplay{display:grid;place-content:center;justify-items:center;gap:10px;color:#fff;font-size:14px}
+#app .skv-noplay svg{width:34px;height:34px}
+#app .skv-noplay a{color:#fff;text-decoration:underline}
+#app .skv-marks{position:relative;height:8px;margin:8px 2px 0}
+#app .skv-marks i{position:absolute;top:0;width:4px;height:8px;border-radius:2px;background:var(--pri)}
+#app .skv-hint{margin:6px 2px 0}
+#app .skv-notes{margin-top:22px}
+#app #skvNotes{max-height:460px;overflow:auto}
+#app .skv-note{display:grid;grid-template-columns:56px minmax(0,1fr);gap:10px;padding:10px 0;border-top:1px solid var(--line);font-family:var(--fr);font-size:15px;line-height:1.55}
+#app .skv-writing{color:var(--mut);font-family:var(--fd);font-size:14px}
+#app .skv-ts{height:24px;padding:0 8px;border:0;border-radius:6px;background:var(--pri-soft);color:var(--pri-ink);font:500 12px var(--fd);cursor:pointer;font-variant-numeric:tabular-nums;justify-self:start}
+#app .skv-ts:hover{background:var(--pri);color:var(--on-acc)}
+#app .skv-stages,#app .skv-acts,#app .skv-plan,#app .skv-steps{list-style:none;margin:0;padding:0}
+#app .skv-stages li,#app .skv-acts li{display:grid;grid-template-columns:22px minmax(0,1fr) auto;gap:10px;align-items:start;padding:10px 0;font-size:14px;line-height:1.45}
+#app .skv-acts li{border-top:1px solid var(--line)}
+#app .skv-stages b{display:block;font-weight:500;font-size:14px}
+#app .skv-stages small{display:block;font-size:13px;color:var(--mut)}
+#app .skv-stages li:not(.on):not(.did) b{color:var(--mut);font-weight:400}
+#app .skv-stages li.on b{font-weight:600}
+#app .skv-stages em,#app .skv-acts em{font-style:normal;font-size:12px;color:var(--mut);font-variant-numeric:tabular-nums;padding-top:2px}
+#app .skv-dot{width:18px;height:18px;border-radius:50%;border:1.5px solid var(--hair2);box-sizing:border-box;display:grid;place-items:center;margin-top:1px;font-size:11px;font-weight:700}
+#app li.did>.skv-dot{border:0;background:var(--ok-soft);color:var(--ok)}
+#app li.did>.skv-dot svg{width:12px;height:12px}
+#app li.on>.skv-dot{border:2px solid var(--pri)}
+#app li.on>.skv-dot::after{content:"";width:6px;height:6px;border-radius:50%;background:var(--pri)}
+#app li.bad>.skv-dot{border:0;background:rgb(var(--bad-rgb) / .12);color:var(--bad)}
+#app .skv-error{display:grid;gap:6px;padding:16px 18px;margin:8px 0 14px;border:1px solid rgb(var(--bad-rgb) / .3);border-radius:14px;background:rgb(var(--bad-rgb) / .05);font-family:var(--fd);font-size:14px}
+#app .skv-btnrow{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+#app .skv-vid{margin-bottom:18px}
+#app .skv-vid summary{cursor:pointer;font-size:14px;font-weight:500;color:var(--pri-ink);margin-bottom:10px}
+#app .skv-steps li{display:grid;grid-template-columns:30px minmax(0,1fr) auto;gap:12px;align-items:start;padding:13px 0;border-top:1px solid var(--line);font-size:15px;line-height:1.5}
+#app .skv-steps small{display:block;font-size:13px;color:var(--mut);margin-top:2px}
+#app .skv-evs{display:flex;gap:4px}
+#app .skv-n{width:24px;height:24px;border-radius:50%;background:var(--sunk);display:grid;place-items:center;font-size:12px;font-weight:600;color:var(--lit)}
+#app .skv-boxes{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-top:22px}
+#app .skv-box{border:1px solid var(--line);border-radius:14px;padding:16px 18px}
+#app .skv-box.warn{background:var(--warn-soft);border-color:rgb(var(--fg-rgb) / .06)}
+#app .skv-box h3{margin:0 0 8px;font-size:14px;font-weight:600}
+#app .skv-box ul{margin:0;padding-left:18px;font-size:14px;line-height:1.65;color:var(--lit)}
+#app .skv-form{display:flex;flex-direction:column;gap:12px;margin-top:14px}
+#app .skv-form label{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:500;color:var(--lit)}
+#app .skv-form input{height:40px;box-sizing:border-box;padding:0 12px;border:1px solid var(--hair2);border-radius:10px;font:400 14.5px var(--fd);color:var(--ink);background:var(--bg)}
+#app .skv-form input:focus{outline:none;border-color:var(--pri)}
+#app .skv-conf{display:flex;justify-content:space-between;align-items:center;margin-top:16px;padding-top:14px;border-top:1px solid var(--line);font-size:13px;color:var(--mut)}
+#app .skv-conf>span:last-child{display:flex;align-items:center;gap:8px;color:var(--ink);font-weight:500}
+#app .skv-conf i{display:block;width:90px;height:5px;border-radius:3px;background:var(--line)}
+#app .skv-conf b{display:block;height:5px;border-radius:3px;background:var(--pri)}
+#app .skv-plan li{display:grid;grid-template-columns:30px minmax(0,1fr);gap:10px;padding:8px 0;font-size:14px;line-height:1.45;color:var(--lit)}
+#app .skv-waiting{display:grid;gap:4px;padding:16px 18px;margin-bottom:18px;border:1px solid rgb(167 99 18 / .3);border-radius:14px;background:var(--warn-soft)}
+#app .skv-waiting small{font-size:12.5px;font-weight:500;color:var(--warn)}
+#app .skv-waiting b{font-size:15px}
+#app .skv-replybox{margin-top:18px;padding:14px 18px;border:1px solid var(--line);border-radius:14px}
+#app .skv-replybox small{font-size:12.5px;color:var(--mut)}
+#app .skv-replybox p{margin:6px 0 0;font-family:var(--fr);font-size:15px;line-height:1.6;white-space:pre-wrap}
+#app .skv-verdict{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-top:18px;padding:16px 18px;border:1px solid var(--line);border-radius:14px}
+#app .skv-verdict b{display:block;font-size:15px}
+#app .skv-verdict span{font-size:13.5px;color:var(--mut)}
+#app .skv .btn.skv-yes{background:var(--ok);border-color:var(--ok)}
+@media (max-width:640px){
+  #app .skv{padding:20px 16px 40px}
+  #app .skv-row{grid-template-columns:96px minmax(0,1fr)}
+  #app .skv-thumb{width:96px;height:56px}
+  #app .skv-rowact{grid-column:1/-1;justify-content:flex-start}
+  #app .skv-side{max-width:none}
+}

@@ -125,7 +125,7 @@ def test_day_cap(env, monkeypatch):
     get_settings.cache_clear()
     for _ in range(2):
         K.watch("default", "https://youtu.be/dQw4w9WgXcQ")
-    with pytest.raises(K.SeekhError, match="2 video seekh liye"):
+    with pytest.raises(K.SeekhError, match="2 videos already learned today"):
         K.watch("default", "https://youtu.be/dQw4w9WgXcQ")
 
 
@@ -135,7 +135,7 @@ def test_switch_off_is_off(env, monkeypatch):
     get_settings.cache_clear()
     called = []
     monkeypatch.setattr(K, "_perceive_youtube", lambda vid, tenant: called.append(1) or "notes")
-    with pytest.raises(K.SeekhError, match="band"):
+    with pytest.raises(K.SeekhError, match="switched off"):
         K.watch("default", "https://youtu.be/dQw4w9WgXcQ")
     assert called == []
 
@@ -241,7 +241,7 @@ def test_watch_youtube_end_to_end(env, monkeypatch):
     assert seen["vid"] == "dQw4w9WgXcQ"
     assert out["learned"] == "Scholarship form" and out["kind"] == "website_work"
     assert out["procedure_id"] and out["recipe"]
-    assert "pehle ek baar" in out["say"] and "NOT proven" in out["note_for_you"]
+    assert "counts as proven once it has worked" in out["say"] and "NOT proven" in out["note_for_you"]
     assert [s["evidence"][0] for s in out["steps"]] == ["0:12", "1:04", "2:41"]
     # the two memories
     rows = pr.listing("default")
@@ -495,4 +495,4 @@ def test_no_network_at_import():
 def test_version_pins():
     """The house pins: pubspec and the console's version story must name SEEKH MANCH."""
     pub = (ROOT / "pubspec.yaml").read_text(encoding="utf-8")
-    assert "version: 0.744.0+743" in pub
+    assert "version: 0.746.0+745" in pub

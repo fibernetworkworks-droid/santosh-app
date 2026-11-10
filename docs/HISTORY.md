@@ -172,3 +172,28 @@ Measured in a real browser: at 1440 / 1180 / 1000 px the Send button's right edg
 nothing could give room. Now `#composer .row>.modelb{flex:0 1 auto;min-width:0}` - the chip name ellipses first,
 every other control keeps its size. The home greeting's avatar face (`.landing .halo`) is hidden under html.human.
 Test: tests/test_v0744_seedha_send.py (Send inside the box at 1440 / 1180 / 1000 / 760, no face) - fails on the old CSS.
+
+
+## v0.746.0 VIDEO LEARNER REDESIGN (built as 0.745.0 - their WEB + APP PAGES took 0.745.0, both kept; owner: "make all screen perfect and all feature functional" -> canvas -> "go")
+
+Checked first: the v0.718 page was one long column in Hinglish; learned tasks could not be opened or removed; a watch
+could not be stopped; the video was never shown; the "realtime" notes were the finished text revealed slowly; Perform
+sent a chat turn and left her to find it. Rebuilt (`static/console/seekh.js`, `skv-` styles in v2.css):
+- Home: link / upload / drop, today's count, learned tasks with YouTube thumbnails, Proven / Learned, not tried yet /
+  Learned as notes / Could not learn (reason + Try again + Remove), filters.
+- Watching: YouTube (youtube-nocookie) or her uploaded file plays; notes STREAM as Gemini writes them
+  (`seekh._stream_text` over `generate_content_stream`; a thread-local sink so every perceive signature is unchanged;
+  console job takes "partial" text without a stage row); [m:ss] chips seek the video; note marks on the bar for files;
+  the five real stages with their own times; Stop (`/stop`, a cancel Event checked per chunk and between stages,
+  `SeekhStopped`, nothing kept).
+- Learned task (`GET /task`): steps with evidence chips, Before you start / Watch out / Not seen, a form built from the
+  steps' value hints, confidence, Re-learn, Remove (`DELETE /task`: list row + procedure + a never-run recipe draft).
+  Old rows rebuild their steps from the procedure labels.
+- Doing it: Do it now = one chat turn (send now returns the chat id); the page follows that chat's timeline - live
+  steps, a card that needs her -> Answer (opens the chat), Hoola's reply, then Did it work? (`POST /proven` ->
+  sidecar wins/fails + `procedures.record_run`).
+- Failed watches are kept (`seekh.record_failure`) and never count toward today's limit. Server messages English.
+- Console CSP: + `https://i.ytimg.com` (img) and `https://www.youtube-nocookie.com` (frame) only.
+- NOT built: a live picture of Hoola's browser on the run screen (needs the operator's screenshots on this page);
+  an OTP typed on this page (it is answered in the chat card). NOT verified with a real Gemini stream or a real run.
+- Tests: tests/test_v0745_video_learner.py (7, incl. a browser walk); v0713 / v0718 pins moved to the English wording.

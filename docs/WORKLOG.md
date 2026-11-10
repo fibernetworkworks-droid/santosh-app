@@ -2663,3 +2663,7 @@ Task ID: v0.743.0 SAAF INSAANI
 ---
 Task ID: v0.744.0 SEEDHA SEND
 - Owner screenshot: avatar face + Send outside the composer. Measured, fixed in v2.css, browser test added (red on old CSS).
+
+---
+Task ID: v0.746.0 VIDEO LEARNER REDESIGN (built as 0.745.0)
+- Canvas approved ("go"); seekh.py live notes / stop / task / forget / mark / failures, seekh_console routes, seekh.js rewrite, CSP for YouTube, tests.

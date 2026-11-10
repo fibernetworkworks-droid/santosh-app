@@ -27,7 +27,9 @@ import io
 import json
 import logging
 import re
+import threading
 import time
+import uuid
 import datetime as dt
 from pathlib import Path
 from typing import Any
@@ -45,7 +47,45 @@ _DIGITS = re.compile(r"\d{3,}")
 
 
 class SeekhError(Exception):
-    """Honest failure: what is missing, in her language."""
+    """Honest failure: what is missing, in plain words."""
+
+
+class SeekhStopped(SeekhError):
+    """v0.745 she pressed Stop: not a failure, nothing kept."""
+
+
+# v0.745 LIVE NOTES: while a watch runs, the perceive doors stream Gemini's notes as it writes them. The live sink
+# and the stop flag ride a thread-local so every perceive signature stays as it was (the v0.713 tests patch them).
+_LIVE = threading.local()
+
+
+def _check_stop() -> None:
+    ev = getattr(_LIVE, "cancel", None)
+    if ev is not None and ev.is_set():
+        raise SeekhStopped("Stopped - nothing was kept.")
+
+
+def _stream_text(client, model: str, contents, config=None) -> str:
+    """Gemini's notes as they are written: each chunk goes to the live sink; Stop is honoured between chunks.
+    No live sink = one plain call (the old path, byte for byte)."""
+    sink = getattr(_LIVE, "on_text", None)
+    kw = {"model": model, "contents": contents}
+    if config is not None:
+        kw["config"] = config
+    if sink is None or not hasattr(client.models, "generate_content_stream"):
+        r = client.models.generate_content(**kw)
+        return (getattr(r, "text", "") or "").strip()
+    acc = ""
+    for ch in client.models.generate_content_stream(**kw):
+        _check_stop()
+        t = getattr(ch, "text", None) or ""
+        if t:
+            acc += t
+            try:
+                sink(acc)
+            except Exception:                           # noqa: BLE001 - a UI sink never breaks the watch
+                log.exception("seekh live sink failed")
+    return acc.strip()
 
 
 # ---------------------------------------------------------------- stage 2: the ask (perception)
@@ -100,7 +140,7 @@ def _classify(ref: str) -> tuple[str, str]:
     """(kind, key): youtube (link / Shorts / bare 11-char id), file (a chat file_id) or url (direct media)."""
     r = str(ref or "").strip()
     if not r:
-        raise SeekhError("Kaunsa video? YouTube ka link, chat mein attach kiye video ka file_id, ya direct video URL dijiye.")
+        raise SeekhError("Which video? Give a YouTube link, a video file you attached, or a direct video URL.")
     from .youtube.client import video_id
     vid = video_id(r)
     if vid:
@@ -109,7 +149,7 @@ def _classify(ref: str) -> tuple[str, str]:
         return "url", r
     if re.fullmatch(r"[\w.-]{4,180}", r):
         return "file", r
-    raise SeekhError("Yeh video samajh nahi aaya: YouTube link, video file ka file_id, ya direct video URL dijiye.")
+    raise SeekhError("That does not look like a video: give a YouTube link, a video file you attached, or a direct video URL.")
 
 
 # ---------------------------------------------------------------- the sidecar (provenance)
@@ -161,8 +201,18 @@ def _perceive_youtube(vid: str, tenant: str) -> str:
         except Exception:                               # noqa: BLE001 - no connector / no meta: Gemini judges
             pass
         if int(meta.get("seconds", 0) or 0) > YT_MAX_S:
-            raise SeekhError("Yeh video 3 ghante se lamba hai; itna lamba video nahi dekh sakte.")
-        return ys.gemini_video(watch_url(vid), _PERCEIVE_ASK)
+            raise SeekhError("This video is longer than 3 hours, which is too long to watch.")
+        if getattr(_LIVE, "on_text", None) is None:
+            return ys.gemini_video(watch_url(vid), _PERCEIVE_ASK)
+        from google.genai import Client, types          # v0.745 the same call, streamed so notes show as written
+        from .config import get_settings
+        st = get_settings()
+        text = _stream_text(Client(api_key=st.gemini_api_key), st.youtube_gemini_model,
+                            types.Content(parts=[types.Part(file_data=types.FileData(file_uri=watch_url(vid))),
+                                                 types.Part(text=_PERCEIVE_ASK)]))
+        if not text:
+            raise SeekhError("Google could not watch this video (it may be private, age-restricted or very new).")
+        return text
     except SeekhError:
         raise
     except Exception as e:                              # noqa: BLE001 - YTError and friends, said plainly
@@ -174,7 +224,7 @@ def _gemini_watch_bytes(data: bytes, mime: str, ask: str) -> str:
     from .videoedit import brain
     client, model = brain._gemini_client()
     if client is None:
-        raise SeekhError("Video dekh kar seekhne ke liye server par GEMINI_API_KEY chahiye.")
+        raise SeekhError("Learning from a video needs GEMINI_API_KEY on the server.")
     from google.genai import types
     try:
         if len(data) <= brain.INLINE_MAX:
@@ -187,14 +237,14 @@ def _gemini_watch_bytes(data: bytes, mime: str, ask: str) -> str:
                 time.sleep(2)
                 f = client.files.get(name=f.name)
             part = types.Part(file_data=types.FileData(file_uri=f.uri, mime_type=mime))
-        r = client.models.generate_content(
-            model=model, contents=types.Content(role="user", parts=[part, types.Part(text=ask)]),
-            config=types.GenerateContentConfig(temperature=0.1, max_output_tokens=8000))
-        text = (r.text or "").strip()
+        text = _stream_text(client, model, types.Content(role="user", parts=[part, types.Part(text=ask)]),
+                            types.GenerateContentConfig(temperature=0.1, max_output_tokens=8000))
+    except SeekhError:
+        raise
     except Exception as e:                              # noqa: BLE001
-        raise SeekhError(f"Video nahi dekh paya: {e}") from e
+        raise SeekhError(f"Could not watch the video: {e}") from e
     if not text:
-        raise SeekhError("Video nahi dekh paya (file kharab ya bahut badi ho sakti hai).")
+        raise SeekhError("Could not watch the video (the file may be broken or too large).")
     return text
 
 
@@ -203,7 +253,7 @@ def _file_bytes(tenant: str, fid: str) -> tuple[bytes, str, str]:
     try:
         f = ms._file_row(tenant, str(fid))
     except Exception as e:                              # noqa: BLE001
-        raise SeekhError(f"File nahi mili (chat mein attach kijiye): {e}") from e
+        raise SeekhError(f"File not found (attach it again): {e}") from e
     data = Path(f.stored_path).read_bytes()
     import mimetypes
     mime = mimetypes.guess_type(f.name)[0] or "video/mp4"
@@ -214,12 +264,12 @@ def _perceive_file(tenant: str, fid: str, st) -> str:
     from .net import media
     data, mime, name = _file_bytes(tenant, fid)
     if len(data) > int(st.seekh_file_max_mb) * 1024 * 1024:
-        raise SeekhError(f"Video {st.seekh_file_max_mb} MB se badi hai - chhota hissa bhejiye.")
+        raise SeekhError(f"The video is over {st.seekh_file_max_mb} MB - send a shorter part.")
     info = media.analyse(name, mime, data)
     if info.get("media") != "video":
-        raise SeekhError("Yeh video file nahi lag rahi - sirf video se seekha ja sakta hai.")
+        raise SeekhError("This is not a video file - Hoola can only learn from a video.")
     if float(info.get("duration") or 0) > float(st.seekh_file_max_s):
-        raise SeekhError(f"Video {int(st.seekh_file_max_s) // 60} minute se lambi hai - chhota hissa bhejiye.")
+        raise SeekhError(f"The video is longer than {int(st.seekh_file_max_s) // 60} minutes - send a shorter part.")
     return _gemini_watch_bytes(data, mime, _PERCEIVE_ASK)
 
 
@@ -241,19 +291,19 @@ def _perceive_url(url: str, st) -> str:
                 for chunk in r.iter_bytes(1 << 16):
                     buf.extend(chunk)
                     if len(buf) > max_b:
-                        raise SeekhError(f"Video {st.seekh_file_max_mb} MB se badi hai - chhota hissa bhejiye.")
+                        raise SeekhError(f"The video is over {st.seekh_file_max_mb} MB - send a shorter part.")
         data = bytes(buf)
     except SeekhError:
         raise
     except Exception as e:                              # noqa: BLE001
-        raise SeekhError(f"Video download nahi ho paya: {e}") from e
+        raise SeekhError(f"Could not download the video: {e}") from e
     import mimetypes
     mime = ctype.split(";")[0].strip() or mimetypes.guess_type(url.split("?")[0])[0] or "video/mp4"
     info = media.analyse(url.split("?")[0].split("/")[-1] or "v.mp4", mime, data)
     if info.get("media") != "video":
-        raise SeekhError("Yeh link video file nahi nikla.")
+        raise SeekhError("That link is not a video file.")
     if float(info.get("duration") or 0) > float(st.seekh_file_max_s):
-        raise SeekhError(f"Video {int(st.seekh_file_max_s) // 60} minute se lambi hai - chhota hissa bhejiye.")
+        raise SeekhError(f"The video is longer than {int(st.seekh_file_max_s) // 60} minutes - send a shorter part.")
     return _gemini_watch_bytes(data, mime, _PERCEIVE_ASK)
 
 
@@ -333,7 +383,7 @@ def _salvage(sk: dict[str, Any]) -> dict[str, Any]:
         out["steps"].append(step)
     out["gotchas"] = dropped[:10]
     if not out["steps"]:
-        raise SeekhError("Video mein koi saaf kaam ke steps nahi dikhe - jo dikha woh gotchas mein hai.")
+        raise SeekhError("No clear steps were seen in the video - what was seen is under Watch out.")
     return out
 
 
@@ -353,7 +403,7 @@ def _distill(text: str) -> dict[str, Any]:
         if not problems:
             return _salvage(sk)
     if not sk:
-        raise SeekhError("Video dekh kar steps nahi bana paya (thodi der baad try kijiye).")
+        raise SeekhError("Could not turn the video into steps (try again in a little while).")
     return _salvage(sk)
 
 
@@ -423,7 +473,21 @@ def _emit(on_stage, stage: str, data: dict[str, Any] | None = None) -> None:
 
 
 def watch(tenant: str, ref: str, title: str = "", actor: str = "owner",
-          on_stage=None) -> dict[str, Any]:
+          on_stage=None, cancel: "threading.Event | None" = None) -> dict[str, Any]:
+    """v0.745: the live notes sink + Stop flag wrap the v0.713 pipeline below."""
+    from .config import get_settings
+    live = bool(on_stage) and bool(getattr(get_settings(), "seekh_live_notes", True))
+    _LIVE.on_text = (lambda acc: _emit(on_stage, "partial", {"perception": acc})) if live else None
+    _LIVE.cancel = cancel
+    try:
+        return _watch(tenant, ref, title, actor, on_stage)
+    finally:
+        _LIVE.on_text = None
+        _LIVE.cancel = None
+
+
+def _watch(tenant: str, ref: str, title: str = "", actor: str = "owner",
+           on_stage=None) -> dict[str, Any]:
     """Watch one video and keep its way of working. Raises SeekhError honestly; never fakes a step.
     on_stage(stage, data) is called at every real pipeline boundary so a UI can show live progress:
     classify -> fetch -> notes (the perception text) -> distill_start -> distill (the salvaged recipe)
@@ -431,14 +495,15 @@ def watch(tenant: str, ref: str, title: str = "", actor: str = "owner",
     from .config import get_settings
     st = get_settings()
     if not st.seekh_enabled:
-        raise SeekhError("Video se seekhna abhi band hai.")
+        raise SeekhError("Learning from videos is switched off on this server.")
     if (actor or "owner") != "owner":
-        raise SeekhError("Sirf owner ka bheja video seekha ja sakta hai.")
+        raise SeekhError("Only the owner can teach Hoola from a video.")
     kind, key = _classify(ref)
     _emit(on_stage, "classify", {"kind": kind, "key": str(key)[:200]})
     today = dt.date.today().isoformat()
-    if sum(1 for r in _load(tenant) if str(r.get("day", "")) == today) >= int(st.seekh_max_per_day):
-        raise SeekhError(f"Aaj ke liye {st.seekh_max_per_day} video seekh liye - kal phir try kijiye.")
+    if sum(1 for r in _load(tenant) if str(r.get("day", "")) == today and r.get("status") != "failed") \
+            >= int(st.seekh_max_per_day):
+        raise SeekhError(f"{st.seekh_max_per_day} videos already learned today - try again tomorrow.")
     _emit(on_stage, "fetch", {"kind": kind})
     if kind == "youtube":
         perception = _perceive_youtube(key, tenant)
@@ -446,9 +511,11 @@ def watch(tenant: str, ref: str, title: str = "", actor: str = "owner",
         perception = _perceive_file(tenant, key, st)
     else:
         perception = _perceive_url(key, st)
+    _check_stop()
     _emit(on_stage, "notes", {"perception": perception})
     _emit(on_stage, "distill_start", {})
     sk = _distill(perception)
+    _check_stop()
     _emit(on_stage, "distill", {"steps": len(sk["steps"]), "title": sk["title"]})
     if str(title or "").strip():
         sk["title"] = re.sub(r"\s+", " ", str(title)).strip()[:TITLE_MAX]
@@ -461,9 +528,17 @@ def watch(tenant: str, ref: str, title: str = "", actor: str = "owner",
             log.exception("seekh recipe draft failed")
     _emit(on_stage, "memory", {"procedure_id": proc["id"], "recipe": recipe})
     rows = _load(tenant)
-    rows.append({"ts": dt.datetime.now().isoformat(timespec="seconds"), "day": today,
+    rows.append({"id": proc["id"], "status": "learned",
+                 "ts": dt.datetime.now().isoformat(timespec="seconds"), "day": today,
                  "source": f"{kind}:{key}"[:200], "title": sk["title"], "procedure_id": proc["id"],
-                 "recipe": recipe, "steps": len(sk["steps"]), "confidence": sk["confidence"]})
+                 "recipe": recipe, "steps": len(sk["steps"]), "confidence": sk["confidence"],
+                 "kind": sk["kind"], "site": sk.get("site", ""), "wins": 0, "fails": 0,
+                 # v0.745 the task page reads these (values are hints / variable names, never her data)
+                 "detail": {"steps": [{"n": x.get("n"), "action": x.get("action"), "note": x.get("note", ""),
+                                       "evidence": x.get("evidence", []), "value_hint": x.get("value_hint", ""),
+                                       "value_var": x.get("value_var", "")} for x in sk["steps"]],
+                            "preconditions": sk["preconditions"], "gotchas": sk["gotchas"],
+                            "unsure": sk["unsure"], "start_url": sk.get("start_url", "")}})
     _save(tenant, rows)
     out = {"learned": sk["title"], "kind": sk["kind"], "site": sk["site"], "procedure_id": proc["id"],
             "recipe": recipe,
@@ -472,12 +547,100 @@ def watch(tenant: str, ref: str, title: str = "", actor: str = "owner",
                       for s in sk["steps"]],
             "preconditions": sk["preconditions"], "gotchas": sk["gotchas"], "unsure": sk["unsure"],
             "confidence": sk["confidence"], "source": f"{kind}:{key}"[:200],
-            "say": "Seekh liya - yeh 'Seekhe hue kaam' mein hai aur jab aap aisa kaam kahenge to khud yaad "
-                   "aayega. Abhi tak sirf dekha hai: pehle ek baar sahi se chal ke dekhein, tab hi pakka "
-                   "maanenge.",
+            "say": "Learned - it is in your learned tasks and comes back by itself when you ask for this kind of "
+                   "work. So far it has only been watched: it counts as proven once it has worked for real.",
             "note_for_you": "Learned is NOT proven: until one real run has worked, say exactly that. Tell her "
                             "the steps with their timestamps, the gotchas and what you are unsure about. For "
                             "website work the operator may use the draft as a guide, checking every step "
                             "against the live page."}
     _emit(on_stage, "done", {"learned": out["learned"]})
     return out
+
+
+# ---------------------------------------------------------------- v0.745 the learner page's own doors
+def _row_id(r: dict[str, Any]) -> str:
+    return str(r.get("id") or r.get("procedure_id") or "")
+
+
+def record_failure(tenant: str, ref: str, title: str, error: str) -> dict[str, Any]:
+    """A watch that could not learn stays on her list with its reason and Try again (never counts toward today)."""
+    try:
+        kind, key = _classify(ref)
+        source = f"{kind}:{key}"[:200]
+    except SeekhError:
+        source = str(ref or "")[:200]
+    row = {"id": "f" + uuid.uuid4().hex[:12], "status": "failed", "ts": dt.datetime.now().isoformat(timespec="seconds"),
+           "day": dt.date.today().isoformat(), "source": source, "ref": str(ref or "")[:300],
+           "title": re.sub(r"\s+", " ", str(title or "")).strip()[:TITLE_MAX], "error": str(error or "")[:300],
+           "steps": 0, "confidence": 0}
+    rows = _load(tenant)
+    rows.append(row)
+    _save(tenant, rows)
+    return row
+
+
+def task(tenant: str, tid: str) -> dict[str, Any]:
+    """One learned task with everything the task page shows. Older rows (before v0.745) carry no detail: their
+    steps come back from the learned procedure's own labels."""
+    for r in _load(tenant):
+        if _row_id(r) == tid:
+            out = dict(r)
+            if not out.get("detail") and out.get("procedure_id"):
+                from . import procedures as pr
+                p = next((x for x in pr.listing(tenant) if x.get("id") == out["procedure_id"]), None)
+                if p:
+                    steps = []
+                    for i, st in enumerate(p.get("steps") or []):
+                        lab = str((st or {}).get("label") or "")
+                        m = re.search(r"\[(\d{1,2}:\d{2}(?::\d{2})?)\]\s*$", lab)
+                        steps.append({"n": i + 1, "action": "", "note": re.sub(r"^\d+\.\s*\w*:\s*|\s*\[[^\]]*\]\s*$", "", lab),
+                                      "evidence": [m.group(1)] if m else [], "value_hint": ""})
+                    out["detail"] = {"steps": steps, "preconditions": [], "gotchas": p.get("watch_out") or [],
+                                     "unsure": []}
+            return out
+    raise SeekhError("That learned task was not found.")
+
+
+def forget(tenant: str, tid: str) -> bool:
+    """Remove a task from her list, its learned procedure and its never-run recipe draft. A recipe that has
+    really run is hers and stays."""
+    rows = _load(tenant)
+    hit = next((r for r in rows if _row_id(r) == tid), None)
+    if hit is None:
+        raise SeekhError("That learned task was not found.")
+    _save(tenant, [r for r in rows if r is not hit])
+    if hit.get("procedure_id"):
+        from . import procedures as pr
+        try:
+            pr.delete(tenant, hit["procedure_id"])
+        except Exception:                               # noqa: BLE001 - already gone is fine
+            pass
+    if hit.get("recipe"):
+        try:
+            from .operator.memory import Memory
+            p = Memory(_operator_home(tenant)).recipe_path(hit["recipe"])
+            if p.exists() and int(json.loads(p.read_text(encoding="utf-8")).get("runs", 0) or 0) == 0:
+                p.unlink()
+        except Exception:                               # noqa: BLE001
+            log.exception("seekh forget recipe")
+    return True
+
+
+def mark(tenant: str, tid: str, ok: bool) -> dict[str, Any]:
+    """Her answer after a run: worked -> one more win (Proven), wrong -> one fail. Also scored on the learned
+    procedure so the chat's own hints learn the same."""
+    rows = _load(tenant)
+    hit = next((r for r in rows if _row_id(r) == tid), None)
+    if hit is None or hit.get("status") == "failed":
+        raise SeekhError("That learned task was not found.")
+    key = "wins" if ok else "fails"
+    hit[key] = int(hit.get(key) or 0) + 1
+    hit["last_run"] = dt.datetime.now().isoformat(timespec="seconds")
+    _save(tenant, rows)
+    if hit.get("procedure_id"):
+        from . import procedures as pr
+        try:
+            pr.record_run(tenant, hit["procedure_id"], ok)
+        except Exception:                               # noqa: BLE001
+            log.exception("seekh mark procedure")
+    return hit

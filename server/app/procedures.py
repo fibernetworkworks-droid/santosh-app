@@ -248,6 +248,20 @@ def update(tenant: str, pid: str, active: bool | None = None, title: str | None 
         return view(p)
 
 
+def record_run(tenant: str, pid: str, ok: bool) -> dict[str, Any]:
+    """v0.745 her own verdict after a real run from the Video Learner: worked = a win, wrong = a fail."""
+    with session() as s:
+        p = s.get(Procedure, pid)
+        if p is None or p.tenant_id != tenant:
+            raise ProcedureError("Yeh seekha hua kaam nahi mila.")
+        p.uses += 1
+        if ok:
+            p.wins += 1
+        else:
+            p.fails += 1
+        return view(p)
+
+
 def delete(tenant: str, pid: str) -> None:
     with session() as s:
         p = s.get(Procedure, pid)

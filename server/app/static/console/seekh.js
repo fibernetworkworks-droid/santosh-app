@@ -1,311 +1,476 @@
-/* v0.718 SEEKH MANCH ON THE CONSOLE - the HOOLA AI VIDEO LEARNER (the owner's console page for v0.713's
-   learn-from-a-video): load a video, watch Hoola take notes in REALTIME, see the MEMORY it prepared, and
-   tell it to PERFORM THIS TASK NOW on this very page - Hoola runs the task with its own browser through
-   one honest chat turn (the computer operator reads the draft recipe at job start).
-
-   Rules this page keeps (the server's rules, drawn):
-   - every stage shown is a REAL boundary of seekh.watch (classify / fetch / notes / distill / memory),
-     never a guess - the elapsed times come from the pipeline itself;
-   - the notes area shows exactly what Hoola's eyes returned (the [m:ss] moments included); the word-by-word
-     reveal is pacing, the text is not touched;
-   - learned is NOT proven: the memory card says so until a real run has worked, and the perform turn asks
-     for the run to be verified step by step against the live page;
-   - nothing is performed by this page itself: PERFORM composes one chat turn through the same door the
-     composer uses, so sending / submitting still asks for her tap;
-   - every value that came from the server goes through esc() - a step note, a site name or a gotcha is
-     data, never markup. */
+/* v0.745 VIDEO LEARNER, REDESIGNED (owner: "make all screen perfect and all feature functional" -> the approved
+   canvas -> "go"). Four screens on one page, same console look:
+     home   - teach a task (link / upload) + her learned tasks (Proven / Learned, not tried / Notes / Could not learn)
+     watch  - the video plays, Hoola's notes arrive AS GEMINI WRITES THEM (streamed, never paced fakes), every
+              [m:ss] jumps the video, the five real stages with their own times, Stop
+     task   - the learned steps with their video moments, Before you start / Watch out / Not seen, a form built
+              from what the task needs, Do it now
+     run    - Hoola doing it: the chat turn's own live steps on this page, a card that needs her = "Answer",
+              then "Did it work?" -> Proven
+   Rules kept from v0.718: every stage is a real boundary of seekh.watch; learned is NOT proven until she says a
+   run worked; nothing is performed by this page itself - Do it now is one chat turn through the composer's door,
+   so sending / submitting still asks for her tap; every server value goes through esc(). */
 'use strict';
-window.HoolaSeekh = function ({api, esc, toast, send, upload, open, live}) {
-  let EL = null, TIMER = null, PACER = null;
-  let LIST = null;                 // GET /api/seekh/console/watches
-  let JOB = null;                  // {id, stage, stages, perception, done, error, result, ...}
-  let NOTES_AT = 0;                // how many chars of the perception are drawn (the pacer)
-  let PERFORM = '';                // the kaam title the perform form is aimed at
-
-  const IN = 'border:1px solid var(--hair);border-radius:10px;padding:9px 12px;background:var(--bg);color:var(--ink);min-width:0';
-  const mmss = s => { s = Math.max(0, Math.round(+s || 0)); const m = Math.floor(s / 60), x = String(s % 60).padStart(2, '0'); return `${m}:${x}`; };
-  const when = iso => { if (!iso) return '–'; const d = new Date(iso); return isNaN(d) ? '–' : d.toLocaleString('en-IN', {day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'}); };
+window.HoolaSeekh = function ({api, esc, toast, send, upload, open: go, live}) {
+  let EL = null, VIEW = 'home', FILTER = 'all';
+  let LIST = null;          // GET /api/seekh/console/watches
+  let JOB = null;           // the watch job being shown
+  let TASK = null;          // the task page's row
+  let RUN = null;           // {cid, after, task, steps:Map, cards:[], text, done, t0}
+  let POLL = null, TICK = null;
+  const MEDIA = new Map();  // file_id -> blob url
+  const STAGES = [['classify', 'Opened the video', 'checked the link'],
+                  ['fetch', 'Watching', 'frame by frame, with the sound'],
+                  ['notes', 'Writing notes', 'every step with its moment'],
+                  ['distill', 'Turning notes into steps', 'a recipe Hoola can follow'],
+                  ['memory', 'Saving to memory', 'added to your learned tasks']];
+  const mmss = s => { s = Math.max(0, Math.round(+s || 0)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
+  const secs = t => { const p = String(t || '').split(':').map(Number); return p.some(isNaN) ? 0 : p.reduce((a, b) => a * 60 + b, 0); };
+  const when = iso => { const d = new Date(iso || ''); return isNaN(d) ? '' : d.toLocaleString('en-IN', {day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit'}); };
   const pct = c => Math.round(Math.min(1, Math.max(0, +c || 0)) * 100);
-  const tag = (c, n) => `<span class="tag ${c}">${esc(n)}</span>`;
+  const human = v => String(v || '').replace(/_/g, ' ').replace(/^\w/, c => c.toUpperCase());
+  const stop = () => { if (POLL) clearInterval(POLL); if (TICK) clearInterval(TICK); POLL = TICK = null; };
+  const ICON = {
+    play: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>',
+    tick: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l5 5 9-10" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>',
+    link: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>',
+    up: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M4 20h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    warn: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 8v5M12 16.5v.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+  };
 
-  // the five steps the panel shows - every one a real pipeline boundary
-  const STEPS = [['classify', 'Pehchana', 'kaunsa video hai'],
-                 ['fetch', 'Video dekh rahi hoon', 'download karke aankhon se dekh rahi hoon'],
-                 ['notes', 'Notes likh rahi hoon', 'jo jo dikha, timestamp ke saath'],
-                 ['distill', 'Steps bana rahi hoon', 'ek recipe bana rahi hoon'],
-                 ['memory', 'Memory', 'Seekhe hue kaam mein rakh rahi hoon']];
-  const stepOf = st => st === 'done' ? 4 : Math.max(0, STEPS.findIndex(([k]) => k === st));
-  const atStage = k => !JOB ? -1 : (JOB.stages || []).findIndex(s => s.k === k || (k === 'distill' && s.k === 'distill_start'));
-
-  // ------------------------------------------------------------ open + draw
-  async function open(el) {
-    EL = el;
-    EL.innerHTML = `<div class="vh"><h2>HOOLA AI Video Learner</h2></div><div class="empty">Loading…</div>`;
-    await refresh();
-    if (EL.isConnected) draw();
+  // ---------------------------------------------------------------- sources and video
+  function srcOf(row) {                    // "youtube:ID" | "file:FID" | "url:..." -> {kind, key}
+    const s = String((row && (row.source || '')) || ''), i = s.indexOf(':');
+    return i < 0 ? {kind: '', key: s} : {kind: s.slice(0, i), key: s.slice(i + 1)};
   }
-
-  async function refresh() {
-    try { LIST = await api('GET', '/api/seekh/console/watches'); }
-    catch (e) { if (EL) EL.innerHTML = `<div class="vh"><h2>HOOLA AI Video Learner</h2></div><p class="badc">${esc(e.message)}</p>`; return false; }
-    if (LIST && LIST.running && (!JOB || JOB.id !== LIST.running)) {   // a watch is already live: adopt it
-      JOB = {id: LIST.running, stage: 'fetch', stages: [], perception: '', done: false};
-      NOTES_AT = 0; startPoll();
+  function refOf(row) {                    // what to send back to /watch for Try again / Re-learn
+    if (row && row.ref) return row.ref;
+    const {kind, key} = srcOf(row);
+    return kind === 'youtube' ? `https://youtu.be/${key}` : key;
+  }
+  function thumb(row) {
+    const {kind, key} = srcOf(row);
+    if (row.status === 'failed') return `<span class="skv-thumb fail" aria-hidden="true">${ICON.warn}</span>`;
+    const img = kind === 'youtube' && /^[\w-]{11}$/.test(key) ? `<img src="https://i.ytimg.com/vi/${esc(key)}/mqdefault.jpg" alt="" loading="lazy">` : '';
+    return `<span class="skv-thumb" aria-hidden="true">${img}<i>${ICON.play}</i></span>`;
+  }
+  async function playerHTML(src, start) {   // youtube embed / her uploaded file / a link we cannot embed
+    if (src.kind === 'youtube' && /^[\w-]{11}$/.test(src.key)) {
+      return `<iframe class="skv-frame" id="skvFrame" title="The video" src="https://www.youtube-nocookie.com/embed/${esc(src.key)}?rel=0&start=${Math.floor(start || 0)}" allow="encrypted-media; picture-in-picture" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>`;
     }
-    return true;
-  }
-
-  function draw() {
-    if (!EL || !LIST) return;
-    const off = LIST.enabled === false;
-    const head = `<div class="vh"><h2>HOOLA AI Video Learner</h2>
-        <span class="muted">Load a video - Hoola watches it, takes notes in realtime, keeps the way of working in memory. Then tell it to perform the task on this page - with its own browser.</span></div>
-        <div class="sk-tags">${off ? tag('bad', 'Seekhna band hai') : `${tag('ok', 'On')} ${tag('v', `Aaj ${LIST.today}/${LIST.max_per_day} seekhe`)}`}</div>`;
-    if (off) { EL.innerHTML = head + `<div class="card"><p>Video se seekhna server par band kar diya gaya hai.</p></div>`; return; }
-    EL.innerHTML = head + learnCard() + liveCard() + memoryCard() + performCard() + listCard();
-    wire();
-    drawLive(); renderNotes();                     // paint whatever the job already is
-  }
-
-  // ------------------------------------------------------------ the cards
-  function learnCard() {
-    return `<section class="tile gl sk-card" aria-labelledby="skLearnH">
-      <h3 id="skLearnH"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="5" width="14" height="14" rx="2"/><path d="M16 10l6-3v10l-6-3"/></svg>Naya kaam seekhaye</h3>
-      <div class="sk-form">
-        <label class="sk-field sk-grow"><span>Video ka link <small class="muted">(YouTube, Shorts ya direct URL)</small></span>
-          <input id="skRef" type="text" autocomplete="off" spellcheck="false" placeholder="https://youtube.com/watch?v=… ya video ka URL" style="${IN}"></label>
-        <label class="sk-field"><span>Naam <small class="muted">(optional)</small></span>
-          <input id="skTitle" type="text" autocomplete="off" placeholder="Jaise: NSP form bharne ka tareeka" style="${IN}"></label>
-        <div class="sk-btnrow">
-          <input type="file" id="skFile" accept="video/*" hidden>
-          <button type="button" class="btn soft" id="skPick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;vertical-align:-2px;margin-right:5px" aria-hidden="true"><path d="M21 12.5l-8.5 8.5a5 5 0 0 1-7-7L14 5.5a3.3 3.3 0 0 1 4.7 4.7L10.2 18.7a1.7 1.7 0 0 1-2.4-2.4L15.5 8.6"/></svg>Video file chuniye</button>
-          <button type="button" class="btn go" id="skWatch">Watch &amp; Learn</button>
-        </div>
-        <p class="muted sk-small">File 25 MB tak chat lane se jaati hai; bade video ka link dijiye. Hoola 3 ghante tak ke video dekh leti hai. Jo seekha ja raha hai usme koi personal value nahi rakhi jaati - values bharni aapko hongi.</p>
-      </div></section>`;
-  }
-
-  function liveCard() {
-    const steps = STEPS.map(([k, t, sub], i) => `<li class="sk-step" data-step="${i}"><i class="sk-dot"></i><span><b>${esc(t)}</b><small>${esc(sub)}</small></span><em></em></li>`).join('');
-    return `<section class="tile gl sk-card sk-live" id="skLive"${JOB ? '' : ' hidden'} aria-labelledby="skLiveH">
-      <h3 id="skLiveH"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>Hoola dekh rahi hai<span class="sk-elapsed" id="skElapsed"></span></h3>
-      <ol class="sk-steps">${steps}</ol>
-      <div class="sk-notes" aria-live="polite">
-        <div class="sk-notes-hd">HOOLA KI NOTES <small>- jaise-jaise dikha, likha</small></div>
-        <div class="sk-notes-bd" id="skNotesBody"><span class="sk-watching">Video dekh rahi hoon…</span></div>
-      </div></section>`;
-  }
-
-  function memoryCard() {
-    if (!JOB || !JOB.done || JOB.error) return '';
-    const r = JOB.result || {};
-    const steps = (r.steps || []).map(s => `<li><span class="sk-n">${esc(s.n)}</span><span class="sk-act">${esc(s.action)}</span>
-        <span class="sk-note">${esc(s.note || s.value_hint || '')}</span>
-        ${(s.evidence || []).map(e => `<span class="sk-ev">@${esc(e)}</span>`).join('')}</li>`).join('');
-    const chips = (r.preconditions || []).map(x => `<span class="sk-chip">pehle: ${esc(x)}</span>`).join('')
-      + (r.gotchas || []).map(x => `<span class="sk-chip warn">dhyan: ${esc(x)}</span>`).join('')
-      + (r.unsure || []).map(x => `<span class="sk-chip v">nahi dikha: ${esc(x)}</span>`).join('');
-    return `<section class="tile gl sk-card sk-mem" id="skMem" aria-labelledby="skMemH">
-      <h3 id="skMemH"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l2.4 5.6L20 11l-5.6 2.4L12 19l-2.4-5.6L4 11l5.6-2.4z"/></svg>Memory taiyar hai</h3>
-      <div class="sk-mem-hd"><b class="sk-title">${esc(r.learned || '')}</b>
-        <span class="sk-badges">${tag(r.kind === 'website_work' ? 'ok' : 'v', r.kind === 'website_work' ? (r.site ? 'Website ka kaam · ' + r.site : 'Website ka kaam') : 'Doosra kaam')}
-        ${r.recipe ? tag('ok', 'Browser recipe (draft)') : ''}${tag('warn', 'Seekha hai - saabit nahi')}</span></div>
-      <ol class="sk-msteps">${steps}</ol>
-      ${chips ? `<div class="sk-chips">${chips}</div>` : ''}
-      <div class="sk-conf"><span>Bharosa</span><i class="sk-bar"><b style="width:${pct(r.confidence)}%"></b></i><span>${pct(r.confidence)}%</span></div>
-      <p class="muted sk-small">${esc(r.say || '')}${r.note_for_you ? ' ' + esc(r.note_for_you.split('.')[0]) + '.' : ''}</p>
-      <div class="sk-btnrow"><button type="button" class="btn go" id="skToPerform">Perform this task NOW ↓</button></div>
-      <p class="muted sk-small sk-src">source: ${esc(r.source || '')}${r.procedure_id ? ' · procedure ' + esc(r.procedure_id) : ''}${r.recipe ? ' · recipe "' + esc(r.recipe) + '"' : ''}</p>
-    </section>`;
-  }
-
-  function performCard() {
-    const r = (JOB && JOB.done && !JOB.error && JOB.result) || null;
-    const kaam = PERFORM || (r && r.learned) || (LIST && LIST.watches && LIST.watches[0] && LIST.watches[0].title) || '';
-    const hints = r && (r.steps || []).filter(s => s.value_hint).map(s => esc(s.value_hint)).filter(Boolean);
-    return `<section class="tile gl sk-card" id="skPerform" aria-labelledby="skPerfH">
-      <h3 id="skPerfH"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4M7 10l2 2 4-4"/></svg>Perform this task NOW</h3>
-      ${kaam ? `<p class="sk-aim">Kaam: <b>${esc(kaam)}</b></p>` : '<p class="muted sk-small">Pehle ek video se kaam seekhaye, phir yahan se usko bulayein.</p>'}
-      <label class="sk-field"><span>Kya karna hai? <small class="muted">(jo values bharni hain woh likh dijiye)</small></span>
-        <textarea id="skAsk" rows="3" placeholder="Jaise: mera form bhar do - naam Ramesh Kumar, gaon Sitapur, class 10… jo video mein dikha tha wahi kaam." style="${IN}resize:vertical"></textarea></label>
-      ${hints && hints.length ? `<div class="sk-chips">${hints.map(h => `<span class="sk-chip">bharna hai: ${h}</span>`).join('')}</div>` : ''}
-      <div class="sk-btnrow">
-        <button type="button" class="btn go" id="skGo"${kaam ? '' : ' disabled'}>Perform NOW - Hoola ke browser se</button>
-        <span class="muted sk-small">Hoola apne browser mein karega; bhejne / submit karne se pehle aapse poochhega.</span>
-      </div>
-      <div class="sk-sent" id="skSent" hidden>
-        <b>Kaam Hoola ko de diya.</b> Woh apne browser mein shuru karega - Live mein har step dikhega, aur jahan kuch bhejna ho wahan aapka tap lagega.
-        <div class="sk-btnrow"><button type="button" class="btn soft" id="skLiveBtn">Live activity dekhiye</button>
-          <button type="button" class="btn soft" id="skChatBtn">Chat kholiye</button></div>
-      </div></section>`;
-  }
-
-  function listCard() {
-    const rows = (LIST && LIST.watches) || [];
-    return `<section class="tile gl sk-card" aria-labelledby="skListH">
-      <h3 id="skListH"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5V6a2 2 0 0 1 2-2h6v16H6a2 2 0 0 0-2 1.5zM12 4h6a2 2 0 0 1 2 2v13.5H12"/></svg>Seekhe hue kaam <span class="muted sk-small">(${(LIST && LIST.total) || 0})</span></h3>
-      ${rows.length ? `<div class="sk-list">${rows.map(w => `
-        <div class="sk-row">
-          <div class="sk-row-bd"><b>${esc(w.title || w.source || 'Kaam')}</b>
-            <small>${esc(when(w.ts))} · ${esc(w.steps || 0)} steps · bharosa ${pct(w.confidence)}%${w.recipe ? ' · ' + esc(w.recipe) : ''}</small>
-            <small class="muted">${esc(w.source || '')}</small></div>
-          <button type="button" class="btn soft sk-perform" data-title="${esc(w.title || '')}">Perform</button>
-        </div>`).join('')}</div>`
-        : '<p class="muted sk-small">Abhi kuch nahi seekha. Pehla video upar dijiye.</p>'}
-    </section>`;
-  }
-
-  // ------------------------------------------------------------ wiring
-  function wire() {
-    const q = s => EL.querySelector(s);
-    q('#skWatch')?.addEventListener('click', start);
-    q('#skPick')?.addEventListener('click', () => q('#skFile')?.click());
-    q('#skFile')?.addEventListener('change', async e => {
-      const f = e.target.files && e.target.files[0]; e.target.value = '';
-      if (!f) return;
-      if (f.size > 25 * 1024 * 1024) return toast(`${f.name}: 25 MB se badi file yahan nahi jaati - video ka link dijiye.`, true);
-      const btn = q('#skPick'); const was = btn.textContent;
-      btn.disabled = true; btn.textContent = 'Upload ho raha hai…';
+    if (src.kind === 'file') {
       try {
-        const r = await upload(f);
-        q('#skRef').value = r.file_id || '';
-        toast('Video upload ho gaya - ab Watch & Learn dabaiye.');
-      } catch (er) { toast(`${f.name}: ${er.message || 'upload fail'}`, true); }
-      btn.disabled = false; btn.textContent = was;
-    });
-    q('#skRef')?.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); start(); } });
-    q('#skToPerform')?.addEventListener('click', () => { const p = q('#skPerform'); p?.scrollIntoView({behavior: 'smooth', block: 'center'}); q('#skAsk')?.focus(); });
-    q('#skGo')?.addEventListener('click', perform);
-    q('#skLiveBtn')?.addEventListener('click', () => live());
-    q('#skChatBtn')?.addEventListener('click', () => open('chat'));
-    EL.querySelectorAll('.sk-perform').forEach(b => b.addEventListener('click', () => {
-      PERFORM = b.dataset.title || '';
-      const p = q('#skPerform'); p?.scrollIntoView({behavior: 'smooth', block: 'center'});
-      const aim = q('.sk-aim'); if (aim) aim.innerHTML = `Kaam: <b>${esc(PERFORM)}</b>`;
-      const go = q('#skGo'); if (go) go.disabled = !PERFORM;
-      q('#skAsk')?.focus();
-    }));
+        if (!MEDIA.has(src.key)) {
+          const r = await api('GET', `/api/panel/files/${encodeURIComponent(src.key)}`, undefined, {raw: true});
+          MEDIA.set(src.key, URL.createObjectURL(await r.blob()));
+        }
+        return `<video class="skv-frame" id="skvVideo" controls preload="metadata" src="${MEDIA.get(src.key)}"></video>`;
+      } catch { /* falls through to the plain box */ }
+    }
+    return `<div class="skv-frame skv-noplay">${ICON.play}<span>This video plays at its own link</span>${src.kind === 'url' ? `<a href="${esc(src.key)}" target="_blank" rel="noopener noreferrer">Open the video</a>` : ''}</div>`;
+  }
+  function seek(t) {                       // a [m:ss] chip: jump the video there
+    const s = secs(t), v = EL && EL.querySelector('#skvVideo'), f = EL && EL.querySelector('#skvFrame');
+    if (v) { v.currentTime = s; v.play?.().catch(() => {}); return true; }
+    if (f) { f.src = f.src.replace(/([?&])start=\d+/, `$1start=${s}`) + (f.src.includes('autoplay=1') ? '' : '&autoplay=1'); return true; }
+    return false;
+  }
+  function markers() {                     // purple ticks on the bar where notes landed (only when the length is known)
+    const v = EL && EL.querySelector('#skvVideo'), box = EL && EL.querySelector('#skvMarks');
+    if (!v || !box || !(v.duration > 0) || !JOB) return;
+    const ts = notesOf(JOB.perception).map(n => secs(n.t)).filter(x => x > 0 && x <= v.duration);
+    box.innerHTML = ts.map(x => `<i style="left:${(x / v.duration * 100).toFixed(2)}%"></i>`).join('');
   }
 
-  // ------------------------------------------------------------ the watch job
-  async function start() {
-    const ref = String(EL.querySelector('#skRef')?.value || '').trim();
-    const title = String(EL.querySelector('#skTitle')?.value || '').trim();
-    if (!ref) return toast('Kaunsa video? Link dijiye ya file chuniye.', true);
-    const btn = EL.querySelector('#skWatch'); btn.disabled = true; btn.textContent = 'Shuru…';
+  // ---------------------------------------------------------------- notes: the watcher's own text, split per moment
+  function notesOf(text) {
+    const out = [];
+    for (const raw of String(text || '').split(/\n+/)) {
+      const line = raw.replace(/^\s*(?:[-*•]|\d+[.)])\s*/, '').trim();
+      if (!line) continue;
+      const m = line.match(/\[?\(?(\d{1,2}:\d{2}(?::\d{2})?)\)?\]?/);
+      const body = m ? line.replace(m[0], '').replace(/^[\s:–-]+/, '').trim() : line;
+      if (!body) continue;
+      out.push({t: m ? m[1] : '', text: body.replace(/\*\*/g, '')});
+    }
+    return out;
+  }
+  function notesHTML(text, writing) {
+    const ns = notesOf(text);
+    if (!ns.length) return `<p class="skv-quiet">${writing ? 'Hoola is watching — notes appear here as it writes them.' : 'No notes yet.'}</p>`;
+    return ns.map(n => `<div class="skv-note">${n.t ? `<button type="button" class="skv-ts" data-t="${esc(n.t)}">${esc(n.t)}</button>` : '<span></span>'}<span>${esc(n.text)}</span></div>`).join('')
+      + (writing ? '<div class="skv-note skv-writing"><span></span><span>Writing…</span></div>' : '');
+  }
+
+  // ---------------------------------------------------------------- open + list
+  async function openPage(el) {
+    EL = el; stop();
+    EL.innerHTML = '<div class="skv"><p class="skv-quiet">Loading…</p></div>';
+    if (!(await refresh())) return;
+    if (LIST.running) { JOB = {id: LIST.running, stage: 'fetch', stages: [], perception: '', done: false}; return showWatch(); }
+    showHome();
+  }
+  async function refresh() {
+    try { LIST = await api('GET', '/api/seekh/console/watches'); return true; }
+    catch (e) { if (EL) EL.innerHTML = `<div class="skv"><h1 class="skv-h1">Video Learner</h1><p class="badc">${esc(e.message)}</p></div>`; return false; }
+  }
+  const crumbs = (...xs) => `<nav class="skv-crumb" aria-label="Breadcrumb"><button type="button" data-go="hub">AI Employees</button>`
+    + xs.map(([label, to]) => ` <span aria-hidden="true">/</span> ${to ? `<button type="button" data-go="${to}">${esc(label)}</button>` : `<span>${esc(label)}</span>`}`).join('') + '</nav>';
+  function status(row) {
+    if (row.status === 'failed') return ['bad', 'Could not learn'];
+    const w = +row.wins || 0, f = +row.fails || 0;
+    if (w > 0) return ['ok', w === 1 ? 'Proven · worked once' : `Proven · worked ${w} times`];
+    if (f > 0) return ['warn', 'Tried · did not work yet'];
+    if (row.kind && row.kind !== 'website_work') return ['mute', 'Learned as notes'];
+    return ['warn', 'Learned · not tried yet'];
+  }
+
+  // ---------------------------------------------------------------- screen 1: home
+  function showHome() {
+    VIEW = 'home'; stop();
+    const off = LIST.enabled === false, rows = LIST.watches || [];
+    const proven = rows.filter(r => +r.wins > 0), fresh = rows.filter(r => r.status !== 'failed' && !(+r.wins > 0));
+    const shown = FILTER === 'proven' ? proven : FILTER === 'fresh' ? fresh : rows;
+    EL.innerHTML = `<div class="skv">${crumbs(['Video Learner'])}
+      <header class="skv-head"><div><h1 class="skv-h1">Video Learner</h1>
+        <p class="skv-lede">Show Hoola a video of any task once. It watches, writes down every step, and can then do that task for you in its own browser.</p></div>
+        <span class="skv-pill mute">${off ? 'Switched off on this server' : `${LIST.today} of ${LIST.max_per_day} videos learned today`}</span></header>
+      ${off ? '<p class="skv-quiet">Learning from videos is switched off on this server.</p>' : `
+      <section class="skv-teach" aria-labelledby="skvTeach" id="skvDrop">
+        <h2 id="skvTeach">Teach Hoola a new task</h2>
+        <div class="skv-teachrow">
+          <label class="skv-link">${ICON.link}<span class="sr">Video link</span><input id="skvRef" type="text" autocomplete="off" spellcheck="false" placeholder="Paste a YouTube, Shorts or video link"></label>
+          <label class="skv-name"><span class="sr">Name this task</span><input id="skvTitle" type="text" autocomplete="off" placeholder="Name it (optional) — e.g. Fill the NSP scholarship form"></label>
+          <button type="button" class="btn go skv-big" id="skvWatch">Watch &amp; learn</button>
+        </div>
+        <div class="skv-teachfoot"><input type="file" id="skvFile" accept="video/*" hidden>
+          <button type="button" class="btn soft" id="skvPick">${ICON.up}Upload a video file</button>
+          <span class="skv-meta">or drop it here · up to 25 MB as a file, up to 3 hours as a link</span></div>
+        <p class="skv-fine">Hoola never copies personal values from the video. Names, numbers and passwords you fill in yourself when it does the task.</p>
+      </section>`}
+      <section class="skv-list" aria-labelledby="skvLearned">
+        <div class="skv-listhead"><h2 id="skvLearned" class="skv-h2">Your learned tasks</h2>
+          <div class="skv-filters" role="group" aria-label="Filter">
+            ${[['all', `All ${rows.length}`], ['proven', `Proven ${proven.length}`], ['fresh', `Not proven yet ${fresh.length}`]]
+              .map(([k, n]) => `<button type="button" class="btn soft${FILTER === k ? ' on' : ''}" data-filter="${k}" aria-pressed="${FILTER === k}">${esc(n)}</button>`).join('')}
+          </div></div>
+        ${shown.length ? shown.map(rowHTML).join('') : `<p class="skv-quiet">${rows.length ? 'Nothing in this filter.' : 'Nothing learned yet. Paste a video link above to teach Hoola its first task.'}</p>`}
+      </section></div>`;
+    wire();
+  }
+  function rowHTML(r) {
+    const [cls, word] = status(r), failed = r.status === 'failed', id = esc(r.id || r.procedure_id || '');
+    const site = r.site ? `${esc(r.site)} · ` : '';
+    const meta = failed ? esc(r.error || 'Hoola could not watch this video.')
+      : `${site}${esc(r.steps || 0)} steps · learned ${esc(when(r.ts))}${r.last_run ? ' · last done ' + esc(when(r.last_run)) : ''}`;
+    const title = esc(r.title || 'Untitled task');
+    return `<div class="skv-row">
+      ${failed ? thumb(r) : `<button type="button" class="skv-thumbbtn" data-task="${id}" aria-label="Open ${title}">${thumb(r)}</button>`}
+      <div class="skv-rowbd">${failed ? `<b>${title}</b>` : `<button type="button" class="skv-title" data-task="${id}">${title}</button>`}
+        <div class="skv-rowmeta"><span class="skv-pill ${cls}">${esc(word)}</span><span class="skv-meta">${meta}</span></div></div>
+      <div class="skv-rowact">${failed
+        ? `<button type="button" class="btn soft" data-retry="${id}">Try again</button><button type="button" class="btn soft" data-forget="${id}">Remove</button>`
+        : `<button type="button" class="btn soft" data-task="${id}">Open</button>${r.kind === 'website_work' || !r.kind ? `<button type="button" class="btn go" data-doit="${id}">Do it now</button>` : ''}`}</div>
+    </div>`;
+  }
+
+  // ---------------------------------------------------------------- screen 2: watching
+  async function startWatch(ref, title) {
+    if (!ref) return toast('Which video? Paste a link or upload a file.', true);
+    const btn = EL.querySelector('#skvWatch'); if (btn) { btn.disabled = true; btn.textContent = 'Starting…'; }
     try {
       const r = await api('POST', '/api/seekh/console/watch', {video: ref, title});
-      if (r.already_running) toast('Ek video pehle se chal raha hai - wahi dikh raha hoon.');
-      else toast('Hoola video dekhne lagi - notes yahin aayenge.');
-      JOB = {id: r.id, stage: 'queue', stages: [], perception: '', done: false};
-      NOTES_AT = 0;
-      qLive(true); drawLive(); startPoll();
+      if (r.already_running) toast('A video is already being learned — showing that one.');
+      JOB = {id: r.id, stage: 'queue', stages: [], perception: '', done: false, ref, title, kind: r.kind || ''};
+      showWatch();
     } catch (e) {
-      toast(e.message || 'Shuru nahi ho paya', true);
+      toast(e.message || 'Could not start', true);
+      if (btn) { btn.disabled = false; btn.textContent = 'Watch & learn'; }
     }
-    btn.disabled = false; btn.textContent = 'Watch & Learn';
   }
-
-  function qLive(on) { const c = EL && EL.querySelector('#skLive'); if (c) c.hidden = !on; }
-
-  function drawLive() {                                   // the live card only (re-drawn on state flips)
-    if (!EL) return;
-    const live = EL.querySelector('#skLive'); if (!live || live.hidden) return;
-    const cur = stepOf(JOB && JOB.stage);
-    EL.querySelectorAll('.sk-step').forEach((li, i) => {
-      li.classList.toggle('on', i === cur && !(JOB && JOB.done));
-      li.classList.toggle('did', i < cur || (JOB && JOB.done && !JOB.error));
-      const em = li.querySelector('em');
-      const hit = ((JOB && JOB.stages) || []).find(s => s.k === STEPS[i][0] || (STEPS[i][0] === 'distill' && s.k === 'distill_start'));
-      if (em) em.textContent = hit ? mmss(hit.ts) : (li.classList.contains('on') ? '…' : '');
+  async function showWatch() {
+    VIEW = 'watch'; stop();
+    const src = JOB.ref ? (() => { const s = String(JOB.ref); const yt = s.match(/(?:youtu\.be\/|v=|shorts\/|embed\/)([\w-]{11})/); return yt ? {kind: 'youtube', key: yt[1]} : /^https?:/i.test(s) ? {kind: 'url', key: s} : {kind: 'file', key: s}; })() : {kind: '', key: ''};
+    EL.innerHTML = `<div class="skv">${crumbs(['Video Learner', 'home'], ['Watching'])}
+      <header class="skv-head"><div><h1 class="skv-h1 sm" id="skvWTitle">${esc(JOB.title || 'Learning a new task')}</h1>
+        <p class="skv-meta" id="skvWSrc">${esc(JOB.ref || '')}</p></div>
+        <div class="skv-headact"><span class="skv-pill live" id="skvLive"><i></i>Learning</span><button type="button" class="btn soft" id="skvStop">Stop</button></div></header>
+      <div class="skv-split">
+        <div class="skv-main">
+          <div class="skv-player" id="skvPlayer"><div class="skv-frame skv-noplay"><span>Loading the video…</span></div></div>
+          <div class="skv-marks" id="skvMarks" aria-hidden="true"></div>
+          <p class="skv-meta skv-hint">Click a time in the notes to jump the video there.</p>
+          <section aria-labelledby="skvNotesH" class="skv-notes"><div class="skv-listhead"><h2 id="skvNotesH" class="skv-h3">Hoola's notes</h2><span class="skv-meta" id="skvNCount">written as Hoola watches</span></div>
+            <div id="skvNotes" aria-live="polite">${notesHTML('', true)}</div></section>
+        </div>
+        <aside class="skv-side" aria-labelledby="skvHow"><h2 id="skvHow" class="skv-h3">How it's going</h2>
+          <ol class="skv-stages" id="skvStages">${STAGES.map(([k, t, sub]) => `<li data-k="${k}"><span class="skv-dot"></span><span><b>${esc(t)}</b><small>${esc(sub)}</small></span><em></em></li>`).join('')}</ol>
+          <p class="skv-fine">Usually takes about as long as the video. You can leave this page — Hoola keeps learning, and your task appears in the list when it's done.</p></aside>
+      </div></div>`;
+    wire();
+    EL.querySelector('#skvPlayer').innerHTML = src.kind ? await playerHTML(src, 0) : '<div class="skv-frame skv-noplay"><span>The video is on its way</span></div>';
+    EL.querySelector('#skvVideo')?.addEventListener('loadedmetadata', markers);
+    paintWatch();
+    POLL = setInterval(pollWatch, 1200); pollWatch();
+    TICK = setInterval(() => { const l = EL && EL.querySelector('#skvLive'); if (l && JOB && !JOB.done) l.lastChild.textContent = `Learning · ${mmss((JOB.elapsed || 0) + (Date.now() - (JOB._at || Date.now())) / 1000)} so far`; }, 1000);
+  }
+  function paintWatch() {
+    if (!EL || VIEW !== 'watch' || !JOB) return;
+    const order = ['classify', 'fetch', 'notes', 'distill', 'memory'];
+    const seen = new Map((JOB.stages || []).map(s => [s.k === 'distill_start' ? 'distill' : s.k, s.ts]));
+    // which stage is live now: fetch = watching, the first streamed words = writing notes, notes done = distilling
+    const cur = JOB.done ? 5 : seen.has('memory') ? 4 : seen.has('distill') || seen.has('notes') ? 3
+      : JOB.perception ? 2 : seen.has('fetch') ? 1 : 0;
+    const writing = !JOB.done && !seen.has('notes');
+    EL.querySelectorAll('#skvStages li').forEach((li, i) => {
+      li.className = (i < cur && !JOB.error) || (JOB.done && !JOB.error) ? 'did' : i === cur && !JOB.done ? 'on' : '';
+      const k = order[i], em = li.querySelector('em');
+      em.textContent = li.className === 'on' ? 'now' : seen.has(k) && li.className === 'did' ? mmss(seen.get(k)) : '';
     });
-    const el = EL.querySelector('#skElapsed');
-    if (el) el.textContent = (JOB && JOB.done) ? `· poora hua ${mmss(JOB.elapsed)} mein` : `· ${mmss((JOB && JOB.elapsed) || 0)}`;
+    const box = EL.querySelector('#skvNotes');
+    if (box) {
+      const atEnd = box.scrollHeight - box.scrollTop - box.clientHeight < 40;
+      box.innerHTML = notesHTML(JOB.perception, !JOB.done);
+      if (atEnd) box.scrollTop = box.scrollHeight;
+      const n = notesOf(JOB.perception).length, c = EL.querySelector('#skvNCount');
+      if (c) c.textContent = n ? `written as Hoola watches · ${n} so far` : 'written as Hoola watches';
+    }
+    if (JOB.title) { const t = EL.querySelector('#skvWTitle'); if (t) t.textContent = JOB.title; }
+    markers();
   }
-
-  function startPoll() {
-    stopPoll();
-    TIMER = setInterval(poll, 1200);
-    poll();
-  }
-  function stopPoll() { if (TIMER) { clearInterval(TIMER); TIMER = null; } }
-
-  async function poll() {
-    if (!JOB || JOB.done) { stopPoll(); return; }
+  async function pollWatch() {
+    if (!JOB || JOB.done) return;
     try {
       const r = await api('GET', `/api/seekh/console/progress?id=${encodeURIComponent(JOB.id || '')}`);
-      const wasNotes = atStage('notes') >= 0;
-      JOB = {...JOB, ...r};
-      qLive(true);
-      drawLive();
-      if (!wasNotes && atStage('notes') >= 0) startPacer();
-      if (r.done && !r.error) {
-        stopPacer(); NOTES_AT = Infinity; renderNotes();
-        PERFORM = (r.result && r.result.learned) || PERFORM;
-        stopPoll();
+      JOB = {...JOB, ...r, ref: r.ref || JOB.ref, title: r.title || JOB.title, _at: Date.now()};
+      if (!EL.querySelector('#skvVideo') && !EL.querySelector('#skvFrame') && JOB.ref) {  // adopted after a reload
+        const s = String(JOB.ref), yt = s.match(/(?:youtu\.be\/|v=|shorts\/|embed\/)([\w-]{11})/);
+        const p = EL.querySelector('#skvPlayer');
+        if (p && (yt || r.kind === 'file')) p.innerHTML = await playerHTML(yt ? {kind: 'youtube', key: yt[1]} : {kind: 'file', key: s}, 0);
+        const w = EL.querySelector('#skvWSrc'); if (w) w.textContent = JOB.ref;
+      }
+      paintWatch();
+      if (r.done) {
+        stop();
         await refresh();
-        if (EL && EL.isConnected) { draw(); EL.querySelector('#skMem')?.scrollIntoView({behavior: 'smooth', block: 'center'}); }
-      } else if (r.done && r.error) {
-        stopPacer(); stopPoll();
-        const body = EL.querySelector('#skNotesBody');
-        if (body) body.innerHTML = `<span class="sk-err">${esc(r.error)}</span>`;
-        toast(r.error, true);
+        if (r.error) {
+          if (r.stopped) { toast('Stopped. Nothing was kept.'); return showHome(); }
+          const l = EL.querySelector('#skvLive'); if (l) { l.className = 'skv-pill bad'; l.textContent = 'Could not learn'; }
+          const box = EL.querySelector('#skvNotes');
+          if (box) box.insertAdjacentHTML('afterbegin', `<div class="skv-error"><b>Hoola could not learn this video.</b><span>${esc(r.error)}</span>
+            <div class="skv-btnrow"><button type="button" class="btn go" id="skvAgain">Try again</button><button type="button" class="btn soft" data-go="home">Back to the list</button></div></div>`);
+          EL.querySelector('#skvAgain')?.addEventListener('click', () => startWatch(JOB.ref, JOB.title));
+          wire();
+          return;
+        }
+        toast('Learned. It is in your learned tasks now.');
+        const pid = r.result && r.result.procedure_id;
+        if (pid) return openTask(pid); else showHome();
       }
     } catch (e) {
-      if (e.status === 404) {                             // restart took the job; the memory keeps what landed
-        stopPoll(); stopPacer(); JOB = null;
-        await refresh(); if (EL && EL.isConnected) draw();
-        toast('Yeh watch restart mein chhoot gaya - jo seekha tha woh memory mein hai.', true);
-      }
+      if (e.status === 404) { stop(); toast('This watch was lost (the server restarted). Start it again.', true); await refresh(); showHome(); }
     }
   }
-
-  // ------------------------------------------------------------ the realtime notes (a paced reveal of the REAL text)
-  function startPacer() {
-    stopPacer();
-    const total = (JOB.perception || '').length;
-    if (!total) { renderNotes(); return; }
-    const step = Math.max(9, Math.ceil(total / 110));      // ~110 ticks ≈ 10 s, any length
-    PACER = setInterval(() => {
-      NOTES_AT = Math.min(total, NOTES_AT + step);
-      renderNotes();
-      if (NOTES_AT >= total) stopPacer();
-    }, 90);
-  }
-  function stopPacer() { if (PACER) { clearInterval(PACER); PACER = null; } }
-
-  function renderNotes() {
-    if (!EL) return;
-    const body = EL.querySelector('#skNotesBody'); if (!body) return;
-    if (JOB && JOB.error) return;                          // the error branch owns the box
-    const txt = (JOB && JOB.perception) || '';
-    if (!txt) return;                                      // still watching: keep the heartbeat line
-    body.textContent = txt.slice(0, NOTES_AT === Infinity ? undefined : NOTES_AT);
-    body.scrollTop = body.scrollHeight;
+  async function stopWatch() {
+    if (!JOB) return;
+    const b = EL.querySelector('#skvStop'); if (b) { b.disabled = true; b.textContent = 'Stopping…'; }
+    try { await api('POST', '/api/seekh/console/stop', {id: JOB.id}); } catch (e) { toast(e.message, true); if (b) { b.disabled = false; b.textContent = 'Stop'; } }
   }
 
-  // ------------------------------------------------------------ perform NOW (one honest chat turn; the page stays)
-  async function perform() {
-    const r = (JOB && JOB.done && JOB.result) || null;
-    const kaam = PERFORM || (r && r.learned) || '';
-    if (!kaam) return toast('Pehle ek video se kaam seekhaye.', true);
-    const ask = String(EL.querySelector('#skAsk')?.value || '').trim();
-    const website = !!(r && r.kind === 'website_work');
-    const msg = `Seekhe hue kaam "${kaam}" ab ek baar asli mein chala ke dekhna hai. ${ask || 'Jo video mein dikha tha, wahi kaam ab kijiye.'}`
-      + (website
-        ? ' Computer operator se kahiye: apne browser mein yeh kaam karein, video se bani recipe (draft) ko guide maanein, har step live page se check karein - jahan kuch bhi bhejna ya submit karna ho wahan pehle mujhse poochein. Jo cheez video mein nahi dikhi thi, wahan ruk kar pooch lein.'
-        : ' Video se seekha hai, steps memory mein hain - har step aage badhne se pehle apne aap check karein, aur jahan kuch bhejna ya badalna ho wahan pehle mujhse poochein.');
-    const btn = EL.querySelector('#skGo'); btn.disabled = true;
+  // ---------------------------------------------------------------- screen 3: one learned task
+  async function openTask(id) {
+    stop();
+    try { TASK = await api('GET', `/api/seekh/console/task?id=${encodeURIComponent(id)}`); }
+    catch (e) { toast(e.message, true); return showHome(); }
+    showTask();
+  }
+  function fieldsOf(t) {                    // the form: one box per thing the task needs (from the learned hints)
+    const seen = new Set(), out = [];
+    for (const s of ((t.detail || {}).steps || [])) {
+      const key = s.value_var || (s.value_hint ? s.value_hint.slice(0, 40) : '');
+      if (!key || seen.has(key)) continue; seen.add(key);
+      out.push({key, label: s.value_var ? human(s.value_var) : human(s.value_hint), hint: s.value_hint || ''});
+    }
+    return out.slice(0, 12);
+  }
+  async function showTask() {
+    VIEW = 'task';
+    const t = TASK, d = t.detail || {}, steps = d.steps || [], [cls, word] = status(t), web = !t.kind || t.kind === 'website_work';
+    const box = (title, xs, warn) => xs && xs.length ? `<div class="skv-box${warn ? ' warn' : ''}"><h3>${title}</h3><ul>${xs.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>` : '';
+    const fields = fieldsOf(t);
+    EL.innerHTML = `<div class="skv">${crumbs(['Video Learner', 'home'], [t.title || 'Learned task'])}
+      <header class="skv-head"><div><h1 class="skv-h1">${esc(t.title || 'Learned task')}</h1>
+        <div class="skv-rowmeta"><span class="skv-pill ${cls}">${esc(word)}</span>${t.site ? `<span class="skv-pill mute">Website task · ${esc(t.site)}</span>` : web ? '' : '<span class="skv-pill mute">Not a website task</span>'}
+        <span class="skv-meta">${esc(t.steps || steps.length)} steps · learned ${esc(when(t.ts))}</span></div></div>
+        <div class="skv-headact"><button type="button" class="btn soft" id="skvRelearn">Re-learn</button><button type="button" class="btn soft" data-forget="${esc(t.id || t.procedure_id)}">Remove</button></div></header>
+      <div class="skv-split">
+        <div class="skv-main">
+          <details class="skv-vid" id="skvVid"><summary>Watch the video</summary><div class="skv-player" id="skvPlayer"></div></details>
+          <section aria-labelledby="skvStepsH"><div class="skv-listhead"><h2 id="skvStepsH" class="skv-h3">The steps Hoola learned</h2><span class="skv-meta">each with the moment it was seen</span></div>
+            <ol class="skv-steps">${steps.map((s, i) => `<li><span class="skv-n">${esc(s.n || i + 1)}</span>
+              <span>${esc(s.note || human(s.action))}${s.value_hint ? `<small>You fill: ${esc(s.value_hint)}</small>` : ''}</span>
+              <span class="skv-evs">${(s.evidence || []).slice(0, 2).map(e => `<button type="button" class="skv-ts" data-t="${esc(e)}">${esc(e)}</button>`).join('')}</span></li>`).join('') || '<li><span></span><span class="skv-quiet">No steps were kept for this task.</span><span></span></li>'}</ol></section>
+          <div class="skv-boxes">${box('Before you start', d.preconditions)}${box('Watch out', d.gotchas, true)}${box('Not seen in the video', d.unsure)}</div>
+        </div>
+        <aside class="skv-side skv-doit" aria-labelledby="skvDoH">
+          <h2 id="skvDoH" class="skv-h3">${web ? 'Let Hoola do it' : 'Ask Hoola to guide you'}</h2>
+          <p class="skv-fine">${web ? 'Fill what the video can\'t know. Hoola uses its own browser and asks you before submitting anything.' : 'This was not a website task, so Hoola walks you through the steps in chat.'}</p>
+          <form id="skvForm" class="skv-form">
+            ${fields.map((f, i) => `<label>${esc(f.label)}<input name="f${i}" data-label="${esc(f.label)}" placeholder="${esc(f.hint)}" autocomplete="off"></label>`).join('')}
+            <label><span>Anything else for Hoola <span class="skv-opt">(optional)</span></span><input name="extra" placeholder="e.g. use the photo I sent yesterday" autocomplete="off"></label>
+            <button type="submit" class="btn go skv-big">${web ? 'Do it now' : 'Guide me now'}</button>
+          </form>
+          <div class="skv-conf"><span>How sure Hoola is</span><span><i><b style="width:${pct(t.confidence)}%"></b></i>${pct(t.confidence)}%</span></div>
+        </aside>
+      </div></div>`;
+    wire();
+    EL.querySelector('#skvRelearn')?.addEventListener('click', () => { if (confirm('Watch this video again and replace what was learned?')) startWatch(refOf(t), t.title || ''); });
+    EL.querySelector('#skvForm')?.addEventListener('submit', e => { e.preventDefault(); doIt(); });
+    const det = EL.querySelector('#skvVid');
+    det?.addEventListener('toggle', async () => { const p = EL.querySelector('#skvPlayer'); if (det.open && p && !p.innerHTML) p.innerHTML = await playerHTML(srcOf(t), 0); });
+  }
+
+  // ---------------------------------------------------------------- screen 4: Hoola doing it
+  async function doIt() {
+    const t = TASK; if (!t) return;
+    const form = EL.querySelector('#skvForm'), vals = [];
+    form.querySelectorAll('input[data-label]').forEach(i => { if (i.value.trim()) vals.push(`${i.dataset.label}: ${i.value.trim()}`); });
+    const extra = String(form.querySelector('[name=extra]')?.value || '').trim();
+    const web = !t.kind || t.kind === 'website_work';
+    const msg = `Do the learned task "${t.title}" now, for real.`
+      + (vals.length ? ` The values to use: ${vals.join('; ')}.` : '')
+      + (extra ? ` ${extra}` : '')
+      + (web ? ' Use your own browser and the recipe learned from the video as a guide, checking every step against the live page. Ask me before sending or submitting anything, and ask me for any value the video did not show.'
+             : ' Walk me through the steps one by one; check each one with me before moving on.');
+    const b = form.querySelector('button[type=submit]'); b.disabled = true; b.textContent = 'Starting…';
     try {
-      await send(msg);
-      const sent = EL.querySelector('#skSent'); if (sent) sent.hidden = false;
-      EL.querySelector('#skAsk').value = '';
-      toast('Kaam Hoola ko de diya - Live mein dekhiye.');
-    } catch (e) {
-      toast('Nahi bhej paya: ' + (e.message || ''), true);
-      btn.disabled = false;
+      const r = await send(msg);
+      const cid = (r && (r.conversation_id || r.conv)) || '';
+      RUN = {cid, after: (r && r.after) || 0, task: t, steps: new Map(), cards: [], reply: '', done: false, t0: Date.now()};
+      showRun();
+    } catch (e) { toast('Could not start: ' + (e.message || ''), true); b.disabled = false; b.textContent = web ? 'Do it now' : 'Guide me now'; }
+  }
+  function showRun() {
+    VIEW = 'run'; stop();
+    const t = RUN.task, planned = ((t.detail || {}).steps || []);
+    EL.innerHTML = `<div class="skv">${crumbs(['Video Learner', 'home'], [t.title || 'Task', 'task'], ['Doing it'])}
+      <header class="skv-head"><div><h1 class="skv-h1 sm">Hoola is doing: ${esc(t.title || 'your task')}</h1>
+        <p class="skv-meta" id="skvRunMeta">Starting…</p></div>
+        <div class="skv-headact"><button type="button" class="btn soft" id="skvRunStop">Stop</button><button type="button" class="btn soft" id="skvRunChat">Open in chat</button></div></header>
+      <div class="skv-split">
+        <div class="skv-main">
+          <div id="skvWait"></div>
+          <section aria-labelledby="skvActH"><h2 id="skvActH" class="skv-h3">What Hoola is doing</h2><ol class="skv-acts" id="skvActs" aria-live="polite"><li class="skv-quiet">Waiting for the first step…</li></ol></section>
+          <div id="skvReply"></div>
+          <div id="skvVerdict"></div>
+        </div>
+        <aside class="skv-side"><h2 class="skv-h3">The learned steps</h2>
+          <ol class="skv-plan">${planned.map((s, i) => `<li><span class="skv-n">${esc(s.n || i + 1)}</span><span>${esc(s.note || human(s.action))}</span></li>`).join('')}</ol>
+          <p class="skv-fine">The page may look different from the video — Hoola checks every step against the live page.</p></aside>
+      </div></div>`;
+    wire();
+    EL.querySelector('#skvRunChat')?.addEventListener('click', () => go('chat'));
+    EL.querySelector('#skvRunStop')?.addEventListener('click', async () => {
+      if (!RUN.cid) return;
+      try { await api('POST', `/api/conversations/${encodeURIComponent(RUN.cid)}/stop`, {}); toast('Stopped.'); } catch (e) { toast(e.message, true); }
+    });
+    POLL = setInterval(pollRun, 2000); pollRun();
+    TICK = setInterval(() => { const m = EL && EL.querySelector('#skvRunMeta'); if (m && RUN && !RUN.done) m.textContent = `${RUN.steps.size} steps so far · ${mmss((Date.now() - RUN.t0) / 1000)} · in Hoola's own browser`; }, 1000);
+  }
+  async function pollRun() {
+    if (!RUN || !RUN.cid || RUN.done) return;
+    let tl;
+    try { tl = await api('GET', `/api/conversations/${encodeURIComponent(RUN.cid)}/timeline?steps=1&own=1&limit=120`); } catch { return; }
+    const evs = (tl.events || []).filter(e => e.id > RUN.after);
+    if (!RUN.started) {                     // our own message is the start line: everything after it is this run
+      const mine = [...evs].reverse().find(e => e.kind === 'message' && e.payload && e.payload.role === 'user' && String(e.payload.text || '').includes(RUN.task.title || '\u0000'));
+      if (!mine) return;
+      RUN.after = mine.id; RUN.started = true;
+    }
+    const after = evs.filter(e => e.id > RUN.after);
+    let running = false, reply = '';
+    const cards = [];
+    for (const e of after) {
+      const p = e.payload || {};
+      if (e.kind === 'step') { RUN.steps.set(p.id || e.id, {label: p.label || p.tool || 'Working', state: p.state || 'running', at: e.at}); if (p.state === 'running') running = true; }
+      else if (e.kind === 'message' && p.role === 'assistant' && p.source !== 'greeting') reply = String(p.text || '');
+      else if (needsHer(p)) cards.push({id: e.id, title: p.title || p.question || p.label || human(e.kind)});
+    }
+    const acts = EL.querySelector('#skvActs');
+    if (acts && RUN.steps.size) acts.innerHTML = [...RUN.steps.values()].map(s => `<li class="${s.state === 'running' ? 'on' : s.state === 'failed' || s.state === 'error' ? 'bad' : 'did'}"><span class="skv-dot">${s.state === 'running' ? '' : s.state === 'failed' || s.state === 'error' ? '!' : ICON.tick}</span><span>${esc(s.label)}</span><em>${esc(new Date(s.at).toLocaleTimeString('en-IN', {hour: 'numeric', minute: '2-digit'}))}</em></li>`).join('');
+    const wait = EL.querySelector('#skvWait');
+    if (wait) wait.innerHTML = cards.length ? `<section class="skv-waiting" aria-label="Waiting for you"><small>Waiting for you</small><b>${esc(cards[cards.length - 1].title)}</b>
+      <span class="skv-fine">Answer it in the chat — Hoola carries on the moment you do.</span><div class="skv-btnrow"><button type="button" class="btn go" id="skvAnswer">Answer</button></div></section>` : '';
+    EL.querySelector('#skvAnswer')?.addEventListener('click', () => go('chat'));
+    if (reply) { const rb = EL.querySelector('#skvReply'); if (rb) rb.innerHTML = `<div class="skv-replybox"><small>Hoola says</small><p>${esc(reply.slice(0, 900))}</p></div>`; }
+    if (reply && !running && !cards.length) {
+      RUN.done = true; stop();
+      const m = EL.querySelector('#skvRunMeta'); if (m) m.textContent = `Finished in ${mmss((Date.now() - RUN.t0) / 1000)}`;
+      const v = EL.querySelector('#skvVerdict');
+      if (v) v.innerHTML = `<section class="skv-verdict"><div><b>Did it work?</b><span>Saying yes marks this task Proven, so next time Hoola goes faster and asks less.</span></div>
+        <div class="skv-btnrow"><button type="button" class="btn go skv-yes" data-verdict="1">Yes, it worked</button><button type="button" class="btn soft" data-verdict="0">Something was wrong</button></div></section>`;
+      v?.querySelectorAll('[data-verdict]').forEach(b => b.addEventListener('click', () => verdict(b.dataset.verdict === '1')));
     }
   }
+  const needsHer = p => { const st = String(p.status || p.state || '').toLowerCase(); return ['pending', 'waiting', 'ask', 'needs_you', 'open'].includes(st) && !p.decided && !p.answered; };
+  async function verdict(ok) {
+    try {
+      await api('POST', '/api/seekh/console/proven', {id: RUN.task.id || RUN.task.procedure_id, ok});
+      toast(ok ? 'Marked Proven.' : 'Noted. You can re-learn it or tell Hoola what went wrong in chat.');
+      await refresh(); openTask(RUN.task.id || RUN.task.procedure_id);
+    } catch (e) { toast(e.message, true); }
+  }
 
-  return {open};
+  // ---------------------------------------------------------------- wiring shared by every screen
+  async function forget(id) {
+    if (!confirm('Remove this task? Hoola forgets these steps.')) return;
+    try { await api('DELETE', `/api/seekh/console/task?id=${encodeURIComponent(id)}`); toast('Removed.'); await refresh(); showHome(); }
+    catch (e) { toast(e.message, true); }
+  }
+  function wire() {
+    const q = s => EL.querySelector(s);
+    EL.querySelectorAll('[data-go]').forEach(b => b.addEventListener('click', async () => {
+      const to = b.dataset.go;
+      if (to === 'hub') { stop(); return go('hire'); }
+      if (to === 'task' && TASK) return openTask(TASK.id || TASK.procedure_id);
+      await refresh(); showHome();
+    }));
+    q('#skvWatch')?.addEventListener('click', () => startWatch(String(q('#skvRef')?.value || '').trim(), String(q('#skvTitle')?.value || '').trim()));
+    q('#skvRef')?.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); q('#skvWatch')?.click(); } });
+    q('#skvPick')?.addEventListener('click', () => q('#skvFile')?.click());
+    q('#skvFile')?.addEventListener('change', e => { const f = e.target.files && e.target.files[0]; e.target.value = ''; if (f) take(f); });
+    const drop = q('#skvDrop');
+    if (drop) {
+      drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('over'); });
+      drop.addEventListener('dragleave', () => drop.classList.remove('over'));
+      drop.addEventListener('drop', e => { e.preventDefault(); drop.classList.remove('over'); const f = e.dataTransfer?.files?.[0]; if (f) take(f); });
+    }
+    q('#skvStop')?.addEventListener('click', stopWatch);
+    EL.querySelectorAll('[data-filter]').forEach(b => b.addEventListener('click', () => { FILTER = b.dataset.filter; showHome(); }));
+    EL.querySelectorAll('[data-task]').forEach(b => b.addEventListener('click', () => openTask(b.dataset.task)));
+    EL.querySelectorAll('[data-doit]').forEach(b => b.addEventListener('click', async () => { await openTask(b.dataset.doit); EL.querySelector('#skvForm input')?.focus(); }));
+    EL.querySelectorAll('[data-forget]').forEach(b => b.addEventListener('click', () => forget(b.dataset.forget)));
+    EL.querySelectorAll('[data-retry]').forEach(b => b.addEventListener('click', () => {
+      const row = (LIST.watches || []).find(r => (r.id || r.procedure_id) === b.dataset.retry);
+      if (row) startWatch(refOf(row), row.title || '');
+    }));
+    EL.querySelectorAll('.skv-ts').forEach(b => b.addEventListener('click', async () => {
+      const det = EL.querySelector('#skvVid');
+      if (det && !det.open) { det.open = true; const p = EL.querySelector('#skvPlayer'); if (p && !p.innerHTML) p.innerHTML = await playerHTML(srcOf(TASK), secs(b.dataset.t)); return; }
+      if (!seek(b.dataset.t)) toast('This video can only be played at its own link.');
+    }));
+  }
+  async function take(f) {
+    if (f.size > 25 * 1024 * 1024) return toast(`${f.name} is over 25 MB — paste the video's link instead.`, true);
+    if (!/^video\//.test(f.type || '')) return toast(`${f.name} is not a video file.`, true);
+    const b = EL.querySelector('#skvPick'); if (b) { b.disabled = true; b.textContent = 'Uploading…'; }
+    try {
+      const r = await upload(f);
+      const title = String(EL.querySelector('#skvTitle')?.value || '').trim() || f.name.replace(/\.[^.]+$/, '');
+      await startWatch(r.file_id || '', title);
+    } catch (e) { toast(`${f.name}: ${e.message || 'upload failed'}`, true); if (b) { b.disabled = false; b.innerHTML = ICON.up + 'Upload a video file'; } }
+  }
+  // the console re-opens the page by calling open(el); stop polling when the page is left
+  document.addEventListener('visibilitychange', () => { if (document.hidden) return; if (VIEW === 'run' && RUN && !RUN.done && !POLL) POLL = setInterval(pollRun, 2000); });
+  return {open: openPage, leave: stop};
 };

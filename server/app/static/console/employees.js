@@ -118,8 +118,8 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
         <div class="ae-row"><h3 id="aeSeekhH">HOOLA AI Video Learner</h3><span class="ae-mut">Learn any way of working from a video</span></div>
         <button class="ae-seekh ae-pop" type="button" data-v="seekh" aria-label="Open the HOOLA AI Video Learner">
           <span class="ae-seekh-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="14" height="14" rx="2"/><path d="M16 10l6-3v10l-6-3"/><path d="M6 13.5l2.5 2.5L13 11"/></svg></span>
-          <span class="ae-seekh-bd"><b>Load a video — Hoola learns the kaam</b>
-            <small>YouTube link, Shorts, MP4 ya koi bhi video. Hoola use REALTIME mein dekh kar notes banati hai, tareeke ko MEMORY mein rakhti hai — aur isi page pe aap use bol sakte hain “PERFORM THIS TASK NOW”, to woh APNE BROWSER se kaam karti hai.</small></span>
+          <span class="ae-seekh-bd"><b>Teach Hoola any task from a video</b>
+            <small>Paste a YouTube link, a Short or upload a video. Hoola watches it, writes down every step, keeps them in memory — and then does the task for you in its own browser.</small></span>
           <span class="ae-seekh-go">Open Video Learner${arrow}</span>
         </button>
       </section>

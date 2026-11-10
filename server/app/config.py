@@ -472,6 +472,7 @@ class Settings(BaseSettings):
     seekh_enabled: bool = True             # v0.713 SEEKH MANCH: learn a way of working from a video (the
     seekh_max_per_day: int = 20            # `seekh_video` tool): the Gemini eyes watch, Claude distills the
     seekh_file_max_mb: int = 200           # steps with [m:ss] evidence, and they land in the two memories
+    seekh_live_notes: bool = True          # v0.745 notes stream onto the Video Learner page as Gemini writes them
     seekh_file_max_s: int = 1800           # that already ship (procedures + operator recipe drafts) - off = off
     voice_adapt: bool = True               # v0.119 her own pauses / style / words / mis-hearings shape the call
     site_model: str = "claude-opus-5-5"     # v0.121 Website Sahayak: model that designs and writes every section
