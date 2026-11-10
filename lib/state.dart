@@ -1205,6 +1205,33 @@ class Santosh extends ChangeNotifier {
 
   /// Open one of her old chats.
   /// v0.646 `remember: false` = a call record from the Calls section: shown now, but the app still reopens on her chat.
+  /// v0.738 parity gap 12: her earlier message edited -> the chat continues from there (the old version is kept on
+  /// the server); the chat is read again so the hidden old replies leave the screen.
+  Future<String?> editMessage(int eventId, String text) async {
+    final id = conversationId;
+    if (id == null || api == null || text.trim().isEmpty) return null;
+    try {
+      await api!.editMessage(id, eventId, text.trim());
+    } catch (e) {
+      return '$e';
+    }
+    await _openStory(reload: true);
+    return null;
+  }
+
+  /// v0.738 the last reply asked again (Dobara): a new answer replaces it on screen; the old one is kept on the server.
+  Future<String?> retryLastReply() async {
+    final id = conversationId;
+    if (id == null || api == null) return null;
+    try {
+      await api!.retryReply(id);
+    } catch (e) {
+      return '$e';
+    }
+    await _openStory(reload: true);
+    return null;
+  }
+
   Future<void> openChat(String id, {bool remember = true}) async {
     if (id == conversationId || api == null) return;
     conversationId = id;

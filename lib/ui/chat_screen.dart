@@ -1100,6 +1100,27 @@ class _ChatScreenState extends State<ChatScreen> {
               _startReply(text);
             },
           ),
+          if (me && it.eid != null && it.eid! > 0)
+            ListTile(
+              leading: const Icon(Icons.edit_rounded, color: C.accent),
+              title: Text(app.g('Edit message'), style: const TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: Text(app.g('Hoola answers again from here'), style: const TextStyle(fontSize: 12, color: C.faint)),
+              onTap: () {
+                Navigator.pop(ctx);
+                _editMsg(it, text);
+              },
+            ),
+          if (!me && _isLastReply(it))
+            ListTile(
+              leading: const Icon(Icons.refresh_rounded, color: C.accent),
+              title: Text(app.g('Ask again'), style: const TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: Text(app.g('A new answer to the same message'), style: const TextStyle(fontSize: 12, color: C.faint)),
+              onTap: () async {
+                Navigator.pop(ctx);
+                final err = await app.retryLastReply();
+                if (err != null && mounted) _snack(app.g('Could not ask again'));
+              },
+            ),
           ListTile(
             leading: Icon(_selecting == it ? Icons.check_circle_rounded : Icons.highlight_alt_rounded, color: C.accent),
             title: Text(app.g(_selecting == it ? 'Stop selecting text' : 'Select text'), style: const TextStyle(fontWeight: FontWeight.w700)),
@@ -1112,6 +1133,36 @@ class _ChatScreenState extends State<ChatScreen> {
         ]),
       ),
     );
+  }
+
+  // v0.738 parity gap 12: only the newest reply can be asked again (the server answers the last message)
+  bool _isLastReply(FeedItem it) {
+    for (var i = app.feed.length - 1; i >= 0; i--) {
+      final f = app.feed[i];
+      if (f.kind == 'message' && '${f.data['role']}' == 'assistant') return identical(f, it);
+    }
+    return false;
+  }
+
+  Future<void> _editMsg(FeedItem it, String text) async {
+    final ctl = TextEditingController(text: text);
+    final out = await showDialog<String>(
+      context: context,
+      builder: (dctx) => AlertDialog(
+        backgroundColor: const Color(0xF2141029),
+        title: Text(app.g('Edit message'), style: const TextStyle(fontWeight: FontWeight.w700)),
+        content: TextField(controller: ctl, autofocus: true, minLines: 1, maxLines: 8,
+            decoration: InputDecoration(hintText: app.g('Your message'))),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dctx), child: Text(app.g('Cancel'))),
+          FilledButton(onPressed: () => Navigator.pop(dctx, ctl.text), child: Text(app.g('Send'))),
+        ],
+      ),
+    );
+    ctl.dispose();
+    if (out == null || out.trim().isEmpty || out.trim() == text.trim() || it.eid == null) return;
+    final err = await app.editMessage(it.eid!, out);
+    if (err != null && mounted) _snack(app.g('Could not edit the message'));
   }
 
   Future<void> _copyMsg(String text) async {

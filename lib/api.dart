@@ -423,6 +423,11 @@ class Api {
   Future<void> checkConversation(String id) async => _send('GET', '/api/conversations/$id/messages');
   /// Stop the task Hoola is running in this conversation (after the current step).
   Future<void> stopTurn(String id) async => _send('POST', '/api/conversations/$id/stop');
+  // v0.738 parity gap 12: edit an earlier message of hers (a new version from there; the old one is kept) and ask the
+  // last reply again - the same routes the web console uses.
+  Future<void> editMessage(String id, int eventId, String text) async =>
+      _send('POST', '/api/conversations/$id/edit', body: {'event_id': eventId, 'text': text});
+  Future<void> retryReply(String id) async => _send('POST', '/api/conversations/$id/retry');
   /// v0.186 the goal card's data (the newest goal of this chat), or {} when none.
   Future<Map<String, dynamic>> goal(String id) async =>
       Map<String, dynamic>.from((await _send('GET', '/api/conversations/$id/goal') as Map)['goal'] as Map? ?? {});

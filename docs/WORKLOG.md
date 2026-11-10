@@ -2627,3 +2627,8 @@ Task ID: v0.737.0 KEY LIMIT SAID
 Ask: READ (errors after the photo test).
 Found: OpenRouter key $10 limit exceeded (403) -> GLM paused -> her photo turn failed; Anthropic credit also out.
 Built: the owner reads a plain "raise the key limit" line.
+
+Task ID: v0.738.0 PARITY 1 + 9a + 12
+Ask: TILL I TOPUP -- CONTINUE OUR THIS WORK (the parity table).
+Built: chat_every_message, chat_files_by_code (pylab docx/pptx/pdf), phone Edit message + Ask again.
+Deploy: vps-ops deploy (+ the APK from build CI).

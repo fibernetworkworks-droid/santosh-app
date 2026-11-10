@@ -440,6 +440,11 @@ class Settings(BaseSettings):
                                            # of stapling a note, and a correction message goes out only when a real
                                            # ACTION claim (sent / paid / booked / deleted / published) stayed false
                                            # after that retry. False = the old stapled notes.
+    chat_files_by_code: bool = True        # parity gap 9a (v0.738): ONE way to make a file, like Claude - pylab writes
+                                           # Word / Excel / PDF / PowerPoint with Python and they land in her chat
+    chat_every_message: bool = True        # parity gap 1 (v0.738): every message reaches the model - the research plan
+                                           # gate never answers for it, stop words still stop the work at once but the
+                                           # model writes the reply (the OTP / CAPTCHA hand-over stays before the model)
     chat_plain_loop: bool = True           # parity Phase 5b (the loop): the model's answer ends the turn. Kept checks
                                            # run BEFORE the answer is shown and a corrected answer REPLACES the draft
                                            # in place (one reply): a false ACTION claim (sent / paid / booked /

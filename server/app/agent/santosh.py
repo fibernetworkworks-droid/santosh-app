@@ -2904,7 +2904,8 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
             _save_pre(conversation_id, "assistant", [{"type": "text", "text": got["say"]}], display=got["say"])
             bus.publish(conversation_id, "message", {"role": "assistant", "text": got["say"], "source": "operator"})
             return got["say"]
-        if not voice and save_user and not str(user_text or "").lstrip().startswith(("[", "(")):
+        _every = bool(getattr(settings, "chat_every_message", False))
+        if not voice and save_user and not _every and not str(user_text or "").lstrip().startswith(("[", "(")):
             try:   # v0.472 R1 PLAN PEHLE: a big research ask shows its plan and waits for her Haan; her Haan starts it
                 from . import research_plan as _rplan
                 _rp = await _rplan.gate(tenant_id, conversation_id, user_text, settings)
@@ -2970,7 +2971,13 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
             from .. import kaamstop
             if kaamstop.wants_stop(user_text):
                 _ks = await asyncio.to_thread(kaamstop.cancel, tenant_id, user_text, conversation_id)
-                if _ks.get("stopped"):
+                if _ks.get("stopped") and getattr(settings, "chat_every_message", False):
+                    # parity gap 1: the work is stopped NOW, and her message still reaches the model, which says so
+                    STATS_PREP["stop_to_model"] = STATS_PREP.get("stop_to_model", 0) + 1
+                    context = ((context + "\n\n") if context else "") + (
+                        "[Done by the system before this turn, because she asked to stop: " + str(_ks.get("say") or "")
+                        + " Tell her in one short line what was stopped. Do not start that work again.]")
+                elif _ks.get("stopped"):
                     _save_pre(conversation_id, "user", user_text, display=user_text)
                     _save_pre(conversation_id, "assistant", [{"type": "text", "text": _ks["say"]}], display=_ks["say"])
                     bus.publish(conversation_id, "message", {"role": "assistant", "text": _ks["say"], "source": "kaam_stop"})

@@ -154,7 +154,7 @@ def test_nothing_running_goes_to_the_brain():
     from app.agent import santosh
     src = inspect.getsource(santosh._run_turn)
     i = src.index("kaamstop.wants_stop(user_text)")
-    assert 'if _ks.get("stopped"):' in src[i:i + 400]            # only a REAL stop answers by itself
+    assert 'if _ks.get("stopped"):' in src[i:i + 1200]           # only a REAL stop answers by itself
     assert src.index("kaamstop.wants_stop(user_text)") < src.index("lock = _locks[conversation_id]")
 
 
@@ -218,4 +218,4 @@ def test_cancel_from_the_next_call_stops_the_job_of_the_last_call(env, monkeypat
         assert s.get(turn_inbox.TurnInbox, iid).status == "stopped"
     call3 = callconv.open_for(T, "chat", "")
     blk = kaamwatch.block(T, call3)                              # what the next call reads
-    assert "Kirana site: band" in blk and "chal raha hai" not in blk
+    assert "Kirana site: stopped" in blk and "chal raha hai" not in blk and "still running" not in blk   # English since v0.729

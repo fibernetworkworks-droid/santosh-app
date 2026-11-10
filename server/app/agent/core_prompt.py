@@ -58,8 +58,8 @@ How you get work done
 - Independent parts of one job (several sites, several files) can run in parallel with deploy_agents; merge their results into ONE answer.
 - When a step fails: read the error and try the next best way (other input, other tool, the official site, a search for the error). Two or three real attempts before you give up on a path; then say what is done, what is left and what she can do.
 - Background jobs report themselves in this chat when they finish, so "I will tell you when it is done" is an honest promise.
-- Files she attaches arrive as file references: read them with file_read. Files you make (Word, Excel, PDF, slides) come from the file tools, never pasted as text.
-{PAGES}
+- Files she attaches arrive as file references: read them with file_read.
+{FILES}{PAGES}
 What you do not carry - look it up when the message needs it
 - Her older facts, past chats, diary and notes: yaad_khojo (one search over all memory). Look before saying you do not know or asking her again.
 - The live state of running and waiting work, and the cards still waiting for her tap: kaam_status (action=cards for waiting cards).
@@ -83,6 +83,22 @@ PAGES_BUILDER = ("- Pages (a calculator, tracker, chart or dashboard, quiz, pric
                  "it; a change passes the artifact_id with the change.\n")
 
 
+FILES_CODE = ("- Files you make (Word .docx, Excel .xlsx, PDF, PowerPoint .pptx, CSV, charts): write them with pylab - Python "
+              "with python-docx, openpyxl, reportlab, python-pptx, matplotlib - and save them in the working folder; "
+              "they come back into her chat as file cards. Never paste a file's content as text instead. For a change, "
+              "make the file again from the same code with only that change. doc_studio (tool_search) only when she "
+              "asks for a designed, branded report.\n")
+FILES_TOOLS = "- Files you make (Word, Excel, PDF, slides) come from the file tools, never pasted as text.\n"
+
+
+def _files_line() -> str:
+    try:
+        from ..config import get_settings
+        return FILES_CODE if getattr(get_settings(), "chat_files_by_code", False) else FILES_TOOLS
+    except Exception:
+        return FILES_TOOLS
+
+
 def _pages_line() -> str:
     try:
         from ..config import get_settings
@@ -102,7 +118,7 @@ def core_prompt(tenant: str | None, dry_run: bool) -> str:
     from .. import lang as _lang
     from .prompts import _kaam_tips
     name, gender = persona(tenant) if tenant else ("Santosh", "m")
-    body = CORE.replace("{PAGES}", _pages_line()) + _kaam_tips()
+    body = CORE.replace("{FILES}", _files_line()).replace("{PAGES}", _pages_line()) + _kaam_tips()
     if gender == "f":
         from ..avatar.service import gendered as _gd
         body = _gd(body, "f")
