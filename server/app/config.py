@@ -440,6 +440,10 @@ class Settings(BaseSettings):
                                            # of stapling a note, and a correction message goes out only when a real
                                            # ACTION claim (sent / paid / booked / deleted / published) stayed false
                                            # after that retry. False = the old stapled notes.
+    chat_model_choice: bool = True         # v0.740 each user picks the chat model in the console composer (owner's list)
+    chat_models: str = "nvidia/nemotron-3.5-super-vl:free,thinkingmachines/inkling-2-small:free,google/gemma-4-31b-it:free"
+                                           # the owner's list beside GLM_MODEL (OpenRouter slugs, comma-separated)
+    model_choice_dir: str = ""             # '' = data/model_choice
     model_profile: bool = True             # v0.739 the chat model's abilities READ from OpenRouter's model list (pictures,
                                            # reasoning, tools, window) - a new GLM_MODEL needs no code change; off = old
     model_profile_dir: str = ""            # '' = data/modelprofile

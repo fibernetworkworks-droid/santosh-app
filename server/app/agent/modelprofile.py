@@ -43,9 +43,19 @@ def on() -> bool:
         return False
 
 
-def _key() -> str:
+def current_model() -> str:
+    """The model THIS turn runs on: her choice from the console dropdown (v0.740, llm.MODEL_NOW), else GLM_MODEL."""
+    try:
+        from .llm import MODEL_NOW
+        m = MODEL_NOW.get()
+    except Exception:
+        m = ""
+    return m or (get_settings().glm_model or "")
+
+
+def _key(model: str = "") -> str:
     st = get_settings()
-    return f"{(st.glm_base_url or '').rstrip('/')}|{st.glm_model or ''}"
+    return f"{(st.glm_base_url or '').rstrip('/')}|{model or current_model()}"
 
 
 def _dir() -> Path:
@@ -104,10 +114,11 @@ def _save_disk(key: str, prof: dict[str, Any]) -> None:
         log.info("model profile not saved: %s", e)
 
 
-def refresh(timeout: float = 15.0) -> dict[str, Any]:
-    """Read the configured model's facts now (sync; call from a thread). Keeps what was learned before."""
+def refresh(timeout: float = 15.0, model: str = "") -> dict[str, Any]:
+    """Read a model's facts now (sync; call from a thread). Keeps what was learned before."""
     st = get_settings()
-    key, model, base = _key(), st.glm_model or "", (st.glm_base_url or "").rstrip("/")
+    model = model or current_model()
+    key, base = _key(model), (st.glm_base_url or "").rstrip("/")
     old = _MEM.get(key) or _load_disk(key) or {}
     if not (model and _openrouter(base)):
         prof = {**_unknown(model), "learned": old.get("learned") or {}}
@@ -119,6 +130,7 @@ def refresh(timeout: float = 15.0) -> dict[str, Any]:
             if r.status_code >= 400:
                 raise RuntimeError(f"{r.status_code}: {r.text[:200]}")
             prof = parse(model, r.json())
+            prof["name"] = str(((r.json() or {}).get("data") or {}).get("name") or model)
             prof["learned"] = old.get("learned") or {}
         except Exception as e:   # noqa: BLE001
             log.warning("model profile for %s could not be read (%s) - keeping %s", model, str(e)[:160],
@@ -149,24 +161,26 @@ def _report(prof: dict[str, Any]) -> None:
                   prof["model"])
 
 
-def refresh_in_background() -> None:
-    key = _key()
+def refresh_in_background(model: str = "") -> None:
+    model = model or current_model()
+    key = _key(model)
     if key in _BUSY:
         return
     _BUSY.add(key)
 
     def go():
         try:
-            refresh()
+            refresh(model=model)
         finally:
             _BUSY.discard(key)
     threading.Thread(target=go, name="model-profile", daemon=True).start()
 
 
-def get() -> dict[str, Any]:
-    """The profile for the configured model. Never blocks on the network: memory, else disk (and a background read
-    when it is missing or a day old), else unknown."""
-    key = _key()
+def get(model: str = "") -> dict[str, Any]:
+    """The profile for a model (default: this turn's). Never blocks on the network: memory, else disk (and a
+    background read when it is missing or a day old), else unknown."""
+    model = model or current_model()
+    key = _key(model)
     prof = _MEM.get(key)
     if prof is None:
         prof = _load_disk(key)
@@ -174,8 +188,8 @@ def get() -> dict[str, Any]:
             _remember(key, prof)
     if prof is None or (time.time() - float(prof.get("at") or 0)) > TTL_S:
         if on() and _openrouter(get_settings().glm_base_url or ""):
-            refresh_in_background()
-    return prof or _unknown(get_settings().glm_model or "")
+            refresh_in_background(model)
+    return prof or _unknown(model)
 
 
 def known() -> bool:

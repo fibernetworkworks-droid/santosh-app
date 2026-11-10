@@ -33,7 +33,7 @@ def mp(env, monkeypatch, tmp_path):
         monkeypatch.setenv(k, v)
     get_settings.cache_clear()
     modelprofile._reset_for_tests()
-    monkeypatch.setattr(modelprofile, "refresh_in_background", lambda: None)   # no thread, no network
+    monkeypatch.setattr(modelprofile, "refresh_in_background", lambda model="": None)   # no thread, no network
     yield modelprofile
     modelprofile._reset_for_tests()
     get_settings.cache_clear()

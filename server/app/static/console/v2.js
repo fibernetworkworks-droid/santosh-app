@@ -251,6 +251,35 @@ function appearanceHTML() {
   </div>`;
 }
 
+// v0.740 MODEL DROPDOWN: she picks the chat model from the owner's list; her next message runs on it.
+let MODELS = null;
+const mlabel = m => (m && (m.name || m.id || '')).replace(/^[^:]*:\s*/, '').replace(/\s*\(free\)\s*$/i, '');
+async function loadModels() {
+  const b = $('#modelBtn'); if (!b) return;
+  try { MODELS = await api('GET', '/api/model/choices'); } catch { MODELS = null; }
+  if (!MODELS || !MODELS.available || !(MODELS.models || []).length) { b.hidden = true; return; }
+  const cur = MODELS.models.find(m => m.selected) || MODELS.models[0];
+  b.querySelector('.mname').textContent = mlabel(cur);
+  b.title = 'Model: ' + (cur.name || cur.id);
+  b.hidden = false;
+}
+function modelMenu() {
+  const b = $('#modelBtn'); if (!MODELS || !window.HoolaMenu) return;
+  const items = [{header: 'Model for your chats'}];
+  for (const m of MODELS.models) {
+    const bits = [m.free ? 'Free' : 'Paid', (m.reads || []).includes('image') ? 'reads pictures' : 'text only'];
+    if (m.default) bits.push('default');
+    items.push({label: mlabel(m), sub: m.pickable ? bits.join(' · ') : m.note, checked: !!m.selected,
+                disabled: !m.pickable, run: async () => {
+                  try { MODELS = await api('PUT', '/api/model/choice', {model: m.id}); await loadModels();
+                        toast('Your next message runs on ' + mlabel(m) + '.'); }
+                  catch (e) { toast(e.message, true); }
+                }});
+  }
+  HoolaMenu.open(b, items, {align: 'end', place: 'above', label: 'Choose the model', width: 300});
+}
+document.addEventListener('click', e => { if (e.target.closest && e.target.closest('#modelBtn')) modelMenu(); });
+
 async function enter() {
   ME = await api('GET', '/api/console/me');
   AV = ME.avatar?.name || 'Santosh';
@@ -261,6 +290,7 @@ async function enter() {
   $('#uini').textContent = (ME.owner || ME.email || 'H').trim().charAt(0).toUpperCase();
   const h = new Date().getHours(), first = (ME.owner && ME.owner !== 'Hoola user') ? ME.owner.split(' ')[0] : '';
   $('#greet').innerHTML = esc(h < 12 ? 'Good morning' : h < 17 ? 'Hello' : 'Good evening') + (first ? `, <span class="gname">${esc(first)}</span>` : '');
+  loadModels();                                  // v0.740 the model dropdown in the composer
   if (window.HoolaEmployees && !EMP) {           // v0.317 Employees for everyone; a desk only once its employee is hired
     EMP = HoolaEmployees({api, esc, toast, changed: syncEmployees, open: (v, arg) => go(v, arg),   // v0.453 desks open Systems / a lab directly
                           say: text => { go('chat'); msg.value = text; msg.dispatchEvent(new Event('input')); composer.requestSubmit(); }});

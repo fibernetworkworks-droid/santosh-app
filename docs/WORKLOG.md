@@ -2637,3 +2637,9 @@ Task ID: v0.739.0 MODEL PROFILE
 Ask: WHY EVERY NEW MODEL NEED UPDATE IN CODE -> GO.
 Built: agent/modelprofile.py (OpenRouter model list read + disk + learned errors), wired into pictures / PDF / reasoning / window; GET /api/model/profile.
 Deploy: vps-ops deploy; a model swap = GLM_MODEL in .env + restart.
+
+
+Task ID: v0.740.0 MODEL DROPDOWN
+Ask: IN WEB CONSOLE LETS USER CHOOSE THE MODEL VIA DROPDOWN.
+Built: composer model chip + menu, app/modelchoice.py (owner's list, per-user pick), MODEL_NOW per turn, per-model profiles.
+Deploy: vps-ops deploy; list = GLM_MODEL + CHAT_MODELS in .env.

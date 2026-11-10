@@ -512,6 +512,8 @@ async def _post_with_retry(url: str, body: dict, headers: dict, label: str) -> h
 # turn's kind - low for a greeting, medium for an ordinary ask, high for a hard ask / long job - and only while
 # chat_thinking_adaptive is on. With a level the reasoning text streams back (exclude false) to the Soch card.
 REASONING_NOW: contextvars.ContextVar[str] = contextvars.ContextVar("hoola_reasoning_now", default="")
+# v0.740 the model THIS turn runs on, from her console dropdown (modelchoice); '' = GLM_MODEL from .env
+MODEL_NOW: contextvars.ContextVar[str] = contextvars.ContextVar("hoola_model_now", default="")
 LEVELS = ("low", "medium", "high")
 _ROOM_X = {"low": 1, "medium": 2, "high": 4}   # reasoning room = glm_reasoning_room x this, so the answer is never starved
 
@@ -537,7 +539,8 @@ def _target(brain: str) -> tuple[str, str, str, dict, dict]:
         lvl = REASONING_NOW.get()
         nv = {"high": "high"}.get(lvl, "low") if lvl else ""     # NVIDIA GLM knows low | high | max (no medium)
         extra = ({"reasoning_effort": nv or st.glm_reasoning_effort or "low",
-                  "chat_template_kwargs": {"clear_thinking": True}} if "glm" in (st.glm_model or "").lower() else {})
+                  "chat_template_kwargs": {"clear_thinking": True}}
+                 if "glm" in (MODEL_NOW.get() or st.glm_model or "").lower() else {})
         label = "GLM (NVIDIA)"
     elif is_openrouter():
         # v0.699 GLM VIA OPENROUTER: OpenRouter speaks its OWN reasoning field ({"reasoning": {...}}), not Z.ai's
@@ -560,7 +563,7 @@ def _target(brain: str) -> tuple[str, str, str, dict, dict]:
         else:
             extra = {"thinking": {"type": st.glm_thinking}} if st.glm_thinking in ("enabled", "disabled") else {}
         label = "GLM"
-    return (st.glm_base_url.rstrip("/") + "/chat/completions", st.glm_model, label,
+    return (st.glm_base_url.rstrip("/") + "/chat/completions", MODEL_NOW.get() or st.glm_model, label,
             {"Authorization": f"Bearer {st.glm_api_key}"}, extra)
 
 

@@ -2852,6 +2852,14 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
     try:   # v0.714 HAR CHAT ALAG: a tool that tells her something during this turn speaks in THIS chat
         from .. import convs as _cv_turn
         _cv_turn.TURN.set(conversation_id)
+    except Exception:
+        pass
+    try:   # v0.740 MODEL DROPDOWN: the whole turn runs on the model she picked in the console (owner's list)
+        from .. import modelchoice as _mc
+        _picked = _mc.chosen(tenant_id or get_settings().tenant_id)
+        if _picked:
+            from . import llm as _llm_pick
+            _llm_pick.MODEL_NOW.set(_picked)
     except Exception:   # noqa: BLE001
         pass
     if client_id and (conversation_id, client_id) in _held:
