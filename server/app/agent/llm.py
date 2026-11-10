@@ -19,6 +19,7 @@ server-side until the user approves them in the app.
 from __future__ import annotations
 
 import asyncio
+import contextvars
 import json
 import logging
 import re
@@ -373,6 +374,21 @@ async def _post_with_retry(url: str, body: dict, headers: dict, label: str) -> h
     raise last
 
 
+# parity Phase 4 THINKING: the reasoning effort THIS chat turn asked for ('' = the old fixed settings: effort
+# glm_reasoning_effort, reasoning text excluded). Set once per step by the chat loop (santosh._steps_inner) from the
+# turn's kind - low for a greeting, medium for an ordinary ask, high for a hard ask / long job - and only while
+# chat_thinking_adaptive is on. With a level the reasoning text streams back (exclude false) to the Soch card.
+REASONING_NOW: contextvars.ContextVar[str] = contextvars.ContextVar("hoola_reasoning_now", default="")
+LEVELS = ("low", "medium", "high")
+_ROOM_X = {"low": 1, "medium": 2, "high": 4}   # reasoning room = glm_reasoning_room x this, so the answer is never starved
+
+
+def reasoning_room(level: str = "") -> int:
+    """Tokens added to max_tokens for the reasoning: the fixed glm_reasoning_room, or that x the turn's level."""
+    base = max(0, int(getattr(get_settings(), "glm_reasoning_room", 2048) or 0))
+    return base * _ROOM_X.get(level, 1)
+
+
 def _target(brain: str) -> tuple[str, str, str, dict, dict]:
     """(url, model, label, headers, extra body) for an OpenAI-compatible brain."""
     st = get_settings()
@@ -385,7 +401,9 @@ def _target(brain: str) -> tuple[str, str, str, dict, dict]:
         # SAB GLM: NVIDIA's hosted GLM-5.3-Flash always reasons (it cannot be switched off); the effort is set with
         # reasoning_effort (low | high | max, default max = slow) and chat turns ask clear_thinking (NVIDIA's own page).
         # Those two fields are GLM's own: another NVIDIA model (her key answered only Nemotron) gets a plain request.
-        extra = ({"reasoning_effort": st.glm_reasoning_effort or "low",
+        lvl = REASONING_NOW.get()
+        nv = {"high": "high"}.get(lvl, "low") if lvl else ""     # NVIDIA GLM knows low | high | max (no medium)
+        extra = ({"reasoning_effort": nv or st.glm_reasoning_effort or "low",
                   "chat_template_kwargs": {"clear_thinking": True}} if "glm" in (st.glm_model or "").lower() else {})
         label = "GLM (NVIDIA)"
     elif is_openrouter():
@@ -393,10 +411,19 @@ def _target(brain: str) -> tuple[str, str, str, dict, dict]:
         # "thinking". v0.700: her live check - z-ai/glm-5.3-flash on OpenRouter answers 400 "Reasoning is mandatory
         # for this endpoint and cannot be disabled", so reasoning is never switched off there: effort low (fast +
         # cheap), the reasoning text excluded from the reply, and room() adds space for it in max_tokens.
-        extra = {"reasoning": {"effort": st.glm_reasoning_effort or "low", "exclude": True}}
+        lvl = REASONING_NOW.get()
+        if lvl:
+            # parity Phase 4: the turn's own effort, and the reasoning text comes back (never into the answer)
+            extra = {"reasoning": {"effort": lvl, "exclude": False}}
+        else:
+            extra = {"reasoning": {"effort": st.glm_reasoning_effort or "low", "exclude": True}}
         label = "GLM (OpenRouter)"
     else:
-        extra = {"thinking": {"type": st.glm_thinking}} if st.glm_thinking in ("enabled", "disabled") else {}
+        lvl = REASONING_NOW.get()
+        if lvl in ("medium", "high"):
+            extra = {"thinking": {"type": "enabled"}}     # parity Phase 4: Z.ai thinks on an ordinary / hard turn
+        else:
+            extra = {"thinking": {"type": st.glm_thinking}} if st.glm_thinking in ("enabled", "disabled") else {}
         label = "GLM"
     return (st.glm_base_url.rstrip("/") + "/chat/completions", st.glm_model, label,
             {"Authorization": f"Bearer {st.glm_api_key}"}, extra)
@@ -413,9 +440,12 @@ def is_openrouter() -> bool:
 def room(max_tokens: int) -> int:
     """NVIDIA's GLM counts its (always-on) reasoning inside max_tokens: a 900-token reviewer would come back empty.
     Room for the reasoning is added on that endpoint only."""
+    lvl = REASONING_NOW.get()
     if not (is_nvidia() or is_openrouter()):
+        if lvl in ("medium", "high"):      # parity Phase 4: Z.ai with thinking on also counts it inside max_tokens
+            return int(max_tokens) + reasoning_room(lvl)
         return max_tokens
-    return int(max_tokens) + max(0, int(getattr(get_settings(), "glm_reasoning_room", 2048) or 0))
+    return int(max_tokens) + reasoning_room(lvl)
 
 
 async def _openai_create(brain: str, system: str, tools: list[dict], messages: list[dict],
