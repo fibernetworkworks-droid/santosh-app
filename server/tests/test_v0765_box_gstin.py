@@ -49,3 +49,20 @@ def test_gstin_daily_cap(env, monkeypatch):
     assert asyncio.run(BX.call("t1", "verify", {"gstin": "33AAACC1206D1ZN"}, api="gstin_verify"))["ok"]
     r = asyncio.run(BX.call("t2", "verify", {"gstin": "33AAACC1206D1ZN"}, api="gstin_verify"))
     assert not r["ok"] and len(seen) == 1 and "GSTIN_DAILY_CALLS" in r["tried"][0]["error"]
+
+
+def test_a_weaker_recipe_answering_says_what_failed(env, monkeypatch):
+    """v0.766 (her live test): 'gstin compliance' on a free gstinapi account got a 403 (credit pack only) and the box
+    quietly answered with gstin_verify - ok:true, as if it were the compliance answer. Now it says what failed."""
+    monkeypatch.setattr(get_settings(), "gstinapi_api_key", "gak_test1234")
+
+    def h(req):
+        if "/compliance" in req.url.path or "/returns" in req.url.path:
+            return httpx.Response(403, json={"error": "This endpoint is available to accounts that have bought a credit pack."})
+        return httpx.Response(200, json={"success": True, "data": {"legal_name": "X", "status": "Active"}})
+    _mock(monkeypatch, h)
+    r = asyncio.run(BX.call("t1", "gstin compliance", {"gstin": "33AAACC1206D1ZN"}))
+    assert r["ok"] and r["api"]["recipe"] == "gstin_verify" and "gstin_compliance" in r["instead_of"]
+    assert "NOT WHAT SHE ASKED FOR" in r["note_for_you"] and "credit pack" in r["note_for_you"]
+    r = asyncio.run(BX.call("t1", "verify gstin", {"gstin": "33AAACC1206D1ZN"}, api="gstin_verify"))
+    assert r["ok"] and "instead_of" not in r and "NOT WHAT" not in r["note_for_you"]

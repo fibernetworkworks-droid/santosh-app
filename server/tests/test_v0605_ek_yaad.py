@@ -159,4 +159,4 @@ def test_a_fact_beyond_the_15_still_reaches_the_turn_by_meaning(env):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.765.0"
+    assert APP_VERSION == "0.766.0"
