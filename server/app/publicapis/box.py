@@ -169,9 +169,7 @@ STARTER: list[dict[str, Any]] = [
      "optional": {"q": "q", "date": "date", "advocate": "advocate", "litigant": "litigant", "state": "state"},
      "need_one_of": ["q", "advocate", "litigant"],
      "example": {"advocate": "Sharma", "state": "MH"}, "error_keys": ["error", "message"],
-     "slim": {"root": "data", "list": "results", "fields": ["date", "courtType", "listType", "caseNumber", "petitioner",
-                                                            "respondent", "advocate", "judge", "courtNo", "state",
-                                                            "district", "itemNo"]},
+     "slim": {"root": "data", "list": "results"},
      "cost": "about Rs 3 a call (pay-as-you-go)"},
     {"key": "india_gov_dataset", "api_id": "government-open-government-india", "needs_key": True,
      "need": "data.gov.in government india open data dataset resource sarkari",
@@ -378,6 +376,9 @@ def _slim(data: dict[str, Any], spec: dict[str, Any], n: int = 10) -> dict[str, 
     out = []
     for row in rows[:n]:
         if not isinstance(row, dict):
+            continue
+        if not spec.get("fields"):                # v0.764: no list given = keep every short field the API sent
+            out.append(_flat(row))
             continue
         item = {}
         for f in spec["fields"]:

@@ -447,3 +447,13 @@ requests and empty results are not charged; limits 100/min, 3,000/h, 50,000/day;
 Tests: test_v0763_box_courts.py 3 (Bearer header + slim + paid note, free refusals, the cap across tenants); starter 23 -> 26.
 NOT VERIFIED: no live call yet; the search / cause-list result field names in the slim lists are read from the docs'
 examples and the first live answer may name them differently (unknown fields simply drop out - the owner's test will show).
+
+
+## v0.764.0 ADALAT 2 (owner's v0.763 live test)
+
+Live on the VPS (Rs ~5 of the free credits): court_case DLHC010351552024 ok (Delhi HC record with its hearing history),
+court_search litigants=Ramesh Kumar ok (totalHits 100,150, facetMode full, 10 results with cnr / caseType / petitioners),
+cause_list advocate=Sharma state=MH ok (2026-11-16 lists, e.g. Wardha district court) - but each cause-list row carried
+only date / courtType / listType / caseNumber / judge / courtNo / state / district: the party and advocate fields were
+named differently live than in the docs' example, and the fixed slim list dropped them. A slim list with no `fields` now
+keeps every short field the API sent (`_flat`); cause_list uses it. Test: test_v0763_box_courts.py +1.
