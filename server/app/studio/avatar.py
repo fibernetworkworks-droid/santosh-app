@@ -47,7 +47,10 @@ CTA_SCENE_S = 2.2              # the closing card, when a cta is given
 _DIMS = {"16:9": (1920, 1080), "9:16": (1080, 1920), "1:1": (1080, 1080)}
 _IMG_OK = re.compile(r"^assets/[A-Za-z0-9][A-Za-z0-9._-]*\.(png|jpg|jpeg|webp)$")
 _HEX = re.compile(r"^#[0-9a-fA-F]{6}$")
-_FONT = "'Noto Sans','Noto Sans Devanagari',sans-serif"
+# v0.747 the real hyperframes@0.9.6 check refuses a family it cannot supply ("noto sans devanagari" is not bundled):
+# Inter is bundled (Latin); Indian scripts fall back to the render box's own system fonts - Hindi is drafted in Roman.
+_FONT = "'Inter',sans-serif"
+GSAP_TAG = '  <script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/gsap.min.js"></script>\n'   # the contract's loader
 
 _DEFAULT_COLOR = {"talking_head": "#4F46E5", "product": "#0F766E", "reel": "#7C3AED"}
 
@@ -93,6 +96,65 @@ def _asset(name: Any, what: str) -> str:
     return n
 
 
+LOOKS = ("none", "title", "big_number", "price", "bar_chart", "lower_third")
+_NUM = re.compile(r"-?\d+(?:\.\d+)?")
+
+
+def _short(v: Any, cap: int, what: str) -> str:
+    t = re.sub(r"\s+", " ", str(v or "").strip())
+    if len(t) > cap:
+        raise FramesError(f"{what} is too long (max {cap} characters).")
+    return t
+
+
+def validate_look(look: Any, i: int) -> dict[str, Any]:
+    """v0.747 one scene's look, checked. Every number shown is one she gave - the builder invents nothing."""
+    if not look:
+        return {"kind": "none"}
+    if not isinstance(look, dict):
+        raise FramesError(f"scene {i + 1}: look must be an object.")
+    kind = str(look.get("kind") or "none").strip()
+    if kind not in LOOKS:
+        raise FramesError(f"scene {i + 1}: look {kind!r} is not known; one of {', '.join(LOOKS)}.")
+    n = f"Scene {i + 1}"
+    if kind == "none":
+        return {"kind": "none"}
+    if kind == "title":
+        text = _short(look.get("text"), 60, f"{n} title")
+        if not text:
+            raise FramesError(f"{n}: the title look needs its words.")
+        return {"kind": kind, "text": text}
+    if kind == "big_number":
+        value = _short(look.get("value"), 16, f"{n} number")
+        if not value:
+            raise FramesError(f"{n}: the big number look needs the number.")
+        return {"kind": kind, "value": value, "label": _short(look.get("label"), 48, f"{n} label")}
+    if kind == "price":
+        newp = _short(look.get("new"), 24, f"{n} price")
+        if not newp:
+            raise FramesError(f"{n}: the price look needs the price.")
+        return {"kind": kind, "new": newp, "old": _short(look.get("old"), 24, f"{n} old price"),
+                "label": _short(look.get("label"), 48, f"{n} label")}
+    if kind == "bar_chart":
+        bars = []
+        for b in (look.get("bars") or [])[:6]:
+            if not isinstance(b, dict):
+                continue
+            m = _NUM.search(str(b.get("value", "")).replace(",", ""))
+            if not m:
+                raise FramesError(f"{n}: every bar needs a number.")
+            bars.append({"label": _short(b.get("label"), 16, f"{n} bar label"), "value": float(m.group(0))})
+        if len(bars) < 2:
+            raise FramesError(f"{n}: a bar chart needs at least two bars with numbers.")
+        if max(b["value"] for b in bars) <= 0:
+            raise FramesError(f"{n}: the bar numbers are all zero.")
+        return {"kind": kind, "bars": bars, "unit": _short(look.get("unit"), 12, f"{n} unit")}
+    title = _short(look.get("title"), 40, f"{n} lower third")
+    if not title:
+        raise FramesError(f"{n}: the lower third needs its main line.")
+    return {"kind": "lower_third", "title": title, "sub": _short(look.get("sub"), 60, f"{n} lower third")}
+
+
 def validate_spec(spec: dict) -> dict:
     """Honest gate: everything wrong is refused here, before any TTS or render."""
     if not isinstance(spec, dict):
@@ -101,7 +163,22 @@ def validate_spec(spec: dict) -> dict:
     if shape not in SHAPES:
         raise FramesError(f"shape {shape!r} nahi jaanta; inme se ek: {', '.join(SHAPES)}")
     silent = bool(spec.get("silent"))
-    sentences = split_sentences(str(spec.get("script") or ""))
+    looks: list[dict[str, Any]] = []
+    if isinstance(spec.get("scenes"), list) and spec.get("scenes"):
+        # v0.747 HOOLA INTERACTIVE: one scene = one spoken beat + its own look (the page edits scenes, not a script)
+        sentences = []
+        for i, sc in enumerate(spec["scenes"]):
+            if not isinstance(sc, dict):
+                raise FramesError(f"scene {i + 1} must be an object (say, look).")
+            say = re.sub(r"\s+", " ", str(sc.get("say") or "").strip())
+            if not say:
+                raise FramesError(f"Scene {i + 1} has nothing to say - write its line or remove the scene.")
+            if len(say) > MAX_PIECE_CHARS:
+                raise FramesError(f"Scene {i + 1} is too long ({len(say)} characters) - split it into two scenes.")
+            sentences.append(say)
+            looks.append(validate_look(sc.get("look"), i))
+    else:
+        sentences = split_sentences(str(spec.get("script") or ""))
     if not sentences and not silent:
         raise FramesError("script khaali hai - jo baat bolni hai woh script mein dijiye.")
     if len(sentences) > MAX_SENTENCES:
@@ -119,6 +196,11 @@ def validate_spec(spec: dict) -> dict:
                       "photo": _asset(it.get("photo"), f"item {i + 1} ka photo")})
     if shape == "product" and not items:
         raise FramesError("product film mein items chahiye (naam + price; photo file_id se aati hai).")
+    if shape == "product":
+        for i, lk in enumerate(looks):
+            if i < len(items) and lk["kind"] != "none":
+                raise FramesError(f"Scene {i + 1} shows a product - a look would cover it. "
+                                  f"Pick 'Just the words' for it, or put the look on a scene without a product.")
 
     aspect = "9:16" if shape == "reel" else str(spec.get("aspect") or "16:9")
     if aspect not in _DIMS:
@@ -139,7 +221,7 @@ def validate_spec(spec: dict) -> dict:
             "cta_text": str(cta.get("text") or "").strip(),
             "cta_image": _asset(cta.get("image"), "cta ka image"),
             "avatar": _asset(spec.get("avatar"), "avatar"),
-            "aspect": aspect, "dims": _DIMS[aspect],
+            "aspect": aspect, "dims": _DIMS[aspect], "looks": looks,
             "lang": str(spec.get("lang") or VOICE_LANG_DEFAULT).strip() or VOICE_LANG_DEFAULT,
             "voice_model": str(spec.get("voice") or VOICE_MODEL_DEFAULT).strip() or VOICE_MODEL_DEFAULT}
 
@@ -253,7 +335,7 @@ def _cta_div(spec: dict, plan: dict, start: float) -> str:
     img = (f'<img src="{_esc(spec["cta_image"])}" alt="" '
            f'style="height:{int(h * 0.34)}px;border-radius:20px;display:block"/>'
            if spec["cta_image"] else "")
-    text = (f'<div style="font-size:{int(h * 0.05)}px;font-weight:800;" '
+    text = (f'<div style="font-size:{int(min(w, h) * 0.07)}px;font-weight:800;text-align:center;padding:0 6%;" '
             f'data-var-text="{_esc(spec["cta_text"])}">{_esc(spec["cta_text"])}</div>' if spec["cta_text"] else "")
     return (f'    <div id="cta" class="clip" data-start="{round(start, 3)}" data-duration="{dur}" '
             f'data-track-index="4" style="position:absolute;left:5%;top:5%;width:90%;height:90%;'
@@ -263,7 +345,7 @@ def _cta_div(spec: dict, plan: dict, start: float) -> str:
             f'gap:{int(h * 0.03)}px;">{img}{text}</div>\n    </div>\n')
 
 
-def _script(plan: dict, reel: bool = False) -> str:
+def _script(plan: dict, reel: bool = False, extra: list[str] | None = None) -> str:
     lines = ["    <script>", "      const tl = gsap.timeline({ paused: true });"]
     for i, c in enumerate(plan["cues"]):
         at = c["start"]
@@ -271,9 +353,91 @@ def _script(plan: dict, reel: bool = False) -> str:
             lines.append(f'      tl.from("#cue-{i}", {{ opacity: 0, scale: 0.92, duration: 0.3 }}, {at});')
         else:
             lines.append(f'      tl.from("#cue-{i}", {{ opacity: 0, y: 26, duration: 0.3 }}, {at});')
+    lines += list(extra or [])
     lines += ['      window.__timelines = window.__timelines || {};',
               '      window.__timelines.main = tl;', '    </script>']
     return "\n".join(lines) + "\n"
+
+
+def _look_box(spec: dict) -> str:
+    """Where a scene's look sits, per shape - clear of the captions and the avatar."""
+    if spec["shape"] == "reel":
+        return "left:8%;top:13%;width:84%;text-align:center;display:flex;justify-content:center;"
+    if spec["shape"] == "product":
+        return f"left:8%;top:{int(spec['dims'][1] * 0.26)}px;width:84%;"
+    return "right:5%;bottom:8%;width:44%;"
+
+
+def _look_inner(lk: dict, h: int) -> str:
+    k = lk["kind"]
+    if k == "title":
+        return (f'<div style="font-size:{int(h * 0.085)}px;font-weight:800;line-height:1.1;" '
+                f'data-var-text="{_esc(lk["text"])}">{_esc(lk["text"])}</div>')
+    if k == "big_number":
+        return (f'<div style="font-size:{int(h * 0.13)}px;font-weight:800;color:var(--brand);line-height:1;" '
+                f'data-var-text="{_esc(lk["value"])}">{_esc(lk["value"])}</div>'
+                + (f'<div style="font-size:{int(h * 0.034)}px;color:var(--muted);margin-top:{int(h * 0.01)}px;" '
+                   f'data-var-text="{_esc(lk["label"])}">{_esc(lk["label"])}</div>' if lk["label"] else ""))
+    if k == "price":
+        old = (f'<span style="font-size:{int(h * 0.045)}px;color:var(--muted);text-decoration:line-through;'
+               f'margin-right:{int(h * 0.02)}px;" data-var-text="{_esc(lk["old"])}">{_esc(lk["old"])}</span>'
+               if lk["old"] else "")
+        return (f'<div style="background:var(--brand);border-radius:28px;padding:{int(h * 0.025)}px {int(h * 0.035)}px;">'
+                + (f'<div style="font-size:{int(h * 0.032)}px;font-weight:600;" data-var-text="{_esc(lk["label"])}">'
+                   f'{_esc(lk["label"])}</div>' if lk["label"] else "")
+                + f'<div>{old}<span style="font-size:{int(h * 0.09)}px;font-weight:800;" '
+                  f'data-var-text="{_esc(lk["new"])}">{_esc(lk["new"])}</span></div></div>')
+    if k == "bar_chart":
+        top = max(b["value"] for b in lk["bars"])
+        bar_h = int(h * 0.22)
+        cols = []
+        for b in lk["bars"]:
+            hh = max(4, int(bar_h * b["value"] / top))
+            num = f"{b['value']:g}{lk['unit']}"
+            cols.append(f'<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;'
+                        f'gap:{int(h * 0.008)}px;height:{bar_h + int(h * 0.09)}px;">'
+                        f'<div style="font-size:{int(h * 0.028)}px;font-weight:700;">{_esc(num)}</div>'
+                        f'<div class="bar" style="width:100%;height:{hh}px;background:var(--brand);border-radius:10px 10px 4px 4px;"></div>'
+                        f'<div style="font-size:{int(h * 0.024)}px;color:var(--muted);">{_esc(b["label"])}</div></div>')
+        return f'<div style="display:flex;gap:{int(h * 0.02)}px;align-items:flex-end;">{"".join(cols)}</div>'
+    return (f'<div style="background:rgba(16,20,38,0.86);border-left:{int(h * 0.008)}px solid var(--brand);'
+            f'padding:{int(h * 0.02)}px {int(h * 0.03)}px;border-radius:12px;text-align:left;">'
+            f'<div style="font-size:{int(h * 0.045)}px;font-weight:700;" data-var-text="{_esc(lk["title"])}">{_esc(lk["title"])}</div>'
+            + (f'<div style="font-size:{int(h * 0.03)}px;color:var(--muted);" data-var-text="{_esc(lk["sub"])}">{_esc(lk["sub"])}</div>'
+               if lk["sub"] else "") + '</div>')
+
+
+def _scene_look(spec: dict, i: int) -> dict:
+    looks = spec.get("looks") or []
+    return looks[i] if i < len(looks) else {"kind": "none"}
+
+
+def _look_divs(spec: dict, plan: dict) -> str:
+    out = []
+    h = min(spec["dims"])                 # sized to the short side: a 9:16 reel's looks must not swallow its captions
+    for i, sc in enumerate(plan["scenes"]):
+        lk = _scene_look(spec, i)
+        if lk["kind"] == "none":
+            continue
+        wide = ' style="width:100%"' if lk["kind"] in ("bar_chart", "lower_third") else ""
+        out.append(f'    <div id="look-{i}" class="clip" data-start="{sc["start"]}" data-duration="{sc["dur"]}" '
+                   f'data-track-index="5" style="position:absolute;{_look_box(spec)}">'
+                   f'<div class="in"{wide}>{_look_inner(lk, h)}</div></div>\n')
+    return "".join(out)
+
+
+def _look_script(spec: dict, plan: dict) -> list[str]:
+    lines = []
+    for i, sc in enumerate(plan["scenes"]):
+        lk = _scene_look(spec, i)
+        if lk["kind"] == "none":
+            continue
+        at = round(sc["start"] + 0.1, 3)
+        lines.append(f'      tl.from("#look-{i}", {{ opacity: 0, y: 24, duration: 0.35 }}, {at});')
+        if lk["kind"] == "bar_chart":
+            lines.append(f'      tl.from("#look-{i} .bar", {{ scaleY: 0, transformOrigin: "50% 100%", '
+                         f'duration: 0.5, stagger: 0.08 }}, {round(at + 0.15, 3)});')
+    return lines
 
 
 def build_html(spec: dict, plan: dict) -> str:
@@ -283,7 +447,7 @@ def build_html(spec: dict, plan: dict) -> str:
     total = plan["total"]
     head = (f"<!doctype html>\n<html lang=\"{_esc(spec['lang'])}\">\n<head>\n"
             f'  <meta charset="UTF-8"/>\n  <meta name="viewport" content="width={w}, height={h}"/>\n'
-            f"{_css(spec, plan)}\n</head>\n<body>\n"
+            f"{GSAP_TAG}{_css(spec, plan)}\n</head>\n<body>\n"
             f'  <div id="root" data-composition-id="main" data-start="0" data-duration="{total}" '
             f'data-width="{w}" data-height="{h}" data-fps="{plan["fps"]}">\n')
     brand_line = (f'    <div id="brand" class="clip" data-start="0" data-duration="{total}" data-track-index="2" '
@@ -299,9 +463,10 @@ def build_html(spec: dict, plan: dict) -> str:
         cap_style = (f"right:5%;top:{int(h * 0.2)}px;width:{int(w * 0.44)}px;"
                      f"font-size:{int(h * 0.072)}px;color:var(--ink);")
         body += _cue_divs(spec, plan, "cap", cap_style, 3)
+        body += _look_divs(spec, plan)
         if spec["cta_text"] or spec["cta_image"]:
             body += _cta_div(spec, plan, _cta_start(spec, plan))
-        return head + body + _script(plan) + tail
+        return head + body + _script(plan, extra=_look_script(spec, plan)) + tail
 
     if shape == "product":
         body = "" if spec["silent"] else _audio(plan)
@@ -333,6 +498,8 @@ def build_html(spec: dict, plan: dict) -> str:
                             f'data-var-text="{_esc(item["note"])}">{_esc(item["note"])}</div>'
                             if item["note"] else "")
                          + '</div></div>')
+            elif _scene_look(spec, i)["kind"] != "none":
+                continue                      # v0.747 the scene's look takes this spot (its words are in the voice)
             else:
                 inner = (f'<div class="in" style="font-size:{int(h * 0.055)}px;font-weight:700;">'
                          f'{_esc(sc["text"])}</div>')
@@ -340,9 +507,10 @@ def build_html(spec: dict, plan: dict) -> str:
                      f'data-duration="{sc["dur"]}" data-track-index="3" '
                      f'style="position:absolute;left:8%;top:{int(h * 0.26)}px;width:84%;'
                      f'display:flex;align-items:center;">{inner}</div>\n')
+        body += _look_divs(spec, plan)
         if spec["cta_text"] or spec["cta_image"]:
             body += _cta_div(spec, plan, _cta_start(spec, plan))
-        return head + body + _script(plan) + tail
+        return head + body + _script(plan, extra=_look_script(spec, plan)) + tail
 
     # reel: 9:16 kinetic captions
     body = "" if spec["silent"] else _audio(plan)
@@ -354,6 +522,7 @@ def build_html(spec: dict, plan: dict) -> str:
     cap_style = (f"left:11%;top:{int(h * 0.34)}px;width:78%;text-align:center;"
                  f"font-size:{int(h * 0.052)}px;color:var(--ink);")
     body += _cue_divs(spec, plan, "cap", cap_style, 2)
+    body += _look_divs(spec, plan)
     if spec["cta_text"] or spec["cta_image"]:
         body += _cta_div(spec, plan, _cta_start(spec, plan))
-    return head + body + _script(plan, reel=True) + tail
+    return head + body + _script(plan, reel=True, extra=_look_script(spec, plan)) + tail

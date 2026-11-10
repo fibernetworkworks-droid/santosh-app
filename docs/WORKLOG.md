@@ -2667,3 +2667,8 @@ Task ID: v0.744.0 SEEDHA SEND
 ---
 Task ID: v0.746.0 VIDEO LEARNER REDESIGN (built as 0.745.0)
 - Canvas approved ("go"); seekh.py live notes / stop / task / forget / mark / failures, seekh_console routes, seekh.js rewrite, CSP for YouTube, tests.
+
+Task ID: v0.747.0 HOOLA INTERACTIVE
+Ask: a perfect Hoola Interactive page in console, like HeyGen, HyperFrames end to end (design canvas first, then "go").
+Built: console video studio (home / studio / making / ready / photo avatars), looks in the avatar-film composition, real-render fixes (GSAP loader, bundled font, closing card).
+Deploy: vps-ops deploy (server only; needs hyperframes on the VPS - vps-ops hf_setup).

@@ -73,7 +73,7 @@ SPEC = {"shape": "talking_head", "script": "Namaste doston. Aaj naya offer hai."
 # ---------------------------------------------------------------- registry + version
 def test_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.746.0"
+    assert APP_VERSION == "0.747.0"
 
 
 def test_registry_avatar_film_action():
@@ -176,7 +176,10 @@ def test_build_html_honours_the_contract():
     assert 'window.__timelines.main = tl' in html
     for banned in ("Date.now", "Math.random", "fetch(", "repeat: -1", "crossorigin"):
         assert banned not in html, f"the contract bans {banned}"
-    assert "Noto Sans Devanagari" in html, "Hindi glyphs must resolve"
+    # v0.747: the real hyperframes@0.9.6 check REFUSES a family it cannot supply (Noto Sans Devanagari is not bundled)
+    # and a composition with no GSAP loader - pinned to what the engine really accepts
+    assert "'Inter',sans-serif" in html and "Noto Sans Devanagari" not in html
+    assert 'cdn.jsdelivr.net/npm/gsap@3.15.0/dist/gsap.min.js' in html
     assert "data-var-text" in html, "text stays editable"
     assert html.count('class="clip') >= len(plan["cues"]) + 2
     assert 'data-duration="%s"' % plan["total"] in html.split("</body>")[0]
