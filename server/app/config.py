@@ -929,6 +929,8 @@ class Settings(BaseSettings):
     app_redirect_scheme: str = "santosh"    # deep link back into the phone app after sign-in
     hoola_signup: str = "open"              # who can make a NEW Hoola with Google sign-in: open (anyone) | invite
     hoola_signup_allow: str = ""            # invite mode: comma list of emails and/or @domain.com allowed to sign up
+    twelvedata_api_key: str = ""            # v0.760 twelvedata.com (NSE / BSE quotes) - ONE server key, VPS .env only
+    alphavantage_api_key: str = ""          # v0.760 alphavantage.co (BSE quotes, backup) - ONE server key, VPS .env only
     newsdata_api_key: str = ""              # v0.758 newsdata.io - ONE server key for every user, VPS .env only
     gnews_api_key: str = ""                 # v0.758 gnews.io - ONE server key for every user, VPS .env only
     data_gov_in_base: str = ""              # v0.755 optional relay for data.gov.in (NIC drops cloud servers): e.g. https://hoola-dg.<you>.workers.dev

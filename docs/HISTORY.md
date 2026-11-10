@@ -393,3 +393,16 @@ over service.MAX_OUT_CHARS (12k), so the box passed the model cut-off JSON text.
 `slim: {list, fields}`: the box calls service.call(full=True), takes the full answer (`_data`, never returned) and keeps
 the listed fields per item (a dict field -> its name / url, a list -> joined, text > 300 chars cut), at most 10 items, plus
 the scalar totals (`box._slim`). The three news recipes use it. Test: test_v0758_box_news.py +1.
+
+
+## v0.760.0 SHARE BHAV (owner: "proceed" on Twelve Data + Alpha Vantage)
+
+Third server-keyed family in the box. SERVER_KEYS gains finance-twelve-data (`twelvedata_api_key`) and
+finance-alpha-vantage (`alphavantage_api_key`), both query `apikey` (each API's own keyless error names it). Twelve
+Data's keyless symbol_search showed RELIANCE on NSE (XNSE) and BSE (XBOM). Recipes: stock_price (/quote, exchange
+NSE default), stock_search (/symbol_search), stock_history (/time_series, 1day x 30 default) on Twelve Data;
+stock_price_bse (GLOBAL_QUOTE symbol=<SYM>.BSE) on Alpha Vantage as the backup. Alpha Vantage answers a refusal with
+HTTP 200 ("Error Message" / "Information" / "Note"), Twelve Data / NewsData with status "error": `box._soft_error`
+reads those as failures so the next recipe answers instead of the model being handed a refusal as data.
+Tests: test_v0760_box_stocks.py 2; starter 18 -> 22. NOT VERIFIED: whether Twelve Data's FREE plan serves NSE / BSE
+quotes - her first live test says; Alpha Vantage free is about 25 calls a day.

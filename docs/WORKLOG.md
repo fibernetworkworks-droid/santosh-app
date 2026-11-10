@@ -2751,3 +2751,10 @@ Agent: Claude (session 019P5N4a)
 Task: news answers too big for the box -> slim per recipe.
 Work Log: box._slim + recipe slim specs; 1 test; 18 passed.
 Stage Summary: server-only; redeploy + rerun her news test.
+
+---
+Task ID: v0.760.0 SHARE BHAV
+Agent: Claude (session 019P5N4a)
+Task: Indian share prices (Twelve Data + Alpha Vantage) as server-keyed box recipes + 200-refusal detection.
+Work Log: SERVER_KEYS + config; 4 recipes; box._soft_error; 2 tests; 20 passed.
+Stage Summary: server-only; owner adds TWELVEDATA_API_KEY / ALPHAVANTAGE_API_KEY. Not yet live-verified.
