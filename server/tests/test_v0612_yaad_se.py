@@ -125,4 +125,4 @@ def test_both_clients_draw_the_note():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.740.0"
+    assert APP_VERSION == "0.741.0"

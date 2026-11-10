@@ -227,5 +227,5 @@ def test_critique_reviews_every_page(site_env, monkeypatch, tmp_path):
 def test_version():
     from pathlib import Path
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.740.0"
-    assert "0.740.0+739" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.741.0"
+    assert "0.741.0+740" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()

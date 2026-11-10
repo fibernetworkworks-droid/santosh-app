@@ -253,7 +253,7 @@ function appearanceHTML() {
 
 // v0.740 MODEL DROPDOWN: she picks the chat model from the owner's list; her next message runs on it.
 let MODELS = null;
-const mlabel = m => (m && (m.name || m.id || '')).replace(/^[^:]*:\s*/, '').replace(/\s*\(free\)\s*$/i, '');
+const mlabel = m => (m && (m.name || m.id || '')).replace(/^[^:]*:\s*/, '').replace(/\s*\((free|Google Gemini|Groq|Mistral|NVIDIA|Z\.ai|OpenRouter)\)\s*$/i, '');
 async function loadModels() {
   const b = $('#modelBtn'); if (!b) return;
   try { MODELS = await api('GET', '/api/model/choices'); } catch { MODELS = null; }
@@ -267,7 +267,8 @@ function modelMenu() {
   const b = $('#modelBtn'); if (!MODELS || !window.HoolaMenu) return;
   const items = [{header: 'Model for your chats'}];
   for (const m of MODELS.models) {
-    const bits = [m.free ? 'Free' : 'Paid', (m.reads || []).includes('image') ? 'reads pictures' : 'text only'];
+    const plan = m.free === true ? 'Free' : m.free === false ? 'Paid' : (m.provider || '');   // v0.741 another provider: its name
+    const bits = [plan, (m.reads || []).includes('image') ? 'reads pictures' : 'text only'].filter(Boolean);
     if (m.default) bits.push('default');
     items.push({label: mlabel(m), sub: m.pickable ? bits.join(' · ') : m.note, checked: !!m.selected,
                 disabled: !m.pickable, run: async () => {

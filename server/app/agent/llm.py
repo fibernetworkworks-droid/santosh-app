@@ -227,6 +227,9 @@ def glm_reads_images(b: str = "glm") -> bool:
         r = _mp.reads("image")
         if r is not None:
             return r
+        from . import providers as _pv
+        if _pv.split(MODEL_NOW.get())[0]:
+            return False                           # v0.741 another provider's model nobody could describe: text only
         return is_nvidia() or bool(getattr(st, "glm_images", False))
     except Exception:
         return False
@@ -527,6 +530,21 @@ def reasoning_room(level: str = "") -> int:
 def _target(brain: str) -> tuple[str, str, str, dict, dict]:
     """(url, model, label, headers, extra body) for an OpenAI-compatible brain."""
     st = get_settings()
+    if brain == "glm":
+        from . import providers as _pv
+        _p, _slug = _pv.split(MODEL_NOW.get())
+        if _p and _p != "openrouter":
+            # v0.741 MORE PROVIDERS: her pick names another provider - its own endpoint and key, and no provider-specific
+            # reasoning field (each speaks its own; the plain request works everywhere)
+            return (_pv.base_of(_p) + "/chat/completions", _slug, f"{_pv.label_of(_p)}",
+                    {"Authorization": f"Bearer {_pv.key_of(_p)}"}, {})
+        if _p == "openrouter":
+            _lvl = REASONING_NOW.get()
+            _ex = {"reasoning": {"effort": _lvl or st.glm_reasoning_effort or "low", "exclude": not _lvl}}
+            if _reasoning_ok() is False:
+                _ex = {}
+            return (_pv.base_of(_p) + "/chat/completions", _slug, "OpenRouter",
+                    {"Authorization": f"Bearer {_pv.key_of(_p)}"}, _ex)
     if brain == "omniroute":
         h = {"x-omniroute-compression": st.omniroute_compression or "off"}   # never rewrite Santosh's tool results
         if st.omniroute_key:
@@ -568,10 +586,23 @@ def _target(brain: str) -> tuple[str, str, str, dict, dict]:
 
 
 def is_nvidia() -> bool:
+    try:   # v0.741 a prefixed pick runs on its own provider with a plain request (no GLM-only NVIDIA fields)
+        from . import providers as _pv
+        if _pv.split(MODEL_NOW.get())[0]:
+            return False
+    except Exception:
+        pass
     return "integrate.api.nvidia.com" in (get_settings().glm_base_url or "")
 
 
 def is_openrouter() -> bool:
+    try:   # v0.741 a turn on another provider (her pick) is not an OpenRouter call, whatever GLM_BASE_URL says
+        from . import providers as _pv
+        _p, _ = _pv.split(MODEL_NOW.get())
+        if _p:
+            return _p == "openrouter"
+    except Exception:
+        pass
     return "openrouter.ai" in (get_settings().glm_base_url or "")
 
 

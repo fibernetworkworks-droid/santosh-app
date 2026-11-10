@@ -108,10 +108,10 @@ def test_routes_need_the_key_and_say_why_when_not_offered(dd, monkeypatch):
     assert c.put("/api/model/choice", json={"model": "deepseek/deepseek-chat-v3.1"}).json()["selected"] == \
         "deepseek/deepseek-chat-v3.1"
     assert c.put("/api/model/choice", json={"model": "nope/nope"}).status_code == 400
-    monkeypatch.setenv("GLM_BASE_URL", "https://integrate.api.nvidia.com/v1")
+    monkeypatch.setenv("CHAT_LLM", "claude")                 # v0.741: offered on any OpenAI-style chat, not on Claude
     get_settings.cache_clear()
     v = c.get("/api/model/choices").json()
-    assert v["available"] is False and "OpenRouter" in v["reason"]
+    assert v["available"] is False and "Claude" in v["reason"]
     monkeypatch.setenv("API_KEY", "k-test-1")
     get_settings.cache_clear()
     assert c.get("/api/model/choices").status_code == 401

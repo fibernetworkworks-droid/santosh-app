@@ -41,19 +41,21 @@ def offered() -> tuple[bool, str]:
     st = get_settings()
     if not bool(getattr(st, "chat_model_choice", False)):
         return False, "Model choice is switched off on this server."
-    if not st.glm_api_key or "openrouter.ai" not in (st.glm_base_url or ""):
-        return False, "Model choice works when the chat runs on OpenRouter."
+    if not st.glm_api_key:
+        return False, "Model choice works when the chat runs on an OpenAI-style model (GLM_API_KEY)."
     if (st.chat_llm or "auto").lower() == "claude":
         return False, "This server's chat runs on Claude."
     return True, ""
 
 
 def allowed() -> list[str]:
+    """GLM_MODEL + the owner's chat_models - only the ones whose provider has a key in .env (v0.741)."""
+    from .agent import providers as pv
     st = get_settings()
     out: list[str] = []
     for m in [st.glm_model or ""] + str(getattr(st, "chat_models", "") or "").split(","):
         m = m.strip()
-        if m and m not in out:
+        if m and m not in out and pv.ready(m):
             out.append(m)
     return out
 
@@ -77,7 +79,12 @@ def _entry(slug: str, selected: str) -> dict[str, Any]:
                                       str(price.get("completion")) in ("0", "0.0"))
     known = bool(p.get("known"))
     tools = "tools" in (p.get("params") or []) if known else None
+    from .agent import providers as pv
+    prov = pv.split(slug)[0]
+    if prov and prov != "openrouter":
+        free = None                       # another provider's own plan (free tier or paid) - Hoola cannot see which
     return {"id": slug, "name": p.get("name") or slug.split("/")[-1].replace(":free", ""),
+            "provider": pv.label_of(prov),
             "free": free, "reads": p.get("inputs") if known else ["text"], "tools": tools,
             "context": p.get("context") or 0, "default": slug == (get_settings().glm_model or ""),
             "selected": slug == selected, "pickable": tools is not False,

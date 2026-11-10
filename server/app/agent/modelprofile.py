@@ -20,6 +20,7 @@ behaviour exactly. A new model = `GLM_MODEL=<slug>` in .env + a restart - no cod
 from __future__ import annotations
 
 import json
+import re
 import logging
 import threading
 import time
@@ -54,8 +55,9 @@ def current_model() -> str:
 
 
 def _key(model: str = "") -> str:
-    st = get_settings()
-    return f"{(st.glm_base_url or '').rstrip('/')}|{model or current_model()}"
+    from . import providers as pv
+    model = model or current_model()
+    return f"{pv.base_of(pv.split(model)[0])}|{model}"
 
 
 def _dir() -> Path:
@@ -114,19 +116,57 @@ def _save_disk(key: str, prof: dict[str, Any]) -> None:
         log.info("model profile not saved: %s", e)
 
 
+_CAT: dict[str, Any] = {"at": 0.0, "data": []}
+
+
+def catalogue(timeout: float = 20.0) -> list[dict]:
+    """OpenRouter's public model catalogue (no key), kept 24 h - used to describe a model served by another provider
+    that publishes no abilities of its own (Gemini / Groq / NVIDIA / Z.ai OpenAI-compatible lists are names only)."""
+    if _CAT["data"] and time.time() - _CAT["at"] < TTL_S:
+        return _CAT["data"]
+    try:
+        import httpx
+        r = httpx.get("https://openrouter.ai/api/v1/models", timeout=timeout)
+        if r.status_code < 400:
+            _CAT.update(at=time.time(), data=list((r.json() or {}).get("data") or []))
+    except Exception as e:   # noqa: BLE001
+        log.info("OpenRouter catalogue not read: %s", str(e)[:120])
+    return _CAT["data"]
+
+
+def _norm(x: str) -> str:
+    x = (x or "").lower().split("/")[-1]
+    x = re.sub(r":free$|-latest$|-instruct$|-it$", "", x)
+    return re.sub(r"[^a-z0-9]+", "", x)
+
+
+def match(provider: str, slug: str) -> dict | None:
+    """The catalogue entry for the same model (by its own name), preferring the provider's own vendor + a paid id."""
+    from . import providers as pv
+    want = _norm(slug)
+    hits = [m for m in catalogue() if _norm(m.get("id", "")) == want]
+    if not hits:
+        return None
+    vendor = pv.PROVIDERS.get(provider, ("", "", "", ""))[3]
+    hits.sort(key=lambda m: (not (vendor and m["id"].startswith(vendor + "/")), m["id"].endswith(":free"), m["id"]))
+    return hits[0]
+
+
 def refresh(timeout: float = 15.0, model: str = "") -> dict[str, Any]:
-    """Read a model's facts now (sync; call from a thread). Keeps what was learned before."""
-    st = get_settings()
+    """Read a model's facts now (sync; call from a thread). Keeps what was learned before.
+    OpenRouter model -> its own endpoints list; another provider's model -> the same model in OpenRouter's catalogue
+    (v0.741); nothing found -> unknown (the callers keep their safe defaults: text only, no extra fields)."""
+    from . import providers as pv
     model = model or current_model()
-    key, base = _key(model), (st.glm_base_url or "").rstrip("/")
+    key = _key(model)
+    prov, slug = pv.split(model)
     old = _MEM.get(key) or _load_disk(key) or {}
-    if not (model and _openrouter(base)):
-        prof = {**_unknown(model), "learned": old.get("learned") or {}}
-    else:
+    if model and pv.is_openrouter(model):
         try:
             import httpx
-            h = {"Authorization": f"Bearer {st.glm_api_key}"} if st.glm_api_key else {}
-            r = httpx.get(f"{base}/models/{model}/endpoints", headers=h, timeout=timeout)
+            k = pv.key_of(prov)
+            h = {"Authorization": f"Bearer {k}"} if k else {}
+            r = httpx.get(f"{pv.base_of(prov)}/models/{slug}/endpoints", headers=h, timeout=timeout)
             if r.status_code >= 400:
                 raise RuntimeError(f"{r.status_code}: {r.text[:200]}")
             prof = parse(model, r.json())
@@ -138,6 +178,18 @@ def refresh(timeout: float = 15.0, model: str = "") -> dict[str, Any]:
             if old:
                 return _remember(key, old)
             prof = {**_unknown(model), "source": "read failed"}
+    elif model and prov:
+        hit = match(prov, slug)
+        if hit:
+            prof = parse(model, {"data": {"architecture": hit.get("architecture") or {}, "endpoints": [
+                {"supported_parameters": hit.get("supported_parameters") or [],
+                 "context_length": hit.get("context_length") or 0}]}})
+            prof.update(name=f"{hit.get('name') or slug} ({pv.label_of(prov)})", price={},
+                        source=f"openrouter catalogue ({hit['id']})", learned=old.get("learned") or {})
+        else:
+            prof = {**_unknown(model), "name": f"{slug} ({pv.label_of(prov)})", "learned": old.get("learned") or {}}
+    else:
+        prof = {**_unknown(model), "learned": old.get("learned") or {}}
     _report(prof)
     _save_disk(key, prof)
     return _remember(key, prof)
@@ -187,7 +239,7 @@ def get(model: str = "") -> dict[str, Any]:
         if prof is not None:
             _remember(key, prof)
     if prof is None or (time.time() - float(prof.get("at") or 0)) > TTL_S:
-        if on() and _openrouter(get_settings().glm_base_url or ""):
+        if on() and model:
             refresh_in_background(model)
     return prof or _unknown(model)
 

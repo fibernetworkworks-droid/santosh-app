@@ -440,6 +440,13 @@ class Settings(BaseSettings):
                                            # of stapling a note, and a correction message goes out only when a real
                                            # ACTION claim (sent / paid / booked / deleted / published) stayed false
                                            # after that retry. False = the old stapled notes.
+    # v0.741 more providers for the model dropdown: each key ONLY here (.env); "<provider>:<model>" in chat_models
+    gemini_chat_api_key: str = ""          # Google AI Studio key for CHAT (the voice GEMINI_API_KEY is never spent by chat)
+    groq_api_key: str = ""
+    mistral_api_key: str = ""
+    nvidia_api_key: str = ""
+    zai_api_key: str = ""
+    openrouter_api_key: str = ""           # only when GLM itself is not on OpenRouter
     chat_model_choice: bool = True         # v0.740 each user picks the chat model in the console composer (owner's list)
     chat_models: str = "nvidia/nemotron-3.5-super-vl:free,thinkingmachines/inkling-2-small:free,google/gemma-4-31b-it:free"
                                            # the owner's list beside GLM_MODEL (OpenRouter slugs, comma-separated)

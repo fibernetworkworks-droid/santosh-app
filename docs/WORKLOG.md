@@ -2643,3 +2643,8 @@ Task ID: v0.740.0 MODEL DROPDOWN
 Ask: IN WEB CONSOLE LETS USER CHOOSE THE MODEL VIA DROPDOWN.
 Built: composer model chip + menu, app/modelchoice.py (owner's list, per-user pick), MODEL_NOW per turn, per-model profiles.
 Deploy: vps-ops deploy; list = GLM_MODEL + CHAT_MODELS in .env.
+
+Task ID: v0.741.0 MORE PROVIDERS
+Ask: CHECK ALL MORE FREE POWERFUL OPTION -> GO.
+Built: agent/providers.py, <provider>:<model> in chat_models, catalogue-matched profiles, per-provider keys in .env.
+Deploy: add keys + CHAT_MODELS in .env, vps-ops deploy.
