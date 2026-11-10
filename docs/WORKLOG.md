@@ -2791,3 +2791,7 @@ Agent: Claude Code (santosh-app session)
 Task: owner "business-gstinapi" - GSTIN verify / compliance / returns + HSN in the API box on one server key.
 Work Log: 4 box recipes, gstin validator, @fy default, daily cap, server key header x-api-key; 3 tests; box suites green.
 Stage Summary: pushed; needs GSTINAPI_API_KEY on the VPS, then a live test.
+
+---
+Task ID: v0.766.0 GSTIN SACH
+Task: her live GSTIN test - fallback answer passed off as compliance. Work: instead_of + note; 1 test; box suites 29 green. Stage: pushed.
