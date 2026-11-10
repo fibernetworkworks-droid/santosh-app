@@ -110,6 +110,47 @@ def skills_index(tenant: str, exclude=(), budget: int = SKILLS_INDEX_BUDGET) -> 
     return head + "\n" + "\n".join(lines)
 
 
+SKILL_NAMES_BUDGET = 600          # parity Phase 7: a chat turn names her skills, it does not describe them
+
+
+def skill_names(tenant: str, query: str = "", conv: str = "", budget: int = SKILL_NAMES_BUDGET) -> str:
+    """Parity Phase 7 (chat_one_memory): her skills by NAME only, the ones matching this ask first, inside `budget`
+    chars; the descriptions and bodies are one `skill_manage read` / `list` away (the 9k described index left the
+    chat turn). A first turn still seeds her starter skills."""
+    if not _skills_enabled():
+        return ""
+    try:
+        from . import skill_packs
+        skill_packs.seed_all(tenant)
+    except Exception:
+        pass
+    try:
+        matched = [r["name"] for r in _matched(tenant, query)] if query else []
+        rows = [r["name"] for r in store.skill_index(tenant)]
+    except Exception:
+        return ""
+    if not rows and not matched:
+        return ""
+    for n in matched:
+        try:
+            store.skill_use_mark(tenant, n, "shown", conv=conv, surface="chat")
+        except Exception:
+            pass
+    head = "Her skills (skill_manage read <name> before following one; skill_manage list describes them): "
+    out = head
+    names = matched + [n for n in rows if n not in matched]
+    shown = 0
+    for i, n in enumerate(names):
+        tag = n + (" (fits this ask)" if n in matched else "")
+        piece = ("" if shown == 0 else ", ") + tag
+        if len(out) + len(piece) + len(f" (+{len(names) - i} more)") > budget:
+            out += f" (+{len(names) - i} more)"
+            break
+        out += piece
+        shown += 1
+    return out[:budget]
+
+
 def admit_tool(adm, tenant: str, query: str) -> bool:
     """v0.494 REACHABILITY: the matched-skills line tells the model to `skill_manage read` the skill,
     but skill_manage lives in the non-core `skill` family, so on an ordinary turn the model could not

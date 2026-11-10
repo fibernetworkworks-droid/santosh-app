@@ -155,6 +155,11 @@ class Settings(BaseSettings):
     # every turn so the prompt cache holds); facts / sites / apps / desks are fetched with tools, per-turn notes ride on
     # her newest message (false = the old ~50-60k per-turn prompt). Calls (voice brain) and routines keep the old shape.
     chat_small_prompt: bool = True
+    # Parity Phase 7: ONE memory, Claude style - a chat turn carries only the short memory summary (her page + pinned facts,
+    # in the per-chat block) plus a capped 'since your last reply' note (job state, card news) and her skill NAMES; the diary,
+    # her recent words, the coder primer and the full skills list are fetched with yaad_khojo / skill_manage instead
+    # (false = today's per-turn memory blocks). Calls (voice brain) and routines keep their own shape.
+    chat_one_memory: bool = True
     prompt_slim: bool = True               # v0.473 PATLA PROMPT: only the admitted families' guides ride in the system prompt (false = the full ~130 KB guide, as before)
     # v0.237 FULL CLAUDE MODE Phase 1 (agent/context.py): the whole chat word for word while it fits the model's window
     chat_context: str = "claude"           # claude = whole chat, gauge + safety net | hoola = the v0.108 40-49 exchange window (instant rollback)

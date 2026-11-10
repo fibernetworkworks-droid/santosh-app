@@ -59,15 +59,16 @@ DESK_TOOLS = [
     {"name": "yaad_khojo", "description": (
         "THE ONE MEMORY DOOR (v0.605): search EVERYTHING Hoola remembers about her in one call - her saved facts, every "
         "past chat / call / job / file / decision (by meaning, plus exact words in raw tool outputs), the work notes "
-        "of past jobs, her knowledge graph and her 'Mere baare mein' page. Each hit says where it came from. Old chats "
+        "of past jobs, her work diary (jobs, website jobs, files, calls), her knowledge graph and her 'Mere baare mein' "
+        "page. Each hit says where it came from. Old chats "
         "are NOT pasted into your context any more: when she refers to anything from before that you do not see, or "
         "you are about to ask her to repeat something, call this FIRST ('last week's quotation', 'which sheet had the MAC', "
         "'the number of the order I placed', 'Riya's school'). days limits how far back; source "
-        "narrows to one store (fact | chat | work | graph | page); kind narrows past chats to exchange | call | job | "
+        "narrows to one store (fact | chat | diary | work | graph | page); kind narrows past chats to exchange | call | job | "
         "file | decision. By a time ('kal', 'is hafte') -> haal_ki_chats."),
      "input_schema": {"type": "object", "properties": {"query": {"type": "string"}, "days": {"type": "integer"},
                                                        "source": {"type": "string",
-                                                                  "enum": ["any", "fact", "chat", "work", "graph", "page"]},
+                                                                  "enum": ["any", "fact", "chat", "diary", "work", "graph", "page"]},
                                                        "kind": {"type": "string",
                                                                 "enum": ["any", "exchange", "call", "job", "file", "decision"]}},
                       "required": ["query"]}},
