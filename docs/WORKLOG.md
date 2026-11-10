@@ -2687,3 +2687,12 @@ Work: publicapis/build.py reads public-apis README + marcelscruz/public-apis res
 (name / own host), keeps old ids (kept or aka alias), 3,014 APIs; service.by_id resolves aliases; source credits
 both; counts 3,000+; test_v0749_public_apis.py (5).
 Deploy: vps-ops deploy; healthz must read 0.749.0.
+
+
+---
+Task ID: v0.750.0 API BOX
+Agent: Claude (web studio session)
+Task: owner "NOW CREATE A BOX FOR FREE APIS FIRST" (one call that picks + calls a free public API).
+Work: publicapis/box.py (13 live-tested starter recipes + learned calls, fallback, one answer, health table + daily
+check), tool api_box, POST /api/box/call + GET /api/box, family words, prompt line, registry 621; test_v0750_api_box.py (8).
+Deploy: vps-ops deploy; healthz must read 0.750.0; then python -m app.publicapis.box check for the first full check.

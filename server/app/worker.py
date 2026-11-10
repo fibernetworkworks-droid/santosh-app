@@ -527,7 +527,7 @@ async def tick() -> None:
         run_routines, expire_device_actions, expire_stale_asks, bazar_reminders, offline_digests, pc_cleanup,
         home_device_alerts, mail_jobs, employee_jobs, kaam_jobs, followup_jobs, goal_resume_jobs, inbox_jobs,
         team_jobs, research_jobs, scrape_crawl_jobs, dhara_jobs, eventlog_jobs, kaan_jobs, aboutme_jobs, applogic_jobs,
-        game_studio_jobs, coder_jobs, bahar_jobs, app_ops_jobs,
+        game_studio_jobs, coder_jobs, bahar_jobs, app_ops_jobs, api_box_jobs,
     ):
         await _slot(fn)
     BEAT["slot"] = ""
@@ -728,6 +728,25 @@ async def team_jobs() -> None:
 
 
 _rs_last = 0.0
+
+
+_box_last = 0.0
+
+
+async def api_box_jobs() -> None:
+    """v0.750 API BOX: once a day, re-check the sites of the least recently checked free public APIs."""
+    global _box_last
+    import time
+    if time.time() - _box_last < 24 * 3600:
+        return
+    _box_last = time.time()
+    st = get_settings()
+    n = int(getattr(st, "api_box_check_per_day", 300) or 0)
+    if not getattr(st, "api_box_enabled", True) or n <= 0:       # 0 = the daily check is off
+        return
+    from .publicapis import box
+    res = await box.check(limit=n)
+    log.info("api box health: %s", res)
 
 
 async def research_jobs() -> None:

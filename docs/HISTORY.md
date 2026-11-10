@@ -250,3 +250,39 @@ shared host is no proof / no link skipped), keep_old (dropped = kept, renamed = 
 in the shipped catalog. test_publicapis + v0238 data desk + v0561 omnipack green beside it. Note found: source 1
 itself lists a few names twice across categories (e.g. Cat Facts) - upstream, left as is. Server + static text only;
 no new pip; rebuild with `python -m app.publicapis.build` (fetches both from GitHub).
+
+
+## v0.750.0 API BOX - the free public APIs behind ONE call (owner: "WE WILL CREATE A BOX FOR PUBLIC APIS AND DEVELOP ONE CALLING API ... THAT SINGLE API GO TO THAT BOX AND EXTRACT THE API REQUIRED" -> "NOW CREATE A BOX FOR FREE APIS FIRST")
+
+Her live site check on the VPS (old 2,161 catalog): 1,796 alive, 128 blocked, 86 dead, 81 timeout, 70 unreachable;
+the 1,035 free ones: 852 alive. Before this the model ran api_find -> api_docs -> api_call itself on every ask.
+
+`server/app/publicapis/box.py` - ONE door, free APIs only (auth none):
+- `plan(need, params, api)`: candidates = STARTER recipes whose `need` words meet her words (13, each called live on
+  10 Nov 2026: india_pincode, ifsc, place_to_coordinates, weather_now, air_quality, currency_rate, dictionary,
+  mutual_fund_search, mutual_fund_nav, books, earthquakes, sunrise_sunset, crypto_price) + every learned call
+  (PublicApiRecipe) of a free API, scored on that API's own name / description / category (all learned rows, not the
+  catalog search's top N - a test caught that a proven call ranked 30+); a learned pattern with a blank in its path is
+  skipped. APIs hidden by health are dropped. `api` = a recipe key / api id to use directly.
+- `call(tenant, need, params, api)`: fills the recipe (every value URL-quoted, so a value cannot add a path, query or
+  host), calls through `service.call` (the same door as api_call: https only, public hosts, GET, size / time caps,
+  the owner-key rules), falls back to the next candidate (max 3 tries), answers {ok, api, url, data, tried, source};
+  ok false names the missing values (`params_needed`) or the closest free alive APIs + the learn-it hint (api_docs +
+  api_call; a call that works becomes a recipe the box uses next time).
+- Health: table `public_api_health` (api_id, status alive / blocked / dead / timeout / unreachable, http, failures in a
+  row, checked_at); `hidden` = dead or 2 failures in a row; every box call updates it; `check(limit, older_days)` asks
+  each free API's own page once (20 at a time, 12 s, the house public-host guard); worker slot `api_box_jobs` once a day
+  re-checks the `api_box_check_per_day` (300) least recently checked (0 = off; conftest pins 0 so tests never reach
+  the network); `python -m app.publicapis.box check [n]`.
+- Doors: tool `api_box` (first in the publicapi family; family words now include pincode / IFSC / exchange rate / AQI /
+  earthquake / sunrise / bitcoin / meaning of), prompt line "FIRST try api_box", POST /api/box/call, GET /api/box.
+  Switch `api_box_enabled`. Registry 620 -> 621.
+Live from the sandbox (no mocks): pincode, IFSC, USD->INR, meaning, bitcoin, earthquakes, mutual fund search - 7/7 ok
+through one call. Left out of the starters on purpose: Wikipedia (refuses this address), REST Countries (version
+deprecated), Universities (http only), India holidays / Nager for IN (no data).
+Tests: NEW test_v0750_api_box.py (8) - free starters with real catalog ids, words -> the right recipe, fill + call +
+one shape + quoting, fallback + hidden after two failures, missing values named, health classify + oldest first +
+nothing older than 30 days re-checked, route + worker slot off at 0, her words open the family + prompt line; the
+tool-count pins moved 620 -> 621.
+NOT VERIFIED: the daily health check on her VPS (first run after deploy logs `api box health: ...`); Open-Meteo weather
+was rate-limited from the sandbox's shared address that day.

@@ -55,6 +55,7 @@ def _full_voice_menu(monkeypatch):
     monkeypatch.setenv("VOICE_BRAIN", "false")         # v0.630 older call suites pin Gemini as the brain; test_v0630 turns it on
     monkeypatch.setenv("CLAUDE_ONE_MODEL", "")        # v0.631 older suites pin each part's own model; test_v0631 checks the lock
     monkeypatch.setenv("CHAT_SIMPLE_MODEL", "")       # v0.630 older chat suites pin the chat model; test_v0630 checks Haiku
+    monkeypatch.setenv("API_BOX_CHECK_PER_DAY", "0")  # v0.750 the daily API-box site check never reaches the network in tests
     monkeypatch.setenv("CHAT_ALONE", "false")         # v0.714 older suites pin "the chat she is in"; test_v0714 turns it on
     monkeypatch.setenv("HOOLA_LANGUAGE", "auto")      # v0.728 older suites pin Hinglish text; test_v0728 checks English
     monkeypatch.setenv("CHAT_ANSWER_ONLY", "false")   # parity Phase 5: older suites pin the stapled notes; test_parity5 checks on

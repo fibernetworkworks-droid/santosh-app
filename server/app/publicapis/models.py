@@ -34,3 +34,14 @@ class PublicApiRecipe(Base):
     owners: Mapped[int] = mapped_column(Integer, default=0)
     last_ok: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
     first_tenant: Mapped[str] = mapped_column(String(64), default="")
+
+
+class PublicApiHealth(Base):
+    """v0.750 API BOX: is this public API's site alive? One row per catalog api_id, refreshed by the daily check and by
+    every box call. Hidden from the box when `status` is dead or it failed twice in a row."""
+    __tablename__ = "public_api_health"
+    api_id: Mapped[str] = mapped_column(String(80), primary_key=True)
+    status: Mapped[str] = mapped_column(String(16), default="")        # alive | blocked | dead | timeout | unreachable
+    http: Mapped[int] = mapped_column(Integer, default=0)
+    fails: Mapped[int] = mapped_column(Integer, default=0)              # failures in a row (any success resets)
+    checked_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
