@@ -2605,3 +2605,10 @@ Task ID: v0.733.0 CLAUDE PARITY MEDIUM
 Ask: GO MEDIUM (gaps 4 thinking, 5 loop, 10 memory).
 Built: adaptive thinking, plain loop with in-place fixes, one memory; 3 worktree agents merged; compared with v0.732.0 (no new reds).
 Deploy: vps-ops deploy; healthz 0.733.0; then parity_card for the live score.
+
+---
+Task ID: v0.734.0 TRAPS + LIVE FIXES
+Ask: FIX TRAPS (after the first live parity card, 88.1/100).
+Built: three core-prompt rules (unclear ask, impossible ask, reshaping = no tool), request dump sweep fix, card rubric v2 + set v2.
+Found live: Anthropic credit out; Google sign-in dead.
+Deploy: vps-ops deploy; healthz 0.734.0; recharge Anthropic; then parity_card.

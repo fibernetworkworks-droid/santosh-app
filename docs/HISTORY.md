@@ -1,3 +1,12 @@
+## v0.734.0 TRAPS + LIVE FIXES — after the first live parity card (10 Nov 2026; owner: "FIX TRAPS")
+
+The first live parity card on GLM-5.3-Flash (run on v0.732.0, 02:32-03:10 UTC): SCORE 88.1/100, 35/60 passed; answered 49/60, followed 27/27, right tool 37/58, no invented done 60/60, nothing stapled 60/60, one brain 50/56; first word median 5.0 s, conversation median 16 s, Rs 328.7 for the card; by category followup 93.3, one_tool 100, long 86.5, make 71.7, memory 90, trap 78, lang 93.3.
+- TRAPS (core prompt, `agent/core_prompt.py`): an ask pointing at something nobody named gets ONE short question naming what is missing, before any tool; an impossible ask (the past, the physical world, out of every tool's reach) is said plainly in the first sentence with the nearest real help, never written as if it happened; reshaping words already in the chat (shorter, a table, bullets, an example, another tone / language, a caption) is plain writing - no pylab / kalam; code only for exact numbers or a file she asked for. Core stays < 11k chars.
+- REQUEST DUMP LIVE FIX (`app/reqdump.py`): the sweep (first write after every restart, then every 200) ran `delete ... where created_at < aware_now` with the session's evaluator against a row loaded naive from SQLite -> "can't compare offset-naive and offset-aware datetimes" -> the write failed and STATS["written"] never moved, so NO request was ever dumped on her server; now naive cutoff + synchronize_session=False; the regression test fails on the old code.
+- CARD FAIRNESS: rubric v2 (`artifact` / `graphic` / `make_document` count as making, `web_fetch` as web / research, a `kaam_plan` written first is judged by the next tool unless a plan WAS the expectation) + set v2 (the past-train trap no longer counts "cannot be booked" as a claim).
+- FOUND LIVE (vps-ops errors, 03:44 / 03:48): the Anthropic credit is OUT ("Your credit balance is too low") - every tool that calls Claude (doc review, picture reading, site / app model) fails, the most likely cause of the 11 unanswered make / memory conversations (the card's own parity.log was not read); her Google sign-in is still dead for both accounts.
+- NOT VERIFIED: the traps fixed only in the prompt - the next live card shows whether GLM follows them.
+
 ## v0.733.0 CLAUDE PARITY MEDIUM — thinking, the plain loop, one memory (10 Nov 2026; owner: "GO MEDIUM" on the parity table)
 
 Three parallel worktree agents, merged; each behind its own switch (default ON, pinned OFF in conftest for the old suites).

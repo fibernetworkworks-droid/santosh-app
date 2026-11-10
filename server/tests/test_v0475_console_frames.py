@@ -122,11 +122,11 @@ def test_app_version_story():
     assert f'APP_VERSION = "{APP_VERSION}"' in main    # v0.537: was a typed 0.535.0, two releases behind
     # story pin moved to the v0.555 story (the v0.476 precedent: the newest release's story carries the
     # marker; the older stories live in git history)
-    assert 'CLAUDE PARITY MEDIUM v0.733' in main and '0.733.0' in main  # the newest-story precedent
+    assert 'TRAPS + LIVE FIXES v0.734' in main and '0.734.0' in main  # the newest-story precedent
 
 
 def test_pubspec_pin():
     pub = (ROOT.parents[0] / 'pubspec.yaml').read_text(encoding='utf-8') if (ROOT.parents[0] / 'pubspec.yaml').exists() else None
     if pub is None:  # tests dir is server/tests; pubspec is at repo root
         pub = (ROOT / 'pubspec.yaml').read_text(encoding='utf-8')
-    assert 'version: 0.733.0+732' in pub
+    assert 'version: 0.734.0+733' in pub
