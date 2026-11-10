@@ -22,7 +22,7 @@ import time
 from contextlib import contextmanager
 from typing import Any
 
-from .skills_asks import ASKS, AWESOME, AWESOME_NEG, AWESOME_SET_V, PACK, SKILLS_SET_V
+from .skills_asks import ASKS, AWESOME, AWESOME_NEG, AWESOME_SET_V, PACK, REST, REST_SET_V, SKILLS_SET_V
 
 log = logging.getLogger("santosh.quality.skills")
 CARD_TENANT = "__skillcard__"
@@ -84,7 +84,7 @@ def free_card(asks: list[dict] | None = None, tenant: str = CARD_TENANT) -> dict
     pos = [r for r in rows if r["kind"] == "pos"]
     neg = [r for r in rows if r["kind"] == "neg"]
     aw = awesome_rows(tenant)
-    return {"kind": "free", "set": SKILLS_SET_V, "awesome": aw, "asks": len(rows), "skills_on_tenant": len(have),
+    return {"kind": "free", "set": SKILLS_SET_V, "awesome": aw, "rest": rest_rows(tenant), "asks": len(rows), "skills_on_tenant": len(have),
             "pack_missing": [n for n in PACK if n not in have],
             "pos": len(pos), "in_top2": sum(r["in_top2"] for r in pos),
             "tool_in_view": sum(r["tool_in_view"] for r in pos),
@@ -108,6 +108,16 @@ def awesome_rows(tenant: str = CARD_TENANT) -> dict[str, Any]:
     return {"set": AWESOME_SET_V, "tuned": len(by("tuned")), "tuned_ok": sum(r["ok"] for r in by("tuned")),
             "held": len(by("held")), "held_ok": sum(r["ok"] for r in by("held")),
             "neg": len(neg), "neg_clean": sum(1 for n in neg if not n["top2"]), "rows": rows, "neg_rows": neg}
+
+
+def rest_rows(tenant: str = CARD_TENANT) -> dict[str, Any]:
+    """v0.755: every other shipped skill, one plain ask each; the exact skill must be in the injected top 2."""
+    from ..coder import inject
+    rows = []
+    for want, text in REST.items():
+        top2 = [r["name"] for r in inject._matched(tenant, text)]
+        rows.append({"want": want, "text": text, "top2": top2, "ok": want in top2})
+    return {"set": REST_SET_V, "n": len(rows), "ok": sum(r["ok"] for r in rows), "rows": rows}
 
 
 # ---------------------------------------------------------------- the live card
@@ -246,6 +256,12 @@ def lines(card: dict) -> list[str]:
             for n in aw["neg_rows"]:
                 if n["top2"]:
                     out.append(f"  - unrelated '{n['text']}' pulled {n['top2']}")
+        rs = card.get("rest") or {}
+        if rs:
+            out.append(f"Other shipped skills (set v{rs['set']}): right skill in top 2 - {rs['ok']}/{rs['n']}")
+            for r in rs["rows"]:
+                if not r["ok"]:
+                    out.append(f"  - {r['want']}: top 2 was {r['top2']}")
         out.append("  (free card = reachability only; whether a model follows the skill needs --live)")
         return out
     out = [f"Skills card (live, set v{card['set']}): RIGHT {card['right']}/{card['answered']} "

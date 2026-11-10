@@ -1,6 +1,7 @@
 ---
 name: sp-using-superpowers
 description: Use at session start - check for a matching skill first
+when_to_use: which skill to use, kaunsa skill, superpowers, skill check
 ---
 If you think there is even a 1% chance a skill might apply to what you are
 doing, you ABSOLUTELY MUST invoke the skill. If a skill applies to your

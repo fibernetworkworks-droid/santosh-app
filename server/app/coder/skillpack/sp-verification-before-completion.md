@@ -1,6 +1,7 @@
 ---
 name: sp-verification-before-completion
 description: Use before claiming done - run the proof, evidence first
+when_to_use: is it done, verify, prove it works, check before done
 ---
 THE IRON LAW: NO COMPLETION CLAIMS WITHOUT FRESH VERIFICATION EVIDENCE.
 If you haven't run the verification command IN THIS MESSAGE, you cannot

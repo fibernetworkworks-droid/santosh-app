@@ -71,3 +71,21 @@ def test_any_gov_dataset_by_resource_id(env, monkeypatch, server_key):
     assert r["ok"] and urlparse(seen[0]).path == "/resource/abc-123"
     from app.agent import publicapi_tools as P
     assert "mandi_price" in P.PUBLICAPI_TOOLS[0]["description"]
+
+
+def test_v0755_relay_base_and_a_keyed_recipe_is_never_hidden(env, monkeypatch, server_key):
+    seen = []
+    monkeypatch.setattr(get_settings(), "data_gov_in_base", "https://dg-relay.example.workers.dev/")
+    _mock(lambda req: (seen.append(str(req.url)), httpx.Response(200, json={"records": [{"a": 1}]}))[1], monkeypatch)
+    for _ in range(3):
+        BX.mark(GOV, False)                                                   # three timeouts in a row
+    r = asyncio.run(BX.call("t1", "onion mandi bhav", {"commodity": "Onion"}))
+    assert r["ok"] and r["api"]["recipe"] == "mandi_price"
+    u = urlparse(seen[0])
+    assert u.netloc == "dg-relay.example.workers.dev" and u.path == "/resource/9ef84268-d588-465a-a308-a864a43d0070"
+    assert parse_qs(u.query)["api-key"] == ["srv-key-1234"]
+
+
+def test_v0755_one_stray_word_does_not_drag_in_other_recipes(env):
+    keys = [p["key"] for p in BX.plan("onion mandi bhav", {"commodity": "Onion"})]
+    assert keys[0] == "mandi_price" and "mutual_fund_nav" not in keys and "crypto_price" not in keys

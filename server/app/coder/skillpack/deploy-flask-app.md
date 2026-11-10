@@ -1,6 +1,7 @@
 ---
 name: deploy-flask-app
 description: Deploy a Flask or FastAPI app to the VPS with systemd
+when_to_use: deploy, flask app, fastapi app, put my app on the server, vps deploy, host my python app, go live
 ---
 GOAL: a new Flask/FastAPI service live on the VPS, restartable, logged.
 

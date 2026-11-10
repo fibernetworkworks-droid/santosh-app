@@ -1,6 +1,7 @@
 ---
 name: byox-physics-engine
 description: Build a 2D rigid-body physics engine: collisions, joints
+when_to_use: physics engine, rigid body, collision detection, game physics
 ---
 GOAL: a 2D engine where boxes and circles stack, bounce and slide realistically.
 

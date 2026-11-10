@@ -1,6 +1,7 @@
 ---
 name: byox-web-server
 description: Build an HTTP/1.1 server: sockets, routing, keep-alive, TLS
+when_to_use: web server from scratch, http server, own nginx
 ---
 GOAL: a server that passes an HTTP conformance test and handles 10k concurrent connections.
 

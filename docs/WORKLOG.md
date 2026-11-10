@@ -2720,3 +2720,15 @@ Work Log:
 - SERVER_KEYS + server_key() in publicapis/service.py; config data_gov_in_api_key; box needs_key + optional filters.
 - Recipes mandi_price, india_gov_dataset; api_box tool text; 4 new tests, v0750 pin 13 -> 15; 17 passed.
 Stage Summary: server-only; owner adds DATA_GOV_IN_API_KEY to ~/apps/santosh-core/.env and restarts. Not yet live-verified.
+
+Task ID: v0.755.0 EVERY SKILL FINDABLE
+Ask: "ALL SKILLS DEVLOPED" - finish the trigger words for every shipped skill.
+Built: when_to_use on the remaining 57 skill files, skills card 'Other shipped skills' row (57/57), 2 tests.
+Deploy: vps-ops deploy (server only).
+
+---
+Task ID: v0.756.0 DATA.GOV.IN RELAY
+Agent: Claude (session 019P5N4a)
+Task: data.gov.in unreachable from the VPS (NIC drops cloud servers) -> relay base + box fixes.
+Work Log: SERVER_BASES/rebase in publicapis/service.py; config data_gov_in_base; deploy/datagov-relay/worker.js; box keyed-never-hidden + stray-word filter; 2 tests; 19 passed.
+Stage Summary: server-only; owner deploys the Worker, sets DATA_GOV_IN_BASE in the VPS .env. Not yet live-verified.

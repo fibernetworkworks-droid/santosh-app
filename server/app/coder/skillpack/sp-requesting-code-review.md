@@ -1,6 +1,7 @@
 ---
 name: sp-requesting-code-review
 description: Use after a task or feature - dispatch a reviewer subagent
+when_to_use: review my code, code review, check my pr, request review
 ---
 Dispatch a code reviewer subagent to catch issues before they cascade. The
 reviewer gets precisely crafted context for evaluation - never your session's

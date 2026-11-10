@@ -1,6 +1,7 @@
 ---
 name: byox-frontend-framework
 description: Build a mini-React with virtual DOM, diffing and hooks
+when_to_use: own react, frontend framework, virtual dom, ui framework from scratch
 ---
 GOAL: a working mini-React where components re-render when state changes.
 

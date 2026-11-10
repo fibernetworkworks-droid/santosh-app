@@ -1,6 +1,7 @@
 ---
 name: sp-diagnosing-superpowers
 description: Use when a session went wrong - report with path:line proof
+when_to_use: session went wrong, what went wrong, post mortem, why did it fail
 ---
 A session went wrong - repeated work, ignored plans, stumbles, poor
 results, a skill that didn't fire, "it took too long", "why is it so

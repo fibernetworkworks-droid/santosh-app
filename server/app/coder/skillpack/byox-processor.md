@@ -1,6 +1,7 @@
 ---
 name: byox-processor
 description: Build a RISC-V CPU in Verilog or simulate RV32I in C
+when_to_use: cpu design, processor, risc-v, verilog, cpu simulator
 ---
 GOAL: execute a Fibonacci program on a RISC-V soft-core; correct register output.
 

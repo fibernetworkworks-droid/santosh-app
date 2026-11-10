@@ -1,6 +1,7 @@
 ---
 name: byox-3d-renderer
 description: Build a 3D ray tracer from scratch: rays, shading, BVH
+when_to_use: ray tracer, 3d renderer, rendering from scratch, raytracing, graphics engine
 ---
 GOAL: a working ray tracer that renders spheres, planes and triangles to an image file.
 

@@ -1,6 +1,7 @@
 ---
 name: uiux-pro-max
 description: Design UI with the searchable style/palette/font database
+when_to_use: ui design, ux, app design, colour palette, font pairing, landing page design, dashboard design
 ---
 GOAL: every page, screen or component she designs comes out coherent - one style,
 one palette, one type system - and clears the UX floor. The uiux_design tool is

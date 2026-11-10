@@ -1,6 +1,7 @@
 ---
 name: sp-executing-plans
 description: Use to execute a plan inline, task by task, final review
+when_to_use: execute the plan, follow the plan, run the plan step by step
 ---
 Execute the plan YOURSELF, task by task, in this session: no implementer
 subagent per task, no reviewer per task, ONE fresh-context review of the

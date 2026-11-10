@@ -1,6 +1,7 @@
 ---
 name: byox-bot
 description: Build a chat bot: Telegram/Slack commands, state, webhooks
+when_to_use: telegram bot, slack bot, chat bot, chatbot banana, discord bot, bot with commands
 ---
 GOAL: a bot that handles commands, remembers user state, and calls an external API.
 

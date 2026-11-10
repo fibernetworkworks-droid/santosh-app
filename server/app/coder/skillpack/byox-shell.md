@@ -1,6 +1,7 @@
 ---
 name: byox-shell
 description: Build a Unix shell: fork/exec, pipes, redirects, job control
+when_to_use: unix shell, own bash, terminal shell, command shell from scratch
 ---
 GOAL: a shell that runs pipelines, redirects I/O and supports background jobs.
 

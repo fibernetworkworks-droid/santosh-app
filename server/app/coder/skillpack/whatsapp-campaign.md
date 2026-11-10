@@ -1,6 +1,7 @@
 ---
 name: whatsapp-campaign
 description: Run a WhatsApp campaign the official Meta way, consent first
+when_to_use: whatsapp campaign, whatsapp broadcast, bulk whatsapp, whatsapp marketing
 ---
 GOAL: messages reach real customers with zero rule breaks.
 

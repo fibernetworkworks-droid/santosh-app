@@ -1,6 +1,7 @@
 ---
 name: byox-blockchain
 description: Build a blockchain with PoW, ECDSA wallets and P2P sync
+when_to_use: blockchain from scratch, own cryptocurrency, proof of work, crypto wallet
 ---
 GOAL: a local chain where multiple nodes stay in sync and transactions are signed.
 

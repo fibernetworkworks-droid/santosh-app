@@ -1,6 +1,7 @@
 ---
 name: byox-database
 description: Build a database: B-tree, SQL parser, WAL, buffer pool, MVCC
+when_to_use: build a database, own database engine, sql parser, b-tree, storage engine
 ---
 GOAL: a database that persists data to disk, parses SQL, and survives a crash.
 

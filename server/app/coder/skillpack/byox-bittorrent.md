@@ -1,6 +1,7 @@
 ---
 name: byox-bittorrent
 description: Build a BitTorrent client: tracker, peers, pieces, verify
+when_to_use: bittorrent client, torrent client, peer to peer download
 ---
 GOAL: download a real .torrent file, verify every piece against SHA-1, write output.
 

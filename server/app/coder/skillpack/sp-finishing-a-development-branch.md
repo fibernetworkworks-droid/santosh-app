@@ -1,6 +1,7 @@
 ---
 name: sp-finishing-a-development-branch
 description: Use when work is done - green suite first, then merge menu
+when_to_use: finish the branch, merge the work, wrap up feature, ready to merge
 ---
 Verify tests -> detect environment -> present options -> execute the choice
 -> clean up.
