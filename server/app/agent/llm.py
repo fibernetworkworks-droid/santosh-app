@@ -193,9 +193,90 @@ def choose(messages: list[dict]) -> str:
     b = chat_brain()
     if b is None:
         return "claude"
-    if _has_media(messages[-1:]) and st.anthropic_api_key and not (b == "glm" and is_nvidia() and _only_images(messages[-1:])):
+    if _has_media(messages[-1:]) and st.anthropic_api_key and not glm_handles(messages[-1:], b):
         return "claude"          # pictures and PDFs go to the model that reads them well (NVIDIA GLM reads pictures)
     return b
+
+
+def glm_reads_images(b: str = "glm") -> bool:
+    """v0.735 ALL GLM: GLM reads pictures on NVIDIA and on OpenRouter (z-ai/glm-5.3-flash: text + image + video)."""
+    try:
+        st = get_settings()
+        if b != "glm":
+            return False
+        return is_nvidia() or bool(getattr(st, "glm_images", False))
+    except Exception:
+        return False
+
+
+def glm_reads_pdfs(b: str = "glm") -> bool:
+    try:
+        return b == "glm" and bool(getattr(get_settings(), "glm_pdf", False))
+    except Exception:
+        return False
+
+
+def glm_handles(messages: list[dict], b: str = "glm") -> bool:
+    """True when every picture / PDF in these messages can go to the GLM brain itself."""
+    for m in messages:
+        c = m.get("content")
+        if not isinstance(c, list):
+            continue
+        for blk in c:
+            k = blk.get("type") if isinstance(blk, dict) else None
+            if k == "image" and not glm_reads_images(b):
+                return False
+            if k == "document" and not glm_reads_pdfs(b):
+                return False
+    return True
+
+
+def pdf_parts(block: dict) -> list[dict]:
+    """v0.735 ALL GLM: one Anthropic 'document' block (a base64 PDF) -> OpenAI parts GLM can read: the PDF's own text
+    (pypdf), or - when it has almost no text (a scan) - its first pages as pictures (pypdfium2). Never raises."""
+    import base64
+    import io
+    st = get_settings()
+    src = (block or {}).get("source") or {}
+    title = str((block or {}).get("title") or "the attached PDF")
+    if src.get("type") == "text" and src.get("data"):
+        return [{"type": "text", "text": f"--- {title} (text) ---\n{str(src['data'])[:int(st.glm_pdf_max_chars)]}"}]
+    if src.get("type") != "base64" or not src.get("data"):
+        return [{"type": "text", "text": f"[{title}: a PDF that could not be opened here]"}]
+    try:
+        raw = base64.b64decode(src["data"])
+    except Exception:
+        return [{"type": "text", "text": f"[{title}: the PDF could not be decoded]"}]
+    text, pages = "", 0
+    try:
+        from pypdf import PdfReader
+        rd = PdfReader(io.BytesIO(raw))
+        pages = len(rd.pages)
+        chunks = []
+        for i, pg in enumerate(rd.pages):
+            chunks.append(f"[page {i + 1}]\n" + (pg.extract_text() or "").strip())
+            if sum(len(x) for x in chunks) > int(st.glm_pdf_max_chars):
+                break
+        text = "\n\n".join(chunks)[:int(st.glm_pdf_max_chars)]
+    except Exception as e:   # noqa: BLE001
+        log.info("pdf text failed: %s", str(e)[:120])
+    words = len(re.findall(r"\w+", re.sub(r"\[page \d+\]", "", text)))
+    if words >= 20 * max(1, min(pages, 3)):
+        return [{"type": "text", "text": f"--- {title} ({pages} pages, its text) ---\n{text}"}]
+    out: list[dict] = [{"type": "text", "text": f"--- {title}: a scanned PDF ({pages or '?'} pages), its pages as pictures ---"}]
+    try:
+        import pypdfium2 as pdfium
+        doc = pdfium.PdfDocument(raw)
+        for i in range(min(len(doc), int(st.glm_pdf_max_pages))):
+            img = doc[i].render(scale=1.6).to_pil()
+            buf = io.BytesIO()
+            img.convert("RGB").save(buf, "JPEG", quality=82)
+            out.append({"type": "image_url", "image_url": {
+                "url": "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode()}})
+    except Exception as e:   # noqa: BLE001
+        log.info("pdf pages to pictures failed: %s", str(e)[:120])
+        out.append({"type": "text", "text": text or f"[{title}: no readable text and its pages could not be drawn]"})
+    return out
 
 
 def _only_images(messages: list[dict]) -> bool:
@@ -228,9 +309,10 @@ def _text_of(content) -> str:
 
 
 def _image_parts(blocks: list) -> list[dict]:
-    """Anthropic base64 image blocks -> OpenAI image_url parts, only for a brain that reads pictures (NVIDIA GLM)."""
+    """Anthropic base64 image blocks -> OpenAI image_url parts, only for a brain that reads pictures (NVIDIA GLM;
+    v0.735 also GLM on OpenRouter with glm_images)."""
     try:
-        if not is_nvidia():
+        if not glm_reads_images("glm"):
             return []
     except Exception:
         return []
@@ -279,6 +361,11 @@ def to_openai(system: str, tools: list[dict], messages: list[dict]) -> tuple[lis
                 extra.append(b)
         if extra:
             parts = _image_parts(extra)
+            if glm_reads_pdfs("glm") and any(b.get("type") == "document" for b in extra):
+                docparts = [p for b in extra if b.get("type") == "document" for p in pdf_parts(b)]
+                parts = parts + [p for p in docparts if p.get("type") == "image_url"]
+                extra = [b for b in extra if b.get("type") != "document"] + [
+                    {"type": "text", "text": p["text"]} for p in docparts if p.get("type") == "text"]
             t = _text_of([b for b in extra if not (parts and b.get("type") == "image")])
             if parts:       # SAB GLM: NVIDIA's GLM-5.3-Flash reads pictures (png / jpg / webp, up to 8 a request)
                 msgs.append({"role": "user", "content": ([{"type": "text", "text": t}] if t else []) + parts})

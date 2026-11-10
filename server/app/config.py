@@ -372,8 +372,13 @@ class Settings(BaseSettings):
     # https://integrate.api.nvidia.com/v1, GLM_MODEL=z-ai/glm-5.3-flash, GLM_API_KEY=nvapi-... and CHAT_LLM=glm.
     claude_all_glm: bool = False
     studio_build_architect: bool = True   # v0.711 Web Studio Build mode: every ask is planned by the architect first (not the library's page set for its business type)
-    architect_opus: bool = True   # v0.710: the website architect's plan always on the Website Sahayak's Opus (the GLM door + claude_one_model stand aside for that one call)
-    claude_all_glm_fallback: bool = True
+    architect_opus: bool = False   # v0.735 ALL GLM (owner: "MOVE EVERYTHING ON GLM 5.3 FLASH"): off = the plan on GLM too. Was True since v0.710 - v0.710: the website architect's plan always on the Website Sahayak's Opus (the GLM door + claude_one_model stand aside for that one call)
+    claude_all_glm_fallback: bool = False   # v0.735 ALL GLM: a failed GLM call is NOT re-asked on Claude (was True)
+    # v0.735 ALL GLM - every job on GLM, one switch per piece so the owner can test them one by one:
+    glm_images: bool = True     # pictures go to GLM (OpenRouter lists z-ai/glm-5.3-flash with text + image + video input)
+    glm_pdf: bool = True        # a PDF reaches GLM as its own text (pypdf); a scanned PDF as page pictures (pypdfium2)
+    glm_pdf_max_chars: int = 60000
+    glm_pdf_max_pages: int = 8  # pages rendered as pictures for a scanned PDF
     claude_all_brain: str = ""              # "" = OmniRoute when OMNIROUTE_URL is set, else GLM | "glm" | "omniroute"
     omniroute_timeout_s: float = 90.0       # one OmniRoute request (it may try two providers inside it)
     glm_reasoning_effort: str = "low"     # NVIDIA GLM-5.3-Flash: low | high | max (its default max is slow)

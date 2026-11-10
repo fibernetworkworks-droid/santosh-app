@@ -107,10 +107,14 @@ def has_media(messages: list) -> bool:
     """A call GLM cannot read well: PDFs always; pictures only when the GLM endpoint is not NVIDIA (which reads them)."""
     try:
         from .agent import llm
-        pics_ok = llm.is_nvidia() and brain() == "glm"
+        b = brain()
+        pics_ok = llm.glm_reads_images(b)          # v0.735: OpenRouter GLM-5.3-Flash reads pictures too
+        pdf_ok = llm.glm_reads_pdfs(b)             # v0.735: a PDF goes as its text / page pictures
     except Exception:
-        pics_ok = False
-    kinds = ("document",) if pics_ok else ("image", "document")
+        pics_ok = pdf_ok = False
+    kinds = tuple(k for k, ok in (("image", pics_ok), ("document", pdf_ok)) if not ok)
+    if not kinds:
+        return False
     for m in messages or []:
         c = m.get("content") if isinstance(m, dict) else None
         if isinstance(c, list) and any(isinstance(b, dict) and b.get("type") in kinds for b in c):

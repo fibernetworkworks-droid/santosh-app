@@ -1,3 +1,13 @@
+## v0.735.0 ALL GLM — every Claude-only job moved onto GLM-5.3-Flash, one switch each (10 Nov 2026; owner: "WE WILL TEST ONE BY ONE MOVE EVERY THINH ON GLM 5.3 FLASH")
+
+Four places still went to Claude with GLM as the chat brain; now each stays on GLM behind its own switch. Each switch is on by default, set in conftest to the old value for the old suites, and `.env` brings the old routing back.
+- PICTURES (`glm_images`, default True): `llm.glm_reads_images` now says yes on OpenRouter as well as NVIDIA. OpenRouter's model list gives z-ai/glm-5.3-flash text + image + video input. `llm.choose` keeps a picture turn on GLM and `_image_parts` sends it as an image_url.
+- PDFS (`glm_pdf`, default True): `llm.pdf_parts` turns a PDF document block into its own text with pypdf, capped by `glm_pdf_max_chars` (60000). If the PDF has fewer than 20 words a page, it is a scan: its first `glm_pdf_max_pages` (8) pages are drawn with pypdfium2 and sent as JPEG pictures. A broken PDF gives one honest line and never raises. `to_openai` and `glmdoor.has_media` both use it, so the SDK door keeps PDFs on GLM too.
+- WEBSITE ARCHITECT (`architect_opus`, default now False): the plan call is no longer forced onto Opus with `glmdoor.CLAUDE_ONLY`, so it rides the GLM door like every other call.
+- NO CLAUDE FALLBACK (`claude_all_glm_fallback`, default now False): when GLM fails at the SDK door, the GLM error is raised and the turn says it is busy, instead of answering on Claude.
+- Tests: `test_v0735_all_glm.py` has 10 tests. Each switch is checked both ways, with a real text PDF and a blank (scanned) PDF made by reportlab.
+- NOT VERIFIED LIVE: whether GLM-5.3-Flash reads a real photo or scan well, and whether the website plan on GLM is as deep as the one on Opus. The v0.710 root cause was GLM-Flash giving generic plans, so try a website plan first and set `ARCHITECT_OPUS=true` if it comes back as a landing page.
+
 ## v0.734.0 TRAPS + LIVE FIXES — after the first live parity card (10 Nov 2026; owner: "FIX TRAPS")
 
 The first live parity card on GLM-5.3-Flash (run on v0.732.0, 02:32-03:10 UTC): SCORE 88.1/100, 35/60 passed; answered 49/60, followed 27/27, right tool 37/58, no invented done 60/60, nothing stapled 60/60, one brain 50/56; first word median 5.0 s, conversation median 16 s, Rs 328.7 for the card; by category followup 93.3, one_tool 100, long 86.5, make 71.7, memory 90, trap 78, lang 93.3.

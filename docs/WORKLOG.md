@@ -2612,3 +2612,8 @@ Ask: FIX TRAPS (after the first live parity card, 88.1/100).
 Built: three core-prompt rules (unclear ask, impossible ask, reshaping = no tool), request dump sweep fix, card rubric v2 + set v2.
 Found live: Anthropic credit out; Google sign-in dead.
 Deploy: vps-ops deploy; healthz 0.734.0; recharge Anthropic; then parity_card.
+
+Task ID: v0.735.0 ALL GLM
+Ask: WE WILL TEST ONE BY ONE MOVE EVERY THINH ON GLM 5.3 FLASH.
+Built: glm_images, glm_pdf (text / scanned pages), architect_opus False, claude_all_glm_fallback False - one switch each.
+Deploy: vps-ops deploy; test one by one; any switch back in .env.

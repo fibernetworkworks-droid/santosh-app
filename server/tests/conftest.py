@@ -64,6 +64,10 @@ def _full_voice_menu(monkeypatch):
     monkeypatch.setenv("CHAT_CORE_TOOLS", "false")    # Parity Phase 3: older suites pin the core families + old result text; test_v0733_clean_tools checks the core set
     monkeypatch.setenv("CHAT_APPROVAL_WORDS", "true") # v0.724 older suites pin "haan" approving a card; test_v0724 checks off
     monkeypatch.setenv("CHAT_ONE_MODEL", "false")      # v0.732 older suites pin the brain fallbacks; test_v0732_ek_model checks one model
+    monkeypatch.setenv("ARCHITECT_OPUS", "true")       # v0.735 older suites pin the architect on Opus; test_v0735_all_glm checks GLM
+    monkeypatch.setenv("CLAUDE_ALL_GLM_FALLBACK", "true")  # v0.735 older suites pin the Claude fallback at the SDK door
+    monkeypatch.setenv("GLM_IMAGES", "false")          # v0.735 older suites pin pictures -> Claude (non-NVIDIA GLM)
+    monkeypatch.setenv("GLM_PDF", "false")             # v0.735 older suites pin PDFs -> Claude
     monkeypatch.setenv("CHAT_CONTEXT_LIMIT_CLAUDE", "200000")   # v0.724 older gauge suites pin the 200k window
     monkeypatch.setenv("CHAT_CONTEXT_LIMIT_GLM", "200000")
     monkeypatch.setenv("CHAT_ONE_MEMORY", "false")    # parity Phase 7: older suites pin the per-turn memory blocks; test_parity_p7 checks one memory
