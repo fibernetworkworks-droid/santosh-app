@@ -47,7 +47,10 @@ def brain() -> str:
 
 def _ready(b: str) -> bool:
     st = _settings()
-    return bool(st.omniroute_url) if b == "omniroute" else bool(st.glm_api_key)
+    if b == "omniroute":
+        return bool(st.omniroute_url)
+    from .agent import llm
+    return llm.glm_ready()            # v0.742 GLM_MODEL may be another provider's model with its own key
 
 
 import contextvars as _cv

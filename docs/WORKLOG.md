@@ -2648,3 +2648,8 @@ Task ID: v0.741.0 MORE PROVIDERS
 Ask: CHECK ALL MORE FREE POWERFUL OPTION -> GO.
 Built: agent/providers.py, <provider>:<model> in chat_models, catalogue-matched profiles, per-provider keys in .env.
 Deploy: add keys + CHAT_MODELS in .env, vps-ops deploy.
+
+Task ID: v0.742.0 AIHUBMIX
+Ask: AIHubMix -- LETS DO IT.
+Built: aihubmix provider, GLM_MODEL may be <provider>:<model>, name matching, free flag, plain limit line.
+Deploy: AIHUBMIX_API_KEY + GLM_MODEL=aihubmix:coding-glm-5.3-flash-free in .env, vps-ops deploy.

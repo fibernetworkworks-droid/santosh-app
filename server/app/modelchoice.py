@@ -41,7 +41,8 @@ def offered() -> tuple[bool, str]:
     st = get_settings()
     if not bool(getattr(st, "chat_model_choice", False)):
         return False, "Model choice is switched off on this server."
-    if not st.glm_api_key:
+    from .agent import llm
+    if not llm.glm_ready():
         return False, "Model choice works when the chat runs on an OpenAI-style model (GLM_API_KEY)."
     if (st.chat_llm or "auto").lower() == "claude":
         return False, "This server's chat runs on Claude."
@@ -82,7 +83,7 @@ def _entry(slug: str, selected: str) -> dict[str, Any]:
     from .agent import providers as pv
     prov = pv.split(slug)[0]
     if prov and prov != "openrouter":
-        free = None                       # another provider's own plan (free tier or paid) - Hoola cannot see which
+        free = pv.free(slug)              # AIHubMix "-free" = $0; other providers' plans Hoola cannot see
     return {"id": slug, "name": p.get("name") or slug.split("/")[-1].replace(":free", ""),
             "provider": pv.label_of(prov),
             "free": free, "reads": p.get("inputs") if known else ["text"], "tools": tools,

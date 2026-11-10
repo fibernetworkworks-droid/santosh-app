@@ -1,3 +1,13 @@
+## v0.742.0 AIHUBMIX — free GLM 5.3 Flash (and more) for testing every Hoola feature (10 Nov 2026; owner: "AIHubMix -- LETS DO IT")
+
+AIHubMix (aihubmix.com/models/free, read 10 Nov) runs 71 models billed at $0. The catch is a one-time $1 top-up, after which each account gets 100 requests a day, 10 a minute, and 1M tokens a day shared across its free models. Its tool support is not published per model.
+- `agent/providers.py`: new provider `aihubmix` (https://aihubmix.com/v1, key `AIHUBMIX_API_KEY`). `providers.free()` is True for OpenRouter `:free` and AIHubMix `-free` names, so the dropdown shows them as Free.
+- The WHOLE server can run on it with only that key: `GLM_MODEL=aihubmix:coding-glm-5.3-flash-free`. `llm.glm_ready()` is now `providers.ready(GLM_MODEL)`, and `llm.model_in_force()` (her pick, else GLM_MODEL) decides the provider in `_target` / `is_openrouter` / `is_nvidia` / picture checks. `glmdoor._ready` and `modelchoice.offered` follow, so background jobs, Web Studio and the SDK door use it too.
+- `modelprofile._norm` drops `coding-` and `-free / :free / -latest / -instruct / -it / -preview`, so `coding-glm-5.3-flash-free` is matched to `z-ai/glm-5.3-flash` in OpenRouter's catalogue and gets its pictures / tools / window.
+- `santosh._friendly_error`: an AIHubMix 429 or limit says the free limit is used up (per minute / per day), not "something went wrong".
+- Tests: `test_v0742_aihubmix.py` has 5 tests: names + free flag + matching, the whole server on AIHubMix with only its key (url, key, model, no extra fields, GLM 5.3 Flash's abilities, pictures stay on it), the SDK door, the dropdown showing Free, and the plain limit line.
+- NOT VERIFIED LIVE: no AIHubMix key yet. Whether its free GLM 5.3 Flash accepts tools like the paid one is unknown until the first call. Its data terms were not read; use it for test chats only.
+
 ## v0.741.0 MORE PROVIDERS — Gemini / Groq / Mistral / NVIDIA / Z.ai in the model dropdown (10 Nov 2026; owner: "CHECK ALL MORE FREE POWERFUL OPTION" -> "GO")
 
 - `app/agent/providers.py`: one table of OpenAI-compatible providers. Each entry has a label, a base URL and the settings field that holds its key (gemini_chat_api_key / groq_api_key / mistral_api_key / nvidia_api_key / zai_api_key / openrouter_api_key), and keys live ONLY in .env. A model in `chat_models` is either a plain slug (the GLM endpoint, i.e. OpenRouter) or `<provider>:<model>`; only known prefixes count, so OpenRouter's `:free` is never mistaken for one. The Gemini chat key is its own setting, so chat turns never spend the prepaid voice GEMINI_API_KEY.

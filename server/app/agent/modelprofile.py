@@ -135,8 +135,13 @@ def catalogue(timeout: float = 20.0) -> list[dict]:
 
 
 def _norm(x: str) -> str:
+    """Same model, any provider's name: 'coding-glm-5.3-flash-free' (AIHubMix) == 'z-ai/glm-5.3-flash' (OpenRouter)."""
     x = (x or "").lower().split("/")[-1]
-    x = re.sub(r":free$|-latest$|-instruct$|-it$", "", x)
+    x = re.sub(r"^coding-", "", x)
+    prev = None
+    while prev != x:
+        prev = x
+        x = re.sub(r"(:free|-free|-latest|-instruct|-it|-preview)$", "", x)
     return re.sub(r"[^a-z0-9]+", "", x)
 
 

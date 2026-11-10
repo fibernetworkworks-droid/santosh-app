@@ -23,6 +23,9 @@ PROVIDERS: dict[str, tuple[str, str, str, str]] = {
     "nvidia": ("NVIDIA", "https://integrate.api.nvidia.com/v1", "nvidia_api_key", ""),
     "zai": ("Z.ai", "https://api.z.ai/api/paas/v4", "zai_api_key", "z-ai"),
     "openrouter": ("OpenRouter", "https://openrouter.ai/api/v1", "openrouter_api_key", ""),
+    # v0.742 AIHubMix (owner: "AIHubMix -- LETS DO IT"): a gateway whose "-free" models bill $0 (100 requests a day,
+    # 1M tokens a day shared across all its free models, after a one-time $1 top-up) - e.g. coding-glm-5.3-flash-free
+    "aihubmix": ("AIHubMix", "https://aihubmix.com/v1", "aihubmix_api_key", ""),
 }
 
 
@@ -61,6 +64,14 @@ def label_of(provider: str) -> str:
 def ready(model: str) -> bool:
     p, _ = split(model)
     return bool(key_of(p))
+
+
+def free(model: str) -> bool | None:
+    """True when the model is billed $0 by its provider's own naming (OpenRouter ':free', AIHubMix '-free')."""
+    p, slug = split(model)
+    if slug.endswith(":free") or (p == "aihubmix" and slug.endswith("-free")):
+        return True
+    return None
 
 
 def is_openrouter(model: str) -> bool:

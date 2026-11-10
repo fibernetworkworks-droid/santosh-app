@@ -447,6 +447,7 @@ class Settings(BaseSettings):
     nvidia_api_key: str = ""
     zai_api_key: str = ""
     openrouter_api_key: str = ""           # only when GLM itself is not on OpenRouter
+    aihubmix_api_key: str = ""             # v0.742 AIHubMix (free "-free" models after a $1 top-up)
     chat_model_choice: bool = True         # v0.740 each user picks the chat model in the console composer (owner's list)
     chat_models: str = "nvidia/nemotron-3.5-super-vl:free,thinkingmachines/inkling-2-small:free,google/gemma-4-31b-it:free"
                                            # the owner's list beside GLM_MODEL (OpenRouter slugs, comma-separated)

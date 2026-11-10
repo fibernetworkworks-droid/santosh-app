@@ -145,7 +145,17 @@ def _client() -> httpx.AsyncClient:
 
 
 def glm_ready() -> bool:
-    return bool(get_settings().glm_api_key)
+    """v0.742 GLM_MODEL may name another provider ("aihubmix:coding-glm-5.3-flash-free"): its key counts."""
+    try:
+        from . import providers as _pv
+        return _pv.ready(get_settings().glm_model or "")
+    except Exception:
+        return bool(get_settings().glm_api_key)
+
+
+def model_in_force() -> str:
+    """The model this call runs on: her dropdown pick, else GLM_MODEL from .env."""
+    return MODEL_NOW.get() or (get_settings().glm_model or "")
 
 
 def omniroute_ready() -> bool:
@@ -228,7 +238,7 @@ def glm_reads_images(b: str = "glm") -> bool:
         if r is not None:
             return r
         from . import providers as _pv
-        if _pv.split(MODEL_NOW.get())[0]:
+        if _pv.split(model_in_force())[0]:
             return False                           # v0.741 another provider's model nobody could describe: text only
         return is_nvidia() or bool(getattr(st, "glm_images", False))
     except Exception:
@@ -532,7 +542,7 @@ def _target(brain: str) -> tuple[str, str, str, dict, dict]:
     st = get_settings()
     if brain == "glm":
         from . import providers as _pv
-        _p, _slug = _pv.split(MODEL_NOW.get())
+        _p, _slug = _pv.split(model_in_force())
         if _p and _p != "openrouter":
             # v0.741 MORE PROVIDERS: her pick names another provider - its own endpoint and key, and no provider-specific
             # reasoning field (each speaks its own; the plain request works everywhere)
@@ -588,7 +598,7 @@ def _target(brain: str) -> tuple[str, str, str, dict, dict]:
 def is_nvidia() -> bool:
     try:   # v0.741 a prefixed pick runs on its own provider with a plain request (no GLM-only NVIDIA fields)
         from . import providers as _pv
-        if _pv.split(MODEL_NOW.get())[0]:
+        if _pv.split(model_in_force())[0]:
             return False
     except Exception:
         pass
@@ -598,7 +608,7 @@ def is_nvidia() -> bool:
 def is_openrouter() -> bool:
     try:   # v0.741 a turn on another provider (her pick) is not an OpenRouter call, whatever GLM_BASE_URL says
         from . import providers as _pv
-        _p, _ = _pv.split(MODEL_NOW.get())
+        _p, _ = _pv.split(model_in_force())
         if _p:
             return _p == "openrouter"
     except Exception:
