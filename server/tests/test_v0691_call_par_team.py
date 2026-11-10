@@ -69,7 +69,7 @@ def test_a_round_scheduled_from_a_call_is_chat_work(env, monkeypatch):
 # ---------------------------------------------------------------- 3
 def test_a_call_question_is_not_pulled_into_the_job():
     from app.agent import santosh
-    src = inspect.getsource(santosh._steps_inner)
+    src = santosh.turn_loop_source()
     assert 'VOICE_BRAIN_NOW.get() and not any(' in src and '.get("tool") == "kaam_plan"' in src
 
 

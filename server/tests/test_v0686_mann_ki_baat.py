@@ -50,7 +50,7 @@ def test_figures_must_be_in_what_pylab_printed():
 # ---------------------------------------------------------------- 38 the corrected answer
 def test_the_corrected_answer_is_checked_again():
     from app.agent import santosh
-    src = inspect.getsource(santosh._steps_inner)
+    src = santosh.turn_loop_source()
     assert 'state.get("hard_fixed")' in src and "free_only=True" in src and "HARD_UNSURE" in src
     assert "free_only" in inspect.signature(santosh._hard_check).parameters
 
@@ -124,7 +124,7 @@ def test_the_fixed_lines_follow_her_avatar():
     assert "Owner" not in santosh.HALTED_TEXT["pause"]
     assert gendered(santosh.HALTED_TEXT["pause"], "f") == santosh.HALTED_TEXT["pause"] and "stopped here" in santosh.HALTED_TEXT["pause"]
     assert gendered(santosh.TIMEOUT_TEXT, "f") == santosh.TIMEOUT_TEXT
-    src = inspect.getsource(santosh._steps_inner)
+    src = santosh.turn_loop_source()
     assert 'gendered(HALTED_TEXT' in src and 'gendered("Changing my approach' in src
     assert "gendered(TIMEOUT_TEXT, _gender)" in inspect.getsource(santosh)
 

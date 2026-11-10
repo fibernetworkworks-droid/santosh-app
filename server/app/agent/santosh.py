@@ -1385,9 +1385,19 @@ async def _steps(conversation_id: str, ctx: Ctx, gender: str, history: list[dict
     """One turn with the v0.63 extras around it: seekhe hue kaam as hints, a circuit breaker, learning afterwards.
     v0.187: while a kaam_plan goal is open for this chat the caps rise (AGENT_GOAL_*), the breaker gets one replan
     rescue, and the real outcome lands in LAST_OUTCOME for the voice call to tell the truth about."""
+    if getattr(settings, "chat_graph", False):   # G0 (docs/LANGGRAPH_TURN_PLAN.md): the same steps as a LangGraph
+        from . import turngraph
+        return await turngraph.run_steps(conversation_id, ctx, gender, history, settings, tenant_id, user_text)
+    state = await _steps_begin(conversation_id, ctx, history, settings, tenant_id, user_text)
+    text = await _steps_inner(conversation_id, ctx, gender, history, settings, tenant_id, state)
+    return await _steps_end(conversation_id, ctx, history, settings, tenant_id, user_text, state, text)
+
+
+async def _steps_begin(conversation_id: str, ctx: Ctx, history: list[dict], settings, tenant_id: str,
+                       user_text: str = "") -> dict:
+    """The turn's state before the loop: the breaker, a big / hard ask, an open goal's caps, the learned hint."""
     from .. import procedures
     from .breaker import Breaker, FAILS_IN_ROW_GOAL
-    from . import pakka
     from . import goal as _goal
     _hers = (getattr(ctx, "actor", "owner") or "owner")
     ASK_NOW.set(user_text if (_hers == "owner" or _hers.startswith("approved:")) else "")
@@ -1447,7 +1457,16 @@ async def _steps(conversation_id: str, ctx: Ctx, gender: str, history: list[dict
         except Exception:
             log.exception("procedure hint failed")
     _mark("hint")
-    text = await _steps_inner(conversation_id, ctx, gender, history, settings, tenant_id, state)
+    return state
+
+
+async def _steps_end(conversation_id: str, ctx: Ctx, history: list[dict], settings, tenant_id: str, user_text: str,
+                     state: dict, text: str) -> str:
+    """After the loop: the outcome (LAST_OUTCOME), the work diary, learning, the background draft check."""
+    from .. import procedures
+    from . import pakka
+    from . import goal as _goal
+    actor = getattr(ctx, "actor", "owner") or "owner"
     g = _goal.active_for(conversation_id) if settings.agent_goal else None
     if g is not None and _goal.steps_left(g):
         ok = False
@@ -1905,13 +1924,57 @@ def small_prompt_on(settings, ctx) -> bool:
     return who in ("owner", "wake", "goal") or who.startswith("approved:")
 
 
+class _Turn:
+    """G0 (docs/LANGGRAPH_TURN_PLAN.md): the locals of one turn's think -> tools loop, held in one object so the SAME
+    step functions serve the old while-loop (`_steps_inner`) and the LangGraph nodes (`agent/turngraph.py`) - the two
+    paths cannot drift because there is only one copy of every step."""
+
+    _FIELDS = ("conversation_id", "ctx", "gender", "history", "settings", "tenant_id", "state", "breaker", "final_text",
+               "ran_tools", "brain", "adm", "mcp_defs", "mcp_route", "mcp_snap", "sys_fams", "system", "tools", "small",
+               "system_fn", "live", "ran_steps")
+
+    def __init__(self, **kw):
+        self.blocks: list = []
+        self.stop = ""
+        for k in self._FIELDS:
+            setattr(self, k, kw.get(k))
+
+    def unpack(self) -> tuple:
+        return tuple(getattr(self, k) for k in self._FIELDS)
+
+    def cap(self) -> int:
+        """The step cap the loop runs under right now (it rises when a goal opens or the turn is extended)."""
+        s, st = self.settings, self.state
+        return s.agent_goal_max_steps if (st.get("goal") or st.get("extended")) else s.agent_max_steps
+
+
 async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: list[dict], settings, tenant_id: str,
                        state: dict) -> str:
     """The think -> tools -> think loop of one turn. Returns the final text shown to the user.
-    v0.187: while a kaam_plan goal is open, text never ends the turn — the goal nudge sends it back to work."""
-    from . import pakka
-    from . import goal as _goal
-    from .breaker import FAILS_IN_ROW_GOAL
+    v0.187: while a kaam_plan goal is open, text never ends the turn — the goal nudge sends it back to work.
+    G0: the loop body lives in `_turn_model` / `_turn_after_model` / `_turn_tools` (shared with the graph path)."""
+    t = await _turn_prepare(conversation_id, ctx, gender, history, settings, tenant_id, state)
+    while t.ran_steps < t.cap():
+        t.ran_steps += 1
+        got = await _turn_model(t)
+        if isinstance(got, str):          # Rokiye / Pause landed during the model call
+            return got
+        nxt = await _turn_after_model(t, *got)
+        if nxt == "model":
+            continue
+        if nxt == "finish":
+            break
+        done = await _turn_tools(t, t.blocks)
+        if done is not None:
+            return done
+    else:
+        return _turn_capped(t)
+    return _turn_silent(t)
+
+
+async def _turn_prepare(conversation_id: str, ctx: Ctx, gender: str, history: list[dict], settings, tenant_id: str,
+                        state: dict) -> "_Turn":
+    """Everything before the first model call: brain, admission, system prompt, tools, the live reply."""
     breaker = state["breaker"]
     _gyaan.begin(conversation_id)        # v0.134 fresh [n] numbering for this turn
     final_text = ""
@@ -2022,10 +2085,21 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
     _mark("prompt")
     from .. import livereply
     live = None if conversation_id in _NO_STREAM else livereply.current(conversation_id)
-    ran_steps = 0
-    while ran_steps < (settings.agent_goal_max_steps if (state.get("goal") or state.get("extended"))
-                       else settings.agent_max_steps):
-        ran_steps += 1
+    return _Turn(conversation_id=conversation_id, ctx=ctx, gender=gender, history=history, settings=settings,
+                 tenant_id=tenant_id, state=state, breaker=breaker, final_text=final_text, ran_tools=ran_tools,
+                 brain=brain, adm=adm, mcp_defs=mcp_defs, mcp_route=mcp_route, mcp_snap=mcp_snap, sys_fams=sys_fams,
+                 system=system, tools=tools, small=small, system_fn=_system, live=live, ran_steps=0)
+
+
+async def _turn_model(t: "_Turn"):
+    """One model step (brain fallbacks, thinking, effort, live stream). Returns (blocks, stop), or the final text
+    when she stopped / paused it mid-call."""
+    (conversation_id, ctx, gender, history, settings, tenant_id, state, breaker, final_text, ran_tools, brain, adm,
+     mcp_defs, mcp_route, mcp_snap, sys_fams, system, tools, small, _system, live, ran_steps) = t.unpack()
+    from . import goal as _goal
+    from .breaker import FAILS_IN_ROW_GOAL
+    from . import context as _ctx
+    try:
         from . import toolsearch as _ts
         native = adm is not None and _ts.on(settings, brain)
         ctx.native_search = native
@@ -2130,6 +2204,20 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
         finally:
             _ctx.CONV.reset(_conv_tok)
         history.append({"role": "assistant", "content": blocks})
+        return blocks, stop
+    finally:
+        t.final_text, t.ran_tools, t.brain, t.mcp_defs, t.mcp_route, t.tools = (final_text, ran_tools, brain, mcp_defs,
+                                                                               mcp_route, tools)
+        t.sys_fams, t.system = sys_fams, system
+
+
+async def _turn_after_model(t: "_Turn", blocks: list, stop: str) -> str:
+    """What happens to the model's words: the held hard answer, the plain check, saving + showing them, the
+    nudges. Returns "model" (another model step), "finish" (the answer stands) or "tools"."""
+    (conversation_id, ctx, gender, history, settings, tenant_id, state, breaker, final_text, ran_tools, brain, adm,
+     mcp_defs, mcp_route, mcp_snap, sys_fams, system, tools, small, _system, live, ran_steps) = t.unpack()
+    from . import goal as _goal
+    try:
         texts = [b["text"] for b in blocks if b.get("type") == "text" and b.get("text", "").strip()]
         if texts and stop not in ("tool_use", "max_tokens") and state.get("hard_fixed") \
                 and not state.get("hard_rechecked"):
@@ -2152,7 +2240,7 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                 state["hard_fixed"] = True
                 history.append({"role": "user", "content": [{"type": "text", "text": nudge}]})
                 _save(conversation_id, "user", [{"type": "text", "text": nudge}])
-                continue
+                return "model"
         plain_nudge = None   # parity Phase 5b: the checks already ran before the answer was shown
         if texts and stop not in ("tool_use", "max_tokens") and plain_loop_on(settings):
             final_text = "\n\n".join(texts)
@@ -2171,7 +2259,7 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                 STATS_PLAIN["replaced"] += 1
                 history.append({"role": "user", "content": [{"type": "text", "text": plain_nudge}]})
                 _save(conversation_id, "user", [{"type": "text", "text": plain_nudge}])
-                continue
+                return "model"
             shown = "\n\n".join(texts)
             if state.get("correct"):   # still false after its one correction: said INSIDE the same reply
                 note = state.pop("correct")
@@ -2206,7 +2294,7 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                         "the rest of what you were saying; do not start again.]"
                 history.append({"role": "user", "content": [{"type": "text", "text": nudge}]})
                 _save(conversation_id, "user", [{"type": "text", "text": nudge}])
-                continue
+                return "model"
             if plain_loop_on(settings):   # parity Phase 5b: no after-answer self-check (the kept checks ran above)
                 nudge = ""
             else:
@@ -2243,7 +2331,7 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
             if nudge:
                 history.append({"role": "user", "content": [{"type": "text", "text": nudge}]})
                 _save(conversation_id, "user", [{"type": "text", "text": nudge}])
-                continue
+                return "model"
             if state.get("correct"):   # the correction is added after the words already shown (never rewrites them)
                 # v0.668 only the correction line goes out as its own short message and its own row: the whole answer
                 # again (answer + note) showed TWICE on the phone and sat twice in the model's history
@@ -2272,7 +2360,24 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                     bus.publish(conversation_id, "message", {"role": "assistant", "text": _line, "source": "agent",
                                                              "note": True, **_tag(live, True)})
                     _save(conversation_id, "assistant", [{"type": "text", "text": _line}], display=_line)
-            break
+            return "finish"
+        return "tools"
+    finally:
+        t.final_text, t.ran_tools, t.brain, t.mcp_defs, t.mcp_route, t.tools = (final_text, ran_tools, brain, mcp_defs,
+                                                                               mcp_route, tools)
+        t.sys_fams, t.system = sys_fams, system
+        t.blocks, t.stop = blocks, stop
+
+
+async def _turn_tools(t: "_Turn", blocks: list):
+    """Run this step's tool_use blocks through `_run_tool` (breaker, parallel-safe set, steering, narration, auto
+    plan). Returns the final text when the turn must end here (stuck / stopped), else None."""
+    (conversation_id, ctx, gender, history, settings, tenant_id, state, breaker, final_text, ran_tools, brain, adm,
+     mcp_defs, mcp_route, mcp_snap, sys_fams, system, tools, small, _system, live, ran_steps) = t.unpack()
+    from . import pakka
+    from . import goal as _goal
+    from .breaker import FAILS_IN_ROW_GOAL
+    try:
         async def _one(b: dict) -> dict:
             """One tool_use block, run to its tool_result (v0.189: every path RETURNS exactly one result, so the
             same body serves the serial loop and the parallel gather - behaviour identical to the old inline loop)."""
@@ -2507,26 +2612,43 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                                                      **_tag(live, True)})
             _save(conversation_id, "assistant", [{"type": "text", "text": final_text}], display=final_text)
             return final_text
-    else:
-        # the step cap ran out: an honest line, never the stale mid-task text
-        g = _goal.active_for(conversation_id) if settings.agent_goal else None
-        if g is not None and _goal.steps_left(g):
-            state["goal"] = g
-            honest = (f"Goal in progress: {g['done']}/{g['total']} steps done ({g['goal'][:120]}); "
-                      f"{len(_goal.steps_left(g))} left - I am carrying on in the background.")
-            final_text = (final_text + "\n\n" + honest).strip() if final_text else honest
-            bus.publish(conversation_id, "message", {"role": "assistant", "text": honest, "source": "agent", **_tag(live, True)})
-            _save(conversation_id, "assistant", [{"type": "text", "text": honest}], display=honest)
-            return final_text
-        # v0.665 SACH KA HISAAB: the honest line is said EVERY time (a mid-task "ab doosra hissa bhej raha hoon" used to
-        # be returned as the final answer and the turn recorded "done"), and the outcome is partial, never done
-        state["left"] = state.get("left") or "the step limit was reached, the work is not finished"
-        honest = "This task has become long and is not finished yet - I am stopping here. Shall I carry on?"
-        bus.publish(conversation_id, "message", {"role": "assistant", "text": honest, "source": "agent",
-                                                 **_tag(live, True)})
-        # v0.473 saved too: the next turn must know the work stopped half-way (before, only she saw this line)
+        return None
+    finally:
+        t.final_text, t.ran_tools, t.brain, t.mcp_defs, t.mcp_route, t.tools = (final_text, ran_tools, brain, mcp_defs,
+                                                                               mcp_route, tools)
+        t.sys_fams, t.system = sys_fams, system
+
+
+def _turn_capped(t: "_Turn") -> str:
+    """The step cap ran out (the old while-else)."""
+    (conversation_id, ctx, gender, history, settings, tenant_id, state, breaker, final_text, ran_tools, brain, adm,
+     mcp_defs, mcp_route, mcp_snap, sys_fams, system, tools, small, _system, live, ran_steps) = t.unpack()
+    from . import goal as _goal
+    # the step cap ran out: an honest line, never the stale mid-task text
+    g = _goal.active_for(conversation_id) if settings.agent_goal else None
+    if g is not None and _goal.steps_left(g):
+        state["goal"] = g
+        honest = (f"Goal in progress: {g['done']}/{g['total']} steps done ({g['goal'][:120]}); "
+                  f"{len(_goal.steps_left(g))} left - I am carrying on in the background.")
+        final_text = (final_text + "\n\n" + honest).strip() if final_text else honest
+        bus.publish(conversation_id, "message", {"role": "assistant", "text": honest, "source": "agent", **_tag(live, True)})
         _save(conversation_id, "assistant", [{"type": "text", "text": honest}], display=honest)
-        return (final_text + "\n\n" + honest).strip() if final_text else honest
+        return final_text
+    # v0.665 SACH KA HISAAB: the honest line is said EVERY time (a mid-task "ab doosra hissa bhej raha hoon" used to
+    # be returned as the final answer and the turn recorded "done"), and the outcome is partial, never done
+    state["left"] = state.get("left") or "the step limit was reached, the work is not finished"
+    honest = "This task has become long and is not finished yet - I am stopping here. Shall I carry on?"
+    bus.publish(conversation_id, "message", {"role": "assistant", "text": honest, "source": "agent",
+                                             **_tag(live, True)})
+    # v0.473 saved too: the next turn must know the work stopped half-way (before, only she saw this line)
+    _save(conversation_id, "assistant", [{"type": "text", "text": honest}], display=honest)
+    return (final_text + "\n\n" + honest).strip() if final_text else honest
+
+
+def _turn_silent(t: "_Turn") -> str:
+    """The loop ended on an answer; a model that said nothing still never leaves her a silent chat."""
+    (conversation_id, ctx, gender, history, settings, tenant_id, state, breaker, final_text, ran_tools, brain, adm,
+     mcp_defs, mcp_route, mcp_snap, sys_fams, system, tools, small, _system, live, ran_steps) = t.unpack()
     if not final_text.strip():
         # the model finished without a word: never leave the user staring at a silent chat
         # v0.665 only when a tool really finished: "Kaam ho gaya" after every tool failed was made up
@@ -2547,6 +2669,14 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                                                  **_tag(live, True)})
         _save(conversation_id, "assistant", [{"type": "text", "text": final_text}], display=final_text)
     return final_text
+
+
+def turn_loop_source() -> str:
+    """The source of the whole turn loop in its old order (source-pin tests read this since the G0 split)."""
+    import inspect as _insp
+    return "\n".join(_insp.getsource(f) for f in (_steps_inner, _turn_prepare, _turn_model, _turn_after_model,
+                                                      _turn_tools, _turn_capped, _turn_silent))
+
 
 
 _stopped: set[str] = set()

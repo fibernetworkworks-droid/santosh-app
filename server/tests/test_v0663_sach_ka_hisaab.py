@@ -45,7 +45,7 @@ def test_ok_false_and_failed_status_are_failures():
     assert tool_failure({"ok": True, "id": 1}) == ""
     assert tool_failure({"status": "working"}) == ""
     assert tool_failure("plain text") == ""
-    src = inspect.getsource(__import__("app.agent.santosh", fromlist=["x"])._steps_inner)
+    src = __import__("app.agent.santosh", fromlist=["x"]).turn_loop_source()
     assert "tool_failure(out)" in src
 
 
@@ -201,7 +201,7 @@ def test_the_auto_plan_closes_with_the_truth(env, text, calls, status):
 # ---------------------------------------------------------------- 9 + 10 honest endings
 def test_step_cap_and_empty_endings_are_honest():
     from app.agent import santosh
-    src = inspect.getsource(santosh._steps_inner)
+    src = santosh.turn_loop_source()
     assert "This task has become long and is not finished yet" in src and 'state["left"] = state.get("left") or "the step limit' in src
     assert "I could not do this" in src and "len(_bad) == len(_cs)" in src
 
