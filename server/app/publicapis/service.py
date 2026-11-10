@@ -257,7 +257,9 @@ def _key_for(tenant: str, api_id: str) -> tuple[str, str, str] | None:
 # typed on the phone can never break the call.
 KEY_PLACE = {"government-open-government-india": ("query", "api-key")}
 # api_id -> (settings field = the .env name in lower case, place, field). One server key serves every user.
-SERVER_KEYS = {"government-open-government-india": ("data_gov_in_api_key", "query", "api-key")}
+SERVER_KEYS = {"government-open-government-india": ("data_gov_in_api_key", "query", "api-key"),
+               "news-newsdata": ("newsdata_api_key", "query", "apikey"),      # newsdata.io: ?apikey= (its own 401 says so)
+               "news-gnews": ("gnews_api_key", "query", "apikey")}            # gnews.io: ?apikey= (its own 400 says so)
 
 
 # api_id -> (settings field, the API's own base). A relay base set by the owner replaces it (v0.755: NIC's data centre

@@ -2737,3 +2737,10 @@ Task ID: v0.757.0 KALA KHULA
 Ask: check all Google skills developed for Hoola.
 Found: kala tool works live (187 skills) but no admission words; fixed EXTRA_KEYS + generic name + description; 3 tests.
 Deploy: vps-ops deploy (server only).
+
+---
+Task ID: v0.758.0 NEWS IN THE BOX
+Agent: Claude (session 019P5N4a)
+Task: newsdata.io + gnews.io as server-keyed box recipes.
+Work Log: SERVER_KEYS + config keys; 3 recipes; api_box text; 3 tests; 22 passed.
+Stage Summary: server-only; owner adds NEWSDATA_API_KEY / GNEWS_API_KEY to the VPS .env. Not yet live-verified.

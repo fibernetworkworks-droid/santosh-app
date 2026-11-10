@@ -929,6 +929,8 @@ class Settings(BaseSettings):
     app_redirect_scheme: str = "santosh"    # deep link back into the phone app after sign-in
     hoola_signup: str = "open"              # who can make a NEW Hoola with Google sign-in: open (anyone) | invite
     hoola_signup_allow: str = ""            # invite mode: comma list of emails and/or @domain.com allowed to sign up
+    newsdata_api_key: str = ""              # v0.758 newsdata.io - ONE server key for every user, VPS .env only
+    gnews_api_key: str = ""                 # v0.758 gnews.io - ONE server key for every user, VPS .env only
     data_gov_in_base: str = ""              # v0.755 optional relay for data.gov.in (NIC drops cloud servers): e.g. https://hoola-dg.<you>.workers.dev
     data_gov_in_api_key: str = ""           # v0.754 data.gov.in (Open Government Data India) - ONE server key for every user, VPS .env only
     google_maps_api_key: str = ""           # Maps Platform key: Places API (New), Routes API, Geocoding API

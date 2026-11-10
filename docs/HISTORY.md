@@ -372,3 +372,15 @@ THE FIX: `admit.EXTRA_KEYS["kala"]` = the products its skills cover (google clou
 - PROOF: `tests/test_v0757_kala_khula.py` 3 + test_v0681_kala_manch 34 + the admission suites re-run.
 - NOT VERIFIED: whether the model then reads the right SKILL.md and follows it on a real ask (no live chat run).
 
+
+
+## v0.758.0 NEWS IN THE BOX (owner: "lets do next" after data.gov.in went live through the relay)
+
+Second server-keyed API family in the box, the v0.754 pattern: `SERVER_KEYS` gains news-newsdata (`newsdata_api_key`,
+query `apikey`) and news-gnews (`gnews_api_key`, query `apikey`) - both confirmed from each API's own reply to a keyless
+call (newsdata 401 "The API key is missing", gnews 400 "Add your API key as the apikey query parameter"). One key each
+in the VPS .env for every user; nothing in any app; the key never reaches the model.
+Recipes: news_india = newsdata.io /api/1/latest?country=in (+ optional q / language / category), news_search =
+gnews.io /api/v4/search?q=...&country=in&max=10 (+ lang), news_headlines = gnews.io /api/v4/top-headlines?country=in
+(+ category / lang). No key = skipped, naming the missing .env line. Tests: test_v0758_box_news.py 3; starter 15 -> 18.
+NOT VERIFIED: no live call with a real key yet - her first test on the VPS is it.
