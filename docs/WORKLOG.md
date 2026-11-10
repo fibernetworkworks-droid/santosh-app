@@ -2777,3 +2777,10 @@ Agent: Claude (session 019P5N4a)
 Task: eCourtsIndia (paid per call) as server-keyed box recipes with a daily cap.
 Work Log: SERVER_KEYS prefix; config key + cap; PublicApiDaily; recipes court_case / court_search / cause_list; patterns, need_one_of, daily_cap, obj/root slim; 3 tests; 24 passed.
 Stage Summary: server-only; owner adds ECOURTSINDIA_API_KEY (+ optional ECOURTS_DAILY_CALLS). Not yet live-verified.
+
+---
+Task ID: v0.764.0 ADALAT 2
+Agent: Claude (session 019P5N4a)
+Task: cause list dropped live party / advocate fields -> keep every short field.
+Work Log: _slim list without fields -> _flat; cause_list spec; 1 test; 16 passed.
+Stage Summary: server-only.

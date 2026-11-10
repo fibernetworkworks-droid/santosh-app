@@ -60,3 +60,14 @@ def test_the_daily_cap_stops_paid_calls_for_everyone(env, monkeypatch):
         assert asyncio.run(BX.call(tenant, "cases", {"litigants": "Ramesh"}, api="court_search"))["ok"]
     r = asyncio.run(BX.call("t3", "cases", {"litigants": "Ramesh"}, api="court_search"))
     assert not r["ok"] and len(seen) == 2 and "ECOURTS_DAILY_CALLS" in r["tried"][0]["error"]
+
+
+def test_v0764_cause_list_keeps_every_short_field_the_api_sends(env, monkeypatch):
+    _keyed(monkeypatch)
+    row = {"date": "2026-11-16", "caseNumber": "RCA/5/2022", "petitionerName": "Asha", "respondentName": "Ravi",
+           "advocateName": "Sharma", "notes": "z" * 900, "history": [{"a": 1}] * 9}
+    _mock(monkeypatch, lambda req: httpx.Response(200, json={"data": {"returnedCount": 1, "results": [row]}}))
+    r = asyncio.run(BX.call("t1", "cause list", {"advocate": "Sharma"}, api="cause_list"))
+    item = r["data"]["results"][0]
+    assert r["ok"] and item["petitionerName"] == "Asha" and item["advocateName"] == "Sharma"
+    assert len(item["notes"]) == 301 and len(item["history"]) == 6
