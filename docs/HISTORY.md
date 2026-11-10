@@ -414,3 +414,17 @@ G0 BUILT: `santosh._steps_inner` (641 lines) split into `_turn_prepare` / `_turn
 - PROOF: `tests/test_g0_turngraph.py` 11 (the same scripted turn through both paths: identical saved rows, event sequence, reply, model calls and outcome for a plain answer, one tool, two parallel tools, a tool error, a false-sent nudge, a max_tokens continue, the step cap; checkpoint written; old path never touches the graph; contextvars survive nodes). harness2 / harness3 / routines / robust_chat / plain loop / long jobs / realtime / v0649 / v0657 / v0663 / v0664 / v0686 / v0691 / v0683 give the same counts with the switch off and on. Two reds (test_v0667 corrected reply, test_v0638 call memory) fail on the pristine tree too.
 - NOT VERIFIED: nothing live; streaming deltas not compared (tests run with streaming off; same function both paths); many concurrent turns on one checkpoint file not tested.
 
+
+
+## v0.762.0 SHARE BHAV 2 (owner's v0.760 live test)
+
+Live on the VPS: stock_search (Twelve Data) ok, stock_price + stock_history (Twelve Data) HTTP 404 - Indian exchange
+quotes are not on Twelve Data's free plan; stock_price_bse (Alpha Vantage) ok, RELIANCE.BSE 1323.90 (2026-11-09).
+- Starter recipes may carry `bonus` (added to the word score). stock_price_bse gets 2 and the wider need words, so
+  Alpha Vantage answers Indian price asks first; Twelve Data's stock_price stays as the fallback for a paid plan.
+- NEW stock_history_bse = Alpha Vantage TIME_SERIES_DAILY {symbol}.BSE compact; `_slim` gains a dict mode
+  (`{"dict": <key>, "n": N}`): the newest N dated rows with "1. open" -> "open" field names; her `days` sets N (<= 100).
+- An HTTP error in the box now appends the API's own message (`message` / `error` / the recipe's error_keys), so the
+  next live test says WHY (e.g. a plan limit), not only the code.
+Tests: test_v0760_box_stocks.py +1 (and the 200-refusal test re-pointed at the new order); starter 22 -> 23.
+Limits said plainly: Alpha Vantage free is about 25 calls a day for every user together; NSE is not on Alpha Vantage.
