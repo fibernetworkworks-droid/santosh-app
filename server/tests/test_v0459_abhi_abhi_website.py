@@ -28,7 +28,7 @@ PUBLIC = lambda host, port: [(2, 1, 6, "", ("93.184.216.34", port))]  # noqa: E7
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.760.0"
+    assert APP_VERSION == "0.761.0"
 
 
 def _events(body: str) -> list[dict]:
