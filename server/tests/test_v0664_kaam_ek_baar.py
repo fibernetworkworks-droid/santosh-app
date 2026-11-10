@@ -42,7 +42,7 @@ def test_quiet_hours_and_the_late_time_really_read_her_zone(env, monkeypatch):
 # ---------------------------------------------------------------- 16 timeout wording
 def test_a_timed_out_tool_is_said_to_be_maybe_still_running():
     from app.agent import santosh
-    src = inspect.getsource(santosh._steps_inner)
+    src = santosh.turn_loop_source()
     assert "MAY STILL BE" in src and "NEVER repeat a send" in src
     assert "try a lighter way or another tool, or hand the" not in src
 

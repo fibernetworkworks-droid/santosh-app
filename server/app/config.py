@@ -463,6 +463,10 @@ class Settings(BaseSettings):
     chat_every_message: bool = True        # parity gap 1 (v0.738): every message reaches the model - the research plan
                                            # gate never answers for it, stop words still stop the work at once but the
                                            # model writes the reply (the OTP / CAPTCHA hand-over stays before the model)
+    chat_graph: bool = False               # G0 (docs/LANGGRAPH_TURN_PLAN.md): the chat turn's think -> tools loop runs
+                                           # as an official LangGraph StateGraph (agent/turngraph.py) over the SAME step
+                                           # functions as the old loop, checkpointed per turn; off = the old loop only
+    chat_graph_dir: str = "./data/turngraph"   # the graph's SQLite checkpoints (checkpoints.db)
     chat_plain_loop: bool = True           # parity Phase 5b (the loop): the model's answer ends the turn. Kept checks
                                            # run BEFORE the answer is shown and a corrected answer REPLACES the draft
                                            # in place (one reply): a false ACTION claim (sent / paid / booked /

@@ -18,7 +18,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 def test_a_cut_off_step_says_so_on_its_card():
     from app.agent import santosh
-    src = inspect.getsource(santosh._steps_inner)
+    src = santosh.turn_loop_source()
     i = src.index("except asyncio.CancelledError:")
     block = src[i:i + 1400]
     assert '"state": "error"' in block and '"stopped"' in block and "raise" in block
@@ -26,7 +26,7 @@ def test_a_cut_off_step_says_so_on_its_card():
 
 def test_a_corrected_reply_goes_out_once():
     from app.agent import santosh
-    src = inspect.getsource(santosh._steps_inner)
+    src = santosh.turn_loop_source()
     i = src.index('if state.get("correct"):')
     block = src[i:i + 1100]
     assert '"text": note' in block and '"note": True' in block

@@ -2758,3 +2758,15 @@ Agent: Claude (session 019P5N4a)
 Task: Indian share prices (Twelve Data + Alpha Vantage) as server-keyed box recipes + 200-refusal detection.
 Work Log: SERVER_KEYS + config; 4 recipes; box._soft_error; 2 tests; 20 passed.
 Stage Summary: server-only; owner adds TWELVEDATA_API_KEY / ALPHAVANTAGE_API_KEY. Not yet live-verified.
+
+Task ID: v0.761.0 LANGGRAPH G0
+Ask: deep research on Hoola's issues + fix with LangGraph.
+Built: docs/LANGGRAPH_TURN_PLAN.md; chat turn on official langgraph behind chat_graph (off); 11 tests.
+Deploy: vps-ops deploy + pip install langgraph langgraph-checkpoint-sqlite in the VPS venv (switch stays off).
+
+---
+Task ID: v0.762.0 SHARE BHAV 2
+Agent: Claude (session 019P5N4a)
+Task: Twelve Data free refuses Indian quotes -> Alpha Vantage first + BSE history + API error text.
+Work Log: recipe bonus; stock_history_bse + _slim dict mode; error text; 1 test; 21 passed.
+Stage Summary: server-only; redeploy + rerun her stock test.

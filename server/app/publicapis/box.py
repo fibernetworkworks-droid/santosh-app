@@ -130,11 +130,18 @@ STARTER: list[dict[str, Any]] = [
      "params": {"symbol": "trading symbol", "exchange": "NSE or BSE", "interval": "1day / 1week / 1h",
                 "days": "how many points (default 30)"},
      "defaults": {"exchange": "NSE", "interval": "1day", "days": "30"}, "example": {"symbol": "TCS"}},
-    {"key": "stock_price_bse", "api_id": "finance-alpha-vantage", "needs_key": True,
-     "need": "share stock price bse quote",
+    {"key": "stock_price_bse", "api_id": "finance-alpha-vantage", "needs_key": True, "bonus": 2,
+     # v0.761: Twelve Data's FREE plan answers 404 for NSE / BSE quotes (live test) - Alpha Vantage BSE goes first
+     "need": "share stock price rate bse nse equity shares market quote company",
      "url": "https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol={symbol}.BSE",
      "params": {"symbol": "trading symbol (RELIANCE, TCS)"}, "example": {"symbol": "RELIANCE"},
      "error_keys": ["Error Message", "Information", "Note"]},
+    {"key": "stock_history_bse", "api_id": "finance-alpha-vantage", "needs_key": True, "bonus": 2,
+     "need": "share stock price history chart past days trend bse nse",
+     "url": "https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol={symbol}.BSE&outputsize=compact",
+     "params": {"symbol": "trading symbol (RELIANCE, TCS)", "days": "how many days (default 30)"},
+     "example": {"symbol": "TCS"}, "error_keys": ["Error Message", "Information", "Note"],
+     "slim": {"dict": "Time Series (Daily)", "n": 30}},
     {"key": "india_gov_dataset", "api_id": "government-open-government-india", "needs_key": True,
      "need": "data.gov.in government india open data dataset resource sarkari",
      "url": "https://api.data.gov.in/resource/{resource_id}?format=json&limit={limit}&offset={offset}",
@@ -266,6 +273,14 @@ def _soft_error(data: Any, r: dict[str, Any]) -> str:
 def _slim(data: dict[str, Any], spec: dict[str, Any], n: int = 10) -> dict[str, Any]:
     """v0.758: a big answer (news is 30-60k chars) keeps only what she needs per item, so it never reaches the model
     as cut-off JSON text: the listed fields, long text cut to 300 chars, at most n items, plus the totals."""
+    if spec.get("dict"):                          # v0.761: {date: {...}} series (Alpha Vantage) - newest n days
+        series = data.get(spec["dict"])
+        if not isinstance(series, dict):
+            return {k: v for k, v in data.items() if not isinstance(v, (list, dict))}
+        keep = list(series.items())[:max(1, min(int(spec.get("n", n)), 100))]
+        meta = data.get("Meta Data") if isinstance(data.get("Meta Data"), dict) else {}
+        return {"meta": meta, "days": [{"date": d, **{k.split(". ", 1)[-1]: v for k, v in (row or {}).items()}}
+                                       for d, row in keep], "shown": len(keep)}
     rows = data.get(spec["list"])
     if not isinstance(rows, list):
         return {k: v for k, v in data.items() if not isinstance(v, (list, dict))}   # e.g. an error answer
@@ -303,7 +318,8 @@ def _starter_candidates(need: str, params: dict[str, Any]) -> list[tuple[float, 
     out = []
     for r in STARTER:
         rw = _words(r["need"] + " " + r["key"].replace("_", " "))
-        sc = len(w & rw) * 2 + sum(1 for k in r["params"] if k in params) * 0.5 - (0.5 if r.get("needs_key") else 0)
+        sc = len(w & rw) * 2 + sum(1 for k in r["params"] if k in params) * 0.5 - (0.5 if r.get("needs_key") else 0) \
+            + r.get("bonus", 0)
         if w & rw:
             out.append((sc, r))
     return out
@@ -390,7 +406,8 @@ async def call(tenant: str, need: str, params: dict[str, Any] | None = None, api
         code = int(res.get("status") or 0)
         if code >= 400 or (res.get("json") is None and not res.get("json_text") and not res.get("text")):
             mark(r["api_id"], code in (401, 403, 429), _classify(code) if code else "unreachable", code)
-            tried.append({"recipe": r["key"], "error": res.get("error") or f"HTTP {code}"})
+            own = _soft_error(res.get("json"), {**r, "error_keys": r.get("error_keys", ()) or ("message", "error")})
+            tried.append({"recipe": r["key"], "error": (res.get("error") or f"HTTP {code}") + (f": {own}" if own else "")})
             continue
         soft = _soft_error(res.get("json"), r)
         if soft:                       # a 200 that is really a refusal (limit, wrong symbol, plan) - try the next one
@@ -399,7 +416,9 @@ async def call(tenant: str, need: str, params: dict[str, Any] | None = None, api
         mark(r["api_id"], True, "alive", code)
         full = res.pop("_data", None)
         if r.get("slim") and isinstance(full, dict):
-            res["json"], res["json_text"] = _slim(full, r["slim"]), None
+            spec = {**r["slim"], "n": vals["days"]} if r["slim"].get("dict") and str(vals.get("days", "")).isdigit() \
+                else r["slim"]
+            res["json"], res["json_text"] = _slim(full, spec), None
         api_row = S.by_id().get(r["api_id"], {})
         return {"ok": True, "api": {"id": r["api_id"], "name": api_row.get("name", r["api_id"]), "recipe": r["key"],
                                     "link": api_row.get("link", "")},
