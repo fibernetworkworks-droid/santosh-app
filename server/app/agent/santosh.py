@@ -1197,7 +1197,8 @@ def _friendly_error(e: BaseException, tenant_id: str | None = None, who: str = "
     import re as _re
     s = str(e)
     low = s.lower()
-    busy = any(x in low for x in ("not reachable", "error 429", "error 5", "overloaded", "rate limit", "timed out", "broken answer"))
+    busy = any(x in low for x in ("not reachable", "error 429", "error 5", "overloaded", "rate limit", "timed out", "broken answer",
+                                  "paused after repeated failures", "empty answer", "no answer"))
     from . import context as _ctx
     if "credit balance is too low" in low or "billing" in low and "anthropic" in low:
         # v0.631 her account is out of credit: say it plainly, it is not a bug and waiting will not fix it

@@ -136,3 +136,45 @@ def test_no_claude_fallback_at_the_door(glm, monkeypatch):
     assert glmdoor._claude_ok() is False          # a GLM failure is said, never answered by Claude
     _flip(monkeypatch, "CLAUDE_ALL_GLM_FALLBACK", "true")
     assert glmdoor._claude_ok() is True
+
+
+# ---------------------------------------------------------------- v0.736 a paused GLM is still the chat's model
+
+def _pause(monkeypatch):
+    import time
+    from app.agent import llm
+    monkeypatch.setitem(llm.BREAKERS, "glm", {"fails": 2, "until": time.time() + 600, "paused": 1})
+
+
+def test_a_paused_glm_is_still_asked_while_it_is_the_only_model(glm, monkeypatch):
+    import asyncio
+    from app.agent import llm
+    _flip(monkeypatch, "CHAT_ONE_MODEL", "true")
+    _pause(monkeypatch)
+    seen = []
+
+    async def fake(*a, **k):
+        seen.append(a[0])
+        return [{"type": "text", "text": "ok"}], "end_turn", {}
+    monkeypatch.setattr(llm, "_openai_create", fake)
+    blocks, _, _ = asyncio.run(llm.openai_create("glm", "s", [], [{"role": "user", "content": "hi"}], 50))
+    assert seen == ["glm"] and blocks[0]["text"] == "ok"
+    assert llm.describe().endswith("(paused)") and llm.describe().startswith("glm:")
+    _flip(monkeypatch, "GLM_PAUSE_ONE_MODEL", "true")
+    with pytest.raises(llm.LLMError, match="paused"):
+        asyncio.run(llm.openai_create("glm", "s", [], [{"role": "user", "content": "hi"}], 50))
+
+
+def test_a_paused_glm_never_sends_door_calls_to_claude_without_the_fallback(glm, monkeypatch):
+    from app import glmdoor
+    _flip(monkeypatch, "CLAUDE_ALL_GLM", "true")
+    _pause(monkeypatch)
+    assert glmdoor.active() is True              # the picture / background call stays on GLM
+    _flip(monkeypatch, "CLAUDE_ALL_GLM_FALLBACK", "true")
+    assert glmdoor.active() is False             # old: Claude answers while GLM is paused
+
+
+def test_a_pause_reads_as_busy_not_something_went_wrong(glm):
+    from app.agent import santosh
+    line = santosh._friendly_error(RuntimeError("glm paused after repeated failures - another brain answers"))
+    assert "busy or unreachable" in line

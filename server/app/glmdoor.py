@@ -67,7 +67,9 @@ def active() -> bool:
         if not _ready(b):
             return False
         from .agent import llm
-        return not llm.brain_paused(b)       # the safety switch: a hung brain is skipped for a while, Claude answers
+        # the safety switch skips a hung brain for a while ONLY when Claude may answer instead (v0.736: with the Claude
+        # fallback off a pause sent every background call - picture reading too - to Claude, whose credit was out)
+        return not (llm.brain_paused(b) and _claude_ok())
     except Exception:
         return False
 

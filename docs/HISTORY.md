@@ -1,3 +1,13 @@
+## v0.736.0 GLM PAUSE FIX — a paused GLM no longer fails every chat (10 Nov 2026; owner's photo test: "WHOS IMAGE ID THIS" -> "Sorry, something went wrong just now (ref 228d25)")
+
+Live healthz read `chat_brain: claude` on 0.735.0, which is what the GLM safety switch shows during a pause (2 failures -> 10 minutes). With `chat_one_model` the chat stays on GLM during a pause, but `llm.openai_create` / `openai_stream` still refused every call ("glm paused after repeated failures - another brain answers"). That error has no status code and no "busy" word, so she saw "something went wrong". At the same time the SDK door moved every background call, the picture reading in `media.understand` included, to Claude, whose credit is out.
+- `llm.pause_refuses`: a pause refuses a call only when another model may take it. With one model it is ignored and GLM is asked anyway. Switch `glm_pause_one_model` (default False); true brings the old refusal back.
+- `glmdoor.active`: during a pause the door stands aside only when the Claude fallback is allowed (`claude_all_glm_fallback`).
+- `santosh._friendly_error`: a pause, an empty answer or "no answer" now gives "busy or unreachable, try again".
+- `llm.describe` (healthz): names the chat's real model, plus "(paused)".
+- NOT KNOWN: what made GLM fail twice in the first place, before the pause. Run vps-ops errors and look for "error ref 228d25"; the photo test after deploy shows whether OpenRouter GLM reads the picture.
+- Photo path for reference: a chat photo is NOT sent to the model as a picture. The turn gets a note and calls `file_read`, which does OCR and then `media.understand` (`_claude_see` through the SDK door, so GLM with CLAUDE_ALL_GLM; Gemini as a fallback).
+
 ## v0.735.0 ALL GLM — every Claude-only job moved onto GLM-5.3-Flash, one switch each (10 Nov 2026; owner: "WE WILL TEST ONE BY ONE MOVE EVERY THINH ON GLM 5.3 FLASH")
 
 Four places still went to Claude with GLM as the chat brain; now each stays on GLM behind its own switch. Each switch is on by default, set in conftest to the old value for the old suites, and `.env` brings the old routing back.

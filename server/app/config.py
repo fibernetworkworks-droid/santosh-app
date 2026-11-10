@@ -376,6 +376,7 @@ class Settings(BaseSettings):
     claude_all_glm_fallback: bool = False   # v0.735 ALL GLM: a failed GLM call is NOT re-asked on Claude (was True)
     # v0.735 ALL GLM - every job on GLM, one switch per piece so the owner can test them one by one:
     glm_images: bool = True     # pictures go to GLM (OpenRouter lists z-ai/glm-5.3-flash with text + image + video input)
+    glm_pause_one_model: bool = False   # v0.736 true = a paused GLM refuses chat calls again (old)
     glm_pdf: bool = True        # a PDF reaches GLM as its own text (pypdf); a scanned PDF as page pictures (pypdfium2)
     glm_pdf_max_chars: int = 60000
     glm_pdf_max_pages: int = 8  # pages rendered as pictures for a scanned PDF

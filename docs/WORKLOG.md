@@ -2617,3 +2617,8 @@ Task ID: v0.735.0 ALL GLM
 Ask: WE WILL TEST ONE BY ONE MOVE EVERY THINH ON GLM 5.3 FLASH.
 Built: glm_images, glm_pdf (text / scanned pages), architect_opus False, claude_all_glm_fallback False - one switch each.
 Deploy: vps-ops deploy; test one by one; any switch back in .env.
+
+Task ID: v0.736.0 GLM PAUSE FIX
+Ask: her photo test answered "something went wrong" (ref 228d25); healthz showed chat_brain claude = GLM paused.
+Built: a paused GLM is still asked in one-model mode; the door keeps calls on GLM without the fallback; a pause reads as busy; healthz "(paused)".
+Deploy: vps-ops deploy; vps-ops errors for the first two GLM failures (ref 228d25).

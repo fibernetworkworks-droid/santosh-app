@@ -95,9 +95,25 @@ def _brain_timeout(label: str):
     return {}
 
 
+def pause_refuses(brain: str) -> bool:
+    """v0.736 the safety switch refuses a call only when another model may take it. While one model is the chat's
+    model (chat_one_model) there is no other model: a paused GLM is still asked (v0.735 photo turn: every turn failed
+    for 10 minutes with 'something went wrong'); `glm_pause_one_model` = true brings back the old refusal."""
+    if not brain_paused(brain):
+        return False
+    try:
+        st = get_settings()
+        if one_model() and not bool(getattr(st, "glm_pause_one_model", False)):
+            STATS["pause_ignored"] = STATS.get("pause_ignored", 0) + 1
+            return False
+    except Exception:
+        pass
+    return True
+
+
 async def openai_create(brain: str, system: str, tools: list[dict], messages: list[dict],
                         max_tokens: int) -> tuple[list[dict], str, dict]:
-    if brain_paused(brain):
+    if pause_refuses(brain):
         raise LLMError(f"{brain} paused after repeated failures - another brain answers")
     try:
         out = await _openai_create(brain, system, tools, messages, max_tokens)
@@ -110,7 +126,7 @@ async def openai_create(brain: str, system: str, tools: list[dict], messages: li
 
 async def openai_stream(brain: str, system: str, tools: list[dict], messages: list[dict], max_tokens: int,
                         on_text, on_think=None, on_tool=None) -> tuple[list[dict], str, dict]:
-    if brain_paused(brain):
+    if pause_refuses(brain):
         raise LLMError(f"{brain} paused after repeated failures - another brain answers")
     try:
         out = await _openai_stream(brain, system, tools, messages, max_tokens, on_text, on_think, on_tool)
@@ -179,11 +195,12 @@ def chat_brain() -> str | None:
 
 def describe() -> str:
     st = get_settings()
-    b = cheap_brain()
+    b = chat_brain() if one_model() else cheap_brain()   # v0.736 healthz names the chat's real model
+    tail = " (paused)" if b and brain_paused(b) else ""
     if b == "omniroute":
-        return "omniroute:" + st.omniroute_model
+        return "omniroute:" + st.omniroute_model + tail
     if b == "glm":
-        return "glm:" + st.glm_model
+        return "glm:" + st.glm_model + tail
     return "claude"
 
 
