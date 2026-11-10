@@ -2784,3 +2784,10 @@ Agent: Claude (session 019P5N4a)
 Task: cause list dropped live party / advocate fields -> keep every short field.
 Work Log: _slim list without fields -> _flat; cause_list spec; 1 test; 16 passed.
 Stage Summary: server-only.
+
+---
+Task ID: v0.765.0 GSTIN JAANCH
+Agent: Claude Code (santosh-app session)
+Task: owner "business-gstinapi" - GSTIN verify / compliance / returns + HSN in the API box on one server key.
+Work Log: 4 box recipes, gstin validator, @fy default, daily cap, server key header x-api-key; 3 tests; box suites green.
+Stage Summary: pushed; needs GSTINAPI_API_KEY on the VPS, then a live test.

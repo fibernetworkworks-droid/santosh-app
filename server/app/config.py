@@ -933,6 +933,8 @@ class Settings(BaseSettings):
     app_redirect_scheme: str = "santosh"    # deep link back into the phone app after sign-in
     hoola_signup: str = "open"              # who can make a NEW Hoola with Google sign-in: open (anyone) | invite
     hoola_signup_allow: str = ""            # invite mode: comma list of emails and/or @domain.com allowed to sign up
+    gstinapi_api_key: str = ""              # v0.765 gstinapi.in (gak_...) - PAID per lookup (Rs 0.40-0.80), ONE server key, VPS .env only
+    gstin_daily_calls: int = 50             # v0.765 most paid GSTIN lookups a day for ALL users together (0 = switched off)
     ecourtsindia_api_key: str = ""          # v0.763 ecourtsindia.com (eci_live_...) - PAID per call, ONE server key, VPS .env only
     ecourts_daily_calls: int = 30           # v0.763 most paid eCourts calls a day for ALL users together (0 = switched off)
     twelvedata_api_key: str = ""            # v0.760 twelvedata.com (NSE / BSE quotes) - ONE server key, VPS .env only

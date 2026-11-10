@@ -264,7 +264,9 @@ SERVER_KEYS = {"government-open-government-india": ("data_gov_in_api_key", "quer
                "finance-twelve-data": ("twelvedata_api_key", "query", "apikey"),     # its own 401 names `apikey`
                "finance-alpha-vantage": ("alphavantage_api_key", "query", "apikey"),
                # its docs: Authorization: Bearer eci_live_... (no query key); PAID per call - box caps it a day
-               "government-ecourtsindia": ("ecourtsindia_api_key", "header", "Authorization", "Bearer ")}  # its own error names `apikey`            # gnews.io: ?apikey= (its own 400 says so)
+               "government-ecourtsindia": ("ecourtsindia_api_key", "header", "Authorization", "Bearer "),
+               # its docs: header x-api-key: gak_...; PAID per successful lookup - box caps it a day
+               "business-gstinapi": ("gstinapi_api_key", "header", "x-api-key")}  # its own error names `apikey`            # gnews.io: ?apikey= (its own 400 says so)
 
 
 # api_id -> (settings field, the API's own base). A relay base set by the owner replaces it (v0.755: NIC's data centre

@@ -171,6 +171,29 @@ STARTER: list[dict[str, Any]] = [
      "example": {"advocate": "Sharma", "state": "MH"}, "error_keys": ["error", "message"],
      "slim": {"root": "data", "list": "results"},
      "cost": "about Rs 3 a call (pay-as-you-go)"},
+    # v0.765 GSTIN checks (gstinapi.in) - PAID per successful lookup on the owner's ONE key, capped a day for all users;
+    # a GSTIN that fails the check digit is refused free (their 00AAAAA0000A1ZT sandbox GSTIN is free and allowed)
+    {"key": "gstin_verify", "api_id": "business-gstinapi", "needs_key": True, "daily_cap": "gstin_daily_calls",
+     "need": "gstin gst number verify check company business legal name trade name registration status active cancelled",
+     "url": "https://www.gstinapi.in/v1/gstin/{gstin}", "params": {"gstin": "15-character GSTIN"},
+     "validators": {"gstin": "gstin"}, "example": {"gstin": "33AAACC1206D1ZN"},
+     "cost": "1 credit, about Rs 0.40-0.80"},
+    {"key": "gstin_compliance", "api_id": "business-gstinapi", "needs_key": True, "daily_cap": "gstin_daily_calls",
+     "need": "gstin gst return filing compliance filed late gstr regular vendor supplier check",
+     "url": "https://www.gstinapi.in/v1/gstin/{gstin}/compliance?fy={fy}",
+     "params": {"gstin": "15-character GSTIN", "fy": "financial year YYYY-YY (default this year)"},
+     "defaults": {"fy": "@fy"}, "validators": {"gstin": "gstin"}, "example": {"gstin": "33AAACC1206D1ZN"},
+     "cost": "1 credit, about Rs 0.40-0.80"},
+    {"key": "gstin_returns", "api_id": "business-gstinapi", "needs_key": True, "daily_cap": "gstin_daily_calls",
+     "need": "gstin gst returns list gstr-1 gstr-3b filed arn dates",
+     "url": "https://www.gstinapi.in/v1/gstin/{gstin}/returns?fy={fy}",
+     "params": {"gstin": "15-character GSTIN", "fy": "financial year YYYY-YY (default this year)"},
+     "defaults": {"fy": "@fy"}, "validators": {"gstin": "gstin"}, "example": {"gstin": "33AAACC1206D1ZN"},
+     "slim": {"list": "returns"}, "cost": "1 credit, about Rs 0.40-0.80"},
+    {"key": "hsn_code", "api_id": "business-gstinapi", "needs_key": True, "daily_cap": "gstin_daily_calls",
+     "need": "hsn sac code meaning description goods service",
+     "url": "https://www.gstinapi.in/v1/hsn/{code}", "params": {"code": "2-8 digit HSN / SAC code"},
+     "patterns": {"code": r"\d{2,8}"}, "example": {"code": "1006"}, "cost": "may use 1 credit"},
     {"key": "india_gov_dataset", "api_id": "government-open-government-india", "needs_key": True,
      "need": "data.gov.in government india open data dataset resource sarkari",
      "url": "https://api.data.gov.in/resource/{resource_id}?format=json&limit={limit}&offset={offset}",
@@ -300,8 +323,29 @@ def _flat(d: dict[str, Any], depth: int = 0) -> dict[str, Any]:
     return out
 
 
+def _gstin_ok(v: str) -> bool:
+    from ..appmaker.gst import valid_gstin
+    return v == "00AAAAA0000A1ZT" or valid_gstin(v)        # the provider's own free sandbox GSTIN is allowed
+
+
+VALIDATORS = {"gstin": _gstin_ok}
+
+
 def _bad_values(r: dict[str, Any], vals: dict[str, Any]) -> str:
     """v0.763: checked BEFORE a paid call - a value that cannot be right costs nothing."""
+    for k, v in list(vals.items()):
+        if v == "@fy":                            # v0.765: this Indian financial year, e.g. 2026-27 (April start)
+            from datetime import datetime
+            from zoneinfo import ZoneInfo
+            d = datetime.now(ZoneInfo("Asia/Kolkata"))
+            y = d.year if d.month >= 4 else d.year - 1
+            vals[k] = f"{y}-{str(y + 1)[2:]}"
+    for k, kind in (r.get("validators") or {}).items():
+        v = str(vals.get(k) or "").strip().upper()
+        if v:
+            if not VALIDATORS[kind](v):
+                return f"{k} '{v[:20]}' fails its check (typed wrong?)"
+            vals[k] = v
     for k, pat in (r.get("patterns") or {}).items():
         v = str(vals.get(k) or "").strip().upper()
         if v and not re.fullmatch(pat, v):
@@ -345,6 +389,8 @@ def _soft_error(data: Any, r: dict[str, Any]) -> str:
     for k in r.get("error_keys", ()):
         if data.get(k):
             return str(data[k])[:200]
+    if data.get("success") is False:              # v0.765 gstinapi.in: {"success": false, "error": "..."}
+        return str(data.get("error") or data.get("message") or "the API said it failed")[:200]
     if str(data.get("status", "")).lower() == "error":
         msg = data.get("message") or (data.get("results") or {}).get("message") if isinstance(data.get("results"), dict) \
             else data.get("message")
@@ -476,7 +522,7 @@ async def call(tenant: str, need: str, params: dict[str, Any] | None = None, api
         bad = _bad_values(r, vals)
         if bad:
             tried.append({"recipe": r["key"], "skipped": bad, "params_needed": {
-                k: r["params"].get(k, k) for k in (r.get("patterns") or r.get("need_one_of") or [])}})
+                k: r["params"].get(k, k) for k in (r.get("validators") or r.get("patterns") or r.get("need_one_of") or [])}})
             continue
         url = _fill(r["url"], vals)
         if url is None:

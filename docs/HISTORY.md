@@ -457,3 +457,10 @@ cause_list advocate=Sharma state=MH ok (2026-11-16 lists, e.g. Wardha district c
 only date / courtType / listType / caseNumber / judge / courtNo / state / district: the party and advocate fields were
 named differently live than in the docs' example, and the fixed slim list dropped them. A slim list with no `fields` now
 keeps every short field the API sent (`_flat`); cause_list uses it. Test: test_v0763_box_courts.py +1.
+
+## v0.765.0 GSTIN JAANCH (owner: "business-gstinapi")
+gstinapi.in in the API box on ONE server key (`GSTINAPI_API_KEY` in the VPS .env, header `x-api-key`; never in any app, never to the model).
+Recipes: `gstin_verify` (/v1/gstin/{gstin}), `gstin_compliance` (/compliance?fy=), `gstin_returns` (/returns?fy=), `hsn_code` (/v1/hsn/{code}).
+Paid per lookup (~Rs 0.40-0.80, 75 free credits): a GSTIN failing the check digit (appmaker.gst.valid_gstin; the sandbox 00AAAAA0000A1ZT allowed)
+is refused BEFORE the call, a daily cap for all users (`GSTIN_DAILY_CALLS`, default 50, the PublicApiDaily table), `fy` defaults to the current
+Indian financial year (`@fy`), a 200 with success:false counts as a failure. Tests test_v0765_box_gstin.py (3). NOT VERIFIED live until her key is in.
