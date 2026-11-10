@@ -35,7 +35,7 @@ from .parity_convs import CATEGORIES, CONVS, PARITY_SET_V
 
 log = logging.getLogger("santosh.quality.parity")
 
-RUBRIC_V = 1
+RUBRIC_V = 2   # v2: artifact / graphic / make_document = make, web_fetch = web, a plan first is fair
 TENANT = "__paritycard__"
 TURN_TIMEOUT_S = 600
 DIMS = ("answered", "followed", "right_tool", "no_invented_done", "no_unasked_text", "one_brain")
@@ -43,11 +43,11 @@ DIMS = ("answered", "followed", "right_tool", "no_invented_done", "no_unasked_te
 FAMILIES: dict[str, str] = {
     "mail": r"^email_|gmail|outlook",
     "calendar": r"^calendar_|add_calendar_event",
-    "web": r"google_search|web_sources|open_website|browse_web|^reach$|duniya|^scrape|parallel_search|research_run"
+    "web": r"google_search|web_sources|open_website|browse_web|^reach$|duniya|^scrape|parallel_search|research_run|^web_fetch$"
            r"|mospi|indiamart|jharokha|youtube_search",
-    "research": r"research_run|research_status|google_search|web_sources|open_website|^reach$|duniya|^scrape"
+    "research": r"research_run|research_status|google_search|web_sources|open_website|^reach$|duniya|^scrape|^web_fetch$"
                 r"|parallel_search|deploy_agents|crew_run|mospi",
-    "make": r"artifact_make|doc_studio|pylab|doc_create|^sheet_create|^sheet_|website|create_studio|hoola_frames"
+    "make": r"^artifact$|artifact_make|^graphic|make_document|doc_studio|pylab|doc_create|^sheet_create|^sheet_|website|create_studio|hoola_frames"
             r"|pdf_tools|slides_create|data_fetch|doc_desk",
     "calc": r"^pylab$",
     "file": r"^drive_|file_read|data_read|sheet_read|doc_preview|pdf_tools|sheets_find",
@@ -56,6 +56,8 @@ FAMILIES: dict[str, str] = {
     "plan": r"kaam_plan|deploy_agents|crew_run|agent_army|officehours",
 }
 NEUTRAL = re.compile(r"^(tool_search|skill_manage|jaanch|think)$")
+# rubric v2: on a long / make ask a kaam_plan written first is the step the prompt asks for - the next tool is judged
+PLAN_FIRST = re.compile(r"^kaam_plan$")
 EXPECT_KEYS = {"tool", "no_tool", "ask", "cannot", "must", "must_not", "refers_prev", "refers_item", "shorter", "lang",
                "stopped"}
 FOLLOW_KEYS = ("refers_prev", "refers_item", "shorter", "lang", "stopped")
@@ -184,10 +186,10 @@ def _lang_ok(lang: str, text: str) -> bool:
     return True
 
 
-def first_tool(calls: list[dict]) -> str:
+def first_tool(calls: list[dict], skip_plan: bool = False) -> str:
     for c in calls or []:
         n = str(c.get("tool") or "")
-        if n and not NEUTRAL.match(n):
+        if n and not NEUTRAL.match(n) and not (skip_plan and PLAN_FIRST.match(n)):
             return n
     return ""
 
@@ -271,7 +273,10 @@ def score_turn(turn: dict, tr: dict, prev_reply: str) -> dict:
     fams = _fams(turn.get("tool"))
     if fams:
         applies["right_tool"] = True
-        ft = first_tool(calls)
+        # rubric v2: a plan written first is the step the prompt asks for unless a plan WAS the expected tool
+        ft = first_tool(calls, skip_plan="plan" not in fams) or (first_tool(calls) if "plan" in fams else "")
+        if not ft and "plan" not in fams and any(PLAN_FIRST.match(str(c.get("tool") or "")) for c in calls or []):
+            ft = "kaam_plan"
         if not ft:
             fails["right_tool"].append("no tool ran (wanted " + "/".join(fams) + ")")
         elif not in_family(ft, fams):
