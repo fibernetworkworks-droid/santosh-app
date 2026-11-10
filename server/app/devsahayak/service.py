@@ -29,7 +29,7 @@ import json
 import logging
 import re
 from datetime import datetime, timedelta, timezone
-from typing import Any
+from typing import Any, Callable
 
 from sqlalchemy import select
 
@@ -364,13 +364,17 @@ def task_view(t: DevTask, full: bool = False) -> dict[str, Any]:
          "tier": t.tier or "", "plan": _j(t.plan or "", {}),
          "self_round": int(t.self_round or 0), "self_review": _j(t.self_review or "", {}),
          "proof": _j(t.proof or "", {}),
-         "at": t.created_at.isoformat() if t.created_at else ""}
+         "running": t.id in _RUNNING, "stopping": t.id in _STOP,
+         "at": t.created_at.isoformat() if t.created_at else "",
+         "updated": t.updated_at.isoformat() if t.updated_at else ""}
     if full:
         v["text"] = t.text
         v["found"] = _j(t.found, {})
         v["diff"] = "\n".join(c.get("diff", "") for c in ch)[:40000]
         v["pr_body"] = t.pr_body
         v["log"] = _j(t.log, [])
+        v["steps"] = _j(t.steps or "", [])
+        v["notes_waiting"] = len(_j(t.notes or "", []))
     return v
 
 
@@ -766,6 +770,158 @@ def _progress(tid: str, line: str) -> None:
         log.debug("dev progress line failed", exc_info=True)
 
 
+# ---------------------------------------------------------------- v0.748 HOOLA CODE: the console's live session
+_RUNNING: set[str] = set()      # tasks whose work runs in a background thread right now (this process)
+_STOP: set[str] = set()         # her Stop: the loop ends at its next step
+MAX_STEPS = 400
+
+
+class _Step:
+    """The step callback handed to loop.run / plan_run: called with the old one-line log (unchanged), plus three
+    optional hooks the loop looks for - event (a structured step for the page), inbox (her notes while it works),
+    stopped (her Stop)."""
+
+    def __init__(self, tid: str):
+        self.tid = tid
+
+    def __call__(self, line: str) -> None:
+        _progress(self.tid, line)
+
+    def event(self, ev: dict[str, Any]) -> None:
+        try:
+            with session() as s:
+                row = s.get(DevTask, self.tid)
+                if row is None:
+                    return
+                steps = _j(row.steps or "", [])
+                steps.append({**ev, "at": now().isoformat()})
+                row.steps = json.dumps(steps[-MAX_STEPS:])
+        except Exception:
+            log.debug("dev step event failed", exc_info=True)
+
+    def inbox(self) -> list[str]:
+        return _take_notes(self.tid)
+
+    def stopped(self) -> bool:
+        return self.tid in _STOP
+
+
+def _take_notes(tid: str) -> list[str]:
+    with session() as s:
+        row = s.get(DevTask, tid)
+        if row is None or not row.notes:
+            return []
+        notes = [str(x) for x in _j(row.notes, [])]
+        row.notes = None
+        return notes
+
+
+def add_note(tenant: str, ref: str, text: str) -> dict[str, Any]:
+    """Her words while the work runs: the loop reads them before its next step (never mid-tool)."""
+    clean, warn = _clean_text(text)
+    if not clean:
+        raise DevError("Write what Hoola should know.")
+    with session() as s:
+        t = _find_task(s, tenant, ref)
+        if t.id not in _RUNNING:
+            raise DevError("Hoola is not working on this right now - use 'Ask for a change' instead.")
+        notes = _j(t.notes or "", [])
+        notes.append(clean[:2000])
+        t.notes = json.dumps(notes[-10:])
+        _log(t, "her note while working")
+    return {"ok": True, "queued": True, "warn": warn.strip()}
+
+
+def stop(tenant: str, ref: str) -> dict[str, Any]:
+    """Stop a running job at its next step. Nothing half-made is pushed; a PR already open stays as it is."""
+    with session() as s:
+        t = _find_task(s, tenant, ref)
+        tid = t.id
+    if tid not in _RUNNING:
+        return cancel(tenant, ref)
+    _STOP.add(tid)
+    return {"ok": True, "stopping": True}
+
+
+def running(tid: str) -> bool:
+    return tid in _RUNNING
+
+
+def _in_thread(tenant: str, tid: str, fn: Callable[..., Any], *a: Any, **kw: Any) -> dict[str, Any]:
+    """Run one piece of the work in the background so the page can watch it; errors land on the task row."""
+    import threading
+    if tid in _RUNNING:
+        raise DevError("Hoola is already working on this.")
+    _RUNNING.add(tid)
+    _STOP.discard(tid)
+
+    def go() -> None:
+        from . import loop as L
+        try:
+            fn(*a, **kw)
+        except L.Stopped:
+            with session() as s:
+                row = s.get(DevTask, tid)
+                if row is not None and row.status not in ("pr_open", "checks_failed", "merged"):
+                    row.status = "cancelled"
+                _log(row, "stopped by her - nothing was pushed") if row is not None else None
+            _Step(tid).event({"k": "stopped"})
+        except (DevError, GhError) as e:
+            with session() as s:
+                row = s.get(DevTask, tid)
+                if row is not None and row.status not in ("failed", "refused"):
+                    row.status, row.error = "failed", str(e)[:2000]
+        except Exception as e:
+            log.exception("dev background work failed")
+            _set(tid, status="failed", error=f"Something broke while working: {e.__class__.__name__}")
+        finally:
+            _RUNNING.discard(tid)
+            _STOP.discard(tid)
+            with session() as s:
+                row = s.get(DevTask, tid)
+                if row is not None:
+                    row.notes = None
+
+    threading.Thread(target=go, name=f"dev-{tid}", daemon=True).start()
+    return get_task(tenant, tid)
+
+
+def start_bg(tenant: str, kind: str, text: str, repo: str = "", issue: int = 0, files: list[str] | None = None,
+             conv: str = "") -> dict[str, Any]:
+    """The console's Start: the same checks as start(), the row at once, the work in the background."""
+    if kind not in KINDS:
+        raise DevError("kind = write | fix | tests | docs | explain")
+    clean, warn = _clean_text(text)
+    if not clean and not issue:
+        raise DevError("Describe the change, or paste the error.")
+    r = _repo(tenant, repo)
+    g = gh(tenant)
+    number = _next_number(tenant)
+    with session() as s:
+        t = DevTask(tenant_id=tenant, number=number, kind=kind, repo=r.full_name, text=clean, issue=int(issue or 0), conv=conv,
+                    base=r.default_branch)
+        _log(t, f"{KINDS[kind]} shuru (console)")
+        s.add(t)
+        s.flush()
+        tid = t.id
+    return _in_thread(tenant, tid, _work, tenant, tid, g, files or [], warn)
+
+
+def in_background(tenant: str, ref: str, what: str, **kw: Any) -> dict[str, Any]:
+    """plan_ok / revise / fix_ci / begin from the console, in the background (the tool + phone paths stay as they are)."""
+    with session() as s:
+        tid = _find_task(s, tenant, ref).id
+    fn = {"plan_ok": plan_ok, "revise": revise, "fix_ci": fix_ci, "begin": begin}[what]
+    if what == "plan_ok":                       # the card checks run now, so a wrong hash is told at once
+        with session() as s:
+            t = _find_task(s, tenant, ref)
+            if t.status != "plan_wait":
+                raise DevError("This plan is not waiting any more.")
+            if str(kw.get("hash_") or "") != t.hash:
+                raise DevError("The plan changed; look at the new one.")
+    return _in_thread(tenant, tid, fn, tenant, ref, **kw)
+
+
 def _plan_pass(tenant: str, t: DevTask, g: Gh, extra_files: list[str], issue_txt: str, tier: str,
                note: str = "") -> dict[str, Any]:
     """v0.451 ECC PHASE 4: the READ-ONLY planning pass. Returns the plan (or {} when it could not run - the work then
@@ -776,10 +932,12 @@ def _plan_pass(tenant: str, t: DevTask, g: Gh, extra_files: list[str], issue_txt
         _progress(t.id, f"{t.number}: plan bana raha hoon (kuch badal nahi raha, sirf padh raha hoon)")
         out = L.plan_run(g, t, cfg.rules, extra_files, issue_txt, max_steps=int(_setting("dev_plan_steps", 18)),
                          minutes=float(_setting("dev_plan_minutes", 8)),
-                         on_step=lambda line: _progress(t.id, line))
+                         on_step=_Step(t.id))
     except (L.LoopUnavailable, GhError) as e:
         log.info("dev plan pass %s: %s", t.id, e)
         return {}
+    except L.Stopped:
+        raise
     except Exception:
         log.exception("dev plan pass failed: working without a plan")
         return {}
@@ -875,13 +1033,15 @@ def _work(tenant: str, tid: str, g: Gh, extra_files: list[str], warn: str, ask_p
             base_sha, read, ctx, out = L.run(g, t, cfg.rules, extra_files, cfg.allow_workflows, issue_txt,
                                              max_steps=_setting("dev_loop_steps", 40),
                                              minutes=float(_setting("dev_loop_minutes", 20)),
-                                             on_step=lambda line: _progress(tid, line), plan_txt=plan_txt,
+                                             on_step=_Step(tid), plan_txt=plan_txt,
                                              lab=the_lab)
         except L.LoopUnavailable as e:
             L.STATS["fallback"] += 1
             log.info("dev loop unavailable (%s): one-shot path", e)
             base_sha = None
         except GhError:
+            raise
+        except L.Stopped:
             raise
         except Exception:
             L.STATS["fallback"] += 1
@@ -1091,11 +1251,13 @@ def _round(tenant: str, t: DevTask, extra: str, warn: str) -> dict[str, Any]:
             _, read, _, out = L.run(g, t, cfg.rules, paths, cfg.allow_workflows, ref_sha=ref, extra=extra, system_extra=spec,
                                     max_steps=_setting("dev_loop_steps", 40),
                                     minutes=float(_setting("dev_loop_minutes", 20)),
-                                    on_step=lambda line: _progress(t.id, line), lab=rlab)
+                                    on_step=_Step(t.id), lab=rlab)
         except L.LoopUnavailable:
             L.STATS["fallback"] += 1
             out = None
         except GhError:
+            raise
+        except L.Stopped:
             raise
         except Exception:
             L.STATS["fallback"] += 1
@@ -1230,6 +1392,7 @@ def cancel(tenant: str, ref: str) -> dict[str, Any]:
             raise DevError("Merge ho chuka; ab cancel nahi.")
         t.status = "cancelled"
         _log(t, "cancel")
+        _STOP.add(t.id)                     # v0.748 a running loop ends at its next step
         pr = t.pr_number
     say = "Kaam band." + (f" PR #{pr} GitHub par khula hai: chahein to wahan band kar dijiye (Hoola khud PR band nahi karta)." if pr else "")
     return {"ok": True, "say": say}

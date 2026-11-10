@@ -522,6 +522,71 @@ def _skills_block(text: str, tenant: str = "") -> str:
         return ""
 
 
+class Stopped(Exception):
+    """v0.748 HOOLA CODE: she pressed Stop - the loop ends at the next step and nothing is prepared or pushed."""
+
+
+def _hook(on_step: Any, name: str) -> Any:
+    """v0.748 optional hooks riding the step callback (service._Step): event(dict), inbox() -> [str], stopped() -> bool.
+    A plain lambda has none of them, so every older caller and test is unchanged."""
+    fn = getattr(on_step, name, None)
+    return fn if callable(fn) else None
+
+
+def _mini_diff(old: str, new: str, cap: int = 14) -> tuple[list[str], int, int]:
+    a, b = str(old or "").splitlines(), str(new or "").splitlines()
+    rows = [f"- {x}" for x in a] + [f"+ {x}" for x in b]
+    return [r[:180] for r in rows[:cap]], len(b), len(a)
+
+
+def step_event(ws: Any, name: str, inp: dict[str, Any], out: str, trail_before: int,
+               checks: list[dict[str, Any]] | None = None) -> list[dict[str, Any]]:
+    """v0.748 one tool call as the page's structured step(s). Only a call that really happened (its trail line was
+    written) becomes a step; a refused call becomes a 'refused' step with its reason, so nothing is hidden."""
+    new_lines = ws.trail[trail_before:]
+    evs: list[dict[str, Any]] = []
+    for ln in new_lines:
+        if ln.startswith("folder ke niyam padhe: "):
+            evs.append({"k": "rules", "paths": ln.split(": ", 1)[1].split(", ")[:8]})
+    inp = inp or {}
+    ok_line = [ln for ln in new_lines if not ln.startswith("folder ke niyam padhe")]
+    if not ok_line:
+        if str(out).startswith(("Refused", "Not applied", "Not created")):
+            evs.append({"k": "refused", "tool": name, "why": str(out).split("\n", 1)[0][:240]})
+        return evs
+    if name == "read_file":
+        evs.append({"k": "read", "path": ws._resolve(inp.get("path", "")),
+                    "lines": [int(inp.get("start") or 0), int(inp.get("end") or 0)]})
+    elif name == "search_code":
+        m = re.search(r"\((\d+) files\)", ok_line[-1])
+        evs.append({"k": "search", "q": str(inp.get("words") or "")[:80], "n": int(m.group(1)) if m else 0})
+    elif name == "list_dir":
+        evs.append({"k": "list", "path": str(inp.get("path") or "/")[:160]})
+    elif name == "find_usages":
+        m = re.search(r"\((\d+) jagah\)", ok_line[-1])
+        evs.append({"k": "usages", "name": str(inp.get("name") or "")[:80], "n": int(m.group(1)) if m else 0})
+    elif name == "edit_file":
+        rows, add, rem = _mini_diff(inp.get("old", ""), inp.get("new", ""))
+        evs.append({"k": "edit", "path": ws._resolve(inp.get("path", "")), "added": add, "removed": rem, "diff": rows})
+    elif name == "new_file":
+        body = str(inp.get("content") or "")
+        evs.append({"k": "new", "path": str(inp.get("path") or "").lstrip("./"), "added": len(body.splitlines()),
+                    "diff": [("+ " + x)[:180] for x in body.splitlines()[:10]]})
+    elif name == "show_diff":
+        evs.append({"k": "diff", "n": len(ws.changed())})
+    elif name == "run_check":
+        c = (checks or [{}])[-1]
+        tail = [x.strip()[:200] for x in str(out).splitlines()
+                if re.search(r"(?i)\b(failed|error|assert|passed|ok)\b", x)][-6:]
+        evs.append({"k": "check", "ok": bool(c.get("ok")), "seconds": c.get("seconds"), "cmd": str(c.get("cmd") or "")[:120],
+                    "only": str(c.get("only") or "")[:120], "tail": tail})
+    elif name == "grep_log":
+        evs.append({"k": "grep", "q": str(inp.get("pattern") or "")[:60]})
+    elif ok_line[-1] in ("check nahi chala", "lab setup fail"):
+        evs.append({"k": "check_off", "why": "the test box could not run here"})
+    return evs
+
+
 def run(g, t, rules: str, extra_files: list[str], allow_workflows: bool = False, issue_txt: str = "",
         max_steps: int = 40, minutes: float = 20.0, on_step: Callable[[str], None] | None = None,
         ref_sha: str = "", extra: str = "", system_extra: str = "",
@@ -562,10 +627,23 @@ def run(g, t, rules: str, extra_files: list[str], allow_workflows: bool = False,
     finish: dict[str, Any] | None = None
     checks: list[dict[str, Any]] = []
     t0, steps, nudged = time.time(), 0, 0
+    ev_fn, inbox, stopped = _hook(on_step, "event"), _hook(on_step, "inbox"), _hook(on_step, "stopped")
+
+    def emit(ev: dict[str, Any]) -> None:
+        if ev_fn:
+            try:
+                ev_fn(ev)
+            except Exception:
+                pass
     while steps < max_steps and time.time() - t0 < minutes * 60:
+        if stopped and stopped():
+            raise Stopped("stopped")
         steps += 1
         blocks, stop = BRAIN(system, messages, tools)   # v0.402 specialist, v0.531 lab
         messages.append({"role": "assistant", "content": blocks})
+        for b in blocks:                                  # v0.748 what Hoola says while it works
+            if b.get("type") == "text" and str(b.get("text") or "").strip():
+                emit({"k": "say", "text": str(b["text"]).strip()[:800]})
         uses = [b for b in blocks if b.get("type") == "tool_use"]
         if not uses:
             if stop == "max_tokens":
@@ -582,16 +660,30 @@ def run(g, t, rules: str, extra_files: list[str], allow_workflows: bool = False,
                 finish = dict(b.get("input") or {})
                 results.append({"type": "tool_result", "tool_use_id": b["id"], "content": "Finished."})
                 continue
+            before = len(ws.trail)
             if use_lab and b["name"] in ("run_check", "grep_log"):
                 out = _lab_tool(lab, ws, b["name"], b.get("input") or {}, checks)
             else:
                 out = ws.run(b["name"], b.get("input") or {})
+            for ev in step_event(ws, b["name"], b.get("input") or {}, out, before, checks):
+                emit(ev)
             if on_step and ws.trail:
                 try:
                     on_step(ws.trail[-1])
                 except Exception:
                     pass
             results.append({"type": "tool_result", "tool_use_id": b["id"], "content": out[:60000]})
+        notes = []
+        if inbox and finish is None:                      # v0.748 her words while it works, read between steps
+            try:
+                notes = [str(x)[:2000] for x in (inbox() or []) if str(x).strip()]
+            except Exception:
+                notes = []
+        if notes:
+            results.append({"type": "text", "text": "<her_note_while_you_work>\n" + "\n".join(notes)
+                            + "\n</her_note_while_you_work>\nTake this into account from your next step."})
+            for n in notes:
+                emit({"k": "note", "text": n[:600]})
         messages.append({"role": "user", "content": results})
         if finish is not None:
             break

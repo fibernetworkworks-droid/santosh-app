@@ -2672,3 +2672,8 @@ Task ID: v0.747.0 HOOLA INTERACTIVE
 Ask: a perfect Hoola Interactive page in console, like HeyGen, HyperFrames end to end (design canvas first, then "go").
 Built: console video studio (home / studio / making / ready / photo avatars), looks in the avatar-film composition, real-render fixes (GSAP loader, bundled font, closing card).
 Deploy: vps-ops deploy (server only; needs hyperframes on the VPS - vps-ops hf_setup).
+
+Task ID: v0.748.0 HOOLA CODE
+Ask: check the existing Hoola Code (Developer Sahayak), design it like Claude Code (6-screen canvas), then "GO".
+Built: console page code.js, structured loop steps, notes while working, Stop, background start, plan / PR / merge / review / settings.
+Deploy: vps-ops deploy (server only).

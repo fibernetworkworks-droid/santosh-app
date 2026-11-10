@@ -138,6 +138,8 @@ IC.socialdesk = '<path d="M18 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM6 15a3 3 0 1 0 0-6 
 let EMP = null;
 let SKH = null;         // v0.718 the HOOLA AI Video Learner (seekh.js) - opens from the AI Employees hub
 let HIV = null;         // v0.747 HOOLA INTERACTIVE (interactive.js) - the video studio, its own sidebar row
+let HCD = null;         // v0.748 HOOLA CODE (code.js) - Developer Sahayak as a console page
+IC.code = '<path d="M8 7l-5 5 5 5M16 7l5 5-5 5M13.5 5l-3 14"/>';
 IC.interactive = '<rect x="3" y="4" width="18" height="13" rx="2.5"/><circle cx="9" cy="10" r="2.2"/><path d="M5.8 15.2c.7-1.6 1.9-2.4 3.2-2.4s2.5.8 3.2 2.4"/><path d="M15 8.5l3 1.8-3 1.8z" fill="currentColor" stroke="none"/><path d="M8 20h8"/>';
 IC.seekh = '<path d="M2 5.5a2 2 0 0 1 2-2h9l2.5 2.5H20a2 2 0 0 1 2 2V16a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2z"/><path d="M10 9.5l4 2.5-4 2.5z" fill="currentColor" stroke="none"/>';   // v0.718 a video folder with a play
 let SK = null;         // v0.481 the Skill Desk (account menu > Skills)
@@ -184,7 +186,7 @@ function go(v, arg) {
   if (v === 'appdev') { location.assign('/console/apps' + (arg ? '#/app/' + encodeURIComponent(arg) : '')); return; }   // v0.693 App Studio = its own app
   if (v === 'webdev') { location.assign('/console/web' + (arg ? '#/site/' + encodeURIComponent(arg) : '')); return; }   // v0.649 Web Studio = its own app
   VIEW = v; $$('.view').forEach(x => x.hidden = x.id !== 'v-' + v);
-  $('#ttl').textContent = {chat: chatFolder(), aaj:'· Today', kaam:'· All tools', baat:'· Baat', main:'· Main', bana:'· Creations', project:'· Folder', arena:'· Design Arena', lab:'· Prayogshala', hire:'· AI Employees', seekh:'· Video Learner', interactive:'· Hoola Interactive', seodesk:'· SEO Desk', socialdesk:'· Social Desk', caddesk:'· CAD Desk', gamedesk:'· Game Desk', archdesk:'· Architecture Desk', edudesk:'· Education Desk', skills:'· Skills', filmdesk:'· Film Desk', leadsdesk:'· Leads Desk'}[v] || '';
+  $('#ttl').textContent = {chat: chatFolder(), aaj:'· Today', kaam:'· All tools', baat:'· Baat', main:'· Main', bana:'· Creations', project:'· Folder', arena:'· Design Arena', lab:'· Prayogshala', hire:'· AI Employees', seekh:'· Video Learner', interactive:'· Hoola Interactive', code:'· Hoola Code', seodesk:'· SEO Desk', socialdesk:'· Social Desk', caddesk:'· CAD Desk', gamedesk:'· Game Desk', archdesk:'· Architecture Desk', edudesk:'· Education Desk', skills:'· Skills', filmdesk:'· Film Desk', leadsdesk:'· Leads Desk'}[v] || '';
   if (v !== 'project') PJ?.draw();
   drawNav(); $('#app').classList.remove('drawer');
   if (v === 'aaj') drawToday(); if (v === 'main') drawMain(); if (v === 'baat') drawBaat();
@@ -195,6 +197,8 @@ function go(v, arg) {
   if (v === 'systems') ENT?.open($('#systems'), arg || 'erp');   // v0.453 an Enterprise employee's Open desk lands on its own role   // v0.396 CONNECT: her own ERP / CRM address + key
   if (v === 'hire') EMP?.hub($('#hire'));
   if (v !== 'interactive') HIV?.leave();
+  if (v !== 'code') HCD?.leave();
+  if (v === 'code') HCD?.open($('#code'));   // v0.748 HOOLA CODE
   if (v === 'seekh') SKH?.open($('#seekh'));   // v0.718 the HOOLA AI Video Learner (from the AI Employees hub)
   if (v === 'interactive') HIV?.open($('#interactive'));   // v0.747 HOOLA INTERACTIVE
   if (v === 'seodesk') EMP?.desk($('#seodesk'));
@@ -326,6 +330,10 @@ async function enter() {
     EMP = HoolaEmployees({api, esc, toast, changed: syncEmployees, open: (v, arg) => go(v, arg),   // v0.453 desks open Systems / a lab directly
                           say: text => { go('chat'); msg.value = text; msg.dispatchEvent(new Event('input')); composer.requestSubmit(); }});
     if (!NAV.some(([k]) => k === 'hire')) NAV.unshift(['hire', 'AI Employees']);   // v0.443 her AI staff is the FIRST section
+  }
+  if (CONFIG.hoola_code && window.HoolaCode && !HCD) {   // v0.748 HOOLA CODE: a row right under Create / Hoola Interactive
+    HCD = HoolaCode({api, esc, toast});
+    if (!NAV.some(([k]) => k === 'code')) NAV.splice(NAV.findIndex(([k]) => k === 'creative') + 1, 0, ['code', 'Hoola Code']);
   }
   if (CONFIG.interactive && window.HoolaInteractive && !HIV) {   // v0.747 HOOLA INTERACTIVE: a row right under Create
     HIV = HoolaInteractive({api, esc, toast, upload: async file => {
