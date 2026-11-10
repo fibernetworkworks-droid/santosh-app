@@ -488,6 +488,9 @@ async def kala(ctx: Ctx, action: str = "status", *, q: str | None = None, name: 
 KALA_TOOLS = [
     {"name": "kala", "description": (
         "KALA MANCH (v0.681): Google's public skill catalog (github.com/google/skills, Apache-2.0) "
+        "- Google's own how-to guides for Google Cloud / GCP: GKE (Kubernetes), BigQuery, Vertex AI / Agent "
+        "Platform, Gemini API, Genkit, Firebase, Cloud Run, Cloud Logging / Monitoring, IAM, SecOps, AlloyDB, "
+        "Spanner, Bigtable, Apigee, Mobile Ads; use it before answering any Google Cloud how-to "
         "- the T5 idea, zero login, zero API key, GET only, one fixed host. Actions: catalog "
         "(fetch index.json byte-exact behind a 5-min cache, narrow by a case-insensitive regex over "
         "name+description: q, limit<=25; no q = the first entries alphabetical) | read (one SKILL.md "
