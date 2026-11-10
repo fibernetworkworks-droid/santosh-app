@@ -234,6 +234,15 @@ class Live:
         self.raw, self.sent, self.last = "", "", 0.0
         self.think_reset()
 
+    def retract(self) -> None:
+        """parity Phase 5b: a check caught this block's answer before it was final - the words she saw stream are
+        void (`delta_reset`), and the corrected answer is written into the SAME block (one reply, replaced in place).
+        Unlike reset() the Soch card keeps what was thought."""
+        if self.sent or self.raw:
+            STATS["retracted"] = STATS.get("retracted", 0) + 1
+            bus.publish_live(self.conv, "delta_reset", {"turn": self.turn, "seg": max(0, self.seg)})
+        self.raw, self.sent, self.last, self.tagged = "", "", 0.0, False
+
     # ---- thinking (v0.171): the same discipline as the words — held back at word edges, cleaned, never stored
     def feed_think(self, piece: str) -> None:
         if not piece:

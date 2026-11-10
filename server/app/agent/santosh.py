@@ -633,7 +633,15 @@ def _hard_held(state: dict, settings, conversation_id: str = "") -> bool:
     turns, so a goal round / routine / call report reached her unchecked."""
     if not getattr(settings, "hard_check", True):
         return False
+    if plain_loop_on(settings):
+        # parity Phase 5b: only an answer written from a research dossier is held (its figures need a source);
+        # an ordinary hard answer streams and ends the turn like any other answer (no reviewer call)
+        return _research_delivered(conversation_id, state)
     return bool(state.get("hard")) or _research_delivered(conversation_id, state)
+
+
+def plain_loop_on(settings) -> bool:
+    return bool(getattr(settings, "chat_plain_loop", False))
 
 
 # wave 13: said under a corrected answer that still fails the free check (it used to go out as if checked)
@@ -1424,7 +1432,7 @@ async def _steps(conversation_id: str, ctx: Ctx, gender: str, history: list[dict
         if learned and learned.get("learned"):
             bus.publish(conversation_id, "procedure", {"event": "learned", "id": learned["learned"], "title": learned["title"]})
     if user_text and actor == "owner" and settings.draft_check and not state.get("hard_checked") \
-            and not state.get("answer_only"):   # parity Phase 5: no after-the-reply note
+            and not state.get("answer_only") and not plain_loop_on(settings):   # parity Phase 5 / 5b: no after-the-reply note
 
         # (v0.436 a hard answer already passed the self-check before she saw it - no second, weaker look after)
         # v0.223 the last look, in the background: the reply is already on her screen, so nothing waits for this
@@ -2034,8 +2042,40 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                 history.append({"role": "user", "content": [{"type": "text", "text": nudge}]})
                 _save(conversation_id, "user", [{"type": "text", "text": nudge}])
                 continue
-        _save(conversation_id, "assistant", blocks, display="\n\n".join(texts) or None)
-        if texts:
+        plain_nudge = None   # parity Phase 5b: the checks already ran before the answer was shown
+        if texts and stop not in ("tool_use", "max_tokens") and plain_loop_on(settings):
+            final_text = "\n\n".join(texts)
+            srcs = None
+            if _gyaan.used(conversation_id):
+                final_text, srcs = _gyaan.finish(conversation_id, final_text, state.get("request", ""))
+                if not state.get("answer_only"):
+                    final_text = await _gyaan.ground(conversation_id, final_text)
+            plain_nudge = await _plain_check(state, final_text, settings, conversation_id)
+            if plain_nudge:
+                # the draft stays in the model's history (so it can correct itself) but is never a chat message;
+                # the words she saw stream are voided and the corrected answer is written into the same block
+                _save(conversation_id, "assistant", blocks, display=None)
+                if live is not None:
+                    live.retract()
+                STATS_PLAIN["replaced"] += 1
+                history.append({"role": "user", "content": [{"type": "text", "text": plain_nudge}]})
+                _save(conversation_id, "user", [{"type": "text", "text": plain_nudge}])
+                continue
+            shown = "\n\n".join(texts)
+            if state.get("correct"):   # still false after its one correction: said INSIDE the same reply
+                note = state.pop("correct")
+                final_text = (final_text + "\n\n" + note).strip()
+                shown = (shown + "\n\n" + note).strip()
+                blocks = blocks + [{"type": "text", "text": note}]
+                history[-1] = {"role": "assistant", "content": blocks}
+            _save(conversation_id, "assistant", blocks, display=shown)
+            if srcs:
+                bus.publish(conversation_id, "gyaan_sources", {"sources": srcs})
+            bus.publish(conversation_id, "message", {"role": "assistant", "text": final_text, "source": "agent", **_tag(live)})
+            plain_nudge = ""
+        else:
+            _save(conversation_id, "assistant", blocks, display="\n\n".join(texts) or None)
+        if texts and plain_nudge is None:
             final_text = "\n\n".join(texts)
             if stop != "tool_use" and _gyaan.used(conversation_id):
                 # v0.134 Gyaan: links from retrieved text removed, numbers checked against the cited sources, source chips
@@ -2056,7 +2096,10 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                 history.append({"role": "user", "content": [{"type": "text", "text": nudge}]})
                 _save(conversation_id, "user", [{"type": "text", "text": nudge}])
                 continue
-            nudge = await _pakka_check(state, final_text, settings, ran_tools, conversation_id)
+            if plain_loop_on(settings):   # parity Phase 5b: no after-answer self-check (the kept checks ran above)
+                nudge = ""
+            else:
+                nudge = await _pakka_check(state, final_text, settings, ran_tools, conversation_id)
             if not nudge and settings.agent_goal:
                 # v0.187 goal mode: text never ends a turn while the goal's steps are open
                 g = _goal.active_for(conversation_id)
@@ -2575,6 +2618,55 @@ async def _pakka_check(state: dict, final_text: str, settings, ran_tools: bool, 
             if not draftcheck.action_claim(final_text):
                 return ""
         state["correct"] = "(To be clear: this is still left - " + (v["missing"] or "some part") + ".)"
+    return ""
+
+
+STATS_PLAIN = {"replaced": 0, "false_action": 0, "promise": 0, "done_failed": 0, "dropped": 0}
+
+
+async def _plain_check(state: dict, final_text: str, settings, conversation_id: str) -> str:
+    """parity Phase 5b: the checks that run BEFORE an answer is shown, all free (no model call). Returns the one
+    correction ask ('' = the answer is final). Only what protects her from a false statement about the world:
+      - a false ACTION claim (sent / paid / booked / deleted / published) no tool of this turn / job backs;
+      - a reminder promised while no reminder was set (nothing would ever keep that promise);
+      - "done" while every tool of the turn failed, said as an action claim.
+    A second false try is said inside the same reply (state['correct']); research figures are held + checked by
+    _hard_check (a dossier turn). The generic pakka self-check model call is gone in this mode."""
+    from . import draftcheck
+    if conversation_id in _stopped or state["breaker"].stopped or state.get("halted"):
+        return ""
+    if settings.draft_check:
+        g0 = state.get("goal") or (_goal_now(conversation_id, settings))
+        since = None
+        if g0:
+            from . import goal as _g
+            since = _g.started_at(g0["id"]) if g0.get("id") else None
+        before = state.get("fake_done", 0)
+        fake = draftcheck.fake_done(state, final_text, conversation_id, since)
+        if fake == draftcheck.NUDGE_PROMISE:
+            STATS_PLAIN["promise"] += 1
+            return fake
+        if fake:
+            if state.get("false_action"):
+                STATS_PLAIN["false_action"] += 1
+                return fake
+            STATS_PLAIN["dropped"] += 1        # a claim that is not an action: the answer stands as written
+            state["fake_done"] = before
+            return ""
+        if state.get("correct"):
+            return ""
+    if settings.kaam_enabled and state.get("calls"):
+        from . import kaam_laws as _kaam
+        from . import pakka
+        real = [c for c in state["calls"] if c.get("tool") not in pakka.SKIP]
+        if real and draftcheck.action_claim(final_text):
+            _note = _kaam.done_note(state, final_text)
+            if _note:
+                if not state.get("done_nudged"):
+                    state["done_nudged"] = True
+                    STATS_PLAIN["done_failed"] += 1
+                    return SELF_CORRECT_NUDGE.format(what="every tool in this turn failed, so what was asked is not done")
+                state["correct"] = _note
     return ""
 
 

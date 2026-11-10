@@ -11,7 +11,7 @@ from app.config import get_settings
 from tests.test_bazar import bz  # noqa: F401
 
 SWITCHES = ("CHAT_ONE_MODEL", "CHAT_SMALL_PROMPT", "CHAT_CORE_TOOLS", "CHAT_WORK_IN_TURN", "CHAT_ANSWER_ONLY",
-            "CHAT_ARTIFACT_DIRECT")
+            "CHAT_ARTIFACT_DIRECT", "CHAT_PLAIN_LOOP")
 
 
 @pytest.fixture()
@@ -48,6 +48,7 @@ def test_a_turn_with_everything_on(allon, monkeypatch):
     assert len(s["tools"]) <= 30, len(s["tools"])       # in view; the rest are deferred (tool search)
     assert len({x["brain"] for x in seen}) == 1                        # Phase 1
     assert out == "Here is the answer."                                # Phase 5: nothing stapled on
+    assert len(seen) == 1                                              # Phase 5b: the answer ends the turn
     assert "(Kaam:" not in json.dumps(out)
 
 
