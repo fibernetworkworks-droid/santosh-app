@@ -178,11 +178,45 @@ function nodesOf(html) {
   return [...holder.childNodes];
 }
 
+/* v0.716 NAYA ROOP (her pick: "Fade with soft focus"): with {soft:true} the NEWEST words of the reply land out of a
+   light blur, one by one as the pacer releases them. The block being written is re-rendered on every tick, so each
+   word keeps the time it was first seen (this.born) and is re-wrapped with a NEGATIVE animation-delay of its age -
+   the fade carries on smoothly across re-renders instead of restarting; a word older than SOFT_MS is plain text
+   again. Only words are wrapped (code, pre and maths are left alone), so copy / selection / the DOM shape of the
+   reloaded reply are unchanged (v0.286 EK HI DOM: the live and reloaded replies still build the same blocks). */
+const SOFT_MS = 460;
+function soften(nodes, born, now) {
+  let k = 0;
+  const walk = n => {
+    if (n.nodeType === 3) {
+      const parts = n.nodeValue.split(/(\s+)/);
+      let changed = false; const out = [];
+      for (const p of parts) {
+        if (!p) continue;
+        if (/^\s+$/.test(p)) { out.push(document.createTextNode(p)); continue; }
+        if (born[k] === undefined) born[k] = now;
+        const age = now - born[k]; k++;
+        if (age < SOFT_MS) {
+          const s = document.createElement('span'); s.className = 'w'; s.textContent = p;
+          if (age > 0) s.style.animationDelay = (-age) + 'ms';
+          out.push(s); changed = true;
+        } else out.push(document.createTextNode(p));
+      }
+      if (changed) n.replaceWith(...out);
+      return;
+    }
+    if (n.nodeType !== 1 || /^(PRE|CODE|SCRIPT|STYLE|SVG|MATH)$/i.test(n.nodeName) || n.classList.contains('katex')) return;
+    for (const c of [...n.childNodes]) walk(c);
+  };
+  for (const n of nodes) walk(n);
+}
 class Live {
-  constructor(el) { this.el = el; this.done = []; this.tailNodes = []; this.text = ''; }
+  constructor(el, opts = {}) { this.el = el; this.done = []; this.tailNodes = []; this.text = ''; this.soft = !!opts.soft; this.tailI = -1; this.born = []; }
   update(text, streaming) {
     this.text = text;
     const bs = splitBlocks(text), fin = streaming ? bs.length - 1 : bs.length;
+    const now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+    const soft = this.soft && !(typeof document !== 'undefined' && document.hidden);
     let i = 0;
     while (i < this.done.length && i < fin && this.done[i].src === bs[i]) i++;
     for (const d of this.done.splice(i)) for (const n of d.nodes) n.remove();   // changed (a reset, or a final text that differs)
@@ -190,15 +224,19 @@ class Live {
     this.tailNodes = [];
     for (; i < fin; i++) {
       const nodes = nodesOf(block(bs[i], false));
+      // the block that was being written finishes: its last words keep fading from where they were
+      if (soft) soften(nodes, i === this.tailI ? this.born : [], now);
       for (const n of nodes) this.el.appendChild(n);
       this.done.push({src: bs[i], nodes});
     }
     if (streaming && bs.length) {
       this.tailNodes = nodesOf(block(bs[bs.length - 1], true));
+      if (bs.length - 1 !== this.tailI) { this.tailI = bs.length - 1; this.born = []; }
+      if (soft) soften(this.tailNodes, this.born, now);
       for (const n of this.tailNodes) this.el.appendChild(n);
-    }
+    } else { this.tailI = -1; this.born = []; }
   }
-  clear() { this.done = []; this.tailNodes = []; this.text = ''; this.el.innerHTML = ''; }
+  clear() { this.done = []; this.tailNodes = []; this.text = ''; this.el.innerHTML = ''; this.tailI = -1; this.born = []; }
 }
 
 window.HoolaMD = {render, Live, esc, splitBlocks, closeInline, inline};

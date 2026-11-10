@@ -24,9 +24,9 @@ async def ai_kharcha(ctx: Ctx, action, days: int = 30, limit_inr=None, **_):
     from .. import usage
     if action == "limit":
         if (getattr(ctx, "actor", "owner") or "owner") != "owner":
-            raise ToolError("Kharche ki seema sirf owner badal sakti hain.")
+            raise ToolError("Only the owner can change the spending limit.")
         if limit_inr is None or float(limit_inr) < 0:
-            raise ToolError("limit_inr dijiye (rupaye mein; 0 = koi seema nahi).")
+            raise ToolError("Give limit_inr (in rupees; 0 = no limit).")
         r = await asyncio.to_thread(usage.set_limit, ctx.tenant_id, None, float(limit_inr))
     else:
         r = await asyncio.to_thread(usage.report, ctx.tenant_id, int(days or 30))

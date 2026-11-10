@@ -16,7 +16,21 @@ log = logging.getLogger("santosh.pylab")
 SHOW_TYPES = {".png": "image/png", ".jpg": "image/jpeg", ".svg": "image/svg+xml", ".csv": "text/csv", ".txt": "text/plain",
               ".json": "application/json", ".md": "text/markdown", ".html": "text/html",
               ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}
+DOC_TYPES = {".pdf": "application/pdf",
+             ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+             ".pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation"}
 STATS = {"runs": 0, "ok": 0, "failed": 0, "timeouts": 0}
+
+
+def _types() -> dict[str, str]:
+    """v0.738 parity 9a: with chat_files_by_code the Word / PDF / PowerPoint files the code writes reach her chat too."""
+    try:
+        from ..config import get_settings
+        if getattr(get_settings(), "chat_files_by_code", False):
+            return {**SHOW_TYPES, **DOC_TYPES}
+    except Exception:
+        pass
+    return SHOW_TYPES
 
 
 class PylabError(Exception):
@@ -62,14 +76,15 @@ def run(tenant: str, code: str, datasets: list[str] | None = None, file_ids: lis
     STATS["ok" if r["ok"] else "failed"] += 1
     STATS["timeouts"] += int(r["timed_out"])
     made = []
+    types = _types()
     for o in r["outputs"]:
         ext = Path(o["name"]).suffix.lower()
-        if ext not in SHOW_TYPES or not o["data"]:
+        if ext not in types or not o["data"]:
             made.append({"name": o["name"], "size": o["size"], "kept": False})
             continue
         try:
             from .. import chatfiles
-            f = chatfiles.store(tenant, o["name"], o["data"], SHOW_TYPES[ext])
+            f = chatfiles.store(tenant, o["name"], o["data"], types[ext])
             if publish and conv:
                 from ..events import bus
                 bus.publish(conv, "pc_file", {**f, "source": "pylab", "title": purpose[:80] or o["name"]})

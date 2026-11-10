@@ -84,7 +84,7 @@ class _EmployeeInboxTabState extends State<EmployeeInboxTab> {
           segments: [
             ButtonSegment(value: 'chats', label: Text('Chats${(sum['unread'] as num? ?? 0) > 0 ? ' · ${sum['unread']}' : ''}')),
             ButtonSegment(value: 'appts', label: Text('Appointment${today.isNotEmpty ? ' · ${today.length}' : ''}')),
-            ButtonSegment(value: 'dues', label: Text('Baaki${(dues['open'] as num? ?? 0) > 0 ? ' · ${dues['open']}' : ''}')),
+            ButtonSegment(value: 'dues', label: Text('Pending${(dues['open'] as num? ?? 0) > 0 ? ' · ${dues['open']}' : ''}')),
           ],
           selected: {_view},
           onSelectionChanged: (v) => setState(() => _view = v.first),
@@ -103,15 +103,15 @@ class _EmployeeInboxTabState extends State<EmployeeInboxTab> {
                       if (noNumber)
                         const Glass(
                           child: Text(
-                              'Business ka WhatsApp number abhi juda nahi hai. "Naukri" tab mein WhatsApp Business (Cloud API) ka '
-                              'phone number ID daaliye. Sirf Meta ka official API: personal WhatsApp kabhi nahi.',
+                              'The business WhatsApp number is not connected yet. In the "Job" tab, enter the WhatsApp Business (Cloud API) '
+                              'phone number ID. Only Meta\'s official API: never personal WhatsApp.',
                               style: TextStyle(color: C.chip, height: 1.35)),
                         ),
                       for (final c in _rows(_o?['contacts'])) _ChatRow(c: c, onTap: () => _open(c)),
                       if (_o != null && _rows(_o?['contacts']).isEmpty && !noNumber)
                         const Padding(
                             padding: EdgeInsets.all(30),
-                            child: Center(child: Text('Graahakon ke message yahan dikhenge.', style: TextStyle(color: C.muted)))),
+                            child: Center(child: Text('Customers\' messages will show here.', style: TextStyle(color: C.muted)))),
                     ]),
                   ),
       ),
@@ -144,7 +144,7 @@ class _ChatRow extends StatelessWidget {
         Text(_t(c['last_at'] as String?), style: const TextStyle(color: C.faint, fontSize: 11.5)),
       ]),
       subtitle: Row(children: [
-        if (c['human'] == true) const Padding(padding: EdgeInsets.only(right: 6), child: Pill('AAP', fg: C.accent2)),
+        if (c['human'] == true) const Padding(padding: EdgeInsets.only(right: 6), child: Pill('YOU', fg: C.accent2)),
         if (c['opted_out'] == true) const Padding(padding: EdgeInsets.only(right: 6), child: Pill('STOP', fg: C.bad)),
         Expanded(child: Text('${c['last_text']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12.5))),
         if (unread > 0)
@@ -251,14 +251,14 @@ class _BizThreadScreenState extends State<BizThreadScreen> {
         backgroundColor: Colors.transparent,
         title: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text('${c['name'] ?? ''}', style: const TextStyle(fontSize: 16)),
-          Text(human ? 'Aap jawab de rahi hain' : '$name jawab de raha hai',
+          Text(human ? 'You are replying' : '$name is replying',
               style: TextStyle(fontSize: 11.5, color: human ? C.accent2 : C.ok)),
         ]),
         actions: [
           if (_o != null)
             TextButton(
               onPressed: () => _human(!human),
-              child: Text(human ? '$name ko do' : 'Main sambhalungi'),
+              child: Text(human ? 'Give to $name' : 'I will handle it'),
             ),
         ],
       ),
@@ -296,7 +296,7 @@ class _BizThreadScreenState extends State<BizThreadScreen> {
           if (!open && _o != null)
             const Padding(
               padding: EdgeInsets.fromLTRB(16, 0, 16, 6),
-              child: Text('24 ghante se graahak ka message nahi aaya: WhatsApp ke niyam se ab sirf approved template ja sakta hai.',
+              child: Text('No customer message in 24 hours: under WhatsApp rules only an approved template can go now.',
                   style: TextStyle(color: C.warn, fontSize: 12)),
             ),
           SafeArea(
@@ -312,7 +312,7 @@ class _BizThreadScreenState extends State<BizThreadScreen> {
                     maxLines: 4,
                     textCapitalization: TextCapitalization.sentences,
                     decoration: InputDecoration(
-                      hintText: human ? 'Apna jawab likhiye' : 'Aap likhengi to $name ruk jayega',
+                      hintText: human ? 'Write your reply' : 'If you write, $name will stop',
                       filled: true,
                       fillColor: const Color(0x14FFFFFF),
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide.none),
@@ -343,7 +343,7 @@ class _Bubble extends StatelessWidget {
   Widget build(BuildContext context) {
     final mine = m['direction'] == 'out';
     final by = m['by'] as String? ?? '';
-    final who = !mine ? '' : (by == 'hoola' ? avatar : by == 'owner' ? 'Aap' : by.startsWith('staff') ? 'Team' : 'System');
+    final who = !mine ? '' : (by == 'hoola' ? avatar : by == 'owner' ? 'You' : by.startsWith('staff') ? 'Team' : 'System');
     final st = m['status'] as String? ?? '';
     return Align(
       alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
@@ -365,7 +365,7 @@ class _Bubble extends StatelessWidget {
           SelectableText('${m['text']}', style: const TextStyle(fontSize: 14, height: 1.3)),
           const SizedBox(height: 2),
           Text(
-              '${_t(m['at'] as String?)}${mine && st.isNotEmpty ? ' · ${{'sent': 'gaya', 'delivered': 'pahuncha', 'read': 'padha', 'failed': 'nahi gaya', 'held': 'ruka'}[st] ?? st}' : ''}',
+              '${_t(m['at'] as String?)}${mine && st.isNotEmpty ? ' · ${{'sent': 'sent', 'delivered': 'delivered', 'read': 'read', 'failed': 'not sent', 'held': 'held'}[st] ?? st}' : ''}',
               style: TextStyle(fontSize: 10.5, color: st == 'failed' || st == 'held' ? C.bad : C.faint)),
         ]),
       ),
@@ -418,10 +418,10 @@ class _ApptsViewState extends State<_ApptsView> {
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, set) => AlertDialog(
           backgroundColor: C.bgBottom,
-          title: const Text('Naya appointment'),
+          title: const Text('New appointment'),
           content: SingleChildScrollView(
             child: Column(mainAxisSize: MainAxisSize.min, children: [
-              if (slots.isEmpty) const Text('Agle 7 din mein koi khaali samay nahi (Naukri tab mein samay dekhiye).'),
+              if (slots.isEmpty) const Text('No free time in the next 7 days (see the times in the Job tab).'),
               if (slots.isNotEmpty)
                 DropdownButton<String>(
                   value: pick,
@@ -430,14 +430,14 @@ class _ApptsViewState extends State<_ApptsView> {
                   items: [for (final s in slots) DropdownMenuItem(value: s, child: Text(s))],
                   onChanged: (v) => set(() => pick = v),
                 ),
-              TextField(controller: name, textCapitalization: TextCapitalization.words, decoration: const InputDecoration(labelText: 'Naam')),
+              TextField(controller: name, textCapitalization: TextCapitalization.words, decoration: const InputDecoration(labelText: 'Name')),
               TextField(controller: phone, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'Phone')),
-              TextField(controller: note, decoration: const InputDecoration(labelText: 'Kis liye')),
+              TextField(controller: note, decoration: const InputDecoration(labelText: 'For what')),
             ]),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Rehne do')),
-            TextButton(onPressed: pick == null ? null : () => Navigator.pop(ctx, true), child: const Text('Book karo')),
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Leave it')),
+            TextButton(onPressed: pick == null ? null : () => Navigator.pop(ctx, true), child: const Text('Book')),
           ],
         ),
       ),
@@ -466,12 +466,12 @@ class _ApptsViewState extends State<_ApptsView> {
     return RefreshIndicator(
       onRefresh: _load,
       child: ListView(padding: const EdgeInsets.fromLTRB(12, 4, 12, 32), children: [
-        GlassButton(label: 'Appointment jodiye', icon: Icons.event_available_rounded, onTap: _add),
+        GlassButton(label: 'Add appointment', icon: Icons.event_available_rounded, onTap: _add),
         const SizedBox(height: 8),
         if (_err != null) Text(_err!, style: const TextStyle(color: C.bad)),
         if (rows == null && _err == null) const Padding(padding: EdgeInsets.all(30), child: Center(child: CircularProgressIndicator())),
         if (rows != null && rows.isEmpty)
-          const Padding(padding: EdgeInsets.all(30), child: Center(child: Text('Aage koi appointment nahi.', style: TextStyle(color: C.muted)))),
+          const Padding(padding: EdgeInsets.all(30), child: Center(child: Text('No upcoming appointments.', style: TextStyle(color: C.muted)))),
         for (final a in rows ?? const <Map<String, dynamic>>[])
           ListTile(
             contentPadding: const EdgeInsets.symmetric(horizontal: 6),
@@ -484,7 +484,7 @@ class _ApptsViewState extends State<_ApptsView> {
                             ? Icons.person_off_rounded
                             : Icons.event_rounded,
                 color: a['status'] == 'booked' ? C.accent : C.muted),
-            title: Text('${_t(a['start'] as String?, date: true)} · ${a['name'] == '' ? 'Bina naam' : a['name']}',
+            title: Text('${_t(a['start'] as String?, date: true)} · ${a['name'] == '' ? 'No name' : a['name']}',
                 style: const TextStyle(fontWeight: FontWeight.w700)),
             subtitle: Text(
                 [if ('${a['note']}'.isNotEmpty) '${a['note']}', if ('${a['phone']}'.isNotEmpty) '+${a['phone']}', '${a['minutes']} min']
@@ -494,10 +494,10 @@ class _ApptsViewState extends State<_ApptsView> {
               color: C.bgBottom,
               onSelected: (v) => _status(a, v),
               itemBuilder: (_) => const [
-                PopupMenuItem(value: 'done', child: Text('Ho gaya')),
-                PopupMenuItem(value: 'no_show', child: Text('Nahi aaye')),
+                PopupMenuItem(value: 'done', child: Text('Done')),
+                PopupMenuItem(value: 'no_show', child: Text('Did not come')),
                 PopupMenuItem(value: 'cancelled', child: Text('Cancel')),
-                PopupMenuItem(value: 'booked', child: Text('Phir se booked')),
+                PopupMenuItem(value: 'booked', child: Text('Booked again')),
               ],
             ),
           ),
@@ -543,19 +543,19 @@ class _DuesViewState extends State<_DuesView> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: C.bgBottom,
-        title: const Text('Baaki jodiye'),
+        title: const Text('Add dues'),
         content: SingleChildScrollView(
           child: Column(mainAxisSize: MainAxisSize.min, children: [
-            TextField(controller: name, textCapitalization: TextCapitalization.words, decoration: const InputDecoration(labelText: 'Naam')),
+            TextField(controller: name, textCapitalization: TextCapitalization.words, decoration: const InputDecoration(labelText: 'Name')),
             TextField(controller: phone, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'WhatsApp number')),
-            TextField(controller: amount, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Rakam (₹)')),
-            TextField(controller: date, decoration: const InputDecoration(labelText: 'Tareekh (2026-11-05)')),
-            TextField(controller: note, decoration: const InputDecoration(labelText: 'Kis cheez ka')),
+            TextField(controller: amount, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Amount (₹)')),
+            TextField(controller: date, decoration: const InputDecoration(labelText: 'Date (2026-11-05)')),
+            TextField(controller: note, decoration: const InputDecoration(labelText: 'For what')),
           ]),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Rehne do')),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Jodo')),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Leave it')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Add')),
         ],
       ),
     );
@@ -580,7 +580,7 @@ class _DuesViewState extends State<_DuesView> {
       final f = res?.files.single;
       if (f == null || f.bytes == null) return;
       final r = await widget.api.employeeImportDues(f.name, f.bytes!);
-      if (mounted) _snack(context, '${r['added']} jode${(r['skipped_rows'] as List? ?? const []).isNotEmpty ? ', kuch line chhodi' : ''}');
+      if (mounted) _snack(context, '${r['added']} added${(r['skipped_rows'] as List? ?? const []).isNotEmpty ? ', left out a few lines' : ''}');
       await _load();
     } catch (e) {
       if (mounted) _snack(context, '$e');
@@ -606,15 +606,15 @@ class _DuesViewState extends State<_DuesView> {
         if (_o != null)
           Glass(
             child: Text(
-                'Khule: ${sum['open']} · kul ${sum['total']}${(sum['late'] as num? ?? 0) > 0 ? '\nDer se: ${sum['late']} · ${sum['late_total']}' : ''}\n'
-                'Graahak WhatsApp par poochhe to Hoola sirf unka baaki batata hai aur aapke UPI ID ka link deta hai. Paisa aaya, yeh aap batati hain.',
+                'Open: ${sum['open']} · total${sum['total']}${(sum['late'] as num? ?? 0) > 0 ? '\nLate: ${sum['late']} · ${sum['late_total']}' : ''}\n'
+                'If a customer asks on WhatsApp, Hoola tells them only their balance and gives a link to your UPI ID. You tell it when the money has come.',
                 style: const TextStyle(color: C.chip, height: 1.35)),
           ),
         const SizedBox(height: 8),
         Row(children: [
-          Expanded(child: GlassButton(label: 'Jodiye', icon: Icons.add_rounded, onTap: _add)),
+          Expanded(child: GlassButton(label: 'Add', icon: Icons.add_rounded, onTap: _add)),
           const SizedBox(width: 8),
-          Expanded(child: GlassButton(label: 'CSV se', icon: Icons.upload_file_rounded, onTap: _import)),
+          Expanded(child: GlassButton(label: 'From CSV', icon: Icons.upload_file_rounded, onTap: _import)),
         ]),
         const SizedBox(height: 6),
         const Text('CSV: name, phone, amount, due_date, note', style: TextStyle(color: C.faint, fontSize: 11.5)),
@@ -625,9 +625,9 @@ class _DuesViewState extends State<_DuesView> {
             title: Text('${d['name'] == '' ? '+${d['phone']}' : d['name']} · ${d['amount_text']}', style: const TextStyle(fontWeight: FontWeight.w700)),
             subtitle: Text(
                 [
-                  {'open': 'Baaki', 'promised': 'Waada ${d['promised_on']}', 'paid': 'Mil gaya', 'disputed': 'Vivaad', 'written_off': 'Chhod diya'}[d['status']] ??
+                  {'open': 'Pending', 'promised': 'Promise ${d['promised_on']}', 'paid': 'Received', 'disputed': 'Dispute', 'written_off': 'Left'}[d['status']] ??
                       '${d['status']}',
-                  if ('${d['due_date']}'.isNotEmpty) 'tareekh ${d['due_date']}',
+                  if ('${d['due_date']}'.isNotEmpty) 'date${d['due_date']}',
                   if ('${d['note']}'.isNotEmpty) '${d['note']}',
                 ].join(' · '),
                 style: const TextStyle(fontSize: 12)),
@@ -635,10 +635,10 @@ class _DuesViewState extends State<_DuesView> {
               color: C.bgBottom,
               onSelected: (v) => _status(d, v),
               itemBuilder: (_) => const [
-                PopupMenuItem(value: 'paid', child: Text('Paisa mil gaya')),
-                PopupMenuItem(value: 'disputed', child: Text('Vivaad hai')),
-                PopupMenuItem(value: 'written_off', child: Text('Chhod do')),
-                PopupMenuItem(value: 'open', child: Text('Phir se baaki')),
+                PopupMenuItem(value: 'paid', child: Text('Money received')),
+                PopupMenuItem(value: 'disputed', child: Text('Disputed')),
+                PopupMenuItem(value: 'written_off', child: Text('Leave it')),
+                PopupMenuItem(value: 'open', child: Text('Due again')),
               ],
             ),
           ),
@@ -688,18 +688,18 @@ class _BizChannelCardState extends State<BizChannelCard> {
         title: const Text('Business WhatsApp number'),
         content: SingleChildScrollView(
           child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Text('Meta WhatsApp Manager > Phone numbers se. Sirf official Cloud API.', style: TextStyle(color: C.muted, fontSize: 12.5)),
+            const Text('From Meta WhatsApp Manager > Phone numbers. Official Cloud API only.', style: TextStyle(color: C.muted, fontSize: 12.5)),
             TextField(controller: id, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Phone number ID')),
             TextField(controller: numc, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'Number (91...)')),
             TextField(
                 controller: tok,
                 obscureText: true,
-                decoration: const InputDecoration(labelText: 'Access token (zaroori nahi)', helperText: 'Server par encrypted rehta hai')),
+                decoration: const InputDecoration(labelText: 'Access token (not required)', helperText: 'Kept encrypted on the server')),
           ]),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Rehne do')),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Jodo')),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Leave it')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Add')),
         ],
       ),
     );
@@ -717,7 +717,7 @@ class _BizChannelCardState extends State<BizChannelCard> {
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text('WhatsApp number', style: display(17)),
           const SizedBox(height: 4),
-          const Text('Graahak is number par likhenge, Hoola naukri ke niyam se jawab dega. Webhook: /webhooks/whatsapp',
+          const Text('Customers will write to this number, and Hoola will reply by the job rules. Webhook: /webhooks/whatsapp',
               style: TextStyle(color: C.muted, fontSize: 12.5)),
           if (!_loaded) const LinearProgressIndicator(),
           for (final c in _ch)
@@ -725,7 +725,7 @@ class _BizChannelCardState extends State<BizChannelCard> {
               contentPadding: EdgeInsets.zero,
               leading: const Icon(Icons.chat_rounded, color: C.ok),
               title: Text(c['display_number'] == '' ? 'ID ${c['phone_number_id']}' : '+${c['display_number']}'),
-              subtitle: Text('ID ${c['phone_number_id']}${c['own_token'] == true ? ' · apna token' : ''}', style: const TextStyle(fontSize: 12)),
+              subtitle: Text('ID ${c['phone_number_id']}${c['own_token'] == true ? ' · own token' : ''}', style: const TextStyle(fontSize: 12)),
               trailing: IconButton(
                 icon: const Icon(Icons.link_off_rounded),
                 onPressed: () async {
@@ -738,7 +738,7 @@ class _BizChannelCardState extends State<BizChannelCard> {
                 },
               ),
             ),
-          if (_loaded && _ch.isEmpty) TextButton.icon(onPressed: _add, icon: const Icon(Icons.add_rounded), label: const Text('Number jodiye')),
+          if (_loaded && _ch.isEmpty) TextButton.icon(onPressed: _add, icon: const Icon(Icons.add_rounded), label: const Text('Connect number')),
         ]),
       );
 }
@@ -757,13 +757,13 @@ class BizHandoverCard extends StatelessWidget {
         Row(children: [
           const Icon(Icons.support_agent_rounded, color: C.accent2, size: 20),
           const SizedBox(width: 8),
-          Expanded(child: Text('WhatsApp: ${c['name'] ?? ''} ko aapki zaroorat hai', style: const TextStyle(fontWeight: FontWeight.w800))),
+          Expanded(child: Text('WhatsApp: ${c['name'] ?? ''} needs you', style: const TextStyle(fontWeight: FontWeight.w800))),
         ]),
         if ('${v['reason'] ?? ''}'.isNotEmpty)
           Padding(padding: const EdgeInsets.only(top: 4), child: Text('${v['reason']}', style: const TextStyle(color: C.muted, fontSize: 12.5))),
         const SizedBox(height: 8),
         GradientButton(
-          label: 'Chat kholo',
+          label: 'Open chat',
           icon: Icons.chat_rounded,
           height: 44,
           onTap: c['id'] == null

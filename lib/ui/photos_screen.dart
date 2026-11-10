@@ -22,8 +22,8 @@ class PhotosPickCard extends StatelessWidget {
     final uri = v['picker_uri'] as String? ?? '';
     final (chip, fg) = switch (status) {
       'ready' => ('$count CHUNI', C.ok),
-      'expired' => ('EXPIRE', C.muted),
-      _ => ('AAPKI BAARI', C.warn),
+      'expired' => ('EXPIRES', C.muted),
+      _ => ('YOUR TURN', C.warn),
     };
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
@@ -40,15 +40,15 @@ class PhotosPickCard extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             status == 'ready'
-                ? 'Photos mil gayi. Hoola aage ka kaam kar raha hai.'
+                ? 'Photos received. Hoola is carrying on with the work.'
                 : status == 'expired'
-                    ? 'Yeh link expire ho gaya. Hoola se dobara boliye.'
-                    : 'Neeche dabaiye, Google Photos mein photos chuniye aur "Done" dabaiye. Hoola sirf wahi photos dekhega.',
+                    ? 'This link has expired. Ask Hoola again.'
+                    : 'Tap below, choose photos in Google Photos and tap "Done". Hoola will see only those photos.',
             style: const TextStyle(color: C.muted, fontSize: 12.5),
           ),
           if (status == 'waiting' && uri.isNotEmpty) ...[
             const SizedBox(height: 10),
-            GradientButton(label: 'Photos chuniye', icon: Icons.photo_library_rounded, height: 48, onTap: () => _open(uri)),
+            GradientButton(label: 'Choose photos', icon: Icons.photo_library_rounded, height: 48, onTap: () => _open(uri)),
           ],
         ]),
       ),
@@ -131,9 +131,9 @@ class _PhotosScreenState extends State<PhotosScreen> {
         child: RefreshIndicator(
           onRefresh: _load,
           child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
-            const Text('Aap Google Photos mein photos chunte hain, Hoola unhe phone, PC, Drive ya email par bhejta hai. '
-                'Hoola photos upload karke albums bhi bana sakta hai. Google ki policy se Hoola aapki poori library '
-                'nahi dekh sakta, na share ya delete kar sakta hai.',
+            const Text('You choose photos in Google Photos, and Hoola sends them to your phone, PC, Drive or email. '
+                'Hoola can also upload photos and make albums. Under Google\'s policy, Hoola cannot see your whole library, '
+                'nor share or delete from it.',
                 style: TextStyle(color: C.muted, fontSize: 13)),
             const SizedBox(height: 14),
             if (_err != null) Padding(padding: const EdgeInsets.only(bottom: 10), child: Text(_err!, style: const TextStyle(color: C.bad))),
@@ -146,7 +146,7 @@ class _PhotosScreenState extends State<PhotosScreen> {
                   const SizedBox(width: 10),
                   Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Text(a['address'] as String? ?? '', style: const TextStyle(fontWeight: FontWeight.w700)),
-                    Text(a['can_upload'] == true ? 'Chunna + upload' : 'Sirf chunna', style: const TextStyle(color: C.muted, fontSize: 12.5)),
+                    Text(a['can_upload'] == true ? 'Chunna + upload' : 'Choose only', style: const TextStyle(color: C.muted, fontSize: 12.5)),
                     if (a['status'] == 'error') Text(a['error'] as String? ?? 'Login fail', style: const TextStyle(color: C.bad, fontSize: 12)),
                   ])),
                   if (a['removable'] == true)
@@ -154,20 +154,20 @@ class _PhotosScreenState extends State<PhotosScreen> {
                 ])),
               ),
             if (_loaded && accounts.isEmpty) ...[
-              GradientButton(label: 'Google Photos jodiye', icon: Icons.photo_library_rounded, height: 50, onTap: canLink ? _link : null),
+              GradientButton(label: 'Link Google Photos', icon: Icons.photo_library_rounded, height: 50, onTap: canLink ? _link : null),
               if (!canLink)
                 const Padding(padding: EdgeInsets.only(top: 8),
-                    child: Text('Is server par Google sign-in abhi chalu nahi hai.', style: TextStyle(color: C.faint, fontSize: 12))),
+                    child: Text('Google sign-in is not turned on for this server yet.', style: TextStyle(color: C.faint, fontSize: 12))),
             ] else if (_loaded)
-              GlassButton(label: 'Doosra Google account jodiye', icon: Icons.add_rounded, height: 44, onTap: canLink ? _link : null),
+              GlassButton(label: 'Link another Google account', icon: Icons.add_rounded, height: 44, onTap: canLink ? _link : null),
             const SizedBox(height: 18),
-            const Text('Bolkar dekhiye', style: TextStyle(fontWeight: FontWeight.w700)),
+            const Text('Try saying', style: TextStyle(fontWeight: FontWeight.w700)),
             const SizedBox(height: 6),
             for (final t in const [
-              '"Expo ki photos chun kar Ramesh ko email karo"',
-              '"Kal ki site photos PC par save karo"',
-              '"Is mail ki photos Google Photos mein Diwali album mein daalo"',
-              '"Shop ki photos Drive ke Marketing folder mein rakho"',
+              '"Pick the Expo photos and email them to Ramesh"',
+              '"Save yesterday\'s site photos to the PC"',
+              '"Put this mail\'s photos in the Diwali album in Google Photos"',
+              '"Keep the shop photos in the Marketing folder on Drive"',
             ])
               Padding(padding: const EdgeInsets.symmetric(vertical: 2), child: Text(t, style: const TextStyle(color: C.chip, fontSize: 13))),
           ]),

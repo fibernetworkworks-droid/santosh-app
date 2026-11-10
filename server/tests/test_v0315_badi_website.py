@@ -134,7 +134,7 @@ def test_a_60_page_site_builds_from_one_template(site_env, monkeypatch):
     assert "{{" not in every                                                  # every placeholder filled
     kaju = (out / "sweets" / "kaju-katli" / "index.html").read_text()
     assert '<p aria-label="About Kaju Katli" class="itm">Kaju Katli</p>' in kaju    # attribute AND text filled
-    assert '<em class="blank">[Price]</em>' in kaju and "desi ghee" in kaju     # nobody gave a price: a visible blank
+    assert 'class="blank eg" data-blank="Price"' in kaju and "desi ghee" in kaju  # nobody gave a price: a marked sample (v0.671), still a blank for launch
     assert 'href="../../assets/site.css"' in kaju                            # two levels deep
     assert 'class="hs-crumbs' in kaju and ">Our sweets</a>" in kaju and 'aria-current="page">Kaju Katli<' in kaju
     home = (out / "index.html").read_text()
@@ -197,5 +197,5 @@ def test_small_sites_unchanged():
 def test_version():
     from pathlib import Path
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.530.0"
-    assert "0.530.0+553" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.758.0"
+    assert "0.758.0+757" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()

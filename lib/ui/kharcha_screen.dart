@@ -77,11 +77,11 @@ class _KharchaScreenState extends State<KharchaScreen> {
     final v = await showDialog<double>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Mahine ki seema (₹)'),
-        content: TextField(controller: c, keyboardType: TextInputType.number, decoration: const InputDecoration(hintText: 'jaise 3000')),
+        title: const Text('Monthly limit (₹)'),
+        content: TextField(controller: c, keyboardType: TextInputType.number, decoration: const InputDecoration(hintText: 'e.g. 3000')),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Rehne do')),
-          TextButton(onPressed: () => Navigator.pop(ctx, double.tryParse(c.text.replaceAll(',', '').trim())), child: const Text('Rakho')),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(ctx, double.tryParse(c.text.replaceAll(',', '').trim())), child: const Text('Save')),
         ],
       ),
     );
@@ -110,7 +110,7 @@ class _KharchaScreenState extends State<KharchaScreen> {
     final maxDay = daily.fold<double>(0, (a, d) => math.max(a, (d['inr'] as num?)?.toDouble() ?? 0));
     final topFeat = feats.isEmpty ? 0.0 : ((feats.first['inr'] as num?)?.toDouble() ?? 0);
     return Scaffold(
-      appBar: AppBar(title: const Text('AI ka kharcha')),
+      appBar: AppBar(title: const Text('AI cost')),
       body: r == null
           ? Center(child: _err == null ? const CircularProgressIndicator() : Padding(padding: const EdgeInsets.all(24), child: Text(_err!)))
           : RefreshIndicator(
@@ -119,44 +119,44 @@ class _KharchaScreenState extends State<KharchaScreen> {
                 Glass(
                   padding: const EdgeInsets.all(16),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    const Text('Is mahine', style: TextStyle(color: C.muted)),
+                    const Text('This month', style: TextStyle(color: C.muted)),
                     const SizedBox(height: 2),
                     Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
                       Text(_rs(spent), style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w800)),
                       const SizedBox(width: 8),
                       Padding(
                         padding: const EdgeInsets.only(bottom: 5),
-                        child: Text(limit > 0 ? '/ ${_rs(limit)} seema' : 'koi seema nahi', style: const TextStyle(color: C.muted)),
+                        child: Text(limit > 0 ? '/ ${_rs(limit)} limit' : 'no limit', style: const TextStyle(color: C.muted)),
                       ),
                     ]),
                     if (limit > 0) ...[const SizedBox(height: 8), _bar(pct, color)],
                     const SizedBox(height: 8),
-                    Text('Isi raftaar se mahine ke ant tak ~${_rs(m['projected_inr'])}', style: const TextStyle(color: C.muted, fontSize: 13)),
+                    Text('At this pace ~${_rs(m['projected_inr'])} by the end of the month', style: const TextStyle(color: C.muted, fontSize: 13)),
                     if (m['over'] == true)
                       const Padding(
                         padding: EdgeInsets.only(top: 6),
-                        child: Text('Seema poori: background kaam (routine, website / video jobs, team ke kaam) ruke hain. Aapki chat aur call chalti hai.',
+                        child: Text('Limit reached: background work (routines, website / video jobs, team tasks) is paused. Your chat and calls keep working.',
                             style: TextStyle(color: C.bad, fontSize: 12.5)),
                       ),
                   ]),
                 ),
                 const SizedBox(height: 14),
-                const Text('Mahine ki seema', style: TextStyle(fontWeight: FontWeight.w800)),
+                const Text('Monthly limit', style: TextStyle(fontWeight: FontWeight.w800)),
                 const SizedBox(height: 6),
                 Wrap(spacing: 6, runSpacing: 6, children: [
                   for (final v in const [500.0, 1000.0, 2000.0, 5000.0])
                     ChoiceChip(label: Text(_rs(v)), selected: limit == v, onSelected: _busy ? null : (_) => _setLimit(v)),
-                  ActionChip(label: const Text('Apni likhiye'), onPressed: _busy ? null : _customLimit),
-                  ChoiceChip(label: const Text('Koi seema nahi'), selected: limit == 0, onSelected: _busy ? null : (_) => _setLimit(0)),
+                  ActionChip(label: const Text('Write your own'), onPressed: _busy ? null : _customLimit),
+                  ChoiceChip(label: const Text('No limit'), selected: limit == 0, onSelected: _busy ? null : (_) => _setLimit(0)),
                 ]),
                 const Padding(
                   padding: EdgeInsets.only(top: 6),
-                  child: Text('80% par aapko bataya jayega; 100% par background kaam ruk jayenge, aapki apni chat aur call nahi.',
+                  child: Text('You will be told at 80%; at 100% background work stops, not your own chat and calls.',
                       style: TextStyle(color: C.faint, fontSize: 12)),
                 ),
                 const SizedBox(height: 18),
                 Row(children: [
-                  const Expanded(child: Text('Roz ka kharcha', style: TextStyle(fontWeight: FontWeight.w800))),
+                  const Expanded(child: Text('Daily cost', style: TextStyle(fontWeight: FontWeight.w800))),
                   for (final d in const [7, 30])
                     Padding(
                       padding: const EdgeInsets.only(left: 6),
@@ -189,9 +189,9 @@ class _KharchaScreenState extends State<KharchaScreen> {
                   ]),
                 ),
                 const SizedBox(height: 18),
-                const Text('Kahan gaya', style: TextStyle(fontWeight: FontWeight.w800)),
+                const Text('Where it went', style: TextStyle(fontWeight: FontWeight.w800)),
                 const SizedBox(height: 8),
-                if (feats.isEmpty) const Text('Abhi koi kharcha nahi.', style: TextStyle(color: C.muted)),
+                if (feats.isEmpty) const Text('No cost yet.', style: TextStyle(color: C.muted)),
                 for (final f in feats)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 10),
@@ -212,10 +212,10 @@ class _KharchaScreenState extends State<KharchaScreen> {
                     padding: const EdgeInsets.only(bottom: 6),
                     child: Row(children: [
                       Expanded(
-                          child: Text('${mm['model']}${mm['estimate'] == true ? ' (andaaza)' : ''}',
+                          child: Text('${mm['model']}${mm['estimate'] == true ? ' (estimate)' : ''}',
                               style: const TextStyle(fontSize: 13), overflow: TextOverflow.ellipsis)),
                       Text(
-                          '${mm['calls']} baar${((mm['minutes'] as num?) ?? 0) > 0 ? ' · ${mm['minutes']} min' : ''} · ${_rs(mm['inr'])}',
+                          '${mm['calls']} times${((mm['minutes'] as num?) ?? 0) > 0 ? ' · ${mm['minutes']} min' : ''} · ${_rs(mm['inr'])}',
                           style: const TextStyle(color: C.muted, fontSize: 12.5)),
                     ]),
                   ),

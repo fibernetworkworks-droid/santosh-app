@@ -58,7 +58,7 @@ ASKS: list[dict] = [
     {"id": "web_news", "text": "Aaj ki badi khabar kya hai India mein", "ok": ["google_search", "web_sources"], "bad": PC},
     {"id": "web_claim", "text": "Kya sach mein RBI ne repo rate kam kiya? Source ke saath batao", "ok": ["web_sources", "google_search"],
      "bad": PC},
-    {"id": "web_read_link", "text": "Is link mein kya likha hai padh ke batao https://example.com/policy", "ok": ["open_website"],
+    {"id": "web_read_link", "text": "Is link mein kya likha hai padh ke batao https://example.com/policy", "ok": ["open_website", "web_fetch"],
      "bad": PC},
     {"id": "web_compare_site", "text": "Amazon pe 5000 ke andar sabse acche earbuds compare karke batao",
      "ok": ["browse_web", "google_search", "web_sources", "order_karo"], "bad": PC},
@@ -270,7 +270,10 @@ FRESH: list[tuple] = [   # (text, families-or-tools[, {"also": first steps that 
     # v0.337 a fair card: the complaint ask names no customer and no complaint, so ONE real question is right too
     ("customer ki complaint register karo", ("shikayat",), {"ask_ok": True}),
     ("Aaj sone ka rate kya hai?", ("google_search", "web_sources")),
-    ("Is page ko padh ke 5 points mein batao: https://en.wikipedia.org/wiki/Diwali", ("open_website",)),
+    # v0.584 a fair card: written before the v0.474 / v0.483 page readers existed - reading ONE public page is equally
+    # right with scrape_page (faster, cheaper than a browser) or reach read; Sonnet AND Haiku both picked scrape_page
+    ("Is page ko padh ke 5 points mein batao: https://en.wikipedia.org/wiki/Diwali",
+     ("open_website", "scrape_page", "reach", "web_fetch")),   # exact readers only; web_fetch = the Phase 3 one reader ("scrape" is also a whole family's name)
     ("ABC Traders ke liye 3 items ka quotation PDF bana do: Chair 2500 x 10, Table 6000 x 2", ("doc_studio",)),
     ("GitHub ke top 50 Python repositories ki list ka PDF bana do", ("data_fetch", "api_call", "doc_studio")),
     ("Maine pichhle hafte kis vendor ke baare mein baat ki thi?", ("haal_ki_chats", "yaad_khojo")),

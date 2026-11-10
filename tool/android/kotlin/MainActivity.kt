@@ -65,7 +65,7 @@ class MainActivity : FlutterActivity() {
                             requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), 44)
                             result.success("permission")
                         } else {
-                            WakeService.status = "Shuru ho raha hai…"
+                            WakeService.status = "Starting…"
                             WakeService.start(this)
                             result.success("ok")
                         }
@@ -119,7 +119,7 @@ class MainActivity : FlutterActivity() {
                         // v0.69 a call never takes the app down: any failure comes back as a reason
                         val err = try { VoiceAudio.start(this) } catch (t: Throwable) {
                             try { VoiceAudio.stop(this) } catch (_: Throwable) {}
-                            "Call shuru nahi ho payi (${t.javaClass.simpleName})"
+                            "Could not start the call (${t.javaClass.simpleName})"
                         }
                         if (err == "permission") requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), 42)
                         if (err == null) {
@@ -155,7 +155,7 @@ class MainActivity : FlutterActivity() {
                     "saveVideo" -> {
                         val p = call.argument<String>("path") ?: ""
                         val n = call.argument<String>("name") ?: "hoola.mp4"
-                        Thread { val err = try { MediaShare.saveVideo(this, p, n) } catch (e: Exception) { "Save nahi ho paya" }
+                        Thread { val err = try { MediaShare.saveVideo(this, p, n) } catch (e: Exception) { "Could not save" }
                             main.post { result.success(err) } }.start()
                     }
                     // ---- v0.127 Hoola Screen: live view-only board on a connected mini screen / TV ----
@@ -167,7 +167,7 @@ class MainActivity : FlutterActivity() {
                     "saveImage" -> {
                         val p = call.argument<String>("path") ?: ""
                         val n = call.argument<String>("name") ?: "hoola.png"
-                        Thread { val err = try { MediaShare.saveImage(this, p, n) } catch (e: Exception) { "Save nahi ho paya" }
+                        Thread { val err = try { MediaShare.saveImage(this, p, n) } catch (e: Exception) { "Could not save" }
                             main.post { result.success(err) } }.start()
                     }
                     // ---- v0.84 Galla: UPI payment alerts (notification access the owner gives herself) ----
@@ -289,7 +289,7 @@ class MainActivity : FlutterActivity() {
                                 .putExtra(android.bluetooth.BluetoothAdapter.EXTRA_DISCOVERABLE_DURATION, 120))
                             "ok"
                         } catch (e: Exception) {
-                            "Bluetooth settings nahi khul paye"
+                            "Could not open Bluetooth settings"
                         }
                         result.success(r)
                     }
@@ -500,6 +500,16 @@ class MainActivity : FlutterActivity() {
 
     private fun handleIntent(intent: Intent?) {
         val action = intent?.action
+        if (action == Notify.ACTION_OPEN_CONV) {   // v0.648 a call record's notification was tapped
+            val conv = intent!!.getStringExtra("conv") ?: ""
+            intent.action = null
+            if (conv.isNotEmpty()) {
+                val msg = "conv:$conv"
+                val sink = linkSink
+                if (sink != null) main.post { sink.success(msg) } else pendingLink = msg
+            }
+            return
+        }
         if (action == ACTION_ASSIST_SCREEN || action == AppUpdate.ACTION_STATUS) {
             // v0.62 the assistant session's screen (screenshot + text as pending files) / the installer's answer
             val it0 = intent!!
@@ -603,7 +613,7 @@ class MainActivity : FlutterActivity() {
                 val uri = Uri.parse(url)
                 val scheme = uri.scheme ?: ""
                 // "tel" only opens the dialer with the number filled in (SOS 112/108); the user presses call
-                if (scheme !in setOf("upi", "tez", "phonepe", "paytmmp", "https", "http", "intent", "tel")) return "Link sahi nahi hai"
+                if (scheme !in setOf("upi", "tez", "phonepe", "paytmmp", "https", "http", "intent", "tel")) return "The link is not valid"
                 if (scheme in setOf("upi", "tez", "phonepe", "paytmmp")) {
                     // v0.109 opened FOR A RESULT so the UPI app's answer (success / failed / ref) comes back to Hoola
                     return UpiPay.open(this, uri, pkg) { installed(it) }
@@ -620,11 +630,11 @@ class MainActivity : FlutterActivity() {
                 } catch (_: Exception) {
                     startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=$pkg")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
                 }
-                return "App install nahi hai; Play Store khol diya"
+                return "The app is not installed; opened the Play Store"
             }
-            return "Kholne ke liye kuch nahi mila"
+            return "Nothing found to open this with"
         } catch (e: Exception) {
-            return "Nahi khul paya: ${e.message ?: e.javaClass.simpleName}"
+            return "Could not open: ${e.message ?: e.javaClass.simpleName}"
         }
     }
 

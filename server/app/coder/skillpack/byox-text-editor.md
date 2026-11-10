@@ -1,6 +1,7 @@
 ---
 name: byox-text-editor
 description: Build a terminal text editor: gap buffer, raw mode
+when_to_use: text editor, terminal editor, own vim, code editor from scratch
 ---
 GOAL: a Kilo-like editor that opens a file, edits it, saves, and highlights syntax.
 

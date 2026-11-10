@@ -1,5 +1,6 @@
 """v0.221 SAHI JAWAB + PATLA PROMPT: one reply rulebook for chat / console / quick lane / voice, and a system prompt
 that carries only the guides of the tool families a turn admitted."""
+import json
 from app.agent import prompts, replystyle
 from app.agent.admit import CORE_FAMILIES, plan_for
 from app.config import get_settings
@@ -35,7 +36,14 @@ def test_voice_and_quick_lane_share_the_rules():
 
 
 def test_full_guide_when_no_families():
-    assert prompts.system_text(None) == prompts.SYSTEM
+    # v0.688 KAAM MANCH: the always-on work-discipline tips append AFTER the guide (kaam_enabled
+    # off = the old byte-identity, asserted too); the admission cut itself still drops nothing
+    from app.agent import kaam_laws
+    from app.config import get_settings
+    if get_settings().kaam_enabled:
+        assert prompts.system_text(None) == prompts.SYSTEM + "\n\n" + kaam_laws.tips_block()
+    else:
+        assert prompts.system_text(None) == prompts.SYSTEM
     full = prompts.system_prompt(False, "", None)
     assert "GST work (she" in full and "Payroll (" in full
 
@@ -48,7 +56,7 @@ def test_slim_guide_is_much_smaller_and_indexes_the_rest():
     assert "GST work" in t[t.index("More skills you have"):]          # named in the index, guide not loaded
     assert "GST work (she" not in t
     # core rules always ride
-    for pin in ("How you answer", "WHERE a website opens", "LAMBA KAAM", "Internet:", "Your memory"):
+    for pin in ("How you answer", "WHERE a website opens", "LONG JOBS", "Internet:", "Your memory"):
         assert pin in t, pin
 
 
@@ -80,11 +88,12 @@ def test_every_block_lands_somewhere():
 def test_agent_loop_sends_the_slim_prompt_and_grows_it_on_tool_search(bz, monkeypatch):
     import asyncio
     from app.agent import santosh
-    seen = []
+    seen, hist = [], []
 
     async def fake_think(brain, system, history, settings, tools=None, live=None, max_tokens=None):
         sys_text = system if isinstance(system, str) else "".join(b.get("text", "") for b in system)
         seen.append(sys_text)
+        hist.append(history)
         if len(seen) == 1:
             return ([{"type": "tool_use", "id": "t1", "name": "tool_search", "input": {"need": "gst return"}}],
                     "tool_use", brain)
@@ -94,7 +103,9 @@ def test_agent_loop_sends_the_slim_prompt_and_grows_it_on_tool_search(bz, monkey
     asyncio.run(santosh.run_turn(bz["conv"], "hi kaise ho"))
     assert len(seen) >= 2
     assert "GST work (she" not in seen[0] and len(seen[0]) < len(prompts.SYSTEM) * 0.5
-    assert "GST work (she" in seen[1]            # tool_search opened gst -> its guide joined the prompt
+    # tool_search opened gst -> its guide reaches the model. v0.563 on a Claude turn the system prompt stays the same
+    # (cache + thinking hold) and the guide rides beside the tool result instead
+    assert seen[1] == seen[0] and "GST work (she" in json.dumps(hist[1][-1]["content"])
 
 
 def test_prompt_slim_off_sends_the_full_guide(bz, monkeypatch):
@@ -118,4 +129,4 @@ def test_prompt_slim_off_sends_the_full_guide(bz, monkeypatch):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.530.0"
+    assert APP_VERSION == "0.758.0"

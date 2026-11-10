@@ -21,9 +21,9 @@ void _snack(BuildContext c, String t) {
 Color _sev(String s) => s == 'high' ? C.bad : (s == 'medium' ? C.warn : C.muted);
 
 const _kindNames = {
-  'scam': 'Scam ka shak', 'spam': 'Spam', 'abuse': 'Gaali', 'threat': 'Dhamki', 'hate': 'Nafrat', 'harassment': 'Chhed-chhaad',
-  'pii': 'Personal jaankari', 'misinfo': 'Afwah?', 'flood': 'Bahut message', 'raid': 'Copy-paste hamla',
-  'negativity': 'Naraazgi badhi', 'leaving': 'Log ja rahe', 'complaints': 'Ek jaisi shikayat', 'rejoin': 'Ban wala wapas',
+  'scam': 'Suspected scam', 'spam': 'Spam', 'abuse': 'Abuse', 'threat': 'Threat', 'hate': 'Hate', 'harassment': 'Teasing',
+  'pii': 'Personal information', 'misinfo': 'Rumour?', 'flood': 'Too many messages', 'raid': 'Copy-paste attack',
+  'negativity': 'Annoyance rose', 'leaving': 'People leaving', 'complaints': 'Similar complaints', 'rejoin': 'Banned person is back',
 };
 
 Future<String?> _ask(BuildContext context, String title, String label, {String initial = '', bool obscure = false, int lines = 1}) async {
@@ -42,8 +42,8 @@ Future<String?> _ask(BuildContext context, String title, String label, {String i
         decoration: InputDecoration(labelText: label),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Rehne do')),
-        TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Aage')),
+        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Leave it')),
+        TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Next')),
       ],
     ),
   );
@@ -133,11 +133,11 @@ class _SamudaayScreenState extends State<SamudaayScreen> {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Glass(child: Text(_s(d['say']), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, height: 1.35))),
       const SizedBox(height: 10),
-      if (acts.isNotEmpty) const _Head('Aapki haan chahiye'),
+      if (acts.isNotEmpty) const _Head('Needs your yes'),
       for (final a in acts) Padding(padding: const EdgeInsets.only(bottom: 8), child: SamudaayActionCard(app: app, data: a, onDone: _load)),
       if (al.isNotEmpty) const _Head('Alert'),
       for (final a in al) Padding(padding: const EdgeInsets.only(bottom: 8), child: SamudaayAlertCard(app: app, data: a, onDone: _load)),
-      if (qs.isNotEmpty) const _Head('Sawal (FAQ mein nahi)'),
+      if (qs.isNotEmpty) const _Head('Question (not in the FAQ)'),
       for (final q in qs) Padding(padding: const EdgeInsets.only(bottom: 8), child: SamudaayQuestionCard(app: app, data: q, onDone: _load)),
       if (jr.isNotEmpty) const _Head('Join request'),
       for (final j in jr) Padding(padding: const EdgeInsets.only(bottom: 8), child: SamudaayJoinCard(app: app, data: j, onDone: _load)),
@@ -146,14 +146,14 @@ class _SamudaayScreenState extends State<SamudaayScreen> {
 
   // ---------------- Groups
   Future<void> _connectBot() async {
-    final t = await _ask(context, 'Telegram bot jodiye',
-        'BotFather wala token (sirf yahan, chat mein kabhi nahi)', obscure: true);
+    final t = await _ask(context, 'Connect Telegram bot',
+        'BotFather token (only here, never in chat)', obscure: true);
     if (t == null) return;
     await _do('PUT', '/api/samudaay/telegram', body: {'token': t});
   }
 
   Future<void> _linkMandali() async {
-    final g = await _ask(context, 'Hoola Mandali jodiye', 'Mandali ka naam (aap admin hon)');
+    final g = await _ask(context, 'Connect Hoola Group', 'Group name (you should be the admin)');
     if (g == null) return;
     await _do('POST', '/api/samudaay/hoola', body: {'group': g});
   }
@@ -177,29 +177,29 @@ class _SamudaayScreenState extends State<SamudaayScreen> {
             const Icon(Icons.send_rounded, color: C.teal),
             const SizedBox(width: 8),
             Expanded(
-                child: Text(bot.isEmpty ? 'Telegram bot juda nahi' : '@${_s(bot['username'])} juda',
+                child: Text(bot.isEmpty ? 'Telegram bot not connected' : '@${_s(bot['username'])} connected',
                     style: const TextStyle(fontWeight: FontWeight.w800))),
             if (bot.isNotEmpty) Pill(_s(bot['status'])),
           ]),
           const SizedBox(height: 6),
           Text(
               bot.isEmpty
-                  ? 'Telegram mein @BotFather se apna bot banaiye, token yahan daaliye. Token sirf is phone se server tak jaata hai, chat mein kabhi nahi.'
-                  : 'Bot ko apne group mein admin banaiye (delete, ban, invite). BotFather > /setprivacy > Disable, taaki woh saare message dekh sake.',
+                  ? 'Make your bot with @BotFather in Telegram and enter the token here. The token goes only from this phone to the server, never in chat.'
+                  : 'Make the bot an admin in your group (delete, ban, invite). BotFather > /setprivacy > Disable, so it can see all messages.',
               style: const TextStyle(color: C.muted, fontSize: 12.5)),
           if (_s(bot['last_error']).isNotEmpty) Text(_s(bot['last_error']), style: const TextStyle(color: C.bad, fontSize: 12)),
           const SizedBox(height: 8),
           Wrap(spacing: 8, runSpacing: 8, children: [
-            GlassButton(label: bot.isEmpty ? 'Bot jodiye' : 'Naya token', icon: Icons.key_rounded, onTap: _busy ? null : _connectBot),
+            GlassButton(label: bot.isEmpty ? 'Connect bot' : 'New token', icon: Icons.key_rounded, onTap: _busy ? null : _connectBot),
             if (bot.isNotEmpty)
               GlassButton(
-                  label: 'Bot hatao', icon: Icons.link_off_rounded, color: C.bad, onTap: _busy ? null : () => _do('DELETE', '/api/samudaay/telegram')),
-            GlassButton(label: 'Mandali jodiye', icon: Icons.groups_rounded, onTap: _busy ? null : _linkMandali),
+                  label: 'Remove bot', icon: Icons.link_off_rounded, color: C.bad, onTap: _busy ? null : () => _do('DELETE', '/api/samudaay/telegram')),
+            GlassButton(label: 'Connect group', icon: Icons.groups_rounded, onTap: _busy ? null : _linkMandali),
           ]),
         ]),
       ),
       const SizedBox(height: 10),
-      if (_comms.isEmpty) const Text('Abhi koi group nahi.', style: TextStyle(color: C.muted)),
+      if (_comms.isEmpty) const Text('No groups yet.', style: TextStyle(color: C.muted)),
       for (final c in _comms)
         Padding(
           padding: const EdgeInsets.only(bottom: 8),
@@ -215,8 +215,8 @@ class _SamudaayScreenState extends State<SamudaayScreen> {
                   Pill(_s(c['status'])),
                 ]),
                 Text(
-                    '${c['members'] ?? 0} member · ${c['open_alerts'] ?? 0} alert · ${c['questions'] ?? 0} sawal · ${_s(c['language'])}'
-                    '${c['welcome_ready'] == true ? ' · welcome taiyaar' : ' · welcome baaki'}',
+                    '${c['members'] ?? 0} member · ${c['open_alerts'] ?? 0} alert · ${c['questions'] ?? 0} questions · ${_s(c['language'])}'
+                    '${c['welcome_ready'] == true ? ' · welcome ready' : ' · welcome pending'}',
                     style: const TextStyle(color: C.muted, fontSize: 12.5)),
               ]),
             ),
@@ -234,7 +234,7 @@ class _SamudaayScreenState extends State<SamudaayScreen> {
         builder: (d, set) => AlertDialog(
           title: Text(_s(m['name'])),
           content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('Juda: ${_s(m['joined_at']).split('T').first} · ${_s(m['source'])}\nPost: ${m['posts']} · chetavni: ${m['warnings']} · ${_s(m['status'])}',
+            Text('Connected: ${_s(m['joined_at']).split('T').first} · ${_s(m['source'])}\nPost: ${m['posts']} · warnings:${m['warnings']} · ${_s(m['status'])}',
                 style: const TextStyle(fontSize: 12.5)),
             const SizedBox(height: 8),
             Wrap(spacing: 6, children: [
@@ -246,7 +246,7 @@ class _SamudaayScreenState extends State<SamudaayScreen> {
             ]),
           ]),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(d, <String>{'__forget'}), child: const Text('Data mitao', style: TextStyle(color: C.bad))),
+            TextButton(onPressed: () => Navigator.pop(d, <String>{'__forget'}), child: const Text('Delete data', style: TextStyle(color: C.bad))),
             TextButton(onPressed: () => Navigator.pop(d, roles), child: const Text('Save')),
           ],
         ),
@@ -264,7 +264,7 @@ class _SamudaayScreenState extends State<SamudaayScreen> {
         Row(children: [
           Expanded(
             child: TextField(
-              decoration: const InputDecoration(hintText: 'Naam se dhoondo', prefixIcon: Icon(Icons.search_rounded)),
+              decoration: const InputDecoration(hintText: 'Search by name', prefixIcon: Icon(Icons.search_rounded)),
               onSubmitted: (v) {
                 _q = v.trim();
                 _loadMembers();
@@ -295,15 +295,15 @@ class _SamudaayScreenState extends State<SamudaayScreen> {
 
   // ---------------- FAQ + welcome
   Future<void> _addFaq([Map<String, dynamic>? f]) async {
-    final q = await _ask(context, 'Sawal', 'Log kaise poochhte hain', initial: _s(f?['question']));
+    final q = await _ask(context, 'Question', 'How people ask', initial: _s(f?['question']));
     if (q == null || !mounted) return;
-    final a = await _ask(context, 'Aapka jawab', 'Sirf sahi baat (Hoola yahi bhejega)', initial: _s(f?['answer']), lines: 3);
+    final a = await _ask(context, 'Your answer', 'Only the correct information (Hoola sends exactly this)', initial: _s(f?['answer']), lines: 3);
     if (a == null) return;
     await _do('POST', '/api/samudaay/faqs', body: {'question': q, 'answer': a, if (f != null) 'id': f['id']});
   }
 
   Future<void> _welcome() async {
-    final w = await _ask(context, 'Welcome message', 'Apna message ya bas idea (khaali = Hoola ka standard)', lines: 3);
+    final w = await _ask(context, 'Welcome message', 'Your own message or just an idea (blank = Hoola\'s standard)', lines: 3);
     final r = await _call(context, app, 'POST', '/api/samudaay/templates', body: {if (w != null) 'from_words': w});
     if (r != null && mounted) {
       await showDialog<void>(context: context, builder: (_) => AlertDialog(content: SamudaayTemplateCard(app: app, data: r, onDone: _load)));
@@ -313,15 +313,15 @@ class _SamudaayScreenState extends State<SamudaayScreen> {
 
   Widget _faq() => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Wrap(spacing: 8, runSpacing: 8, children: [
-          GlassButton(label: 'Naya FAQ', icon: Icons.add_comment_rounded, onTap: _busy ? null : () => _addFaq()),
+          GlassButton(label: 'New FAQ', icon: Icons.add_comment_rounded, onTap: _busy ? null : () => _addFaq()),
           GlassButton(label: 'Welcome message', icon: Icons.waving_hand_rounded, onTap: _busy ? null : _welcome),
         ]),
         const SizedBox(height: 8),
         for (final t in _templates)
           Padding(padding: const EdgeInsets.only(bottom: 8), child: SamudaayTemplateCard(app: app, data: t, onDone: _load)),
-        const _Head('Aapke jawab'),
+        const _Head('Your answers'),
         if (_faqs.isEmpty)
-          const Text('Abhi koi FAQ nahi. Jo sawal aapse poochhe jayenge, aapka jawab yahan jud jayega.', style: TextStyle(color: C.muted, fontSize: 12.5)),
+          const Text('No FAQs yet. Your answer to questions people ask you will be added here.', style: TextStyle(color: C.muted, fontSize: 12.5)),
         for (final f in _faqs)
           Padding(
             padding: const EdgeInsets.only(bottom: 8),
@@ -373,15 +373,15 @@ class _SamudaayScreenState extends State<SamudaayScreen> {
             Text('${h['score'] ?? '-'}', style: display(36, color: (h['score'] ?? 0) >= 75 ? C.ok : ((h['score'] ?? 0) >= 55 ? C.warn : C.bad))),
             const SizedBox(width: 12),
             Expanded(
-                child: Text('Sehat: ${_s(h['label'])}\n${((h['why'] as List?) ?? const []).join('; ')}',
+                child: Text('Health: ${_s(h['label'])}\n${((h['why'] as List?) ?? const []).join('; ')}',
                     style: const TextStyle(fontSize: 13, height: 1.3))),
           ]),
         ),
         const SizedBox(height: 8),
         Wrap(spacing: 8, runSpacing: 8, children: [
           for (final (k, label) in const [
-            ('members', 'Member'), ('joins', 'Aaye'), ('leaves', 'Gaye'), ('active', 'Baat ki'), ('posts', 'Message'),
-            ('faq_answers', 'FAQ jawab'), ('unanswered', 'Baaki sawal'), ('actions', 'Kaarwai'),
+            ('members', 'Member'), ('joins', 'Joined'), ('leaves', 'Went'), ('active', 'Chatted'), ('posts', 'Message'),
+            ('faq_answers', 'FAQ answers'), ('unanswered', 'Remaining questions'), ('actions', 'Action'),
           ])
             _Stat(label, '${now[k] ?? 0}'),
         ]),
@@ -400,7 +400,7 @@ class _SamudaayScreenState extends State<SamudaayScreen> {
             onRefresh: _load,
             child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
               Wrap(spacing: 6, runSpacing: 6, children: [
-                for (final (i, t) in const [(0, 'Aaj'), (1, 'Groups'), (2, 'Log'), (3, 'FAQ'), (4, 'Report')])
+                for (final (i, t) in const [(0, 'Today'), (1, 'Groups'), (2, 'Log'), (3, 'FAQ'), (4, 'Report')])
                   ChoiceChip(label: Text(t), selected: _tab == i, onSelected: (_) => setState(() => _tab = i)),
               ]),
               const SizedBox(height: 10),
@@ -408,9 +408,9 @@ class _SamudaayScreenState extends State<SamudaayScreen> {
               if (_d == null) const Center(child: CircularProgressIndicator()) else [_today(), _groups(), _register(), _faq(), _reportTab()][_tab],
               const SizedBox(height: 14),
               const Text(
-                  'Kisi ko nikalna, ban / mute, kisi ki post hatana aur sab ko announcement - sirf aapke "Haan" se, wajah log mein rehti hai. '
-                  'Hoola sirf aapke FAQ se jawab deta hai; baaki sawal aapse poochhta hai. Message 90 din baad mit jaate hain. '
-                  'Personal WhatsApp group automate nahi hote.',
+                  'Removing someone, ban / mute, deleting a post and announcements to everyone - only with your "Yes", and the reason stays in the log. '
+                  'Hoola answers only from your FAQ; for other questions it asks you. Messages are deleted after 90 days. '
+                  'Personal WhatsApp groups are not automated.',
                   style: TextStyle(color: C.faint, fontSize: 11.5)),
             ]),
           ),
@@ -484,9 +484,9 @@ class _CommunitySheetState extends State<_CommunitySheet> {
           child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(_s(widget.c['name']), style: display(20)),
             const SizedBox(height: 8),
-            TextField(controller: _rules, minLines: 2, maxLines: 5, decoration: const InputDecoration(labelText: 'Group ke niyam')),
+            TextField(controller: _rules, minLines: 2, maxLines: 5, decoration: const InputDecoration(labelText: 'Group rules')),
             const SizedBox(height: 8),
-            const Text('Bhasha', style: TextStyle(color: C.muted, fontSize: 12)),
+            const Text('Language', style: TextStyle(color: C.muted, fontSize: 12)),
             Wrap(spacing: 6, children: [
               for (final l in const ['hinglish', 'hindi', 'marathi', 'english'])
                 ChoiceChip(label: Text(l), selected: _lang == l, onSelected: (_) => setState(() => _lang = l)),
@@ -494,19 +494,19 @@ class _CommunitySheetState extends State<_CommunitySheet> {
             const SizedBox(height: 6),
             const Text('Join request', style: TextStyle(color: C.muted, fontSize: 12)),
             Wrap(spacing: 6, children: [
-              for (final (k, t) in const [('ask', 'Mujhse poochho'), ('auto', 'Saaf ho to le lo'), ('off', 'Kuch mat karo')])
+              for (final (k, t) in const [('ask', 'Ask me'), ('auto', 'Take it if it is clear'), ('off', 'Do nothing')])
                 ChoiceChip(label: Text(t), selected: _join == k, onSelected: (_) => setState(() => _join = k)),
             ]),
             const SizedBox(height: 6),
             const Text('Link', style: TextStyle(color: C.muted, fontSize: 12)),
             Wrap(spacing: 6, children: [
-              for (final (k, t) in const [('allow', 'Chalega'), ('new_no', 'Naye log nahi'), ('none', 'Bilkul nahi')])
+              for (final (k, t) in const [('allow', 'Allowed'), ('new_no', 'No new people'), ('none', 'Not at all')])
                 ChoiceChip(label: Text(t), selected: _linksPolicy == k, onSelected: (_) => setState(() => _linksPolicy = k)),
             ]),
-            TextField(controller: _links, decoration: const InputDecoration(labelText: 'Theek sites (comma se)')),
-            SwitchListTile(value: _welcome, onChanged: (v) => setState(() => _welcome = v), title: const Text('Naye logon ko welcome')),
-            SwitchListTile(value: _faq, onChanged: (v) => setState(() => _faq = v), title: const Text('FAQ se khud jawab')),
-            SwitchListTile(value: _paused, onChanged: (v) => setState(() => _paused = v), title: const Text('Is group mein rok do (pause)')),
+            TextField(controller: _links, decoration: const InputDecoration(labelText: 'Allowed sites (comma separated)')),
+            SwitchListTile(value: _welcome, onChanged: (v) => setState(() => _welcome = v), title: const Text('Welcome new people')),
+            SwitchListTile(value: _faq, onChanged: (v) => setState(() => _faq = v), title: const Text('Answer from the FAQ by itself')),
+            SwitchListTile(value: _paused, onChanged: (v) => setState(() => _paused = v), title: const Text('Pause in this group')),
             const SizedBox(height: 8),
             GradientButton(label: 'Save', icon: Icons.check_rounded, onTap: _save),
           ]),
@@ -535,17 +535,17 @@ class _SamudaayAlertCardState extends State<SamudaayAlertCard> {
   Future<void> _act(String kind, String label) async {
     String? reason;
     if (kind == 'remove' || kind == 'ban' || kind == 'mute') {
-      reason = await _ask(context, label, 'Wajah (log mein rahegi)', initial: _s(widget.data['title']));
+      reason = await _ask(context, label, 'Reason (stays in the log)', initial: _s(widget.data['title']));
       if (reason == null) return;
     } else {
       final ok = await showDialog<bool>(
         context: context,
         builder: (d) => AlertDialog(
           title: Text('$label?'),
-          content: const Text('Yeh group mein abhi ho jayega.'),
+          content: const Text('This will happen in the group right now.'),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Nahi')),
-            TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Haan')),
+            TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('No')),
+            TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Yes')),
           ],
         ),
       );
@@ -596,7 +596,7 @@ class _SamudaayAlertCardState extends State<SamudaayAlertCard> {
         const SizedBox(height: 4),
         Text(_s(d['title']), style: const TextStyle(fontSize: 13)),
         if (_s(ev['member']).isNotEmpty)
-          Text('${_s(ev['member'])} · ${ev['posts'] ?? 0} post · chetavni ${ev['warnings'] ?? 0}', style: const TextStyle(color: C.muted, fontSize: 12)),
+          Text('${_s(ev['member'])} · ${ev['posts'] ?? 0} post · warnings${ev['warnings'] ?? 0}', style: const TextStyle(color: C.muted, fontSize: 12)),
         if (_s(ev['text']).isNotEmpty)
           Container(
             margin: const EdgeInsets.only(top: 6),
@@ -616,7 +616,7 @@ class _SamudaayAlertCardState extends State<SamudaayAlertCard> {
                   height: 40,
                   color: (sug['kind'] == 'ban' || sug['kind'] == 'remove') ? C.bad : C.ink,
                   onTap: _busy ? null : () => _act(_s(sug['kind']), _s(sug['label']))),
-            GlassButton(label: 'Galat alarm', height: 40, icon: Icons.close_rounded, onTap: _busy ? null : _dismiss),
+            GlassButton(label: 'False alarm', height: 40, icon: Icons.close_rounded, onTap: _busy ? null : _dismiss),
           ]),
         ],
       ]),
@@ -643,7 +643,7 @@ class _SamudaayActionCardState extends State<SamudaayActionCard> {
     final d = widget.data;
     String reason = _s(d['reason']);
     if (yes && d['needs_reason'] == true && reason.isEmpty) {
-      final r = await _ask(context, _s(d['label']), 'Wajah (log mein rahegi)');
+      final r = await _ask(context, _s(d['label']), 'Reason (stays in the log)');
       if (r == null) return;
       reason = r;
     }
@@ -688,15 +688,15 @@ class _SamudaayActionCardState extends State<SamudaayActionCard> {
             decoration: BoxDecoration(color: C.panel, borderRadius: BorderRadius.circular(12)),
             child: Text(_s(d['text']), style: const TextStyle(fontSize: 13)),
           ),
-        if (_s(d['reason']).isNotEmpty) Text('Wajah: ${_s(d['reason'])}', style: const TextStyle(fontSize: 12, color: C.muted)),
-        if ((d['hours'] ?? 0) > 0 && d['kind'] == 'mute') Text('${d['hours']} ghante', style: const TextStyle(fontSize: 12, color: C.muted)),
+        if (_s(d['reason']).isNotEmpty) Text('Reason: ${_s(d['reason'])}', style: const TextStyle(fontSize: 12, color: C.muted)),
+        if ((d['hours'] ?? 0) > 0 && d['kind'] == 'mute') Text('${d['hours']} hours', style: const TextStyle(fontSize: 12, color: C.muted)),
         if (_result.isNotEmpty) Text(_result, style: const TextStyle(fontSize: 12, color: C.faint)),
         if (pending) ...[
           const SizedBox(height: 8),
           Row(children: [
-            Expanded(child: GradientButton(label: 'Haan, karo', icon: Icons.check_rounded, height: 46, onTap: _busy ? null : () => _decide(true))),
+            Expanded(child: GradientButton(label: 'Yes, do it', icon: Icons.check_rounded, height: 46, onTap: _busy ? null : () => _decide(true))),
             const SizedBox(width: 8),
-            GlassButton(label: 'Nahi', height: 46, onTap: _busy ? null : () => _decide(false)),
+            GlassButton(label: 'No', height: 46, onTap: _busy ? null : () => _decide(false)),
           ]),
         ],
       ]),
@@ -747,9 +747,9 @@ class _SamudaayQuestionCardState extends State<SamudaayQuestionCard> {
           const Icon(Icons.help_outline_rounded, color: C.teal),
           const SizedBox(width: 8),
           Expanded(
-              child: Text('${_s(d['member'])} ne poochha${_s(d['community']).isNotEmpty ? ' · ${_s(d['community'])}' : ''}',
+              child: Text('${_s(d['member'])} asked${_s(d['community']).isNotEmpty ? ' · ${_s(d['community'])}' : ''}',
                   style: const TextStyle(fontWeight: FontWeight.w800))),
-          if ((d['count'] ?? 1) > 1) Pill('${d['count']} log'),
+          if ((d['count'] ?? 1) > 1) Pill('${d['count']} people'),
         ]),
         const SizedBox(height: 4),
         Text('"${_s(d['text'])}"', style: const TextStyle(fontSize: 13.5, fontStyle: FontStyle.italic)),
@@ -758,20 +758,20 @@ class _SamudaayQuestionCardState extends State<SamudaayQuestionCard> {
         else ...[
           if (likely.isNotEmpty) ...[
             const SizedBox(height: 6),
-            Text('Shayad yeh FAQ: ${_s(likely['question'])}', style: const TextStyle(fontSize: 12, color: C.muted)),
-            GlassButton(label: 'Yahi jawab bhejo', height: 38, onTap: _busy ? null : () => _send(faqId: _s(likely['id']))),
+            Text('Maybe this FAQ: ${_s(likely['question'])}', style: const TextStyle(fontSize: 12, color: C.muted)),
+            GlassButton(label: 'Send this answer', height: 38, onTap: _busy ? null : () => _send(faqId: _s(likely['id']))),
           ],
-          TextField(controller: _c, minLines: 1, maxLines: 4, decoration: const InputDecoration(hintText: 'Aapka jawab (Hoola yahi bhejega)')),
+          TextField(controller: _c, minLines: 1, maxLines: 4, decoration: const InputDecoration(hintText: 'Your answer (Hoola will send exactly this)')),
           CheckboxListTile(
               dense: true,
               contentPadding: EdgeInsets.zero,
               value: _save,
               onChanged: (v) => setState(() => _save = v ?? true),
-              title: const Text('Agli baar ke liye FAQ mein rakho', style: TextStyle(fontSize: 12.5))),
+              title: const Text('Keep it in the FAQ for next time', style: TextStyle(fontSize: 12.5))),
           Row(children: [
-            Expanded(child: GradientButton(label: 'Jawab bhejo', icon: Icons.send_rounded, height: 44, onTap: _busy ? null : () => _send())),
+            Expanded(child: GradientButton(label: 'Send answer', icon: Icons.send_rounded, height: 44, onTap: _busy ? null : () => _send())),
             const SizedBox(width: 8),
-            GlassButton(label: 'Chhodo', height: 44, onTap: _busy ? null : () => _send(ignore: true)),
+            GlassButton(label: 'Leave', height: 44, onTap: _busy ? null : () => _send(ignore: true)),
           ]),
         ],
       ]),
@@ -814,7 +814,7 @@ class _SamudaayJoinCardState extends State<SamudaayJoinCard> {
           const Icon(Icons.person_add_alt_1_rounded, color: C.accent),
           const SizedBox(width: 8),
           Expanded(
-              child: Text('${_s(d['name'])}${_s(d['username']).isNotEmpty ? ' (@${_s(d['username'])})' : ''} judna chahte hain',
+              child: Text('${_s(d['name'])}${_s(d['username']).isNotEmpty ? ' (@${_s(d['username'])})' : ''} wants to join',
                   style: const TextStyle(fontWeight: FontWeight.w800))),
         ]),
         if (_s(d['community']).isNotEmpty) Text(_s(d['community']), style: const TextStyle(color: C.muted, fontSize: 12)),
@@ -825,9 +825,9 @@ class _SamudaayJoinCardState extends State<SamudaayJoinCard> {
           Pill(_status)
         else
           Row(children: [
-            Expanded(child: GradientButton(label: 'Andar lo', icon: Icons.check_rounded, height: 44, onTap: _busy ? null : () => _go(true))),
+            Expanded(child: GradientButton(label: 'Let in', icon: Icons.check_rounded, height: 44, onTap: _busy ? null : () => _go(true))),
             const SizedBox(width: 8),
-            GlassButton(label: 'Mana', height: 44, onTap: _busy ? null : () => _go(false)),
+            GlassButton(label: 'Decline', height: 44, onTap: _busy ? null : () => _go(false)),
           ]),
       ]),
     );
@@ -869,8 +869,8 @@ class _SamudaayTemplateCardState extends State<SamudaayTemplateCard> {
         Row(children: [
           const Icon(Icons.waving_hand_rounded, color: C.accent),
           const SizedBox(width: 8),
-          Expanded(child: Text('${d['kind'] == 'rules' ? 'Niyam' : 'Welcome'} message · ${_s(d['language'])}', style: const TextStyle(fontWeight: FontWeight.w800))),
-          Pill(_status == 'approved' ? 'manzoor' : 'draft'),
+          Expanded(child: Text('${d['kind'] == 'rules' ? 'Rules' : 'Welcome'} message · ${_s(d['language'])}', style: const TextStyle(fontWeight: FontWeight.w800))),
+          Pill(_status == 'approved' ? 'approved' : 'draft'),
         ]),
         const SizedBox(height: 6),
         Container(
@@ -881,7 +881,7 @@ class _SamudaayTemplateCardState extends State<SamudaayTemplateCard> {
         for (final p in problems) Text('⚠ $p', style: const TextStyle(fontSize: 12, color: C.warn)),
         if (_status != 'approved') ...[
           const SizedBox(height: 8),
-          GradientButton(label: 'Haan, yahi bhejo', icon: Icons.check_rounded, height: 44, onTap: _busy || problems.isNotEmpty ? null : _approve),
+          GradientButton(label: 'Yes, send this', icon: Icons.check_rounded, height: 44, onTap: _busy || problems.isNotEmpty ? null : _approve),
         ],
       ]),
     );
@@ -904,7 +904,7 @@ class SamudaayInfoCard extends StatelessWidget {
           Icon(h.isEmpty ? Icons.groups_rounded : Icons.monitor_heart_rounded, color: C.teal),
           const SizedBox(width: 8),
           Expanded(
-              child: Text(h.isEmpty ? 'Community' : '${_s(data['community'])} · hafte ki sehat ${h['score']}/100',
+              child: Text(h.isEmpty ? 'Community' : '${_s(data['community'])} · weekly health ${h['score']}/100',
                   style: const TextStyle(fontWeight: FontWeight.w800))),
         ]),
         const SizedBox(height: 4),
@@ -915,7 +915,7 @@ class SamudaayInfoCard extends StatelessWidget {
           alignment: Alignment.centerRight,
           child: TextButton(
               onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => SamudaayScreen(app: app))),
-              child: const Text('Community Sahayak kholo')),
+              child: const Text('Open Community Assistant')),
         ),
       ]),
     );

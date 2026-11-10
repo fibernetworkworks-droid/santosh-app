@@ -53,6 +53,39 @@ def find(text: str) -> list[str]:
     return out
 
 
+_CARDLIKE = re.compile(r"(?<!\d)(?:\d[ -]?){12,18}\d(?!\d)")
+
+
+def _luhn(num: str) -> bool:
+    tot, alt = 0, False
+    for ch in reversed(num):
+        d = int(ch)
+        if alt:
+            d = d * 2 - 9 if d > 4 else d * 2
+        tot += d
+        alt = not alt
+    return tot % 10 == 0
+
+
+def mask_sensitive(text: str, mark: str = "######") -> str:
+    """v0.661 the numbers that must never sit in memory - a card (Luhn), an Aadhaar (Verhoeff), a bank account next to
+    its word, a PAN, a CVV - masked; every OTHER number stays. Before, memory masked ANY 9+ digit run, so her
+    customers' phone numbers and order numbers became ###### and Hoola could not call or message the right person."""
+    t = text or ""
+    t = CVV.sub(lambda m: re.sub(r"\d{3,4}\b", "***", m.group(0)), t)
+    t = BANK.sub(lambda m: re.sub(r"\d{9,18}", mark, m.group(0)), t)
+    t = PAN.sub(mark, t)
+
+    def _card(m):
+        d = re.sub(r"\D", "", m.group(0))
+        return mark if 13 <= len(d) <= 19 and _luhn(d) else m.group(0)
+    t = _CARDLIKE.sub(_card, t)
+
+    def _aad(m):
+        return mark if verhoeff_ok(re.sub(r"\D", "", m.group(0))) else m.group(0)
+    return AADHAAR_ANY.sub(_aad, t)
+
+
 SAY = {"otp_pin": "OTP / PIN", "password": "password", "card": "card number", "aadhaar": "Aadhaar number",
        "pan": "PAN number", "bank_account": "bank account number", "cvv": "CVV"}
 

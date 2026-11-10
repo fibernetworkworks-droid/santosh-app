@@ -79,8 +79,34 @@ def check(tenant: str, folder: str = "inbox", unread_only: bool = False, search:
                         "email_snooze action='list' se dikhte hain.")
     items = _guard(box, lambda: box.list(folder or "inbox", unread_only, search, limit, since, snippets))
     contacts.learn(tenant, [(i.get("from", ""), i.get("from_email", "")) for i in items if not i.get("bulk")], 0.2)
-    return {"account": box.address, "folder": folder or "inbox", "count": len(items),
-            "emails": [_public(box, i) for i in items]}
+    out = {"account": box.address, "folder": folder or "inbox", "count": len(items),
+           "emails": [_public(box, i) for i in items]}
+    if getattr(box, "last_more", False) or (limit and len(items) >= int(limit)):
+        # v0.706 the model never knew a list was cut short - it looped check -> act, guessing when to stop
+        out["more"] = True
+        out["more_note"] = ("Aur mails bhi hain is filter mein. Bulk kaam ke liye wahi query dobara chalao jab tak "
+                            "'more' na rahe - ek baar act karne ke baad wahi mails wapas aayein to loop hai, ruk jao.")
+    return out
+
+
+SLIM_DROP = ("to", "message_id", "account")
+
+
+def slim(result: dict[str, Any]) -> dict[str, Any]:
+    """v0.706 the model's copy of an email list: ~720 chars a mail meant the 6,000-char result cap showed it only 6 of
+    50 fetched mails. Drops what it never acts on, false flags, and caps the snippet."""
+    if not isinstance(result, dict) or not isinstance(result.get("emails"), list):
+        return result
+    rows = []
+    drop = SLIM_DROP if result.get("account") != "all" else tuple(k for k in SLIM_DROP if k != "account")
+    for e in result["emails"]:
+        r = {k: v for k, v in e.items() if k not in drop and v not in (False, "", None)}
+        if isinstance(r.get("snippet"), str) and len(r["snippet"]) > 140:
+            r["snippet"] = r["snippet"][:140] + "…"
+        if isinstance(r.get("subject"), str) and len(r["subject"]) > 120:
+            r["subject"] = r["subject"][:120] + "…"
+        rows.append(r)
+    return {**result, "emails": rows}
 
 
 def _check_all(tenant: str, folder: str, unread_only: bool, search: str | None, limit: int,
@@ -117,10 +143,13 @@ def _check_all(tenant: str, folder: str, unread_only: bool, search: str | None, 
     return out
 
 
-def thread(tenant: str, ref: str) -> dict[str, Any]:
+def thread(tenant: str, ref: str, max_messages: int = 30, body_chars: int = 3000) -> dict[str, Any]:
     """v0.181.0 the whole conversation, in order, one call."""
     box, native = split_ref(tenant, ref)
-    out = _guard(box, lambda: box.thread(native))
+    try:
+        out = _guard(box, lambda: box.thread(native, max_messages, body_chars))
+    except TypeError:                                # a box whose thread() takes only the id
+        out = _guard(box, lambda: box.thread(native))
     out["account"] = box.address
     out["id"] = make_ref(box, native)
     for m in out.get("messages", []):
@@ -168,6 +197,46 @@ def _by_box(tenant: str, refs: list[str]) -> dict[str, tuple[Box, list[str]]]:
 
 ACTIONS = ("archive", "mark_read", "mark_unread", "star", "unstar", "move", "spam", "not_spam",
            "mark_important", "mark_not_important", "category")
+
+
+BULK_CAP = 500
+BULK_ACTIONS = ("archive", "mark_read", "mark_unread", "star", "unstar", "move", "mark_not_important")
+
+
+def act_query(tenant: str, action: str, source_folder: str = "inbox", search: str | None = None,
+              account: str | None = None, folder: str = "", cap: int = BULK_CAP) -> dict[str, Any]:
+    """v0.707 ONE call for "saare promotions archive karo": the server finds every matching mail (paged) and acts on all
+    of them, then says how many - the model used to loop check -> act 40 times guessing when it was done."""
+    if action not in BULK_ACTIONS:
+        raise MailError(f"Bulk action in mein se: {', '.join(BULK_ACTIONS)} (delete / spam ke liye email_delete card).")
+    if action == "move" and not folder:
+        raise MailError("Kis folder/label mein?")
+    box = get_box(tenant, account)
+    if box.kind != "gmail" or not hasattr(box, "ids_for"):
+        raise MailError("Query se bulk kaam abhi Gmail par hai - doosre mailbox ke liye email_check ke ids do.")
+    ids, more = _guard(box, lambda: box.ids_for(source_folder or "inbox", search, max(1, min(int(cap), 2000))))
+    if not ids:
+        return {"done": action, "count": 0, "account": box.address, "note": "Is filter mein koi mail nahi mili."}
+
+    def go():
+        if action == "archive":
+            box.archive(ids)
+        elif action in ("mark_read", "mark_unread"):
+            box.mark(ids, action == "mark_read")
+        elif action in ("star", "unstar"):
+            box.star(ids, action == "star")
+        elif action == "mark_not_important":
+            box.mark_important(ids, False)
+        else:
+            box.move(ids, folder)
+    _guard(box, go)
+    out = {"done": action, "count": len(ids), "account": box.address, "from": source_folder,
+           "say": f"{len(ids)} mails par '{action}' ho gaya. Ab dobara check karke loop mat chalao."}
+    if more:
+        out["more"] = True
+        out["say"] = (f"{len(ids)} mails par '{action}' ho gaya; aur bhi bachi hain (ek baar mein {cap} tak). Owner se "
+                      "poochho aage karna hai to wahi call ek baar aur.")
+    return out
 
 
 def act(tenant: str, refs: list[str], action: str, folder: str = "") -> dict[str, Any]:
@@ -757,6 +826,7 @@ def gmail_draft_edit(tenant: str, ref: str, to: str | None = None, cc: str | Non
     msg = mime.build(from_addr=from_addr or box.address, from_name=from_name or sender_name(tenant, box),
                      to=(to or "").strip() or mime.dec(orig.get("To")),
                      cc=(cc or "").strip() or mime.dec(orig.get("Cc")),
+                     bcc=mime.dec(orig.get("Bcc")) or "",      # v0.706 an edit used to drop the draft's Bcc silently
                      subject=(subject or "").strip() or (mime.dec(orig.get("Subject")) or ""),
                      body=new_body, in_reply_to=irt, references=refs, files=files, html_body=html_body)
     out = _guard(box, lambda: box.draft_update(native, msg, thread_id or None))
@@ -788,7 +858,7 @@ def threads_list(tenant: str, query: str = "in:inbox", limit: int = 10, account:
 THREAD_ACTIONS = ("archive", "trash", "inbox", "mark_read", "mark_unread", "star", "unstar", "move")
 
 
-def thread_act(tenant: str, refs: list[str], action: str, folder: str = "") -> dict[str, Any]:
+def thread_act(tenant: str, refs: list[str], action: str, folder: str = "", confirmed: bool = False) -> dict[str, Any]:
     if action not in THREAD_ACTIONS:
         raise MailError(f"action must be one of {', '.join(THREAD_ACTIONS)}")
     if not refs:
@@ -800,6 +870,10 @@ def thread_act(tenant: str, refs: list[str], action: str, folder: str = "") -> d
         r = str(ref or "")
         if "~" not in r:
             raise MailError("Yeh thread ka ref nahi lag raha — email_threads list se refs lijiye.")
+        if action == "trash" and not confirmed:
+            # v0.706 whole conversations went to Trash with no card and no cap (email_delete always asks first)
+            raise MailError("Poori conversation Trash karna delete hai - pehle confirm card chahiye. email_delete ids=<message "
+                            "ids from email_check> use karo; woh card bhejta hai aur uske Haan ke baad hi hatata hai.")
         box, native = split_ref(tenant, r)
         tid = native[3:] if native.startswith("th:") else native
         if box.kind != "gmail":
@@ -910,8 +984,13 @@ def describe_attachments(tenant: str, refs: list[dict[str, Any]] | None) -> list
                         "size": att["size"], "mime": att["mime"]})
         elif a.get("file_id"):
             f = _file_row(tenant, str(a["file_id"]))
-            out.append({"type": "file", "file_id": f.id, "name": f.name, "size": f.size,
-                        "mime": mimetypes.guess_type(f.name)[0] or "application/octet-stream"})
+            p = Path(f.stored_path or "")
+            if not p.exists():
+                raise MailError(f"{f.name} ab server par nahi hai (files 24 ghante baad hat jaati hain). Dobara bhejiye.")
+            data = p.read_bytes()
+            out.append({"type": "file", "file_id": f.id, "name": f.name, "size": len(data),
+                        "mime": mimetypes.guess_type(f.name)[0] or "application/octet-stream",
+                        "keep": _keep(tenant, data)})
         elif a.get("artifact_id"):
             from .. import artifacts
             art = artifacts.get(tenant, str(a["artifact_id"]))
@@ -919,30 +998,11 @@ def describe_attachments(tenant: str, refs: list[dict[str, Any]] | None) -> list
                 raise MailError("Woh Santosh page (artifact) nahi mila ya abhi ban raha hai.")
             name = re.sub(r"[^\w\- ]+", "", art.title).strip() or "santosh-page"
             out.append({"type": "artifact", "artifact_id": art.id, "name": f"{name}.html", "size": 0, "mime": "text/html"})
-        elif a.get("drive_file_id"):
-            from ..drive.accounts import get_client as _drive_client
-            try:
-                c = _drive_client(tenant)
-                meta = c.get(str(a["drive_file_id"]))
-                name, mt = meta.get("name") or "file", meta.get("mimeType") or "application/octet-stream"
-                if mt.startswith("application/vnd.google-apps"):
-                    export = {"document": ("application/pdf", ".pdf"),
-                              "spreadsheet": ("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", ".xlsx"),
-                              "presentation": ("application/pdf", ".pdf"), "drawing": ("image/png", ".png")}
-                    kind = mt.rsplit(".", 1)[-1]
-                    if kind not in export:
-                        raise MailError("Yeh Google file type attach nahi hoti; use PDF/XLSX bana kar Drive mein rakhiye.")
-                    mt, ext = export[kind]
-                    name = (name.rsplit(".", 1)[0] if "." in name else name) + ext
-                    data = c.export(str(a["drive_file_id"]), mt)
-                else:
-                    data = c.download(str(a["drive_file_id"]))
-            except MailError:
-                raise
-            except Exception as e:
-                raise MailError(f"Drive file nahi mili ({type(e).__name__}). Google Drive judi hai? Profile > Google Drive.")
-            out.append({"type": "drive", "drive_file_id": str(a["drive_file_id"]), "name": name[:200],
-                        "size": len(data), "mime": mt})
+        elif a.get("drive_file_id") or a.get("drive_file"):
+            ref = str(a.get("drive_file_id") or a.get("drive_file"))
+            name, mt, data = _drive_bytes(tenant, ref, a.get("format"))
+            out.append({"type": "drive", "drive_file_id": ref, "name": name[:200], "size": len(data), "mime": mt,
+                        "keep": _keep(tenant, data)})
         else:
             raise MailError("attachments: use {email_id, attachment_id}, {file_id}, {drive_file_id} or {artifact_id}")
     cap = get_settings().mail_max_attach_mb * 1024 * 1024
@@ -952,6 +1012,70 @@ def describe_attachments(tenant: str, refs: list[dict[str, Any]] | None) -> list
     return out
 
 
+
+# v0.701 PAKKA ATTACHMENT: every attached file is copied once, at draft time, into the mail's own store (content
+# addressed), so the draft no longer depends on the 24-hour chat-file store (cleanup is in the frozen PC module and is
+# left alone) or on Drive still answering at send time. The copy is what she saw in the preview.
+def _keep_root(tenant: str) -> Path:
+    safe = re.sub(r"[^A-Za-z0-9_.-]", "_", tenant or "default")[:80]
+    p = Path(get_settings().mail_keep_dir) / safe
+    p.mkdir(parents=True, exist_ok=True)
+    return p
+
+
+def _keep(tenant: str, data: bytes) -> str:
+    import hashlib
+    import time as _t
+    h = hashlib.sha256(data).hexdigest()
+    p = _keep_root(tenant) / h
+    try:
+        if not p.exists():
+            tmp = p.with_suffix(".part")
+            tmp.write_bytes(data)
+            tmp.replace(p)
+        else:
+            p.touch()
+        _sweep_kept(tenant, _t.time())
+    except OSError:
+        log.warning("mail: could not keep a copy of an attachment", exc_info=True)
+        return ""
+    return h
+
+
+def _kept(tenant: str, h: Any) -> bytes | None:
+    if not h or not re.fullmatch(r"[0-9a-f]{64}", str(h)):
+        return None
+    p = _keep_root(tenant) / str(h)
+    try:
+        return p.read_bytes() if p.exists() else None
+    except OSError:
+        return None
+
+
+def _sweep_kept(tenant: str, now_ts: float) -> None:
+    cutoff = now_ts - max(1, int(get_settings().mail_keep_days or 70)) * 86400
+    for p in _keep_root(tenant).iterdir():
+        try:
+            if p.is_file() and p.stat().st_mtime < cutoff:
+                p.unlink()
+        except OSError:
+            pass
+
+
+def _drive_bytes(tenant: str, ref: str, fmt: Any = None) -> tuple[str, str, bytes]:
+    """One Drive door for mail: any ref drive_find gives ("<account>~<id>"), a link, an id or a name; Google files
+    exported with their real type (a Sheet as a real .xlsx, not a PDF named .xlsx); the 25 MB size check BEFORE the
+    download (drive.service.fetch)."""
+    from ..drive import service as ds
+    from ..drive.client import DriveError
+    try:
+        name, mt, data, _c, _f = ds.fetch(tenant, ref, str(fmt).lower() if fmt else None)
+    except DriveError as e:
+        raise MailError(str(e) or "Drive file nahi mili.")
+    except Exception as e:
+        raise MailError(f"Drive file nahi mili ({type(e).__name__}). Google Drive judi hai? Profile > Google Drive.")
+    return name, mt, data
+
 def load_files(tenant: str, refs: list[dict[str, Any]] | None) -> list[tuple[str, str, bytes]]:
     files = []
     for a in refs or []:
@@ -960,24 +1084,22 @@ def load_files(tenant: str, refs: list[dict[str, Any]] | None) -> list[tuple[str
             name, mtype, data = attachment(tenant, a["email_id"], a["attachment_id"])
             files.append((a.get("name") or name, mtype, data))
         elif t == "file":
+            kept = _kept(tenant, a.get("keep"))
+            if kept is not None:
+                files.append((a.get("name") or "file", a.get("mime") or "application/octet-stream", kept))
+                continue
             f = _file_row(tenant, a["file_id"])
             p = Path(f.stored_path)
             if not p.exists():
                 raise MailError(f"{f.name} ab server par nahi hai (files 24 ghante baad hat jaati hain). Dobara bhejiye.")
             files.append((f.name, a.get("mime") or "application/octet-stream", p.read_bytes()))
         elif t == "drive":
-            from ..drive.accounts import get_client as _drive_client
-            try:
-                c = _drive_client(tenant)
-                meta = c.get(a["drive_file_id"])
-                mt = meta.get("mimeType") or a.get("mime") or "application/octet-stream"
-                if mt.startswith("application/vnd.google-apps"):
-                    data = c.export(a["drive_file_id"], "application/pdf")
-                else:
-                    data = c.download(a["drive_file_id"])
-            except Exception as e:
-                raise MailError(f"Drive file ab nahi mili ({type(e).__name__}).")
-            files.append((a.get("name") or meta.get("name") or "file", mt, data))
+            kept = _kept(tenant, a.get("keep"))
+            if kept is not None:
+                files.append((a.get("name") or "file", a.get("mime") or "application/octet-stream", kept))
+                continue
+            name, mt, data = _drive_bytes(tenant, a["drive_file_id"], a.get("format"))
+            files.append((a.get("name") or name, a.get("mime") or mt, data))
         elif t == "artifact":
             from .. import artifacts
             html = artifacts.latest_html(a["artifact_id"])
@@ -1121,9 +1243,10 @@ def send_draft(tenant: str, draft_id: str, edits: dict[str, Any] | None = None, 
         md = bool(d.markdown)
         alias = (d.from_alias or "").strip().lower()
     try:
-        for a in [x for x in (to_addr + "," + cc + "," + bcc).split(",") if x.strip()]:
-            if not contacts.valid(email.utils.parseaddr(a)[1]):
-                raise MailError(f"'{a.strip()}' sahi email address nahi hai")
+        # v0.706 getaddresses: a display name with a comma ("Sharma, Ravi" <r@x.com>) was split in two and refused
+        for nm, a in email.utils.getaddresses([x for x in (to_addr, cc, bcc) if x]):
+            if not contacts.valid(a):
+                raise MailError(f"'{(nm + ' ' + a).strip()}' sahi email address nahi hai")
         box = get_box(tenant, account or None)
         if alias:
             _alias_verified(tenant, box, alias)     # verified send-as only, before anything moves
@@ -1147,6 +1270,13 @@ def send_draft(tenant: str, draft_id: str, edits: dict[str, Any] | None = None, 
         view = draft_view(d)
     bus.publish(conv, "email_sent", view)
     people = mime.addr_list(to_addr) + mime.addr_list(cc) + mime.addr_list(bcc)
+    # v0.545.0 P5: the leads outreach ledger's email side - if a recipient's address is a leads-store row's
+    # email, the send lands in lead_outreach (kind=email_sent, desk=email). The ledger never breaks the send.
+    try:
+        from ..leads.service import note_email_sends
+        note_email_sends(tenant, [a for _, a in people], draft_id)
+    except Exception as e:
+        log.warning("email_sent ledger write failed for draft %s: %s", draft_id, e)
     contacts.learn(tenant, people, 1.0, sent=True)
     if follow:
         add_watch(tenant, conv, box, "their_reply", sent.get("message_id", ""), sent.get("thread_id") or thread_id or "",

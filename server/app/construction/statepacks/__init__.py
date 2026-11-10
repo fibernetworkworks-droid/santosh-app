@@ -9,6 +9,10 @@ source or left out entirely, never guessed.
 v0.512.0 ships `maharashtra.json` v0 (the plan's worked example) and the loader. Wave 2 checkers
 (bye-law, RERA, approvals) consume these rows; Wave 1's `const_labour cess/TDS` reads the determined
 tax rows through `tax_rows()`.
+
+v0.550.0 adds `india.json` - the NATIONAL code rows for the Wave-3 desks (IS 875 unit weights and
+imposed loads, IS 456 span/depth ratios, CPHEEO per-capita water). `rule_row(state, rule_id)` reads
+the state pack FIRST, then the national pack, so a state row always wins; both refuse when stale.
 """
 from __future__ import annotations
 
@@ -82,13 +86,56 @@ def value(pack: dict, rule_id: str, default=None):
     return r.get("value", default)
 
 
-def tax_rows(state: str = "maharashtra") -> dict:
-    """The determined tax / cess numbers Wave 1's calculators work from, each with its citation.
-    Raises PackError (stale pack included) - the caller says the message, never a made-up rate."""
+def _fresh(state: str) -> dict:
+    """load + the staleness refusal, shared by every reader - a stale pack makes the desk say so."""
     pack = load(state)
     if stale(pack):
         raise PackError(f"{pack.get('state')} ka rule pack purana hai (refresh_by {pack.get('refresh_by')}) - "
                         "pehle pack verify karke refresh karo, phir hisaab.")
+    return pack
+
+
+def national() -> dict:
+    """The national code pack (`india`), refusing when stale."""
+    return _fresh("india")
+
+
+def rule_row(state: str, rule_id: str) -> dict | None:
+    """One rule row, state pack first then the national pack - the state row always wins. Stale pack
+    refuses (PackError); a rule that is in neither returns None and the caller refuses to guess."""
+    _fresh(state)
+    try:
+        nat = national()
+    except PackError:
+        nat = {}
+    r = row(load(state), rule_id)
+    if r:
+        return r
+    return row(nat, rule_id)
+
+
+def rule_value(state: str, rule_id: str, default=None):
+    r = rule_row(state, rule_id)
+    if r is None:
+        return default
+    return r.get("value", default)
+
+
+def rule_cited(state: str, rule_id: str) -> dict:
+    """The row with its citation, refusing when the rule is missing - the desk never carries a
+    number without its clause."""
+    r = rule_row(state, rule_id)
+    if r is None:
+        raise PackError(f"rule '{rule_id}' na state pack mein hai na national pack mein - bina clause ka "
+                        "number nahi chalta. Rule ke clause + source ke saath add karo.")
+    return {"rule_id": rule_id, "value": r.get("value"), "clause": r.get("clause"), "source": r.get("source"),
+            "checked_on": r.get("checked_on")}
+
+
+def tax_rows(state: str = "maharashtra") -> dict:
+    """The determined tax / cess numbers Wave 1's calculators work from, each with its citation.
+    Raises PackError (stale pack included) - the caller says the message, never a made-up rate."""
+    pack = _fresh(state)
     out = {}
     for rid in ("gst_works_contract", "gst_tds", "it_tds_194c", "bocw_cess", "rera_escrow_pct"):
         r = row(pack, rid)

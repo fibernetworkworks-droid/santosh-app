@@ -131,7 +131,7 @@ class _ReelScreenState extends State<ReelScreen> {
         if (_r?['saved'] == true) {
           await api.reelUnsave(_id);
           setState(() => _r = {...?_r, 'saved': false});
-          _snack('Saved se hata di');
+          _snack('Removed from saved');
           return;
         }
         final r = await api.reelSave(_id);
@@ -145,10 +145,10 @@ class _ReelScreenState extends State<ReelScreen> {
     DateTime at(int addDays, int h) => DateTime(now.year, now.month, now.day + addDays, h);
     final sunday = at((DateTime.sunday - now.weekday + 7) % 7 == 0 ? 7 : (DateTime.sunday - now.weekday + 7) % 7, 11);
     final options = <(String, DateTime)>[
-      if (now.hour < 18) ('Aaj shaam 7 baje', at(0, 19)),
-      ('Kal subah 9 baje', at(1, 9)),
-      ('Kal shaam 7 baje', at(1, 19)),
-      ('Is Sunday 11 baje', sunday),
+      if (now.hour < 18) ('Today 7 pm', at(0, 19)),
+      ('Tomorrow 9 am', at(1, 9)),
+      ('Tomorrow 7 pm', at(1, 19)),
+      ('This Sunday 11 am', sunday),
     ];
     final picked = await showModalBottomSheet<DateTime>(
       context: context,
@@ -168,7 +168,7 @@ class _ReelScreenState extends State<ReelScreen> {
               ),
             ListTile(
               leading: const Icon(Icons.edit_calendar_rounded, color: C.teal),
-              title: const Text('Din aur time chuniye', style: TextStyle(fontWeight: FontWeight.w700)),
+              title: const Text('Choose day and time', style: TextStyle(fontWeight: FontWeight.w700)),
               onTap: () async {
                 final d = await showDatePicker(context: ctx, firstDate: now, lastDate: now.add(const Duration(days: 730)), initialDate: now);
                 if (d == null || !ctx.mounted) return;
@@ -186,7 +186,7 @@ class _ReelScreenState extends State<ReelScreen> {
     final iso = '${picked.year}-${two(picked.month)}-${two(picked.day)}T${two(picked.hour)}:${two(picked.minute)}';
     await _run('remind', () async {
       final r = await _api!.reelRemind(_id, iso);
-      _snack('${r['say'] ?? 'Reminder lag gaya'}');
+      _snack('${r['say'] ?? 'Reminder set'}');
     });
   }
 
@@ -203,7 +203,7 @@ class _ReelScreenState extends State<ReelScreen> {
       ...ingredients,
     ];
     if (names.isEmpty) {
-      _snack('Is reel mein khareedne layak cheez nahi mili.');
+      _snack('No product worth buying was found in this reel.');
       return;
     }
     final chosen = names.toSet();
@@ -217,9 +217,9 @@ class _ReelScreenState extends State<ReelScreen> {
           child: ConstrainedBox(
             constraints: BoxConstraints(maxHeight: MediaQuery.of(ctx).size.height * .8),
             child: ListView(shrinkWrap: true, padding: const EdgeInsets.fromLTRB(18, 18, 18, 12), children: [
-              Text('Shopping list mein daalein?', style: display(18)),
+              Text('Add to the shopping list?', style: display(18)),
               const SizedBox(height: 6),
-              const Text('Neeche ke link se daam milaiye; khareedna aap khud karenge.', style: TextStyle(color: C.faint, fontSize: 12)),
+              const Text('Compare prices with the links below; you will buy yourself.', style: TextStyle(color: C.faint, fontSize: 12)),
               const SizedBox(height: 8),
               for (final n in names)
                 CheckboxListTile(
@@ -238,7 +238,7 @@ class _ReelScreenState extends State<ReelScreen> {
                 ]),
               ],
               const SizedBox(height: 16),
-              GradientButton(label: 'List mein daalo', icon: Icons.add_shopping_cart_rounded, onTap: () => Navigator.pop(ctx, true)),
+              GradientButton(label: 'Add to list', icon: Icons.add_shopping_cart_rounded, onTap: () => Navigator.pop(ctx, true)),
             ]),
           ),
         ),
@@ -247,7 +247,7 @@ class _ReelScreenState extends State<ReelScreen> {
     if (go != true || chosen.isEmpty) return;
     await _run('shop', () async {
       final res = await _api!.reelShop(_id, items: chosen.toList());
-      _snack('${res['say'] ?? 'List mein daal diya'}');
+      _snack('${res['say'] ?? 'Added to the list'}');
     });
   }
 
@@ -256,14 +256,14 @@ class _ReelScreenState extends State<ReelScreen> {
         final text = await _api!.reelShareText(_id);
         await AndroidIntent(action: 'android.intent.action.SEND', type: 'text/plain', arguments: <String, dynamic>{
           'android.intent.extra.TEXT': text,
-        }).launchChooser('Family ko bhejo');
+        }).launchChooser('Send to family');
       });
 
   // 5 ye sach hai?
   Future<void> _sach() => _run('check', () async {
         final r = await _api!.reelCheck(_id);
         setState(() => _check = r);
-        if ((r['checks'] as List? ?? const []).isEmpty) _snack('${r['note'] ?? 'Check karne layak daava nahi mila'}');
+        if ((r['checks'] as List? ?? const []).isEmpty) _snack('${r['note'] ?? 'No claim worth checking was found'}');
       });
 
   void _askInChat() {
@@ -272,7 +272,7 @@ class _ReelScreenState extends State<ReelScreen> {
     final url = _r?['url'] as String? ?? '';
     final t = _r?['title'] as String? ?? '';
     Navigator.of(context).popUntil((r) => r.isFirst);
-    app.onShared({'files': <dynamic>[], 'text': 'Is reel ke baare mein: ${t.isEmpty ? '' : '"$t" '}$url'.trim(), 'skipped': 0});
+    app.onShared({'files': <dynamic>[], 'text': 'About this reel: ${t.isEmpty ? '' : '"$t" '}$url'.trim(), 'skipped': 0});
   }
 
   Future<void> _open(String url) async {
@@ -323,10 +323,10 @@ class _ReelScreenState extends State<ReelScreen> {
       );
 
   static const _verdict = {
-    'sach': ('Sahi lagta hai', C.ok, Icons.verified_rounded),
-    'galat': ('Galat lagta hai', C.bad, Icons.dangerous_rounded),
+    'sach': ('Looks right', C.ok, Icons.verified_rounded),
+    'galat': ('Looks wrong', C.bad, Icons.dangerous_rounded),
     'adhoora': ('Aadha sach / bhramak', C.warn, Icons.error_outline_rounded),
-    'pata_nahi': ('Pakka nahi', C.muted, Icons.help_outline_rounded),
+    'pata_nahi': ('Not sure', C.muted, Icons.help_outline_rounded),
   };
 
   Widget _checkCard() {
@@ -334,7 +334,7 @@ class _ReelScreenState extends State<ReelScreen> {
     final checks = List<Map<String, dynamic>>.from((c['checks'] as List? ?? const []).map((e) => Map<String, dynamic>.from(e as Map)));
     if (checks.isEmpty) return const SizedBox.shrink();
     final o = _verdict[c['overall']] ?? _verdict['pata_nahi']!;
-    return _section('YE SACH HAI?', [
+    return _section('IS THIS TRUE?', [
       Row(children: [
         Icon(o.$3, color: o.$2),
         const SizedBox(width: 8),
@@ -356,7 +356,7 @@ class _ReelScreenState extends State<ReelScreen> {
         ]),
         const SizedBox(height: 8),
       ],
-      const Text('Google Search se jaancha: yeh ishara hai, aakhri faisla nahi.', style: TextStyle(color: C.faint, fontSize: 11)),
+      const Text('Checked with Google Search: this is a hint, not a final verdict.', style: TextStyle(color: C.faint, fontSize: 11)),
     ]);
   }
 
@@ -380,13 +380,13 @@ class _ReelScreenState extends State<ReelScreen> {
               child: Column(children: const [
                 SizedBox(width: 30, height: 30, child: CircularProgressIndicator(strokeWidth: 2.5)),
                 SizedBox(height: 14),
-                Text('Hoola reel dekh raha hai…', style: TextStyle(fontWeight: FontWeight.w700)),
+                Text('Hoola is watching the reel…', style: TextStyle(fontWeight: FontWeight.w700)),
               ]),
             ),
           if (_err != null && !_looking) ...[
             Glass(radius: 18, padding: const EdgeInsets.all(16), child: Text(_err!, style: const TextStyle(color: C.bad))),
             const SizedBox(height: 12),
-            GlassButton(label: 'Screen recording chuniye', icon: Icons.video_library_rounded, onTap: _pickRecording),
+            GlassButton(label: 'Choose a screen recording', icon: Icons.video_library_rounded, onTap: _pickRecording),
           ],
           if (r != null && !_looking) ...[
             Row(children: [
@@ -417,12 +417,12 @@ class _ReelScreenState extends State<ReelScreen> {
                   const Row(children: [
                     Icon(Icons.screen_share_rounded, color: C.warn, size: 20),
                     SizedBox(width: 8),
-                    Expanded(child: Text('Poori reel samajhne ke liye', style: TextStyle(fontWeight: FontWeight.w800))),
+                    Expanded(child: Text('To understand the whole reel', style: TextStyle(fontWeight: FontWeight.w800))),
                   ]),
                   const SizedBox(height: 6),
                   Text('${r['how_to_show'] ?? ''}', style: const TextStyle(color: C.muted, fontSize: 13, height: 1.35)),
                   const SizedBox(height: 10),
-                  GlassButton(label: 'Recording / screenshot chuniye', icon: Icons.video_library_rounded, onTap: _pickRecording),
+                  GlassButton(label: 'Choose a recording / screenshot', icon: Icons.video_library_rounded, onTap: _pickRecording),
                 ]),
               ),
             ],
@@ -450,10 +450,10 @@ class _ReelScreenState extends State<ReelScreen> {
               childAspectRatio: .78,
               children: [
                 _action('save', Icons.bookmark_add_rounded, r['saved'] == true ? 'Saved' : 'Save', C.accent, _save, on: r['saved'] == true),
-                _action('remind', Icons.alarm_add_rounded, 'Yaad dilao', C.teal, _remind),
+                _action('remind', Icons.alarm_add_rounded, 'Remind me', C.teal, _remind),
                 _action('shop', Icons.shopping_bag_rounded, 'Khareedo', C.accentSoft, _shop),
                 _action('family', Icons.family_restroom_rounded, 'Family ko', C.violet, _family),
-                _action('check', Icons.fact_check_rounded, 'Ye sach hai?', C.ok, _sach),
+                _action('check', Icons.fact_check_rounded, 'Is this true?', C.ok, _sach),
               ],
             ),
             if (_check != null) _checkCard(),
@@ -466,7 +466,7 @@ class _ReelScreenState extends State<ReelScreen> {
                 ],
               ]),
             if ((r['products'] as List? ?? const []).isNotEmpty)
-              _section('REEL MEIN DIKHA SAAMAAN', [
+              _section('ITEMS SEEN IN THE REEL', [
                 for (final p in (r['products'] as List))
                   ListTile(
                     contentPadding: EdgeInsets.zero,
@@ -495,9 +495,9 @@ class _ReelScreenState extends State<ReelScreen> {
               _section('TAREEKH / OFFER', [
                 for (final e in (r['events'] as List)) _bullet('${(e as Map)['what']}${'${e['when']}'.isEmpty ? '' : ' · ${e['when']}'}'),
               ]),
-            if ((r['song'] as String? ?? '').isNotEmpty) _section('GAANA', [_bullet('${r['song']}')]),
+            if ((r['song'] as String? ?? '').isNotEmpty) _section('SONG', [_bullet('${r['song']}')]),
             const SizedBox(height: 16),
-            GlassButton(label: 'Hoola se is reel ke baare mein poochho', icon: Icons.chat_bubble_rounded, onTap: _askInChat),
+            GlassButton(label: 'Ask Hoola about this reel', icon: Icons.chat_bubble_rounded, onTap: _askInChat),
           ],
         ]),
       ),
@@ -569,7 +569,7 @@ class _SavedReelsScreenState extends State<SavedReelsScreen> {
           child: RefreshIndicator(
             onRefresh: _load,
             child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
-              const Text('Kisi bhi app ki reel: Share dabaiye, Hoola chuniye.', style: TextStyle(color: C.muted, fontSize: 13)),
+              const Text('A reel from any app: tap Share, then choose Hoola.', style: TextStyle(color: C.muted, fontSize: 13)),
               const SizedBox(height: 12),
               Glass(
                 radius: 18,
@@ -598,7 +598,7 @@ class _SavedReelsScreenState extends State<SavedReelsScreen> {
                 const Padding(
                   padding: EdgeInsets.all(24),
                   child: Center(
-                      child: Text('Abhi koi saved reel nahi.\nInstagram / YouTube mein reel kholiye → Share → Hoola → Save.',
+                      child: Text('No saved reels yet.\nOpen a reel in Instagram / YouTube → Share → Hoola → Save.',
                           textAlign: TextAlign.center, style: TextStyle(color: C.muted))),
                 ),
               for (final r in _items)

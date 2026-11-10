@@ -71,7 +71,8 @@ def chat_list(tenant: str, archived: bool = False, limit: int = 200, project: st
     count = (select(func.count(Message.id)).where(Message.conversation_id == Conversation.id, Message.role == "user",
                                                   Message.display.is_not(None)).correlate(Conversation).scalar_subquery())
     at = func.coalesce(Conversation.last_at, Conversation.created_at)
-    q = (select(Conversation, first, count).where(Conversation.tenant_id == tenant,
+    from .callconv import not_call   # v0.646 call records live in the Calls section, never in the chat list
+    q = (select(Conversation, first, count).where(Conversation.tenant_id == tenant, not_call(),
                                                   or_(Conversation.deleted.is_(None), Conversation.deleted.is_(False)))
          .order_by(func.coalesce(Conversation.pinned, False).desc(), at.desc()).limit(max(1, min(limit, 500))))
     q = q.where(Conversation.archived.is_(True)) if archived else \

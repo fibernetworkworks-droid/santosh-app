@@ -5,9 +5,9 @@ from __future__ import annotations
 import asyncio
 import time
 import logging
-from datetime import timedelta
+from datetime import timedelta, timezone
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 
 from . import campaigns as camp
 from .config import get_settings
@@ -112,11 +112,12 @@ async def send_batches(max_seconds: float = 5.0) -> None:
                                                             OutboundMessage.status == "queued",
                                                             OutboundMessage.wa_message_id.is_(None))
                               .order_by(OutboundMessage.id).limit(budget)).all()
-            batch = [(m.id, m.phone, m.params, m.attempts) for m in batch]
+            batch = [(m.id, m.phone, m.params, m.attempts, m.lead_id) for m in batch]
         if not batch:
             continue   # everything is with Meta; finish_campaigns() closes it once statuses settle
         gap = 1.0 / max(st.send_rate_per_sec, 0.1)
-        for mid, phone, params, attempts in batch:
+        sent_lead_ids: list[int] = []   # v0.545.0 P5: leads-store copies that ACTUALLY went out this batch
+        for mid, phone, params, attempts, lead_id in batch:
             with session() as s:
                 if s.get(Campaign, cid).status != "sending":
                     break   # paused or cancelled mid-batch
@@ -126,6 +127,8 @@ async def send_batches(max_seconds: float = 5.0) -> None:
                 with session() as s:
                     m = s.get(OutboundMessage, mid)
                     m.wa_message_id, m.status, m.sent_at, m.attempts = wamid, "sent", now(), attempts + 1
+                if lead_id:
+                    sent_lead_ids.append(int(lead_id))
             except WhatsAppError as e:
                 with session() as s:
                     m = s.get(OutboundMessage, mid)
@@ -142,6 +145,14 @@ async def send_batches(max_seconds: float = 5.0) -> None:
                                           "Maine campaign rok diya hai.")
                 break
             await asyncio.sleep(gap)
+        if sent_lead_ids:
+            # v0.545.0 P5: the outreach ledger records the moment of truth - the SEND, not the queueing. Only
+            # leads-store copies land here (LeadListRef joins); her own imported lists were never store rows.
+            try:
+                from .leads.service import note_campaign_sends
+                note_campaign_sends(tenant, cid, sent_lead_ids)
+            except Exception as e:
+                log.warning("campaign_sent ledger write failed for %s: %s", cid, e)
         camp.publish_campaign(cid)
 
 
@@ -177,6 +188,24 @@ async def pump_simulated_statuses() -> None:
             camp.publish_campaign(cid)
 
 
+def _home_conv(s, tenant: str, conv: str) -> str:
+    """v0.667 the chat a reminder / routine / briefing should speak in: its own, unless that chat was deleted or is a
+    call record - then the chat she is in now (never '' when she has any chat)."""
+    from .db import Conversation
+    c = s.get(Conversation, conv) if conv else None
+    if c is not None and not c.deleted and (c.kind or "") != "call":
+        return conv
+    if c is not None and (c.kind or "") == "call" and c.origin_conv:
+        o = s.get(Conversation, c.origin_conv)
+        if o is not None and not o.deleted:
+            return o.id
+    try:
+        from . import convs
+        return convs.notice_chat(tenant) or conv   # v0.714 her updates chat, never the chat she has open
+    except Exception:   # noqa: BLE001
+        return conv
+
+
 async def fire_reminders() -> None:
     from . import life
     from .db import Reminder
@@ -184,25 +213,108 @@ async def fire_reminders() -> None:
     with session() as s:
         due = s.scalars(select(Reminder).where(Reminder.status == "active", Reminder.due_at <= now())
                         .order_by(Reminder.due_at).limit(100)).all()
-        due = [(r.id, r.tenant_id, r.conversation_id, r.text) for r in due]
+        due = [(r.id, r.tenant_id, r.conversation_id, r.text, r.due_at) for r in due]
     touched: dict[str, str] = {}
-    for rid, tenant, conv, text in due:
-        notify(conv, f"Yaad dila raha hoon: {text}")
-        bus.publish(conv, "reminder", {"id": rid, "text": text})
+    for rid, tenant, conv, text, due_at in due:
+        # v0.666 the reminder is ADVANCED (committed) first and said after: a crash between saying and saving used to
+        # say it again on the next tick. The advance is a claim on exactly this due time, so two ticks never both say it.
         tz = life.tz_of(tenant)
         with session() as s:
             r = s.get(Reminder, rid)
-            r.fired_count += 1
-            nxt = life.next_due(r.due_at, r.repeat, tz)
+            if r is None or r.status != "active" or r.due_at != due_at:
+                continue
+            home = _home_conv(s, tenant, conv)    # v0.667 a deleted chat / a call record -> the chat she is in
+            if home and home != conv:
+                r.conversation_id = conv = home
+            anchor = r.anchor_day or life.anchor_of(r.due_at, r.repeat, tz)
+            nxt = life.next_due(r.due_at, r.repeat, tz, anchor)
             while nxt is not None and nxt <= now():      # catch up after downtime without spamming
-                nxt = life.next_due(nxt, r.repeat, tz)
-            if nxt is None:
-                r.status = "done"
-            else:
-                r.due_at = nxt
+                nxt = life.next_due(nxt, r.repeat, tz, anchor)
+            vals = {"fired_count": (r.fired_count or 0) + 1, "anchor_day": anchor}
+            vals.update({"status": "done"} if nxt is None else {"due_at": nxt})
+            got = s.execute(update(Reminder).where(Reminder.id == rid, Reminder.status == "active",
+                                                   Reminder.due_at == due_at).values(**vals))
+            if got.rowcount != 1:
+                continue
+        late = _late_by(due_at)
+        if late >= REMINDER_LATE_S:
+            # v0.662 the server was down when it was due: say it is LATE (never the plain line as if on time), and a
+            # late one never rings her phone in the night - a 21:30 reminder must not auto-start a call at 3 am
+            when = _local_hhmm(tenant, due_at)
+            notify(conv, f"Yaad dila raha hoon (der se - yeh {when} ka tha, us waqt main band tha): {text}")
+            bus.publish(conv, "reminder", {"id": rid, "text": text, "late": True, "was_due": when})
+            if not _quiet_now(tenant):
+                _ring_for_reminder(tenant, conv, rid, text)
+        else:
+            notify(conv, f"Yaad dila raha hoon: {text}")
+            bus.publish(conv, "reminder", {"id": rid, "text": text})   # a live call SAYS it (voice.card_news)
+            _ring_for_reminder(tenant, conv, rid, text)                # v0.621 no live call: Hoola rings her and says it
         touched[conv] = tenant
     for conv, tenant in touched.items():
         bus.publish(conv, "reminders", {"reminders": life.upcoming_reminders(tenant)})
+
+
+REMINDER_LATE_S = 20 * 60   # v0.662 a reminder fired this long after its time is said as LATE
+
+
+def _late_by(due_at) -> float:
+    try:
+        d = due_at if due_at.tzinfo else due_at.replace(tzinfo=timezone.utc)
+        return (now() - d).total_seconds()
+    except Exception:
+        return 0.0
+
+
+def _tz(life, tenant: str):
+    """v0.666 her time zone as a ZoneInfo. life.tz_of ALREADY returns one, and ZoneInfo(ZoneInfo) raises TypeError -
+    swallowed, so v0.662's quiet-hours check was always False (a late reminder still rang her at 3 am) and the late
+    line always said 'pehle' instead of the time."""
+    from zoneinfo import ZoneInfo
+    z = life.tz_of(tenant)
+    return z if isinstance(z, ZoneInfo) else ZoneInfo(str(z or "Asia/Kolkata"))
+
+
+def _local_hhmm(tenant: str, due_at) -> str:
+    try:
+        from . import life
+        from zoneinfo import ZoneInfo
+        d = due_at if due_at.tzinfo else due_at.replace(tzinfo=timezone.utc)
+        return d.astimezone(_tz(life, tenant)).strftime("%I:%M %p").lstrip("0")
+    except Exception:
+        return "pehle"
+
+
+def _quiet_now(tenant: str) -> bool:
+    """Her night (22:00-08:00 in her time zone) - the same quiet hours the job ring keeps."""
+    try:
+        from . import life
+        from zoneinfo import ZoneInfo
+        from datetime import datetime as _dt
+        h = _dt.now(_tz(life, tenant)).hour
+        return h >= 22 or h < 8
+    except Exception:
+        return False
+
+
+def _ring_for_reminder(tenant: str, conv: str, rid: str, text: str) -> None:
+    """v0.621 YAAD KI GHANTI (owner: "REMINDER NOT WORKING VIA VOICE"): with no call live, a due reminder used to be a
+    chat line + a notification only - Hoola never SAID it. Now the server rings her phone (the GHANTI voice_ring the
+    native side already turns into an auto-started call) and the call OPENS with the reminder (call followup note).
+    Her own reminder at her own time: quiet hours and the job-news ring budget do not apply (own cap in push)."""
+    try:
+        from . import voice
+        if voice.tenant_live(tenant):
+            return                                   # a live call (any chat of hers) already heard it via card_news
+        if not get_settings().voice_ring_reminders:
+            return
+        from . import yaad
+        yaad.note_call_followup(conv, tenant, f"REMINDER jo usne khud lagaya tha, abhi due hai: {text[:300]}. "
+                                              "Call uthate hi sabse pehle yahi ek line mein yaad dilao.")
+        # through the bus: an OPEN app rings from its live stream, a closed one from the push (gated in push)
+        bus.publish(conv, "voice_ring", {"reason": f"reminder: {text}"[:80], "ref": f"rem:{rid}", "conv": conv,
+                                         "reminder": True})
+    except Exception:
+        log.exception("reminder ring failed")
 
 
 async def morning_briefings() -> None:
@@ -226,6 +338,15 @@ async def morning_briefings() -> None:
                 continue
             p = s.get(Profile, tenant)
             p.last_briefing_date = today   # mark first, so a slow weather call never sends it twice
+            home = _home_conv(s, tenant, conv)   # v0.667 a deleted chat / a call record -> the chat she is in
+            if home != conv:
+                p.briefing_conversation_id = conv = home
+        try:   # v0.714 HAR CHAT ALAG: the morning briefing lives in her 'Hoola updates' chat
+            from . import convs as _cv_b
+            if _cv_b._alone():
+                conv = _cv_b.updates_chat(tenant) or conv
+        except Exception:   # noqa: BLE001
+            log.exception("briefing updates chat")
         text = await life.compose_briefing(tenant)
         notify(conv, text)
         bus.publish(conv, "briefing", {"text": text, "date": today})
@@ -246,9 +367,10 @@ async def run_routines() -> None:
         jobs = []
         for r in due:
             tz = life.tz_of(r.tenant_id)
-            nxt = life.next_due(r.next_run, r.repeat, tz)
+            r.anchor_day = r.anchor_day or life.anchor_of(r.next_run, r.repeat, tz)   # v0.667 the 31st stays the 31st
+            nxt = life.next_due(r.next_run, r.repeat, tz, r.anchor_day)
             while nxt is not None and nxt <= now():   # after downtime run once, not once per missed slot
-                nxt = life.next_due(nxt, r.repeat, tz)
+                nxt = life.next_due(nxt, r.repeat, tz, r.anchor_day)
             r.run_count += 1
             r.last_run = now()
             if nxt is None:
@@ -256,23 +378,57 @@ async def run_routines() -> None:
             else:
                 r.next_run = nxt
             if s.get(Conversation, r.conversation_id):
-                jobs.append((r.id, r.tenant_id, r.conversation_id, r.title, r.instruction))
+                # v0.667 a routine in a chat she deleted (or a call record) kept spending model calls into a chat she
+                # can never see: it moves to the chat she is in, once, and keeps running there
+                home = _home_conv(s, r.tenant_id, r.conversation_id)
+                if home and home != r.conversation_id:
+                    r.conversation_id = home
+                run_in = r.conversation_id
+                try:   # v0.714 HAR CHAT ALAG: a daily / scheduled job speaks in her 'Hoola updates' chat, never inside
+                    # one of her working chats (its reply and its history used to land in the chat she was using)
+                    from . import convs as _cv_r
+                    if _cv_r._alone():
+                        run_in = _cv_r.updates_chat(r.tenant_id) or run_in
+                except Exception:   # noqa: BLE001
+                    log.exception("routine updates chat")
+                jobs.append((r.id, r.tenant_id, run_in, r.title, r.instruction))
     for rid, tenant, conv, title, instruction in jobs:
         prompt = (f'[Automatic job "{title}" is running now at its scheduled time. The user is not in the chat and '
                   f"will read your reply as a phone notification. Do the task with your tools, then reply with the result "
                   f"in 1-3 short sentences. Do not ask questions and do not create new automatic jobs.]\n{instruction}")
 
         async def _go(rid=rid, tenant=tenant, conv=conv, prompt=prompt):
+            import time as _time
+            t0 = _time.time()
             try:
-                out = await run_turn(conv, prompt, tenant_id=tenant, actor="routine")
+                # v0.666 the routine rides the turn inbox: a restart mid-run re-runs it (as a routine) instead of the
+                # slot being spent and the result silently lost
+                from . import turn_inbox as _ti
+                ti_id = await asyncio.to_thread(_ti.accept, tenant, conv, prompt, False, "", "", "", "routine")
+                if ti_id:
+                    out = await _ti.run_owned(ti_id, conv, prompt, tenant, False, actor="routine")
+                else:
+                    out = await run_turn(conv, prompt, tenant_id=tenant, actor="routine")
+                from .agent import santosh as _sant
+                if _sant.turn_failed_since(conv, t0):
+                    # v0.657 PAKKA KAAM: run_turn RETURNS its error line ('kuch gadbad', 'credit khatam') - it is a
+                    # failure, never the routine's result, and a live call must not read it out as "poora hua"
+                    out = f"failed: {out}"
             except Exception as e:   # never let one job kill the worker
                 log.exception("routine %s failed", rid)
                 out = f"failed: {e}"
             with session() as s:
                 r = s.get(Routine, rid)
+                title = r.title if r else ""
                 if r:
                     r.last_result = (out or "")[:2000]
             bus.publish(conv, "routines", {"routines": life.active_routines(tenant)})
+            if out and not str(out).startswith("failed:"):   # v0.617 a live call SAYS the result (no new card kind)
+                try:
+                    from . import voice as _voice
+                    _voice.card_news(conv, "routine_done", {"id": rid, "title": title, "text": str(out)[:600]})
+                except Exception:
+                    log.exception("routine result to the live call")
 
         t = asyncio.create_task(_go())
         _routine_tasks.add(t)
@@ -334,35 +490,99 @@ async def expire_stale_asks() -> None:
         log.exception("studio approval expiry failed")
 
 
+_SLOT_FAIL: dict[str, float] = {}
+# wave 13: what the worker is doing, for /healthz (a hung slot used to stop reminders / follow-ups for good, silently)
+BEAT = {"tick_at": 0.0, "slot_at": 0.0, "slot": "", "ticks": 0, "slot_timeouts": 0}
+
+
+async def _slot(fn) -> None:
+    """v0.662 one worker slot, guarded: an exception that keeps recurring in an EARLY slot (campaigns come first)
+    used to skip every slot after it on every tick - reminders, follow-ups, research - silently. Now it is logged
+    (once a minute per slot) and the next slot still runs."""
+    from . import google_auth as _ga
+    tok = _ga.BACKGROUND.set(True)      # a dead Google sign-in waits out its backoff here (never in her own chat)
+    name = getattr(fn, "__name__", "slot")
+    BEAT["slot"], BEAT["slot_at"] = name, time.time()
+    try:
+        r = fn()
+        if asyncio.iscoroutine(r):
+            # wave 13: one hung await (a mail / HTTP call that never answers) no longer holds every other slot for ever
+            await asyncio.wait_for(r, timeout=float(getattr(get_settings(), "worker_slot_timeout_s", 300) or 300))
+    except asyncio.TimeoutError:
+        BEAT["slot_timeouts"] += 1
+        log.error("worker slot %s took longer than its limit - cut, the other slots run", name)
+    except asyncio.CancelledError:
+        raise
+    except Exception:
+        if time.time() - _SLOT_FAIL.get(name, 0.0) >= 60:
+            _SLOT_FAIL[name] = time.time()
+            log.exception("worker slot %s failed (the other slots still run)", name)
+    finally:
+        _ga.BACKGROUND.reset(tok)
+
+
 async def tick() -> None:
-    await check_approvals()
-    await send_batches()
-    await pump_simulated_statuses()
-    await finish_campaigns()
-    await fire_reminders()
-    await morning_briefings()
-    await run_routines()
-    expire_device_actions()
-    await expire_stale_asks()
-    await bazar_reminders()
-    await offline_digests()
-    await pc_cleanup()
-    await home_device_alerts()
-    await mail_jobs()
-    await employee_jobs()
-    kaam_jobs()
-    await followup_jobs()
-    goal_resume_jobs()
-    await inbox_jobs()
-    await team_jobs()
-    await research_jobs()
-    await scrape_crawl_jobs()
-    await dhara_jobs()
-    eventlog_jobs()
-    aboutme_jobs()
-    applogic_jobs()
-    game_studio_jobs()
-    await coder_jobs()
+    for fn in (
+        check_approvals, send_batches, pump_simulated_statuses, finish_campaigns, fire_reminders, morning_briefings,
+        run_routines, expire_device_actions, expire_stale_asks, bazar_reminders, offline_digests, pc_cleanup,
+        home_device_alerts, mail_jobs, employee_jobs, kaam_jobs, followup_jobs, goal_resume_jobs, inbox_jobs,
+        team_jobs, research_jobs, scrape_crawl_jobs, dhara_jobs, eventlog_jobs, kaan_jobs, aboutme_jobs, applogic_jobs,
+        game_studio_jobs, coder_jobs, bahar_jobs, app_ops_jobs, api_box_jobs,
+    ):
+        await _slot(fn)
+    BEAT["slot"] = ""
+    BEAT["tick_at"] = time.time()
+    BEAT["ticks"] += 1
+
+
+def health() -> dict:
+    """wave 13: is the worker alive? stuck = a slot has run past its limit + 2 min, or no tick for 10 min."""
+    now = time.time()
+    if not BEAT["ticks"] and not BEAT["slot_at"]:
+        return {"ok": True, "started": False}
+    limit = float(getattr(get_settings(), "worker_slot_timeout_s", 300) or 300) + 120
+    in_slot = bool(BEAT["slot"]) and now - BEAT["slot_at"] > limit
+    no_tick = BEAT["tick_at"] > 0 and now - BEAT["tick_at"] > max(600.0, limit)
+    return {"ok": not (in_slot or no_tick), "started": True, "slot": BEAT["slot"],
+            "last_tick_s": round(now - BEAT["tick_at"], 1) if BEAT["tick_at"] else None,
+            "ticks": BEAT["ticks"], "slot_timeouts": BEAT["slot_timeouts"]}
+
+_ops_last = 0.0
+
+
+def app_ops_jobs() -> None:
+    """v0.546 CHALTA KAAM (Pillar L): write out what the apps' own backends measured, and once a day tell her the
+    things a rule says are worth telling - failures up, the app slower than it was, crashes, a filling app, cost
+    doubling. One line per kind per day; an alert that cries every hour is one she turns off."""
+    global _ops_last
+    if time.time() - _ops_last < 60:
+        return
+    _ops_last = time.time()
+    try:
+        from .appmaker import ops as OPS
+        OPS.flush()
+    except Exception:                                      # noqa: BLE001
+        log.debug("ops flush", exc_info=True)
+    try:
+        from .appmaker import ops as OPS
+        from .appmaker.models import AppProject
+        from .db import session
+        hour = __import__("datetime").datetime.now(OPS.IST).hour
+        if hour != 9:                                      # her morning, once
+            return
+        with session() as s:
+            rows = s.query(AppProject).filter(AppProject.status == "approved").limit(200).all()
+            for row in rows:
+                s.expunge(row)
+        for r in rows:
+            if (r.plan or "").find('"jaanch_of"') >= 0:    # never alert about a test twin
+                continue
+            try:
+                OPS.watch(r)
+            except Exception:                              # noqa: BLE001
+                log.debug("ops watch", exc_info=True)
+    except Exception:                                      # noqa: BLE001
+        log.debug("ops jobs", exc_info=True)
 
 
 _logic_task: "asyncio.Task | None" = None
@@ -510,6 +730,25 @@ async def team_jobs() -> None:
 _rs_last = 0.0
 
 
+_box_last = 0.0
+
+
+async def api_box_jobs() -> None:
+    """v0.750 API BOX: once a day, re-check the sites of the least recently checked free public APIs."""
+    global _box_last
+    import time
+    if time.time() - _box_last < 24 * 3600:
+        return
+    _box_last = time.time()
+    st = get_settings()
+    n = int(getattr(st, "api_box_check_per_day", 300) or 0)
+    if not getattr(st, "api_box_enabled", True) or n <= 0:       # 0 = the daily check is off
+        return
+    from .publicapis import box
+    res = await box.check(limit=n)
+    log.info("api box health: %s", res)
+
+
 async def research_jobs() -> None:
     """v0.475 R4 background research runs: start queued ones, pick a stalled one up again from its checkpoint, forget old rows."""
     global _rs_last
@@ -579,7 +818,41 @@ def eventlog_jobs() -> None:
         log.exception("event log retention failed")
 
 
+_kaan_last = 0.0
+
+
+def kaan_jobs() -> None:
+    """v0.667 KAAN W6: the daily retention sweep - kaan_transcripts older than kaan_retention_days
+    go (pinned rows survive), live spines past the cutoff go with their sessions. 0 = no-op."""
+    global _kaan_last
+    if time.time() - _kaan_last < 86400:
+        return
+    _kaan_last = time.time()
+    try:
+        from .kaan import limits
+        limits.retention_sweep()
+    except Exception:
+        log.exception("kaan retention sweep failed")
+
+
 _coder_last = 0.0
+
+
+_bh_last = 0.0
+
+
+async def bahar_jobs() -> None:
+    """v0.616 BAHAR SE BAAT: a job that finished after her outside-app turn still reaches her there."""
+    global _bh_last
+    import time
+    if time.time() - _bh_last < 30:
+        return
+    _bh_last = time.time()
+    try:
+        from . import bahar
+        await bahar.forward_all()
+    except Exception:
+        log.exception("bahar forward tick failed")
 
 
 async def coder_jobs() -> None:
@@ -976,6 +1249,16 @@ async def employee_jobs() -> None:
         await asyncio.to_thread(site_service.blog_tick)
     except Exception:
         log.exception("site blog tick failed")
+    try:                                   # v0.538 HOOLA CMS: the team's scheduled drafts whose time came
+        from .site import cms as site_cms
+        await asyncio.to_thread(site_cms.tick)
+    except Exception:
+        log.exception("site cms tick failed")
+    try:                                   # v0.564 CHALTI WEBSITE: visitors' errors + speed, alerts, nightly restore test
+        from .site import ops as site_ops
+        await asyncio.to_thread(site_ops.tick)
+    except Exception:
+        log.exception("site ops tick failed")
     try:                                   # v0.124 care: visit counters to the DB, monthly care note on the 1st
         from .site import care as site_care
         await asyncio.to_thread(site_care.flush)
@@ -1081,6 +1364,11 @@ async def run_forever(stop: asyncio.Event) -> None:
             await tick()
         except Exception:
             log.exception("worker tick failed")
+        try:   # wave 13: what her quiet hours held goes out once the night is over
+            from . import push as _push
+            _push.flush_night()
+        except Exception:
+            log.exception("night push flush failed")
         try:   # v0.98 counted model calls reach the database even when nothing else is happening
             from . import usage
             await asyncio.to_thread(usage.flush)

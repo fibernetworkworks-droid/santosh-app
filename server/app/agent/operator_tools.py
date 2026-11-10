@@ -60,9 +60,9 @@ def _run(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             v = ops.start(ctx.tenant_id, a.get("task") or "", a.get("start_url") or "", a.get("file_ids") or [],
                           ctx.conversation_id, created_by=getattr(ctx, "actor", "owner") or "owner")
             return {"task_id": v["id"], "status": v["status"], "place": "hoola",
-                    "where": "Hoola ka apna browser (server par) - not her PC, not her phone",
-                    "say": "Kaam mere apne browser mein shuru (aapke PC par nahi): chat mein live card hai. Poora form main "
-                           "bharunga; OTP aaye to bata dijiye, submit / payment se pehle poochhunga.",
+                    "where": "Hoola's own browser (on the server) - not her PC, not her phone",
+                    "say": "Started in my own browser (not on your PC): there is a live card in the chat. I will fill the whole form; "
+                           "if an OTP comes, tell me here, and I will ask before submit / payment.",
                     "note_for_you": "Do not poll; questions and the result arrive as cards + a message by themselves."}
         if action == "list":
             return {"jobs": [_short(v) for v in ops.listing(ctx.tenant_id, 10)]}
@@ -71,12 +71,12 @@ def _run(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
                                 for r in ops.recipes(ctx.tenant_id)]}
         if action == "forget_recipe":
             if not ops.forget_recipe(ctx.tenant_id, a.get("name") or ""):
-                raise ToolError("Is naam ka seekha hua kaam nahi mila (action=recipes dekhiye).")
+                raise ToolError("No learned task with this name was found (see action=recipes).")
             return {"ok": True}
         tid = a.get("task_id") or ((ops.active(ctx.tenant_id) or {}).get("id")) or \
             ((ops.listing(ctx.tenant_id, 1) or [{}])[0].get("id"))
         if not tid:
-            raise ToolError("Abhi koi website ka kaam nahi hai.")
+            raise ToolError("There is no website task right now.")
         if action == "status":
             return _short(ops.get(ctx.tenant_id, tid))
         if action == "cancel":
@@ -91,9 +91,9 @@ async def computer_operator(ctx: Ctx, action, **a):
         from ..operator import service as ops
         got = await ops.answer_from_chat(ctx.tenant_id, str(a.get("text") or ""))
         if not got and ops.recently_filled(ctx.tenant_id):
-            return {"ok": True, "say": "OTP pehle hi box mein bhar diya hai, aage badh raha hoon. Digits mat dohraiye."}
+            return {"ok": True, "say": "The OTP has already been entered in the box, I am moving on. Do not repeat the digits."}
         if not got:
-            raise ToolError("Abhi koi OTP / CAPTCHA ka intezaar nahi hai, ya yeh OTP jaisa nahi laga. Dobara poochhiye.")
+            raise ToolError("No OTP / CAPTCHA is being waited for right now, or this did not look like an OTP. Ask her again.")
         return {"ok": got["ok"], "say": got["say"]}
     if str(action) == "start":
         where = str(a.get("where") or "auto")
@@ -107,11 +107,10 @@ async def computer_operator(ctx: Ctx, action, **a):
                 if not chk["ok"]:
                     site = chk.get("site") or ""
                     return {"status": "site_blocks_server", "site": site, "why": chk.get("why", ""), "place": "hoola",
-                            "say": (f"{site or 'Yeh website'} mere apne browser (Hoola ke server) se nahi khulti - unki "
-                                    "suraksha data-centre ka address rok deti hai. Aapke PC par Chrome mein kar doon?"),
+                            "say": (f"{site or 'This website'} does not open from my own browser (Hoola's server) - its "
+                                    "security blocks data-centre addresses. Shall I do it in Chrome on your PC?"),
                             "next": ("She asked for YOUR browser. Tell her this in one or two lines and ASK. Only when she "
-                                     "says yes: computer_operator action=start where=pc. If she says 'server pe hi try "
-                                     "karo': where=server.")}
+                                     "says yes: computer_operator action=start where=pc. If she says 'try on the server only': where=server.")}
             where = "server"
         if where == "auto" and not get_settings().operator_preflight:
             where = "server"
@@ -141,8 +140,8 @@ def _ask_for_pc(chk: dict[str, Any]) -> dict[str, Any]:
     site = chk.get("site") or ""
     reach.STATS["told"] += 1
     return {"status": "site_blocks_server", "site": site, "why": chk.get("why", ""), "place": "server",
-            "say": (f"{site or 'Yeh website'} Hoola ke server se nahi khulti - unki suraksha data-centre ka address rok "
-                    "deti hai. Aapke PC par Chrome mein kar doon?"),
+            "say": (f"{site or 'This website'} does not open from Hoola's server - its security blocks data-centre "
+                    "addresses. Shall I do it in Chrome on your PC?"),
             "next": ("Do the rest of the job with the sites that DO open (never wait on this one), then tell her in one "
                      "line that this site refuses Hoola's server and ASK. Only when she says yes: computer_operator "
                      "action=start where=pc. Never move it to her PC or the cloud PC by yourself.")}
@@ -165,15 +164,15 @@ async def _to_pc(ctx: Ctx, a: dict[str, Any], chk: dict[str, Any]) -> dict[str, 
     except ToolError as e:
         if asked:
             return {"status": "pc_not_ready", "place": "pc", "pc": str(e)[:200],
-                    "say": ("Aapka PC abhi juda nahi hai, isliye wahan shuru nahi ho paya. PC par Santosh Desktop kholiye "
-                            "aur 'Santosh ko PC chalane dein' on kijiye, phir bata dijiye."),
+                    "say": ("Your PC is not connected right now, so it could not start there. Open Santosh Desktop on the PC "
+                            "and turn on 'Let Santosh control the PC', then tell me."),
                     "next": ("Tell her this in one line. Do NOT start it in your own browser instead unless she says so "
                              "(then computer_operator where=server).")}
         reach.STATS["told"] += 1
         link = url or (f"https://{site}" if site else "")
         return {"status": "site_blocks_server", "site": site, "why": why, "pc": str(e)[:200],
-                "say": (f"{site or 'Yeh website'} Hoola ke server se nahi khulti (unki suraksha data-centre ke address "
-                        "rok deti hai), isliye yeh kaam abhi aapke PC se ya phone se hoga."),
+                "say": (f"{site or 'This website'} does not open from Hoola's server (its security blocks "
+                        "data-centre addresses), so this task will be done from your PC or phone for now."),
                 "next": ("Tell her this plainly in one or two lines and offer: (1) open Santosh Desktop on her PC, then say "
                          "'PC par karo' and it runs there by itself; (2) open_on_phone with " + (link or "the site link") +
                          " so she does it on her phone; (3) the office proxy (one-time setup) so the server can open it. "
@@ -181,15 +180,14 @@ async def _to_pc(ctx: Ctx, a: dict[str, Any], chk: dict[str, Any]) -> dict[str, 
     r["place"] = "pc"
     r["where"] = "Aapka PC (Chrome on HER computer, via Santosh Desktop) - not your own browser"
     if asked:
-        r["say"] = ("Aapke PC par Chrome mein shuru kar diya hai. Live card chat mein hai; OTP aaye to bas yahan bata "
-                    "dijiye, main PC ke box mein bhar dunga.")
+        r["say"] = ("Started in Chrome on your PC. The live card is in the chat; if an OTP comes just tell me here "
+                    "and I will enter it in the PC box.")
         return r
     reach.STATS["routed_pc"] += 1
     r["moved_to"] = "pc"
-    r["why"] = f"{site} Hoola ke server se nahi khulta ({why})" if site else why
-    r["say"] = (f"{site or 'Yeh site'} mere apne browser (Hoola ke server) se nahi khulti, isliye yeh kaam AAPKE PC par "
-                "Chrome mein shuru kar diya hai. Live card chat mein hai; OTP aaye to bas yahan bata dijiye, main PC ke box "
-                "mein bhar dunga.")
+    r["why"] = f"{site} does not open from Hoola's server ({why})" if site else why
+    r["say"] = (f"{site or 'This site'} does not open from my own browser (Hoola's server), so this task was started on YOUR PC "
+                "in Chrome. The live card is in the chat; if an OTP comes just tell me here and I will enter it in the PC box.")
     return r
 
 

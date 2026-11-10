@@ -414,7 +414,7 @@ def _tenants_with_calendar() -> set[str]:
 
 def _conversation_for(tenant: str) -> str | None:
     from .. import convs
-    cur = convs.current(tenant)     # v0.158 the chat she is in first (a saved alert chat may be one she left)
+    cur = convs.notice_chat(tenant) if convs._alone() else convs.current(tenant)   # v0.714 updates chat; v0.158 the chat she is in first (a saved alert chat may be one she left)
     if cur:
         return cur
     p = prefs(tenant)

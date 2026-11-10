@@ -77,15 +77,15 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
     from ..qa import service as S
     t, conv, actor = ctx.tenant_id, ctx.conversation_id, _actor(ctx)
     if actor.startswith("customer:"):
-        raise ToolError("Testing graahakon ke liye nahi hai.")
+        raise ToolError("Testing is not for customers.")
     if action in _OWNER_ONLY and not _owner(ctx):
-        raise ToolError("Yeh sirf owner kar sakti hain.")
+        raise ToolError("Only the owner can do this.")
     if action == "target_edit" and "allow_writes" in a and not _owner(ctx):
-        raise ToolError("Forms submit ki ijazat sirf owner de sakti hain.")
+        raise ToolError("Only the owner can allow form submissions.")
     blob = " ".join(_s(a.get(k)) for k in ("text", "note", "title", "expected"))
     if _PASSWORDISH.search(blob) or any("account." not in _s(x.get("value")) and re.search(r"password", _s(x.get("target")), re.I)
                                           for x in (a.get("steps") or []) if isinstance(x, dict) and x.get("do") == "fill"):
-        raise ToolError("Password / OTP chat mein nahi: test account app mein (QA > target > Test account) bhariye. Asli password badal dijiye agar likh diya ho.")
+        raise ToolError("No password / OTP in chat: enter the test account in the app (QA > target > Test account). Change the real password if it was written.")
     tg = _s(a.get("target"))
     try:
         if action == "target_add":
@@ -118,7 +118,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         if action == "bug":
             st = _s(a.get("status"))
             if st in ("wont_fix", "closed") and not _owner(ctx):
-                raise ToolError("Bug band / 'nahi badlenge' sirf owner kar sakti hain.")
+                raise ToolError("Only the owner can close a bug / mark it 'will not fix'.")
             return S.set_bug(t, _s(a.get("bug")), st, _s(a.get("reason")), _s(a.get("duplicate_of")), _s(a.get("severity")), actor)
         if action == "retest":
             return S.retest(t, _s(a.get("bug")), actor, conv, background=True)
@@ -132,7 +132,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return S.save_settings(t, **{k: a[k] for k in ("team_name", "rules") if k in a})
     except (S.QaError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("action galat")
+    raise ToolError("invalid action")
 
 
 def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
@@ -165,13 +165,13 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
             return {"steps": GUIDE}
         if what == "rules":
             return {"types": R.TYPE_LABEL, "severities": R.SEV_LABEL, "statuses": R.BUG_LABEL, "standards": R.STANDARDS,
-                    "never": ["kisi aur ki website test karna", "asli password / OTP / card bharna", "pay / checkout dabana",
-                              "live site par form sach mein bhejna (jab tak staging ke liye ijazat na ho)", "GitHub issue bina uske tap ke"]}
+                    "never": ["testing someone else's website", "entering a real password / OTP / card", "pressing pay / checkout",
+                              "really submitting a form on a live site (unless allowed for staging)", "a GitHub issue without her tap"]}
         if what == "settings":
             return S.settings(t)
     except (S.QaError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("what galat")
+    raise ToolError("invalid what")
 
 
 async def qa(ctx: Ctx, action, **a: Any):

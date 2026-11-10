@@ -56,7 +56,7 @@ def test_news_is_merged_and_never_told_twice(env):
         await asyncio.sleep(0.4)
         return c, _texts(c)
     c, texts = asyncio.run(go())
-    assert len(texts) == 1 and "blouse" in texts[0] and "bijli" in texts[0] and "ek-ek karke" in texts[0]
+    assert len(texts) == 1 and "blouse" in texts[0] and "bijli" in texts[0] and "one by one" in texts[0]
     assert c.stats["news_deduped"] == 2 and c.stats["news_merged"] == 1
 
 
@@ -66,7 +66,7 @@ def test_news_never_waits_forever(env):
         c.NEWS_MAX_WAIT_S = 0.3
         c._last_voice_at = time.monotonic() + 60       # she talks and talks
         c.push_news("(kaam ho gaya: ticket book)")
-        await asyncio.sleep(0.7)
+        await asyncio.sleep(1.3)                       # v0.657: past the cap it still waits for a gap, up to 3x the cap
         return _texts(c)
     assert len(asyncio.run(go())) == 1
 
@@ -147,6 +147,8 @@ class _Fake:
 def _pool(monkeypatch):
     monkeypatch.setattr(voice, "pool_clips", lambda kind, v, g: [b"m"])
     monkeypatch.setenv("VOICE_BACKCHANNEL", "true")
+    from app.config import get_settings
+    get_settings.cache_clear()   # v0.625 the murmurs are opt-in now: the env must really be read
 
 
 def test_murmur_in_a_breath_inside_her_sentence(env, monkeypatch):
@@ -175,4 +177,4 @@ def test_no_murmur_on_a_short_turn(env, monkeypatch):
 
 def test_version():
     from app import main
-    assert main.APP_VERSION == "0.530.0"
+    assert main.APP_VERSION == "0.758.0"

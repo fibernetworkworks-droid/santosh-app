@@ -17,9 +17,9 @@ List<Map<String, dynamic>> _list(dynamic l) =>
 Map<String, dynamic> _map(dynamic m) => m is Map ? Map<String, dynamic>.from(m) : <String, dynamic>{};
 void _snack(BuildContext c, String t) => ScaffoldMessenger.of(c).showSnackBar(SnackBar(content: Text(t)));
 
-const _disclaimer = 'Draft research / jaankari, legal advice nahi. Har citation us source se hai jo Hoola ne padha; vakil se pakka karwaiye.';
+const _disclaimer = 'This is draft research / information, not legal advice. Every citation is from a source Hoola read; confirm with a lawyer.';
 
-Future<Map<String, String>?> _form(BuildContext context, String title, List<(String, String)> fields, {String ok = 'Aage'}) async {
+Future<Map<String, String>?> _form(BuildContext context, String title, List<(String, String)> fields, {String ok = 'Next'}) async {
   final c = {for (final (k, _) in fields) k: TextEditingController()};
   final res = await showDialog<bool>(
     context: context,
@@ -32,7 +32,7 @@ Future<Map<String, String>?> _form(BuildContext context, String title, List<(Str
         ]),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Rehne do')),
+        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Leave it')),
         TextButton(onPressed: () => Navigator.pop(d, true), child: Text(ok)),
       ],
     ),
@@ -103,11 +103,11 @@ class _LegalresScreenState extends State<LegalresScreen> {
   }
 
   Future<void> _ask() async {
-    final f = await _form(context, 'Kanoon ka sawaal', const [
-      ('question', 'Sawaal (jaise: IPC 420 ab kya hai, cheating kab banta hai?)'),
-      ('client', 'Kiska matter (aapke liye label, optional)'),
-      ('url', 'Koi official link padhna ho (optional)'),
-    ], ok: 'Research karo');
+    final f = await _form(context, 'Legal question', const [
+      ('question', 'Question (for example: what is IPC 420 now, when does cheating apply?)'),
+      ('client', 'Whose matter (a label for you, optional)'),
+      ('url', 'An official link to read (optional)'),
+    ], ok: 'Research');
     if (f == null || _s(f['question']).isEmpty) return;
     final r = await _run(() => widget.app.api!.call('POST', '/api/legalres/research',
         body: {'question': f['question'], if (f['client'] != null) 'client': f['client'], if (f['url'] != null) 'urls': [f['url']]},
@@ -125,9 +125,9 @@ class _LegalresScreenState extends State<LegalresScreen> {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Glass(child: Text(_s(d['say']), style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, height: 1.35))),
       const SizedBox(height: 10),
-      GradientButton(label: 'Naya sawaal', icon: Icons.search_rounded, height: 48, onTap: _busy ? null : _ask),
+      GradientButton(label: 'New question', icon: Icons.search_rounded, height: 48, onTap: _busy ? null : _ask),
       const SizedBox(height: 10),
-      if (ms.isEmpty) const Text('Abhi koi matter nahi.', style: TextStyle(color: C.muted)),
+      if (ms.isEmpty) const Text('No matters yet.', style: TextStyle(color: C.muted)),
       for (final m in ms)
         Padding(
           padding: const EdgeInsets.only(bottom: 8),
@@ -146,7 +146,7 @@ class _LegalresScreenState extends State<LegalresScreen> {
                       Text(_s(_map(m['last'])['short']), maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12.5)),
                   ]),
                 ),
-                Pill(_s(m['status']) == 'closed' ? 'BAND' : 'KHULA', fg: _s(m['status']) == 'closed' ? C.muted : C.ok),
+                Pill(_s(m['status']) == 'closed' ? 'CLOSED' : 'OPEN', fg: _s(m['status']) == 'closed' ? C.muted : C.ok),
               ]),
             ),
           ),
@@ -156,7 +156,7 @@ class _LegalresScreenState extends State<LegalresScreen> {
 
   Widget _savedTab() => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         const Caption('Saved authorities (act / judgment)'),
-        if (_saved.isEmpty) const Text('Matter ke source par "Save" dabaiye.', style: TextStyle(color: C.muted)),
+        if (_saved.isEmpty) const Text('Tap "Save" on a matter\'s source.', style: TextStyle(color: C.muted)),
         for (final a in _saved)
           Padding(
             padding: const EdgeInsets.only(bottom: 8),
@@ -166,7 +166,7 @@ class _LegalresScreenState extends State<LegalresScreen> {
                 Text('${_s(a['matter'])} · ${_s(a['kind'])}${a['official'] == true ? ' · official' : ''}', style: const TextStyle(color: C.muted, fontSize: 12)),
                 if (_s(a['note']).isNotEmpty) Text(_s(a['note']), style: const TextStyle(fontSize: 12.5)),
                 if (_s(a['excerpt']).isNotEmpty) Text('"${_s(a['excerpt'])}"', maxLines: 4, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, fontStyle: FontStyle.italic)),
-                if (_s(a['url']).isNotEmpty) TextButton(onPressed: () => _open(context, _s(a['url'])), child: const Text('Source kholo')),
+                if (_s(a['url']).isNotEmpty) TextButton(onPressed: () => _open(context, _s(a['url'])), child: const Text('Open source')),
               ]),
             ),
           ),
@@ -184,12 +184,12 @@ class _LegalresScreenState extends State<LegalresScreen> {
   }
 
   Widget _mappingTab() => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Text('IPC -> BNS, CrPC -> BNSS, Evidence Act -> BSA (1 July 2024 se). "andaaza" wali row India Code par pakka kijiye.',
+        const Text('IPC -> BNS, CrPC -> BNSS, Evidence Act -> BSA (from 1 July 2024). Confirm the "estimate" rows on India Code.',
             style: TextStyle(color: C.muted, fontSize: 12.5)),
         const SizedBox(height: 8),
-        TextField(controller: _mapText, decoration: const InputDecoration(labelText: 'Jaise: IPC 420, CrPC 438, Evidence 65B (khaali = poori IPC list)')),
+        TextField(controller: _mapText, decoration: const InputDecoration(labelText: 'For example: IPC 420, CrPC 438, Evidence 65B (blank = the whole IPC list)')),
         const SizedBox(height: 8),
-        GlassButton(label: 'Dekho', icon: Icons.swap_horiz_rounded, onTap: _lookup),
+        GlassButton(label: 'View', icon: Icons.swap_horiz_rounded, onTap: _lookup),
         const SizedBox(height: 8),
         LegalresMappingTable(rows: _rows),
       ]);
@@ -201,14 +201,14 @@ class _LegalresScreenState extends State<LegalresScreen> {
       Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           const Text('Indian Kanoon (official paid API)', style: TextStyle(fontWeight: FontWeight.w800)),
-          Text(joined ? 'Judi: ${_s(st['ik_label'])}${st['ik_ok'] == true ? ' · chal rahi hai' : ''}' : 'Nahi judi (judgments sirf official sites / aapke links se)',
+          Text(joined ? 'Linked: ${_s(st['ik_label'])}${st['ik_ok'] == true ? ' · in progress' : ''}' : 'Not connected (judgments only from official sites / your links)',
               style: const TextStyle(fontSize: 12.5)),
-          Text('Aaj ka kharcha: Rs ${_s(st['ik_today_rs'])} / Rs ${_s(st['ik_day_rs'])} (search 0.50, document 0.20 aapke prepaid balance se)',
+          Text('Today\'s cost: Rs ${_s(st['ik_today_rs'])} / Rs ${_s(st['ik_day_rs'])} (search 0.50, document 0.20 from your prepaid balance)',
               style: const TextStyle(color: C.muted, fontSize: 12)),
           const SizedBox(height: 8),
           Wrap(spacing: 8, runSpacing: 8, children: [
             GlassButton(
-                label: joined ? 'Key badlo' : 'Key jodo',
+                label: joined ? 'Change key' : 'Add key',
                 icon: Icons.key_rounded,
                 onTap: _busy
                     ? null
@@ -221,11 +221,11 @@ class _LegalresScreenState extends State<LegalresScreen> {
                             content: Column(mainAxisSize: MainAxisSize.min, children: [
                               TextField(controller: c, obscureText: true, decoration: const InputDecoration(labelText: 'Token (api.indiankanoon.org)')),
                               const SizedBox(height: 6),
-                              const Text('Sirf yahan daaliye, chat mein kabhi nahi. Server par sealed rehta hai.', style: TextStyle(fontSize: 12)),
+                              const Text('Enter only here, never in chat. It is kept sealed on the server.', style: TextStyle(fontSize: 12)),
                             ]),
                             actions: [
-                              TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Rehne do')),
-                              TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Jodo')),
+                              TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Leave it')),
+                              TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Add')),
                             ],
                           ),
                         );
@@ -234,14 +234,14 @@ class _LegalresScreenState extends State<LegalresScreen> {
                         }
                         c.dispose();
                       }),
-            if (joined) GlassButton(label: 'Key hatao', icon: Icons.link_off_rounded, onTap: _busy ? null : () => _run(() => widget.app.api!.call('DELETE', '/api/legalres/key'))),
+            if (joined) GlassButton(label: 'Remove key', icon: Icons.link_off_rounded, onTap: _busy ? null : () => _run(() => widget.app.api!.call('DELETE', '/api/legalres/key'))),
             GlassButton(
-                label: 'Roz ki limit',
+                label: 'Daily limit',
                 icon: Icons.currency_rupee_rounded,
                 onTap: _busy
                     ? null
                     : () async {
-                        final f = await _form(context, 'Indian Kanoon roz ki limit (Rs)', const [('ik_day_rs', 'Rupaye')]);
+                        final f = await _form(context, 'Indian Kanoon daily limit (Rs)', const [('ik_day_rs', 'Rupees')]);
                         final v = double.tryParse(_s(f?['ik_day_rs']));
                         if (v != null) await _run(() => widget.app.api!.call('PUT', '/api/legalres/settings', body: {'ik_day_rs': v}));
                       }),
@@ -253,12 +253,12 @@ class _LegalresScreenState extends State<LegalresScreen> {
         child: Column(children: [
           SwitchListTile(
               contentPadding: EdgeInsets.zero,
-              title: const Text('Official sites dhoondho (India Code, courts, gov.in)'),
+              title: const Text('Search official sites (India Code, courts, gov.in)'),
               value: st['use_web'] != false,
               onChanged: _busy ? null : (v) => _run(() => widget.app.api!.call('PUT', '/api/legalres/settings', body: {'use_web': v}))),
           SwitchListTile(
               contentPadding: EdgeInsets.zero,
-              title: const Text('Meri files (Gyaan) bhi dekho'),
+              title: const Text('Also look in my files (Knowledge)'),
               value: st['use_files'] != false,
               onChanged: _busy ? null : (v) => _run(() => widget.app.api!.call('PUT', '/api/legalres/settings', body: {'use_files': v}))),
         ]),
@@ -276,7 +276,7 @@ class _LegalresScreenState extends State<LegalresScreen> {
             onRefresh: _load,
             child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
               Wrap(spacing: 6, children: [
-                for (final (i, t) in const [(0, 'Matter'), (1, 'Saved'), (2, 'Purana -> naya'), (3, 'Niyam')])
+                for (final (i, t) in const [(0, 'Matter'), (1, 'Saved'), (2, 'Old -> new'), (3, 'Rules')])
                   ChoiceChip(label: Text(t), selected: _tab == i, onSelected: (_) => setState(() => _tab = i)),
               ]),
               const SizedBox(height: 10),
@@ -309,7 +309,7 @@ class LegalresMappingTable extends StatelessWidget {
             ),
             Expanded(child: Text(_s(r['subject']), style: const TextStyle(fontSize: 12.5))),
             const SizedBox(width: 6),
-            Pill(r['sure'] == true ? 'PAKKA' : 'ANDAAZA', fg: r['sure'] == true ? C.ok : C.warn),
+            Pill(r['sure'] == true ? 'CONFIRMED' : 'ESTIMATE', fg: r['sure'] == true ? C.ok : C.warn),
           ]),
         ),
     ]);
@@ -327,7 +327,7 @@ class LegalresMemoView extends StatelessWidget {
     final srcs = _list(memo['sources']);
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Row(children: [
-        Pill(found ? 'SOURCE SE' : 'NAHI MILA', fg: found ? C.ok : C.warn),
+        Pill(found ? 'FROM SOURCE' : 'NOT FOUND', fg: found ? C.ok : C.warn),
         const SizedBox(width: 6),
         if (memo['v'] != null) Text('v${_s(memo['v'])}', style: const TextStyle(color: C.muted, fontSize: 12)),
       ]),
@@ -345,18 +345,18 @@ class LegalresMemoView extends StatelessWidget {
       ],
       if (_list(memo['mapping']).isNotEmpty) ...[
         const SizedBox(height: 10),
-        const Caption('Purana -> naya kanoon'),
+        const Caption('Old -> new law'),
         LegalresMappingTable(rows: _list(memo['mapping'])),
       ],
-      for (final g in (memo['gaps'] as List? ?? const [])) Text('• Nahi mila: ${_s(g)}', style: const TextStyle(fontSize: 12.5, color: C.warn)),
-      for (final f in (memo['flags'] as List? ?? const [])) Text('• Hataya: ${_s(f)}', style: const TextStyle(fontSize: 12, color: C.bad)),
+      for (final g in (memo['gaps'] as List? ?? const [])) Text('• Not found: ${_s(g)}', style: const TextStyle(fontSize: 12.5, color: C.warn)),
+      for (final f in (memo['flags'] as List? ?? const [])) Text('• Removed:${_s(f)}', style: const TextStyle(fontSize: 12, color: C.bad)),
       if (srcs.isNotEmpty) ...[
         const SizedBox(height: 10),
-        const Caption('Sources (jo sach mein padhe)'),
+        const Caption('Sources (what was actually read)'),
         for (final x in srcs)
           Row(children: [
             Expanded(
-              child: Text('[${_s(x['n'])}] ${_s(x['title'])}${x['official'] == true ? ' · official' : _s(x['via']) == 'ikanoon' ? ' · Indian Kanoon' : _s(x['via']) == 'gyaan' ? ' · aapki file' : ''}',
+              child: Text('[${_s(x['n'])}] ${_s(x['title'])}${x['official'] == true ? ' · official' : _s(x['via']) == 'ikanoon' ? ' · Indian Kanoon' : _s(x['via']) == 'gyaan' ? ' · your file' : ''}',
                   style: const TextStyle(fontSize: 12.5)),
             ),
             if (_s(x['url']).isNotEmpty) IconButton(icon: const Icon(Icons.open_in_new_rounded, size: 18), onPressed: () => _open(context, _s(x['url']))),
@@ -414,8 +414,8 @@ class _LegalresMatterPageState extends State<LegalresMatterPage> {
   }
 
   Future<void> _share() async {
-    final f = await _form(context, 'Memo bhejna (aapki haan ka card)', const [
-      ('to_name', 'Kisko (naam)'),
+    final f = await _form(context, 'Send memo (a card for your yes)', const [
+      ('to_name', 'To whom (name)'),
       ('to_contact', 'Mobile ya email'),
       ('via', 'whatsapp / email / file'),
     ]);
@@ -443,12 +443,12 @@ class _LegalresMatterPageState extends State<LegalresMatterPage> {
                 const SizedBox(height: 10),
                 Wrap(spacing: 8, runSpacing: 8, children: [
                   GlassButton(
-                      label: 'Aur poochho',
+                      label: 'Ask more',
                       icon: Icons.search_rounded,
                       onTap: _busy
                           ? null
                           : () async {
-                              final f = await _form(context, 'Isi matter mein sawaal', const [('question', 'Sawaal'), ('url', 'Official link (optional)')]);
+                              final f = await _form(context, 'Question on this matter', const [('question', 'Question'), ('url', 'Official link (optional)')]);
                               if (f != null && _s(f['question']).isNotEmpty) {
                                 await _run(() => widget.app.api!.call('POST', '/api/legalres/research',
                                     body: {'question': f['question'], 'matter': m['number'], if (f['url'] != null) 'urls': [f['url']]},
@@ -456,12 +456,12 @@ class _LegalresMatterPageState extends State<LegalresMatterPage> {
                               }
                             }),
                   GlassButton(
-                      label: 'Link padho',
+                      label: 'Read link',
                       icon: Icons.link_rounded,
                       onTap: _busy
                           ? null
                           : () async {
-                              final f = await _form(context, 'Judgment / act ka link', const [('url', 'https://...')]);
+                              final f = await _form(context, 'Link to the judgment / act', const [('url', 'https://...')]);
                               if (f?['url'] != null) await _run(() => widget.app.api!.call('POST', '$_path/link', body: {'url': f!['url']}));
                             }),
                   GlassButton(
@@ -474,13 +474,13 @@ class _LegalresMatterPageState extends State<LegalresMatterPage> {
                               if (f?['text'] != null) await _run(() => widget.app.api!.call('POST', '$_path/note', body: {'text': f!['text']}));
                             }),
                   if (memo.isNotEmpty) GlassButton(label: 'Word memo', icon: Icons.description_rounded, onTap: _busy ? null : () => _run(() => widget.app.api!.call('POST', '$_path/memo/file', body: {}))),
-                  if (_s(memo['status']) == 'found') GlassButton(label: 'Bhejna hai', icon: Icons.send_rounded, onTap: _busy ? null : _share),
+                  if (_s(memo['status']) == 'found') GlassButton(label: 'To send', icon: Icons.send_rounded, onTap: _busy ? null : _share),
                   if (_s(m['status']) == 'open')
-                    GlassButton(label: 'Band karo', icon: Icons.lock_rounded, onTap: _busy ? null : () => _run(() => widget.app.api!.call('PATCH', _path, body: {'status': 'closed'})))
+                    GlassButton(label: 'Close', icon: Icons.lock_rounded, onTap: _busy ? null : () => _run(() => widget.app.api!.call('PATCH', _path, body: {'status': 'closed'})))
                   else ...[
-                    GlassButton(label: 'Phir kholo', icon: Icons.lock_open_rounded, onTap: _busy ? null : () => _run(() => widget.app.api!.call('PATCH', _path, body: {'status': 'open'}))),
+                    GlassButton(label: 'Reopen', icon: Icons.lock_open_rounded, onTap: _busy ? null : () => _run(() => widget.app.api!.call('PATCH', _path, body: {'status': 'open'}))),
                     GlassButton(
-                        label: 'Sab mitao',
+                        label: 'Delete all',
                         icon: Icons.delete_forever_rounded,
                         color: C.bad,
                         onTap: _busy
@@ -489,10 +489,10 @@ class _LegalresMatterPageState extends State<LegalresMatterPage> {
                                 final ok = await showDialog<bool>(
                                   context: context,
                                   builder: (d) => AlertDialog(
-                                    content: const Text('Is matter ka sawaal, memo, sources aur log hamesha ke liye mit jaayenge.'),
+                                    content: const Text('This matter\'s questions, memo, sources and log will be deleted for good.'),
                                     actions: [
-                                      TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Nahi')),
-                                      TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Haan, mitao')),
+                                      TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('No')),
+                                      TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Yes, delete')),
                                     ],
                                   ),
                                 );
@@ -504,7 +504,7 @@ class _LegalresMatterPageState extends State<LegalresMatterPage> {
                   ],
                 ]),
                 const SizedBox(height: 12),
-                const Caption('Saare sources'),
+                const Caption('All sources'),
                 for (final x in _list(m['sources']))
                   Padding(
                     padding: const EdgeInsets.only(bottom: 6),
@@ -516,7 +516,7 @@ class _LegalresMatterPageState extends State<LegalresMatterPage> {
                             style: const TextStyle(color: C.muted, fontSize: 11.5)),
                         if (_s(x['url']).isNotEmpty)
                           Row(children: [
-                            TextButton(onPressed: () => _open(context, _s(x['url'])), child: const Text('Kholo')),
+                            TextButton(onPressed: () => _open(context, _s(x['url'])), child: const Text('Open')),
                             TextButton(
                                 onPressed: () {
                                   Clipboard.setData(ClipboardData(text: _s(x['url'])));
@@ -530,7 +530,7 @@ class _LegalresMatterPageState extends State<LegalresMatterPage> {
                 const SizedBox(height: 8),
                 for (final sh in _list(m['shares']))
                   Text('${_s(sh['number'])}: ${_s(sh['to_name'])} · ${_s(sh['status'])}', style: const TextStyle(fontSize: 12.5)),
-                TextButton(onPressed: () => setState(() => _showLog = !_showLog), child: Text(_showLog ? 'Log chhupao' : 'Research log (Rs ${_s(m['spent_rs'])})')),
+                TextButton(onPressed: () => setState(() => _showLog = !_showLog), child: Text(_showLog ? 'Hide log' : 'Research log (Rs ${_s(m['spent_rs'])})')),
                 if (_showLog)
                   for (final l in _list(m['log']))
                     Text('${_s(l['at']).length >= 16 ? _s(l['at']).substring(0, 16).replaceFirst('T', ' ') : _s(l['at'])} · ${_s(l['kind'])}: ${_s(l['text'])}',
@@ -566,7 +566,7 @@ class LegalresMemoCard extends StatelessWidget {
           alignment: Alignment.centerRight,
           child: TextButton(
               onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => LegalresMatterPage(app: app, ref: _s(m['number'])))),
-              child: const Text('Poora matter')),
+              child: const Text('Whole matter')),
         ),
         const Text(_disclaimer, style: TextStyle(color: C.faint, fontSize: 11)),
       ]),
@@ -619,15 +619,15 @@ class _LegalresShareCardState extends State<LegalresShareCard> {
         const SizedBox(height: 8),
         if (waiting)
           Row(children: [
-            Expanded(child: GradientButton(label: 'Haan, taiyaar karo', height: 44, onTap: _busy ? null : () => _decide(true))),
+            Expanded(child: GradientButton(label: 'Yes, prepare', height: 44, onTap: _busy ? null : () => _decide(true))),
             const SizedBox(width: 8),
-            GlassButton(label: 'Mana', onTap: _busy ? null : () => _decide(false)),
+            GlassButton(label: 'Decline', onTap: _busy ? null : () => _decide(false)),
           ]),
         for (final e in links.entries)
           TextButton.icon(
               onPressed: () => _open(context, _s(e.value)),
               icon: Icon(e.key == 'email' ? Icons.mail_rounded : Icons.chat_rounded, size: 18),
-              label: Text(e.key == 'email' ? 'Email draft kholo' : 'WhatsApp draft kholo (file khud lagaiye)')),
+              label: Text(e.key == 'email' ? 'Open email draft' : 'Open WhatsApp draft (attach the file yourself)')),
       ]),
     );
   }

@@ -38,10 +38,40 @@ jobs:
             [ -n "$file" ] && echo "::warning file=${file#$PWD/},line=$line::$sev $code: $msg"
           done < analyze.txt
           true
+      - name: Gradle download that survives a GitHub outage
+        # 8 Nov: every Gradle download (services.gradle.org redirects to github.com/gradle/gradle-distributions) answered 504.
+        # If GitHub's copy answers, nothing changes. If not, the wrapper is pointed at a public mirror, and the wrapper
+        # itself checks the file against the SHA-256 Gradle publishes on services.gradle.org - a wrong file never runs.
+        run: |
+          P=android/gradle/wrapper/gradle-wrapper.properties
+          [ -f "$P" ] || exit 0
+          V=$(grep distributionUrl "$P" | sed -E 's#.*gradle-([0-9.]+)-(all|bin)\.zip.*#\1#')
+          echo "Gradle $V"
+          ok=""
+          for i in 1 2 3; do
+            code=$(curl -s -o /dev/null -w '%{http_code}' -L --max-time 40 -r 0-1023 "https://services.gradle.org/distributions/gradle-${V}-bin.zip")
+            [ "$code" = "200" ] || [ "$code" = "206" ] && { ok=1; break; }
+            echo "Gradle download answered $code (try $i)"; sleep $((i*10))
+          done
+          if [ -z "$ok" ]; then
+            SUM=$(curl -fsSL --max-time 30 "https://services.gradle.org/distributions/gradle-${V}-bin.zip.sha256")
+            echo "$SUM" | grep -Eq '^[0-9a-f]{64}$' || { echo "::error::No official Gradle checksum - refusing a mirror"; exit 1; }
+            sed -i -E "s#^distributionUrl=.*#distributionUrl=https\\\\://mirrors.cloud.tencent.com/gradle/gradle-${V}-bin.zip#" "$P"
+            sed -i '/^distributionSha256Sum=/d' "$P"; echo "distributionSha256Sum=$SUM" >> "$P"
+            echo "::warning::Gradle from the mirror, checked against Gradle's own SHA-256 $SUM"
+          fi
+          cat "$P"
       - name: Build APK
         run: |
           set -o pipefail
-          flutter build apk --release --target-platform android-arm,android-arm64 2>&1 | tee /tmp/b.log || {
+          # A download blip (504 / Gateway Time-out / could not GET) is retried up to 3 times; a real code error fails at once.
+          ok=""
+          for i in 1 2 3; do
+            if flutter build apk --release --target-platform android-arm,android-arm64 2>&1 | tee /tmp/b.log; then ok=1; break; fi
+            grep -qiE "504|Gateway Time-out|Could not GET|Could not download|downloading artifacts from the network|Connection reset|timed out" /tmp/b.log || break
+            echo "::warning::Network trouble while building (try $i) - waiting and trying again"; sleep $((i*45))
+          done
+          [ -n "$ok" ] || {
             grep -iE "error|exception|because|incompatible|requires|not found|unresolved|failed|minSdk|compileSdk|namespace" /tmp/b.log | tail -50 | while IFS= read -r L; do echo "::error::$L"; done
             exit 1
           }

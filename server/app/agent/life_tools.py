@@ -1,6 +1,8 @@
 """Daily-life tools: reminders, phone alarms/timers/calendar, memory, lists, profile, weather."""
 from __future__ import annotations
 
+import asyncio
+import re
 from datetime import timedelta
 
 from sqlalchemy import func, select
@@ -12,13 +14,18 @@ from .tools import Ctx, ToolError
 
 LIFE_TOOLS = [
     {"name": "create_reminder", "description": (
-        "Remind the user at a time. Santosh messages them in the chat and their phone shows a notification. "
-        "Use for 'yaad dilana', medicines, bills, calls to make. Time is the user's LOCAL time."),
+        "Remind the user at a time - ONLY when she asks to be reminded (yaad dilana / remind / X baje bata dena), "
+        "NEVER a reminder for an email, message, search or any other job; 'X minute BAAD' = in_minutes=X. Any other "
+        "job goes to its own tool or santosh_kaam. Santosh messages them in the chat, their phone shows a notification, and a live "
+        "call says it. 'X minute / ghante BAAD' (from now) -> "
+        "ALWAYS in_minutes=X (the server counts from the exact current time - never work out the clock yourself). "
+        "A clock time or a date ('kal 9 baje', '5 tareekh') -> when, in the user's LOCAL time."),
      "input_schema": {"type": "object", "properties": {
          "text": {"type": "string", "description": "What to remind, short, in the user's language, e.g. 'Dawai lena (BP)'"},
-         "when": {"type": "string", "description": "Local date-time ISO, e.g. 2026-10-18T09:00"},
+         "in_minutes": {"type": "number", "description": "Minutes from NOW, e.g. 2 for 'do minute baad', 90 for 'dedh ghante baad'"},
+         "when": {"type": "string", "description": "Only for a clock time / date: local date-time ISO, e.g. 2026-10-18T09:00"},
          "repeat": {"type": "string", "enum": list(life.REPEATS), "description": "none, daily, weekdays, weekly or monthly"}},
-         "required": ["text", "when"]}},
+         "required": ["text"]}},
     {"name": "list_reminders", "description": "The user's upcoming reminders.",
      "input_schema": {"type": "object", "properties": {}}},
     {"name": "cancel_reminder", "description": "Cancel a reminder by id (get ids from list_reminders).",
@@ -45,7 +52,12 @@ LIFE_TOOLS = [
     {"name": "remember", "description": ("Save a fact the user wants you to remember (dates, preferences, people, numbers like policy "
                                          "expiry). Do NOT save passwords, OTPs, card or bank numbers. pin=true only when they say "
                                          "it must ALWAYS be kept in mind ('hamesha yaad rakhna'); pinned facts are few and short."),
-     "input_schema": {"type": "object", "properties": {"fact": {"type": "string"}, "pin": {"type": "boolean"}}, "required": ["fact"]}},
+     "input_schema": {"type": "object", "properties": {"fact": {"type": "string"}, "pin": {"type": "boolean"},
+                                                       "replaces": {"type": "integer", "description": (
+                                                           "id of a remembered fact this one makes OUTDATED (she "
+                                                           "moved / changed it: 'ab', 'now', 'no longer'); that old "
+                                                           "fact is removed. Leave out for a new fact.")}},
+                     "required": ["fact"]}},
     {"name": "forget", "description": "Delete a remembered fact by its id (ids are shown in your context).",
      "input_schema": {"type": "object", "properties": {"fact_id": {"type": "integer"}}, "required": ["fact_id"]}},
     {"name": "list_add", "description": "Add items to a named list (shopping, todo, packing...). Creates the list if needed.",
@@ -97,6 +109,18 @@ LIFE_LABELS = {
 SENSITIVE = ("password", "passcode", "otp", "pin ", "cvv", "card number")   # ID numbers go to the Pehchaan Locker (v0.75)
 
 
+
+def _home(ctx) -> str:
+    """v0.667 the chat a reminder / routine / briefing belongs to. Set on a split voice call, ctx.conversation_id is the
+    call RECORD (hidden from her chat list), so every daily run and every 'yaad dila raha hoon' landed where she never
+    looks; it belongs to the chat the call came from."""
+    conv = getattr(ctx, "conversation_id", "") or ""
+    try:
+        from .. import callconv
+        return callconv.chat_of(conv) or conv
+    except Exception:   # noqa: BLE001
+        return conv
+
 def _publish_reminders(ctx: Ctx) -> None:
     bus.publish(ctx.conversation_id, "reminders", {"reminders": life.upcoming_reminders(ctx.tenant_id)})
 
@@ -111,17 +135,35 @@ def _device_action(ctx: Ctx, type_: str, payload: dict, say: str) -> dict:
     return {"action_id": aid, "sent_to_phone": True, "note": say}
 
 
-async def create_reminder(ctx: Ctx, text, when, repeat="none", **_):
+async def create_reminder(ctx: Ctx, text, when=None, repeat="none", in_minutes=None, **_):
     tz = life.tz_of(ctx.tenant_id)
-    try:
-        due = life.parse_local(when, tz)
-    except ValueError as e:
-        raise ToolError(f"Could not read the time '{when}': {e}. Use local ISO like 2026-10-18T09:00.")
-    if due < now() - timedelta(minutes=1):
-        raise ToolError(f"{life.fmt_local(due, tz)} is already in the past. Ask the user for a future time.")
+    # v0.622 SAHI SAMAY: her live call said "do minute baad" three times and the call model worked out the clock
+    # itself - twice in the PAST (refused), once 9 seconds ahead. A relative ask is now counted by the SERVER from
+    # its own exact clock; the model never does that sum.
+    mins = None
+    if in_minutes not in (None, ""):
+        try:
+            mins = float(in_minutes)
+        except (TypeError, ValueError):
+            raise ToolError(f"in_minutes must be a number of minutes, got {in_minutes!r}.")
+        if not 0 < mins <= 60 * 24 * 366:
+            raise ToolError("in_minutes must be more than 0 (and under a year).")
+    if mins is not None:
+        due = now() + timedelta(minutes=mins)
+    else:
+        if not when:
+            raise ToolError("Give in_minutes for 'X minute baad', or when for a clock time / date.")
+        try:
+            due = life.parse_local(when, tz)
+        except ValueError as e:
+            raise ToolError(f"Could not read the time '{when}': {e}. Use local ISO like 2026-10-18T09:00, "
+                            "or in_minutes for 'X minute baad'.")
+        if due < now() - timedelta(minutes=1):
+            raise ToolError(f"{life.fmt_local(due, tz)} is already in the past (it is {life.fmt_local(now(), tz)} now). "
+                            "If she said 'X minute / ghante baad', call again with in_minutes=X; else ask her the time.")
     repeat = repeat if repeat in life.REPEATS else "none"
     with session() as s:
-        r = Reminder(tenant_id=ctx.tenant_id, conversation_id=ctx.conversation_id, text=text[:500], due_at=due, repeat=repeat)
+        r = Reminder(tenant_id=ctx.tenant_id, conversation_id=_home(ctx), text=text[:500], due_at=due, repeat=repeat)
         s.add(r)
         s.flush()
         view = life.reminder_view(r, tz)
@@ -179,38 +221,70 @@ async def add_calendar_event(ctx: Ctx, title, start, end=None, location=None, no
         r_at = s_utc - timedelta(minutes=int(remind_minutes_before))
         if r_at > now():
             with session() as s:
-                s.add(Reminder(tenant_id=ctx.tenant_id, conversation_id=ctx.conversation_id,
-                               text=f"{title} ({int(remind_minutes_before)} min mein)", due_at=r_at))
+                s.add(Reminder(tenant_id=ctx.tenant_id, conversation_id=_home(ctx),
+                               text=f"{title} (in {int(remind_minutes_before)} min)", due_at=r_at))
             _publish_reminders(ctx)
             out["reminder_at"] = life.fmt_local(r_at, tz)
     return out
 
 
-async def remember(ctx: Ctx, fact, pin=False, **_):
+# v0.609 the chats whose live turn already kept / forgot a fact itself (Claude's way): the background extractor
+# stays out of that turn, so one fact is never written twice by two writers (conversation -> time noted)
+SAVED_THIS_TURN: dict[str, float] = {}
+
+
+def _mark_saved(conv: str) -> None:
+    import time as _t
+    if conv:
+        if len(SAVED_THIS_TURN) > 2000:
+            SAVED_THIS_TURN.clear()
+        SAVED_THIS_TURN[conv] = _t.time()
+
+
+async def remember(ctx: Ctx, fact, pin=False, replaces=None, **_):
     from ..fence import is_incognito
     if is_incognito(getattr(ctx, "conversation_id", "") or ""):   # v0.250 an incognito chat saves nothing
-        raise ToolError("Yeh incognito chat hai: yahan se kuch yaad nahi rakha jaata. Ise yaad rakhwana ho to "
-                        "normal chat mein boliye.")
+        raise ToolError("This is an incognito chat: nothing is remembered from here. To have it remembered, "
+                        "say it in a normal chat.")
     from ..idvault import capture
     from ..pii import describe, find
     fact, _ids = capture(ctx.tenant_id, str(fact))     # v0.75 ID numbers -> Pehchaan Locker, the fact keeps the reference
     low = f" {fact.lower()} "
     found = [k for k in find(str(fact)) if k in ("otp_pin", "password", "card", "cvv")]
     if found:
-        raise ToolError(f"Isme {describe(found)} hai. Hoola yeh yaad nahi rakhta; password manager mein rakhiye.")
-    if any(k in low for k in SENSITIVE):
+        raise ToolError(f"This contains {describe(found)}. Hoola does not remember this; keep it in a password manager.")
+    if any(k in re.sub(r"pin\s*-?\s*code|pincode", " ", low) for k in SENSITIVE):   # wave 11: a PIN code is an address
         raise ToolError("This looks like a password, OTP, PIN or account/card number. Do not store it; tell the user to keep it in a password manager.")
+    from .. import yaad
+    conv = getattr(ctx, "conversation_id", "") or ""
+    if replaces not in (None, "", 0):
+        # v0.661 her PINNED fact changed: updated in place, stays pinned (before: the old pinned value stayed beside the new)
+        old = await asyncio.to_thread(yaad.update_pinned, ctx.tenant_id, replaces, fact, conv)
+        if old:
+            _mark_saved(conv)
+            await asyncio.to_thread(yaad.retire_copies, ctx.tenant_id, old, {int(replaces)})
+            return {"saved": True, "fact_id": int(replaces), "pinned": True, "replaced": old}
+    elif await asyncio.to_thread(yaad.is_dupe, ctx.tenant_id, fact):
+        # v0.661 'yaad rakhna X' twice = one fact, not two
+        return {"saved": True, "already_known": True, "note": "This is already remembered."}
     with session() as s:
         m = MemoryFact(tenant_id=ctx.tenant_id, text=fact[:500])
         s.add(m)
         s.flush()
         fid = m.id
+    _mark_saved(conv)
+    replaced = ""
+    if replaces not in (None, "", 0):   # v0.603 the update retires the outdated fact
+        replaced = await asyncio.to_thread(yaad.retire_fact, ctx.tenant_id, replaces, conv)
+        if replaced:
+            await asyncio.to_thread(yaad.retire_copies, ctx.tenant_id, replaced, {fid})
+    extra = {"replaced": replaced} if replaced else {}
     if pin:
         try:
             life.pin_fact(ctx.tenant_id, fid, True)
         except ValueError as e:
-            return {"saved": True, "fact_id": fid, "pinned": False, "note": str(e)}
-    return {"saved": True, "fact_id": fid, "pinned": bool(pin)}
+            return {"saved": True, "fact_id": fid, "pinned": False, "note": str(e), **extra}
+    return {"saved": True, "fact_id": fid, "pinned": bool(pin), **extra}
 
 
 async def forget(ctx: Ctx, fact_id, **_):
@@ -220,7 +294,12 @@ async def forget(ctx: Ctx, fact_id, **_):
             raise ToolError(f"No remembered fact with id {fact_id}")
         text = m.text
         s.delete(m)
-    return {"forgotten": text}
+    _mark_saved(getattr(ctx, "conversation_id", "") or "")
+    # v0.603 BHOOL JAO HAR JAGAH: the copies the other memories made of it go too
+    from .. import yaad
+    gone = await asyncio.to_thread(yaad.forget_everywhere, ctx.tenant_id, text)
+    return {"forgotten": text, "also_removed": gone,
+            "note": "Her chats themselves are not deleted; the fact is gone from every memory."}
 
 
 def _norm_list(name: str) -> str:
@@ -303,7 +382,7 @@ async def set_profile(ctx: Ctx, name=None, city=None, language=None, timezone=No
                 except Exception:
                     raise ToolError("briefing_time must be HH:MM, e.g. 07:30, or 'off'")
                 p.briefing_time = f"{hh:02d}:{mm:02d}"
-                p.briefing_conversation_id = ctx.conversation_id
+                p.briefing_conversation_id = _home(ctx)
                 p.last_briefing_date = None
         return {"name": p.name, "city": p.city, "language": p.language, "timezone": p.timezone,
                 "briefing_time": p.briefing_time}
@@ -330,7 +409,7 @@ async def create_routine(ctx: Ctx, title, instruction, first_run, repeat="daily"
                                                                      Routine.status == "active")) or 0
         if n >= MAX_ROUTINES:
             raise ToolError(f"The user already has {n} automatic jobs (limit {MAX_ROUTINES}). Ask which one to stop first.")
-        r = Routine(tenant_id=ctx.tenant_id, conversation_id=ctx.conversation_id, title=title[:200],
+        r = Routine(tenant_id=ctx.tenant_id, conversation_id=_home(ctx), title=title[:200],
                     instruction=instruction[:2000], next_run=due, repeat=repeat)
         s.add(r)
         s.flush()

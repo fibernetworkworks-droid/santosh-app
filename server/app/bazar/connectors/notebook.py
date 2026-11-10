@@ -22,10 +22,10 @@ class NotebookExecutor:
             d = ns.detail(ctx.user.id, str(args.get("notebook", "")))
         except ns.NotebookError as e:
             raise ToolError(str(e))
-        return NeedsApproval(tier=2, title="Notebook delete karein?", payee="Santosh Notebook", amount_paise=0,
+        return NeedsApproval(tier=2, title="Delete notebook?", payee="Santosh Notebook", amount_paise=0,
                              items=[{"name": f"{d['emoji']} {d['title']}"},
                                     {"name": f"{len(d['sources'])} sources, {len(d['notes'])} notes, {len(d['audio'])} audio"},
-                                    {"name": "Yeh wapas nahi aayega (aapki asli files par koi asar nahi)."}],
+                                    {"name": "This cannot be undone (your original files are not affected)."}],
                              pay_method="Santosh Notebook", preview={"message": f"Approve to delete notebook '{d['title']}'."},
                              action={"executor": "notebook", "pack_id": pack.id, "name": "delete", "args": {"notebook": d["id"]}})
 
@@ -34,6 +34,6 @@ class NotebookExecutor:
         if action != "delete":
             raise ToolError(f"Unknown action {action}")
         try:
-            return {"message": f"Notebook '{ns.delete(ctx.user.id, args['notebook'])}' delete kar di."}
+            return {"message": f"Notebook '{ns.delete(ctx.user.id, args['notebook'])}' deleted."}
         except ns.NotebookError as e:
             raise ToolError(str(e))

@@ -46,7 +46,7 @@ def test_a_plain_multi_tool_ask_now_gets_lines_without_any_plan(gz, monkeypatch)
     before = STATS_LONG["narrate"]
     asyncio.run(run_turn(conv, "status dekho", tenant_id="default"))
     seen = _texts(brain)
-    assert "ab use EK chhoti line batao" in seen, "a plain multi-tool ask must talk too, not only a goal"
+    assert "now tell her ONE short line" in seen, "a plain multi-tool ask must talk too, not only a goal"
     assert STATS_LONG["narrate"] > before
 
 
@@ -70,11 +70,11 @@ def test_the_cadence_is_claudes_one_per_group_still_capped():
 def test_the_line_carries_the_tools_own_fact():
     from app.agent import goal as G
     bare = G.NARRATE
-    assert "asli number / id / naam / link" in bare and "banaya hua nahi" in bare
+    assert "real number / id / name / link" in bare and "nothing made up" in bare
     assert "koi number ya link nahi" not in bare                       # v0.240's ban, reversed
     withf = G.narrate_line(["12 naye mails aaye", "video taiyar - drive.google.com"])
     assert "12 naye mails aaye" in withf and "drive.google.com" in withf
-    assert "naya mat banao" in withf
+    assert "do not invent new ones" in withf
     assert G.narrate_line([]) == bare                                  # no fact -> the bare ask, never an empty tail
 
 
@@ -90,12 +90,12 @@ def test_the_true_facts_are_kept_for_the_line_not_only_whispered():
 # ---------------------------------------------------------------- the opener, and no contradictions left
 def test_the_prompt_asks_for_the_opener_and_the_per_step_line():
     p = (ROOT / "server/app/agent/prompts.py").read_text()
-    assert "CHALTE CHALTE BOLO" in p
-    assert "bade kaam se PEHLE ek vaakya" in p                          # say it before touching a tool
-    assert "har tool ke baad ek chhoti line" in p
+    assert "TALK AS YOU WORK" in p
+    assert "BEFORE a big job, one sentence" in p                          # say it before touching a tool
+    assert "after every tool one short line" in p
     assert "har step ka koi line chat mein mat likho" not in p          # v0.240's order is gone
     # v0.268 reworded the ban list into the never-list; the bans themselves are stronger, not weaker
-    for ban in ("bullet / heading / emoji", "machine ke", "15-30 shabd"):
+    for ban in ("bullets / headings / emoji", "inside the\n  machine", "15-30 words"):
         assert ban in p, ban
 
 
@@ -103,10 +103,10 @@ def test_no_prompt_contradicts_another_in_the_same_turn():
     """PLAN_FIRST asked for a line per step while prompts.py and kaam_plan forbade one - all three now agree."""
     from app.agent import goal as G
     from app.agent import goal_tools as GT  # noqa: F401
-    assert "har bade step ke baad ek chhoti line" in G.PLAN_FIRST
+    assert "after each big step say in one short line" in G.PLAN_FIRST
     gt = (ROOT / "server/app/agent/goal_tools.py").read_text()
     assert "chat mein iska koi line mat likho" not in gt
-    assert "is step se jo asli cheez mili" in gt
+    assert "the real finding from this step" in gt
 
 
 def test_the_rulebook_carries_both_rules_on_chat_only():
@@ -127,7 +127,7 @@ def test_the_final_answer_is_still_short_and_the_report_still_lives_on_the_card(
     assert "Results of work, the short way" in R.CHAT
     assert "never a bullet list of the steps you ran" in R.CHAT
     gt = (ROOT / "server/app/agent/goal_tools.py").read_text()
-    assert 'out["card_shows"]' in gt and "EK chhoti insaani line" in gt
+    assert 'out["card_shows"]' in gt and "ONE short human line" in gt
     p = (ROOT / "server/app/agent/prompts.py").read_text()
     assert "Aakhri jawab hamesha chaar hisson mein" not in p
 
@@ -136,11 +136,11 @@ def test_the_console_already_folds_the_tool_noise_like_claude():
     """The UI needed no work: the step rows were already a collapsed, expandable group."""
     js = (ROOT / "server/app/static/console/v2.js").read_text()
     assert "STEPBUF = document.createElement('details')" in js
-    assert "STEPBUF.className = 'tools'" in js and "STEPBUF.open = false" in js
-    assert "`${n} step${n > 1 ? \"s\" : \"\"}`" in js
+    assert "STEPBUF.className = 'tools hmfold'" in js and "STEPBUF.open = false" in js   # v0.716 the same fold as a live turn
+    assert "textContent = 'Worked';" in js   # v0.721 no step count - the arrow opens the steps
 
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.530.0"
-    assert "0.530.0+553" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.758.0"
+    assert "0.758.0+757" in (ROOT / "pubspec.yaml").read_text()

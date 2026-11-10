@@ -74,7 +74,7 @@ def test_vacation_get_and_set_behind_card(sbox, bz):  # noqa: F811
     ctx = Ctx("default", bz["conv"])
     out = run("email_vacation", {"action": "get"}, ctx)
     assert out["scope_ok"] is True and out["vacation"]["on"] is False
-    with pytest.raises(ToolError, match="message do"):
+    with pytest.raises(ToolError, match="give a message"):
         run("email_vacation", {"action": "set", "enable": True}, ctx)
     end = (now() + timedelta(days=7)).strftime("%Y-%m-%dT%H:%M")
     out = run("email_vacation", {"action": "set", "enable": True,
@@ -82,9 +82,9 @@ def test_vacation_get_and_set_behind_card(sbox, bz):  # noqa: F811
                                  "subject": "Out of office", "end": end}, ctx)
     assert out["needs_approval"]
     card = _events(bz["conv"], "bazar_approval")[-1]
-    assert card["title"] == "Vacation reply chalu karein?"
+    assert card["title"] == "Turn vacation reply on?"
     flat = json.dumps(card).lower()
-    assert "bahar hoon" in flat and "har mail" in flat and "out of office" in flat
+    assert "bahar hoon" in flat and "every incoming mail" in flat and "out of office" in flat
     assert sbox.vac["enableAutoReply"] is False                       # kuch nahi badla, pehle manzoori
     assert not any(m == "PUT" and p == "/settings/vacation" for m, p in sbox.calls)
     bz["svc"].decide("default", card["id"], "approve")
@@ -97,7 +97,7 @@ def test_vacation_get_and_set_behind_card(sbox, bz):  # noqa: F811
     out = run("email_vacation", {"action": "set", "enable": False}, ctx)   # band karna bhi card se
     assert out["needs_approval"]
     card = _events(bz["conv"], "bazar_approval")[-1]
-    assert card["title"] == "Vacation reply band karein?"
+    assert card["title"] == "Turn vacation reply off?"
     bz["svc"].decide("default", card["id"], "approve")
     assert sbox.vac["enableAutoReply"] is False
 
@@ -139,7 +139,7 @@ def test_signature_push_and_aliases(sbox, bz):  # noqa: F811
     out = run("email_accounts", {"signature_push": True}, ctx)
     assert out["needs_approval"]
     card = _events(bz["conv"], "bazar_approval")[-1]
-    assert card["title"] == "Signature Gmail mein daalein?" and "Director, FNW" in json.dumps(card)
+    assert card["title"] == "Put signature into Gmail?" and "Director, FNW" in json.dumps(card)
     assert not any(m == "PATCH" for m, _ in sbox.calls)               # sirf manzoori ke baad
     bz["svc"].decide("default", card["id"], "approve")
     assert ("PATCH", "/settings/sendAs/meghana@fnw.in") in sbox.calls  # the PRIMARY sendAs, not the alias
@@ -155,13 +155,13 @@ def test_auto_forward_card_and_off(sbox, bz):  # noqa: F811
     out = run("email_accounts", {"auto_forward": "ca@newtika.in"}, ctx)
     assert out["needs_approval"]
     card = _events(bz["conv"], "bazar_approval")[-1]
-    assert card["title"] == "Auto-forward chalu karein?" and "ca@newtika.in" in json.dumps(card)
+    assert card["title"] == "Turn auto-forward on?" and "ca@newtika.in" in json.dumps(card)
     assert sbox.fwd["enabled"] is False
     bz["svc"].decide("default", card["id"], "approve")
     assert sbox.fwd == {"enabled": True, "emailAddress": "ca@newtika.in", "disposition": "keep"}
     out = run("email_accounts", {"auto_forward": "off"}, ctx)
     card = _events(bz["conv"], "bazar_approval")[-1]
-    assert card["title"] == "Auto-forward band karein?"
+    assert card["title"] == "Turn auto-forward off?"
     bz["svc"].decide("default", card["id"], "approve")
     assert sbox.fwd["enabled"] is False and sbox.fwd["emailAddress"] == "ca@newtika.in"
     with pytest.raises(ToolError, match="address"):
@@ -231,4 +231,4 @@ def test_api_mail_settings_endpoint(sbox):  # noqa: F811
 # ---------------- version ----------------
 def test_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.530.0"
+    assert APP_VERSION == "0.758.0"

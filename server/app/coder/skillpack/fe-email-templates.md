@@ -1,6 +1,7 @@
 ---
 name: fe-email-templates
 description: Campaign email templates - proven structures, her facts
+when_to_use: email template, offer email, sale email, newsletter, festival greeting email, product launch email, reminder email, marketing email
 ---
 GOAL: campaign/marketing emails are ASSEMBLED from proven template structures (the
 awesome-emails read), filled with HER facts - subject line se CTA tak ek hi shape,

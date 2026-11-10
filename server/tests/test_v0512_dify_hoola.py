@@ -321,7 +321,7 @@ def test_approval_expiry_is_typed_and_refuses_retry(monkeypatch):
     run = D.get_run(CTX.tenant_id, r["run_id"])
     assert run["status"] == "failed" and run["pause_reason"] == "approval_expired"
     out = _run(D.dhara_control(CTX, action="retry", run_id=r["run_id"]))
-    assert out.get("ok") is False and "approve" in out["note"]
+    assert out.get("ok") is False and "approving again" in out["note"]
 
 
 def test_step_version_recorded_default_1():
@@ -375,10 +375,10 @@ def test_retry_honest_on_live_or_done_runs():
     _run(D.dhara_save(CTX, name="plain", steps=[{"id": "a", "type": "set", "name": "v", "value": "1"}]))
     r = _run(D.dhara_run(CTX, name="plain"))
     out = _run(D.dhara_control(CTX, action="retry", run_id=r["run_id"]))
-    assert "sirf ruke hue" in out["note"]
+    assert "only on a stopped" in out["note"]
     _run(D.drain())
     out2 = _run(D.dhara_control(CTX, action="retry", run_id=r["run_id"]))
-    assert "sirf ruke hue" in out2["note"]
+    assert "only on a stopped" in out2["note"]
 
 
 def test_summaries_kill_switch(monkeypatch):
@@ -475,7 +475,7 @@ def test_dsl_import_lands_disabled():
     _run(D.dhara_save(CTX2, name="traveler", steps=_flow()))
     env = _run(D.dhara_dsl(CTX2, action="export", name="traveler"))["dsl"]
     out = _run(D.dhara_dsl(CTX, action="import", dsl=env))
-    assert out["ok"] is True and out["enabled"] is False and "BAND" in out["note"]
+    assert out["ok"] is True and out["enabled"] is False and "OFF" in out["note"]
     assert D.get_workflow(T1, name="traveler")["enabled"] in (0, False)
 
 
@@ -505,7 +505,7 @@ def test_dsl_size_cap(monkeypatch):
     _run(D.dhara_save(CTX, name="big", steps=big))
     with pytest.raises(Exception) as e:
         _run(D.dhara_dsl(CTX, action="export", name="big"))
-    assert "bohot bada" in str(e.value)
+    assert "too big" in str(e.value)
 
 
 def test_dsl_webhook_import_mints_a_new_token_shown_once():
@@ -522,7 +522,7 @@ def test_dsl_kill_switch(monkeypatch):
     _patch_settings(monkeypatch, dhara_dsl_enabled=False)
     with pytest.raises(Exception) as e:
         _run(D.dhara_dsl(CTX, action="export", name="x"))
-    assert "band" in str(e.value).lower()
+    assert "turned off" in str(e.value).lower()
 
 
 # ================================================================= pins
@@ -535,11 +535,11 @@ def test_registry_542_with_dhara_dsl():
     assert names <= global_names
     for n in names:
         assert n in HANDLERS and n in TOOL_LABELS, n
-    assert len(TOOLS) == 555, "541 (v0.502) + 1 magic21 (their v0.512) + 1 dhara_dsl (v0.514) + 10 construction Wave 1 (v0.522) + 1 crew_run (v0.523) + 1 image_edit (image editing)"
+    assert len(TOOLS) == 621, "617 + 1 shilp (v0.730 SHILP MANCH: the ArtCraft generation lane, their Omni API api.storyteller.ai, BYOK - owner 'MAKE A PLAN FOR HOOLA AI THUS HOOLA USER CAN USE THIS' -> the plan's W0). 616 + 1 seekh_video (v0.713 SEEKH MANCH: the learn-from-video bridge tool, owner 'GO' on the SEEKH MANCH plan). 608 + 1 kala (v0.681 KALA MANCH: the T5 knowledge-skill catalog family, owner 'GO' on the google/skills deploy plan). " "607 + 1 duniya (v0.667 DUNIYA MANCH: the T4 keyless-public-web family, owner 'T4'). " "606 + 1 jharokha (v0.665 JHAROKHA MANCH: the T3 local-browser family). " "581 + 1 paisa_sahayak (their v0.587) + 2 sandarbh (v0.590 SANDARBH MANCH: workspace + kgmemory). Was: 541 (v0.502) + 1 magic21 (their v0.512) + 1 dhara_dsl (v0.514) + 10 construction Wave 1 (v0.522) + 1 crew_run (v0.523) + 2 from main's v0.533 CRAWL BRAIN wiring (healed in v0.537: red on pristine main) + 1 reach (v0.559 REACH MANCH) + 1 speckit (v0.569 SPEC SUTRA)"
     for n in names:
         assert FAMILY_OF.get(n) == "dhara", n
 
 
 def test_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.530.0"
+    assert APP_VERSION == "0.758.0"

@@ -31,7 +31,7 @@ GRAPH_TOOLS = [
      "description": (
          "Map a GitHub repo into a code knowledge graph (functions, classes, imports, calls, communities) with Graphify. "
          "Local AST parsing: no model call, free. Use FIRST when she wants to understand a codebase's structure, "
-         "dependencies or call flow ('is repo ka naksha banao', 'map this codebase'). Takes a minute or two; her private "
+         "dependencies or call flow ('make a map of this repo', 'map this codebase'). Takes a minute or two; her private "
          "repos work through her Developer Sahayak token. Then use graph_ask. NOT for changing code (Developer Sahayak)."),
      "input_schema": {"type": "object", "properties": {
          "repo": {"type": "string", "description": "owner/name or https://github.com/owner/name"},

@@ -69,7 +69,7 @@ class _HomeDevicesScreenState extends State<HomeDevicesScreen> with WidgetsBindi
     var res = await Native.homeRun(action);
     if (res == 'permission') {
       await Native.homeAskBluetooth();
-      res = '"Nearby devices" ki permission dijiye, phir dobara try kijiye.';
+      res = 'Allow the "Nearby devices" permission, then try again.';
     }
     final ok = res == 'ok';
     final id = action['command_id'] as String?;
@@ -100,12 +100,12 @@ class _HomeDevicesScreenState extends State<HomeDevicesScreen> with WidgetsBindi
           context: context,
           builder: (_) => AlertDialog(
                 backgroundColor: C.bgBottom,
-                title: const Text('IR blaster nahi mila'),
-                content: const Text('AC chalane ke liye phone mein IR blaster chahiye (Redmi, POCO, iQOO, kuch OnePlus/Realme). '
-                    'Is phone mein nahi dikh raha. Samsung/LG AC ho to neeche brand account jodiye.'),
+                title: const Text('IR blaster not found'),
+                content: const Text('To run an AC, the phone needs an IR blaster (Redmi, POCO, iQOO, some OnePlus/Realme). '
+                    'This phone does not seem to have one. For a Samsung/LG AC, connect the brand account below.'),
                 actions: [
-                  TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Theek hai')),
-                  TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Phir bhi jodiye')),
+                  TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('OK')),
+                  TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Connect anyway')),
                 ],
               ));
       if (go != true) return;
@@ -113,11 +113,11 @@ class _HomeDevicesScreenState extends State<HomeDevicesScreen> with WidgetsBindi
     List<Map<String, dynamic>> paired = const [];
     if (kind == 'tv') {
       if (_caps['tv_remote'] != true) {
-        _snack('TV remote ke liye Android 9+ aur Bluetooth chahiye.');
+        _snack('A TV remote needs Android 9+ and Bluetooth.');
         return;
       }
       if (!await Native.homeAskBluetooth()) {
-        _snack('"Nearby devices" ki permission dijiye, phir dobara "TV jodiye" dabaiye.');
+        _snack('Allow the "Nearby devices" permission, then tap "Connect TV" again.');
         return;
       }
       paired = await Native.homePaired();
@@ -133,21 +133,21 @@ class _HomeDevicesScreenState extends State<HomeDevicesScreen> with WidgetsBindi
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setD) => AlertDialog(
           backgroundColor: C.bgBottom,
-          title: Text({'speaker': 'Speaker jodiye', 'tv': 'TV jodiye', 'ac': 'AC jodiye'}[kind]!),
+          title: Text({'speaker': 'Connect speaker', 'tv': 'Connect TV', 'ac': 'Connect AC'}[kind]!),
           content: SingleChildScrollView(
             child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-              TextField(controller: name, decoration: const InputDecoration(labelText: 'Naam (jaise Bedroom AC)')),
-              TextField(controller: room, decoration: const InputDecoration(labelText: 'Kamra (optional)')),
+              TextField(controller: name, decoration: const InputDecoration(labelText: 'Name (for example Bedroom AC)')),
+              TextField(controller: room, decoration: const InputDecoration(labelText: 'Room (optional)')),
               if (kind == 'ac') TextField(controller: brand, decoration: const InputDecoration(labelText: 'Brand (LG, Midea, Voltas…)')),
               if (kind == 'speaker')
                 const Padding(
                   padding: EdgeInsets.only(top: 10),
-                  child: Text('Speaker ko pehle phone ki Bluetooth settings se jodiye. Hoola awaaz 90% se upar nahi le jaata.',
+                  child: Text('First pair the speaker in the phone\'s Bluetooth settings. Hoola never raises the volume above 90%.',
                       style: TextStyle(color: C.muted, fontSize: 12.5)),
                 ),
               if (kind == 'tv') ...[
                 const SizedBox(height: 10),
-                const Text('Phone se juda TV chuniye (pehli baar ho to baad mein jodiye):', style: TextStyle(color: C.muted, fontSize: 12.5)),
+                const Text('Choose a TV paired with the phone (if first time, connect it later):', style: TextStyle(color: C.muted, fontSize: 12.5)),
                 for (final d in paired.take(8))
                   RadioListTile<String>(
                     dense: true,
@@ -159,13 +159,13 @@ class _HomeDevicesScreenState extends State<HomeDevicesScreen> with WidgetsBindi
                     subtitle: Text(d['address'] as String? ?? '', style: const TextStyle(fontSize: 11)),
                   ),
                 TextField(controller: ip, keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(labelText: 'TV ka Wi-Fi IP (optional, jaise 192.168.1.20)')),
+                    decoration: const InputDecoration(labelText: 'TV Wi-Fi IP (optional, for example 192.168.1.20)')),
               ],
             ]),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Rehne dijiye')),
-            TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Jodiye')),
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Leave it')),
+            TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Connect')),
           ],
         ),
       ),
@@ -201,11 +201,11 @@ class _HomeDevicesScreenState extends State<HomeDevicesScreen> with WidgetsBindi
           builder: (_) => AlertDialog(
                 backgroundColor: C.bgBottom,
                 title: Text('${d['name']}: remote test ${i + 1}/${list.length}'),
-                content: Text('Phone ka upar wala hissa AC ki taraf rakhiye (2-3 metre ke andar), phir "Bhejiye" dabaiye.\n'
-                    'Hoola "Cool 24°C" bhejega. (${p['label']})'),
+                content: Text('Hold the top of the phone towards the AC (within 2-3 metres), then tap "Send".\n'
+                    'Hoola will send "Cool 24°C". (${p['label']})'),
                 actions: [
-                  TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Baad mein')),
-                  TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Bhejiye')),
+                  TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Later')),
+                  TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Send')),
                 ],
               ));
       if (send != true) return;
@@ -226,20 +226,20 @@ class _HomeDevicesScreenState extends State<HomeDevicesScreen> with WidgetsBindi
           barrierDismissible: false,
           builder: (_) => AlertDialog(
                 backgroundColor: C.bgBottom,
-                title: const Text('Kya AC ne beep kiya?'),
-                content: const Text('AC chalu hua aur 24°C dikha raha hai?'),
+                title: const Text('Did the AC beep?'),
+                content: const Text('Did the AC turn on and show 24°C?'),
                 actions: [
-                  TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Nahi')),
-                  TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Haan')),
+                  TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('No')),
+                  TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Yes')),
                 ],
               ));
       if (beeped == true) {
         final r = await app.api!.homeIrConfirm(d['id'] as String, p['protocol'] as String);
-        _snack(r['message'] as String? ?? 'AC taiyaar hai');
+        _snack(r['message'] as String? ?? 'AC is ready');
         return;
       }
     }
-    _snack('Is AC ka remote abhi Hoola nahi samajhta. Samsung/LG ho to brand account jodiye.');
+    _snack('Hoola does not understand this AC\'s remote yet. For a Samsung/LG AC, connect the brand account.');
   }
 
   List<Map> _protocols() => const [
@@ -254,7 +254,7 @@ class _HomeDevicesScreenState extends State<HomeDevicesScreen> with WidgetsBindi
   Future<void> _tvSetup(Map<String, dynamic> d) async {
     final r = await Native.homeRemote(true);
     if (r != 'ok') {
-      _snack(r == 'permission' ? '"Nearby devices" ki permission dijiye.' : r);
+      _snack(r == 'permission' ? 'Allow the "Nearby devices" permission.' : r);
       return;
     }
     final t = Map<String, dynamic>.from(d['target'] as Map? ?? const {});
@@ -263,7 +263,7 @@ class _HomeDevicesScreenState extends State<HomeDevicesScreen> with WidgetsBindi
     final out = Map<String, dynamic>.from(res['result'] as Map? ?? const {});
     if (res['ok'] != true) {
       final e = res['error'] as String? ?? '';
-      _snack(e == 'permission' ? '"Nearby devices" ki permission dijiye.' : e == 'bluetooth_off' ? 'Pehle Bluetooth chalu kijiye.' : e);
+      _snack(e == 'permission' ? 'Allow the "Nearby devices" permission.' : e == 'bluetooth_off' ? 'Turn on Bluetooth first.' : e);
       return;
     }
     if (out['connected'] == true) {
@@ -276,9 +276,9 @@ class _HomeDevicesScreenState extends State<HomeDevicesScreen> with WidgetsBindi
         context: context,
         builder: (_) => AlertDialog(
               backgroundColor: C.bgBottom,
-              title: const Text('TV par jod diya?'),
+              title: const Text('Connected to the TV?'),
               actions: [
-                TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Baad mein')),
+                TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Later')),
                 TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Test')),
               ],
             ));
@@ -289,7 +289,7 @@ class _HomeDevicesScreenState extends State<HomeDevicesScreen> with WidgetsBindi
     try {
       final t = await app.api!.homeTvTest(d['id'] as String);
       final err = await _runOnPhone(Map<String, dynamic>.from(t['device_action'] as Map));
-      _snack(err ?? 'TV ki awaaz upar-neeche hui? To TV jud gaya. Ab boliye: "TV pe YouTube chalao".');
+      _snack(err ?? 'Did the TV volume go up and down? Then the TV is connected. Now say: "Play YouTube on the TV".');
     } catch (e) {
       _snack(_clean(e));
     }
@@ -318,20 +318,20 @@ class _HomeDevicesScreenState extends State<HomeDevicesScreen> with WidgetsBindi
               backgroundColor: C.bgBottom,
               title: const Text('LG ThinQ token'),
               content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-                const Text('LG ki site par sign in karke "Personal Access Token" banaiye (device permission ke saath), '
-                    'phir yahan paste kijiye. Chat mein kabhi mat bhejiye.', style: TextStyle(color: C.muted, fontSize: 13)),
+                const Text('Sign in on LG\'s site and create a "Personal Access Token" (with device permission), '
+                    'then paste it here. Never send it in chat.', style: TextStyle(color: C.muted, fontSize: 13)),
                 const SizedBox(height: 8),
-                if (url.isNotEmpty) TextButton(onPressed: () => Native.openExternal(url: url), child: const Text('LG token page kholiye')),
+                if (url.isNotEmpty) TextButton(onPressed: () => Native.openExternal(url: url), child: const Text('Open LG token page')),
                 TextField(controller: tok, obscureText: true, decoration: const InputDecoration(labelText: 'Token')),
               ]),
               actions: [
-                TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Rehne dijiye')),
-                TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Jodiye')),
+                TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Leave it')),
+                TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Connect')),
               ],
             ));
     if (ok != true || tok.text.trim().isEmpty) return;
     final r = await app.api!.homeLinkLg(tok.text.trim());
-    _snack(r['message'] as String? ?? 'LG ThinQ jud gaya');
+    _snack(r['message'] as String? ?? 'LG ThinQ connected');
     await _load(quiet: true);
   }
 
@@ -343,7 +343,7 @@ class _HomeDevicesScreenState extends State<HomeDevicesScreen> with WidgetsBindi
   Future<void> _sync() async => _guard(() async {
         await app.api!.homeSync();
         await _load(quiet: true);
-        _snack('Appliances refresh ho gaye');
+        _snack('Appliances refreshed');
       });
 
   Future<void> _remove(Map<String, dynamic> d) async => _guard(() async {
@@ -364,19 +364,19 @@ class _HomeDevicesScreenState extends State<HomeDevicesScreen> with WidgetsBindi
   String _status(Map<String, dynamic> d) {
     if (d['channel'] == 'cloud') {
       final ro = d['kind'] == 'fridge' || d['kind'] == 'washer';
-      return '${d['brand'] ?? ''} account se · ${ro ? 'sirf dekh sakte hain (safety)' : 'chala sakte hain'}';
+      return '${d['brand'] ?? ''} account · ${ro ? 'view only (for safety)' : 'can be operated'}';
     }
     if (d['kind'] == 'ac') {
-      if (d['ready'] != true) return 'Remote test baaki hai';
+      if (d['ready'] != true) return 'Remote test pending';
       final s = Map<String, dynamic>.from(d['last_set'] as Map? ?? const {});
-      return s['power'] == true ? 'Aakhri baar: ${s['mode']} ${s['temp_c']}°C (IR ulta nahi padhta)' : 'Aakhri baar: band';
+      return s['power'] == true ? 'Last time: ${s['mode']} ${s['temp_c']}°C (IR does not read back)' : 'Last time: off';
     }
     if (d['kind'] == 'tv') {
       final t = Map<String, dynamic>.from(d['target'] as Map? ?? const {});
       if (t['bt_address'] != null) return 'Bluetooth: ${t['bt_address']}';
-      return _caps['tv_saved'] == true ? 'Hoola remote se juda' : 'Menu > "Remote test / jodiye" dabaiye';
+      return _caps['tv_saved'] == true ? 'Connected to Hoola remote' : 'Tap Menu > "Remote test / connect"';
     }
-    return 'Phone ki awaaz / Bluetooth speaker';
+    return 'Phone volume / Bluetooth speaker';
   }
 
   Widget _deviceCard(Map<String, dynamic> d) {
@@ -406,8 +406,8 @@ class _HomeDevicesScreenState extends State<HomeDevicesScreen> with WidgetsBindi
                 await _load(quiet: true);
               },
               itemBuilder: (_) => [
-                if (d['kind'] == 'ac' || d['kind'] == 'tv') const PopupMenuItem(value: 'test', child: Text('Remote test / jodiye')),
-                const PopupMenuItem(value: 'remove', child: Text('Hataiye')),
+                if (d['kind'] == 'ac' || d['kind'] == 'tv') const PopupMenuItem(value: 'test', child: Text('Remote test / connect')),
+                const PopupMenuItem(value: 'remove', child: Text('Remove')),
               ],
             ),
         ]),
@@ -426,15 +426,15 @@ class _HomeDevicesScreenState extends State<HomeDevicesScreen> with WidgetsBindi
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(l['name'] as String? ?? '', style: const TextStyle(fontWeight: FontWeight.w700)),
-            Text(linked ? 'Juda hai' : (configured ? 'Fridge, washing machine, AC (brand ka account)' : 'Server par abhi chalu nahi'),
+            Text(linked ? 'Connected' : (configured ? 'Fridge, washing machine, AC (brand account)' : 'Not running on the server yet'),
                 style: const TextStyle(fontSize: 11.5, color: C.faint)),
           ]),
         ),
         if (linked)
-          TextButton(onPressed: _busy ? null : () => _unlink(l), child: const Text('Hataiye'))
+          TextButton(onPressed: _busy ? null : () => _unlink(l), child: const Text('Remove'))
         else
           TextButton(onPressed: _busy || !configured ? null : () => _link(l),
-              child: Text(l['token_in_app'] == true ? 'Token daaliye' : 'Jodiye')),
+              child: Text(l['token_in_app'] == true ? 'Enter token' : 'Connect')),
       ]),
     );
   }
@@ -443,7 +443,7 @@ class _HomeDevicesScreenState extends State<HomeDevicesScreen> with WidgetsBindi
   Widget build(BuildContext context) {
     final remoteOn = _caps['remote_on'] == true;
     return Scaffold(
-      appBar: AppBar(title: const Text('Ghar'), backgroundColor: Colors.transparent),
+      appBar: AppBar(title: const Text('Home'), backgroundColor: Colors.transparent),
       body: Aurora(
         child: RefreshIndicator(
           onRefresh: _load,
@@ -451,16 +451,16 @@ class _HomeDevicesScreenState extends State<HomeDevicesScreen> with WidgetsBindi
             if (_err != null) Padding(padding: const EdgeInsets.only(bottom: 10), child: Text(_err!, style: const TextStyle(color: C.bad))),
             Glass(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('Ghar ke device', style: display(20)),
+                Text('Home devices', style: display(20)),
                 const SizedBox(height: 6),
-                const Text('Phone se AC (IR), TV (Bluetooth remote) aur speaker chalaiye. Phir boliye: '
-                    '"Bedroom AC 24 pe karo", "TV ki awaaz kam karo", "Arijit ke gaane chalao".',
+                const Text('Control an AC (IR), TV (Bluetooth remote) and speaker from the phone. Then say: '
+                    '"Set the Bedroom AC to 24", "Turn the TV volume down", "Play Arijit\'s songs".',
                     style: TextStyle(color: C.muted, fontSize: 13, height: 1.4)),
                 const SizedBox(height: 8),
                 Wrap(spacing: 6, runSpacing: 6, children: [
-                  Pill(_caps['ir'] == true ? 'IR blaster: hai' : 'IR blaster: nahi', fg: _caps['ir'] == true ? C.ok : C.faint),
+                  Pill(_caps['ir'] == true ? 'IR blaster: yes' : 'IR blaster: no', fg: _caps['ir'] == true ? C.ok : C.faint),
                   Pill(_caps['bluetooth_on'] == true ? 'Bluetooth: on' : 'Bluetooth: off', fg: _caps['bluetooth_on'] == true ? C.ok : C.faint),
-                  if (remoteOn) const Pill('TV remote: chalu', fg: C.ok),
+                  if (remoteOn) const Pill('TV remote: on', fg: C.ok),
                 ]),
               ]),
             ),
@@ -482,20 +482,20 @@ class _HomeDevicesScreenState extends State<HomeDevicesScreen> with WidgetsBindi
               Expanded(child: GlassButton(label: 'Speaker', icon: Icons.speaker_rounded, height: 44, onTap: _busy ? null : () => _add('speaker'))),
             ]),
             const SizedBox(height: 16),
-            const Caption('MERE DEVICE'),
+            const Caption('MY DEVICES'),
             if (!_loaded) const Padding(padding: EdgeInsets.all(30), child: Center(child: CircularProgressIndicator())),
             if (_loaded && _devices.isEmpty)
-              const Padding(padding: EdgeInsets.all(12), child: Text('Abhi koi device nahi. Upar se jodiye.', style: TextStyle(color: C.faint))),
+              const Padding(padding: EdgeInsets.all(12), child: Text('No devices yet. Connect one from above.', style: TextStyle(color: C.faint))),
             for (final d in _devices) _deviceCard(d),
             if (_devices.any((d) => d['kind'] == 'tv'))
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
-                title: const Text('TV remote background mein chalu rakhein'),
-                subtitle: const Text('App band ho tab bhi TV Hoola remote se juda rahe', style: TextStyle(fontSize: 12, color: C.faint)),
+                title: const Text('Keep the TV remote running in the background'),
+                subtitle: const Text('The TV stays connected to the Hoola remote even when the app is closed', style: TextStyle(fontSize: 12, color: C.faint)),
                 value: remoteOn,
                 onChanged: (v) async {
                   final r = await Native.homeRemote(v);
-                  if (r != 'ok') _snack(r == 'permission' ? '"Nearby devices" ki permission dijiye.' : r);
+                  if (r != 'ok') _snack(r == 'permission' ? 'Allow the "Nearby devices" permission.' : r);
                   await _load(quiet: true);
                 },
               ),
@@ -510,8 +510,8 @@ class _HomeDevicesScreenState extends State<HomeDevicesScreen> with WidgetsBindi
               ]),
             ),
             const SizedBox(height: 12),
-            const Text('Suraksha: AC hamesha 20–28°C (default 24°C). Fridge aur washing machine sirf dekhe jaate hain, '
-                'chalu/band nahi hote. Geyser abhi nahi (16A smart plug aur auto-off timer ke bina nahi).',
+            const Text('Safety: the AC is always 20–28°C (default 24°C). The fridge and washing machine are view-only, '
+                'never turned on/off. No geyser for now (not without a 16A smart plug and an auto-off timer).',
                 style: TextStyle(color: C.faint, fontSize: 11.5, height: 1.4)),
           ]),
         ),

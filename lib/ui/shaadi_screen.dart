@@ -20,7 +20,7 @@ List<Map<String, dynamic>> _list(dynamic l) =>
     List<Map<String, dynamic>>.from(((l as List?) ?? const []).whereType<Map>().map((e) => Map<String, dynamic>.from(e)));
 List<String> _strs(dynamic l) => ((l as List?) ?? const []).map((e) => '$e').toList();
 num? _n(String? v) => (v == null || v.trim().isEmpty) ? null : num.tryParse(v.replaceAll(',', '').trim());
-String _rs(dynamic v) => v == null ? '[daam?]' : '₹${(v is num ? v : num.tryParse('$v') ?? 0).toStringAsFixed(0)}';
+String _rs(dynamic v) => v == null ? '[price?]' : '₹${(v is num ? v : num.tryParse('$v') ?? 0).toStringAsFixed(0)}';
 
 void _snack(BuildContext c, String t) {
   if (t.trim().isEmpty) return;
@@ -28,7 +28,7 @@ void _snack(BuildContext c, String t) {
 }
 
 Future<Map<String, String>?> _form(BuildContext context, String title, List<(String, String)> fields,
-    {String ok = 'Aage', Map<String, String> initial = const {}}) async {
+    {String ok = 'Continue', Map<String, String> initial = const {}}) async {
   final c = {for (final (k, _) in fields) k: TextEditingController(text: initial[k] ?? '')};
   final res = await showDialog<bool>(
     context: context,
@@ -42,7 +42,7 @@ Future<Map<String, String>?> _form(BuildContext context, String title, List<(Str
         ]),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Rehne do')),
+        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Cancel')),
         TextButton(onPressed: () => Navigator.pop(d, true), child: Text(ok)),
       ],
     ),
@@ -112,17 +112,17 @@ class _ShaadiScreenState extends State<ShaadiScreen> {
       .then((_) => _load());
 
   Future<void> _newWedding() async {
-    final f = await _form(context, 'Nayi shaadi', const [
-      ('bride', 'Dulhan ka naam'),
-      ('groom', 'Dulhe ka naam'),
-      ('community', 'Samaj (marathi / punjabi / muslim / tamil / christian ...)'),
-      ('city', 'Shahar'),
-      ('state', 'State (jaise Maharashtra)'),
+    final f = await _form(context, 'New wedding', const [
+      ('bride', 'Bride\'s name'),
+      ('groom', 'Groom\'s name'),
+      ('community', 'Community (marathi / punjabi / muslim / tamil / christian ...)'),
+      ('city', 'City'),
+      ('state', 'State (e.g. Maharashtra)'),
       ('venue', 'Venue'),
-      ('budget', 'Kul budget (jaise 25 lakh)'),
-      ('guests_estimate', 'Andaazan mehmaan'),
-      ('client', 'Client (agar aap planner hain)'),
-      ('client_phone', 'Client ka phone'),
+      ('budget', 'Total budget (e.g. 25 lakh)'),
+      ('guests_estimate', 'Estimated guests'),
+      ('client', 'Client (if you are a planner)'),
+      ('client_phone', 'Client phone'),
     ]);
     if (f == null) return;
     final r = await _run('POST', '/api/shaadi/weddings', {
@@ -139,16 +139,16 @@ class _ShaadiScreenState extends State<ShaadiScreen> {
     return ListView(padding: const EdgeInsets.all(16), children: [
       Glass(child: Text(_s(day['say']), style: const TextStyle(fontSize: 14))),
       const SizedBox(height: 12),
-      if (waiting.isNotEmpty) const Caption('AAPKI HAAN CHAHIYE'),
+      if (waiting.isNotEmpty) const Caption('NEEDS YOUR APPROVAL'),
       for (final c in waiting)
         Padding(padding: const EdgeInsets.only(bottom: 10), child: ShaadiCardCard(app: widget.app, data: {'card': c}, onDone: _load)),
-      if (_strs(day['soon']).isNotEmpty) ...[const Caption('IS HAFTE'), for (final x in _strs(day['soon'])) Text('• $x')],
+      if (_strs(day['soon']).isNotEmpty) ...[const Caption('THIS WEEK'), for (final x in _strs(day['soon'])) Text('• $x')],
       if (_strs(day['todo']).isNotEmpty) ...[
         const SizedBox(height: 8),
-        const Caption('KAAM'),
+        const Caption('WORK'),
         for (final x in _strs(day['todo'])) Text('• $x', style: TextStyle(color: x.contains('(der)') ? C.warn : C.ink)),
       ],
-      if (_strs(day['payments']).isNotEmpty) ...[const SizedBox(height: 8), const Caption('PAYMENT AANE WALE'),
+      if (_strs(day['payments']).isNotEmpty) ...[const SizedBox(height: 8), const Caption('PAYMENTS DUE'),
         for (final x in _strs(day['payments'])) Text('• $x')],
     ]);
   }
@@ -156,9 +156,9 @@ class _ShaadiScreenState extends State<ShaadiScreen> {
   Widget _weddings() {
     final ws = _list(_d?['weddings']);
     return ListView(padding: const EdgeInsets.all(16), children: [
-      GradientButton(label: 'Nayi shaadi', icon: Icons.add_rounded, height: 46, onTap: _busy ? null : _newWedding),
+      GradientButton(label: 'New wedding', icon: Icons.add_rounded, height: 46, onTap: _busy ? null : _newWedding),
       const SizedBox(height: 12),
-      if (ws.isEmpty) const Text('Abhi koi shaadi nahi.', style: TextStyle(color: C.muted)),
+      if (ws.isEmpty) const Text('No weddings yet.', style: TextStyle(color: C.muted)),
       for (final w in ws)
         Padding(
           padding: const EdgeInsets.only(bottom: 10),
@@ -170,7 +170,7 @@ class _ShaadiScreenState extends State<ShaadiScreen> {
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text('${_s(w['number'])} · ${_s(w['title'])}', style: const TextStyle(fontWeight: FontWeight.w800)),
                 Text([_s(w['community_label']), _s(w['city']), if (_s(w['first_date']).isNotEmpty) _s(w['first_date']),
-                  if (w['days_left'] != null) '${_s(w['days_left'])} din baaki'].where((x) => x.isNotEmpty).join(' · '),
+                  if (w['days_left'] != null) '${_s(w['days_left'])} days left'].where((x) => x.isNotEmpty).join(' · '),
                     style: const TextStyle(fontSize: 12.5, color: C.muted)),
               ])),
               Pill(_s(w['status'])),
@@ -184,20 +184,20 @@ class _ShaadiScreenState extends State<ShaadiScreen> {
     final st = _m(_d?['settings']);
     return ListView(padding: const EdgeInsets.all(16), children: [
       Glass(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(_s(st['firm']).isEmpty ? 'Firm ka naam nahi' : _s(st['firm']), style: const TextStyle(fontWeight: FontWeight.w800)),
-        Text('Mode: ${_s(st['mode']) == 'agency' ? 'clients ke liye planner' : 'apni family ki shaadi'}'),
-        Text('Fee: ${_s(st['fee_mode'])} ${_s(st['fee_value'])} · GST ${_s(st['gst_pct'])}% ${_s(st['gstin']).isEmpty ? '(GSTIN nahi: GST nahi lagega)' : _s(st['gstin'])}',
+        Text(_s(st['firm']).isEmpty ? 'No firm name' : _s(st['firm']), style: const TextStyle(fontWeight: FontWeight.w800)),
+        Text('Mode: ${_s(st['mode']) == 'agency' ? 'planner for clients' : 'your own family\'s wedding'}'),
+        Text('Fee: ${_s(st['fee_mode'])} ${_s(st['fee_value'])} · GST ${_s(st['gst_pct'])}% ${_s(st['gstin']).isEmpty ? '(No GSTIN: GST will not be added)' : _s(st['gstin'])}',
             style: const TextStyle(fontSize: 12.5, color: C.muted)),
-        Text('UPI: ${_s(st['upi_id']).isEmpty ? '-' : _s(st['upi_id'])} · Subah ka note ${_s(st['morning_time'])}',
+        Text('UPI: ${_s(st['upi_id']).isEmpty ? '-' : _s(st['upi_id'])} · Morning note ${_s(st['morning_time'])}',
             style: const TextStyle(fontSize: 12.5, color: C.muted)),
         for (final x in _list(st['stages'])) Text('• ${_s(x['label'])}: ${_s(x['pct'])}%', style: const TextStyle(fontSize: 12.5)),
       ])),
       const SizedBox(height: 10),
-      GradientButton(label: 'Niyam badlo', icon: Icons.tune_rounded, height: 44, onTap: _busy ? null : () async {
-        final f = await _form(context, 'Niyam', const [
-          ('firm', 'Firm / aapka naam'), ('mode', 'Mode: family / agency'), ('gstin', 'GSTIN (agar hai)'), ('phone', 'Phone'),
-          ('upi_id', 'UPI ID (client payment ke liye)'), ('fee_mode', 'Fee: none / percent / flat'), ('fee_value', 'Fee (% ya rupaye)'),
-          ('gst_pct', 'GST % (CA se pakka)'), ('morning_time', 'Subah ka note (HH:MM)'), ('terms', 'Terms'),
+      GradientButton(label: 'Edit rules', icon: Icons.tune_rounded, height: 44, onTap: _busy ? null : () async {
+        final f = await _form(context, 'Rules', const [
+          ('firm', 'Firm / your name'), ('mode', 'Mode: family / agency'), ('gstin', 'GSTIN (if any)'), ('phone', 'Phone'),
+          ('upi_id', 'UPI ID (for client payments)'), ('fee_mode', 'Fee: none / percent / flat'), ('fee_value', 'Fee (% or rupees)'),
+          ('gst_pct', 'GST % (confirm with your CA)'), ('morning_time', 'Morning note (HH:MM)'), ('terms', 'Terms'),
         ], initial: {for (final k in ['firm', 'mode', 'gstin', 'phone', 'upi_id', 'fee_mode', 'morning_time', 'terms']) k: _s(st[k])});
         if (f == null) return;
         await _run('PUT', '/api/shaadi/settings', {
@@ -207,14 +207,14 @@ class _ShaadiScreenState extends State<ShaadiScreen> {
         });
       }),
       const SizedBox(height: 10),
-      const Text('Muhurat panditji ka faisla hai; Hoola sirf aapki di hui tareekh ka panchang (tithi, nakshatra) dikhata hai. '
-          'Booking, advance, payment aur mehmaanon ko message sirf aapke tap se.', style: TextStyle(fontSize: 12, color: C.faint)),
+      const Text('The muhurat is the priest\'s decision; Hoola only shows the panchang (tithi, nakshatra) for the date you give.'
+          'Bookings, advances, payments and messages to guests go only with your tap.', style: TextStyle(fontSize: 12, color: C.faint)),
     ]);
   }
 
   @override
   Widget build(BuildContext context) {
-    const tabs = ['Aaj', 'Shaadiyan', 'Niyam'];
+    const tabs = ['Today', 'Weddings', 'Rules'];
     return Scaffold(
       backgroundColor: C.bgTop,
       appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Shaadi Sahayak'),
@@ -287,9 +287,9 @@ class _ShaadiWeddingPageState extends State<ShaadiWeddingPage> {
 
   // ---- functions
   Future<void> _editFn(Map<String, dynamic>? f) async {
-    final r = await _form(context, f == null ? 'Naya function' : _s(f['name']), const [
-      ('name', 'Naam (jaise Mehendi)'), ('date', 'Tareekh (DD-MM-YYYY)'), ('start', 'Shuru (jaise 7 pm)'), ('end', 'Khatam'),
-      ('venue', 'Jagah'), ('muhurat', 'Muhurat (panditji ne jo bataya)'), ('muhurat_by', 'Kisne bataya (panditji ka naam)'),
+    final r = await _form(context, f == null ? 'New function' : _s(f['name']), const [
+      ('name', 'Name (e.g. Mehendi)'), ('date', 'Date (DD-MM-YYYY)'), ('start', 'Start (e.g. 7 pm)'), ('end', 'End'),
+      ('venue', 'Place'), ('muhurat', 'Muhurat (as told by the priest)'), ('muhurat_by', 'Told by (priest\'s name)'),
       ('notes', 'Note'),
     ], initial: f == null ? const {} : {for (final k in ['name', 'date', 'start', 'end', 'venue', 'muhurat', 'muhurat_by', 'notes']) k: _s(f[k])});
     if (r == null) return;
@@ -299,7 +299,7 @@ class _ShaadiWeddingPageState extends State<ShaadiWeddingPage> {
   Widget _functions() {
     return ListView(padding: const EdgeInsets.all(16), children: [
       Row(children: [
-        Expanded(child: GradientButton(label: 'Function jodo', icon: Icons.add_rounded, height: 44, onTap: _busy ? null : () => _editFn(null))),
+        Expanded(child: GradientButton(label: 'Add function', icon: Icons.add_rounded, height: 44, onTap: _busy ? null : () => _editFn(null))),
         const SizedBox(width: 8),
         GlassButton(label: 'Panchang', icon: Icons.brightness_5_rounded, height: 44, onTap: _busy ? null : () async {
           final p = await _call(context, widget.app, 'GET', '$_base/panchang');
@@ -307,7 +307,7 @@ class _ShaadiWeddingPageState extends State<ShaadiWeddingPage> {
         }),
       ]),
       const SizedBox(height: 6),
-      const Text('Muhurat sirf panditji ka; Hoola tareekh ka panchang (tithi, nakshatra, chhutti) dikhata hai.',
+      const Text('The muhurat is only the priest\'s; Hoola shows the panchang for the date (tithi, nakshatra, holiday).',
           style: TextStyle(fontSize: 12, color: C.faint)),
       for (final d in _list(_panchang['days']))
         if (_s(d['date']).isNotEmpty)
@@ -326,14 +326,14 @@ class _ShaadiWeddingPageState extends State<ShaadiWeddingPage> {
               IconButton(icon: const Icon(Icons.delete_outline_rounded, color: C.faint),
                   onPressed: _busy ? null : () => _run('POST', '$_base/functions', {'fn': _s(f['id']), 'remove': true})),
             ]),
-            Text([_s(f['date']).isEmpty ? 'tareekh baaki' : _s(f['date']), _s(f['start']), _s(f['venue'])].where((x) => x.isNotEmpty).join(' · '),
+            Text([_s(f['date']).isEmpty ? 'date pending' : _s(f['date']), _s(f['start']), _s(f['venue'])].where((x) => x.isNotEmpty).join(' · '),
                 style: const TextStyle(fontSize: 12.5, color: C.muted)),
             if (_s(f['muhurat']).isNotEmpty) Text('Muhurat: ${_s(f['muhurat'])} (${_s(f['muhurat_by'])})', style: const TextStyle(fontSize: 12.5)),
             for (final r in _list(f['timeline'])) Text('${_s(r['time']).isEmpty ? '--:--' : _s(r['time'])}  ${_s(r['what'])}',
                 style: const TextStyle(fontSize: 12)),
             const SizedBox(height: 6),
             Wrap(spacing: 8, children: [
-              GlassButton(label: 'Timeline banao', icon: Icons.schedule_rounded, height: 38, onTap: _busy ? null : () =>
+              GlassButton(label: 'Make timeline', icon: Icons.schedule_rounded, height: 38, onTap: _busy ? null : () =>
                   _run('POST', '$_base/timeline', {'fn': _s(f['id']), 'starter': true})),
               GlassButton(label: 'Invite draft', icon: Icons.mail_rounded, height: 38, onTap: _busy ? null : () => _invite(_s(f['id']))),
             ]),
@@ -345,8 +345,8 @@ class _ShaadiWeddingPageState extends State<ShaadiWeddingPage> {
   Future<void> _invite(String fn) async {
     final t = await _call(context, widget.app, 'GET', '$_base/invite_text?fn=$fn');
     if (t == null || !mounted) return;
-    final f = await _form(context, 'Mehmaanon ko message', const [('text', 'Message ({name} = mehmaan ka naam)')],
-        ok: 'Haan ka card banao', initial: {'text': _s(t['text'])});
+    final f = await _form(context, 'Message to guests', const [('text', 'Message ({name} = guest\'s name)')],
+        ok: 'Make card for approval', initial: {'text': _s(t['text'])});
     if (f == null) return;
     await _run('POST', '$_base/message', {'text': f['text'], 'fn': fn});
   }
@@ -357,10 +357,10 @@ class _ShaadiWeddingPageState extends State<ShaadiWeddingPage> {
     final gs = _list(_guests['guests']);
     return ListView(padding: const EdgeInsets.all(16), children: [
       Row(children: [
-        Expanded(child: GradientButton(label: 'Mehmaan jodo', icon: Icons.person_add_rounded, height: 44, onTap: _busy ? null : () async {
-          final f = await _form(context, 'Mehmaan', const [
-            ('name', 'Naam'), ('side', 'Taraf: bride / groom / common'), ('phone', 'Phone'), ('adults', 'Bade'), ('kids', 'Bachche'),
-            ('city', 'Shahar'), ('diet', 'Khana: veg / jain / nonveg'), ('arrive', 'Aana (DD-MM-YYYY)'), ('depart', 'Jaana'),
+        Expanded(child: GradientButton(label: 'Add guest', icon: Icons.person_add_rounded, height: 44, onTap: _busy ? null : () async {
+          final f = await _form(context, 'Guests', const [
+            ('name', 'Name'), ('side', 'Side: bride / groom / common'), ('phone', 'Phone'), ('adults', 'Adults'), ('kids', 'Children'),
+            ('city', 'City'), ('diet', 'Food: veg / jain / nonveg'), ('arrive', 'Arrival (DD-MM-YYYY)'), ('depart', 'Departure'),
           ]);
           if (f == null) return;
           await _run('POST', '$_base/guests', {
@@ -374,19 +374,19 @@ class _ShaadiWeddingPageState extends State<ShaadiWeddingPage> {
         GlassButton(label: 'Sheet', icon: Icons.upload_file_rounded, height: 44, onTap: _busy ? null : _importGuests),
       ]),
       const SizedBox(height: 10),
-      const Caption('GINTI (CATERER KE LIYE)'),
+      const Caption('COUNT (FOR THE CATERER)'),
       for (final h in hc)
-        Text('• ${_s(h['function'])}: haan ${_s(h['yes'])} · shayad ${_s(h['maybe'])} · baaki ${_s(h['pending'])} · nahi ${_s(h['no'])}',
+        Text('• ${_s(h['function'])}: yes ${_s(h['yes'])} · maybe ${_s(h['maybe'])} · pending ${_s(h['pending'])} · no ${_s(h['no'])}',
             style: const TextStyle(fontSize: 12.5)),
       const SizedBox(height: 10),
-      GlassButton(label: 'Jinka jawab baaki, unhe yaad dilao', icon: Icons.notifications_rounded, height: 40, onTap: _busy ? null : () async {
+      GlassButton(label: 'Remind those who have not replied', icon: Icons.notifications_rounded, height: 40, onTap: _busy ? null : () async {
         final t = await _call(context, widget.app, 'GET', '$_base/invite_text?kind=rsvp');
         if (t == null || !mounted) return;
-        final f = await _form(context, 'RSVP yaad', const [('text', 'Message')], ok: 'Haan ka card banao', initial: {'text': _s(t['text'])});
+        final f = await _form(context, 'RSVP reminder', const [('text', 'Message')], ok: 'Make card for approval', initial: {'text': _s(t['text'])});
         if (f != null) await _run('POST', '$_base/message', {'text': f['text'], 'pending': true});
       }),
       const SizedBox(height: 10),
-      Caption('MEHMAAN (${_s(_guests['count'])} · ${_s(_guests['heads'])} log)'),
+      Caption('GUESTS (${_s(_guests['count'])} · ${_s(_guests['heads'])} people)'),
       for (final g in gs)
         Glass(
           margin: const EdgeInsets.only(bottom: 6),
@@ -399,9 +399,9 @@ class _ShaadiWeddingPageState extends State<ShaadiWeddingPage> {
             PopupMenuButton<String>(
               onSelected: (a) => _run('POST', '$_base/rsvp', {'guest': _s(g['id']), 'answer': a}),
               itemBuilder: (_) => const [
-                PopupMenuItem(value: 'yes', child: Text('Haan, aayenge')),
-                PopupMenuItem(value: 'maybe', child: Text('Shayad')),
-                PopupMenuItem(value: 'no', child: Text('Nahi')),
+                PopupMenuItem(value: 'yes', child: Text('Yes, will come')),
+                PopupMenuItem(value: 'maybe', child: Text('Maybe')),
+                PopupMenuItem(value: 'no', child: Text('No')),
               ],
             ),
           ]),
@@ -428,10 +428,10 @@ class _ShaadiWeddingPageState extends State<ShaadiWeddingPage> {
   Widget _roomsTab() {
     final r = _m(_w?['rooms']);
     return ListView(padding: const EdgeInsets.all(16), children: [
-      GradientButton(label: 'Room block jodo', icon: Icons.hotel_rounded, height: 44, onTap: _busy ? null : () async {
+      GradientButton(label: 'Add room block', icon: Icons.hotel_rounded, height: 44, onTap: _busy ? null : () async {
         final f = await _form(context, 'Rooms', const [
-          ('place', 'Hotel / homestay / ghar'), ('label', 'Room label (jaise D)'), ('count', 'Kitne room'), ('capacity', 'Ek room mein kitne log'),
-          ('check_in', 'Check-in (DD-MM-YYYY)'), ('check_out', 'Check-out'), ('rate', 'Hotel ka rate / raat (unka quote)'),
+          ('place', 'Hotel / homestay / house'), ('label', 'Room label (e.g. D)'), ('count', 'How many rooms'), ('capacity', 'How many people in one room'),
+          ('check_in', 'Check-in (DD-MM-YYYY)'), ('check_out', 'Check-out'), ('rate', 'Hotel rate / night (their quote)'),
         ]);
         if (f == null) return;
         await _run('POST', '$_base/rooms', {
@@ -447,7 +447,7 @@ class _ShaadiWeddingPageState extends State<ShaadiWeddingPage> {
         Glass(margin: const EdgeInsets.only(top: 6), padding: const EdgeInsets.all(10), child: Row(children: [
           Expanded(child: Text('${_s(x['name'])} · ${_s(x['heads'])} log · ${_s(x['arrive'])} → ${_s(x['depart'])}')),
           GlassButton(label: 'Room do', height: 36, onTap: _busy ? null : () async {
-            final f = await _form(context, 'Kaunsa room?', const [('room', 'Room label (jaise D-1)')]);
+            final f = await _form(context, 'Which room?', const [('room', 'Room label (e.g. D-1)')]);
             if (f != null) await _run('POST', '$_base/rooms/assign', {'guest': _s(x['id']), 'room': f['room']});
           }),
         ])),
@@ -459,7 +459,7 @@ class _ShaadiWeddingPageState extends State<ShaadiWeddingPage> {
           child: Text('${_s(x['place'])} ${_s(x['label'])} · ${_s(x['heads'])}/${_s(x['capacity'])} · ${_s(x['check_in'])} → ${_s(x['check_out'])}\n'
               '${_list(x['guests']).map((g) => _s(g['name'])).join(', ')}', style: const TextStyle(fontSize: 12.5)),
         ),
-      const Text('Overbooking Hoola nahi karta: jagah se zyada log ek room mein nahi jaate.', style: TextStyle(fontSize: 11, color: C.faint)),
+      const Text('Hoola does not overbook: more people than space will not go into one room.', style: TextStyle(fontSize: 11, color: C.faint)),
     ]);
   }
 
@@ -467,11 +467,11 @@ class _ShaadiWeddingPageState extends State<ShaadiWeddingPage> {
   Widget _vendorsTab() {
     final vs = _list(_w?['vendors']);
     return ListView(padding: const EdgeInsets.all(16), children: [
-      GradientButton(label: 'Vendor jodo', icon: Icons.storefront_rounded, height: 44, onTap: _busy ? null : () async {
-        final f = await _form(context, 'Vendor (unka quote)', const [
-          ('name', 'Naam'), ('kind', 'Kaam: decor / caterer / photographer / mehendi / dj / pandit / makeup / transport'),
-          ('phone', 'Phone'), ('quote', 'Unka quote (rupaye)'), ('per_plate', 'Per plate (caterer)'), ('plates', 'Plates'),
-          ('quote_note', 'Kya shamil hai'), ('advance', 'Advance (rupaye)'), ('advance_due', 'Advance ki tareekh'),
+      GradientButton(label: 'Add vendor', icon: Icons.storefront_rounded, height: 44, onTap: _busy ? null : () async {
+        final f = await _form(context, 'Vendor (their quote)', const [
+          ('name', 'Name'), ('kind', 'Trade: decor / caterer / photographer / mehendi / dj / pandit / makeup / transport'),
+          ('phone', 'Phone'), ('quote', 'Their quote (rupees)'), ('per_plate', 'Per plate (caterer)'), ('plates', 'Plates'),
+          ('quote_note', 'What is included'), ('advance', 'Advance (rupees)'), ('advance_due', 'Advance date'),
         ]);
         if (f == null) return;
         await _run('POST', '$_base/vendors', {
@@ -483,7 +483,7 @@ class _ShaadiWeddingPageState extends State<ShaadiWeddingPage> {
         });
       }),
       const SizedBox(height: 6),
-      const Text('Daam sirf vendor ka diya hua; Hoola daam nahi gadhta. Booking aur har payment aapke tap (fingerprint) se.',
+      const Text('The price is only what the vendor gave; Hoola never makes up prices. Booking and every payment need your tap (fingerprint).',
           style: TextStyle(fontSize: 12, color: C.faint)),
       const SizedBox(height: 10),
       for (final v in vs)
@@ -494,22 +494,22 @@ class _ShaadiWeddingPageState extends State<ShaadiWeddingPage> {
               Expanded(child: Text('${_s(v['name'])} · ${_s(v['kind_label'])}', style: const TextStyle(fontWeight: FontWeight.w800))),
               Pill(_s(v['status']), fg: _s(v['status']) == 'booked' ? C.ok : C.chip),
             ]),
-            Text('Quote ${_s(v['quote_text'])} · diya ${_rs(v['paid'])} · baaki ${_rs(v['due'])}', style: const TextStyle(fontSize: 12.5)),
+            Text('Quote ${_s(v['quote_text'])} · paid ${_rs(v['paid'])} · due ${_rs(v['due'])}', style: const TextStyle(fontSize: 12.5)),
             if (_s(v['quote_note']).isNotEmpty) Text(_s(v['quote_note']), style: const TextStyle(fontSize: 12, color: C.muted)),
             for (final x in _list(v['schedule']))
               Row(children: [
                 Expanded(child: Text('• ${_s(x['label'])} ${_rs(x['amount'])} ${_s(x['due'])} (${_s(x['status'])})', style: const TextStyle(fontSize: 12))),
                 if (_s(v['status']) == 'booked' && _s(x['status']) == 'planned')
                   TextButton(onPressed: _busy ? null : () => _run('POST', '$_base/vendors/${_s(v['id'])}/pay', {'item': _s(x['id'])}),
-                      child: const Text('Dena hai')),
+                      child: const Text('To pay')),
                 if (_s(x['status']) == 'approved')
                   TextButton(onPressed: _busy ? null : () async {
-                    final f = await _form(context, 'Maine de diya', const [('ref', 'UTR / cheque (aakhri ank)')]);
+                    final f = await _form(context, 'I have paid', const [('ref', 'UTR / cheque (last digits)')]);
                     if (f != null) await _run('POST', '$_base/vendors/${_s(v['id'])}/paid', {'item': _s(x['id']), 'ref': f['ref'] ?? ''});
-                  }, child: const Text('Maine de diya')),
+                  }, child: const Text('I have paid')),
               ]),
             if (_s(v['status']) == 'quoted')
-              GlassButton(label: 'Book karna hai', icon: Icons.verified_rounded, height: 38,
+              GlassButton(label: 'To book', icon: Icons.verified_rounded, height: 38,
                   onTap: _busy ? null : () => _run('POST', '$_base/vendors/${_s(v['id'])}/book')),
           ]),
         ),
@@ -522,14 +522,14 @@ class _ShaadiWeddingPageState extends State<ShaadiWeddingPage> {
     return ListView(padding: const EdgeInsets.all(16), children: [
       Glass(child: Text(_s(b['say']))),
       const SizedBox(height: 8),
-      GradientButton(label: 'Budget likho', icon: Icons.account_balance_wallet_rounded, height: 44, onTap: _busy ? null : () async {
-        final f = await _form(context, 'Budget', const [('amount', 'Rakam'), ('head', 'Kis cheez ka (khaali = kul budget)'), ('fn', 'Function (khaali = poori shaadi)')]);
+      GradientButton(label: 'Write budget', icon: Icons.account_balance_wallet_rounded, height: 44, onTap: _busy ? null : () async {
+        final f = await _form(context, 'Budget', const [('amount', 'Amount'), ('head', 'For what (empty = total budget)'), ('fn', 'Function (empty = whole wedding)')]);
         if (f != null) await _run('POST', '$_base/budget', {...f, 'amount': _n(f['amount'])});
       }),
       for (final w in _strs(b['warnings'])) Text('⚠ $w', style: const TextStyle(color: C.warn, fontSize: 12.5)),
       const SizedBox(height: 8),
       for (final r in _list(b['rows']))
-        Text('• ${_s(r['function'])} / ${_s(r['head_label'])}: budget ${_rs(r['planned'])} · pakka ${_rs(r['committed'])} · diya ${_rs(r['paid'])}',
+        Text('• ${_s(r['function'])} / ${_s(r['head_label'])}: budget ${_rs(r['planned'])} · confirmed ${_rs(r['committed'])} · paid ${_rs(r['paid'])}',
             style: TextStyle(fontSize: 12.5, color: r['over'] == true ? C.warn : C.ink)),
     ]);
   }
@@ -537,7 +537,7 @@ class _ShaadiWeddingPageState extends State<ShaadiWeddingPage> {
   Widget _checklistTab() {
     final items = _list(_w?['checklist']);
     return ListView(padding: const EdgeInsets.all(16), children: [
-      GlassButton(label: 'Registration ki checklist', icon: Icons.gavel_rounded, height: 40, onTap: _busy ? null : () async {
+      GlassButton(label: 'Registration checklist', icon: Icons.gavel_rounded, height: 40, onTap: _busy ? null : () async {
         final r = await _call(context, widget.app, 'GET', '$_base/registration');
         if (r != null && mounted) setState(() => _reg = r);
       }),
@@ -554,7 +554,7 @@ class _ShaadiWeddingPageState extends State<ShaadiWeddingPage> {
           value: c['done'] == true,
           onChanged: _busy ? null : (v) => _run('POST', '$_base/checklist', {'item': _s(c['id']), 'done': v == true}),
           title: Text(_s(c['what']), style: const TextStyle(fontSize: 13.5)),
-          subtitle: Text(_s(c['due']).isEmpty ? 'tareekh tay hone par' : '${_s(c['due'])} tak',
+          subtitle: Text(_s(c['due']).isEmpty ? 'once the date is fixed' : 'until ${_s(c['due'])}',
               style: TextStyle(fontSize: 12, color: _s(c['state']) == 'late' ? C.warn : C.muted)),
         ),
     ]);
@@ -565,28 +565,28 @@ class _ShaadiWeddingPageState extends State<ShaadiWeddingPage> {
     final gs = _list(_gifts['gifts']);
     return ListView(padding: const EdgeInsets.all(16), children: [
       Row(children: [
-        Expanded(child: GradientButton(label: 'Shagun likho', icon: Icons.redeem_rounded, height: 44, onTap: _busy ? null : () async {
-          final f = await _form(context, 'Shagun / tohfa', const [
-            ('giver', 'Kisne diya'), ('relation', 'Rishta'), ('value', 'Rakam / andaazan keemat'),
-            ('kind', 'cash / upi / cheque / gold / item'), ('what', 'Kya (saamaan ho to)'), ('side', 'Taraf: bride / groom / common'),
-            ('for_whom', 'Kiske liye: bride / groom / both'),
+        Expanded(child: GradientButton(label: 'Write shagun', icon: Icons.redeem_rounded, height: 44, onTap: _busy ? null : () async {
+          final f = await _form(context, 'Shagun / gift', const [
+            ('giver', 'Given by'), ('relation', 'Relation'), ('value', 'Amount / estimated value'),
+            ('kind', 'cash / upi / cheque / gold / item'), ('what', 'What (if it is a gift)'), ('side', 'Side: bride / groom / common'),
+            ('for_whom', 'For whom: bride / groom / both'),
           ]);
           if (f == null) return;
           await _run('POST', '$_base/gifts', {...f, if (f['value'] != null) 'value': _n(f['value'])});
           await _loadGifts();
         })),
         const SizedBox(width: 8),
-        GlassButton(label: 'Dekho', icon: Icons.visibility_rounded, height: 44, onTap: _busy ? null : _loadGifts),
+        GlassButton(label: 'View', icon: Icons.visibility_rounded, height: 44, onTap: _busy ? null : _loadGifts),
       ]),
       const SizedBox(height: 6),
-      const Text('Yeh register sirf aapka hai: staff, mehmaan ya kisi avatar ko kabhi nahi dikhta. Dahej ka hisaab Hoola nahi rakhta.',
+      const Text('This register is only yours: it is never shown to staff, guests or any avatar. Hoola does not keep dowry accounts.',
           style: TextStyle(fontSize: 12, color: C.faint)),
       if (_gifts.isNotEmpty) ...[
         const SizedBox(height: 8),
-        Text('Kul ${_rs(_gifts['total'])} · ${_s(_gifts['count'])} entry', style: const TextStyle(fontWeight: FontWeight.w800)),
+        Text('Total ${_rs(_gifts['total'])} · ${_s(_gifts['count'])} entries', style: const TextStyle(fontWeight: FontWeight.w800)),
         Wrap(spacing: 8, children: [
-          GlassButton(label: 'Dulhan ki list PDF', height: 38, onTap: _busy ? null : () => _run('POST', '$_base/gifts/list', {'for_whom': 'bride'})),
-          GlassButton(label: 'Dulhe ki list PDF', height: 38, onTap: _busy ? null : () => _run('POST', '$_base/gifts/list', {'for_whom': 'groom'})),
+          GlassButton(label: 'Bride\'s list PDF', height: 38, onTap: _busy ? null : () => _run('POST', '$_base/gifts/list', {'for_whom': 'bride'})),
+          GlassButton(label: 'Groom\'s list PDF', height: 38, onTap: _busy ? null : () => _run('POST', '$_base/gifts/list', {'for_whom': 'groom'})),
         ]),
         for (final g in gs)
           ListTile(
@@ -614,7 +614,7 @@ class _ShaadiWeddingPageState extends State<ShaadiWeddingPage> {
   Widget _cardsTab() {
     final cs = _list(_w?['cards']);
     return ListView(padding: const EdgeInsets.all(16), children: [
-      if (cs.isEmpty) const Text('Koi card nahi.', style: TextStyle(color: C.muted)),
+      if (cs.isEmpty) const Text('No cards.', style: TextStyle(color: C.muted)),
       for (final c in cs)
         Padding(padding: const EdgeInsets.only(bottom: 10), child: ShaadiCardCard(app: widget.app, data: {'card': c}, onDone: _load)),
     ]);
@@ -622,7 +622,7 @@ class _ShaadiWeddingPageState extends State<ShaadiWeddingPage> {
 
   @override
   Widget build(BuildContext context) {
-    const tabs = ['Functions', 'Mehmaan', 'Rooms', 'Vendors', 'Budget', 'Checklist', 'Shagun', 'Cards'];
+    const tabs = ['Functions', 'Guests', 'Rooms', 'Vendors', 'Budget', 'Checklist', 'Shagun', 'Cards'];
     final w = _w;
     return Scaffold(
       backgroundColor: C.bgTop,
@@ -669,13 +669,13 @@ class _ShaadiCardCardState extends State<ShaadiCardCard> {
   Future<Map<String, dynamic>> _proof(String id) async {
     final ch = _m(await widget.app.api!.call('POST', '/api/shaadi/cards/$id/challenge'));
     final show = _m(ch['show']);
-    final r = await Native.approveKeySign(_s(ch['message']), _s(show['title']).isEmpty ? 'Shaadi ka kharch' : _s(show['title']),
+    final r = await Native.approveKeySign(_s(ch['message']), _s(show['title']).isEmpty ? 'Wedding expense' : _s(show['title']),
         [show['amount'], show['payee']].where((x) => x != null && '$x'.isNotEmpty).join(' · '));
     if (r['signature'] == null) {
       throw ApiException(428, switch (_s(r['error'])) {
-        'cancelled' => 'Fingerprint nahi diya, isliye haan nahi hui.',
-        'key_invalidated' => 'Phone mein naya fingerprint juda hai: Profile > Fingerprint se haan mein phone phir se jodiye.',
-        _ => 'Fingerprint se haan nahi ho payi (${_s(r['error'])}).',
+        'cancelled' => 'No fingerprint given, so it was not approved.',
+        'key_invalidated' => 'A new fingerprint was added to the phone: re-link this phone in Profile > Fingerprint approval.',
+        _ => 'Could not approve with fingerprint (${_s(r['error'])}).',
       });
     }
     return {'challenge_id': ch['challenge_id'], 'device_id': r['device_id'], 'signature': r['signature']};
@@ -715,10 +715,10 @@ class _ShaadiCardCardState extends State<ShaadiCardCard> {
     return switch (_s(_c['kind'])) {
       'vendor_book' => 'Booking: ${_s(sh['vendor'])} (${_s(sh['kind'])}) · ${_rs(sh['quote'])}',
       'vendor_pay' => 'Payment: ${_s(sh['vendor'])} · ${_s(sh['item'])} ${_rs(sh['amount'])}',
-      'spend' => 'Kharch: ${_s(sh['what'])} · ${_rs(sh['amount'])}',
+      'spend' => 'Expense: ${_s(sh['what'])} · ${_rs(sh['amount'])}',
       'client_quote' => 'Client quote: ${_s(sh['client'])} · ${_rs(sh['total'])}',
       'client_pay' => 'Client se: ${_s(sh['stage'])} ${_rs(sh['amount'])}',
-      _ => 'Message: ${_s(sh['count'])} logon ko',
+      _ => 'Message: to ${_s(sh['count'])} people',
     };
   }
 
@@ -736,7 +736,7 @@ class _ShaadiCardCardState extends State<ShaadiCardCard> {
           Icon(c['money'] == true ? Icons.currency_rupee_rounded : Icons.favorite_rounded, color: C.accent),
           const SizedBox(width: 8),
           Expanded(child: Text('${_s(c['number'])} · ${_title()}', style: const TextStyle(fontWeight: FontWeight.w800))),
-          Pill(switch (st) { 'waiting' => 'aapki haan?', 'approved' => 'haan', 'rejected' => 'nahi', 'stale' => 'purana', 'done' => 'ho gaya', _ => st },
+          Pill(switch (st) { 'waiting' => 'your approval?', 'approved' => 'yes', 'rejected' => 'no', 'stale' => 'stale', 'done' => 'done', _ => st },
               fg: st == 'waiting' ? C.accent : C.chip),
         ]),
         Text(_s(sh['title']), style: const TextStyle(fontSize: 12.5, color: C.muted)),
@@ -749,7 +749,7 @@ class _ShaadiCardCardState extends State<ShaadiCardCard> {
         if (_s(c['kind']) == 'client_quote') ...[
           if ((sh['fee'] ?? 0) != 0) Text('Fee: ${_rs(sh['fee'])} (${_s(sh['fee_note'])})', style: const TextStyle(fontSize: 12.5)),
           for (final x in _list(sh['lines'])) Text('• ${_s(x['name'])} ${_rs(x['amount'])}', style: const TextStyle(fontSize: 12)),
-          Text('GST ${_rs(sh['gst'])} · Kul ${_rs(sh['total'])} · ${_s(sh['valid_until'])} tak', style: const TextStyle(fontSize: 12.5)),
+          Text('GST ${_rs(sh['gst'])} · Total ${_rs(sh['total'])} · until ${_s(sh['valid_until'])}', style: const TextStyle(fontSize: 12.5)),
         ],
         if (_s(c['kind']) == 'message') ...[
           Text(_s(sh['audience']), style: const TextStyle(fontSize: 12, color: C.muted)),
@@ -759,13 +759,13 @@ class _ShaadiCardCardState extends State<ShaadiCardCard> {
         const SizedBox(height: 8),
         if (st == 'waiting')
           Row(children: [
-            Expanded(child: GradientButton(label: 'Haan', height: 42, onTap: _busy ? null : () => _decide(true))),
+            Expanded(child: GradientButton(label: 'Yes', height: 42, onTap: _busy ? null : () => _decide(true))),
             const SizedBox(width: 8),
-            GlassButton(label: 'Nahi', height: 42, onTap: _busy ? null : () => _decide(false)),
+            GlassButton(label: 'No', height: 42, onTap: _busy ? null : () => _decide(false)),
           ]),
         if (_m(res['draft']).isNotEmpty) ...[const SizedBox(height: 6), _draftButtons(_m(res['draft']))],
         if (_s(res['upi']).isNotEmpty)
-          GlassButton(label: 'UPI link copy / kholo', icon: Icons.qr_code_rounded, height: 38, onTap: () => Native.openExternal(url: _s(res['upi']))),
+          GlassButton(label: 'Copy / open UPI link', icon: Icons.qr_code_rounded, height: 38, onTap: () => Native.openExternal(url: _s(res['upi']))),
         for (final l in links)
           Row(children: [
             Expanded(child: Text(_s(l['name']), style: const TextStyle(fontSize: 12.5))),
@@ -775,11 +775,11 @@ class _ShaadiCardCardState extends State<ShaadiCardCard> {
               IconButton(icon: const Icon(Icons.sms_rounded, color: C.faint), onPressed: () => Native.openExternal(url: _s(l['sms']))),
           ]),
         if (_s(c['kind']) == 'spend' && st == 'approved')
-          GlassButton(label: 'Maine de diya', icon: Icons.check_rounded, height: 38, onTap: _busy ? null : () async {
+          GlassButton(label: 'I have paid', icon: Icons.check_rounded, height: 38, onTap: _busy ? null : () async {
             await _call(context, widget.app, 'POST', '/api/shaadi/cards/${_s(c['id'])}/paid', {'ref': ''});
             widget.onDone?.call();
           }),
-        const Text('Hoola paise nahi bhejta, na message khud bhejta; aap bhejti hain.', style: TextStyle(fontSize: 11, color: C.faint)),
+        const Text('Hoola does not send money or messages itself; you send them.', style: TextStyle(fontSize: 11, color: C.faint)),
       ]),
     );
   }

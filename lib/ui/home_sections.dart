@@ -126,7 +126,7 @@ class HomeLabel extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
               decoration: BoxDecoration(borderRadius: BorderRadius.circular(999), border: Border.all(color: const Color(0x6634D399))),
-              child: const Text('NAYA', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, letterSpacing: 1, color: C.ok)),
+              child: const Text('NEW', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, letterSpacing: 1, color: C.ok)),
             ),
           ],
           if (count != null) ...[
@@ -181,10 +181,10 @@ class LiveWorkSection extends StatelessWidget {
   Widget build(BuildContext context) {
     if (jobs.isEmpty) return const SizedBox.shrink();
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      HomeLabel('KAAM KI HAALAT', trailing: Row(children: [
+      HomeLabel('WORK STATUS', trailing: Row(children: [
         Container(width: 8, height: 8, decoration: const BoxDecoration(color: C.ok, shape: BoxShape.circle)),
         const SizedBox(width: 5),
-        Text('${jobs.length} chal rahe hain', style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: C.ok)),
+        Text('${jobs.length} running', style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: C.ok)),
       ])),
       for (final j in jobs)
         Padding(
@@ -222,7 +222,7 @@ class DayTilesSection extends StatelessWidget {
   final HomeExtra extra;
   final Santosh app;
 
-  static const _repeat = {'none': 'Ek baar', 'hourly': 'Har ghante', 'daily': 'Roz', 'weekdays': 'Mon–Fri', 'weekly': 'Har hafte', 'monthly': 'Har mahine'};
+  static const _repeat = {'none': 'Once', 'hourly': 'Every hour', 'daily': 'Daily', 'weekdays': 'Mon–Fri', 'weekly': 'Every week', 'monthly': 'Every month'};
 
   static String wIconFor(int? code, bool isDay) {
     if (code == null) return '🌤️';
@@ -257,12 +257,12 @@ class DayTilesSection extends StatelessWidget {
   }
 
   static String _inMins(int? m, bool running) {
-    if (running) return 'Abhi chal rahi hai';
+    if (running) return 'Running now';
     if (m == null) return '';
-    if (m < 1) return 'Ab shuru hone wali';
-    if (m < 60) return '$m min mein';
-    if (m < 1440) return '${(m / 60).round()} ghante mein';
-    return 'Aaj baad mein';
+    if (m < 1) return 'Starting soon';
+    if (m < 60) return 'In $m min';
+    if (m < 1440) return '${(m / 60).round()} hours from now';
+    return 'Later today';
   }
 
   Widget _wchip(String emoji, String text) => Container(
@@ -333,7 +333,7 @@ class DayTilesSection extends StatelessWidget {
         .clamp(0.0, 1.0);
 
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      const HomeLabel('AAJ KA DIN'),
+      const HomeLabel('TODAY'),
       Glass(
         radius: 24,
         padding: EdgeInsets.zero,
@@ -361,12 +361,12 @@ class DayTilesSection extends StatelessWidget {
                         if (w['feels_c'] is num)
                           Padding(
                             padding: const EdgeInsets.only(left: 8, top: 9),
-                            child: Text('Mehsus ${(w['feels_c'] as num).round()}°',
+                            child: Text('Feeling ${(w['feels_c'] as num).round()}°',
                                 style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: C.faint)),
                           ),
                       ]),
                       const SizedBox(height: 1),
-                      Text(_s(w['now']).isEmpty ? 'Mausam' : _s(w['now']),
+                      Text(_s(w['now']).isEmpty ? 'Weather' : _s(w['now']),
                           style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: C.chip)),
                     ]),
                   ),
@@ -382,9 +382,9 @@ class DayTilesSection extends StatelessWidget {
                 if (w['rain_chance_pct'] is num || w['wind_kmph'] is num) ...[
                   const SizedBox(height: 10),
                   Wrap(spacing: 6, runSpacing: 6, children: [
-                    if (w['rain_chance_pct'] is num) _wchip('💧', '${(w['rain_chance_pct'] as num).round()}% baarish'),
-                    if (w['wind_kmph'] is num) _wchip('💨', '${(w['wind_kmph'] as num).round()} km/h hawa'),
-                    if (w['humidity'] is num) _wchip('🌫️', '${(w['humidity'] as num).round()}% nami'),
+                    if (w['rain_chance_pct'] is num) _wchip('💧', '${(w['rain_chance_pct'] as num).round()}% rain'),
+                    if (w['wind_kmph'] is num) _wchip('💨', '${(w['wind_kmph'] as num).round()} km/h wind'),
+                    if (w['humidity'] is num) _wchip('🌫️', '${(w['humidity'] as num).round()}% humidity'),
                   ]),
                 ],
                 const SizedBox(height: 11),
@@ -397,7 +397,7 @@ class DayTilesSection extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 10),
-                  Text('Din ka ${(dayPct * 100).round()}%',
+                  Text('Day\'s ${(dayPct * 100).round()}%',
                       style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: C.faint)),
                 ]),
               ]),
@@ -414,17 +414,17 @@ class DayTilesSection extends StatelessWidget {
                 const SizedBox(width: 12),
                 const Expanded(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text('Mausam ke liye sheher chahiye', style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800)),
+                    Text('Needs a city for the weather', style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800)),
                     SizedBox(height: 2),
-                    Text('Profile mein apna sheher jodo — main roz mausam bataungi.', style: TextStyle(fontSize: 11.5, color: C.muted)),
+                    Text('Add your city in Profile — I will tell you the weather every day.', style: TextStyle(fontSize: 11.5, color: C.muted)),
                   ]),
                 ),
               ]),
             ),
           // ---------- aaj ki baaki meetings ----------
           if (events.isEmpty)
-            _drow(Icons.event_rounded, const Color(0x247C5CFF), const Color(0xFFA78BFA), 'Aaj koi meeting nahi',
-                day == null ? '' : 'Calendar se sab main yaad rakhungi')
+            _drow(Icons.event_rounded, const Color(0x247C5CFF), const Color(0xFFA78BFA), 'No meetings today',
+                day == null ? '' : 'I will remember everything from the Calendar')
           else ...[
             for (var i = 0; i < events.length; i++) ...[
               if (i > 0) _divider(),
@@ -432,7 +432,7 @@ class DayTilesSection extends StatelessWidget {
                   [
                     _inMins(events[i]['starts_in_mins'] is int ? events[i]['starts_in_mins'] as int : null, events[i]['running'] == true),
                     if (_s(events[i]['location']).isNotEmpty) _s(events[i]['location']),
-                    if (events[i]['attendees'] is int && (events[i]['attendees'] as int) > 0) '${events[i]['attendees']} log',
+                    if (events[i]['attendees'] is int && (events[i]['attendees'] as int) > 0) '${events[i]['attendees']} people',
                   ].where((x) => x.isNotEmpty).join(' · '),
                   time: _time(_s(events[i]['start'])), running: events[i]['running'] == true),
             ],
@@ -440,18 +440,18 @@ class DayTilesSection extends StatelessWidget {
           // ---------- agla reminder ----------
           _divider(),
           if (next == null)
-            _drow(Icons.notifications_active_outlined, const Color(0x24FFB15C), C.accentSoft, 'Aaj koi reminder nahi',
-                'Boliye — "kal 9 baje dawai yaad dilana"')
+            _drow(Icons.notifications_active_outlined, const Color(0x24FFB15C), C.accentSoft, 'No reminders today',
+                'Say — "remind me about medicine tomorrow at 9"')
           else
             _drow(Icons.notifications_active_outlined, const Color(0x24FFB15C), C.accentSoft, _s(next['text']),
                 next['repeat'] is String && (next['repeat'] as String) != 'none'
-                    ? 'Yaad dila dunga · ${_repeat[next['repeat']] ?? ''}'.trim()
-                    : 'Yaad dila dunga',
+                    ? 'I will remind you · ${_repeat[next['repeat']] ?? ''}'.trim()
+                    : 'I will remind you',
                 time: _time(_s(next['when']))),
           // ---------- away-catchup ----------
           if (cu > 0 && extra.catchup != null) ...[
             _divider(),
-            _drow(Icons.history_rounded, const Color(0x242DD4BF), C.teal, 'Jab aap bahar thi', '$cu naye kaam — ek ek karke dikha dungi',
+            _drow(Icons.history_rounded, const Color(0x242DD4BF), C.teal, 'While you were away', '$cu new tasks — I will show them one by one',
                 chevron: true, onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => CatchUpScreen(app: app, data: extra.catchup!)))),
           ],
           Padding(
@@ -459,7 +459,7 @@ class DayTilesSection extends StatelessWidget {
             child: Row(children: [
               const Icon(Icons.favorite_rounded, size: 10, color: C.faint),
               const SizedBox(width: 6),
-              Expanded(child: Text('Main din bhar nazar rakhungi — aap nishchint rahiye.',
+              Expanded(child: Text('I will keep watch all day — you can relax.',
                   style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600, color: C.faint))),
             ]),
           ),
@@ -638,7 +638,7 @@ class EmployeeSection extends StatelessWidget {
               const SizedBox(width: 11),
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(_s(st['business']).isEmpty ? 'Meri dukaan' : _s(st['business']), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                  Text(_s(st['business']).isEmpty ? 'My shop' : _s(st['business']), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
                   Text(_s(st['role']).isEmpty ? 'Front desk' : _s(st['role']), style: const TextStyle(fontSize: 11.5, color: C.muted)),
                 ]),
               ),
@@ -652,7 +652,7 @@ class EmployeeSection extends StatelessWidget {
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
                   if (!paused) Container(width: 6, height: 6, decoration: const BoxDecoration(color: C.ok, shape: BoxShape.circle)),
                   if (!paused) const SizedBox(width: 5),
-                  Text(paused ? 'AARAAM' : 'ON DUTY', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: .5, color: paused ? C.warn : C.teal)),
+                  Text(paused ? 'REST' : 'ON DUTY', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: .5, color: paused ? C.warn : C.teal)),
                 ]),
               ),
             ]),
@@ -674,7 +674,7 @@ class EmployeeSection extends StatelessWidget {
             ],
             const SizedBox(height: 10),
             Row(children: [
-              _stat('${_n(st['done_today'])}', 'AAJ POORE'),
+              _stat('${_n(st['done_today'])}', 'TODAY ALL DONE'),
               const SizedBox(width: 8),
               _stat('${_n(st['pending_asks'])}', 'ASK WAIT', hot: _n(st['pending_asks']) > 0),
               const SizedBox(width: 8),
@@ -689,7 +689,7 @@ class EmployeeSection extends StatelessWidget {
                   _tile(Icons.front_hand_rounded, const [Color(0xFFFFB15C), Color(0xFFFB923C)], size: 26, radius: 9, ic: 14),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: Text('${_s(ask['why']).isEmpty ? 'Ek kaam aapki haan ka intezaar kar raha hai' : _s(ask['why'])}',
+                    child: Text('${_s(ask['why']).isEmpty ? 'One task is waiting for your yes' : _s(ask['why'])}',
                         style: const TextStyle(fontSize: 12, height: 1.4), maxLines: 2, overflow: TextOverflow.ellipsis),
                   ),
                 ]),
@@ -697,7 +697,7 @@ class EmployeeSection extends StatelessWidget {
             ],
             const SizedBox(height: 10),
             Text(
-              paused ? '"Jab bolo, phir duty pe aa jaungi."' : '"Dukaan pe sab main sambhaal rahi hoon — aap chinta mat karo."',
+              paused ? '"Whenever you say, I will be back on duty."' : '"I am handling everything at the shop — do not worry."',
               style: const TextStyle(fontSize: 11.5, fontStyle: FontStyle.italic, color: Color(0xCC5EEAD4)),
             ),
             const SizedBox(height: 10),
@@ -723,9 +723,9 @@ class EmployeeSection extends StatelessWidget {
   /// Trust tier chip: Seekh (learning) / Saathi (partner) / Bharosa (trusted).
   static Widget _tier(String level) {
     final (label, fg, bg, bc) = switch (level) {
-      'bharosa' => ('BHAROSA', const Color(0xFF2DD4BF), const Color(0x1A2DD4BF), const Color(0x552DD4BF)),
+      'bharosa' => ('TRUST', const Color(0xFF2DD4BF), const Color(0x1A2DD4BF), const Color(0x552DD4BF)),
       'saathi' => ('SAATHI', C.accentSoft, const Color(0x1AFFB15C), const Color(0x55FFC27A)),
-      _ => ('SEEKH', C.faint, Colors.white.withOpacity(.06), Colors.white.withOpacity(.14)),
+      _ => ('LEARNING', C.faint, Colors.white.withOpacity(.06), Colors.white.withOpacity(.14)),
     };
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
@@ -1053,11 +1053,11 @@ class NetworkSection extends StatelessWidget {
             Row(children: [
               _stat('$knocks', 'KNOCK WAIT', hot: knocks > 0),
               const SizedBox(width: 8),
-              _stat('$dost', 'DOST'),
+              _stat('$dost', 'FRIEND'),
               const SizedBox(width: 8),
-              _stat('${extra.netThreads}', 'BAATEIN'),
+              _stat('${extra.netThreads}', 'CHATS'),
               const SizedBox(width: 8),
-              _stat('${extra.netGroups}', 'MANDALI'),
+              _stat('${extra.netGroups}', 'GROUP'),
             ]),
             if (extra.netGroupList.isNotEmpty) ...[
               const SizedBox(height: 10),
@@ -1550,13 +1550,13 @@ class LearnedSection extends StatelessWidget {
       Glass(
         padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          _catHead(Icons.forum_rounded, _cViolet, 'BAATEIN SE', facts.length),
+          _catHead(Icons.forum_rounded, _cViolet, 'FROM CHATS', facts.length),
           if (facts.isEmpty)
             _emptyLine(app.g('Aaj baaton se kuch naya nahi.'))
           else
             for (final f in facts) _factRow(f),
           _sep(),
-          _catHead(Icons.graphic_eq_rounded, _cRose, 'AWAAZ SE', words.length + fixes.length),
+          _catHead(Icons.graphic_eq_rounded, _cRose, 'FROM VOICE', words.length + fixes.length),
           if (words.isEmpty && fixes.isEmpty)
             _emptyLine(app.g('Aaj awaaz se kuch naya nahi.'))
           else ...[
@@ -1564,7 +1564,7 @@ class LearnedSection extends StatelessWidget {
             for (final x in fixes) _fixRow(x),
           ],
           _sep(),
-          _catHead(Icons.school_rounded, _cEmerald, 'NETWORK SE', lessons.length + skills.length),
+          _catHead(Icons.school_rounded, _cEmerald, 'FROM NETWORK', lessons.length + skills.length),
           if (lessons.isEmpty && skills.isEmpty)
             _emptyLine(app.g('Network se aaj kuch naya nahi.'))
           else ...[
@@ -1592,13 +1592,13 @@ class RecapSection extends StatelessWidget {
     final items = _list(cu['items']);
     if (items.isEmpty) return const SizedBox.shrink();
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      const HomeLabel('HOOLA NE KIYA · PICHHLE 24 GHANTE'),
+      const HomeLabel('WHAT HOOLA DID · LAST 24 HOURS'),
       Press(
         onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => CatchUpScreen(app: app, data: cu))),
         child: Glass(
           padding: const EdgeInsets.all(14),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('${items.length} kaam poore kiye 👍', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14.5)),
+            Text('${items.length} tasks finished 👍', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14.5)),
             const SizedBox(height: 4),
             for (final it in items.take(2))
               Padding(
@@ -1609,7 +1609,7 @@ class RecapSection extends StatelessWidget {
             if (items.length > 2)
               Padding(
                 padding: const EdgeInsets.only(top: 6),
-                child: Text('aur ${items.length - 2} kaam — tap karke sab dekho', style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: C.violet)),
+                child: Text('and ${items.length - 2} tasks — tap to see all', style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: C.violet)),
               ),
           ]),
         ),
@@ -1631,10 +1631,10 @@ class PartnerFooter extends StatelessWidget {
           gradient: const LinearGradient(colors: [Color(0x1AFF8A3D), Color(0x1AC86BFF)]),
         ),
         child: Column(children: [
-          Text('Main yahin hoon — kabhi bhi, kahin bhi. 💛', textAlign: TextAlign.center,
+          Text('I am right here — anytime, anywhere. 💛', textAlign: TextAlign.center,
               style: display(14, w: FontWeight.w800)),
           const SizedBox(height: 4),
-          const Text('Aapki har baat yaad hai, har kaam pe nazar hai.', textAlign: TextAlign.center,
+          const Text('I remember everything you say and keep watch on every task.', textAlign: TextAlign.center,
               style: TextStyle(fontSize: 11.5, color: C.muted)),
         ]),
       );

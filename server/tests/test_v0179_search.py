@@ -161,10 +161,12 @@ def test_console_files_carry_the_search_power(env):
     assert "FIND_SEQ" in cl and "&lt;&lt;" in cl                                       # FTS marks painted safely
     import re
     from app.main import APP_VERSION
-    # Re-pointed on the v0.489 rebase (the 0.487 convention, pinned in test_v0475_console_frames):
-    # console stamps move only when the console itself changes; a server-only release leaves
-    # them coherent at the last console version (0.487.0 - the BYOX chain changed the console
-    # on main). The guard's real job: never MIXED app stamps in one page.
+    # v0.537: this pinned the literal "0.487.0" and had drifted red - main itself ships the stamps at
+    # APP_VERSION (0.536.0 at the time of writing), and test_v0240_calm_brand asserts exactly that
+    # ("follows APP_VERSION, never a typed number"). Two sessions' conventions disagreed and the typed
+    # number lost, because CLAUDE.md's version ritual lists the console stamps as part of the bump.
+    # The guard's REAL job is unchanged and is what matters: never MIXED app stamps in one page.
     vs = {v for v in re.findall(r"\?v=([0-9.]+)", html) if v.startswith("0.")}   # vendor stamps excluded
-    assert vs == {"0.487.0"}, f"mixed console cache stamps: {sorted(vs)}"
-    assert APP_VERSION == "0.530.0"    # conscious-bump guard: moves with every release (bump with pubspec)
+    assert len(vs) == 1, f"mixed console cache stamps: {sorted(vs)}"
+    assert vs == {APP_VERSION}, f"console stamps {sorted(vs)} are not the app version {APP_VERSION}"
+    assert APP_VERSION == "0.758.0"    # conscious-bump guard: moves with every release (bump with pubspec)

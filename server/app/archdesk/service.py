@@ -75,7 +75,7 @@ def model_json(system: str, prompt: str, max_tokens: int = 16000) -> dict[str, A
     try:
         return ai.ask_json(system, prompt, max_tokens=max_tokens, kind="build")
     except ai.AiError as e:
-        raise ArchError(f"Model nahi mila: {e}")
+        raise ArchError(f"Model not found: {e}")
 
 
 def _spawn(fn, *args) -> None:
@@ -87,8 +87,8 @@ def _gate(tenant: str, work: bool = True) -> None:
     from ..employee import hire
     ok = hire.is_working(tenant, HIRE_KEY) if work else hire.is_hired(tenant, HIRE_KEY)
     if not ok:
-        raise ArchError("Principal Software Architect abhi hired nahi hai (ya paused hai). Employees mein "
-                        "'Hire Principal Software Architect' dabaiye.")
+        raise ArchError("The Principal Software Architect is not hired right now (or is paused). In Employees "
+                        "tap 'Hire Principal Software Architect'.")
 
 
 def root() -> Path:
@@ -184,7 +184,7 @@ def get(tenant: str, pid: str) -> dict[str, Any]:
     with session() as s:
         p = s.get(ArchProject, pid)
         if p is None or p.tenant_id != tenant:
-            raise ArchError("Yeh design nahi mila.")
+            raise ArchError("Design not found.")
         return {**view(p), "reviews": [review_view(r) for r in s.scalars(
             select(ArchReview).where(ArchReview.project_id == pid).order_by(ArchReview.created_at.desc()).limit(20)).all()]}
 
@@ -197,7 +197,7 @@ def _clean_scale(scale: dict[str, Any] | None) -> dict[str, Any]:
         if v not in (None, ""):
             f = capacity._num(v)
             if f is None:
-                raise ArchError(f"'{capacity.FIELDS[k][0]}' ek number hona chahiye.")
+                raise ArchError(f"'{capacity.FIELDS[k][0]}' must be a number.")
             out[k] = f
     return out
 
@@ -207,16 +207,16 @@ def start(tenant: str, conversation_id: str, brief: str, repo: str = "", scale: 
     _gate(tenant)
     kind = (kind or "design").strip().lower()
     if kind not in master.KINDS:
-        raise ArchError("Kaam ka prakaar: " + ", ".join(master.KINDS) + ".")
+        raise ArchError("Kind of work: " + ", ".join(master.KINDS) + ".")
     if kind in master.NEEDS_REPO and not (repo or "").strip():
-        raise ArchError(f"'{master.KINDS[kind]}' aapke maujooda system par hota hai - uska GitHub repo (owner/name) "
-                        "dijiye; Developer Sahayak mein judna chahiye.")
+        raise ArchError(f"'{master.KINDS[kind]}' is done on your existing system - give its GitHub repo (owner/name); "
+                        "it must be connected in Developer Sahayak.")
     ensure_table()
     brief = (brief or "").strip()
     if len(brief) < 15:
-        raise ArchError("Kya banana hai thoda batao: system kya karega, kaun use karega, kitne log (roz), koi zaroori shart.")
+        raise ArchError("Tell me a little about what to build: what the system will do, who will use it, how many people (daily), any must-have conditions.")
     if len(brief) > MAX_BRIEF:
-        raise ArchError(f"Brief {MAX_BRIEF} akshar tak rakhiye; lambi details file mein bhejiye.")
+        raise ArchError(f"Keep the brief within {MAX_BRIEF} characters; send long details in a file.")
     full = ""
     if repo.strip():
         from ..devsahayak import service as dev
@@ -225,15 +225,15 @@ def start(tenant: str, conversation_id: str, brief: str, repo: str = "", scale: 
         except dev.DevError as e:
             raise ArchError(str(e))
     if _today_count(tenant, ArchProject) >= DAILY_DESIGNS:
-        raise ArchError(f"Aaj ke {DAILY_DESIGNS} designs ho gaye; kal phir.")
+        raise ArchError(f"Today's {DAILY_DESIGNS} designs are done; try again tomorrow.")
     sc = _clean_scale(scale)
     with session() as s:
         busy = s.scalars(select(ArchProject.id).where(ArchProject.tenant_id == tenant, ArchProject.status.in_(BUSY))).first()
         if busy:
-            raise ArchError("Ek design abhi ban raha hai; uske poora hote hi agla shuru karenge.")
+            raise ArchError("A design is being made right now; the next one will start as soon as it finishes.")
         p = ArchProject(tenant_id=tenant, conversation_id=conversation_id or "", brief=brief, repo=full, scale=sc, kind=kind,
                         title=brief.splitlines()[0][:120], status="reading" if full else "designing",
-                        stage="Repo padh raha hoon" if full else "Design likh raha hoon")
+                        stage="Reading the repo" if full else "Writing the design")
         s.add(p)
         s.flush()
         pid = p.id
@@ -246,17 +246,17 @@ def change(tenant: str, pid: str, words: str) -> dict[str, Any]:
     _gate(tenant)
     words = (words or "").strip()
     if not words:
-        raise ArchError("Kya badalna hai, likhiye.")
+        raise ArchError("Write what should be changed.")
     if _today_count(tenant, ArchProject, "updated_at") >= DAILY_DESIGNS * 3:
-        raise ArchError("Aaj bahut versions ho gaye; kal phir.")
+        raise ArchError("Too many versions today; try again tomorrow.")
     with session() as s:
         p = s.get(ArchProject, pid)
         if p is None or p.tenant_id != tenant:
-            raise ArchError("Yeh design nahi mila.")
+            raise ArchError("Design not found.")
         if p.status in BUSY:
-            raise ArchError("Design abhi ban raha hai; poora hone ke baad badlav bhejiye.")
+            raise ArchError("The design is being made right now; send changes after it finishes.")
         p.changes = list(p.changes or []) + [{"words": words[:MAX_CHANGE], "at": now().isoformat()}]
-        p.status, p.stage, p.error, p.approved_at = "designing", "Agla version likh raha hoon", "", None
+        p.status, p.stage, p.error, p.approved_at = "designing", "Writing the next version", "", None
     STATS["versions"] += 1
     _spawn(run, pid)
     return get(tenant, pid)
@@ -267,9 +267,9 @@ def approve(tenant: str, pid: str, watch_prs: bool | None = None) -> dict[str, A
     with session() as s:
         p = s.get(ArchProject, pid)
         if p is None or p.tenant_id != tenant:
-            raise ArchError("Yeh design nahi mila.")
+            raise ArchError("Design not found.")
         if p.status != "waiting_her":
-            raise ArchError("Sirf taiyaar design approve hota hai.")
+            raise ArchError("Only a ready design can be approved.")
         p.status, p.stage, p.approved_at = "approved", "Approved", now()
         if watch_prs is not None:
             p.watch_prs = bool(watch_prs) and bool(p.repo)
@@ -281,9 +281,9 @@ def settings(tenant: str, pid: str, watch_prs: bool) -> dict[str, Any]:
     with session() as s:
         p = s.get(ArchProject, pid)
         if p is None or p.tenant_id != tenant:
-            raise ArchError("Yeh design nahi mila.")
+            raise ArchError("Design not found.")
         if watch_prs and not p.repo:
-            raise ArchError("PR dekhne ke liye design ke saath ek GitHub repo chahiye.")
+            raise ArchError("To review PRs, the design needs a GitHub repo.")
         p.watch_prs = bool(watch_prs)
     return get(tenant, pid)
 
@@ -292,9 +292,9 @@ def cancel(tenant: str, pid: str) -> dict[str, Any]:
     with session() as s:
         p = s.get(ArchProject, pid)
         if p is None or p.tenant_id != tenant:
-            raise ArchError("Yeh design nahi mila.")
+            raise ArchError("Design not found.")
         if p.status in BUSY:
-            p.status, p.stage = "cancelled", "Roka gaya"
+            p.status, p.stage = "cancelled", "Stopped"
     return {"cancelled": True}
 
 
@@ -303,7 +303,7 @@ def delete(tenant: str, pid: str) -> None:
     with session() as s:
         p = s.get(ArchProject, pid)
         if p is None or p.tenant_id != tenant:
-            raise ArchError("Yeh design nahi mila.")
+            raise ArchError("Design not found.")
         for r in s.scalars(select(ArchReview).where(ArchReview.project_id == pid)).all():
             s.delete(r)
         s.delete(p)
@@ -448,7 +448,7 @@ def _clip(v: Any, n: int) -> str:
 def _valid(d: Any) -> dict[str, Any]:
     """The model's design, shaped and capped (a missing or odd field never breaks the desk)."""
     if not isinstance(d, dict):
-        raise ArchError("Design ka jawab samajh nahi aaya; dobara koshish kijiye.")
+        raise ArchError("Could not understand the design reply; please try again.")
     out: dict[str, Any] = {"title": _clip(d.get("title"), 120) or "Architecture",
                            "summary": str(d.get("summary") or "")[:3000]}
     ctx = d.get("context") if isinstance(d.get("context"), dict) else {}
@@ -497,7 +497,7 @@ def run(pid: str) -> None:
         _run(pid)
     except Exception as e:      # noqa: BLE001 - the desk must always show why it stopped
         log.exception("archdesk run failed")
-        _set(pid, status="failed", stage="", error=str(e)[:500] or "Design nahi ban saka.")
+        _set(pid, status="failed", stage="", error=str(e)[:500] or "The design could not be made.")
 
 
 def _peer_review(kind: str, design: dict[str, Any], extra: dict[str, Any], scale: dict[str, Any]) -> dict[str, Any]:
@@ -538,12 +538,12 @@ def _run(pid: str) -> None:
         version = int(p.version or 0) + 1
     repo_ctx = ""
     if repo:
-        if not _set(pid, status="reading", stage="Repo padh raha hoon"):
+        if not _set(pid, status="reading", stage="Reading the repo"):
             return
         repo_ctx, facts = read_repo(tenant, repo)
         if not _set(pid, repo_facts=facts):
             return
-    if not _set(pid, status="designing", stage="Design likh raha hoon (Opus)"):
+    if not _set(pid, status="designing", stage="Writing the design (Opus)"):
         return
     prompt = f"<brief>\n{brief}\n</brief>\n"
     if scale:
@@ -565,7 +565,7 @@ def _run(pid: str) -> None:
     design, extra = _valid(raw), master.shape(kind, raw)
     review = _peer_review(kind, design, extra, scale)
     if any(i["severity"] in ("high", "medium") for i in review["issues"]):
-        if not _set(pid, stage=f"Peer review: {len(review['issues'])} baatein - sudhaar raha hoon"):
+        if not _set(pid, stage=f"Peer review: {len(review['issues'])} points - fixing them"):
             return
         try:
             raw2 = model_json(system + master.REVISE_SYSTEM_TAIL, prompt + "<draft>\n" + json.dumps(raw, ensure_ascii=False)[:60000]
@@ -603,7 +603,7 @@ def _run(pid: str) -> None:
         if mer:
             design["diagrams"] = design["diagrams"][:7] + [{"name": "As-is module dependencies (from the code)",
                                                             "kind": "as-is", "mermaid": mer}]
-    if not _set(pid, status="drawing", stage="Diagrams bana raha hoon", design=design, capacity=cap,
+    if not _set(pid, status="drawing", stage="Drawing the diagrams", design=design, capacity=cap,
                 title=design["title"], extra=extra):
         return
     vdir = _pdir(tenant, pid) / f"v{version}"
@@ -643,14 +643,14 @@ def _run(pid: str) -> None:
     except Exception as e:      # noqa: BLE001 - the design is still good without its PDF
         log.info("archdesk pdf failed: %s", e)
     ok = sum(1 for d in drawn if d["ok"])
-    if not _set(pid, status="waiting_her", stage=f"Taiyaar - v{version} ({ok}/{len(drawn)} diagrams)", error=""):
+    if not _set(pid, status="waiting_her", stage=f"Ready - v{version} ({ok}/{len(drawn)} diagrams)", error=""):
         return
     if conv:
         from ..events import bus
         bus.publish(conv, "message", {"role": "assistant", "source": "archdesk",
-                                      "text": f"**{design['title']}** ka architecture design (v{version}) taiyaar hai - "
+                                      "text": f"The architecture design (v{version}) for **{design['title']}** is ready - "
                                               f"{len(design['adrs'])} decisions, {len(design['risks'])} risks, {ok} diagrams. "
-                                              "Architecture Desk mein dekhiye aur approve ya badlav bataiye."})
+                                              "Look at it in the Architecture Desk and approve it or tell me the changes."})
 
 
 # ---------------------------------------------------------------- the document
@@ -932,11 +932,11 @@ def review_view(r: ArchReview) -> dict[str, Any]:
 def _approved(s, tenant: str, pid: str) -> ArchProject:
     p = s.get(ArchProject, pid)
     if p is None or p.tenant_id != tenant:
-        raise ArchError("Yeh design nahi mila.")
+        raise ArchError("Design not found.")
     if p.status != "approved":
-        raise ArchError("PR ko design se milane ke liye pehle design approve kijiye.")
+        raise ArchError("To check a PR against the design, approve the design first.")
     if not p.repo:
-        raise ArchError("Is design ke saath koi GitHub repo nahi juda.")
+        raise ArchError("No GitHub repo is connected to this design.")
     return p
 
 
@@ -945,7 +945,7 @@ def review_pr(tenant: str, pid: str, pr_number: int, _auto: bool = False) -> dic
     if not _auto:
         _gate(tenant)
     if _today_count(tenant, ArchReview) >= DAILY_REVIEWS:
-        raise ArchError(f"Aaj ke {DAILY_REVIEWS} PR reviews ho gaye; kal phir.")
+        raise ArchError(f"Today's {DAILY_REVIEWS} PR reviews are done; try again tomorrow.")
     with session() as s:
         p = _approved(s, tenant, pid)
         repo, design, rules = p.repo, dict(p.design or {}), list((p.extra or {}).get("fitness_rules") or [])
@@ -1012,14 +1012,14 @@ def review_body(r: dict[str, Any]) -> str:
 def post_review(tenant: str, rid: str, by_tap: bool = False) -> dict[str, Any]:
     """Her tap posts the findings as ONE comment on the PR (never an approval, never a merge)."""
     if not by_tap:
-        raise ArchError("PR par comment sirf aapke tap se jaata hai (Architecture Desk mein 'Post on PR').")
+        raise ArchError("A comment on the PR goes only on your tap ('Post on PR' in the Architecture Desk).")
     _gate(tenant)
     with session() as s:
         r = s.get(ArchReview, rid)
         if r is None or r.tenant_id != tenant:
-            raise ArchError("Yeh review nahi mila.")
+            raise ArchError("Review not found.")
         if r.status != "draft":
-            raise ArchError("Yeh review pehle hi post / hata diya gaya.")
+            raise ArchError("This review has already been posted / removed.")
         v = review_view(r)
         repo, n, sha = r.repo, r.pr_number, r.head_sha
     from ..devsahayak import service as dev
@@ -1036,7 +1036,7 @@ def discard_review(tenant: str, rid: str) -> dict[str, Any]:
     with session() as s:
         r = s.get(ArchReview, rid)
         if r is None or r.tenant_id != tenant:
-            raise ArchError("Yeh review nahi mila.")
+            raise ArchError("Review not found.")
         r.status = "discarded"
         return review_view(r)
 
@@ -1085,9 +1085,9 @@ def run_due(force: bool = False) -> int:
                 if conv and r["verdict"] != "fits":
                     from ..events import bus
                     bus.publish(conv, "message", {"role": "assistant", "source": "archdesk",
-                                                  "text": f"PR #{key[0]} ({r['title']}) design se **{r['verdict']}** - "
-                                                          f"{len(r['findings'])} baatein. Architecture Desk mein dekhiye; "
-                                                          "PR par aapke tap se hi jayega."})
+                                                  "text": f"PR #{key[0]} ({r['title']}) against the design: **{r['verdict']}** - "
+                                                          f"{len(r['findings'])} findings. Look at it in the Architecture Desk; "
+                                                          "it goes to the PR only on your tap."})
     return done
 
 

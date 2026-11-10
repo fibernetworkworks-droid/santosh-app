@@ -68,7 +68,7 @@ class RemoteService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val n = Notify.service(this, "Hoola TV remote on", "Hoola aapka TV remote hai")
+        val n = Notify.service(this, "Hoola TV remote on", "Hoola is your TV remote")
         try {
             if (Build.VERSION.SDK_INT >= 29) {
                 startForeground(NOTIFICATION_ID, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE)

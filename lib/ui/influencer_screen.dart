@@ -19,7 +19,7 @@ List<Map<String, dynamic>> _list(dynamic l) =>
     List<Map<String, dynamic>>.from(((l as List?) ?? const []).whereType<Map>().map((e) => Map<String, dynamic>.from(e)));
 List<String> _strs(dynamic l) => ((l as List?) ?? const []).map((e) => '$e').toList();
 num? _n(String? v) => (v == null || v.trim().isEmpty) ? null : num.tryParse(v.replaceAll(',', '').trim());
-String _rs(dynamic v) => v == null ? '[daam?]' : '₹${(v is num ? v : num.tryParse('$v') ?? 0).toStringAsFixed(0)}';
+String _rs(dynamic v) => v == null ? '[price?]' : '₹${(v is num ? v : num.tryParse('$v') ?? 0).toStringAsFixed(0)}';
 
 void _snack(BuildContext c, String t) {
   if (t.trim().isEmpty) return;
@@ -29,7 +29,7 @@ void _snack(BuildContext c, String t) {
 const _longKeys = {'brief', 'caption', 'script', 'text', 'terms', 'notes', 'csv', 'rules', 'address'};
 
 Future<Map<String, String>?> _form(BuildContext context, String title, List<(String, String)> fields,
-    {String ok = 'Aage', Map<String, String> initial = const {}}) async {
+    {String ok = 'Continue', Map<String, String> initial = const {}}) async {
   final c = {for (final (k, _) in fields) k: TextEditingController(text: initial[k] ?? '')};
   final res = await showDialog<bool>(
     context: context,
@@ -42,7 +42,7 @@ Future<Map<String, String>?> _form(BuildContext context, String title, List<(Str
         ]),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Rehne do')),
+        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Cancel')),
         TextButton(onPressed: () => Navigator.pop(d, true), child: Text(ok)),
       ],
     ),
@@ -70,7 +70,7 @@ Widget _draftButtons(Map<String, dynamic> draft) {
     if (wa.isNotEmpty) GlassButton(label: 'WhatsApp draft', icon: Icons.chat_rounded, height: 40, onTap: () => Native.openExternal(url: wa)),
     if (mail.isNotEmpty) GlassButton(label: 'Email draft', icon: Icons.mail_rounded, height: 40, onTap: () => Native.openExternal(url: mail)),
     if (sms.isNotEmpty) GlassButton(label: 'SMS draft', icon: Icons.sms_rounded, height: 40, onTap: () => Native.openExternal(url: sms)),
-    if (upi.isNotEmpty) GlassButton(label: 'UPI app kholo', icon: Icons.currency_rupee_rounded, height: 40, onTap: () => Native.openExternal(url: upi)),
+    if (upi.isNotEmpty) GlassButton(label: 'Open UPI app', icon: Icons.currency_rupee_rounded, height: 40, onTap: () => Native.openExternal(url: upi)),
   ]);
 }
 
@@ -81,7 +81,7 @@ Widget _checkBox(Map<String, dynamic> chk) {
     Row(children: [
       Icon(ok ? Icons.verified_rounded : Icons.block_rounded, color: ok ? C.ok : C.bad, size: 18),
       const SizedBox(width: 6),
-      Text(ok ? 'Disclosure theek' : 'Rukawat', style: TextStyle(fontWeight: FontWeight.w800, color: ok ? C.ok : C.bad)),
+      Text(ok ? 'Disclosure is fine' : 'Blocker', style: TextStyle(fontWeight: FontWeight.w800, color: ok ? C.ok : C.bad)),
     ]),
     for (final b in _strs(chk['block'])) Text('✗ $b', style: const TextStyle(fontSize: 12, color: C.bad)),
     for (final w in _strs(chk['warn'])) Text('• $w', style: const TextStyle(fontSize: 12, color: C.warn)),
@@ -146,23 +146,23 @@ class _InfluencerScreenState extends State<InfluencerScreen> {
     return ListView(padding: const EdgeInsets.all(16), children: [
       Glass(child: Text(_s(day['say']), style: const TextStyle(fontSize: 14))),
       const SizedBox(height: 12),
-      if (_list(_d?['cards']).isNotEmpty) const Caption('AAPKI HAAN KA INTEZAAR'),
+      if (_list(_d?['cards']).isNotEmpty) const Caption('WAITING FOR YOUR APPROVAL'),
       for (final c in _list(_d?['cards']))
         Padding(padding: const EdgeInsets.only(bottom: 10), child: InfluencerCardCard(app: widget.app, data: {'card': c}, onDone: _load)),
-      for (final (k, label) in const [('today', 'AAJ POST'), ('tomorrow', 'KAL POST'), ('late', 'DER HO GAYI'), ('blocked', 'DISCLOSURE RUKAWAT')])
+      for (final (k, label) in const [('today', 'POST TODAY'), ('tomorrow', 'POST TOMORROW'), ('late', 'LATE'), ('blocked', 'DISCLOSURE BLOCKER')])
         if (_strs(day[k]).isNotEmpty) ...[Caption(label), Wrap(spacing: 6, runSpacing: 6, children: [for (final p in _strs(day[k])) Pill(p)]),
           const SizedBox(height: 10)],
-      if (_strs(day['unpaid']).isNotEmpty) ...[const Caption('PAISE BAAKI'), for (final x in _strs(day['unpaid'])) Text('• $x')],
+      if (_strs(day['unpaid']).isNotEmpty) ...[const Caption('PAYMENTS PENDING'), for (final x in _strs(day['unpaid'])) Text('• $x')],
       if (_strs(day['exclusivity']).isNotEmpty) ...[const Caption('EXCLUSIVITY'), for (final x in _strs(day['exclusivity'])) Text('• $x')],
     ]);
   }
 
   Future<void> _newCreator() async {
-    final f = await _form(context, 'Naya creator', const [
-      ('name', 'Naam'), ('phone', 'Mobile'), ('niche', 'Niche (beauty, food ...)'), ('city', 'Shehar'), ('language', 'Bhasha'),
-      ('platform', 'Platform (instagram / youtube)'), ('handle', 'Handle (@...)'), ('followers', 'Followers (jaise 1.2 lakh)'),
-      ('avg_likes', 'Average likes'), ('avg_comments', 'Average comments'), ('qualification', 'Health qualification (agar ho)'),
-      ('sebi_reg', 'SEBI number (finance creator)'), ('upi_id', 'Creator ka UPI ID (payout)'),
+    final f = await _form(context, 'New creator', const [
+      ('name', 'Name'), ('phone', 'Mobile'), ('niche', 'Niche (beauty, food ...)'), ('city', 'City'), ('language', 'Language'),
+      ('platform', 'Platform (instagram / youtube)'), ('handle', 'Handle (@...)'), ('followers', 'Followers (e.g. 1.2 lakh)'),
+      ('avg_likes', 'Average likes'), ('avg_comments', 'Average comments'), ('qualification', 'Health qualification (if any)'),
+      ('sebi_reg', 'SEBI number (finance creator)'), ('upi_id', 'Creator\'s UPI ID (payout)'),
     ], ok: 'Save');
     if (f == null) return;
     await _run('POST', '/api/influencer/creators', f);
@@ -170,8 +170,8 @@ class _InfluencerScreenState extends State<InfluencerScreen> {
 
   Future<void> _rate(Map<String, dynamic> c) async {
     final f = await _form(context, 'Rate: ${_s(c['name'])}', const [
-      ('platform', 'Platform'), ('fmt', 'Format (reel / story / video ...)'), ('price', 'Aapka daam (₹, GST alag)'),
-      ('usage_days', 'Usage rights din (0 = sirf organic)'), ('usage_price', 'Usage ka daam'),
+      ('platform', 'Platform'), ('fmt', 'Format (reel / story / video ...)'), ('price', 'Your price (₹, GST extra)'),
+      ('usage_days', 'Usage rights days (0 = organic only)'), ('usage_price', 'Usage price'),
     ], ok: 'Save');
     if (f == null) return;
     await _run('POST', '/api/influencer/creators/${_s(c['number'])}/rates', {
@@ -185,9 +185,9 @@ class _InfluencerScreenState extends State<InfluencerScreen> {
   Widget _creators() {
     final cs = _list(_d?['creators']);
     return ListView(padding: const EdgeInsets.all(16), children: [
-      GradientButton(label: 'Naya creator', icon: Icons.person_add_rounded, height: 46, onTap: _busy ? null : _newCreator),
+      GradientButton(label: 'New creator', icon: Icons.person_add_rounded, height: 46, onTap: _busy ? null : _newCreator),
       const SizedBox(height: 6),
-      const Text('Followers wahi jo aap likhti hain (tareekh ke saath). Followers / likes kharidna: kabhi nahi.',
+      const Text('Followers are exactly what you write (with the date). Buying followers / likes: never.',
           style: TextStyle(fontSize: 11.5, color: C.faint)),
       const SizedBox(height: 10),
       for (final c in cs)
@@ -207,16 +207,16 @@ class _InfluencerScreenState extends State<InfluencerScreen> {
             Wrap(spacing: 8, runSpacing: 6, children: [
               GlassButton(label: 'Rate', icon: Icons.sell_rounded, height: 38, onTap: _busy ? null : () => _rate(c)),
               GlassButton(label: 'Followers update', icon: Icons.trending_up_rounded, height: 38, onTap: _busy ? null : () async {
-                final f = await _form(context, 'Aaj ke followers', const [('platform', 'Platform'), ('followers', 'Followers'),
+                final f = await _form(context, 'Today\'s followers', const [('platform', 'Platform'), ('followers', 'Followers'),
                   ('avg_likes', 'Average likes'), ('avg_comments', 'Average comments')], ok: 'Save');
                 if (f == null) return;
                 final r = await _run('POST', '/api/influencer/creators', {'id': _s(c['number']), ...f});
                 final sig = _strs(_m(r?['creator'])['signals']);
                 if (sig.isNotEmpty && context.mounted) {
                   await showDialog<void>(context: context, builder: (d) => AlertDialog(
-                    title: const Text('Dhyaan dene wali baatein'),
+                    title: const Text('Things to note'),
                     content: Text(sig.join('\n\n')),
-                    actions: [TextButton(onPressed: () => Navigator.pop(d), child: const Text('Theek'))],
+                    actions: [TextButton(onPressed: () => Navigator.pop(d), child: const Text('OK'))],
                   ));
                 }
               }),
@@ -227,7 +227,7 @@ class _InfluencerScreenState extends State<InfluencerScreen> {
                   title: Text('Rate card · ${_s(c['name'])}'),
                   content: SingleChildScrollView(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     for (final x in _list(r['rates'])) Text('${_s(x['platform_label'])} ${_s(x['fmt_label'])}: ${_s(x['price_text'])}'),
-                    if (_list(r['history']).isNotEmpty) ...[const SizedBox(height: 8), const Text('Aapki pichhli deals (median):')],
+                    if (_list(r['history']).isNotEmpty) ...[const SizedBox(height: 8), const Text('Your past deals (median):')],
                     for (final h in _list(r['history'])) Text('${_s(h['platform'])} ${_s(h['fmt'])}: ${_rs(h['median'])} (${_s(h['deals'])})'),
                     const SizedBox(height: 8),
                     Text(_s(r['note']), style: const TextStyle(fontSize: 11.5, color: C.faint)),
@@ -242,11 +242,11 @@ class _InfluencerScreenState extends State<InfluencerScreen> {
   }
 
   Future<void> _newDeal() async {
-    final f = await _form(context, 'Nayi brand deal', const [
-      ('creator', 'Creator (naam / C-001)'), ('brand', 'Brand'), ('brand_contact', 'Brand mein kaun'), ('brand_phone', 'Brand mobile'),
-      ('brand_email', 'Brand email'), ('product', 'Product'), ('brief', 'Brand ka brief (chipkaiye)'),
-      ('fmt', 'Deliverable format (reel / story / video)'), ('platform', 'Platform'), ('qty', 'Kitne'), ('due', 'Kab tak (DD-MM-YYYY)'),
-      ('fee', 'Fee (agar rate card se alag)'), ('excl_category', 'Exclusivity category (optional)'),
+    final f = await _form(context, 'New brand deal', const [
+      ('creator', 'Creator (name / C-001)'), ('brand', 'Brand'), ('brand_contact', 'Who at the brand'), ('brand_phone', 'Brand mobile'),
+      ('brand_email', 'Brand email'), ('product', 'Product'), ('brief', 'Brand brief (paste)'),
+      ('fmt', 'Deliverable format (reel / story / video)'), ('platform', 'Platform'), ('qty', 'How many'), ('due', 'Due by (DD-MM-YYYY)'),
+      ('fee', 'Fee (if different from the rate card)'), ('excl_category', 'Exclusivity category (optional)'),
     ], ok: 'Save');
     if (f == null) return;
     await _run('POST', '/api/influencer/deals', {
@@ -261,7 +261,7 @@ class _InfluencerScreenState extends State<InfluencerScreen> {
   Widget _deals() {
     final ds = _list(_d?['deals']);
     return ListView(padding: const EdgeInsets.all(16), children: [
-      GradientButton(label: 'Nayi deal', icon: Icons.handshake_rounded, height: 46, onTap: _busy ? null : _newDeal),
+      GradientButton(label: 'New deal', icon: Icons.handshake_rounded, height: 46, onTap: _busy ? null : _newDeal),
       const SizedBox(height: 12),
       for (final d in ds)
         Glass(
@@ -273,7 +273,7 @@ class _InfluencerScreenState extends State<InfluencerScreen> {
               const SizedBox(width: 10),
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text('${_s(d['number'])} · ${_s(d['brand'])}', style: const TextStyle(fontWeight: FontWeight.w700)),
-                Text('${_s(d['creator'])} · ${_s(d['product'])} · ${d['fee'] == null ? '[daam?]' : _rs(d['fee'])}',
+                Text('${_s(d['creator'])} · ${_s(d['product'])} · ${d['fee'] == null ? '[price?]' : _rs(d['fee'])}',
                     style: const TextStyle(fontSize: 12.5, color: C.muted)),
               ])),
               Pill(_s(d['stage_label'])),
@@ -315,17 +315,17 @@ class _InfluencerScreenState extends State<InfluencerScreen> {
             ),
           ),
       ],
-      if (_list(_cal?['undated']).isNotEmpty) ...[const Caption('BINA TAREEKH'), for (final p in _list(_cal?['undated'])) Text('• ${_s(p['number'])} ${_s(p['brand'])}')],
+      if (_list(_cal?['undated']).isNotEmpty) ...[const Caption('NO DATE'), for (final p in _list(_cal?['undated'])) Text('• ${_s(p['number'])} ${_s(p['brand'])}')],
     ]);
   }
 
   Widget _jaanch() => ListView(padding: const EdgeInsets.all(16), children: [
-        const Text('Koi bhi caption chipkaiye: ASCI / CCPA disclosure jaanch (pehli line #ad, video / story / podcast, AI label, '
+        const Text('Paste any caption: ASCI / CCPA disclosure check (#ad on the first line, video / story / podcast, AI label,'
             'health, finance, crypto).', style: TextStyle(fontSize: 12.5, color: C.muted)),
         const SizedBox(height: 8),
         TextField(controller: _caption, maxLines: 6, decoration: const InputDecoration(hintText: '#ad ...')),
         const SizedBox(height: 8),
-        GradientButton(label: 'Jaancho', icon: Icons.fact_check_rounded, height: 46, onTap: _busy ? null : () async {
+        GradientButton(label: 'Check', icon: Icons.fact_check_rounded, height: 46, onTap: _busy ? null : () async {
           try {
             final r = _m(await widget.app.api!.call('POST', '/api/influencer/check', body: {'caption': _caption.text}));
             if (mounted) setState(() => _chk = r);
@@ -341,18 +341,18 @@ class _InfluencerScreenState extends State<InfluencerScreen> {
     final st = _m(_d?['settings']);
     return ListView(padding: const EdgeInsets.all(16), children: [
       Glass(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(_s(st['agency']).isEmpty ? 'Agency ka naam nahi' : _s(st['agency']), style: const TextStyle(fontWeight: FontWeight.w800)),
+        Text(_s(st['agency']).isEmpty ? 'No agency name' : _s(st['agency']), style: const TextStyle(fontWeight: FontWeight.w800)),
         Text('GSTIN ${_s(st['gstin']).isEmpty ? '-' : _s(st['gstin'])} · UPI ${_s(st['upi_id']).isEmpty ? '-' : _s(st['upi_id'])}'),
-        Text('Commission ${_s(st['commission_pct'] ?? '?')}% · payment ${_s(st['pay_days'])} din · subah note ${_s(st['morning_time'])}'),
+        Text('Commission ${_s(st['commission_pct'] ?? '?')}% · payment in ${_s(st['pay_days'])} days · morning note ${_s(st['morning_time'])}'),
         const SizedBox(height: 6),
         for (final n in _strs(st['notes'])) Text('• $n', style: const TextStyle(fontSize: 11.5, color: C.faint)),
       ])),
       const SizedBox(height: 10),
-      GradientButton(label: 'Niyam badlo', icon: Icons.tune_rounded, height: 46, onTap: _busy ? null : () async {
-        final f = await _form(context, 'Niyam', const [
-          ('agency', 'Agency / aapka naam'), ('gstin', 'GSTIN'), ('upi_id', 'Aapka UPI ID'), ('commission_pct', 'Commission %'),
-          ('pay_days', 'Brand payment din'), ('phone', 'Phone'), ('email', 'Email'), ('address', 'Pata'), ('terms', 'Contract ki shartein'),
-          ('morning_time', 'Subah note (HH:MM)'),
+      GradientButton(label: 'Edit rules', icon: Icons.tune_rounded, height: 46, onTap: _busy ? null : () async {
+        final f = await _form(context, 'Rules', const [
+          ('agency', 'Agency / your name'), ('gstin', 'GSTIN'), ('upi_id', 'Your UPI ID'), ('commission_pct', 'Commission %'),
+          ('pay_days', 'Brand payment din'), ('phone', 'Phone'), ('email', 'Email'), ('address', 'Address'), ('terms', 'Contract terms'),
+          ('morning_time', 'Morning note (HH:MM)'),
         ], ok: 'Save', initial: {for (final k in ['agency', 'gstin', 'upi_id', 'phone', 'email', 'address', 'terms', 'morning_time']) k: _s(st[k]),
           'commission_pct': _s(st['commission_pct']), 'pay_days': _s(st['pay_days'])});
         if (f == null) return;
@@ -367,7 +367,7 @@ class _InfluencerScreenState extends State<InfluencerScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const tabs = ['Aaj', 'Creators', 'Deals', 'Calendar', 'Jaanch', 'Niyam'];
+    const tabs = ['Today', 'Creators', 'Deals', 'Calendar', 'Check', 'Rules'];
     final body = switch (_tab) { 0 => _aaj(), 1 => _creators(), 2 => _deals(), 3 => _calendar(), 4 => _jaanch(), _ => _niyam() };
     return Scaffold(
       backgroundColor: C.bgTop,
@@ -430,8 +430,8 @@ class _InfluencerDealPageState extends State<InfluencerDealPage> {
 
   Future<void> _post(Map<String, dynamic> p) async {
     final f = await _form(context, '${_s(p['number'])} · ${_s(p['platform_label'])} ${_s(p['fmt_label'])}', const [
-      ('caption', 'Caption (pehli line mein #ad)'), ('script', 'Script (video / podcast)'), ('duration_s', 'Video ki lambai (second)'),
-      ('due', 'Tareekh (DD-MM-YYYY)'), ('brand_notes', 'Brand ka feedback'),
+      ('caption', 'Caption (#ad on the first line)'), ('script', 'Script (video / podcast)'), ('duration_s', 'Video length (seconds)'),
+      ('due', 'Date (DD-MM-YYYY)'), ('brand_notes', 'Brand feedback'),
     ], ok: 'Save', initial: {'caption': _s(p['caption']), 'script': _s(p['script']), 'duration_s': _s(p['duration_s']), 'due': _s(p['due']),
       'brand_notes': _s(p['brand_notes'])});
     if (f == null) return;
@@ -446,7 +446,7 @@ class _InfluencerDealPageState extends State<InfluencerDealPage> {
       margin: const EdgeInsets.only(bottom: 8),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
-          Expanded(child: Text('$n · ${_s(p['platform_label'])} ${_s(p['fmt_label'])} · ${_s(p['due']).isEmpty ? 'tareekh?' : _s(p['due'])}',
+          Expanded(child: Text('$n · ${_s(p['platform_label'])} ${_s(p['fmt_label'])} · ${_s(p['due']).isEmpty ? 'date?' : _s(p['due'])}',
               style: const TextStyle(fontWeight: FontWeight.w700))),
           Pill(_s(p['status_label']), fg: p['status'] == 'live' ? C.ok : C.chip),
         ]),
@@ -464,16 +464,16 @@ class _InfluencerDealPageState extends State<InfluencerDealPage> {
         Wrap(spacing: 8, runSpacing: 6, children: [
           GlassButton(label: 'Caption / script', icon: Icons.edit_rounded, height: 38, onTap: _busy ? null : () => _post(p)),
           if (_s(p['caption']).isNotEmpty && p['status'] != 'live')
-            GlassButton(label: 'Brand ko bhejo', icon: Icons.outbox_rounded, height: 38, onTap: _busy ? null : () => _run('POST', '/api/influencer/posts/$n/content')),
+            GlassButton(label: 'Send to brand', icon: Icons.outbox_rounded, height: 38, onTap: _busy ? null : () => _run('POST', '/api/influencer/posts/$n/content')),
           if (p['status'] == 'with_brand')
-            GlassButton(label: 'Brand ne haan kaha', icon: Icons.thumb_up_rounded, height: 38,
+            GlassButton(label: 'Brand said yes', icon: Icons.thumb_up_rounded, height: 38,
                 onTap: _busy ? null : () => _run('PATCH', '/api/influencer/posts/$n', {'brand_ok': true})),
           if (p['brand_ok'] == true && p['status'] != 'live')
-            GlassButton(label: 'Creator ko: post karo', icon: Icons.rocket_launch_rounded, height: 38,
+            GlassButton(label: 'To the creator: post it', icon: Icons.rocket_launch_rounded, height: 38,
                 onTap: _busy ? null : () => _run('POST', '/api/influencer/posts/$n/golive')),
           if (p['status'] != 'live')
             GlassButton(label: 'Live link', icon: Icons.link_rounded, height: 38, onTap: _busy ? null : () async {
-              final f = await _form(context, 'Live post ka link', const [('live_url', 'https://...')], ok: 'Save');
+              final f = await _form(context, 'Link to the live post', const [('live_url', 'https://...')], ok: 'Save');
               if (f == null) return;
               await _run('PATCH', '/api/influencer/posts/$n', f);
             }),
@@ -508,7 +508,7 @@ class _InfluencerDealPageState extends State<InfluencerDealPage> {
                   if (_s(d['excl_category']).isNotEmpty)
                     Text('Exclusivity: ${_s(d['excl_category'])} ${_s(d['excl_from'])} – ${_s(d['excl_to'])}', style: const TextStyle(fontSize: 12)),
                   for (final x in _list(d['deliverables']))
-                    Text('• ${_s(x['platform'])} ${_s(x['fmt'])} x${_s(x['qty'])} · ${x['price'] == null ? '[daam?]' : _rs(x['price'])} · ${_s(x['due'])}',
+                    Text('• ${_s(x['platform'])} ${_s(x['fmt'])} x${_s(x['qty'])} · ${x['price'] == null ? '[price?]' : _rs(x['price'])} · ${_s(x['due'])}',
                         style: const TextStyle(fontSize: 12.5)),
                   if (_s(d['brief']).isNotEmpty) Text('Brief: ${_s(d['brief'])}', style: const TextStyle(fontSize: 12, color: C.faint)),
                 ])),
@@ -516,40 +516,40 @@ class _InfluencerDealPageState extends State<InfluencerDealPage> {
                 Wrap(spacing: 8, runSpacing: 6, children: [
                   for (final (k, label, icon) in const [
                     ('pitch', 'Pitch', Icons.send_rounded), ('contract', 'Contract', Icons.article_rounded),
-                    ('invoice', 'Invoice', Icons.receipt_long_rounded), ('payout', 'Creator ka hissa', Icons.payments_rounded),
+                    ('invoice', 'Invoice', Icons.receipt_long_rounded), ('payout', 'Creator\'s share', Icons.payments_rounded),
                     ('report', 'Report', Icons.bar_chart_rounded),
                   ])
                     GlassButton(label: label, icon: icon, height: 40, onTap: _busy ? null : () => _run('POST', '$_base/$k')),
                   GlassButton(label: 'Stage', icon: Icons.flag_rounded, height: 40, onTap: _busy ? null : () async {
                     final f = await _form(context, 'Stage', const [('stage', 'lead / pitched / negotiating / contracted / live / done / lost'),
-                      ('reason', 'Wajah (lost ke liye)')], ok: 'Save');
+                      ('reason', 'Reason (for lost)')], ok: 'Save');
                     if (f == null) return;
                     await _run('POST', '$_base/stage', f);
                   }),
-                  GlassButton(label: 'Paise mile', icon: Icons.account_balance_wallet_rounded, height: 40, onTap: _busy ? null : () async {
-                    final f = await _form(context, 'Brand se paise', const [('amount', 'Kitne aaye (₹)'), ('tds', 'TDS kaata (₹)'),
-                      ('ref', 'UTR (aakhri 4)')], ok: 'Darj karo');
+                  GlassButton(label: 'Money received', icon: Icons.account_balance_wallet_rounded, height: 40, onTap: _busy ? null : () async {
+                    final f = await _form(context, 'Money from brand', const [('amount', 'How much received (₹)'), ('tds', 'TDS deducted (₹)'),
+                      ('ref', 'UTR (last 4)')], ok: 'Record');
                     if (f == null) return;
                     await _run('POST', '$_base/paid', {...f, 'amount': _n(f['amount']), if (f['tds'] != null) 'tds': _n(f['tds'])});
                   }),
                   GlassButton(label: 'Numbers sheet', icon: Icons.table_chart_rounded, height: 40, onTap: _busy ? null : () async {
-                    final f = await _form(context, 'Instagram / YouTube export (CSV) chipkaiye', const [('csv', 'CSV text')], ok: 'Jodo');
+                    final f = await _form(context, 'Paste Instagram / YouTube export (CSV)', const [('csv', 'CSV text')], ok: 'Add');
                     if (f == null) return;
                     await _run('POST', '$_base/metrics_text', f);
                   }),
                   GlassButton(label: 'Message', icon: Icons.chat_rounded, height: 40, onTap: _busy ? null : () async {
-                    final f = await _form(context, 'Message', const [('text', 'Kya likhna hai'), ('to', 'brand / creator')], ok: 'Card banao');
+                    final f = await _form(context, 'Message', const [('text', 'What to write'), ('to', 'brand / creator')], ok: 'Make card');
                     if (f == null) return;
                     await _run('POST', '$_base/message', f);
                   }),
                 ]),
                 if (_card.isNotEmpty) ...[const SizedBox(height: 10), InfluencerCardCard(app: widget.app, data: {'card': _card}, onDone: _load)],
                 const SizedBox(height: 12),
-                const Caption('HISAAB'),
+                const Caption('ACCOUNTS'),
                 Glass(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text('Fee ${_rs(money['taxable'])} · GST ${_rs(_m(money['gst'])['total_tax'] ?? 0)} · kul ${_s(money['total_text'])}'),
-                  Text('Mila ${_rs(money['received'])} · TDS ${_rs(money['tds_deducted'])} · baaki ${money['outstanding'] == null ? '?' : _rs(money['outstanding'])}'),
-                  Text('Commission ${_s(money['commission_pct'] ?? '?')}% = ${money['commission'] == null ? '?' : _rs(money['commission'])} · creator ka hissa '
+                  Text('Fee ${_rs(money['taxable'])} · GST ${_rs(_m(money['gst'])['total_tax'] ?? 0)} · total ${_s(money['total_text'])}'),
+                  Text('Received ${_rs(money['received'])} · TDS ${_rs(money['tds_deducted'])} · due ${money['outstanding'] == null ? '?' : _rs(money['outstanding'])}'),
+                  Text('Commission ${_s(money['commission_pct'] ?? '?')}% = ${money['commission'] == null ? '?' : _rs(money['commission'])} · creator\'s share'
                       '${money['creator_due'] == null ? '?' : _rs(money['creator_due'])}'),
                   if (_s(d['invoice_no']).isNotEmpty) Text('Invoice ${_s(d['invoice_no'])} · due ${_s(d['due_on'])}'),
                   for (final x in _strs(_m(money['tds'])['lines'])) Text('• $x', style: const TextStyle(fontSize: 11.5, color: C.faint)),
@@ -587,9 +587,9 @@ class _InfluencerCardCardState extends State<InfluencerCardCard> {
         [show['amount'], show['payee']].where((x) => x != null && '$x'.isNotEmpty).join(' · '));
     if (r['signature'] == null) {
       throw ApiException(428, switch (_s(r['error'])) {
-        'cancelled' => 'Fingerprint nahi diya, isliye haan nahi hui.',
-        'key_invalidated' => 'Phone mein naya fingerprint juda hai: Profile > Fingerprint se haan mein phone phir se jodiye.',
-        _ => 'Fingerprint se haan nahi ho payi (${_s(r['error'])}).',
+        'cancelled' => 'No fingerprint given, so it was not approved.',
+        'key_invalidated' => 'A new fingerprint was added to the phone: re-link this phone in Profile > Fingerprint approval.',
+        _ => 'Could not approve with fingerprint (${_s(r['error'])}).',
       });
     }
     return {'challenge_id': ch['challenge_id'], 'device_id': r['device_id'], 'signature': r['signature']};
@@ -599,7 +599,7 @@ class _InfluencerCardCardState extends State<InfluencerCardCard> {
     final id = _s(_c['id']);
     String reason = '';
     if (!yes) {
-      final f = await _form(context, 'Kyun nahi?', const [('reason', 'Wajah (optional)')], ok: 'Nahi');
+      final f = await _form(context, 'Why not?', const [('reason', 'Reason (optional)')], ok: 'No');
       if (f == null) return;
       reason = f['reason'] ?? '';
     }
@@ -647,7 +647,7 @@ class _InfluencerCardCardState extends State<InfluencerCardCard> {
           }, color: C.accent),
           const SizedBox(width: 8),
           Expanded(child: Text('${_s(c['title'])} · ${_s(sh['deal'])} ${_s(sh['post'])}', style: const TextStyle(fontWeight: FontWeight.w800))),
-          Pill(switch (st) { 'waiting' => 'aapki haan?', 'approved' => 'haan', 'rejected' => 'nahi', 'stale' => 'purana', _ => st },
+          Pill(switch (st) { 'waiting' => 'your approval?', 'approved' => 'yes', 'rejected' => 'no', 'stale' => 'stale', _ => st },
               fg: st == 'waiting' ? C.accent : C.chip),
         ]),
         Text('${_s(sh['brand'])} · ${_s(sh['creator'])}', style: const TextStyle(fontSize: 12.5)),
@@ -656,15 +656,15 @@ class _InfluencerCardCardState extends State<InfluencerCardCard> {
         if (_s(sh['text']).isNotEmpty) Text(_s(sh['text']), maxLines: 8, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12.5)),
         for (final w in _strs(sh['warn'])) Text('• $w', style: const TextStyle(fontSize: 11.5, color: C.warn)),
         for (final x in _strs(sh['tds_lines'])) Text('• $x', style: const TextStyle(fontSize: 11.5, color: C.faint)),
-        if (kind == 'payout') Text('Brand se mila ${_rs(sh['received'])} · commission ${_s(sh['commission_pct'] ?? '?')}%', style: const TextStyle(fontSize: 12)),
+        if (kind == 'payout') Text('Received from brand ${_rs(sh['received'])} · commission ${_s(sh['commission_pct'] ?? '?')}%', style: const TextStyle(fontSize: 12)),
         const SizedBox(height: 8),
         if (st == 'waiting')
           Wrap(spacing: 8, runSpacing: 6, children: [
-            GradientButton(label: money ? 'Haan (fingerprint)' : 'Haan', height: 42, onTap: _busy ? null : () => _decide(true)),
-            GlassButton(label: 'Nahi', height: 42, onTap: _busy ? null : () => _decide(false)),
+            GradientButton(label: money ? 'Yes (fingerprint)' : 'Yes', height: 42, onTap: _busy ? null : () => _decide(true)),
+            GlassButton(label: 'No', height: 42, onTap: _busy ? null : () => _decide(false)),
           ]),
         if (_draft.isNotEmpty) ...[const SizedBox(height: 6), _draftButtons(_draft)],
-        const Text('Hoola khud post / message nahi karta, paise nahi leta / deta: aap bhejti hain.', style: TextStyle(fontSize: 11, color: C.faint)),
+        const Text('Hoola does not post or message by itself and does not take or give money: you send them.', style: TextStyle(fontSize: 11, color: C.faint)),
       ]),
     );
   }
@@ -689,7 +689,7 @@ class InfluencerNoteCard extends StatelessWidget {
           if (deal.isNotEmpty)
             TextButton(
               onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => InfluencerDealPage(app: app, ref: deal))),
-              child: Text('$deal kholo'),
+              child: Text('Open $deal'),
             ),
         ])),
       ]),

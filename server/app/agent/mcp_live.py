@@ -96,6 +96,32 @@ def snapshot(tenant: str) -> list[dict]:
     return out
 
 
+_REFRESHING: set[str] = set()
+
+
+def snapshot_fast(tenant: str) -> list[dict]:
+    """v0.638 a call's brain turn never waits on her MCP servers (her 16:36 call: 4.5 s here before the first model
+    call). The last snapshot is used as it is (any age); a stale or missing one is refreshed in the background for
+    the next ask. No snapshot yet = no MCP tools this one ask."""
+    with _lock:
+        hit = _cache.get(tenant)
+    if hit is None or time.time() - hit[0] >= SNAPSHOT_TTL_S:
+        with _lock:
+            busy = tenant in _REFRESHING
+            _REFRESHING.add(tenant)
+        if not busy:
+            def _bg():
+                try:
+                    snapshot(tenant)
+                except Exception:
+                    log.exception("mcp snapshot refresh failed")
+                finally:
+                    with _lock:
+                        _REFRESHING.discard(tenant)
+            threading.Thread(target=_bg, name="mcp-refresh", daemon=True).start()
+    return hit[2] if hit else []
+
+
 def forget(tenant: str) -> None:
     with _lock:
         _cache.pop(tenant, None)

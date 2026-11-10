@@ -56,7 +56,7 @@ def test_restart_picks_up_a_half_done_job(gz, monkeypatch):  # noqa: F811
     assert _row(v["id"])["recovered"] == 1 and _row(v["id"])["rounds"] == 1   # a recovery never uses a round
     with session() as s:
         lines = [m.display for m in s.scalars(select(Message).where(Message.conversation_id == conv)).all()]
-    assert any("Server dobara chalu hua" in (x or "") and "1/3" in (x or "") for x in lines)
+    assert any("The server restarted" in (x or "") and "1/3" in (x or "") for x in lines)
     _age(v["id"], 15)
     assert goal.recover_tick() == 0                              # its round is pending in this process: never doubled
 
@@ -186,7 +186,7 @@ def test_message_mid_job_reaches_the_running_job_at_its_next_step(gz, monkeypatc
     from sqlalchemy import select
     conv = gz["conv"]
     brain = FakeBrain([([tu("1", "sheet_read", sheet="x")], "tool_use"),
-                       ([txt("Samajh gaya, PDF ki jagah Excel bana diya.")], "end_turn")])   # v0.311: a finished reply (a mere "bana raha hoon" now keeps working)
+                       ([txt("Samajh gaya, ab PDF nahi - Excel wali report yeh rahi.")], "end_turn")])   # v0.311: a finished reply (a mere "bana raha hoon" now keeps working); v0.665 not "Excel bana diya" - only a read ran, that would be a false claim
     gate = _steer_setup(monkeypatch, brain)
 
     async def scene():
@@ -236,4 +236,4 @@ def test_quick_lane_says_it_reaches_the_job():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.530.0"
+    assert APP_VERSION == "0.758.0"

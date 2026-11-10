@@ -43,9 +43,9 @@ class FinanceScreen extends StatelessWidget {
             backgroundColor: Colors.transparent,
             title: const Text('Financial analyst'),
             bottom: const TabBar(isScrollable: true, tabAlignment: TabAlignment.start, tabs: [
-              Tab(text: 'Hisaab'),
+              Tab(text: 'Accounts'),
               Tab(text: 'Cash'),
-              Tab(text: 'Lena-Dena'),
+              Tab(text: 'Dues'),
               Tab(text: 'Loan / Tax'),
             ]),
           ),
@@ -90,20 +90,20 @@ class _BooksTabState extends State<_BooksTab> {
     if (f == null) return;
     final now = DateTime.now();
     final fyStart = now.month >= 4 ? now.year : now.year - 1;
-    final label = TextEditingController(text: 'FY $fyStart-${(fyStart + 1) % 100} tak');
+    final label = TextEditingController(text: 'Up to FY $fyStart-${(fyStart + 1) % 100}');
     final start = TextEditingController(text: '$fyStart-04-01');
     final end = TextEditingController(text: DateTime(now.year, now.month, 0).toIso8601String().substring(0, 10));
     if (!mounted) return;
     final ok = await showDialog<bool>(
       context: context,
       builder: (d) => AlertDialog(
-        title: const Text('Yeh hisaab kis samay ka hai?'),
+        title: const Text('What period is this account for?'),
         content: Column(mainAxisSize: MainAxisSize.min, children: [
-          TextField(controller: label, decoration: const InputDecoration(labelText: 'Naam')),
-          TextField(controller: start, decoration: const InputDecoration(labelText: 'Shuru (YYYY-MM-DD)')),
-          TextField(controller: end, decoration: const InputDecoration(labelText: 'Aakhri din')),
+          TextField(controller: label, decoration: const InputDecoration(labelText: 'Name')),
+          TextField(controller: start, decoration: const InputDecoration(labelText: 'Start (YYYY-MM-DD)')),
+          TextField(controller: end, decoration: const InputDecoration(labelText: 'Last day')),
         ]),
-        actions: [TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Dekho'))],
+        actions: [TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('View'))],
       ),
     );
     if (ok != true) return;
@@ -133,11 +133,11 @@ class _BooksTabState extends State<_BooksTab> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (d) => AlertDialog(
-        title: const Text('Report bahar bhejni hai?'),
-        content: const Text('Bank / CA / investor ko yeh hisaab dikhana theek hai?'),
+        title: const Text('Sending the report outside?'),
+        content: const Text('Is it fine to show these accounts to the bank / CA / investor?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Nahi')),
-          TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Haan')),
+          TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('No')),
+          TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Yes')),
         ],
       ),
     );
@@ -145,7 +145,7 @@ class _BooksTabState extends State<_BooksTab> {
     try {
       final r = await widget.app.api!.finAct('share', {'snapshot': _s((_a?['snapshot'] as Map?)?['id']), 'approve': true});
       await Clipboard.setData(ClipboardData(text: _s(r['draft'])));
-      if (mounted) _snack(context, '${_s(r['say'])} Note copy ho gaya.');
+      if (mounted) _snack(context, '${_s(r['say'])} Note copied.');
     } catch (e) {
       if (mounted) _snack(context, '$e');
     }
@@ -167,10 +167,10 @@ class _BooksTabState extends State<_BooksTab> {
     return RefreshIndicator(
       onRefresh: _load,
       child: ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 40), children: [
-        GradientButton(label: _busy ? 'Padh raha hoon...' : 'Tally trial balance / P&L daalo', icon: Icons.upload_file_rounded, onTap: _busy ? null : _upload),
+        GradientButton(label: _busy ? 'Reading...' : 'Add Tally trial balance / P&L', icon: Icons.upload_file_rounded, onTap: _busy ? null : _upload),
         const Padding(
           padding: EdgeInsets.only(top: 6, bottom: 10),
-          child: Text('Tally: Display > Trial Balance > Export (Excel). P&L / balance sheet ki photo / PDF chat mein bhi bhej sakti hain.',
+          child: Text('Tally: Display > Trial Balance > Export (Excel). You can also send a photo / PDF of the P&L / balance sheet in chat.',
               style: TextStyle(color: C.faint, fontSize: 12)),
         ),
         if (a == null && _err != null) Glass(child: Text(_err!, style: const TextStyle(color: C.muted))),
@@ -180,17 +180,17 @@ class _BooksTabState extends State<_BooksTab> {
               Text('${_s((a['snapshot'] as Map?)?['label'])}', style: display(16)),
               Text('${_s((a['snapshot'] as Map?)?['start'])} se ${_s((a['snapshot'] as Map?)?['end'])}', style: const TextStyle(color: C.muted, fontSize: 12)),
               const SizedBox(height: 6),
-              _kv('Bikri', pl['revenue']),
+              _kv('Sales', pl['revenue']),
               _kv('Gross profit', pl['gross_profit'], c: C.ok),
-              _kv('Chalane ke kharche', pl['opex']),
-              _kv('Depreciation + byaaj', (pl['depreciation'] ?? 0) + (pl['interest'] ?? 0)),
-              _kv('Tax se pehle munafa', pl['profit_before_tax'], c: (pl['profit_before_tax'] ?? 0) < 0 ? C.bad : C.accent),
+              _kv('Running costs', pl['opex']),
+              _kv('Depreciation + interest', (pl['depreciation'] ?? 0) + (pl['interest'] ?? 0)),
+              _kv('Profit before tax', pl['profit_before_tax'], c: (pl['profit_before_tax'] ?? 0) < 0 ? C.bad : C.accent),
             ]),
           ),
           const SizedBox(height: 10),
           Glass(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('Kya dikh raha hai', style: display(15)),
+              Text('What it shows', style: display(15)),
               for (final i in _list(a['insights']))
                 Padding(
                   padding: const EdgeInsets.only(top: 5),
@@ -205,7 +205,7 @@ class _BooksTabState extends State<_BooksTab> {
           const SizedBox(height: 10),
           Glass(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('Ratios (bank kya dekhta hai)', style: display(15)),
+              Text('Ratios (what the bank looks at)', style: display(15)),
               for (final r in _list(a['ratios']).where((r) => r['value'] != null))
                 Padding(
                   padding: const EdgeInsets.only(top: 4),
@@ -221,22 +221,22 @@ class _BooksTabState extends State<_BooksTab> {
           const SizedBox(height: 10),
           Glass(
             child: Column(children: [
-              _kv('Lene hain (debtors)', bs['debtors']),
-              _kv('Dene hain (creditors)', bs['creditors']),
+              _kv('To receive (debtors)', bs['debtors']),
+              _kv('To pay (creditors)', bs['creditors']),
               _kv('Stock', bs['stock']),
               _kv('Cash + bank', bs['cash_bank']),
               _kv('Loan', bs['loans']),
-              _kv('Apna paisa (net worth)', bs['own_funds']),
+              _kv('Your own money (net worth)', bs['own_funds']),
             ]),
           ),
           const SizedBox(height: 10),
           Wrap(spacing: 8, runSpacing: 8, children: [
             GlassButton(label: 'MIS report (Excel + PDF)', icon: Icons.summarize_rounded, onTap: _report),
-            GlassButton(label: 'Bank / CA ko bhejna', icon: Icons.send_rounded, onTap: _share),
+            GlassButton(label: 'Send to bank / CA', icon: Icons.send_rounded, onTap: _share),
           ]),
         ],
         const SizedBox(height: 10),
-        const Text('Yeh hisaab-kitaab ka vishleshan hai, financial salah nahi. Paisa Hoola kabhi nahi bhejta.',
+        const Text('This is an analysis of the accounts, not financial advice. Hoola never sends money.',
             style: TextStyle(color: C.faint, fontSize: 11.5)),
       ]),
     );
@@ -296,15 +296,15 @@ class _CashTabState extends State<_CashTab> {
     return RefreshIndicator(
       onRefresh: _load,
       child: ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 40), children: [
-        GradientButton(label: 'Bank statement daalo (Excel / CSV)', icon: Icons.account_balance_rounded, onTap: _upload),
+        GradientButton(label: 'Add bank statement (Excel / CSV)', icon: Icons.account_balance_rounded, onTap: _upload),
         const SizedBox(height: 10),
-        if (c == null) Glass(child: Text(_err ?? 'Bank statement nahi mila.', style: const TextStyle(color: C.muted))),
+        if (c == null) Glass(child: Text(_err ?? 'Bank statement not found.', style: const TextStyle(color: C.muted))),
         if (c != null) ...[
           Glass(child: Text(_s(c['say']), style: const TextStyle(height: 1.35))),
           const SizedBox(height: 10),
           Glass(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('Agle 13 hafte (andaza)', style: display(15)),
+              Text('Next 13 weeks (estimate)', style: display(15)),
               const SizedBox(height: 8),
               SizedBox(
                 height: 90,
@@ -329,7 +329,7 @@ class _CashTabState extends State<_CashTab> {
                 ]),
               ),
               const SizedBox(height: 6),
-              Text('Sabse kam: ${lakh((c['lowest_week'] as Map?)?['closing'] ?? 0)} (${_s((c['lowest_week'] as Map?)?['week_from'])} wala hafta)',
+              Text('Lowest: ${lakh((c['lowest_week'] as Map?)?['closing'] ?? 0)} (week of ${_s((c['lowest_week'] as Map?)?['week_from'])})',
                   style: const TextStyle(color: C.muted, fontSize: 12.5)),
             ]),
           ),
@@ -388,10 +388,10 @@ class _OwedTabState extends State<_OwedTab> {
       context: context,
       builder: (d) => StatefulBuilder(
         builder: (d, setS) => AlertDialog(
-          title: Text(kind == 'receivable' ? 'Kisse lena hai' : 'Kisko dena hai'),
+          title: Text(kind == 'receivable' ? 'To receive from' : 'To pay to'),
           content: Column(mainAxisSize: MainAxisSize.min, children: [
             TextField(controller: party, decoration: const InputDecoration(labelText: 'Party')),
-            TextField(controller: amt, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Rakam')),
+            TextField(controller: amt, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Amount')),
             TextField(controller: bill, decoration: const InputDecoration(labelText: 'Bill no')),
             TextField(controller: date, decoration: const InputDecoration(labelText: 'Bill date (YYYY-MM-DD)')),
             if (kind == 'payable')
@@ -399,7 +399,7 @@ class _OwedTabState extends State<_OwedTab> {
                   contentPadding: EdgeInsets.zero,
                   value: msme,
                   onChanged: (v) => setS(() => msme = v ?? false),
-                  title: const Text('Supplier micro / small (Udyam) hai')),
+                  title: const Text('Supplier is micro / small (Udyam)')),
           ]),
           actions: [TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Save'))],
         ),
@@ -427,7 +427,7 @@ class _OwedTabState extends State<_OwedTab> {
       final r = await widget.app.api!.finAct('reminders');
       final text = _list(r['drafts']).map((d) => '${_s(d['party'])} (${_s(d['to'])}):\n${_s(d['text'])}').join('\n\n');
       await Clipboard.setData(ClipboardData(text: text));
-      if (mounted) _snack(context, '${_s(r['say'])} Copy ho gaye.');
+      if (mounted) _snack(context, '${_s(r['say'])} Copied.');
     } catch (e) {
       if (mounted) _snack(context, '$e');
     }
@@ -456,7 +456,7 @@ class _OwedTabState extends State<_OwedTab> {
               ]),
             ),
           if (kind == 'receivable' && _list(a?['items']).isNotEmpty)
-            TextButton.icon(onPressed: _reminders, icon: const Icon(Icons.chat_rounded, size: 18), label: const Text('Yaad dilane ke message')),
+            TextButton.icon(onPressed: _reminders, icon: const Icon(Icons.chat_rounded, size: 18), label: const Text('Reminder messages')),
         ]),
       );
 
@@ -464,13 +464,13 @@ class _OwedTabState extends State<_OwedTab> {
   Widget build(BuildContext context) => RefreshIndicator(
         onRefresh: _load,
         child: ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 40), children: [
-          _section('Lene hain', _r, 'receivable'),
+          _section('To receive', _r, 'receivable'),
           const SizedBox(height: 10),
-          _section('Dene hain', _p, 'payable'),
+          _section('To pay', _p, 'payable'),
           const Padding(
             padding: EdgeInsets.only(top: 8),
-            child: Text('Micro / small supplier ko 15 din (likhit samjhauta ho to 45 din tak) mein na dene par woh kharcha tax mein nahi ghatta '
-                '(Sec 37(2)(g)) aur byaaj 3x bank rate lagta hai.', style: TextStyle(color: C.faint, fontSize: 11.5)),
+            child: Text('If a micro / small supplier is not paid within 15 days (up to 45 days with a written agreement), the expense is not deductible for tax'
+                '(Sec 37(2)(g)) and interest at 3x the bank rate applies.', style: TextStyle(color: C.faint, fontSize: 11.5)),
           ),
         ]),
       );
@@ -510,16 +510,16 @@ class _LoanTabState extends State<_LoanTab> {
   Widget build(BuildContext context) => ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 40), children: [
         Glass(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('Naya loan le sakte hain?', style: display(15)),
+            Text('Can we take a new loan?', style: display(15)),
             Row(children: [
-              Expanded(child: TextField(controller: _amt, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Rakam'))),
+              Expanded(child: TextField(controller: _amt, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Amount'))),
               const SizedBox(width: 8),
-              SizedBox(width: 70, child: TextField(controller: _rate, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Byaaj %'))),
+              SizedBox(width: 70, child: TextField(controller: _rate, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Interest %'))),
               const SizedBox(width: 8),
-              SizedBox(width: 60, child: TextField(controller: _yrs, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Saal'))),
+              SizedBox(width: 60, child: TextField(controller: _yrs, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Year'))),
             ]),
             const SizedBox(height: 10),
-            GradientButton(label: 'Hisaab lagao', icon: Icons.calculate_rounded, onTap: _check),
+            GradientButton(label: 'Calculate', icon: Icons.calculate_rounded, onTap: _check),
             if (_loan != null) Padding(padding: const EdgeInsets.only(top: 10), child: Text(_s(_loan!['say']), style: const TextStyle(height: 1.35))),
           ]),
         ),
@@ -528,7 +528,7 @@ class _LoanTabState extends State<_LoanTab> {
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text('Advance tax', style: display(15)),
             const SizedBox(height: 6),
-            GlassButton(label: 'Is saal ka andaza', icon: Icons.event_note_rounded, onTap: _advance),
+            GlassButton(label: 'Estimate for this year', icon: Icons.event_note_rounded, onTap: _advance),
             if (_tax != null) ...[
               Padding(padding: const EdgeInsets.only(top: 10), child: Text(_s(_tax!['say']), style: const TextStyle(height: 1.35))),
               for (final i in _list((_tax!['plan'] as Map?)?['installments']))
@@ -572,12 +572,12 @@ class _FinCardState extends State<FinCard> {
           Row(children: [
             Icon(alert.isNotEmpty ? Icons.notifications_active_rounded : Icons.query_stats_rounded, color: C.accent, size: 20),
             const SizedBox(width: 8),
-            Expanded(child: Text(alert.isNotEmpty ? 'Paisa: dhyaan dijiye' : 'Hisaab: ${_s(widget.v['label'])}', style: display(15))),
+            Expanded(child: Text(alert.isNotEmpty ? 'Money: be careful' : 'Accounts: ${_s(widget.v['label'])}', style: display(15))),
           ]),
           if (alert.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 6), child: Text(alert, style: const TextStyle(height: 1.3))),
           if (_a != null) ...[
             const SizedBox(height: 6),
-            Text('Bikri ${lakh(pl['revenue'])} · munafa ${lakh(pl['profit_before_tax'])}', style: const TextStyle(fontWeight: FontWeight.w700)),
+            Text('Sales ${lakh(pl['revenue'])} · profit ${lakh(pl['profit_before_tax'])}', style: const TextStyle(fontWeight: FontWeight.w700)),
             for (final i in _list(_a!['insights']).take(3))
               Padding(
                 padding: const EdgeInsets.only(top: 4),

@@ -21,7 +21,7 @@ List<Map<String, dynamic>> _list(dynamic l) =>
     List<Map<String, dynamic>>.from(((l as List?) ?? const []).whereType<Map>().map((e) => Map<String, dynamic>.from(e)));
 List<String> _strs(dynamic l) => ((l as List?) ?? const []).map((e) => '$e').toList();
 num? _n(String? v) => (v == null || v.trim().isEmpty) ? null : num.tryParse(v.replaceAll(',', '').replaceAll('₹', '').trim());
-String _rs(dynamic v) => v == null ? '[daam?]' : '₹${(v is num ? v : num.tryParse('$v') ?? 0).toStringAsFixed(0)}';
+String _rs(dynamic v) => v == null ? '[price?]' : '₹${(v is num ? v : num.tryParse('$v') ?? 0).toStringAsFixed(0)}';
 
 void _snack(BuildContext c, String t) {
   if (t.trim().isEmpty) return;
@@ -29,7 +29,7 @@ void _snack(BuildContext c, String t) {
 }
 
 Future<Map<String, String>?> _form(BuildContext context, String title, List<(String, String)> fields,
-    {String ok = 'Aage', Map<String, String> initial = const {}}) async {
+    {String ok = 'Continue', Map<String, String> initial = const {}}) async {
   final c = {for (final (k, _) in fields) k: TextEditingController(text: initial[k] ?? '')};
   final res = await showDialog<bool>(
     context: context,
@@ -45,7 +45,7 @@ Future<Map<String, String>?> _form(BuildContext context, String title, List<(Str
         ]),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Rehne do')),
+        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Cancel')),
         TextButton(onPressed: () => Navigator.pop(d, true), child: Text(ok)),
       ],
     ),
@@ -127,16 +127,16 @@ class _FrontofficeScreenState extends State<FrontofficeScreen> {
 
   Future<void> _newBooking() async {
     final types = _list(_d?['types']).map((t) => _s(t['code'])).join(' / ');
-    final f = await _form(context, 'Nayi booking', [
+    final f = await _form(context, 'New booking', [
       ('room_type', 'Room type ($types)'),
-      ('arrive', 'Aana (DD-MM-YYYY / aaj / kal)'),
-      ('nights', 'Kitni raat'),
-      ('name', 'Mehmaan ka naam'),
+      ('arrive', 'Arrival (DD-MM-YYYY / today / tomorrow)'),
+      ('nights', 'How many nights'),
+      ('name', 'Guest name'),
       ('phone', 'Mobile'),
-      ('adults', 'Kitne log'),
-      ('rate', 'Rate / raat (sirf aapne kaha ho; khaali = aapka plan)'),
-      ('source', 'Kahan se: walk_in / phone / whatsapp / agent'),
-    ], ok: 'Booking banao');
+      ('adults', 'How many people'),
+      ('rate', 'Rate / night (only if you said it; empty = your plan)'),
+      ('source', 'Source: walk_in / phone / whatsapp / agent'),
+    ], ok: 'Make booking');
     if (f == null) return;
     final body = <String, dynamic>{...f};
     for (final k in ['nights', 'adults', 'rate']) {
@@ -148,10 +148,10 @@ class _FrontofficeScreenState extends State<FrontofficeScreen> {
   }
 
   Future<void> _pasteOta() async {
-    final f = await _form(context, 'OTA ka mail paste kijiye', const [
-      ('text', 'MakeMyTrip / Goibibo / Booking.com / Agoda / Airbnb mail ka text'),
-      ('room_type', 'Room type (agar Hoola pooche)'),
-    ], ok: 'Padho');
+    final f = await _form(context, 'Paste the OTA mail', const [
+      ('text', 'Text of the MakeMyTrip / Goibibo / Booking.com / Agoda / Airbnb mail'),
+      ('room_type', 'Room type (if Hoola asks)'),
+    ], ok: 'Read');
     if (f == null || (f['text'] ?? '').isEmpty) return;
     await _run('POST', '/api/frontoffice/import', f);
   }
@@ -170,9 +170,9 @@ class _FrontofficeScreenState extends State<FrontofficeScreen> {
           await showDialog<void>(
               context: context,
               builder: (d) => AlertDialog(
-                  title: const Text('Sheet ke notes'),
+                  title: const Text('Sheet notes'),
                   content: SingleChildScrollView(child: Text(notes.join('\n'))),
-                  actions: [TextButton(onPressed: () => Navigator.pop(d), child: const Text('Theek'))]));
+                  actions: [TextButton(onPressed: () => Navigator.pop(d), child: const Text('OK'))]));
         }
       }
     } catch (e) {
@@ -193,8 +193,8 @@ class _FrontofficeScreenState extends State<FrontofficeScreen> {
                 Text('${_s(b['number'])} · ${_s(b['guest'])}', style: const TextStyle(fontWeight: FontWeight.w700)),
                 Text('${_s(b['type_name'])}${_s(b['room']).isEmpty ? '' : ' · room ${_s(b['room'])}'} · ${_s(b['arrive'])} → ${_s(b['depart'])}',
                     style: const TextStyle(fontSize: 12.5, color: C.muted)),
-                Text('${_s(b['source_label'])} · ${b['total'] == null ? 'rate khaali' : _rs(b['total'])}'
-                    '${(b['balance'] is num && (b['balance'] as num) > 0) ? ' · baaki ${_rs(b['balance'])}' : ''}',
+                Text('${_s(b['source_label'])} · ${b['total'] == null ? 'rate empty' : _rs(b['total'])}'
+                    '${(b['balance'] is num && (b['balance'] as num) > 0) ? ' · due ${_rs(b['balance'])}' : ''}',
                     style: const TextStyle(fontSize: 12, color: C.faint)),
               ]),
             ),
@@ -210,33 +210,33 @@ class _FrontofficeScreenState extends State<FrontofficeScreen> {
       for (final c in _list(_d?['cards'])) Padding(padding: const EdgeInsets.only(top: 10), child: FrontofficeCardCard(app: widget.app, data: {'card': c}, onDone: _load)),
       for (final m in _list(_d?['messages']).take(10))
         Padding(padding: const EdgeInsets.only(top: 10), child: FrontofficeMessageCard(app: widget.app, data: {'message': m}, onDone: _load)),
-      if (_list(d['arrivals']).isNotEmpty) _h('Aaj aane wale'),
+      if (_list(d['arrivals']).isNotEmpty) _h('Arriving today'),
       for (final b in _list(d['arrivals'])) _bookingTile(b),
-      if (_list(d['departures']).isNotEmpty) _h('Aaj jaane wale'),
+      if (_list(d['departures']).isNotEmpty) _h('Leaving today'),
       for (final b in _list(d['departures'])) _bookingTile(b),
-      if (_list(_d?['formc']).isNotEmpty) _h('Form C (videshi mehmaan, 24 ghante)'),
+      if (_list(_d?['formc']).isNotEmpty) _h('Form C (foreign guest, 24 hours)'),
       for (final f in _list(_d?['formc'])) FrontofficeFormCTile(app: widget.app, data: f, onDone: _load),
-      if (_list(d['in_house']).isNotEmpty) _h('Ruke hue'),
+      if (_list(d['in_house']).isNotEmpty) _h('Held'),
       for (final b in _list(d['in_house'])) _bookingTile(b),
-      if (_list(d['unpaid']).isNotEmpty) _h('Paisa baaki'),
+      if (_list(d['unpaid']).isNotEmpty) _h('Payment due'),
       for (final b in _list(d['unpaid'])) _bookingTile(b),
     ]);
   }
 
   Widget _bookingsTab() => ListView(padding: const EdgeInsets.all(16), children: [
         Wrap(spacing: 8, runSpacing: 8, children: [
-          GradientButton(label: 'Nayi booking', icon: Icons.add_rounded, height: 44, onTap: _busy ? null : _newBooking),
+          GradientButton(label: 'New booking', icon: Icons.add_rounded, height: 44, onTap: _busy ? null : _newBooking),
           GlassButton(label: 'OTA mail paste', icon: Icons.mail_rounded, height: 44, onTap: _busy ? null : _pasteOta),
           GlassButton(label: 'OTA sheet', icon: Icons.upload_file_rounded, height: 44, onTap: _busy ? null : _uploadSheet),
         ]),
         const Padding(
           padding: EdgeInsets.only(top: 8),
-          child: Text('OTA par Hoola login nahi karta: aap mail / sheet dijiye. Jo raat bhari ho, wahan booking ban hi nahi sakti.',
+          child: Text('Hoola does not log in to OTA sites: give it the mail / sheet. A booking cannot be made on a night that is full.',
               style: TextStyle(fontSize: 11.5, color: C.faint)),
         ),
-        _h('Aane wali bookings'),
+        _h('Upcoming bookings'),
         for (final b in _list(_d?['upcoming'])) _bookingTile(b),
-        if (_list(_d?['upcoming']).isEmpty) const Text('Koi aane wali booking nahi.', style: TextStyle(color: C.muted)),
+        if (_list(_d?['upcoming']).isEmpty) const Text('No upcoming bookings.', style: TextStyle(color: C.muted)),
       ]);
 
   Widget _rooms() {
@@ -244,7 +244,7 @@ class _FrontofficeScreenState extends State<FrontofficeScreen> {
     final rooms = _list(board['rooms']);
     return ListView(padding: const EdgeInsets.all(16), children: [
       Glass(child: Text(_s(board['say']))),
-      _h('Housekeeping (tap = status badlo)'),
+      _h('Housekeeping (tap = change status)'),
       Wrap(spacing: 8, runSpacing: 8, children: [
         for (final r in rooms)
           GestureDetector(
@@ -261,12 +261,12 @@ class _FrontofficeScreenState extends State<FrontofficeScreen> {
                 Text(_s(r['type']), style: const TextStyle(fontSize: 11, color: C.muted)),
                 Text(_s(r['status_label']), style: TextStyle(fontSize: 11, color: _roomColor(_s(r['status'])))),
                 if (r['occupied'] == true) Text(_s(r['guest']), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11)),
-                if (_s(r['arriving']).isNotEmpty) Text('aa raha ${_s(r['arriving'])}', style: const TextStyle(fontSize: 10.5, color: C.accent)),
+                if (_s(r['arriving']).isNotEmpty) Text('arriving ${_s(r['arriving'])}', style: const TextStyle(fontSize: 10.5, color: C.accent)),
               ]),
             ),
           ),
       ]),
-      _h('Khaali kamre'),
+      _h('Empty rooms'),
       FrontofficeAvailability(app: widget.app),
     ]);
   }
@@ -277,7 +277,7 @@ class _FrontofficeScreenState extends State<FrontofficeScreen> {
       builder: (c) => SafeArea(
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           ListTile(title: Text('Room ${_s(r['number'])}', style: const TextStyle(fontWeight: FontWeight.w800))),
-          for (final (k, l) in const [('dirty', 'Ganda'), ('clean', 'Saaf'), ('inspected', 'Jaancha hua (ready)'), ('out_of_order', 'Kharab / band')])
+          for (final (k, l) in const [('dirty', 'Dirty'), ('clean', 'Clean'), ('inspected', 'Inspected (ready)'), ('out_of_order', 'Broken / closed')])
             ListTile(title: Text(l), leading: Icon(Icons.circle, color: _roomColor(k), size: 14), onTap: () => Navigator.pop(c, k)),
         ]),
       ),
@@ -285,7 +285,7 @@ class _FrontofficeScreenState extends State<FrontofficeScreen> {
     if (st == null) return;
     var body = <String, dynamic>{'status': st};
     if (st == 'out_of_order') {
-      final f = await _form(context, 'Kyon band?', const [('reason', 'Wajah (AC kharab / seepage ...)'), ('until', 'Kab tak (DD-MM-YYYY, khaali = jab tak aap kahein)')]);
+      final f = await _form(context, 'Why closed?', const [('reason', 'Reason (AC broken / seepage ...)'), ('until', 'Until when (DD-MM-YYYY, empty = until you say)')]);
       if (f == null) return;
       body = {...body, ...f};
     }
@@ -309,19 +309,19 @@ class _FrontofficeScreenState extends State<FrontofficeScreen> {
   Future<void> _settings() async {
     final s = _m(_d?['settings']);
     final pol = _m(s['cancel_policy']);
-    final f = await _form(context, 'Hotel ke niyam', const [
-      ('hotel_name', 'Hotel ka naam'),
-      ('address', 'Pata'),
+    final f = await _form(context, 'Hotel rules', const [
+      ('hotel_name', 'Hotel name'),
+      ('address', 'Address'),
       ('phone', 'Phone'),
-      ('gstin', 'GSTIN (registered ho to)'),
-      ('upi_id', 'Aapka UPI ID'),
-      ('check_in_time', 'Check-in samay (12:00)'),
-      ('check_out_time', 'Check-out samay (11:00)'),
-      ('free_days', 'Kitne din pehle tak free cancellation'),
-      ('fee', 'Uske baad: first_night / pct / full'),
-      ('pct', 'Agar pct: kitna %'),
+      ('gstin', 'GSTIN (if registered)'),
+      ('upi_id', 'Your UPI ID'),
+      ('check_in_time', 'Check-in time (12:00)'),
+      ('check_out_time', 'Check-out time (11:00)'),
+      ('free_days', 'Free cancellation up to how many days before'),
+      ('fee', 'After that: first_night / pct / full'),
+      ('pct', 'If pct: how much %'),
       ('review_link', 'Google review link (https://...)'),
-      ('morning_time', 'Subah ka note (08:00)'),
+      ('morning_time', 'Morning note (08:00)'),
     ], initial: {
       'hotel_name': _s(s['hotel_name']),
       'address': _s(s['address']),
@@ -345,15 +345,15 @@ class _FrontofficeScreenState extends State<FrontofficeScreen> {
   }
 
   Future<void> _roomType([Map<String, dynamic>? t]) async {
-    final f = await _form(context, t == null ? 'Naya room type' : 'Room type: ${_s(t['name'])}', const [
-      ('name', 'Naam (Deluxe / Standard)'),
+    final f = await _form(context, t == null ? 'New room type' : 'Room type: ${_s(t['name'])}', const [
+      ('name', 'Name (Deluxe / Standard)'),
       ('code', 'Code (DLX)'),
-      ('aliases', 'OTA par naam (comma se)'),
-      ('max_adults', 'Zyada se zyada log'),
-      ('base', 'Rate / raat (weekday)'),
-      ('weekend', 'Weekend rate (Fri, Sat raat)'),
-      ('extra_adult', 'Extra adult / raat'),
-      ('numbers', 'Kamre (101-105, 201) - sirf naye ke liye'),
+      ('aliases', 'Name on OTA (comma separated)'),
+      ('max_adults', 'Maximum people'),
+      ('base', 'Rate / night (weekday)'),
+      ('weekend', 'Weekend rate (Fri, Sat nights)'),
+      ('extra_adult', 'Extra adult / night'),
+      ('numbers', 'Rooms (101-105, 201) - only for a new one'),
     ], initial: t == null
         ? const {}
         : {
@@ -383,16 +383,16 @@ class _FrontofficeScreenState extends State<FrontofficeScreen> {
     return ListView(padding: const EdgeInsets.all(16), children: [
       Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(_s(s['hotel_name']).isEmpty ? 'Hotel ka naam daaliye' : _s(s['hotel_name']), style: const TextStyle(fontWeight: FontWeight.w800)),
+          Text(_s(s['hotel_name']).isEmpty ? 'Enter the hotel name' : _s(s['hotel_name']), style: const TextStyle(fontWeight: FontWeight.w800)),
           _line('GST', _s(s['gst_note'])),
           _line('UPI', _s(s['upi_id'])),
           _line('Check-in / out', '${_s(s['check_in_time'])} / ${_s(s['check_out_time'])}'),
-          _line('Cancellation', _s(s['cancel_policy_text']).isEmpty ? 'set nahi (charge nahi lagega)' : _s(s['cancel_policy_text'])),
+          _line('Cancellation', _s(s['cancel_policy_text']).isEmpty ? 'not set (no charge will be added)' : _s(s['cancel_policy_text'])),
           const SizedBox(height: 8),
-          GlassButton(label: 'Badlo', icon: Icons.edit_rounded, height: 40, onTap: _busy ? null : _settings),
+          GlassButton(label: 'Edit', icon: Icons.edit_rounded, height: 40, onTap: _busy ? null : _settings),
         ]),
       ),
-      _h('Room types aur aapke rate'),
+      _h('Room types and your rates'),
       for (final t in _list(_d?['types']))
         Glass(
           margin: const EdgeInsets.only(bottom: 8),
@@ -401,22 +401,22 @@ class _FrontofficeScreenState extends State<FrontofficeScreen> {
             onTap: () => _roomType(t),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text('${_s(t['code'])} · ${_s(t['name'])}', style: const TextStyle(fontWeight: FontWeight.w700)),
-              _line('Rate', t['base'] == null ? 'nahi diya (quote par khaali)' : '${_rs(t['base'])} · weekend ${_rs(t['weekend'] ?? t['base'])}',
+              _line('Rate', t['base'] == null ? 'not given (left empty on the quote)' : '${_rs(t['base'])} · weekend ${_rs(t['weekend'] ?? t['base'])}',
                   color: t['base'] == null ? C.warn : null),
-              _line('Kamre', _strs(t['rooms']).join(', ')),
+              _line('Rooms', _strs(t['rooms']).join(', ')),
               _line('Seasons', _list(t['seasons']).map((x) => '${_s(x['name'])} ${_s(x['from'])}-${_s(x['to'])} ${_rs(x['rate'])}').join('; ')),
             ]),
           ),
         ),
-      GlassButton(label: 'Naya room type', icon: Icons.add_rounded, onTap: _busy ? null : () => _roomType()),
-      _h('Hoola kabhi nahi karega'),
+      GlassButton(label: 'New room type', icon: Icons.add_rounded, onTap: _busy ? null : () => _roomType()),
+      _h('Hoola will never do'),
       for (final n in _strs(_d?['never'])) Text('• $n', style: const TextStyle(fontSize: 12.5, color: C.muted)),
     ]);
   }
 
   @override
   Widget build(BuildContext context) {
-    final tabs = const ['Aaj', 'Booking', 'Kamre', 'Report', 'Niyam'];
+    final tabs = const ['Today', 'Booking', 'Rooms', 'Report', 'Rules'];
     return Scaffold(
       backgroundColor: C.bgTop,
       appBar: AppBar(
@@ -495,10 +495,10 @@ class _FrontofficeAvailabilityState extends State<FrontofficeAvailability> {
           Expanded(child: Text('${_s(a['from'])} → ${_s(a['to'])}', style: const TextStyle(fontWeight: FontWeight.w700))),
           TextButton(
               onPressed: () async {
-                final f = await _form(context, 'Tareekh', const [('arrive', 'Aana'), ('depart', 'Jaana')]);
+                final f = await _form(context, 'Date', const [('arrive', 'Arrival'), ('depart', 'Departure')]);
                 if (f != null) await _load(f['arrive'] ?? '', f['depart'] ?? '');
               },
-              child: const Text('Badlo')),
+              child: const Text('Edit')),
         ]),
         for (final t in _list(a['types'])) ...[
           Text(_s(t['name']), style: const TextStyle(fontWeight: FontWeight.w600)),
@@ -527,7 +527,7 @@ class _FrontofficeReportViewState extends State<FrontofficeReportView> {
   late Map<String, dynamic> _r = widget.initial;
 
   Future<void> _pick() async {
-    final f = await _form(context, 'Report kab ka', const [('start', 'Se (DD-MM-YYYY)'), ('end', 'Tak (DD-MM-YYYY)')]);
+    final f = await _form(context, 'Report from', const [('start', 'Se (DD-MM-YYYY)'), ('end', 'Until (DD-MM-YYYY)')]);
     if (f == null) return;
     try {
       final r = _m(await widget.app.api!.call('GET', '/api/frontoffice/report', query: {'start': f['start'] ?? '', 'end': f['end'] ?? ''}));
@@ -552,7 +552,7 @@ class _FrontofficeReportViewState extends State<FrontofficeReportView> {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Row(children: [
         Expanded(child: Text('${_s(_r['from'])} → ${_s(_r['to'])}', style: const TextStyle(fontWeight: FontWeight.w700))),
-        TextButton(onPressed: _pick, child: const Text('Tareekh')),
+        TextButton(onPressed: _pick, child: const Text('Date')),
       ]),
       Row(children: [
         tile('Occupancy', '${_s(t['occupancy_pct'])}%'),
@@ -562,9 +562,9 @@ class _FrontofficeReportViewState extends State<FrontofficeReportView> {
         tile('RevPAR', _rs(t['revpar'])),
       ]),
       const SizedBox(height: 8),
-      Text('${_s(t['rooms_sold'])} / ${_s(t['rooms_available'])} room-nights · kiraya ${_rs(t['room_revenue'])}',
+      Text('${_s(t['rooms_sold'])} / ${_s(t['rooms_available'])} room-nights · rent ${_rs(t['room_revenue'])}',
           style: const TextStyle(color: C.muted)),
-      for (final s in _list(_r['by_source'])) _line(_s(s['label']), '${_s(s['room_nights'])} raat · ${_rs(s['revenue'])}'),
+      for (final s in _list(_r['by_source'])) _line(_s(s['label']), '${_s(s['room_nights'])} nights · ${_rs(s['revenue'])}'),
       Text(_s(_r['note']), style: const TextStyle(fontSize: 11, color: C.faint)),
     ]);
   }
@@ -621,24 +621,24 @@ class _FrontofficeBookingPageState extends State<FrontofficeBookingPage> {
     final fields = foreign
         ? const [
             ('nationality', 'Nationality'),
-            ('passport', 'Passport no. (Pehchaan Locker mein jayega)'),
+            ('passport', 'Passport no. (goes to the ID Locker)'),
             ('visa_number', 'Visa / OCI no.'),
             ('visa_type', 'Visa type'),
-            ('visa_expiry', 'Visa kab tak (DD-MM-YYYY)'),
-            ('arrived_india_on', 'India kab aaye'),
-            ('coming_from', 'Kahan se aaye'),
-            ('going_to', 'Aage kahan'),
-            ('purpose', 'Kis kaam se'),
-            ('room', 'Room (khaali = Hoola chunega)'),
+            ('visa_expiry', 'Visa valid until (DD-MM-YYYY)'),
+            ('arrived_india_on', 'When they came to India'),
+            ('coming_from', 'Coming from'),
+            ('going_to', 'Going where'),
+            ('purpose', 'Purpose of visit'),
+            ('room', 'Room (empty = Hoola will pick)'),
           ]
         : const [
             ('id_kind', 'ID: aadhaar / dl / voter / passport'),
-            ('id_number', 'ID number (Pehchaan Locker mein jayega)'),
-            ('address', 'Pata'),
-            ('coming_from', 'Kahan se aaye'),
-            ('going_to', 'Aage kahan'),
-            ('purpose', 'Kis kaam se'),
-            ('room', 'Room (khaali = Hoola chunega)'),
+            ('id_number', 'ID number (goes to the ID Locker)'),
+            ('address', 'Address'),
+            ('coming_from', 'Coming from'),
+            ('going_to', 'Going where'),
+            ('purpose', 'Purpose of visit'),
+            ('room', 'Room (empty = Hoola will pick)'),
           ];
     final f = await _form(context, 'Check-in', fields, ok: 'Check-in');
     if (f == null) return;
@@ -646,19 +646,19 @@ class _FrontofficeBookingPageState extends State<FrontofficeBookingPage> {
   }
 
   Future<void> _charge() async {
-    final f = await _form(context, 'Folio mein jodo', const [
+    final f = await _form(context, 'Add to folio', const [
       ('kind', 'restaurant / room_service / laundry / extra_bed / minibar / transport / other'),
-      ('text', 'Kya (Dinner, 2 shirt ...)'),
+      ('text', 'What (Dinner, 2 shirts ...)'),
       ('amount', 'Rate'),
-      ('qty', 'Kitne'),
-    ], ok: 'Jodo');
+      ('qty', 'How many'),
+    ], ok: 'Add');
     if (f == null) return;
     await _run('POST', '$_p/charge', {...f, 'amount': _n(f['amount']), 'qty': _n(f['qty']) ?? 1});
   }
 
   Future<void> _received() async {
-    final f = await _form(context, 'Paisa mila (sirf aap)', const [('amount', 'Kitna'), ('mode', 'upi / cash / card / bank / ota'), ('ref', 'UTR / ref (aakhri ank)')],
-        ok: 'Darj karo');
+    final f = await _form(context, 'Money received (only you)', const [('amount', 'How much'), ('mode', 'upi / cash / card / bank / ota'), ('ref', 'UTR / ref (last digits)')],
+        ok: 'Record');
     if (f == null) return;
     await _run('POST', '$_p/received', {...f, 'amount': _n(f['amount'])});
   }
@@ -676,12 +676,12 @@ class _FrontofficeBookingPageState extends State<FrontofficeBookingPage> {
   }
 
   Future<void> _discount() async {
-    final f = await _form(context, 'Discount / muft (aapki haan ka card)', const [
+    final f = await _form(context, 'Discount / free (card for your approval)', const [
       ('amount', 'Discount ₹'),
       ('pct', 'ya %'),
-      ('complimentary', 'Poora muft? (haan likhiye)'),
-      ('reason', 'Wajah'),
-    ], ok: 'Card banao');
+      ('complimentary', 'Fully free? (write yes)'),
+      ('reason', 'Reason'),
+    ], ok: 'Make card');
     if (f == null) return;
     await _run('POST', '$_p/discount', {
       'amount': _n(f['amount']),
@@ -692,20 +692,20 @@ class _FrontofficeBookingPageState extends State<FrontofficeBookingPage> {
   }
 
   Future<void> _refund() async {
-    final f = await _form(context, 'Refund (aapki haan + fingerprint)', const [('amount', 'Kitna'), ('reason', 'Wajah')], ok: 'Card banao');
+    final f = await _form(context, 'Refund (your approval + fingerprint)', const [('amount', 'How much'), ('reason', 'Reason')], ok: 'Make card');
     if (f == null) return;
     await _run('POST', '$_p/refund', {'amount': _n(f['amount']), 'reason': f['reason'] ?? ''});
   }
 
   Future<void> _amend() async {
     final b = _b ?? {};
-    final f = await _form(context, 'Booking badlo', const [
-      ('arrive', 'Aana'),
-      ('depart', 'Jaana'),
+    final f = await _form(context, 'Change booking', const [
+      ('arrive', 'Arrival'),
+      ('depart', 'Departure'),
       ('room_type', 'Room type'),
       ('adults', 'Log'),
-      ('rate', 'Naya rate / raat (aapka)'),
-    ], initial: {'arrive': _s(b['arrive']), 'depart': _s(b['depart']), 'room_type': _s(b['type']), 'adults': _s(b['adults'])}, ok: 'Badlo');
+      ('rate', 'New rate / night (yours)'),
+    ], initial: {'arrive': _s(b['arrive']), 'depart': _s(b['depart']), 'room_type': _s(b['type']), 'adults': _s(b['adults'])}, ok: 'Edit');
     if (f == null) return;
     await _run('POST', '$_p/amend', {...f, 'adults': _n(f['adults']), 'rate': _n(f['rate'])});
   }
@@ -734,28 +734,28 @@ class _FrontofficeBookingPageState extends State<FrontofficeBookingPage> {
                 Wrap(spacing: 8, runSpacing: 8, children: [
                   if (['hold', 'confirmed'].contains(_s(b['status']))) ...[
                     GradientButton(label: 'Check-in', icon: Icons.login_rounded, height: 42, onTap: _busy ? null : _checkIn),
-                    GlassButton(label: 'Badlo', height: 42, onTap: _busy ? null : _amend),
-                    GlassButton(label: 'Radd karo', height: 42, onTap: _busy ? null : () => _run('POST', '$_p/cancel', {'reason': 'owner'})),
+                    GlassButton(label: 'Edit', height: 42, onTap: _busy ? null : _amend),
+                    GlassButton(label: 'Cancel', height: 42, onTap: _busy ? null : () => _run('POST', '$_p/cancel', {'reason': 'owner'})),
                     GlassButton(label: 'Confirmation draft', height: 42, onTap: _busy ? null : () => _run('POST', '$_p/message', {'kind': 'confirmation'})),
                   ],
-                  if (_s(b['status']) == 'hold') GlassButton(label: 'Pakki karo', height: 42, onTap: _busy ? null : () => _run('POST', '$_p/confirm')),
+                  if (_s(b['status']) == 'hold') GlassButton(label: 'Confirm', height: 42, onTap: _busy ? null : () => _run('POST', '$_p/confirm')),
                   if (_s(b['status']) == 'in_house') ...[
                     GradientButton(label: 'Check-out', icon: Icons.logout_rounded, height: 42, onTap: _busy ? null : () => _run('POST', '$_p/checkout')),
-                    GlassButton(label: 'Folio mein jodo', height: 42, onTap: _busy ? null : _charge),
-                    GlassButton(label: 'Badlo', height: 42, onTap: _busy ? null : _amend),
+                    GlassButton(label: 'Add to folio', height: 42, onTap: _busy ? null : _charge),
+                    GlassButton(label: 'Edit', height: 42, onTap: _busy ? null : _amend),
                   ],
                   if (_s(b['status']) == 'checked_out' && _m(b['bill'])['status'] != 'final')
-                    GlassButton(label: 'Bill ka card', height: 42, onTap: _busy ? null : () => _run('POST', '$_p/bill')),
-                  GlassButton(label: 'Paisa mila', height: 42, onTap: _busy ? null : _received),
-                  GlassButton(label: 'UPI link bhejo', height: 42, onTap: _busy ? null : _payLink),
-                  GlassButton(label: 'Discount / muft', height: 42, onTap: _busy ? null : _discount),
+                    GlassButton(label: 'Bill card', height: 42, onTap: _busy ? null : () => _run('POST', '$_p/bill')),
+                  GlassButton(label: 'Money received', height: 42, onTap: _busy ? null : _received),
+                  GlassButton(label: 'Send UPI link', height: 42, onTap: _busy ? null : _payLink),
+                  GlassButton(label: 'Discount / free', height: 42, onTap: _busy ? null : _discount),
                   GlassButton(label: 'Refund', height: 42, onTap: _busy ? null : _refund),
                 ]),
                 _h('Folio'),
                 FrontofficeFolio(folio: _m(b['folio'])),
-                _h('Paise'),
+                _h('Money'),
                 for (final p in _list(b['payments'])) _line(_s(p['receipt_no']), '${_rs(p['amount'])} · ${_s(p['mode'])} · ${_s(p['on'])}'),
-                if (_list(b['payments']).isEmpty) const Text('Abhi kuch nahi mila.', style: TextStyle(color: C.muted)),
+                if (_list(b['payments']).isEmpty) const Text('Nothing found yet.', style: TextStyle(color: C.muted)),
                 if (_list(b['formc']).isNotEmpty) _h('Form C'),
                 for (final f in _list(b['formc'])) FrontofficeFormCTile(app: widget.app, data: f, onDone: _load),
                 if (_m(b['bill'])['status'] == 'final') ...[
@@ -766,8 +766,8 @@ class _FrontofficeBookingPageState extends State<FrontofficeBookingPage> {
                       icon: Icons.picture_as_pdf_rounded,
                       onTap: _busy ? null : () => _run('POST', '/api/frontoffice/bills/${_s(_m(b['bill'])['id'])}/file')),
                 ],
-                _h('Niyam'),
-                Text(_s(b['policy_text']).isEmpty ? 'Cancellation policy set nahi.' : _s(b['policy_text']), style: const TextStyle(color: C.muted)),
+                _h('Rules'),
+                Text(_s(b['policy_text']).isEmpty ? 'Cancellation policy is not set.' : _s(b['policy_text']), style: const TextStyle(color: C.muted)),
                 if (_s(b['ota_note']).isNotEmpty) Text(_s(b['ota_note']), style: const TextStyle(fontSize: 12, color: C.warn)),
               ]),
             ),
@@ -788,16 +788,16 @@ class FrontofficeFolio extends StatelessWidget {
             padding: const EdgeInsets.only(bottom: 3),
             child: Row(children: [
               Expanded(child: Text(_s(l['text']), style: const TextStyle(fontSize: 12.5))),
-              Text(l['value'] == null ? '[daam?]' : '${_rs(l['value'])}${f['gst_on'] == true ? ' +${_s(l['gst_pct'])}%' : ''}',
+              Text(l['value'] == null ? '[price?]' : '${_rs(l['value'])}${f['gst_on'] == true ? ' +${_s(l['gst_pct'])}%' : ''}',
                   style: TextStyle(fontSize: 12.5, color: l['value'] == null ? C.warn : C.ink)),
             ]),
           ),
         const Divider(color: C.line),
         if ((f['discount'] is num) && (f['discount'] as num) > 0) _line(f['complimentary'] == true ? 'Complimentary' : 'Discount', _rs(f['discount'])),
         if (f['gst_on'] == true) _line('CGST + SGST', '${_rs(f['cgst'])} + ${_rs(f['sgst'])}'),
-        _line('Kul', _rs(f['total']), color: C.ink),
-        _line('Mila', _rs(f['paid'])),
-        _line('Baaki', f['balance'] == null ? 'rate khaali' : _rs(f['balance']), color: C.accent),
+        _line('Total', _rs(f['total']), color: C.ink),
+        _line('Received', _rs(f['paid'])),
+        _line('Due', f['balance'] == null ? 'rate empty' : _rs(f['balance']), color: C.accent),
         Text(_s(f['note']), style: const TextStyle(fontSize: 11, color: C.faint)),
       ]),
     );
@@ -827,7 +827,7 @@ class FrontofficeFormCTile extends StatelessWidget {
             ]),
           ),
           actions: [
-            TextButton(onPressed: () => Native.openExternal(url: _s(r['portal'])), child: const Text('e-FRRO kholo')),
+            TextButton(onPressed: () => Native.openExternal(url: _s(r['portal'])), child: const Text('Open e-FRRO')),
             TextButton(onPressed: () => Navigator.pop(d), child: const Text('Band')),
           ],
         ),
@@ -843,19 +843,19 @@ class FrontofficeFormCTile extends StatelessWidget {
         padding: const EdgeInsets.all(12),
         border: data['overdue'] == true ? C.bad : null,
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('${_s(data['guest'])} · ${_s(data['kind']) == 'arrival' ? 'aagman' : 'departure'} · ${_s(data['booking'])}',
+          Text('${_s(data['guest'])} · ${_s(data['kind']) == 'arrival' ? 'arrivals' : 'departure'} · ${_s(data['booking'])}',
               style: const TextStyle(fontWeight: FontWeight.w700)),
-          _line('Kab tak', _s(data['due_local']), color: data['overdue'] == true ? C.bad : null),
+          _line('Until when', _s(data['due_local']), color: data['overdue'] == true ? C.bad : null),
           _line('Ref', _s(data['ref'])),
           const SizedBox(height: 6),
           Wrap(spacing: 8, runSpacing: 6, children: [
-            GlassButton(label: 'Data dekho', height: 38, onTap: () => _show(context)),
+            GlassButton(label: 'See data', height: 38, onTap: () => _show(context)),
             if (_s(data['status']) == 'due')
               GlassButton(
-                  label: 'Maine bhar diya',
+                  label: 'I have filled it in',
                   height: 38,
                   onTap: () async {
-                    final f = await _form(context, 'Form C ref', const [('ref', 'Portal ka reference (ho to)')], ok: 'Darj karo');
+                    final f = await _form(context, 'Form C ref', const [('ref', 'Portal reference (if any)')], ok: 'Record');
                     if (f == null || !context.mounted) return;
                     await _call(context, app, 'POST', '/api/frontoffice/formc/${_s(data['id'])}/done', {'ref': f['ref'] ?? ''});
                     onDone?.call();
@@ -882,13 +882,13 @@ class _FrontofficeCardCardState extends State<FrontofficeCardCard> {
   Future<Map<String, dynamic>> _proof(String id) async {
     final ch = _m(await widget.app.api!.call('POST', '/api/frontoffice/cards/$id/challenge'));
     final show = _m(ch['show']);
-    final r = await Native.approveKeySign(_s(ch['message']), _s(show['title']).isEmpty ? 'Aapki haan' : _s(show['title']),
+    final r = await Native.approveKeySign(_s(ch['message']), _s(show['title']).isEmpty ? 'Your approval' : _s(show['title']),
         [show['amount'], show['payee']].where((x) => x != null && '$x'.isNotEmpty).join(' · '));
     if (r['signature'] == null) {
       throw ApiException(428, switch (_s(r['error'])) {
-        'cancelled' => 'Fingerprint nahi diya, isliye haan nahi hui.',
-        'key_invalidated' => 'Phone mein naya fingerprint juda hai: Profile > Fingerprint se haan mein phone phir se jodiye.',
-        _ => 'Fingerprint se haan nahi ho payi (${_s(r['error'])}).',
+        'cancelled' => 'No fingerprint given, so it was not approved.',
+        'key_invalidated' => 'A new fingerprint was added to the phone: re-link this phone in Profile > Fingerprint approval.',
+        _ => 'Could not approve with fingerprint (${_s(r['error'])}).',
       });
     }
     return {'challenge_id': ch['challenge_id'], 'device_id': r['device_id'], 'signature': r['signature']};
@@ -921,7 +921,7 @@ class _FrontofficeCardCardState extends State<FrontofficeCardCard> {
   }
 
   Future<void> _refundDone() async {
-    final f = await _form(context, 'Refund bhej diya', const [('ref', 'UTR / ref'), ('mode', 'upi / bank / cash / card')], ok: 'Darj karo');
+    final f = await _form(context, 'Refund sent', const [('ref', 'UTR / ref'), ('mode', 'upi / bank / cash / card')], ok: 'Record');
     if (f == null) return;
     await _call(context, widget.app, 'POST', '/api/frontoffice/cards/${_s(_c['id'])}/refund_done', f);
     widget.onDone?.call();
@@ -940,27 +940,27 @@ class _FrontofficeCardCardState extends State<FrontofficeCardCard> {
           Icon(c['money'] == true ? Icons.payments_rounded : Icons.hotel_rounded, color: C.accent),
           const SizedBox(width: 8),
           Expanded(child: Text('${_s(c['number'])} · ${_s(c['kind_label'])}', style: const TextStyle(fontWeight: FontWeight.w800))),
-          Pill(switch (st) { 'waiting' => 'aapki haan?', 'approved' => 'maana', 'rejected' => 'nahi', 'stale' => 'purana', _ => st },
+          Pill(switch (st) { 'waiting' => 'your approval?', 'approved' => 'accepted', 'rejected' => 'no', 'stale' => 'stale', _ => st },
               fg: st == 'waiting' ? C.accent : (st == 'rejected' || st == 'stale' ? C.bad : C.ok)),
         ]),
         Text(_s(show['title']), style: const TextStyle(fontSize: 13)),
         if (kind == 'bill')
           for (final l in _list(show['lines']).take(12))
             _line(_s(l['text']), '${_rs(l['value'])}${show['gst_on'] == true ? ' +${_s(l['gst_pct'])}%' : ''}'),
-        if (kind == 'bill') _line('Kul', _rs(show['total']), color: C.ink),
-        _line('Kyon', _s(show['why'] ?? show['reason'])),
-        _line('Kaise', _s(show['how'])),
+        if (kind == 'bill') _line('Total', _rs(show['total']), color: C.ink),
+        _line('Why', _s(show['why'] ?? show['reason'])),
+        _line('How', _s(show['how'])),
         for (final x in _strs(show['checks'])) Text('⚠ $x', style: const TextStyle(fontSize: 12.5, color: C.warn)),
         const SizedBox(height: 8),
         if (st == 'waiting')
           Row(children: [
-            Expanded(child: GradientButton(label: 'Haan', height: 42, onTap: _busy ? null : () => _decide(true))),
+            Expanded(child: GradientButton(label: 'Yes', height: 42, onTap: _busy ? null : () => _decide(true))),
             const SizedBox(width: 8),
-            GlassButton(label: 'Nahi', height: 42, onTap: _busy ? null : () => _decide(false)),
+            GlassButton(label: 'No', height: 42, onTap: _busy ? null : () => _decide(false)),
           ]),
         if (st == 'approved' && kind == 'refund' && show['done'] != true)
-          GlassButton(label: 'Refund bhej diya', icon: Icons.check_rounded, height: 40, onTap: _busy ? null : _refundDone),
-        const Text('Hoola paise nahi leta / deta; refund aap apne app / bank se bhejti hain.', style: TextStyle(fontSize: 11, color: C.faint)),
+          GlassButton(label: 'Refund sent', icon: Icons.check_rounded, height: 40, onTap: _busy ? null : _refundDone),
+        const Text('Hoola does not take or give money; you send the refund from your own app / bank.', style: TextStyle(fontSize: 11, color: C.faint)),
       ]),
     );
   }
@@ -985,7 +985,7 @@ class _FrontofficeMessageCardState extends State<FrontofficeMessageCard> {
     try {
       if (via == 'self') {
         final link = _s(_x['wa']).isNotEmpty ? _s(_x['wa']) : _s(_x['sms']);
-        if (link.isEmpty) throw Exception('Mehmaan ka mobile nahi.');
+        if (link.isEmpty) throw Exception('No guest mobile.');
         await Native.openExternal(url: link);
       }
       final m = _m(await widget.app.api!.call('POST', '/api/frontoffice/messages/${_s(_x['id'])}/send', body: {'via': via, 'hash': _s(_x['hash'])}));
@@ -1002,7 +1002,7 @@ class _FrontofficeMessageCardState extends State<FrontofficeMessageCard> {
   }
 
   Future<void> _edit() async {
-    final f = await _form(context, 'Message badlo', const [('text', 'Message')], initial: {'text': _s(_x['text'])}, ok: 'Save');
+    final f = await _form(context, 'Change message', const [('text', 'Message')], initial: {'text': _s(_x['text'])}, ok: 'Save');
     if (f == null) return;
     try {
       final m = _m(await widget.app.api!.call('PUT', '/api/frontoffice/messages/${_s(_x['id'])}', body: {'text': f['text'] ?? ''}));
@@ -1022,19 +1022,19 @@ class _FrontofficeMessageCardState extends State<FrontofficeMessageCard> {
         Row(children: [
           const Icon(Icons.sms_rounded, color: C.accent),
           const SizedBox(width: 8),
-          Expanded(child: Text('${_s(x['to'])} ko · ${_s(x['kind'])} · ${_s(x['booking'])}', style: const TextStyle(fontWeight: FontWeight.w800))),
-          Pill(st == 'draft' ? 'draft' : (st == 'sent' ? 'bheja' : st), fg: st == 'sent' ? C.ok : C.chip),
+          Expanded(child: Text('to ${_s(x['to'])} · ${_s(x['kind'])} · ${_s(x['booking'])}', style: const TextStyle(fontWeight: FontWeight.w800))),
+          Pill(st == 'draft' ? 'draft' : (st == 'sent' ? 'sent' : st), fg: st == 'sent' ? C.ok : C.chip),
         ]),
         Text(_s(x['text']), style: const TextStyle(fontSize: 13)),
-        if (x['no_messages'] == true) const Text('⚠ Inhone message mana kiya hai.', style: TextStyle(fontSize: 12, color: C.warn)),
+        if (x['no_messages'] == true) const Text('⚠ This guest has declined messages.', style: TextStyle(fontSize: 12, color: C.warn)),
         const SizedBox(height: 8),
         if (st == 'draft')
           Wrap(spacing: 8, runSpacing: 6, children: [
-            GradientButton(label: 'Apne WhatsApp se', icon: Icons.send_rounded, height: 40, onTap: _busy ? null : () => _send('self')),
+            GradientButton(label: 'From your own WhatsApp', icon: Icons.send_rounded, height: 40, onTap: _busy ? null : () => _send('self')),
             GlassButton(label: 'Business number se', height: 40, onTap: _busy ? null : () => _send('business')),
-            GlassButton(label: 'Badlo', height: 40, onTap: _busy ? null : _edit),
+            GlassButton(label: 'Edit', height: 40, onTap: _busy ? null : _edit),
             GlassButton(
-                label: 'Hatao',
+                label: 'Remove',
                 height: 40,
                 onTap: _busy
                     ? null
@@ -1064,13 +1064,13 @@ class FrontofficeBookingCard extends StatelessWidget {
           Expanded(child: Text('${_s(b['number'])} · ${_s(b['guest'])}', style: const TextStyle(fontWeight: FontWeight.w800))),
           Pill(_s(b['status_label']), fg: _s(b['status']) == 'in_house' ? C.ok : C.chip),
         ]),
-        _line('Kamra', '${_s(b['type_name'])}${_s(b['room']).isEmpty ? '' : ' · room ${_s(b['room'])}'}'),
-        _line('Tareekh', '${_s(b['arrive'])} → ${_s(b['depart'])} (${_s(b['nights_count'])} raat) · ${_s(b['adults'])} log'),
-        _line('Kahan se', '${_s(b['source_label'])}${_s(b['ota_ref']).isEmpty ? '' : ' · ${_s(b['ota_ref'])}'}'),
-        _line('Kul', b['total'] == null ? 'rate khaali: ${_strs(b['blanks']).join(', ')}' : _rs(b['total']),
+        _line('Room', '${_s(b['type_name'])}${_s(b['room']).isEmpty ? '' : ' · room ${_s(b['room'])}'}'),
+        _line('Date', '${_s(b['arrive'])} → ${_s(b['depart'])} (${_s(b['nights_count'])} nights) · ${_s(b['adults'])} guests'),
+        _line('From where', '${_s(b['source_label'])}${_s(b['ota_ref']).isEmpty ? '' : ' · ${_s(b['ota_ref'])}'}'),
+        _line('Total', b['total'] == null ? 'rate empty: ${_strs(b['blanks']).join(', ')}' : _rs(b['total']),
             color: b['total'] == null ? C.warn : null),
-        if (b['balance'] is num && (b['balance'] as num) > 0) _line('Baaki', _rs(b['balance']), color: C.accent),
-        if (_s(b['hold_until']).isNotEmpty) _line('Hold', '${_s(b['hold_until'])} tak (advance aane par pakki)'),
+        if (b['balance'] is num && (b['balance'] as num) > 0) _line('Due', _rs(b['balance']), color: C.accent),
+        if (_s(b['hold_until']).isNotEmpty) _line('Hold', 'until ${_s(b['hold_until'])} (confirmed when advance arrives)'),
         if (data['say'] != null) Text(_s(data['say']), style: const TextStyle(fontSize: 12, color: C.faint)),
       ]),
     );
@@ -1094,9 +1094,9 @@ class FrontofficeAlertCard extends StatelessWidget {
           const SizedBox(width: 8),
           Expanded(
               child: Text(switch (kind) {
-            'overbook' => 'Overbooking roki',
-            'formc' => 'Form C (videshi mehmaan)',
-            'hold_released' => 'Hold khatam',
+            'overbook' => 'Overbooking prevented',
+            'formc' => 'Form C (foreign guest)',
+            'hold_released' => 'Hold expired',
             'no_show' => 'No-show?',
             _ => 'Front desk',
           }, style: const TextStyle(fontWeight: FontWeight.w800))),
@@ -1124,13 +1124,13 @@ class FrontofficeDayCard extends StatelessWidget {
         const Row(children: [
           Icon(Icons.wb_sunny_rounded, color: C.accent),
           SizedBox(width: 8),
-          Text('Aaj ka front desk', style: TextStyle(fontWeight: FontWeight.w800)),
+          Text('Today\'s front desk', style: TextStyle(fontWeight: FontWeight.w800)),
         ]),
         Text(_s(data['say']), style: const TextStyle(fontSize: 13)),
-        if (rep.isNotEmpty) _line('Kal', 'occupancy ${_s(rep['occupancy_pct'])}% · ADR ${_rs(rep['adr'])} · RevPAR ${_rs(rep['revpar'])}'),
+        if (rep.isNotEmpty) _line('Yesterday', 'occupancy ${_s(rep['occupancy_pct'])}% · ADR ${_rs(rep['adr'])} · RevPAR ${_rs(rep['revpar'])}'),
         const SizedBox(height: 6),
         GlassButton(
-            label: 'Front office kholo',
+            label: 'Open front office',
             height: 38,
             onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => FrontofficeScreen(app: app)))),
       ]),

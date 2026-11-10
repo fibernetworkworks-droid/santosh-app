@@ -10,21 +10,21 @@ String levelText(Map<String, dynamic> p) {
   final st = p['status'] as String? ?? '';
   final ex = p['executor'] as String? ?? '';
   return switch (st) {
-    'needs_link' => 'Link karein',
-    'needs_key' => 'Key daaliye',
-    'not_connected' => 'Connect karein',
-    'no_device' => 'Device jodiye',
-    'pc_not_paired' => 'PC jodiye',
-    'pc_offline' => 'PC band hai',
-    'no_shop_yet' => 'Dukaan jud rahi hai',
+    'needs_link' => 'Link it',
+    'needs_key' => 'Enter key',
+    'not_connected' => 'Connect',
+    'no_device' => 'Add a device',
+    'pc_not_paired' => 'Add a PC',
+    'pc_offline' => 'PC is off',
+    'no_shop_yet' => 'Shop is being linked',
     'demo' => 'Demo bill',
-    'not_configured' => 'Jald aa raha',
-    'unavailable' => 'Abhi band',
+    'not_configured' => 'Coming soon',
+    'unavailable' => 'Off for now',
     _ => switch (ex) {
-        'handoff' => 'App kholega',
-        'reader' => 'SMS padhega',
-        'upi' => 'UPI app kholega',
-        _ => 'Hoola karega',
+        'handoff' => 'Opens the app',
+        'reader' => 'Reads SMS',
+        'upi' => 'Opens the UPI app',
+        _ => 'Hoola does it',
       },
   };
 }
@@ -40,10 +40,10 @@ String levelGroup(Map<String, dynamic> p) {
 }
 
 Color levelColor(String text) => switch (text) {
-      'Hoola karega' => C.ok,
-      'App kholega' || 'UPI app kholega' => C.teal,
-      'SMS padhega' => C.violet,
-      'Demo bill' || 'Link karein' || 'Key daaliye' || 'Connect karein' || 'Device jodiye' || 'PC jodiye' => C.warn,
+      'Hoola does it' => C.ok,
+      'Opens the app' || 'Opens the UPI app' => C.teal,
+      'Reads SMS' => C.violet,
+      'Demo bill' || 'Link it' || 'Enter key' || 'Connect' || 'Add a device' || 'Add a PC' => C.warn,
       _ => C.faint,
     };
 
@@ -319,15 +319,15 @@ class PluginRow extends StatelessWidget {
 List<String> examplesFor(Map<String, dynamic> p) {
   final n = p['name'] as String? ?? '';
   return switch (p['executor'] as String? ?? '') {
-    'bbps' => ['$n ka bill kitna hai?', '$n ka bill bhar do'],
-    'shop' => ['Paas ki ${n.toLowerCase()} se saamaan mangwao'],
-    'upi' => ['$n se Priya ko 500 bhejo'],
-    'ride' => ['$n se station ke liye cab book karo'],
-    'mcp' => ['$n se order karo', '$n pe kya offer hai?'],
-    'handoff' => ['$n kholo', '$n ka kaam karna hai, details tayaar karo'],
-    'reader' => ['$n ke SMS se is mahine ka kharch batao'],
-    'device' => ['$n se TV / AC chalao'],
-    _ => ['$n se madad chahiye'],
+    'bbps' => ['How much is the $n bill?', '$n ka bill bhar do'],
+    'shop' => ['Order supplies from a nearby ${n.toLowerCase()}'],
+    'upi' => ['Send 500 to Priya with $n'],
+    'ride' => ['Book a cab to the station with $n'],
+    'mcp' => ['Order with $n', 'What offers are on $n?'],
+    'handoff' => ['Open $n', 'I need to do a task on $n, get the details ready'],
+    'reader' => ['Tell me this month\'s spending from the $n SMS'],
+    'device' => ['Run the TV / AC with $n'],
+    _ => ['I need help from $n'],
   };
 }
 
@@ -362,7 +362,7 @@ Future<void> showPluginSheet(BuildContext context, Map<String, dynamic> p, {Widg
             Text(p['does'] as String, style: const TextStyle(color: C.chip, fontSize: 13.5, height: 1.4)),
           ],
           const SizedBox(height: 14),
-          const Text('Hoola se aise kahiye', style: TextStyle(color: C.muted, fontSize: 12, fontWeight: FontWeight.w800)),
+          const Text('Tell Hoola like this', style: TextStyle(color: C.muted, fontSize: 12, fontWeight: FontWeight.w800)),
           const SizedBox(height: 6),
           for (final e in examplesFor(p))
             Padding(

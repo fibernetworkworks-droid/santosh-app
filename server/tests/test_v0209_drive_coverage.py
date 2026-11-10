@@ -20,7 +20,7 @@ NEW = ["drive_details", "drive_access", "drive_trash_list", "drive_delete", "dri
 
 def test_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.530.0"    # conscious-bump guard: moves with every release (bump with pubspec)
+    assert APP_VERSION == "0.758.0"    # conscious-bump guard: moves with every release (bump with pubspec)
 
 
 def test_registry_has_21_tools():
@@ -48,10 +48,10 @@ def test_old_gdrive_path_registers_nothing():
 
 
 def test_card_backed_actions_have_bazar_copy():
-    for act, title in {"unshare": "Sharing hata dein?", "role": "Role badlein?", "transfer": "Ownership de dein?",
-                       "delete": "Hamesha ke liye delete?", "empty_trash": "Poora Trash khaalein?",
-                       "comment": "Comment daalein?", "reply": "Reply daalein?",
-                       "comment_delete": "Comment hatayein?"}.items():
+    for act, title in {"unshare": "Remove sharing?", "role": "Change role?", "transfer": "Transfer ownership?",
+                       "delete": "Delete forever?", "empty_trash": "Empty the whole Trash?",
+                       "comment": "Add comment?", "reply": "Add reply?",
+                       "comment_delete": "Delete comment?"}.items():
         assert TITLES.get(act) == title
 
 

@@ -1,6 +1,7 @@
 ---
 name: seo-page-audit
 description: Audit a web page's SEO basics before publishing
+when_to_use: seo check, seo audit, page ranking, google ranking, meta tags, website seo
 ---
 GOAL: the page is findable and honest before it ships.
 

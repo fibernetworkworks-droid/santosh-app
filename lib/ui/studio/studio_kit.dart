@@ -60,26 +60,26 @@ String secs(Object? s) {
   return '${n ~/ 60}:${(n % 60).toString().padLeft(2, '0')}';
 }
 
-const kindLabel = {'scene': 'Drishya', 'product': 'Product', 'talk': 'Bolta hai', 'dialogue': 'Do log baat', 'link': 'Jodne wala'};
+const kindLabel = {'scene': 'Scene', 'product': 'Product', 'talk': 'Speaks', 'dialogue': 'Two people talking', 'link': 'Connecting'};
 const kindColor = {
   'scene': SC.teal, 'product': Color(0xFF7FB2FF), 'talk': C.accentSoft, 'dialogue': C.accentSoft, 'link': SC.violet,
 };
 const qualityLabel = {'preview': 'Preview', 'draft': 'Draft · 720p', 'final': 'HD · 1080p', 'premium': 'Premium'};
 const qualityShort = {'preview': 'Preview', 'draft': 'Draft', 'final': 'HD', 'premium': 'Premium'};
 const qualityWhat = {
-  'preview': 'Tasveeron se chalti kahani · sirf dekhne ke liye',
-  'draft': 'Seedance 2 Fast · tez, idea jaanchne ko',
+  'preview': 'A story told through pictures · view only',
+  'draft': 'Seedance 2 Fast · quick, to test an idea',
   'final': 'Wan 3.0 kahani · MiniMax H3 product',
-  'premium': 'Seedance 2.5 · film jaisa, sabse saaf chehra',
+  'premium': 'Seedance 2.5 · film-like, sharpest faces',
 };
 const styleLabel = {
-  'reel': 'Reel', 'cinematic': 'Cinematic', 'ad': 'Ad', 'indian_wedding': 'Shaadi', 'documentary': 'Documentary',
+  'reel': 'Reel', 'cinematic': 'Cinematic', 'ad': 'Ad', 'indian_wedding': 'Wedding', 'documentary': 'Documentary',
   'animation_3d': '3D cartoon', 'anime': 'Anime', 'news': 'News style',
 };
 const cameraLabel = {
-  'static': 'Sthir', 'dolly_in': 'Andar', 'dolly_out': 'Bahar', 'pan_left': 'Pan baayein', 'pan_right': 'Pan daayein',
-  'tilt_up': 'Upar', 'tilt_down': 'Neeche', 'orbit': 'Orbit', 'crane_up': 'Crane', 'tracking': 'Peechha',
-  'handheld': 'Haath mein', 'drone': 'Drone', 'zoom_in': 'Zoom', 'whip_pan': 'Jhatka pan',
+  'static': 'Steady', 'dolly_in': 'Indoors', 'dolly_out': 'Outdoors', 'pan_left': 'Pan left', 'pan_right': 'Pan right',
+  'tilt_up': 'Up', 'tilt_down': 'Down', 'orbit': 'Orbit', 'crane_up': 'Crane', 'tracking': 'Back',
+  'handheld': 'In hand', 'drone': 'Drone', 'zoom_in': 'Zoom', 'whip_pan': 'Jerky pan',
 };
 const cameraIcon = {
   'static': Icons.crop_square_rounded, 'dolly_in': Icons.zoom_in_map_rounded, 'dolly_out': Icons.zoom_out_map_rounded,
@@ -89,7 +89,7 @@ const cameraIcon = {
   'whip_pan': Icons.swap_horiz_rounded,
 };
 const moodLabel = {
-  'calm': 'Shaant', 'cinematic': 'Cinematic', 'festive': 'Utsav', 'upbeat': 'Upbeat', 'lofi': 'Lofi', 'corporate': 'Office',
+  'calm': 'Calm', 'cinematic': 'Cinematic', 'festive': 'Festival', 'upbeat': 'Upbeat', 'lofi': 'Lofi', 'corporate': 'Office',
 };
 const langs = [
   ['Hindi', 'हिंदी'], ['Marathi', 'मराठी'], ['English', 'English'], ['Hinglish', 'Hinglish'], ['Tamil', 'தமிழ்'],
@@ -332,7 +332,7 @@ class _SoundButtonState extends State<SoundButton> {
     try {
       var url = widget.url;
       if (url.isEmpty && widget.load != null) url = await widget.load!();
-      if (url.isEmpty) throw 'Abhi sunne ko kuch nahi hai';
+      if (url.isEmpty) throw 'Nothing to listen to yet';
       if (_c == null || _c!.dataSource != widget.app.api!.absolute(url)) {
         await _c?.dispose();
         final c = VideoPlayerController.networkUrl(Uri.parse(widget.app.api!.absolute(url)));
@@ -427,7 +427,7 @@ class _SVideoState extends State<SVideo> {
       }
       setState(() => _c = c);
     } catch (e) {
-      if (mounted) setState(() => _err = 'Video nahi chal paya');
+      if (mounted) setState(() => _err = 'The video did not play');
     }
     if (mounted) setState(() => _busy = false);
   }
@@ -507,7 +507,7 @@ Future<String> localCopy(Santosh app, String url, String name) async {
   final f = File('${dir.path}/$safe');
   if (await f.exists() && await f.length() > 0) return f.path;
   final res = await http.get(Uri.parse(app.api!.absolute(url))).timeout(const Duration(seconds: 180));
-  if (res.statusCode != 200) throw 'Video download nahi ho paya (${res.statusCode})';
+  if (res.statusCode != 200) throw 'The video did not download (${res.statusCode})';
   await f.writeAsBytes(res.bodyBytes);
   return f.path;
 }

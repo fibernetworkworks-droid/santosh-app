@@ -118,13 +118,13 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return S.kb_import(t, file_id=_s(a.get("file_id")), url=_s(a.get("url")), text=_s(a.get("text")))
         if action == "kb_approve":
             if not _owner(ctx):
-                raise ToolError("Gyaan ko manzoori sirf owner deti hain.")
+                raise ToolError("Only the owner approves knowledge.")
             return S.kb_approve(t, a.get("ids") or _s(a.get("entry_id")))
         if action == "kb_edit":
             return S.kb_edit(t, _s(a.get("entry_id")), **{k: a[k] for k in ("question", "answer", "aliases", "kind") if k in a})
         if action == "kb_remove":
             if not _owner(ctx):
-                raise ToolError("Sirf owner.")
+                raise ToolError("Owner only.")
             return S.kb_remove(t, _s(a.get("entry_id")))
         if action == "ask":
             return S.answer(t, _s(a.get("question") or a.get("text")), "test")
@@ -132,7 +132,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return S.macro_add(t, _s(a.get("name")), _s(a.get("text")), _s(a.get("lang")))
         if action == "macro_approve":
             if not _owner(ctx):
-                raise ToolError("Taiyaar jawab ko manzoori sirf owner deti hain.")
+                raise ToolError("Only the owner approves a ready answer.")
             return S.macro_approve(t, _s(a.get("macro_id")))
         if action == "ticket":
             return S.new_ticket(t, _s(a.get("text")), _s(a.get("channel")) or "phone", "", _s(a.get("name")), _s(a.get("phone")),
@@ -149,20 +149,20 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         if action == "exception":
             out = S.exception_request(t, _s(a.get("kind")) or "refund", _s(a.get("reason")), a.get("amount") or 0, tk, a.get("days_since"),
                                       _by(ctx), conv)
-            return out | {"needs_tap": True, "note": "Card bhej diya. Faisla sirf owner ki tap se hota hai; khud haan mat kaho."}
+            return out | {"needs_tap": True, "note": "Card sent. The decision is made only by the owner's tap; do not say yes yourself."}
         if action == "sent":
             if not _owner(ctx):
-                raise ToolError("Paise bhejne ki pushti sirf owner.")
+                raise ToolError("Only the owner can confirm sending money.")
             return S.mark_sent(t, _s(a.get("exception_id")), _s(a.get("ref")))
         if action == "csat":
             return S.csat(t, tk, a.get("score") or 0, _s(a.get("comment")))
         if action == "settings":
             if not _owner(ctx):
-                raise ToolError("Seva ke niyam sirf owner badalti hain.")
+                raise ToolError("Only the owner changes Seva rules.")
             return S.save_settings(t, **{k: a[k] for k in _SETTINGS_KEYS if k in a})
     except S.SevaError as ex:
         raise ToolError(str(ex))
-    raise ToolError("action galat")
+    raise ToolError("invalid action")
 
 
 def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
@@ -192,13 +192,13 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
             return S.settings(t)
         if what == "rules":
             return {"never": list(R.NEVER), "sla_default": R.SLA_DEFAULT, "presets": R.SLA_PRESETS,
-                    "law": {"ecommerce": "Grievance officer: 48 ghante mein pavti, 1 mahine mein hal (E-Commerce Rules 2020)",
-                            "dpdp": "Data se judi shikayat 90 din (DPDP Rules 2025; mukhya niyam 13 May 2027 se)",
-                            "upi": "Fail UPI / IMPS: T+1 mein wapas, der par ₹100 roz bank deta hai (RBI 20 Sep 2019)",
+                    "law": {"ecommerce": "Grievance officer: acknowledgement in 48 hours, resolution in 1 month (E-Commerce Rules 2020)",
+                            "dpdp": "Data-related complaint: 90 days (DPDP Rules 2025; main rules from 13 May 2027)",
+                            "upi": "Failed UPI / IMPS: refund by T+1, and the bank pays ₹100 a day for delay (RBI 20 Sep 2019)",
                             "consumer": "National Consumer Helpline 1915, e-Jagriti"}}
     except S.SevaError as ex:
         raise ToolError(str(ex))
-    raise ToolError("what galat")
+    raise ToolError("invalid what")
 
 
 async def seva(ctx: Ctx, action, **a: Any):
@@ -237,7 +237,7 @@ async def biz_seva_ticket(ctx: Ctx, text: str = "", category: str = "", **_):
         raise ToolError(str(ex))
     v = out["ticket"]
     return {"ticket": out["number"], "status_line": out["status_line"], "duplicate": bool(out.get("duplicate")),
-            "priority": v["priority"], "note": "Graahak ko ticket number aur status line batao. Samay ka waada mat karo."}
+            "priority": v["priority"], "note": "Tell the customer the ticket number and the status line. Do not promise a time."}
 
 
 async def biz_seva_status(ctx: Ctx, number: str = "", **_):

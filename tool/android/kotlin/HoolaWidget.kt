@@ -51,9 +51,9 @@ class HoolaWidget : AppWidgetProvider() {
             val p = prefs(ctx)
             val v = RemoteViews(ctx.packageName, R.layout.hoola_widget)
             v.setTextViewText(R.id.w_name, p.getString("w_name", "")?.ifBlank { "Hoola" } ?: "Hoola")
-            v.setTextViewText(R.id.w_last, p.getString("w_last", "")?.ifBlank { "Namaste! Bolo ya likho, main sun raha hoon." } ?: "")
+            v.setTextViewText(R.id.w_last, p.getString("w_last", "")?.ifBlank { "Hello! Speak or type, I am listening." } ?: "")
             val next = p.getString("w_next", "") ?: ""
-            v.setTextViewText(R.id.w_next, if (next.isBlank()) "Koi reminder nahi" else "⏰ $next")
+            v.setTextViewText(R.id.w_next, if (next.isBlank()) "No reminders" else "⏰ $next")
             val flags = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             val talk = Intent(ctx, MainActivity::class.java).setAction(WakeService.ACTION_WAKE).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             v.setOnClickPendingIntent(R.id.w_talk, PendingIntent.getActivity(ctx, 41, talk, flags))

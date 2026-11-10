@@ -60,7 +60,7 @@ def test_a_step_note_passed_either_way_lands_in_the_same_place(gz):  # noqa: F81
 # ---------------------------------------------------------------- 2. no backend text in her chat
 def test_the_try_another_way_line_carries_no_raw_error():
     src = (ROOT / "server/app/agent/pakka.py").read_text()
-    assert 'say = "Yeh raasta nahi chala — ek doosra tareeka try karta hoon…"' in src
+    assert 'say = "That route did not work - trying another way…"' in src
     assert 'say = f"Yeh raasta nahi chala ({reason})' not in src
     # the detail is NOT lost - the step chip still carries it, one click away
     agent = (ROOT / "server/app/agent/santosh.py").read_text()
@@ -89,7 +89,7 @@ def test_a_finished_job_does_not_report_twice_when_the_turn_already_did():
     assert "in_history" in src                                # progress notes are not an answer
     assert "len(text) >= 40" in src                           # nor is a one-word ack
     tick = (ROOT / "server/app/kaam_followup.py").read_text()
-    assert '_recent_said(conv, title) or _answered_since(conv, getattr(r, "created_at", None))' in tick
+    assert '_recent_said(conv, title) or _answered_since(conv, getattr(r, "created_at", None), key=key, tenant=tenant)' in tick   # v0.552 + the job identity
     assert K._answered_since("missing-conv", None) is False   # no timestamp = never block the news
 
 
@@ -106,16 +106,16 @@ def test_the_between_step_narration_still_stands():
     from app.config import get_settings
     st = get_settings()
     assert st.agent_narrate_every == 1 and st.agent_narrate_max == 6
-    assert "asli number / id / naam / link" in G.NARRATE
+    assert "real number / id / name / link" in G.NARRATE
     assert "12 naye mails aaye" in G.narrate_line(["12 naye mails aaye"])
     p = (ROOT / "server/app/agent/prompts.py").read_text()
-    assert "CHALTE CHALTE BOLO" in p and "bade kaam se PEHLE ek vaakya" in p
+    assert "TALK AS YOU WORK" in p and "BEFORE a big job, one sentence" in p
 
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.530.0"
-    assert "0.530.0+553" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.758.0"
+    assert "0.758.0+757" in (ROOT / "pubspec.yaml").read_text()
 
 
 from tests.test_bazar import bz  # noqa: E402,F401

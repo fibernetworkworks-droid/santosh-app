@@ -343,7 +343,7 @@ object VoiceAudio {
         }
         if (r == null) {
             undoSetup(am)
-            return "Microphone shuru nahi ho paya"
+            return "Could not start the microphone"
         }
         val t = try {
             openTrack()
@@ -351,7 +351,7 @@ object VoiceAudio {
             r.release()
             releaseEffects()
             undoSetup(am)
-            return "Speaker shuru nahi ho paya"
+            return "Could not start the speaker"
         }
         record = r
         track = t

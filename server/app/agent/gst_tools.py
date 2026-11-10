@@ -25,8 +25,8 @@ GST_TOOLS = [
         "what she decided. action=ims_apply: client, period (puts her decisions on the portal). "
         "action=gstr1: client, period (YYYY-MM; QRMP quarter = its last month; IFF for months 1-2). action=gstr3b: client, "
         "period, other_reversal {igst, cgst, sgst}. action=cmp08: client, period, turnover. "
-        "action=decide: return_id, approve, note: ONLY when she herself says haan / mana. action=file: return_id (after her "
-        "haan; Computer Operator fills the portal and stops before submit; EVC OTP + challan are the taxpayer's). "
+        "action=decide: return_id, approve, note: ONLY when she herself says yes / no. action=file: return_id (after her "
+        "yes; Computer Operator fills the portal and stops before submit; EVC OTP + challan are the taxpayer's). "
         "action=filed: return_id, arn, filed_on. action=json: return_id (GSTR-1 JSON + review Excel as files). "
         "action=supplier_drafts: client, period (messages to suppliers whose bills are missing in 2B). "
         "action=ask_bills: client, period (draft to the client). action=tax_message: return_id (draft: tax to pay). "
@@ -108,11 +108,11 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return G.fetch_2b(t, _s(a.get("client")), _s(a.get("period")), conv, by)
         if action == "ims":
             if not _owner(ctx):
-                raise ToolError("IMS ka faisla sirf owner.")
+                raise ToolError("Only the owner decides on IMS.")
             return G.ims_decide(t, _s(a.get("client")), _s(a.get("period")), a.get("decisions") or {}, by)
         if action == "ims_apply":
             if not _owner(ctx):
-                raise ToolError("Portal par IMS sirf owner ki haan se.")
+                raise ToolError("IMS on the portal only with the owner's approval.")
             return G.ims_apply(t, _s(a.get("client")), _s(a.get("period")), conv, by)
         if action == "gstr1":
             return G.prepare_gstr1(t, _s(a.get("client")), _s(a.get("period")), conv)
@@ -122,11 +122,11 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return G.prepare_cmp08(t, _s(a.get("client")), _s(a.get("period")), a.get("turnover"), conv)
         if action == "decide":
             if not _owner(ctx):
-                raise ToolError("Return par haan sirf owner de sakti hain.")
+                raise ToolError("Only the owner can approve a return.")
             return G.decide(t, _s(a.get("return_id")), bool(a.get("approve")), _s(a.get("note")), conv)
         if action == "file":
             if not _owner(ctx):
-                raise ToolError("Filing sirf owner ki haan se.")
+                raise ToolError("Filing only with the owner's approval.")
             return G.file_return(t, _s(a.get("return_id")), conv, by)
         if action == "filed":
             return G.mark_filed(t, _s(a.get("return_id")), _s(a.get("arn")), _s(a.get("filed_on")), by, conv)
@@ -151,7 +151,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return G.notice_status(t, _s(a.get("notice_id")), _s(a.get("status")))
         if action == "settings":
             if not _owner(ctx):
-                raise ToolError("Settings sirf owner.")
+                raise ToolError("Settings are for the owner only.")
             keys = ("practitioner", "enrolment", "morning_time", "remind_days")
             return {"settings": G.save_settings(t, **{k: a[k] for k in keys if k in a}), "say": "Save."}
     except (G.GstError, ValueError) as e:

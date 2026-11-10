@@ -5,7 +5,7 @@ Before this, every call scorecard lived only in `voice.STATS` (a deque in memory
 them, so "is the call better after this version?" could not be answered. Now each finished call writes ONE compact
 line to `data/voice_calls/<tenant>.jsonl` (last 300 kept). Numbers and labels only - never words, never audio.
 
-`grade()` turns a scorecard into good / ok / bad + plain Hinglish problems. `quality()` rolls the saved calls up
+`grade()` turns a scorecard into good / ok / bad + plain English problems. `quality()` rolls the saved calls up
 (per version too, so a release can be compared with the one before). The ear test and the phone checklist are fixed
 scenarios she plays on her own phone; her pass / fail is saved per app version.
 

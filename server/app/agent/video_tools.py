@@ -51,20 +51,20 @@ def _run(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
                          a.get("music_file_id") or "", a.get("title") or "", ctx.conversation_id,
                          created_by=getattr(ctx, "actor", "owner") or "owner")
             return {"job_id": v["id"], "status": v["status"], "platform": v["platform_label"],
-                    "say": "Edit shuru ho gaya: card mein progress dikhega aur video taiyaar hote hi yahin aa jayegi "
-                           "(1-5 minute). Tab tak kuch aur poochh sakti hain.",
+                    "say": "Edit started: progress shows on the card and the video arrives here as soon as it is ready "
+                           "(1-5 minutes). She can ask something else meanwhile.",
                     "note_for_you": "Do not poll; the finished video arrives as a card + message by itself."}
         job = a.get("job_id") or vs.latest_id(ctx.tenant_id)
         if action == "list":
             return {"jobs": [_short(v) for v in vs.listing(ctx.tenant_id, 10)]}
         if not job:
-            raise ToolError("Abhi koi video job nahi hai.")
+            raise ToolError("There is no video job right now.")
         if action == "status":
             return _short(vs.get(ctx.tenant_id, job))
         if action == "revise":
             v = vs.revise(ctx.tenant_id, job, a.get("instruction") or "")
             return {"job_id": v["id"], "status": v["status"],
-                    "say": "Badlav shuru: naya version card mein aayega (pehle wale clips cache se, isliye jaldi)."}
+                    "say": "Change started: the new version will arrive on the card (earlier clips come from cache, so it is quick)."}
         if action == "cancel":
             return _short(vs.cancel(ctx.tenant_id, job))
     except vs.VideoError as e:

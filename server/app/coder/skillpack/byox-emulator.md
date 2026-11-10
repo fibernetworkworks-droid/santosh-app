@@ -1,6 +1,7 @@
 ---
 name: byox-emulator
 description: Build a CHIP-8 or bytecode VM: fetch-decode-execute
+when_to_use: emulator, chip-8, virtual machine, bytecode vm, game console emulator
 ---
 GOAL: run real CHIP-8 ROMs correctly; pass the official test ROM.
 

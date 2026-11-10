@@ -79,6 +79,10 @@ POST   /api/gamedesk/liveops/{sid}/crashes/{sig}/hotfix | /patch_check | /money 
 GET    /play/{token}/live                       what the game reads: running tests + approved events (same host)
 GET|POST /api/gamedesk/big[/{pid}/tasks[/{tno}[/reopen]]]   v0.433 big-studio projects in Unity / Unreal / Godot
 GET    /api/gamedesk/big/plugin/{unity|unreal}.zip   the Hoola Crew editor plugin (MCP client; writes only on her Apply)
+GET|POST /api/gamedesk/scenes/{sid}[/{name}/approve|reject]  v0.456 scenes as CHECKED DATA: the model writes a spec,
+       Hoola generates the .tscn and loads it in the real engine; a scene may never carry script source
+GET    /api/gamedesk/provenance/{sid}[/steam]   v0.455 where every shipped piece came from, the human record, and
+       a DRAFT store answer she signs (generated / code-made / her own files kept apart)
 GET|POST /api/gamedesk/arena[/briefs|/{rid}[/stop]|/compare/{a}/{b}|/duel]  v0.447 Game Arena (owner only): fixed briefs,
        runs judged by PLAYING, measured originality, run-vs-run compare, blind duels vs a rival's public game
 GET    /api/gamedesk/editor/tokens  POST {label} (shown ONCE)  DELETE /api/gamedesk/editor/tokens/{id}
@@ -826,6 +830,40 @@ def make_router(require_key, current_tenant) -> APIRouter:
         _owner_game_dev(tenant)
         b = _b(body)
         return await call(LO.import_revenue, tenant, sid, str(b.get("csv") or ""), str(b.get("source") or ""))
+
+    # ------------------------------------------------------------ v0.456 Scenes as checked data (the ceiling)
+    from . import scene as SC
+
+    @r.get("/api/gamedesk/scenes/{sid}", dependencies=[Depends(require_key)])
+    async def sc_view(sid: str, tenant: str = Depends(current_tenant)):
+        return await call(SC.view, tenant, sid)
+
+    @r.post("/api/gamedesk/scenes/{sid}", dependencies=[Depends(require_key)])
+    async def sc_new(sid: str, body: Any = Body(default=None), tenant: str = Depends(current_tenant)):
+        _owner_game_dev(tenant)
+        b = _b(body)
+        return await call(SC.propose, tenant, sid, str(b.get("words") or ""), str(b.get("name") or ""))
+
+    @r.post("/api/gamedesk/scenes/{sid}/{name}/approve", dependencies=[Depends(require_key)])
+    async def sc_ok(sid: str, name: str, tenant: str = Depends(current_tenant)):
+        _owner_game_dev(tenant)
+        return await call(SC.approve, tenant, sid, name)
+
+    @r.post("/api/gamedesk/scenes/{sid}/{name}/reject", dependencies=[Depends(require_key)])
+    async def sc_no(sid: str, name: str, tenant: str = Depends(current_tenant)):
+        _owner_game_dev(tenant)
+        return await call(SC.reject, tenant, sid, name)
+
+    # ------------------------------------------------------------ v0.455 Provenance (what shipped, and what is hers)
+    from . import provenance as PV
+
+    @r.get("/api/gamedesk/provenance/{sid}", dependencies=[Depends(require_key)])
+    async def pv_sheet(sid: str, tenant: str = Depends(current_tenant)):
+        return await call(PV.sheet, tenant, sid)
+
+    @r.get("/api/gamedesk/provenance/{sid}/steam", dependencies=[Depends(require_key)])
+    async def pv_steam(sid: str, tenant: str = Depends(current_tenant)):
+        return await call(PV.steam_survey, tenant, sid)
 
     # ------------------------------------------------------------ v0.447 Game Arena (is a Hoola game any good? as numbers)
     from . import arena as AR

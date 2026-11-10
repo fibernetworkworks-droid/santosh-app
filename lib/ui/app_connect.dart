@@ -43,10 +43,10 @@ class _AppConnectPanelState extends State<AppConnectPanel> {
       builder: (c) => AlertDialog(
         title: Text('Approve: ${_s(a['label'])}?'),
         content: Text('${_s(lv['method'])} ${_s(lv['host'])}\nKab: ${_s(lv['when'])}\nBhejega: ${(lv['fields'] as List? ?? const []).join(', ')}\n'
-            'Chaabi: ${(lv['secrets'] as List? ?? const []).join(', ')}'),
+            'Key: ${(lv['secrets'] as List? ?? const []).join(', ')}'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Nahi')),
-          FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('Haan, approve')),
+          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('No')),
+          FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('Yes, approve')),
         ],
       ),
     );
@@ -70,12 +70,12 @@ class _AppConnectPanelState extends State<AppConnectPanel> {
       Row(children: [
         const Icon(Icons.hub_rounded, color: C.muted, size: 20),
         const SizedBox(width: 6),
-        Expanded(child: Text('Connectors (${acts.where((a) => a['approved'] == true).length} chalu)', style: display(15))),
-        IconButton(onPressed: _load, icon: const Icon(Icons.refresh_rounded, color: C.muted, size: 20), tooltip: 'Taaza karo'),
+        Expanded(child: Text('Connectors (${acts.where((a) => a['approved'] == true).length} on)', style: display(15))),
+        IconButton(onPressed: _load, icon: const Icon(Icons.refresh_rounded, color: C.muted, size: 20), tooltip: 'Refresh'),
       ]),
-      const Text('Courier / SMS / WhatsApp / e-mail / Sheets / accounts aapki chaabi se. Har connector aapke approve karne par hi chalta hai. '
-          'Naya pack aur chaabi web console ke app page par jodiye.', style: TextStyle(color: C.muted, fontSize: 12)),
-      if (acts.isEmpty) const Text('Abhi koi connector nahi.', style: TextStyle(color: C.muted, fontSize: 12.5)),
+      const Text('Courier / SMS / WhatsApp / e-mail / Sheets / accounts with your key. Every connector runs only when you approve it. '
+          'Add a new pack and key on the app page of the web console.', style: TextStyle(color: C.muted, fontSize: 12)),
+      if (acts.isEmpty) const Text('No connectors yet.', style: TextStyle(color: C.muted, fontSize: 12.5)),
       for (final a in acts)
         ListTile(
           dense: true,
@@ -88,7 +88,7 @@ class _AppConnectPanelState extends State<AppConnectPanel> {
         ),
       if (runs.isNotEmpty) ...[
         const SizedBox(height: 4),
-        Text('Pichhle runs', style: display(13.5)),
+        Text('Previous runs', style: display(13.5)),
         for (final x in runs.take(6))
           Text('${_s(x['at']).length >= 16 ? _s(x['at']).substring(11, 16) : ''} · ${_s(x['action'])} · ${_s(x['status'])}${_s(x['note']).isNotEmpty ? ' · ${_s(x['note'])}' : ''}',
               style: const TextStyle(color: C.muted, fontSize: 12), maxLines: 2, overflow: TextOverflow.ellipsis),

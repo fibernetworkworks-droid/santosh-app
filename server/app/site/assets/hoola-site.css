@@ -39,6 +39,7 @@ p{margin:0 0 1em;text-wrap:pretty}
 .btns{display:flex;flex-wrap:wrap;gap:12px;margin-top:1.4em}
 .pill{display:inline-flex;align-items:center;gap:.4em;padding:.35em .9em;border-radius:99px;background:color-mix(in srgb,var(--c-primary) 12%,transparent);color:var(--c-primary-text);font-weight:600;font-size:.88rem}
 .blank{background:#fff3b0;color:#5c4400;padding:0 .3em;border-radius:4px;font-style:normal}
+.blank.eg{background:none;color:inherit;padding:0;border-radius:0;font-style:inherit;text-decoration:underline dotted;text-decoration-color:color-mix(in srgb,currentColor 40%,transparent);text-underline-offset:.2em}
 /* header / nav */
 .hs-head{position:sticky;top:0;z-index:50;background:color-mix(in srgb,var(--c-bg) 88%,transparent);backdrop-filter:saturate(1.4) blur(10px);
   -webkit-backdrop-filter:saturate(1.4) blur(10px);transition:box-shadow .3s}
@@ -65,7 +66,7 @@ p{margin:0 0 1em;text-wrap:pretty}
 /* footer */
 .hs-foot{background:var(--c-ink);color:color-mix(in srgb,var(--c-bg) 85%,transparent);padding:56px 0 96px;font-size:.95rem}
 .hs-foot a{color:inherit}
-.hs-foot h3{color:var(--c-bg);font-size:1rem;margin-bottom:.8em}
+.hs-foot h2,.hs-foot h3{color:var(--c-bg);font-size:1rem;margin-bottom:.8em}
 .hs-foot ul{list-style:none;margin:0;padding:0;display:grid;gap:8px}
 .hs-foot .hs-legal{margin-top:36px;padding-top:18px;border-top:1px solid color-mix(in srgb,var(--c-bg) 18%,transparent);font-size:.85rem;opacity:.8;display:flex;flex-wrap:wrap;gap:8px 20px;justify-content:space-between}
 /* floating actions */
@@ -118,7 +119,7 @@ details.faq[open] summary::after{transform:rotate(45deg)}
 @media print{.hs-head,.hs-float,.hs-foot{display:none}}
 /* v0.292 one icon set (Lucide) */
 .hs-ic{display:inline-block;width:1.25em;height:1.25em;flex:none;vertical-align:-.22em;stroke-width:2}
-.hs-ai-note{font-size:.85rem;margin:.8em 0 0}
+.hs-ai-note{font-size:.85rem;margin:.8em 0 0}.hs-credits{font-size:.85rem;margin:.6em 0 0}.hs-credits a{color:inherit;text-decoration:underline;text-underline-offset:2px}
 /* v0.301 live features: map / video load on tap, booking slots, UPI pay */
 .hs-map,.hs-video{margin:0;border-radius:var(--radius);overflow:hidden;background:var(--c-surface);border:1px solid var(--c-line)}
 .hs-map.on iframe,.hs-video.on iframe{display:block;width:100%;border:0;aspect-ratio:16/9;min-height:260px}
@@ -369,3 +370,57 @@ form[data-hoola-calc] output{font-family:var(--font-head),sans-serif;font-weight
 .hs-typing{min-height:1.2em;margin:.25rem 0}.hs-threads{list-style:none;padding:0}.hs-threads li{padding:.5rem 0;border-bottom:1px solid var(--c-line,#e6e4ea)}
 .hs-queue-board,.hs-queue-mine{text-align:center;margin-bottom:1rem}.hs-queue-add{display:flex;flex-wrap:wrap;gap:.5rem;margin:1rem 0}
 .hs-queue-add input{flex:1 1 10rem;min-width:0}.hs-q-done td{opacity:.6}.hs-q-called td{font-weight:600}
+/* v0.538 catalogue: filter bar, card grid, pager, item page */
+.hs-cat-filter{display:flex;flex-wrap:wrap;gap:.5rem .75rem;align-items:end;margin:0 0 1rem}
+.hs-cat-filter label{display:flex;flex-direction:column;gap:.2rem;font-size:.85rem;min-width:0}
+.hs-cat-filter .hs-cat-q{flex:1 1 14rem}.hs-cat-filter input,.hs-cat-filter select{min-width:0;max-width:100%}
+.hs-cat-grid{list-style:none;padding:0;margin:0;display:grid;gap:1rem;grid-template-columns:repeat(auto-fill,minmax(min(100%,11rem),1fr))}
+.hs-cat-card a{display:flex;flex-direction:column;gap:.35rem;text-decoration:none;color:inherit;height:100%}
+.hs-cat-img{width:100%;height:auto;aspect-ratio:1/1;object-fit:cover;border-radius:var(--radius,10px);background:var(--c-soft,#f4f3f7)}
+.hs-cat-t{font-weight:600;line-height:1.3;overflow-wrap:anywhere}.hs-cat-p{font-weight:600}.hs-cat-s{font-size:.85rem;opacity:.75}
+.hs-pager{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;justify-content:center;margin:1.5rem 0 0}
+.hs-pager ol{list-style:none;display:flex;flex-wrap:wrap;gap:.25rem;padding:0;margin:0}
+.hs-pager a{display:inline-block;min-width:2.5rem;padding:.4rem .6rem;text-align:center;border:1px solid var(--c-line,#e6e4ea);border-radius:8px;text-decoration:none}
+.hs-pager a[aria-current]{font-weight:700;border-color:currentColor}.hs-pg-gap{padding:.4rem}
+.hs-cat-more{display:block;margin:1rem auto 0}.hs-cat-lists{list-style:none;display:flex;flex-wrap:wrap;gap:.5rem;padding:0;margin:0 0 1rem}
+.hs-cat-item-grid{display:grid;gap:1.5rem}@media(min-width:800px){.hs-cat-item-grid{grid-template-columns:1fr 1fr;align-items:start}}
+.hs-cat-photo img{width:100%;height:auto;border-radius:var(--radius,10px)}
+.hs-cat-facts{display:grid;grid-template-columns:auto 1fr;gap:.35rem 1rem;margin:1rem 0}.hs-cat-facts div{display:contents}
+.hs-cat-facts dt{opacity:.75}.hs-cat-facts dd{margin:0;overflow-wrap:anywhere}
+/* v0.551 the hidden honeypot on every enquiry form (bots fill it, people never see it) */
+form[data-hoola-form] .hp{position:absolute;left:-9999px;width:1px;height:1px;min-height:0;padding:0;border:0;opacity:0}
+.cf-turnstile{margin:.5rem 0}
+
+/* v0.567 KOI BHI DESIGN: rich pieces (quiz, configurator, comparison) + scroll-driven motion (CSS only) */
+form[data-hoola-quiz] [data-q],form[data-hoola-config] fieldset{border:1px solid var(--c-line);border-radius:var(--radius);padding:14px 16px;margin:0 0 12px}
+form[data-hoola-quiz] legend,form[data-hoola-config] legend{font-weight:600;padding:0 6px}
+form[data-hoola-quiz] label,form[data-hoola-config] label{display:flex;gap:10px;align-items:center;padding:6px 0;cursor:pointer}
+form[data-hoola-quiz] [data-result-panel]{border-left:4px solid var(--c-primary);padding:12px 16px;margin-top:12px;background:var(--c-surface);border-radius:var(--radius)}
+form[data-hoola-quiz] [data-result-panel]:focus{outline:2px solid var(--c-primary);outline-offset:2px}
+form[data-hoola-config] [data-config-summary]{display:block;color:var(--c-muted);margin:8px 0}
+[data-hoola-compare-table] table{width:100%;border-collapse:collapse}
+[data-hoola-compare-table] th,[data-hoola-compare-table] td{padding:10px 12px;border-bottom:1px solid var(--c-line);text-align:left}
+[data-hoola-compare-table] .hs-pick{background:color-mix(in srgb,var(--c-primary) 10%,transparent)}
+[data-hoola-compare-table] button[aria-pressed="true"]{background:var(--c-primary);color:var(--c-on-primary)}
+@supports (animation-timeline: view()){
+  @media (prefers-reduced-motion: no-preference){
+    [data-m~="scrub"]{animation:hs-scrub linear both;animation-timeline:view();animation-range:entry 0% cover 35%}
+    [data-m~="scrub-x"]{animation:hs-scrub-x linear both;animation-timeline:view();animation-range:entry 0% cover 40%}
+    [data-m~="scrub-scale"]{animation:hs-scrub-scale linear both;animation-timeline:view();animation-range:entry 0% cover 45%}
+  }
+}
+@keyframes hs-scrub{from{opacity:.15;transform:translateY(48px)}to{opacity:1;transform:none}}
+@keyframes hs-scrub-x{from{opacity:.15;transform:translateX(-56px)}to{opacity:1;transform:none}}
+@keyframes hs-scrub-scale{from{opacity:.3;transform:scale(.88)}to{opacity:1;transform:none}}
+
+/* v0.568 LOTTIE + 3D HERO: sizes before the scripts arrive (no layout shift), graceful when they never do */
+[data-hoola-lottie]{display:inline-block;width:120px;aspect-ratio:1/1;vertical-align:middle}
+[data-hoola-lottie] svg{display:block;width:100%!important;height:100%!important}
+[data-hoola-lottie-off],[data-hoola-lottie-missing]{visibility:hidden}
+[data-hoola-3d]{position:relative;width:100%;min-height:320px;aspect-ratio:16/10;overflow:hidden;
+  background:radial-gradient(60% 60% at 50% 45%,color-mix(in srgb,var(--c-primary) 22%,transparent),transparent 70%)}
+[data-hoola-3d] canvas{position:absolute;inset:0}
+@media (max-width:640px){[data-hoola-3d]{min-height:240px;aspect-ratio:4/3}}
+
+/* v0.581 a lesson's video / YouTube player in the website's app pages */
+.hs-appx-video{display:block;width:100%;max-width:720px;aspect-ratio:16/9;border:0;border-radius:var(--radius);background:#000}

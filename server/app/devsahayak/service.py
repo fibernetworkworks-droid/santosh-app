@@ -29,7 +29,7 @@ import json
 import logging
 import re
 from datetime import datetime, timedelta, timezone
-from typing import Any
+from typing import Any, Callable
 
 from sqlalchemy import select
 
@@ -97,7 +97,7 @@ Rules:
   for a new or small file you may give the whole `content`.
 
 Reply with ONE JSON object:
-{"explain": "plain Hinglish for the owner: what was wrong / what you did, 2-5 lines",
+{"explain": "plain English for the owner: what was wrong / what you did, 2-5 lines",
  "cause": "one line root cause (fix / explain only)",
  "files": [{"path": "repo/relative/path", "why": "one line", "edits": [{"find": "...", "replace": "..."}]}
            or {"path": "...", "why": "...", "content": "full new file text"}],
@@ -364,13 +364,17 @@ def task_view(t: DevTask, full: bool = False) -> dict[str, Any]:
          "tier": t.tier or "", "plan": _j(t.plan or "", {}),
          "self_round": int(t.self_round or 0), "self_review": _j(t.self_review or "", {}),
          "proof": _j(t.proof or "", {}),
-         "at": t.created_at.isoformat() if t.created_at else ""}
+         "running": t.id in _RUNNING, "stopping": t.id in _STOP,
+         "at": t.created_at.isoformat() if t.created_at else "",
+         "updated": t.updated_at.isoformat() if t.updated_at else ""}
     if full:
         v["text"] = t.text
         v["found"] = _j(t.found, {})
         v["diff"] = "\n".join(c.get("diff", "") for c in ch)[:40000]
         v["pr_body"] = t.pr_body
         v["log"] = _j(t.log, [])
+        v["steps"] = _j(t.steps or "", [])
+        v["notes_waiting"] = len(_j(t.notes or "", []))
     return v
 
 
@@ -629,7 +633,7 @@ def _ask_model(t: DevTask, context: str, rules: str, extra: str = "") -> dict[st
     ask = {"write": "Write the code she asks for.", "fix": "Find the root cause of this bug, explain it, and fix it WITH a test.",
            "tests": "Write tests for the code she names (no behaviour change unless a test proves a bug: then say so in risk).",
            "docs": "Write / update the docs she asks for (README, docstrings, comments, API docs). No code behaviour change.",
-           "explain": "Explain this bug in plain Hinglish: where, why, how to fix. Do NOT change files (files: [])."}[t.kind]
+           "explain": "Explain this bug in plain English: where, why, how to fix. Do NOT change files (files: [])."}[t.kind]
     prompt = (f"Task kind: {t.kind}. {ask}\nRepo: {t.repo} (base branch {t.base}).\n"
               + (f"Her coding rules: {rules}\n" if rules else "")
               + f"\n<request>\n{t.text}\n</request>\n\n"
@@ -766,6 +770,158 @@ def _progress(tid: str, line: str) -> None:
         log.debug("dev progress line failed", exc_info=True)
 
 
+# ---------------------------------------------------------------- v0.748 HOOLA CODE: the console's live session
+_RUNNING: set[str] = set()      # tasks whose work runs in a background thread right now (this process)
+_STOP: set[str] = set()         # her Stop: the loop ends at its next step
+MAX_STEPS = 400
+
+
+class _Step:
+    """The step callback handed to loop.run / plan_run: called with the old one-line log (unchanged), plus three
+    optional hooks the loop looks for - event (a structured step for the page), inbox (her notes while it works),
+    stopped (her Stop)."""
+
+    def __init__(self, tid: str):
+        self.tid = tid
+
+    def __call__(self, line: str) -> None:
+        _progress(self.tid, line)
+
+    def event(self, ev: dict[str, Any]) -> None:
+        try:
+            with session() as s:
+                row = s.get(DevTask, self.tid)
+                if row is None:
+                    return
+                steps = _j(row.steps or "", [])
+                steps.append({**ev, "at": now().isoformat()})
+                row.steps = json.dumps(steps[-MAX_STEPS:])
+        except Exception:
+            log.debug("dev step event failed", exc_info=True)
+
+    def inbox(self) -> list[str]:
+        return _take_notes(self.tid)
+
+    def stopped(self) -> bool:
+        return self.tid in _STOP
+
+
+def _take_notes(tid: str) -> list[str]:
+    with session() as s:
+        row = s.get(DevTask, tid)
+        if row is None or not row.notes:
+            return []
+        notes = [str(x) for x in _j(row.notes, [])]
+        row.notes = None
+        return notes
+
+
+def add_note(tenant: str, ref: str, text: str) -> dict[str, Any]:
+    """Her words while the work runs: the loop reads them before its next step (never mid-tool)."""
+    clean, warn = _clean_text(text)
+    if not clean:
+        raise DevError("Write what Hoola should know.")
+    with session() as s:
+        t = _find_task(s, tenant, ref)
+        if t.id not in _RUNNING:
+            raise DevError("Hoola is not working on this right now - use 'Ask for a change' instead.")
+        notes = _j(t.notes or "", [])
+        notes.append(clean[:2000])
+        t.notes = json.dumps(notes[-10:])
+        _log(t, "her note while working")
+    return {"ok": True, "queued": True, "warn": warn.strip()}
+
+
+def stop(tenant: str, ref: str) -> dict[str, Any]:
+    """Stop a running job at its next step. Nothing half-made is pushed; a PR already open stays as it is."""
+    with session() as s:
+        t = _find_task(s, tenant, ref)
+        tid = t.id
+    if tid not in _RUNNING:
+        return cancel(tenant, ref)
+    _STOP.add(tid)
+    return {"ok": True, "stopping": True}
+
+
+def running(tid: str) -> bool:
+    return tid in _RUNNING
+
+
+def _in_thread(tenant: str, tid: str, fn: Callable[..., Any], *a: Any, **kw: Any) -> dict[str, Any]:
+    """Run one piece of the work in the background so the page can watch it; errors land on the task row."""
+    import threading
+    if tid in _RUNNING:
+        raise DevError("Hoola is already working on this.")
+    _RUNNING.add(tid)
+    _STOP.discard(tid)
+
+    def go() -> None:
+        from . import loop as L
+        try:
+            fn(*a, **kw)
+        except L.Stopped:
+            with session() as s:
+                row = s.get(DevTask, tid)
+                if row is not None and row.status not in ("pr_open", "checks_failed", "merged"):
+                    row.status = "cancelled"
+                _log(row, "stopped by her - nothing was pushed") if row is not None else None
+            _Step(tid).event({"k": "stopped"})
+        except (DevError, GhError) as e:
+            with session() as s:
+                row = s.get(DevTask, tid)
+                if row is not None and row.status not in ("failed", "refused"):
+                    row.status, row.error = "failed", str(e)[:2000]
+        except Exception as e:
+            log.exception("dev background work failed")
+            _set(tid, status="failed", error=f"Something broke while working: {e.__class__.__name__}")
+        finally:
+            _RUNNING.discard(tid)
+            _STOP.discard(tid)
+            with session() as s:
+                row = s.get(DevTask, tid)
+                if row is not None:
+                    row.notes = None
+
+    threading.Thread(target=go, name=f"dev-{tid}", daemon=True).start()
+    return get_task(tenant, tid)
+
+
+def start_bg(tenant: str, kind: str, text: str, repo: str = "", issue: int = 0, files: list[str] | None = None,
+             conv: str = "") -> dict[str, Any]:
+    """The console's Start: the same checks as start(), the row at once, the work in the background."""
+    if kind not in KINDS:
+        raise DevError("kind = write | fix | tests | docs | explain")
+    clean, warn = _clean_text(text)
+    if not clean and not issue:
+        raise DevError("Describe the change, or paste the error.")
+    r = _repo(tenant, repo)
+    g = gh(tenant)
+    number = _next_number(tenant)
+    with session() as s:
+        t = DevTask(tenant_id=tenant, number=number, kind=kind, repo=r.full_name, text=clean, issue=int(issue or 0), conv=conv,
+                    base=r.default_branch)
+        _log(t, f"{KINDS[kind]} shuru (console)")
+        s.add(t)
+        s.flush()
+        tid = t.id
+    return _in_thread(tenant, tid, _work, tenant, tid, g, files or [], warn)
+
+
+def in_background(tenant: str, ref: str, what: str, **kw: Any) -> dict[str, Any]:
+    """plan_ok / revise / fix_ci / begin from the console, in the background (the tool + phone paths stay as they are)."""
+    with session() as s:
+        tid = _find_task(s, tenant, ref).id
+    fn = {"plan_ok": plan_ok, "revise": revise, "fix_ci": fix_ci, "begin": begin}[what]
+    if what == "plan_ok":                       # the card checks run now, so a wrong hash is told at once
+        with session() as s:
+            t = _find_task(s, tenant, ref)
+            if t.status != "plan_wait":
+                raise DevError("This plan is not waiting any more.")
+            if str(kw.get("hash_") or "") != t.hash:
+                raise DevError("The plan changed; look at the new one.")
+    return _in_thread(tenant, tid, fn, tenant, ref, **kw)
+
+
 def _plan_pass(tenant: str, t: DevTask, g: Gh, extra_files: list[str], issue_txt: str, tier: str,
                note: str = "") -> dict[str, Any]:
     """v0.451 ECC PHASE 4: the READ-ONLY planning pass. Returns the plan (or {} when it could not run - the work then
@@ -776,10 +932,12 @@ def _plan_pass(tenant: str, t: DevTask, g: Gh, extra_files: list[str], issue_txt
         _progress(t.id, f"{t.number}: plan bana raha hoon (kuch badal nahi raha, sirf padh raha hoon)")
         out = L.plan_run(g, t, cfg.rules, extra_files, issue_txt, max_steps=int(_setting("dev_plan_steps", 18)),
                          minutes=float(_setting("dev_plan_minutes", 8)),
-                         on_step=lambda line: _progress(t.id, line))
+                         on_step=_Step(t.id))
     except (L.LoopUnavailable, GhError) as e:
         log.info("dev plan pass %s: %s", t.id, e)
         return {}
+    except L.Stopped:
+        raise
     except Exception:
         log.exception("dev plan pass failed: working without a plan")
         return {}
@@ -866,22 +1024,32 @@ def _work(tenant: str, tid: str, g: Gh, extra_files: list[str], warn: str, ask_p
     if _loop_on():
         # v0.350 KADAM-BA-KADAM: the model explores the repo with tools and edits step by step (devsahayak/loop.py);
         # anything that stops the loop early falls back to the one-shot path below, so the task never dies of it
+        from . import lab as LAB
         from . import loop as L
+        the_lab = LAB.for_task(tenant, t, _token(tenant), None, t.base)   # v0.531 one clone for this whole task
+        if the_lab is not None:
+            _progress(tid, f"{t.number}: lab khula - aapka check `{the_lab.cmd}` chala sakta hoon")
         try:
             base_sha, read, ctx, out = L.run(g, t, cfg.rules, extra_files, cfg.allow_workflows, issue_txt,
                                              max_steps=_setting("dev_loop_steps", 40),
                                              minutes=float(_setting("dev_loop_minutes", 20)),
-                                             on_step=lambda line: _progress(tid, line), plan_txt=plan_txt)
+                                             on_step=_Step(tid), plan_txt=plan_txt,
+                                             lab=the_lab)
         except L.LoopUnavailable as e:
             L.STATS["fallback"] += 1
             log.info("dev loop unavailable (%s): one-shot path", e)
             base_sha = None
         except GhError:
             raise
+        except L.Stopped:
+            raise
         except Exception:
             L.STATS["fallback"] += 1
             log.exception("dev loop failed: one-shot path")
             base_sha = None
+        finally:
+            if the_lab is not None:
+                the_lab.close()
     if base_sha is None:
         base_sha, read, ctx = _gather(g, t, extra_files)
         out = _ask_model(t, ctx["context"], cfg.rules)
@@ -964,7 +1132,9 @@ def push(tenant: str, ref: str, hash_: str, by_tap: bool = False, _internal: boo
         # v0.351 PEHLE CI, PHIR PR: a repo with CI gets a DRAFT PR first; the tick runs her CI, fixes until it passes
         # (up to DEV_CI_ROUNDS) and only then marks the PR ready for review
         has_ci = _has_ci(g, t.repo, head_now)
-        tests_first = _proof_tests(t, changes, has_ci)   # v0.447 ECC PHASE 3: the test commit goes in on its own, first
+        local = _lab_proof(tenant, t, changes)           # v0.531 the lab answers in seconds, if she has turned it on
+        tests_first = [] if local.get("state") in ("proven_local", "not_proven_local", "odd") else \
+            _proof_tests(t, changes, has_ci)             # v0.447 ECC PHASE 3: else the test commit goes in on its own
         if tests_first:
             sha = g.commit_files(t.repo, t.branch, head_now,
                                  [(c["path"], c["new"]) for c in changes if c["path"] in tests_first],
@@ -996,25 +1166,32 @@ def push(tenant: str, ref: str, hash_: str, by_tap: bool = False, _internal: boo
         row.status, row.ci_round, row.ci_since = "ci_running", 0, now()
         row.self_round, row.self_review = 0, json.dumps({"has_ci": has_ci})
         if tests_first:
-            row.proof = json.dumps({"state": "wait", "tests": tests_first, "test_sha": sha})
+            row.proof = json.dumps({"state": "wait", "tests": tests_first, "test_sha": sha, **(
+                {"local_tried": local.get("state", "")} if local else {})})
+        elif local:
+            row.proof = json.dumps(local)
         _log(row, (f"test pehle commit hua ({len(tests_first)} file), bug ka saboot CI se" if tests_first
                    else f"draft PR #{row.pr_number} khula" + (", CI chal raha" if has_ci else "")))
         s.flush()
         mine = (" Uske baad PR dene se pehle main khud bhi apna code review karunga."
                 if _setting("dev_self_review", True) else "")
+        lab_line = (" " + LOCAL_SAY.get(str(local.get("state")), "")) if local else ""
         if tests_first:
             say = (f"{row.number}: pehle sirf test draft PR #{row.pr_number} par gaya. Aapka CI ise chalayega - test FAIL "
-                   "hona chahiye, wahi bug ka saboot hai; uske baad fix ka commit jayega." + mine + warn)
+                   "hona chahiye, wahi bug ka saboot hai; uske baad fix ka commit jayega." + lab_line + mine + warn)
         else:
             say = (f"{row.number}: badlav draft PR #{row.pr_number} par gaya ({len(changes)} file). "
                    + ("Aapka CI chal raha hai - fail hua to main khud theek karunga, aur PASS hone par hi PR review ke liye "
-                      "taiyaar karunga." if has_ci else "Is repo mein CI nahi hai.") + mine + warn)
+                      "taiyaar karunga." if has_ci else "Is repo mein CI nahi hai.") + lab_line + mine + warn)
+        body_now, pr_no = row.pr_body, row.pr_number
         if has_ci:
+            _lab_pr_note(g, t.repo, pr_no, body_now, local)
             return _card(tenant, row, say)              # the tick watches her CI, then the own review runs
         tid = row.id
+    _lab_pr_note(g, t.repo, pr_no, body_now, local)
     # v0.445 no CI in this repo: there is nothing to wait for, so Hoola's own review runs NOW and its answer is the card
     try:
-        out = _ci_step(tenant, tid, say_tail=warn)
+        out = _ci_step(tenant, tid, say_tail=lab_line + warn)
     except (DevError, GhError) as e:                    # the gate never blocks a PR: the draft card stands
         log.info("devsahayak own review on push %s: %s", tid, e)
         out = None
@@ -1063,7 +1240,9 @@ def _round(tenant: str, t: DevTask, extra: str, warn: str) -> dict[str, Any]:
     if on_branch and _loop_on():
         # v0.351 a CI fix / revision on the PR branch explores and edits with the same 8 tools (devsahayak/loop.py),
         # starting from the branch's own head; the one-shot answer stays the fallback
+        from . import lab as LAB
         from . import loop as L
+        rlab = LAB.for_task(tenant, t, _token(tenant), None, t.branch if on_branch else t.base)
         try:
             spec = ""
             if "<ci_log>" in extra and _setting("dev_spec_fix", False):   # v0.402 a red CI run gets the fixer specialist
@@ -1072,16 +1251,21 @@ def _round(tenant: str, t: DevTask, extra: str, warn: str) -> dict[str, Any]:
             _, read, _, out = L.run(g, t, cfg.rules, paths, cfg.allow_workflows, ref_sha=ref, extra=extra, system_extra=spec,
                                     max_steps=_setting("dev_loop_steps", 40),
                                     minutes=float(_setting("dev_loop_minutes", 20)),
-                                    on_step=lambda line: _progress(t.id, line))
+                                    on_step=_Step(t.id), lab=rlab)
         except L.LoopUnavailable:
             L.STATS["fallback"] += 1
             out = None
         except GhError:
             raise
+        except L.Stopped:
+            raise
         except Exception:
             L.STATS["fallback"] += 1
             log.exception("dev loop round failed: one-shot path")
             out = None
+        finally:
+            if rlab is not None:
+                rlab.close()
     if out is None:
         read = []
         for p in paths:
@@ -1208,6 +1392,7 @@ def cancel(tenant: str, ref: str) -> dict[str, Any]:
             raise DevError("Merge ho chuka; ab cancel nahi.")
         t.status = "cancelled"
         _log(t, "cancel")
+        _STOP.add(t.id)                     # v0.748 a running loop ends at its next step
         pr = t.pr_number
     say = "Kaam band." + (f" PR #{pr} GitHub par khula hai: chahein to wahan band kar dijiye (Hoola khud PR band nahi karta)." if pr else "")
     return {"ok": True, "say": say}
@@ -1761,6 +1946,93 @@ PROOF_PR = {
 }
 
 
+LOCAL_SAY = {
+    "proven_local": "Lab mein saabit hua: naya test purane code par FAIL hua, fix ke saath PASS - CI ka intezaar nahi karna pada.",
+    "not_proven_local": "Saaf baat: lab mein naya test PURANE code par bhi PASS ho gaya, to yeh test bug ko saabit nahi karta.",
+    "still_failing": "Lab mein aapka check fix ke BAAD bhi fail ho raha hai - PR draft hi hai, main ise theek karta hoon.",
+    "odd": "Lab ka nateeja ulta aaya (bina fix PASS, fix ke saath FAIL) - PR dekh kar hi aage badhiye.",
+    "checked_local": "Lab mein aapka check PASS hua (is badlav ke saath).",
+    "check_failed_local": "Lab mein aapka check FAIL hua is badlav ke saath - PR draft hi hai.",
+}
+LOCAL_PR = {
+    "proven_local": "**Proven in the lab.** `{cmd}` ({source}) FAILED with only the new test in place ({red}s) and "
+                    "PASSED with the fix ({green}s). Run locally in a sealed container, not in CI.",
+    "not_proven_local": "**NOT proven.** `{cmd}` PASSED with only the new test in place, so the test does not "
+                        "reproduce the bug. The fix is still here; the test needs to fail on the old code.",
+    "still_failing": "**Her check still fails.** `{cmd}` fails even with this change ({green}s). Read the run before "
+                     "trusting anything else in this PR.",
+    "odd": "**Odd result.** `{cmd}` passed WITHOUT the fix and failed WITH it. Something about the check or the change "
+           "is not what it looks like.",
+    "checked_local": "**Checked in the lab.** `{cmd}` ({source}) passed with this change ({green}s).",
+    "check_failed_local": "**Her check fails.** `{cmd}` ({source}) failed with this change ({green}s).",
+}
+
+
+def _lab_note(local: dict[str, Any]) -> str:
+    """The lab's evidence as markdown: the verdict, the command, both runs' seconds, and the done_when results."""
+    if not local:
+        return ""
+    state = str(local.get("state") or "")
+    line = LOCAL_PR.get(state, "").format(cmd=local.get("cmd", "?"), source=local.get("source", "?"),
+                                          red=(local.get("red") or {}).get("seconds", "?"),
+                                          green=(local.get("green") or {}).get("seconds", "?"))
+    rows = [line] if line else []
+    dw = local.get("done_when") or []
+    if dw:
+        rows.append("")
+        rows.append("**Done when** (run here, not assumed):")
+        for d in dw[:6]:
+            mark = {"VERIFIED": "[x]", "FAILED": "[ ]"}.get(str(d.get("verdict")), "[ ]")
+            tail = f" - {d.get('why')}" if d.get("verdict") == "not performed" else ""
+            rows.append(f"- {mark} `{str(d.get('line'))[:160]}` - {d.get('verdict')}{tail}")
+    return "\n".join(rows)
+
+
+def _lab_pr_note(g: Gh, repo: str, pr_number: int, body: str, local: dict[str, Any]) -> None:
+    """Best effort: whoever reviews this PR sees what the lab measured, not just what Hoola says it did."""
+    note = _lab_note(local)
+    if not (note and body and pr_number):
+        return
+    try:
+        g.update_pr(repo, pr_number, body=body + "\n\n### Checked in the lab (v0.531)\n" + note)
+    except GhError as e:
+        log.info("devsahayak lab pr note %s#%s: %s", repo, pr_number, e)
+
+
+def _lab_proof(tenant: str, t: DevTask, changes: list[dict[str, Any]]) -> dict[str, Any]:
+    """v0.531 PRAYOGSHALA step 2: measure the bug proof HERE, in seconds, instead of spending a CI round on it
+    (v0.447 did it by pushing the test alone and reading her CI). Also runs the v0.451 plan's done_when lines that
+    are real commands. {} = the lab could not say anything, and the CI proof stays exactly as it was."""
+    from . import lab as LAB
+    l = LAB.for_task(tenant, t, _token(tenant), None, t.base)
+    if l is None:
+        return {}
+    full = {c["path"]: c["new"] for c in changes}
+    tests = [c["path"] for c in changes if R.is_test_path(c["path"])]
+    try:
+        pf: dict[str, Any] = {}
+        if t.kind == "fix" and tests and len(tests) < len(changes):
+            pf = l.proof(changes, tests) or {}
+        if not pf:
+            r = l.run(full, label="pre-push")
+            if r.get("stage") == "check":
+                pf = {"state": "checked_local" if r.get("ok") else "check_failed_local", "cmd": l.cmd,
+                      "source": l.source, "green": {"ok": r.get("ok"), "seconds": r.get("seconds"),
+                                                     "log": r.get("log"), "tail": (r.get("shown") or "")[-1500:]}}
+        if not pf:
+            return {}
+        pl = _j(t.plan or "", {}) or {}
+        if pl.get("done_when"):
+            pf["done_when"] = l.done_when(pl["done_when"], full)
+        pf["local"] = True
+        return pf
+    except Exception:  # noqa: BLE001 - the lab is help; a task never dies because a check could not run
+        log.exception("local lab proof failed for %s", t.id)
+        return {}
+    finally:
+        l.close()
+
+
 def _proof_tests(t: DevTask, changes: list[dict[str, Any]], has_ci: bool) -> list[str]:
     """v0.447 ECC PHASE 3 (ECC's orch-fix-defect: "proving the bug exists first is what separates a fix from a tweak").
     The test files of a FIX that go in as their own first commit, so her CI's RED run is the proof. [] = no proof run:
@@ -1868,6 +2140,11 @@ def _ready_or_self_review(tenant: str, t: DevTask, g: Gh, say: str) -> dict[str,
         pl = _j(t.plan or "", {}) or {}          # v0.451 the own review now has the plan's acceptance criteria to check
         acc = ("\nIt was planned, and APPROVED, to do exactly this - check the work against it:\n" + P.as_text(pl)
                if pl.get("done_when") else "")
+        pf0 = _j(t.proof or "", {}) or {}        # v0.531 and the lab's measured evidence, where there is any
+        if pf0.get("local"):
+            acc += ("\n<lab_evidence>\n" + _lab_note(pf0)
+                    + "\nThis was MEASURED, not claimed. If it says her check fails or the test proves nothing, that is "
+                      "a real problem with this PR - say so.\n</lab_evidence>")
         pr_text = (f"<pr>\nRepo {t.repo} PR #{t.pr_number}: {t.pr_title}\nBy: Hoola Developer Sahayak (YOUR OWN work)\n"
                    f"The task it must do: {t.text[:1500]}\n{str(t.pr_body or '')[:2000]}{acc}\n</pr>")
         out = explore_review(g, t.repo, t.head_sha, pr_text, diff_parts, added_lines, cfg.rules,

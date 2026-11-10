@@ -57,7 +57,7 @@ class _JaanchScreenState extends State<JaanchScreen> {
               if (fix.isNotEmpty && c['ok'] != true)
                 Padding(
                   padding: const EdgeInsets.only(top: 3),
-                  child: Text('Kya karein: $fix', style: TextStyle(color: _col(c['ok']), fontSize: 12.5)),
+                  child: Text('What to do: $fix', style: TextStyle(color: _col(c['ok']), fontSize: 12.5)),
                 ),
             ]),
           ),
@@ -92,14 +92,14 @@ class _JaanchScreenState extends State<JaanchScreen> {
     final web = Map<String, dynamic>.from((rep['website'] as Map?) ?? const {});
     final notDone = List<Map>.from((web['not_done'] as List?) ?? const []);
     return Scaffold(
-      appBar: AppBar(title: Text('${widget.app.aName} Jaanch'), actions: [
+      appBar: AppBar(title: Text('${widget.app.aName} Check'), actions: [
         IconButton(onPressed: _busy ? null : _run, icon: const Icon(Icons.refresh_rounded)),
       ]),
       body: _busy && r == null
           ? const Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
               CircularProgressIndicator(),
               SizedBox(height: 12),
-              Text('Har hissa jaanch raha hoon (10 second)…', style: TextStyle(color: C.muted)),
+              Text('Checking every part (10 seconds)…', style: TextStyle(color: C.muted)),
             ]))
           : _err != null && r == null
               ? Center(child: Padding(padding: const EdgeInsets.all(24), child: Text(_err!, style: const TextStyle(color: C.bad))))
@@ -114,30 +114,30 @@ class _JaanchScreenState extends State<JaanchScreen> {
                         const SizedBox(width: 12),
                         Expanded(
                           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                            Text('${r?['ok'] ?? 0} / ${r?['total'] ?? 0} theek', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
+                            Text('${r?['ok'] ?? 0} / ${r?['total'] ?? 0} fine', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
                             Text('${r?['say'] ?? ''}', style: const TextStyle(color: C.muted, fontSize: 12.5)),
                           ]),
                         ),
                       ]),
                     ),
-                    _section('Hoola ke hisse', parts.map(_check).toList()),
-                    _section('Websites: server se khulti hain?', [
+                    _section('Hoola\'s parts', parts.map(_check).toList()),
+                    _section('Websites: do they open from the server?', [
                       const Padding(
                         padding: EdgeInsets.only(bottom: 8),
-                        child: Text('Jo server se nahi khultin, unka kaam apne aap aapke PC par chalega (Santosh Desktop khula ho to).',
+                        child: Text('The work of those that do not open from the server will run on your PC by itself (if Santosh Desktop is open).',
                             style: TextStyle(color: C.faint, fontSize: 12)),
                       ),
                       ...sites.map(_check),
                     ]),
-                    _section('Pichhle ${rep['days'] ?? 14} din ka kaam', [
+                    _section('Previous ${rep['days'] ?? 14} days of work', [
                       Glass(
                         radius: 16,
                         padding: const EdgeInsets.all(12),
                         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          Text('Chat ke kaam: ${chat['total'] ?? 0}  (${_counts(chat['outcomes'] as Map?)})'),
-                          Text('Website ke kaam: ${web['total'] ?? 0}  (${_counts(web['status'] as Map?)})'),
+                          Text('Chat work: ${chat['total'] ?? 0}  (${_counts(chat['outcomes'] as Map?)})'),
+                          Text('Website work: ${web['total'] ?? 0}  (${_counts(web['status'] as Map?)})'),
                           Text('App crash: ${rep['crashes'] ?? 0}'),
-                          if ((chat['avg_seconds'] ?? 0) != 0) Text('Ek kaam mein ausat: ${chat['avg_seconds']} second'),
+                          if ((chat['avg_seconds'] ?? 0) != 0) Text('Average per job: ${chat['avg_seconds']} second'),
                         ]),
                       ),
                       for (final o in notDone.take(6))

@@ -55,9 +55,11 @@ def test_gap_before_and_fixed_after(desk):
 
 
 def test_no_match_or_switch_off_adds_nothing(desk):
+    # v0.559 SKILL KI SOOCHI: every skill is named on every turn, so skill_manage is callable whenever she HAS a
+    # skill (Claude's level 1) - an unrelated ask now loads it too; the switch below still takes it all away
     plan = _plan("aaj ka mausam kaisa rehega Akola mein?")
-    assert inject.admit_tool(plan, T, "aaj ka mausam kaisa rehega Akola mein?") is False
-    assert "skill_manage" not in _names(plan)
+    assert inject.admit_tool(plan, T, "aaj ka mausam kaisa rehega Akola mein?") is True
+    assert "skill_manage" in _names(plan)
     plan2 = _plan("write this week's status report for my team")
     desk.setenv("CODER_SKILLS", "false")
     from app.config import get_settings
@@ -81,7 +83,7 @@ def test_agent_loop_calls_admit_tool():
 def test_free_card_numbers(desk):
     card = skillscard.free_card(tenant=T)
     assert card["pack_missing"] == []
-    assert card["skills_on_tenant"] == len(skill_packs.seed_files()) + len(skill_packs.byox_files()) + len(skill_packs.prog_files()) + len(skill_packs.sp_files()) + len(skill_packs.fe_files()) + len(skill_packs.cs_files()) + len(skill_packs.mg_files()) + len(skill_packs.bd_files()) + len(skill_packs.cr_files()) + len(skill_packs.claude_dirs())
+    assert card["skills_on_tenant"] == len(skill_packs.all_seed_files()) + len(skill_packs.claude_dirs())
     assert (card["in_top2"], card["pos"]) == (10, 10)
     assert card["tool_in_view"] == 10 and card["files_ok"] == 10
     assert (card["neg_clean"], card["neg"]) == (4, 4)

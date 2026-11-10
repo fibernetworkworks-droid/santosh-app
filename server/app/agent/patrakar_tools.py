@@ -90,9 +90,9 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
     from ..patrakar import service as S
     t, conv, actor = ctx.tenant_id, ctx.conversation_id, _actor(ctx)
     if actor.startswith("customer:"):
-        raise ToolError("Yeh kaam graahak ke liye nahi.")
+        raise ToolError("This work is not for customers.")
     if action in _OWNER_ONLY and not _owner(ctx):
-        raise ToolError("Sirf owner.")
+        raise ToolError("Owner only.")
     st = _s(a.get("story"))
     try:
         if action == "settings":
@@ -162,7 +162,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return S.story_forget(t, st, actor)
     except S.PatrakarError as e:
         raise ToolError(str(e))
-    raise ToolError(f"action '{action}' nahi pehchana.")
+    raise ToolError(f"action '{action}' not recognised.")
 
 
 def _see(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
@@ -176,7 +176,7 @@ def _see(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
         if what == "story":
             return S.story_view(t, _s(a.get("story")))
         if what == "sources":
-            return {"sources": S.sources(t), "say": "Sirf refs; pehchaan sealed hai (aapke app screen par hi dikhti hai)."}
+            return {"sources": S.sources(t), "say": "Refs only; the identity is sealed (shown only on your app screen)."}
         if what == "cards":
             return {"cards": S.cards(t)}
         if what == "grievances":
@@ -187,7 +187,7 @@ def _see(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
             return S.settings(t)
     except S.PatrakarError as e:
         raise ToolError(str(e))
-    raise ToolError(f"what '{what}' nahi pehchana.")
+    raise ToolError(f"what '{what}' not recognised.")
 
 
 async def _patrakar(ctx: Ctx, action: str = "", **a: Any) -> dict[str, Any]:

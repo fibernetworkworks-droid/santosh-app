@@ -1,0 +1,141 @@
+{
+ "state": "india",
+ "note": "NATIONAL code rows for the Wave-3 desks (pre-design, survey, green). Only DETERMINED rows from the standard code tables - the numbers the codes themselves fix. Anything state-specific or notified (NBC limits per occupancy, ECBC tables, tariffs) is NOT parked here: those checks run on HER sourced rows or the state pack. refresh_by follows the pack law - the desk re-verifies before it reuses.",
+ "checked_on": "2026-11-05",
+ "refresh_by": "2027-05-05",
+ "rows": [
+  {
+   "rule_id": "is875_p1_rcc",
+   "value": 25.0,
+   "clause": "unit weight of reinforced cement concrete 25 kN/m3",
+   "source": "IS 875 (Part 1): 1987 Table 1 - unit weights of building materials",
+   "checked_on": "2026-11-05"
+  },
+  {
+   "rule_id": "is875_p1_pcc",
+   "value": 24.0,
+   "clause": "unit weight of plain cement concrete 24 kN/m3",
+   "source": "IS 875 (Part 1): 1987 Table 1",
+   "checked_on": "2026-11-05"
+  },
+  {
+   "rule_id": "is875_p1_brick_masonry",
+   "value": 19.0,
+   "clause": "unit weight of burnt-brick masonry in cement mortar 19 kN/m3",
+   "source": "IS 875 (Part 1): 1987 Table 1",
+   "checked_on": "2026-11-05"
+  },
+  {
+   "rule_id": "is875_p1_cement_plaster",
+   "value": 20.0,
+   "clause": "unit weight of cement plaster / mortar 20 kN/m3",
+   "source": "IS 875 (Part 1): 1987 Table 1",
+   "checked_on": "2026-11-05"
+  },
+  {
+   "rule_id": "is875_p2_residential",
+   "value": 2.0,
+   "clause": "imposed floor load, dwelling houses 2.0 kN/m2",
+   "source": "IS 875 (Part 2): 1987 Table 1",
+   "checked_on": "2026-11-05"
+  },
+  {
+   "rule_id": "is875_p2_office",
+   "value": 3.0,
+   "clause": "imposed floor load, offices 3.0 kN/m2",
+   "source": "IS 875 (Part 2): 1987 Table 1",
+   "checked_on": "2026-11-05"
+  },
+  {
+   "rule_id": "is875_p2_stair",
+   "value": 3.0,
+   "clause": "imposed load, staircases / corridors / balconies (residential and light use) 3.0 kN/m2",
+   "source": "IS 875 (Part 2): 1987 Table 1",
+   "checked_on": "2026-11-05"
+  },
+  {
+   "rule_id": "is456_beam_cantilever",
+   "value": 7.0,
+   "clause": "basic span/effective-depth ratio for deflection, CANTILEVER beam - spans not exceeding 10 m; beyond that the modification factors apply and the check belongs to the engineer",
+   "source": "IS 456:2000 cl 23.2.1",
+   "checked_on": "2026-11-05"
+  },
+  {
+   "rule_id": "is456_beam_ss",
+   "value": 20.0,
+   "clause": "basic span/effective-depth ratio for deflection, SIMPLY SUPPORTED beam - spans not exceeding 10 m",
+   "source": "IS 456:2000 cl 23.2.1",
+   "checked_on": "2026-11-05"
+  },
+  {
+   "rule_id": "is456_beam_continuous",
+   "value": 26.0,
+   "clause": "basic span/effective-depth ratio for deflection, CONTINUOUS beam - spans not exceeding 10 m",
+   "source": "IS 456:2000 cl 23.2.1",
+   "checked_on": "2026-11-05"
+  },
+  {
+   "rule_id": "cpheeo_lpcd",
+   "value": 135.0,
+   "clause": "design water supply 135 litres per capita per day for towns with full sewerage (indirect system of conservation)",
+   "source": "CPHEEO, Manual on Water Supply and Treatment (Ministry of Urban Development), per-capita norms table",
+   "checked_on": "2026-11-05"
+  },
+  {
+   "rule_id": "is456_strike_vertical",
+   "value": 16.0,
+   "clause": "minimum striking period, VERTICAL formwork to columns / walls / beams 16-24 h (min of the range parked here)",
+   "source": "IS 456:2000 cl 11.3 Table 10 - OPC used and ambient temperature above 15 degC",
+   "checked_on": "2026-11-05"
+  },
+  {
+   "rule_id": "is456_strike_slab_soffit",
+   "value": 72.0,
+   "clause": "minimum striking period, soffit formwork to SLABS (props left under) 3 days",
+   "source": "IS 456:2000 cl 11.3 Table 10 - OPC, ambient above 15 degC",
+   "checked_on": "2026-11-05"
+  },
+  {
+   "rule_id": "is456_strike_beam_soffit",
+   "value": 168.0,
+   "clause": "minimum striking period, soffit formwork to BEAMS (props left under) 7 days",
+   "source": "IS 456:2000 cl 11.3 Table 10 - OPC, ambient above 15 degC",
+   "checked_on": "2026-11-05"
+  },
+  {
+   "rule_id": "is456_strike_props_slab_le4m5",
+   "value": 168.0,
+   "clause": "minimum period, PROPS to slabs (spanning up to 4.5 m) 7 days",
+   "source": "IS 456:2000 cl 11.3 Table 10 - OPC, ambient above 15 degC",
+   "checked_on": "2026-11-05"
+  },
+  {
+   "rule_id": "is456_strike_props_beam_le6m",
+   "value": 336.0,
+   "clause": "minimum period, PROPS to beams (spanning up to 6 m) 14 days",
+   "source": "IS 456:2000 cl 11.3 Table 10 - OPC, ambient above 15 degC",
+   "checked_on": "2026-11-05"
+  },
+  {
+   "rule_id": "is456_strike_props_slab_gt4m5",
+   "value": 336.0,
+   "clause": "minimum period, PROPS to slabs (spanning over 4.5 m) 14 days",
+   "source": "IS 456:2000 cl 11.3 Table 10 - OPC, ambient above 15 degC",
+   "checked_on": "2026-11-05"
+  },
+  {
+   "rule_id": "is456_strike_props_beam_gt6m",
+   "value": 504.0,
+   "clause": "minimum period, PROPS to beams (spanning over 6 m) 21 days",
+   "source": "IS 456:2000 cl 11.3 Table 10 - OPC, ambient above 15 degC",
+   "checked_on": "2026-11-05"
+  },
+  {
+   "rule_id": "gst_works_contract_pct",
+   "value": 18.0,
+   "clause": "works-contract composite GST rate 18% (taxable value x rate)",
+   "source": "CBIC Not. 11/2017-IGST dated 28-06-2017 (works contract services, composite 18%) - verify the current notification before reliance",
+   "checked_on": "2026-11-06"
+  }
+ ]
+}

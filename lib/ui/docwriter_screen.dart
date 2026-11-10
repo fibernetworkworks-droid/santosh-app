@@ -31,8 +31,8 @@ const _langs = <(String, String)>[('en', 'English'), ('hinglish', 'Hinglish'), (
 const _sources = <(String, String, String)>[
   ('hoola_app', 'Hoola ki banayi app', 'App number (A-0001)'),
   ('hoola_site', 'Hoola ki banayi website', 'Site number (S-0001)'),
-  ('web', 'Meri live website / web app', 'https://...'),
-  ('github', 'Mera GitHub repo (sirf padhna)', 'owner/repo'),
+  ('web', 'My live website / web app', 'https://...'),
+  ('github', 'My GitHub repo (read-only)', 'owner/repo'),
 ];
 
 Widget _img(Santosh app, String path, {double? height}) {
@@ -64,7 +64,7 @@ Future<String?> _ask(BuildContext context, String title, {String hint = '', bool
         decoration: InputDecoration(hintText: hint),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Rehne do')),
+        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Keep it')),
         FilledButton(onPressed: () => Navigator.pop(d, true), child: const Text('Aage')),
       ],
     ),
@@ -128,19 +128,19 @@ class _DocwriterScreenState extends State<DocwriterScreen> {
   Future<void> _newDoc() async {
     final prods = _list(_d?['products']).where((p) => p['verified'] == true).toList();
     if (prods.isEmpty) {
-      _snack(context, 'Pehle Sources mein product jodiye (aur sabit kijiye ki aapka hai).');
+      _snack(context, 'First add the product in Sources (and prove that it is yours).');
       setState(() => _tab = 2);
       return;
     }
     final pid = prods.length == 1
         ? _s(prods.first['id'])
-        : await _pick(context, 'Kis cheez ke docs?', [for (final p in prods) (_s(p['id']), '${p['name']} (${p['kind']})')]);
+        : await _pick(context, 'Docs for what?', [for (final p in prods) (_s(p['id']), '${p['name']} (${p['kind']})')]);
     if (pid == null || !mounted) return;
-    final kind = await _pick(context, 'Kaunsa doc?', _kinds);
+    final kind = await _pick(context, 'Which doc?', _kinds);
     if (kind == null || !mounted) return;
-    final lang = await _pick(context, 'Bhasha', _langs) ?? 'en';
+    final lang = await _pick(context, 'Language', _langs) ?? 'en';
     if (!mounted) return;
-    final words = await _ask(context, 'Kuch khaas? (zaroori nahi)', hint: 'Jaise: naye staff ke liye, order lene ka tareeka', lines: true);
+    final words = await _ask(context, 'Anything special? (optional)', hint: 'For example: for new staff, how to take an order', lines: true);
     final r = await _run(() => widget.app.api!.call('POST', '/api/docwriter/docs',
         body: {'product': pid, 'kind': kind, 'lang': lang, if (words != null) 'words': words}, timeout: const Duration(minutes: 6)));
     final doc = _map(r?['doc']);
@@ -152,18 +152,18 @@ class _DocwriterScreenState extends State<DocwriterScreen> {
       .then((_) => _load());
 
   Future<void> _addSource() async {
-    final kind = await _pick(context, 'Docs kis cheez ke?', [for (final (k, l, _) in _sources) (k, l)]);
+    final kind = await _pick(context, 'Docs for what?', [for (final (k, l, _) in _sources) (k, l)]);
     if (kind == null || !mounted) return;
     final hint = _sources.firstWhere((e) => e.$1 == kind).$3;
-    final ref = await _ask(context, 'Kaunsa?', hint: hint);
+    final ref = await _ask(context, 'Which?', hint: hint);
     if (ref == null) return;
     await _run(() => widget.app.api!.call('POST', '/api/docwriter/products', body: {'kind': kind, 'ref': ref}, timeout: const Duration(minutes: 2)));
   }
 
   Future<void> _recordFlow(Map<String, dynamic> p) async {
-    final name = await _ask(context, 'Kaam ka naam', hint: 'Jaise: Naya order kaise karein');
+    final name = await _ask(context, 'Task name', hint: 'For example: How to place a new order');
     if (name == null || !mounted) return;
-    final steps = await _ask(context, 'Steps (ek line mein ek)',
+    final steps = await _ask(context, 'Steps (one per line)',
         hint: 'goto /login\nfill "Email" = demo@shop.in\nclick "Orders"\nscreenshot "Orders ki list"', lines: true);
     if (steps == null) return;
     await _run(() => widget.app.api!.call('POST', '/api/docwriter/products/${p['id']}/flows',
@@ -172,7 +172,7 @@ class _DocwriterScreenState extends State<DocwriterScreen> {
 
   Future<void> _github() async {
     final t = await _ask(context, 'GitHub fine-grained token',
-        hint: 'Sirf is repo par Contents: read, Pull requests: read (publish ke liye write)', obscure: true);
+        hint: 'Only on this repo: Contents: read, Pull requests: read (write for publishing)', obscure: true);
     if (t == null) return;
     await _run(() => widget.app.api!.call('PUT', '/api/docwriter/github', body: {'token': t}));
   }
@@ -204,18 +204,18 @@ class _DocwriterScreenState extends State<DocwriterScreen> {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Glass(child: Text(_s(d['say']), style: const TextStyle(fontWeight: FontWeight.w700, height: 1.35))),
       const SizedBox(height: 10),
-      if (_list(d['waiting']).isNotEmpty) const Text('Aapki haan ka intezaar', style: TextStyle(fontWeight: FontWeight.w800)),
+      if (_list(d['waiting']).isNotEmpty) const Text('Waiting for your yes', style: TextStyle(fontWeight: FontWeight.w800)),
       for (final x in _list(d['waiting'])) _docTile(x),
-      if (_list(d['stale']).isNotEmpty) const Text('Product badla: docs update chahiye', style: TextStyle(fontWeight: FontWeight.w800)),
+      if (_list(d['stale']).isNotEmpty) const Text('Product changed: docs need an update', style: TextStyle(fontWeight: FontWeight.w800)),
       for (final x in _list(d['stale'])) _docTile(x),
       const SizedBox(height: 10),
-      FilledButton.icon(onPressed: _busy ? null : _newDoc, icon: const Icon(Icons.add), label: const Text('Naya doc')),
+      FilledButton.icon(onPressed: _busy ? null : _newDoc, icon: const Icon(Icons.add), label: const Text('New doc')),
     ]);
   }
 
   Widget _docs() => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         for (final x in _list(_d?['docs'])) _docTile(x),
-        if (_list(_d?['docs']).isEmpty) const Text('Abhi koi doc nahi.', style: TextStyle(color: C.muted)),
+        if (_list(_d?['docs']).isEmpty) const Text('No docs yet.', style: TextStyle(color: C.muted)),
       ]);
 
   Widget _sourcesTab() {
@@ -238,7 +238,7 @@ class _DocwriterScreenState extends State<DocwriterScreen> {
                 InkWell(
                   onTap: () {
                     Clipboard.setData(ClipboardData(text: _s(_map(p['verify'])[k])));
-                    _snack(context, 'Copy ho gaya');
+                    _snack(context, 'Copied');
                   },
                   child: Padding(
                       padding: const EdgeInsets.symmetric(vertical: 3),
@@ -249,12 +249,12 @@ class _DocwriterScreenState extends State<DocwriterScreen> {
               if (p['verified'] != true)
                 TextButton(
                     onPressed: () => _run(() => widget.app.api!.call('POST', '/api/docwriter/products/${p['id']}/verify')),
-                    child: const Text('Jaancho')),
+                    child: const Text('Check')),
               if (p['verified'] == true)
                 TextButton(
                     onPressed: () => _run(() => widget.app.api!
                         .call('POST', '/api/docwriter/products/${p['id']}/sync', body: {}, timeout: const Duration(minutes: 8))),
-                    child: const Text('Sync karo')),
+                    child: const Text('Sync')),
               if (p['verified'] == true && _s(p['kind']) == 'web')
                 TextButton(onPressed: () => _recordFlow(p), child: const Text('Steps + screenshot')),
             ]),
@@ -266,7 +266,7 @@ class _DocwriterScreenState extends State<DocwriterScreen> {
         child: Row(children: [
           const Icon(Icons.code_rounded),
           const SizedBox(width: 8),
-          Expanded(child: Text(gh['joined'] == true ? 'GitHub juda: ${gh['label']} (sirf padhna)' : 'GitHub token nahi juda')),
+          Expanded(child: Text(gh['joined'] == true ? 'GitHub linked: ${gh['label']} (read-only)' : 'GitHub token not linked')),
           TextButton(onPressed: _github, child: Text(gh['joined'] == true ? 'Badlo' : 'Jodo')),
           if (gh['joined'] == true)
             TextButton(onPressed: () => _run(() => widget.app.api!.call('DELETE', '/api/docwriter/github')), child: const Text('Hatao')),
@@ -285,29 +285,29 @@ class _DocwriterScreenState extends State<DocwriterScreen> {
     }
 
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      ListTile(title: const Text('Product ka naam'), subtitle: Text(_s(st['product_name'])), onTap: () => edit('product_name', 'Product ka naam')),
-      ListTile(title: const Text('Kaun padhega'), subtitle: Text(_s(st['audience'])), onTap: () => edit('audience', 'Kaun padhega')),
+      ListTile(title: const Text('Product name'), subtitle: Text(_s(st['product_name'])), onTap: () => edit('product_name', 'Product name')),
+      ListTile(title: const Text('Who will read it'), subtitle: Text(_s(st['audience'])), onTap: () => edit('audience', 'Who will read it')),
       ListTile(title: const Text('Lehja'), subtitle: Text(_s(st['tone'])), onTap: () => edit('tone', 'Lehja')),
       ListTile(
-          title: const Text('Support contact (docs mein dikhega)'),
+          title: const Text('Support contact (shown in the docs)'),
           subtitle: Text(_s(st['contact'])),
           onTap: () => edit('contact', 'Support contact')),
       ListTile(
-          title: const Text('Kabhi translate na ho'),
+          title: const Text('Never translate'),
           subtitle: Text(((st['keep'] as List?) ?? const []).join(', ')),
-          onTap: () => edit('keep', 'Ek line mein ek shabd', list: true)),
+          onTap: () => edit('keep', 'One word per line', list: true)),
       ListTile(
-          title: const Text('Mere niyam'),
+          title: const Text('My rules'),
           subtitle: Text(((st['rules'] as List?) ?? const []).join(' · ')),
-          onTap: () => edit('rules', 'Ek line mein ek niyam', list: true)),
+          onTap: () => edit('rules', 'One rule per line', list: true)),
       const Padding(padding: EdgeInsets.fromLTRB(16, 8, 16, 4), child: Text('Shabdavali', style: TextStyle(fontWeight: FontWeight.w800))),
       for (final g in _list(st['glossary']))
-        ListTile(dense: true, title: Text(_s(g['term'])), subtitle: Text(_s(g['avoid']).isEmpty ? _s(g['note']) : "na ki '${g['avoid']}'")),
+        ListTile(dense: true, title: Text(_s(g['term'])), subtitle: Text(_s(g['avoid']).isEmpty ? _s(g['note']) : "not '${g['avoid']}'")),
       TextButton.icon(
           onPressed: () async {
             final t = await _ask(context, 'Sahi shabd', hint: 'order');
             if (t == null || !mounted) return;
-            final a = await _ask(context, 'Iski jagah na likhein (zaroori nahi)', hint: 'booking');
+            final a = await _ask(context, 'Do not write this instead (optional)', hint: 'booking');
             final g = [..._list(st['glossary']), {'term': t, 'avoid': a ?? ''}];
             await _run(() => widget.app.api!.call('PUT', '/api/docwriter/settings', body: {'glossary': g}));
           },
@@ -325,7 +325,7 @@ class _DocwriterScreenState extends State<DocwriterScreen> {
       appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Docs sahayak'), actions: [
         IconButton(onPressed: _load, icon: const Icon(Icons.refresh)),
       ]),
-      floatingActionButton: FloatingActionButton.extended(onPressed: _busy ? null : _newDoc, icon: const Icon(Icons.edit_note), label: const Text('Naya doc')),
+      floatingActionButton: FloatingActionButton.extended(onPressed: _busy ? null : _newDoc, icon: const Icon(Icons.edit_note), label: const Text('New doc')),
       body: _d == null
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
@@ -387,14 +387,14 @@ class _DocwriterDocPageState extends State<DocwriterDocPage> {
   String get _base => '/api/docwriter/docs/${widget.docId}';
 
   Future<void> _publish() async {
-    final dest = await _pick(context, 'Kahan public karein?', const [
+    final dest = await _pick(context, 'Where to publish?', const [
       ('page', 'Hoola docs page (public link)'),
-      ('github', 'GitHub repo mein pull request'),
-      ('wordpress', 'Meri WordPress site'),
+      ('github', 'Pull request in the GitHub repo'),
+      ('wordpress', 'My WordPress site'),
     ]);
     if (dest == null) return;
     String? repo;
-    if (dest == 'github' && mounted) repo = await _ask(context, 'Repo (khaali = jo juda hai)', hint: 'owner/repo');
+    if (dest == 'github' && mounted) repo = await _ask(context, 'Repo (blank = the one linked)', hint: 'owner/repo');
     await _run('POST', '$_base/publish', body: {'dest': dest, if (repo != null) 'repo': repo});
   }
 
@@ -409,19 +409,19 @@ class _DocwriterDocPageState extends State<DocwriterDocPage> {
             if (v == 'check') await _run('POST', '$_base/check');
             if (v == 'files') await _run('POST', '$_base/files', body: {'formats': ['md', 'docx', 'pdf']});
             if (v == 'translate') {
-              final to = await _pick(context, 'Kis bhasha mein?', _langs);
+              final to = await _pick(context, 'In which language?', _langs);
               if (to != null) await _run('POST', '$_base/translate', body: {'to': to}, timeout: const Duration(minutes: 6));
             }
             if (v == 'revise' && mounted) {
-              final t = await _ask(context, 'Kya badlein?', hint: 'Jaise: aur aasaan shabd, har step chhota', lines: true);
+              final t = await _ask(context, 'What should change?', hint: 'For example: simpler words, shorter steps', lines: true);
               if (t != null) await _run('POST', '$_base/revise', body: {'instruction': t}, timeout: const Duration(minutes: 5));
             }
             if (v == 'unpage') await _run('POST', '$_base/unpage');
           },
           itemBuilder: (_) => const [
-            PopupMenuItem(value: 'check', child: Text('Jaancho')),
-            PopupMenuItem(value: 'revise', child: Text('Badlav bolo')),
-            PopupMenuItem(value: 'translate', child: Text('Anuvaad')),
+            PopupMenuItem(value: 'check', child: Text('Check')),
+            PopupMenuItem(value: 'revise', child: Text('Say a change')),
+            PopupMenuItem(value: 'translate', child: Text('Translation')),
             PopupMenuItem(value: 'files', child: Text('Word + PDF + Markdown')),
             PopupMenuItem(value: 'unpage', child: Text('Docs page hatao')),
           ],
@@ -435,7 +435,7 @@ class _DocwriterDocPageState extends State<DocwriterDocPage> {
                 child: FilledButton.icon(
                     onPressed: _busy || ((checks['blocking'] as List?) ?? const []).isNotEmpty ? null : _publish,
                     icon: const Icon(Icons.public),
-                    label: Text(((checks['blocking'] as List?) ?? const []).isNotEmpty ? 'Pehle rukawat theek kijiye' : 'Publish (aapki haan se)')),
+                    label: Text(((checks['blocking'] as List?) ?? const []).isNotEmpty ? 'Fix the blockers first' : 'Publish (with your yes)')),
               ),
             ),
       body: d == null
@@ -460,11 +460,11 @@ class _DocwriterDocPageState extends State<DocwriterDocPage> {
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Row(children: [
                       Expanded(child: Text(_s(sec['title']), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15))),
-                      if (sec['edited'] == true) const Chip(label: Text('aapka likha'), visualDensity: VisualDensity.compact),
+                      if (sec['edited'] == true) const Chip(label: Text('written by you'), visualDensity: VisualDensity.compact),
                       IconButton(
                           icon: const Icon(Icons.edit_outlined, size: 18),
                           onPressed: () async {
-                            final t = await _ask(context, 'Khud likhiye', lines: true, initial: _s(sec['body']));
+                            final t = await _ask(context, 'Write it yourself', lines: true, initial: _s(sec['body']));
                             if (t != null) await _run('PUT', '$_base/sections/${sec['id']}', body: {'body': t});
                           }),
                     ]),
@@ -500,13 +500,13 @@ class DocwriterDocCard extends StatelessWidget {
         ]),
         const SizedBox(height: 4),
         Text(_s(data['say']), style: const TextStyle(fontSize: 13)),
-        Text('${d['kind_label']} · ${d['lang']} · v${d['version']} · ${d['sections']} hisse · ${ch['blocking'] ?? 0} rukawat',
+        Text('${d['kind_label']} · ${d['lang']} · v${d['version']} · ${d['sections']} hisse · ${ch['blocking'] ?? 0} blockers',
             style: const TextStyle(fontSize: 12, color: C.muted)),
         Align(
           alignment: Alignment.centerRight,
           child: TextButton(
               onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => DocwriterDocPage(app: app, docId: _s(d['id'])))),
-              child: const Text('Kholo')),
+              child: const Text('Open')),
         ),
       ]),
     );
@@ -545,10 +545,10 @@ class _DocwriterPublishCardState extends State<DocwriterPublishCard> {
     return Glass(
       border: C.accent,
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Text('Docs public karein? Aapki haan chahiye', style: TextStyle(fontWeight: FontWeight.w800)),
+        const Text('Publish the docs? Your yes is needed', style: TextStyle(fontWeight: FontWeight.w800)),
         const SizedBox(height: 4),
         Text('${d['number']} · ${d['title']}', style: const TextStyle(fontWeight: FontWeight.w700)),
-        Text('Kahan: ${widget.data['where']}', style: const TextStyle(fontSize: 12.5)),
+        Text('Where: ${widget.data['where']}', style: const TextStyle(fontSize: 12.5)),
         for (final w in ((widget.data['warnings'] as List?) ?? const []).take(4)) Text('• $w', style: const TextStyle(fontSize: 12, color: C.warn)),
         const SizedBox(height: 6),
         Text(_s(widget.data['preview']), maxLines: 8, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, color: C.muted)),
@@ -557,9 +557,9 @@ class _DocwriterPublishCardState extends State<DocwriterPublishCard> {
           Text(_done, style: const TextStyle(color: C.ok, fontWeight: FontWeight.w700))
         else
           Row(children: [
-            Expanded(child: FilledButton(onPressed: _busy ? null : () => _decide(true), child: const Text('Haan, public karo'))),
+            Expanded(child: FilledButton(onPressed: _busy ? null : () => _decide(true), child: const Text('Yes, publish'))),
             const SizedBox(width: 8),
-            OutlinedButton(onPressed: _busy ? null : () => _decide(false), child: const Text('Nahi')),
+            OutlinedButton(onPressed: _busy ? null : () => _decide(false), child: const Text('No')),
           ]),
       ]),
     );
@@ -583,7 +583,7 @@ class DocwriterSyncCard extends StatelessWidget {
           for (final r in _list(data['docs']))
             TextButton(
                 onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => DocwriterDocPage(app: app, docId: _s(r['doc'])))),
-                child: Text('${r['number']}: ${r['updated']} update · ${((r['stale'] as List?) ?? const []).length} badle')),
+                child: Text('${r['number']}: ${r['updated']} update · ${((r['stale'] as List?) ?? const []).length} changed')),
         ]),
       );
 }

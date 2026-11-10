@@ -53,12 +53,32 @@ function toast(msg, bad) { const t = $('#toast'); t.textContent = msg; t.classNa
 
 /* ================= login ================= */
 let CONFIG = {google: false, v2: true};
+/* v0.743 SAAF INSAANI (owner: "DO NOT CHANGE EXISTING DESIGN BUT MAKE IT MORE USER FRIENDLY AND HUMAN MADE" -> GO on the
+   canvas): same layout, colours and fonts; the screens talk like a person - her name + what happened on the home, the
+   real step and time on work cards, "1 needs you" in the sidebar, plain spend, Ask again / Good answer / Not right,
+   "Slide to approve / Not now", one-colour start icons, no emoji headings. Switch console_human (server) -> CONFIG.human. */
+let HUMAN = false;
+const HOUR_WORD = h => h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
+function soFar(iso) {   // "6 min so far" from a server time
+  const t = Date.parse(iso || ''); if (!t) return '';
+  const m = Math.max(0, Math.round((Date.now() - t) / 60000));
+  return m < 1 ? 'just started' : m < 60 ? m + ' min so far' : Math.floor(m / 60) + ' h ' + (m % 60) + ' min so far';
+}
+function humanTagline() {   // one plain sentence: what is waiting, what is running, else ready
+  if (!HUMAN) return; const el = document.querySelector('.tagline'); if (!el) return;
+  const w = QUEUE.length, r = JOBS.filter(j => j.state === 'working').length;
+  const n = (k, one, many) => k === 1 ? one : k + ' ' + many;
+  el.innerHTML = w ? `${esc(AV)} has ${n(w, 'one thing', 'things')} waiting for your OK. <button type="button" class="tlink" data-v="aaj">Review →</button>`
+    : r ? `${esc(AV)} is working on ${n(r, 'one job', 'jobs')} for you right now.`
+    : `${esc(AV)} is ready. Say what you need done, in your own words.`;
+}
 function showLogin(err) {
   $('#app').hidden = true; $('#login').hidden = false; if (err) { $('#lerr').textContent = err; $('#lerr').hidden = false; }
   $('#gbtn').disabled = false;
 }
 async function boot() {
   try { CONFIG = await api('GET', '/api/console/config'); } catch {}
+  HUMAN = !!CONFIG.human; document.documentElement.classList.toggle('human', HUMAN);   // v0.743 SAAF INSAANI
   const u = new URL(location.href), code = u.searchParams.get('code'), err = u.searchParams.get('error'), gApps = u.searchParams.get('google') === 'apps';
   if (code || err) history.replaceState(null, '', '/console/');
   if (code) {
@@ -100,7 +120,7 @@ let CREATE = null;      // v0.259 the Create Studio (studio.js): the Create butt
 /* v0.222 R2: the sidebar is Claude-style - New chat + Search on top, then the places; Chat is the brand mark (home),
    Account is the user card at the bottom. The phone tabbar keeps its own five. */
 const SMOOTH = () => matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';   // v0.226 R6: no smooth scroll under reduced motion
-const NAV = [['creative','Create'],['aaj','Today'],['kaam','Tools'],['baat','Voice call']];   // v0.456 her ask: no Lab / Systems rows
+const NAV = [['creative','Create'],['webdev','Web Development'],['appdev','App Development'],['aaj','Today'],['kaam','Tools'],['baat','Voice call']];   // v0.456 her ask: no Lab / Systems rows
 // (was ['lab','Lab'] since v0.415): Prayogshala opens from the Education Desk's Lab tab, Systems from an Enterprise
 // employee's Open desk - both views (#v-lab, #v-systems) and go('lab' | 'systems', arg) stay as they were.
 IC.creative = '<path d="M12 3l2.4 5.6L20 11l-5.6 2.4L12 19l-2.4-5.6L4 11l5.6-2.4z"/>';
@@ -116,7 +136,19 @@ IC.archdesk = '<path d="M3 21h18M5 21V10l7-6 7 6v11M9 21v-6h6v6M9 13h.01M15 13h.
 IC.gamedesk = '<path d="M6 12h4M8 10v4M15 13h.01M18 11h.01M17.3 5H6.7A4.7 4.7 0 0 0 2 9.7v4.1A3.2 3.2 0 0 0 5.2 17c1 0 2-.5 2.6-1.4L9 14h6l1.2 1.6c.6.9 1.6 1.4 2.6 1.4a3.2 3.2 0 0 0 3.2-3.2V9.7A4.7 4.7 0 0 0 17.3 5z"/>';   // v0.370 Game Desk
 IC.socialdesk = '<path d="M18 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM6 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM18 22a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/>';   // v0.353 Social Desk
 let EMP = null;
+let SKH = null;         // v0.718 the HOOLA AI Video Learner (seekh.js) - opens from the AI Employees hub
+let HIV = null;         // v0.747 HOOLA INTERACTIVE (interactive.js) - the video studio, its own sidebar row
+let HCD = null;         // v0.748 HOOLA CODE (code.js) - Developer Sahayak as a console page
+let FLW = null;         // v0.751 HOOLA FLOW (flow.js) - the Kaan pack as a console page
+let FMIC = null;        // v0.751 the chat box mic through Kaan (flow.js HoolaFlowMic)
+IC.code = '<path d="M8 7l-5 5 5 5M16 7l5 5-5 5M13.5 5l-3 14"/>';
+IC.flow = '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M8 21h8"/>';   // v0.751 HOOLA FLOW
+IC.interactive = '<rect x="3" y="4" width="18" height="13" rx="2.5"/><circle cx="9" cy="10" r="2.2"/><path d="M5.8 15.2c.7-1.6 1.9-2.4 3.2-2.4s2.5.8 3.2 2.4"/><path d="M15 8.5l3 1.8-3 1.8z" fill="currentColor" stroke="none"/><path d="M8 20h8"/>';
+IC.seekh = '<path d="M2 5.5a2 2 0 0 1 2-2h9l2.5 2.5H20a2 2 0 0 1 2 2V16a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2z"/><path d="M10 9.5l4 2.5-4 2.5z" fill="currentColor" stroke="none"/>';   // v0.718 a video folder with a play
 let SK = null;         // v0.481 the Skill Desk (account menu > Skills)
+let FD = null;         // v0.565 the Film Desk (filmdesk.js)
+IC.appdev = '<rect x="6" y="2.5" width="12" height="19" rx="3"/><path d="M10.5 18.5h3M9.5 9l-2 2 2 2M14.5 9l2 2-2 2"/>';   // v0.693 App Development (phone + code)
+IC.webdev = '<rect x="3" y="4" width="18" height="16" rx="3"/><path d="M3 9h18M9 14l-2 2 2 2M15 14l2 2-2 2"/>';   // v0.635 Web Development
 let ENT = null;        // v0.317 the Employee Hub + desks (employees.js)
 const EDU_KEYS = ['tutor', 'school_office', 'curriculum', 'research', 'school_register', 'lab'];   // v0.453 any of them opens the Education Desk
 function syncEmployees(hired) {                     // v0.317 desks exist only while their employee is hired
@@ -124,7 +156,7 @@ function syncEmployees(hired) {                     // v0.317 desks exist only w
   // opens from AI Employees > Open desk; the sidebar keeps only the AI Employees entry. A desk that is open when its
   // employee is let go still falls back to the hub.
   if (ME) ME.employees = hired || {};
-  for (const [key, view] of [['seo', 'seodesk', 'SEO Desk'], ['social', 'socialdesk', 'Social Desk'], ['cad', 'caddesk', 'CAD Desk'], ['game_dev', 'gamedesk', 'Game Desk'], ['architect', 'archdesk', 'Architecture Desk'], ['edu', 'edudesk', 'Education Desk']]) {
+  for (const [key, view] of [['seo', 'seodesk', 'SEO Desk'], ['social', 'socialdesk', 'Social Desk'], ['cad', 'caddesk', 'CAD Desk'], ['game_dev', 'gamedesk', 'Game Desk'], ['architect', 'archdesk', 'Architecture Desk'], ['edu', 'edudesk', 'Education Desk'], ['film', 'filmdesk', 'Film Desk'], ['leads', 'leadsdesk', 'Leads Desk']]) {
     const want = !!(hired && (hired[key] || (key === 'edu' && EDU_KEYS.some(k => hired[k])) || (key === 'game_dev' && (hired.procgen_dev || hired.physics_dev || hired.audio_dev || hired.haptics_dev || hired.netcode_dev || hired.xr_dev || hired.sim_dev || hired.twin_arch || hired.vfx_td))));   // v0.420 any Game Desk role opens the Game Desk
     if (!want && VIEW === view) go('hire');
   }
@@ -138,6 +170,11 @@ IC.call = '<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2
 let JOBS = [];          // v0.222 her live jobs (working / waiting) for the home row and the Today badge
 function navBadge(k) {
   if (k !== 'aaj') return '';
+  if (HUMAN) {   // v0.743 words, not bare numbers
+    const r = JOBS.filter(j => j.state === 'working').length;
+    return (QUEUE.length ? `<span class="ct hx txt" title="Waiting for your approval">${QUEUE.length} need${QUEUE.length === 1 ? 's' : ''} you</span>`
+      : r ? `<span class="lv txt" title="${r} running now"><i></i>${r} working</span>` : '');
+  }
   const live = JOBS.length ? `<span class="lv txt" title="${JOBS.length} running now"><i></i>${JOBS.length}</span>` : '';
   return live + (QUEUE.length ? `<span class="ct txt" title="Waiting for your approval">${QUEUE.length}</span>` : '');
 }
@@ -149,8 +186,10 @@ function drawNav() {
 }
 function go(v, arg) {
   if (v === 'creative' && CREATE) { CREATE.open(); return; }    // v0.259 Create = the full-screen Create Studio
+  if (v === 'appdev') { location.assign('/console/apps' + (arg ? '#/app/' + encodeURIComponent(arg) : '')); return; }   // v0.693 App Studio = its own app
+  if (v === 'webdev') { location.assign('/console/web' + (arg ? '#/site/' + encodeURIComponent(arg) : '')); return; }   // v0.649 Web Studio = its own app
   VIEW = v; $$('.view').forEach(x => x.hidden = x.id !== 'v-' + v);
-  $('#ttl').textContent = {chat: chatFolder(), aaj:'· Today', kaam:'· All tools', baat:'· Baat', main:'· Main', bana:'· Creations', project:'· Folder', arena:'· Design Arena', lab:'· Prayogshala', hire:'· AI Employees', seodesk:'· SEO Desk', socialdesk:'· Social Desk', caddesk:'· CAD Desk', gamedesk:'· Game Desk', archdesk:'· Architecture Desk', edudesk:'· Education Desk', skills:'· Skills'}[v] || '';
+  $('#ttl').textContent = {chat: chatFolder(), aaj:'· Today', kaam:'· All tools', baat:'· Baat', main:'· Main', bana:'· Creations', project:'· Folder', arena:'· Design Arena', lab:'· Prayogshala', hire:'· AI Employees', seekh:'· Video Learner', interactive:'· Hoola Interactive', code:'· Hoola Code', seodesk:'· SEO Desk', socialdesk:'· Social Desk', caddesk:'· CAD Desk', gamedesk:'· Game Desk', archdesk:'· Architecture Desk', edudesk:'· Education Desk', skills:'· Skills', filmdesk:'· Film Desk', leadsdesk:'· Leads Desk'}[v] || '';
   if (v !== 'project') PJ?.draw();
   drawNav(); $('#app').classList.remove('drawer');
   if (v === 'aaj') drawToday(); if (v === 'main') drawMain(); if (v === 'baat') drawBaat();
@@ -160,12 +199,21 @@ function go(v, arg) {
   else if (v === 'lab' && !$('#labframe').src) $('#labframe').src = '/static/prayog/index.html';   // Prayogshala (public labs)
   if (v === 'systems') ENT?.open($('#systems'), arg || 'erp');   // v0.453 an Enterprise employee's Open desk lands on its own role   // v0.396 CONNECT: her own ERP / CRM address + key
   if (v === 'hire') EMP?.hub($('#hire'));
+  if (v !== 'interactive') HIV?.leave();
+  if (v !== 'code') HCD?.leave();
+  if (v === 'code') HCD?.open($('#code'));   // v0.748 HOOLA CODE
+  if (v !== 'flow') FLW?.leave();
+  if (v === 'flow') FLW?.open($('#flow'));   // v0.751 HOOLA FLOW
+  if (v === 'seekh') SKH?.open($('#seekh'));   // v0.718 the HOOLA AI Video Learner (from the AI Employees hub)
+  if (v === 'interactive') HIV?.open($('#interactive'));   // v0.747 HOOLA INTERACTIVE
   if (v === 'seodesk') EMP?.desk($('#seodesk'));
   if (v === 'socialdesk') EMP?.social($('#socialdesk'));
   if (v === 'caddesk') EMP?.cad($('#caddesk'));
   if (v === 'gamedesk') EMP?.game($('#gamedesk'));
   if (v === 'archdesk') EMP?.arch($('#archdesk'));   // v0.410
   if (v === 'edudesk') EMP?.edu($('#edudesk'));   // v0.453 Education, Research & Lab
+  if (v === 'filmdesk') FD?.open($('#filmdesk'));   // v0.565 Film Desk
+  if (v === 'leadsdesk') EMP?.leads($('#leadsdesk'));   // v0.686.0 Leads Desk (the Lead Generation employee)
   if (v === 'skills') SK?.draw($('#skills'));   // v0.481 the Skill Desk
   if (v === 'creative') WORKSPACE?.open();
   if (v === 'creative') $('#ttl').textContent = '· Creative workspace';
@@ -241,6 +289,36 @@ function appearanceHTML() {
   </div>`;
 }
 
+// v0.740 MODEL DROPDOWN: she picks the chat model from the owner's list; her next message runs on it.
+let MODELS = null;
+const mlabel = m => (m && (m.name || m.id || '')).replace(/^[^:]*:\s*/, '').replace(/\s*\((free|Google Gemini|Groq|Mistral|NVIDIA|Z\.ai|OpenRouter)\)\s*$/i, '');
+async function loadModels() {
+  const b = $('#modelBtn'); if (!b) return;
+  try { MODELS = await api('GET', '/api/model/choices'); } catch { MODELS = null; }
+  if (!MODELS || !MODELS.available || !(MODELS.models || []).length) { b.hidden = true; return; }
+  const cur = MODELS.models.find(m => m.selected) || MODELS.models[0];
+  b.querySelector('.mname').textContent = mlabel(cur);
+  b.title = 'Model: ' + (cur.name || cur.id);
+  b.hidden = false;
+}
+function modelMenu() {
+  const b = $('#modelBtn'); if (!MODELS || !window.HoolaMenu) return;
+  const items = [{header: 'Model for your chats'}];
+  for (const m of MODELS.models) {
+    const plan = m.free === true ? 'Free' : m.free === false ? 'Paid' : (m.provider || '');   // v0.741 another provider: its name
+    const bits = [plan, (m.reads || []).includes('image') ? 'reads pictures' : 'text only'].filter(Boolean);
+    if (m.default) bits.push('default');
+    items.push({label: mlabel(m), sub: m.pickable ? bits.join(' · ') : m.note, checked: !!m.selected,
+                disabled: !m.pickable, run: async () => {
+                  try { MODELS = await api('PUT', '/api/model/choice', {model: m.id}); await loadModels();
+                        toast('Your next message runs on ' + mlabel(m) + '.'); }
+                  catch (e) { toast(e.message, true); }
+                }});
+  }
+  HoolaMenu.open(b, items, {align: 'end', place: 'above', label: 'Choose the model', width: 300});
+}
+document.addEventListener('click', e => { if (e.target.closest && e.target.closest('#modelBtn')) modelMenu(); });
+
 async function enter() {
   ME = await api('GET', '/api/console/me');
   AV = ME.avatar?.name || 'Santosh';
@@ -250,16 +328,57 @@ async function enter() {
   $('#uname').textContent = ME.owner || ME.email || 'You'; $('#uhandle').textContent = `${AV} · ${ME.handle || ''}`;
   $('#uini').textContent = (ME.owner || ME.email || 'H').trim().charAt(0).toUpperCase();
   const h = new Date().getHours(), first = (ME.owner && ME.owner !== 'Hoola user') ? ME.owner.split(' ')[0] : '';
-  $('#greet').innerHTML = esc(h < 12 ? 'Good morning' : h < 17 ? 'Hello' : 'Good evening') + (first ? `, <span class="gname">${esc(first)}</span>` : '');
+  $('#greet').innerHTML = esc(HUMAN ? HOUR_WORD(h) : h < 12 ? 'Good morning' : h < 17 ? 'Hello' : 'Good evening') + (first ? `, <span class="gname">${esc(first)}</span>` : '');
+  humanTagline();
+  loadModels();                                  // v0.740 the model dropdown in the composer
   if (window.HoolaEmployees && !EMP) {           // v0.317 Employees for everyone; a desk only once its employee is hired
     EMP = HoolaEmployees({api, esc, toast, changed: syncEmployees, open: (v, arg) => go(v, arg),   // v0.453 desks open Systems / a lab directly
                           say: text => { go('chat'); msg.value = text; msg.dispatchEvent(new Event('input')); composer.requestSubmit(); }});
     if (!NAV.some(([k]) => k === 'hire')) NAV.unshift(['hire', 'AI Employees']);   // v0.443 her AI staff is the FIRST section
   }
+  if (CONFIG.flow && window.HoolaFlow && !FLW) {   // v0.751 HOOLA FLOW: a row right under Create (with Interactive / Code)
+    FLW = HoolaFlow({api, esc, toast, say: (text, send) => { go('chat'); msg.value = text; msg.dispatchEvent(new Event('input')); msg.focus(); if (send) composer.requestSubmit(); }});
+    if (!NAV.some(([k]) => k === 'flow')) NAV.splice(NAV.findIndex(([k]) => k === 'creative') + 1, 0, ['flow', 'Hoola Flow']);
+  }
+  if (CONFIG.flow_mic && window.HoolaFlowMic && !FMIC) {   // v0.751 the chat box mic dictates through Kaan when its engine is ready
+    FMIC = HoolaFlowMic({api, toast, onText: t => { msg.value = t; msg.dispatchEvent(new Event('input')); scrollDown(true); },
+      onState: (on, why) => { $('#micBtn').classList.toggle('on', !!on); $('#micBtn').classList.toggle('busy', why === 'writing');
+        $('#micBtn').title = on ? 'Hoola Flow is listening - click (or Ctrl + Space) to finish' : 'Speak to type (Hoola Flow) - Ctrl + Space'; }});
+  }
+  if (CONFIG.hoola_code && window.HoolaCode && !HCD) {   // v0.748 HOOLA CODE: a row right under Create / Hoola Interactive
+    HCD = HoolaCode({api, esc, toast});
+    if (!NAV.some(([k]) => k === 'code')) NAV.splice(NAV.findIndex(([k]) => k === 'creative') + 1, 0, ['code', 'Hoola Code']);
+  }
+  if (CONFIG.interactive && window.HoolaInteractive && !HIV) {   // v0.747 HOOLA INTERACTIVE: a row right under Create
+    HIV = HoolaInteractive({api, esc, toast, upload: async file => {
+      let id = CONV;
+      if (!id) { const c = await api('POST', '/api/conversations?reuse=1'); id = c.id; }
+      const fd = new FormData(); fd.append('file', file, file.name);
+      return api('POST', `/api/conversations/${encodeURIComponent(id)}/files`, undefined, {form: fd});
+    }});
+    if (!NAV.some(([k]) => k === 'interactive')) NAV.splice(NAV.findIndex(([k]) => k === 'creative') + 1, 0, ['interactive', 'Hoola Interactive']);
+  }
+  if (window.HoolaSeekh && !SKH) {               // v0.718 the Video Learner: stays on its page while Hoola works
+    SKH = HoolaSeekh({api, esc, toast, open: (v, arg) => go(v, arg), live: () => $('#app').classList.add('open'),
+                      send: async text => {        // one honest chat turn without leaving the panel
+                        let id = CONV;
+                        if (!id) { const c = await api('POST', '/api/conversations?reuse=1'); id = c.id; }
+                        const r = await api('POST', `/api/conversations/${encodeURIComponent(id)}/messages`,
+                                   {text: String(text || ''), client_id: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random())), files: [], hints: []});
+                        return {...(r || {}), conversation_id: id};   // v0.745 the learner follows this run on its own page
+                      },
+                      upload: async file => {      // the panel's video picker rides the chat file lane (25 MB)
+                        let id = CONV;
+                        if (!id) { const c = await api('POST', '/api/conversations?reuse=1'); id = c.id; }
+                        const fd = new FormData(); fd.append('file', file, file.name);
+                        return api('POST', `/api/conversations/${encodeURIComponent(id)}/files`, undefined, {form: fd});
+                      }});
+  }
   syncEmployees(ME.employees || {});
   if (window.HoolaEnterprise && !ENT) {        // v0.396 CONNECT: the only door an enterprise credential has
     ENT = HoolaEnterprise({api, esc, toast});
   }
+  if (window.HoolaFilmDesk && !FD) FD = HoolaFilmDesk({api, esc, toast});   // v0.565
   if (window.HoolaSkills && !SK) {             // v0.481 the Skill Desk
     SK = HoolaSkills({api, esc, toast});
   }
@@ -344,7 +463,8 @@ $('#jump').addEventListener('click', () => { thread.scrollTo({top: thread.scroll
 function landing(on) {
   $('#landing').hidden = !on; $('#thread').hidden = on; $('#dock').hidden = on;
   (on ? $('#slotLand') : $('#slotDock')).appendChild(composer);
-  msg.placeholder = on ? 'Ask anything, attach a file, or describe what you want to create' : `Reply to ${AV}…  (/ for commands)`;
+  msg.placeholder = HUMAN ? (on ? `What should ${AV} do? For example: “Reply to my supplier and attach the invoice”` : `Reply to ${AV}…`)
+    : on ? 'Ask anything, attach a file, or describe what you want to create' : `Reply to ${AV}…  (/ for commands)`;
   drawHead();
 }
 /* v0.222 R3: the conversation header - title, its session, export and the chat's own menu */
@@ -397,8 +517,8 @@ function replayStep(p) {
   if (p.args) STEPS_ARGS.set(id, p.args);
   if (p.state === 'running') return;      // the done / error step of the same call follows it
   if (!STEPBUF) {
-    STEPBUF = document.createElement('details'); STEPBUF.className = 'tools'; STEPBUF.open = false;
-    STEPBUF.innerHTML = `<summary><span class="ic" style="width:18px;height:18px;font-size:10px">✓</span><span class="sm"></span><span class="chev">⌄</span></summary><div class="tl"></div>`;
+    STEPBUF = document.createElement('details'); STEPBUF.className = 'tools hmfold'; STEPBUF.open = false;   // v0.718 the same fold as a live turn
+    STEPBUF.innerHTML = `<summary><span class="sm"></span>${HM_DN}</summary><div class="tl"></div>`;
     SINK.appendChild(STEPBUF);
   }
   const row = p.state === 'error' ? `<span class="ic" style="background:rgba(248,113,113,.18);color:var(--bad)">!</span>${esc(p.label || p.tool)} <code>${esc(p.tool || '')}</code>${p.detail ? `<span class="tm">${esc(String(p.detail).slice(0, 60))}</span>` : ''}`
@@ -413,7 +533,7 @@ function flushStepBuf() {
   if (!STEPBUF) return;
   const n = STEPBUF.querySelectorAll('.ts').length;
   if (!n) STEPBUF.remove();
-  else STEPBUF.querySelector('.sm').textContent = `${n} step${n > 1 ? "s" : ""}`;
+  else STEPBUF.querySelector('.sm').textContent = 'Worked';   // v0.721 no count - the arrow opens the steps
   STEPBUF = null;
 }
 // v0.279 attach.js: her files as Claude-style tiles (composer tray, above her sent bubble, full-screen viewer)
@@ -562,15 +682,27 @@ function simpleProgress(kind,p={}) {
   if (!SIMPLE_PROGRESS) {
     SIMPLE_PROGRESS=document.createElement('div');SIMPLE_PROGRESS.className='simple-progress';
     SIMPLE_PROGRESS.setAttribute('role','status');SIMPLE_PROGRESS.setAttribute('aria-live','polite');SIMPLE_PROGRESS.setAttribute('aria-atomic','true');
+    const mark=document.createElement('span');mark.className='progress-mark';mark.setAttribute('aria-hidden','true');   // v0.718 the 3D Hoola mark while she waits
+    if(window.HoolaMark)mark.innerHTML=HoolaMark.think(24);
     const label=document.createElement('span');label.className='progress-label';   // v0.299: no avatar here either
-    const dots=document.createElement('span');dots.className='progress-dots';dots.setAttribute('aria-hidden','true');dots.innerHTML='<i></i><i></i><i></i>';
     const secs=document.createElement('span');secs.className='progress-secs';secs.setAttribute('aria-hidden','true');   // v0.293 the clock is decoration; the label is what a screen reader reads
-    SIMPLE_PROGRESS.append(label,dots,secs);
+    // v0.721 EK HI KAAM-ROW: the ONE working row. The step list (the backend feed) sits under it, folded behind a
+    // small arrow - the arrow shows only once there is a step, and opening it is her choice for the whole reply.
+    const tog=document.createElement('button');tog.type='button';tog.className='wtog';tog.hidden=true;
+    tog.setAttribute('aria-label','Show steps');tog.setAttribute('aria-expanded','false');tog.innerHTML=HM_DN;
+    const steps=document.createElement('div');steps.className='tools hmlive wsteps';steps.innerHTML='<div class="tl"></div>';
+    tog.addEventListener('click',()=>{const t=TURN;const on=!SIMPLE_PROGRESS?.classList.contains('wopen');
+      if(t)t.stepsOpen=on;SIMPLE_PROGRESS?.classList.toggle('wopen',on);tog.setAttribute('aria-expanded',String(on));tog.setAttribute('aria-label',on?'Hide steps':'Show steps');});
+    SIMPLE_PROGRESS.append(mark,label,secs,tog,steps);
+    if(TURN?.stepsOpen){SIMPLE_PROGRESS.classList.add('wopen');tog.setAttribute('aria-expanded','true');}
     PROGRESS_T0=Date.now();clearInterval(PROGRESS_TIMER);PROGRESS_TIMER=setInterval(progressTick,1000);
   }
   placeProgress();
-  const label=PROGRESS_POLICY.phase(kind,p);
-  const text=SIMPLE_PROGRESS.querySelector('.progress-label');if(text.textContent!==label)text.textContent=label;
+  let label=PROGRESS_POLICY.phase(kind,p);
+  const cur=TURN?.live?.cur;   // v0.721 the row says what is happening NOW, in the step's own words
+  if(cur&&/^(Working on it|Thinking|Still working)/.test(label))label=cur;
+  const text=SIMPLE_PROGRESS.querySelector('.progress-label');
+  if(text.textContent!==label){text.textContent=label;text.classList.remove('wswap');void text.offsetWidth;text.classList.add('wswap');}
   scrollDown();
 }
 /* v0.299 (owner: "WHEN HOOLA PERFECOM LONG TASK THE LODING, THINGING SECTION GET HIDE FOR WHILE - FIND ROUTE
@@ -586,7 +718,70 @@ function placeProgress(){
   SIMPLE_PROGRESS.hidden=false;
 }
 function clearSimpleProgress(){SIMPLE_PROGRESS?.remove();SIMPLE_PROGRESS=null;clearInterval(PROGRESS_TIMER);PROGRESS_TIMER=0;}
-function stepEvent(p) { simpleProgress('step',p); }
+/* v0.716 NAYA ROOP (her pick 5): like Claude, the turn's tool steps show LIVE as rows - a spinner while a step runs,
+   a tick that draws itself when it is done - and fold into one "Worked for 12s · 3 steps" line the moment the words
+   start (or the turn ends). Before, a live turn showed only the one-line progress label; the rows existed only on a
+   reload (replayStep). */
+const HM_TICK = '<svg viewBox="0 0 16 16"><path d="M3 8.5l3.2 3L13 5"/></svg>';
+const HM_CHEV = '<svg class="hm-chev" viewBox="0 0 12 12"><path d="M4 2l4 4-4 4"/></svg>';
+const HM_DN = '<svg class="hm-dn" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 4.5l3 3 3-3"/></svg>';   // v0.721 the only control: an arrow
+function liveStep(p) {
+  if (!TYPING) return;
+  const t = turn();
+  if (!SIMPLE_PROGRESS) simpleProgress('step', p);
+  let g = t.live;
+  if (!g) {
+    // v0.721: no second "Working" block in the chat any more - the steps live inside the ONE working row; this
+    // hidden anchor only keeps their place, so the fold ("Worked for 12s") lands where the work happened
+    const el = document.createElement('details'); el.className = 'tools hmfold'; el.open = false; el.hidden = true;
+    el.innerHTML = `<summary><span class="sm"></span>${HM_DN}</summary><div class="tl"></div>`;
+    const tl = SIMPLE_PROGRESS.querySelector('.wsteps .tl'); tl.innerHTML = '';
+    g = t.live = {el, tl, rows: new Map(), t0: Date.now(), n: 0, cur: ''};
+    put(t, el);
+    if (SIMPLE_PROGRESS) placeProgress();
+  }
+  const tog = SIMPLE_PROGRESS?.querySelector('.wtog'); if (tog) tog.hidden = false;
+  const id = String(p.id || p.tool || g.n);
+  let r = g.rows.get(id);
+  if (!r) {
+    r = document.createElement('div'); r.className = 'ts run';
+    r.innerHTML = '<span class="ic"><span class="hm-spin"></span></span><span class="tx"></span><span class="tm"></span>';
+    r._t0 = Date.now(); g.rows.set(id, r); g.n++; g.tl.appendChild(r);
+  }
+  r.querySelector('.tx').textContent = p.label || p.tool || 'Working';
+  if (p.state !== 'done' && p.state !== 'error') g.cur = p.label || p.tool || g.cur;
+  if (p.state === 'done' || p.state === 'error') {
+    r.classList.remove('run'); r.classList.toggle('err', p.state === 'error');
+    const ic = r.querySelector('.ic'); ic.className = p.state === 'error' ? 'ic' : 'ic hm-tick';
+    ic.innerHTML = p.state === 'error' ? '!' : HM_TICK;
+    const s = (Date.now() - r._t0) / 1000; r.querySelector('.tm').textContent = s < 1 ? '<1s' : s.toFixed(1) + 's';
+  }
+  scrollDown();
+}
+function foldLive(t = TURN) {
+  const g = t?.live; if (!g) return;
+  t.live = null;
+  const secs = Math.max(1, Math.round((Date.now() - g.t0) / 1000));
+  const tl = g.el.querySelector('.tl'); while (g.tl.firstChild) tl.appendChild(g.tl.firstChild);
+  g.el.hidden = false; g.el.open = !!t.stepsOpen;
+  g.el.querySelector('.sm').textContent = `Worked for ${fmtSecs(secs)}`;   // v0.721 no step count, just the arrow
+  const tog = SIMPLE_PROGRESS?.querySelector('.wtog'); if (tog) tog.hidden = true;
+  g.el.querySelectorAll('.ts.run').forEach(r => { r.classList.remove('run'); });
+  // the rows keep their live look inside the fold (spinner never left spinning)
+  g.el.querySelectorAll('.ts .hm-spin').forEach(sp => { sp.parentElement.className = 'ic hm-tick'; sp.parentElement.innerHTML = HM_TICK; });
+  g.el.querySelector('.tl').classList.add('hmrows');
+}
+/* parity Phase 5: the turn's work receipt ("4/24 steps · 2 calls (2 ok) · done ✓ · tools") is step data, not a chat
+   row - it sits small and grey at the bottom of the folded "Worked for" steps; nothing shows when there is no fold */
+function ledgerLine(line, root = col, t = TURN) {
+  if (!line) return;
+  const tl = t?.live?.tl || [...root.querySelectorAll('.hmfold')].pop()?.querySelector('.tl');
+  if (!tl) return;
+  tl.querySelector('.wledger')?.remove();
+  const d = document.createElement('div'); d.className = 'wledger'; d.textContent = String(line).replace(/^\(Kaam:\s*/, '').replace(/\)$/, '');
+  tl.appendChild(d);
+}
+function stepEvent(p) { liveStep(p); simpleProgress('step',p); }   // v0.721 one row: liveStep fills its list, simpleProgress its words
 function closeTurnTools(t = TURN) {
   if (!t) return;
   for (const g of t.groups || []) {
@@ -601,7 +796,7 @@ function typing(on) {
   $('#stopBtn').hidden=!on;
   if(on){TYPING ||= document.createElement('div');simpleProgress('typing');live('run');}
   else {
-    TYPING=null;clearSimpleProgress();closeTurnTools();
+    foldLive();TYPING=null;clearSimpleProgress();closeTurnTools();
     for(const [cid,R] of [...RCPTS])if(R.state==='queue')receiptUpdate(cid,'sent');
     live(QUEUE.length?'ask':'idle');TURN=null;
   }
@@ -635,11 +830,12 @@ function reply(turnId) {
 function seg(R, n) {
   let S = R.segs.get(n);
   if (S) return S;
+  foldLive(R.t);                                                         // v0.718 the steps so far fold into one line
   const el = document.createElement('div'); el.className = 'txt textmd'; el.dataset.seg = n;
   put(R.t, el); R.t.afterText = true;
   if (TYPING && TYPING.parentNode === R.t.bd) TYPING.hidden = true;    // the words themselves show that it is working
   if (SIMPLE_PROGRESS) SIMPLE_PROGRESS.hidden = true;                    // v0.227.3 one row: the streaming words replace the progress line
-  const view = new HoolaMD.Live(el);
+  const view = new HoolaMD.Live(el, {soft: true});   // v0.718 the newest words land out of a soft focus
   S = {el, view, pacer: new HoolaStream.Pacer((text, fin) => {
     view.update(text, !fin);
     LAST_WORD_AT = Date.now();                       // v0.302 feeds the watchdog in progressTick
@@ -668,9 +864,9 @@ function drawActs(R) {
   const can = !!CONFIG.stream, last = R.turn === LAST_TURN;
   a.innerHTML = `<button type="button" class="ra" data-act="copy" aria-label="Copy reply">${svg('<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/>')}<span>Copy</span></button>`
     + `<button type="button" class="ra" data-act="quote" aria-label="Quote" title="Quote in the composer">${svg('<path d="M4 5h16v11H8l-4 4z"/><path d="M8 9h8M8 12h5"/>')}<span>Quote</span></button>`
-    + (can && last ? `<button type="button" class="ra" data-act="retry" aria-label="Retry">${svg('<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/>')}<span>Retry</span></button>` : '')
-    + (can ? `<button type="button" class="ra" data-act="up" aria-label="Good reply" aria-pressed="${R.fb === 'up'}">${svg('<path d="M7 10v11H3V10zM7 10l5-8a3 3 0 0 1 3 3v4h5a2 2 0 0 1 2 2.3l-1.4 8A2 2 0 0 1 18.6 21H7"/>')}</button>`
-      + `<button type="button" class="ra" data-act="down" aria-label="Bad reply" aria-pressed="${R.fb === 'down'}">${svg('<path d="M17 14V3h4v11zM17 14l-5 8a3 3 0 0 1-3-3v-4H4a2 2 0 0 1-2-2.3l1.4-8A2 2 0 0 1 5.4 3H17"/>')}</button>` : '')
+    + (can && last ? `<button type="button" class="ra" data-act="retry" aria-label="Retry">${svg('<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/>')}<span>${HUMAN ? 'Ask again' : 'Retry'}</span></button>` : '')
+    + (can ? `<button type="button" class="ra" data-act="up" aria-label="Good reply" aria-pressed="${R.fb === 'up'}">${svg('<path d="M7 10v11H3V10zM7 10l5-8a3 3 0 0 1 3 3v4h5a2 2 0 0 1 2 2.3l-1.4 8A2 2 0 0 1 18.6 21H7"/>')}${HUMAN ? '<span>Good answer</span>' : ''}</button>`
+      + `<button type="button" class="ra" data-act="down" aria-label="Bad reply" aria-pressed="${R.fb === 'down'}">${svg('<path d="M17 14V3h4v11zM17 14l-5 8a3 3 0 0 1-3-3v-4H4a2 2 0 0 1-2-2.3l1.4-8A2 2 0 0 1 5.4 3H17"/>')}${HUMAN ? '<span>Not right</span>' : ''}</button>` : '')
     + (R.stopped ? '<span class="rstop">Stopped</span>' : '');
   a.addEventListener('click', e => { const b = e.target.closest('[data-act]'); if (b) replyAct(R, b.dataset.act, b); });
   R.t.bd.appendChild(a); R.acts = a;
@@ -735,7 +931,7 @@ function live(state) {
 /* ================= cards ================= */
 const LABEL = {bazar_approval:'Your approval is required', employee_ask:'Employee question', operator_ask:'The website job needs you', operator_task:'Website job',
   email_draft:'Email draft', hoola_deal:'Hoola Deal', hoola_knock:'Hoola Network', hoola_msg:'Hoola Network message', calendar_event:'Calendar',
-  reminders:'Reminders', lists:'Lists', gyaan_sources:'Sources', call_receipt:'Call receipt', procedure:'Learned', memory_saved:'Saved to memory',
+  reminders:'Reminders', lists:'Lists', gyaan_sources:'Sources', call_receipt:'Call receipt', procedure:'Learned', memory_saved:'Saved to memory', memory_used:'From memory',
   artifact:'Page', pc_file:'File', photo_made:'Picture', motion:'Reel', video_job:'Video', studio_approval:'AI video cost', gst_return:'GST return',
   payroll_run:'Salary run', google_reconnect:'Reconnect Google', campaign:'WhatsApp campaign', share_ask:'Share this?'};
 const CARDS = new Map();      // kind:id -> element (updated in place)
@@ -770,6 +966,7 @@ function showWorkspace() {
 CREATE = window.HoolaCreate ? HoolaCreate({api, esc, toast, conv: () => CONV,
   newConv: async () => { const c = await api('POST', '/api/conversations'); await openConv(c.id, false, {noPush: true}); return c.id; },
   avatar: () => ME?.avatar?.gender === 'f' ? '/static/santosh-happy.png' : '/static/santosh-head.png',
+  artcraft: () => !!CONFIG?.artcraft,   // v0.752 ArtCraft in Create (the shilp lane's page door)
   owner: () => !!ME?.arena,   // v0.327 Create > Engines shows the services + server steps only to the owner
   version: (document.querySelector('script[src*="/studio.js"]')?.getAttribute('src') || '').split('v=')[1] || '',
   onClose: () => drawNav()}) : null;
@@ -814,6 +1011,11 @@ function slider(label, onDone) {
   return w;
 }
 function decisionRow(el, {yes, no, yesLabel = 'Slide for Haan', noLabel = 'Mana'}) {
+  if (HUMAN) {   // v0.743 plain English on every approval, and the promise said once
+    if (yesLabel === 'Slide for Haan') yesLabel = 'Slide to approve';
+    if (noLabel === 'Mana') noLabel = 'Not now';
+    el.insertAdjacentHTML('beforeend', '<p class="hxnote">Nothing happens until you approve.</p>');
+  }
   const s = slider(yesLabel, async () => { try { await yes(); } catch (e) { toast(e.message, true); throw e; } });
   const a = document.createElement('div'); a.className = 'acts dec';
   a.innerHTML = `<button class="btn soft" type="button">${esc(noLabel)}</button>`;
@@ -829,33 +1031,117 @@ function goalReport(r) {
   const part = (h, xs) => (Array.isArray(xs) && xs.length) ? `<div class="grep"><small>${h}</small>` +
     xs.slice(0, 10).map(x => { const u = safeLink(x); return `<div>\u2022 ${u ? `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(x)}</a>` : esc(x)}</div>`; }).join('') + `</div>` : '';
   return `<div class="greport">` + (r.summary ? `<div class="note">${esc(r.summary)}</div>` : '') +
-    part('✅ What was done', r.hua) + part('📎 What was made', r.bana) +
-    part('⏳ What is left', r.baaki) + (r.aapka ? part('👉 Your part', [r.aapka]) : '') + `</div>`;
+    part(HUMAN ? 'What was done' : '✅ What was done', r.hua) + part(HUMAN ? 'What was made' : '📎 What was made', r.bana) +
+    part(HUMAN ? 'What is left' : '⏳ What is left', r.baaki) + (r.aapka ? part(HUMAN ? 'Your part' : '👉 Your part', [r.aapka]) : '') + `</div>`;
 }
 
+/* v0.725 PAGE CARD (owner: "CHECK THE INTERACTIVE WEB UI BAR -- DONT HAVE A TIMING AND WORK IN PROGRESS" -> the
+   approved preview -> GO): one card per page, drawn in all its states from the server's real fields. While it is made:
+   a live clock from started_at (server clock, so a skewed PC clock never shows a wrong number), the usual time, the
+   step the builder is really on (writing / checking), a moving bar that shows work and never a made-up percentage,
+   and Stop. Ready: a small picture, what the page holds, version, how long it took, Share + Open. Not made: the
+   reason in plain words + Try again. */
+const PAGE_STEPS = [['read', 'Brief read'], ['writing', 'Writing the page'], ['checking', 'Checking it opens'], ['done', 'Ready']];
+function pageClock(s) { s = Math.max(0, Math.floor(s)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }
+function pageCard(p, live) {
+  const el = cardShell('artifact', p); el.className = 'cd hmpage';
+  clearInterval(el._tick);
+  const st = p.status || 'building', stage = p.stage || (st === 'building' ? 'writing' : '');
+  const building = st === 'building', failed = st === 'failed';
+  const stopped = stage === 'stopped', kept = st === 'ready' && (stopped || stage === 'failed') && Number(p.version) > 0;
+  const title = esc(p.title || 'Page');
+  const pill = building ? '<span class="hp-pill work"><span class="d"></span>Building</span>'
+    : failed ? `<span class="hp-pill bad"><span class="d"></span>${stopped ? 'Stopped' : 'Not made'}</span>`
+    : '<span class="hp-pill ok"><span class="d"></span>Ready</span>';
+  const thumb = `<div class="hp-thumb${building ? ' live' : ''}" aria-hidden="true"><i></i><i></i><i></i>${st === 'ready' ? '<b></b><b></b><b></b>' : ''}</div>`;
+  const now0 = Date.parse(p.now || '') || Date.now(), skew = now0 - Date.now();
+  const t0 = Date.parse(p.started_at || '') || 0;
+  const took = p.build_s != null ? pageClock(p.build_s) : '';
+  let sub, acts = '', below = '';
+  if (building) {
+    const cur = Math.max(1, PAGE_STEPS.findIndex(x => x[0] === stage));
+    sub = `<span data-step>${esc(PAGE_STEPS[cur][1])}</span><span class="sep">·</span><span class="hp-clock" data-clock>${t0 ? pageClock((Date.now() + skew - t0) / 1000) : '0:00'}</span><span class="sep">·</span><span>${p.draft ? `${Number(p.chars || 0).toLocaleString('en-IN')} characters` : 'usually 20–90 s'}</span>`;
+    acts = p.draft ? '' : '<button class="btn soft" type="button" data-stop>Stop</button>';
+    below = '<div class="hp-bar" aria-hidden="true"><span></span></div><div class="hp-steps">' + PAGE_STEPS.map((x, i) =>
+      `<span class="hp-st${i < cur ? ' done' : i === cur ? ' now' : ''}"><span class="ic">${i < cur ? '✓' : ''}</span>${esc(x[1])}</span>`).join('') + '</div>';
+  } else if (failed) {
+    sub = `<span>${esc(p.error || 'The page could not be made.')}${took ? ` After <span class="hp-clock">${took}</span>.` : ''}</span>`;
+    acts = stopped ? '' : '<button class="btn" type="button" data-retry>Try again</button>';
+  } else {
+    sub = `<span>${esc(p.summary || 'Open it to use the page.')}</span>`;
+    acts = '<button class="btn soft" type="button" data-share>Share</button><button class="btn" type="button" data-open>Open</button>';
+    below = `<div class="hp-foot"><span>Version ${Number(p.version) || 1}</span>${took ? `<span class="sep">·</span><span>made in <span class="hp-clock">${took}</span></span>` : ''}`
+      + (kept ? `<span class="sep">·</span><span>${esc(stopped ? 'The new version was stopped; this one stays.' : 'The new version could not be made; this one stays.')}</span>` : '') + '</div>';
+  }
+  el.setAttribute('aria-label', `Page ${p.title || ''}: ${building ? 'being made' : failed ? 'not made' : 'ready'}`);
+  el.innerHTML = `<div class="hp-top">${thumb}<div class="hp-meta"><div class="hp-r1"><span class="hp-title">${title}</span>${pill}</div>`
+    + `<div class="hp-sub"${building ? ' aria-live="polite"' : ''}>${sub}</div></div><div class="hp-acts">${acts}</div></div>${below}`;
+  if (building && t0) {
+    const c = el.querySelector('[data-clock]');
+    el._tick = setInterval(() => { if (!el.isConnected) return clearInterval(el._tick); c.textContent = pageClock((Date.now() + skew - t0) / 1000); }, 1000);
+  }
+  el.querySelector('[data-stop]')?.addEventListener('click', async e => {
+    e.currentTarget.disabled = true; e.currentTarget.textContent = 'Stopping…';
+    try { await api('POST', `/api/artifacts/${encodeURIComponent(p.id)}/stop`); } catch (er) { toast(er.message, true); }
+  });
+  el.querySelector('[data-retry]')?.addEventListener('click', () => {
+    msg.value = `Make the page "${p.title || 'page'}" again`; msg.dispatchEvent(new Event('input')); composer.requestSubmit();
+  });
+  el.querySelector('[data-open]')?.addEventListener('click', () => { const it = PN?.itemOf('artifact', p); if (it) PN.open(it); });
+  el.querySelector('[data-share]')?.addEventListener('click', async () => {
+    try {
+      const r = await api('POST', `/api/artifacts/${encodeURIComponent(p.id)}/share`, {on: true});
+      try { await navigator.clipboard.writeText(r.share_url); toast('Share link copied.'); } catch (er) { toast('Share link: ' + r.share_url); }
+    } catch (er) { toast(er.message, true); }
+  });
+  if (live && st === 'ready') PN?.update('artifact', p);
+  scrollDown();
+}
+
+/* parity Phase 6: while the chat model writes a page in its tool call, its card shows Writing + the size so far; the
+   stored version's own card takes its place (an edit of an existing page updates that page's card in place). */
+const DRAFT_T0 = new Map();
+function draftCard(p) {
+  const key = p.artifact_id || ('draft:' + p.turn + ':' + p.idx);
+  if (!DRAFT_T0.has(key)) DRAFT_T0.set(key, new Date().toISOString());
+  pageCard({id: key, draft: true, status: 'building', stage: 'writing', title: p.title || 'Page', chars: p.chars,
+            started_at: DRAFT_T0.get(key), now: new Date().toISOString()}, false);
+}
+function endDraftCards(p) {
+  DRAFT_T0.delete(p.id);
+  if (p.status === 'ready') for (const [k, el] of [...CARDS]) if (k.startsWith('artifact:draft:')) { el.remove(); CARDS.delete(k); DRAFT_T0.delete(k.slice(9)); }
+}
 function renderCard(kind, p, at, live) {
+  if (kind === 'artifact' && p && p.id && !p.draft) endDraftCards(p);
+  if (kind === 'artifact' && p && p.id) { pageCard(p, live); return; }
   if(PROGRESS_POLICY.quiet(kind,p)){if(live)simpleProgress(kind,p);return;}
   if (B && B.kinds.has(kind)) { const el = cardShell(kind, p); B.card(kind, p, el, !!live); scrollDown(); return; }
   if (RESULTS?.kinds.has(kind) && PN?.itemOf(kind, p) && (kind !== 'artifact' || p.status === 'ready')) {
     const el = cardShell(kind, p); RESULTS.card(kind, p, el); if (live) PN.update(kind, p); scrollDown(); return;
   }
   if (kind === 'goal') {   // v0.186 lamba kaam pakka: live checklist, one card per goal id
-    const el = cardShell(kind, p);
+    // v0.716 NAYA ROOP (her pick 5): drawn as Claude's to-do list - a Plan card with the mark, n of m, and each step
+    // ticking itself off (spinner while current, a drawn tick when done). HEAD stays the job's state for readers.
+    const el = cardShell(kind, p); el.classList.add('hmplan');
     const st = p.status || 'working';
     const HEAD = {working: 'LONG JOB RUNNING', done: 'LONG JOB DONE', blocked: 'WAITING FOR YOUR ANSWER',
                   failed: 'LONG JOB INCOMPLETE', stopped: 'LONG JOB STOPPED'};
+    const SAY = {working: 'Working', done: 'Done', blocked: 'Waiting for you', failed: 'Not finished', stopped: 'Stopped'};
     const steps = Array.isArray(p.steps) ? p.steps : [];
     const done = p.done != null ? p.done : steps.filter(x => x.state === 'done').length;
     const total = p.total != null ? p.total : steps.length;
-    const ico = {done: '\u2713', current: '\u23F3', failed: '\u2715', skipped: '\u2013', pending: '\u2022'};
-    el.innerHTML = head(HEAD[st] || HEAD.working, total ? (done + '/' + total) : '', st === 'done' ? 'ok' : st === 'failed' ? 'bad' : 'v') +
-      `<div class="bd" style="margin-top:4px"><b>${esc(p.title || p.goal || 'Long job')}</b>` +
-      (total ? `<div class="pbar"><i style="width:${Math.max(0, Math.min(100, p.pct ?? Math.round(100 * done / total)))}%"></i></div>` : '') +
-      steps.slice(0, 15).map(x => `<div class="gstep ${esc(x.state || 'pending')}"><span>${ico[x.state] || '\u2022'}</span> ${esc(x.text || '')}` +
-        (x.note ? ` <small>(${esc(x.note)})</small>` : '') + `</div>`).join('') +
+    const box = {done: `<span class="b hm-tick">${HM_TICK}</span>`, current: '<span class="b"><span class="hm-spin"></span></span>',
+                 failed: '<span class="b">!</span>', skipped: '<span class="b">–</span>', pending: '<span class="b"><span class="r0"></span></span>'};
+    const mark = window.HoolaMark ? (st === 'working' && !HUMAN ? HoolaMark.think(16) : `<span style="width:16px;height:16px;display:inline-block">${HoolaMark.svg()}</span>`) : '';
+    el.setAttribute('aria-label', HEAD[st] || HEAD.working);
+    el.innerHTML = `<div class="ph">${mark}<span>Plan</span><span class="pc">${esc(SAY[st] || SAY.working)}${total ? ' · ' + done + ' of ' + total : ''}</span></div>` +
+      `<div class="pt">${esc(p.title || p.goal || 'Long job')}</div>` +
+      `<ol>` + steps.slice(0, 15).map((x, i) => `<li class="${esc(x.state || 'pending')}${x.state === 'done' && el._done?.has(i) ? ' old' : ''}">${box[x.state] || box.pending}<span>${esc(x.text || '')}` +
+        (x.note ? ` <small>(${esc(x.note)})</small>` : '') + `</span></li>`).join('') + `</ol>` +
       (p.reason && st !== 'working' && !p.report ? `<div class="note">${esc(p.reason)}</div>` : '') +
       goalReport(p.report) +
-      (st === 'blocked' && p.hold === 'limit' ? `<div class="row" style="margin-top:8px"><button class="btn" type="button" data-goal-go>Continue</button></div>` : '') + `</div>`;
+      (st === 'blocked' && p.hold === 'limit' ? `<div class="row" style="margin-top:8px"><button class="btn" type="button" data-goal-go>Continue</button></div>` : '');
+    el._done = new Set(steps.slice(0, 15).map((x, i) => x.state === 'done' ? i : -1).filter(i => i >= 0));   // a tick draws once
     const go = el.querySelector('[data-goal-go]');   // v0.223 the budget ran out: the job ASKS, her tap carries it on
     if (go) go.onclick = async () => {
       go.disabled = true;
@@ -896,7 +1182,26 @@ function renderCard(kind, p, at, live) {
     turn().bd.appendChild(el); return;
   }
   if (kind === 'memory_saved' || kind === 'procedure') {
-    const el = document.createElement('div'); el.className = 'note'; el.textContent = (kind === 'memory_saved' ? '📌 Saved to memory: ' : '🎓 Learned: ') + (p.text || p.title || ''); turn().bd.appendChild(el); return;
+    const el = document.createElement('div'); el.className = 'note'; el.textContent = (kind === 'memory_saved' ? (HUMAN ? 'Saved to memory: ' : '📌 Saved to memory: ') : (HUMAN ? 'Learned: ' : '🎓 Learned: ')) + (p.text || p.title || ''); turn().bd.appendChild(el); return;
+  }
+  // v0.612 YAAD SE (Grok's "which memory did this use"): the memory this reply leaned on, each one forgettable
+  if (kind === 'memory_used') {
+    const items = Array.isArray(p.items) ? p.items : [];
+    if (!items.length) return;
+    const el = document.createElement('details'); el.className = 'note memused';
+    const labels = [...new Set(items.map(i => i.label || 'Memory'))].join(' · ');
+    el.innerHTML = `<summary>📖 From memory: ${esc(labels)}</summary>` + items.map((it, n) =>
+      `<div class="mu" style="display:flex;gap:8px;align-items:flex-start;margin-top:6px;font-size:13px"><span style="flex:1"><b>${esc(it.label || '')}</b> — <span class="faint">${esc(it.text || '')}</span></span><button type="button" class="btn soft" data-mu="${n}" style="padding:2px 8px">Forget</button></div>`).join('');
+    el.addEventListener('click', async e => {
+      const b = e.target.closest('[data-mu]'); if (!b) return;
+      const it = items[Number(b.dataset.mu)]; if (!it) return;
+      const ask = it.source === 'chat' ? 'Stop using this chat as memory? The chat itself stays in your list.' : 'Forget this?';
+      if (!confirm(ask)) return;
+      try { await api('POST', '/api/memory/unremember', {source: it.source, id: it.id, conversation_id: it.conversation_id || '', text: it.text || ''});
+            b.closest('.mu').remove(); if (!el.querySelector('.mu')) el.remove(); }
+      catch (er) { toast(er.message, true); }
+    });
+    turn().bd.appendChild(el); return;
   }
   const el = cardShell(kind, p);
   switch (kind) {
@@ -1069,6 +1374,7 @@ function onEvent(ev) {
       hoolaText(p.text || '', p.source, ev.id, ev.at); return;
     case 'typing': typing(!!p.on); return;
     case 'step': landing(false); stepEvent(p); return;
+    case 'ledger': ledgerLine(p.line); return;   // parity Phase 5: the receipt lives in the steps fold
     case 'work': workEvent(p); return;
     case 'say': {
       simpleProgress('say',p);
@@ -1076,6 +1382,7 @@ function onEvent(ev) {
       $('#stageCap').textContent = p.text || 'Working…'; return;
     }
     case 'think': landing(false); thinkEvent(p); return;   // v0.171 the model's reasoning, live in its card
+    case 'artifact_draft': landing(false); draftCard(p); PN?.draft?.(p); return;   // parity Phase 6: a page being written
     default: landing(false); renderCard(ev.kind, p, ev.at, true);
       if (/ask|approval|draft|_sign|quote|confirm|knock/.test(ev.kind)) refreshPending();
   }
@@ -1096,6 +1403,7 @@ function renderEvents(events, any) {
       else hoolaText(p.text || '', p.source, ev.id, ev.at);
     }
     else if (ev.kind === 'step') continue;   // v0.171 the transcript keeps what each turn did (steps=1)
+    else if (ev.kind === 'ledger') { flushStepBuf(); ledgerLine(p.line, SINK, null); }   // parity Phase 5
     else { flushStepBuf(); renderCard(ev.kind, p, ev.at); }
   }
   flushStepBuf();
@@ -1324,11 +1632,11 @@ addEventListener('resize', drawRail);
 /* ================= one stream for all her chats (CHAT_SESSIONS; on with CONSOLE_V2) ================= */
 // kinds that belong to their own chat only (events.LOCAL_KINDS). v0.227.4 a card of another chat never lands in the open chat;
 // that chat gets the unread dot instead (Today still counts every approval)
-const LOCAL = new Set(['typing', 'step', 'work', 'log', 'reply_start', 'delta', 'delta_reset', 'reply_end', 'think', 'say', 'message', 'upload',
+const LOCAL = new Set(['typing', 'step', 'work', 'log', 'reply_start', 'delta', 'delta_reset', 'reply_end', 'think', 'say', 'artifact_draft', 'message', 'upload',
   'reminders', 'routines', 'lists', 'email_sent', 'hoola_update', 'galla', 'mshop', 'office', 'employee', 'darzi_order',
   'phonedoc_open', 'phonedoc_check', 'device_action', 'device_action_result', 'home_device', 'bt_request', 'bazar_open',
-  'bazar_link', 'gyaan_sources', 'memory_saved', 'procedure', 'compact', 'open', 'link', 'call_receipt', 'speaker', 'voice',
-  'maps_places',
+  'bazar_link', 'gyaan_sources', 'memory_saved', 'memory_used', 'procedure', 'compact', 'open', 'link', 'call_receipt', 'speaker', 'voice',
+  'maps_places', 'ledger',
   'biz_inbox', 'biz_appointment', 'propagent_listing', 'chai_order']);
 let ACC = null, ACC_LAST = 0;
 function accountStream() {
@@ -1426,7 +1734,8 @@ async function loadGauge() {
     // v0.222 R2: the same numbers as a card at the bottom of the sidebar
     sp.hidden = false; sp.className = 'spend' + cls; sp.title = tip;
     $('#spMonth').textContent = new Date().toLocaleString('en-IN', {month: 'short'});
-    $('#spAmt').textContent = `${money(m.spent_usd, m.spent_inr)} / ${money(m.limit_usd, m.limit_inr)}`;
+    $('#spAmt').textContent = HUMAN ? `${money(m.spent_usd, m.spent_inr)} of ${money(m.limit_usd, m.limit_inr)}` : `${money(m.spent_usd, m.spent_inr)} / ${money(m.limit_usd, m.limit_inr)}`;
+    if (HUMAN) sp.querySelector('.sp1 span').textContent = 'AI spend this month';
     sp.querySelector('.spbar i').style.width = pct + '%';
   } catch {}
 }
@@ -1626,7 +1935,18 @@ $('#toolsBtn').addEventListener('click', () => go('kaam'));
    stays on Baat. No speech recognition in this browser = the old jump to Baat, with a one-line why. */
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 let DICT = null;
-$('#micBtn').addEventListener('click', () => {
+async function flowMic() {   // v0.751 Kaan first (her own server), the browser's speech service only when Kaan cannot hear
+  if (FMIC?.on) { FMIC.stop(); return true; }
+  if (!FMIC || DICT || !(await FMIC.canUse())) return false;
+  try { await FMIC.start(msg.value); toast('Hoola Flow is listening. Click the microphone (or Ctrl + Space) to finish.'); return true; }
+  catch (e) { toast(/denied|NotAllowed|Permission/i.test(String(e?.message)) ? 'Allow the microphone for this site in your browser address bar.' : (e.message || 'The microphone could not start.'), true); return true; }
+}
+document.addEventListener('keydown', e => {   // v0.751 Ctrl + Space starts / finishes dictation while the chat box has focus
+  if (!FMIC || !e.ctrlKey || e.code !== 'Space' || document.activeElement !== msg) return;
+  e.preventDefault(); $('#micBtn').click();
+});
+$('#micBtn').addEventListener('click', async () => {
+  if (await flowMic()) return;
   if (!SR) { go('baat'); return; }
   if (DICT) { DICT.stop(); return; }
   const r = new SR();
@@ -1692,7 +2012,7 @@ const JOB_IC = {site_board: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12
 async function loadJobs() {
   let list = [];
   try { list = ((await api('GET', '/api/kaam')).jobs || []).filter(j => j.state === 'working' || j.state === 'waiting'); } catch { return; }
-  JOBS = list; drawJobs(); drawNav();
+  JOBS = list; drawJobs(); drawNav(); humanTagline();
 }
 function drawJobs() {
   const box = $('#liveJobs'); box.hidden = !JOBS.length; if (!JOBS.length) return;
@@ -1700,11 +2020,14 @@ function drawJobs() {
   $('#jobGrid').innerHTML = show.map(j => {
     const wait = j.state === 'waiting', pct = Math.max(4, Math.min(100, +j.pct || 0));
     const icon = wait ? '<path d="M12 8v5M12 16.5v.5"/><circle cx="12" cy="12" r="9"/>' : (JOB_IC[j.kind] || IC.kaam);
-    const sub = j.stage || j.detail || (wait ? 'Waiting for you' : 'Working…');
+    const sub = HUMAN ? [j.stage || j.detail || (wait ? 'Waiting for your OK' : 'Working'), wait ? '' : soFar(j.started_at)].filter(Boolean).join(' · ')
+                      : j.stage || j.detail || (wait ? 'Waiting for you' : 'Working…');
+    const real = +j.pct > 0 && +j.pct < 100;   // v0.743 a bar only when the job reports real progress
     return `<button type="button" class="job${wait ? ' wait' : ''}" data-job="${esc(j.conversation_id || '')}">
       <span class="jt"><span class="ji">${svg(icon)}</span><span class="jn"><b>${esc(j.title || j.label || 'Job')}</b><span>${esc(j.label && j.title ? j.label + ' · ' : '')}${esc(sub)}</span></span></span>
+      ${HUMAN ? `<span class="jtag">${wait ? 'Waiting for you' : 'Working'}</span>` : ''}
       ${wait ? '<span class="jact">Review &amp; approve</span>'
-             : `<span class="jbar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}" aria-label="Progress"><i style="width:${pct}%"></i></span>`}
+             : HUMAN && !real ? '' : `<span class="jbar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}" aria-label="Progress"><i style="width:${pct}%"></i></span>`}
     </button>`;
   }).join('');
 }
@@ -1730,7 +2053,7 @@ async function refreshPending() {
     const saveTurn = TURN; TURN = {bd: holder, steps: {}}; const k = q.kind + ':' + q.id; CARDS.delete(k);
     renderCard(q.kind, q.card || q); CARDS.delete(k); TURN = saveTurn;
   }
-  if (!TYPING) live(QUEUE.length ? 'ask' : 'idle'); drawNav();
+  if (!TYPING) live(QUEUE.length ? 'ask' : 'idle'); drawNav(); humanTagline();
 }
 
 /* ================= Today ================= */
@@ -1744,10 +2067,28 @@ async function drawToday() {
     <div class="grid2">
       <div class="tile gl"><h3>Reminders</h3>${d.reminders.length ? `<div class="ag">${d.reminders.map(r => `<div><time>${esc(timeOf(r.due_at))}</time><span>${esc(r.text)}</span></div>`).join('')}</div>` : '<div class="empty">No reminders.</div>'}</div>
       <div class="tile gl"><h3>Lists</h3>${Object.keys(d.lists).length ? Object.entries(d.lists).map(([n, items]) => `<b style="font-size:13px" class="acc">${esc(n)}</b><div class="lst">${items.map(i => `<label><input type="checkbox" disabled> ${esc(i.text)}</label>`).join('')}</div>`).join('') : '<div class="empty">No lists yet. Ask in chat, for example: "doodh shopping list mein daalo".</div>'}</div>
+      <div class="tile gl" id="todayWork"><h3>Work</h3><div class="empty">Loading…</div></div>
       <div class="tile gl"><h3>Your approval is required <span class="tag warn">${d.pending.length}</span></h3>${d.pending.length ? d.pending.map(q => `<div class="ln"><span>${esc(q.title)}</span><b>${q.money ? '📱 phone' : 'console'}</b></div>`).join('') + '<button class="btn soft" type="button" id="toQueue">Open cards</button>' : '<div class="empty">Nothing yet.</div>'}</div>
     </div>`;
   $('#toQueue')?.addEventListener('click', () => { $('#app').classList.add('open'); go('chat'); });
+  drawTodayWork();
 }
+/* v0.648 KAAM KA HISAAB: running / waiting for her / finished in the last 7 days; a row opens its chat or call */
+async function drawTodayWork() {
+  const box = $('#todayWork'); if (!box) return;
+  let d; try { d = await api('GET', '/api/kaam/list'); } catch (e) { box.innerHTML = `<h3>Work</h3><p class="badc">${esc(e.message)}</p>`; return; }
+  const when = iso => { try { return new Date(iso).toLocaleString('en-IN', {weekday: 'short', hour: '2-digit', minute: '2-digit'}); } catch { return ''; } };
+  const row = r => `<button type="button" class="ln wkrow" data-wconv="${esc(r.conversation_id || '')}" ${r.conversation_id ? '' : 'disabled'}>
+      <span>${esc(r.title || r.label || 'Work')}${r.from_call ? ' <span class="tag v">call</span>' : ''}</span>
+      <b>${esc(r.say || r.state || '')}${r.at ? ' · ' + esc(when(r.at)) : ''}</b></button>`;
+  const sec = (name, rows) => rows.length ? `<b style="font-size:13px" class="acc">${esc(name)} (${rows.length})</b>${rows.slice(0, 12).map(row).join('')}` : '';
+  const html = sec('Waiting for you', d.waiting || []) + sec('Running now', d.running || []) + sec('Done in the last 7 days', d.done || []);
+  box.innerHTML = '<h3>Work</h3>' + (html || '<div class="empty">No work this week yet.</div>');
+}
+document.addEventListener('click', e => {
+  const b = e.target.closest('#todayWork [data-wconv]'); if (!b || !b.dataset.wconv) return;
+  go('chat'); openConv(b.dataset.wconv);
+});
 
 /* ================= Main (profile + console password) ================= */
 const gOn = m => { const g = m.google_apps || {}; return !!(g.gmail && g.calendar && g.drive); };

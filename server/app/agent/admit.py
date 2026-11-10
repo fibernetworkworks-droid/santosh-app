@@ -19,7 +19,7 @@ small and stable per session. HOOLA's version, adapted to a chat agent:
   set goes instead (never worse than v0.190).
 
 Admission only changes what the model SEES. dispatch(), employee.gate, the confirm-card rules, Rokiye - all
-unchanged and applied after, exactly as before. Non-owner actors (routine / staff / customer) keep the full set:
+unchanged and applied after, exactly as before. Non-owner actors (staff / customer) keep the full set (v0.558: her own routines are admitted like chat):
 their gates already restrict them and their jobs may need anything.
 """
 from __future__ import annotations
@@ -40,28 +40,117 @@ CORE_FAMILIES = frozenset({
     "goal",       # kaam_plan: long jobs
     "bazar",      # the gateway to MCP servers + everything not built in
     "web",        # google_search / web_sources / open_website / browse_web
+    "reach",      # v0.559 REACH MANCH: the fallback door when a web tool fails + status/channels introspection
     "gyaan",      # her knowledge base
     "procedure",  # seekhe hue kaam
     "google",     # google_status (the one-line Google fix)
     "make",       # memory_search + make_document + photo_clean / id_photo
     "life",       # reminders, alarms, lists, profile, weather
-    "maps",       # places / directions
+    # v0.559 "maps" left the core: the family grew to 20 tools over the Maps phases and rode on every "namaste";
+    # her map words open the whole family, and CORE_TOOLS below keeps the two everyday ones always in view
     "file",       # file_read (attachments in chat)
     "id",         # Pehchaan Locker
     "usage",      # ai_kharcha
     "device",     # phone_health
     "docstudio",  # v0.245 doc_studio / doc_preview: a document ask in any words finds the design studio
     "data",       # v0.238 data_fetch / data_read: big data stays in a server file (never escape to the cloud PC)
-    "team",       # v0.193 deploy_agents / agent_status / session_log - the agent team is a first-class tool now
+    # v0.559 "team" left the core too: a BIG ask (several things to make) or her team words open it (plan_for)
     "recall",     # v0.250 haal_ki_chats: her other chats by time (one tiny spec, like Claude's recent-chats tool)
 })
+# v0.559 SAHI GINTI: single tools that stay in view on every turn even though their family is not core - the
+# everyday ones of a family that is otherwise only opened by her words. Anthropic's guidance: tool choice gets worse
+# past 30-50 tools in view; a plain "namaste" carried 75 before this, ~52 after.
+CORE_TOOLS = frozenset({"maps_search", "maps_directions",
+                        "yaad_khojo"})   # v0.605 EK YAAD: the one memory door is always in view (old chats are fetched, not pasted)
+
+
+# Parity Phase 3 CLEAN TOOLS: the core families of the old mode (life, maps' everyday pair, id, usage, device, make,
+# data, docstudio) are no longer always on, so the words that clearly name ONE of their jobs bring just that job back
+# (a tool name) or its family (a family tag). Whole-word / phrase matches (tight), read only when chat_core_tools is on.
+CORE_KEYS: dict[str, tuple[str, ...]] = {
+    "get_weather": ("weather", "mausam", "baarish", "barish", "rain", "temperature", "garmi kitni", "thand kitni",
+                    "मौसम", "बारिश", "तापमान"),
+    "set_phone_alarm": ("alarm", "utha dena", "utha do", "jaga dena", "jaga do", "wake me", "अलार्म", "उठा देना",
+                        "जगा देना"),
+    "set_phone_timer": ("timer", "टाइमर"),
+    "list_add": ("grocery", "shopping list", "list mein", "list me", "meri list", "my list", "list se", "सूची"),
+    "list_show": ("grocery", "shopping list", "list mein", "list me", "meri list", "my list", "list dikhao"),
+    "list_done": ("list se", "list mein se", "ho gaya list"),
+    "list_reminders": ("reminders", "reminder list", "kaun se reminder", "mere reminder"),
+    "cancel_reminder": ("reminder cancel", "reminder hata", "reminder band", "cancel the reminder"),
+    "create_routine": ("roz subah", "har roz", "every day at", "every morning", "routine", "har din"),
+    "maps_search": ("kitna time lagega", "kitni der lagegi", "how far", "how long to reach", "airport tak",
+                    "timing", "opening hours", "khulta", "khulti", "band hota", "pharmacy", "hospital", "clinic"),
+    "maps_directions": ("kitna time lagega", "kitni der lagegi", "how far", "how long to reach", "airport tak",
+                        "directions"),
+    "ai_kharcha": ("ai ka kharcha", "ai ka kitna kharcha", "ai kharcha", "ai spend", "ai spending", "ai cost",
+                   "ai usage", "hoola ka kharcha"),
+    "id_locker": ("aadhaar", "aadhar", "pan card", "pan number", "passport number", "voter id", "driving licence",
+                  "driving license", "pehchaan", "आधार"),
+    "id_photo": ("passport size", "passport photo", "पासपोर्ट फोटो", "id photo", "visa photo"),
+    "photo_clean": ("background hata", "remove background", "photo saaf", "photo clean"),
+    "phone_health": ("phone slow", "phone itna slow", "phone garam", "phone hang", "battery", "storage full",
+                     "mera phone"),
+    "make_document": ("word mein", "word file", "word document", "in word", "docx", "mou"),
+    "docstudio": ("word mein", "word file", "word document", "in word", "docx", "mou", "excel", "spreadsheet",
+                  "powerpoint", "ppt", "slides", "presentation", "brochure", "letterhead"),
+    "data": ("most starred", "collect the", "collect all", "list of", "dataset"),
+    "id": ("id locker", "pehchaan locker"),
+    "file": ("attached", "attachment", "this file", "is file"),
+}
+
+
+def core_keys_hits(text: str) -> tuple[set[str], set[str]]:
+    """(tool names, family tags) her words clearly name, from CORE_KEYS (tight match)."""
+    low = str(text or "").lower()
+    tools_: set[str] = set()
+    fams: set[str] = set()
+    fam_tags = set(FAMILY_OF.values())
+    for target, keys in CORE_KEYS.items():
+        if any(_hit_tight(k, low) for k in keys):
+            if target in HANDLERS:
+                tools_.add(target)
+            elif target in fam_tags:
+                fams.add(target)
+    return tools_, fams
+
+
+def core_on(settings) -> bool:
+    """Parity Phase 3 CLEAN TOOLS (setting chat_core_tools): a turn starts from the core tool set (agent/core_tools.py)."""
+    if settings is None:
+        try:
+            from ..config import get_settings
+            settings = get_settings()
+        except Exception:
+            return False
+    return bool(getattr(settings, "chat_core_tools", False))
+
+
+_LATLNG = re.compile(r"(?<![\d.])-?\d{1,2}\.\d{2,}\s*,\s*-?\d{1,3}\.\d{2,}")
 
 # Hand-written keywords per family (lowercase substrings matched against her words). Tool names add their own
 # auto-keys below - this map carries the natural language the names cannot cover.
 EXTRA_KEYS: dict[str, tuple[str, ...]] = {
     # v0.311 WhatsApp campaigns are a family now (they were always on): her words, or a chat that already ran one
-    "campaign": ("whatsapp", "whats app", "campaign", "template", "broadcast", "lead list", "leads", "contact list",
-                 "customer list", "bulk message", "opt-in", "opt in", "consent", "व्हाट्सएप", "कैंपेन"),
+    # wave 9: NOT a bare "whatsapp" - "Rahul ko whatsapp karo" (one person) opened the BULK campaign tools and
+    # tool_search ranked create_campaign first; only bulk / campaign words open it now
+    "campaign": ("whatsapp campaign", "whatsapp broadcast", "whatsapp pe sabko", "whatsapp par sabko", "sabko whatsapp",
+                 "customers ko whatsapp", "clients ko whatsapp", "grahakon ko whatsapp", "logon ko whatsapp",
+                 "sabhi ko whatsapp", "whatsapp pe offer", "whatsapp par offer", "whatsapp offer", "customers ko offer",
+                 "whatsapp template", "campaign", "template", "broadcast", "lead list", "leads", "contact list",
+                 "customer list", "bulk message", "bulk whatsapp", "opt-in", "opt in", "consent", "कैंपेन"),
+    # v0.540 LEADS engine (the run / status / list / export / forget tools): the words that mean FINDING new
+    # business customers, not messaging the ones she has. Deliberately narrower than "campaign"'s "leads" -
+    # both families may come into view together and the model picks; no key here collides with a lane refusal.
+    "leads": ("leads chahiye", "lead banao", "lead generation", "leads dhundho", "leads dhoondo", "customers dhundo",
+              "customers dhoondo", "naye graahak", "naye customers", "new customers", "business list", "sellers dhundo",
+              "prospects", "territory list", "leads store", "leads export", "leads run", "लीड्स", "ग्राहक ढूंढो",
+              # v0.543.0: the scrape lane's finding words (the lane itself refuses politely until her opt-in)
+              "scrape karke", "maps scrape", "google maps se list", "scrape lane",
+              # v0.544.0: the vendor lane's words (config-gated - no vendor named, no lane)
+              "vendor se leads", "licensed vendor", "vendor lane",
+              # v0.545.0: the outreach handoff's words (the confirm card is the right first answer)
+              "outreach", "campaign list banao", "leads ki list campaign", "outreach hisaab"),
     # v0.245 generic verbs (bhej / send / reply / draft / label) removed: they loaded 23 mail tools for every send
     "email": ("mail", "email", "gmail", "inbox", "khat", "newsletter", "unsubscribe", "attachment",
               "fwd", "snooze", "vacation", "spam", "ईमेल", "मेल", "इनबॉक्स"),
@@ -83,13 +172,29 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
                    "brightness", "contrast", "before after", "before-after", "passport size", "pdf size photo", "photo ko"),
     "graphic": ("graphic", "banner", "poster", "logo", "thumbnail", "design", "creativ"),
     "video": ("video", "clip", "trim", "subtitle", "edit", "reel"),
-    "reel": ("reel", "short", "instagram", "status video"),
+    "reel": ("reel", "shorts", "youtube short", "short video", "instagram", "status video"),   # wave 12: not "short" ("short mein batao")
+    # v0.713 SEEKH MANCH: learn-from-video words. Deliberately NOT a bare "seekh" ('kya seekha' = the
+    # seekhe_kaam list, 'banana sikhao' = the build family, hoola_seekha = voice style: all keep their routing);
+    # every key here says video next to seekh.
+    "seekh": ("isse seekh", "is video se seekh", "video se seekh", "video sikhao", "sikhao video",
+              "video seekh kar", "learn this video", "learn from this video", "learn from the video",
+              "सीख लो वीडियो", "वीडियो सीख"),
     "motion": ("motion", "animat", "animate"),
     "studio": ("studio", "ai video", "video shoot"),
+    "cstudio": ("shot brief", "site visualisation", "site visualization", "render brief", "walkthrough brief", "asset checklist"),   # FINAL CHECK: the construction Studio desk (its tools were filed under "studio")
     # v0.259 Create Studio: song / voice-over / dubbing (the Create page names the tool; these cover her own words)
     "create": ("song", "gaana", "gaane", "jingle", "lyrics", "music studio", "voice-over", "voiceover", "voice over",
                "dub", "dubbing", "create studio", "गाना", "डब"),
     "blender": ("blender", "3d", "three d"),
+    # v0.589 KAAN PACK: her words for a transcript job (sunwai stays OUT - it is the vakil desk's court-hearing word;
+    # bare "kaan" stays OUT too - "makaan" contains it, the rentdesk lane does not need our family)
+    "kaan": ("transcript", "transcribe", "transcription", "kaan se", "kaan tool", "kaan pack", "audio sun",
+             "sun kar", "sun ke", "audio likh", "likhawat", "srt", "subtitle", "voice note likh", "speech to text",
+             "meeting ki file", "record sun", "record likh", "ट्रांसक्रिप्ट", "लिखावट",
+             # v0.607 W1: minutes + kaun-bola keys (TIGHT multiword only - bare "minutes"/"minute" stays OUT,
+             # "10 minute ruko" must never admit this family)
+             "meeting minutes", "minutes bana", "minutes likh", "minutes chahiye", "kaun bola", "kaun bola tha",
+             "kaun kaun bole", "kaun bol raha"),
     # v0.357 Engineering Desk (CAD Engineer): her words for a part / drawing / CAD files
     "eng": ("cad", "step file", ".step", "stl", "3d print", "cnc", "machin", "bracket", "flange", "enclosure", "mounting",
             "part bana", "drawing", "dimension", "fillet", "chamfer", "solidworks", "fusion 360", "autocad", "freecad",
@@ -106,6 +211,36 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
     # v0.245 "pc" is not keyword-admitted any more: _pc_wanted() decides (v0.271: only her PC / Hoola's PC named)
     "operator": ("computer operator", "operator"),
     "jaanch": ("jaanch", "test karo"),
+    # v0.559 REACH MANCH: core family anyway; these words keep it admitted if core ever shrinks ('kya kharab hai'
+    # stays with jaanch - Hoola's own health - reach answers only about the internet doors)
+    "reach": ("reach", "reach manch", "website nahi khul", "site nahi khul", "nahi khul raha", "internet check",
+              "backends", "kaun sa door", "web status"),
+    # v0.757 KALA KHULA: the google/skills catalog (v0.681) had NO words of its own - only the bare family name "kala"
+    # (which in Hindi is art / black) - so an everyday Google Cloud ask never brought it into view. These are the
+    # product names its 187 skills cover; a plain "google" / "cloud" alone is deliberately NOT a key.
+    "kala": ("google cloud", "gcp", "gcloud", "gke", "kubernetes engine", "bigquery", "big query", "vertex ai",
+             "agent platform", "gemini api", "genkit", "firebase", "cloud run", "cloud logging", "cloud monitoring",
+             "secops", "alloydb", "spanner", "bigtable", "apigee", "iam policy", "iam role", "google skill",
+             "google ki skill", "google ke skill", "well-architected", "google mobile ads", "admob"),
+    # v0.560 SPEC SUTRA: a work lane, not core (reach is the fallback door every chat may need; the spec
+    # ladder is admitted when software work is spoken). Bare "spec" stays with product (its action=spec) -
+    # these keys are the software-build shapes.
+    "speckit": ("speckit", "spec sutra", "spec driven", "spec-driven", "sdd", "user story", "acceptance criteria",
+                "user stories", "traceability", "constitution", "naksha banao", "spec banao", "spec likho",
+                "spec likh", "requirements doc", "requirement list", "converge loop", "convergence"),
+    # v0.586 SANDARBH MANCH: two work lanes (backend-only, the hoola AI's own desks - the T1 reference
+    # family). Bare "file" stays with product's file tools; these are the agent-owns-it shapes.
+    "workspace": ("workspace", "meri files", "file banao", "file likho", "file padho", "file kholo",
+                  "file save karo", "folder banao", "folder dikhao", "file dikhao", "directory tree",
+                  "apni file", "workspac"),
+    "kgmemory": ("kgmemory", "knowledge graph", "graph memory", "kg memory", "long term memory",
+                 "long-term memory", "entity banao", "relation banao", "yaad graph", "memory graph"),
+    # v0.618 BHANDAR MANCH: the local-data workbench (read-only over her own beds). Bare "sql" stays
+    # with pgdb (the postgres desk); bare "ast"/"json" too short/loose for substring admit - these
+    # are the bed-shaped keys.
+    "bhandar": ("bhandar", "sqlite", "local beds", "local data", "beds dikhao", "markdown outline",
+                "json get", "json keys", "ast outline", "code skeleton", "time zone", "timezone",
+                "iana"),
     "shop": ("order", "amazon", "flipkart", "zomato", "swiggy", "kharid", "shopping", "pizza", "grocer"),
     "mshop": ("mobile shop", "sim card", "phone repair", "phone shop"),
     "courier": ("courier", "parcel", "deliver", "track", "shipment", "speed post", "speedpost", "bluedart",
@@ -141,7 +276,11 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
                  # v0.433 Phase 10: big-studio mode
                  "unity", "unreal", "unreal engine", "ue5", "big studio", "hoola crew plugin", "editor plugin",
                  # v0.447 Game Arena
-                 "game arena", "games arena", "game ka score", "game duel", "game originality"),
+                 "game arena", "games arena", "game ka score", "game duel", "game originality",
+                 # v0.455 provenance
+                 "steam survey", "ai disclosure", "game provenance", "kahan se aaya", "created with ai",
+                 # v0.456 scenes
+                 "game scene", "game ka scene", "tscn", "level scene", "platformer level"),
     # v0.348 official Indian statistics -> MoSPI (built in); the STATS intent below carries sentence shapes
     "mospi": ("mospi", "esankhyiki", "inflation", "mehngai", "mahangai", "महंगाई", "cpi", "wpi", "iip", "gdp", "gva",
               "plfs", "unemployment", "berozgari", "बेरोजगारी", "jobless", "labour force", "nfhs", "census", "sarkari aankde",
@@ -154,7 +293,9 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
     "hoola": ("avatar", "hoola network", "samaj", "dosti", "community", "connection", "business page", "network pe"),
     "employee": ("employee", "staff", "naukar"),
     "pgdb": ("postgres", "sql", "database"),
-    "publicapi": ("api",),
+    "publicapi": ("api", "api box", "pincode", "pin code", "ifsc", "exchange rate", "currency rate", "dollar rate",
+                  "usd to inr", "air quality", "aqi", "earthquake", "bhukamp", "sunrise", "sunset", "mutual fund nav",
+                  "nav of", "bitcoin", "crypto price", "word meaning", "meaning of"),   # v0.750 the free API box's asks
     "handoff": ("digilocker", "ondc", "a2a", "consent"),
     "artifact": ("artifact", "tracker", "hisaab", "calculator", "planner", "checklist", "dashboard"),
     "army": ("army", "agent army"),
@@ -201,6 +342,36 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
     "itadmin": ("it admin", "itadmin", "office wifi", "office network"),
     "devops": ("devops", "deploy", "server", "uptime"),
     "dev": ("dev", "developer", "code", "bug", "software"),
+    # v0.585 Paisa Sahayak (consumer money safety): loan / fee / scam / complaint words. Tight keys.
+    "finguard": ("bank statement", "statement check", "passbook", "paise kat", "paisa kat", "kat gaya", "double debit",
+                 "extra charge", "hidden charge", "credit card bill",   # wave 12: her statement went to the B2B bank integrator
+                 "emi", "loan", "karz", "qarz", "processing fee", "apr", "prepay", "foreclos", "snowball", "avalanche", "scam", "fraud", "dhokha",
+                 "thagi", "fake call", "fake kyc", "kyc expire", "upi collect", "collect request", "ombudsman", "bank complaint", "bank charges",
+                 "hidden charges", "sms charges", "min balance", "credit card charges", "paisa_sahayak", "otp maang", "otp mang", "digital arrest"),
+    # v0.602 Vitt Sahayak (finance desk assists, Wave 2). Tight keys.
+    "finops": ("sip", "advance tax", "26as", "ais reconcile", "tds reconcil", "ageing", "aging report", "receivable", "payable", "three way match",
+               "3 way match", "aml", "structuring", "sanction", "pep screening", "credit memo", "dscr", "financial ratio", "vitt_sahayak"),
+    # v0.603 Risk Desk (markets and credit papers, Wave 3). Tight keys.
+    "riskdesk": ("order ticket", "rebalance", "portfolio drift", "concentration limit", "margin utilisation", "underwrit", "key fact statement", " kfs",
+                 "dpd", "npa", "sma-", "ecl", "expected credit loss", "dcf", "discounted cash", "velocity check", "wash trade", "round trip trade", "risk_desk"),
+    # v0.604 Dukaan Desk (retail Wave 1). Tight keys.
+    "retaildesk": ("dukaan desk", "dukaan_desk", "reorder", "dead stock", "expiry list", "mrp se upar", "oversell", "rto", "cod risk", "settlement reconcil",
+                   "landed cost", "product claim", "gst split", "kirana", "daily sales summary", "stock kam", "margin check"),
+    # v0.607 Retail Growth (Wave 2) + Retail Trust (Wave 3). Tight keys.
+    "retailgrowth": ("markdown schedule", "near expiry price", "loyalty list", "lapsed customer", "unit economics", "ltv", "abc analysis", "range review",
+                     "price rule", "scheme accrual", "retailer credit", "beat route", "cash conversion", "working capital", "delivery batch", "retail_growth"),
+    "retailtrust": ("fraud rule", "return abuse", "dark pattern", "grievance clock", "fake review", "review authenticity", "seller kyc", "gstin check",
+                    "legal metrology", "label check", "delivery promise audit", "override rate", "price fairness", "retail_trust"),
+    # v0.609 Bima Desk (health-insurance Wave 1). Tight keys.
+    "bimadesk": ("claim checklist", "insurance claim", "cashless claim", "reimbursement claim", "room rent", "proportionate deduction", "claim deduction",
+                 "claim rejected", "rejection appeal", "insurance ombudsman", "policy renewal reminder", "portability", "tpa", "settlement letter", "bima", "bima_desk"),
+    # v0.610 Bima Assist (health-insurance Wave 2). Tight keys.
+    "bimaassist": ("plan compare", "compare health plans", "material facts", "pre-existing disclosure", "proposal form check", "coverage check", "waiting period check",
+                   "pre-auth check", "insurer query", "medical timeline", "rejection letter", "grievance reply", "ombudsman packet", "wording review", "policy wording",
+                   "mis-selling", "free look", "fhir claim", "icd mapping", "code mapping", "bima_assist"),
+    # v0.611 Bima Risk (health-insurance Wave 3). Tight keys.
+    "bimarisk": ("loss ratio", "claim frequency", "chain ladder", "run-off triangle", "ibnr", "pricing fairness", "rating factor", "underwriting rule", "proposal triage",
+                 "provider outlier", "upcoding", "duplicate claim", "cashless misuse", "siu case", "fraud model audit", "scheme anomaly", "bima_risk"),
     # v0.495 office hours (the gstack THINK/PLAN lane): her big-idea words open a design doc first.
     # Tight keys only - "idea" / "plan" alone would load it on every second turn (kaam_plan is core already).
     "officehours": ("office hours", "officehours", "baithak", "design doc", "plan review", "naya idea",
@@ -223,7 +394,11 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
     "kalam": ("kalam", "writer", "lekha"),
     "lekhak": ("lekhak", "anuvaad", "translate", "translation", "grammar", "application likh", "kruti", "affidavit",
                "अनुवाद", "आवेदन"),
-    "kitab": ("kitab", "book"),
+    "kitab": ("kitab", "kitaab", "ebook", "e-book", "novel", "book likh", "book likhni", "book publish", "book banao",
+              "apni book", "meri book"),   # wave 12: not a bare "book" ("cab book karo", "table book karo")
+    # wave 12: "mera phone slow hai" opened nothing (phone_doctor's only auto-key was "doctor")
+    "phonedoc": ("phone slow", "mobile slow", "phone hang", "hang ho raha", "hang hota", "phone garam", "battery jaldi",
+                 "battery drain", "battery khatam", "storage full", "phone ki jaanch", "phone check karo"),
     "podcast": ("podcast",),
     "telecall": ("telecall", "cold call", "call list"),
     "callcentre": ("call centre", "callcenter", "call center", "inbound", "outbound"),
@@ -266,7 +441,16 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
     "askform": ("ask form", "sawaal form"),
     "a2a": ("a2a",),
     "desk2": ("desk",),
-    "team": ("agents", "agent lagao", "agent banao", "team banao", "team laga", "crew", "deploy",
+    # v0.559 maps left the core, so her place words must open it (before, it rode on every turn and needed none)
+    "maps": ("paas mein", "paas me", "aas paas", "aaspaas", "nazdeek", "najdeek", "kahan hai", "kaha hai", "kahaan hai",
+             "rasta", "raasta", "route", "direction", "map", "location", "kitni door", "kitna door", "kitne km",
+             "km door", "distance", "near me", "nearby", "petrol pump", "pahunchna", "pahuchna", "kaise jaun",
+             "kaise jaaun", "kaise pahunch", "google maps", "kaun si jagah", "jagah batao", "dukaan kahan",
+             "shop near", "my maps", "business profile", "listing", "ghar ke paas", "yahan ke paas",
+             "office ke paas", "dukaan ke paas", "ke aas paas", "sabse paas", "doori", "km ke andar", "km tak",
+             "jagah", "jagahen", "kram mein", "gps", "pins", "pin kiya", "dukaan tak", "google se kitne",
+             "maps ka", "maps par", "maps pe", "delivery kis kram"),
+    "team": ("agents", "agent lagao", "agent banao", "team banao", "team bana", "agent team", "team laga", "crew", "deploy",
              "parallel", "kai agents", "multiple agents", "agents lagao", "madadgar dal", "team se karo"),
     # v0.479 HOOLA SMART HOME: ghar ke devices (Home Assistant). Fridge / geyser words bhi yahin
     # admit hote hain TAAKI Hoola politely refuse kar sake (read-only guard app/home.py mein).
@@ -306,6 +490,13 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
               "what breaks if", "impact of changing", "architecture of this repo", "codebase samjh", "code ka naksha",
               "repo ka naksha", "kaun call karta", "kis par depend", "isko badalne se kya tootega", "graph_build",
               "graph_ask", "graph_list"),
+    # v0.694.0 WEB CLONE: the family opens ONLY on clone words (bare 'clone' parks in _GENERIC so 'git clone this
+    # repo' never misroutes, and 'site banao' stays the website builder). 'rebuild' only with the site named.
+    "webclone": ("web clone", "site clone", "website clone", "clone kar do site", "site ko clone",
+                 "is site ko clone", "is website ko clone", "site ka clone", "website ka clone",
+                 "webclone", "site clone kar", "website clone kar", "is page ko clone", "page clone",
+                 "site ko archive kar", "website archive", "apni site migrate", "site ko migrate kar",
+                 "site ka rebuild banao", "website ka rebuild banao", "साइट क्लोन", "क्लोन कर दो साइट"),
 }
 
 # words that appear inside many tool names but mean nothing on their own - never become auto-keys
@@ -320,17 +511,50 @@ _STOP = frozenset({
 _WORD_RE = re.compile(r"[a-z]{3,}")
 
 
+# wave 12: single words that are INSIDE other everyday words match as whole words only: "form" in "information" /
+# "performance", "edit" in "credit", "press" in "pressure" / "express" / "WordPress", "shoot" in "troubleshoot",
+# "clip" in "clipboard", "state" in "statement", "link" in "LinkedIn", "home" in "homework"
+_WHOLE_WORD = frozenset({"format", "form", "forms", "edit", "press", "shoot", "clip", "state", "link", "home", "page", "land",
+                         "book", "short", "doctor", "bank", "off"})
+
+
 def _hit(key: str, text: str) -> bool:
     """Short keys match on word boundaries only ('id' must not live inside 'video', 'app' not inside 'apple');
     longer keys stay substrings so 'mail' finds gmail and 'sheet' finds spreadsheet."""
-    if len(key) <= 3:
-        return re.search(r"\b" + re.escape(key) + r"\b", text) is not None
+    if len(key) <= 3 or key in _WHOLE_WORD:
+        return re.search(r"\b" + re.escape(key) + r"(?:s|es|ing|ed)?\b", text) is not None
     return key in text
+
+
+# Parity Phase 3 CLEAN TOOLS: with chat_core_tools a family joins a turn only when her words clearly NAME it. Every
+# key matches as a whole word (a Latin key may take a plural / -ing / -ed ending; "rent" no longer opens the rent desk
+# on "current"), and a few compound words keep their own spelling ("gmail", "spreadsheet"). Keys in Indian scripts
+# keep the substring match (a word boundary does not work there).
+_TIGHT_PREFIX = ("g", "spread", "e", "whats")   # "gmail" / "spreadsheet" / "email" / "whatsapp" still name the family
+
+
+def _hit_tight(key: str, text: str) -> bool:
+    if not key or not key.isascii():
+        return bool(key) and key in text
+    pre = r"(?:" + "|".join(_TIGHT_PREFIX) + r")?" if len(key) >= 4 else ""
+    return re.search(r"\b" + pre + re.escape(key) + r"(?:s|es|ing|ed)?\b", text) is not None
+
+
+# everyday words that are auto-keys of one family but do not NAME it (tight mode only): "rate" opened Biz Seva on
+# "repo rate", "india" opened the India facts family on "in India", "current" etc. Her own phrases still open them.
+_TIGHT_GENERIC = frozenset({"india", "rate", "rates", "price", "prices", "today", "current", "news", "world", "public",
+                            "local", "online", "free", "best", "top", "new", "old", "big", "small", "quick", "fast",
+                            "smart", "daily", "live", "info", "help", "guide", "money", "plan", "work", "job", "jobs",
+                            "profile", "source", "sources"})
 
 
 # v0.245 tags / name-words that are everyday words: never auto-keys ('make' loaded notebook + network + artifact,
 # 'search' / 'phone' / 'report' / 'print' loaded the PC tools, 'file' loaded Drive)
 _GENERIC = frozenset({
+    # wave 12: everyday words that were auto-keys of one family - "yeh link kholo" / "homework" opened smart home,
+    # "bank statement" the enterprise bank integrator, "doctor ka appointment" the phone doctor, "landing page" land
+    "page", "doctor", "land", "bank", "home", "off", "link", "state", "book", "press", "shoot", "short", "clip",
+    "release",
     "make", "file", "files", "life", "desk", "note", "notes", "report", "print", "phone", "search", "task", "entry",
     "photo", "video", "edit", "share", "export", "copy", "upload", "comments", "threads", "thread", "answer", "reply",
     "call", "docs", "doc", "sheet", "form", "event", "cancel", "settings", "sources", "studio", "plan", "office",
@@ -342,6 +566,10 @@ _GENERIC = frozenset({
     "pdf",       # making a pdf = docstudio; working ON a pdf = the "pdf work" intent
     "build",     # v0.496 "build a website / app" is not a code-graph ask
     "graph",     # v0.496 charts / dashboards own the bare word; the code-graph family has its own phrases
+    "kala",      # v0.757 KALA KHULA: the google/skills tool's own name is the Hindi word for black / art ("kala kurta");
+                 # its family opens only on the Google Cloud words in EXTRA_KEYS["kala"]
+    "clone",     # v0.694.0 WEB CLONE: bare 'clone' is everyday ("git clone this repo" = git, not the web family);
+                 # only her clone WORDS (web clone / site ko clone ...) open the webclone family
 })
 
 
@@ -370,6 +598,16 @@ def _auto_keys() -> dict[str, set[str]]:
 
 _AUTO = _auto_keys()
 
+# wave 12: EXTRA_KEYS entries that named families with no tools were dropped in silence ("blog likho", "instagram pe post
+# karo", "credit card bill" reached nothing) - folded into the family that really does the work; truly dead ones removed
+_REHOME = {"website": "site", "content": "kalam", "social": "kalam", "loan": "finguard", "salamat": "society"}
+for _old, _new in _REHOME.items():
+    if _old in EXTRA_KEYS and _new in set(FAMILY_OF.values()):
+        EXTRA_KEYS[_new] = tuple(dict.fromkeys(tuple(EXTRA_KEYS.get(_new, ())) + tuple(EXTRA_KEYS.pop(_old))))
+for _dead in [f for f in list(EXTRA_KEYS) if f not in set(FAMILY_OF.values())]:
+    log.info("admit: keyword family %s has no tools - its keys are dropped", _dead)
+    EXTRA_KEYS.pop(_dead, None)
+
 
 class AdmitSet:
     """The admitted set of ONE turn. Stable across the whole turn (cache discipline); `admit_family` is the
@@ -377,8 +615,13 @@ class AdmitSet:
 
     def __init__(self, settings):
         self.settings = settings
-        self.families: set[str] = set(CORE_FAMILIES)
+        self.core = core_on(settings)         # Parity Phase 3: start from the ~20 core tools, not the core families
+        self.families: set[str] = set() if self.core else set(CORE_FAMILIES)
         self.extra: set[str] = set()          # tool names admitted directly (beyond their family)
+        if self.core:
+            from .core_tools import CORE
+            direct = bool(getattr(settings, "chat_artifact_direct", False))   # Phase 6 on = the direct page tool
+            self.extra.update(n for n in CORE if n in HANDLERS and (n != "artifact" or direct))
         self.why: dict[str, str] = {}         # v0.245 family -> how it got in (word / intent / meaning / place)
 
     def admit_families(self, tags) -> list[str]:
@@ -404,7 +647,14 @@ class AdmitSet:
 
     def specs(self) -> list[dict]:
         """The tool list for the model: tool_search first, then the admitted specs in the registry's own order."""
-        out = [dict(TOOL_SEARCH)]
+        out = [search_spec()]
+        if self.core:   # Parity Phase 3: the core tools first, in their own order, with the clear English descriptions
+            from .core_tools import CORE, present
+            by_name = {t["name"]: t for t in TOOLS}
+            out += [present(by_name[n]) for n in CORE if n in by_name and n in self.extra]
+            have = {t["name"] for t in out}
+            out += [t for t in TOOLS if t["name"] not in have and self._seen(t["name"])]
+            return out
         for t in TOOLS:
             if self._seen(t["name"]):
                 out.append(t)
@@ -421,20 +671,39 @@ TOOL_SEARCH = {
         "required": ["need"]},
 }
 
+_SPEC: dict = {}
+
+
+def search_spec() -> dict:
+    """v0.563 tool_search with the families named (Anthropic's tool-search advice: say which categories exist so the
+    model knows what it can search for). Built once from the registry, so it is byte-stable across turns (cache)."""
+    if not _SPEC:
+        fams = sorted({f for f in FAMILY_OF.values() if f})
+        _SPEC.update(TOOL_SEARCH)
+        _SPEC["description"] = (TOOL_SEARCH["description"] + f" Every Hoola tool can be found here ({len(TOOLS)} in "
+                                f"{len(fams)} families: " + ", ".join(fams) + "). Search by what the job needs or by "
+                                "a tool's exact name; the tools found load for you to call next.")
+    return dict(_SPEC)
+
+
 _LABEL = "Tools dhoondh raha hoon"
 
 
-def _match(text: str) -> set[str]:
-    """Families whose keys (auto or hand-written) appear in the text. Lowercase in, family tags out."""
+def _match(text: str, tight: bool = False) -> set[str]:
+    """Families whose keys (auto or hand-written) appear in the text. Lowercase in, family tags out.
+    tight (Parity Phase 3, chat_core_tools): whole-word keys only and no everyday auto-keys."""
     hits: set[str] = set()
+    hit = _hit_tight if tight else _hit
     for fam, keys in _AUTO.items():
         for k in keys:
-            if _hit(k, text):
+            if tight and k in _TIGHT_GENERIC:
+                continue
+            if hit(k, text):
                 hits.add(fam)
                 break
     for fam, keys in EXTRA_KEYS.items():
         for k in keys:
-            if _hit(k, text):
+            if hit(k, text):
                 hits.add(fam)
                 break
     return hits & set(FAMILY_OF.values())   # only families that really exist in the registry
@@ -462,6 +731,12 @@ APPFILE = re.compile(r"\.(?:" + _EXT + r")\b|\b(?:exe|dll|apk|apks|xapk|ipa|jar|
                      r"(?:app|apk|program|software|game|tool|file|exe|model)\b.{0,40}(?:kaise kaam|kaise bana|andar kya|"
                      r"kya karta|kya hota|ke andar|internals?|how (?:does it|it) works?|under the hood)", re.I)
 INTENTS: list[tuple[re.Pattern, tuple[str, ...], str]] = [
+    # v0.713 SEEKH MANCH: a video to LEARN from (watch -> keep the way of working in memory). Not playing
+    # (youtube_play), not editing (video_edit), not summarising (youtube_watch): the learn word must sit
+    # next to a video word, so 'kya seekha' (the list) and 'banana sikhao' (the build family) never match.
+    (re.compile(r"(?:seekh|sikh[a-z]?|learn)\w*.{0,40}(?:video|youtube|shorts?|clip|mp4|recording)"
+                r"|(?:video|youtube|shorts?|clip|mp4|recording).{0,40}(?:seekh|sikh[a-z]?|learn)", re.I),
+     ("seekh",), "learn from video"),
     # a file to MAKE (pdf / word / excel / ppt): the design studio
     (re.compile(_D, re.I), ("docstudio",), "document"),
     # work ON a pdf she has: merge / split / shrink / rotate / pages / lock
@@ -516,6 +791,12 @@ INTENTS: list[tuple[re.Pattern, tuple[str, ...], str]] = [
     # other avatars on the Hoola Network
     (re.compile(r"(?:ke|ki|ka|ko)\s+avatar|avatar\s+(?:ko|se)|hoola network|network pe", re.I), ("hoola",), "network"),
     # research / comparison that splits into parts -> the team (core) + the web (core); nothing extra to load
+    # v0.694.0 WEB CLONE: the job TYPE in her words ("is site ko clone kar do") - EXTRA_KEYS carries the same words;
+    # bare 'clone' stays parked in _GENERIC so 'git clone this repo' never lands here
+    (re.compile(r"web\s*clone|website\s+clone|site\s+clone|clone\s+(?:this|is|yeh|ye)\s+(?:site|website|page)|"
+                r"(?:site|website|page)\s+ko\s+clone|(?:site|website)\s+ka\s+(?:clone|rebuild)|"
+                r"clone\s+kar(?:a|wa)?\s*(?:do|dena|de)?", re.I),
+     ("webclone",), "web clone ka kaam"),
 ]
 # desktop-software words (v0.271: they no longer bring a PC into view by themselves - only her words do)
 _DESKTOP = re.compile(r"\btally\b|busy software|\bmarg\b|ffmpeg|libreoffice|pandoc|imagemagick|\bapt\b|pip install|"
@@ -538,7 +819,7 @@ def route(text: str, settings=None) -> dict[str, str]:
     """family -> why, for one ask (no admission state). The single source for plan_for and the tool-choice card."""
     low = str(text or "").lower()
     why: dict[str, str] = {}
-    for fam in _match(low):
+    for fam in _match(low, tight=core_on(settings)):
         why.setdefault(fam, "word")
     for pat, fams, label in INTENTS:
         if pat.search(text or ""):
@@ -586,13 +867,33 @@ def plan_for(text: str, settings, extra_text: str = "") -> AdmitSet | None:
     if not getattr(settings, "agent_tool_admission", True):
         return None
     adm = AdmitSet(settings)
+    if not adm.core:
+        adm.extra.update(n for n in CORE_TOOLS if n in HANDLERS)     # v0.559 the everyday tools of non-core families
     why = route(text, settings)
     if extra_text:
         for f, w in route(extra_text, settings).items():
             why.setdefault(f, w)
+    if adm.core:
+        _ct, _cf = core_keys_hits((text or "") + " " + (extra_text or ""))
+        adm.extra.update(_ct)
+        for f in _cf:
+            why.setdefault(f, "core word")
+        if _ct:
+            adm.why = {**adm.why, **{n: "core word" for n in _ct}}
     if why:
         adm.admit_families(why)
-        adm.why = why
+        adm.why = {**adm.why, **why}
+    if "maps" in set(FAMILY_OF.values()) and "maps" not in adm.families and _LATLNG.search(text or ""):
+        adm.admit_families(["maps"])            # v0.559 a latitude, longitude pair in her words is a maps ask
+        adm.why = {**adm.why, "maps": "coordinates"}
+    try:                            # v0.559 a big ask (several things to make) brings the agent team into view
+        from . import goal as _goal
+        if "team" in set(FAMILY_OF.values()) and "team" not in adm.families and \
+                (_goal.looks_big(text) or _goal.looks_big(extra_text or "")):
+            adm.admit_families(["team"])
+            adm.why = {**adm.why, "team": "big ask"}
+    except Exception:               # noqa: BLE001 - routing never fails a turn
+        pass
     if calc_needed(text, why):
         adm.extra.add("pylab")          # v0.430 SOCH KE JAWAB 3: every worked-out number comes from real code
         adm.why = {**adm.why, "pylab": "calculation"}
@@ -601,6 +902,13 @@ def plan_for(text: str, settings, extra_text: str = "") -> AdmitSet | None:
         if "research" in set(FAMILY_OF.values()) and (_hard.research_wanted(text) or "research_status" in str(text) or "research_watch" in str(text)):
             adm.admit_families(["research"])
             adm.why = {**adm.why, "research": "research ask"}
+            if adm.core:    # Parity Phase 3: a research ask also gets the quoted-sources reader and the report maker
+                adm.extra.add("web_sources")
+                if "docstudio" in set(FAMILY_OF.values()):
+                    adm.admit_families(["docstudio"])
+            if "team" in set(FAMILY_OF.values()):     # v0.559 team left the core: deep research still gets its crew
+                adm.admit_families(["team"])
+                adm.why.setdefault("team", "research ask")
     except Exception:               # noqa: BLE001 - routing never fails a turn
         pass
     STATS["turns"] += 1
@@ -661,6 +969,13 @@ async def tool_search(ctx, need: str = "", **_):
     if not need:
         return {"admitted": [], "note": "Batao kya kaam karna hai - 'send an email', 'sheet update' jaisa."}
     hits = _match(need.lower())
+    # v0.550 EK JAISA: a tool asked for by its EXACT name always opens its own family. The keyword match used to win
+    # and the name lookup ran only when it found nothing, so tool_search("sheet_read") opened sheets but not
+    # gdrive, "crm_arch" opened arch but not enterprise, "edit_desk" opened video - 15 tools could not be reached.
+    for nm in set(_NAME_RE.findall(need.lower())) | {need.lower()}:
+        fam = FAMILY_OF.get(nm)
+        if fam:
+            hits.add(fam)
     if not hits:   # try the words as family tags / tool names directly
         low = need.lower()
         words = set(_WORD_RE.findall(low)) | {low}
@@ -669,14 +984,55 @@ async def tool_search(ctx, need: str = "", **_):
                 hits.add(fam)
             elif any(_hit(w, fam) or w == fam for w in words):
                 hits.add(fam)
+    if adm is not None and getattr(ctx, "native_search", False):
+        # v0.563 CLAUDE KA AUZAAR: on a Claude turn every tool is already declared (deferred). The answer is
+        # tool_reference blocks - the API loads those definitions - and the request's tool list never changes.
+        # The families still count as opened (the PC gate in pick.py reads them; the next turn keeps them sticky).
+        from . import toolsearch as _ts
+        had = set(adm.families)
+        if hits:
+            adm.admit_families(hits)
+        try:
+            from .prompts import guide_for
+            g = guide_for(hits - had, had)
+            if getattr(ctx, "small_prompt", False):   # parity Phase 2: the always-on how-to notes left the prompt
+                from .core_prompt import how_for
+                h = how_for(need)
+                g = (g + "\n" + h).strip() if h else g
+            if g:   # the family's working guide, delivered beside the result (the system prompt stays as it was)
+                getattr(ctx, "native_guides", None) is None and setattr(ctx, "native_guides", [])
+                ctx.native_guides.append(g)
+        except Exception:
+            log.debug("native guide lookup failed", exc_info=True)
+        names = _ts.find(need, hits)
+        STATS["tool_search"] += 1
+        refs = _ts.answer(names, set(getattr(ctx, "native_loaded", ()) or ()))
+        log.info("tool_search (native) %s -> %s", ",".join(sorted(hits)), ",".join(names[:8]))
+        if refs:
+            return {"tool_references": refs, "found": names}
+        if names:
+            return {"admitted": [], "note": "Yeh tools pehle se dikh rahe hain: " + ", ".join(names[:20])}
     if not hits:
         return {"admitted": [], "note": ("Is naam se koi parivar nahi mila. Kaam ka verb batao (mail, calendar, "
                                          "sheet, video, photo, pc, gst...) ya seedha tool ka naam.")}
     if adm is None:   # no turn state (admission off / direct call): names only, nothing changes
         names = sorted(n for n, f in FAMILY_OF.items() if f in hits)
         return {"admitted": names[:40], "note": "Yeh tools is turn mein loaded NAHI hain (admission off)."}
+    had = set(adm.families)
     fresh = adm.admit_families(hits)
     STATS["tool_search"] += 1
+    if getattr(ctx, "small_prompt", False):
+        # parity Phase 2: the system prompt never changes inside a turn, so the opened families' guides (and the
+        # always-on how-to notes matching the need) are delivered beside this result, as on the native path
+        try:
+            from .prompts import guide_for
+            from .core_prompt import how_for
+            g = "\n".join(x for x in (guide_for(hits - had, had), how_for(need)) if x)
+            if g:
+                getattr(ctx, "native_guides", None) is None and setattr(ctx, "native_guides", [])
+                ctx.native_guides.append(g)
+        except Exception:
+            log.debug("guide lookup failed", exc_info=True)
     log.info("tool_search admitted %s (%s)", ",".join(hits), ",".join(fresh[:8]))
     return {"admitted": fresh, "note": "Yeh tools ab is poori turn ke liye khul gaye - agle call se upyog karo."}
 

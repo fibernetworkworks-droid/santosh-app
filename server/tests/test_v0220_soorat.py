@@ -43,6 +43,7 @@ class _TonedCall:
         self._tone = tone
         self._tone_at = time.monotonic() - age
         self._quiet_pending = []
+        self.conv = "c220"           # the chat the late result's outcome is read for
         self.closed = asyncio.Event()
         self.stats = {}
         self.notes = []
@@ -97,7 +98,7 @@ def test_bright_ack_ix_is_the_same_rule_the_ask_speaks():
 def test_build_acks_records_position_to_line_even_when_a_render_dies(tmp_path, monkeypatch):
     monkeypatch.setattr(voice, "_ack_file", lambda v, g, i: tmp_path / f"{v}_{g}_{i}.pcm")
     def tts(text, v, g, client=None):
-        if "mil gaya" in text.lower():
+        if "found it" in text.lower():
             raise RuntimeError("tts down for one clip")
         return b"\x10\x04" * 400
     monkeypatch.setattr(voice, "_ack_tts", tts)
@@ -269,7 +270,7 @@ def test_note_result_rides_the_tone(monkeypatch):
     c = _TonedCall("low")
     monkeypatch.setattr(voice, "get_settings", lambda: _settings())
     voice.Call._note_result(c, "search_web", {"result": "mil gaya"})
-    assert "ho chuka" in c.notes[0] and "naram" in c.notes[0]
+    assert "has finished" in c.notes[0] and "naram" in c.notes[0]
     c2 = _TonedCall("low", age=voiceaffect.TONE_S + 5)
     voice.Call._note_result(c2, "search_web", {"result": "mil gaya"})
     assert "naram" not in c2.notes[0]
@@ -315,7 +316,7 @@ def test_stall_nudge_rides_the_tone(monkeypatch):
 
     asyncio.get_event_loop_policy().new_event_loop().run_until_complete(go())
     assert c.stats.get("stall_nudges") == 1
-    assert "turant bolo" in c.notes[0] and "naram" in c.notes[0]
+    assert "right now" in c.notes[0] and "naram" in c.notes[0]
 
 
 def test_late_result_rides_the_tone(monkeypatch):
@@ -330,7 +331,7 @@ def test_late_result_rides_the_tone(monkeypatch):
         voice.Call._late_result(c, job)
 
     asyncio.get_event_loop_policy().new_event_loop().run_until_complete(go())
-    assert "ho gaya" in c.notes[0] and "naram" in c.notes[0]
+    assert "is done" in c.notes[0] and "naram" in c.notes[0]
 
 
 # ---------------- the scorecard counts the energy ----------------
@@ -351,4 +352,4 @@ def test_scorecard_counts_soorat():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.530.0"
+    assert APP_VERSION == "0.758.0"

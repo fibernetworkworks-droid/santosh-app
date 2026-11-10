@@ -17,7 +17,7 @@ from typing import Any
 
 log = logging.getLogger("santosh.site.kit")
 
-PARTS = ("k-btn", "k-btn-ghost", "k-card", "k-eyebrow", "k-title", "k-sub", "k-head", "k-badge", "k-media", "k-quote",
+PARTS = ("k-btn", "k-btn-ghost", "k-card", "k-title", "k-sub", "k-head", "k-badge", "k-media", "k-quote",
          "k-stat", "k-list", "k-divider", "k-chip")
 MAX_CSS = 24000
 
@@ -26,8 +26,8 @@ KIT: the shared components every section of every page will use, so a 100-page s
 Return ONE JSON object: {"css": "...", "notes": {"k-btn": "one line: when to use it", ...}}
 CSS rules:
 - Only these class selectors (and their :hover / :focus-visible / ::before / ::after, and descendants that are also
-  .k- classes): .k-btn (primary action), .k-btn-ghost (secondary), .k-card, .k-eyebrow, .k-title (section title),
-  .k-sub (the line under a title), .k-head (a section header block: eyebrow + title + sub), .k-badge, .k-media (a
+  .k- classes): .k-btn (primary action), .k-btn-ghost (secondary), .k-card, .k-title (section title),
+  .k-sub (the line under a title), .k-head (a section header block: title + sub; no small label above the title), .k-badge, .k-media (a
   photo frame), .k-quote, .k-stat (a big number + label), .k-list (a ticked list), .k-divider, .k-chip.
   @media (min-width: ...) wrappers are fine. Nothing else: no element, id, :root, html or body selectors.
 - Colours, fonts, radius ONLY through the site variables: --c-bg --c-surface --c-ink --c-muted --c-line --c-primary

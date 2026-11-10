@@ -18,7 +18,7 @@ import logging
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from sqlalchemy import JSON, DateTime, Integer, String, Text, select
+from sqlalchemy import JSON, DateTime, Integer, String, Text, or_, select
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .db import Base, Conversation, Message, now, session
@@ -73,6 +73,15 @@ def mark(tenant: str, conv: str, source: str = "app") -> None:
     """She is in this chat now (sent a message / opened it / is watching it)."""
     if not tenant or not conv or tenant_of(conv) != tenant:
         return
+    try:   # v0.646 a call record is never "the chat she is in" (background notes must not land in a call record)
+        from .callconv import is_call
+        if is_call(conv):
+            return
+        from .bahar import chat_ids   # v0.667 nor an outside-channel chat
+        if conv in chat_ids(tenant):
+            return
+    except Exception:
+        pass
     import time
     hit = _CACHE.get(tenant)
     if hit and hit[0] == conv and time.monotonic() - hit[1] < 30:
@@ -93,15 +102,89 @@ def current(tenant: str) -> str:
     """The chat she is in (last marked), else her newest chat, else ''. Never makes a new one."""
     if not tenant:
         return ""
+    try:   # v0.667 her WhatsApp / Telegram / Slack / Teams chats are never "the chat she is in"
+        from .bahar import chat_ids
+        outside = chat_ids(tenant)
+    except Exception:   # noqa: BLE001
+        outside = set()
     with session() as s:
         row = s.get(ConvFocus, tenant)
-        if row is not None:
+        if row is not None and row.conversation_id not in outside:
             c = s.get(Conversation, row.conversation_id)
-            if c is not None and c.tenant_id == tenant and not c.deleted:
+            if c is not None and c.tenant_id == tenant and not c.deleted and c.kind != "call":
                 return c.id
-        c = s.scalars(select(Conversation).where(Conversation.tenant_id == tenant, Conversation.deleted.is_not(True))
-                      .order_by(Conversation.created_at.desc())).first()
+        from .callconv import not_call   # v0.646
+        q = select(Conversation).where(Conversation.tenant_id == tenant, Conversation.deleted.is_not(True), not_call(),
+                                       or_(Conversation.kind.is_(None), Conversation.kind != "updates"))   # v0.714
+        if outside:
+            q = q.where(Conversation.id.not_in(list(outside)))
+        c = s.scalars(q.order_by(Conversation.created_at.desc())).first()
         return c.id if c else ""
+
+
+import contextvars as _cv
+
+# v0.714 HAR CHAT ALAG: the chat whose turn is running right now (set by agent.santosh._run_turn). A tool that "tells
+# her" during her turn speaks in THAT chat; anything outside a turn (a desk's daily job, new-mail notes, a reminder
+# whose chat is gone) goes to her own "Hoola updates" chat - never into whatever chat she happens to have open.
+TURN: "_cv.ContextVar[str]" = _cv.ContextVar("hoola_turn_conv", default="")
+UPDATES_KIND = "updates"
+UPDATES_TITLE = "Hoola updates"
+
+
+def _alone() -> bool:
+    try:
+        from .config import get_settings
+        return bool(getattr(get_settings(), "chat_alone", True))
+    except Exception:   # noqa: BLE001
+        return True
+
+
+def updates_chat(tenant: str) -> str:
+    """v0.714 her one pinned chat for background news (daily desk reports, briefings, new mail, alerts). Made once."""
+    if not tenant:
+        return ""
+    with session() as s:
+        c = s.scalars(select(Conversation).where(Conversation.tenant_id == tenant,
+                                                 Conversation.kind == UPDATES_KIND,
+                                                 Conversation.deleted.is_not(True))
+                      .order_by(Conversation.created_at).limit(1)).first()
+        if c is not None:
+            return c.id
+        c = Conversation(tenant_id=tenant, kind=UPDATES_KIND, title=UPDATES_TITLE, pinned=True)
+        s.add(c)
+        s.flush()
+        cid = c.id
+    _TENANT[cid] = tenant
+    return cid
+
+
+def is_updates(conv: str) -> bool:
+    if not conv:
+        return False
+    try:
+        with session() as s:
+            c = s.get(Conversation, conv)
+            return bool(c is not None and (c.kind or "") == UPDATES_KIND)
+    except Exception:   # noqa: BLE001
+        return False
+
+
+def notice_chat(tenant: str) -> str:
+    """v0.714 where a message that is NOT an answer to her should land: the running turn's own chat (a tool telling
+    her mid-turn), else her 'Hoola updates' chat. With chat_alone off: the old rule (the chat she is in)."""
+    if not tenant:
+        return ""
+    if not _alone():
+        return current_or_new(tenant)
+    t = TURN.get()
+    if t and tenant_of(t) == tenant:
+        try:
+            from .callconv import chat_of
+            return chat_of(t) or t
+        except Exception:   # noqa: BLE001
+            return t
+    return updates_chat(tenant)
 
 
 def current_or_new(tenant: str) -> str:
@@ -135,7 +218,8 @@ def chats(tenant: str, limit: int = 40) -> list[dict[str, Any]]:
     cur = current(tenant)
     out = []
     with session() as s:
-        convs = s.scalars(select(Conversation).where(Conversation.tenant_id == tenant)
+        from .callconv import not_call   # v0.646 call records are not chats
+        convs = s.scalars(select(Conversation).where(Conversation.tenant_id == tenant, not_call())
                           .order_by(Conversation.created_at.desc()).limit(200)).all()
         for c in convs:
             first = s.scalars(select(Message).where(Message.conversation_id == c.id, Message.role == "user",

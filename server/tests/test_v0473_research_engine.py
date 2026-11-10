@@ -285,7 +285,8 @@ def test_the_dossier_is_not_cut_at_the_usual_six_thousand_characters(env):
     big = {"dossier": E.render(d) + ("\nfiller line of text" * 800), "stats": d["stats"]}
     s = santosh._short(big, santosh.RESULT_LIMIT["research_run"])
     assert "[1] https://index.example.gov.in/corvane/2025" in s and len(s) > 6000
-    assert "cut:" in santosh._short(big)                                  # the default limit would have lost the source list
+    short = santosh._short(big)                                            # the default limit would have lost the source list
+    assert "cut:" in short or "more characters cut" in short               # (v0.667: a long string is shortened in place)
 
 
 def test_the_planner_prompt_formats_without_a_crash_so_it_can_really_ask_for_more(env):

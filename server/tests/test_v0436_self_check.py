@@ -33,7 +33,9 @@ def test_code_check_catches_a_calculation_done_in_the_head():
     draft = "EMI lagbhag 18,500 hogi aur total interest 24,40,000 banega."
     probs = hard.code_check(q, draft, ["calculation", "numbers"], ["google_search"])
     assert probs and "18,500" in probs[0] and "pylab" in probs[0]
-    assert hard.code_check(q, draft, ["calculation"], ["pylab"]) == []          # it ran: fine
+    # wave 13: pylab having run is not enough - its printed output must carry the figures
+    assert hard.code_check(q, draft, ["calculation"], ["pylab"], "RESULT: 18500.0 2440000") == []
+    assert hard.code_check(q, draft, ["calculation"], ["pylab"], "RESULT: 7") != []
     assert hard.code_check(q, draft, ["decision"], []) == []                    # not a calculation ask
     assert hard.code_check(q, "EMI 9% pe 20 saal ke liye nikalni hogi.", ["calculation"], []) == []   # only her own numbers
 
@@ -108,7 +110,9 @@ def test_a_wrong_hard_answer_is_fixed_before_she_sees_it(gz, monkeypatch, check_
     note = brain.seen[1]["messages"][-1]["content"][0]["text"]
     assert note.startswith("[System: JAANCH") and "18,500" in note
     shown = _shown(conv)
-    assert shown == ["EMI **Rs 17,994.52** mahina hogi; 20 saal mein kul byaaj Rs 23,18,684.59."]   # draft never shown
+    # draft never shown; wave 13: the fix round still ran no pylab, so the re-check labels its figures as unconfirmed
+    from app.agent.santosh import HARD_UNSURE
+    assert shown == ["EMI **Rs 17,994.52** mahina hogi; 20 saal mein kul byaaj Rs 23,18,684.59.\n\n" + HARD_UNSURE.strip()]
 
 
 def test_a_right_hard_answer_passes_the_reviewer_and_goes_out(gz, monkeypatch, check_on):  # noqa: F811
@@ -154,4 +158,4 @@ def test_settings():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.530.0"
+    assert APP_VERSION == "0.758.0"

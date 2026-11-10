@@ -140,7 +140,7 @@ def test_registry_mount(env):
     from app.agent import tools
     assert "magic21" in tools.HANDLERS and "magic21" in tools.TOOL_LABELS
     assert any(t["name"] == "magic21" for t in tools.TOOLS)
-    assert len(tools.TOOLS) == 555, "541 (v0.502) + 1 magic21 (v0.512) + 1 dhara_dsl (their v0.514) + 10 construction (v0.522) + 1 crew_run (v0.523) + 1 image_edit (image editing)"
+    assert len(tools.TOOLS) == 621, "617 + 1 shilp (v0.730 SHILP MANCH: the ArtCraft generation lane, their Omni API api.storyteller.ai, BYOK - owner 'MAKE A PLAN FOR HOOLA AI THUS HOOLA USER CAN USE THIS' -> the plan's W0). 616 + 1 seekh_video (v0.713 SEEKH MANCH: the learn-from-video bridge tool, owner 'GO' on the SEEKH MANCH plan). 608 + 1 kala (v0.681 KALA MANCH: the T5 knowledge-skill catalog family, owner 'GO' on the google/skills deploy plan). " "607 + 1 duniya (v0.667 DUNIYA MANCH: the T4 keyless-public-web family, owner 'T4'). " "606 + 1 jharokha (v0.665 JHAROKHA MANCH: the T3 local-browser family). " "581 + 1 paisa_sahayak (their v0.587) + 2 sandarbh (v0.590 SANDARBH MANCH: workspace + kgmemory). Was: 541 (v0.502) + 1 magic21 (v0.512) + 1 dhara_dsl (their v0.514) + 10 construction (v0.522) + 1 crew_run (v0.523) + 2 from main's v0.533 CRAWL BRAIN wiring (healed in v0.537: this pin was red on pristine main) + 1 reach (v0.559 REACH MANCH) + 1 speckit (v0.569 SPEC SUTRA)"
 
 
 def test_voice_absence(env):
@@ -178,13 +178,14 @@ def test_config_defaults(env, monkeypatch):
 def test_version(env):
     from app import main as main_mod
     from pathlib import Path as P
-    assert main_mod.APP_VERSION == "0.530.0"
+    assert main_mod.APP_VERSION == "0.758.0"
     story = P(main_mod.__file__).read_text().split("APP_VERSION = ", 1)[1][:20000]
     # the newest-story precedent (established in the v0.520 rebase): the story pin
     # rides the NEWEST story - now the v0.530 HOOLA GRAPH story
-    assert "HOOLA GRAPH" in story and "StateGraph" in story and "interrupt" in story
+    # story pin moved to the newest story (the newest-story precedent)
+    assert "HOOLA RETRIEVE" in story and "index()" in story and "retriever" in story  # the newest-story precedent (the P5 markers live in the Previous chain)
     pub = (REPO_ROOT / "pubspec.yaml").read_text(encoding="utf-8")
-    assert "version: 0.530.0+553" in pub
+    assert "version: 0.758.0+757" in pub
 
 
 # ------------------------------------------------------------------ (7) kill switches
@@ -492,7 +493,7 @@ def test_mg_lane_counts(env):
     assert len(skill_packs.seed_files()) == 11       # the starter lane untouched (mg- excluded)
     assert len(skill_packs.byox_files()) == 31 and len(skill_packs.prog_files()) == 2
     seed_dir = skill_packs.SEED_DIR
-    assert len(list(seed_dir.glob("*.md"))) == 68    # 11 + 31 + 2 + 15 + 3 + 2 + 1 + 2 + 1, NINE lanes
+    assert len(list(seed_dir.glob("*.md"))) == 99    # 11 + 31 + 2 + 15 + 3 + 2 + 1 + 2 + 1 + 2 + 2 + 27, TWENTY-NINE lanes (th- v0.547, ed- v0.548, the 18 omni families v0.561)
     seeder_names = {f.__name__ for f in skill_packs._pack_seeders()}
     assert "seed_magicpack" in seeder_names          # found by name - no seed_all edit
 

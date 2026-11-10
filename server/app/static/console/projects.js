@@ -50,7 +50,8 @@ async function open(pid) {
         <textarea class="pjta" data-f="instructions" rows="6" aria-label="Session instructions" placeholder="What should ${esc(ctx.avatar())} know about this work?">${esc(p.instructions)}</textarea></div>
       <div class="tile gl"><h3>Memory <span class="tag v">notes</span></h3>
         <p class="muted" style="font-size:13px">Key facts for this work: names, dates, decisions.</p>
-        <textarea class="pjta" data-f="memory" rows="6" aria-label="Session memory" placeholder="Venue: Pune, 12 Dec · Caterer: Sharma ji">${esc(p.memory)}</textarea></div>
+        <textarea class="pjta" data-f="memory" rows="6" aria-label="Session memory" placeholder="Venue: Pune, 12 Dec · Caterer: Sharma ji">${esc(p.memory)}</textarea>
+        <label class="pjmain" style="display:flex;gap:8px;align-items:flex-start;margin-top:10px;font-size:13px"><input type="checkbox" data-a="mainmem" ${p.use_main_memory === false ? '' : 'checked'} style="margin-top:3px"><span><b>Use my main memory here</b><br><span class="muted">Off: chats in this session use only this session's own memory (its facts and chats), never your other facts or your memory page. Pinned facts still apply.</span></span></label></div>
       <div class="tile gl pjfiles"><h3>Files <span class="tag v">${p.files}</span></h3>
         <label class="pjdrop" tabindex="0"><input type="file" multiple hidden><b>Drop files here</b><span>or choose · up to 25 MB · big files are searched through Gyaan</span></label>
         <div class="pjfl">${(p.file_list || []).map(f => `<div class="pjf"><span>📎 ${esc(f.name)}</span><small>${Math.max(1, Math.round(f.size / 1024))} KB</small><button type="button" class="ib" data-rm="${esc(f.id)}" aria-label="Remove ${esc(f.name)}">✕</button></div>`).join('') || '<div class="empty">No files yet.</div>'}</div></div>
@@ -64,6 +65,8 @@ async function open(pid) {
   box.querySelector('.pjemo').addEventListener('click', () => { const e = (prompt('One emoji (e.g. 💍 🧾 🏪)', p.emoji) || '').trim(); if (e) save({emoji: e}).then(() => open(pid)); });
   // instructions + notes save on their own
   box.querySelectorAll('.pjta').forEach(ta => { let t = 0; ta.addEventListener('input', () => { clearTimeout(t); t = setTimeout(() => save({[ta.dataset.f]: ta.value}, true), 700); }); });
+  // v0.609 the per-session "use main memory" switch (Claude's per-project "Use account memory")
+  box.querySelector('[data-a="mainmem"]').addEventListener('change', e => save({use_main_memory: e.target.checked}, true));
   // files
   const drop = box.querySelector('.pjdrop'), inp = drop.querySelector('input');
   drop.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); inp.click(); } });

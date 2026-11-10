@@ -65,7 +65,7 @@ def _owner(ctx: Ctx) -> bool:
 _OWNER_ONLY = {"rules", "settings", "forget"}
 _SETTINGS_KEYS = ("business", "gstin", "warehouse", "default_carrier", "divisor", "remit_days", "manifest_time", "morning_time")
 _SECRET_KEYS = ("password", "token", "secret", "api_key", "client_secret", "license_key", "key")
-_NEXT = "Card uske phone par hai; woh khud tap karegi. Tum book / bhej nahi sakte, dobara mat poochho."
+_NEXT = "The card is on her phone; she will tap it herself. You cannot book / send, so do not ask again."
 
 
 def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
@@ -74,11 +74,11 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
     t, conv, ref = ctx.tenant_id, ctx.conversation_id, _s(a.get("ref"))
     actor = getattr(ctx, "actor", "owner") or "owner"
     if actor.startswith("customer:"):
-        raise ToolError("Yeh dukaan ka andar ka tool hai.")
+        raise ToolError("This is an internal shop tool.")
     if action in _OWNER_ONLY and not _owner(ctx):
-        raise ToolError("Yeh sirf owner kar sakti hain.")
+        raise ToolError("Only the owner can do this.")
     if any(k in a for k in _SECRET_KEYS) or any(k in (a.get("warehouse") or {}) for k in _SECRET_KEYS):
-        raise ToolError("Courier ki chaabi chat mein nahi: app mein Courier > Niyam mein daaliye (aur jo chat mein likhi, use badal dijiye).")
+        raise ToolError("No courier keys in chat: add it in the app under Courier > Rules (and change any key you wrote in chat).")
     try:
         if action == "new":
             return S.new_parcel(t, order_ref=_s(a.get("order_ref")), customer=a.get("customer") or {}, items=a.get("items"), value=a.get("value"),
@@ -112,7 +112,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return S.cancel_request(t, ref, conv)
         if action == "remit":
             if not a.get("file_id"):
-                raise ToolError("file_id chahiye (courier ki COD remittance sheet).")
+                raise ToolError("file_id needed (the courier's COD remittance sheet).")
             data, name = _file(t, _s(a["file_id"]))
             return S.remit_import(t, data, name)
         if action == "manifest":
@@ -133,7 +133,7 @@ def _file(tenant: str, file_id: str) -> tuple[bytes, str]:
     try:
         name, _m, data = ms.load_files(tenant, [{"type": "file", "file_id": file_id}])[0]
     except Exception:
-        raise ToolError("File nahi mili (chat ki file 24 ghante mein chali jaati hai; dobara bhejiye).")
+        raise ToolError("File not found (chat files expire in 24 hours; send it again).")
     return data, name
 
 
@@ -143,7 +143,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
     from ..courier import service as S
     t = ctx.tenant_id
     if (getattr(ctx, "actor", "") or "").startswith("customer:"):
-        raise ToolError("Graahak ke liye biz_parcel_status hai.")
+        raise ToolError("For customers there is biz_parcel_status.")
     try:
         if what == "day":
             return S.day(t)
@@ -188,7 +188,7 @@ async def biz_parcel_status(ctx, ref: str = "", **_):
     from ..employee import inbox
     c = inbox._contact(ctx)
     rows = await asyncio.to_thread(S.customer_parcels, ctx.tenant_id, c.wa_id, str(ref)[:40])
-    return {"parcels": rows, "note": "Sirf is number ke parcel. Courier ka status jaisa unhone bataya; koi tareekh apni taraf se mat do."}
+    return {"parcels": rows, "note": "Only parcels for this number. The courier's status is as they gave it; do not add any date of your own."}
 
 
 async def biz_parcel_fix(ctx, ref: str = "", when: str = "", address: str = "", phone: str = "", note: str = "", **_):
@@ -200,7 +200,7 @@ async def biz_parcel_fix(ctx, ref: str = "", when: str = "", address: str = "", 
         rows = await asyncio.to_thread(S.customer_parcels, ctx.tenant_id, c.wa_id)
         bad = [r for r in rows if r["status"] == S.R.STATE_LABEL["exception"]]
         if not bad:
-            raise ToolError("Is number par koi atka hua parcel nahi mila.")
+            raise ToolError("No stuck parcel was found for this number.")
         ref = bad[0]["number"]
     try:
         return await asyncio.to_thread(S.customer_fix, ctx.tenant_id, c.wa_id, str(ref)[:40], str(when)[:10], str(address)[:180],

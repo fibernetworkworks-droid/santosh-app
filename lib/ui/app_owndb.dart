@@ -52,7 +52,7 @@ class _AppOwnDbPanelState extends State<AppOwnDbPanel> {
     setState(() => _busy = true);
     try {
       final r = _m(await widget.app.api!.call(method, '$_base/$path', body: body, timeout: const Duration(seconds: 300)));
-      _say(_s(r['say']).isNotEmpty ? _s(r['say']) : (r['ok'] == true ? 'Ho gaya.' : 'Ginti: ${_s(r['counts'])}'));
+      _say(_s(r['say']).isNotEmpty ? _s(r['say']) : (r['ok'] == true ? 'Done.' : 'Counts: ${_s(r['counts'])}'));
     } catch (e) {
       _say('$e');
     }
@@ -65,12 +65,12 @@ class _AppOwnDbPanelState extends State<AppOwnDbPanel> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (c) => AlertDialog(
-        title: const Text('Data apne database mein le jaayein?'),
-        content: Text('Is app ka saara data "${_s(name)}" mein copy hoga (pehle backup, phir ginti milaayi jaayegi). '
-            '${_mode == 'primary' ? 'Har nayi entry pehle wahin save hogi.' : 'Wahan ek live copy rahegi.'}'),
+        title: const Text('Move the data to your own database?'),
+        content: Text('All of this app\'s data will be copied to "${_s(name)}" (backup first, then the counts are matched).'
+            '${_mode == 'primary' ? 'Every new entry will be saved there first.' : 'A live copy will stay there.'}'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Nahi')),
-          FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('Haan, le jaao')),
+          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('No')),
+          FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('Yes, move it')),
         ],
       ),
     );
@@ -86,13 +86,13 @@ class _AppOwnDbPanelState extends State<AppOwnDbPanel> {
       'postgres': 'postgresql://user:password@host:5432/db',
       'mysql': 'mysql://user:password@host:3306/db',
       'mongodb': 'mongodb+srv://user:password@cluster.mongodb.net/db',
-      'firestore': 'Firebase service-account JSON (poora text)',
+      'firestore': 'Firebase service-account JSON (full text)',
     };
     final ok = await showDialog<bool>(
       context: context,
       builder: (c) => StatefulBuilder(
         builder: (c, set) => AlertDialog(
-          title: const Text('Apna database jodo'),
+          title: const Text('Link your own database'),
           content: SingleChildScrollView(
             child: Column(mainAxisSize: MainAxisSize.min, children: [
               DropdownButton<String>(
@@ -106,7 +106,7 @@ class _AppOwnDbPanelState extends State<AppOwnDbPanel> {
                 ],
                 onChanged: (x) => set(() => kind = x ?? 'postgres'),
               ),
-              TextField(controller: name, decoration: const InputDecoration(labelText: 'Naam (jaise Dukaan database)')),
+              TextField(controller: name, decoration: const InputDecoration(labelText: 'Name (e.g. Shop database)')),
               TextField(
                 controller: secret,
                 minLines: kind == 'firestore' ? 4 : 1,
@@ -117,13 +117,13 @@ class _AppOwnDbPanelState extends State<AppOwnDbPanel> {
                 decoration: InputDecoration(labelText: 'Connection', hintText: hints[kind]),
               ),
               const SizedBox(height: 6),
-              const Text('Server par band (sealed) rehta hai, dobara kabhi dikhaya nahi jaata. Chat mein kabhi mat likhiye.',
+              const Text('It is kept sealed on the server and never shown again. Never write it in chat.',
                   style: TextStyle(fontSize: 11.5)),
             ]),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Nahi')),
-            FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('Jodo')),
+            TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('No')),
+            FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('Add')),
           ],
         ),
       ),
@@ -152,24 +152,24 @@ class _AppOwnDbPanelState extends State<AppOwnDbPanel> {
       Row(children: [
         const Icon(Icons.storage_rounded, color: C.accent, size: 20),
         const SizedBox(width: 6),
-        Expanded(child: Text('Apna database', style: display(15))),
-        if (linked) Pill(_s(ln['mode']) == 'primary' ? 'Data wahin' : 'Copy', fg: C.ok),
-        IconButton(onPressed: _load, icon: const Icon(Icons.refresh_rounded, color: C.muted, size: 20), tooltip: 'Taaza karo'),
+        Expanded(child: Text('Your own database', style: display(15))),
+        if (linked) Pill(_s(ln['mode']) == 'primary' ? 'Data stays there' : 'Copy', fg: C.ok),
+        IconButton(onPressed: _load, icon: const Icon(Icons.refresh_rounded, color: C.muted, size: 20), tooltip: 'Refresh'),
       ]),
-      Text('Is app ka data apne database mein chalaiye: PostgreSQL (Supabase, Neon...), MySQL (PlanetScale, TiDB...), '
-          'MongoDB (Atlas) ya Firebase - ${_l(_v['providers']).length} prakaar.', style: const TextStyle(color: C.muted, fontSize: 12)),
+      Text('Run this app\'s data in your own database: PostgreSQL (Supabase, Neon...), MySQL (PlanetScale, TiDB...),'
+          'MongoDB (Atlas) or Firebase - ${_l(_v['providers']).length} types.', style: const TextStyle(color: C.muted, fontSize: 12)),
       const SizedBox(height: 6),
       if (linked) ...[
         Text('${_s(ln['name'])} · ${_s(ln['label'])}', style: const TextStyle(color: C.ink, fontSize: 12.5)),
-        Text('Schema ${_s(ln['schema'])} · sync baaki: ${_s(_v['lag'])}', style: const TextStyle(color: C.muted, fontSize: 12)),
-        if (_s(ln['last_error']).isNotEmpty) Text('Dikkat: ${_s(ln['last_error'])}', style: const TextStyle(color: C.bad, fontSize: 12)),
+        Text('Schema ${_s(ln['schema'])} · sync pending: ${_s(_v['lag'])}', style: const TextStyle(color: C.muted, fontSize: 12)),
+        if (_s(ln['last_error']).isNotEmpty) Text('Problem: ${_s(ln['last_error'])}', style: const TextStyle(color: C.bad, fontSize: 12)),
         Wrap(spacing: 8, children: [
-          TextButton(onPressed: _busy ? null : () => _do('POST', 'owndb/sync'), child: const Text('Abhi sync')),
-          TextButton(onPressed: _busy ? null : () => _do('POST', 'owndb/verify'), child: const Text('Ginti milao')),
-          TextButton(onPressed: _busy ? null : () => _do('POST', 'owndb/unlink'), child: const Text('Alag karo')),
+          TextButton(onPressed: _busy ? null : () => _do('POST', 'owndb/sync'), child: const Text('Sync now')),
+          TextButton(onPressed: _busy ? null : () => _do('POST', 'owndb/verify'), child: const Text('Match counts')),
+          TextButton(onPressed: _busy ? null : () => _do('POST', 'owndb/unlink'), child: const Text('Unlink')),
         ]),
       ] else ...[
-        if (conns.isEmpty) const Text('Abhi koi database juda nahi.', style: TextStyle(color: C.muted, fontSize: 12.5)),
+        if (conns.isEmpty) const Text('No database linked yet.', style: TextStyle(color: C.muted, fontSize: 12.5)),
         if (conns.isNotEmpty) ...[
           DropdownButton<String>(
             value: _conn.isEmpty ? null : _conn,
@@ -178,17 +178,17 @@ class _AppOwnDbPanelState extends State<AppOwnDbPanel> {
             onChanged: (x) => setState(() => _conn = x ?? ''),
           ),
           SegmentedButton<String>(
-            segments: const [ButtonSegment(value: 'primary', label: Text('Data wahin')), ButtonSegment(value: 'mirror', label: Text('Sirf copy'))],
+            segments: const [ButtonSegment(value: 'primary', label: Text('Data stays there')), ButtonSegment(value: 'mirror', label: Text('Copy only'))],
             selected: {_mode},
             onSelectionChanged: (x) => setState(() => _mode = x.first),
           ),
           const SizedBox(height: 6),
-          FilledButton(onPressed: _busy || _conn.isEmpty ? null : _link, child: Text(_busy ? 'Copy ho raha hai…' : 'Data wahan le jaao')),
+          FilledButton(onPressed: _busy || _conn.isEmpty ? null : _link, child: Text(_busy ? 'Copying…' : 'Move the data there')),
         ],
         TextButton.icon(
           onPressed: _busy ? null : _addDb,
           icon: const Icon(Icons.add_rounded, size: 18),
-          label: const Text('Database jodo'),
+          label: const Text('Link database'),
         ),
       ],
     ]);

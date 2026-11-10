@@ -33,9 +33,9 @@ class BrowserExecutor:
         label = str(p.get("label") or "next step")[:80]
         return NeedsApproval(
             tier=2, title=f"{site}: '{label}'", payee=site, amount_paise=0,
-            items=[{"name": f"Hoola ka apna browser (server par, aapka PC nahi) '{label}' dabayega: {site}"},
+            items=[{"name": f"Hoola's own browser (on the server, not your PC) will click '{label}': {site}"},
                    {"name": "No payment. Passwords, OTPs and payments are never done by Santosh."}],
-            pay_method="Hoola ka browser", preview={"message": f"Approve to let Santosh click '{label}' on {site}."},
+            pay_method="Hoola's browser", preview={"message": f"Approve to let Santosh click '{label}' on {site}."},
             action={"executor": "browser", "pack_id": pack.id, "name": "approve_step",
                     "args": {"session_id": sid, "pending_id": p["id"], "label": label, "site": site}})
 
@@ -49,5 +49,5 @@ class BrowserExecutor:
             raise ToolError(str(e))
         conv = (ctx.task.conversation_id if ctx.task is not None else "") or ""
         browser.follow(ctx.user.id, conv, args["session_id"])
-        return {"message": f"Theek hai, {args.get('site', 'website')} par '{args.get('label', '')}' kar raha hoon. "
-                           "Ho jaate hi yahin bataunga."}
+        return {"message": f"Okay, doing '{args.get('label', '')}' on {args.get('site', 'the website')}. "
+                           "I will tell you here as soon as it is done."}

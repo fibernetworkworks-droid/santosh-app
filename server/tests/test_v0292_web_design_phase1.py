@@ -120,7 +120,8 @@ def test_stock_fallback_when_the_image_model_fails(site_env, monkeypatch):
         got = P.make_set([{"name": "a", "about": "sweets", "aspect": "16:9", "for": "hero", "prompt": "x"}])
     finally:
         P.set_transport(None)
-    assert len(got) == 1 and got[0][2] == {"source": "pexels", "credit": "Photo: Asha / Pexels"}
+    assert len(got) == 1 and {k: got[0][2][k] for k in ("source", "credit")} == {"source": "pexels", "credit": "Photo: Asha / Pexels"}
+    assert got[0][2]["credit_name"] == "Asha"                 # v0.617 the photographer is kept for the page credit
     assert "orientation=landscape" in calls[0]
     # off = nothing at all
     monkeypatch.setenv("SITE_AI_PHOTOS", "0")
@@ -226,5 +227,5 @@ def test_critique_reviews_every_page(site_env, monkeypatch, tmp_path):
 def test_version():
     from pathlib import Path
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.530.0"
-    assert "0.530.0+553" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.758.0"
+    assert "0.758.0+757" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()

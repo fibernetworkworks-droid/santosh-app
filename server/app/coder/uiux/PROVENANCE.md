@@ -4,6 +4,9 @@
 - License: MIT (NextLevelBuilder) - `LICENSE` beside this file; the license text is
   preserved verbatim and this vendor notice records the import.
 - Imported: 2026-11-04, upstream commit as of clone date.
+- v0.753: `data/` was never committed with the scripts (the tool answered "File not found" from v0.498 on);
+  restored from upstream commit 6ae86f6 (2026-11-10), whose `src/ui-ux-pro-max/scripts/` is byte-identical to
+  the vendored scripts here, so the data matches the engine.
 - HOOLA release that vendored it: v0.486.0 (HOOLA UIUX PRO MAX).
 
 ## What came in

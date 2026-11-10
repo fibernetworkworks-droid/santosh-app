@@ -13,21 +13,24 @@ from .tools import Ctx, ToolError
 CUSTOMER_TOOLS = [
     {"name": "const_customer", "description": (
         "Grahak ke paise + possession desk (builder's customer side). action=demand: project, unit, customer, phone, "
-        "milestone (plinth / slab / registration), amount, due, interest_pct (aapke agreement ka clause), note -> DRAFT "
+        "milestone (plinth / slab / registration), amount, due, interest_pct (the clause of your agreement), note -> DRAFT "
         "demand. action=letter: demand (id) -> the demand-letter PDF (file). action=demand_send: demand (id) - OWNER ONLY, "
-        "bhejne ki haan. action=receipt: demand (id) or project+unit, amount, mode neft|rtgs|cheque|upi|loan, day, note. "
+        "approval to send. action=receipt: demand (id) or project+unit, amount, mode neft|rtgs|cheque|upi|loan, day, note. "
         "action=handover: project, unit, customer, items [{item, done, day, note}] (checklist), keys_on, utilities, status "
         "open|ready|handed. action=dlp_open: project, unit, issue, trade, vendor, dlp_months (agreement), possession_on -> "
-        "DLP ticket with the window arithmetic. action=dlp_sent: ticket (id) - OWNER ONLY, vendor ko bhejne ka record. "
-        "action=dlp_close: ticket (id), day, note. Hoola demand nahi bhejta, vendor ko nahi bhejta, byaaj ka legal faisla "
-        "nahi karta - sirf draft + record + hisaab."),
+        "DLP ticket with the window arithmetic. action=dlp_sent: ticket (id) - OWNER ONLY, record of sending to the vendor. "
+        "action=dlp_close: ticket (id), day, note. Hoola does not send demands, does not send to the vendor, does not make the legal decision on interest "
+        "- only draft + record + arithmetic."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["demand", "letter", "demand_send", "receipt", "handover", "dlp_open",
-                                               "dlp_sent", "dlp_close"]},
+                                               "dlp_sent", "dlp_close", "lead_add", "inventory_mark",
+                                               "inventory_sum", "mkt_asset", "afs_doc",
+                                               "handover_unit", "investor_pack"]},
          "project": {"type": "string"}, "unit": {"type": "string"}, "customer": {"type": "string"}, "phone": {"type": "string"},
          "milestone": {"type": "string"}, "amount": {"type": "number"}, "due": {"type": "string"},
          "interest_pct": {"type": "number"}, "note": {"type": "string"}, "demand": {"type": "string"},
          "mode": {"type": "string"}, "day": {"type": "string"}, "items": {"type": "array", "items": {"type": "object"}},
+         "rows": {"type": "array", "items": {}}, "ref": {"type": "string"}, "unit": {"type": "string"}, "status": {"type": "string"}, "approved_by": {"type": "string"},
          "keys_on": {"type": "string"}, "utilities": {"type": "string"}, "status": {"type": "string"},
          "issue": {"type": "string"}, "trade": {"type": "string"}, "vendor": {"type": "string"},
          "dlp_months": {"type": "number"}, "possession_on": {"type": "string"}, "ticket": {"type": "string"}},
@@ -61,7 +64,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             did = _s(a.get("demand"))
             pdf = C.demand_letter(t, did)
             f = chatfiles.store(t, f"Demand-{did[:8]}.pdf", pdf, "application/pdf")
-            return {"file": f, "say": "Demand letter PDF ban gaya. Bhejna aapki haan se (demand_send owner-only)."}
+            return {"file": f, "say": "The demand letter PDF is ready. Sending only on your approval (demand_send is owner-only)."}
         if action == "demand_send":
             return C.demand_send(t, _s(a.get("demand")), ctx.actor, _s(a.get("day")), conv)
         if action == "receipt":
@@ -78,6 +81,24 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return C.dlp_sent(t, _s(a.get("ticket")), ctx.actor, _s(a.get("day")))
         if action == "dlp_close":
             return C.dlp_close(t, _s(a.get("ticket")), _s(a.get("day")), _s(a.get("note")))
+
+        if action == "lead_add":
+            return C.lead_add(t, _s(a.get("project")), a.get("rows") or [], conv)
+        if action == "inventory_mark":
+            return C.inventory_mark(t, _s(a.get("project")), _s(a.get("unit")), _s(a.get("status")))
+        if action == "inventory_sum":
+            return C.inventory_sum(t, _s(a.get("project")))
+        if action == "mkt_asset":
+            return C.mkt_asset(t, _s(a.get("project")), a.get("rows") or [])
+        if action == "afs_doc":
+            return C.afs_doc(t, _s(a.get("project")), _s(a.get("unit")), a.get("items") or [],
+                             _s(a.get("approved_by")))
+        if action == "handover_unit":
+            return C.handover_unit(t, _s(a.get("project")), _s(a.get("unit")), a.get("items") or [],
+                                   _s(a.get("ref")))
+        if action == "investor_pack":
+            return C.investor_pack(t, _s(a.get("project")), a.get("items") or [],
+                                   a.get("rows") or [])
     except (C.CstError, ValueError) as ex:
         raise ToolError(str(ex))
     raise ToolError("action galat")

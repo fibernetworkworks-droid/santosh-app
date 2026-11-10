@@ -144,7 +144,7 @@ def _place(text: str) -> tuple[str, str]:
 
 
 def parse_script(text: str) -> list[dict[str, Any]]:
-    """Scenes from a screenplay or a plain Hinglish script: headings (INT./EXT., Scene 3, Drishya 2, दृश्य 4), speakers
+    """Scenes from a screenplay or a plain English script: headings (INT./EXT., Scene 3, Drishya 2, दृश्य 4), speakers
     ('NAME' on its own line or 'Name: line'), action lines. Seconds = dialogue words / 2.5 + action words / 3 (min 4)."""
     lines = [ln.rstrip() for ln in str(text or "").replace("\r", "").split("\n")]
     scenes: list[dict[str, Any]] = []

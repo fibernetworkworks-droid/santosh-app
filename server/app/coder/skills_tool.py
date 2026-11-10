@@ -59,7 +59,39 @@ async def skill_manage(ctx, operations=None, **_):
     res = skills_store.apply(ctx.tenant_id, operations if isinstance(operations, list) else [])
     if res.get("ok"):
         nudge.reset_counter(ctx.tenant_id, ctx.conversation_id)
+    try:
+        _mark_foreign_tools(res)
+    except Exception:   # noqa: BLE001
+        pass
     return res
+
+
+import re as _re
+
+_TOOLISH = _re.compile(r"`([a-z][a-z0-9]*_[a-z0-9_]+)`")
+
+
+def _mark_foreign_tools(res) -> None:
+    """wave 12: a skill body names tools that only exist inside the PC operator (ask_approval, ax_find, page_fill_form,
+    open_app ...) - a chat turn following the skill tried to call them. Each read skill now carries which named tools
+    are NOT this agent's, and what to do instead."""
+    from ..agent.tools import HANDLERS
+
+    def walk(o):
+        if isinstance(o, dict):
+            body = o.get("body")
+            if isinstance(body, str):
+                foreign = sorted({n for n in _TOOLISH.findall(body) if n not in HANDLERS})
+                if foreign:
+                    o["not_your_tools"] = (", ".join(foreign[:12]) + " - these are steps of the PC operator / another lane, "
+                                           "NOT tools you can call here. On chat: ask her with a card / plain question "
+                                           "instead of ask_approval, and use your own tools for the rest.")
+            for v in o.values():
+                walk(v)
+        elif isinstance(o, list):
+            for v in o:
+                walk(v)
+    walk(res)
 
 
 SKILL_HANDLERS["skill_manage"] = skill_manage

@@ -51,7 +51,7 @@ Future<Map<String, String>?> _form(BuildContext context, String title, List<(Str
         ]),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Rehne do')),
+        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Keep it')),
         TextButton(onPressed: () => Navigator.pop(d, true), child: Text(ok)),
       ],
     ),
@@ -152,17 +152,17 @@ class _HomestayScreenState extends State<HomestayScreen> {
 
   // ---------------------------------------------------------------- actions
   Future<void> _newBooking() async {
-    final f = await _form(context, 'Nayi booking (enquiry)', const [
-      ('room', 'Kamra (R-01 / naam; do kamre: "R-01, R-02")'),
+    final f = await _form(context, 'New booking (enquiry)', const [
+      ('room', 'Room (R-01 / name; two rooms: "R-01, R-02")'),
       ('check_in', 'Check-in (DD-MM-YYYY)'),
       ('check_out', 'Check-out (DD-MM-YYYY)'),
-      ('name', 'Mehmaan ka naam'),
+      ('name', 'Mehmaan name'),
       ('phone', 'Mobile'),
-      ('adults', 'Bade log'),
-      ('children', 'Bachche'),
+      ('adults', 'Adults'),
+      ('children', 'Children'),
       ('addons', 'Khaana / extra: "breakfast, dinner"'),
       ('notes', 'Note'),
-    ], ok: 'Hold karo');
+    ], ok: 'Hold');
     if (f == null || (f['room'] ?? '').isEmpty) return;
     final body = <String, dynamic>{
       'room': f['room'],
@@ -182,21 +182,21 @@ class _HomestayScreenState extends State<HomestayScreen> {
   }
 
   Future<void> _otaMail() async {
-    final f = await _form(context, 'OTA ka mail paste kijiye', const [
-      ('mail', 'Airbnb / Booking.com / MakeMyTrip / Agoda mail ka poora text'),
-      ('room', 'Kamra (mail mein naam na ho to)'),
-    ], ok: 'Padho');
+    final f = await _form(context, 'Paste the OTA mail', const [
+      ('mail', 'Full text of the Airbnb / Booking.com / MakeMyTrip / Agoda mail'),
+      ('room', 'Room (if the mail has no name)'),
+    ], ok: 'Read');
     if (f == null || (f['mail'] ?? '').isEmpty) return;
     await _run('POST', '/api/homestay/ota_email', {'text': f['mail'], 'room': f['room'] ?? ''});
   }
 
   Future<void> _icalFile() async {
     final rooms = _list(_d?['rooms']);
-    if (rooms.isEmpty) return _snack(context, 'Pehle kamra jodiye (Niyam).');
+    if (rooms.isEmpty) return _snack(context, 'Add a room first (Rules).');
     final f = await _form(context, 'Calendar file (.ics)', const [
-      ('room', 'Kis kamre ki file (R-01 / naam)'),
+      ('room', 'Which room\'s file (R-01 / name)'),
       ('source', 'airbnb / booking / mmt / agoda (khaali = file se)'),
-    ], ok: 'File chuno');
+    ], ok: 'Choose a file');
     if (f == null || (f['room'] ?? '').isEmpty) return;
     final res = await FilePicker.platform.pickFiles(withData: true, type: FileType.custom, allowedExtensions: const ['ics', 'txt']);
     final file = res?.files.single;
@@ -214,26 +214,26 @@ class _HomestayScreenState extends State<HomestayScreen> {
   }
 
   Future<void> _block() async {
-    final f = await _form(context, 'Din band karo', const [
-      ('room', 'Kamra'),
+    final f = await _form(context, 'Block days', const [
+      ('room', 'Room'),
       ('start', 'Kab se (DD-MM-YYYY)'),
-      ('end', 'Kab tak (check-out jaisa)'),
-      ('note', 'Kyon (repair / ghar ka kaam)'),
-    ], ok: 'Band karo');
+      ('end', 'Until when (like check-out)'),
+      ('note', 'Why (repair / own use)'),
+    ], ok: 'Block');
     if (f == null || (f['room'] ?? '').isEmpty) return;
     await _run('POST', '/api/homestay/blocks', f);
   }
 
   Future<void> _addRoom() async {
-    final f = await _form(context, 'Naya kamra', const [
+    final f = await _form(context, 'New room', const [
       ('name', 'Naam (Neem room / Cottage 1)'),
       ('beds', 'Bed (1 double + 1 single)'),
-      ('base_guests', 'Daam mein kitne log (2)'),
-      ('max_guests', 'Zyada se zyada log (3)'),
-      ('base_rate', 'Daam / raat (aapka)'),
-      ('weekend_rate', 'Shukra / Shani raat ka daam (ho to)'),
-      ('extra_person', 'Extra mehmaan / raat'),
-      ('ota_names', 'OTA par naam (comma se)'),
+      ('base_guests', 'Guests included in the price (2)'),
+      ('max_guests', 'Maximum guests (3)'),
+      ('base_rate', 'Price / night (yours)'),
+      ('weekend_rate', 'Friday / Saturday night price (if any)'),
+      ('extra_person', 'Extra guest / night'),
+      ('ota_names', 'Name on the OTA (comma separated)'),
     ], ok: 'Jodo');
     if (f == null || (f['name'] ?? '').isEmpty) return;
     final body = <String, dynamic>{...f};
@@ -246,10 +246,10 @@ class _HomestayScreenState extends State<HomestayScreen> {
 
   Future<void> _editRoom(Map<String, dynamic> r) async {
     final f = await _form(context, '${_s(r['number'])} ${_s(r['name'])}', const [
-      ('base_rate', 'Daam / raat'),
-      ('weekend_rate', 'Weekend raat'),
-      ('extra_person', 'Extra mehmaan / raat'),
-      ('max_guests', 'Zyada se zyada log'),
+      ('base_rate', 'Price / night'),
+      ('weekend_rate', 'Weekend night'),
+      ('extra_person', 'Extra guest / night'),
+      ('max_guests', 'Maximum guests'),
     ], initial: {
       'base_rate': _s(r['base_rate']),
       'weekend_rate': _s(r['weekend_rate']),
@@ -263,22 +263,22 @@ class _HomestayScreenState extends State<HomestayScreen> {
   Future<void> _settings() async {
     final st = _m(_d?['settings']);
     const keys = [
-      ('business', 'Homestay ka naam'),
-      ('host_name', 'Aapka naam'),
-      ('phone', 'Aapka mobile'),
+      ('business', 'Homestay name'),
+      ('host_name', 'Your name'),
+      ('phone', 'Your mobile'),
       ('address', 'Pata'),
-      ('state', 'Rajya code (MH / GA / KL / HP ...)'),
+      ('state', 'State code (MH / GA / KL / HP ...)'),
       ('pin', 'PIN code'),
       ('map_link', 'Google Maps link (https://...)'),
-      ('upi_id', 'UPI ID (advance / balance aapke UPI mein)'),
+      ('upi_id', 'UPI ID (advance / balance go to your UPI)'),
       ('gstin', 'GSTIN (ho to)'),
-      ('checkin_time', 'Check-in samay (12:00)'),
-      ('checkout_time', 'Check-out samay (11:00)'),
+      ('checkin_time', 'Check-in time (12:00)'),
+      ('checkout_time', 'Check-out time (11:00)'),
       ('advance_pct', 'Advance % (jaise 30)'),
-      ('policy', 'Cancellation policy: "7 din pehle 100%, 2 din pehle 50%, uske baad kuch nahi"'),
+      ('policy', 'Cancellation policy: "100% back 7 days before, 50% 2 days before, nothing after that"'),
       ('menu', 'Menu: "breakfast 200, dinner 350, bonfire 500"'),
-      ('house_rules', 'Ghar ke niyam'),
-      ('checkin_info', 'Aane ka raasta / parking / chaabi (password nahi)'),
+      ('house_rules', 'House rules'),
+      ('checkin_info', 'Directions / parking / key (not a password)'),
       ('review_link', 'Google review link (https://...)'),
       ('morning_time', 'Subah ka note (HH:MM)'),
     ];
@@ -292,7 +292,7 @@ class _HomestayScreenState extends State<HomestayScreen> {
   }
 
   Future<void> _regItem(Map<String, dynamic> it) async {
-    final f = await _form(context, _s(it['text']), const [('ref', 'Number / ref (ho to)')], ok: 'Ho gaya');
+    final f = await _form(context, _s(it['text']), const [('ref', 'Number / ref (if any)')], ok: 'Done');
     if (f == null) return;
     await _run('PUT', '/api/homestay/registration', {'item': it['id'], 'done': true, 'ref': f['ref'] ?? ''});
   }
@@ -301,7 +301,7 @@ class _HomestayScreenState extends State<HomestayScreen> {
     final reg = _m(_d?['registration']);
     final f = await _form(context, 'Homestay registration', const [
       ('number', 'Registration number'),
-      ('valid_to', 'Kab tak valid (DD-MM-YYYY)'),
+      ('valid_to', 'Valid until (DD-MM-YYYY)'),
     ], initial: {'number': _s(reg['number']), 'valid_to': _s(reg['valid_to'])}, ok: 'Save');
     if (f == null) return;
     await _run('PUT', '/api/homestay/registration', f);
@@ -310,12 +310,12 @@ class _HomestayScreenState extends State<HomestayScreen> {
   Future<void> _addGuest() async {
     final f = await _form(context, 'Mehmaan', const [
       ('name', 'Naam'),
-      ('phone', 'Mobile (videshi: +desh code)'),
-      ('country', 'Desh (IN = Bharat)'),
-      ('aadhaar', 'Aadhaar (Pehchaan Locker mein jayega)'),
-      ('passport', 'Passport (videshi; Locker mein)'),
-      ('visa', 'Visa / e-Visa number (Locker mein)'),
-      ('nationality', 'Nationality (videshi)'),
+      ('phone', 'Mobile (foreigner: +country code)'),
+      ('country', 'Country (IN = India)'),
+      ('aadhaar', 'Aadhaar (goes to the ID Locker)'),
+      ('passport', 'Passport (foreigner; goes to the Locker)'),
+      ('visa', 'Visa / e-Visa number (goes to the Locker)'),
+      ('nationality', 'Nationality (foreigner)'),
     ], ok: 'Save');
     if (f == null || (f['name'] ?? '').isEmpty) return;
     final body = <String, dynamic>{...f};
@@ -353,23 +353,23 @@ class _HomestayScreenState extends State<HomestayScreen> {
     return ListView(padding: const EdgeInsets.all(14), children: [
       Glass(child: Text(_s(d['say']), style: const TextStyle(fontWeight: FontWeight.w700))),
       const SizedBox(height: 10),
-      if (cards.isNotEmpty) const Caption('AAPKE TAP KA INTEZAAR'),
+      if (cards.isNotEmpty) const Caption('WAITING FOR YOUR TAP'),
       for (final c in cards)
         Padding(padding: const EdgeInsets.only(bottom: 8), child: HomestayCardCard(app: widget.app, data: {'card': c}, onDone: _load)),
-      if (_list(d['arrivals']).isNotEmpty) const Caption('AAJ AA RAHE'),
+      if (_list(d['arrivals']).isNotEmpty) const Caption('ARRIVING TODAY'),
       for (final b in _list(d['arrivals'])) _bookingTile(b),
-      if (_list(d['departures']).isNotEmpty) const Caption('AAJ JA RAHE'),
+      if (_list(d['departures']).isNotEmpty) const Caption('LEAVING TODAY'),
       for (final b in _list(d['departures'])) _bookingTile(b),
-      if (_list(d['in_house']).isNotEmpty) const Caption('GHAR MEIN'),
+      if (_list(d['in_house']).isNotEmpty) const Caption('STAYING'),
       for (final b in _list(d['in_house'])) _bookingTile(b),
-      if (tasks.isNotEmpty) const Caption('SAFAI / LAUNDRY'),
+      if (tasks.isNotEmpty) const Caption('CLEANING / LAUNDRY'),
       for (final t in tasks.take(30))
         Glass(
           margin: const EdgeInsets.only(bottom: 6),
           padding: const EdgeInsets.all(10),
           child: Row(children: [
             Expanded(
-              child: Text('${_s(t['room'])} · ${_s(t['what'])}${_s(t['due']).isEmpty ? '' : ' · ${_s(t['due'])} se pehle'}'
+              child: Text('${_s(t['room'])} · ${_s(t['what'])}${_s(t['due']).isEmpty ? '' : ' · before ${_s(t['due'])}'}'
                   '${_s(t['assigned']).isEmpty ? '' : ' · ${_s(t['assigned'])}'}',
                   style: const TextStyle(fontSize: 13)),
             ),
@@ -386,7 +386,7 @@ class _HomestayScreenState extends State<HomestayScreen> {
     final start = DateTime.tryParse(_s(cal['start'])) ?? DateTime.now();
     final days = (cal['days'] as num?)?.toInt() ?? 14;
     return ListView(padding: const EdgeInsets.all(14), children: [
-      const Caption('AGLE 14 DIN (HAR KAMRA, HAR RAAT)'),
+      const Caption('NEXT 14 DAYS (EVERY ROOM, EVERY NIGHT)'),
       SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -417,26 +417,26 @@ class _HomestayScreenState extends State<HomestayScreen> {
         ]),
       ),
       const SizedBox(height: 10),
-      const Text('Hara = pakki · peela = hold · neela = ghar mein · dhundla = band', style: TextStyle(fontSize: 11.5, color: C.faint)),
+      const Text('Green = confirmed · yellow = hold · blue = checked in · grey = blocked', style: TextStyle(fontSize: 11.5, color: C.faint)),
       const SizedBox(height: 14),
-      GlassButton(label: 'Din band karo', icon: Icons.block_rounded, onTap: _busy ? null : _block),
+      GlassButton(label: 'Block days', icon: Icons.block_rounded, onTap: _busy ? null : _block),
     ]);
   }
 
   Widget _bookingsTab() {
     final up = _list(_d?['upcoming']);
     return ListView(padding: const EdgeInsets.all(14), children: [
-      GradientButton(label: 'Nayi booking / enquiry', icon: Icons.add_rounded, height: 46, onTap: _busy ? null : _newBooking),
+      GradientButton(label: 'New booking / enquiry', icon: Icons.add_rounded, height: 46, onTap: _busy ? null : _newBooking),
       const SizedBox(height: 8),
       Wrap(spacing: 8, runSpacing: 8, children: [
-        GlassButton(label: 'OTA mail paste karo', icon: Icons.mark_email_read_rounded, height: 42, onTap: _busy ? null : _otaMail),
+        GlassButton(label: 'Paste OTA mail', icon: Icons.mark_email_read_rounded, height: 42, onTap: _busy ? null : _otaMail),
         GlassButton(label: 'Calendar file (.ics)', icon: Icons.event_note_rounded, height: 42, onTap: _busy ? null : _icalFile),
       ]),
       const SizedBox(height: 6),
-      const Text('Hoola kisi OTA mein login nahi karta: aap mail paste kijiye ya OTA se calendar export karke file dijiye. '
-          'Ek kamra ek raat do baar kabhi book nahi hota.', style: TextStyle(fontSize: 11.5, color: C.faint)),
+      const Text('Hoola never logs in to an OTA: paste the mail or export the calendar from the OTA and give the file. '
+          'A room is never booked twice for the same night.', style: TextStyle(fontSize: 11.5, color: C.faint)),
       const SizedBox(height: 10),
-      if (up.isEmpty) const Text('Abhi koi aane wali booking nahi.', style: TextStyle(color: C.muted)),
+      if (up.isEmpty) const Text('No upcoming bookings.', style: TextStyle(color: C.muted)),
       for (final b in up) _bookingTile(b),
     ]);
   }
@@ -444,7 +444,7 @@ class _HomestayScreenState extends State<HomestayScreen> {
   Widget _guestsTab() => ListView(padding: const EdgeInsets.all(14), children: [
         GradientButton(label: 'Mehmaan jodo', icon: Icons.person_add_alt_1_rounded, height: 46, onTap: _busy ? null : _addGuest),
         const SizedBox(height: 6),
-        const Text('Aadhaar / passport / visa number sirf Pehchaan Locker mein; yahan masked dikhta hai.',
+        const Text('Aadhaar / passport / visa numbers are kept only in the ID Locker; they show masked here.',
             style: TextStyle(fontSize: 11.5, color: C.faint)),
         const SizedBox(height: 10),
         for (final g in _guests)
@@ -464,7 +464,7 @@ class _HomestayScreenState extends State<HomestayScreen> {
               ),
               if (g['forgotten'] != true)
                 IconButton(
-                  tooltip: 'Jaankari mitao (DPDP)',
+                  tooltip: 'Delete details (DPDP)',
                   onPressed: _busy ? null : () => _run('POST', '/api/homestay/guests/${_s(g['id'])}/forget').then((_) => _loadGuests()),
                   icon: const Icon(Icons.delete_sweep_rounded, color: C.faint),
                 ),
@@ -486,10 +486,10 @@ class _HomestayScreenState extends State<HomestayScreen> {
           Pill('RevPAR ${_rs(r['revpar'])}'),
         ]),
         const SizedBox(height: 10),
-        const Caption('SOURCE KE HISAAB SE'),
+        const Caption('BY SOURCE'),
         for (final x in _list(r['by_source']))
           _line(_s(x['source']), '${_s(x['bookings'])} booking · ${_s(x['nights'])} raat · ${_rs(x['revenue'])}'),
-        const Caption('KAMRE'),
+        const Caption('ROOMS'),
         for (final x in _list(r['by_room'])) _line(_s(x['room']), '${_s(x['nights'])} raat · ${_s(x['occupancy'])}%'),
         Text(_s(r['note']), style: const TextStyle(fontSize: 11.5, color: C.faint)),
       ],
@@ -511,7 +511,7 @@ class _HomestayScreenState extends State<HomestayScreen> {
     return ListView(padding: const EdgeInsets.all(14), children: [
       Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(_s(st['business']).isEmpty ? 'Homestay ka naam abhi nahi' : _s(st['business']),
+          Text(_s(st['business']).isEmpty ? 'No homestay name yet' : _s(st['business']),
               style: const TextStyle(fontWeight: FontWeight.w800)),
           _line('UPI', _s(st['upi_effective'])),
           _line('Check-in / out', '${_s(st['checkin_time'])} / ${_s(st['checkout_time'])}'),
@@ -523,7 +523,7 @@ class _HomestayScreenState extends State<HomestayScreen> {
         ]),
       ),
       const SizedBox(height: 10),
-      const Caption('KAMRE AUR DAAM'),
+      const Caption('ROOMS AND PRICES'),
       for (final r in _list(_d?['rooms']))
         Glass(
           margin: const EdgeInsets.only(bottom: 6),
@@ -531,30 +531,30 @@ class _HomestayScreenState extends State<HomestayScreen> {
           child: Press(
             onTap: () => _editRoom(r),
             child: Text('${_s(r['number'])} · ${_s(r['name'])} · ${_rs(r['base_rate']).isEmpty ? 'daam baaki' : _rs(r['base_rate'])}'
-                '${_rs(r['weekend_rate']).isEmpty ? '' : ' (weekend ${_rs(r['weekend_rate'])})'} · ${_s(r['max_guests'])} log tak',
+                '${_rs(r['weekend_rate']).isEmpty ? '' : ' (weekend ${_rs(r['weekend_rate'])})'} · ${_s(r['max_guests'])} guests max',
                 style: const TextStyle(fontSize: 13)),
           ),
         ),
-      GlassButton(label: 'Kamra jodo', icon: Icons.add_rounded, height: 40, onTap: _busy ? null : _addRoom),
+      GlassButton(label: 'Add a room', icon: Icons.add_rounded, height: 40, onTap: _busy ? null : _addRoom),
       const SizedBox(height: 12),
-      const Caption('APNA CALENDAR OTA KO (GUEST KA NAAM NAHI JAATA)'),
+      const Caption('YOUR CALENDAR FOR THE OTA (NO GUEST NAME GOES)'),
       Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('Yeh link Airbnb / Booking.com ke "Import calendar" mein daaliye: Hoola ki bookings wahan band dikhengi.',
+          const Text('Put this link in "Import calendar" on Airbnb / Booking.com: Hoola\'s bookings will show there as blocked.',
               style: TextStyle(fontSize: 12.5, color: C.muted)),
           const SizedBox(height: 6),
           GlassButton(
-              label: 'Link copy karo',
+              label: 'Copy link',
               icon: Icons.copy_rounded,
               height: 40,
               onTap: () {
                 Clipboard.setData(ClipboardData(text: link));
-                _snack(context, 'Calendar link copy hua.');
+                _snack(context, 'Calendar link copied.');
               }),
         ]),
       ),
       const SizedBox(height: 12),
-      const Caption('REGISTRATION (STARTER - RAJYA KA PORTAL AAKHRI SACH)'),
+      const Caption('REGISTRATION (STARTER - THE STATE PORTAL HAS THE FINAL WORD)'),
       Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text(_s(info['scheme']).isEmpty ? _s(info['note']) : _s(info['scheme']), style: const TextStyle(fontWeight: FontWeight.w700)),
@@ -568,7 +568,7 @@ class _HomestayScreenState extends State<HomestayScreen> {
                   size: 18, color: it['done'] != null ? C.ok : (it['must'] == true ? C.warn : C.faint)),
               const SizedBox(width: 6),
               Expanded(child: Text(_s(it['text']), style: const TextStyle(fontSize: 12.5))),
-              if (it['done'] == null) TextButton(onPressed: _busy ? null : () => _regItem(it), child: const Text('Ho gaya')),
+              if (it['done'] == null) TextButton(onPressed: _busy ? null : () => _regItem(it), child: const Text('Done')),
             ]),
           GlassButton(label: 'Registration number / valid', height: 40, onTap: _busy ? null : _regNumber),
         ]),
@@ -663,11 +663,11 @@ class _HomestayBookingPageState extends State<HomestayBookingPage> {
   Future<void> _message() async {
     const kinds = [
       ('confirmation', 'Confirmation'),
-      ('checkin_info', 'Aane ki jaankari'),
-      ('house_rules', 'Ghar ke niyam'),
+      ('checkin_info', 'Arrival details'),
+      ('house_rules', 'House rules'),
       ('payment', 'Payment link'),
       ('review', 'Review request'),
-      ('custom', 'Apna message'),
+      ('custom', 'Your own message'),
     ];
     final k = await showModalBottomSheet<String>(
       context: context,
@@ -680,7 +680,7 @@ class _HomestayBookingPageState extends State<HomestayBookingPage> {
     if (k == null) return;
     String text = '';
     if (k == 'custom') {
-      final f = await _form(context, 'Message', const [('text', 'Mehmaan ke liye message')], ok: 'Draft');
+      final f = await _form(context, 'Message', const [('text', 'Message for the guest')], ok: 'Draft');
       if (f == null) return;
       text = f['text'] ?? '';
     }
@@ -688,11 +688,11 @@ class _HomestayBookingPageState extends State<HomestayBookingPage> {
   }
 
   Future<void> _received() async {
-    final f = await _form(context, 'Paise mile (aapne dekhe)', const [
-      ('amount', 'Raqam'),
+    final f = await _form(context, 'Money received (you checked)', const [
+      ('amount', 'Amount'),
       ('mode', 'upi / cash / bank / ota'),
-      ('ref', 'UTR / ref (aakhri 4 bhi chalega)'),
-    ], ok: 'Darj karo');
+      ('ref', 'UTR / ref (the last 4 digits are fine)'),
+    ], ok: 'Save');
     if (f == null || _n(f['amount']) == null) return;
     await _act('received', {'amount': _n(f['amount']), 'mode': f['mode'] ?? 'upi', 'ref': f['ref'] ?? ''});
   }
@@ -701,18 +701,18 @@ class _HomestayBookingPageState extends State<HomestayBookingPage> {
     try {
       final r = _m(await widget.app.api!.call('GET', '/api/homestay/bookings/${widget.id}/pay_link'));
       await Clipboard.setData(ClipboardData(text: _s(r['link'])));
-      if (mounted) _snack(context, '${_s(r['say'])} Link copy hua.');
+      if (mounted) _snack(context, '${_s(r['say'])} Link copied.');
     } catch (e) {
       if (mounted) _snack(context, '$e');
     }
   }
 
   Future<void> _cancel() async {
-    final f = await _form(context, 'Cancel (aapki haan ka card)', const [
+    final f = await _form(context, 'Cancel (card for your yes)', const [
       ('by', 'Kisne: guest / host'),
       ('reason', 'Wajah'),
-      ('refund', 'Wapas raqam (khaali = aapki policy se)'),
-    ], ok: 'Card banao');
+      ('refund', 'Refund amount (blank = per your policy)'),
+    ], ok: 'Make card');
     if (f == null) return;
     await _act('cancel', {'by': f['by'] ?? 'guest', 'reason': f['reason'] ?? '', if (_n(f['refund']) != null) 'refund': _n(f['refund'])});
   }
@@ -724,7 +724,7 @@ class _HomestayBookingPageState extends State<HomestayBookingPage> {
       await showDialog<void>(
         context: context,
         builder: (d) => AlertDialog(
-          title: const Text('Form C (Form-III) ki jaankari'),
+          title: const Text('Form C (Form-III) details'),
           content: SingleChildScrollView(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
               Text(_s(r['law']), style: const TextStyle(fontSize: 12, color: C.warn)),
@@ -737,7 +737,7 @@ class _HomestayBookingPageState extends State<HomestayBookingPage> {
             ]),
           ),
           actions: [
-            TextButton(onPressed: () => Native.openExternal(url: 'https://indianfrro.gov.in/frro/FormC'), child: const Text('Portal kholo')),
+            TextButton(onPressed: () => Native.openExternal(url: 'https://indianfrro.gov.in/frro/FormC'), child: const Text('Open portal')),
             TextButton(onPressed: () => Navigator.pop(d), child: const Text('Theek')),
           ],
         ),
@@ -748,8 +748,8 @@ class _HomestayBookingPageState extends State<HomestayBookingPage> {
   }
 
   Future<void> _formCDone(String stage) async {
-    final f = await _form(context, 'Form C ${stage == 'departure' ? '(jaana)' : '(aana)'} ho gaya', const [('ref', 'Form C reference number')],
-        ok: 'Darj karo');
+    final f = await _form(context, 'Form C ${stage == 'departure' ? '(departure)' : '(arrival)'} done', const [('ref', 'Form C reference number')],
+        ok: 'Save');
     if (f == null) return;
     await _act('form_c_done', {'ref': f['ref'] ?? '', 'stage': stage});
   }
@@ -774,16 +774,16 @@ class _HomestayBookingPageState extends State<HomestayBookingPage> {
                               style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16))),
                       Pill(_s(b['status_label']), fg: _statusColor(_s(b['status']))),
                     ]),
-                    _line('Kamre', _strs(b['rooms']).join(', ')),
-                    _line('Taarikh', '${_s(b['check_in'])} → ${_s(b['check_out'])} (${_s(b['nights'])} raat)'),
-                    _line('Log', '${_s(b['adults'])} bade, ${_s(b['children'])} bachche'),
+                    _line('Rooms', _strs(b['rooms']).join(', ')),
+                    _line('Date', '${_s(b['check_in'])} → ${_s(b['check_out'])} (${_s(b['nights'])} raat)'),
+                    _line('Log', '${_s(b['adults'])} adults, ${_s(b['children'])} children'),
                     _line('Source', '${_s(b['source_label'])} ${_s(b['ota_ref'])}'),
-                    _line('Kul', _rs(b['total']).isEmpty ? 'daam baaki' : _rs(b['total'])),
+                    _line('Total', _rs(b['total']).isEmpty ? 'daam baaki' : _rs(b['total'])),
                     _line('Advance', _rs(b['advance'])),
-                    _line('Mila', _rs(b['paid'])),
+                    _line('Received', _rs(b['paid'])),
                     _line('Baaki', _rs(b['due']), color: C.warn),
-                    _line('Wapas dena', _rs((_n(_s(b['refund_due'])) ?? 0) - (_n(_s(b['refunded'])) ?? 0)), color: C.warn),
-                    _line('Hold tak', _s(b['hold_until'])),
+                    _line('Give back', _rs((_n(_s(b['refund_due'])) ?? 0) - (_n(_s(b['refunded'])) ?? 0)), color: C.warn),
+                    _line('Hold until', _s(b['hold_until'])),
                     for (final x in _strs(b['missing'])) Text('⚠ $x', style: const TextStyle(fontSize: 12, color: C.warn)),
                     for (final l in _list(_m(b['quote'])['lines']))
                       Text('${_s(l['item'])} · ${_rs(l['amount'])}', style: const TextStyle(fontSize: 12, color: C.faint)),
@@ -793,7 +793,7 @@ class _HomestayBookingPageState extends State<HomestayBookingPage> {
                 ),
                 const SizedBox(height: 10),
                 Wrap(spacing: 8, runSpacing: 8, children: [
-                  if (_s(b['status']) == 'hold') GlassButton(label: 'Pakki (maine baat ki)', height: 40, onTap: _busy ? null : () => _act('confirm')),
+                  if (_s(b['status']) == 'hold') GlassButton(label: 'Confirmed (I spoke to them)', height: 40, onTap: _busy ? null : () => _act('confirm')),
                   if (_s(b['status']) == 'confirmed' || _s(b['status']) == 'hold')
                     GradientButton(label: 'Check-in', icon: Icons.login_rounded, height: 40, onTap: _busy ? null : () => _act('checkin', {'id_seen': true})),
                   if (_s(b['status']) == 'checked_in')
@@ -802,22 +802,22 @@ class _HomestayBookingPageState extends State<HomestayBookingPage> {
                   GlassButton(label: 'UPI link', icon: Icons.qr_code_rounded, height: 40, onTap: _busy ? null : _payLink),
                   GlassButton(label: 'Paise mile', icon: Icons.payments_rounded, height: 40, onTap: _busy ? null : _received),
                   if (_m(b['guest'])['foreign'] == true) ...[
-                    GlassButton(label: 'Form C jaankari', icon: Icons.assignment_ind_rounded, height: 40, onTap: _busy ? null : _formC),
-                    GlassButton(label: 'Form C ho gaya', height: 40, onTap: _busy ? null : () => _formCDone('arrival')),
+                    GlassButton(label: 'Form C details', icon: Icons.assignment_ind_rounded, height: 40, onTap: _busy ? null : _formC),
+                    GlassButton(label: 'Form C done', height: 40, onTap: _busy ? null : () => _formCDone('arrival')),
                     if (_s(b['status']) == 'checked_out')
                       GlassButton(label: 'Departure darj', height: 40, onTap: _busy ? null : () => _formCDone('departure')),
                   ],
                   if (_m(b['checklist']).containsKey('police') && _m(_m(b['checklist'])['police'])['done'] != true)
-                    GlassButton(label: 'Thane ko bataya', height: 40, onTap: _busy ? null : () => _act('check', {'item': 'police'})),
+                    GlassButton(label: 'Told the police station', height: 40, onTap: _busy ? null : () => _act('check', {'item': 'police'})),
                   if (_s(b['status']) == 'confirmed' || _s(b['status']) == 'hold')
                     GlassButton(label: 'Cancel', icon: Icons.cancel_rounded, color: C.bad, height: 40, onTap: _busy ? null : _cancel),
-                  if (_s(b['status']) == 'blocked') GlassButton(label: 'Kholo', height: 40, onTap: _busy ? null : () => _act('unblock')),
+                  if (_s(b['status']) == 'blocked') GlassButton(label: 'Open', height: 40, onTap: _busy ? null : () => _act('unblock')),
                 ]),
                 const SizedBox(height: 12),
                 if (_list(b['cards']).isNotEmpty) const Caption('CARDS'),
                 for (final c in _list(b['cards']).reversed)
                   Padding(padding: const EdgeInsets.only(bottom: 8), child: HomestayCardCard(app: widget.app, data: {'card': c}, onDone: _load)),
-                if (_list(b['tasks']).isNotEmpty) const Caption('SAFAI KAAM'),
+                if (_list(b['tasks']).isNotEmpty) const Caption('CLEANING TASKS'),
                 for (final t in _list(b['tasks'])) _line(_s(t['what']), '${_s(t['room'])} · ${_s(t['status'])}'),
                 if (_list(b['log']).isNotEmpty) const Caption('LOG'),
                 for (final l in _list(b['log']).reversed.take(20)) _line(_s(l['at']), _s(l['what'])),
@@ -845,13 +845,13 @@ class _HomestayCardCardState extends State<HomestayCardCard> {
   Future<Map<String, dynamic>> _proof(String id) async {
     final ch = _m(await widget.app.api!.call('POST', '/api/homestay/cards/$id/challenge'));
     final show = _m(ch['show']);
-    final r = await Native.approveKeySign(_s(ch['message']), _s(show['title']).isEmpty ? 'Aapki haan' : _s(show['title']),
+    final r = await Native.approveKeySign(_s(ch['message']), _s(show['title']).isEmpty ? 'Your yes' : _s(show['title']),
         [show['amount'], show['payee']].where((x) => x != null && '$x'.isNotEmpty).join(' · '));
     if (r['signature'] == null) {
       throw ApiException(428, switch (_s(r['error'])) {
-        'cancelled' => 'Fingerprint nahi diya, isliye haan nahi hui.',
-        'key_invalidated' => 'Phone mein naya fingerprint juda hai: Profile > Fingerprint se haan mein phone phir se jodiye.',
-        _ => 'Fingerprint se haan nahi ho payi (${_s(r['error'])}).',
+        'cancelled' => 'No fingerprint was given, so it was not approved.',
+        'key_invalidated' => 'A new fingerprint was added to the phone: link this phone again in Profile > Fingerprint approval.',
+        _ => 'Could not approve with fingerprint (${_s(r['error'])}).',
       });
     }
     return {'challenge_id': ch['challenge_id'], 'device_id': r['device_id'], 'signature': r['signature']};
@@ -861,7 +861,7 @@ class _HomestayCardCardState extends State<HomestayCardCard> {
     final id = _s(_c['id']);
     String reason = '';
     if (!yes) {
-      final f = await _form(context, 'Kyon nahi', const [('reason', 'Wajah (aapke liye)')]);
+      final f = await _form(context, 'Why not', const [('reason', 'Reason (for you)')]);
       if (f == null) return;
       reason = f['reason'] ?? '';
     }
@@ -896,8 +896,8 @@ class _HomestayCardCardState extends State<HomestayCardCard> {
       if (via == 'self') {
         final links = _m(show['links']);
         final link = _s(links['whatsapp']).isNotEmpty ? _s(links['whatsapp']) : _s(links['sms']);
-        if (link.isEmpty) throw Exception('Mehmaan ka mobile nahi.');
-        if (_strs(show['blanks']).isNotEmpty) throw Exception('Pehle khaali jagah bhariye: ${_strs(show['blanks']).join(', ')}');
+        if (link.isEmpty) throw Exception('The guest has no mobile number.');
+        if (_strs(show['blanks']).isNotEmpty) throw Exception('Fill in the blanks first: ${_strs(show['blanks']).join(', ')}');
         await Native.openExternal(url: link);
       }
       final m = _m(await widget.app.api!.call('POST', '/api/homestay/cards/${_s(_c['id'])}/send', body: {'via': via, 'hash': _s(_c['hash'])}));
@@ -939,20 +939,20 @@ class _HomestayCardCardState extends State<HomestayCardCard> {
           const SizedBox(width: 8),
           Expanded(child: Text('${_s(c['number'])} · ${_s(show['title'])}', style: const TextStyle(fontWeight: FontWeight.w800))),
           Pill(switch (st) {
-            'waiting' => isMsg ? 'draft' : 'aapki haan?',
-            'sent' => 'bheja',
-            'approved' => 'maana',
-            'rejected' => 'nahi',
+            'waiting' => isMsg ? 'draft' : 'your yes?',
+            'sent' => 'sent',
+            'approved' => 'approved',
+            'rejected' => 'no',
             'stale' => 'purana',
-            'paid' => 'diya',
+            'paid' => 'given',
             _ => st,
           }, fg: st == 'waiting' ? C.accent : (st == 'rejected' || st == 'stale' ? C.bad : C.ok)),
         ]),
         if (isMsg) Text(_s(show['text']), style: const TextStyle(fontSize: 13)),
         if (!isMsg) ...[
           _line('Mehmaan', _s(show['guest'])),
-          _line('Taarikh', _s(show['dates'])),
-          _line('Raqam', _s(show['amount_text']), color: C.warn),
+          _line('Date', _s(show['dates'])),
+          _line('Amount', _s(show['amount_text']), color: C.warn),
           _line('Kyon', _s(show['why'])),
           _line('Vendor', _s(show['vendor'])),
         ],
@@ -960,7 +960,7 @@ class _HomestayCardCardState extends State<HomestayCardCard> {
         const SizedBox(height: 8),
         if (st == 'waiting' && isMsg)
           Wrap(spacing: 8, runSpacing: 6, children: [
-            GradientButton(label: 'Apne WhatsApp se', icon: Icons.send_rounded, height: 40, onTap: _busy ? null : () => _send('self')),
+            GradientButton(label: 'From my WhatsApp', icon: Icons.send_rounded, height: 40, onTap: _busy ? null : () => _send('self')),
             GlassButton(label: 'Business number se', height: 40, onTap: _busy ? null : () => _send('business')),
             GlassButton(label: 'Badlo', height: 40, onTap: _busy ? null : _edit),
             GlassButton(
@@ -975,11 +975,11 @@ class _HomestayCardCardState extends State<HomestayCardCard> {
           ]),
         if (st == 'waiting' && !isMsg)
           Row(children: [
-            Expanded(child: GradientButton(label: 'Haan', height: 42, onTap: _busy ? null : () => _decide(true))),
+            Expanded(child: GradientButton(label: 'Yes', height: 42, onTap: _busy ? null : () => _decide(true))),
             const SizedBox(width: 8),
-            GlassButton(label: 'Nahi', height: 42, onTap: _busy ? null : () => _decide(false)),
+            GlassButton(label: 'No', height: 42, onTap: _busy ? null : () => _decide(false)),
           ]),
-        const Text('Hoola paise nahi leta / deta; mehmaan ko message bhi aapke tap se hi jaata hai.',
+        const Text('Hoola does not pay or receive money; messages to guests go only after your tap.',
             style: TextStyle(fontSize: 11, color: C.faint)),
       ]),
     );
@@ -1055,7 +1055,7 @@ class HomestayDayCard extends StatelessWidget {
             const SizedBox(width: 8),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                const Text('Aaj ka homestay', style: TextStyle(fontWeight: FontWeight.w800)),
+                const Text('Today\'s homestay', style: TextStyle(fontWeight: FontWeight.w800)),
                 Text(_s(data['say']), style: const TextStyle(fontSize: 12.5, color: C.muted)),
               ]),
             ),

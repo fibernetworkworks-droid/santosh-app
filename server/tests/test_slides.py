@@ -266,7 +266,7 @@ def test_delete_and_share_need_the_tap(bz, gsl):  # noqa: F811
     d = gsl.decks["OLDDECK00000000000000000000000000000"]
     assert len(d["slides"]) == 3
     card = _events(bz["conv"], "bazar_approval")[-1]
-    assert card["title"] == "Slides hatayein?" and "Next steps" in json.dumps(card)
+    assert card["title"] == "Delete slides?" and "Next steps" in json.dumps(card)
     bz["svc"].decide("default", card["id"], "approve")
     assert len(d["slides"]) == 2
     from app.mailbox import contacts

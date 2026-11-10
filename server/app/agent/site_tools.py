@@ -29,6 +29,11 @@ SITE_TOOLS = [
         "online shop: cart, checkout, UPI to HER UPI ID or cash on delivery; only HER prices, never invented. Customers pay in "
         "their own UPI app; YOU never mark money received - action=shop_order + site + number (O-1001) + to (confirmed | packed "
         "| shipped | delivered | cancelled) only on her word (confirmed = she saw the money). website_dekho what=orders. "
+        "CATALOGUE (v0.538, 100s-10,000s of products / doctors / properties from HER data): action=catalog + site + coll "
+        "(the list address: products / doctors / flats) + sheet (her Google Sheet link / name, + tab) OR dataset (a ds_ id "
+        "from data_fetch / an ERP read) -> a PREVIEW only (new / changed / rejected rows, thin + duplicate pages, the column "
+        "mapping); nothing is written - SHE taps Apply on the console's Catalogue card (a file she has goes there too). "
+        "Never type thousands of items into action=change. "
         "action=change: site + instruction (her words: 'hero mein meri photo', 'rang halka', 'price list hatao', 'Hindi "
         "version') -> only those parts are rebuilt, new version. action=photo: site + file_id (+ about: 'shop front', "
         "'owner'). action=undo: her last own-hand edit (words / link / photo / colours she changed in the preview's Edit "
@@ -68,12 +73,26 @@ SITE_TOOLS = [
         "renewal price in rupees from the registry; action=domain_check + domains [list]; action=domain_buy + domain (+ "
         "auto_renew) = sends HER fingerprint card (no refunds; .in needs her own NIXI e-KYC on the registrar page); "
         "action=domain_kyc + domain when she says KYC is done. "
+        "HER OWN DESIGN (v0.565): action=design_from + source screenshot (file_id of the picture she sent) | figma (url of HER "
+        "Figma file; her Figma token is added only in the console, never in chat) | site (url of HER OWN old website; she proves "
+        "it is hers once with a TXT record or meta tag the answer gives) = a PREVIEW of the design (colours measured, type, "
+        "corners, section order; from her own site also her words, phone, photos) - nothing changes yet; action=design_use + "
+        "token (+ site; empty = a NEW site from her old site / Figma words) ONLY after she said haan to that preview: look 1 "
+        "becomes her design, the other two stay Hoola alternatives. A screenshot of someone else's site gives only a STYLE, "
+        "never their words / logo / photos; 'exactly like their site' stays refused. HER OWN OLD SITE MOVING (v0.622): "
+        "design_use + keep=true when she says 'purana jaisa rakho' (her page list + section order kept); action=moves = her "
+        "old addresses -> new pages (the list + hash, nothing served yet); action=moves_ok + hash (+ drop: old paths she "
+        "unticked) ONLY after her haan = live 301s; action=compare_old + url (old path) = old page vs new at the same width. "
+        "ANIMATION / 3D (v0.568): action=animation + file_id (her Lottie .json file) + name = keep her own animation for "
+        "the site (checked; a link to another server or a file over 1.5 MB is refused); then action=change can put it on a "
+        "page by name. Built-in animations (pulse, check, sparkle, scroll, dots, wave) and 3D hero scenes (orb, knot, "
+        "particles, waves, blocks) need no file: ask for them with action=change (e.g. 'hero mein 3D orb lagao'). "
         "AFTER LAUNCH: action=care (+ days) = visits, enquiries, uptime, SSL / domain dates, what to improve; action=github (+ "
         "repo, private) = card to put the code in HER GitHub (her tap pushes). AGENCY: action=assign* + client / staff (staff "
         "member id) = whose site it is and who may work on it (a staff member only touches sites given to them); "
         "action=client_report + client. action=delete*. (* owner only)"),
      "input_schema": {"type": "object", "properties": {
-         "action": {"type": "string", "enum": ["new", "grow", "shop", "shop_order", "answer", "plan_ok", "look", "change", "photo", "undo", "language", "languages", "blog", "code", "booking", "app", "architect", "architect_data", "architect_change", "architect_ok", "logic", "logic_ok", "phone_app", "stop", "resume",
+         "action": {"type": "string", "enum": ["new", "grow", "shop", "shop_order", "answer", "plan_ok", "look", "change", "photo", "undo", "language", "languages", "blog", "code", "booking", "app", "architect", "architect_data", "architect_change", "architect_ok", "logic", "logic_ok", "phone_app", "catalog", "design_from", "design_use", "moves", "moves_ok", "compare_old", "animation", "stop", "resume",
                                                "export", "launch", "domain", "dns_check", "email_dns", "rollback",
                                                "takedown", "domain_ideas", "domain_check", "domain_buy", "domain_kyc",
                                                "care", "github", "assign", "client_report", "delete"]},
@@ -90,6 +109,9 @@ SITE_TOOLS = [
          "languages": {"type": "array", "items": {"type": "string"}, "description": "extra language codes, max 4"},
          "slug": {"type": "string"}, "blog_action": {"type": "string", "enum": ["hide", "show", "cover"]}, "cover": {"type": "string"},
          "file": {"type": "string", "description": "code mode: one code file path (website_dekho what=code lists them)"},
+         "source": {"type": "string", "enum": ["", "screenshot", "figma", "site"]}, "url": {"type": "string"}, "token": {"type": "string"},
+         "keep": {"type": "boolean", "description": "design_use from HER OWN old site: keep its page list + section order"},
+         "drop": {"type": "array", "items": {"type": "string"}, "description": "moves_ok: old paths she unticked"},
          "lead": {"type": "string"}, "yes": {"type": "boolean"}, "format": {"type": "string", "enum": ["zip", "react"]}, "domain": {"type": "string"}, "primary": {"type": "string", "enum": ["root", "www"]}, "plan": {"type": "string"},
          "provider": {"type": "string"}, "report_to": {"type": "string"}, "version": {"type": "integer"},
          "city": {"type": "string"}, "domains": {"type": "array", "items": {"type": "string"}},
@@ -98,23 +120,26 @@ SITE_TOOLS = [
          "private": {"type": "boolean"}, "staff": {"type": "string"},
          "spec": {"type": "string", "description": "architect spec card number (A-0007) or id"},
          "hash": {"type": "string", "description": "the card / draft hash she said haan to"},
+         "coll": {"type": "string", "description": "catalogue: the list address (products / doctors / flats)"},
+         "sheet": {"type": "string", "description": "catalogue: her Google Sheet link / name"}, "tab": {"type": "string"},
+         "dataset": {"type": "string", "description": "catalogue: a dataset id (ds_...)"},
          "modules": {"type": "array", "items": {"type": "string", "enum": ["pages", "users", "data", "logic", "features"]}}},
          "required": ["action"]}},
     {"name": "website_dekho", "description": (
         "Read her websites (nothing changes). what=sites | site (site: board, pages, sections, scores, preview link, "
-        "versions) | hosting (site: live addresses, DNS / SSL state, DNS plans) | domains (domains bought through Hoola, KYC, expiry) | care (site, days: visits / enquiries / uptime / tips) | dashboard (site, days: day-by-day visits, enquiries, orders, sales, top pages / products, web-app records + change vs the previous period; she sees the charts in the website's Dashboard tab) | code (site, + file: the code files of the site / one file's code) | blog (site: her posts - published / scheduled / hidden - and the site's languages) | clients (agency: sites by client) | checks (site: what failed / warnings) | leads (site: enquiries from the site forms) | library (q: "
+        "versions) | hosting (site: live addresses, DNS / SSL state, DNS plans) | domains (domains bought through Hoola, KYC, expiry) | care (site, days: visits / enquiries / uptime / tips) | dashboard (site, days: day-by-day visits, enquiries, orders, sales, top pages / products, web-app records + change vs the previous period; she sees the charts in the website's Dashboard tab) | ops (site, days: her VISITORS' JavaScript errors (top messages + pages), real-visit speed as p75 bands (LCP / first paint / server answer / layout shift; INP not measured), AI cost of the site, last backup + whether it restored cleanly - use for 'website ki galti dekho', 'site dheemi kyun hai', 'backup theek hai?') | code (site, + file: the code files of the site / one file's code) | blog (site: her posts - published / scheduled / hidden - and the site's languages) | clients (agency: sites by client) | checks (site: what failed / warnings) | leads (site: enquiries from the site forms) | library (q: "
         "find a business type, or industry) | brief (field, goal, style: the full ready brief) | understand (q: what a "
         "short ask means: business type, goal, 3 looks)."),
      "input_schema": {"type": "object", "properties": {
-         "what": {"type": "string", "enum": ["sites", "site", "hosting", "domains", "care", "dashboard", "blog", "code", "clients", "checks", "leads", "orders", "library", "brief", "understand"]},
+         "what": {"type": "string", "enum": ["sites", "site", "hosting", "domains", "care", "dashboard", "ops", "blog", "code", "clients", "checks", "leads", "orders", "library", "brief", "understand"]},
          "site": {"type": "string"}, "q": {"type": "string"}, "industry": {"type": "string"}, "field": {"type": "string"},
          "goal": {"type": "string"}, "style": {"type": "string"}, "days": {"type": "integer"}, "file": {"type": "string"}},
          "required": ["what"]}},
 ]
 SITE_LABELS = {"website": "Website bana raha hoon", "website_dekho": "Website dekh raha hoon"}
 _OWNER_ONLY = {"delete", "takedown", "domain_buy", "domain_kyc", "assign", "github"}
-_NO_SITE = {"new", "domain_check", "client_report", "architect", "architect_data", "architect_change", "architect_ok"}
-_TAP_LIKE = {"plan_ok", "look", "architect_ok", "logic_ok"}
+_NO_SITE = {"new", "domain_check", "client_report", "architect", "architect_data", "architect_change", "architect_ok", "design_from", "design_use"}
+_TAP_LIKE = {"plan_ok", "look", "architect_ok", "logic_ok", "design_use", "moves_ok"}
 
 
 def _owner(ctx: Ctx) -> bool:
@@ -125,14 +150,14 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
     from ..site import service as S
     t, site = ctx.tenant_id, str(a.get("site") or "")
     if action in _OWNER_ONLY and not _owner(ctx):
-        raise ToolError("Sirf maalkin yeh kar sakti hain.")
+        raise ToolError("Only the owner can do this.")
     if action in _TAP_LIKE and not _owner(ctx):
-        raise ToolError("Plan / look sirf maalkin chunti hain (app ke card par).")
+        raise ToolError("Only the owner picks the plan / look (on the card in the app).")
     conv = ctx.conversation_id or ""
     if action not in _NO_SITE and str(ctx.actor).startswith("staff:"):
         from ..site import care as SC
         if not SC.staff_ok(t, site, ctx.actor):
-            raise ToolError("Yeh website aapko di nahi gayi; maalkin se kahiye ki aapko assign karein.")
+            raise ToolError("This website was not given to you; ask the owner to assign it to you.")
     if action == "new":
         v = S.new(t, str(a.get("brief") or ""), conv, str(a.get("name") or ""), "", str(a.get("goal") or ""),
                   str(a.get("style") or ""), a.get("answers") if isinstance(a.get("answers"), dict) else None,
@@ -145,6 +170,48 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         return {k: v.get(k) for k in ("settings", "upi", "summary", "say")} | {"products": len(v.get("products") or [])}
     if action == "shop_order":
         return S.shop_move(t, site, str(a.get("number") or ""), str(a.get("to") or ""))
+    if action == "animation":                     # v0.568 her own Lottie file
+        return S.add_lottie(t, site, None, str(a.get("file_id") or ""), str(a.get("name") or ""))
+    if action in ("design_from", "design_use"):   # v0.567 KOI BHI DESIGN: her screenshot / Figma / own old site
+        from ..site import inspire as IN
+        try:
+            if action == "design_from":
+                out = IN.read(t, str(a.get("source") or ""), str(a.get("url") or ""), str(a.get("file_id") or ""))
+                out["ref"] = {k: v for k, v in out["ref"].items() if k != "content"} | {
+                    "content": {k: v for k, v in (out["ref"].get("content") or {}).items() if k != "texts"}}
+                return out
+            return IN.use(t, str(a.get("token") or ""), str(a.get("site") or ""), ctx.conversation_id or "", str(a.get("brief") or ""),
+                          bool(a.get("keep")))
+        except IN.InspireError as e:
+            return {"error": str(e), **e.extra}
+    if action in ("moves", "moves_ok", "compare_old"):   # v0.622 KOI PATA NA KHOYE: her own old site's addresses
+        from ..site import moved as MV
+        try:
+            if action == "moves":
+                v = MV.propose(t, site)
+                return {**{k: v[k] for k in ("site", "from_host", "hash", "guesses", "approved", "say")},
+                        "rows": v["rows"][:60], "total": len(v["rows"])}
+            if action == "moves_ok":
+                return MV.apply(t, site, str(a.get("hash") or ""), [str(x) for x in (a.get("drop") or [])][:500])
+            v = MV.compare(t, site, str(a.get("url") or "/"), str(a.get("slug") or ""))
+            return {k: v[k] for k in ("old", "new_page", "differences", "widths", "note", "say")}
+        except MV.MovedError as e:
+            return {"error": str(e)}
+    if action == "catalog":                       # v0.538 a preview only; her Apply tap writes it (console Catalogue card)
+        from ..site import catalog as CAT
+        try:
+            if a.get("sheet"):
+                rows = CAT.from_sheet(t, str(a["sheet"]), str(a.get("tab") or "") or None)
+            elif a.get("dataset"):
+                rows = CAT.from_dataset(t, str(a["dataset"]))
+            else:
+                return {"error": "A Google Sheet (sheet) or a dataset id is needed; for a file, upload it in console > Website > App & data > Catalogue."}
+            v = CAT.preview(t, site, str(a.get("coll") or ""), rows, None, str(a.get("name") or ""), "", "chat")
+        except CAT.CatalogError as e:
+            return {"error": str(e)}
+        return {k: v.get(k) for k in ("coll", "items", "new", "changed", "same", "rejected", "thin", "dup", "photos", "mapping")} | {
+            "rejected_rows": v["rejected_rows"][:5],
+            "say": v["say"] + " Apply: console > Website > App & data > Catalogue (her tap). A new version is made after that."}
     if action == "grow":
         v = S.grow(t, site, int(a.get("page_count") or 0), str(a.get("instruction") or a.get("brief") or ""))
         return {k: v.get(k) for k in ("id", "number", "status", "mapping", "say")}
@@ -152,12 +219,12 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         return S.answer(t, site, a.get("answers") if isinstance(a.get("answers"), dict) else {})
     if action == "plan_ok":
         v = S.approve_plan(t, site, conv, a.get("pages") if isinstance(a.get("pages"), list) else None)
-        return {"status": v["status"], "say": "3 looks ban rahe hain; card par aa jayenge (poll mat kariye)."}
+        return {"status": v["status"], "say": "3 looks are being made; they will arrive on the card (do not poll)."}
     if action == "look":
         cf = a.get("colors_from")
         v = S.choose_look(t, site, int(a.get("index") or 0), int(cf) if cf is not None else None, conv)
         return {"status": v["status"], "preview": v["preview"],
-                "say": "Banana shuru. Har section ban-te hi live preview mein dikhega."}
+                "say": "Build started. Each section shows in the live preview as soon as it is made."}
     if action == "change":
         return S.change(t, site, str(a.get("instruction") or ""), conv)
     if action == "photo":
@@ -196,7 +263,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
     if action == "github":
         from ..site import github as GH
         c = GH.request(t, site, str(a.get("repo") or ""), a.get("private", True) is not False, conv)
-        return {"repo": c["repo"], "private": c["private"], "files": c["files"], "say": c["say"] + " (Card par haan unhe deni hai.)"}
+        return {"repo": c["repo"], "private": c["private"], "files": c["files"], "say": c["say"] + " (She must say yes on the card.)"}
     if action == "assign":
         from ..site import care as SC
         return SC.assign(t, site, a.get("client") if a.get("client") is not None else None,
@@ -251,7 +318,7 @@ def _domains(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         c = DM.buy_request(t, site, str(a.get("domain") or ""), bool(a.get("auto_renew")), conv,
                            a.get("registrant") if isinstance(a.get("registrant"), dict) else None)
         return {"card": c["id"], "amount": c["amount"], "renew_inr": c["renew_inr"], "lines": c["lines"],
-                "say": c["say"] + " (Card par fingerprint se haan unhe hi deni hai; aap khud nahi khareed sakte.)"}
+                "say": c["say"] + " (Only she can say yes on the card, with her fingerprint; you cannot buy it yourself.)"}
     return DM.kyc_done(t, str(a.get("domain") or ""))
 
 
@@ -263,7 +330,7 @@ def _hosting(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
     t, site, conv = ctx.tenant_id, str(a.get("site") or ""), ctx.conversation_id or ""
     if action == "launch":
         c = H.launch_request(t, site, a.get("free", True) is not False, conv)
-        return {"hosts": c["hosts"], "blockers": c["blockers"], "say": c["say"] + " (Card par 'Haan, live karo' unhe hi dabana hai.)"}
+        return {"hosts": c["hosts"], "blockers": c["blockers"], "say": c["say"] + " (Only she can press 'Haan, live karo' on the card.)"}
     if action == "domain":
         c = H.connect_domain(t, site, str(a.get("domain") or ""), conv, str(a.get("primary") or ""))
         return {"domain": c["domain"], "provider": c["plan"]["provider"], "changes": c["plan"]["words"],
@@ -276,8 +343,8 @@ def _hosting(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         d = D.norm_domain(str(a.get("domain") or ""))
         p = D.make_plan(t, sid, d, D.email_records(d, str(a.get("provider") or ""), str(a.get("report_to") or "")), "email")
         S._publish(t, "site_dns", {"kind": "dns", "domain": d, "plan": p, "push": True,
-                                   "say": f"{d} par email ke liye {p['todo']} DNS badlav; aapki haan se."}, conv)
-        return {"plan": p["id"], "changes": p["words"], "say": "Email DNS ka card bhej diya (haan unhe dena hai)."}
+                                   "say": f"{p['todo']} DNS changes for email on {d}; with her yes."}, conv)
+        return {"plan": p["id"], "changes": p["words"], "say": "The email DNS card was sent (she must say yes)."}
     if action == "rollback":
         c = H.rollback_request(t, site, int(a.get("version") or 0), conv)
         return {"say": c["say"]}
@@ -337,6 +404,9 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> Any:
         sr = r.pop("series")
         r["busiest_days"] = sorted(zip(sr["days"], sr["visits"]), key=lambda x: -x[1])[:5]
         return r
+    if what == "ops":                             # v0.564 CHALTI WEBSITE: errors, real speed, cost, backup restore test
+        from ..site import ops as OPS
+        return OPS.owner_view(t, site, int(a.get("days") or 30))
     if what == "clients":
         from ..site import care as SC
         return {"clients": SC.clients(t)}

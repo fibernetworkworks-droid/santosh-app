@@ -25,7 +25,7 @@ def _login(c, base, email, pw="pass-word-1"):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.530.0"
+    assert APP_VERSION == "0.758.0"
 
 
 # ---------------------------------------------------------------- 1. old sites move by themselves
@@ -190,7 +190,7 @@ def test_spec_card_has_stories_payments_notifications_and_other_apps(school):
     c = TestClient(app)
     card = c.post("/api/site-architect", json={"words": "school portal - admission, fees, attendance, report card"}).json()
     mods = {m["key"]: m for m in card["modules"]}
-    assert list(mods) == ["stories", "pages", "users", "data", "logic", "payments", "notifications", "integrations", "features"]
+    assert list(mods) == ["stories", "pages", "users", "flows", "data", "logic", "payments", "notifications", "integrations", "features", "quality", "phases", "risks"]
     assert len(mods["stories"]["lines"]) == 4 and mods["stories"]["lines"][0].startswith("Parent: admission online")
     assert "record" in json.dumps(card) or "Staff payment record" in mods["payments"]["lines"][0]
     assert any("Paisa kabhi khud nahi" in x for x in mods["payments"]["lines"])
@@ -327,7 +327,7 @@ def test_live_check_builds_nothing(school):
     from app.appmaker import service as AS
     from app.site import architect as AR
     res = AR.live_check()
-    assert res["data_ready"] and len(res["modules"]) == 9 and res["seconds"] >= 0
+    assert res["data_ready"] and len(res["modules"]) == 13 and res["seconds"] >= 0
     assert AS.apps(T) == [] and AR.specs(T) == []                            # the spec was removed again
 
 

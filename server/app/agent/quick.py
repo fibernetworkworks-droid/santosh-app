@@ -111,6 +111,14 @@ QUEUE_STEER = ('saying you are passing it to the running job right now and it wi
                '(e.g. "{queue} Theek hai, chal rahe kaam mein yeh abhi jod raha hoon.")')
 
 
+# v0.665 her message asks for WORK (a doing verb) - only the full brain with its tools can do it
+_ACTION = re.compile(r"\b(bhejo|bhej\s*d[oeiy]|kar\s*d[oe]|kar\s*dijiye|banao|bana\s*d[oe]|book\s*kar|order\s*kar"
+                     r"|pay\s*kar|cancel\s*kar|delete\s*kar|mita\s*d|mitao|lagao|laga\s*d[oe]|set\s*kar|yaad\s*dila"
+                     r"|schedule\s*kar|post\s*kar|publish|share\s*kar|forward\s*kar|reply\s*kar|likh\s*d|likho"
+                     r"|send|book\s+(?:a|the|my)|order\s+(?:a|the|my)|cancel\s+(?:the|my)|delete\s+(?:the|my)|create"
+                     r"|make\s+(?:a|the|me)|remind\s+me|schedule\s+(?:a|the))\b", re.I)
+
+
 CHECKPOINT_CHARS = 2500   # v0.244 the slice of the chat's checkpoint summary a quick reply gets
 
 
@@ -155,8 +163,19 @@ async def answer(conv: str, tenant: str, user_text: str, steering: bool = False)
         STATS["failed"] += 1
         return None
     queued = out.lstrip().startswith(QUEUE)
-    text = out.replace(QUEUE, "").strip() or ("Theek hai, chal rahe kaam mein yeh abhi jod raha hoon." if steering
-                                               else "Haan, abhi wala kaam khatam hote hi yeh karta hoon.")
+    text = out.replace(QUEUE, "").strip()
+    if not queued:
+        # v0.665 SACH KA HISAAB: the quick lane has NO tools. A reply that says done ("Theek hai, bhej diya") or her
+        # message that asks for real work is never answered here - it was saved as answered, the full brain never saw
+        # it, and she was told the work was done. Both now go to the running job / the queue, honestly worded.
+        from . import draftcheck
+        if draftcheck.claims_done(text) or _ACTION.search(user_text or ""):
+            STATS["forced_queue"] = STATS.get("forced_queue", 0) + 1
+            queued = True
+            if draftcheck.claims_done(text):
+                text = ""
+    text = text or ("Okay, I am adding this to the work in progress right now." if steering
+                                               else "Yes, I will do this as soon as the current task is finished.")
     with session() as s:
         if not queued:   # answered here: shown in chat, never replayed to the full brain as a new request
             s.add(Message(conversation_id=conv, role="user", content=user_text, display=user_text,

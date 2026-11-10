@@ -35,7 +35,7 @@ task, kickoff_for_each, usage metrics. This suite pins the port:
     create-if-missing, hers win, the 4,000-char cap, the three-door routing content
     pins; seed_files excludes the cr- prefix (starter stays 11; the library 68, NINE
     lanes).
-(7) VERSION: APP_VERSION 0.514.0 + the story; pubspec 0.530.0+553.
+(7) VERSION: APP_VERSION 0.514.0 + the story; pubspec 0.542.0+565.
 """
 import asyncio
 import inspect
@@ -351,8 +351,8 @@ def test_registry_mount(env):
     from app.agent import tools
     assert "crew_run" in tools.HANDLERS and "crew_run" in tools.TOOL_LABELS
     assert any(t["name"] == "crew_run" for t in tools.TOOLS)
-    assert len(tools.TOOLS) == 555, ("541 (v0.502) + 1 magic21 (v0.512) + 1 dhara_dsl (their v0.514)  + 1 image_edit (image editing)"
-                                     "+ 10 construction (v0.522) + 1 crew_run (v0.523)")
+    assert len(tools.TOOLS) == 621, "617 + 1 shilp (v0.730 SHILP MANCH: the ArtCraft generation lane, their Omni API api.storyteller.ai, BYOK - owner 'MAKE A PLAN FOR HOOLA AI THUS HOOLA USER CAN USE THIS' -> the plan's W0). 616 + 1 seekh_video (v0.713 SEEKH MANCH: the learn-from-video bridge tool, owner 'GO' on the SEEKH MANCH plan). 608 + 1 kala (v0.681 KALA MANCH: the T5 knowledge-skill catalog family, owner 'GO' on the google/skills deploy plan). " "607 + 1 duniya (v0.667 DUNIYA MANCH: the T4 keyless-public-web family, owner 'T4'). " "606 + 1 jharokha (v0.665 JHAROKHA MANCH: the T3 local-browser family). " + ("581 + 1 paisa_sahayak (their v0.587) + 2 sandarbh (v0.590 SANDARBH MANCH: workspace + kgmemory). Was: 541 (v0.502) + 1 magic21 (v0.512) + 1 dhara_dsl (their v0.514) "
+                                     "+ 10 construction (v0.522) + 1 crew_run (v0.523) + 2 from main's v0.533 CRAWL BRAIN wiring (healed in v0.537: this pin was red on pristine main) + 1 reach (v0.559 REACH MANCH) + 1 speckit (v0.569 SPEC SUTRA)")
 
 
 def test_voice_absence(env):
@@ -483,7 +483,7 @@ def test_cr_files_and_lane_counts():
     cr = skill_packs.cr_files()
     assert len(cr) == 1 and cr[0].stem == "cr-crew-plays"
     seed_dir = Path(skill_packs.SEED_DIR)
-    assert len(list(seed_dir.glob("*.md"))) == 68       # 11+31+2+15+3+2+1+2+1, NINE lanes
+    assert len(list(seed_dir.glob("*.md"))) == 99      # 11+31+2+15+3+2+1+2+1+2+2+27, TWENTY-NINE lanes (th- v0.547, ed- v0.548, the 18 omni families v0.561)
 
 
 def test_seed_crewpack_reaches_a_tenant_already_seeded(desk):
@@ -564,8 +564,10 @@ def test_injection_matches_a_crew_ask(desk):
 def test_version(env):
     from app import main as main_mod
     from pathlib import Path as P
-    assert main_mod.APP_VERSION == "0.530.0"
+    assert main_mod.APP_VERSION == "0.758.0"
     story = P(main_mod.__file__).read_text().split("APP_VERSION = ", 1)[1][:20000]
-    assert "HOOLA CREW" in story and "crewAI" in story
+    # story pin moved to the newest story (the v0.549/v0.476 precedent: the newest
+    # release's story carries the marker; the older stories live in git history)
+    assert "HOOLA RETRIEVE" in story and "aep/retrieve.py" in story  # the newest-story precedent (the P5 markers live in the Previous chain)
     pub = (REPO_ROOT / "pubspec.yaml").read_text(encoding="utf-8")
-    assert "version: 0.530.0+553" in pub
+    assert "version: 0.758.0+757" in pub

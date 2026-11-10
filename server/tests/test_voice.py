@@ -383,7 +383,7 @@ def test_voice_new_session_gets_a_short_briefing_and_no_stale_audio(env, monkeyp
         with c.websocket_connect(f"/api/voice/ws?conv={conv}") as ws:
             read_events(ws, lambda e: e["type"] == "status" and e["state"] == "live", limit=80)
             ws.send_text(json.dumps({"type": "end"}))
-    assert any("Pichli baat" in t and "Kal ka mausam" in t and "Kal barish hogi" in t for t in second.texts)
+    assert any("The conversation so far" in t and "Kal ka mausam" in t and "Kal barish hogi" in t for t in second.texts)
 
 
 def test_voice_queue_never_drops_a_note_for_audio(env):
@@ -462,7 +462,7 @@ def test_voice_slow_tool_is_cut_off_with_a_spoken_reason(env, monkeypatch):
         with c.websocket_connect(f"/api/voice/ws?conv={conv}") as ws:
             assert wait_until(lambda: len(fake.tool_responses) >= 1, timeout=9)
             ws.send_text(json.dumps({"type": "end"}))
-    assert "der le raha" in fake.tool_responses[0].response["error"]
+    assert "taking very long" in fake.tool_responses[0].response["error"]
 
 
 def test_voice_result_goes_in_as_a_note_when_the_session_moved_on(env, monkeypatch):
@@ -479,7 +479,7 @@ def test_voice_result_goes_in_as_a_note_when_the_session_moved_on(env, monkeypat
     with TestClient(main.app) as c:
         conv = c.post("/api/conversations").json()["id"]
         with c.websocket_connect(f"/api/voice/ws?conv={conv}") as ws:
-            assert wait_until(lambda: any("Pehle ka kaam 'set_phone_alarm'" in t for t in fake.texts))
+            assert wait_until(lambda: any("The earlier job 'set_phone_alarm'" in t for t in fake.texts))
             ws.send_text(json.dumps({"type": "end"}))
 
 
@@ -502,6 +502,6 @@ def test_voice_withdrawn_tool_call_is_not_answered_but_not_lost(env, monkeypatch
     with TestClient(main.app) as c:
         conv = c.post("/api/conversations").json()["id"]
         with c.websocket_connect(f"/api/voice/ws?conv={conv}") as ws:
-            assert wait_until(lambda: any("Pehle ka kaam 'set_phone_alarm'" in t for t in fake.texts), timeout=5)
+            assert wait_until(lambda: any("The earlier job 'set_phone_alarm'" in t for t in fake.texts), timeout=5)
             ws.send_text(json.dumps({"type": "end"}))
     assert fake.tool_responses == []

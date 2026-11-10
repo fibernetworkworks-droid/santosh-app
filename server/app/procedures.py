@@ -92,13 +92,36 @@ def _match(tenant: str, text: str, floor: float) -> list[tuple[Procedure, float]
     by = {r.id: r for r in rows}
     ranked = semantic.rank(_mask(_request(text), 400), [(r.id, f"{r.title}. {r.trigger}") for r in rows], top=3, floor=floor)
     if not semantic.available():          # word overlap: demand more than half of the words
-        ranked = [x for x in ranked if x[2] >= 0.5]
+        # wave 11: and never LESS than the floor asked for - "the same procedure" (0.80) collapsed to 0.5 here, so a
+        # different ask sharing half its words overwrote an existing procedure's steps
+        ranked = [x for x in ranked if x[2] >= max(0.5, float(floor))]
     return [(by[i], score) for i, _, score in ranked]
 
 
 # ---------------------------------------------------------------- using them
+_STOPWORDS = {"haan", "han", "ha", "ji", "ok", "okay", "theek", "thik", "hai", "kar", "karo", "do", "de", "dijiye", "bhej",
+              "bhejo", "aage", "badho", "chalo", "yes", "sure", "nahi", "mat", "ruko", "please", "plz", "the", "a", "to"}
+
+
+def _too_short(text: str) -> bool:
+    """wave 11: a bare yes / no / carry-on ("Haan bhej do", "theek hai", "aage badho") is not a job to learn from or to
+    match: the yes-turn runs the tools, so a procedure titled "Haan bhej do" was learned and then hinted on every later
+    yes (score 0.79 against "haan theek hai")."""
+    t = _request(text or "").lower()
+    words = [w for w in re.findall(r"[a-z\u0900-\u097f]+", t) if w not in _STOPWORDS]
+    if len(words) < 3:
+        return True
+    try:
+        from . import approval_words
+        return bool(approval_words.is_pure_approval(t))
+    except Exception:   # noqa: BLE001
+        return False
+
+
 def hint(tenant: str, user_text: str, limit: int = 2) -> tuple[str, list[str]]:
     """Prompt block with the best matching procedures, and their ids (to score them after the turn)."""
+    if _too_short(user_text):
+        return "", []
     found = _match(tenant, user_text, MATCH_FLOOR)[:limit]
     if not found:
         return "", []
@@ -138,7 +161,7 @@ def _after_turn(tenant, user_text, calls, used, ok, actor):
                 p.fails += 1
                 if p.fails >= 3 and p.fails > p.wins:
                     p.active = False                      # keeps failing: switched off, the owner can turn it on again
-    if not ok or actor not in ("owner", "routine"):
+    if not ok or actor not in ("owner", "routine") or _too_short(user_text):
         return None
     real = [c for c in calls if c.get("tool") not in SKIP_TOOLS and not str(c.get("tool", "")).startswith("biz_")]
     good = [c for c in real if c.get("ok")]
@@ -147,7 +170,8 @@ def _after_turn(tenant, user_text, calls, used, ok, actor):
     from .agent.tools import TOOL_LABELS
 
     def label_for(tool: str) -> str:
-        return TOOL_LABELS.get(tool, tool.replace("_", " "))
+        from . import lang as _lang
+        return _lang.label(tool)
     steps, seen = [], set()
     for c in good:                                         # each tool once, in the order it first worked
         if c["tool"] in seen:
@@ -224,6 +248,20 @@ def update(tenant: str, pid: str, active: bool | None = None, title: str | None 
         return view(p)
 
 
+def record_run(tenant: str, pid: str, ok: bool) -> dict[str, Any]:
+    """v0.745 her own verdict after a real run from the Video Learner: worked = a win, wrong = a fail."""
+    with session() as s:
+        p = s.get(Procedure, pid)
+        if p is None or p.tenant_id != tenant:
+            raise ProcedureError("Yeh seekha hua kaam nahi mila.")
+        p.uses += 1
+        if ok:
+            p.wins += 1
+        else:
+            p.fails += 1
+        return view(p)
+
+
 def delete(tenant: str, pid: str) -> None:
     with session() as s:
         p = s.get(Procedure, pid)
@@ -238,3 +276,28 @@ def forget_all(tenant: str) -> int:
         for r in rows:
             s.delete(r)
         return len(rows)
+
+
+def save_video(tenant: str, title: str, trigger: str, steps: list[dict[str, Any]],
+               watch_out: list[str] | None = None) -> dict[str, Any]:
+    """v0.713 SEEKH MANCH: a way of working learned by WATCHING a video (seekh.py), kept exactly like a
+    learned procedure so hint() offers it on the next similar ask. Unproven by definition: wins come only
+    from real runs (after_turn scores them like any other procedure)."""
+    clean = [s for s in (steps or []) if isinstance(s, dict) and str(s.get("label") or "").strip()][:12]
+    if not clean:
+        raise ProcedureError("Video mein koi kadam nahi mila jo save ho.")
+    with session() as s:
+        n = s.scalar(select(func.count()).select_from(Procedure).where(Procedure.tenant_id == tenant)) or 0
+        if n >= MAX_PER_OWNER:                             # make room: drop the least useful one
+            worst = s.scalars(select(Procedure).where(Procedure.tenant_id == tenant)
+                              .order_by(Procedure.wins, Procedure.uses, Procedure.created_at)).first()
+            if worst is not None:
+                s.delete(worst)
+        p = Procedure(tenant_id=tenant, title=_title(title or "Video se seekha kaam"),
+                      trigger=_mask(_request(trigger), 240),
+                      steps=json.dumps(clean, ensure_ascii=False),
+                      watch_out=json.dumps([str(w)[:200] for w in (watch_out or [])[:8]], ensure_ascii=False))
+        s.add(p)
+        s.flush()
+        STATS["learned"] += 1
+        return view(p)

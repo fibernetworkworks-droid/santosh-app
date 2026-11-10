@@ -98,14 +98,14 @@ def test_switches(w):
     client = TestClient(__import__("app.main", fromlist=["app"]).app)
     aboutme.set_text("default", "KAAM - bakery")
     r = client.put("/api/memory/settings", json={"auto": False, "recall": False}).json()
-    assert r["switches"] == {"auto": False, "recall": False}
+    assert r["switches"] == {"auto": False, "recall": False, "sensitive": False}   # v0.609 the third switch, off by default
     assert asyncio.run(aboutme.rebuild("default")) is None                     # auto off: no rebuild
     assert "MERE BAARE MEIN" not in life.context_block("default", w.g)          # recall off: page not loaded
     from app.agent.recall_tools import find
     assert find("default", w.g, "aaj")["off"] is True
     asyncio.run(yaad.extract_facts("default", w.g, "Mera naya godown Bhosari mein hai yaad rakhna", "ok"))
     client.put("/api/memory/settings", json={"recall": True})
-    assert fence.prefs("default") == {"auto": False, "recall": True}
+    assert fence.prefs("default") == {"auto": False, "recall": True, "sensitive": False}
 
 
 # ------------------------------------------------------------------ recent chats by time
@@ -179,7 +179,7 @@ def test_about_endpoints(w):
     r = client.put("/api/memory/about", json={"text": "KAAM - bakery; card 4111 1111 1111 1111"}).json()
     assert "4111" not in r["about"]["text"] and r["about"]["by"] == "her"
     g = client.get("/api/memory/about").json()
-    assert g["switches"] == {"auto": True, "recall": True} and g["about"]["text"].startswith("KAAM")
+    assert g["switches"] == {"auto": True, "recall": True, "sensitive": False} and g["about"]["text"].startswith("KAAM")
     rb = client.post("/api/memory/about/rebuild").json()
     assert rb["changed"] is True and rb["about"]["by"] == "hoola"
     assert client.delete("/api/memory/about").json()["about"]["text"] == ""

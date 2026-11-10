@@ -1,5 +1,5 @@
 """Cosec Sahayak tools (company secretary's desk). `cosec_dekho` only reads; `cosec` does the work. Sending a meeting notice,
-signing off minutes and "file karo" on an MCA form only become CARDS here: her tap in the app decides. Hoola never logs in to
+signing off minutes and "file it" on an MCA form only become CARDS here: her tap in the app decides. Hoola never logs in to
 MCA V3, never uses a DSC, never pays a fee. Everything is draft / jaankari (CS / vakil / CA se pakka)."""
 from __future__ import annotations
 
@@ -96,9 +96,9 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
     from ..cosec import service as S
     t, conv = ctx.tenant_id, ctx.conversation_id
     if _actor(ctx).startswith("customer:"):
-        raise ToolError("Yeh company secretary office ka andar ka kaam hai.")
+        raise ToolError("This is internal work of the company secretary office.")
     if action in _OWNER_ONLY and not _owner(ctx):
-        raise ToolError("Sirf owner.")
+        raise ToolError("Only the owner can do this.")
     en = _s(a.get("entity"))
     mt = _s(a.get("meeting"))
     try:
@@ -106,7 +106,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return S.save_settings(t, **{k: a[k] for k in S._SET_KEYS if k in a})
         if action == "entity":
             if _s(a.get("status")) in ("closed", "struck_off") and not _owner(ctx):
-                raise ToolError("Entity band karna sirf owner.")
+                raise ToolError("Only the owner can close an entity.")
             return S.save_entity(t, _s(a.get("name")), en, **{k: a[k] for k in _ENT_ARGS if k in a})
         if action == "person":
             return S.person(t, en, _s(a.get("name")), _s(a.get("role") or "director"), _s(a.get("person")),
@@ -157,7 +157,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
     from ..cosec import service as S
     t, en = ctx.tenant_id, _s(a.get("entity"))
     if _actor(ctx).startswith("customer:"):
-        raise ToolError("Yeh company secretary office ka andar ka kaam hai.")
+        raise ToolError("This is internal work of the company secretary office.")
     try:
         if what == "day":
             S.ensure(t)
@@ -173,7 +173,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
             return {"meetings": S.meetings(t, en, _s(a.get("status")))}
         if what == "meeting":
             return next((m for m in S.meetings(t) if m["id"] == _s(a.get("meeting")) or m["number"] == _s(a.get("meeting")).upper()),
-                        {"say": "Meeting nahi mili."})
+                        {"say": "Meeting not found."})
         if what == "resolutions":
             return {"resolutions": S.resolutions(t, en)}
         if what == "settings":

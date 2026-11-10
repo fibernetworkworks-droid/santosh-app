@@ -75,7 +75,8 @@ SHEETS_TOOLS = [
          "required": ["spreadsheet"]}},
     {"name": "sheet_create", "description": (
         "Create a new Google Sheet in the user's Drive, with tabs, a header row and optional rows (objects or lists). "
-        "Or import an Excel / CSV: source = {email_id, attachment_id} (from an email) or {file_id} (PC / phone file). "
+        "Or import an Excel / CSV: source = {email_id, attachment_id} (from an email), {file_id} (PC / phone file) or "
+        "{drive_file} (an Excel / CSV / Google Sheet already in her Drive: the id drive_find gives, a link or a name). "
         "Returns the link and shows a card in the chat."),
      "input_schema": {"type": "object", "properties": {
          "title": {"type": "string"},
@@ -83,7 +84,7 @@ SHEETS_TOOLS = [
              "name": {"type": "string"}, "header": {"type": "array", "items": {"type": "string"}},
              "rows": {"type": "array", "items": {}}}}},
          "source": {"type": "object", "properties": {"email_id": {"type": "string"}, "attachment_id": {"type": "string"},
-                                                     "file_id": {"type": "string"}}}},
+                                                     "file_id": {"type": "string"}, "drive_file": {"type": "string"}}}},
          "required": ["title"]}},
     {"name": "sheet_add_tab", "description": "Add a new tab to a sheet, optionally with a header row.",
      "input_schema": {"type": "object", "properties": {"spreadsheet": SHEET, "name": {"type": "string"},
@@ -249,7 +250,7 @@ def _card(ctx: Ctx, pid: str) -> dict[str, Any]:
 def _sheet_arg(spreadsheet, spreadsheet_id):
     s = spreadsheet or spreadsheet_id
     if not s:
-        raise ToolError("Kaunsi sheet? spreadsheet (naam, link ya id) do.")
+        raise ToolError("Which sheet? Give spreadsheet (name, link or id).")
     return str(s)
 
 
@@ -295,7 +296,7 @@ async def sheet_update(ctx: Ctx, spreadsheet, set, where=None, rows=None, tab=No
             pid = ss.pend(ctx.tenant_id, ctx.conversation_id, "update",
                           {"account": c.key, "sid": meta["id"], "data": plan["data"], "rows": plan["rows"], "link": meta["link"]},
                           {"title": meta["title"], "tab": plan["tab"],
-                           "lines": [f"{len(plan['rows'])} rows mein: " + ", ".join(f"{k} → {v}" for k, v in plan["set"].items())] + lines,
+                           "lines": [f"In {len(plan['rows'])} rows: " + ", ".join(f"{k} → {v}" for k, v in plan["set"].items())] + lines,
                            "more": max(0, len(plan["rows"]) - 5)})
             return {"pending_id": pid}
         n = ss.do_update(c, meta["id"], plan["data"])
@@ -322,9 +323,9 @@ async def sheet_delete_rows(ctx: Ctx, spreadsheet, tab=None, where=None, rows=No
                        {"account": c.key, "sid": meta["id"], "tab": plan["tab"], "tab_id": plan["tab_id"],
                         "rows": plan["rows"], "before": plan["before"], "header_row": int(header_row or 1),
                         "link": meta["link"]},
-                       {"title": meta["title"], "tab": plan["tab"], "lines": [f"{len(plan['rows'])} rows hatengi"] + lines,
+                       {"title": meta["title"], "tab": plan["tab"], "lines": [f"{len(plan['rows'])} rows will be deleted"] + lines,
                         "more": max(0, len(plan["rows"]) - 6),
-                        "note": "Google Sheets ki Version history se wapas la sakte hain."})
+                        "note": "Can be restored from Google Sheets Version history."})
     pid = await _t(work)
     card = await asyncio.to_thread(_card, ctx, pid)
     return {**card, "status": "needs_approval", "note": "Confirm card with the rows is in the chat; nothing deleted yet."}
@@ -368,13 +369,13 @@ async def sheet_share(ctx: Ctx, spreadsheet, people, role="reader", **_):
             raise SheetError(" ".join(problems))
         emails = [a.strip() for a in addrs.split(",") if a.strip()]
         if not emails:
-            raise SheetError("Kisko share karna hai?")
+            raise SheetError("Who should it be shared with?")
         c, meta = ss.resolve(ctx.tenant_id, str(spreadsheet))
         r = "writer" if role == "writer" else "reader"
         return ss.pend(ctx.tenant_id, ctx.conversation_id, "share",
                        {"account": c.key, "sid": meta["id"], "emails": emails, "role": r, "link": meta["link"]},
-                       {"title": meta["title"], "lines": [("Edit" if r == "writer" else "Sirf dekh") + " sakenge: " + ", ".join(emails)],
-                        "note": "Unhe Google se email jayega."})
+                       {"title": meta["title"], "lines": [("Can edit: " if r == "writer" else "Can view only: ") + ", ".join(emails)],
+                        "note": "Google will email them."})
     pid = await _t(work)
     card = await asyncio.to_thread(_card, ctx, pid)
     return {**card, "status": "needs_approval"}
@@ -397,7 +398,7 @@ async def sheet_clear(ctx: Ctx, spreadsheet, ranges, tab=None, **_):
 async def sheet_copy_tab(ctx: Ctx, spreadsheet, dest_spreadsheet, tab=None, new_title=None, **_):
     out = await _t(ss.copy_tab, ctx.tenant_id, str(spreadsheet), tab, str(dest_spreadsheet), new_title)
     _card_event(ctx, out.get("src_tab", ""), out.get("link", ""), "", "tab_copied", out)
-    return {**out, "note": f"Tab '{out.get('src_tab')}' ko '{out.get('new_tab')}' ke naam se copy kar diya."}
+    return {**out, "note": f"Tab '{out.get('src_tab')}' was copied as '{out.get('new_tab')}'."}
 
 
 async def sheet_duplicate_tab(ctx: Ctx, spreadsheet, tab, new_title=None, new_index=None, **_):
@@ -420,7 +421,7 @@ async def sheet_delete_tab(ctx: Ctx, spreadsheet, tab, **_):
 
 async def sheet_format(ctx: Ctx, spreadsheet, range, format, tab=None, **_):
     out = await _t(ss.format_cells, ctx.tenant_id, str(spreadsheet), str(range), dict(format or {}), tab)
-    return {**out, "note": "Format lag gaya."}
+    return {**out, "note": "Formatting applied."}
 
 
 async def sheet_protect(ctx: Ctx, spreadsheet, range, tab=None, description="", editors=None, **_):

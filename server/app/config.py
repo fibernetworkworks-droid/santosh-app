@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     agent_self_check: bool = True          # v0.78 Pakka kaam: check the real results before saying done
     draft_check: bool = True               # v0.223 Draft jaanch: the last look at a reply (free in code + one
     draft_check_max_hour: int = 4          #   small check after the words are out); notes per chat per hour
+    memory_recent_facts: int = 15          # v0.605 JUST IN TIME: newest unpinned facts in the prompt (was 40; the rest via yaad_khojo)
     memory_auto: bool = True               # v0.108 lasting facts picked after her turns ("yaad rakha" chip)
     agent_fix_search: bool = True          # v0.78: a failed step with no known fix -> search the web for the solution
     agent_tool_timeout_s: int = 300         # a tool that hangs never blocks a chat turn longer than this (browser waits go up to 270 s)
@@ -33,6 +34,9 @@ class Settings(BaseSettings):
     agent_hard_effort: str = "high"        # v0.331 Claude effort for a hard reasoning ask (agent/hard.py); '' = model default
     agent_long_on_claude: bool = True       # v0.331 a long job's calls go to Claude even when CHAT_LLM picks a cheaper brain
     agent_hard_model: str = "claude-opus-5-5"   # v0.429 SOCH KE JAWAB 2: a hard reasoning ask runs on the strongest model ('' = anthropic_model)
+    hoola_operator_tenant: str = "default"   # wave 9: the tenant that owns the server's AI key (only it is told to recharge Anthropic)
+    claude_one_model: str = "claude-haiku-5-5"   # v0.631 SAB HAIKU (owner: "DO EVERY THING HAIKU FOR NOW --- SIMPLE TO HARD"): EVERY Claude call in Hoola runs on this model, whatever it asked for ('' = each part uses its own model again)
+    chat_simple_model: str = "claude-haiku-5-5"   # v0.630 HAIKU DIMAAG: an ordinary (not hard, not long) ask runs on Haiku ('' = anthropic_model); a failure answers on Sonnet
     agent_hard_max_tokens: int = 16000      # v0.429 per call for a hard ask (thinking counts; 2000 cut the answer)
     agent_hard_on_claude: bool = True       # v0.429 a hard ask goes to Claude even when CHAT_LLM picks a cheaper brain
     agent_goal_rounds: int = 6              # background continuation turns per goal (v0.473: 3 -> 6; resumes after her tap are free)
@@ -49,6 +53,7 @@ class Settings(BaseSettings):
     agent_plan_after_steps: int = 4         # ... tool steps without a kaam_plan before the plan is asked for (v0.311: 6 -> 4)
     agent_auto_plan: bool = True            # v0.311 PLAN HAMESHA: still no plan 3 steps after the ask = the server writes a one-step plan
     chat_thinking: str = "goal"             # v0.232 PHASE C: Claude thinks out loud (adaptive) - goal = only while a long job runs, on = every turn, off = never
+    chat_thinking_adaptive: bool = True     # parity Phase 4: every chat turn may think, effort by the turn (greeting low / ordinary medium / hard + long high), shown folded; False = thinking only for long jobs / hard asks, GLM reasoning excluded
     hard_detect: bool = True                # v0.272 SOCH KE JAWAB: spot hard reasoning asks (agent/hard.py)
     hard_thinking: bool = True              # v0.272 a hard ask thinks (adaptive) from its first call, like a long job
     hard_judge: bool = True                 # v0.272 the 'not sure' zone asks one tiny model call (1 token, time-limited)
@@ -61,6 +66,7 @@ class Settings(BaseSettings):
     avatar_engine_url: str = ""            # e.g. https://<account>--hoola-lab-web.modal.run
     avatar_engine_key: str = ""            # the same ENGINE_KEY the lab's Modal secret holds
     hard_check_model: str = ""              # v0.436 the reviewer's model ('' = anthropic_model)
+    hard_check_independent: bool = True     # wave 13: the reviewer skips the one-model rewrite (never the writer's own Haiku)
     hard_check_timeout_s: float = 60.0      # v0.436 a slow reviewer never blocks the answer
     agent_narrate_every: int = 1            # v0.258 after this many tool rounds with no word to her, ONE short line (8 in v0.240 = silence)
     agent_narrate_max: int = 6              # v0.258 at most this many such lines in a turn (2 in v0.240; Claude writes one per tool group)
@@ -81,7 +87,7 @@ class Settings(BaseSettings):
     dev_review_steps: int = 25              # v0.377 a PR review explores at most this many steps (read-only tools)
     dev_review_minutes: int = 10            # ... and this many minutes, then the one-shot review is the fallback
     dev_spec_review: bool = True            # v0.402 ECC specialists in PR reviews; ON since the review card (same 8/8 caught, false alarms 8 -> 4, nits 3 -> 0)
-    dev_lab: bool = False                   # v0.456 PRAYOGSHALA: Hoola may run her declared checks in the Docker box. OFF until `python -m app.devlab check` passes on the VPS
+    dev_lab: bool = True                    # v0.533 PRAYOGSHALA ON: her VPS answered lab_check with every wall holding (docker 29.8.1, base image built, pass + fail caught, network blocked, read-only root, uid 1000)
     dev_lab_timeout: int = 600              # ... seconds one check may run (her .hoola/lab.json may lower it)
     dev_lab_keep: int = 12                  # ... per-repo dependency snapshots kept before the oldest are dropped
     dev_plan_first: bool = True             # v0.451 ECC PHASE 4: a standard / large job gets a read-only PLAN pass before any edit
@@ -145,22 +151,42 @@ class Settings(BaseSettings):
     # tool families her words (and any open goal) actually need; the rest stay one tool_search away. Stable for the
     # WHOLE turn, so the Anthropic prompt cache holds; a family admitted mid-turn re-caches once, by design.
     agent_tool_admission: bool = True
+    # Parity Phase 2: a chat turn sends a small FIXED system prompt (core + a small per-chat block, ~10k chars, the same
+    # every turn so the prompt cache holds); facts / sites / apps / desks are fetched with tools, per-turn notes ride on
+    # her newest message (false = the old ~50-60k per-turn prompt). Calls (voice brain) and routines keep the old shape.
+    chat_small_prompt: bool = True
+    # Parity Phase 7: ONE memory, Claude style - a chat turn carries only the short memory summary (her page + pinned facts,
+    # in the per-chat block) plus a capped 'since your last reply' note (job state, card news) and her skill NAMES; the diary,
+    # her recent words, the coder primer and the full skills list are fetched with yaad_khojo / skill_manage instead
+    # (false = today's per-turn memory blocks). Calls (voice brain) and routines keep their own shape.
+    chat_one_memory: bool = True
     prompt_slim: bool = True               # v0.473 PATLA PROMPT: only the admitted families' guides ride in the system prompt (false = the full ~130 KB guide, as before)
     # v0.237 FULL CLAUDE MODE Phase 1 (agent/context.py): the whole chat word for word while it fits the model's window
     chat_context: str = "claude"           # claude = whole chat, gauge + safety net | hoola = the v0.108 40-49 exchange window (instant rollback)
-    chat_context_limit_glm: int = 200000   # GLM's context window in tokens (check your Z.ai plan)
-    chat_context_limit_claude: int = 200000
-    chat_context_limit_omniroute: int = 128000   # the smallest window your OmniRoute combo can land on
+    chat_context_limit_glm: int = 1000000  # v0.724 owner: 1M for every chat (a smaller real window is learned from its "too long" error)
+    chat_context_limit_claude: int = 1000000   # v0.724 owner: "MAKE IT 1 MILLION CONTEXT WINDOW FOR EVERY CHAT"
+    chat_context_limit_omniroute: int = 1000000  # v0.724 1M; a smaller real window is learned from its error
     chat_context_full_at: float = 0.75     # the request may fill this share of the window; above it the safety net runs
+    chat_context_max_tokens_glm: int = 0       # v0.724 owner: 1M window, no GLM cost cap (0 = off); v0.707 cap while the GLM door answers (no prompt cache); v0.724 = tokens
+                                               # of CONVERSATION on top of the system prompt + tools (was the whole request)
     chat_context_max_tokens: int = 0       # v0.244 cost cap: compact at this many tokens whatever the model's window (0 = off)
     # v0.242 FULL CLAUDE MODE Phase 2 (agent/compact.py): Claude-style compaction at the full_at line
     about_me: bool = True                  # v0.250 "Mere baare mein" page rebuilt daily for active owners (false = never rebuilt)
+    request_dump: bool = True              # v0.732 PARITY Phase 0: every chat model call's request (system text, tool NAMES, messages, brain/model, max_tokens) kept per conversation, secrets masked - GET /api/conversations/{id}/request[/{turn}]
+    request_dump_turns: int = 20           # newest turns kept per conversation (older ones dropped)
+    chat_alone: bool = True                # v0.714 HAR CHAT ALAG: background / daily messages go to her pinned 'Hoola updates' chat (never the chat she has open), and a chat turn reads only ITS OWN chat's jobs / cards / diary; false = the old shared behaviour
     memory_fence: bool = True              # v0.246 PHASE 3C: Hoola's own memory stays inside its Session (fence.py); false = all chats share
     chat_compact: bool = True              # false = Phase 1 only (the safety net shortens instead of a summary)
     chat_compact_prepare_at: float = 0.6   # past this share a draft summary is written in the background
     chat_compact_keep: int = 4             # newest exchanges that always stay word for word
     chat_compact_max_chars: int = 8000     # the checkpoint summary's size
     tool_admit_cap: int = 220               # admitted specs above this = router over-matched: send the FULL set instead
+    # Parity Phase 3 CLEAN TOOLS (docs/CLAUDE_PARITY_PLAN.md): a turn starts from ~22 core tools (agent/core_tools.py:
+    # web_search, ONE web reader web_fetch, pylab, artifact, file, one memory search, chats, mail, calendar, drive,
+    # plan, agents, form, status) with clear English descriptions; a family joins only when her words clearly name it
+    # (whole-word keys), everything else stays one tool_search away; big results keep head + tail; no raw Python errors.
+    # false = the old always-on core families (~55 tools a plain turn) and the old result / error text
+    chat_core_tools: bool = True
     # v0.191 HARNESS-2: job-completion WAKE turns (dsh completionDelivery + maxConsecutiveWakes) - a finished job whose
     # chat is idle wakes the real brain (tools allowed) instead of only the v0.187 one-shot line; budget keeps it finite.
     agent_wake_turns: bool = True
@@ -182,8 +208,18 @@ class Settings(BaseSettings):
     team_research_max_tokens: int = 4000    # v0.437 ... and room for a sourced report (~15 lines with links)
     team_research_soft_s: float = 170.0     # v0.437 a research agent writes its sourced report at this mark (the inline crew clock is 260 s)
     team_background: bool = True            # mode="background" crews (persisted, worker-run, self-reporting)
+    team_tenant_inline_max: int = 8      # CALL PAR TEAM: inline agents running at once for one user, across all her asks
     team_bg_max_running: int = 2            # running background crews per tenant
     team_bg_timeout_s: int = 1200           # a whole background crew's wall clock
+    # PARITY Phase 4 (docs/CLAUDE_PARITY_PLAN.md): long work stays IN the chat turn, like Claude - deploy_agents crews
+    # and Hoola's own research_run run inside her turn and the answer is the reply (no background crew, no wake turn).
+    # Background jobs stay only for work that outlives the turn (video renders, app / website builds). False = the old
+    # behaviour (crews / research may go to the background, 900 s turn, 300 s tool clock).
+    chat_work_in_turn: bool = True
+    chat_turn_s: int = 1200                 # her chat turn's budget with work in the turn (20 min; was agent_turn_timeout_s 900)
+    chat_max_calls: int = 200               # tool calls one chat turn may make (breaker cap; was 48 / 150 in goal mode)
+    chat_long_tool_s: int = 1080            # tool clock for deploy_agents / research_run inside a chat turn (was 300 s)
+    team_inturn_timeout_s: int = 900        # an in-turn crew's clock: slow agents are cut, finished agents keep their work
     agent_event_log: bool = True            # the harness session log (harness_events; best-effort writes, never breaks a turn)
     event_log_retain_days: int = 14         # the daily worker sweep drops older rows
     tv_refresh: bool = True                # Hoola TV: download + check the free channel list nightly
@@ -236,6 +272,18 @@ class Settings(BaseSettings):
     google_ads_developer_token: str = ""   # v0.401 YouTube ads (plan Y2): Google Ads API Center token (test / Basic access)
     google_ads_login_customer_id: str = ""  # optional manager (MCC) id when her ad account sits under Hoola's manager
     google_ads_api_version: str = "v26"
+    # v0.541 SEO INTEL: AI visibility through each company's own API (keys in .env only), DataForSEO for competitor data
+    perplexity_api_key: str = ""            # Perplexity Sonar API (PERPLEXITY_API_KEY); empty = Perplexity left out
+    seo_ai_openai_model: str = "gpt-5-mini"
+    seo_ai_openai_search_tool: str = "web_search"
+    seo_ai_gemini_model: str = "gemini-2.5-flash"
+    seo_ai_perplexity_model: str = "sonar"
+    seo_ai_call_inr: float = 2.0            # what one AI answer is charged as (an estimate; every answer counts against her ceiling)
+    seo_ai_month_inr: float = 300.0         # default monthly ceiling for AI-visibility answers, per site (she can change it)
+    dataforseo_login: str = ""              # Newtika's own DataForSEO login - used ONLY when dataforseo_shared is true
+    dataforseo_password: str = ""
+    dataforseo_shared: bool = False         # false = every user brings her own DataForSEO login (her money)
+    dataforseo_month_usd: float = 5.0       # default monthly DataForSEO ceiling per site (USD, from DataForSEO's own reported cost)
     meta_ads_config_id: str = ""            # v0.417 optional Facebook Login for Business configuration for the ads login (ads_management + ads_read)
     meta_ads_max_daily: int = 2000          # v0.417 Hoola's ceiling on a Facebook / Instagram ad's daily budget (her account currency)
     gads_max_daily: int = 2000              # Hoola's ceiling on a YouTube ad's daily budget (her account currency)
@@ -273,6 +321,15 @@ class Settings(BaseSettings):
 
     # --- low-cost chat brain: any OpenAI-compatible API (Z.ai GLM, or GLM self-hosted in India) ---
     chat_llm: str = "auto"                  # auto (OmniRoute, else GLM, else Claude) | omniroute | glm | claude
+    # v0.732 PARITY PHASE 1 EK MODEL (owner: "WE WILL KEEP GLM 5.3 FLASH AS PRIMARY FOR ALL FOR NOW --- PHASE 0 + 1"): a
+    # chat turn runs on ONE model from start to end, like Claude chat - the configured chat brain (GLM-5.3-Flash on her
+    # server). No silent switch to Claude when GLM fails or is paused, no Haiku / Sonnet / Opus split by ask size: the
+    # same model is asked again (chat_model_retries, chat_model_retry_s apart), then the turn says plainly that the model
+    # is busy. The ONE exception: a PDF / picture the chat brain cannot read goes to Claude (llm.choose). Background
+    # work (summaries, reviewers, Studio steps) keeps its own routes. Off = the old fallbacks.
+    chat_one_model: bool = True
+    chat_model_retries: int = 2
+    chat_model_retry_s: float = 3.0
     # --- OmniRoute: open-source LLM gateway on this VPS (switches providers, fallback, cost routing) ---
     omniroute_url: str = ""                 # e.g. http://127.0.0.1:20128/v1
     omniroute_key: str = ""                 # an endpoint API key made in the OmniRoute dashboard
@@ -288,10 +345,19 @@ class Settings(BaseSettings):
     browser_wait_seconds: int = 20          # v0.86 how long a chat turn waits before "I'll message you when done" (was 150)
     pc_wait_seconds: int = 12               # v0.86 same for the PC operator (the chat stays free for new questions)
     artifact_wait_seconds: int = 20         # v0.86 same for pages (the card opens when ready)
-    quick_lane: bool = True                 # v0.86 answer new chat messages at once while a long job runs
+    chat_artifact_direct: bool = True       # parity Phase 6: the chat model writes pages itself (tool `artifact`: create /
+                                            # update old->new / rewrite, a version per change, streamed into the panel);
+                                            # artifact_make (the separate builder) only for a 'polish / studio quality' ask
+    hoola_language: str = "en"              # v0.728 SAB ENGLISH: en = Hoola writes and speaks English; auto = her own language
+    quick_lane: bool = False                # v0.86 answer new chat messages at once while a long job runs. v0.724 CLAUDE
+                                            # JAISA: off - a smaller no-tools brain answered from 10 lines and the pair was
+                                            # kept OUT of the history; now her message reaches the running job / waits
+    chat_approval_words: bool = False       # v0.724 CLAUDE JAISA: a bare "haan" no longer approves a waiting PC / browser
+                                            # card before the model reads it; the model sees the card + its own last reply
     quick_model: str = ""                   # v0.86 model for the quick lane ('' = anthropic_model; a cheap brain is used first)
     prompt_cache: bool = True               # v0.86 Anthropic prompt caching on tools + conversation (faster replies)
     console_v2: bool = True                 # v0.170 Console v2 master switch: the Night-Glass v2 shell serves /console (?legacy=1 = the old page) and turns the four chat phases on below in one go
+    console_human: bool = True             # v0.743 SAAF INSAANI: the console talks like a person (same design)
     console_stream: bool = False            # v0.161 replies stream word by word (live-only delta events, /live, retry, thumbs)
     chat_sessions: bool = False             # v0.162 many chats: titles, pin / archive / delete, search, edit + branches
     side_panel: bool = False                # v0.163 finished work (pages, files, videos, sites, apps) opens beside the chat
@@ -301,6 +367,29 @@ class Settings(BaseSettings):
     glm_base_url: str = "https://api.z.ai/api/paas/v4"
     glm_model: str = "glm-4.7"
     glm_temperature: float = 0.6
+    # SAB GLM (owner: "use GLM 5.3 Flash for all use - NVIDIA gives a free API"): with claude_all_glm on, EVERY Claude
+    # call (chat fallback, reviewers, summaries, every engine) is answered by the GLM brain below; Claude only when GLM
+    # fails (claude_all_glm_fallback) or a call carries pictures / PDFs. For NVIDIA set GLM_BASE_URL to
+    # https://integrate.api.nvidia.com/v1, GLM_MODEL=z-ai/glm-5.3-flash, GLM_API_KEY=nvapi-... and CHAT_LLM=glm.
+    claude_all_glm: bool = False
+    api_box_enabled: bool = True             # v0.750 the free public-API box (api_box tool, /api/box)
+    api_box_check_per_day: int = 300         # v0.750 free APIs whose site is re-checked a day (all ~1,400 about monthly); 0 = off
+    studio_build_architect: bool = True   # v0.711 Web Studio Build mode: every ask is planned by the architect first (not the library's page set for its business type)
+    architect_opus: bool = False   # v0.735 ALL GLM (owner: "MOVE EVERYTHING ON GLM 5.3 FLASH"): off = the plan on GLM too. Was True since v0.710 - v0.710: the website architect's plan always on the Website Sahayak's Opus (the GLM door + claude_one_model stand aside for that one call)
+    claude_all_glm_fallback: bool = False   # v0.735 ALL GLM: a failed GLM call is NOT re-asked on Claude (was True)
+    # v0.735 ALL GLM - every job on GLM, one switch per piece so the owner can test them one by one:
+    glm_images: bool = True     # pictures go to GLM (OpenRouter lists z-ai/glm-5.3-flash with text + image + video input)
+    glm_pause_one_model: bool = False   # v0.736 true = a paused GLM refuses chat calls again (old)
+    glm_pdf: bool = True        # a PDF reaches GLM as its own text (pypdf); a scanned PDF as page pictures (pypdfium2)
+    glm_pdf_max_chars: int = 60000
+    glm_pdf_max_pages: int = 8  # pages rendered as pictures for a scanned PDF
+    claude_all_brain: str = ""              # "" = OmniRoute when OMNIROUTE_URL is set, else GLM | "glm" | "omniroute"
+    omniroute_timeout_s: float = 90.0       # one OmniRoute request (it may try two providers inside it)
+    glm_reasoning_effort: str = "low"     # NVIDIA GLM-5.3-Flash: low | high | max (its default max is slow)
+    glm_timeout_s: float = 45.0           # one GLM request waits at most this (her NVIDIA test hung 120 s with 0 bytes)
+    glm_breaker_fails: int = 2            # GLM failures in a row before it is skipped
+    glm_pause_s: float = 600.0            # how long a failing GLM is skipped (Claude answers meanwhile)
+    glm_reasoning_room: int = 2048        # tokens added to max_tokens on NVIDIA (its reasoning counts inside max_tokens)
     glm_thinking: str = "disabled"          # enabled | disabled | "" (don't send) — disabled = faster, cheaper replies
 
     # --- realtime voice (Baat tab): Gemini Live speech-to-speech, key from aistudio.google.com ---
@@ -311,10 +400,92 @@ class Settings(BaseSettings):
     parallel_search: bool = True           # v0.91 Parallel web search (free MCP endpoint): quotes from real pages + links
     parallel_api_key: str = ""             # optional: higher limits (https://platform.parallel.ai); only the query is sent
     parallel_mcp_url: str = "https://search.parallel.ai/mcp"
+    reach_enabled: bool = True             # v0.559 REACH MANCH: the Agent-Reach discipline layer (the `reach` tool)
+    reach_per_tenant_per_min: int = 30     # v0.559 per-tenant reach budget per minute (0 = no limit); channel rate-limit
+                                           # cooldowns stay GLOBAL - the egress IP is shared, so a platform pause is too
+    speckit_enabled: bool = True           # v0.560 SPEC SUTRA: the spec-driven ladder (the `speckit` tool, the
+                                           # github/spec-kit idea); per-tenant store data/speckit/<tenant>/speckit.db
+    workspace_enabled: bool = True         # v0.586 SANDARBH MANCH: the T1 reference filesystem role (the `workspace`
+                                           # tool, the modelcontextprotocol/servers idea) - per-tenant sandbox
+                                           # data/workspace/<tenant>/; off stops WRITES, reads stay answerable
+    kgmemory_enabled: bool = True          # v0.586 SANDARBH MANCH: the T1 reference memory role (the `kgmemory`
+                                           # tool, the knowledge-graph idea) - per-tenant store
+                                           # data/kgmemory/<tenant>/kg.db; off stops WRITES, reads stay answerable
+    bhandar_enabled: bool = True           # v0.618 BHANDAR MANCH: the T2 local-core family (the `bhandar` tool,
+                                           # the read-only SQLite/markdown/json/AST/time beds idea) - all reads
+                                           # over the tenant's OWN stores; off means off (honest NEED_SETUP)
+    jharokha_enabled: bool = True          # v0.665 JHAROKHA MANCH: the T3 local-browser family (the `jharokha`
+                                           # tool, the zero-login playwright-mcp + Puppeteer idea) - the agent's
+                                           # OWN headless Chromium per tenant, capped and reaped (RAM law);
+                                           # off means off (honest NEED_SETUP)
+    duniya_enabled: bool = True            # v0.667 DUNIYA MANCH: the T4 keyless-public-web family (the `duniya`
+                                           # tool, the mcp/servers fetch reference + the no-key public-API rows)
+                                           # - ONE GET-only lane over the no-login/no-key services; off means
+                                           # off (honest NEED_SETUP)
+    kala_enabled: bool = True              # v0.681 KALA MANCH: the T5 knowledge-skill catalog family (the `kala`
+    kala_catalog_ttl_seconds: int = 300    # tool, the google/skills catalog) - index.json fetched byte-exact
+                                           # behind this in-process TTL; documents fetched fresh every read;
+                                           # off means off (honest NEED_SETUP)
+    shilp_enabled: bool = True             # v0.730 SHILP MANCH: the ArtCraft generation lane (the `shilp` tool,
+                                           # their Omni API api.storyteller.ai) - video + image generation and
+                                           # job status; off means off (honest NEED_SETUP)
+    artcraft_api_key: str = ""             # BYOK: VPS .env only (ARTCRAFT_API_KEY), never in chat or the repo -
+                                           # gated per account by the ArtCraft team (app.getartcraft.com)
+    artcraft_base_url: str = "https://api.storyteller.ai"  # their doc's own emphasis: NOT api.getartcraft.com
+    kaam_enabled: bool = True              # v0.688 KAAM MANCH: the work-discipline layer (OWL-derived, IDEA-ONLY
+                                           # from camel-ai/owl@2df367e, zero upstream code): the search/verify
+                                           # tips on the system prompt + the done-needs-proof backstop + the
+                                           # (Kaam: ...) ledger note - no tool, no key, no network
+    kaam_ledger_enabled: bool = True       # ... the ledger note alone can go quiet without touching the rest
+    chat_answer_only: bool = True          # parity Phase 5: the reply is ONLY what the model wrote - the (Kaam: ...)
+                                           # ledger rides the turn's step data (event `ledger`, the console's folded
+                                           # steps row), honesty checks ask the model to correct itself once instead
+                                           # of stapling a note, and a correction message goes out only when a real
+                                           # ACTION claim (sent / paid / booked / deleted / published) stayed false
+                                           # after that retry. False = the old stapled notes.
+    # v0.741 more providers for the model dropdown: each key ONLY here (.env); "<provider>:<model>" in chat_models
+    gemini_chat_api_key: str = ""          # Google AI Studio key for CHAT (the voice GEMINI_API_KEY is never spent by chat)
+    groq_api_key: str = ""
+    mistral_api_key: str = ""
+    nvidia_api_key: str = ""
+    zai_api_key: str = ""
+    openrouter_api_key: str = ""           # only when GLM itself is not on OpenRouter
+    aihubmix_api_key: str = ""             # v0.742 AIHubMix (free "-free" models after a $1 top-up)
+    chat_model_choice: bool = True         # v0.740 each user picks the chat model in the console composer (owner's list)
+    chat_models: str = "nvidia/nemotron-3.5-super-vl:free,thinkingmachines/inkling-2-small:free,google/gemma-4-31b-it:free"
+                                           # the owner's list beside GLM_MODEL (OpenRouter slugs, comma-separated)
+    model_choice_dir: str = ""             # '' = data/model_choice
+    model_profile: bool = True             # v0.739 the chat model's abilities READ from OpenRouter's model list (pictures,
+                                           # reasoning, tools, window) - a new GLM_MODEL needs no code change; off = old
+    model_profile_dir: str = ""            # '' = data/modelprofile
+    chat_files_by_code: bool = True        # parity gap 9a (v0.738): ONE way to make a file, like Claude - pylab writes
+                                           # Word / Excel / PDF / PowerPoint with Python and they land in her chat
+    chat_every_message: bool = True        # parity gap 1 (v0.738): every message reaches the model - the research plan
+                                           # gate never answers for it, stop words still stop the work at once but the
+                                           # model writes the reply (the OTP / CAPTCHA hand-over stays before the model)
+    chat_plain_loop: bool = True           # parity Phase 5b (the loop): the model's answer ends the turn. Kept checks
+                                           # run BEFORE the answer is shown and a corrected answer REPLACES the draft
+                                           # in place (one reply): a false ACTION claim (sent / paid / booked /
+                                           # deleted / published with no tool), a reminder promised with none set,
+                                           # and research figures with no source (a dossier turn). Dropped: the
+                                           # generic pakka self-check model call and the reviewer call on ordinary
+                                           # hard answers. Kept as is: the goal nudge (only with an open kaam_plan
+                                           # goal) and the promise nudge (aage). False = the old checks.
+    seekh_enabled: bool = True             # v0.713 SEEKH MANCH: learn a way of working from a video (the
+    seekh_max_per_day: int = 20            # `seekh_video` tool): the Gemini eyes watch, Claude distills the
+    seekh_file_max_mb: int = 200           # steps with [m:ss] evidence, and they land in the two memories
+    seekh_live_notes: bool = True          # v0.745 notes stream onto the Video Learner page as Gemini writes them
+    interactive_page: bool = True          # v0.747 HOOLA INTERACTIVE: the console's video studio (one line -> scenes -> HyperFrames MP4)
+    hoola_code_page: bool = True          # v0.748 HOOLA CODE: Developer Sahayak as a console page (sessions, live steps, plan, PR, reviews)
+    flow_page: bool = True                # v0.751 HOOLA FLOW: the Kaan pack as a console page (dictate, files, live captions, words, settings)
+    flow_composer_mic: bool = True        # v0.751 the chat box mic dictates through Kaan when its engine is ready (else the browser's own)
+    shilp_page: bool = True               # v0.752 ARTCRAFT IN CREATE: the Create studio's ArtCraft tool over the shilp lane (/api/shilp)
+    seekh_file_max_s: int = 1800           # that already ship (procedures + operator recipe drafts) - off = off
     voice_adapt: bool = True               # v0.119 her own pauses / style / words / mis-hearings shape the call
     site_model: str = "claude-opus-5-5"     # v0.121 Website Sahayak: model that designs and writes every section
     site_edit_model: str = ""              # v0.121 small website edits ('' = anthropic_model)
     site_opus: bool = True                 # v0.225 every website section / fix / change on the App Sahayak Opus path (thinking, effort, retries, no quiet fallback)
+    site_live_stream: bool = True          # v0.664 ASLI SAMAY: section writing streams its words to the Web Studio live canvas (same tokens)
     site_art: bool = True                  # v0.225 Opus writes a design DNA per look before the hero (art direction)
     site_critique: str = "all"             # v0.225 Opus looks at the built screenshots: all (v0.292, every page) | home | off
     site_critique_min: float = 7.5         # v0.225 a section scoring below this (out of 10) is redrawn once with the notes
@@ -323,12 +494,23 @@ class Settings(BaseSettings):
     pexels_api_key: str = ""               # v0.292 optional licensed stock photos (official Pexels API) when the image models fail
     site_look_sections: int = 3            # v0.292 sections of the home page each of the 3 looks shows (hero + the next ones)
     site_look_parallel: int = 6            # v0.324 look sections written at the same time (3 looks x hero + page top)
+    site_full_looks: bool = True           # v0.649 WEB STUDIO: each of the 3 looks is the WHOLE site (every page), words written once
+    site_full_looks_max: int = 40          # v0.649 above this many sections the looks stay page tops (a big site would cost too much)
     site_kit: bool = True                  # v0.330 one design kit per site (.k-* components every section uses)
     site_critique_pages: int = 6           # v0.292 pages Opus reviews from their real screenshots (site_critique=all)
     site_max_pages: int = 150              # v0.315 BADI WEBSITE: most pages one site may have (designed + list items + legal)
     site_max_ai_pages: int = 40            # v0.315 most pages with their OWN designed sections (each section = one Opus call)
     site_parallel_big: int = 8             # v0.315 sections written at the same time on a big site (v0.400: 5 -> 8)
     site_check_pages: int = 40             # v0.315 pages the browser checks open on a big site (+2 items of every list)
+    site_shop_max_products: int = 20000    # v0.538 BADA CATALOGUE: products one website shop may hold (was 500)
+    site_shop_day_cap: int = 300           # orders a website shop takes in a day (spam guard; a big shop raises it)
+    site_shop_ip_cap: int = 12             # orders from one address in 10 minutes
+    site_gates: bool = True                # v0.551 SURAKSHA GATES: every website build is checked; a FAIL blocks going live
+    site_look: bool = True                 # v0.606 SAAF NAZAR: the AI-look tells on every build (warn only, never blocks)
+    site_look_fix: bool = True             # v0.606 ...and the per-section ones go into the first fix round once
+    site_kept: bool = True                 # v0.617 KUCHH NA CHHOOTE: a change in her words is compared with the version before
+    site_turnstile_site: str = ""          # v0.551 Cloudflare Turnstile site key (public) - both keys = forms get the box
+    site_turnstile_secret: str = ""        # its secret (VPS .env only): the server checks every form post with Cloudflare
     site_check_parallel: int = 3           # v0.382 browsers that check a site's pages at once (FAST: big sites only)
     site_sms_provider: str = ""            # v0.434 website phone-OTP login: "" off | msg91 (DLT registered, her account)
     msg91_authkey: str = ""                # v0.434 MSG91 auth key (VPS .env only)
@@ -339,6 +521,10 @@ class Settings(BaseSettings):
     app_model: str = "claude-opus-5-5"     # v0.140 App Sahayak: EVERY design / screen / fix / change / Kotlin call (owner: Opus 5.5)
     app_model_fallback: bool = False       # v0.140 true = when Opus can't be reached, use the chat model / cheap brain instead
     app_model_tries: int = 5               # v0.140 tries per call when Opus is busy (429 / 5xx / overloaded / timeouts)
+    tool_search_native: bool = True   # v0.563 CLAUDE KA AUZAAR: every tool declared, the rest deferred + tool_reference search
+    engine_thinking: str = "adaptive"      # v0.560 EK DARWAZA: adaptive | off for every specialist engine through agent/door.py
+    cad_model: str = "claude-opus-5-5"      # v0.560 CAD engine's model (was written into engineering/ai.py)
+    motion_model: str = ""                 # v0.560 Hoola Motion's HTML plans ('' = anthropic_model, as before)
     app_thinking: str = "adaptive"         # v0.140 adaptive | off: Opus thinks before it designs (Claude decides how much)
     app_effort: str = "high"               # v0.140 effort for screens / Kotlin (low | medium | high | xhigh | max)
     app_art_effort: str = "xhigh"          # v0.140 effort for the art direction of each look
@@ -391,6 +577,12 @@ class Settings(BaseSettings):
     operator_preflight: bool = True        # v0.92 check a website job's site from this server first; refused -> her PC
     scrape_respect_robots: bool = True     # v0.477 scrape tools refuse paths the site's robots.txt disallows for bots
     scrape_stealth_enabled: bool = False   # v0.477 allow scrape_stealth to launch the stealth browser (RAM-heavy; needs `scrapling install` once)
+    # v0.537 CRAWL BRAIN (the crawl4ai ideas, hand-built). Every one is OFF or neutral by default.
+    scrape_proxies: str = ""               # v0.537 comma list: ip:port[:user:pass] | url | DIRECT. Empty = fetch direct, as before
+    scrape_proxy_max_fails: int = 3        # v0.537 failures before a proxy is rested
+    scrape_proxy_rest_s: int = 300         # v0.537 how long a failing proxy rests
+    scrape_clean_default: bool = False     # v0.537 prune boilerplate on EVERY scrape_page (she can also ask per call)
+    scrape_crawl_question_mode: str = "best"   # v0.537 frontier mode when a crawl job carries a question: best | bfs
     scrape_cache_enabled: bool = True      # v0.481 serve repeat scrapes from the per-tenant page cache within max_age
     scrape_cache_max_age: int = 1800       # v0.481 default seconds a cached page stays fresh for the scrape tool (0 = always fresh)
     scrape_crawl_enabled: bool = True      # v0.486 background crawl jobs (crawl_start -> worker tick -> crawl_status/results)
@@ -425,14 +617,29 @@ class Settings(BaseSettings):
     officehours_enabled: bool = True       # v0.495 office hours (the gstack THINK/PLAN lane: design docs + plan reviews)
     officehours_keep_docs: int = 30        # v0.495 baithak docs kept per tenant; older ones (and their reviews) are forgotten
     call_receipt: bool = True              # v0.91 after a call: a short card of what was decided and what really ran
-    voice_tool_ack: bool = True            # a tool runs and he is silent: say a quick "ek second" in his own voice
-    voice_backchannel: bool = True         # v0.205 KAAN KAAPI: tiny listener murmurs in her pauses + one progress sound on a long silent tool (kill switch)
+    voice_tool_ack: bool = False           # v0.625 OFF: the "ek second" clips come from a SEPARATE TTS model (a legacy one on failure, cached forever) - a different / radio-like voice mid-call; Gemini Live says its own filler line
+    voice_backchannel: bool = False        # v0.625 OFF (same TTS-clip voice problem); v0.205 KAAN KAAPI: tiny listener murmurs in her pauses + one progress sound on a long silent tool (kill switch)
     voice_prosody: bool = True             # v0.208 AWAAZ-3: her TurnMeter prosody sharpens the feeling note - vetoes a glad her voice contradicts, confirms a low, adds the thinking-pauses rider (kill switch; off = the v0.202 words-only engine)
     voice_soorat: bool = True              # v0.220 SOORAT: his energy follows her transitions - a state flip names the move, the fresh tone tints the scripted moments (acks skip the bright clips while she is heavy/tense, stall/result/reconnect notes carry the tone); off = the v0.219 engine
     # v0.264 OPENAI VOICE (Phase 1 of "two engines, she chooses"): a second call engine for "real voice" (breaths,
     # hmm, light laughs). Gemini stays the default and untouched; OpenAI is used only when the owner picks it, a key is
     # set, and the month's budget / her minutes allow - otherwise the call quietly runs on Gemini.
     openai_api_key: str = ""                          # VPS .env only (OPENAI_API_KEY), never in chat or the repo
+    voice_openai_enabled: bool = False
+    voice_lean_tools: bool = True    # v0.627 the call declares only LEAN_TOOLS (Gemini bills the whole tool list on every reply); the rest via santosh_kaam
+    voice_brain: bool = True         # v0.630 HAIKU DIMAAG: Gemini Live is ONLY the voice (hears + speaks); every ask goes to the Hoola brain (voice_brain_model) with every chat tool
+    voice_brain_model: str = "claude-haiku-5-5"
+    voice_checkin_s: int = 150    # v0.652 a call ask still running: one 'abhi bhi kar raha hoon' line this often
+    voice_checkin_max: int = 3    # ...at most this many times (0 = off)
+    kaam_stop_words: bool = True   # v0.649 SACH MEIN ROKO: her 'roko / cancel karo' stops running work before the turn waits
+    call_split: bool = True   # v0.646 ALAG CALL: a phone that asks (split=1) gets each call on its own record (Calls section)
+    voice_brain_yaad: bool = False       # v0.644 diary / facts block on a call brain turn (never ready in time on her calls)
+    voice_brain_memory_s: float = 2.5    # v0.638 a call brain turn waits at most this for diary / job state / coder memory
+    chat_memory_s: float = 6.0          # v0.704 a chat turn reads diary / job state / card news / coder memory in parallel, at most this long
+    voice_brain_result_chars: int = 1500   # v0.636 an earlier exchange's tool result cut to this on a call brain turn (0 = keep)
+    voice_brain_history: int = 8      # v0.634 (12) -> v0.636 8: a call brain turn reads the summary + this many recent exchanges (0 = the whole chat)
+    voice_brain_wait_s: int = 20      # v0.630 the voice waits this long for the brain's answer, then says it is working   # v0.630 the call's brain ('' = the chat model); hard / long asks still go up (Opus / Sonnet)
+    voice_reminder_guard: bool = True   # v0.624 a create_reminder with no reminder ask in her words goes to santosh_kaam                # v0.622 owner: every call on Gemini; True brings the OpenAI choice back
     voice_openai_model: str = "gpt-realtime-2.1-mini"   # the mini only: the full model costs 4-10x Gemini
     voice_openai_voice_m: str = "cedar"
     voice_openai_voice_f: str = "marin"
@@ -460,6 +667,8 @@ class Settings(BaseSettings):
     voice_ack_tts_model: str = "gemini-3.8-flash-tts"   # v0.181 (was gemini-2.5-flash-preview-tts): new TTS, far more natural delivery; legacy model is the automatic fallback
     voice_compress_trigger: int = 60000    # v0.224 Gemini Live context compression starts here (0 = Google's default near the limit)
     voice_compress_target: int = 35000     # ...and slides the window back to about this many tokens
+    voice_brain_compress_trigger: int = 8000   # v0.632 KAAN CHHOTA: with voice_brain the call keeps only the last few minutes (the brain holds the memory), so each reply re-reads ~8k tokens at most
+    voice_brain_compress_target: int = 4000
     voice_tool_behavior: bool = True       # v0.473 slow call tools NON_BLOCKING (he keeps talking), quick ones BLOCKING (exact answer, no guessing); false = model default for all
     voice_affective: bool = True           # v0.181 affective dialog: he answers with the emotional tone he HEARS (happy with her, gentle when she is low). If Gemini refuses the field for a model, the call retries without it and remembers (voice.py _AFFECTIVE_OK)
     # --- Awaaz Pehchaan: who is talking (owner / family) from the voice; free models, CPU (sherpa-onnx) ---
@@ -468,6 +677,9 @@ class Settings(BaseSettings):
     voiceid_margin: float = 0.06           # and this much ahead of the next closest person
     voiceid_min_speech_s: float = 1.6      # speech needed before the first guess in a call
     voice_resume_grace_s: int = 25         # a dropped phone connection can re-join the same call within this time
+    voice_park: bool = True                # v0.617 HAMESHA JUDA: a quiet call leaves Gemini (billed per second, even silence) and stays connected
+    voice_park_after_s: int = 90           # ...after this long with nobody speaking and nothing running
+    voice_park_grace_s: int = 900          # ...and a parked call waits this long for her phone to come back (nothing billed)
     focus_user_words: int = 6              # v0.200 her newest messages kept WORD-FOR-WORD in the focus block (a human remembers what you just SAID, not a summary of it)
     focus_word_chars: int = 600            # v0.200 cap per saved message inside the focus block
     focus_max_chars: int = 4000            # v0.200 the whole focus block's cap ("focused" = small and exact, never a dump)
@@ -486,7 +698,11 @@ class Settings(BaseSettings):
     voice_auto_rescue: bool = True         # v0.211 a tool failing twice hands the work to the full agent by itself (the call never just gives up)
     voice_setup_hard_keep_s: int = 3600    # v0.211 heavy setup losses (compression / tools) self-heal after this long - memory and tools come back on their own
     voice_ring: bool = True                # v0.219 ON: the native side learned the kind (SantoshPush turns the push into the wake: path + auto-call); off = the v0.214 behaviour
+    voice_ring_reminders: bool = True      # v0.621 a due reminder with no live call rings her and the call says it
+    voice_ring_reminder_max_day: int = 12  # ...her own reminders: quiet hours do not apply, only this sanity cap
     voice_ring_max_day: int = 2            # v0.211 rings per tenant per day (the phone is not an alarm clock)
+    push_quiet: str = ""                   # wave 13: quiet hours for pushes ("" = the ring's voice_ring_quiet)
+    push_night_hold: bool = True           # wave 13: non-urgent pushes are held in her quiet hours, the newest few sent after
     voice_ring_quiet: str = "22-8"         # v0.211 quiet hours in the tenant's own timezone - no rings inside
 
     # --- Hoola Coder (v0.473): persistent session memory - capture -> spool -> observer -> vault ---
@@ -521,6 +737,13 @@ class Settings(BaseSettings):
     home_control: bool = False              # the HOME gate (default OFF - bake on the VPS, then flip to true)
     home_assistant_url: str = ""            # e.g. http://192.168.1.10:8123 (the HA base URL, no trailing slash)
     home_assistant_token: str = ""          # HA long-lived access token (profile -> Security -> Tokens); never in chat
+    # --- KAAN PACK v0.589 (WhisperAI Wave W0): transcription core, AUDIO gate PC/HOME se alag, default OFF ---
+    kaan_audio: bool = False                # the AUDIO gate (default OFF - KAAN_AUDIO=1 on the VPS flips it)
+    kaan_diarize: bool = True               # v0.610 KAAN W1: pause-turn diarization (local, CPU-light - kill switch; KAAN_DIARIZE=0 par band)
+    kaan_live_dir: str = "./data/kaan_live"  # v0.618 KAAN W2: live-caption PCM spines (16k mono, sirf uske server par)
+    kaan_quota_audio_min: int = 0           # v0.667 KAAN W6: per-tenant monthly audio-minutes cap (0 = no cap, default; resets on the 1st)
+    kaan_retention_days: int = 0            # v0.667 KAAN W6: transcripts older than N days are swept daily (pinned survive; 0 = keep forever, default)
+    kaan_voiceprint: bool = False           # v0.667 KAAN W6: voiceprint diarization at transcribe time (biometric - needs KAAN_VOICEPRINT=1 AND KAAN_RETENTION_DAYS>0)
     # --- v0.486.0 BYOX SKILL PACK: Build-Your-Own-X 31 categories, seed default on ---
     byox_enabled: bool = True               # BYOX skill pack seeds on first open (default ON)
     # --- Claude skills pilot (docs/CLAUDE_SKILLS_PILOT_PLAN.md): Apache-2.0 Anthropic skills seeded once per tenant ---
@@ -571,6 +794,32 @@ class Settings(BaseSettings):
     coder_crew_timeout_s: int = 600        # the whole-crew wall clock; partial work is not kept (honest)
     crewpack_enabled: bool = True          # the cr- seed (crew plays) seeds on first open under its own stamp (default ON)
 
+    # --- THEORY PACK (v0.547): the vision-lane syllabus + the agent-architecture research loop ---
+    thpack_enabled: bool = True            # the th- seed (the awesome Theory read) seeds on first open under its own stamp (default ON)
+
+    # --- EDITORS PACK (v0.548): the VS Code cockpit + the Neovim cockpit - drive Hoola from inside the IDE ---
+    edpack_enabled: bool = True            # the ed- seed (the awesome Editors read) seeds on first open under its own stamp (default ON)
+    # --- OMNI PACK (v0.561): the 18 awesome-list lanes, each its own once-ever stamp ---
+    gapack_enabled: bool = True       # the ga- seed (the awesome Gaming read) seeds on first open under its own stamp (default ON)
+    devpack_enabled: bool = True      # the de- seed (the awesome Dev-Environment read) seeds on first open under its own stamp (default ON)
+    enpack_enabled: bool = True       # the en- seed (the awesome Entertainment read) seeds on first open under its own stamp (default ON)
+    dbpack_enabled: bool = True       # the db- seed (the awesome Databases read) seeds on first open under its own stamp (default ON)
+    mepack_enabled: bool = True       # the me- seed (the awesome Media read) seeds on first open under its own stamp (default ON)
+    lepack_enabled: bool = True       # the le- seed (the awesome Learn read) seeds on first open under its own stamp (default ON)
+    secpack_enabled: bool = True      # the se- seed (the awesome Security read) seeds on first open under its own stamp (default ON)
+    cmpack_enabled: bool = True       # the cm- seed (the awesome CMS read) seeds on first open under its own stamp (default ON)
+    hapack_enabled: bool = True       # the ha- seed (the awesome Hardware read) seeds on first open under its own stamp (default ON)
+    bupack_enabled: bool = True       # the bu- seed (the awesome Business read) seeds on first open under its own stamp (default ON)
+    wopack_enabled: bool = True       # the wo- seed (the awesome Work read) seeds on first open under its own stamp (default ON)
+    nepack_enabled: bool = True       # the ne- seed (the awesome Networking read) seeds on first open under its own stamp (default ON)
+    dcpack_enabled: bool = True       # the dc- seed (the Decentralized stance: Tor/privacy only) seeds on first open under its own stamp (default ON)
+    hspack_enabled: bool = True       # the hs- seed (the awesome Health read, non-core) seeds on first open under its own stamp (default ON)
+    evpack_enabled: bool = True       # the ev- seed (the awesome Events read) seeds on first open under its own stamp (default ON)
+    tepack_enabled: bool = True       # the te- seed (the awesome Testing read) seeds on first open under its own stamp (default ON)
+    mipack_enabled: bool = True       # the mi- seed (the awesome Miscellaneous read) seeds on first open under its own stamp (default ON)
+    repack_enabled: bool = True       # the re- seed (the awesome Related read) seeds on first open under its own stamp (default ON)
+
+
     # --- Hoola AEP trace (v0.520): the LangSmith layer self-hosted - tracers, run trees, astream_events ---
     aep_trace: bool = False                # run persistence (vault rows typed 'aep_run') + the /api/aep/runs explorer - bake, then flip
     aep_trace_redact: bool = True          # redaction before storage (strip_private + redact_secrets); a test seam, prod keeps True
@@ -591,6 +840,10 @@ class Settings(BaseSettings):
     mail_bulk_daily_cap: int = 300          # per mailbox per day (Gmail allows ~500 for personal accounts)
     mail_bulk_max: int = 1000               # recipients in one bulk mail
     mail_max_attach_mb: int = 18            # total attachments per mail (Gmail/Outlook limit is ~25 MB encoded)
+    # v0.701 PAKKA ATTACHMENT: a draft keeps its OWN copy of every attached file (chat uploads / Hoola-made / Drive)
+    # so a Bhejo tap next day, a scheduled send (up to 60 days) or a multi-day bulk never meets a deleted file.
+    mail_keep_dir: str = "./data/mail_attach"
+    mail_keep_days: int = 70                # kept copies older than this are swept (schedules go up to 60 days)
     notebook_tts_model: str = "gemini-3.8-flash-tts"            # v0.155 Audio / Video Overview voices (expressive, 2 hosts, 20 Indian langs)
     notebook_tts_legacy_model: str = "gemini-2.5-flash-preview-tts"   # used when the new TTS refuses (older API path)
     notebook_model: str = "claude-opus-5-5"   # v0.155 writes Studio items (scripts, decks, reports); '' = anthropic_model
@@ -608,7 +861,7 @@ class Settings(BaseSettings):
     motion_dir: str = "./data/motion"         # Hoola Motion MP4s (kept until the owner deletes them)
     motion_keep: int = 60                      # newest videos kept per owner
     reels_gemini_model: str = ""          # Hoola Reels: understands shared reels ("" = youtube_gemini_model)
-    youtube_gemini_model: str = "gemini-2.5-flash"   # watches public YouTube videos to summarise / answer (official Gemini API)
+    youtube_gemini_model: str = "gemini-flash-latest"   # v0.560 Google's alias for its newest Flash (was 2.5); usage.install falls back to gemini-2.5-flash if it is refused   # watches public YouTube videos to summarise / answer (official Gemini API)
     hivision_url: str = ""                 # v0.51 e.g. http://127.0.0.1:8085 (docker linzeyi/hivision_idphotos): ID photos
     gotenberg_url: str = ""                # v0.49 e.g. http://127.0.0.1:3005 (docker gotenberg): Office files get page-1 previews
     hoola_enrich: bool = True              # avatars look at what arrives (vision / video) and suggest replies
@@ -676,6 +929,10 @@ class Settings(BaseSettings):
     app_redirect_scheme: str = "santosh"    # deep link back into the phone app after sign-in
     hoola_signup: str = "open"              # who can make a NEW Hoola with Google sign-in: open (anyone) | invite
     hoola_signup_allow: str = ""            # invite mode: comma list of emails and/or @domain.com allowed to sign up
+    newsdata_api_key: str = ""              # v0.758 newsdata.io - ONE server key for every user, VPS .env only
+    gnews_api_key: str = ""                 # v0.758 gnews.io - ONE server key for every user, VPS .env only
+    data_gov_in_base: str = ""              # v0.755 optional relay for data.gov.in (NIC drops cloud servers): e.g. https://hoola-dg.<you>.workers.dev
+    data_gov_in_api_key: str = ""           # v0.754 data.gov.in (Open Government Data India) - ONE server key for every user, VPS .env only
     google_maps_api_key: str = ""           # Maps Platform key: Places API (New), Routes API, Geocoding API
     # v0.449 PAISA PEHLE: Maps had no ceiling at all. These are the first ones.
     maps_daily_inr: float = 200.0           # per tenant per day; a call that would cross it is REFUSED, not billed. 0 = no cap
@@ -688,6 +945,37 @@ class Settings(BaseSettings):
     route_opt_sa_file: str = ""             # ... and OAuth (cloud-platform scope) from a service-account JSON on the VPS, NOT the Maps API key
     maps_opt_max_stops: int = 40            # stops in one plan (each is a billed shipment); Google's own sync limit was not read
     maps_cache: bool = True                 # reuse the licence-permitted place_id + 30-day lat/lng instead of re-billing
+    # v0.540.0 LEADS NEEV: the caps the leads engine refuses AT PLAN TIME (docs/LEADS_PLAN.md section 12 asked
+    # once: 5,000 rows/run and 20,000 rows/day per tenant are the first numbers, changeable here, refused early)
+    leads_max_rows_per_run: int = 5000      # a run planning more rows than this is REFUSED with the cap named
+    leads_max_rows_per_day: int = 20000     # per tenant per UTC day, counted from the kept-rows ledger (lead_cap_days)
+    # v0.541.0 OFFICIAL LANES: the Places lane buys maps.place_details (Enterprise SKU) for at most this many
+    # places per run - the maps_place economics (phone/website are per-place purchases), guarded by mapsbill's cap
+    leads_places_details_per_run: int = 50
+    # v0.542.0 ENRICHMENT: the P2 pass reads each kept row's OWN website (site-level 1 req/s, <= 3 pages/site,
+    # robots obeyed) and makes at most ONE cheap-model call per row - more eligible rows than this cap and the
+    # pass REFUSES at plan time with the number named, never truncates quietly (the leads cap law)
+    leads_enrich_rows_per_run: int = 100
+    # v0.543.0 SCRAPE LANE: the Google Maps public-listing grid's plan-time ceilings - the cell count and the
+    # pages walked per cell (6 x 20 = 120 listings/cell, the known ~120 search ceiling). The lane itself is
+    # per-tenant opt-in OFF (lead_scrape_optins), the politeness cap is 1 req/s per host (leads/scrape.py),
+    # and a block page aborts the run - all refused/recorded, never muscled through (docs/LEADS_PLAN.md section 5)
+    leads_scrape_max_cells: int = 400
+    leads_scrape_pages_per_cell: int = 6
+    # v0.544.0 VENDOR LANE: one licensed lead-data vendor behind the leads_run job shape (the research R6
+    # pattern, leads/vendor.py). Until SHE names the vendor (plan section 12.4) every string stays empty and
+    # the lane is ABSENT from the plan card - an explicit ask is refused with exactly this config named. The
+    # price makes the ceiling possible (0 = refused), the run cap refuses the estimate at PLAN time, and the
+    # terms ack is HER act (she read the vendor's terms; nothing is assumed - the v0.389 SACH BOLO discipline)
+    leads_vendor_name: str = ""                 # she names the vendor (e.g. "acme-leads")
+    leads_vendor_base_url: str = ""             # the vendor's documented API base (e.g. "https://api.vendor.example")
+    leads_vendor_api_key: str = ""              # env LEADS_VENDOR_API_KEY; rides the header only, never a log
+    leads_vendor_price_per_row_inr: float = 0.0 # rupees per row the vendor charges; 0 = the lane refuses
+    leads_vendor_run_cap_inr: float = 2000.0    # one vendor run's rupee ceiling, refused AT PLAN TIME
+    leads_vendor_terms_ack: str = ""            # the vendor's name once SHE has read its terms (CSV)
+    # v0.544.0 SCALE: the P4 fan-out enrich pass (leads/scale.py, the HOOLA GRAPH walk) keeps at most this many
+    # site passes in flight (shared Semaphore; politeness stays 1 req/s per site inside enrich.site_pass)
+    leads_enrich_fanout_max: int = 4
     picovoice_access_key: str = ""          # no longer used: "Hey Santosh" runs on Santosh Wake (our own model)
     wake_keyword_file: str = ""             # optional newer hey_santosh.onnx to push to phones (wakeword/train.py)
     wake_sensitivity: float = 0.25          # 0..1; higher = wakes more easily (threshold = 1.1 - sensitivity). 0.25 -> 0.85: ~95% recall, ~2 false wakes/hour on test speech
@@ -716,6 +1004,7 @@ class Settings(BaseSettings):
     dry_run_reply_ratio: float = 0.08
 
     worker_tick_seconds: float = 2.0
+    worker_slot_timeout_s: float = 300.0   # wave 13: a worker slot that hangs longer is cut, the rest run
     tenant_id: str = "default"
 
     # --- v0.134 Gyaan: knowledge base (agentic RAG) over her files, Drive, mail, notes, chats ---

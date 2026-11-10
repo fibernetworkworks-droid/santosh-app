@@ -187,7 +187,7 @@ async def form_export(ctx: Ctx, form, to="auto", **_):
 
 async def form_settings(ctx: Ctx, form, accepting=None, quiz=None, published=None, emails=None, **_):
     if accepting is None and quiz is None and published is None and emails is None:
-        raise ToolError("Kya badalna hai? accepting, published, quiz ya emails.")
+        raise ToolError("What should change? accepting, published, quiz or emails.")
     return _brief(await _t(fs.settings, ctx.tenant_id, ctx.conversation_id, str(form), accepting, quiz, published, emails))
 
 

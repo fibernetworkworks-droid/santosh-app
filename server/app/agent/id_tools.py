@@ -29,16 +29,16 @@ async def id_locker(ctx: Ctx, action, person="self", kind="aadhaar", number="", 
     if action == "list":
         rows = await asyncio.to_thread(idvault.list_, ctx.tenant_id)
         return {"ids": [{k: r[k] for k in ("ref", "person_label", "kind_label", "masked", "note")} for r in rows],
-                "note": "" if rows else "Locker khaali hai. Number bataiye ya chat mein likhiye, Hoola rakh lega."}
+                "note": "" if rows else "The locker is empty. Give a number or write it in the chat, and Hoola will keep it."}
     if action == "save":
         if not number:
-            raise ToolError("Number bataiye.")
+            raise ToolError("Give the number.")
         try:
             r = await asyncio.to_thread(idvault.save, ctx.tenant_id, kind or "other", str(number), person or "self", str(note or ""))
         except idvault.VaultError as e:
             raise ToolError(str(e))
         return {k: r[k] for k in ("ref", "person_label", "kind_label", "masked")} | {
-            "say": f"{r['person_label']} ka {r['kind_label']} ({r['masked']}) Pehchaan Locker mein rakh liya."}
+            "say": f"{r['person_label']}'s {r['kind_label']} ({r['masked']}) was saved in the Pehchaan Locker."}
     raise ToolError("action: list ya save")
 
 

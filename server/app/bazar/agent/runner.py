@@ -38,16 +38,34 @@ class Runner:
             raise ToolError("Approval not found")
         if ap.decision != "pending":
             raise ToolError(f"Already {ap.decision}")
+        # v0.657 PAKKA KAAM: CLAIM the card before anything runs. A plain read of 'pending' let a phone tap and a
+        # console tap (or a retry while a slow connector ran) both pass and both EXECUTE - an order placed twice.
+        # One conditional UPDATE, committed first: exactly one tap wins; a restart mid-run leaves 'executing'
+        # (never 'pending', so it can neither be tapped again nor expire as "nothing was ordered").
+        from sqlalchemy import update as _update
+        decided_at = dt.datetime.now(dt.timezone.utc).replace(tzinfo=None)
+        claim = "executing" if decision == "approve" else "rejected"
+        won = self.s.execute(_update(Approval).where(Approval.id == approval_id, Approval.decision == "pending")
+                             .values(decision=claim, decided_at=decided_at)).rowcount
+        self.s.commit()
+        self.s.refresh(ap)
+        if won != 1:
+            raise ToolError(f"Already {ap.decision}")
         task = self.s.get(Task, ap.task_id)
         assert task is not None
         ctx = Ctx(self.s, user, task, self.settings)
-        ap.decided_at = dt.datetime.now(dt.timezone.utc).replace(tzinfo=None)
         if decision == "approve":
             ap.decision = "approved"
             try:
                 outcome = self._execute(ctx, ap)
             except ToolError as e:
                 outcome = {"error": str(e)}
+            except Exception:
+                # an unexpected crash mid-action: it may or may not have reached the shop - never back to 'pending'
+                self.s.rollback()
+                ap.decision = "interrupted"
+                self.s.commit()
+                raise
             if task.status == "awaiting_approval":
                 task.status = "done"
         else:

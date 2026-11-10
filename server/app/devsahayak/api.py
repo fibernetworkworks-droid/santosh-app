@@ -85,6 +85,37 @@ def make_router(require_key, current_tenant) -> APIRouter:
         return await run(S.start, tenant, str(b.get("kind") or "write"), str(b.get("text") or ""), str(b.get("repo") or ""),
                          int(b.get("issue") or 0), [str(x) for x in files if x][:10], str(b.get("conv") or ""), "owner")
 
+    # ---- v0.748 HOOLA CODE: the console runs the work in the background and watches it
+    @r.post("/tasks/start")
+    async def start_bg(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        b = _b(body)
+        files = b.get("files") or []
+        return await run(S.start_bg, tenant, str(b.get("kind") or "write"), str(b.get("text") or ""), str(b.get("repo") or ""),
+                         int(b.get("issue") or 0), [str(x) for x in files if x][:10], str(b.get("conv") or ""))
+
+    @r.post("/tasks/{tid}/note")
+    async def note(tid: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        return await run(S.add_note, tenant, tid, str(_b(body).get("text") or ""))
+
+    @r.post("/tasks/{tid}/stop")
+    async def stop(tid: str, tenant: str = Depends(current_tenant)):
+        return await run(S.stop, tenant, tid)
+
+    @r.post("/tasks/{tid}/bg/{what}")
+    async def bg(tid: str, what: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        b = _b(body)
+        if what == "plan_ok":
+            kw = {"hash_": str(b.get("hash") or ""), "by_tap": True, "note": str(b.get("note") or "")}
+        elif what == "revise":
+            kw = {"words": str(b.get("text") or "")}
+        elif what == "begin":
+            kw = {"repo": str(b.get("repo") or "")}
+        elif what == "fix_ci":
+            kw = {}
+        else:
+            raise HTTPException(404, "plan_ok | revise | fix_ci | begin")
+        return await run(S.in_background, tenant, tid, what, **kw)
+
     @r.get("/tasks/{tid}")
     async def get_task(tid: str, tenant: str = Depends(current_tenant)):
         return await run(S.get_task, tenant, tid)

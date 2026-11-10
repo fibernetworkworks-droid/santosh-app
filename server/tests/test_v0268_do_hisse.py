@@ -20,27 +20,27 @@ ROOT = Path(__file__).resolve().parents[2]
 def test_the_narration_ask_spells_out_both_halves():
     from app.agent import goal as G
     n = G.NARRATE
-    assert "THEEK DO HISSE" in n
-    assert "KYA MILA" in n and "AB KYA" in n
-    assert "subject CHEEZ ho, tum nahi" in n            # the thing is the subject, not "I"
-    assert "Bina number wali line bekaar hai" in n      # a line with no real figure is filler
-    assert "15-30 shabd" in n and "Teesra vaakya mat jodo" in n
+    assert "EXACTLY TWO HALVES" in n
+    assert "WHAT WAS FOUND" in n and "WHAT NEXT" in n
+    assert "subject is the THING, not you" in n            # the thing is the subject, not "I"
+    assert "A line without a number is useless" in n      # a line with no real figure is filler
+    assert "15-30 words" in n and "Do not add a third sentence" in n
 
 
 def test_the_narration_ask_carries_the_never_list():
     from app.agent import goal as G
     n = G.NARRATE
-    for ban in ("Bilkul!", "Perfect!", "lagta hai", "bullet, heading, emoji",
+    for ban in ("Sure!", "Perfect!", "it seems", "bullets, headings, emoji",
                 "kaam_plan, TypeError, thread-level listing"):
         assert ban in n, ban
-    assert "Maafi ya drama nahi" in n                   # bad news stays calm
-    assert "kaam ab POORA ho gaya hai to yeh line mat likho" in n
+    assert "No apology or drama" in n                   # bad news stays calm
+    assert "If the work is now COMPLETE do not write this line" in n
 
 
 def test_the_tool_fact_still_rides_in_and_nothing_is_invented():
     from app.agent import goal as G
     withf = G.narrate_line(["20 mails mile hain", "env~9831 sabse naya"])
-    assert "20 mails mile hain" in withf and "naya mat banao" in withf
+    assert "20 mails mile hain" in withf and "do not invent new ones" in withf
     assert G.narrate_line([]) == G.NARRATE and G.narrate_line(None) == G.NARRATE
 
 
@@ -74,12 +74,12 @@ def test_the_rulebook_bans_the_filler_and_the_machine_words():
 # ---------------------------------------------------------------- the system prompt
 def test_the_prompt_asks_for_the_opener_and_both_halves():
     p = (ROOT / "server/app/agent/prompts.py").read_text()
-    assert "CHALTE CHALTE BOLO" in p
-    assert "pehla kadam kya hai" in p                   # the opener names the first move too
-    assert "DO HISSON mein" in p
-    assert "bina asli figure wali line mat likho" in p
-    assert "15-30 shabd" in p
-    assert "machine ke\n  andar ki koi baat" in p or "machine ke andar ki koi baat" in p.replace("\n  ", " ")
+    assert "TALK AS YOU WORK" in p
+    assert "and the first step" in p                    # the opener names the first move too
+    assert "TWO HALVES" in p
+    assert "never write a line without a real figure" in p
+    assert "15-30 words" in p
+    assert "anything from inside the\n  machine" in p or "anything from inside the machine" in p.replace("\n  ", " ")
 
 
 # ---------------------------------------------------------------- nothing earlier is undone
@@ -98,12 +98,12 @@ def test_v0260_fixes_are_untouched():
     from app.agent.goal_tools import GOAL_TOOLS
     spec = [t for t in GOAL_TOOLS if t["name"] == "kaam_plan"][0]
     assert "current, reason)" in spec["description"] and "current, note)" not in spec["description"]
-    assert 'say = "Yeh raasta nahi chala — ek doosra tareeka try karta hoon…"' in \
+    assert 'say = "That route did not work - trying another way…"' in \
         (ROOT / "server/app/agent/pakka.py").read_text()
     assert "def _answered_since" in (ROOT / "server/app/kaam_followup.py").read_text()
 
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.530.0"
-    assert "0.530.0+553" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.758.0"
+    assert "0.758.0+757" in (ROOT / "pubspec.yaml").read_text()

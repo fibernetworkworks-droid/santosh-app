@@ -40,7 +40,7 @@ class SantoshPush : FirebaseMessagingService() {
                     if (actionId.isEmpty() || !Store.claim(this, actionId)) return
                     val (ok, detail) = Actions.run(this, payload)
                     postResult(actionId, ok, detail)
-                    if (!ok) Notify.message(this, "Phone par yeh nahi ho paya: $detail", eventId)
+                    if (!ok) Notify.message(this, "This could not be done on the phone: $detail", eventId)
                 }
                 "home_device", "bt_request" -> {
                     val payload = try { JSONObject(d["payload"] ?: "{}") } catch (_: Exception) { JSONObject() }
@@ -63,7 +63,9 @@ class SantoshPush : FirebaseMessagingService() {
                     if (MainActivity.visible) return          // the open app shows it in the chat
                     val body = d["body"] ?: ""
                     val title = d["title"] ?: ""
-                    if (body.isNotBlank()) Notify.message(this, if (title.isNotBlank() && title != "Hoola") "$title: $body" else body, eventId)
+                    // v0.648 a call record's news opens that call when tapped
+                    if (body.isNotBlank()) Notify.message(this, if (title.isNotBlank() && title != "Hoola") "$title: $body" else body, eventId,
+                        d["open_conv"] ?: "")
                 }
             }
         } finally {

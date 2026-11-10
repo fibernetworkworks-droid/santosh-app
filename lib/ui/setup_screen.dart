@@ -30,14 +30,14 @@ class _SetupScreenState extends State<SetupScreen> {
     try {
       final h = await Api(url, '').health();
       if (h['google_login'] != true) {
-        setState(() => _err = 'Is server par Google sign-in abhi on nahi hai.');
+        setState(() => _err = 'Google sign-in is not on yet on this server.');
         return;
       }
       await widget.app.saveSettings(lang: _lang);
       // opens Google consent; the app comes back via the santosh:// deep link
       await launchUrl(widget.app.api?.googleSignInUrl() ?? Api(url, '').googleSignInUrl(), mode: LaunchMode.externalApplication);
     } catch (e) {
-      setState(() => _err = 'Google sign-in shuru nahi hua. Internet check karke dobara dabaiye.');
+      setState(() => _err = 'Google sign-in did not start. Check the internet and press again.');
     }
   }
 
@@ -48,9 +48,9 @@ class _SetupScreenState extends State<SetupScreen> {
     });
     final url = widget.app.serverUrl;
     try {
-      if (_key.text.trim().isEmpty) throw 'API key daaliye';
+      if (_key.text.trim().isEmpty) throw 'Add API key';
       final h = await Api(url, _key.text.trim()).health();
-      if (h['ok'] != true) throw 'Hoola abhi jawab nahi de raha';
+      if (h['ok'] != true) throw 'Hoola is not answering right now';
       await widget.app.saveSettings(key: _key.text, lang: _lang);
       await widget.app.connect(fresh: true);
       if (widget.app.connected && _name.text.trim().isNotEmpty) {
@@ -59,7 +59,7 @@ class _SetupScreenState extends State<SetupScreen> {
       if (!widget.app.connected) throw widget.app.error ?? 'Could not connect';
       widget.onDone?.call();
     } catch (e) {
-      setState(() => _err = 'Connect nahi ho paya: $e');
+      setState(() => _err = 'Could not connect: $e');
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -76,12 +76,12 @@ class _SetupScreenState extends State<SetupScreen> {
                 radius: 30,
                 padding: const EdgeInsets.fromLTRB(20, 22, 20, 20),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                  Text('Namaste, main Hoola', style: display(30)),
+                  Text('Hello, I am Hoola', style: display(30)),
                   const SizedBox(height: 8),
-                  const Text('Aapka AI saathi. Bill bharna, dukaan se saamaan, cab, email, reminders — bas boliye, main kar dunga.',
+                  const Text('Your AI companion. Paying bills, groceries from the shop, cabs, email, reminders — just say it and I will do it.',
                       style: TextStyle(color: C.muted, fontSize: 14, height: 1.5)),
                   const SizedBox(height: 18),
-                  const Text('APNI BHASHA', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 1.4, color: C.muted)),
+                  const Text('YOUR LANGUAGE', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 1.4, color: C.muted)),
                   const SizedBox(height: 8),
                   Wrap(spacing: 8, runSpacing: 8, children: [
                     for (final e in languages.entries)
@@ -95,7 +95,7 @@ class _SetupScreenState extends State<SetupScreen> {
                       ),
                   ]),
                   const SizedBox(height: 18),
-                  TextField(controller: _name, decoration: const InputDecoration(labelText: 'Aapka naam')),
+                  TextField(controller: _name, decoration: const InputDecoration(labelText: 'Your name')),
                   const SizedBox(height: 14),
                   Press(
                     onTap: _busy ? null : _google,
@@ -105,7 +105,7 @@ class _SetupScreenState extends State<SetupScreen> {
                       child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                         Text('G', style: TextStyle(color: Color(0xFF4285F4), fontWeight: FontWeight.w900, fontSize: 20)),
                         SizedBox(width: 10),
-                        Text('Google se shuru karein', style: TextStyle(color: C.onAccent, fontWeight: FontWeight.w800, fontSize: 15.5)),
+                        Text('Start with Google', style: TextStyle(color: C.onAccent, fontWeight: FontWeight.w800, fontSize: 15.5)),
                       ]),
                     ),
                   ),
@@ -113,7 +113,7 @@ class _SetupScreenState extends State<SetupScreen> {
                   Center(
                     child: TextButton(
                       onPressed: () => setState(() => _advanced = !_advanced),
-                      child: Text(_advanced ? 'API key chhupao' : 'Ya API key se connect karein', style: const TextStyle(color: C.muted)),
+                      child: Text(_advanced ? 'Hide API key' : 'Or connect with an API key', style: const TextStyle(color: C.muted)),
                     ),
                   ),
                   if (_advanced)
@@ -123,11 +123,11 @@ class _SetupScreenState extends State<SetupScreen> {
                     Text(_err!, style: const TextStyle(color: C.bad, fontSize: 13)),
                   ],
                   const SizedBox(height: 14),
-                  const Text('Aapka data sirf aapka. Hoola kabhi PIN, OTP ya password nahi maangega.',
+                  const Text('Your data is only yours. Hoola will never ask for a PIN, OTP or password.',
                       textAlign: TextAlign.center, style: TextStyle(color: C.faint, fontSize: 11.5)),
                   const SizedBox(height: 14),
                   if (_advanced)
-                    GradientButton(label: _busy ? 'Jod raha hai…' : 'API key se jodiye', icon: Icons.arrow_forward_rounded, onTap: _busy ? null : _go),
+                    GradientButton(label: _busy ? 'Connecting…' : 'Connect with API key', icon: Icons.arrow_forward_rounded, onTap: _busy ? null : _go),
                 ]),
               ),
             ]),

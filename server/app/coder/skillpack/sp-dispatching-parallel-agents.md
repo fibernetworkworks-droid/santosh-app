@@ -1,6 +1,7 @@
 ---
 name: sp-dispatching-parallel-agents
 description: Use for 2+ independent problems - parallel agents, one each
+when_to_use: parallel agents, many independent tasks, split the work, do these in parallel
 ---
 Delegate to specialized agents with isolated context: they never inherit
 your session's context or history - you construct exactly what they need.

@@ -74,9 +74,27 @@ def prefs(tenant: str) -> dict[str, bool]:
         with session() as s:
             p = s.get(Profile, tenant)
             return {"auto": not (p is not None and p.memory_auto is False),
-                    "recall": not (p is not None and p.memory_recall is False)}
+                    "recall": not (p is not None and p.memory_recall is False),
+                    "sensitive": bool(p is not None and getattr(p, "memory_sensitive", None) is True)}
     except Exception:
-        return {"auto": True, "recall": True}
+        return {"auto": True, "recall": True, "sensitive": False}
+
+
+def main_memory_ok(conversation_id: str) -> bool:
+    """v0.609 YAAD KE KHAANE: may this chat use her MAIN memory (general facts, her page, her graph)? False only for a
+    chat in a Session whose 'use main memory' switch she turned off (Claude's per-project 'Use account memory').
+    Pinned facts still ride: 'hamesha yaad' is her own word that they always apply."""
+    scope = scope_of(conversation_id) if conversation_id else None
+    if not scope:
+        return True
+    try:
+        from .projects import Project
+        with session() as s:
+            p = s.get(Project, scope)
+            return not (p is not None and p.use_main_memory is False)
+    except Exception:
+        log.exception("main-memory switch read failed")
+        return True
 
 
 def chats_in(tenant: str, conversation_id: str) -> set[str] | None:
@@ -98,6 +116,22 @@ def chats_in(tenant: str, conversation_id: str) -> set[str] | None:
     return out
 
 
+def own_chat(tenant: str, conversation_id: str) -> set[str] | None:
+    """v0.714 HAR CHAT ALAG: the chats whose WORK (jobs, cards, diary, work notes) a turn of this chat may see - only
+    this chat (and, for a call record, the chat it came from). Her facts still follow chats_in (they are about her).
+    With chat_alone off: chats_in, exactly as before."""
+    if not conversation_id:
+        return None
+    if not alone():
+        return chats_in(tenant, conversation_id)
+    try:
+        from .callconv import chat_of
+        chat = chat_of(conversation_id) or conversation_id
+    except Exception:   # noqa: BLE001
+        chat = conversation_id
+    return {chat, conversation_id}
+
+
 def visible(row_conversation: str | None, allowed: set[str] | None) -> bool:
     """A memory row may be shown in this chat: no fence, or a row with no chat (global: hers, or older than
     v0.246), or a row from a chat of the same scope."""
@@ -109,11 +143,23 @@ def visible(row_conversation: str | None, allowed: set[str] | None) -> bool:
     return ok
 
 
-def keep(rows: Iterable, allowed: set[str] | None, attr: str = "conversation_id") -> list:
-    """The rows this chat may see (attribute or dict key `attr` = the chat each row came from)."""
+def alone() -> bool:
+    """v0.714 the chat_alone switch (default on)."""
+    try:
+        from .config import get_settings
+        return bool(getattr(get_settings(), "chat_alone", True))
+    except Exception:   # noqa: BLE001
+        return True
+
+
+def keep(rows: Iterable, allowed: set[str] | None, attr: str = "conversation_id", strict: bool = False) -> list:
+    """The rows this chat may see (attribute or dict key `attr` = the chat each row came from).
+    v0.714 strict = a row with no chat is NOT shown (work that belongs to no chat is not this chat's work)."""
     out = []
     for r in rows:
         conv = r.get(attr) if isinstance(r, dict) else getattr(r, attr, None)
+        if strict and allowed is not None and not conv:
+            continue
         if visible(conv, allowed):
             out.append(r)
     return out

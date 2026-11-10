@@ -48,8 +48,8 @@ object Notify {
         })
         // v0.219 VOICE RING: the server rings her phone when a kaam is done and no call is live. Default sound
         // on purpose (no setSound) - the phone audibly rings, that is the point; she controls it like any channel.
-        m.createNotificationChannel(NotificationChannel(CH_RING, "Hoola bula rahi hai", NotificationManager.IMPORTANCE_HIGH).apply {
-            description = "Hoola khud call karti hai jab koi kaam pura ho jata hai"
+        m.createNotificationChannel(NotificationChannel(CH_RING, "Hoola is calling you", NotificationManager.IMPORTANCE_HIGH).apply {
+            description = "Hoola calls you by herself when a task is finished"
             enableVibration(true)
             vibrationPattern = longArrayOf(0, 350, 250, 350, 250, 350)
             lockscreenVisibility = Notification.VISIBILITY_PUBLIC
@@ -94,8 +94,8 @@ object Notify {
         val hangPi = PendingIntent.getBroadcast(ctx, 7, hang, piFlags())
         val b = builder(ctx, CH_CALL)
             .setSmallIcon(R.drawable.ic_stat_santosh)
-            .setContentTitle("Hoola se baat chal rahi hai")
-            .setContentText("Phone lock ho tab bhi sun raha hoon")
+            .setContentTitle("Talking with Hoola")
+            .setContentText("Listening even when the phone is locked")
             .setOngoing(true)
             .setUsesChronometer(true)
             .setWhen(System.currentTimeMillis())
@@ -103,7 +103,7 @@ object Notify {
             .setVisibility(Notification.VISIBILITY_PUBLIC)
             .setContentIntent(openApp(ctx, 8))
         @Suppress("DEPRECATION")
-        b.addAction(Notification.Action.Builder(0, "Call band karein", hangPi).build())
+        b.addAction(Notification.Action.Builder(0, "End call", hangPi).build())
         if (Build.VERSION.SDK_INT >= 31) b.setForegroundServiceBehavior(Notification.FOREGROUND_SERVICE_IMMEDIATE)
         return b.build()
     }
@@ -117,7 +117,16 @@ object Notify {
     }
 
     @Suppress("DEPRECATION")
-    fun message(ctx: Context, text: String, eventId: Long) {
+    /** v0.648 a tap opens one conversation (a call record from the Calls section) inside the app. */
+    const val ACTION_OPEN_CONV = "com.newtika.santosh.OPEN_CONV"
+
+    fun openConv(ctx: Context, conv: String): PendingIntent {
+        val i = Intent(ctx, MainActivity::class.java).setAction(ACTION_OPEN_CONV).putExtra("conv", conv)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        return PendingIntent.getActivity(ctx, 3 + (conv.hashCode() and 0xffff), i, piFlags())
+    }
+
+    fun message(ctx: Context, text: String, eventId: Long, conv: String = "") {
         if (text.isBlank()) return
         channels(ctx)
         val clean = text.replace(Regex("[*_#`]"), "")
@@ -127,7 +136,7 @@ object Notify {
             .setContentText(clean)
             .setStyle(Notification.BigTextStyle().bigText(clean))
             .setAutoCancel(true)
-            .setContentIntent(openApp(ctx, 2))
+            .setContentIntent(if (conv.isNotEmpty()) openConv(ctx, conv) else openApp(ctx, 2))
             .setCategory(Notification.CATEGORY_MESSAGE)
         if (Build.VERSION.SDK_INT < 26) b.setPriority(Notification.PRIORITY_HIGH).setDefaults(Notification.DEFAULT_ALL)
         nm(ctx).notify(MSG_BASE + (eventId % MSG_SLOTS).toInt(), b.build())
@@ -158,7 +167,7 @@ object Notify {
             .setFullScreenIntent(fullPi, true)
             .setContentIntent(fullPi)
             .setOngoing(true)
-            .addAction(Notification.Action.Builder(null, "Band karo", stopPi).build())
+            .addAction(Notification.Action.Builder(null, "Stop", stopPi).build())
         if (Build.VERSION.SDK_INT >= 26) b.setTimeoutAfter(10 * 60 * 1000L)
         if (Build.VERSION.SDK_INT < 26) {
             b.setPriority(Notification.PRIORITY_MAX)
@@ -182,8 +191,8 @@ object Notify {
         val pi = PendingIntent.getActivity(ctx, 7105, open, piFlags())
         val b = builder(ctx, CH_RING)
             .setSmallIcon(R.drawable.ic_stat_santosh)
-            .setContentTitle("Hoola bolna chahta hai")
-            .setContentText(reason.ifBlank { "Baat karne ke liye tap kijiye" })
+            .setContentTitle("Hoola wants to talk")
+            .setContentText(reason.ifBlank { "Tap to talk" })
             .setCategory(Notification.CATEGORY_CALL)
             .setVisibility(Notification.VISIBILITY_PUBLIC)
             .setFullScreenIntent(pi, true)

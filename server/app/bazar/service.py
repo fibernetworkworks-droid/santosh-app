@@ -315,28 +315,28 @@ def _open_action(out: dict[str, Any]) -> dict[str, Any] | None:
     if not isinstance(out, dict):
         return None
     if out.get("status") == "copy_pay":   # v0.120 app refuses links to a person: copy the UPI ID + open the app
-        return {"kind": "upi_copy", "url": "", "package": out.get("android_package") or "", "label": "UPI app kholiye",
+        return {"kind": "upi_copy", "url": "", "package": out.get("android_package") or "", "label": "Open UPI app",
                 "txn_ref": out.get("txn_ref") or "", "vpa": out.get("vpa") or "", "name": out.get("payee_name") or "",
                 "amount": out.get("amount") or "", "app": out.get("app") or ""}
     if out.get("intent_url"):
         return {"kind": "upi", "url": out["intent_url"], "package": out.get("android_package") or "",
-                "label": "UPI app kholiye", "txn_ref": out.get("txn_ref") or "", "vpa": out.get("vpa") or "",
+                "label": "Open UPI app", "txn_ref": out.get("txn_ref") or "", "vpa": out.get("vpa") or "",
                 "name": out.get("payee_name") or "", "amount": out.get("amount") or ""}
     if out.get("deep_link") or out.get("android_package"):
         return {"kind": "app", "url": out.get("deep_link") or "", "package": out.get("android_package") or "",
-                "label": f"{out.get('app', 'App')} kholiye"}
+                "label": f"Open {out.get('app', 'App')}"}
     if isinstance(out.get("open"), dict):  # handoff / reader packs: official site if verified, else Play Store search
         o, app = out["open"], out.get("app", "App")
         web = o.get("web") if o.get("web_verified") and str(o.get("web", "")).startswith("https://") else ""
         store = o.get("app_store") if str(o.get("app_store", "")).startswith("https://play.google.com/") else ""
         if web and store:
             return {"kind": "links", "links": [{"name": f"{app} official site", "url": web},
-                                               {"name": f"{app} app (Play Store)", "url": store}], "label": f"{app} kholiye"}
+                                               {"name": f"{app} app (Play Store)", "url": store}], "label": f"Open {app}"}
         if web or store:
             return {"kind": "app", "url": web or store, "package": "",
-                    "label": f"{app} official site kholiye" if web else f"{app} app dhoondhiye (Play Store)"}
+                    "label": f"Open {app} official site" if web else f"Find {app} app (Play Store)"}
     if out.get("share_links"):
-        label = "SOS: call ya WhatsApp" if out.get("sos_text") else "WhatsApp par bhejiye"
+        label = "SOS: call or WhatsApp" if out.get("sos_text") else "Send on WhatsApp"
         return {"kind": "links", "links": out["share_links"], "label": label}
     if out.get("payment_link"):
         return {"kind": "share", "text": out.get("share_text") or out["payment_link"], "label": "Link share kijiye"}
@@ -543,11 +543,11 @@ def decide(tenant_id: str, approval_id: str, decision: str, notify_ok: bool = Tr
         bus.publish(conv, "bazar_approval", card)   # the card resolves in place (chat + call) — hamesha
         if notify_ok:                               # v0.191 voice/text approval apni ek hi line bolti hai
             if outcome.get("error"):
-                notify(conv, f"{card['title']}: nahi ho paya. {outcome['error']}")
+                notify(conv, f"{card['title']}: could not be done. {outcome['error']}")
             elif decision == "reject":
-                notify(conv, f"Theek hai, '{card['title']}' cancel kar diya. Kuch order ya payment nahi hua.")
+                notify(conv, f"Okay, '{card['title']}' is cancelled. No order or payment was made.")
             else:
-                notify(conv, outcome.get("message") or f"'{card['title']}' ho gaya.")
+                notify(conv, outcome.get("message") or f"'{card['title']}' is done.")
     return {"status": ap.decision, "outcome": outcome, "open": act}
 
 
@@ -607,7 +607,7 @@ def voice_approve(tenant_id: str, conversation_id: str, text: str, pure_only: bo
             say = ("(System: yeh manzoori PAISE/OTP wali hai — bol se nahi hoti. Ek chhoti line mein batao: app ke card "
                    "par hi Approve dabana hoga; tumhe is step se aage nahi badhna.)")
         else:
-            say = "Paise wali manzoori card se hi hoti hai — app mein card khol kar 'Approve' dabaiye. Main us se aage nahi badha."
+            say = "Payments are approved only on the card - open the card in the app and tap Approve. I did not go ahead with it."
         return {"money": True, "say": say}
     said: list[str] = []
     for ap in pending[:1]:   # ek manzoori, ek haan
@@ -628,7 +628,7 @@ def voice_approve(tenant_id: str, conversation_id: str, text: str, pure_only: bo
             say = (f"(System: usne manzoori di — '{title}' wali manzoori approve ho gayi, kaam aage badh raha hai. Usne yeh "
                    f"bhi kaha: \"{text}\" — is baat ka jawab do.)")
     else:
-        say = f"Theek hai — '{title}' manzoor. Kaam aage badh raha hoon, poora hote hi bata dungi."
+        say = f"Okay - '{title}' is approved. I am carrying on and will tell you as soon as it is done."
     return {"approved": said, "pure": pure, "say": say}
 
 
@@ -691,6 +691,11 @@ def voice_tool_approve(tenant_id: str, conversation_id: str, heard: str = "") ->
                     "raha hai. Bas ek chhoti line bolo: 'manzoori mil gayi, kaam aage badh gaya'.)")}
 
 
+EXPIRED_SAY = "This card is too old; no order or payment was made."
+INTERRUPTED_SAY = ("This started when you said yes, but the server stopped midway - I am not sure whether the order / payment went through. "
+                   "Before trying again, check in that app or shop so it does not happen twice.")
+
+
 def expire_approvals(ttl_h: int = 24) -> int:
     """v0.179 a confirm card nobody tapped goes expired after the TTL (worker tick): her chat stops asking for a
     decision on the same card key. Nothing was ordered, nothing was paid."""
@@ -702,13 +707,24 @@ def expire_approvals(ttl_h: int = 24) -> int:
                                                 Approval.created_at < now() - timedelta(hours=max(1, int(ttl_h))))).all()
         for ap in rows:
             ap.decision, ap.decided_at = "expired", now()
-        cards = [(ap.conversation_id or "", card_of(ap, reg.lookup((ap.action or {}).get("pack_id", "")))) for ap in rows]
+        cards = [(ap.conversation_id or "", card_of(ap, reg.lookup((ap.action or {}).get("pack_id", ""))), EXPIRED_SAY)
+                 for ap in rows]
+        # v0.657 PAKKA KAAM: a card whose Haan began running but never finished (server restart mid-order) is NOT
+        # "nothing was ordered" - it may have reached the shop. Said plainly, once; never tappable again.
+        stuck = s.scalars(select(Approval).where(Approval.decision == "executing",
+                                                 Approval.decided_at < now() - timedelta(minutes=30))).all()
+        for ap in stuck:
+            ap.decision = "interrupted"
+        cards += [(ap.conversation_id or "", card_of(ap, reg.lookup((ap.action or {}).get("pack_id", ""))), INTERRUPTED_SAY)
+                  for ap in stuck]
     n = 0
-    for conv, card in cards:
+    for conv, card, say in cards:
         if not conv:
             continue
         try:
-            bus.publish(conv, "bazar_approval", {**card, "result": {"message": "Yeh card kaafi purana ho gaya; kuch order ya payment nahi hua."}})
+            bus.publish(conv, "bazar_approval", {**card, "result": {"message": say}})
+            if say is INTERRUPTED_SAY:
+                notify(conv, f"{card.get('title') or 'Card'}: {say}")
             n += 1
         except Exception:  # noqa: BLE001
             log.exception("bazar approval expiry publish failed")
@@ -917,7 +933,7 @@ def unlink(tenant_id: str, pack_id: str) -> bool:
 # ---------------------------------------------------------------- MCP servers the user adds
 def mcp_directory(query: str = "", field: str = "", limit: int = 8) -> dict[str, Any]:
     if core_settings().connect_clean:   # v0.303 the 63,700-server directory is off: most of it never worked for her
-        return {"servers": [], "note": "MCP directory band hai. Apps ke liye composio_apps action=list query=<naam> "
+        return {"servers": [], "note": "The MCP directory is off. For apps use composio_apps action=list query=<name> "
                                        "(her own account in ~1,600 apps); ek server ka https pata ho to bazar_mcp action=add."}
     if not query and not field:
         return directory.stats()
@@ -1040,8 +1056,8 @@ def mcp_connect_featured(tenant_id: str, fid: str, url: str = "", key: str = "",
         except ValueError as e:
             raise ToolError(str(e))
         if key and not key.startswith("sbp_"):
-            raise ToolError("Supabase personal access token 'sbp_' se shuru hota hai (dashboard > Account > Access Tokens). "
-                            "Service role / secret key MCP ke liye nahi.")
+            raise ToolError("A Supabase personal access token starts with 'sbp_' (dashboard > Account > Access Tokens). "
+                            "The service role / secret key is not for MCP.")
         if not key and _saved_key(tenant_id, "featured:" + c["id"]):
             key = _saved_key(tenant_id, "featured:" + c["id"])
     reused = False
@@ -1065,16 +1081,15 @@ def mcp_connect_featured(tenant_id: str, fid: str, url: str = "", key: str = "",
         out["settings"] = {"toolsets": extra.get("X-MCP-Toolsets", "").split(","), "readonly": bool(extra.get("X-MCP-Readonly")),
                            "lockdown": bool(extra.get("X-MCP-Lockdown")), "token": "developer_sahayak" if reused else "own"}
         if key.startswith(("ghp_", "gho_")) and not reused and not kept:
-            out["note"] = ("Yeh classic token hai (saare repos par). Fine-grained token behtar hai: sirf chune hue repos, kam "
+            out["note"] = ("This is a classic token (all repos). A fine-grained token is better: only chosen repos, fewer "
                            "permissions. Settings > Developer settings > Fine-grained tokens.")
     if kind == "supabase":
         st = featured.supabase_settings(url)
         out["settings"] = {**st, "login": "token" if key else "sign_in"}
         if not st["project"]:
-            out["note"] = ("Saare projects khule hain. Ek project chun lijiye (project ref) taaki Hoola baaki projects na "
-                           "chhue." + ("" if st["readonly"] else " Read-only bhi band hai: production data par dhyaan."))
+            out["note"] = ("All projects are open. Pick one project (project ref) so Hoola does not touch the others." + ("" if st["readonly"] else " Read-only is also off: be careful with production data."))
         elif not st["readonly"]:
-            out["note"] = "Read-only band hai: SQL / migration sirf aapke tap se chalenge. Production par read-only behtar hai."
+            out["note"] = "Read-only is off: SQL / migrations will run only on your tap. Read-only is better for production."
     return out
 
 
@@ -1125,7 +1140,7 @@ def mcp_add(tenant_id: str, url: str, name: str = "", ref: str = "", key: str = 
         if result == "ok":
             out.update(status="ready", say=f"{row.name} is connected. Use bazar_find or bazar_run with pack_id {row.id}.")
         elif result == "auth" and row.auth == "oauth" and pack_status(s, user, pack) == "ready":
-            out.update(status="ready", say=f"{row.name} settings badle; sign-in wahi hai. pack_id {row.id}.")
+            out.update(status="ready", say=f"{row.name} settings changed; the sign-in is the same. pack_id {row.id}.")
         elif result == "auth" and row.auth != "key":
             row.auth = "oauth"
             out.update(status="needs_link", say="This server needs a sign-in. A Link button is shown; after the user signs "
@@ -1163,7 +1178,7 @@ def mcp_set_key(tenant_id: str, pack_id: str, key: str, header: str = "") -> dic
 def _my_custom(s, tenant_id: str, pack_id: str):
     row = s.get(CustomMcp, pack_id)
     if not row or row.user_id != tenant_id or row.status != "active":
-        raise ToolError("Yeh MCP server aapki list mein nahi hai.")
+        raise ToolError("This MCP server is not in your list.")
     return row
 
 
@@ -1196,7 +1211,7 @@ def mcp_find_tools(tenant_id: str, pack_id: str, query: str = "", limit: int = 1
         else:
             pack = registry().lookup(pack_id)
             if pack is None or pack.executor != "mcp" or pack_status(s, user, pack) != "ready":
-                raise ToolError("Yeh MCP server aapki list mein ready nahi hai (bazar_mcp action=list dekho).")
+                raise ToolError("This MCP server is not ready in your list (see bazar_mcp action=list).")
         try:
             specs = executors()["mcp"].tool_specs(pack, _ctx(s, user, None))
         except ToolError as e:
@@ -1253,7 +1268,7 @@ def _conv_of_txn(s, txn: Transaction) -> str:
 def latest_conversation(s, tenant_id: str) -> str:
     """v0.158 the chat she is in (was: the newest chat created, often an empty console chat)."""
     from .. import convs
-    cid = convs.current(tenant_id)
+    cid = convs.notice_chat(tenant_id)   # v0.714 her updates chat outside a turn
     if cid:
         return cid
     c = s.scalars(select(CoreConversation).where(CoreConversation.tenant_id == tenant_id)
@@ -1265,7 +1280,7 @@ def payment_confirmed(txn_ref: str, ok: bool, provider_ref: str = "") -> dict[st
     with session() as s:
         txn = Runner(s, get_settings(), registry(), executors()).payment_confirmed(txn_ref, ok, provider_ref)
         conv = _conv_of_txn(s, txn)
-        reply = (txn.meta or {}).get("reply") or ("Payment nahi hua. Kuch kata nahi; dobara try karein?" if not ok else "")
+        reply = (txn.meta or {}).get("reply") or ("The payment did not go through. Nothing was charged; try again?" if not ok else "")
         out = {"txn_ref": txn.txn_ref, "status": txn.status}
     if conv and reply:
         notify(conv, reply)
@@ -1345,8 +1360,8 @@ def shop_orders(shop_id: str, tenant_id: str | None, merchant_token: str | None,
 
 
 ORDER_STATUS = {"accepted", "ready", "delivered", "cancelled"}
-STATUS_HI = {"accepted": "order accept kar liya", "ready": "order taiyaar hai", "delivered": "order deliver ho gaya",
-             "cancelled": "order cancel kar diya"}
+STATUS_HI = {"accepted": "accepted your order", "ready": "your order is ready", "delivered": "delivered your order",
+             "cancelled": "cancelled your order"}
 
 
 def update_order(shop_id: str, order_id: str, status: str | None, paid: bool, tenant_id: str | None,
@@ -1361,7 +1376,7 @@ def update_order(shop_id: str, order_id: str, status: str | None, paid: bool, te
             if status not in ORDER_STATUS:
                 raise ToolError("status must be accepted, ready, delivered or cancelled")
             o.status = status
-            msgs.append(f"{shop.name} ne aapka {STATUS_HI[status]}.")
+            msgs.append(f"{shop.name} has {STATUS_HI[status]}.")
         txn = s.scalars(select(Transaction).where(Transaction.txn_ref == o.txn_ref)).first() if o.txn_ref else None
         conv = _conv_of_txn(s, txn) if txn else latest_conversation(s, o.user_id)
         ref, already = o.txn_ref, o.payment_status == "paid"
@@ -1403,15 +1418,26 @@ def _advance(r: Reminder) -> None:
     step = {"daily": dt.timedelta(days=1), "weekly": dt.timedelta(days=7)}.get(r.repeat)
     if step:
         r.due_at += step
-    elif r.repeat == "monthly":
-        m = r.due_at.month % 12 + 1
-        y = r.due_at.year + (r.due_at.month == 12)
-        r.due_at = r.due_at.replace(year=y, month=m, day=min(r.due_at.day, 28))
-    elif r.repeat == "yearly":
-        try:
-            r.due_at = r.due_at.replace(year=r.due_at.year + 1)
-        except ValueError:
-            r.due_at = r.due_at.replace(year=r.due_at.year + 1, day=28)
+    elif r.repeat in ("monthly", "yearly"):
+        # v0.667 the bill due on the 31st keeps the 31st (it was clamped to the 28th for ever); a 29 Feb birthday keeps
+        # 29 Feb in a leap year. The anchor lives in meta (no new column on bz_reminders).
+        import calendar
+        meta = dict(r.meta or {})
+        day = int(meta.get("day") or r.due_at.day)
+        month0 = int(meta.get("month") or r.due_at.month)
+        meta.update({"day": day, "month": month0})
+        r.meta = meta
+        nowu0 = dt.datetime.now(dt.timezone.utc).replace(tzinfo=None)
+        d = r.due_at
+        while True:
+            if r.repeat == "monthly":
+                y, m = d.year + (d.month == 12), d.month % 12 + 1
+            else:
+                y, m = d.year + 1, month0
+            d = d.replace(year=y, month=m, day=min(day, calendar.monthrange(y, m)[1]))
+            if d > nowu0:              # catch up after downtime: once, never a backlog
+                break
+        r.due_at = d
     else:
         r.done = True
     # never fire a backlog after downtime: jump daily/weekly repeats past "now"
@@ -1421,21 +1447,39 @@ def _advance(r: Reminder) -> None:
             r.due_at += step
 
 
-ICON = {"bill": "Bill yaad dilana", "medicine": "Dawai ka samay", "birthday": "Aaj khaas din", "event": "Event", "reminder": "Yaad dilana"}
+ICON = {"bill": "Bill reminder", "medicine": "Medicine time", "birthday": "A special day today", "event": "Event", "reminder": "Reminder"}
 
 
 def fire_due_reminders() -> int:
+    """v0.667 a medicine / bill / birthday reminder behaves like a Hoola reminder: a live call SAYS it (the 'reminder'
+    event), no call = her phone rings, a late one (downtime) is said as late and never rings at night. It used to be a
+    chat line only. Advanced (committed) before it is said, so a crash never says it twice."""
     nowu = dt.datetime.now(dt.timezone.utc).replace(tzinfo=None)
     fired = []
     with session() as s:
         rows = s.scalars(select(Reminder).where(Reminder.done.is_(False), Reminder.due_at <= nowu).limit(50)).all()
         for r in rows:
             conv = latest_conversation(s, r.user_id)
-            fired.append((conv, f"{ICON.get(r.kind, 'Yaad dilana')}: {r.text}"))
+            fired.append((conv, r.user_id, r.id, r.kind, r.text, r.due_at))
             _advance(r)
-    for conv, text in fired:
-        if conv:
-            notify(conv, text)
+    from .. import worker as _w
+    from ..events import bus as _bus
+    for conv, tenant, rid, kind, text, due in fired:
+        if not conv:
+            continue
+        head = ICON.get(kind, "Yaad dilana")
+        due_u = due.replace(tzinfo=dt.timezone.utc) if due.tzinfo is None else due
+        late = _w._late_by(due_u) >= _w.REMINDER_LATE_S
+        if late:
+            notify(conv, f"{head} (late - this was for {_w._local_hhmm(tenant, due_u)}, I was down then): {text}")
+        else:
+            notify(conv, f"{head}: {text}")
+        try:
+            _bus.publish(conv, "reminder", {"id": f"bz:{rid}", "text": f"{head}: {text}", **({"late": True} if late else {})})
+            if not (late and _w._quiet_now(tenant)):
+                _w._ring_for_reminder(tenant, conv, f"bz:{rid}", f"{head}: {text}")
+        except Exception:
+            log.exception("bazar reminder voice / ring failed")
     return len(fired)
 
 
@@ -1472,7 +1516,7 @@ def catalog(tenant_id: str) -> dict[str, Any]:
 def _cmp():
     from . import composio
     if not composio.configured():
-        raise ToolError("Composio apps abhi server par chalu nahi hain (COMPOSIO_API_KEY nahi hai).")
+        raise ToolError("Composio apps are not on at the server right now (COMPOSIO_API_KEY is missing).")
     return composio
 
 
@@ -1495,7 +1539,7 @@ def composio_connect(tenant_id: str, toolkit: str, conversation_id: str = "") ->
         user = ensure_user(s, tenant_id)
         st_now = cmp.status(s, user.id, toolkit)
         if st_now == "ready":
-            return {"status": "ready", "pack_id": cmp.PREFIX + toolkit, "url": "", "say": "Yeh app pehle se juda hai."}
+            return {"status": "ready", "pack_id": cmp.PREFIX + toolkit, "url": "", "say": "This app is already connected."}
         if st_now == "needs_key":
             name = cmp.toolkits().get(toolkit, (toolkit, ""))[0]
             try:
@@ -1503,8 +1547,8 @@ def composio_connect(tenant_id: str, toolkit: str, conversation_id: str = "") ->
             except cmp.ComposioError as e:
                 raise ToolError(str(e))
             return {"status": "needs_key", "pack_id": cmp.PREFIX + toolkit, "url": "", "fields": fields,
-                    "say": f"{name} apni API key se judta hai: Hoola app > Connect > MCP servers > Apps > {name} > "
-                           f"'Key daaliye' mein apni key daaliye. Key chat mein kabhi mat bhejiye."}
+                    "say": f"{name} connects with its own API key: Hoola app > Connect > MCP servers > Apps > {name} > "
+                           f"'Add key' - enter your key there. Never send a key in chat."}
         if st_now == "needs_setup":
             name = cmp.toolkits().get(toolkit, (toolkit, ""))[0]
             return {"status": "needs_setup", "pack_id": cmp.PREFIX + toolkit, "url": "",
@@ -1515,8 +1559,8 @@ def composio_connect(tenant_id: str, toolkit: str, conversation_id: str = "") ->
             raise ToolError(str(e))
     if conversation_id:
         bus.publish(conversation_id, "bazar_open", {"kind": "app", "url": link["url"], "package": "",
-                                                    "label": f"{link['name']} se jodiye", "pack": link["name"],
-                                                    "message": f"Apne {link['name']} account se sign-in kijiye."})
+                                                    "label": f"Connect {link['name']}", "pack": link["name"],
+                                                    "message": f"Sign in with your {link['name']} account."})
     return {"status": "open_link", "pack_id": link["pack_id"], "url": link["url"],
             "say": f"An Open button is in the chat: she signs in to her own {link['name']} account there (official "
                    f"{link['name']} page, no Composio account needed). Then {link['name']} is ready."}
@@ -1534,7 +1578,7 @@ def composio_key(tenant_id: str, toolkit: str, values: dict[str, Any]) -> dict[s
             raise ToolError(str(e))
         conv = latest_conversation(s, user.id) if out["status"] == "ready" else ""
     if conv:
-        notify(conv, f"{out['name']} jud gaya. Ab {out['name']} ke kaam bataiye.")
+        notify(conv, f"{out['name']} is connected. Now tell me what to do in {out['name']}.")
     return out
 
 
@@ -1542,11 +1586,11 @@ def composio_tools(tenant_id: str, toolkit: str, query: str = "") -> dict[str, A
     cmp = _cmp()
     toolkit = (toolkit or "").strip().lower()
     if toolkit not in cmp.toolkits():
-        raise ToolError(f"'{toolkit}' Hoola ki app list mein nahi hai. composio_apps action=list query=<naam> se dhoondhiye.")
+        raise ToolError(f"'{toolkit}' is not in Hoola's app list. Search with composio_apps action=list query=<name>.")
     try:
         items = cmp.tool_list(toolkit, query=str(query or "")[:120], important=not query, limit=10 if query else 25)
     except cmp.ComposioError as e:
-        raise ToolError(f"Composio se tools nahi mile: {e}")
+        raise ToolError(f"Could not get tools from Composio: {e}")
     tools = [cmp.spec_of(t, toolkit) for t in items]
     for t in tools:
         if t["tier"] >= 2:
@@ -1571,7 +1615,7 @@ def composio_callback(state: str) -> tuple[str, bool]:
             raise ToolError(str(e))
         conv = latest_conversation(s, uid) if ok else ""
     if conv:
-        notify(conv, f"{name} jud gaya. Ab {name} ke kaam bataiye.")
+        notify(conv, f"{name} is connected. Now tell me what to do in {name}.")
     return name, ok
 
 
@@ -1581,5 +1625,5 @@ def composio_expired(ca: str) -> bool:
         got = composio.on_expired(s, ca)
         conv = latest_conversation(s, got[0]) if got else ""
     if got and conv:
-        notify(conv, f"{got[1]} ka sign-in khatam ho gaya. '{got[1]} jodo' boliye, ek baar phir sign-in kar lijiye.")
+        notify(conv, f"The {got[1]} sign-in has ended. Say 'connect {got[1]}' and sign in once more.")
     return bool(got)

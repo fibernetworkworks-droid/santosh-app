@@ -92,6 +92,8 @@ def _publish(tenant: str, kind: str, payload: dict, conv: str = "") -> None:
 
 
 def _work(r: AppProject, phase: str, label: str, note: str = "", items: list | None = None) -> None:
+    from . import activity as _ACT               # v0.693 APP STUDIO: every progress line is also a timed step
+    _ACT.on_work(r.tenant_id, r.id, phase, label, note, items)
     data: dict[str, Any] = {"site": r.name or "App", "note": _tidy(note, 90), "url": preview_url(r, short=True)}
     if items is not None:
         data["sections"] = items[:8]
@@ -372,7 +374,14 @@ def view(r: AppProject, full: bool = True) -> dict[str, Any]:
          "preview": preview_url(r), "error": r.error, "queued": len(_j(r.queued, [])), "language": r.language,
          "approved": bool(r.approved_hash), "updated_at": r.updated_at.isoformat() if r.updated_at else "",
          "model": _model_label(), "art": _art_view(plan.get("art"))}
+    _bld = _j(r.android, {})                     # v0.693 APP STUDIO: build state at a glance on every card
+    v["builds"] = {"android": {k: _bld.get(k) for k in ("status", "build", "now")},
+                   "ios": {k: (_bld.get("ios") or {}).get(k) for k in ("status", "build", "now")},
+                   "store": (_bld.get("store") or {}).get("status")}
     if full:
+        from . import activity as _ACT
+        v["activity"] = _ACT.read(r.tenant_id, r.id)
+        v["conv"] = r.conv or ""
         checks = _j(r.checks, {})
         v.update({"brief": r.brief, "plan": {"screens": [{"id": s, "label": (plan.get("labels") or {}).get(s, s),
                                                           "design": (plan.get("designs") or {}).get(s, ""),

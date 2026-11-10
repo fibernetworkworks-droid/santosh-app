@@ -79,14 +79,14 @@ class _McpToolsState extends State<_McpTools> {
             IconButton(onPressed: _loading ? null : _load, icon: const Icon(Icons.refresh_rounded, color: C.muted)),
           ]),
           Text(
-            _loading ? 'Server se tools la raha hoon…' : '$on / ${_tools.length} chalu. Band tool ${widget.app.aName} ko dikhta hi nahi. '
-                '"Pehle poochho" = har baar confirm card.',
+            _loading ? 'Loading tools from the server…' : '$on / ${_tools.length} on. A tool that is off is not shown to ${widget.app.aName} at all. '
+                '"Ask first" = a confirm card every time.',
             style: const TextStyle(color: C.muted, fontSize: 12.5),
           ),
           if (_caution)
             const Padding(
               padding: EdgeInsets.only(top: 4),
-              child: Text('Paise / code wala server: har tool par aapka tap lagega.', style: TextStyle(color: C.warn, fontSize: 12)),
+              child: Text('Paid / code server: every tool needs your tap.', style: TextStyle(color: C.warn, fontSize: 12)),
             ),
           const SizedBox(height: 10),
           Expanded(
@@ -95,7 +95,7 @@ class _McpToolsState extends State<_McpTools> {
                 : _err != null
                     ? Center(child: Text(_err!, textAlign: TextAlign.center, style: const TextStyle(color: C.bad)))
                     : _tools.isEmpty
-                        ? const Center(child: Text('Is server ne koi tool nahi bataya.', style: TextStyle(color: C.muted)))
+                        ? const Center(child: Text('This server did not list any tools.', style: TextStyle(color: C.muted)))
                         : ListView.separated(
                             itemCount: _tools.length,
                             separatorBuilder: (_, __) => const SizedBox(height: 8),
@@ -132,7 +132,7 @@ class _McpToolsState extends State<_McpTools> {
             const SizedBox(width: 6),
             Expanded(
               child: Text(
-                locked ? 'Pehle poochho (bhejna / mitana / paise: hamesha)' : (ask ? 'Pehle poochho' : 'Khud chalayega (sirf padhta hai)'),
+                locked ? 'Ask first (sending / deleting / money: always)' : (ask ? 'Ask first' : 'Runs by itself (read-only)'),
                 style: TextStyle(color: ask ? C.warn : C.faint, fontSize: 12),
               ),
             ),

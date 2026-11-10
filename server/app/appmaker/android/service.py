@@ -69,7 +69,11 @@ def _put(app_id: str, **kw) -> dict[str, Any]:
         st.update(kw)
         r.android = json.dumps(st, ensure_ascii=False, default=str)
         r.updated_at = now()
-        return st
+        tenant = r.tenant_id
+    if "now" in kw or "status" in kw:            # v0.693 APP STUDIO: the build's own lines as timed steps
+        from .. import activity as _ACT
+        _ACT.on_build(tenant, app_id, "android", kw, st.get("states"))
+    return st
 
 
 def _states(app_id: str, upd: dict[str, str], now_line: str = "") -> None:
@@ -82,6 +86,10 @@ def _states(app_id: str, upd: dict[str, str], now_line: str = "") -> None:
         if now_line:
             st["now"] = now_line
         r.android = json.dumps(st, ensure_ascii=False, default=str)
+        tenant = r.tenant_id
+    if now_line:
+        from .. import activity as _ACT
+        _ACT.on_build(tenant, app_id, "android", {"now": now_line}, ss)
 
 
 # ---------------------------------------------------------------- the app's own preview signing key (same for every build)
@@ -275,6 +283,12 @@ def run(app_id: str) -> None:
 
 
 def _run(r: AppProject) -> None:
+    from .. import ops as OPS                              # v0.546 what this build really costs lands on HER app's bill
+    with OPS.meter(r, note="build"):
+        _run_inner(r)
+
+
+def _run_inner(r: AppProject) -> None:
     st = state(r)
     n = int(st.get("build") or 1)
     ctx = AS._ctx(r)

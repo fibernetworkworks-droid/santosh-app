@@ -27,10 +27,16 @@ ADS_TOOLS = [
         "WhatsApp) | messenger | instagram (DMs) | website (link) | boost (post_id of her Page post), text, headline, "
         "description, cities (names, else all India), radius_km, age_min, age_max, gender all|men|women, platforms "
         "both|facebook|instagram, daily (her currency a day), days. Nothing reaches Meta: she adds the photo, checks, "
-        "creates it PAUSED and taps Start herself in the app (Social Desk > Facebook & Instagram ads); say that."),
+        "creates it PAUSED and taps Start herself in the app (Social Desk > Facebook & Instagram ads); say that. "
+        "action=google_draft (owner only): a NEW Google ad draft in Hoola - kind search (keywords = what people type on "
+        "Google, negatives, headlines up to 15 x 30 letters, descriptions 2-4 x 90, link, cities) | pmax (Performance Max "
+        "over Search / YouTube / Maps / Gmail: headlines 3-5 x 30, long_headline, descriptions, link, cities; she adds "
+        "photos + logo in the app) | youtube (video_id); daily, days. Nothing reaches Google: she checks, creates it "
+        "PAUSED and taps Start in the app (Social Desk > Google ads). action=google_ideas: seeds (words) and/or link, "
+        "cities -> Google Keyword Planner ideas (monthly searches, competition, bid range), read-only."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["import", "fetch", "plan", "done", "copies", "live", "result", "sale", "settings",
-                                               "meta_forget", "meta_draft"]},
+                                               "meta_forget", "meta_draft", "google_draft", "google_ideas"]},
          "file_id": {"type": "string"}, "platform": {"type": "string"}, "start": {"type": "string"}, "end": {"type": "string"},
          "days": {"type": "integer"}, "extra": {"type": "number"}, "change": {"type": "string"}, "brief": {"type": "string"},
          "campaign": {"type": "string"}, "n": {"type": "integer"}, "lang": {"type": "string"}, "landing": {"type": "string"},
@@ -45,7 +51,11 @@ ADS_TOOLS = [
          "text": {"type": "string"}, "headline": {"type": "string"}, "description": {"type": "string"},
          "link": {"type": "string"}, "post_id": {"type": "string"}, "cities": {"type": "array", "items": {"type": "string"}},
          "radius_km": {"type": "integer"}, "age_min": {"type": "integer"}, "age_max": {"type": "integer"},
-         "gender": {"type": "string"}, "platforms": {"type": "string"}, "daily": {"type": "integer"}},
+         "gender": {"type": "string"}, "platforms": {"type": "string"}, "daily": {"type": "integer"},
+         "kind": {"type": "string", "enum": ["search", "pmax", "youtube"]}, "keywords": {"type": "array", "items": {"type": "string"}},
+         "negatives": {"type": "array", "items": {"type": "string"}}, "headlines": {"type": "array", "items": {"type": "string"}},
+         "descriptions": {"type": "array", "items": {"type": "string"}}, "long_headline": {"type": "string"},
+         "video_id": {"type": "string"}, "seeds": {"type": "array", "items": {"type": "string"}}},
          "required": ["action"]}},
     {"name": "ads_dekho", "description": (
         "Read her ads work (nothing changes). what=report (days, platform: spend, results, cost per result vs her target, "
@@ -58,7 +68,7 @@ ADS_TOOLS = [
          "required": ["what"]}},
 ]
 ADS_LABELS = {"ads": "Ads ka hisaab dekh raha hoon", "ads_dekho": "Ads report dekh raha hoon"}
-_OWNER_ONLY = {"settings", "meta_forget", "meta_draft"}
+_OWNER_ONLY = {"settings", "meta_forget", "meta_draft", "google_draft"}
 
 
 def _s(v: Any) -> str:
@@ -71,7 +81,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
     t, conv = ctx.tenant_id, ctx.conversation_id
     try:
         if action in _OWNER_ONLY and actor != "owner" and not actor.startswith("approved:"):
-            raise ToolError("Yeh sirf owner kar sakti hain.")
+            raise ToolError("Only the owner can do this.")
         if action == "import":
             r = A.import_report(t, _s(a.get("file_id")), platform=_s(a.get("platform")), start=_s(a.get("start")),
                                 end=_s(a.get("end")), conv=conv)
@@ -110,11 +120,27 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
                 d = M.new_draft(t, _s(a.get("goal")) or "whatsapp", **{k: a[k] for k in keys if a.get(k) is not None})
             except M.MetaAdsError as e:
                 raise ToolError(str(e))
-            return {"draft": d, "say": "Draft Hoola mein bana - Meta mein abhi kuch nahi gaya. App mein Social Desk > Facebook & "
-                    "Instagram ads par photo jodiye, 'Check with Meta', phir 'Create (paused)' aur Start - sab aapke tap par."}
+            return {"draft": d, "say": "Draft made in Hoola - nothing has gone to Meta yet. In the app, open Social Desk > Facebook & "
+                    "Instagram ads, add a photo, 'Check with Meta', then 'Create (paused)' and Start - all on your tap."}
+        if action in ("google_draft", "google_ideas"):
+            from ..ads import gads as G
+            try:
+                if action == "google_ideas":
+                    return G.keyword_ideas(t, a.get("seeds") or a.get("keywords") or [], _s(a.get("link")),
+                                           a.get("cities") or [], _s(a.get("lang")) or "en")
+                keys = ("headlines", "descriptions", "long_headline", "keywords", "negatives", "cities", "daily", "days")
+                kw = {k: a[k] for k in keys if a.get(k) is not None}
+                if a.get("link"):
+                    kw["final_url"] = _s(a.get("link"))
+                d = G.new_draft(t, _s(a.get("video_id")), _s(a.get("kind")) or "search", **kw)
+            except G.GAdsError as e:
+                raise ToolError(str(e))
+            return {"draft": d, "say": "Draft made in Hoola - nothing has gone to Google yet. In the app, open Social Desk > Google ads "
+                    "'Check with Google', then 'Create (paused)' and Start - all on your tap."}
     except A.AdsError as e:
         raise ToolError(str(e))
-    raise ToolError("action = import | fetch | plan | done | copies | live | result | sale | settings | meta_forget | meta_draft")
+    raise ToolError("action = import | fetch | plan | done | copies | live | result | sale | settings | meta_forget | meta_draft "
+                    "| google_draft | google_ideas")
 
 
 def _change_id(tenant: str, ref: str) -> str:
@@ -122,7 +148,7 @@ def _change_id(tenant: str, ref: str) -> str:
     for c in A.changes(tenant, limit=200):
         if ref and (c["id"] == ref or c["number"].lower() == ref.lower()):
             return c["id"]
-    raise ToolError(f"Badlav '{ref}' nahi mila.")
+    raise ToolError(f"Change '{ref}' was not found.")
 
 
 def _short(rep: dict) -> dict:

@@ -34,7 +34,8 @@ Return JSON: {"summary": "2-4 short lines in her language (Hinglish ok) - what w
              "update": own|admin, "delete": own|admin}, "fields": [{"key", "label", "type", "required", "options", "to"}]}],
  "fields": [{"coll", "key", "label", "type", "options", "to"}],
  "logic":  {...the spec below...}}
-Field types: text long_text number phone email date choice yes_no photo location file ref (ref needs "to": a list key).
+Field types: text long_text number phone email date choice yes_no photo location file video url ref (ref needs "to": a list
+key; video = an uploaded lesson / clip that plays in the app; url = a https link, a YouTube link plays as a video).
 A field may carry "private": true = only staff / the owner see it (e.g. internal notes, cost price, a teacher's remark).
 New fields on EXISTING lists are never required. Staff-only lists use rules admin/admin/admin/admin.
 
@@ -62,6 +63,15 @@ THE SPEC ("logic"):
    ONLY when a formula cannot say it. Body language: let x = expr / x = expr / if c { } else if c { } else { } /
    for item in list { } / break / continue / return expr / fail("message"). A function reads ONLY its params. Write 2-4 tests.
 - labels: {"list": "field that names a row"}
+- gates: [{"coll": "lessons", "pass": "enrollments", "via": "course", "pass_field": "course", "match": {"status": "Active"}}]
+   = members-only CONTENT: a member reads a lessons row ONLY while she owns an enrollments row with status Active for the
+   same course (staff always). Omit via / pass_field for a site-wide membership (any Active membership opens every row).
+   Use for courses / lessons / premium content; their videos follow the same lock.
+- subscription_list: "memberships"  = her AutoPay plans keep ONE row per member there (fields plan + status with options
+   Active / Ended, rules create admin, read own), written ONLY by the payment gateway's events - a gate can read it.
+- documents: [{"coll": "attempts", "title": "Certificate of Completion", "lines": ["This certifies that {{me_name}} ...",
+   "Score {{score}}%"], "signer": "Course Director", "when": "score >= quiz.pass_mark"}] = a PDF made from a row (a
+   certificate) only for whoever may read that row and only when `when` holds; every value comes from the row.
 
 EXPRESSIONS: field names of that list directly; a ref field gives the parent row (customer.city); a relation name gives
 the children list (lines; lines.amount = list of amounts); me.role / me.id / me.name; id; created.
@@ -170,7 +180,8 @@ def draft(r: AppProject, words: str, ask=None) -> dict[str, Any]:
     ask = ask or (lambda system, prompt: AI.ask_json(system, prompt, 9000))
     be = _be(r)
     prompt = _prompt(r, words, be)
-    with _DRAFT_LOCK:
+    from .. import ops as OPS                               # v0.546 the brain's draft costs her money: on this app's bill
+    with OPS.meter(r, note="logic"), _DRAFT_LOCK:
         out = ask(AUTHOR_SYSTEM, prompt)
         if not isinstance(out, dict):
             raise W.AppError("Logic ka draft nahi bana; dobara koshish kijiye.", 502)

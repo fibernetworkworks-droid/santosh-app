@@ -29,7 +29,7 @@ def test_call_starts_from_the_chat_checkpoint(cm):  # noqa: F811
         s.add(yaad.YaadSummary(conversation_id=c, tenant_id="default", upto_id=1, exchanges=10, text="- purana saar"))
     vb = yaad.voice_block("default", c)
     assert "IS CHAT KA SAAR" in vb and "Invoice_March_v3.pdf" in vb and "purana saar" not in vb
-    recent = vb.split("Haal ki baatein", 1)[1]
+    recent = vb.split("Recent messages", 1)[1]
     assert "kaam number 11 karo" in recent and "kaam number 2 karo" not in recent   # only what came AFTER it
     assert len(vb) <= yaad.CALL_MAX_WITH_CHECKPOINT + 200
 
@@ -40,7 +40,7 @@ def test_call_without_checkpoint_is_as_before(cm):  # noqa: F811
     with session() as s:
         s.add(yaad.YaadSummary(conversation_id=c, tenant_id="default", upto_id=1, exchanges=10, text="- purana saar"))
     vb = yaad.voice_block("default", c)
-    assert "Purani baaton ka saar:\n- purana saar" in vb and "IS CHAT KA SAAR" not in vb
+    assert "Summary of older messages:\n- purana saar" in vb and "IS CHAT KA SAAR" not in vb
 
 
 def test_big_checkpoint_never_pushes_out_the_rest(cm):  # noqa: F811
@@ -49,7 +49,7 @@ def test_big_checkpoint_never_pushes_out_the_rest(cm):  # noqa: F811
     set_client(Model(summary="S" * 7900))
     asyncio.run(cm.run(c, "default", "manual"))
     vb = yaad.voice_block("default", c)
-    assert "Haal ki baatein" in vb and vb.count("S" * 100) <= yaad.CALL_CHECKPOINT_CHARS // 100
+    assert "Recent messages" in vb and vb.count("S" * 100) <= yaad.CALL_CHECKPOINT_CHARS // 100
 
 
 # ------------------------------------------------------------------ 2. the quick lane reads it too
@@ -108,4 +108,4 @@ def test_new_chat_greets_with_her_avatars_name(env):
     cid = client.post("/api/conversations").json()["id"]
     with session() as s:
         g = s.query(Message).filter(Message.conversation_id == cid).first()
-    assert g.display.startswith("Namaskar! Main Riya hoon") and "Santosh" not in g.display
+    assert g.display.startswith("Hello! I am Riya") and "Santosh" not in g.display

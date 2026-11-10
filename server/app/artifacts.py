@@ -110,8 +110,47 @@ def share_url(token: str) -> str:
 
 
 def public(a: Artifact) -> dict[str, Any]:
+    st = getattr(a, "started_at", None)
     return {"id": a.id, "title": a.title, "version": a.version, "status": a.status, "summary": a.summary,
-            "error": a.error, "updated_at": (a.updated_at or a.created_at).isoformat(), "shared": bool(a.share_token)}
+            "error": a.error, "updated_at": (a.updated_at or a.created_at).isoformat(), "shared": bool(a.share_token),
+            # v0.725 PAGE CARD: the real step the builder is on, when it started (the card's clock) and how long it took
+            "stage": getattr(a, "stage", "") or "", "started_at": st.isoformat() if st else "",
+            "build_s": getattr(a, "build_s", None), "now": now().isoformat()}
+
+
+def _stage(aid: str, stage: str) -> None:
+    """v0.725 move the build to its next real step and tell the card."""
+    with session() as s:
+        a = s.get(Artifact, aid)
+        if a is None:
+            return
+        a.stage = stage
+        s.flush()
+        snap, conv = public(a), a.conversation_id
+    if conv:
+        try:
+            bus.publish(conv, "artifact", snap)
+        except Exception:
+            log.exception("artifact stage event failed")
+
+
+def _why(e: BaseException) -> str:
+    """v0.725 a failure in plain words for the card (was the Python class name)."""
+    if isinstance(e, (asyncio.TimeoutError, TimeoutError)):
+        return "The page maker took too long and was stopped."
+    if isinstance(e, ValueError):
+        return "The page came back incomplete twice."
+    return "The page maker had a problem."
+
+
+def _took(a: Artifact) -> int | None:
+    st = getattr(a, "started_at", None)
+    if not st:
+        return None
+    if st.tzinfo is None:
+        from datetime import timezone
+        st = st.replace(tzinfo=timezone.utc)
+    return max(0, int((now() - st).total_seconds()))
 
 
 def _emit(a: Artifact) -> None:
@@ -155,8 +194,9 @@ async def _llm(system: str, prompt: str, max_tokens: int = 16000) -> str:
     from .agent import llm
     if st.anthropic_api_key:
         from .agent.santosh import get_client
-        msg = await get_client().messages.create(model=st.anthropic_model, max_tokens=max_tokens, system=system,
-                                                 messages=[{"role": "user", "content": prompt}])
+        from .agent import door   # v0.560 EK DARWAZA
+        msg = await door.acreate(get_client(), door.shape("page", st.anthropic_model, max_tokens, system,
+                                                          [{"role": "user", "content": prompt}]))
         return "".join(getattr(b, "text", "") for b in msg.content)
     brain = llm.cheap_brain()
     if not brain:
@@ -203,6 +243,7 @@ async def _build(aid: str, request: str, data: str = "") -> None:
         if a is None:
             return
         a.status, a.error, a.updated_at = "building", "", now()
+        a.stage, a.started_at, a.build_s = "writing", now(), None      # v0.725 the card's step + clock
         prev_version = a.version
         s.flush()
         snap = public(a)
@@ -218,10 +259,13 @@ async def _build(aid: str, request: str, data: str = "") -> None:
         prompt = f"{prompt}\n\nCURRENT PAGE:\n{current}"
     try:
         reply = await _llm(system, prompt)
+        _stage(aid, "checking")
         try:
             title, summary, page = parse(reply)
         except ValueError:   # one retry with a nudge about the format
+            _stage(aid, "writing")
             reply = await _llm(system, prompt + "\n\nReturn TITLE, SUMMARY and the complete HTML document.")
+            _stage(aid, "checking")
             title, summary, page = parse(reply)
         with session() as s:
             a = s.get(Artifact, aid)
@@ -230,8 +274,20 @@ async def _build(aid: str, request: str, data: str = "") -> None:
             n = a.version + 1
             s.add(ArtifactVersion(artifact_id=aid, version=n, html=page, note=request.strip()[:300]))
             a.version, a.title, a.summary, a.status, a.error, a.updated_at = n, title, summary, "ready", "", now()
+            a.stage, a.build_s = "done", _took(a)
             s.flush()
             s.expunge(a)
+    except asyncio.CancelledError:      # v0.725 her Stop on the card
+        with session() as s:
+            a = s.get(Artifact, aid)
+            if a is not None:
+                a.status = "ready" if a.version else "failed"
+                a.stage, a.build_s, a.error, a.updated_at = "stopped", _took(a), "Stopped by you.", now()
+                s.flush()
+                s.expunge(a)
+        if a is not None:
+            _emit(a)
+        raise
     except Exception as e:
         log.exception("artifact build failed")
         with session() as s:
@@ -239,11 +295,24 @@ async def _build(aid: str, request: str, data: str = "") -> None:
             if a is None:
                 return
             a.status = "ready" if a.version else "failed"
-            a.error = f"Ye version nahi ban paya: {type(e).__name__}"[:300]
+            a.stage, a.build_s = "failed", _took(a)
+            a.error = _why(e)[:300]
             a.updated_at = now()
             s.flush()
             s.expunge(a)
     _emit(a)
+
+
+def stop(tenant: str, aid: str) -> bool:
+    """v0.725 her Stop on a page card: cancel the running build (the last ready version stays)."""
+    a = get(tenant, aid)
+    if a is None:
+        return False
+    t = _building.get(aid)
+    if not t or t.done():
+        return False
+    t.cancel()
+    return True
 
 
 def start_build(aid: str, request: str, data: str = "") -> asyncio.Task:
@@ -281,6 +350,211 @@ async def make(tenant: str, conversation_id: str, request: str, artifact_id: str
             pass
     a = get(tenant, a.id) or a
     return public(a)
+
+
+# ----------------------------------------------------------------------------- direct (parity Phase 6)
+# The chat model writes the page itself in its `artifact` tool call (create / update / rewrite), like Claude's
+# artifacts: no second builder call, every change a new version, an edit is a small exact replacement.
+KINDS = ("html", "markdown", "svg", "mermaid")
+MAX_SOURCE = MAX_HTML
+MARKED_JS = "https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"
+MERMAID_JS = "https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"
+_DOCTYPE = re.compile(r"<!doctype html|<html", re.I)
+
+
+class EditError(ValueError):
+    """A direct write that cannot be applied (the message says exactly why and what to send instead)."""
+
+
+def _strip_fences(text: str) -> str:
+    t = (text or "").strip()
+    t = re.sub(r"^```[\w-]*[ \t]*\n", "", t)
+    return re.sub(r"\n?```\s*$", "", t).strip()
+
+
+def _doc(title: str, body: str, head: str = "") -> str:
+    t = htmlmod.escape(title or "Page")
+    return ("<!doctype html>\n<html lang=\"en\"><head><meta charset=\"utf-8\">"
+            "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">"
+            f"<title>{t}</title><style>:root{{color-scheme:light dark}}body{{font:16px/1.6 system-ui,sans-serif;"
+            "max-width:760px;margin:0 auto;padding:20px 16px}pre{white-space:pre-wrap}img,svg{max-width:100%}"
+            f"</style>{head}</head><body>{body}</body></html>")
+
+
+def page_of(kind: str, source: str, title: str) -> str:
+    """The servable HTML for what the chat model wrote - the same cleaning the builder's reply gets (code fences
+    off, one complete document, the size cap); markdown / svg / mermaid are wrapped into a page. Serving is the
+    same sandboxed CSP + bridge as every page."""
+    src = _strip_fences(source)
+    if kind == "html":
+        m = _DOCTYPE.search(src)
+        if m:
+            page = src[m.start():]
+            end = page.lower().rfind("</html>")
+            page = page[:end + 7] if end != -1 else page + "\n</html>"
+        else:   # a fragment: put it in a document
+            page = _doc(title, src)
+    elif kind == "svg":
+        m = re.search(r"<svg\b", src, re.I)
+        if not m:
+            raise EditError("An svg artifact must contain an <svg> element.")
+        page = _doc(title, src[m.start():], "<style>body{display:grid;place-items:center;min-height:90vh}</style>")
+    elif kind == "markdown":
+        page = _doc(title, f'<article id="md"><pre>{htmlmod.escape(src)}</pre></article>',
+                    f'<script src="{MARKED_JS}"></script><script>addEventListener("DOMContentLoaded",function(){{'
+                    'try{var a=document.getElementById("md");a.innerHTML=marked.parse(a.textContent)}catch(e){}});</script>')
+    elif kind == "mermaid":
+        page = _doc(title, f'<pre class="mermaid">{htmlmod.escape(src)}</pre>',
+                    f'<script src="{MERMAID_JS}"></script><script>addEventListener("DOMContentLoaded",function(){{'
+                    'try{mermaid.initialize({startOnLoad:true,theme:matchMedia("(prefers-color-scheme: dark)")'
+                    '.matches?"dark":"default"})}catch(e){}});</script>')
+    else:
+        raise EditError(f"Unknown type '{kind}'. Use one of: {', '.join(KINDS)}.")
+    if len(page) > MAX_HTML:
+        raise EditError(f"The page is too large ({len(page):,} characters; the limit is {MAX_HTML:,}).")
+    return page
+
+
+def current_source(aid: str) -> tuple[int, str, str]:
+    """(version, kind, source) of the newest version - for a builder version the source is its HTML."""
+    with session() as s:
+        v = s.scalars(select(ArtifactVersion).where(ArtifactVersion.artifact_id == aid)
+                      .order_by(ArtifactVersion.version.desc())).first()
+        if v is None:
+            return 0, "html", ""
+        return v.version, (v.kind or "html"), (v.source if v.source is not None else v.html)
+
+
+def source_of(aid: str, version: int) -> tuple[str, str] | None:
+    """(kind, source) of one version (a builder version: html, its page)."""
+    with session() as s:
+        v = s.scalars(select(ArtifactVersion).where(ArtifactVersion.artifact_id == aid,
+                                                    ArtifactVersion.version == version)).first()
+        return None if v is None else ((v.kind or "html"), (v.source if v.source is not None else v.html))
+
+
+def apply_edits(source: str, edits: list[dict], title: str = "", version: int = 0) -> str:
+    """Exact old -> new replacements; each old_str must occur exactly once (like a code edit). All or none."""
+    out = source
+    where = f" in v{version} of '{title}'" if version else ""
+    for i, e in enumerate(edits, 1):
+        e = e if isinstance(e, dict) else {}
+        old = str(e.get("old_str") or "")
+        new = "" if e.get("new_str") is None else str(e.get("new_str"))
+        tag = f"Edit {i}: " if len(edits) > 1 else ""
+        if not old:
+            raise EditError(f"{tag}old_str is empty. Copy the exact text to replace from the current version.")
+        n = out.count(old)
+        if n == 0:
+            raise EditError(f"{tag}old_str was not found{where}. Copy it exactly from the current version (spaces "
+                            f"and line breaks matter), or use action=rewrite with the full new content. "
+                            f"Not found: {old[:120]!r}")
+        if n > 1:
+            raise EditError(f"{tag}old_str occurs {n} times{where}; include more of the surrounding text so it "
+                            f"occurs exactly once. Ambiguous: {old[:120]!r}")
+        out = out.replace(old, new, 1)
+    return out
+
+
+def write(tenant: str, conversation_id: str, action: str, *, artifact_id: str = "", title: str = "",
+          kind: str = "", content: str | None = None, edits: list[dict] | None = None, note: str = "") -> dict[str, Any]:
+    """create | update | rewrite: store what the chat model wrote as a new version and tell the page card.
+    Raises EditError with a plain reason the model can act on (nothing is stored then)."""
+    action = (action or "").strip().lower()
+    if action not in ("create", "update", "rewrite"):
+        raise EditError("action must be create, update or rewrite.")
+    kind = (kind or "").strip().lower()
+    if kind and kind not in KINDS:
+        raise EditError(f"Unknown type '{kind}'. Use one of: {', '.join(KINDS)}.")
+    t0 = time.monotonic()
+    if action == "create":
+        if not (content or "").strip():
+            raise EditError("content is empty: write the whole page in content.")
+        kind = kind or "html"
+        title = (title or "").strip()[:120] or _guess_title(re.sub(r"<[^>]+>", " ", content)[:200])
+        src = _strip_fences(content)
+        page = page_of(kind, src, title)            # refused BEFORE a row exists
+        if len(src) > MAX_SOURCE:
+            raise EditError(f"The content is too large ({len(src):,} characters).")
+        with session() as s:
+            row = Artifact(tenant_id=tenant, conversation_id=conversation_id or "", title=title, status="building",
+                           stage="writing", started_at=now())
+            s.add(row)
+            s.flush()
+            aid = row.id
+        first = get(tenant, aid)
+        if first is not None:
+            _emit(first)                            # the card shows Writing at once
+    else:
+        if not artifact_id:
+            raise EditError("artifact_id is required for update / rewrite (artifact_list gives the ids).")
+        a = get(tenant, artifact_id)
+        if a is None:
+            raise EditError("That page wasn't found (artifact_list gives the ids).")
+        aid = a.id
+        t = _building.get(aid)
+        if t and not t.done():
+            raise EditError("A new version of this page is being built right now; wait for it, then edit.")
+        ver, cur_kind, cur = current_source(aid)
+        if not ver:
+            raise EditError("This page has no version yet to change.")
+        kind = kind or cur_kind
+        title = (title or "").strip()[:120] or a.title
+        if action == "update":
+            if not edits:
+                raise EditError("update needs old_str and new_str (or edits: [{old_str, new_str}, ...]).")
+            src = apply_edits(cur, edits, a.title, ver)
+        else:
+            if not (content or "").strip():
+                raise EditError("content is empty: rewrite needs the whole new page in content.")
+            src = _strip_fences(content)
+        if len(src) > MAX_SOURCE:
+            raise EditError(f"The content is too large ({len(src):,} characters).")
+        page = page_of(kind, src, title)
+    with session() as s:
+        row = s.get(Artifact, aid)
+        if conversation_id and row.conversation_id != conversation_id:
+            row.conversation_id = conversation_id
+        n = row.version + 1
+        s.add(ArtifactVersion(artifact_id=aid, version=n, html=page, kind=kind, source=src,
+                              note=(note or action)[:300]))
+        row.version, row.title, row.status, row.error, row.updated_at = n, title, "ready", "", now()
+        if action == "create" or not row.summary:
+            row.summary = ("Document" if kind == "markdown" else "Diagram" if kind == "mermaid"
+                           else "Picture" if kind == "svg" else "Page") + " written in the chat"
+        if action != "create":
+            row.started_at = now()
+        row.stage, row.build_s = "done", max(0, int(round(time.monotonic() - t0)))
+        s.flush()
+        s.expunge(row)
+    _emit(row)
+    return {**public(row), "kind": kind, "chars": len(src)}
+
+
+def undo(tenant: str, aid: str) -> dict[str, Any] | None:
+    """The version before the newest becomes the newest again - as a NEW version (history is never rewritten)."""
+    a = get(tenant, aid)
+    if a is None:
+        return None
+    if a.version < 2:
+        raise EditError("There is no earlier version to go back to.")
+    t = _building.get(aid)
+    if t and not t.done():
+        raise EditError("A new version is being built right now.")
+    with session() as s:
+        prev = s.scalars(select(ArtifactVersion).where(ArtifactVersion.artifact_id == aid,
+                                                       ArtifactVersion.version == a.version - 1)).first()
+        if prev is None:
+            raise EditError("The earlier version was not found.")
+        row = s.get(Artifact, aid)
+        n = row.version + 1
+        s.add(ArtifactVersion(artifact_id=aid, version=n, html=prev.html, kind=prev.kind, source=prev.source,
+                              note=f"Undo: back to v{prev.version}"))
+        row.version, row.status, row.stage, row.error, row.updated_at = n, "ready", "done", "", now()
+        s.flush()
+        s.expunge(row)
+    _emit(row)
+    return public(row)
 
 
 # ----------------------------------------------------------------------------- serving
@@ -339,7 +613,8 @@ def detail(tenant: str, aid: str) -> dict[str, Any] | None:
     with session() as s:
         vs = s.scalars(select(ArtifactVersion).where(ArtifactVersion.artifact_id == aid)
                        .order_by(ArtifactVersion.version.desc())).all()
-        versions = [{"version": v.version, "created_at": v.created_at.isoformat(), "note": v.note} for v in vs]
+        versions = [{"version": v.version, "created_at": v.created_at.isoformat(), "note": v.note,
+                     "kind": v.kind or "html", "direct": v.source is not None} for v in vs]
     return {**public(a), "versions": versions, "share_url": share_url(a.share_token)}
 
 

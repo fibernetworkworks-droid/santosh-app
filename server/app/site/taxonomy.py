@@ -55,17 +55,17 @@ GOALS: dict[str, dict[str, Any]] = {
 
 # ---------------------------------------------------------------- design styles (10)
 STYLES: dict[str, dict[str, Any]] = {
-    "editorial_calm": {"label": "Editorial calm", "fonts": "fraunces_inter", "moods": ["calm", "earthy"],
+    "editorial_calm": {"label": "Editorial calm", "fonts": "dmserif_dm", "moods": ["calm", "earthy"],
                        "radius": 4, "grid": "asymmetric 12-column, generous white space, large serif headlines",
                        "motion": ["reveal-fade-soft", "split-words-soft", "image-zoom-slow", "underline-draw"],
                        "heroes": ["editorial_split", "big_type", "photo_caption"],
-                       "do": "magazine feel: big serif headings, small caps labels, thin rules, real photos with captions",
+                       "do": "magazine feel: big serif headings, thin rules, real photos with captions",
                        "dont": "no gradients, no bouncy motion, no stock-looking icons"},
-    "bold_modern": {"label": "Bold modern", "fonts": "space_dm", "moods": ["bold", "contrast"],
+    "bold_modern": {"label": "Bold modern", "fonts": "bricolage_dm", "moods": ["bold", "contrast"],
                     "radius": 14, "grid": "strong blocks, oversized type, full-bleed colour bands",
-                    "motion": ["split-chars-strong", "reveal-up-strong", "marquee-fast", "magnetic-buttons", "count-up"],
-                    "heroes": ["kinetic_type", "full_bleed_photo", "marquee_hero"],
-                    "do": "huge confident headlines, one loud accent colour, chunky buttons, marquee strip",
+                    "motion": ["split-chars-strong", "reveal-up-strong", "magnetic-buttons", "count-up"],
+                    "heroes": ["kinetic_type", "full_bleed_photo", "split_photo"],
+                    "do": "huge confident headlines, one loud accent colour, chunky buttons, full-bleed colour bands",
                     "dont": "no thin pastel text, no clutter"},
     "warm_local": {"label": "Warm local", "fonts": "baloo_mukta", "moods": ["warm", "festive"],
                    "radius": 18, "grid": "friendly rounded cards, hand-drawn style dividers, photos of the real place",
@@ -77,7 +77,7 @@ STYLES: dict[str, dict[str, Any]] = {
                     "radius": 2, "grid": "dark canvas, wide margins, slow reveals, gold hairlines",
                     "motion": ["reveal-blur-slow", "parallax-soft", "image-zoom-slow", "line-draw-gold"],
                     "heroes": ["video_loop", "full_bleed_photo", "spotlight_product"],
-                    "do": "restraint: few words, big images, thin gold lines, letter-spaced labels",
+                    "do": "restraint: few words, big images, thin gold lines, generous space",
                     "dont": "no bright colours, no crowded sections, no fast motion"},
     "playful_bright": {"label": "Playful bright", "fonts": "sora_nunito", "moods": ["bright", "candy"],
                        "radius": 24, "grid": "bouncy cards, stickers, tilted elements, colour blocks",
@@ -85,11 +85,11 @@ STYLES: dict[str, dict[str, Any]] = {
                        "heroes": ["illustrated_scene", "sticker_collage", "kinetic_type"],
                        "do": "fun for kids / youth / food: bright blocks, playful shapes, emoji-free illustrations",
                        "dont": "no dark heavy palettes, no long paragraphs"},
-    "minimal_swiss": {"label": "Minimal Swiss", "fonts": "inter_inter", "moods": ["mono", "neutral"],
+    "minimal_swiss": {"label": "Minimal Swiss", "fonts": "archivo_dm", "moods": ["mono", "neutral"],
                       "radius": 0, "grid": "strict grid, black / white + one colour, lots of air",
                       "motion": ["reveal-fade-soft", "line-draw", "sticky-progress"],
                       "heroes": ["big_type", "grid_index", "editorial_split"],
-                      "do": "precision: aligned grid, numbered sections, one accent colour",
+                      "do": "precision: aligned grid, strict type scale, one accent colour",
                       "dont": "no shadows, no rounded blobs, no decoration"},
     "festive_traditional": {"label": "Festive traditional", "fonts": "yatra_hind", "moods": ["festive", "warm"],
                             "radius": 12, "grid": "ornamental borders drawn by Hoola, rangoli / toran motifs, rich colours",
@@ -97,11 +97,11 @@ STYLES: dict[str, dict[str, Any]] = {
                             "heroes": ["ornament_frame", "photo_stack", "shopfront_photo"],
                             "do": "Indian celebration feel: maroon / marigold / gold, Devanagari display type, motifs Hoola draws",
                             "dont": "no religious symbols unless she asks, no copied artwork"},
-    "tech_gradient": {"label": "Tech gradient", "fonts": "jakarta_inter", "moods": ["tech", "gradient"],
-                      "radius": 16, "grid": "glass cards, gradient glows, product shots, dark or light",
-                      "motion": ["reveal-up-strong", "tilt-cards", "glow-follow", "count-up", "gradient-shift"],
-                      "heroes": ["gradient_glow", "device_mockup", "3d_object"],
-                      "do": "modern SaaS / ISP / IT look: gradient glows, crisp icons, numbers that count up",
+    "tech_gradient": {"label": "Tech gradient", "fonts": "urbanist_mukta", "moods": ["tech", "gradient"],
+                      "radius": 16, "grid": "clean cards, product shots, one strong accent, dark or light",
+                      "motion": ["reveal-up-strong", "tilt-cards", "count-up", "line-draw"],
+                      "heroes": ["device_mockup", "3d_object", "split_photo"],
+                      "do": "modern SaaS / ISP / IT look: crisp icons, real product shots, numbers that count up (hers only)",
                       "dont": "no clip-art, no heavy textures"},
     "organic_natural": {"label": "Organic natural", "fonts": "lora_dm", "moods": ["green", "earthy"],
                         "radius": 28, "grid": "soft blobs, leaf / grain textures drawn in SVG, earthy photos",
@@ -109,9 +109,9 @@ STYLES: dict[str, dict[str, Any]] = {
                         "heroes": ["full_bleed_photo", "blob_photo", "illustrated_scene"],
                         "do": "calm and natural: greens, sand, clay; rounded blobs; wellness, farm, organic food",
                         "dont": "no neon, no hard edges everywhere"},
-    "corporate_trust": {"label": "Corporate trust", "fonts": "manrope_inter", "moods": ["trust", "blue"],
+    "corporate_trust": {"label": "Corporate trust", "fonts": "manrope_dm", "moods": ["trust", "blue"],
                         "radius": 8, "grid": "clean columns, certificates, numbers, clear navigation",
-                        "motion": ["reveal-up-soft", "count-up", "stagger-cards", "logos-marquee"],
+                        "motion": ["reveal-up-soft", "count-up", "stagger-cards"],
                         "heroes": ["split_photo", "stats_hero", "full_bleed_photo"],
                         "do": "serious and credible: navy / teal, certificates and registration numbers, team, process",
                         "dont": "no playful stickers, no slang in headings"},
@@ -459,6 +459,10 @@ FONTS: dict[str, dict[str, Any]] = {
     "josefin_lato": {"head": "Josefin Sans", "body": "Lato", "deva": "Mukta"},
     "spectral_inter": {"head": "Spectral", "body": "Inter", "deva": "Martel"},
     "kalam_mukta": {"head": "Kalam", "body": "Mukta", "deva": "Kalam"},
+    # v0.606 SAAF NAZAR: pairs with their own character for the style defaults (none of Impeccable's overused faces)
+    "bricolage_dm": {"head": "Bricolage Grotesque", "body": "DM Sans", "deva": "Mukta"},
+    "archivo_dm": {"head": "Archivo", "body": "DM Sans", "deva": "Mukta"},
+    "manrope_dm": {"head": "Manrope", "body": "DM Sans", "deva": "Mukta"},
     "palanquin_hind": {"head": "Palanquin Dark", "body": "Palanquin", "deva": "Palanquin"},
 }
 
@@ -732,6 +736,56 @@ INDUSTRIES: dict[str, dict[str, Any]] = {
 }
 
 
+# ---------------------------------------------------------------- v0.714 APP SCREENS: the building blocks of a portal / web app
+# The section library above is marketing-only (hero / services / pricing / reviews), so any plan built from it came out as
+# a landing page - even a school portal. These are the SCREENS a real system is made of (what Lovable / Emergent build
+# first): each is drawn as a working app screen filled with clearly-marked SAMPLE data (data-sample + a "Sample data"
+# chip) so she sees the real product before any data exists. Sample rows never go live: the launch check counts them.
+SCREENS: dict[str, dict[str, Any]] = {
+    "screen_dashboard": {"label": "Dashboard", "screen": True, "variants": [
+        "4 KPI tiles with a number + small trend, then today's list and a recent-activity feed",
+        "left column of KPI tiles, right a chart card and a 'needs your action' list",
+        "greeting line + quick action buttons + 3 cards of the user's own items"]},
+    "screen_table": {"label": "Data table", "screen": True, "variants": [
+        "search box + status filter chips + a table of rows with status pills and a row action, paging under it",
+        "dense table with sortable column heads, a bulk-select column and an 'Add new' button",
+        "card list on phone that becomes a table on desktop, each row opening its record"]},
+    "screen_form": {"label": "Form", "screen": True, "variants": [
+        "multi-step form with a step bar, labelled fields, help text and a clear submit",
+        "two-column form grouped in panels with a summary card at the side",
+        "short one-screen form with field validation hints and a success state"]},
+    "screen_detail": {"label": "Record detail", "screen": True, "variants": [
+        "header with name + status pill + actions, field panels below and a timeline of changes",
+        "tabs (Details / Activity / Files) with related lists inside",
+        "summary card left, related rows (payments, visits, marks) right"]},
+    "screen_board": {"label": "Board", "screen": True, "variants": [
+        "kanban columns per workflow state with cards showing who / when / priority",
+        "swimlanes by owner with cards moving left to right",
+        "compact columns with counts in each header and a 'new' card at the top"]},
+    "screen_calendar": {"label": "Calendar", "screen": True, "variants": [
+        "week view with booked slots as coloured blocks and free slots tappable",
+        "month grid with dots per day and the chosen day's list beside it",
+        "today's agenda list with time, who and status, plus a mini month"]},
+    "screen_approvals": {"label": "Approvals queue", "screen": True, "variants": [
+        "list of pending items, each with what / who / when and Approve / Reject buttons",
+        "inbox style: list left, the selected item's details + decision right",
+        "grouped by type with counts and a reason box for rejections"]},
+    "screen_signin": {"label": "Sign-in", "screen": True, "variants": [
+        "role cards (who are you?) then Hoola's sign-in box; no password field drawn by hand",
+        "split panel: what you can do inside on the left, Hoola's sign-in on the right",
+        "centred card with the portal name, a one-line purpose and Hoola's sign-in"]},
+    "screen_settings": {"label": "Settings", "screen": True, "variants": [
+        "side list of setting groups, the chosen group's fields and toggles on the right",
+        "stacked panels (profile, notifications, team) with save per panel",
+        "simple list of toggles and choices with a short line under each"]},
+}
+SECTIONS.update(SCREENS)
+
+
+def is_screen(t: Any) -> bool:
+    return isinstance(t, str) and t in SCREENS
+
+
 def check() -> list[str]:
     """Self-check of the fixed parts (used by tests and the library build)."""
     bad: list[str] = []
@@ -739,7 +793,7 @@ def check() -> list[str]:
         bad.append("goals != 10")
     if len(STYLES) != 10:
         bad.append("styles != 10")
-    if sum(len(v["variants"]) for v in SECTIONS.values()) != 300:
+    if sum(len(v["variants"]) for k, v in SECTIONS.items() if k not in SCREENS) != 300:
         bad.append("section designs != 300")
     if len(HEROES) != 24:
         bad.append("heroes != 24")
@@ -747,8 +801,8 @@ def check() -> list[str]:
         bad.append("motion presets != 60")
     if len(PALETTES) != 50:
         bad.append(f"palettes != 50 ({len(PALETTES)})")
-    if len(FONTS) != 30:
-        bad.append("font pairs != 30")
+    if len(FONTS) != 33:                     # v0.606 +3 pairs with their own character (style defaults)
+        bad.append("font pairs != 33")
     if len(INDUSTRIES) != 40:
         bad.append(f"industries != 40 ({len(INDUSTRIES)})")
     for k, st in STYLES.items():

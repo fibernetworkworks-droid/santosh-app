@@ -26,7 +26,7 @@ void _snack(BuildContext c, String t) {
 }
 
 Future<Map<String, String>?> _form(BuildContext context, String title, List<(String, String)> fields,
-    {String ok = 'Aage', Map<String, String> initial = const {}}) async {
+    {String ok = 'Continue', Map<String, String> initial = const {}}) async {
   final c = {for (final (k, _) in fields) k: TextEditingController(text: initial[k] ?? '')};
   final res = await showDialog<bool>(
     context: context,
@@ -42,7 +42,7 @@ Future<Map<String, String>?> _form(BuildContext context, String title, List<(Str
         ]),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Rehne do')),
+        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Cancel')),
         TextButton(onPressed: () => Navigator.pop(d, true), child: Text(ok)),
       ],
     ),
@@ -103,20 +103,20 @@ class _PropagentScreenState extends State<PropagentScreen> {
   }
 
   Future<void> _newListing() async {
-    final f = await _form(context, 'Nayi listing', const [
-      ('words', 'Property ke baare mein (jaise: 2BHK flat bikri ke liye)'),
+    final f = await _form(context, 'New listing', const [
+      ('words', 'About the property (e.g. 2BHK flat for sale)'),
       ('purpose', 'sale / rent / lease'),
-      ('price', 'Daam (malik ka bataya) - jaise 52 lakh'),
-      ('rent', 'Kiraya / mahina (kiraye ke liye)'),
+      ('price', 'Price (as told by the owner) - e.g. 52 lakh'),
+      ('rent', 'Rent / month (for rentals)'),
       ('carpet_sqft', 'Carpet area (sq ft)'),
-      ('locality', 'Ilaka'),
-      ('city', 'Shehar'),
-      ('address', 'Pura pata (public nahi hota)'),
-      ('owner_name', 'Malik ka naam'),
-      ('owner_phone', 'Malik ka phone'),
-      ('project', 'Project ka naam (ho to)'),
-      ('rera_project_no', 'RERA project no (naya project ho to)'),
-    ], ok: 'Banao');
+      ('locality', 'Locality'),
+      ('city', 'City'),
+      ('address', 'Full address (not made public)'),
+      ('owner_name', 'Owner name'),
+      ('owner_phone', 'Owner phone'),
+      ('project', 'Project name (if any)'),
+      ('rera_project_no', 'RERA project no. (for a new project)'),
+    ], ok: 'Create');
     if (f == null) return;
     final body = <String, dynamic>{...f};
     if (f['carpet_sqft'] != null) body['carpet_sqft'] = _n(f['carpet_sqft']);
@@ -139,12 +139,12 @@ class _PropagentScreenState extends State<PropagentScreen> {
       .then((_) => _load());
 
   Future<void> _newLead() async {
-    final f = await _form(context, 'Naya graahak', const [
-      ('name', 'Naam'),
+    final f = await _form(context, 'New customer', const [
+      ('name', 'Name'),
       ('phone', 'Phone'),
-      ('words', 'Kya chahiye (jaise: 2BHK Gorakshan Road 40-55 lakh)'),
-      ('source', 'Kahan se: walk_in / call / portal / referral / whatsapp / cold'),
-    ], ok: 'Jodo');
+      ('words', 'What they want (e.g. 2BHK Gorakshan Road 40-55 lakh)'),
+      ('source', 'Source: walk_in / call / portal / referral / whatsapp / cold'),
+    ], ok: 'Add');
     if (f == null) return;
     final r = await _run('POST', '/api/propagent/leads', f);
     final id = _s(_m(r?['lead'])['id']);
@@ -164,18 +164,18 @@ class _PropagentScreenState extends State<PropagentScreen> {
       ]),
       floatingActionButton: switch (_tab) {
         1 => FloatingActionButton.extended(onPressed: _newListing, icon: const Icon(Icons.add_home_rounded), label: const Text('Listing')),
-        2 => FloatingActionButton.extended(onPressed: _newLead, icon: const Icon(Icons.person_add_rounded), label: const Text('Graahak')),
+        2 => FloatingActionButton.extended(onPressed: _newLead, icon: const Icon(Icons.person_add_rounded), label: const Text('Customer')),
         _ => null,
       },
       bottomNavigationBar: NavigationBar(
         selectedIndex: _tab,
         onDestinationSelected: (i) => setState(() => _tab = i),
         destinations: const [
-          NavigationDestination(icon: Icon(Icons.today_rounded), label: 'Aaj'),
+          NavigationDestination(icon: Icon(Icons.today_rounded), label: 'Today'),
           NavigationDestination(icon: Icon(Icons.home_work_rounded), label: 'Listings'),
-          NavigationDestination(icon: Icon(Icons.people_alt_rounded), label: 'Graahak'),
+          NavigationDestination(icon: Icon(Icons.people_alt_rounded), label: 'Customers'),
           NavigationDestination(icon: Icon(Icons.handshake_rounded), label: 'Deals'),
-          NavigationDestination(icon: Icon(Icons.tune_rounded), label: 'Niyam'),
+          NavigationDestination(icon: Icon(Icons.tune_rounded), label: 'Rules'),
         ],
       ),
       body: d == null
@@ -198,9 +198,9 @@ class _PropagentScreenState extends State<PropagentScreen> {
     final com = _m(day['commission']);
     return [
       Glass(child: Text(_s(day['say']), style: const TextStyle(fontSize: 15, height: 1.35))),
-      if (_list(day['visits']).isNotEmpty) _section('Aaj ki site visit'),
+      if (_list(day['visits']).isNotEmpty) _section('Today\'s site visits'),
       for (final v in _list(day['visits'])) PropagentVisitCard(app: widget.app, data: {'visit': v}),
-      if (_list(d['cards']).any((c) => _s(c['status']) == 'waiting')) _section('Aapki haan ke liye'),
+      if (_list(d['cards']).any((c) => _s(c['status']) == 'waiting')) _section('For your approval'),
       for (final c in _list(d['cards']).where((c) => _s(c['status']) == 'waiting'))
         Padding(padding: const EdgeInsets.only(bottom: 8), child: PropagentCardCard(app: widget.app, data: {'card': c}, onDone: _load)),
       if (_list(day['follow_ups']).isNotEmpty) _section('Follow up'),
@@ -210,7 +210,7 @@ class _PropagentScreenState extends State<PropagentScreen> {
             subtitle: Text('${_s(l['next_what'])} · ${_s(l['next_at'])}'),
             onTap: () => _openLead(_s(l['id']))),
       if (com['due'] != null && (com['due'] as num) > 0) ...[
-        _section('Commission baaki'),
+        _section('Commission pending'),
         for (final p in _list(com['pending'])) ListTile(title: Text('${_s(p['deal'])} · ${_s(p['due_text'])}'), subtitle: Text(_s(p['listing']))),
       ],
     ];
@@ -241,7 +241,7 @@ class _PropagentScreenState extends State<PropagentScreen> {
               ),
             ),
           ),
-        if (_list(d['listings']).isEmpty) const Caption('Abhi koi listing nahi. Neeche "Listing" dabaiye ya chat mein bataiye.'),
+        if (_list(d['listings']).isEmpty) const Caption('No listings yet. Press "Listing" below or tell me in chat.'),
       ];
 
   List<Widget> _leads(Map<String, dynamic> d) => [
@@ -252,7 +252,7 @@ class _PropagentScreenState extends State<PropagentScreen> {
             subtitle: Text(_s(l['need_text'])),
             onTap: () => _openLead(_s(l['id'])),
           ),
-        if (_list(d['leads']).isEmpty) const Caption('Koi graahak nahi.'),
+        if (_list(d['leads']).isEmpty) const Caption('No customers.'),
       ];
 
   List<Widget> _deals(Map<String, dynamic> d) => [
@@ -263,7 +263,7 @@ class _PropagentScreenState extends State<PropagentScreen> {
             subtitle: Text('${_s(x['lead_name'])} · ${_s(x['status_label'])}'),
             onTap: () => _openDeal(_s(x['id'])),
           ),
-        if (_list(d['deals']).isEmpty) const Caption('Deal graahak ke page se banti hai (pasand aayi listing).'),
+        if (_list(d['deals']).isEmpty) const Caption('A deal is made from the customer\'s page (a listing they liked).'),
       ];
 
   List<Widget> _niyam(Map<String, dynamic> d) {
@@ -272,31 +272,31 @@ class _PropagentScreenState extends State<PropagentScreen> {
     return [
       Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(_s(st['business']).isEmpty ? 'Business ka naam daaliye' : _s(st['business']), style: const TextStyle(fontWeight: FontWeight.w800)),
+          Text(_s(st['business']).isEmpty ? 'Enter the business name' : _s(st['business']), style: const TextStyle(fontWeight: FontWeight.w800)),
           Text('RERA agent: ${_s(st['rera_agent_no']).isEmpty ? '—' : _s(st['rera_agent_no'])}'
-              '${_s(st['rera_valid_until']).isEmpty ? '' : ' · ${_s(st['rera_valid_until'])} tak'}'),
-          if (st['rera_expired'] == true) const Text('RERA registration khatam: renew kijiye.', style: TextStyle(color: C.bad)),
-          Text('Brokerage: ${_s(st['sale_pct']).isEmpty ? '—' : '${_s(st['sale_pct'])}%'} bikri · '
-              '${_s(st['rent_months']).isEmpty ? '—' : '${_s(st['rent_months'])} mahina'} kiraya'),
-          Text('GST: ${st['gst_on'] == true ? 'haan (${_s(st['gstin'])})' : 'nahi'}'),
+              '${_s(st['rera_valid_until']).isEmpty ? '' : ' · until ${_s(st['rera_valid_until'])}'}'),
+          if (st['rera_expired'] == true) const Text('RERA registration has expired: please renew.', style: TextStyle(color: C.bad)),
+          Text('Brokerage: ${_s(st['sale_pct']).isEmpty ? '—' : '${_s(st['sale_pct'])}%'} on sale ·'
+              '${_s(st['rent_months']).isEmpty ? '—' : '${_s(st['rent_months'])} months'} on rent'),
+          Text('GST: ${st['gst_on'] == true ? 'yes (${_s(st['gstin'])})' : 'no'}'),
           const SizedBox(height: 8),
           GlassButton(
-              label: 'Badlo',
+              label: 'Edit',
               icon: Icons.edit_rounded,
               onTap: () async {
-                final f = await _form(context, 'Niyam', const [
-                  ('business', 'Business ka naam'),
-                  ('agent_name', 'Aapka naam'),
-                  ('phone', 'Business phone (public page par)'),
-                  ('city', 'Shehar'),
+                final f = await _form(context, 'Rules', const [
+                  ('business', 'Business name'),
+                  ('agent_name', 'Your name'),
+                  ('phone', 'Business phone (on the public page)'),
+                  ('city', 'City'),
                   ('rera_agent_no', 'RERA agent no (MahaRERA: A5...)'),
-                  ('rera_valid_until', 'Registration kab tak (DD-MM-YYYY)'),
-                  ('gstin', 'GSTIN (ho to)'),
-                  ('sale_pct', 'Bikri brokerage % (har taraf)'),
-                  ('rent_months', 'Kiraya brokerage (mahine)'),
-                  ('visit_minutes', 'Ek visit kitne minute'),
-                  ('morning_time', 'Subah ka note (HH:MM)'),
-                  ('rules', 'Aapke niyam'),
+                  ('rera_valid_until', 'Registration valid until (DD-MM-YYYY)'),
+                  ('gstin', 'GSTIN (if any)'),
+                  ('sale_pct', 'Sale brokerage % (each side)'),
+                  ('rent_months', 'Rental brokerage (months)'),
+                  ('visit_minutes', 'Minutes per visit'),
+                  ('morning_time', 'Morning note (HH:MM)'),
+                  ('rules', 'Your rules'),
                 ], initial: {for (final k in st.keys) k: _s(st[k])});
                 if (f == null) return;
                 final body = <String, dynamic>{...f};
@@ -308,22 +308,22 @@ class _PropagentScreenState extends State<PropagentScreen> {
               }),
         ]),
       ),
-      _section('Stamp duty / registration rates (aapke numbers, IGR se)'),
+      _section('Stamp duty / registration rates (your numbers, from IGR)'),
       for (final e in rates.entries)
         ListTile(
             title: Text(e.key),
             subtitle: Text(_m(e.value).entries.map((x) => '${x.key}: ${x.value}').join(' · '))),
       GlassButton(
-          label: 'Area ka rate jodo',
+          label: 'Add area rate',
           icon: Icons.add_rounded,
           onTap: () async {
             final f = await _form(context, 'Rate', const [
-              ('area', 'Area / shehar (jaise akola)'),
+              ('area', 'Area / city (e.g. akola)'),
               ('stamp_pct', 'Stamp duty %'),
-              ('cess_pct', 'Cess / LBT % (ho to)'),
-              ('women_less_pct', 'Mahila ke liye kam % (ho to)'),
+              ('cess_pct', 'Cess / LBT % (if any)'),
+              ('women_less_pct', 'Lower % for women (if any)'),
               ('reg_pct', 'Registration %'),
-              ('reg_cap', 'Registration ki seema ₹ (ho to)'),
+              ('reg_cap', 'Registration limit ₹ (if any)'),
             ]);
             if (f == null || (f['area'] ?? '').isEmpty) return;
             final row = <String, dynamic>{
@@ -334,7 +334,7 @@ class _PropagentScreenState extends State<PropagentScreen> {
               'rates': {...rates, f['area']!.toLowerCase(): row}
             });
           }),
-      _section('Kabhi nahi'),
+      _section('Never'),
       for (final n in _strs(d['never'])) Text('• $n', style: const TextStyle(fontSize: 12.5, color: C.muted)),
     ];
   }
@@ -404,7 +404,7 @@ class _PropagentListingPageState extends State<PropagentListingPage> {
           ListTile(leading: const Icon(Icons.public_rounded), title: const Text('Hoola page (link)'), onTap: () => Navigator.pop(c, 'page')),
           ListTile(
               leading: const Icon(Icons.copy_rounded),
-              title: const Text('Text copy (portal / WhatsApp status par aap khud daaliye)'),
+              title: const Text('Copy text (post it yourself on the portal / WhatsApp status)'),
               onTap: () => Navigator.pop(c, 'copy')),
           ListTile(leading: const Icon(Icons.table_chart_rounded), title: const Text('Portal sheet (Excel)'), onTap: () => Navigator.pop(c, 'sheet')),
         ]),
@@ -424,9 +424,9 @@ class _PropagentListingPageState extends State<PropagentListingPage> {
 
   Future<void> _edit() async {
     final l = _l ?? {};
-    final f = await _form(context, 'Listing badlo', const [
-      ('price', 'Daam'),
-      ('rent', 'Kiraya / mahina'),
+    final f = await _form(context, 'Edit listing', const [
+      ('price', 'Price'),
+      ('rent', 'Rent / month'),
       ('deposit', 'Deposit'),
       ('carpet_sqft', 'Carpet sq ft'),
       ('bhk', 'BHK'),
@@ -461,10 +461,10 @@ class _PropagentListingPageState extends State<PropagentListingPage> {
                   Text([_s(l['price_text']), if (l['carpet_sqft'] != null) '${l['carpet_sqft']} sq ft carpet', _s(l['status_label'])]
                       .where((x) => x.isNotEmpty)
                       .join(' · ')),
-                  if (_s(l['rera_project_no']).isNotEmpty) Text('RERA: ${_s(l['rera_project_no'])}${l['has_qr'] == true ? ' · QR laga' : ''}'),
-                  if (_s(l['address']).isNotEmpty) Text('Pata (sirf aapke liye): ${_s(l['address'])}', style: const TextStyle(fontSize: 12, color: C.faint)),
-                  Text('Malik: ${_s(l['owner_name'])} ${_s(l['owner_phone_masked'])}', style: const TextStyle(fontSize: 12.5, color: C.muted)),
-                  Text(l['public'] == true ? 'Public hai' : 'Public nahi', style: TextStyle(color: l['public'] == true ? C.ok : C.faint)),
+                  if (_s(l['rera_project_no']).isNotEmpty) Text('RERA: ${_s(l['rera_project_no'])}${l['has_qr'] == true ? ' · QR added' : ''}'),
+                  if (_s(l['address']).isNotEmpty) Text('Address (only for you): ${_s(l['address'])}', style: const TextStyle(fontSize: 12, color: C.faint)),
+                  Text('Owner: ${_s(l['owner_name'])} ${_s(l['owner_phone_masked'])}', style: const TextStyle(fontSize: 12.5, color: C.muted)),
+                  Text(l['public'] == true ? 'Public' : 'Not public', style: TextStyle(color: l['public'] == true ? C.ok : C.faint)),
                 ]),
               ),
               for (final b in _strs(checks['block'])) Text('⛔ $b', style: const TextStyle(color: C.bad, fontSize: 12.5)),
@@ -473,12 +473,12 @@ class _PropagentListingPageState extends State<PropagentListingPage> {
               Wrap(spacing: 8, runSpacing: 8, children: [
                 if (mandate['consent'] != true)
                   GlassButton(
-                      label: 'Malik ne haan kahi',
+                      label: 'Owner said yes',
                       icon: Icons.verified_user_rounded,
                       onTap: () async {
-                        final f = await _form(context, 'Malik ki haan (marketing)', const [
-                          ('commission_pct', 'Malik se commission % (ho to)'),
-                          ('until', 'Kab tak (DD-MM-YYYY)'),
+                        final f = await _form(context, 'Owner\'s approval (marketing)', const [
+                          ('commission_pct', 'Commission % from owner (if any)'),
+                          ('until', 'Until when (DD-MM-YYYY)'),
                         ]);
                         if (f == null) return;
                         await _run('PATCH', '/api/propagent/listings/${widget.id}', {
@@ -490,7 +490,7 @@ class _PropagentListingPageState extends State<PropagentListingPage> {
                 if (l['new_project'] == true)
                   GlassButton(label: 'MahaRERA QR', icon: Icons.qr_code_rounded, onTap: _busy ? () {} : () => _photo('qr', ImageSource.gallery)),
                 GlassButton(
-                    label: 'Text banao',
+                    label: 'Make text',
                     icon: Icons.auto_awesome_rounded,
                     onTap: () async {
                       final r = await _run('POST', '/api/propagent/listings/${widget.id}/describe');
@@ -499,8 +499,8 @@ class _PropagentListingPageState extends State<PropagentListingPage> {
                       final ok = await showDialog<bool>(
                           context: context,
                           builder: (d) => AlertDialog(content: Text(t), actions: [
-                                TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Rehne do')),
-                                TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Save karo')),
+                                TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Cancel')),
+                                TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Save')),
                               ]));
                       if (ok == true) await _run('PATCH', '/api/propagent/listings/${widget.id}', {'description': t});
                     }),
@@ -510,7 +510,7 @@ class _PropagentListingPageState extends State<PropagentListingPage> {
                   GlassButton(label: 'Poster', icon: Icons.image_rounded, onTap: () => _run('POST', '/api/propagent/listings/${widget.id}/poster')),
               ]),
               const SizedBox(height: 10),
-              GradientButton(label: 'Public karne ka card', icon: Icons.campaign_rounded, onTap: _busy ? null : _publish),
+              GradientButton(label: 'Card to make it public', icon: Icons.campaign_rounded, onTap: _busy ? null : _publish),
               if (_list(l['photos']).isNotEmpty) _section('Photo (${_list(l['photos']).length})'),
               if (_list(l['photos']).isNotEmpty)
                 SizedBox(
@@ -528,7 +528,7 @@ class _PropagentListingPageState extends State<PropagentListingPage> {
                       ),
                   ]),
                 ),
-              if (_buyers.isNotEmpty) _section('Kisko pasand aa sakti hai'),
+              if (_buyers.isNotEmpty) _section('Who may like it'),
               for (final b in _buyers)
                 ListTile(
                   title: Text('${_s(b['number'])} ${_s(b['name'])} · ${_s(b['score'])}'),
@@ -590,7 +590,7 @@ class _PropagentLeadPageState extends State<PropagentLeadPage> {
   }
 
   Future<void> _visit() async {
-    final f = await _form(context, 'Site visit', const [('day', 'Din (DD-MM-YYYY ya kal)'), ('start', 'Shuru (HH:MM)')],
+    final f = await _form(context, 'Site visit', const [('day', 'Day (DD-MM-YYYY or tomorrow)'), ('start', 'Start (HH:MM)')],
         initial: const {'start': '10:00'});
     if (f == null) return;
     final ids = _pick.isEmpty ? _matches.take(3).map((m) => _s(m['listing'])).toList() : _pick.toList();
@@ -602,38 +602,38 @@ class _PropagentLeadPageState extends State<PropagentLeadPage> {
   Widget build(BuildContext context) {
     final l = _l;
     return Scaffold(
-      appBar: AppBar(title: Text(_s(l?['number']).isEmpty ? 'Graahak' : '${_s(l?['number'])} ${_s(l?['name'])}')),
+      appBar: AppBar(title: Text(_s(l?['number']).isEmpty ? 'Customer' : '${_s(l?['number'])} ${_s(l?['name'])}')),
       body: l == null
           ? const Center(child: CircularProgressIndicator())
           : ListView(padding: const EdgeInsets.all(14), children: [
               Glass(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(_s(l['need_text']).isEmpty ? 'Zaroorat saaf nahi' : _s(l['need_text']), style: const TextStyle(fontWeight: FontWeight.w700)),
+                  Text(_s(l['need_text']).isEmpty ? 'Need is not clear' : _s(l['need_text']), style: const TextStyle(fontWeight: FontWeight.w700)),
                   Text('${_s(l['phone_masked'])} · ${_s(l['stage_label'])} · ${_s(l['source'])}', style: const TextStyle(color: C.muted)),
-                  if (_s(l['next_at']).isNotEmpty) Text('Agla: ${_s(l['next_what'])} ${_s(l['next_at'])}'),
-                  if (l['consent'] != true) const Text('Baat karne ki haan darj nahi', style: TextStyle(color: C.warn)),
+                  if (_s(l['next_at']).isNotEmpty) Text('Next: ${_s(l['next_what'])} ${_s(l['next_at'])}'),
+                  if (l['consent'] != true) const Text('Consent to contact not recorded', style: TextStyle(color: C.warn)),
                 ]),
               ),
               const SizedBox(height: 8),
               Wrap(spacing: 8, runSpacing: 8, children: [
                 GlassButton(
-                    label: 'Zaroorat badlo',
+                    label: 'Edit the need',
                     icon: Icons.edit_note_rounded,
                     onTap: () async {
-                      final f = await _form(context, 'Zaroorat', const [('words', 'Kya chahiye'), ('next_when', 'Agla call kab'), ('notes', 'Note')]);
+                      final f = await _form(context, 'Need', const [('words', 'What they want'), ('next_when', 'When is the next call'), ('notes', 'Note')]);
                       if (f != null) await _run('PATCH', '/api/propagent/leads/${widget.id}', f);
                     }),
                 GlassButton(label: 'Visit plan', icon: Icons.directions_car_rounded, onTap: _busy ? () {} : _visit),
                 GlassButton(
-                    label: 'Deal banao',
+                    label: 'Make deal',
                     icon: Icons.handshake_rounded,
                     onTap: () async {
                       final lid = _pick.isNotEmpty ? _pick.first : (_matches.isNotEmpty ? _s(_matches.first['listing']) : '');
                       if (lid.isEmpty) {
-                        _snack(context, 'Pehle listing chuniye.');
+                        _snack(context, 'Choose a listing first.');
                         return;
                       }
-                      final f = await _form(context, 'Deal', const [('price', 'Tay daam / kiraya'), ('token', 'Token (ho to)'), ('market_value', 'Ready reckoner value (aapka number)')]);
+                      final f = await _form(context, 'Deal', const [('price', 'Agreed price / rent'), ('token', 'Token (if any)'), ('market_value', 'Ready reckoner value (your number)')]);
                       if (f == null) return;
                       final r = await _run('POST', '/api/propagent/deals', {'listing': lid, 'lead': widget.id, ...f});
                       final id = _s(_m(r?['deal'])['id']);
@@ -642,9 +642,9 @@ class _PropagentLeadPageState extends State<PropagentLeadPage> {
                       }
                     }),
                 if (_s(l['stage']) == 'lost' || _s(l['stage']) == 'closed')
-                  GlassButton(label: 'Jaankari mitao', icon: Icons.delete_sweep_rounded, color: C.bad, onTap: () => _run('POST', '/api/propagent/leads/${widget.id}/forget')),
+                  GlassButton(label: 'Delete information', icon: Icons.delete_sweep_rounded, color: C.bad, onTap: () => _run('POST', '/api/propagent/leads/${widget.id}/forget')),
               ]),
-              _section('Mel khaati listings (chuniye)'),
+              _section('Matching listings (choose)'),
               for (final m in _matches)
                 CheckboxListTile(
                   value: _pick.contains(_s(m['listing'])),
@@ -652,10 +652,10 @@ class _PropagentLeadPageState extends State<PropagentLeadPage> {
                   title: Text('${_s(m['number'])} · ${_s(m['title'])} · ${_s(m['score'])}'),
                   subtitle: Text([_s(m['price_text']), ..._strs(m['why']), ..._strs(m['miss']).map((x) => '⚠ $x')].where((x) => x.isNotEmpty).join(' · ')),
                 ),
-              if (_matches.isEmpty) const Caption('Abhi koi listing mel nahi khaati.'),
+              if (_matches.isEmpty) const Caption('No listing matches yet.'),
               const SizedBox(height: 8),
               GradientButton(
-                  label: 'Inhe bhejne ka card',
+                  label: 'Card to send these',
                   icon: Icons.send_rounded,
                   onTap: _busy
                       ? null
@@ -722,15 +722,15 @@ class _PropagentDealPageState extends State<PropagentDealPage> {
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text(_s(d['listing_title']), style: const TextStyle(fontWeight: FontWeight.w800)),
                   Text('${_s(d['lead_name'])} · ${_s(d['status_label'])}'),
-                  Text('Daam / kiraya: ${_rs(d['price'])} · Token: ${_rs(d['token'])}'),
+                  Text('Price / rent: ${_rs(d['price'])} · Token: ${_rs(d['token'])}'),
                   for (final x in _list(d['ids'])) Text('${_s(x['side'])}: ${_s(x['kind'])} ${_s(x['masked'])} (Locker)', style: const TextStyle(fontSize: 12, color: C.muted)),
                 ]),
               ),
               if (_s(d['purpose']) == 'sale') ...[
-                _section('Stamp duty / registration (andaaza, aapke rates)'),
+                _section('Stamp duty / registration (estimate, using your rates)'),
                 if (sd['stamp'] != null)
                   Text('Stamp ${_rs(sd['stamp'])} + cess ${_rs(sd['cess'])} + registration ${_rs(sd['registration'])} = ${_rs(sd['total'])}'),
-                for (final m in _strs(sd['missing'])) Text('Chahiye: $m', style: const TextStyle(color: C.warn)),
+                for (final m in _strs(sd['missing'])) Text('Needs: $m', style: const TextStyle(color: C.warn)),
                 if (_s(est['rate_note']).isNotEmpty) Text(_s(est['rate_note']), style: const TextStyle(fontSize: 12, color: C.faint)),
                 if (_s(sd['base_note']).isNotEmpty) Text(_s(sd['base_note']), style: const TextStyle(fontSize: 12, color: C.faint)),
               ],
@@ -740,20 +740,20 @@ class _PropagentDealPageState extends State<PropagentDealPage> {
               _section('Commission'),
               for (final side in ['buyer', 'seller'])
                 if (_m(com[side])['amount'] != null)
-                  Text('${side == 'buyer' ? 'Kharidaar / kirayedaar' : 'Malik'}: ${_rs(_m(com[side])['amount'])}'
+                  Text('${side == 'buyer' ? 'Buyer / tenant' : 'Owner'}: ${_rs(_m(com[side])['amount'])}'
                       '${_m(com[side])['gst'] != null && _m(com[side])['gst'] != 0 ? ' + GST ${_rs(_m(com[side])['gst'])}' : ''}'),
-              Text('Mila ${_rs(com['received'])} · baaki ${_rs(com['due'])}'),
+              Text('Received ${_rs(com['received'])} · remaining ${_rs(com['due'])}'),
               GlassButton(
-                  label: 'Commission mila',
+                  label: 'Commission received',
                   icon: Icons.savings_rounded,
                   onTap: () async {
-                    final f = await _form(context, 'Commission mila', const [('side', 'buyer / seller'), ('amount', 'Kitna'), ('mode', 'Kaise'), ('ref', 'UTR (ho to)')]);
+                    final f = await _form(context, 'Commission received', const [('side', 'buyer / seller'), ('amount', 'How much'), ('mode', 'How'), ('ref', 'UTR (if any)')]);
                     if (f != null) await _run('POST', '/api/propagent/deals/${widget.id}/commission', f);
                   }),
-              _section('Kaagaz (draft, aapki haan ke baad Word / PDF)'),
+              _section('Documents (draft, Word / PDF after your approval)'),
               Wrap(spacing: 8, runSpacing: 8, children: [
                 for (final (k, label) in const [
-                  ('token_receipt', 'Token raseed'),
+                  ('token_receipt', 'Token receipt'),
                   ('offer_letter', 'Offer letter'),
                   ('agreement_checklist', 'Checklist'),
                   ('commission_bill', 'Commission bill'),
@@ -782,14 +782,14 @@ class _PropagentDealPageState extends State<PropagentDealPage> {
                     title: Text(_s(c['item']), style: const TextStyle(fontSize: 13))),
               _section('Status'),
               Wrap(spacing: 6, children: [
-                for (final (k, label) in const [('token', 'Token'), ('agreement', 'Agreement'), ('registered', 'Registry'), ('done', 'Poora'), ('fell', 'Toot gaya')])
+                for (final (k, label) in const [('token', 'Token'), ('agreement', 'Agreement'), ('registered', 'Registry'), ('done', 'Done'), ('fell', 'Broke down')])
                   ChoiceChip(
                       label: Text(label),
                       selected: _s(d['status']) == k,
                       onSelected: (_) => _run('POST', '/api/propagent/deals/${widget.id}/status', {'status': k})),
               ]),
               const SizedBox(height: 12),
-              const Caption('Agreement sirf draft: vakil se check karwaiye. Hoola paise nahi leta / deta.'),
+              const Caption('The agreement is only a draft: have a lawyer check it. Hoola does not take or give money.'),
             ]),
     );
   }
@@ -813,12 +813,12 @@ class _PropagentCardCardState extends State<PropagentCardCard> {
   Future<Map<String, dynamic>> _proof(String id) async {
     final ch = _m(await widget.app.api!.call('POST', '/api/propagent/cards/$id/challenge'));
     final show = _m(ch['show']);
-    final r = await Native.approveKeySign(_s(ch['message']), _s(show['title']).isEmpty ? 'Kaagaz ki haan' : _s(show['title']), _s(show['amount']));
+    final r = await Native.approveKeySign(_s(ch['message']), _s(show['title']).isEmpty ? 'Approval for the documents' : _s(show['title']), _s(show['amount']));
     if (r['signature'] == null) {
       throw ApiException(428, switch (_s(r['error'])) {
-        'cancelled' => 'Fingerprint nahi diya, isliye haan nahi hui.',
-        'key_invalidated' => 'Phone mein naya fingerprint juda hai: Profile > Fingerprint se haan mein phone phir se jodiye.',
-        _ => 'Fingerprint se haan nahi ho payi (${_s(r['error'])}).',
+        'cancelled' => 'No fingerprint given, so it was not approved.',
+        'key_invalidated' => 'A new fingerprint was added to the phone: re-link this phone in Profile > Fingerprint approval.',
+        _ => 'Could not approve with fingerprint (${_s(r['error'])}).',
       });
     }
     return {'challenge_id': ch['challenge_id'], 'device_id': r['device_id'], 'signature': r['signature']};
@@ -869,8 +869,8 @@ class _PropagentCardCardState extends State<PropagentCardCard> {
     final body = _m(c['body']);
     final res = _m(c['result']);
     final title = switch (kind) {
-      'publish' => 'Listing public karein? (${_s(body['number'])} · ${_s(c['sub'])})',
-      'message' => 'Message: ${_s(body['to']) == 'owner' ? 'malik' : 'graahak'} ${_s(body['name'])}',
+      'publish' => 'Make the listing public? (${_s(body['number'])} · ${_s(c['sub'])})',
+      'message' => 'Message: ${_s(body['to']) == 'owner' ? 'owner' : 'customer'} ${_s(body['name'])}',
       _ => '${_s(body['title'])} · ${_s(body['deal'])}',
     };
     final text = switch (kind) { 'publish' => _s(body['show']), 'message' => _s(body['text']), _ => _s(body['text']) };
@@ -881,10 +881,10 @@ class _PropagentCardCardState extends State<PropagentCardCard> {
           Icon(kind == 'publish' ? Icons.campaign_rounded : (kind == 'message' ? Icons.chat_rounded : Icons.description_rounded), color: C.accent),
           const SizedBox(width: 8),
           Expanded(child: Text('${_s(c['number'])} · $title', style: const TextStyle(fontWeight: FontWeight.w800))),
-          Pill(switch (st) { 'waiting' => 'aapki haan?', 'approved' => 'haan', 'sent' => 'bheja', 'rejected' => 'nahi', 'stale' => 'purana', _ => st },
+          Pill(switch (st) { 'waiting' => 'your approval?', 'approved' => 'yes', 'sent' => 'sent', 'rejected' => 'no', 'stale' => 'stale', _ => st },
               fg: st == 'waiting' ? C.accent : (st == 'rejected' || st == 'stale' ? C.bad : C.ok)),
         ]),
-        if (_s(c['money_text']).isNotEmpty) Text('Rakam: ${_s(c['money_text'])}', style: const TextStyle(fontWeight: FontWeight.w700)),
+        if (_s(c['money_text']).isNotEmpty) Text('Amount: ${_s(c['money_text'])}', style: const TextStyle(fontWeight: FontWeight.w700)),
         const SizedBox(height: 6),
         ConstrainedBox(
           constraints: const BoxConstraints(maxHeight: 220),
@@ -892,24 +892,24 @@ class _PropagentCardCardState extends State<PropagentCardCard> {
         ),
         for (final w in _strs(body['warn'])) Text('⚠ $w', style: const TextStyle(fontSize: 12, color: C.warn)),
         if ((body['blanks'] ?? 0) is num && (body['blanks'] ?? 0) > 0)
-          Text('${body['blanks']} khaali jagah aap / vakil bharenge.', style: const TextStyle(fontSize: 12, color: C.warn)),
+          Text('${body['blanks']} blanks are for you / your lawyer to fill.', style: const TextStyle(fontSize: 12, color: C.warn)),
         const SizedBox(height: 8),
         if (st == 'waiting')
           Row(children: [
-            Expanded(child: GradientButton(label: kind == 'publish' ? 'Haan, public karo' : 'Haan', height: 42, onTap: _busy ? null : () => _decide(true))),
+            Expanded(child: GradientButton(label: kind == 'publish' ? 'Yes, make it public' : 'Yes', height: 42, onTap: _busy ? null : () => _decide(true))),
             const SizedBox(width: 8),
-            GlassButton(label: 'Nahi', height: 42, onTap: _busy ? () {} : () => _decide(false)),
+            GlassButton(label: 'No', height: 42, onTap: _busy ? () {} : () => _decide(false)),
           ]),
         if (st == 'approved' && kind == 'message')
           Row(children: [
-            Expanded(child: GlassButton(label: 'WhatsApp kholo', icon: Icons.open_in_new_rounded, height: 42, onTap: () => Native.openExternal(url: _s(res['wa'])))),
+            Expanded(child: GlassButton(label: 'Open WhatsApp', icon: Icons.open_in_new_rounded, height: 42, onTap: () => Native.openExternal(url: _s(res['wa'])))),
             const SizedBox(width: 8),
-            GlassButton(label: 'Bhej diya', icon: Icons.check_rounded, height: 42, onTap: _sent),
+            GlassButton(label: 'Sent', icon: Icons.check_rounded, height: 42, onTap: _sent),
           ]),
         if (st == 'approved' && _s(res['url']).isNotEmpty)
-          GlassButton(label: 'Page kholo', icon: Icons.public_rounded, onTap: () => Native.openExternal(url: _s(res['url']))),
-        if (st == 'approved' && _s(res['text']).isNotEmpty && kind == 'publish') const Caption('Text copy karke apne portal / status par khud daaliye.'),
-        const Text('Hoola khud kuch post / send nahi karta, paise nahi leta.', style: TextStyle(fontSize: 11, color: C.faint)),
+          GlassButton(label: 'Open page', icon: Icons.public_rounded, onTap: () => Native.openExternal(url: _s(res['url']))),
+        if (st == 'approved' && _s(res['text']).isNotEmpty && kind == 'publish') const Caption('Copy the text and post it yourself on your portal / status.'),
+        const Text('Hoola does not post or send anything itself, and does not take money.', style: TextStyle(fontSize: 11, color: C.faint)),
       ]),
     );
   }
@@ -937,7 +937,7 @@ class PropagentVisitCard extends StatelessWidget {
           Text('${_s(s['at'])}  ${_s(s['number'])} ${_s(s['title'])}${s['km'] != null ? ' (${s['km']} km)' : ''}'
               '${_s(s['feedback']).isEmpty ? '' : ' · ${_s(s['feedback'])}'}',
               style: const TextStyle(fontSize: 13)),
-        if (v['route_known'] != true) const Text('Doori Maps se nahi: aapke kram mein.', style: TextStyle(fontSize: 11.5, color: C.faint)),
+        if (v['route_known'] != true) const Text('Distance is not from Maps: it is in your order.', style: TextStyle(fontSize: 11.5, color: C.faint)),
         if (_s(data['say']).isNotEmpty) Text(_s(data['say']), style: const TextStyle(fontSize: 12, color: C.muted)),
       ]),
     );
@@ -972,13 +972,13 @@ class PropagentDayCard extends StatelessWidget {
           const Row(children: [
             Icon(Icons.home_work_rounded, color: C.accent),
             SizedBox(width: 8),
-            Text('Property ka aaj', style: TextStyle(fontWeight: FontWeight.w800)),
+            Text('Property today', style: TextStyle(fontWeight: FontWeight.w800)),
           ]),
           const SizedBox(height: 6),
           Text(_s(data['say']), style: const TextStyle(fontSize: 13.5, height: 1.35)),
           const SizedBox(height: 6),
           GlassButton(
-              label: 'Kholo',
+              label: 'Open',
               icon: Icons.open_in_new_rounded,
               height: 40,
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => PropagentScreen(app: app)))),

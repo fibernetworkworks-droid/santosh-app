@@ -33,7 +33,7 @@ log = logging.getLogger("santosh.draftcheck")
 STATS = {"fake_done": 0, "fake_done_said": 0, "gated": 0, "checked": 0, "missed": 0, "unsupported": 0,
          "skipped_cap": 0, "quiet": 0}
 
-NOTE_MARKS = ("(Saaf baat:", "(Dhyaan:", "(Ek baat reh gayi:")
+NOTE_MARKS = ("(Saaf baat:", "(Dhyaan:", "(Ek baat reh gayi:", "(To be clear:", "(Please note:", "(One thing left:")
 
 # ---------------------------------------------------------------- 1. a claim with nothing behind it
 
@@ -43,7 +43,26 @@ _DONE = re.compile(
     r"|book\s*(?:ho\s*gaya|kar\s*diya|kar\s*di)|save\s*kar\s*d|update\s*kar\s*d|add\s*kar\s*d|delete\s*kar\s*d"
     r"|order\s*kar\s*d|pay\s*kar\s*d|cancel\s*kar\s*d|set\s*kar\s*d"
     r"|reminder\s*(?:lag\s*gaya|laga\s*diya)|upload\s*kar\s*d|download\s*kar\s*l|kaam\s*ho\s*gaya"
-    r"|likh\s*kar\s*bhej|draft\s*bhej)", re.I)
+    r"|likh\s*kar\s*bhej|draft\s*bhej"
+    # v0.654 SACH KA PEHRA: the claims the check never knew
+    r"|live\s*ho\s*ga(?:ya|yi|ye|i)|publish\s*(?:kar\s*d|ho\s*gay)|post\s*(?:kar\s*d|ho\s*gay)|schedule\s*kar\s*d"
+    r"|book\s*ho\s*gay[ai]|confirm\s*ho\s*gaya|payment\s*ho\s*gay[ai]|transfer\s*kar\s*d|forward\s*kar\s*d"
+    r"|reply\s*kar\s*d|bhej\s*(?:chuka|chuki|diya\s*gaya)|submit\s*kar\s*d|file\s*kar\s*d"
+    # v0.662 the common Hinglish forms the v0.654 list still missed ("order place ho gaya", "reminder set ho gaya",
+    # "meeting fix ho gayi", "mail chala gaya", "Rahul tak pahunch gaya", "appointment le liya")
+    r"|(?:place|transfer|set|fix|cancel|update|submit|schedule|save|send|deliver)\s*ho\s*gay[aie]"
+    r"|\b(?:chala\s*gaya|chali\s*gayi|chale\s*gaye)\b|pahunch\s*gay[aie]"
+    r"|(?:appointment|booking|slot|ticket|order)\s*le\s*l(?:iya|i|ee)\b"
+    # v0.665 "invoice / PDF bana diya", "file ban gayi", "taiyaar kar diya" - a made thing with nothing that made it
+    # (only a FILE-like thing: a plan or a list written right here in the reply is really made - never a claim)
+    r"|(?:pdf|file|invoice|bill|document|doc|docx|sheet|excel|ppt|presentation|website|site|page|video|image|photo"
+    r"|poster|logo|report|app|form|quotation|link|backup|zip)\b[^.!?\n]{0,24}?(?:bana\s*(?:diya|di|diye|dia|chuka|chuki)\b"
+    r"|\bban\s*(?:gaya|gayi|gai|gaye)\b|tai?yaa?r\s*(?:kar\s*d|ho\s*gay)\w*)"
+    r"|place\s*kar\s*d"
+    r"|\bi(?:'ve|\s+have)\s+(?:just\s+|already\s+)?(?:sent|booked|ordered|paid|posted|published|deleted|scheduled"
+    r"|submitted|placed|forwarded|replied|emailed|messaged|cancelled|canceled|filed|transferred)\b"
+    r"|\b(?:has|have)\s+(?:now\s+)?been\s+(?:sent|booked|ordered|paid|posted|published|deleted|scheduled|submitted"
+    r"|placed|forwarded|emailed|cancelled|canceled|filed|transferred)\b|\bis\s+now\s+live\b)", re.I)
 # the same words are fine about HER, in the future, or as a condition
 # v0.287: the English half of this list was missing entirely, and that one gap turned the whole check into a loop.
 # "I haven't sent anything" contains `sent`, so a perfectly honest sentence read as a CLAIM; the nudge then told
@@ -71,14 +90,151 @@ _ALREADY_HONEST = re.compile(
     r"|not\s+(?:yet\s+)?(?:sent|saved|created|submitted|done))", re.I)
 
 
+_CLAUSE_END = re.compile(r"[.!?;\n,|]|\s-\s|\s—\s")
+
+
+def _clause(text: str, start: int, end: int) -> str:
+    """v0.654 the clause the claim sits in: "Order kar diya, 20 minute mein aa jayega" - the future word is in the NEXT
+    clause and no longer excuses the claim (the old +-45 character window let it)."""
+    a = 0
+    for m in _CLAUSE_END.finditer(text, 0, start):
+        a = m.end()
+    m2 = _CLAUSE_END.search(text, end)
+    b = m2.start() if m2 else len(text)
+    return text[a:b]
+
+
+# v0.665 words that excuse a claim only when they come AFTER it are the ones that GOVERN it (a negation, "aapne" as the
+# doer). A future / offer / condition word AFTER the claim is about something else: "order place kar diya hai jo kal tak
+# aa jayega", "I have sent the invoice and you can track it here" were both excused, so the false claim went through.
+_AFTER_OK = re.compile(r"(nahi\s*bhej|nahi\s*hua|nahi\s*kiya|\bnot\b|n't\b|\bnothing\b|\bnever\b|\byet\b"
+                       r"|\bwithout\b|haan\s*kar|tap\s*kar|card\s*par|aapki\s*haan|your\s+approval|you\s+approve"
+                       r"|you\s+tap|baad\s*mein)", re.I)
+# "aapne jo list di thi, un sabko mail bhej diya": "aapne" names HER giving the list, not her sending the mail - a
+# relative clause ("jo ... thi / tha / the") before the verb is cut off before the excuse is read
+_REL = re.compile(r"(?:\baap\s*ne\s+|\baapne\s+)?\bjo\b.*?\b(?:thi|tha|the|hai|hain)\b", re.I)
+
+
 def claims_done(text: str) -> str:
     """The claimed action when the reply says something was really done, else ''."""
-    for m in _DONE.finditer(text or ""):
-        a, b = max(0, m.start() - 45), min(len(text), m.end() + 30)
-        if _NOT_A_CLAIM.search(text[a:b]):
+    got = all_claims(text)
+    return got[0][0] if got else ""
+
+
+def all_claims(text: str) -> list[tuple[str, str, str]]:
+    """v0.665 EVERY claim in the reply as (claimed phrase, the words just before it, its clause) - "Mail bhej diya aur reminder
+    laga diya" is two claims, and only the first used to be judged."""
+    t = text or ""
+    out: list[tuple[str, str, str]] = []
+    for m in _DONE.finditer(t):
+        cl = _clause(t, m.start(), m.end())
+        at = cl.lower().find(m.group(1).lower())
+        before, after = (cl[:at], cl[at + len(m.group(1)):]) if at >= 0 else (cl, "")
+        before = _REL.sub(" ", before)
+        # the rest of the matched word ("order kar d" + "unga" = a future, "bhej d" + "enge") decides as well
+        word = m.group(1) + re.match(r"\S*", t[m.end():]).group(0)
+        if _NOT_A_CLAIM.search(before) or _AFTER_OK.search(after) or _NOT_A_CLAIM.search(word):
             continue
-        return m.group(1)[:60]
-    return ""
+        out.append((m.group(1)[:60], t[max(0, m.start() - 40):m.end()], cl))
+    return out
+
+
+# v0.665 SACH KA HISAAB: a claim is backed only by a tool of ITS kind. "Rahul ko mail bhejo aur kal yaad dilana" with only
+# create_reminder run used to pass "Mail bhej diya aur reminder laga diya" - any doing tool switched the whole check off.
+_FAMILIES = (
+    ("send", re.compile(r"bhej|send|sent|mail|whatsapp|message|forward|reply|replied|emailed|messaged|pahunch|chal[aie]\s*ga", re.I),
+     re.compile(r"mail|gmail|outlook|whatsapp|\bwa_|send|message|msg|sms|telegram|slack|campaign|forward|reply|share"
+                r"|notify|net_|bahar|post", re.I)),
+    ("money", re.compile(r"order|pay|paid|transfer|placed|place\s|payment", re.I),
+     re.compile(r"order|pay|upi|bazar|shop|buy|cart|transfer|bill|ondc|swiggy|zomato|razorpay|khata|invoice|checkout", re.I)),
+    ("book", re.compile(r"book|appointment|slot|ticket|meeting|fix\s*ho", re.I),
+     re.compile(r"book|ride|cab|ticket|appointment|calendar|event|meet|slot|irctc|travel|schedule", re.I)),
+    ("remind", re.compile(r"reminder|yaad|alarm", re.I),
+     re.compile(r"remind|routine|alarm|calendar|schedule", re.I)),
+    ("publish", re.compile(r"post|publish|live\s*ho|is\s+now\s+live", re.I),
+     re.compile(r"post|publish|social|insta|facebook|linkedin|youtube|site|website|kalam|launch|deploy|host|blog", re.I)),
+)
+# a tool that can do ANY of these on her behalf (a sub-agent, a browser, a workflow) backs every family
+_ANY_TOOL = re.compile(r"delegate|crew|team|agent|santosh_kaam|dhara|workflow|browse|browser|pc_|operator|computer"
+                       r"|composio|mcp|zapier|kaam_run|bazar_do|connector", re.I)
+
+
+# parity Phase 5: the claims that are real ACTIONS on her behalf - only these may still get a correction message after
+# the model's own retry (a false "sent" / "paid" / "booked" / "deleted" / "published" must never stand)
+ACTION_FAMILIES = ("send", "money", "book", "publish")
+_DELETE = re.compile(r"delet|remov|cancel|hata\s*di|mita\s*di", re.I)
+
+
+def is_action(phrase: str, family: str = "") -> bool:
+    """True when a claimed phrase is a real action (a family above, or a delete / cancel)."""
+    return (family or family_of(phrase, "")[0]) in ACTION_FAMILIES or bool(_DELETE.search(phrase or ""))
+
+
+def action_claim(text: str) -> bool:
+    """True when the reply claims at least one real ACTION was done."""
+    return any(is_action(p, family_of(p, w)[0]) for p, w, _c in all_claims(text))
+
+
+def family_of(phrase: str, window: str) -> tuple[str, "re.Pattern | None"]:
+    """The kind of work a claim names ('' + None = a generic claim any doing tool backs)."""
+    for name, words, tools in _FAMILIES:
+        if words.search(phrase):
+            return name, tools
+    for name, words, tools in _FAMILIES:
+        if words.search(window):
+            return name, tools
+    return "", None
+
+
+def _backs_claim(c: dict, tools) -> bool:
+    n = str(c.get("tool") or "")
+    return tools is None or bool(tools.search(n)) or bool(_ANY_TOOL.search(n))
+
+
+_PAST = re.compile(r"\b(tha|thi|the|pehle|kal|already|earlier|yesterday|parso|pichhl?e|last\s+(?:week|time)|aaj\s+subah)\b", re.I)
+_STATUS_ASK = re.compile(r"(gay[aie]|hu[aie]|hue|bhej[aie]|kiya|aaya|pahunch[aie])\s*(?:kya|ki\s*nahi|ya\s*nahi|na)\b"
+                         r"|\bkya\b[^?]{0,40}\b(gay[aie]|hu[aie]|bhej[aie]|kiya|pahunch[aie]|lag[aie])\b"
+                         r"|\b(did|has|have|was|were)\b[^?]{0,40}\b(sent|done|booked|paid|ordered|gone|placed|delivered)\b"
+                         r"|\bstatus\b", re.I)
+
+
+def ran_before(conv: str, tools, days: int = 7) -> bool:
+    """v0.665 did a tool of this kind really succeed in this chat in the last few days? (her "mail gaya kya?" is
+    answered truthfully by "haan, bhej diya tha" - the per-turn check used to call that a lie). Trouble reading the log
+    answers True (never accuse on a guess)."""
+    try:
+        import json as _json
+        from datetime import datetime, timedelta, timezone
+
+        from sqlalchemy import select
+
+        from ..db import session
+        from .eventlog import HarnessEvent, ensure_table
+        ensure_table()
+        convs = [conv]
+        try:
+            from .. import callconv
+            o = callconv.chat_of(conv)
+            if o and o != conv:
+                convs.append(o)
+        except Exception:   # noqa: BLE001
+            pass
+        since = datetime.now(timezone.utc) - timedelta(days=days)
+        with session() as s:
+            rows = s.scalars(select(HarnessEvent.payload)
+                             .where(HarnessEvent.conversation_id.in_(convs), HarnessEvent.kind == "tool_result",
+                                    HarnessEvent.created_at >= since)).all()
+        for raw in rows:
+            try:
+                p = _json.loads(raw or "{}")
+            except ValueError:
+                continue
+            if p.get("ok") and not _is_read(p.get("tool")) and _backs_claim(p, tools):
+                return True
+        return False
+    except Exception:   # noqa: BLE001
+        log.debug("past-work claim check failed", exc_info=True)
+        return True
 
 
 # reads and bookkeeping: running one of these is not "doing" anything. Every Sahayak's own read tool follows the
@@ -89,18 +245,51 @@ READS = {"google_search", "web_sources", "open_website", "parallel_search", "kaa
          "indiamart_khoj", "indiamart_detail", "mospi"}
 
 
+# v0.654 a read is known by its NAME too (47 read tools - email_check, list_reminders, get_campaign_status... - used to
+# count as DOING, so "only reads ran" was almost never true and the check almost never fired); a name that also names
+# a change (list_add, list_done...) is never a read.
+_READ_NAME = re.compile(r"(_check|_read|_search|_find|_status|_agenda|_info|_khoj|_lookup|_preview|_view|_dekho|_thread"
+                        r"|_drafts|_stats|_usage|_kharcha|_show|_detail|_details|_history|_report|_free_slots)$"
+                        r"|^(list_|get_|find_|haal_|search_|read_)")
+_CHANGE_WORD = re.compile(r"_(add|done|delete|remove|set|create|update|send|cancel|book|pay|order|post|publish|run|make"
+                          r"|start|stop|edit|move|rename|mark|archive)\b|_(add|done|delete|remove|set|create|update|send"
+                          r"|cancel|book|pay|order|post|publish|make|start|stop|edit|move|rename|mark|archive)_")
+# a result that is a card / draft waiting for HER tap: nothing has happened in the world yet
+_CARD_RESULT = re.compile(r"[\"']?(?:status|state)[\"']?\s*[:=]\s*[\"']?(?:pending\w*|draft\w*|needs_\w+|awaiting\w*|"
+                          r"waiting\w*|approval\w*|ask)\b|[\"']?needs_approval[\"']?\s*[:=]\s*(?:true|True|1)|approval_id|card\s*(?:bheja|banaya|bana\s*diya|taiyaar|ready|sent\s*to\s*her)"
+                          r"|(?:approval|confirm|haan\s*ka)\s*card|bhejo\s*dabaiye|aapki\s*haan|her\s*tap|needs\s*her", re.I)
+
+
 def _is_read(name: str) -> bool:
     from . import pakka
     n = str(name or "")
-    return n in READS or n in pakka.SKIP or n.endswith("_dekho")
+    if n in READS or n in pakka.SKIP or n.endswith("_dekho"):
+        return True
+    return bool(_READ_NAME.search(n)) and not _CHANGE_WORD.search(n + "_")
+
+
+def effect(call: dict) -> str:
+    """What one tool call really did: 'did' (changed something in the world), 'card' (made a card / draft that waits
+    for her tap), 'read' (only looked), '' (failed - did nothing)."""
+    if not call.get("ok"):
+        return ""
+    if _is_read(call.get("tool")):
+        return "read"
+    if _CARD_RESULT.search(str(call.get("result") or "")):
+        return "card"
+    return "did"
 
 
 def nothing_ran(calls: list[dict] | None) -> bool:
-    """True when this turn did not actually DO anything: every tool that finished ok was a read."""
-    for c in calls or []:
-        if c.get("ok") and not _is_read(c.get("tool")):
-            return False
-    return True
+    """True when this turn did not actually DO anything: no tool that finished ok changed something in the world
+    (reads and cards / drafts waiting for her tap do not count - v0.654)."""
+    return not any(effect(c) == "did" for c in calls or [])
+
+
+def only_cards(calls: list[dict] | None) -> bool:
+    """v0.654 the turn made a card / draft for her tap and did nothing else real."""
+    fx = [effect(c) for c in calls or []]
+    return "card" in fx and "did" not in fx
 
 
 def nothing_ran_in_job(conv: str, since) -> bool:
@@ -139,16 +328,33 @@ NUDGE = ("[System check, not the user] Your message says the work is already don
          "with the right tool (every card, "
          "approval and OTP rule as usual), or say plainly in one line that it is NOT done yet and what the next "
          "step is. Never say done for something that did not happen.")
-SAID = "(Saaf baat: yeh kaam abhi hua nahi hai - ab bhi karna baaki hai.)"
+NUDGE_CARD = ("[System check, not the user] Your message says it is already done (sent / ordered / paid / booked), but "
+              "this turn only made a CARD or DRAFT that waits for HER tap - nothing has happened yet. Say it plainly in "
+              "one line: the card / draft is ready and it happens only when she taps it (e.g. 'card bheja hai, aapki "
+              "haan se hoga'). Never say done before her tap.")
+NUDGE_PART = ("[System check, not the user] Your message says \"{what}\" is done, but no tool that does THAT ran - "
+              "the tools this turn did other parts of the ask. Either do that part NOW with the right tool (every card, "
+              "approval and OTP rule as usual), or say plainly which part is done and which is NOT done yet.")
+SAID_CARD_EN = "(To be clear: nothing has happened yet - the card / draft is waiting for your tap.)"
 # v0.287: the note followed her into English conversations as a Hinglish line. v0.260 made HER LANGUAGE the first
 # rule of a reply, and this note is part of the reply.
 SAID_EN = "(To be clear: this is not done yet - it still has to be carried out.)"
+# owner: everything in English - the English twins are the only notes used; the old names stay as aliases
+SAID = SAID_EN
+SAID_CARD = SAID_CARD_EN
 _HINGLISH = re.compile(r"[ऀ-ॿ]|\b(hai|hain|nahi|kar|karo|kiya|aap|main|maine|diya|gaya|raha|rahi|ho|ka|ki|ke)\b", re.I)
 
 
 def said_line(text: str) -> str:
     """The honest line, in the language the reply is written in."""
-    return SAID if _HINGLISH.search(text or "") else SAID_EN
+    return SAID_EN
+
+
+_PROMISE_REMIND = re.compile(r"(yaad\s*dila\s*(?:dunga|dungi|doonga|doongi|denge|deta|deti)|i'?ll\s+remind\s+you"
+                             r"|remind\s+you\s+(?:tomorrow|at|in|later))", re.I)
+NUDGE_PROMISE = ("[Truth check] You PROMISED to remind her, but no reminder is set - Hoola remembers nothing without a "
+                 "reminder. Set it now with create_reminder at the right time (then say what time you set), or do not "
+                 "make the promise.")
 
 
 def fake_done(state: dict, text: str, conv: str = "", since=None) -> str:
@@ -159,20 +365,53 @@ def fake_done(state: dict, text: str, conv: str = "", since=None) -> str:
         # it already says it is not done - saying so again is the loop this check used to create
         STATS["quiet"] += 1
         return ""
-    if not claims_done(text):
+    if _PROMISE_REMIND.search(text or "") and not state.get("promise_nudged") \
+            and not any(str((c or {}).get("tool") or "").startswith(("create_reminder", "reminder")) for c in state.get("calls") or []):
+        # v0.662 "kal subah 9 baje yaad dila dungi" with NO reminder set = a promise nothing will keep (Hoola has no memory
+        # of promises outside a reminder). Once: set it now, or do not promise.
+        state["promise_nudged"] = True
+        STATS["promise_nudged"] = STATS.get("promise_nudged", 0) + 1
+        return NUDGE_PROMISE
+    claims = all_claims(text)
+    if not claims:
         return ""
-    if not nothing_ran(state.get("calls")):
+    calls = state.get("calls") or []
+    report = (state.get("actor") == "wake") or bool(_STATUS_ASK.search(str(state.get("request") or "")))
+    bad, card, act = [], False, False
+    for phrase, window, clause in claims:
+        _fam, tools = family_of(phrase, window)
+        mine = [c for c in calls if _backs_claim(c, tools)]
+        if any(effect(c) == "did" for c in mine):
+            continue                       # a tool of this kind really did it this turn
+        if since is not None and not nothing_ran_in_job(conv, since):
+            continue                       # an earlier round of this job really did it; this round only reported
+        if conv and (report or _PAST.search(clause)) and ran_before(conv, tools):
+            continue                       # v0.665 a true report of work done earlier ("haan, bhej diya tha")
+        bad.append(phrase)
+        act = act or is_action(phrase, _fam)
+        card = card or any(effect(c) == "card" for c in mine)
+    if not bad:
         return ""
-    if since is not None and not nothing_ran_in_job(conv, since):
-        return ""          # an earlier round of this job really did it; this round only reported
+    state["false_action"] = act
     seen = state.get("fake_done", 0) + 1
     state["fake_done"] = seen
     if seen == 1:
         STATS["fake_done"] += 1
+        if card:
+            STATS["fake_done_card"] = STATS.get("fake_done_card", 0) + 1
+        if card:
+            return NUDGE_CARD
+        if any(effect(c) == "did" for c in calls):
+            return NUDGE_PART.format(what=", ".join(dict.fromkeys(bad))[:120])
         return NUDGE
     if seen == 2 and not state.get("correct"):
+        if state.get("answer_only") and not state.get("false_action"):
+            # parity Phase 5: the model was asked once to correct itself; a claim that is not a real ACTION
+            # (sent / paid / booked / deleted / published) gets no note stapled on - the reply stays its own words
+            STATS["said_dropped"] = STATS.get("said_dropped", 0) + 1
+            return ""
         STATS["fake_done_said"] += 1
-        state["correct"] = said_line(text)
+        state["correct"] = (SAID_CARD_EN if card else said_line(text))
     return ""
 
 
@@ -218,6 +457,7 @@ def sources_text(request: str, calls: list[dict] | None, chat_tail: str = "") ->
     for c in calls or []:
         parts.append(str(c.get("args") or ""))
         parts.append(str(c.get("result") or ""))
+        parts.append(str(c.get("digits") or ""))   # v0.665 every figure the tool returned, not only its first 300 chars
         parts.append(str(c.get("error") or ""))
     return "\n".join(parts)
 
@@ -287,7 +527,7 @@ async def ask_model(ask: str, reply: str, calls: list[dict] | None, settings) ->
     lines = []
     for c in (calls or [])[-12:]:
         lines.append(f"- {c.get('tool')}: {'ok' if c.get('ok') else 'ERROR'}"
-                     + (f" -> {_mask(c.get('result', ''), 200)}" if c.get("ok") and c.get("result") else ""))
+                     + (f" -> {_mask(c.get('result', ''), 300)}" if c.get("ok") and c.get("result") else ""))
     msg = (f"User request:\n{_mask(ask, 900)}\n\nTool results this turn:\n"
            + ("\n".join(lines) or "- (none: the assistant only talked)")
            + f"\n\nThe reply that was sent:\n{_mask(reply, 1400)}")
@@ -330,11 +570,11 @@ def note_of(v: dict, loose: list[str], sources: str = "") -> str:
     uns = [u for u in (v.get("unsupported") or []) if _backs(u, seen, low)]
     if uns:
         STATS["unsupported"] += 1
-        return ("(Dhyaan: " + " aur ".join(uns[:2])
-                + " - yeh mujhe kisi pakke source se nahi mila; ek baar khud dekh lijiye.)")
+        return ("(Please note: " + " and ".join(uns[:2])
+                + " - I could not find this in any reliable source; please check it yourself once.)")
     if v.get("missed"):
         STATS["missed"] += 1
-        return "(Ek baat reh gayi: " + v["missed"] + " - bataun?)"
+        return "(One thing left: " + v["missed"] + " - shall I tell you?)"
     return ""
 
 
@@ -366,7 +606,7 @@ async def after_turn(conversation_id: str, tenant_id: str | None, ask: str, repl
     from .santosh import _stopped
     if not getattr(settings, "draft_check", True) or conversation_id in _stopped or state.get("halted"):
         return ""
-    if str(reply or "").startswith(("Maaf kijiye", "Yeh kaam lamba", "Theek, rok")):
+    if str(reply or "").startswith(("Maaf kijiye", "Yeh kaam lamba", "Theek, rok", "Sorry", "This task has become long", "Okay, I stopped", "Okay, stopped")):
         return ""
     g = worth_checking(ask, reply, state.get("calls"), state.get("chat_tail", ""))
     if not g or not may_speak(conversation_id, settings):

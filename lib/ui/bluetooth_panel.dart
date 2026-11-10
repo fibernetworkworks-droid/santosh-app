@@ -64,7 +64,7 @@ class _BluetoothPanelState extends State<BluetoothPanel> {
     if (r['ok'] != true) {
       _snack(_why(r['error'] as String));
     } else if (_nearby.isEmpty) {
-      _snack('Kuch naya nahi mila. Device ko pairing mode mein rakhiye (Bluetooth button dabaye rakhiye jab tak light blink kare).');
+      _snack('Nothing new found. Put the device in pairing mode (hold the Bluetooth button until the light blinks).');
     }
   }
 
@@ -78,15 +78,15 @@ class _BluetoothPanelState extends State<BluetoothPanel> {
       _snack(_why(r['error'] as String));
     } else if (action == 'tv_pair') {
       if (res['connected'] == true) {
-        _snack('TV jud gaya! Ab boliye: "TV ki awaaz badhao", "TV pe YouTube kholo".');
+        _snack('TV connected! Now say: "turn up the TV volume", "open YouTube on the TV".');
         widget.onTvConnected?.call();
       } else {
         await tvHelp(context, res['phone_name'] as String? ?? '');
       }
     } else if (action == 'pair') {
-      _snack(res['paired'] == true ? '${d['name']} jud gaya.' : 'Android ke dialog par "Pair" dabaiye.');
+      _snack(res['paired'] == true ? '${d['name']} connected.' : 'Press "Pair" on the Android dialog.');
     } else if (action == 'connect') {
-      _snack(res['connected'] == true ? '${d['name']} connect ho gaya.' : 'Bluetooth settings mein ${d['name']} par ek baar tap kijiye.');
+      _snack(res['connected'] == true ? '${d['name']} connected.' : 'Tap ${d['name']} once in Bluetooth settings.');
     }
     await refresh();
     if (!mounted) return;
@@ -122,16 +122,16 @@ class _BluetoothPanelState extends State<BluetoothPanel> {
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(d['name'] as String? ?? '', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w600)),
-            Text(connected ? (d['remote_host'] == true ? 'Hoola remote se juda' : 'Connected') : (nearby ? 'Aas-paas' : 'Paired'),
+            Text(connected ? (d['remote_host'] == true ? 'Linked with Hoola remote' : 'Connected') : (nearby ? 'Nearby' : 'Paired'),
                 style: TextStyle(fontSize: 11.5, color: connected ? C.ok : C.faint)),
           ]),
         ),
         if (busy)
           const Padding(padding: EdgeInsets.all(10), child: SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)))
         else if (tv && !(connected && d['remote_host'] == true))
-          TextButton(onPressed: _busy != null ? null : () => _do('tv_pair', d), child: const Text('TV remote banaiye'))
+          TextButton(onPressed: _busy != null ? null : () => _do('tv_pair', d), child: const Text('Set up TV remote'))
         else if (nearby)
-          TextButton(onPressed: _busy != null ? null : () => _do('pair', d), child: const Text('Jodiye'))
+          TextButton(onPressed: _busy != null ? null : () => _do('pair', d), child: const Text('Add'))
         else if (!connected)
           TextButton(onPressed: _busy != null ? null : () => _do('connect', d), child: const Text('Connect')),
       ]),
@@ -149,23 +149,23 @@ class _BluetoothPanelState extends State<BluetoothPanel> {
           const SizedBox(width: 8),
           Expanded(child: Text('Bluetooth', style: display(18))),
           if (!perm)
-            TextButton(onPressed: () async { await Native.homeAskBluetooth(); await refresh(); }, child: const Text('Permission dijiye'))
+            TextButton(onPressed: () async { await Native.homeAskBluetooth(); await refresh(); }, child: const Text('Give permission'))
           else if (!on)
-            TextButton(onPressed: _turnOn, child: const Text('Chalu kijiye'))
+            TextButton(onPressed: _turnOn, child: const Text('Turn on'))
           else
-            TextButton(onPressed: _scanning ? null : _scan, child: Text(_scanning ? 'Dhoondh raha hoon…' : 'Aas-paas dhoondhiye')),
+            TextButton(onPressed: _scanning ? null : _scan, child: Text(_scanning ? 'Searching…' : 'Search nearby')),
         ]),
-        const Text('Speaker, earbuds, TV — Hoola jod sakta hai aur chala sakta hai. Boliye: "boAt speaker jodo", '
-            '"TV ko Bluetooth se jodo", "TV ki awaaz badhao".', style: TextStyle(color: C.muted, fontSize: 12.5, height: 1.35)),
+        const Text('Speakers, earbuds, TV — Hoola can connect and control them. Say: "connect the boAt speaker",'
+            '"connect the TV by Bluetooth", "turn up the TV volume".', style: TextStyle(color: C.muted, fontSize: 12.5, height: 1.35)),
         if (_scanning) const Padding(padding: EdgeInsets.only(top: 10), child: LinearProgressIndicator(minHeight: 2)),
         if (_nearby.isNotEmpty) ...[
           const SizedBox(height: 10),
-          const Caption('AAS-PAAS'),
+          const Caption('NEARBY'),
           for (final d in _nearby.take(12)) _row(d, nearby: true),
         ],
         if (_paired.isNotEmpty) ...[
           const SizedBox(height: 10),
-          const Caption('JUDE HUE DEVICE'),
+          const Caption('LINKED DEVICES'),
           for (final d in _paired.take(12)) _row(d, nearby: false),
         ],
         if (on && perm)
@@ -181,14 +181,14 @@ class _BluetoothPanelState extends State<BluetoothPanel> {
                       if (r['ok'] != true) {
                         _snack(_why(r['error'] as String));
                       } else if (res['connected'] == true) {
-                        _snack('TV jud gaya!');
+                        _snack('TV connected!');
                         widget.onTvConnected?.call();
                       } else {
                         await tvHelp(context, res['phone_name'] as String? ?? '');
                       }
                       await refresh();
                     },
-              child: const Text('TV list mein nahi? TV se phone jodiye'),
+              child: const Text('TV not in the list? Pair the phone with the TV'),
             ),
           ),
       ]),
@@ -201,26 +201,26 @@ Future<void> showTvPairHelp(BuildContext context, String phoneName) => showDialo
       context: context,
       builder: (_) => AlertDialog(
         backgroundColor: C.bgBottom,
-        title: const Text('TV se phone jodiye'),
-        content: Text('Phone 2 minute ke liye dikh raha hai.\n\n'
-            '1. TV par Settings > Bluetooth / Remotes & accessories > "Add accessory" kholiye.\n'
-            '2. List mein "${phoneName.isEmpty ? 'aapke phone ka naam' : phoneName}" chuniye.\n'
-            '3. Dono par code same ho to "Pair" dabaiye.\n\n'
-            'Ho jaye to Ghar mein TV > "Remote test" dabaiye.'),
-        actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Theek hai'))],
+        title: const Text('Pair the phone with the TV'),
+        content: Text('The phone is visible for 2 minutes.\n\n'
+            '1. On the TV open Settings > Bluetooth / Remotes & accessories > "Add accessory".\n'
+            '2. Choose "${phoneName.isEmpty ? 'your phone name' : phoneName}" in the list.\n'
+            '3. If the code is the same on both, press "Pair".\n\n'
+            'When done, press Home > TV > "Remote test".'),
+        actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('OK'))],
       ),
     );
 
 /// Plain words for the phone's Bluetooth / TV-remote error codes.
 String btWhy(String err) => switch (err) {
-      'permission' => '"Nearby devices" ki permission dijiye, phir dobara dabaiye.',
-      'bluetooth_off' => 'Bluetooth band hai. Pehle Bluetooth chalu kijiye.',
-      'not_found' => 'Device nahi mila. Use pairing mode mein rakhkar dobara dhoondhiye.',
-      'needs_screen' => 'Hoola app khula rakhiye.',
-      'tv_not_paired' => 'Abhi koi TV phone se paired nahi hai. Ghar > Bluetooth mein "TV remote banaiye" dabaiye.',
-      'tv_not_reachable' => 'TV paired hai par jawab nahi diya. TV chalu kijiye aur phone paas rakhiye, phir dobara.',
-      'remote_not_ready' => 'Bluetooth remote shuru nahi hua. Bluetooth ek baar band-chalu kijiye.',
-      'link_dropped' => 'TV ne Bluetooth link chhod diya. Phone TV ke paas rakhkar dobara try kijiye.',
-      'boot_protocol' => 'Yeh TV Bluetooth se sirf arrows, OK aur number leta hai; awaaz aur Home TV ke remote se.',
+      'permission' => 'Give the "Nearby devices" permission, then press again.',
+      'bluetooth_off' => 'Bluetooth is off. Turn Bluetooth on first.',
+      'not_found' => 'Device not found. Put it in pairing mode and search again.',
+      'needs_screen' => 'Keep the Hoola app open.',
+      'tv_not_paired' => 'No TV is paired with the phone yet. Press "Set up TV remote" in Home > Bluetooth.',
+      'tv_not_reachable' => 'The TV is paired but did not respond. Turn the TV on and keep the phone close, then try again.',
+      'remote_not_ready' => 'The Bluetooth remote did not start. Turn Bluetooth off and on once.',
+      'link_dropped' => 'The TV dropped the Bluetooth link. Keep the phone near the TV and try again.',
+      'boot_protocol' => 'This TV accepts only arrows, OK and numbers over Bluetooth; volume and Home are on the TV\'s own remote.',
       _ => err,
     };

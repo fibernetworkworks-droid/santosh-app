@@ -75,9 +75,13 @@ from typing import Annotated, Any, Callable, Iterator, TypedDict, get_args, get_
 
 from .messages import (
     REMOVE_ALL_MESSAGES,
+    AIMessage,
     BaseMessage,
+    ChatMessage,
     HumanMessage,
     RemoveMessage,
+    SystemMessage,
+    ToolMessage,
     message_to_dict,
     messages_from_dict,
 )
@@ -159,6 +163,19 @@ def _coerce_message(m: Any) -> Any:
     if isinstance(m, BaseMessage):
         return m
     if isinstance(m, dict):
+        if "type" not in m and "data" not in m and "role" in m:
+            # the role shape ({"role", "content", ...}) - the upstream
+            # convert_to_messages table, shared with the model input lane
+            role = m.get("role", "human")
+            cls = {"human": HumanMessage, "user": HumanMessage,
+                   "ai": AIMessage, "assistant": AIMessage,
+                   "system": SystemMessage, "tool": ToolMessage}.get(role)
+            if cls is None:
+                return ChatMessage(role=role, content=m.get("content", ""))
+            kwargs: dict[str, Any] = {"content": m.get("content", "")}
+            if m.get("id"):
+                kwargs["id"] = m["id"]
+            return cls(**kwargs)
         out = messages_from_dict([m])
         return out[0] if out else m
     if isinstance(m, str):
@@ -169,8 +186,9 @@ def _coerce_message(m: Any) -> Any:
 def add_messages(left: list[Any], right: list[Any]) -> list[Any]:
     """The messages-channel reducer (the upstream add_messages semantics):
     append; replace-by-id; RemoveMessage drops that id; RemoveMessage with the
-    REMOVE_ALL_MESSAGES id clears the lane; dicts and strings coerce."""
-    out = [m for m in (left or []) if not isinstance(m, RemoveMessage)]
+    REMOVE_ALL_MESSAGES id clears the lane; dicts and strings coerce - BOTH
+    sides (upstream coerces the whole lane, not just the writes)."""
+    out = [_coerce_message(m) for m in (left or []) if not isinstance(m, RemoveMessage)]
     for m in (right or []):
         m = _coerce_message(m)
         if isinstance(m, RemoveMessage):
@@ -301,6 +319,7 @@ class SqliteSaver(BaseCheckpointSaver):
         self.path = path
         self.engine = engine
         self._local = threading.local()
+        self._ensured = False   # per-instance: class-level leaked across databases
         if self.path:
             conn = self._conn()
             self._ensure(conn)
@@ -329,20 +348,22 @@ class SqliteSaver(BaseCheckpointSaver):
 
     def _raw(self) -> tuple[Any, bool]:
         """(connection, borrowed) - an engine connection is borrowed from the
-        pool and returned by close(); a path connection is thread-local."""
+        pool and returned by close(); a path connection is thread-local. The
+        engine path ensures its table on FIRST use of the instance (put, get,
+        list or delete may all arrive first - a get before any put is the
+        chat-memory path)."""
         if self.engine is not None:
-            return self.engine.raw_connection(), True
+            conn = self.engine.raw_connection()
+            if not self._ensured:
+                self._ensure(conn)
+                self._ensured = True
+            return conn, True
         return self._conn(), False
-
-    _ensured = False
 
     def put(self, config: dict, checkpoint: dict) -> None:
         tid = _thread_id(config)
         blob = json.dumps(_jsonify(checkpoint), ensure_ascii=False, default=str)
         conn, borrowed = self._raw()
-        if self.engine is not None and not SqliteSaver._ensured:
-            self._ensure(conn)   # the engine path creates the table lazily
-            SqliteSaver._ensured = True
         try:
             conn.execute(
                 "INSERT OR REPLACE INTO aep_checkpoints"
@@ -521,9 +542,9 @@ class StateGraph:
                                 f"conditional edge from {src!r} targets unknown node {target!r}")
 
     def compile(self, checkpointer: BaseCheckpointSaver | None = None,
-                store: Any = None) -> "CompiledStateGraph":
+                store: Any = None, name: str | None = None) -> "CompiledStateGraph":
         self._validate()
-        return CompiledStateGraph(self, checkpointer=checkpointer, store=store)
+        return CompiledStateGraph(self, checkpointer=checkpointer, store=store, name=name)
 
 
 # ---------------------------------------------------------------------------
@@ -539,7 +560,7 @@ class CompiledStateGraph(Runnable):
     _tls = threading.local()   # the interrupt/resume context of the running node
 
     def __init__(self, builder: StateGraph, checkpointer: BaseCheckpointSaver | None = None,
-                 store: Any = None) -> None:
+                 store: Any = None, name: str | None = None) -> None:
         self.schema = builder.schema
         self.nodes = dict(builder._nodes)
         self.channels = dict(builder._channels)
@@ -548,6 +569,7 @@ class CompiledStateGraph(Runnable):
         self.entry = list(dict.fromkeys(builder._entry))
         self.checkpointer = checkpointer
         self.store = store
+        self._name = name   # the display name (P4 create_agent names its agent)
         # fan-in barriers: node -> the parents it waits for
         self._parents: dict[str, set[str]] = {}
         self._out: dict[str, list[str]] = {}
@@ -559,7 +581,8 @@ class CompiledStateGraph(Runnable):
     # -- naming --------------------------------------------------------
 
     def get_name(self, suffix: str | None = None) -> str:
-        return f"StateGraph{suffix}" if suffix else "StateGraph"
+        base = self._name or "StateGraph"
+        return f"{base}{suffix}" if suffix else base
 
     # -- state plumbing --------------------------------------------------
 
@@ -623,7 +646,10 @@ class CompiledStateGraph(Runnable):
         self._tls.resume = {"node": name, "resumes": resumes or {}, "calls": 0}
         span = _span_start(cfg, _NodeRef(name), "chain", state)
         try:
-            out = _run_callable(fn, state, cfg)
+            # the node body runs on the span's child config, so runs fired
+            # INSIDE the node (a model call, a tool call) nest under the node
+            # span in the P2 run tree - the upstream shape
+            out = _run_callable(fn, state, span.child_cfg if span is not None else cfg)
         except GraphInterrupt:
             raise   # the span stays open - the walk parked, honestly
         except Exception as e:  # noqa: BLE001 - the span must close before re-raise
@@ -649,11 +675,12 @@ class CompiledStateGraph(Runnable):
         prev = getattr(self._tls, "resume", None)
         self._tls.resume = {"node": name, "resumes": {}, "calls": 0}
         span = _span_start(cfg, _NodeRef(name), "chain", state)
+        body_cfg = span.child_cfg if span is not None else cfg
         try:
             if inspect.iscoroutinefunction(fn):
-                out = await fn(state, cfg)
+                out = await fn(state, body_cfg)
             else:
-                out = await asyncio.to_thread(fn, state, cfg)
+                out = await asyncio.to_thread(fn, state, body_cfg)
         except GraphInterrupt:
             raise   # the span stays open - the walk parked, honestly
         except Exception as e:  # noqa: BLE001
@@ -680,15 +707,29 @@ class CompiledStateGraph(Runnable):
                     pending: dict | None) -> dict | None:
         if self.checkpointer is None:
             return None
+        # untracked channels (the P5 middleware run counters, jump_to) live for
+        # one walk only - they are stripped from the stored payload, so a
+        # checkpointed thread restarts them on the next invoke
+        vals = {k: v for k, v in values.items()
+                if not getattr(self.channels.get(k), "untracked", False)}
         cp = {
             "v": 1, "id": uuid.uuid4().hex,
             "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
             "thread_id": _thread_id(cfg), "step": step,
-            "channel_values": values, "next": [n for n in nxt if n != END],
+            "channel_values": vals, "next": [n for n in nxt if n != END],
             "pending": pending,
         }
         self.checkpointer.put(cfg, cp)
         return cp
+
+    def _strip_ephemeral(self, state: dict) -> dict:
+        """Clear the walk's ephemeral channels (jump_to) after a routing pass -
+        one hook jump answers one gate, never reroutes a later arrival."""
+        drop = [k for k, red in self.channels.items()
+                if getattr(red, "ephemeral", False) and k in state]
+        if not drop:
+            return state
+        return {k: v for k, v in state.items() if k not in drop}
 
     # -- interrupt shape -------------------------------------------------------
 
@@ -710,6 +751,7 @@ class CompiledStateGraph(Runnable):
             if step >= limit:
                 raise GraphRecursionError(
                     f"recursion_limit of {limit} super-steps crossed - the walk never reached END")
+            state = self._strip_ephemeral(state)  # one jump, one gate (P5)
             updates: dict[str, dict] = {}
             parked: GraphInterrupt | None = None
             for name in nxt:
@@ -745,7 +787,9 @@ class CompiledStateGraph(Runnable):
 
     def _limit(self, cfg: dict) -> int:
         return int((cfg.get("configurable") or {}).get("recursion_limit")
-                   or cfg.get("recursion_limit") or DEFAULT_RECURSION_LIMIT)
+                   or cfg.get("recursion_limit")
+                   or getattr(self, "default_limit", None)
+                   or DEFAULT_RECURSION_LIMIT)
 
     # -- interrupt + resume -------------------------------------------------
 
@@ -797,6 +841,7 @@ class CompiledStateGraph(Runnable):
             if step >= limit:
                 raise GraphRecursionError(
                     f"recursion_limit of {limit} super-steps crossed - the walk never reached END")
+            state = self._strip_ephemeral(state)  # one jump, one gate (P5)
             updates: dict[str, dict] = {}
             parked: GraphInterrupt | None = None
             for name in nxt:
@@ -866,7 +911,34 @@ class CompiledStateGraph(Runnable):
                 return self._tail(state, nxt, cfg, int(cp.get("step") or 0) + 1,
                                   self._limit(cfg),
                                   {n: set(p) for n, p in self._parents.items()})
+        if isinstance(input, dict) and self.checkpointer is not None:
+            cp = self.checkpointer.get(cfg)
+            if cp is not None:
+                return self._merged_walk(input, cp, cfg)
         return self._walk(input, cfg)
+
+    def _merged_walk(self, inp: dict, cp: dict, cfg: dict) -> dict:
+        """A dict input on a checkpointed thread MERGES into the stored channel
+        values (the chat-memory law, the upstream shape): the input rides the
+        reducers on top of the stored state, then the walk continues - from the
+        parked node when the thread is parked (no resumes: the interrupt
+        re-parks honestly with the merged state), from the stored next on a
+        crashed walk, or from the entry when the thread finished (a fresh turn
+        on an old conversation)."""
+        state = self._apply_update(dict(cp.get("channel_values") or {}), inp)
+        pending = cp.get("pending")
+        parents = {n: set(p) for n, p in self._parents.items()}
+        if pending:
+            nxt: list[str] = [pending["node"]]
+            step = int(cp.get("step") or 0) + 1
+        elif cp.get("next"):
+            nxt = list(cp.get("next") or [])
+            step = int(cp.get("step") or 0) + 1
+        else:
+            nxt = list(self.entry)
+            step = 0   # a fresh turn - the step budget restarts
+        self._checkpoint(cfg, step, state, nxt, pending)
+        return self._tail(state, nxt, cfg, step, self._limit(cfg), parents)
 
     def _reshape(self, cmd: Command, cfg: dict) -> dict:
         """Command(update/goto): shape the stored walk, continue it."""
@@ -920,6 +992,7 @@ class CompiledStateGraph(Runnable):
             if step >= limit:
                 raise GraphRecursionError(
                     f"recursion_limit of {limit} super-steps crossed - the walk never reached END")
+            state = self._strip_ephemeral(state)  # one jump, one gate (P5)
             updates: dict[str, dict] = {}
             parked: GraphInterrupt | None = None
             for name in nxt:
@@ -985,6 +1058,7 @@ class CompiledStateGraph(Runnable):
             if step >= limit:
                 raise GraphRecursionError(
                     f"recursion_limit of {limit} super-steps crossed - the walk never reached END")
+            state = self._strip_ephemeral(state)  # one jump, one gate (P5)
             updates: dict[str, dict] = {}
             parked: GraphInterrupt | None = None
             for name in nxt:

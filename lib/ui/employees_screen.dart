@@ -316,7 +316,7 @@ class _SeoDeskScreenState extends State<SeoDeskScreen> {
               const Text('How much may it do on its own?', style: TextStyle(fontWeight: FontWeight.w600)),
               RadioListTile<String>(
                   value: 'seekh', groupValue: trust, onChanged: (v) => setSheet(() => trust = v ?? 'seekh'),
-                  title: const Text('Seekh'), subtitle: const Text('Asks you before every change outside Hoola')),
+                  title: const Text('Learning'), subtitle: const Text('Asks you before every change outside Hoola')),
               RadioListTile<String>(
                   value: 'saathi', groupValue: trust, onChanged: (v) => setSheet(() => trust = v ?? 'seekh'),
                   title: const Text('Saathi'), subtitle: const Text('Small, undoable changes; tells you the same day')),
@@ -330,7 +330,7 @@ class _SeoDeskScreenState extends State<SeoDeskScreen> {
     if (ok != true) return;
     final body = <String, dynamic>{for (final e in f.entries) e.key: e.value.text.trim(), 'trust': trust};
     if (_s(body['url']).isEmpty) {
-      if (mounted) _snack(context, 'Website address chahiye.');
+      if (mounted) _snack(context, 'A website address is needed.');
       return;
     }
     await _call(() => widget.app.api!.seoOnboard(body), 'Started. The first check takes 10-15 minutes.');
@@ -542,6 +542,19 @@ class _SeoDeskScreenState extends State<SeoDeskScreen> {
                       },
                 child: Text(_s((d['indexnow'] as Map?)?['key']).isEmpty ? 'Turn on' : 'Check the file')),
           ]),
+        ),
+        const SizedBox(height: 12),
+        Press(
+          onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => SearchIntelScreen(app: widget.app))),
+          child: Glass(
+            child: Row(children: [
+              const Icon(Icons.travel_explore_rounded, color: C.accent),
+              const SizedBox(width: 10),
+              Expanded(child: Text('Search intel', style: display(14))),
+              const Text('Google, Maps, AI answers', style: TextStyle(color: C.muted, fontSize: 12)),
+              const Icon(Icons.chevron_right_rounded, color: C.muted),
+            ]),
+          ),
         ),
         const SizedBox(height: 16),
         Text('Open fixes on the website', style: display(15)),
@@ -1220,8 +1233,8 @@ class _SocialDeskScreenState extends State<SocialDeskScreen> {
               child: Row(children: [
                 const Icon(Icons.campaign_rounded, color: C.accent),
                 const SizedBox(width: 10),
-                Expanded(child: Text('YouTube ads', style: display(14))),
-                const Text('Your Google Ads, your tap', style: TextStyle(color: C.muted, fontSize: 12)),
+                Expanded(child: Text('Google ads', style: display(14))),
+                const Text('YouTube, Search, Performance Max', style: TextStyle(color: C.muted, fontSize: 12)),
                 const Icon(Icons.chevron_right_rounded, color: C.muted),
               ]),
             ),
@@ -1613,16 +1626,89 @@ class _YtAdsScreenState extends State<YtAdsScreen> {
       ) ==
       true;
 
+  // v0.425 one edit sheet for every kind (lists are one per line)
+  Future<void> _edit(Map<String, dynamic> d) async {
+    final kind = _s(d['kind']);
+    String ls(dynamic v) => ((v as List?) ?? const []).join('\n');
+    final f = <String, TextEditingController>{
+      'headlines': TextEditingController(text: ls(d['headlines'])),
+      'descriptions': TextEditingController(text: ls(d['descriptions'])),
+      'long_headline': TextEditingController(text: _s(d['long_headline'])),
+      'business': TextEditingController(text: _s(d['business'])),
+      'keywords': TextEditingController(text: ls(d['keywords'])),
+      'negatives': TextEditingController(text: ls(d['negatives'])),
+      'cities': TextEditingController(text: ls(d['cities'])),
+      'final_url': TextEditingController(text: _s(d['final_url'])),
+      'daily': TextEditingController(text: _s(d['daily'])),
+      'days': TextEditingController(text: _s(d['days'])),
+    };
+    Widget box(String k, String label, {int lines = 1, bool numeric = false}) => TextField(
+        controller: f[k], minLines: lines, maxLines: lines > 1 ? 8 : 1,
+        keyboardType: numeric ? TextInputType.number : TextInputType.text, decoration: InputDecoration(labelText: label));
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: Text('Edit ${_s(d['kind_label'])}'),
+        content: SingleChildScrollView(
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            if (kind == 'search') box('keywords', 'Keywords (one per line)', lines: 3),
+            if (kind == 'search') box('negatives', 'Not these words (one per line)', lines: 2),
+            box('headlines', kind == 'search' ? 'Headlines (3-15, 30 letters)' : 'Headlines (one per line)', lines: 3),
+            if (kind != 'search') box('long_headline', 'Long headline (90)'),
+            box('descriptions', 'Descriptions (one per line)', lines: 2),
+            if (kind != 'search') box('business', 'Business name (25)'),
+            if (kind != 'youtube') box('cities', 'Cities (one per line, empty = all India)', lines: 2),
+            box('final_url', 'Where the ad leads (https://...)'),
+            box('daily', 'Daily budget', numeric: true),
+            box('days', 'Days (1-30)', numeric: true),
+          ]),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('Save')),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    List<String> lst(String k) => f[k]!.text.split('\n').map((x) => x.trim()).where((x) => x.isNotEmpty).toList();
+    await _do(
+        () => widget.app.api!.socialYtAdsEdit(_s(d['id']), {
+              'headlines': lst('headlines'),
+              'descriptions': lst('descriptions'),
+              if (kind != 'search') 'long_headline': f['long_headline']!.text.trim(),
+              if (kind != 'search') 'business': f['business']!.text.trim(),
+              if (kind == 'search') 'keywords': lst('keywords'),
+              if (kind == 'search') 'negatives': lst('negatives'),
+              if (kind != 'youtube') 'cities': lst('cities'),
+              'final_url': f['final_url']!.text.trim(),
+              'daily': int.tryParse(f['daily']!.text.trim()) ?? d['daily'],
+              'days': int.tryParse(f['days']!.text.trim()) ?? d['days'],
+            }),
+        'Saved.');
+  }
+
+  Future<void> _pick(Map<String, dynamic> d, {required bool logo}) async {
+    final x = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 90, maxWidth: 1600);
+    if (x == null) return;
+    final bytes = await x.readAsBytes();
+    await _do(() async {
+      final a = await widget.app.api!.socialUpload(x.name, bytes);
+      final had = ((d['images'] as List?) ?? const []).map((e) => '$e').toList();
+      return widget.app.api!.socialYtAdsEdit(_s(d['id']), logo ? {'logo_asset': _s(a['id'])} : {'images': [...had, _s(a['id'])]});
+    }, logo ? 'Logo added.' : 'Photo added.');
+  }
+
   Widget _draft(Map<String, dynamic> d, String cur) {
     final st = _s(d['status']);
     final probs = ((d['problems'] as List?) ?? const []).map((e) => '$e').toList();
+    final kind = _s(d['kind']);
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Glass(
         padding: const EdgeInsets.all(12),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
-            Expanded(child: Text(_s(d['video_title']).isEmpty ? _s(d['video_id']) : _s(d['video_title']),
+            Expanded(child: Text('${_s(d['kind_label'])} · ${_s(d['title']).isEmpty ? _s(d['video_id']) : _s(d['title'])}',
                 style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5))),
             _Tag(_st[st] ?? st, st == 'running' ? C.ok : (st == 'failed' ? C.bad : C.warn)),
           ]),
@@ -1634,6 +1720,13 @@ class _YtAdsScreenState extends State<YtAdsScreen> {
           if (_s(d['error']).isNotEmpty) Text(_s(d['error']), style: const TextStyle(color: C.bad, fontSize: 12.5)),
           Wrap(spacing: 8, children: [
             if (['draft', 'checked', 'failed'].contains(st)) ...[
+              TextButton(onPressed: _busy ? null : () => _edit(d), child: const Text('Edit')),
+              if (kind == 'pmax')
+                TextButton(onPressed: _busy ? null : () => _pick(d, logo: false),
+                    child: Text('Add photo (${((d['images'] as List?) ?? const []).length})')),
+              if (kind != 'search')
+                TextButton(onPressed: _busy ? null : () => _pick(d, logo: true),
+                    child: Text(_s(d['logo_asset']).isEmpty ? 'Add logo' : 'Change logo')),
               TextButton(onPressed: _busy ? null : () => _do(() => widget.app.api!.socialYtAdsAct(_s(d['id']), 'check'), 'Google checked it.'),
                   child: const Text('Check with Google')),
               FilledButton(
@@ -1647,7 +1740,7 @@ class _YtAdsScreenState extends State<YtAdsScreen> {
             if (['created', 'paused'].contains(st))
               FilledButton(
                   onPressed: _busy ? null : () async {
-                    if (await _confirm('Start this YouTube ad?',
+                    if (await _confirm('Start this Google ad?',
                         'Google can spend up to ${_num(d['daily'])} $cur a day, about ${_num(d['total'])} $cur in total. You can Pause any time.', 'Start')) {
                       _do(() => widget.app.api!.socialYtAdsAct(_s(d['id']), 'start', confirm: true), 'Started.');
                     }
@@ -1671,7 +1764,7 @@ class _YtAdsScreenState extends State<YtAdsScreen> {
     if (v == null) {
       kids.add(const Center(child: CircularProgressIndicator()));
     } else if (v['configured'] != true) {
-      kids.add(const Text('YouTube ads are not set up on the server yet (Google sign-in).', style: TextStyle(fontSize: 14)));
+      kids.add(const Text('Google ads are not set up on the server yet (Google sign-in).', style: TextStyle(fontSize: 14)));
     } else if (a == null) {
       kids.addAll([
         const Text('Connect your own Google Ads account. Hoola makes ads PAUSED; money is spent only after you tap Start.',
@@ -1690,7 +1783,7 @@ class _YtAdsScreenState extends State<YtAdsScreen> {
       kids.add(Text('Google account ${_s(a['email'])}${_s(a['customer_id']).isEmpty ? '' : ' · ad account ${_s(a['customer_id'])}'}',
           style: const TextStyle(color: C.muted, fontSize: 12.5)));
       if (_s(a['customer_id']).isEmpty) {
-        kids.add(const Padding(padding: EdgeInsets.only(top: 10), child: Text('Which ad account runs your YouTube ads?')));
+        kids.add(const Padding(padding: EdgeInsets.only(top: 10), child: Text('Which ad account runs your Google ads?')));
         for (final c in _list(a['customers']).where((c) => c['manager'] != true)) {
           kids.add(ListTile(
             dense: true,
@@ -1703,11 +1796,19 @@ class _YtAdsScreenState extends State<YtAdsScreen> {
         final vids = _list(v['videos']);
         kids.add(Padding(
           padding: const EdgeInsets.symmetric(vertical: 10),
-          child: Wrap(spacing: 8, children: [
+          child: Wrap(spacing: 8, runSpacing: 6, children: [
+            OutlinedButton(
+                onPressed: _busy ? null : () => _do(() => widget.app.api!.socialYtAdsNew('', kind: 'search'),
+                    'Search ad draft made from your business facts. Tap Edit to change it.'),
+                child: const Text('New Search ad')),
+            OutlinedButton(
+                onPressed: _busy ? null : () => _do(() => widget.app.api!.socialYtAdsNew('', kind: 'pmax'),
+                    'Performance Max draft made. Add photos and your logo.'),
+                child: const Text('New Performance Max')),
             OutlinedButton(
                 onPressed: _busy || vids.isEmpty ? null : () => _do(() => widget.app.api!.socialYtAdsNew(_s(vids.first['id'])),
-                    'Draft made from your latest video. Edit the words on the computer console if needed.'),
-                child: const Text('New ad from my latest video')),
+                    'Draft made from your latest video. Tap Edit to change the words.'),
+                child: const Text('YouTube ad from my latest video')),
           ]),
         ));
         for (final d in _list(v['drafts'])) {
@@ -1716,7 +1817,7 @@ class _YtAdsScreenState extends State<YtAdsScreen> {
       }
     }
     return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('YouTube ads')),
+      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Google ads')),
       body: Aurora(
         child: RefreshIndicator(
           onRefresh: _load,
@@ -2001,5 +2102,266 @@ class _MetaAdsScreenState extends State<MetaAdsScreen> {
         ),
       ),
     );
+  }
+}
+
+// ---------------------------------------------------------------- v0.541 SEARCH INTEL (phone): same server as the console tile
+class SearchIntelScreen extends StatefulWidget {
+  const SearchIntelScreen({super.key, required this.app});
+  final Santosh app;
+  @override
+  State<SearchIntelScreen> createState() => _SearchIntelScreenState();
+}
+
+class _SearchIntelScreenState extends State<SearchIntelScreen> {
+  Map<String, dynamic>? _v;
+  bool _busy = false;
+  static const _eng = {'openai': 'ChatGPT', 'gemini': 'Gemini', 'perplexity': 'Perplexity'};
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final v = await widget.app.api!.seoIntel();
+      if (mounted) setState(() => _v = v);
+    } catch (e) {
+      if (mounted) _snack(context, '$e');
+    }
+  }
+
+  Future<void> _do(Future<dynamic> Function() fn, [String done = '']) async {
+    setState(() => _busy = true);
+    try {
+      final r = await fn();
+      if (mounted) _snack(context, done.isNotEmpty ? done : (r is Map && _s(r['say']).isNotEmpty ? _s(r['say']) : 'Done.'));
+      await _load();
+    } catch (e) {
+      if (mounted) _snack(context, '$e');
+    }
+    if (mounted) setState(() => _busy = false);
+  }
+
+  Future<List<String>?> _ask(String title, String hint, {bool lines = true}) async {
+    final c = TextEditingController();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (d) => AlertDialog(
+        title: Text(title),
+        content: TextField(controller: c, minLines: lines ? 3 : 1, maxLines: lines ? 8 : 1, decoration: InputDecoration(hintText: hint)),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(d, true), child: const Text('OK')),
+        ],
+      ),
+    );
+    if (ok != true) return null;
+    return c.text.split('\n').map((x) => x.trim()).where((x) => x.isNotEmpty).toList();
+  }
+
+  Future<void> _joinDfs() async {
+    final login = TextEditingController(), pw = TextEditingController();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (d) => AlertDialog(
+        title: const Text('Join DataForSEO'),
+        content: Column(mainAxisSize: MainAxisSize.min, children: [
+          const Text('Your own account at app.dataforseo.com (API Access). Checked once for free, then kept sealed.',
+              style: TextStyle(fontSize: 12.5)),
+          TextField(controller: login, decoration: const InputDecoration(labelText: 'Login (email)')),
+          TextField(controller: pw, obscureText: true, enableSuggestions: false, autocorrect: false,
+              decoration: const InputDecoration(labelText: 'API password')),
+        ]),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(d, true), child: const Text('Join')),
+        ],
+      ),
+    );
+    if (ok == true) {
+      await _do(() => widget.app.api!.seoIntelPost('dataforseo', {'login': login.text.trim(), 'password': pw.text.trim()}));
+    }
+    pw.clear();
+  }
+
+  Future<void> _findShop() async {
+    try {
+      final r = await widget.app.api!.seoIntelPost('maps/find', {});
+      final cands = _list(r['candidates']);
+      if (!mounted) return;
+      if (cands.isEmpty) {
+        _snack(context, 'Not found on Google Maps - check the name and city.');
+        return;
+      }
+      final pick = await showDialog<int>(
+        context: context,
+        builder: (d) => SimpleDialog(title: const Text('Which one is your shop?'), children: [
+          for (var i = 0; i < cands.length; i++)
+            SimpleDialogOption(onPressed: () => Navigator.pop(d, i), child: Text('${_s(cands[i]['name'])}\n${_s(cands[i]['address'])}')),
+        ]),
+      );
+      if (pick != null) await _do(() => widget.app.api!.seoIntelPost('maps/place', {'place': cands[pick]}), 'Shop saved.');
+    } catch (e) {
+      if (mounted) _snack(context, '$e');
+    }
+  }
+
+  Color _cell(dynamic r) => r == null ? C.muted.withOpacity(0.25) : ((r as num) <= 3 ? C.ok : (r <= 10 ? C.warn : C.bad));
+
+  Widget _grid(Map<String, dynamic> g) {
+    final n = (g['size'] as num?)?.toInt() ?? 5;
+    final pts = _list(g['points']);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text('${_s(g['keyword'])} · top 3 at ${_num(g['top3'])} / ${pts.length} points',
+            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5)),
+        const SizedBox(height: 6),
+        SizedBox(
+          width: n * 38.0,
+          child: Wrap(spacing: 4, runSpacing: 4, children: [
+            for (final p in pts)
+              Container(
+                width: 34, height: 34, alignment: Alignment.center,
+                decoration: BoxDecoration(color: _cell(p['rank']), borderRadius: BorderRadius.circular(8)),
+                child: Text(p['rank'] == null ? '20+' : _s(p['rank']), style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
+              ),
+          ]),
+        ),
+      ]),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final v = _v;
+    final kids = <Widget>[];
+    if (v == null) {
+      kids.add(const Center(child: CircularProgressIndicator()));
+    } else {
+      final rk = _list((v['ranks'] as Map?)?['keywords']);
+      final ai = Map<String, dynamic>.from((v['ai'] as Map?) ?? const {});
+      final mp = Map<String, dynamic>.from((v['maps'] as Map?) ?? const {});
+      final df = Map<String, dynamic>.from((v['dataforseo'] as Map?) ?? const {});
+      final sp = Map<String, dynamic>.from((v['spend'] as Map?) ?? const {});
+      final place = Map<String, dynamic>.from((mp['place'] as Map?) ?? const {});
+      kids.addAll([
+        Text('Keywords you follow in Google', style: display(15)),
+        for (final k in rk)
+          ListTile(
+            dense: true, contentPadding: EdgeInsets.zero,
+            title: Text(_s(k['keyword'])),
+            subtitle: Text('Position ${k['position'] ?? '–'}'
+                '${k['move_7d'] == null ? '' : ' · ${(k['move_7d'] as num) >= 0 ? '▲' : '▼'}${(k['move_7d'] as num).abs()} this week'}'
+                '${k['exact'] == null ? '' : ' · exact #${(k['exact'] as Map)['position'] ?? '100+'}'}',
+                style: const TextStyle(fontSize: 12, color: C.muted)),
+            trailing: IconButton(icon: const Icon(Icons.close_rounded, size: 18), tooltip: 'Stop',
+                onPressed: _busy ? null : () => _do(() => widget.app.api!.seoIntelPost('track', {'keywords': [_s(k['keyword'])], 'remove': true}), 'Stopped.')),
+          ),
+        Wrap(spacing: 8, runSpacing: 6, children: [
+          OutlinedButton(onPressed: _busy ? null : () async {
+            final l = await _ask('Follow keywords', 'dentist in akola');
+            if (l != null && l.isNotEmpty) await _do(() => widget.app.api!.seoIntelPost('track', {'keywords': l}));
+          }, child: const Text('Add keywords')),
+          OutlinedButton(onPressed: _busy ? null : () => _do(() => widget.app.api!.seoIntelPost('ranks/gsc', {}), 'Search Console positions refreshed.'),
+              child: const Text('Refresh (free)')),
+          if (df['connected'] == true)
+            OutlinedButton(onPressed: _busy ? null : () => _do(() => widget.app.api!.seoIntelPost('ranks/serp', {})), child: const Text('Exact check')),
+        ]),
+        const SizedBox(height: 16),
+        Text('Are you named in AI answers?', style: display(15)),
+        Text(_s(ai['last_run']).isEmpty ? 'No answers read yet.'
+            : 'Named in ${_num((ai['summary'] as Map?)?['mentioned_pct'])}% · your site cited in ${_num((ai['summary'] as Map?)?['cited_pct'])}%',
+            style: const TextStyle(fontSize: 13.5)),
+        for (final e in ((ai['by_engine'] as Map?) ?? const {}).entries)
+          Text('${_eng[e.key] ?? e.key}: named ${_num((e.value as Map)['mentioned_pct'])}%, cited ${_num((e.value as Map)['cited_pct'])}%',
+              style: const TextStyle(fontSize: 12.5, color: C.muted)),
+        if (_list(ai['prompts']).isNotEmpty) Text('${_list(ai['prompts']).length} questions tracked', style: const TextStyle(fontSize: 12, color: C.muted)),
+        Wrap(spacing: 8, runSpacing: 6, children: [
+          OutlinedButton(onPressed: _busy ? null : () async {
+            final l = await _ask('Questions customers ask an AI', 'Best dental clinic in Akola for implants?');
+            if (l != null && l.isNotEmpty) await _do(() => widget.app.api!.seoIntelPost('ai/prompts', {'prompts': l}), 'Questions added.');
+          }, child: const Text('Add questions')),
+          OutlinedButton(onPressed: _busy ? null : () async {
+            try {
+              final r = await widget.app.api!.seoIntelPost('ai/suggest', {});
+              final sug = ((r['suggestions'] as List?) ?? const []).map((e) => '$e').toList();
+              if (sug.isNotEmpty) await _do(() => widget.app.api!.seoIntelPost('ai/prompts', {'prompts': sug}), '${sug.length} questions added.');
+            } catch (e) {
+              if (mounted) _snack(context, '$e');
+            }
+          }, child: const Text('Suggest + add')),
+          FilledButton(onPressed: _busy ? null : () => _do(() => widget.app.api!.seoIntelPost('ai/run', {})), child: const Text('Ask the AIs now')),
+        ]),
+        Text('This month ₹${_num(sp['ai_inr'])} of ₹${_num(sp['ai_cap_inr'])}. ${_s(ai['note'])}', style: const TextStyle(fontSize: 12, color: C.muted)),
+        const SizedBox(height: 16),
+        Text('Google Maps grid', style: display(15)),
+        if (mp['ready'] != true)
+          const Text('Google Maps key not set on the server.', style: TextStyle(color: C.muted))
+        else if (place['id'] == null)
+          OutlinedButton(onPressed: _busy ? null : _findShop, child: const Text('Find my shop on Google Maps'))
+        else ...[
+          Text('${_s(place['name'])} · ${_s(place['address'])}', style: const TextStyle(fontSize: 12, color: C.muted)),
+          const SizedBox(height: 6),
+          for (final g in _list(mp['grids'])) _grid(g),
+          Wrap(spacing: 8, children: [
+            OutlinedButton(onPressed: _busy ? null : () async {
+              final l = await _ask('Which search?', 'dentist near me', lines: false);
+              if (l != null && l.isNotEmpty) await _do(() => widget.app.api!.seoIntelPost('maps/grid', {'keyword': l.first}));
+            }, child: const Text('Check a search')),
+            TextButton(onPressed: _busy ? null : _findShop, child: const Text('Change shop')),
+          ]),
+        ],
+        const SizedBox(height: 16),
+        Text('Competitors and backlinks', style: display(15)),
+        Text(df['connected'] == true ? 'DataForSEO joined · this month \$${_s(df['spent_usd'])} of \$${_s(df['cap_usd'])}'
+            : 'Join your own DataForSEO account (pay as you go) to see competitors, keyword gaps and backlinks.',
+            style: const TextStyle(fontSize: 12.5, color: C.muted)),
+        Wrap(spacing: 8, runSpacing: 6, children: [
+          if (df['connected'] != true) FilledButton(onPressed: _busy ? null : _joinDfs, child: const Text('Join DataForSEO')),
+          if (df['connected'] == true) ...[
+            OutlinedButton(onPressed: _busy ? null : () => _showDfs('competitors'), child: const Text('Who competes with me')),
+            OutlinedButton(onPressed: _busy ? null : () => _showDfs('backlinks'), child: const Text('My backlinks')),
+            if (df['via'] == 'own')
+              TextButton(onPressed: _busy ? null : () => _do(() => widget.app.api!.seoIntelForget()), child: const Text('Remove login')),
+          ],
+        ]),
+      ]);
+    }
+    return Scaffold(
+      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Search intel')),
+      body: Aurora(
+        child: RefreshIndicator(
+          onRefresh: _load,
+          child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: kids),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showDfs(String what) async {
+    setState(() => _busy = true);
+    try {
+      final r = await widget.app.api!.seoIntelPost('dfs/$what', {});
+      if (!mounted) return;
+      final rows = what == 'competitors'
+          ? _list(r['competitors']).map((c) => '${_s(c['domain'])} · ${_num(c['shared_keywords'])} shared keywords').toList()
+          : ['${_num(r['backlinks'])} backlinks from ${_num(r['referring_domains'])} sites',
+             ..._list(r['top_referrers']).take(15).map((x) => '${_s(x['domain'])} (rank ${_num(x['rank'])})')];
+      await showDialog<void>(
+        context: context,
+        builder: (d) => AlertDialog(
+          title: Text(what == 'competitors' ? 'Who competes with you' : 'Your backlinks'),
+          content: SingleChildScrollView(child: Text(rows.join('\n'))),
+          actions: [TextButton(onPressed: () => Navigator.pop(d), child: const Text('Close'))],
+        ),
+      );
+    } catch (e) {
+      if (mounted) _snack(context, '$e');
+    }
+    if (mounted) setState(() => _busy = false);
   }
 }

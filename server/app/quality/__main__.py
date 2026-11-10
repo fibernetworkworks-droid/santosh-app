@@ -6,11 +6,14 @@
    | code [--set 1|2|3] [--only id,id] [--limit N] [--kind fix] [--spec] [--label "..."]
    | review [--modes old,new] [--k 1] [--only id,id] [--label x]   (v0.402 PR review card: ECC specialists vs old)
    | maps [--live] [--only id,id] [--limit N] [--kind geo|tool|rule] [--label x]   (v0.470 MAPS card: proof + rupees)
+   | leads [--live] [--only id,id] [--limit N] [--kind tool|rule] [--label x]   (v0.540 LEADS card: reachability + walls)
    | skills [--live] [--only id,id] [--limit N] [--kind pos|neg] [--label x]   (v0.494 SKILLS card: do imported skills reach the model)
    | research [--live] [--judge] [--only id,id] [--limit N] [--kind topic|trap] [--label x]
        | research verdict <id> right|wrong ["why"] [--engine X]   (v0.471 R0 RESEARCH card: report quality scored from its own evidence)
        | research runoff --check | --status | --decide | --apply | --reset | --budget-inr N [--engines hoola,parallel,exa] [--only ids] [--limit N] [--k 1] [--judge]
          (v0.478 R7: the card across the engines, scored the same way; --apply writes the winner as the default, only when she says so)
+   | parity [--check | --live] [--judge] [--only id,id] [--limit N] [--cat followup|one_tool|long|make|memory|trap|lang]
+       [--label x] | parity --status   (v0.732 CLAUDE PARITY card: 60 multi-turn conversations through the real run_turn)
    | sdk [--setup]   (v0.378 the Dart / Kotlin toolchains the mobile coding card runs with)   (v0.360 coding card: 12 practice jobs through the real loop)"""
 from __future__ import annotations
 
@@ -44,6 +47,17 @@ def _mapscard(argv: list[str]) -> int:
     card = asyncio.run(MC.live_card(items)) if "--live" in argv else MC.free_card(items)
     card = MC.save(card, val("--label"))
     print("\n".join(MC.lines(card)))
+    print(f"\n  saved: {card['file']}")
+    return 0
+
+
+def _leadscard(argv: list[str]) -> int:
+    from . import leadscard as LC
+    val = lambda k: argv[argv.index(k) + 1] if k in argv and len(argv) > argv.index(k) + 1 else ""  # noqa: E731
+    items = LC.pick(only=val("--only"), limit=int(val("--limit") or 0), kind=val("--kind"))
+    card = asyncio.run(LC.live_card(items)) if "--live" in argv else LC.free_card(items)
+    card = LC.save(card, val("--label"))
+    print("\n".join(LC.lines(card)))
     print(f"\n  saved: {card['file']}")
     return 0
 
@@ -143,6 +157,32 @@ def _code(argv: list[str]) -> int:
     return 0
 
 
+def _parity(argv: list[str]) -> int:
+    """v0.732 CLAUDE PARITY Phase 0: --check (free: set + calibrated scorer + tools in view) or --live (real turns)."""
+    from . import paritycard as PC
+    val = lambda k: argv[argv.index(k) + 1] if k in argv and len(argv) > argv.index(k) + 1 else ""  # noqa: E731
+    if "--status" in argv:
+        cards = PC.saved()
+        if not cards:
+            print("No parity card saved yet.")
+            return 0
+        print("\n".join(PC.lines(PC.load(cards[0]["file"]))))
+        return 0
+    items = PC.pick(only=val("--only"), limit=int(val("--limit") or 0), cat=val("--cat"))
+    if not items:
+        print("No conversation matches.")
+        return 2
+    if "--live" in argv:
+        card = asyncio.run(PC.live_card(items, judge="--judge" in argv,
+                                        progress=lambda cid: print("  ..", cid, flush=True)))
+    else:
+        card = PC.free_card(items)
+    card = PC.save(card, val("--label"))
+    print("\n".join(PC.lines(card)))
+    print(f"\n  saved: {card['file']}")
+    return 0 if card.get("kind") != "check" or card.get("ok") else 1
+
+
 def _hardcard(argv: list[str]) -> int:
     from . import hard_card as H
 
@@ -166,8 +206,16 @@ def _longcard(argv: list[str]) -> int:
     if "--check" in argv:                     # free: the set is valid, nothing runs
         bad = LC.check_set()
         k = int(val("--k") or 3)
-        lo, hi = LC.estimate(len(ASKS) * k)
-        print(f"Long card set {LC.SET_V}: {len(ASKS)} asks, {len(ASKS) * k} runs at k={k} "
+        # v0.586 the line describes THIS run (--only / --limit / --k and the card's model), not the whole set:
+        # a 5-job Haiku try used to print the 75-run Sonnet price (Rs 4,500-16,500)
+        only = [x for x in val("--only").split(",") if x]
+        n = len([a for a in ASKS if not only or a["id"] in only][:int(val("--limit"))] if val("--limit")
+                else [a for a in ASKS if not only or a["id"] in only])
+        from ..config import get_settings
+        model = get_settings().anthropic_model
+        lo, hi = LC.estimate(n * k, model)
+        size = f"{n} of {len(ASKS)} asks" if n != len(ASKS) else f"{len(ASKS)} asks"
+        print(f"Long card set {LC.SET_V}: {size}, {n * k} runs at k={k} on {model} "
               f"(rough cost Rs {lo:,}-{hi:,}).")
         print("\n".join(f"  PROBLEM {b}" for b in bad) or "  set OK")
         return 1 if bad else 0
@@ -186,7 +234,40 @@ def _longcard(argv: list[str]) -> int:
     return 0
 
 
+CHEAP = {"haiku": "claude-haiku-5-5", "sonnet": "claude-sonnet-5-5", "opus": "claude-opus-5-5"}
+# v0.582 the Claude model settings a card turn can reach (chat, hard asks, the checker, every engine door, the dev loop):
+# all of them move to ONE model for the card run, so a cheap run never quietly spends Opus somewhere inside
+_CLAUDE_FIELDS = ("anthropic_model", "agent_hard_model", "hard_check_model", "hard_judge_model", "quick_model",
+                  "dev_loop_model", "site_model", "site_edit_model", "app_model", "cad_model", "motion_model",
+                  "blender_model", "notebook_model", "studio_plan_model", "doc_model", "game_model")
+
+
+def test_model(argv: list[str]) -> tuple[list[str], str]:
+    """v0.582 SASTI JAANCH: `--model haiku|sonnet|opus|<id>` (or QUALITY_MODEL=...) runs THIS card process on one
+    Claude model - her live users are untouched (it only sets this process's environment). Haiku 5.5 is ~20x cheaper
+    than Sonnet 5.5 and ~40x cheaper than Opus 5.5: it proves the PIPES (requests accepted, tools found, jobs finish),
+    not the quality of the production model's answers. Returns (argv without the flag, model or '')."""
+    import os
+    want = ""
+    if "--model" in argv and len(argv) > argv.index("--model") + 1:
+        i = argv.index("--model")
+        want = argv[i + 1]
+        argv = argv[:i] + argv[i + 2:]
+    want = want or os.environ.get("QUALITY_MODEL", "")
+    if not want:
+        return argv, ""
+    model = CHEAP.get(want.lower(), want)
+    from ..config import Settings, get_settings
+    for f in _CLAUDE_FIELDS:
+        if f in Settings.model_fields:
+            os.environ[f.upper()] = model
+    get_settings.cache_clear()
+    print(f"== card model: {model} (this run only; live chat keeps its own models)")
+    return argv, model
+
+
 def main(argv: list[str]) -> int:
+    argv, _model = test_model(argv)
     if argv and argv[0] == "longcard":      # v0.443 LONG CARD (real long jobs: costs model calls unless --check)
         return _longcard(argv[1:])
     if argv and argv[0] == "review":        # v0.401 PR review card (old vs ECC specialists)
@@ -206,6 +287,8 @@ def main(argv: list[str]) -> int:
         return 0
     if argv and argv[0] == "maps":          # v0.470 MAPS card (free; --live costs model calls + real Maps rupees)
         return _mapscard(argv[1:])
+    if argv and argv[0] == "leads":         # v0.540 LEADS card (free = reachability + the walls; --live = real turns)
+        return _leadscard(argv[1:])
     if argv and argv[0] == "skills":        # v0.494 SKILLS card (free = reachability; --live = a real model's turns)
         return _skillscard(argv[1:])
     if argv and argv[0] == "research":      # v0.471 R0 RESEARCH card (free; --live costs model calls + web)
@@ -219,6 +302,8 @@ def main(argv: list[str]) -> int:
         hours = int(argv[argv.index("--hours") + 1]) if "--hours" in argv and len(argv) > argv.index("--hours") + 1 else 24
         print("\n".join(LJ.lines(LJ.report(hours))))
         return 0
+    if argv and argv[0] == "parity":        # v0.732 CLAUDE PARITY card (free --check; --live costs model calls)
+        return _parity(argv[1:])
     if argv and argv[0] == "hardcard":      # v0.438 the hard card: known answers, scored (free, or --live)
         return _hardcard(argv[1:])
     if argv and argv[0] == "hard":          # v0.272 the hard-reasoning detector card (free, no model)

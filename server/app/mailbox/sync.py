@@ -383,26 +383,35 @@ def snooze_add(tenant: str, conv: str, email_ref: str, wake_at: datetime) -> dic
         s.flush()
         view = snooze_view(w)
     try:
+        # v0.707 the whole CONVERSATION leaves the inbox (archiving one message of a thread left the thread in the inbox)
         box.archive([native])            # inbox se bahar jab tak wake time na ho (wapas laaya ja sakta hai)
-    except MailError:
-        pass
+        if box.kind == "gmail":
+            try:   # v0.707 ... and the rest of its conversation (one message out left the thread in the inbox)
+                tid = box.thread_of(native)
+                if tid:
+                    box.thread_modify(tid, remove=["INBOX"])
+            except (MailError, AttributeError):
+                pass
+    except MailError as e:
+        # v0.707 it said "snoozed" while the mail stayed in the inbox - said plainly now
+        view = {**view, "warning": f"Snooze yaad rakha, par mail inbox se hata nahi paaye ({e}). Time par yaad dilaunga."}
     return view
 
 
 def _wake(tenant: str, w: MailSnooze) -> None:
     """Bring one snoozed mail back: unarchive + mark unread + a reminder card in her chat."""
+    back = True
     try:
         box = get_box(tenant, w.account or None)
         native = w.email_ref.split("~", 1)[-1] if "~" in w.email_ref else w.email_ref
         try:
             box.move([native], "inbox")
-        except MailError:
-            pass
-        try:
             box.mark([native], False)
-        except MailError:
-            pass
+        except MailError as e:
+            back = False
+            log.warning("snooze wake %s: inbox mein wapas nahi aayi: %s", w.id, e)
     except (MailError, NotConnected) as e:
+        back = False
         log.warning("snooze wake %s: mailbox nahi khula: %s", w.id, e)
     with session() as s:
         row = s.get(MailSnooze, w.id)
@@ -413,7 +422,9 @@ def _wake(tenant: str, w: MailSnooze) -> None:
         bus.publish(w.conversation_id, "email_snooze", {"id": w.id, "status": "woken", "subject": w.subject,
                                                         "peer": w.peer, "email_ref": w.email_ref})
         from ..events import notify
-        notify(w.conversation_id, f"Snooze khatam: \"{w.subject}\" ({w.peer or 'mail'}) wapas inbox mein hai.")
+        notify(w.conversation_id, f"Snooze khatam: \"{w.subject}\" ({w.peer or 'mail'}) wapas inbox mein hai." if back else
+               f"Snooze khatam: \"{w.subject}\" ({w.peer or 'mail'}) - inbox mein wapas laa nahi paaye, Gmail mein "
+               "'All Mail' mein dekh lijiye.")
 
 
 def snooze_list(tenant: str) -> list[dict[str, Any]]:
@@ -595,7 +606,7 @@ def sync_account(tenant: str, box: Box) -> int:
     if not fresh or not calibrated:          # pehli baar: watermark bharo, khabar nahi
         _save_recent(tenant, box.key, native_ids, recent)
         return 0
-    conv = convs.current(tenant)
+    conv = convs.notice_chat(tenant)   # v0.714 new-mail news goes to her updates chat, not the chat she has open
     rules = rules_for(tenant)
     mute = set(muted(tenant))
     known = _vip_senders(tenant)

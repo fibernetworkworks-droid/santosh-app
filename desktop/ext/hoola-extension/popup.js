@@ -23,6 +23,99 @@ async function init() {
   $("opts").addEventListener("click", (e) => { e.preventDefault(); chrome.runtime.openOptionsPage(); });
   $("sendpage").addEventListener("click", () => send($("ask").value.trim(), true));
   $("sendask").addEventListener("click", () => send($("ask").value.trim(), false));
+  $("capstart").addEventListener("click", captionsStart);
+  $("capstop").addEventListener("click", captionsStop);
+  captionsResume();   // W5: a reopened popup keeps polling a session that is still live
+}
+
+// ---------------------------------------------------------------- W5: live captions
+// The worker owns the session (offscreen recording + start/stop); the popup only shows the
+// truth: poll GET /api/kaan/live/{sid} every 3s and render the captions_tail as it grows.
+let capPoll = null, capSid = "";
+
+function capState(msg, bad) {
+  const el = $("capstate");
+  el.textContent = msg;
+  el.style.color = bad ? "#D93C3C" : (msg.startsWith("Live") ? "#0E9F6E" : "#5B5675");
+}
+
+async function captionsStart() {
+  $("capstart").disabled = true;
+  capState("Session khol raha hoon…", false);
+  const out = await chrome.runtime.sendMessage({ kind: "captions-start" });
+  $("capstart").disabled = false;
+  if (!out || !out.ok) {
+    capState((out && out.message) || "Session nahi khula.", true);
+    return;
+  }
+  capSid = out.sid;
+  await chrome.storage.local.set({ capSid, capStartedAt: Date.now() });
+  $("capstop").disabled = false;
+  $("caps").innerHTML = "";
+  capState("Live · " + (out.model || "base") + " · captions aa rahe hain…", false);
+  clearInterval(capPoll);
+  capPoll = setInterval(pollCaptions, 3000);
+  pollCaptions();
+}
+
+async function pollCaptions() {
+  if (!capSid) return;
+  const st = await chrome.storage.local.get(["server", "token"]);
+  const server = (st.server || DEFAULT_SERVER).replace(/\/+$/, "");
+  try {
+    const r = await fetch(server + "/api/kaan/live/" + encodeURIComponent(capSid), {
+      headers: { "Authorization": "Bearer " + st.token },
+    });
+    if (!r.ok) { capState("Session ki sthiti nahi mili (HTTP " + r.status + ").", true); return; }
+    const d = await r.json();
+    if (d.status !== "live") { stopPolling("Session band ho gaya."); return; }
+    const secs = Math.round(d.duration_s || 0);
+    capState("Live · " + secs + "s · " + (d.n_phrases || 0) + " phrase(s)", false);
+    const box = $("caps");
+    box.innerHTML = "";
+    for (const p of (d.captions_tail || []).slice(-6)) {
+      const div = document.createElement("div");
+      div.className = "reply";
+      div.textContent = p.text || "";
+      box.appendChild(div);
+    }
+  } catch (e) {
+    capState("Server tak poll nahi pahuncha.", true);
+  }
+}
+
+async function captionsStop() {
+  $("capstop").disabled = true;
+  capState("Band kar raha hoon…", false);
+  const out = await chrome.runtime.sendMessage({ kind: "captions-stop" });
+  clearInterval(capPoll); capPoll = null;
+  await chrome.storage.local.remove(["capSid", "capStartedAt"]);
+  $("capstart").disabled = false;
+  $("capstop").disabled = true;
+  capSid = "";
+  if (out && out.ok) {
+    capState("Transcript ban gayi" + (out.transcript_id ? " - " + out.transcript_id : "") + ". Conversation mein dikhegi.", false);
+  } else {
+    capState((out && out.message) || "Band nahi hua.", true);
+  }
+}
+
+function stopPolling(msg) {
+  clearInterval(capPoll); capPoll = null;
+  capSid = "";
+  chrome.storage.local.remove(["capSid", "capStartedAt"]).catch(() => {});
+  $("capstart").disabled = false;
+  $("capstop").disabled = true;
+  capState(msg, false);
+}
+
+async function captionsResume() {
+  const st = await chrome.storage.local.get(["capSid"]);
+  if (!st.capSid) return;
+  capSid = st.capSid;
+  $("capstop").disabled = false;
+  capPoll = setInterval(pollCaptions, 3000);
+  pollCaptions();
 }
 
 function say(msg, bad) {

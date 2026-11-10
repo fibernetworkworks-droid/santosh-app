@@ -304,11 +304,13 @@ def test_three_layers_search_timeline_fetch(cod):
 
 
 def test_work_state_roundtrip_and_primer(cod):
+    # (wave 9: work lists are per tenant - one user's list never rides another user's primer)
     store.work_write("build", [{"text": "ship the coder module", "status": "doing"},
-                               {"text": "old done thing", "status": "done"}])
-    open_lists = store.work_read()
+                               {"text": "old done thing", "status": "done"}], tenant=T)
+    open_lists = store.work_read(tenant=T)
     assert list(open_lists) == ["build"] and len(open_lists["build"]) == 1   # done hidden by default
-    assert len(store.work_read(include_closed=True)["build"]) == 2
+    assert len(store.work_read(include_closed=True, tenant=T)["build"]) == 2
+    assert store.work_read(tenant="someone-else") == {}
     store.store_observation(CONV, T, {"type": "decision", "title": "Coder memory is server-side only",
                                       "narrative": "no APK surface in v1"})
     blk = inject.primer(T, CONV)
@@ -355,7 +357,8 @@ def test_session_lifecycle_pins():
     assert "if not incognito:" in ms and ms.index("if not incognito:") < ms.index('coder.session_started(tenant')
     assert "_coder_router(require_key, current_tenant)" in ms
     ws = open("app/worker.py").read()
-    assert "await coder_jobs()" in ws and "coder.observer.tick" in ws
+    # (v0.662 every worker slot runs through the guarded slot loop: coder_jobs is one of its slots, not a bare await)
+    assert ("await coder_jobs()" in ws or "coder_jobs" in ws) and "coder.observer.tick" in ws
 
 
 def test_coder_routes_mounted(env):
@@ -380,4 +383,4 @@ def test_retention_typo_never_purges(cod):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.530.0"
+    assert APP_VERSION == "0.758.0"

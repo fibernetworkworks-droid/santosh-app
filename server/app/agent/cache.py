@@ -14,7 +14,12 @@ def tools(defs: list[dict] | None) -> list[dict] | None:
     if not defs:
         return defs
     out = list(defs)
-    out[-1] = {**out[-1], "cache_control": _EPH}
+    # v0.563 a deferred tool (defer_loading) may not carry cache_control (the API 400s) and sits outside the cached
+    # prefix anyway: the breakpoint goes on the LAST tool that is really in view
+    for i in range(len(out) - 1, -1, -1):
+        if not (isinstance(out[i], dict) and out[i].get("defer_loading")):
+            out[i] = {**out[i], "cache_control": _EPH}
+            break
     return out
 
 
@@ -49,9 +54,19 @@ def messages(history: list[dict]) -> list[dict]:
 def system_prompt(system: Any) -> Any:
     """v0.189 the third breakpoint: the system prompt is the biggest constant prefix of all (persona, rules, tools
     guidance, memory summary) and never changes inside a turn - cache it like everything before the newest block.
-    Anthropic allows up to 4 breakpoints; we use 3 (system, last tool, newest message). A non-string system passes
+    Anthropic allows up to 4 breakpoints; we use 3 (system, last tool, newest message) - 4 with the small prompt's
+    core / chat split. A non-string system passes
     through untouched."""
     if isinstance(system, str) and system.strip():
+        # parity Phase 2: the small prompt is CORE (fixed for the tenant) + THIS CHAT (changes rarely) - one breakpoint
+        # after each, so a new chat / a new day still reads the core from the cache. 4 breakpoints in all (Anthropic's
+        # limit): core, this chat, last tool, newest message.
+        from .core_prompt import CHAT_HEAD
+        cut = system.find(CHAT_HEAD)
+        if cut > 0:
+            core, chat = system[:cut], system[cut:]
+            return [{"type": "text", "text": core, "cache_control": _EPH},
+                    {"type": "text", "text": chat, "cache_control": _EPH}]
         return [{"type": "text", "text": system, "cache_control": _EPH}]
     return system
 

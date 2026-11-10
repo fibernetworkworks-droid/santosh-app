@@ -97,7 +97,7 @@ class _SiteDashPageState extends State<SiteDashPage> {
 
   Widget _bars(List<dynamic> values, Color color, {bool money = false}) {
     final v = values.map(_n).toList();
-    if (v.every((x) => x == 0)) return const Text('Is samay mein kuch nahi.', style: TextStyle(color: C.faint, fontSize: 13));
+    if (v.every((x) => x == 0)) return const Text('Nothing in this period.', style: TextStyle(color: C.faint, fontSize: 13));
     final days = _l(_m(_d?['series'])['days']).map((x) => _t(x)).toList();
     final best = v.reduce((a, b) => a > b ? a : b);
     final at = v.indexOf(best);
@@ -106,7 +106,7 @@ class _SiteDashPageState extends State<SiteDashPage> {
         height: 120,
         width: double.infinity,
         child: Semantics(
-          label: 'Chart: sabse zyada ${money ? '₹' : ''}${inr(best)}${at >= 0 && at < days.length ? ' on ${days[at]}' : ''}',
+          label: 'Chart: most ${money ? '₹' : ''}${inr(best)}${at >= 0 && at < days.length ? ' on ${days[at]}' : ''}',
           child: CustomPaint(painter: _BarsPainter(v, color)),
         ),
       ),
@@ -122,7 +122,7 @@ class _SiteDashPageState extends State<SiteDashPage> {
   }
 
   Widget _rows(List<dynamic> rows, {bool money = false, int valueAt = 1, String Function(List<dynamic>)? label}) {
-    if (rows.isEmpty) return const Text('Abhi kuch nahi.', style: TextStyle(color: C.faint, fontSize: 13));
+    if (rows.isEmpty) return const Text('Nothing yet.', style: TextStyle(color: C.faint, fontSize: 13));
     final max = rows.map((r) => _n(_l(r).length > valueAt ? _l(r)[valueAt] : 0)).fold<num>(1, (a, b) => b > a ? b : a);
     return Column(children: [
       for (final r in rows.take(8))
@@ -152,7 +152,7 @@ class _SiteDashPageState extends State<SiteDashPage> {
     final app = _m(d?['app']);
     return Scaffold(
       appBar: AppBar(title: Text(widget.name.isEmpty ? 'Website dashboard' : '${widget.name} · dashboard'), actions: [
-        IconButton(icon: const Icon(Icons.refresh_rounded), onPressed: _load, tooltip: 'Dobara'),
+        IconButton(icon: const Icon(Icons.refresh_rounded), onPressed: _load, tooltip: 'Retry'),
       ]),
       body: RefreshIndicator(
         onRefresh: _load,
@@ -160,7 +160,7 @@ class _SiteDashPageState extends State<SiteDashPage> {
           Wrap(spacing: 8, children: [
             for (final n in const [7, 30, 90, 365])
               ChoiceChip(
-                label: Text(n == 365 ? '1 saal' : '$n din'),
+                label: Text(n == 365 ? '1 year' : '$n din'),
                 selected: _days == n,
                 onSelected: (_) {
                   setState(() => _days = n);
@@ -176,23 +176,23 @@ class _SiteDashPageState extends State<SiteDashPage> {
             const SizedBox(height: 10),
             Wrap(spacing: 8, runSpacing: 8, children: [for (final k in _l(d['kpis'])) _kpi(_m(k))]),
             const SizedBox(height: 12),
-            _card('Roz ke visit', _bars(_l(sr['visits']), C.violet)),
-            _card('Enquiry + booking roz', _bars([
+            _card('Visits per day', _bars(_l(sr['visits']), C.violet)),
+            _card('Enquiries + bookings per day', _bars([
               for (var i = 0; i < _l(sr['enquiries']).length; i++)
                 _n(_l(sr['enquiries'])[i]) + (i < _l(sr['bookings']).length ? _n(_l(sr['bookings'])[i]) : 0)
             ], C.teal)),
-            _card('Sabse zyada dekhe gaye page', _rows(_l(d['top_pages']))),
+            _card('Most viewed pages', _rows(_l(d['top_pages']))),
             if (d['shop'] == true) ...[
-              _card('Roz ki pakki bikri (₹)', _bars(_l(sr['sales']), C.accent, money: true)),
-              _card('Roz ke order', _bars(_l(sr['orders']), C.accent2)),
-              _card('Order kis haal mein', _rows(_l(d['status_mix']))),
-              _card('Sabse zyada bikne wale', _rows(_l(d['top_products']), money: true, valueAt: 2,
+              _card('Confirmed sales per day (₹)', _bars(_l(sr['sales']), C.accent, money: true)),
+              _card('Orders per day', _bars(_l(sr['orders']), C.accent2)),
+              _card('Order status', _rows(_l(d['status_mix']))),
+              _card('Best sellers', _rows(_l(d['top_products']), money: true, valueAt: 2,
                   label: (r) => '${_t(r.first)} × ${_t(r.length > 1 ? r[1] : '')}')),
             ],
             for (final x in _l(app['lists']).take(6))
-              _card('Web app: ${_t(_m(x)['label'])} (naye roz)', _bars(_l(_m(x)['days']), C.teal)),
-            const Text('Visit Hoola ka apna server ginta hai (cookie / tracker nahi; bots aur uptime check nahi gine jaate). '
-                'Bikri mein sirf woh order jo aapne pakke kiye.', style: TextStyle(color: C.faint, fontSize: 11.5)),
+              _card('Web app: ${_t(_m(x)['label'])} (new per day)', _bars(_l(_m(x)['days']), C.teal)),
+            const Text('Visits are counted by the Hoola server itself (no cookies or trackers; bots and uptime checks are not counted). '
+                'Sales include only the orders you confirmed.', style: TextStyle(color: C.faint, fontSize: 11.5)),
           ],
         ]),
       ),

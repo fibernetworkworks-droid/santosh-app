@@ -125,9 +125,9 @@ async def youtube_play(ctx: Ctx, video="", query="", on="phone", tv="", order="r
     q = str(query or "").strip()
     vid = video_id(str(video or "")) if video else None
     if video and not vid:
-        raise ToolError("Yeh YouTube link / video id samajh nahi aaya.")
+        raise ToolError("Could not understand this YouTube link / video id.")
     if not vid and not q:
-        raise ToolError("Kaunsa video? video (link) ya query (kya dhoondhna hai) dijiye.")
+        raise ToolError("Which video? Give video (link) or query (what to search).")
     title, channel, picked = "", "", None
     try:
         if vid:
@@ -137,7 +137,7 @@ async def youtube_play(ctx: Ctx, video="", query="", on="phone", tv="", order="r
             out = await asyncio.to_thread(ys.search, ctx.tenant_id, q, "video", order or "relevance", 3, duration or "")
             vids = out.get("videos") or []
             if not vids:
-                raise ToolError(f"YouTube par '{q}' ka koi video nahi mila. Doosre shabd bataiye.")
+                raise ToolError(f"No YouTube video found for '{q}'. Ask for other words.")
             picked = vids[0]
     except NotConnected:
         picked = None            # no API key / sign-in: still open it, by search
@@ -159,7 +159,7 @@ async def youtube_play(ctx: Ctx, video="", query="", on="phone", tv="", order="r
                       "thumbnail": f"https://i.ytimg.com/vi/{got['id']}/hqdefault.jpg"}
     if picked:
         vid, title, channel = picked.get("id") or vid, picked.get("title", ""), picked.get("channel", "")
-        ys.publish(ctx.conversation_id, [picked], "YouTube: chal raha hai")
+        ys.publish(ctx.conversation_id, [picked], "YouTube: playing")
     shown = title or q or "video"
     if on == "tv":
         from .bt_tools import _device, _ensure_tv
@@ -171,13 +171,13 @@ async def youtube_play(ctx: Ctx, video="", query="", on="phone", tv="", order="r
             await _device(ctx, "smart-tv-remote", "tv_open_app", {"app": "youtube", **dev})
             res = await _device(ctx, "smart-tv-remote", "tv_search", {"query": q, **dev})
         return {"on": "tv", "video_id": vid, "title": title, "channel": channel, **res,
-                "say": f"TV par YouTube mein '{shown}' lag gaya." if res.get("status") == "done" else ""}
+                "say": f"'{shown}' is now playing on YouTube on the TV." if res.get("status") == "done" else ""}
     from .life_tools import _device_action
     payload = {"video_id": vid or "", "title": shown[:120], "query": "" if vid else q[:200],
                "url": watch_url(vid) if vid else "https://www.youtube.com/results?search_query=" + quote_plus(q)}
-    note = (f"'{shown}' phone par YouTube app mein chal raha hai." if vid else
-            f"Theek video nahi mil paya, isliye YouTube app mein '{q}' ki search khol di; jo video chahiye usse tap kar "
-            "lijiye.")
+    note = (f"'{shown}' is playing in the YouTube app on the phone." if vid else
+            f"The exact video could not be found, so the search for '{q}' was opened in the YouTube app; tap the video "
+            "you want.")
     return {"on": "phone", "video_id": vid, "title": title, "channel": channel, **_device_action(ctx, "youtube_play", payload, note)}
 
 

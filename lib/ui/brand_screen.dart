@@ -24,11 +24,11 @@ Color _hex(String h, [Color or = C.chip]) {
   return Color(int.parse('FF$v', radix: 16));
 }
 
-const _status = {'draft': 'Proof', 'waiting': 'Aapki haan', 'approved': 'Final', 'rejected': 'Mana'};
+const _status = {'draft': 'Proof', 'waiting': 'Your yes', 'approved': 'Final', 'rejected': 'Declined'};
 Color _stCol(String s) => switch (s) { 'approved' => C.ok, 'waiting' => C.accent, 'rejected' => C.bad, _ => C.chip };
 
 const _setsUi = {'social': 'Social (4)', 'whatsapp': 'WhatsApp', 'all_social': 'Sab platform', 'print': 'Print A4'};
-const _kindsUi = {'poster': 'Poster', 'offer': 'Offer / sale', 'festival': 'Tyohar', 'event': 'Event', 'product': 'Product',
+const _kindsUi = {'poster': 'Poster', 'offer': 'Offer / sale', 'festival': 'Festival', 'event': 'Event', 'product': 'Product',
   'hiring': 'Hiring', 'announcement': 'Suchna', 'quote': 'Vichar / review'};
 
 /// A proof / final picture (needs the key, so it goes with authHeaders).
@@ -108,10 +108,10 @@ class _BrandScreenState extends State<BrandScreen> {
             backgroundColor: Colors.transparent,
             title: Text('${app.aName} · Brand designer'),
             bottom: const TabBar(isScrollable: true, tabAlignment: TabAlignment.start, tabs: [
-              Tab(text: 'Banao'),
+              Tab(text: 'Make'),
               Tab(text: 'Designs'),
               Tab(text: 'Brand kit'),
-              Tab(text: 'Tyohar'),
+              Tab(text: 'Festival'),
             ]),
           ),
           body: Aurora(
@@ -147,7 +147,7 @@ class _MakeTabState extends State<_MakeTab> {
 
   Future<void> _make() async {
     if (_brief.text.trim().isEmpty && _kind != 'festival') {
-      _snack(context, 'Poster kis baare mein? Offer, daam, din likhiye.');
+      _snack(context, 'What is the poster about? Write the offer, price and date.');
       return;
     }
     setState(() => _busy = true);
@@ -187,15 +187,15 @@ class _MakeTabState extends State<_MakeTab> {
           child: Glass(child: Row(children: [
             const Icon(Icons.info_outline_rounded, color: C.accent),
             const SizedBox(width: 10),
-            const Expanded(child: Text('Pehle "Brand kit" mein business ka naam aur logo daaliye: rang logo se apne aap ban jaayenge.')),
+            const Expanded(child: Text('First add the business name and logo in "Brand kit": the colours will be made from the logo automatically.')),
           ])),
         ),
       Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('Naya poster', style: display(17)),
+          Text('New poster', style: display(17)),
           const SizedBox(height: 8),
           Wrap(spacing: 6, runSpacing: 4, children: [
-            ChoiceChip(label: const Text('Apne aap'), selected: _kind.isEmpty, onSelected: (_) => setState(() => _kind = '')),
+            ChoiceChip(label: const Text('Automatic'), selected: _kind.isEmpty, onSelected: (_) => setState(() => _kind = '')),
             for (final e in _kindsUi.entries)
               ChoiceChip(label: Text(e.value), selected: _kind == e.key, onSelected: (_) => setState(() => _kind = e.key)),
           ]),
@@ -204,7 +204,7 @@ class _MakeTabState extends State<_MakeTab> {
             controller: _brief,
             minLines: 3,
             maxLines: 6,
-            decoration: const InputDecoration(labelText: 'Kya dikhana hai (offer, daam, din, pata)', hintText: 'Diwali offer: 100 Mbps Rs 499, 15 Nov tak, free installation'),
+            decoration: const InputDecoration(labelText: 'What to show (offer, price, date, address)', hintText: 'Diwali offer: 100 Mbps Rs 499, until 15 Nov, free installation'),
           ),
           const SizedBox(height: 10),
           const Text('Size', style: TextStyle(color: C.muted, fontSize: 12.5)),
@@ -216,7 +216,7 @@ class _MakeTabState extends State<_MakeTab> {
           Row(children: [
             Expanded(
               child: GlassButton(
-                label: _photo == null ? 'Photo lagao (optional)' : _photo!.name,
+                label: _photo == null ? 'Add a photo (optional)' : _photo!.name,
                 icon: Icons.add_photo_alternate_rounded,
                 height: 42,
                 onTap: () async {
@@ -229,10 +229,10 @@ class _MakeTabState extends State<_MakeTab> {
           ]),
           const SizedBox(height: 12),
           _busy
-              ? const Column(children: [LinearProgressIndicator(), SizedBox(height: 6), Text('Har size ka proof ban raha hai...', style: TextStyle(color: C.muted))])
-              : GradientButton(label: 'Proof banao', icon: Icons.brush_rounded, height: 48, onTap: _make),
+              ? const Column(children: [LinearProgressIndicator(), SizedBox(height: 6), Text('Making a proof for every size...', style: TextStyle(color: C.muted))])
+              : GradientButton(label: 'Make proof', icon: Icons.brush_rounded, height: 48, onTap: _make),
           const SizedBox(height: 6),
-          Text('Proof par PROOF likha hota hai. Saaf final files tabhi banengi jab aap card par "Haan, final" dabayengi.',
+          Text('The proof has PROOF written on it. Clean final files are made only when you tap "Yes, final" on the card.',
               style: const TextStyle(color: C.faint, fontSize: 12)),
         ]),
       ),
@@ -250,7 +250,7 @@ class _DesignsTab extends StatelessWidget {
   Widget build(BuildContext context) => RefreshIndicator(
         onRefresh: onChanged,
         child: designs.isEmpty
-            ? ListView(children: const [Padding(padding: EdgeInsets.all(24), child: Text('Abhi koi design nahi. "Banao" mein pehla poster banaiye.', style: TextStyle(color: C.muted)))])
+            ? ListView(children: const [Padding(padding: EdgeInsets.all(24), child: Text('No designs yet. Make your first poster under "Make".', style: TextStyle(color: C.muted)))])
             : GridView.builder(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, mainAxisSpacing: 12, crossAxisSpacing: 12, mainAxisExtent: 250),
@@ -329,7 +329,7 @@ class _BrandDesignPageState extends State<BrandDesignPage> {
         title: Text(title),
         content: TextField(controller: c, minLines: lines, maxLines: 6, autofocus: true, decoration: InputDecoration(hintText: hint)),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Rehne do')),
+          TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Keep it')),
           FilledButton(onPressed: () => Navigator.pop(d, true), child: const Text('Theek')),
         ],
       ),
@@ -340,17 +340,17 @@ class _BrandDesignPageState extends State<BrandDesignPage> {
   Future<void> _ownWords() async {
     final ct = _map(_v!['content']);
     final ctl = {for (final k in ['headline', 'sub', 'offer', 'cta', 'date']) k: TextEditingController(text: _s(ct[k]))};
-    const labels = {'headline': 'Headline', 'sub': 'Neeche ki line', 'offer': 'Offer / daam', 'cta': 'Button', 'date': 'Din / tareekh'};
+    const labels = {'headline': 'Headline', 'sub': 'Line below', 'offer': 'Offer / daam', 'cta': 'Button', 'date': 'Din / tareekh'};
     final ok = await showDialog<bool>(
       context: context,
       builder: (d) => AlertDialog(
-        title: const Text('Apne shabd'),
+        title: const Text('Your own words'),
         content: SingleChildScrollView(
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             for (final e in ctl.entries) TextField(controller: e.value, decoration: InputDecoration(labelText: labels[e.key])),
           ]),
         ),
-        actions: [FilledButton(onPressed: () => Navigator.pop(d, true), child: const Text('Lagao'))],
+        actions: [FilledButton(onPressed: () => Navigator.pop(d, true), child: const Text('Apply'))],
       ),
     );
     if (ok != true) return;
@@ -370,7 +370,7 @@ class _BrandDesignPageState extends State<BrandDesignPage> {
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('Kaun si size chahiye?', style: display(16)),
+              Text('Which sizes do you need?', style: display(16)),
               const SizedBox(height: 8),
               Wrap(spacing: 6, runSpacing: 4, children: [
                 for (final e in all.entries)
@@ -381,7 +381,7 @@ class _BrandDesignPageState extends State<BrandDesignPage> {
                   ),
               ]),
               const SizedBox(height: 12),
-              GradientButton(label: 'Proof banao', height: 44, onTap: () => Navigator.pop(c, true)),
+              GradientButton(label: 'Make proof', height: 44, onTap: () => Navigator.pop(c, true)),
             ]),
           ),
         ),
@@ -398,8 +398,8 @@ class _BrandDesignPageState extends State<BrandDesignPage> {
     final name = '${_v!['number']}_$sz.$key';
     await _run('share', () async {
       final path = await _fetch(widget.app, _s(f[key]), name);
-      final err = gallery ? await Native.saveImage(path, name) : await Native.shareFile(path, mime: key == 'pdf' ? 'application/pdf' : 'image/$key', title: 'Poster bhejo');
-      return {'say': err ?? (gallery ? 'Gallery mein save (Pictures/Hoola).' : '')};
+      final err = gallery ? await Native.saveImage(path, name) : await Native.shareFile(path, mime: key == 'pdf' ? 'application/pdf' : 'image/$key', title: 'Send poster');
+      return {'say': err ?? (gallery ? 'Saved to the gallery (Pictures/Hoola).' : '')};
     });
   }
 
@@ -419,8 +419,8 @@ class _BrandDesignPageState extends State<BrandDesignPage> {
               }
             },
             itemBuilder: (_) => [
-              const PopupMenuItem(value: 'copy', child: Text('Copy banao')),
-              PopupMenuItem(value: 'template', child: Text(v['template'] == true ? 'Template se hatao' : 'Template banao')),
+              const PopupMenuItem(value: 'copy', child: Text('Make a copy')),
+              PopupMenuItem(value: 'template', child: Text(v['template'] == true ? 'Remove from templates' : 'Make a template')),
               const PopupMenuItem(value: 'delete', child: Text('Hatao')),
             ],
           ),
@@ -473,7 +473,7 @@ class _BrandDesignPageState extends State<BrandDesignPage> {
         const SizedBox(height: 12),
         Glass(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('Jaanch', style: display(15)),
+            Text('Check', style: display(15)),
             for (final c in checks)
               Padding(
                 padding: const EdgeInsets.only(top: 6),
@@ -491,13 +491,13 @@ class _BrandDesignPageState extends State<BrandDesignPage> {
       if (status != 'approved') ...[
         Row(children: [
           Expanded(
-            child: GlassButton(label: 'Badlav bolo', icon: Icons.edit_rounded, height: 42, onTap: _busy.isNotEmpty ? null : () async {
-              final t = await _ask('Kya badlein?', hint: 'offer bada karo, background laal, "free" hatao');
+            child: GlassButton(label: 'Say a change', icon: Icons.edit_rounded, height: 42, onTap: _busy.isNotEmpty ? null : () async {
+              final t = await _ask('What should change?', hint: 'make the offer bigger, red background, remove "free"');
               if (t != null && t.isNotEmpty) await _run('revise', () => widget.app.api!.brandAct(widget.id, 'revise', {'instruction': t}));
             }),
           ),
           const SizedBox(width: 8),
-          Expanded(child: GlassButton(label: 'Khud likho', icon: Icons.text_fields_rounded, height: 42, onTap: _busy.isNotEmpty ? null : _ownWords)),
+          Expanded(child: GlassButton(label: 'Write it myself', icon: Icons.text_fields_rounded, height: 42, onTap: _busy.isNotEmpty ? null : _ownWords)),
         ]),
         const SizedBox(height: 8),
         Row(children: [
@@ -516,7 +516,7 @@ class _BrandDesignPageState extends State<BrandDesignPage> {
           BrandApproveBox(app: widget.app, v: v, onDone: (nv) => setState(() => _v = nv))
         else
           GradientButton(
-            label: 'Final haan ke liye bhejo',
+            label: 'Send for final approval',
             icon: Icons.verified_rounded,
             height: 48,
             onTap: _busy.isNotEmpty ? null : () => _run('approve', () => widget.app.api!.brandAct(widget.id, 'approve')),
@@ -533,14 +533,14 @@ class _BrandDesignPageState extends State<BrandDesignPage> {
                   subtitle: Text(_map(finals[sz]).keys.where((k) => ['png', 'jpg', 'pdf'].contains(k)).join(' + ').toUpperCase()),
                   trailing: Wrap(children: [
                     if (!R.isPrint(sz)) IconButton(tooltip: 'Gallery', icon: const Icon(Icons.download_rounded), onPressed: () => _share(_map(finals[sz]), sz, gallery: true)),
-                    IconButton(tooltip: 'Bhejo', icon: const Icon(Icons.share_rounded), onPressed: () => _share(_map(finals[sz]), sz)),
+                    IconButton(tooltip: 'Send', icon: const Icon(Icons.share_rounded), onPressed: () => _share(_map(finals[sz]), sz)),
                   ]),
                 ),
           ]),
         ),
         const SizedBox(height: 8),
-        GlassButton(label: 'Isme badlav (naya version)', icon: Icons.edit_rounded, height: 42, onTap: () async {
-          final t = await _ask('Kya badlein?');
+        GlassButton(label: 'Change this (new version)', icon: Icons.edit_rounded, height: 42, onTap: () async {
+          final t = await _ask('What should change?');
           if (t != null && t.isNotEmpty) await _run('revise', () => widget.app.api!.brandAct(widget.id, 'revise', {'instruction': t}));
         }),
       ],
@@ -573,9 +573,9 @@ class _BrandApproveBoxState extends State<BrandApproveBox> {
       final ok = await showDialog<bool>(
         context: context,
         builder: (d) => AlertDialog(
-          title: const Text('Kya pasand nahi aaya?'),
-          content: TextField(controller: c, decoration: const InputDecoration(hintText: 'rang, shabd, photo... (yaad rakha jayega)')),
-          actions: [FilledButton(onPressed: () => Navigator.pop(d, true), child: const Text('Mana karo'))],
+          title: const Text('What did you not like?'),
+          content: TextField(controller: c, decoration: const InputDecoration(hintText: 'colour, words, photo... (will be remembered)')),
+          actions: [FilledButton(onPressed: () => Navigator.pop(d, true), child: const Text('Decline'))],
         ),
       );
       if (ok != true) return;
@@ -595,14 +595,14 @@ class _BrandApproveBoxState extends State<BrandApproveBox> {
 
   @override
   Widget build(BuildContext context) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Text('Sab size dekh li? Haan dabate hi saaf final files (PNG / print PDF) banengi.', style: const TextStyle(color: C.muted, fontSize: 12.5)),
+        Text('Seen every size? As soon as you tap Yes, clean final files (PNG / print PDF) are made.', style: const TextStyle(color: C.muted, fontSize: 12.5)),
         const SizedBox(height: 8),
         _busy
-            ? const Column(children: [LinearProgressIndicator(), SizedBox(height: 6), Text('Final files ban rahi hain...', style: TextStyle(color: C.muted))])
+            ? const Column(children: [LinearProgressIndicator(), SizedBox(height: 6), Text('Making the final files...', style: TextStyle(color: C.muted))])
             : Row(children: [
-                Expanded(child: GlassButton(label: 'Mana', color: C.bad, height: 46, onTap: () => _decide(false))),
+                Expanded(child: GlassButton(label: 'Declined', color: C.bad, height: 46, onTap: () => _decide(false))),
                 const SizedBox(width: 8),
-                Expanded(flex: 2, child: GradientButton(label: 'Haan, final', icon: Icons.check_rounded, height: 46, onTap: () => _decide(true))),
+                Expanded(flex: 2, child: GradientButton(label: 'Yes, final', icon: Icons.check_rounded, height: 46, onTap: () => _decide(true))),
               ]),
       ]);
 }
@@ -671,7 +671,7 @@ class _KitTab extends StatelessWidget {
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(_s(kit['name']).isEmpty ? 'Business ka naam?' : _s(kit['name']), style: display(17)),
                 const SizedBox(height: 6),
-                GlassButton(label: kit['logo'] == true ? 'Logo badlo' : 'Logo daalo', icon: Icons.upload_rounded, height: 38, onTap: () async {
+                GlassButton(label: kit['logo'] == true ? 'Logo badlo' : 'Add logo', icon: Icons.upload_rounded, height: 38, onTap: () async {
                   final f = await pickAttachments(context, max: 1);
                   if (f.isEmpty) return;
                   try {
@@ -689,19 +689,19 @@ class _KitTab extends StatelessWidget {
         const SizedBox(height: 12),
         Glass(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('Rang', style: display(15)),
+            Text('Colour', style: display(15)),
             const SizedBox(height: 8),
             Wrap(spacing: 10, runSpacing: 10, children: [
               for (final role in ['primary', 'secondary', 'accent', 'dark', 'light'])
                 GestureDetector(
                   onTap: () async {
-                    final v = await _ask(context, 'Rang ($role)', _s(cols[role]), hint: '#1565C0 ya laal / neela / hara');
+                    final v = await _ask(context, 'Rang ($role)', _s(cols[role]), hint: '#1565C0 or red / blue / green');
                     if (v != null && v.isNotEmpty && context.mounted) await _save(context, {'colors': {role: v}});
                   },
                   child: Column(children: [
                     Container(width: 48, height: 48, decoration: BoxDecoration(color: _hex(_s(cols[role])), shape: BoxShape.circle, border: Border.all(color: C.line, width: 2))),
                     const SizedBox(height: 4),
-                    Text({'primary': 'Mukhya', 'secondary': 'Doosra', 'accent': 'Button', 'dark': 'Gehra', 'light': 'Halka'}[role]!, style: const TextStyle(fontSize: 11.5, color: C.muted)),
+                    Text({'primary': 'Mukhya', 'secondary': 'Other', 'accent': 'Button', 'dark': 'Gehra', 'light': 'Halka'}[role]!, style: const TextStyle(fontSize: 11.5, color: C.muted)),
                   ]),
                 ),
             ]),
@@ -719,25 +719,25 @@ class _KitTab extends StatelessWidget {
         const SizedBox(height: 12),
         Glass(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            row('Business ka naam', _s(kit['name']), (v) => _save(context, {'name': v})),
+            row('Business name', _s(kit['name']), (v) => _save(context, {'name': v})),
             row('Tagline', _s(kit['tagline']), (v) => _save(context, {'tagline': v})),
             row('Phone', _s(contact['phone']), (v) => _save(context, {'contact': {'phone': v}})),
             row('WhatsApp', _s(contact['whatsapp']), (v) => _save(context, {'contact': {'whatsapp': v}})),
             row('Website', _s(contact['website']), (v) => _save(context, {'contact': {'website': v}})),
             row('Instagram', _s(contact['instagram']), (v) => _save(context, {'contact': {'instagram': v}})),
-            row('Pata (chhota)', _s(contact['address']), (v) => _save(context, {'contact': {'address': v}})),
-            row('Rajya (tyohar ki tareekh ke liye)', _s(kit['state']), (v) => _save(context, {'state': v}), hint: 'Maharashtra'),
-            row('Andaaz (tone)', _s(kit['tone']), (v) => _save(context, {'tone': v}), hint: 'garam, seedha, premium...'),
+            row('Address (short)', _s(contact['address']), (v) => _save(context, {'contact': {'address': v}})),
+            row('State (for festival dates)', _s(kit['state']), (v) => _save(context, {'state': v}), hint: 'Maharashtra'),
+            row('Tone', _s(kit['tone']), (v) => _save(context, {'tone': v}), hint: 'warm, direct, premium...'),
           ]),
         ),
         const SizedBox(height: 12),
         Glass(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
-              Expanded(child: Text('Mere niyam', style: display(15))),
+              Expanded(child: Text('My rules', style: display(15))),
               TextButton.icon(
                 onPressed: () async {
-                  final v = await _ask(context, 'Naya niyam', '', hint: 'Logo hamesha upar left; laal rang kabhi nahi');
+                  final v = await _ask(context, 'New rule', '', hint: 'Logo always top left; never use red');
                   if (v != null && v.isNotEmpty && context.mounted) await _save(context, {'rule': v});
                 },
                 icon: const Icon(Icons.add_rounded),
@@ -754,8 +754,8 @@ class _KitTab extends StatelessWidget {
               contentPadding: EdgeInsets.zero,
               value: kit['nudge'] == true,
               onChanged: (v) => _save(context, {'nudge': v}),
-              title: const Text('Tyohar se pehle yaad dilao'),
-              subtitle: Text('${kit['nudge_days'] ?? 7} din pehle poster ka sujhav'),
+              title: const Text('Remind before a festival'),
+              subtitle: Text('A poster suggestion ${kit['nudge_days'] ?? 7} days before'),
             ),
           ]),
         ),
@@ -772,7 +772,7 @@ class _FestTab extends StatelessWidget {
   final Future<void> Function() onDone;
   @override
   Widget build(BuildContext context) => ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 96), children: [
-        if (fests.isEmpty) const Padding(padding: EdgeInsets.all(20), child: Text('Agle 60 din mein koi bada tyohar nahi mila.', style: TextStyle(color: C.muted))),
+        if (fests.isEmpty) const Padding(padding: EdgeInsets.all(20), child: Text('No big festival found in the next 60 days.', style: TextStyle(color: C.muted))),
         for (final f in fests)
           Padding(
             padding: const EdgeInsets.only(bottom: 10),
@@ -793,8 +793,8 @@ class _FestTab extends StatelessWidget {
                   ]),
                 ),
                 f['made'] == true
-                    ? const Pill('Bana hai', fg: C.ok)
-                    : GlassButton(label: 'Banao', height: 36, onTap: () => brandFestival(context, app, f, onDone)),
+                    ? const Pill('Made', fg: C.ok)
+                    : GlassButton(label: 'Make', height: 36, onTap: () => brandFestival(context, app, f, onDone)),
               ]),
             ),
           ),
@@ -807,14 +807,14 @@ Future<void> brandFestival(BuildContext context, Santosh app, Map<String, dynami
     context: context,
     builder: (d) => AlertDialog(
       title: Text('${f['name']} ka poster'),
-      content: TextField(controller: c, minLines: 2, maxLines: 4, decoration: const InputDecoration(hintText: 'Koi offer ya sandesh? (khali chhodo to sirf badhai)')),
-      actions: [FilledButton(onPressed: () => Navigator.pop(d, true), child: const Text('Proof banao'))],
+      content: TextField(controller: c, minLines: 2, maxLines: 4, decoration: const InputDecoration(hintText: 'Any offer or message? (leave blank for greetings only)')),
+      actions: [FilledButton(onPressed: () => Navigator.pop(d, true), child: const Text('Make proof'))],
     ),
   );
   if (ok != true) return;
   try {
     final r = await app.api!.brandMake({
-      'brief': '${f['name']} ki badhai. ${c.text.trim()}', 'kind': 'festival', 'festival': f['name'], 'sizes': ['festival'],
+      'brief': 'Greetings for ${f['name']}. ${c.text.trim()}', 'kind': 'festival', 'festival': f['name'], 'sizes': ['festival'],
       'conversation_id': app.conversationId ?? ''
     });
     if (context.mounted) _snack(context, _s(r['say']));
@@ -863,7 +863,7 @@ class BrandDesignCard extends StatelessWidget {
             alignment: Alignment.centerRight,
             child: TextButton(
               onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => BrandDesignPage(app: app, id: _s(d['id'])))),
-              child: Text(status == 'approved' ? 'Final files' : 'Sab size dekho / badlo'),
+              child: Text(status == 'approved' ? 'Final files' : 'View / change all sizes'),
             ),
           ),
       ]),
@@ -888,7 +888,7 @@ class BrandIdeaCard extends StatelessWidget {
         const SizedBox(height: 6),
         Text(_s(v['say']), style: const TextStyle(color: C.chip, fontSize: 13)),
         const SizedBox(height: 8),
-        Align(alignment: Alignment.centerRight, child: GlassButton(label: 'Poster banao', height: 38, onTap: () => brandFestival(context, app, f))),
+        Align(alignment: Alignment.centerRight, child: GlassButton(label: 'Make poster', height: 38, onTap: () => brandFestival(context, app, f))),
       ]),
     );
   }

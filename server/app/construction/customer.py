@@ -9,7 +9,7 @@ import io
 from sqlalchemy import select
 
 from ..db import session
-from .common import (CstError, _LOCK, _date, _dump, _num, _rs, add_months, publish, today)
+from .common import (CstError, _LOCK, _date, _dump, _j, _num, _rs, add_months, publish, today)
 from .models import CCustDemand, CCustReceipt, CDlpTicket, CHandover
 
 
@@ -214,3 +214,138 @@ def dlp_list(tenant: str, open_only: bool = True) -> list[dict]:
         rows = [r for r in rows if r.status != "closed"]
     return [{"id": r.id, "project": r.project, "unit": r.unit, "issue": r.issue[:120], "trade": r.trade,
              "vendor": r.vendor, "opened_on": r.opened_on, "dlp_until": r.dlp_until, "status": r.status} for r in rows]
+
+
+# ---------------------------------------------------------------- Wave 4: #94-#99 sales, docs, handover, investor
+def lead_add(tenant: str, project: str, rows: list, conv: str = "") -> dict:
+    """#94: rows [name, contact, source, unit_interest, status] - the pipeline as HER words."""
+    from . import models as WM
+    from .common import publish as pub
+    if not rows:
+        raise CstError("Lead rows chahiye [name, contact, source, unit, status].")
+    made = 0
+    with session() as s:
+        for r in rows:
+            if not isinstance(r, (list, tuple)) or len(r) < 2:
+                continue
+            s.add(WM.Cw4ExtItem(tenant_id=tenant, project=project, kind="lead",
+                                name=str(r[0])[:120],
+                                data=_dump({"contact": str(r[1])[:80], "source": str(r[2])[:60] if len(r) > 2 else "",
+                                            "unit": str(r[3])[:40] if len(r) > 3 else "",
+                                            "status": str(r[4])[:24] if len(r) > 4 else "new"})))
+            made += 1
+    pub(tenant, "const_customer", {"kind": "leads", "project": project, "rows": made}, conv)
+    return {"ok": True, "rows": made, "said": f"{made} lead row(s) - follow-up CRM ke apne rules par."}
+
+
+def inventory_mark(tenant: str, project: str, unit: str, status: str) -> dict:
+    """#94: unit status available | booked | sold - HER word, recorded."""
+    from . import models as WM
+    if status not in ("available", "booked", "sold"):
+        raise CstError("status available | booked | sold.")
+    with session() as s:
+        s.add(WM.Cw4ExtItem(tenant_id=tenant, project=project, kind="inventory", ref=unit[:40],
+                            name=unit[:40], data=_dump({"status": status})))
+    return {"ok": True, "unit": unit, "status": status, "said": f"{unit} -> {status} (aapka word)."}
+
+
+def inventory_sum(tenant: str, project: str) -> dict:
+    from . import models as WM
+    with session() as s:
+        rows = s.scalars(select(WM.Cw4ExtItem).where(WM.Cw4ExtItem.tenant_id == tenant,
+                                                     WM.Cw4ExtItem.project == project,
+                                                     WM.Cw4ExtItem.kind == "inventory")).all()
+    counts: dict[str, int] = {}
+    for r in rows:
+        st = str(_j(r.data, {}).get("status") or "?")
+        counts[st] = counts.get(st, 0) + 1
+    return {"units": counts, "said": "Inventory aapke marks se hai."}
+
+
+def mkt_asset(tenant: str, project: str, rows: list) -> dict:
+    """#95: rows [asset, status, rera_no] - RERA number ke bina ad nahi (tier C refuses)."""
+    from . import models as WM
+    made = 0
+    with session() as s:
+        for r in rows:
+            if not isinstance(r, (list, tuple)) or len(r) < 2:
+                continue
+            s.add(WM.Cw4ExtItem(tenant_id=tenant, project=project, kind="mkt",
+                                name=str(r[0])[:120],
+                                data=_dump({"status": str(r[1])[:24] if len(r) > 1 else "",
+                                            "rera_no": str(r[2])[:40] if len(r) > 2 else ""})))
+            made += 1
+    return {"ok": True, "rows": made,
+            "said": (f"{made} marketing asset row(s) - RERA number ke bina advertise karna "
+                     "gates mein block hai (RERA 2016 s.3).")}
+
+
+def afs_doc(tenant: str, project: str, unit: str, rows: list, by: str = "") -> dict:
+    """#96: agreement-for-sale document checklist [doc, status] - status needs the doer's name;
+    the signed agreement is hers."""
+    from . import models as WM
+    if not by:
+        raise CstError("Doc status ke saath US KA NAAM jo rakh raha hai.")
+    if not rows:
+        raise CstError("Doc rows chahiye [doc, status].")
+    made = 0
+    with session() as s:
+        for r in rows:
+            if not isinstance(r, (list, tuple)) or len(r) < 2:
+                continue
+            s.add(WM.Cw4ExtItem(tenant_id=tenant, project=project, kind="afs", ref=unit[:40],
+                                name=str(r[0])[:120], data=_dump({"status": str(r[1])[:24]}), by=by))
+            made += 1
+    return {"ok": True, "unit": unit, "rows": made, "by": by,
+            "said": f"{made} doc row(s) '{unit}' ke liye - agreement par sign aapki."}
+
+
+def handover_unit(tenant: str, project: str, unit: str, dues_rows: list, snags_ref: str = "") -> dict:
+    """#97: dues [type, amount, paid] + optional snag reference (const_quality punch). Possession
+    letter hers; the arithmetic here."""
+    from . import models as WM
+    if not dues_rows:
+        raise CstError("Dues rows chahiye [type, amount, paid].")
+    rows_out, due_t, paid_t = [], 0.0, 0.0
+    with session() as s:
+        for r in dues_rows:
+            if not isinstance(r, (list, tuple)) or len(r) < 3:
+                continue
+            amt, pd = _num(r[1]), _num(r[2])
+            due_t, paid_t = due_t + amt, paid_t + pd
+            rows_out.append({"type": str(r[0])[:60], "amount": amt, "paid": pd,
+                             "balance": round(amt - pd, 2)})
+        s.add(WM.Cw4ExtItem(tenant_id=tenant, project=project, kind="handover", ref=unit[:40],
+                            name="dues",
+                            data=_dump({"rows": rows_out, "due_total": round(due_t, 2),
+                                        "paid_total": round(paid_t, 2),
+                                        "balance": round(due_t - paid_t, 2),
+                                        "snags_ref": snags_ref[:40]})))
+    bal = round(due_t - paid_t, 2)
+    return {"ok": True, "unit": unit, "rows": rows_out, "due_total": round(due_t, 2),
+            "paid_total": round(paid_t, 2), "balance": bal, "snags_ref": snags_ref,
+            "said": (f"Balance {bal:,.0f} baaki - possession letter dues clear hone par hi, "
+                     "decision aapka." if bal > 0 else "Dues clear (arithmetic) - handover aapka faisla.")}
+
+
+def investor_pack(tenant: str, project: str, rows: list, milestones: list) -> dict:
+    """#99: drawdown rows [period, planned, actual] + milestone rows [milestone, status] - the
+    lender/investor pack draft, sign line empty."""
+    from . import models as WM
+    if not rows:
+        raise CstError("Drawdown rows chahiye [period, planned, actual].")
+    per, tp, ta = [], 0.0, 0.0
+    with session() as s:
+        for r in rows:
+            if not isinstance(r, (list, tuple)) or len(r) < 3:
+                continue
+            p, a = _num(r[1]), _num(r[2])
+            tp, ta = tp + p, ta + a
+            per.append({"period": str(r[0])[:20], "planned": p, "actual": a, "var": round(a - p, 2)})
+        for m in milestones or []:
+            if isinstance(m, (list, tuple)) and m:
+                s.add(WM.Cw4ExtItem(tenant_id=tenant, project=project, kind="investor",
+                                    name=str(m[0])[:120], data=_dump({"status": str(m[1])[:24] if len(m) > 1 else ""})))
+    return {"ok": True, "drawdown": per, "total_planned": round(tp, 2), "total_actual": round(ta, 2),
+            "variance": round(ta - tp, 2),
+            "said": ("Pack ka DRAFT hai - sign line khaali; lender ke samne CFO/MD hi present karenge.")}

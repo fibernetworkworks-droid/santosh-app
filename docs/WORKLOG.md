@@ -1,4 +1,71 @@
 # HOOLA — Multi-Session Worklog
+Task ID: v0.730.0 SHILP MANCH (the ArtCraft generation lane, W0)
+Agent: main (shilp lane)
+Task: owner "MAKE A PLAN FOR HOOLA AI THUS HOOLA USER CAN USE THIS" after the READ of github.com/storytold/artcraft; the plan's W0 (the lane, six actions, two doors, BYOK, ~43 tests; W1 SEVAK worker + W2 BHANDAR store wait on a real key).
+Work Log: REBASE PROTOCOL (planned v0.686, rebuilt on their v0.729 tip 53ab8a366, their base kept whole); agent/shilp_tools.py NEW (envelope, _http seam, _call status table, _ref_url wall, _no_tokens media-token refusal, _gen_body, _generate, _act_job/_act_jobs, _map_state, _act_status/_act_models, _error_of, _sync, SHILP_TOOLS spec); agent/tools.py registry 617 -> 618; config.py shilp_enabled + artcraft_api_key + artcraft_base_url; app/shilp/mcp_server.py NEW (the kaan wire, serverInfo hoola-shilp); test_v0730_shilp.py NEW (43, offline, the seam fake records calls); ritual_v0730.py swept (parser-stamp guard), pubspec 0.730.0+729, console stamps, APP_VERSION story, CLAUDE.md + HISTORY.md + WORKLOG mirrors.
+Stage Summary: pushed to main as v0.730.0 + tag; vps-ops deploy fired; live test = action=status zero-network + her first real generation once ARTCRAFT_API_KEY is in the VPS .env.
+Task ID: v0.694.0 WEB CLONE (rebuilt-from-spec lane)
+Agent: lane (webclone rebuild)
+Task: owner "DOES ALL WORK DONE -- DOES NOW HOOLA AI WILL CLONE ANY WEBSITE PERFECTLY" -> the deploy ask "PERFECT IS IT DEPLOYED".
+Work Log: the first rebuild sat built through their v0.686-v0.693 and was eaten by the sandbox recycle mid-flight (the 0.682.0 precedent); this lane rebuilt it from the spec onto their 8c11c130d HOOLA APP STUDIO tip: capture.py + endpoints_adapter.py + assemble.py + webclone_tools.py, the three admit.py seams, 30 tool-count pins healed, 224 version pins re-swept, the offline suite 21 cases green + the live example.com check.
+Stage Summary: pushed to main; the box still runs 0.685.0 - the paste-in runtime patch carries the same seams against it
+
+Task ID: v0.688.0 KAAM MANCH (the OWL work-discipline port)
+Agent: main (kaam laws lane)
+Task: owner "GO" on the OWL deploy plan (download/HOOLA_OWL_DEPLOY_PLAN.md, 6 decisions locked: laws+tips shape, KAAM MANCH name, all lanes, default ON + caps, no new tool, ~30 tests).
+Work Log: REBASE PROTOCOL (planned v0.686, shipped on their v0.687 tip c78c2164c, their base kept whole); server/app/agent/kaam_laws.py NEW (~150 LOC, stdlib-re only); prompts.py _kaam_tips() appended post-cut in system_text (both paths); santosh.py the ledger note at natural turn end + the done backstop in _pakka_check; config.py kaam_enabled + kaam_ledger_enabled (default on); test_v0688_kaam_manch.py NEW (32, offline); the v0.221 full-guide contract test re-pinned to SYSTEM+tips (off = old identity); ritual_v0688.py swept (parser-stamp guard), pubspec 0.688.0+687, console stamps, APP_VERSION story, CLAUDE.md + HISTORY.md + WORKLOG mirrors; battery green, jharokha 22 reds proven pre-existing (missing Chromium, stash run).
+Stage Summary: pushed to main as v0.688.0 + tag; vps-ops deploy fired; live test = her first (Kaam:) receipt line under a worked answer.
+Task ID: v0.680.0 SAVE THE STATE (P9 HOOLA ADOPT live)
+Agent: main (aep adoption lane)
+Task: owner "PERFECT. IT IS NOW LIVE ON HOOLA AI --- SAVE THE STATE" after the P9 AEP adoption deploy.
+Work Log: branch stable-2026-11-08-aep-v680 cut at 00aa1dac9 (v0.680.0, pubspec 0.680.0+679) and pushed; the deploy was fired this session through vps-ops > deploy (run 42394254940, success in ~50 s, the job took the DB backup before the restart); CLAUDE.md checkpoint entry added. Live proof at the save: healthz ok true / version 0.680.0; anonymous POST /api/aep/turn -> 401; anonymous GET /api/aep/runs -> 401; P9 suite re-run 15/15 green at this exact commit.
+Stage Summary: pushed to main; the AEP turn lane is LIVE behind user auth; first real signed-in turn + aep_trace flip + phone rendering of the 'aep'-sourced reply still to be seen on her device.
+
+---
+
+# HOOLA — Multi-Session Worklog
+
+Task ID: v0.687.0 LEADS EMPLOYEE - the Lead Generation employee joins the AI Employees hub's Business department + the Leads Desk in the web console (the real /api/leads surface, the two-tap confirm card, the outreach ledger, opt-out + forget; no is_hired gate on the six leads tools - EDU_OPEN law; registry 615 stands; ritual_0687.py 0.686.0 -> 0.687.0 (+686); owner: "PUT THE LEAD GENEARTION AI EMPLOYEE IN THAT SECTION")
+Task ID: v0.682.0 KAAN W6 FIX - the unlock guard's engine seam made honest (voiceprint_ready consumes the real voiceid bool contract; the live box TypeError healed at kaan/status; the three W6 test patches healed + one NEW regression test on the real unpatched contract; ritual_v0682.py 0.681.0 -> 0.682.0 (+681); owner: "W6 (quotas + retention -> unlocks real voiceprint diarization) -- start")
+
+Task ID: v0.681.0 KALA MANCH - the T5 knowledge-skill catalog family (planned at 0.669.0, the dev chain took 0.669-0.680 while KALA sat planned - REBASE PROTOCOL, re-slotted on their v0.680.0 tip, all kept; owner: "GO" on the google/skills deploy plan)
+
+Task ID: v0.670.0 KAAN W6 HISAAB AUR SAFAI (built as 0.667.0; their 0.667.0/0.668.0/0.669.0 took the version numbers while W6 sat built - REBASE PROTOCOL, rebuilt on their tip, all kept)
+
+Task ID: v0.666.0 KAAN W5 BOLI KE TEEN DARWAZE (built as 0.663.0; their STUDIO JAANCH 0.663.0, ASLI SAMAY 0.664.0, JHAROKHA MANCH 0.665.0 - REBASE PROTOCOL twice, all kept)
+Agent: main (kaan lane)
+Task: owner START "W5 — MCP + API + extension audio" — Wave W5: the HTTP door, the MCP door, the extension's ears.
+Work Log: NEW server/app/kaan/api.py (_kaan_router factory, /api/kaan/* full surface, honest 400s, tenant via current_tenant); NEW server/app/kaan/mcp_server.py (stdio JSON-RPC 2.0 protocol 2025-06-18, one tool kaan, dispatch through kaan_tools._sync, isError honesty, lazy imports); extension +tabCapture/+offscreen with NEW offscreen.html/offscreen.js (MediaRecorder 2s slices -> /api/kaan/live/{sid}/chunk), background captions-start/stop, popup live-captions section; status() doors block; registry 606 + enum 18 UNCHANGED; test_v0663_kaan_w5.py 23 green (TestClient HTTP ring + MCP handle ring + subprocess inertness + extension source pins) + kaan chain W0-W4 + webext + api + v0660/v0661/v0662 green (199/200, the 1 red = pre-existing sandbox google-auth environment red, stash-proven); ritual_0663.py swept 212 files 0.662.0->0.663.0 (+669), pubspec 0.663.0+669, APP_VERSION story, webext permission-set pin healed.
+Stage Summary: pushed to main; deploy rides vps-ops; NOT VERIFIED live yet — first /api/kaan call + MCP handshake on the VPS waits (single-line protocol).
+
+---
+
+# HOOLA — Multi-Session Worklog
+Task ID: v0.659.0 KAAN W4 BOLI SE KITAAB (built as 0.656.0; their KAAM DIKHE took 0.656.0, PAKKA KAAM took 0.657.0 and SAAF DIKHE took 0.658.0 while W4 sat built - REBASE PROTOCOL twice, rebuilt fresh on their 2361b78a7 tip, all kept)
+Agent: main (kaan lane)
+Task: owner START "W4 (exports + translation + Gyaan unlock)" — Wave W4: deterministic exports, the gyaan unlock, the translate proof.
+Work Log: NEW server/app/kaan/exports.py (srt/vtt/txt/json pure serializations; SRT/VTT cues == the W3 subtitles lines, one code path; hand-rolled timestamps; sort_keys JSON; honest refusals); service.export_transcript + to_gyaan (add_note content-hash idempotent, lazy gyaan import) + status exports block; kaan_tools +export/+to_gyaan (enum 18, diet 1190, to_gyaan owner/approved); translate pinned end-to-end (W0 wiring, row records task, turbo refuses); test_v0656_kaan_w4.py 18 green + neighbours (kaan 86 total on the tree); ritual sweep 0.655.0 -> 0.659.0 (+665) across two rebases, pubspec 0.659.0+665, enum pins healed, APP_VERSION story, CLAUDE.md/HISTORY/WORKLOG mirrors.
+Stage Summary: pushed to main; deploy rides vps-ops; NOT VERIFIED live yet — first export + to_gyaan on the VPS waits for the owner's paste (single-line protocol).
+
+---
+
+Task ID: v0.637.0 KAHAN RUKA (built as 0.636.0)
+Agent: Claude Code (session_019P5N4aaNdxLca2Dui5D9om)
+Task: her 16:22 log - 18 s before the first Claude call on a voice brain turn; measure every stage, cut the obvious costs.
+Work Log: stage timer + `brain prep` log line; lock-busy log; compaction skipped on call brain turns; 8 exchanges, old results cut to 1,500 chars; 4 tests; version 0.637.0+643 (re-versioned: their WEB DEVELOPMENT PANEL took 0.636.0).
+Stage Summary: pushed to main + feature branch; next call's `brain prep` line names the slow stage.
+
+---
+Task ID: v0.638.0 TEZ TAIYARI
+Agent: Claude Code (session_019P5N4aaNdxLca2Dui5D9om)
+Task: her `brain prep 19.6s` line - cut memory 7.0 s / MCP 4.5 s / hint 1.8 s on call brain turns.
+Work Log: parallel memory under 2.5 s, MCP snapshot_fast, hint skipped; 3 tests; version 0.638.0+644.
+Stage Summary: pushed to main + feature branch; next call's `brain prep` line should read ~3-4 s.
+Task ID: v0639-kaan-w3-apni-boli
+Agent: Claude (KAAN lane, session web-f8fcbe11)
+Task: Owner "START" on the kaan plan (+ "always show result in English") - Wave W3: custom vocabulary + style presets.
+Work Log: kaan/vocab.py + kaan_vocab table (initial_prompt soft hint + fix_to deterministic fixes, counted, 800-char cap), transcribe vocab=true default, live_start freezes the prompt for every pass; kaan/styles.py five deterministic renders (verbatim/clean/subtitles/minutes/social, gate-free reads); engine initial_prompt; 4 new actions (registry 606 unchanged); ritual_0637 swept 210 files, 3 enum pins healed, pubspec 0.637.0+643; W3 suite 23 green + neighbours (W2/W1/W0/auzaar/bhandar) 115 green.
+Stage Summary: v0.639.0 (built as 0.637.0; REBASE PROTOCOL onto their 0.638 tip).
 
 > Fresh-environment bootstrap. Original worklog from prior sessions nahi aaya is env mein;
 > yeh file continuation prompt + live repo/API verification se reconstruct ki gayi hai.
@@ -1286,3 +1353,1394 @@ Stage Summary:
   the trace_flip job stays pre-built and dispatch-ready. Rollback = one flip; no schema
   migration (checkpoints live in their own table / saver).
 
+
+Task ID: 37 — v0.539.0 PRAYOGSHALA SACH (built as 0.537.0; 5 Nov 2026)
+Owner: "LAB_TRY DONE, CHECK RESULT". vps-ops run 252 failed at stage=setup in 9 s with
+`error: externally-managed-environment`. Two defects fixed: (A) Debian's PEP 668 marker refused the repo's own
+declared pip install — removed once in the image, so a repo's real command runs unrewritten; (B) silent — the setup
+step had a read-only root AND a tmpfs over /home/lab, and docker commit keeps neither, so an install would have been
+discarded while the snapshot reported cached. Writability now derived from commit_to (no caller can unseal a check);
+check keeps read-only root + --network none with HOME in /tmp and PYTHONUSERBASE pointing at the committed
+/home/lab/.local. Image revision label + lab_check rebuilds a stale image; selftest proves pip install works and
+survives the commit. Healed, all red on pristine main from the v0.536 ritual: console stamp pins (0.487.0 ->
+0.536.0 x21), full-string pins `version: 0.535.0+558`, APP_VERSION story markers, registry count 554 -> 556.
+Her VPS must run lab_setup (rebuilds) before lab_try. No credentials in this entry.
+
+Task ID: 38 — v0.543.0 PRAYOGSHALA EK HI PYTHON (built as 0.542.0) (5 Nov 2026)
+Owner: "DEPLOY DONE, LAB_SETUP DONE, LAB_TRY DONE - CHECK RESULT". vps-ops run 257: the v0.539 fixes held — clone +
+dependency install + snapshot commit + a real no-network pytest, ~7 min (was 9 s). It then failed at import on
+app/notebook/render.py:517 (backslash in an f-string expression): PEP 701 allows it from Python 3.12, her server runs
+3.13, Debian 12's python3 is 3.11 — the box was a different language version than production. Fixed the BOX: base image
+python:3.13-slim-bookworm, apt python3-dev/venv/pip dropped; her code untouched (valid for her Python). Guards: the
+self-test compares box vs server Python and says GADBAD; snapshots keyed on the base revision so a stale 3.11 snapshot
+cannot be served on the new base. Image rev 2 -> 3; lab_check rebuilds. 45 green. lab_try still has never passed.
+No credentials in this entry.
+
+## Task 38 — v0.549.0 HOOLA AGENT (owner: "GO BUILD P4"; built through the collision wave)
+
+- Grounding re-established after compaction: repo synced to origin/main 99d752f7 (v0.537.0
+  CRAWL BRAIN), tree clean; P1 + P2 + P3 all on main.
+- The READ again (house law): upstream re-fetched at the pinned commit
+  aa2528fb980a290d2b06c83a1be43e60bc2348f9 (the full SHA recovered from the
+  langchain-core==1.7.5 tag); libs/langchain_v1/langchain/agents/factory.py (2164 lines) read:
+  create_agent(model, tools=None, *, system_prompt, middleware, response_format, state_schema,
+  context_schema, checkpointer, store, interrupt_before, interrupt_after, debug, name, cache,
+  transformers) -> CompiledStateGraph; nodes "model"/"tools"; START->model,
+  model->(tools|END), tools->(model|END-if-return_direct); the 24-middlewares listed in
+  agents/middleware/* (P5's spec).
+- Built server/app/aep/agent.py (~430 LOC, ZERO upstream): ToolNode (pending tool_calls of the
+  last AIMessage or an explicit tool_call list; sequential, call order, deterministic;
+  handle_tool_errors True/str/False - False re-raises the ORIGINAL error; unknown names honest;
+  dict outputs JSON-stringify; GraphInterrupt/GraphRecursionError propagate) + create_agent
+  (bind_tools at BUILD time; pre-bound Runnable lane; system_prompt rides the prompt never the
+  state; response_format pydantic/dict -> generate_structured_response writing
+  state['structured_response'] through the P1 with_structured_output lane; state_schema extra
+  channels ride via a dynamic TypedDict only when the structured channel is needed;
+  interrupt_before/after static breakpoints on the P3 park seam - before-tools/before-model at
+  node top, after-model only when tool calls exist, after-tools at the model re-entry detected
+  by a ToolMessage last at model entry; one gate per arrival, after checked before before;
+  checkpointer chat memory; store wiring; debug prints; name names the compiled graph) +
+  create_react_agent alias. Honest divergences recorded for the P8 audit: response_format uses
+  the post-loop structured node; model strings point at the P7 HUB; dict (provider) tools
+  refused; context_schema accepted and inert until P5.
+- Substrate seams P4 needed (graph.py, additive; P3 suite re-verified): compile(name=...) +
+  get_name naming; node bodies run on their span's CHILD config so model/tool calls nest UNDER
+  their node span; add_messages coerces BOTH sides + the role-shape dict table; the
+  CHECKPOINT-MERGE law (a dict input on a checkpointed thread merges into the stored channel
+  values through the reducers - parked threads re-run the parked node with the merged state;
+  finished threads start a fresh turn with the step budget reset; crashed walks resume from the
+  stored next); SqliteSaver lazy-ensure moved to _raw() PER INSTANCE (the class-level _ensured
+  leaked across databases AND a get before any put had no table on the engine path).
+- INERTNESS re-proven: a fresh interpreter imports app.aep.agent with zero threads/env/files;
+  registry stays 569 (library module); voice untouched; mem pin untouched; console stamps
+  FOLLOW APP_VERSION (the dev's own v0.537 convention change; their v0.548 let them drift to
+  0.546 - healed to 0.549.0, 21 stamps).
+- Tests: NEW test_v0540_hoola_agent.py (56, zero network, one-loop law). Bugs caught: the
+  add_messages left-side coercion gap; handle_tool_errors=False wrapping instead of re-raising;
+  the SqliteSaver class-flag leak + get-before-put table; the interrupt_after=['tools']
+  first-turn expectation (a breakpoint is STATIC - it parks on every arrival).
+- THE COLLISION WAVE (thirty-fourth + thirty-fifth): the dev chain shipped 0.538 LOAD PROOF,
+  0.540 JAANCH, 0.541 SEO INTEL + GOOGLE ADS 2, 0.544 CONSTRUCTION WAVE 2, 0.545 SCENES AS
+  CHECKED DATA, 0.546 CHALTA KAAM, 0.547 TH PACK and 0.548 ED PACK while P4 sat built.
+  REBASE PROTOCOL twice (efc96e04f, then 154940f18): the AEP layer re-applied each time (they
+  never touched server/app/aep), the ritual re-run as 0.549.0 on their fresh base.
+- Version ritual v0.549.0 (story / pubspec 0.549.0+572 / CLAUDE.md healed / v2.html stamps 21x
+  0.546.0 -> 0.549.0 / pins swept 0.548.0 -> 0.549.0 + +571 -> +572 across 179 test files, 94
+  full-string + 176 bare hits + 7 story-literal heals, zero residual outside deliberate
+  history; the dev chain's stale 568 count pins (six suites) healed to the real 569).
+  docs/WORKLOG.md Task 38 + docs/HISTORY.md v0.549.0.
+- Sweeps on the ritual tree: AEP quad (core 79 + trace + graph 42 + agent 56) + the dev's
+  newest (seo_intel, crawl 69, lab 15) + dhara/docs7/cspack/bdpack/mem/dify/construction
+  w1+w2/crew + selfteach/swarm/curator/officehours/magic21/coder/skill-desk/console + memory
+  suites (exact counts in the commit message); remaining sandbox reds are the DOCUMENTED
+  env/data classes byte-identical on pristine (patchright missing; the dev's own missing uiux
+  corpus data files styles.csv + friends; the jaanch twin-project suite needs >10 min
+  in-process - CI's own job).
+
+Stage Summary:
+- P4 DONE: the AEP train has its agent - create_agent compiles model+tools onto the house
+  graph with real chat memory, static breakpoints, structured answers and a run tree that
+  nests. Train: P5 the 24-middlewares (nudge/curator/delegate/skills-primer collapse into
+  hooks) -> P6 RETRIEVE -> P7 HUB -> P8 the parity audit. Deploy is the owner's dispatch
+  (v0.530.0 + v0.549.0 ride it together; healthz should say 0.549.0); trace_flip stays
+  pre-built and dispatch-ready. Rollback = one flip; checkpoints live in their own table.
+
+---
+Task ID: 39 — v0.550.0 EK JAISA (5 Nov 2026)
+Agent: Claude Code (session claude/hoola-project-review-lzrqhu)
+Task: owner "ALL VOICE CALL, CONSOLE CHAT, MOBILE APP CHAT ---- WIRED TO ALL 100 % AI WORK CHECK".
+
+Work Log:
+- Audited the three surfaces: console + phone chat = one pipeline (same POST /messages -> run_turn); registry specs
+  vs handlers (biz_* customer-only by design); voice call_route for every tool; card kinds drawn per client.
+- FIXED: phone event switch had no default (unnamed card kinds dropped) -> any_card + AnyEventCard; tool_search
+  exact-name lookup lost to keyword families (15 tools unreachable) -> exact name always opens its family; voice
+  coder block had no query (no skills ever on a call) -> recent words + named skills.
+- NEW test_v0550_ek_jaisa.py (10). Pre-existing reds stash-proven (v0311 hello size, v0473 routes, uiux x5).
+
+Stage Summary:
+- v0.550.0 ready; Dart compiles first on CI. Deploy = owner's vps-ops dispatch.
+
+---
+Task ID: 40 — v0.552.0 NATIJA PAKKA (built as 0.551.0) (5 Nov 2026)
+Agent: Claude Code (session claude/hoola-project-review-lzrqhu)
+Task: owner "WHEN RESULT COME FROM ANY TASK DOES IT REPLY RELIABLY" on voice call, console chat, phone chat.
+
+Work Log:
+- Traced kaamwatch -> kaam_followup -> wake / one-shot / canned -> notify (Message + SSE + FCM) + live-call note;
+  call santosh_kaam jobs via turn_inbox + next-call followup.
+- FIXED _answered_since (unrelated replies swallowed the news; proven on old code) and the ~50 s postpone
+  (now KAAM_FOLLOWUP_WAIT_S 300 s, _MAX_TRIES 60 so nothing is stranded).
+- NEW test_v0552_natija_pakka.py (8). COLLISION: the dev's SURAKSHA GATES took 0.551.0 - rebased on b7f0e273,
+  re-versioned 0.552.0, both kept. v0.550.0 APK published: v0.550.0-b1643.
+
+Stage Summary:
+- v0.552.0 server-only. Deploy = owner's vps-ops dispatch.
+
+---
+Task ID: 41 — v0.553.0 GHANTI (5 Nov 2026)
+Agent: Claude Code (session claude/hoola-project-review-lzrqhu)
+Task: owner deployed v0.552 and said all surfaces will now call when a task is done - checked first.
+Work Log:
+- Found voice_ring only on the fallback path; the wake turn (normal path) returned before it. One _ring helper
+  for both; gates unchanged. +2 tests; report suites 78 passed. Live healthz read 0.552.0 before this change.
+Stage Summary:
+- v0.553.0 server-only. Deploy = owner's vps-ops dispatch.
+
+---
+Task ID: 42 — v0.554.0 CARD KI KHABAR (5 Nov 2026)
+Agent: Claude Code (session claude/hoola-project-review-lzrqhu)
+Task: owner "WHEN RESULT ON CARD / APPROVAL CARD / ANY CARD APPEARS --- VOICE CALL DONT KNOW".
+Work Log:
+- bus.publish -> voice.card_news (push.render words, one note per card state, money tap-only, own-tool cards and
+  job states not repeated); call screen lists any_card. NEW test_v0554_card_khabar.py (11); 308 voice suites green.
+Stage Summary:
+- v0.554.0 server + one Dart line. Deploy = owner's vps-ops dispatch; APK from CI.
+
+---
+Task ID: 43 — v0.555.0 HOOLA CARD (5 Nov 2026)
+Agent: Claude Code (session claude/hoola-project-review-lzrqhu)
+Task: owner "BUILD THIS" on the premium card design (claude.ai/artifact/NgbT6WLDj63Jhh7MbysuGD).
+Work Log:
+- Console hcard.js (pure) + v2.css tokens in renderCard default; phone any_card.dart rewritten with the same rules.
+- NEW test_v0555_hoola_card.py (8); console + pin suites 141 passed, the reds pre-exist. Rendered light + dark.
+Stage Summary:
+- v0.555.0. Deploy = owner's vps-ops dispatch (console) + the CI APK (phone). Next: dedicated cards onto the same anatomy.
+
+---
+Task ID: 44 — v0.556.0 SEEDHA RAASTA (5 Nov 2026)
+Agent: Claude Code (session claude/hoola-project-review-lzrqhu)
+Task: owner "CHECK HOW ALL SURFACES RESPOND FOR SIMPLE TASK AND WHICH MODEL IT USE".
+Work Log:
+- Probed run_turn with a recording fake client: simple = 1 Sonnet call, 2k, no thinking; voice = Gemini Live 3.8.
+- FIXED bare sums on Opus (word-problem rule) and make requests waiting for the Haiku judge (_MAKE). Sets unchanged.
+- NEW test_v0556_simple_route.py (8); hard suites 89 passed. v0.555 APK green (run 41984659811).
+Stage Summary:
+- v0.556.0 server-only. Deploy = owner's vps-ops dispatch.
+
+---
+Task ID: 45 — v0.558.0 SAHI KAMRA (built as 0.557.0) (5 Nov 2026)
+Agent: Claude Code (session claude/hoola-project-review-lzrqhu)
+Task: owner "IS NOW ALL TASK WILL FLOW PROPERLY TO DEFINED MODEL OR NEED MORE WORK".
+Work Log:
+- Live healthz 0.556.0. Probed big ask / wake / routine / hard with the recording model.
+- FIXED big ask 2k tokens with xhigh thinking (now 16k) and routines carrying 569 tools (now admitted).
+- NEW test_v0558_sahi_kamra.py (3); 204 routing suites passed; 4 reds pre-exist. COLLISION: TEZ CHECKOUT took
+  0.557.0 - rebased on f5819dca, re-versioned 0.558.0, both kept.
+Stage Summary:
+- v0.558.0 server-only. Deploy = owner's vps-ops dispatch.
+
+---
+Task ID: 46 — v0.559.0 REACH MANCH (5 Nov 2026)
+Agent: Z (Owner chain, session web-1162d2ab)
+Task: owner "MAKE A HOOLA AGENT REACH FEATURE, DEVLOPE END TO END" (after the READ of Panniantong/Agent-Reach,
+archived at download/AGENT_REACH_READ.md).
+Work Log:
+- Read Agent-Reach v1.6.1 (MIT) end to end; ported its three ideas IDEA-ONLY onto the house internet stack: the one
+  envelope, the error taxonomy with model-behavioural hints, ordered backends with health memory + cooldowns.
+- NEW server/app/agent/reach_tools.py: the `reach` tool (registry 570) - actions read | search | channels | status;
+  read = house web.open_website -> Parallel free fetch, search = Google (Gemini grounding) -> Parallel free search;
+  backends pause on failure (TIMEOUT 60 s / UPSTREAM_BROKEN 120 s / NEED_SETUP 60 s), a rate limit cools the whole
+  channel 1 h (global: the egress IP is shared), per-tenant minute budget (reach_per_tenant_per_min), 8 Agent-Reach
+  codes + BLOCKED_HOST, FINAL_CODES, attempts trail, empty-is-no-rows, dispatcher-side limit clamp; web.py's SSRF
+  guard stays the wall (reach adds no egress of its own).
+- Wired: config (reach_enabled, reach_per_tenant_per_min), prompts.py bullet, admit.py (reach in CORE_FAMILIES +
+  EXTRA_KEYS), tools.py merge; version ritual (APP_VERSION story, pubspec 0.559.0+582, pins swept 0.558.0 -> 0.559.0
+  / +581 -> +582 / 569 -> 570, zero residual).
+- NEW test_v0559_reach_manch.py (45, zero network; the real doors plug-fail loudly). Bugs caught: a backend returning
+  EMPTY rows was treated as success (now UPSTREAM_BROKEN, next door tried) and the limit clamp was trusted to
+  backends (now enforced in the dispatcher).
+Stage Summary:
+- v0.559.0 server-only. Deploy = owner's vps-ops dispatch.
+Task ID: 47 — v0.562.0 CLAUDE JAISA + EK DARWAZA (built as 0.560.0) (5 Nov 2026)
+Agent: Claude Code (cloud session)
+Task: owner "BUILD 1 - 3" (Claude vs Hoola comparison) then "BUILD THE 3 FIXES" (structure audit).
+Work Log:
+- CLAUDE JAISA: every skill named each turn/call (coder/inject.skills_index), maps + team out of the core
+  (admit.py; research + big asks open team), clear_old in agent/prune.py. Cards: tools 176/176, maps 26/26.
+- EK DARWAZA: NEW agent/door.py; gamedesk / blender3d / engineering / motion / notebook / studio / artifacts
+  ride it; cad_model, motion_model, engine_thinking settings; Gemini default gemini-flash-latest + fallback.
+- NEW test_v0559_claude_jaisa.py (14), test_v0560_ek_darwaza.py (10); v0477/v0494 skills tests moved to the
+  new behaviour. Reds seen are pre-existing on pristine main (Playwright, v0270 goal_rounds, ...).
+Stage Summary:
+- v0.562.0 server-only. Deploy = owner's vps-ops dispatch.
+
+---
+Task ID: 48 — v0.565.0 CLAUDE KA AUZAAR (built as 0.563.0) (5 Nov 2026)
+Agent: Claude Code (cloud session)
+Task: owner "NOW MAKE CHOOSING TOOL AND SKILL SAME AS CLAUDE AI ---- EVEN FIND MORE".
+Work Log:
+- Read Anthropic's tool-search page; built agent/toolsearch.py (deferred tools, fixed list per turn, tool_reference
+  answers, BM25, refusal ladder, dangling-reference guard); cache / context / GLM paths made deferral-safe.
+- Skills: full descriptions on chat turns (9,000 chars), call unchanged.
+- NEW test_v0565_claude_ka_auzaar.py (10); v0221 / v0558 / v0193 moved to the new truth.
+Stage Summary:
+- v0.565.0 server-only. Deploy = owner's vps-ops dispatch. Not verified against the live API yet.
+
+---
+Task ID: 48 — v0.566.0 HOOLA MIDDLEWARE (the SECOND collision round: their v0.565 CLAUDE KA AUZAAR landed mid-push; re-based again, re-versioned 0.566.0) (5 Nov 2026)
+Agent: main (Z.ai, IM session)
+Task: the same owner directive - the push of Task 47 was rejected non-fast-forward.
+Work Log:
+- git fetch: ONE new commit - v0.565.0 CLAUDE KA AUZAAR (built as 0.563.0; the parallel sessions took
+  0.563 AND 0.564 - the wave is hot). P5 moved 0.565.0 -> 0.566.0.
+- Rebase round two: 4 conflicts (main.py / CLAUDE.md / docs x2 - pubspec and v2.html and the test
+  sweeps auto-merged: both sides made the identical mechanical moves). Theirs taken, the ritual
+  re-run as 0.566.0+589 (APP_VERSION story + the two-round collision note, stamps 22x, pins swept
+  0.565 -> 0.566 + +588 -> +589, the three newest-story pins re-healed).
+- AEP quint + the dev's suites re-verified on the final tree.
+Stage Summary:
+- P5 DONE at v0.566.0. Train: P6 RETRIEVE -> P7 HUB -> P8 the parity audit. Deploy = the owner's
+  dispatch (healthz should say 0.566.0).
+
+---
+Task ID: 49 — v0.571.0 SAB SCHEMA SAHI hotfix (5 Nov 2026)
+Agent: Claude Code (cloud session)
+Task: her live hard_card on 0.570 showed every Claude turn 400ing (tools.N.custom.input_schema invalid).
+Work Log:
+- Root cause dhara_save schema (`required` inside `properties`), exposed by v0.565 sending all tools.
+- Fixed the schema, schema_ok filter in toolsearch.build, wider refusal ladder, 2 tests; jsonschema in requirements.
+Stage Summary:
+- v0.571.0 server-only. Deploy NOW = owner's vps-ops deploy, then re-run hard_card.
+---
+Task ID: 27 (GO BUILD P6: HOOLA RETRIEVE - the retrieval layer -> v0.580.0 (built as 0.570.0; the dev chain took 0.570-0.571 while P6 sat built - REBASE PROTOCOL, re-versioned), built, tested 31/31, pushed clean)
+Agent: main (Z.ai)
+Task: Owner directive "P6 RETRIEVE" - Phase 6 of the HOOLA AEP plan (Task 22/37): the langchain retrieval feature surface hand-built as house code (vectors IN SCOPE per the 100% directive).
+Work Log:
+- Grounding re-established after compaction: repo /home/z/my-project/santosh-app (hoola-201 is a stale v202 worktree, untouched), P1-P5 verified on main at ec24fc08b (v0.566.0); synced to origin (v0.569.0 SPEC SUTRA, registry 581, pubspec 0.569.0+592) - the dev took 0.567-0.569 while P6 sat unbuilt, no collision this round (clean fast-forward, P6 built ON TOP of their tree).
+- Upstream re-read at the pinned SHA aa2528fb980a290d2b06c83a1be43e60bc2348f9 (shallow fetch-by-SHA to /tmp/upstream/lc): vectorstores/base.py 1111 lines + in_memory.py 546 + utils.py (the MMR), embeddings/ 78+129, indexing/ base 661 + api 954 + in_memory 104, retrievers.py 328, text-splitters base.py + character.py.
+- Built server/app/aep/retrieve.py (~1.6k LOC, ZERO upstream): Document; Embeddings + DeterministicEmbeddings (sha256-seeded unit vectors, byte-stable, numpy-free); maximal_marginal_relevance pure-python; VectorStore ABC (the honest defaults + search dispatch + the [0,1] relevance contract + score_threshold + as_retriever + a-twins); SqliteVectorStore (the sqlite-first ANN: stdlib sqlite3 WAL, exactly one of path=/engine= the vault engine seam riding raw_connection - the P3 SqliteSaver shape, one table aep_vectors(id,doc,vec,ts), exact cosine kNN scan + the metadata-equality filter, MMR over fetch_k, relevance = cosine clamped [0,1], persists across instances); RecordManager + SqliteRecordManager (aep_index_records(uuid,updated_at,group_id), the time_at_least monotonic gate, chunked IN exists, list_keys filters); index()/aindex() (the dedup flow: content+metadata hashed separately then combined, key_encoder sha1|sha256|sha512|blake2b default sha256, in-order dedup, the store write FIRST the ledger update SECOND, cleanup None|incremental|full|scoped_full, IndexingResult counts, force_update, the delete-override gate); TextSplitter ABC (the _merge_splits overlap pop-loop ported exactly, add_start_index, the per-chunk metadata deep-copy) + CharacterTextSplitter (the lookaround guard) + RecursiveCharacterTextSplitter (the separator ladder, over-cap pieces emitted AS-IS); BaseRetriever (the retriever as a Runnable firing the P2 "retriever" span - RUN_TYPES pre-declared it in P2) + VectorStoreRetriever (search_type similarity|mmr validated, search_kwargs ride every call, add_documents proxy) + Docs7Retriever (docs7 as a source: the same flag/redaction/window/vault-cache gates, the fetch injectable for zero-network tests, the handler imported lazily inside the call - inertness; ok=False = the honest empty list with the raw result on .last_result).
+- P2 seam extension (additive): CallbackManager gained retriever_start/end/error (on_retriever_* fired), RunTreeTracer gained on_retriever_start/_end/_error (Run run_type "retriever"), Span routes the retriever branch - the chain fallback untouched, P2 tests unaffected (verified by sweep).
+- INERTNESS re-proven (fresh interpreter: zero threads/env/files; sqlite opens only on first use; the docs7 import lazy inside the call). Registry stays 581 (library module - no tools/routes/flags). Voice untouched by construction; mem pin untouched; desktop untouched - server-only.
+- Tests: NEW test_v0560_hoola_retrieve.py (31, zero network, tmp sqlite wiped per test, the asyncio one-loop law). Bugs the suite caught: max_marginal_relevance_search_by_vector fed cosine SCORES into the MMR scorer where VECTORS belonged; get_by_ids mis-keyed its parsed rows; chunk_size<=0 lost the overlap-vs-size error race; the source-id assigner raised a raw KeyError on missing metadata instead of the friendly "not assigned a source id" refusal.
+- Version ritual v0.580.0 (the rebase re-run): APP_VERSION story, pubspec 0.580.0+595, CLAUDE.md healed, console stamps 22x, pins swept 0.569.0 -> 0.570.0 / +592 -> +593 across 187 test files, WORKLOG Task 27 + HISTORY.md v0.570.0 section.
+Stage Summary:
+- P6 DONE: the AEP train has its retrieval layer. Train: P7 HUB -> P8 the 100% parity audit. Deploy is the owner's dispatch (server-only: checkout main + cp -r server/app + pm2 restart santosh --update-env; healthz should say 0.570.0).
+
+---
+Task ID: 50 — v0.582.0 SASTI JAANCH (5 Nov 2026)
+Agent: Claude Code (cloud session)
+Task: owner "TESTING IS VERY COSTY" -> "SHIFT TO HAIKU AND TEST ON IT".
+Work Log:
+- quality --model / QUALITY_MODEL moves every Claude setting for the card process; vps-ops *_haiku jobs; status job not red.
+- NEW test_v0582_sasti_jaanch.py (4).
+Stage Summary:
+- v0.582.0 server + workflow only. Owner runs deploy, then tool_card_haiku / hard_card_haiku / long_card_try_haiku.
+
+---
+Task ID: 51 — v0.584.0 SAHI PAIMANA (5 Nov 2026)
+Agent: Claude Code (cloud session)
+Task: owner "YES" to accepting scrape_page on the one tool-card miss.
+Work Log:
+- Read her Haiku card runs (hard 9/9, tools 25/26, long card try started); fresh15 accepts open_website / scrape_page / reach.
+Stage Summary:
+- v0.584.0 server-only (quality card). Deploy, then tool_card_haiku should read 26/26.
+
+---
+Task ID: v0.586.0 SAHI KHARCHA
+- Owner showed run #283's "Rs 4,500-16,500" line on a 5-job Haiku try; the --check line now prices the run that starts (asks, k, model). vps-ops passes $LC_ARGS. Tests 4.
+
+---
+Task ID: v0.587.0 EXCEL BINA NAAM
+- Haiku long try 4/5, Rs 30; the rent_xlsx fail was the card reading an id-named file by path; now bytes. Tests 3.
+
+---
+Task ID: 28 (GO BUILD P7+P8: HOOLA HUB -> HOOLA AEP 1.0 - the hub/loader/conformance layer v0.589.0, then the 100% parity audit + the openwiki analog v0.600.0 - THE TRAIN IS COMPLETE)
+Agent: main (Z.ai)
+Task: Owner directive "P7 HUB -> P8 the 100% parity audit" - the final two phases of the HOOLA AEP plan (Task 22/37).
+Work Log:
+- Grounding re-established after compaction: repo /home/z/my-project/santosh-app, P1-P6 verified on main (HEAD 44eafae7b v0.580.0, registry 581); upstream re-fetched at the pinned SHA aa2528fb980a290d2b06c83a1be43e60bc2348f9 (shallow fetch-by-SHA to /tmp/upstream/lc; the tree at that SHA carries libs/langchain_v1/langchain/{chat_models/base.py 1079, mcp/}, libs/core/langchain_core/load/, libs/standard-tests/, libs/model-profiles/, openwiki/ 31 pages).
+- P7 built as four modules (~2.3k LOC, ZERO upstream): server/app/aep/hub.py (init_chat_model - the provider-string router with the honest registry fake|hoola|openai_compat + register_provider, prefix inference, the supported-list refusals; ConfigurableModel - the declarative mode with the resolution ladder defaults <- with_config pinned <- per-call, the fields filter, config_prefix, the QUEUED declarative calls; OpenAICompatChatModel - the BYOK zoo adapter, lazy httpx via import_module (the P1 no-network-import law held literally), tool calls parsed only when complete (the v0.221 broken-args law), SSE streaming + usage, bind_tools -> RunnableBinding on the OpenAI wire, transport injectable; HouseBrainChatModel - the server brain behind an injected sync/async runner, hoola_brain_factory lazy; model profiles: PROFILE_REGISTRY, model_data_to_profile, the byte-stable refresh_profiles, summarize_profile_diff, the python -m app.aep.hub CLI) + load.py (the from-dict loader P1's seed reserved: dumpd/dumps/load/loads, the escape law, the house-duck lane for the _SerializableBase family, the allowlist Reviver scanned from the live package - NO imports on the load path, NO env reads (secrets_from_env demands the caller hand the mapping over), lc_secrets $placeholders) + mcp.py (the MCP client hand-built on JSON-RPC 2.0 because the port law is zero new pip: StdioTransport with a lazy reader thread + real timeouts, MemoryTransport, McpClient (initialize 2025-06-18, cursor pagination, tools/call, elicitation both ways - custom handler honored, default honest refusal), McpClientGroup (mcp__server__tool mangling), McpTool (inputSchema -> REAL pydantic args model, open objects stay open, isError -> McpToolError -> the failed ToolMessage lane, structuredContent artifact), load_mcp_tools + the McpTools context manager, string targets REFUSED at the gate) + conformance.py (the standard-tests port: run_standard_tests -> ConformanceReport rows, the honest capability auto-derive, the misattribution law on standard_params, the serdes round trip with placeholders neutralized, the P2 span row).
+- House seams: models.py grew the additive BaseChatModel.standard_params() (the _get_ls_params shape); tools.py got the P7 bugfix - _invoke_bare's error path under response_format="content_and_artifact" indexed result[0] on the ERROR STRING (McpTool is the first content_and_artifact tool with handle_tool_error - the ToolMessage carried one character).
+- Tests: NEW test_v0570_hoola_hub.py (44, zero network; the stdio test spawns a REAL subprocess MCP server - still zero network). Bugs the suite caught: the provider registrations ran before register_provider was defined; ConfigurableModel queued with_config onto a model with no such method (reworked to the pinned lane); _house_serialize skipped the lc_secrets masking; the group loader read server_info off the GROUP and mangled names never resolved; stream tool-call chunks lost usage_metadata; the app.aep.load module/function name shadowing (the parsers precedent: load as _load_mod).
+- COLLISION: the dev chain took 0.581-0.588 while P7 sat built (LMS, SASTI JAANCH, SAHI PAIMANA, SAHI KHARCHA, EXCEL BINA NAAM, PAISA SAHAYAK - registry 581 -> 582). REBASE PROTOCOL: rebase onto their v0.588.0 ab38cf27d, ZERO aep conflicts, the version layer re-applied coherently 0.588.0/+603 -> 0.589.0/+604 (the first checkout used the wrong -theirs direction and clobbered their four version files - restored from origin and re-applied). Pushed 2bfd8f16a clean as v0.589.0.
+- P8 built: server/app/aep/audit.py (~600 LOC) - PARITY_MATRIX 230 machine-readable rows (every upstream feature across the eight phases -> hoola module + symbol + proving suite + test needle; P1 56 / P2 28 / P3 21 / P4 24 / P5 39 / P6 22 / P7 36 / P8 4); audit_parity() verifies EVERY row LIVE (symbol imports, needle greps) - the 100% verdict is COMPUTED: 'TOTAL: 230/230 - 100% PARITY VERIFIED'; phase_checklist() signs off P1..P8 with living numbers (11523 LOC, 369 suite tests, every phase DONE); generate_wiki() - the openwiki analog, deterministic byte-stable evidence pages with repo:// sources, committed as docs/aep-wiki/ (9 pages) + docs/AEP_PARITY_AUDIT.md (the sign-off); the CLI python -m app.aep.audit matrix|checklist|wiki.
+- THE REGISTRY HEAL their v0.588 owed: the w35 suite's registry pin stayed 581 after their paisa_sahayak tool took the registry to 582 (red on their own tree) - the PIN HEAL law applied: the pin says 582 with the arithmetic in the wording, a P8 test holds it.
+- Tests: NEW test_v0600_hoola_aep1.py (10). Sweeps green on the pushed tree: the AEP OCTO 369 (core 79 + trace 26 + graph 42 + agent 56 + middleware 68 + retrieve 31 + hub 44 + audit 10 - wait, trace 39/graph 42 by file; the octo total is 369) + their newest suites 34 (lms_proof 10, sasti_jaanch, sahi_kharcha, excel_bina_naam, w35 17 with the healed pin).
+- Version ritual v0.600.0 (the plan's own number for AEP 1.0): APP_VERSION story, pubspec 0.600.0+605, CLAUDE.md healed, console stamps 23x, pins swept 0.589.0 -> 0.600.0 / +604 -> +605 across 193 test files, the P7 story pins moved to the P8 era (the newest-story precedent), WORKLOG Task 28 + HISTORY.md v0.600.0 section.
+Stage Summary:
+- THE AEP TRAIN IS COMPLETE: P1 HOOLA CORE v0.510.0 -> P2 HOOLA TRACE v0.520.0 -> P3 HOOLA GRAPH v0.530.0 -> P4 HOOLA AGENT v0.549.0 -> P5 HOOLA MIDDLEWARE v0.566.0 -> P6 HOOLA RETRIEVE v0.580.0 -> P7 HOOLA HUB v0.589.0 -> P8 HOOLA AEP 1.0 v0.600.0 - eight phases, ~11.5k LOC of hand-built platform, 369 suite tests, every langchain feature a house module + a proving test, the parity verdict COMPUTED. Deploy is the owner's dispatch (server-only: checkout main + cp -r server/app + pm2 restart santosh --update-env; healthz should say 0.600.0).
+
+---
+Task ID: v0.604.0 YAAD SACH (built as 0.603.0)
+- Memory audit (probes) -> incognito leak into Coder vault + KG fixed with sweep; fact updates replace; forget cleans every memory copy. Tests 13.
+
+---
+Task ID: v0.608.0 EK YAAD + JUST IN TIME (built as 0.605.0)
+- One memory door (memory.py search_all / everything / reset_all) behind yaad_khojo (always in view); old chats fetched not pasted; 15 facts in the prompt. Tests 10.
+
+---
+Task ID: v0.611.0 YAAD KE KHAANE (built as 0.609.0)
+- Live model writes memory, extractor skips that turn; per-Session main-memory switch; sensitive opt-in; phone reset button; memory_quiz job. Tests 8.
+
+---
+Task ID: v0.610.0 KAAN W1 (TURN KHOJ + MEETING MINUTES)
+- Wave W1 of the WhisperAI feed, built on the shipped W0 kaan tool (v0.601.0): diarize + minutes as TWO ACTIONS on the same ONE tool - registry 588 unchanged (actions, not tools). Diarize is HONEST turn attribution: pauses are the only truthful signal because W0 stores no audio; word/segment gaps > 0.8s cut turns; turns stay UNNAMED until the owner names them (names={'1': 'Gupta ji'}); no voiceprint claim anywhere - acoustic ID needs stored audio, a W6 decision. Minutes are DETERMINISTIC: per-turn stats, en+hi keywords, action-item CANDIDATES by cue words with turn attribution; zero model calls; the prose summary is Santosh's job. Gate map: stored-id diarize gate-free but kill-switched (kaan_diarize default ON, KAAN_DIARIZE=0 par band); fresh-audio diarize rides the AUDIO gate; minutes is a staff-open read; diarize owner/approved-only. Admit keys tight multiword only - bare 'minute' never admits (trap pinned). Tests: 18 new + W0 27 with healed pins; neighbour sweeps 241 passed / 1 skipped; 1 pre-existing red DOCUMENTED untouched (test_v0512/v0514/v0495 story-window markers left the 20k window during the dev chain's own 0.601-0.606 sweeps - stash-proven at clean d7d34ee05). Version ritual: APP_VERSION story, pubspec 0.607.0+613, pins swept across 195 test files (101 full-string + 203 bare), console stamps untouched (server-only, the 0.476 precedent). VPS bake evidence at W1 exit: engine ready, jfk.flac through kaan word-exact, KAAN_AUDIO=1. OPS NOTE: get_settings is @lru_cache - a .env flip reaches the RUNNING server only via `pm2 restart santosh --update-env` (the process name is santosh, not santosh-core).
+
+---
+Task ID: v0.615.0 YAAD SE + SUDHAAR YAAD (built as 0.612.0)
+- memory_used note under replies (only echoed memory), unremember endpoint (no_recall for past chats), corrections kept as WHEN/WANT preferences. Tests 9.
+
+---
+Task ID: v0.616.0 BAHAR SE BAAT
+Agent: Claude Code session (hoola-project-review)
+Task: owner asked for more places to talk to Hoola - all four channels (WhatsApp, Telegram, Slack, Teams), owner only.
+Work: app/bahar.py core + four webhooks + /api/bahar + worker forward + phone Profile > Bahar se baat; pairing code binds one sender.
+Result: test_v0616_bahar.py 10 green; memory + wiring suites 63/63 green. Not verified live on any channel.
+
+---
+Task ID: v0.618.0 HAMESHA JUDA
+Agent: Claude Code session (hoola-project-review)
+Task: owner - voice call is the soul; stays connected until she hangs up, speaks results and reminders 24/7 -> START.
+Work: quiet Gemini session parks (billed per second even silence), wakes on voice/text/news/reminder; long hold + lost phone park instead of ending; reminders/briefing/routine results spoken on a live call; OpenAI 50-min move at a pause; phone re-dials after server update, 14-min reconnect window.
+Result: test_v0617_hamesha_juda.py 9 green; voice suites green; built as 0.617 (their KUCHH NA CHHOOTE took 0.617), re-versioned 0.618. Site suites red only for missing Playwright browser in the sandbox. Not verified on a real phone.
+Task ID: 17
+Agent: main (kaan lane)
+Task: Owner: "START" - KAAN W2 LIVE CAPTIONS built as v0.618.0 on the v0.617.0 tip (c12a8d45e), no collision this time
+
+Work Log:
+- Tip moved v0.615 -> v0.617 while the lane read it (BAHAR SE BAAT + KUCHH NA CHHOOTE took 0.616, re-versioned to 0.617); next free = 0.618.0, verified via tags.
+- Built the PCM spine (server/app/kaan/live.py): chunks ffmpeg-decode to 16k mono s16le and append per session; windows cut by byte offset + stdlib wave (no subprocess); watermark trims overlap dupes; phrases split on gaps/enders; stop writes a kn_ row (source='live') that W1 diarize/minutes read; optional bounded clean pass (finalize_model, <=10 min).
+- Gate map: start/chunk = audio ingest -> the kaan_audio gate (no new switch); stop = the W1 stored-bytes law; live actions owner/approved-only; registry 605 unchanged (actions, not tools); kaan description tightened inside the 1200 diet.
+- Found + fixed during the suite's own first run: my description blew the 1200-char diet (W2 invisible to the agent - tightened); two tests ran a real pass without an engine patch; n_new counts phrases not words.
+- Tests: NEW test_v0618_kaan_w2.py 18 green (after the ritual sweep).
+- Ritual 0.618.0 (this script, line-wise): APP_VERSION story (chain verbatim), pubspec 0.618.0+624, quoted test pins swept, CLAUDE.md one-liner, HISTORY section, this mirror.
+Stage Summary:
+- W2 engine + tool actions + tests + ritual done in-sandbox; NOT VERIFIED live: the first real phone-chunk session - the bake block rides the vps-ops deploy. W3 (styles + vocab) waits for START.
+
+---
+Task ID: v0.620.0 BHANDAR MANCH (T2 Local Core, built as 0.618.0)
+Agent: main (owner session)
+Task: "T2 Local Core -- START" - the T2 tier of download/HOOLA_MCP_FEED.json ported backend-only into the hoola AI
+
+Work Log:
+- Sandbox recycled mid-task: repo restored from origin/main (fetched fresh - the dev chain had moved 0.493 -> 0.617.0 while the snapshot sat), feed files + upstream clones rebuilt from the pipeline recipes.
+- T2 catalog rows re-derived and evidence-verified (catalog description verbatim): Aderali06/sqlite-mcp-server, hannesrudolph/sqlite-explorer-fastmcp, scoretracker4321/json-mcp-lite, micl2e2/code-to-tree, rafim-dev/mcp-context-condenser, EdelmarSchneider/permark, davidan90/time-node-mcp (+ mcp/servers src/time reference shape). awesome-mcp-servers MIT re-verified; mcp/servers MIT->Apache-2.0 transition noted; zero code taken either way.
+- NEW server/app/agent/bhandar_tools.py: ONE tool `bhandar` (beds | sql | md | json | ast | time), READ-ONLY over the tenant's own beds; three-belt sql gate (one statement + head law / write verbs + write pragmas refused by name / mode=ro); sandarbh root law on md/json/ast; honest envelopes; stdlib only. Name law: 'matka' rejected (ads gambling blocklist beside 'satta'); Bhandar = the storehouse.
+- Wiring: tools.py registry 605 -> 606; config.py bhandar_enabled; admit.py bed-shaped keys (bare 'sql' stays with pgdb); prompts.py bullet beside Sandarbh Manch.
+- Tests: NEW server/tests/test_v0618_bhandar_manch.py (40, zero network; name keeps the first-build number) - discovery + no-create law, the sql gate surface, replace() exception, WITH/EXPLAIN, read pragmas, SQL_ERROR honesty, bed-name law + tenant isolation, md/json/ast lanes + caps + parse positions, time (IST home, UTC +00:00 regression from the first smoke, DST honesty), kill switch, purity, registry/enum/APP_VERSION pins.
+- COLLISION #11 + REBASE PROTOCOL: their HAMESHA JUDA took 0.618.0 (tag v0.618.0-b1789) and their KAAN W2 took 0.619.0 (tag v0.619.0-b1791) while BHANDAR sat built; rebased onto their e522b90b0 tip, their base kept whole, the version layer re-applied coherently (the rebase --theirs flip caught and redone: their tip restored for all shared files, then scripts/ritual_0620.py swept 208 test files 0.619.0 -> 0.620.0, +625 -> +626, registry pins 605 -> 606, ZERO residual).
+- Deploy: server-only = owner's vps-ops dispatch; desktop untouched.
+
+Stage Summary: v0.620.0 BHANDAR MANCH shipped on origin/main - the T2 local-core lane live behind the guard wall, zero keys, zero logins, zero new pip.
+
+---
+Task ID: v0.621.0 YAAD KI GHANTI
+Task: owner - reminder not working via voice.
+Work: traced fire_reminders; live call path proven end to end; no-live-call path had no voice at all -> ring + call opens with the reminder; reminder rings skip job quiet hours.
+Result: test_v0621 6 green; console stamps healed 0.618 -> 0.621. Not verified on her phone.
+
+---
+Task ID: v0.622.0 SAHI SAMAY + SIRF GEMINI
+Task: owner - reminder setting broken on her call (logs) + "switch voice to Gemini".
+Work: her VPS call record: reminders spoken when due, but the call model computed "X minute baad" itself (past / 9 s ahead) -> create_reminder in_minutes counted by the server; voice_openai_enabled False = every call on Gemini.
+Result: test_v0622 7 green + routines/console/openai suites green; 6 pre-existing reds (v063 / v091) proven on the untouched tree.
+
+---
+Task ID: save-state-2026-11-06-voice-v622
+Agent: Claude Code (session 019P5N4aaNdxLca2Dui5D9om)
+Task: Owner "GEMINI IS PERFECT SAVE THE STATE".
+Work Log:
+- Live healthz 0.622.0 = commit 743d4cd6; branch stable-2026-11-06-voice-v622 cut there.
+- Extracted the commit; 151 voice / reminder / routines tests green, markers checked.
+- APK v0.622.0-b1797. CLAUDE.md KNOWN GOOD CHECKPOINT entry added.
+Stage Summary: voice-on-Gemini state saved; rollback = usual VPS commands with this branch.
+
+---
+Task ID: v0624-sab-kaam-call-par
+Agent: Claude Code (session 019P5N4aaNdxLca2Dui5D9om)
+Task: Owner: every job on a call goes to the reminder tool; make the call do all chat work.
+Work Log: reminder guard by code in Call._execute -> santosh_kaam; tool + her words logged per call tool; persona and
+tool text; old reminder notes fade after 30 min; version 0.624.0; tests test_v0624_sab_kaam.py.
+Stage Summary: shipped server-only; live call is the proof.
+
+---
+Task ID: v0625-ek-awaaz
+Agent: Claude Code (session 019P5N4aaNdxLca2Dui5D9om)
+Task: Owner: radio-like / different voices during a task on a call.
+Work Log: traced to pre-rendered TTS clips (ack / murmur / progress) from a separate TTS model, cached on disk; defaults OFF; tests.
+Stage Summary: v0.625.0 shipped server-only; live call is the proof.
+
+---
+Task ID: v0626-paisa-ka-hisaab
+Agent: Claude Code (session 019P5N4aaNdxLca2Dui5D9om)
+Task: Owner: Rs 338 Gemini spend in 2 calls.
+Work Log: found Live bills the whole context per reply (tools ~23k tok + persona ~7k); meter counted only audio minutes; now records usage_metadata.
+Stage Summary: v0.626.0 meter fix; cost cut awaiting her choice.
+
+---
+Task ID: v0627-chhota-menu
+Agent: Claude Code (session 019P5N4aaNdxLca2Dui5D9om)
+Task: Owner: Gemini cost per call + money going with the call off.
+Work Log: lean call menu (91k -> 37k chars); no Gemini wake while the phone is away; such a call not live for reminders.
+Stage Summary: v0.627.0; voice suites green; live call is the proof.
+
+---
+Task ID: v0628-chhoti-hidayat
+Agent: Claude Code (session 019P5N4aaNdxLca2Dui5D9om)
+Task: Owner "GO TRIM": cut what Gemini re-reads per reply.
+Work Log: PERSONA_LEAN 27k -> 7.8k; lean tool / param texts; brief capped 4.5k + primer 1.5k; tests.
+Stage Summary: v0.628.0; measure with her next call.
+
+---
+Task ID: v0629-mcp-bhi-chhota
+Agent: Claude Code (session 019P5N4aaNdxLca2Dui5D9om)
+Task: v0.628 call still 29k tokens/reply; measured on VPS: MCP tools 32 / 52k chars on every call.
+Work Log: small-menu calls name MCP servers only (santosh_kaam does their work); test.
+Stage Summary: v0.629.0.
+
+---
+Task ID: save-state-2026-11-06-voice-v629
+Agent: Claude Code (session 019P5N4aaNdxLca2Dui5D9om)
+Task: Owner "SAVE THE STATE" after the Gemini cost work.
+Work Log: live healthz 0.629.0 = 1dec230f; branch stable-2026-11-06-voice-v629 cut there; markers + voice suites re-run in the
+extracted commit; APK v0.629.0-b1820; measured 09:27 call ~13.5k tokens/reply, $0.054.
+Stage Summary: cheap-call state saved; rollback = usual VPS commands with this branch.
+
+---
+Task ID: v0630-haiku-dimaag
+Agent: Claude Code (session 019P5N4aaNdxLca2Dui5D9om)
+Task: Owner: Haiku for basic tasks + "SHIFT VOICE BRAIN ON HAIKU -- GEMINI FOR VOICE ONLY".
+Work Log: model_for -> chat_simple_model (Haiku) with Sonnet fallback; voice_brain mode (one tool, PERSONA_BRAIN, tiny
+context, brain turn on voice_brain_model with her words); conftest switches; 5 tests.
+Stage Summary: v0.630.0; verify with her next call's `gemini tokens` + chat turn log.
+
+---
+Task ID: v0631-sab-haiku
+Agent: Claude Code (session 019P5N4aaNdxLca2Dui5D9om)
+Task: Owner "DO EVERY THING HAIKU FOR NOW --- SIMPLE TO HARD"; her 10:52 call failed on "credit balance is too low".
+Work Log: claude_one_model lock at the SDK door; credit error said plainly; 3 tests.
+Stage Summary: v0.631.0; she must recharge Anthropic credit for anything Claude to work.
+
+---
+Task ID: v0632-kaan-chhota
+Agent: Claude Code (session 019P5N4aaNdxLca2Dui5D9om)
+Task: Her 11:11 brain call cost $0.173; 54% was Gemini re-reading the call's audio.
+Work Log: brain calls compress at 8k / 4k; test.
+Stage Summary: v0.632.0.
+
+---
+Task ID: v0633-tez-jawab
+Agent: Claude Code (session 019P5N4aaNdxLca2Dui5D9om)
+Task: Owner: Gemini + Haiku together is slow, Gemini alone was fast.
+Work Log: hybrid persona (Gemini answers talk itself, brain only for tools / her data), brain non-blocking with one filler line, brain wait logged.
+Stage Summary: v0.633.0.
+
+---
+Task ID: v0634-tez-dimaag
+Agent: Claude Code (session 019P5N4aaNdxLca2Dui5D9om)
+Task: Her call brain turns took 8-21 s (harness events: 3-5 s before the first tool every time).
+Work Log: brain turn history = checkpoint + last 12 exchanges; no hard detection on call turns; 3 tests.
+Stage Summary: v0.634.0.
+
+---
+Task ID: v0635-saaf-naap
+Agent: Claude Code (session 019P5N4aaNdxLca2Dui5D9om)
+Task: Call brain turns still 20 s before the first tool; no per-call timing to say why.
+Work Log: per-Claude-call timing log; no thinking / effort on call brain turns; 1 test.
+Stage Summary: v0.635.0.
+
+---
+Task ID: v0.637.0 KAHAN RUKA (built as 0.636.0)
+Agent: Claude Code (session_019P5N4aaNdxLca2Dui5D9om)
+Task: her 16:22 log - 18 s before the first Claude call on a voice brain turn; measure every stage, cut the obvious costs.
+Work Log: stage timer + `brain prep` log line; lock-busy log; compaction skipped on call brain turns; 8 exchanges, old results cut to 1,500 chars; 4 tests; version 0.637.0+643 (re-versioned: their WEB DEVELOPMENT PANEL took 0.636.0).
+Stage Summary: pushed to main + feature branch; next call's `brain prep` line names the slow stage.
+
+---
+Task ID: v0.638.0 TEZ TAIYARI
+Agent: Claude Code (session_019P5N4aaNdxLca2Dui5D9om)
+Task: her `brain prep 19.6s` line - cut memory 7.0 s / MCP 4.5 s / hint 1.8 s on call brain turns.
+Work Log: parallel memory under 2.5 s, MCP snapshot_fast, hint skipped; 3 tests; version 0.638.0+644.
+Stage Summary: pushed to main + feature branch; next call's `brain prep` line should read ~3-4 s.
+
+---
+Task ID: v0.640.0 PAKDO (built as 0.639.0)
+Agent: Claude Code (session_019P5N4aaNdxLca2Dui5D9om)
+Task: her 16:52 log - prep 13 s, 2.5 s wait took 5.6 s: find what blocks the event loop.
+Work Log: looplag watchdog, own pool for call memory, 2 more prep stages; 2 tests; version 0.639.0+645.
+Stage Summary: pushed; next call's `event loop blocked` lines name the blocking code.
+
+---
+Task ID: v0.641.0 PEHLE SE TAIYAAR
+Agent: Claude Code (session_019P5N4aaNdxLca2Dui5D9om)
+Task: the watchdog's 8.1 s loop block = 606 tool schema checks on the first turn after a deploy.
+Work Log: toolsearch.warm() at startup in a thread; watchdog innermost frames; 1 test; version 0.641.0+647.
+Stage Summary: pushed; the first call after a deploy should no longer freeze for seconds.
+
+---
+Task ID: v0.642.0 SAAF RAASTA
+Agent: Claude Code (session_019P5N4aaNdxLca2Dui5D9om)
+Task: watchdog: 4.7 s loop freeze in yaad.extract_facts embeddings.
+Work Log: _known + semantic.rank -> asyncio.to_thread; 1 test; version 0.642.0+648.
+Stage Summary: pushed; khata test_reminders red pre-existing (stash-proven).
+
+---
+Task ID: v0.643.0 HAMESHA HAIKU
+Agent: Claude Code (session_019P5N4aaNdxLca2Dui5D9om)
+Task: 17:44 call ran on Sonnet 16k for a big-looking ask.
+Work Log: model_for voice-brain first; log prints the sent model; 1 test; version 0.643.0+649.
+Stage Summary: pushed.
+
+---
+Task ID: v0.644.0 BINA RUKE
+Agent: Claude Code (session_019P5N4aaNdxLca2Dui5D9om)
+Task: call brain memory wait always ran out on yaad.
+Work Log: yaad out of the call brain memory (voice_brain_yaad False); 1 test; version 0.644.0+650.
+Stage Summary: pushed.
+
+---
+Task ID: v0.645.0 KHULA LOOP
+Agent: Claude (session 019P5N4aaNdxLca2Dui5D9om)
+Task: her 17:59 call log showed a 2.1 s event-loop freeze in aftersales.due during the call brain's prompt stage.
+Work Log: traced due() -> aftersales.prompt_block -> prompts.system_prompt; moved context_block + both _system builds in
+santosh._run_turn to asyncio.to_thread; 1 test; version ritual 0.645.0+651.
+Stage Summary: system prompt no longer built on the event loop. Next: her next call log.
+
+---
+Task ID: SAVE THE STATE v0.645.0 (7 Nov 2026)
+Agent: Claude (session 019P5N4aaNdxLca2Dui5D9om)
+Task: owner "SAVE THE STATE PERFECT NOW" after the call-speed work.
+Work Log: healthz read 0.645.0 = main 4e6ff005; markers + 71 tests re-run in a git archive of that commit; branch
+stable-2026-11-07-voice-v645 pushed at 4e6ff005; CLAUDE.md checkpoint entry; APK v0.645.0-b1861.
+Stage Summary: rollback point saved. Two older website test reds noted (also red at v0.629).
+
+---
+Task ID: v0.647.0 ALAG CALL, EK YAAD (7 Nov 2026)
+Agent: Claude (session 019P5N4aaNdxLca2Dui5D9om)
+Task: owner GO on docs/CALL_CHAT_SPLIT_PLAN.md (separate call + chat sections, shared memory, calm notifications).
+Work Log: callconv module + Conversation columns; voice_ws split=1 mapping; dual ACTIVE keys; chat list / focus exclusion;
+memory blocks both ways; receipt summary; yaad notes keyed by chat; events forwarding of phone actions; push quiet on a
+live call; /api/calls; phone Calls sheet + split=1; console Calls group; 14 tests; merged their v0.646.0, re-versioned 0.647.0.
+Stage Summary: shipped server + phone; next = phone app-open heartbeat (chat pushes only when the app is closed).
+
+---
+Task ID: v0.648.0 KAAM KA HISAAB (7 Nov 2026)
+Agent: Claude (session 019P5N4aaNdxLca2Dui5D9om)
+Task: owner GO on the past/current work audit (work list on phone + console, call knows this week's work, call notification
+opens the call, no double call summaries).
+Work Log: kaamlist module + /api/kaam/list; brain memory part "kiya"; recent_block removed from chat turns; push open_conv +
+Kotlin intent + Dart link; phone Kaam sheet; console Today > Work; 8 tests.
+Stage Summary: shipped; live check pending on her phone.
+
+---
+Task ID: v0.650.0 HOOLA WEB STUDIO (built as 0.649) (7 Nov 2026)
+Agent: Claude (session 019P5N4axTAqHmJWhdzsNhQW)
+Task: owner wanted the website builder as a separate Lovable/Emergent-like app with its own sidebar; approved a 13-screen
+prototype, plan mode optional and written from her words, three full looks (every page, PC / tablet / phone) before any build.
+Work Log: /console/web app (webstudio.html/js/css); console Web Development row opens it, webdev.js removed; service._full_looks
+(wave 4: pages written once, each look = the whole site, build writes nothing again); SITE_FULL_LOOKS / _MAX; test_v0649 (server
++ real browser).
+Stage Summary: shipped; NOT verified on a real Opus build on the VPS.
+Task ID: v0.649.0 SACH MEIN ROKO (7 Nov 2026)
+Agent: Claude (session 019P5N4aaNdxLca2Dui5D9om)
+Task: owner GO on the real-cancel fix (cancel said done, the job kept running and the next call said "chal raha hai").
+Work Log: kaamstop module (stop words + tenant-wide cancel), pre-lock interception in _run_turn, kaamwatch cancelled guard,
+voice late-news drop, kaam_status action=stop, persona lines, 11 tests.
+Stage Summary: shipped; live check on her call pending.
+
+---
+Task ID: v0.651.0 JAWAB MIL GAYA (7 Nov 2026)
+Agent: Claude (session 019P5N4aaNdxLca2Dui5D9om)
+Task: owner: a card tapped during a call - the call did not know and asked again.
+Work Log: card asked/answered registry in voice.card_news, Call.card_answered (drop unspoken note + quiet note),
+events.cards_block in the call brain memory, persona lines, sync DB read removed from _brain_memory; merged their
+v0.650.0 Web Studio, re-versioned 0.651.0; 6 tests.
+Stage Summary: shipped; live check pending.
+
+---
+Task ID: v0.653.0 SACHCHA NATIJA (7 Nov 2026)
+Agent: Claude (session 019P5N4aaNdxLca2Dui5D9om)
+Task: owner GO on the task-monitoring audit's four fixes.
+Work Log: _record_cut + since-checked _late_result; kaamwatch kinds game/CAD/campaign/coding + unwrap; stuck words in block /
+status / Kaam list + 2-day dead told once; Call._still_working check-ins; merged their v0.652.0, re-versioned 0.653.0; 9 tests.
+Stage Summary: shipped; live check pending.
+
+---
+Task ID: v0.654.0 BHEJA TO DIKHA
+Agent: Claude (web studio session)
+Task: owner screenshot - Web Studio plan chat / home send "does nothing"
+Work Log:
+- traced: revise call takes up to a minute with no UI feedback; home ask the same
+- plan chat + home box now show her line / a working row at once, words restored on failure
+- browser test slows /revise, fails on old code, passes now; version ritual 0.654.0+660
+Stage Summary: shipped v0.654.0 on top of their v0.653.0 SACHCHA NATIJA (both kept)
+
+---
+Task ID: v0.655.0 SACH KA PEHRA (7 Nov 2026)
+Agent: Claude (session 019P5N4aaNdxLca2Dui5D9om)
+Task: owner GO on the false-task-reply audit.
+Work Log: draftcheck effect() by result, read names, clause window, new claim phrases, card nudge + line; voice spoken-claim
+correction; merged their v0.654.0, re-versioned 0.655.0; 25 tests.
+Stage Summary: shipped; live check pending.
+
+---
+Task ID: v0.656.0 KAAM DIKHE
+Agent: Claude (web studio session)
+Task: owner screenshot - Studio looks panel showed one line and 0%; wants Lovable-style live steps + timing
+Work Log:
+- new site/activity.py step log fed by every build stage + finer counts in the looks waves
+- Studio work panel + site chat: elapsed time, step list with ticks / spinners / counts / live times
+- tests 3 new + browser walk; 74/75 site suites green (the 1 red fails on main too)
+Stage Summary: shipped v0.656.0 on top of their v0.655.0 SACH KA PEHRA (both kept)
+
+---
+Task ID: v0.657.0 PAKKA KAAM
+Agent: Claude (voice/task session)
+Task: owner "Wave 1 (lost work, money): 1, 2, 5, 6, 7, 8, 12 --- FIX THIS" after the deep flaw audit
+Work Log:
+- turn_inbox: started_at anchor, final-reply check, resume note; queued message no longer dropped
+- bazar runner: conditional claim before execute; 'executing' cut by a restart -> 'interrupted' + plain notice
+- santosh._mark_failed / turn_failed_since; kaam_followup + routines use it; timeout text warns of half-done step
+- kaamwatch marks a queued report told; followup tick checks _SENDING first
+- tests: test_v0657_pakka_kaam.py 14 (12 fail on the old code); harness2 expectation updated (another turn's reply is not this row's answer)
+Stage Summary: shipped v0.657.0 on top of their v0.656.0 KAAM DIKHE (both kept)
+
+---
+Task ID: v0.658.0 SAAF DIKHE
+Agent: Claude (web studio session)
+Task: owner screenshots - no timing / feed in the Studio site chat; no project menu in the Studio sidebar
+Work Log:
+- site chat: live tool steps + ticking timer, 'Worked for N · steps' per answer; greeting-as-answer bug fixed
+- sidebar: Search, Starred, per-project menu (open / new tab / rename / star / delete), card + workspace menus; PATCH /api/sites/{id}
+- 11/11 Studio tests green (3 new incl. a slow fake turn in a real browser)
+Stage Summary: shipped v0.658.0 on top of their v0.657.0 (both kept)
+
+---
+Task ID: v0.660.0 CALL KI YAAD
+Agent: Claude (voice/task session)
+Task: owner "Wave 2 (call memory and smoothness): 3, 4, 13-18, 23 -- WORK ON IT NOW"
+Work Log:
+- yaad.voice_block reads the origin chat for a call record; small brief per-part shares + head/tail checkpoint
+- call brain: chat checkpoint + facts by meaning, late parts named + cached (job state never cached)
+- voice: check-in does not block parking, side records for a second ask, split santosh_kaam dedupe,
+  brain-made cards quiet but remembered, unsent news saved at call end, early late-result callback, news gap rule
+- tests: test_v0660_call_yaad.py 14; two old pins updated (v0230 news cap timing, v0554 VOICE_DIRECT line)
+Stage Summary: shipped v0.660.0 on top of their v0.659.0 KAAN W4 + v0.658.0 SAAF DIKHE (both kept); 4 older reds stash-proven pre-existing
+
+---
+Task ID: v0.661.0 YAAD SAHI
+Agent: Claude (voice/task session)
+Task: owner "GO" on Wave 3 of the deep audit (memory accuracy 19-22, 24, 25)
+Work Log:
+- pii.mask_sensitive replaces the blunt 9+/10+ digit masks in yaad._scrub + compact.scrub; fact_ok no longer refuses plain numbers
+- yaad.update_pinned / _pinned_ids / retire_copies / is_preference; save_fact + life_tools.remember use them; remember dedupes
+- _search fence + incognito in SQL; diary receipt scan bounded by days; extract_facts defers inside the gap, short self-facts kept
+- tests: test_v0661_yaad_sahi.py 9 (all fail on the old code); pins updated in v0217 (order id kept) + v0603 (pinned in place)
+Stage Summary: shipped v0.661.0 on top of v0.660.0; 2 older reds (v108 _reseed fake, v0473 routes) pre-existing
+
+---
+Task ID: v0.662.0 KAAM SAAF
+Agent: Claude (voice/task session)
+Task: owner "GO" on Wave 4 of the deep audit (coworker polish 9-11, 26-30) - the last wave
+Work Log:
+- worker._slot guard + google_auth.BACKGROUND around every slot; fire_reminders late path (REMINDER_LATE_S, _quiet_now)
+- santosh._STOP_AT / STOPPED_IN_PREP; _say_error dedupe for background turns
+- google_auth._DEAD backoff per refresh token (background only) + _note_dead once-a-day notice
+- draftcheck new _DONE forms + _PROMISE_REMIND / NUDGE_PROMISE; kaamwatch honest stuck line + BOOT_AT
+- kaamlist._is_work + job-start dedupe + waiting cards; events.waiting_cards max_age_h + CARD_STALE_H in cards_block
+- tests: test_v0662_kaam_saaf.py 19 (17 fail on the old code); 320 older passed
+Stage Summary: shipped v0.662.0 on top of v0.661.0; all four audit waves done
+
+---
+Task ID: save-state-audit-v662
+Date: 2026-11-07
+Agent: Claude Code (session hoola-project-review-lzrqhu)
+Task: SAVE THE STATE after the four-wave flaw audit (v0.657 / v0.660 / v0.661 / v0.662).
+Work: branch `stable-2026-11-07-audit-v662` cut at dda3e58f (= v0.662.0 code + one marketing doc); markers re-verified and
+151 tests green in a git-archive extract of that commit; KNOWN GOOD CHECKPOINT entry added to CLAUDE.md.
+Not verified: live restart / call / late reminder; VPS version at save; Google sign-in still dead.
+
+---
+Task ID: v0.663.0 STUDIO JAANCH
+Agent: Claude Code session (claude/vigilant-lamport-0hvbp3)
+Task: owner asked to check every Web Studio section end to end.
+Work Log:
+- Matched all 45 Studio API calls against the server routes (all exist).
+- Walked every section in Chromium with page errors + HTTP >= 400 logged per section.
+- Fixed: real downloads, DNS records + apply / check / undo in Publish, quiet /moves, Live pill in History, care name fallback.
+Stage Summary:
+- v0.663.0, tests/test_v0663_studio_jaanch.py 3 green.
+
+---
+Task ID: v0.664.0 ASLI SAMAY
+Agent: Claude Code session (claude/vigilant-lamport-0hvbp3)
+Task: owner asked to see the website being built in real time (R1-R5).
+Work Log:
+- Checked first: no streaming anywhere, partial site hidden by the Studio.
+- Built stream.py + streamed Opus sections, the SSE live route, the build canvas pages + hoola-build.js, the Studio live view (canvas, follow, page strip, code tabs, live looks, live changes, before / after).
+Stage Summary:
+- v0.664.0, tests/test_v0664_asli_samay.py 7 green.
+
+## Task 39 — v0.665.0 JHAROKHA MANCH (owner: "T3 Local Browser --- CONTINUE"; built as 0.664.0, their ASLI SAMAY took 0.664.0 while it sat built - REBASE PROTOCOL #12, both kept)
+
+The T3 tier of download/HOOLA_MCP_FEED.json - the zero-login / zero-key browser rows - lands
+backend-only for the hoola AI, the third idea-lane of the feed family (Sandarbh v0.586 = T1
+reference, Bhandar v0.620 = T2 local core, Jharokha v0.665 = T3 local browser).
+
+**The catalog (both MIT, both catalog-description-verified, ported IDEA-ONLY - zero upstream code,
+zero new pip, zero new keys):** microsoft/playwright-mcp ("browser automation capabilities using
+Playwright ... through structured accessibility snapshots, bypassing the need for screenshots or
+visually-tuned models") + the modelcontextprotocol/servers Puppeteer archived reference ("Browser
+automation and web scraping").
+
+**The lane:** ONE tool `jharokha` (registry 606 -> 607), nine actions, every answer one envelope
+(the v0.559 discipline shape): `open` (SSRF-guarded public http(s) through the house's own
+scrape-lane guard + inert about:blank / data:text/html scratch pages), `snapshot` (the interactive
+tree with refs e1.. + the visible text; a fresh snapshot rides EVERY answer), `click` (ONE real
+click through a ref, the tag verified first - stale refs are honest NOT_FOUND), `type` (fill /
+select_option, submit=true presses Enter), `press` (ONE named key from a printed allowlist),
+`console` (page logs + uncaught pageerrors, clearable), `tabs` (list | select | new | close, cap 4),
+`screenshot` (ONE PNG into data/jharokha/<tenant>/, never base64, 5 MB cap), `close` (RAM hygiene).
+
+**The laws:** refs from a house-sized DOM walk (playwright 1.57 has no page.accessibility) -
+role + name + nth, re-runnable, tag-verifiable, 250 max; MEM-CURE RAM discipline (max 2 tenant
+browsers server-wide - an extra tenant is an honest BUSY - max 4 tabs, idle reaper at 180 s on a
+30 s tick and again before every action); ONE owner daemon loop owns playwright forever (its
+objects are loop-bound), actions submitted thread-safe, serialized per tenant, 60 s belt each;
+ephemeral (no profile, no cookies on disk, nothing shared across tenants); tree / text / console
+pass operator.browser mask_ids (navigation truth page.url + title and local paths do not); no
+evaluate, no downloads, no file://, no uploads, no credentials - the agentic door for those stays
+the Computer Operator. Kill switch `jharokha_enabled` (default on; off = NEED_SETUP, honest); a
+server without the browser stack also says NEED_SETUP naming the setup command.
+
+**Tests:** NEW server/tests/test_v0664_jharokha_manch.py (27) - a real headless Chromium, every
+page a data:text/html scratch page, the whole suite offline; the ritual swept the pins to
+0.665.0(+671) and registry 607.
+
+Stage Summary:
+- v0.665.0, tests/test_v0664_jharokha_manch.py green.
+
+---
+Task ID: v0.667.0 PREMIUM STUDIO
+Agent: Claude Code session (claude/vigilant-lamport-0hvbp3)
+Task: owner asked for a premium Web Studio design in Figma first, then "GO BUILD THE DESIGN".
+Work Log:
+- Designed 4 frames + a Chip component in Figma (file Yl6AWOsMaD8f2FdHROVbOB).
+- Built it into webstudio.css / .js / .html: tokens, fonts, home, sidebar, top bar, chat, work card, finished state, live pane.
+Stage Summary:
+- v0.667.0, tests/test_v0667_premium_studio.py 2 green; older Studio suites green.
+## Task 40 — v0.668.0 DUNIYA MANCH (owner: "T4" - the T4 tier of download/HOOLA_MCP_FEED.json; built as 0.667.0, their PREMIUM STUDIO took 0.667.0 while T4 sat built and pushed - REBASE PROTOCOL #13, both kept)
+
+The T4 tier of download/HOOLA_MCP_FEED.json - the no-login / no-key public-web rows - lands
+backend-only for the hoola AI, the fourth and last idea-lane of the feed family (Sandarbh v0.586 =
+T1 reference, Bhandar v0.620 = T2 local core, Jharokha v0.665 = T3 local browser, Duniya v0.667 =
+T4 keyless public web). NOTE: the feed file itself was lost to a sandbox recycle; the T4 tier was
+deployed from its recorded definition (the no-login / no-key public-web rows), the same standard
+the first three tiers rode.
+
+**The catalog (catalog-description-verified, ported IDEA-ONLY - zero upstream code, zero new pip,
+zero new keys):** modelcontextprotocol/servers fetch (the official reference: "Web content fetching
+capabilities for LLMs") + the no-key public-API rows (Wikipedia / Open-Meteo / Hacker News /
+Frankfurter / Free Dictionary / arXiv).
+
+**The lane:** ONE tool `duniya` (registry 607 -> 608), eight actions, every answer one envelope
+{schema_version, ok, tool, action, ..., meta{elapsed_ms, backend}, error{code, message, hint}}:
+fetch | wikipedia | weather | hn | currency | dictionary | arxiv | status.
+
+**The laws:** GET only, forever (never POST/PUT/DELETE, never an auth header, never a cookie);
+the named backends' urls are code constants and EVERY url rides the house scrape-lane SSRF guard;
+ONE network seam (`_http_get`) every public byte rides - tests monkeypatch exactly that, the whole
+suite offline; text passes mask_ids; kill switch `duniya_enabled` (off = honest NEED_SETUP).
+
+- Wiring: agent/duniya_tools.py (new); tools.py registry 607 -> 608; config.py duniya_enabled=True;
+  prompts.py Duniya bullet beside the three brothers.
+- Tests: NEW server/tests/test_v0667_duniya_manch.py (39, zero network; the fake seam pops scripted
+  answers): envelope shape, status zero-network, kill switch, fetch (strips scripts/styles, json
+  pretty, redirect final url, honest truncation, TOO_BIG, non-text refused, PAN mask, guard REALLY
+  wired), the SSRF guard itself (loopback / metadata / file:// / ftp://), wikipedia, weather, hn,
+  currency, dictionary, arxiv, upstream mapping, purity (no top-level httpx), registry 608 pin,
+  enum pin, APP_VERSION pin.
+- Ritual: scripts/ritual_0667.py - 0.666.0/+672 -> 0.667.0/+673 across the suites (zero residual),
+  registry pins 607 -> 608 with the note, pubspec, APP_VERSION story (their KAAN W5 chain verbatim
+  in Previous), CLAUDE.md, WORKLOG Task 40, HISTORY section.
+
+Stage Summary:
+- v0.667.0, tests/test_v0667_duniya_manch.py green. Server-only deploy - old APKs keep working.
+
+---
+Task ID: v0.669.0 HOOLA AURA
+Agent: Claude Code (web session)
+Task: animated soft Hoola brand glow behind the Web Studio home (preview first, then GO)
+Work Log:
+- built the aura (webstudio.js + webstudio.css), previewed light / dark / 4x clip, owner said GO
+- test_v0669_hoola_aura.py 2 + test_v0667_premium_studio.py 2 green; version ritual 0.668.0 -> 0.669.0 (+675)
+Stage Summary:
+- shipped v0.669.0 to main
+
+---
+Task ID: v0.671.0 NAAM AUR NAMOONA
+Agent: Claude Code (web session)
+Task: Hoola brand name before building + sample values instead of blanks in the preview
+Work Log:
+- brand_name + new()/view()/rename(); build.samples + prompts + live canvas; Studio chip
+- built as 0.670; their KAAN W6 took 0.670.0 -> re-versioned 0.671.0 on their tip (REBASE PROTOCOL)
+- tests: v0671 6 + site suites (v121, v0223-v0225, v0292, v0315, v0649, v0663, v0664, v0667, v0669) green; v0224 backup prune red on the unchanged tree too
+Stage Summary:
+- shipped v0.671.0 to main
+Task ID: v0665-sach-ka-hisaab (built as 0.663)
+Date: 2026-11-07
+Agent: Claude Code (session hoola-project-review-lzrqhu)
+Task: second deep audit (37 flaws found, 4 waves proposed) -> owner "GO WAVE 5" = the 14 false-statement flaws.
+Work: v0.665.0 SACH KA HISAAB - tool_failure, family-aware + past-report-aware claim check, quick lane forced queue,
+call claim check by real tools, honest auto-plan close / step cap / empty ending, goal round outcome kept, verify scoped
+to the job, figures from the whole result, guessed facts labelled. 32 new tests.
+Not verified: live. Waves 6-8 (double / lost work, wrong place, smoothness) wait for her GO.
+
+---
+Task ID: v0666-kaam-ek-baar (built as 0.664)
+Date: 2026-11-07
+Agent: Claude Code (session hoola-project-review-lzrqhu)
+Task: owner "GO WAVE 6" = second audit items 15-23 (double / lost work).
+Work: v0.666.0 KAAM EK BAAR - tz fix for late reminders (own v0.662 bug), honest timeout, durable send dedupe, routines /
+Dobara / edit / form answers on the turn inbox (TurnInbox.actor), pre-lock replies out of history, stop never parallel,
+channel replies advanced after send, reminders advanced before said. 10 new tests.
+Not verified: live. Waves 7-8 wait for her GO.
+
+---
+Task ID: v0667-sahi-jagah (built as 0.665)
+Date: 2026-11-07
+Agent: Claude Code (session hoola-project-review-lzrqhu)
+Task: owner "GO WAVE 7" = second audit items 24-31 (wrong place / inconsistent).
+Work: v0.667.0 SAHI JAGAH - channel chats never current, call-set reminders/routines on the chat, deleted-chat re-home,
+bazar reminders spoken + rung + day kept, monthly anchor_day, lock holder gates steering, honest recovery wording,
+strings slimmed in tool results. 8 new tests.
+Not verified: live. Wave 8 (smoothness on screen) waits for her GO.
+
+---
+Task ID: v0668-saaf-screen (built as 0.667)
+Date: 2026-11-07
+Agent: Claude Code (session hoola-project-review-lzrqhu)
+Task: owner "GO WAVE 8" = second audit items 32-37 (smoothness on screen). Also: their ASLI SAMAY took 0.664.0 -> waves 5-8
+re-versioned 0.665-0.668 (REBASE PROTOCOL), all kept.
+Work: v0.668.0 SAAF SCREEN - cut-off step cards end, correction sent once, typing on the clock, phone ack placeholder,
+late stream events read back, history off the loop. 6 new tests.
+Not verified: live / on a real phone.
+
+
+---
+
+## Task: GO BUILD P9 HOOLA ADOPT -> v0.680.0 (the authed AEP turn lane; the train's first product adoption)
+
+Owner: "CURRENTLY HOOLA DONT USE AEP IT NEED USER AUTH" + "CONTINUE". Built as 0.610.0; the dev chain took 0.611-0.672 while P9 sat
+built - REBASE PROTOCOL THREE TIMES (v0.670.0 KAAN W6: 200 conflicts; v0.671.0 NAAM AUR NAMOONA mid-push: 221; v0.672.0 DOOSRI
+JAANCH mid-push again), their base kept whole each time, the route + the module re-applied, the version layer re-applied coherently
+0.672.0/+678 -> 0.680.0/+679. server/app/agent/aeptune.py + POST /api/aep/turn/{conversation_id} behind require_key + current_tenant;
+tests test_v0610_hoola_adopt.py (15, zero network); the AEP octo 369 + their newest suites green (the reds proven pre-existing on
+pristine); deploy is the owner's dispatch.
+
+---
+Task ID: v0.683.0 EK LAKH PROMPT
+Agent: Claude Code (web session)
+Task: 1,00,000 deep website prompts in the Web Studio Templates
+Work Log:
+- site/templates.py (compose from library.brief, fit to 2,000, guard-safe), /api/site-templates routes, Studio Templates page + dialog + Use
+- all 1,00,000 checked: <= 2,000 chars and guard-clean; built as 0.672, main moved to 0.682 -> re-versioned 0.683.0 (REBASE PROTOCOL)
+- tests: v0683 5 + v121 site + v0671 / v0669 / v0667 / v0663 green
+Stage Summary:
+- shipped v0.683.0 to main
+Task ID: v0681-turant
+Date: 2026-11-07
+Agent: Claude Code (session hoola-project-review-lzrqhu)
+Task: third deep audit ("NOW AGAIN GO DEEP ... MAKE THE HOOLA AI A POWERFULL GOD") -> 47 flaws, 5 waves -> "GO WAVE 9".
+Work: v0.681.0 TURANT - per-tenant coder work lists + tenant-filtered batch routes, bulk send only on her own words,
+SAB HAIKU on streams + real-model metering, studio stream counted, research in-flight price held, operator-only
+recharge line, one-model fallback bypass + quiet wake failures, staff failures honest, minute out of the cached prompt.
+19 new tests. Not verified live. Waves 10-13 wait for her GO.
+
+---
+Task ID: v0681-lamba-kaam (wave 10, same release)
+Date: 2026-11-07
+Agent: Claude Code (session hoola-project-review-lzrqhu)
+Task: owner "GO WAVE 10" = third audit items 10-19 (long tasks end to end).
+Work: gist instead of bare clear, crew shares, budget_at, job-wide tool check, resume on her answer, waiting-on-her
+window, one queued round, file-kind match, stale goals rested, silent failures told. 11 new tests.
+
+---
+Task ID: v0681-sahi-auzaar (wave 12, same release)
+Date: 2026-11-07
+Agent: Claude Code (session hoola-project-review-lzrqhu)
+Task: owner "GO WAVE 12" = third audit items 29-35 (tool choice + skills).
+Work: finguard / phonedoc keys, whole-word ambiguous keys + generic auto-keys, skills matched on name+description with
+2+ words, dead keyword families re-homed, lane rules for overlapping tools, foreign tool names marked in read skills.
+27 new tests.
+
+---
+Task ID: v0685-teesri-jaanch (waves 9-12, built as 0.681)
+Date: 2026-11-08
+Agent: Claude Code (session hoola-project-review-lzrqhu)
+Task: ship waves 9-12 of the third audit as one release after the wide regression run.
+Work: re-versioned 0.681 -> 0.685 on their v0.684 tip; 9 regressions found by the comparison fixed; 67 new tests.
+Not verified live. Wave 13 waits for her GO.
+
+---
+Task ID: v0.686.0 EK LAKH ALAG WEBSITE
+Agent: Claude Code (web session)
+Task: Templates = 1,00,000 unique websites worldwide (owner: v0.683 showed 100 'Sweet shop' cards)
+Work Log:
+- site/world.py (50 sectors x 20 subjects, 10 types, sector types, positionings, cities, name roots) + site/templates.py rewrite + routes + Studio page
+- all 1,00,000 checked (length, guard, unique names + concepts); built as 0.684, main moved to 0.685 -> re-versioned 0.686.0
+Stage Summary:
+- shipped v0.686.0 to main
+
+---
+Task ID: SAVE THE STATE stable-2026-11-08-web-v687
+Agent: Claude Code (web session)
+Task: checkpoint after the owner deployed the 1 lakh websites (live healthz 0.687.0)
+Work Log:
+- git archive c78c2164c, ran 40 tests there (all green), templates TOTAL 100000 + world.check() clean
+- branch stable-2026-11-08-web-v687 pushed at c78c2164c; CLAUDE.md checkpoint entry added
+Stage Summary:
+- rollback point = stable-2026-11-08-web-v687 (v0.687.0)
+Task ID: v0686-mann-ki-baat (wave 13 of the third audit)
+Date: 2026-11-08
+Agent: Claude Code (session hoola-project-review-lzrqhu)
+Task: "GO WAVE 13" - analysis, monitoring and feeling (12 items).
+Work: research check on every actor, pylab figures checked, corrected answer re-checked, independent reviewer, worker health + slot timeout + looplag from start, female avatar grammar, fixed lines gendered, night push hold, mood rule, prompt contradictions, error-after-tools warning, background errors once a night; 16 tests. The third audit (47 flaws) is complete. Not verified live.
+
+---
+Task ID: v0692-call-par-team
+Date: 2026-11-08
+Agent: Claude Code (session hoola-project-review-lzrqhu)
+Task: multi-agent crews during a live call while a long task runs - map how it works, then fix the 12 gaps.
+Work: crew cap count, chat-mode rounds, call questions not hijacked, results said whole on the call, roko stops crews, call reaches the chat job, live crew progress, per-her inline cap, crews out of voice mode + research rules, gendered lines, record pick lock; 10 tests. Built as 0.691 work, shipped as 0.692 after their 0.690-0.691. Not verified live.
+
+---
+Task ID: v0692-call-par-team
+Date: 2026-11-08
+Agent: Claude Code (session hoola-project-review-lzrqhu)
+Task: multi-agent crews during a live call while a long task runs - map how it works, then fix the 12 gaps.
+Work: crew cap count, chat-mode rounds, call questions not hijacked, results said whole on the call, roko stops crews, call reaches the chat job, live crew progress, per-her inline cap, crews out of voice mode + research rules, gendered lines, record pick lock; 10 tests. Shipped as 0.692 after their 0.690-0.691. Not verified live.
+
+---
+Task ID: v0.693.0 HOOLA APP STUDIO
+Agent: Claude Code (web session)
+Task: App Studio at /console/apps (owner: prototype of 14 pages -> "GO BUILD THE APP STUDIO")
+Work Log:
+- read the whole app flow (server engine, 232 routes, phone + console clients); 14-page prototype approved
+- appmaker/activity.py + hooks; appstudio.html/js/css; /console/apps route; App Development sidebar row; chat card link
+- 6 tests (route, english steps, build hooks, design log, markers, real-browser walk of every page); built as 0.688, main moved to 0.692 -> re-versioned 0.693.0
+Stage Summary:
+- shipped v0.693.0 to main
+
+---
+Task ID: v0695-sab-glm-final-jaanch
+Date: 2026-11-08
+Agent: Claude Code (session hoola-project-review-lzrqhu)
+Task: deep check before final testing + use NVIDIA GLM 5.3 Flash for every brain call.
+Work: free cards all full, 2 real bugs fixed (video_studio family, skill pack stamps), card + pins healed, docs/FINAL_TEST_PLAN.md; SAB GLM door (glmdoor.py) with NVIDIA reasoning fields, picture support, Claude fallback, glm_check job; 11 tests. Not verified live (no NVIDIA key here).
+
+---
+Task ID: v0696-glm-safety-switch
+Date: 2026-11-08
+Agent: Claude Code (session hoola-project-review-lzrqhu)
+Task: her live NVIDIA test hung - keep Hoola fast whatever GLM does.
+Work: 45 s GLM clock, no retry on timeout, skip GLM 10 min after 2 failures; 2 tests.
+
+---
+Task ID: v0697-nvidia-nemotron
+Date: 2026-11-08
+Agent: Claude Code (session hoola-project-review-lzrqhu)
+Task: her NVIDIA key - GLM-5.3-Flash hangs; find a model that answers.
+Work: her tests found only Nemotron answers; GLM-only reasoning fields; recommended nemotron-3.5-super-vl-120b-a12b; 1 test.
+
+---
+Task ID: v0698-omniroute
+Date: 2026-11-08
+Agent: Claude Code (session hoola-project-review-lzrqhu)
+Task: OmniRoute for every brain call.
+Work: door picks OmniRoute when set, per-brain breaker, 90 s clock, setup steps (official keys only); 2 tests.
+
+---
+Task ID: v0.699.0 GLM VIA OPENROUTER
+Agent: Claude Code (branch claude/hoola-project-review-lzrqhu)
+Task: owner "lets go with glm 5.3 flash - via openrouter"
+Work Log:
+- llm._target OpenRouter branch (reasoning field), room only when thinking on, retry strips reasoning fields
+- version ritual 0.698.0 -> 0.699.0 (pubspec +698, 223 test files, 32 console stamps)
+Stage Summary:
+- tests/test_v0699_glm_openrouter.py 4 passed; SAB GLM / glm / v0475 / routines 39 passed
+- NOT VERIFIED live: her glmdoor check on the VPS
+
+---
+Task ID: v0.700.0 REASONING ZAROORI
+Agent: Claude Code (branch claude/hoola-project-review-lzrqhu)
+Task: her OpenRouter check showed GLM-5.3-Flash refuses reasoning off
+Work Log:
+- llm._target OpenRouter: always reasoning effort low + exclude; room() on OpenRouter too
+- version ritual 0.699.0 -> 0.700.0
+Stage Summary:
+- 39 passed (v0699 / v0695 / glm / v0475 / routines)
+
+---
+Task ID: v0.701.0 PAKKA ATTACHMENT
+Agent: Claude Code (branch claude/hoola-project-review-lzrqhu)
+Task: owner "GO FIX 1 2 3 + SHEET IMPORT"
+Work Log:
+- mailbox kept copies (_keep/_kept/_sweep_kept), _drive_bytes via drive.service.fetch, load_files kept-first
+- sheets import_rows drive_file; schemas; config mail_keep_dir / mail_keep_days
+Stage Summary:
+- 11 new tests + 86 in email/drive/photos/routines + 93 in sheets & neighbours green; 4 website reds pre-existing on main
+
+---
+Task ID: v0.702.0 GLM SIRF DIKHTE AUZAAR
+Agent: Claude Code (branch claude/hoola-project-review-lzrqhu)
+Task: her G8 "stuck, trying different way, was instant before"
+Work Log:
+- glmdoor.build keeps in-view + tool_search-loaded tools only; _expand_refs for tool_reference blocks
+Stage Summary:
+- 42 passed (v0702 / v0699 / v0695 / glm / v0475 / routines); the failing-tool cause still needs her harness events
+
+---
+Task ID: v0.703.0 TOOL ARGS MAAF
+Agent: Claude Code (branch claude/hoola-project-review-lzrqhu)
+Task: her G8 event log - kaam_plan step without state, email_draft without to
+Work Log:
+- goal_tools.kaam_plan: default + synonym map for state; email_tools.email_draft: recipient aliases + exact retry hint
+Stage Summary:
+- 2 new tests green; goal / email suites re-run
+
+---
+Task ID: v0.704.0 CARD KI KHABAR CHAT MEIN
+Agent: Claude Code (branch claude/hoola-project-review-lzrqhu)
+Task: Hoola does not know a card was sent / approved; every task slow
+Work Log:
+- events: CARD_ALIAS email_sent->email_draft, card_title, card_updates, card_news_block
+- santosh: _chat_memory (parallel, bounded, logged) + _last_reply_at; config chat_memory_s
+Stage Summary:
+- 5 new tests + v0650 green; wider suites run
+
+---
+Task ID: v0.705.0 LOOP BAND
+Agent: Claude Code (branch claude/hoola-project-review-lzrqhu)
+Task: her harness log - promotions archive looped 40 rounds
+Work Log:
+- gmail.FOLDER_Q inbox tabs; email_threads description; breaker NAME_STEER / NAME_STOP with batch credit
+Stage Summary:
+- 4 new tests; breaker suites green except reds that fail on the old code too
+
+---
+Task ID: v0.706.0 GMAIL GEHRI JAANCH
+Agent: Claude Code (branch claude/hoola-project-review-lzrqhu)
+Task: deep Gmail flaw audit + fixes
+Work Log:
+- 3 parallel read-only audits; findings verified in code; 13 fixed; open list in docs/tests/GMAIL_AUDIT_2026-11-08.md
+Stage Summary:
+- 10 new tests; email suites run
+
+---
+Task ID: v0.707.0 SEEDHA WORKSPACE
+Agent: Claude Code (web session)
+Task: Studio plan / build land on the workspace at once + Build this plan never dies on the data draft (owner screenshots)
+Work Log:
+- architect.approve drops data/logic when the draft is bad and says so; webstudio + appstudio drawPending; approve-plan working state; ws-in fade + skeleton css
+- 4 tests; 291 green on the 0.694 tree (studio, architect, app studio suites); built as 0.694, main moved to 0.706 -> re-versioned 0.707.0
+Stage Summary:
+- shipped v0.707.0 to main
+Task ID: v0.708.0 GMAIL WAVE 2 (built as 0.707.0)
+Agent: Claude Code (branch claude/hoola-project-review-lzrqhu)
+Task: the Gmail audit's open items
+Work Log:
+- bulk by filter, not-supported settings, NotConnected on expiry, snooze per thread, draft id guard, GLM history caps
+Stage Summary:
+- 8 new tests; wider suites run
+
+---
+Task ID: v0.709.0 PLAN KA DHAANCHA
+Ask: plans random/shallow; every plan previewed as a marketing landing page - root cause + fix.
+Done: approved plan drives the site structure (site_plan + brief_text + looks hero/tops), deep code-sized architect + depth checks + deepen round, Build-mode deep path, Studio plan document. 7 new tests + 4 architect suites green.
+Not verified: real Opus plan depth/time on her server.
+
+---
+Task ID: v0.710.0 ARCHITECT OPUS
+Ask: plans still landing-page; check logs.
+Found: healthz chat_brain GLM-5.3-Flash + claude_one_model Haiku answer the architect call. Fixed: plan calls on Opus (CLAUDE_ONLY + ONE_MODEL_BYPASS), log line per plan.
+Not verified live.
+
+---
+Task ID: v0.711.0 SIRF JO POOCHA CHAT
+Agent: Claude Code (branch claude/hoola-project-review-lzrqhu)
+Task: Hoola answered a new ask with a status report of waiting cards
+Work Log:
+- events.card_news_block takes her words; waiting list only on pending-work words; answered note marked background
+Stage Summary:
+- v0704 + v0650 suites 12 passed
+
+---
+Task ID: v0.712.0 HAR PROMPT KA PLAN
+Ask: every prompt still gives a landing-page plan after v0.710.
+Found: Build mode (the default) only used the architect for portal words; everything else = library page set.
+Fixed: every Build ask planned by the architect (Opus), brochure no data draft, fallback, section prompt neutral.
+Not verified live.
+
+---
+Task ID: v0.713.0 SEEKH MANCH (re-ship; built as 0.711, their SIRF JO POOCHA CHAT took 0.711 and HAR PROMPT KA PLAN took 0.712 - REBASE PROTOCOL onto their tip, all kept)
+Agent: Claude (web session)
+Ask: "NOW LETS WORK ON A HOOLA AI AGENT THAT WILL SEE THE YOUTUBVIDEO FROM LINK, SHORTS, MP4 OR ANY VIDEO FORMAT ... AI WILL LEARN THAT TRAIN ITSELF KEEP IN MEMORY AND IF TASK GIVEN RELATED TO IT IT WILL PERFORM SMOOTHLY" + "GO" on the SEEKH MANCH plan.
+Built: ONE tool seekh_video (616 -> 617, family seekh); server/app/seekh.py (classify -> Gemini perceive -> Claude distill -> store) + agent/seekh_tools.py + procedures.save_video; operator recipe DRAFTS through the public Memory.save format (runs=0, proven recipes never clobbered); evidence law, digit masking, value variables, day/size/length caps, seekh_enabled switch; routing words kept off 'kya seekha' / 'banana sikhao' / hoola_seekha; 40 offline tests (test_v0713_seekh_manch.py, born v0711 in the collision round).
+Deploy: the owner's vps-ops dispatch; healthz must grep 0.713.0.
+
+---
+Task ID: v0.714.0 HAR CHAT ALAG
+Ask: other chats' messages / daily coworker updates land in new chats - keep every chat independent.
+Found: every background notice used convs.current = the chat she had open; chat-turn memory read other chats' jobs / cards.
+Fixed: convs.notice_chat -> turn chat or the pinned 'Hoola updates' chat; routines + briefing run there; own-chat jobs / cards / diary / coder notes; switch chat_alone.
+Not verified live.
+
+
+---
+Task ID: v0.715.0 SCREENS FIRST (built as 0.714)
+Agent: Claude (web studio session)
+Task: owner "GO" on research points 1 + 2 - app-screen section types + screens-first plans and looks.
+Work: taxonomy.SCREENS (9 types), architect main_screen + SCREENS FIRST prompt + depth check, site_plan home = front door +
+main screen, looks show screens (APP_LOOK_NOTE), SCREEN_NOTE for the writer, [data-sample] counted + launch blocker,
+Studio "Main screen" pill; test_v0714_screens_first.py (5), v0709 fixture updated.
+Deploy: vps-ops deploy; healthz must read 0.715.0.
+
+
+---
+Task ID: v0.716.0 NAYA ROOP
+Ask: her new logo as the 3D thinking icon + app logo everywhere, and the chat feel picked on the preview page.
+Built: mark.js (one drawing) + make_mark.js -> every logo size; 3D thinking mark (console + phone); Calm pace; soft-focus word landing; file card; live steps folding into Worked for; Plan card; small motions.
+Not verified live; phone compiles on CI.
+
+---
+Task ID: v0.717.0 FILE CARD SAHI
+Ask: her live PDF card stacked in a column - make it like the approved design.
+Fixed: row direction (the old .cd column rule won), Open + download icon, no Use as reference, doubled name cleaned. Checked in a browser.
+
+---
+Task ID: v0.718.0 SEEKH MANCH ON THE CONSOLE (re-ship; built as 0.716, their NAYA ROOP took 0.716 and FILE CARD SAHI took 0.717 - REBASE PROTOCOL onto their 5964cdda7 tip, all kept)
+Agent: Claude (web session)
+Ask: "NOW WE WILL DEVELOP A CONSOLE PAGE FOR IT ... IN AI EMPLOYEE SECTION BUILD THE HOOLA AI VIDEO LEARNER ... load a video and HOOLA AI will see this and note in REALTIME ... prepare a MEMORY ... IN THIS PAGE ONLY user will tell HOOLA to PERFORM THIS TASK NOW - then HOOLA will use HIS BROWSER" + "PERFECT START THE DEPLOYMENT" on the prototype shown in chat.
+Built: the #v-seekh console view + seekh.js (load video -> live five-step stepper + HOOLA KI NOTES paced in -> the memory card -> Perform-this-task-NOW on the same page through one chat turn, the operator's own browser); the AI Employees hub card (employees.js); NEW server/app/seekh_console.py (/api/seekh/console/*: watch job + progress pulse + watches list; key-protected, tenant-scoped, one watch at a time, adoption on reload); seekh.watch grew only an additive on_stage callback (no-op for the tool and the old tests); no new tool (617), no new pip/keys/settings; frozen PC zone untouched (pinned). 25 tests (born v0716, ships v0718) + v0713 re-run 40/40; live browser-verified before the push (panel walk, honest 422 + the no-Gemini error surfaced in the notes area, zero page errors).
+Deploy: the owner's vps-ops dispatch; healthz must grep 0.718.0.
+
+---
+Task ID: v0.719.0 SAAF COMPOSER
+Ask: with an artifact / PDF / doc open in the right panel, the chat typing box icons get misplaced - keep everything intact.
+Fixed: the composer is a CSS container; buttons never shrink, chips never break (icons / own line when narrow), Send stays inside the box, flush right. Checked in a real browser at 1180-1700 px.
+Deploy: the usual vps-ops ritual; healthz must grep 0.719.0; hard refresh.
+
+---
+Task ID: v0.720.0 HALKA NISHAAN
+Ask: the sidebar logo is dark with a ring - make it the light logo, no ring.
+Fixed: static/hoola-mark.png (the mark on transparent, from make_mark.js) in the console sidebar + sign-in; ring / crop removed. Checked light + dark.
+Deploy: the usual vps-ops ritual; healthz must grep 0.720.0; hard refresh.
+
+---
+Task ID: v0.721.0 EK HI KAAM-ROW
+Ask: two 'working' things in the chat - one row only, backend feed hidden behind a dropdown arrow (no step count).
+Built: one working row (mark, current step words, clock, arrow); steps folded under it; 'Worked for Ns' + arrow at the end. Browser walk with real events.
+Deploy: the usual vps-ops ritual; healthz must grep 0.721.0; hard refresh.
+
+---
+Task ID: v0.722.0 JAWAB HI JAWAB
+Ask: her $5M AI SaaS prompt got a desk survey instead of the answer - find root cause and fix.
+Built: finished agent-team wake fetches agent_status check and writes the answer; wake text stays on its own job; kaam_status in a wake = this chat only.
+Deploy: the usual vps-ops ritual; healthz must grep 0.722.0.
+
+---
+Task ID: v0.723.0 PICHHLA SAWAAL
+Ask: she said YES to Hoola's own "Want me to make a PDF report?" and Hoola asked what the YES was for - root cause.
+Built: shortened replies keep their end; the exchange before her message stays rich and is never dropped; haan_karo text.
+Deploy: the usual vps-ops ritual; healthz must grep 0.723.0.
+
+---
+Task ID: v0.724.0 CLAUDE JAISA
+Ask: GLM fine, check our code; 1M context for every chat; message handling exactly like Claude chat.
+Built: measured the GLM cap starving the chat (~7k tokens); 1M window, no GLM cap, later tool-result clearing; quick lane + bare-haan shortcut off.
+Deploy: the usual vps-ops ritual; healthz must grep 0.724.0.
+
+
+---
+Task ID: v0.725.0 PAGE CARD
+Ask: the page card had no timing / progress - premium card (preview approved, GO).
+Built: builder steps + start + duration + Stop + plain failure reasons; console pageCard in all three states; browser walk.
+Deploy: the usual vps-ops ritual; healthz must grep 0.725.0; hard refresh the console.
+
+
+---
+Task ID: v0.726.0 PAGE CARD NARROW
+Ask: page card messy when the side panel narrows the chat.
+Built: card sizes by its own width (container query); browser test at 4 widths that fails on the old CSS.
+Deploy: the usual vps-ops ritual; healthz must grep 0.726.0; hard refresh the console.
+
+
+---
+Task ID: v0.727.0 VAADA PAKKA
+Ask: no card when she asked for the rebuild - Hoola only said "starting".
+Built: promise guard catches subject-less English promises and runs on tool-less turns too.
+Deploy: the usual vps-ops ritual; healthz must grep 0.727.0.
+
+
+---
+Task ID: v0.728.0 SAB ENGLISH wave 1
+Ask: make the entire Hoola English.
+Built: hoola_language switch; English reply rules; 644 English step labels; voice calls in Indian English. Next waves: server card/notification texts, phone app strings.
+Deploy: the usual vps-ops ritual; healthz must grep 0.728.0.
+
+
+---
+Task ID: v0.729.0 SAB ENGLISH wave 2
+Ask: GO WAVE 2 (server text she reads without the model).
+Built: notifications, server chat lines, cards / approvals / errors, approval titles + desk messages in English (~1,200 strings, 4 agents in worktrees, merged + diffed against the pre-wave tree).
+Deploy: the usual vps-ops ritual; healthz must grep 0.729.0.
+
+---
+Task ID: v0.731.0 SAB ENGLISH wave 3 + phone (built as 0.730; their SHILP MANCH took 0.730.0)
+Ask: GO PHONE and GO WAVE 3 -- in parallel.
+Built: phone app (Dart + Kotlin + manifest) English, model-facing prompts / tool descriptions / nudges / voice persona English; i18n lookup keys kept; 9 worktree agents, merged + compared against v0.729.0.
+Incident: shared /tmp/pytest-of-root filled the disk (0 MB); deleted with the owner's OK.
+Deploy: the usual vps-ops ritual; healthz must grep 0.731.0; the APK build is the first compile of the phone text.
+
+---
+Task ID: v0.732.0 CLAUDE PARITY 0-6
+Ask: GLM 5.3 Flash primary + PHASE 0 + 1, then the large gaps of the parity table first.
+Built: parity card + request dump, one model per chat, small fixed prompt, core tools + web_fetch, work in the turn, answer only, direct artifacts; 6 worktree agents + the join; each switch default on, pinned off for old suites.
+Deploy: the usual vps-ops ritual; healthz must grep 0.732.0; then vps-ops parity_card_check (free) and parity_card (live) for the first baseline.
+
+---
+Task ID: v0.733.0 CLAUDE PARITY MEDIUM
+Ask: GO MEDIUM (gaps 4 thinking, 5 loop, 10 memory).
+Built: adaptive thinking, plain loop with in-place fixes, one memory; 3 worktree agents merged; compared with v0.732.0 (no new reds).
+Deploy: vps-ops deploy; healthz 0.733.0; then parity_card for the live score.
+
+---
+Task ID: v0.734.0 TRAPS + LIVE FIXES
+Ask: FIX TRAPS (after the first live parity card, 88.1/100).
+Built: three core-prompt rules (unclear ask, impossible ask, reshaping = no tool), request dump sweep fix, card rubric v2 + set v2.
+Found live: Anthropic credit out; Google sign-in dead.
+Deploy: vps-ops deploy; healthz 0.734.0; recharge Anthropic; then parity_card.
+
+Task ID: v0.735.0 ALL GLM
+Ask: WE WILL TEST ONE BY ONE MOVE EVERY THINH ON GLM 5.3 FLASH.
+Built: glm_images, glm_pdf (text / scanned pages), architect_opus False, claude_all_glm_fallback False - one switch each.
+Deploy: vps-ops deploy; test one by one; any switch back in .env.
+
+Task ID: v0.736.0 GLM PAUSE FIX
+Ask: her photo test answered "something went wrong" (ref 228d25); healthz showed chat_brain claude = GLM paused.
+Built: a paused GLM is still asked in one-model mode; the door keeps calls on GLM without the fallback; a pause reads as busy; healthz "(paused)".
+Deploy: vps-ops deploy; vps-ops errors for the first two GLM failures (ref 228d25).
+
+Task ID: v0.737.0 KEY LIMIT SAID
+Ask: READ (errors after the photo test).
+Found: OpenRouter key $10 limit exceeded (403) -> GLM paused -> her photo turn failed; Anthropic credit also out.
+Built: the owner reads a plain "raise the key limit" line.
+
+Task ID: v0.738.0 PARITY 1 + 9a + 12
+Ask: TILL I TOPUP -- CONTINUE OUR THIS WORK (the parity table).
+Built: chat_every_message, chat_files_by_code (pylab docx/pptx/pdf), phone Edit message + Ask again.
+Deploy: vps-ops deploy (+ the APK from build CI).
+
+Task ID: v0.739.0 MODEL PROFILE
+Ask: WHY EVERY NEW MODEL NEED UPDATE IN CODE -> GO.
+Built: agent/modelprofile.py (OpenRouter model list read + disk + learned errors), wired into pictures / PDF / reasoning / window; GET /api/model/profile.
+Deploy: vps-ops deploy; a model swap = GLM_MODEL in .env + restart.
+
+
+Task ID: v0.740.0 MODEL DROPDOWN
+Ask: IN WEB CONSOLE LETS USER CHOOSE THE MODEL VIA DROPDOWN.
+Built: composer model chip + menu, app/modelchoice.py (owner's list, per-user pick), MODEL_NOW per turn, per-model profiles.
+Deploy: vps-ops deploy; list = GLM_MODEL + CHAT_MODELS in .env.
+
+Task ID: v0.741.0 MORE PROVIDERS
+Ask: CHECK ALL MORE FREE POWERFUL OPTION -> GO.
+Built: agent/providers.py, <provider>:<model> in chat_models, catalogue-matched profiles, per-provider keys in .env.
+Deploy: add keys + CHAT_MODELS in .env, vps-ops deploy.
+
+Task ID: v0.742.0 AIHUBMIX
+Ask: AIHubMix -- LETS DO IT.
+Built: aihubmix provider, GLM_MODEL may be <provider>:<model>, name matching, free flag, plain limit line.
+Deploy: AIHUBMIX_API_KEY + GLM_MODEL=aihubmix:coding-glm-5.3-flash-free in .env, vps-ops deploy.
+
+---
+Task ID: v0.743.0 SAAF INSAANI
+- Owner asked for a human, friendlier console without changing the existing design; showed two canvases, built the second on "GO".
+- Files: static/console/v2.js, v2.css, employees.js; app/config.py (console_human); app/main.py (config key); tests/conftest.py pin; tests/test_v0743_saaf_insaani.py.
+- Verified: new suite 3/3 incl. browser walk; console suites v0740 / v0721 / v163 / v164 / v0716 / v0719 / deploy green.
+
+---
+Task ID: v0.744.0 SEEDHA SEND
+- Owner screenshot: avatar face + Send outside the composer. Measured, fixed in v2.css, browser test added (red on old CSS).
+
+---
+Task ID: v0.746.0 VIDEO LEARNER REDESIGN (built as 0.745.0)
+- Canvas approved ("go"); seekh.py live notes / stop / task / forget / mark / failures, seekh_console routes, seekh.js rewrite, CSP for YouTube, tests.
+
+Task ID: v0.747.0 HOOLA INTERACTIVE
+Ask: a perfect Hoola Interactive page in console, like HeyGen, HyperFrames end to end (design canvas first, then "go").
+Built: console video studio (home / studio / making / ready / photo avatars), looks in the avatar-film composition, real-render fixes (GSAP loader, bundled font, closing card).
+Deploy: vps-ops deploy (server only; needs hyperframes on the VPS - vps-ops hf_setup).
+
+Task ID: v0.748.0 HOOLA CODE
+Ask: check the existing Hoola Code (Developer Sahayak), design it like Claude Code (6-screen canvas), then "GO".
+Built: console page code.js, structured loop steps, notes while working, Stop, background start, plan / PR / merge / review / settings.
+Deploy: vps-ops deploy (server only).
+
+
+---
+Task ID: v0.749.0 SAB PUBLIC APIS
+Agent: Claude (web studio session)
+Task: owner "NOW CONSOLIDATE ALL PUBLIC APIS FIRST" after publicapis.dev.
+Work: publicapis/build.py reads public-apis README + marcelscruz/public-apis resources.json, merges with dedupe
+(name / own host), keeps old ids (kept or aka alias), 3,014 APIs; service.by_id resolves aliases; source credits
+both; counts 3,000+; test_v0749_public_apis.py (5).
+Deploy: vps-ops deploy; healthz must read 0.749.0.
+
+
+---
+Task ID: v0.750.0 API BOX
+Agent: Claude (web studio session)
+Task: owner "NOW CREATE A BOX FOR FREE APIS FIRST" (one call that picks + calls a free public API).
+Work: publicapis/box.py (13 live-tested starter recipes + learned calls, fallback, one answer, health table + daily
+check), tool api_box, POST /api/box/call + GET /api/box, family words, prompt line, registry 621; test_v0750_api_box.py (8).
+Deploy: vps-ops deploy; healthz must read 0.750.0; then python -m app.publicapis.box check for the first full check.
+
+Task ID: v0.751.0 HOOLA FLOW (built as 0.749; their SAB PUBLIC APIS took 0.749.0 and API BOX 0.750.0 - REBASE PROTOCOL twice, all kept)
+Ask: a Wispr Flow for Hoola - check the code (it is the Kaan pack W0-W6), design (8-screen canvas), then "GO".
+Built: console page flow.js, /api/flow (kaan/flow.py), WAV-piece mic recorder, chat box dictation through Kaan.
+Deploy: vps-ops deploy (server only).
+
+Task ID: v0.752.0 ARTCRAFT IN CREATE
+Ask: develop ArtCraft in the Create section (backend = the v0.730 shilp lane).
+Built: Create studio ArtCraft tool (studio.js), /api/shilp page door (shilp/api.py), finished files onto My creations.
+Deploy: vps-ops deploy (server only); needs ARTCRAFT_API_KEY in the VPS .env for real jobs.
+
+Task ID: v0.753.0 SKILLS FIND + UIUX DATA
+Ask: check the awesome skills deployed in the backend, then fix what the audit found.
+Built: when_to_use trigger words on 42 pack skills + seed_when, stricter match for long descriptions, awesome rows on the skills card, UI/UX Pro Max data committed.
+Deploy: vps-ops deploy (server only).
+
+---
+Task ID: v0.754.0 KEYED BOX
+Agent: Claude (session 019P5N4a)
+Task: data.gov.in key for every Hoola user (server .env, not the app) + mandi / govt dataset recipes in the API box.
+Work Log:
+- SERVER_KEYS + server_key() in publicapis/service.py; config data_gov_in_api_key; box needs_key + optional filters.
+- Recipes mandi_price, india_gov_dataset; api_box tool text; 4 new tests, v0750 pin 13 -> 15; 17 passed.
+Stage Summary: server-only; owner adds DATA_GOV_IN_API_KEY to ~/apps/santosh-core/.env and restarts. Not yet live-verified.
+
+Task ID: v0.755.0 EVERY SKILL FINDABLE
+Ask: "ALL SKILLS DEVLOPED" - finish the trigger words for every shipped skill.
+Built: when_to_use on the remaining 57 skill files, skills card 'Other shipped skills' row (57/57), 2 tests.
+Deploy: vps-ops deploy (server only).
+
+---
+Task ID: v0.756.0 DATA.GOV.IN RELAY
+Agent: Claude (session 019P5N4a)
+Task: data.gov.in unreachable from the VPS (NIC drops cloud servers) -> relay base + box fixes.
+Work Log: SERVER_BASES/rebase in publicapis/service.py; config data_gov_in_base; deploy/datagov-relay/worker.js; box keyed-never-hidden + stray-word filter; 2 tests; 19 passed.
+Stage Summary: server-only; owner deploys the Worker, sets DATA_GOV_IN_BASE in the VPS .env. Not yet live-verified.
+
+Task ID: v0.757.0 KALA KHULA
+Ask: check all Google skills developed for Hoola.
+Found: kala tool works live (187 skills) but no admission words; fixed EXTRA_KEYS + generic name + description; 3 tests.
+Deploy: vps-ops deploy (server only).
+
+---
+Task ID: v0.758.0 NEWS IN THE BOX
+Agent: Claude (session 019P5N4a)
+Task: newsdata.io + gnews.io as server-keyed box recipes.
+Work Log: SERVER_KEYS + config keys; 3 recipes; api_box text; 3 tests; 22 passed.
+Stage Summary: server-only; owner adds NEWSDATA_API_KEY / GNEWS_API_KEY to the VPS .env. Not yet live-verified.

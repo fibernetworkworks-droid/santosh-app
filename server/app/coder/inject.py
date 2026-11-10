@@ -29,6 +29,10 @@ VOICE_BUDGET = 10_000
 COMPACT_BUDGET = 1_600
 SKILLS_VOICE_BUDGET = 1_200      # v0.477 the matched-skills carve-out inside the coder block
 SKILLS_COMPACT_BUDGET = 400
+SKILLS_INDEX_BUDGET = 9_000      # v0.563 every skill's WHOLE description on a chat turn (Claude's level 1: all of them)
+VOICE_INDEX_BUDGET = 3_000       # a call keeps the v0.559 size (the live voice prompt is small on purpose)
+INDEX_DESC_MAX = 200              # v0.563 a skill's own description in full (the skill lint caps it at 60-200)
+NAMES_BUDGET = 1_600             # v0.559 the names-only tail: every skill past the described ones is still named
 HEADER = "CODER MEMORY (what was built here before; never ask her to repeat it):"
 
 
@@ -69,20 +73,99 @@ def _matched(tenant: str, query: str, limit: int = 4) -> list[dict]:
     return rows[:2]
 
 
+def skills_index(tenant: str, exclude=(), budget: int = SKILLS_INDEX_BUDGET) -> str:
+    """v0.559 SKILL KI SOOCHI - Claude's level 1: every skill she has is NAMED with one short line on every turn, so
+    the MODEL decides when one applies (before, only a skill whose words matched her ask was ever seen). The body
+    still loads only on `skill_manage read`. Recently used first; a '+N more' tail past the budget."""
+    if not _skills_enabled():
+        return ""
+    try:
+        rows = [r for r in store.skill_index(tenant) if r["name"] not in set(exclude)]
+    except Exception:
+        return ""
+    if not rows:
+        return ""
+    head = ("ALL HER SKILLS (name: what it is for). If one fits this work, skill_manage read <name> first and "
+            "follow it:")
+    lines, used = [], len(head)
+    for i, r in enumerate(rows):
+        d = " ".join(str(r.get("description") or "").split())
+        if len(d) > INDEX_DESC_MAX:
+            d = d[:INDEX_DESC_MAX - 3].rstrip() + "..."
+        line = f"- {r['name']}: {d}" if d else f"- {r['name']}"
+        if used + len(line) + 1 > budget:
+            rest = [x["name"] for x in rows[i:]]        # past the described budget: still NAMED, every one
+            tail, n = "Also: ", 0
+            for nm in rest:
+                if len(tail) + len(nm) + 2 > NAMES_BUDGET:
+                    break
+                tail += ("" if n == 0 else ", ") + nm
+                n += 1
+            if n < len(rest):
+                tail += f" (+{len(rest) - n} more: skill_manage list)"
+            lines.append(tail)
+            break
+        lines.append(line)
+        used += len(line) + 1
+    return head + "\n" + "\n".join(lines)
+
+
+SKILL_NAMES_BUDGET = 600          # parity Phase 7: a chat turn names her skills, it does not describe them
+
+
+def skill_names(tenant: str, query: str = "", conv: str = "", budget: int = SKILL_NAMES_BUDGET) -> str:
+    """Parity Phase 7 (chat_one_memory): her skills by NAME only, the ones matching this ask first, inside `budget`
+    chars; the descriptions and bodies are one `skill_manage read` / `list` away (the 9k described index left the
+    chat turn). A first turn still seeds her starter skills."""
+    if not _skills_enabled():
+        return ""
+    try:
+        from . import skill_packs
+        skill_packs.seed_all(tenant)
+    except Exception:
+        pass
+    try:
+        matched = [r["name"] for r in _matched(tenant, query)] if query else []
+        rows = [r["name"] for r in store.skill_index(tenant)]
+    except Exception:
+        return ""
+    if not rows and not matched:
+        return ""
+    for n in matched:
+        try:
+            store.skill_use_mark(tenant, n, "shown", conv=conv, surface="chat")
+        except Exception:
+            pass
+    head = "Her skills (skill_manage read <name> before following one; skill_manage list describes them): "
+    out = head
+    names = matched + [n for n in rows if n not in matched]
+    shown = 0
+    for i, n in enumerate(names):
+        tag = n + (" (fits this ask)" if n in matched else "")
+        piece = ("" if shown == 0 else ", ") + tag
+        if len(out) + len(piece) + len(f" (+{len(names) - i} more)") > budget:
+            out += f" (+{len(names) - i} more)"
+            break
+        out += piece
+        shown += 1
+    return out[:budget]
+
+
 def admit_tool(adm, tenant: str, query: str) -> bool:
     """v0.494 REACHABILITY: the matched-skills line tells the model to `skill_manage read` the skill,
     but skill_manage lives in the non-core `skill` family, so on an ordinary turn the model could not
     call it (only via a tool_search detour). When a skill matches this ask, admit that ONE tool for the
     turn - no match, no extra tool, no extra prompt weight. Returns True when it was admitted."""
-    if adm is None or not query or not _skills_enabled():
+    if adm is None or not _skills_enabled():
         return False
-    try:
-        if not _matched(tenant, query):
-            return False
+    try:   # v0.559 every skill is listed on every turn now, so skill_manage must be callable whenever she has one
+        has = bool((query and _matched(tenant, query)) or store.skill_index(tenant))
     except Exception:
         return False
+    if not has:
+        return False
     adm.extra.add("skill_manage")
-    adm.why = {**getattr(adm, "why", {}), "skill_manage": "matched skill"}
+    adm.why = {**getattr(adm, "why", {}), "skill_manage": "her skills"}
     return True
 
 
@@ -132,10 +215,10 @@ def _decode(r: dict) -> dict:
     return r
 
 
-def _work_lines() -> list[str]:
+def _work_lines(tenant: str = "") -> list[str]:
     out: list[str] = []
     try:
-        for lst, items in store.work_read().items():
+        for lst, items in store.work_read(tenant=tenant).items():
             for it in items[:8]:
                 status = it.get("status") or "todo"
                 mark = "[todo]" if status == "todo" else "[doing]"
@@ -178,6 +261,25 @@ def _fit(items_full: list[str], items_plain: list[str], summary_block: str, head
     return "\n".join(p for p in parts if p)[:budget]
 
 
+def _scope(tenant: str, conv: str | None):
+    """wave 11: the chats whose work notes this turn may see - her Session's chats (the fence), and for a call record the
+    chat it came from. Before: a chat turn saw the newest notes of EVERY Session (Client X's notes in Client Y's), and a
+    split call looked only at its own fresh record (none). None = no fence (everything, as before v0.246)."""
+    if not conv:
+        return None
+    try:
+        from .. import callconv, fence
+        chat = callconv.chat_of(conv) or conv
+        if not fence.main_memory_ok(chat):
+            return {chat, conv}
+        scope = fence.chats_in(tenant, chat)
+        if scope is None:
+            return None
+        return set(scope) | {conv}
+    except Exception:   # noqa: BLE001
+        return None
+
+
 def primer(tenant: str, conv: str | None = None, compact: bool = False, query: str = "") -> str:
     """The block. compact=True is the per-chat-turn version (small); voice uses the full 10k.
     query is her current ask: matched skills ride at the TOP of the coder block (how-to outranks
@@ -198,11 +300,24 @@ def primer(tenant: str, conv: str | None = None, compact: bool = False, query: s
                       surface="voice" if not compact else "chat")
     if sk:
         header += "\n" + sk
-    work = _work_lines()
+    work = _work_lines(tenant)
+    own = False
+    if compact and conv:
+        try:   # v0.714 HAR CHAT ALAG: a chat turn sees only its own chat's work notes, never the cross-chat to-do lists
+            from .. import fence
+            own = fence.alone()
+        except Exception:   # noqa: BLE001
+            own = False
+    if own:
+        work = []
     if work:
         header += "\nStill open:\n" + "\n".join(work[:6])
     limit = 6 if compact else 30
-    rows = store.recent_observations(tenant, limit=limit, conv=conv)
+    scope = _scope(tenant, conv)
+    if own:
+        from .. import fence
+        scope = fence.own_chat(tenant, conv) or scope
+    rows = store.recent_observations(tenant, limit=limit, convs=scope)
     if not rows and not work and not sk:
         return ""
     rows = [_decode(r) for r in rows]
@@ -225,17 +340,68 @@ def turn_block(tenant: str, conv: str, query: str = "") -> str:
         from ..config import get_settings
         if not getattr(get_settings(), "coder_enabled", True):
             return ""
-        return primer(tenant, conv=None, compact=True, query=query)
+        out = primer(tenant, conv=conv or None, compact=True, query=query)   # wave 11: fenced to her Session
+        try:   # v0.559 the always-on list of all her skills rides beside the matched ones (own budget)
+            seen = [r["name"] for r in _matched(tenant, query)] if query else []
+            idx = skills_index(tenant, exclude=seen)
+        except Exception:
+            idx = ""
+        if idx:
+            out = (out + "\n" + idx) if out else idx
+        return out
     except Exception:
         return ""
 
 
+def _recent_asks(conv: str, n: int = 4) -> str:
+    """v0.550 EK JAISA: her last few words in this chat - a call starts with no ask, so this is what the call's
+    matched-skills lookup searches with (a reconnect mid-call sees the newest words, call turns included)."""
+    if not conv:
+        return ""
+    try:
+        from sqlalchemy import select
+        from ..db import Message, session
+        with session() as s:
+            rows = s.scalars(select(Message.display).where(Message.conversation_id == conv,
+                                                           Message.role == "user")
+                             .order_by(Message.id.desc()).limit(n)).all()
+        return " ".join(str(r or "") for r in rows)[:800]
+    except Exception:
+        return ""
+
+
+def skill_names_line(tenant: str) -> str:
+    """v0.550 the call's fallback: when nothing matched, NAME her skills (no bodies) so the live model knows
+    they exist and can `skill_manage read` one - before this a call never saw a single skill."""
+    if not _skills_enabled():
+        return ""
+    try:
+        names = store.skill_names(tenant, 8)
+    except Exception:
+        return ""
+    if not names:
+        return ""
+    return ("Her saved skills (skill_manage read <name> before you follow one): " + ", ".join(names))[:SKILLS_VOICE_BUDGET]
+
+
 def voice_block(tenant: str, conv: str, query: str = "") -> str:
-    """The full call-start block (rides after the KAAM YAAD block in the voice context)."""
+    """The full call-start block (rides after the KAAM YAAD block in the voice context).
+    v0.550 EK JAISA: a call has no ask yet, so the matched-skills lookup uses her recent words in this chat;
+    when still nothing matches, her skills are NAMED so the call is not blind to them (chat always saw them)."""
     try:
         from ..config import get_settings
         if not getattr(get_settings(), "coder_enabled", True):
             return ""
-        return primer(tenant, conv=conv, compact=False, query=query)
+        q = query or _recent_asks(conv)
+        out = primer(tenant, conv=conv, compact=False, query=q)
+        seen = [r["name"] for r in _matched(tenant, q)] if q else []
+        idx = skills_index(tenant, exclude=seen, budget=VOICE_INDEX_BUDGET)   # v0.559 every skill named, like chat
+        if idx:
+            out = (out + "\n" + idx) if out else idx
+        elif "LEARNED SKILLS" not in out:
+            names = skill_names_line(tenant)
+            if names:
+                out = (out + "\n" + names) if out else names
+        return out
     except Exception:
         return ""

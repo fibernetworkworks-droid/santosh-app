@@ -74,7 +74,8 @@ TOOLS = [
         "approval card and the user's words in this turn approve it in context ('haan karo', 'kar do', 'theek hai', "
         "any clear yes). Call this to approve THAT step: the job moves at once. ONLY when such a step card is really "
         "pending; if the tool says none, don't insist. NEVER for money / UPI / bank-OTP / password cards: those "
-        "approve only by tapping the card in the app; voice can never approve them - say so plainly."),
+        "approve only by tapping the card in the app; voice can never approve them - say so plainly. A bare 'yes' / 'haan' that answers the question or offer in "
+        "YOUR OWN last reply ('Want me to make a PDF report?') is NOT this tool's job: do what you offered."),
      "input_schema": {"type": "object", "properties": {
          "heard": {"type": "string", "description": "Her words that approved it (short quote)"}}}},
 ]
@@ -170,7 +171,33 @@ async def check_template_status(ctx: Ctx, template_id: str, **_):
         return {"template_id": t.id, "name": t.name, "status": t.status, "rejection_reason": t.rejection_reason}
 
 
+_SEND_YES = re.compile(r"\b(haan|han|ha|haa|yes|yep|ok|okay|theek|thik|bhej\s*d[oeiy]|bhejo|bhejiye|send|go\s+ahead|kar\s*do"
+                       r"|chalu\s*kar|start\s+(?:it|the)|sabko\s+bhej|bhej\s*den?a)\b", re.I)
+_SEND_NO = re.compile(r"\b(nahi|nahin|mat|ruko|wait|no|don'?t|cancel|baad\s*mein)\b", re.I)
+
+
+def _she_said_send(ctx: Ctx) -> bool:
+    """Wave 9: a bulk WhatsApp send starts only when HER words in THIS turn say send - never a routine, a wake report or
+    the model reading an older 'haan'. Otherwise the campaign waits as a card ("Haan, bhej do" on her phone)."""
+    actor = getattr(ctx, "actor", "owner") or "owner"
+    if not (actor == "owner" or actor.startswith("approved:")):
+        return False
+    try:
+        from .santosh import ASK_NOW
+        words = ASK_NOW.get() or ""
+    except Exception:   # noqa: BLE001
+        return False
+    return bool(_SEND_YES.search(words)) and not _SEND_NO.search(words)
+
+
+WAIT_FOR_HER = ("The campaign is READY but NOT sent: her own words in this turn did not say send. Show her the message "
+                "text and how many people it goes to, and ask 'Bhej doon?'. It sends only when she says haan / bhej do "
+                "herself, or taps 'Haan, bhej do' on the campaign card. Never say it was sent.")
+
+
 async def create_campaign(ctx: Ctx, title, lead_list_id, template_id, param_mapping, consent_confirmed, auto_send, **_):
+    if auto_send and not _she_said_send(ctx):
+        auto_send = False
     try:
         v = camp.create_campaign(tenant_id=ctx.tenant_id, conversation_id=ctx.conversation_id, title=title,
                                  lead_list_id=lead_list_id, template_id=template_id, param_mapping=param_mapping,
@@ -179,10 +206,16 @@ async def create_campaign(ctx: Ctx, title, lead_list_id, template_id, param_mapp
     except camp.CampaignError as e:
         raise ToolError(str(e))
     v["daily_limit"] = get_settings().max_daily_sends
+    if not auto_send:
+        v["not_sent"] = WAIT_FOR_HER
     return v
 
 
 async def confirm_send(ctx: Ctx, campaign_id, **_):
+    if not _she_said_send(ctx):
+        v = camp.campaign_view(campaign_id)
+        v["not_sent"] = WAIT_FOR_HER
+        return v
     try:
         return camp.confirm_send(campaign_id)
     except camp.CampaignError as e:
@@ -327,6 +360,78 @@ TOOLS.extend(WEB_TOOLS)
 TOOL_LABELS.update(WEB_LABELS)
 HANDLERS.update(WEB_HANDLERS)
 
+from .reach_tools import REACH_HANDLERS, REACH_LABELS, REACH_TOOLS  # noqa: E402  v0.559 REACH MANCH - the Agent-Reach discipline layer (envelope, ordered backends, health, status)
+
+TOOLS.extend(REACH_TOOLS)
+TOOL_LABELS.update(REACH_LABELS)
+HANDLERS.update(REACH_HANDLERS)
+
+from .speckit_tools import SPECKIT_HANDLERS, SPECKIT_LABELS, SPECKIT_TOOLS  # noqa: E402  v0.560 SPEC SUTRA - the spec-driven ladder (constitution/specify/clarify/plan/tasks/analyze/converge, the spec-kit idea)
+
+TOOLS.extend(SPECKIT_TOOLS)
+TOOL_LABELS.update(SPECKIT_LABELS)
+HANDLERS.update(SPECKIT_HANDLERS)
+
+from .sandarbh_tools import (  # noqa: E402  v0.586 SANDARBH MANCH - the T1 reference family (modelcontextprotocol/servers, MIT, IDEA-ONLY): the confined tenant workspace (the filesystem role) + the knowledge-graph memory (the memory role), backend-only
+    KGMEMORY_HANDLERS, KGMEMORY_LABELS, KGMEMORY_TOOLS,
+    WORKSPACE_HANDLERS, WORKSPACE_LABELS, WORKSPACE_TOOLS,
+)
+
+TOOLS.extend(WORKSPACE_TOOLS)
+TOOL_LABELS.update(WORKSPACE_LABELS)
+HANDLERS.update(WORKSPACE_HANDLERS)
+TOOLS.extend(KGMEMORY_TOOLS)
+TOOL_LABELS.update(KGMEMORY_LABELS)
+HANDLERS.update(KGMEMORY_HANDLERS)
+
+from .bhandar_tools import (  # noqa: E402  v0.618 BHANDAR MANCH - the T2 local-core family (the no-credential local beds of download/HOOLA_MCP_FEED.json, IDEA-ONLY): read-only SQL over the tenant's own SQLite, markdown/json/AST workbenches + IANA time, backend-only
+    BHANDAR_HANDLERS, BHANDAR_LABELS, BHANDAR_TOOLS,
+)
+
+TOOLS.extend(BHANDAR_TOOLS)
+TOOL_LABELS.update(BHANDAR_LABELS)
+HANDLERS.update(BHANDAR_HANDLERS)
+
+from .jharokha_tools import (  # noqa: E402  v0.665 JHAROKHA MANCH - the T3 local-browser family (the no-credential browser rows of download/HOOLA_MCP_FEED.json, IDEA-ONLY): the agent's OWN headless Chromium driven one deterministic action at a time - open/snapshot/click/type/press/console/tabs/screenshot/close through accessibility-style refs, backend-only
+    JHAROKHA_HANDLERS, JHAROKHA_LABELS, JHAROKHA_TOOLS,
+)
+
+TOOLS.extend(JHAROKHA_TOOLS)
+TOOL_LABELS.update(JHAROKHA_LABELS)
+HANDLERS.update(JHAROKHA_HANDLERS)
+
+from .duniya_tools import (  # noqa: E402  v0.667 DUNIYA MANCH - the T4 keyless-public-web family (the no-login / no-key public-web rows of download/HOOLA_MCP_FEED.json, IDEA-ONLY): ONE GET-only lane over the famous no-key services - fetch (the mcp/servers fetch reference idea) + wikipedia / weather / hn / currency / dictionary / arxiv / status, every free url SSRF-guarded, backend-only
+    DUNIYA_HANDLERS, DUNIYA_LABELS, DUNIYA_TOOLS,
+)
+
+TOOLS.extend(DUNIYA_TOOLS)
+TOOL_LABELS.update(DUNIYA_LABELS)
+HANDLERS.update(DUNIYA_HANDLERS)
+
+from .kala_tools import (  # noqa: E402  v0.681 KALA MANCH - the T5 knowledge-skill catalog family (github.com/google/skills, Apache-2.0, fork-and-remix sanctioned, IDEA-ONLY): ONE GET-only door over Google's public skill catalog - catalog (index.json byte-exact behind a TTL cache, regex-narrowed) + read / references (SKILL.md documents fetched fresh on demand, NEVER executed) + list / status, every url behind the house SSRF guard AND a one-host allowlist, backend-only
+    KALA_HANDLERS, KALA_LABELS, KALA_TOOLS,
+)
+
+TOOLS.extend(KALA_TOOLS)
+TOOL_LABELS.update(KALA_LABELS)
+HANDLERS.update(KALA_HANDLERS)
+
+from .core_tools import (  # noqa: E402  Parity Phase 3 CLEAN TOOLS: web_fetch = the ONE web reader (mode fast | browser | stealth) over the readers that already exist; they stay registered, out of the core view, reachable by tool_search
+    WEBFETCH_HANDLERS, WEBFETCH_LABELS, WEBFETCH_TOOLS,
+)
+
+TOOLS.extend(WEBFETCH_TOOLS)
+TOOL_LABELS.update(WEBFETCH_LABELS)
+HANDLERS.update(WEBFETCH_HANDLERS)
+
+from .shilp_tools import (  # noqa: E402  v0.730 SHILP MANCH - the ArtCraft generation lane (their Omni API, api.storyteller.ai, BYOK): ONE door over their documented surface - video / image generation (job tokens, credits spent on her explicit ask) + job / jobs status polling + status / models (zero network), the key in the VPS .env only, reference urls behind the lane's own wall (http(s), no credentials, no private hosts), idempotency minted here, 402 PAYMENT final
+    SHILP_HANDLERS, SHILP_LABELS, SHILP_TOOLS,
+)
+
+TOOLS.extend(SHILP_TOOLS)
+TOOL_LABELS.update(SHILP_LABELS)
+HANDLERS.update(SHILP_HANDLERS)
+
 from .scrape_tools import SCRAPE_HANDLERS, SCRAPE_LABELS, SCRAPE_TOOLS  # noqa: E402  v0.474 Scrapling
 
 TOOLS.extend(SCRAPE_TOOLS)
@@ -344,6 +449,66 @@ from .dhara_tools import DHARA_HANDLERS, DHARA_LABELS, DHARA_TOOLS  # noqa: E402
 TOOLS.extend(DHARA_TOOLS)
 TOOL_LABELS.update(DHARA_LABELS)
 HANDLERS.update(DHARA_HANDLERS)
+
+from .finguard_tools import FINGUARD_HANDLERS, FINGUARD_LABELS, FINGUARD_TOOLS  # noqa: E402  v0.585 Paisa Sahayak (consumer finance protection)
+
+TOOLS.extend(FINGUARD_TOOLS)
+TOOL_LABELS.update(FINGUARD_LABELS)
+HANDLERS.update(FINGUARD_HANDLERS)
+
+from .finops_tools import FINOPS_HANDLERS, FINOPS_LABELS, FINOPS_TOOLS  # noqa: E402  v0.602 Vitt Sahayak (finance desk assists, Wave 2)
+
+TOOLS.extend(FINOPS_TOOLS)
+TOOL_LABELS.update(FINOPS_LABELS)
+HANDLERS.update(FINOPS_HANDLERS)
+
+from .riskdesk_tools import RISKDESK_HANDLERS, RISKDESK_LABELS, RISKDESK_TOOLS  # noqa: E402  v0.603 Risk Desk (markets and credit papers, Wave 3)
+
+TOOLS.extend(RISKDESK_TOOLS)
+TOOL_LABELS.update(RISKDESK_LABELS)
+HANDLERS.update(RISKDESK_HANDLERS)
+
+from .retaildesk_tools import RETAILDESK_HANDLERS, RETAILDESK_LABELS, RETAILDESK_TOOLS  # noqa: E402  v0.604 Dukaan Desk (retail Wave 1)
+
+TOOLS.extend(RETAILDESK_TOOLS)
+TOOL_LABELS.update(RETAILDESK_LABELS)
+HANDLERS.update(RETAILDESK_HANDLERS)
+
+from .retailgrowth_tools import RETAILGROWTH_HANDLERS, RETAILGROWTH_LABELS, RETAILGROWTH_TOOLS  # noqa: E402  v0.607 Retail Growth (retail Wave 2)
+
+TOOLS.extend(RETAILGROWTH_TOOLS)
+TOOL_LABELS.update(RETAILGROWTH_LABELS)
+HANDLERS.update(RETAILGROWTH_HANDLERS)
+
+from .retailtrust_tools import RETAILTRUST_HANDLERS, RETAILTRUST_LABELS, RETAILTRUST_TOOLS  # noqa: E402  v0.607 Retail Trust (retail Wave 3)
+
+TOOLS.extend(RETAILTRUST_TOOLS)
+TOOL_LABELS.update(RETAILTRUST_LABELS)
+HANDLERS.update(RETAILTRUST_HANDLERS)
+
+from .bimadesk_tools import BIMADESK_HANDLERS, BIMADESK_LABELS, BIMADESK_TOOLS  # noqa: E402  v0.609 Bima Desk (health-insurance Wave 1)
+
+TOOLS.extend(BIMADESK_TOOLS)
+TOOL_LABELS.update(BIMADESK_LABELS)
+HANDLERS.update(BIMADESK_HANDLERS)
+
+from .bimaassist_tools import BIMAASSIST_HANDLERS, BIMAASSIST_LABELS, BIMAASSIST_TOOLS  # noqa: E402  v0.610 Bima Assist (health-insurance Wave 2)
+
+TOOLS.extend(BIMAASSIST_TOOLS)
+TOOL_LABELS.update(BIMAASSIST_LABELS)
+HANDLERS.update(BIMAASSIST_HANDLERS)
+
+from .bimarisk_tools import BIMARISK_HANDLERS, BIMARISK_LABELS, BIMARISK_TOOLS  # noqa: E402  v0.611 Bima Risk (health-insurance Wave 3)
+
+TOOLS.extend(BIMARISK_TOOLS)
+TOOL_LABELS.update(BIMARISK_LABELS)
+HANDLERS.update(BIMARISK_HANDLERS)
+
+from .kaan_tools import KAAN_HANDLERS, KAAN_LABELS, KAAN_TOOLS  # noqa: E402  v0.589 KAAN PACK - WhisperAI Wave W0 (transcription core)
+
+TOOLS.extend(KAAN_TOOLS)
+TOOL_LABELS.update(KAAN_LABELS)
+HANDLERS.update(KAAN_HANDLERS)
 
 from .officehours_tools import OFFICEHOURS_HANDLERS, OFFICEHOURS_LABELS, OFFICEHOURS_TOOLS  # noqa: E402  v0.495 office hours (the gstack THINK/PLAN lane)
 
@@ -397,6 +562,7 @@ from .appcheck_tools import APPCHECK_HANDLERS, APPCHECK_LABELS, APPCHECK_TOOLS  
 from .rea_tools import REA_HANDLERS, REA_LABELS, REA_TOOLS  # noqa: E402
 from .frames_tools import FRAMES_HANDLERS, FRAMES_LABELS, FRAMES_TOOLS  # noqa: E402
 from .hoola_tools import HOOLA_HANDLERS, HOOLA_LABELS, HOOLA_TOOLS  # noqa: E402
+from .webclone_tools import WEBCLONE_HANDLERS, WEBCLONE_LABELS, WEBCLONE_TOOLS  # noqa: E402
 
 # Google Sheets and Google Drive have their own full toolsets now (per-user sign-in, service account as fallback);
 # the old service-account tools with the same names step aside
@@ -408,7 +574,7 @@ for _t, _l, _h in ((SHEETS_TOOLS, SHEETS_LABELS, SHEETS_HANDLERS), (DRIVE_TOOLS,
                    (FORMS_TOOLS, FORMS_LABELS, FORMS_HANDLERS), (SLIDES_TOOLS, SLIDES_LABELS, SLIDES_HANDLERS),
                    (PHOTOS_TOOLS, PHOTOS_LABELS, PHOTOS_HANDLERS), (NOTEBOOK_TOOLS, NOTEBOOK_LABELS, NOTEBOOK_HANDLERS),
                    (YOUTUBE_TOOLS, YOUTUBE_LABELS, YOUTUBE_HANDLERS), (PHOTO_TOOLS, PHOTO_LABELS, PHOTO_HANDLERS), (CREATE_TOOLS, CREATE_LABELS, CREATE_HANDLERS), (APPCHECK_TOOLS, APPCHECK_LABELS, APPCHECK_HANDLERS),
-                   (REA_TOOLS, REA_LABELS, REA_HANDLERS), (FRAMES_TOOLS, FRAMES_LABELS, FRAMES_HANDLERS), (HOOLA_TOOLS, HOOLA_LABELS, HOOLA_HANDLERS)):
+                   (REA_TOOLS, REA_LABELS, REA_HANDLERS), (FRAMES_TOOLS, FRAMES_LABELS, FRAMES_HANDLERS), (HOOLA_TOOLS, HOOLA_LABELS, HOOLA_HANDLERS), (WEBCLONE_TOOLS, WEBCLONE_LABELS, WEBCLONE_HANDLERS)):
     TOOLS.extend(_t)
     TOOL_LABELS.update(_l)
     HANDLERS.update(_h)
@@ -540,6 +706,13 @@ from .procedure_tools import PROCEDURE_HANDLERS, PROCEDURE_LABELS, PROCEDURE_TOO
 TOOLS.extend(PROCEDURE_TOOLS)
 TOOL_LABELS.update(PROCEDURE_LABELS)
 HANDLERS.update(PROCEDURE_HANDLERS)
+
+# v0.713 SEEKH MANCH: learn a way of working from a video (the bridge tool; the eyes and memories ship already)
+from .seekh_tools import SEEKH_HANDLERS, SEEKH_LABELS, SEEKH_TOOLS  # noqa: E402
+
+TOOLS.extend(SEEKH_TOOLS)
+TOOL_LABELS.update(SEEKH_LABELS)
+HANDLERS.update(SEEKH_HANDLERS)
 
 # v0.59 the WhatsApp customer's tools: callable (customer turns, owner-approved asks) but never offered to the owner's model
 from ..employee.inbox import BIZ_HANDLERS, BIZ_LABELS  # noqa: E402
@@ -775,9 +948,48 @@ from .const_customer_tools import CUSTOMER_HANDLERS, CUSTOMER_LABELS, CUSTOMER_T
 from .const_quality_tools import QUALITY_HANDLERS, QUALITY_LABELS, QUALITY_TOOLS  # noqa: E402
 from .const_meet_tools import MEET_HANDLERS, MEET_LABELS, MEET_TOOLS  # noqa: E402
 
+# v0.531 Construction Wave 2 (file-builders & checkers; plan docs/CONSTRUCTION_EMPLOYEE_PLAN.md C7-C10):
+# Approvals office (#28-32,34,36), QS desk (#37-39,41,49), RERA & escrow (#35,93), Contracts (#44-46,51),
+# Tendering (#52-56,58), Drawing QA + bye-law (#9,16,73). Every tool rides construction/gates.py:
+# PREPARE, never CERTIFY - a named licensee on every output, the pack cites, the pack refuses when stale.
+from .const_approvals_tools import APPROVALS_HANDLERS, APPROVALS_LABELS, APPROVALS_TOOLS  # noqa: E402
+from .const_qs_tools import QS_HANDLERS, QS_LABELS, QS_TOOLS  # noqa: E402
+from .const_rera_tools import RERA_HANDLERS, RERA_LABELS, RERA_TOOLS  # noqa: E402
+from .const_contracts_tools import CONTRACTS_HANDLERS, CONTRACTS_LABELS, CONTRACTS_TOOLS  # noqa: E402
+from .const_tender_tools import TENDER_HANDLERS, TENDER_LABELS, TENDER_TOOLS  # noqa: E402
+from .const_drawqa_tools import DRAWQA_HANDLERS, DRAWQA_LABELS, DRAWQA_TOOLS  # noqa: E402
+
+# v0.550 Construction Wave 3 (model-level & certificate-adjacent; plan §7 C11-C15): BIM/Information
+# desk (#18-21 - IFC read / BCF write / IDS subset / CDE / clash / 4D-5D), Pre-design (#10-12 -
+# load take-down, preliminary sizing, MEP estimates, fire rule checks), Survey & measurement
+# (#22-24,26 - traverse, shoelace, volumes, deviations, RERA carpet), Delay working papers (#47),
+# Green & performance (#104,110-118 - meters/ECBC/daylight/carbon/water/credits/Cx/T&C/M&V).
+# #82 incident investigation rides const_quality. Same law: open formats said on the tin, a named
+# licensee on every output, every rule row with clause + source, every number with its trail.
+from .const_bim_tools import BIM_HANDLERS, BIM_LABELS, BIM_TOOLS  # noqa: E402
+from .const_predesign_tools import PREDESIGN_HANDLERS, PREDESIGN_LABELS, PREDESIGN_TOOLS  # noqa: E402
+from .const_survey_tools import SURVEY_HANDLERS, SURVEY_LABELS, SURVEY_TOOLS  # noqa: E402
+from .const_delay_tools import DELAY_HANDLERS, DELAY_LABELS, DELAY_TOOLS  # noqa: E402
+from .const_green_tools import GREEN_HANDLERS, GREEN_LABELS, GREEN_TOOLS  # noqa: E402
+from .const_land_tools import LAND_HANDLERS, LAND_LABELS, LAND_TOOLS  # noqa: E402
+from .const_plan_tools import PLAN_HANDLERS, PLAN_LABELS, PLAN_TOOLS  # noqa: E402
+from .const_ehs_tools import EHS_HANDLERS, EHS_LABELS, EHS_TOOLS  # noqa: E402
+# FINAL CHECK: imported under its OWN names - as STUDIO_* it overwrote the AI video studio's names, so video_studio
+# lost its family (rode every turn) and "ai video" opened the construction shot-brief desk instead (the v0.559 trap again)
+from .const_studio_tools import STUDIO_HANDLERS as CSTUDIO_HANDLERS, STUDIO_LABELS as CSTUDIO_LABELS  # noqa: E402
+from .const_studio_tools import STUDIO_TOOLS as CSTUDIO_TOOLS  # noqa: E402
+from .const_studio_tools import LEARN_HANDLERS, LEARN_LABELS, LEARN_TOOLS  # noqa: E402
+from .const_fm_tools import FM_HANDLERS, FM_LABELS, FM_TOOLS  # noqa: E402
+
 for _t, _l, _h in ((STORE_TOOLS, STORE_LABELS, STORE_HANDLERS), (LABOUR_TOOLS, LABOUR_LABELS, LABOUR_HANDLERS),
                    (CUSTOMER_TOOLS, CUSTOMER_LABELS, CUSTOMER_HANDLERS), (QUALITY_TOOLS, QUALITY_LABELS, QUALITY_HANDLERS),
-                   (MEET_TOOLS, MEET_LABELS, MEET_HANDLERS)):
+                   (MEET_TOOLS, MEET_LABELS, MEET_HANDLERS),
+                   (APPROVALS_TOOLS, APPROVALS_LABELS, APPROVALS_HANDLERS), (QS_TOOLS, QS_LABELS, QS_HANDLERS),
+                   (RERA_TOOLS, RERA_LABELS, RERA_HANDLERS), (CONTRACTS_TOOLS, CONTRACTS_LABELS, CONTRACTS_HANDLERS),
+                   (TENDER_TOOLS, TENDER_LABELS, TENDER_HANDLERS), (DRAWQA_TOOLS, DRAWQA_LABELS, DRAWQA_HANDLERS),
+                   (BIM_TOOLS, BIM_LABELS, BIM_HANDLERS), (PREDESIGN_TOOLS, PREDESIGN_LABELS, PREDESIGN_HANDLERS),
+                   (SURVEY_TOOLS, SURVEY_LABELS, SURVEY_HANDLERS), (DELAY_TOOLS, DELAY_LABELS, DELAY_HANDLERS),
+                   (GREEN_TOOLS, GREEN_LABELS, GREEN_HANDLERS)):
     _seen = {t["name"] for t in TOOLS}
     TOOLS.extend(t for t in _t if t["name"] not in _seen)
     TOOL_LABELS.update(_l)
@@ -947,6 +1159,13 @@ from .society_tools import SOCIETY_HANDLERS, SOCIETY_LABELS, SOCIETY_TOOLS  # no
 for _t, _l, _h in ((PROPAGENT_TOOLS, PROPAGENT_LABELS, PROPAGENT_HANDLERS), (RENTDESK_TOOLS, RENTDESK_LABELS, RENTDESK_HANDLERS),
                    (SITESUP_TOOLS, SITESUP_LABELS, SITESUP_HANDLERS), (INTERIOR_TOOLS, INTERIOR_LABELS, INTERIOR_HANDLERS),
                    (ARCHASSIST_TOOLS, ARCHASSIST_LABELS, ARCHASSIST_HANDLERS), (SOCIETY_TOOLS, SOCIETY_LABELS, SOCIETY_HANDLERS)):
+    _seen = {t["name"] for t in TOOLS}
+    TOOLS.extend(t for t in _t if t["name"] not in _seen)
+    TOOL_LABELS.update(_l)
+    HANDLERS.update(_h)
+for _t, _l, _h in ((LAND_TOOLS, LAND_LABELS, LAND_HANDLERS), (PLAN_TOOLS, PLAN_LABELS, PLAN_HANDLERS),
+                   (EHS_TOOLS, EHS_LABELS, EHS_HANDLERS), (CSTUDIO_TOOLS, CSTUDIO_LABELS, CSTUDIO_HANDLERS),
+                   (LEARN_TOOLS, LEARN_LABELS, LEARN_HANDLERS), (FM_TOOLS, FM_LABELS, FM_HANDLERS)):
     _seen = {t["name"] for t in TOOLS}
     TOOLS.extend(t for t in _t if t["name"] not in _seen)
     TOOL_LABELS.update(_l)
@@ -1184,6 +1403,16 @@ TOOL_LABELS.update(CREW_LABELS)
 HANDLERS.update(CREW_HANDLERS)
 del _seen
 
+# v0.540.0 LEADS NEEV: the lead generation engine - five tools (leads_run / leads_status / leads_list /
+# leads_export / leads_forget) over the run store, plan-time caps and the provenance gate. P0 runs L0 (her
+# data) only; the engine gathers and NEVER contacts anyone - outreach stays behind her tap on the desks.
+from .leads_tools import LEADS_HANDLERS, LEADS_LABELS, LEADS_TOOLS  # noqa: E402
+_seen = {t["name"] for t in TOOLS}
+TOOLS.extend(t for t in LEADS_TOOLS if t["name"] not in _seen)
+TOOL_LABELS.update(LEADS_LABELS)
+HANDLERS.update(LEADS_HANDLERS)
+del _seen
+
 _RAW_SPECS: list[dict] = [dict(t) for t in TOOLS]     # kept for tests / size stats only (never sent anywhere)
 DIET_STATS: dict[str, int] = {"raw_chars": 0, "diet_chars": 0, "kept_full": 0}
 
@@ -1253,6 +1482,20 @@ DIET_STATS["raw_chars"] = _diet_size(_RAW_SPECS)
 # used, an AI agent can't be expected to do better." Renaming / merging the tools would touch every prompt, voice list
 # and saved procedure, so the lanes are drawn in the descriptions instead - first, so no cap can ever cut them.
 TOOL_LANES: dict[str, str] = {
+    # wave 12: overlapping tools with no rule between them - the model picked at random
+    "add_calendar_event": "LANE: an event on HER PHONE's own calendar (no Google sign-in needed). Her GOOGLE Calendar (shared, "
+                          "invites, Meet link, seen on every device) -> calendar_add_event. Only a reminder to ring -> "
+                          "create_reminder.",
+    "calendar_add_event": "LANE: an event on her GOOGLE Calendar (invites, Meet link, every device). Google not connected or "
+                          "she means the phone's own calendar -> add_calendar_event.",
+    "scrape": "LANE: the DEFAULT way to read a public web page (it escalates past blocks by itself). One known link and a "
+              "plain page -> open_website is fine; clicks / forms / login -> browse_web; many links of a site -> scrape_map; "
+              "a search -> google_search.",
+    "scrape_page": "LANE: one page's text when scrape is not needed (no block expected). The default reader is scrape.",
+    "reach": "LANE: a page or a search with its sources and backend shown (the disciplined envelope) when you need to SAY "
+             "where it came from. Plain reading -> scrape; a plain search -> google_search.",
+    "kgmemory": "LANE: the knowledge GRAPH of people / companies and how they relate (who is whose supplier). A plain fact "
+                "to keep -> remember; finding anything she told you -> yaad_khojo.",
     # v0.449 maps: a KIND of place -> maps_nearby; a NAMED place -> maps_search; one place's details -> maps_place
     "maps_search": "LANE: a place you can NAME ('Haldiram Nagpur', 'Akola station', a particular shop). A CATEGORY "
                    "near somewhere ('chemist', 'petrol pump', 'hardware shop') -> maps_nearby, which ranks by real "
@@ -1309,8 +1552,11 @@ TOOL_LANES: dict[str, str] = {
                    "document -> doc_studio.",
     "hoola_make": "LANE: a file made FOR a connected person and sent on the Hoola Network. A file for her own chat -> "
                   "doc_studio.",
-    "artifact_make": "LANE: an interactive page (calculator, tracker, quiz) she opens and shares. A document to read "
-                     "or print -> doc_studio.",
+    "artifact_make": "LANE: the POLISH builder for a studio-quality page she asked to be polished. A page you can write "
+                     "yourself -> artifact. A document to read or print -> doc_studio.",
+    "artifact": "LANE: a page / dashboard / chart / tracker / diagram you write yourself, edited in place with "
+                "update old_str -> new_str. A polished / studio-quality page she asked for -> artifact_make; a "
+                "document to read or print -> doc_studio.",
     "notebook_make": "LANE: a quick item made FROM her notebook's sources (summary, FAQ, timeline). A designed file -> "
                      "doc_studio.",
     # memory: what to search
@@ -1318,8 +1564,8 @@ TOOL_LANES: dict[str, str] = {
     "memory_search": "LANE: find a FACT she asked you to remember. What was said in her chats / calls / jobs -> "
                      "yaad_khojo; her own files and documents -> gyaan_khojo; chats by date ('kal', 'is hafte') -> "
                      "haal_ki_chats.",
-    "yaad_khojo": "LANE: what was said or decided in her chats, calls and jobs, by meaning. A saved fact -> "
-                  "memory_search; her files -> gyaan_khojo; by date -> haal_ki_chats.",
+    "yaad_khojo": "LANE: the ONE memory door - facts, past chats / calls / jobs, work notes, her graph and page in one "
+                  "search. Her documents' contents -> gyaan_khojo; by date -> haal_ki_chats.",
     "gyaan_khojo": "LANE: search inside HER files and documents (Gyaan, Drive folders). A file she attached in this "
                    "chat -> file_read; her chats -> yaad_khojo.",
     "haal_ki_chats": "LANE: her other chats by DATE ('aaj', 'kal', 'is hafte'). By topic -> yaad_khojo.",
@@ -1359,5 +1605,11 @@ for _n, _v in list(globals().items()):
         for _t in _v:
             if isinstance(_t, dict) and _t.get("name"):
                 FAMILY_OF.setdefault(_t["name"], _fam)
+
+# v0.559 SAHI GINTI: two modules both export CONTRACTS_TOOLS, so the construction pair (const_contracts /
+# const_contracts_dekho) lost its family to the later import and rode on EVERY turn, "namaste" included.
+from . import const_contracts_tools as _cct   # noqa: E402
+for _t in _cct.CONTRACTS_TOOLS:
+    FAMILY_OF.setdefault(_t["name"], "contracts")
 
 

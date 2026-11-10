@@ -18,7 +18,7 @@ FRANCHISE_TOOLS = [
         "day, channels {dine, swiggy, zomato...}. action=import: outlet, file_id (POS day-wise export). action=cost: outlet, kind "
         "food|staff|rent|utility|aggregator|marketing|maintenance|other, amount, month. action=statement: brand, month (YYYY-MM, "
         "default last month) -> royalty + marketing + GST / RCM + TDS + payable + Excel. action=approve_statement: statement_id "
-        "(ONLY on her haan: report draft for the franchisor). action=paid: statement_id, on (she paid). action=licence: outlet, "
+        "(ONLY on her yes: report draft for the franchisor). action=paid: statement_id, on (she paid). action=licence: outlet, "
         "kind fssai|shop_act|trade|fire_noc|music|signage|health|pollution|..., valid_to, number. action=audit: outlet, failed "
         "[items missed] or items [{item, ok, note}], kind daily|brand. action=pnl_file: month."),
      "input_schema": {"type": "object", "properties": {
@@ -65,7 +65,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
     try:
         if action == "settings":
             if not _owner(ctx):
-                raise ToolError("Sirf owner.")
+                raise ToolError("Only the owner can do this.")
             return S.save_settings(t, **{k: a[k] for k in ("company", "state", "tds_applies", "morning_time") if k in a})
         if action == "agreement":
             keys = ("franchisor", "contact", "royalty_pct", "marketing_pct", "tech_fee", "min_guarantee", "base", "foreign", "franchisor_state",
@@ -85,7 +85,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return S.statement(t, _s(a.get("brand")), _s(a.get("month")), conv)
         if action == "approve_statement":
             if not _owner(ctx):
-                raise ToolError("Franchisor ko report bhejne ki haan sirf owner.")
+                raise ToolError("Only the owner can approve sending a report to the franchisor.")
             return S.approve_statement(t, _s(a.get("statement_id")))
         if action == "paid":
             return S.mark_paid(t, _s(a.get("statement_id")), _s(a.get("on")))

@@ -318,6 +318,8 @@ def from_anthropic(model: str, resp: Any) -> None:
     u = getattr(resp, "usage", None)
     if u is None:
         return
+    if _is_glm(resp):
+        return          # SAB GLM: the GLM door already counted this answer at GLM's own price (from_openai)
     g = (lambda k: int(getattr(u, k, 0) or 0)) if not isinstance(u, dict) else (lambda k: int(u.get(k) or 0))
     record(getattr(resp, "model", None) or model or "claude", tok_in=g("input_tokens"), tok_out=g("output_tokens"),
            cache_read=g("cache_read_input_tokens"), cache_write=g("cache_creation_input_tokens"))
@@ -346,6 +348,55 @@ def from_openai(model: str, usage: dict | None) -> None:
            tok_out=int(usage.get("completion_tokens") or 0), cache_read=cached)
 
 
+GEMINI_FALLBACK = {"gemini-flash-latest": "gemini-2.5-flash", "gemini-3.5-flash": "gemini-2.5-flash"}
+
+
+def _gemini_fallback(kw: dict, e: Exception) -> str:
+    """v0.560 ONE MODEL REGISTRY: the Gemini text default is now Google's newest-Flash alias; when this key / region
+    refuses it (not found / not supported), the call is made once on the model Hoola ran on before."""
+    m = str(kw.get("model") or "")
+    s = str(e).lower()
+    if m in GEMINI_FALLBACK and ("404" in s or "not found" in s or "not supported" in s or "unsupported" in s
+                                 or "permission" in s or "invalid model" in s):
+        log.warning("gemini %s refused (%s); answering on %s", m, str(e)[:120], GEMINI_FALLBACK[m])
+        return GEMINI_FALLBACK[m]
+    return ""
+
+
+ONE_MODEL = {"moved": 0}
+
+
+import contextvars as _cvars
+
+# wave 9: the ONE model just failed (overload / refusal) - its fallback must really be another model. The fallback asked
+# for anthropic_model and one_model rewrote it straight back to the same Haiku, so a 529 killed the turn.
+ONE_MODEL_BYPASS: "_cvars.ContextVar[bool]" = _cvars.ContextVar("hoola_one_model_bypass", default=False)
+
+
+def one_model(kw: dict) -> dict:
+    """v0.631 SAB HAIKU: with claude_one_model set, every Claude call (chat, hard asks, long jobs, background jobs,
+    routines, every engine - including the ones with a model written in their code) runs on that one model. Applied
+    at the SDK, the one door every Claude call passes, so nothing can quietly spend Opus or Sonnet."""
+    try:
+        from .config import get_settings
+        one = str(getattr(get_settings(), "claude_one_model", "") or "").strip()
+    except Exception:
+        return kw
+    m = str(kw.get("model") or "")
+    if ONE_MODEL_BYPASS.get():
+        ONE_MODEL["bypassed"] = ONE_MODEL.get("bypassed", 0) + 1
+        return kw
+    if one and m.startswith("claude-") and m != one:
+        ONE_MODEL["moved"] += 1
+        return {**kw, "model": one}
+    return kw
+
+
+def _is_glm(resp: Any) -> bool:
+    m = str(getattr(resp, "model", "") or "").lower()
+    return m.startswith(("z-ai/", "zai", "glm")) or "/glm" in m
+
+
 def install() -> None:
     """Wrap the SDKs once (idempotent): every Claude / Gemini call anywhere in Hoola is counted."""
     if _INSTALLED[0]:
@@ -356,17 +407,61 @@ def install() -> None:
         a_orig, s_orig = AsyncMessages.create, Messages.create
 
         async def a_create(self, *a, **kw):
+            from . import glmdoor
+            if glmdoor.active() and not kw.get("stream") and not (glmdoor.has_media(kw.get("messages"))
+                                                                    and glmdoor._claude_ok()):
+                # SAB GLM: this Claude call is answered by GLM (NVIDIA glm-5.3-flash); Claude only if GLM fails
+                try:
+                    return await glmdoor.acreate(kw)
+                except Exception as e:
+                    if not glmdoor._claude_ok():
+                        glmdoor.STATS["failed"] += 1
+                        raise
+                    log.warning("GLM door failed (%s) - this call goes to Claude", str(e)[:200])
+                    glmdoor.STATS["fallback_claude"] += 1
+            kw = one_model(kw)
             r = await a_orig(self, *a, **kw)
             if not kw.get("stream"):
                 from_anthropic(kw.get("model", ""), r)
             return r
 
         def s_create(self, *a, **kw):
+            from . import glmdoor
+            if glmdoor.active() and not kw.get("stream") and not (glmdoor.has_media(kw.get("messages"))
+                                                                    and glmdoor._claude_ok()):
+                try:
+                    return glmdoor.create_sync(kw)
+                except Exception as e:
+                    if not glmdoor._claude_ok():
+                        glmdoor.STATS["failed"] += 1
+                        raise
+                    log.warning("GLM door failed (%s) - this call goes to Claude", str(e)[:200])
+                    glmdoor.STATS["fallback_claude"] += 1
+            kw = one_model(kw)
             r = s_orig(self, *a, **kw)
             if not kw.get("stream"):
                 from_anthropic(kw.get("model", ""), r)
             return r
         AsyncMessages.create, Messages.create = a_create, s_create
+        # wave 9: .stream() posts directly (anthropic 2.x never calls .create), so every STREAMED call - all of her live
+        # chat, the Web Studio live build - skipped SAB HAIKU while the log claimed Haiku. The model is rewritten here
+        # too; the streamed usage is counted where the final message is read (santosh._claude_stream, site.ai).
+        as_orig, ss_orig = AsyncMessages.stream, Messages.stream
+
+        def a_stream(self, *a, **kw):
+            from . import glmdoor
+            if glmdoor.active() and not (glmdoor.has_media(kw.get("messages")) and glmdoor._claude_ok()):
+                me, k1 = self, one_model(kw)
+                return glmdoor._Stream(kw, lambda: as_orig(me, *a, **k1))   # SAB GLM, Claude only as the fallback
+            return as_orig(self, *a, **one_model(kw))
+
+        def s_stream(self, *a, **kw):
+            from . import glmdoor
+            if glmdoor.active() and not (glmdoor.has_media(kw.get("messages")) and glmdoor._claude_ok()):
+                me, k1 = self, one_model(kw)
+                return glmdoor._SyncStream(kw, lambda: ss_orig(me, *a, **k1))
+            return ss_orig(self, *a, **one_model(kw))
+        AsyncMessages.stream, Messages.stream = a_stream, s_stream
     except Exception:
         log.exception("usage: anthropic not wrapped")
     try:
@@ -374,12 +469,26 @@ def install() -> None:
         ga_orig, gs_orig = AsyncModels.generate_content, Models.generate_content
 
         async def ga(self, *a, **kw):
-            r = await ga_orig(self, *a, **kw)
+            try:
+                r = await ga_orig(self, *a, **kw)
+            except Exception as e:      # v0.560 an alias / new model this key cannot use: the proven one answers
+                fb = _gemini_fallback(kw, e)
+                if not fb:
+                    raise
+                kw = {**kw, "model": fb}
+                r = await ga_orig(self, *a, **kw)
             from_gemini(str(kw.get("model") or (a[0] if a else "")), r)
             return r
 
         def gs(self, *a, **kw):
-            r = gs_orig(self, *a, **kw)
+            try:
+                r = gs_orig(self, *a, **kw)
+            except Exception as e:      # v0.560 same fallback, sync
+                fb = _gemini_fallback(kw, e)
+                if not fb:
+                    raise
+                kw = {**kw, "model": fb}
+                r = gs_orig(self, *a, **kw)
             from_gemini(str(kw.get("model") or (a[0] if a else "")), r)
             return r
         AsyncModels.generate_content, Models.generate_content = ga, gs

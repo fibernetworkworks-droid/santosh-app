@@ -18,7 +18,7 @@ CYBER_TOOLS = [
         "instructions. action=intake: text (pasted alerts: antivirus / EDR (Defender, Quick Heal, Seqrite), firewall / router log, "
         "sshd / fail2ban log, Google Workspace / Microsoft 365 alert email, Cloudflare WAF events) or file_id (CSV / JSON / log export), "
         "source antivirus|firewall|server|workspace|m365|waf (optional), include_hoola -> noise filtered, the few that matter with WHY "
-        "and what to do; say those, not the noise. action=teach: alert (AL-0001), reason, scope ip|user|host|kind (owner: 'yeh normal hai'). "
+        "and what to do; say those, not the noise. action=teach: alert (AL-0001), reason, scope ip|user|host|kind (owner: 'this is normal'). "
         "action=ack / dismiss: alert. action=rule_remove: rule (owner). action=check_email: text (best: full 'Show original' / 'View "
         "source'), sender, links, attachments, clicked / entered_password / opened_attachment / money / gave_otp / remote_access, report "
         "(true = log a security incident with the CERT-In clock) -> verdict + flags; NEVER open its links. action=check_link: urls (looked "
@@ -60,7 +60,7 @@ CYBER_TOOLS = [
          "money": {"type": "boolean"}, "gave_otp": {"type": "boolean"}, "remote_access": {"type": "boolean"}},
          "required": ["action"]}},
     {"name": "cyber_dekho", "description": (
-        "Read the business's security picture (nothing changes). what=day (alerts that matter, block / wipe cards waiting for her haan, "
+        "Read the business's security picture (nothing changes). what=day (alerts that matter, block / wipe cards waiting for her yes, "
         "open incidents, urgent software advisories, SSL expiring, weak domain settings) | alerts (level matters|watch|noise, status "
         "open|dismissed|incident) | alert (alert) | rules (her 'normal' rules) | checks (kind email|link|file) | domains | software | "
         "advisories (status new|patched|...) | incidents | incident (incident: timeline, CERT-In, DPDP, actions) | actions (status) | "
@@ -96,12 +96,12 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
     from ..cyber import service as S
     t, conv, actor = ctx.tenant_id, ctx.conversation_id, _actor(ctx)
     if actor.startswith("customer:"):
-        raise ToolError("Cyber suraksha graahakon ke liye nahi hai.")
+        raise ToolError("Cyber security is not for customers.")
     if action in _OWNER_ONLY and not _owner(ctx):
-        raise ToolError("Yeh sirf owner kar sakti hain.")
+        raise ToolError("Only the owner can do this.")
     if action in ("settings", "software_add", "domain_add") and _KEYLIKE.search(" ".join(_s(v) for v in a.values())):
-        raise ToolError("API key / token chat mein nahi: app mein Cyber Suraksha > Niyam > Keys mein daaliye (aur jo key chat mein aa gayi, use "
-                        "badal dijiye).")
+        raise ToolError("No API key / token in chat: add it in the app under Cyber Security > Rules > Keys (and any key that came into chat, "
+                        "change it).")
     did = {k: bool(a.get(k)) for k in _DID}
     try:
         if action == "intake":
@@ -172,7 +172,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
     from ..cyber import service as S
     t = ctx.tenant_id
     if _actor(ctx).startswith("customer:"):
-        raise ToolError("Cyber suraksha graahakon ke liye nahi hai.")
+        raise ToolError("Cyber security is not for customers.")
     try:
         if what == "day":
             return S.day(t)
@@ -202,9 +202,9 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
             st = S.settings(t)
             return {k: v for k, v in st.items()}
         if what == "never":
-            return {"never": ["kisi aur ke system ko scan / test karna, exploit code", "shak wala link kholna (sirf reputation lookup)",
-                              "aapki file kahin upload karna (sirf hash)", "password / OTP / API key maangna ya chat mein lena",
-                              "block / disable / quarantine / wipe bina aapke tap ke", "ransomware / forwarding-rule jaise alerts chhupana"],
+            return {"never": ["scanning / testing anyone else's system, exploit code", "opening a suspicious link (reputation lookup only)",
+                              "uploading your file anywhere (hash only)", "asking for or accepting a password / OTP / API key in chat",
+                              "block / disable / quarantine / wipe without your tap", "hiding alerts such as ransomware / forwarding rules"],
                     "action_kinds": R.ACTIONS}
     except (S.CyberError, ValueError) as ex:
         raise ToolError(str(ex))

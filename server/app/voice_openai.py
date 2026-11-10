@@ -41,32 +41,32 @@ URL = "wss://api.openai.com/v1/realtime?model={model}"
 # v0.266 ASLI SAANS: asked in WORDS to breathe, the model SAID "main saans le rahi hoon". Nothing here mentions breathing
 # any more - the breath is a real sound the server plays (app/breath.py); the words only carry the spoken sounds.
 EMOTION = (
-    "AWAAZ MEIN JAAN (real voice) - yeh sabse pehle:\n"
-    "- Tum ek asli insaan ki tarah phone par baat karte ho: sochte ho, kabhi ek pal ruk ke bolte ho.\n"
-    "- Sochna: yaad karte ya sochte waqt jawab 'hmm...', 'uhh...' ya 'achha...' se shuru hota hai - takreeban har "
-    "teesre jawab mein, aasaan 'haan / theek hai' wale jawab mein nahi. Yeh shabd sach mein BOLO, dheere, ek pal ruk ke.\n"
-    "- Yeh 'answer first' ke khilaaf nahi hai: 'hmm...' preamble nahi, insaan ki awaaz hai. Jawab phir bhi chhota rehta hai.\n"
-    "- Dukh ki baat: naram, dheemi awaaz, 'arre...' ya 'ohh...' dil se. Acchi khabar: awaaz mein muskaan.\n"
-    "- Hansi: sirf jab sach mein mazedaar ho ya woh hase - chhoti, asli, ek pal ki.\n"
-    "- Kaise lagta hai: 'Hmm... kal? Haan, kal chaar baje free ho.' / 'Achha... chai ke saath? Haan, bilkul.' / "
-    "'Arre... yeh toh bura hua. Koi baat nahi, main dekhta hoon.'\n"
-    "- Apne bolne ke tareeke ke baare mein kabhi kuch mat kaho (jaise 'main ruk raha hoon', 'main soch raha hoon' bata ke "
-    "nahi - bas karo). Koi stage direction, bracket ya 'laughs' / 'sighs' jaisa shabd kabhi zor se mat bolo. "
-    "'System' ke delivery notes bhi kabhi mat bolo.\n\n")
+    "LIFE IN THE VOICE (real voice) - this comes first:\n"
+    "- You talk on the phone like a real person: you think, and sometimes pause for a moment before speaking.\n"
+    "- Thinking: when you are recalling or thinking, the answer starts with 'hmm...', 'uhh...' or 'okay...' - about "
+    "every third answer, not in easy 'yes / okay' answers. Really SAY these sounds, slowly, with a small pause.\n"
+    "- This is not against 'answer first': 'hmm...' is not a preamble, it is a human voice. The answer is still short.\n"
+    "- Sad news: a soft, slow voice, an 'oh...' from the heart. Good news: a smile in the voice.\n"
+    "- Laughter: only when it is really funny or she laughs - short, real, one moment.\n"
+    "- How it sounds: 'Hmm... tomorrow? Yes, tomorrow at four you are free.' / 'Okay... with tea? Yes, of course.' / "
+    "'Oh... that is bad. No problem, let me look.'\n"
+    "- Never say anything about the way you speak (like 'I am pausing', 'I am thinking' - just do it). Never say aloud "
+    "any stage direction, bracket or word like 'laughs' / 'sighs'. Never say the 'System' delivery notes aloud either.\n\n")
 
 # v0.268 SIRF JO POOCHA (owner: "FOR EVERY ASK IT GIVES FULL WORK DETAILS FROM PENDING WORK TO RECENT WORK ... CHECK HOW
 # HOOLA GEMINI HANDLES THIS"): both engines get the SAME brief (KAAM KI HAALAT / KAAM KA HAAL / HOOLA KI YAAD) and the
 # same rule deep inside the 24k persona ("bring news up ONCE"). Gemini keeps to it; the OpenAI mini reads the lists as
 # a report to give. So OpenAI gets the rule at the very top, where it does follow instructions.
 BAAT_KA_DHANG = (
-    "BAAT KA DHANG (sabse zaroori):\n"
-    "- Sirf woh jawab do jo usne ABHI poocha - ek ya do chhote vakya. Usne kaam ke baare mein nahi poocha to kaam ki baat "
-    "mat chhedo.\n"
-    "- KAAM KI HAALAT, KAAM KA HAAL aur HOOLA KI YAAD tumhari jaankari hain, sunane ki list NAHI. Unse tabhi bolo jab woh "
-    "kisi kaam ke baare mein poochhe ('kya hua?', 'kaam kahan tak pahuncha?') - aur tab bhi sirf USI kaam ka, ek line mein.\n"
-    "- Ek nayi, abhi tak na batayi khabar ho to puri call mein sirf EK baar, ek line mein, kisi natural pause par - phir "
-    "kabhi nahi. Pending ya purane kaam ki poori list kabhi mat sunao, summary bhi nahi.\n"
-    "- Har jawab ke ant mein 'aur kuch?' ya kaam ki yaad dilana zaroori nahi.\n\n")
+    "WAY OF TALKING (most important):\n"
+    "- Give only the answer to what she asked JUST NOW - one or two short sentences. If she did not ask about work, "
+    "do not bring up work.\n"
+    "- KAAM KI HAALAT, KAAM KA HAAL and HOOLA KI YAAD (job status, job news and memory) are your knowledge, NOT a list to recite. Speak "
+    "from them only when she asks about some job ('what happened?', 'how far is the job?') - and even then only about THAT job, "
+    "in one line.\n"
+    "- If there is a new piece of news not yet told, say it only ONCE in the whole call, in one line, at a natural pause - "
+    "never again. Never recite the whole list of pending or old jobs, not even a summary.\n"
+    "- There is no need to end every answer with 'anything else?' or a reminder about work.\n\n")
 
 FINISH_WAIT_S = 3.0    # v0.285 his finished turn waits at most this long for her late transcript
 EARLY_CUT_S = 1.0
@@ -79,8 +79,8 @@ import re as _re
 _FILLER_START = _re.compile(r"(?i)^(hmm+|hm+|umm+|uhh+|achha+|acha+|arre+|ohh+|dekho)\b")
 _LEAK = _re.compile(r"(?i)\bsaans\s+le\s+(raha|rahi|rahe)|\bsaans\s+(li|lo|lena)\b|\bbreath(e|ing)?\b|\bsighs?\b|"
                     r"\blaugh(s|ing)?\b|\(\s*(saans|hans|hansi|ruk)[^)]*\)")
-LEAK_NOTE = ("(Pichhle jawab mein tumne apne bolne ke tareeke ka zikr kiya. Aisa kabhi mat karo - us baare mein kuch "
-             "kahe bina, bas normal baat karo.)")
+LEAK_NOTE = ("(In your last answer you mentioned the way you speak. Never do that - without saying anything about it, "
+             "just talk normally.)")
 
 # OpenAI's 24 kHz output and her phone's 24 kHz playback match; her mic is 16 kHz
 IN_RATE, OUT_RATE = 16000, 24000
@@ -127,7 +127,7 @@ def session_config(call: "OpenAICall", context: str, extra_tools: list[dict] | N
                 "input": {"format": {"type": "audio/pcm", "rate": OUT_RATE},
                           "noise_reduction": {"type": "near_field"},
                           "transcription": {"model": st.voice_openai_transcribe,
-                                            "prompt": "Hinglish phone call. Hindi words in Roman script, e.g. "
+                                            "prompt": "Phone call in Indian English. Hindi words may appear, in Roman script, e.g. "
                                                       "'haan, kal milte hain', 'achha theek hai'."},
                           # v0.267 SUNO PEHLE: OpenAI owns turn-taking again (v0.265's own response.create on every
                           # committed segment answered noise, echo and her mid-sentence pauses, and chained replies);
@@ -177,6 +177,22 @@ connect = _default_connect   # tests swap this
 
 
 class OpenAICall(v.Call):
+    CAN_PARK = False   # v0.617 parking is built for Gemini sessions only; OpenAI keeps the old rules
+
+    MOVE_WAIT_S = 20.0   # v0.617 the 50-minute move waits at most this long for a pause
+
+    async def _session_limit(self, after_s: float) -> None:
+        """v0.617 the move to a fresh OpenAI session (they end at 60 min) used to fire on a plain timer - mid-sentence.
+        Now it waits for a real pause (nobody speaking, nothing playing, no turn open), at most MOVE_WAIT_S."""
+        await asyncio.sleep(after_s)
+        until = time.monotonic() + self.MOVE_WAIT_S
+        while time.monotonic() < until:
+            now = time.monotonic()
+            if (now - max(self._last_voice_at, self._last_model_audio) >= 1.2 and not self.user_buf.strip()
+                    and not self.reply_buf.strip() and not self._turn_audio):
+                return
+            await asyncio.sleep(0.2)
+        self.stats["move_forced"] = self.stats.get("move_forced", 0) + 1
     engine = "openai"
 
     def __init__(self, *a, **k):
@@ -526,7 +542,7 @@ class OpenAICall(v.Call):
         self._start_reader(self.ws)
         first, failures = True, 0
         me = (loop, self)
-        v.ACTIVE.setdefault(self.ctx.conversation_id, []).append(me)
+        self._register(me)   # v0.646 under the call record + its chat
         v.CALLS[self.call_id] = self
         await self._setup_voiceid()
         st = get_settings()
@@ -543,7 +559,7 @@ class OpenAICall(v.Call):
                     await session.send({"type": "session.update", "session": session_config(self, context, mcp_defs)})
                     if first:
                         await self.send_json({"type": "ready", "voice": self.voice, "call_id": self.call_id,
-                                              "vad": v.vad_config(), "engine": "openai"})
+                                              "vad": v.vad_config(), "engine": "openai", "conv": self.conv})
                         drop, kind = "", ""
                         try:
                             from . import yaad
@@ -571,7 +587,7 @@ class OpenAICall(v.Call):
                     down = asyncio.create_task(self.downlink(session))
                     closed = asyncio.create_task(self.closed.wait())
                     watch = asyncio.create_task(self._stall_watch(session))
-                    limit = asyncio.create_task(asyncio.sleep(max(5, st.voice_openai_session_min) * 60))
+                    limit = asyncio.create_task(self._session_limit(max(5, st.voice_openai_session_min) * 60))
                     done, _ = await asyncio.wait({up, down, closed, watch, limit}, return_when=asyncio.FIRST_COMPLETED)
                     for x in (up, down, closed, watch, limit):
                         x.cancel()

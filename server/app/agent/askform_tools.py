@@ -35,7 +35,7 @@ async def ask_form(ctx: Ctx, title, fields, why: str = "", **_):
     except askform.FormError as e:
         raise ToolError(str(e))
     return {"form_id": v["id"], "status": "sent", "fields": [f["label"] for f in v["fields"]],
-            "say": "Ek form bheja hai, bhar dijiye; jaise hi bharengi, main aage badhunga.",
+            "say": "I have sent a form. Please fill it in; as soon as you do, I will carry on.",
             "note_for_you": "Wait for her answers (they arrive as her next message). Don't ask these in chat meanwhile."}
 
 

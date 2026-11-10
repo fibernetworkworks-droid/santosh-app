@@ -70,7 +70,7 @@ Hard rules (the page is rendered frame by frame on a server with NO network):
    Never use requestAnimationFrame, setTimeout, setInterval, Date or real randomness (use HM.rnd(seed)).
    Canvas is fine (clear and redraw everything in seek); so is DOM / SVG positioned from t.
 4. Put everything inside <div id="stage"></div> (full screen). Use vmin / vw / vh units. Text big and readable on a phone,
-   in simple Hinglish (Roman) unless asked otherwise. Call HM.badge() once (a small "AI · Hoola" label: required by law).
+   in simple English (Roman) unless asked otherwise. Call HM.badge() once (a small "AI · Hoola" label: required by law).
 5. Make it genuinely beautiful: a clear visual hook in the first second, smooth easing, strong colour, real motion design.
    No invented facts (phone numbers, prices, claims) beyond what is given. No copyrighted characters or logos.
 Return ONLY the HTML document, starting with <!doctype html>."""
@@ -116,9 +116,10 @@ def _claude_html(prompt: str) -> str:
     st = get_settings()
     if st.anthropic_api_key:
         import anthropic
-        client = anthropic.Anthropic(api_key=st.anthropic_api_key, timeout=240)
-        msg = client.messages.create(model=st.anthropic_model, max_tokens=16000,
-                                     messages=[{"role": "user", "content": prompt}])
+        client = anthropic.Anthropic(api_key=st.anthropic_api_key, timeout=600)
+        from ..agent import door   # v0.560 EK DARWAZA
+        msg = door.create(client, door.shape("motion", door.model_for("motion_model", st.anthropic_model), 16000, "",
+                                             [{"role": "user", "content": prompt}]))
         return "".join(getattr(b, "text", "") for b in msg.content)
     if st.gemini_api_key:
         from google import genai

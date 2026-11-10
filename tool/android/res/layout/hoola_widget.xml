@@ -53,7 +53,7 @@
             android:layout_marginEnd="6dp"
             android:background="@drawable/hoola_widget_btn"
             android:gravity="center"
-            android:text="🎙  Bolo"
+            android:text="🎙  Speak"
             android:textColor="#FFFFFF"
             android:textSize="14sp"
             android:textStyle="bold" />
@@ -64,7 +64,7 @@
             android:layout_weight="1"
             android:background="@drawable/hoola_widget_btn2"
             android:gravity="center"
-            android:text="✍  Likho"
+            android:text="✍  Type"
             android:textColor="#FFFFFF"
             android:textSize="14sp"
             android:textStyle="bold" />

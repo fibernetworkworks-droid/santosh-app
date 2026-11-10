@@ -1,6 +1,7 @@
 ---
 name: sp-using-git-worktrees
 description: Use when starting feature work - isolated workspace first
+when_to_use: git worktree, separate workspace, feature branch setup
 ---
 Ensure work happens in an isolated workspace. CORE PRINCIPLE: detect
 existing isolation first, then native tools, then the git fallback - never

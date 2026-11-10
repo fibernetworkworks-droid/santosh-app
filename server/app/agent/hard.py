@@ -102,6 +102,11 @@ _ACTION = re.compile(r"^\s*(?:hoola[,\s]+)?(?:send|bhej\w*|remind|yaad\s+dila\w*
 _QTY = re.compile(r"\bkitn[aeiy]\b|\bkitni\b|\bhow\s+(?:much|many|long)\b|\bkab\s+(?:tak|hoga|milenge|milega)\b|"
                   r"\bwhen\s+will\b|\bam\s+i\s+(?:actually\s+)?(?:earning|losing|saving)|कितन", re.I)
 _NUM = re.compile(r"(?<![\w.])\d[\d,]*(?:\.\d+)?(?:\s*(?:%|lakh|crore|k\b|cr\b|rs|₹))?", re.I)
+# v0.556 a MAKE / DO request anywhere in her words ("50 chairs ka quotation bana do", "Make an invoice for...") with no
+# reasoning signal is plain work: it skips the 'maybe' judge, which held the reply up to 2.5 s for nothing
+_MAKE = re.compile(r"\bbana\s*(?:do|dijiye|dena|de)\b|\bbanao\b|\bbanaiye\b|\blikh\s*(?:do|dijiye|dena)\b|\blikho\b|"
+                   r"\bbhej\s*(?:do|dijiye)\b|\bset\s*(?:karo|kar\s*do)\b|\blaga\s*do\b|\bmake\s+(?:a|an|the|me)\b|"
+                   r"\bcreate\s+(?:a|an|the)\b|\bgenerate\s+(?:a|an|the)\b|\bdraft\s+(?:a|an|the)\b|\bprepare\s+(?:a|an|the)\b", re.I)
 
 
 def assess(text: str) -> dict:
@@ -128,14 +133,18 @@ def assess(text: str) -> dict:
         score += 1
         why.append("long ask")
     nums = len(_NUM.findall(t))
-    if nums >= 2 and _QTY.search(t) and "calculation" not in why:
-        score += 2                                  # a word problem: numbers + "how much / how many / when"
+    if nums >= 2 and _QTY.search(t) and "calculation" not in why and (words >= 12 or nums >= 3):
+        # a word problem: numbers + "how much / how many / when". v0.556: not a bare sum - "12 aur 15 ka total
+        # kitna?" (6 words, 2 numbers) was sent to Opus with thinking at effort high; a real word problem has a story
+        score += 2
         why.append("word problem")
     if _ACTION.match(t) and score < 3:
         score = 0
     hard = score >= 2
     # not sure: one weak signal, or a real question (8+ words) that is not an action - the fast judge decides
     maybe = (not hard) and not _ACTION.match(t) and (score == 1 or (words >= 8 and ("?" in t or nums >= 2)))
+    if maybe and score == 0 and _MAKE.search(t):
+        maybe = False                               # v0.556 plain make / do work never waits for the judge
     if hard:
         STATS["hard"] += 1
     return {"hard": hard, "maybe": maybe, "score": score, "why": why}
@@ -207,11 +216,11 @@ async def decide(text: str, settings) -> dict:
 # Rides in the system prompt ONLY on a hard turn (ordinary chat stays lean). The core is how a careful analyst works;
 # the kind lines come from the labels assess() found. The reply rulebook (her language, answer first, length follows
 # the question, light formatting) still governs HOW it is written - this governs how it is THOUGHT.
-RECIPE_CORE = """SOCH KA TAREEKA (this is a hard question - think it through like a careful analyst, then answer like Hoola):
+RECIPE_CORE = """HOW TO THINK (this is a hard question - think it through like a careful analyst, then answer like Hoola):
 1. The real question: what decision or number does she actually need? If the words allow two readings, take the most
    likely one and say it in ONE line; ask a question only when a wrong guess would cost her (money, a filing, a send).
 2. Facts first: use what she gave, this chat, her files and memory. A fact you need and do not have = a stated
-   assumption in one short line ("maan ke chal rahe hain: ..."), never a made-up fact. Current rates, rules or prices
+   assumption in one short line ("Assuming: ..."), never a made-up fact. Current rates, rules or prices
    that change = say they should be checked, or look them up with a tool.
 3. Work it out in parts. EVERY number you work out comes from pylab (run it, quote the printed result) - never mental
    maths. Keep units and the Indian way of writing money (Rs / lakh / crore).
@@ -310,6 +319,27 @@ def research_check(draft: str, evidence_text: str) -> list[str]:
     return []
 
 
+def _num(t: str) -> float | None:
+    try:
+        return float(t.replace(",", ""))
+    except ValueError:
+        return None
+
+
+def backed(figure: str, evidence_text: str, question: str = "") -> bool:
+    """wave 13: is this figure in the tools' output (exactly, rounded, or in lakh / crore / thousand / percent form)?"""
+    v = _num(figure)
+    if v is None:
+        return True
+    pool = [x for x in (_num(t) for t in _DIGITS.findall((evidence_text or "") + " " + (question or ""))) if x is not None]
+    for e in pool:
+        for scale in (1, 1e3, 1e5, 1e7, 1e-2, 100):
+            w = v * scale
+            if abs(e - w) <= max(0.006 * abs(w), 0.51 if scale == 1 else 0.0):
+                return True
+    return False
+
+
 def code_check(question: str, draft: str, why: list[str] | None, tools_run: list[str],
                evidence_text: str = "") -> list[str]:
     """Free check: a calculation ask whose draft carries worked-out numbers while pylab never ran; a research answer
@@ -318,12 +348,18 @@ def code_check(question: str, draft: str, why: list[str] | None, tools_run: list
         found = research_check(draft, evidence_text)
         if found:
             return found
-    if "pylab" in (tools_run or []):
-        return []
     if not (set(why or []) & _CALC_KINDS):
         return []
     asked = set(_DIGITS.findall(question or ""))
     new = [n for n in _DIGITS.findall(draft or "") if n not in asked and len(n.replace(",", "")) >= 3]
+    if "pylab" in (tools_run or []):
+        # wave 13: pylab having run at all used to pass the check - now the draft's worked-out figures must be in what
+        # the tools printed (or in her question), so a trivial pylab call cannot cover numbers written from memory
+        stray = [n for n in dict.fromkeys(new) if not backed(n, evidence_text, question)]
+        if len(stray) >= 2:
+            return [f"These figures are not in pylab's printed output or any tool result: {', '.join(stray[:6])}. "
+                    "Compute each of them in pylab (print it) and use the printed value."]
+        return []
     if len(new) >= 2:
         return [f"These figures were worked out without running pylab: {', '.join(new[:6])}. Compute them in pylab "
                 "and use its printed results."]
@@ -369,11 +405,18 @@ async def review(question: str, draft: str, ev: str, settings) -> list[str]:
     try:
         from .santosh import get_client
         model = getattr(settings, "hard_check_model", "") or settings.anthropic_model
+        from .. import usage as _usage
+        # wave 13: the reviewer is a DIFFERENT model from the writer - under SAB HAIKU the reviewer was rewritten to the
+        # same Haiku that wrote the answer, so "independent" was not true. One small call (900 tokens), held answers only.
         user = (f"HER QUESTION:\n{question[:3000]}\n\nTOOL EVIDENCE FROM THIS TURN (pylab code + outputs, data):\n"
                 f"{ev or '(no tools ran)'}\n\nDRAFT ANSWER:\n{draft[:8000]}")
-        resp = await asyncio.wait_for(get_client().messages.create(
-            model=model, max_tokens=900, system=CHECK_SYSTEM, messages=[{"role": "user", "content": user}]),
-            timeout=float(getattr(settings, "hard_check_timeout_s", 60)))
+        _byp = _usage.ONE_MODEL_BYPASS.set(bool(getattr(settings, "hard_check_independent", True)))
+        try:
+            resp = await asyncio.wait_for(get_client().messages.create(
+                model=model, max_tokens=900, system=CHECK_SYSTEM, messages=[{"role": "user", "content": user}]),
+                timeout=float(getattr(settings, "hard_check_timeout_s", 60)))
+        finally:
+            _usage.ONE_MODEL_BYPASS.reset(_byp)
         raw = "".join(_text_of(b) for b in resp.content).strip()
         m = re.search(r"\{.*\}", raw, re.S)
         v = _json.loads(m.group(0)) if m else {}

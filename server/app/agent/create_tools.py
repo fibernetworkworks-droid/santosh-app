@@ -61,7 +61,7 @@ async def create_studio(ctx: Ctx, action, **a: Any):
             title = a.get("title") or (a.get("brief") or a.get("genre") or "Hoola song")[:40]
             v = _store(ctx, title, r["ext"], r["bytes"], "song", {"genre": a.get("genre") or "", "language": a.get("language") or ""})
             return {"status": "done", "file_id": v["file_id"], "name": v["name"], "about_inr": 7,
-                    "note": "Gaana ban gaya; chat mein card par sun / download sakti hain. Ek line mein batao."}
+                    "note": "The song is ready; she can listen / download it on the card in the chat. Tell her in one line."}
         if action == "voice":
             r = await cs.voice(a.get("text") or "", a.get("voice") or "", a.get("language") or "Hindi",
                                a.get("style") or "friendly", float(a.get("speed") or 1.0), ctx.tenant_id)
@@ -71,7 +71,7 @@ async def create_studio(ctx: Ctx, action, **a: Any):
         if action == "dub":
             fid = str(a.get("file_id") or "").strip()
             if not fid:
-                raise ToolError("Kaunsa video dub karna hai? Pehle video bhejiye, phir uska file_id do.")
+                raise ToolError("Which video should be dubbed? Send the video first, then give its file_id.")
             from .make_tools import _owner_bytes
             name, data = _owner_bytes(ctx, fid)
             r = await cs.dub(data, name, a.get("languages") or [], a.get("keep_sound", True) is not False)
@@ -83,10 +83,10 @@ async def create_studio(ctx: Ctx, action, **a: Any):
                 made.append({"language": o["language"], "file_id": v["file_id"], "name": v["name"]})
             return {"status": "done", "made": made, "source_language": r["source_language"],
                     "speakers": r["speakers"], "voices": r["voices"], "lines": len(r["lines"]),
-                    "note": ("Dub ban gaye, har bhasha ka card chat mein. Bata do: awaaz milti-julti hai (clone nahi), "
-                             "honth dobara sync nahi hue - lip sync Video Studio mein paid card se.")}
+                    "note": ("The dubs are ready, one card per language in the chat. Tell her: the voice is similar (not a clone), "
+                             "lips were not re-synced - lip sync is in Video Studio via a paid card.")}
     except cs.CreateError as e:
-        raise ToolError(str(e) + " (Dobara mat try karo; unhe yahi bata do.)")
+        raise ToolError(str(e) + " (Do not try again; tell her this.)")
     raise ToolError("action: song | voice | dub | voices")
 
 

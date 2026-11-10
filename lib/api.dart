@@ -362,6 +362,13 @@ class Api {
       await _send('GET', '/api/conversations/$conv/timeline/head', query: {'n': '$n'}) as Map);
   Future<Map<String, dynamic>> chats() async => Map<String, dynamic>.from(await _send('GET', '/api/conversations') as Map);
   Future<void> openChat(String conv) async => _send('POST', '/api/conversations/$conv/open');
+  /// v0.648 KAAM KA HISAAB: running / waiting for her / finished in the last 7 days (each row names its chat or call).
+  Future<Map<String, dynamic>> kaamList() async => Map<String, dynamic>.from(await _send('GET', '/api/kaam/list') as Map);
+  /// v0.646 ALAG CALL: the Calls section (each voice call's own record, newest first).
+  Future<List<Map<String, dynamic>>> calls() async {
+    final r = Map<String, dynamic>.from(await _send('GET', '/api/calls') as Map);
+    return [for (final c in (r['calls'] as List? ?? const [])) Map<String, dynamic>.from(c as Map)];
+  }
   Future<void> chatHeal(String reason, Map<String, dynamic> data) async =>
       _send('POST', '/api/chat/heal', body: {'kind': 'resync', 'reason': reason, 'data': data});
   Future<Map<String, dynamic>> chatWaiting() async => Map<String, dynamic>.from(await _send('GET', '/api/chat/waiting') as Map);
@@ -416,6 +423,11 @@ class Api {
   Future<void> checkConversation(String id) async => _send('GET', '/api/conversations/$id/messages');
   /// Stop the task Hoola is running in this conversation (after the current step).
   Future<void> stopTurn(String id) async => _send('POST', '/api/conversations/$id/stop');
+  // v0.738 parity gap 12: edit an earlier message of hers (a new version from there; the old one is kept) and ask the
+  // last reply again - the same routes the web console uses.
+  Future<void> editMessage(String id, int eventId, String text) async =>
+      _send('POST', '/api/conversations/$id/edit', body: {'event_id': eventId, 'text': text});
+  Future<void> retryReply(String id) async => _send('POST', '/api/conversations/$id/retry');
   /// v0.186 the goal card's data (the newest goal of this chat), or {} when none.
   Future<Map<String, dynamic>> goal(String id) async =>
       Map<String, dynamic>.from((await _send('GET', '/api/conversations/$id/goal') as Map)['goal'] as Map? ?? {});
@@ -431,9 +443,21 @@ class Api {
       (await _send('PUT', '/api/memory/about', body: {'text': text}) as Map)['about'] as Map? ?? {});
   Future<Map<String, dynamic>> aboutMeRebuild() async => Map<String, dynamic>.from(
       (await _send('POST', '/api/memory/about/rebuild', timeout: const Duration(seconds: 90)) as Map)['about'] as Map? ?? {});
-  Future<Map<String, dynamic>> memorySwitches({bool? auto, bool? recall}) async => Map<String, dynamic>.from(
-      (await _send('PUT', '/api/memory/settings', body: {if (auto != null) 'auto': auto, if (recall != null) 'recall': recall})
-          as Map)['switches'] as Map? ?? {});
+  Future<Map<String, dynamic>> memorySwitches({bool? auto, bool? recall, bool? sensitive}) async =>
+      Map<String, dynamic>.from((await _send('PUT', '/api/memory/settings', body: {
+        if (auto != null) 'auto': auto,
+        if (recall != null) 'recall': recall,
+        if (sensitive != null) 'sensitive': sensitive,   // v0.609 "Sensitive topics too" (off by default)
+      }) as Map)['switches'] as Map? ?? {});
+  /// v0.616 BAHAR SE BAAT: her own Hoola from WhatsApp / Telegram / Slack / Teams (only her, after a pairing code).
+  Future<List<Map<String, dynamic>>> baharList() async =>
+      ((await _send('GET', '/api/bahar') as Map)['channels'] as List? ?? []).map((e) => Map<String, dynamic>.from(e as Map)).toList();
+  Future<Map<String, dynamic>> baharSetup(String channel, Map<String, String> creds) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/bahar/$channel', body: creds) as Map);
+  Future<void> baharRemove(String channel) async => _send('DELETE', '/api/bahar/$channel');
+  /// v0.609 "Saari yaad mitao" (Claude's reset): every memory store forgets her; her chats stay.
+  Future<Map<String, dynamic>> memoryReset() async => Map<String, dynamic>.from(
+      (await _send('POST', '/api/memory/reset', body: {'confirm': 'RESET'}) as Map)['removed'] as Map? ?? {});
   /// v0.186 Rokiye for the goal only: the plan stops, the chat itself stays free.
   Future<void> stopGoal(String id) async => _send('POST', '/api/conversations/$id/goal/stop');
   // v0.228 the job ran out of budget and ASKS: her tap carries it on with a fresh budget (done steps kept)
@@ -475,13 +499,13 @@ class Api {
         final mb = (bytes.length / 1024 / 1024).toStringAsFixed(1);
         final msg = switch (res.statusCode) {
           404 when detail.isEmpty || detail == 'Not Found' =>
-            'Server par file lene ka naya hissa abhi nahi hai — VPS ko latest version par update kijiye (git pull + pm2 restart).',
+            'The server does not have the new file-receiving part yet - update the VPS to the latest version (git pull + pm2 restart).',
           413 => detail.isNotEmpty && detail != 'Request Entity Too Large'
               ? detail
-              : 'File ($mb MB) server ne badi bataayi — VPS nginx mein client_max_body_size 30m kijiye.',
-          401 || 403 => 'Server ne mana kiya (login / API key). App dobara kholiye.',
-          502 || 503 || 504 => 'Server abhi jawab nahi de raha (restart ho raha hoga). Thodi der baad dobara.',
-          _ => detail.isNotEmpty ? detail : 'Upload nahi hua (server ${res.statusCode}).',
+              : 'The server said the file ($mb MB) is too big - set client_max_body_size 30m in the VPS nginx.',
+          401 || 403 => 'The server refused (login / API key). Please reopen the app.',
+          502 || 503 || 504 => 'The server is not answering right now (it may be restarting). Please try again in a little while.',
+          _ => detail.isNotEmpty ? detail : 'Upload failed (server ${res.statusCode}).',
         };
         if (res.statusCode >= 500 && attempt < tries - 1) {
           last = ApiException(res.statusCode, msg);
@@ -501,7 +525,7 @@ class Api {
       if (attempt < tries - 1) await Future<void>.delayed(Duration(seconds: 2 + attempt * 2));
     }
     if (last is ApiException) throw last;
-    throw ApiException(0, 'Network kamzor hai, file nahi gayi. Net check karke dobara bhejiye.');
+    throw ApiException(0, 'The network is weak and the file was not sent. Check your internet and send again.');
   }
 
   /// v0.44.1 chat / call paperclip: any file; returns {file_id, name, url, media, preview, pages, leads?...}.
@@ -529,7 +553,7 @@ class Api {
       }
       if (i < 2) await Future.delayed(Duration(milliseconds: 800 * (i + 1)));
     }
-    throw last ?? Exception('Message nahi gaya');
+    throw last ?? Exception('Message was not sent');
   }
 
   /// Santosh's automatic jobs. Older servers (before v0.3) have none: returns an empty list.
@@ -718,6 +742,13 @@ class Api {
   Future<List<Map<String, dynamic>>> memory() async =>
       List<Map<String, dynamic>>.from((await _send('GET', '/api/memory'))['facts'] as List);
   Future<void> forget(int id) async => _send('DELETE', '/api/memory/$id');
+  /// v0.612 YAAD SE: "Bhool jao" on one memory a reply used (a fact, a past chat, a work note, a page / graph line).
+  Future<void> unremember(Map<String, dynamic> item) async => _send('POST', '/api/memory/unremember', body: {
+        'source': '${item['source'] ?? ''}',
+        if (item['id'] != null) 'id': item['id'],
+        'conversation_id': '${item['conversation_id'] ?? ''}',
+        'text': '${item['text'] ?? ''}',
+      });
   /// "Hamesha yaad": pin / unpin a remembered fact (server refuses past its character limit).
   Future<void> pinMemory(int id, bool pinned) async => _send('PATCH', '/api/memory/$id', body: {'pinned': pinned});
   // ---- v0.75 Pehchaan Locker (Aadhaar / PAN / ID numbers, encrypted on the server) ----
@@ -1153,8 +1184,11 @@ class Api {
   Future<String> socialYtAdsConnect() async => (await _send('GET', '/api/social/ytads/connect'))['url'] as String;
   Future<Map<String, dynamic>> socialYtAdsAccount(String id) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/social/ytads/account', body: {'customer_id': id}) as Map);
-  Future<Map<String, dynamic>> socialYtAdsNew(String videoId) async =>
-      Map<String, dynamic>.from(await _send('POST', '/api/social/ytads/drafts', body: {'video_id': videoId}) as Map);
+  Future<Map<String, dynamic>> socialYtAdsNew(String videoId, {String kind = 'youtube'}) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/social/ytads/drafts', body: {'video_id': videoId, 'kind': kind}) as Map);
+  // v0.425 Google Search + Performance Max drafts share the YouTube ads routes
+  Future<Map<String, dynamic>> socialYtAdsEdit(String id, Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/social/ytads/drafts/$id', body: body) as Map);
   Future<Map<String, dynamic>> socialYtAdsAct(String id, String action, {bool confirm = false}) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/social/ytads/drafts/$id/$action', body: {'confirm': confirm},
           timeout: const Duration(seconds: 90)) as Map);
@@ -1229,6 +1263,13 @@ class Api {
       Map<String, dynamic>.from(await _send('POST', '/api/employees/$key/$action', body: {}) as Map);
   Future<Map<String, dynamic>> employeeSettings(String key, Map<String, dynamic> body) async =>
       Map<String, dynamic>.from(await _send('PUT', '/api/employees/$key/settings', body: body) as Map);
+  // v0.541 SEARCH INTEL: ranks, AI answers, Maps grid, DataForSEO (her own login typed only here)
+  Future<Map<String, dynamic>> seoIntel() async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/seo/intel', timeout: const Duration(seconds: 45)) as Map);
+  Future<Map<String, dynamic>> seoIntelPost(String path, Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/seo/intel/$path', body: body, timeout: const Duration(seconds: 120)) as Map);
+  Future<Map<String, dynamic>> seoIntelForget() async =>
+      Map<String, dynamic>.from(await _send('DELETE', '/api/seo/intel/dataforseo') as Map);
   Future<Map<String, dynamic>> seoDesk() async =>
       Map<String, dynamic>.from(await _send('GET', '/api/seo/desk', timeout: const Duration(seconds: 45)) as Map);
   Future<Map<String, dynamic>> seoOnboard(Map<String, dynamic> body) async =>
@@ -1494,7 +1535,7 @@ class Api {
   /// Proof / final picture bytes (they need the key, so Image.network gets authHeaders; downloads come through here).
   Future<List<int>> brandBytes(String path) async {
     final res = await http.get(Uri.parse(absolute(path)), headers: authHeaders).timeout(const Duration(seconds: 120));
-    if (res.statusCode != 200) throw 'File nahi mili (${res.statusCode})';
+    if (res.statusCode != 200) throw 'File not found (${res.statusCode})';
     return res.bodyBytes;
   }
   // ---- v0.101 Kalam Sahayak (content writer; publishing only on her tap) ----
@@ -1828,7 +1869,7 @@ class Api {
     if (apiKey.isNotEmpty) req.headers['Authorization'] = 'Bearer $apiKey';
     final res = await http.Response.fromStream(await req.send().timeout(const Duration(seconds: 420)));
     final body = jsonDecode(utf8.decode(res.bodyBytes));
-    if (res.statusCode >= 400) throw ApiException(res.statusCode, (body as Map)['detail']?.toString() ?? 'Jaanch nahi hui');
+    if (res.statusCode >= 400) throw ApiException(res.statusCode, (body as Map)['detail']?.toString() ?? 'Check failed');
     return Map<String, dynamic>.from(body as Map);
   }
 
@@ -1947,14 +1988,14 @@ class Api {
     final c = Map<String, dynamic>.from(await _send('POST', '/api/approvekey/challenge', body: {'kind': kind, 'target': target}) as Map);
     final show = Map<String, dynamic>.from((c['show'] as Map?) ?? const {});
     final sub = [show['amount'], show['payee']].where((x) => x != null && '$x'.isNotEmpty).join(' · ');
-    final r = await Native.approveKeySign('${c['message']}', '${show['title'] ?? 'Haan dene ke liye fingerprint'}', sub);
+    final r = await Native.approveKeySign('${c['message']}', '${show['title'] ?? 'Fingerprint to approve'}', sub);
     if (r['signature'] == null) {
       final err = '${r['error'] ?? ''}';
       throw ApiException(428, switch (err) {
-        'cancelled' => 'Fingerprint nahi diya, isliye haan nahi hui.',
-        'key_invalidated' => 'Phone mein naya fingerprint juda hai: Profile > Fingerprint se haan mein is phone ko phir se jodiye.',
-        'no_key' || 'not_supported' => 'Yeh card fingerprint se hi haan hota hai, par is phone mein chaabi nahi hai. Jude hue phone se haan kijiye.',
-        _ => 'Fingerprint se haan nahi ho payi ($err).',
+        'cancelled' => 'No fingerprint was given, so it was not approved.',
+        'key_invalidated' => 'A new fingerprint was added to the phone: link this phone again in Profile > Fingerprint approval.',
+        'no_key' || 'not_supported' => 'This card can only be approved with a fingerprint, but this phone has no key. Approve from a linked phone.',
+        _ => 'Could not approve with fingerprint ($err).',
       });
     }
     return {'challenge_id': c['challenge_id'], 'device_id': r['device_id'], 'signature': r['signature']};

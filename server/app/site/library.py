@@ -133,7 +133,7 @@ def counts() -> dict[str, int]:
     f = fields()
     return {"fields": len(f), "industries": len(T.INDUSTRIES), "goals": len(T.GOALS), "styles": len(T.STYLES),
             "briefs": len(f) * len(T.GOALS) * len(T.STYLES),
-            "section_designs": sum(len(s["variants"]) for s in T.SECTIONS.values()),
+            "section_designs": sum(len(s["variants"]) for k, s in T.SECTIONS.items() if k not in T.SCREENS),
             "motion_presets": len(T.MOTION_PRESETS), "palettes": len(T.PALETTES), "font_pairs": len(T.FONTS),
             "hero_types": len(T.HEROES), "phrases": len(phrases())}
 
@@ -173,7 +173,7 @@ def guess_goal(text: str, default: str = "") -> str:
     return best or default
 
 
-def match(text: str, top: int = 5) -> list[dict[str, Any]]:
+def match(text: str, top: int = 5, meaning: bool = True) -> list[dict[str, Any]]:
     """Her words -> best field cards [{id, en, hi, industry, score, why}] (score 0..1)."""
     by_phrase, vocab, strings = _index()
     toks = _tokens(text)
@@ -215,7 +215,7 @@ def match(text: str, top: int = 5) -> list[dict[str, Any]]:
                                 * (0.5 if close in GENERIC else 1.0) / (1 + 0.1 * (len(ids) - 1)),
                                 f"'{w}' ~ '{close}'")
     # 3. meaning (FastEmbed) when words were not enough
-    if not scores or max(scores.values()) < 0.5:
+    if meaning and (not scores or max(scores.values()) < 0.5):   # v0.683 off for the template search box
         try:
             from .. import semantic
             if semantic.available():

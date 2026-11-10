@@ -1,4 +1,4 @@
-"""v0.47 Public APIs: Hoola knows 2,100+ free / public web APIs (github.com/public-apis/public-apis, MIT) and can use them.
+"""v0.47 Public APIs: Hoola knows 3,000+ free / public web APIs (v0.749: github.com/public-apis/public-apis + publicapis.dev, both MIT) and can use them.
 
   find(q, cat, auth)        search the catalog (name, what it does, category; Hinglish words understood); APIs that
                             already worked for someone come first, with their working call pattern
@@ -32,7 +32,7 @@ from .models import PublicApiKey, PublicApiRecipe
 CATALOG = Path(__file__).with_name("catalog.json.gz")
 MAX_BYTES = 2_000_000
 MAX_OUT_CHARS = 12_000
-SOURCE = "github.com/public-apis/public-apis (MIT)"
+SOURCE = "github.com/public-apis/public-apis + github.com/marcelscruz/public-apis (publicapis.dev), both MIT"
 
 # Hinglish / everyday words -> catalog words
 SYN = {
@@ -73,7 +73,11 @@ def catalog() -> tuple[dict[str, Any], ...]:
 
 @lru_cache(maxsize=1)
 def by_id() -> dict[str, dict[str, Any]]:
-    return {r["id"]: r for r in catalog()}
+    out = {r["id"]: r for r in catalog()}
+    for r in catalog():                          # v0.749 an id upstream renamed still finds its API (saved keys, recipes)
+        for a in r.get("aka") or []:
+            out.setdefault(a, r)
+    return out
 
 
 def categories() -> list[dict[str, Any]]:
@@ -195,6 +199,8 @@ def save_key(tenant: str, api_id: str, key: str, place: str = "query", field: st
     if len(key) < 4 or len(key) > 500:
         raise ApiError("Key sahi nahi lag rahi.")
     place = "header" if place == "header" else "query"
+    if r["id"] in KEY_PLACE and not field:
+        place, field = KEY_PLACE[r["id"]]
     field = re.sub(r"[^A-Za-z0-9_\-]", "", field or "")[:60] or ("X-Api-Key" if place == "header" else "apikey")
     with session() as s:
         row = s.scalars(select(PublicApiKey).where(PublicApiKey.tenant_id == tenant, PublicApiKey.api_id == r["id"])).first()
@@ -223,13 +229,59 @@ def list_keys(tenant: str) -> list[dict[str, Any]]:
         return out
 
 
+def server_key(api_id: str) -> tuple[str, str, str] | None:
+    """v0.754: a key the OWNER put in the VPS .env for Hoola itself - used for every user, never shown in any app,
+    never sent to the model."""
+    spec = SERVER_KEYS.get(api_id)
+    if not spec:
+        return None
+    from ..config import get_settings
+    v = str(getattr(get_settings(), spec[0], "") or "").strip()
+    return (v, spec[1], spec[2]) if v else None
+
+
 def _key_for(tenant: str, api_id: str) -> tuple[str, str, str] | None:
     from ..bazar.security import vault
+    sk = server_key(api_id)
+    if sk is not None:
+        return sk
     with session() as s:
         row = s.scalars(select(PublicApiKey).where(PublicApiKey.tenant_id == tenant, PublicApiKey.api_id == api_id)).first()
         if row is None:
             return None
-        return vault().open(row.sealed), row.place, row.field
+        place, field = KEY_PLACE.get(api_id, (row.place, row.field))
+        return vault().open(row.sealed), place, field
+
+
+# Where a known API reads its key (from its own docs) - wins over what was typed in the app, so a wrong field name
+# typed on the phone can never break the call.
+KEY_PLACE = {"government-open-government-india": ("query", "api-key")}
+# api_id -> (settings field = the .env name in lower case, place, field). One server key serves every user.
+SERVER_KEYS = {"government-open-government-india": ("data_gov_in_api_key", "query", "api-key"),
+               "news-newsdata": ("newsdata_api_key", "query", "apikey"),      # newsdata.io: ?apikey= (its own 401 says so)
+               "news-gnews": ("gnews_api_key", "query", "apikey")}            # gnews.io: ?apikey= (its own 400 says so)
+
+
+# api_id -> (settings field, the API's own base). A relay base set by the owner replaces it (v0.755: NIC's data centre
+# drops connections from cloud servers, so data.gov.in can be reached through her own relay).
+SERVER_BASES = {"government-open-government-india": ("data_gov_in_base", "https://api.data.gov.in")}
+
+
+def rebase(api_id: str, url: str) -> str:
+    spec = SERVER_BASES.get(api_id)
+    if not spec:
+        return url
+    from ..config import get_settings
+    relay = str(getattr(get_settings(), spec[0], "") or "").strip().rstrip("/")
+    if relay.startswith("https://") and url.startswith(spec[1] + "/"):
+        return relay + url[len(spec[1]):]
+    return url
+
+
+def server_key_hint(api_id: str) -> str:
+    spec = SERVER_KEYS.get(api_id)
+    return (f"not set up on this Hoola server yet (the server owner adds {spec[0].upper()}=... to the VPS .env)"
+            if spec else "")
 
 
 # ---------------------------------------------------------------- calling
@@ -291,10 +343,14 @@ async def call(tenant: str, url: str, params: dict[str, Any] | None = None, api_
             hdrs[str(k)] = str(v)[:200]
     if any(SECRET_PARAM.search(k) for k, _ in parse_qsl(urlparse(url).query)) and not api_id:
         raise ApiError("Key wali API ke liye owner app mein key save karein; chat mein key kabhi nahi.")
+    if api_id:
+        url = rebase(api_id, url)
     secret_url = url
     if api_id:
         r = get(api_id)
         k = _key_for(tenant, r["id"])
+        if k is None and r["id"] in SERVER_KEYS:
+            raise ApiError(f"{r['name']} is {server_key_hint(r['id'])}. Never ask for the key in chat.")
         if k is None and r["auth"] not in ("none",):
             raise ApiError(f"{r['name']} ko key chahiye ({r['auth']}). Owner Connect > Public APIs mein '{r['name']}' "
                            f"kholkar apni key save karein ({r['link']} par free key milti hai). Chat mein key mat bhejiye.")

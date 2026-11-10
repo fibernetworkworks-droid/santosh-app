@@ -66,21 +66,21 @@ class HoolaKeepAlive {
               Row(children: [
                 const Icon(Icons.battery_alert_rounded, color: Color(0xFFFFB15C)),
                 const SizedBox(width: 8),
-                Expanded(child: Text(newKills ? 'Phone ne ${app.aName} ko band kiya' : '$brand phone: ek baar 1 minute', style: display(20))),
+                Expanded(child: Text(newKills ? 'Phone ne ${app.aName} stopped' : '$brand phone: once, 1 minute', style: display(20))),
               ]),
               const SizedBox(height: 8),
               Text(
                   newKills
                       ? (probs.firstWhere((e) => e['code'] == 'oem_kills' || e['code'] == 'recents_clear')['title'] as String? ?? '') +
-                          '. Isliye reminder / jawab der se ya bilkul nahi aate.'
-                      : '$brand phones battery bachane ke liye apps ko background mein band kar dete hain. 3-4 settings ek baar kar dijiye, '
-                          'phir ${app.aName} ke reminder, alarm aur jawab time par aayenge.',
+                          '. That is why reminders / replies come late or not at all.'
+                      : '$brand phones stop apps in the background to save battery. Do 3-4 settings once, '
+                          'then ${app.aName} reminders, alarms and replies will come on time.',
                   style: const TextStyle(color: C.muted, fontSize: 13.5, height: 1.4)),
               const SizedBox(height: 14),
               Row(children: [
-                TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Baad mein')),
+                TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Later')),
                 const Spacer(),
-                FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Theek karo')),
+                FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Fix')),
               ]),
             ]),
           ),
@@ -94,7 +94,7 @@ class HoolaKeepAlive {
 
   static String _brandName(Map<String, dynamic> r) {
     final b = '${(r['facts'] as Map?)?['brand'] ?? r['vendor'] ?? ''}';
-    return b.isEmpty ? 'Aapka' : '${b[0].toUpperCase()}${b.substring(1)}';
+    return b.isEmpty ? 'Your' : '${b[0].toUpperCase()}${b.substring(1)}';
   }
 
   static Future<void> runAction(String action) async {
@@ -197,16 +197,16 @@ class _KeepAliveScreenState extends State<KeepAliveScreen> with WidgetsBindingOb
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text(
                       r == null
-                          ? (_busy ? 'Jaanch raha hoon…' : 'Jaanch nahi paye (server se judiye)')
+                          ? (_busy ? 'Checking…' : 'Could not check (connect to the server)')
                           : probs.isEmpty
-                              ? 'Sab theek lag raha hai'
-                              : '${probs.length} cheez theek karni hai',
+                              ? 'Everything looks fine'
+                              : '${probs.length} things to fix',
                       style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
                   if (r != null)
                     Text(
                         kills > 0
-                            ? 'Pichhle 7 din mein phone ne ${widget.app.aName} ko $kills baar background mein band kiya.'
-                            : 'Pichhle 7 din mein phone ne ${widget.app.aName} ko band nahi kiya.',
+                            ? 'In the last 7 days the phone stopped ${widget.app.aName} in the background $kills times.'
+                            : 'In the last 7 days the phone did not stop ${widget.app.aName} .',
                         style: const TextStyle(color: C.muted, fontSize: 12.5)),
                 ]),
               ),
@@ -226,14 +226,14 @@ class _KeepAliveScreenState extends State<KeepAliveScreen> with WidgetsBindingOb
                   ]),
                 ),
                 if ('${p['action']}' != 'none' && '${p['action']}' != 'recents')
-                  TextButton(onPressed: () => HoolaKeepAlive.runAction('${p['action']}'), child: const Text('Kholo')),
+                  TextButton(onPressed: () => HoolaKeepAlive.runAction('${p['action']}'), child: const Text('Open')),
               ]),
             ),
           ],
           const SizedBox(height: 18),
-          Text(brand.isEmpty ? 'Ek baar yeh kar dijiye' : '$brand phone par ek baar yeh kar dijiye', style: display(18)),
+          Text(brand.isEmpty ? 'Do this once' : 'Do this once on a $brand phone', style: display(18)),
           const SizedBox(height: 4),
-          const Text('Har line ka "Kholo" sahi settings page kholta hai. Wahan switch aap khud ON kijiye, phir wapas aaiye.',
+          const Text('"Open" on each line opens the right settings page. Turn the switch ON there yourself, then come back.',
               style: TextStyle(color: C.muted, fontSize: 12.5)),
           const SizedBox(height: 8),
           for (final (i, it) in items.indexed)
@@ -250,7 +250,7 @@ class _KeepAliveScreenState extends State<KeepAliveScreen> with WidgetsBindingOb
           OutlinedButton.icon(
             onPressed: _busy ? null : _load,
             icon: const Icon(Icons.refresh_rounded),
-            label: const Text('Dobara jaanchiye'),
+            label: const Text('Check again'),
           ),
         ]),
       ),
@@ -288,13 +288,13 @@ class _ChecklistRow extends StatelessWidget {
                 child: TextButton(
                   style: TextButton.styleFrom(padding: EdgeInsets.zero, visualDensity: VisualDensity.compact),
                   onPressed: () => onDone(!done),
-                  child: Text(done ? 'Ho gaya ✓ (wapas lo)' : 'Ho gaya'),
+                  child: Text(done ? 'Done ✓ (go back)' : 'Done'),
                 ),
               ),
           ]),
         ),
         if (action != 'recents' && action != 'none')
-          TextButton(onPressed: () => HoolaKeepAlive.runAction(action), child: const Text('Kholo')),
+          TextButton(onPressed: () => HoolaKeepAlive.runAction(action), child: const Text('Open')),
       ]),
     );
   }

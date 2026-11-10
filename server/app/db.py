@@ -38,6 +38,16 @@ class Conversation(Base):
     last_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     # v0.250 incognito chat: Hoola reads her memory but writes NOTHING from it (no facts, index, diary, page, recall)
     incognito: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    # v0.612 YAAD SE: she tapped "is chat ko yaad se hatao" (Grok's remove-from-memory) - the chat itself stays in
+    # her list, but its old exchanges are never recalled into another chat again
+    no_recall: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    # v0.646 ALAG CALL: a voice call's own record ("call"), kept out of the chat list; origin_conv = the chat she called
+    # from (shares its memory scope), call_id = the live call, call_summary = the receipt line for the Calls list
+    kind: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    origin_conv: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    call_id: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    call_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    call_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
 
 class Message(Base):
@@ -198,6 +208,7 @@ class Profile(Base):
     # v0.250 her memory switches (None = on): Hoola picks up facts by itself / uses her past chats (search, page)
     memory_auto: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     memory_recall: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    memory_sensitive: Mapped[bool | None] = mapped_column(Boolean, nullable=True)   # v0.609 opt-in, off by default
 
 
 class Reminder(Base):
@@ -211,6 +222,8 @@ class Reminder(Base):
     status: Mapped[str] = mapped_column(String(16), default="active")  # active/done/cancelled
     fired_count: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    # v0.667 a monthly repeat remembers the day it was set for (31 Jan -> 28 Feb -> 31 Mar, never the 28th for ever)
+    anchor_day: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
 
 class Routine(Base):
@@ -228,6 +241,7 @@ class Routine(Base):
     last_run: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     last_result: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    anchor_day: Mapped[int | None] = mapped_column(Integer, nullable=True)   # v0.667 see Reminder.anchor_day
 
 
 class MemoryFact(Base):
@@ -680,6 +694,10 @@ class Artifact(Base):
     deleted: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    # v0.725 PAGE CARD: the card's live step + clock (nullable: old rows have none)
+    stage: Mapped[str | None] = mapped_column(String(20), nullable=True, default="")      # writing | checking | done | stopped | failed
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    build_s: Mapped[int | None] = mapped_column(Integer, nullable=True)                 # seconds the last build took
 
 
 class ArtifactVersion(Base):
@@ -691,6 +709,10 @@ class ArtifactVersion(Base):
     html: Mapped[str] = mapped_column(Text)
     note: Mapped[str] = mapped_column(String(300), default="")         # what was asked for this version
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    # parity Phase 6 (artifacts the Claude way): what the chat model wrote itself - html | markdown | svg | mermaid -
+    # and its own text (the page served is built from it). Nullable: builder versions have neither.
+    kind: Mapped[str | None] = mapped_column(String(12), nullable=True)
+    source: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
 class ArtifactState(Base):
@@ -744,6 +766,8 @@ def init_db(url: str | None = None):
     from .photos import models as _photos_models  # noqa: F401
     from .notebook import models as _notebook_models  # noqa: F401
     from .youtube import models as _youtube_models  # noqa: F401
+    from .kaan import models as _kaan_models  # noqa: F401  v0.589 KAAN PACK (transcripts)
+    from . import bahar as _bahar  # noqa: F401  v0.616 BAHAR SE BAAT (outside channels)
     from .appcheck import models as _appcheck_models  # noqa: F401
     from .avatar import models as _avatar_models  # noqa: F401
     from .voiceid import models as _voiceid_models  # noqa: F401
@@ -772,6 +796,10 @@ def init_db(url: str | None = None):
     from .site import shop as _site_shop  # noqa: F401  (v0.351 DUKAAN products + orders)
     from .site import blog as _site_blog  # noqa: F401  (v0.366 BLOG posts on her websites)
     from .site import proof as _site_proof  # noqa: F401  (v0.376 PROOF 100-page runs + rival crawls)
+    from .site import cms as _site_cms  # noqa: F401  (v0.538 her team: members, drafts, revisions)
+    from .site import inspire as _site_inspire  # noqa: F401  (v0.567 her sealed Figma token)
+    from .site import ops as _site_ops  # noqa: F401  (v0.564 visitors' errors + real-visit speed per day)
+    from .site import catalog as _site_catalog  # noqa: F401  (v0.538 imported lists: products / doctors / properties)
     from .site import webpush as _site_webpush  # noqa: F401  (v0.459 browser notifications, visitor's yes)
     from . import screen as _screen  # noqa: F401  (v0.127 Hoola Screen revoke versions)
     from . import convs as _convs  # noqa: F401  (v0.158 the chat she is in, chat health reports)
@@ -819,6 +847,7 @@ def init_db(url: str | None = None):
     from .social import desk as _social_desk  # noqa: F401  (v0.353 Social Media Manager desk)
     from .ads import gads as _gads  # noqa: F401  (v0.401 YouTube ads, Google Ads API)
     from .ads import metaads as _metaads  # noqa: F401  (v0.417 Facebook / Instagram ads, Meta Marketing API)
+    from .seo import intel as _seo_intel  # noqa: F401  (v0.541 SEO INTEL: ranks, AI visibility, Maps grid, DataForSEO)
     from .social import growth as _social_growth  # noqa: F401  (v0.383 Social Media Manager growth)
     from .social import inbox as _social_inbox  # noqa: F401  (v0.368 Social Media Manager inbox)
     from .thok import service as _thok  # noqa: F401
@@ -914,6 +943,7 @@ def init_db(url: str | None = None):
     from . import turn_inbox as _turn_inbox  # noqa: F401  (v0.192.0 the durable accepted-message inbox - registered
         # HERE on day one, the v0.190.1 lesson: a lazily-imported model never reaches create_all() and the live DB
         # stays without its table; turn_inbox.ensure_table() self-heals old DBs on the first accept/sweep too)
+    from . import reqdump as _reqdump  # noqa: F401  (v0.732 PARITY Phase 0 the request dump - registered here AND self-healing)
     from . import home as _home  # noqa: F401  (v0.479.0 HOOLA SMART HOME the home_audit table - registered
         # HERE on day one AND self-healing via home.ensure_table(), same lesson)
     from .agent import eventlog as _harness_eventlog  # noqa: F401  (v0.193.0 HARNESS-3 the event-sourced session
@@ -943,6 +973,7 @@ def init_db(url: str | None = None):
     from .gamedesk import liveops as _gameliveops  # noqa: F401  (v0.428 live ops: crash groups)
     from .gamedesk import bigstudio as _gamebig  # noqa: F401  (v0.433 big-studio mode: Unity / Unreal projects)
     from .gamedesk import arena as _gamearena  # noqa: F401  (v0.447 Game Arena: runs, items, duels)
+    from .gamedesk import scene as _gamescene  # noqa: F401  (v0.456 scenes as checked data)
     from .pgdb import service as _pgdb  # noqa: F401  (v0.147 Hoola Postgres)
     from .employee import models as _employee_models  # noqa: F401
     from .employee import network as _employee_net  # noqa: F401
@@ -959,6 +990,9 @@ def init_db(url: str | None = None):
         # store / labour / books / customer / quality / meetings tables - registered HERE on day one,
         # the v0.190.1 lesson: a lazily-imported model never reaches create_all() and the live DB
         # stays without its table)
+    from .leads import models as _leads_models  # noqa: F401  (v0.540 LEADS NEEV: lead_runs / lead_contacts /
+        # lead_outreach / lead_cap_days / lead_list_refs - registered HERE on day one, same lesson, AND
+        # self-healing via leads.models.ensure_tables())
     Base.metadata.create_all(_engine)
     _add_missing_columns(_engine)
     from .bazar.db import Base as _BazarBase, init_tables as _bazar_tables
@@ -989,6 +1023,13 @@ def _col_default(col):
     if isinstance(val, (int, float, str)):
         return val
     return None
+
+
+def add_missing_columns_for(engine, *tables) -> None:
+    """v0.551 the missing-column check for ONE module's own tables. The whole-database form inspects ~900 tables, and a
+    self-heal that ran it on a hot path (a shop checkout) made the first minutes of every worker crawl."""
+    import types
+    _add_missing_columns(engine, types.SimpleNamespace(sorted_tables=list(tables)))
 
 
 def _add_missing_columns(engine, metadata=None) -> None:

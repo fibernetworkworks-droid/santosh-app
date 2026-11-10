@@ -1,6 +1,7 @@
 ---
 name: byox-regex-engine
 description: Build a regex engine: Thompson NFA, O(n*m) matching
+when_to_use: regex engine, regular expression matcher from scratch
 ---
 GOAL: a regex engine that matches . * + ? [] ^ $ | () without catastrophic backtracking.
 

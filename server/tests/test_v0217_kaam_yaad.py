@@ -85,8 +85,12 @@ def test_news_pending_capped_clipped_and_scrubbed(env):
     assert len(news[0]) <= 240 and all(len(t) <= 240 for t in news)
     yaad.note_call_followup(conv, "default", "order id 1234567890 ho gaya")
     yaad.note_call_followup(conv, "default", "ek aur")
-    news = _news_pending(conv, 720, skip_newest=False)        # the digit run must never ride the prompt raw
-    assert all("1234567890" not in t for t in news) and any("######" in t for t in news)
+    news = _news_pending(conv, 720, skip_newest=False)
+    # v0.661: an ORDER number is her work and stays (she must be able to quote it); a card number never rides raw
+    assert any("1234567890" in t for t in news)
+    yaad.note_call_followup(conv, "default", "card 4111 1111 1111 1111 se payment")
+    news = _news_pending(conv, 720, skip_newest=False)
+    assert all("4111 1111 1111 1111" not in t for t in news) and any("######" in t for t in news)
 
 
 def test_voice_block_leads_with_kaam_ka_haal(env):
@@ -115,7 +119,7 @@ def test_brief_carries_the_work_discipline():
     assert "never ask again what is already settled" in brief
     assert "bring it up ONCE yourself at a natural pause" in brief
     assert "ONE short clarifying line" in brief and "standing silent or waiting helpdesk-style is failure" in brief
-    assert "par aapne yeh maanga tha" in brief                 # the result-check, in his own mouth
+    assert "but you had asked for that" in brief                 # the result-check, in his own mouth
 
 
 def test_run_wiring_pin_news_skip_newest():
@@ -126,13 +130,13 @@ def test_run_wiring_pin_news_skip_newest():
 
 def test_greeting_followup_points_at_kaam_ka_haal():
     g = " ".join(voice.greeting("default", followup="sheet ban gayi thi").split())
-    assert "KAAM KA HAAL" in g and "EK-EK karke" in g          # the rest of the pile gets a path to her ears
+    assert "KAAM KA HAAL" in g and "one by one" in g          # the rest of the pile gets a path to her ears
 
 
 def test_greeting_fresh_still_carries_the_kaam_line():
     g = " ".join(voice.greeting("default").split())
-    assert "if HOOLA KI YAAD shows a kaam still open" in g     # v0.214 continuity wording intact
+    assert "if HOOLA KI YAAD shows a job still open" in g     # v0.214 continuity wording intact
 
 
 def test_version():
-    assert APP_VERSION == "0.530.0"
+    assert APP_VERSION == "0.758.0"

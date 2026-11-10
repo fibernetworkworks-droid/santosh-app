@@ -80,7 +80,7 @@ def test_goal_plan_keeps_the_turn_going_until_every_step_is_done(gz, monkeypatch
     out = asyncio.run(run_turn(conv, "Report banao end to end", tenant_id="default"))
     assert "Report taiyaar" in out
     # the goal nudge really went back to the brain: it saw the baaki-steps message
-    assert any("baaki hain" in (b.get("text") or "") for m in brain.seen for msg in m["messages"]
+    assert any("steps are still left" in (b.get("text") or "") for m in brain.seen for msg in m["messages"]
                for b in (msg["content"] if isinstance(msg["content"], list) else []) if isinstance(b, dict))
     assert len(brain.seen) == 8                       # the text stop did NOT end the turn (+1: v0.443 claim check)
     from app.db import Event, session
@@ -144,10 +144,10 @@ def test_failed_path_reads_docs_and_says_doosra_tareeka_breaker_rescues_once(gz,
              if isinstance(b, dict) and b.get("type") == "text" and "replan" in (b.get("text") or "")]
     assert len(notes) == 1                            # appended once to the history (snapshots repeat it)
     # she saw the doosra-tareeka line exactly once (45 s throttle in one turn)
-    progress = [e for e in _events(conv, "message") if "doosra tareeka" in (e.get("text") or "")]
+    progress = [e for e in _events(conv, "message") if "trying another way" in (e.get("text") or "")]
     assert len(progress) == 1
     # the doc text was handed to the brain (marked as data, not instructions) — inside the failing tool's result
-    assert any("Docs padh liye" in str(b) for m in brain.seen for msg in m["messages"]
+    assert any("Docs read" in str(b) for m in brain.seen for msg in m["messages"]
                for b in (msg["content"] if isinstance(msg["content"], list) else []))
     # breaker accounting: one rescue, no hard stop
     from app.agent.breaker import STATS
@@ -190,10 +190,10 @@ def test_steps_running_out_ends_honestly_and_one_continuation_finishes(gz, monke
         return out
 
     out = asyncio.run(go())
-    assert "steps ho gaye" in out and "background" in out          # honest, not the stale mid-task text
+    assert "steps done" in out and "background" in out          # honest, not the stale mid-task text
     # _steps records partial (TaskRun); once the continuation is scheduled the call hears 'continuing'
     assert LAST_OUTCOME[conv]["outcome"] in ("partial", "continuing")
-    assert conts and "baaki steps" in conts[0][1]
+    assert conts and "steps left" in conts[0][1]
     from sqlalchemy import select
     from app.db import Event, session
     with session() as s:
@@ -237,7 +237,7 @@ def test_no_continuation_when_blocked_on_her_after_rokiye_or_past_rounds(gz, mon
     assert goal_mod.maybe_continue(conv2, "default", "owner") is False
     v2 = goal_mod.show("default", v["id"])
     # v0.223: the budget ran out = the job stops and ASKS ("Aage badhaun?"), it is no longer thrown away as failed
-    assert v2["status"] == "blocked" and v2["hold"] == "limit" and "Aage badhaun" in v2["reason"]
+    assert v2["status"] == "blocked" and v2["hold"] == "limit" and "Shall I carry on" in v2["reason"]
 
 
 def test_max_tokens_cut_continues_exactly_where_it_stopped(gz, monkeypatch):  # noqa: F811
@@ -245,11 +245,13 @@ def test_max_tokens_cut_continues_exactly_where_it_stopped(gz, monkeypatch):  # 
     brain = _set_brain(monkeypatch, FakeBrain([
         ([txt("Shuru kar raha hoon, pehle data —")], "max_tokens"),
         ([txt("Shuru kar raha hoon, pehle data — phir draft, phir check.")], "end_turn"),
+        # v0.727 that line is a promise with no tool: the guard asks once more, the job's honest answer follows
+        ([txt("Data, draft, phir check - teeno ho gaye.")], "end_turn"),
     ]))
     from app.agent.santosh import run_turn
     out = asyncio.run(run_turn(conv, "kaam shuru karo", tenant_id="default"))
     assert "phir check" in out
-    nudge_seen = any("cut gaya" in (b.get("text") or "") for m in brain.seen
+    nudge_seen = any("cut off in the middle" in (b.get("text") or "") for m in brain.seen
                      for msg in m["messages"] for b in (msg["content"] if isinstance(msg["content"], list) else [])
                      if isinstance(b, dict))
     assert nudge_seen
@@ -343,21 +345,21 @@ def test_late_result_tells_the_truth_never_a_fake_done(gz, monkeypatch):  # noqa
     santosh.LAST_OUTCOME[conv] = {"outcome": "partial", "left": "2/5 steps ho gaye", "goal": "Report banao"}
     c._late_result(_done_job("2/5 ho gaya"), "report banao")
     note = got[-1][1]
-    assert "abhi kaam chal raha hai" in note and "khatam hote hi bataunga" in note
+    assert "still running" in note and "as soon as it is done" in note
 
     santosh.LAST_OUTCOME[conv] = {"outcome": "stuck", "left": "OTP nahi mila", "goal": "Report banao"}
     c._late_result(_done_job("atka"), "report banao")
     note = got[-1][1]
-    assert "atka hai" in note and "'Ho gaya' bilkul mat kehna" in note
+    assert "is stuck" in note and "Do NOT say it is done" in note
 
     santosh.LAST_OUTCOME[conv] = {"outcome": "done", "left": "", "goal": "Report banao"}
     c._late_result(_done_job("poora ho gaya"), "report banao")
     note = got[-1][1]
-    assert "ho gaya" in note
+    assert "is done" in note
 
     # the exception branch is kept
     c._late_result(_failed_job(RuntimeError("x")), "report banao")
-    assert "poora nahi ho paya" in got[-1][1]
+    assert "could not be completed" in got[-1][1]
 
 
 def test_goal_events_reach_the_call_via_kaamwatch(gz, monkeypatch):  # noqa: F811
@@ -368,7 +370,7 @@ def test_goal_events_reach_the_call_via_kaamwatch(gz, monkeypatch):  # noqa: F81
     monkeypatch.setattr(voice, "inject", lambda c, note: got.append((c, note)) or 1)
     kaamwatch.observe(conv, "goal", {"id": "gr9", "title": "Report banao", "status": "working",
                                     "pct": 33, "stage": "draft likho"})
-    assert got and "Lamba kaam" in got[-1][1] and "Report banao" in got[-1][1]
+    assert got and "Long job" in got[-1][1] and "Report banao" in got[-1][1]
     # progress ticks are quiet (told only on real change), a blocked goal is loud
     kaamwatch.observe(conv, "goal", {"id": "gr9", "title": "Report banao", "status": "blocked",
                                     "reason": "uska jawab chahiye"})

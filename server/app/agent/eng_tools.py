@@ -73,10 +73,10 @@ async def cad_part(ctx: Ctx, action, brief="", project_id="", words="", **_):
             if action == "new":
                 p = eng.start(ctx.tenant_id, ctx.conversation_id, str(brief or ""))
                 return {"project_id": p["id"], "status": p["status"],
-                        "say": "Part ban raha hai (lagbhag ek minute). Taiyaar hote hi chat mein line aayegi; files CAD Desk par."}
+                        "say": "The part is being made (about a minute). A line will appear in the chat when it is ready; files are on the CAD Desk."}
             if action == "change":
                 p = eng.change(ctx.tenant_id, str(project_id or ""), str(words or ""), ctx.conversation_id)
-                return {"project_id": p["id"], "status": p["status"], "say": "Naya version ban raha hai."}
+                return {"project_id": p["id"], "status": p["status"], "say": "A new version is being made."}
             if action == "get":
                 return eng.get(ctx.tenant_id, str(project_id or ""))
             if action == "list":

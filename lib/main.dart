@@ -92,7 +92,7 @@ class _SantoshAppState extends State<SantoshApp> with WidgetsBindingObserver {
     share = {...share, 'files': files};
     if (share['assist'] is Map && (share['text'] as String? ?? '').trim().isEmpty) {
       // v0.62 long-press home: the screen the owner was on arrives as pending files; she adds what she wants
-      share['text'] = files.isEmpty ? '' : 'Is screen ke baare mein madad karo: ';
+      share['text'] = files.isEmpty ? '' : 'Help me with this screen: ';
     }
     final text = (share['text'] as String? ?? '').trim();
     if (files.isEmpty && text.isEmpty) return;
@@ -121,6 +121,10 @@ class _SantoshAppState extends State<SantoshApp> with WidgetsBindingObserver {
     _linkSub = _linkCh.receiveBroadcastStream().listen((token) async {
       final t = token?.toString() ?? '';
       if (t.isEmpty) return;
+      if (t.startsWith('conv:')) {   // v0.648 a call record's notification: open that call (the app still reopens on her chat)
+        unawaited(widget.app.openChat(t.substring(5), remember: false));
+        return;
+      }
       if (t.startsWith('wake:')) {
         widget.app.wake(locked: t == 'wake:locked');
         return;
@@ -132,7 +136,7 @@ class _SantoshAppState extends State<SantoshApp> with WidgetsBindingObserver {
           final ctx = navKey.currentContext;
           if (ctx != null && u['ok'] != true) {
             ScaffoldMessenger.maybeOf(ctx)?.showSnackBar(SnackBar(content: Text(
-                u['status'] == 3 ? 'Update roka gaya.' : 'Update install nahi hua${'${u['message'] ?? ''}'.isEmpty ? '' : ': ${u['message']}'}')));
+                u['status'] == 3 ? 'Update stopped.' : 'The update did not install${'${u['message'] ?? ''}'.isEmpty ? '' : ': ${u['message']}'}')));
           }
         } catch (_) {}
         return;
@@ -274,20 +278,20 @@ class _HomeState extends State<Home> {
     showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Hoola pichhli baar band ho gaya tha'),
+        title: const Text('Hoola closed last time'),
         content: Text(inCall
-            ? 'Call ke dauraan app band ho gaya. Wajah server ko bhej di hai. Agli calls ab "surakshit mode" mein chalengi '
-                '(thodi kam samajhdaar shor-pehchaan, par app band nahi hoga) jab tak naya update na aaye.'
-            : 'Wajah server ko bhej di hai, taaki theek ho sake.'),
+            ? 'The app closed during a call. The reason has been sent to the server. The next calls will run in "safe mode" '
+                '(slightly less accurate noise detection, but the app will not close) until a new update comes.'
+            : 'The reason has been sent to the server so it can be fixed.'),
         actions: [
           TextButton(
             onPressed: () {
               Clipboard.setData(ClipboardData(text: '${r['kind']}\n${r['text']}'));
               Navigator.pop(ctx);
             },
-            child: const Text('Report copy karo'),
+            child: const Text('Copy report'),
           ),
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Theek hai')),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK')),
         ],
       ),
     );
@@ -364,7 +368,7 @@ class _HomeState extends State<Home> {
                 child: Row(children: [
                   const Icon(Icons.lock_outline_rounded, color: C.teal, size: 18),
                   const SizedBox(width: 6),
-                  const Expanded(child: Text('Phone locked · sirf Baat', style: TextStyle(color: C.teal, fontWeight: FontWeight.w700, fontSize: 13))),
+                  const Expanded(child: Text('Phone locked · Talk only', style: TextStyle(color: C.teal, fontWeight: FontWeight.w700, fontSize: 13))),
                   TextButton(
                     onPressed: () async {
                       if (await Native.requestUnlock()) {
@@ -372,7 +376,7 @@ class _HomeState extends State<Home> {
                         widget.app.notifyChange();
                       }
                     },
-                    child: const Text('Unlock karke poora app'),
+                    child: const Text('Unlock for the full app'),
                   ),
                 ]),
               ),
@@ -455,7 +459,7 @@ class _NavBar extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 4),
               opacity: .1,
               child: Row(children: [
-                _item(0, Icons.home_outlined, Icons.home_rounded, 'Aaj'),
+                _item(0, Icons.home_outlined, Icons.home_rounded, 'Today'),
                 _item(1, Icons.chat_bubble_outline_rounded, Icons.chat_bubble_rounded, 'Chat'),
                 const Expanded(child: SizedBox()),
                 _item(3, Icons.power_outlined, Icons.power_rounded, 'Connect'),
@@ -466,7 +470,7 @@ class _NavBar extends StatelessWidget {
               top: -4,
               child: Semantics(
                 button: true,
-                label: 'Baat — live voice',
+                label: 'Talk — live voice',
                 child: Press(
                   onTap: () => onTap(2),
                   child: Container(

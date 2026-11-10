@@ -15,7 +15,7 @@ What this suite pins:
 (6) THE REST CLIENT: states / state_one / switch against a fake HA (httpx.MockTransport) - domain-native
     services (cover open/close, scene turn_on, button press), the settle re-read, honest failure lines.
 (7) AUDIT: every attempt (success or refusal) lands in home_audit; recent_audit reads it back.
-(8) VERSION: APP_VERSION 0.479.0, pubspec 0.530.0+553.
+(8) VERSION: APP_VERSION 0.479.0, pubspec 0.542.0+565.
 """
 import asyncio
 
@@ -360,10 +360,10 @@ def test_audit_trail_readback(fakeha):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.530.0"
+    assert APP_VERSION == "0.758.0"
 
 
 def test_pubspec_version():
     import pathlib
     root = pathlib.Path(__file__).resolve().parents[2]
-    assert "0.530.0+553" in (root / "pubspec.yaml").read_text()
+    assert "0.758.0+757" in (root / "pubspec.yaml").read_text()

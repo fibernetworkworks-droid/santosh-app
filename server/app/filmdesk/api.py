@@ -223,4 +223,102 @@ def make_router(require_key, current_tenant) -> APIRouter:
         b = _b(body)
         return await run(S.decide, tenant, card_id, bool(b.get("yes")), _s(b.get("hash")), _s(b.get("reason")), True)
 
+    # ---- producer layers (production / sales / delivery / coverage / previs / royalty): one view and one op route each
+    def _only(b: dict, keys) -> dict:
+        return {k: b[k] for k in keys if k in b}
+
+    @r.get("/projects/{ref}/coverage")
+    async def coverage(ref: str, tenant: str = Depends(current_tenant)):
+        return await run(S.coverage_view, tenant, ref)
+
+    @r.get("/projects/{ref}/previs")
+    async def previs(ref: str, tenant: str = Depends(current_tenant)):
+        return await run(S.previs_view, tenant, ref)
+
+    @r.get("/projects/{ref}/schedule")
+    async def schedule_get(ref: str, what: str = "schedule", day: int | None = None, tenant: str = Depends(current_tenant)):
+        if what not in ("schedule", "dood", "plan_budget", "callsheet"):
+            raise HTTPException(400, "what: schedule | dood | plan_budget | callsheet")
+        return await run(S.plan_view, tenant, ref, what, day)
+
+    @r.post("/projects/{ref}/schedule")
+    async def schedule_make(ref: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        b = _b(body)
+        keys = ("start_date", "day_hours", "setup_hours", "hours_per_screen_minute", "days_off", "blocked_dates", "unavailable",
+                "call_time")
+        return await run(S.plan_schedule, tenant, ref, "owner", **_only(b, keys))
+
+    @r.post("/projects/{ref}/callsheet")
+    async def callsheet_make(ref: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        b = _b(body)
+        return await run(lambda: S.plan_callsheet(tenant, ref, b.get("day"), "owner", "",
+                                                  **_only(b, ("call_time", "cast_calls", "location_address", "contacts", "notes"))))
+
+    @r.post("/projects/{ref}/budget-plan")
+    async def budget_plan(ref: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        b = _b(body)
+        return await run(S.plan_budget, tenant, ref, b.get("rates"), b.get("contingency_pct"), "owner")
+
+    @r.get("/projects/{ref}/festivals")
+    async def festivals(ref: str, tenant: str = Depends(current_tenant)):
+        return await run(S.festival_view, tenant, ref)
+
+    @r.post("/projects/{ref}/festivals")
+    async def festival_do(ref: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        b = _b(body)
+        keys = ("entry", "name", "country", "category", "deadline", "event_date", "fee_inr", "requires", "status", "submitted_on",
+                "screened_on", "notes", "key", "done")
+        return await run(S.festival_op, tenant, ref, _s(b.get("op")) or "add", "owner", **_only(b, keys))
+
+    @r.get("/projects/{ref}/windows")
+    async def windows(ref: str, tenant: str = Depends(current_tenant)):
+        return await run(S.windows_view, tenant, ref)
+
+    @r.post("/projects/{ref}/windows")
+    async def window_do(ref: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        b = _b(body)
+        keys = ("entry", "medium", "territory", "start", "end", "exclusive", "licensee", "fee_inr", "notes", "holdbacks")
+        return await run(S.window_op, tenant, ref, _s(b.get("op")) or "add", "owner", **_only(b, keys))
+
+    @r.get("/projects/{ref}/waterfall")
+    async def waterfall_get(ref: str, tenant: str = Depends(current_tenant)):
+        return await run(S.waterfall_view, tenant, ref)
+
+    @r.post("/projects/{ref}/waterfall")
+    async def waterfall_do(ref: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        b = _b(body)
+        return await run(S.waterfall_run, tenant, ref, b.get("gross_inr"), b.get("deductions"), b.get("investors"), b.get("shares"),
+                         "owner")
+
+    @r.get("/projects/{ref}/deliverables")
+    async def deliverables(ref: str, tenant: str = Depends(current_tenant)):
+        return await run(S.deliverables_view, tenant, ref)
+
+    @r.post("/projects/{ref}/deliverables")
+    async def deliverable_do(ref: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        b = _b(body)
+        return await run(S.deliverable_op, tenant, ref, _s(b.get("op")) or "add", "owner",
+                         **_only(b, ("entry", "label", "buyer", "due", "status", "notes", "kind")))
+
+    @r.get("/projects/{ref}/localisation")
+    async def localisation(ref: str, tenant: str = Depends(current_tenant)):
+        return await run(S.localisation_view, tenant, ref)
+
+    @r.post("/projects/{ref}/localisation")
+    async def localise_do(ref: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        b = _b(body)
+        keys = ("entry", "language", "kind", "dub_mode", "voice_person", "vendor", "due", "status", "qa_rounds", "notes")
+        return await run(S.localise_op, tenant, ref, _s(b.get("op")) or "add", "owner", **_only(b, keys))
+
+    @r.get("/projects/{ref}/royalties")
+    async def royalties(ref: str, tenant: str = Depends(current_tenant)):
+        return await run(S.royalties_view, tenant, ref)
+
+    @r.post("/projects/{ref}/royalties")
+    async def royalty_do(ref: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        b = _b(body)
+        keys = ("entry", "party", "role", "guild", "basis", "rate", "threshold_inr", "cap_inr", "floor_inr", "applies_to", "start",
+                "end", "source", "notes", "medium", "amount_inr", "net_inr", "units", "period", "payer")
+        return await run(S.royalty_op, tenant, ref, _s(b.get("op")) or "add", "owner", **_only(b, keys))
+
     return r

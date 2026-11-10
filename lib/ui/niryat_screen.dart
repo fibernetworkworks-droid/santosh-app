@@ -36,7 +36,7 @@ Future<Map<String, String>?> _form(BuildContext context, String title, List<(Str
           for (final (k, label) in fields) TextField(controller: c[k], maxLines: k == 'text' ? 4 : 1, decoration: InputDecoration(labelText: label)),
         ]),
       ),
-      actions: [TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Aage'))],
+      actions: [TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Continue'))],
     ),
   );
   if (ok != true) return null;
@@ -99,27 +99,27 @@ class _NiryatScreenState extends State<NiryatScreen> {
   Future<void> _settings() async {
     final st = Map<String, dynamic>.from((_day?['settings'] as Map?) ?? const {});
     final f = await _form(context, 'Firm', const [
-      ('firm', 'Firm ka naam'),
+      ('firm', 'Firm name'),
       ('address', 'Address'),
       ('iec', 'IEC'),
       ('gstin', 'GSTIN'),
       ('ad_bank', 'AD bank + AD code'),
-      ('lut_no', 'Is saal ka LUT number'),
+      ('lut_no', 'This year\'s LUT number'),
       ('rcmc', 'RCMC (council + number)'),
-      ('rcmc_valid_to', 'RCMC kab tak'),
+      ('rcmc_valid_to', 'RCMC valid until'),
     ], init: {for (final k in ['firm', 'address', 'iec', 'gstin', 'ad_bank', 'lut_no', 'rcmc', 'rcmc_valid_to']) k: _s(st[k])});
     if (f == null) return;
     await _run(() => widget.app.api!.niryatSettings(f));
   }
 
   Future<void> _newBuyer() async {
-    final f = await _form(context, 'Naya buyer', const [
-      ('name', 'Naam'),
-      ('country', 'Desh (jaise UAE, US, GB)'),
+    final f = await _form(context, 'New buyer', const [
+      ('name', 'Name'),
+      ('country', 'Country (e.g. UAE, US, GB)'),
       ('currency', 'Currency (USD / EUR / AED...)'),
       ('pay_terms', 'Payment: advance / lc / dp / da / open'),
       ('email', 'Email'),
-      ('phone', 'WhatsApp (country code ke saath)'),
+      ('phone', 'WhatsApp (with country code)'),
       ('address', 'Address'),
     ]);
     if (f == null) return;
@@ -127,13 +127,13 @@ class _NiryatScreenState extends State<NiryatScreen> {
   }
 
   Future<void> _newPi() async {
-    final f = await _form(context, 'Naya PI', const [
+    final f = await _form(context, 'New PI', const [
       ('buyer', 'Buyer'),
-      ('text', 'Maal: naam maatra @ rate HS code (har line alag)'),
+      ('text', 'Goods: name qty @ rate HS code (one per line)'),
       ('incoterm', 'Incoterm (FOB / CIF / CFR / EXW / DAP)'),
-      ('place', 'Port / jagah'),
+      ('place', 'Port / place'),
       ('fx', 'Exchange rate (Rs per unit)'),
-      ('freight', 'Freight (CIF / CFR ho to)'),
+      ('freight', 'Freight (if CIF / CFR)'),
       ('port_loading', 'Port of loading'),
       ('port_discharge', 'Port of discharge'),
     ], init: const {'incoterm': 'FOB'});
@@ -159,7 +159,7 @@ class _NiryatScreenState extends State<NiryatScreen> {
           onRefresh: _load,
           child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 90), children: [
             Wrap(spacing: 6, children: [
-              for (final (i, t) in const [(0, 'Aaj'), (1, 'Shipments'), (2, 'Buyers')])
+              for (final (i, t) in const [(0, 'Today'), (1, 'Shipments'), (2, 'Buyers')])
                 ChoiceChip(label: Text(t), selected: _tab == i, onSelected: (_) => setState(() => _tab = i)),
             ]),
             const SizedBox(height: 10),
@@ -174,7 +174,7 @@ class _NiryatScreenState extends State<NiryatScreen> {
                   child: Glass(
                     padding: const EdgeInsets.all(10),
                     border: (x['days_left'] ?? 1) < 0 ? C.bad : ((x['days_left'] ?? 99) <= 30 ? C.warn : null),
-                    child: Text('${_s(x['number'])} ${_s(x['buyer'])}: baaki ${_fc(x['currency'], x['outstanding'])} · RBI tareekh ${_s(x['realise_by'])} (${x['days_left']} din)'),
+                    child: Text('${_s(x['number'])} ${_s(x['buyer'])}: due ${_fc(x['currency'], x['outstanding'])} · RBI date ${_s(x['realise_by'])} (${x['days_left']} days)'),
                   ),
                 ),
               for (final dr in _list(r['drafts']))
@@ -197,7 +197,7 @@ class _NiryatScreenState extends State<NiryatScreen> {
                   child: NiryatCard(key: ValueKey('ns${x['id']}${x['status']}'), v: {'shipment_id': x['id']}, app: widget.app, shipment: x, onDone: _load),
                 ),
             if (_day != null && _tab == 2) ...[
-              GlassButton(label: 'Naya buyer', icon: Icons.person_add_alt_rounded, onTap: _busy ? null : _newBuyer),
+              GlassButton(label: 'New buyer', icon: Icons.person_add_alt_rounded, onTap: _busy ? null : _newBuyer),
               const SizedBox(height: 8),
               for (final b in _buyers)
                 Padding(
@@ -214,8 +214,8 @@ class _NiryatScreenState extends State<NiryatScreen> {
             ],
             const SizedBox(height: 14),
             const Text(
-                'PI aur invoice buyer ko aapki haan se. Shipping bill (CHA / ICEGATE), certificate of origin (DGFT), e-BRC aur forward contract aap / bank karte hain. '
-                'Paisa shipment ke 9 mahine mein (rupee invoice: 12) aana zaroori.',
+                'The PI and invoice go to the buyer with your approval. The shipping bill (CHA / ICEGATE), certificate of origin (DGFT), e-BRC and forward contract are done by you / the bank.'
+                'Money must come in within 9 months of shipment (12 for a rupee invoice).',
                 style: TextStyle(color: C.faint, fontSize: 11.5)),
           ]),
         ),
@@ -302,15 +302,15 @@ class _NiryatCardState extends State<NiryatCard> {
         Text(_s(x['incoterm_says']), style: const TextStyle(color: C.muted, fontSize: 12)),
         for (final c in _list(x['checks'])) Text('• ${_s(c['text'])}', style: TextStyle(fontSize: 12, color: _lvl(_s(c['level'])))),
         if (_s(x['realise_by']).isNotEmpty)
-          Text('Paisa ${_s(x['realise_by'])} tak · mila ${_fc(x['currency'], x['received'])} · baaki ${_fc(x['currency'], x['outstanding'])}',
+          Text('Money due by ${_s(x['realise_by'])} · received ${_fc(x['currency'], x['received'])} · remaining ${_fc(x['currency'], x['outstanding'])}',
               style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700)),
         const SizedBox(height: 8),
         Wrap(spacing: 8, runSpacing: 8, children: [
-          if (st == 'pi') GlassButton(label: 'Haan, buyer ko bhejo', icon: Icons.send_rounded, onTap: _busy ? null : () => _act('send_pi')),
-          if (st == 'pi') GlassButton(label: 'Order pakka: invoice banao', icon: Icons.check_rounded, onTap: _busy ? null : () => _act('confirm')),
+          if (st == 'pi') GlassButton(label: 'Yes, send to the buyer', icon: Icons.send_rounded, onTap: _busy ? null : () => _act('send_pi')),
+          if (st == 'pi') GlassButton(label: 'Order confirmed: make the invoice', icon: Icons.check_rounded, onTap: _busy ? null : () => _act('confirm')),
           if (st == 'confirmed')
             GlassButton(
-                label: 'Maal nikal gaya',
+                label: 'Goods shipped',
                 icon: Icons.directions_boat_rounded,
                 onTap: _busy
                     ? null
@@ -320,12 +320,12 @@ class _NiryatCardState extends State<NiryatCard> {
                       }),
           if (st != 'realised' && st != 'cancelled')
             GlassButton(
-                label: 'Paisa aaya',
+                label: 'Money received',
                 icon: Icons.currency_exchange_rounded,
                 onTap: _busy
                     ? null
                     : () async {
-                        final f = await _form(context, 'Bank mein aaya', [('amount', 'Rakam (${_s(x['currency'])})'), ('inr', 'Rupaye mile'), ('ref', 'IRM / e-BRC no')]);
+                        final f = await _form(context, 'Received in the bank', [('amount', 'Amount (${_s(x['currency'])})'), ('inr', 'Rupees received'), ('ref', 'IRM / e-BRC no')]);
                         if (f != null) {
                           await _act('receive', {...f, 'amount': double.tryParse(f['amount'] ?? '') ?? 0, if (f['inr'] != null) 'inr': double.tryParse(f['inr']!) ?? 0});
                         }

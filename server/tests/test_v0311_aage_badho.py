@@ -92,8 +92,8 @@ def test_promised(text, want):
 def test_the_narrate_ask_now_says_line_and_tool_in_one_message():
     from app.agent import goal as G
     n = G.NARRATE
-    assert "AGLA TOOL CALL ek hi jawab mein" in n and "sirf line likh ke mat ruko" in n
-    assert "ab use EK chhoti line batao" in n and "15-30 shabd" in n       # v0.258 / v0.268 untouched
+    assert "NEXT TOOL CALL in one reply" in n and "do not stop after writing only the line" in n
+    assert "now tell her ONE short line" in n and "15-30 words" in n       # v0.258 / v0.268 untouched
 
 
 # ---------------------------------------------------------------- 2. a parallel batch is one call
@@ -160,8 +160,8 @@ def test_no_plan_after_the_ask_means_the_server_writes_one(gz, monkeypatch):  # 
     before = STATS_LONG["auto_plan"]
     out = asyncio.run(run_turn(conv, "saare kaam ek ek karke dekho", tenant_id="default"))
     assert STATS_LONG["auto_plan"] == before + 1
-    assert any("server ne yeh plan bana diya" in str(c["messages"][-1]) for c in brain.seen)
-    first = next(i for i, c in enumerate(brain.seen) if "server ne yeh plan bana diya" in str(c["messages"][-1]))
+    assert any("the server made this plan" in str(c["messages"][-1]) for c in brain.seen)
+    first = next(i for i, c in enumerate(brain.seen) if "the server made this plan" in str(c["messages"][-1]))
     assert first == 7                                    # asked at step 4, written at step 7
     assert "Saare 9 kaam" in out and brain.script == []  # the final answer closes the server's plan: no nudge loop
     assert goal.active_for(conv) is None                 # done, not left open

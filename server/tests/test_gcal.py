@@ -193,7 +193,7 @@ def test_invite_waits_for_approval(bz, g):  # noqa: F811
                                      "attendees": ["Swati"], "meet": True}, ctx)
     assert out["needs_approval"] and not g.events.get(ME)            # nothing created yet
     card = _events(bz["conv"], "bazar_approval")[-1]
-    assert card["title"] == "Invite bhejein?" and "swati@fnw.in" in json.dumps(card)
+    assert card["title"] == "Send invite?" and "swati@fnw.in" in json.dumps(card)
     bz["svc"].decide("default", card["id"], "approve")
     ev = list(g.events[ME].values())[0]
     assert ev["attendees"] == [{"email": "swati@fnw.in"}] and ev["hangoutLink"]
@@ -236,7 +236,7 @@ def test_reschedule_cancel_and_decline(bz, g):  # noqa: F811
         run("calendar_update_event", {"event_id": gid, "title": "x"}, ctx)
     run("calendar_cancel_event", {"event_id": gid}, ctx)
     card = _events(bz["conv"], "bazar_approval")[-1]
-    assert card["title"] == "Meeting ke liye mana karein?"
+    assert card["title"] == "Decline the meeting?"
     bz["svc"].decide("default", card["id"], "approve")
     me = [a for a in g.events[ME][guest["id"]]["attendees"] if a.get("self")][0]
     assert me["responseStatus"] == "declined" and guest["id"] in g.events[ME]

@@ -24,7 +24,7 @@ def _client():
     global _CLIENT
     if _CLIENT is None:
         from anthropic import Anthropic
-        _CLIENT = Anthropic(api_key=get_settings().anthropic_api_key, timeout=240, max_retries=2)
+        _CLIENT = Anthropic(api_key=get_settings().anthropic_api_key, timeout=600, max_retries=2)   # v0.560 thinking needs room
     return _CLIENT
 
 
@@ -33,7 +33,8 @@ def _img_block(data: bytes) -> dict[str, Any]:
     return {"type": "image", "source": {"type": "base64", "media_type": mt, "data": base64.b64encode(data).decode()}}
 
 
-def ask(system: str, prompt: str, images: list[bytes] | None = None, max_tokens: int = 12000) -> str:
+def ask(system: str, prompt: str, images: list[bytes] | None = None, max_tokens: int = 12000,
+        job: str = "blender") -> str:
     st = get_settings()
     content: list[dict[str, Any]] = [_img_block(b) for b in (images or [])[:3]] + [{"type": "text", "text": prompt}]
     if st.anthropic_api_key:
@@ -41,8 +42,9 @@ def ask(system: str, prompt: str, images: list[bytes] | None = None, max_tokens:
         for model in dict.fromkeys([getattr(st, "blender_model", "") or "claude-opus-5-5", st.anthropic_model]):
             for attempt in range(2):
                 try:
-                    msg = _client().messages.create(model=model, max_tokens=max_tokens, system=system,
-                                                    messages=[{"role": "user", "content": content}])
+                    from ..agent import door   # v0.560 EK DARWAZA
+                    msg = door.create(_client(), door.shape(job, model, max_tokens, system,
+                                                            [{"role": "user", "content": content}]))
                     return "".join(getattr(b, "text", "") for b in msg.content)
                 except Exception as e:
                     last = e
@@ -86,14 +88,14 @@ YOU WRITE ONE PYTHON SCRIPT FOR BLENDER 5.2 (bpy). It runs in an EMPTY scene ins
   real person. If she asks for one, make an original look-alike-free design in the same spirit and say so in NOTES.
 - For 3D printing (print=yes): closed solid meshes (no open edges), no paper-thin parts (walls >= 1.5 mm), parts touching
   or joined, flat base on Z=0, no floor plane.
-ANSWER FORMAT: first one line `TITLE: <short name>`, one line `NOTES: <one Hinglish sentence about the design>`, then the
+ANSWER FORMAT: first one line `TITLE: <short name>`, one line `NOTES: <one English sentence about the design>`, then the
 script in ONE ```python block. Nothing else."""
 
 WRITE_SYSTEM = "You are Hoola's 3D artist. You build 3D models and scenes in Blender with Python.\n" + GUIDE
 
 LOOK_SYSTEM = (
     "You check a 3D render against what the owner asked for. Reply ONLY JSON: {\"score\": 0-10, \"ok\": true|false, "
-    "\"seen\": \"one Hinglish line: what the picture shows\", \"fix\": \"what to change in the scene to match the ask "
+    "\"seen\": \"one English line: what the picture shows\", \"fix\": \"what to change in the scene to match the ask "
     "better (concrete: sizes, colours, missing parts, camera too far), or empty\"}. ok=true when score >= 7. Be honest.")
 
 
@@ -134,7 +136,8 @@ def change(brief: str, code: str, words: str, photo_names: list[str], print_read
 
 
 def look(brief: str, png: bytes) -> dict[str, Any]:
-    raw = ask(LOOK_SYSTEM, f"HER ASK: {brief}\nDoes the render match? JSON only.", [png], max_tokens=600)
+    raw = ask(LOOK_SYSTEM, f"HER ASK: {brief}\nDoes the render match? JSON only.", [png], max_tokens=600,
+              job="blender_look")
     m = re.search(r"\{.*\}", raw or "", re.S)
     try:
         v = json.loads(m.group(0)) if m else {}

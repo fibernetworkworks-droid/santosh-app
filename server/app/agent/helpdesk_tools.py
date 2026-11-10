@@ -87,9 +87,9 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
     from ..helpdesk import service as S
     t, conv, actor = ctx.tenant_id, ctx.conversation_id, _actor(ctx)
     if actor.startswith("customer:"):
-        raise ToolError("Office IT helpdesk graahakon ke liye nahi hai.")
+        raise ToolError("Office IT helpdesk is not for customers.")
     if action in _OWNER_ONLY and not _owner(ctx):
-        raise ToolError("Yeh sirf owner kar sakti hain.")
+        raise ToolError("Only the owner can do this.")
     tk = _s(a.get("ticket"))
     try:
         if action == "new":
@@ -138,7 +138,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return S.register_file(t, conv)
     except (S.HelpdeskError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("action galat")
+    raise ToolError("invalid action")
 
 
 def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
@@ -172,11 +172,11 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
             return S.settings(t)
         if what == "rules":
             return {"priority": R.PRIORITY_LABEL, "sla": R.SLA_DEFAULT, "cert_in": R.CERT_IN, "dpdp_from": R.DPDP_FROM.isoformat(),
-                    "never": ["password / OTP / PIN maangna ya rakhna", "system setting khud badalna / install / reset (sirf uski haan ke card se)",
-                              "phishing ka link / attachment kholna", "vendor ko paisa dena"]}
+                    "never": ["asking for or keeping a password / OTP / PIN", "changing a system setting / installing / resetting itself (only via a card on her yes)",
+                              "opening a phishing link / attachment", "paying a vendor"]}
     except (S.HelpdeskError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("what galat")
+    raise ToolError("invalid what")
 
 
 async def helpdesk(ctx: Ctx, action, **a: Any):

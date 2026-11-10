@@ -33,7 +33,7 @@ class MapsPlacesCard extends StatelessWidget {
       if (p['distance_km'] != null) '${p['distance_km']} km',
       if (p['rating'] != null)
         '★ ${p['rating']}${p['reviews'] != null ? ' (${p['reviews']})' : ''}',
-      if (open == true) 'Khula hai' else if (open == false) 'Band hai',
+      if (open == true) 'Khula hai' else if (open == false) 'Off',
       if (status.isNotEmpty && status != 'OPERATIONAL') status.replaceAll('_', ' ').toLowerCase(),
     ].where((x) => x.isNotEmpty).join(' · ');
   }
@@ -56,13 +56,13 @@ class MapsPlacesCard extends StatelessWidget {
         Row(children: [
           const Icon(Icons.place_outlined, size: 17, color: C.accent),
           const SizedBox(width: 6),
-          Expanded(child: Text(_s(data['title']).isEmpty ? 'Jagahein' : _s(data['title']),
+          Expanded(child: Text(_s(data['title']).isEmpty ? 'Places' : _s(data['title']),
               style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15))),
           Text('${places.length}', style: const TextStyle(color: C.faint, fontSize: 12.5)),
         ]),
         if (near.isNotEmpty)
           Padding(padding: const EdgeInsets.only(top: 2),
-              child: Text('$near ke aas-paas', style: const TextStyle(color: C.faint, fontSize: 12.5))),
+              child: Text('Near $near', style: const TextStyle(color: C.faint, fontSize: 12.5))),
         for (final p in places) _Place(p: p, go: _go),
         Padding(
           padding: const EdgeInsets.only(top: 8),

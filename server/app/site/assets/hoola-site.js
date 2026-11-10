@@ -392,7 +392,167 @@
       run();
     });
   }
-  function start() { nav(); groups(); search(); forms(); lightbox(); compare(); embeds(); booking(); tabs(); carousel(); filters(); toggles(); calcs(); motion(); }
+  /* v0.567 KOI BHI DESIGN rich pieces (attributes only; the answers and options are on the page with JS off too) */
+  function quizzes() {          // <form data-hoola-quiz>: radios carry data-result="key"; most picks -> [data-result-panel="key"]
+    $$('form[data-hoola-quiz]').forEach(function (f) {
+      var panels = $$('[data-result-panel]', f);
+      panels.forEach(function (p) { p.hidden = true; p.setAttribute('tabindex', '-1'); });
+      f.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var votes = {}, order = [], unanswered = 0;
+        $$('[data-q]', f).forEach(function (q) {
+          var pick = q.querySelector('input:checked');
+          if (!pick) { unanswered++; return; }
+          String(pick.getAttribute('data-result') || '').split(/\s+/).forEach(function (k) {
+            if (!k) return;
+            if (!(k in votes)) { votes[k] = 0; order.push(k); }
+            votes[k]++;
+          });
+        });
+        var msg = f.querySelector('[data-quiz-msg]');
+        if (unanswered) { if (msg) msg.textContent = msg.getAttribute('data-missing') || 'Please answer every question.'; return; }
+        if (msg) msg.textContent = '';
+        var best = order.reduce(function (a, k) { return a === null || votes[k] > votes[a] ? k : a; }, null);
+        panels.forEach(function (p) { p.hidden = p.getAttribute('data-result-panel') !== best; });
+        var shown = f.querySelector('[data-result-panel="' + best + '"]');
+        if (shown) shown.focus();
+      });
+      f.addEventListener('reset', function () { panels.forEach(function (p) { p.hidden = true; }); });
+    });
+  }
+  function configs() {          // <form data-hoola-config>: choices (data-add / data-show), a summary, a send-this-choice button
+    $$('form[data-hoola-config]').forEach(function (f) {
+      var pre = f.getAttribute('data-prefix') || '₹';
+      function run() {
+        var total = parseFloat(f.getAttribute('data-base')) || 0, picked = [], show = {};
+        $$('input:checked,select', f).forEach(function (el) {
+          var o = el.tagName === 'SELECT' ? el.options[el.selectedIndex] : el;
+          if (!o) return;
+          total += parseFloat(o.getAttribute('data-add')) || 0;
+          var lab = o.getAttribute('data-label') || (el.tagName === 'SELECT' ? o.textContent : (el.labels && el.labels[0] ? el.labels[0].textContent : el.value));
+          if (lab) picked.push(lab.trim());
+          String(o.getAttribute('data-show') || '').split(/\s+/).forEach(function (k) { if (k) show[k] = 1; });
+        });
+        $$('[data-config-show]', f).forEach(function (x) { x.hidden = !show[x.getAttribute('data-config-show')]; });
+        $$('[data-calc-out]', f).forEach(function (o) { o.textContent = money(total, pre); });
+        $$('[data-config-summary]', f).forEach(function (o) { o.textContent = picked.join(' · '); });
+        f._choice = picked.join(', ') + (total ? ' (' + money(total, pre) + ')' : '');
+      }
+      f.addEventListener('input', run); f.addEventListener('change', run);
+      f.addEventListener('submit', function (e) {
+        e.preventDefault(); run();
+        var wa = f.getAttribute('data-whatsapp'), target = d.querySelector('form[data-hoola-form] textarea');
+        var text = (f.getAttribute('data-intro') || 'I would like:') + ' ' + f._choice;
+        if (wa && /^\d{10,13}$/.test(wa)) { W.open('https://wa.me/' + wa + '?text=' + encodeURIComponent(text), '_blank', 'noopener'); return; }
+        if (target) { target.value = text; target.focus(); target.scrollIntoView({ block: 'center' }); }
+      });
+      $$('[data-calc-out],[data-config-summary]', f).forEach(function (o) { o.setAttribute('aria-live', 'polite'); });
+      run();
+    });
+  }
+  function compareTables() {    // [data-hoola-compare-table]: "differences only" + pick a column to highlight
+    $$('[data-hoola-compare-table]').forEach(function (box) {
+      var t = box.querySelector('table'); if (!t) return;
+      var diff = box.querySelector('[data-compare-diff]');
+      if (diff) diff.addEventListener('click', function () {
+        var on = diff.getAttribute('aria-pressed') !== 'true';
+        diff.setAttribute('aria-pressed', on ? 'true' : 'false');
+        $$('tbody tr', t).forEach(function (tr) {
+          var cells = $$('td', tr).map(function (c) { return c.textContent.trim(); });
+          tr.hidden = on && cells.length > 1 && cells.every(function (c) { return c === cells[0]; });
+        });
+      });
+      $$('[data-compare-col]', box).forEach(function (b) {
+        b.addEventListener('click', function () {
+          var i = parseInt(b.getAttribute('data-compare-col'), 10);
+          $$('[data-compare-col]', box).forEach(function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); });
+          $$('tr', t).forEach(function (tr) {
+            Array.prototype.forEach.call(tr.children, function (c, j) { c.classList.toggle('hs-pick', j === i); });
+          });
+        });
+      });
+    });
+  }
+  /* v0.568 LOTTIE: [data-hoola-lottie] plays an animation from the site's own files (light player, SVG, no eval).
+     Hoola's built-ins carry two placeholder colours that become the site's --c-primary / --c-accent here. */
+  function rgb01(css) {
+    var c = d.createElement('canvas').getContext('2d'); if (!c) return null;
+    c.fillStyle = '#000'; c.fillStyle = css; var h = c.fillStyle;
+    if (!/^#[0-9a-f]{6}$/i.test(h)) return null;
+    return [parseInt(h.slice(1, 3), 16) / 255, parseInt(h.slice(3, 5), 16) / 255, parseInt(h.slice(5, 7), 16) / 255, 1];
+  }
+  function recolour(node, from, to) {
+    if (Array.isArray(node)) {
+      if (node.length === 4 && node.every(function (v, i) { return v === from[i]; })) { for (var i = 0; i < 4; i++) node[i] = to[i]; return; }
+      node.forEach(function (x) { recolour(x, from, to); });
+    } else if (node && typeof node === 'object') { for (var k in node) if (Object.prototype.hasOwnProperty.call(node, k)) recolour(node[k], from, to); }
+  }
+  function lotties() {
+    var els = $$('[data-hoola-lottie][data-src]');
+    if (!els.length || !W.lottie || !W.fetch) return;
+    var cs = getComputedStyle(root), pri = rgb01(cs.getPropertyValue('--c-primary').trim()), acc = rgb01(cs.getPropertyValue('--c-accent').trim());
+    els.forEach(function (el) {
+      fetch(el.getAttribute('data-src')).then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); }).then(function (data) {
+        if (pri) recolour(data, [1, 0, 1, 1], pri);
+        if (acc) recolour(data, [0, 1, 1, 1], acc);
+        var loop = el.getAttribute('data-loop') !== 'false';
+        var a = W.lottie.loadAnimation({ container: el, renderer: 'svg', loop: loop, autoplay: false, animationData: data,
+                                         rendererSettings: { preserveAspectRatio: 'xMidYMid meet' } });
+        el.setAttribute('data-hoola-lottie-on', '');
+        a.addEventListener('DOMLoaded', function () {
+          if (still) { a.goToAndStop(loop ? Math.floor(a.totalFrames * 0.6) : a.totalFrames - 1, true); return; }
+          if (!W.IntersectionObserver) { a.play(); return; }
+          new IntersectionObserver(function (es) { if (es[0].isIntersecting) a.play(); else a.pause(); }).observe(el);
+        });
+      }).catch(function () { el.setAttribute('data-hoola-lottie-off', ''); });
+    });
+  }
+  function start() { nav(); groups(); search(); forms(); lightbox(); compare(); embeds(); booking(); tabs(); carousel(); filters(); toggles(); calcs(); quizzes(); configs(); compareTables(); motion(); lotties(); }
   W.HoolaSite = { start: start };      // v0.305 the React export starts it again after a route change
   if (d.readyState === 'loading') d.addEventListener('DOMContentLoaded', start); else start();
+})();
+
+/* v0.564 CHALTI WEBSITE: her visitors' JavaScript errors + how fast the page really showed, sent to Hoola so she can see
+   it. Nothing about the visitor: no cookie, no id, no query string, no typed text; at most 5 errors a page view and one
+   timing line, sent with sendBeacon to the address her own forms already use (the site's CSP allows only that). Off on a
+   preview (the API's own host) and when the page has no <meta name="hoola-ops">. */
+(function () {
+  'use strict';
+  var d = document, W = window, meta = d.querySelector('meta[name="hoola-ops"]');
+  if (!meta || !W.navigator || !navigator.sendBeacon || !W.JSON) return;
+  var url = meta.getAttribute('content') || '';
+  try { if (new URL(url, location.href).host === location.host) return; } catch (e) { return; }
+  var errs = [], sent = 0, timed = false, sp = {}, path = location.pathname;
+  function send(body) { try { navigator.sendBeacon(url, JSON.stringify(body)); } catch (e) { /* never break her page */ } }
+  function push(m, f, l) {
+    if (sent + errs.length >= 5) return;
+    errs.push({ m: String(m || '').slice(0, 200), f: String(f || '').split(/[?#]/)[0].split('/').pop().slice(0, 60), l: +l || 0 });
+    if (errs.length === 1) setTimeout(flush, 2000);
+  }
+  function flush() { if (!errs.length) return; send({ p: path, e: errs }); sent += errs.length; errs = []; }
+  W.addEventListener('error', function (ev) {
+    if (ev && ev.message) push(ev.message, ev.filename, ev.lineno);
+  });
+  W.addEventListener('unhandledrejection', function (ev) {
+    var r = ev && ev.reason;
+    if (r && r.name === 'AbortError') return;       // a page animation cut short by the next click: not a fault
+    push(r && r.message ? r.message : String(r), r && r.fileName, 0);
+  });
+  var has = (W.PerformanceObserver && PerformanceObserver.supportedEntryTypes) || [], cls = 0;
+  function watch(type, fn) {      // only what this browser really measures (Safari: no LCP / layout shift -> left out, never 0)
+    if (has.indexOf(type) < 0) return false;
+    try { new PerformanceObserver(function (l) { fn(l.getEntries()); }).observe({ type: type, buffered: true }); return true; }
+    catch (e) { return false; }
+  }
+  try { var nav = performance.getEntriesByType('navigation')[0]; if (nav) sp.ttfb = Math.round(nav.responseStart); } catch (e) { /* old */ }
+  watch('paint', function (es) { es.forEach(function (e) { if (e.name === 'first-contentful-paint') sp.fcp = Math.round(e.startTime); }); });
+  watch('largest-contentful-paint', function (es) { if (es.length) sp.lcp = Math.round(es[es.length - 1].startTime); });
+  var clsOn = watch('layout-shift', function (es) { es.forEach(function (e) { if (!e.hadRecentInput) cls += e.value; }); });
+  function timing() {
+    if (timed) return; timed = true; flush();
+    if (clsOn) sp.cls = Math.round(cls * 1000) / 1000;
+    if (sp.ttfb !== undefined || sp.lcp !== undefined) send({ p: path, s: sp });
+  }
+  d.addEventListener('visibilitychange', function () { if (d.visibilityState === 'hidden') timing(); });
+  W.addEventListener('pagehide', timing);
 })();

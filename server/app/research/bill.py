@@ -68,6 +68,11 @@ class Meter:
         # v0.477 R6: a vendor engine's charge (NOT a model call, so usage.record never sees it). Starts as the run's PRICE (the committed
         # estimate), becomes the vendor's own reported cost when it reports one. A restart carries it in `base`.
         self.vendor: dict[str, Any] = dict(self.base.get("vendor") or {})
+        # wave 9: calls granted by afford() that have not been counted yet. Goals run IN PARALLEL, so up to six workers
+        # used to pass afford() at Rs 147 of a Rs 150 cap and then each spend ~Rs 10: the spend only grows after a call
+        # returns. Every granted call now holds its likely price until the meter has counted it.
+        self._granted = 0
+        self._calls0 = int(self.acc.get("calls", 0))
 
     # -- the money
     def model_inr(self) -> float:
@@ -99,14 +104,23 @@ class Meter:
         others = store.spent_since(self.tenant, day_start_utc(), exclude=self.run_id)
         return round(others + self.total_inr(), 4)
 
+    def held_inr(self) -> float:
+        """The likely price of the calls already granted and still running (not yet in the meter)."""
+        done = max(0, int(self.acc.get("calls", 0)) - self._calls0)
+        return round(max(0, self._granted - done) * per_call_inr(), 4)
+
     def afford(self) -> tuple[bool, str]:
         c = caps()
-        total = self.total_inr()
-        if total + c["reserve_inr"] > c["run_inr"]:
-            return False, f"this run has spent Rs {total:.0f} of its Rs {c['run_inr']:.0f} ceiling"
+        need = max(float(c["reserve_inr"]), per_call_inr())   # the call about to be made, at its likely price
+        spent, held = self.total_inr(), self.held_inr()
+        if spent + held + need > c["run_inr"]:
+            return False, (f"this run has spent Rs {spent:.0f} of its Rs {c['run_inr']:.0f} ceiling"
+                           + (f" (Rs {held:.0f} more is held by calls still running)" if held >= 0.5 else ""))
         day = self.day_spent_inr()
-        if day + c["reserve_inr"] > c["day_inr"]:
-            return False, f"today's research has spent Rs {day:.0f} of the Rs {c['day_inr']:.0f} daily ceiling"
+        if day + held + need > c["day_inr"]:
+            return False, (f"today's research has spent Rs {day:.0f} of the Rs {c['day_inr']:.0f} daily ceiling"
+                           + (f" (Rs {held:.0f} more is held by calls still running)" if held >= 0.5 else ""))
+        self._granted += 1
         return True, ""
 
     # -- the itemised line
@@ -134,6 +148,21 @@ class Meter:
         b = self.breakdown()
         return {"model_inr": b["model_inr"], "model_calls": b["model_calls"], "tok_in": b["tok_in"], "tok_out": b["tok_out"],
                 "searches": b["searches"], "fetches": b["fetches"], "by_model": b["by_model"]}
+
+
+def per_call_inr(tok_in: int = 12000, tok_out: int = 2500) -> float:
+    """wave 9: the likely rupees of ONE research model call (a worker step: page context in, up to 2,500 tokens out) at the
+    model the SDK door really sends - never the flat Rs 3 reserve, which one Sonnet call with page context exceeds."""
+    try:
+        from .. import usage
+        from ..config import get_settings
+        st = get_settings()
+        model = usage.one_model({"model": str(getattr(st, "anthropic_model", "") or "claude")})["model"]
+        p, _known = usage.price_of(model)
+        usd = (tok_in * float(p.get("in", 0.0)) + tok_out * float(p.get("out", 0.0))) / 1_000_000
+        return round(usd * usage.usd_inr(), 4)
+    except Exception:   # noqa: BLE001
+        return 3.0
 
 
 def preflight(tenant: str) -> None:

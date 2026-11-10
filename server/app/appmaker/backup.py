@@ -86,7 +86,7 @@ def ensure_table() -> None:
     if _db._engine is not None:
         AppJournal.__table__.create(_db._engine, checkfirst=True)
         try:                                    # v0.434 an older journal table gains `by` (else every journal write fails)
-            _db._add_missing_columns(_db._engine)
+            _db.add_missing_columns_for(_db._engine, AppJournal.__table__)   # v0.551 own table only (was ~900 tables)
         except Exception:                       # noqa: BLE001
             log.exception("journal column check failed")
         _OK = True

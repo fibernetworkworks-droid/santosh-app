@@ -1,6 +1,7 @@
 ---
 name: cr-crew-plays
 description: Agent crews - roles, tasks, context, the three-door routing
+when_to_use: team of agents, crew, multiple agents, roles and tasks, divide the work, research team, writer and reviewer agents
 ---
 
 # Crew plays (the crewAI way, Hoola-sized)

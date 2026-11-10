@@ -12,8 +12,8 @@ from .tools import Ctx, ToolError
 
 _ACTIONS = ["settings", "new", "update", "script", "script_set", "script_restore", "cast", "shots", "shot", "storyboard",
             "preview", "spend", "assemble", "person", "consent", "withdraw", "forget", "right", "rating", "cbfc", "tick",
-            "message", "release"]
-_OWNER_ONLY = {"settings", "consent", "withdraw", "forget", "rating", "cbfc"}
+            "message", "release", "schedule", "callsheet", "budget_plan", "festival", "window", "waterfall", "deliverable", "localise", "royalty"]
+_OWNER_ONLY = {"settings", "consent", "withdraw", "forget", "rating", "cbfc", "budget_plan", "window", "waterfall", "royalty"}
 
 FILMDESK_TOOLS = [
     {"name": "film_desk", "description": (
@@ -29,7 +29,30 @@ FILMDESK_TOOLS = [
         "own|commissioned|licensed|royalty_free|ai_generated|public_domain, sync, platforms, until, file_id. rating*: rating "
         "U|UA7|UA13|UA16|A. cbfc*: category, number, date. tick: key, done. message: msg_kind consent_request|rights_request|"
         "festival|distributor|custom, person / phone, text, uses, item -> CARD. release: force, reason -> CARD. Every action "
-        "takes project (F-0001). * = owner only."),
+        "takes project (F-0001). * = owner only. PRODUCTION layer (all in code, nothing sent or paid): schedule: "
+        "start_date YYYY-MM-DD, day_hours, setup_hours, hours_per_screen_minute (her real numbers; defaults are ASSUMPTIONS), days_off "
+        "[sun], blocked_dates, unavailable {character: [dates]} -> shooting days grouped by place, day before night + "
+        "day-out-of-days. callsheet: day (shoot day number), call_time HH:MM, cast_calls {name: HH:MM}, location_address {place: "
+        "address}, contacts {role: phone}, notes -> text + PDF; unknown details stay [blanks]; sending to cast is action=message "
+        "(card). budget_plan*: rates {crew, cast, location, equipment, night_allowance, transport, food, post_per_screen_minute, "
+        "'extra:name'} in rupees per unit, ONLY her numbers; contingency_pct -> at-least total, heads without a rate listed as missing. SALES layer "
+        "(her facts only, nothing submitted or signed): festival: op add|update|remove|tick, entry (fs1), name, country, category, "
+        "deadline/event_date/submitted_on/screened_on YYYY-MM-DD, fee_inr, requires regional|national|international|world|none, status "
+        "planned|submitted|accepted|rejected|withdrawn|screened; tick: key logline|screener|poster|stills|trailer|bios|subtitles|... -> "
+        "days left, premiere-conflict warnings, packet checklist. window*: op add|remove|holdbacks, medium theatrical|festival|svod|"
+        "avod|tvod|tv|home_video|airline|educational|other, territory 'india, uae' or world, start, end, exclusive, licensee, fee_inr, "
+        "holdbacks [{after, before, days}] -> exclusivity overlaps + holdback violations. waterfall*: gross_inr, deductions [{name, kind "
+        "fixed_inr|percent_of_gross|percent_of_remaining, value, cap_inr}], investors [{name, invested_inr, premium_pct}], shares "
+        "[{name, pct}] (sum 100) -> tiers that add back to the gross. DELIVERY layer (hers to edit, nothing is sent or accepted): "
+        "deliverable: op add|update|remove|starter, entry (d1), label, buyer, due YYYY-MM-DD, status todo|in_progress|delivered|qc_failed|"
+        "accepted|waived, notes; starter: kind festival|ott|theatrical|tv adds a STARTING list of item names (the buyer's own spec is final). "
+        "localise: op add|update|remove, entry (l1), language, kind subtitles|dub|both, dub_mode human|ai_voice, voice_person (P-001, an AI voice "
+        "is flagged unless that person's recorded consent covers ai_voice), vendor, due, status todo|translating|recording|qc|delivered|"
+        "accepted|blocked, qa_rounds, notes. SCRIPT COVERAGE + PREVIS are read-only (film_desk_dekho what=coverage|previs: counts and heuristic "
+        "flags, never a reader's verdict). ROYALTY*: op add|update|remove|receipt|unreceipt, entry (gt1 / rc1), party, role writer|director|actor|composer|"
+        "lyricist|singer|musician|editor|cinematographer|other, guild, basis flat_inr|percent_of_gross|percent_of_net|per_unit, rate, threshold_inr, cap_inr, "
+        "floor_inr, applies_to [medium], start, end, SOURCE (the contract clause: REQUIRED, there is no built-in guild rate table); receipt: medium, "
+        "amount_inr, net_inr, units, period, payer -> what each party is due under HER terms (a calculation to check against the contract)."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": _ACTIONS}, "project": {"type": "string"}, "title": {"type": "string"},
          "logline": {"type": "string"}, "format": {"type": "string"}, "language": {"type": "string"},
@@ -51,12 +74,30 @@ FILMDESK_TOOLS = [
          "date": {"type": "string"}, "key": {"type": "string"}, "done": {"type": "boolean"}, "msg_kind": {"type": "string"},
          "item": {"type": "string"}, "terms": {"type": "string"}, "force": {"type": "array", "items": {"type": "string"}},
          "reason": {"type": "string"}, "banner": {"type": "string"}, "producer": {"type": "string"},
-         "month_budget_inr": {"type": "number"}, "morning_time": {"type": "string"}, "rules": {"type": "string"}},
+         "month_budget_inr": {"type": "number"}, "morning_time": {"type": "string"}, "rules": {"type": "string"},
+         "start_date": {"type": "string"}, "day_hours": {"type": "number"}, "setup_hours": {"type": "number"},
+         "hours_per_screen_minute": {"type": "number"}, "days_off": {"type": "array", "items": {"type": "string"}},
+         "blocked_dates": {"type": "array", "items": {"type": "string"}}, "unavailable": {"type": "object"},
+         "call_time": {"type": "string"}, "cast_calls": {"type": "object"}, "location_address": {"type": "object"},
+         "contacts": {"type": "object"}, "day": {"type": "integer"}, "rates": {"type": "object"},
+         "contingency_pct": {"type": "number"}, "op": {"type": "string"}, "entry": {"type": "string"},
+         "requires": {"type": "string"}, "status": {"type": "string"}, "deadline": {"type": "string"},
+         "event_date": {"type": "string"}, "submitted_on": {"type": "string"}, "screened_on": {"type": "string"},
+         "country": {"type": "string"}, "medium": {"type": "string"}, "territory": {"type": "string"}, "start": {"type": "string"},
+         "end": {"type": "string"}, "exclusive": {"type": "boolean"}, "licensee": {"type": "string"},
+         "holdbacks": {"type": "array", "items": {"type": "object"}}, "gross_inr": {"type": "number"},
+         "deductions": {"type": "array", "items": {"type": "object"}}, "investors": {"type": "array", "items": {"type": "object"}},
+         "shares": {"type": "array", "items": {"type": "object"}}, "label": {"type": "string"}, "buyer": {"type": "string"},
+         "due": {"type": "string"}, "dub_mode": {"type": "string"}, "voice_person": {"type": "string"}, "vendor": {"type": "string"},
+         "qa_rounds": {"type": "integer"}, "party": {"type": "string"}, "basis": {"type": "string"},
+         "rate": {"type": "number"}, "threshold_inr": {"type": "number"}, "cap_inr": {"type": "number"}, "floor_inr": {"type": "number"},
+         "applies_to": {"type": "array", "items": {"type": "string"}}, "source": {"type": "string"}, "guild": {"type": "string"},
+         "amount_inr": {"type": "number"}, "net_inr": {"type": "number"}, "units": {"type": "number"}, "payer": {"type": "string"}},
          "required": ["action"]}},
     {"name": "film_desk_dekho", "description": (
         "Read the film desk (nothing changes). what=day | projects | project (project) | script | shots | budget (studio "
         "estimate per shot in rupees) | release (checklist + blockers + AI disclosure line) | people | person (person) | "
-        "rights | cards | settings | cbfc_note."),
+        "rights | cards | settings | cbfc_note | schedule | dood (day-out-of-days) | plan_budget | callsheet (day) | festivals | windows | waterfall | deliverables | localisation | coverage | previs | royalties."),
      "input_schema": {"type": "object", "properties": {"what": {"type": "string"}, "project": {"type": "string"},
                                                        "person": {"type": "string"}, "status": {"type": "string"}},
                       "required": ["what"]}},
@@ -129,16 +170,41 @@ def _sync(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
                                  "", actor, conv)
     if action == "release":
         return S.release_request(t, pr, a.get("force") or None, _s(a.get("reason")), actor, conv)
-    raise ToolError(f"action '{action}' nahi pehchana.")
+    if action == "schedule":
+        keys = ("start_date", "day_hours", "setup_hours", "hours_per_screen_minute", "days_off", "blocked_dates", "unavailable",
+                "call_time")
+        return S.plan_schedule(t, pr, actor, **{k: a[k] for k in keys if k in a})
+    if action == "budget_plan":
+        return S.plan_budget(t, pr, a.get("rates"), a.get("contingency_pct"), actor)
+    if action == "festival":
+        keys = ("entry", "name", "country", "category", "deadline", "event_date", "fee_inr", "requires", "status", "submitted_on",
+                "screened_on", "notes", "key", "done")
+        return S.festival_op(t, pr, _s(a.get("op")) or "add", actor, **{k: a[k] for k in keys if k in a})
+    if action == "window":
+        keys = ("entry", "medium", "territory", "start", "end", "exclusive", "licensee", "fee_inr", "notes", "holdbacks")
+        return S.window_op(t, pr, _s(a.get("op")) or "add", actor, **{k: a[k] for k in keys if k in a})
+    if action == "deliverable":
+        keys = ("entry", "label", "buyer", "due", "status", "notes", "kind")
+        return S.deliverable_op(t, pr, _s(a.get("op")) or "add", actor, **{k: a[k] for k in keys if k in a})
+    if action == "localise":
+        keys = ("entry", "language", "kind", "dub_mode", "voice_person", "vendor", "due", "status", "qa_rounds", "notes")
+        return S.localise_op(t, pr, _s(a.get("op")) or "add", actor, **{k: a[k] for k in keys if k in a})
+    if action == "royalty":
+        keys = ("entry", "party", "role", "guild", "basis", "rate", "threshold_inr", "cap_inr", "floor_inr", "applies_to", "start", "end",
+                "source", "notes", "medium", "amount_inr", "net_inr", "units", "period", "payer")
+        return S.royalty_op(t, pr, _s(a.get("op")) or "add", actor, **{k: a[k] for k in keys if k in a})
+    if action == "waterfall":
+        return S.waterfall_run(t, pr, a.get("gross_inr"), a.get("deductions"), a.get("investors"), a.get("shares"), actor)
+    raise ToolError(f"Unknown action '{action}'.")
 
 
 async def _film_desk(ctx: Ctx, action: str = "", **a: Any) -> dict[str, Any]:
     from ..filmdesk import service as S
     actor = _actor(ctx)
     if actor.startswith("customer:"):
-        raise ToolError("Yeh kaam graahak ke liye nahi.")
+        raise ToolError("This work is not for customers.")
     if action in _OWNER_ONLY and not _owner(ctx):
-        raise ToolError("Sirf owner.")
+        raise ToolError("Only the owner can do this.")
     t, conv, pr = ctx.tenant_id, ctx.conversation_id, _s(a.get("project"))
     try:
         if action == "storyboard":
@@ -150,6 +216,10 @@ async def _film_desk(ctx: Ctx, action: str = "", **a: Any) -> dict[str, Any]:
                                  actor, conv)
         if action == "assemble":
             return await S.assemble(t, pr, True, actor)
+        if action == "callsheet":
+            keys = ("call_time", "cast_calls", "location_address", "contacts", "notes")
+            return await asyncio.to_thread(lambda: S.plan_callsheet(t, pr, a.get("day"), actor, conv,
+                                                                    **{k: a[k] for k in keys if k in a}))
         return await asyncio.to_thread(_sync, ctx, action, a)
     except S.FilmError as e:
         raise ToolError(str(e))
@@ -187,7 +257,27 @@ def _see(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
         return S.settings(t)
     if what == "cbfc_note":
         return {"note": R.CBFC_NOTE}
-    raise ToolError(f"what '{what}' nahi pehchana.")
+    if what in ("schedule", "dood", "plan_budget", "callsheet"):
+        return S.plan_view(t, pr, what, a.get("day"))
+    if what == "festivals":
+        return S.festival_view(t, pr)
+    if what == "windows":
+        return S.windows_view(t, pr)
+    if what == "waterfall":
+        return S.waterfall_view(t, pr)
+    if what == "deliverables":
+        return S.deliverables_view(t, pr)
+    if what == "localisation":
+        return S.localisation_view(t, pr)
+    if what == "coverage":
+        return S.coverage_view(t, pr)
+    if what == "previs":
+        return S.previs_view(t, pr)
+    if what == "royalties":
+        if not _owner(ctx):
+            raise ToolError("Only the owner can do this.")
+        return S.royalties_view(t, pr)
+    raise ToolError(f"Unknown what '{what}'.")
 
 
 async def _film_desk_dekho(ctx: Ctx, what: str = "", **a: Any) -> dict[str, Any]:

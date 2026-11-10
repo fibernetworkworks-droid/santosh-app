@@ -46,7 +46,7 @@ class SantoshService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val n = Notify.service(this, "Hoola duty par hai", "App band ho tab bhi aapke kaam chal rahe hain")
+        val n = Notify.service(this, "Hoola is on duty", "Your tasks keep running even when the app is closed")
         if (Build.VERSION.SDK_INT >= 34) {
             startForeground(Notify.SERVICE_ID, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_REMOTE_MESSAGING)
         } else {
@@ -100,7 +100,7 @@ class SantoshService : Service() {
                 conn = c
                 val code = c.responseCode
                 if (code == 401 || code == 404) {
-                    Store.setStatus(this, if (code == 401) "API key galat hai" else "Chat nahi mila, app kholiye")
+                    Store.setStatus(this, if (code == 401) "The API key is wrong" else "Chat not found, please open the app")
                     c.disconnect()
                     pause(300000)
                     continue
@@ -153,7 +153,7 @@ class SantoshService : Service() {
                     if (!Store.claim(this, actionId)) return
                     val (ok, detail) = Actions.run(this, payload)
                     postResult(actionId, ok, detail)
-                    if (!ok) Notify.message(this, "Phone par yeh nahi ho paya: $detail", id)
+                    if (!ok) Notify.message(this, "This could not be done on the phone: $detail", id)
                 }
             }
         } finally {

@@ -15,8 +15,8 @@ List<Map<String, dynamic>> _list(dynamic l) =>
 Map<String, dynamic> _map(dynamic m) => m is Map ? Map<String, dynamic>.from(m) : <String, dynamic>{};
 void _snack(BuildContext c, String t) => ScaffoldMessenger.of(c).showSnackBar(SnackBar(content: Text(t)));
 
-const _note = 'Har paper official scholarly API se; DOI Crossref se jaancha. References code se bante hain. Drafts AI-assisted '
-    'hain: padh kar badliye aur university ke niyam se disclose kijiye.';
+const _note = 'Every paper comes from an official scholarly API; DOIs are checked with Crossref. References are built by code. Drafts are AI-assisted: '
+    'read and edit them, and disclose as your university requires.';
 
 class ShodhScreen extends StatefulWidget {
   const ShodhScreen({super.key, required this.app});
@@ -49,14 +49,14 @@ class _ShodhScreenState extends State<ShodhScreen> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (d) => AlertDialog(
-        title: const Text('Naya research project'),
+        title: const Text('New research project'),
         content: Column(mainAxisSize: MainAxisSize.min, children: [
           TextField(controller: t, decoration: const InputDecoration(labelText: 'Topic')),
           TextField(controller: q, minLines: 1, maxLines: 3, decoration: const InputDecoration(labelText: 'Research question')),
         ]),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Rehne do')),
-          TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Banao')),
+          TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Keep it')),
+          TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Make')),
         ],
       ),
     );
@@ -76,7 +76,7 @@ class _ShodhScreenState extends State<ShodhScreen> {
           child: RefreshIndicator(
             onRefresh: _load,
             child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
-              GradientButton(label: 'Naya project', icon: Icons.add_rounded, height: 46, onTap: _new),
+              GradientButton(label: 'New project', icon: Icons.add_rounded, height: 46, onTap: _new),
               const SizedBox(height: 10),
               if (_projects == null) const Center(child: CircularProgressIndicator()),
               for (final p in _projects ?? const <Map<String, dynamic>>[])
@@ -167,7 +167,7 @@ class _ShodhProjectPageState extends State<ShodhProjectPage> {
         ]),
         const SizedBox(height: 8),
         GradientButton(
-            label: 'Papers dhoondho',
+            label: 'Search papers',
             icon: Icons.search_rounded,
             height: 44,
             onTap: _busy
@@ -208,7 +208,7 @@ class _ShodhProjectPageState extends State<ShodhProjectPage> {
         Row(children: [
           Expanded(
               child: GlassButton(
-                  label: 'Saar banao (abstract se)',
+                  label: 'Write a summary (from the abstract)',
                   onTap: _busy
                       ? null
                       : () async {
@@ -243,7 +243,7 @@ class _ShodhProjectPageState extends State<ShodhProjectPage> {
       ]);
 
   Widget _refsTab() => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Text('Included papers ki list file mein (Zotero / Mendeley mein BibTeX ya RIS import ho jaata hai).', style: TextStyle(color: C.muted, fontSize: 12.5)),
+        const Text('The included papers list as a file (BibTeX or RIS imports into Zotero / Mendeley).', style: TextStyle(color: C.muted, fontSize: 12.5)),
         const SizedBox(height: 8),
         Wrap(spacing: 8, runSpacing: 8, children: [
           for (final (style, fmt, label) in const [('apa', 'text', 'APA'), ('ieee', 'text', 'IEEE'), ('harvard', 'text', 'Harvard'), ('', 'bibtex', 'BibTeX'), ('', 'ris', 'RIS')])

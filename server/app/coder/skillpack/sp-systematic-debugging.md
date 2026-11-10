@@ -1,6 +1,7 @@
 ---
 name: sp-systematic-debugging
 description: Use on any bug or test failure - root cause before any fix
+when_to_use: bug, error, debug, not working, test failing, crash, fix this error
 ---
 THE IRON LAW: NO FIXES WITHOUT ROOT CAUSE INVESTIGATION FIRST.
 If Phase 1 is not complete, you cannot propose fixes. Symptom fixes are

@@ -24,15 +24,15 @@ class FormCard extends StatelessWidget {
     final qs = (v['questions'] as num?)?.toInt();
     final accepting = v['accepting'] != false;
     final (chip, fg) = switch (status) {
-      'created' => ('BAN GAYA', C.ok),
-      'updated' => ('BADAL DIYA', C.ok),
+      'created' => ('MADE', C.ok),
+      'updated' => ('CHANGED', C.ok),
       _ => (status.toUpperCase(), C.chip),
     };
     final facts = [
-      if (qs != null) '$qs sawaal',
-      if (n != null) '$n jawab',
+      if (qs != null) '$qs questions',
+      if (n != null) '$n responses',
       if (v['is_quiz'] == true) 'quiz',
-      accepting ? 'jawab le raha hai' : 'band hai',
+      accepting ? 'taking responses' : 'closed',
     ].join(' · ');
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
@@ -50,7 +50,7 @@ class FormCard extends StatelessWidget {
             const SizedBox(height: 10),
             Row(children: [
               if (open.isNotEmpty)
-                Expanded(child: GradientButton(label: 'Form kholiye', icon: Icons.open_in_new_rounded, height: 42, onTap: () => _open(open))),
+                Expanded(child: GradientButton(label: 'Open form', icon: Icons.open_in_new_rounded, height: 42, onTap: () => _open(open))),
               if (open.isNotEmpty && edit.isNotEmpty) const SizedBox(width: 8),
               if (edit.isNotEmpty)
                 Expanded(child: GlassButton(label: 'Edit', icon: Icons.edit_rounded, height: 42, onTap: () => _open(edit))),
@@ -139,9 +139,9 @@ class _FormsScreenState extends State<FormsScreen> {
         child: RefreshIndicator(
           onRefresh: _load,
           child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
-            const Text('Hoola ek line se Google Form ya quiz banata hai, sawaal badalta hai, jawab padhta aur samjhata hai, '
-                'Sheet / Excel mein nikaalta hai aur naye jawab aane par batata hai. Doosron ko edit access dena aur '
-                'jawab wale sawaal hatana hamesha aapke tap ke baad hi.',
+            const Text('Hoola makes a Google Form or quiz from one line, changes questions, reads and explains responses, '
+                'exports to Sheet / Excel and tells you when new responses come. Giving others edit access and '
+                'deleting questions with responses always happen only after your tap.',
                 style: TextStyle(color: C.muted, fontSize: 13)),
             const SizedBox(height: 14),
             if (_err != null) Padding(padding: const EdgeInsets.only(bottom: 10), child: Text(_err!, style: const TextStyle(color: C.bad))),
@@ -154,28 +154,28 @@ class _FormsScreenState extends State<FormsScreen> {
                   const SizedBox(width: 10),
                   Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Text(a['address'] as String? ?? '', style: const TextStyle(fontWeight: FontWeight.w700)),
-                    Text(a['key'] == 'google' ? 'Google sign-in se' : 'Google Forms', style: const TextStyle(color: C.muted, fontSize: 12.5)),
+                    Text(a['key'] == 'google' ? 'With Google sign-in' : 'Google Forms', style: const TextStyle(color: C.muted, fontSize: 12.5)),
                     if (a['status'] == 'error') Text(a['error'] as String? ?? 'Login fail', style: const TextStyle(color: C.bad, fontSize: 12)),
                   ])),
                   if (a['removable'] == true)
-                    IconButton(tooltip: 'Hataiye', icon: const Icon(Icons.close_rounded, color: C.muted),
+                    IconButton(tooltip: 'Remove', icon: const Icon(Icons.close_rounded, color: C.muted),
                         onPressed: () => _remove(a['key'] as String)),
                 ])),
               ),
             if (_loaded) ...[
               accounts.isEmpty
-                  ? GradientButton(label: 'Google Forms jodiye', icon: Icons.assignment_rounded, height: 50, onTap: canLink ? _link : null)
-                  : GlassButton(label: 'Doosra Google account jodiye', icon: Icons.add_rounded, height: 44, onTap: canLink ? _link : null),
+                  ? GradientButton(label: 'Connect Google Forms', icon: Icons.assignment_rounded, height: 50, onTap: canLink ? _link : null)
+                  : GlassButton(label: 'Connect another Google account', icon: Icons.add_rounded, height: 44, onTap: canLink ? _link : null),
               if (!canLink)
                 const Padding(
                   padding: EdgeInsets.only(top: 8),
-                  child: Text('Is server par Google sign-in abhi chalu nahi hai (GOOGLE_OAUTH_CLIENT_ID / SECRET).',
+                  child: Text('Google sign-in is not on for this server yet (GOOGLE_OAUTH_CLIENT_ID / SECRET).',
                       style: TextStyle(color: C.faint, fontSize: 12)),
                 ),
               const SizedBox(height: 14),
             ],
             if (recent.isNotEmpty) ...[
-              const Text('Haal ke forms', style: TextStyle(fontWeight: FontWeight.w700)),
+              const Text('Recent forms', style: TextStyle(fontWeight: FontWeight.w700)),
               const SizedBox(height: 4),
               Glass(child: Column(children: [
                 for (final f in recent)
@@ -185,7 +185,7 @@ class _FormsScreenState extends State<FormsScreen> {
                     title: Text(f['title'] as String? ?? ''),
                     subtitle: Text([
                       'Last: ${f['used'] ?? ''}',
-                      if (watching.any((w) => w['form_id'] == f['id'])) 'naye jawab ka alert on',
+                      if (watching.any((w) => w['form_id'] == f['id'])) 'new-response alert is on',
                     ].join(' · '), style: const TextStyle(color: C.muted, fontSize: 12)),
                     trailing: const Icon(Icons.open_in_new_rounded, size: 18),
                     onTap: () => _open('https://docs.google.com/forms/d/${f['id']}/edit'),
@@ -193,15 +193,15 @@ class _FormsScreenState extends State<FormsScreen> {
               ])),
               const SizedBox(height: 14),
             ],
-            const Text('Bolkar dekhiye', style: TextStyle(fontWeight: FontWeight.w700)),
+            const Text('Try saying', style: TextStyle(fontWeight: FontWeight.w700)),
             const SizedBox(height: 6),
             for (final t in const [
-              '"Diwali Milan ke liye registration form banao: naam, phone, kitne log aayenge"',
-              '"Customer feedback form banao, 1 se 5 rating ke saath"',
-              '"Class 8 ke liye 10 sawaal ka GK quiz banao"',
-              '"Feedback form mein kitne jawab aaye? Saar batao"',
-              '"Jawab Google Sheet mein daal do"',
-              '"Naye jawab aaye to mujhe batana"',
+              '"Make a registration form for the Diwali Milan: name, phone, how many people will come"',
+              '"Make a customer feedback form with a 1 to 5 rating"',
+              '"Make a 10-question GK quiz for class 8"',
+              '"How many responses came on the feedback form? Give a summary"',
+              '"Put the responses in a Google Sheet"',
+              '"Tell me when new responses come"',
             ])
               Padding(padding: const EdgeInsets.symmetric(vertical: 2), child: Text(t, style: const TextStyle(color: C.chip, fontSize: 13))),
           ]),

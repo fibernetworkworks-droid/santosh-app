@@ -196,9 +196,9 @@ async def doc_studio(ctx: Ctx, kind, title, text="", sheets=None, slides=None, c
     blob = f"{title}\n{text}\n{sheets}\n{slides}\n{charts}"
     bad = [k for k in find(blob) if k in ("otp_pin", "password", "cvv")]
     if bad:
-        raise ToolError(f"Isme {describe(bad)} hai; Hoola aisi file nahi banata.")
+        raise ToolError(f"It contains {describe(bad)}; Hoola does not make such a file.")
     if kind in ("xlsx", "pptx") and not (sheets or slides):
-        raise ToolError("xlsx ko sheets chahiye ({'Sheet': [[...]]}), pptx ko slides ([{title, bullets}]).")
+        raise ToolError("xlsx needs sheets ({'Sheet': [[...]]}), pptx needs slides ([{title, bullets}]).")
     kw: dict[str, Any] = {"style": str(style or "auto"), "subject": str(subject or "")}
     if kind != "xlsx":
         kw["cover"] = cover if isinstance(cover, bool) else str(cover or "auto")
@@ -242,7 +242,7 @@ async def doc_studio(ctx: Ctx, kind, title, text="", sheets=None, slides=None, c
     _HELD.pop(conv, None)
     _HELD_ONCE.pop(conv, None)
     view = await asyncio.to_thread(_deliver, ctx, name, data, "docstudio")
-    notes = ["The file card is in chat; file_id email / hoola_send ke liye ready hai. This is her FINAL file - do "
+    notes = ["The file card is in chat; the file_id is ready for email / hoola_send. This is her FINAL file - do "
              "not make another version unless she asks for a change."]
     if qa.get("status") == "warn":
         notes.append(f"QA ne kaha: {qa.get('issues')}")
@@ -257,7 +257,7 @@ async def doc_studio(ctx: Ctx, kind, title, text="", sheets=None, slides=None, c
         notes.append(f"{res['formulas']} live formulas.")
     if kind == "xlsx" and res.get("splits"):
         sp = res["splits"][0]
-        notes.append(f"{sp['cols']:,} cols Excel ki ek-sheet limit (16,384) se bade the - "
+        notes.append(f"{sp['cols']:,} cols were over Excel's one-sheet limit (16,384) - "
                      f"{len(sp['parts'])} parts + Index bane.")
     return view | {"made": kind, "style": res.get("style"), "design": res.get("design"),
                    "preview": prev, "note": " ".join(notes)}

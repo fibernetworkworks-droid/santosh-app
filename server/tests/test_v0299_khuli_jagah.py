@@ -38,7 +38,7 @@ def test_no_avatar_is_drawn_in_the_chat():
     js = _js()
     assert 'd.innerHTML = `<div class="bd"></div>`;' in js          # the reply row builds without a face
     assert "avatar.className='progress-avatar av'" not in js        # nor does the working row
-    assert "SIMPLE_PROGRESS.append(label,dots,secs)" in js
+    assert "SIMPLE_PROGRESS.append(mark,label,secs,tog,steps)" in js   # v0.721 one row: no dots, the arrow + its folded steps   # v0.716 the Hoola mark, never the avatar
 
 
 def test_the_dead_avatar_rules_were_deleted_not_left_behind():
@@ -88,5 +88,5 @@ def test_v0293_clock_and_v0286_renderer_still_stand():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.530.0"
-    assert "0.530.0+553" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.758.0"
+    assert "0.758.0+757" in (ROOT / "pubspec.yaml").read_text()

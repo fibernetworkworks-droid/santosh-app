@@ -657,6 +657,13 @@ def daily(tenant: str, sid: str) -> dict[str, Any]:
                 if latest.get("ga4") and not b.get("ga4"):
                     b["ga4"] = latest["ga4"]
                 d.baseline = json.dumps(b, ensure_ascii=False)
+    try:                                       # v0.541 SEO INTEL: her tracked keywords' Search Console positions + 5-place drops
+        from . import intel
+        iv = intel.daily(tenant, sid)
+        for line in iv.get("alerts") or []:
+            _event(tenant, sid, "alert", "warn", line)
+    except Exception as e:   # noqa: BLE001 - never stops the daily numbers
+        log.info("seo intel daily skipped: %s", e)
     return latest
 
 
@@ -692,6 +699,17 @@ def weekly(tenant: str, sid: str) -> dict[str, Any]:
         _save_shot(sid, "desktop", S.pagespeed(tenant, sid, strategy="desktop").get("shot"))
     except S.SeoError:
         pass
+    try:                                       # v0.541 SEO INTEL: AI answers, Maps grids, exact positions - only what she switched on
+        from . import intel
+        iv = intel.weekly(tenant, sid)
+        out["intel"] = iv
+        if iv.get("ai"):
+            _event(tenant, sid, "run", "info", f"AI answers this week: named in {iv['ai']['mentioned_pct']}%, your site cited in "
+                   f"{iv['ai']['cited_pct']}% ({iv['ai']['answers']} answers).")
+        for line in iv.get("grids") or []:
+            _event(tenant, sid, "run", "info", "Maps grid: " + line)
+    except Exception as e:   # noqa: BLE001
+        log.info("seo intel weekly skipped: %s", e)
     return out
 
 

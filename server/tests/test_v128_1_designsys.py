@@ -59,7 +59,7 @@ def test_catalogues_colours_fonts_and_tokens(monkeypatch):
     assert CL.find_colors("laal aur neela rang, #00AA88 bhi")[:3] and "#00AA88" in CL.find_colors("#00aa88")
     # fonts: 300+ open-licence families, Indian scripts, pairs
     fc = FN.counts()
-    assert fc["families"] >= 300 and fc["pairs"] == 80
+    assert fc["families"] >= 300 and fc["pairs"] == 83   # v0.602 +3 site pairs
     assert FN.find("lexend")["family"] == "Lexend" and FN.families(script="devanagari")
     assert any(f["family"].startswith("Noto Sans Tamil") for f in FN.families(script="tamil"))
     # tokens: structure replaceable, other mode always present, dark asked = dark base

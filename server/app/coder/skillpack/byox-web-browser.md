@@ -1,6 +1,7 @@
 ---
 name: byox-web-browser
 description: Build a browser: HTML parser, CSS, box layout, paint
+when_to_use: web browser from scratch, own browser, html renderer
 ---
 GOAL: a browser that correctly renders a simple webpage with styled text and boxes.
 

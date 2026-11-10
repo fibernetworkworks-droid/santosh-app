@@ -25,17 +25,17 @@ void _snack(BuildContext c, String t) => ScaffoldMessenger.of(c).showSnackBar(Sn
 const _langs = {'hi': 'हिंदी', 'mr': 'मराठी', 'en': 'English', 'gu': 'ગુજરાતી', 'ta': 'தமிழ்', 'te': 'తెలుగు', 'kn': 'ಕನ್ನಡ', 'bn': 'বাংলা', 'pa': 'ਪੰਜਾਬੀ', 'ml': 'മലയാളം', 'ur': 'اردو'};
 const _kinds = {
   'application': 'Application',
-  'leave': 'Chhutti',
-  'complaint': 'Shikayat',
+  'leave': 'Holiday',
+  'complaint': 'Complaint',
   'noc': 'NOC',
   'bank': 'Bank',
   'authority': 'Authority',
   'certificate': 'Certificate',
   'office': 'Office',
-  'reply': 'Jawab',
+  'reply': 'Reply',
   'affidavit': 'Affidavit draft',
 };
-const _status = {'draft': 'Draft', 'waiting_sign': 'Sign baaki', 'signed': 'Final', 'ready': 'Taiyaar', 'rejected': 'Wapas'};
+const _status = {'draft': 'Draft', 'waiting_sign': 'Signature pending', 'signed': 'Final', 'ready': 'Ready', 'rejected': 'Back'};
 Color _statusCol(String s) => switch (s) { 'signed' => C.ok, 'waiting_sign' => C.accent, 'rejected' => C.faint, 'ready' => C.teal, _ => C.accentSoft };
 
 Future<String?> _askText(BuildContext context, String title, {String label = '', String init = '', int lines = 1}) async {
@@ -46,8 +46,8 @@ Future<String?> _askText(BuildContext context, String title, {String label = '',
       title: Text(title),
       content: TextField(controller: c, minLines: lines, maxLines: lines > 1 ? 14 : 1, autofocus: true, decoration: InputDecoration(labelText: label)),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Rehne do')),
-        FilledButton(onPressed: () => Navigator.pop(d, true), child: const Text('Theek')),
+        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Leave it')),
+        FilledButton(onPressed: () => Navigator.pop(d, true), child: const Text('OK')),
       ],
     ),
   );
@@ -107,13 +107,13 @@ class _LekhakScreenState extends State<LekhakScreen> {
         child: Scaffold(
           appBar: AppBar(
             backgroundColor: Colors.transparent,
-            title: Text('${app.aName} · Typist aur translator'),
+            title: Text('${app.aName} · Typist and translator'),
             bottom: const TabBar(isScrollable: true, tabAlignment: TabAlignment.start, tabs: [
-              Tab(text: 'Likho'),
-              Tab(text: 'Anuvaad'),
-              Tab(text: 'Sudhaar'),
-              Tab(text: 'Kaagaz'),
-              Tab(text: 'Niyam'),
+              Tab(text: 'Write'),
+              Tab(text: 'Translation'),
+              Tab(text: 'Improvement'),
+              Tab(text: 'Paper'),
+              Tab(text: 'Rules'),
             ]),
           ),
           body: Aurora(
@@ -184,7 +184,7 @@ class _WriteTabState extends State<_WriteTab> {
 
   Future<void> _make() async {
     if (_text.text.trim().isEmpty && _voiceId == null) {
-      _snack(context, 'Boliye ya likhiye ki letter mein kya hai');
+      _snack(context, 'Say or write what the letter should say');
       return;
     }
     setState(() => _busy = true);
@@ -227,20 +227,20 @@ class _WriteTabState extends State<_WriteTab> {
           const SizedBox(height: 10),
           Text(
               rec
-                  ? 'Bol rahi hain... ${secs}s (rokne ke liye dabaiye)'
+                  ? 'Listening... ${secs}s (tap to stop)'
                   : _voiceId != null
-                      ? 'Awaaz mili (${secs}s) · neeche "Letter banao" dabaiye'
-                      : 'Dabakar letter boliye: kisko, kis baare mein, saari baatein',
+                      ? 'Voice received (${secs}s) · tap "Make letter" below'
+                      : 'Hold and say: to whom, about what, all the details',
               textAlign: TextAlign.center,
               style: const TextStyle(color: C.muted)),
           const SizedBox(height: 4),
-          const Text('"poorn viram", "comma", "naya para" bolkar viram laga sakti hain', style: TextStyle(color: C.faint, fontSize: 11.5)),
+          const Text('You can say "full stop", "comma", "new paragraph" to add punctuation', style: TextStyle(color: C.faint, fontSize: 11.5)),
         ]),
       ),
       const SizedBox(height: 12),
-      TextField(controller: _text, minLines: 3, maxLines: 10, decoration: const InputDecoration(labelText: 'Ya yahan likhiye (jaise bolti hain, waise hi)')),
+      TextField(controller: _text, minLines: 3, maxLines: 10, decoration: const InputDecoration(labelText: 'Or write here (just as you speak)')),
       const SizedBox(height: 10),
-      TextField(controller: _to, decoration: const InputDecoration(labelText: 'Kisko (Tehsildar Akot, MSEDCL, Bank manager...)')),
+      TextField(controller: _to, decoration: const InputDecoration(labelText: 'To whom (Tehsildar Akot, MSEDCL, Bank manager...)')),
       if (widget.contacts.isNotEmpty)
         Padding(
           padding: const EdgeInsets.only(top: 6),
@@ -250,20 +250,20 @@ class _WriteTabState extends State<_WriteTab> {
           ]),
         ),
       const SizedBox(height: 12),
-      const Text('Kis tarah ka letter', style: TextStyle(color: C.muted, fontSize: 12.5)),
+      const Text('What kind of letter', style: TextStyle(color: C.muted, fontSize: 12.5)),
       Wrap(spacing: 6, runSpacing: 4, children: [
-        ChoiceChip(label: const Text('Hoola samjhe'), selected: _kind.isEmpty, onSelected: (_) => setState(() => _kind = '')),
+        ChoiceChip(label: const Text('Hoola understood'), selected: _kind.isEmpty, onSelected: (_) => setState(() => _kind = '')),
         for (final k in _kinds.entries) ChoiceChip(label: Text(k.value), selected: _kind == k.key, onSelected: (_) => setState(() => _kind = k.key)),
       ]),
       const SizedBox(height: 10),
-      const Text('Bhasha', style: TextStyle(color: C.muted, fontSize: 12.5)),
+      const Text('Language', style: TextStyle(color: C.muted, fontSize: 12.5)),
       Wrap(spacing: 6, children: [
         for (final l in ['hi', 'mr', 'en']) ChoiceChip(label: Text(_langs[l]!), selected: (_lang.isEmpty ? widget.defLang : _lang) == l, onSelected: (_) => setState(() => _lang = l)),
       ]),
       const SizedBox(height: 16),
-      GradientButton(label: _busy ? 'Likh rahi hoon...' : 'Letter banao', icon: Icons.edit_note_rounded, onTap: _busy ? null : _make),
+      GradientButton(label: _busy ? 'Writing...' : 'Make letter', icon: Icons.edit_note_rounded, onTap: _busy ? null : _make),
       const SizedBox(height: 8),
-      const Text('Jo aapne nahi bataya woh [khaali] rahega; Hoola apne se kuch nahi jodta. Sign sirf aapki Haan se.',
+      const Text('Whatever you did not say stays [blank]; Hoola adds nothing of its own. Signing only with your Yes.',
           style: TextStyle(color: C.faint, fontSize: 12)),
     ]);
   }
@@ -304,7 +304,7 @@ class _TranslateTabState extends State<_TranslateTab> {
 
   Future<void> _go() async {
     if (_text.text.trim().isEmpty && _fileId == null) {
-      _snack(context, 'Text likhiye ya file / photo chuniye');
+      _snack(context, 'Write text or choose a file / photo');
       return;
     }
     setState(() => _busy = true);
@@ -325,13 +325,13 @@ class _TranslateTabState extends State<_TranslateTab> {
 
   @override
   Widget build(BuildContext context) => ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 96), children: [
-        TextField(controller: _text, minLines: 5, maxLines: 14, decoration: const InputDecoration(labelText: 'Text yahan daaliye')),
+        TextField(controller: _text, minLines: 5, maxLines: 14, decoration: const InputDecoration(labelText: 'Enter text here')),
         const SizedBox(height: 8),
         Row(children: [
-          Expanded(child: GlassButton(label: _fileName.isEmpty ? 'Ya file / photo chuniye' : _fileName, icon: Icons.attach_file_rounded, onTap: _busy ? null : _pick)),
+          Expanded(child: GlassButton(label: _fileName.isEmpty ? 'Or choose a file / photo' : _fileName, icon: Icons.attach_file_rounded, onTap: _busy ? null : _pick)),
         ]),
         const SizedBox(height: 12),
-        const Text('Kis bhasha mein', style: TextStyle(color: C.muted, fontSize: 12.5)),
+        const Text('Which language', style: TextStyle(color: C.muted, fontSize: 12.5)),
         Wrap(spacing: 6, runSpacing: 4, children: [
           for (final l in _langs.entries) ChoiceChip(label: Text(l.value), selected: _to == l.key, onSelected: (_) => setState(() => _to = l.key)),
         ]),
@@ -339,13 +339,13 @@ class _TranslateTabState extends State<_TranslateTab> {
           contentPadding: EdgeInsets.zero,
           value: _simple,
           onChanged: (v) => setState(() => _simple = v),
-          title: const Text('Aam bolchaal ki bhasha'),
-          subtitle: const Text('Band = daftar / sarkari bhasha'),
+          title: const Text('Everyday spoken language'),
+          subtitle: const Text('Off = office / government language'),
         ),
-        GradientButton(label: _busy ? 'Anuvaad ho raha hai...' : 'Anuvaad karo', icon: Icons.translate_rounded, onTap: _busy ? null : _go),
+        GradientButton(label: _busy ? 'Translating...' : 'Translate', icon: Icons.translate_rounded, onTap: _busy ? null : _go),
         const SizedBox(height: 8),
-        const Text('Naam, number, tareekh aur rakam badalte nahi (lock rehte hain); wapas milaakar jaancha jaata hai. '
-            'Court / passport / embassy ke liye certified translator ki stamp chahiye.', style: TextStyle(color: C.faint, fontSize: 12)),
+        const Text('Names, numbers, dates and amounts do not change (they stay locked); it is checked by translating back. '
+            'Court / passport / embassy need a certified translator\'s stamp.', style: TextStyle(color: C.faint, fontSize: 12)),
       ]);
 }
 
@@ -402,19 +402,19 @@ class _FixTabState extends State<_FixTab> {
 
   @override
   Widget build(BuildContext context) => ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 96), children: [
-        Text('Grammar theek karo', style: display(16)),
+        Text('Fix grammar', style: display(16)),
         const SizedBox(height: 6),
-        TextField(controller: _text, minLines: 4, maxLines: 12, decoration: const InputDecoration(labelText: 'Text daaliye')),
+        TextField(controller: _text, minLines: 4, maxLines: 12, decoration: const InputDecoration(labelText: 'Enter text')),
         const SizedBox(height: 8),
-        GradientButton(label: _busy ? 'Jaanch rahi hoon...' : 'Galtiyan theek karo', height: 48, icon: Icons.spellcheck_rounded, onTap: _busy ? null : _fix),
+        GradientButton(label: _busy ? 'Checking...' : 'Fix mistakes', height: 48, icon: Icons.spellcheck_rounded, onTap: _busy ? null : _fix),
         const Padding(
           padding: EdgeInsets.only(top: 6),
-          child: Text('Sirf galtiyan; matlab, naam aur number nahi badlte. Har badlav dikhega.', style: TextStyle(color: C.faint, fontSize: 12)),
+          child: Text('Only mistakes; meaning, names and numbers do not change. Every change is shown.', style: TextStyle(color: C.faint, fontSize: 12)),
         ),
         const SizedBox(height: 18),
-        Text('Photo / scan se type', style: display(16)),
+        Text('Type from photo / scan', style: display(16)),
         const SizedBox(height: 6),
-        GlassButton(label: 'Photo, scan ya Kruti Dev file chuniye', icon: Icons.document_scanner_rounded, onTap: _busy ? null : _typePhoto),
+        GlassButton(label: 'Choose a photo, scan or Kruti Dev file', icon: Icons.document_scanner_rounded, onTap: _busy ? null : _typePhoto),
         const SizedBox(height: 18),
         Text('Kruti Dev ↔ Unicode', style: display(16)),
         const SizedBox(height: 6),
@@ -427,9 +427,9 @@ class _FixTabState extends State<_FixTab> {
           }),
         ),
         const SizedBox(height: 8),
-        TextField(controller: _kd, minLines: 3, maxLines: 10, decoration: InputDecoration(labelText: _toKd ? 'हिंदी / मराठी text' : 'Kruti Dev text (jaise: fgUnh)')),
+        TextField(controller: _kd, minLines: 3, maxLines: 10, decoration: InputDecoration(labelText: _toKd ? 'हिंदी / मराठी text' : 'Kruti Dev text (for example: fgUnh)')),
         const SizedBox(height: 8),
-        GlassButton(label: 'Badlo', icon: Icons.swap_horiz_rounded, onTap: _convert),
+        GlassButton(label: 'Change', icon: Icons.swap_horiz_rounded, onTap: _convert),
         if (_kdOut.isNotEmpty) ...[
           const SizedBox(height: 10),
           Glass(child: SelectableText(_kdOut, style: const TextStyle(color: C.chip, height: 1.5))),
@@ -440,11 +440,11 @@ class _FixTabState extends State<_FixTab> {
               label: const Text('Copy'),
               onPressed: () {
                 Clipboard.setData(ClipboardData(text: _kdOut));
-                _snack(context, 'Copy ho gaya');
+                _snack(context, 'Copied');
               },
             ),
           ),
-          if (_toKd) const Text('Kruti Dev 010 font mein hi Hindi dikhega.', style: TextStyle(color: C.faint, fontSize: 12)),
+          if (_toKd) const Text('Hindi shows correctly only in the Kruti Dev 010 font.', style: TextStyle(color: C.faint, fontSize: 12)),
         ],
       ]);
 }
@@ -459,7 +459,7 @@ class _DocsTab extends StatelessWidget {
   Widget build(BuildContext context) => RefreshIndicator(
         onRefresh: onRefresh,
         child: ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 96), children: [
-          if (docs.isEmpty) const Padding(padding: EdgeInsets.all(24), child: Text('Abhi koi kaagaz nahi.', style: TextStyle(color: C.muted))),
+          if (docs.isEmpty) const Padding(padding: EdgeInsets.all(24), child: Text('No papers yet.', style: TextStyle(color: C.muted))),
           for (final d in docs)
             Padding(
               padding: const EdgeInsets.only(bottom: 10),
@@ -517,23 +517,23 @@ class _RulesTab extends StatelessWidget {
     return ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 96), children: [
       Glass(
         child: Column(children: [
-          row('my_name', 'Mera naam (letter ke neeche)', _s(st['my_name'])),
-          row('my_lines', 'Pata / pad (har line alag)', _strs(st['my_lines']).join('\n'), lines: 4, list: true),
+          row('my_name', 'My name (below the letter)', _s(st['my_name'])),
+          row('my_lines', 'Address / designation (one per line)', _strs(st['my_lines']).join('\n'), lines: 4, list: true),
           row('my_phone', 'Mobile', _s(st['my_phone'])),
-          row('place', 'Sthan', _s(st['place'])),
-          row('letterhead', 'Office letterhead (pehli line naam)', _s(st['letterhead']), lines: 3),
+          row('place', 'Place', _s(st['place'])),
+          row('letterhead', 'Office letterhead (first line is the name)', _s(st['letterhead']), lines: 3),
           ListTile(
             contentPadding: EdgeInsets.zero,
-            title: const Text('Mahila / Purush (bhavdiya / bhavdiy)'),
+            title: const Text('Female / Male (grammar form)'),
             trailing: SegmentedButton<String>(
-              segments: const [ButtonSegment(value: 'f', label: Text('Mahila')), ButtonSegment(value: 'm', label: Text('Purush'))],
+              segments: const [ButtonSegment(value: 'f', label: Text('Female')), ButtonSegment(value: 'm', label: Text('Male'))],
               selected: {_s(st['gender']).isEmpty ? 'm' : _s(st['gender'])},
               onSelectionChanged: (s) => _save(context, {'gender': s.first}),
             ),
           ),
           ListTile(
             contentPadding: EdgeInsets.zero,
-            title: const Text('Letter ki bhasha'),
+            title: const Text('Letter language'),
             trailing: DropdownButton<String>(
               value: const ['hi', 'mr', 'en'].contains(_s(st['lang'])) ? _s(st['lang']) : 'hi',
               items: [for (final l in ['hi', 'mr', 'en']) DropdownMenuItem(value: l, child: Text(_langs[l]!))],
@@ -546,17 +546,17 @@ class _RulesTab extends StatelessWidget {
       Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
-            Expanded(child: Text('Sign ki photo', style: display(15))),
+            Expanded(child: Text('Signature photo', style: display(15))),
             if (st['has_sign'] == true) const Pill('Saved', fg: C.ok),
           ]),
           const SizedBox(height: 4),
-          const Text('Sirf tab lagti hai jab aap sign card par "photo lagao" chunti hain. Yeh photo hai, digital signature nahi.',
+          const Text('Used only when you choose "add photo" on the sign card. This is a photo, not a digital signature.',
               style: TextStyle(color: C.faint, fontSize: 12)),
           const SizedBox(height: 8),
           Row(children: [
             Expanded(
               child: GlassButton(
-                label: st['has_sign'] == true ? 'Badlo' : 'Photo chuniye',
+                label: st['has_sign'] == true ? 'Change' : 'Choose photo',
                 icon: Icons.draw_rounded,
                 onTap: () async {
                   final files = await pickAttachmentsOfType(context, FileType.image);
@@ -572,7 +572,7 @@ class _RulesTab extends StatelessWidget {
             ),
             if (st['has_sign'] == true) ...[
               const SizedBox(width: 8),
-              GlassButton(label: 'Hatao', onTap: () => _save(context, {'sign_file': ''})),
+              GlassButton(label: 'Remove', onTap: () => _save(context, {'sign_file': ''})),
             ],
           ]),
         ]),
@@ -580,15 +580,15 @@ class _RulesTab extends StatelessWidget {
       const SizedBox(height: 12),
       Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          row('keep', 'Kabhi translate na ho (har line ek shabd)', _strs(st['keep']).join('\n'), lines: 5, list: true),
-          row('rules', 'Mere niyam (har line ek)', _strs(st['rules']).join('\n'), lines: 5, list: true),
+          row('keep', 'Never translate (one word per line)', _strs(st['keep']).join('\n'), lines: 5, list: true),
+          row('rules', 'My rules (one per line)', _strs(st['rules']).join('\n'), lines: 5, list: true),
           ListTile(
             contentPadding: EdgeInsets.zero,
             title: Text('Shabdkosh (${gl.length})'),
             subtitle: Text(gl.take(4).map((e) => '${e['src']} → ${e['dst']}').join(' · ')),
             trailing: const Icon(Icons.add_rounded),
             onTap: () async {
-              final v = await _askText(context, 'Shabd = anuvaad', label: 'jaise: ग्राहक क्रमांक = consumer number');
+              final v = await _askText(context, 'Word = translation', label: 'for example: ग्राहक क्रमांक = consumer number');
               if (v == null || !v.contains('=')) return;
               final p = v.split('=');
               await _save(context, {'glossary': [...gl, {'src': p[0].trim(), 'dst': p.sublist(1).join('=').trim()}]});
@@ -596,13 +596,13 @@ class _RulesTab extends StatelessWidget {
           ),
           if (_strs(st['style']).isNotEmpty) ...[
             const SizedBox(height: 6),
-            const Text('Aapke badlav se seekha:', style: TextStyle(color: C.muted, fontSize: 12.5)),
+            const Text('Learned from your changes:', style: TextStyle(color: C.muted, fontSize: 12.5)),
             for (final x in _strs(st['style']).reversed.take(6)) Text('• $x', style: const TextStyle(color: C.faint, fontSize: 12)),
           ],
         ]),
       ),
       const SizedBox(height: 12),
-      Text('Pate (${_list(d['contacts']).length})', style: display(15)),
+      Text('Addresses (${_list(d['contacts']).length})', style: display(15)),
       for (final c in _list(d['contacts']))
         ListTile(
           contentPadding: EdgeInsets.zero,
@@ -612,11 +612,11 @@ class _RulesTab extends StatelessWidget {
         ),
       TextButton.icon(
         icon: const Icon(Icons.add_rounded),
-        label: const Text('Naya pata'),
+        label: const Text('New address'),
         onPressed: () async {
-          final n = await _askText(context, 'Kisko (chhota naam)', label: 'Tehsildar Akot');
+          final n = await _askText(context, 'To whom (short name)', label: 'Tehsildar Akot');
           if (n == null || n.isEmpty || !context.mounted) return;
-          final lines = await _askText(context, 'Pata jaise letter par jaayega', label: 'har line alag', lines: 4);
+          final lines = await _askText(context, 'Address as it will go on the letter', label: 'one per line', lines: 4);
           if (lines == null) return;
           try {
             await app.api!.lekhakContact({'name': n, 'lines': lines.split('\n').where((x) => x.trim().isNotEmpty).toList()});
@@ -697,18 +697,18 @@ class _LekhakDocPageState extends State<LekhakDocPage> {
                 if (d['status'] != 'signed')
                   Wrap(spacing: 8, runSpacing: 8, children: [
                     GlassButton(
-                      label: 'Badlo (boliye)',
+                      label: 'Change (say it)',
                       icon: Icons.record_voice_over_rounded,
                       height: 42,
                       onTap: _busy
                           ? null
                           : () async {
-                              final v = await _askText(context, 'Kya badalna hai?', label: 'jaise: subject chhota karo, Marathi mein karo');
+                              final v = await _askText(context, 'What to change?', label: 'for example: shorten the subject, do it in Marathi');
                               if (v != null && v.isNotEmpty) await _run(() => widget.app.api!.lekhakRevise(widget.id, v, conversationId: conv));
                             },
                     ),
                     GlassButton(
-                      label: 'Khud likho',
+                      label: 'Write it yourself',
                       icon: Icons.edit_rounded,
                       height: 42,
                       onTap: _busy
@@ -717,7 +717,7 @@ class _LekhakDocPageState extends State<LekhakDocPage> {
                               final plain = ['translation', 'typing', 'grammar', 'convert'].contains(d['kind']);
                               final parts = Map<String, dynamic>.from((d['parts'] as Map?) ?? const {});
                               final init = plain ? _s(parts['text']) : _strs(parts['body']).join('\n\n');
-                              final v = await _askText(context, plain ? 'Text' : 'Letter ka mukhya hissa', init: init, lines: 10);
+                              final v = await _askText(context, plain ? 'Text' : 'Main body of the letter', init: init, lines: 10);
                               if (v == null) return;
                               await _run(() => widget.app.api!.lekhakEdit(widget.id,
                                   plain ? {'text': v} : {'parts': {'body': v.split(RegExp(r'\n\s*\n')).where((x) => x.trim().isNotEmpty).toList()}}));
@@ -725,7 +725,7 @@ class _LekhakDocPageState extends State<LekhakDocPage> {
                     ),
                     if (!['translation', 'typing', 'grammar', 'convert'].contains(d['kind']))
                       GlassButton(
-                        label: 'Sign ke liye',
+                        label: 'For signing',
                         icon: Icons.draw_rounded,
                         height: 42,
                         onTap: _busy ? null : () => _run(() => widget.app.api!.lekhakSignRequest(widget.id, conversationId: conv)),
@@ -740,7 +740,7 @@ class _LekhakDocPageState extends State<LekhakDocPage> {
                     height: 44,
                     onTap: () {
                       Clipboard.setData(ClipboardData(text: _s(d['text'])));
-                      _snack(context, 'Copy ho gaya');
+                      _snack(context, 'Copied');
                     },
                   ),
                   GlassButton(
@@ -748,7 +748,7 @@ class _LekhakDocPageState extends State<LekhakDocPage> {
                     icon: Icons.send_rounded,
                     height: 44,
                     onTap: () async {
-                      final ph = await _askText(context, 'Kis number par?', label: '10 ank');
+                      final ph = await _askText(context, 'On which number?', label: '10 digits');
                       if (ph == null) return;
                       try {
                         final r = await widget.app.api!.lekhakShare(widget.id, phone: ph);
@@ -759,7 +759,7 @@ class _LekhakDocPageState extends State<LekhakDocPage> {
                     },
                   ),
                   if (d['status'] == 'signed')
-                    GlassButton(label: 'Nayi copy', icon: Icons.copy_all_rounded, height: 44, onTap: () => _run(() => widget.app.api!.lekhakCopy(widget.id))),
+                    GlassButton(label: 'New copy', icon: Icons.copy_all_rounded, height: 44, onTap: () => _run(() => widget.app.api!.lekhakCopy(widget.id))),
                 ]),
                 for (final f in ((d['files'] as Map?) ?? const {}).entries)
                   ListTile(
@@ -773,7 +773,7 @@ class _LekhakDocPageState extends State<LekhakDocPage> {
                   const SizedBox(height: 12),
                   ExpansionTile(
                     tilePadding: EdgeInsets.zero,
-                    title: const Text('Aapne kya kaha tha', style: TextStyle(color: C.muted)),
+                    title: const Text('What you said', style: TextStyle(color: C.muted)),
                     children: [SelectableText(_s(d['source']), style: const TextStyle(color: C.faint))],
                   ),
                 ],
@@ -812,13 +812,13 @@ class LekhakChecks extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         if (checks['label'] != null) line(Icons.info_outline_rounded, C.muted, _s(checks['label'])),
-        if (blanks.isNotEmpty) line(Icons.edit_note_rounded, C.accent, 'Bharna baaki: ${blanks.join(', ')}'),
-        if (missing.isNotEmpty) line(Icons.report_rounded, C.bad, 'Aapki baat se letter mein nahi aaya: ${missing.join(', ')}'),
-        if (lost.isNotEmpty) line(Icons.report_rounded, C.bad, 'Anuvaad mein chhoot gaya: ${lost.join(', ')}'),
-        if (diffs.isNotEmpty) line(Icons.compare_arrows_rounded, C.accent, 'Wapas milaane par farq: ${diffs.join('; ')}'),
-        if (back.isNotEmpty && diffs.isEmpty) line(Icons.verified_rounded, C.ok, 'Wapas milaaya: matlab same hai'),
+        if (blanks.isNotEmpty) line(Icons.edit_note_rounded, C.accent, 'Still to fill: ${blanks.join(', ')}'),
+        if (missing.isNotEmpty) line(Icons.report_rounded, C.bad, 'Not in the letter from what you said: ${missing.join(', ')}'),
+        if (lost.isNotEmpty) line(Icons.report_rounded, C.bad, 'Left out in the translation: ${lost.join(', ')}'),
+        if (diffs.isNotEmpty) line(Icons.compare_arrows_rounded, C.accent, 'Difference when translated back: ${diffs.join('; ')}'),
+        if (back.isNotEmpty && diffs.isEmpty) line(Icons.verified_rounded, C.ok, 'Translated back: the meaning is the same'),
         for (final e in edits) line(Icons.check_rounded, C.ok, '"${e['from']}" → "${e['to']}"  (${e['why']})'),
-        for (final e in refused) line(Icons.block_rounded, C.faint, 'Roka: "${e['from']}" → "${e['to']}" (${e['why']})'),
+        for (final e in refused) line(Icons.block_rounded, C.faint, 'Blocked:"${e['from']}" → "${e['to']}" (${e['why']})'),
         for (final n in notes) line(Icons.lightbulb_outline_rounded, C.accent2, n),
       ]),
     );
@@ -854,7 +854,7 @@ class LekhakDocCard extends StatelessWidget {
           alignment: Alignment.centerRight,
           child: TextButton(
             onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => LekhakDocPage(app: app, id: _s(v['id'])))),
-            child: const Text('Kholo / badlo / file'),
+            child: const Text('Open / change / file'),
           ),
         ),
       ]),
@@ -900,7 +900,7 @@ class _LekhakSignCardState extends State<LekhakSignCard> {
         Row(children: [
           const Icon(Icons.draw_rounded, color: C.accent, size: 20),
           const SizedBox(width: 8),
-          Expanded(child: Text('Sign karna hai? ${v['number']}', style: display(15))),
+          Expanded(child: Text('Do you want to sign? ${v['number']}', style: display(15))),
           if (!waiting) Pill(_status[st] ?? st, fg: _statusCol(st)),
         ]),
         const SizedBox(height: 8),
@@ -911,28 +911,28 @@ class _LekhakSignCardState extends State<LekhakSignCard> {
           child: SingleChildScrollView(child: Text(_s(v['text']), style: const TextStyle(color: Color(0xFF1A1A1A), fontSize: 13, height: 1.5))),
         ),
         if (blanks.isNotEmpty)
-          Padding(padding: const EdgeInsets.only(top: 6), child: Text('Pehle bhariye: ${blanks.join(', ')}', style: const TextStyle(color: C.bad, fontSize: 12.5))),
+          Padding(padding: const EdgeInsets.only(top: 6), child: Text('Fill in first: ${blanks.join(', ')}', style: const TextStyle(color: C.bad, fontSize: 12.5))),
         if (waiting) ...[
           const SizedBox(height: 8),
           SegmentedButton<String>(
             segments: [
-              const ButtonSegment(value: 'paper', icon: Icon(Icons.print_rounded), label: Text('Print, main sign karungi')),
-              ButtonSegment(value: 'image', icon: const Icon(Icons.draw_rounded), label: const Text('Sign photo lagao'), enabled: v['has_sign'] == true),
+              const ButtonSegment(value: 'paper', icon: Icon(Icons.print_rounded), label: Text('Print, I will sign')),
+              ButtonSegment(value: 'image', icon: const Icon(Icons.draw_rounded), label: const Text('Add signature photo'), enabled: v['has_sign'] == true),
             ],
             selected: {_mode},
             onSelectionChanged: (x) => setState(() => _mode = x.first),
           ),
           Padding(
             padding: const EdgeInsets.only(top: 4),
-            child: Text(v['has_sign'] == true ? 'Sign photo sirf ek photo hai, digital signature nahi.' : 'Sign photo ke liye Niyam mein photo jodiye.',
+            child: Text(v['has_sign'] == true ? 'The signature photo is only a photo, not a digital signature.' : 'Add a photo in Rules for the signature photo.',
                 style: const TextStyle(color: C.faint, fontSize: 11.5)),
           ),
-          const Text('Official e-sign chahiye to Aadhaar eSign wali site use kijiye.', style: TextStyle(color: C.faint, fontSize: 11.5)),
+          const Text('For an official e-sign, use the Aadhaar eSign site.', style: TextStyle(color: C.faint, fontSize: 11.5)),
           const SizedBox(height: 8),
           Row(children: [
-            Expanded(child: GlassButton(label: 'Mana', onTap: _busy ? null : () => _decide(false))),
+            Expanded(child: GlassButton(label: 'Decline', onTap: _busy ? null : () => _decide(false))),
             const SizedBox(width: 10),
-            Expanded(child: GradientButton(label: 'Haan, final', height: 48, onTap: _busy || blanks.isNotEmpty ? null : () => _decide(true))),
+            Expanded(child: GradientButton(label: 'Yes, final', height: 48, onTap: _busy || blanks.isNotEmpty ? null : () => _decide(true))),
           ]),
         ],
       ]),

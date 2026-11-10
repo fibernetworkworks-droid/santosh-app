@@ -41,16 +41,16 @@ async def postgres(ctx: Ctx, action="databases", database="", schema="public", t
     actor = str(getattr(ctx, "actor", "owner") or "owner")
     for v in (sql, reason, database, table):
         if v and _DSN.search(str(v)):
-            raise ToolError("Connection string / password chat se nahi lete. Use turant badal dijiye (rotate) aur app mein "
-                            "Profile > Postgres database se jodiye.")
+            raise ToolError("A connection string / password is not accepted in chat. Rotate it at once and connect in the app "
+                            "under Profile > Postgres database.")
     if actor.startswith("customer"):
-        raise ToolError("Graahak ke liye database nahi khulta.")
+        raise ToolError("The database does not open for customers.")
     try:
         if action == "databases":
             rows = await asyncio.to_thread(S.conns, ctx.tenant_id)
             if not rows:
-                return {"databases": [], "say": "Abhi koi database nahi juda. App mein Profile > Postgres database se jodiye "
-                                                "(connection string wahi daaliye, chat mein nahi)."}
+                return {"databases": [], "say": "No database is connected yet. Connect one in the app under Profile > Postgres database "
+                                                "(enter the connection string there, not in chat)."}
             return {"databases": rows}
         if action == "schemas":
             return await asyncio.to_thread(S.schemas, ctx.tenant_id, database)
@@ -67,13 +67,13 @@ async def postgres(ctx: Ctx, action="databases", database="", schema="public", t
         if action == "write":
             v = await asyncio.to_thread(S.write_request, ctx.tenant_id, ctx.conversation_id, database, sql, reason, actor)
             return {"status": "needs_tap", "card": v["id"], "number": v["number"], "statements": v["statements"],
-                    "danger": v["danger"], "note": ("Card chat mein hai; badlav tabhi chalega jab woh Haan dabayengi. Abhi "
-                                                    "'ho gaya' mat kahiye, ek line mein bata dijiye kya badlega.")}
+                    "danger": v["danger"], "note": ("The card is in the chat; the change runs only when she presses Haan. Do not say "
+                                                    "'done' yet; tell her in one line what will change.")}
         if action == "writes":
             return {"writes": await asyncio.to_thread(S.writes, ctx.tenant_id)}
     except S.PgError as e:
         raise ToolError(str(e))
-    raise ToolError("action samajh nahi aaya")
+    raise ToolError("action not understood")
 
 
 PGDB_HANDLERS = {"postgres": postgres}

@@ -9,11 +9,11 @@ from typing import Any
 from ..packs.registry import Pack
 from .base import Ctx, NeedsApproval, ToolError, ToolSpec
 
-TITLES = {"share": "File share karein?", "public": "Public link banayein?", "trash": "Trash mein daalein?",
-          "unshare": "Sharing hata dein?", "role": "Role badlein?", "transfer": "Ownership de dein?",
-          "delete": "Hamesha ke liye delete?", "empty_trash": "Poora Trash khaalein?",
-          "comment": "Comment daalein?", "reply": "Reply daalein?", "comment_delete": "Comment hatayein?"}
-ROLE = {"reader": "sirf dekh sakenge", "commenter": "comment kar sakenge", "writer": "badal (edit) bhi sakenge"}
+TITLES = {"share": "Share this file?", "public": "Create a public link?", "trash": "Move to Trash?",
+          "unshare": "Remove sharing?", "role": "Change role?", "transfer": "Transfer ownership?",
+          "delete": "Delete forever?", "empty_trash": "Empty the whole Trash?",
+          "comment": "Add comment?", "reply": "Add reply?", "comment_delete": "Delete comment?"}
+ROLE = {"reader": "can only view", "commenter": "can comment", "writer": "can edit"}
 
 
 class DriveExecutor:
@@ -29,59 +29,59 @@ class DriveExecutor:
             raise ToolError(f"Unknown tool {tool}")
         p = ds.pending(ctx.user.id, str(args.get("pending_id", "")))
         if p is None or p["status"] != "pending":
-            raise ToolError("Yeh Drive badlav taiyaar nahi hai; dobara boliye.")
+            raise ToolError("This Drive change is not ready; please ask again.")
         sm, act = p["summary"], p["action"]
         if act == "share":
             items = [{"name": f"{sm['type']}: {sm['name']}"},
-                     {"name": "Kisko: " + ", ".join(sm["people"])[:200]},
-                     {"name": f"Woh {ROLE.get(sm['role'], sm['role'])}; unhe Google se email jayega."}]
+                     {"name": "To: " + ", ".join(sm["people"])[:200]},
+                     {"name": f"They {ROLE.get(sm['role'], sm['role'])}; Google will email them."}]
         elif act == "public":
             items = [{"name": f"{sm['type']}: {sm['name']}"},
-                     {"name": "Link wala koi bhi ise dekh sakega (bina login)."}]
+                     {"name": "Anyone with the link can view it (no sign-in needed)."}]
         elif act == "unshare":
             items = [{"name": f"File: {sm['name']}"},
-                     {"name": "Kaun hatana hai: " + ", ".join(sm["people"])[:200]},
-                     {"name": "Link se ab koi nahi khol payega jise permission nahi hai." if sm.get("stop") == "sab"
-                      else "Iske baad woh file nahi kholega."}]
+                     {"name": "Who to remove: " + ", ".join(sm["people"])[:200]},
+                     {"name": "Nobody without permission will be able to open it by link." if sm.get("stop") == "sab"
+                      else "After this they will not be able to open the file."}]
         elif act == "role":
             items = [{"name": f"File: {sm['name']}"},
-                     {"name": "Kaun: " + ", ".join(sm["people"])[:200]},
-                     {"name": f"Nayi role: {ROLE.get(sm.get('role', ''), sm.get('role', ''))}."}]
+                     {"name": "Who: " + ", ".join(sm["people"])[:200]},
+                     {"name": f"New role: {ROLE.get(sm.get('role', ''), sm.get('role', ''))}."}]
         elif act == "transfer":
             items = [{"name": f"File: {sm['name']}"},
-                     {"name": "Naya owner: " + ", ".join(sm["people"])[:200]},
-                     {"name": "Aap editor rahengi; ownership wapas alag tarah se leni padti hai."}]
+                     {"name": "New owner: " + ", ".join(sm["people"])[:200]},
+                     {"name": "You will stay an editor; getting ownership back needs a separate step."}]
         elif act == "delete":
             names = sm.get("names") or []
             items = [{"name": n} for n in names[:6]]
             if len(names) > 6:
-                items.append({"name": f"+ {len(names) - 6} aur"})
+                items.append({"name": f"+ {len(names) - 6} more"})
             if sm.get("folders"):
-                items.append({"name": "Folder ke andar ki sab files bhi jayengi."})
-            items.append({"name": "HAMESHA ke liye — Trash se bhi nahi lautegi."})
+                items.append({"name": "All files inside the folder will go too."})
+            items.append({"name": "FOREVER — it will not come back from Trash either."})
         elif act == "empty_trash":
-            items = [{"name": f"{sm['name']} ka poora Trash"},
-                     {"name": "Trash ki sab files hamesha ke liye delete ho jayengi."}]
+            items = [{"name": f"All of the Trash in {sm['name']}"},
+                     {"name": "Every file in the Trash will be deleted forever."}]
         elif act == "comment":
             items = [{"name": f"{sm.get('type', 'File')}: {sm['name']}"},
-                     {"name": "Kya likha: " + sm.get("content", "")[:200]},
-                     {"name": "File par jo log hain unhe Google email jayega."}]
+                     {"name": "What it says: " + sm.get("content", "")[:200]},
+                     {"name": "Google will email the people on the file."}]
         elif act == "reply":
-            items = [{"name": "Reply par: " + sm.get("quoted", "")[:120]},
-                     {"name": "Kya likha: " + sm.get("content", "")[:200]}]
+            items = [{"name": "Replying to: " + sm.get("quoted", "")[:120]},
+                     {"name": "What it says: " + sm.get("content", "")[:200]}]
         elif act == "comment_delete":
             items = [{"name": f"File: {sm['name']}"},
-                     {"name": "Kaunsa comment: " + sm.get("quoted", "")[:150]},
-                     {"name": "Comment hamesha ke liye hat jayega."}]
+                     {"name": "Which comment: " + sm.get("quoted", "")[:150]},
+                     {"name": "The comment will be removed forever."}]
         else:
             names = sm.get("names") or []
             items = [{"name": n} for n in names[:6]]
             if len(names) > 6:
-                items.append({"name": f"+ {len(names) - 6} aur"})
+                items.append({"name": f"+ {len(names) - 6} more"})
             if sm.get("folders"):
-                items.append({"name": "Folder ke andar ki sab files bhi Trash mein jayengi."})
-            items.append({"name": "30 din tak Drive ke Trash se wapas la sakte hain."})
-        return NeedsApproval(tier=2, title=TITLES.get(act, "Drive badlav?"), payee="Google Drive", amount_paise=0,
+                items.append({"name": "All files inside the folder will go to Trash too."})
+            items.append({"name": "You can bring them back from Drive Trash for 30 days."})
+        return NeedsApproval(tier=2, title=TITLES.get(act, "Drive change?"), payee="Google Drive", amount_paise=0,
                              items=items, pay_method="Santosh Drive",
                              preview={"message": f"Approve to {act} on Google Drive."},
                              action={"executor": "drive", "pack_id": pack.id, "name": "run", "args": {"pending_id": p["id"]}})

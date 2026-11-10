@@ -22,19 +22,19 @@ void _snack(BuildContext c, String t) {
 Color _level(String l) => switch (l) { 'bad' => C.bad, 'warn' => C.warn, 'ok' => C.ok, _ => C.muted };
 
 const _stages = [
-  ('shipped', 'Chal pada'),
-  ('arrived', 'Pahuncha'),
+  ('shipped', 'Started'),
+  ('arrived', 'Arrived'),
   ('igm', 'IGM'),
   ('be_filed', 'BE file'),
-  ('query', 'Sawaal / exam'),
+  ('query', 'Question / exam'),
   ('assessed', 'Assessment'),
-  ('duty_paid', 'Duty jama'),
+  ('duty_paid', 'Duty paid'),
   ('ooc', 'Out of Charge'),
   ('delivered', 'Godown'),
-  ('empty_returned', 'Container wapas'),
+  ('empty_returned', 'Container returned'),
 ];
 
-Future<Map<String, String>?> _form(BuildContext context, String title, List<(String, String)> fields, {String ok = 'Aage'}) async {
+Future<Map<String, String>?> _form(BuildContext context, String title, List<(String, String)> fields, {String ok = 'Next'}) async {
   final c = {for (final (k, _) in fields) k: TextEditingController()};
   final res = await showDialog<bool>(
     context: context,
@@ -47,7 +47,7 @@ Future<Map<String, String>?> _form(BuildContext context, String title, List<(Str
         ]),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Rehne do')),
+        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Leave it')),
         TextButton(onPressed: () => Navigator.pop(d, true), child: Text(ok)),
       ],
     ),
@@ -111,17 +111,17 @@ class _CustomsScreenState extends State<CustomsScreen> {
       .then((_) => _load());
 
   Future<void> _new() async {
-    final f = await _form(context, 'Naya import shipment', const [
-      ('supplier', 'Supplier ka naam'),
-      ('origin', 'Maal kis desh ka (origin)'),
+    final f = await _form(context, 'New import shipment', const [
+      ('supplier', 'Supplier name'),
+      ('origin', 'Country of origin of the goods'),
       ('incoterm', 'Incoterm (FOB / CIF / EXW / CFR / DAP ...)'),
       ('currency', 'Currency (USD / EUR / AED ...)'),
-      ('invoice_value', 'Invoice value (us currency mein)'),
+      ('invoice_value', 'Invoice value (in that currency)'),
       ('mode', 'Mode: sea / air / courier / land'),
       ('port', 'Port / air cargo / ICD'),
       ('bl_no', 'BL / AWB number (ho to)'),
       ('eta', 'ETA (dd-mm-yyyy)'),
-    ], ok: 'Banao');
+    ], ok: 'Make');
     if (f == null || (f['supplier'] ?? '').isEmpty) return;
     final body = <String, dynamic>{...f};
     if (f['invoice_value'] != null) body['invoice_value'] = _n(f['invoice_value']) ?? 0;
@@ -172,30 +172,30 @@ class _CustomsScreenState extends State<CustomsScreen> {
       for (final a in _list(d['alerts']))
         Text('• ${_s(a['shipment'])}: ${_s(a['say'])}', style: TextStyle(fontSize: 12.5, color: _level(_s(a['level'])))),
       const SizedBox(height: 8),
-      if (_list(d['open']).isNotEmpty) Text('Khule shipment', style: display(15)),
+      if (_list(d['open']).isNotEmpty) Text('Open shipments', style: display(15)),
       const SizedBox(height: 6),
       for (final v in _list(d['open'])) _tile(v),
     ]);
   }
 
   Widget _shipments() => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        GradientButton(label: 'Naya import', icon: Icons.add_rounded, height: 48, onTap: _busy ? null : _new),
+        GradientButton(label: 'New import', icon: Icons.add_rounded, height: 48, onTap: _busy ? null : _new),
         const SizedBox(height: 10),
-        if (_list(_d?['shipments']).isEmpty) const Text('Abhi koi shipment nahi.', style: TextStyle(color: C.muted)),
+        if (_list(_d?['shipments']).isEmpty) const Text('No shipments yet.', style: TextStyle(color: C.muted)),
         for (final v in _list(_d?['shipments'])) _tile(v),
       ]);
 
   Future<void> _hsAsk() async {
-    final f = await _form(context, 'HS code ka sujhaav', const [('desc', 'Maal kya hai, kis cheez ka bana, kis kaam ka')], ok: 'Dekho');
+    final f = await _form(context, 'HS code suggestion', const [('desc', 'What the goods are, what they are made of, what they are used for')], ok: 'View');
     if (f == null || (f['desc'] ?? '').isEmpty) return;
     final r = await _run('POST', '/api/customs/hs/suggest', {'desc': f['desc']});
     if (r != null && mounted) setState(() => _hs = r);
   }
 
   Widget _hsTab() => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        GradientButton(label: 'Maal batao, code sujhao', icon: Icons.manage_search_rounded, height: 48, onTap: _busy ? null : _hsAsk),
+        GradientButton(label: 'Describe the goods, get a code suggestion', icon: Icons.manage_search_rounded, height: 48, onTap: _busy ? null : _hsAsk),
         const SizedBox(height: 8),
-        const Text('Sujhaav sirf andaaza hai. 8 ank ka code Customs Tariff / CHA se pakka kariye; galat code par jurmana aur maal rukta hai.',
+        const Text('A suggestion is only an estimate. Confirm the 8-digit code with the Customs Tariff / your CHA; a wrong code means a penalty and held goods.',
             style: TextStyle(fontSize: 12, color: C.muted)),
         const SizedBox(height: 10),
         if (_hs != null) ...[
@@ -208,15 +208,15 @@ class _CustomsScreenState extends State<CustomsScreen> {
 
   Future<void> _settings() async {
     final st = _m(_d?['settings']);
-    final f = await _form(context, 'Importer ki jaankari', [
-      ('firm', 'Firm ka naam (${_s(st['firm'])})'),
+    final f = await _form(context, 'Importer details', [
+      ('firm', 'Firm name (${_s(st['firm'])})'),
       ('iec', 'IEC (${_s(st['iec'])})'),
       ('gstin', 'GSTIN (${_s(st['gstin'])})'),
-      ('address', 'Pata'),
+      ('address', 'Address'),
       ('cha_name', 'CHA / customs broker (${_s(st['cha_name'])})'),
       ('cha_phone', 'CHA phone'),
       ('cha_email', 'CHA email'),
-      ('morning_time', 'Subah ka note (HH:MM, abhi ${_s(st['morning_time'])})'),
+      ('morning_time', 'Morning note (HH:MM, now ${_s(st['morning_time'])})'),
     ], ok: 'Save');
     if (f == null || f.isEmpty) return;
     await _run('PUT', '/api/customs/settings', f);
@@ -227,16 +227,16 @@ class _CustomsScreenState extends State<CustomsScreen> {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(_s(st['firm']).isEmpty ? 'Firm ka naam nahi diya' : _s(st['firm']), style: const TextStyle(fontWeight: FontWeight.w800)),
+          Text(_s(st['firm']).isEmpty ? 'Firm name not given' : _s(st['firm']), style: const TextStyle(fontWeight: FontWeight.w800)),
           Text('IEC: ${_s(st['iec']).isEmpty ? '—' : _s(st['iec'])}${st['iec_ok'] == true ? ' ✓' : ''} · GSTIN: ${_s(st['gstin']).isEmpty ? '—' : _s(st['gstin'])}',
               style: const TextStyle(color: C.muted, fontSize: 12.5)),
           Text('CHA: ${_s(st['cha_name']).isEmpty ? '—' : _s(st['cha_name'])} ${_s(st['cha_phone'])}', style: const TextStyle(color: C.muted, fontSize: 12.5)),
         ]),
       ),
       const SizedBox(height: 8),
-      GlassButton(label: 'Badlo', icon: Icons.edit_rounded, onTap: _busy ? null : _settings),
+      GlassButton(label: 'Change', icon: Icons.edit_rounded, onTap: _busy ? null : _settings),
       const SizedBox(height: 10),
-      Text('Hoola kya nahi karta', style: display(14)),
+      Text('What Hoola does not do', style: display(14)),
       for (final n in ((_d?['never'] as List?) ?? const [])) Text('• $n', style: const TextStyle(fontSize: 12.5, color: C.muted)),
     ]);
   }
@@ -245,14 +245,14 @@ class _CustomsScreenState extends State<CustomsScreen> {
   Widget build(BuildContext context) => Scaffold(
         appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Customs Sahayak')),
         floatingActionButton: _tab <= 1
-            ? FloatingActionButton.extended(onPressed: _busy ? null : _new, icon: const Icon(Icons.local_shipping_rounded), label: const Text('Naya import'))
+            ? FloatingActionButton.extended(onPressed: _busy ? null : _new, icon: const Icon(Icons.local_shipping_rounded), label: const Text('New import'))
             : null,
         body: Aurora(
           child: RefreshIndicator(
             onRefresh: _load,
             child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 90), children: [
               Wrap(spacing: 6, runSpacing: 6, children: [
-                for (final (i, t) in const [(0, 'Aaj'), (1, 'Shipments'), (2, 'HS jaanch'), (3, 'Niyam')])
+                for (final (i, t) in const [(0, 'Today'), (1, 'Shipments'), (2, 'HS check'), (3, 'Rules')])
                   ChoiceChip(label: Text(t), selected: _tab == i, onSelected: (_) => setState(() => _tab = i)),
               ]),
               const SizedBox(height: 10),
@@ -260,7 +260,7 @@ class _CustomsScreenState extends State<CustomsScreen> {
               if (_d == null) const Center(child: CircularProgressIndicator()) else [_today(), _shipments(), _hsTab(), _rules()][_tab],
               const SizedBox(height: 14),
               const Text(
-                  'Bill of Entry ka data CHA ko sirf aapki haan ke baad jaata hai. Hoola ICEGATE par file nahi karta, duty nahi bharta, duty rate khud nahi lagata.',
+                  'Bill of Entry data goes to your CHA only after your yes. Hoola does not file on ICEGATE, does not pay duty, and does not apply duty rates by itself.',
                   style: TextStyle(color: C.faint, fontSize: 11.5)),
             ]),
           ),
@@ -281,11 +281,11 @@ class _HsCandidate extends StatelessWidget {
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
             Expanded(child: Text(_s(c['formatted']), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15))),
-            Pill(switch (_s(c['source'])) { 'aapka' => 'aapka pichhla', 'model' => 'andaaza', _ => 'heading' }),
+            Pill(switch (_s(c['source'])) { 'aapka' => 'your previous', 'model' => 'estimate', _ => 'heading' }),
           ]),
           if (_s(c['title']).isNotEmpty) Text(_s(c['title']), style: const TextStyle(fontSize: 12.5)),
           if (_s(c['why']).isNotEmpty) Text(_s(c['why']), style: const TextStyle(fontSize: 12, color: C.muted)),
-          if (_s(c['ask']).isNotEmpty) Text('Pakka karne ke liye: ${_s(c['ask'])}', style: const TextStyle(fontSize: 12, color: C.accentSoft)),
+          if (_s(c['ask']).isNotEmpty) Text('To confirm: ${_s(c['ask'])}', style: const TextStyle(fontSize: 12, color: C.accentSoft)),
           for (final n in ((chk['notes'] as List?) ?? const []).take(1)) Text('• $n', style: const TextStyle(fontSize: 11.5, color: C.faint)),
           for (final r in _list(chk['regulators'])) Text('• ${_s(r['label'])}: ${_s(r['doc'])}', style: const TextStyle(fontSize: 11.5, color: C.warn)),
         ]),
@@ -335,18 +335,18 @@ class _CustomsShipmentPageState extends State<CustomsShipmentPage> {
 
   Future<void> _edit() async {
     final v = _v ?? const {};
-    final f = await _form(context, 'Shipment badlo', [
+    final f = await _form(context, 'Change shipment', [
       ('invoice_value', 'Invoice value (${_s(v['invoice_value'])})'),
-      ('fx', 'Exchange rate ₹ (CBIC notified, abhi ${_s(v['fx'])})'),
-      ('freight', 'Freight (asli raqam, pata ho to)'),
-      ('insurance', 'Insurance (asli raqam, pata ho to)'),
+      ('fx', 'Exchange rate ₹ (CBIC notified, now ${_s(v['fx'])})'),
+      ('freight', 'Freight (actual amount, if known)'),
+      ('insurance', 'Insurance (actual amount, if known)'),
       ('bl_no', 'BL / AWB (${_s(v['bl_no'])})'),
       ('eta', 'ETA (dd-mm-yyyy)'),
-      ('free_days', 'Port / CFS free din (${_s(v['free_days'])})'),
-      ('demurrage_per_day', 'Demurrage ₹ / din (aapki rate)'),
-      ('detention_free_days', 'Container free din (shipping line)'),
-      ('detention_per_day', 'Detention ₹ / din'),
-      ('cha', 'Is shipment ka CHA'),
+      ('free_days', 'Port / CFS free days (${_s(v['free_days'])})'),
+      ('demurrage_per_day', 'Demurrage ₹ / day (your rate)'),
+      ('detention_free_days', 'Container free days (shipping line)'),
+      ('detention_per_day', 'Detention ₹ / day'),
+      ('cha', 'CHA for this shipment'),
     ], ok: 'Save');
     if (f == null || f.isEmpty) return;
     final body = <String, dynamic>{};
@@ -357,26 +357,26 @@ class _CustomsShipmentPageState extends State<CustomsShipmentPage> {
   }
 
   Future<void> _addLine() async {
-    final f = await _form(context, 'Maal ki line', const [
-      ('desc', 'Maal (naam, material, kaam)'),
+    final f = await _form(context, 'Goods line', const [
+      ('desc', 'Goods (name, material, use)'),
       ('qty', 'Quantity'),
       ('unit', 'Unit (pcs / kg / nos)'),
       ('value', 'Value (invoice currency)'),
-    ], ok: 'Jodo');
+    ], ok: 'Add');
     if (f == null || (f['desc'] ?? '').isEmpty) return;
     await _run('POST', '$_p/lines', {'desc': f['desc'], 'qty': _n(f['qty']) ?? 0, 'unit': f['unit'] ?? '', 'value': _n(f['value']) ?? 0});
   }
 
   Future<void> _confirmHs(Map<String, dynamic> ln) async {
-    final f = await _form(context, 'Line ${_s(ln['no'])}: pakka HS code', [('hs', '8 ank (abhi ${_s(ln['hs_fmt'])})')], ok: 'Pakka');
+    final f = await _form(context, 'Line ${_s(ln['no'])}: confirm HS code', [('hs', '8 digits (now ${_s(ln['hs_fmt'])})')], ok: 'Confirmed');
     if (f == null || (f['hs'] ?? '').isEmpty) return;
     await _run('POST', '$_p/hs', {'line': ln['no'], 'hs': f['hs']});
   }
 
   Future<void> _rates(Map<String, dynamic> ln) async {
-    final f = await _form(context, 'Line ${_s(ln['no'])}: duty rates (Tariff / CHA se)', const [
+    final f = await _form(context, 'Line ${_s(ln['no'])}: duty rates (from Tariff / CHA)', const [
       ('bcd', 'BCD %'),
-      ('sws', 'SWS % (khaali = BCD ka 10%)'),
+      ('sws', 'SWS % (blank = 10% of BCD)'),
       ('igst', 'IGST %'),
       ('cess', 'Compensation cess % (ho to)'),
       ('aidc', 'AIDC % (ho to)'),
@@ -392,9 +392,9 @@ class _CustomsShipmentPageState extends State<CustomsShipmentPage> {
     await showDialog<void>(
       context: context,
       builder: (d) => AlertDialog(
-        title: const Text('Sujhaav (andaaza)'),
+        title: const Text('Suggestion (estimate)'),
         content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [for (final c in _list(r['candidates'])) _HsCandidate(c: c)])),
-        actions: [TextButton(onPressed: () => Navigator.pop(d), child: const Text('Theek'))],
+        actions: [TextButton(onPressed: () => Navigator.pop(d), child: const Text('OK'))],
       ),
     );
   }
@@ -410,13 +410,13 @@ class _CustomsShipmentPageState extends State<CustomsShipmentPage> {
 
   Future<void> _stage(String key, String label) async {
     final f = await _form(context, label, [
-      ('at', 'Tareekh (dd-mm-yyyy, khaali = aaj)'),
+      ('at', 'Date (dd-mm-yyyy, blank = today)'),
       if (key == 'be_filed') ('be_no', 'BE number'),
       if (key == 'igm') ('igm_no', 'IGM number'),
-      if (key == 'duty_paid') ('amount', 'Kitni duty bhari (₹, jaisa CHA bola)'),
+      if (key == 'duty_paid') ('amount', 'Duty paid (₹, as the CHA said)'),
       ('note', 'Note'),
-      ('by', 'Kisne bataya (CHA / line)'),
-    ], ok: 'Darj karo');
+      ('by', 'Told by (CHA / line)'),
+    ], ok: 'Save');
     if (f == null) return;
     await _run('POST', '$_p/stage', {
       'stage': key,
@@ -427,7 +427,7 @@ class _CustomsShipmentPageState extends State<CustomsShipmentPage> {
 
   Widget _lines(Map<String, dynamic> v) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
-          Expanded(child: Text('Maal', style: display(15))),
+          Expanded(child: Text('Goods', style: display(15))),
           GlassButton(label: 'Line', icon: Icons.add_rounded, height: 40, onTap: _busy ? null : _addLine),
         ]),
         const SizedBox(height: 6),
@@ -442,8 +442,8 @@ class _CustomsShipmentPageState extends State<CustomsShipmentPage> {
                 Text('${_s(ln['qty'])} ${_s(ln['unit'])} · ${_s(v['currency'])} ${_s(ln['value'])}', style: const TextStyle(fontSize: 12.5, color: C.muted)),
                 Text(
                     _s(ln['hs_fmt']).isEmpty
-                        ? 'HS code nahi'
-                        : 'HS ${_s(ln['hs_fmt'])} ${ln['hs_confirmed'] == true ? '(pakka)' : '(andaaza, pakka kariye)'}',
+                        ? 'No HS code'
+                        : 'HS ${_s(ln['hs_fmt'])} ${ln['hs_confirmed'] == true ? '(confirmed)' : '(estimate, please confirm)'}',
                     style: TextStyle(fontSize: 12.5, color: ln['hs_confirmed'] == true ? C.ok : C.warn)),
                 Text(
                     'Rates: BCD ${_s(ln['bcd']).isEmpty ? '?' : _s(ln['bcd'])}% · IGST ${_s(ln['igst']).isEmpty ? '?' : _s(ln['igst'])}%'
@@ -451,11 +451,11 @@ class _CustomsShipmentPageState extends State<CustomsShipmentPage> {
                     style: const TextStyle(fontSize: 12, color: C.muted)),
                 const SizedBox(height: 6),
                 Wrap(spacing: 6, runSpacing: 6, children: [
-                  GlassButton(label: 'Sujhao', icon: Icons.manage_search_rounded, height: 36, onTap: _busy ? null : () => _suggest(ln)),
-                  GlassButton(label: 'HS pakka', icon: Icons.verified_rounded, height: 36, onTap: _busy ? null : () => _confirmHs(ln)),
+                  GlassButton(label: 'Suggest', icon: Icons.manage_search_rounded, height: 36, onTap: _busy ? null : () => _suggest(ln)),
+                  GlassButton(label: 'HS confirmed', icon: Icons.verified_rounded, height: 36, onTap: _busy ? null : () => _confirmHs(ln)),
                   GlassButton(label: 'Rates', icon: Icons.percent_rounded, height: 36, onTap: _busy ? null : () => _rates(ln)),
                   GlassButton(
-                      label: 'Hatao', icon: Icons.delete_outline_rounded, height: 36, onTap: _busy ? null : () => _run('DELETE', '$_p/lines/${_s(ln['no'])}')),
+                      label: 'Remove', icon: Icons.delete_outline_rounded, height: 36, onTap: _busy ? null : () => _run('DELETE', '$_p/lines/${_s(ln['no'])}')),
                 ]),
               ]),
             ),
@@ -463,7 +463,7 @@ class _CustomsShipmentPageState extends State<CustomsShipmentPage> {
       ]);
 
   Widget _docs(Map<String, dynamic> v) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('Kaagaz (${_s(v['docs_missing'])} zaroori baaki)', style: display(15)),
+        Text('Papers (${_s(v['docs_missing'])} required pending)', style: display(15)),
         const SizedBox(height: 6),
         for (final d in _list(v['docs']))
           Padding(
@@ -488,9 +488,9 @@ class _CustomsShipmentPageState extends State<CustomsShipmentPage> {
               PopupMenuButton<String>(
                 onSelected: (st) => _run('POST', '$_p/docs', {'key': d['key'], 'status': st}),
                 itemBuilder: (_) => const [
-                  PopupMenuItem(value: 'have', child: Text('Mil gaya')),
-                  PopupMenuItem(value: 'missing', child: Text('Baaki')),
-                  PopupMenuItem(value: 'na', child: Text('Zaroorat nahi')),
+                  PopupMenuItem(value: 'have', child: Text('Received')),
+                  PopupMenuItem(value: 'missing', child: Text('Pending')),
+                  PopupMenuItem(value: 'na', child: Text('Not needed')),
                 ],
               ),
             ]),
@@ -499,19 +499,19 @@ class _CustomsShipmentPageState extends State<CustomsShipmentPage> {
 
   Widget _costBox() {
     final c = _cost;
-    if (c == null) return GlassButton(label: 'Landed cost dekho', icon: Icons.calculate_rounded, onTap: _busy ? null : _loadCost);
+    if (c == null) return GlassButton(label: 'See landed cost', icon: Icons.calculate_rounded, onTap: _busy ? null : _loadCost);
     final t = _m(c['totals']);
     final av = _m(c['value']);
     return Glass(
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('Landed cost (andaaza)', style: display(14)),
+        Text('Landed cost (estimate)', style: display(14)),
         const SizedBox(height: 4),
         Text(_s(c['say']), style: const TextStyle(fontSize: 12.5, height: 1.3)),
         if (c['complete'] == true) ...[
           const SizedBox(height: 6),
           Text('Assessable value ₹${_s(t['av'])} · BCD ₹${_s(t['bcd'])} · SWS ₹${_s(t['sws'])} · IGST ₹${_s(t['igst'])}',
               style: const TextStyle(fontSize: 12, color: C.muted)),
-          Text('Landed (IGST credit ke baad) ₹${_s(c['landed_cost'])}', style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700)),
+          Text('Landed (after IGST credit) ₹${_s(c['landed_cost'])}', style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700)),
         ],
         for (final n in ((av['notes'] as List?) ?? const [])) Text('• $n', style: const TextStyle(fontSize: 11.5, color: C.faint)),
       ]),
@@ -536,7 +536,7 @@ class _CustomsShipmentPageState extends State<CustomsShipmentPage> {
           subtitle: done.containsKey(key)
               ? Text([_s(done[key]!['shown']), _s(done[key]!['note']), _s(done[key]!['by'])].where((x) => x.isNotEmpty).join(' · '))
               : null,
-          trailing: TextButton(onPressed: _busy ? null : () => _stage(key, label), child: Text(done.containsKey(key) ? 'Badlo' : 'Ho gaya')),
+          trailing: TextButton(onPressed: _busy ? null : () => _stage(key, label), child: Text(done.containsKey(key) ? 'Change' : 'Done')),
         ),
     ]);
   }
@@ -572,7 +572,7 @@ class _CustomsShipmentPageState extends State<CustomsShipmentPage> {
                       Text(_s(v['incoterm_means']), style: const TextStyle(fontSize: 11.5, color: C.faint)),
                       const SizedBox(height: 8),
                       Wrap(spacing: 8, runSpacing: 8, children: [
-                        GlassButton(label: 'Badlo', icon: Icons.edit_rounded, height: 40, onTap: _busy ? null : _edit),
+                        GlassButton(label: 'Change', icon: Icons.edit_rounded, height: 40, onTap: _busy ? null : _edit),
                         GlassButton(label: 'Data sheet', icon: Icons.table_view_rounded, height: 40, onTap: _busy ? null : () => _run('POST', '$_p/datasheet')),
                       ]),
                     ]),
@@ -587,13 +587,13 @@ class _CustomsShipmentPageState extends State<CustomsShipmentPage> {
                   _costBox(),
                   const SizedBox(height: 10),
                   if (_list(v['blockers']).isNotEmpty) ...[
-                    Text('Filing se pehle', style: display(14)),
+                    Text('Before filing', style: display(14)),
                     for (final b in (v['blockers'] as List)) Text('• $b', style: const TextStyle(fontSize: 12.5, color: C.warn)),
                   ],
                   for (final w in ((v['warnings'] as List?) ?? const [])) Text('• $w', style: const TextStyle(fontSize: 12, color: C.muted)),
                   const SizedBox(height: 8),
                   GradientButton(
-                      label: 'Filing card banao (aapki haan)',
+                      label: 'Make filing card (your yes)',
                       icon: Icons.assignment_turned_in_rounded,
                       height: 48,
                       onTap: _busy ? null : () => _run('POST', '$_p/filing')),
@@ -631,7 +631,7 @@ class _CustomsFilingCardState extends State<CustomsFilingCard> {
     final f = _m(widget.data['filing']);
     String reason = '';
     if (!yes) {
-      final r = await _form(context, 'Kyun nahi? (zaroori nahi)', const [('reason', 'Wajah')], ok: 'Mana karo');
+      final r = await _form(context, 'Why not? (not needed)', const [('reason', 'Reason')], ok: 'Decline');
       if (r == null) return;
       reason = r['reason'] ?? '';
     }
@@ -660,7 +660,7 @@ class _CustomsFilingCardState extends State<CustomsFilingCard> {
         Row(children: [
           const Icon(Icons.assignment_turned_in_rounded, color: C.accent),
           const SizedBox(width: 8),
-          Expanded(child: Text('Filing: aapki haan · ${_s(f['number'])} · ${_s(s['shipment'])}', style: const TextStyle(fontWeight: FontWeight.w800))),
+          Expanded(child: Text('Filing: your yes · ${_s(f['number'])} · ${_s(s['shipment'])}', style: const TextStyle(fontWeight: FontWeight.w800))),
         ]),
         const SizedBox(height: 6),
         Text('${_s(s['supplier'])} (${_s(s['origin'])}) · ${_s(s['incoterm'])} · ${_s(s['currency'])} ${_s(s['invoice_value'])} · ${_s(s['port'])}',
@@ -669,23 +669,23 @@ class _CustomsFilingCardState extends State<CustomsFilingCard> {
             style: const TextStyle(fontSize: 12.5, color: C.muted)),
         for (final ln in _list(s['lines']))
           Text('• ${_s(ln['desc'])}: ${_s(ln['qty'])} ${_s(ln['unit'])}, HS ${_s(ln['hs'])}, ${_s(ln['value'])}', style: const TextStyle(fontSize: 12)),
-        for (final w in ((f['warnings'] as List?) ?? const [])) Text('Dhyaan: $w', style: const TextStyle(fontSize: 12, color: C.warn)),
+        for (final w in ((f['warnings'] as List?) ?? const [])) Text('Note: $w', style: const TextStyle(fontSize: 12, color: C.warn)),
         const SizedBox(height: 4),
-        const Text('Haan = data sheet + CHA ko message ka draft. Submit aur duty aap / CHA karte hain; Hoola ICEGATE par file nahi karta.',
+        const Text('Yes = data sheet + a draft message to the CHA. You / the CHA submit and pay duty; Hoola does not file on ICEGATE.',
             style: TextStyle(fontSize: 11.5, color: C.faint)),
         const SizedBox(height: 8),
         if (_status == 'waiting')
           Row(children: [
-            Expanded(child: GradientButton(label: 'Haan, CHA ko do', icon: Icons.check_rounded, height: 44, onTap: _busy ? null : () => _decide(true))),
+            Expanded(child: GradientButton(label: 'Yes, give to CHA', icon: Icons.check_rounded, height: 44, onTap: _busy ? null : () => _decide(true))),
             const SizedBox(width: 8),
-            Expanded(child: GlassButton(label: 'Mana', icon: Icons.close_rounded, height: 44, onTap: _busy ? null : () => _decide(false))),
+            Expanded(child: GlassButton(label: 'Decline', icon: Icons.close_rounded, height: 44, onTap: _busy ? null : () => _decide(false))),
           ])
         else
           Text(
               switch (_status) {
-                'approved' => 'Haan di. CHA ko message aap bhejiye.',
-                'rejected' => 'Mana kiya.',
-                'stale' => 'Shipment badal gaya: naya card banwaiye.',
+                'approved' => 'Approved. You send the message to the CHA.',
+                'rejected' => 'Declined.',
+                'stale' => 'The shipment has changed: make a new card.',
                 _ => _status,
               },
               style: TextStyle(color: _status == 'approved' ? C.ok : C.muted, fontSize: 12.5)),
@@ -766,7 +766,7 @@ class CustomsDayCard extends StatelessWidget {
             Row(children: [
               const Icon(Icons.wb_sunny_rounded, color: C.accent),
               const SizedBox(width: 8),
-              Text('Aaj ka import desk', style: display(14)),
+              Text('Today\'s import desk', style: display(14)),
             ]),
             const SizedBox(height: 6),
             for (final l in ((data['lines'] as List?) ?? const []).take(8)) Text('• $l', style: const TextStyle(fontSize: 12.5)),

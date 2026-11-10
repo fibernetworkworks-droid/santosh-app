@@ -298,17 +298,67 @@ def _unmirror(tenant: str, name: str) -> None:
 
 # ---------------------------------------------------------------- single ops
 
-def create(tenant: str, name: str, desc: str, body: str) -> dict:
+WHEN_MAX = 300                               # v0.753 a shipped skill's plain trigger words (when_to_use)
+
+
+def _when_only(extra: dict | None) -> dict:
+    """v0.753: the strict lane takes ONE extra field - when_to_use, the plain words people type for this skill (searched
+    with the description). Nothing else rides here: `imported` (Claude's big limits) stays the import lane's alone."""
+    w = " ".join(str((extra or {}).get("when_to_use") or "").split())
+    if len(w) > WHEN_MAX:
+        raise SkillError(f"when_to_use must be <= {WHEN_MAX} chars (got {len(w)})")
+    return {"when_to_use": w} if w else {}
+
+
+def create(tenant: str, name: str, desc: str, body: str, extra: dict | None = None) -> dict:
     with _LOCK:
         name = validate_name(name)
         desc, body = validate(desc, body)
+        extra = _when_only(extra)
         p = _path(tenant, name)
         if os.path.exists(p):
             raise SkillError(f"skill {name!r} already exists (use update)")
-        _write_atomic(p, render(name, desc, body))
+        _write_atomic(p, render(name, desc, body, extra=extra))
         _READ_OK.add((tenant, name))             # creating counts as knowing it
-        _mirror(tenant, name, desc, body)
+        _mirror(tenant, name, desc, body, extra=extra)
         return {"op": "create", "name": name, "chars": len(body)}
+
+
+def get_when(tenant: str, name: str) -> str | None:
+    """v0.753: a skill's when_to_use ('' = none), None when she has no such skill."""
+    try:
+        p = _path(tenant, validate_name(name))
+    except SkillError:
+        return None
+    if not os.path.exists(p):
+        return None
+    front, _ = parse_front(open(p, encoding="utf-8").read())
+    return " ".join(str(front.get("when_to_use") or "").split())
+
+
+def add_when(tenant: str, name: str, when: str, replace: bool = False) -> bool:
+    """v0.753: give an EXISTING skill its shipped trigger words - her description and body are never touched. With
+    replace=False only a skill that has none gets them; the caller passes replace=True only for a line Hoola itself
+    shipped earlier (a when_to_use she wrote is never overwritten). True when the file changed."""
+    w = _when_only({"when_to_use": when}).get("when_to_use", "")
+    if not w:
+        return False
+    with _LOCK:
+        name = validate_name(name)
+        p = _path(tenant, name)
+        if not os.path.exists(p):
+            return False
+        raw = open(p, encoding="utf-8").read()
+        front, _ = parse_front(raw)
+        extra = _extra_of(front)
+        if extra.get("when_to_use") and (not replace or extra["when_to_use"] == w):
+            return False
+        _, desc, body = parse_skill(raw)
+        enabled = _front_enabled(raw)
+        extra["when_to_use"] = w
+        _write_atomic(p, render(name, desc, body, enabled=enabled, extra=extra))
+        _mirror(tenant, name, desc, body, enabled=enabled, extra=extra)
+        return True
 
 
 def update(tenant: str, name: str, desc: str | None = None, body: str | None = None) -> dict:

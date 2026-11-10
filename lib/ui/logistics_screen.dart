@@ -32,7 +32,7 @@ Color _stColor(String s) => switch (s) {
     };
 
 Future<Map<String, String>?> _form(BuildContext context, String title, List<(String, String)> fields,
-    {String ok = 'Aage', Map<String, String> initial = const {}}) async {
+    {String ok = 'Next', Map<String, String> initial = const {}}) async {
   final c = {for (final (k, _) in fields) k: TextEditingController(text: initial[k] ?? '')};
   final res = await showDialog<bool>(
     context: context,
@@ -45,7 +45,7 @@ Future<Map<String, String>?> _form(BuildContext context, String title, List<(Str
         ]),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Rehne do')),
+        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Leave it')),
         TextButton(onPressed: () => Navigator.pop(d, true), child: Text(ok)),
       ],
     ),
@@ -103,21 +103,21 @@ class _LogisticsScreenState extends State<LogisticsScreen> {
   }
 
   Future<void> _newShipment() async {
-    final f = await _form(context, 'Naya shipment', const [
-      ('consignee', 'Maal kisko (party ka naam)'),
-      ('consignee_gstin', 'Unka GSTIN (ho to)'),
-      ('consignee_place', 'Shehar'),
+    final f = await _form(context, 'New shipment', const [
+      ('consignee', 'Goods for whom (party name)'),
+      ('consignee_gstin', 'Their GSTIN (if any)'),
+      ('consignee_place', 'City'),
       ('consignee_pincode', 'PIN code'),
-      ('consignee_phone', 'Unka phone'),
-      ('goods_text', 'Maal (jaise: cement 120 bag @ 380)'),
+      ('consignee_phone', 'Their phone'),
+      ('goods_text', 'Goods (for example: cement 120 bags @ 380)'),
       ('doc_no', 'Invoice / challan no.'),
-      ('doc_date', 'Invoice ki tareekh'),
-      ('vehicle_no', 'Gaadi no.'),
+      ('doc_date', 'Invoice date'),
+      ('vehicle_no', 'Vehicle no.'),
       ('transporter_name', 'Transporter'),
-      ('driver_phone', 'Driver ka phone'),
-      ('distance_km', 'Doori (km)'),
-      ('eta', 'Kab tak pahunchega (jaise: kal shaam)'),
-      ('thok_order', 'Ya Thok bill no. (bill se sab bhar jayega)'),
+      ('driver_phone', 'Driver\'s phone'),
+      ('distance_km', 'Distance (km)'),
+      ('eta', 'Arrives by (for example: tomorrow evening)'),
+      ('thok_order', 'Or Wholesale bill no. (everything fills from the bill)'),
     ]);
     if (f == null) return;
     await _do('POST', '$_base/shipments', {...f, if (f['distance_km'] != null) 'distance_km': _n(f['distance_km'])});
@@ -145,7 +145,7 @@ class _LogisticsScreenState extends State<LogisticsScreen> {
                     if (_s(s['to_place']).isNotEmpty) _s(s['to_place']),
                     if (_s(s['vehicle_no']).isNotEmpty) _s(s['vehicle_no']),
                     if (_s(s['eta']).isNotEmpty) 'ETA ${_s(s['eta'])}',
-                    if ((s['late_h'] ?? 0) is num && (s['late_h'] ?? 0) > 0) '${s['late_h']} ghante late',
+                    if ((s['late_h'] ?? 0) is num && (s['late_h'] ?? 0) > 0) '${s['late_h']} hours late',
                     if (_s(s['ewb_no']).isNotEmpty) 'EWB ${_s(s['ewb_no'])}',
                   ].join(' · '),
                   style: const TextStyle(fontSize: 12.5, color: C.muted)),
@@ -173,20 +173,20 @@ class _LogisticsScreenState extends State<LogisticsScreen> {
       if ((w['ewb_cards'] ?? 0) > 0 || (w['drafts'] ?? 0) > 0)
         Padding(
           padding: const EdgeInsets.only(top: 6),
-          child: Text('Aapke tap ka intezaar: ${w['ewb_cards'] ?? 0} e-way bill card, ${w['drafts'] ?? 0} graahak message',
+          child: Text('Waiting for your tap: ${w['ewb_cards'] ?? 0} e-way bill card, ${w['drafts'] ?? 0} customer messages',
               style: const TextStyle(fontSize: 12.5, color: C.accent)),
         ),
       _section('Late', _list(b['late'])),
-      _section('E-way bill par dhyaan', _list(b['ewb'])),
-      _section('Aaj nikalna hai', _list(b['today'])),
-      _section('Raste mein', _list(b['moving'])),
-      _section('E-way bill baaki', _list(b['ewb_missing'])),
-      _section('Deliver, par POD photo nahi', _list(b['no_pod'])),
+      _section('Watch the e-way bill', _list(b['ewb'])),
+      _section('To leave today', _list(b['today'])),
+      _section('On the way', _list(b['moving'])),
+      _section('E-way bill pending', _list(b['ewb_missing'])),
+      _section('Delivered, but no POD photo', _list(b['no_pod'])),
       if (ot.isNotEmpty) ...[
         const SizedBox(height: 10),
-        Text('Samay par pahunchana (asli trips se)', style: display(14)),
+        Text('On-time delivery (from real trips)', style: display(14)),
         for (final e in ot.entries)
-          Text('• ${e.key}: ${_m(e.value)['on_time_pct']}% samay par (${_m(e.value)['trips']} trip)', style: const TextStyle(fontSize: 12.5)),
+          Text('• ${e.key}: ${_m(e.value)['on_time_pct']}% on time (${_m(e.value)['trips']} trip)', style: const TextStyle(fontSize: 12.5)),
       ],
     ]);
   }
@@ -202,12 +202,12 @@ class _LogisticsScreenState extends State<LogisticsScreen> {
   Future<void> _party([Map<String, dynamic>? p]) async {
     final f = await _form(
         context,
-        p == null ? 'Nayi party' : _s(p['name']),
+        p == null ? 'New party' : _s(p['name']),
         [
-          if (p == null) ('name', 'Naam'),
+          if (p == null) ('name', 'Name'),
           ('gstin', 'GSTIN'),
-          ('address', 'Pata'),
-          ('place', 'Shehar'),
+          ('address', 'Address'),
+          ('place', 'City'),
           ('pincode', 'PIN'),
           ('phone', 'Phone'),
           ('kind', 'customer / supplier / transporter'),
@@ -218,7 +218,7 @@ class _LogisticsScreenState extends State<LogisticsScreen> {
   }
 
   Widget _parties() => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        GlassButton(label: 'Nayi party', icon: Icons.person_add_rounded, height: 40, onTap: _busy ? null : () => _party()),
+        GlassButton(label: 'New party', icon: Icons.person_add_rounded, height: 40, onTap: _busy ? null : () => _party()),
         const SizedBox(height: 8),
         for (final p in _list(_d?['parties']))
           Padding(
@@ -242,23 +242,23 @@ class _LogisticsScreenState extends State<LogisticsScreen> {
     final st = _m(_d?['settings']);
     final f = await _form(
         context,
-        'Niyam',
+        'Rules',
         const [
-          ('firm', 'Firm ka naam'),
+          ('firm', 'Firm name'),
           ('role', 'trader / manufacturer / transporter'),
           ('gstin', 'GSTIN'),
-          ('address', 'Pata'),
-          ('place', 'Shehar'),
+          ('address', 'Address'),
+          ('place', 'City'),
           ('pincode', 'PIN'),
           ('phone', 'Phone'),
           ('carrier_reg', 'Carrier registration (transporter)'),
-          ('gta_rate', 'GTA GST % (5 ya 18, warna 0)'),
+          ('gta_rate', 'GTA GST % (5 or 18, otherwise 0)'),
           ('lr_prefix', 'LR prefix'),
           ('dc_prefix', 'Challan prefix'),
-          ('grace_h', 'Kitne ghante der ko late maane'),
-          ('silent_h', 'Kitne ghante khabar na aaye to poochhe'),
-          ('morning_time', 'Subah ka note (HH:MM)'),
-          ('terms', 'LR par shartein'),
+          ('grace_h', 'How many hours late counts as late'),
+          ('silent_h', 'After how many hours without news to ask'),
+          ('morning_time', 'Morning note (HH:MM)'),
+          ('terms', 'Terms on the LR'),
         ],
         initial: {for (final e in st.entries) if (e.value is! Map) e.key: _s(e.value)});
     if (f == null) return;
@@ -269,13 +269,13 @@ class _LogisticsScreenState extends State<LogisticsScreen> {
   }
 
   Future<void> _gsp() async {
-    final f = await _form(context, 'GSP (e-way bill API) jodiye', const [
+    final f = await _form(context, 'Connect GSP (e-way bill API)', const [
       ('base_url', 'GSP API address (https://...)'),
       ('client_id', 'Client ID'),
       ('client_secret', 'Client secret'),
       ('gstin', 'GSTIN'),
       ('username', 'E-way bill API user'),
-      ('password', 'API user ka password'),
+      ('password', 'API user\'s password'),
     ]);
     if (f == null) return;
     await _do('PUT', '$_base/ewb_keys', {'provider': 'gsp', 'creds': f});
@@ -287,11 +287,11 @@ class _LogisticsScreenState extends State<LogisticsScreen> {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(_s(st['firm']).isEmpty ? 'Firm ka naam bhariye' : _s(st['firm']), style: const TextStyle(fontWeight: FontWeight.w800)),
+          Text(_s(st['firm']).isEmpty ? 'Enter the firm name' : _s(st['firm']), style: const TextStyle(fontWeight: FontWeight.w800)),
           Text('${_s(st['role'])} · GSTIN ${_s(st['gstin']).isEmpty ? '-' : _s(st['gstin'])} · ${_s(st['place'])} ${_s(st['pincode'])}',
               style: const TextStyle(fontSize: 12.5, color: C.muted)),
           const SizedBox(height: 8),
-          GlassButton(label: 'Badlo', icon: Icons.edit_rounded, height: 40, onTap: _busy ? null : _settings),
+          GlassButton(label: 'Change', icon: Icons.edit_rounded, height: 40, onTap: _busy ? null : _settings),
         ]),
       ),
       const SizedBox(height: 10),
@@ -300,15 +300,15 @@ class _LogisticsScreenState extends State<LogisticsScreen> {
           Text('E-way bill', style: display(14)),
           Text(
               ewb['joined'] == true
-                  ? 'GSP juda: ${_s(ewb['label'])}. Har filing aapke tap se hi jaati hai.'
-                  : 'GSP nahi juda: Hoola JSON + portal ke steps deta hai; aap portal par upload karti hain (OTP aapka).',
+                  ? 'GSP connected: ${_s(ewb['label'])}. Every filing goes only with your tap.'
+                  : 'GSP not connected: Hoola gives the JSON + portal steps; you upload on the portal (the OTP is yours).',
               style: const TextStyle(fontSize: 12.5, height: 1.35)),
           const SizedBox(height: 8),
           Wrap(spacing: 8, runSpacing: 6, children: [
-            GlassButton(label: 'GSP jodo', icon: Icons.link_rounded, height: 40, onTap: _busy ? null : _gsp),
+            GlassButton(label: 'Add GSP', icon: Icons.link_rounded, height: 40, onTap: _busy ? null : _gsp),
             if (ewb['joined'] == true)
               GlassButton(
-                  label: 'GSP hatao', icon: Icons.link_off_rounded, height: 40, onTap: _busy ? null : () => _do('PUT', '$_base/ewb_keys', {'provider': 'manual'})),
+                  label: 'Remove GSP', icon: Icons.link_off_rounded, height: 40, onTap: _busy ? null : () => _do('PUT', '$_base/ewb_keys', {'provider': 'manual'})),
           ]),
         ]),
       ),
@@ -321,14 +321,14 @@ class _LogisticsScreenState extends State<LogisticsScreen> {
   Widget build(BuildContext context) => Scaffold(
         appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Logistics Sahayak')),
         floatingActionButton: _tab <= 1
-            ? FloatingActionButton.extended(onPressed: _busy ? null : _newShipment, icon: const Icon(Icons.local_shipping_rounded), label: const Text('Naya maal'))
+            ? FloatingActionButton.extended(onPressed: _busy ? null : _newShipment, icon: const Icon(Icons.local_shipping_rounded), label: const Text('New goods'))
             : null,
         body: Aurora(
           child: RefreshIndicator(
             onRefresh: _load,
             child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 90), children: [
               Wrap(spacing: 6, runSpacing: 6, children: [
-                for (final (i, t) in const [(0, 'Aaj'), (1, 'Shipments'), (2, 'Party'), (3, 'Niyam')])
+                for (final (i, t) in const [(0, 'Today'), (1, 'Shipments'), (2, 'Party'), (3, 'Rules')])
                   ChoiceChip(label: Text(t), selected: _tab == i, onSelected: (_) => setState(() => _tab = i)),
               ]),
               const SizedBox(height: 10),
@@ -336,7 +336,7 @@ class _LogisticsScreenState extends State<LogisticsScreen> {
               if (_d == null) const Center(child: CircularProgressIndicator()) else [_today(), _shipments(), _parties(), _rules()][_tab],
               const SizedBox(height: 14),
               const Text(
-                  'Tracking sirf aapki / driver / transporter / courier ki batayi baat se. Graahak ko message aap bhejti hain; e-way bill portal par sirf aapke tap se. Paisa Hoola nahi leta / deta.',
+                  'Tracking is only from what you / the driver / transporter / courier say. You send the message to the customer; the e-way bill goes on the portal only with your tap. Hoola neither takes nor gives money.',
                   style: TextStyle(color: C.faint, fontSize: 11.5)),
             ]),
           ),
@@ -381,18 +381,18 @@ class _LogisticsShipmentPageState extends State<LogisticsShipmentPage> {
   }
 
   Future<void> _update() async {
-    final f = await _form(context, 'Kya khabar hai?', const [
-      ('text', 'Driver / transporter ne kya bola (jaise: Nagpur cross kiya)'),
+    final f = await _form(context, 'What is the news?', const [
+      ('text', 'What the driver / transporter said (for example: crossed Nagpur)'),
       ('status', 'Ya status: dispatched / in_transit / delayed / out_for_delivery / delivered'),
-      ('eta', 'Naya ETA (ho to)'),
-      ('reason', 'Der ki wajah (der ho to)'),
+      ('eta', 'New ETA (if any)'),
+      ('reason', 'Reason for delay (if delayed)'),
     ]);
     if (f == null) return;
     await _do('POST', '$_p/update', f);
   }
 
   Future<void> _location() async {
-    final f = await _form(context, 'Driver ki location', const [('text', 'Location ka link paste kijiye')]);
+    final f = await _form(context, 'Driver\'s location', const [('text', 'Paste the location link')]);
     if (f == null) return;
     await _do('POST', '$_p/location', f);
   }
@@ -401,18 +401,18 @@ class _LogisticsShipmentPageState extends State<LogisticsShipmentPage> {
     final v = _v ?? const {};
     final f = await _form(
         context,
-        'Badlo',
+        'Change',
         const [
-          ('vehicle_no', 'Gaadi no.'),
+          ('vehicle_no', 'Vehicle no.'),
           ('driver_name', 'Driver'),
           ('driver_phone', 'Driver phone'),
           ('transporter_name', 'Transporter'),
           ('transporter_gstin', 'Transporter GSTIN / ID'),
-          ('distance_km', 'Doori km'),
-          ('freight', 'Bhada'),
+          ('distance_km', 'Distance km'),
+          ('freight', 'Rent'),
           ('freight_by', 'paid / to_pay / tbb'),
           ('packages', 'Packets'),
-          ('weight_kg', 'Vazan kg'),
+          ('weight_kg', 'Weight kg'),
           ('eta', 'ETA'),
           ('courier', 'Courier'),
           ('awb', 'AWB'),
@@ -427,7 +427,7 @@ class _LogisticsShipmentPageState extends State<LogisticsShipmentPage> {
   }
 
   Future<void> _ewbNumber() async {
-    final f = await _form(context, 'Portal par bana EWB', const [('ewb_no', 'EWB number (12 ank)'), ('valid_upto', 'Valid upto (jaise 26-10-2026 23:59)')]);
+    final f = await _form(context, 'EWB made on the portal', const [('ewb_no', 'EWB number (12 digits)'), ('valid_upto', 'Valid up to (for example 26-10-2026 23:59)')]);
     if (f == null) return;
     await _do('POST', '$_p/ewb_number', f);
   }
@@ -435,12 +435,12 @@ class _LogisticsShipmentPageState extends State<LogisticsShipmentPage> {
   Future<void> _ewbKind(String kind) async {
     Map<String, String>? f = {};
     if (kind == 'part_b') {
-      f = await _form(context, 'Gaadi badli (Part B)', const [('vehicle_no', 'Nayi gaadi no.'), ('reason', 'breakdown / transhipment / others'), ('from_place', 'Kahan se')]);
+      f = await _form(context, 'Vehicle changed (Part B)', const [('vehicle_no', 'New vehicle no.'), ('reason', 'breakdown / transhipment / others'), ('from_place', 'From where')]);
     } else if (kind == 'extend') {
-      f = await _form(context, 'Validity badhao', const [
-        ('from_place', 'Maal abhi kahan (shehar)'),
-        ('from_pincode', 'Wahan ka PIN'),
-        ('remaining_km', 'Baaki doori km'),
+      f = await _form(context, 'Extend validity', const [
+        ('from_place', 'Where the goods are now (city)'),
+        ('from_pincode', 'PIN there'),
+        ('remaining_km', 'Distance left (km)'),
         ('reason', 'natural_calamity / law_order / transhipment / accident / others'),
       ]);
     }
@@ -455,7 +455,7 @@ class _LogisticsShipmentPageState extends State<LogisticsShipmentPage> {
       Map<String, String> extra = {};
       if (stage == 'pod') {
         if (!mounted) return;
-        final f = await _form(context, 'POD', const [('receiver', 'Kisne liya'), ('remarks', 'Kami / nuksaan (ho to)'), ('short', 'Kitne packet kam')]);
+        final f = await _form(context, 'POD', const [('receiver', 'Who took it'), ('remarks', 'Shortage / damage (if any)'), ('short', 'How many packets short')]);
         if (f == null) return;
         extra = {...f, if ((f['remarks'] ?? '').isNotEmpty) 'damaged': 'true'};
       }
@@ -514,11 +514,11 @@ class _LogisticsShipmentPageState extends State<LogisticsShipmentPage> {
         const SizedBox(height: 4),
         for (final g in _list(v['goods']))
           Text('• ${_s(g['name'])} ${_s(g['qty'])} ${_s(g['unit'])}${_s(g['hsn']).isNotEmpty ? ' · HSN ${_s(g['hsn'])}' : ''}', style: const TextStyle(fontSize: 12.5)),
-        Text('Keemat ₹${_s(v['value'])} · Invoice ${_s(v['doc_no']).isEmpty ? '-' : _s(v['doc_no'])} · LR ${_s(v['lr_no']).isEmpty ? '-' : _s(v['lr_no'])}',
+        Text('Value ₹${_s(v['value'])} · Invoice ${_s(v['doc_no']).isEmpty ? '-' : _s(v['doc_no'])} · LR ${_s(v['lr_no']).isEmpty ? '-' : _s(v['lr_no'])}',
             style: const TextStyle(fontSize: 12.5)),
         Text(
-            'Gaadi ${_s(v['vehicle_no']).isEmpty ? '-' : _s(v['vehicle_no'])}${_s(dr['name']).isNotEmpty ? ' · ${_s(dr['name'])}' : ''}'
-            '${_s(v['eta']).isNotEmpty ? ' · ETA ${_s(v['eta'])}' : ''}${(v['late_h'] ?? 0) is num && (v['late_h'] ?? 0) > 0 ? ' · ${v['late_h']} ghante late' : ''}',
+            'Vehicle ${_s(v['vehicle_no']).isEmpty ? '-' : _s(v['vehicle_no'])}${_s(dr['name']).isNotEmpty ? ' · ${_s(dr['name'])}' : ''}'
+            '${_s(v['eta']).isNotEmpty ? ' · ETA ${_s(v['eta'])}' : ''}${(v['late_h'] ?? 0) is num && (v['late_h'] ?? 0) > 0 ? ' · ${v['late_h']} hours late' : ''}',
             style: const TextStyle(fontSize: 12.5)),
         if (_s(v['awb']).isNotEmpty) Text('Courier ${_s(v['courier'])} · AWB ${_s(v['awb'])}', style: const TextStyle(fontSize: 12.5)),
         if (_s(pod['receiver']).isNotEmpty) Text('POD: ${_s(pod['receiver'])} ${_s(pod['remarks'])}', style: const TextStyle(fontSize: 12.5, color: C.ok)),
@@ -530,7 +530,7 @@ class _LogisticsShipmentPageState extends State<LogisticsShipmentPage> {
               if (_s(loc['maps']).isNotEmpty)
                 GlassButton(label: 'Location', icon: Icons.place_rounded, height: 38, onTap: () => Native.openExternal(url: _s(loc['maps']))),
               if (_s(dr['phone']).isNotEmpty)
-                GlassButton(label: 'Driver ko call', icon: Icons.call_rounded, height: 38, onTap: () => Native.openExternal(url: 'tel:${_s(dr['phone'])}')),
+                GlassButton(label: 'Call driver', icon: Icons.call_rounded, height: 38, onTap: () => Native.openExternal(url: 'tel:${_s(dr['phone'])}')),
             ]),
           ),
       ]),
@@ -540,9 +540,9 @@ class _LogisticsShipmentPageState extends State<LogisticsShipmentPage> {
   Widget _actions(Map<String, dynamic> v) {
     final open = !['delivered', 'cancelled'].contains(_s(v['status']));
     return Wrap(spacing: 8, runSpacing: 6, children: [
-      if (open) GlassButton(label: 'Khabar daalo', icon: Icons.update_rounded, height: 40, onTap: _busy ? null : _update),
+      if (open) GlassButton(label: 'Add news', icon: Icons.update_rounded, height: 40, onTap: _busy ? null : _update),
       if (open) GlassButton(label: 'Location', icon: Icons.share_location_rounded, height: 40, onTap: _busy ? null : _location),
-      if (open) GlassButton(label: 'Badlo', icon: Icons.edit_rounded, height: 40, onTap: _busy ? null : _edit),
+      if (open) GlassButton(label: 'Change', icon: Icons.edit_rounded, height: 40, onTap: _busy ? null : _edit),
       if (_s(v['awb']).isNotEmpty) GlassButton(label: 'Courier track', icon: Icons.travel_explore_rounded, height: 40, onTap: _busy ? null : () => _do('POST', '$_p/track')),
       GlassButton(label: 'LR', icon: Icons.receipt_long_rounded, height: 40, onTap: _busy ? null : () => _do('POST', '$_p/docs', {'which': ['lr']})),
       GlassButton(label: 'Packing list', icon: Icons.inventory_2_rounded, height: 40, onTap: _busy ? null : () => _do('POST', '$_p/docs', {'which': ['packing']})),
@@ -550,8 +550,8 @@ class _LogisticsShipmentPageState extends State<LogisticsShipmentPage> {
       if (_s(v['thok_order']).isNotEmpty)
         GlassButton(label: 'Tax invoice', icon: Icons.request_quote_rounded, height: 40, onTap: _busy ? null : () => _do('POST', '$_p/docs', {'which': ['invoice']})),
       GlassButton(label: 'POD photo', icon: Icons.photo_camera_rounded, height: 40, onTap: _busy ? null : () => _photo(ImageSource.camera, 'pod')),
-      GlassButton(label: 'Gallery se POD', icon: Icons.photo_library_rounded, height: 40, onTap: _busy ? null : () => _photo(ImageSource.gallery, 'pod')),
-      for (final k in const [('dispatch', 'Nikla msg'), ('delay', 'Der msg'), ('delivered', 'Pahuncha msg')])
+      GlassButton(label: 'POD from gallery', icon: Icons.photo_library_rounded, height: 40, onTap: _busy ? null : () => _photo(ImageSource.gallery, 'pod')),
+      for (final k in const [('dispatch', 'Message went out'), ('delay', 'Der msg'), ('delivered', 'Message delivered')])
         GlassButton(label: k.$2, icon: Icons.chat_rounded, height: 40, onTap: _busy ? null : () => _do('POST', '$_p/draft', {'kind': k.$1})),
       if (open)
         GlassButton(
@@ -562,7 +562,7 @@ class _LogisticsShipmentPageState extends State<LogisticsShipmentPage> {
             onTap: _busy
                 ? null
                 : () async {
-                    final f = await _form(context, 'Cancel kyun?', const [('reason', 'Wajah')], ok: 'Cancel karo');
+                    final f = await _form(context, 'Why cancel?', const [('reason', 'Reason')], ok: 'Cancel');
                     if (f != null) await _do('POST', '$_p/cancel', f);
                   }),
     ]);
@@ -586,8 +586,8 @@ class _LogisticsShipmentPageState extends State<LogisticsShipmentPage> {
         Wrap(spacing: 8, runSpacing: 6, children: [
           if (_s(e['no']).isEmpty) GlassButton(label: 'E-way bill card', icon: Icons.assignment_rounded, height: 38, onTap: _busy ? null : () => _ewbKind('generate')),
           if (_s(e['no']).isEmpty) GlassButton(label: 'JSON file', icon: Icons.data_object_rounded, height: 38, onTap: _busy ? null : () => _do('POST', '$_p/docs', {'which': ['ewb_json']})),
-          GlassButton(label: 'Number daalo', icon: Icons.pin_rounded, height: 38, onTap: _busy ? null : _ewbNumber),
-          if (_s(e['no']).isNotEmpty) GlassButton(label: 'Gaadi badli', icon: Icons.swap_horiz_rounded, height: 38, onTap: _busy ? null : () => _ewbKind('part_b')),
+          GlassButton(label: 'Enter number', icon: Icons.pin_rounded, height: 38, onTap: _busy ? null : _ewbNumber),
+          if (_s(e['no']).isNotEmpty) GlassButton(label: 'Vehicle changed', icon: Icons.swap_horiz_rounded, height: 38, onTap: _busy ? null : () => _ewbKind('part_b')),
           if (_s(e['no']).isNotEmpty) GlassButton(label: 'Extend', icon: Icons.more_time_rounded, height: 38, onTap: _busy ? null : () => _ewbKind('extend')),
         ]),
       ]),
@@ -596,7 +596,7 @@ class _LogisticsShipmentPageState extends State<LogisticsShipmentPage> {
 
   Widget _timeline(Map<String, dynamic> v) => Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('Safar', style: display(14)),
+          Text('Journey', style: display(14)),
           const SizedBox(height: 6),
           for (final t in _list(v['timeline']).reversed)
             Padding(
@@ -663,26 +663,26 @@ class _LogisticsEwbCardState extends State<LogisticsEwbCard> {
         const SizedBox(height: 6),
         if (_s(p['docNo']).isNotEmpty)
           Text('${_s(p['docType'])} ${_s(p['docNo'])} ${_s(p['docDate'])} · ${_s(p['toTrdName'])} · ₹${_s(p['totInvValue'])}', style: const TextStyle(fontSize: 12.5)),
-        if (_s(p['vehicleNo']).isNotEmpty) Text('Gaadi ${_s(p['vehicleNo'])}${p['transDistance'] != null ? ' · ${p['transDistance']} km' : ''}', style: const TextStyle(fontSize: 12.5)),
-        if (c['validity_days'] != null) Text('Validity: ${c['validity_days']} din', style: const TextStyle(fontSize: 12.5)),
-        if (p['tripSheetEwbBills'] != null) Text('${(p['tripSheetEwbBills'] as List).length} e-way bill ek gaadi mein', style: const TextStyle(fontSize: 12.5)),
+        if (_s(p['vehicleNo']).isNotEmpty) Text('Vehicle ${_s(p['vehicleNo'])}${p['transDistance'] != null ? ' · ${p['transDistance']} km' : ''}', style: const TextStyle(fontSize: 12.5)),
+        if (c['validity_days'] != null) Text('Validity: ${c['validity_days']} days', style: const TextStyle(fontSize: 12.5)),
+        if (p['tripSheetEwbBills'] != null) Text('${(p['tripSheetEwbBills'] as List).length} e-way bills in one vehicle', style: const TextStyle(fontSize: 12.5)),
         for (final w in ((c['warnings'] as List?) ?? const [])) Text('! $w', style: const TextStyle(fontSize: 12, color: C.warn)),
         if (_s(widget.data['how']).isNotEmpty) Text(_s(widget.data['how']), style: const TextStyle(fontSize: 12, color: C.muted)),
         const SizedBox(height: 8),
         if (_status == 'waiting')
           Row(children: [
-            Expanded(child: GradientButton(label: 'Haan, bhejo', icon: Icons.check_rounded, height: 44, onTap: _busy ? null : () => _decide(true))),
+            Expanded(child: GradientButton(label: 'Yes, send', icon: Icons.check_rounded, height: 44, onTap: _busy ? null : () => _decide(true))),
             const SizedBox(width: 8),
-            Expanded(child: GlassButton(label: 'Mana', icon: Icons.close_rounded, height: 44, onTap: _busy ? null : () => _decide(false))),
+            Expanded(child: GlassButton(label: 'Decline', icon: Icons.close_rounded, height: 44, onTap: _busy ? null : () => _decide(false))),
           ])
         else ...[
           Text(
               switch (_status) {
-                'done' => 'Portal par ho gaya.',
-                'manual' => 'JSON file aapki files mein: portal par upload kijiye, phir EWB number bataiye.',
-                'rejected' => 'Mana kiya: kuch nahi bheja.',
-                'stale' => 'Purana card: naya banaiye.',
-                'failed' => 'Portal ne mana kiya (wajah upar).',
+                'done' => 'Done on the portal.',
+                'manual' => 'The JSON file is in your files: upload it on the portal, then tell me the EWB number.',
+                'rejected' => 'Declined: nothing was sent.',
+                'stale' => 'Old card: make a new one.',
+                'failed' => 'The portal declined (reason above).',
                 _ => _status,
               },
               style: TextStyle(fontSize: 12.5, color: _status == 'done' ? C.ok : C.muted)),
@@ -720,7 +720,7 @@ class _LogisticsUpdateCardState extends State<LogisticsUpdateCard> {
   }
 
   Future<void> _edit() async {
-    final f = await _form(context, 'Message badlo', const [('text', 'Message')], initial: {'text': _s(_msg['text'])}, ok: 'Save');
+    final f = await _form(context, 'Change message', const [('text', 'Message')], initial: {'text': _s(_msg['text'])}, ok: 'Save');
     if (f == null || f['text'] == null) return;
     setState(() => _busy = true);
     final r = await _call(context, widget.app, 'PUT', '$_base/messages/${_s(_msg['id'])}', {'text': f['text']});
@@ -743,12 +743,12 @@ class _LogisticsUpdateCardState extends State<LogisticsUpdateCard> {
         Row(children: [
           const Icon(Icons.chat_bubble_rounded, color: C.accent),
           const SizedBox(width: 8),
-          Expanded(child: Text('Graahak ke liye · ${_s(widget.data['number'])}', style: const TextStyle(fontWeight: FontWeight.w800))),
+          Expanded(child: Text('For the customer · ${_s(widget.data['number'])}', style: const TextStyle(fontWeight: FontWeight.w800))),
           Pill(_s(_msg['kind'])),
         ]),
         const SizedBox(height: 6),
         SelectableText(text, style: const TextStyle(fontSize: 12.5, height: 1.35)),
-        if (blanks.isNotEmpty) Text('Bhejne se pehle bhariye: ${blanks.join(', ')}', style: const TextStyle(fontSize: 12, color: C.warn)),
+        if (blanks.isNotEmpty) Text('Fill in before sending: ${blanks.join(', ')}', style: const TextStyle(fontSize: 12, color: C.warn)),
         const SizedBox(height: 8),
         if (draft)
           Wrap(spacing: 8, runSpacing: 6, children: [
@@ -762,18 +762,18 @@ class _LogisticsUpdateCardState extends State<LogisticsUpdateCard> {
                 height: 40,
                 onTap: () {
                   Clipboard.setData(ClipboardData(text: text));
-                  _snack(context, 'Copy ho gaya');
+                  _snack(context, 'Copied');
                 }),
-            GlassButton(label: 'Badlo', icon: Icons.edit_rounded, height: 40, onTap: _busy ? null : _edit),
-            GlassButton(label: 'Maine bhej diya', icon: Icons.done_all_rounded, height: 40, onTap: _busy ? null : () => _post('$_base/messages/${_s(_msg['id'])}/sent')),
+            GlassButton(label: 'Change', icon: Icons.edit_rounded, height: 40, onTap: _busy ? null : _edit),
+            GlassButton(label: 'I sent it', icon: Icons.done_all_rounded, height: 40, onTap: _busy ? null : () => _post('$_base/messages/${_s(_msg['id'])}/sent')),
             GlassButton(
-                label: 'Business WhatsApp se',
+                label: 'From Business WhatsApp',
                 icon: Icons.storefront_rounded,
                 height: 40,
                 onTap: _busy || blanks.isNotEmpty ? null : () => _post('$_base/messages/${_s(_msg['id'])}/send', {'hash': _s(_msg['hash'])})),
           ])
         else
-          Text(_s(_msg['via']) == 'business' ? 'Business WhatsApp se gaya.' : 'Bhej diya.', style: const TextStyle(fontSize: 12.5, color: C.ok)),
+          Text(_s(_msg['via']) == 'business' ? 'Sent from Business WhatsApp.' : 'Sent.', style: const TextStyle(fontSize: 12.5, color: C.ok)),
       ]),
     );
   }
@@ -829,12 +829,12 @@ class LogisticsAlertCard extends StatelessWidget {
         const SizedBox(height: 8),
         Wrap(spacing: 8, runSpacing: 6, children: [
           GlassButton(
-              label: 'Kholo',
+              label: 'Open',
               icon: Icons.open_in_new_rounded,
               height: 38,
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => LogisticsShipmentPage(app: app, id: _s(data['id']))))),
           if (_s(data['phone']).isNotEmpty)
-            GlassButton(label: 'Driver ko call', icon: Icons.call_rounded, height: 38, onTap: () => Native.openExternal(url: 'tel:${_s(data['phone'])}')),
+            GlassButton(label: 'Call driver', icon: Icons.call_rounded, height: 38, onTap: () => Native.openExternal(url: 'tel:${_s(data['phone'])}')),
         ]),
       ]),
     );

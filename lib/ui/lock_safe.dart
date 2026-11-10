@@ -14,13 +14,13 @@ class LockSafe {
 
   /// Short reason the call may stop on lock, or null when everything looks fine.
   static String? issue(Map<String, dynamic> s, {bool inCall = false}) {
-    if (s['notifications'] == false) return 'Notifications band hain — lock par call ruk sakti hai';
+    if (s['notifications'] == false) return 'Notifications are off — a call may stop at the lock screen';
     if (inCall && s['running'] != true) {
       final p = (s['problem'] as String? ?? '').trim();
-      return 'Lock-safe mode shuru nahi hua${p.isEmpty ? '' : ' ($p)'}';
+      return 'Lock-safe mode did not start${p.isEmpty ? '' : ' ($p)'}';
     }
     if (s['batteryOptimized'] == true && _strict(s['brand'] as String? ?? '')) {
-      return 'Phone ka battery saver Hoola ko lock par rok sakta hai';
+      return 'The phone\'s battery saver can stop Hoola at the lock screen';
     }
     return null;
   }
@@ -34,15 +34,15 @@ class LockSafe {
       return [
         'Settings → Battery → Background power consumption management → Hoola → "Allow" (High background power)',
         'Settings → Apps → Hoola → Autostart: ON',
-        'Recent apps mein Hoola ko neeche kheench kar 🔒 lock kar dijiye',
-        'Settings → Apps → Hoola → Notifications: ON (sab allow)',
+        'In Recent apps, pull Hoola down to 🔒 lock it',
+        'Settings → Apps → Hoola → Notifications: ON (allow all)',
       ];
     }
     if (brand.contains('oppo') || brand.contains('realme') || brand.contains('oneplus')) {
       return [
         'Settings → Battery → Hoola → "Allow background activity" / Unrestricted',
         'Settings → Apps → Hoola → Auto launch / Autostart: ON',
-        'Recent apps mein Hoola ke upar ⋮ → Lock',
+        'In Recent apps, tap ⋮ above Hoola → Lock',
         'Notifications: ON',
       ];
     }
@@ -50,14 +50,14 @@ class LockSafe {
       return [
         'Settings → Apps → Hoola → Battery saver → "No restrictions"',
         'Settings → Apps → Hoola → Autostart: ON',
-        'Recent apps mein Hoola ko lock kar dijiye',
+        'Lock Hoola in Recent apps',
         'Notifications: ON',
       ];
     }
     if (brand.contains('samsung')) {
       return [
         'Settings → Apps → Hoola → Battery → Unrestricted',
-        'Settings → Battery → Background usage limits → Hoola ko "Never sleeping apps" mein daaliye',
+        'Settings → Battery → Background usage limits → add Hoola to "Never sleeping apps"',
         'Notifications: ON',
       ];
     }
@@ -79,9 +79,9 @@ class LockSafe {
         child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 18, 20, 16),
           child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('Phone lock par bhi Hoola', style: display(22)),
+            Text('Hoola even when the phone is locked', style: display(22)),
             const SizedBox(height: 4),
-            Text(brand.isEmpty ? 'Yeh settings ek baar kar dijiye:' : '${brand[0].toUpperCase()}${brand.substring(1)} phone par yeh ek baar kar dijiye:',
+            Text(brand.isEmpty ? 'Do these settings once:' : '${brand[0].toUpperCase()}${brand.substring(1)} phone: do this once',
                 style: const TextStyle(color: C.muted, fontSize: 13)),
             const SizedBox(height: 12),
             for (final (i, t) in steps(brand).indexed)
@@ -136,7 +136,7 @@ class MakerStepsState extends State<MakerSteps> {
                 onTap: () => setState(() => _open = !_open),
                 child: Row(children: [
                   Expanded(
-                    child: Text('${d['name'] ?? widget.brand} ke liye poore steps${d['rank'] != null ? ' (sakhti: ${d['rank']}/5)' : ''}',
+                    child: Text('${d['name'] ?? widget.brand} full steps for${d['rank'] != null ? ' (strictness:${d['rank']}/5)' : ''}',
                         style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
                   ),
                   Icon(_open ? Icons.expand_less_rounded : Icons.expand_more_rounded, color: C.muted),
@@ -173,7 +173,7 @@ class LockSafeBanner extends StatelessWidget {
                 const Icon(Icons.lock_clock_rounded, size: 18, color: Color(0xFFFFD9A8)),
                 const SizedBox(width: 8),
                 Expanded(child: Text(text, style: const TextStyle(fontSize: 12.5, color: Color(0xFFFFD9A8), fontWeight: FontWeight.w600))),
-                const Text('Theek karo', style: TextStyle(fontSize: 12.5, color: C.accent, fontWeight: FontWeight.w800)),
+                const Text('Fix', style: TextStyle(fontSize: 12.5, color: C.accent, fontWeight: FontWeight.w800)),
               ]),
             ),
           ),

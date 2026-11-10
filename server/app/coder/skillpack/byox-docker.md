@@ -1,6 +1,7 @@
 ---
 name: byox-docker
 description: Build a Linux container: namespaces, cgroups, pivot_root
+when_to_use: own docker, container from scratch, namespaces, cgroups
 ---
 GOAL: a container that runs a program in full PID/net/mnt isolation with memory limits.
 

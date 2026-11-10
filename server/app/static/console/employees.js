@@ -15,7 +15,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
   const when = iso => { if (!iso) return '–'; const d = new Date(iso); return isNaN(d) ? '–' : d.toLocaleString('en-IN', {day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'}); };
   const num = v => (v === null || v === undefined || v === '') ? '–' : (typeof v === 'number' ? v.toLocaleString('en-IN', {maximumFractionDigits: 1}) : esc(String(v)));
   const visible = el => el && el.isConnected && !el.closest('.view')?.hidden;
-  const DESKS = {game_dev: 'gamedesk', procgen_dev: 'gamedesk', physics_dev: 'gamedesk', audio_dev: 'gamedesk', haptics_dev: 'gamedesk', netcode_dev: 'gamedesk', xr_dev: 'gamedesk', sim_dev: 'gamedesk', twin_arch: 'gamedesk', vfx_td: 'gamedesk', architect: 'archdesk', tutor: 'edudesk', school_office: 'edudesk', curriculum: 'edudesk', research: 'edudesk', school_register: 'edudesk', lab: 'edudesk', erp: 'systems', crm_arch: 'systems', tpm: 'systems', bpa: 'systems', ecom_arch: 'systems', health_int: 'systems', bank_int: 'systems', supply_opt: 'systems', plm: 'systems', regtech: 'systems'};   // v0.420 the Game Desk roles share it
+  const DESKS = {film: 'filmdesk', game_dev: 'gamedesk', procgen_dev: 'gamedesk', physics_dev: 'gamedesk', audio_dev: 'gamedesk', haptics_dev: 'gamedesk', netcode_dev: 'gamedesk', xr_dev: 'gamedesk', sim_dev: 'gamedesk', twin_arch: 'gamedesk', vfx_td: 'gamedesk', architect: 'archdesk', tutor: 'edudesk', school_office: 'edudesk', curriculum: 'edudesk', research: 'edudesk', school_register: 'edudesk', lab: 'edudesk', erp: 'systems', crm_arch: 'systems', tpm: 'systems', bpa: 'systems', ecom_arch: 'systems', health_int: 'systems', bank_int: 'systems', supply_opt: 'systems', plm: 'systems', regtech: 'systems', leads: 'leadsdesk'};   // v0.420 the Game Desk roles share it   // v0.686.0 the Lead Generation employee's desk
     // v0.410 + the Architecture Desk    // v0.370 employee key -> its desk view when the names differ
 
   // ------------------------------------------------------------ the hub
@@ -34,6 +34,14 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
      desc: 'Architecture, systems and code work on your own repositories. Reads first, changes only on your tap.'},
     {g: 'Education, Research & Lab', id: 'edu', name: 'Education, Research & Lab', art: 'edu',   // v0.453
      desc: 'A tutor, a school office, a paper setter, a research assistant, the register and a 3D science lab. Children only with guardian consent.'},
+    {g: 'Finance & Banking', id: 'fin', name: 'Finance & Banking', art: 'biz',   // v0.585
+     desc: 'Money safety for people: a loan\'s real cost, hidden charges, scam warnings, complaint letters. It explains and calculates; it never moves money or asks for a PIN or OTP.'},
+    {g: 'Retail & E-commerce', id: 'retail', name: 'Retail & E-commerce', art: 'biz',   // v0.604
+     desc: 'A shop and online-seller copilot: sales, reorder, dead stock, margin and MRP checks, oversell and return risk, settlements. It prepares and checks; you set prices and place orders.'},
+    {g: 'Health Insurance', id: 'healthins', name: 'Health Insurance', art: 'biz',   // v0.609
+     desc: 'Claims and servicing help: documents needed, a payable worksheet, why a settlement was cut, appeal outlines, renewals and grievance clocks. It prepares; the insurer or TPA decides.'},
+    {g: 'Film, Media & Entertainment', id: 'film', name: 'Film, Media & Entertainment', art: 'biz',   // v0.565
+     desc: 'A producer\'s coworker: script facts, shot checks, schedule, budget from your rate card, festivals, windows, deliverables, royalties. Nothing is sent or paid without your tap.'},
     {g: 'Enterprise Systems & ERP', id: 'ent', name: 'Enterprise Systems & ERP', art: 'ent',     // v0.453
      desc: 'ERP, CRM, PLM, supply chain and compliance work on your own systems. Every write is planned, dry-run and waits for your tap.'}];
   const ART = {   // line drawings; every path is drawn on once (pathLength 1 + .ae-draw)
@@ -106,6 +114,15 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
         ${team.length ? `<div class="ae-members">${team.map(e => { const d = deptOf(e.group); return `<button class="ae-member ae-pop ae-d-${d.id}" type="button" data-ae="role" data-key="${esc(e.key)}"><span class="ae-mono">${esc(ini(e.name))}<i class="${e.status === 'paused' ? 'ae-dot-paused' : 'ae-live'}"></i></span><span><b>${esc(e.name)}</b><small>${e.status === 'paused' ? 'Paused' : 'Working'} · ${esc((TRUST[e.trust] || TRUST.seekh)[0])}</small></span></button>`; }).join('')}</div>`
           : `<div class="ae-empty-team"><span class="ae-seats" aria-hidden="true"><i></i><i></i><i></i></span><p>No one hired yet. Open a department, pick a role and press Hire.</p>${ds[0] ? `<button class="btn soft ae-btn" type="button" data-ae="dept" data-id="${esc(ds[0].id)}">Start with ${esc(ds[0].name)}${arrow}</button>` : ''}</div>`}
       </section>
+      <section class="ae-team ae-up" style="animation-delay:.2s" aria-labelledby="aeSeekhH">
+        <div class="ae-row"><h3 id="aeSeekhH">HOOLA AI Video Learner</h3><span class="ae-mut">Learn any way of working from a video</span></div>
+        <button class="ae-seekh ae-pop" type="button" data-v="seekh" aria-label="Open the HOOLA AI Video Learner">
+          <span class="ae-seekh-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="14" height="14" rx="2"/><path d="M16 10l6-3v10l-6-3"/><path d="M6 13.5l2.5 2.5L13 11"/></svg></span>
+          <span class="ae-seekh-bd"><b>Teach Hoola any task from a video</b>
+            <small>Paste a YouTube link, a Short or upload a video. Hoola watches it, writes down every step, keeps them in memory — and then does the task for you in its own browser.</small></span>
+          <span class="ae-seekh-go">Open Video Learner${arrow}</span>
+        </button>
+      </section>
       ${q ? `<section class="ae-sec" aria-labelledby="aeResH"><h3 id="aeResH" class="ae-sech">${results.length} ${results.length === 1 ? 'role matches' : 'roles match'} “${esc(HS.q.trim())}”</h3>
           ${results.length ? `<div class="ae-roles">${results.map((e, i) => roleCard(e, i, true)).join('')}</div>` : '<p class="ae-mut">No role matches that yet. Try a job title or a word like “Instagram”, “3D” or “server”.</p>'}</section>`
         : `<section class="ae-sec" aria-labelledby="aeDeptH"><div class="ae-row ae-up" style="animation-delay:.22s"><h3 id="aeDeptH" class="ae-sech">Departments</h3><span class="ae-mut">Open one to meet its employees</span></div>
@@ -125,11 +142,17 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
       </button>`;
   }
 
+  function needLine(e) {   // v0.743 SAAF INSAANI: what a role needs before it starts, on the card itself
+    if (!document.documentElement.classList.contains('human') || isHired(e)) return '';
+    const n = Array.isArray(e.needs) ? e.needs[0] : '';
+    return n ? `<span class="ae-role-n">Needs: ${esc(String(n))}</span>` : '';
+  }
   function roleCard(e, i, withDept) {
     const d = deptOf(e.group), [sc, st] = status(e), on = HS.view === 'dept' && HS.sel === e.key;
     return `<button class="ae-role ae-up ae-d-${esc(d.id)}${on ? ' on' : ''}" type="button" data-ae="role" data-key="${esc(e.key)}" aria-pressed="${on}" style="animation-delay:${(.12 + i * .04).toFixed(2)}s">
         <span class="ae-role-h"><span class="ae-mono">${esc(ini(e.name))}${isHired(e) ? `<i class="${e.status === 'paused' ? 'ae-dot-paused' : 'ae-live'}"></i>` : ''}</span><span><b>${esc(e.name)}</b>${withDept ? `<small>${esc(d.name)}</small>` : ''}</span></span>
         <span class="ae-role-p">${esc(e.pitch || '')}</span>
+        ${needLine(e)}
         <span class="ae-role-ft"><span class="ae-chip ${sc}">${st}</span><span class="ae-more">Details${arrow}</span></span>
       </button>`;
   }
@@ -267,9 +290,124 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
             <button class="btn soft" type="button" data-run="index">Check Google index</button></div></div>
       </div>
       <div class="tile gl"><h3>Open fixes on the website</h3>${fixes(d.open_tasks || [])}</div>
-      ${indexNow(d)}`;
+      ${indexNow(d)}
+      <div class="tile gl" id="emIntel"><div class="em-h"><h3>Search intel</h3></div><div class="empty">Loading…</div></div>`;
     wireDesk(el, d);
+    intel(el);
     if (d.state === 'first_run') TIMER = setTimeout(() => { if (visible(el)) desk(el); }, 10000);
+  }
+
+  // ------------------------------------------------------------ v0.541 SEARCH INTEL: ranks, AI answers, Maps grid, DataForSEO
+  const ENG = {openai: 'ChatGPT', gemini: 'Gemini', perplexity: 'Perplexity'};
+  const cell = r => r == null ? 'var(--line)' : r <= 3 ? 'var(--ok)' : r <= 10 ? 'var(--warn)' : 'var(--bad)';
+  async function intel(el) {
+    const box = el.querySelector('#emIntel'); if (!box) return;
+    let v;
+    try { v = await api('GET', '/api/seo/intel'); }
+    catch (e) { box.innerHTML = `<div class="em-h"><h3>Search intel</h3></div><p class="badc">${esc(e.message)}</p>`; return; }
+    const sp = v.spend || {}, ai = v.ai || {}, mp = v.maps || {}, df = v.dataforseo || {}, rk = (v.ranks || {}).keywords || [];
+    const pos = p => p == null ? '–' : esc(String(p));
+    const move = m => m == null ? '' : `<i class="${m > 0 ? 'okc' : m < 0 ? 'badc' : ''}">${m > 0 ? '▲' : m < 0 ? '▼' : ''}${esc(String(Math.abs(m)))}</i>`;
+    const ranks = `<div class="tile gl em-sub2"><div class="em-h"><h4>Keywords you follow in Google</h4><span class="muted em-small">${rk.length} / ${num((v.ranks || {}).max || 100)}</span></div>
+      ${rk.length ? `<table class="em-tbl"><thead><tr><th>Keyword</th><th>Position</th><th>7 days</th><th>Clicks (7d)</th><th>Page</th><th>Exact check</th><th></th></tr></thead><tbody>${rk.map(k =>
+        `<tr><td>${esc(k.keyword)}</td><td>${pos(k.position)}</td><td>${move(k.move_7d)}</td><td>${num(k.clicks_7d)}</td><td class="muted">${esc((k.url || '').replace(/^https?:\/\/[^/]+/, '') || '–')}</td>
+          <td>${k.exact ? `${k.exact.position == null ? 'not in top 100' : '#' + esc(String(k.exact.position))} <span class="muted em-small">top: ${esc((k.exact.top || []).map(t => t.domain).join(', '))}</span>` : '–'}</td>
+          <td><button class="btn soft" type="button" data-untrack="${esc(k.keyword)}">Stop</button></td></tr>`).join('')}</tbody></table>` : '<div class="empty">Add the searches you want to win.</div>'}
+      <div class="ar-form em-form"><label><span>Add keywords (one per line)</span><textarea id="inTrack" rows="2" placeholder="dentist in akola"></textarea></label></div>
+      <div class="acts"><button class="btn go" type="button" id="inTrackGo">Follow these</button>
+        <button class="btn soft" type="button" id="inGsc">Refresh from Search Console (free)</button>
+        <button class="btn soft" type="button" id="inSerp"${df.connected ? '' : ' disabled title="Join DataForSEO below"'}>Exact Google check (DataForSEO)</button>
+        <button class="btn soft" type="button" id="inIdeas">Keyword ideas</button></div><div id="inIdeasOut"></div>
+      <p class="muted em-small">${esc((v.ranks || {}).note || '')}</p></div>`;
+    const be = ai.by_engine || {};
+    const aiBox = `<div class="tile gl em-sub2"><div class="em-h"><h4>Are you named in AI answers?</h4><span class="muted em-small">${Object.entries(ai.engines || {}).map(([k, e]) => tag(e.ready ? 'ok' : '', (ENG[k] || k) + (e.ready ? '' : ' (no key)'))).join(' ')}</span></div>
+      ${ai.last_run ? `<div class="kpis em-kpis"><div class="kpi gl"><b>${num(ai.summary.mentioned_pct)}%</b><span>answers name you</span></div><div class="kpi gl"><b>${num(ai.summary.cited_pct)}%</b><span>cite your site</span></div>
+        ${Object.entries(be).map(([k, x]) => `<div class="kpi gl"><b>${num(x.mentioned_pct)}%</b><span>${esc(ENG[k] || k)}</span><small>cited ${num(x.cited_pct)}%</small></div>`).join('')}</div>
+        ${(ai.cited_instead || []).length ? `<p class="em-small"><b>Sites the AI cites instead</b> (get listed / mentioned here): ${ai.cited_instead.map(([d, n]) => `${esc(d)} <span class="muted">${n}</span>`).join(' · ')}</p>` : ''}
+        ${(ai.competitors_named || []).length ? `<p class="em-small"><b>Competitors named</b>: ${ai.competitors_named.map(([d, n]) => `${esc(d)} <span class="muted">${n}</span>`).join(' · ')}</p>` : ''}` : '<div class="empty">No answers read yet.</div>'}
+      <table class="em-tbl"><thead><tr><th>Question</th>${Object.keys(ENG).map(k => `<th>${ENG[k]}</th>`).join('')}<th></th></tr></thead><tbody>${(ai.prompts || []).map(p => {
+        const r = Object.fromEntries((p.results || []).map(x => [x.engine, x]));
+        return `<tr><td>${esc(p.prompt)}${p.active ? '' : ' <span class="muted">(off)</span>'}</td>${Object.keys(ENG).map(k => `<td>${r[k] ? (r[k].mentioned ? `<i class="okc">named${r[k].rank ? ' #' + r[k].rank : ''}</i>` : '<i class="badc">not named</i>') + (r[k].cited ? ' · cited' : '') : '–'}</td>`).join('')}
+          <td><button class="btn soft" type="button" data-pr="${esc(p.id)}" data-on="${p.active ? '0' : '1'}">${p.active ? 'Pause' : 'Resume'}</button></td></tr>`; }).join('')}</tbody></table>
+      <div class="ar-form em-form"><label><span>Questions customers ask an AI (one per line)</span><textarea id="inPrompts" rows="2" placeholder="Best dental clinic in Akola for implants?"></textarea></label></div>
+      <div class="acts"><button class="btn soft" type="button" id="inPromptsGo">Add questions</button><button class="btn soft" type="button" id="inSuggest">Suggest questions</button>
+        <button class="btn go" type="button" id="inAiRun">Ask the AIs now (~₹${num((ai.price_per_answer_inr || 2) * (ai.prompts || []).filter(p => p.active).length * Object.values(ai.engines || {}).filter(e => e.ready).length)})</button>
+        <label class="em-small"><input type="checkbox" id="inAiWeekly"${(v.settings || {}).ai_weekly ? ' checked' : ''}> every week</label></div><div id="inSugOut"></div>
+      <p class="muted em-small">${esc(ai.note || '')} This month ₹${num(sp.ai_inr)} of ₹${num(sp.ai_cap_inr)}.</p></div>`;
+    const grid = g => `<div class="em-grid-wrap"><b>${esc(g.keyword)}</b> <span class="muted em-small">top 3 at ${num(g.top3)} / ${g.points.length} points · average ${g.average == null ? '–' : esc(String(g.average))}${g.previous ? ` (was ${num(g.previous.top3)} top-3)` : ''} · ${esc(when(g.at))}</span>
+      <div style="display:grid;grid-template-columns:repeat(${g.size},34px);gap:4px;margin:8px 0">${g.points.map(p => `<span title="${p.rank == null ? 'not in first 20' : '#' + p.rank}" style="height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;background:${cell(p.rank)};color:#fff">${p.rank == null ? '20+' : p.rank}</span>`).join('')}</div>
+      ${(g.leaders || []).length ? `<p class="em-small muted">At your shop: ${g.leaders.map((x, i) => `${i + 1}. ${x.you ? '<b>you</b>' : esc(x.name)}`).join(' · ')}</p>` : ''}</div>`;
+    const maps = `<div class="tile gl em-sub2"><div class="em-h"><h4>Google Maps grid</h4><span class="muted em-small">${mp.place && mp.place.id ? esc(mp.place.name + ' · ' + (mp.place.address || '')) : 'Pick your shop first'}</span></div>
+      ${!mp.ready ? '<div class="empty">Google Maps key not set on the server.</div>' : !(mp.place && mp.place.id) ? '<div class="acts"><button class="btn go" type="button" id="inFind">Find my shop on Google Maps</button></div><div id="inFindOut"></div>' :
+        `${(mp.grids || []).map(grid).join('') || '<div class="empty">No grid yet.</div>'}
+        <div class="acts"><input id="inGridKw" placeholder="dentist near me" aria-label="Search"><select id="inGridSize" aria-label="Grid">${[3, 5, 7].map(n => `<option value="${n}"${n === (v.settings || {}).grid_size ? ' selected' : ''}>${n}x${n}</option>`).join('')}</select>
+          <button class="btn go" type="button" id="inGridGo">Check this search</button><button class="btn soft" type="button" id="inFind">Change shop</button></div><div id="inFindOut"></div>`}
+      <p class="muted em-small">${esc(mp.note || '')}</p></div>`;
+    const dfs = `<div class="tile gl em-sub2"><div class="em-h"><h4>Competitors and backlinks (DataForSEO)</h4><span class="muted em-small">${df.connected ? `Joined (${esc(df.via === 'own' ? df.login : 'Newtika')}) · this month $${esc(String(df.spent_usd))} of $${esc(String(df.cap_usd))}` : 'Your own DataForSEO account, pay as you go'}</span></div>
+      ${df.connected ? `<div class="acts"><button class="btn soft" type="button" data-dfs="overview">My domain</button><button class="btn soft" type="button" data-dfs="competitors">Who competes with me</button>
+          <button class="btn soft" type="button" data-dfs="backlinks">My backlinks</button><input id="inGapDom" placeholder="competitor.com" aria-label="Competitor"><button class="btn soft" type="button" data-dfs="gap">Keyword gap</button>
+          <label class="em-small">Monthly ceiling $<input id="inCap" type="number" min="0.5" step="0.5" value="${esc(String(df.cap_usd))}" style="width:70px"></label>
+          ${df.via === 'own' ? '<button class="btn soft" type="button" id="inDfsOff">Remove login</button>' : ''}</div><div id="inDfsOut"></div>`
+        : `<div class="ar-form em-form"><label><span>DataForSEO login (email)</span><input id="inDfsLogin" autocomplete="off"></label><label><span>API password (app.dataforseo.com > API Access)</span><input id="inDfsPw" type="password" autocomplete="new-password"></label></div>
+          <div class="acts"><button class="btn go" type="button" id="inDfsGo">Join DataForSEO</button></div><p class="muted em-small">Checked once for free, then kept sealed; Hoola never shows it again. Every call shows what DataForSEO charged.</p>`}</div>`;
+    box.innerHTML = `<div class="em-h"><h3>Search intel</h3><span class="muted em-small">What Google, Maps and AI assistants show people looking for what you sell.</span></div>${ranks}${aiBox}${maps}${dfs}`;
+    wireIntel(el, box, v);
+  }
+
+  function wireIntel(el, box, v) {
+    const go = async (fn, done) => { try { const r = await fn(); toast(done || (r && r.say) || 'Done.'); intel(el); } catch (e) { toast(e.message, true); } };
+    const lines = id => (box.querySelector(id)?.value || '').split('\n').map(x => x.trim()).filter(Boolean);
+    box.querySelector('#inTrackGo')?.addEventListener('click', () => go(() => api('POST', '/api/seo/intel/track', {keywords: lines('#inTrack')})));
+    box.querySelectorAll('[data-untrack]').forEach(b => b.addEventListener('click', () => go(() => api('POST', '/api/seo/intel/track', {keywords: [b.dataset.untrack], remove: true}), 'Stopped.')));
+    box.querySelector('#inGsc')?.addEventListener('click', () => go(() => api('POST', '/api/seo/intel/ranks/gsc', {}), 'Search Console positions refreshed.'));
+    box.querySelector('#inSerp')?.addEventListener('click', () => { if (confirm('Check every keyword on Google through DataForSEO? It costs a little per keyword on your DataForSEO balance.')) go(() => api('POST', '/api/seo/intel/ranks/serp', {})); });
+    box.querySelector('#inIdeas')?.addEventListener('click', async () => {
+      const out = box.querySelector('#inIdeasOut'); out.innerHTML = '<div class="empty">Asking…</div>';
+      try { const r = await api('POST', '/api/seo/intel/keywords', {seeds: lines('#inTrack')});
+        out.innerHTML = `<p class="muted em-small">${esc(r.source || '')}</p><table class="em-tbl"><thead><tr><th>Idea</th><th>Searches a month</th><th>Competition</th><th></th></tr></thead><tbody>${(r.ideas || []).slice(0, 25).map(x =>
+          `<tr><td>${esc(x.text)}</td><td>${num(x.searches)}</td><td>${esc(x.competition || '')}</td><td><button class="btn soft" type="button" data-addkw="${esc(x.text)}">Follow</button></td></tr>`).join('')}</tbody></table>`;
+        out.querySelectorAll('[data-addkw]').forEach(b => b.addEventListener('click', () => go(() => api('POST', '/api/seo/intel/track', {keywords: [b.dataset.addkw]}))));
+      } catch (e) { out.innerHTML = `<p class="badc">${esc(e.message)}</p>`; }
+    });
+    box.querySelector('#inPromptsGo')?.addEventListener('click', () => go(() => api('POST', '/api/seo/intel/ai/prompts', {prompts: lines('#inPrompts')}), 'Questions added.'));
+    box.querySelectorAll('[data-pr]').forEach(b => b.addEventListener('click', () => go(() => api('POST', '/api/seo/intel/ai/prompt', {id: b.dataset.pr, active: b.dataset.on === '1'}), 'Saved.')));
+    box.querySelector('#inSuggest')?.addEventListener('click', async () => {
+      const out = box.querySelector('#inSugOut'); out.innerHTML = '<div class="empty">Thinking of questions…</div>';
+      try { const r = await api('POST', '/api/seo/intel/ai/suggest', {});
+        out.innerHTML = (r.suggestions || []).map(q => `<p class="em-small"><button class="btn soft" type="button" data-sug="${esc(q)}">Add</button> ${esc(q)}</p>`).join('') || '<div class="empty">No ideas.</div>';
+        out.querySelectorAll('[data-sug]').forEach(b => b.addEventListener('click', () => go(() => api('POST', '/api/seo/intel/ai/prompts', {prompts: [b.dataset.sug]}), 'Added.')));
+      } catch (e) { out.innerHTML = `<p class="badc">${esc(e.message)}</p>`; }
+    });
+    box.querySelector('#inAiRun')?.addEventListener('click', () => { if (confirm('Ask ChatGPT, Gemini and Perplexity every active question now? Each answer counts against your monthly ceiling.')) go(() => api('POST', '/api/seo/intel/ai/run', {})); });
+    box.querySelector('#inAiWeekly')?.addEventListener('change', e => go(() => api('POST', '/api/seo/intel/settings', {ai_weekly: e.target.checked}), 'Saved.'));
+    box.querySelector('#inFind')?.addEventListener('click', async () => {
+      const out = box.querySelector('#inFindOut'); out.innerHTML = '<div class="empty">Searching Google Maps…</div>';
+      try { const r = await api('POST', '/api/seo/intel/maps/find', {});
+        out.innerHTML = (r.candidates || []).map((c, i) => `<p class="em-small"><button class="btn soft" type="button" data-place="${i}">This is my shop</button> <b>${esc(c.name)}</b> <span class="muted">${esc(c.address)}</span></p>`).join('') || '<div class="empty">Not found - check the name and city on the desk.</div>';
+        out.querySelectorAll('[data-place]').forEach(b => b.addEventListener('click', () => go(() => api('POST', '/api/seo/intel/maps/place', {place: r.candidates[+b.dataset.place]}), 'Shop saved.')));
+      } catch (e) { out.innerHTML = `<p class="badc">${esc(e.message)}</p>`; }
+    });
+    box.querySelector('#inGridGo')?.addEventListener('click', () => {
+      const kw = box.querySelector('#inGridKw').value.trim(), size = +box.querySelector('#inGridSize').value;
+      if (!kw) return toast('Type the search, e.g. "dentist near me".', true);
+      go(async () => { await api('POST', '/api/seo/intel/settings', {grid_keywords: [...new Set([...(v.settings.grid_keywords || []), kw])].slice(-5), grid_size: size});
+        return api('POST', '/api/seo/intel/maps/grid', {keyword: kw, size}); });
+    });
+    box.querySelector('#inDfsGo')?.addEventListener('click', () => go(() => api('POST', '/api/seo/intel/dataforseo', {login: box.querySelector('#inDfsLogin').value, password: box.querySelector('#inDfsPw').value})));
+    box.querySelector('#inDfsOff')?.addEventListener('click', () => go(() => api('DELETE', '/api/seo/intel/dataforseo')));
+    box.querySelector('#inCap')?.addEventListener('change', e => go(() => api('POST', '/api/seo/intel/settings', {dfs_cap_usd: Number(e.target.value)}), 'Ceiling saved.'));
+    box.querySelectorAll('[data-dfs]').forEach(b => b.addEventListener('click', async () => {
+      const out = box.querySelector('#inDfsOut'), what = b.dataset.dfs; out.innerHTML = '<div class="empty">Asking DataForSEO…</div>';
+      try {
+        const r = await api('POST', `/api/seo/intel/dfs/${what}`, {competitor: box.querySelector('#inGapDom').value.trim()});
+        const tbl = (h, rows) => `<table class="em-tbl"><thead><tr>${h.map(x => `<th>${x}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody></table>`;
+        out.innerHTML = (what === 'overview' ? `<p class="em-small"><b>${esc(r.domain)}</b>: ${num(r.keywords)} keywords in Google India, ${num(r.top3)} in the top 3, ${num(r.top10)} in the top 10, about ${num(r.traffic)} visits a month.</p>`
+          : what === 'competitors' ? tbl(['Competitor', 'Shared keywords', 'Their avg position', 'Their keywords', 'Their traffic'], (r.competitors || []).map(c => `<tr><td>${esc(c.domain)}</td><td>${num(c.shared_keywords)}</td><td>${esc(String(c.avg_position))}</td><td>${num(c.keywords)}</td><td>${num(c.traffic)}</td></tr>`))
+          : what === 'gap' ? `<p class="em-small">${esc(r.say || '')}</p>` + tbl(['Keyword', 'Searches', 'Their position', 'Yours', 'Their page'], (r.gap || []).map(g => `<tr><td>${esc(g.keyword)}</td><td>${num(g.volume)}</td><td>${esc(String(g.their_position))}</td><td>${g.your_position == null ? '–' : esc(String(g.your_position))}</td><td class="muted">${esc(g.their_url)}</td></tr>`))
+          : `<p class="em-small"><b>${esc(r.domain)}</b>: ${num(r.backlinks)} backlinks from ${num(r.referring_domains)} sites, ${num(r.broken)} broken.</p>` + tbl(['Site linking to you', 'Its rank', 'Links', 'First seen'], (r.top_referrers || []).map(x => `<tr><td>${esc(x.domain)}</td><td>${num(x.rank)}</td><td>${num(x.backlinks)}</td><td>${esc(x.first_seen)}</td></tr>`)))
+          + `<p class="muted em-small">This month $${esc(String((r.spend || {}).spent_usd))} of $${esc(String((r.spend || {}).cap_usd))}.</p>`;
+      } catch (e) { out.innerHTML = `<p class="badc">${esc(e.message)}</p>`; }
+    }));
   }
 
   function kpi(k) {
@@ -491,7 +629,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
           ${(pl.boosts || []).length ? `<h3 class="sc-h">Worth a boost</h3>${pl.boosts.map(x => `<p class="em-small"><a href="${esc(x.permalink)}" target="_blank" rel="noopener">${esc(x.fmt)} · ${esc(x.date)}</a> <b>${esc(String(x.times))}x</b> your normal. <span class="muted">${esc(x.plan)}</span></p>`).join('')}` : ''}</div>
       </div>` : ''}
       ${accs.length ? growthTile(d.growth || {}) : ''}
-      ${accs.length ? '<div class="tile gl sc-ytads" id="scYtAds"><div class="em-h"><h3>YouTube ads</h3></div><div class="empty">Loading…</div></div>' : ''}
+      ${accs.length ? '<div class="tile gl sc-ytads" id="scYtAds"><div class="em-h"><h3>Google ads</h3></div><div class="empty">Loading…</div></div>' : ''}
       ${accs.length ? '<div class="tile gl sc-ytads" id="scMetaAds"><div class="em-h"><h3>Facebook &amp; Instagram ads</h3></div><div class="empty">Loading…</div></div>' : ''}
       ${cal.length ? `<div class="tile gl"><div class="em-h"><h3>Calendar</h3><span class="muted">${esc(d.calendar_status === 'approved' ? 'Approved' : 'Draft')}</span></div>
         <div class="sc-cal">${cal.map(post).join('')}</div></div>` : ''}
@@ -614,26 +752,43 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
     const box = el.querySelector('#scYtAds'); if (!box) return;
     let v;
     try { v = await api('GET', '/api/social/ytads'); }
-    catch (e) { box.innerHTML = `<div class="em-h"><h3>YouTube ads</h3></div><p class="badc">${esc(e.message)}</p>`; return; }
-    const head = `<div class="em-h"><h3>YouTube ads</h3><span class="muted em-small">Your own Google Ads account. An ad is made paused; money is spent only after you tap Start.</span></div>`;
+    catch (e) { box.innerHTML = `<div class="em-h"><h3>Google ads</h3></div><p class="badc">${esc(e.message)}</p>`; return; }
+    const head = `<div class="em-h"><h3>Google ads</h3><span class="muted em-small">YouTube, Search and Performance Max in your own Google Ads account. An ad is made paused; money is spent only after you tap Start.</span></div>`;
     if (!v.configured) { box.innerHTML = head + '<div class="empty">Not set up on the server yet (Google sign-in).</div>'; return; }
     const a = v.account;
     if (!a) { box.innerHTML = head + '<button class="btn go" type="button" id="ytConn">Connect Google Ads</button>'; wireYt(el, box, v); return; }
-    const pick = !a.customer_id ? `<p class="em-small">Which ad account runs your YouTube ads?</p><div class="acts">${(a.customers || []).filter(c => !c.manager).map(c =>
+    const pick = !a.customer_id ? `<p class="em-small">Which ad account runs your Google ads?</p><div class="acts">${(a.customers || []).filter(c => !c.manager).map(c =>
       `<button class="btn soft" type="button" data-ytcust="${esc(c.id)}">${esc(c.name || c.id)} (${esc(c.currency || '')})${c.test ? ' - test' : ''}</button>`).join('') || '<span class="muted">No ad account found in this Google login.</span>'}</div>` : '';
-    const card = d => { const [c, n] = YTS[d.status] || ['', d.status]; const ro = !['draft', 'checked', 'failed'].includes(d.status);
-      return `<div class="em-item sc-ytd" data-did="${esc(d.id)}"><div class="em-meta"><b>${esc(d.video_title || d.video_id || 'New ad')}</b>${tag(c, n)}
-          <span class="muted">${num(d.daily)} ${esc(a.currency || '')} a day x ${num(d.days)} days = ${num(d.total)}${d.stop_on ? ' · until ' + esc(d.stop_on) : ''}</span></div>
-        ${ro ? `<p class="em-small">${d.headlines.map(esc).join(' · ')}</p>` : `<div class="ar-form em-form sc-ytform">
-          <label><span>Video</span><select data-f="video_id">${(v.videos || []).map(x => `<option value="${esc(x.id)}"${x.id === d.video_id ? ' selected' : ''}>${esc(x.title || x.id)} (${num(x.views)} views)</option>`).join('')}<option value="${esc(d.video_id)}"${(v.videos || []).some(x => x.id === d.video_id) ? '' : ' selected'}>${esc(d.video_id || 'Choose')}</option></select></label>
-          <label><span>Headlines (one per line, up to 5, 40 letters each)</span><textarea data-f="headlines" rows="3">${esc(d.headlines.join('\n'))}</textarea></label>
-          <label><span>Long headline (90)</span><input data-f="long_headline" value="${esc(d.long_headline)}"></label>
-          <label><span>Descriptions (one per line, up to 5, 90 each)</span><textarea data-f="descriptions" rows="2">${esc(d.descriptions.join('\n'))}</textarea></label>
-          <label><span>Business name (25)</span><input data-f="business" value="${esc(d.business)}"></label>
-          <label><span>Where the ad leads (https://...)</span><input data-f="final_url" value="${esc(d.final_url)}"></label>
+    const lines = (f, rows, hint, list) => `<label><span>${hint}</span><textarea data-f="${f}" rows="${rows}">${esc((list || []).join('\n'))}</textarea></label>`;
+    const common = d => `<label><span>Where the ad leads (https://...)</span><input data-f="final_url" value="${esc(d.final_url)}"></label>
           <label><span>Daily budget (${esc(a.currency || '')}, up to ${num(v.cap)})</span><input data-f="daily" type="number" min="1" max="${esc(String(v.cap))}" value="${esc(String(d.daily))}"></label>
-          <label><span>Days (1-30)</span><input data-f="days" type="number" min="1" max="30" value="${esc(String(d.days))}"></label>
-          <label class="btn soft sc-up">${d.logo_asset ? 'Change logo' : 'Add logo (square)'}<input type="file" accept="image/*" data-ytlogo="${esc(d.id)}" hidden></label></div>`}
+          <label><span>Days (1-30)</span><input data-f="days" type="number" min="1" max="30" value="${esc(String(d.days))}"></label>`;
+    const places = d => `<label><span>Cities (one per line, empty = all India)</span><textarea data-f="cities" rows="2">${esc((d.cities || []).join('\n'))}</textarea></label>`;
+    const forms = {
+      youtube: d => `<label><span>Video</span><select data-f="video_id">${(v.videos || []).map(x => `<option value="${esc(x.id)}"${x.id === d.video_id ? ' selected' : ''}>${esc(x.title || x.id)} (${num(x.views)} views)</option>`).join('')}<option value="${esc(d.video_id)}"${(v.videos || []).some(x => x.id === d.video_id) ? '' : ' selected'}>${esc(d.video_id || 'Choose')}</option></select></label>
+          ${lines('headlines', 3, 'Headlines (one per line, up to 5, 40 letters each)', d.headlines)}
+          <label><span>Long headline (90)</span><input data-f="long_headline" value="${esc(d.long_headline)}"></label>
+          ${lines('descriptions', 2, 'Descriptions (one per line, up to 5, 90 each)', d.descriptions)}
+          <label><span>Business name (25)</span><input data-f="business" value="${esc(d.business)}"></label>${common(d)}
+          <label class="btn soft sc-up">${d.logo_asset ? 'Change logo' : 'Add logo (square)'}<input type="file" accept="image/*" data-ytlogo="${esc(d.id)}" hidden></label>`,
+      search: d => `${lines('keywords', 4, 'Keywords - what people type on Google (one per line, up to 20)', d.keywords)}
+          <div class="acts"><button class="btn soft" type="button" data-ytideas="${esc(d.id)}">Keyword ideas from Google</button></div><div class="yt-ideas"></div>
+          ${lines('negatives', 2, 'Not these words (one per line, e.g. free, job)', d.negatives)}
+          ${lines('headlines', 5, 'Headlines (one per line, 3 to 15, 30 letters each)', d.headlines)}
+          ${lines('descriptions', 3, 'Descriptions (one per line, 2 to 4, 90 each)', d.descriptions)}
+          ${lines('paths', 2, 'Display path (up to 2 words, 15 letters each)', d.paths)}${places(d)}${common(d)}`,
+      pmax: d => `${lines('headlines', 4, 'Headlines (one per line, 3 to 5, 30 letters each)', d.headlines)}
+          <label><span>Long headline (90)</span><input data-f="long_headline" value="${esc(d.long_headline)}"></label>
+          ${lines('descriptions', 3, 'Descriptions (one per line, 2 to 5, 90 each, one 60 or shorter)', d.descriptions)}
+          <label><span>Business name (25)</span><input data-f="business" value="${esc(d.business)}"></label>${places(d)}${common(d)}
+          <p class="muted em-small">${(d.images || []).length} photo(s) - Hoola cuts each to Google's wide (1.91:1) and square shapes.</p>
+          <div class="acts"><label class="btn soft sc-up">Add photos<input type="file" accept="image/*" multiple data-ytpics="${esc(d.id)}" hidden></label>
+          <label class="btn soft sc-up">${d.logo_asset ? 'Change logo' : 'Add logo (square)'}<input type="file" accept="image/*" data-ytlogo="${esc(d.id)}" hidden></label></div>`,
+    };
+    const card = d => { const [c, n] = YTS[d.status] || ['', d.status]; const ro = !['draft', 'checked', 'failed'].includes(d.status);
+      return `<div class="em-item sc-ytd" data-did="${esc(d.id)}" data-kind="${esc(d.kind)}"><div class="em-meta"><b>${esc(d.title || 'New ad')}</b>${tag('v', d.kind_label)}${tag(c, n)}
+          <span class="muted">${num(d.daily)} ${esc(a.currency || '')} a day x ${num(d.days)} days = ${num(d.total)}${d.kind !== 'youtube' ? ' · ' + esc((d.cities || []).join(', ') || 'all India') : ''}${d.stop_on ? ' · until ' + esc(d.stop_on) : ''}</span></div>
+        ${ro ? `<p class="em-small">${d.headlines.map(esc).join(' · ')}</p>` : `<div class="ar-form em-form sc-ytform">${(forms[d.kind] || forms.youtube)(d)}</div>`}
         ${(d.problems || []).length ? `<p class="em-small warnc">${d.problems.map(esc).join(' ')}</p>` : ''}${d.error ? `<p class="em-small badc">${esc(d.error)}</p>` : ''}
         <div class="acts">${ro ? '' : `<button class="btn soft" type="button" data-ytsave="${esc(d.id)}">Save</button>
           <button class="btn soft" type="button" data-ytact="check" data-id="${esc(d.id)}">Check with Google (free)</button>
@@ -641,10 +796,12 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
           ${['created', 'paused'].includes(d.status) ? `<button class="btn go" type="button" data-ytact="start" data-id="${esc(d.id)}" data-total="${esc(String(d.total))}">Start</button>` : ''}
           ${d.status === 'running' ? `<button class="btn soft" type="button" data-ytact="pause" data-id="${esc(d.id)}">Pause</button>` : ''}</div></div>`; };
     box.innerHTML = head + `<p class="muted em-small">Google account ${esc(a.email)}${a.customer_id ? ' · ad account ' + esc(a.customer_id) : ''}${a.error ? ' · ' + esc(a.error) : ''}</p>` + pick +
-      (a.customer_id ? `<div class="acts em-run"><button class="btn soft" type="button" id="ytRead">Read my YouTube ads</button>
+      (a.customer_id ? `<div class="acts em-run"><button class="btn soft" type="button" id="ytRead">Read my Google ads</button>
+        <button class="btn soft" type="button" data-ytnew="search">New Search ad</button>
+        <button class="btn soft" type="button" data-ytnew="pmax">New Performance Max</button>
         <button class="btn soft" type="button" id="ytNew"${(v.videos || []).length ? '' : ' disabled title="Connect YouTube first"'}>New YouTube ad</button></div>
         <div id="ytCamps"></div><div class="sc-items">${(v.drafts || []).map(card).join('')}</div>
-        <p class="muted em-small">Runs on YouTube only (in-stream, in-feed, Shorts) as a Demand Gen campaign, India, your languages. Older in-stream "Video" campaigns cannot be made through Google's API - make those in Google Ads.</p>` : '');
+        <p class="muted em-small">Search = your ad on Google when people type your keywords. Performance Max = one campaign across Search, YouTube, Maps, Gmail and Display (Google needs a conversion goal in your account, and your Business Profile linked once for Maps). YouTube = a Demand Gen video ad on in-stream, in-feed and Shorts.</p>` : '');
     wireYt(el, box, v);
   }
 
@@ -655,18 +812,21 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
       catch (e) { toast(e.message, true); }
     });
     box.querySelectorAll('[data-ytcust]').forEach(b => b.addEventListener('click', () => go(() => api('POST', '/api/social/ytads/account', {customer_id: b.dataset.ytcust}), 'Ad account chosen.')));
+    box.querySelectorAll('[data-ytnew]').forEach(b => b.addEventListener('click', () => go(() => api('POST', '/api/social/ytads/drafts', {kind: b.dataset.ytnew}),
+      'Draft made from your business facts - change anything, then Check with Google.')));
     box.querySelector('#ytNew')?.addEventListener('click', () => go(() => api('POST', '/api/social/ytads/drafts', {video_id: (v.videos[0] || {}).id || ''}), 'Draft made - change anything, then Check with Google.'));
     box.querySelector('#ytRead')?.addEventListener('click', async () => {
       const out = box.querySelector('#ytCamps'); out.innerHTML = '<div class="empty">Reading…</div>';
       try {
         const r = await api('POST', '/api/social/ytads/read');
-        out.innerHTML = (r.campaigns || []).length ? `<table class="em-tbl"><thead><tr><th>Campaign</th><th>Status</th><th>Spent (${esc(r.currency || '')})</th><th>Views</th><th>Cost a view</th><th>Clicks</th><th>Results</th></tr></thead><tbody>${r.campaigns.map(c =>
-          `<tr><td>${esc(c.name)}</td><td>${esc(c.status)}</td><td>${num(c.spend)}</td><td>${num(c.views)}</td><td>${c.cpv == null ? '–' : num(c.cpv)}</td><td>${num(c.clicks)}</td><td>${num(c.conversions)}</td></tr>`).join('')}</tbody></table>
-          ${r.ads_desk ? `<p class="muted em-small">Ads desk: ${esc(r.ads_desk)}</p>` : ''}` : '<div class="empty">No YouTube campaigns in the last 30 days.</div>';
+        out.innerHTML = (r.campaigns || []).length ? `<table class="em-tbl"><thead><tr><th>Campaign</th><th>Type</th><th>Status</th><th>Spent (${esc(r.currency || '')})</th><th>Views</th><th>Cost a view</th><th>Clicks</th><th>Results</th></tr></thead><tbody>${r.campaigns.map(c =>
+          `<tr><td>${esc(c.name)}</td><td>${esc(({SEARCH: 'Search', PERFORMANCE_MAX: 'Performance Max', DEMAND_GEN: 'YouTube', VIDEO: 'YouTube', DISPLAY: 'Display'})[c.type] || c.type || '')}</td><td>${esc(c.status)}</td><td>${num(c.spend)}</td><td>${num(c.views)}</td><td>${c.cpv == null ? '–' : num(c.cpv)}</td><td>${num(c.clicks)}</td><td>${num(c.conversions)}</td></tr>`).join('')}</tbody></table>
+          ${r.terms ? `<p class="muted em-small">${num(r.terms)} search terms went to the Ads desk - it shows the ones spending with no result.</p>` : ''}
+          ${r.ads_desk ? `<p class="muted em-small">Ads desk: ${esc(r.ads_desk)}</p>` : ''}` : '<div class="empty">No Google campaigns in the last 30 days.</div>';
       } catch (e) { out.innerHTML = `<p class="badc">${esc(e.message)}</p>`; }
     });
     const body = card => { const o = {}; card.querySelectorAll('[data-f]').forEach(i => { const f = i.dataset.f;
-      o[f] = ['headlines', 'descriptions'].includes(f) ? i.value.split('\n').map(x => x.trim()).filter(Boolean) : (['daily', 'days'].includes(f) ? Number(i.value) : i.value); }); return o; };
+      o[f] = ['headlines', 'descriptions', 'keywords', 'negatives', 'paths', 'cities'].includes(f) ? i.value.split('\n').map(x => x.trim()).filter(Boolean) : (['daily', 'days'].includes(f) ? Number(i.value) : i.value); }); return o; };
     box.querySelectorAll('[data-ytsave]').forEach(b => b.addEventListener('click', () => go(() => api('POST', `/api/social/ytads/drafts/${encodeURIComponent(b.dataset.ytsave)}`, body(b.closest('.sc-ytd'))), 'Saved.')));
     box.querySelectorAll('[data-ytlogo]').forEach(inp => inp.addEventListener('change', async () => {
       const f = inp.files && inp.files[0]; if (!f) return;
@@ -674,10 +834,29 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
       go(async () => { const a = await api('POST', '/api/social/media', undefined, {form: fd});
         await api('POST', `/api/social/ytads/drafts/${encodeURIComponent(inp.dataset.ytlogo)}`, {...body(inp.closest('.sc-ytd')), logo_asset: a.id}); }, 'Logo added.');
     }));
+    box.querySelectorAll('[data-ytpics]').forEach(inp => inp.addEventListener('change', async () => {
+      const files = Array.from(inp.files || []).slice(0, 5); if (!files.length) return;
+      const card = inp.closest('.sc-ytd'), did = inp.dataset.ytpics, had = ((v.drafts || []).find(x => x.id === did) || {}).images || [];
+      go(async () => { const ids = [];
+        for (const f of files) { const fd = new FormData(); fd.append('file', f); ids.push((await api('POST', '/api/social/media', undefined, {form: fd})).id); }
+        await api('POST', `/api/social/ytads/drafts/${encodeURIComponent(did)}`, {...body(card), images: had.concat(ids).slice(-5)}); }, 'Photos added.');
+    }));
+    box.querySelectorAll('[data-ytideas]').forEach(b => b.addEventListener('click', async () => {
+      const card = b.closest('.sc-ytd'), f = body(card), out = card.querySelector('.yt-ideas');
+      out.innerHTML = '<div class="empty">Asking Google Keyword Planner…</div>';
+      try {
+        const r = await api('POST', '/api/social/ytads/ideas', {seeds: (f.keywords || []).slice(0, 10), url: f.final_url || '', cities: f.cities || []});
+        out.innerHTML = (r.ideas || []).length ? `<table class="em-tbl"><thead><tr><th>Idea</th><th>Searches a month</th><th>Competition</th><th>Top-of-page bid (${esc(r.currency || '')})</th><th></th></tr></thead><tbody>${r.ideas.slice(0, 20).map(x =>
+          `<tr><td>${esc(x.text)}</td><td>${num(x.searches)}</td><td>${esc(x.competition)}</td><td>${x.high ? num(x.low) + ' - ' + num(x.high) : '–'}</td><td><button class="btn soft" type="button" data-ytaddkw="${esc(x.text)}">Add</button></td></tr>`).join('')}</tbody></table><p class="muted em-small">${esc(r.note || '')}</p>` : '<div class="empty">Google had no ideas for these words.</div>';
+        out.querySelectorAll('[data-ytaddkw]').forEach(x => x.addEventListener('click', () => {
+          const ta = card.querySelector('[data-f="keywords"]'); const have = ta.value.split('\n').map(y => y.trim()).filter(Boolean);
+          if (!have.includes(x.dataset.ytaddkw)) ta.value = have.concat([x.dataset.ytaddkw]).join('\n'); x.disabled = true; }));
+      } catch (e) { out.innerHTML = `<p class="badc">${esc(e.message)}</p>`; }
+    }));
     box.querySelectorAll('[data-ytact]').forEach(b => b.addEventListener('click', async () => {
       const act = b.dataset.ytact, id = encodeURIComponent(b.dataset.id);
       if (act === 'create' && !confirm('Create this ad in your Google Ads account? It is made PAUSED - nothing is spent until you tap Start.')) return;
-      if (act === 'start' && !confirm(`Start this YouTube ad? Google can spend up to its daily budget every day, about ${b.dataset.total} in total. You can Pause any time.`)) return;
+      if (act === 'start' && !confirm(`Start this Google ad? Google can spend up to its daily budget every day, about ${b.dataset.total} in total. You can Pause any time.`)) return;
       b.disabled = true;
       go(() => api('POST', `/api/social/ytads/drafts/${id}/${act}`, act === 'start' ? {confirm: true} : {}),
          {check: 'Google checked it - no problems.', create: 'Made in Google Ads, paused.', start: 'Started.', pause: 'Paused.'}[act]);
@@ -1069,13 +1248,14 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
   let GS_ASSETS = false;       // v0.416 the Assets page of the open project
   let GS_REL = false;          // v0.416 the Release page (platforms + store kit) of the open project
   let GS_QA = false;           // v0.416 the QA farm + bugs page of the open project
+  let GS_SCN = false;          // v0.456 the Scenes page (the ceiling): specs in, checked .tscn out
   let GS_SIM = null;
   let GS_OPEN = '';            // v0.386 the Studio Project board open in the Game Desk ('' = the desk home)
   let GS_ROLE = '';            // v0.420 a role page open: 'world' | 'physics' ('' = none)
   let GS_ROLE_SID = '';        // ... for this Studio project ('' = her own, no project)
   async function game(el) {
     clearTimeout(GTIMER);
-    if (GS_ROLE) return ({runtime: gsRuntime, liveops: gsLiveops, big: gsBig, arena: gsArena, world: gsWorld, physics: gsPhysics, audio: gsAudio, haptics: gsHaptics, net: gsNet, xr: gsXr, sim: gsSim, twin: gsTwin, vfx: gsVfx}[GS_ROLE] || gsWorld)(el);
+    if (GS_ROLE) return ({runtime: gsRuntime, liveops: gsLiveops, big: gsBig, arena: gsArena, prov: gsProv, world: gsWorld, physics: gsPhysics, audio: gsAudio, haptics: gsHaptics, net: gsNet, xr: gsXr, sim: gsSim, twin: gsTwin, vfx: gsVfx}[GS_ROLE] || gsWorld)(el);
     if (GS_OPEN) return gsBoard(el, GS_OPEN);
     if (!el.firstChild) el.innerHTML = '<div class="vh"><h2>Game Desk</h2></div><div class="empty">Loading…</div>';
     let d, sp = {projects: []};
@@ -1423,6 +1603,46 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
     el.querySelectorAll('[data-qb]').forEach(b => b.addEventListener('click', () => go(() => api('POST', `/api/gamestudio/${q}/bugs/${encodeURIComponent(b.dataset.n)}/${b.dataset.qb}`),
       b.dataset.qb === 'fix' ? 'A fix task is on the board. The bug closes when the same bot cannot find it again.' : '')));
     if (d.running) GTIMER = setTimeout(() => { if (visible(el) && GS_QA) gsQa(el, id); }, 8000);
+  }
+
+  // ---------------------------------------------------------------- v0.456 Scenes as checked data (the ceiling)
+  const SCST = {approved: ['ok', 'In the game'], draft: ['v', 'Waiting for your OK'], failed: ['bad', 'Did not load'], rejected: ['', 'Dropped']};
+  async function gsScenes(el, id) {
+    clearTimeout(GTIMER);
+    const q = encodeURIComponent(id);
+    let d;
+    try { d = await api('GET', `/api/gamedesk/scenes/${q}`); }
+    catch (e) { toast(e.message, true); GS_SCN = false; return gsBoard(el, id); }
+    const lim = d.limits || {};
+    el.innerHTML = `<div class="vh"><button class="btn soft" type="button" id="scBack">← Board</button><h2>Scenes</h2>
+        <span class="muted em-sub">${num((d.in_the_game || []).length)} in the game · up to ${num(lim.scenes)} scenes, ${num(lim.nodes_per_scene)} nodes each</span></div>
+      <p class="muted em-sub">${esc(d.how || '')}</p>
+      <section class="tile gl"><h3>Ask for a scene</h3>
+        <div class="acts"><input id="scW" maxlength="400" placeholder="A rooftop level: three ledges, a moving platform, twenty coins and the exit door" aria-label="What the scene should have">
+          <input id="scN" maxlength="32" placeholder="Name, e.g. Level1" aria-label="Scene name">
+          <button class="btn go" type="button" id="scGo">Make it and load it in the engine</button></div>
+        <p class="muted em-small">Hoola writes the scene itself from a checked description - the model never writes a scene file, because a script hidden inside one would run. Every scene is opened in the real engine before you see it.</p></section>
+      ${(d.scenes || []).map(x => { const [c, n] = SCST[x.status] || ['', x.status], r = x.report || {};
+        return `<section class="tile gl"><div class="ga-h"><b>${esc(x.name)}</b> <span class="muted">${esc(x.file)}</span> ${tag(c, n)}
+            <span class="muted em-small">${num(x.nodes)} nodes in the engine${(r.verdict ? ' · ' + esc(r.verdict) : '')}</span></div>
+          ${x.words ? `<p class="em-small">${esc(x.words)}</p>` : ''}
+          ${r.why ? `<p class="${x.status === 'failed' ? 'badc' : 'muted'} em-small">${esc(r.why)}</p>` : ''}
+          ${(r.trouble || []).slice(0, 3).map(t => `<div class="badc em-small">${esc(t)}</div>`).join('')}
+          <div class="acts">${x.status === 'draft' ? `<button class="btn go gs-mini" type="button" data-sc="approve" data-n="${esc(x.id)}">Haan, game mein daalo</button>` : ''}
+            ${x.status !== 'rejected' ? `<button class="btn soft gs-mini" type="button" data-sc="reject" data-n="${esc(x.id)}">Drop it</button>` : ''}</div></section>`; }).join('')
+        || '<p class="muted em-small">No scenes yet.</p>'}
+      <p class="muted em-small">Not built: ${esc(d.not_built || '')}</p>`;
+    const go = async (fn, ok) => { try { await fn(); if (ok) toast(ok); } catch (e) { toast(e.message, true); } gsScenes(el, id); };
+    el.querySelector('#scBack').addEventListener('click', () => { GS_SCN = false; gsBoard(el, id); });
+    el.querySelector('#scGo').addEventListener('click', e => {
+      const words = el.querySelector('#scW').value.trim();
+      if (words.length < 8) { toast('Scene ek line mein likhiye.', true); return; }
+      e.target.disabled = true; e.target.textContent = 'Making it and loading it…';
+      go(() => api('POST', `/api/gamedesk/scenes/${q}`, {words, name: el.querySelector('#scN').value.trim()}));
+    });
+    el.querySelectorAll('[data-sc]').forEach(b => b.addEventListener('click', () => go(
+      () => api('POST', `/api/gamedesk/scenes/${q}/${encodeURIComponent(b.dataset.n)}/${b.dataset.sc}`),
+      b.dataset.sc === 'approve' ? 'Agli build mein dikhega.' : '')));
   }
 
   // ---------------------------------------------------------------- v0.416 platforms: downloads, store kit, itch.io
@@ -1782,6 +2002,53 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
       extra: x => { const q = (x.report || {}).queue; return q ? `<p class="em-small">${num(q.frames)} frames · ${num(q.requeued)} re-queued · farm ${num(q.wall_hours)} h · ${esc(Object.entries(q.cost_inr || {}).map(([s, c]) => s + ' Rs ' + c).join(' · '))}</p>` : ''; }});
   }
 
+  // ---------------------------------------------------------------- v0.455 Provenance (what shipped, and what is yours)
+  async function gsProv(el) {
+    clearTimeout(GTIMER);
+    const sid = GS_ROLE_SID;
+    let d;
+    try { d = await api('GET', `/api/gamedesk/provenance/${encodeURIComponent(sid)}`); } catch (e) { toast(e.message, true); return roleBack(el); }
+    const a = d.assets, h = d.human, sv = d.steam, c = d.code;
+    const rows = (list, why) => list.map(x => `<tr><td>${esc(x.key)}</td><td class="em-small">${esc(x.kind)}</td><td class="em-small">${esc(x.model || x.how)}</td>
+      <td class="em-small">${esc((x.at || '').slice(0, 10))}</td><td>${x.cost_inr ? '₹' + num(x.cost_inr) : '-'}</td></tr>`).join('')
+      || `<tr><td colspan="5" class="muted em-small">${esc(why)}</td></tr>`;
+    el.innerHTML = `<div class="vh"><button class="btn soft" type="button" id="pvBack">← Board</button><h2>Where it came from</h2></div>
+      <p class="muted em-small">${esc(d.how_to_read_it)}</p>
+      <section class="tile gl"><h3>The store answer (a draft — you sign it)</h3>
+        <p class="em-small"><b>AI content that ships and players see:</b> ${tag(sv.pre_generated.answer === 'Yes' ? '' : 'ok', sv.pre_generated.answer)}</p>
+        <pre class="gs-sum rt-cfg">${esc(sv.pre_generated.draft)}</pre>
+        <p class="em-small"><b>Content the game generates while running:</b> ${tag('ok', sv.live_generated.answer)} <span class="muted">${esc(sv.live_generated.draft)}</span></p>
+        ${(sv.judgement_calls || []).map(j => `<div class="tile lo-row"><b>Your call: ${esc(j.item)}</b><div class="em-small">${esc(j.fact)}</div>
+          <div class="em-small">• ${esc(j.one_reading)}</div><div class="em-small">• ${esc(j.other_reading)}</div>
+          <div class="em-small"><b>${esc(j.who_decides)}</b></div></div>`).join('')}
+        ${(sv.unknowns || []).map(u => `<div class="badc em-small">${esc(u)}</div>`).join('')}
+        <p class="muted em-small">${esc(sv.you_sign_it)}</p>
+        <p class="em-small"><b>Store line:</b> ${esc(d.disclosure.line)}${d.disclosure.fab_tag ? ` <span class="muted">(Fab tag: ${esc(d.disclosure.fab_tag)})</span>` : ''}</p></section>
+      <section class="tile gl"><h3>What is in the game</h3>
+        <div class="ph-grid"><div><b>${num(a.counts.generative)}</b><div class="muted em-small">a model made</div></div>
+          <div><b>${num(a.counts.procedural)}</b><div class="muted em-small">code made</div></div>
+          <div><b>${num(a.counts.hers)}</b><div class="muted em-small">your own files</div></div>
+          <div><b>${num(a.counts.made_but_never_approved)}</b><div class="muted em-small">made, never approved</div></div></div>
+        <p class="em-small"><b>A model made these — these are what a store survey asks about</b></p>
+        <table class="ph-tbl"><thead><tr><th>Asset</th><th>Kind</th><th>Model</th><th>When</th><th>Cost</th></tr></thead><tbody>${rows(a.generative, 'None.')}</tbody></table>
+        <p class="em-small"><b>Code made these — not AI</b> <span class="muted">${esc(a.procedural_warning)}</span></p>
+        <table class="ph-tbl"><thead><tr><th>Asset</th><th>Kind</th><th>How</th><th>When</th><th>Cost</th></tr></thead><tbody>${rows(a.procedural, 'None.')}</tbody></table>
+        ${a.hers.length ? `<p class="em-small"><b>Your own files</b></p><table class="ph-tbl"><tbody>${rows(a.hers, '')}</tbody></table>` : ''}
+        ${a.unknown.length ? `<div class="badc em-small">${num(a.unknown.length)} asset(s) have a source Hoola cannot classify — open them before you answer a survey.</div>` : ''}</section>
+      <section class="tile gl"><h3>The code</h3>
+        <p class="em-small">Live version ${num(c.live_version)} · ${c.models_live_build.length ? esc(c.models_live_build.join(', ')) : '<span class="muted">no model recorded</span>'} · ${num(c.files)} files</p>
+        <p class="muted em-small">${esc(c.note)}</p></section>
+      <section class="tile gl"><h3>What you did — the part that may be yours</h3>
+        <div class="ph-grid"><div><b>${num(h.counts.decisions)}</b><div class="muted em-small">decisions</div></div>
+          <div><b>${num(h.counts.versions_chosen)}</b><div class="muted em-small">versions you picked</div></div>
+          <div><b>${num(h.counts.rejected)}</b><div class="muted em-small">you rejected</div></div>
+          <div><b>${num(h.counts.uploaded)}</b><div class="muted em-small">your own files</div></div></div>
+        ${h.thin_warning ? `<div class="badc em-small">${esc(h.thin_warning)}</div>` : ''}
+        <p class="muted em-small">${esc(h.why_it_matters)}</p>
+        <ul class="em-small">${(h.decisions_she_made || []).slice(0, 10).map(x => `<li>${esc(x.text)}${x.why ? ` — <span class="muted">${esc(x.why)}</span>` : ''}</li>`).join('')}</ul></section>`;
+    el.querySelector('#pvBack').addEventListener('click', () => roleBack(el));
+  }
+
   // ---------------------------------------------------------------- v0.447 Game Arena (numbers, not claims)
   let GAR_OPEN = '';
   async function gsArena(el) {
@@ -2038,6 +2305,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
     if (GS_BIBLE) return gsBible(el, id);
     if (GS_ASSETS) return gsAssets(el, id);
     if (GS_QA) return gsQa(el, id);
+    if (GS_SCN) return gsScenes(el, id);
     if (GS_REL) return gsRelease(el, id);
     let p;
     try { p = await api('GET', `/api/gamestudio/${encodeURIComponent(id)}`); }
@@ -2061,7 +2329,9 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
         <button class="btn soft" type="button" id="gsXrBtn">VR / AR</button>
         <button class="btn soft" type="button" id="gsSimBtn">Simulator</button>
         <button class="btn soft" type="button" id="gsRtBtn">Runtime & editor</button>
+        <button class="btn soft" type="button" id="gsScnBtn">Scenes</button>
         <button class="btn soft" type="button" id="gsLoBtn">Live ops</button>
+        <button class="btn soft" type="button" id="gsPvBtn">Where it came from</button>
         <button class="btn soft" type="button" id="gsQaBtn">QA${(p.qa || {}).verdict ? ' · ' + esc(p.qa.verdict) : ''}${(p.qa || {}).open ? ' · ' + num(p.qa.open) + ' bug' + (p.qa.open === 1 ? '' : 's') : ''}</button>
         <button class="btn soft" type="button" id="gsAst">Assets${(p.assets || {}).count ? ' · ' + num(p.assets.in_game) + ' in game' : ''}${(p.assets || {}).waiting_ok ? ' · ' + num(p.assets.waiting_ok) + ' for your OK' : ''}${(p.assets || {}).priced ? ' · ₹' + num(p.assets.priced) + ' card' : ''}</button></div>
       <p class="muted em-sub">${esc(p.goal || '')}</p>
@@ -2107,7 +2377,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
       </div>`;
     const q = encodeURIComponent(p.id);
     const go = async (fn, ok) => { try { await fn(); if (ok) toast(ok); } catch (e) { toast(e.message, true); } gsBoard(el, id); };
-    el.querySelector('#gsBack').addEventListener('click', () => { GS_OPEN = ''; GS_BIBLE = false; GS_ASSETS = false; GS_QA = false; GS_REL = false; GS_ROLE = ''; el.innerHTML = ''; game(el); });
+    el.querySelector('#gsBack').addEventListener('click', () => { GS_OPEN = ''; GS_BIBLE = false; GS_ASSETS = false; GS_QA = false; GS_SCN = false; GS_REL = false; GS_ROLE = ''; el.innerHTML = ''; game(el); });
     el.querySelector('#gsBib').addEventListener('click', () => { GS_BIBLE = true; gsBible(el, id); });
     el.querySelector('#gsAst').addEventListener('click', () => { GS_ASSETS = true; gsAssets(el, id); });
     el.querySelector('#gsQaBtn').addEventListener('click', () => { GS_QA = true; gsQa(el, id); });
@@ -2120,7 +2390,9 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
     el.querySelector('#gsXrBtn').addEventListener('click', () => { GS_ROLE = 'xr'; GS_ROLE_SID = id; gsXr(el); });
     el.querySelector('#gsSimBtn').addEventListener('click', () => { GS_ROLE = 'sim'; GS_ROLE_SID = id; gsSim(el); });
     el.querySelector('#gsRtBtn').addEventListener('click', () => { GS_ROLE = 'runtime'; GS_ROLE_SID = id; gsRuntime(el); });
+    el.querySelector('#gsScnBtn').addEventListener('click', () => { GS_SCN = true; gsScenes(el, id); });
     el.querySelector('#gsLoBtn').addEventListener('click', () => { GS_ROLE = 'liveops'; GS_ROLE_SID = id; gsLiveops(el); });
+    el.querySelector('#gsPvBtn').addEventListener('click', () => { GS_ROLE = 'prov'; GS_ROLE_SID = id; gsProv(el); });
     el.querySelector('#gsAdd').addEventListener('click', () => {
       const title = el.querySelector('#gsT').value.trim();
       if (title.length < 3) { toast('Write the task in one line.', true); return; }
@@ -2526,5 +2798,132 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
     }));
   }
 
-  return {hub, desk, social, cad, game, arch, edu};
+  // ------------------------------------------------------------ v0.686.0 the Leads Desk
+  // The Lead Generation employee's desk: the real /api/leads/* surface. Read-only except HER two taps (the
+  // campaign-list hand-off: confirm card first, nothing is built until the second tap) and the DPO acts
+  // (opt-out per row, forget). The engine gathers; nothing is ever sent from this desk.
+  const LKIND = {campaign_list: 'List built', campaign_sent: 'WhatsApp sent', email_sent: 'Email sent'};
+  let LROWS = {q: '', city: '', lane: ''}, LCARD = null;
+  async function leads(el) {
+    const empty = t => `<p class="muted em-small">${esc(t)}</p>`;   // the desk's own empty helper (each desk carries its own; a sibling desk's local is not in scope here)
+    if (!el.firstChild) el.innerHTML = '<div class="vh"><h2>Leads Desk</h2></div><div class="empty">Loading…</div>';
+    const me = (DATA && DATA.employees || []).find(x => x.key === 'leads');
+    if (!me || !isHired(me)) {
+      el.innerHTML = `<div class="vh"><h2>Leads Desk</h2></div><div class="empty">The Lead Generation employee is not hired. <button class="btn go" type="button" data-v="hire">Go to AI Employees</button></div>`;
+      return;
+    }
+    let o, rr, out;
+    try {
+      [o, rr, out] = await Promise.all([api('GET', '/api/leads'), api('GET', '/api/leads/runs?limit=12'),
+                                        api('GET', '/api/leads/outreach?limit=100')]);
+    } catch (e) { el.innerHTML = `<div class="vh"><h2>Leads Desk</h2></div><p class="badc">${esc(e.message)}</p>`; return; }
+    const st = o.store || {}, u = o.usage || {}, built = o.lanes_built || {};
+    const LANE_NAME = {HER_DATA: 'Your lists (CSV / typed)', REGISTRY: 'IndiaMART (official MCP, free)',
+                       OFFICIAL_API: 'Google Places (official routes)', SCRAPE: 'Public-listing scrape (opt-in)',
+                       VENDOR: 'Paid vendor (config-gated)'};
+    const laneTiles = (o.lanes || []).map(l => `<div class="kpi gl"><b>${built[l] ? 'Built' : '–'}</b><span>${esc(LANE_NAME[l] || l)}</span></div>`).join('');
+    el.innerHTML = `<div class="vh"><h2>Leads Desk</h2><span class="muted em-sub">It gathers; it never contacts anyone on its own. Outreach waits for your two taps on the campaign / email desks.</span>
+        ${me.status === 'paused' ? tag('warn', 'Paused') : ''} <span class="tag">${esc((TRUST[me.trust] || TRUST.seekh)[0])}</span></div>
+      <div class="kpis em-kpis">
+        <div class="kpi gl"><b>${num(st.rows)}</b><span>businesses kept</span></div>
+        <div class="kpi gl"><b>${num(st.with_phone)}</b><span>with phone</span></div>
+        <div class="kpi gl"><b>${num(st.with_email)}</b><span>with email</span></div>
+        <div class="kpi gl"><b>${num(st.opted_out)}</b><span>opted out</span></div>
+        <div class="kpi gl"><b>${num(u.rows_kept)}</b><span>kept today (cap ${num(u.per_day)})</span></div></div>
+      <div class="tile gl"><div class="em-h"><h3>The lanes</h3><span class="muted em-small">Run one by asking in the chat, e.g. “IndiaMART pe Akola ke plumbers laao” or “Places se Pune mein dentist dhoondo”.</span></div>
+        <div class="kpis em-kpis">${laneTiles}</div>
+        <p class="muted em-small">Store: ${esc((o.store_backend || {}).backend || 'sqlite')} · ${esc(o.one_question || '')}</p></div>
+      <div class="grid2">
+        <section class="tile gl"><h3>Recent runs</h3>${(rr.runs || []).map(r => `<div class="ed-row"><div><b>${esc((r.lanes || []).join(', ') || 'run')}</b> <small class="muted">${esc(when(r.created_at))}</small>
+          <p class="muted em-small">${esc([r.place, r.status, `${num(r.kept)} kept of ${num(r.found)} found`, r.duped ? `${num(r.duped)} dupes` : '', r.error ? 'error: ' + r.error : ''].filter(Boolean).join(' · '))}</p></div></div>`).join('') || empty('No runs yet. Ask in the chat to run a lane.')}</section>
+        <section class="tile gl"><h3>Outreach ledger</h3>
+          <p class="muted em-small">Every event that left the store through a desk. Opt-outs are refused at send time; a forgotten row's events stay (the history is not the person).</p>
+          ${(out.events || []).slice(0, 12).map(v => `<div class="ed-row"><div><b>${esc(LKIND[v.kind] || v.kind)}</b> <small class="muted">${esc(v.desk || '')}</small>
+            <p class="muted em-small">${esc(v.name || '')} · ${esc(when(v.at))}</p></div></div>`).join('') || empty('Nothing has left the store yet.')}</section>
+      </div>
+      <section class="tile gl"><h3>The store</h3>
+        <div class="ar-form em-form"><label><span>Search</span><input id="lq" value="${esc(LROWS.q)}" placeholder="Sharma, dental…"></label>
+          <label><span>City</span><input id="lcity" value="${esc(LROWS.city)}" placeholder="Akola"></label>
+          <label><span>Lane</span><select id="llane"><option value="">All lanes</option>${(o.lanes || []).map(l => `<option value="${esc(l)}"${LROWS.lane === l ? ' selected' : ''}>${esc(LANE_NAME[l] || l)}</option>`).join('')}</select></label>
+          <button class="btn soft" type="button" id="lgo">Search</button></div>
+        <div id="lrowsOut">${empty('Press Search to see rows.')}</div></section>
+      <section class="tile gl"><div class="em-h"><h3>Hand a list to the campaign desk</h3><span class="muted em-small">Two taps: the first shows the confirm card and creates nothing; the second builds the list. Sending is the campaign / email desk's own consent machinery.</span></div>
+        <div class="ar-form em-form"><label><span>List name</span><input id="lname" value="Leads list"></label>
+          <label><span>Same search as the store</span><input id="lhq" value="${esc(LROWS.q)}" placeholder="leave empty for everything"></label>
+          <label><span>City</span><input id="lhcity" value="${esc(LROWS.city)}"></label>
+          <label><span>Lane</span><select id="lhlane"><option value="">All lanes</option>${(o.lanes || []).map(l => `<option value="${esc(l)}">${esc(LANE_NAME[l] || l)}</option>`).join('')}</select></label>
+          <button class="btn go" type="button" id="lhand">Show the confirm card</button></div>
+        <div id="lcardOut"></div></section>
+      <section class="tile gl"><h3>Forget (the DPO duty)</h3>
+        <p class="muted em-small">Forgetting removes the rows and their store copies; the ledger's events stay, shown as gone. Opt out a single business with the button in its row above.</p>
+        <div class="ar-form em-form"><label><span>Run id (leave empty with “everything” unticked)</span><input id="lfrun" placeholder="run id"></label>
+          <label class="em-small"><input type="checkbox" id="lfall"> forget EVERYTHING in the store</label>
+          <button class="btn soft em-leave" type="button" id="lforget">Forget</button></div></section>`;
+    const rowsOut = el.querySelector('#lrowsOut');
+    async function loadRows() {
+      rowsOut.innerHTML = empty('Loading…');
+      try {
+        const r = await api('GET', `/api/leads/rows?q=${encodeURIComponent(LROWS.q)}&city=${encodeURIComponent(LROWS.city)}&lane=${encodeURIComponent(LROWS.lane)}&limit=25`);
+        rowsOut.innerHTML = (r.rows || []).length ? `<p class="muted em-small">${num(r.total)} match · showing ${num((r.rows || []).length)}</p>
+          <table class="em-tbl"><thead><tr><th>Business</th><th>Phone</th><th>City</th><th>Source</th><th></th></tr></thead><tbody>${r.rows.map(w => `<tr>
+            <td><b>${esc(w.name || '(naam nahi)')}</b>${w.opt_out ? ' <span class="tag warn">opted out</span>' : ''}<br><small class="muted">${esc(w.category || '')}</small></td>
+            <td>${esc(w.phone || '–')}</td><td>${esc(w.city || '–')}</td>
+            <td><small class="muted">${esc(w.source_lane || '')}${w.source_url ? `<br>${esc(String(w.source_url).slice(0, 60))}` : ''}</small></td>
+            <td>${w.opt_out ? '' : `<button class="btn soft" type="button" data-lopt="${esc(w.id)}">Opt out</button>`}</td></tr>`).join('')}</tbody></table>`
+          : empty('No rows match. Run a lane from the chat first, or import your CSV there.');
+        rowsOut.querySelectorAll('[data-lopt]').forEach(b => b.addEventListener('click', async () => {
+          b.disabled = true;
+          try { await api('POST', '/api/leads/opt-out', {contact_id: b.dataset.lopt, opt_out: true}); toast('Opted out. The campaign desk will refuse them at send time.'); await leads(el); }
+          catch (e) { toast(e.message, true); b.disabled = false; }
+        }));
+      } catch (e) { rowsOut.innerHTML = `<p class="badc">${esc(e.message)}</p>`; }
+    }
+    el.querySelector('#lgo').addEventListener('click', () => {
+      LROWS = {q: el.querySelector('#lq').value.trim(), city: el.querySelector('#lcity').value.trim(), lane: el.querySelector('#llane').value};
+      loadRows();
+    });
+    const cardOut = el.querySelector('#lcardOut');
+    if (LCARD) cardOut.innerHTML = LCARD;
+    const handBody = () => ({name: el.querySelector('#lname').value.trim() || 'Leads list', q: el.querySelector('#lhq').value.trim(),
+                             city: el.querySelector('#lhcity').value.trim(), lane: el.querySelector('#lhlane').value});
+    el.querySelector('#lhand').addEventListener('click', async () => {
+      LCARD = empty('Loading…'); cardOut.innerHTML = LCARD;
+      try {
+        const c = await api('POST', '/api/leads/campaign-list', handBody());
+        if (c.confirm_required) {
+          LCARD = `<div class="tile gl em-note"><b>Confirm card - nothing is built yet</b>
+            <p class="em-small">${num(c.rows)} rows can go (with a phone) · ${num(c.rows_without_phone)} stay back (no phone) · ${num(c.opt_out_excluded)} opted-out rows are already excluded. ${esc(c.confirm || '')}</p>
+            <p class="muted em-small">${esc(c.consent || '')}</p>
+            <div class="acts"><button class="btn go" type="button" id="lconfirm">Confirm - build the list</button>
+              <button class="btn soft" type="button" id="lcancel">Cancel</button></div></div>`;
+        } else {
+          LCARD = `<div class="tile gl em-note"><b>List built: ${esc(c.name || '')}</b>
+            <p class="em-small">${num(c.rows)} rows · consent False on every row. ${esc(c.note || '')}</p>
+            <p class="muted em-small">Now open the campaign desk (chat: “isk list pe campaign banao”) and send from there, on its own consent machinery.</p></div>`;
+          toast('List built. Nothing was sent.');
+        }
+        cardOut.innerHTML = LCARD;
+        const cf = el.querySelector('#lconfirm'), cc = el.querySelector('#lcancel');
+        if (cc) cc.addEventListener('click', () => { LCARD = null; cardOut.innerHTML = ''; });
+        if (cf) cf.addEventListener('click', async () => {
+          cf.disabled = true;
+          try { const done = await api('POST', '/api/leads/campaign-list', {...handBody(), confirm: true});
+                LCARD = `<div class="tile gl em-note"><b>List built: ${esc(done.name || '')}</b><p class="em-small">${num(done.rows)} rows · consent False on every row. ${esc(done.note || '')}</p>
+                  <p class="muted em-small">Now open the campaign desk (chat: “isk list pe campaign banao”) and send from there, on its own consent machinery.</p></div>`;
+                cardOut.innerHTML = LCARD; toast('List built. Nothing was sent.'); await leads(el); }
+          catch (e) { toast(e.message, true); cf.disabled = false; }
+        });
+      } catch (e) { LCARD = `<p class="badc">${esc(e.message)}</p>`; cardOut.innerHTML = LCARD; }
+    });
+    el.querySelector('#lforget').addEventListener('click', async () => {
+      const run = el.querySelector('#lfrun').value.trim(), all = el.querySelector('#lfall').checked;
+      if (!run && !all) { toast('Give a run id, or tick “forget EVERYTHING”.', true); return; }
+      if (!confirm(all ? 'Forget EVERY row in the leads store? This cannot be undone.' : 'Forget every row of this run? This cannot be undone.')) return;
+      try { const r = await api('POST', '/api/leads/forget', {run_id: run, all_rows: all}); toast(`Forgotten: ${num(r.deleted)} rows. The ledger's events stay, shown as gone.`); await leads(el); }
+      catch (e) { toast(e.message, true); }
+    });
+    loadRows();
+  }
+
+  return {hub, desk, social, cad, game, arch, edu, leads};
 };

@@ -43,7 +43,7 @@ String slotSay(dynamic iso) {
   final d0 = DateTime(now.year, now.month, now.day);
   final d1 = DateTime(l.year, l.month, l.day);
   final diff = d1.difference(d0).inDays;
-  final day = diff == 0 ? 'aaj' : (diff == 1 ? 'kal' : '${l.day}/${l.month}');
+  final day = diff == 0 ? 'today' : (diff == 1 ? 'tomorrow' : '${l.day}/${l.month}');
   final h = l.hour % 12 == 0 ? 12 : l.hour % 12;
   return '$day $h:${l.minute.toString().padLeft(2, '0')} ${l.hour < 12 ? 'am' : 'pm'}';
 }
@@ -61,8 +61,8 @@ Future<String?> _askText(BuildContext context, String title, String hint, {Strin
           keyboardType: number ? TextInputType.number : TextInputType.text,
           decoration: InputDecoration(hintText: hint)),
       actions: [
-        TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Rehne do')),
-        TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Theek hai')),
+        TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Leave it')),
+        TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('OK')),
       ],
     ),
   );
@@ -110,7 +110,7 @@ class _JobPanelState extends State<JobPanel> {
         context: context,
         builder: (ctx) => SafeArea(
           child: Wrap(children: [
-            for (final e in const {'before': 'Kaam se pehle', 'after': 'Kaam ke baad', 'intake': 'Jaise mila', 'proof': 'Saboot / bill'}.entries)
+            for (final e in const {'before': 'Before the job', 'after': 'After the job', 'intake': 'As found', 'proof': 'Proof / bill'}.entries)
               ListTile(title: Text(e.value), onTap: () => Navigator.of(ctx).pop(e.key)),
           ]),
         ),
@@ -133,15 +133,15 @@ class _JobPanelState extends State<JobPanel> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Extra kaam (graahak ki haan chahiye)'),
+        title: const Text('Extra work (needs the customer\'s yes)'),
         content: TextField(
             controller: c,
             minLines: 2,
             maxLines: 6,
-            decoration: const InputDecoration(hintText: 'Har line: kaam daam [GST%]\nCartridge 350 18')),
+            decoration: const InputDecoration(hintText: 'Each line: job price [GST%]\nCartridge 350 18')),
         actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Rehne do')),
-          TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Bhejo')),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Leave it')),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Send')),
         ],
       ),
     );
@@ -162,17 +162,17 @@ class _JobPanelState extends State<JobPanel> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Kaam poora?'),
+        title: const Text('Job complete?'),
         content: Column(mainAxisSize: MainAxisSize.min, children: [
-          TextField(controller: sum, decoration: const InputDecoration(labelText: 'Kya kiya (graahak ko dikhega)')),
-          TextField(controller: wd, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Warranty (din)')),
+          TextField(controller: sum, decoration: const InputDecoration(labelText: 'What was done (the customer will see this)')),
+          TextField(controller: wd, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Warranty (days)')),
           const SizedBox(height: 8),
-          const Text('Bill code banayega: quote + jin extra kaam par haan aayi. Aur kuch nahi judta.',
+          const Text('The bill will be made by code: the quote + the extra jobs that got a yes. Nothing else is added.',
               style: TextStyle(color: C.faint, fontSize: 12)),
         ]),
         actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Rehne do')),
-          TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Poora, bill bhejo')),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Leave it')),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Complete, send the bill')),
         ],
       ),
     );
@@ -207,7 +207,7 @@ class _JobPanelState extends State<JobPanel> {
                       errorBuilder: (_, __, ___) => const SizedBox(width: 64, height: 64, child: Icon(Icons.broken_image_rounded))),
                 ),
               ),
-              Text({'before': 'pehle', 'after': 'baad', 'intake': 'mila', 'proof': 'saboot'}[_s(p['stage'])] ?? _s(p['stage']),
+              Text({'before': 'before', 'after': 'after', 'intake': 'intake', 'proof': 'proof'}[_s(p['stage'])] ?? _s(p['stage']),
                   style: const TextStyle(fontSize: 10.5, color: C.muted)),
             ]),
           ),
@@ -235,11 +235,11 @@ class _JobPanelState extends State<JobPanel> {
                 style: const TextStyle(fontWeight: FontWeight.w700))),
       ]));
     }
-    if (!buyer && _s(job['address']).isNotEmpty) rows.add(Text('Pata: ${_s(job['address'])}', style: const TextStyle(fontSize: 12.5)));
-    if (_s(job['eta']).isNotEmpty) rows.add(Text('Pahunchenge: ${slotSay(job['eta'])}', style: const TextStyle(color: C.teal, fontSize: 12.5)));
+    if (!buyer && _s(job['address']).isNotEmpty) rows.add(Text('Address: ${_s(job['address'])}', style: const TextStyle(fontSize: 12.5)));
+    if (_s(job['eta']).isNotEmpty) rows.add(Text('Will arrive: ${slotSay(job['eta'])}', style: const TextStyle(color: C.teal, fontSize: 12.5)));
     if (extras.isNotEmpty) {
       rows.add(const Padding(
-          padding: EdgeInsets.only(top: 6), child: Text('Extra kaam', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13))));
+          padding: EdgeInsets.only(top: 6), child: Text('Extra job', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13))));
       for (final x in extras) {
         final st = _s(x['status']);
         rows.add(Row(children: [
@@ -249,7 +249,7 @@ class _JobPanelState extends State<JobPanel> {
           if (buyer && st == 'pending' && acts.contains('approve'))
             Wrap(spacing: 4, children: [
               ChoiceChip(
-                  label: const Text('Haan'),
+                  label: const Text('Yes'),
                   selected: _answers[_s(x['id'])] == true,
                   onSelected: (_) => setState(() => _answers[_s(x['id'])] = true)),
               ChoiceChip(
@@ -258,7 +258,7 @@ class _JobPanelState extends State<JobPanel> {
                   onSelected: (_) => setState(() => _answers[_s(x['id'])] = false)),
             ])
           else
-            Pill({'pending': 'jawab baaki', 'yes': 'haan', 'no': 'na'}[st] ?? st,
+            Pill({'pending': 'reply pending', 'yes': 'yes', 'no': 'no'}[st] ?? st,
                 fg: st == 'yes' ? C.ok : (st == 'no' ? C.muted : C.warn)),
         ]));
       }
@@ -267,7 +267,7 @@ class _JobPanelState extends State<JobPanel> {
         rows.add(Padding(
           padding: const EdgeInsets.only(top: 6),
           child: GradientButton(
-              label: 'Jawab bhejo',
+              label: 'Send reply',
               icon: Icons.check_rounded,
               height: 46,
               onTap: _busy || !all
@@ -293,21 +293,21 @@ class _JobPanelState extends State<JobPanel> {
         ]));
       }
       rows.add(Row(children: [
-        const Expanded(child: Text('Kul', style: TextStyle(fontWeight: FontWeight.w800))),
+        const Expanded(child: Text('Total', style: TextStyle(fontWeight: FontWeight.w800))),
         Text(_inr(bill['total']), style: const TextStyle(fontWeight: FontWeight.w900, color: C.accent)),
       ]));
     }
     if (_s(job['summary']).isNotEmpty) rows.add(Text(_s(job['summary']), style: const TextStyle(fontSize: 12.5, color: C.muted)));
     if (_d(w['days']) > 0) {
-      rows.add(Text('Warranty ${_s(w['days'])} din · ${_s(w['until'])} tak${_s(w['covers']).isEmpty ? '' : ' · ${_s(w['covers'])}'}',
+      rows.add(Text('Warranty ${_s(w['days'])} days · ${_s(w['until'])} until${_s(w['covers']).isEmpty ? '' : ' · ${_s(w['covers'])}'}',
           style: const TextStyle(color: C.ok, fontSize: 12.5)));
     }
-    if (claim['open'] == true) rows.add(Text('Warranty shikayat: ${_s(claim['note'])}', style: const TextStyle(color: C.warn, fontSize: 12.5)));
+    if (claim['open'] == true) rows.add(Text('Warranty complaint: ${_s(claim['note'])}', style: const TextStyle(color: C.warn, fontSize: 12.5)));
     if (_s(job['revisit_say']).isNotEmpty) {
-      rows.add(Text('Muft revisit: ${_s(job['revisit_say'])}', style: const TextStyle(color: C.teal, fontSize: 12.5)));
+      rows.add(Text('Free revisit: ${_s(job['revisit_say'])}', style: const TextStyle(color: C.teal, fontSize: 12.5)));
     }
     if (buyer && acts.contains('pick_slot')) {
-      rows.add(const Padding(padding: EdgeInsets.only(top: 6), child: Text('Naya samay chuniye', style: TextStyle(fontWeight: FontWeight.w700))));
+      rows.add(const Padding(padding: EdgeInsets.only(top: 6), child: Text('Choose a new time', style: TextStyle(fontWeight: FontWeight.w700))));
       rows.add(Wrap(spacing: 6, runSpacing: 6, children: [
         for (final s in List<String>.from((offer['slots'] as List?) ?? const []))
           ActionChip(label: Text(slotSay(s)), onPressed: _busy ? null : () => _act('pick_slot', {'slot': s})),
@@ -317,60 +317,60 @@ class _JobPanelState extends State<JobPanel> {
     if (!buyer) {
       if (acts.contains('on_the_way')) {
         btn.add(GlassButton(
-            label: 'Raste mein',
+            label: 'On the way',
             icon: Icons.two_wheeler_rounded,
             onTap: _busy
                 ? null
                 : () async {
-                    final r = await _askText(context, 'Kitni der mein pahunchenge?', 'minute (jaise 30)', number: true);
+                    final r = await _askText(context, 'In how long will you arrive?', 'minutes (for example 30)', number: true);
                     if (r != null) _act('on_the_way', {'eta_minutes': int.tryParse(r)});
                   }));
       }
-      if (acts.contains('arrived')) btn.add(GlassButton(label: 'Pahunch gaye', icon: Icons.place_rounded, onTap: _busy ? null : () => _act('arrived')));
-      if (acts.contains('estimate')) btn.add(GlassButton(label: 'Extra kaam', icon: Icons.build_rounded, onTap: _busy ? null : _estimate));
+      if (acts.contains('arrived')) btn.add(GlassButton(label: 'Arrived', icon: Icons.place_rounded, onTap: _busy ? null : () => _act('arrived')));
+      if (acts.contains('estimate')) btn.add(GlassButton(label: 'Extra job', icon: Icons.build_rounded, onTap: _busy ? null : _estimate));
       if (acts.contains('photo')) {
         btn.add(GlassButton(label: 'Photo', icon: Icons.photo_camera_rounded, onTap: _busy ? null : () => _photo(ImageSource.camera)));
         btn.add(GlassButton(label: 'Gallery', icon: Icons.photo_library_rounded, onTap: _busy ? null : () => _photo(ImageSource.gallery)));
       }
-      if (acts.contains('done')) btn.add(GradientButton(label: 'Kaam poora', icon: Icons.task_alt_rounded, height: 46, onTap: _busy ? null : _done));
+      if (acts.contains('done')) btn.add(GradientButton(label: 'Job complete', icon: Icons.task_alt_rounded, height: 46, onTap: _busy ? null : _done));
       if (acts.contains('offer_slots')) {
-        btn.add(GlassButton(label: 'Naya samay do', icon: Icons.schedule_rounded, onTap: _busy ? null : () => _act('offer_slots', {'purpose': 'resched'})));
+        btn.add(GlassButton(label: 'Give a new time', icon: Icons.schedule_rounded, onTap: _busy ? null : () => _act('offer_slots', {'purpose': 'resched'})));
       }
       if (acts.contains('warranty_slots')) {
         btn.add(GlassButton(
-            label: 'Warranty visit ke samay', icon: Icons.schedule_rounded, onTap: _busy ? null : () => _act('offer_slots', {'purpose': 'warranty'})));
+            label: 'Warranty visit time', icon: Icons.schedule_rounded, onTap: _busy ? null : () => _act('offer_slots', {'purpose': 'warranty'})));
       }
       if (acts.contains('warranty_done')) {
         btn.add(GlassButton(
-            label: 'Warranty kaam ho gaya',
+            label: 'Warranty job done',
             icon: Icons.verified_rounded,
             onTap: _busy
                 ? null
                 : () async {
-                    final r = await _askText(context, 'Kya kiya?', 'Washer badla');
+                    final r = await _askText(context, 'What was done?', 'Replaced the washer');
                     if (r != null) _act('warranty_done', {'summary': r});
                   }));
       }
     } else {
       if (acts.contains('resched')) {
         btn.add(GlassButton(
-            label: 'Samay badlo',
+            label: 'Change time',
             icon: Icons.schedule_rounded,
             onTap: _busy
                 ? null
                 : () async {
-                    final r = await _askText(context, 'Samay badalna hai?', 'Kab theek rahega');
+                    final r = await _askText(context, 'Do you want to change the time?', 'When would suit you');
                     if (r != null) _act('resched', {'note': r});
                   }));
       }
       if (acts.contains('warranty')) {
         btn.add(GlassButton(
-            label: 'Warranty shikayat',
+            label: 'Warranty complaint',
             icon: Icons.report_rounded,
             onTap: _busy
                 ? null
                 : () async {
-                    final r = await _askText(context, 'Kya dikkat phir aayi?', 'Do line mein');
+                    final r = await _askText(context, 'What problem came back?', 'In two lines');
                     if (r != null) _act('warranty', {'note': r});
                   }));
       }
@@ -440,15 +440,15 @@ class _BookingTabState extends State<BookingTab> {
         title: const Text('Booking / appointment'),
         content: SingleChildScrollView(
           child: Column(mainAxisSize: MainAxisSize.min, children: [
-            TextField(controller: to, decoration: const InputDecoration(labelText: 'Kisse (plumber, clinic, garage...)')),
-            TextField(controller: what, minLines: 1, maxLines: 3, decoration: const InputDecoration(labelText: 'Kya kaam', hintText: 'Nal neeche se tapak raha hai')),
-            TextField(controller: when, decoration: const InputDecoration(labelText: 'Kab theek rahega', hintText: 'Kal subah')),
-            TextField(controller: area, decoration: const InputDecoration(labelText: 'Ilaaka (pura pata booking par hi)', hintText: 'Kothrud')),
+            TextField(controller: to, decoration: const InputDecoration(labelText: 'To whom (plumber, clinic, garage...)')),
+            TextField(controller: what, minLines: 1, maxLines: 3, decoration: const InputDecoration(labelText: 'What job', hintText: 'The tap is dripping from below')),
+            TextField(controller: when, decoration: const InputDecoration(labelText: 'When would suit you', hintText: 'Tomorrow morning')),
+            TextField(controller: area, decoration: const InputDecoration(labelText: 'Area (full address only at booking)', hintText: 'Kothrud')),
           ]),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Rehne do')),
-          TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Poochho')),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Leave it')),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Ask')),
         ],
       ),
     );
@@ -484,18 +484,18 @@ class _BookingTabState extends State<BookingTab> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, set) => AlertDialog(
-          title: const Text('Rate card mein kaam'),
+          title: const Text('Jobs in the rate card'),
           content: Column(mainAxisSize: MainAxisSize.min, children: [
-            TextField(controller: name, decoration: const InputDecoration(labelText: 'Kaam', hintText: 'Tap repair')),
-            TextField(controller: price, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Daam (GST ke bina)')),
-            TextField(controller: wd, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Warranty (din)')),
+            TextField(controller: name, decoration: const InputDecoration(labelText: 'Job', hintText: 'Tap repair')),
+            TextField(controller: price, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Price (without GST)')),
+            TextField(controller: wd, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Warranty (days)')),
             Wrap(spacing: 6, children: [
               for (final g in const [0.0, 5.0, 18.0])
                 ChoiceChip(label: Text('GST ${g.toInt()}%'), selected: gst == g, onSelected: (_) => set(() => gst = g)),
             ]),
           ]),
           actions: [
-            TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Rehne do')),
+            TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Leave it')),
             TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Save')),
           ],
         ),
@@ -522,10 +522,10 @@ class _BookingTabState extends State<BookingTab> {
 
   Widget _settings() {
     final days = List<String>.from((_rules['days'] as List?) ?? const []);
-    const dw = {'mon': 'Som', 'tue': 'Mangal', 'wed': 'Budh', 'thu': 'Guru', 'fri': 'Shukra', 'sat': 'Shani', 'sun': 'Ravi'};
+    const dw = {'mon': 'Mon', 'tue': 'Tue', 'wed': 'Wed', 'thu': 'Thu', 'fri': 'Fri', 'sat': 'Sat', 'sun': 'Sun'};
     return Glass(
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Text('Meri seva (jab main kaam karti / karta hoon)', style: TextStyle(fontWeight: FontWeight.w800)),
+        const Text('My service (when I work)', style: TextStyle(fontWeight: FontWeight.w800)),
         const SizedBox(height: 6),
         Wrap(spacing: 4, runSpacing: 4, children: [
           for (final e in dw.entries)
@@ -537,24 +537,24 @@ class _BookingTabState extends State<BookingTab> {
         Row(children: [
           TextButton(
               onPressed: () async {
-                final r = await _askText(context, 'Kab se', 'HH:MM', initial: _s(_rules['open_at']));
+                final r = await _askText(context, 'From', 'HH:MM', initial: _s(_rules['open_at']));
                 if (r != null) _set({'open_at': r});
               },
-              child: Text('Khule: ${_s(_rules['open_at'])}')),
+              child: Text('Open: ${_s(_rules['open_at'])}')),
           TextButton(
               onPressed: () async {
-                final r = await _askText(context, 'Kab tak', 'HH:MM', initial: _s(_rules['close_at']));
+                final r = await _askText(context, 'Until', 'HH:MM', initial: _s(_rules['close_at']));
                 if (r != null) _set({'close_at': r});
               },
-              child: Text('Band: ${_s(_rules['close_at'])}')),
+              child: Text('Closes:${_s(_rules['close_at'])}')),
         ]),
-        Text('Ek kaam: ${_s(_rules['slot_minutes'])} min · ek samay mein ${_s(_rules['capacity'])}', style: const TextStyle(fontSize: 12.5)),
+        Text('One job: ${_s(_rules['slot_minutes'])} min · at a time ${_s(_rules['capacity'])}', style: const TextStyle(fontSize: 12.5)),
         Wrap(spacing: 6, children: [
           for (final x in const [30, 60, 90, 120])
             ChoiceChip(label: Text('$x min'), selected: _d(_rules['slot_minutes']) == x, onSelected: (_) => _set({'slot_minutes': x})),
         ]),
         Wrap(spacing: 6, children: [
-          for (final e in const {'their_place': 'Graahak ke ghar', 'my_place': 'Meri dukaan / clinic'}.entries)
+          for (final e in const {'their_place': 'At the customer\'s home', 'my_place': 'My shop / clinic'}.entries)
             ChoiceChip(label: Text(e.value), selected: _s(_rules['at']) == e.key, onSelected: (_) => _set({'at': e.key})),
         ]),
         Row(children: [
@@ -564,12 +564,12 @@ class _BookingTabState extends State<BookingTab> {
                 final r = await _askText(context, 'Visit charge (₹)', '200', number: true);
                 if (r != null) _set({'visit_fee': double.tryParse(r) ?? 0});
               },
-              child: const Text('Badlo')),
+              child: const Text('Change')),
         ]),
         SwitchListTile(
           dense: true,
           contentPadding: EdgeInsets.zero,
-          title: const Text('Kaam hua to visit charge bill mein adjust'),
+          title: const Text('If the job happens, the visit charge is adjusted in the bill'),
           value: _rules['visit_adjust'] != false,
           onChanged: (x) => _set({'visit_adjust': x}),
         ),
@@ -577,11 +577,11 @@ class _BookingTabState extends State<BookingTab> {
         const Text('Rate card', style: TextStyle(fontWeight: FontWeight.w700)),
         for (final x in _l(_rules['services']))
           Text('${_s(x['name'])} · ${_inr(x['price'])}${_d(x['gst_pct']) > 0 ? ' + GST ${_s(x['gst_pct'])}%' : ''}'
-              '${x['warranty_days'] != null ? ' · warranty ${_s(x['warranty_days'])} din' : ''}',
+              '${x['warranty_days'] != null ? ' · warranty ${_s(x['warranty_days'])} days' : ''}',
               style: const TextStyle(fontSize: 12.5)),
-        TextButton.icon(onPressed: _addService, icon: const Icon(Icons.add_rounded), label: const Text('Kaam jodo')),
+        TextButton.icon(onPressed: _addService, icon: const Icon(Icons.add_rounded), label: const Text('Add job')),
         if ((_rules['free_slots'] as List?)?.isNotEmpty == true)
-          Text('Agle khaali samay: ${(_rules['free_slots'] as List).take(4).map(slotSay).join(', ')}',
+          Text('Next free time: ${(_rules['free_slots'] as List).take(4).map(slotSay).join(', ')}',
               style: const TextStyle(color: C.faint, fontSize: 12)),
       ]),
     );
@@ -591,9 +591,9 @@ class _BookingTabState extends State<BookingTab> {
   Widget build(BuildContext context) => RefreshIndicator(
         onRefresh: _load,
         child: ListView(padding: const EdgeInsets.all(16), children: [
-          GlassButton(label: 'Nayi booking / appointment', icon: Icons.event_rounded, onTap: _new),
+          GlassButton(label: 'New booking / appointment', icon: Icons.event_rounded, onTap: _new),
           const SizedBox(height: 6),
-          const Text('Sirf kaam, ilaaka aur samay jaata hai. Samay aap chunengi tabhi booking hoti hai, aur pata bhi tabhi.',
+          const Text('Only the job, area and time are sent. The booking is made, and the address shared, only when you choose a time.',
               style: TextStyle(color: C.faint, fontSize: 12)),
           const SizedBox(height: 12),
           if (_loading) const Center(child: CircularProgressIndicator()),

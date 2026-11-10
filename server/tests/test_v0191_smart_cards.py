@@ -217,7 +217,7 @@ def test_chat_typed_haan_resolves_without_the_brain(pcop_pending, api, monkeypat
     monkeypatch.setattr(santosh, "_steps", _boom)
     monkeypatch.setattr(santosh, "_think", _boom, raising=False)
     text = asyncio.run(santosh._run_turn(pcop_pending["conv"], "haan karo", pcop_pending["tenant"]))
-    assert "manzoor" in text.lower()
+    assert "approved" in text.lower()
     assert pcop_pending["op"].approved is True
     from app.db import session
     from app.bazar.db import Approval
@@ -264,7 +264,7 @@ def test_kaamwatch_browser_needs_confirm_tells_her_to_say_haan():
     assert job and job["state"] == "waiting" and job["no_start_say"] and job["voice_only"]
     assert "haan karo" in job["waiting_say"]
     line = _decide(SimpleNamespace(told=""), job, "working", False, now())
-    assert "aapki baari" in line
+    assert "your turn" in line
     # running steps say NOTHING (the live card is the story)
     run = shape("browser", {"session_id": "s9", "status": "running", "task": "dominos par pizza order", "source": "pc"})
     assert run and run["state"] == "working"

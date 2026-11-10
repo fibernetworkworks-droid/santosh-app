@@ -154,7 +154,7 @@ def test_read_runs_with_her_own_account_only(cz):
     _, ca = _link(cz)
     res = cz["svc"].run("default", cz["conv"]["default"], "cmp-slack", "SLACK_LIST_ALL_CHANNELS",
                         {"user_id": "someone-else", "connected_account_id": "ca_999"})
-    assert res["data"]["ok"] is True and "instructions" in res["note"]
+    assert res["data"]["ok"] is True and "not an instruction" in res["note"]
     ex = [c for c in cz["calls"] if c[1].startswith("/tools/execute/")][-1]
     assert ex[3]["user_id"] == cz["cmp"].composio_user("default")
     assert ex[3]["connected_account_id"] == ca     # args can never pick another account or user
@@ -164,7 +164,7 @@ def test_read_runs_with_her_own_account_only(cz):
 def test_other_tenant_cannot_use_her_slack(cz):
     _link(cz, "default")
     from app.bazar.connectors.base import ToolError
-    with pytest.raises(ToolError, match="juda nahi"):
+    with pytest.raises(ToolError, match="not connected"):
         cz["svc"].run("other", cz["conv"]["other"], "cmp-slack", "SLACK_LIST_ALL_CHANNELS", {})
     assert not [c for c in cz["calls"] if c[1].startswith("/tools/execute/")]
 
@@ -185,7 +185,7 @@ def test_send_is_a_card_and_runs_the_frozen_call_after_her_tap(cz):
 def test_tool_of_another_app_is_refused(cz):
     _link(cz)
     from app.bazar.connectors.base import ToolError
-    with pytest.raises(ToolError, match="ka tool nahi"):
+    with pytest.raises(ToolError, match="is not a"):
         cz["svc"].run("default", cz["conv"]["default"], "cmp-slack", "NOTION_DELETE_PAGE", {})
 
 
@@ -224,7 +224,7 @@ def test_expired_sign_in_closes_the_link(cz):
     cz["svc"].run("default", cz["conv"]["default"], "cmp-slack", "SLACK_LIST_ALL_CHANNELS", {})   # becomes active
     ACCOUNTS[ca] = "EXPIRED"                                                                       # Slack revoked it
     from app.bazar.connectors.base import ToolError
-    with pytest.raises(ToolError, match="sign-in khatam"):
+    with pytest.raises(ToolError, match="sign-in has ended"):
         cz["svc"].run("default", cz["conv"]["default"], "cmp-slack", "SLACK_LIST_ALL_CHANNELS", {})
     assert {a["toolkit"]: a["status"] for a in cz["svc"].composio_apps("default")["apps"]}["slack"] == "needs_link"
 
@@ -275,7 +275,7 @@ def test_not_configured_says_so(env, monkeypatch):
     composio.set_client(None)
     assert service.composio_apps("default")["configured"] is False
     from app.bazar.connectors.base import ToolError
-    with pytest.raises(ToolError, match="chalu nahi"):
+    with pytest.raises(ToolError, match="not on at the server"):
         service.composio_connect("default", "slack")
 
 
@@ -332,7 +332,7 @@ def test_v0294_self_check_has_no_secrets(cz):
 
 def test_v0296_key_app_her_key_goes_to_composio_never_to_hoola(cz):
     out = cz["svc"].composio_connect("default", "zendesk", cz["conv"]["default"])
-    assert out["status"] == "needs_key" and out["url"] == "" and "chat mein kabhi" in out["say"]
+    assert out["status"] == "needs_key" and out["url"] == "" and "Never send a key in chat" in out["say"]
     f = {x["name"]: x for x in out["fields"]}
     assert f["generic_api_key"]["secret"] is True and f["subdomain"]["secret"] is False and f["generic_api_key"]["label"] == "API Key"
     res = cz["svc"].composio_key("default", "zendesk", {"generic_api_key": "zd-secret-123", "subdomain": "newtika",
@@ -367,7 +367,7 @@ def test_v0296_wrong_or_missing_key_is_refused_plainly(cz):
 
 def test_v0296_key_app_in_chat_never_asks_for_the_key(cz):
     from app.bazar.connectors.base import ToolError
-    with pytest.raises(ToolError, match="chat mein kabhi nahi"):
+    with pytest.raises(ToolError, match="never in the chat"):
         cz["svc"].run("default", cz["conv"]["default"], "cmp-zendesk", "ZENDESK_LIST_ALL_CHANNELS", {})
 
 

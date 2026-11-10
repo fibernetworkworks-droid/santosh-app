@@ -345,6 +345,61 @@ def prompt_is_private(conv: str, n: int | None) -> bool:
 
 # ---------------------------------------------------------------- observations
 
+def forget_conv(conv: str) -> dict:
+    """v0.603 INCOGNITO SACH: every trace one conversation left in the vault - her asks, tool rows,
+    observations (their FTS rows ride the delete trigger), the summary (its FTS row by hand: there is
+    no delete trigger on summaries), the session row, dedup pairs and preimages. Returns the counts."""
+    ensure()
+    out = {"prompts": 0, "tool_uses": 0, "observations": 0, "summaries": 0, "sessions": 0}
+    with db(write=True) as c:
+        ids = [r[0] for r in c.execute("SELECT id FROM observations WHERE conv=?", (conv,)).fetchall()]
+        if ids:
+            marks = ",".join("?" * len(ids))
+            c.execute(f"DELETE FROM dedup_candidates WHERE observation_id IN ({marks}) "
+                      f"OR duplicate_of_id IN ({marks})", ids + ids)
+            c.execute(f"DELETE FROM obs_preimages WHERE obs_id IN ({marks})", ids)
+        for r in c.execute("SELECT * FROM summaries WHERE conv=?", (conv,)).fetchall():
+            try:
+                c.execute("INSERT INTO sum_fts(sum_fts, rowid, request, investigated, learned, completed, "
+                          "next_steps, notes) VALUES ('delete',?,?,?,?,?,?,?)",
+                          (r["id"], r["request"], r["investigated"], r["learned"], r["completed"],
+                           r["next_steps"], r["notes"]))
+            except Exception:
+                pass   # no FTS5 on this box: nothing to keep in sync
+        for t in ("prompts", "tool_uses", "observations", "summaries", "sessions"):
+            out[t] = c.execute(f"DELETE FROM {t} WHERE conv=?", (conv,)).rowcount or 0
+    return out
+
+
+def forget_carrying(tenant: str, fact: str, carries) -> int:
+    """v0.603 BHOOL JAO HAR JAGAH: the tenant's observations that carry a forgotten fact go (the FTS row
+    rides the delete trigger; dedup pairs and preimages go with them). `carries(fact, text)` decides."""
+    ensure()
+    with db() as c:
+        rows = c.execute("SELECT id, title, subtitle, facts, narrative FROM observations WHERE tenant=?",
+                         (tenant,)).fetchall()
+    ids = [r["id"] for r in rows
+           if carries(fact, " ".join(str(r[k] or "") for k in ("title", "subtitle", "facts", "narrative")))]
+    if not ids:
+        return 0
+    marks = ",".join("?" * len(ids))
+    with db(write=True) as c:
+        c.execute(f"DELETE FROM dedup_candidates WHERE observation_id IN ({marks}) "
+                  f"OR duplicate_of_id IN ({marks})", ids + ids)
+        c.execute(f"DELETE FROM obs_preimages WHERE obs_id IN ({marks})", ids)
+        c.execute(f"DELETE FROM observations WHERE id IN ({marks})", ids)
+    return len(ids)
+
+
+def known_convs() -> list[str]:
+    """Every conversation the vault holds anything for (the incognito sweep reads this)."""
+    ensure()
+    with db() as c:
+        rows = c.execute("SELECT conv FROM prompts UNION SELECT conv FROM tool_uses "
+                         "UNION SELECT conv FROM observations UNION SELECT conv FROM summaries").fetchall()
+    return [r[0] for r in rows if r[0]]
+
+
 def store_observation(conv: str, tenant: str, obs: dict, turn_id: str = "", actor: str = "",
                       discovery_tokens: int = 0) -> int | None:
     """Insert one parsed observation. Exact-content dedupe (session + hash) re-confirms the existing
@@ -439,15 +494,22 @@ def get_observations(ids: list[int]) -> list[dict]:
     return [by_id[i] for i in ids if i in by_id]
 
 
-def recent_observations(tenant: str, limit: int = 50, conv: str | None = None) -> list[dict]:
+def recent_observations(tenant: str, limit: int = 50, conv: str | None = None,
+                        convs: set | list | None = None) -> list[dict]:
     """The primer's recent block - live rows only (a curator-superseded row is absorbed history,
-    the canonical row it points at is the memory)."""
+    the canonical row it points at is the memory). wave 11 `convs`: only the chats of her Session (the fence)."""
     ensure()
     q = "SELECT * FROM observations WHERE tenant=? AND superseded_by=0"
     args: list = [tenant]
     if conv:
         q += " AND conv=?"
         args.append(conv)
+    elif convs is not None:
+        ids = [str(c) for c in convs if c][:500]
+        if not ids:
+            return []
+        q += " AND conv IN (" + ",".join("?" * len(ids)) + ")"
+        args.extend(ids)
     q += " ORDER BY created_epoch DESC, id DESC LIMIT ?"
     args.append(limit)
     with db() as c:
@@ -509,22 +571,34 @@ def tool_uses_by_ids(ids: list[int]) -> list[dict]:
 
 # ---------------------------------------------------------------- work state
 
-def work_write(lst: str, items: list[dict]) -> None:
+# v0.672+ wave 9: the table had no tenant column (list was the whole primary key), so one user's to-do list rode every
+# other user's chat and call primer ("Still open: ..."). Each list is now stored under its tenant's own key; rows written
+# before this (no key) are read by nobody.
+_WS_SEP = "\x1f"
+
+
+def _ws_key(tenant: str, lst: str) -> str:
+    return f"{tenant or ''}{_WS_SEP}{(lst or 'default')[:200]}"
+
+
+def work_write(lst: str, items: list[dict], tenant: str = "") -> None:
     ensure()
     now = time.strftime("%Y-%m-%dT%H:%M:%S%z")
     with db(write=True) as c:
         c.execute("INSERT INTO work_state(list, items, updated_at) VALUES (?,?,?) "
                   "ON CONFLICT(list) DO UPDATE SET items=excluded.items, updated_at=excluded.updated_at",
-                  (lst[:200], json.dumps(items[:100], ensure_ascii=False), now))
+                  (_ws_key(tenant, lst), json.dumps(items[:100], ensure_ascii=False), now))
 
 
-def work_read(lst: str | None = None, include_closed: bool = False) -> dict:
+def work_read(lst: str | None = None, include_closed: bool = False, tenant: str = "") -> dict:
     ensure()
+    pre = f"{tenant or ''}{_WS_SEP}"
     with db() as c:
         if lst:
-            rows = c.execute("SELECT * FROM work_state WHERE list=?", (lst,)).fetchall()
+            rows = c.execute("SELECT * FROM work_state WHERE list=?", (_ws_key(tenant, lst),)).fetchall()
         else:
-            rows = c.execute("SELECT * FROM work_state ORDER BY updated_at").fetchall()
+            rows = c.execute("SELECT * FROM work_state WHERE substr(list, 1, ?) = ? ORDER BY updated_at",
+                             (len(pre), pre)).fetchall()
     out: dict[str, list] = {}
     for r in rows:
         try:
@@ -533,7 +607,7 @@ def work_read(lst: str | None = None, include_closed: bool = False) -> dict:
             items = []
         if not include_closed:
             items = [i for i in items if (i.get("status") or "todo") in ("todo", "doing")]
-        out[r["list"]] = items
+        out[str(r["list"])[len(pre):]] = items
     return out
 
 
@@ -563,7 +637,13 @@ _SKILL_STOP = frozenset((
     "the and for with this that from your you are was were have has had not but can will just into onto "
     "about please what when where which who how why mein hai hain hoon tha thi the aur par per ko ki ka ke "
     "se liye wala wali kya kaise kab kahan kyun nahi mera meri mere aap aapka aapki main hum tum yeh woh "
-    "iska iski uska uski abhi kuch koi sab bhi toh bas ek kar karo karna kiya hota hoti").split())
+    "iska iski uska uski abhi kuch koi sab bhi toh bas ek kar karo karna kiya hota hoti "
+    # v0.753: English helper words - "should" + "use" alone pulled internal-comms into "which python library should
+    # I use to read excel" (its description says "Claude should use this skill")
+    "should would could use using want need make get some any all its our their them then than also").split())
+
+
+LONG_DESC = 200                  # v0.753 descriptions longer than this need two of her words in name / description
 
 
 def skills_search(tenant: str, query: str, limit: int = 2, include_disabled: bool = False) -> list[dict]:
@@ -581,19 +661,42 @@ def skills_search(tenant: str, query: str, limit: int = 2, include_disabled: boo
                                 if len(t) >= 3 and t.lower().strip(".,?!;:'\"()") not in _SKILL_STOP)[:400]
             if terms:
                 try:
+                    # wave 12: matched on its NAME + DESCRIPTION, and on 2+ of her words (or one word that is in the
+                    # skill's name). One shared word anywhere in a skill's body pulled unrelated skills in as "LEARNED
+                    # SKILLS matching this ask" ("mera phone slow hai" -> a wellbeing skill) and the model was told to
+                    # read and follow them.
                     rows = c.execute(
                         "SELECT s.name, s.description, s.body, s.enabled FROM skills_fts f "
                         "JOIN skills s ON s.rowid = f.rowid "
                         "WHERE skills_fts MATCH ? AND s.tenant=?" + live +
-                        " ORDER BY rank LIMIT ?", (terms, tenant, limit)).fetchall()
-                    return [dict(r) for r in rows]
+                        " ORDER BY rank LIMIT ?", ("{name description} : (" + terms + ")", tenant, limit * 6)).fetchall()
+                    words = {t.lower().strip(".,?!;:'\"()") for t in q.split()
+                             if len(t) >= 3 and t.lower().strip(".,?!;:'\"()") not in _SKILL_STOP}
+                    out = []
+                    for r in rows:
+                        name_words = set(re.findall(r"[a-z0-9\u0900-\u097f]+", str(r["name"] or "").lower()))
+                        desc = str(r["description"] or "").lower()
+                        body = str(r["body"] or "").lower()
+                        top = {w for w in words if w in name_words or re.search(r"\b" + re.escape(w), desc)}
+                        deep = {w for w in words if re.search(r"\b" + re.escape(w), body)}
+                        # at least one of her words in the skill's own name / description, and two in all.
+                        # v0.753: a LONG description (an imported Claude skill, 200+ chars of everyday words like
+                        # "write / reports / updates / pages") needs two of her words in the name / description
+                        # itself - one common word plus a body hit pulled internal-comms / theme-factory into
+                        # unrelated asks ("which python library reads excel", "set up a new laptop").
+                        need_top = 2 if len(desc) > LONG_DESC else 1
+                        if (len(top) >= need_top and len(top | deep) >= 2) or (top & name_words and len(words) <= 2):
+                            out.append(dict(r))
+                        if len(out) >= limit:
+                            break
+                    return out
                 except sqlite3.Error:
                     pass                       # a malformed match string falls through to LIKE
         like = f"%{q[:200]}%"
         rows = c.execute(
             "SELECT name, description, body, enabled FROM skills WHERE tenant=?" + live +
-            " AND (name LIKE ? OR description LIKE ? OR body LIKE ?) LIMIT ?",
-            (tenant, like, like, like, limit)).fetchall()
+            " AND (name LIKE ? OR description LIKE ?) LIMIT ?",
+            (tenant, like, like, limit)).fetchall()
         return [dict(r) for r in rows]
 
 
@@ -601,6 +704,38 @@ def skills_count() -> int:
     ensure()
     with db() as c:
         return int(c.execute("SELECT COUNT(*) FROM skills").fetchone()[0])
+
+
+def skill_index(tenant: str) -> list[dict]:
+    """v0.559 SKILL KI SOOCHI: every enabled skill of hers as {name, description}, the ones she used in the last
+    30 days first, then by name - Claude's level-1 skill metadata (name + one line, always in view)."""
+    ensure()
+    with db() as c:
+        rows = c.execute("SELECT name, description FROM skills WHERE tenant=? AND enabled=1 ORDER BY name",
+                         (str(tenant or ""),)).fetchall()
+    out = [{"name": r["name"], "description": r["description"] or ""} for r in rows]
+    try:
+        hot = skill_recent(tenant, 30)
+    except Exception:
+        hot = set()
+    out.sort(key=lambda r: r["name"] not in hot)
+    return out
+
+
+def skill_names(tenant: str, limit: int = 8) -> list[str]:
+    """v0.550 EK JAISA: her enabled skills by name, the ones she used lately first - the voice call's
+    'these exist' line when nothing matched her words yet (a call starts with no ask)."""
+    ensure()
+    with db() as c:
+        rows = c.execute("SELECT name FROM skills WHERE tenant=? AND enabled=1 ORDER BY name",
+                         (str(tenant or ""),)).fetchall()
+    names = [r["name"] for r in rows]
+    try:
+        hot = skill_recent(tenant, 30)
+    except Exception:
+        hot = set()
+    names.sort(key=lambda n: n not in hot)
+    return names[:max(0, int(limit))]
 
 
 # ---------------------------------------------------------------- skill telemetry (v0.484)

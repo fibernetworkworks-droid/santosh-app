@@ -106,7 +106,7 @@ TOOLS: list[dict[str, Any]] = [
     {"name": "done", "description": "Finish. Call it when the change is complete (or, for an explain task, when you "
      "understand the bug). Nothing is committed before this.",
      "input_schema": {"type": "object", "properties": {
-         "explain": {"type": "string", "description": "plain Hinglish for the owner: what was wrong / what you did, 2-5 lines - or, "
+         "explain": {"type": "string", "description": "plain English for the owner: what was wrong / what you did, 2-5 lines - or, "
                      "for a vague request, ONE short question back to her (and no edits)"},
          "cause": {"type": "string", "description": "one line root cause (fix / explain)"},
          "pr_title": {"type": "string", "description": "short imperative English title"},
@@ -144,6 +144,76 @@ A VAGUE request (no symptom, error, screen, file or behaviour named - e.g. "chec
 explore briefly; if the code does not show ONE clear bug that matches her words, do NOT guess and do NOT edit anything.
 Call done with explain = ONE short question in her language asking what she sees and where (the error / the step / an
 example), and no files. A clear request is never answered with a question - do the work."""
+
+
+# ---------------------------------------------------------------- v0.531 PRAYOGSHALA step 2: the lab's two tools
+LAB_TOOLS: list[dict[str, Any]] = [
+    {"name": "run_check", "description": "RUN HER CHECK on the code as it is right now, including every edit you have "
+     "made in this task, and get back pass or fail with the real output. This is the only way you can know the work "
+     "is done instead of guessing. The command is hers (declared in her repo) - you cannot choose it. Use it: on a "
+     "bug, FIRST with only the new test in place to prove the bug is real (it must FAIL), then again after the fix "
+     "(it must PASS); after a risky edit; and once before done. `only` narrows it to one test file when her command "
+     "allows that, which is faster - the answer says if it could not.",
+     "input_schema": {"type": "object", "properties": {
+         "only": {"type": "string", "description": "one test file path to run alone (optional)"},
+         "why": {"type": "string", "description": "one short line: what you expect this run to show"}}}},
+    {"name": "grep_log", "description": "Search the LAST run_check's full output (it is kept in a file; what you were "
+     "shown inline is cut). Use it to find a test name, a file, an assertion or a traceback instead of re-running the "
+     "whole check.",
+     "input_schema": {"type": "object", "properties": {
+         "pattern": {"type": "string", "description": "words, a test name, a path, or a regex"}}, "required": ["pattern"]}},
+]
+
+
+def _lab_tool(lab: Any, ws: Any, name: str, inp: dict[str, Any], checks: list[dict[str, Any]]) -> str:
+    """run_check / grep_log for the model, as TEXT. An error here teaches instead of blaming (Anthropic: a tool's
+    error response should "clearly communicate specific and actionable improvements")."""
+    if name == "grep_log":
+        pat = str(inp.get("pattern") or "").strip()
+        if not pat:
+            return "grep_log needs a pattern: a test name, a file path, 'Error', 'assert'."
+        ws.trail.append(f"log mein dhoonda: {pat[:40]}")
+        return lab.grep(pat)[:20000]
+    only = str(inp.get("only") or "").strip()
+    overlay = dict(ws.current)                      # every edit made so far in this task, as the files really are now
+    res = lab.run(overlay, only=only, label="loop")
+    stage = res.get("stage")
+    if stage in ("shut", "cap", "box"):
+        ws.trail.append("check nahi chala")
+        return (f"run_check could not run: {res.get('why', '')}. Do not retry it; finish the work you can stand "
+                "behind and say this in risk.")
+    if stage == "setup":
+        ws.trail.append("lab setup fail")
+        return ("run_check could not install this repo's dependencies, so no check can run in this task:\n"
+                + str(res.get("out", ""))[-2000:]
+                + "\nDo not retry. Say this in risk and finish without a measured check.")
+    if stage == "command":
+        return f"run_check refused that command: {res.get('why', '')}"
+    checks.append({"ok": bool(res.get("ok")), "cmd": res.get("cmd", ""), "only": only,
+                   "seconds": res.get("seconds"), "log": res.get("log", ""), "why": str(inp.get("why") or "")[:200]})
+    ws.trail.append(("check PASS" if res.get("ok") else "check FAIL") + f" ({res.get('seconds')}s)")
+    head = res.get("note", "") + (res.get("say") or "")
+    tail = ("\n(The whole output is in a log file - use grep_log to search it.)"
+            if res.get("cut") else "")
+    return f"{head}\n{'-' * 40}\n{res.get('shown', '')}{tail}"[:60000]
+
+
+def lab_block(lab: Any) -> str:
+    """What the model is told when the lab is open. It replaces guesswork with a measurement, so it is stated as a
+    duty, not an option (code.claude.com/docs/en/best-practices: "give Claude something it can run that comes back
+    pass or fail")."""
+    return f"""HER CHECK IS RUNNABLE (the lab is open for this task).
+Command: `{lab.cmd}` - declared in {lab.source}. You run it with run_check; you cannot change it.
+What this changes for you:
+- A BUG FIX is proved, not claimed: write the failing test first, run_check with `only` = that test file and SEE IT
+  FAIL on the unfixed code (that failure is the proof the bug is real), then fix and run_check again until it passes.
+  If your new test PASSES before the fix, the test is wrong - it proves nothing. Say so and write a better one.
+- Before you call done, run_check once with everything in place. If it fails, you are not finished: read the output,
+  or grep_log it for the test name, and fix the cause.
+- If a check cannot run (setup fails, the command is wrong for this repo), do NOT invent a result and do NOT keep
+  retrying: say exactly what happened in `risk` and finish the work you can stand behind.
+- The output you see is cut (a pass is shown short, a failure keeps its END, where the traceback is) and the whole
+  output is in a log file - grep_log asks it a second question. Never guess what the cut part said."""
 
 
 def _numbered(text: str, start: int, end: int) -> str:
@@ -452,10 +522,75 @@ def _skills_block(text: str, tenant: str = "") -> str:
         return ""
 
 
+class Stopped(Exception):
+    """v0.748 HOOLA CODE: she pressed Stop - the loop ends at the next step and nothing is prepared or pushed."""
+
+
+def _hook(on_step: Any, name: str) -> Any:
+    """v0.748 optional hooks riding the step callback (service._Step): event(dict), inbox() -> [str], stopped() -> bool.
+    A plain lambda has none of them, so every older caller and test is unchanged."""
+    fn = getattr(on_step, name, None)
+    return fn if callable(fn) else None
+
+
+def _mini_diff(old: str, new: str, cap: int = 14) -> tuple[list[str], int, int]:
+    a, b = str(old or "").splitlines(), str(new or "").splitlines()
+    rows = [f"- {x}" for x in a] + [f"+ {x}" for x in b]
+    return [r[:180] for r in rows[:cap]], len(b), len(a)
+
+
+def step_event(ws: Any, name: str, inp: dict[str, Any], out: str, trail_before: int,
+               checks: list[dict[str, Any]] | None = None) -> list[dict[str, Any]]:
+    """v0.748 one tool call as the page's structured step(s). Only a call that really happened (its trail line was
+    written) becomes a step; a refused call becomes a 'refused' step with its reason, so nothing is hidden."""
+    new_lines = ws.trail[trail_before:]
+    evs: list[dict[str, Any]] = []
+    for ln in new_lines:
+        if ln.startswith("folder ke niyam padhe: "):
+            evs.append({"k": "rules", "paths": ln.split(": ", 1)[1].split(", ")[:8]})
+    inp = inp or {}
+    ok_line = [ln for ln in new_lines if not ln.startswith("folder ke niyam padhe")]
+    if not ok_line:
+        if str(out).startswith(("Refused", "Not applied", "Not created")):
+            evs.append({"k": "refused", "tool": name, "why": str(out).split("\n", 1)[0][:240]})
+        return evs
+    if name == "read_file":
+        evs.append({"k": "read", "path": ws._resolve(inp.get("path", "")),
+                    "lines": [int(inp.get("start") or 0), int(inp.get("end") or 0)]})
+    elif name == "search_code":
+        m = re.search(r"\((\d+) files\)", ok_line[-1])
+        evs.append({"k": "search", "q": str(inp.get("words") or "")[:80], "n": int(m.group(1)) if m else 0})
+    elif name == "list_dir":
+        evs.append({"k": "list", "path": str(inp.get("path") or "/")[:160]})
+    elif name == "find_usages":
+        m = re.search(r"\((\d+) jagah\)", ok_line[-1])
+        evs.append({"k": "usages", "name": str(inp.get("name") or "")[:80], "n": int(m.group(1)) if m else 0})
+    elif name == "edit_file":
+        rows, add, rem = _mini_diff(inp.get("old", ""), inp.get("new", ""))
+        evs.append({"k": "edit", "path": ws._resolve(inp.get("path", "")), "added": add, "removed": rem, "diff": rows})
+    elif name == "new_file":
+        body = str(inp.get("content") or "")
+        evs.append({"k": "new", "path": str(inp.get("path") or "").lstrip("./"), "added": len(body.splitlines()),
+                    "diff": [("+ " + x)[:180] for x in body.splitlines()[:10]]})
+    elif name == "show_diff":
+        evs.append({"k": "diff", "n": len(ws.changed())})
+    elif name == "run_check":
+        c = (checks or [{}])[-1]
+        tail = [x.strip()[:200] for x in str(out).splitlines()
+                if re.search(r"(?i)\b(failed|error|assert|passed|ok)\b", x)][-6:]
+        evs.append({"k": "check", "ok": bool(c.get("ok")), "seconds": c.get("seconds"), "cmd": str(c.get("cmd") or "")[:120],
+                    "only": str(c.get("only") or "")[:120], "tail": tail})
+    elif name == "grep_log":
+        evs.append({"k": "grep", "q": str(inp.get("pattern") or "")[:60]})
+    elif ok_line[-1] in ("check nahi chala", "lab setup fail"):
+        evs.append({"k": "check_off", "why": "the test box could not run here"})
+    return evs
+
+
 def run(g, t, rules: str, extra_files: list[str], allow_workflows: bool = False, issue_txt: str = "",
         max_steps: int = 40, minutes: float = 20.0, on_step: Callable[[str], None] | None = None,
         ref_sha: str = "", extra: str = "", system_extra: str = "",
-        plan_txt: str = "") -> tuple[str, list[dict[str, Any]], dict[str, Any], dict[str, Any]]:
+        plan_txt: str = "", lab: Any = None) -> tuple[str, list[dict[str, Any]], dict[str, Any], dict[str, Any]]:
     """The loop. Returns (base_sha, read, ctx, out) in the shapes service._work already uses after _gather + _ask_model.
     v0.351 ref_sha = work on that commit (a PR branch's head, for a CI fix round); extra = more context (the CI log)."""
     STATS["runs"] += 1
@@ -478,18 +613,37 @@ def run(g, t, rules: str, extra_files: list[str], allow_workflows: bool = False,
              + (f"\n<issue>\n{issue_txt}\n</issue>\n" if issue_txt else "")
              + (f"\nFiles named in her words / the error: {', '.join(dict.fromkeys(hints))}\n" if hints else "")
              + (f"\n{plan_txt}\n" if plan_txt else "")      # v0.451 the plan she approved: the handoff, not a hint
+             + (f"\nHer check command for this repo: `{lab.cmd}` ({lab.source}) - run it with run_check.\n"
+                if lab is not None and getattr(lab, "usable", False) else "")
              + (f"\nThis round works on her open PR branch (commit {base_sha[:7]}): the files below are its current "
                 f"state.\n{extra}\n" if extra else "")
              + "\nTop-level folders:\n" + ws.list_dir("") + "\n\n" + _project_rules(ws)
              + (("\n\n" + _sk + "\n\n") if _sk else "")
              + "\n\nStart exploring with the tools. Call done when finished.")
+    use_lab = lab is not None and getattr(lab, "usable", False)
+    tools = TOOLS + (LAB_TOOLS if use_lab else [])
+    system = SYSTEM + ("\n\n" + system_extra if system_extra else "") + (("\n\n" + lab_block(lab)) if use_lab else "")
     messages: list[dict] = [{"role": "user", "content": first}]
     finish: dict[str, Any] | None = None
+    checks: list[dict[str, Any]] = []
     t0, steps, nudged = time.time(), 0, 0
+    ev_fn, inbox, stopped = _hook(on_step, "event"), _hook(on_step, "inbox"), _hook(on_step, "stopped")
+
+    def emit(ev: dict[str, Any]) -> None:
+        if ev_fn:
+            try:
+                ev_fn(ev)
+            except Exception:
+                pass
     while steps < max_steps and time.time() - t0 < minutes * 60:
+        if stopped and stopped():
+            raise Stopped("stopped")
         steps += 1
-        blocks, stop = BRAIN(SYSTEM + ("\n\n" + system_extra if system_extra else ""), messages, TOOLS)   # v0.402 specialist
+        blocks, stop = BRAIN(system, messages, tools)   # v0.402 specialist, v0.531 lab
         messages.append({"role": "assistant", "content": blocks})
+        for b in blocks:                                  # v0.748 what Hoola says while it works
+            if b.get("type") == "text" and str(b.get("text") or "").strip():
+                emit({"k": "say", "text": str(b["text"]).strip()[:800]})
         uses = [b for b in blocks if b.get("type") == "tool_use"]
         if not uses:
             if stop == "max_tokens":
@@ -506,13 +660,30 @@ def run(g, t, rules: str, extra_files: list[str], allow_workflows: bool = False,
                 finish = dict(b.get("input") or {})
                 results.append({"type": "tool_result", "tool_use_id": b["id"], "content": "Finished."})
                 continue
-            out = ws.run(b["name"], b.get("input") or {})
+            before = len(ws.trail)
+            if use_lab and b["name"] in ("run_check", "grep_log"):
+                out = _lab_tool(lab, ws, b["name"], b.get("input") or {}, checks)
+            else:
+                out = ws.run(b["name"], b.get("input") or {})
+            for ev in step_event(ws, b["name"], b.get("input") or {}, out, before, checks):
+                emit(ev)
             if on_step and ws.trail:
                 try:
                     on_step(ws.trail[-1])
                 except Exception:
                     pass
             results.append({"type": "tool_result", "tool_use_id": b["id"], "content": out[:60000]})
+        notes = []
+        if inbox and finish is None:                      # v0.748 her words while it works, read between steps
+            try:
+                notes = [str(x)[:2000] for x in (inbox() or []) if str(x).strip()]
+            except Exception:
+                notes = []
+        if notes:
+            results.append({"type": "text", "text": "<her_note_while_you_work>\n" + "\n".join(notes)
+                            + "\n</her_note_while_you_work>\nTake this into account from your next step."})
+            for n in notes:
+                emit({"k": "note", "text": n[:600]})
         messages.append({"role": "user", "content": results})
         if finish is not None:
             break
@@ -532,7 +703,9 @@ def run(g, t, rules: str, extra_files: list[str], allow_workflows: bool = False,
            "pr_title": finish.get("pr_title", ""), "pr_summary": finish.get("pr_summary", ""),
            "test_plan": finish.get("test_plan", ""), "risk": finish.get("risk", ""),
            "rules_followed": finish.get("rules_followed", "")}
+    out["checks"] = checks
     found = {"trace": tr["files"], "errors": tr["errors"], "words": tr["words"], "read": sorted(ws.read),
+             "checks": checks,
              "hidden": [p for p, o in ws.orig.items() if o.get("hidden")], "tree_size": len(paths),
              "issue": bool(issue_txt), "rules": list(dict.fromkeys(ws.rules_shown)), "loop": {"steps": steps, "searched": ws.searched[-20:], "trail": ws.trail[-60:],
                                                  "finished": finished}}

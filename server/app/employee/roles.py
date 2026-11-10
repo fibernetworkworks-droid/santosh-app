@@ -29,6 +29,10 @@ DUTIES: dict[str, dict] = {
                   "prefix": (), "tools": {"list_lead_lists", "get_lead_list", "check_template", "submit_template",
                                           "check_template_status", "create_campaign", "confirm_send", "get_campaign_status",
                                           "control_campaign"}},
+    # v0.540 LEADS NEEV: the engine gathers; it NEVER contacts anyone - outreach is a desk act behind her tap
+    "leads_work": {"label": "Leads dhundhna",
+                   "say": "naye dhandhe ke customers ka list - pehle apna data, phir official/registry lane, ya (uski haan par) public listing; har row ke saath uska source; export CSV/Sheets ya campaign desk ko",
+                   "prefix": ("leads_",), "tools": set()},
     "video": {"label": "Video editing", "say": "reels, shorts, status aur YouTube ke liye video edit (captions, logo, music)",
               "prefix": (), "tools": {"video_edit", "video_studio", "blender_3d"}},
     "operator": {"label": "Computer operator", "say": "websites par form, application, download, status check (OTP / submit / payment aap karti hain)",
@@ -161,6 +165,8 @@ DUTIES: dict[str, dict] = {
                   "prefix": (), "tools": {"archassist", "archassist_dekho", "file_read", "make_document", "lekhak"}},
     "society_work": {"label": "Housing society", "say": "flats / members register, maintenance bill, receipt, baaki ki yaad, shikayat, notice / AGM / minutes, vendor / AMC, gate register (bill / notice / message / kharcha / penalty aapki haan se)",
                      "prefix": (), "tools": {"society", "society_dekho", "file_read"}},
+    "fm_work": {"label": "Facility management (FM)", "say": "Work orders (status ke saath naam), PPM due-hisaab, lift/fire/STP/WTP compliance calendar, housekeeping/security roster, structural-audit schedule, asset & space register; certificate agency/engineer ki",
+                     "prefix": (), "tools": {"const_fm", "const_fm_dekho"}},
     # v0.150 Kanoon suite
     "legal_junior": {"label": "Lawyer's junior", "say": "court diary, tareekhein, cause list, limitation (andaaza), drafts vakil sahab ke liye, client update drafts, fee hisaab (filing / message / fee maangna aapke tap se)",
                      "prefix": (), "tools": {"vakil", "vakil_dekho", "file_read", "lekhak", "lekhak_dekho"}},
@@ -253,6 +259,9 @@ ROLES: dict[str, dict] = {
                       "duties": ["customers", "tickets", "appointments", "reminders", "records"]},
     "sales": {"label": "Sales aur follow-up", "say": "Naye enquiry ka jawab, lead follow-up, quotation draft, offer campaign",
               "duties": ["customers", "campaigns", "email", "records", "reminders", "research"]},
+    "leads_sahayak": {"label": "Leads Sahayak",
+                      "say": "Dhandhe ke customers dhundo: pehle aapka apna data, phir sarkari/official list; har row export-taiyar, har row ke saath uska source; koi message khud nahi - bhejna campaign desk se, aapke tap par",
+                      "duties": ["leads_work", "campaigns", "records", "reminders", "research"]},
     "hr_admin": {"label": "HR aur admin", "say": "Job post, interview, attendance register, roster, renewals",
                  "duties": ["records", "email", "appointments", "reminders"]},
     "marketing": {"label": "Marketing", "say": "Tyohaar ke post ideas, poster, offer campaign, reels, competitor ki khabar",
@@ -394,7 +403,7 @@ ROLES: dict[str, dict] = {
     "real_estate_agent": {"label": "Real estate agent", "say": "Listings, graahak se milaan, site visit, deal ke kaagaz, commission; public listing / message / paise ke kaagaz aapki haan se",
                           "duties": ["propagent_work", "telecalling", "appointments", "reminders", "records"]},
     "property_manager": {"label": "Property manager", "say": "Kirayedar, kiraya / deposit, receipt, agreement draft, repair, move-out; message / katauti / kiraya badlav aapki haan se",
-                         "duties": ["rentdesk_work", "reminders", "records", "collections"]},
+                         "duties": ["rentdesk_work", "reminders", "records", "collections", "fm_work"]},
     "site_supervisor": {"label": "Site supervisor", "say": "Roz ka kaam, hazri, maal, safety, cube test, snag, DPR; indent / client report / kaam rokna aapki haan se",
                         "duties": ["site_supervision", "contract_work", "records", "reminders"]},
     "interior_designer": {"label": "Interior designer", "say": "Brief, naap, moodboard, BOQ-quote, vendor order, snag, handover; quote / order / paise maangna aapki haan se",
@@ -402,7 +411,7 @@ ROLES: dict[str, dict] = {
     "architect_assistant": {"label": "Architect's assistant", "say": "Project file, FSI jaanch (andaaza), drawing register, approval, RFI, fee invoice; issue / submit / invoice aapki haan se",
                             "duties": ["arch_work", "records", "reminders", "email"]},
     "society_manager": {"label": "Housing society manager", "say": "Flats, maintenance bill, baaki, shikayat, AGM / notice, vendor, gate; bill / notice / kharcha aapki haan se",
-                        "duties": ["society_work", "reminders", "records"]},
+                        "duties": ["society_work", "fm_work", "reminders", "records"]},
     # v0.150 Kanoon suite
     "lawyer_junior": {"label": "Lawyer's junior", "say": "Court diary, tareekhein, cause list, limitation (andaaza), drafts, fee hisaab; filing / message / fee aapki haan se",
                       "duties": ["legal_junior", "reminders", "records"]},
@@ -555,6 +564,21 @@ PRESETS: dict[str, dict] = {
                     "rules": ["Call sirf insaan karega; Hoola list, script aur log banayega.",
                               "Jo 'call mat karna' kahe use dobara call nahi.", "Kharidi hui / cold list par promotional call nahi.",
                               "Jhoota vaada ya guarantee nahi."]},
+    "leads_desk": {"label": "Leads / business development", "role": "leads_sahayak", "kind": "office", "slot_minutes": 30,
+                   "after_hours": "quiet",
+                   "about_hint": "Kiska dhandha, kis sheher/area ke customers chahiye, kis category mein, purani lists kahan hain",
+                   "rules": ["Engine kabhi kisi ko message / email / call nahi bhejta - outreach sirf owner ke tap par.",
+                             "Har leads row ke saath uska source (lane + URL) - bina source ki row export nahi hoti.",
+                             "Cap plan-time par refuse karta hai; cap badalna owner ki haan se.",
+                             "Scrape lane (P3, Google Maps public listings) per-tenant opt-in OFF by default hai - "
+                             "owner ki khaas haan se on hota hai (walls: rules.SCRAPE_WALLS, CLAUDE.md amended rule).",
+                             "Vendor lane (P4) config-gated hai - jab tak owner ne licensed vendor ka naam, key, "
+                             "per-row price aur terms-ack set nahi kiya, lane card par bhi nahi; run PEHLE price "
+                             "hoti hai, estimate cap paar to refuse.",
+                             "Campaign-list hand-off (P5) do tap ka hai: pehla tap sirf CONFIRM CARD dikhata hai "
+                             "(rows, opt_out_excluded, consent=False) aur kuch nahi banata; confirm=true doosre tap "
+                             "par list banti hai. Send ke waqt bhi opt-out maana jaata hai, aur har send "
+                             "(campaign/email) lead_outreach hisaab mein jaata hai."]},
     "audit_firm": {"label": "CA / audit firm", "role": "audit_assistant", "kind": "ca", "slot_minutes": 30, "after_hours": "note",
                    "about_hint": "Kaun se audit (statutory, tax, internal, stock), kitne client, partner kaun, client se kaagaz kaise aate hain",
                    "rules": ["Audit report / raay sirf partner sign karega.", "UDIN aur form filing Hoola nahi karega.",

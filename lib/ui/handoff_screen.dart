@@ -83,7 +83,7 @@ class _A2ATaskCardState extends State<A2ATaskCard> {
       if (r != null) _fresh = _m(r['task']);
     });
     if (r != null) {
-      _snack(context, _s(r['say']).isEmpty ? 'Ho gaya' : _s(r['say']));
+      _snack(context, _s(r['say']).isEmpty ? 'Done' : _s(r['say']));
       widget.onChanged?.call();
     }
   }
@@ -105,7 +105,7 @@ class _A2ATaskCardState extends State<A2ATaskCard> {
         ),
       const Divider(color: C.line),
       Row(children: [
-        const Expanded(child: Text('Kul (GST milakar)', style: TextStyle(fontWeight: FontWeight.w800))),
+        const Expanded(child: Text('Total (with GST)', style: TextStyle(fontWeight: FontWeight.w800))),
         Text(_inr(q['total']), style: const TextStyle(fontWeight: FontWeight.w900, color: C.accent)),
       ]),
     ]);
@@ -122,7 +122,7 @@ class _A2ATaskCardState extends State<A2ATaskCard> {
         Row(children: [
           const Icon(Icons.smart_toy_rounded, color: C.teal),
           const SizedBox(width: 10),
-          Expanded(child: Text('Bahar ka AI agent · ${_s(t['caller'])}', style: const TextStyle(fontWeight: FontWeight.w800))),
+          Expanded(child: Text('Outside AI agent · ${_s(t['caller'])}', style: const TextStyle(fontWeight: FontWeight.w800))),
           const Pill('unverified', fg: C.warn),
         ]),
         _say(_s(widget.v['say']).isNotEmpty && _fresh == null ? _s(widget.v['say']) : _s(t['say_state'])),
@@ -134,38 +134,38 @@ class _A2ATaskCardState extends State<A2ATaskCard> {
         const SizedBox(height: 10),
         if (_busy) const LinearProgressIndicator(minHeight: 2),
         if (waiting == 'reply') ...[
-          TextField(controller: _reply, minLines: 1, maxLines: 4, decoration: const InputDecoration(hintText: 'Aapka jawab')),
+          TextField(controller: _reply, minLines: 1, maxLines: 4, decoration: const InputDecoration(hintText: 'Your reply')),
           const SizedBox(height: 8),
           Row(children: [
-            Expanded(child: GradientButton(label: 'Bhejo', icon: Icons.send_rounded, onTap: _busy ? null : () => _act('reply', {'text': _reply.text}))),
+            Expanded(child: GradientButton(label: 'Send', icon: Icons.send_rounded, onTap: _busy ? null : () => _act('reply', {'text': _reply.text}))),
             const SizedBox(width: 8),
             TextButton(onPressed: _busy ? null : () => _act('reject'), child: const Text('Mana')),
           ]),
         ],
         if (waiting == 'quote')
           Row(children: [
-            Expanded(child: GradientButton(label: 'Quote bhejo', icon: Icons.request_quote_rounded, onTap: _busy ? null : () => _act('quote'))),
+            Expanded(child: GradientButton(label: 'Send quote', icon: Icons.request_quote_rounded, onTap: _busy ? null : () => _act('quote'))),
             const SizedBox(width: 8),
             TextButton(onPressed: _busy ? null : () => _act('reject'), child: const Text('Mana')),
           ]),
         if (waiting == 'accept')
           Row(children: [
-            Expanded(child: GradientButton(label: 'Order pakka karo', icon: Icons.check_circle_rounded, onTap: _busy ? null : () => _act('accept'))),
+            Expanded(child: GradientButton(label: 'Confirm order', icon: Icons.check_circle_rounded, onTap: _busy ? null : () => _act('accept'))),
             const SizedBox(width: 8),
             TextButton(onPressed: _busy ? null : () => _act('reject'), child: const Text('Mana')),
           ]),
         if (_s(order['status']) == 'accepted')
           Row(children: [
-            Expanded(child: GlassButton(label: 'Taiyaar (code bhejo)', icon: Icons.inventory_2_rounded, onTap: _busy ? null : () => _act('ready'))),
+            Expanded(child: GlassButton(label: 'Ready (send code)', icon: Icons.inventory_2_rounded, onTap: _busy ? null : () => _act('ready'))),
             TextButton(onPressed: _busy ? null : () => _act('cancel'), child: const Text('Cancel')),
           ]),
         if (_s(order['status']) == 'ready')
           Row(children: [
-            Expanded(child: TextField(controller: _code, keyboardType: TextInputType.number, decoration: const InputDecoration(hintText: 'Graahak ka code'))),
+            Expanded(child: TextField(controller: _code, keyboardType: TextInputType.number, decoration: const InputDecoration(hintText: 'Customer code'))),
             const SizedBox(width: 8),
-            GlassButton(label: 'De diya', onTap: _busy ? null : () => _act('handed_over', {'code': _code.text.trim()})),
+            GlassButton(label: 'Given', onTap: _busy ? null : () => _act('handed_over', {'code': _code.text.trim()})),
           ]),
-        if (skill == 'order') _say('Paise sirf aapke counter par; bahar ke agent ko UPI link nahi jaata.', color: C.faint),
+        if (skill == 'order') _say('Money is taken only at your counter; no UPI link goes to an outside agent.', color: C.faint),
       ]),
     );
   }
@@ -210,17 +210,17 @@ class _A2AOutCardState extends State<A2AOutCard> {
           Expanded(child: Text(_s(o['agent']), style: const TextStyle(fontWeight: FontWeight.w800))),
           Pill(_s(o['say_status']).isEmpty ? st : _s(o['say_status'])),
         ]),
-        _say('Aap: ${_s(o['text'])}', color: C.ink),
-        if (_s(o['reply']).isNotEmpty) _say('Unka jawab (jaankari): ${_s(o['reply'])}'),
+        _say('You: ${_s(o['text'])}', color: C.ink),
+        if (_s(o['reply']).isNotEmpty) _say('Their reply (information): ${_s(o['reply'])}'),
         const SizedBox(height: 8),
         if (_busy) const LinearProgressIndicator(minHeight: 2),
         if (st == 'draft')
           Row(children: [
-            Expanded(child: GradientButton(label: 'Bhejo', icon: Icons.send_rounded, onTap: _busy ? null : () => _act('send'))),
+            Expanded(child: GradientButton(label: 'Send', icon: Icons.send_rounded, onTap: _busy ? null : () => _act('send'))),
             TextButton(onPressed: _busy ? null : () => _act('drop'), child: const Text('Hatao')),
           ])
         else if (!st.contains('COMPLETED') && !st.contains('CANCELED') && st != 'failed' && st != 'dropped')
-          Align(alignment: Alignment.centerRight, child: TextButton(onPressed: _busy ? null : () => _act('poll'), child: const Text('Dobara dekho'))),
+          Align(alignment: Alignment.centerRight, child: TextButton(onPressed: _busy ? null : () => _act('poll'), child: const Text('Check again'))),
       ]),
     );
   }
@@ -240,7 +240,7 @@ class ConsentReminderCard extends StatelessWidget {
         Row(children: [
           Icon(rail == 'aa' ? Icons.account_balance_rounded : Icons.local_hospital_rounded, color: C.accent),
           const SizedBox(width: 10),
-          Expanded(child: Text(rail == 'aa' ? 'AA consent chalu hai' : 'Health records consent chalu hai',
+          Expanded(child: Text(rail == 'aa' ? 'AA consent is on' : 'Health records consent is on',
               style: const TextStyle(fontWeight: FontWeight.w800))),
         ]),
         _say(_s(v['say'])),
@@ -248,7 +248,7 @@ class ConsentReminderCard extends StatelessWidget {
         Row(children: [
           Expanded(
               child: GlassButton(
-                  label: 'Revoke kar diya',
+                  label: 'Revoked',
                   icon: Icons.block_rounded,
                   onTap: () async {
                     final r = await _guard(context, () => app.api!.handoffMark(rail, _s(c['id']), 'revoked'));
@@ -259,7 +259,7 @@ class ConsentReminderCard extends StatelessWidget {
                   url: rail == 'aa'
                       ? 'https://play.google.com/store/search?q=account%20aggregator&c=apps'
                       : 'https://play.google.com/store/search?q=ABHA%20app%20NHA&c=apps'),
-              child: const Text('App kholo')),
+              child: const Text('Open app')),
         ]),
       ]),
     );
@@ -283,7 +283,7 @@ class DigiLockerCard extends StatelessWidget {
         _say(_s(v['say'])),
         if (_s(v['url']).isNotEmpty) ...[
           const SizedBox(height: 8),
-          GradientButton(label: 'DigiLocker kholo', icon: Icons.open_in_new_rounded, onTap: () => Native.openExternal(url: _s(v['url']))),
+          GradientButton(label: 'Open DigiLocker', icon: Icons.open_in_new_rounded, onTap: () => Native.openExternal(url: _s(v['url']))),
         ],
         for (final d in docs.take(6)) _DocRow(d: d, app: app),
       ]),
@@ -302,14 +302,14 @@ class _DocRow extends StatelessWidget {
           Expanded(child: Text('${_s(d['name'])} · ${_s(d['issuer'])}', style: const TextStyle(fontSize: 13))),
           if (d['is_id'] == true) const Pill('ID', fg: C.warn),
           if (d['aadhaar'] == true)
-            const Padding(padding: EdgeInsets.only(left: 6), child: Text('DigiLocker mein hi', style: TextStyle(fontSize: 11, color: C.faint)))
+            const Padding(padding: EdgeInsets.only(left: 6), child: Text('Only in DigiLocker', style: TextStyle(fontSize: 11, color: C.faint)))
           else
             TextButton(
                 onPressed: () async {
                   final r = await _guard(context, () => app.api!.digilockerFetch(_s(d['uri'])));
                   if (r != null && context.mounted) _snack(context, _s(r['say']));
                 },
-                child: const Text('File banao')),
+                child: const Text('Make file')),
         ]),
       );
 }
@@ -361,14 +361,14 @@ class _HandoffScreenState extends State<HandoffScreen> {
         initialIndex: widget.tab,
         child: Scaffold(
           appBar: AppBar(
-            title: const Text('Consent, kaagaz, bahar ke agents'),
+            title: const Text('Consents, papers, outside agents'),
             backgroundColor: Colors.transparent,
             bottom: const TabBar(isScrollable: true, tabs: [
               Tab(text: 'Bank data (AA)'),
               Tab(text: 'Health (ABHA)'),
               Tab(text: 'DigiLocker'),
               Tab(text: 'ONDC'),
-              Tab(text: 'Bahar ke agents'),
+              Tab(text: 'Outside agents'),
             ]),
           ),
           body: Aurora(
@@ -395,11 +395,11 @@ class _HandoffScreenState extends State<HandoffScreen> {
   // ---------------- AA
   Widget _aaIntro() => Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('Account Aggregator consent jaancho', style: TextStyle(fontWeight: FontWeight.w800)),
-          _say('Loan / card / insurance ke liye bank data ka consent aaya? Jo dikh raha hai yahan daaliye: ${app.aName} bataega kya zyada '
-              'maanga gaya. Approve / Reject aap AA app mein hi karengi; ${app.aName} data nahi leta, OTP nahi maangta.'),
+          const Text('Check an Account Aggregator consent', style: TextStyle(fontWeight: FontWeight.w800)),
+          _say('Got a consent request for bank data for a loan / card / insurance? Enter what you see here: ${app.aName} will tell you what is being asked for beyond need. '
+              'You approve / reject only in the AA app; ${app.aName} does not take data or ask for OTPs.'),
           const SizedBox(height: 8),
-          GradientButton(label: 'Naya consent jaancho', icon: Icons.fact_check_rounded, onTap: _newAa),
+          GradientButton(label: 'Check a new consent', icon: Icons.fact_check_rounded, onTap: _newAa),
         ]),
       );
 
@@ -426,42 +426,42 @@ class _HandoffScreenState extends State<HandoffScreen> {
     final fis = <String>{'DEPOSIT'};
     const fiOpts = {'DEPOSIT': 'Bank account', 'TERM_DEPOSIT': 'FD', 'RECURRING_DEPOSIT': 'RD', 'MUTUAL_FUNDS': 'Mutual fund',
         'EQUITIES': 'Shares', 'INSURANCE_POLICIES': 'Insurance', 'NPS': 'NPS', 'GSTR1_3B': 'GST returns'};
-    const forOpts = {'loan': 'Loan', 'loan_running': 'Chalta loan', 'credit_card': 'Credit card', 'insurance': 'Insurance',
-        'wealth': 'Investment', 'budget': 'Budget app', 'tax': 'Tax', 'rent': 'Kiraya / job', 'other': 'Doosra'};
+    const forOpts = {'loan': 'Loan', 'loan_running': 'Running loan', 'credit_card': 'Credit card', 'insurance': 'Insurance',
+        'wealth': 'Investment', 'budget': 'Budget app', 'tax': 'Tax', 'rent': 'Kiraya / job', 'other': 'Other'};
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, set) => AlertDialog(
-          title: const Text('Consent mein kya likha hai?'),
+          title: const Text('What does the consent say?'),
           content: SingleChildScrollView(
             child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-              TextField(controller: req, decoration: const InputDecoration(labelText: 'Kaun maang raha hai (bank / NBFC / app)')),
+              TextField(controller: req, decoration: const InputDecoration(labelText: 'Who is asking (bank / NBFC / app)')),
               const SizedBox(height: 8),
-              const Text('Kis liye', style: TextStyle(fontSize: 12, color: C.faint)),
+              const Text('For what', style: TextStyle(fontSize: 12, color: C.faint)),
               Wrap(spacing: 6, children: [
                 for (final e in forOpts.entries) ChoiceChip(label: Text(e.value), selected: forWhat == e.key, onSelected: (_) => set(() => forWhat = e.key)),
               ]),
               const SizedBox(height: 8),
-              const Text('Kaunse accounts', style: TextStyle(fontSize: 12, color: C.faint)),
+              const Text('Which accounts', style: TextStyle(fontSize: 12, color: C.faint)),
               Wrap(spacing: 6, children: [
                 for (final e in fiOpts.entries)
                   FilterChip(label: Text(e.value), selected: fis.contains(e.key), onSelected: (v) => set(() => v ? fis.add(e.key) : fis.remove(e.key))),
               ]),
-              TextField(controller: months, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Kitne mahine purana data')),
+              TextField(controller: months, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'How many months of old data')),
               Wrap(spacing: 6, children: [
                 for (final f in const ['ONETIME', 'PERIODIC'])
-                  ChoiceChip(label: Text(f == 'ONETIME' ? 'Ek baar' : 'Baar-baar'), selected: fetch == f, onSelected: (_) => set(() => fetch = f)),
+                  ChoiceChip(label: Text(f == 'ONETIME' ? 'Once' : 'Repeatedly'), selected: fetch == f, onSelected: (_) => set(() => fetch = f)),
                 for (final m in const ['VIEW', 'STORE'])
-                  ChoiceChip(label: Text(m == 'VIEW' ? 'Sirf dekhenge' : 'Rakhenge'), selected: mode == m, onSelected: (_) => set(() => mode = m)),
+                  ChoiceChip(label: Text(m == 'VIEW' ? 'View only' : 'Rakhenge'), selected: mode == m, onSelected: (_) => set(() => mode = m)),
               ]),
-              TextField(controller: life, decoration: const InputDecoration(labelText: 'Data kitne din rakhenge (jaise 1 YEAR)')),
-              TextField(controller: exp, decoration: const InputDecoration(labelText: 'Consent kab tak (YYYY-MM-DD)')),
+              TextField(controller: life, decoration: const InputDecoration(labelText: 'How long they will keep the data (e.g. 1 YEAR)')),
+              TextField(controller: exp, decoration: const InputDecoration(labelText: 'Consent valid until (YYYY-MM-DD)')),
               TextField(controller: aaApp, decoration: const InputDecoration(labelText: 'AA app (OneMoney, Finvu...)')),
             ]),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Rehne do')),
-            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Jaancho')),
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Keep it')),
+            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Check')),
           ],
         ),
       ),
@@ -493,7 +493,7 @@ class _HandoffScreenState extends State<HandoffScreen> {
             _say(_s(r['rule_of_thumb']), color: C.faint),
           ]),
         ),
-        actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Samajh gayi'))],
+        actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Understood'))],
       ),
     );
   }
@@ -515,17 +515,17 @@ class _HandoffScreenState extends State<HandoffScreen> {
           const SizedBox(width: 6),
           Pill(status),
         ]),
-        if (rail == 'abdm' && _s(c['for_whom']) != 'self') _say('Kiske liye: ${_s(c['for_whom'])}'),
+        if (rail == 'abdm' && _s(c['for_whom']) != 'self') _say('For whom: ${_s(c['for_whom'])}'),
         if (what.isNotEmpty) _say(what),
         for (final f in flags) _say('• ${_s(f['say'])}', color: _s(f['level']) == 'avoid' ? C.bad : C.warn),
-        if (_s(c['remind_at']).isNotEmpty) _say('Revoke yaad: ${_s(c['remind_at']).substring(0, 10)}', color: C.faint),
+        if (_s(c['remind_at']).isNotEmpty) _say('Revoke reminder: ${_s(c['remind_at']).substring(0, 10)}', color: C.faint),
         const SizedBox(height: 6),
         Wrap(spacing: 6, children: [
           if (status == 'reviewed') ...[
             ActionChip(label: const Text('Approve kiya'), onPressed: () => _mark(rail, c, 'approved')),
             ActionChip(label: const Text('Mana kiya'), onPressed: () => _mark(rail, c, rail == 'aa' ? 'rejected' : 'denied')),
           ],
-          if (status == 'approved') ActionChip(label: const Text('Revoke kiya'), onPressed: () => _mark(rail, c, 'revoked')),
+          if (status == 'approved') ActionChip(label: const Text('Revoked'), onPressed: () => _mark(rail, c, 'revoked')),
           ActionChip(
               label: const Text('Hatao'),
               onPressed: () async {
@@ -547,13 +547,13 @@ class _HandoffScreenState extends State<HandoffScreen> {
   Widget _abdmIntro() => Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           const Text('ABHA / health records', style: TextStyle(fontWeight: FontWeight.w800)),
-          _say('Hospital ya doctor ne records maange? Request yahan daaliye; ${app.aName} samjhaega. Approve / Deny aap ABHA app mein karengi. '
-              '${app.aName} koi health record nahi dekhta.'),
+          _say('Did a hospital or doctor ask for records? Enter the request here; ${app.aName} will explain it. You approve / deny in the ABHA app. '
+              '${app.aName} does not see any health records.'),
           const SizedBox(height: 8),
-          GradientButton(label: 'Request jaancho', icon: Icons.health_and_safety_rounded, onTap: _newAbdm),
+          GradientButton(label: 'Check a request', icon: Icons.health_and_safety_rounded, onTap: _newAbdm),
           const SizedBox(height: 8),
           Wrap(spacing: 6, runSpacing: 6, children: [
-            for (final t in const {'abha': 'ABHA kya hai', 'scan_share': 'Scan & Share', 'link': 'Records jodna', 'consent': 'Consent',
+            for (final t in const {'abha': 'What is ABHA', 'scan_share': 'Scan & Share', 'link': 'Linking records', 'consent': 'Consent',
                 'family': 'Parivaar', 'privacy': 'Privacy'}.entries)
               ActionChip(label: Text(t.value), onPressed: () => _help(t.key)),
           ]),
@@ -586,17 +586,17 @@ class _HandoffScreenState extends State<HandoffScreen> {
     var who = 'self';
     final types = <String>{'Prescription', 'DiagnosticReport'};
     const pOpts = {'CAREMGT': 'Ilaaj', 'HPAYMT': 'Bill / claim', 'BTG': 'Emergency', 'PUBHLTH': 'Public health', 'DSRCH': 'Research',
-        'PATRQT': 'Maine maanga'};
+        'PATRQT': 'I asked for it'};
     const tOpts = {'Prescription': 'Parchi', 'DiagnosticReport': 'Lab report', 'OPConsultation': 'OPD', 'DischargeSummary': 'Discharge',
-        'ImmunizationRecord': 'Teeka', 'HealthDocumentRecord': 'Doosre kaagaz', 'WellnessRecord': 'Wellness', 'Invoice': 'Bill'};
+        'ImmunizationRecord': 'Teeka', 'HealthDocumentRecord': 'Other papers', 'WellnessRecord': 'Wellness', 'Invoice': 'Bill'};
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, set) => AlertDialog(
-          title: const Text('ABHA app mein kya maanga hai?'),
+          title: const Text('What does the ABHA app ask for?'),
           content: SingleChildScrollView(
             child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-              TextField(controller: req, decoration: const InputDecoration(labelText: 'Kaun (hospital / doctor / lab)')),
+              TextField(controller: req, decoration: const InputDecoration(labelText: 'Who (hospital / doctor / lab)')),
               Wrap(spacing: 6, children: [
                 for (final e in pOpts.entries) ChoiceChip(label: Text(e.value), selected: purpose == e.key, onSelected: (_) => set(() => purpose = e.key)),
               ]),
@@ -604,17 +604,17 @@ class _HandoffScreenState extends State<HandoffScreen> {
                 for (final e in tOpts.entries)
                   FilterChip(label: Text(e.value), selected: types.contains(e.key), onSelected: (v) => set(() => v ? types.add(e.key) : types.remove(e.key))),
               ]),
-              TextField(controller: from, decoration: const InputDecoration(labelText: 'Kab se ke records (YYYY-MM-DD)')),
-              TextField(controller: exp, decoration: const InputDecoration(labelText: 'Kab tak dekh payenge (YYYY-MM-DD)')),
+              TextField(controller: from, decoration: const InputDecoration(labelText: 'Records since when (YYYY-MM-DD)')),
+              TextField(controller: exp, decoration: const InputDecoration(labelText: 'Can view until (YYYY-MM-DD)')),
               Wrap(spacing: 6, children: [
-                for (final w in const ['self', 'maa', 'papa', 'pati', 'patni', 'beta', 'beti'])
+                for (final w in const ['self', 'mother', 'father', 'husband', 'patni', 'beta', 'beti'])
                   ChoiceChip(label: Text(w == 'self' ? 'Main' : w), selected: who == w, onSelected: (_) => set(() => who = w)),
               ]),
             ]),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Rehne do')),
-            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Jaancho')),
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Keep it')),
+            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Check')),
           ],
         ),
       ),
@@ -636,15 +636,15 @@ class _HandoffScreenState extends State<HandoffScreen> {
       Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
-            const Expanded(child: Text('Mere DigiLocker kaagaz', style: TextStyle(fontWeight: FontWeight.w800))),
-            Pill(d['connected'] == true ? 'juda hai' : 'juda nahi', fg: d['connected'] == true ? C.ok : C.muted),
+            const Expanded(child: Text('My DigiLocker papers', style: TextStyle(fontWeight: FontWeight.w800))),
+            Pill(d['connected'] == true ? 'connected' : 'not connected', fg: d['connected'] == true ? C.ok : C.muted),
           ]),
-          _say('Sign in DigiLocker ke apne page par (OTP wahin). Aadhaar file nahi banti; ID documents kisi aur ke avatar ko nahi jaate.'),
+          _say('Sign in on DigiLocker\'s own page (the OTP goes there). No Aadhaar file is made; ID documents never go to anyone else\'s avatar.'),
           if (_s(d['say']).isNotEmpty) _say(_s(d['say']), color: C.warn),
           const SizedBox(height: 8),
           if (d['configured'] == true)
             GradientButton(
-                label: d['connected'] == true ? 'Dobara jodo (list taaza)' : 'DigiLocker jodo',
+                label: d['connected'] == true ? 'Link again (refresh the list)' : 'DigiLocker jodo',
                 icon: Icons.link_rounded,
                 onTap: () async {
                   final r = await _guard(context, () => app.api!.digilockerStart());
@@ -657,7 +657,7 @@ class _HandoffScreenState extends State<HandoffScreen> {
             for (final s in (manual['steps'] as List? ?? const [])) _say('• $s', color: C.ink),
             const SizedBox(height: 6),
             GlassButton(
-                label: 'DigiLocker app kholo',
+                label: 'Open DigiLocker app',
                 icon: Icons.open_in_new_rounded,
                 onTap: () => Native.openExternal(package: 'com.digilocker.android', url: _s(_m(manual['app'])['play']))),
           ],
@@ -685,7 +685,7 @@ class _HandoffScreenState extends State<HandoffScreen> {
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             const Text('Files banayi', style: TextStyle(fontWeight: FontWeight.w800)),
             for (final p in _l(d['pulled']))
-              _say('${_s(p['name'])}${p['hmac_ok'] == true ? ' · DigiLocker jaanch ✓' : ''}${p['is_id'] == true ? ' · ID (sirf aapke liye)' : ''}',
+              _say('${_s(p['name'])}${p['hmac_ok'] == true ? ' · DigiLocker verified ✓' : ''}${p['is_id'] == true ? ' · ID (only for you)' : ''}',
                   color: C.ink),
           ]),
         ),
@@ -700,7 +700,7 @@ class _HandoffScreenState extends State<HandoffScreen> {
       Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
-            const Expanded(child: Text('ONDC par bechna (optional)', style: TextStyle(fontWeight: FontWeight.w800))),
+            const Expanded(child: Text('Selling on ONDC (optional)', style: TextStyle(fontWeight: FontWeight.w800))),
             Switch(
                 value: l['on'] == true,
                 onChanged: (v) async {
@@ -708,8 +708,8 @@ class _HandoffScreenState extends State<HandoffScreen> {
                   _load();
                 }),
           ]),
-          _say('ONDC par dukaan ek registered seller app ke through lagti hai (woh orders aur paise sambhalte hain). '
-              '${app.aName} aapke stock se unke liye sheet banata hai aur kami bataata hai; ONDC se khud nahi judta.'),
+          _say('A shop on ONDC is listed through a registered seller app (it handles orders and money). '
+              '${app.aName} makes a sheet for it from your stock and points out gaps; it does not connect to ONDC itself.'),
           const SizedBox(height: 6),
           Wrap(spacing: 6, runSpacing: 6, children: [
             for (final e in domains.entries)
@@ -722,21 +722,21 @@ class _HandoffScreenState extends State<HandoffScreen> {
                   }),
           ]),
           const SizedBox(height: 8),
-          GlassButton(label: 'Dukaan ki jaankari', icon: Icons.edit_rounded, onTap: () => _ondcEdit(l)),
+          GlassButton(label: 'Shop details', icon: Icons.edit_rounded, onTap: () => _ondcEdit(l)),
         ]),
       ),
       Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
-            const Expanded(child: Text('Taiyaari', style: TextStyle(fontWeight: FontWeight.w800))),
-            Pill(_ondc['ready'] == true ? 'taiyaar' : 'adhoori', fg: _ondc['ready'] == true ? C.ok : C.warn),
+            const Expanded(child: Text('Preparation', style: TextStyle(fontWeight: FontWeight.w800))),
+            Pill(_ondc['ready'] == true ? 'ready' : 'incomplete', fg: _ondc['ready'] == true ? C.ok : C.warn),
           ]),
           for (final b in (_ondc['blockers'] as List? ?? const [])) _say('✗ $b', color: C.bad),
           for (final w in (_ondc['warnings'] as List? ?? const [])) _say('! $w', color: C.warn),
           for (final g in _l(_ondc['item_gaps']).take(12)) _say('${_s(g['item'])}: ${(g['missing'] as List? ?? const []).join(', ')}'),
           const SizedBox(height: 8),
           GradientButton(
-              label: 'Seller app ke liye sheet nikaalo',
+              label: 'Export a sheet for the seller app',
               icon: Icons.table_view_rounded,
               onTap: () async {
                 final r = await _guard(context, () => app.api!.ondcExport());
@@ -762,9 +762,9 @@ class _HandoffScreenState extends State<HandoffScreen> {
       'pincodes': TextEditingController(text: (l['pincodes'] as List? ?? const []).join(', ')),
       'ship_minutes': TextEditingController(text: _s(l['ship_minutes'])),
     };
-    const labels = {'store_name': 'Dukaan ka naam', 'seller_app': 'Seller app (jo aapne chuna)', 'gstin': 'GSTIN', 'fssai': 'FSSAI (khana)',
+    const labels = {'store_name': 'Dukaan name', 'seller_app': 'Seller app (jo aapne chuna)', 'gstin': 'GSTIN', 'fssai': 'FSSAI (khana)',
         'care_name': 'Customer care naam', 'care_phone': 'Customer care phone', 'care_email': 'Customer care email',
-        'pincodes': 'Pincodes (comma se)', 'ship_minutes': 'Kitne minute mein bhejengi'};
+        'pincodes': 'Pincodes (comma separated)', 'ship_minutes': 'Ships within how many minutes'};
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -775,7 +775,7 @@ class _HandoffScreenState extends State<HandoffScreen> {
           ]),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Rehne do')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Keep it')),
           FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Save')),
         ],
       ),
@@ -794,11 +794,11 @@ class _HandoffScreenState extends State<HandoffScreen> {
     return [
       Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('Bahar ke AI agents (A2A 1.0)', style: TextStyle(fontWeight: FontWeight.w800)),
-          _say('Doosre platforms ke AI agents sirf aapke public business counter tak aate hain. Har jawab, quote aur order aapke tap se.'),
+          const Text('Outside AI agents (A2A 1.0)', style: TextStyle(fontWeight: FontWeight.w800)),
+          _say('AI agents from other platforms reach only your public business counter. Every reply, quote and order needs your tap.'),
           const SizedBox(height: 6),
           Wrap(spacing: 6, children: [
-            for (final e in const {'off': 'Band', 'questions': 'Sirf sawaal', 'orders': 'Sawaal + order list'}.entries)
+            for (final e in const {'off': 'Band', 'questions': 'Question only', 'orders': 'Question + order list'}.entries)
               ChoiceChip(
                   label: Text(e.value),
                   selected: mode == e.key,
@@ -811,12 +811,12 @@ class _HandoffScreenState extends State<HandoffScreen> {
           InkWell(
             onTap: () {
               Clipboard.setData(ClipboardData(text: _s(_a2a['card'])));
-              _snack(context, 'Agent card ka pata copy hua');
+              _snack(context, 'Agent card address copied');
             },
             child: _say('Agent card: ${_s(_a2a['card'])}  (copy)', color: C.faint),
           ),
           const SizedBox(height: 8),
-          GlassButton(label: 'Kisi agent ko message', icon: Icons.add_comment_rounded, onTap: _newOut),
+          GlassButton(label: 'Message to an agent', icon: Icons.add_comment_rounded, onTap: _newOut),
         ]),
       ),
       for (final t in _l(_a2a['tasks'])) A2ATaskCard(key: ValueKey('at${t['id']}${t['updated_at']}'), v: {'task': t}, app: app, onChanged: _load),
@@ -830,15 +830,15 @@ class _HandoffScreenState extends State<HandoffScreen> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Bahar ke agent ko'),
+        title: const Text('To an outside agent'),
         content: Column(mainAxisSize: MainAxisSize.min, children: [
-          TextField(controller: url, decoration: const InputDecoration(labelText: 'Unki website / agent card (https://...)')),
-          TextField(controller: text, minLines: 2, maxLines: 5, decoration: const InputDecoration(labelText: 'Kya poochhna hai')),
-          _say('Phone number, pata, ID ya OTP mat likhiye.', color: C.faint),
+          TextField(controller: url, decoration: const InputDecoration(labelText: 'Their website / agent card (https://...)')),
+          TextField(controller: text, minLines: 2, maxLines: 5, decoration: const InputDecoration(labelText: 'What to ask')),
+          _say('Do not write phone numbers, addresses, IDs or OTPs.', color: C.faint),
         ]),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Rehne do')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Taiyaar karo')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Keep it')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Get ready')),
         ],
       ),
     );

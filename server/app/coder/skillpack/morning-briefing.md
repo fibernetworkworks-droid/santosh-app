@@ -1,6 +1,7 @@
 ---
 name: morning-briefing
 description: Compose the morning briefing: weather, reminders, lists
+when_to_use: morning briefing, good morning summary, aaj ka plan, daily summary, subah ki report
 ---
 GOAL: one short message that starts her day right.
 

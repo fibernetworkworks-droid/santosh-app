@@ -265,6 +265,16 @@ class BaseChatModel(_SerializableBase, Runnable[Any, AIMessage]):
     def _identifying_params(self) -> dict[str, Any]:
         return {}
 
+    def standard_params(self, *, model: str | None = None) -> dict[str, Any]:
+        """The trace row (P7: the upstream _get_ls_params shape) - which
+        provider, which model. Subclasses that read a per-call `model` kwarg
+        override this to honor it, so traces never misattribute a call."""
+        return {
+            "ls_provider": type(self).__name__,
+            "ls_model_name": model or self._llm_type,
+            "ls_model_type": "chat",
+        }
+
     def _llm_string(self) -> str:
         return f"{type(self).__name__}:{self._llm_type}:{sorted(self._identifying_params.items())}"
 

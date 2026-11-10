@@ -189,7 +189,7 @@ def test_reply_edit_upload_need_the_tap(bz, yt):  # noqa: F811
     run("youtube_reply", {"comment_id": "c1", "text": "Namaste Ramesh ji, price Rs 999 hai."}, ctx)
     assert not any(p[0] == "/comments" for p in yt.posted)
     card = _events(bz["conv"], "bazar_approval")[-1]
-    assert card["title"] == "Comment ka jawab post karein?" and "Price kya hai?" in json.dumps(card)
+    assert card["title"] == "Post the comment reply?" and "Price kya hai?" in json.dumps(card)
     bz["svc"].decide("default", card["id"], "approve")
     assert yt.posted[-1] == ("/comments", {"snippet": {"parentId": "c1", "textOriginal": "Namaste Ramesh ji, price Rs 999 hai."}})
     with pytest.raises(ToolError, match="aapke channel ka nahi"):

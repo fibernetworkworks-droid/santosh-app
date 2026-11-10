@@ -101,6 +101,8 @@ def tokens(style: str, palette: str, brand: dict[str, str] | None = None, overri
         return out
     primary_text, accent_text = text_safe(pal["primary"]), text_safe(pal["accent"])
     fonts = T.FONTS.get(st["fonts"]) or T.FONTS["poppins_mukta"]
+    if (overrides or {}).get("fonts") in T.FONTS:     # v0.567 her design's type, mapped to a pair Hoola ships
+        fonts = T.FONTS[overrides["fonts"]]
     radius = int((overrides or {}).get("radius", st["radius"]) or 0)
     return {"style": style, "palette": palette, "bg": pal["bg"], "surface": pal["surface"], "ink": pal["ink"],
             "muted": muted, "line": line, "primary": pal["primary"], "on_primary": on_p, "accent": pal["accent"],
@@ -282,14 +284,14 @@ def make_photo(data: bytes, max_px: int = 2400) -> tuple[bytes, tuple[int, int]]
     return buf.getvalue(), im.size
 
 
-def photo_set(src: Path, name: str, dest: Path) -> dict[str, Any]:
+def photo_set(src: Path, name: str, dest: Path, widths: tuple[int, ...] = WIDTHS) -> dict[str, Any]:
     from PIL import Image, features
     dest.mkdir(parents=True, exist_ok=True)
     im = Image.open(src).convert("RGB")
     w0, h0 = im.size
     made = []
     avif = features.check("avif")
-    for w in WIDTHS:
+    for w in widths:
         if w > w0 and made:
             break
         ww = min(w, w0)
@@ -306,11 +308,14 @@ def photo_set(src: Path, name: str, dest: Path) -> dict[str, Any]:
     return {"name": name, "w": w0, "h": h0, "sizes": made, "avif": avif}
 
 
-def picture(meta: dict[str, Any], alt: str, rel: str, eager: bool = False, cls: str = "", extra: str = "") -> str:
+def picture(meta: dict[str, Any], alt: str, rel: str, eager: bool = False, cls: str = "", extra: str = "",
+            sizes: str = "(min-width:1100px) 50vw, 100vw") -> str:
     name = meta["name"]
+    size_attr = sizes
     sizes = meta.get("sizes") or []
     if not sizes:
         return ""
+    sz = esc(size_attr)
 
     def srcset(ext: str) -> str:
         return ", ".join(f"{rel}assets/img/{name}-{w}.{ext} {ww}w" for w, ww, _h in sizes)
@@ -318,11 +323,11 @@ def picture(meta: dict[str, Any], alt: str, rel: str, eager: bool = False, cls: 
     load = 'loading="eager" fetchpriority="high"' if eager else 'loading="lazy"'
     srcs = ""
     if meta.get("avif"):
-        srcs += f'<source type="image/avif" srcset="{srcset("avif")}" sizes="(min-width:1100px) 50vw, 100vw">'
-    srcs += f'<source type="image/webp" srcset="{srcset("webp")}" sizes="(min-width:1100px) 50vw, 100vw">'
+        srcs += f'<source type="image/avif" srcset="{srcset("avif")}" sizes="{sz}">'
+    srcs += f'<source type="image/webp" srcset="{srcset("webp")}" sizes="{sz}">'
     c = f' class="{esc(cls)}"' if cls else ""
     return (f'<picture>{srcs}<img src="{rel}assets/img/{name}-{w}.jpg" srcset="{srcset("jpg")}" '
-            f'sizes="(min-width:1100px) 50vw, 100vw" width="{ww}" height="{hh}" alt="{esc(alt)}" {load} decoding="async"{c}{extra}></picture>')
+            f'sizes="{sz}" width="{ww}" height="{hh}" alt="{esc(alt)}" {load} decoding="async"{c}{extra}></picture>')
 
 
 def expand_images(html: str, photos: dict[str, dict[str, Any]], rel: str, first_eager: bool) -> tuple[str, list[str]]:
@@ -504,10 +509,22 @@ def buy_button(slug: str, title: str) -> str:
             f'aria-label="Add {esc(title)} to cart">Add to cart</button>')
 
 
+SHOP_GRID_MAX = 60
+
+
 def shop_grid(site: dict[str, Any], rel: str, photos: dict[str, dict[str, Any]]) -> str:
     items = (site.get("shop") or {}).get("products") or []
     if not items:
         return '<p class="muted">Products jald aa rahe hain.</p>'
+    lists = [c for c in site.get("catalog") or [] if c.get("items")]
+    if lists:                                    # v0.538 a big catalogue: its products are on their own list pages
+        own = {f'{c["key"]}/' for c in lists}
+        items = [p for p in items if not any(p["slug"].startswith(k) for k in own)]
+    more = ""
+    if len(items) > SHOP_GRID_MAX or lists:
+        more = '<ul class="hs-cat-lists">' + "".join(
+            f'<li><a class="btn btn-ghost" href="{rel}{esc(c["key"])}/">{esc(c["label"])} ({len(c["items"])})</a></li>' for c in lists) + "</ul>"
+        items = items[:SHOP_GRID_MAX]
     cards = []
     for p in items:
         img = picture(photos[p["photo"]], p["title"], rel) if p.get("photo") in photos else ""
@@ -516,7 +533,7 @@ def shop_grid(site: dict[str, Any], rel: str, photos: dict[str, dict[str, Any]])
                      f'<p class="hs-price"><span data-hoola-price>{esc(p["price_text"])}</span>{unit}</p>'
                      + (buy_button(p["slug"], p["title"]) if p.get("in_stock") else '<p class="muted">Abhi stock mein nahi</p>')
                      + '</li>')
-    return f'<ul class="hs-prods">{"".join(cards)}</ul>'
+    return more + f'<ul class="hs-prods">{"".join(cards)}</ul>'
 
 
 def shop_page(site: dict[str, Any], rel: str, photos: dict[str, dict[str, Any]]) -> str:
@@ -526,9 +543,17 @@ def shop_page(site: dict[str, Any], rel: str, photos: dict[str, dict[str, Any]])
 
 def buy_box(site: dict[str, Any], slug: str) -> str:
     """On a product's own page (a list item that is also a product): its price + Add to cart."""
-    p = next((x for x in (site.get("shop") or {}).get("products") or [] if x["slug"] == slug), None)
+    shop = site.get("shop") or {}
+    idx = shop.get("_by_slug")
+    if idx is None:                                  # v0.538 one dict per build (10,000 product pages, not 10,000 scans)
+        idx = shop["_by_slug"] = {x["slug"]: x for x in shop.get("products") or []} if shop else {}
+    p = idx.get(slug)
     if not p:
         return ""
+    return buy_box_of(p)
+
+
+def buy_box_of(p: dict[str, Any]) -> str:
     unit = f' <small>/ {esc(p["unit"])}</small>' if p.get("unit") else ""
     act = buy_button(p["slug"], p["title"]) if p.get("in_stock") else '<p class="muted">Abhi stock mein nahi</p>'
     return (f'<section class="hs hs-buybox" aria-label="Buy {esc(p["title"])}"><div class="wrap">'
@@ -641,12 +666,24 @@ def footer(site: dict[str, Any], plan: dict[str, Any], rel: str) -> str:
         contact.append(f'<li>{esc(f["hours"])}</li>')
     regs = [f"{k.upper()}: {esc(v)}" for k, v in (f.get("registrations") or {}).items() if v]
     return (f'<footer class="hs-foot"><div class="wrap"><div class="grid g3">'
-            f'<div><h3>{esc(f.get("name") or "")}</h3><p>{esc(f.get("tagline") or "")}</p></div>'
-            f'<div><h3>Links</h3><ul>{quick}</ul></div><div><h3>Contact</h3><ul>{"".join(contact)}</ul></div></div>'
+            f'<div><h2>{esc(f.get("name") or "")}</h2><p>{esc(f.get("tagline") or "")}</p></div>'   # v0.606 h2: no level skip
+            f'<div><h2>Links</h2><ul>{quick}</ul></div><div><h2>Contact</h2><ul>{"".join(contact)}</ul></div></div>'
             f'<div class="hs-legal"><span>© <span data-year>2026</span> {esc(f.get("name") or "")}'
             f'{" · " + " · ".join(regs) if regs else ""}</span><span>{legal}</span></div>'
             + ('<p class="hs-ai-note">Is website ki kuch tasveeren AI se banayi gayi hain. / Some pictures on this site are '
-               'AI-generated.</p>' if site.get("ai_photos") else "") + '</div></footer>')
+               'AI-generated.</p>' if site.get("ai_photos") else "") + photo_credits(site) + '</div></footer>')
+
+
+def photo_credits(site: dict[str, Any]) -> str:
+    """v0.617 the Pexels API guidelines: 'a prominent link to Pexels' wherever its photos come through the API, and the
+    photographers credited with a link to the photo page when possible. Empty when the site has no Pexels photo."""
+    cr = [c for c in (site.get("photo_credits") or []) if isinstance(c, dict) and c.get("name")]
+    if not cr:
+        return ""
+    names = ", ".join(f'<a href="{esc(c["url"])}" rel="noopener">{esc(c["name"])}</a>'
+                      if str(c.get("url") or "").startswith("https://www.pexels.com/") else esc(c["name"]) for c in cr[:40])
+    return (f'<p class="hs-credits">Photos provided by <a href="https://www.pexels.com" rel="noopener">Pexels</a>. '
+            f'Photographers: {names}.</p>')
 
 
 def floats(site: dict[str, Any]) -> str:
@@ -710,6 +747,7 @@ def page_html(site: dict[str, Any], plan: dict[str, Any], page: dict[str, Any], 
             f'<meta property="og:type" content="website"><meta property="og:image" content="{rel}assets/og.jpg">',
             '<meta name="twitter:card" content="summary_large_image">',
             '<meta name="generator" content="Hoola">']
+    canon = page.get("canonical") or canon          # v0.538 a duplicate catalogue page points at the original
     if canon:
         meta.append(f'<link rel="canonical" href="{esc(canon)}">')
     root_base = (site.get("root_base") if site.get("root_base") is not None else base_url) or ""
@@ -725,6 +763,10 @@ def page_html(site: dict[str, Any], plan: dict[str, Any], page: dict[str, Any], 
         meta = [m.replace('content="website"', f'content="{esc(page["og_type"])}"') for m in meta]
     if site.get("noindex") or page["slug"] in ("admin", "account"):
         meta.append('<meta name="robots" content="noindex">')
+    elif page.get("robots"):                         # v0.538 a thin / duplicate catalogue page: shown, not indexed
+        meta.append(f'<meta name="robots" content="{esc(page["robots"])}">')
+    if site.get("ops_api") and not site.get("edit"):   # v0.564 where her visitors' errors + timings go (never on Edit)
+        meta.append(f'<meta name="hoola-ops" content="{esc(site["ops_api"])}">')
     if site.get("app_api"):                      # v0.305 where the app script talks to (Hoola's API, never the site host)
         meta.append(f'<meta name="hoola-app" content="{esc(site["app_api"])}" data-lang="{esc(site.get("language") or "en")}" '
                     f'data-privacy="{rel}privacy/">')
@@ -755,14 +797,69 @@ def page_html(site: dict[str, Any], plan: dict[str, Any], page: dict[str, Any], 
                       "item": base_url.rstrip("/") + "/" + ("" if sg == "home" else sg + "/")} for i, (t, sg) in enumerate(trail)]
             ld += ('<script type="application/ld+json">' + json.dumps({"@context": "https://schema.org", "@type": "BreadcrumbList",
                                                                        "itemListElement": items}, ensure_ascii=False).replace("</", "<\\/") + '</script>')
-    return (f'<!doctype html><html lang="{lang}"{dir_}><head>{"".join(meta)}{links}{ld}</head>'
+    return samples((f'<!doctype html><html lang="{lang}"{dir_}><head>{"".join(meta)}{links}{ld}</head>'
             f'<body class="look-{esc(site["tokens"]["style"])}">{header(site, plan, page["slug"], rel, logo)}{notice}'
             f'<main id="main">{crumb}{body}</main>{footer(site, plan, rel)}{floats(site)}'
-            f'<script src="{rel}assets/hoola-site.js" defer></script><script src="{rel}assets/site.js" defer></script>'
+            + (f'<script src="{rel}assets/vendor/lottie_light.min.js" defer></script>'
+               if 'data-hoola-lottie="' in body and "data-src=" in body else "")                                  # v0.566
+            + f'<script src="{rel}assets/hoola-site.js" defer></script><script src="{rel}assets/site.js" defer></script>'
             + (f'<script src="{rel}assets/hoola-chart.js" defer></script>' if uses_charts(body) else "")   # v0.357
             + (f'<script src="{rel}assets/hoola-app.js" defer></script>' if site.get("app_api") else "")
             + (f'<script src="{rel}assets/hoola-shop.js" defer></script>' if shop.get("api") else "")
-            + '</body></html>')
+            + (f'<script src="{rel}assets/hoola-catalog.js" defer></script>' if "data-hoola-catalog=" in body else "")   # v0.538
+            + (f'<script type="module" src="{rel}assets/vendor/three-hero.js"></script>' if "data-hoola-3d=" in body else "")   # v0.566
+            + ('<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>'
+               if 'class="cf-turnstile"' in body else "")                                                       # v0.551
+            + '</body></html>'), f)
+
+
+# ---------------------------------------------------------------- v0.671 sample values in the preview
+# A blank the model could not fill (her phone, a price, a review) shows a believable SAMPLE in the preview - like
+# Lovable's filled-in demo - instead of a yellow [phone]. It stays a blank underneath (class "blank eg"), so the launch
+# check still counts it and nothing goes live until her real value replaces it; filling a blank writes the real fact.
+_EG_BLANK = re.compile(r'<em\b([^>]*\bclass="blank"[^>]*)>\[([^\]<]{1,60})\]</em>')
+_EG_ATTR = re.compile(r'\bdata-eg="([^"]{1,80})"')
+
+
+def sample_for(label: str, f: dict[str, Any]) -> str:
+    low = re.sub(r"[^a-z0-9 /-]+", "", label.lower()).strip()
+    city = str(f.get("city") or "").strip()
+    nm = str(f.get("name") or "").strip()
+    slug = re.sub(r"[^a-z0-9]+", "", nm.lower())[:20] or "yourshop"
+    table = (
+        (("whatsapp", "phone", "mobile", "number", "call", "contact", "contact number"), "98765 43210"),
+        (("email", "e-mail", "mail", "email id", "email address"), f"hello@{slug}.in"),
+        (("email / phone", "phone / email"), f"hello@{slug}.in / 98765 43210"),
+        (("address", "full address", "shop address", "pata", "location"), f"12 Main Road, {city or 'Station Road'}"),
+        (("hours", "timings", "timing", "opening hours", "time", "samay"), "10 am - 9 pm, Mon - Sat"),
+        (("price", "daam", "rate", "fees", "fee", "cost", "amount"), "₹299"),
+        (("city", "shahar", "town", "area"), city or "Your city"),
+        (("name", "business name", "shop name", "brand name"), nm or "Your business"),
+        (("rating",), "4.8 out of 5"),
+        (("year", "since", "established"), "2015"),
+    )
+    for words, val in table:
+        if low in words:
+            return val
+    for words, val in table:
+        if any(w in low.split() for w in words):
+            return val
+    return ""
+
+
+def samples(html: str, f: dict[str, Any]) -> str:
+    if 'class="blank"' not in html:
+        return html
+
+    def one(m):
+        eg = _EG_ATTR.search(m.group(1))
+        val = (eg.group(1) if eg else "") or esc(sample_for(m.group(2), f))
+        if not val:
+            return m.group(0)
+        lab = esc(m.group(2))
+        return (f'<em class="blank eg" data-blank="{lab}" title="Sample - give your real {lab} and Hoola puts it here '
+                f'before the site goes live">{val}</em>')
+    return _EG_BLANK.sub(one, html)
 
 
 # ---------------------------------------------------------------- legal pages (code only)
@@ -905,6 +1002,8 @@ def blog_post(site: dict[str, Any], idx: int, rel: str, pic, base_url: str, phot
 def assemble(site: dict[str, Any], plan: dict[str, Any], sections: dict[str, dict[str, Any]], photos: dict[str, dict],
              out: Path, base_url: str = "", form_endpoint: str = "") -> dict[str, Any]:
     """sections: key 'page__type' -> {html, css, js} (already sanitised). Writes the site; returns {files, bytes, problems}."""
+    if form_endpoint and "/api/site-forms/" in form_endpoint:   # v0.564 the beacon goes where her forms already post
+        site.setdefault("ops_api", form_endpoint.replace("/api/site-forms/", "/api/site-ops/").rstrip("/") + "/beacon")
     if out.exists():
         shutil.rmtree(out)
     (out / "assets" / "img").mkdir(parents=True)
@@ -927,6 +1026,14 @@ def assemble(site: dict[str, Any], plan: dict[str, Any], sections: dict[str, dic
     if site.get("app_api"):
         shutil.copy(ASSETS / "hoola-app.js", out / "assets" / "hoola-app.js")
         shutil.copy(ASSETS / "hoola-push-sw.js", out / "assets" / "hoola-push-sw.js")   # v0.459 browser notifications (her yes)
+    from . import catalog as CAT                    # v0.538 BADA CATALOGUE: her imported lists, pages made by code
+    cats = site["catalog"] if site.get("catalog") is not None else (CAT.load(site.get("site_id") or "") if not site.get("edit") else [])
+    cats = [c for c in cats if c.get("items")]
+    site = {**site, "catalog": cats}
+    if cats:
+        keys = {c["key"] for c in cats}
+        plan = {**plan, "collections": [c for c in plan.get("collections") or [] if c.get("key") not in keys]}
+        shutil.copy(ASSETS / "hoola-catalog.js", out / "assets" / "hoola-catalog.js")
     plan = with_app_pages(site, plan)
     plan = with_shop_pages(site, plan)            # v0.351
     plan, blog_extra = with_blog_pages(site, plan)   # v0.366
@@ -977,6 +1084,9 @@ def assemble(site: dict[str, Any], plan: dict[str, Any], sections: dict[str, dic
     cols = {c["key"]: c for c in SM.collections(plan)}
     tpls = {p["slug"]: p for p in plan.get("pages", []) if p.get("template_of")}
 
+    from . import lottie as LT                   # v0.568 animations (built-ins + hers) and the 3D hero
+    rich: dict[str, Any] = {"lottie": set(), "three": False, "avail": set(LT.BUILTINS) | set(LT.hers(src_root))}
+
     def render(slug: str, secs: list[dict[str, Any]], rel: str, key_slug: str = "", item: dict[str, Any] | None = None,
                fields: list[dict[str, Any]] | None = None) -> str:
         """The page body from its sections (v0.315: an item page = its collection's template, filled with the item)."""
@@ -984,7 +1094,11 @@ def assemble(site: dict[str, Any], plan: dict[str, Any], sections: dict[str, dic
         for i, s in enumerate(secs):
             key = f"{key_slug or slug}__{s['type']}"
             sec = sections.get(key)
+            slot = (site.get("slot_prefix") or "") + key
             if not sec:
+                if site.get("building") and item is None:     # v0.664 ASLI SAMAY: where this section will grow
+                    parts.append(f'<div class="hb-slot hb-wait" data-slot="{esc(slot)}" data-type="{esc(s["type"])}">'
+                                 f'<div class="hb-ph"><span>{esc(s["type"].replace("_", " ").title())}</span></div></div>')
                 continue
             h = sec["html"]
             if item is not None:
@@ -996,6 +1110,12 @@ def assemble(site: dict[str, Any], plan: dict[str, Any], sections: dict[str, dic
             h, mmiss = MD.expand(h, src_root, out, rel)
             if mmiss:
                 problems.append(f"{key}: file not found: {', '.join(mmiss)}")
+            if "data-hoola-lottie" in h:         # v0.568 an animation by name -> the file this page loads
+                h, lused, lprob0 = LT.expand(h, rel, rich["avail"])
+                rich["lottie"] |= lused
+                problems.extend(f"{key}: {x}" for x in lprob0)
+            if "data-hoola-3d=" in h:
+                rich["three"] = True
             if "data-hoola-posts" in h:          # v0.366 the latest posts as cards
                 from . import blog as BL
                 h = BL.latest_cards(h, site.get("blog") or [], rel, lambda n: pic(n).replace("__REL__", rel),
@@ -1013,6 +1133,9 @@ def assemble(site: dict[str, Any], plan: dict[str, Any], sections: dict[str, dic
                 h = strip(h)
             if form_endpoint:          # every enquiry form that has no endpoint yet (v0.301: a booking form may sit beside it)
                 h = re.sub(r'data-hoola-form(?![^>]*data-endpoint)', f'data-hoola-form data-endpoint="{esc(form_endpoint)}"', h)
+            h = guard_forms(h)                   # v0.551 every enquiry form: the hidden honeypot (+ Turnstile when on)
+            if site.get("building") and item is None:
+                h = f'<div class="hb-slot" data-slot="{esc(slot)}" data-type="{esc(s["type"])}">{h}</div>'
             parts.append(h)
         return "\n".join(parts)
 
@@ -1050,10 +1173,26 @@ def assemble(site: dict[str, Any], plan: dict[str, Any], sections: dict[str, dic
             body = render(slug, page.get("sections", []), rel)
             if big and page.get("collection") in cols:     # the listing of its items, made by code
                 body += "\n" + SM.grid(cols[page["collection"]], rel)
+            cat_here = next((c for c in cats if c["key"] == slug), None)
+            if cat_here is not None:                 # v0.538 her designed page for an imported list carries its page 1
+                body += "\n" + CAT.listing(cat_here, 1, rel)
         dest = out / page_path(slug)
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_text(page_html(site, plan, page, body, rel, logo, base_url), encoding="utf-8")
         files += 1
+    cat_res: dict[str, Any] = {"pages": 0, "urls": [], "noindex": 0}
+    if cats:                                     # v0.538 every catalogue page: listings, items, the filter index
+        designed = {p["slug"] for p in plan.get("pages", []) if not p.get("template_of")}
+
+        def tpl_body(c: dict[str, Any], it: dict[str, Any], rel: str) -> str:
+            t = tpls.get(SM.template_slug(c["key"]))
+            if not t:
+                return ""
+            return render(f'{c["key"]}/{it["slug"]}', t.get("sections", []), rel, t["slug"],
+                          {"title": it["title"], "data": {k: str(v) for k, v in it["data"].items()}}, c["fields"])
+        cat_res = CAT.write(out, site, plan, cats, lambda pg, b, rel: page_html(site, plan, pg, b, rel, logo, base_url),
+                            base_url, designed, tpl_body)
+        files += cat_res["pages"]
     (out / "assets" / "site.css").write_text(_min_css("\n".join(css_all)), encoding="utf-8")
     (out / "assets" / "site.js").write_text("\n".join(js_all) or "/* no section scripts */", encoding="utf-8")
     (out / "404.html").write_text(page_html(site, plan, {"slug": "home", "title": "Not found"},
@@ -1068,7 +1207,12 @@ def assemble(site: dict[str, Any], plan: dict[str, Any], sections: dict[str, dic
     urls = [(base_url.rstrip("/") + "/" + ("" if p["slug"] == "home" else p["slug"] + "/")) for p in every]
     if big:                                  # v0.315 the site search reads this (titles, addresses, one line each)
         (out / "assets" / "search.json").write_text(json.dumps(SM.search_entries(plan), ensure_ascii=False), encoding="utf-8")
-    if base_url:
+    if base_url and cats:                    # v0.538 a sitemap index + one file per list (each under 45,000 addresses)
+        by_coll: dict[str, list[tuple[str, str]]] = {}
+        for u, lm in cat_res["urls"]:
+            by_coll.setdefault(u[len(base_url.rstrip("/")) + 1:].split("/")[0], []).append((u, lm))
+        CAT.sitemaps(out, base_url, urls, by_coll)
+    elif base_url:
         (out / "sitemap.xml").write_text('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/'
                                          'sitemap/0.9">' + "".join(f"<url><loc>{esc(u)}</loc></url>" for u in urls) + "</urlset>")
     robots = "User-agent: *\n" + ("Disallow: /\n" if site.get("noindex") else "Allow: /\n")
@@ -1078,14 +1222,58 @@ def assemble(site: dict[str, Any], plan: dict[str, Any], sections: dict[str, dic
     (out / "_headers").write_text("/*\n  " + "\n  ".join(f"{k}: {v}" for k, v in security_headers(form_endpoint).items()) + "\n")
     for alt in alts:                         # v0.301 / v0.366 each extra language under /<lang>/, one menu to all of them
         sub = {**site, "language": alt["lang"], "alt": None, "alts": [], "src_root": str(src_root), "root_up": "../",
+               "catalog": [], "_sub": True,                  # v0.538 her imported lists stay in her first language
                "blog": alt.get("blog") if alt.get("blog") is not None else (site.get("blog") or [])}
         res = assemble(sub, alt["plan"], alt["sections"], dict(photos), out / alt["lang"],
                        (base_url.rstrip("/") + "/" + alt["lang"]) if base_url else "", form_endpoint)
         problems += [f'{alt["lang"]}: {x}' for x in res["problems"]]
         files += res["pages"]
-    total = sum(p.stat().st_size for p in out.rglob("*") if p.is_file())
-    return {"files": sum(1 for p in out.rglob("*") if p.is_file()), "pages": files, "bytes": total, "problems": problems,
-            "photos": photos}
+    if rich["lottie"]:                       # v0.568 only the animations used, and the player only when one is
+        LT.write(out, rich["lottie"], src_root)
+        (out / "assets" / "vendor").mkdir(parents=True, exist_ok=True)
+        shutil.copy(ASSETS / "vendor" / "lottie_light.min.js", out / "assets" / "vendor" / "lottie_light.min.js")
+    if rich["three"]:
+        (out / "assets" / "vendor").mkdir(parents=True, exist_ok=True)
+        shutil.copy(ASSETS / "vendor" / "three-hero.js", out / "assets" / "vendor" / "three-hero.js")
+    if not site.get("_sub") and not site.get("edit"):   # v0.538 W10: every text file also pre-compressed (nginx gzip_static)
+        from . import speed as SPD
+        SPD.precompress(out)
+    total = sum(p.stat().st_size for p in out.rglob("*") if p.is_file() and p.suffix != ".gz")
+    return {"files": sum(1 for p in out.rglob("*") if p.is_file() and p.suffix != ".gz"), "pages": files, "bytes": total,
+            "problems": problems, "photos": photos, "catalog": {"pages": cat_res["pages"], "noindex": cat_res["noindex"]}}
+
+
+HP = '<input class="hp" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">'
+FORM_OPEN = re.compile(r"<form\b[^>]*data-hoola-form[^>]*>(?P<body>.*?)</form>", re.S | re.I)
+
+
+def turnstile_key() -> str:
+    """v0.551 Cloudflare Turnstile's SITE key (public) when the server has BOTH keys; '' = off."""
+    from . import gates as G
+    if not G.turnstile_on():
+        return ""
+    from ..config import get_settings
+    return str(getattr(get_settings(), "site_turnstile_site", "") or "")
+
+
+def guard_forms(h: str) -> str:
+    """v0.551 every data-hoola-form gets the hidden honeypot it lacks, and the Turnstile box when the server has the keys
+    (the visitor's browser adds `cf-turnstile-response`; the server checks it with Cloudflare before saving the enquiry)."""
+    key = turnstile_key()
+
+    def one(m: re.Match) -> str:
+        block = m.group(0)
+        head_end = block.index(">") + 1
+        head, body = block[:head_end], block[head_end:]
+        if not re.search(r"""name\s*=\s*["']website["']""", body):
+            body = HP + body
+        if key and "cf-turnstile" not in body:
+            body = re.sub(r"(<button\b[^>]*type\s*=\s*[\"']submit[\"'])",
+                          f'<div class="cf-turnstile" data-sitekey="{esc(key)}"></div>\\1', body, count=1) \
+                if re.search(r"<button\b[^>]*type\s*=\s*[\"']submit", body) else \
+                body.replace("</form>", f'<div class="cf-turnstile" data-sitekey="{esc(key)}"></div></form>')
+        return head + body
+    return FORM_OPEN.sub(one, h)
 
 
 def security_headers(form_endpoint: str = "") -> dict[str, str]:
@@ -1093,9 +1281,11 @@ def security_headers(form_endpoint: str = "") -> dict[str, str]:
     m = re.match(r"https?://[^/]+", form_endpoint or "")
     if m:
         connect += " " + m.group(0)
-    return {"Content-Security-Policy": ("default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; "
-                                        f"script-src 'self'; font-src 'self'; connect-src {connect}; frame-ancestors 'self'; "
-                                        "frame-src https://www.google.com https://maps.google.com https://www.youtube-nocookie.com; "
+    ts = " https://challenges.cloudflare.com" if turnstile_key() else ""     # v0.551 Turnstile only when it is on
+    return {"Content-Security-Policy": ("default-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; "   # v0.581 app photos / lesson videos arrive as blob: (fetched with her login)
+                                        "style-src 'self' 'unsafe-inline'; "
+                                        f"script-src 'self'{ts}; font-src 'self'; connect-src {connect}; frame-ancestors 'self'; "
+                                        f"frame-src https://www.google.com https://maps.google.com https://www.youtube-nocookie.com{ts}; "
                                         "base-uri 'self'; form-action 'self'; object-src 'none'"),
             "X-Content-Type-Options": "nosniff", "Referrer-Policy": "strict-origin-when-cross-origin",
             "Permissions-Policy": "camera=(), microphone=(), geolocation=()", "X-Frame-Options": "SAMEORIGIN"}
@@ -1112,7 +1302,7 @@ def export_zip(out: Path) -> bytes:
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
         for p in sorted(out.rglob("*")):
-            if p.is_file():
+            if p.is_file() and p.suffix != ".gz":            # v0.538 the .gz twins are for nginx, not her ZIP
                 z.write(p, p.relative_to(out).as_posix())
     return buf.getvalue()
 

@@ -132,12 +132,12 @@ def test_phone_soch_card_wiring():
     assert "case 'think':" in st and "void _onThink" in st and "void _thinkFold" in st
     assert "snap?['think']" in st                          # a reload mid-thought reopens the card
     card = (ROOT / "lib/ui/think_card.dart").read_text()
-    assert "Soch raha hoon" in card and "ne socha" in card
+    assert "Thinking" in card and "thought" in card
     chat = (ROOT / "lib/ui/chat_screen.dart").read_text()
     assert "ThinkCard(" in chat and "import 'think_card.dart';" in chat
 
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.530.0"
-    assert "0.530.0+553" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.758.0"
+    assert "0.758.0+757" in (ROOT / "pubspec.yaml").read_text()

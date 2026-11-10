@@ -218,6 +218,18 @@ class CallbackManager:
     def tool_error(self, name: str, run_id: str, error: str) -> None:
         self._fire("on_tool_error", name, run_id, error)
 
+    # the retriever fire surface (P6: RUN_TYPES pre-declared the run type in P2;
+    # the chain fallback below stays untouched for every other type)
+    def retriever_start(self, name: str, run_id: str, query: Any) -> None:
+        self._fire("on_retriever_start", name, run_id, self.parent_run_id, query,
+                   self.tags, self.metadata)
+
+    def retriever_end(self, name: str, run_id: str, documents: Any) -> None:
+        self._fire("on_retriever_end", name, run_id, documents)
+
+    def retriever_error(self, name: str, run_id: str, error: str) -> None:
+        self._fire("on_retriever_error", name, run_id, error)
+
     def text(self, text: str, run_id: str) -> None:
         self._fire("on_text", text, run_id)
 
@@ -270,6 +282,8 @@ class Span:
             mgr.chat_model_start(name, run_id, inputs)
         elif run_type == "tool":
             mgr.tool_start(name, run_id, inputs)
+        elif run_type == "retriever":
+            mgr.retriever_start(name, run_id, inputs)
         else:
             mgr.chain_start(name, run_id, inputs)
         return cls(run_id, name, run_type, mgr, child_cfg)
@@ -287,6 +301,8 @@ class Span:
             self.mgr.llm_end(self.name, self.run_id, output)
         elif self.run_type == "tool":
             self.mgr.tool_end(self.name, self.run_id, output)
+        elif self.run_type == "retriever":
+            self.mgr.retriever_end(self.name, self.run_id, output)
         else:
             self.mgr.chain_end(self.name, self.run_id, output)
 
@@ -296,6 +312,8 @@ class Span:
             self.mgr.llm_error(self.name, self.run_id, text)
         elif self.run_type == "tool":
             self.mgr.tool_error(self.name, self.run_id, text)
+        elif self.run_type == "retriever":
+            self.mgr.retriever_error(self.name, self.run_id, text)
         else:
             self.mgr.chain_error(self.name, self.run_id, text)
 
@@ -422,6 +440,16 @@ class RunTreeTracer(BaseCallbackHandler):
         self._finish(run_id, outputs=output)
 
     def on_tool_error(self, name, run_id, error) -> None:
+        self._finish(run_id, error=error)
+
+    # -- retriever (P6)
+    def on_retriever_start(self, name, run_id, parent_run_id, query, tags, metadata) -> None:
+        self._make(name, "retriever", run_id, parent_run_id, query, tags, metadata)
+
+    def on_retriever_end(self, name, run_id, documents) -> None:
+        self._finish(run_id, outputs=documents)
+
+    def on_retriever_error(self, name, run_id, error) -> None:
         self._finish(run_id, error=error)
 
     # -- reads

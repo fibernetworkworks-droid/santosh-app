@@ -20,16 +20,19 @@ from .tools import Ctx, ToolError
 ATTACH_SCHEMA = {"type": "array", "description": (
     "Files to attach. Each item is ONE of: {email_id, attachment_id} (a file from a received email, ids from "
     "email_read), {file_id} (a file from the user's PC via pc_send_to_phone, or one the user added), "
-    "{drive_file_id} (a file from the user's Google Drive), {artifact_id} (a Santosh page)."),
+    "{drive_file_id} (a file from the user's Google Drive: the id drive_find gives, a Drive link or the file name; a "
+    "Google Doc / Sheet / Slides goes as .docx / .xlsx / .pptx, or set format: pdf), {artifact_id} (a Santosh page). "
+    "The draft keeps its own copy of each file, so a later or scheduled send still has it."),
     "items": {"type": "object", "properties": {"email_id": {"type": "string"}, "attachment_id": {"type": "string"},
                                                "file_id": {"type": "string"}, "drive_file_id": {"type": "string"},
+                                               "format": {"type": "string", "enum": ["pdf", "docx", "xlsx", "pptx", "csv"]},
                                                "artifact_id": {"type": "string"}}}}
 
 EMAIL_TOOLS = [
     {"name": "email_check", "description": (
         "List emails (newest first) with a short preview. folder: inbox (default), sent, archive, starred, snoozed "
         "(Gmail's own snooze pile), spam, trash, or a label/folder name. account: a mailbox address, or 'all' for a "
-        "unified inbox across every connected mailbox. unread_only for 'koi nayi mail aayi?'. search finds by sender, "
+        "unified inbox across every connected mailbox. unread_only for 'any new mail?'. search finds by sender, "
         "subject or words (Gmail accounts accept Gmail search like 'from:bank has:attachment'). Read one fully with "
         "email_read, a whole conversation with email_thread."),
      "input_schema": {"type": "object", "properties": {
@@ -43,11 +46,11 @@ EMAIL_TOOLS = [
      "input_schema": {"type": "object", "properties": {"id": {"type": "string"}}, "required": ["id"]}},
     {"name": "email_thread", "description": (
         "Read a whole conversation (thread) in order: every message with sender, time and text. id from email_check "
-        "or email_read. Use for 'poora baat-cheet dikhao', 'is thread mein kya hua'."),
+        "or email_read. Use for 'show the whole conversation', 'what happened in this thread'."),
      "input_schema": {"type": "object", "properties": {"id": {"type": "string"}}, "required": ["id"]}},
     {"name": "email_triage", "description": (
         "Sort the inbox: what needs the user's reply, bills/payments, OTP and security alerts, newsletters, other. Use "
-        "for 'aaj ki mails batao', 'kya zaroori hai', a daily inbox summary. hours = how far back (default 24)."),
+        "for 'tell me today's mails', 'what is important', a daily inbox summary. hours = how far back (default 24)."),
      "input_schema": {"type": "object", "properties": {
          "hours": {"type": "integer"}, "unread_only": {"type": "boolean", "description": "default true"},
          "account": {"type": "string"}}}},
@@ -64,7 +67,7 @@ EMAIL_TOOLS = [
         "mail). WRITE THE FULL BODY yourself in the user's language and tone. markdown=true makes the body rich: "
         "**bold**, *italic*, `code`, [text](url), - bullets, numbered lists, ## headings (sent as nice HTML plus plain "
         "text; never write raw HTML tags yourself). If the mailbox has a signature it is added automatically, so don't "
-        "sign then; otherwise sign with the user's name. The user approves with Bhejo in the app; it is NOT sent "
+        "sign then; otherwise sign with the user's name. The user approves with Send in the app; it is NOT sent "
         "automatically. send_at schedules it (local time, e.g. 2026-10-20T09:00). follow_up_days = remind the user if "
         "nobody replies. save_to_gmail=true also puts the draft in their Gmail Drafts folder (they can finish it in "
         "the Gmail app too). from_alias='address' sends from one of her Gmail send-as aliases (only verified ones; "
@@ -82,11 +85,13 @@ EMAIL_TOOLS = [
          "follow_up_days": {"type": "number", "description": "Optional: remind if no reply after this many days"},
          "save_to_gmail": {"type": "boolean", "description": "Also save into the Gmail Drafts folder"},
          "from_alias": {"type": "string", "description": "Send from this Gmail send-as alias (verified ones only)"},
+         "replace_id": {"type": "string", "description": "Fixing a draft card you made earlier (new subject / body / "
+                        "address)? Its draft_id here: the old card is cancelled so only the fixed one is live."},
          "account": {"type": "string", "description": "Send from this mailbox (address)"}},
          "required": ["body"]}},
     {"name": "email_forward", "description": (
         "Forward an email (with its attachments) to someone. note = a short message on top, in the user's tone. Makes a "
-        "draft card; the user approves with Bhejo."),
+        "draft card; the user approves with Send."),
      "input_schema": {"type": "object", "properties": {
          "id": {"type": "string"}, "to": {"type": "string", "description": "Emails or names"}, "cc": {"type": "string"},
          "note": {"type": "string"}, "include_attachments": {"type": "boolean", "description": "default true"}},
@@ -94,11 +99,19 @@ EMAIL_TOOLS = [
     {"name": "email_action", "description": (
         "Organise emails (done at once, can be undone): archive, mark_read, mark_unread, star, unstar, move (to "
         "folder/label; created if missing), spam, not_spam, mark_important, mark_not_important, category (folder= "
-        "personal / social / updates / forums / promotions; Gmail). ids from email_check. To delete use email_delete."),
+        "personal / social / updates / forums / promotions; Gmail). ids from email_check. To delete use email_delete. "
+        "ALL mails of a filter at once ('archive all promotions', 'mark all unread as read'): give NO ids, give "
+        "source_folder (inbox / promotions / social / updates / ...) and/or query (Gmail search like from:amazon "
+        "older_than:30d) - the server acts on every match (up to 500) in ONE call and returns the count. Never loop "
+        "email_check -> email_action for a bulk job."),
      "input_schema": {"type": "object", "properties": {
          "ids": {"type": "array", "items": {"type": "string"}},
-         "action": {"type": "string", "enum": list(ms.ACTIONS)}, "folder": {"type": "string"}},
-         "required": ["ids", "action"]}},
+         "action": {"type": "string", "enum": list(ms.ACTIONS)}, "folder": {"type": "string",
+                    "description": "Target folder/label for move, or the tab for category"},
+         "source_folder": {"type": "string", "description": "Bulk: which folder / tab to act on (no ids)"},
+         "query": {"type": "string", "description": "Bulk: Gmail search to act on (no ids)"},
+         "account": {"type": "string"}},
+         "required": ["action"]}},
     {"name": "email_label", "description": (
         "Manage Gmail labels. action='list' shows them as a nested tree (Gmail nests with /). 'create' (name) — "
         "'Office/Clients' creates the nested path too. 'rename' (name, new_name). 'color' (name, color: red / orange / "
@@ -162,7 +175,9 @@ EMAIL_TOOLS = [
         "search, default in:inbox) + limit shows conversations with ref, subject, from, count, unread, snippet. "
         "action='read' with a message id from email_check reads the whole conversation (same as email_thread). "
         "action='act' with refs + one of archive / trash / inbox / mark_read / mark_unread / star / unstar / move "
-        "(folder=) applies it to EVERY mail in those conversations at once. Gmail accounts only."),
+        "(folder=) applies it to EVERY mail in those conversations at once. Gmail accounts only. An archived mail keeps its "
+        "category, so a query for an inbox tab must include in:inbox (category:promotions in:inbox) - else the same "
+        "mails come back after every archive. act=trash is refused here (no card) - deleting goes through email_delete."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["list", "read", "act"]},
          "query": {"type": "string"}, "limit": {"type": "integer"},
@@ -176,10 +191,10 @@ EMAIL_TOOLS = [
         "subject: 'words, comma = all of', has_attachment: true, bulk: true (newsletters), unread: true}; actions = "
         "{label: 'Bills', archive: true, star: true, mark_read: true, important: true/false (Gmail), mute: true (no "
         "new-mail announcement), notify: true (announce even in vip mode), forward_to: 'email' (makes a DRAFT card for "
-        "her Bhejo tap — Santosh NEVER sends by himself)}. Rules apply to NEW mail from now on, not to old mail. "
+        "her Send tap — Santosh NEVER sends by himself)}. Rules apply to NEW mail from now on, not to old mail. "
         "kind='search' with match (from / subject / has_attachment / bulk / unread, or query: a raw Gmail search like "
-        "'from:hdfcbank has:attachment') saves a SEARCH instead: a name she can ask for again any time ('bank wali "
-        "mails dikhao') — running one only lists what matches now, it changes nothing. action='list' shows rules with "
+        "'from:hdfcbank has:attachment') saves a SEARCH instead: a name she can ask for again any time ('show the bank "
+        "mails') — running one only lists what matches now, it changes nothing. action='list' shows rules with "
         "hit counts, 'searches' shows the saved searches, 'run' with rule_id runs one saved search now, 'pause'/'resume' "
         "with rule_id, 'delete' with rule_id (rules and searches), 'test' dry-runs a rule against the newest inbox mail "
         "(nothing changes)."),
@@ -238,7 +253,7 @@ EMAIL_TOOLS = [
         "Send one email separately to many people (mail merge). Recipients come from source: {email_id, attachment_id} "
         "(an Excel/CSV attached to an email), {file_id} (Excel/CSV from the PC or phone), {lead_list_id} (an uploaded "
         "contact list), or {rows: [{email, name, ...}]}. Use {{column}} in subject/body for each person's details, e.g. "
-        "'Namaste {{name}}, aapka bill {{amount}} hai'. Shows a confirm card with a sample; nothing is sent until the user "
+        "'Hello {{name}}, your bill is {{amount}}'. Shows a confirm card with a sample; nothing is sent until the user "
         "approves. Only for people who expect mail from the user (customers, members, team), never purchased lists."),
      "input_schema": {"type": "object", "properties": {
          "subject": {"type": "string"}, "body": {"type": "string"},
@@ -257,7 +272,7 @@ EMAIL_TOOLS = [
         "The user's connected mailboxes and their signatures, and settings: signature (set for a mailbox; "
         "signature_push=true also pushes it INTO Gmail itself, behind a confirm card), make_default (address), "
         "daily_summary ('09:00' local time for a daily inbox summary, 'weekly 09:00' for a weekly digest every "
-        "weekday of the first run, or 'off'), undo_seconds (0-60: after Bhejo the email waits this many seconds and "
+        "weekday of the first run, or 'off'), undo_seconds (0-60: after Send the email waits this many seconds and "
         "can still be cancelled; 0 = send at once), watch_mode ('off' = no new-mail announcements, 'vip' = important "
         "mail + people she mails herself [default], 'all' = every new mail; for one account or all), mute (sender "
         "emails, comma-separated, to never announce; 'clear' empties the list), send_as=true lists the Gmail send-as "
@@ -309,7 +324,8 @@ async def _t(fn, *a, **kw):
 
 
 async def email_check(ctx: Ctx, folder="inbox", unread_only=False, limit=10, search=None, account=None, **_):
-    return await _t(ms.check, ctx.tenant_id, folder or "inbox", bool(unread_only), search, int(limit or 10), account)
+    return ms.slim(await _t(ms.check, ctx.tenant_id, folder or "inbox", bool(unread_only), search, int(limit or 10),
+                            account))
 
 
 async def email_read(ctx: Ctx, id, **_):
@@ -317,7 +333,8 @@ async def email_read(ctx: Ctx, id, **_):
 
 
 async def email_thread(ctx: Ctx, id, **_):
-    return await _t(ms.thread, ctx.tenant_id, str(id))
+    # v0.707 a long thread was up to 30 x 3,000 chars (~90k) in ONE result; newest 15 at 1,500 each is plenty to answer
+    return await _t(ms.thread, ctx.tenant_id, str(id), 15, 1500)
 
 
 async def email_triage(ctx: Ctx, hours=24, unread_only=True, account=None, **_):
@@ -350,7 +367,7 @@ def _read_image(ctx: Ctx, name: str, mtype: str, data: bytes) -> dict[str, Any]:
     if seen:
         out["seen"] = seen
     else:
-        out["note"] = "Is picture mein padhne layak kuch nahi mila; do='phone' se phone par bhej sakte hain."
+        out["note"] = "Nothing readable was found in this picture; you can send it to the phone with do='phone'."
     return out
 
 
@@ -365,13 +382,13 @@ async def email_attachment(ctx: Ctx, email_id, attachment_id, do="read", **_):
     if do == "pc":
         from ..pc.hub import hub
         if not hub.is_online(ctx.tenant_id):
-            raise ToolError("PC offline hai. PC par Santosh Desktop chalu kijiye, ya do='phone' se phone par bhejiye.")
+            raise ToolError("The PC is offline. Start Santosh Desktop on the PC, or send it to the phone with do='phone'.")
         row = await asyncio.to_thread(ms.store_bytes, ctx.tenant_id, name, data, "to_pc")
         try:
             out = await hub.call(ctx.tenant_id, "save_file", {"file_id": row.id, "name": row.name,
                                                               "url": f"/api/pc/fetch/{row.id}"})
         except Exception as e:
-            raise ToolError(f"PC par save nahi hua: {e}")
+            raise ToolError(f"Could not save on the PC: {e}")
         return {"saved_on_pc": name, **({k: v for k, v in (out or {}).items() if k in ("path", "message")})}
     if do == "read" and (mtype or "").startswith("image/"):
         return await asyncio.to_thread(_read_image, ctx, name, mtype, data)
@@ -405,11 +422,11 @@ def _when(ctx: Ctx, send_at: str | None):
     try:
         dt = life.parse_local(str(send_at), tz)
     except ValueError as e:
-        raise ToolError(f"send_at '{send_at}' samajh nahi aaya ({e}). Local time do, jaise 2026-10-20T09:00.")
+        raise ToolError(f"send_at '{send_at}' was not understood ({e}). Give local time, like 2026-10-20T09:00.")
     if dt < now() + timedelta(minutes=1):
-        raise ToolError("send_at aage ka time hona chahiye.")
+        raise ToolError("send_at must be a future time.")
     if dt > now() + timedelta(days=60):
-        raise ToolError("60 din se aage schedule nahi kar sakte.")
+        raise ToolError("Cannot schedule more than 60 days ahead.")
     return dt
 
 
@@ -423,9 +440,60 @@ def _save_draft(ctx: Ctx, **f) -> dict[str, Any]:
     return view
 
 
+
+def _near_miss(tenant: str, addrs: str) -> list[str]:
+    """v0.706 an address she never mailed / never got mail from, that is ONE small typo away from one she knows."""
+    import difflib
+    import email.utils as eu
+    from ..db import MailContact, session as _session
+    from sqlalchemy import select as _select
+    got = [a.lower() for _, a in eu.getaddresses([addrs or ""]) if a]
+    if not got:
+        return []
+    with _session() as s:
+        known = [c.email.lower() for c in s.scalars(_select(MailContact).where(MailContact.tenant_id == tenant)
+                                                     .order_by(MailContact.score.desc()).limit(2000)).all()]
+    ks = set(known)
+    out = []
+    for a in got:
+        if a in ks:
+            continue
+        local, _, dom = a.partition("@")
+        best = None
+        for k in known:
+            kl, _, kd = k.partition("@")
+            if kd != dom:
+                continue
+            r = difflib.SequenceMatcher(None, local, kl).ratio()
+            if r >= 0.72 and (best is None or r > best[0]):
+                best = (r, k)
+        if best:
+            out.append(f"{a} is a new address - could it be {best[1]}?")
+    return out
+
+
+def _cancel_pending(ctx: Ctx, draft_id: str) -> None:
+    """v0.706 email_draft replace_id: the old card she has not tapped yet is cancelled, so a fix never leaves two live
+    cards (she could tap the wrong one)."""
+    from ..db import EmailDraft, session as _session
+    with _session() as s:
+        d = s.get(EmailDraft, draft_id)
+        if not d or d.tenant_id != ctx.tenant_id or d.status not in ("pending", "failed"):
+            return
+        d.status = "cancelled"
+        conv = d.conversation_id
+    bus.publish(conv, "email_sent", {"id": draft_id, "status": "cancelled"})
+
 async def email_draft(ctx: Ctx, body, to=None, cc="", bcc="", subject=None, reply_to_id=None, reply_all=False,
                       attachments=None, send_at=None, follow_up_days=None, account=None, markdown=False,
-                      save_to_gmail=False, from_alias=None, **_):
+                      save_to_gmail=False, from_alias=None, replace_id=None, **_):
+    # v0.703: GLM sometimes names the recipient under another key (recipient / email / to_email...) or drops it;
+    # take the common aliases instead of failing the step, and say exactly how to retry when it is really missing.
+    if not to:
+        for k in ("recipient", "recipients", "to_email", "to_address", "email", "address"):
+            if _.get(k):
+                to = _[k]
+                break
     def work():
         to_addr = _resolve(ctx, to or "", "to")
         cc_addr = _resolve(ctx, cc or "", "cc")
@@ -438,7 +506,9 @@ async def email_draft(ctx: Ctx, body, to=None, cc="", bcc="", subject=None, repl
             orig = ms.read(ctx.tenant_id, str(reply_to_id), mark_seen=False)
             kind = "reply"
             box, _native = ms.split_ref(ctx.tenant_id, str(reply_to_id))
-            acct = acct or box.key
+            # v0.706 a reply ALWAYS goes from the mailbox the mail came to: another account carried the source box's
+            # thread id into a box that does not have it (Gmail splits / refuses the thread)
+            acct = box.key
             me = box.address
             if not to_addr:
                 reply_to = mime.addr_list(orig.get("reply_to"))
@@ -454,7 +524,9 @@ async def email_draft(ctx: Ctx, body, to=None, cc="", bcc="", subject=None, repl
             refs = orig.get("references") or None
             thread_id = orig.get("thread_id") or None
         if not to_addr:
-            raise ToolError("Kis email par bhejna hai? 'to' address ya naam do, ya reply_to_id do.")
+            raise ToolError("'to' missing: call email_draft again with to=\"name@example.com\" (the address you "
+                            "found, e.g. from email_contacts) or to=\"<contact name>\", or reply_to_id for a reply. "
+                            "Keep the same body/subject.")
         alias = (str(from_alias or "")).strip().lower()
         if alias:                                        # v0.184.0 send-from-alias: check before the card exists
             abox = get_box(ctx.tenant_id, acct)
@@ -462,19 +534,38 @@ async def email_draft(ctx: Ctx, body, to=None, cc="", bcc="", subject=None, repl
         text, key = _with_signature(ctx, body, acct)
         atts = ms.describe_attachments(ctx.tenant_id, attachments)
         when = _when(ctx, send_at)
+        if replace_id:
+            _cancel_pending(ctx, str(replace_id))
         return _save_draft(ctx, to_addr=to_addr[:1000], cc_addr=cc_addr[:1000], bcc_addr=bcc_addr[:1000] or None,
                            subject=(subj or "(no subject)")[:500], body=text, in_reply_to=in_reply_to, references=refs,
                            thread_id=thread_id, account=key, kind=kind, attachments=atts or None, send_at=when,
                            follow_up_days=int(follow_up_days) if follow_up_days else None, markdown=bool(markdown),
                            from_alias=alias or None)
     view = await _t(work)
+    try:   # v0.707 many VISIBLE recipients: everyone sees everyone's address
+        import email.utils as _eu
+        n_vis = len(_eu.getaddresses([view.get("to", "") or "", view.get("cc", "") or ""]))
+        if n_vis > 10:
+            view = {**view, "many_recipients": n_vis,
+                    "say": f"{n_vis} people will see each other's address. Ask the owner - if they should be sent separately use "
+                           "email_bulk, or put the rest in bcc."}
+    except Exception:
+        pass
+    try:   # v0.706 a mistyped address went in unchecked (kunaltelgote23 for kunaltlgt23) - name the near miss
+        warn = await _t(_near_miss, ctx.tenant_id, view.get("to", "") + "," + (view.get("cc") or ""))
+        if warn:
+            view = {**view, "check_address": warn,
+                    "say": "Ask her first: " + "; ".join(warn) + " - if wrong, make the draft again with email_draft replace_id "
+                           "and the correct address."}
+    except Exception:
+        pass
     if save_to_gmail:
         await _t(ms.push_gmail_draft, ctx.tenant_id, str(view["id"]))
-    note = "Draft taiyaar hai. User app mein 'Bhejo' dabakar approve karega; tab tak bheja nahi jayega."
+    note = "The draft is ready. The user will approve it by tapping 'Send' in the app; until then it will not be sent."
     if save_to_gmail:
-        note += " Mailbox ke apne Drafts folder mein bhi save kar diya."
+        note += " Also saved in the mailbox's own Drafts folder."
     if view.get("send_at_label"):
-        note += f" Bhejo dabane par yeh {view['send_at_label']} ko jayega."
+        note += f" When she taps Send it will go at {view['send_at_label']}."
     return {"draft_id": view["id"], "to": view["to"], "cc": view["cc"], "subject": view["subject"],
             "attachments": [a["name"] for a in view["attachments"]], "status": "pending_approval", "note": note}
 
@@ -498,10 +589,16 @@ async def email_forward(ctx: Ctx, id, to, cc="", note="", include_attachments=Tr
     view = await _t(work)
     return {"draft_id": view["id"], "to": view["to"], "subject": view["subject"],
             "attachments": [a["name"] for a in view["attachments"]], "status": "pending_approval",
-            "note": "Forward ka draft card chat mein hai; user Bhejo dabayega."}
+            "note": "The forward draft card is in the chat; the user will tap Send."}
 
 
-async def email_action(ctx: Ctx, ids, action, folder="", **_):
+async def email_action(ctx: Ctx, action, ids=None, folder="", query=None, source_folder=None, account=None, **_):
+    if not ids and (query or source_folder):
+        # v0.707 bulk by filter: the server pages through every match and acts once (no check -> act loop)
+        return await _t(ms.act_query, ctx.tenant_id, action, source_folder or "inbox", query, account, folder or "")
+    if not ids:
+        raise ToolError("Which emails? Give ids (from email_check), or for a whole filter give source_folder / query "
+                        "(like source_folder='promotions').")
     return await _t(ms.act, ctx.tenant_id, [str(i) for i in ids or []], action, folder or "")
 
 
@@ -516,6 +613,11 @@ async def email_label(ctx: Ctx, action, name="", new_name="", color="", account=
 
 async def email_drafts(ctx: Ctx, action="list", id=None, limit=10, account=None, to=None, cc=None, subject=None,
                        body=None, markdown=None, **_):
+    if id and str(id).startswith("eml_"):
+        # v0.707 two kinds of draft id: eml_... is Hoola's own card (email_draft), not a Gmail draft - it 404'd here as
+        # "email nahi mila"
+        raise ToolError(f"{id} is a Hoola card, not a Gmail draft. To change it, make it again with email_draft replace_id={id} and "
+                        "the new subject / body / to; sending = the owner's tap on the card.")
     if action == "delete":
         if not id:
             raise ToolError("Kaunsa draft? id do (email_drafts list se).")
@@ -530,7 +632,10 @@ async def email_drafts(ctx: Ctx, action="list", id=None, limit=10, account=None,
         if not id:
             raise ToolError("Kaunsa draft? id do (email_drafts list se).")
         if to is None and cc is None and subject is None and body is None:
-            raise ToolError("Kya badalna hai? to / cc / subject / body mein se jo badle wahi dijiye.")
+            raise ToolError("What should change? Give only the one of to / cc / subject / body that changes.")
+        # v0.707 names / typos went straight into the To header - resolved like email_draft does
+        to = None if to is None else _resolve(ctx, str(to), "to")
+        cc = None if cc is None else _resolve(ctx, str(cc), "cc")
         return await _t(ms.gmail_draft_edit, ctx.tenant_id, str(id), None if to is None else str(to),
                         None if cc is None else str(cc), None if subject is None else str(subject),
                         None if body is None else str(body), markdown, account)
@@ -583,7 +688,7 @@ async def email_threads(ctx: Ctx, action="list", query="", limit=10, refs=None, 
         return await _t(ms.threads_list, ctx.tenant_id, str(query or "in:inbox"), int(limit or 10), account)
     if action == "read":
         if not id:
-            raise ToolError("Kaunsa conversation? ek mail ka id do (email_check se).")
+            raise ToolError("Which conversation? Give one mail's id (from email_check).")
         return await _t(ms.thread, ctx.tenant_id, str(id))
     if action == "act":
         return await _t(ms.thread_act, ctx.tenant_id, [str(r) for r in refs or []], str(act or ""), folder or "")
@@ -595,7 +700,7 @@ async def email_follow_up(ctx: Ctx, action, email_id=None, days=3, watch_id=None
         return {"follow_ups": await _t(ms.watches, ctx.tenant_id)}
     if action == "cancel":
         if not watch_id or not await _t(ms.cancel_watch, ctx.tenant_id, str(watch_id)):
-            raise ToolError("Woh follow-up nahi mila (ids email_follow_up list se).")
+            raise ToolError("That follow-up was not found (ids are from the email_follow_up list).")
         return {"cancelled": watch_id}
     if not email_id:
         raise ToolError("email_id do (email_check se).")
@@ -625,10 +730,10 @@ async def email_bulk_status(ctx: Ctx, bulk_id, cancel=False, **_):
     if cancel:
         ok = await _t(ms.cancel_bulk, ctx.tenant_id, str(bulk_id))
         if not ok:
-            raise ToolError("Yeh bulk email chal nahi raha.")
+            raise ToolError("This bulk email is not running.")
     v = await _t(ms.bulk_view, ctx.tenant_id, str(bulk_id))
     if v is None:
-        raise ToolError("Bulk email nahi mila")
+        raise ToolError("Bulk email not found")
     return {k: v[k] for k in ("id", "status", "subject", "total", "sent", "failed")}
 
 
@@ -690,7 +795,7 @@ async def email_accounts(ctx: Ctx, account=None, signature=None, make_default=No
         if str(imap).strip().lower() == "get":
             out = await _t(ms.settings_status, ctx.tenant_id, box.key)
             return {"imap": out.get("imap"), "account": out.get("account"),
-                    "note": "'on' / 'off' se badal sakte hain."}
+                    "note": "You can change it with 'on' / 'off'."}
         return await _t(ms.imap_set, ctx.tenant_id, box.key, str(imap).strip().lower() == "on")
     if pop is not None:
         box, blocked = await _settings_gate(ctx, account)
@@ -699,7 +804,7 @@ async def email_accounts(ctx: Ctx, account=None, signature=None, make_default=No
         if str(pop).strip().lower() == "get":
             out = await _t(ms.settings_status, ctx.tenant_id, box.key)
             return {"pop": out.get("pop"), "account": out.get("account"),
-                    "note": "'off' / 'all' / 'from_now_on' se badal sakte hain."}
+                    "note": "You can change it with 'off' / 'all' / 'from_now_on'."}
         return await _t(ms.pop_set, ctx.tenant_id, box.key, str(pop).strip().lower(),
                         str(pop_disposition or "leave_in_inbox"))
     if language is not None:
@@ -709,7 +814,7 @@ async def email_accounts(ctx: Ctx, account=None, signature=None, make_default=No
         if str(language).strip().lower() == "get":
             out = await _t(ms.settings_status, ctx.tenant_id, box.key)
             return {"language": out.get("language"), "account": out.get("account"),
-                    "note": "Naya code dijiye (hi / en / en-GB / mr / ta)."}
+                    "note": "Give a new code (hi / en / en-GB / mr / ta)."}
         return await _t(ms.language_set, ctx.tenant_id, box.key, str(language))
     out: dict[str, Any] = {"mailboxes": await _t(views, ctx.tenant_id),
                            "watch": await _t(sync.watch_views, ctx.tenant_id),
@@ -772,16 +877,16 @@ async def email_rule(ctx: Ctx, action="list", name="", match=None, actions=None,
                      kind="rule", **_):
     if action == "create" and (str(kind or "rule")).strip().lower() == "search":
         out = await _t(sync.search_save, ctx.tenant_id, str(name or ""), dict(match or {}))
-        return {**out, "note": "Saved search taiyaar hai. Boliye 'is naam se dikhao' aur main use chala dunga — "
-                               "yeh sirf dikhata hai, kuch nahi badalta."}
+        return {**out, "note": "The saved search is ready. Say 'show it by this name' and I will run it — "
+                               "it only shows, it changes nothing."}
     if action == "create":
         out = await _t(sync.rule_create, ctx.tenant_id, str(name or ""), dict(match or {}), dict(actions or {}))
-        return {**out, "note": "Rule chalu hai. Ab se aane wali nayi mail par chalega (purani mail par nahi). "
-                               "forward_to wala rule sirf draft banata hai — bhejna hamesha user ke Bhejo par."}
+        return {**out, "note": "The rule is on. From now it works on new incoming mail (not on old mail). "
+                               "A forward_to rule only makes a draft — sending is always on the user's Send tap."}
     if action == "searches":
         return {"searches": await _t(sync.searches_list, ctx.tenant_id),
-                "note": "Saved searches: 'run' se chal sakta hai, delete se hata sakta hai. Run sirf dikhata hai "
-                        "jo ABHI match hota hai — kuch nahi badalta."}
+                "note": "Saved searches: can be run with 'run', removed with delete. Run only shows "
+                        "what matches RIGHT NOW — it changes nothing."}
     if action == "run":
         if not rule_id:
             raise ToolError("Kaunsa saved search? rule_id do (email_rule action='searches' se).")
@@ -790,19 +895,19 @@ async def email_rule(ctx: Ctx, action="list", name="", match=None, actions=None,
         if not rule_id:
             raise ToolError("Kaunsa rule? rule_id do (email_rule list se).")
         out = await _t(sync.rule_edit, ctx.tenant_id, str(rule_id), action == "resume")
-        return {**out, "note": "Rule " + ("chalu kar diya." if action == "resume" else "roka (delete nahi hua).")}
+        return {**out, "note": "Rule " + ("turned on." if action == "resume" else "paused (not deleted).")}
     if action == "delete":
         if not rule_id or not await _t(sync.rule_delete, ctx.tenant_id, str(rule_id)):
-            raise ToolError("Woh rule / saved search nahi mila (ids email_rule list ya searches se).")
+            raise ToolError("That rule / saved search was not found (ids are from the email_rule list or searches).")
         return {"deleted": rule_id}
     if action == "test":
         if not rule_id:
             raise ToolError("Kaunsa rule? rule_id do (email_rule list se).")
         return await _t(sync.rule_test, ctx.tenant_id, str(rule_id), account)
     return {"rules": await _t(sync.rules_list, ctx.tenant_id),
-            "note": "Rules nayi mail par chalte hain. Kaam: label, archive, star, mark_read, important, mute, "
-                    "notify; forward_to sirf draft banata hai (Santosh khud kabhi nahi bhejta). "
-                    "Saved searches ke liye action='searches'."}
+            "note": "Rules run on new mail. Actions: label, archive, star, mark_read, important, mute, "
+                    "notify; forward_to only makes a draft (Santosh never sends by himself). "
+                    "For saved searches use action='searches'."}
 
 
 def _snooze_when(ctx: Ctx, when, hours, days):
@@ -818,7 +923,7 @@ def _snooze_when(ctx: Ctx, when, hours, days):
     except (TypeError, ValueError):
         d = 0.0
     if h <= 0 and d <= 0:
-        raise ToolError("Kab wapas laaun? when (local time) ya hours ya days do.")
+        raise ToolError("When should it come back? Give when (local time) or hours or days.")
     return now() + _td(hours=h) + _td(days=d)
 
 
@@ -827,13 +932,13 @@ async def email_snooze(ctx: Ctx, action="list", email_id=None, when=None, hours=
         return {"snoozed": await _t(sync.snooze_list, ctx.tenant_id)}
     if action == "cancel":
         if not snooze_id or not await _t(sync.snooze_cancel, ctx.tenant_id, str(snooze_id)):
-            raise ToolError("Woh snooze nahi mila (ids email_snooze list se).")
-        return {"cancelled": snooze_id, "note": "Mail wapas inbox mein aa gayi (unread)."}
+            raise ToolError("That snooze was not found (ids are from the email_snooze list).")
+        return {"cancelled": snooze_id, "note": "The mail is back in the inbox (unread)."}
     if not email_id:
         raise ToolError("Kaunsi email? email_id do (email_check se).")
     wake = _snooze_when(ctx, when, hours, days)
     out = await _t(sync.snooze_add, ctx.tenant_id, ctx.conversation_id, str(email_id), wake)
-    return {**out, "note": f"Mail inbox se hata di; {out['wake_label']} par wapas aayegi (unread mark ho gi)."}
+    return {**out, "note": f"The mail was removed from the inbox; it will come back at {out['wake_label']} (marked unread)."}
 
 
 async def _settings_gate(ctx: Ctx, account=None):
@@ -842,8 +947,8 @@ async def _settings_gate(ctx: Ctx, account=None):
     box = await _t(ms.settings_gmail, ctx.tenant_id, account or None)
     if not await _t(settings_scope_ok, ctx.tenant_id, box):
         return box, {"scope_ok": False, "account": box.address, "note": settings_scope_message(box.address),
-                     "say": "Is Gmail ne settings ki permission abhi nahi di — ek baar Profile > Email se is Gmail ko "
-                            "dobara jodna hoga (mail sab waisi hi chalegi)."}
+                     "say": "This Gmail has not given the settings permission yet — connect this Gmail again once from Profile > Email "
+                            "(mail will keep working as before)."}
     return box, None
 
 

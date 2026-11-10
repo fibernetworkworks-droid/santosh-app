@@ -23,7 +23,7 @@ Widget _badges(Map<String, dynamic> v) => Wrap(spacing: 6, children: [
       if (v['business'] == true) const Text('🏢 business', style: TextStyle(color: C.teal, fontSize: 11.5, fontWeight: FontWeight.w700)),
       if (v['vip'] == true) const Text('⭐ VIP', style: TextStyle(color: C.accent, fontSize: 11.5, fontWeight: FontWeight.w700)),
       if (v['key_warning'] == true)
-        const Text('⚠️ pehchaan badli', style: TextStyle(color: C.bad, fontSize: 11.5, fontWeight: FontWeight.w700)),
+        const Text('⚠️ identity changed', style: TextStyle(color: C.bad, fontSize: 11.5, fontWeight: FontWeight.w700)),
     ]);
 
 void openHoolaThread(BuildContext context, Santosh app, String? threadId) {
@@ -60,7 +60,7 @@ Widget _checked(Map<String, dynamic> v) {
     if ((v['summary'] ?? '') != '') Text(v['summary'] as String, style: const TextStyle(fontSize: 13, color: C.ink)),
     if (verdict.isNotEmpty)
       Text(
-          '${verdict == 'clear' ? '✅ Jaanch saaf' : verdict == 'caution' ? '⚠️ Dhyaan se' : verdict == 'danger' ? '⛔ Khatarnak' : 'Jaanch poori nahi hui'}'
+          '${verdict == 'clear' ? '✅ Check clear' : verdict == 'caution' ? '⚠️ Be careful' : verdict == 'danger' ? '⛔ Dangerous' : 'Check not complete'}'
           '${notes.isNotEmpty ? ': ${notes.join('; ')}' : ''}',
           style: TextStyle(color: col, fontSize: 12.5, fontWeight: FontWeight.w600)),
   ];
@@ -73,10 +73,10 @@ Widget _effectButtons(Map<String, dynamic>? e) {
   if (e == null) return const SizedBox.shrink();
   final where = e['where'] as String? ?? '';
   final (String label, IconData icon, String url) = switch (where) {
-    'pay' => ('UPI app mein pay kijiye', Icons.currency_rupee_rounded, e['pay_link'] as String? ?? ''),
-    'link' => ('Link kholiye', Icons.open_in_new_rounded, e['url'] as String? ?? ''),
-    'map' => ('Map mein dekhiye', Icons.map_rounded, e['url'] as String? ?? ''),
-    'contact' => ('Call kijiye', Icons.call_rounded, 'tel:${e['phone'] ?? ''}'),
+    'pay' => ('Pay in your UPI app', Icons.currency_rupee_rounded, e['pay_link'] as String? ?? ''),
+    'link' => ('Open link', Icons.open_in_new_rounded, e['url'] as String? ?? ''),
+    'map' => ('See on map', Icons.map_rounded, e['url'] as String? ?? ''),
+    'contact' => ('Call', Icons.call_rounded, 'tel:${e['phone'] ?? ''}'),
     _ => ('', Icons.circle, ''),
   };
   if (label.isEmpty || url.isEmpty) return const SizedBox.shrink();
@@ -90,12 +90,12 @@ Widget _effectButtons(Map<String, dynamic>? e) {
 }
 
 String _statusText(String s) => switch (s) {
-      'accepted' => 'Haan kaha ✓',
-      'declined' => 'Mana kiya',
-      'snoozed' => 'Baad mein yaad dilayenge',
-      'handled' => 'Hoola ne sambhal liya',
-      'auto' => 'Niyam se seedha liya',
-      'blocked' => 'Roka gaya',
+      'accepted' => 'Said yes ✓',
+      'declined' => 'Declined',
+      'snoozed' => 'We will remind you later',
+      'handled' => 'Hoola handled it',
+      'auto' => 'Taken directly by rule',
+      'blocked' => 'Stopped',
       _ => s,
     };
 
@@ -146,7 +146,7 @@ class _HoolaKnockCardState extends State<HoolaKnockCard> {
       context: context,
       builder: (ctx) => SafeArea(
         child: Column(mainAxisSize: MainAxisSize.min, children: [
-          for (final e in const {60: '1 ghante baad', 180: '3 ghante baad', 720: 'Shaam ko (12 ghante)', 1440: 'Kal'}.entries)
+          for (final e in const {60: 'In 1 hour', 180: 'In 3 hours', 720: 'This evening (12 hours)', 1440: 'Tomorrow'}.entries)
             ListTile(title: Text(e.value), onTap: () => Navigator.of(ctx).pop(e.key)),
         ]),
       ),
@@ -180,7 +180,7 @@ class _HoolaKnockCardState extends State<HoolaKnockCard> {
               ]),
             ),
             IconButton(
-              tooltip: 'Baat-cheet kholiye',
+              tooltip: 'Open chat',
               onPressed: () => openHoolaThread(context, widget.app, v['thread_id'] as String?),
               icon: const Icon(Icons.forum_rounded, color: C.accent),
             ),
@@ -205,13 +205,13 @@ class _HoolaKnockCardState extends State<HoolaKnockCard> {
                 icon: _thinking
                     ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
                     : const Icon(Icons.visibility_rounded, size: 18, color: C.teal),
-                label: Text(_thinking ? '${widget.app.aName} dekh raha hai…' : '${widget.app.aName}, dekh ke batao', style: const TextStyle(color: C.teal)),
+                label: Text(_thinking ? '${widget.app.aName} is looking…' : '${widget.app.aName}, take a look and tell me', style: const TextStyle(color: C.teal)),
               ),
             ),
           if (body['amount'] != null)
             Padding(
               padding: const EdgeInsets.only(top: 6),
-              child: Text('₹${body['amount']} maang rahe hain · paise sirf aapke UPI app mein aapke tap se',
+              child: Text('₹${body['amount']} is asking · money moves only in your UPI app, only with your tap',
                   style: const TextStyle(color: C.warn, fontSize: 12.5)),
             ),
           if (slots.isNotEmpty) ...[
@@ -232,15 +232,15 @@ class _HoolaKnockCardState extends State<HoolaKnockCard> {
             KbField(
               child: TextField(
                 controller: _note,
-                decoration: const InputDecoration(isDense: true, hintText: 'Jawab mein kuch kehna hai? (optional)'),
+                decoration: const InputDecoration(isDense: true, hintText: 'Anything to say in reply? (optional)'),
               ),
             ),
             const SizedBox(height: 8),
             Row(children: [
-              Expanded(child: GradientButton(label: 'Haan', icon: Icons.check_rounded, height: 42, onTap: _busy ? null : () => _do('accept'))),
+              Expanded(child: GradientButton(label: 'Yes', icon: Icons.check_rounded, height: 42, onTap: _busy ? null : () => _do('accept'))),
               const SizedBox(width: 8),
-              TextButton(onPressed: _busy ? null : () => _do('decline'), child: const Text('Mana', style: TextStyle(color: C.bad))),
-              TextButton(onPressed: _busy ? null : _later, child: const Text('Baad mein')),
+              TextButton(onPressed: _busy ? null : () => _do('decline'), child: const Text('Decline', style: TextStyle(color: C.bad))),
+              TextButton(onPressed: _busy ? null : _later, child: const Text('Later')),
             ]),
             if (const {'message', 'ask', 'meeting', 'task', 'reminder', 'voice_note'}.contains(v['kind']))
               Align(
@@ -248,7 +248,7 @@ class _HoolaKnockCardState extends State<HoolaKnockCard> {
                 child: TextButton.icon(
                   onPressed: _busy ? null : () => _do('handle'),
                   icon: const Icon(Icons.smart_toy_rounded, size: 18, color: C.teal),
-                  label: Text('${widget.app.aName}, tum sambhalo', style: const TextStyle(color: C.teal)),
+                  label: Text('${widget.app.aName}, you handle it', style: const TextStyle(color: C.teal)),
                 ),
               ),
           ] else ...[
@@ -310,9 +310,9 @@ class _HoolaConnectCardState extends State<HoolaConnectCard> {
             Padding(padding: const EdgeInsets.only(top: 8), child: Text('“${v['note']}”', style: const TextStyle(fontSize: 13.5))),
           if (status == 'incoming') ...[
             const SizedBox(height: 8),
-            const Text('Aapke liye yeh kaun hain?', style: TextStyle(color: C.muted, fontSize: 12.5)),
+            const Text('Who are these to you?', style: TextStyle(color: C.muted, fontSize: 12.5)),
             Wrap(spacing: 6, children: [
-              for (final e in const {'family': 'Parivar', 'team': 'Team', 'business': 'Business', 'friend': 'Dost'}.entries)
+              for (final e in const {'family': 'Family', 'team': 'Team', 'business': 'Business', 'friend': 'Friend'}.entries)
                 ChoiceChip(
                   label: Text(e.value),
                   selected: rel == e.key,
@@ -324,9 +324,9 @@ class _HoolaConnectCardState extends State<HoolaConnectCard> {
             ]),
             const SizedBox(height: 8),
             Row(children: [
-              Expanded(child: GradientButton(label: 'Jodiye', icon: Icons.check_rounded, height: 42, onTap: _busy ? null : () => _do('accept'))),
+              Expanded(child: GradientButton(label: 'Connect', icon: Icons.check_rounded, height: 42, onTap: _busy ? null : () => _do('accept'))),
               const SizedBox(width: 8),
-              TextButton(onPressed: _busy ? null : () => _do('decline'), child: const Text('Mana')),
+              TextButton(onPressed: _busy ? null : () => _do('decline'), child: const Text('Decline')),
               TextButton(onPressed: _busy ? null : () => _do('block'), child: const Text('Block', style: TextStyle(color: C.bad))),
             ]),
           ] else
@@ -334,12 +334,12 @@ class _HoolaConnectCardState extends State<HoolaConnectCard> {
               padding: const EdgeInsets.only(top: 8),
               child: Text(
                   status == 'active'
-                      ? 'Jud gaye ✓ ${v['safety_code'] != null ? '· safety code ${v['safety_code']}' : ''}'
+                      ? 'Connected ✓ ${v['safety_code'] != null ? '· safety code ${v['safety_code']}' : ''}'
                       : status == 'blocked'
-                          ? 'Block kiya'
+                          ? 'Blocked'
                           : status == 'declined'
-                              ? 'Mana kiya'
-                              : 'Request bheji',
+                              ? 'Declined'
+                              : 'Request sent',
                   style: const TextStyle(color: C.ok, fontWeight: FontWeight.w700)),
             ),
         ]),
@@ -359,18 +359,18 @@ class HoolaMsgCard extends StatelessWidget {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('${v['from'] ?? 'Hoola'} ko jawab'),
-        content: TextField(controller: c, minLines: 2, maxLines: 6, decoration: const InputDecoration(hintText: 'Kya kehna hai?')),
+        title: Text('${v['from'] ?? 'Hoola'} reply'),
+        content: TextField(controller: c, minLines: 2, maxLines: 6, decoration: const InputDecoration(hintText: 'What do you want to say?')),
         actions: [
           TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Bhejo')),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Send')),
         ],
       ),
     );
     if (ok != true || c.text.trim().isEmpty) return;
     try {
       await app.api!.netReply(v['thread_id'] as String, c.text.trim());
-      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Jawab bhej diya')));
+      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Reply sent')));
     } catch (e) {
       if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
     }
@@ -393,10 +393,10 @@ class HoolaMsgCard extends StatelessWidget {
                 HoolaFromTo(v: v, app: app),
               ]),
             ),
-            if (v['fyi'] == true) const Text('jaankari', style: TextStyle(color: C.faint, fontSize: 11.5)),
+            if (v['fyi'] == true) const Text('info', style: TextStyle(color: C.faint, fontSize: 11.5)),
             if (canReply)
               IconButton(
-                tooltip: 'Baat-cheet kholiye',
+                tooltip: 'Open chat',
                 onPressed: () => openHoolaThread(context, app, v['thread_id'] as String?),
                 icon: const Icon(Icons.forum_rounded, color: C.accent, size: 20),
               ),
@@ -410,14 +410,14 @@ class HoolaMsgCard extends StatelessWidget {
           if (effect != null && (effect['where'] == 'calendar' || effect['where'] == 'reminder'))
             Padding(
               padding: const EdgeInsets.only(top: 4),
-              child: Text(effect['where'] == 'calendar' ? '📅 Calendar mein jod diya' : '⏰ Reminder laga diya',
+              child: Text(effect['where'] == 'calendar' ? '📅 Added to Calendar' : '⏰ Reminder set',
                   style: const TextStyle(color: C.teal, fontSize: 12.5)),
             ),
           _effectButtons(effect),
           if (canReply)
             Align(
               alignment: Alignment.centerRight,
-              child: TextButton.icon(onPressed: () => _reply(context), icon: const Icon(Icons.reply_rounded, size: 18), label: const Text('Jawab')),
+              child: TextButton.icon(onPressed: () => _reply(context), icon: const Icon(Icons.reply_rounded, size: 18), label: const Text('Reply')),
             ),
         ]),
       ),
@@ -441,7 +441,7 @@ class _HoolaGroupCardState extends State<HoolaGroupCard> {
   Future<void> _answer(String a) async {
     try {
       await widget.app.api!.netGroupAct(widget.v['gid'] as String, 'answer_invite', answer: a);
-      if (mounted) setState(() => _done = a == 'accept' ? 'Group mein aa gaye ✓' : 'Mana kiya');
+      if (mounted) setState(() => _done = a == 'accept' ? 'Joined the group ✓' : 'Declined');
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
     }
@@ -452,10 +452,10 @@ class _HoolaGroupCardState extends State<HoolaGroupCard> {
     final v = widget.v;
     final invite = v['event'] == 'invite' && v['status'] == 'invited';
     final text = switch (v['event']) {
-      'invite' => '${v['from'] ?? ''} ne aapko group mein bulaya hai',
-      'group_join' => '${v['from'] ?? ''} group mein aa gaye',
-      'group_leave' => '${v['from'] ?? ''} ne group chhoda',
-      'removed' => 'Aapko group se hata diya gaya',
+      'invite' => '${v['from'] ?? ''} has invited you to the group',
+      'group_join' => '${v['from'] ?? ''} joined the group',
+      'group_leave' => '${v['from'] ?? ''} left the group',
+      'removed' => 'You were removed from the group',
       _ => '',
     };
     return Padding(
@@ -467,7 +467,7 @@ class _HoolaGroupCardState extends State<HoolaGroupCard> {
             const SizedBox(width: 10),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(v['name'] as String? ?? 'Mandali', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+                Text(v['name'] as String? ?? 'Group', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
                 Text(text, style: const TextStyle(color: C.muted, fontSize: 12.5)),
               ]),
             ),
@@ -475,9 +475,9 @@ class _HoolaGroupCardState extends State<HoolaGroupCard> {
           if (invite && _done == null) ...[
             const SizedBox(height: 8),
             Row(children: [
-              Expanded(child: GradientButton(label: 'Judiye', icon: Icons.group_add_rounded, height: 42, onTap: () => _answer('accept'))),
+              Expanded(child: GradientButton(label: 'Connect', icon: Icons.group_add_rounded, height: 42, onTap: () => _answer('accept'))),
               const SizedBox(width: 8),
-              TextButton(onPressed: () => _answer('decline'), child: const Text('Mana')),
+              TextButton(onPressed: () => _answer('decline'), child: const Text('Decline')),
             ]),
           ],
           if (_done != null) Padding(padding: const EdgeInsets.only(top: 8), child: Text(_done!, style: const TextStyle(color: C.ok))),
@@ -511,7 +511,7 @@ class _HoolaGroupPostCardState extends State<HoolaGroupPostCard> {
   Future<void> _file() async {
     try {
       await widget.app.api!.netGroupFile(widget.v['id'] as String);
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('File phone par aa gayi')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('The file has come to the phone')));
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
     }
@@ -535,28 +535,28 @@ class _HoolaGroupPostCardState extends State<HoolaGroupPostCard> {
               child: Text('${v['group'] ?? ''} · ${v['author'] ?? ''}',
                   maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5)),
             ),
-            if (v['mention'] == true) const Text('@aap', style: TextStyle(color: C.accent, fontSize: 11.5, fontWeight: FontWeight.w700)),
+            if (v['mention'] == true) const Text('@you', style: TextStyle(color: C.accent, fontSize: 11.5, fontWeight: FontWeight.w700)),
           ]),
-          if (task) Padding(padding: const EdgeInsets.only(top: 6), child: Text('🧰 ${body['title'] ?? 'Kaam'}${(body['due'] ?? '') != '' ? ' · ${body['due']}' : ''}',
+          if (task) Padding(padding: const EdgeInsets.only(top: 6), child: Text('🧰 ${body['title'] ?? 'Task'}${(body['due'] ?? '') != '' ? ' · ${body['due']}' : ''}',
               style: const TextStyle(fontWeight: FontWeight.w700))),
           if (text.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 4), child: Text(text, style: const TextStyle(fontSize: 13.5))),
           if ((body['name'] ?? '') != '') _checked({...body}),
           if ((body['name'] ?? '') != '' && body['qid'] != null)
-            Align(alignment: Alignment.centerLeft, child: TextButton.icon(onPressed: _file, icon: const Icon(Icons.download_rounded, size: 18), label: const Text('File lijiye'))),
+            Align(alignment: Alignment.centerLeft, child: TextButton.icon(onPressed: _file, icon: const Icon(Icons.download_rounded, size: 18), label: const Text('Get the file'))),
           if (task && v['for_me'] == true)
             status == 'open' || status.isEmpty
                 ? Row(children: [
-                    TextButton(onPressed: () => _task('accepted'), child: const Text('Le liya')),
-                    TextButton(onPressed: () => _task('done'), child: const Text('Ho gaya')),
-                    TextButton(onPressed: () => _task('declined'), child: const Text('Mana', style: TextStyle(color: C.bad))),
+                    TextButton(onPressed: () => _task('accepted'), child: const Text('Taken')),
+                    TextButton(onPressed: () => _task('done'), child: const Text('Done')),
+                    TextButton(onPressed: () => _task('declined'), child: const Text('Decline', style: TextStyle(color: C.bad))),
                   ])
                 : status == 'accepted'
                     ? Row(children: [
-                        const Text('Aapne liya', style: TextStyle(color: C.ok)),
+                        const Text('You took', style: TextStyle(color: C.ok)),
                         const Spacer(),
-                        TextButton(onPressed: () => _task('done'), child: const Text('Ho gaya')),
+                        TextButton(onPressed: () => _task('done'), child: const Text('Done')),
                       ])
-                    : Text(status == 'done' ? 'Poora ✓' : status, style: const TextStyle(color: C.ok)),
+                    : Text(status == 'done' ? 'Complete ✓' : status, style: const TextStyle(color: C.ok)),
         ]),
       ),
     );
@@ -579,7 +579,7 @@ class _HoolaLessonCardState extends State<HoolaLessonCard> {
   Future<void> _act(String a) async {
     try {
       await widget.app.api!.netLessonAct(widget.v['id'] as String, a);
-      if (mounted) setState(() => _done = a == 'share' ? 'Samaj ke saath share kiya ✓' : 'Share nahi kiya');
+      if (mounted) setState(() => _done = a == 'share' ? 'Shared with the community ✓' : 'Not shared');
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
     }
@@ -597,13 +597,13 @@ class _HoolaLessonCardState extends State<HoolaLessonCard> {
           Row(children: [
             const Icon(Icons.lightbulb_rounded, color: C.accent),
             const SizedBox(width: 8),
-            Expanded(child: Text('${widget.app.aName} ne seekha', style: const TextStyle(fontWeight: FontWeight.w700))),
+            Expanded(child: Text('${widget.app.aName} learned', style: const TextStyle(fontWeight: FontWeight.w700))),
           ]),
           const SizedBox(height: 6),
           Text(v['text'] as String? ?? '', style: const TextStyle(fontSize: 13.5)),
           if ((v['share_text'] ?? '') != '') ...[
             const SizedBox(height: 8),
-            const Text('Samaj ko yeh jayega (bina personal jaankari):', style: TextStyle(color: C.muted, fontSize: 12.5)),
+            const Text('This will go to the community (without personal details):', style: TextStyle(color: C.muted, fontSize: 12.5)),
             Container(
               margin: const EdgeInsets.only(top: 4),
               padding: const EdgeInsets.all(10),
@@ -611,14 +611,14 @@ class _HoolaLessonCardState extends State<HoolaLessonCard> {
               child: Text(v['share_text'] as String, style: const TextStyle(fontSize: 13)),
             ),
             if (removed.isNotEmpty)
-              Padding(padding: const EdgeInsets.only(top: 4), child: Text('Hataya: ${removed.join(', ')}', style: const TextStyle(color: C.teal, fontSize: 12))),
+              Padding(padding: const EdgeInsets.only(top: 4), child: Text('Removed: ${removed.join(', ')}', style: const TextStyle(color: C.teal, fontSize: 12))),
             if (comms.isNotEmpty)
-              Padding(padding: const EdgeInsets.only(top: 4), child: Text('Kahan: ${comms.map((c) => c['name']).join(', ')}', style: const TextStyle(color: C.faint, fontSize: 12))),
+              Padding(padding: const EdgeInsets.only(top: 4), child: Text('Where: ${comms.map((c) => c['name']).join(', ')}', style: const TextStyle(color: C.faint, fontSize: 12))),
           ],
           if (_done == null && v['share_status'] == 'proposed')
             Row(children: [
-              TextButton(onPressed: () => _act('share'), child: const Text('Share karo')),
-              TextButton(onPressed: () => _act('dont_share'), child: const Text('Nahi')),
+              TextButton(onPressed: () => _act('share'), child: const Text('Share')),
+              TextButton(onPressed: () => _act('dont_share'), child: const Text('No')),
             ]),
           if (_done != null) Padding(padding: const EdgeInsets.only(top: 6), child: Text(_done!, style: const TextStyle(color: C.ok))),
         ]),
@@ -665,13 +665,13 @@ class _HoolaSamajCardState extends State<HoolaSamajCard> {
       _ => Icons.public_rounded,
     };
     final head = switch (ev) {
-      'review' => 'Skill manzoori ka intezaar',
-      'report' => 'Report aayi',
-      'join_request' => '${v['from'] ?? ''} judna chahte hain',
-      'joined' => 'Samaj mein aa gaye',
-      'can_answer' => 'Is sawaal ka jawab aapki seekh mein hai',
-      'answered' => 'Maine jawab diya',
-      _ => kind == 'alert' ? 'Chetavni' : kind == 'answer' && v['for_me'] == true ? 'Aapke sawaal ka jawab' : (item['author'] as String? ?? ''),
+      'review' => 'Waiting for skill approval',
+      'report' => 'Report came',
+      'join_request' => '${v['from'] ?? ''} wants to join',
+      'joined' => 'Joined the community',
+      'can_answer' => 'The answer to this question is in your learning',
+      'answered' => 'I replied',
+      _ => kind == 'alert' ? 'Warning' : kind == 'answer' && v['for_me'] == true ? 'Answer to your question' : (item['author'] as String? ?? ''),
     };
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
@@ -681,7 +681,7 @@ class _HoolaSamajCardState extends State<HoolaSamajCard> {
             Icon(icon, color: kind == 'alert' ? C.bad : C.teal, size: 20),
             const SizedBox(width: 8),
             Expanded(
-              child: Text('${v['community'] ?? 'Samaj'} · $head',
+              child: Text('${v['community'] ?? 'Community'} · $head',
                   maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5)),
             ),
           ]),
@@ -699,28 +699,28 @@ class _HoolaSamajCardState extends State<HoolaSamajCard> {
             ),
             if (_done == null)
               TextButton(
-                onPressed: () => _run(() => api.netSamajPost(v['cid'] as String, 'answer', {'parent': item['item_id'], 'text': v['draft']}), 'Jawab bhej diya ✓'),
-                child: const Text('Haan, jawab bhejo'),
+                onPressed: () => _run(() => api.netSamajPost(v['cid'] as String, 'answer', {'parent': item['item_id'], 'text': v['draft']}), 'Reply sent ✓'),
+                child: const Text('Yes, send the reply'),
               ),
           ],
           if (ev == 'review' && _done == null)
             TextButton(
               onPressed: () => _run(() => api.netSamajItem(item['item_id'] as String, {'action': 'moderate', 'mod_action': 'approve'}), 'Manzoor ✓'),
-              child: const Text('Manzoor karo'),
+              child: const Text('Approve'),
             ),
           if (ev == 'join_request' && _done == null)
             TextButton(
-              onPressed: () => _run(() => api.netSamajAct(v['cid'] as String, {'action': 'moderate_member', 'mod_action': 'approve_member', 'who': v['address']}), 'Jod liya ✓'),
-              child: const Text('Aane do'),
+              onPressed: () => _run(() => api.netSamajAct(v['cid'] as String, {'action': 'moderate_member', 'mod_action': 'approve_member', 'who': v['address']}), 'Added ✓'),
+              child: const Text('Let it in'),
             ),
           if (ev == 'item' && kind == 'skill' && _done == null)
-            TextButton(onPressed: () => _run(() => api.netSamajItem(item['item_id'] as String, {'action': 'install'}), 'Skill lag gayi ✓'),
-                child: const Text('Skill install karo')),
+            TextButton(onPressed: () => _run(() => api.netSamajItem(item['item_id'] as String, {'action': 'install'}), 'Skill added ✓'),
+                child: const Text('Install skill')),
           if (ev == 'item' && (kind == 'answer' || kind == 'card') && _done == null)
             Row(children: [
-              TextButton(onPressed: () => _run(() => api.netSamajItem(item['item_id'] as String, {'action': 'rate', 'helpful': true}), 'Dhanyavaad ✓'),
-                  child: const Text('👍 Kaam ka')),
-              TextButton(onPressed: () => _run(() => api.netSamajItem(item['item_id'] as String, {'action': 'report'}), 'Report kiya'),
+              TextButton(onPressed: () => _run(() => api.netSamajItem(item['item_id'] as String, {'action': 'rate', 'helpful': true}), 'Thank you ✓'),
+                  child: const Text('👍 Useful')),
+              TextButton(onPressed: () => _run(() => api.netSamajItem(item['item_id'] as String, {'action': 'report'}), 'Reported'),
                   child: const Text('Report', style: TextStyle(color: C.bad))),
             ]),
           if (_done != null) Padding(padding: const EdgeInsets.only(top: 6), child: Text(_done!, style: const TextStyle(color: C.ok))),
@@ -763,19 +763,19 @@ class _HoolaChainCardState extends State<HoolaChainCard> {
     String to = '';
     String note = '';
     if (a == 'pass') {
-      final t = await _ask(context, 'Kise dena hai?', '@hoola.id ya naam');
+      final t = await _ask(context, 'Who should it go to?', '@hoola.id or name');
       if (t == null || t.isEmpty) return;
       to = t;
     }
     if (a == 'done' || a == 'decline') {
       if (!mounted) return;
-      final n = await _ask(context, a == 'done' ? 'Kya kiya?' : 'Kyon wapas?', 'Chhota note');
+      final n = await _ask(context, a == 'done' ? 'What was done?' : 'Why send it back?', 'Short note');
       if (n == null) return;
       note = n;
     }
     try {
       final r = await widget.app.api!.netChainAct(widget.v['chain_id'] as String, a, to: to, note: note);
-      if (mounted) setState(() => _done = {'accepted': 'Aapne le liya', 'passed': 'Aage diya: ${r['to'] ?? ''}', 'done': 'Ho gaya ✓', 'declined': 'Wapas bheja'}[r['status']] ?? '${r['status']}');
+      if (mounted) setState(() => _done = {'accepted': 'You took it', 'passed': 'Given forward: ${r['to'] ?? ''}', 'done': 'Done ✓', 'declined': 'Sent back'}[r['status']] ?? '${r['status']}');
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
     }
@@ -794,7 +794,7 @@ class _HoolaChainCardState extends State<HoolaChainCard> {
             const Icon(Icons.link_rounded, color: C.violet),
             const SizedBox(width: 8),
             Expanded(
-              child: Text(withMe ? '${v['from'] ?? ''} ne kaam bheja' : (v['text'] as String? ?? 'Kaam ki khabar'),
+              child: Text(withMe ? '${v['from'] ?? ''} sent a task' : (v['text'] as String? ?? 'Task update'),
                   style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5)),
             ),
             if ((v['ref'] ?? '') != '') Text(v['ref'] as String, style: const TextStyle(color: C.accent, fontSize: 12)),
@@ -806,10 +806,10 @@ class _HoolaChainCardState extends State<HoolaChainCard> {
                 style: const TextStyle(color: C.muted, fontSize: 12)),
           if (withMe && _done == null)
             Wrap(spacing: 2, children: [
-              TextButton(onPressed: () => _act('accept'), child: const Text('Le liya')),
-              TextButton(onPressed: () => _act('pass'), child: const Text('Aage bhejo')),
-              TextButton(onPressed: () => _act('done'), child: const Text('Ho gaya')),
-              TextButton(onPressed: () => _act('decline'), child: const Text('Wapas', style: TextStyle(color: C.bad))),
+              TextButton(onPressed: () => _act('accept'), child: const Text('Taken')),
+              TextButton(onPressed: () => _act('pass'), child: const Text('Send forward')),
+              TextButton(onPressed: () => _act('done'), child: const Text('Done')),
+              TextButton(onPressed: () => _act('decline'), child: const Text('Back', style: TextStyle(color: C.bad))),
             ]),
           if (_done != null) Padding(padding: const EdgeInsets.only(top: 6), child: Text(_done!, style: const TextStyle(color: C.ok))),
         ]),
@@ -831,7 +831,7 @@ class _HoolaTicketCardState extends State<HoolaTicketCard> {
   String? _status;
 
   Future<void> _set(String status) async {
-    final note = await _ask(context, 'Customer ko kya batayein?', 'Jaise: technician kal 11 baje aayega');
+    final note = await _ask(context, 'What should we tell the customer?', 'For example: the technician will come tomorrow at 11');
     if (note == null) return;
     try {
       final r = await widget.app.api!.netTicket(widget.v['number'] as String, status: status, note: note);
@@ -842,7 +842,7 @@ class _HoolaTicketCardState extends State<HoolaTicketCard> {
   }
 
   Future<void> _assign() async {
-    final to = await _ask(context, 'Kise dena hai?', '@technician.id');
+    final to = await _ask(context, 'Who should it go to?', '@technician.id');
     if (to == null || to.isEmpty) return;
     try {
       await widget.app.api!.netTicket(widget.v['number'] as String, to: to);
@@ -868,12 +868,12 @@ class _HoolaTicketCardState extends State<HoolaTicketCard> {
           ]),
           const SizedBox(height: 4),
           Text(v['text'] as String? ?? '', style: const TextStyle(fontSize: 13.5)),
-          if ((v['webhook'] ?? '') != '') Text('Aapke system ko bheja: ${v['webhook']}', style: const TextStyle(color: C.faint, fontSize: 11.5)),
+          if ((v['webhook'] ?? '') != '') Text('Sent to your system: ${v['webhook']}', style: const TextStyle(color: C.faint, fontSize: 11.5)),
           if (status != 'resolved' && status != 'closed')
             Wrap(spacing: 2, children: [
-              TextButton(onPressed: _assign, child: const Text('Technician ko do')),
-              TextButton(onPressed: () => _set('in_progress'), child: const Text('Kaam chalu')),
-              TextButton(onPressed: () => _set('resolved'), child: const Text('Theek ho gaya')),
+              TextButton(onPressed: _assign, child: const Text('Give to technician')),
+              TextButton(onPressed: () => _set('in_progress'), child: const Text('Work started')),
+              TextButton(onPressed: () => _set('resolved'), child: const Text('Fixed')),
             ]),
         ]),
       ),
@@ -898,7 +898,7 @@ class _HoolaOutboxCardState extends State<HoolaOutboxCard> {
   Future<void> _act(String a) async {
     try {
       await widget.app.api!.netOutbox(widget.v['id'] as String, a);
-      if (mounted) setState(() => _done = a == 'send' ? 'Bhej diya ✓' : 'Nahi bheja');
+      if (mounted) setState(() => _done = a == 'send' ? 'Sent ✓' : 'Not sent');
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
     }
@@ -915,9 +915,9 @@ class _HoolaOutboxCardState extends State<HoolaOutboxCard> {
           Row(children: [
             const Icon(Icons.outbox_rounded, color: C.accent),
             const SizedBox(width: 8),
-            Expanded(child: Text('${v['to'] ?? ''} ko bhejein?', style: const TextStyle(fontWeight: FontWeight.w700))),
+            Expanded(child: Text('${v['to'] ?? ''} — send it?', style: const TextStyle(fontWeight: FontWeight.w700))),
           ]),
-          Text('Aapka tap chahiye: ${v['reason'] ?? ''}', style: const TextStyle(color: C.warn, fontSize: 12.5)),
+          Text('Needs your tap: ${v['reason'] ?? ''}', style: const TextStyle(color: C.warn, fontSize: 12.5)),
           if ((v['text'] ?? '') != '')
             Container(
               margin: const EdgeInsets.only(top: 6),
@@ -928,14 +928,14 @@ class _HoolaOutboxCardState extends State<HoolaOutboxCard> {
           if (v['file'] is Map && (v['file'] as Map).isNotEmpty)
             HoolaMediaTile(body: {'local': v['file']}, app: widget.app),
           if (body['made_by_avatar'] == true)
-            Text('${widget.app.aName} ne banaya hai — dekh lijiye, phir bhejiye.', style: const TextStyle(color: C.teal, fontSize: 12)),
+            Text('${widget.app.aName} made this — take a look, then send.', style: const TextStyle(color: C.teal, fontSize: 12)),
           if ((body['name'] ?? body['place'] ?? body['email_id'] ?? '') != '')
             Text('${body['name'] ?? body['place'] ?? 'email'}', style: const TextStyle(color: C.chip, fontSize: 12.5)),
           if (_done == null)
             Row(children: [
-              Expanded(child: GradientButton(label: 'Bhejo', icon: Icons.send_rounded, height: 42, onTap: () => _act('send'))),
+              Expanded(child: GradientButton(label: 'Send', icon: Icons.send_rounded, height: 42, onTap: () => _act('send'))),
               const SizedBox(width: 8),
-              TextButton(onPressed: () => _act('cancel'), child: const Text('Mat bhejo')),
+              TextButton(onPressed: () => _act('cancel'), child: const Text('Do not send')),
             ])
           else
             Padding(padding: const EdgeInsets.only(top: 6), child: Text(_done!, style: const TextStyle(color: C.ok))),

@@ -86,7 +86,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
     from ..customs import service as S
     t, conv, who = ctx.tenant_id, ctx.conversation_id, _actor(ctx)
     if who.startswith("customer:"):
-        raise ToolError("Import desk customer ke liye nahi.")
+        raise ToolError("The import desk is not for customers.")
     sh = _s(a.get("shipment"))
     try:
         if action == "new":
@@ -114,11 +114,11 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return S.datasheet(t, sh, conv=conv)
         if action == "cancel":
             if not _owner(ctx):
-                raise ToolError("Shipment band sirf owner.")
+                raise ToolError("Only the owner can close a shipment.")
             return S.cancel(t, sh, _s(a.get("reason")))
         if action == "settings":
             if not _owner(ctx):
-                raise ToolError("Sirf owner.")
+                raise ToolError("Only the owner can do this.")
             return S.save_settings(t, **{k: a[k] for k in S._SET_KEYS if k in a})
     except (S.CustomsError, ValueError) as ex:
         raise ToolError(str(ex))

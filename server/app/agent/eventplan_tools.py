@@ -18,7 +18,7 @@ EVENTPLAN_TOOLS = [
     {"name": "event_plan", "description": (
         "Event planner's coworker (corporate, conference, launch, birthday, college fest, exhibition). NEVER invent a vendor price, "
         "date, venue or licence: missing = blank, ask her. Vendor booking/advance, client quote/invoice, invites/messages, spends = "
-        "CARDS for HER tap (say 'aapki haan ka card bheja hai'). action=settings*: firm, gstin, upi_id, margin_pct, head_margins "
+        "CARDS for HER tap (say 'I have sent a card for your approval'). action=settings*: firm, gstin, upi_id, margin_pct, head_margins "
         "{head: %}, fee_mode markup|fee|none, fee_pct, gst_pct, validity_days, terms, sound_till, morning_time, team [{name, phone, "
         "role}]. event: name / event (update), kind, client, client_phone, client_gstin, client_state, day, start, end, venue, city, "
         "headcount, budget, brief, facts {venue_kind indoor|open|hotel|public, sound, food, music, alcohol, pandal, stage, fireworks, "
@@ -95,9 +95,9 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
     from ..eventplan import service as S
     t, conv, actor = ctx.tenant_id, ctx.conversation_id, _actor(ctx)
     if actor.startswith("customer:"):
-        raise ToolError("Yeh kaam graahak ke liye nahi.")
+        raise ToolError("This work is not for customers.")
     if action in _OWNER_ONLY and not _owner(ctx):
-        raise ToolError("Sirf owner.")
+        raise ToolError("Only the owner can do this.")
     ev = _s(a.get("event"))
     try:
         if action == "settings":
@@ -164,7 +164,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return S.forget(t, ev, actor)
     except S.EventError as e:
         raise ToolError(str(e))
-    raise ToolError(f"action '{action}' nahi pehchana.")
+    raise ToolError(f"Unknown action '{action}'.")
 
 
 def _see(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
@@ -199,7 +199,7 @@ def _see(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
             return S.settings(t)
     except S.EventError as e:
         raise ToolError(str(e))
-    raise ToolError(f"what '{what}' nahi pehchana.")
+    raise ToolError(f"Unknown what '{what}'.")
 
 
 async def _event_plan(ctx: Ctx, action: str = "", **a: Any) -> dict[str, Any]:

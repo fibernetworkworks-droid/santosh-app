@@ -1,6 +1,7 @@
 ---
 name: prog-library-registry
 description: Pick libraries from the vetted registry - never a guess
+when_to_use: python library, which library, package, pip install, read excel, read pdf, scrape website, pandas, openpyxl, requests
 ---
 GOAL: every script names only libraries that exist. A hallucinated package name is not a
 typo - it is a supply-chain door (typosquatting), so the registry below is the short list

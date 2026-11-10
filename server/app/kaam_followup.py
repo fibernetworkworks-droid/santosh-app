@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 import os
 import re
 import threading
@@ -30,7 +31,7 @@ from .events import notify
 
 log = logging.getLogger("santosh.kaam_followup")
 
-STATE_WORD = {"done": "poora ho gaya", "failed": "ruk gaya, dikkat aayi", "stopped": "band kar diya gaya"}
+STATE_WORD = {"done": "finished", "failed": "stopped, ran into a problem", "stopped": "was stopped"}
 _LOCK = threading.Lock()
 _SENDING: set[int] = set()
 STATS: dict[str, int] = {"enqueued": 0, "sent": 0, "fallback": 0, "skipped": 0, "postponed": 0, "dup": 0,
@@ -118,7 +119,7 @@ def _aware(d: datetime | None) -> datetime | None:
     return d if d.tzinfo else d.replace(tzinfo=timezone.utc)
 
 
-def enqueue(tenant: str, conv: str, job: dict[str, Any]) -> bool:
+def enqueue(tenant: str, conv: str, job: dict[str, Any], dup_ok: bool = False) -> bool:
     """Queue one result report for a finished/failed/stopped job (deduped per job key + state). False = not queued.
     v0.189: stopped jobs report too - she told Hoola to Rokiye a kaam, or the system stopped it; the news is still
     hers, in Hoola's own words, not a dry ⏹ line."""
@@ -139,7 +140,7 @@ def enqueue(tenant: str, conv: str, job: dict[str, Any]) -> bool:
                                                        KaamFollowup.status.in_(("pending", "sent")),
                                                        KaamFollowup.created_at >= cut)).first()
             if dup:
-                return False
+                return bool(dup_ok)     # v0.657 the caller may count "already on its way" as reported
             s.add(KaamFollowup(tenant_id=tenant, conversation_id=conv, key=key, kind=str(job.get("kind") or "")[:40],
                                label=str(job.get("label") or "")[:80], title=str(job.get("title") or "")[:200],
                                state=st, detail=str(job.get("detail") or "")[:400], link=str(job.get("link") or "")[:300]))
@@ -155,30 +156,43 @@ def _wake_text(r: KaamFollowup) -> str:
     these words too, so the tools the result talks about (mail, sheet, video...) are loaded for the follow-up."""
     if r.kind == "research_watch" and r.state == "done":    # v0.480 R9: a watched topic CHANGED - a short message, from the diff
         rid = r.key.split(":", 1)[-1]
-        return (f"[Santosh worker update, not the user] <research_change_due run=\"{rid}\">\nJis topic par nazar rakhi thi usme badlaav mila ({r.title}): {r.detail}\n"
-                f"Pehle research_watch tool se action=result, run_id={rid} lo - usme badlaav ka digest hai. Phir uski bhasha mein CHHOTA sandesh likho (3-8 lines): "
-                f"kya badla (pehle kya tha -> ab kya, kis period ka), kya naya mila, aur jo is baar nahi dikha (use 'nahi dikha' likho, 'badal gaya' nahi). Kaaran apne se mat jodo. "
-                f"Naye aankde [n] source ke saath; purana aankda bina [n] ke 'pehle' likh kar. Ant mein poochho: poori report chahiye (research_status result) ya watch rok dein.\n</research_change_due>")
+        return (f"[Santosh worker update, not the user] <research_change_due run=\"{rid}\">\nThe topic you were watching has changed ({r.title}): {r.detail}\n"
+                f"First call the research_watch tool with action=result, run_id={rid} - it holds the digest of the change. Then write a SHORT message (3-8 lines): "
+                f"what changed (what it was before -> what it is now, for which period), what is new, and what was not seen this time (write 'not seen this time', never 'changed'). Do not add reasons of your own. "
+                f"Give new figures with their [n] source; give an old figure without [n], marked 'before'. End by asking: does she want the full report (research_status result) or should the watch be stopped.\n</research_change_due>")
     if r.kind == "research_run" and r.state == "done":     # v0.475 R4: the report is WRITTEN here, from the dossier
         rid = r.key.split(":", 1)[-1]
-        return (f"[Santosh worker update, not the user] <research_report_due run=\"{rid}\">\nResearch poora ho gaya ({r.title}): {r.detail}\n"
-                f"Ab uski REPORT likho: pehle research_status tool se action=result, id={rid} lo - usme dossier hai. Report sirf us dossier "
-                f"se likho (research_run dobara mat chalao): har number uske note ke source ke saath [n] aur date ke saath, jo confirm nahi hua "
-                f"woh alag section mein 'jo confirm nahi ho paya', aur sources ki list. Uski bhasha mein likho. Lamba ya file maangi ho to "
-                f"research_document tool se PDF / Word banao (uske liye apni final report `report` mein do) aur chat mein saar + file do.\n</research_report_due>")
+        return (f"[Santosh worker update, not the user] <research_report_due run=\"{rid}\">\nThe research is finished ({r.title}): {r.detail}\n"
+                f"Now write her REPORT: first call the research_status tool with action=result, id={rid} - it holds the dossier. Write the report only from that dossier "
+                f"(do not run research_run again): every number with its note's source [n] and date; what could not be confirmed goes "
+                f"in a separate section 'Not confirmed', then the list of sources. Write in clear simple English. If she asked for something long or a file, "
+                f"make a PDF / Word with the research_document tool (pass your final report as `report`) and give a summary + the file in the chat.\n</research_report_due>")
+    if r.kind == "agent_team" and r.state in ("done", "failed"):
+        # v0.722 JAWAB HI JAWAB: a background crew's deliverable (up to 24k chars, AgentTeam.result) never reached the chat -
+        # the follow-up carried a 400-char snippet + "1-3 lines", so her question ("5 million dollar AI SaaS idea dhundo")
+        # got a status survey of her whole desk and "the result should be in your chat above" instead of the answer
+        tid = r.key.split(":", 1)[-1]
+        return (f"[Santosh worker update, not the user] <team_result_due team=\"{tid}\">\nThe team she started: "
+                f"{STATE_WORD.get(r.state, r.state)} ({r.label} {r.title}).".replace("( ", "(") + (f"\nDetails: {r.detail}" if r.detail else "") + f"\nFirst call the agent_status tool with action=check, id={tid} - it holds "
+                f"the team's COMPLETE deliverables. Now write the ACTUAL ANSWER TO HER QUESTION right here in the chat from them - complete, "
+                f"clear, in simple English (as much as the question needs; if she asked for three ideas, give all three, each with "
+                f"the key points). This IS the answer for this chat: do not list other jobs / projects / cards, do not run kaam_status, "
+                f"do not write 'the answer is above'. Do not add anything that is not in the deliverables; if something is unfinished, "
+                f"say so in one line.\n</team_result_due>")
     head = f"{r.label} {r.title}".strip()
-    digest = f"Kaam: {head}\nNatija: {STATE_WORD.get(r.state, r.state)}"
+    digest = f"Job: {head}\nResult: {STATE_WORD.get(r.state, r.state)}"
     if r.detail:
-        digest += f"\nVivaran: {r.detail}"
+        digest += f"\nDetails: {r.detail}"
     if r.link:
         digest += f"\nLink: {r.link}"
-    return ("[Santosh worker update, not the user] Ek background kaam ka natija abhi aaya hai:\n" + digest +
-            "\n\nIsko apni awaaz mein 1-3 chhoti lines mein batao - kya hua, asli natija kya hai. Bole jaise phone "
-            "par bolte hain: chhote vaakya, comma ka matlab chhota pause, aur energy natije ke hisaab se (sahi nikla "
-            "to thodi khushi awaaz mein, adhura ya galat to dheemi aur seedhi). Agar natija adhura "
-            "ya galat lag raha hai, ya usme jo bataya gaya usse zyada kaam baaki hai, to tools se haalat check kar ke "
-            "sahi jaankari do (jo tools dikhe unse; jo nahi dikhe tool_search se lao). Jo pata hai wahi bolo, kuch "
-            "apne aap se mat jodo.")
+    return ("[Santosh worker update, not the user] The result of a background job has just come in:\n" + digest +
+            "\n\nTell her this in your own voice in 1-3 short lines - what happened, what the real result is. Speak the way "
+            "people talk on the phone: short sentences, a comma is a short pause, energy to match the result (a little "
+            "pleased if it worked, slower and plainer if it is incomplete or wrong). If the result looks incomplete "
+            "or wrong, or there is more work left than what was reported, check the real state with tools "
+            "and give the right information (use the tools you can see; load others with tool_search). Say only what you know, "
+            "add nothing of your own. Talk ONLY about THIS job - do not list other jobs / projects / cards. "
+            "Write 'the result is above in the chat' only if it really is written above in this chat.")
 
 
 async def _wake_turn(r: KaamFollowup, settings) -> bool:
@@ -191,15 +205,22 @@ async def _wake_turn(r: KaamFollowup, settings) -> bool:
                         "mode": "wake_turn"})
     try:
         from .agent import santosh
+        t0 = time.time()
         text = await santosh.run_turn(r.conversation_id, _wake_text(r), tenant_id=r.tenant_id, actor="wake",
                                       save_user=False)
         if not str(text or "").strip():
+            return False
+        if santosh.turn_failed_since(r.conversation_id, t0):
+            # v0.657 PAKKA KAAM: the wake turn crashed / timed out / hit the budget and RETURNED its error line - that
+            # is not the result. False = the honest canned line (with the result's link) goes out, never lost.
+            STATS["wake_failed"] = STATS.get("wake_failed", 0) + 1
             return False
         _wake_spend(r.conversation_id)
         STATS["wake"] += 1
         try:   # the same quiet note into her live call, exactly like the one-shot line
             from . import kaamwatch
-            kaamwatch._voice(r.tenant_id, r.conversation_id, " ".join(str(text).split())[:300])
+            # CALL PAR TEAM: a few full sentences (300 chars left one fragment of a 4-agent result on the call)
+            kaamwatch._voice(r.tenant_id, r.conversation_id, " ".join(str(text).split())[:700])
         except Exception:
             log.debug("wake voice note failed", exc_info=True)
         return True
@@ -210,23 +231,31 @@ async def _wake_turn(r: KaamFollowup, settings) -> bool:
 
 def _canned(r: KaamFollowup) -> str:
     """The honest kaamwatch-style line, used when the model has no words (never leave her without the news)."""
+    try:   # CALL PAR TEAM: her avatar's own forms ("shuru kar dungi")
+        from .avatar.service import gendered, persona
+        return gendered(_canned_raw(r), persona(r.tenant_id)[1])
+    except Exception:
+        return _canned_raw(r)
+
+
+def _canned_raw(r: KaamFollowup) -> str:
     head = f"{r.label} {r.title}".strip()
     if r.state == "failed":
-        return f"❌ {head}: ruk gaya, dikkat aayi." + (f" ({r.detail})" if r.detail else "") + \
-            " Bataiye to dobara koshish karun ya doosra raasta lun."
+        return f"❌ {head}: stopped, ran into a problem." + (f" ({r.detail})" if r.detail else "") + \
+            " Tell me if you want me to try again or take another route."
     if r.state == "stopped":
-        return f"⏹ {head}: band kar diya gaya." + (f" ({r.detail})" if r.detail else "") + \
-            " Jab chahiye, bas bol dena - phir shuru kar dunga."
-    return f"✅ {head}: ho gaya." + (f" {r.detail}" if r.detail else "") + (f" {r.link}" if r.link else "")
+        return f"⏹ {head}: was stopped." + (f" ({r.detail})" if r.detail else "") + \
+            " Whenever you want it, just say so and I will start it again."
+    return f"✅ {head}: done." + (f" {r.detail}" if r.detail else "") + (f" {r.link}" if r.link else "")
 
 
 _ONE_SHOT_SYSTEM = (   # v0.193 the delivery brief lives in ONE place so tests pin it
-    "Tum Hoola ho, ek Bharatiya AI coworker. Tumhari malik ke ek kaam ka natija abhi aaya hai. "
-    "Usko 1-2 chhoti Hinglish lines mein batao: kya poora hua, ruk gaya, ya band kar diya gaya, asli "
-    "natija kya hai. Jaise phone par bolti hai waise likho: chhote vaakya, comma ka matlab chhota pause, "
-    "energy natije ke hisaab se (sahi nikla to thodi khushi, ruk gaya ya band hua to dheemi aur seedhi "
-    "awaaz). Sirf wahi fact bolo jo neeche diya hai - kuch apne aap se jodna mat. Link ho to ek "
-    "baar saaf likho. Koi emoji nahi, koi markdown nahi, koi ✅ ❌ jaise symbol nahi.")
+    "You are Hoola, an Indian AI coworker. The result of one of your owner's jobs has just come in. "
+    "Tell her in 1-2 short lines of clear simple English: whether it finished, stopped, or was cancelled, and what the real "
+    "result is. Write the way you would say it on the phone: short sentences, a comma is a short pause, "
+    "energy to match the result (a little pleased if it worked, slower and plainer if it stopped or was cancelled). "
+    "Say only the facts given below - add nothing of your own. If there is a link, write it clearly once. "
+    "No emoji, no markdown, no symbols like ✅ ❌.")
 
 
 def _spoken(line: str) -> str:
@@ -242,7 +271,7 @@ async def _model_line(r: KaamFollowup, settings) -> str:
     from .agent.pakka import _ask
     system = _ONE_SHOT_SYSTEM
     text = f"Kaam: {r.label} {r.title}\nNatija: {STATE_WORD.get(r.state, r.state)}" + \
-           (f"\nVivaran: {r.detail}" if r.detail else "") + (f"\nLink: {r.link}" if r.link else "")
+           (f"\nDetails: {r.detail}" if r.detail else "") + (f"\nLink: {r.link}" if r.link else "")
     try:
         out = (await _ask(system, text, settings) or "").strip()
     except Exception as e:
@@ -251,7 +280,48 @@ async def _model_line(r: KaamFollowup, settings) -> str:
     return " ".join(out.split())[:600]
 
 
-def _answered_since(conv: str, since) -> bool:
+def _job_started(tenant: str, key: str):
+    """When the job behind this report started (kaam_jobs), or None when it is not known."""
+    if not tenant or not key:
+        return None
+    try:
+        from .kaamwatch import KaamJob
+        with session() as s:
+            r = s.scalars(select(KaamJob).where(KaamJob.tenant_id == tenant, KaamJob.key == key)).first()
+            return _aware(r.started_at) if r is not None else None
+    except Exception:
+        log.debug("job start lookup failed", exc_info=True)
+        return None
+
+
+def _turn_began(conv: str, msg_id: int):
+    """When the turn that wrote assistant message `msg_id` began = her last saved words before it (None if none)."""
+    from .db import Message
+    with session() as s:
+        u = s.scalars(select(Message).where(Message.conversation_id == conv, Message.role == "user",
+                                            Message.id < msg_id).order_by(Message.id.desc()).limit(1)).first()
+        return _aware(getattr(u, "created_at", None)) if u is not None else None
+
+
+def _other_jobs_report(conv: str, key: str, at) -> bool:
+    """v0.551 this reply WAS another finished job's own wake report (sent within two minutes after it was saved)."""
+    if at is None:
+        return False
+    try:
+        ensure_table()
+        with session() as s:
+            rows = s.scalars(select(KaamFollowup).where(KaamFollowup.conversation_id == conv,
+                                                        KaamFollowup.status == "sent",
+                                                        KaamFollowup.key != key,
+                                                        KaamFollowup.sent_at >= at - timedelta(seconds=5),
+                                                        KaamFollowup.sent_at <= at + timedelta(seconds=120))).all()
+            return bool(rows)
+    except Exception:
+        log.debug("other-report check failed", exc_info=True)
+        return False
+
+
+def _answered_since(conv: str, since, key: str = "", tenant: str = "") -> bool:
     """v0.260: did a REAL reply land in this chat after the job finished? Then the turn she was watching already
     told her, and waking the brain for a second report is the duplicate she saw on 29 Oct ("Competitor job poora ho
     gaya" under a full answer). _recent_said below only matched the TITLE's words against the reply, so it missed
@@ -276,6 +346,16 @@ def _answered_since(conv: str, since) -> bool:
             if text[:1] in set("\u25b6\U0001f504\u2705\u274c\u23f9\u23f3\u26a0"):
                 continue                                  # a status chip is not an answer either
             if len(text) >= 40:                           # a real reply, not a one-word ack
+                # v0.552 NATIJA PAKKA: a reply is THIS job's report only when its turn ran the job (began before
+                # the job started) and it is not another job's own wake report. Before, ANY reply after the
+                # finish counted, so a job that finished while she asked about something else was never told.
+                if key and _other_jobs_report(conv, key, at):
+                    continue
+                started = _job_started(tenant, key)
+                if started is not None:
+                    began = _turn_began(conv, m.id)
+                    if began is None or began > started + timedelta(seconds=5):
+                        continue                          # she asked something else after the job began
                 return True
     except Exception:
         log.debug("answered-since check failed", exc_info=True)
@@ -325,22 +405,36 @@ async def tick() -> int:
     ensure_table()          # v0.190.1 P0 self-heal (see enqueue)
     out = 0
     with session() as s:
-        rows = s.scalars(select(KaamFollowup).where(KaamFollowup.status == "pending", KaamFollowup.tries < 5)
+        rows = s.scalars(select(KaamFollowup).where(KaamFollowup.status == "pending", KaamFollowup.tries < _MAX_TRIES)
                          .order_by(KaamFollowup.created_at).limit(8)).all()
         rows = [{c: getattr(r, c) for c in ("id", "tenant_id", "conversation_id", "tries")} for r in rows]
     from .config import get_settings
     settings = get_settings()
     for row in rows:
         conv = row["conversation_id"]
+        if row["id"] in _SENDING:
+            # v0.657 PAKKA KAAM: checked FIRST - the turn holding the chat may be this row's OWN wake turn; counting
+            # that as "her turn is busy" posted the dry canned line in the middle of the real report (told twice)
+            continue
         if conv and _turn_running(conv):
             with session() as s:
                 r = s.get(KaamFollowup, row["id"])
                 if r and r.status == "pending":
                     r.tries += 1
-                    if r.tries >= 5:            # never lose the news: the canned line goes out now
+                    age = (now() - (_aware(r.created_at) or now())).total_seconds()
+                    # v0.552 NATIJA PAKKA: wait for her turn up to KAAM_FOLLOWUP_WAIT_S (5 min), not 5 ticks (~50 s):
+                    # an ordinary multi-tool turn used to get a dry line dropped into its middle and the real report
+                    # never came. A truly long turn still gets the honest line - the news is never lost.
+                    if age >= _wait_s() or r.tries >= _MAX_TRIES - 1:
                         r.status, r.sent_at = "sent", now()
-                        notify(conv, _canned(r))
+                        line = _canned(r)
+                        notify(conv, line)
                         STATS["fallback"] += 1
+                        try:   # CALL PAR TEAM: a live call hears it too (it went to the chat only)
+                            from . import kaamwatch
+                            kaamwatch._voice(r.tenant_id, conv, line[:700])
+                        except Exception:
+                            log.debug("fallback voice note failed", exc_info=True)
             STATS["postponed"] += 1
             continue
         if row["id"] in _SENDING:
@@ -356,6 +450,14 @@ async def tick() -> int:
 
 _BG: set = set()
 _task_row: dict = {}
+_MAX_TRIES = 60          # v0.552 postpones count here too (every ~10 s), so the cap sits above the 5-minute wait
+
+
+def _wait_s() -> int:
+    try:
+        return max(30, int(os.environ.get("KAAM_FOLLOWUP_WAIT_S", "300")))
+    except ValueError:
+        return 300
 
 
 def _bg_done(t) -> None:
@@ -372,7 +474,7 @@ async def _send(fid: str, settings) -> None:
             r = s.get(KaamFollowup, fid)
             if r is None or r.status != "pending":
                 return
-            conv, tenant, title = r.conversation_id, r.tenant_id, r.title
+            conv, tenant, title, key = r.conversation_id, r.tenant_id, r.title, r.key
             r.tries += 1
         if not conv:
             with session() as s:
@@ -380,7 +482,7 @@ async def _send(fid: str, settings) -> None:
                 if r2:
                     r2.status, r2.sent_at = "skipped", now()
             return
-        if _recent_said(conv, title) or _answered_since(conv, getattr(r, "created_at", None)):
+        if _recent_said(conv, title) or _answered_since(conv, getattr(r, "created_at", None), key=key, tenant=tenant):
             with session() as s:
                 r2 = s.get(KaamFollowup, fid)
                 if r2:
@@ -399,6 +501,10 @@ async def _send(fid: str, settings) -> None:
                     r2 = s.get(KaamFollowup, fid)
                     if r2 is not None and r2.status == "pending":
                         r2.status, r2.sent_at = "sent", now()
+                # v0.553 GHANTI: the wake turn is the NORMAL path, and it returned before the ring below - so a
+                # finished job almost never rang her phone. It rings here too (same gates: quiet hours, daily cap,
+                # never over a live call).
+                _ring(conv, snapshot.key, snapshot.state, title, settings)
                 return                   # the wake turn already told her (and the call) in Hoola's own words
             log.info("wake turn declined for %s; the one-shot line goes instead", fid)
         line = ""
@@ -427,20 +533,25 @@ async def _send(fid: str, settings) -> None:
             kaamwatch._voice(tenant, conv, _spoken(line))
         except Exception:
             log.debug("followup voice note failed", exc_info=True)
-        try:   # v0.211 NO live call? the SERVER may ring her phone for this news: kind=voice_ring data push,
-               # gated in push.on_event (quiet hours, daily budget, never while a call is live); v0.219 the
-               # phone's native side learned the kind and the setting flipped ON - 'if we dont give call it
-               # never reply on its own'
-            if settings.voice_ring:
-                from . import push as _push
-                _push.on_event(conv, {"kind": "voice_ring", "id": r3.key, "at": "",
-                                      "payload": {"reason": f"kaam {r3.state}: {title}"[:80], "ref": r3.key,
-                                                  "conv": conv}})
-        except Exception:
-            log.debug("voice ring skipped", exc_info=True)
+        _ring(conv, r3.key, r3.state, title, settings)
         STATS["sent"] += 1
     except Exception:
         log.exception("kaam followup send failed")
+
+
+def _ring(conv: str, key: str, state: str, title: str, settings) -> None:
+    """v0.211 NO live call? the SERVER may ring her phone for this news: kind=voice_ring data push, gated in
+    push.on_event (quiet hours, daily budget, never while a call is live); v0.219 the phone's native side learned
+    the kind and the setting flipped ON - 'if we dont give call it never reply on its own'. v0.553: ONE helper for
+    both report paths (the wake turn and the one-shot line)."""
+    try:
+        if settings.voice_ring:
+            from . import push as _push
+            _push.on_event(conv, {"kind": "voice_ring", "id": key, "at": "",
+                                  "payload": {"reason": f"kaam {state}: {title}"[:80], "ref": key, "conv": conv}})
+            STATS["ring"] = STATS.get("ring", 0) + 1
+    except Exception:
+        log.debug("voice ring skipped", exc_info=True)
 
 
 def pending(tenant: str) -> list[dict[str, Any]]:

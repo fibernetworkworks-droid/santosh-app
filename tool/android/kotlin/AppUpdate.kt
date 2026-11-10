@@ -55,9 +55,9 @@ object AppUpdate {
 
     /** Downloads + checks the APK on a background thread; done(path, error) on that thread. */
     fun download(ctx: Context, url: String, sha256: String, size: Long, done: (String?, String?) -> Unit) {
-        if (channel(ctx) != "github") { done(null, "Is version mein app khud update nahi hota (Play Store se update kijiye)."); return }
+        if (channel(ctx) != "github") { done(null, "This version cannot update itself (please update from the Play Store)."); return }
         if (!url.startsWith("https://github.com/") && !url.startsWith("https://objects.githubusercontent.com/")) {
-            done(null, "Update ka link GitHub ka nahi hai, isliye nahi liya."); return
+            done(null, "The update link is not from GitHub, so it was not used."); return
         }
         fetch(ctx, url, sha256, size, "hoola-update.apk", { true }, { f -> check(ctx, f) }, done)
     }
@@ -66,20 +66,20 @@ object AppUpdate {
      *  host, no redirects elsewhere), SHA-256 must match what the server reported, the package must be the app's own
      *  in.hoola.preview.* id (never Hoola itself). Android's own Install screen asks her. */
     fun downloadPreview(ctx: Context, url: String, sha256: String, pkg: String, server: String, done: (String?, String?) -> Unit) {
-        if (channel(ctx) != "github") { done(null, "Is version mein doosri app install nahi hoti."); return }
+        if (channel(ctx) != "github") { done(null, "This version cannot install other apps."); return }
         val host = try { URL(server).host } catch (_: Exception) { "" }
         val ok: (String) -> Boolean = { u -> try { val x = URL(u); x.protocol == "https" && host.isNotEmpty() && x.host == host } catch (_: Exception) { false } }
-        if (!ok(url)) { done(null, "Yeh link aapke Hoola server ka nahi hai, isliye nahi liya."); return }
+        if (!ok(url)) { done(null, "This link is not from your Hoola server, so it was not used."); return }
         if (!Regex("^in\\.hoola\\.preview\\.[a-z0-9]{4,40}$").matches(pkg) || pkg == ctx.packageName) {
-            done(null, "App ka naam sahi nahi hai."); return
+            done(null, "The app name is not valid."); return
         }
-        if (sha256.length != 64) { done(null, "Checksum nahi mila."); return }
+        if (sha256.length != 64) { done(null, "Checksum not found."); return }
         fetch(ctx, url, sha256, 0, "hoola-preview.apk", ok, { f -> checkPreview(ctx, f, pkg) }, done)
     }
 
     private fun fetch(ctx: Context, url: String, sha256: String, size: Long, name: String, hostOk: (String) -> Boolean,
                       verify: (File) -> Unit, done: (String?, String?) -> Unit) {
-        if (busy) { done(null, "Download pehle se chal raha hai."); return }
+        if (busy) { done(null, "A download is already running."); return }
         busy = true; stop = false; pct = 0
         Thread {
             val dir = File(ctx.cacheDir, "updates").apply { mkdirs() }
@@ -134,9 +134,9 @@ object AppUpdate {
                 busy = false; pct = -1
                 done(null, when {
                     e is InterruptedException -> "cancelled"
-                    e is SecurityException && e.message == "checksum" -> "Download kharab aaya (checksum match nahi hua). Dobara try kijiye."
+                    e is SecurityException && e.message == "checksum" -> "The download was corrupted (checksum did not match). Please try again."
                     e is SecurityException -> e.message
-                    else -> "Download nahi ho paya (${e.message ?: e.javaClass.simpleName})."
+                    else -> "Could not download (${e.message ?: e.javaClass.simpleName})."
                 })
             }
         }.start()
@@ -146,13 +146,13 @@ object AppUpdate {
     private fun checkPreview(ctx: Context, apk: File, pkg: String) {
         val pm = ctx.packageManager
         val flag = if (Build.VERSION.SDK_INT >= 28) PackageManager.GET_SIGNING_CERTIFICATES else PackageManager.GET_SIGNATURES
-        val arch = pm.getPackageArchiveInfo(apk.absolutePath, flag) ?: throw SecurityException("Yeh file sahi APK nahi hai.")
-        if (arch.packageName != pkg) throw SecurityException("Yeh APK is app ka nahi hai.")
+        val arch = pm.getPackageArchiveInfo(apk.absolutePath, flag) ?: throw SecurityException("This file is not a valid APK.")
+        if (arch.packageName != pkg) throw SecurityException("This APK is not for this app.")
         val installed = try { pm.getPackageInfo(pkg, flag) } catch (_: Exception) { null }
         if (installed != null) {
             val a = signers(installed); val b = signers(arch)
             if (a.isNotEmpty() && b.isNotEmpty() && a.intersect(b).isEmpty()) {
-                throw SecurityException("Phone par is app ka purana version doosri chaabi se bana hai; pehle use hataiye.")
+                throw SecurityException("The old version of this app on the phone was signed with a different key; please remove it first.")
             }
         }
     }
@@ -169,12 +169,12 @@ object AppUpdate {
     private fun check(ctx: Context, apk: File) {
         val pm = ctx.packageManager
         val flag = if (Build.VERSION.SDK_INT >= 28) PackageManager.GET_SIGNING_CERTIFICATES else PackageManager.GET_SIGNATURES
-        val arch = pm.getPackageArchiveInfo(apk.absolutePath, flag) ?: throw SecurityException("Yeh file sahi APK nahi hai.")
-        if (arch.packageName != ctx.packageName) throw SecurityException("Yeh APK Hoola ka nahi hai.")
+        val arch = pm.getPackageArchiveInfo(apk.absolutePath, flag) ?: throw SecurityException("This file is not a valid APK.")
+        if (arch.packageName != ctx.packageName) throw SecurityException("This APK is not Hoola's.")
         val mine = signers(pm.getPackageInfo(ctx.packageName, flag))
         val theirs = signers(arch)
         if (mine.isEmpty() || theirs.isEmpty() || mine.intersect(theirs).isEmpty()) {
-            throw SecurityException("Naye APK ka signature is app se alag hai, isliye update nahi kiya.")
+            throw SecurityException("The new APK's signature differs from this app, so it was not updated.")
         }
     }
 
@@ -200,7 +200,7 @@ object AppUpdate {
             }
             null
         } catch (e: Exception) {
-            "Install shuru nahi hua (${e.message ?: e.javaClass.simpleName})."
+            "Could not start the install (${e.message ?: e.javaClass.simpleName})."
         }
     }
 

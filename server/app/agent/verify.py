@@ -80,13 +80,13 @@ def file_row(tenant: str, file_id: str):
 def check_file_id(tenant: str, file_id: str) -> dict[str, Any]:
     r = file_row(tenant, file_id)
     if r is None:
-        return _bad(file_id, "aisi koi file nahi bani (file id record mein nahi hai)")
+        return _bad(file_id, "no such file was made (the file id is not in the records)")
     p = Path(r.stored_path or "")
     if not r.stored_path or not p.exists():
-        return _bad(r.name or file_id, "file ka record hai par file disk par nahi hai")
+        return _bad(r.name or file_id, "the file has a record but is not on disk")
     size = p.stat().st_size
     if size <= 0:
-        return _bad(r.name or file_id, "file khaali hai (0 bytes)")
+        return _bad(r.name or file_id, "the file is empty (0 bytes)")
     return _ok(r.name or file_id, f"{size} bytes")
 
 
@@ -97,15 +97,15 @@ def check_artifact(tenant: str, art_id: str) -> dict[str, Any]:
     with session() as s:
         a = s.scalars(select(Artifact).where(Artifact.id == art_id, Artifact.tenant_id == tenant)).first()
         if a is None:
-            return _bad(art_id, "aisa koi page nahi bana")
+            return _bad(art_id, "no such page was made")
         if a.deleted:
-            return _bad(a.title or art_id, "page delete ho chuka hai")
+            return _bad(a.title or art_id, "the page has been deleted")
         if not a.version or a.status != "ready":
-            return _bad(a.title or art_id, f"page tayyar nahi hai (status {a.status})")
+            return _bad(a.title or art_id, f"the page is not ready (status {a.status})")
         v = s.scalars(select(ArtifactVersion).where(ArtifactVersion.artifact_id == a.id,
                                                     ArtifactVersion.version == a.version)).first()
         if v is None or not (v.html or "").strip():
-            return _bad(a.title or art_id, "page ka content khaali hai")
+            return _bad(a.title or art_id, "the page content is empty")
         return _ok(a.title or art_id, f"v{a.version}, {len(v.html)} chars")
 
 
@@ -121,11 +121,11 @@ def check_dataset(tenant: str, item: str) -> dict[str, Any] | None:
         doc = D.load(tenant, ds)
     except Exception as e:   # noqa: BLE001 - DataError = it is not there (14-day sweep), anything else = unknown
         if type(e).__name__ == "DataError":
-            return _bad(ds, "yeh dataset ab nahi hai")
-        return _unknown(ds, f"dataset check nahi ho paya ({type(e).__name__})")
+            return _bad(ds, "this dataset no longer exists")
+        return _unknown(ds, f"the dataset could not be checked ({type(e).__name__})")
     rows = doc.get("rows") if isinstance(doc, dict) else None
     n = len(rows or []) if isinstance(rows, list) else 0
-    return _ok(ds, f"{n} rows") if n else _bad(ds, "dataset khaali hai")
+    return _ok(ds, f"{n} rows") if n else _bad(ds, "the dataset is empty")
 
 
 def check_link(url: str) -> dict[str, Any]:
@@ -135,7 +135,7 @@ def check_link(url: str) -> dict[str, Any]:
 
     from ..config import get_settings
     if not getattr(get_settings(), "goal_verify_links", True):
-        return _unknown(url, "link check band hai")
+        return _unknown(url, "link checking is switched off")
     STATS["links_checked"] += 1
     try:
         with httpx.Client(timeout=LINK_TIMEOUT_S, follow_redirects=True) as c:
@@ -143,14 +143,62 @@ def check_link(url: str) -> dict[str, Any]:
             if r.status_code in (403, 405, 501):
                 r = c.get(url, headers={"Range": "bytes=0-256"})
     except Exception as e:   # noqa: BLE001 - network trouble is never a verdict on her work
-        return _unknown(url, f"link check nahi ho paya ({type(e).__name__})")
+        return _unknown(url, f"the link could not be checked ({type(e).__name__})")
     if r.status_code in (404, 410):
-        return _bad(url, f"link par kuch nahi hai ({r.status_code})")
+        return _bad(url, f"there is nothing at the link ({r.status_code})")
     if r.status_code >= 500:
-        return _unknown(url, f"server ne {r.status_code} diya - abhi pata nahi chala")
+        return _unknown(url, f"the server answered {r.status_code} - not known yet")
     if r.status_code >= 400:
-        return _unknown(url, f"link ne {r.status_code} diya (shayad login chahiye)")
+        return _unknown(url, f"the link answered {r.status_code} (maybe it needs a login)")
     return _ok(url, str(r.status_code))
+
+
+# v0.665 SACH KA HISAAB: the gate looks only at what THIS job made. "Q3 report.pdf" from last month, or three old
+# reminders, used to pass a job that claimed them - every row the tenant ever had was counted.
+import contextvars as _cv
+from datetime import timedelta as _td, timezone as _tz
+
+SINCE: "_cv.ContextVar" = _cv.ContextVar("verify_since", default=None)
+
+
+def _new(at) -> bool:
+    """Was this row made after the job began? (no start known = every row counts, the old behaviour)"""
+    since = SINCE.get()
+    if since is None or at is None:
+        return True
+    a = at if at.tzinfo else at.replace(tzinfo=_tz.utc)
+    b = since if since.tzinfo else since.replace(tzinfo=_tz.utc)
+    return a >= b - _td(seconds=90)
+
+
+def _ran_in_job(conv: str, tool: str) -> bool:
+    """wave 10: did `tool` finish ok in this chat since the job began (SINCE)? The harness log holds every round."""
+    since = SINCE.get()
+    if not conv or since is None:
+        return False
+    try:
+        import json as _json
+
+        from sqlalchemy import select
+
+        from ..db import session
+        from .eventlog import HarnessEvent, ensure_table
+        ensure_table()
+        with session() as s:
+            rows = s.scalars(select(HarnessEvent).where(HarnessEvent.conversation_id == conv,
+                                                        HarnessEvent.kind == "tool_result")).all()
+            for r in rows:
+                if not _new(r.created_at):
+                    continue
+                try:
+                    p = _json.loads(r.payload or "{}")
+                except ValueError:
+                    continue
+                if p.get("ok") and str(p.get("tool") or "") == tool:
+                    return True
+    except Exception:   # noqa: BLE001
+        log.debug("job tool lookup failed", exc_info=True)
+    return False
 
 
 def _delivered(tenant: str) -> list[tuple[str, str]]:
@@ -160,7 +208,8 @@ def _delivered(tenant: str) -> list[tuple[str, str]]:
     with session() as s:
         return [(r.name or "", r.stored_path or "")
                 for r in s.scalars(select(PcFile).where(PcFile.tenant_id == tenant,
-                                                        PcFile.direction == "to_phone")).all()]
+                                                        PcFile.direction == "to_phone")
+                                   .order_by(PcFile.created_at)).all() if _new(r.created_at)]
 
 
 def check_filename(tenant: str, name: str) -> dict[str, Any]:
@@ -170,8 +219,8 @@ def check_filename(tenant: str, name: str) -> dict[str, Any]:
             p = Path(path)
             if path and p.exists() and p.stat().st_size > 0:
                 return _ok(nm, f"{p.stat().st_size} bytes")
-            return _bad(nm, "file ka record hai par file disk par nahi hai")
-    return _bad(name, "is naam ki koi file nahi bani")
+            return _bad(nm, "the file has a record but is not on disk")
+    return _bad(name, "no file with this name was made")
 
 
 # ---------------------------------------------------------------- what the job says it made
@@ -195,7 +244,7 @@ def check_made(tenant: str, made: list[str] | None) -> list[dict[str, Any]]:
         url = _URL.search(item)
         if url:
             if links >= MAX_LINKS:
-                rows.append(_unknown(url.group(0), "itne link ek saath check nahi kiye"))
+                rows.append(_unknown(url.group(0), "this many links were not checked at once"))
             else:
                 links += 1
                 rows.append(check_link(url.group(0)))
@@ -211,7 +260,11 @@ def check_made(tenant: str, made: list[str] | None) -> list[dict[str, Any]]:
 
 
 # ---------------------------------------------------------------- what a plan step demands
-def _file_info(tenant: str, hint: str) -> tuple[dict[str, Any] | None, dict[str, Any]]:
+_FITS = {"file_pages": ("pdf", "docx", "doc", "pptx"), "file_rows": ("xlsx", "xls", "csv", "tsv"),
+         "file_slides": ("pptx", "ppt", "pdf")}
+
+
+def _file_info(tenant: str, hint: str, check: str = "") -> tuple[dict[str, Any] | None, dict[str, Any]]:
     """The file a step points at (by id, link or name; else the newest delivered one) + what is inside it."""
     from ..quality.longcard import read_file           # the long card's reader: pypdf / openpyxl / docx / pptx
     fid = _PC_LINK.search(hint or "") or _FILE_ID.search(hint or "")
@@ -226,14 +279,18 @@ def _file_info(tenant: str, hint: str) -> tuple[dict[str, Any] | None, dict[str,
             want = fn.group(0).lower()
             pick = next((x for x in names if want in x[0].lower()), None)
         if pick is None and names:
-            pick = names[-1]
+            # wave 10: no file named - the newest file of the KIND this check reads (a page count is a PDF / Word file,
+            # a row count a sheet); the newest file of any kind made a PDF step read the later Excel and fail
+            fits = _FITS.get(check)
+            typed = [x for x in names if fits and x[0].rsplit(".", 1)[-1].lower() in fits]
+            pick = (typed or names)[-1]
         if pick is None:
-            return None, {"ok": False, "why": "koi file nahi mili"}
+            return None, {"ok": False, "why": "no file was found"}
         name, path = pick
     else:
         name, path = row.name or "", row.stored_path or ""
     kind = name.rsplit(".", 1)[-1].lower() if "." in name else ""
-    info = read_file(path, kind) if path else {"ok": False, "why": "file disk par nahi hai"}
+    info = read_file(path, kind) if path else {"ok": False, "why": "the file is not on disk"}
     return {"name": name, "path": path, "kind": kind}, info
 
 
@@ -245,16 +302,20 @@ def check_step(tenant: str, conv: str, step: dict[str, Any], calls: list[dict] |
         return None
     m = _CHECK.match(spec)
     if m is None:
-        return _unknown(f"step {step.get('n')}", f"check samajh nahi aaya: {spec[:60]}")
+        return _unknown(f"step {step.get('n')}", f"the check was not understood: {spec[:60]}")
     kind, arg, num = m.group(1).lower(), (m.group(2) or "").strip(), int(m.group(3) or 0)
     note = str(step.get("note") or "")
     where = f"step {step.get('n')} ({str(step.get('text') or '')[:40]})"
     if kind == "tool":
         hit = [c for c in (calls or []) if c.get("ok") and str(c.get("tool") or "") == arg]
-        return _ok(where, f"{arg} chala") if hit else _bad(where, f"{arg} is kaam mein chala hi nahi")
+        if not hit and _ran_in_job(conv, arg):
+            # wave 10: `calls` is THIS round only - a mail sent in round 2 failed the round-4 finish, the step reopened
+            # and the model was told to really do it (a second mail); the whole job's harness log is asked as well
+            return _ok(where, f"{arg} ran earlier in this job")
+        return _ok(where, f"{arg} ran") if hit else _bad(where, f"{arg} never ran in this job")
     if kind == "link_ok":
         url = _URL.search(note)
-        return check_link(url.group(0)) if url else _bad(where, "step ke note mein koi link nahi hai")
+        return check_link(url.group(0)) if url else _bad(where, "there is no link in the step note")
     if kind == "artifact":
         aid = _ART_LINK.search(note) or _ART_ID.search(note)
         if aid:
@@ -266,8 +327,8 @@ def check_step(tenant: str, conv: str, step: dict[str, Any], calls: list[dict] |
             a = s.scalars(select(Artifact).where(Artifact.tenant_id == tenant, Artifact.status == "ready",
                                                  Artifact.deleted.is_(False))
                           .order_by(Artifact.updated_at.desc())).first()
-            aid2 = a.id if a is not None else ""
-        return check_artifact(tenant, aid2) if aid2 else _bad(where, "koi tayyar page nahi hai")
+            aid2 = a.id if a is not None and _new(a.updated_at) else ""
+        return check_artifact(tenant, aid2) if aid2 else _bad(where, "there is no ready page")
     if kind in ("reminder", "routine"):
         from sqlalchemy import select
 
@@ -277,8 +338,9 @@ def check_step(tenant: str, conv: str, step: dict[str, Any], calls: list[dict] |
             rows = s.scalars(select(Reminder if kind == "reminder" else Routine)
                              .where((Reminder if kind == "reminder" else Routine).tenant_id == tenant,
                                     (Reminder if kind == "reminder" else Routine).status == "active")).all()
+            rows = [x for x in rows if _new(x.created_at)]
         return (_ok(where, f"{len(rows)} active") if len(rows) >= want
-                else _bad(where, f"sirf {len(rows)} {kind} lage, {want} chahiye the"))
+                else _bad(where, f"only {len(rows)} {kind} were found, {want} were needed"))
     if kind == "list":
         from sqlalchemy import select
 
@@ -286,38 +348,47 @@ def check_step(tenant: str, conv: str, step: dict[str, Any], calls: list[dict] |
         want = max(1, num)
         with session() as s:
             rows = [x for x in s.scalars(select(ListItem).where(ListItem.tenant_id == tenant)).all()
-                    if not arg or arg.lower() in (x.list_name or "").lower()]
+                    if (not arg or arg.lower() in (x.list_name or "").lower()) and _new(x.created_at)]
         return (_ok(where, f"{len(rows)} items") if len(rows) >= want
-                else _bad(where, f"list mein sirf {len(rows)} items, {want} chahiye the"))
+                else _bad(where, f"the list has only {len(rows)} items, {want} were needed"))
     # the file family
     hint = (arg + " " + note) if kind == "file" else note
-    f, info = _file_info(tenant, hint)
+    f, info = _file_info(tenant, hint, kind)
     if f is None or not info.get("ok"):
-        return _bad(where, str(info.get("why") or "file nahi mili"))
+        return _bad(where, str(info.get("why") or "file not found"))
     if kind == "file":
         return _ok(where, f["name"])
     got = int(info.get({"file_pages": "pages", "file_rows": "rows", "file_slides": "slides"}[kind], 0) or 0)
     want = max(1, num)
     unit = {"file_pages": "page", "file_rows": "row", "file_slides": "slide"}[kind]
     return (_ok(where, f"{f['name']}: {got} {unit}s") if got >= want
-            else _bad(where, f"{f['name']} mein {got} {unit}s hain, {want} chahiye the"))
+            else _bad(where, f"{f['name']} has {got} {unit}s, {want} were needed"))
 
 
 # ---------------------------------------------------------------- the gate
 def line_for(failures: list[dict], unknown: list[dict]) -> str:
     out = ""
     if failures:
-        out = "Yeh cheezein asal mein nahi mili: " + "; ".join(f"{f['item']} - {f['why']}" for f in failures[:4])
+        out = "These things were not really found: " + "; ".join(f"{f['item']} - {f['why']}" for f in failures[:4])
     if unknown:
-        out += (" " if out else "") + "Check nahi ho paya: " + "; ".join(
+        out += (" " if out else "") + "Could not be checked: " + "; ".join(
             f"{u['item']} - {u['why']}" for u in unknown[:3])
     return out.strip()[:400]
 
 
 def gate(tenant: str, conv: str, made: list[str] | None, steps: list[dict] | None,
-         calls: list[dict] | None = None) -> dict[str, Any]:
+         calls: list[dict] | None = None, since=None) -> dict[str, Any]:
     """Can this job close as done? Never raises: a broken check must not break her job (it reads as unknown)."""
     STATS["gates"] += 1
+    tok = SINCE.set(since)
+    try:
+        return _gate(tenant, conv, made, steps, calls)
+    finally:
+        SINCE.reset(tok)
+
+
+def _gate(tenant: str, conv: str, made: list[str] | None, steps: list[dict] | None,
+          calls: list[dict] | None = None) -> dict[str, Any]:
     rows: list[dict[str, Any]] = []
     try:
         rows += check_made(tenant, made)

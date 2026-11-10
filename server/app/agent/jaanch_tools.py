@@ -26,7 +26,7 @@ async def hoola_jaanch(ctx: Ctx, action="check", **_):
     if action != "check":
         raise ToolError("action = check | report")
     r = await jaanch.run(ctx.tenant_id)
-    r["checks"] = [c for c in r["checks"] if c["ok"] is not True] or [{"name": "sab", "ok": True}]
+    r["checks"] = [c for c in r["checks"] if c["ok"] is not True] or [{"name": "all", "ok": True}]
     r["report"] = {k: r["report"].get(k) for k in ("chat", "website", "crashes")}
     return r
 

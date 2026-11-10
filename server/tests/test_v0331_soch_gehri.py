@@ -116,7 +116,8 @@ def test_a_long_result_shrinks_its_lists_and_stays_json():
 def test_a_long_text_is_cut_with_a_way_to_get_the_rest():
     from app.agent.santosh import _short
     out = _short({"text": "x" * 9000})
-    assert "showing 6,000 of" in out and "next page" in out
+    # v0.667 a long string is shortened in place (every key after it survives) - the hint still says how to get the rest
+    assert ("showing 6,000 of" in out or "more characters cut" in out) and "next page" in out and len(out) <= 6000
     assert len(_short({"a": 1})) < 20                                # small results untouched
 
 

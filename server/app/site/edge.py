@@ -125,6 +125,8 @@ server {{
     proxy_set_header X-Forwarded-Proto https;
     gzip on;
     gzip_types text/css application/javascript image/svg+xml application/xml text/plain application/json;
+    gzip_static on;          # v0.538 the build's own .gz twins: no compression work per visitor (10,000-page catalogues)
+    gzip_vary on;
 
     # served by nginx itself only when the address is live in the enabled folder
     set $hoola_live 0;
@@ -146,12 +148,13 @@ server {{
         return 404;
     }}
     location = /_headers {{ return 404; }}
+    location = /_redirects.json {{ return 404; }}
     location ^~ /assets/ {{
         if ($hoola_live = 0) {{
 {proxy}
         }}
 {hdr}
-        add_header Cache-Control "public, max-age=604800" always;
+        add_header Cache-Control "public, max-age=604800, stale-while-revalidate=604800" always;
         try_files $uri =404;
     }}
     location / {{
@@ -160,8 +163,20 @@ server {{
         }}
         if (-d $request_filename) {{ rewrite [^/]$ $uri/ permanent; }}
 {hdr}
-        add_header Cache-Control "public, max-age=300, must-revalidate" always;
-        try_files $uri $uri/index.html =404;
+        add_header Cache-Control "public, max-age=300, stale-while-revalidate=86400" always;   # v0.538 a CDN keeps serving
+        try_files $uri $uri/index.html @hoola_moved;
+    }}
+    # v0.622 a missing page of a site that moved here from her old site: Hoola answers with the 301 to its new page
+    location @hoola_moved {{
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header X-Hoola-Edge 1;
+        if (-f $document_root/_redirects.json) {{
+{proxy}
+        }}
+        return 404;
     }}
     error_page 404 /404.html;
     location = /404.html {{

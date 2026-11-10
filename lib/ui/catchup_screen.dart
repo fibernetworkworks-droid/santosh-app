@@ -40,7 +40,7 @@ class CatchUpScreen extends StatelessWidget {
                       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                         Text('Welcome back!', style: display(24)),
                         const SizedBox(height: 6),
-                        Text('Aap $hours ghante door the. Maine kaam jaari rakha. Yeh raha hisaab:',
+                        Text('You were away for $hours hours. I kept the work going. Here is the summary:',
                             style: const TextStyle(fontSize: 13.5, height: 1.45, color: C.chip)),
                       ]),
                     ),
@@ -53,14 +53,14 @@ class CatchUpScreen extends StatelessWidget {
             Stagger(
               index: 1,
               child: Row(children: [
-                _stat('${items.length}', 'kaam / khabar', C.ok),
+                _stat('${items.length}', 'work / news', C.ok),
                 const SizedBox(width: 8),
-                _stat('${pending.length}', 'approve karein', C.accentSoft),
+                _stat('${pending.length}', 'approve', C.accentSoft),
               ]),
             ),
             const SizedBox(height: 18),
             if (pending.isNotEmpty) ...[
-              const Caption('APKE TAP KA INTEZAAR'),
+              const Caption('WAITING FOR YOUR TAP'),
               for (final a in pending)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 10),
@@ -78,7 +78,7 @@ class CatchUpScreen extends StatelessWidget {
               const SizedBox(height: 8),
             ],
             if (items.isNotEmpty) ...[
-              const Caption('JAB AAP OFFLINE THE'),
+              const Caption('WHILE YOU WERE OFFLINE'),
               Glass(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
                 child: Column(children: [
@@ -98,7 +98,7 @@ class CatchUpScreen extends StatelessWidget {
               ),
             ],
             const SizedBox(height: 18),
-            GlassButton(label: 'Theek hai, aage badhiye', height: 52, onTap: () => Navigator.of(context).pop()),
+            GlassButton(label: 'OK, move on', height: 52, onTap: () => Navigator.of(context).pop()),
           ]),
         ),
       ),

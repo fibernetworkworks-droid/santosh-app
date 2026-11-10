@@ -1010,9 +1010,18 @@ def import_rows(tenant: str, source: dict[str, Any]) -> tuple[list[list[Any]], s
     elif source.get("file_id"):
         from pathlib import Path
         f = ms._file_row(tenant, source["file_id"])
-        name, data = f.name, Path(f.stored_path).read_bytes()
+        p = Path(f.stored_path or "")
+        if not p.exists():
+            raise SheetError(f"{f.name} ab server par nahi hai (files 24 ghante baad hat jaati hain). Dobara bhejiye.")
+        name, data = f.name, p.read_bytes()
+    elif source.get("drive_file") or source.get("drive_file_id"):
+        # v0.701: an Excel / CSV (or a Google Sheet, exported as xlsx) already in her Drive - no upload first
+        try:
+            name, _mt, data = ms._drive_bytes(tenant, str(source.get("drive_file") or source.get("drive_file_id")), "xlsx")
+        except ms.MailError as e:
+            raise SheetError(str(e))
     else:
-        raise SheetError("source: {email_id, attachment_id} ya {file_id} (Excel / CSV)")
+        raise SheetError("source: {email_id, attachment_id}, {file_id} ya {drive_file} (Excel / CSV)")
     rows = mime.table_rows(name, data)
     if not rows:
         raise SheetError(f"{name} mein koi data nahi mila.")

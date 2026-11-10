@@ -107,9 +107,9 @@ def test_shipment_ewb_her_tap_manual(lg):
     r = ship(S, vehicle_no="", distance_km=0)
     v = r["shipment"]
     assert v["number"] == "S-0001" and v["ewb"]["needed"] and not v["ewb"]["intra"]
-    assert any("E-way bill chahiye" in w for w in v["warnings"]) and any("Doori" in w for w in v["warnings"])
+    assert any("An e-way bill is needed" in w for w in v["warnings"]) and any("No distance" in w for w in v["warnings"])
     rd = S.ewb_ready(T, "S-0001")
-    assert any("Doori" in b for b in rd["blockers"])
+    assert any("distance" in b for b in rd["blockers"])
     with pytest.raises(S.LogiError):
         S.ewb_request(T, "S-0001")                                   # blockers stop the card
     S.update_shipment(T, "S-0001", distance_km=640, vehicle_no="MH30AB1234")
@@ -266,7 +266,7 @@ def test_docs_pod_and_courier(lg, monkeypatch, tmp_path):
     buf = io.BytesIO()
     im.save(buf, "JPEG", exif=ex)
     p = S.add_photo(T, "S-0001", buf.getvalue(), "pod", receiver="Raju", damaged=True, remarks="2 bag phate")
-    assert p["shipment"]["status"] == "delivered" and p["notes"] and "180 din" in p["notes"][0]
+    assert p["shipment"]["status"] == "delivered" and p["notes"] and "180 days" in p["notes"][0]
     stored = Image.open(S.photo_file(T, p["photo"]["id"]))
     assert not dict(stored.getexif())
     assert any(mm["kind"] == "delivered" for mm in S.get(T, "S-0001")["messages"])

@@ -1,6 +1,7 @@
 ---
 name: byox-operating-system
 description: Build an OS: bootloader, VGA, interrupts, paging, scheduler
+when_to_use: operating system, own os, kernel, bootloader, os banana
 ---
 GOAL: a kernel that boots in QEMU, handles keyboard IRQs and runs two processes.
 

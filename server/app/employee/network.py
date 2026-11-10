@@ -114,12 +114,19 @@ async def run_pending(limit: int = 3) -> int:
         if member is None or not member["active"]:
             status, out = "failed", "Team member ab team mein nahi hai."
         else:
+            import time as _time
+            t0 = _time.time()
             try:
                 out = await run_turn(emp._home(tenant), _prompt(name, member["role"], text), tenant_id=tenant,
                                      actor=f"staff:{mid}")
-            except Exception as e:
+                from ..agent import santosh as _sant
+                if _sant.turn_failed_since(emp._home(tenant), t0):
+                    # wave 9: run_turn RETURNS its error line ("kuch gadbad", the outage line) - it was saved as "done"
+                    # and sent to the staff member as the result; now it is a failure with a plain line, no internals
+                    status, out = "failed", "Abhi yeh kaam nahi ho paya (AI service mein dikkat). Thodi der baad phir bhejiye."
+            except Exception:
                 log.exception("staff task %s failed", tid)
-                status, out = "failed", f"Kuch gadbad: {e}"
+                status, out = "failed", "Abhi yeh kaam nahi ho paya. Thodi der baad phir bhejiye."
         with session() as s:
             t = s.get(StaffTask, tid)
             t.status, t.result, t.done_at = status, (out or "")[:4000], now()

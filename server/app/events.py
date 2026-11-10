@@ -13,7 +13,8 @@ from __future__ import annotations
 import asyncio
 import contextvars
 from collections import defaultdict
-from datetime import datetime, timezone
+import re
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from sqlalchemy import func, or_, select
@@ -25,7 +26,8 @@ CALL: contextvars.ContextVar[str] = contextvars.ContextVar("hoola_call", default
 
 # v0.161 a reply as it is being written: sent to open streams only, NEVER stored (the final `message` is the record)
 # v0.171 `think`: the model's reasoning as it thinks (Claude thinking / GLM reasoning), same live-only discipline
-STREAM_KINDS = {"reply_start", "delta", "delta_reset", "reply_end", "think", "say"}
+STREAM_KINDS = {"reply_start", "delta", "delta_reset", "reply_end", "think", "say",
+                "artifact_draft"}   # parity Phase 6: a page the chat model is writing, as it grows (never stored)
 # never part of the chat's story (live-only noise) - still stored so a reconnect mid-turn catches up (except STREAM_KINDS)
 LIVE_ONLY = {"typing", "step", "work", "log"} | STREAM_KINDS
 # belong to the chat they were made in only (answers' sources, phone actions, list refreshes...): never copied to others
@@ -33,10 +35,16 @@ LOCAL_KINDS = LIVE_ONLY | {
     "message", "upload", "reminders", "routines", "lists", "email_sent", "email_new", "email_snooze", "hoola_update",
     "galla", "mshop", "office",
     "employee", "darzi_order", "phonedoc_open", "phonedoc_check", "device_action", "device_action_result", "home_device",
-    "bt_request", "bazar_open", "bazar_link", "gyaan_sources", "memory_saved", "procedure", "compact", "open", "link",
+    "bt_request", "bazar_open", "bazar_link", "gyaan_sources", "memory_saved", "memory_used", "procedure", "compact", "open", "link",
     "call_receipt", "speaker", "voice", "biz_inbox", "biz_appointment", "propagent_listing", "chai_order",
     "maps_places",   # v0.449 Phase 2: the places card belongs to the chat that asked
+    "ledger",        # parity Phase 5: the turn's work receipt (step data shown in the steps fold)
 }
+# v0.646 ALAG CALL: what a call does on its own record that stays THERE (her words, tool rows, the receipt...). Every
+# other local kind - phone actions (alarm, open app, home devices), list refreshes, places - also reaches the live
+# streams of the chat she called from, because her phone is listening there.
+CALL_ONLY_KINDS = LIVE_ONLY | {"message", "upload", "call_receipt", "gyaan_sources", "memory_saved", "memory_used",
+                               "procedure", "compact", "speaker", "voice"}
 # phone actions are done once, live (or through pending actions): never replayed as chat history
 ACTIONS = {"device_action", "device_action_result", "home_device", "bt_request", "phonedoc_open", "bazar_open", "bazar_link"}
 _ID_KEYS = ("id", "task_id", "session_id", "job_id", "deal_id", "ticket_id", "card_id", "project", "ref")
@@ -46,10 +54,16 @@ WAIT_STATUS = {"waiting", "pending", "needs_tap", "waiting_payment", "waiting_si
 TAP_KINDS = {"bazar_approval", "employee_ask", "operator_ask", "studio_approval", "ask_form", "pg_write"}
 
 
+# v0.704 a card whose answer arrives under ANOTHER kind (her Send tap on an email draft is published as email_sent):
+# without this the draft kept its own "pending" state for ever - every "kya card abhi baaki hai?" said yes
+CARD_ALIAS = {"email_sent": "email_draft"}
+
+
 def card_key(kind: str, payload: Any, event_id: int) -> str:
     """One card = one key (kind + its own id). Messages and id-less events never merge."""
     if kind == "message" or not isinstance(payload, dict):
         return f"e:{event_id}"
+    kind = CARD_ALIAS.get(kind, kind)
     for k in _ID_KEYS:
         v = payload.get(k)
         if isinstance(v, (str, int)) and str(v):
@@ -146,6 +160,14 @@ class EventBus:
                 touch(s, conversation_id)
         targets = list(self._subs.get(conversation_id, ()))
         targets += [q for q in self._account(conversation_id) if q not in targets]
+        if kind in LOCAL_KINDS and kind not in CALL_ONLY_KINDS:
+            try:   # v0.646 a call record's phone action / refresh reaches the phone listening on the chat behind it
+                from .callconv import origin_of
+                origin = origin_of(conversation_id)
+                if origin:
+                    targets += [q for q in self._subs.get(origin, ()) if q not in targets]
+            except Exception:
+                pass
         if kind not in LOCAL_KINDS and self._tsubs:
             try:   # v0.158 the card also reaches her other open chats (phone on one chat, console on another)
                 from . import convs
@@ -177,6 +199,13 @@ class EventBus:
         try:   # v0.136 Hoola watches every long job as it moves and tells her (chat + live call)
             from . import kaamwatch
             kaamwatch.observe(conversation_id, kind, payload)
+        except Exception:
+            pass
+        try:   # v0.554 CARD KI KHABAR: a card that reaches her screen also reaches her live call as a quiet note
+            import sys as _sys
+            _v = _sys.modules.get(__package__ + ".voice")      # no voice module loaded = no call can be live
+            if _v is not None and _v.ACTIVE:
+                _v.card_news(conversation_id, kind, payload, call)
         except Exception:
             pass
         return data
@@ -408,25 +437,144 @@ def head(conversation_id: str, tenant: str, n: int = 40) -> dict[str, Any]:
             "last_event_id": bus.last_id(conversation_id, tenant)}
 
 
-def waiting_cards(tenant: str, limit: int = 40) -> list[dict[str, Any]]:
-    """Cards in ANY of her chats whose latest state waits for her (newest first)."""
+CARD_STALE_H = 72   # v0.662 a card nobody answered in 3 days is not news on every call ask any more
+
+
+def waiting_cards(tenant: str, limit: int = 40, max_age_h: float | None = None,
+                  conversation_id: str = "") -> list[dict[str, Any]]:
+    """Cards in ANY of her chats whose latest state waits for her (newest first).
+    v0.714 `conversation_id` = only THAT chat's own cards (a chat turn never sees another chat's cards)."""
     from . import convs
-    conv = convs.current(tenant)
+    conv = conversation_id or convs.current(tenant)
     if not conv:
         return []
-    items = _collapse(_story(conv, tenant, scan=4000))
+    items = _collapse(_story(conv, "" if conversation_id else tenant, scan=4000))
     now = datetime.now(timezone.utc)
     out = []
     for it in reversed(items):
         e = it["latest"]
         if needs_her(e.kind, e.payload):
             age = (now - _utc(it["first"].created_at)).total_seconds() / 3600
+            if max_age_h is not None and age > max_age_h:
+                continue
             out.append({"id": it["first"].id, "kind": e.kind, "key": it["key"], "age_h": round(age, 1),
-                        "title": str((e.payload or {}).get("title") or (e.payload or {}).get("what") or
-                                     (e.payload or {}).get("reason") or e.kind)[:80]})
+                        "conversation_id": getattr(it["first"], "conversation_id", "") or "",
+                        "at": _utc(it["first"].created_at).isoformat(),
+                        "title": card_title(e.kind, e.payload)})
             if len(out) >= limit:
                 break
     return out
+
+
+def card_title(kind: str, payload: Any) -> str:
+    p = payload if isinstance(payload, dict) else {}
+    t = p.get("title") or p.get("what") or p.get("reason")
+    if not t and p.get("subject") is not None:
+        t = f"Email to {p.get('to') or '?'}: {p.get('subject') or '(no subject)'}"
+    return str(t or kind)[:80]
+
+
+_DONE_WORD = {"sent": "SENT (it has gone out)", "scheduled": "QUEUED TO SEND (it will go out by itself after the undo time or its set time - do not say 'it did not go'; say 'sent' only when it shows SENT)", "cancelled": "CANCELLED (not sent)",
+              "approved": "APPROVED", "rejected": "REJECTED (she said no)", "done": "DONE", "failed": "FAILED",
+              "expired": "EXPIRED", "answered": "ANSWERED", "decided": "DECIDED", "paid": "PAID"}
+
+
+def card_updates(tenant: str, since: datetime | None, limit: int = 8, conversation_id: str = "") -> list[dict[str, Any]]:
+    """v0.704 cards she ANSWERED (tap: send / approve / cancel / reply...) after `since` - the brain's own history only has
+    "card bheja", never her tap, so without this a chat turn thought the card still waited.
+    v0.714 `conversation_id` = that chat's own cards only (it used to read whichever chat she had open + all others)."""
+    from . import convs
+    conv = conversation_id or convs.current(tenant)
+    if not conv:
+        return []
+    cut = _utc(since) if since else datetime.now(timezone.utc) - timedelta(hours=6)
+    out = []
+    for it in reversed(_collapse(_story(conv, "" if conversation_id else tenant, scan=2000))):
+        first, last = it["first"], it["latest"]
+        if last.id == first.id or _utc(last.created_at) <= cut:
+            continue
+        if not needs_her(first.kind, first.payload) or needs_her(last.kind, last.payload):
+            continue
+        p = last.payload if isinstance(last.payload, dict) else {}
+        st = str(p.get("status") or p.get("state") or ("answered" if p.get("answered") else
+                                                      "decided" if p.get("decided") else "done")).lower()
+        out.append({"title": card_title(first.kind, first.payload), "kind": first.kind, "state": st,
+                    "at": _utc(last.created_at).isoformat(), "error": str(p.get("error") or "")[:160]})
+        if len(out) >= limit:
+            break
+    return out
+
+
+# v0.709 her words that are ABOUT pending work / cards - only then does the waiting list ride the turn
+_ASKS_PENDING = re.compile(r"\b(card|cards|pending|baaki|bacha|bache|waiting|approve|approval|haan banao|kya hua|"
+                           r"status|update|kya chal|kahan tak|bhej(a|i|e)? (kya|ki nahi)|gaya kya|hua kya|draft)\b", re.I)
+
+
+def _own_conv(conversation_id: str) -> str:
+    """v0.714 HAR CHAT ALAG: the chat whose OWN cards a turn reads ('' = the old all-chats read, chat_alone off)."""
+    if not conversation_id:
+        return ""
+    try:
+        from .fence import alone
+        if not alone():
+            return ""
+        from .callconv import chat_of
+        return chat_of(conversation_id) or conversation_id
+    except Exception:   # noqa: BLE001
+        return conversation_id
+
+
+def card_news_block(tenant: str, since: datetime | None, user_text: str = "", conversation_id: str = "") -> str:
+    """v0.704 for EVERY chat turn: what she did on cards since the last reply + the cards that really still wait.
+    v0.709: the WAITING list rides only when her message is about pending work / cards - on every turn it made the model
+    open her real asks with a status report ("Good morning. Quick state: 4 cards waiting...") instead of answering."""
+    try:
+        ups = card_updates(tenant, since, conversation_id=_own_conv(conversation_id))
+    except Exception:
+        ups = []
+    lines = []
+    if ups:
+        rows = []
+        for u in ups:
+            hm = datetime.fromisoformat(u["at"]).astimezone(timezone(timedelta(hours=5, minutes=30))).strftime("%H:%M")
+            rows.append(f"- {u['title']}: {_DONE_WORD.get(u['state'], u['state'].upper())} at {hm}"
+                        + (f" - error: {u['error']}" if u["error"] else ""))
+        lines.append("BACKGROUND ONLY - cards she answered since your last reply (her own taps, the real result). Use it "
+                     "only if her message is about these; never ask her to tap them again, never redo them, and do NOT "
+                     "open your reply with this:\n" + "\n".join(rows))
+    if not _ASKS_PENDING.search(user_text or ""):
+        return "\n\n".join(lines)
+    try:
+        ws = waiting_cards(tenant, 8, max_age_h=CARD_STALE_H, conversation_id=_own_conv(conversation_id))
+    except Exception:
+        ws = []
+    if ws:
+        lines.append("Cards still waiting for her tap (she asked about pending work):\n"
+                     + "\n".join(f"- {w['title']} ({w['kind']})" for w in ws))
+    return "\n\n".join(lines)
+
+
+def cards_block(tenant: str, limit: int = 8) -> str:
+    """v0.650 JAWAB MIL GAYA: for a call's brain turn - the cards that REALLY still wait for her (their own latest
+    state). An earlier "card sent, please approve" line in the history is no proof: a card she already tapped is not
+    here, so the brain never asks her to tap it again."""
+    try:
+        ws = waiting_cards(tenant, limit, max_age_h=CARD_STALE_H)
+    except Exception:
+        return ""
+    if not ws:
+        try:
+            old_n = len(waiting_cards(tenant, limit))
+        except Exception:
+            old_n = 0
+        if old_n:
+            return (f"CARDS: no NEW card is waiting for her yes; {old_n} old cards (more than 3 days) are lying "
+                    "there - mention them only if she asks about them herself.")
+        return ("CARDS: no card is waiting for her yes right now. She has already answered the cards sent earlier "
+                "- do not tell her to tap / approve / send on any card.")
+    rows = "\n".join(f"- {w['title']} ({w['kind']}, for {w['age_h']} hours)" for w in ws)
+    return ("CARDS NOW WAITING FOR HER YES (live, from the cards themselves):\n" + rows +
+            "\nA card that is NOT in this list has already been answered by her: do not tell her to tap it again.")
 
 
 def notify(conversation_id: str, text: str, campaign_id: str | None = None) -> None:

@@ -125,10 +125,10 @@ object ApproveKey {
         try {
             val exec = act.mainExecutor
             val prompt = BiometricPrompt.Builder(act)
-                .setTitle(title.take(80).ifBlank { "Haan dene ke liye fingerprint" })
+                .setTitle(title.take(80).ifBlank { "Fingerprint to approve" })
                 .setSubtitle(subtitle.take(120))
-                .setDescription("Sirf aap hi yeh haan de sakti / sakte hain.")
-                .setNegativeButton("Rehne do", exec, DialogInterface.OnClickListener { _, _ -> once(mapOf("error" to "cancelled")) })
+                .setDescription("Only you can give this approval.")
+                .setNegativeButton("Cancel", exec, DialogInterface.OnClickListener { _, _ -> once(mapOf("error" to "cancelled")) })
                 .build()
             prompt.authenticate(BiometricPrompt.CryptoObject(sig), CancellationSignal(), exec,
                 object : BiometricPrompt.AuthenticationCallback() {

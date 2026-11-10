@@ -477,7 +477,7 @@ def test_routes_mounted():
 def test_desk_route_live_seeds_and_counts(desk):
     c = _client()
     got = c.get("/api/coder/skills").json()
-    assert len(got["skills"]) == len(skill_packs.seed_files()) + len(skill_packs.byox_files()) + len(skill_packs.prog_files()) + len(skill_packs.sp_files()) + len(skill_packs.fe_files()) + len(skill_packs.cs_files()) + len(skill_packs.mg_files()) + len(skill_packs.bd_files()) + len(skill_packs.cr_files()) + len(skill_packs.claude_dirs())
+    assert len(got["skills"]) == len(skill_packs.all_seed_files()) + len(skill_packs.claude_dirs())
     assert got["skills"][0]["shown"] == 0 and got["skills"][0]["read"] == 0
     inject.skills_block(T, "deploy")                        # one shown
     skills_store.read(T, "deploy-flask-app")
@@ -487,7 +487,7 @@ def test_desk_route_live_seeds_and_counts(desk):
     # a second tenant: her pre-existing skill survives the seed untouched (hers win)
     skills_store.create(T2, "deploy-flask-app", "Her own deploy runbook", "her words")
     got2 = _client(T2).get("/api/coder/skills").json()
-    assert len(got2["skills"]) == len(skill_packs.seed_files()) + len(skill_packs.byox_files()) + len(skill_packs.prog_files()) + len(skill_packs.sp_files()) + len(skill_packs.fe_files()) + len(skill_packs.cs_files()) + len(skill_packs.mg_files()) + len(skill_packs.bd_files()) + len(skill_packs.cr_files()) + len(skill_packs.claude_dirs())
+    assert len(got2["skills"]) == len(skill_packs.all_seed_files()) + len(skill_packs.claude_dirs())
     row2 = next(s for s in got2["skills"] if s["name"] == "deploy-flask-app")
     assert row2["description"] == "Her own deploy runbook"
 
@@ -553,7 +553,7 @@ def test_package_exports_skill_packs(desk):
 def test_version_layer():
     server_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))   # server/
     main = open(os.path.join(server_dir, "app", "main.py"), encoding="utf-8").read()
-    assert 'APP_VERSION = "0.530.0"' in main   # the story pin rides the newest story (the v0.476 precedent)
+    assert 'APP_VERSION = "0.758.0"' in main   # the story pin rides the newest story (the v0.476 precedent)
     pub = open(os.path.join(server_dir, "..", "pubspec.yaml"), encoding="utf-8").read()
-    assert "version: 0.530.0+553" in pub
+    assert "version: 0.758.0+757" in pub
     assert store._SCHEMA_VERSION == 3

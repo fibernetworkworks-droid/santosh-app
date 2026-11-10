@@ -36,14 +36,14 @@ class _SiteSpecCardState extends State<SiteSpecCard> {
     final w = await showDialog<String>(
         context: context,
         builder: (c) => AlertDialog(
-              title: const Text('Kya badalna hai?'),
+              title: const Text('What should change?'),
               content: TextField(
                   controller: ctl,
                   autofocus: true,
                   maxLines: 3,
-                  decoration: const InputDecoration(hintText: 'Jaise: alumni page bhi jodo, teacher bhi attendance bhare')),
+                  decoration: const InputDecoration(hintText: 'For example: add an alumni page too, let teachers mark attendance')),
               actions: [
-                TextButton(onPressed: () => Navigator.pop(c), child: const Text('Rehne do')),
+                TextButton(onPressed: () => Navigator.pop(c), child: const Text('Keep it')),
                 TextButton(onPressed: () => Navigator.pop(c, ctl.text.trim()), child: const Text('Badlo')),
               ],
             ));
@@ -52,7 +52,7 @@ class _SiteSpecCardState extends State<SiteSpecCard> {
     try {
       final r = await widget.app.api!.architectAct(_t(v['id']), 'revise', {'words': w});
       if (r['modules'] is List) _fresh = r;
-      _snack(_t(r['say']).isEmpty ? 'Badal diya.' : _t(r['say']));
+      _snack(_t(r['say']).isEmpty ? 'Changed.' : _t(r['say']));
     } catch (e) {
       _snack('$e');
     } finally {
@@ -66,10 +66,10 @@ class _SiteSpecCardState extends State<SiteSpecCard> {
         context: context,
         builder: (c) => AlertDialog(
               title: Text('${_t(v['name'])} banayein?'),
-              content: Text('Ye hisse banenge: ${keep.join(', ')}'),
+              content: Text('These parts will be made: ${keep.join(', ')}'),
               actions: [
-                TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Abhi nahi')),
-                TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Haan, banao')),
+                TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Not now')),
+                TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Yes, build it')),
               ],
             ));
     if (ok != true) return;
@@ -77,7 +77,7 @@ class _SiteSpecCardState extends State<SiteSpecCard> {
     try {
       final r = await widget.app.api!.architectAct(_t(v['id']), 'approve', {'hash': _t(v['hash']), 'modules': keep});
       _fresh = {...v, 'status': 'built', 'site': _t(r['number'])};
-      _snack(_t(r['say']).isEmpty ? 'Ban raha hai.' : _t(r['say']));
+      _snack(_t(r['say']).isEmpty ? 'Building.' : _t(r['say']));
     } catch (e) {
       _snack('$e');
     } finally {
@@ -102,7 +102,7 @@ class _SiteSpecCardState extends State<SiteSpecCard> {
           Expanded(
               child: Text('${_t(v['number'])} · ${_t(v['name']).isEmpty ? 'Website plan' : _t(v['name'])}',
                   style: display(15), maxLines: 1, overflow: TextOverflow.ellipsis)),
-          Pill(built ? 'Ban raha: ${_t(v['site'])}' : 'Aapki haan chahiye', fg: built ? C.teal : C.accent),
+          Pill(built ? 'Building: ${_t(v['site'])}' : 'Needs your yes', fg: built ? C.teal : C.accent),
         ]),
         if (_t(v['summary']).isNotEmpty) ...[
           const SizedBox(height: 6),
@@ -121,7 +121,7 @@ class _SiteSpecCardState extends State<SiteSpecCard> {
                         : (on) => setState(() => on == true ? _off.remove(_t(m['key'])) : _off.add(_t(m['key']))))),
             const SizedBox(width: 6),
             Expanded(child: Text(_t(m['title']), style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14))),
-            if (m['ready'] == false) const Pill('theek karna hai', fg: Colors.redAccent),
+            if (m['ready'] == false) const Pill('needs fixing', fg: Colors.redAccent),
           ]),
           for (final line in _l(m['lines']).take(8))
             Padding(
@@ -133,9 +133,9 @@ class _SiteSpecCardState extends State<SiteSpecCard> {
         if (!built) ...[
           const SizedBox(height: 10),
           Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-            TextButton(onPressed: _busy ? null : _change, child: const Text('Kuch badlo')),
+            TextButton(onPressed: _busy ? null : _change, child: const Text('Change something')),
             const SizedBox(width: 6),
-            GlassButton(label: _busy ? 'Ruko...' : 'Haan, banao', height: 38, color: C.accent, onTap: _busy ? null : _build),
+            GlassButton(label: _busy ? 'Wait...' : 'Yes, build it', height: 38, color: C.accent, onTap: _busy ? null : _build),
           ]),
         ],
       ]),

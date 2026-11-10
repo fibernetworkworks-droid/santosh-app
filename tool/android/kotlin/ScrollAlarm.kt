@@ -52,7 +52,7 @@ object ScrollAlarm {
         (ctx.getSystemService(Context.ALARM_SERVICE) as AlarmManager).cancel(pi(ctx))
     }
 
-    private fun hm(m: Int) = if (m < 60) "$m min" else if (m % 60 == 0) "${m / 60} ghante" else "${m / 60}h ${m % 60}m"
+    private fun hm(m: Int) = if (m < 60) "$m min" else if (m % 60 == 0) "${m / 60} hours" else "${m / 60}h ${m % 60}m"
 
     private fun alert(ctx: Context, title: String, text: String) {
         val open = Intent(ctx, MainActivity::class.java).setData(android.net.Uri.parse("santosh://scroll"))
@@ -88,12 +88,12 @@ object ScrollAlarm {
             if (due != null) {
                 p.edit().putInt("sent_$today", due).apply()
                 when {
-                    due < budget -> alert(ctx, "Aaj ${hm(used)} reels ho gayi",
-                        "Aapki roz ki limit ${hm(budget)} hai: bas ${hm(budget - used)} bachi. ($top sabse zyada)")
-                    due == budget -> alert(ctx, "Aaj ki reel limit poori 🙂",
-                        "${hm(used)} ho gaye ($top sabse zyada). Thoda break lijiye: paani, stretch, ya kisi se baat?")
-                    else -> alert(ctx, "Limit se ${hm(used - budget)} zyada",
-                        "Aaj ${hm(used)} reels. Phone rakh kar 5 minute aankhon ko aaram dijiye.")
+                    due < budget -> alert(ctx, "You watched ${hm(used)} of reels today",
+                        "Your daily limit is ${hm(budget)}: only ${hm(budget - used)} left. ($top the most)")
+                    due == budget -> alert(ctx, "Today's reel limit is reached 🙂",
+                        "That is ${hm(used)} ($top the most). Take a short break: water, a stretch, or a chat with someone?")
+                    else -> alert(ctx, "${hm(used - budget)} over your limit",
+                        "${hm(used)} of reels today. Put the phone down and rest your eyes for 5 minutes.")
                 }
             }
             val nextLevel = levels.filter { it > maxOf(used, p.getInt("sent_$today", 0)) }.minOrNull() ?: (used + 30)
@@ -113,7 +113,7 @@ object ScrollAlarm {
             val nightKey = "%04d-%02d-%02d".format(start.get(Calendar.YEAR), start.get(Calendar.MONTH) + 1, start.get(Calendar.DAY_OF_MONTH))
             if (night >= 15 && !p.getBoolean("bed_$nightKey", false)) {
                 p.edit().putBoolean("bed_$nightKey", true).apply()
-                alert(ctx, "Raat ho gayi 😴", "11 baje ke baad ${hm(night.toInt())} scroll ho gaya. Kal ke liye neend bachaiye: phone side mein rakh dijiye.")
+                alert(ctx, "It is night 😴", "${hm(night.toInt())} of scrolling after 11 pm. Save your sleep for tomorrow: put the phone aside.")
             }
             nextMin = minOf(nextMin, if (h in 22..23 || h < 5) 15.0 else 60.0)
         }

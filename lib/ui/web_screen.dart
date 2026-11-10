@@ -72,7 +72,7 @@ class _WebScreenState extends State<WebScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                 radius: 20,
                 child: Row(children: [
-                  IconButton(tooltip: 'Band karo', icon: const Icon(Icons.close_rounded, color: C.chip), onPressed: () => Navigator.of(context).pop()),
+                  IconButton(tooltip: 'Close', icon: const Icon(Icons.close_rounded, color: C.chip), onPressed: () => Navigator.of(context).pop()),
                   Expanded(
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
                       Text(_title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5)),
@@ -90,8 +90,8 @@ class _WebScreenState extends State<WebScreen> {
                       if (v == 'chrome') launchUrl(Uri.parse(_url), mode: LaunchMode.externalApplication);
                     },
                     itemBuilder: (_) => const [
-                      PopupMenuItem(value: 'reload', child: Text('Dobara load karo')),
-                      PopupMenuItem(value: 'chrome', child: Text('Chrome mein kholo')),
+                      PopupMenuItem(value: 'reload', child: Text('Reload')),
+                      PopupMenuItem(value: 'chrome', child: Text('Open in Chrome')),
                     ],
                   ),
                 ]),

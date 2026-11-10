@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 
 import '../native.dart';
 import '../state.dart';
+import 'filmdesk_producer.dart';
 import 'glass.dart';
 
 String _s(dynamic v) => v == null ? '' : '$v';
@@ -29,7 +30,7 @@ void _snack(BuildContext c, String t) {
 const _bigFields = {'text', 'logline', 'notes', 'prompt', 'dialogue', 'terms', 'rules', 'description'};
 
 Future<Map<String, String>?> _form(BuildContext context, String title, List<(String, String)> fields,
-    {String ok = 'Aage', Map<String, String> initial = const {}}) async {
+    {String ok = 'Next', Map<String, String> initial = const {}}) async {
   final c = {for (final (k, _) in fields) k: TextEditingController(text: initial[k] ?? '')};
   final res = await showDialog<bool>(
     context: context,
@@ -42,7 +43,7 @@ Future<Map<String, String>?> _form(BuildContext context, String title, List<(Str
         ]),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Rehne do')),
+        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Leave it')),
         TextButton(onPressed: () => Navigator.pop(d, true), child: Text(ok)),
       ],
     ),
@@ -65,9 +66,9 @@ Future<Map<String, dynamic>?> _call(BuildContext context, Santosh app, String me
 
 const _statusLabel = {
   'idea': 'Idea', 'script': 'Script', 'breakdown': 'Scenes', 'shots': 'Shots', 'storyboard': 'Storyboard',
-  'production': 'Shots ban rahe', 'post': 'Jod rahe', 'release_ready': 'Release taiyaar', 'released': 'Release',
+  'production': 'Shots being made', 'post': 'Joining', 'release_ready': 'Release ready', 'released': 'Release',
 };
-const _consentLabel = {'none': 'ijazat nahi', 'recorded': 'ijazat darj', 'withdrawn': 'ijazat wapas'};
+const _consentLabel = {'none': 'no permission', 'recorded': 'permission recorded', 'withdrawn': 'permission taken back'};
 
 class FilmdeskScreen extends StatefulWidget {
   const FilmdeskScreen({super.key, required this.app});
@@ -132,26 +133,26 @@ class _FilmdeskScreenState extends State<FilmdeskScreen> {
     return ListView(padding: const EdgeInsets.all(16), children: [
       Glass(child: Text(_s(day['say']), style: const TextStyle(fontSize: 14))),
       const SizedBox(height: 12),
-      if (_list(_d?['cards']).isNotEmpty) const Caption('AAPKI HAAN KA INTEZAAR'),
+      if (_list(_d?['cards']).isNotEmpty) const Caption('WAITING FOR YOUR YES'),
       for (final c in _list(_d?['cards']))
         Padding(padding: const EdgeInsets.only(bottom: 10), child: FilmdeskCardCard(app: widget.app, data: {'card': c}, onDone: _load)),
       for (final x in _strs(day['consent_ending'])) Text('• $x', style: const TextStyle(fontSize: 12.5)),
       for (final x in _strs(day['rights_ending'])) Text('• $x', style: const TextStyle(fontSize: 12.5)),
       const SizedBox(height: 8),
-      const Text('AI shots ka kharcha sirf Video Studio ke card par aapki haan se hota hai. Hoola kahin post / upload nahi karta.',
+      const Text('The cost of AI shots is spent only on the Video Studio card with your yes. Hoola does not post / upload anywhere.',
           style: TextStyle(fontSize: 11.5, color: C.faint)),
     ]);
   }
 
   Future<void> _newFilm() async {
-    final f = await _form(context, 'Nayi film', const [
-      ('title', 'Naam'),
-      ('logline', 'Ek-do line ki kahani (logline)'),
-      ('format', 'Kaisi: short / reel / ad / music_video / web_episode / feature / documentary'),
+    final f = await _form(context, 'New film', const [
+      ('title', 'Name'),
+      ('logline', 'A one- or two-line story (logline)'),
+      ('format', 'Type: short / reel / ad / music_video / web_episode / feature / documentary'),
       ('language', 'Bhasha (Hindi / Marathi / English / Hinglish)'),
-      ('targets', 'Kahan dikhegi: youtube, instagram, ott, festival, theatrical, tv'),
-      ('budget_inr', 'AI shots ka budget ₹ (optional)'),
-    ], ok: 'Banao');
+      ('targets', 'Where it will be shown: youtube, instagram, ott, festival, theatrical, tv'),
+      ('budget_inr', 'Budget for AI shots ₹ (optional)'),
+    ], ok: 'Make');
     if (f == null) return;
     final r = await _run('POST', '/api/filmdesk/projects', {
       ...f,
@@ -163,34 +164,34 @@ class _FilmdeskScreenState extends State<FilmdeskScreen> {
   }
 
   Widget _films() => ListView(padding: const EdgeInsets.all(16), children: [
-        GradientButton(label: 'Nayi film', icon: Icons.add_rounded, height: 46, onTap: _busy ? null : _newFilm),
+        GradientButton(label: 'New film', icon: Icons.add_rounded, height: 46, onTap: _busy ? null : _newFilm),
         const SizedBox(height: 12),
         for (final p in _list(_d?['projects'])) _projectTile(p),
       ]);
 
   Future<void> _addPerson() async {
-    final f = await _form(context, 'Register mein naam', const [
-      ('name', 'Naam'),
+    final f = await _form(context, 'Name in register', const [
+      ('name', 'Name'),
       ('role', 'Role: actor / voice / subject / crew / writer / singer'),
       ('phone', 'Mobile (optional)'),
-      ('minor', 'Nabalig? (haan / nahi)'),
-    ], ok: 'Jodo');
+      ('minor', 'Minor? (yes / no)'),
+    ], ok: 'Add');
     if (f == null) return;
     await _run('POST', '/api/filmdesk/people', {
       'name': f['name'],
       'role': f['role'] ?? 'actor',
       if (f['phone'] != null) 'phone': f['phone'],
-      'minor': (f['minor'] ?? '').toLowerCase().startsWith('h'),
+      'minor': (f['minor'] ?? '').toLowerCase().startsWith(RegExp('[hy]')),
     });
   }
 
   Future<void> _recordConsent(Map<String, dynamic> p) async {
-    final f = await _form(context, 'Ijazat darj: ${_s(p['name'])}', const [
-      ('how', 'Kaise li: signed_form / video / audio / email / written'),
-      ('uses', 'Kis kaam ki: ai_likeness, ai_voice, real_footage, real_voice, name, promo'),
-      ('until', 'Kab tak (DD-MM-YYYY, optional)'),
-      ('guardian', 'Nabalig ho to guardian ka naam'),
-    ], ok: 'Saboot chuno');
+    final f = await _form(context, 'Permission recorded: ${_s(p['name'])}', const [
+      ('how', 'How taken:signed_form / video / audio / email / written'),
+      ('uses', 'For what use: ai_likeness, ai_voice, real_footage, real_voice, name, promo'),
+      ('until', 'Until when (DD-MM-YYYY, optional)'),
+      ('guardian', 'If a minor, guardian\'s name'),
+    ], ok: 'Choose proof');
     if (f == null) return;
     final pick = await FilePicker.platform.pickFiles(withData: true);
     final file = (pick == null || pick.files.isEmpty) ? null : pick.files.first;
@@ -210,11 +211,11 @@ class _FilmdeskScreenState extends State<FilmdeskScreen> {
   Widget _ijazat() => ListView(padding: const EdgeInsets.all(16), children: [
         const Glass(
             child: Text(
-                'Asli insaan ka chehra ya awaaz AI se tabhi banega jab unki ijazat ka saboot (sign kiya form / video / audio) yahan darj ho. '
-                'Jaane-maane log (neta / actor / khiladi) kabhi nahi. Ijazat kabhi bhi wapas ho sakti hai.',
+                'A real person\'s face or voice is made with AI only when proof of their permission (signed form / video / audio) is recorded here. '
+                'Never for well-known people (politicians / actors / sportspeople). Permission can be taken back anytime.',
                 style: TextStyle(fontSize: 12.5))),
         const SizedBox(height: 10),
-        GradientButton(label: 'Naam jodo', icon: Icons.person_add_alt_rounded, height: 44, onTap: _busy ? null : _addPerson),
+        GradientButton(label: 'Add name', icon: Icons.person_add_alt_rounded, height: 44, onTap: _busy ? null : _addPerson),
         const SizedBox(height: 12),
         for (final p in _list(_d?['people'])) _personTile(p),
       ]);
@@ -232,18 +233,18 @@ class _FilmdeskScreenState extends State<FilmdeskScreen> {
           Pill(_consentLabel[status] ?? status, fg: status == 'recorded' ? C.ok : C.warn),
         ]),
         if (p['public_figure'] == true)
-          const Text('Jaane-maane vyakti: AI chehra / awaaz nahi.', style: TextStyle(fontSize: 12, color: C.bad)),
+          const Text('Well-known person: no AI face / voice.', style: TextStyle(fontSize: 12, color: C.bad)),
         if (_strs(c['uses']).isNotEmpty)
-          Text('${_strs(c['uses']).join(', ')}${until.isEmpty ? '' : ' · $until tak'}', style: const TextStyle(fontSize: 12, color: C.muted)),
+          Text('${_strs(c['uses']).join(', ')}${until.isEmpty ? '' : ' · until $until'}', style: const TextStyle(fontSize: 12, color: C.muted)),
         if (p['forgotten'] != true)
           Wrap(spacing: 8, runSpacing: 6, children: [
             if (p['public_figure'] != true)
-              GlassButton(label: 'Ijazat darj', icon: Icons.verified_user_rounded, height: 38,
+              GlassButton(label: 'Permission recorded', icon: Icons.verified_user_rounded, height: 38,
                   onTap: _busy ? null : () => _recordConsent(p)),
             if (status == 'recorded')
-              GlassButton(label: 'Wapas li', icon: Icons.block_rounded, height: 38,
+              GlassButton(label: 'Taken back', icon: Icons.block_rounded, height: 38,
                   onTap: _busy ? null : () => _run('POST', '/api/filmdesk/people/${_s(p['number'])}/withdraw', {})),
-            GlassButton(label: 'Hatao (DPDP)', icon: Icons.delete_outline_rounded, height: 38,
+            GlassButton(label: 'Remove (DPDP)', icon: Icons.delete_outline_rounded, height: 38,
                 onTap: _busy ? null : () => _run('DELETE', '/api/filmdesk/people/${_s(p['number'])}')),
           ]),
       ]),
@@ -256,21 +257,21 @@ class _FilmdeskScreenState extends State<FilmdeskScreen> {
       Glass(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text('Banner: ${_s(st['banner'])}'),
         Text('Producer: ${_s(st['producer'])}'),
-        Text('Bhasha: ${_s(st['language'])}'),
-        Text('Mahine ki AI shots seema: ${st['month_budget_inr'] == null ? '-' : '₹${_s(st['month_budget_inr'])}'}'),
-        Text('Subah ka note: ${_s(st['morning_time'])}'),
+        Text('Language: ${_s(st['language'])}'),
+        Text('Monthly AI shots limit: ${st['month_budget_inr'] == null ? '-' : '₹${_s(st['month_budget_inr'])}'}'),
+        Text('Morning note: ${_s(st['morning_time'])}'),
       ])),
       const SizedBox(height: 10),
-      GradientButton(label: 'Badlo', icon: Icons.edit_rounded, height: 44, onTap: _busy ? null : () async {
-        final f = await _form(context, 'Film desk ke niyam', const [
-          ('banner', 'Production / banner ka naam'),
+      GradientButton(label: 'Change', icon: Icons.edit_rounded, height: 44, onTap: _busy ? null : () async {
+        final f = await _form(context, 'Film desk rules', const [
+          ('banner', 'Production / banner name'),
           ('producer', 'Producer'),
           ('email', 'Email'),
           ('phone', 'Mobile'),
-          ('language', 'Bhasha'),
-          ('month_budget_inr', 'Mahine ki AI shots seema ₹'),
-          ('morning_time', 'Subah ka note (HH:MM)'),
-          ('rules', 'Apne niyam'),
+          ('language', 'Language'),
+          ('month_budget_inr', 'Monthly AI shots limit ₹'),
+          ('morning_time', 'Morning note (HH:MM)'),
+          ('rules', 'Your own rules'),
         ], initial: {for (final e in st.entries) if (e.value != null) e.key: '${e.value}'}, ok: 'Save');
         if (f == null) return;
         await _run('PUT', '/api/filmdesk/settings', {
@@ -283,7 +284,7 @@ class _FilmdeskScreenState extends State<FilmdeskScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const tabs = ['Aaj', 'Filmein', 'Ijazat', 'Niyam'];
+    const tabs = ['Today', 'Filmein', 'Permission', 'Rules'];
     return Scaffold(
       backgroundColor: C.bgTop,
       appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Film desk'),
@@ -358,26 +359,43 @@ class _FilmdeskProjectPageState extends State<FilmdeskProjectPage> {
         ]),
       );
 
+  Widget _producerBox() {
+    void go(int tab) => Navigator.of(context).push(MaterialPageRoute(builder: (_) => FilmdeskProducerPage(app: widget.app, ref: widget.ref, tab: tab)));
+    return _section('Producer', [
+      const Text('Script counts, shot list checks, schedule, money, festivals, delivery. All from your own numbers and your script.',
+          style: TextStyle(fontSize: 12, color: C.muted)),
+      const SizedBox(height: 6),
+      Wrap(spacing: 8, runSpacing: 6, children: [
+        GlassButton(label: 'Script coverage', icon: Icons.fact_check_rounded, height: 38, onTap: () => go(0)),
+        GlassButton(label: 'Shot check', icon: Icons.movie_filter_rounded, height: 38, onTap: () => go(1)),
+        GlassButton(label: 'Schedule', icon: Icons.event_note_rounded, height: 38, onTap: () => go(2)),
+        GlassButton(label: 'Money / royalty', icon: Icons.payments_rounded, height: 38, onTap: () => go(3)),
+        GlassButton(label: 'Festival / windows', icon: Icons.emoji_events_rounded, height: 38, onTap: () => go(4)),
+        GlassButton(label: 'Delivery', icon: Icons.local_shipping_rounded, height: 38, onTap: () => go(5)),
+      ]),
+    ]);
+  }
+
   Widget _scriptBox() {
     final p = _p!;
     final script = _s(p['script']);
     final br = _m(p['breakdown']);
     return _section('Script', [
-      if (script.isEmpty) const Text('Abhi script nahi.', style: TextStyle(color: C.muted)),
+      if (script.isEmpty) const Text('No script yet.', style: TextStyle(color: C.muted)),
       if (script.isNotEmpty)
         Text(script.length > 700 ? '${script.substring(0, 700)}…' : script, style: const TextStyle(fontSize: 12, fontFamily: 'monospace')),
       if (br.isNotEmpty)
-        Text('${_s(br['scenes'])} scenes · ~${_s(br['seconds'])} s · raat ke ${_s(br['night'])}',
+        Text('${_s(br['scenes'])} scenes · ~${_s(br['seconds'])} s · night ${_s(br['night'])}',
             style: const TextStyle(fontSize: 12.5, color: C.muted)),
       const SizedBox(height: 6),
       Wrap(spacing: 8, runSpacing: 6, children: [
-        GlassButton(label: 'Hoola likhe', icon: Icons.auto_awesome_rounded, height: 38, onTap: _busy ? null : () async {
-          final f = await _form(context, 'Script ke liye aapki baatein', const [('notes', 'Kirdaar, mood, ant... (sirf aapki baatein)')]);
+        GlassButton(label: 'Let Hoola write', icon: Icons.auto_awesome_rounded, height: 38, onTap: _busy ? null : () async {
+          final f = await _form(context, 'Your points for the script', const [('notes', 'Characters, mood, ending... (only your points)')]);
           if (f == null) return;
           await _run('POST', '$_base/script', {'notes': f['notes'] ?? ''});
         }),
-        GlassButton(label: 'Apni script', icon: Icons.edit_note_rounded, height: 38, onTap: _busy ? null : () async {
-          final f = await _form(context, 'Script (INT. JAGAH - DIN, NAAM: line)', const [('text', 'Script')],
+        GlassButton(label: 'Your own script', icon: Icons.edit_note_rounded, height: 38, onTap: _busy ? null : () async {
+          final f = await _form(context, 'Script (INT. PLACE - DAY, NAME: line)', const [('text', 'Script')],
               initial: {'text': script}, ok: 'Save');
           if (f == null) return;
           await _run('PUT', '$_base/script', {'text': f['text'] ?? ''});
@@ -388,18 +406,18 @@ class _FilmdeskProjectPageState extends State<FilmdeskProjectPage> {
 
   Widget _castBox() {
     final cast = _m(_p!['cast']);
-    return _section('Cast (kirdaar)', [
-      if (cast.isEmpty) const Text('Script ke baad kirdaar yahan aayenge.', style: TextStyle(color: C.muted)),
+    return _section('Cast (characters)', [
+      if (cast.isEmpty) const Text('The characters will show here after the script.', style: TextStyle(color: C.muted)),
       for (final e in cast.entries)
         Row(children: [
           Expanded(child: Text(
-              '${e.key}: ${_s(_m(e.value)['kind']) == 'real' ? 'asli ${_s(_m(e.value)['person'])}' : 'AI kirdaar'}'
+              '${e.key}: ${_s(_m(e.value)['kind']) == 'real' ? 'real${_s(_m(e.value)['person'])}' : 'AI characters'}'
               '${_s(_m(e.value)['description']).isEmpty ? '' : ' · ${_s(_m(e.value)['description'])}'}',
               style: const TextStyle(fontSize: 12.5))),
           IconButton(icon: const Icon(Icons.edit_rounded, size: 18), onPressed: _busy ? null : () async {
-            final f = await _form(context, 'Kirdaar: ${e.key}', const [
-              ('person', 'Asli insaan ho to register number (P-001)'),
-              ('description', 'AI kirdaar ho to roop (umar, kapde, chehra)'),
+            final f = await _form(context, 'Character: ${e.key}', const [
+              ('person', 'Register number if a real person (P-001)'),
+              ('description', 'Look if an AI character (age, clothes, face)'),
             ]);
             if (f == null) return;
             await _run('POST', '$_base/cast', {'character': e.key, ...f});
@@ -415,7 +433,7 @@ class _FilmdeskProjectPageState extends State<FilmdeskProjectPage> {
       return;
     }
     final f = await _form(context, 'Shot $id', const [
-      ('prompt', 'Kya dikhe aur kya ho'),
+      ('prompt', 'What is shown and what happens'),
       ('duration', 'Seconds (4-10)'),
       ('dialogue', 'Dialogue'),
     ], initial: {'prompt': _s(s['prompt']), 'duration': _s(s['duration']), 'dialogue': _s(s['dialogue'])}, ok: 'Save');
@@ -441,16 +459,16 @@ class _FilmdeskProjectPageState extends State<FilmdeskProjectPage> {
             PopupMenuButton<String>(
               onSelected: (v) => _editShot(s, v),
               itemBuilder: (_) => const [
-                PopupMenuItem(value: 'edit', child: Text('Badlo')),
-                PopupMenuItem(value: 'del', child: Text('Hatao')),
+                PopupMenuItem(value: 'edit', child: Text('Change')),
+                PopupMenuItem(value: 'del', child: Text('Remove')),
               ],
             ),
           ]),
         ),
       Wrap(spacing: 8, runSpacing: 6, children: [
-        GlassButton(label: 'Shot list banao', icon: Icons.view_list_rounded, height: 38,
+        GlassButton(label: 'Make shot list', icon: Icons.view_list_rounded, height: 38,
             onTap: _busy ? null : () => _run('POST', '$_base/shots', {})),
-        GlassButton(label: 'Studio mein storyboard', icon: Icons.movie_filter_rounded, height: 38,
+        GlassButton(label: 'Storyboard in the studio', icon: Icons.movie_filter_rounded, height: 38,
             onTap: _busy ? null : () => _run('POST', '$_base/storyboard')),
         GlassButton(label: 'Free preview', icon: Icons.play_circle_rounded, height: 38,
             onTap: _busy ? null : () => _run('POST', '$_base/preview')),
@@ -461,14 +479,14 @@ class _FilmdeskProjectPageState extends State<FilmdeskProjectPage> {
   Widget _budgetBox() {
     final b = _budget;
     final tot = _m(b?['total']);
-    return _section('Budget (studio ka andaaza)', [
-      if (b == null) const Text('Storyboard ke baad har shot ka daam yahan dikhega.', style: TextStyle(color: C.muted)),
+    return _section('Budget (studio estimate)', [
+      if (b == null) const Text('After the storyboard, the price of every shot will show here.', style: TextStyle(color: C.muted)),
       if (b != null) ...[
-        Text('Draft ~₹${_s(_m(tot['draft'])['inr'])} · Final ~₹${_s(_m(tot['final'])['inr'])} · ab tak ₹${_s(b['spent_inr'])}',
+        Text('Draft ~₹${_s(_m(tot['draft'])['inr'])} · Final ~₹${_s(_m(tot['final'])['inr'])} · so far ₹${_s(b['spent_inr'])}',
             style: const TextStyle(fontWeight: FontWeight.w700)),
         if (b['film_budget_inr'] != null)
-          Text('Film ka budget ₹${_s(b['film_budget_inr'])} · bacha ₹${_s(b['film_left_inr'])}', style: const TextStyle(fontSize: 12.5)),
-        Text('Is mahine ₹${_s(b['month_spent_inr'])} / ₹${_s(b['month_limit_inr'])}', style: const TextStyle(fontSize: 12.5, color: C.muted)),
+          Text('Film budget ₹${_s(b['film_budget_inr'])} · left ₹${_s(b['film_left_inr'])}', style: const TextStyle(fontSize: 12.5)),
+        Text('This month ₹${_s(b['month_spent_inr'])} / ₹${_s(b['month_limit_inr'])}', style: const TextStyle(fontSize: 12.5, color: C.muted)),
         if (_s(b['stale']).isNotEmpty) Text(_s(b['stale']), style: const TextStyle(fontSize: 12, color: C.warn)),
         for (final r in _list(b['shots']))
           Text('${_s(r['shot'])} · ${_s(r['seconds'])} s · draft ₹${_s(_m(r['draft'])['inr'])} · final ₹${_s(_m(r['final'])['inr'])}',
@@ -477,44 +495,44 @@ class _FilmdeskProjectPageState extends State<FilmdeskProjectPage> {
       ],
       const SizedBox(height: 6),
       Wrap(spacing: 8, runSpacing: 6, children: [
-        GlassButton(label: 'Daam dekho', icon: Icons.calculate_rounded, height: 38, onTap: _busy ? null : _loadBudget),
-        GlassButton(label: 'Draft shots maango', icon: Icons.currency_rupee_rounded, height: 38,
+        GlassButton(label: 'See prices', icon: Icons.calculate_rounded, height: 38, onTap: _busy ? null : _loadBudget),
+        GlassButton(label: 'Ask for draft shots', icon: Icons.currency_rupee_rounded, height: 38,
             onTap: _busy ? null : () => _run('POST', '$_base/spend', {'quality': 'draft'})),
-        GlassButton(label: 'Final shots maango', icon: Icons.hd_rounded, height: 38,
+        GlassButton(label: 'Ask for final shots', icon: Icons.hd_rounded, height: 38,
             onTap: _busy ? null : () => _run('POST', '$_base/spend', {'quality': 'final'})),
-        GlassButton(label: 'Video jodo', icon: Icons.merge_rounded, height: 38,
+        GlassButton(label: 'Add video', icon: Icons.merge_rounded, height: 38,
             onTap: _busy ? null : () => _run('POST', '$_base/assemble', {})),
       ]),
-      const Text('Kharcha sirf Video Studio ke card par aapki haan se.', style: TextStyle(fontSize: 11, color: C.faint)),
+      const Text('Money is spent only on the Video Studio card with your yes.', style: TextStyle(fontSize: 11, color: C.faint)),
     ]);
   }
 
   Future<void> _addRight() async {
-    final f = await _form(context, 'Gaana / awaaz / stock / font', const [
-      ('kind', 'Kya: music / song / voice / stock / font / lyrics / footage'),
-      ('title', 'Naam'),
-      ('owner', 'Malik (label / artist)'),
+    final f = await _form(context, 'Song / voice / stock / font', const [
+      ('kind', 'What: music / song / voice / stock / font / lyrics / footage'),
+      ('title', 'Name'),
+      ('owner', 'Owner (label / artist)'),
       ('licence', 'own / commissioned / licensed / royalty_free / ai_generated / public_domain'),
-      ('sync', 'Video ke saath (sync) ijazat? haan / nahi'),
-      ('platforms', 'Kahan ke liye: youtube, ott, theatrical... ya all'),
-      ('until', 'Kab tak (DD-MM-YYYY)'),
-    ], ok: 'Jodo');
+      ('sync', 'Permission to use with video (sync)? yes / no'),
+      ('platforms', 'For where: youtube, ott, theatrical... or all'),
+      ('until', 'Until when (DD-MM-YYYY)'),
+    ], ok: 'Add');
     if (f == null) return;
     await _run('POST', '$_base/rights', {
       ...f,
-      'sync': (f['sync'] ?? '').toLowerCase().startsWith('h'),
+      'sync': (f['sync'] ?? '').toLowerCase().startsWith(RegExp('[hy]')),
       'platforms': (f['platforms'] ?? '').trim().toLowerCase() == 'all' ? 'all' : _csv(f['platforms']),
     });
   }
 
   Widget _rightsBox() {
     final rights = _list(_p!['rights']);
-    return _section('Music / haq', [
+    return _section('Music / rights', [
       for (final r in rights)
         Text('${_s(r['number'])} · ${_s(r['title'])} (${_s(r['kind'])}) · ${_s(r['licence'])}${r['sync'] == true ? ' · sync' : ''}'
-            '${r['has_proof'] == true ? ' · saboot' : ''}${_s(r['until']).isEmpty ? '' : ' · ${_s(r['until'])} tak'}',
+            '${r['has_proof'] == true ? ' · proof' : ''}${_s(r['until']).isEmpty ? '' : ' · ${_s(r['until'])} until'}',
             style: const TextStyle(fontSize: 12.5)),
-      GlassButton(label: 'Haq jodo', icon: Icons.library_music_rounded, height: 38, onTap: _busy ? null : _addRight),
+      GlassButton(label: 'Add rights', icon: Icons.library_music_rounded, height: 38, onTap: _busy ? null : _addRight),
     ]);
   }
 
@@ -528,7 +546,7 @@ class _FilmdeskProjectPageState extends State<FilmdeskProjectPage> {
         ])),
         if (it['auto'] != true)
           TextButton(onPressed: _busy ? null : () => _run('POST', '$_base/tick', {'key': it['key'], 'done': it['ok'] != true}),
-              child: Text(it['ok'] == true ? 'Undo' : 'Ho gaya')),
+              child: Text(it['ok'] == true ? 'Undo' : 'Done')),
       ]);
 
   Widget _releaseBox() {
@@ -538,7 +556,7 @@ class _FilmdeskProjectPageState extends State<FilmdeskProjectPage> {
       for (final it in _list(rel['items'])) _checkRow(it),
       if (_s(disc['description_line']).isNotEmpty) ...[
         const SizedBox(height: 6),
-        const Caption('AI DISCLOSURE (description mein)'),
+        const Caption('AI DISCLOSURE (in the description)'),
         SelectableText(_s(disc['description_line']), style: const TextStyle(fontSize: 12.5)),
         for (final x in _strs(disc['steps'])) Text('• $x', style: const TextStyle(fontSize: 11.5, color: C.muted)),
       ],
@@ -554,23 +572,23 @@ class _FilmdeskProjectPageState extends State<FilmdeskProjectPage> {
           final f = await _form(context, 'CBFC certificate', const [
             ('category', 'U / UA7 / UA13 / UA16 / A / S'),
             ('number', 'Certificate number'),
-            ('date', 'Tareekh (DD-MM-YYYY)'),
+            ('date', 'Date (DD-MM-YYYY)'),
           ]);
           if (f == null) return;
           await _run('PUT', '$_base/cbfc', f);
         }),
-        GlassButton(label: 'Kisi ko message', icon: Icons.chat_rounded, height: 38, onTap: _busy ? null : () async {
-          final f = await _form(context, 'Message (card banega, aap bhejengi)', const [
+        GlassButton(label: 'Message to someone', icon: Icons.chat_rounded, height: 38, onTap: _busy ? null : () async {
+          final f = await _form(context, 'Message (a card will be made, you send it)', const [
             ('msg_kind', 'consent_request / rights_request / festival / distributor / custom'),
-            ('person', 'Register number (P-001) ya khaali'),
+            ('person', 'Register number (P-001) or blank'),
             ('phone', 'Ya mobile'),
-            ('text', 'Text (custom ke liye)'),
-            ('terms', 'Ijazat maangte waqt shartein / fees'),
-          ], ok: 'Card banao');
+            ('text', 'Text (for custom)'),
+            ('terms', 'Terms / fees when asking for permission'),
+          ], ok: 'Make card');
           if (f == null) return;
           await _run('POST', '$_base/message', f);
         }),
-        GradientButton(label: 'Release ke liye card', icon: Icons.rocket_launch_rounded, height: 42,
+        GradientButton(label: 'Card for release', icon: Icons.rocket_launch_rounded, height: 42,
             onTap: _busy ? null : () => _run('POST', '$_base/release-request', {})),
       ]),
     ]);
@@ -601,6 +619,7 @@ class _FilmdeskProjectPageState extends State<FilmdeskProjectPage> {
                 _scriptBox(),
                 _castBox(),
                 _shotsBox(),
+                _producerBox(),
                 _budgetBox(),
                 _rightsBox(),
                 _releaseBox(),
@@ -629,7 +648,7 @@ class _FilmdeskCardCardState extends State<FilmdeskCardCard> {
     final id = _s(_c['id']);
     String reason = '';
     if (!yes) {
-      final f = await _form(context, 'Kyun nahi?', const [('reason', 'Wajah (optional)')], ok: 'Nahi');
+      final f = await _form(context, 'Why not?', const [('reason', 'Reason (optional)')], ok: 'No');
       if (f == null) return;
       reason = f['reason'] ?? '';
     }
@@ -666,28 +685,28 @@ class _FilmdeskCardCardState extends State<FilmdeskCardCard> {
           const SizedBox(width: 8),
           Expanded(child: Text('${_s(c['title'])} · ${_s(sh['project'])} ${_s(sh['title'])}',
               style: const TextStyle(fontWeight: FontWeight.w800))),
-          Pill(switch (st) { 'waiting' => 'aapki haan?', 'approved' => 'haan', 'rejected' => 'nahi', 'stale' => 'purana', _ => st },
+          Pill(switch (st) { 'waiting' => 'your yes?', 'approved' => 'yes', 'rejected' => 'no', 'stale' => 'old', _ => st },
               fg: st == 'waiting' ? C.accent : C.chip),
         ]),
         if (kind == 'message') ...[
           if (_s(sh['to']).isNotEmpty || _s(sh['phone']).isNotEmpty)
-            Text('Kisko: ${_s(sh['to'])} ${_s(sh['phone'])}', style: const TextStyle(fontSize: 12.5)),
+            Text('To whom: ${_s(sh['to'])} ${_s(sh['phone'])}', style: const TextStyle(fontSize: 12.5)),
           Text('“${_s(sh['text'])}”', style: const TextStyle(fontSize: 12.5)),
           if (sh['blanks'] == true)
-            const Text('[Khaali jagah] bhariye, phir card dobara banaiye.', style: TextStyle(fontSize: 12, color: C.warn)),
+            const Text('Fill in the [blank] spaces, then make the card again.', style: TextStyle(fontSize: 12, color: C.warn)),
         ],
         if (kind == 'release') ...[
           Text(_strs(sh['targets']).join(', '), style: const TextStyle(fontSize: 12.5)),
           for (final it in _list(sh['items']))
-            Text('${it['ok'] == true ? '✓' : (forced.contains(_s(it['key'])) ? '⚠ chhoda' : '✗')} ${_s(it['label'])}',
+            Text('${it['ok'] == true ? '✓' : (forced.contains(_s(it['key'])) ? '⚠ skipped' : '✗')} ${_s(it['label'])}',
                 style: const TextStyle(fontSize: 12)),
           if (_s(sh['disclosure']).isNotEmpty) Text(_s(sh['disclosure']), style: const TextStyle(fontSize: 12, color: C.muted)),
         ],
         const SizedBox(height: 8),
         if (st == 'waiting')
           Wrap(spacing: 8, runSpacing: 6, children: [
-            GradientButton(label: 'Haan', height: 42, onTap: _busy ? null : () => _decide(true)),
-            GlassButton(label: 'Nahi', height: 42, onTap: _busy ? null : () => _decide(false)),
+            GradientButton(label: 'Yes', height: 42, onTap: _busy ? null : () => _decide(true)),
+            GlassButton(label: 'No', height: 42, onTap: _busy ? null : () => _decide(false)),
           ]),
         if (wa.isNotEmpty || sms.isNotEmpty || mail.isNotEmpty)
           Wrap(spacing: 8, runSpacing: 6, children: [
@@ -697,7 +716,7 @@ class _FilmdeskCardCardState extends State<FilmdeskCardCard> {
             if (mail.isNotEmpty)
               GlassButton(label: 'Mail draft', icon: Icons.mail_rounded, height: 40, onTap: () => Native.openExternal(url: mail)),
           ]),
-        const Text('Hoola khud kuch nahi bhejta / post karta: message aur upload aap karti hain.',
+        const Text('Hoola does not send or post anything by itself: you send the message and upload.',
             style: TextStyle(fontSize: 11, color: C.faint)),
       ]),
     );
@@ -722,7 +741,7 @@ class FilmdeskNoteCard extends StatelessWidget {
         ])),
         TextButton(
             onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => FilmdeskScreen(app: app))),
-            child: const Text('Kholo')),
+            child: const Text('Open')),
       ]),
     );
   }

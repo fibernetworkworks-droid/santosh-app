@@ -30,14 +30,14 @@ class Starter {
 }
 
 const starters = [
-  Starter('Diwali offer reel', '20 sec · dukaan', Color(0xFF3A1D0E), Icons.local_fire_department_rounded,
-      'Meri dukaan ki Diwali offer reel: diye, rangoli, khush graahak, ant mein offer aur dukaan ka naam.', 20, 'ad', '9:16'),
+  Starter('Diwali offer reel', '20 sec · shop', Color(0xFF3A1D0E), Icons.local_fire_department_rounded,
+      'My shop\'s Diwali offer reel: lamps, rangoli, happy customers, and at the end the offer and the shop name.', 20, 'ad', '9:16'),
   Starter('Product ad', '15 sec · photo se', Color(0xFF10283A), Icons.inventory_2_rounded,
-      'Mere product ka 15 second ka ad: product chamakti roshni mein ghoomta hai, istemaal hota dikhe, ant mein naam.', 15, 'ad', '9:16'),
+      'A 15 second ad for my product: the product turns in shining light, shown being used, name at the end.', 15, 'ad', '9:16'),
   Starter('Shaadi invite', '30 sec · Hindi', Color(0xFF3B1230), Icons.favorite_rounded,
-      'Shaadi ka video invite: phoolon se saja mandap, dulha dulhan ke naam, tareekh aur jagah, pyaar bhara sandesh.', 30, 'indian_wedding', '9:16'),
+      'Wedding video invite: a mandap decorated with flowers, the names of the bride and groom, date and place, a loving message.', 30, 'indian_wedding', '9:16'),
   Starter('Good morning', '10 sec · chai', Color(0xFF2F2A10), Icons.wb_sunny_rounded,
-      'Good morning greeting: subah ki dhoop, garam chai ka cup, pakshi, ek pyaari si shubhkamna.', 10, 'reel', '9:16'),
+      'Good morning greeting: morning sunlight, a cup of hot tea, birds, a sweet good wish.', 10, 'reel', '9:16'),
 ];
 
 class _StudioScreenState extends State<StudioScreen> {
@@ -98,7 +98,7 @@ class _StudioScreenState extends State<StudioScreen> {
       if ((s == 'done' || s == 'notListening') && mounted) setState(() => _listening = false);
     });
     if (!ok) {
-      if (mounted) studioSnack(context, 'Microphone ki permission chahiye.');
+      if (mounted) studioSnack(context, 'Microphone permission is needed.');
       return;
     }
     final before = _idea.text.trim();
@@ -115,13 +115,13 @@ class _StudioScreenState extends State<StudioScreen> {
   String _nameFrom(String idea) {
     final w = idea.replaceAll(RegExp(r'[^\w\sऀ-෿]'), ' ').split(RegExp(r'\s+')).where((x) => x.isNotEmpty).take(5).join(' ');
     final n = w.length > 36 ? w.substring(0, 36) : w;
-    return n.length < 2 ? 'Naya video' : n[0].toUpperCase() + n.substring(1);
+    return n.length < 2 ? 'New video' : n[0].toUpperCase() + n.substring(1);
   }
 
   Future<void> _quick() async {
     final idea = _idea.text.trim();
     if (idea.length < 8) {
-      studioSnack(context, 'Thoda aur likhiye: kya dikhana hai, kisko, kya kehna hai.');
+      studioSnack(context, 'Write a little more: what to show, to whom, what to say.');
       return;
     }
     setState(() => _busy = true);
@@ -168,11 +168,11 @@ class _StudioScreenState extends State<StudioScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: SC.card,
-        title: Text('"${p['project']}" hatayein?', style: sora(17)),
-        content: Text('List se hat jayega. Is mahine ka kharcha hisaab mein rahega.', style: body(13.5, color: C.muted)),
+        title: Text('Delete "${p['project']}"?', style: sora(17)),
+        content: Text('It will be removed from the list. This month\'s cost stays in the accounts.', style: body(13.5, color: C.muted)),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Rehne do')),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Hatao', style: TextStyle(color: C.bad))),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Remove', style: TextStyle(color: C.bad))),
         ],
       ),
     );
@@ -201,7 +201,7 @@ class _StudioScreenState extends State<StudioScreen> {
             _header(spent, limit),
             _create(),
             const SizedBox(height: 26),
-            Padding(padding: const EdgeInsets.symmetric(horizontal: 20), child: SHead('Ek tap mein shuru', trailing: 'idea ke saath khulega')),
+            Padding(padding: const EdgeInsets.symmetric(horizontal: 20), child: SHead('Start in one tap', trailing: 'opens with the idea')),
             SizedBox(
               height: 214,
               child: ListView.separated(
@@ -216,13 +216,13 @@ class _StudioScreenState extends State<StudioScreen> {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                SHead('Aapke projects', trailing: projects.isEmpty ? null : '${projects.length}'),
+                SHead('Your projects', trailing: projects.isEmpty ? null : '${projects.length}'),
                 if (_loading) const Padding(padding: EdgeInsets.all(24), child: Center(child: CircularProgressIndicator())),
                 if (!_loading && projects.isEmpty)
                   Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(borderRadius: BorderRadius.circular(20), border: Border.all(color: SC.line2)),
-                    child: Text('Abhi koi video nahi. Upar idea likhiye ya ek starter chuniye: storyboard free banta hai.',
+                    child: Text('No videos yet. Write an idea above or pick a starter: the storyboard is free.',
                         style: body(13.5, color: C.muted, height: 1.45)),
                   ),
                 for (final p in projects) ...[
@@ -235,11 +235,11 @@ class _StudioScreenState extends State<StudioScreen> {
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(borderRadius: BorderRadius.circular(18), border: Border.all(color: SC.line2)),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text('Har shot ke liye sabse achha model, apne aap', style: body(12, w: FontWeight.w700, color: C.chip)),
+                    Text('The best model for every shot, automatically', style: body(12, w: FontWeight.w700, color: C.chip)),
                     const SizedBox(height: 6),
                     Text(
-                        'Kahani Wan 3.0 · Premium Seedance 2.5 · Product MiniMax H3 · Bolna Sync 3 lip sync · Tasveer Nano Banana Pro. '
-                        'Har video par "AI-generated · Hoola" label.${ready.isEmpty ? '\nAbhi server par sirf free preview chalu hai (OPENROUTER_API_KEY lagaiye).' : ''}',
+                        'Story Wan 3.0 · Premium Seedance 2.5 · Product MiniMax H3 · Speech Sync 3 lip sync · Pictures Nano Banana Pro. '
+                        'Every video has an "AI-generated · Hoola" label.${ready.isEmpty ? '\nOnly the free preview is on at the server right now (add OPENROUTER_API_KEY).' : ''}',
                         style: body(11.5, color: C.faint, height: 1.45)),
                   ]),
                 ),
@@ -258,11 +258,11 @@ class _StudioScreenState extends State<StudioScreen> {
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text('Video Studio', style: sora(22, w: FontWeight.w700)),
-              Text('${app.aName} ka AI film set', style: body(12.5, color: C.faint)),
+              Text('${app.aName}\'s AI film set', style: body(12.5, color: C.faint)),
             ]),
           ),
           Press(
-            onTap: () => studioSnack(context, 'Is mahine ${rupees(spent)} laga, seema ${rupees(limit)}.'),
+            onTap: () => studioSnack(context, 'This month ${rupees(spent)} used, limit ${rupees(limit)}.'),
             child: Container(
               padding: const EdgeInsets.fromLTRB(8, 6, 12, 6),
               decoration: BoxDecoration(color: SC.card, borderRadius: BorderRadius.circular(999), border: Border.all(color: SC.line)),
@@ -290,7 +290,7 @@ class _StudioScreenState extends State<StudioScreen> {
         decoration: BoxDecoration(color: SC.card, borderRadius: BorderRadius.circular(24), border: Border.all(color: SC.line)),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           Row(children: [
-            Expanded(child: Text('Kya video banana hai?', style: sora(17))),
+            Expanded(child: Text('What video do you want to make?', style: sora(17))),
             const Tag('Storyboard free', fg: C.ok, size: 11),
           ]),
           const SizedBox(height: 14),
@@ -300,7 +300,7 @@ class _StudioScreenState extends State<StudioScreen> {
             maxLines: 6,
             style: body(14.5, w: FontWeight.w500, height: 1.45),
             decoration: InputDecoration(
-              hintText: 'Jaise: Gautam Buddha ki 30 sec ki cinematic reel, Marathi mein ek shaant sandesh ke saath…',
+              hintText: 'e.g. A 30 sec cinematic reel of Gautam Buddha, with a calm message in Marathi…',
               hintStyle: body(14, w: FontWeight.w500, color: C.faint, height: 1.45),
               filled: true,
               fillColor: SC.field,
@@ -312,7 +312,7 @@ class _StudioScreenState extends State<StudioScreen> {
           const SizedBox(height: 12),
           Wrap(spacing: 8, runSpacing: 8, children: [
             SChip(label: _secs < 60 ? '$_secs sec' : '${_secs ~/ 60} min', icon: Icons.timer_outlined, on: false, onTap: () async {
-              final v = await pickOne<int>(context, 'Lambai', const {15: '15 sec', 30: '30 sec', 60: '1 min', 120: '2 min', 300: '5 min'},
+              final v = await pickOne<int>(context, 'Length', const {15: '15 sec', 30: '30 sec', 60: '1 min', 120: '2 min', 300: '5 min'},
                   current: _secs);
               if (v != null) setState(() => _secs = v);
             }),
@@ -326,23 +326,23 @@ class _StudioScreenState extends State<StudioScreen> {
               if (v != null) setState(() => _style = v);
             }),
             SChip(label: langShown(_lang), on: false, onTap: () async {
-              final v = await pickOne<String>(context, 'Bhasha', {for (final l in langs) l[0]: l[1]}, current: _lang);
+              final v = await pickOne<String>(context, 'Language', {for (final l in langs) l[0]: l[1]}, current: _lang);
               if (v != null) setState(() => _lang = v);
             }),
           ]),
           const SizedBox(height: 14),
           Row(children: [
-            _square(_listening ? Icons.stop_rounded : Icons.mic_rounded, 'Bolkar bataiye', _mic, on: _listening),
+            _square(_listening ? Icons.stop_rounded : Icons.mic_rounded, 'Tell by voice', _mic, on: _listening),
             const SizedBox(width: 10),
-            _square(Icons.add_photo_alternate_rounded, 'Photo ke saath', () => _full()),
+            _square(Icons.add_photo_alternate_rounded, 'With a photo', () => _full()),
             const SizedBox(width: 10),
-            Expanded(child: SButton(label: 'Storyboard banao', icon: Icons.auto_awesome_rounded, busy: _busy, onTap: _quick)),
+            Expanded(child: SButton(label: 'Make storyboard', icon: Icons.auto_awesome_rounded, busy: _busy, onTap: _quick)),
           ]),
           const SizedBox(height: 10),
           Center(
             child: TextButton(
               onPressed: () => _full(),
-              child: Text('Poori settings ke saath shuru karein', style: body(12.5, color: C.muted)),
+              child: Text('Start with all settings', style: body(12.5, color: C.muted)),
             ),
           ),
         ]),
@@ -404,21 +404,21 @@ class _StudioScreenState extends State<StudioScreen> {
   if (outs.isNotEmpty && outs.last['preview'] != true) steps = 4;
   switch (phase) {
     case 'planning':
-      return (label: 'Storyboard likh raha', color: C.accent, steps: steps);
+      return (label: 'Writing storyboard', color: C.accent, steps: steps);
     case 'painting':
-      return (label: 'Tasveerein ban rahi', color: const Color(0xFF7FB2FF), steps: steps);
+      return (label: 'Pictures being made', color: const Color(0xFF7FB2FF), steps: steps);
     case 'working':
-      return (label: 'Ban raha ${prog['done'] ?? 0}/${prog['total'] ?? shots.length}', color: const Color(0xFF7FB2FF), steps: steps);
+      return (label: 'Being made ${prog['done'] ?? 0}/${prog['total'] ?? shots.length}', color: const Color(0xFF7FB2FF), steps: steps);
     case 'reviewing':
-      return (label: 'AI jaanch', color: const Color(0xFF7FB2FF), steps: steps);
+      return (label: 'AI check', color: const Color(0xFF7FB2FF), steps: steps);
     case 'assembling':
-      return (label: 'Jod raha hoon', color: const Color(0xFF7FB2FF), steps: steps);
+      return (label: 'Joining', color: const Color(0xFF7FB2FF), steps: steps);
     case 'ready':
-      return (label: 'Taiyaar', color: C.ok, steps: steps);
+      return (label: 'Ready', color: C.ok, steps: steps);
     case 'empty':
-      return (label: 'Khaali', color: C.faint, steps: steps);
+      return (label: 'Empty', color: C.faint, steps: steps);
   }
-  return (label: 'Storyboard taiyaar', color: C.accent, steps: steps);
+  return (label: 'Storyboard ready', color: C.accent, steps: steps);
 }
 
 String posterOf(Map<String, dynamic> v) {
@@ -505,15 +505,15 @@ class ProjectTile extends StatelessWidget {
                 ]),
                 const SizedBox(height: 5),
                 Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                  for (final t in const ['Storyboard', 'Tasveer', 'Video', 'Final']) Text(t, style: body(10, color: C.faint)),
+                  for (final t in const ['Storyboard', 'Picture', 'Video', 'Final']) Text(t, style: body(10, color: C.faint)),
                 ]),
                 const SizedBox(height: 8),
                 Text(
                   working
-                      ? 'Kharch ${rupees(prog['spent_inr'])} / ${rupees(prog['inr'])}'
+                      ? 'Cost ${rupees(prog['spent_inr'])} / ${rupees(prog['inr'])}'
                       : ready
-                          ? 'Kharch ${rupees(v['spent_inr'])}'
-                          : 'Agla kadam: ${nxt['label'] ?? ''}${sInt(nxt['inr']) > 0 ? ' · ${rupees(nxt['inr'])}' : ''}',
+                          ? 'Cost ${rupees(v['spent_inr'])}'
+                          : 'Next step: ${nxt['label'] ?? ''}${sInt(nxt['inr']) > 0 ? ' · ${rupees(nxt['inr'])}' : ''}',
                   style: body(12.5, w: FontWeight.w700),
                 ),
               ]),

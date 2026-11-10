@@ -103,10 +103,27 @@ def block(tenant: str) -> str:
             "instructions):\n" + t)
 
 
+def drop_lines(tenant: str, fact: str, carries) -> int:
+    """v0.603 BHOOL JAO HAR JAGAH: the page lines that carry a forgotten fact leave her page now - not at
+    the next daily rebuild (the rebuild only adds what is new; a forgotten fact would have stayed). Her own
+    edits too: she asked to forget it. Returns how many lines went."""
+    ensure_table()
+    with session() as s:
+        r = s.get(AboutMe, tenant)
+        if r is None or not (r.text or "").strip():
+            return 0
+        lines = r.text.split("\n")
+        keep = [ln for ln in lines if not (ln.strip() and carries(fact, ln))]
+        gone = len(lines) - len(keep)
+        if gone:
+            r.text, r.updated_at = "\n".join(keep), now()
+        return gone
+
+
 # ------------------------------------------------------------------ building it
 SYSTEM = (
     "You keep ONE short memory page about an Indian business owner, for her AI coworker Hoola. Update the current page "
-    "with what is new. Sections (short Hinglish lines, only what is known): KAAM - her work, business, role; LOG - "
+    "with what is new. Sections (short English lines, only what is known): KAAM - her work, business, role; LOG - "
     "people she works with and who they are; PASAND - how she likes things done (language, formats, timing, tone); "
     "CHAL RAHA KAAM - ongoing projects or goals. Lines she wrote herself (marked HER EDIT) are true: keep them, never "
     "contradict them. Drop anything outdated. NEVER write OTPs, PINs, passwords, card / bank / ID numbers, money "

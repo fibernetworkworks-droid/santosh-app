@@ -28,7 +28,7 @@ CONTRACTS_TOOLS = [
         "action=playbook*: key, position, level, value, standard_text, off. action=rates*: rates [{kind, state, mode fixed|pct, rate, min, "
         "max, note}]. action=settings*: party_name, default_role, seat_city, state, msme, email, morning_time, windows. action=status*: "
         "contract, status. action=share: contract, version (0 = original) -> her file. action=register (Excel). action=forget* (DPDP, after "
-        "the contract is over). * = owner only. Never say a card is approved: 'aapki haan ka card bheja hai'."),
+        "the contract is over). * = owner only. Never say a card is approved: 'I have sent a card for your approval'."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["add", "update", "review", "version", "redline", "send", "esign", "estamp", "notice", "oblig",
                                                "oblig_done", "signed", "stamped", "playbook", "rates", "settings", "status", "share", "register",
@@ -86,9 +86,9 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
     from ..contracts import service as S
     t, conv = ctx.tenant_id, ctx.conversation_id
     if _actor(ctx).startswith("customer:"):
-        raise ToolError("Contracts business ka andar ka kaam hai.")
+        raise ToolError("Contracts are internal business work.")
     if action in _OWNER_ONLY and not _owner(ctx):
-        raise ToolError("Sirf owner.")
+        raise ToolError("Only the owner can do this.")
     cr = _s(a.get("contract"))
     try:
         if action == "add":
@@ -144,7 +144,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
     from ..contracts import service as S
     t, cr = ctx.tenant_id, _s(a.get("contract"))
     if _actor(ctx).startswith("customer:"):
-        raise ToolError("Contracts business ka andar ka kaam hai.")
+        raise ToolError("Contracts are internal business work.")
     try:
         if what == "day":
             return S.day(t)

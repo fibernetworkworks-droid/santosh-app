@@ -69,15 +69,15 @@ class _ApproveKeyScreenState extends State<ApproveKeyScreen> {
         final k = await Native.approveKeyCreate();
         if (k['public_key'] == null) {
           _snack(switch ('${k['error']}') {
-            'no_fingerprint' => 'Pehle phone ki Settings mein fingerprint / face lock lagaiye.',
-            'not_supported' => 'Is phone mein yeh suvidha nahi hai (Android 9+ aur fingerprint chahiye). Slide se haan chalta rahega.',
-            _ => 'Chaabi nahi ban payi: ${k['error']}',
+            'no_fingerprint' => 'First set up a fingerprint / face lock in the phone\'s Settings.',
+            'not_supported' => 'This phone does not have this feature (it needs Android 9+ and a fingerprint). Approval by slide will keep working.',
+            _ => 'Could not make the key: ${k['error']}',
           });
           return;
         }
         final r = await widget.app.api!.approveKeyAdd('${k['device_id']}', '${k['public_key']}',
             '${_phone['model'] ?? 'Phone'}', k['strongbox'] == true);
-        _snack('${r['say'] ?? 'Ho gaya'}');
+        _snack('${r['say'] ?? 'Done'}');
       });
 
   Future<void> _remove(Map<String, dynamic> d) => _run(() async {
@@ -87,12 +87,12 @@ class _ApproveKeyScreenState extends State<ApproveKeyScreen> {
         }
         final r = await widget.app.api!.approveKeyRemove('${d['device_id']}', proof: proof);
         if (d['device_id'] == _phone['device_id'] && r['status'] == 'removed') await Native.approveKeyDelete();
-        _snack('${r['say'] ?? 'Ho gaya'}');
+        _snack('${r['say'] ?? 'Done'}');
       });
 
   Future<void> _cancel(Map<String, dynamic> d) => _run(() async {
         final r = await widget.app.api!.approveKeyCancel('${d['device_id']}');
-        _snack('${r['say'] ?? 'Ho gaya'}');
+        _snack('${r['say'] ?? 'Done'}');
       });
 
   String _when(dynamic iso) {
@@ -105,10 +105,10 @@ class _ApproveKeyScreenState extends State<ApproveKeyScreen> {
     final me = d['device_id'] == _phone['device_id'];
     final st = '${d['status']}';
     final line = st == 'pending'
-        ? 'Naya: ${_when(d['active_after'])} ke baad chalu hoga'
+        ? 'New: ${_when(d['active_after'])} will start after'
         : d['remove_after'] != null
-            ? 'Hat raha hai: ${_when(d['remove_after'])} ke baad'
-            : 'Chalu${d['strongbox'] == true ? ' · alag security chip' : ''}${d['last_used'] != null ? ' · aakhri haan ${_when(d['last_used'])}' : ''}';
+            ? 'Being removed: ${_when(d['remove_after'])} after'
+            : 'On${d['strongbox'] == true ? ' · separate security chip' : ''}${d['last_used'] != null ? ' · last yes ${_when(d['last_used'])}' : ''}';
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Glass(
@@ -120,14 +120,14 @@ class _ApproveKeyScreenState extends State<ApproveKeyScreen> {
           const SizedBox(width: 10),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('${d['label'] ?? 'Phone'}${me ? ' (yeh phone)' : ''}', style: const TextStyle(fontWeight: FontWeight.w700)),
+              Text('${d['label'] ?? 'Phone'}${me ? ' (this phone)' : ''}', style: const TextStyle(fontWeight: FontWeight.w700)),
               Text(line, style: const TextStyle(color: C.muted, fontSize: 12.5)),
             ]),
           ),
           if (st == 'pending' || d['remove_after'] != null)
-            TextButton(onPressed: _busy ? null : () => _cancel(d), child: const Text('Rok do'))
+            TextButton(onPressed: _busy ? null : () => _cancel(d), child: const Text('Stop'))
           else
-            TextButton(onPressed: _busy ? null : () => _remove(d), child: const Text('Hatao')),
+            TextButton(onPressed: _busy ? null : () => _remove(d), child: const Text('Remove')),
         ]),
       ),
     );
@@ -138,7 +138,7 @@ class _ApproveKeyScreenState extends State<ApproveKeyScreen> {
     final on = _server?['on'] == true;
     final supported = _phone['supported'] == true;
     return Scaffold(
-      appBar: AppBar(title: const Text('Fingerprint se haan')),
+      appBar: AppBar(title: const Text('Approve with fingerprint')),
       body: _server == null && _err == null
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
@@ -151,7 +151,7 @@ class _ApproveKeyScreenState extends State<ApproveKeyScreen> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Text(on ? 'Chalu hai' : 'Band hai', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
+                        Text(on ? 'On' : 'Off', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
                         Text('${_server?['say'] ?? _err ?? ''}', style: const TextStyle(color: C.muted, fontSize: 12.5)),
                       ]),
                     ),
@@ -159,19 +159,19 @@ class _ApproveKeyScreenState extends State<ApproveKeyScreen> {
                 ),
                 const SizedBox(height: 12),
                 const Text(
-                    'Chalu hone par paise wale card (bill, UPI, order, AI video ka kharcha) sirf jude hue phone ke fingerprint se '
-                    'haan honge. App ki chaabi chori bhi ho jaye to koi aur haan nahi kar sakta. Naya phone jodna ya hatana 24 '
-                    'ghante baad hota hai, jab tak jude hue phone se fingerprint na diya jaye.',
+                    'When on, cards that involve money (bills, UPI, orders, AI video costs) are approved only by the fingerprint of the connected phone. '
+                    'Even if the app key is stolen, no one else can approve. Adding or removing a phone takes 24 '
+                    'hours, unless the fingerprint is given from the connected phone.',
                     style: TextStyle(color: C.faint, fontSize: 12.5)),
                 const SizedBox(height: 14),
                 ..._devices.map(_device),
                 const SizedBox(height: 8),
                 if (!supported)
-                  const Text('Is phone mein yeh suvidha nahi hai (Android 9+ aur fingerprint / face lock chahiye).',
+                  const Text('This phone does not have this feature (it needs Android 9+ and a fingerprint / face lock).',
                       style: TextStyle(color: C.warn))
                 else if (!_mineActive && _mine?['status'] != 'pending')
                   GlassButton(
-                    label: _phone['enrolled'] == true ? 'Is phone ko jodiye' : 'Pehle phone mein fingerprint lagaiye',
+                    label: _phone['enrolled'] == true ? 'Connect this phone' : 'First set up a fingerprint on the phone',
                     icon: Icons.fingerprint_rounded,
                     onTap: _busy || _phone['enrolled'] != true ? null : _addThisPhone,
                   ),

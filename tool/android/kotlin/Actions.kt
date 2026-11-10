@@ -41,7 +41,7 @@ object Actions {
             "add_calendar_event" -> calendar(ctx, a)
             "open_url" -> openUrl(ctx, a)
             "tv_play" -> tvPlay(ctx, a)
-            else -> Pair(false, "Is app version ko '${a.optString("type")}' nahi aata; app update kijiye.")
+            else -> Pair(false, "This app version does not support '${a.optString("type")}'. Please update the app.")
         }
     } catch (e: Exception) {
         Pair(false, e.message ?: e.javaClass.simpleName)
@@ -50,21 +50,21 @@ object Actions {
     /** Android won't open screens from the background, so a tap on the notification opens the link. */
     private fun openUrl(ctx: Context, a: JSONObject): Pair<Boolean, String> {
         val url = a.optString("url")
-        if (!url.startsWith("http://") && !url.startsWith("https://")) return Pair(false, "Link sahi nahi hai")
+        if (!url.startsWith("http://") && !url.startsWith("https://")) return Pair(false, "The link is not valid")
         val title = a.optString("title").ifBlank { android.net.Uri.parse(url).host ?: url }
         val view = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url))
-        Notify.tapToOpen(ctx, (url.hashCode() and 0x7fffffff) % 100000 + 300_000, "Hoola: $title", "Tap karke kholiye", view)
-        return Pair(true, "Notification bheja hai; tap karte hi khul jayega")
+        Notify.tapToOpen(ctx, (url.hashCode() and 0x7fffffff) % 100000 + 300_000, "Hoola: $title", "Tap to open", view)
+        return Pair(true, "Notification sent; it opens when you tap it")
     }
 
     /** Hoola TV while the app is closed: a tap on the notification opens the channel in Hoola's player. */
     private fun tvPlay(ctx: Context, a: JSONObject): Pair<Boolean, String> {
         val ch = a.optString("channel")
-        if (ch.isBlank()) return Pair(false, "Channel nahi mila")
+        if (ch.isBlank()) return Pair(false, "Channel not found")
         val open = Intent(ctx, MainActivity::class.java).setData(android.net.Uri.parse("santosh://tv?ch=" + android.net.Uri.encode(ch)))
         Notify.tapToOpen(ctx, (ch.hashCode() and 0x7fffffff) % 100000 + 400_000, "Hoola TV: ${a.optString("name", "channel")}",
-            "Tap karke dekhiye", open)
-        return Pair(true, "Notification bheja hai; tap karte hi channel chalega")
+            "Tap to watch", open)
+        return Pair(true, "Notification sent; the channel plays when you tap it")
     }
 
     private fun hhmm(h: Int, m: Int) = String.format("%02d:%02d", h, m)
@@ -78,13 +78,13 @@ object Actions {
         val id = (System.currentTimeMillis() % 1_000_000).toInt() + 10_000
         val spec = JSONObject().put("id", id).put("at", at).put("label", label).put("hour", h).put("minute", m).put("days", days)
         val exact = schedule(ctx, spec)
-        val note = if (exact) "" else " (thoda aage-peeche baj sakta hai)"
-        return Pair(true, "App band tha, isliye Hoola ka apna alarm ${hhmm(h, m)} par set kiya$note")
+        val note = if (exact) "" else " (it may ring a little earlier or later)"
+        return Pair(true, "The clock app was closed, so Hoola set its own alarm for ${hhmm(h, m)}$note")
     }
 
     private fun timer(ctx: Context, a: JSONObject): Pair<Boolean, String> {
         val secs = a.optLong("seconds")
-        if (secs <= 0) return Pair(false, "Timer ka samay sahi nahi hai")
+        if (secs <= 0) return Pair(false, "The timer duration is not valid")
         val label = a.optString("label", "Hoola timer").ifBlank { "Hoola timer" }
         val at = System.currentTimeMillis() + secs * 1000
         val c = Calendar.getInstance().apply { timeInMillis = at }
@@ -93,7 +93,7 @@ object Actions {
             .put("hour", c.get(Calendar.HOUR_OF_DAY)).put("minute", c.get(Calendar.MINUTE)).put("days", JSONArray())
         schedule(ctx, spec)
         val mins = (secs + 59) / 60
-        return Pair(true, "Timer chalu: $mins minute baad bajega")
+        return Pair(true, "Timer started: it will ring in $mins minutes")
     }
 
     /** Next moment at h:m on one of [days] (or the next h:m when there are no days). */
@@ -156,7 +156,7 @@ object Actions {
                     put(CalendarContract.Reminders.METHOD, CalendarContract.Reminders.METHOD_ALERT)
                 }
                 try { ctx.contentResolver.insert(CalendarContract.Reminders.CONTENT_URI, r) } catch (_: Exception) {}
-                return Pair(true, "Calendar mein seedha save kar diya")
+                return Pair(true, "Saved directly to the calendar")
             }
         }
         // no calendar permission: one tap on the notification opens the filled-in calendar screen
@@ -166,8 +166,8 @@ object Actions {
             .putExtra(CalendarContract.Events.TITLE, title)
             .putExtra(CalendarContract.Events.EVENT_LOCATION, a.optString("location", ""))
             .putExtra(CalendarContract.Events.DESCRIPTION, a.optString("notes", ""))
-        Notify.tapToOpen(ctx, (start / 1000 % 100000).toInt() + 200_000, "Calendar: $title", "Tap karke save kijiye", insert)
-        return Pair(false, "Calendar permission nahi hai; notification bheja hai, tap karke save karein")
+        Notify.tapToOpen(ctx, (start / 1000 % 100000).toInt() + 200_000, "Calendar: $title", "Tap to save", insert)
+        return Pair(false, "No calendar permission; a notification was sent, tap it to save")
     }
 
     private fun writableCalendar(ctx: Context): Long? {

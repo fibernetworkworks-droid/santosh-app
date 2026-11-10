@@ -1,6 +1,7 @@
 ---
 name: byox-game
 description: Build a 2D game: fixed game loop, physics, sprites, audio
+when_to_use: 2d game banana, simple game from scratch, game loop, sprites, pygame game
 ---
 GOAL: a playable 2D platformer with sprites, collisions, enemies and sound.
 

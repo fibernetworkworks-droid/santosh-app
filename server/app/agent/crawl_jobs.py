@@ -24,6 +24,7 @@ Tools (3): crawl_start / crawl_status (check|stop) / crawl_results. Registry 523
 """
 import asyncio
 import json
+import logging
 import re
 import sqlite3
 import time
@@ -33,6 +34,8 @@ from typing import Any
 from urllib.parse import urljoin, urlparse
 
 from . import scrape_tools as st          # the one lane: guards, fetch core, page cache, masking
+
+log = logging.getLogger("santosh.crawl_jobs")
 from .tools import Ctx, ToolError
 
 _CRAWL_PAGES_CAP = 50        # hard page budget per job (max_pages param clamps to this)
@@ -229,10 +232,21 @@ def claim(tenant_id: str, job_id: str, tries_max: int) -> bool:
         con.commit()
         if cur.rowcount > 0:
             return True
-        con.execute("UPDATE crawl_jobs SET status = 'failed', error = ?, updated_at = ? "
-                    "WHERE id = ? AND status IN ('queued','running')",
-                    ("tries bhar gaye — site baar baar crawl nahi ho payi", time.time(), job_id))
+        cur2 = con.execute("UPDATE crawl_jobs SET status = 'failed', error = ?, updated_at = ? "
+                           "WHERE id = ? AND status IN ('queued','running')",
+                           ("tries bhar gaye — site baar baar crawl nahi ho payi", time.time(), job_id))
         con.commit()
+        if cur2.rowcount > 0:
+            # wave 10: a crawl that used up its tries went "failed" in silence - she learned it only by asking crawl_status
+            try:
+                row = con.execute("SELECT seed FROM crawl_jobs WHERE id = ?", (job_id,)).fetchone()
+                from .. import convs, events
+                conv = convs.notice_chat(tenant_id)   # v0.714
+                if conv:
+                    events.notify(conv, f"Crawl ({(row[0] if row else '')[:80]}) kai baar ki koshish ke baad bhi nahi "
+                                        f"ho paya, isliye band kar diya (job {job_id}).")
+            except Exception:   # noqa: BLE001
+                pass
         return False
     finally:
         con.close()
@@ -297,6 +311,65 @@ def _save_cp(tenant_id: str, job_id: str, queue: list[str], seen: list[str], cp:
     return json.dumps(payload)
 
 
+def _pick_next(queue: list, cp: dict, question: str, mode: str, seed: str, include: str | None):
+    """Which url to read next. v0.537 item 3: best-first when she asked a QUESTION (the most promising link
+    first), plain FIFO otherwise - so a crawl with no question behaves exactly as it did before.
+
+    The frontier is rebuilt from the queue each tick rather than held in memory: this job is resumed from a
+    SQLite checkpoint after a restart, so anything not in the checkpoint does not exist.
+    """
+    if not queue:
+        return None
+    if mode != "best" or not question:
+        return queue.pop(0)
+    try:
+        from ..crawl.frontier import Filters, Frontier
+        f = Frontier(keywords=_keywords(question),
+                     filters=Filters(same_host_as=seed, include=(include or "")), mode="best")
+        for u in queue:
+            f.push(u)
+        for txt in (cp.get("learned") or [])[-20:]:
+            f.learn(str(txt))
+        got = f.pop()
+        if got is None:
+            return queue.pop(0)
+        url = got[0]
+        if url in queue:
+            queue.remove(url)
+        return url
+    except Exception:
+        log.exception("frontier failed; falling back to fifo")
+        return queue.pop(0)
+
+
+def _keywords(question: str) -> list[str]:
+    from ..crawl.bm25 import words
+    return words(question)[:12]
+
+
+def _enough_yet(cp: dict, question: str) -> tuple[bool, str, dict]:
+    """v0.537 item 1: has it read enough to answer her question? (stop?, why, metrics)
+
+    Only ever asked when she gave a question - a crawl told to mirror a section still stops on its page
+    budget alone, as it always did.
+    """
+    if not question:
+        return False, "", {}
+    try:
+        from ..crawl.enough import EnoughConfig, Knowledge, confidence, should_stop
+        k = Knowledge(query=question)
+        for item in (cp.get("learned") or []):
+            k.add(str(item.get("url", "")), str(item.get("text", "")))
+        k.confidence_history = list(cp.get("conf_history") or [])
+        cfg = EnoughConfig(max_pages=10_000)      # the JOB's page budget is the real ceiling, not this
+        stop, why = should_stop(k, cfg)
+        cp["conf_history"] = k.confidence_history[-20:]
+        return stop, why, confidence(k, cfg)
+    except Exception:
+        log.exception("enough-check failed; the crawl carries on")
+        return False, "", {}
+
+
 async def run_job(tenant_id: str, job_id: str) -> None:
     """The checkpointed polite BFS. One page = one heartbeat. Stop/failure are honest, never silent."""
     try:
@@ -315,7 +388,16 @@ async def run_job(tenant_id: str, job_id: str) -> None:
                 return
             include = (row["include"] or "").strip() or None
             start_host = urlparse(row["seed"]).hostname or ""
-            url = queue.pop(0)
+            # v0.537 items 1 + 3: the frontier decides WHICH url next, and the question (if she gave one)
+            # decides WHETHER to carry on. Both are rebuilt from the checkpoint every tick, because this
+            # job must survive a pm2 restart and resume from where it stopped.
+            question = (cp.get("question") or "").strip()
+            mode = (cp.get("mode") or "bfs").strip().lower()
+            url = _pick_next(queue, cp, question, mode, row["seed"], include)
+            if url is None:
+                _save(tenant_id, job_id, status="done", updated_at=time.time(),
+                      note="frontier mein koi padhne layak url nahi bacha")
+                return
             seq = int(row["fetched"]) + 1
             # guards first: a queued url that fails the guard is recorded, the crawl moves on
             try:
@@ -356,14 +438,26 @@ async def run_job(tenant_id: str, job_id: str) -> None:
                 title, md, txt = await asyncio.to_thread(_read_page, page)
                 put_page(tenant_id, job_id, getattr(page, "url", "") or url, seq, status, title, md, txt)
                 await asyncio.to_thread(st._cache_put_page, tenant_id, page)   # warm the v0.481 page cache
+                if question:
+                    learned = list(cp.get("learned") or [])
+                    learned.append({"url": getattr(page, "url", "") or url, "text": (txt or md or "")[:4000]})
+                    cp["learned"] = learned[-30:]          # bounded: the checkpoint is JSON in a row
                 for nxt in _harvest(page, getattr(page, "url", "") or url, start_host, include):
                     if nxt in seen or len(queue) >= _QUEUE_CAP:
                         continue
                     seen.append(nxt)
                     queue.append(nxt)
+            done_now = int(row.get("pages_done") or 0) + (0 if (blk or status >= 400) else 1)
+            stop_enough, why_enough, metrics = _enough_yet(cp, question)
+            if metrics:
+                cp["confidence"] = metrics
             _save(tenant_id, job_id, checkpoint=_save_cp(tenant_id, job_id, queue, seen, cp),
-                  fetched=seq, pages_done=int(row.get("pages_done") or 0) + (0 if (blk or status >= 400) else 1),
-                  updated_at=time.time())
+                  fetched=seq, pages_done=done_now, updated_at=time.time())
+            if stop_enough:
+                # The whole point of item 1: a crawl that has the answer stops instead of spending the
+                # rest of its budget. The REASON is recorded, because a crawl that stops must say why.
+                _save(tenant_id, job_id, status="done", updated_at=time.time(), note=why_enough)
+                return
             await asyncio.sleep(_polite_s)
     except asyncio.CancelledError:
         try:                      # honest + resumable: the next tick picks the checkpoint up again
@@ -444,9 +538,13 @@ def _fmt_job(row: dict[str, Any]) -> dict[str, Any]:
             "note": row.get("note") or ""}
 
 
-async def crawl_start(ctx: Ctx, url, max_pages=20, include=None, **_):
+async def crawl_start(ctx: Ctx, url, max_pages=20, include=None, question=None, **_):
     """Queue a background crawl of one site section (the Firecrawl /crawl idea): polite BFS, robots
-    honoured, HTTP only, checkpointed — the worker tick picks it up within ~20 s."""
+    honoured, HTTP only, checkpointed — the worker tick picks it up within ~20 s.
+
+    v0.537: give `question` and the crawl changes character — it reads the most PROMISING link next
+    instead of the next one in line, and it STOPS when the pages answer the question rather than
+    spending the whole page budget. Without a question the behaviour is byte-for-byte what it was."""
     from ..config import get_settings
     s = get_settings()
     if not getattr(s, "scrape_crawl_enabled", True):
@@ -460,12 +558,21 @@ async def crawl_start(ctx: Ctx, url, max_pages=20, include=None, **_):
         want = 20
     row = create_job(ctx.tenant_id, seed, str(include or ""), want)
     fresh = bool(row.pop("_created", False))
+    q = str(question or "").strip()[:300]
+    if q and fresh:
+        cp = dict(row.get("checkpoint") or {})
+        cp["question"] = q
+        cp["mode"] = str(getattr(s, "scrape_crawl_question_mode", "best") or "best").lower()
+        _save(ctx.tenant_id, row["id"], checkpoint=json.dumps(cp), updated_at=time.time())
     return st._masked({"job_id": row["id"], "seed": row["seed"], "status": row["status"],
                        "max_pages": int(row["max_pages"]),
                        "already_running": not fresh,
+                       **({"question": q, "mode": cp["mode"]} if q and fresh else {}),
                        "note": ("Crawl queue ho gaya — worker ise ~20 s mein uthayega, phir crawl_status se progress aur "
                                 "crawl_results se pages dekhein" if fresh
-                                else "Yeh seed pehle se queued/running hai — wahi job aage badhega (naya job nahi bana)")})
+                                else "Yeh seed pehle se queued/running hai — wahi job aage badhega (naya job nahi bana)")
+                       + (" Question diya hai, to sabse kaam ka link pehle padhega aur jawab milte hi ruk jayega."
+                          if q and fresh else "")})
 
 
 async def crawl_status(ctx: Ctx, job_id="", action="check", **_):
@@ -524,7 +631,12 @@ CRAWL_TOOLS = [
      "input_schema": {"type": "object", "properties": {
          "url": {"type": "string", "description": "Where the crawl starts (homepage or a section url)"},
          "max_pages": {"type": "integer", "description": "Page budget, default 20, cap 50"},
-         "include": {"type": "string", "description": "Regex the crawled urls must match, e.g. '/product/'"}},
+         "include": {"type": "string", "description": "Regex the crawled urls must match, e.g. '/product/'"},
+         "question": {"type": "string", "description": (
+             "What she actually wants to know (e.g. 'what are the GST rates on cement'). Give this and the "
+             "crawl reads the most promising link next instead of the next one in line, and STOPS as soon "
+             "as the pages answer it — so a 50-page budget is not spent when the answer arrived on page 3. "
+             "Leave it out to mirror a whole section.")}},
          "required": ["url"]}},
     {"name": "crawl_status", "description": (
         "Progress of a background crawl job (v0.486): status (queued/running/done/failed/stopped), pages "

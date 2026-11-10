@@ -97,6 +97,8 @@ def pick(tenant: str) -> tuple[str, str]:
     if chosen(tenant) != "openai":
         return "gemini", ""
     st = get_settings()
+    if not st.voice_openai_enabled:   # v0.622 owner: "SWITCH VOICE TO GEMINI - CHATGPT IS VERY BAD"
+        return "gemini", ""
     if not st.openai_api_key:
         return "gemini", "Real voice ke liye server par OpenAI key nahi hai - abhi Gemini awaaz."
     if not allowed(tenant):

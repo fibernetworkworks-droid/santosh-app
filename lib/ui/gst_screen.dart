@@ -194,12 +194,12 @@ class _TodayTabState extends State<_TodayTab> with _GstLive {
         const SizedBox(height: 12),
         if ((d['clients'] ?? 0) == 0)
           const Glass(
-              child: Text('Pehla client jodiye: Clients > "Naya client" (GSTIN se). Ya Hoola se boliye: '
+              child: Text('Add your first client: Clients > "New client" (with GSTIN). Or tell Hoola: '
                   '"Sharma Traders, GSTIN 27..., monthly client jodo".', style: TextStyle(color: C.muted))),
         if (late.isNotEmpty) ...[Text('Late', style: display(15)), const SizedBox(height: 8), for (final x in late) _row(x, true)],
         if (due.isNotEmpty) ...[
           const SizedBox(height: 6),
-          Text('Aane wale', style: display(15)),
+          Text('Upcoming', style: display(15)),
           const SizedBox(height: 8),
           for (final x in due) _row(x, false)
         ],
@@ -255,16 +255,16 @@ class _ClientsTabState extends State<_ClientsTab> with _GstLive {
           child: Glass(
             child: SingleChildScrollView(
               child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('Naya client', style: display(17)),
+                Text('New client', style: display(17)),
                 TextField(controller: name, decoration: const InputDecoration(labelText: 'Naam (firm)')),
                 TextField(
                     controller: g,
                     textCapitalization: TextCapitalization.characters,
-                    decoration: const InputDecoration(labelText: 'GSTIN (15 akshar)')),
+                    decoration: const InputDecoration(labelText: 'GSTIN (15 characters)')),
                 TextField(
                     controller: aato,
                     keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(labelText: 'Pichhle saal ka turnover (₹)')),
+                    decoration: const InputDecoration(labelText: 'Last year\'s turnover (₹)')),
                 const SizedBox(height: 8),
                 Wrap(spacing: 8, children: [
                   for (final s in const ['monthly', 'qrmp', 'composition'])
@@ -272,7 +272,7 @@ class _ClientsTabState extends State<_ClientsTab> with _GstLive {
                 ]),
                 TextField(
                     controller: user,
-                    decoration: const InputDecoration(labelText: 'Portal username (password nahi)', helperText: 'Password Hoola kabhi nahi rakhta')),
+                    decoration: const InputDecoration(labelText: 'Portal username (not the password)', helperText: 'Hoola never keeps the password')),
                 TextField(controller: cn, decoration: const InputDecoration(labelText: 'Contact naam')),
                 TextField(controller: ph, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'Contact phone')),
                 const SizedBox(height: 12),
@@ -303,7 +303,7 @@ class _ClientsTabState extends State<_ClientsTab> with _GstLive {
 
   @override
   Widget build(BuildContext context) => ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 40), children: [
-        GradientButton(label: 'Naya client', icon: Icons.person_add_alt_1_rounded, onTap: _add),
+        GradientButton(label: 'New client', icon: Icons.person_add_alt_1_rounded, onTap: _add),
         const SizedBox(height: 12),
         for (final c in _c)
           Padding(
@@ -449,7 +449,7 @@ class _GstClientPageState extends State<GstClientPage> with _GstLive {
                   reload();
                 },
               ),
-              Text('Sale ${out.length} · Kharid ${inn.length}${bad > 0 ? ' · $bad bill mein galti' : ''}',
+              Text('Sales ${out.length} · Purchases ${inn.length}${bad > 0 ? ' · $bad bills with errors' : ''}',
                   style: TextStyle(color: bad > 0 ? C.warn : C.chip)),
             ]),
           ),
@@ -458,22 +458,22 @@ class _GstClientPageState extends State<GstClientPage> with _GstLive {
           const SizedBox(height: 6),
           Wrap(spacing: 8, runSpacing: 8, children: [
             GlassButton(label: 'Sale register', icon: Icons.upload_file_rounded, onTap: _busy ? null : () => _upload('out')),
-            GlassButton(label: 'Kharid register', icon: Icons.upload_file_rounded, onTap: _busy ? null : () => _upload('in')),
+            GlassButton(label: 'Purchase register', icon: Icons.upload_file_rounded, onTap: _busy ? null : () => _upload('in')),
             GlassButton(label: 'Client se bill mango', icon: Icons.chat_rounded, onTap: _draft),
           ]),
           const Padding(
             padding: EdgeInsets.only(top: 6),
-            child: Text('Bill ki photo / PDF chat mein Hoola ko bhejiye: woh padhkar yahan daal dega.',
+            child: Text('Send a photo / PDF of the bill to Hoola in the chat: it will read it and add it here.',
                 style: TextStyle(color: C.faint, fontSize: 12)),
           ),
           if (scheme != 'composition') ...[
             const SizedBox(height: 14),
-            Text('2. GSTR-2B aur milaan', style: display(15)),
+            Text('2. GSTR-2B and matching', style: display(15)),
             const SizedBox(height: 6),
             Wrap(spacing: 8, runSpacing: 8, children: [
               GlassButton(label: '2B upload', icon: Icons.download_rounded, onTap: _busy ? null : () => _upload('2b')),
               GlassButton(
-                  label: 'Milaan dekho',
+                  label: 'View matching',
                   icon: Icons.compare_arrows_rounded,
                   onTap: () => Navigator.of(context)
                       .push(MaterialPageRoute(builder: (_) => GstReconPage(app: app, client: widget.id, period: _period)))),
@@ -485,17 +485,17 @@ class _GstClientPageState extends State<GstClientPage> with _GstLive {
           Wrap(spacing: 8, runSpacing: 8, children: [
             if (scheme != 'composition')
               GradientButton(
-                  label: scheme == 'qrmp' && !quarterEnd ? 'IFF banao' : 'GSTR-1 banao',
+                  label: scheme == 'qrmp' && !quarterEnd ? 'Make IFF' : 'Make GSTR-1',
                   icon: Icons.description_rounded,
                   onTap: _busy ? null : () => _run(() => app.api!.gstPrepare(widget.id, _period, 'gstr1'), openReturn: true)),
             if (scheme == 'monthly' || (scheme == 'qrmp' && quarterEnd))
               GradientButton(
-                  label: 'GSTR-3B banao',
+                  label: 'Make GSTR-3B',
                   icon: Icons.calculate_rounded,
                   onTap: _busy ? null : () => _run(() => app.api!.gstPrepare(widget.id, _period, 'gstr3b'), openReturn: true)),
             if (scheme == 'composition' && quarterEnd)
               GradientButton(
-                  label: 'CMP-08 banao',
+                  label: 'Make CMP-08',
                   icon: Icons.calculate_rounded,
                   onTap: _busy ? null : () => _run(() => app.api!.gstPrepare(widget.id, _period, 'cmp08'), openReturn: true)),
           ]),
@@ -582,7 +582,7 @@ class _GstReconPageState extends State<GstReconPage> {
             {'client': widget.client, 'period': widget.period, 'apply': true, 'conversation_id': widget.app.conversationId ?? ''});
         if (mounted) _snack(context, _s(r['say']));
       } else if (mounted) {
-        _snack(context, 'Faisla save');
+        _snack(context, 'Save decision');
       }
     } catch (e) {
       if (mounted) _snack(context, '$e');
@@ -623,7 +623,7 @@ class _GstReconPageState extends State<GstReconPage> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(backgroundColor: Colors.transparent, title: Text('2B milaan · ${_nicePeriod(widget.period)}')),
+        appBar: AppBar(backgroundColor: Colors.transparent, title: Text('2B matching · ${_nicePeriod(widget.period)}')),
         body: Aurora(
           child: _r == null
               ? Center(child: _err != null ? Padding(padding: const EdgeInsets.all(20), child: Text(_err!)) : const CircularProgressIndicator())
@@ -631,16 +631,16 @@ class _GstReconPageState extends State<GstReconPage> {
                   Glass(child: Text(_s(_r!['say']), style: const TextStyle(height: 1.35))),
                   const SizedBox(height: 6),
                   Text(_s(_r!['ims_note']), style: const TextStyle(color: C.faint, fontSize: 12)),
-                  _sec('Farak wale', 'mismatch', C.warn, ims: true),
-                  _sec('Sirf 2B mein', 'only_2b', C.warn, ims: true),
-                  _sec('Sirf books mein (supplier ne nahi dala)', 'only_books', C.bad),
-                  _sec('Mil gaye', 'matched', C.ok, ims: true),
-                  _sec('ITC nahi milega', 'ineligible', C.faint),
+                  _sec('With differences', 'mismatch', C.warn, ims: true),
+                  _sec('Only in 2B', 'only_2b', C.warn, ims: true),
+                  _sec('Only in books (supplier did not file)', 'only_books', C.bad),
+                  _sec('Matched', 'matched', C.ok, ims: true),
+                  _sec('ITC not allowed', 'ineligible', C.faint),
                   _sec('Reverse charge', 'rcm', C.muted),
                   const SizedBox(height: 16),
-                  GlassButton(label: 'Faisla save', icon: Icons.save_rounded, onTap: () => _save()),
+                  GlassButton(label: 'Save decision', icon: Icons.save_rounded, onTap: () => _save()),
                   const SizedBox(height: 8),
-                  GradientButton(label: 'Portal par IMS lagao', icon: Icons.computer_rounded, onTap: () => _save(apply: true)),
+                  GradientButton(label: 'Apply in IMS on the portal', icon: Icons.computer_rounded, onTap: () => _save(apply: true)),
                 ]),
         ),
       );
@@ -681,7 +681,7 @@ class _ReturnsTabState extends State<_ReturnsTab> with _GstLive {
 
   @override
   Widget build(BuildContext context) => ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 40), children: [
-        if (_r.isEmpty) const Glass(child: Text('Abhi koi return nahi. Client kholkar "GSTR-1 banao" dabaiye.', style: TextStyle(color: C.muted))),
+        if (_r.isEmpty) const Glass(child: Text('No returns yet. Open a client and tap "Make GSTR-1".', style: TextStyle(color: C.muted))),
         for (final r in _r)
           Padding(
             padding: const EdgeInsets.only(bottom: 8),
@@ -786,7 +786,7 @@ class _GstReturnViewState extends State<GstReturnView> with _GstLive {
       if (mounted && _s(r['say']).isNotEmpty) _snack(context, _s(r['say']));
       if (action == 'tax_message' && mounted) {
         await Clipboard.setData(ClipboardData(text: _s(r['draft'])));
-        if (mounted) _snack(context, 'Client ka message copy ho gaya');
+        if (mounted) _snack(context, 'Client message copied');
       }
     } catch (e) {
       if (mounted) _snack(context, '$e');
@@ -840,22 +840,22 @@ class _GstReturnViewState extends State<GstReturnView> with _GstLive {
         const SizedBox(height: 6),
         if (kind == 'gstr1') ...[
           _kv('B2B bill', '${s['b2b_invoices'] ?? 0} (${s['b2b_parties'] ?? 0} party)'),
-          _kv('B2C bade (B2CL)', '${s['b2cl_invoices'] ?? 0}'),
-          _kv('B2C chhote (lines)', '${s['b2cs_rows'] ?? 0}'),
+          _kv('B2C large (B2CL)', '${s['b2cl_invoices'] ?? 0}'),
+          _kv('Small B2C (lines)', '${s['b2cs_rows'] ?? 0}'),
           _kv('Credit / debit notes', '${s['notes'] ?? 0}'),
           _kv('Taxable', rs(s['txval'] ?? 0)),
-          _kv('Kul tax', rs(s['tax'] ?? 0), c: C.accent),
+          _kv('Total tax', rs(s['tax'] ?? 0), c: C.accent),
         ],
         if (kind == 'gstr3b') ...[
           _kv('Tax (3.1)', rs(s['liability'] ?? 0)),
-          _kv('ITC (4C, sirf 2B wala)', rs(s['itc'] ?? 0), c: C.ok),
+          _kv('ITC (4C, only what is in 2B)', rs(s['itc'] ?? 0), c: C.ok),
           if (!widget.compact) ...[
             _kv('4B(1) blocked 17(5)', rs(((t['4B1'] as Map?)?.values ?? const []).fold<num>(0, (a, b) => a + (b as num)))),
             _kv('4B(2) Rule 37 / other', rs(((t['4B2'] as Map?)?.values ?? const []).fold<num>(0, (a, b) => a + (b as num)))),
-            _kv('RCM (3.1(d)) cash mein', rs(((t['3.1d'] as Map?)?['igst'] ?? 0) + ((t['3.1d'] as Map?)?['cgst'] ?? 0) + ((t['3.1d'] as Map?)?['sgst'] ?? 0))),
+            _kv('RCM (3.1(d)) in cash', rs(((t['3.1d'] as Map?)?['igst'] ?? 0) + ((t['3.1d'] as Map?)?['cgst'] ?? 0) + ((t['3.1d'] as Map?)?['sgst'] ?? 0))),
           ],
           if ((s['late_days'] ?? 0) > 0) _kv('Byaaj + late fee', '${rs(s['interest'] ?? 0)} + ${rs(s['late_fee'] ?? 0)}', c: C.bad),
-          _kv('Cash mein bharna', rs(s['pay_total'] ?? 0), c: C.accent),
+          _kv('To pay in cash', rs(s['pay_total'] ?? 0), c: C.accent),
         ],
         if (kind == 'cmp08') ...[
           _kv('Turnover', rs(s['turnover'] ?? 0)),
@@ -873,29 +873,29 @@ class _GstReturnViewState extends State<GstReturnView> with _GstLive {
         const SizedBox(height: 10),
         if (st == 'ready' || st == 'rejected')
           Row(children: [
-            Expanded(child: GlassButton(label: 'Haan, theek hai', icon: Icons.check_rounded, color: C.ok, onTap: _busy ? null : () => _act('decide', {'approve': true}))),
+            Expanded(child: GlassButton(label: 'Yes, it is fine', icon: Icons.check_rounded, color: C.ok, onTap: _busy ? null : () => _act('decide', {'approve': true}))),
             const SizedBox(width: 8),
             Expanded(child: GlassButton(label: 'Mana', icon: Icons.close_rounded, color: C.bad, onTap: _busy ? null : () => _act('decide', {'approve': false}))),
           ]),
         if (st == 'approved')
-          GradientButton(label: 'Portal par file ke liye taiyaar karo', icon: Icons.computer_rounded, onTap: _busy ? null : () => _act('file')),
+          GradientButton(label: 'Get ready to file on the portal', icon: Icons.computer_rounded, onTap: _busy ? null : () => _act('file')),
         if (st == 'filing' || st == 'approved')
-          TextButton.icon(onPressed: _busy ? null : _arn, icon: const Icon(Icons.verified_rounded, size: 18), label: const Text('File ho gaya: ARN daalo')),
+          TextButton.icon(onPressed: _busy ? null : _arn, icon: const Icon(Icons.verified_rounded, size: 18), label: const Text('Filed: enter ARN')),
         if (!widget.compact)
           Wrap(spacing: 8, children: [
             if (kind == 'gstr1' && r['has_json'] == true)
               TextButton.icon(onPressed: _busy ? null : () => _act('json'), icon: const Icon(Icons.file_download_rounded, size: 18), label: const Text('JSON + Excel')),
             if (kind != 'gstr1')
-              TextButton.icon(onPressed: _busy ? null : () => _act('tax_message'), icon: const Icon(Icons.chat_rounded, size: 18), label: const Text('Client ko tax batao')),
+              TextButton.icon(onPressed: _busy ? null : () => _act('tax_message'), icon: const Icon(Icons.chat_rounded, size: 18), label: const Text('Tell the client the tax')),
           ]),
         if (widget.compact)
           Align(
             alignment: Alignment.centerRight,
             child: TextButton(
                 onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => GstReturnPage(app: app, id: widget.id))),
-                child: const Text('Poora dekho')),
+                child: const Text('View all')),
           ),
-        const Text('Final submit EVC OTP / DSC se aur tax ka challan client khud karega. Hoola paise nahi bharta.',
+        const Text('The final submit is done with EVC OTP / DSC, and the client pays the tax challan. Hoola does not pay money.',
             style: TextStyle(color: C.faint, fontSize: 11.5)),
       ]),
     );
@@ -942,7 +942,7 @@ class _NoticesTabState extends State<_NoticesTab> with _GstLive {
       await showDialog(
         context: context,
         builder: (d) => AlertDialog(
-          title: Text('${_s(n['form'])} jawab (${_s(r['reply_form'])})'),
+          title: Text('${_s(n['form'])} reply (${_s(r['reply_form'])})'),
           content: SingleChildScrollView(child: SelectableText(_s(r['draft']))),
           actions: [
             TextButton(
@@ -962,7 +962,7 @@ class _NoticesTabState extends State<_NoticesTab> with _GstLive {
   @override
   Widget build(BuildContext context) => ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 40), children: [
         const Glass(
-            child: Text('Notice aaya? PDF / photo chat mein Hoola ko bhejiye: woh client, form aur aakhri tareekh note karke jawab ka draft banayega.',
+            child: Text('Got a notice? Send the PDF / photo to Hoola in the chat: it will note the client, form and last date, and draft a reply.',
                 style: TextStyle(color: C.muted))),
         const SizedBox(height: 10),
         for (final n in _n)
@@ -976,16 +976,16 @@ class _NoticesTabState extends State<_NoticesTab> with _GstLive {
                   Pill(_s(n['status'])),
                 ]),
                 Text(_s(n['what']), style: const TextStyle(color: C.chip, fontSize: 13)),
-                Text('Jawab: ${_s(n['reply_form'])} · aakhri din ${_s(n['due_on'])}', style: const TextStyle(color: C.muted, fontSize: 12.5)),
+                Text('Reply: ${_s(n['reply_form'])} · aakhri din ${_s(n['due_on'])}', style: const TextStyle(color: C.muted, fontSize: 12.5)),
                 Wrap(spacing: 8, children: [
-                  TextButton(onPressed: () => _draft(n), child: const Text('Jawab ka draft')),
+                  TextButton(onPressed: () => _draft(n), child: const Text('Reply draft')),
                   if (n['status'] == 'open')
                     TextButton(
                         onPressed: () async {
                           await app.api!.gstNoticeAct(_s(n['id']), 'status', {'status': 'replied'});
                           reload();
                         },
-                        child: const Text('Jawab de diya')),
+                        child: const Text('Reply given')),
                 ]),
               ]),
             ),

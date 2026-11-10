@@ -545,8 +545,9 @@ async def _llm(system: str, prompt: str, max_tokens: int = 4000) -> str:
     if model and st.anthropic_api_key and model != st.anthropic_model:
         try:
             from ..agent.santosh import get_client
-            msg = await get_client().messages.create(model=model, max_tokens=max_tokens, system=system,
-                                                     messages=[{"role": "user", "content": prompt}])
+            from ..agent import door   # v0.560 EK DARWAZA
+            msg = await door.acreate(get_client(), door.shape("notebook", model, max_tokens, system,
+                                                              [{"role": "user", "content": prompt}]))
             text = "".join(getattr(b, "text", "") for b in msg.content).strip()
             if text:
                 return text

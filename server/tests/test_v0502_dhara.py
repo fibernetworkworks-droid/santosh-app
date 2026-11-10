@@ -72,7 +72,7 @@ def test_registry_5_dhara_tools():
     assert names <= global_names
     for n in names:
         assert n in HANDLERS and n in TOOL_LABELS, n
-    assert len(TOOLS) == 555, "536 (v0.501, docs7 in) + 5 dhara tools + 1 magic21 (v0.512) + 1 dhara_dsl (their v0.514) + 10 construction (v0.522) + 1 crew_run (v0.523) + 1 image_edit (image editing)"
+    assert len(TOOLS) == 621, "617 + 1 shilp (v0.730 SHILP MANCH: the ArtCraft generation lane, their Omni API api.storyteller.ai, BYOK - owner 'MAKE A PLAN FOR HOOLA AI THUS HOOLA USER CAN USE THIS' -> the plan's W0). 616 + 1 seekh_video (v0.713 SEEKH MANCH: the learn-from-video bridge tool, owner 'GO' on the SEEKH MANCH plan). 608 + 1 kala (v0.681 KALA MANCH: the T5 knowledge-skill catalog family, owner 'GO' on the google/skills deploy plan). " "607 + 1 duniya (v0.667 DUNIYA MANCH: the T4 keyless-public-web family, owner 'T4'). " "606 + 1 jharokha (v0.665 JHAROKHA MANCH: the T3 local-browser family). " "581 + 1 paisa_sahayak (their v0.587) + 2 sandarbh (v0.590 SANDARBH MANCH: workspace + kgmemory). Was: 536 (v0.501, docs7 in) + 5 dhara tools + 1 magic21 (v0.512) + 1 dhara_dsl (their v0.514) + 10 construction (v0.522) + 1 crew_run (v0.523) + 2 from main's v0.533 CRAWL BRAIN wiring (healed in v0.537: red on pristine main) + 1 reach (v0.559 REACH MANCH) + 1 speckit (v0.569 SPEC SUTRA)"
 
 
 def test_family_map():
@@ -127,7 +127,7 @@ def test_save_schedule_trigger_needs_spec_and_webhook_hides_token():
     with pytest.raises(Exception):
         _run(D.dhara_save(CTX, name="s2", steps=_flow1_steps(), trigger="cron"))
     out = _run(D.dhara_save(CTX, name="s3", steps=_flow1_steps(), trigger="webhook"))
-    assert "webhook_note" in out and "sambhal" in out["webhook_note"]
+    assert "webhook_note" in out and "keep it safe" in out["webhook_note"]
     wf = D.get_workflow(CTX.tenant_id, name="s3")
     assert wf["token_hash"] and len(wf["token_hash"]) == 64  # sha256 hex, never the token itself
 
@@ -212,7 +212,7 @@ def test_run_unknown_tool_fails_honestly():
     r = _run(D.dhara_run(CTX, name="bad"))
     _run(D.drain())
     run = D.get_run(CTX.tenant_id, r["run_id"])
-    assert run["status"] == "failed" and "registry mein nahi" in run["error"]
+    assert run["status"] == "failed" and "not in the registry" in run["error"]
     assert run["steps_log"][-1]["status"] == "error"
 
 
@@ -292,7 +292,7 @@ def test_approval_approve_on_non_waiting_is_honest():
     r = _run(D.dhara_run(CTX, name="plain"))
     _run(D.drain())
     out = _run(D.dhara_control(CTX, action="approve", run_id=r["run_id"]))
-    assert "intezaar nahi" in out["note"]
+    assert "not waiting" in out["note"]
 
 
 def test_stop_between_steps_keeps_finished_log():
@@ -307,7 +307,7 @@ def test_stop_between_steps_keeps_finished_log():
     out = _run(D.dhara_control(CTX, action="stop", run_id=r["run_id"]))
     assert out["status"] == "stopped"
     again = _run(D.dhara_control(CTX, action="stop", run_id=r["run_id"]))
-    assert "pehle hi" in again["note"]
+    assert "already stopped" in again["note"]
     run = D.get_run(CTX.tenant_id, r["run_id"])
     assert run["status"] == "stopped" and len(run["steps_log"]) == 2
     assert "never" not in [s["id"] for s in run["steps_log"]]
@@ -503,7 +503,7 @@ def test_webhook_enqueues_with_body_and_refuses_bad_tokens():
 def test_webhook_kill_switch(monkeypatch):
     _patch_settings(monkeypatch, dhara_webhook_enabled=False)
     out = D.webhook_enqueue("anything", {})
-    assert out["status"] == 503 and "band" in out["error"]
+    assert out["status"] == 503 and "off" in out["error"]
 
 
 # ---------------------------------------------------------------- tools: runs / list / control / disabled
@@ -548,7 +548,7 @@ def test_disabled_flag_honest(monkeypatch):
     _patch_settings(monkeypatch, dhara_enabled=False)
     with pytest.raises(Exception) as e:
         _run(D.dhara_save(CTX, name="nope", steps=_flow1_steps()))
-    assert "band" in str(e.value)
+    assert "turned off" in str(e.value)
     with pytest.raises(Exception):
         _run(D.dhara_list(CTX))
     assert _run(D.tick()) == 0
@@ -580,7 +580,7 @@ def test_outputs_pass_mask_ids():
 
 def test_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.530.0"
+    assert APP_VERSION == "0.758.0"
     from pathlib import Path
     pub = Path(__file__).resolve().parents[2] / "pubspec.yaml"
-    assert "0.530.0+553" in pub.read_text()
+    assert "0.758.0+757" in pub.read_text()

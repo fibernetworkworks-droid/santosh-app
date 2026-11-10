@@ -128,7 +128,7 @@ def test_openai_call_end_to_end(oa):
     assert upd["audio"]["input"]["format"] == {"type": "audio/pcm", "rate": 24000}
     assert upd["audio"]["output"]["voice"] == get_settings().voice_openai_voice_m      # Achird = male avatar
     assert upd["audio"]["input"]["turn_detection"]["type"] == "semantic_vad"
-    assert "AWAAZ MEIN JAAN" in upd["instructions"] and "laughs" in upd["instructions"]
+    assert "LIFE IN THE VOICE" in upd["instructions"] and "laughs" in upd["instructions"]
     names = {t["name"] for t in upd["tools"]}
     assert {"set_phone_alarm", "santosh_kaam"} <= names and all(t["type"] == "function" for t in upd["tools"])
     # her 16 kHz mic reached OpenAI as 24 kHz (x1.5)
@@ -254,8 +254,8 @@ def test_voice_block_leads_and_openai_waits_for_us():
     c.langst, c.lang, c.name, c.gender, c.style = voicelang.LangState("hi-IN"), "hi-IN", "Santosh", "m", {}
     cfg = voice_openai.session_config(c, "")
     ins = cfg["instructions"]
-    assert ins.index("AWAAZ MEIN JAAN") < 3000                 # at the top, not after the 24k persona
-    assert "preamble nahi" in ins
+    assert ins.index("LIFE IN THE VOICE") < 3000                 # at the top, not after the 24k persona
+    assert "is not a preamble" in ins
     td = cfg["audio"]["input"]["turn_detection"]
     assert td["type"] == "semantic_vad" and td["eagerness"] == "medium"  # v0.283 waits at most ~4 s (low felt like not listening)
     assert td["create_response"] is True and td["interrupt_response"] is True   # OpenAI owns turn-taking again
@@ -320,9 +320,9 @@ def test_work_lists_are_background_not_a_report():
     c = voice_openai.OpenAICall.__new__(voice_openai.OpenAICall)
     c.langst, c.lang, c.name, c.gender, c.style = voicelang.LangState("hi-IN"), "hi-IN", "Santosh", "m", {}
     ins = voice_openai.session_config(c, "KAAM KI HALAT (live): - Video: chal raha hai")["instructions"]
-    top = ins.index("BAAT KA DHANG")
-    assert top < ins.index("AWAAZ MEIN JAAN") < ins.index("KAAM KI HALAT")      # the rule leads, before the brief
-    assert "sunane ki list NAHI" in ins and "sirf EK baar" in ins
+    top = ins.index("WAY OF TALKING")
+    assert top < ins.index("LIFE IN THE VOICE") < ins.index("KAAM KI HALAT")      # the rule leads, before the brief
+    assert "NOT a list to recite" in ins and "only ONCE" in ins
     assert "GST wala kaam" not in voice_openai.EMOTION                         # no example that recites work
     vsrc = (ROOT / "server/app/voice.py").read_text()
     assert "BAAT_KA_DHANG" not in vsrc                                         # Gemini's prompt untouched
@@ -396,5 +396,5 @@ def test_gemini_file_has_only_the_routing_seam():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.530.0"
-    assert "0.530.0+553" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.758.0"
+    assert "0.758.0+757" in (ROOT / "pubspec.yaml").read_text()

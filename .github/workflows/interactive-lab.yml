@@ -15,7 +15,7 @@ on:
         description: What to run
         type: choice
         default: smoke
-        options: [setup, prefetch, smoke, face, bench, streams, e2e, studio, deploy, down]
+        options: [setup, prefetch, smoke, face, bench, streams, e2e, studio, voices, voice_tune, face_make, deploy, down]
       gpu:
         description: GPU for this run (T4 is cheapest, L4 is the free-credit default, A10G / L40S are faster)
         type: choice
@@ -99,6 +99,21 @@ jobs:
         working-directory: avatar_engine
         run: modal run modal_app.py::studio_card
 
+      - name: Voice card - the same Hindi lines through every voice we may ship, scored by how clearly whisper hears them
+        if: inputs.job == 'voices'
+        working-directory: avatar_engine
+        run: modal run modal_app.py::voice_card
+
+      - name: Voice tuning card - Chatterbox (her pick) under a few sampling settings, scored and saved for her ears
+        if: inputs.job == 'voice_tune'
+        working-directory: avatar_engine
+        run: modal run modal_app.py::voice_tune
+
+      - name: AI-made faces - paint fictional teachers (FLUX.1-schnell), bring two to life (Wan 2.2), make them speak
+        if: inputs.job == 'face_make'
+        working-directory: avatar_engine
+        run: modal run modal_app.py::face_make
+
       - name: Deploy the engine endpoint
         if: inputs.job == 'deploy'
         working-directory: avatar_engine
@@ -112,7 +127,7 @@ jobs:
         run: modal app stop hoola-lab
 
       - name: Keep the clips and the timing report
-        if: (inputs.job == 'smoke' || inputs.job == 'face' || inputs.job == 'bench' || inputs.job == 'streams' || inputs.job == 'e2e' || inputs.job == 'studio') && always()
+        if: (inputs.job == 'smoke' || inputs.job == 'face' || inputs.job == 'bench' || inputs.job == 'streams' || inputs.job == 'e2e' || inputs.job == 'studio' || inputs.job == 'voices' || inputs.job == 'voice_tune' || inputs.job == 'face_make') && always()
         uses: actions/upload-artifact@v4
         with:
           name: lab-output-${{ inputs.gpu }}

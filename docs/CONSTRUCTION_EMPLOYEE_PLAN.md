@@ -190,14 +190,68 @@ Members: 9, 16, 28, 29, 35, 36, 37–39, 44–46, 52–56, 72, 73, 81, 93.
 
 ### Wave 3 — model-level and certificate-adjacent (open formats + a licensee on every output)
 
-Members: 18–21, 10–12, 22–24, 26, 47, 82, 104, 110–118. Built **only after** Wave 2 proves the packs and
-the trails, and only where a real customer hands us open formats:
+Members: 18–21, 10–12, 22–24, 26, 47, 82, 104, 110–118. **SHIPPED v0.560.0** (C11–C15; built as
+0.550.0 — the dev chain's collision wave took 0.551–0.559 while it sat built) after Wave 2
+proved the packs and the trails. The register's 23 waved members are all homed (`register.py
+WAVE3_HOME`); the plan's earlier stragglers shipped as Wave 3.5 below.
 
 | Phase | Ships | The honest limit printed on every card |
 |---|---|---|
-| **C11** | BIM/CDE (18–21, 25, 109): IFC/BCF/IDS readers (ifcopenshell-class library, vendored), clash runs on open models, 4D/5D take-off from IFC, model health reports, COBie handover | *"Model-level check. A PDF was never a model."* |
-| **C12** | Pre-design assist (10–12, 74): load take-down + member sizing by IS tables, MEP load estimates + sizing tables, fire rule-hit checks (NBC part 4), formwork/scaffold planning drafts | *"Working paper for <the named engineer>. The stability certificate / Form A-B / striking approval is theirs."* |
-| **C13** | Survey & performance (22–24, 26, 47, 82, 104, 110–118): LandXML/E57/LAS processors, RERA carpet-area statements, delay-analysis working papers, incident-investigation packs, energy/LCA/Cx/M&V assistants on pylab | every result *"explained, not certified"* |
+| **C11** ✅ | BIM/Information desk `const_bim` (18–21): pure-Python IFC STEP reader (classes, GUIDs, declared quantities, placements), model health, ISO 19650 naming, CDE register + supersede + transmittals, clash candidates on declared axis-aligned extents (+ NOT-CHECKABLE counted), BCF 2.1 zip out, IDS subset check (entity + property facets; rest UNVERIFIED), 4D mapping + 5D rows on the model's own quantities (qty × rate only with a sourced rate) | *"Model-level check on the open formats only. A PDF was never a model."* |
+| **C12** ✅ | Pre-design desk `const_predesign` (10–12): IS 875 load take-down + IS 456 cl 39.3 preliminary sizing (50 mm module, rounding shown) + cl 23.2.1 depth route (spans > 10 m refused), MEP estimates on FED factors, fire rule rows (clause + source) → declared vs limit, fire demand arithmetic | *"PRELIMINARY working paper for <the named engineer>. The stability certificate / Form A-B is theirs."* |
+| **C13** ✅ | Survey desk `const_survey` (22–24, 26): coords + LandXML CgPoints, loop traverse closure, shoelace boundary vs the 7/12, grid cut/fill volumes (kept separate), CSV deviations with RMS (E57/LAS NOT parsed), RERA carpet statement under HER wall policy vs the MahaRERA 3% pack row, discrepancy pack sign EMPTY. Delay desk `const_delay` (47): baseline + as-built as DATA (criticality = HER marks, no CPM), windows, slip days, notice-compliance arithmetic, working paper for the forensic planner. #82 incident investigations ride `const_quality` (close needs the safety head's name; open actions block) | *every result "explained, not certified"* |
+| **C15** ✅ | Green & performance desk `const_green` (104, 110–118): meters + her bill's tariff slabs + EPI benchmark, ECBC/daylight sourced rows, the energy-model INPUT register (EnergyPlus not run), EPD carbon hot-spots (factor source required), CPHEEO water + RWH on her IMD station, green-credit tracker (a sum; the rating is the assessor's), Cx scripts + issue log, T&C tolerance arithmetic, M&V least-squares baseline (a, b, r2 printed) + the savings identity, her IPMVP option | *"Records + arithmetic; every certification refused."* |
+
+Shipped together with: the national `statepacks/india.json` (IS 875 / IS 456 / CPHEEO rows, cited;
+`rule_row(state, id)` reads the state pack first, both refuse when stale), two new tier-C gate rows
+("certify an area statement", "certify a survey"), 29 new tables, 10 new tools (registry 569 → 579),
+5 Hub hires, VOICE_VIA_KAAM, tests `test_v0550_construction_w3.py` (24).
+
+### Wave 3.5 — the five stragglers (v0.565.0; owner: "GO WAVE 3.5")
+
+Members: 25, 27, 74, 77, 109 — the Wave-3 rows the owner's Wave-3 GO excluded, homed per §5's original
+mapping onto the existing desks (NO new tools; the three desks grew actions). Same laws: open formats,
+recorded names, tier C refusals. **SHIPPED v0.565.0.**
+
+| Phase | Ships | The honest limit printed on every card |
+|---|---|---|
+| **C11b** ✅ | **As-built + twin on `const_bim`** (#25, #109): the as-built SET register — HER required list, received/na marks BY NAME, completeness % + missing list (the set's approval stays with the site architect / QS — new tier-C row) · the digital twin as a DATA-LINK register: asset → IFC GUID + model, sensor feed rows with a SOURCED band flagged out-of-band (the twin is a register, never a live 3D view or a sensor platform) · COBie Component CSV check (required headers, rows missing asset/type) | *"Completeness is arithmetic on YOUR list; approval is the site architect's. The twin is a data link, not a 3D view."* |
+| **C13b** ✅ | **GIS + setting-out on `const_survey`** (#27, #77): GeoJSON read as TEXT for Polygon/MultiPolygon rings — CRS recorded as fed, areas ONLY in projected metres (degree layers REFUSED: a degree has no square metres; inner rings counted, never silently subtracted) · flood / seismic / zoning overlays as HER readings (the map is never fetched or interpreted) · setting-out sheets + as-laid vs design plan deviations (RMS, out-of-tolerance) · level checks with the sign KEPT (up ≠ down) | *"Lat/lng has no square metres and we don't pretend otherwise; the zoning value is YOUR reading off the map."* |
+| **C12b** ✅ | **Formwork & scaffold on `const_predesign`** (#74): contact-area take-off by plain geometry on HER dims (slab soffit / beam soffit + 2 sides / column 4 faces / wall both faces) · striking time vs the IS 456 cl 11.3 **Table 10** pack rows (7 new national rows: 11 → 18; OPC + ambient > 15 °C ONLY — blending cements and cold weather REFUSED, the maturity maths is the engineer's) · props vs the supplier table's allowable (source required) · scaffold tag register (ok / defective / altered, competent person's NAME) — the striking ORDER and the tag itself stay tier C (two new rows) | *"The take-off and the table comparison are ours; the strike order and the green tag are the site engineer's / competent person's."* |
+
+Shipped together with: `india.json` 11 → 18 rows (IS 456 Table 10 striking periods, scope said on the
+row), tier-C gate 30 → 33 rows (approve the as-built set / order formwork striking / tag a scaffold
+safe), 7 new tables (cbim_asbuilts + docs, ctwin_assets + readings, cgis_layers + overlays,
+cpd_scaffolds), registry STILL 580, Hub rows + prompt block + `__init__` carry Wave 3.5, tests
+`test_v0565_construction_w35.py`.
+
+### Wave 4 — the remaining seats (v0.586.0; owner: "GO WAVE 4")
+
+Members: the 47 register rows outside Waves 1–3.5 EXCEPT the four design-discipline rows (8, 14, 15, 17)
+which stay with `DESIGN_DESK_PLAN.md` (§4 anti-duplication — the v0.372 lesson stands). Four rows were
+already shipped elsewhere and are TAGGED ONLY: #7 `architect_assistant`, #13 `interior_designer`,
+#100 `property_manager`, #101 `society_manager`. The FM rows (#102–#108) ride the EXISTING
+property/society seats (§12's own law) as new `const_fm` tools on a new `fm_work` duty — no new hire key.
+Five NEW desks + six desk extensions + the FM tools; same laws everywhere (open honesty on every card,
+marks need names, tier C refuses the reserved acts). **SHIPPED v0.586.0.**
+
+| Desk | Ships | The honest limit printed on every card |
+|---|---|---|
+| **`const_land`** (NEW, #1–#6) | parcel register (area AS FED with its 7/12 source) · title document checklist, marks BY NAME (#2) · land-record reconciliation arithmetic (#3) · development worksheet: FSI fed WITH SOURCE → permissible vs programme (#4) · cost/funding totals, equity:debt, simple interest on HER rate (#5) · JV share register from the deed → entitlement arithmetic (#6) | *"Title opinion = advocate; funding structure = CFO; the deed is signed by you. We do the registers and the arithmetic."* |
+| **`const_plan`** (NEW, #42/#43/#63/#65/#66/#68/#69/#79/#80) | activity register, baseline AS FED, % complete HER word · date variance (criticality NEVER computed — new tier-C row) · resource loading + output ratios (#65) · risk register, score = P × I on HER marks (#66) · site instructions + PMC log (#69) · cash-flow: HER baseline vs HER bills (#42) · EVM: SPI/CPI arithmetic, no EAC forecast (#43) · director's dashboard — only what the registers already said (#68) · specialist-agency register (#79) · plant bookings with double-booking NAMED + utilisation (#80) | *"Dates and P/I are your marks; variance and scores are arithmetic; the critical path is the planner's mark, never our code's."* |
+| **`const_ehs`** (NEW, #83/#84/#86) | training & competency register with expiry arithmetic (#83) · environmental readings AS FED vs limits FED WITH SOURCES → exceedance arithmetic (no sensors seated, #84) · camp register + facilities checklist BY NAME (#86) | *"Your monitoring report is the only reading we accept; 'site safe' is the EHS head's declaration."* |
+| **`const_studio`** (NEW, #119/#120) | shot-brief register + per-shot asset checklists (#119) · report/slide outline register with section status (#120) | *"We keep the register and the checklist; the render and the deck are yours."* |
+| **`const_learn`** (NEW, #121/#122/#123) | trainee/module/assessment registers, pass list = arithmetic on HER pass line (#121) · topic register + quizzes with the key held, score arithmetic (#122) · contractor records-discipline checklist + coaching notes (#123) | *"Marks come from your sheets; certificates come from the training centre; tax/investment advice stays with the CA."* |
+| **Desk extensions** | `const_approvals` + heritage/AAI/CRZ applicability screener, HER yes/no/unsure marks, nothing fetched (#33) · `const_qs` + cost plan vs estimate, VE options, works-contract GST rows with the national-pack rate, net after HER ITC (#40, #89) · `const_contracts` + LD calculator (all four numbers from HER clause; the deduction stays tier C) + arbitration bundle index (#48, #50) · `const_tender` + purchase register, expediting board, EXIM register — customs stays with the CHA (#57, #59, #60) · `const_quality` + material test register: pass/fail arithmetic on FED limits, acceptance stays tier C (#76) · `const_customer` + sales pipeline, unit inventory as HER marks, marketing assets with the RERA number required (new tier-C row), agreement-for-sale checklist BY NAME, handover dues arithmetic, investor/lender pack draft with the sign line EMPTY (#94–#99) | *"Every number is fed with its source; every reserved act stays gated."* |
+| **`const_fm` tools on the EXISTING seats** (#102–#108) | work orders (status change BY NAME) · PPM register with next-due arithmetic (#103) · lift/fire/STP/WTP compliance calendar (#105) · housekeeping/security rosters with gaps named (#106) · structural-audit schedule, cycle FED from HER municipal circular — certificate tier C (#107) · asset & space register (#108) | *"The seats already exist (property/society). The certificate is the agency's / the registered engineer's."* |
+
+Shipped together with: `india.json` 18 → 19 rows (works-contract GST 18% rate row, CBIC Not. 11/2017-IGST
+with a verify-before-reliance note on the row), tier-C gate 33 → 40 rows (certify a clear title / declare
+the critical path / declare a site safe / give tax or investment advice / advertise without the RERA
+number / certify a structural audit / file a GST return), 10 new tables (cland_*, cplan_*, cehs_*,
+cstudio_*, clearn_*, cfm_*, cw4_ext_items), registry 581 → 593 (six new do+dekho tools), the `fm_work`
+duty joins `society_manager` + `property_manager` in roles.py, Hub rows carry the Wave-4 lines, tests
+`test_v0586_construction_w4.py` (20).
 
 ## 8. The voice-first daily log (the wedge, designed now so C1 builds it once)
 
@@ -218,7 +272,7 @@ escrow withdrawal; accept or reject work on site (inspection pass, concrete cube
 design or a change order; sign a contract; release a payment or a bank guarantee; issue a notice,
 termination or LD deduction; decide delay entitlement; certify measurement or an RA bill; give a safety
 clearance or permit-to-work; certify green rating, commissioning or energy audit; give a
-structural-safety verdict.
+structural-safety verdict; approve the as-built set; order formwork struck; tag a scaffold safe.
 
 ## 10. The pilot (what "GO" should start)
 
@@ -246,8 +300,9 @@ name printed under it.
 
 ## 12. Not in this plan (said plainly)
 
-Register rows outside Waves 1–3 (1–6, 40, 42–43, 47, 57, 63, 65–66, 68–69, 79–80, 83–84, 86, 89, 94–99,
-102–103, 105–108, 119–123) wait for her word or a paying customer; FM/society gaps (102–109 except the
-COBie row) belong to the existing property/society employees; the Design Desk disciplines stay in
-`DESIGN_DESK_PLAN.md` (§4); nothing here builds a WhatsApp automation beyond the official API; and no
+After Wave 4 (v0.586.0) exactly FOUR register rows remain unbuilt: 8, 14, 15, 17 — the design &
+consultancy disciplines that `DESIGN_DESK_PLAN.md` (§4) owns; they build there or not at all (the
+anti-duplication law stands). Four rows were Wave-4 TAGS ONLY on already-shipped seats (#7/#13 design
+lane, #100/#101 operations lane). The FM rows ride the existing property/society employees as built
+(§12's own law, honoured). Nothing here builds a WhatsApp automation beyond the official API; and no
 phase touches the frozen Mera PC / desktop surface.

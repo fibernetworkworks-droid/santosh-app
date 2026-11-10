@@ -209,7 +209,7 @@ def test_stopped_enqueue_gate_and_canned_line():
     waiting = dict(job, state="waiting")
     assert enqueue("default", "conv_gate", waiting) is False         # waiting still never reports (her baari = card)
     row = types.SimpleNamespace(label="Video edit", title="Roka hua kaam", state="stopped", detail="", link="")
-    assert "band kar diya gaya" in _canned(row) and "bol dena" in _canned(row)
+    assert "was stopped" in _canned(row) and "just say so" in _canned(row)
 
 
 # ---------------- version ----------------
@@ -217,6 +217,6 @@ def test_stopped_enqueue_gate_and_canned_line():
 def test_version():
     from app.config import get_settings
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.530.0"
+    assert APP_VERSION == "0.758.0"
     assert get_settings().agent_parallel_tools is True
     assert get_settings().agent_ack_after_s == 5.0

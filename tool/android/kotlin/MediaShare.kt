@@ -13,7 +13,7 @@ import java.io.File
 object MediaShare {
     fun share(act: Activity, path: String, mime: String, title: String, pkg: String = ""): String? {
         val f = File(path)
-        if (!f.exists() || !f.canonicalPath.startsWith(act.cacheDir.canonicalPath)) return "File nahi mili"
+        if (!f.exists() || !f.canonicalPath.startsWith(act.cacheDir.canonicalPath)) return "File not found"
         val uri = FileProvider.getUriForFile(act, act.packageName + ".hoolafiles", f)
         val send = Intent(Intent.ACTION_SEND).setType(mime).putExtra(Intent.EXTRA_STREAM, uri)
             .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
@@ -31,8 +31,8 @@ object MediaShare {
     /** v0.118 Brand Sahayak: a final poster into Pictures/Hoola (Android 10+ needs no permission for this). */
     fun saveImage(ctx: Context, path: String, name: String): String? {
         val f = File(path)
-        if (!f.exists()) return "File nahi mili"
-        if (Build.VERSION.SDK_INT < 29) return "Is phone par 'Share' se save kijiye"
+        if (!f.exists()) return "File not found"
+        if (Build.VERSION.SDK_INT < 29) return "On this phone, please save using 'Share'"
         val mime = if (name.lowercase().endsWith(".png")) "image/png" else "image/jpeg"
         val values = ContentValues().apply {
             put(MediaStore.Images.Media.DISPLAY_NAME, name.ifBlank { "hoola.png" })
@@ -41,7 +41,7 @@ object MediaShare {
             put(MediaStore.Images.Media.IS_PENDING, 1)
         }
         val r = ctx.contentResolver
-        val uri = r.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values) ?: return "Gallery mein jagah nahi mili"
+        val uri = r.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values) ?: return "No space found in the gallery"
         return try {
             r.openOutputStream(uri)?.use { out -> f.inputStream().use { it.copyTo(out) } }
             values.clear(); values.put(MediaStore.Images.Media.IS_PENDING, 0)
@@ -49,15 +49,15 @@ object MediaShare {
             null
         } catch (e: Exception) {
             r.delete(uri, null, null)
-            "Save nahi ho paya"
+            "Could not save"
         }
     }
 
     /** Movies/Hoola in the gallery (Android 10+ needs no permission for this). */
     fun saveVideo(ctx: Context, path: String, name: String): String? {
         val f = File(path)
-        if (!f.exists()) return "File nahi mili"
-        if (Build.VERSION.SDK_INT < 29) return "Is phone par 'Share' se save kijiye"
+        if (!f.exists()) return "File not found"
+        if (Build.VERSION.SDK_INT < 29) return "On this phone, please save using 'Share'"
         val values = ContentValues().apply {
             put(MediaStore.Video.Media.DISPLAY_NAME, name.ifBlank { "hoola.mp4" })
             put(MediaStore.Video.Media.MIME_TYPE, "video/mp4")
@@ -65,7 +65,7 @@ object MediaShare {
             put(MediaStore.Video.Media.IS_PENDING, 1)
         }
         val r = ctx.contentResolver
-        val uri = r.insert(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, values) ?: return "Gallery mein jagah nahi mili"
+        val uri = r.insert(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, values) ?: return "No space found in the gallery"
         return try {
             r.openOutputStream(uri)?.use { out -> f.inputStream().use { it.copyTo(out) } }
             values.clear(); values.put(MediaStore.Video.Media.IS_PENDING, 0)
@@ -73,7 +73,7 @@ object MediaShare {
             null
         } catch (e: Exception) {
             r.delete(uri, null, null)
-            "Save nahi ho paya"
+            "Could not save"
         }
     }
 }

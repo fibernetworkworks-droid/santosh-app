@@ -21,7 +21,7 @@ List<Map<String, dynamic>> _list(dynamic l) =>
     List<Map<String, dynamic>>.from(((l as List?) ?? const []).whereType<Map>().map((e) => Map<String, dynamic>.from(e)));
 List<String> _strs(dynamic l) => ((l as List?) ?? const []).map((e) => '$e').toList();
 
-const _disclaimer = 'Yeh draft / jaankari hai, kanooni salah nahi. Vakil / CA / CS se pakka karwaiye.';
+const _disclaimer = 'This is a draft / information, not legal advice. Confirm it with a lawyer / CA / CS.';
 
 void _snack(BuildContext c, String t) {
   if (t.trim().isEmpty) return;
@@ -44,7 +44,7 @@ Future<Map<String, String>?> _form(BuildContext context, String title, List<(Str
         ]),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Rehne do')),
+        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Keep it')),
         TextButton(onPressed: () => Navigator.pop(d, true), child: Text(ok)),
       ],
     ),
@@ -119,16 +119,16 @@ class _DpoScreenState extends State<DpoScreen> {
   // ---------------------------------------------------------------- actions
   Future<void> _settings() async {
     final st = _m(_d?['settings']);
-    final f = await _form(context, 'DPO jaankari', const [
-      ('org', 'Business ka naam (Data Fiduciary)'),
-      ('contact_name', 'Jawab dene wala (DPO / contact person)'),
-      ('contact_email', 'Unka email'),
-      ('contact_phone', 'Unka mobile'),
-      ('link', 'Consent wapas / maang ka link (https://)'),
-      ('identifiers', 'Pehchaan kaise karengi (jaise registered mobile)'),
-      ('reply_days', 'Jawab ke din (max 90)'),
+    final f = await _form(context, 'DPO details', const [
+      ('org', 'Business name (Data Fiduciary)'),
+      ('contact_name', 'Person who replies (DPO / contact person)'),
+      ('contact_email', 'Their email'),
+      ('contact_phone', 'Their mobile'),
+      ('link', 'Link to withdraw consent / make a request (https://)'),
+      ('identifiers', 'How you will verify identity (e.g. registered mobile)'),
+      ('reply_days', 'Days to reply (max 90)'),
       ('morning_time', 'Subah ka note (HH:MM)'),
-      ('rules', 'Aapke niyam'),
+      ('rules', 'Your rules'),
     ], ok: 'Save', initial: {for (final e in st.entries) if (e.value != null && e.value is! Map && e.value is! List) e.key: '${e.value}'});
     if (f == null) return;
     final body = <String, dynamic>{...f};
@@ -137,15 +137,15 @@ class _DpoScreenState extends State<DpoScreen> {
   }
 
   Future<void> _activity([Map<String, dynamic>? a]) async {
-    final f = await _form(context, a == null ? 'Naya kaam (processing)' : '${_s(a['number'])} badlo', const [
-      ('name', 'Kaam ka naam'),
-      ('people', 'Kiska data (graahak / staff / bachche)'),
-      ('items', 'Kaunsa data (comma se)'),
-      ('purpose', 'Kis kaam ke liye'),
+    final f = await _form(context, a == null ? 'New activity (processing)' : 'Change ${_s(a['number'])}', const [
+      ('name', 'Kaam name'),
+      ('people', 'Whose data (customers / staff / children)'),
+      ('items', 'Which data (comma separated)'),
+      ('purpose', 'For what purpose'),
       ('basis', 'Aadhaar: consent / voluntary / employment / law / emergency'),
-      ('retention', 'Kitne samay rakhna (shabdon mein)'),
-      ('retention_days', 'Din mein (review ke liye)'),
-      ('processors', 'Kaun process karta hai (comma se)'),
+      ('retention', 'How long to keep (in words)'),
+      ('retention_days', 'In days (for review)'),
+      ('processors', 'Who processes it (comma separated)'),
     ], ok: 'Save', initial: a == null
         ? const {}
         : {
@@ -194,8 +194,8 @@ class _DpoScreenState extends State<DpoScreen> {
             ]),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Rehne do')),
-            TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Jokhim dekho')),
+            TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Keep it')),
+            TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('View risks')),
           ],
         ),
       ),
@@ -227,7 +227,7 @@ class _DpoScreenState extends State<DpoScreen> {
         title: Text('Notice v${_s(n['version'])}'),
         content: SizedBox(width: 500, child: TextField(controller: c, maxLines: 18)),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Rehne do')),
+          TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Keep it')),
           TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Save')),
         ],
       ),
@@ -236,29 +236,29 @@ class _DpoScreenState extends State<DpoScreen> {
   }
 
   Future<void> _newRequest() async {
-    final f = await _form(context, 'Nayi maang (data principal)', const [
-      ('text', 'Unke shabd (jaise "mera data mitao")'),
+    final f = await _form(context, 'New request (data principal)', const [
+      ('text', 'Their words (e.g. "delete my data")'),
       ('name', 'Naam'),
       ('phone', 'Registered mobile'),
       ('email', 'Email (ho to)'),
-      ('via', 'Kaise aayi (WhatsApp / email / dukaan)'),
-      ('received', 'Kab mili (YYYY-MM-DD, khaali = aaj)'),
-    ], ok: 'Darj karo');
+      ('via', 'How it came (WhatsApp / email / shop)'),
+      ('received', 'When received (YYYY-MM-DD, blank = today)'),
+    ], ok: 'Save');
     if (f == null || ((f['text'] ?? '').isEmpty)) return;
     await _run('POST', '/api/dpo/requests', f);
   }
 
   Future<void> _newBreach() async {
-    final f = await _form(context, 'Data breach darj karo', const [
-      ('title', 'Kya hua (ek line)'),
-      ('aware', 'Kab pata chala (YYYY-MM-DD HH:MM, khaali = abhi)'),
-      ('nature', 'Kis tarah ka (chori / hack / galti se bheja)'),
-      ('extent', 'Kitne log / kaunsa data'),
-      ('when', 'Ghatna kab hui'),
-      ('location', 'Kahan / kaunsa system'),
-      ('impact', 'Sambhavit asar'),
-      ('affected', 'Prabhavit logon ke mobile / email (comma se)'),
-    ], ok: 'Darj karo');
+    final f = await _form(context, 'Record a data breach', const [
+      ('title', 'What happened (one line)'),
+      ('aware', 'When you found out (YYYY-MM-DD HH:MM, blank = now)'),
+      ('nature', 'What kind (theft / hack / sent by mistake)'),
+      ('extent', 'How many people / which data'),
+      ('when', 'When it happened'),
+      ('location', 'Where / which system'),
+      ('impact', 'Possible impact'),
+      ('affected', 'Mobile / email of affected people (comma separated)'),
+    ], ok: 'Save');
     if (f == null || (f['title'] ?? '').isEmpty) return;
     final body = <String, dynamic>{...f, 'cert_in': true};
     body['affected'] = _lines(f['affected']);
@@ -266,16 +266,16 @@ class _DpoScreenState extends State<DpoScreen> {
   }
 
   Future<void> _newConsent() async {
-    final f = await _form(context, 'Consent darj karo', const [
+    final f = await _form(context, 'Record consent', const [
       ('name', 'Naam'),
       ('phone', 'Mobile'),
       ('activities', 'Kaam (PA-01, PA-02)'),
-      ('how', 'Kaise li (form / WhatsApp / kaagaz)'),
-      ('proof', 'Saboot ka reference'),
-      ('child', 'Bachcha hai? (haan / nahi)'),
-      ('parent_name', 'Maa / baap ka naam (bachche ke liye)'),
-      ('parent_check', 'Kaise verify kiya + reference (ID number nahi)'),
-    ], ok: 'Darj karo');
+      ('how', 'How it was taken (form / WhatsApp / paper)'),
+      ('proof', 'Evidence reference'),
+      ('child', 'Is it a child? (yes / no)'),
+      ('parent_name', 'Parent\'s name (for the child)'),
+      ('parent_check', 'How it was verified + reference (not the ID number)'),
+    ], ok: 'Save');
     if (f == null) return;
     final body = <String, dynamic>{...f, 'activities': _lines(f['activities']), 'child': (f['child'] ?? '').toLowerCase().startsWith('h')};
     await _run('POST', '/api/dpo/consents', body);
@@ -283,11 +283,11 @@ class _DpoScreenState extends State<DpoScreen> {
 
   Future<void> _vendor([Map<String, dynamic>? v]) async {
     final clauses = _list(_law['dpa']);
-    final f = await _form(context, v == null ? 'Naya vendor (processor)' : _s(v['name']), const [
+    final f = await _form(context, v == null ? 'New vendor (processor)' : _s(v['name']), const [
       ('name', 'Naam'),
-      ('service', 'Kya karta hai'),
-      ('items', 'Kaunsa data jaata hai'),
-      ('country', 'Data kis desh mein'),
+      ('service', 'What it does'),
+      ('items', 'Which data goes there'),
+      ('country', 'Data is in which country'),
       ('dpa_on', 'Contract (DPA) kab sign (YYYY-MM-DD)'),
       ('review_on', 'Review kab (YYYY-MM-DD)'),
     ], ok: 'Aage', initial: v == null
@@ -302,7 +302,7 @@ class _DpoScreenState extends State<DpoScreen> {
       context: context,
       builder: (d) => StatefulBuilder(
         builder: (d, set) => AlertDialog(
-          title: const Text('Contract (DPA) mein kya hai'),
+          title: const Text('What is in the contract (DPA)'),
           content: SingleChildScrollView(
             child: Column(mainAxisSize: MainAxisSize.min, children: [
               SwitchListTile(value: signed, title: const Text('DPA sign hai'), onChanged: (x) => set(() => signed = x)),
@@ -315,7 +315,7 @@ class _DpoScreenState extends State<DpoScreen> {
             ]),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Rehne do')),
+            TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Keep it')),
             TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Save')),
           ],
         ),
@@ -344,18 +344,18 @@ class _DpoScreenState extends State<DpoScreen> {
       for (final p in _strs(day['phases'])) Text('ℹ $p', style: const TextStyle(fontSize: 12, color: C.muted)),
       const SizedBox(height: 12),
       Row(children: [
-        Expanded(child: GradientButton(label: 'Nayi maang', icon: Icons.person_search_rounded, height: 46, onTap: _busy ? null : _newRequest)),
+        Expanded(child: GradientButton(label: 'New request', icon: Icons.person_search_rounded, height: 46, onTap: _busy ? null : _newRequest)),
         const SizedBox(width: 8),
         Expanded(child: GlassButton(label: 'Breach', icon: Icons.warning_amber_rounded, color: C.bad, onTap: _busy ? null : _newBreach)),
       ]),
       const SizedBox(height: 12),
-      if (_list(day['cards']).isNotEmpty) ...[const Caption('AAPKI HAAN CHAHIYE'), _cardsList(_list(day['cards']))],
+      if (_list(day['cards']).isNotEmpty) ...[const Caption('NEEDS YOUR YES'), _cardsList(_list(day['cards']))],
       if (_list(day['breaches']).isNotEmpty) ...[
         const Caption('KHULE BREACH'),
         for (final b in _list(day['breaches'])) DpoBreachCard(app: widget.app, data: {'breach': b}),
       ],
       if (_list(day['requests']).isNotEmpty) ...[
-        const Caption('KHULI MAANGEIN'),
+        const Caption('OPEN REQUESTS'),
         for (final r in _list(day['requests'])) DpoRequestCard(app: widget.app, data: {'request': r}),
       ],
       const SizedBox(height: 8),
@@ -371,10 +371,10 @@ class _DpoScreenState extends State<DpoScreen> {
             child: GradientButton(
                 label: 'Modules se bharo', icon: Icons.auto_fix_high_rounded, height: 46, onTap: _busy ? null : () => _run('POST', '/api/dpo/scan'))),
         const SizedBox(width: 8),
-        Expanded(child: GlassButton(label: 'Naya kaam', icon: Icons.add_rounded, onTap: _busy ? null : () => _activity())),
+        Expanded(child: GlassButton(label: 'New activity', icon: Icons.add_rounded, onTap: _busy ? null : () => _activity())),
       ]),
       const SizedBox(height: 8),
-      GlassButton(label: 'Poora register (Excel)', icon: Icons.table_view_rounded, onTap: _busy ? null : () => _run('POST', '/api/dpo/register')),
+      GlassButton(label: 'Full register (Excel)', icon: Icons.table_view_rounded, onTap: _busy ? null : () => _run('POST', '/api/dpo/register')),
       const SizedBox(height: 12),
       for (final a in acts)
         Padding(
@@ -400,14 +400,14 @@ class _DpoScreenState extends State<DpoScreen> {
                 if (a['confirmed'] != true)
                   TextButton(
                       onPressed: _busy ? null : () => _run('PATCH', '/api/dpo/activities/${_s(a['id'])}', {'confirmed': true}),
-                      child: const Text('Sahi hai')),
+                      child: const Text('Correct')),
                 TextButton(onPressed: _busy ? null : () => _activity(a), child: const Text('Badlo')),
                 TextButton(onPressed: _busy ? null : () => _dpia(a), child: const Text('DPIA')),
               ]),
             ]),
           ),
         ),
-      if (acts.isEmpty) const Text('Abhi register khaali. "Modules se bharo" dabaiye: Hoola dekhega kis kaam mein logon ka data hai.',
+      if (acts.isEmpty) const Text('The register is empty. Tap "Fill from modules": Hoola will see which activities hold people\'s data.',
           style: TextStyle(color: C.muted)),
       if (_retention.any((r) => (r['older'] ?? 0) > 0)) ...[
         const SizedBox(height: 12),
@@ -421,7 +421,7 @@ class _DpoScreenState extends State<DpoScreen> {
   Widget _noticeTab() {
     final ns = _list(_d?['notices']);
     return ListView(padding: const EdgeInsets.all(16), children: [
-      GradientButton(label: 'Naya notice (Rule 3)', icon: Icons.policy_rounded, height: 46, onTap: _busy ? null : _newNotice),
+      GradientButton(label: 'New notice (Rule 3)', icon: Icons.policy_rounded, height: 46, onTap: _busy ? null : _newNotice),
       const SizedBox(height: 12),
       for (final n in ns)
         Padding(
@@ -440,19 +440,19 @@ class _DpoScreenState extends State<DpoScreen> {
                 decoration: BoxDecoration(color: C.panel, borderRadius: BorderRadius.circular(10)),
                 child: Text(_s(n['text']), style: const TextStyle(fontSize: 12.5, height: 1.35), maxLines: 14, overflow: TextOverflow.ellipsis),
               ),
-              if (n['blanks'] == true) const Text('⚠ [____] baaki: Niyam mein naam / link / contact bhariye ya khud likhiye.',
+              if (n['blanks'] == true) const Text('⚠ [____] still blank: fill in the name / link / contact in Rules or write it yourself.',
                   style: TextStyle(fontSize: 12, color: C.warn)),
               Wrap(spacing: 6, children: [
                 if (n['status'] == 'draft' || n['status'] == 'rejected') ...[
-                  TextButton(onPressed: _busy ? null : () => _editNotice(n), child: const Text('Khud likho')),
+                  TextButton(onPressed: _busy ? null : () => _editNotice(n), child: const Text('Write it myself')),
                   TextButton(
                       onPressed: _busy || n['blanks'] == true ? null : () => _run('POST', '/api/dpo/notices/${_s(n['id'])}/publish'),
-                      child: const Text('Haan ke liye card')),
+                      child: const Text('Card for your yes')),
                 ],
                 TextButton(
                     onPressed: () {
                       Clipboard.setData(ClipboardData(text: _s(n['text'])));
-                      _snack(context, 'Copy ho gaya.');
+                      _snack(context, 'Copied.');
                     },
                     child: const Text('Copy')),
               ]),
@@ -466,7 +466,7 @@ class _DpoScreenState extends State<DpoScreen> {
     final rs = _list(_d?['requests']);
     return ListView(padding: const EdgeInsets.all(16), children: [
       Row(children: [
-        Expanded(child: GradientButton(label: 'Nayi maang', icon: Icons.person_search_rounded, height: 46, onTap: _busy ? null : _newRequest)),
+        Expanded(child: GradientButton(label: 'New request', icon: Icons.person_search_rounded, height: 46, onTap: _busy ? null : _newRequest)),
         const SizedBox(width: 8),
         Expanded(child: GlassButton(label: 'Consent', icon: Icons.how_to_reg_rounded, onTap: _busy ? null : _newConsent)),
       ]),
@@ -488,11 +488,11 @@ class _DpoScreenState extends State<DpoScreen> {
             leading: Icon(c['status'] == 'active' ? Icons.check_circle_rounded : Icons.remove_circle_rounded,
                 color: c['status'] == 'active' ? C.ok : C.faint),
             title: Text('${_s(c['name'])} ${_s(c['phone'])}${c['child'] == true ? ' · bachcha' : ''}'),
-            subtitle: Text('${_s(c['how'])} · ${_s(c['given_at']).split('T').first}${_s(c['withdrawn_at']).isEmpty ? '' : ' · wapas'}'),
+            subtitle: Text('${_s(c['how'])} · ${_s(c['given_at']).split('T').first}${_s(c['withdrawn_at']).isEmpty ? '' : ' · withdrawn'}'),
             trailing: c['status'] == 'active'
                 ? TextButton(
                     onPressed: _busy ? null : () => _run('POST', '/api/dpo/consents/withdraw', {'consent': _s(c['id']), 'how': 'app'}),
-                    child: const Text('Wapas'))
+                    child: const Text('Returned'))
                 : null,
           ),
       ],
@@ -502,10 +502,10 @@ class _DpoScreenState extends State<DpoScreen> {
   Widget _breachTab() {
     final bs = _list(_d?['breaches']);
     return ListView(padding: const EdgeInsets.all(16), children: [
-      GlassButton(label: 'Breach darj karo', icon: Icons.warning_amber_rounded, color: C.bad, onTap: _busy ? null : _newBreach),
+      GlassButton(label: 'Record breach', icon: Icons.warning_amber_rounded, color: C.bad, onTap: _busy ? null : _newBreach),
       const SizedBox(height: 6),
-      const Text('Board ko bina der pehli soochna, 72 ghante mein poori report; logon ko bina der. Cyber hamla ho to CERT-In 6 ghante '
-          '(IT Helpdesk mein clock).', style: TextStyle(fontSize: 12, color: C.muted)),
+      const Text('Tell the Board without delay, with the full report in 72 hours; tell the people affected without delay. For a cyber attack, CERT-In within 6 hours '
+          '(clock in IT Helpdesk).', style: TextStyle(fontSize: 12, color: C.muted)),
       const SizedBox(height: 12),
       for (final b in bs)
         Press(
@@ -533,10 +533,10 @@ class _DpoScreenState extends State<DpoScreen> {
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Row(children: [
                   Expanded(child: Text(_s(v['name']), style: const TextStyle(fontWeight: FontWeight.w800))),
-                  Pill(v['dpa_signed'] == true ? 'DPA hai' : 'DPA nahi', fg: v['dpa_signed'] == true ? C.ok : C.warn),
+                  Pill(v['dpa_signed'] == true ? 'DPA in place' : 'No DPA', fg: v['dpa_signed'] == true ? C.ok : C.warn),
                 ]),
                 Text('${_s(v['service'])} · ${_s(v['country'])}', style: const TextStyle(fontSize: 12.5, color: C.muted)),
-                if (v['abroad'] == true) const Text('Data India ke bahar: contract mein desh likhwaiye.', style: TextStyle(fontSize: 12, color: C.warn)),
+                if (v['abroad'] == true) const Text('Data is outside India: get the country written into the contract.', style: TextStyle(fontSize: 12, color: C.warn)),
                 for (final m in _strs(v['missing']).take(4)) Text('• baaki: $m', style: const TextStyle(fontSize: 11.5, color: C.faint)),
               ]),
             ),
@@ -550,11 +550,11 @@ class _DpoScreenState extends State<DpoScreen> {
     return ListView(padding: const EdgeInsets.all(16), children: [
       Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(_s(st['org']).isEmpty ? 'Business ka naam nahi diya' : _s(st['org']), style: const TextStyle(fontWeight: FontWeight.w800)),
+          Text(_s(st['org']).isEmpty ? 'No business name given' : _s(st['org']), style: const TextStyle(fontWeight: FontWeight.w800)),
           Text('Contact: ${[st['contact_name'], st['contact_email'], st['contact_phone']].where((x) => _s(x).isNotEmpty).join(', ')}',
               style: const TextStyle(fontSize: 12.5, color: C.muted)),
           Text('Link: ${_s(st['link'])}', style: const TextStyle(fontSize: 12.5, color: C.muted)),
-          Text('Jawab: ${_s(st['reply_days'])} din (kanoon max 90)', style: const TextStyle(fontSize: 12.5, color: C.muted)),
+          Text('Reply: ${_s(st['reply_days'])} din (kanoon max 90)', style: const TextStyle(fontSize: 12.5, color: C.muted)),
           Text(_s(st['sdf_note']), style: const TextStyle(fontSize: 11.5, color: C.faint)),
           for (final m in _strs(st['missing'])) Text('⚠ baaki: $m', style: const TextStyle(fontSize: 12, color: C.warn)),
           const SizedBox(height: 8),
@@ -562,10 +562,10 @@ class _DpoScreenState extends State<DpoScreen> {
         ]),
       ),
       const SizedBox(height: 12),
-      const Caption('KABHI NAHI'),
+      const Caption('NEVER'),
       for (final n in _strs(_law['never'])) Text('• $n', style: const TextStyle(fontSize: 12.5)),
       const SizedBox(height: 12),
-      const Caption('JURMANA (ZYADA SE ZYADA)'),
+      const Caption('PENALTY (MAXIMUM)'),
       for (final p in (_law['penalties'] as List? ?? const []))
         if (p is List && p.length >= 2) Text('• ${p[0]}: ${p[1]}', style: const TextStyle(fontSize: 12.5, color: C.muted)),
       const SizedBox(height: 12),
@@ -585,7 +585,7 @@ class _DpoScreenState extends State<DpoScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final tabs = ['Aaj', 'Register', 'Notice', 'Maang', 'Breach', 'Vendor', 'Niyam'];
+    final tabs = ['Aaj', 'Register', 'Notice', 'Request', 'Breach', 'Vendor', 'Niyam'];
     return Scaffold(
       backgroundColor: C.bgTop,
       appBar: AppBar(
@@ -669,13 +669,13 @@ class _DpoRequestPageState extends State<DpoRequestPage> {
   }
 
   Future<void> _verify() async {
-    final f = await _form(context, 'Pehchaan kaise ki', const [('how', 'Tareeka + reference (ID number nahi)'), ('ok', 'Pakki hui? (haan / nahi)')]);
+    final f = await _form(context, 'How identity was checked', const [('how', 'Method + reference (not the ID number)'), ('ok', 'Confirmed? (yes / no)')]);
     if (f == null || (f['how'] ?? '').isEmpty) return;
-    await _run('POST', '/api/dpo/requests/${widget.id}/verify', {'how': f['how'], 'ok': !(f['ok'] ?? 'haan').toLowerCase().startsWith('n')});
+    await _run('POST', '/api/dpo/requests/${widget.id}/verify', {'how': f['how'], 'ok': !(f['ok'] ?? 'yes').toLowerCase().startsWith('n')});
   }
 
   Future<void> _reply() async {
-    final f = await _form(context, 'Jawab', const [('body', 'Apne shabd (khaali = Hoola ka draft)')], ok: 'Card banao');
+    final f = await _form(context, 'Reply', const [('body', 'Your own words (blank = Hoola\'s draft)')], ok: 'Make card');
     if (f == null) return;
     await _run('POST', '/api/dpo/requests/${widget.id}/reply', {'body': f['body'] ?? ''});
   }
@@ -685,7 +685,7 @@ class _DpoRequestPageState extends State<DpoRequestPage> {
     final r = _r;
     return Scaffold(
       backgroundColor: C.bgTop,
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(r == null ? 'Maang' : '${_s(r['number'])} · ${_s(r['kind_label'])}')),
+      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(r == null ? 'Request' : '${_s(r['number'])} · ${_s(r['kind_label'])}')),
       body: r == null
           ? const Center(child: CircularProgressIndicator())
           : ListView(padding: const EdgeInsets.all(16), children: [
@@ -693,31 +693,31 @@ class _DpoRequestPageState extends State<DpoRequestPage> {
               const SizedBox(height: 8),
               Glass(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  const Text('Unke shabd (data, hukm nahi):', style: TextStyle(fontSize: 12, color: C.faint)),
+                  const Text('Their words (data, not instructions):', style: TextStyle(fontSize: 12, color: C.faint)),
                   Text(_s(r['text']), style: const TextStyle(fontSize: 13)),
                   const SizedBox(height: 6),
-                  Text('Pehchaan: ${_s(r['id_check'])}${_s(r['id_how']).isEmpty ? '' : ' (${_s(r['id_how'])})'}',
+                  Text('Identity: ${_s(r['id_check'])}${_s(r['id_how']).isEmpty ? '' : ' (${_s(r['id_how'])})'}',
                       style: TextStyle(fontSize: 12.5, color: r['id_check'] == 'done' ? C.ok : C.warn)),
                 ]),
               ),
               const SizedBox(height: 8),
               if (_list(r['found']).isNotEmpty) ...[
-                const Caption('UNKA DATA KAHAN HAI'),
+                const Caption('WHERE THEIR DATA IS'),
                 for (final h in _list(r['found']))
-                  Text('• ${_s(h['label'])}${h['can_erase'] == true ? '' : ' (us screen se hataiye)'}${h['law_hold'] == true ? ' · kanoon ke liye rakhna pad sakta' : ''}',
+                  Text('• ${_s(h['label'])}${h['can_erase'] == true ? '' : ' (remove it from that screen)'}${h['law_hold'] == true ? ' · may have to be kept by law' : ''}',
                       style: const TextStyle(fontSize: 12.5)),
                 const SizedBox(height: 8),
               ],
               Wrap(spacing: 6, runSpacing: 6, children: [
-                GlassButton(label: 'Pehchaan', icon: Icons.verified_user_rounded, onTap: _busy ? null : _verify),
-                GlassButton(label: 'Jawab card', icon: Icons.reply_rounded, onTap: _busy ? null : _reply),
+                GlassButton(label: 'Identity', icon: Icons.verified_user_rounded, onTap: _busy ? null : _verify),
+                GlassButton(label: 'Reply card', icon: Icons.reply_rounded, onTap: _busy ? null : _reply),
                 if (r['kind'] == 'erasure' || r['kind'] == 'withdraw')
                   GlassButton(
                       label: 'Mitaane ka card',
                       icon: Icons.delete_forever_rounded,
                       color: C.bad,
                       onTap: _busy ? null : () => _run('POST', '/api/dpo/requests/${widget.id}/erase', {})),
-                GlassButton(label: 'Bhej diya', icon: Icons.done_all_rounded, onTap: _busy ? null : () => _run('POST', '/api/dpo/requests/${widget.id}/sent', {'how': 'app'})),
+                GlassButton(label: 'Sent', icon: Icons.done_all_rounded, onTap: _busy ? null : () => _run('POST', '/api/dpo/requests/${widget.id}/sent', {'how': 'app'})),
                 GlassButton(label: 'Band', icon: Icons.close_rounded, onTap: _busy ? null : () => _run('POST', '/api/dpo/requests/${widget.id}/close', {})),
               ]),
               const SizedBox(height: 12),
@@ -774,27 +774,27 @@ class _DpoBreachPageState extends State<DpoBreachPage> {
 
   Future<void> _facts() async {
     final f0 = _m(_b?['facts']);
-    final f = await _form(context, 'Jaankari bhariye', const [
-      ('nature', 'Kis tarah ka'),
-      ('extent', 'Kitne log / kaunsa data'),
-      ('when', 'Kab hua'),
-      ('location', 'Kahan / system'),
-      ('impact', 'Sambhavit asar'),
-      ('consequences', 'Logon par asar'),
-      ('measures', 'Humne kya kiya'),
-      ('safety', 'Log khud kya karein'),
+    final f = await _form(context, 'Fill in the details', const [
+      ('nature', 'What kind'),
+      ('extent', 'How many people / which data'),
+      ('when', 'When it happened'),
+      ('location', 'Where / system'),
+      ('impact', 'Possible impact'),
+      ('consequences', 'Impact on people'),
+      ('measures', 'What we did'),
+      ('safety', 'What people should do themselves'),
       ('cause', 'Wajah'),
-      ('findings', 'Kisne kiya: jo pata chala'),
-      ('remedial', 'Dobara na ho uske kadam'),
-      ('details', 'Taaza poori jaankari'),
-      ('people_report', 'Logon ko soochna ki report'),
+      ('findings', 'Who did it: what is known'),
+      ('remedial', 'Steps so it does not happen again'),
+      ('details', 'Latest full details'),
+      ('people_report', 'Report on informing people'),
     ], ok: 'Save', initial: {for (final e in f0.entries) e.key: '${e.value}'});
     if (f == null) return;
     await _run('PATCH', '/api/dpo/breaches/${widget.id}', f);
   }
 
   Future<void> _sent(String which) async {
-    final f = await _form(context, 'Bhej diya: $which', const [('ref', 'Reference (mail / portal number)')]);
+    final f = await _form(context, 'Sent: $which', const [('ref', 'Reference (mail / portal number)')]);
     if (f == null) return;
     await _run('POST', '/api/dpo/breaches/${widget.id}/sent', {'which': which, 'ref': f['ref'] ?? ''});
   }
@@ -811,8 +811,8 @@ class _DpoBreachPageState extends State<DpoBreachPage> {
           : ListView(padding: const EdgeInsets.all(16), children: [
               DpoBreachCard(app: widget.app, data: {'breach': b}),
               const SizedBox(height: 8),
-              GlassButton(label: 'Jaankari bhariye', icon: Icons.edit_note_rounded, onTap: _busy ? null : _facts),
-              for (final (k, title) in const [('initial', 'Board: pehli soochna'), ('report', 'Board: 72 ghante report'), ('people', 'Logon ko soochna')]) ...[
+              GlassButton(label: 'Fill in the details', icon: Icons.edit_note_rounded, onTap: _busy ? null : _facts),
+              for (final (k, title) in const [('initial', 'Board: pehli soochna'), ('report', 'Board: 72 ghante report'), ('people', 'Informing people')]) ...[
                 const SizedBox(height: 12),
                 Caption(title.toUpperCase()),
                 Container(
@@ -821,13 +821,13 @@ class _DpoBreachPageState extends State<DpoBreachPage> {
                   child: Text(_s(dr[k]), style: const TextStyle(fontSize: 12.5, height: 1.35)),
                 ),
                 Wrap(spacing: 6, children: [
-                  TextButton(onPressed: _busy ? null : () => _run('POST', '/api/dpo/breaches/${widget.id}/send', {'which': k}), child: const Text('Haan ke liye card')),
-                  TextButton(onPressed: _busy ? null : () => _sent(k), child: const Text('Bhej diya')),
+                  TextButton(onPressed: _busy ? null : () => _run('POST', '/api/dpo/breaches/${widget.id}/send', {'which': k}), child: const Text('Card for your yes')),
+                  TextButton(onPressed: _busy ? null : () => _sent(k), child: const Text('Sent')),
                 ]),
               ],
               const SizedBox(height: 12),
               for (final c in _cards) ...[DpoCardCard(app: widget.app, data: {'card': c}, onDone: _load), const SizedBox(height: 8)],
-              GlassButton(label: 'Breach band karo', icon: Icons.task_alt_rounded, onTap: _busy ? null : () => _run('POST', '/api/dpo/breaches/${widget.id}/close')),
+              GlassButton(label: 'Close breach', icon: Icons.task_alt_rounded, onTap: _busy ? null : () => _run('POST', '/api/dpo/breaches/${widget.id}/close')),
             ]),
     );
   }
@@ -854,12 +854,12 @@ class _DpoCardCardState extends State<DpoCardCard> {
   Future<Map<String, dynamic>> _proof(String id) async {
     final ch = _m(await widget.app.api!.call('POST', '/api/dpo/cards/$id/challenge'));
     final show = _m(ch['show']);
-    final r = await Native.approveKeySign(_s(ch['message']), _s(show['title']).isEmpty ? 'Data mitaana' : _s(show['title']), '');
+    final r = await Native.approveKeySign(_s(ch['message']), _s(show['title']).isEmpty ? 'Delete data' : _s(show['title']), '');
     if (r['signature'] == null) {
       throw ApiException(428, switch (_s(r['error'])) {
-        'cancelled' => 'Fingerprint nahi diya, isliye haan nahi hui.',
-        'key_invalidated' => 'Phone mein naya fingerprint juda hai: Profile > Fingerprint se haan mein phone phir se jodiye.',
-        _ => 'Fingerprint se haan nahi ho payi (${_s(r['error'])}).',
+        'cancelled' => 'No fingerprint was given, so it was not approved.',
+        'key_invalidated' => 'A new fingerprint was added to the phone: link this phone again in Profile > Fingerprint approval.',
+        _ => 'Could not approve with fingerprint (${_s(r['error'])}).',
       });
     }
     return {'challenge_id': ch['challenge_id'], 'device_id': r['device_id'], 'signature': r['signature']};
@@ -869,7 +869,7 @@ class _DpoCardCardState extends State<DpoCardCard> {
     final id = _s(_c['id']);
     String reason = '';
     if (!yes) {
-      final f = await _form(context, 'Kyon nahi', const [('reason', 'Wajah (aapke liye)')]);
+      final f = await _form(context, 'Why not', const [('reason', 'Reason (for you)')]);
       if (f == null) return;
       reason = f['reason'] ?? '';
     }
@@ -954,7 +954,7 @@ class _DpoCardCardState extends State<DpoCardCard> {
           }, color: kind == 'erase' ? C.bad : C.accent),
           const SizedBox(width: 8),
           Expanded(child: Text(_s(c['title']), style: const TextStyle(fontWeight: FontWeight.w800))),
-          Pill(switch (st) { 'waiting' => 'aapki haan?', 'approved' => 'haan', 'rejected' => 'nahi', 'stale' => 'purana', _ => st },
+          Pill(switch (st) { 'waiting' => 'your yes?', 'approved' => 'yes', 'rejected' => 'no', 'stale' => 'old', _ => st },
               fg: st == 'waiting' ? C.accent : (st == 'approved' ? C.ok : C.bad)),
         ]),
         ..._details(kind, d),
@@ -965,9 +965,9 @@ class _DpoCardCardState extends State<DpoCardCard> {
           Row(children: [
             Expanded(
                 child: GradientButton(
-                    label: kind == 'erase' ? 'Haan, mitao (fingerprint)' : 'Haan', height: 42, onTap: _busy ? null : () => _decide(true))),
+                    label: kind == 'erase' ? 'Yes, wipe (fingerprint)' : 'Yes', height: 42, onTap: _busy ? null : () => _decide(true))),
             const SizedBox(width: 8),
-            GlassButton(label: 'Nahi', height: 42, onTap: _busy ? null : () => _decide(false)),
+            GlassButton(label: 'No', height: 42, onTap: _busy ? null : () => _decide(false)),
           ]),
         if (_send.isNotEmpty)
           Wrap(spacing: 6, children: [
@@ -976,7 +976,7 @@ class _DpoCardCardState extends State<DpoCardCard> {
             TextButton(
                 onPressed: () {
                   Clipboard.setData(ClipboardData(text: _s(_send['text'])));
-                  _snack(context, 'Copy ho gaya.');
+                  _snack(context, 'Copied.');
                 },
                 child: const Text('Copy')),
           ]),
@@ -992,11 +992,11 @@ class _DpoCardCardState extends State<DpoCardCard> {
           ),
         if (_text.isNotEmpty && _sendList.isEmpty)
           GlassButton(
-              label: 'Text copy (aap bhejiye)',
+              label: 'Copy text (you send it)',
               icon: Icons.copy_rounded,
               onTap: () {
                 Clipboard.setData(ClipboardData(text: _text));
-                _snack(context, 'Copy ho gaya.');
+                _snack(context, 'Copied.');
               }),
         for (final e in _erased)
           Text('${e['ok'] == true ? '✓' : '✗'} ${_s(e['module'])}: ${_s(e['say'])}',
@@ -1030,7 +1030,7 @@ class DpoRequestCard extends StatelessWidget {
             Pill(_s(r['status'])),
           ]),
           Text('${_s(r['name'])} ${_s(r['phone'])}', style: const TextStyle(fontSize: 12.5, color: C.muted)),
-          Text(late ? 'Taarikh ${_s(r['due_on'])} nikal gayi' : 'Jawab ${_s(r['due_on'])} tak (${_s(left)} din)',
+          Text(late ? 'Date ${_s(r['due_on'])} has passed' : 'Reply by ${_s(r['due_on'])} (${_s(left)} days)',
               style: TextStyle(fontSize: 12.5, color: late ? C.bad : C.warn)),
           if (_s(data['say']).isNotEmpty) Text(_s(data['say']), style: const TextStyle(fontSize: 12)),
         ]),
@@ -1061,7 +1061,7 @@ class DpoBreachCard extends StatelessWidget {
             Expanded(child: Text('${_s(b['number'])} · ${_s(b['title'])}', style: const TextStyle(fontWeight: FontWeight.w800))),
             Pill(_s(b['status'])),
           ]),
-          Text('Pata chala: ${_s(b['aware_at'])} · report ${_s(b['report_due'])}${b['hours_left'] == null ? '' : ' (${_s(b['hours_left'])} ghante)'}',
+          Text('Found out: ${_s(b['aware_at'])} · report ${_s(b['report_due'])}${b['hours_left'] == null ? '' : ' (${_s(b['hours_left'])} ghante)'}',
               style: const TextStyle(fontSize: 12.5, color: C.warn)),
           Text(
               [
@@ -1112,13 +1112,13 @@ class DpoDayCard extends StatelessWidget {
           const Row(children: [
             Icon(Icons.shield_rounded, color: C.accent),
             SizedBox(width: 8),
-            Text('Aaj data suraksha mein', style: TextStyle(fontWeight: FontWeight.w800)),
+            Text('Data protection today', style: TextStyle(fontWeight: FontWeight.w800)),
           ]),
           const SizedBox(height: 6),
           Text(_s(data['say']), style: const TextStyle(fontSize: 13.5, height: 1.4)),
           const SizedBox(height: 8),
           GlassButton(
-              label: 'DPO kholo',
+              label: 'Open DPO',
               icon: Icons.open_in_new_rounded,
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => DpoScreen(app: app)))),
         ]),

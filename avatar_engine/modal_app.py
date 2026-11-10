@@ -37,6 +37,7 @@ APP = "hoola-lab"
 GPU = os.environ.get("HOOLA_LAB_GPU", "L4")          # L4 is in Modal's free monthly credit range; A10G / L40S for speed tests
 WARM = int(os.environ.get("HOOLA_LAB_WARM", "0"))      # containers kept running (0 = scale to zero); 1 = a teacher mid-lesson never meets a cold start
 VOICE_WARM = int(os.environ.get("HOOLA_LAB_VOICES", "3" if WARM else "0"))   # voice containers kept warm (one per early chunk: two chunks sharing a card each ran ~30 % slower): chunks 2, 3... are made at the SAME time as chunk 1 on the others
+LIVE_TRIM_WAIT = 6.0                                 # seconds a live chunk may wait for the ears before it goes as it is
 IDLE = 120                                          # seconds an idle container lives (credit saver)
 MODELS_DIR = "/models"
 HF_ENV = {"HF_HOME": f"{MODELS_DIR}/hf", "HF_HUB_ENABLE_HF_TRANSFER": "0"}
@@ -54,7 +55,30 @@ secret = modal.Secret.from_name("hoola-lab")
 
 # ---------------------------------------------------------------- images (one per clashing stack)
 _base = modal.Image.debian_slim(python_version="3.11").apt_install("ffmpeg", "git").env(HF_ENV)
-chatterbox_image = _base.pip_install("chatterbox-tts==0.1.7", "soundfile", "huggingface_hub").add_local_python_source("registry")
+# Chatterbox 0.1.7's end-of-speech guard, read from its source and measured on the studio card (runs 33-35):
+# (1) it ended a sentence the moment ANY two identical speech tokens came in a row - its own comment says "3x", and the
+#     "only once the text is spoken" condition is commented out - so held vowels cut words off;
+# (2) with that loosened (run 35), the voice spoke the sentence and then BABBLED 3-5 s of non-words after it (whisper heard
+#     "aaj hum baat karenge gati ki" in 1.4 s, then nonsense to 6.7 s). Nothing else in the guard catches that tail.
+# The patch restores the authors' intent - the repeat rule counts only AFTER the text is spoken - and adds a hard stop
+# 20 speech tokens (0.8 s, 25 a second) after the text is spoken. The build fails if either line it patches changes.
+CB_PATCH = r"""
+import importlib.util, pathlib
+p = pathlib.Path(importlib.util.find_spec("chatterbox").submodule_search_locations[0]) / "models/t3/inference/alignment_stream_analyzer.py"
+s = p.read_text()
+old1 = "len(self.generated_tokens) >= 3 and\n            len(set(self.generated_tokens[-2:])) == 1"
+new1 = "self.complete and len(self.generated_tokens) >= 3 and\n            len(set(self.generated_tokens[-2:])) == 1"
+old2 = "if long_tail or alignment_repetition or token_repetition:"
+new2 = "past_end = self.complete and self.completed_at is not None and (T - self.completed_at) > 20\n        if long_tail or alignment_repetition or token_repetition or past_end:"
+for o in (old1, old2):
+    assert s.count(o) == 1, "chatterbox end-of-speech guard changed - re-read it before patching"
+p.write_text(s.replace(old1, new1).replace(old2, new2))
+print("chatterbox end-of-speech guard patched")
+"""
+chatterbox_image = (_base.pip_install("chatterbox-tts==0.1.7", "soundfile", "huggingface_hub")
+                    # one line: a build step is a single Dockerfile RUN, so the script travels base64-encoded
+                    .run_commands(f"echo {base64.b64encode(CB_PATCH.encode()).decode()} | base64 -d | python")
+                    .add_local_python_source("registry"))
 indicf5_image = (_base.pip_install("git+https://github.com/ai4bharat/IndicF5.git", "soundfile", "huggingface_hub")
                  # newest `datasets` needs pyarrow>=24, which needs NumPy 2; this stack is on NumPy 1.26 -> pin a matching pair
                  .pip_install("pyarrow==16.1.0", "datasets==2.21.0")
@@ -89,6 +113,11 @@ face_image = (
 )
 hear_image = (modal.Image.debian_slim(python_version="3.11").apt_install("ffmpeg")
               .pip_install("faster-whisper==1.1.0", "requests", "huggingface_hub").add_local_python_source("registry"))
+# The AI-made face: FLUX.1-schnell paints a fictional teacher, Wan 2.2 TI2V-5B makes her blink and breathe (both Apache-2.0).
+paint_image = (modal.Image.debian_slim(python_version="3.11").apt_install("ffmpeg", "git").env(HF_ENV)
+               .pip_install("torch==2.5.1", "diffusers>=0.35.0", "transformers>=4.51,<5", "accelerate", "sentencepiece",
+                            "protobuf", "ftfy", "imageio", "imageio-ffmpeg", "huggingface_hub", "Pillow")
+               .add_local_python_source("registry"))
 studio_image = modal.Image.debian_slim(python_version="3.11").apt_install("ffmpeg").add_local_python_source("registry")
 web_image = modal.Image.debian_slim(python_version="3.11").pip_install("fastapi[standard]").add_local_python_source("registry")
 
@@ -105,6 +134,31 @@ def _wav_bytes(wav, sr: int) -> bytes:
     buf = io.BytesIO()
     sf.write(buf, a.astype("float32"), sr, format="WAV")
     return buf.getvalue()
+
+
+# The owner chose Chatterbox by ear (5 Nov 2026). These are its sampling settings for EVERY take (Studio + live); empty =
+# the model's own defaults (exaggeration 0.5, cfg_weight 0.5, temperature 0.8), which is what she heard and liked. The
+# voice_tune card measures other settings; one she picks by ear goes here and nowhere else.
+VOICE_SETTINGS: dict = {}
+_KNOB_RANGE = {"exaggeration": (0.25, 1.0), "cfg_weight": (0.2, 0.8), "temperature": (0.4, 1.0)}
+
+
+def _voice_knobs(settings: dict | None) -> dict:
+    """Only the three known Chatterbox knobs, each clamped to a range that still speaks sensibly; anything else dropped."""
+    out = {}
+    for k, v in {**VOICE_SETTINGS, **(settings or {})}.items():
+        if k in _KNOB_RANGE:
+            try:
+                lo, hi = _KNOB_RANGE[k]
+                out[k] = round(min(hi, max(lo, float(v))), 2)
+            except (TypeError, ValueError):
+                pass
+    return out
+
+
+def _take_off(secs: float, words: int) -> float:
+    """How far a voice take is from the normal length of `words` Hindi words (about 0.45 s a word)."""
+    return abs(secs - max(0.6, words * 0.45))
 
 
 def _tmp(data: bytes | None, suffix: str) -> str | None:
@@ -171,33 +225,38 @@ class Chatterbox:
             return f.read()
 
     @modal.method()
-    def speak(self, text: str, lang: str = "hi", ref_audio: bytes | None = None, voice_id: str = "", **_) -> dict:
+    def speak(self, text: str, lang: str = "hi", ref_audio: bytes | None = None, voice_id: str = "",
+              settings: dict | None = None, **_) -> dict:
+        knobs = _voice_knobs(settings)
         if voice_id:
             if not AVATAR_ID.match(voice_id):
                 raise ValueError("bad voice_id")
             ref_audio = self._voice_ref(voice_id)
         ref = _tmp(ref_audio, ".wav")
         t = time.time()
-        # Guard: a short line can make this voice ramble (one word -> 12 s of audio). A line of N words should speak for
-        # about N x 0.45 s (Hindi); more than N x 1.0 s + 2.5 s is a runaway - make it again, keep the shortest take.
-        limit = len(text.split()) * 1.0 + 2.5
+        # Guard both ways. A line of N words should speak for about N x 0.45 s (Hindi). More than N x 0.8 s + 1.5 s is a
+        # runaway (one word once rambled for 12 s; run 35 spoke 5 words in 1.4 s then babbled to 6.7 s, which the old
+        # N x 1.0 + 2.5 let through); less than N x 0.22 s means the voice stopped early and dropped words.
+        # Either one is made again (max 3 takes); the take closest to the normal length is kept.
+        n = len(text.split())
+        limit, floor = n * 0.8 + 1.5, n * 0.22
         best, tries = None, 0
         for _ in range(3):
             tries += 1
-            w = self.model.generate(text, language_id=lang, **({"audio_prompt_path": ref} if ref else {}))
+            w = self.model.generate(text, language_id=lang, **knobs, **({"audio_prompt_path": ref} if ref else {}))
             peak = float(w.abs().max()) or 1.0                       # cut the silent tail the sampler leaves after the last word (keep 0.2 s)
             loud = (w.abs() > 0.02 * peak).nonzero()
             if loud.numel():
                 w = w[..., : min(w.shape[-1], int(loud[:, -1].max()) + int(0.2 * self.model.sr))]
             secs = w.shape[-1] / self.model.sr
-            if best is None or secs < best[1]:
+            if best is None or _take_off(secs, n) < _take_off(best[1], n):
                 best = (w, secs)
-            if secs <= limit:
+            if floor <= secs <= limit:
                 break
         wav, secs = best
         out = _wav_bytes(wav, self.model.sr)
         return {"wav": out, "sr": self.model.sr, "synth_s": round(time.time() - t, 2), "load_s": self.load_s,
-                "tries": tries, "runaway": secs > limit}
+                "tries": tries, "runaway": secs > limit, "cut_short": secs < floor, "knobs": knobs}
 
 
 @app.cls(gpu=GPU, image=indicf5_image, volumes={MODELS_DIR: volume}, secrets=[secret], scaledown_window=IDLE, timeout=600)
@@ -545,6 +604,10 @@ class Live:
 
     @modal.method()
     def prepare(self, avatar_id: str, video: bytes, consent: str) -> dict:
+        return self._prepare_impl(avatar_id, video, consent)
+
+    def _prepare_impl(self, avatar_id: str, video: bytes, consent: str) -> dict:
+        """Shared by prepare (a recorded clip) and prepare_photo (a still made into a clip): same consent rules."""
         if not AVATAR_ID.match(avatar_id or ""):
             raise ValueError("avatar_id: lower-case letters, digits, - and _ (max 40)")
         if not CONSENT.match(consent or ""):
@@ -837,8 +900,25 @@ def web():
             chunks = split_speech(text)
             lang = str(hello.get("lang") or "hi")[:5]
             await say(type="start", fps=25, chunks=len(chunks))
-            voice, face = Chatterbox(), Live()
-            tasks = [asyncio.create_task(voice.speak.remote.aio(c, lang)) for c in chunks]
+            voice, face, ear = Chatterbox(), Live(), Hear()
+
+            async def voiced(k: int, c: str) -> dict:
+                """The voice for one chunk. Chunks after the first go through the ears (cut right after the last
+                scripted word - the voice can babble past its text); they are made while earlier chunks play, so the
+                cut costs no waiting. The FIRST chunk is never held: the face must start talking at once. A trim that
+                is slow or fails keeps the take as it is (a long tail beats a lost sentence), and it is never
+                cancelled - cancelling a Modal call restarts its container."""
+                r = await voice.speak.remote.aio(c, lang)
+                if k == 0:
+                    return r
+                cut = asyncio.ensure_future(ear.trim.remote.aio(r["wav"], c, lang))
+                done, _ = await asyncio.wait({cut}, timeout=LIVE_TRIM_WAIT)
+                if cut in done and not cut.exception():
+                    return {**r, "wav": cut.result()["wav"], "cut_s": cut.result().get("cut_s")}
+                cut.add_done_callback(lambda f: f.exception())
+                return r
+
+            tasks = [asyncio.create_task(voiced(k, c)) for k, c in enumerate(chunks)]
             for k, t in enumerate(tasks):
                 r = await asyncio.wait_for(t, 180)
                 await push(2, k, 0, r["wav"])
@@ -1322,7 +1402,68 @@ def _mp4_concat(clips: list) -> bytes:
     return data
 
 
-@app.cls(image=hear_image, volumes={MODELS_DIR: volume}, secrets=[secret], scaledown_window=IDLE, timeout=900, cpu=4, memory=4096)
+def _chars(text: str) -> int:
+    """Letters only (no spaces / punctuation) - how much was SAID, comparable between the script and what whisper heard."""
+    return sum(1 for c in text if c.isalnum() or "\u0900" <= c <= "\u097f")
+
+
+def _trim_point(words: list, script: str, duration: float) -> float | None:
+    """Where the script's speech ends, from whisper's words [{w, start, end}].
+
+    Measured on studio runs 35-36: the voice says the line, then babbles on ("yah ek tasveer se bana video hai" in 1.6 s,
+    then nonsense to 6.7 s). The cut goes after the heard word where the letters said so far come closest to the script's
+    letters - babble only ever ADDS letters - preferring, within +-30 %, the word followed by the longest pause (babble
+    starts after a breath). None = nothing worth cutting (under 0.4 s of tail)."""
+    if not words:
+        return None
+    target = max(1, _chars(script))
+    acc, cands = 0, []
+    for i, w in enumerate(words):
+        acc += _chars(str(w.get("w") or ""))
+        if abs(acc - target) <= 0.3 * target:
+            gap = (words[i + 1]["start"] - w["end"]) if i + 1 < len(words) else 99.0
+            cands.append((gap, -abs(acc - target), i))
+    if cands:
+        i = max(cands)[2]
+    else:   # nothing near the script's length: the closest point overall
+        acc, best = 0, (None, 0)
+        for j, w in enumerate(words):
+            acc += _chars(str(w.get("w") or ""))
+            if best[0] is None or abs(acc - target) < best[0]:
+                best = (abs(acc - target), j)
+        i = best[1]
+    cut = float(words[i]["end"]) + 0.25
+    return round(cut, 2) if duration - cut > 0.4 else None
+
+
+def _cut_wav(wav: bytes, seconds: float, fade_s: float = 0.08) -> bytes:
+    """The first `seconds` of a PCM WAV, with a short fade so the cut never clicks (stdlib only)."""
+    import array
+    import io
+    import wave
+    with wave.open(io.BytesIO(wav), "rb") as r:
+        ch, width, rate = r.getnchannels(), r.getsampwidth(), r.getframerate()
+        frames = r.readframes(min(r.getnframes(), int(seconds * rate)))
+    if width == 2:
+        a = array.array("h", frames)
+        n = min(len(a) // ch, int(fade_s * rate))
+        for k in range(n):
+            g = k / n                     # k counts back from the last sample: 0 at the very end, 1 at the fade's start
+            for c in range(ch):
+                idx = len(a) - (k + 1) * ch + c
+                a[idx] = int(a[idx] * g)
+        frames = a.tobytes()
+    buf = io.BytesIO()
+    with wave.open(buf, "wb") as o:
+        o.setnchannels(ch)
+        o.setsampwidth(width)
+        o.setframerate(rate)
+        o.writeframes(frames)
+    return buf.getvalue()
+
+
+@app.cls(image=hear_image, volumes={MODELS_DIR: volume}, secrets=[secret], scaledown_window=IDLE, timeout=900, cpu=4, memory=4096,
+         min_containers=WARM)          # CPU only (no GPU bill); warm with the live engine so the live trim never waits on a cold start
 class Hear:
     """Speech to text (faster-whisper small, MIT code + MIT weights, CPU int8): what was said, in which language, and when."""
 
@@ -1341,12 +1482,43 @@ class Hear:
         wav = f"/tmp/{uuid.uuid4().hex}_16k.wav"
         subprocess.run(["ffmpeg", "-y", "-v", "error", "-i", src, "-vn", "-ac", "1", "-ar", "16000", wav], check=True)
         segs, info = self.model.transcribe(wav, language=(lang or None), word_timestamps=True, vad_filter=True)
+        loud_end = self._loud_end(wav)
         out = []
         for sg in segs:
-            out.append({"start": round(sg.start, 2), "end": round(sg.end, 2), "text": sg.text.strip(),
-                        "words": [{"w": w.word.strip(), "start": round(w.start, 2), "end": round(w.end, 2)} for w in (sg.words or [])]})
-        return {"language": info.language, "language_probability": round(float(info.language_probability), 2),
-                "duration": round(float(info.duration), 2), "segments": out, "load_s": self.load_s}
+            # float(): faster-whisper hands back numpy floats, and the studio image that receives this has no numpy
+            out.append({"start": round(float(sg.start), 2), "end": round(float(sg.end), 2), "text": str(sg.text).strip(),
+                        "words": [{"w": str(w.word).strip(), "start": round(float(w.start), 2), "end": round(float(w.end), 2)}
+                                  for w in (sg.words or [])]})
+        return {"language": str(info.language), "language_probability": round(float(info.language_probability), 2),
+                "duration": round(float(info.duration), 2), "loud_end": loud_end, "segments": out, "load_s": self.load_s}
+
+    @staticmethod
+    def _loud_end(wav16k: str) -> float:
+        """The last moment there is real sound (20 ms frames above 3 % of the peak) - silence after it is not babble."""
+        from faster_whisper.audio import decode_audio
+        import numpy as np
+        a = decode_audio(wav16k, sampling_rate=16000)
+        if not len(a):
+            return 0.0
+        f = 320
+        n = len(a) // f
+        rms = np.sqrt((a[: n * f].reshape(n, f) ** 2).mean(axis=1)) if n else np.zeros(1)
+        loud = np.nonzero(rms > 0.03 * float(np.abs(a).max() or 1.0))[0]
+        return round(float((loud[-1] + 1) * f / 16000), 2) if len(loud) else 0.0
+
+    @modal.method()
+    def trim(self, wav: bytes, script: str, lang: str = "hi") -> dict:
+        """Cut a voice take right after the script's last word (see _trim_point). Untouched when nothing runs past it."""
+        src = _tmp(wav, ".wav")
+        w16 = f"/tmp/{uuid.uuid4().hex}_16k.wav"
+        subprocess.run(["ffmpeg", "-y", "-v", "error", "-i", src, "-ac", "1", "-ar", "16000", w16], check=True)
+        segs, info = self.model.transcribe(w16, language=(lang or None), word_timestamps=True, vad_filter=False)
+        words = [{"w": str(x.word).strip(), "start": float(x.start), "end": float(x.end)} for sg in segs for x in (sg.words or [])]
+        cut = _trim_point(words, script, float(info.duration))
+        heard = " ".join(x["w"] for x in words)
+        if cut is None:
+            return {"wav": wav, "cut_s": None, "duration": round(float(info.duration), 2), "heard": heard}
+        return {"wav": _cut_wav(wav, cut), "cut_s": cut, "duration": round(float(info.duration), 2), "heard": heard}
 
 
 def _speak_chunks(text: str, lang: str, voice_id: str, first_words: int = 14) -> tuple:
@@ -1357,12 +1529,28 @@ def _speak_chunks(text: str, lang: str, voice_id: str, first_words: int = 14) ->
     voice = Chatterbox()
     calls = [voice.speak.spawn(c, lang, None, voice_id) for c in chunks]
     wavs = [c.get(timeout=300)["wav"] for c in calls]
+    # The ears cut each take right after its last scripted word (the voice babbles past its text - runs 35-36).
+    # A failed trim keeps the take as it is: a long tail is better than a lost sentence.
+    ear = Hear()
+    trims = [ear.trim.spawn(w, c, lang) for w, c in zip(wavs, chunks)]
+    for i, t in enumerate(trims):
+        try:
+            wavs[i] = t.get(timeout=180)["wav"]
+        except Exception:
+            pass
     cues, t = [], 0.0
     for c, w in zip(chunks, wavs):
         d = _wav_seconds(w)
         cues.append((t, t + d, c))
         t += d
     return _wav_concat(wavs), cues, t
+
+
+def _has_audio(path: str) -> bool:
+    """Does this media file carry a sound track? (ffprobe ships with ffmpeg)"""
+    r = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "a", "-show_entries", "stream=index", "-of", "csv=p=0", path],
+                       capture_output=True, text=True)
+    return bool(r.stdout.strip())
 
 
 @app.function(image=studio_image, secrets=[secret], timeout=1800, max_containers=8)
@@ -1406,6 +1594,8 @@ def studio_job(op: str, p: dict) -> dict:
             raise ValueError(f"text: 1-{MAX_VIDEO_TEXT} characters")
         tmp_id = "dub-" + uuid.uuid4().hex[:10]
         src = _tmp(video, ".mp4")
+        if not _has_audio(src):
+            raise ValueError("this video has no sound, so there is no voice to copy - send a video where the person speaks")
         sample = f"/tmp/{uuid.uuid4().hex}_ref.wav"
         subprocess.run(["ffmpeg", "-y", "-v", "error", "-i", src, "-vn", "-ac", "1", "-ar", "24000", "-t", "20", sample], check=True)
         with open(sample, "rb") as f:
@@ -1465,6 +1655,324 @@ def _sample_photo() -> bytes:
         return f.read()
 
 
+# ================================================================ VOICE CARD - which voice says Hindi most clearly
+VOICE_CARD_LINES = [
+    "नमस्ते, मैं आपकी शिक्षक हूँ।",
+    "आज हम गति के बारे में सीखेंगे।",
+    "गति का मतलब है कि कोई चीज़ समय के साथ अपनी जगह कितनी तेज़ी से बदलती है।",
+    "प्रकाश संश्लेषण में पौधे सूरज की रोशनी से अपना भोजन बनाते हैं।",
+    "इस आयत का क्षेत्रफल लंबाई गुणा चौड़ाई होता है।",
+    "वैज्ञानिक प्रयोग करके अपने विचारों की जाँच करते हैं।",
+    "यह एक तस्वीर से बना वीडियो है।",
+    "बहुत बढ़िया, आपका उत्तर बिल्कुल सही है।",
+]
+
+
+def _norm_hi(text: str) -> str:
+    """Letters only, one spelling: nukta dropped (ज़ = ज), chandrabindu = anusvara, punctuation and spaces gone. Whisper
+    and the script disagree on exactly these marks all the time, and they are not what a listener hears as wrong."""
+    import unicodedata
+    t = unicodedata.normalize("NFC", text or "")
+    t = t.replace("\u093c", "").replace("\u0901", "\u0902")
+    for a, b in (("क़", "क"), ("ख़", "ख"), ("ग़", "ग"), ("ज़", "ज"), ("ड़", "ड"), ("ढ़", "ढ"), ("फ़", "फ"), ("य़", "य")):
+        t = t.replace(a, b)
+    return "".join(c for c in t if c.isalnum() or "\u0900" <= c <= "\u097f").replace("\u0964", "")
+
+
+def _cer(ref: str, hyp: str) -> float:
+    """Character error rate after _norm_hi: edits needed to turn what was heard into the script, per script letter."""
+    r, h = _norm_hi(ref), _norm_hi(hyp)
+    if not r:
+        return 0.0 if not h else 1.0
+    prev = list(range(len(h) + 1))
+    for i, rc in enumerate(r, 1):
+        cur = [i] + [0] * len(h)
+        for j, hc in enumerate(h, 1):
+            cur[j] = min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (rc != hc))
+        prev = cur
+    return round(prev[-1] / len(r), 3)
+
+
+@app.local_entrypoint()
+def voice_card():
+    """The same Hindi teaching lines through every voice we may ship, heard back by whisper. Score = character error
+    rate (letters whisper heard wrong, after the marks it always disagrees on are evened out) - lower is clearer. Whisper
+    itself makes mistakes in Hindi, so read it as a COMPARISON between voices, not an absolute grade; the WAVs are saved
+    beside the report for real ears. lab_out/REPORT_voices.txt + voice_<engine>_<n>.wav"""
+    os.makedirs("lab_out", exist_ok=True)
+    lines_out = [f"GPU {GPU}  Hoola voice card - {len(VOICE_CARD_LINES)} Hindi lines per voice, heard back by whisper (small)"]
+
+    def note(text: str) -> None:
+        lines_out.append(text)
+        print(text, flush=True)
+        with open("lab_out/REPORT_voices.txt", "w") as f:
+            f.write("\n".join(lines_out) + "\n")
+
+    engines = [
+        ("chatterbox", lambda t: Chatterbox().speak.spawn(t, "hi")),
+        ("parler_female", lambda t: IndicParler().speak.spawn(t, "hi", "A warm female teacher speaks clearly at a moderate "
+                                                                       "pace in a quiet room; the recording is very clear and close.")),
+        ("parler_male", lambda t: IndicParler().speak.spawn(t, "hi", "A calm male teacher speaks clearly at a moderate "
+                                                                     "pace in a quiet room; the recording is very clear and close.")),
+    ]
+    ear = Hear()
+    summary = []
+    for name, start in engines:
+        cers, tails, rtf = [], [], []
+        try:
+            outs = [start(t).get(timeout=900) for t in VOICE_CARD_LINES]   # one after another: ONE warm container, not 8 cold ones
+        except Exception as e:
+            note(f"{name:<14} FAILED to speak: {type(e).__name__}: {str(e)[:200]}")
+            continue
+        for i, (text, o) in enumerate(zip(VOICE_CARD_LINES, outs), 1):
+            with open(f"lab_out/voice_{name}_{i}.wav", "wb") as f:
+                f.write(o["wav"])
+            secs = _wav_seconds(o["wav"])
+            try:
+                h = ear.transcribe.spawn(o["wav"], "hi").get(timeout=600)
+            except Exception as e:
+                note(f"   {name} line {i}: could not listen ({type(e).__name__})")
+                continue
+            heard = " ".join(sg["text"] for sg in h["segments"])
+            words = [w for sg in h["segments"] for w in sg["words"]]
+            last = words[-1]["end"] if words else 0.0
+            tail = max(0.0, float(h.get("loud_end") or secs) - last)
+            c = _cer(text, heard)
+            cers.append(c)
+            tails.append(tail)
+            if secs:
+                rtf.append(float(o.get("synth_s") or 0) / secs)
+            note(f"   {name:<14} {i}: CER {c:.2f}  {secs:4.1f}s  tail {tail:3.1f}s | {heard[:90]}")
+        if cers:
+            avg = sum(cers) / len(cers)
+            summary.append((avg, name, max(tails or [0]), sum(rtf) / len(rtf) if rtf else 0))
+            note(f"{name:<14} mean CER {avg:.3f}  worst tail {max(tails or [0]):.1f}s  make time {summary[-1][3]:.2f}x speech")
+    summary.sort()
+    note("RANKING (clearest first - then LISTEN to the WAVs; the ear decides):")
+    for avg, name, tail, r in summary:
+        note(f"   {name:<14} CER {avg:.3f}  worst tail {tail:.1f}s  {r:.2f}x real time")
+
+
+VOICE_TUNES = [                       # name, settings - the first is what she heard and liked (the model's own defaults)
+    ("default", {}),
+    ("calm", {"temperature": 0.6}),
+    ("careful", {"cfg_weight": 0.3}),
+    ("careful_calm", {"cfg_weight": 0.3, "temperature": 0.6}),
+    ("firm_calm", {"cfg_weight": 0.7, "temperature": 0.6}),
+    ("lively_careful", {"exaggeration": 0.7, "cfg_weight": 0.3}),
+]
+
+
+@app.local_entrypoint()
+def voice_tune():
+    """Chatterbox (her choice) under a few sampling settings, the same 8 Hindi lines TWICE each (sampling is random, one
+    take is noise), heard back by whisper. Per setting: character error rate (clearer = lower), babble (takes whose sound
+    runs on > 0.8 s past the last word, or that the length guard had to remake), pace. lab_out/REPORT_tune.txt +
+    tune_<setting>.wav (three teaching lines joined) for her ears - the card ranks, her ear picks, and the pick goes
+    into VOICE_SETTINGS."""
+    os.makedirs("lab_out", exist_ok=True)
+    out_lines = [f"GPU {GPU}  Chatterbox tuning card - {len(VOICE_CARD_LINES)} Hindi lines x 2 takes per setting"]
+
+    def note(text: str) -> None:
+        out_lines.append(text)
+        print(text, flush=True)
+        with open("lab_out/REPORT_tune.txt", "w") as f:
+            f.write("\n".join(out_lines) + "\n")
+
+    voice, ear = Chatterbox(), Hear()
+    board = []
+    for name, knobs in VOICE_TUNES:
+        cers, babble, secs_all, words_all, listen = [], 0, 0.0, 0, []
+        for take in (1, 2):
+            for i, text in enumerate(VOICE_CARD_LINES, 1):
+                try:
+                    o = voice.speak.spawn(text, "hi", None, "", knobs).get(timeout=600)
+                    h = ear.transcribe.spawn(o["wav"], "hi").get(timeout=600)
+                except Exception as e:
+                    note(f"   {name} take {take} line {i}: FAILED {type(e).__name__}: {str(e)[:160]}")
+                    continue
+                heard = " ".join(sg["text"] for sg in h["segments"])
+                words = [w for sg in h["segments"] for w in sg["words"]]
+                last = words[-1]["end"] if words else 0.0
+                ran_on = float(h.get("loud_end") or 0) - last > 0.8 or (o.get("tries") or 1) > 1
+                babble += 1 if ran_on else 0
+                c = _cer(text, heard)
+                cers.append(c)
+                secs_all += _wav_seconds(o["wav"])
+                words_all += len(text.split())
+                if take == 1 and i in (2, 3, 4):
+                    listen.append(o["wav"])
+                note(f"   {name:<15} t{take} {i}: CER {c:.2f}{'  RAN ON' if ran_on else ''} | {heard[:80]}")
+        if listen:
+            with open(f"lab_out/tune_{name}.wav", "wb") as f:
+                f.write(_wav_concat(listen, gap_s=0.6))
+        if cers:
+            avg = sum(cers) / len(cers)
+            pace = words_all / secs_all if secs_all else 0
+            board.append((avg, babble, name, knobs, pace, len(cers)))
+            note(f"{name:<15} {json.dumps(knobs)}  mean CER {avg:.3f}  ran on {babble}/{len(cers)}  pace {pace:.1f} words/s")
+    board.sort(key=lambda b: (b[0] + 0.02 * b[1]))
+    note("RANKING (clearest first; each ran-on take costs 0.02 - then LISTEN to tune_<name>.wav, the ear picks):")
+    for avg, bab, name, knobs, pace, n in board:
+        note(f"   {name:<15} CER {avg:.3f}  ran on {bab}/{n}  {pace:.1f} words/s  {json.dumps(knobs)}")
+
+
+# ================================================================ THE AI-MADE FACE (her choice 'b')
+# Fictional people only: the prompts describe no real person, and every face carries a provenance note
+# (model, prompt, seed, 'AI-generated - not a real person'). Faces are prepared with consent 'ai_generated'.
+FACE_SPECS = [
+    ("asha", "female", "a fictional Indian woman teacher in her early 30s, warm kind face, simple cotton saree, hair "
+                       "neatly tied back, small bindi"),
+    ("meera", "female", "a fictional Indian woman teacher in her mid 40s, gentle confident face, plain salwar kurta with "
+                        "a dupatta, hair in a low bun"),
+    ("arjun", "male", "a fictional Indian man teacher in his early 30s, friendly face, neat short hair, light blue "
+                      "formal shirt"),
+    ("vikram", "male", "a fictional Indian man teacher in his mid 40s, calm face, thin glasses, simple kurta, neatly "
+                       "trimmed beard"),
+]
+FACE_STYLE = ("photorealistic head-and-shoulders portrait, looking straight into the camera, lips gently closed, soft "
+              "natural smile, plain light grey studio background, soft even front lighting, sharp focus, natural skin "
+              "texture, 85mm lens, centred, shoulders visible")
+FACE_MOTION = ("The same person sits still and looks straight into the camera, blinks naturally and breathes calmly, "
+               "very slight natural head movement, lips closed, not speaking, static camera, plain background, "
+               "photorealistic")
+FACE_MOTION_NEG = ("talking, open mouth, speaking, laughing, camera movement, zoom, pan, text, subtitles, watermark, "
+                   "distorted face, deformed, extra fingers, blurry, low quality, flicker")
+
+
+@app.cls(gpu=GPU, image=paint_image, volumes={MODELS_DIR: volume}, secrets=[secret], scaledown_window=IDLE, timeout=1800)
+class Painter:
+    """FLUX.1-schnell: a portrait of a fictional teacher in 4 steps."""
+
+    @modal.enter()
+    def load(self):
+        registry.check("flux_schnell", "lab")
+        import torch
+        from diffusers import FluxPipeline
+        t = time.time()
+        self.pipe = FluxPipeline.from_pretrained("black-forest-labs/FLUX.1-schnell", torch_dtype=torch.bfloat16,
+                                                 token=os.environ.get("HF_TOKEN")).to("cuda")
+        self.torch = torch
+        self.load_s = round(time.time() - t, 1)
+        volume.commit()
+
+    @modal.method()
+    def paint(self, prompt: str, seed: int, width: int = 704, height: int = 1280) -> dict:
+        import io
+        t = time.time()
+        img = self.pipe(prompt, guidance_scale=0.0, num_inference_steps=4, max_sequence_length=256, width=width,
+                        height=height, generator=self.torch.Generator("cuda").manual_seed(int(seed))).images[0]
+        buf = io.BytesIO()
+        img.save(buf, format="PNG")
+        return {"png": buf.getvalue(), "make_s": round(time.time() - t, 1), "load_s": self.load_s}
+
+
+@app.cls(gpu=GPU, image=paint_image, volumes={MODELS_DIR: volume}, secrets=[secret], scaledown_window=IDLE, timeout=3600)
+class Mover:
+    """Wan 2.2 TI2V-5B: the portrait becomes a short clip of the same person blinking and breathing (no speech)."""
+
+    @modal.enter()
+    def load(self):
+        registry.check("wan22_ti2v_5b", "lab")
+        import torch
+        from diffusers import AutoencoderKLWan, WanImageToVideoPipeline
+        t = time.time()
+        mid = "Wan-AI/Wan2.2-TI2V-5B-Diffusers"
+        vae = AutoencoderKLWan.from_pretrained(mid, subfolder="vae", torch_dtype=torch.float32)
+        self.pipe = WanImageToVideoPipeline.from_pretrained(mid, vae=vae, torch_dtype=torch.bfloat16).to("cuda")
+        self.torch = torch
+        self.load_s = round(time.time() - t, 1)
+        volume.commit()
+
+    @modal.method()
+    def move(self, png: bytes, prompt: str, negative: str, seed: int, frames: int = 121, steps: int = 40) -> dict:
+        import io
+        from diffusers.utils import export_to_video
+        from PIL import Image
+        img = Image.open(io.BytesIO(png)).convert("RGB")
+        w, h = img.size
+        t = time.time()
+        out = self.pipe(image=img, prompt=prompt, negative_prompt=negative, width=w, height=h, num_frames=int(frames),
+                        num_inference_steps=int(steps), guidance_scale=5.0,
+                        generator=self.torch.Generator("cuda").manual_seed(int(seed))).frames[0]
+        path = f"/tmp/{uuid.uuid4().hex}.mp4"
+        export_to_video(out, path, fps=24)
+        with open(path, "rb") as f:
+            data = f.read()
+        return {"mp4": data, "make_s": round(time.time() - t, 1), "load_s": self.load_s, "frames": len(out)}
+
+
+@app.local_entrypoint()
+def face_make():
+    """Her choice 'b': AI-made teacher faces. Paints the four fictional teachers in FACE_SPECS, brings two of them to
+    life (HOOLA_FACES, default asha + arjun: one woman, one man), prepares each moving clip for the face engine with
+    consent 'ai_generated', then makes it speak a Hindi line in the Chatterbox voice she chose. Everything lands in
+    lab_out/: face_<name>.png (+ .json provenance), face_<name>_motion.mp4, face_<name>_talking.mp4, REPORT_faces.txt.
+    She picks the face by eye; nothing here is shipped by itself."""
+    os.makedirs("lab_out", exist_ok=True)
+    out_lines = [f"GPU {GPU}  Hoola AI-made faces - fictional teachers only, every file marked AI-generated"]
+
+    def note(text: str) -> None:
+        out_lines.append(text)
+        print(text, flush=True)
+        with open("lab_out/REPORT_faces.txt", "w") as f:
+            f.write("\n".join(out_lines) + "\n")
+
+    painter = Painter()
+    pngs = {}
+    for k, (name, sex, who) in enumerate(FACE_SPECS):
+        prompt = f"{FACE_STYLE}, {who}"
+        seed = 1000 + 17 * k
+        try:
+            r = painter.paint.spawn(prompt, seed).get(timeout=1500)
+        except Exception as e:
+            note(f"paint {name:<7} FAIL  {type(e).__name__}: {str(e)[:300]}")
+            continue
+        pngs[name] = r["png"]
+        with open(f"lab_out/face_{name}.png", "wb") as f:
+            f.write(r["png"])
+        with open(f"lab_out/face_{name}.json", "w") as f:
+            json.dump({"name": name, "voice_sex": sex, "model": "black-forest-labs/FLUX.1-schnell (Apache-2.0)",
+                       "prompt": prompt, "seed": seed, "label": "AI-generated - not a real person",
+                       "consent": "ai_generated"}, f, ensure_ascii=False, indent=1)
+        note(f"paint {name:<7} PASS  {r['make_s']}s (load {r['load_s']}s)")
+    picks = [n.strip() for n in os.environ.get("HOOLA_FACES", "asha,arjun").split(",") if n.strip() in pngs]
+    mover, live = Mover(), Live()
+    line = "नमस्ते, मैं आपकी शिक्षक हूँ। आज हम गति के बारे में सीखेंगे।"
+    for k, name in enumerate(picks):
+        try:
+            r = mover.move.spawn(pngs[name], FACE_MOTION, FACE_MOTION_NEG, 7 + k).get(timeout=3300)
+        except Exception as e:
+            note(f"move  {name:<7} FAIL  {type(e).__name__}: {str(e)[:300]}")
+            continue
+        with open(f"lab_out/face_{name}_motion.mp4", "wb") as f:
+            f.write(r["mp4"])
+        note(f"move  {name:<7} PASS  {r['make_s']}s for {r['frames']} frames (load {r['load_s']}s)")
+        avatar = f"ai-{name}"
+        try:
+            p = live.prepare.spawn(avatar, r["mp4"], "ai_generated").get(timeout=2700)
+            note(f"face  {name:<7} PASS  prepared in {p['prepare_s']}s")
+            v = studio_job.spawn("video", {"avatar_id": avatar, "text": line, "lang": "hi"}).get(timeout=900)
+        except Exception as e:
+            note(f"talk  {name:<7} FAIL  {type(e).__name__}: {str(e)[:300]}")
+            continue
+        with open(f"lab_out/face_{name}_talking.mp4", "wb") as f:
+            f.write(v["files"]["video.mp4"])
+        note(f"talk  {name:<7} PASS  {v['info'].get('seconds')}s of speech, made in {v['info'].get('made_s')}s")
+    note("WATCH face_<name>_talking.mp4 - pick the face; the voice is the Chatterbox default for every face today "
+         "(a man's face with that voice is a known mismatch until a male voice is chosen).")
+
+
+@app.function(image=face_image, timeout=300)
+def _sample_talking() -> bytes:
+    """MuseTalk's sample face with its sample speech laid under it - a stand-in for 'a video of a person speaking'."""
+    out = "/tmp/sample_talking.mp4"
+    subprocess.run(["ffmpeg", "-y", "-v", "error", "-i", f"{MUSE_DIR}/data/video/yongen.mp4", "-i", f"{MUSE_DIR}/data/audio/yongen.wav",
+                    "-map", "0:v:0", "-map", "1:a:0", "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", "-shortest", out], check=True)
+    with open(out, "rb") as f:
+        return f.read()
+
+
 @app.local_entrypoint()
 def studio_card():
     """Every Studio feature once, on the GPU: text to video, photo avatar, my voice, transcribe, dub, podcast, one video many
@@ -1499,10 +2007,29 @@ def studio_card():
             if fn in r["files"]:
                 with open(f"lab_out/{out_name}", "wb") as f:
                     f.write(r["files"][fn])
-        sizes = ", ".join(f"{k} {len(v) // 1024} KB" for k, v in r["files"].items())
+        sizes = ", ".join(f"{k} {len(v) / 1024:.1f} KB" for k, v in r["files"].items())
         note(f"{name:<22} PASS  {time.time() - t:5.1f}s  {sizes or '-'}  {json.dumps(r['info'], ensure_ascii=False)[:200]}")
         results[name] = True
         return r
+
+    def heard(name: str, r: dict | None, fname: str, script: str) -> None:
+        """Ears for the card: the video's sound is transcribed (whisper) and compared with the script. Extra words or
+        sound running long after the last word = the voice babbled past its text (what run 35's clips did)."""
+        if not r or fname not in r.get("files", {}):
+            return
+        try:
+            h = Hear().transcribe.spawn(r["files"][fname], "hi").get(timeout=600)
+        except Exception as e:
+            note(f"   ears {name}: could not listen ({type(e).__name__}: {str(e)[:120]})")
+            return
+        words = [w for sg in h["segments"] for w in sg["words"]]
+        end = words[-1]["end"] if words else 0.0
+        sw, hw, dur = len(script.split()), len(words), float(h["duration"])
+        loud = float(h.get("loud_end") or dur)
+        ok = bool(words) and hw <= sw * 1.3 + 1 and loud - end <= 0.8
+        note(f"   ears {name}: script {sw} words, heard {hw}, last word ends {end:.1f}s, sound ends {loud:.1f}s of {dur:.1f}s -> "
+             f"{'CLEAN' if ok else 'EXTRA SPEECH / BABBLE'} | " + " ".join(sg["text"] for sg in h["segments"])[:160])
+        results[f"{name} (ears)"] = ok
 
     consent = "signed:labtest0001"          # the lab uses MuseTalk's sample speaker; a real person's consent record is never faked
     text = "नमस्ते, मैं आपकी शिक्षक हूँ। आज हम गति के बारे में सीखेंगे। गति का मतलब है कि कोई चीज़ समय के साथ अपनी जगह कितनी तेज़ी से बदलती है।"
@@ -1513,14 +2040,14 @@ def studio_card():
     except Exception as e:
         note(f"face prepare FAILED: {type(e).__name__} {str(e)[:300]}")
         return
-    run("1 text to video", "video", {"avatar_id": "lab-live", "text": text, "lang": "hi"},
+    r1 = run("1 text to video", "video", {"avatar_id": "lab-live", "text": text, "lang": "hi"},
         {"video.mp4": "studio_1_text_to_video.mp4", "captions.vtt": "studio_1_captions.vtt"})
     run("2 photo avatar", "photo_face", {"avatar_id": "lab-photo", "photo": _sample_photo.remote(), "consent": "ai_generated"})
-    run("2b photo -> video", "video", {"avatar_id": "lab-photo", "text": "यह एक तस्वीर से बना वीडियो है।", "lang": "hi"},
+    r2 = run("2b photo -> video", "video", {"avatar_id": "lab-photo", "text": "यह एक तस्वीर से बना वीडियो है।", "lang": "hi"},
         {"video.mp4": "studio_2_photo_avatar.mp4"})
     audio = _sample_audio.remote()
     run("3 my voice (save)", "voice_save", {"voice_id": "lab-voice", "wav": audio, "consent": consent})
-    run("3b my voice -> video", "video", {"avatar_id": "lab-live", "voice_id": "lab-voice", "text": "यह मेरी अपनी आवाज़ में बोला गया वाक्य है।", "lang": "hi"},
+    r3 = run("3b my voice -> video", "video", {"avatar_id": "lab-live", "voice_id": "lab-voice", "text": "यह मेरी अपनी आवाज़ में बोला गया वाक्य है।", "lang": "hi"},
         {"video.mp4": "studio_3_my_voice.mp4"})
     try:
         studio_job.spawn("voice_save", {"voice_id": "lab-bad", "wav": audio, "consent": "ai_generated"}).get(timeout=300)
@@ -1533,14 +2060,21 @@ def studio_card():
     if r:
         note(f"   heard: language {r['info']['language']} ({r['info']['language_probability']}), {len(r['info']['segments'])} segments: "
              + " ".join(sg["text"] for sg in r["info"]["segments"])[:200])
-    run("5 dub (video translate)", "dub", {"video": _sample_face.remote(), "text": "यह वही व्यक्ति है, अब हिंदी में बोल रहा है।", "lang": "hi", "consent": consent},
+    r5 = run("5 dub (video translate)", "dub", {"video": _sample_talking.remote(), "text": "यह वही व्यक्ति है, अब हिंदी में बोल रहा है।", "lang": "hi", "consent": consent},
         {"video.mp4": "studio_5_dub.mp4"})
-    run("6 podcast (2 hosts)", "podcast", {"lang": "hi", "hosts": {"a": {"avatar_id": "lab-live", "voice_id": ""}, "b": {"avatar_id": "lab-photo", "voice_id": "lab-voice"}},
+    r6 = run("6 podcast (2 hosts)", "podcast", {"lang": "hi", "hosts": {"a": {"avatar_id": "lab-live", "voice_id": ""}, "b": {"avatar_id": "lab-photo", "voice_id": "lab-voice"}},
         "lines": [{"host": "a", "text": "आज हम बात करेंगे गति की।"}, {"host": "b", "text": "गति यानी चाल और दिशा, है न?"}, {"host": "a", "text": "बिल्कुल सही।"}]},
         {"video.mp4": "studio_6_podcast.mp4", "captions.vtt": "studio_6_captions.vtt"})
-    run("7 one video, many names", "personalised", {"avatar_id": "lab-live", "lang": "hi", "template": "नमस्ते {name}, आपकी कक्षा कल सुबह दस बजे है।", "names": ["आरव", "सिया"]},
+    r7 = run("7 one video, many names", "personalised", {"avatar_id": "lab-live", "lang": "hi", "template": "नमस्ते {name}, आपकी कक्षा कल सुबह दस बजे है।", "names": ["आरव", "सिया"]},
         {"video_01.mp4": "studio_7_aarav.mp4", "video_02.mp4": "studio_7_siya.mp4"})
+    note("THE EARS - every video's sound against its script:")
+    heard("1", r1, "video.mp4", text)
+    heard("2b", r2, "video.mp4", "यह एक तस्वीर से बना वीडियो है।")
+    heard("3b", r3, "video.mp4", "यह मेरी अपनी आवाज़ में बोला गया वाक्य है।")
+    heard("5", r5, "video.mp4", "यह वही व्यक्ति है, अब हिंदी में बोल रहा है।")
+    heard("6", r6, "video.mp4", "आज हम बात करेंगे गति की। गति यानी चाल और दिशा, है न? बिल्कुल सही।")
+    heard("7", r7, "video_01.mp4", "नमस्ते आरव, आपकी कक्षा कल सुबह दस बजे है।")
     ok = sum(1 for v in results.values() if v)
-    note(f"RESULT: {ok} of {len(results)} features passed")
+    note(f"RESULT: {ok} of {len(results)} checks passed")
     if ok < len(results):
         note("FAILED: " + ", ".join(k for k, v in results.items() if not v))

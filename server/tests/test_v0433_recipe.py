@@ -1,7 +1,7 @@
 """v0.433 SOCH KE JAWAB step 4 - the reasoning recipe (owner: "GO STEP 4").
 
 Steps 1-3 decided WHO thinks (a hard ask), on WHAT (Opus, effort high, 16k, thinking) and WITH WHAT (pylab). Nothing
-said HOW: the reply rulebook is tuned for crisp chat. A hard turn's system prompt now carries SOCH KA TAREEKA - the
+said HOW: the reply rulebook is tuned for crisp chat. A hard turn's system prompt now carries HOW TO THINK - the
 real question, facts vs stated assumptions, work in parts with pylab for every number, check before writing, answer
 first + compact reasoning + assumptions + what would change it + next step - plus up to 3 lines for the kinds of
 reasoning found (calculation, word problem, maths, decision, plan, diagnosis, analysis, rules, impact, deep).
@@ -18,7 +18,7 @@ from tests.test_v0186_long_goal import FakeBrain, _set_brain, gz, txt  # noqa: F
 def test_the_core_carries_the_whole_method():
     from app.agent import hard
     c = hard.RECIPE_CORE
-    for must in ("SOCH KA TAREEKA", "The real question", "stated", "assumption", "pylab", "never mental",
+    for must in ("HOW TO THINK", "The real question", "stated", "assumption", "pylab", "never mental",
                  "Check before you write", "answer or decision FIRST", "what would change the answer", "next step",
                  "uncertain", "private thinking is not the reply"):
         assert must in c, must
@@ -57,10 +57,10 @@ def test_a_hard_turn_carries_the_recipe_and_a_chat_does_not(gz, monkeypatch):  #
     brain = _set_brain(monkeypatch, FakeBrain([([txt("Namaste!")], "end_turn"), ([txt("EMI ...")], "end_turn")]))
     from app.agent.santosh import run_turn
     asyncio.run(run_turn(gz["conv"], "namaste", tenant_id="default"))
-    assert "SOCH KA TAREEKA" not in str(brain.seen[-1]["system"])
+    assert "HOW TO THINK" not in str(brain.seen[-1]["system"])
     asyncio.run(run_turn(gz["conv"], "20 lakh ke home loan ki EMI kitni banegi 9% pe 20 saal", tenant_id="default"))
     sysp = str(brain.seen[-1]["system"])
-    assert "SOCH KA TAREEKA" in sysp and "Calculation:" in sysp
+    assert "HOW TO THINK" in sysp and "Calculation:" in sysp
     assert "Her language, first and always" in sysp          # the reply rulebook still governs the writing
 
 
@@ -72,11 +72,11 @@ def test_switch_off(gz, monkeypatch):  # noqa: F811
         brain = _set_brain(monkeypatch, FakeBrain([([txt("Jawab.")], "end_turn")]))
         from app.agent.santosh import run_turn
         asyncio.run(run_turn(gz["conv"], "Prove that root 2 is irrational", tenant_id="default"))
-        assert "SOCH KA TAREEKA" not in str(brain.seen[-1]["system"])
+        assert "HOW TO THINK" not in str(brain.seen[-1]["system"])
     finally:
         st.hard_recipe = True
 
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.530.0"
+    assert APP_VERSION == "0.758.0"

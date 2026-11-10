@@ -44,15 +44,15 @@ class _AudioTabState extends State<AudioTab> {
       final ok = await approveSimple(context, app,
           title: 'Music: ${moodLabel[mood] ?? mood}',
           sub: '$name · Google Lyria',
-          rows: [PriceRow(Icons.music_note_rounded, SC.violet, 'Ek asli track', 'Is video ke liye, bina gaane ke shabd', 7)],
+          rows: [PriceRow(Icons.music_note_rounded, SC.violet, 'One original track', 'For this video, without lyrics', 7)],
           inr: 7,
           month: sMap(widget.v['month']),
           ask: () => app.api!.studioMusicMood(name, mood));
-      if (ok && mounted) studioSnack(context, 'Music ban raha hai (lagbhag 30 sec)');
+      if (ok && mounted) studioSnack(context, 'Making the music (about 30 sec)');
       await widget.onChanged();
       return;
     }
-    await _run(() => app.api!.studioMusicMood(name, mood), ok: 'Free music laga diya');
+    await _run(() => app.api!.studioMusicMood(name, mood), ok: 'Added free music');
   }
 
   Future<void> _ownSong() async {
@@ -62,8 +62,8 @@ class _AudioTabState extends State<AudioTab> {
     await _run(() async {
       final bytes = await File(path).readAsBytes();
       final f = await app.api!.chatFile(app.conversationId ?? '', r!.files.single.name, bytes);
-      await app.api!.studioMusicMood(name, 'apna', fileId: '${f['file_id']}');
-    }, ok: 'Aapka gaana lag gaya (sirf woh gaana jiska haq aapke paas ho)');
+      await app.api!.studioMusicMood(name, 'own', fileId: '${f['file_id']}');
+    }, ok: 'Your song is added (use only a song you have the rights to)');
   }
 
   Future<void> _narrate(Map<String, dynamic> s) async {
@@ -76,9 +76,9 @@ class _AudioTabState extends State<AudioTab> {
       builder: (ctx) => Padding(
         padding: EdgeInsets.fromLTRB(20, 18, 20, 20 + MediaQuery.of(ctx).viewInsets.bottom),
         child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          Text('Shot ${'${s['id']}'.toUpperCase()} ka kathan', style: sora(18)),
+          Text('Shot ${'${s['id']}'.toUpperCase()} narration', style: sora(18)),
           const SizedBox(height: 6),
-          Text('Video ki awaaz mein bola jayega (free). ${s['duration']} sec ke shot mein lagbhag ${sInt(s['duration']) * 2} shabd.',
+          Text('It will be spoken in the video\'s voice (free). A ${s['duration']} sec shot fits about ${sInt(s['duration']) * 2} words.',
               style: body(12.5, color: C.faint)),
           const SizedBox(height: 12),
           TextField(controller: t, minLines: 2, maxLines: 5, autofocus: true, style: body(14.5, w: FontWeight.w500),
@@ -90,7 +90,7 @@ class _AudioTabState extends State<AudioTab> {
       ),
     );
     if (ok == true && t.text.trim().isNotEmpty) {
-      await _run(() => app.api!.studioVoiceover(name, '${s['id']}', t.text.trim()), ok: 'Kathan jud gaya');
+      await _run(() => app.api!.studioVoiceover(name, '${s['id']}', t.text.trim()), ok: 'Narration added');
     }
   }
 
@@ -109,10 +109,10 @@ class _AudioTabState extends State<AudioTab> {
         if (_busy) const Padding(padding: EdgeInsets.only(bottom: 10), child: LinearProgressIndicator(color: C.accent, minHeight: 2)),
         const SHead('Video ki awaaz'),
         Row(children: [
-          for (final e in const {'male': 'Purush · gambhir', 'female': 'Mahila · madhur'}.entries) ...[
+          for (final e in const {'male': 'Male · deep', 'female': 'Female · sweet'}.entries) ...[
             Expanded(
               child: Press(
-                onTap: () => _run(() => app.api!.studioSettings(name, {'voice': e.key}), ok: 'Awaaz badal gayi (nayi lines isi mein)'),
+                onTap: () => _run(() => app.api!.studioSettings(name, {'voice': e.key}), ok: 'Voice changed (new lines will use it)'),
                 child: Container(
                   height: 60,
                   padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -168,7 +168,7 @@ class _AudioTabState extends State<AudioTab> {
             child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
               const Icon(Icons.library_music_rounded, size: 18, color: C.chip),
               const SizedBox(width: 8),
-              Text(cur == 'apna gaana' ? 'Aapka gaana laga hai · badlo' : 'Apna gaana lagao', style: body(13, w: FontWeight.w700, color: C.chip)),
+              Text(cur == 'own song' ? 'Your song is set · change' : 'Add your own song', style: body(13, w: FontWeight.w700, color: C.chip)),
             ]),
           ),
         ),
@@ -198,17 +198,17 @@ class _AudioTabState extends State<AudioTab> {
                 ),
                 const Icon(Icons.volume_up_rounded, size: 18, color: C.faint),
               ]),
-              Text('Jab koi bolta hai, music apne aap dheema ho jata hai.', style: body(11.5, color: C.faint)),
+              Text('When someone speaks, the music lowers by itself.', style: body(11.5, color: C.faint)),
             ]),
           ),
         ],
         const SizedBox(height: 22),
-        const SHead('Bolna aur kathan'),
+        const SHead('Speech and narration'),
         if (lines.isEmpty)
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.white24)),
-            child: Text('Kisi shot mein bolne wali line nahi. Neeche kisi shot par kathan jodiye.', style: body(12.5, color: C.muted)),
+            child: Text('No shot has a spoken line. Add narration to a shot below.', style: body(12.5, color: C.muted)),
           ),
         for (final s in lines) ...[
           Container(
@@ -221,7 +221,7 @@ class _AudioTabState extends State<AudioTab> {
                   Text('${s['dialogue'] ?? ''}'.isNotEmpty ? '${s['dialogue']}' : '${s['vo_text']}', maxLines: 2,
                       overflow: TextOverflow.ellipsis, style: body(13, w: FontWeight.w600)),
                   if (s['lipsync'] == true) Text('LIP SYNC', style: body(10, w: FontWeight.w800, color: C.accentSoft)),
-                  if ('${s['vo_url'] ?? ''}'.isNotEmpty) Text('KATHAN', style: body(10, w: FontWeight.w800, color: SC.violet)),
+                  if ('${s['vo_url'] ?? ''}'.isNotEmpty) Text('NARRATION', style: body(10, w: FontWeight.w800, color: SC.violet)),
                 ]),
               ),
               SoundButton(
@@ -236,11 +236,11 @@ class _AudioTabState extends State<AudioTab> {
           const SizedBox(height: 8),
         ],
         const SizedBox(height: 4),
-        SButton(label: 'Kisi shot par kathan jodo', icon: Icons.record_voice_over_rounded, primary: false, height: 46,
+        SButton(label: 'Add narration to a shot', icon: Icons.record_voice_over_rounded, primary: false, height: 46,
             onTap: shots.isEmpty || _busy
                 ? null
                 : () async {
-                    final id = await pickOne<String>(context, 'Kis shot par?', {
+                    final id = await pickOne<String>(context, 'On which shot?', {
                       for (final s in shots)
                         '${s['id']}': '${'${s['id']}'.toUpperCase()} · ${'${s['prompt']}'.length > 40 ? '${'${s['prompt']}'.substring(0, 40)}…' : s['prompt']}',
                     });
@@ -300,7 +300,7 @@ class _BrandTabState extends State<BrandTab> {
     try {
       final f = await app.api!.chatFile(app.conversationId ?? '', x.name.isEmpty ? 'logo.png' : x.name, await x.readAsBytes());
       await app.api!.studioLogo(name, '${f['file_id']}', pos);
-      if (mounted) studioSnack(context, 'Logo lag gaya');
+      if (mounted) studioSnack(context, 'Logo added');
     } catch (e) {
       if (mounted) studioSnack(context, '$e'.replaceFirst('Exception: ', ''));
     }
@@ -328,7 +328,7 @@ class _BrandTabState extends State<BrandTab> {
         Opacity(
           opacity: on ? 1 : .4,
           child: Row(children: [
-            for (final e in const {'bold': 'Bade akshar', 'words': 'Shabd-shabd', 'plain': 'Saada'}.entries) ...[
+            for (final e in const {'bold': 'Large letters', 'words': 'Shabd-shabd', 'plain': 'Saada'}.entries) ...[
               Expanded(
                 child: Press(
                   onTap: on ? () => _set({'caption_style': e.key}) : null,
@@ -381,7 +381,7 @@ class _BrandTabState extends State<BrandTab> {
               children: [
                 for (final sp in spots)
                   GestureDetector(
-                    onTap: logo.isEmpty ? () => _logo(sp) : () => _set({'logo_position': sp}, ok: 'Logo ki jagah badal gayi'),
+                    onTap: logo.isEmpty ? () => _logo(sp) : () => _set({'logo_position': sp}, ok: 'Logo position changed'),
                     child: Container(decoration: BoxDecoration(
                         color: logo.isNotEmpty && pos == sp ? C.accent : Colors.white10, borderRadius: BorderRadius.circular(4))),
                   ),
@@ -397,17 +397,17 @@ class _BrandTabState extends State<BrandTab> {
                 Row(children: [
                   SizedBox(width: 44, height: 44, child: SImage(app: app, url: '${logo['url'] ?? ''}', radius: 10, fit: BoxFit.contain)),
                   const SizedBox(width: 10),
-                  Expanded(child: Text('Kone par chamakta rahega. Jagah badalne ke liye khaane par tap kijiye.',
+                  Expanded(child: Text('It will stay in the corner. Tap a box to change its position.',
                       style: body(11.5, color: C.faint, height: 1.4))),
                 ]),
               const SizedBox(height: 8),
-              SButton(label: logo.isEmpty ? 'Logo photo chuniye' : 'Logo badlo', primary: false, height: 44,
+              SButton(label: logo.isEmpty ? 'Choose a logo photo' : 'Logo badlo', primary: false, height: 44,
                   onTap: _busy ? null : () => _logo(logo.isEmpty ? 'top-right' : pos)),
               const SizedBox(height: 10),
               Row(children: [
                 const Icon(Icons.lock_rounded, size: 14, color: C.faint),
                 const SizedBox(width: 6),
-                Expanded(child: Text('"AI-generated · Hoola" label hamesha (kanoon ke hisaab se)', style: body(11.5, color: C.faint))),
+                Expanded(child: Text('The "AI-generated · Hoola" label is always there (as the law requires)', style: body(11.5, color: C.faint))),
               ]),
             ]),
           ),

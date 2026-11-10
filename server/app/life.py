@@ -54,8 +54,10 @@ def fmt_local(dt: datetime, tz: ZoneInfo) -> str:
     return f"{day} {d.strftime('%I:%M %p').lstrip('0')}"
 
 
-def next_due(due: datetime, repeat: str, tz: ZoneInfo) -> datetime | None:
-    """Next occurrence after `due`, keeping the same local clock time."""
+def next_due(due: datetime, repeat: str, tz: ZoneInfo, anchor_day: int | None = None) -> datetime | None:
+    """Next occurrence after `due`, keeping the same local clock time.
+    v0.667 `anchor_day`: a monthly repeat's own day (the 31st stays the 31st where the month has one; it used to clamp
+    from the PREVIOUS due date, so Jan 31 -> Feb 28 -> Mar 28 -> the 28th for ever)."""
     if repeat == "none":
         return None
     if repeat == "hourly":
@@ -71,7 +73,7 @@ def next_due(due: datetime, repeat: str, tz: ZoneInfo) -> datetime | None:
             nxt += timedelta(days=1)
     elif repeat == "monthly":
         y, m = (local.year + (local.month // 12), local.month % 12 + 1)
-        d = min(local.day, calendar.monthrange(y, m)[1])
+        d = min(int(anchor_day or local.day), calendar.monthrange(y, m)[1])
         nxt = local.replace(year=y, month=m, day=d)
     else:
         return None
@@ -96,7 +98,19 @@ def upcoming_reminders(tenant_id: str, limit: int = 50, include_done: bool = Fal
 
 
 PINNED_CHARS = 1500     # "hamesha yaad": always in the prompt, kept short (idea from Hermes Agent)
-RECENT_FACTS = 40       # newest other facts in the prompt; older ones are found with memory_search
+RECENT_FACTS = 40       # v0.605: the default of the `memory_recent_facts` setting (see recent_facts()); kept for callers
+
+
+def recent_facts() -> int:
+    """v0.605 JUST IN TIME: how many of her newest (unpinned) facts ride the system prompt. 40 -> 15 by default:
+    pinned facts all ride, the facts closest IN MEANING to her message ride the turn block (yaad.relevant_facts),
+    and the rest are one yaad_khojo / memory_search away - the Claude shape (a short memory summary in, the rest
+    looked up)."""
+    try:
+        from .config import get_settings
+        return max(0, int(getattr(get_settings(), "memory_recent_facts", 15)))
+    except Exception:
+        return 15
 
 
 def memory_facts(tenant_id: str, limit: int = 60, conversation_id: str = "") -> list[MemoryFact]:
@@ -111,7 +125,9 @@ def memory_facts(tenant_id: str, limit: int = 60, conversation_id: str = "") -> 
         q = select(MemoryFact).where(MemoryFact.tenant_id == tenant_id,
                                      (MemoryFact.pinned.is_(None)) | (MemoryFact.pinned.is_(False)))
         if allowed is not None:
-            q = q.where(MemoryFact.conversation_id.is_(None) | MemoryFact.conversation_id.in_(allowed))
+            from .fence import main_memory_ok   # v0.609 a Session with 'use main memory' off: only its own facts
+            q = q.where(MemoryFact.conversation_id.is_(None) | MemoryFact.conversation_id.in_(allowed)) \
+                if main_memory_ok(conversation_id) else q.where(MemoryFact.conversation_id.in_(allowed))
         rest = s.scalars(q.order_by(MemoryFact.id.desc()).limit(max(0, limit))).all()
         for r in list(pinned) + list(rest):
             s.expunge(r)
@@ -148,7 +164,8 @@ def context_block(tenant_id: str, conversation_id: str = "") -> str:
     lines = []
     try:   # v0.250 "Mere baare mein": her memory page first (unless she turned recall off)
         from .aboutme import block as _about
-        ab = _about(tenant_id)
+        from .fence import main_memory_ok   # v0.609 a Session on its own memory never reads her main page
+        ab = _about(tenant_id) if main_memory_ok(conversation_id) else ""
         if ab:
             lines.append(ab)
     except Exception:
@@ -159,24 +176,41 @@ def context_block(tenant_id: str, conversation_id: str = "") -> str:
         lines.append(f"User's city: {p.city}")
     if p.language:
         lines.append(f"Preferred language: {p.language}")
-    lines.append(f"User's time zone: {p.timezone or 'Asia/Kolkata'}; local time now {datetime.now(tz).strftime('%A %d %B %Y %H:%M')}")
+    lines.append(f"User's time zone: {p.timezone or 'Asia/Kolkata'}; today is {datetime.now(tz).strftime('%A %d %B %Y')} "
+                 "(the exact time rides with her newest message)")   # wave 9: no minute here - it broke the prompt cache
     if p.briefing_time:
         lines.append(f"Morning briefing is set for {p.briefing_time} every day")
     jobs = active_routines(tenant_id)
     if jobs:
         lines.append("Your automatic jobs for this user (id: title, repeat, next run):")
         lines += [f"- {j['id']}: {j['title']}, {j['repeat']}, {j['next_run_local']}" for j in jobs]
-    facts = memory_facts(tenant_id, RECENT_FACTS, conversation_id)
+    facts = memory_facts(tenant_id, recent_facts(), conversation_id)
     pins = [f for f in facts if f.pinned]
     if pins:
         lines.append("ALWAYS keep in mind (the user pinned these; id: fact):")
         lines += [f"- {f.id}: {f.text}" for f in pins]
     others = [f for f in facts if not f.pinned]
-    if others:
-        lines.append("Things the user asked you to remember (id: fact):")
-        lines += [f"- {f.id}: {f.text}" for f in others]
+    # v0.665 SACH KA HISAAB: a fact Hoola picked up by itself (source auto) is NOT her instruction, and an old fact may be
+    # out of date - both used to sit under "the user asked you to remember", undated, and were stated to her as truth
+    hers = [f for f in others if (f.source or "") != "auto"]
+    guessed = [f for f in others if (f.source or "") == "auto"]
+
+    def _when(f) -> str:
+        try:
+            return f.created_at.strftime("%d %b %Y")
+        except Exception:   # noqa: BLE001
+            return "?"
+    if hers:
+        lines.append("Things the user asked you to remember (id: fact, saved on):")
+        lines += [f"- {f.id}: {f.text} (saved {_when(f)})" for f in hers]
+    if guessed:
+        lines.append("Things YOU picked up from earlier chats - your own reading, not her words (id: fact, noted on). "
+                     "They can be wrong or out of date: before you act on one or state it as a fact, check it with her "
+                     "in a few words (e.g. 'aapka godown ab bhi Chakan mein hai na?'):")
+        lines += [f"- {f.id}: {f.text} (noted {_when(f)})" for f in guessed]
     if memory_count(tenant_id) > len(facts):
-        lines.append("Older things the user told you are not listed here: use memory_search to find them when needed.")
+        lines.append("Older things the user told you are not listed here: yaad_khojo (or memory_search for a saved "
+                     "fact) finds them in one call - look them up before saying you do not know or asking her again.")
     return "\n".join(lines)
 
 
@@ -320,3 +354,10 @@ def active_routines(tenant_id: str) -> list[dict]:
         rows = s.scalars(select(Routine).where(Routine.tenant_id == tenant_id, Routine.status == "active")
                          .order_by(Routine.next_run)).all()
         return [routine_view(r, tz) for r in rows]
+
+
+def anchor_of(due: datetime, repeat: str, tz: ZoneInfo) -> int | None:
+    """v0.667 the day of the month a monthly repeat keeps (None for any other repeat)."""
+    if repeat != "monthly" or due is None:
+        return None
+    return as_utc(due).astimezone(tz).day

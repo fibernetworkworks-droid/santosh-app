@@ -2,13 +2,14 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import random
 import re
 import time
 import json
 import logging
 from collections import defaultdict
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from sqlalchemy import select
 
@@ -32,6 +33,17 @@ log = logging.getLogger("santosh.agent")
 
 _client = None
 _locks: dict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
+_HOLDER: dict[str, str] = {}   # v0.667 who holds each chat's lock right now (owner / goal / wake / routine ...)
+
+
+@contextlib.asynccontextmanager
+async def _holding(lock: asyncio.Lock, conversation_id: str):
+    """The chat lock; who holds it is forgotten the moment it is released."""
+    async with lock:
+        try:
+            yield
+        finally:
+            _HOLDER.pop(conversation_id, None)
 # v0.187 the truth about the last finished turn of this conversation, for the voice call's late result
 # ({"outcome": done|partial|stuck|stopped|talk|continuing, "left": what remains, "goal": the goal line, "at": ts})
 LAST_OUTCOME: dict[str, dict] = {}
@@ -74,6 +86,17 @@ def _load_history(conversation_id: str) -> list[dict]:
     if _ctx.full_mode():
         return _sanitize(yaad.full_history(conversation_id))
     return _sanitize(yaad.history(conversation_id))
+
+
+def _now_note(tenant_id: str | None) -> str:
+    """wave 9: "[Current time: Saturday 07 Nov 2026, 9:32 PM IST]" in her own time zone, for THIS message only."""
+    try:
+        from .. import life
+        t = datetime.now(life.tz_of(tenant_id or "default"))
+    except Exception:   # noqa: BLE001
+        from zoneinfo import ZoneInfo
+        t = datetime.now(ZoneInfo("Asia/Kolkata"))
+    return f"[Current time: {t.strftime('%A %d %b %Y, %I:%M %p').replace(' 0', ' ')} {t.tzname() or ''}]".replace(" ]", "]")
 
 
 def _with_memory(history: list[dict], block: str) -> None:
@@ -126,10 +149,10 @@ def _results_first(blocks: list) -> list:
 
 
 # v0.216 the honest answer for a result the crash lost (the model is told to check the step, not to guess)
-TOOL_RESULT_LOST = ("[System: yeh tool result ek crash ke beech save nahi ho paya tha. Is step ka asli status "
-                    "khud check karke (status/list jaisa tool) aage badho, andaza mat lagao.]")
+TOOL_RESULT_LOST = ("[System: this tool result was not saved because of a crash. Check the real status of this step "
+                    "yourself (with a status/list kind of tool) and carry on; do not guess.]")
 # v0.213 the prefill guard's continuation line (unchanged text, now inside _api_ready)
-CONTINUE_NUDGE = "[System: upar ki baat-cheet ke hisaab se aage badho.]"
+CONTINUE_NUDGE = "[System: carry on according to the conversation above.]"
 
 
 def _sanitize(msgs: list[dict]) -> list[dict]:
@@ -266,6 +289,30 @@ _LONG_TURN: set[str] = set()     # v0.473 turns that moved to the long-job caps 
 _PROGRESS: dict[str, float] = {}  # v0.311 conv -> when its running turn last finished a tool (the deadline reads it)
 
 
+# PARITY Phase 4: long work stays in the turn. Tools that run a whole crew / research run inside her turn get the long
+# tool clock instead of the 300 s one (an inline research run's own soft clock is 420 s - it was cut at 300 s before).
+LONG_IN_TURN = frozenset({"deploy_agents", "research_run"})
+STATS_INTURN: dict[str, int] = {"turns": 0, "crews_kept_in_turn": 0, "research_kept_in_turn": 0}
+
+
+def work_in_turn(ctx, settings=None) -> bool:
+    """True = this is HER chat turn and long work (crews, research) runs inside it and comes back as the reply.
+    A call's brain turn (she is waiting on the line), routines, wakes, goal rounds and staff keep the old lanes."""
+    st = settings or get_settings()
+    if not getattr(st, "chat_work_in_turn", False):
+        return False
+    if (getattr(ctx, "actor", "owner") or "owner") != "owner":
+        return False
+    return not VOICE_BRAIN_NOW.get()
+
+
+def _calls_cap(settings, ctx, base: int) -> int:
+    """The breaker's tool-call cap for this turn: her in-turn chat gets chat_max_calls (~200), never less than before."""
+    if work_in_turn(ctx, settings):
+        return max(int(base), int(getattr(settings, "chat_max_calls", 0) or 0))
+    return int(base)
+
+
 async def _with_deadline(coro, conversation_id: str, first: float, long: float):
     """v0.473 the turn's lock deadline. A turn that became a long job mid-way (kaam_plan written, or the short cap
     reached with work going) gets the long-job deadline instead of being killed at the short one."""
@@ -302,10 +349,75 @@ def _no_think(content):
     return content
 
 
-def _save(conversation_id: str, role: str, content, display: str | None = None) -> None:
+def _save(conversation_id: str, role: str, content, display: str | None = None, in_history: bool = True) -> None:
     content = _no_think(content)
     with session() as s:
-        s.add(Message(conversation_id=conversation_id, role=role, content=content, display=display, in_history=True))
+        s.add(Message(conversation_id=conversation_id, role=role, content=content, display=display,
+                      in_history=in_history))
+
+
+def _save_pre(conversation_id: str, role: str, content, display: str | None = None) -> None:
+    """v0.666 a reply given BEFORE the chat lock (a card's "haan", a research plan, a stop by words). When another turn
+    holds the chat, its last saved row may be a tool_use whose tool_result is not written yet - a row saved now would
+    land between them, the real result was dropped as an orphan next turn (TOOL_RESULT_LOST) and the model redid a
+    send it had already done. Then the row is shown, but kept out of the model's history."""
+    lk = _locks.get(conversation_id) if isinstance(_locks, dict) else None
+    _save(conversation_id, role, content, display=display, in_history=not (lk is not None and lk.locked()))
+
+
+# v0.657 PAKKA KAAM: run_turn never raises - a crash / timeout / budget stop RETURNS a friendly line, so callers
+# (a finished job's wake report, a routine) could not tell it from a real answer and marked the work delivered.
+# Every failed ending stamps the time here; `turn_failed_since(conv, t0)` asks "did the turn I started fail?".
+_FAILED: dict[str, float] = {}
+TIMEOUT_TEXT = ("This task had been running for too long, so I stopped it midway. The step that was running at that moment "
+                "may be half done - please check what has already happened before asking again (or ask me and I will "
+                "check and tell you), so that no email or message goes out twice.")
+TIMEOUT_GOAL = ("This round ran out of time and the step in progress was stopped. The next round will first check what is "
+                "already done and carry on from there - you do not need to say anything again.")
+
+
+def _mark_failed(conversation_id: str) -> None:
+    _FAILED[conversation_id] = time.time()
+    if len(_FAILED) > 2000:
+        for k in sorted(_FAILED, key=_FAILED.get)[:1000]:
+            _FAILED.pop(k, None)
+
+
+_BG_ERR: dict[str, tuple[str, float]] = {}
+BG_ERROR_QUIET_S = 1800
+BG_ERROR_NIGHT_S = 10 * 3600
+
+
+def _say_error(tenant_id: str, who: str, text: str) -> bool:
+    """v0.662 an outage (out of credit, the model down) used to post + push one error line PER background turn -
+    every routine, goal round and job report, each with a new ref. Her own turn always hears it; a background turn
+    says the same kind of error once per tenant per 30 minutes."""
+    if (who or "owner") == "owner":
+        return True
+    if who == "wake":
+        # wave 9: a failed job report says nothing itself - kaam_followup sees turn_failed_since and posts its own honest
+        # line; both went out before ("AI busy, phir boliye" + "ho gaya") - two pushes, one asking her to repeat a thing
+        # she never asked
+        STATS_LONG["bg_errors_quiet"] = STATS_LONG.get("bg_errors_quiet", 0) + 1
+        return False
+    kind = re.sub(r"\(ref[^)]*\)|ref[:\s]*\w+|\d+", "", text or "").strip()[:80]
+    last = _BG_ERR.get(tenant_id)
+    quiet = BG_ERROR_QUIET_S
+    try:   # wave 13: in her quiet hours the same background error is said once for the night, not every 30 minutes
+        from .. import push as _push
+        if _push.is_quiet_now(tenant_id):
+            quiet = BG_ERROR_NIGHT_S
+    except Exception:
+        pass
+    if last and last[0] == kind and time.time() - last[1] < quiet:
+        STATS_LONG["bg_errors_quiet"] = STATS_LONG.get("bg_errors_quiet", 0) + 1
+        return False
+    _BG_ERR[tenant_id] = (kind, time.time())
+    return True
+
+
+def turn_failed_since(conversation_id: str, since: float) -> bool:
+    return _FAILED.get(conversation_id, 0.0) >= since
 
 
 def _pending_worker_notes(conversation_id: str) -> list[str]:
@@ -323,7 +435,36 @@ TRIM_STATS: dict[str, int] = {"lists": 0, "cut": 0}
 
 
 # v0.473 R2: the research dossier IS the evidence (its source list ends it), so it is not cut at the usual 6,000 characters
-RESULT_LIMIT = {"research_run": 40000}
+RESULT_LIMIT = {"research_run": 40000,
+                "web_fetch": 12000,     # Parity Phase 3: the one web reader returns up to 10,000 characters of page text
+                "email_check": 12000,   # v0.706 slimmed rows: 20-40 mails fit, the model no longer sees 6 of 50
+                # wave 10: a crew's deliverables ARE the evidence of the job: at 6,000 the list-slimming cut agents 4+
+                "deploy_agents": 24000, "agent_status": 24000}
+
+
+_FAIL_STATUS = {"failed", "failure", "error", "refused"}
+
+
+def tool_failure(out) -> str:
+    """v0.665 SACH KA HISAAB: the failure text of a tool result, '' when it went fine. A result like
+    {"ok": False, "stage": "check", "errors": [...]} (a failed video render, a refused promo) used to count as a
+    success because only an "error" key was read - logged ok, outcome "done", and the honesty check switched off."""
+    if not isinstance(out, dict):
+        return ""
+    if out.get("error"):
+        return str(out.get("error"))
+    if out.get("ok") is False or str(out.get("status") or "").strip().lower() in _FAIL_STATUS:
+        for k in ("reason", "message", "say", "detail", "errors", "stage", "status"):
+            if out.get(k):
+                return str(out[k])[:300]
+        return "the tool said it did not succeed"
+    return ""
+
+
+def _facts_of(content) -> str:
+    """The numbers a tool result carries, as one compact string (for the after-reply figure check)."""
+    nums = re.findall(r"\d[\d,.]*\d|\d", str(content or "")[:40000])
+    return " ".join(dict.fromkeys(nums))[:6000]
 
 
 def _short(obj, limit: int = 6000) -> str:
@@ -342,10 +483,85 @@ def _short(obj, limit: int = 6000) -> str:
                 if len(out) <= limit:
                     TRIM_STATS["lists"] += 1
                     return out
+        # v0.667 a dict whose bulk is ONE long string (a page / mail body) lost every key after it in the raw cut - the
+        # ids, the next-page cursor, the error / next hints - and the JSON broke. Long strings are shortened in place
+        # first, so every key survives and the JSON stays valid.
+        for cap in (3000, 1500, 600, 200):
+            slim = _slim_strings(obj, cap)
+            out = json.dumps(slim, ensure_ascii=False, default=str)
+            if len(out) <= limit:
+                TRIM_STATS["strings"] = TRIM_STATS.get("strings", 0) + 1
+                return out
     TRIM_STATS["cut"] += 1
+    if _head_tail_on():
+        # Parity Phase 3 CLEAN TOOLS: head + tail, so the END of a result (totals, the next-page cursor, the error at
+        # the bottom of a log, the closing sources) survives the cut too
+        head = int(limit * 0.7)
+        tail = max(0, limit - head)
+        return (s[:head] + f"…[cut: {len(s) - head - tail:,} of {len(s):,} characters left out in the middle. For "
+                "the rest ask for less - a filter, a search word, a smaller limit or the next page - or save big "
+                "data with data_fetch and read it with data_read.]…" + (s[-tail:] if tail else ""))
     return (s[:limit] + f"…[cut: showing {limit:,} of {len(s):,} characters. For the rest ask for less - a filter, a "
             "search word, a smaller limit or the next page - or save big data with data_fetch and read it with "
             "data_read.]")
+
+
+def _head_tail_on() -> bool:
+    try:
+        from ..config import get_settings
+        return bool(getattr(get_settings(), "chat_core_tools", False))
+    except Exception:
+        return False
+
+
+_MISSING_ARG = re.compile(r"missing (\d+ )?required (?:positional |keyword-only )?arguments?: (.+)$")
+_UNEXPECTED_ARG = re.compile(r"got an unexpected keyword argument '([^']+)'")
+
+
+def clean_error(name: str, e: BaseException, args: dict | None = None) -> str:
+    """Parity Phase 3 CLEAN TOOLS: a crash inside a tool never reaches the model as a raw Python error ("KeyError:
+    'x'", "NoneType object is not subscriptable"). It says what went wrong in plain words and how to fix the CALL when
+    the call itself was wrong (a missing / unknown parameter); otherwise that it was Hoola's own fault and what to do."""
+    msg = str(e)
+    m = _MISSING_ARG.search(msg)
+    if isinstance(e, TypeError) and m:
+        names = ", ".join(x.strip().strip("'") for x in m.group(2).replace(" and ", ", ").split(",") if x.strip())
+        return (f"{name} was called without its required parameter(s): {names}. Call {name} again with "
+                f"{names} filled in.")
+    m = _UNEXPECTED_ARG.search(msg)
+    if isinstance(e, TypeError) and m:
+        return (f"{name} has no parameter '{m.group(1)}'. Call it again with only the parameters in its "
+                "description.")
+    kind = type(e).__name__
+    return (f"{name} failed because of a problem inside Hoola ({kind}), not because of anything she did. Do not "
+            "repeat the same call with the same arguments: try a different tool or different arguments, or tell her "
+            "plainly in one line that this step did not work.")
+
+
+def _slim_strings(obj, cap: int, depth: int = 0):
+    """Every string longer than `cap` cut to its head + how much was left out (lists slimmed to 12 too)."""
+    if depth > 8:
+        return obj
+    if isinstance(obj, str):
+        if len(obj) <= cap:
+            return obj
+        if not _head_tail_on():
+            return obj[:cap] + (f"…[{len(obj) - cap:,} more characters cut - for the rest ask for this part alone, a "
+                                "smaller limit or the next page, or save big data with data_fetch and read it with "
+                                "data_read]")
+        head = int(cap * 0.7)   # Parity Phase 3: a long text keeps its end too (a page's last lines, a log's error)
+        tail = cap - head
+        return (obj[:head] + f"…[{len(obj) - cap:,} characters cut from the middle - for the rest ask for this part "
+                "alone, a smaller limit or the next page, or save big data with data_fetch and read it with "
+                "data_read]…" + obj[-tail:])
+    if isinstance(obj, dict):
+        return {k: _slim_strings(v, cap, depth + 1) for k, v in obj.items()}
+    if isinstance(obj, list):
+        items = [_slim_strings(v, cap, depth + 1) for v in obj[:12]]
+        if len(obj) > 12:
+            items.append(f"…[{len(obj) - 12} more items left out - ask for fewer / the next page]")
+        return items
+    return obj
 
 
 def _slim_lists(obj, keep: int, depth: int = 0):
@@ -399,15 +615,47 @@ def _model_refused(e: Exception) -> bool:
     return ("not_found" in m or "404" in m or "unknown model" in m or "model:" in m) and "model" in m
 
 
-def _hard_held(state: dict, settings) -> bool:
-    """v0.436 is this turn's answer held for the self-check? Her hard question, check switched on."""
-    return bool(state.get("hard") and getattr(settings, "hard_check", True))
+def _research_delivered(conversation_id: str, state: dict) -> bool:
+    """wave 13: a research dossier was handed to the model in THIS turn (any actor: a long-job round, a routine, a call)."""
+    if not conversation_id:
+        return False
+    try:
+        from ..research import engine as _reng
+        d = _reng.recall(conversation_id)
+        return d is not None and float(d.get("_delivered", 0)) >= float(state.get("t0", 0) or 0) > 0
+    except Exception:
+        return False
 
 
-async def _hard_check(conversation_id: str, state: dict, draft: str, history: list[dict], settings) -> list[str]:
-    """v0.436 SOCH KE JAWAB step 5: the free code check, then ONE independent reviewer call. Problems or []."""
+def _hard_held(state: dict, settings, conversation_id: str = "") -> bool:
+    """v0.436 is this turn's answer held for the self-check? Her hard question, check switched on.
+    wave 13: also every turn that writes from a research dossier - the figure check used to run only on HER hard
+    turns, so a goal round / routine / call report reached her unchecked."""
+    if not getattr(settings, "hard_check", True):
+        return False
+    if plain_loop_on(settings):
+        # parity Phase 5b: only an answer written from a research dossier is held (its figures need a source);
+        # an ordinary hard answer streams and ends the turn like any other answer (no reviewer call)
+        return _research_delivered(conversation_id, state)
+    return bool(state.get("hard")) or _research_delivered(conversation_id, state)
+
+
+def plain_loop_on(settings) -> bool:
+    return bool(getattr(settings, "chat_plain_loop", False))
+
+
+# wave 13: said under a corrected answer that still fails the free check (it used to go out as if checked)
+STATS_HARD_UNSURE = {"n": 0}
+HARD_UNSURE = ("\n\n_Please note: some figures in this answer could not be confirmed - check them once before "
+               "you use them._")
+
+
+async def _hard_check(conversation_id: str, state: dict, draft: str, history: list[dict], settings,
+                      free_only: bool = False) -> list[str]:
+    """v0.436 SOCH KE JAWAB step 5: the free code check, then ONE independent reviewer call. Problems or [].
+    wave 13 free_only = the corrected answer's re-check: code + claim checks only, no model call."""
     from . import hard as _hardc
-    bus.publish(conversation_id, "step", {"tool": "jaanch", "label": "Jawab jaanch raha hoon", "state": "running",
+    bus.publish(conversation_id, "step", {"tool": "jaanch", "label": "Checking the answer", "state": "running",
                                           "id": "hard-check"})
     try:
         ev, names = _hardc.evidence(history)
@@ -421,13 +669,13 @@ async def _hard_check(conversation_id: str, state: dict, draft: str, history: li
                 _d = _reng.recall(conversation_id)
                 if _d is not None and float(_d.get("_delivered", 0)) >= float(state.get("t0", 0)):   # handed to the model in THIS turn
                     problems = _claims.check_report(draft, _d)
-                    if not problems:    # v0.480 R9: then a reviewer reads the WORDING against the dossier's notes (the generic one only sees a truncated tail)
+                    if not problems and not free_only:    # v0.480 R9: then a reviewer reads the WORDING against the dossier's notes (the generic one only sees a truncated tail)
                         from ..research import review as _rrev
                         problems = await _rrev.review_report(state.get("request", ""), draft, _d, settings)
                         reviewed = bool(getattr(settings, "research_review", True)) and bool(_d.get("fields"))
             except Exception:
                 log.exception("claim check failed")
-        if not problems and not reviewed:
+        if not problems and not reviewed and not free_only:
             problems = await _hardc.review(state.get("request", ""), draft, ev, settings)
         state["hard_check"] = {"problems": problems, "tools": names[:12]}
         return problems
@@ -439,12 +687,53 @@ async def _hard_check(conversation_id: str, state: dict, draft: str, history: li
                                               "id": "hard-check"})
 
 
+# v0.630 HAIKU DIMAAG: set by a voice call before it hands her words to the brain (copied into the turn's task)
+VOICE_BRAIN_NOW: _cv.ContextVar[bool] = _cv.ContextVar("hoola_voice_brain_now", default=False)
+# wave 9: HER words of this turn (only her own turns set it) - a bulk send is allowed only when THESE say send, never on
+# the model's own reading of an earlier "haan" (create_campaign auto_send / confirm_send used to trust the model)
+ASK_NOW: _cv.ContextVar[str] = _cv.ContextVar("hoola_ask_now", default="")
+# v0.636 KAHAN RUKA: her 16:22 call ask waited 18 s BEFORE the first Claude call (the calls were 5.3 s + 3.3 s) - a call
+# brain turn now times every stage before its first model call and logs them in one line (`brain prep ...`)
+_PREP: _cv.ContextVar = _cv.ContextVar("hoola_brain_prep", default=None)
+STATS_PREP = {"logged": 0, "compact_skipped": 0, "results_cut": 0}
+
+
+def _mark(stage: str) -> None:
+    p = _PREP.get()
+    if p is None or p.get("done"):
+        return
+    now = time.monotonic()
+    p["marks"].append((stage, now - p["last"]))
+    p["last"] = now
+
+
+def _prep_line() -> str:
+    p = _PREP.get()
+    if p is None or p.get("done"):
+        return ""
+    p["done"] = True
+    total = time.monotonic() - p["t0"]
+    return f"brain prep {total:.1f}s before the first call: " + ", ".join(f"{k} {v:.1f}s" for k, v in p["marks"])
+SIMPLE_MODEL = {"ok": True, "calls": 0, "failed": 0}
+
+
 def model_for(settings, hard: bool, long_job: bool) -> str:
     """'' = the chat model. A hard reasoning ask (not a long job - those run many steps and stay on the chat model at
-    agent_long_effort) gets agent_hard_model."""
+    agent_long_effort) gets agent_hard_model. v0.630 HAIKU DIMAAG: an ordinary ask (not hard, not long) gets
+    chat_simple_model (Haiku, ~13x cheaper than Sonnet); a voice call's brain turn gets voice_brain_model."""
+    if VOICE_BRAIN_NOW.get() and getattr(settings, "voice_brain_model", ""):
+        # v0.643 FIRST: a call question that LOOKS big ("PDF banao", an open long job in the chat) used to fall into
+        # the long-job branch and ran on Sonnet with a 16k cap - her 17:44 call: 9.1 + 5.8 + 23.0 + 4.3 s. She is
+        # waiting on the line; the call brain is always voice_brain_model (Haiku)
+        return str(settings.voice_brain_model) if SIMPLE_MODEL["ok"] else ""
+    if getattr(settings, "chat_one_model", False):
+        return ""        # v0.732 PARITY PHASE 1: no Haiku / Sonnet / Opus split by ask size - the chat model, every step
     if hard and not long_job:
         return str(getattr(settings, "agent_hard_model", "") or "")
-    return ""
+    if long_job:
+        return ""
+    simple = str(getattr(settings, "chat_simple_model", "") or "")
+    return simple if simple and SIMPLE_MODEL["ok"] else ""
 EFFORT = {"ok": True, "calls": 0, "refused": 0}
 
 
@@ -458,11 +747,39 @@ def effort_for(settings, long_job: bool, hard: bool) -> str:
     return ""
 
 
-def think_wanted(settings, goal_open: bool) -> bool:
+def think_wanted(settings, goal_open: bool, level: str = "") -> bool:
     """v0.232 PHASE C (fix 6 of the long-task report): she sees Hoola THINK - the Soch card on the phone and console.
-    chat_thinking = goal (default: only while a long job runs, short chats stay fast) | on | off."""
+    chat_thinking = goal (default: only while a long job runs, short chats stay fast) | on | off.
+    parity Phase 4: with chat_thinking_adaptive on and a turn level set, every chat turn may think (Claude decides how
+    much under the turn's effort); chat_thinking=off still means never."""
     mode = (getattr(settings, "chat_thinking", "goal") or "off").lower()
+    if level and mode != "off" and getattr(settings, "chat_thinking_adaptive", False):
+        return THINK["ok"]
     return THINK["ok"] and (mode == "on" or (mode == "goal" and goal_open))
+
+
+# parity Phase 4: a plain greeting / thanks / ok thinks at effort low (her Hinglish forms kept)
+_PLAIN = re.compile(
+    r"^\s*(hi+|hello+|hey+|hii+|namaste|namaskar|good\s+(morning|afternoon|evening|night)|gm|gn|thanks?|thank\s*you|"
+    r"thx|ty|shukriya|dhanyavaad|dhanyavad|ok+|okay|okk+|k|cool|nice|great|bye|alright|haan|han|ha|ji|haan\s*ji|"
+    r"theek\s*hai|thik\s*hai|achha|accha|acha|kaise\s+ho|how\s+are\s+you|sup|yo)[\s!.?,]*"
+    r"(hoola|ji|bhai|dear|santosh)?[\s!.?,]*$", re.I)
+
+
+def think_level(settings, text: str, long_job: bool, hard: bool) -> str:
+    """parity Phase 4 THINKING like Claude: the effort THIS turn thinks at - '' when chat_thinking_adaptive is off or
+    chat_thinking is off (today's behaviour), else high for a hard ask / long job / big ask, low for a plain greeting,
+    medium for everything else."""
+    if not getattr(settings, "chat_thinking_adaptive", False):
+        return ""
+    if (getattr(settings, "chat_thinking", "goal") or "off").lower() == "off":
+        return ""
+    if long_job or hard:
+        return "high"
+    t = (text or "").strip()
+    if not t or _PLAIN.match(t):
+        return "low"
+    return "medium"
 
 
 def _loop_ok(history: list[dict]) -> bool:
@@ -491,6 +808,65 @@ def _think_refused(e: Exception) -> bool:
 
 async def _call_brain(brain: str, system: str, history: list[dict], settings, tools: list[dict] | None = None,
                       live=None, max_tokens: int | None = None, think: bool = False) -> tuple[list[dict], str]:
+    """v0.732 PARITY Phase 0: the one model-call funnel also keeps WHAT THE MODEL RECEIVED (reqdump: system text, tool
+    names, messages, brain / model, max_tokens) for GET /api/conversations/{id}/request/{turn}. Fail-open and off the
+    loop; behaviour unchanged (switch `request_dump`)."""
+    _mark("request")      # v0.639 the step's request was built (prune / trim / sanitize)
+    handle = _dump_start(brain, system, history, settings, tools, max_tokens)
+    try:
+        out = await _call_brain_once(brain, system, history, settings, tools, live, max_tokens, think)
+    except BaseException as e:   # noqa: BLE001 - recorded, then re-raised untouched
+        _dump_done(handle, False, f"{type(e).__name__}: {str(e)[:300]}")
+        raise
+    _dump_done(handle, True)
+    return out
+
+
+def _dump_model(brain: str, settings) -> str:
+    """The brain / model this call goes to, as the request dump names it (the SDK door's GLM said when it answers)."""
+    if brain == "omniroute":
+        return str(getattr(settings, "omniroute_model", "") or "")
+    if brain == "glm":
+        return str(getattr(settings, "glm_model", "") or "")
+    sent = _sent_model(_MODEL_NOW.get() or settings.anthropic_model)
+    try:
+        from .. import glmdoor
+        if glmdoor.active():
+            b = glmdoor.brain()
+            m = settings.omniroute_model if b == "omniroute" else settings.glm_model
+            return f"{b}:{m} via SDK door (asked {sent})"
+    except Exception:
+        pass
+    return sent
+
+
+def _dump_start(brain, system, history, settings, tools, max_tokens):
+    try:
+        from .. import reqdump
+        if not reqdump.on():
+            return None
+        tl = tools if tools is not None else TOOLS
+        if brain in ("glm", "omniroute"):
+            from . import toolsearch as _ts
+            tl = _ts.loaded(tl)
+        return reqdump.start(brain, _dump_model(brain, settings), int(max_tokens or settings.agent_max_tokens or 0),
+                             system, tl, history, prep=_api_ready)
+    except Exception:
+        return None
+
+
+def _dump_done(handle, ok: bool, error: str = "") -> None:
+    if handle is None:
+        return
+    try:
+        from .. import reqdump
+        reqdump.done(handle, ok, error)
+    except Exception:
+        pass
+
+
+async def _call_brain_once(brain: str, system: str, history: list[dict], settings, tools: list[dict] | None = None,
+                           live=None, max_tokens: int | None = None, think: bool = False) -> tuple[list[dict], str]:
     """One model call on one brain. Raises when that brain fails. With `live` (v0.161) the words stream as written.
     v0.187 goal mode raises max_tokens (6000) so a plan's steps are not cut at the chat-size 2000.
     v0.213 the prefill guard: the production model refuses a conversation whose LAST message is an assistant
@@ -510,10 +886,14 @@ async def _call_brain(brain: str, system: str, history: list[dict], settings, to
     # the thinking reaches the Soch card while the words are held
     api_stream = streaming or live is not None or cap > NONSTREAM_MAX_TOKENS
     if brain in ("glm", "omniroute"):
+        from . import toolsearch as _ts   # v0.563 deferred tools + tool references are Claude-only
+        tools = _ts.loaded(tools)
+        history = _ts.fit_refs(history, [], keep=False)
         history = [{**m, "content": _no_think(m["content"])} for m in history]   # v0.232 Claude-only blocks
         if streaming:
             blocks, stop, usage = await llm.openai_stream(brain, system, tools, history, cap,
-                                                          live.feed, on_think=live.feed_think)   # v0.171 thinking
+                                                          live.feed, on_think=live.feed_think,   # v0.171 thinking
+                                                          on_tool=getattr(live, "feed_tool", None))   # parity Phase 6
         else:
             blocks, stop, usage = await llm.openai_create(brain, system, tools, history, cap)
         log.info("%s in=%s out=%s %s", llm.describe(), usage.get("prompt_tokens"), usage.get("completion_tokens"),
@@ -521,30 +901,108 @@ async def _call_brain(brain: str, system: str, history: list[dict], settings, to
         from . import context as _ctx   # v0.237 the gauge learns this brain's real chars-per-token
         _ctx.after_call(brain, system, tools, history, usage.get("prompt_tokens"), bool(usage.get("estimated")))
         return blocks, stop
+    _lvl = llm.REASONING_NOW.get()
+    if think and _lvl in ("low", "medium") and cap < 8000:
+        cap = int(cap) + llm.reasoning_room(_lvl)   # parity Phase 4: Claude's thinking counts inside max_tokens too
     over = _MODEL_NOW.get()
-    if over and over != settings.anthropic_model and HARD_MODEL["ok"]:
+    stat = HARD_MODEL if over == str(getattr(settings, "agent_hard_model", "") or "") else SIMPLE_MODEL
+    if over and over != settings.anthropic_model and stat["ok"]:
         # v0.429 SOCH KE JAWAB step 2: a hard reasoning ask runs on the strongest model (agent_hard_model, Opus). Any
         # failure there (not available on this key, overloaded, ...) retries the SAME call on the chat model once, so
         # she always gets an answer; a 404 / unknown model turns the switch off for this process.
         try:
-            HARD_MODEL["calls"] += 1
+            stat["calls"] += 1
             return await _claude_call(over, system, history, settings, tools, live, cap, think, api_stream)
         except asyncio.CancelledError:
             raise
         except Exception as e:   # noqa: BLE001 - the chat model answers instead
-            HARD_MODEL["failed"] += 1
+            stat["failed"] += 1
             if _model_refused(e):
-                HARD_MODEL["ok"] = False
-            log.warning("hard model %s failed, answering on %s: %s", over, settings.anthropic_model, str(e)[:200])
+                stat["ok"] = False
+            log.warning("model %s failed, answering on %s: %s", over, settings.anthropic_model, str(e)[:200])
             if live is not None:
                 live.reset()
-    return await _claude_call(settings.anthropic_model, system, history, settings, tools, live, cap, think, api_stream)
+            if _sent_model(over) == _sent_model(settings.anthropic_model):
+                # wave 9: SAB HAIKU would send the fallback to the very model that just failed - this one call goes to
+                # the real fallback model instead (said in the log); every other call stays on the one model
+                from .. import usage as _u
+                tok = _u.ONE_MODEL_BYPASS.set(True)
+                try:
+                    log.warning("fallback bypasses the one-model rule once: %s failed, %s answers", _sent_model(over),
+                                settings.anthropic_model)
+                    return await _claude_call(settings.anthropic_model, system, history, settings, tools, live, cap,
+                                              think, api_stream)
+                finally:
+                    _u.ONE_MODEL_BYPASS.reset(tok)
+    try:
+        return await _claude_call(settings.anthropic_model, system, history, settings, tools, live, cap, think, api_stream)
+    except asyncio.CancelledError:
+        raise
+    except Exception as e:   # noqa: BLE001
+        # wave 9: the ONE model (SAB HAIKU) is overloaded / down: the turn used to die there (the SDK's own retries are on
+        # the same model). Once, the real chat model answers instead - never on a credit / bad-request error.
+        low = str(e).lower()
+        if getattr(settings, "chat_one_model", False) and not VOICE_BRAIN_NOW.get():
+            raise        # v0.732 one model: _think asks the SAME model again, never another one mid-chat
+        if _sent_model(settings.anthropic_model) == settings.anthropic_model or "credit" in low or "billing" in low \
+                or not any(x in low for x in ("overloaded", "529", "error 5", "503", "502", "500", "timed out", "rate limit", "429")):
+            raise
+        from .. import usage as _u
+        log.warning("one model %s failed (%s); %s answers this call", _sent_model(settings.anthropic_model), low[:120],
+                    settings.anthropic_model)
+        if live is not None:
+            live.reset()
+        tok = _u.ONE_MODEL_BYPASS.set(True)
+        try:
+            return await _claude_call(settings.anthropic_model, system, history, settings, tools, live, cap, think,
+                                      api_stream)
+        finally:
+            _u.ONE_MODEL_BYPASS.reset(tok)
+
+
+def _sent_model(model: str) -> str:
+    """v0.643 the model the SDK door really sends (usage.one_model may rewrite it), for the `claude call` log line."""
+    try:
+        from .. import usage
+        return str(usage.one_model({"model": model}).get("model") or model)
+    except Exception:
+        return model
 
 
 async def _claude_call(model: str, system: str, history: list[dict], settings, tools: list[dict], live, cap: int,
                        think: bool, streaming: bool) -> tuple[list[dict], str]:
+    """v0.635 every Claude call's own time + shape in the log (`claude call 4.2s ...`): her call turns spent 20 s before
+    the first tool and the harness log could not say which part - now it can."""
+    t0 = time.monotonic()
+    try:
+        _pl = _prep_line()
+        if _pl:
+            STATS_PREP["logged"] += 1
+            log.info("%s", _pl)
+    except Exception:
+        pass
+    try:
+        return await _claude_call_once(model, system, history, settings, tools, live, cap, think, streaming)
+    finally:
+        try:
+            log.info("claude call %.1fs model=%s msgs=%d chars=%d tools=%d think=%s effort=%s cap=%d voice=%s",
+                     time.monotonic() - t0, _sent_model(model), len(history),
+                     len(str(system)) + sum(len(str(m.get("content"))) for m in history),
+                     len(tools or []), bool(think and THINK["ok"]), _EFFORT_NOW.get() or "-", cap,
+                     VOICE_BRAIN_NOW.get())
+        except Exception:
+            pass
+
+
+async def _claude_call_once(model: str, system: str, history: list[dict], settings, tools: list[dict], live, cap: int,
+                            think: bool, streaming: bool) -> tuple[list[dict], str]:
     """One Claude call on `model` (v0.429 split out of _call_brain so a hard ask can try Opus and fall back)."""
-    from . import cache
+    from . import cache, toolsearch as _ts
+    deferred = any(isinstance(t, dict) and t.get("defer_loading") for t in (tools or []))
+    if deferred and not _ts.NATIVE["ok"]:
+        tools = _ts.loaded(tools)          # v0.563 refused earlier in this process: the old shape
+        deferred = False
+    history = _ts.fit_refs(history, tools, keep=deferred)   # a reference must resolve, or the whole call 400s
     kw = cache.shape(dict(model=model, max_tokens=cap,
                           system=system, tools=tools, messages=history), getattr(settings, "prompt_cache", True))
     api = get_client().messages
@@ -560,6 +1018,17 @@ async def _claude_call(model: str, system: str, history: list[dict], settings, t
             return await _claude_stream(api, kw, live)
         resp = await api.create(**kw)
     except Exception as e:
+        if deferred and _ts.refused(e):
+            # v0.563 this API refuses deferred tools / tool references: the same call the old way, off for this process
+            log.warning("tool search refused, continuing with the loaded tools only: %s", str(e)[:200])
+            kw = _ts.downgrade(kw)
+            if live is not None:
+                live.reset()
+            if streaming and hasattr(api, "stream"):
+                return await _claude_stream(api, kw, live)
+            resp = await api.create(**kw)
+            _learn_claude(kw, resp)
+            return [_block_to_dict(b) for b in resp.content], resp.stop_reason
         if "extra_body" in kw and _effort_refused(e):
             # v0.331 this model / API refuses the effort setting: go on without it (the reply matters more)
             EFFORT["ok"], EFFORT["refused"] = False, EFFORT["refused"] + 1
@@ -617,20 +1086,33 @@ async def _claude_stream(api, kw: dict, live) -> tuple[list[dict], str]:
     the SDK, which parses it only when the block is complete. Prompt caching is the same request shape.
     v0.171 thinking deltas (adaptive / extended thinking) stream to the console's Soch card, never into the answer."""
     live = live if live is not None else _QuietLive()
+    on_tool = getattr(live, "feed_tool", None)   # parity Phase 6: a page written in a tool call shows as it grows
+    tool_in: dict[int, list] = {}
     async with api.stream(**kw) as st:
         async for ev in st:
             t = getattr(ev, "type", "")
-            if t == "content_block_start" and getattr(getattr(ev, "content_block", None), "type", "") == "text":
+            cb = getattr(ev, "content_block", None)
+            if t == "content_block_start" and getattr(cb, "type", "") == "text":
                 live.new_text_block()
+            elif t == "content_block_start" and getattr(cb, "type", "") == "tool_use" and on_tool:
+                tool_in[int(getattr(ev, "index", 0) or 0)] = [getattr(cb, "name", "") or "", ""]
             elif t == "content_block_delta":
                 dt = getattr(getattr(ev, "delta", None), "type", "")
                 if dt == "text_delta":
                     live.feed(ev.delta.text)
                 elif dt == "thinking_delta":
                     live.feed_think(getattr(ev.delta, "thinking", "") or "")
+                elif dt == "input_json_delta" and on_tool:
+                    i = int(getattr(ev, "index", 0) or 0)
+                    if i in tool_in:
+                        tool_in[i][1] += getattr(ev.delta, "partial_json", "") or ""
+                        try:
+                            on_tool(i, tool_in[i][0], tool_in[i][1])
+                        except Exception:
+                            pass
         msg = await st.get_final_message()
     from .. import usage   # the SDK wrapper counts messages.create only: a streamed answer is counted here
-    usage.from_anthropic(kw.get("model", ""), msg)
+    usage.from_anthropic(_sent_model(kw.get("model", "")), msg)   # wave 9: the model the SDK door REALLY sent (SAB HAIKU)
     _learn_claude(kw, msg)
     return [_block_to_dict(b) for b in msg.content], msg.stop_reason
 
@@ -641,14 +1123,24 @@ async def _think(brain: str, system: str, history: list[dict], settings, tools: 
     either never leaves the user without an answer. Returns (blocks, stop_reason, the brain that answered).
     v0.161 a brain that fails after some streamed words: `delta_reset`, and the next brain writes them again."""
     order = [brain]
-    if brain == "claude":
+    if llm.one_model():
+        # v0.732 PARITY PHASE 1 EK MODEL: the chat stays on its model - the SAME brain is asked again a few seconds
+        # apart (a GLM timeout is never retried inside one request), never another brain; then the error goes up and
+        # she reads the plain "busy, try again" line
+        order = [brain] * (1 + max(0, int(getattr(settings, "chat_model_retries", 2) or 0)))
+    elif brain == "claude":
         cheap = llm.cheap_brain()
         if cheap and not llm._has_media(history[-1:]):   # pictures and PDFs need Claude; plain text can go to the cheap brain
             order.append(cheap)
     elif _claude_ready():
         order.append("claude")
     last: Exception | None = None
-    for b in order:
+    for i, b in enumerate(order):
+        if i and llm.one_model():
+            if last is not None and not _same_model_retry_ok(last):
+                break
+            STATS_ONE_MODEL["retries"] += 1
+            await asyncio.sleep(float(getattr(settings, "chat_model_retry_s", 3.0) or 0) * i)
         try:
             extra = {"think": True} if (_THINK_NOW.get() and b == "claude") else {}   # v0.232 only when it thinks
             blocks, stop = await _call_brain(b, system, history, settings, tools, live, max_tokens, **extra)
@@ -662,29 +1154,84 @@ async def _think(brain: str, system: str, history: list[dict], settings, tools: 
             last = e
             if live is not None:
                 live.reset()
-            log.warning("%s failed%s: %s", b, "; trying the other brain" if b != order[-1] else "", e)
+            log.warning("%s failed%s: %s", b, "; asking the same model again" if llm.one_model() and i + 1 < len(order)
+                        else ("; trying the other brain" if b != order[-1] else ""), e)
     assert last is not None
     raise last
 
 
-def _friendly_error(e: BaseException) -> str:
+STATS_ONE_MODEL = {"retries": 0}
+
+
+def _same_model_retry_ok(e: BaseException) -> bool:
+    """v0.732 a failure worth asking the same model again: busy / rate limit / timeout / unreachable / a 5xx. A wrong key,
+    a refused request, an out-of-credit or a too-long chat will not get better a few seconds later."""
+    low = str(e).lower()
+    if "credit" in low or "billing" in low:
+        return False
+    from . import context as _ctx
+    if _ctx.is_overflow(str(e)):
+        return False
+    return any(x in low for x in ("overloaded", "529", "error 5", "503", "502", "500", "timed out", "timeout",
+                                  "rate limit", "429", "not reachable", "connection", "broken answer"))
+
+
+OUTAGE_TEXT = "The Hoola AI service is paused for a little while - we are fixing it. Please try again in a moment."
+
+
+def _operator(tenant_id: str | None) -> bool:
+    """wave 9: the tenant that OWNS the server's AI key (it pays the Anthropic bill) - only that tenant is told to recharge."""
+    try:
+        op = str(getattr(get_settings(), "hoola_operator_tenant", "default") or "default")
+    except Exception:   # noqa: BLE001
+        op = "default"
+    return (tenant_id or "default") == op
+
+
+def _friendly_error(e: BaseException, tenant_id: str | None = None, who: str = "owner", spoken: bool = False) -> str:
     """v0.237 a clean line for her: never the raw technical text (it stays in the log under the same short ref,
-    and the turn_failed event keeps it for the developer). An HTTP status, when there is one, rides as a code."""
+    and the turn_failed event keeps it for the developer). An HTTP status, when there is one, rides as a code.
+    wave 9: the AI key is ONE key for the whole server - a staff member, a customer or another tenant was told to recharge
+    Anthropic on console.anthropic.com (and a call could read it aloud with its code / ref tail). Only the operator's own
+    turn hears the billing line; everyone else hears a neutral outage line; a spoken line never carries the code / ref."""
     import re as _re
     s = str(e)
     low = s.lower()
-    busy = any(x in low for x in ("not reachable", "error 429", "error 5", "overloaded", "rate limit", "timed out", "broken answer"))
+    busy = any(x in low for x in ("not reachable", "error 429", "error 5", "overloaded", "rate limit", "timed out", "broken answer",
+                                  "paused after repeated failures", "empty answer", "no answer"))
     from . import context as _ctx
-    if _ctx.is_overflow(s):
-        head = "Yeh chat bahut lambi ho gayi hai. Naya chat shuru karke wahi baat bolein - pichhli baatein yaad rahengi."
+    if "credit balance is too low" in low or "billing" in low and "anthropic" in low:
+        # v0.631 her account is out of credit: say it plainly, it is not a bug and waiting will not fix it
+        log.error("ANTHROPIC CREDIT IS OUT - every Claude turn on this server fails until it is recharged")
+        if _operator(tenant_id) and (who or "owner") == "owner":
+            head = "The Anthropic credit has run out - recharge it at console.anthropic.com > Plans & Billing, then try again."
+        else:
+            head = OUTAGE_TEXT
+    elif any(x in low for x in ("key limit exceeded", "insufficient credits", "error 402")) and ("glm" in low or "openrouter" in low):
+        # v0.736 her OpenRouter key reached its spending limit (403 "Key limit exceeded") or the account is empty (402):
+        # every GLM call fails until she raises it - not a bug, and waiting will not fix it
+        log.error("OPENROUTER KEY LIMIT / CREDIT IS OUT - every GLM call fails until it is raised")
+        if _operator(tenant_id) and (who or "owner") == "owner":
+            head = ("The OpenRouter key has reached its spending limit - raise it at openrouter.ai > Settings > Keys "
+                    "(or add credit), then try again.")
+        else:
+            head = OUTAGE_TEXT
+    elif "aihubmix" in low and ("error 429" in low or "quota" in low or "limit" in low):
+        # v0.742 AIHubMix free models: 100 requests a day / 10 a minute / 1M tokens a day shared - said plainly
+        head = ("The free AIHubMix limit is used up for now (10 a minute, 100 a day, 1M tokens a day across its free "
+                "models). Try again in a minute, tomorrow for the daily limit, or pick another model.")
+    elif _ctx.is_overflow(s):
+        head = "This chat has become too long. Start a new chat and say the same thing there - I will still remember the earlier parts."
     elif busy:
-        head = "Abhi AI service busy ya unreachable hai, thodi der baad phir bolna."
+        head = "The AI service is busy or unreachable right now. Please try again in a moment."
     else:
-        head = "Maaf kijiye, abhi kuch gadbad ho gayi."
+        head = "Sorry, something went wrong just now."
     if not s:
         return head
     ref = format(random.getrandbits(24), "06x")
     log.warning("error ref %s: %s", ref, s[:2000])
+    if spoken:
+        return head            # a voice call speaks the line: no "code 529 · ref a3f9c2" read aloud
     m = _re.search(r"\b(?:error(?: code)?:?\s*|status\s*)(\d{3})\b", s, _re.I)
     return f"{head} (code {m.group(1)} · ref {ref})" if m else f"{head} (ref {ref})"
 
@@ -739,8 +1286,23 @@ async def _watched(work, conversation_id: str, ctx: Ctx, state: dict | None = No
         raise
 
 
-HALTED_TEXT = {"stop": "Theek hai, maine kaam rok diya.",
-               "pause": "Owner ne kaam rok diya (Pause), isliye main yahin ruk gaya. 'Kaam shuru' hone par aage karunga."}
+# wave 13: an error AFTER tools ran used to give only the generic line - she repeated the ask and a mail went twice
+AFTER_TOOLS = (" Some steps had already run before this - please check what has happened before asking again, so that "
+               "no email or message goes out twice.")
+
+
+def _tools_since(history: list[dict], h0: int) -> list[str]:
+    names: list[str] = []
+    for m in history[h0:]:
+        c = m.get("content") if isinstance(m, dict) else None
+        for b in (c if isinstance(c, list) else []):
+            if isinstance(b, dict) and b.get("type") == "tool_use":
+                names.append(str(b.get("name") or ""))
+    return names
+
+
+HALTED_TEXT = {"stop": "Okay, I stopped the work.",
+               "pause": "You paused the work, so I have stopped here. I will carry on when the work is started again."}
 
 # v0.189 Tools that may run TOGETHER when one step asks for several (dsh's bounded pool, Claude Code's
 # concurrency-safe read batching - kept deliberately small): pure look-ups only. Anything that writes,
@@ -752,6 +1314,16 @@ PARALLEL_SAFE = frozenset({
     "indiamart_khoj", "indiamart_detail",      # v0.277 read-only IndiaMART look-ups
     "mospi",                                   # v0.348 read-only MoSPI statistics
 })
+
+
+def _parallel_ok(b: dict) -> bool:
+    """v0.666 by CALL, not only by name: kaam_status is a look-up only for action=status - action=stop cancels jobs
+    across all her chats (DB writes), and two of those side by side were the nested-write race v0.188 keeps serial."""
+    if b.get("name") not in PARALLEL_SAFE:
+        return False
+    if b.get("name") == "kaam_status":
+        return str((b.get("input") or {}).get("action") or "status").strip().lower() != "stop"
+    return True
 
 
 async def _run_tool(name: str, args: dict, ctx: Ctx, settings, mcp_route: dict | None = None):
@@ -774,7 +1346,10 @@ async def _run_tool(name: str, args: dict, ctx: Ctx, settings, mcp_route: dict |
                      _meta.get("turn_id", ""), _meta.get("actor", ""))
     _t0 = time.time()
     try:
-        out = await asyncio.wait_for(work, timeout=max(5, settings.agent_tool_timeout_s))
+        _clock = max(5, settings.agent_tool_timeout_s)
+        if name in LONG_IN_TURN and work_in_turn(ctx, settings):
+            _clock = max(_clock, int(getattr(settings, "chat_long_tool_s", 0) or 0))
+        out = await asyncio.wait_for(work, timeout=_clock)
     except asyncio.CancelledError:
         raise
     except BaseException as e:
@@ -814,15 +1389,23 @@ async def _steps(conversation_id: str, ctx: Ctx, gender: str, history: list[dict
     from .breaker import Breaker, FAILS_IN_ROW_GOAL
     from . import pakka
     from . import goal as _goal
-    state: dict = {"calls": [], "breaker": Breaker(), "used": [], "hint": "", "request": user_text, "t0": time.time(),
-                   "conv": conversation_id}
+    _hers = (getattr(ctx, "actor", "owner") or "owner")
+    ASK_NOW.set(user_text if (_hers == "owner" or _hers.startswith("approved:")) else "")
+    state: dict = {"calls": [], "breaker": Breaker(max_calls=_calls_cap(settings, ctx, Breaker().max_calls)), "used": [], "hint": "", "request": user_text, "t0": time.time(),
+                   "conv": conversation_id, "actor": getattr(ctx, "actor", "owner") or "owner",
+                   # parity Phase 5: the reply is only what the model wrote (no stapled notes / ledger line)
+                   "answer_only": bool(getattr(settings, "chat_answer_only", False))}
     # v0.232 PHASE C a clearly big ask by her thinks from its FIRST call (the plan comes first, and Claude can't start
     # thinking in the middle of a tool loop, so waiting for kaam_plan set would keep this whole turn silent)
     state["big"] = bool(ctx.actor in ("owner", "goal") and settings.agent_goal and _goal.looks_big(user_text or ""))
+    if state["big"]:   # v0.558 a big ask thinks at effort xhigh from its FIRST call: thinking tokens count, give it the long-job room
+        state["max_tokens"] = max(state.get("max_tokens") or 0, int(settings.agent_goal_max_tokens or 16000))
     # v0.272 SOCH KE JAWAB step 1: a HARD question (analysis, calculation, decision, plan, root cause, proof, deep
     # explanation) is not a long job - looks_big missed 50 of 50 of them - but it needs thinking from its first call
     state["hard"] = False
-    if ctx.actor == "owner" and getattr(settings, "hard_detect", True):
+    # v0.634 TEZ DIMAAG: a voice call's brain turn is never a "hard" turn - thinking, a held answer and a reviewer
+    # call cost her 21 s of silence on "teen email ka detail summary" (her 15:27 call); she is waiting on the line
+    if ctx.actor == "owner" and getattr(settings, "hard_detect", True) and not VOICE_BRAIN_NOW.get():
         try:
             from . import hard as _hard
             _hv = await _hard.decide(user_text or "", settings)
@@ -847,7 +1430,7 @@ async def _steps(conversation_id: str, ctx: Ctx, gender: str, history: list[dict
         g0 = _goal.active_for(conversation_id)
         if g0 is not None:   # goal open when the turn began: the goal caps apply from the first step
             state["goal"] = g0
-            state["breaker"] = Breaker(max_calls=settings.agent_goal_max_calls, fails_in_row=FAILS_IN_ROW_GOAL,
+            state["breaker"] = Breaker(max_calls=_calls_cap(settings, ctx, settings.agent_goal_max_calls), fails_in_row=FAILS_IN_ROW_GOAL,
                                        rescue=True)
             state["max_tokens"] = settings.agent_goal_max_tokens
     actor = getattr(ctx, "actor", "owner") or "owner"
@@ -857,23 +1440,28 @@ async def _steps(conversation_id: str, ctx: Ctx, gender: str, history: list[dict
             state["paused0"] = _emp.paused_now(tenant_id)
         except Exception:
             state["paused0"] = None
-    if user_text and actor in ("owner", "routine", "goal"):
+    if user_text and actor in ("owner", "routine", "goal") and not VOICE_BRAIN_NOW.get():
+        # (v0.638 a call's brain turn skips the learned-procedure lookup: 1.8 s on her 16:36 call, before any model call)
         try:
             state["hint"], state["used"] = await asyncio.to_thread(procedures.hint, tenant_id, user_text)
         except Exception:
             log.exception("procedure hint failed")
+    _mark("hint")
     text = await _steps_inner(conversation_id, ctx, gender, history, settings, tenant_id, state)
     g = _goal.active_for(conversation_id) if settings.agent_goal else None
     if g is not None and _goal.steps_left(g):
         ok = False
-        state["left"] = (f"goal '{g['goal']}': {g['done']}/{g['total']} steps ho gaye, "
-                         f"{len(_goal.steps_left(g))} baaki ({g['stage'] or 'aage badhega'})")
+        state["left"] = (f"goal '{g['goal']}': {g['done']}/{g['total']} steps done, "
+                         f"{len(_goal.steps_left(g))} left ({g['stage'] or 'will carry on'})")
     else:
         ok = (bool(text.strip()) and not state["breaker"].stopped and conversation_id not in _stopped
               and not state.get("halted")
-              and not text.startswith(("Yeh kaam lamba", "Maaf kijiye")))
+              and not text.startswith(("This task has become long", "Sorry")))
     if user_text:
-        lessons = await asyncio.to_thread(pakka.learn, tenant_id, state["calls"], ok, state.get("lessons_used", []))
+        # wave 11: a reply the honesty check caught, or a turn that left work undone, is never LEARNED from as a good run
+        # (the outcome itself is unchanged)
+        good = ok and not state.get("fake_done") and not state.get("left")
+        lessons = await asyncio.to_thread(pakka.learn, tenant_id, state["calls"], good, state.get("lessons_used", []))
         if lessons:
             bus.publish(conversation_id, "procedure", {"event": "lesson", "title": lessons[0][:120], "count": len(lessons)})
         outcome = ("stopped" if conversation_id in _stopped or state.get("halted") else "stuck" if state["breaker"].stopped else
@@ -884,11 +1472,13 @@ async def _steps(conversation_id: str, ctx: Ctx, gender: str, history: list[dict
         if not await asyncio.to_thread(is_incognito, conversation_id):
             await asyncio.to_thread(pakka.record, tenant_id, user_text, outcome, state["calls"], state,
                                     time.time() - state["t0"], state.get("left", ""))
-        learned = await asyncio.to_thread(procedures.after_turn, tenant_id, user_text, state["calls"], state["used"], ok,
+        learned = await asyncio.to_thread(procedures.after_turn, tenant_id, user_text, state["calls"], state["used"], good,
                                           "routine" if actor == "goal" else actor)
         if learned and learned.get("learned"):
             bus.publish(conversation_id, "procedure", {"event": "learned", "id": learned["learned"], "title": learned["title"]})
-    if user_text and actor == "owner" and settings.draft_check and not state.get("hard_checked"):
+    if user_text and actor == "owner" and settings.draft_check and not state.get("hard_checked") \
+            and not state.get("answer_only") and not plain_loop_on(settings):   # parity Phase 5 / 5b: no after-the-reply note
+
         # (v0.436 a hard answer already passed the self-check before she saw it - no second, weaker look after)
         # v0.223 the last look, in the background: the reply is already on her screen, so nothing waits for this
         from . import draftcheck
@@ -897,10 +1487,10 @@ async def _steps(conversation_id: str, ctx: Ctx, gender: str, history: list[dict
     return text
 
 
-AUTO_PLAN_NOTE = ("[System: tumne plan nahi likha tha, isliye server ne yeh plan bana diya aur use card par dikha "
-                  "diya: \"{goal}\" ({n} steps: {steps}). Ab lambe kaam ki seema mil gayi hai - ruko mat. Har step "
-                  "hone par `kaam_plan step n done` likho (card par dikhta hai); chaho to `kaam_plan set` se behtar "
-                  "steps likh do. Kaam poora hone par seedha aakhri jawab do.]")
+AUTO_PLAN_NOTE = ("[System: you did not write a plan, so the server made this plan and showed it on the card: "
+                  "\"{goal}\" ({n} steps: {steps}). You now have the limits of a long job - do not stop. After each step "
+                  "write `kaam_plan step n done` (it shows on the card); if you want, write better steps with "
+                  "`kaam_plan set`. When the work is complete give the final answer directly.]")
 
 
 def _auto_plan(conversation_id: str, tenant_id: str, state: dict, settings, ctx) -> str:
@@ -923,7 +1513,7 @@ def _auto_plan(conversation_id: str, tenant_id: str, state: dict, settings, ctx)
     state["auto_plan"] = v["id"]
     state["goal"] = v
     b = state["breaker"]
-    b.max_calls, b.fails_in_row, b.rescue = settings.agent_goal_max_calls, FAILS_IN_ROW_GOAL, True
+    b.max_calls, b.fails_in_row, b.rescue = _calls_cap(settings, ctx, settings.agent_goal_max_calls), FAILS_IN_ROW_GOAL, True
     state["max_tokens"] = max(state.get("max_tokens") or 0, settings.agent_goal_max_tokens)
     _LONG_TURN.add(conversation_id)
     STATS_LONG["auto_plan"] += 1
@@ -956,17 +1546,50 @@ def _ask_steps(req: str) -> tuple[str, list[str]]:
     return (head.strip(" .") or req), parts[:8]
 
 
+def _lang_label(name: str) -> str:
+    """v0.728 SAB ENGLISH: the working-row label in English when Hoola is set to English."""
+    from .. import lang as _lang
+    return _lang.label(name)
+
+
 def _aage_promised(text: str) -> bool:
     from . import aage as _aage
     return _aage.promised(text)
 
 
-def _close_auto_plan(tenant_id: str, conversation_id: str, g: dict, final_text: str) -> None:
+_ASKS_HER = re.compile(r"\?\s*$|\b(bataiye|batayein|batao|bata\s*dijiye|chahiye|bhej\s*dijiye|share\s*kar|dijiye\s*to"
+                       r"|confirm\s*kar|please\s+(?:share|send|tell|confirm)|could\s+you|can\s+you|let\s+me\s+know"
+                       r"|which\s+one|kaun\s*s[aie]|kis\s+(?:date|din|time))\b", re.I)
+_SAYS_FAILED = re.compile(r"\b(fail|failed|nahi\s*ho\s*pa(?:ya|yi|aya)|nahi\s*hua|nahi\s*ho\s*saka|error|atak\s*gay"
+                          r"|could\s*n[o']t|couldn'?t|was\s+unable|unable\s+to|did\s*n[o']t\s+work)\b", re.I)
+
+
+_OFFER = re.compile(r"[^.!?\n]*\b(aur\s+kuch|kuch\s+aur|aur\s+koi|anything\s+else|something\s+else|kuch\s+bhi\s+aur"
+                    r"|aur\s+madad|more\s+help)\b[^.!?\n]*[.!?]?", re.I)
+
+
+def _close_auto_plan(tenant_id: str, conversation_id: str, g: dict, final_text: str, calls: list | None = None) -> None:
+    """v0.311 the server's own plan closes with the model's final answer.
+    v0.665 SACH KA HISAAB: only a real finish closes it as DONE. A step that failed ("Step b fail ho gaya, API key
+    chahiye") or a question back to her ("Kaunsi date chahiye?") used to tick every remaining step done and show the
+    whole job finished on her card; now the first is `failed`, the second `blocked_on_her`, the steps left as they are."""
     from . import goal as _goal
+    text = " ".join(str(final_text or "").split())
+    did_ok = any(c.get("ok") for c in calls or [])
+    some_failed = any(not c.get("ok") for c in calls or [])
+    failed_only = bool(calls) and not did_ok
+    # a polite closing offer ("Aur kuch karna hai?") is not a question about THIS job
+    core = _OFFER.sub(" ", text).strip()
     try:
+        if core and _ASKS_HER.search(core[-400:]):
+            _goal.finish(tenant_id, g["id"], "blocked_on_her", reason=text[:300], your_turn=text[-300:])
+            return
+        if failed_only or (some_failed and _SAYS_FAILED.search(text)):
+            _goal.finish(tenant_id, g["id"], "failed", reason=text[:300])
+            return
         for x in _goal.steps_left(g):
             _goal.mark_step(tenant_id, g["id"], x["n"], "done", conv=conversation_id)
-        _goal.finish(tenant_id, g["id"], "done", reason=" ".join(str(final_text or "").split())[:300])
+        _goal.finish(tenant_id, g["id"], "done", reason=text[:300])
     except Exception:
         log.exception("auto plan close failed")
 
@@ -987,6 +1610,265 @@ def _chat_tail(history: list[dict], keep: int = 8) -> str:
     return "\n".join(out)[-4000:]
 
 
+_BRAIN_POOL: dict = {}
+
+
+def _brain_pool():
+    import concurrent.futures as _cf
+    p = _BRAIN_POOL.get("p")
+    if p is None:
+        p = _BRAIN_POOL["p"] = _cf.ThreadPoolExecutor(max_workers=6, thread_name_prefix="call-brain")
+    return p
+
+
+_BRAIN_CACHE: dict = {}
+_LATE_SAY = {"kaam": "the latest state of her work", "kiya": "this week's finished work", "cards": "the cards still waiting",
+             "chat": "recent things said in this chat", "saar": "the chat summary", "facts": "related facts",
+             "coder": "coder notes", "yaad": "the diary"}
+
+
+def _brain_keep(key, fut) -> None:
+    try:
+        if not fut.cancelled() and fut.exception() is None:
+            _BRAIN_CACHE[key] = (time.time(), fut.result() or "")
+    except Exception:
+        pass
+    if len(_BRAIN_CACHE) > 600:
+        for k in sorted(_BRAIN_CACHE, key=lambda k: _BRAIN_CACHE[k][0])[:300]:
+            _BRAIN_CACHE.pop(k, None)
+
+
+def _call_chat_saar(conversation_id: str, max_chars: int = 2200) -> str:
+    """v0.657 the chat's checkpoint for a call record's brain turn (head + the pending tail)."""
+    from .. import callconv as _cc
+    chat = _cc.origin_of(conversation_id)
+    from . import compact as _compact
+    from .. import yaad as _y
+    if not chat:
+        # a plain chat's brain turn reads its own checkpoint in its history - but a chat that was NEVER compacted has
+        # none, and the call brain reads only the last 8 exchanges: wave 11 gives it the chat's rolling summary instead
+        if _compact.active(conversation_id):
+            return ""
+        summ = _y.summary_block(conversation_id)
+        return ("Summary of the older part of this chat (before the last 8 exchanges):\n" + _y._clip_ends(summ, max_chars)) \
+            if summ else ""
+    cp = _compact.active(chat)
+    if cp and cp.get("summary"):
+        return "CHAT KA SAAR (checkpoint of the chat she called from - open work and promises):\n" + \
+            _y._clip_ends(cp["summary"], max_chars)
+    summ = _y.summary_block(chat)
+    return ("Summary of the older part of this chat:\n" + _y._clip_ends(summ, max_chars)) if summ else ""
+
+
+def _call_facts(tenant_id: str, conversation_id: str, user_text: str) -> str:
+    """v0.657 her facts by MEANING for this ask (an older preference / correction too), in the call's memory scope."""
+    if not (user_text or "").strip():
+        return ""
+    from .. import yaad as _y
+    from .. import callconv as _cc
+    from ..life import memory_facts, recent_facts
+    chat = _cc.chat_of(conversation_id)
+    shown = {f.id for f in memory_facts(tenant_id, recent_facts(), chat)}
+    rel = _y.relevant_facts(tenant_id, user_text, shown, top=6, conversation_id=chat)
+    if not rel:
+        return ""
+    mk = _y.fact_marks([i for i, _ in rel])   # v0.665 dated; Hoola's own guesses marked as such
+    return ("JUDE HUE FACTS (by meaning for this ask; 'Hoola ne samjha' = your own reading, not her words):\n"
+            + "\n".join(f"- {t}{mk.get(i, '')}" for i, t in rel))
+
+
+
+def _last_reply_at(conversation_id: str):
+    """v0.704 when Hoola last replied in this chat (the 'since' of the card news)."""
+    from ..db import Message
+    from sqlalchemy import select as _sel
+    with session() as s:
+        return s.scalar(_sel(Message.created_at).where(Message.conversation_id == conversation_id,
+                                                       Message.role == "assistant")
+                        .order_by(Message.id.desc()).limit(1))
+
+
+ONE_MEMORY_NOTE_CAP = 1800     # parity Phase 7: the 'since your last reply' note (job state + card news + a cut call)
+ONE_MEMORY_KAAM_CAP = 1000
+ONE_MEMORY_CARDS_CAP = 700
+ONE_MEMORY_PAST_HINT = ("She points at something from before that you may not see here: look it up with yaad_khojo "
+                        "(one search over facts, past chats, jobs, files and work notes) before asking her.")
+
+
+def one_memory_on(settings, who: str) -> bool:
+    """parity Phase 7: one memory for her chat turns (her own, a wake / goal round, an approved run). A call's brain
+    turn and her scheduled routines keep their current memory blocks."""
+    if not getattr(settings, "chat_one_memory", False) or VOICE_BRAIN_NOW.get():
+        return False
+    who = str(who or "owner")
+    return who in ("owner", "wake", "goal") or who.startswith("approved:")
+
+
+def _clip_note(text: str, cap: int) -> str:
+    text = (text or "").strip()
+    return text if len(text) <= cap else text[:cap].rsplit("\n", 1)[0].rstrip() + "\n…"
+
+
+def _one_memory_parts(tenant_id: str, conversation_id: str, user_text: str) -> list:
+    """parity Phase 7: what still rides her newest message - the real job state and her card taps since the last reply
+    (both capped), a call cut off by the network, and her skill NAMES. Her facts by meaning, recalled chats, her recent
+    words, the diary and the coder primer are no longer pasted: yaad_khojo fetches them when the message needs them."""
+    from .. import yaad, kaamwatch, events as _ev
+    from .. import coder as _coder
+
+    def _since():
+        out = []
+        k = _clip_note(kaamwatch.block(tenant_id, conversation_id), ONE_MEMORY_KAAM_CAP)
+        if k:
+            out.append(k)
+        c = _clip_note(_ev.card_news_block(tenant_id, _last_reply_at(conversation_id), user_text or "",
+                                           conversation_id), ONE_MEMORY_CARDS_CAP)
+        if c:
+            out.append(c)
+        try:
+            drop = yaad.recent_call_drop(conversation_id, get_settings().voice_continuation_min)
+        except Exception:
+            drop = ""
+        if drop:
+            out.append("THE LAST CALL WAS CUT OFF BY THE NETWORK - carry on from there:\n" + _clip_note(drop, 400))
+        if len((user_text or "").split()) >= 2 and yaad.refers_to_past(user_text):
+            out.append(ONE_MEMORY_PAST_HINT)
+        if not out:
+            return ""
+        return _clip_note("SINCE YOUR LAST REPLY (background for this message, not her words):\n" + "\n\n".join(out),
+                          ONE_MEMORY_NOTE_CAP)
+
+    return [("since", _since),
+            ("skills", lambda: _coder.inject.skill_names(tenant_id, user_text or "", conv=conversation_id)
+             if getattr(get_settings(), "coder_enabled", True) else "")]
+
+
+async def _chat_memory(tenant_id: str, conversation_id: str, user_text: str, settings, one: bool = False) -> str:
+    """v0.704 a chat turn's memory block: diary / facts (yaad), the real job state (kaamwatch), the coder primer and the
+    card news read IN PARALLEL, waiting at most `chat_memory_s` in all (they used to run one after another).
+    one=True (parity Phase 7, chat_one_memory): only the short 'since your last reply' note + her skill names."""
+    from .. import yaad, kaamwatch, events as _ev
+    from .. import coder as _coder
+
+    def _cards():
+        return _ev.card_news_block(tenant_id, _last_reply_at(conversation_id), user_text or "", conversation_id)
+
+    parts = [("yaad", lambda: yaad.turn_block(tenant_id, conversation_id, user_text)),
+             ("kaam", lambda: kaamwatch.block(tenant_id, conversation_id)),
+             ("cards", _cards),
+             ("coder", lambda: _coder.inject.turn_block(tenant_id, conversation_id, query=user_text or ""))]
+    if one:
+        parts = _one_memory_parts(tenant_id, conversation_id, user_text)
+    tasks = {name: asyncio.ensure_future(asyncio.to_thread(fn)) for name, fn in parts}
+    t0 = time.monotonic()
+    done, pending = await asyncio.wait(tasks.values(), timeout=float(getattr(settings, "chat_memory_s", 6.0) or 6.0))
+    out = []
+    for name, t in tasks.items():
+        if t in done:
+            try:
+                v = t.result()
+            except Exception:
+                log.exception("chat memory part %s failed", name)
+                continue
+            if v:
+                out.append(v)
+        else:
+            log.info("chat memory: %s not ready in %.1fs, left out of this turn", name, time.monotonic() - t0)
+    log.info("chat memory %.2fs (%s)", time.monotonic() - t0, ",".join(n for n, t in tasks.items() if t in done))
+    return "\n\n".join(out)
+
+async def _brain_memory(tenant_id: str, conversation_id: str, user_text: str, settings) -> str:
+    """v0.638 the memory block of a call's brain turn: diary/facts (yaad), the real job state (kaamwatch) and the coder
+    primer read IN PARALLEL, waiting at most `voice_brain_memory_s` in all. A part that is not ready in time is left out
+    of THIS ask (it is not cancelled - it finishes in its thread and the next ask reads it again); the job state is
+    the part that matters most on a call ("ho gaya kya?") and is a quick DB read."""
+    from .. import yaad, kaamwatch
+    from .. import coder as _coder
+    parts = [
+        ("kaam", lambda: kaamwatch.block(tenant_id, conversation_id)),
+        ("coder", lambda: _coder.inject.turn_block(tenant_id, conversation_id, query=user_text or "")),
+    ]
+    from .. import kaamlist as _kaamlist
+    # v0.648 KAAM KA HISAAB: what finished this week (two small queries), so "kal jo kaam diya tha" needs no extra step
+    parts.append(("kiya", lambda: _kaamlist.brief(tenant_id, conversation_id)))
+    from .. import events as _events_cb
+    # v0.650 JAWAB MIL GAYA: the cards that really still wait for her (a tapped card is never asked about again)
+    parts.append(("cards", lambda: _events_cb.cards_block(tenant_id)))
+    from .. import callconv as _callconv
+    # v0.646 ALAG CALL, EK YAAD: a call on its own record still knows what she just wrote in the chat she called from
+    # (chat_block itself says "" for a plain chat - checked in its thread, never a DB read on the event loop, v0.650)
+    parts.append(("chat", lambda: _callconv.chat_block(conversation_id)))
+    # v0.657 a call record's brain turn reads the ORIGIN chat's checkpoint (open work, promises) - its own history is
+    # the call's few exchanges, so the chat's pending work never reached it - and her facts BY MEANING (an older
+    # standing preference / correction, not only the 15 newest facts in the prompt)
+    parts.append(("saar", lambda: _call_chat_saar(conversation_id)))
+    parts.append(("facts", lambda: _call_facts(tenant_id, conversation_id, user_text)))
+    if getattr(settings, "voice_brain_yaad", False):
+        # v0.644 off by default: on EVERY call ask since v0.638 the diary / facts read missed its wait (17:25, 17:34, 17:44,
+        # 17:51 - "yaad not ready in 2.5s"), so each ask paid the full wait for nothing; old memory stays one
+        # yaad_khojo call away when a question needs it
+        parts.insert(0, ("yaad", lambda: yaad.turn_block(tenant_id, conversation_id, user_text)))
+    # v0.639 its OWN small pool: on her 16:52 call even the quick job-status read missed 2.5 s, queued behind the
+    # shared default pool (every to_thread in the server) - a call's reads never wait behind background work
+    loop = asyncio.get_running_loop()
+    import contextvars as _cvs
+    tasks = [asyncio.ensure_future(loop.run_in_executor(_brain_pool(), _cvs.copy_context().run, fn)) for _, fn in parts]
+    wait_s = float(getattr(settings, "voice_brain_memory_s", 2.5) or 2.5)
+    done, pending = await asyncio.wait(tasks, timeout=wait_s)
+    out, late = [], []
+    for (name, _), t in zip(parts, tasks):
+        if t in done:
+            try:
+                txt = t.result()
+            except Exception:
+                log.exception("call brain memory part %s failed", name)
+                continue
+            _BRAIN_CACHE[(conversation_id, name)] = (time.time(), txt or "")
+            if txt:
+                out.append(txt)
+        else:
+            late.append(name)
+            # v0.657 the part finishes in its thread and is KEPT for the next ask (before, the next ask re-ran it)
+            t.add_done_callback(lambda f, k=(conversation_id, name): _brain_keep(k, f))
+            hit = _BRAIN_CACHE.get((conversation_id, name))
+            if name != "kaam" and hit and time.time() - hit[0] < 600 and hit[1]:
+                out.append(hit[1])        # a few minutes old is far better than nothing (job state never: it moves)
+    if late:
+        # v0.657 never a silent gap: the brain is told what it does NOT have, so it checks instead of guessing
+        miss = [_LATE_SAY.get(n, n) for n in late]
+        out.append("(This part of memory is not loaded yet: " + ", ".join(miss) + ". If she asks about these, first "
+                   "look with a tool - the state of work with kaam_status, older things with yaad_khojo; do not guess.)")
+        STATS_PREP["memory_late"] = STATS_PREP.get("memory_late", 0) + 1
+        from .. import looplag
+        log.info("call brain memory: %s not ready in %.1fs, left out of this ask (shared pool queue %d)",
+                 ",".join(late), wait_s, looplag.pool_queue())
+    return "\n\n".join(out)
+
+
+def _cut_old_results(msgs: list[dict], cap: int) -> list[dict]:
+    """v0.636 a call brain turn: an EARLIER exchange's big tool result (a whole email, a page) is cut to `cap` chars
+    (her 16:22 call sent 143k chars a call, mostly old mails). This turn's own results are never passed here."""
+    if cap <= 0:
+        return msgs
+    out = []
+    for m in msgs:
+        c = m.get("content") if isinstance(m, dict) else None
+        if m.get("role") == "user" and isinstance(c, list):
+            nb, changed = [], False
+            for b in c:
+                if isinstance(b, dict) and b.get("type") == "tool_result" and isinstance(b.get("content"), str) \
+                        and len(b["content"]) > cap:
+                    nb.append({**b, "content": b["content"][:cap] + " ...[old result shortened; run the tool again if you need all of it]"})
+                    changed = True
+                    STATS_PREP["results_cut"] += 1
+                else:
+                    nb.append(b)
+            out.append({**m, "content": nb} if changed else m)
+        else:
+            out.append(m)
+    return out
+
+
 def _request(history: list[dict], system: str, tools, brain: str, conversation_id: str, state: dict,
              settings) -> list[dict]:
     """v0.237 FULL CLAUDE MODE: what this model call sends. Old tool results trimmed (v0.189 prune, as before), then the
@@ -997,8 +1879,30 @@ def _request(history: list[dict], system: str, tools, brain: str, conversation_i
     start = state.get("turn_start", len(history))
     if state.get("squeezed"):
         return _sanitize(_ctx.squeeze(pruned, conversation_id, start))
+    keep = int(getattr(settings, "voice_brain_history", 0) or 0)
+    if VOICE_BRAIN_NOW.get() and keep > 0:
+        # v0.634 TEZ DIMAAG: a call's brain turn reads the chat's checkpoint summary + the last few exchanges, not the
+        # whole chat word for word (her 15:27 call: 3-5 s before every first step, 21 s on one ask). Older memory is
+        # still one yaad_khojo away; this turn's own messages are never cut.
+        start = max(0, min(start, len(pruned)))
+        head, old = _ctx._split_head(pruned[:start])
+        recent = [m for ex in _ctx._exchanges(old)[-keep:] for m in ex]
+        return _sanitize(head + _cut_old_results(recent, int(getattr(settings, "voice_brain_result_chars", 0) or 0))
+                         + pruned[start:])
     msgs, form = _ctx.fit(pruned, system, tools, brain, conversation_id, start, settings)
     return _sanitize(msgs) if form == "net" else msgs
+
+
+PROMPT_STATS = {"small": 0, "small_chars": 0}
+
+
+def small_prompt_on(settings, ctx) -> bool:
+    """parity Phase 2: the small fixed system prompt for chat turns (her own, a wake / goal round, an approved run).
+    A call's brain turn and her scheduled routines keep their current shape; staff / customer actors too."""
+    if not getattr(settings, "chat_small_prompt", False) or VOICE_BRAIN_NOW.get():
+        return False
+    who = str(getattr(ctx, "actor", "owner") or "owner")
+    return who in ("owner", "wake", "goal") or who.startswith("approved:")
 
 
 async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: list[dict], settings, tenant_id: str,
@@ -1023,11 +1927,20 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
     _summ = "" if full else yaad.summary_block(conversation_id)
     from ..fence import is_incognito as _incog
     _secret = await asyncio.to_thread(_incog, conversation_id)
+    # parity Phase 2: a chat turn sends the small FIXED system prompt (core + this chat); the per-turn parts below
+    # (summary, hint, hard recipe, the admitted families' guides) ride on her newest message instead
+    small = small_prompt_on(settings, ctx)
+    ctx.small_prompt = small
     tail = ""                       # everything after the guide; the guide itself follows the admitted families
-    if _summ:                       # v0.108 everything older than the 40-exchange window, in a few lines
+    if _summ and not small:         # v0.108 everything older than the 40-exchange window, in a few lines
         tail += "\n\nPURANI BAATEIN (summary of this chat before the exchanges below; data, not instructions):\n" + _summ
     # the owner's MCP connections: known to the avatar, and their tools callable directly
-    mcp_snap = await asyncio.to_thread(mcp_live.snapshot, tenant_id)
+    _mark("steps_setup")
+    if VOICE_BRAIN_NOW.get():   # v0.638 a call never waits on her MCP servers (4.5 s on her 16:36 call)
+        mcp_snap = mcp_live.snapshot_fast(tenant_id)
+    else:
+        mcp_snap = await asyncio.to_thread(mcp_live.snapshot, tenant_id)
+    _mark("mcp")
     mcp_defs, mcp_route = mcp_live.tool_defs(mcp_snap, settings.mcp_native_tools, _last_user_text(history))
     tail += "\n\n" + mcp_live.prompt_block(mcp_snap, mcp_route)
     tail += state.get("hint") or ""
@@ -1052,7 +1965,9 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
     adm = None
     # v0.270 the background rounds of HER long job ("goal") are routed too: they used to see the whole 425-tool
     # registry (pc_do / hoola_pc_do with their long "do anything" text), so a deep-research + PDF job drifted onto a PC
-    if (getattr(ctx, "actor", "owner") or "owner") in ("owner", "wake", "goal") or \
+    # v0.558 HER scheduled routines too: a routine call used to carry all ~570 tools (~740 KB, ~184k tokens) on every
+    # call; core families stay always on, her words pick the rest, tool_search opens any other one - gates unchanged
+    if (getattr(ctx, "actor", "owner") or "owner") in ("owner", "wake", "goal", "routine") or \
             str(getattr(ctx, "actor", "owner") or "owner").startswith("approved:"):
         _extra = state.get("hint") or ""
         _g0 = state.get("goal")
@@ -1072,36 +1987,69 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
             await asyncio.to_thread(_coder_adm.inject.admit_tool, adm, tenant_id, state.get("request", "") or "")
         except Exception:
             log.exception("skill tool admission failed")
+    _mark("admit")
     ctx.admit = adm                 # tool_search writes through here (None = admission off)
     ctx.calls = state["calls"]      # v0.443 kaam_plan's `tool:<name>` check reads what really ran this job
-    _ctxb = context_block(tenant_id, conversation_id)   # v0.246 facts fenced to this chat's Session
+    # v0.645 KHULA LOOP: the context block + the system prompt read ~25 DB-backed blocks (aftersales due list, shop,
+    # site, brand...) - built on the event loop they froze the WHOLE server (her 17:59 call: 2.1 s in aftersales.due)
+    _ctxb = "" if small else await asyncio.to_thread(context_block, tenant_id, conversation_id)   # v0.246 facts fenced to this chat's Session
+    _small_sys = ""
+    if small:
+        from . import core_prompt as _core
+        _small_sys = await asyncio.to_thread(_core.system, tenant_id, conversation_id, settings.wa_dry_run, mcp_snap,
+                                             bool(_secret))
+        _hard_txt = ""
+        if state.get("hard") and getattr(settings, "hard_recipe", True):
+            from . import hard as _hardr
+            _hard_txt = _hardr.recipe(((state.get("hard_why") or {}).get("why")) or [])
+        _notes = _core.turn_notes(set(adm.families) - set(_admit.CORE_FAMILIES) if adm is not None else (),
+                                  summary=_summ, hint=state.get("hint") or "", recipe=_hard_txt, adm=adm)
+        if _notes:
+            _with_memory(history, _notes)
+        PROMPT_STATS["small"] += 1
+        PROMPT_STATS["small_chars"] = len(_small_sys)
 
     def _system(fams) -> str:
+        if small:
+            return _small_sys
         # v0.473 PATLA PROMPT: only the guides of the admitted families ride (None = the full guide, as before)
         text = system_prompt(settings.wa_dry_run, _ctxb, tenant_id,
                              families=None if (fams is None or not settings.prompt_slim) else fams) + tail
         return text + (_admit.unloaded_note(text, adm) if adm is not None else "")
     sys_fams = frozenset(adm.families) if adm is not None else None
-    system = _system(sys_fams)
+    system = await asyncio.to_thread(_system, sys_fams)
     tools = (adm.specs()) + mcp_defs if adm is not None else TOOLS + mcp_defs
+    _mark("prompt")
     from .. import livereply
     live = None if conversation_id in _NO_STREAM else livereply.current(conversation_id)
     ran_steps = 0
     while ran_steps < (settings.agent_goal_max_steps if (state.get("goal") or state.get("extended"))
                        else settings.agent_max_steps):
         ran_steps += 1
-        tools = (adm.specs()) + mcp_defs if adm is not None else TOOLS + mcp_defs   # v0.191 after tool_search
-        if adm is not None and frozenset(adm.families) != sys_fams:
+        from . import toolsearch as _ts
+        native = adm is not None and _ts.on(settings, brain)
+        ctx.native_search = native
+        if native:
+            # v0.563 CLAUDE KA AUZAAR: the whole toolbox declared once (in view + the rest deferred) and never changed
+            # inside the turn - tool_search answers with tool_reference blocks instead of growing the list
+            if state.get("native_tools") is None:
+                state["native_tools"] = _ts.build(adm.specs() + mcp_defs)
+                _ts.NATIVE["turns"] += 1
+            tools = state["native_tools"]
+            ctx.native_loaded = {t.get("name") for t in tools if not t.get("defer_loading")}
+        else:
+            tools = (adm.specs()) + mcp_defs if adm is not None else TOOLS + mcp_defs   # v0.191 after tool_search
+        if adm is not None and not native and not small and frozenset(adm.families) != sys_fams:
             # tool_search opened a family mid-turn: its guide joins the system prompt too (one cache re-write)
             sys_fams = frozenset(adm.families)
-            system = _system(sys_fams)
+            system = await asyncio.to_thread(_system, sys_fams)
         if settings.agent_goal and "goal" not in state:
             # v0.187 the plan can be written mid-turn (kaam_plan set): the goal caps rise from that moment
             g_top = _goal.active_for(conversation_id)
             if g_top is not None:
                 state["goal"] = g_top
                 b = state["breaker"]
-                b.max_calls, b.fails_in_row, b.rescue = settings.agent_goal_max_calls, FAILS_IN_ROW_GOAL, True
+                b.max_calls, b.fails_in_row, b.rescue = _calls_cap(settings, ctx, settings.agent_goal_max_calls), FAILS_IN_ROW_GOAL, True
                 state["max_tokens"] = settings.agent_goal_max_tokens
         # v0.232 PHASE C: this step's model call thinks out loud when a long job runs (read by _think; a contextvar so
         # sub-agents and every caller of _think keep their signature, and the team's own calls never think)
@@ -1112,12 +2060,26 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
             brain = "claude"   # v0.429 a hard reasoning ask runs on Claude even when a cheaper brain answers chat
         _EFFORT_NOW.set(effort_for(settings, _long_now, bool(state.get("hard"))))
         _MODEL_NOW.set(model_for(settings, bool(state.get("hard")), _long_now) if brain == "claude" else "")
+        # parity Phase 4 THINKING: every chat turn may think, at the effort its kind asks for (greeting low, ordinary
+        # medium, hard / long / big high); '' = the switch is off and every body below is today's
+        _lvl = think_level(settings, state.get("request") or "", _long_now, bool(state.get("hard")))
+        llm.REASONING_NOW.set(_lvl)
+        if _lvl and brain == "claude" and not _EFFORT_NOW.get():
+            _EFFORT_NOW.set(_lvl)          # an ordinary Claude turn: the turn's own effort (long / hard keep theirs)
         _THINK_NOW.set(think_wanted(settings, bool(state.get("goal") or state.get("big") or
-                                                   (state.get("hard") and getattr(settings, "hard_thinking", True)))))
+                                                   (state.get("hard") and getattr(settings, "hard_thinking", True))),
+                                    _lvl))
+        if VOICE_BRAIN_NOW.get():
+            llm.REASONING_NOW.set("")      # parity Phase 4: a call's brain turn keeps today's reasoning body
+            # v0.635 she is waiting on the line: a call's brain turn never thinks out loud or runs at a raised effort
+            # (an open long job in the chat used to switch both on for EVERY call question)
+            _EFFORT_NOW.set("")
+            _THINK_NOW.set(False)
         if live is not None:   # Gyaan answers are rewritten at the end (links, numbers): those show only when final
             # v0.436 SOCH KE JAWAB step 5: a hard answer is held too - it is checked before she sees it (thinking
             # still streams on the Soch card)
-            live.block(stream=not (_gyaan.used(conversation_id) or _hard_held(state, settings)))
+            live.block(stream=not (_gyaan.used(conversation_id) or _hard_held(state, settings, conversation_id)))
+        _mark("step_setup")
         _conv_tok = _ctx.CONV.set(conversation_id)   # v0.237 the model's real token count lands on this chat's reading
         try:
             try:   # stays on the brain that worked; Rokiye cancels the model call itself, not just the next step
@@ -1141,6 +2103,9 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                     # a server's tool description the model refuses: go on without the direct MCP tools (bazar_run still works)
                     log.warning("MCP tool schemas refused (%s); continuing without them", str(e)[:200])
                     mcp_defs, mcp_route, tools = [], {}, TOOLS
+                    if state.get("native_tools") is not None and adm is not None:   # v0.563 rebuilt without them
+                        from . import toolsearch as _ts2
+                        state["native_tools"] = tools = _ts2.build(adm.specs())
                     if live is not None:
                         live.reset()
                 else:
@@ -1157,7 +2122,7 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                 bus.publish(conversation_id, "message", {"role": "assistant", "text": part, "source": "agent",
                                                          "stopped": True, **_tag(live)})
                 _save(conversation_id, "assistant", [{"type": "text", "text": part}], display=part)
-            final_text = HALTED_TEXT[h.why]
+            final_text = gendered(HALTED_TEXT[h.why], gender)
             bus.publish(conversation_id, "message", {"role": "assistant", "text": final_text, "source": "agent",
                                                      **_tag(live, bool(part))})
             _save(conversation_id, "assistant", [{"type": "text", "text": final_text}], display=final_text)
@@ -1166,7 +2131,17 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
             _ctx.CONV.reset(_conv_tok)
         history.append({"role": "assistant", "content": blocks})
         texts = [b["text"] for b in blocks if b.get("type") == "text" and b.get("text", "").strip()]
-        if texts and stop not in ("tool_use", "max_tokens") and _hard_held(state, settings) \
+        if texts and stop not in ("tool_use", "max_tokens") and state.get("hard_fixed") \
+                and not state.get("hard_rechecked"):
+            # wave 13: the corrected answer is checked again (free checks only); still failing = said plainly
+            state["hard_rechecked"] = True
+            if await _hard_check(conversation_id, state, "\n\n".join(texts), history, settings, free_only=True) \
+                    and not state.get("answer_only"):   # parity Phase 5: no note stapled onto the corrected answer
+                STATS_HARD_UNSURE["n"] += 1
+                blocks = blocks + [{"type": "text", "text": HARD_UNSURE.strip()}]
+                history[-1] = {"role": "assistant", "content": blocks}
+                texts = texts + [HARD_UNSURE.strip()]
+        if texts and stop not in ("tool_use", "max_tokens") and _hard_held(state, settings, conversation_id) \
                 and not state.get("hard_checked"):
             state["hard_checked"] = True
             problems = await _hard_check(conversation_id, state, "\n\n".join(texts), history, settings)
@@ -1174,16 +2149,50 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                 _save(conversation_id, "assistant", blocks, display=None)
                 from . import hard as _hardc
                 nudge = _hardc.fix_note(problems)
+                state["hard_fixed"] = True
                 history.append({"role": "user", "content": [{"type": "text", "text": nudge}]})
                 _save(conversation_id, "user", [{"type": "text", "text": nudge}])
                 continue
-        _save(conversation_id, "assistant", blocks, display="\n\n".join(texts) or None)
-        if texts:
+        plain_nudge = None   # parity Phase 5b: the checks already ran before the answer was shown
+        if texts and stop not in ("tool_use", "max_tokens") and plain_loop_on(settings):
+            final_text = "\n\n".join(texts)
+            srcs = None
+            if _gyaan.used(conversation_id):
+                final_text, srcs = _gyaan.finish(conversation_id, final_text, state.get("request", ""))
+                if not state.get("answer_only"):
+                    final_text = await _gyaan.ground(conversation_id, final_text)
+            plain_nudge = await _plain_check(state, final_text, settings, conversation_id)
+            if plain_nudge:
+                # the draft stays in the model's history (so it can correct itself) but is never a chat message;
+                # the words she saw stream are voided and the corrected answer is written into the same block
+                _save(conversation_id, "assistant", blocks, display=None)
+                if live is not None:
+                    live.retract()
+                STATS_PLAIN["replaced"] += 1
+                history.append({"role": "user", "content": [{"type": "text", "text": plain_nudge}]})
+                _save(conversation_id, "user", [{"type": "text", "text": plain_nudge}])
+                continue
+            shown = "\n\n".join(texts)
+            if state.get("correct"):   # still false after its one correction: said INSIDE the same reply
+                note = state.pop("correct")
+                final_text = (final_text + "\n\n" + note).strip()
+                shown = (shown + "\n\n" + note).strip()
+                blocks = blocks + [{"type": "text", "text": note}]
+                history[-1] = {"role": "assistant", "content": blocks}
+            _save(conversation_id, "assistant", blocks, display=shown)
+            if srcs:
+                bus.publish(conversation_id, "gyaan_sources", {"sources": srcs})
+            bus.publish(conversation_id, "message", {"role": "assistant", "text": final_text, "source": "agent", **_tag(live)})
+            plain_nudge = ""
+        else:
+            _save(conversation_id, "assistant", blocks, display="\n\n".join(texts) or None)
+        if texts and plain_nudge is None:
             final_text = "\n\n".join(texts)
             if stop != "tool_use" and _gyaan.used(conversation_id):
                 # v0.134 Gyaan: links from retrieved text removed, numbers checked against the cited sources, source chips
                 final_text, srcs = _gyaan.finish(conversation_id, final_text, state.get("request", ""))
-                final_text = await _gyaan.ground(conversation_id, final_text)      # v0.135 model check of cited sentences
+                if not state.get("answer_only"):   # parity Phase 5: the ground check appends a note - not any more
+                    final_text = await _gyaan.ground(conversation_id, final_text)  # v0.135 model check of cited sentences
                 if srcs:
                     bus.publish(conversation_id, "gyaan_sources", {"sources": srcs})
             bus.publish(conversation_id, "message", {"role": "assistant", "text": final_text, "source": "agent", **_tag(live)})
@@ -1193,12 +2202,15 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                 # v0.473 and give the next call more room (a big tool input cut at 2,000 tokens would be cut again)
                 state["max_tokens"] = min(16000, 2 * (state.get("max_tokens") or settings.agent_max_tokens))
                 state["cuts"] = state.get("cuts", 0) + 1
-                nudge = "[System: aapka jawab beech mein cut gaya (max_tokens). Wahi se exactly aage badho — kaam ya " \
-                        "baaki baat poore karo, dobara shuru mat karo.]"
+                nudge = "[System: your reply was cut off in the middle (max_tokens). Continue exactly from there - finish the work or " \
+                        "the rest of what you were saying; do not start again.]"
                 history.append({"role": "user", "content": [{"type": "text", "text": nudge}]})
                 _save(conversation_id, "user", [{"type": "text", "text": nudge}])
                 continue
-            nudge = await _pakka_check(state, final_text, settings, ran_tools, conversation_id)
+            if plain_loop_on(settings):   # parity Phase 5b: no after-answer self-check (the kept checks ran above)
+                nudge = ""
+            else:
+                nudge = await _pakka_check(state, final_text, settings, ran_tools, conversation_id)
             if not nudge and settings.agent_goal:
                 # v0.187 goal mode: text never ends a turn while the goal's steps are open
                 g = _goal.active_for(conversation_id)
@@ -1206,13 +2218,20 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                         and not _aage_promised(final_text):
                     # v0.311 the server's own one-step plan closes with the model's real final answer (no
                     # "text mein mat ruko" loop over a plan the model never wrote); a mere promise still goes on
-                    _close_auto_plan(tenant_id, conversation_id, g, final_text)
+                    _close_auto_plan(tenant_id, conversation_id, g, final_text, state.get("calls"))
+                    g = None
+                if g is not None and VOICE_BRAIN_NOW.get() and not any(
+                        (c or {}).get("tool") == "kaam_plan" for c in (state.get("calls") or [])):
+                    # CALL PAR TEAM: a call question that did not touch the job ("kal ka mausam?") is answered as it
+                    # is - the open job's rounds carry on in the background, they do not take her call ask over
                     g = None
                 if g is not None and _goal.steps_left(g) and state.get("goal_nudges", 0) < 8:
                     state["goal"] = g
                     state["goal_nudges"] = state.get("goal_nudges", 0) + 1
                     nudge = _goal.nudge_text(g)
-            if not nudge and ran_tools and getattr(settings, "agent_aage", True) \
+            # v0.727 a promise with NO tool at all is checked too: "Starting one fresh build now." after "where do I
+            # check that" ran nothing and nothing ever started (was gated on ran_tools)
+            if not nudge and getattr(settings, "agent_aage", True) \
                     and conversation_id not in _stopped and not state.get("halted"):
                 # v0.311 AAGE BADHO: a text-only reply that only PROMISES more work ("ab doosra hissa dekh raha
                 # hoon") is not a finished job - before, the loop took it as the answer and nothing more ran
@@ -1226,10 +2245,33 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                 _save(conversation_id, "user", [{"type": "text", "text": nudge}])
                 continue
             if state.get("correct"):   # the correction is added after the words already shown (never rewrites them)
-                final_text = (final_text + "\n\n" + state.pop("correct")).strip()
-                bus.publish(conversation_id, "message", {"role": "assistant", "text": final_text, "source": "agent",
-                                                         **_tag(live)})
-                _save(conversation_id, "assistant", [{"type": "text", "text": final_text}], display=final_text)
+                # v0.668 only the correction line goes out as its own short message and its own row: the whole answer
+                # again (answer + note) showed TWICE on the phone and sat twice in the model's history
+                note = state.pop("correct")
+                final_text = (final_text + "\n\n" + note).strip()
+                bus.publish(conversation_id, "message", {"role": "assistant", "text": note, "source": "agent",
+                                                         "note": True, **_tag(live, True)})
+                _save(conversation_id, "assistant", [{"type": "text", "text": note}], display=note)
+            # v0.688 KAAM MANCH: the work receipt - one (Kaam: ...) note row under the answer when tools ran
+            # (OWL's per-round honest record, miniaturized; pure arithmetic over state, never an estimate). The
+            # ledger switch is separate so the line can go quiet without touching the tips or the backstop.
+            if settings.kaam_enabled and settings.kaam_ledger_enabled and state.get("calls"):
+                from . import kaam_laws as _kaam
+                _g0 = state.get("goal")
+                _line = _kaam.ledger(state, ran_steps,
+                                     (settings.agent_goal_max_steps if (state.get("goal") or state.get("extended"))
+                                      else settings.agent_max_steps),
+                                     plan_left=(len(_goal.steps_left(_g0)) if _g0 else None),
+                                     plan_total=(len(_g0.get("steps") or []) if _g0 else 0))
+                if _line and state.get("answer_only"):
+                    # parity Phase 5: the receipt is step data, never a chat row - the console shows it small and grey
+                    # inside the folded "Worked for" steps; the phone ignores the kind; the model never re-reads it
+                    state["ledger"] = _line
+                    bus.publish(conversation_id, "ledger", {"line": _line})
+                elif _line:
+                    bus.publish(conversation_id, "message", {"role": "assistant", "text": _line, "source": "agent",
+                                                             "note": True, **_tag(live, True)})
+                    _save(conversation_id, "assistant", [{"type": "text", "text": _line}], display=_line)
             break
         async def _one(b: dict) -> dict:
             """One tool_use block, run to its tool_result (v0.189: every path RETURNS exactly one result, so the
@@ -1246,18 +2288,24 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
             from . import where as _where   # v0.93 the card / work line name the place where it REALLY runs
             shown = _where.shown(b["name"], args_in, getattr(ctx, "place", "") or _where.working(conversation_id))
             label = gendered(mcp_live.label(b["name"], mcp_route, mcp_snap) if b["name"] in mcp_route
-                             else TOOL_LABELS.get(shown, shown), gender)
+                             else _lang_label(shown), gender)
             bus.publish(conversation_id, "step", {"tool": shown, "label": label, "state": "running", "id": b["id"],
                                                   "args": livework.args_brief(args_in)})   # v0.171 masked, display-safe
             _work(conversation_id, b["id"], shown, label, "start", args_in)
             try:
                 out = await _watched(_run_tool(b["name"], args_in, ctx, settings, mcp_route), conversation_id, ctx, state)
                 _PROGRESS[conversation_id] = time.time()   # v0.311 the turn is moving (read by _with_deadline)
-                fine = not (isinstance(out, dict) and out.get("error"))
+                _fail = tool_failure(out)   # v0.665 {"ok": False} / status failed is a failure too, not only "error"
+                fine = not _fail
                 breaker.after(b["name"], fine)
-                content = _short(out, RESULT_LIMIT.get(b["name"], 6000))
-                call = {"tool": b["name"], "ok": fine, "error": "" if fine else str(out.get("error"))[:300],
-                        "args": args_in, "key": _key(b["name"], args_in), "result": "" if not fine else content[:300]}
+                refs = out.get("tool_references") if isinstance(out, dict) and getattr(ctx, "native_search", False) \
+                    else None
+                content = refs if refs else _short(out, RESULT_LIMIT.get(b["name"], 6000))   # v0.563 tool_reference
+                call = {"tool": b["name"], "ok": fine, "error": "" if fine else _fail[:300],
+                        "args": args_in, "key": _key(b["name"], args_in), "result": "" if not fine else str(content)[:300],
+                        # v0.665 every figure the tool really returned (the 300-char result above hid row 10's amount,
+                        # so the after-reply check called a correct number unsourced)
+                        "digits": _facts_of(content) if fine else ""}
                 if not fine:
                     content += await pakka.on_failure(tenant_id, b["name"], call["error"], state.get("request", ""), state)
                     call["internet_fix"] = (state.get("web_fix") or {}).get(b["name"], "")
@@ -1280,6 +2328,18 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                 except Exception:
                     log.debug("say line failed", exc_info=True)
                 return {"type": "tool_result", "tool_use_id": b["id"], "content": content}
+            except asyncio.CancelledError:
+                # v0.668 the turn's time limit (or a stop) cancelled this step: say so on the step card before the
+                # cancel goes on - it used to stay "running" with a spinner for ever (and "running" again on reload)
+                try:
+                    state["calls"].append({"tool": b["name"], "ok": False, "error": "cut off (time limit)",
+                                           "args": args_in, "key": _key(b["name"], args_in)})
+                    bus.publish(conversation_id, "step", {"tool": shown, "label": label, "state": "error",
+                                                          "id": b["id"], "detail": "samay khatam, beech mein roka"})
+                    _work(conversation_id, b["id"], shown, label, "stopped", args_in, error="Samay khatam, roka gaya")
+                except Exception:   # noqa: BLE001
+                    log.debug("cut-off step card failed", exc_info=True)
+                raise
             except _Halted as h:
                 state["halted"] = h.why
                 state["calls"].append({"tool": b["name"], "ok": False, "error": "stopped by the owner", "args": args_in,
@@ -1303,13 +2363,19 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                 breaker.after(b["name"], False)
                 state["calls"].append({"tool": b["name"], "ok": False, "error": "timeout", "args": args_in,
                                        "key": _key(b["name"], args_in)})
-                msg = (f"{b['name']} did not finish in {settings.agent_tool_timeout_s} seconds and was stopped. "
-                       "Don't stop the task: check this step's status, try a lighter way or another tool, or hand the "
-                       "step to a route that answers faster.")
+                # v0.666 the wait stopped, the WORK may not have: a tool running in a thread (a browser job, a render)
+                # carries on and can still submit the form. "Try another way" made the model start a second one and
+                # the form went twice - now the step's status is checked first and a send / submit is never repeated.
+                msg = (f"{b['name']} did not answer in {settings.agent_tool_timeout_s} seconds. It MAY STILL BE "
+                       "RUNNING or may be half done - the work was not cancelled. Before doing anything again, check "
+                       "what really happened (its own status / result tool, kaam_status, the sent mail / order / "
+                       "booking list). NEVER repeat a send, submit, order, payment or booking until you have seen "
+                       "that it did not happen; if you cannot check, tell her plainly that it may or may not have gone "
+                       "through. For a read-only step, a lighter way or another tool is fine.")
                 log.warning("tool %s timed out", b["name"])
                 bus.publish(conversation_id, "step", {"tool": shown, "label": label, "state": "error",
-                                                      "id": b["id"], "detail": "bahut der lag rahi thi, rok diya"})
-                _work(conversation_id, b["id"], shown, label, "error", args_in, error="Bahut der lag rahi thi, rok diya")
+                                                      "id": b["id"], "detail": "it was taking too long, so I stopped it"})
+                _work(conversation_id, b["id"], shown, label, "error", args_in, error="It was taking too long, so I stopped it")
                 return {"type": "tool_result", "tool_use_id": b["id"], "content": msg, "is_error": True}
             except Exception as e:  # unexpected bug: tell the model, keep the turn alive
                 breaker.after(b["name"], False)
@@ -1318,14 +2384,15 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                 log.exception("tool %s crashed", b["name"])
                 help_ = await pakka.on_failure(tenant_id, b["name"], f"internal error: {e}", state.get("request", ""), state)
                 bus.publish(conversation_id, "step", {"tool": shown, "label": label, "state": "error", "id": b["id"]})
-                _work(conversation_id, b["id"], shown, label, "error", args_in, error="Kuch gadbad ho gayi")
+                _work(conversation_id, b["id"], shown, label, "error", args_in, error="Something went wrong")
                 return {"type": "tool_result", "tool_use_id": b["id"],
-                        "content": f"Internal error in {b['name']}: {e}" + help_, "is_error": True}
+                        "content": (clean_error(b["name"], e, b.get("input") or {}) if _head_tail_on()
+                                    else f"Internal error in {b['name']}: {e}") + help_, "is_error": True}
 
         tblocks = [b for b in blocks if b.get("type") == "tool_use"]
         results: list[dict] = []
         if len(tblocks) > 1 and getattr(settings, "agent_parallel_tools", True) \
-                and all(b["name"] in PARALLEL_SAFE for b in tblocks):
+                and all(_parallel_ok(b) for b in tblocks):
             # v0.189 one step asked for several pure look-ups: they run together (dsh's bounded pool, Claude Code's
             # concurrency-safe read batching), results commit strictly in the model's order. Her Rokiye still lands:
             # every _one watches for the halt itself and returns the stopped result.
@@ -1334,12 +2401,17 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
             for b, o in zip(tblocks, outs):
                 results.append(o if isinstance(o, dict) else
                                {"type": "tool_result", "tool_use_id": b["id"], "is_error": True,
-                                "content": f"Internal error in {b['name']}: {o}"})
+                                "content": (clean_error(b["name"], o, b.get("input") or {}) if _head_tail_on()
+                                            else f"Internal error in {b['name']}: {o}")})
         else:
             for b in blocks:
                 if b.get("type") != "tool_use":
                     continue
                 results.append(await _one(b))
+        for _g in (getattr(ctx, "native_guides", None) or []):   # v0.563 a family's guide, opened by tool_search
+            results.append({"type": "text", "text": "[Guide for the tools just found]\n" + _g})
+        if getattr(ctx, "native_guides", None):
+            ctx.native_guides = []
         if getattr(settings, "agent_steer", True):
             try:   # v0.223 PHASE A: what she sent while this job ran rides with this step's results (Claude-style)
                 from . import steer as _steer
@@ -1400,7 +2472,7 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
             history[-1] = {"role": "user", "content": results + [{"type": "text", "text": note}]}
             if live is not None:
                 live.new_text_block()
-            bus.publish(conversation_id, "message", {"role": "assistant", "text": "Soch badal raha hoon — doosra raasta try karta hoon.",
+            bus.publish(conversation_id, "message", {"role": "assistant", "text": gendered("Changing my approach - taking a different route.", gender),
                                                      "source": "agent", **_tag(live, True)})
         _save(conversation_id, "user", results)
         if breaker.stopped:                # stuck: stop here and say so plainly
@@ -1422,15 +2494,15 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
             _LONG_TURN.add(conversation_id)
             STATS_LONG["extended"] += 1
             b = state["breaker"]
-            b.max_calls, b.fails_in_row, b.rescue = settings.agent_goal_max_calls, FAILS_IN_ROW_GOAL, True
+            b.max_calls, b.fails_in_row, b.rescue = _calls_cap(settings, ctx, settings.agent_goal_max_calls), FAILS_IN_ROW_GOAL, True
             state["max_tokens"] = max(state.get("max_tokens") or 0, settings.agent_goal_max_tokens)
-            ext = ("[System: yeh kaam lamba hai aur abhi poora nahi hua. Ruko mat. Abhi `kaam_plan set` se baaki kaam ke "
-                   "steps likho (jo ho chuka use done likho), phir aage badho jab tak poora na ho.]")
+            ext = ("[System: this job is long and not finished yet. Do not stop. Now write the steps of the remaining work with `kaam_plan set` "
+                   "(mark what is already done as done), then carry on until it is complete.]")
             history[-1] = {"role": "user", "content": list(history[-1]["content"]) + [{"type": "text", "text": ext}]}
         if conversation_id in _stopped or state.get("halted"):
-            final_text = HALTED_TEXT.get(state.get("halted") or "stop", HALTED_TEXT["stop"])
+            final_text = gendered(HALTED_TEXT.get(state.get("halted") or "stop", HALTED_TEXT["stop"]), gender)
             if state.get("halted"):
-                final_text += " Jo kadam chal raha tha woh beech mein roka gaya; dobara karne se pehle dekh lijiye kitna hua."
+                final_text += " The step that was running was stopped midway; please check how much got done before doing it again."
             bus.publish(conversation_id, "message", {"role": "assistant", "text": final_text, "source": "agent",
                                                      **_tag(live, True)})
             _save(conversation_id, "assistant", [{"type": "text", "text": final_text}], display=final_text)
@@ -1440,23 +2512,37 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
         g = _goal.active_for(conversation_id) if settings.agent_goal else None
         if g is not None and _goal.steps_left(g):
             state["goal"] = g
-            honest = (f"Goal jaari hai: {g['done']}/{g['total']} steps ho gaye ({g['goal'][:120]}); "
-                      f"{len(_goal.steps_left(g))} baaki hain — main background mein aage badh raha hoon.")
+            honest = (f"Goal in progress: {g['done']}/{g['total']} steps done ({g['goal'][:120]}); "
+                      f"{len(_goal.steps_left(g))} left - I am carrying on in the background.")
             final_text = (final_text + "\n\n" + honest).strip() if final_text else honest
             bus.publish(conversation_id, "message", {"role": "assistant", "text": honest, "source": "agent", **_tag(live, True)})
             _save(conversation_id, "assistant", [{"type": "text", "text": honest}], display=honest)
             return final_text
-        if not final_text:
-            final_text = "Yeh kaam lamba ho gaya, main yahin ruk raha hoon. Aage kya karoon?"
-            bus.publish(conversation_id, "message", {"role": "assistant", "text": final_text, "source": "agent",
-                                                     **_tag(live, True)})
-            # v0.473 saved too: the next turn must know the work stopped half-way (before, only she saw this line)
-            _save(conversation_id, "assistant", [{"type": "text", "text": final_text}], display=final_text)
-        return final_text
+        # v0.665 SACH KA HISAAB: the honest line is said EVERY time (a mid-task "ab doosra hissa bhej raha hoon" used to
+        # be returned as the final answer and the turn recorded "done"), and the outcome is partial, never done
+        state["left"] = state.get("left") or "the step limit was reached, the work is not finished"
+        honest = "This task has become long and is not finished yet - I am stopping here. Shall I carry on?"
+        bus.publish(conversation_id, "message", {"role": "assistant", "text": honest, "source": "agent",
+                                                 **_tag(live, True)})
+        # v0.473 saved too: the next turn must know the work stopped half-way (before, only she saw this line)
+        _save(conversation_id, "assistant", [{"type": "text", "text": honest}], display=honest)
+        return (final_text + "\n\n" + honest).strip() if final_text else honest
     if not final_text.strip():
         # the model finished without a word: never leave the user staring at a silent chat
-        final_text = gendered("Kaam ho gaya. Aur kuch karna hai?", gender) if ran_tools else \
-            "Maaf kijiye, main samajh nahi paya. Ek baar phir bata dein?"
+        # v0.665 only when a tool really finished: "Kaam ho gaya" after every tool failed was made up
+        _cs = state.get("calls") or []
+        _bad = [c for c in _cs if not c.get("ok")]
+        if ran_tools and _cs and len(_bad) == len(_cs):
+            state["left"] = state.get("left") or "no step finished"
+            final_text = ("Sorry, I could not do this - the steps I ran got stuck ("
+                          + (str(_bad[-1].get("error") or "")[:120] or "error") + "). Shall I try again?")
+        elif ran_tools and _bad:
+            state["left"] = state.get("left") or "some steps got stuck"
+            final_text = gendered("Part of it is done, but not all - some steps got stuck. Shall I redo the rest?", gender)
+        else:
+            # wave 13: no "Aur kuch karna hai?" tail (the reply rule forbids it), and the not-understood line gendered too
+            final_text = "Done." if ran_tools else \
+                gendered("Sorry, I did not understand that. Could you say it once more?", gender)
         bus.publish(conversation_id, "message", {"role": "assistant", "text": final_text, "source": "agent",
                                                  **_tag(live, True)})
         _save(conversation_id, "assistant", [{"type": "text", "text": final_text}], display=final_text)
@@ -1464,6 +2550,22 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
 
 
 _stopped: set[str] = set()
+
+
+def _record_cut(tenant_id: str, conversation_id: str, user_text: str, why: str, t0: float) -> None:
+    """v0.652 SACHCHA NATIJA: a turn that hit its time limit or crashed used to leave NO outcome - a call then read the
+    PREVIOUS ask's outcome (often "done") and said "ho gaya" for work that stopped, and the work diary / Kaam list never
+    showed it. Now it is "stuck" in LAST_OUTCOME (fresh `at`) and in the task log."""
+    LAST_OUTCOME[conversation_id] = {"outcome": "stuck", "left": why, "goal": "", "at": time.time()}
+    if not user_text or str(user_text).lstrip().startswith(("[", "(")):
+        return
+    try:
+        from ..fence import is_incognito
+        from . import pakka
+        if not is_incognito(conversation_id):
+            pakka.record(tenant_id, user_text, "stuck", [], {"conv": conversation_id}, time.time() - t0, why)
+    except Exception:
+        log.exception("cut turn record failed")
 
 # v0.191 wake turns never stream: a live call on this chat owns its own reply stream (livereply), and the
 # wake turn's words must publish as plain messages instead of feeding into it.
@@ -1473,8 +2575,8 @@ _NO_STREAM: set[str] = set()
 # line ("Ek second, dekh rahi hoon…") as an EPHEMERAL message - no Event row, no push, never in history, the
 # real reply replaces it. One ack per turn, owner chats only (voice calls have their own ack clips).
 _ACKED: set[str] = set()
-ACK_LINES = ("Ek second, dekh raha hoon…", "Ho raha hai, bas thodi der…", "Soch raha hoon, ek minute…",
-             "Shuru kar diya, chal raha hai…", "Dekh li jiye, abhi laaya…", "Kaam pakda, chal padta hoon…")
+ACK_LINES = ("One second, looking into it…", "On it, just a moment…", "Thinking, one minute…",
+             "Started, it is running…", "Let me check, back in a moment…", "Got the task, getting going…")
 
 
 def _assistant_spoke_recently(conversation_id: str, seconds: float) -> bool:
@@ -1583,6 +2685,23 @@ async def _pakka_check(state: dict, final_text: str, settings, ran_tools: bool, 
     real = [c for c in calls if c.get("tool") not in pakka.SKIP]
     if not real:
         return ""
+    # v0.688 KAAM MANCH (OWL's <TASK_DONE> law, in code): the free backstop for the paths the model self-check
+    # never reaches (the simple-job skip below, the checks cap above) - a strong done-claim while EVERY real
+    # call failed is always wrong, and it costs no model call to know it. Sets the correction note only.
+    if settings.kaam_enabled:
+        from . import kaam_laws as _kaam
+        _note = _kaam.done_note(state, final_text)
+        if _note:
+            if state.get("answer_only"):
+                # parity Phase 5: the model corrects itself once; a note goes out only for a real action claim
+                if not state.get("done_nudged"):
+                    state["done_nudged"] = True
+                    return SELF_CORRECT_NUDGE.format(what="every tool in this turn failed, so what was asked is not done")
+                if draftcheck.action_claim(final_text):
+                    state["correct"] = _note
+                return ""
+            state["correct"] = _note
+            return ""
     failed = any(not c.get("ok") for c in real)
     if not failed and len(real) < 3:          # a simple job that went fine: no extra model call
         return ""
@@ -1602,14 +2721,81 @@ async def _pakka_check(state: dict, final_text: str, settings, ran_tools: bool, 
                 "If it truly cannot be done, say plainly what is done, what is left and what she can do.")
     if not v["claim_ok"]:
         pakka.STATS["corrected_claims"] += 1
-        state["correct"] = "(Saaf baat: abhi yeh baaki hai — " + (v["missing"] or "kuch hissa") + ".)"
+        if state.get("answer_only"):
+            # parity Phase 5: ask the model once to say it right; no note unless a real action claim stays false
+            if not state.get("claim_nudged"):
+                state["claim_nudged"] = True
+                return SELF_CORRECT_NUDGE.format(what=(v["missing"] or "some part") + " is still left")
+            if not draftcheck.action_claim(final_text):
+                return ""
+        state["correct"] = "(To be clear: this is still left - " + (v["missing"] or "some part") + ".)"
     return ""
+
+
+STATS_PLAIN = {"replaced": 0, "false_action": 0, "promise": 0, "done_failed": 0, "dropped": 0}
+
+
+async def _plain_check(state: dict, final_text: str, settings, conversation_id: str) -> str:
+    """parity Phase 5b: the checks that run BEFORE an answer is shown, all free (no model call). Returns the one
+    correction ask ('' = the answer is final). Only what protects her from a false statement about the world:
+      - a false ACTION claim (sent / paid / booked / deleted / published) no tool of this turn / job backs;
+      - a reminder promised while no reminder was set (nothing would ever keep that promise);
+      - "done" while every tool of the turn failed, said as an action claim.
+    A second false try is said inside the same reply (state['correct']); research figures are held + checked by
+    _hard_check (a dossier turn). The generic pakka self-check model call is gone in this mode."""
+    from . import draftcheck
+    if conversation_id in _stopped or state["breaker"].stopped or state.get("halted"):
+        return ""
+    if settings.draft_check:
+        g0 = state.get("goal") or (_goal_now(conversation_id, settings))
+        since = None
+        if g0:
+            from . import goal as _g
+            since = _g.started_at(g0["id"]) if g0.get("id") else None
+        before = state.get("fake_done", 0)
+        fake = draftcheck.fake_done(state, final_text, conversation_id, since)
+        if fake == draftcheck.NUDGE_PROMISE:
+            STATS_PLAIN["promise"] += 1
+            return fake
+        if fake:
+            if state.get("false_action"):
+                STATS_PLAIN["false_action"] += 1
+                return fake
+            STATS_PLAIN["dropped"] += 1        # a claim that is not an action: the answer stands as written
+            state["fake_done"] = before
+            return ""
+        if state.get("correct"):
+            return ""
+    if settings.kaam_enabled and state.get("calls"):
+        from . import kaam_laws as _kaam
+        from . import pakka
+        real = [c for c in state["calls"] if c.get("tool") not in pakka.SKIP]
+        if real and draftcheck.action_claim(final_text):
+            _note = _kaam.done_note(state, final_text)
+            if _note:
+                if not state.get("done_nudged"):
+                    state["done_nudged"] = True
+                    STATS_PLAIN["done_failed"] += 1
+                    return SELF_CORRECT_NUDGE.format(what="every tool in this turn failed, so what was asked is not done")
+                state["correct"] = _note
+    return ""
+
+
+# parity Phase 5: the one self-correction ask (the model rewrites its own answer; nothing is stapled on after)
+SELF_CORRECT_NUDGE = ("[System check, not the user] Your answer claims more than was really done: {what}. Write your "
+                      "answer again in your own words, saying plainly what is done and what is not. Do not claim "
+                      "anything that no tool result shows.")
+
+
+_STOP_AT: dict[str, float] = {}
+STOPPED_IN_PREP = "Okay, stopped - nothing was started this time."
 
 
 def stop(conversation_id: str) -> None:
     """The owner tapped Stop: the running model call / tool call is cancelled at once (v0.91), nothing more runs,
     and an open goal of this chat is marked stopped (v0.187: Rokiye stops the goal, not just the turn)."""
     _stopped.add(conversation_id)
+    _STOP_AT[conversation_id] = time.time()   # v0.662 when: a Stop during a turn's preparation is no longer erased
     bus.publish(conversation_id, "work", {"id": "stop", "tool": "", "scene": "work", "phase": "stopped",
                                           "label": "Roka gaya", "data": {}})
     try:
@@ -1649,8 +2835,9 @@ async def run_turn(conversation_id: str, user_text: str, tenant_id: str | None =
         raise
     except BaseException as e:   # noqa: BLE001 - the last line of defence: silence is worse than any error text
         log.exception("agent turn crashed outside its guard")
+        _mark_failed(conversation_id)
         try:
-            text = _friendly_error(e)
+            text = _friendly_error(e, tenant_id, actor or "owner", bool(VOICE_BRAIN_NOW.get()))
             bus.publish(conversation_id, "message", {"role": "assistant", "text": text, "source": "error"})
             _save(conversation_id, "assistant", [{"type": "text", "text": text}], display=text)
             bus.publish(conversation_id, "typing", {"on": False})
@@ -1666,6 +2853,19 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
     """Handle one user message end to end. Returns Santosh's final reply text.
     v0.173 `client_id` (the console's steering): a message she took back while queued returns at once — nothing
     runs, nothing is published (the take-back endpoint already hid the bubble)."""
+    try:   # v0.714 HAR CHAT ALAG: a tool that tells her something during this turn speaks in THIS chat
+        from .. import convs as _cv_turn
+        _cv_turn.TURN.set(conversation_id)
+    except Exception:
+        pass
+    try:   # v0.740 MODEL DROPDOWN: the whole turn runs on the model she picked in the console (owner's list)
+        from .. import modelchoice as _mc
+        _picked = _mc.chosen(tenant_id or get_settings().tenant_id)
+        if _picked:
+            from . import llm as _llm_pick
+            _llm_pick.MODEL_NOW.set(_picked)
+    except Exception:   # noqa: BLE001
+        pass
     if client_id and (conversation_id, client_id) in _held:
         _held.discard((conversation_id, client_id))
         return ""
@@ -1679,6 +2879,14 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
     # v0.193 the harness session log: every turn gets an id and everything it does logs under it
     _turn_id = new_id("turn")
     _t_turn0 = time.time()
+    if VOICE_BRAIN_NOW.get():
+        _m0 = time.monotonic()
+        _PREP.set({"t0": _m0, "last": _m0, "marks": []})
+        try:   # v0.639 PAKDO: name whatever blocks the event loop (logs only)
+            from .. import looplag
+            looplag.start()
+        except Exception:
+            pass
     _evlog.CURRENT.set({"turn_id": _turn_id, "actor": who})
     # v0.222 a background round of HER long job ("goal") is her own chat: never refused by the monthly background limit
     feature = ("call" if usage.current()[1] == "call" else "chat") if (who == "goal" or who.startswith(("owner", "approved:"))) else \
@@ -1686,7 +2894,9 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
     usage.bind(tenant_id, feature)       # v0.98 what this turn's model calls cost, and for whom
     if not usage.allowed(tenant_id, feature):
         text = usage.blocked_text(tenant_id)
-        bus.publish(conversation_id, "message", {"role": "assistant", "text": text, "source": "budget"})
+        _mark_failed(conversation_id)
+        if _say_error(tenant_id, who, text):
+            bus.publish(conversation_id, "message", {"role": "assistant", "text": text, "source": "budget"})
         return text
     _gender = persona(tenant_id)[1]
     # v0.75 ID numbers the OWNER writes go into her Pehchaan Locker; the model and the saved chat get references.
@@ -1702,11 +2912,12 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
             got = None
         if got:
             shown = ("OTP " if got["kind"] == "otp" else "CAPTCHA ") + got.get("masked", "••••")
-            _save(conversation_id, "user", shown, display=shown)
-            _save(conversation_id, "assistant", [{"type": "text", "text": got["say"]}], display=got["say"])
+            _save_pre(conversation_id, "user", shown, display=shown)
+            _save_pre(conversation_id, "assistant", [{"type": "text", "text": got["say"]}], display=got["say"])
             bus.publish(conversation_id, "message", {"role": "assistant", "text": got["say"], "source": "operator"})
             return got["say"]
-        if not voice and save_user and not str(user_text or "").lstrip().startswith(("[", "(")):
+        _every = bool(getattr(settings, "chat_every_message", False))
+        if not voice and save_user and not _every and not str(user_text or "").lstrip().startswith(("[", "(")):
             try:   # v0.472 R1 PLAN PEHLE: a big research ask shows its plan and waits for her Haan; her Haan starts it
                 from . import research_plan as _rplan
                 _rp = await _rplan.gate(tenant_id, conversation_id, user_text, settings)
@@ -1714,20 +2925,20 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
                 log.exception("research plan gate failed")      # a broken gate never blocks her ask
                 _rp = None
             if _rp and _rp["action"] == "say":
-                _save(conversation_id, "user", user_text, display=user_text)
-                _save(conversation_id, "assistant", [{"type": "text", "text": _rp["text"]}], display=_rp["text"])
+                _save_pre(conversation_id, "user", user_text, display=user_text)
+                _save_pre(conversation_id, "assistant", [{"type": "text", "text": _rp["text"]}], display=_rp["text"])
                 bus.publish(conversation_id, "message", {"role": "assistant", "text": _rp["text"], "source": "research_plan"})
                 bus.publish(conversation_id, "typing", {"on": False})
                 return _rp["text"]
             if _rp and _rp["action"] == "start":
                 # her words are what the chat shows; the SAME turn gets the ask + the plan she approved (never saved twice)
-                _save(conversation_id, "user", _rp["words"], display=_rp["words"])
+                _save_pre(conversation_id, "user", _rp["words"], display=_rp["words"])
                 user_text, save_user = _rp["text"], False
         try:   # v0.191 SAMAJHDAR CARD: PC/browser step uski haan ka intezaar hai aur usne LIKH diya ('haan karo',
                # 'approve hai', 'confirm'...) — card khud resolve, tap ki zaroorat nahi (paise wali card par hi).
                # Sirf POORA uttar hi manzoori ho tabhi ('haan, address yeh raha' ka baaki hissa brain dekhega).
             from .. import approval_words
-            if approval_words.is_pure_approval(user_text):
+            if getattr(settings, "chat_approval_words", False) and approval_words.is_pure_approval(user_text):
                 from ..bazar import service as _bz
                 _ap = await asyncio.to_thread(_bz.voice_approve, tenant_id, conversation_id, user_text, True, "chat")
             else:
@@ -1736,8 +2947,8 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
             log.exception("approval by chat text failed")
             _ap = None
         if _ap:
-            _save(conversation_id, "user", user_text, display=user_text)
-            _save(conversation_id, "assistant", [{"type": "text", "text": _ap["say"]}], display=_ap["say"])
+            _save_pre(conversation_id, "user", user_text, display=user_text)
+            _save_pre(conversation_id, "assistant", [{"type": "text", "text": _ap["say"]}], display=_ap["say"])
             bus.publish(conversation_id, "message", {"role": "assistant", "text": _ap["say"], "source": "approval"})
             bus.publish(conversation_id, "typing", {"on": False})
             return _ap["say"]
@@ -1760,11 +2971,45 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
             from . import goal as _g
             if settings.agent_goal and _g.held_for_limit(conversation_id) and _g.wants_continue(user_text):
                 _g.reopen(tenant_id, conversation_id)
+            elif settings.agent_goal and _hers and str(user_text or "").strip():
+                _g.resume_on_answer(tenant_id, conversation_id, user_text)   # wave 10: her answer to a job that asked her
         except Exception:
             log.exception("goal reopen failed")
+    if who == "owner" and save_user and getattr(settings, "kaam_stop_words", True):
+        # v0.649 SACH MEIN ROKO: her "roko / cancel karo / band karo" stops the work NOW - before this turn waits for the
+        # conversation lock that the very job she is cancelling holds. Only what really stopped is said; nothing
+        # running (or her words name something else) = the normal turn handles it (a draft, a booking...).
+        try:
+            from .. import kaamstop
+            if kaamstop.wants_stop(user_text):
+                _ks = await asyncio.to_thread(kaamstop.cancel, tenant_id, user_text, conversation_id)
+                if _ks.get("stopped") and getattr(settings, "chat_every_message", False):
+                    # parity gap 1: the work is stopped NOW, and her message still reaches the model, which says so
+                    STATS_PREP["stop_to_model"] = STATS_PREP.get("stop_to_model", 0) + 1
+                    context = ((context + "\n\n") if context else "") + (
+                        "[Done by the system before this turn, because she asked to stop: " + str(_ks.get("say") or "")
+                        + " Tell her in one short line what was stopped. Do not start that work again.]")
+                elif _ks.get("stopped"):
+                    _save_pre(conversation_id, "user", user_text, display=user_text)
+                    _save_pre(conversation_id, "assistant", [{"type": "text", "text": _ks["say"]}], display=_ks["say"])
+                    bus.publish(conversation_id, "message", {"role": "assistant", "text": _ks["say"], "source": "kaam_stop"})
+                    bus.publish(conversation_id, "typing", {"on": False})
+                    return _ks["say"]
+        except Exception:
+            log.exception("kaam stop by words failed")   # a broken stop never blocks her ask
+    _mark("checks")
     lock = _locks[conversation_id]
     _steer_e = None
-    if lock.locked() and (actor or "owner") == "owner" and not voice:
+    if VOICE_BRAIN_NOW.get() and lock.locked():
+        log.info("call brain turn waits: this chat is busy with another turn (%s)", conversation_id)
+    # v0.667 only a turn that is HERS (her own ask / her long job) may answer or take her new words early: a wake
+    # report or a routine holding the chat used to swallow them (steer.take has no actor check) and her own turn
+    # returned "" and never ran - now she simply waits her turn behind it, like a queued message
+    _holder = _HOLDER.get(conversation_id, "owner")
+    if lock.locked() and (actor or "owner") == "owner" and not voice and not VOICE_BRAIN_NOW.get() \
+            and _holder in ("owner", "goal"):
+        # v0.657 a call's brain ask never takes the no-tools quick lane (it answered "kaam chal raha hai" without
+        # tools); the call sends a second ask to its own side record instead (voice.Call._delegate)
         # v0.86 a long job holds the chat: answer this message NOW from the quick lane; only real work waits
         from . import quick
         steer_on = bool(getattr(settings, "agent_steer", True)) and not context
@@ -1774,7 +3019,7 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
         if steer_on:   # v0.223 the instruction reaches the RUNNING job at its next step (agent.steer)
             from . import steer as _steer
             _steer_e = _steer.offer(conversation_id, user_text, client_id)
-    async with lock:
+    async with _holding(lock, conversation_id):
         if _steer_e is not None:
             from . import steer as _steer
             if _steer.claim(conversation_id, _steer_e):
@@ -1784,6 +3029,9 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
             return ""
         if client_id:
             _active_msg[conversation_id] = client_id   # v0.173 this message's turn runs now (take-back refuses it)
+        _HOLDER[conversation_id] = (actor or "owner") if not str(actor or "").startswith("approved:") else "owner"
+        _mark("lock")
+        _t_lock = time.time()
         notes = _pending_worker_notes(conversation_id)
         from . import quick as _quick
         notes += _quick.take_notes(conversation_id)
@@ -1797,9 +3045,15 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
             agent_text = "\n".join(f"[Santosh worker update] {n}" for n in notes) + "\n\n" + agent_text
         try:   # v0.242 FULL CLAUDE MODE Phase 2: a chat near its window is compacted BEFORE this turn (Claude's way)
             from . import compact as _compact
-            await _compact.before_turn(conversation_id, tenant_id, settings)
+            if VOICE_BRAIN_NOW.get():
+                # v0.636 a call brain turn reads only the last few exchanges (voice_brain_history), so it never needs
+                # the whole chat compacted first - that is a full-chat model call while she waits; the next chat turn does it
+                STATS_PREP["compact_skipped"] += 1
+            else:
+                await _compact.before_turn(conversation_id, tenant_id, settings)
         except Exception:
             log.exception("compact before turn failed")
+        _mark("compact")
         saved_wake = False
         if save_user:
             # v0.473 a goal's background round is not her words: kept in history, but never shown as her message
@@ -1832,7 +3086,16 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
         except Exception:
             pass
 
-        history = _load_history(conversation_id)
+        _mark("save")
+        try:   # v0.657 PAKKA KAAM: the inbox row learns THIS turn really began (the restart sweep's anchor)
+            from .. import turn_inbox as _ti
+            await asyncio.to_thread(_ti.started, conversation_id)
+        except Exception:
+            log.debug("inbox started stamp failed", exc_info=True)
+        # v0.668 read in a thread: up to 5,000 rows decoded on the event loop froze the WHOLE server (live call audio,
+        # every SSE stream) for a moment on every turn of a long chat
+        history = await asyncio.to_thread(_load_history, conversation_id)
+        _mark("history")
         if not save_user and not saved_wake and agent_text.strip():
             # v0.213 wake / inbox re-run turns: this turn's words were deliberately NOT saved (save_user=False,
             # kaam_followup._wake_turn / turn_inbox re-runs), so the array below used to end with the PREVIOUS
@@ -1842,25 +3105,19 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
             history.append({"role": "user", "content": agent_text})
         block = ""
         if who == "owner" or who in ("routine", "wake", "goal") or who.startswith("approved:"):
-            try:   # v0.108 work diary, facts by meaning, recalled old exchanges: for this message only
-                from .. import yaad
-                block = await asyncio.to_thread(yaad.turn_block, tenant_id, conversation_id, user_text)
-                try:   # v0.136 the REAL state of her running / finished jobs, so Hoola never says "dekh raha hoon"
-                    from .. import kaamwatch
-                    kb = await asyncio.to_thread(kaamwatch.block, tenant_id, conversation_id)   # v0.246 fenced
-                    if kb:
-                        block = (block + "\n\n" + kb) if block else kb
-                except Exception:
-                    log.exception("kaam block failed")
-                try:   # v0.473 HOOLA CODER: the compact coder-memory primer rides BESIDE yaad, never
-                       # instead of it - KAAM KA HAAL and the diary keep their order, this lands after
-                    from .. import coder as _coder
-                    cb = await asyncio.to_thread(_coder.inject.turn_block, tenant_id, conversation_id,
-                                                 query=user_text or "")
-                    if cb:
-                        block = (block + "\n\n" + cb) if block else cb
-                except Exception:
-                    log.exception("coder block failed")
+            if VOICE_BRAIN_NOW.get():
+                # v0.638 a call's brain turn: diary / job state / coder memory read TOGETHER under one short wait
+                # (read one after another they cost 7.0 s on her 16:36 call); a slow one is left out of this ask only
+                block = await _brain_memory(tenant_id, conversation_id, user_text, settings)
+            else:
+              try:   # v0.108 work diary, facts by meaning, recalled old exchanges: for this message only
+                # v0.704 the parts are read TOGETHER (one after another they added up on every chat turn, the shape
+                # v0.638 removed from calls) under one bounded wait; a part not ready is left out of THIS turn only.
+                # The card news rides with them: her taps (Send / Approve / Cancel) since the last reply.
+                block = await _chat_memory(tenant_id, conversation_id, user_text, settings,
+                                           one=one_memory_on(settings, who))
+                # v0.648: her recent calls reach a chat turn through the diary's "Pichhli calls" section (call records are
+                # in the same memory scope) - the separate v0.646 recent-calls block said the same thing twice
                 if settings.agent_goal:   # v0.187 an open goal rides above everything: this turn continues it
                     from . import goal as _goalb
                     gb = _goalb.goal_block(conversation_id)
@@ -1871,12 +3128,24 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
                         # v0.228 a clearly big ask: the plan comes FIRST, before any work (Claude's todo list)
                         STATS_LONG["plan_first"] += 1
                         block = (_goalb.PLAN_FIRST + "\n\n" + block) if block else _goalb.PLAN_FIRST
-            except Exception:
+              except Exception:
                 log.exception("memory block failed")
+            _now_line = _now_note(tenant_id)   # wave 9: the exact time rides HERE (volatile), never in the cached system prompt
+            block = (_now_line + "\n\n" + block) if block else _now_line
             if block:
                 _with_memory(history, block)
+        _mark("memory")
         final_text = ""
+        if _STOP_AT.get(conversation_id, 0.0) >= _t_lock and (actor or "owner") == "owner":
+            # v0.662 she tapped Stop while this turn was preparing (saving, compaction, memory read): the discard below
+            # used to wipe it and the whole turn ran anyway. Nothing has run yet - say so and end the turn.
+            _stopped.discard(conversation_id)
+            bus.publish(conversation_id, "message", {"role": "assistant", "text": STOPPED_IN_PREP, "source": "stop"})
+            _save(conversation_id, "assistant", [{"type": "text", "text": STOPPED_IN_PREP}], display=STOPPED_IN_PREP)
+            bus.publish(conversation_id, "typing", {"on": False})
+            return STOPPED_IN_PREP
         _stopped.discard(conversation_id)
+        _h0 = len(history)
         from .. import livereply
         # v0.191 a wake turn never streams into an already-open channel (a live call owns its own reply stream);
         # it publishes whole messages like every non-streaming path.
@@ -1889,30 +3158,45 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
             from . import goal as _goalt
             goal_on = settings.agent_goal and _goalt.active_for(conversation_id) is not None
             _LONG_TURN.discard(conversation_id)
+            _first = settings.agent_goal_turn_s if goal_on else settings.agent_turn_timeout_s
+            if work_in_turn(ctx, settings):   # PARITY Phase 4: her chat turn has room for long work (20 min)
+                STATS_INTURN["turns"] += 1
+                _first = max(_first, int(getattr(settings, "chat_turn_s", 0) or 0))
             final_text = await _with_deadline(
                 _steps(conversation_id, ctx, _gender, history, settings, tenant_id, user_text), conversation_id,
-                max(30, settings.agent_goal_turn_s if goal_on else settings.agent_turn_timeout_s),
+                max(30, _first),
                 max(30, settings.agent_goal_turn_s) if settings.agent_goal else 0)
         except asyncio.TimeoutError:
             log.error("agent turn timed out after %ss", settings.agent_turn_timeout_s)
-            final_text = "Yeh kaam bahut der se chal raha tha, isliye maine ise rok diya. Thoda chhota karke phir bolein?"
+            _mark_failed(conversation_id)
+            # v0.657 PAKKA KAAM: the deadline cancels the turn MID-TOOL, so a step may be half done (some mails gone,
+            # some not). Never invite a blind resend; a background goal round says the next round carries on.
+            final_text = TIMEOUT_GOAL if (goal_on and who == "goal") else gendered(TIMEOUT_TEXT, _gender)
+            await asyncio.to_thread(_record_cut, tenant_id, conversation_id, user_text, "time limit par roka gaya", _t_turn0)
             _evlog.log_event(tenant_id, conversation_id, "turn_failed", {"line": f"turn timeout ({settings.agent_turn_timeout_s}s)"},
                              turn_id=_turn_id, actor=who)
             if live is not None:
                 live.reset()
-            bus.publish(conversation_id, "message", {"role": "assistant", "text": final_text, "source": "error",
-                                                     **_tag(live, True)})
-            _save(conversation_id, "assistant", [{"type": "text", "text": final_text}], display=final_text)
+            if _say_error(tenant_id, who, final_text):
+                bus.publish(conversation_id, "message", {"role": "assistant", "text": final_text, "source": "error",
+                                                         **_tag(live, True)})
+                _save(conversation_id, "assistant", [{"type": "text", "text": final_text}], display=final_text)
         except Exception as e:
             log.exception("agent turn failed")
-            final_text = _friendly_error(e)
+            _mark_failed(conversation_id)
+            final_text = _friendly_error(e, tenant_id, who, bool(VOICE_BRAIN_NOW.get()))
+            _ran = _tools_since(history, _h0)
+            if _ran:    # wave 13: steps already ran (a mail may be gone) - never invite a blind repeat
+                final_text = final_text + AFTER_TOOLS
+            await asyncio.to_thread(_record_cut, tenant_id, conversation_id, user_text, f"galti: {str(e)[:120]}", _t_turn0)
             _evlog.log_event(tenant_id, conversation_id, "turn_failed", {"line": str(e)[:200]},
                              turn_id=_turn_id, actor=who)
             if live is not None:
                 live.reset()
-            bus.publish(conversation_id, "message", {"role": "assistant", "text": final_text, "source": "error",
-                                                     **_tag(live, True)})
-            _save(conversation_id, "assistant", [{"type": "text", "text": final_text}], display=final_text)
+            if _say_error(tenant_id, who, final_text):
+                bus.publish(conversation_id, "message", {"role": "assistant", "text": final_text, "source": "error",
+                                                         **_tag(live, True)})
+                _save(conversation_id, "assistant", [{"type": "text", "text": final_text}], display=final_text)
         finally:
             _ACKED.discard(conversation_id)   # v0.187 no ack after this turn for any reason
             try:   # v0.315 EK HI FILE: a document draft held for a fix that nobody replaced reaches her now
@@ -1933,6 +3217,10 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
                 from .. import yaad   # a goal round's "[Goal jaari...]" text is never her words: no facts from it
                 yaad.after_turn(tenant_id, conversation_id, user_text, final_text,
                                 "owner" if who == "owner" else ("routine" if who == "goal" else who))
+                if who == "owner":   # v0.612 YAAD SE: which memory this reply leaned on, each forgettable
+                    yaad.publish_used(conversation_id, final_text)
+                else:
+                    yaad.USED.pop(conversation_id, None)
             except Exception:
                 log.exception("memory after turn failed")
             try:   # v0.477 HOOLA NUDGE: the turn counter - at coder_nudge_every turns ONE quiet

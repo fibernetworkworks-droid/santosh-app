@@ -927,7 +927,7 @@ class Operator:
                 title = ""
             if PAY_PAGE.search(f"{s.page.url} {title} {(it or {}).get('name', '')} {reason}"):
                 kind = "payment"      # a bank / payment OTP moves money: she enters it herself in the live view
-                reason = ("Bank / payment ka OTP: yeh aap khud live screen par bhariye (paise isi se katenge). "
+                reason = ("Bank / payment OTP: please enter this yourself on the live screen (the money is deducted with it). "
                           + (reason or ""))
         a = Approval(id="h" + secrets.token_hex(5), session=s.name, kind=kind, reason=(reason or "")[:500], ref=ref,
                      target_name=(it or {}).get("name", "") if kind in ("approve", "payment") else "",
@@ -939,13 +939,13 @@ class Operator:
             try:
                 solved = await self.captcha_solve(a.id)
                 a.suggested_answer = solved
-                a.reason = f"CAPTCHA padha: \"{solved}\" — sahi hai? (ya sahi jawab likhiye)"
+                a.reason = f"CAPTCHA read as: \"{solved}\" — is it right? (or type the correct answer)"
             except OperatorError:
                 a.suggested_answer = ""      # OCR failed: owner reads it herself (old flow)
         self.approvals[a.id] = a
         s.trace.append({"action": "human", "kind": kind, "reason": a.reason,
                         "target": self.descriptor(it) if it else None, "url": s.page.url})
-        s.action = f"Aapka intezaar: {a.reason}"
+        s.action = f"Waiting for you: {a.reason}"
         await self._audit(s, f"owner:{kind}", it, None, {"url": s.page.url})
         if self.on_human_request:
             try:
@@ -1068,7 +1068,7 @@ class Operator:
                 pass
         box = await loc.bounding_box()      # no picture found: the area around the box
         if not box:
-            raise OperatorError("CAPTCHA picture nahi mili; live view mein dekhiye.")
+            raise OperatorError("Could not find the CAPTCHA picture; please look in the live view.")
         x, y = max(0, box["x"] - 340), max(0, box["y"] - 110)
         return await s.page.screenshot(clip={"x": x, "y": y, "width": box["width"] + 680, "height": box["height"] + 220})
 
@@ -1089,7 +1089,7 @@ class Operator:
         img = img.point(lambda p: 255 if p > 140 else 0)
         solved = pytesseract.image_to_string(img, config="--psm 7 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789").strip()
         if not solved:
-            raise OperatorError("CAPTCHA padh nahi paya; owner se poochein.")
+            raise OperatorError("Could not read the CAPTCHA; ask the owner.")
         return solved
 
     async def captcha_fill(self, approval_id: str, value: str) -> dict:

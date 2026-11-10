@@ -21,7 +21,7 @@ from __future__ import annotations
 import logging
 import time
 
-from . import parser, prompts, spool, store
+from . import capture, parser, prompts, spool, store
 from .modes import load_mode
 
 log = logging.getLogger("coder.observer")
@@ -126,6 +126,28 @@ def _bump_session_observed(conv: str, n: int) -> None:
         log.exception("coder session bump failed")
 
 
+_SWEPT = {"done": False}
+
+
+def _sweep_incognito() -> int:
+    """v0.603 INCOGNITO SACH, once per process: before this version an incognito chat's asks, tool rows
+    and observations reached the vault (the capture boundary never asked). Every vault conversation
+    that is an incognito chat is forgotten whole. Cheap (one id list), idempotent, never raises."""
+    if _SWEPT["done"]:
+        return 0
+    _SWEPT["done"] = True
+    n = 0
+    try:
+        for conv in store.known_convs():
+            if capture.secret(conv):
+                got = store.forget_conv(conv)
+                n += 1
+                log.info("coder: incognito chat %s forgotten from the vault %s", conv, got)
+    except Exception:
+        log.exception("coder incognito sweep failed")
+    return n
+
+
 async def tick(settings, max_sessions: int = 3) -> dict:
     """One worker pass: drain the spool, observe what is ready, summarize what ended."""
     stats = {"drained": 0, "observed": 0, "summaries": 0, "noise": 0, "skipped": 0}
@@ -137,6 +159,7 @@ async def tick(settings, max_sessions: int = 3) -> dict:
     except Exception:
         log.exception("coder store ensure failed")
         return stats
+    _sweep_incognito()
     events = spool.drain()
     stats["drained"] = len(events)
     now = time.time()
@@ -144,6 +167,10 @@ async def tick(settings, max_sessions: int = 3) -> dict:
     for ev in events:
         conv = str(ev.get("conv") or "")
         if not conv or spool.is_consumed(ev["_file"]):
+            stats["skipped"] += 1
+            continue
+        if capture.secret(conv):               # v0.603 an incognito chat's event is dropped unread
+            spool.consume(ev["_file"])
             stats["skipped"] += 1
             continue
         s = _session(conv, str(ev.get("tenant") or ""))
@@ -237,3 +264,5 @@ async def tick(settings, max_sessions: int = 3) -> dict:
 def reset_for_tests() -> None:
     """Test isolation: the RAM session state forgets every conversation."""
     _sessions.clear()
+    _SWEPT["done"] = False
+    capture._SECRET.clear()

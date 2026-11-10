@@ -51,19 +51,21 @@ def make_router(require_key, current_tenant) -> APIRouter:
         await require_key(request)
         body = await request.json()
         ids = [i for i in (body.get("ids") or []) if str(i).isdigit()][:100]
-        return {"observations": search.get_observations(ids)}
+        t = current_tenant(request)   # wave 9: never another tenant's rows by id
+        return {"observations": [o for o in search.get_observations(ids) if (o.get("tenant") or "") == t]}
 
     @r.post("/tool-uses/batch")
     async def tool_uses_batch(request: Request):
         await require_key(request)
         body = await request.json()
         ids = [i for i in (body.get("ids") or []) if str(i).isdigit()][:100]
-        return {"tool_uses": store.tool_uses_by_ids(ids)}
+        t = current_tenant(request)   # wave 9: never another tenant's rows by id
+        return {"tool_uses": [u for u in store.tool_uses_by_ids(ids) if (u.get("tenant") or "") == t]}
 
     @r.get("/work-state")
     async def work_state_get(request: Request, list: str = "", include_closed: bool = False):
         await require_key(request)
-        return store.work_read(list or None, include_closed)
+        return store.work_read(list or None, include_closed, tenant=current_tenant(request))
 
     @r.post("/work-state")
     async def work_state_post(request: Request):
@@ -73,7 +75,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
         items = body.get("items") or []
         if not isinstance(items, list):
             return {"error": "items must be a list"}
-        store.work_write(lst, items)
+        store.work_write(lst, items, tenant=current_tenant(request))
         return {"ok": True, "list": lst}
 
     @r.post("/memory")

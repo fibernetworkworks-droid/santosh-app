@@ -30,7 +30,7 @@ class LookInfo {
   final String id, name, city, country, region, hair, outfit, gender;
   factory LookInfo.from(Map<String, dynamic> m) => LookInfo('${m['id']}', '${m['name']}', '${m['city']}', '${m['country']}',
       '${m['region']}', '${m['hair'] ?? ''}', '${m['outfit'] ?? ''}', '${m['gender'] ?? (('${m['id']}').startsWith('m') ? 'm' : 'f')}');
-  static const santosh = LookInfo('', 'Santosh', 'Hoola ka asli', 'roop', '', '', '', 'm');
+  static const santosh = LookInfo('', 'Santosh', 'Hoola\'s original', 'roop', '', '', '', 'm');
 }
 
 List<LookInfo>? _looks;
@@ -41,11 +41,11 @@ Future<List<LookInfo>> loadLooks() async {
 }
 
 const lookRegions = <String, String>{
-  '': 'Sab',
-  'sa': 'Bharat aur Dakshin Asia',
-  'ea': 'Purvi Asia',
-  'sea': 'Dakshin-Purv Asia',
-  'me': 'Madhya Purv aur Madhya Asia',
+  '': 'All',
+  'sa': 'India and South Asia',
+  'ea': 'East Asia',
+  'sea': 'South-East Asia',
+  'me': 'Middle East and Central Asia',
   'af': 'Africa',
   'eu': 'Europe',
   'am': 'America',
@@ -118,7 +118,7 @@ class _LookPickerScreenState extends State<LookPickerScreen> {
     final mine = _all.where((l) => l.id.isNotEmpty).length;
     final cur = _cur;
     return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text('${widget.avatarName} ka roop')),
+      appBar: AppBar(backgroundColor: Colors.transparent, title: Text('${widget.avatarName} look')),
       body: Aurora(
         child: SafeArea(
           child: Column(children: [
@@ -143,9 +143,9 @@ class _LookPickerScreenState extends State<LookPickerScreen> {
                       Text(widget.avatarName, style: display(22)),
                       const SizedBox(height: 2),
                       if (cur != null)
-                        Text(cur.id.isEmpty ? 'Roop: asli Santosh' : 'Roop: ${cur.name} · ${cur.city}, ${cur.country}', style: const TextStyle(color: C.muted, fontSize: 13)),
+                        Text(cur.id.isEmpty ? 'Look: original Santosh' : 'Look: ${cur.name} · ${cur.city}, ${cur.country}', style: const TextStyle(color: C.muted, fontSize: 13)),
                       const SizedBox(height: 8),
-                      const Text('Naam aapka diya hua hi rahega. Roop sirf dikhne ke liye hai: call mein, chat mein aur doosron ke Hoola par.',
+                      const Text('The name stays as you gave it. The look is only for display: in calls, in chat and on others\' Hoola.',
                           style: TextStyle(color: C.faint, fontSize: 12)),
                     ]),
                   ),
@@ -183,7 +183,7 @@ class _LookPickerScreenState extends State<LookPickerScreen> {
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
               child: GradientButton(
-                label: cur == null ? 'Yeh roop chuniye' : 'Yeh roop chuniye · ${cur.id.isEmpty ? 'Santosh' : cur.name}',
+                label: cur == null ? 'Choose this look' : 'Choose this look · ${cur.id.isEmpty ? 'Santosh' : cur.name}',
                 icon: Icons.check_rounded,
                 onTap: () => Navigator.of(context).pop(_sel),
               ),

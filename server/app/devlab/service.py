@@ -15,6 +15,7 @@ import logging
 import os
 import re
 import shutil
+import sys
 import subprocess
 import tempfile
 import time
@@ -35,7 +36,10 @@ def _slug(repo: str) -> str:
 
 
 def image_for(repo: str, key: str) -> str:
-    return f"hoola-devlab:{_slug(repo)}-{key}"
+    """v0.542: the BASE revision rides in the tag. A snapshot is built ON the base image, so a base that changes
+    (a new Python, a new tool) must not be served stale dependencies built against the old one - which is exactly
+    what would have happened after the 3.11 -> 3.13 move: a cached snapshot, a fresh base, and the same failure."""
+    return f"hoola-devlab:{_slug(repo)}-r{box.BASE_REV}-{key}"
 
 
 def _git(argv: list[str], cwd: str, token: str, timeout: int) -> tuple[int, str]:
@@ -208,6 +212,93 @@ def check(repo: str, ref: str = "", token: str = "", cmd: str = "", hers: dict[s
             shutil.rmtree(work, ignore_errors=True)
 
 
+# ---------------------------------------------------------------- v0.531 step 2: one workspace per task, reused
+def safe_rel(path: str) -> str:
+    """A repo-relative path we are willing to write. Anything else is refused by name, never silently dropped."""
+    raw = (path or "").strip().replace("\\", "/")
+    if not raw or raw.startswith("/") or ".." in raw.split("/") or len(raw) > 400:
+        return ""
+    p = raw.removeprefix("./")
+    if not p or p.startswith(".git/") or p == ".git":
+        return ""
+    return p
+
+
+def write_overlay(work: str, overlay: dict[str, str]) -> dict[str, Any]:
+    """Put the task's EDITED files on top of the checkout, so a check runs on the code as it is NOW - not on the base
+    commit. Without this the lab would only ever test code that is already pushed, which is the whole problem."""
+    wrote, bad = [], []
+    for path, text in (overlay or {}).items():
+        rel = safe_rel(path)
+        if not rel:
+            bad.append(path)
+            continue
+        f = Path(work) / rel
+        try:
+            f.parent.mkdir(parents=True, exist_ok=True)
+            f.write_text(text if isinstance(text, str) else str(text), "utf-8")
+            os.chmod(f, 0o666)
+            wrote.append(rel)
+        except OSError as e:
+            bad.append(f"{rel} ({e})")
+    return {"wrote": sorted(wrote), "refused": bad[:5]}
+
+
+def open_workspace(repo: str, ref: str = "", token: str = "", hers: dict[str, str] | None = None,
+                   cmd: str = "") -> dict[str, Any]:
+    """Clone ONCE for a whole task and keep the folder: a persistent workspace is what every product that runs code
+    has and a GitHub-API-only agent does not (docs/CODING_HARNESS_PLAN.md 4). The dependency snapshot is built on the
+    FIRST check, not here, so opening a workspace for a task that never runs one costs a clone and nothing more."""
+    av = box.available()
+    if not av["ok"]:
+        return {"ok": False, "stage": "box", "why": av["why"]}
+    m = materialize(repo, ref, token)
+    if not m["ok"]:
+        return {"ok": False, "stage": "clone", "why": m["why"]}
+    sp = spec_for(m["dir"], m["paths"], hers)
+    want = spec._clean(cmd) or sp["test"]
+    bad = spec.refuse_reason(want) if want else ""
+    return {"ok": True, "dir": m["dir"], "paths": m["paths"], "spec": sp, "repo": repo, "ref": ref,
+            "cmd": "" if bad else want, "source": "aap" if cmd else sp["source"],
+            "confirm": bool(want) and not cmd and sp.get("confirm") and not (hers or {}).get("ok"),
+            "why": bad or sp["why"], "image": "", "runs": 0}
+
+
+def run_on(ws: dict[str, Any], cmd: str = "", overlay: dict[str, str] | None = None, timeout: int = 0,
+           label: str = "") -> dict[str, Any]:
+    """One check on an open workspace, with the task's edits written in first. The snapshot is built (or reused) here."""
+    if not ws.get("ok"):
+        return {"ok": False, "stage": "box", "why": ws.get("why") or "lab khula nahi"}
+    run_cmd = spec._clean(cmd) or ws.get("cmd") or ""
+    if not run_cmd:
+        return {"ok": False, "stage": "command", "why": ws.get("why") or "koi command declare nahi hui"}
+    bad = spec.refuse_reason(run_cmd)
+    if bad:
+        return {"ok": False, "stage": "command", "why": bad}
+    ov = write_overlay(ws["dir"], overlay or {})
+    if not ws.get("image"):
+        snap = snapshot(ws["repo"], ws["dir"], ws["spec"]["setup"], ws["spec"]["deps_key"])
+        if not snap["ok"]:
+            return {"ok": False, "stage": "setup", "why": snap["why"], "out": snap.get("out", "")[-4000:]}
+        ws["image"], ws["setup_seconds"], ws["snapshot_cached"] = snap["image"], snap["seconds"], snap["cached"]
+    lim = int(timeout or ws["spec"].get("timeout") or box.CHECK_TIMEOUT)
+    r = box.run_in(ws["image"], ws["dir"], f"set -o pipefail; cd {box.WORK}; {run_cmd}", timeout=lim, network=False)
+    ws["runs"] = int(ws.get("runs") or 0) + 1
+    logp = out.write_log(_log_folder(), f"{_slug(ws['repo'])}-{label or 'check'}-{int(time.time())}", r["out"])
+    res = out.shape(r["out"], r["rc"], logp, r["secs"], r["timed_out"])
+    res.update({"stage": "check", "cmd": run_cmd, "files_written": len(ov["wrote"]), "refused_paths": ov["refused"],
+                "say": out.say(res, run_cmd), "run": ws["runs"]})
+    ws["last_log"] = logp
+    return res
+
+
+def close_workspace(ws: dict[str, Any]) -> None:
+    d = (ws or {}).get("dir") or ""
+    if d:
+        shutil.rmtree(d, ignore_errors=True)
+        ws["dir"] = ""
+
+
 def selftest() -> list[str]:
     """`python -m app.devlab check` - does the box work on THIS machine, end to end, with no repo of hers involved?"""
     lines = []
@@ -215,9 +306,12 @@ def selftest() -> list[str]:
     lines.append(f"docker: {'ok ' + str(av.get('docker')) if av['ok'] else 'NAHI - ' + av['why']}")
     if not av["ok"]:
         return lines
-    lines.append(f"base image {box.BASE_IMAGE}: {'bani hai' if av.get('base_built') else 'NAHI bani'}")
-    if not av.get("base_built"):
-        b = box.build_base()
+    lines.append(f"base image {box.BASE_IMAGE}: {'bani hai' if av.get('base_built') else 'NAHI bani'}"
+                 + (f" (rev {av.get('base_rev') or '1'}, chahiye {box.BASE_REV})" if av.get("base_built") else ""))
+    if av.get("base_stale"):
+        lines.append("  PURANI image hai - naye niyamon se dobara bana raha hoon")
+    if not av.get("base_built") or av.get("base_stale"):
+        b = box.build_base(nocache=bool(av.get("base_stale")))
         lines.append(f"  build: {'ok' if b['ok'] else 'FAIL - ' + b['why']} ({b.get('seconds')}s)")
         if not b["ok"]:
             lines += ["  " + x for x in b.get("out", "").splitlines()[-12:]]
@@ -235,12 +329,37 @@ def selftest() -> list[str]:
         shaped = out.shape(bad["out"], bad["rc"], "", bad["secs"], bad["timed_out"])
         lines.append(f"ek fail hone wala test: exit {bad['rc']} - " + ("ok, aur fail ka ant dikh raha hai"
                      if bad["rc"] != 0 and "assert" in shaped["shown"] else "GADBAD: fail pakda nahi gaya"))
+        # v0.542: the box must speak the SAME Python as her server, or a check fails on code that runs fine in
+        # production - which is exactly what her first working lab_try did (a 3.12+ f-string, SyntaxError on 3.11).
+        ver = box.run_in(box.BASE_IMAGE, work, "python3 -c \"import sys;print('%d.%d' % sys.version_info[:2])\"",
+                         timeout=60)
+        box_py = (ver["out"] or "").strip().splitlines()[-1].strip() if (ver["out"] or "").strip() else "?"
+        mine = "%d.%d" % sys.version_info[:2]
+        lines.append(f"box ka python {box_py}, server ka {mine}: "
+                     + ("ok (ek hi hai)" if box_py == mine else
+                        f"GADBAD - farak hai, uska code is box mein toot sakta hai (image rev {box.BASE_REV})"))
         net = box.run_in(box.BASE_IMAGE, work, "cd /work; python3 -c \"import socket;"
                          "socket.create_connection(('1.1.1.1',53),timeout=4)\"", timeout=60)
         lines.append("network band hai: " + ("ok (box bahar nahi pahunch saka)" if net["rc"] != 0
                      else "KHATRA - box ko internet mila, --network none kaam nahi kiya"))
         w = box.run_in(box.BASE_IMAGE, work, "touch /etc/hoola-should-fail 2>&1; echo rc=$?", timeout=60)
         lines.append("root filesystem read-only hai: " + ("ok" if "rc=0" not in w["out"] else "GADBAD - likh paya"))
+        # v0.537: her first live lab_try died here, not on any wall - Debian's PEP 668 marker refused the repo's own
+        # pip command. This proves a plain `pip install` works AND that what it installs survives the commit.
+        Path(work, "needs.txt").write_text("tabulate==0.9.0\n")
+        tag = box.BASE_IMAGE + "-selftest"
+        ins = box.run_in(box.BASE_IMAGE, work, "cd /work; python3 -m pip install -q -r needs.txt",
+                         timeout=300, network=True, commit_to=tag)
+        lines.append("repo ka apna `pip install` chalta hai: " + ("ok" if ins["rc"] == 0 else
+                     "GADBAD - " + ins["out"].strip()[-300:]))
+        if ins["rc"] == 0 and box.has_image(tag):
+            kept = box.run_in(tag, work, "cd /work; python3 -c \"import tabulate; print('mila', tabulate.__name__)\"",
+                              timeout=90)
+            lines.append("install snapshot mein bacha rehta hai: " + ("ok" if "mila" in kept["out"]
+                         else "GADBAD - commit ke baad gayab: " + kept["out"].strip()[-300:]))
+            box.forget(tag)
+        else:
+            lines.append("install snapshot mein bacha rehta hai: GADBAD - snapshot hi nahi bani")
         who = box.run_in(box.BASE_IMAGE, work, "id -u", timeout=60)
         lines.append(f"box ka user: {who['out'].strip()[:20]} " + ("(ok, root nahi)" if who["out"].strip() != "0"
                                                                   else "(GADBAD - root hai)"))

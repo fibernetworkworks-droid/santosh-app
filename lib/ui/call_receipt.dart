@@ -46,21 +46,21 @@ class CallReceiptCard extends StatelessWidget {
           Row(children: [
             const Icon(Icons.call_end_rounded, color: C.teal, size: 20),
             const SizedBox(width: 8),
-            const Expanded(child: Text('Call ka hisaab', style: TextStyle(fontWeight: FontWeight.w800))),
+            const Expanded(child: Text('Call summary', style: TextStyle(fontWeight: FontWeight.w800))),
             Text(mins, style: const TextStyle(color: C.faint, fontSize: 12)),
           ]),
           if (summary.isNotEmpty) ...[
             const SizedBox(height: 6),
             Text(summary, style: const TextStyle(color: C.ink, fontSize: 13.5)),
           ],
-          _section('Tay hua', Icons.handshake_outlined, C.accent, _l('decisions')),
-          _section('Ho gaya', Icons.check_circle_rounded, C.ok, _l('done')),
-          _section('Nahi ho paya', Icons.error_outline_rounded, C.bad, _l('failed')),
-          _section('Baaki / chal raha hai', Icons.schedule_rounded, C.warn, pending),
+          _section('Decided', Icons.handshake_outlined, C.accent, _l('decisions')),
+          _section('Done', Icons.check_circle_rounded, C.ok, _l('done')),
+          _section('Did not happen', Icons.error_outline_rounded, C.bad, _l('failed')),
+          _section('Pending / in progress', Icons.schedule_rounded, C.warn, pending),
           if (v['ai'] != true && summary.isEmpty)
             const Padding(
               padding: EdgeInsets.only(top: 8),
-              child: Text('Sirf asli kadam dikhaye gaye hain.', style: TextStyle(color: C.faint, fontSize: 11.5)),
+              child: Text('Only real steps are shown.', style: TextStyle(color: C.faint, fontSize: 11.5)),
             ),
         ]),
       ),

@@ -55,7 +55,7 @@ List<Map<String, dynamic>> parseItemLines(String text) {
 }
 
 const tierColor = {'trusted': C.ok, 'known': C.teal, 'stranger': C.muted, 'blocked': C.bad};
-const _dayWord = {'mon': 'Som', 'tue': 'Mangal', 'wed': 'Budh', 'thu': 'Guru', 'fri': 'Shukra', 'sat': 'Shani', 'sun': 'Ravi'};
+const _dayWord = {'mon': 'Mon', 'tue': 'Tue', 'wed': 'Wed', 'thu': 'Thu', 'fri': 'Fri', 'sat': 'Sat', 'sun': 'Sun'};
 
 Future<T?> _guard<T>(BuildContext context, Future<T> Function() fn) async {
   try {
@@ -114,9 +114,9 @@ class _CompareCardState extends State<CompareCard> {
           const Icon(Icons.compare_arrows_rounded, color: C.accent),
           const SizedBox(width: 10),
           Expanded(
-              child: Text('Tulna · ${_s(v['title']).isEmpty ? '${_l(v['items']).length} item' : _s(v['title'])}',
+              child: Text('Comparison · ${_s(v['title']).isEmpty ? '${_l(v['items']).length} item' : _s(v['title'])}',
                   style: const TextStyle(fontWeight: FontWeight.w800), maxLines: 1, overflow: TextOverflow.ellipsis)),
-          Pill({'open': 'intezaar', 'ready': 'chuniye', 'chosen': 'chun liya', 'closed': 'band'}[st] ?? st,
+          Pill({'open': 'waiting', 'ready': 'choose', 'chosen': 'chosen', 'closed': 'band'}[st] ?? st,
               fg: st == 'ready' ? C.accent : C.muted),
         ]),
         if (_s(v['say']).isNotEmpty) ...[
@@ -126,7 +126,7 @@ class _CompareCardState extends State<CompareCard> {
         if (st == 'open')
           const Padding(
             padding: EdgeInsets.only(top: 6),
-            child: Text('Sabke jawab ya samay poora hone tak quotes rok kar rakhe hain, taaki pehla jawab dekh kar jaldi na ho.',
+            child: Text('Quotes are held until everyone has replied or the time is up, so that nobody rushes on seeing the first reply.',
                 style: TextStyle(color: C.faint, fontSize: 11.5)),
           ),
         const SizedBox(height: 8),
@@ -147,18 +147,18 @@ class _CompareCardState extends State<CompareCard> {
                   Text(_s(r['say']), style: const TextStyle(color: C.muted, fontSize: 12)),
               ]),
               Wrap(spacing: 6, runSpacing: 4, children: [
-                if (r['best'] == true) const Pill('sabse achha', fg: C.accent),
+                if (r['best'] == true) const Pill('best', fg: C.accent),
                 if (r['verified'] == true) const Pill('verified', fg: C.ok),
                 Pill(_s(r['tier']), fg: tierColor[_s(r['tier'])] ?? C.chip),
-                if (_d(r['more_by']) > 0) Pill('${_inr(r['more_by'])} zyada', fg: C.muted),
+                if (_d(r['more_by']) > 0) Pill('${_inr(r['more_by'])} more', fg: C.muted),
                 if (r['credit_days'] != null) Pill('${_s(r['credit_days'])} din udhaar', fg: C.violet),
-                if (r['fill_rate'] != null) Pill('pehle ${(_d(r['fill_rate']) * 100).round()}% diya', fg: C.teal),
+                if (r['fill_rate'] != null) Pill('gave ${(_d(r['fill_rate']) * 100).round()}% first', fg: C.teal),
               ]),
               if ((r['short'] as List?)?.isNotEmpty == true || (r['missing'] as List?)?.isNotEmpty == true)
                 Text(
                     [
-                      if ((r['short'] as List?)?.isNotEmpty == true) 'kam: ${(r['short'] as List).join(', ')}',
-                      if ((r['missing'] as List?)?.isNotEmpty == true) 'nahi: ${(r['missing'] as List).join(', ')}',
+                      if ((r['short'] as List?)?.isNotEmpty == true) 'short: ${(r['short'] as List).join(', ')}',
+                      if ((r['missing'] as List?)?.isNotEmpty == true) 'missing: ${(r['missing'] as List).join(', ')}',
                     ].join(' · '),
                     style: const TextStyle(color: C.warn, fontSize: 12)),
               if (r['quoted'] == true && _s(r['state']) == 'quoted' && canTake && !chosen.contains(_s(r['deal_id'])))
@@ -168,17 +168,17 @@ class _CompareCardState extends State<CompareCard> {
                     padding: const EdgeInsets.only(top: 6),
                     child: r['best'] == true
                         ? GradientButton(
-                            label: 'Isse lo · ${_inr(r['total'])}', icon: Icons.check_rounded, height: 46, onTap: _busy ? null : () => _take(r))
-                        : GlassButton(label: 'Isse lo · ${_inr(r['total'])}', icon: Icons.check_rounded, onTap: _busy ? null : () => _take(r)),
+                            label: 'Take this · ${_inr(r['total'])}', icon: Icons.check_rounded, height: 46, onTap: _busy ? null : () => _take(r))
+                        : GlassButton(label: 'Take this · ${_inr(r['total'])}', icon: Icons.check_rounded, onTap: _busy ? null : () => _take(r)),
                   ),
                 ),
-              if (chosen.contains(_s(r['deal_id']))) const Pill('chuna gaya ✓', fg: C.ok),
+              if (chosen.contains(_s(r['deal_id']))) const Pill('chosen ✓', fg: C.ok),
             ]),
           ),
         if (st != 'closed')
           Wrap(spacing: 8, children: [
             FilterChip(
-              label: const Text('Split order (ek se zyada)'),
+              label: const Text('Split order (more than one)'),
               selected: v['split'] == true,
               onSelected: (x) async {
                 final r = await _guard(context, () => widget.app.api!.netRfqAct(_s(v['id']), 'split', on: x));
@@ -191,9 +191,9 @@ class _CompareCardState extends State<CompareCard> {
                   if (r != null && mounted) setState(() => _fresh = r);
                   widget.onChanged?.call();
                 },
-                child: const Text('Baaki ko mana karo', style: TextStyle(color: C.muted))),
+                child: const Text('Decline the rest', style: TextStyle(color: C.muted))),
           ]),
-        const Text('Kisi dukaan ko doosre ka quote nahi dikhta. Order sirf aapke tap se.', style: TextStyle(color: C.faint, fontSize: 11)),
+        const Text('No shop sees another\'s quote. An order goes only with your tap.', style: TextStyle(color: C.faint, fontSize: 11)),
       ]),
     );
   }
@@ -235,15 +235,15 @@ class _CompareTabState extends State<CompareTab> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, set) => AlertDialog(
-          title: const Text('Quotes ki tulna'),
+          title: const Text('Compare quotes'),
           content: SingleChildScrollView(
             child: Column(mainAxisSize: MainAxisSize.min, children: [
-              TextField(controller: to, decoration: const InputDecoration(labelText: '2-5 dukaan (comma se)', hintText: 'Sharma Traders, @gupta.wholesale')),
+              TextField(controller: to, decoration: const InputDecoration(labelText: '2-5 shops (comma separated)', hintText: 'Sharma Traders, @gupta.wholesale')),
               TextField(
                   controller: items,
                   minLines: 3,
                   maxLines: 8,
-                  decoration: const InputDecoration(labelText: 'Har line: cheez aur maatra', hintText: 'Parle-G 10 carton')),
+                  decoration: const InputDecoration(labelText: 'One per line: item and quantity', hintText: 'Parle-G 10 carton')),
               TextField(controller: note, decoration: const InputDecoration(labelText: 'Note')),
               const SizedBox(height: 8),
               Wrap(spacing: 6, children: [
@@ -253,8 +253,8 @@ class _CompareTabState extends State<CompareTab> {
             ]),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Rehne do')),
-            TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Bhejo')),
+            TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
+            TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Send')),
           ],
         ),
       ),
@@ -278,13 +278,13 @@ class _CompareTabState extends State<CompareTab> {
   Widget build(BuildContext context) => RefreshIndicator(
         onRefresh: _load,
         child: ListView(padding: const EdgeInsets.all(16), children: [
-          GlassButton(label: 'Nayi tulna (2-5 dukaan)', icon: Icons.compare_arrows_rounded, onTap: _new),
+          GlassButton(label: 'New comparison (2-5 shops)', icon: Icons.compare_arrows_rounded, onTap: _new),
           const SizedBox(height: 12),
           if (_loading) const Center(child: CircularProgressIndicator()),
           if (!_loading && _xs.isEmpty)
             const Padding(
               padding: EdgeInsets.all(12),
-              child: Text('Ek hi list kai dukaanon ko: sabke quote ek table mein, kul daam se sajaa kar.', style: TextStyle(color: C.muted)),
+              child: Text('One list to many shops: all quotes in one table, sorted by total price.', style: TextStyle(color: C.muted)),
             ),
           for (final x in _xs)
             Padding(
@@ -341,7 +341,7 @@ class _MandateCardState extends State<MandateCard> {
           Expanded(
               child: Text('Standing order ${_s(v['number'])} · ${_s(v['with'])}',
                   style: const TextStyle(fontWeight: FontWeight.w800), maxLines: 1, overflow: TextOverflow.ellipsis)),
-          Pill({'draft': 'aapki haan baaki', 'active': 'chalu', 'paused': 'ruka', 'ended': 'band'}[st] ?? st,
+          Pill({'draft': 'your approval pending', 'active': 'active', 'paused': 'paused', 'ended': 'band'}[st] ?? st,
               fg: st == 'active' ? C.ok : (st == 'draft' ? C.warn : C.muted)),
         ]),
         if (_s(v['say']).isNotEmpty) ...[
@@ -349,15 +349,15 @@ class _MandateCardState extends State<MandateCard> {
           Text(_s(v['say']), style: const TextStyle(fontSize: 13, height: 1.35)),
         ],
         const SizedBox(height: 6),
-        Text('${_s(v['when'])} · har baar max ${_inr(v['max_total'])} · ${_s(v['until'])} tak',
+        Text('${_s(v['when'])} · max ${_inr(v['max_total'])} each time · until ${_s(v['until'])}',
             style: const TextStyle(fontSize: 12.5)),
-        Text('Daam ${_qty(v['tolerance_pct'])}% tak badhe to chalega · ${_qty(v['hold_minutes'])} min rok kar pakka',
+        Text('OK if the price rises up to ${_qty(v['tolerance_pct'])}% · held for ${_qty(v['hold_minutes'])} min before confirming',
             style: const TextStyle(color: C.muted, fontSize: 12)),
         Text(_l(v['items']).map((i) => '${_s(i['item'])} × ${_qty(i['qty'])} ${_s(i['unit'])}'.trim()).join(', '),
             style: const TextStyle(fontSize: 12)),
-        if (_s(v['next_say']).isNotEmpty) Text('Agla: ${_s(v['next_say'])}', style: const TextStyle(color: C.teal, fontSize: 12)),
+        if (_s(v['next_say']).isNotEmpty) Text('Next: ${_s(v['next_say'])}', style: const TextStyle(color: C.teal, fontSize: 12)),
         if (st == 'active' && v['base_set'] != true)
-          const Text('Pehla order aapke tap se hoga; uske daam aage ke liye aadhaar banenge.', style: TextStyle(color: C.faint, fontSize: 11.5)),
+          const Text('The first order will go with your tap; its prices will become the basis for later ones.', style: TextStyle(color: C.faint, fontSize: 11.5)),
         for (final r in runs.reversed.take(3))
           Text('• ${_s(r['status'])}${r['total'] == null ? '' : ' ${_inr(r['total'])}'}'
               '${(r['why'] as List?)?.isNotEmpty == true ? ': ${(r['why'] as List).first}' : ''}',
@@ -365,13 +365,13 @@ class _MandateCardState extends State<MandateCard> {
         const SizedBox(height: 10),
         Wrap(spacing: 8, runSpacing: 8, children: [
           if (st == 'draft')
-            GradientButton(label: 'Haan, chalu karo', icon: Icons.verified_rounded, onTap: _busy ? null : () => _act('sign')),
+            GradientButton(label: 'Yes, turn on', icon: Icons.verified_rounded, onTap: _busy ? null : () => _act('sign')),
           if (st == 'paused')
-            GradientButton(label: 'Phir chalu karo', icon: Icons.play_arrow_rounded, onTap: _busy ? null : () => _act('resume')),
-          if (st == 'active') GlassButton(label: 'Abhi bhejo', icon: Icons.send_rounded, onTap: _busy ? null : () => _act('run')),
-          if (st == 'active') GlassButton(label: 'Roko', icon: Icons.pause_rounded, onTap: _busy ? null : () => _act('pause')),
+            GradientButton(label: 'Turn on again', icon: Icons.play_arrow_rounded, onTap: _busy ? null : () => _act('resume')),
+          if (st == 'active') GlassButton(label: 'Send now', icon: Icons.send_rounded, onTap: _busy ? null : () => _act('run')),
+          if (st == 'active') GlassButton(label: 'Stop', icon: Icons.pause_rounded, onTap: _busy ? null : () => _act('pause')),
           if (st != 'ended')
-            TextButton(onPressed: _busy ? null : () => _act('stop'), child: const Text('Band karo', style: TextStyle(color: C.bad))),
+            TextButton(onPressed: _busy ? null : () => _act('stop'), child: const Text('Close', style: TextStyle(color: C.bad))),
         ]),
       ]),
     );
@@ -417,15 +417,15 @@ class _StandingTabState extends State<StandingTab> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, set) => AlertDialog(
-          title: const Text('Naya standing order'),
+          title: const Text('New standing order'),
           content: SingleChildScrollView(
             child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-              TextField(controller: to, decoration: const InputDecoration(labelText: 'Kis dukaan se')),
+              TextField(controller: to, decoration: const InputDecoration(labelText: 'From which shop')),
               TextField(
                   controller: items,
                   minLines: 3,
                   maxLines: 8,
-                  decoration: const InputDecoration(labelText: 'Roz / har hafte ki list', hintText: 'Doodh 20 litre')),
+                  decoration: const InputDecoration(labelText: 'Daily / weekly list', hintText: 'Milk 20 litre')),
               const SizedBox(height: 8),
               Wrap(spacing: 4, runSpacing: 4, children: [
                 for (final e in _dayWord.entries)
@@ -434,17 +434,17 @@ class _StandingTabState extends State<StandingTab> {
                       selected: days.contains(e.key),
                       onSelected: (x) => set(() => x ? days.add(e.key) : days.remove(e.key))),
               ]),
-              TextField(controller: at, decoration: const InputDecoration(labelText: 'Samay (HH:MM)')),
+              TextField(controller: at, decoration: const InputDecoration(labelText: 'Time (HH:MM)')),
               TextField(controller: cap, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Har order max ₹')),
               const SizedBox(height: 8),
-              Text('Daam badhne ki chhoot: ${tol.toStringAsFixed(0)}%', style: const TextStyle(fontSize: 12.5)),
+              Text('Allowed price rise: ${tol.toStringAsFixed(0)}%', style: const TextStyle(fontSize: 12.5)),
               Wrap(spacing: 6, children: [
                 for (final x in const [0.0, 3.0, 5.0, 10.0])
                   ChoiceChip(label: Text('${x.toInt()}%'), selected: tol == x, onSelected: (_) => set(() => tol = x)),
               ]),
               TextButton.icon(
                 icon: const Icon(Icons.event_rounded),
-                label: Text('${until.day}/${until.month}/${until.year} tak'),
+                label: Text('until ${until.day}/${until.month}/${until.year}'),
                 onPressed: () async {
                   final p = await showDatePicker(
                       context: ctx,
@@ -457,8 +457,8 @@ class _StandingTabState extends State<StandingTab> {
             ]),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Rehne do')),
-            TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Banao')),
+            TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
+            TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Create')),
           ],
         ),
       ),
@@ -485,9 +485,9 @@ class _StandingTabState extends State<StandingTab> {
   Widget build(BuildContext context) => RefreshIndicator(
         onRefresh: _load,
         child: ListView(padding: const EdgeInsets.all(16), children: [
-          GlassButton(label: 'Naya standing order', icon: Icons.event_repeat_rounded, onTap: _new),
+          GlassButton(label: 'New standing order', icon: Icons.event_repeat_rounded, onTap: _new),
           const SizedBox(height: 6),
-          const Text('Ek baar niyam par haan: har baar code daam, maatra aur seema jaanchta hai. Kuch bhi bahar ho to aapse poochhta hai.',
+          const Text('Say yes once to the rule: each time, the code checks the price, quantity and limit. If anything is outside, it asks you.',
               style: TextStyle(color: C.faint, fontSize: 12)),
           const SizedBox(height: 12),
           if (_loading) const Center(child: CircularProgressIndicator()),
@@ -541,24 +541,24 @@ class _PromoCardState extends State<PromoCard> {
               '${_s(i['unit']).isEmpty ? '' : ' / ${_s(i['unit'])}'}',
               style: const TextStyle(fontSize: 12.5)),
         if (_s(v['valid_until']).length >= 10)
-          Text('${_s(v['valid_until']).substring(0, 10)} tak', style: const TextStyle(color: C.faint, fontSize: 11.5)),
+          Text('until ${_s(v['valid_until']).substring(0, 10)}', style: const TextStyle(color: C.faint, fontSize: 11.5)),
         const SizedBox(height: 8),
         if (_done.isNotEmpty)
           Text(_done, style: const TextStyle(color: C.teal, fontSize: 12))
         else
           Wrap(spacing: 8, runSpacing: 8, children: [
             GlassButton(
-                label: 'List banao',
+                label: 'Make list',
                 icon: Icons.playlist_add_rounded,
-                onTap: () => _do('List bhej di', () => widget.app.api!.netPromoItem(_s(v['id']), 'order'))),
+                onTap: () => _do('List sent', () => widget.app.api!.netPromoItem(_s(v['id']), 'order'))),
             TextButton(
-                onPressed: () => _do('Inke offers band', () => widget.app.api!.netPromoAct('optout', {'to': peer})),
-                child: const Text('Offers band karo')),
+                onPressed: () => _do('Stop their offers', () => widget.app.api!.netPromoAct('optout', {'to': peer})),
+                child: const Text('Stop offers')),
             TextButton(
-                onPressed: () => _do('Shikayat darj', () => widget.app.api!.netTrustReport(peer, 'spam', kind: 'promo_offer')),
+                onPressed: () => _do('Complaint recorded', () => widget.app.api!.netTrustReport(peer, 'spam', kind: 'promo_offer')),
                 child: const Text('Report', style: TextStyle(color: C.bad))),
           ]),
-        const Text('Yeh offer aapne maanga tha. Order sirf aapke kehne par.', style: TextStyle(color: C.faint, fontSize: 11)),
+        const Text('You asked for this offer. An order goes only when you say so.', style: TextStyle(color: C.faint, fontSize: 11)),
       ]),
     );
   }
@@ -601,11 +601,11 @@ class _OffersTabState extends State<OffersTab> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Kis dukaan ke offers chahiye?'),
-        content: TextField(controller: c, decoration: const InputDecoration(hintText: 'Naam / @Hoola ID')),
+        title: const Text('Offers from which shop?'),
+        content: TextField(controller: c, decoration: const InputDecoration(hintText: 'Name / @Hoola ID')),
         actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Rehne do')),
-          TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Haan')),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Yes')),
         ],
       ),
     );
@@ -624,7 +624,7 @@ class _OffersTabState extends State<OffersTab> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Offer bhejo'),
+        title: const Text('Send offer'),
         content: SingleChildScrollView(
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             TextField(controller: title, decoration: const InputDecoration(labelText: 'Title', hintText: 'Diwali offer')),
@@ -633,12 +633,12 @@ class _OffersTabState extends State<OffersTab> {
                 controller: items,
                 minLines: 2,
                 maxLines: 8,
-                decoration: const InputDecoration(labelText: 'Har line: cheez daam [MRP]', hintText: 'Parle-G 430 450')),
+                decoration: const InputDecoration(labelText: 'One per line: item price [MRP]', hintText: 'Parle-G 430 450')),
           ]),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Rehne do')),
-          TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Aage')),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Continue')),
         ],
       ),
     );
@@ -659,11 +659,11 @@ class _OffersTabState extends State<OffersTab> {
     final go = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Bhejein?'),
+        title: const Text('Send?'),
         content: Text(_s(pv['say'])),
         actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Nahi')),
-          TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: Text('Haan, ${_s(pv['to'])} ko bhejo')),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('No')),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: Text('Yes, send to ${_s(pv['to'])}')),
         ],
       ),
     );
@@ -679,11 +679,11 @@ class _OffersTabState extends State<OffersTab> {
         child: ListView(padding: const EdgeInsets.all(16), children: [
           if (_loading) const Center(child: CircularProgressIndicator()),
           Wrap(spacing: 10, runSpacing: 10, children: [
-            GlassButton(label: 'Dukaan ke offers lo', icon: Icons.notifications_active_rounded, onTap: _optin),
-            GlassButton(label: 'Mere graahakon ko offer', icon: Icons.campaign_rounded, onTap: _send),
+            GlassButton(label: 'Get offers from shops', icon: Icons.notifications_active_rounded, onTap: _optin),
+            GlassButton(label: 'Offers to my customers', icon: Icons.campaign_rounded, onTap: _send),
           ]),
           const SizedBox(height: 6),
-          Text('Mere offers ${_s(_aud['on'] ?? 0)} graahakon ne maange hain · hafte mein ek graahak ko 2 tak',
+          Text('${_s(_aud['on'] ?? 0)} customers have asked for my offers · up to 2 offers a week to one customer',
               style: const TextStyle(color: C.faint, fontSize: 12)),
           const SizedBox(height: 12),
           for (final o in _optins.where((o) => _s(o['status']) == 'on'))
@@ -700,7 +700,7 @@ class _OffersTabState extends State<OffersTab> {
             ]),
           const SizedBox(height: 8),
           if (!_loading && _inbox.isEmpty)
-            const Text('Sirf un dukaanon ke offers aate hain jinke liye aapne haan kahi. Har offer par "band karo".',
+            const Text('Only offers from shops you said yes to come in. Every offer has "stop".',
                 style: TextStyle(color: C.muted)),
           for (final o in _inbox)
             Padding(padding: const EdgeInsets.only(bottom: 12), child: PromoCard(key: ValueKey('pr${o['id']}'), v: o, app: widget.app, onChanged: _load)),
@@ -719,17 +719,17 @@ class TrustChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => PopupMenuButton<String>(
-        tooltip: 'Bharosa',
+        tooltip: 'Trust',
         onSelected: (x) async {
           final r = await _guard(context, () => x == 'report' ? app.api!.netTrustReport(peer, 'spam') : app.api!.netTrustSet(peer, x));
-          if (r != null && context.mounted) _snack(context, _s(r['say']).isEmpty ? 'Ho gaya: ${_s(r['word'])}' : _s(r['say']));
+          if (r != null && context.mounted) _snack(context, _s(r['say']).isEmpty ? 'Done: ${_s(r['word'])}' : _s(r['say']));
           onChanged?.call();
         },
         itemBuilder: (_) => const [
-          PopupMenuItem(value: 'trusted', child: Text('Bharosemand (auto quote / order meri seema tak)')),
-          PopupMenuItem(value: 'known', child: Text('Sirf jaan-pehchaan (har order mere tap se)')),
-          PopupMenuItem(value: 'auto', child: Text('Apne aap (rishte se)')),
-          PopupMenuItem(value: 'report', child: Text('Shikayat / spam')),
+          PopupMenuItem(value: 'trusted', child: Text('Trusted (auto quote / order up to my limit)')),
+          PopupMenuItem(value: 'known', child: Text('Known people only (every order with my tap)')),
+          PopupMenuItem(value: 'auto', child: Text('Automatic (through the relationship)')),
+          PopupMenuItem(value: 'report', child: Text('Complaint / spam')),
         ],
         child: Pill(say.isEmpty ? tier : say, fg: tierColor[tier] ?? C.chip),
       );

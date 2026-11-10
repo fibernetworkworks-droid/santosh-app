@@ -53,9 +53,13 @@ def state(r: AppProject) -> dict[str, Any]:
 
 
 def _put(app_id: str, **kw) -> dict[str, Any]:
-    st = dict(state(AS._load(app_id)))
+    r = AS._load(app_id)
+    st = dict(state(r))
     st.update(kw)
     AN._put(app_id, ios=st)
+    if "now" in kw or "status" in kw:            # v0.693 APP STUDIO: the iPhone build's lines as timed steps
+        from .. import activity as _ACT
+        _ACT.on_build(r.tenant_id, app_id, "ios", kw, st.get("states"))
     return st
 
 

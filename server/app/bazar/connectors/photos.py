@@ -21,13 +21,13 @@ class PhotosExecutor:
             raise ToolError(f"Unknown tool {tool}")
         p = ps.pending(ctx.user.id, str(args.get("pending_id", "")))
         if p is None or p["status"] != "pending":
-            raise ToolError("Yeh upload taiyaar nahi hai; dobara boliye.")
+            raise ToolError("This upload is not ready; please ask again.")
         sm = p["summary"]
-        items = [{"name": f"{sm.get('count', 0)} photos / videos Google Photos mein jayengi"}]
+        items = [{"name": f"{sm.get('count', 0)} photos / videos will go to Google Photos"}]
         if sm.get("album"):
             items.append({"name": f"Album: {sm['album']}"})
-        items.append({"name": "Google Photos mein se hatana aapko khud karna hoga (Santosh delete nahi kar sakta)."})
-        return NeedsApproval(tier=2, title="Itni photos upload karein?", payee="Google Photos", amount_paise=0,
+        items.append({"name": "You will have to remove them from Google Photos yourself (Santosh cannot delete)."})
+        return NeedsApproval(tier=2, title="Upload these photos?", payee="Google Photos", amount_paise=0,
                              items=items, pay_method="Santosh Photos",
                              preview={"message": f"Approve to upload {sm.get('count', 0)} files to Google Photos."},
                              action={"executor": "photos", "pack_id": pack.id, "name": "run", "args": {"pending_id": p["id"]}})

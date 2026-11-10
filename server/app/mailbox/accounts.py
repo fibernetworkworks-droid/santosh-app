@@ -49,8 +49,16 @@ def _post(url: str, data: dict) -> dict:
         if _http is None:
             c.close()
     if r.status_code != 200:
-        raise MailError(f"Token nahi mila: {r.text[:200]}")
+        if "invalid_grant" in r.text or r.status_code in (400, 401):
+            # v0.707 an expired / revoked Google login reached the model as raw JSON ("Token nahi mila: {...}")
+            raise NotConnected(RECONNECT)
+        raise MailError(f"Login server ne mana kiya ({r.status_code}). Thodi der baad dobara try karein.")
     return r.json()
+
+
+RECONNECT = ("Is mailbox ka login expire ho gaya hai (Google ne band kar diya). Owner ko batao: App mein Profile > Email "
+             "(ya Profile > Google Drive) se 'dobara jodiye' dabayein, saare box tick karein. Tab tak is mailbox ka kaam "
+             "nahi hoga - dobara try mat karo.")
 
 
 def _get(url: str, token: str) -> dict:
@@ -109,7 +117,7 @@ def _signin_token(tenant: str):
         if creds is None:
             raise NotConnected("Google sign-in nahi mila.")
         if force:
-            google_auth.refresh(creds, tenant)
+            google_auth.refresh(creds, tenant)     # GoogleReconnect -> its own clear line + reconnect card (v0.70)
             google_auth.save_token(tenant, creds)
         return creds.token
     return token

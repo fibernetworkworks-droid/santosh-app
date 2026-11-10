@@ -34,14 +34,14 @@ async def photo_banao(ctx: Ctx, action="make", prompt="", file_ids=None, aspect=
     prompt = str(prompt or "").strip()
     ids = [str(x) for x in (file_ids or []) if str(x).strip()][:photogen.MAX_INPUTS]
     if action == "edit" and not ids:
-        raise ToolError("Kaunsi photo badalni hai? Pehle photo bhejne ko kahiye (chat ka paperclip / call mein 'Photo "
-                        "dikhaiye'), phir uska file_id do.")
+        raise ToolError("Which photo should be changed? Ask her to send the photo first (the chat paperclip / 'show the photo' "
+                        "on a call), then give its file_id.")
     if not str(getattr(ctx, "actor", "owner") or "owner").startswith(("owner", "approved", "goal")):
         if not usage.allowed(ctx.tenant_id, "routine"):
             raise ToolError(usage.blocked_text(ctx.tenant_id))
     why = photogen.problem(prompt, edit=bool(ids))
     if why:
-        raise ToolError(why + " (Dobara mat try karo; unhe yahi bata do.)")
+        raise ToolError(why + " (Do not try again; tell her this.)")
     imgs = []
     for fid in ids:
         _, data = _owner_bytes(ctx, fid)
@@ -49,7 +49,7 @@ async def photo_banao(ctx: Ctx, action="make", prompt="", file_ids=None, aspect=
     try:
         res = await asyncio.to_thread(photogen.make, prompt, imgs, str(aspect or ""), str(quality or "fast"))
     except photogen.Refused as e:
-        raise ToolError(str(e) + " (Dobara mat try karo.)")
+        raise ToolError(str(e) + " (Do not try again.)")
     except photogen.PhotoError as e:
         raise ToolError(str(e))
     base = filename or re.sub(r"\s+", " ", prompt)[:40] or "Hoola photo"
@@ -63,8 +63,8 @@ async def photo_banao(ctx: Ctx, action="make", prompt="", file_ids=None, aspect=
     bus.publish(ctx.conversation_id, "photo_made", card)
     return {"status": "done", "file_id": view["file_id"], "name": view["name"], "aspect": res["aspect"],
             "quality": res["quality"], "about_inr": res["cost_inr"],
-            "note": ("Photo ban gayi aur chat mein card ke saath dikh rahi hai (save / share / badlav). Use email / "
-                     "hoola_send mein file_id se bhej sakte ho. Ek line mein batao kya bana; 'AI se bana' label laga hai.")}
+            "note": ("The photo is made and shown in the chat with a card (save / share / change). You can send it by email / "
+                     "hoola_send using its file_id. Say in one line what was made; it carries an 'AI-made' label.")}
 
 
 PHOTO_HANDLERS = {"photo_banao": photo_banao}
