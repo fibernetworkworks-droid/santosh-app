@@ -362,3 +362,13 @@ the code.
   recipe could never come back); a starter recipe scoring under half the best one stays out of the fallbacks (her test
   pulled in mutual_fund_nav and crypto_price on one shared word).
 Tests: test_v0754_box_keyed.py +2. NOT VERIFIED: whether NIC answers Cloudflare's addresses - her first relay call says.
+
+## v0.757.0 KALA KHULA — the Google skills catalog reached by everyday Google Cloud words (10 Nov 2026; built as 0.756, their DATA.GOV.IN RELAY took 0.756.0 - REBASE PROTOCOL, both kept; owner: "NOW CHECK ALL GOOGLE SKILLS IN REPO DEVLOPED FOR HOOLA")
+
+THE CHECK: v0.681 KALA MANCH (`agent/kala_tools.py`, tool `kala`) reads Google's public skill catalog github.com/google/skills. Driven live from here: index.json answers 200 with 187 skills (it was ~75 KB at v0.681, now ~129 KB); catalog q=bigquery -> 17 hits, read agent-platform-access-audit -> its SKILL.md (12k cap), list gke- -> 42, status ok; the 34-test suite green. Nothing is copied into the repo - the documents are read on demand, never executed (the v0.681 law).
+THE GAP: the tool had no words of its own. Its only admission key was the bare family name `kala`, which is Hindi for black / art - so 'google cloud par GKE cluster kaise banaun', 'bigquery mein ML model', 'firebase setup' never brought it into view (0/8), while 'kala kurta online order karo' did. tool_search could not find it for 'gemini api' / 'bigquery' either.
+THE FIX: `admit.EXTRA_KEYS["kala"]` = the products its skills cover (google cloud, gcp, gcloud, gke, kubernetes engine, bigquery, vertex ai, agent platform, gemini api, genkit, firebase, cloud run, cloud logging / monitoring, secops, alloydb, spanner, bigtable, apigee, iam policy / role, google skill, well-architected, google mobile ads, admob); `kala` joins `_GENERIC` (no key from its own name); the tool description names the products. Plain 'google' / 'cloud' / 'drive' / 'maps' / 'gmail' are deliberately NOT keys.
+- RESULT: 10/10 Google Cloud asks bring it into view, 0/8 unrelated asks (incl. 'kala kurta', 'google drive', 'google maps', 'gmail'); free tool card unchanged 176/176, wrong family 0.
+- PROOF: `tests/test_v0757_kala_khula.py` 3 + test_v0681_kala_manch 34 + the admission suites re-run.
+- NOT VERIFIED: whether the model then reads the right SKILL.md and follows it on a real ask (no live chat run).
+

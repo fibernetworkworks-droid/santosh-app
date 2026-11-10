@@ -209,6 +209,13 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
     # stays with jaanch - Hoola's own health - reach answers only about the internet doors)
     "reach": ("reach", "reach manch", "website nahi khul", "site nahi khul", "nahi khul raha", "internet check",
               "backends", "kaun sa door", "web status"),
+    # v0.757 KALA KHULA: the google/skills catalog (v0.681) had NO words of its own - only the bare family name "kala"
+    # (which in Hindi is art / black) - so an everyday Google Cloud ask never brought it into view. These are the
+    # product names its 187 skills cover; a plain "google" / "cloud" alone is deliberately NOT a key.
+    "kala": ("google cloud", "gcp", "gcloud", "gke", "kubernetes engine", "bigquery", "big query", "vertex ai",
+             "agent platform", "gemini api", "genkit", "firebase", "cloud run", "cloud logging", "cloud monitoring",
+             "secops", "alloydb", "spanner", "bigtable", "apigee", "iam policy", "iam role", "google skill",
+             "google ki skill", "google ke skill", "well-architected", "google mobile ads", "admob"),
     # v0.560 SPEC SUTRA: a work lane, not core (reach is the fallback door every chat may need; the spec
     # ladder is admitted when software work is spoken). Bare "spec" stays with product (its action=spec) -
     # these keys are the software-build shapes.
@@ -553,6 +560,8 @@ _GENERIC = frozenset({
     "pdf",       # making a pdf = docstudio; working ON a pdf = the "pdf work" intent
     "build",     # v0.496 "build a website / app" is not a code-graph ask
     "graph",     # v0.496 charts / dashboards own the bare word; the code-graph family has its own phrases
+    "kala",      # v0.757 KALA KHULA: the google/skills tool's own name is the Hindi word for black / art ("kala kurta");
+                 # its family opens only on the Google Cloud words in EXTRA_KEYS["kala"]
     "clone",     # v0.694.0 WEB CLONE: bare 'clone' is everyday ("git clone this repo" = git, not the web family);
                  # only her clone WORDS (web clone / site ko clone ...) open the webclone family
 })
