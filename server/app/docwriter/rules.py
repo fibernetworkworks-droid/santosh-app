@@ -146,9 +146,9 @@ def validate_steps(steps: Any, base_host: str = "") -> list[dict[str, Any]]:
             else:
                 m = re.match(r"^https?://([^/:?#]+)", url, re.I)
                 if not m:
-                    raise StepError(f"step {i}: sirf http(s) link")
+                    raise StepError(f"step {i}: only an http(s) link")
                 if base_host and not same_site(m.group(1), base_host):
-                    raise StepError(f"step {i}: only your own site ({base_host}) ke pages")
+                    raise StepError(f"step {i}: only pages of your own site ({base_host})")
                 st["url"] = url
         if do in ("click", "fill", "select", "hover") or (do in ("screenshot", "scroll", "wait") and raw.get("target")):
             st["target"] = clean_target(raw.get("target") or {k: raw[k] for k in TARGET_KEYS if raw.get(k)})
@@ -256,7 +256,7 @@ def mask_text(text: str, keep: list[str] | None = None) -> str:
 
     def sub(m):
         v = m.group(0)
-        return v if any(v.strip() in k or k in v for k in keep) else "[hataya]"
+        return v if any(v.strip() in k or k in v for k in keep) else "[removed]"
     return re.sub("|".join(f"(?:{p})" for p in PII_PATTERNS), sub, text or "")
 
 

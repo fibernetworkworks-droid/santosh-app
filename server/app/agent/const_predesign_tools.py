@@ -12,8 +12,8 @@ from .tools import Ctx, ToolError
 
 PREDESIGN_TOOLS = [
     {"name": "const_predesign", "description": (
-        "Pre-design desk - load take-down, preliminary sizing, MEP estimates, fire rule checks (sab "
-        "PRELIMINARY working papers; design/stability sign registered engineer ka, tier C). action=rule_add: "
+        "Pre-design desk - load take-down, preliminary sizing, MEP estimates, fire rule checks (all "
+        "PRELIMINARY working papers; design/stability sign-off is the registered engineer's, tier C). action=rule_add: "
         "family ll|unit|span|fire|mep|other, rule_id, text, value, unit, direction min|max, clause, source - "
         "a rule without a clause is not kept. action=slab_load: project, name, occupancy residential|office|stair, "
         "thickness_m, finish_kn_m2 -> DL+LL trail (IS 875 pack rows). action=column_load: project, name, "

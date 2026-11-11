@@ -381,7 +381,7 @@ def classes(tenant: str, src: dict[str, Any], query: str) -> dict[str, Any]:
         names = [r if isinstance(r, str) else (r.get("name") or r.get("class_name") or str(r)) for r in rows][:120]
         return {"name": name, "sha256": an.sha256_file(Path(p)), "kind": kind, "query": query or "",
                 "count": len(names), "classes": names,
-                "next": ["class class_name=<se ek> -> methods", "method class_name=... method_name=... -> decompiled body"]}
+                "next": ["class class_name=<one of these> -> methods", "method class_name=... method_name=... -> decompiled body"]}
 
 
 def klass(tenant: str, src: dict[str, Any], class_name: str) -> dict[str, Any]:

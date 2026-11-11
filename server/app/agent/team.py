@@ -790,7 +790,7 @@ TEAM_TOOLS = [
        "required": ["mission", "agents"]}},
     {"name": "agent_status",
      "description": ("Check or stop a deployed agent team. check = the deliverables of recent crews (a background "
-                     "crew reports itself when done; this re-reads its results). stop = Rokiye a running crew."),
+                     "crew reports itself when done; this re-reads its results). stop = stop a running crew."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["check", "stop"]},
          "id": {"type": "string", "description": "Team id from deploy_agents' result; empty = the latest crews"}},

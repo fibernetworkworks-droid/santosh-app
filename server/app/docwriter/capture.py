@@ -208,7 +208,7 @@ def run(base_url: str, steps: list[dict[str, Any]], out_dir: Path, device: str =
                     if do == "goto":
                         url = urljoin(base_url, st["url"])
                         if not R.same_site(urlparse(url).hostname or "", host):
-                            raise R.StepError(f"step {i}: sirf {host} ke pages")
+                            raise R.StepError(f"step {i}: only pages of {host}")
                         page.goto(url, wait_until="load")
                     elif do == "click":
                         target.click()

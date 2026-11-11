@@ -356,7 +356,7 @@ def add_product(tenant: str, kind: str, ref: str = "", name: str = "", file_ids:
         out = snapshot(tenant, pid)
     with session() as s:
         v = _pview(s.get(DocProduct, pid), full=True)
-    say = f"'{v['name']}' connected." + (f" {v['parts']} hisse mile." if v["parts"] else "")
+    say = f"'{v['name']}' connected." + (f" {v['parts']} parts found." if v["parts"] else "")
     if not v["verified"]:
         say += " " + (out.get("note") or v.get("verify", {}).get("say", ""))
     return {"product": v, "say": say}
@@ -603,7 +603,7 @@ def record_flow(tenant: str, product: str, name: str, steps: Any, device: str = 
         v = _fview(f)
     snap = snapshot(tenant, p.id)
     card = {"kind": "shots", "flow": v, "product": p.name, "changed_steps": changed, "blocked": res["blocked"],
-            "say": (f"'{v['name']}': {len(res['shots'])} screenshots taken" + (f", {len(changed)} badle hue" if changed else "")
+            "say": (f"'{v['name']}': {len(res['shots'])} screenshots taken" + (f", {len(changed)} changed" if changed else "")
                     + (". Stopped: " + res["error"] if res["error"] else ". Personal details were masked.")),
             "images": [f"/api/docwriter/flows/{fid}/img/{x['file']}" for x in res["shots"]]}
     _publish(tenant, "docwriter_shots", card, conv)
@@ -1001,7 +1001,7 @@ def check(tenant: str, doc: str) -> dict[str, Any]:
             res["warnings"].append({"kind": "stale", "text": f"'{sec['title'][:40]}' is out of date: {sec.get('why')}", "section": sec["id"]})
     contact_ok = [st["contact"]] if st["contact"] else []
     masked = R.mask_text(md, contact_ok)
-    if masked.count("[hataya]") > md.count("[hataya]"):
+    if masked.count("[removed]") > md.count("[removed]"):
         res["blocking"].append({"kind": "pii", "text": "The docs contain someone's e-mail / phone (other than your business contact): remove it"})
     if not secs:
         res["blocking"].append({"kind": "empty", "text": "The doc is empty"})
@@ -1072,8 +1072,8 @@ def revise(tenant: str, doc: str, instruction: str, section: str = "", conv: str
     _reset_pending(tenant, did)
     check(tenant, did)
     v = get(tenant, did)
-    _publish(tenant, "docwriter_doc", _card(v, f"{v['number']}: {done} hisse badle."), conv)
-    return {"doc": v, "say": f"{done} hisse badle."}
+    _publish(tenant, "docwriter_doc", _card(v, f"{v['number']}: {done} sections changed."), conv)
+    return {"doc": v, "say": f"{done} sections changed."}
 
 
 TR_SYSTEM = """Translate this product documentation from {src} into {dst} for ordinary Indian users.

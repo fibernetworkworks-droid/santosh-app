@@ -36,7 +36,7 @@ BIM_TOOLS = [
         "kind, space, model -> data-link row (#109, twin = a register, not a 3D view). action=twin_read: "
         "project, rows [asset_id, sensor, value], unit, band_min, band_max, band_source (a band needs "
         "its source) -> out-of-band flagged. action=cobie_check: project, csv_text (Component sheet "
-        "CSV) -> required headers + rows bina AssetIdentifier/TypeName."),
+        "CSV) -> required headers + rows without AssetIdentifier/TypeName."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["ifc_add", "health", "naming", "cde_add", "cde_status",
                                                "transmit", "clash_scan", "clash_mark", "bcf", "link4d",

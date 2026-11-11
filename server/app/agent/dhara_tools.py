@@ -646,7 +646,7 @@ async def _exec_one(tenant_id: str, conv: str, step: dict, ctx: dict, run_id: st
             body = await _http_step(tenant_id, step, ctx)
             ctx["steps"][sid] = {"output": body}
             return True, body, ""
-        return False, None, f"anjaan step type '{typ}'"
+        return False, None, f"unknown step type '{typ}'"
     except ToolError as e:
         return False, None, str(e)
     except Exception as e:

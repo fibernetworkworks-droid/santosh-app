@@ -105,7 +105,7 @@ DEFAULT_PLAYBOOK: dict[str, dict[str, Any]] = {
                         "standard_text": ("Each Party shall process any personal data received under this Agreement only for the purposes "
                                           "of this Agreement and in compliance with the Digital Personal Data Protection Act, 2023 and the "
                                           "rules made under it.")},
-    "force_majeure": {"position": "Force majeure clause ho.", "level": "low"},
+    "force_majeure": {"position": "There is a force majeure clause.", "level": "low"},
     "assignment": {"position": "The other party does not assign the contract without our consent.", "level": "low"},
     "stamp": {"position": "Stamp duty is paid before signing / on the same day.", "level": "medium"},
     "term": {"position": "The start and end dates are clear.", "level": "low"},
@@ -636,8 +636,8 @@ def notice_deadline(end: date | None, notice_days: int | None) -> date | None:
 def mask(text: str) -> str:
     """Contract text kept by Hoola: Aadhaar, card / account-like numbers, PAN, OTP / PIN / password values hidden."""
     t = str(text or "")
-    t = re.sub(r"\b(otp|pin|cvv|password|upi pin)\b\s*(?:is|hai|:|=)?\s*\S+", lambda m: f"{m.group(1)} [hataya]", t, flags=re.I)
-    t = re.sub(r"(?<!\d)[2-9]\d{3}[ -]?\d{4}[ -]?\d{4}(?!\d)", "[Aadhaar hataya]", t)
-    t = re.sub(r"\b(?:\d[ -]?){13,19}\b", "[number hataya]", t)
-    t = re.sub(r"\b[A-Z]{3}[ABCFGHLJPT][A-Z]\d{4}[A-Z]\b", "[PAN hataya]", t)
+    t = re.sub(r"\b(otp|pin|cvv|password|upi pin)\b\s*(?:is|hai|:|=)?\s*\S+", lambda m: f"{m.group(1)} [removed]", t, flags=re.I)
+    t = re.sub(r"(?<!\d)[2-9]\d{3}[ -]?\d{4}[ -]?\d{4}(?!\d)", "[Aadhaar removed]", t)
+    t = re.sub(r"\b(?:\d[ -]?){13,19}\b", "[number removed]", t)
+    t = re.sub(r"\b[A-Z]{3}[ABCFGHLJPT][A-Z]\d{4}[A-Z]\b", "[PAN removed]", t)
     return t

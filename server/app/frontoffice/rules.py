@@ -78,11 +78,11 @@ def phone10(v: Any) -> str:
 
 
 _SECRETS = [
-    (re.compile(r"(?i)\b(otp|pin|cvv|mpin|password|passcode)\b\s*[:=-]?\s*\S+"), r"\1 [hataya]"),
-    (re.compile(r"(?<!\d)(?:\d[ -]?){13,19}(?!\d)"), "[card hataya]"),
-    (re.compile(r"(?<!\d)[2-9]\d{3}[ -]?\d{4}[ -]?\d{4}(?!\d)"), "[ID hataya]"),
-    (re.compile(r"\b[A-Z]{5}\d{4}[A-Z]\b"), "[PAN hataya]"),
-    (re.compile(r"\b[A-PR-WY][1-9]\d\s?\d{4}[1-9]\b"), "[passport hataya]"),
+    (re.compile(r"(?i)\b(otp|pin|cvv|mpin|password|passcode)\b\s*[:=-]?\s*\S+"), r"\1 [removed]"),
+    (re.compile(r"(?<!\d)(?:\d[ -]?){13,19}(?!\d)"), "[card removed]"),
+    (re.compile(r"(?<!\d)[2-9]\d{3}[ -]?\d{4}[ -]?\d{4}(?!\d)"), "[ID removed]"),
+    (re.compile(r"\b[A-Z]{5}\d{4}[A-Z]\b"), "[PAN removed]"),
+    (re.compile(r"\b[A-PR-WY][1-9]\d\s?\d{4}[1-9]\b"), "[passport removed]"),
 ]
 
 

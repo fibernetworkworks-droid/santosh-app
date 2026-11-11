@@ -414,7 +414,7 @@ async def maps_nearest(ctx: Ctx, candidates, origins=None, mode="car", top=3, **
                        "unreachable": bad})
         if not card:
             card = [{"name": b["name"], "address": b.get("address", ""), "distance_km": b["distance_km"],
-                     "type": f"{b['duration']} · {'gaadi se' if m == 'DRIVE' else 'raste se'}"} for b in best]
+                     "type": f"{b['duration']} · {'by car' if m == 'DRIVE' else 'by road'}"} for b in best]
     if card:
         _places_card(ctx, "Nearest", card, near=o_pts[0].get("name", ""), cost_inr=spent)
     out = {"mode": m, "compared": len(d_pts), "results": result, "cost_inr": spent,
@@ -502,7 +502,7 @@ async def maps_route_plan(ctx: Ctx, stops, vehicles=None, day="", **_):
             if start is None:
                 raise ToolError("Where does the vehicle start from? Ask her to give the phone location permission, or to name the starting place.")
             end = await _locate(ctx, v["end"], here) if v.get("end") else None
-            veh.append({"name": v.get("name") or f"Gaadi {i + 1}", "start": start, "end": end,
+            veh.append({"name": v.get("name") or f"Vehicle {i + 1}", "start": start, "end": end,
                         "capacity": v.get("capacity"), "from": v.get("from"), "until": v.get("until")})
         pts, missing = [], []
         for item in raw:

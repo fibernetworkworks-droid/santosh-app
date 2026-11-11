@@ -144,7 +144,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return S.register_file(t, conv)
     except (S.TourError, ValueError) as e:
         raise ToolError(str(e))
-    raise ToolError(f"Anjaan action: {action}")
+    raise ToolError(f"Unknown action: {action}")
 
 
 async def tour_guide(ctx: Ctx, action, **a: Any):
@@ -187,7 +187,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
             return {"never": list(R.NEVER), "sources": [{"what": w, "url": u, "date": d} for w, u, d in R.SOURCES]}
     except (S.TourError, ValueError) as e:
         raise ToolError(str(e))
-    raise ToolError(f"Anjaan what: {what}")
+    raise ToolError(f"Unknown what: {what}")
 
 
 async def tour_guide_dekho(ctx: Ctx, what, **a: Any):

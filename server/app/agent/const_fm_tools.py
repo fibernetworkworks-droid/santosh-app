@@ -17,7 +17,7 @@ FM_TOOLS = [
         "task, freq_days, last_done]. action=ppm_due: project (optional) -> next-due arithmetic. "
         "action=comp_add: project, rows [system(lift|fire|stp|wtp|other), cert_no, agency, last, due]. "
         "action=comp_due: project -> overdue list (certificate agency ki). action=roster_add: rows "
-        "[post, weekday, shift, person]. action=roster_gap: project -> khali posts. action=audit_add: "
+        "[post, weekday, shift, person]. action=roster_gap: project -> vacant posts. action=audit_add: "
         "rows [building, audit_type, last, cycle_yrs(from your municipal circular), agency]. "
         "action=audit_due: project -> next-due (certificate registered engineer ki, tier C). "
         "action=asset_add: rows [asset, space, dept, warranty_till]."),

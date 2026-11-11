@@ -245,7 +245,7 @@ async def doc_studio(ctx: Ctx, kind, title, text="", sheets=None, slides=None, c
     notes = ["The file card is in chat; the file_id is ready for email / hoola_send. This is her FINAL file - do "
              "not make another version unless she asks for a change."]
     if qa.get("status") == "warn":
-        notes.append(f"QA ne kaha: {qa.get('issues')}")
+        notes.append(f"QA said: {qa.get('issues')}")
     if kind == "pdf" and res.get("design"):
         d = res["design"]
         notes.append(f"Design matched to the topic: {d['label']} ({d['cover']} cover, "
