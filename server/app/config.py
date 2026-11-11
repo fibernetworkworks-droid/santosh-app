@@ -498,6 +498,9 @@ class Settings(BaseSettings):
     seekh_max_per_day: int = 20            # `seekh_video` tool): the Gemini eyes watch, Claude distills the
     seekh_file_max_mb: int = 200           # steps with [m:ss] evidence, and they land in the two memories
     seekh_live_notes: bool = True          # v0.745 notes stream onto the Video Learner page as Gemini writes them
+    seekh_resume: bool = True              # v0.785 a watch a restart cut is picked up again once (off = it is only reported lost)
+    seekh_keep_media: bool = True          # v0.785 the learner keeps its own copy of an uploaded video (the chat lane is swept after 24 h)
+    seekh_media_max_mb: int = 1024         # v0.785 kept videos per owner; over it the oldest copies go (the learned steps stay)
     interactive_page: bool = True          # v0.747 HOOLA INTERACTIVE: the console's video studio (one line -> scenes -> HyperFrames MP4)
     hoola_code_page: bool = True          # v0.748 HOOLA CODE: Developer Sahayak as a console page (sessions, live steps, plan, PR, reviews)
     flow_page: bool = True                # v0.751 HOOLA FLOW: the Kaan pack as a console page (dictate, files, live captions, words, settings)

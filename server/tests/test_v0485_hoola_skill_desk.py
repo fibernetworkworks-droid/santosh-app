@@ -553,7 +553,7 @@ def test_package_exports_skill_packs(desk):
 def test_version_layer():
     server_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))   # server/
     main = open(os.path.join(server_dir, "app", "main.py"), encoding="utf-8").read()
-    assert 'APP_VERSION = "0.789.0"' in main   # the story pin rides the newest story (the v0.476 precedent)
+    assert 'APP_VERSION = "0.795.0"' in main   # the story pin rides the newest story (the v0.476 precedent)
     pub = open(os.path.join(server_dir, "..", "pubspec.yaml"), encoding="utf-8").read()
-    assert "version: 0.789.0+788" in pub
+    assert "version: 0.795.0+794" in pub
     assert store._SCHEMA_VERSION == 3

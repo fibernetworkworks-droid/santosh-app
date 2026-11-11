@@ -565,7 +565,10 @@ def _waiting_on_job(conv: str) -> bool:
         from ..kaamwatch import KaamJob
         cut = now() - timedelta(seconds=JOB_WAIT_S)
         with session() as s:
-            rows = s.scalars(select(KaamJob).where(KaamJob.conversation_id == conv, KaamJob.state == "working")
+            # v0.791 the long job's OWN kaamwatch row (kind 'goal') is not a job it waits on - it made the goal
+            # pause itself for up to JOB_WAIT_S after its first round whenever kaamwatch was on
+            rows = s.scalars(select(KaamJob).where(KaamJob.conversation_id == conv, KaamJob.state == "working",
+                                                   KaamJob.kind != "goal")
                              .limit(20)).all()
             return any((_aware(r.moved_at) or _aware(r.updated_at) or now()) >= cut for r in rows)
     except Exception:

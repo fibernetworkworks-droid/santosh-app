@@ -69,6 +69,14 @@ def make_router(require_key) -> APIRouter:
         return {"free": {k: v for k, v in card.items() if k != "rows"}, "lines": RC.lines(card),
                 "rows": card["rows"], "cards": RC.saved(), "verdicts": RC.verdicts()}
 
+    @r.get("/prompt")
+    async def prompt_card():
+        """v0.785 HOOLA PROMPTING P0: the free prompt card now (set valid, scorer calibrated, estimate) + the saved live
+        cards (python -m app.quality prompt --live --budget-inr N) + HER picks."""
+        from . import promptcard as PC
+        card = await asyncio.to_thread(PC.free_card)
+        return {"free": card, "lines": PC.lines(card), "cards": PC.saved(), "verdicts": PC.verdicts()}
+
     @r.get("/parity")
     async def parity_card():
         """v0.732 CLAUDE PARITY Phase 0: the free check now (set, calibrated scorer, tools in view) + the saved cards

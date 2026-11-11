@@ -949,6 +949,7 @@ def init_db(url: str | None = None):
     from .agent import turndeliver as _turndeliver  # noqa: F401  (G5 LangGraph turn: the delivery record - registered
         # HERE AND self-healing via turndeliver.ensure_table())
     from .site import plans as _site_plans  # noqa: F401  (v0.782 TEEN MODE site plans + instructions - registered here AND self-healing)
+    from .site import yehwala as _site_yehwala  # noqa: F401  (v0.795 YEH WALA site comments - registered here AND self-healing)
     from . import turncost as _turncost  # noqa: F401  (v0.777 CHAT JAISA each turn's rupees - registered here AND self-healing)
     from . import reqdump as _reqdump  # noqa: F401  (v0.732 PARITY Phase 0 the request dump - registered here AND self-healing)
     from . import home as _home  # noqa: F401  (v0.479.0 HOOLA SMART HOME the home_audit table - registered
