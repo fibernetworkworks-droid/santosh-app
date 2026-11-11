@@ -1465,3 +1465,35 @@ walk of all 12 pages at 1440 and 390 px: header first, one current tab, no boxed
 no Hinglish, no "0s", the tab bar fits; motion once per page); `test_v0693_app_studio.py` pin moved to "Approve design".
 NOT VERIFIED: on her own server with a real build in progress; the thread's older Hinglish job lines from other server
 messages (design ready / failed / stopped) are unchanged.
+
+## v0.802.0 GALTI PAKDO - the preview tells Hoola when it breaks; Try to fix follows a ladder (L6 of docs/LOVABLE_STUDIO_PLAN.md, owner: "GO L6")
+Before: an error in the preview was invisible to Hoola (and a section script's error was swallowed by its own try/catch);
+she had to notice it and describe it. Lovable's error collector + Try to fix, in Hoola's shape:
+- COLLECTOR (`hoola-site.js`, last block): runs ONLY in a frame whose page is /api/site-preview/... - `error`,
+  `unhandledrejection` (AbortError skipped), failed `fetch` (5xx = Data error, network = Data error) and `window.__hoolaErr`
+  (called by the build's per-section catch with `pages/<page>/<section>.js`; on her live site nothing defines it, so the catch
+  stays silent as before). Max 20 per page load, posted to the parent window only.
+- RELAY (Studio): only messages from its own preview frame; batched 1.2 s; POST /api/sites/{id}/preview-errors with her login
+  (64 KB cap -> 413, 20 items, masked by `ops.clean_message`: emails, long numbers, query strings; the preview's private link
+  is cut from messages and stacks).
+- STORE (`site/galti.py`, table `site_errors`, registered in db.init_db + self-heal): one row per fingerprint (kind +
+  message with numbers folded + file + line): count, page, version, stack (6 lines), first / last seen, status
+  (open / ignored / fixed - it reopens if it comes back), the LEDGER of attempts. A site that stopped on a build problem
+  shows a Build problem card (GET /api/sites/{id}/errors).
+- CARDS: above the chat box (up to 3 + "N more") and a "This page hit a problem" bar over the preview: title (Page error /
+  Data error / Build problem), page, times seen, version, Show details (file:line, stack, attempts), Ignore, Try to fix
+  (Ctrl+Enter when the chat box is empty).
+- THE LADDER (plan section 8): Try to fix -> POST /api/sites/{id}/errors/{eid}/fix -> the Build message + `<error_to_fix>`
+  (the error, its file, every earlier attempt and its result) read ONCE by that turn via `turnmode.site_block`; the model is
+  told to find the cause first, change as little as possible (edit_lines) and NOT claim it fixed. An attempt is marked
+  'did not fix' when the same error is seen on a version newer than the one it started from. After two that did not hold,
+  the button and the server switch to "Plan for root cause" (Plan mode, "what have we already tried") - never a third blind
+  patch. Not seen on a newer version after an attempt = "Not seen since vN" (proven by the preview, never claimed).
+- AGENT: `website_dekho what=errors` (+ all) - the open errors with the ledger; the description says read before fixing.
+NOT BUILT: the plan's "5 free fixes a day" (Hoola has no per-turn charge to waive, so nothing says free); ladder steps 3-6
+stay manual (History > restore a version already exists; rebuild one section = action=change; remix not built).
+Tests: test_v0802_galti_pakdo.py (9: one card per fingerprint + masking + caps + her sites only, the ladder two fixes then a
+plan with the ledger in the turn, not-seen-since / ignore / reopen, build problem + routes + the agent read + 413, section
+errors only in the preview, the preview link never kept, source wiring, and the PLANTED-ERROR walk: a section that throws ->
+the card names pages/home/hero.js -> Try to fix -> one exact edit -> the next preview is clean - fixed on try 1).
+NOT VERIFIED live: a real model fixing a real error from <error_to_fix> on her server.

@@ -2933,3 +2933,9 @@ Built server/app/vocal/ (service + 20 routes) on Hoola's own engines and static/
 Fixed a live bug in Hoola Interactive too: tabs used data-v, which the console's global click handler sends to go().
 Not verified: engines faked in tests; no real voice heard; clone / design need the GPU lab. Plan: docs/HOOLA_VOCAL_PLAN.md.
 Next: she deploys, opens Hoola Vocal, makes one line of speech; her decision on the GPU lab and on the three missing models.
+
+---
+Task ID: v0.802.0 GALTI PAKDO (L6)
+Task: owner "GO L6" - E4 preview error collector + error cards + Try to fix + the debugging ladder with the attempts ledger.
+Work Log: hoola-site.js preview-only collector + build's section catch -> __hoolaErr; site/galti.py (site_errors, ledger, try_fix, pending block); 4 routes; website_dekho what=errors; Studio cards + preview bar + Ctrl+Enter; 9 tests incl. the planted-error walk (fixed on try 1).
+Stage Summary: pushed; server deploy only. Next: L7 WAPAS (versions before launch: restore any, bookmark, undo per reply, per-version diff) on her GO.
