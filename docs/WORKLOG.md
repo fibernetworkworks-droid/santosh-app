@@ -2885,14 +2885,44 @@ Work Log: site/designq.py + 2 routes; S.new reads designq.PENDING; look 1 'Your 
 Stage Summary: pushed; server deploy only. Next: L4 CHHOTA BADLAAV (line edits + tiered checks) on her GO.
 
 ---
-Task ID: PLAN HOOLA PROMPTING (11 Nov 2026)
-Ask: new feature HOOLA PROMPTING (sections: web design, app development, script...) - deep research first, then the moat plan.
-Done: two web reads (how prompting works: vendor guides + papers; the prompt-product market) -> docs/research/prompting/00_INDEX.md; plan docs/HOOLA_PROMPTING_PLAN.md (brief object, six machines, 13 sections, page, score, outcome ledger, phases P0-P12, 6 owner decisions). Docs only, no version change.
-Next: P0 NAAP (the prompt card) on her GO.
+Task ID: HI-PREMIUM
+Date: 2026-11-11
+Task: Hoola Interactive premium redesign (owner: "it look stale and old design ... more premium ... with some animation")
+Done: v0.786.0 (built as 0.785) - screenshotted every page first; rebuilt the look in static/console/interactive.js + the #hiRoot block in v2.css
+(folding sidebar, one heading per page, drawn dropdowns, one control scale, editor rows that do not wrap, thumbnails with
+content, brand-tinted stage, once-only motion); fixed Create Studio's resize error (studio.js); tests extended + a rule test.
+Not verified: not seen on the VPS. Pre-existing reds on main left alone (v0221 english, v0255 weights, v0256 crisp).
+Next: she deploys (VPS ops > deploy) and looks; her notes on any page come back here.
+
+Task ID: v0.787.0 HOOLA CODE ENGINE (built as 0.784)
+Ask: "IS HOOLA CODE BACKEND SAME AS CLAUDE CODE" -> no -> "GO STEP 1 AND 2 --- 2 SESSIONS, USE CLAUDE".
+Built: devsahayak/brain.py (Claude-only, thinking, caching, trimming), devsahayak/engine.py (working copy, Claude Code tools, bash in the box, compaction, continue, checkpoints + rewind, 2 live slots), routes ws / files / rewind, page steps + Working copy card; 13 tests incl. real Docker.
+Deploy: vps-ops deploy (server-only; no new pip; working copies under data/devsahayak/ws). Needs Anthropic credit (Hoola Code is Claude-only now). Found: server venv is Python 3.12 vs box 3.13.
+
+Task ID: v0.788.0 LANGGRAPH G5
+Ask: GO G5 (outcome in state + one delivery node).
+Built: turngraph deliver node, agent/turndeliver.py record, kaam_followup reads it; chat_graph still off; 11 tests. Found goal._waiting_on_job pause bug (not fixed).
+Deploy: vps-ops deploy (langgraph pip install from v0.761 if not done).
+
 
 ---
-Task ID: v0.785.0 PROMPT NAAP (P0 of HOOLA PROMPTING)
-Ask: the owner pasted the P0 step of the plan (measure before building).
-Built: quality/prompt_asks.py (60 asks: raw + hand-filled brief), quality/promptcard.py (scorer, free card, live card with a rupee ceiling, rule verdict, her picks), CLI `prompt`, GET /api/quality/prompt, vps-ops prompt_card_check / prompt_card_try; 11 tests, no model.
-Found: the architect plan echoed her words (brief scored its own text) - fixed; a flag picture the picture engine refuses - replaced.
-Deploy: vps-ops deploy (server-only; no new pip, no tables). Then prompt_card_check (free), then prompt_card_try (Rs 250 cap). Next: read the numbers, then P1 on her GO.
+Task ID: v0.789.0 CHHOTA BADLAAV (built as 0.785; their HOOLA AI APPS took 0.785.0, HOOLA INTERACTIVE PREMIUM PASS 0.786.0, HOOLA CODE ENGINE 0.787.0 and LANGGRAPH G5 0.788.0; L4)
+Task: owner "GO L4" - E1 line-edit tools + E2 tiered checks in the Web Studio.
+Work Log: site/lineedit.py; website_dekho what=search, website action=edit_lines / write_file; checks.run quick; save_version quick + _quick_merge; blockers + Go live starts the full check; Studio version card; 8 tests; real Chromium quick check 6.2 s.
+Stage Summary: pushed; server deploy only. Next: L5 YEH WALA (preview toolbar, element pills, style panel) on her GO.
+
+Task ID: v0.791.0 KHUD PE NA RUKE
+Ask: found during G5 - a long job paused itself ~1 h (kaamwatch on).
+Built: goal._waiting_on_job skips the job's own kind=goal row; 1 test.
+Deploy: vps-ops deploy.
+
+Task ID: v0.792.0 VIDEO LEARNER PREMIUM (built as 0.785)
+Ask: read the AI Employees Video Learner code + design -> "FIX ALL 7 PROPERLY ... MAKE ENTIRE SECTION PROPER AND PREMIUM ... VISUAL GRAPHICAL ANIMATION".
+Built: 7 fixes (pill class, Re-learn replaces, run kept + Proven by real work, file picker steps, stage durations, uploads kept, restart pick-up) + the page redrawn (seekh.js, skv- CSS, hub card); 20 tests incl. a browser walk.
+Deploy: vps-ops deploy (server-only; no new pip, no new tables; data/seekh/media + data/seekh/jobs are created by themselves).
+
+Task ID: v0.793.0 HOOLA CODE SAFETY + RESUME (built as 0.789; re-versioned on merge: CHHOTA BADLAAV took 0.789.0, HOOLA GAME DEV 0.790.0, KHUD PE NA RUKE 0.791.0, VIDEO LEARNER PREMIUM 0.792.0)
+Ask: GO PHASE 4 WITH 2 LIVE SESSIONS -> MERGE.
+What happened: another session shipped Phase 4 first (v0.787 HOOLA CODE ENGINE, proved on real Docker). This session's parallel engine (wsp.py) was withdrawn, not merged; its missing pieces were re-landed on the shipped engine.
+Built: link wall (the server never follows a link a box command planted), keys hidden after the clone + in output, restart pickup (job heartbeat + resume), per-repo setup / test / variables, question choices, the lost round-count save; 9 tests incl. a browser walk.
+Deploy: vps-ops deploy (server-only; no new pip; four nullable columns self-heal). Not verified on real Docker here.

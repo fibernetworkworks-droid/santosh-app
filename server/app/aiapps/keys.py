@@ -1,4 +1,4 @@
-"""v0.772 HOOLA AI APPS - D2: API keys for one app + the service API.
+"""v0.785 HOOLA AI APPS - D2: API keys for one app + the service API.
 
 Laws (each one has a test):
   - A key is shown ONCE, at creation. Only its sha256 is kept; a list never carries it (the last 4 characters only).

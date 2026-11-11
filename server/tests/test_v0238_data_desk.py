@@ -275,6 +275,21 @@ def test_a_dead_or_finished_job_no_longer_holds_the_goal(gz):  # noqa: F811
     assert goal._waiting_on_job("no-such-chat") is False
 
 
+def test_the_long_jobs_own_row_does_not_hold_it(gz):  # noqa: F811
+    """v0.791: with kaamwatch on, a long job's own 'goal:' row (state working) made _waiting_on_job say yes, so the
+    job paused itself for up to an hour after its first round. Its own row is not a job it waits on."""
+    from app.agent import goal
+    from app.db import now, session
+    from app.kaamwatch import KaamJob
+    conv = gz["conv"]
+    with session() as s:
+        s.add(KaamJob(tenant_id="default", conversation_id=conv, key="goal:g1", kind="goal", label="Long job",
+                      title="100 repos ki PDF", state="working", moved_at=now(), updated_at=now()))
+    assert goal._waiting_on_job(conv) is False
+    _job(conv)                                            # a real cloud-PC job of the same chat still holds it
+    assert goal._waiting_on_job(conv) is True
+
+
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.785.0"
+    assert APP_VERSION == "0.793.0"

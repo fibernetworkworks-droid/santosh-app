@@ -1253,7 +1253,17 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
   let GS_OPEN = '';            // v0.386 the Studio Project board open in the Game Desk ('' = the desk home)
   let GS_ROLE = '';            // v0.420 a role page open: 'world' | 'physics' ('' = none)
   let GS_ROLE_SID = '';        // ... for this Studio project ('' = her own, no project)
+  // v0.785 inside Hoola Game Dev (gameEmbed) a page's own error path must NOT draw the whole Game Desk home into a tab
+  // (its New game form, other projects' boards, every game's actions): it draws a calm panel with Try again instead.
+  let EMBED_ON = false, EMBED_LAST = null;
+  function embedFallback(el) {
+    clearTimeout(GTIMER);
+    el.innerHTML = '<div class="tile gl gdv-embedfail"><p>This page could not load just now. The reason is in the message at the bottom of the screen.</p>'
+      + '<div class="acts"><button class="btn soft" type="button" data-embed-retry>Try again</button></div></div>';
+    el.querySelector('[data-embed-retry]').addEventListener('click', () => { if (EMBED_LAST) gameEmbed(el, EMBED_LAST[0], EMBED_LAST[1]); });
+  }
   async function game(el) {
+    if (EMBED_ON) return embedFallback(el);
     clearTimeout(GTIMER);
     if (GS_ROLE) return ({runtime: gsRuntime, liveops: gsLiveops, big: gsBig, arena: gsArena, prov: gsProv, world: gsWorld, physics: gsPhysics, audio: gsAudio, haptics: gsHaptics, net: gsNet, xr: gsXr, sim: gsSim, twin: gsTwin, vfx: gsVfx}[GS_ROLE] || gsWorld)(el);
     if (GS_OPEN) return gsBoard(el, GS_OPEN);
@@ -1707,7 +1717,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
   // ---------------------------------------------------------------- v0.420 Game Desk roles: Worlds + Physics
   const WST = {draft: ['warn', 'Waiting for your OK'], approved: ['ok', 'In the game'], rejected: ['', 'Not used'], failed: ['bad', 'Failed its checks'],
                testing: ['v', 'Lab running']};
-  function roleBack(el) { GS_ROLE = ''; if (GS_ROLE_SID) { GS_OPEN = GS_ROLE_SID; gsBoard(el, GS_ROLE_SID); } else game(el); }
+  function roleBack(el) { if (EMBED_ON) return embedFallback(el); GS_ROLE = ''; if (GS_ROLE_SID) { GS_OPEN = GS_ROLE_SID; gsBoard(el, GS_ROLE_SID); } else game(el); }
   function checkList(ch) {
     return `${(ch.errors || []).map(e => `<div class="badc em-small">✕ ${esc(e)}</div>`).join('')}${(ch.warnings || []).map(w => `<div class="muted em-small">! ${esc(w)}</div>`).join('')}
       ${(ch.passed || []).map(x => `<div class="em-small">✓ ${esc(x)}</div>`).join('')}`;
@@ -2925,5 +2935,38 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
     loadRows();
   }
 
-  return {hub, desk, social, cad, game, arch, edu, leads};
+  // ---------------------------------------------------------------- v0.783 HOOLA GAME DEV (/console/games)
+  // The Game Dev app shows these same, tested game pages inside its own tabs. ONE entry point, so the app never reaches
+  // into the desk's state: it names a page and a Studio project, and the desk's own flags are reset for it. The Game
+  // Desk inside the console is untouched and keeps working exactly as before.
+  //   project pages (need a Studio project id): board | bible | scenes | assets | qa | release
+  //   role pages (studio id optional, '' = no project): liveops | prov | runtime | world | physics | audio | haptics |
+  //                                                       net | xr | sim | twin | vfx | arena | big
+  const EMBED_PROJECT = {board: gsBoard, bible: gsBible, scenes: gsScenes, assets: gsAssets, qa: gsQa, release: gsRelease};
+  const EMBED_ROLE = {liveops: gsLiveops, prov: gsProv, runtime: gsRuntime, world: gsWorld, physics: gsPhysics, audio: gsAudio,
+    haptics: gsHaptics, net: gsNet, xr: gsXr, sim: gsSim, twin: gsTwin, vfx: gsVfx, arena: gsArena, big: gsBig};
+  function gameEmbed(el, page, sid) {
+    clearTimeout(GTIMER);
+    EMBED_ON = true; EMBED_LAST = [page, sid];
+    GS_BIBLE = false; GS_ASSETS = false; GS_REL = false; GS_QA = false; GS_SCN = false; GS_ROLE = '';
+    GS_OPEN = String(sid || ''); GS_ROLE_SID = String(sid || '');
+    if (EMBED_PROJECT[page]) {
+      if (!sid) throw new Error('This page belongs to a long project. Turn the game into a long project first.');
+      if (page === 'bible') GS_BIBLE = true;
+      if (page === 'assets') GS_ASSETS = true;
+      if (page === 'release') GS_REL = true;
+      if (page === 'qa') GS_QA = true;
+      if (page === 'scenes') GS_SCN = true;
+      return EMBED_PROJECT[page](el, String(sid));
+    }
+    const fn = EMBED_ROLE[page];
+    if (!fn) throw new Error('Unknown game page: ' + page);
+    GS_ROLE = page;
+    return fn(el);
+  }
+  gameEmbed.stop = () => { clearTimeout(GTIMER); };   // the app calls this when it leaves a pane, so no poll outlives it
+  gameEmbed.pages = Object.keys(EMBED_PROJECT).concat(Object.keys(EMBED_ROLE));
+  gameEmbed.projectPages = Object.keys(EMBED_PROJECT);
+
+  return {hub, desk, social, cad, game, arch, edu, leads, gameEmbed};
 };

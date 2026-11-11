@@ -119,8 +119,10 @@ Reply with ONE JSON object:
 def model_json(system: str, prompt: str, max_tokens: int = 12000) -> dict[str, Any]:
     """Claude via the website builder's helper (Opus first, then the chat model, then the cheap brain). Tests replace this."""
     from ..site import ai
+    from . import brain as _B
     try:
-        return ai.ask_json(system, prompt, max_tokens=max_tokens, kind="build")
+        with _B.claude_only():                      # v0.784 USE CLAUDE: Hoola Code's one-shot calls are Claude's too
+            return ai.ask_json(system, prompt, max_tokens=max_tokens, kind="build")
     except ai.AiError as e:
         raise DevError(f"Model nahi mila: {e}")
 
@@ -250,7 +252,61 @@ _FULL = re.compile(r"^[A-Za-z0-9_.-]{1,100}/[A-Za-z0-9_.-]{1,100}$")
 
 def repo_view(r: DevRepo) -> dict[str, Any]:
     return {"id": r.id, "repo": r.full_name, "default_branch": r.default_branch, "private": r.private, "language": r.language,
-            "deploy_workflow": r.deploy_workflow, "deploy_ref": r.deploy_ref, "notes": r.notes}
+            "deploy_workflow": r.deploy_workflow, "deploy_ref": r.deploy_ref, "notes": r.notes,
+            "setup_cmd": r.setup_cmd or "", "test_cmd": r.test_cmd or "", "env_vars": _j(r.env_vars or "", {})}
+
+
+_ENV_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]{0,60}$")
+_ENV_SECRETY = re.compile(r"(?i)(password|passwd|secret|token|api[_-]?key|private[_-]?key|credential)")
+
+
+def save_repo(tenant: str, full: str, setup_cmd: Any = None, test_cmd: Any = None, env_vars: Any = None) -> dict[str, Any]:
+    """How THIS repo runs in the box: her own setup command (the one-time dependency install, the only step that gets the
+    internet), her own test command, and plain environment variables for every command. None of it is a place for a
+    key - the box's output is shown to the AI - so a name or value that looks like a secret is refused here, by name."""
+    from ..devlab import spec as SP
+    with session() as s:
+        r = s.scalars(select(DevRepo).where(DevRepo.tenant_id == tenant, DevRepo.full_name == (full or "").strip())).first()
+        if r is None:
+            raise DevError("That repo is not on your list.")
+        for name, val in (("setup_cmd", setup_cmd), ("test_cmd", test_cmd)):
+            if val is None:
+                continue
+            c = SP._clean(str(val))
+            if c and (SP.refuse_reason(c) or "\n" in str(val).strip() or R.secrets_in(c)):
+                raise DevError("That command cannot run in the box: one plain line, no sudo / docker / service commands, "
+                               "and no key or password in it.")
+            setattr(r, name, c or None)
+        if env_vars is not None:
+            if not isinstance(env_vars, dict):
+                raise DevError("Environment variables are NAME = value pairs.")
+            clean: dict[str, str] = {}
+            for k, v in list(env_vars.items())[:20]:
+                k, v = str(k).strip(), str(v).strip()[:400]
+                if not k:
+                    continue
+                if not _ENV_NAME.match(k):
+                    raise DevError(f"'{k[:40]}' is not a valid variable name (letters, numbers and _ only).")
+                if _ENV_SECRETY.search(k) or R.secrets_in(f"{k}={v}") or R.looks_token(v):
+                    raise DevError(f"{k} looks like a key or a password. The box is not a place for secrets - "
+                                   "its output is shown to the AI.")
+                clean[k] = v
+            r.env_vars = json.dumps(clean) if clean else None
+        s.flush()
+        return repo_view(r)
+
+
+def _repo_box(tenant: str, full: str) -> tuple[dict[str, str], dict[str, str]]:
+    """(her setup / test commands, her plain variables) for one repo - what the working-copy engine runs the box with."""
+    try:
+        with session() as s:
+            r = s.scalars(select(DevRepo).where(DevRepo.tenant_id == tenant, DevRepo.full_name == full)).first()
+            if r is None:
+                return {}, {}
+            hers = {k: v for k, v in (("setup", r.setup_cmd or ""), ("test", r.test_cmd or "")) if v.strip()}
+            return hers, {str(k): str(v) for k, v in (_j(r.env_vars or "", {}) or {}).items()}
+    except Exception:
+        return {}, {}
 
 
 def add_repo(tenant: str, full: str, deploy_workflow: str = "", deploy_ref: str = "", notes: str = "") -> dict[str, Any]:
@@ -353,6 +409,51 @@ def _log(t: DevTask, line: str) -> None:
     t.log = json.dumps(lg[-40:])
 
 
+def ws_view(tid: str) -> dict[str, Any]:
+    try:
+        from . import engine as EN
+        return EN.view(tid) if EN.on() or EN.exists(tid) else {"exists": False}
+    except Exception:
+        return {"exists": False}
+
+
+def ws_task_view(tenant: str, ref: str) -> dict[str, Any]:
+    with session() as s:
+        tid = _find_task(s, tenant, ref).id
+    return ws_view(tid)
+
+
+def ws_files(tenant: str, ref: str, path: str = "") -> dict[str, Any]:
+    from . import engine as EN
+    with session() as s:
+        tid = _find_task(s, tenant, ref).id
+    try:
+        return EN.files(tid, path)
+    except ValueError as e:
+        raise DevError(str(e))
+
+
+def ws_rewind(tenant: str, ref: str, n: int) -> dict[str, Any]:
+    """Back to checkpoint n: the working copy and the conversation as they were then. GitHub is not touched; a PR
+    already open keeps its commits until the next push."""
+    from . import engine as EN
+    with session() as s:
+        t = _find_task(s, tenant, ref)
+        if t.id in _RUNNING:
+            raise DevError("Hoola is working in this session right now - stop it first.")
+        tid = t.id
+    try:
+        cp = EN.rewind(tid, n)
+    except ValueError as e:
+        raise DevError(str(e))
+    _Step(tid).event({"k": "rewind", "n": cp["n"], "text": cp.get("label", "")[:80]})
+    with session() as s:
+        row = s.get(DevTask, tid)
+        _log(row, f"rewound to checkpoint {cp['n']}")
+        out = task_view(row, full=True)
+    return out
+
+
 def task_view(t: DevTask, full: bool = False) -> dict[str, Any]:
     ch = _j(t.changes, [])
     v = {"id": t.id, "number": t.number, "kind": t.kind, "kind_label": KINDS.get(t.kind, t.kind), "repo": t.repo,
@@ -384,6 +485,8 @@ def task_view(t: DevTask, full: bool = False) -> dict[str, Any]:
         v["steps"] = _j(t.steps or "", [])
         v["notes"] = [str(x) for x in _j(t.notes or "", [])]      # v0.768 her queued words, shown until Hoola reads them
         v["notes_waiting"] = len(v["notes"])
+        v["ws"] = ws_view(t.id)                                    # v0.784 the working copy: checkpoints, to-do, live / slots
+        v["can_continue"] = bool(v["ws"].get("exists")) and t.status in CONTINUE and not t.pr_number
     return v
 
 
@@ -424,6 +527,9 @@ def models(tenant: str = "") -> dict[str, Any]:
     default = str(getattr(st, "dev_loop_model", "") or getattr(st, "site_model", "") or st.anthropic_model)
     ids = list(dict.fromkeys(x for x in (default, str(st.anthropic_model or ""), str(getattr(st, "chat_simple_model", "") or "")) if x))
     forced = None
+    if bool(getattr(st, "dev_claude", True)):        # v0.784 USE CLAUDE: Hoola Code stands the server's model rules aside
+        return {"options": [{"id": m, "label": _pretty_model(m)} for m in ids], "default": default, "forced": None,
+                "efforts": list(EFFORTS), "default_effort": str(getattr(st, "dev_loop_effort", "high") or "high")}
     try:
         from .. import glmdoor
         if glmdoor.active():
@@ -995,6 +1101,7 @@ def _progress(tid: str, line: str) -> None:
 
 # ---------------------------------------------------------------- v0.748 HOOLA CODE: the console's live session
 _RUNNING: set[str] = set()      # tasks whose work runs in a background thread right now (this process)
+_BEAT: dict[str, float] = {}    # when each running session last wrote its heartbeat (this process)
 _STOP: set[str] = set()         # her Stop: the loop ends at its next step
 MAX_STEPS = 400
 
@@ -1024,6 +1131,22 @@ class _Step:
 
     def inbox(self) -> list[str]:
         return _take_notes(self.tid)
+
+    def beat(self) -> None:
+        """'This round is alive' - what tells a restarted server which sessions really stopped mid-round."""
+        import time as _t
+        if _t.time() - _BEAT.get(self.tid, 0.0) < 20:
+            return
+        _BEAT[self.tid] = _t.time()
+        try:
+            with session() as s:
+                row = s.get(DevTask, self.tid)
+                job = _j(row.job or "", {}) if row is not None else {}
+                if job:
+                    job["beat"] = now().isoformat()
+                    row.job = json.dumps(job)
+        except Exception:
+            log.debug("dev beat failed", exc_info=True)
 
     def stopped(self) -> bool:
         return self.tid in _STOP
@@ -1188,18 +1311,31 @@ def delete_task(tenant: str, ref: str) -> dict[str, Any]:
     try:
         import shutil
         shutil.rmtree(_attach_dir(tid), ignore_errors=True)      # the pictures she attached go with the session
+        from . import engine as _EN
+        _EN.forget(tid)                                           # v0.784 and its working copy
     except Exception:
         pass
     return {"ok": True, "deleted": tid, "pr_left_open": pr or 0}
 
 
-def _in_thread(tenant: str, tid: str, fn: Callable[..., Any], *a: Any, **kw: Any) -> dict[str, Any]:
-    """Run one piece of the work in the background so the page can watch it; errors land on the task row."""
+def _in_thread(tenant: str, tid: str, fn: Callable[..., Any], *a: Any, job: dict[str, Any] | None = None,
+               **kw: Any) -> dict[str, Any]:
+    """Run one piece of the work in the background so the page can watch it; errors land on the task row.
+    `job` = what this run is, in words a restarted server can act on ({what, words}). It is written on the row with a
+    heartbeat and cleared when the run ends, so a round a restart cut is found and continued (_resume_cut_runs)."""
     import threading
     if tid in _RUNNING:
         raise DevError("Hoola is already working on this.")
     _RUNNING.add(tid)
     _STOP.discard(tid)
+    if job is not None:
+        try:
+            with session() as s:
+                row = s.get(DevTask, tid)
+                if row is not None:
+                    row.job = json.dumps({**job, "beat": now().isoformat(), "tries": int(job.get("tries") or 0)})
+        except Exception:
+            log.debug("dev job write failed", exc_info=True)
 
     def go() -> None:
         from . import loop as L
@@ -1227,10 +1363,12 @@ def _in_thread(tenant: str, tid: str, fn: Callable[..., Any], *a: Any, **kw: Any
             _add_cost(tid, acc)
             _RUNNING.discard(tid)
             _STOP.discard(tid)
+            _BEAT.pop(tid, None)
             with session() as s:
                 row = s.get(DevTask, tid)
                 if row is not None:
                     row.notes = None
+                    row.job = None
 
     threading.Thread(target=go, name=f"dev-{tid}", daemon=True).start()
     return get_task(tenant, tid)
@@ -1290,7 +1428,7 @@ def start_bg(tenant: str, kind: str, text: str, repo: str = "", issue: int = 0, 
         d.mkdir(parents=True, exist_ok=True)
         for name, raw in blobs:
             (d / name).write_bytes(raw)
-    return _in_thread(tenant, tid, _work, tenant, tid, g, files or [], warn)
+    return _in_thread(tenant, tid, _work, tenant, tid, g, files or [], warn, job={"what": "work"})
 
 
 def in_background(tenant: str, ref: str, what: str, **kw: Any) -> dict[str, Any]:
@@ -1305,7 +1443,8 @@ def in_background(tenant: str, ref: str, what: str, **kw: Any) -> dict[str, Any]
                 raise DevError("This plan is not waiting any more.")
             if str(kw.get("hash_") or "") != t.hash:
                 raise DevError("The plan changed; look at the new one.")
-    return _in_thread(tenant, tid, fn, tenant, ref, **kw)
+    job = {"what": what, "words": str(kw.get("words") or "")[:6000]} if what in ("revise", "fix_ci") else None
+    return _in_thread(tenant, tid, fn, tenant, ref, job=job, **kw)
 
 
 def _plan_pass(tenant: str, t: DevTask, g: Gh, extra_files: list[str], issue_txt: str, tier: str,
@@ -1365,7 +1504,7 @@ def plan_ok(tenant: str, ref: str, hash_: str, by_tap: bool = False, note: str =
 
 
 def _work(tenant: str, tid: str, g: Gh, extra_files: list[str], warn: str, ask_pr: bool = False,
-          plan: dict[str, Any] | None = None) -> dict[str, Any]:
+          plan: dict[str, Any] | None = None, follow_up: str = "", resume: bool = False) -> dict[str, Any]:
     cfg = _cfg(tenant)
     with session() as s:
         t = s.get(DevTask, tid)
@@ -1382,8 +1521,11 @@ def _work(tenant: str, tid: str, g: Gh, extra_files: list[str], warn: str, ask_p
     tier = str(sized["tier"])
     att_txt, att_pics = _attach_for_loop(t)                 # Phase 3: what she attached (text files, screenshots)
     # Phase 3 the mode she picked for this session: 'plan' = a plan first and it WAITS, whatever the size of the job
-    force_plan = (t.mode or "") == "plan" and plan is None and t.kind != "explain" and _loop_on()
-    if plan is None and _loop_on() and ((bool(_setting("dev_plan_first", True)) and P.needs_plan(tier)) or force_plan):
+    force_plan = (t.mode or "") == "plan" and plan is None and t.kind != "explain" and _loop_on() and not follow_up
+    if resume and plan is None:                 # a round a restart cut: its plan (if it had one) was made before the cut
+        plan = _j(t.plan or "", {}) or {}
+        force_plan = False
+    if plan is None and not follow_up and _loop_on() and ((bool(_setting("dev_plan_first", True)) and P.needs_plan(tier)) or force_plan):
         plan = _plan_pass(tenant, t, g, extra_files, issue_txt + (("\n\n" + att_txt) if att_txt else ""), tier) or None
         if plan:
             waiting = force_plan or (P.waits(tier) and bool(_setting("dev_plan_gate", True)))
@@ -1410,7 +1552,24 @@ def _work(tenant: str, tid: str, g: Gh, extra_files: list[str], warn: str, ask_p
         s.flush()
     plan_txt = P.as_text(plan or {})
     base_sha = read = ctx = out = None
-    if _loop_on():
+    # v0.784 THE WORKSPACE ENGINE: a real working copy, Claude Code's tools, bash in the locked box, a conversation that
+    # continues. Anything that keeps it from running here (no box, no git, the switch off) falls back to the old loop.
+    from . import engine as EN
+    if EN.on() and _loop_on():
+        try:
+            hers, env = _repo_box(tenant, t.repo)
+            base_sha, read, ctx, out = EN.run(g, t, _token(tenant), cfg.rules, cfg.allow_workflows, issue_txt,
+                                              on_step=_Step(tid), plan_txt=plan_txt, attach=(att_txt, att_pics),
+                                              follow_up=follow_up, resume=resume, hers=hers, env=env)
+        except EN.Unavailable as e:
+            log.info("workspace engine unavailable for %s (%s): the old loop", tid, e)
+            base_sha = None
+        except EN.Stopped:
+            from . import loop as L
+            raise L.Stopped("stopped")
+        except GhError:
+            raise
+    if base_sha is None and _loop_on():
         # v0.350 KADAM-BA-KADAM: the model explores the repo with tools and edits step by step (devsahayak/loop.py);
         # anything that stops the loop early falls back to the one-shot path below, so the task never dies of it
         from . import lab as LAB
@@ -1441,7 +1600,7 @@ def _work(tenant: str, tid: str, g: Gh, extra_files: list[str], warn: str, ask_p
                 the_lab.close()
     if base_sha is None:
         base_sha, read, ctx = _gather(g, t, extra_files)
-        out = _ask_model(t, ctx["context"], cfg.rules, att_txt)
+        out = _ask_model(t, ctx["context"], cfg.rules, att_txt + (("\n\n" + follow_up) if follow_up else ""))
     out["rules_read"] = (ctx.get("found") or {}).get("rules") or []
     explain = str(out.get("explain") or "").strip()[:3000]
     if R.secrets_in(explain):
@@ -1544,6 +1703,8 @@ def push(tenant: str, ref: str, hash_: str, by_tap: bool = False, _internal: boo
         row = s.get(DevTask, t.id)
         row.status, row.head_sha, row.pr_number, row.pr_url, row.base_sha = "pr_open", sha, int(pr.get("number") or 0), \
             str(pr.get("html_url") or ""), head_now
+        from . import engine as _EN
+        _EN.mark_pushed(row.id, sha)                    # v0.784 the working copy now matches the PR branch
         row.ci = json.dumps({"state": "pending", "say": "CI shuru hone wala"})
         if not ci_loop:
             _log(row, f"PR #{row.pr_number} khula")
@@ -1591,6 +1752,9 @@ def push(tenant: str, ref: str, hash_: str, by_tap: bool = False, _internal: boo
         return _card(tenant, s.get(DevTask, tid), say)
 
 
+CONTINUE = ("explained", "failed", "cancelled")   # v0.784 sessions that take a follow-up in the same working copy
+
+
 def revise(tenant: str, ref: str, words: str, conv: str = "", comments: Any = None) -> dict[str, Any]:
     """Her change in words -> a new commit on the SAME hoola/* branch (or a new prepared change). Her comments on lines
     of the diff (the Changes pane) ride with the message; comments alone are enough."""
@@ -1599,10 +1763,22 @@ def revise(tenant: str, ref: str, words: str, conv: str = "", comments: Any = No
     if not clean and not block:
         raise DevError("Write what to change, or comment on a line.")
     clean = (clean + ("\n\n" if clean and block else "") + block).strip()
+    from . import engine as EN
+    cont = ""
+    with session() as s:
+        t = _find_task(s, tenant, ref)
+        if t.status in CONTINUE and not t.pr_number and EN.on() and EN.exists(t.id):
+            cont = t.id
+            t.status, t.error = "new", ""
+            if t.kind == "explain" and guess_kind(clean) != "explain":
+                t.kind = guess_kind(clean)                 # "yes, fix it" after an explanation = now do the work
+            _log(t, "her follow-up: the session continues")
+    if cont:                                               # outside the session: the work opens its own
+        return _work(tenant, cont, gh(tenant), [], warn, follow_up=f"<her_follow_up>\n{clean}\n</her_follow_up>")
     with session() as s:
         t = _find_task(s, tenant, ref)
         if t.status not in ("pr_open", "checks_failed", "ready", "refused"):
-            raise DevError(f"Yeh kaam '{STATUS.get(t.status, t.status)}' hai; naya kaam shuru kijiye.")
+            raise DevError(f"This session is '{STATUS.get(t.status, t.status)}' - start a new session.")
         if t.rounds >= 6:
             raise DevError("Is PR par bahut round ho gaye; naya kaam shuru kijiye.")
         s.expunge(t)
@@ -1624,7 +1800,7 @@ def fix_ci(tenant: str, ref: str) -> dict[str, Any]:
                              "unless the test is wrong: then say why in risk).", "")
 
 
-def _round(tenant: str, t: DevTask, extra: str, warn: str) -> dict[str, Any]:
+def _round(tenant: str, t: DevTask, extra: str, warn: str, resume: bool = False) -> dict[str, Any]:
     g = gh(tenant)
     cfg = _cfg(tenant)
     on_branch = t.status in ("pr_open", "checks_failed", "ci_running")
@@ -1632,7 +1808,26 @@ def _round(tenant: str, t: DevTask, extra: str, warn: str) -> dict[str, Any]:
     read = []
     paths = [c["path"] for c in _j(t.changes, [])]
     out = None
-    if on_branch and _loop_on():
+    from . import engine as EN
+    if EN.on() and _loop_on():                       # v0.784 the same session continues, in the same working copy
+        try:
+            spec = ""
+            if "<ci_log>" in extra and _setting("dev_spec_fix", False):
+                from . import specialists as SP
+                spec = SP.fix_addendum(extra, paths)
+            hers, env = _repo_box(tenant, t.repo)
+            _, read, _, out = EN.run(g, t, _token(tenant), cfg.rules, cfg.allow_workflows, on_step=_Step(t.id),
+                                     ref_sha=ref, follow_up=extra, system_extra=spec, resume=resume, hers=hers, env=env)
+            read = []
+        except EN.Unavailable as e:
+            log.info("workspace engine unavailable for round %s (%s)", t.id, e)
+            out = None
+        except EN.Stopped:
+            from . import loop as L
+            raise L.Stopped("stopped")
+        except GhError:
+            raise
+    if out is None and on_branch and _loop_on():
         # v0.351 a CI fix / revision on the PR branch explores and edits with the same 8 tools (devsahayak/loop.py),
         # starting from the branch's own head; the one-shot answer stays the fallback
         from . import lab as LAB
@@ -1698,6 +1893,7 @@ def _round(tenant: str, t: DevTask, extra: str, warn: str) -> dict[str, Any]:
             v["say"] = f"{row.number}: badlav taiyaar, PR ke liye aapki haan (card)." + warn
             _publish(tenant, "devsahayak_push", {"task": v, "say": v["say"]}, row.conv)
             return v
+        s.flush()        # the round count, the security notes and Hoola's explanation were set above: write them BEFORE letting go of the row (they were silently lost on every round on an open PR, so the "6 rounds" limit never counted)
         s.expunge(row)
     try:
         sha = g.commit_files(t.repo, t.branch, t.head_sha, [(c["path"], c["new"]) for c in prep["changes"]],
@@ -1711,6 +1907,8 @@ def _round(tenant: str, t: DevTask, extra: str, warn: str) -> dict[str, Any]:
             allc[c["path"]] = c
         row.changes = json.dumps(list(allc.values()))
         row.head_sha = sha
+        from . import engine as _EN
+        _EN.mark_pushed(row.id, sha)                    # v0.784
         if row.status == "ci_running":           # v0.351 the CI loop goes on: wait for CI on the new commit
             row.ci_since = now()
         else:
@@ -2653,9 +2851,93 @@ def _ci_step(tenant: str, tid: str, at: datetime | None = None, say_tail: str = 
     return None
 
 
+_SWEPT = {"at": 0.0}
+
+
+def _sweep_ws() -> None:
+    """v0.784 free the disk: working copies of deleted / archived / merged / closed sessions, and idle ones."""
+    import time as _t
+    if _t.time() - _SWEPT["at"] < 3600:
+        return
+    _SWEPT["at"] = _t.time()
+    from . import engine as EN
+    with session() as s:
+        keep = {t.id for t in s.scalars(select(DevTask).where(DevTask.archived_at.is_(None),
+                                                              DevTask.status.notin_(("merged", "closed")))).all()}
+    EN.sweep(keep)
+
+
+def _beat_fresh(job: dict[str, Any], seconds: int) -> bool:
+    try:
+        at = datetime.fromisoformat(str(job.get("beat") or ""))
+    except ValueError:
+        return False
+    at = at if at.tzinfo else at.replace(tzinfo=now().tzinfo)
+    return (now() - at).total_seconds() < seconds
+
+
+def _resume_cut_runs() -> None:
+    """A session whose background round was cut by a server restart is continued from the last step it saved (the
+    working copy and the conversation are on disk). A round is 'cut' when its row still says a job is in flight, this
+    process is not running it, and its heartbeat is old. Twice at most - then it is marked failed with the reason, never
+    left looking busy. A run of the OLD loop has nothing saved to continue from: after 30 silent minutes it is marked."""
+    from . import engine as EN
+    with session() as s:
+        rows = [(t.tenant_id, t.id, _j(t.job or "", {})) for t in
+                s.scalars(select(DevTask).where(DevTask.job.is_not(None)).limit(40)).all()]
+    for tenant, tid, job in rows:
+        if not job or tid in _RUNNING or _beat_fresh(job, 180):
+            continue
+        boxed = EN.on() and EN.exists(tid)
+        if not boxed and _beat_fresh(job, 1800):
+            continue
+        tries, what = int(job.get("tries") or 0), str(job.get("what") or "")
+        if not boxed or tries >= 2 or what not in ("work", "revise", "fix_ci"):
+            with session() as s:
+                row = s.get(DevTask, tid)
+                row.job = None
+                if row.status == "new":
+                    row.status = "failed"
+                    row.error = ("The server restarted while Hoola was working. " + ("Send a message to go on - the working "
+                                 "copy is kept." if boxed else "Start this again as a new session."))
+                _log(row, "run could not be continued after a restart")
+            continue
+        job = {**job, "tries": tries + 1}
+        words = str(job.get("words") or "").strip()
+        try:
+            with session() as s:
+                row = s.get(DevTask, tid)
+                status = row.status
+                s.expunge(row)
+            g = gh(tenant)
+            if what == "fix_ci":
+                _in_thread(tenant, tid, fix_ci, tenant, tid, job=job)
+            elif what == "revise" and status in ("pr_open", "checks_failed", "ready", "refused"):
+                extra = f"<her_change>\n{words}\n</her_change>\nApply her change to the work below." if words else ""
+                _in_thread(tenant, tid, _round, tenant, row, extra, "", resume=True, job=job)
+            elif status in ("new", "failed", "cancelled", "explained"):
+                with session() as s:
+                    s.get(DevTask, tid).status = "new"
+                follow = f"<her_follow_up>\n{words}\n</her_follow_up>" if what == "revise" and words else ""
+                _in_thread(tenant, tid, _work, tenant, tid, g, [], "", follow_up=follow, resume=True, job=job)
+            else:
+                with session() as s:
+                    s.get(DevTask, tid).job = None
+        except (DevError, GhError) as e:
+            log.info("devsahayak resume %s: %s", tid, e)
+
+
 def tick(at: datetime | None = None) -> None:
     """Every minute: open Hoola PRs' CI every 5 min (card when the result changes), running deploys every minute."""
     at = at or now()
+    try:
+        _sweep_ws()
+    except Exception:
+        log.debug("ws sweep failed", exc_info=True)
+    try:
+        _resume_cut_runs()
+    except Exception:
+        log.exception("devsahayak resume of cut runs failed")
     with session() as s:
         open_t = [(t.tenant_id, t.id) for t in s.scalars(select(DevTask).where(DevTask.status.in_(("pr_open", "checks_failed")))
                                                           .limit(60)).all()]

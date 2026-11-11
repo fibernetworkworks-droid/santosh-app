@@ -1,4 +1,4 @@
-"""v0.772 HOOLA AI APPS - D2: the PUBLIC surface (hosted chat page, embed bubble, JSON routes).
+"""v0.785 HOOLA AI APPS - D2: the PUBLIC surface (hosted chat page, embed bubble, JSON routes).
 
 None of these routes takes her key: they answer her customers. So every one of them checks, every time:
   - the app exists, is LIVE (a draft or a paused app is a plain 404 - a draft is never revealed), and the channel it is
