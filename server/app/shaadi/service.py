@@ -1463,7 +1463,7 @@ INVITE = {
                 "aashirwad hoga. Kripya bataiye aap aa payenge ya nahi.\n- {host}",
     "hindi": "आदरणीय {name} जी,\n{bride} और {groom} के शुभ विवाह में आप सपरिवार सादर आमंत्रित हैं।\n{lines}\nकृपया अपने आने की सूचना दें।\n- {host}",
     "marathi": "आदरणीय {name},\n{bride} आणि {groom} यांच्या शुभविवाहास आपण सहकुटुंब अवश्य यावे.\n{lines}\nकृपया येण्याविषयी कळवावे.\n- {host}",
-    "english": "Dear {name},\nYou and your family are warmly invited to the wedding of {bride} and {groom}.\n{lines}\nKindly let us know if you "
+    "english": "Dear {name},\nYou and your family are warmly invited to the wedding of {bride} and {groom}.\n{lines}\nPlease let us know if you "
                "can join.\n- {host}",
 }
 RSVP_ASK = {"hinglish": "Namaste {name} ji, {fn} ({when}) mein aap aa payenge? Kitne log? Bas 'haan / nahi' likh dijiye. - {host}",

@@ -233,7 +233,7 @@ def _template(d: dict[str, Any], tid: str, lang: str = "") -> dict[str, Any]:
     raise S.StudioError("That template was not found.")
 
 
-def template_use(tenant: str, tid: str, values: dict[str, Any], lang: str = "hi", avatar_id: str = "",
+def template_use(tenant: str, tid: str, values: dict[str, Any], lang: str = "en", avatar_id: str = "",
                  title: str = "") -> dict[str, Any]:
     """Fill a template from HER values. A variable she left empty refuses by name - nothing is ever filled in for her."""
     with S._LOCK:
@@ -266,7 +266,7 @@ def _sentences(text: str) -> list[str]:
     return out[:S.MAX_SCENES]
 
 
-def batch(tenant: str, scripts: list[Any], shape: str = "talking_head", lang: str = "hi", avatar_id: str = "") -> list[dict[str, Any]]:
+def batch(tenant: str, scripts: list[Any], shape: str = "talking_head", lang: str = "en", avatar_id: str = "") -> list[dict[str, Any]]:
     """Many scripts -> one draft each. Scenes are cut at sentence ends by code; her words are not rewritten."""
     texts = [_clip(s, 2400) for s in (scripts or []) if _clip(s, 2400)]
     if not texts:
@@ -518,6 +518,6 @@ def overview(tenant: str) -> dict[str, Any]:
 def voice_sample(lang: str) -> bytes:
     """A short spoken line in the Hoola voice, so she can hear it before she picks. Needs the engine."""
     from . import lab
-    line = {"en": "Hello, this is how I sound in your videos.", "mr": "Namaskar, tumchya video madhe mi asa bolto."}.get(
-        lang, "Namaste, aapke video mein meri awaaz aisi sunai degi.")
+    line = {"hi": "Namaste, aapke video mein meri awaaz aisi sunai degi.", "mr": "Namaskar, tumchya video madhe mi asa bolto."}.get(
+        lang, "Hello, this is how I sound in your videos.")
     return lab.voice(line, lang=lang if lang in S.LANGS else "hi")
