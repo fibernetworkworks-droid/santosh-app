@@ -193,7 +193,7 @@ def test_spec_card_has_stories_payments_notifications_and_other_apps(school):
     assert list(mods) == ["stories", "pages", "users", "flows", "data", "logic", "payments", "notifications", "integrations", "features", "quality", "phases", "risks"]
     assert len(mods["stories"]["lines"]) == 4 and mods["stories"]["lines"][0].startswith("Parent: admission online")
     assert "record" in json.dumps(card) or "Staff payment record" in mods["payments"]["lines"][0]
-    assert any("Paisa kabhi khud nahi" in x for x in mods["payments"]["lines"])
+    assert any("Money never moves on its own" in x for x in mods["payments"]["lines"])
     assert len(mods["notifications"]["lines"]) == 2 and "WhatsApp" in mods["notifications"]["lines"][1]
     assert mods["integrations"]["lines"][0].startswith("Google Sheets") and "random_crm" not in json.dumps(mods)
     assert card["data_ready"]

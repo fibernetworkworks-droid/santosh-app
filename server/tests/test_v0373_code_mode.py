@@ -51,7 +51,7 @@ def test_files_hand_edits_safety_and_undo(site_env):
     out = S.code_write(T, sid, "pages/home/hero.html", new)
     assert "Naya din, nayi mithai." in out["code"] and "onclick" not in out["code"] and "<script" not in out["code"]
     assert "javascript:" not in out["code"] and any("removed <script>" in x for x in out["removed"])
-    assert "Safety ke liye hataya" in out["say"]
+    assert "Removed for safety" in out["say"]
     g = S.get(T, sid)
     assert g["version"] == ver + 1
     assert "Naya din, nayi mithai." in (B.out_dir(T, sid, g["version"]) / "index.html").read_text()
@@ -120,7 +120,7 @@ def test_ask_hoola_changes_code_with_a_diff(site_env, monkeypatch):
     # Opus gave nothing usable -> said plainly, nothing changed
     monkeypatch.setattr(AI, "ask_json", lambda *a, **k: {"files": []})
     bad = S.code_ask(T, sid, "kuch bhi")
-    assert bad["status"] == "failed" and "dobara" in bad["say"]
+    assert bad["status"] == "failed" and "ask again" in bad["say"]
 
 
 def test_api_tools_and_console():

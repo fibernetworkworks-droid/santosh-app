@@ -120,4 +120,4 @@ def test_a_crashing_plan_never_kills_the_build_tap(site_env, monkeypatch):
         raise RuntimeError("model door exploded")
     monkeypatch.setattr(AR, "draft", boom)
     v = AR.build_now(T, "Sharma Sweets mithai dukaan ki website")
-    assert v["say"].startswith("Gehra plan abhi nahi bana") and S._load(v["id"]) is not None
+    assert v["say"].startswith("The deep plan could not be made right now") and S._load(v["id"]) is not None

@@ -167,7 +167,7 @@ def coll(schema: dict[str, Any], key: str) -> dict[str, Any]:
 
 DESIGN_SYSTEM = """You design the DATA side of a small business web app in India (like Lovable's backend), from the
 owner's words. Return JSON:
-{"say": "one short line in her language: what the app will do",
+{"say": "one short line in clear, simple English: what the app will do",
  "signup": true,
  "collections": [{"key": "orders", "label": "Orders", "fields": [{"key": "item", "label": "Item", "type": "text |
  long_text | number | phone | email | date | choice | yes_no", "required": true, "options": ["only for choice"],

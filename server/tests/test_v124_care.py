@@ -124,7 +124,7 @@ def test_views_uptime_report_and_monthly_note(care_env, monkeypatch):
     rep = c.get(f"/api/sites/{g['id']}/care?days=30").json()
     assert rep["views"] == 4 and rep["missing_hits"] == 1 and rep["leads"] == 1 and rep["conversion_pct"] == 25.0
     assert dict(rep["top_pages"])["/"] == 3 and rep["uptime_pct"] == 50.0
-    assert any("nahi khuli" in t for t in rep["tips"])
+    assert any("did not open" in t for t in rep["tips"])
     with session() as s:                                               # nothing about the visitor is stored
         from app.site.care import SiteCareDay
         row = s.scalars(select(SiteCareDay)).first()

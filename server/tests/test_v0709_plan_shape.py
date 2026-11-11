@@ -231,7 +231,7 @@ def test_build_mode_falls_back_when_the_architect_cannot_plan(site_env, monkeypa
     monkeypatch.setattr(AI, "ask_json", ask)
     c = TestClient(__import__("app.main", fromlist=["app"]).app)
     r = c.post("/api/sites", json={"brief": "mithai dukaan ki website", "deep": True})
-    assert r.status_code == 200 and "Gehra plan abhi nahi bana" in r.json()["say"]
+    assert r.status_code == 200 and "The deep plan could not be made right now" in r.json()["say"]
     assert "spec" not in json.loads(S._load(r.json()["id"]).plan)
 
 

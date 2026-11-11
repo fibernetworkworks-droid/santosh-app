@@ -408,7 +408,7 @@ problems need. Return the same JSON shape: {"html": "...", "css": "...", "js": "
 
 CHANGE_SYSTEM = """The owner asked for a change to her website, in her own words (Hinglish / Hindi / Marathi / English). Decide
 exactly what must change. Return JSON:
-{"say": "one short line in her language saying what you will do",
+{"say": "one short line in clear, simple English saying what you will do",
  "sections": [{"key": "page__type", "instruction": "precise instruction for the designer"}],
  "add": [{"page": "slug", "type": "section type, or 'custom' + a name for anything the library has no type for (EMI calculator,
           plan comparison, size guide...)", "name": "for custom", "after": "page__type or ''", "instruction": "..."}],

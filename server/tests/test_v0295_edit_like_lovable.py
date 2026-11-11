@@ -82,7 +82,7 @@ def test_edit_flow_no_ai_undo_versions_and_clean_live(site_env, monkeypatch):
     e = next(x for x in range(1, 40) if _safe(hero, str(x)) and _el(hero, str(x))["tag"] == "h1")
     calls_before = len(site_env.calls)
     out = c.post(f"/api/sites/{sid}/edit", json={"k": "home__hero", "e": str(e), "op": "text", "value": "Akot ki sabse meethi dukaan"}).json()
-    assert "Badal diya" in out["say"] and len(site_env.calls) == calls_before        # no AI call at all
+    assert "Changed: " in out["say"] and len(site_env.calls) == calls_before        # no AI call at all
     g2 = S.get(T, sid)
     assert g2["version"] == ver0 + 1 and g2["status"] == "ready"                     # a checked version of her edit
     live = (B.out_dir(T, sid, g2["version"]) / "index.html").read_text()
@@ -128,7 +128,7 @@ def test_edits_wait_for_a_running_build_and_old_sections_get_numbers(site_env, m
     S._JOBS[sid] = "save"                                                    # her last edits being checked: go on
     monkeypatch.setattr(S, "_start", lambda *a, **kw: False)
     out = S.edit_element(T, sid, k, "1", "text", "Naya shabd")
-    assert sid in S._SAVE_PENDING and "Badal diya" in out["say"]
+    assert sid in S._SAVE_PENDING and "Changed: " in out["say"]
     S._SAVE_PENDING.discard(sid)
     S._JOBS.pop(sid, None)
 

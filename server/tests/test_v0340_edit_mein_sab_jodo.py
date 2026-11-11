@@ -71,7 +71,7 @@ def test_she_adds_every_kind_and_the_site_shows_it(site_env):
     song = S.add_media(T, sid, MP3, "jingle.mp3", "Jingle")["name"]
     photo = S.add_photo(T, sid, _png(), "", "Kaju katli thali")["name"]
     ins = lambda key, spec: S.edit_element(T, sid, key, _e_of(S, sid, key), "insert", json.dumps(spec))   # noqa: E731
-    assert "video jodi" in ins(home, {"kind": "video", "name": vid, "caption": "Hamari <dukaan>"})["say"]
+    assert "video added" in ins(home, {"kind": "video", "name": vid, "caption": "Hamari <dukaan>"})["say"]
     ins(home, {"kind": "file", "name": pdf, "caption": "Menu download"})
     ins(home, {"kind": "audio", "name": song})
     ins(home, {"kind": "youtube", "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ", "caption": "Tyohar special"})

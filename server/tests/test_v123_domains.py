@@ -180,7 +180,7 @@ def test_buy_only_on_her_tap_kyc_and_reminders(dom_env):
     v, ctx = _site()
     D.set_key(T, "porkbun", PB_KEY, PB_SECRET)
     card = c.post("/api/sites-domains/request", json={"site": v["id"], "domain": "sharmasweets.in"}).json()
-    assert card["kind"] == "domain" and card["hash"] and "NIXI" in " ".join(card["lines"]) and "wapas nahi" in " ".join(card["lines"])
+    assert card["kind"] == "domain" and card["hash"] and "NIXI" in " ".join(card["lines"]) and "not refunded" in " ".join(card["lines"])
     assert _events("site_domain")[-1]["push"] and _events("site_domain")[-1]["kind"] == "domain"
     assert not dom_env.created                                 # nothing bought by the card
     digest, show = ak.card_digest("domain", card["id"], T)

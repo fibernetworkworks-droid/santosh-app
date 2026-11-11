@@ -220,7 +220,7 @@ def test_her_domain_saas_dns_plan_apply_undo_and_activation(host_env):
     ops = {(x["op"], x["type"], x["name"]) for x in plan["changes"]}
     assert ("add", "CNAME", "www.sharmasweets.in") in ops
     assert ("update", "CNAME", "sharmasweets.in") in ops                      # old A record -> Hoola, with a risk line
-    assert any("pehle A 203.0.113.9" in x for x in plan["risks"])
+    assert any("pointed to A 203.0.113.9" in x for x in plan["risks"])
     assert sum(1 for x in plan["changes"] if x["type"] == "TXT" and x["name"].startswith("_cf-custom-hostname")) == 2
     assert not any(x["type"] == "MX" for x in plan["changes"])                 # mail untouched
     assert _events("site_dns")[-1]["push"] is True

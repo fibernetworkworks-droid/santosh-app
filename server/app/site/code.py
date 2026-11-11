@@ -33,7 +33,7 @@ MAX_FILE = 120_000
 
 CODE_SYSTEM = """You are a senior front-end developer editing the REAL code of a small business website in India, exactly as
 the owner asks. You get one or more sections; each is {"key", "html", "css", "js"}.
-Return JSON {"files": [{"key": "<same key>", "html": "...", "css": "...", "js": "..."}], "summary": "one line, her language"}.
+Return JSON {"files": [{"key": "<same key>", "html": "...", "css": "...", "js": "..."}], "summary": "one line, in clear simple English"}.
 - Change ONLY what she asked; keep every other tag, class, id, data-* attribute, text, link, number and price exactly.
 - html: one <section> per key (keep its id). css: every selector starts with #<section id>. js: optional small plain
   script for THIS section only (document.getElementById(...)); never fetch / XHR / WebSocket / eval / Function /

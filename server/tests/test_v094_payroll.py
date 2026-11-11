@@ -88,7 +88,7 @@ def test_run_haan_files_paid(env, monkeypatch):
     aj = L["Ajay More"]
     assert aj["paid_days"] == 16 and aj["lop_days"] == 15                                # joined on the 16th
     assert run["totals"]["pf_admin"] == 500 and run["totals"]["employees"] == 3
-    assert any("bank account nahi" in c for c in run["checks"]) and any("PAN" not in c or True for c in run["checks"])
+    assert any("no bank account" in c for c in run["checks"]) and any("PAN" not in c or True for c in run["checks"])
     # her Haan first
     with pytest.raises(P.PayError):
         P.files(T, run["id"])

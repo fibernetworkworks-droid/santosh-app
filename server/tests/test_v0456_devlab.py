@@ -65,7 +65,7 @@ def test_a_repo_file_can_state_it_outright_and_is_trusted():
 
 def test_nothing_declared_means_nothing_runs():
     d = spec.discover(["main.c", "Makefile.in"], {})
-    assert d["test"] == "" and "bata dijiye" in d["why"] and "khud se command banakar nahi" in d["why"]
+    assert d["test"] == "" and "Tell Hoola the command" in d["why"] and "will not make up a command" in d["why"]
 
 
 def test_commands_that_are_refused_outright():
@@ -81,7 +81,7 @@ def test_a_refused_command_is_reported_never_quietly_swapped():
     d = spec.discover(["pyproject.toml"], {"AGENTS.md": "## Testing\n- Test: sudo pytest\n",
                                            "pyproject.toml": "[project]\nname='x'\n"})
     assert d["refused"] and d["refused"][0]["cmd"] == "sudo pytest" and d["refused"][0]["source"] == "AGENTS.md"
-    assert "nahi chal sakti" in d["why"]                          # she is told, in her words
+    assert "cannot be run" in d["why"]                          # she is told, in her words
     assert d["test"] == "python3 -m pytest -q" and d["confirm"] is True   # the offer still waits for her tap
 
 
@@ -126,7 +126,7 @@ def test_a_pass_is_shown_short_because_nobody_debugs_a_pass():
 
 def test_a_timeout_is_not_a_pass():
     r = out.shape("still running", 124, "/tmp/x.log", 600.0, timed_out=True)
-    assert r["ok"] is False and r["timed_out"] is True and "roka gaya" in out.say(r, "npm test")
+    assert r["ok"] is False and r["timed_out"] is True and "was stopped" in out.say(r, "npm test")
 
 
 def test_the_log_can_be_asked_a_second_question():
