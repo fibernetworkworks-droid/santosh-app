@@ -113,8 +113,11 @@ struct ShareButton: View {
 
     var body: some View {
         let title = label.isEmpty ? MediaWords.share : label
-        if let u = URL(string: url), u.scheme == "https" || u.scheme == "http" {
-            ShareLink(item: u, message: text.isEmpty ? nil : Text(text)) { Label(title, systemImage: "square.and.arrow.up") }
+        if let u = URL(string: url), u.scheme == "https" || u.scheme == "http", !text.isEmpty {
+            ShareLink(item: u, message: Text(text)) { Label(title, systemImage: "square.and.arrow.up") }
+                .buttonStyle(.bordered)
+        } else if let u = URL(string: url), u.scheme == "https" || u.scheme == "http" {
+            ShareLink(item: u) { Label(title, systemImage: "square.and.arrow.up") }
                 .buttonStyle(.bordered)
         } else {
             ShareLink(item: text) { Label(title, systemImage: "square.and.arrow.up") }
