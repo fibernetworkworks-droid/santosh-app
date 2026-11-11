@@ -85,7 +85,7 @@ class _AudioTabState extends State<AudioTab> {
               decoration: InputDecoration(filled: true, fillColor: SC.field,
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none))),
           const SizedBox(height: 14),
-          SButton(label: 'Bolwao · free', icon: Icons.record_voice_over_rounded, onTap: () => Navigator.pop(ctx, true)),
+          SButton(label: 'Voice it · free', icon: Icons.record_voice_over_rounded, onTap: () => Navigator.pop(ctx, true)),
         ]),
       ),
     );
@@ -107,7 +107,7 @@ class _AudioTabState extends State<AudioTab> {
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         if (_busy) const Padding(padding: EdgeInsets.only(bottom: 10), child: LinearProgressIndicator(color: C.accent, minHeight: 2)),
-        const SHead('Video ki awaaz'),
+        const SHead('Video voice'),
         Row(children: [
           for (final e in const {'male': 'Male · deep', 'female': 'Female · sweet'}.entries) ...[
             Expanded(
@@ -328,7 +328,7 @@ class _BrandTabState extends State<BrandTab> {
         Opacity(
           opacity: on ? 1 : .4,
           child: Row(children: [
-            for (final e in const {'bold': 'Large letters', 'words': 'Shabd-shabd', 'plain': 'Saada'}.entries) ...[
+            for (final e in const {'bold': 'Large letters', 'words': 'Word by word', 'plain': 'Plain'}.entries) ...[
               Expanded(
                 child: Press(
                   onTap: on ? () => _set({'caption_style': e.key}) : null,
@@ -401,7 +401,7 @@ class _BrandTabState extends State<BrandTab> {
                       style: body(11.5, color: C.faint, height: 1.4))),
                 ]),
               const SizedBox(height: 8),
-              SButton(label: logo.isEmpty ? 'Choose a logo photo' : 'Logo badlo', primary: false, height: 44,
+              SButton(label: logo.isEmpty ? 'Choose a logo photo' : 'Change logo', primary: false, height: 44,
                   onTap: _busy ? null : () => _logo(logo.isEmpty ? 'top-right' : pos)),
               const SizedBox(height: 10),
               Row(children: [

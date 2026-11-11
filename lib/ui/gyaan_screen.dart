@@ -395,7 +395,7 @@ class _GyaanScreenState extends State<GyaanScreen> {
                       value: settings['mail_on'] == true,
                       onChanged: _busy ? null : (v) => _setting('mail_on', v),
                       title: const Text('My mail too (last 60 days)'),
-                      subtitle: Text(_s(st['mail_synced']).isEmpty ? 'Band' : 'Last read: ${_s(st['mail_synced']).replaceFirst('T', ' ').split('.').first}'),
+                      subtitle: Text(_s(st['mail_synced']).isEmpty ? 'Off' : 'Last read: ${_s(st['mail_synced']).replaceFirst('T', ' ').split('.').first}'),
                     ),
                     SwitchListTile(
                       contentPadding: EdgeInsets.zero,
@@ -565,7 +565,7 @@ class GyaanSourcesCard extends StatelessWidget {
                   Navigator.pop(c);
                   Navigator.of(context).push(MaterialPageRoute(builder: (_) => GyaanScreen(app: app)));
                 },
-                child: const Text('Gyaan'),
+                child: const Text('Knowledge'),
               ),
             ]),
           ]),

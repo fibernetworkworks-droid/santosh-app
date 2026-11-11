@@ -21,7 +21,7 @@ class PhotosPickCard extends StatelessWidget {
     final purpose = v['purpose'] as String? ?? '';
     final uri = v['picker_uri'] as String? ?? '';
     final (chip, fg) = switch (status) {
-      'ready' => ('$count CHUNI', C.ok),
+      'ready' => ('$count SELECTED', C.ok),
       'expired' => ('EXPIRES', C.muted),
       _ => ('YOUR TURN', C.warn),
     };
@@ -146,7 +146,7 @@ class _PhotosScreenState extends State<PhotosScreen> {
                   const SizedBox(width: 10),
                   Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Text(a['address'] as String? ?? '', style: const TextStyle(fontWeight: FontWeight.w700)),
-                    Text(a['can_upload'] == true ? 'Chunna + upload' : 'Choose only', style: const TextStyle(color: C.muted, fontSize: 12.5)),
+                    Text(a['can_upload'] == true ? 'Choose + upload' : 'Choose only', style: const TextStyle(color: C.muted, fontSize: 12.5)),
                     if (a['status'] == 'error') Text(a['error'] as String? ?? 'Login fail', style: const TextStyle(color: C.bad, fontSize: 12)),
                   ])),
                   if (a['removable'] == true)

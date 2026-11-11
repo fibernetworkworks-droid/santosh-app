@@ -261,7 +261,7 @@ class _FranchiseScreenState extends State<FranchiseScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Franchise sahayak')),
+        appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Franchise assistant')),
         body: Aurora(
           child: RefreshIndicator(
             onRefresh: _load,

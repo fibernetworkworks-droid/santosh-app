@@ -185,7 +185,7 @@ class _SocietyScreenState extends State<SocietyScreen> {
       backgroundColor: C.bgBottom,
       builder: (_) => SafeArea(
         child: Column(mainAxisSize: MainAxisSize.min, children: [
-          for (final (k, l) in const [('assigned', 'Given to vendor'), ('working', 'Work in progress'), ('resolved', 'Fixed'), ('closed', 'Band')])
+          for (final (k, l) in const [('assigned', 'Given to vendor'), ('working', 'Work in progress'), ('resolved', 'Fixed'), ('closed', 'Closed')])
             ListTile(title: Text(l), onTap: () => Navigator.pop(context, k)),
         ]),
       ),
@@ -345,7 +345,7 @@ class _SocietyScreenState extends State<SocietyScreen> {
               dense: true,
               leading: Icon(Icons.event_rounded, color: (c['days_left'] ?? 0) < 0 ? C.bad : C.warn),
               title: Text(_s(c['what'])),
-              subtitle: Text('${_s(c['on'])} · ${(c['days_left'] ?? 0) < 0 ? 'expired' : '${c['days_left']} din'}')),
+              subtitle: Text('${_s(c['on'])} · ${(c['days_left'] ?? 0) < 0 ? 'expired' : '${c['days_left']} days'}')),
       ],
       if (_complaints.isNotEmpty) ...[
         const Caption('OPEN COMPLAINTS'),
@@ -701,7 +701,7 @@ class _SocietyFlatPageState extends State<SocietyFlatPage> {
   }
 
   Future<void> _parking() async {
-    final r = await _form(context, 'Parking slot', const [('slot', 'Slot no'), ('kind', 'car / two_wheeler'), ('resolution', 'General body resolution')], ok: 'Do');
+    final r = await _form(context, 'Parking slot', const [('slot', 'Slot no'), ('kind', 'car / two_wheeler'), ('resolution', 'General body resolution')], ok: 'Assign');
     if (r == null || (r['slot'] ?? '').isEmpty) return;
     await _do('POST', '/api/society/flats/${widget.id}/parking', r);
   }

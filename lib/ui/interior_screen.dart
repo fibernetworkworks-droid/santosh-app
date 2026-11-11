@@ -344,7 +344,7 @@ class _InteriorScreenState extends State<InteriorScreen> {
     const tabs = ['Today', 'Projects', 'Rate card', 'Vendors', 'Rules'];
     return Scaffold(
       backgroundColor: C.bgTop,
-      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Interior Sahayak'),
+      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Interior Assistant'),
           actions: [IconButton(icon: const Icon(Icons.refresh_rounded), onPressed: _load)]),
       body: Column(children: [
         SizedBox(

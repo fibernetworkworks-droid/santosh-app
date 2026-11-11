@@ -584,7 +584,7 @@ class _RulesTab extends StatelessWidget {
           row('rules', 'My rules (one per line)', _strs(st['rules']).join('\n'), lines: 5, list: true),
           ListTile(
             contentPadding: EdgeInsets.zero,
-            title: Text('Shabdkosh (${gl.length})'),
+            title: Text('Glossary (${gl.length})'),
             subtitle: Text(gl.take(4).map((e) => '${e['src']} → ${e['dst']}').join(' · ')),
             trailing: const Icon(Icons.add_rounded),
             onTap: () async {

@@ -29,8 +29,8 @@ const _kinds = <(String, String)>[
 ];
 const _langs = <(String, String)>[('en', 'English'), ('hinglish', 'Hinglish'), ('hi', 'हिंदी'), ('mr', 'मराठी')];
 const _sources = <(String, String, String)>[
-  ('hoola_app', 'Hoola ki banayi app', 'App number (A-0001)'),
-  ('hoola_site', 'Hoola ki banayi website', 'Site number (S-0001)'),
+  ('hoola_app', 'App made by Hoola', 'App number (A-0001)'),
+  ('hoola_site', 'Website made by Hoola', 'Site number (S-0001)'),
   ('web', 'My live website / web app', 'https://...'),
   ('github', 'My GitHub repo (read-only)', 'owner/repo'),
 ];
@@ -65,7 +65,7 @@ Future<String?> _ask(BuildContext context, String title, {String hint = '', bool
       ),
       actions: [
         TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Keep it')),
-        FilledButton(onPressed: () => Navigator.pop(d, true), child: const Text('Aage')),
+        FilledButton(onPressed: () => Navigator.pop(d, true), child: const Text('Next')),
       ],
     ),
   );
@@ -189,7 +189,7 @@ class _DocwriterScreenState extends State<DocwriterScreen> {
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text('${d['number']} · ${d['title']}', style: const TextStyle(fontWeight: FontWeight.w700)),
                 Text('${d['kind_label']} · ${d['lang']} · v${d['version']} · ${d['status']}'
-                    '${(d['stale'] ?? 0) > 0 ? ' · ${d['stale']} purane hisse' : ''}',
+                    '${(d['stale'] ?? 0) > 0 ? ' · ${d['stale']} outdated sections' : ''}',
                     style: const TextStyle(fontSize: 12, color: C.muted)),
               ]),
             ),
@@ -229,7 +229,7 @@ class _DocwriterScreenState extends State<DocwriterScreen> {
               Icon(p['verified'] == true ? Icons.verified_rounded : Icons.help_outline, color: p['verified'] == true ? C.ok : C.warn),
               const SizedBox(width: 8),
               Expanded(child: Text('${p['name']} · ${p['kind']}', style: const TextStyle(fontWeight: FontWeight.w700))),
-              Text('${p['version']} · ${p['parts']} hisse', style: const TextStyle(fontSize: 12, color: C.muted)),
+              Text('${p['version']} · ${p['parts']} sections', style: const TextStyle(fontSize: 12, color: C.muted)),
             ]),
             if (p['verified'] != true) ...[
               const SizedBox(height: 6),
@@ -260,16 +260,16 @@ class _DocwriterScreenState extends State<DocwriterScreen> {
             ]),
           ]),
         ),
-      FilledButton.icon(onPressed: _busy ? null : _addSource, icon: const Icon(Icons.add_link), label: const Text('Product jodo')),
+      FilledButton.icon(onPressed: _busy ? null : _addSource, icon: const Icon(Icons.add_link), label: const Text('Add product')),
       const SizedBox(height: 12),
       Glass(
         child: Row(children: [
           const Icon(Icons.code_rounded),
           const SizedBox(width: 8),
           Expanded(child: Text(gh['joined'] == true ? 'GitHub linked: ${gh['label']} (read-only)' : 'GitHub token not linked')),
-          TextButton(onPressed: _github, child: Text(gh['joined'] == true ? 'Badlo' : 'Jodo')),
+          TextButton(onPressed: _github, child: Text(gh['joined'] == true ? 'Change' : 'Connect')),
           if (gh['joined'] == true)
-            TextButton(onPressed: () => _run(() => widget.app.api!.call('DELETE', '/api/docwriter/github')), child: const Text('Hatao')),
+            TextButton(onPressed: () => _run(() => widget.app.api!.call('DELETE', '/api/docwriter/github')), child: const Text('Remove')),
         ]),
       ),
     ]);
@@ -287,7 +287,7 @@ class _DocwriterScreenState extends State<DocwriterScreen> {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       ListTile(title: const Text('Product name'), subtitle: Text(_s(st['product_name'])), onTap: () => edit('product_name', 'Product name')),
       ListTile(title: const Text('Who will read it'), subtitle: Text(_s(st['audience'])), onTap: () => edit('audience', 'Who will read it')),
-      ListTile(title: const Text('Lehja'), subtitle: Text(_s(st['tone'])), onTap: () => edit('tone', 'Lehja')),
+      ListTile(title: const Text('Tone'), subtitle: Text(_s(st['tone'])), onTap: () => edit('tone', 'Tone')),
       ListTile(
           title: const Text('Support contact (shown in the docs)'),
           subtitle: Text(_s(st['contact'])),
@@ -300,19 +300,19 @@ class _DocwriterScreenState extends State<DocwriterScreen> {
           title: const Text('My rules'),
           subtitle: Text(((st['rules'] as List?) ?? const []).join(' · ')),
           onTap: () => edit('rules', 'One rule per line', list: true)),
-      const Padding(padding: EdgeInsets.fromLTRB(16, 8, 16, 4), child: Text('Shabdavali', style: TextStyle(fontWeight: FontWeight.w800))),
+      const Padding(padding: EdgeInsets.fromLTRB(16, 8, 16, 4), child: Text('Glossary', style: TextStyle(fontWeight: FontWeight.w800))),
       for (final g in _list(st['glossary']))
         ListTile(dense: true, title: Text(_s(g['term'])), subtitle: Text(_s(g['avoid']).isEmpty ? _s(g['note']) : "not '${g['avoid']}'")),
       TextButton.icon(
           onPressed: () async {
-            final t = await _ask(context, 'Sahi shabd', hint: 'order');
+            final t = await _ask(context, 'Correct word', hint: 'order');
             if (t == null || !mounted) return;
             final a = await _ask(context, 'Do not write this instead (optional)', hint: 'booking');
             final g = [..._list(st['glossary']), {'term': t, 'avoid': a ?? ''}];
             await _run(() => widget.app.api!.call('PUT', '/api/docwriter/settings', body: {'glossary': g}));
           },
           icon: const Icon(Icons.add),
-          label: const Text('Shabd jodo')),
+          label: const Text('Add word')),
       const SizedBox(height: 8),
       for (final n in ((_d?['never'] as List?) ?? const [])) Text('• $n', style: const TextStyle(fontSize: 12, color: C.muted)),
     ]);
@@ -320,9 +320,9 @@ class _DocwriterScreenState extends State<DocwriterScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const tabs = ['Aaj', 'Docs', 'Sources', 'Niyam'];
+    const tabs = ['Today', 'Docs', 'Sources', 'Rules'];
     return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Docs sahayak'), actions: [
+      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Docs assistant'), actions: [
         IconButton(onPressed: _load, icon: const Icon(Icons.refresh)),
       ]),
       floatingActionButton: FloatingActionButton.extended(onPressed: _busy ? null : _newDoc, icon: const Icon(Icons.edit_note), label: const Text('New doc')),
@@ -423,7 +423,7 @@ class _DocwriterDocPageState extends State<DocwriterDocPage> {
             PopupMenuItem(value: 'revise', child: Text('Say a change')),
             PopupMenuItem(value: 'translate', child: Text('Translation')),
             PopupMenuItem(value: 'files', child: Text('Word + PDF + Markdown')),
-            PopupMenuItem(value: 'unpage', child: Text('Docs page hatao')),
+            PopupMenuItem(value: 'unpage', child: Text('Remove docs page')),
           ],
         ),
       ]),
@@ -468,7 +468,7 @@ class _DocwriterDocPageState extends State<DocwriterDocPage> {
                             if (t != null) await _run('PUT', '$_base/sections/${sec['id']}', body: {'body': t});
                           }),
                     ]),
-                    if (sec['stale'] == true) Text('Purana: ${sec['why']}', style: const TextStyle(color: C.warn, fontSize: 12)),
+                    if (sec['stale'] == true) Text('Outdated: ${sec['why']}', style: const TextStyle(color: C.warn, fontSize: 12)),
                     for (final sh in _list(sec['shots']))
                       Padding(
                         padding: const EdgeInsets.symmetric(vertical: 6),
@@ -500,7 +500,7 @@ class DocwriterDocCard extends StatelessWidget {
         ]),
         const SizedBox(height: 4),
         Text(_s(data['say']), style: const TextStyle(fontSize: 13)),
-        Text('${d['kind_label']} · ${d['lang']} · v${d['version']} · ${d['sections']} hisse · ${ch['blocking'] ?? 0} blockers',
+        Text('${d['kind_label']} · ${d['lang']} · v${d['version']} · ${d['sections']} sections · ${ch['blocking'] ?? 0} blockers',
             style: const TextStyle(fontSize: 12, color: C.muted)),
         Align(
           alignment: Alignment.centerRight,

@@ -444,7 +444,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Feedback sahayak'), actions: [
+        appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Feedback assistant'), actions: [
           IconButton(
               icon: const Icon(Icons.table_view_rounded),
               tooltip: 'Report (Excel + PDF)',

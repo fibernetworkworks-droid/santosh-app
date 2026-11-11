@@ -91,9 +91,9 @@ class GstScreen extends StatelessWidget {
         child: Scaffold(
           appBar: AppBar(
             backgroundColor: Colors.transparent,
-            title: const Text('GST sahayak'),
+            title: const Text('GST assistant'),
             bottom: const TabBar(isScrollable: true, tabAlignment: TabAlignment.start, tabs: [
-              Tab(text: 'Aaj'),
+              Tab(text: 'Today'),
               Tab(text: 'Clients'),
               Tab(text: 'Returns'),
               Tab(text: 'Notice'),
@@ -195,7 +195,7 @@ class _TodayTabState extends State<_TodayTab> with _GstLive {
         if ((d['clients'] ?? 0) == 0)
           const Glass(
               child: Text('Add your first client: Clients > "New client" (with GSTIN). Or tell Hoola: '
-                  '"Sharma Traders, GSTIN 27..., monthly client jodo".', style: TextStyle(color: C.muted))),
+                  '"Add Sharma Traders, GSTIN 27..., as a monthly client".', style: TextStyle(color: C.muted))),
         if (late.isNotEmpty) ...[Text('Late', style: display(15)), const SizedBox(height: 8), for (final x in late) _row(x, true)],
         if (due.isNotEmpty) ...[
           const SizedBox(height: 6),
@@ -256,7 +256,7 @@ class _ClientsTabState extends State<_ClientsTab> with _GstLive {
             child: SingleChildScrollView(
               child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text('New client', style: display(17)),
-                TextField(controller: name, decoration: const InputDecoration(labelText: 'Naam (firm)')),
+                TextField(controller: name, decoration: const InputDecoration(labelText: 'Name (firm)')),
                 TextField(
                     controller: g,
                     textCapitalization: TextCapitalization.characters,
@@ -273,7 +273,7 @@ class _ClientsTabState extends State<_ClientsTab> with _GstLive {
                 TextField(
                     controller: user,
                     decoration: const InputDecoration(labelText: 'Portal username (not the password)', helperText: 'Hoola never keeps the password')),
-                TextField(controller: cn, decoration: const InputDecoration(labelText: 'Contact naam')),
+                TextField(controller: cn, decoration: const InputDecoration(labelText: 'Contact name')),
                 TextField(controller: ph, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'Contact phone')),
                 const SizedBox(height: 12),
                 GradientButton(label: 'Save', icon: Icons.check_rounded, onTap: () => Navigator.pop(ctx, true)),
@@ -854,7 +854,7 @@ class _GstReturnViewState extends State<GstReturnView> with _GstLive {
             _kv('4B(2) Rule 37 / other', rs(((t['4B2'] as Map?)?.values ?? const []).fold<num>(0, (a, b) => a + (b as num)))),
             _kv('RCM (3.1(d)) in cash', rs(((t['3.1d'] as Map?)?['igst'] ?? 0) + ((t['3.1d'] as Map?)?['cgst'] ?? 0) + ((t['3.1d'] as Map?)?['sgst'] ?? 0))),
           ],
-          if ((s['late_days'] ?? 0) > 0) _kv('Byaaj + late fee', '${rs(s['interest'] ?? 0)} + ${rs(s['late_fee'] ?? 0)}', c: C.bad),
+          if ((s['late_days'] ?? 0) > 0) _kv('Interest + late fee', '${rs(s['interest'] ?? 0)} + ${rs(s['late_fee'] ?? 0)}', c: C.bad),
           _kv('To pay in cash', rs(s['pay_total'] ?? 0), c: C.accent),
         ],
         if (kind == 'cmp08') ...[
@@ -875,7 +875,7 @@ class _GstReturnViewState extends State<GstReturnView> with _GstLive {
           Row(children: [
             Expanded(child: GlassButton(label: 'Yes, it is fine', icon: Icons.check_rounded, color: C.ok, onTap: _busy ? null : () => _act('decide', {'approve': true}))),
             const SizedBox(width: 8),
-            Expanded(child: GlassButton(label: 'Mana', icon: Icons.close_rounded, color: C.bad, onTap: _busy ? null : () => _act('decide', {'approve': false}))),
+            Expanded(child: GlassButton(label: 'No', icon: Icons.close_rounded, color: C.bad, onTap: _busy ? null : () => _act('decide', {'approve': false}))),
           ]),
         if (st == 'approved')
           GradientButton(label: 'Get ready to file on the portal', icon: Icons.computer_rounded, onTap: _busy ? null : () => _act('file')),
@@ -976,7 +976,7 @@ class _NoticesTabState extends State<_NoticesTab> with _GstLive {
                   Pill(_s(n['status'])),
                 ]),
                 Text(_s(n['what']), style: const TextStyle(color: C.chip, fontSize: 13)),
-                Text('Reply: ${_s(n['reply_form'])} · aakhri din ${_s(n['due_on'])}', style: const TextStyle(color: C.muted, fontSize: 12.5)),
+                Text('Reply: ${_s(n['reply_form'])} · last day ${_s(n['due_on'])}', style: const TextStyle(color: C.muted, fontSize: 12.5)),
                 Wrap(spacing: 8, children: [
                   TextButton(onPressed: () => _draft(n), child: const Text('Reply draft')),
                   if (n['status'] == 'open')

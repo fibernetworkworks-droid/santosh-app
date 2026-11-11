@@ -16,9 +16,9 @@ List<Map<String, dynamic>> _list(dynamic l) =>
     List<Map<String, dynamic>>.from(((l as List?) ?? const []).map((e) => Map<String, dynamic>.from(e as Map)));
 void _snack(BuildContext c, String t) => ScaffoldMessenger.of(c).showSnackBar(SnackBar(content: Text(t)));
 
-const _prio = {'urgent': 'Turant', 'high': 'Important', 'normal': 'Normal', 'low': 'Aaram se'};
+const _prio = {'urgent': 'Urgent', 'high': 'Important', 'normal': 'Normal', 'low': 'Low'};
 Color _prioCol(String p) => switch (p) { 'urgent' => C.bad, 'high' => C.accent, 'low' => C.faint, _ => C.accentSoft };
-const _tstatus = {'open': 'Khula', 'assigned': 'Given to vendor', 'waiting': 'Parts ka intezaar', 'done': 'Theek', 'cancelled': 'Band'};
+const _tstatus = {'open': 'Open', 'assigned': 'Given to vendor', 'waiting': 'Waiting for parts', 'done': 'Fixed', 'cancelled': 'Cancelled'};
 
 Future<Map<String, String>?> _ask(BuildContext context, String title, List<(String key, String label, bool number)> fields,
     {Map<String, String> init = const {}}) async {
@@ -117,14 +117,14 @@ class _OfficeScreenState extends State<OfficeScreen> {
             backgroundColor: Colors.transparent,
             title: Text('${app.aName} · Office manager'),
             bottom: const TabBar(isScrollable: true, tabAlignment: TabAlignment.start, tabs: [
-              Tab(text: 'Aaj'),
+              Tab(text: 'Today'),
               Tab(text: 'Goods'),
               Tab(text: 'Repair'),
               Tab(text: 'Renewal'),
               Tab(text: 'Team'),
-              Tab(text: 'Kharcha'),
+              Tab(text: 'Expenses'),
               Tab(text: 'Note'),
-              Tab(text: 'Niyam'),
+              Tab(text: 'Rules'),
             ]),
           ),
           body: Aurora(
@@ -210,7 +210,7 @@ class _OfficeScreenState extends State<OfficeScreen> {
                 ('unit', 'Unit (pcs, ream, kg, box)', false),
                 ('min_qty', 'Minimum to keep (blank = Hoola will learn)', true),
                 ('vendor', 'Where it comes from (vendor)', false),
-                ('price', 'Daam per unit (₹)', true),
+                ('price', 'Price per unit (₹)', true),
               ]);
               if (r == null || r['name']!.isEmpty) return;
               await _do(() => app.api!.officeItem({
@@ -274,7 +274,7 @@ class _OfficeScreenState extends State<OfficeScreen> {
               icon: const Icon(Icons.add_rounded, size: 18),
               label: const Text('Arrived'),
               onPressed: () async {
-                final r = await _ask(context, '${it['name']}: how much arrived?', [('qty', 'How much', true), ('price', 'Daam per unit (₹)', true)]);
+                final r = await _ask(context, '${it['name']}: how much arrived?', [('qty', 'How much', true), ('price', 'Price per unit (₹)', true)]);
                 final q = _num(r?['qty'] ?? '');
                 if (q != null) {
                   await _do(() async {
@@ -358,7 +358,7 @@ class _OfficeScreenState extends State<OfficeScreen> {
                         'conversation_id': app.conversationId ?? '',
                       }));
                 },
-                child: const Text('Vendor / kharcha'),
+                child: const Text('Vendor / expense'),
               ),
             ]),
         ]),
@@ -433,7 +433,7 @@ class _OfficeScreenState extends State<OfficeScreen> {
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
             Expanded(child: Text(_s(r['name']), style: display(14.5))),
-            Pill(left == null ? '-' : (left < 0 ? '${-left} din se baaki' : (left == 0 ? 'Aaj' : '$left din')), fg: col),
+            Pill(left == null ? '-' : (left < 0 ? '${-left} days overdue' : (left == 0 ? 'Today' : '$left days')), fg: col),
           ]),
           const SizedBox(height: 4),
           Text([
@@ -475,7 +475,7 @@ class _OfficeScreenState extends State<OfficeScreen> {
             icon: Icons.flag_rounded,
             onTap: () async {
               final r = await _ask(context, 'New deadline', [
-                ('title', 'Kaam', false),
+                ('title', 'Task', false),
                 ('owner', 'Whose (team member)', false),
                 ('due_on', 'Due (Friday, 28/10, in 3 days)', false),
               ]);
@@ -550,10 +550,10 @@ class _OfficeScreenState extends State<OfficeScreen> {
       Row(children: [
         Expanded(
           child: GlassButton(
-            label: 'Kharcha',
+            label: 'Expenses',
             icon: Icons.remove_rounded,
             onTap: () async {
-              final r = await _ask(context, 'Petty cash se kharcha', [('amount', 'Amount (₹)', true), ('what', 'Kis cheez ka', false), ('by', 'Kisne kiya', false)]);
+              final r = await _ask(context, 'Expense from petty cash', [('amount', 'Amount (₹)', true), ('what', 'What for', false), ('by', 'Who spent it', false)]);
               if (r == null || _num(r['amount']!) == null) return;
               await _do(() => app.api!.officePetty({'amount': _num(r['amount']!), 'what': r['what'], 'by': r['by'], 'kind': 'out'}));
             },
@@ -649,7 +649,7 @@ class _OfficeScreenState extends State<OfficeScreen> {
       Glass(
         child: Column(children: [
           row('office_name', 'Office name', _s(st['office_name'])),
-          row('morning_time', 'Subah ki list kab', _s(st['morning_time'])),
+          row('morning_time', 'Morning list time', _s(st['morning_time'])),
           row('note_day', 'Day of the weekly note (Mon..Sun)', _s(st['note_day_name'])),
           row('note_time', 'Time of the note', _s(st['note_time'])),
           row('month_budget', 'Monthly budget (₹, 0 = none)', '${st['month_budget'] ?? 0}', number: true),
@@ -661,7 +661,7 @@ class _OfficeScreenState extends State<OfficeScreen> {
             title: const Text('Morning list and weekly note'),
             onChanged: (v) => _do(() async {
               await app.api!.officeSettings({'enabled': v});
-              return {'say': v ? 'On' : 'Band'};
+              return {'say': v ? 'On' : 'Off'};
             }),
           ),
         ]),
@@ -791,7 +791,7 @@ class _OfficeSpendCardState extends State<OfficeSpendCard> {
         if (_s(v['month_budget']).isNotEmpty)
           Padding(
             padding: const EdgeInsets.only(top: 4),
-            child: Text('This month: ${v['month_spent']} spent · ${v['month_left']} bacha', style: TextStyle(color: v['over_budget'] == true ? C.bad : C.muted, fontSize: 12.5)),
+            child: Text('This month: ${v['month_spent']} spent · ${v['month_left']} left', style: TextStyle(color: v['over_budget'] == true ? C.bad : C.muted, fontSize: 12.5)),
           ),
         if (pending) ...[
           const SizedBox(height: 8),
@@ -801,7 +801,7 @@ class _OfficeSpendCardState extends State<OfficeSpendCard> {
           ),
           const SizedBox(height: 8),
           Row(children: [
-            Expanded(child: GlassButton(label: 'Mana', onTap: _busy ? null : () => _decide(false))),
+            Expanded(child: GlassButton(label: 'No', onTap: _busy ? null : () => _decide(false))),
             const SizedBox(width: 10),
             Expanded(child: GradientButton(label: 'Yes', height: 48, onTap: _busy ? null : () => _decide(true))),
           ]),
@@ -851,7 +851,7 @@ class _OfficeNudgeCardState extends State<OfficeNudgeCard> {
         Row(children: [
           const Icon(Icons.notifications_active_rounded, color: C.accent2, size: 20),
           const SizedBox(width: 8),
-          Expanded(child: Text('Yaad dilana: ${_s(widget.v['who']).isEmpty ? 'team' : widget.v['who']}', style: display(15))),
+          Expanded(child: Text('Reminder: ${_s(widget.v['who']).isEmpty ? 'team' : widget.v['who']}', style: display(15))),
           if (widget.v['opened'] == true) const Pill('Opened', fg: C.teal),
         ]),
         const SizedBox(height: 8),
@@ -915,7 +915,7 @@ class OfficeNoteCard extends StatelessWidget {
         ]),
         const SizedBox(height: 8),
         Wrap(spacing: 8, runSpacing: 6, children: [
-          Pill('Repair ${n['tickets_closed'] ?? 0}/${n['tickets_opened'] ?? 0} theek'),
+          Pill('Repairs ${n['tickets_closed'] ?? 0}/${n['tickets_opened'] ?? 0} fixed'),
           Pill('Approved ${n['approved'] ?? '₹0'}', fg: C.ok),
           Pill('Renewal ${n['renewals_coming'] ?? 0} upcoming', fg: C.accent2),
           if ((n['deadlines_missed'] ?? 0) > 0) Pill('${n['deadlines_missed']} deadlines late', fg: C.bad),

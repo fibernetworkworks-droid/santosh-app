@@ -44,7 +44,7 @@ void _snack(BuildContext c, String t) {
   ScaffoldMessenger.of(c).showSnackBar(SnackBar(content: Text(t)));
 }
 
-Future<Map<String, String>?> _form(BuildContext context, String title, List<(String, String)> fields, {String ok = 'Aage'}) async {
+Future<Map<String, String>?> _form(BuildContext context, String title, List<(String, String)> fields, {String ok = 'Next'}) async {
   final c = {for (final (k, _) in fields) k: TextEditingController()};
   final res = await showDialog<bool>(
     context: context,
@@ -147,8 +147,8 @@ class _WarehouseScreenState extends State<WarehouseScreen> {
 
   // ---------------------------------------------------------------- Bin
   Future<void> _newBins() async {
-    final f = await _form(context, 'Naye bin', const [
-      ('zone', 'Zone (jaise A)'),
+    final f = await _form(context, 'New bins', const [
+      ('zone', 'Zone (e.g. A)'),
       ('aisles', 'How many aisles'),
       ('racks', 'Racks per aisle'),
       ('capacity', 'How much stock per bin (units)'),
@@ -185,7 +185,7 @@ class _WarehouseScreenState extends State<WarehouseScreen> {
 
   Widget _bins() => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Wrap(spacing: 8, runSpacing: 8, children: [
-          GlassButton(label: 'Naye bin', icon: Icons.grid_view_rounded, height: 42, onTap: _busy ? null : _newBins),
+          GlassButton(label: 'New bins', icon: Icons.grid_view_rounded, height: 42, onTap: _busy ? null : _newBins),
           GlassButton(label: 'Move stock', icon: Icons.swap_horiz_rounded, height: 42, onTap: _busy ? null : _move),
           GlassButton(label: 'Write-off card', icon: Icons.delete_sweep_rounded, height: 42, onTap: _busy ? null : _writeoff),
           GlassButton(label: 'Bin labels', icon: Icons.qr_code_2_rounded, height: 42, onTap: _busy ? null : () => _run('POST', '/api/warehouse/labels', {'what': 'bins'})),
@@ -249,7 +249,7 @@ class _WarehouseScreenState extends State<WarehouseScreen> {
         Wrap(spacing: 8, runSpacing: 8, children: [
           GlassButton(label: 'Your own list', icon: Icons.list_alt_rounded, height: 42, onTap: _busy ? null : () => _pick('list')),
           GlassButton(label: 'Hoola Deals orders', icon: Icons.storefront_rounded, height: 42, onTap: _busy ? null : () => _pick('deal')),
-          GlassButton(label: 'Thok bills', icon: Icons.receipt_long_rounded, height: 42, onTap: _busy ? null : () => _pick('thok')),
+          GlassButton(label: 'Wholesale bills', icon: Icons.receipt_long_rounded, height: 42, onTap: _busy ? null : () => _pick('thok')),
         ]),
         const SizedBox(height: 10),
         if (_list(_d?['picks']).isEmpty) const Text('No open pick lists.', style: TextStyle(color: C.muted)),
@@ -287,14 +287,14 @@ class _WarehouseScreenState extends State<WarehouseScreen> {
   Future<void> _settings() async {
     final st = _m(_d?['settings']);
     final cd = _m(st['count_days']);
-    final f = await _form(context, 'Godown rules', [
-      ('name', 'Godown name (${_s(st['name'])})'),
+    final f = await _form(context, 'Warehouse rules', [
+      ('name', 'Warehouse name (${_s(st['name'])})'),
       ('A', 'Count A items every how many days (${_s(cd['A'])})'),
       ('B', 'B item (${_s(cd['B'])})'),
       ('C', 'C item (${_s(cd['C'])})'),
       ('near_expiry_days', 'Warn about expiry how many days before (${_s(st['near_expiry_days'])})'),
       ('count_bins_per_day', 'How many bins to count each day (${_s(st['count_bins_per_day'])})'),
-      ('morning_time', 'Subah ka note (${_s(st['morning_time'])})'),
+      ('morning_time', 'Morning note (${_s(st['morning_time'])})'),
     ], ok: 'Save');
     if (f == null) return;
     await _run('PUT', '/api/warehouse/settings', {
@@ -310,7 +310,7 @@ class _WarehouseScreenState extends State<WarehouseScreen> {
   Widget _rules() {
     final st = _m(_d?['settings']);
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      GlassButton(label: 'Niyam badlo', icon: Icons.tune_rounded, height: 42, onTap: _busy ? null : _settings),
+      GlassButton(label: 'Change rules', icon: Icons.tune_rounded, height: 42, onTap: _busy ? null : _settings),
       const SizedBox(height: 8),
       SwitchListTile(
         contentPadding: EdgeInsets.zero,
@@ -326,13 +326,13 @@ class _WarehouseScreenState extends State<WarehouseScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Godown Sahayak')),
+        appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Warehouse Assistant')),
         body: Aurora(
           child: RefreshIndicator(
             onRefresh: _load,
             child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 60), children: [
               Wrap(spacing: 6, runSpacing: 6, children: [
-                for (final (i, t) in const [(0, 'Aaj'), (1, 'Bin'), (2, 'Receipts'), (3, 'Pick'), (4, 'Count'), (5, 'Niyam')])
+                for (final (i, t) in const [(0, 'Today'), (1, 'Bin'), (2, 'Receipts'), (3, 'Pick'), (4, 'Count'), (5, 'Rules')])
                   ChoiceChip(label: Text(t), selected: _tab == i, onSelected: (_) => setState(() => _tab = i)),
               ]),
               const SizedBox(height: 10),
@@ -476,7 +476,7 @@ class _WarehouseAdjustCardState extends State<WarehouseAdjustCard> {
           Row(children: [
             Expanded(child: GradientButton(label: 'Yes, change the stock', icon: Icons.check_rounded, height: 44, onTap: _busy ? null : () => _decide(true))),
             const SizedBox(width: 8),
-            Expanded(child: GlassButton(label: 'Mana', icon: Icons.close_rounded, height: 44, onTap: _busy ? null : () => _decide(false))),
+            Expanded(child: GlassButton(label: 'No', icon: Icons.close_rounded, height: 44, onTap: _busy ? null : () => _decide(false))),
           ]),
           if (_s(a['count']).isNotEmpty)
             TextButton(onPressed: _busy ? null : () => _recount(_s(a['count'])), child: const Text('Recount first')),
@@ -530,7 +530,7 @@ class _WarehouseGrnCardState extends State<WarehouseGrnCard> {
           const Icon(Icons.move_to_inbox_rounded, color: C.teal),
           const SizedBox(width: 8),
           Expanded(child: Text('${_s(g['number'])}${_s(g['supplier']).isNotEmpty ? ' · ${_s(g['supplier'])}' : ''}', style: const TextStyle(fontWeight: FontWeight.w800))),
-          Pill(_status == 'putaway' ? 'put away' : 'rakhna baaki'),
+          Pill(_status == 'putaway' ? 'put away' : 'put-away pending'),
         ]),
         const SizedBox(height: 4),
         for (final l in _list(g['lines'])) ...[
@@ -768,16 +768,16 @@ class WarehouseDayCard extends StatelessWidget {
         const Row(children: [
           Icon(Icons.warehouse_rounded, color: C.accent),
           SizedBox(width: 8),
-          Expanded(child: Text('Today\'s godown note', style: TextStyle(fontWeight: FontWeight.w800))),
+          Expanded(child: Text('Today\'s warehouse note', style: TextStyle(fontWeight: FontWeight.w800))),
         ]),
         const SizedBox(height: 6),
         Text(_s(data['say']), style: const TextStyle(fontSize: 13)),
-        for (final x in _list(data['due']).take(5)) Text('• ginna: [${_s(x['abc'])}] ${_s(x['name'])}', style: const TextStyle(fontSize: 12.5)),
+        for (final x in _list(data['due']).take(5)) Text('• count: [${_s(x['abc'])}] ${_s(x['name'])}', style: const TextStyle(fontSize: 12.5)),
         for (final l in _list(ne['near']).take(5))
           Text('• ${_s(l['name'])} (${_s(l['bin'])}): ${l['days_left']} days to expiry', style: const TextStyle(fontSize: 12.5, color: C.warn)),
         const SizedBox(height: 8),
         GlassButton(
-            label: 'Open godown',
+            label: 'Open warehouse',
             icon: Icons.open_in_new_rounded,
             height: 40,
             onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => WarehouseScreen(app: app)))),

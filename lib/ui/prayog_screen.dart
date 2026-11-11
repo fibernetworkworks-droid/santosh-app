@@ -102,7 +102,7 @@ class _PrayogScreenState extends State<PrayogScreen> {
       groups.putIfAbsent(_q.isEmpty ? _s(l['group']) : 'Results', () => []).add(l);
     }
     return Scaffold(
-      appBar: AppBar(title: Text('${widget.app.aName} · Prayogshala')),
+      appBar: AppBar(title: Text('${widget.app.aName} · Lab')),
       body: _labs == null && _err.isEmpty
           ? const Center(child: CircularProgressIndicator())
           : ListView(padding: const EdgeInsets.all(16), children: [
@@ -220,7 +220,7 @@ class _PrayogLabViewState extends State<PrayogLabView> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: Text(widget.title.isEmpty ? 'Prayogshala' : widget.title), actions: [
+        appBar: AppBar(title: Text(widget.title.isEmpty ? 'Lab' : widget.title), actions: [
           IconButton(tooltip: 'Reload', icon: const Icon(Icons.refresh_rounded), onPressed: () => _web.reload()),
         ]),
         body: Stack(children: [

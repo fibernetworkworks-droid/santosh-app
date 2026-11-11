@@ -209,7 +209,7 @@ class _Blender3dCardState extends State<Blender3dCard> {
                 [
                   if (size != null) 'Size $size cm',
                   if (stats['tris'] != null) '${stats['tris']} triangles',
-                  if (stats['count'] != null) '${stats['count']} hisse',
+                  if (stats['count'] != null) '${stats['count']} parts',
                 ].join(' · '),
                 style: const TextStyle(color: C.muted, fontSize: 12)),
           ],
@@ -453,7 +453,7 @@ class _Blender3dPageState extends State<_Blender3dPage> {
                     for (final o in objects.take(30))
                       Text(
                           '${o['name']} · ${o['type']}${o['tris'] != null ? ' · ${o['tris']} tri' : ''}'
-                          '${(o['open_edges'] ?? 0) is num && (o['open_edges'] as num) > 0 ? ' · khule kinare ${o['open_edges']}' : ''}',
+                          '${(o['open_edges'] ?? 0) is num && (o['open_edges'] as num) > 0 ? ' · open edges ${o['open_edges']}' : ''}',
                           style: const TextStyle(color: C.muted, fontSize: 12)),
                   ]),
                 ),
@@ -590,7 +590,7 @@ class _NewBlender3dState extends State<_NewBlender3d> {
         const SizedBox(height: 14),
         Row(children: [
           const Expanded(child: Text('Your photo (label / texture)', style: TextStyle(fontWeight: FontWeight.w600))),
-          TextButton.icon(onPressed: _photos.length >= 6 ? null : _addPhoto, icon: const Icon(Icons.add_photo_alternate_rounded), label: const Text('Jodo')),
+          TextButton.icon(onPressed: _photos.length >= 6 ? null : _addPhoto, icon: const Icon(Icons.add_photo_alternate_rounded), label: const Text('Add')),
         ]),
         if (_photos.isNotEmpty)
           Wrap(spacing: 6, children: [
@@ -619,7 +619,7 @@ class _NewBlender3dState extends State<_NewBlender3d> {
           contentPadding: EdgeInsets.zero,
           value: _turn,
           onChanged: (v) => setState(() => _turn = v),
-          title: const Text('360° ghoomta video'),
+          title: const Text('360° turntable video'),
         ),
         SwitchListTile(
           contentPadding: EdgeInsets.zero,
@@ -629,7 +629,7 @@ class _NewBlender3dState extends State<_NewBlender3d> {
             if (v) _exports.add('stl');
           }),
           title: const Text('For 3D printing'),
-          subtitle: const Text('Band (closed) solid model + size check, STL file'),
+          subtitle: const Text('Closed solid model + size check, STL file'),
         ),
         const SizedBox(height: 12),
         FilledButton.icon(

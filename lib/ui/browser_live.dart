@@ -14,7 +14,7 @@ class BrowserLive {
   static String label(Map<String, dynamic> v) => switch (v['status'] as String? ?? 'running') {
         'running' || 'starting' => 'LIVE',
         'done' => 'DONE',
-        'partial' => 'ADHURA',
+        'partial' => 'PARTIAL',
         'needs_confirm' => 'APPROVAL',
         'needs_payment' => 'YOU PAY',
         'needs_user' => 'YOUR STEP',

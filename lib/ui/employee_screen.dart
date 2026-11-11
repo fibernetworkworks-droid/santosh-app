@@ -265,7 +265,7 @@ class _EmployeeScreenState extends State<EmployeeScreen> {
                   backgroundColor: m['role'] == 'manager' ? C.accent2 : C.violet,
                   child: Text((m['name'] as String).isEmpty ? '?' : (m['name'] as String)[0].toUpperCase(),
                       style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800))),
-              title: Text('${m['name']}${m['active'] == true ? '' : ' (band)'}', style: const TextStyle(fontWeight: FontWeight.w700)),
+              title: Text('${m['name']}${m['active'] == true ? '' : ' (off)'}', style: const TextStyle(fontWeight: FontWeight.w700)),
               subtitle: Text(
                   [
                     m['role'] == 'manager' ? 'Manager · all tasks' : 'Staff · ${List<String>.from(m['duties'] as List).map(dl).join(', ')}',
@@ -821,7 +821,7 @@ class _SetupTabState extends State<_SetupTab> {
             onChanged: (v) => setState(() => _inboxOn = v),
           ),
           Row(children: [
-            const Text('Ek appointment: ', style: TextStyle(color: C.muted)),
+            const Text('One appointment: ', style: TextStyle(color: C.muted)),
             DropdownButton<int>(
               value: const [10, 15, 20, 30, 45, 60, 90, 120].contains(_slot) ? _slot : 30,
               dropdownColor: C.bgBottom,

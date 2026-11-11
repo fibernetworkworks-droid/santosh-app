@@ -512,7 +512,7 @@ class _GraphicJobPageState extends State<GraphicJobPage> {
             }),
             GlassButton(label: 'Quote card', icon: Icons.request_quote_rounded, height: 40, onTap: _busy ? null : () => _act('quote')),
             GlassButton(label: 'Client accepted the quote', icon: Icons.handshake_rounded, height: 40, onTap: _busy ? null : () async {
-              final f = await _form(context, 'Quote maana', const [('evidence', 'Their message')]);
+              final f = await _form(context, 'Quote accepted', const [('evidence', 'Their message')]);
               if (f?['evidence'] != null) await _act('accepted', {'evidence': f!['evidence']});
             }),
             GlassButton(label: 'Make proof', icon: Icons.auto_awesome_rounded, height: 40, onTap: _busy ? null : () async {

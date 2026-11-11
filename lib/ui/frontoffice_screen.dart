@@ -828,7 +828,7 @@ class FrontofficeFormCTile extends StatelessWidget {
           ),
           actions: [
             TextButton(onPressed: () => Native.openExternal(url: _s(r['portal'])), child: const Text('Open e-FRRO')),
-            TextButton(onPressed: () => Navigator.pop(d), child: const Text('Band')),
+            TextButton(onPressed: () => Navigator.pop(d), child: const Text('Close')),
           ],
         ),
       );

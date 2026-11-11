@@ -155,7 +155,7 @@ class _PropagentScreenState extends State<PropagentScreen> {
   Widget build(BuildContext context) {
     final d = _d;
     return Scaffold(
-      appBar: AppBar(title: const Text('Property Sahayak'), actions: [
+      appBar: AppBar(title: const Text('Property Assistant'), actions: [
         IconButton(onPressed: _load, icon: const Icon(Icons.refresh_rounded)),
         IconButton(
             tooltip: 'Excel',
@@ -505,7 +505,7 @@ class _PropagentListingPageState extends State<PropagentListingPage> {
                       if (ok == true) await _run('PATCH', '/api/propagent/listings/${widget.id}', {'description': t});
                     }),
                 if (l['public'] == true)
-                  GlassButton(label: 'Page band', icon: Icons.public_off_rounded, onTap: () => _run('POST', '/api/propagent/listings/${widget.id}/unpublish')),
+                  GlassButton(label: 'Take page down', icon: Icons.public_off_rounded, onTap: () => _run('POST', '/api/propagent/listings/${widget.id}/unpublish')),
                 if (l['public'] == true || _list(l['published']).isNotEmpty)
                   GlassButton(label: 'Poster', icon: Icons.image_rounded, onTap: () => _run('POST', '/api/propagent/listings/${widget.id}/poster')),
               ]),

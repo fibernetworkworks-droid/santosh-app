@@ -197,13 +197,13 @@ class _FilmdeskProducerPageState extends State<FilmdeskProducerPage> {
     if ((c['scenes'] ?? 0) == 0) return [_line(_s(c['note']), muted: true)];
     return [
       _box('Script count', [
-        _line('${_s(c['scenes'])} scenes · ~${_s(c['estimated_minutes'])} min · ${_s(c['characters_n'])} kirdaar · ${_s(c['places_n'])} jagah'),
+        _line('${_s(c['scenes'])} scenes · ~${_s(c['estimated_minutes'])} min · ${_s(c['characters_n'])} characters · ${_s(c['places_n'])} locations'),
         _line('Night ${_s(c['night_scenes'])} scene (${_s(c['night_pct'])}%) · location changes ${_s(c['company_moves'])} times'),
         _line('Dialogue ${_s(c['dialogue_pct'])}% · most dialogue: ${_s(c['most_dialogue'])}', muted: true),
         _line(_s(c['kind_note']), muted: true),
       ]),
       _box('Flags', _flags(c['flags'], 'Nothing was flagged.')),
-      _box('Kirdaar', [
+      _box('Characters', [
         for (final x in _list(c['cast_table']))
           _line('${_s(x['name'])}: ${_s(x['lines'])} lines · ${_s(x['dialogue_pct'])}% · ${_s(x['scenes_n'])} scenes'),
       ]),
@@ -237,7 +237,7 @@ class _FilmdeskProducerPageState extends State<FilmdeskProducerPage> {
         onTap: _busy ? null : () => _add('schedule', 'Shoot plan (your real numbers)', const [
               ('start_date', 'Start date (YYYY-MM-DD)'),
               ('day_hours', 'Hours in a day'),
-              ('setup_hours', 'Set-up ghante'),
+              ('setup_hours', 'Set-up hours'),
               ('hours_per_screen_minute', 'Hours per screen minute'),
             ], const {}));
     if (s.isEmpty) return [_box('Schedule', [_line('No plan yet. Hours are estimates until you give your own numbers.', muted: true), plan])];
@@ -247,8 +247,8 @@ class _FilmdeskProducerPageState extends State<FilmdeskProducerPage> {
         const SizedBox(height: 6),
         ..._flags(s['flags']),
         for (final x in _list(s['days']))
-          _line('Din ${_s(x['order'])} · ${_s(x['date']).isEmpty ? '[tareekh]' : _s(x['date'])} · ${_s(x['part'])} · '
-              '${((x['places'] as List?) ?? const []).join(', ')} · ${((x['scenes'] as List?) ?? const []).length} scenes · ${_s(x['hours'])} ghante'),
+          _line('Day ${_s(x['order'])} · ${_s(x['date']).isEmpty ? '[date]' : _s(x['date'])} · ${_s(x['part'])} · '
+              '${((x['places'] as List?) ?? const []).join(', ')} · ${((x['scenes'] as List?) ?? const []).length} scenes · ${_s(x['hours'])} hours'),
         _line('The call sheet is made from the chat ("call sheet day 2"); anything only you know stays [blank].', muted: true),
       ]),
       if (d.isNotEmpty)
@@ -278,11 +278,11 @@ class _FilmdeskProducerPageState extends State<FilmdeskProducerPage> {
           ? [_line('Not made yet (chat: "waterfall: gross 5 lakh ...").', muted: true)]
           : [
               _line('Gross ${_inr(w['gross_inr'])} · matches gross: ${w['ties_to_gross'] == true ? 'yes' : 'NO'}'),
-              for (final t in _list(w['tiers'])) _line('${_s(t['tier'])} · ${_s(t['name'])}: ${_inr(t['amount_inr'])} (bacha ${_inr(t['left_inr'])})'),
+              for (final t in _list(w['tiers'])) _line('${_s(t['tier'])} · ${_s(t['name'])}: ${_inr(t['amount_inr'])} (left ${_inr(t['left_inr'])})'),
             ]),
       _box('Royalty (your contract terms)', [
         Wrap(spacing: 8, runSpacing: 6, children: [
-          GlassButton(label: 'Shart jodo', icon: Icons.gavel_rounded, height: 38, onTap: _busy ? null : () => _add(termsPath, 'Contract ki shart', const [
+          GlassButton(label: 'Add term', icon: Icons.gavel_rounded, height: 38, onTap: _busy ? null : () => _add(termsPath, 'Contract term', const [
                 ('party', 'Kis ko'),
                 ('role', 'Role (writer / director / actor / composer ...)'),
                 ('basis', 'flat_inr / percent_of_gross / percent_of_net / per_unit'),
@@ -297,7 +297,7 @@ class _FilmdeskProducerPageState extends State<FilmdeskProducerPage> {
                 ('amount_inr', 'Rupees'),
                 ('net_inr', 'Net rupees (or blank)'),
                 ('units', 'Count (or blank)'),
-                ('period', 'Tareekh (YYYY-MM-DD)'),
+                ('period', 'Date (YYYY-MM-DD)'),
               ], const {'op': 'receipt'})),
         ]),
         const SizedBox(height: 6),
@@ -319,13 +319,13 @@ class _FilmdeskProducerPageState extends State<FilmdeskProducerPage> {
     final chk = _m(w['check']);
     return [
       _box('Festival', [
-        GlassButton(label: 'Festival jodo', icon: Icons.emoji_events_rounded, height: 38, onTap: _busy ? null : () => _add('festivals', 'Festival', const [
-              ('name', 'Naam'),
-              ('country', 'Desh'),
+        GlassButton(label: 'Add festival', icon: Icons.emoji_events_rounded, height: 38, onTap: _busy ? null : () => _add('festivals', 'Festival', const [
+              ('name', 'Name'),
+              ('country', 'Country'),
               ('deadline', 'Deadline (YYYY-MM-DD)'),
               ('event_date', 'Festival date'),
               ('fee_inr', 'Fee in rupees'),
-              ('requires', 'Premiere niyam: regional / national / international / world / none'),
+              ('requires', 'Premiere rule: regional / national / international / world / none'),
             ], const {'op': 'add'})),
         const SizedBox(height: 6),
         ..._flags(f['flags']),
@@ -336,7 +336,7 @@ class _FilmdeskProducerPageState extends State<FilmdeskProducerPage> {
         _line(_s(f['note']), muted: true),
       ]),
       _box('Release windows', [
-        GlassButton(label: 'Window jodo', icon: Icons.calendar_month_rounded, height: 38, onTap: _busy ? null : () => _add('windows', 'Release window', const [
+        GlassButton(label: 'Add window', icon: Icons.calendar_month_rounded, height: 38, onTap: _busy ? null : () => _add('windows', 'Release window', const [
               ('medium', 'Medium (theatrical / svod / avod / tv ...)'),
               ('territory', 'Territory (india, uae or world)'),
               ('start', 'Start (YYYY-MM-DD)'),
@@ -362,7 +362,7 @@ class _FilmdeskProducerPageState extends State<FilmdeskProducerPage> {
     return [
       _box('Deliverables (${_s(d['done'])}/${_s(d['total'])})', [
         Wrap(spacing: 8, runSpacing: 6, children: [
-          GlassButton(label: 'Item jodo', icon: Icons.add_task_rounded, height: 38, onTap: _busy ? null : () => _add('deliverables', 'Deliverable', const [
+          GlassButton(label: 'Add item', icon: Icons.add_task_rounded, height: 38, onTap: _busy ? null : () => _add('deliverables', 'Deliverable', const [
                 ('label', 'Item'),
                 ('buyer', 'Buyer / festival'),
                 ('due', 'Due (YYYY-MM-DD)'),
@@ -384,7 +384,7 @@ class _FilmdeskProducerPageState extends State<FilmdeskProducerPage> {
               ('language', 'Language'),
               ('kind', 'subtitles / dub / both'),
               ('dub_mode', 'human / ai_voice'),
-              ('voice_person', 'AI awaaz ho to register number (P-001)'),
+              ('voice_person', 'If an AI voice, its register number (P-001)'),
               ('vendor', 'Vendor'),
               ('due', 'Due (YYYY-MM-DD)'),
             ], const {'op': 'add'})),

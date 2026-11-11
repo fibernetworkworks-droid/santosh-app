@@ -384,7 +384,7 @@ class _DriversScreenState extends State<DriversScreen> {
         Text('• ${_s(x['driver'])} ${_s(x['day'])} ${_s(x['start'])}-${_s(x['end'])} ${_s(x['vehicle'])}', style: const TextStyle(fontSize: 12.5, color: C.warn)),
       if (_list(d['docs']).isNotEmpty) ...[const SizedBox(height: 6), Text('Documents', style: display(14))],
       for (final x in _list(d['docs']))
-        Text('• ${_s(x['driver'])}: ${_s(x['label'])} ${x['state'] == 'missing' ? 'not recorded' : (x['state'] == 'expired' ? 'expired' : '${x['days_left']} din')}',
+        Text('• ${_s(x['driver'])}: ${_s(x['label'])} ${x['state'] == 'missing' ? 'not recorded' : (x['state'] == 'expired' ? 'expired' : '${x['days_left']} days')}',
             style: TextStyle(fontSize: 12.5, color: x['state'] == 'soon' ? C.warn : C.bad)),
       if (((d['free'] as List?) ?? const []).isNotEmpty)
         Padding(
@@ -547,7 +547,7 @@ class _DriversScreenState extends State<DriversScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Driver Sahayak')),
+        appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Driver Assistant')),
         floatingActionButton: _tab <= 1
             ? FloatingActionButton.extended(onPressed: _busy ? null : _newDuty, icon: const Icon(Icons.event_note_rounded), label: const Text('Assign duty'))
             : null,

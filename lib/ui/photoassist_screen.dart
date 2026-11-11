@@ -20,7 +20,7 @@ List<Map<String, dynamic>> _list(dynamic l) =>
     List<Map<String, dynamic>>.from(((l as List?) ?? const []).whereType<Map>().map((e) => Map<String, dynamic>.from(e)));
 List<String> _strs(dynamic l) => ((l as List?) ?? const []).map((e) => '$e').toList();
 num? _n(String? v) => (v == null || v.trim().isEmpty) ? null : num.tryParse(v.replaceAll(',', '').trim());
-String _rs(dynamic v) => v == null ? '[daam?]' : '₹${(v is num ? v : num.tryParse('$v') ?? 0).toStringAsFixed(0)}';
+String _rs(dynamic v) => v == null ? '[price?]' : '₹${(v is num ? v : num.tryParse('$v') ?? 0).toStringAsFixed(0)}';
 const _p = '/api/photoassist';
 
 void _snack(BuildContext c, String t) {
@@ -29,7 +29,7 @@ void _snack(BuildContext c, String t) {
 }
 
 Future<Map<String, String>?> _form(BuildContext context, String title, List<(String, String)> fields,
-    {String ok = 'Aage', Map<String, String> initial = const {}}) async {
+    {String ok = 'Next', Map<String, String> initial = const {}}) async {
   final c = {for (final (k, _) in fields) k: TextEditingController(text: initial[k] ?? '')};
   final res = await showDialog<bool>(
     context: context,
@@ -87,7 +87,7 @@ Widget _shootTile(BuildContext context, Santosh app, Map<String, dynamic> b, Voi
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text('${_s(b['number'])} · ${_s(b['kind_label'])} · ${_s(b['client'])}', style: const TextStyle(fontWeight: FontWeight.w700)),
               Text('${_s(b['day'])}${_s(b['end_day']).isNotEmpty ? ' – ${_s(b['end_day'])}' : ''} '
-                  '${_s(b['start']).isEmpty ? 'pura din' : '${_s(b['start'])}-${_s(b['end'])}'} · ${_s(b['location'])}',
+                  '${_s(b['start']).isEmpty ? 'all day' : '${_s(b['start'])}-${_s(b['end'])}'} · ${_s(b['location'])}',
                   style: const TextStyle(fontSize: 12, color: C.muted)),
             ])),
             Pill(_s(b['status_label'])),
@@ -136,7 +136,7 @@ class _PhotoassistScreenState extends State<PhotoassistScreen> {
       if (_list(_d?['cards']).isNotEmpty) const Caption('WAITING FOR YOUR YES'),
       for (final c in _list(_d?['cards']))
         Padding(padding: const EdgeInsets.only(bottom: 10), child: PhotoassistCardCard(app: widget.app, data: {'card': c}, onDone: _load)),
-      for (final (k, label) in const [('today', 'TODAY\'S SHOOTS'), ('tomorrow', 'TOMORROW\'S SHOOTS'), ('holds_expiring', 'HOLD KHATAM HONE WALE')])
+      for (final (k, label) in const [('today', 'TODAY\'S SHOOTS'), ('tomorrow', 'TOMORROW\'S SHOOTS'), ('holds_expiring', 'HOLDS EXPIRING')])
         if (_list(day[k]).isNotEmpty) ...[
           Caption(label),
           for (final b in _list(day[k])) _shootTile(context, widget.app, b, _load),
@@ -149,10 +149,10 @@ class _PhotoassistScreenState extends State<PhotoassistScreen> {
 
   Future<void> _newShoot() async {
     final f = await _form(context, 'New shoot', const [
-      ('kind', 'Kis cheez ka (shaadi / pre-wedding / product / portrait ...)'),
-      ('client', 'Client name'), ('phone', 'Client ka phone'), ('day', 'Tareekh (2026-12-12)'),
-      ('end_day', 'Last day (if it runs several days)'), ('start', 'Start (4 pm)'), ('end', 'Khatam'),
-      ('location', 'Jagah'), ('package', 'Package name'), ('shooters', 'Who will go (names, comma separated; blank = you)'),
+      ('kind', 'What for (wedding / pre-wedding / product / portrait ...)'),
+      ('client', 'Client name'), ('phone', 'Client ka phone'), ('day', 'Date (2026-12-12)'),
+      ('end_day', 'Last day (if it runs several days)'), ('start', 'Start (4 pm)'), ('end', 'End'),
+      ('location', 'Location'), ('package', 'Package name'), ('shooters', 'Who will go (names, comma separated; blank = you)'),
       ('drone', 'Drone? (yes / no)'),
     ]);
     if (f == null) return;
@@ -166,7 +166,7 @@ class _PhotoassistScreenState extends State<PhotoassistScreen> {
   }
 
   Future<void> _checkFree() async {
-    final f = await _form(context, 'Khaali hai?', const [('day', 'Tareekh'), ('start', 'Start'), ('end', 'Khatam'), ('shooter', 'Who (blank = you)')]);
+    final f = await _form(context, 'Is it free?', const [('day', 'Date'), ('start', 'Start'), ('end', 'End'), ('shooter', 'Who (blank = you)')]);
     if (f == null) return;
     try {
       final r = _m(await widget.app.api!.call('GET', '$_p/free', query: {
@@ -180,7 +180,7 @@ class _PhotoassistScreenState extends State<PhotoassistScreen> {
   Widget _shoots() => ListView(padding: const EdgeInsets.all(16), children: [
         Wrap(spacing: 8, runSpacing: 8, children: [
           GradientButton(label: 'New shoot', icon: Icons.add_rounded, height: 44, onTap: _newShoot),
-          GlassButton(label: 'Khaali hai?', icon: Icons.event_available_rounded, height: 44, onTap: _checkFree),
+          GlassButton(label: 'Is it free?', icon: Icons.event_available_rounded, height: 44, onTap: _checkFree),
         ]),
         if (_free != null) ...[
           const SizedBox(height: 10),
@@ -200,7 +200,7 @@ class _PhotoassistScreenState extends State<PhotoassistScreen> {
             if (_strs(p['includes']).isNotEmpty) Text(_strs(p['includes']).join(', '), style: const TextStyle(fontSize: 12, color: C.muted)),
             if ((p['edits'] ?? 0) != 0) Text('${p['edits']} edited photos included', style: const TextStyle(fontSize: 12, color: C.muted)),
           ])),
-        GlassButton(label: 'Package jodo', icon: Icons.add_rounded, height: 42, onTap: () async {
+        GlassButton(label: 'Add package', icon: Icons.add_rounded, height: 42, onTap: () async {
           final f = await _form(context, 'Package', const [('name', 'Name'), ('price', 'Price (before GST)'),
             ('unit', 'shoot / day / hour / photo'), ('includes', 'What is included (comma separated)'), ('edits', 'How many edited photos included')]);
           if (f == null) return;
@@ -220,8 +220,8 @@ class _PhotoassistScreenState extends State<PhotoassistScreen> {
               if (_s(g['insured_until']).isNotEmpty) 'insurance ${_s(g['insured_until'])}',
             ].join(' · ')),
           ),
-        GlassButton(label: 'Gear jodo', icon: Icons.add_rounded, height: 42, onTap: () async {
-          final f = await _form(context, 'Gear', const [('name', 'Naam (Sony A7 IV, DJI Mini 4...)'),
+        GlassButton(label: 'Add gear', icon: Icons.add_rounded, height: 42, onTap: () async {
+          final f = await _form(context, 'Gear', const [('name', 'Name (Sony A7 IV, DJI Mini 4...)'),
             ('kind', 'camera / lens / flash / light / drone / battery / card / stand'), ('serial', 'Serial'),
             ('uin', 'Drone UIN (Digital Sky)'), ('weight_g', 'Drone weight (grams)'), ('insured_until', 'Insurance valid until')]);
           if (f == null) return;
@@ -236,7 +236,7 @@ class _PhotoassistScreenState extends State<PhotoassistScreen> {
         Text(_s(st['studio']).isEmpty ? 'No studio name' : _s(st['studio']), style: const TextStyle(fontWeight: FontWeight.w800)),
         Text('GST: ${st['gst_on'] == true ? '${st['gst_pct']}% (GSTIN ${_s(st['gstin'])})' : 'no (no GSTIN)'}'),
         Text('UPI: ${_s(st['upi_id']).isEmpty ? '-' : _s(st['upi_id'])}'),
-        Text('Travel gap ${_s(st['buffer_minutes'])} min · hold ${_s(st['hold_hours'])} ghante · delivery ${_s(st['delivery_days'])} din'),
+        Text('Travel gap ${_s(st['buffer_minutes'])} min · hold ${_s(st['hold_hours'])} hours · delivery ${_s(st['delivery_days'])} days'),
         Text('Copyright: ${_s(st['copyright']) == 'client' ? 'the client\'s' : 'yours (private licence to the client)'}'),
         if (_s(st['rpc_number']).isNotEmpty) Text('Drone RPC ${_s(st['rpc_number'])} · until ${_s(st['rpc_until'])}'),
         const SizedBox(height: 6),
@@ -244,12 +244,12 @@ class _PhotoassistScreenState extends State<PhotoassistScreen> {
         if (_s(st['unfair']).isNotEmpty) Text(_s(st['unfair']), style: const TextStyle(fontSize: 12, color: C.warn)),
       ])),
       const SizedBox(height: 10),
-      GlassButton(label: 'Badlo', icon: Icons.edit_rounded, height: 44, onTap: () async {
-        final f = await _form(context, 'Niyam', const [('studio', 'Studio'), ('gstin', 'GSTIN'), ('upi_id', 'UPI ID'),
-          ('phone', 'Phone'), ('address', 'Pata'), ('buffer_minutes', 'Travel between two shoots (min)'), ('hold_hours', 'Hold for how many hours'),
+      GlassButton(label: 'Change', icon: Icons.edit_rounded, height: 44, onTap: () async {
+        final f = await _form(context, 'Rules', const [('studio', 'Studio'), ('gstin', 'GSTIN'), ('upi_id', 'UPI ID'),
+          ('phone', 'Phone'), ('address', 'Address'), ('buffer_minutes', 'Travel between two shoots (min)'), ('hold_hours', 'Hold for how many hours'),
           ('delivery_days', 'Delivery within how many days'), ('retention_days', 'Days to keep raw files after delivery'),
           ('copyright', 'keep (yours) / client'), ('rpc_number', 'Drone RPC number'), ('rpc_until', 'RPC valid until'),
-          ('morning_time', 'Subah ka note (08:00)'), ('terms', 'Other terms')], initial: {
+          ('morning_time', 'Morning note (08:00)'), ('terms', 'Other terms')], initial: {
           for (final k in const ['studio', 'gstin', 'upi_id', 'phone', 'address', 'copyright', 'rpc_number', 'rpc_until', 'morning_time',
             'terms', 'buffer_minutes', 'hold_hours', 'delivery_days', 'retention_days']) k: _s(st[k]),
         });
@@ -265,10 +265,10 @@ class _PhotoassistScreenState extends State<PhotoassistScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const tabs = ['Aaj', 'Shoots', 'Studio', 'Niyam'];
+    const tabs = ['Today', 'Shoots', 'Studio', 'Rules'];
     return Scaffold(
       backgroundColor: C.bgTop,
-      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Photo Sahayak'),
+      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Photo Assistant'),
           actions: [IconButton(icon: const Icon(Icons.refresh_rounded), onPressed: _load)]),
       body: Column(children: [
         SizedBox(
@@ -365,7 +365,7 @@ class _PhotoassistShootPageState extends State<PhotoassistShootPage> {
       backgroundColor: C.bgBottom,
       builder: (c) => Wrap(children: [
         ListTile(title: Text(_s(p['name'])), subtitle: Text(_strs(p['why']).join(' · '))),
-        for (final (k, l) in const [('keep', 'Keep'), ('maybe', 'Shak'), ('reject', 'Hatao'), ('edit', 'Needs editing')])
+        for (final (k, l) in const [('keep', 'Keep'), ('maybe', 'Maybe'), ('reject', 'Remove'), ('edit', 'Needs editing')])
           ListTile(title: Text(l), onTap: () => Navigator.pop(c, k)),
       ]),
     );
@@ -420,7 +420,7 @@ class _PhotoassistShootPageState extends State<PhotoassistShootPage> {
           Glass(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text('${_s(v['client'])} · ${_s(v['phone'])}', style: const TextStyle(fontWeight: FontWeight.w800)),
             Text('${_s(v['day'])}${_s(v['end_day']).isNotEmpty ? ' – ${_s(v['end_day'])}' : ''} '
-                '${_s(v['start']).isEmpty ? 'pura din' : '${_s(v['start'])}-${_s(v['end'])}'} · ${_s(v['location'])}'),
+                '${_s(v['start']).isEmpty ? 'all day' : '${_s(v['start'])}-${_s(v['end'])}'} · ${_s(v['location'])}'),
             Text('Who: ${_strs(v['shooters']).join(', ')} · ${_s(v['status_label'])} · delivery by ${_s(v['delivery_due'])}',
                 style: const TextStyle(fontSize: 12, color: C.muted)),
             const SizedBox(height: 6),
@@ -445,8 +445,8 @@ class _PhotoassistShootPageState extends State<PhotoassistShootPage> {
                 if (f != null) await _do('delivery', f);
               }),
             GlassButton(label: 'Invoice (card)', height: 40, onTap: () => _do('invoice')),
-            GlassButton(label: 'Paise mile', height: 40, onTap: () async {
-              final f = await _form(context, 'Paise mile', const [('amount', 'How many'), ('mode', 'upi / cash / bank'), ('ref', 'UTR (aakhri ank)')]);
+            GlassButton(label: 'Payment received', height: 40, onTap: () async {
+              final f = await _form(context, 'Payment received', const [('amount', 'How many'), ('mode', 'upi / cash / bank'), ('ref', 'UTR (last digits)')]);
               if (f != null) await _do('paid', {...f, 'amount': _n(f['amount'])});
             }),
             GlassButton(label: 'Message (card)', height: 40, onTap: () async {
@@ -477,9 +477,9 @@ class _PhotoassistShootPageState extends State<PhotoassistShootPage> {
               title: Text('${_s(shotList[i]['item'])}${shotList[i]['must'] == true ? ' *' : ''}'),
             ),
           TextButton(onPressed: () async {
-            final f = await _form(context, 'Shot jodo', const [('add', 'Shot')]);
+            final f = await _form(context, 'Add shot', const [('add', 'Shot')]);
             if (f != null) await _do('shots', {'add': [f['add']]});
-          }, child: const Text('+ shot jodo')),
+          }, child: const Text('+ add shot')),
           const Caption('GEAR CHECKLIST'),
           for (var i = 0; i < gearList.length; i++)
             CheckboxListTile(
@@ -528,7 +528,7 @@ class _PhotoassistShootPageState extends State<PhotoassistShootPage> {
           TextButton(onPressed: () async {
             final f = await _form(context, 'Client ka edit', const [('photo', 'Photo name'), ('ask', 'What should change')]);
             if (f != null) await _do('edit', f);
-          }, child: const Text('+ edit jodo')),
+          }, child: const Text('+ add edit')),
           const Caption('CARDS'),
           for (final c in _list(v['cards']))
             Padding(padding: const EdgeInsets.only(bottom: 8), child: PhotoassistCardCard(app: widget.app, data: {'card': c}, onDone: _load)),
@@ -557,7 +557,7 @@ class _PhotoassistCardCardState extends State<PhotoassistCardCard> {
   Future<Map<String, dynamic>> _proof(String id) async {
     final ch = _m(await widget.app.api!.call('POST', '$_p/cards/$id/challenge'));
     final show = _m(ch['show']);
-    final r = await Native.approveKeySign(_s(ch['message']), _s(show['title']).isEmpty ? 'Photo Sahayak' : _s(show['title']),
+    final r = await Native.approveKeySign(_s(ch['message']), _s(show['title']).isEmpty ? 'Photo Assistant' : _s(show['title']),
         [show['amount'], show['payee']].where((x) => x != null && '$x'.isNotEmpty).join(' · '));
     if (r['signature'] == null) {
       throw ApiException(428, switch (_s(r['error'])) {
@@ -635,7 +635,7 @@ class _PhotoassistCardCardState extends State<PhotoassistCardCard> {
         if (_s(sh['label']).isNotEmpty) Text(_s(sh['label'])),
         if (_s(sh['link']).isNotEmpty) Text(_s(sh['link']), style: const TextStyle(fontSize: 12, color: C.teal)),
         for (final w in _strs(sh['warn'])) Text('• $w', style: const TextStyle(fontSize: 12, color: C.warn)),
-        if (_s(sh['reason']).isNotEmpty) Text('Wajah: ${_s(sh['reason'])}', style: const TextStyle(fontSize: 12)),
+        if (_s(sh['reason']).isNotEmpty) Text('Reason: ${_s(sh['reason'])}', style: const TextStyle(fontSize: 12)),
         if (_s(sh['why']).isNotEmpty) Text(_s(sh['why']), style: const TextStyle(fontSize: 12)),
         if (_s(sh['text']).isNotEmpty) Text('“${_s(sh['text'])}”', style: const TextStyle(fontSize: 12.5)),
         if (_s(sh['copyright_text']).isNotEmpty) Text(_s(sh['copyright_text']), style: const TextStyle(fontSize: 11.5, color: C.muted)),

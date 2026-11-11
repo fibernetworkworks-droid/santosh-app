@@ -30,7 +30,7 @@ const _stages = [
   ('assessed', 'Assessment'),
   ('duty_paid', 'Duty paid'),
   ('ooc', 'Out of Charge'),
-  ('delivered', 'Godown'),
+  ('delivered', 'Warehouse'),
   ('empty_returned', 'Container returned'),
 ];
 
@@ -243,7 +243,7 @@ class _CustomsScreenState extends State<CustomsScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Customs Sahayak')),
+        appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Customs Assistant')),
         floatingActionButton: _tab <= 1
             ? FloatingActionButton.extended(onPressed: _busy ? null : _new, icon: const Icon(Icons.local_shipping_rounded), label: const Text('New import'))
             : null,

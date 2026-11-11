@@ -34,7 +34,7 @@ void _snack(BuildContext c, String t) {
 }
 
 Future<Map<String, String>?> _form(BuildContext context, String title, List<(String, String)> fields,
-    {String ok = 'Aage', Map<String, String> initial = const {}}) async {
+    {String ok = 'Next', Map<String, String> initial = const {}}) async {
   final c = {for (final (k, _) in fields) k: TextEditingController(text: initial[k] ?? '')};
   const long = {'text', 'bio', 'script', 'summary', 'chapters', 'description', 'release_terms', 'points', 'notes', 'topics'};
   final res = await showDialog<bool>(
@@ -169,9 +169,9 @@ class _PodcastScreenState extends State<PodcastScreen> {
         const Caption('RECORDING'),
         for (final r in _list(day['recordings']))
           Glass(margin: const EdgeInsets.only(bottom: 8), child: InkWell(onTap: () => _open(_s(r['number'])),
-              child: Text('${_s(r['number'])} · ${_s(r['title'])} · ${_s(r['at'])}${r['run_sheet'] == true ? '' : ' · run sheet baaki'}'))),
+              child: Text('${_s(r['number'])} · ${_s(r['title'])} · ${_s(r['at'])}${r['run_sheet'] == true ? '' : ' · run sheet pending'}'))),
       ],
-      if (_strs(day['release_missing']).isNotEmpty) ...[const Caption('RELEASE BAAKI'), for (final x in _strs(day['release_missing'])) Text('• $x')],
+      if (_strs(day['release_missing']).isNotEmpty) ...[const Caption('RELEASE PENDING'), for (final x in _strs(day['release_missing'])) Text('• $x')],
     ]);
   }
 
@@ -203,7 +203,7 @@ class _PodcastScreenState extends State<PodcastScreen> {
             ('topics', 'Topics (comma se)'),
             ('guests', 'Guest (G-001 or name)'),
             ('record_at', 'Recording (YYYY-MM-DD HH:MM)'),
-            ('publish_on', 'Publish tareekh (YYYY-MM-DD)'),
+            ('publish_on', 'Publish date (YYYY-MM-DD)'),
           ]);
           if (f == null) return;
           final r = await _run('POST', '/api/podcast/episodes', {
@@ -220,7 +220,7 @@ class _PodcastScreenState extends State<PodcastScreen> {
 
   Widget _guests() => ListView(padding: const EdgeInsets.all(16), children: [
         GradientButton(label: 'New guest', icon: Icons.person_add_rounded, height: 46, onTap: _busy ? null : () async {
-          final f = await _form(context, 'Guest', const [('name', 'Naam'), ('phone', 'Mobile'), ('email', 'Email'),
+          final f = await _form(context, 'Guest', const [('name', 'Name'), ('phone', 'Mobile'), ('email', 'Email'),
             ('bio', 'About them (in their own words)'), ('topics', 'About what')]);
           if (f == null) return;
           await _run('POST', '/api/podcast/guests', {...f, if (f['topics'] != null) 'topics': f['topics']!.split(',')});
@@ -254,7 +254,7 @@ class _PodcastScreenState extends State<PodcastScreen> {
                     if (f == null) return;
                     await _run('POST', '/api/podcast/guests/${_s(g['id'])}/revoke', f);
                   }),
-                GlassButton(label: 'Details hatao', height: 38, onTap: () => _run('POST', '/api/podcast/guests/${_s(g['id'])}/forget')),
+                GlassButton(label: 'Remove details', height: 38, onTap: () => _run('POST', '/api/podcast/guests/${_s(g['id'])}/forget')),
               ]),
             ]),
           ),
@@ -305,7 +305,7 @@ class _PodcastScreenState extends State<PodcastScreen> {
                 Expanded(child: Text('${_s(p['number'])} · ${_s(p['brand'])}', style: const TextStyle(fontWeight: FontWeight.w700))),
                 Pill(_s(p['status'])),
               ]),
-              Text('Fees ${_s(p['amount_text'])} · mile ₹${_s(p['paid'])} · ${_s(p['deliverables'])}',
+              Text('Fees ${_s(p['amount_text'])} · received ₹${_s(p['paid'])} · ${_s(p['deliverables'])}',
                   style: const TextStyle(fontSize: 12.5, color: C.muted)),
               const SizedBox(height: 6),
               Wrap(spacing: 8, runSpacing: 6, children: [
@@ -316,8 +316,8 @@ class _PodcastScreenState extends State<PodcastScreen> {
                   if (f == null) return;
                   await _run('POST', '/api/podcast/sponsors/${_s(p['id'])}/message', f);
                 }),
-                GlassButton(label: 'Paise mile', icon: Icons.currency_rupee_rounded, height: 38, onTap: _busy ? null : () async {
-                  final f = await _form(context, 'Paise mile', const [('amount', 'Amount'), ('ref', 'Last digits of the UTR'), ('tds', 'TDS deducted (if any)')]);
+                GlassButton(label: 'Payment received', icon: Icons.currency_rupee_rounded, height: 38, onTap: _busy ? null : () async {
+                  final f = await _form(context, 'Payment received', const [('amount', 'Amount'), ('ref', 'Last digits of the UTR'), ('tds', 'TDS deducted (if any)')]);
                   if (f == null) return;
                   await _run('POST', '/api/podcast/sponsors/${_s(p['id'])}/paid',
                       {...f, 'amount': _n(f['amount']), if (f['tds'] != null) 'tds': _n(f['tds'])});
@@ -331,8 +331,8 @@ class _PodcastScreenState extends State<PodcastScreen> {
         const Glass(child: Text('Keep the licence for every song / tune / sound here. If the licence is not clear, the episode will not be published. For film / album '
             'songs you need a written licence from the label / IPRS / PPL; "royalty-free" is not free everywhere.', style: TextStyle(fontSize: 12.5))),
         const SizedBox(height: 10),
-        GradientButton(label: 'Track jodo', icon: Icons.music_note_rounded, height: 46, onTap: _busy ? null : () async {
-          final f = await _form(context, 'Music / sound', const [('title', 'Naam'), ('artist', 'Kalakar'), ('source', 'From where'),
+        GradientButton(label: 'Add track', icon: Icons.music_note_rounded, height: 46, onTap: _busy ? null : () async {
+          final f = await _form(context, 'Music / sound', const [('title', 'Name'), ('artist', 'Artist'), ('source', 'From where'),
             ('licence', 'own / commissioned / cc0 / cc_by / royalty_free / paid / unknown'), ('attribution', 'Credit line (CC BY)'),
             ('proof', 'Licence / receipt reference'), ('valid_until', 'Valid until (YYYY-MM-DD)')]);
           if (f == null) return;
@@ -357,7 +357,7 @@ class _PodcastScreenState extends State<PodcastScreen> {
             await _upload(context, widget.app, '/api/podcast/stats/file', const ['csv', 'xlsx', 'txt']);
             await _load();
           }),
-          GlassButton(label: 'Chipkao', icon: Icons.content_paste_rounded, height: 42, onTap: () async {
+          GlassButton(label: 'Paste', icon: Icons.content_paste_rounded, height: 42, onTap: () async {
             final f = await _form(context, 'Export ka text', const [('text', 'CSV text'), ('platform', 'spotify / apple / youtube')]);
             if (f == null) return;
             await _run('POST', '/api/podcast/stats', f);
@@ -368,7 +368,7 @@ class _PodcastScreenState extends State<PodcastScreen> {
         for (final e in _list(_stats?['episodes']))
           Glass(margin: const EdgeInsets.only(top: 8), child: Text(
               '${_s(e['number'])} ${_s(e['title'])}\n${_s(e['plays'])} plays · ${_s(e['listeners'])} listeners'
-              '${e['consumption'] == null ? '' : ' · ${_s(e['consumption'])}% suna'}',
+              '${e['consumption'] == null ? '' : ' · ${_s(e['consumption'])}% listened'}',
               style: const TextStyle(fontSize: 12.5))),
       ]);
 
@@ -379,7 +379,7 @@ class _PodcastScreenState extends State<PodcastScreen> {
       Glass(child: Text('${_s(st['show']).isEmpty ? 'No show name' : _s(st['show'])} · host ${_s(st['host'])} · ${_s(st['category'])} · '
           '${st['explicit'] == true ? 'explicit' : 'clean'} · ${_s(st['language'])}')),
       const SizedBox(height: 10),
-      GlassButton(label: 'Show badlo', icon: Icons.edit_rounded, height: 44, onTap: () async {
+      GlassButton(label: 'Edit show', icon: Icons.edit_rounded, height: 44, onTap: () async {
         final f = await _form(context, 'Show', const [('show', 'Show name'), ('host', 'Host'), ('author', 'Author / company'),
           ('description', 'About the show'), ('language', 'Language (hi / mr / en)'), ('category', 'Apple category (Business, Education ...)'),
           ('owner_email', 'Owner email (shown in the feed)'), ('website', 'Website'), ('upi_id', 'UPI ID'), ('gstin', 'GSTIN'),
@@ -410,10 +410,10 @@ class _PodcastScreenState extends State<PodcastScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const tabs = ['Aaj', 'Episode', 'Guest', 'Sponsor', 'Music', 'Numbers', 'Niyam'];
+    const tabs = ['Today', 'Episode', 'Guest', 'Sponsor', 'Music', 'Numbers', 'Rules'];
     return Scaffold(
       backgroundColor: C.bgTop,
-      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Podcast Sahayak'),
+      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Podcast Assistant'),
           actions: [IconButton(icon: const Icon(Icons.refresh_rounded), onPressed: _load)]),
       body: Column(children: [
         SizedBox(
@@ -523,7 +523,7 @@ class _PodcastEpisodePageState extends State<PodcastEpisodePage> {
         Text('Loudness ${_s(lo['lufs'])} LUFS · peak ${_s(lo['true_peak'])} dBTP ${lo['ok'] == true ? '✓' : '(Apple: -16 ±1, peak ≤ -1)'}',
             style: TextStyle(fontSize: 12.5, color: lo['ok'] == true ? C.ok : C.warn)),
       Wrap(spacing: 8, runSpacing: 6, children: [
-        GlassButton(label: 'Audio do', icon: Icons.upload_rounded, height: 38, onTap: _busy || live ? null : () async {
+        GlassButton(label: 'Add audio', icon: Icons.upload_rounded, height: 38, onTap: _busy || live ? null : () async {
           setState(() => _busy = true);
           await _upload(context, widget.app, '$_base/audio', const ['mp3', 'm4a', 'wav', 'flac', 'aac', 'ogg', 'mp4']);
           await _load();
@@ -543,7 +543,7 @@ class _PodcastEpisodePageState extends State<PodcastEpisodePage> {
         }),
         if (e['has_transcript'] == true)
           GlassButton(label: 'Speakers', height: 38, onTap: () async {
-            final f = await _form(context, 'Naam', const [('S1', 'Who is S1?'), ('S2', 'Who is S2?'), ('S3', 'Who is S3?')]);
+            final f = await _form(context, 'Name', const [('S1', 'Who is S1?'), ('S2', 'Who is S2?'), ('S3', 'Who is S3?')]);
             if (f == null) return;
             await _run('POST', '$_base/speakers', {'names': f});
           }),
@@ -558,12 +558,12 @@ class _PodcastEpisodePageState extends State<PodcastEpisodePage> {
           for (final c in _list(nt['chapters'])) Text('${_hms(c['start'])} ${_s(c['title'])}', style: const TextStyle(fontSize: 12.5)),
         ],
         for (final q in _list(nt['quotes'])) Text('“${_s(q['text'])}” (${_hms(q['start'])})', style: const TextStyle(fontSize: 12, color: C.muted)),
-        for (final d in _strs(nt['dropped'])) Text('Hataya: $d', style: const TextStyle(fontSize: 11.5, color: C.faint)),
+        for (final d in _strs(nt['dropped'])) Text('Removed: $d', style: const TextStyle(fontSize: 11.5, color: C.faint)),
       ],
       Wrap(spacing: 8, runSpacing: 6, children: [
         GlassButton(label: 'Make notes', height: 38, onTap: _busy || e['has_transcript'] != true || live ? null : () => _run('POST', '$_base/notes', {})),
         if (nt.isNotEmpty)
-          GlassButton(label: 'Khud badlo', height: 38, onTap: live ? null : () async {
+          GlassButton(label: 'Edit it yourself', height: 38, onTap: live ? null : () async {
             final f = await _form(context, 'Show notes', const [('summary', 'Summary'), ('points', 'Points (one per line)'),
               ('chapters', 'Chapters (00:00 Title, one per line)')], initial: {
               'summary': _s(nt['summary']),
@@ -575,14 +575,14 @@ class _PodcastEpisodePageState extends State<PodcastEpisodePage> {
           }),
       ]),
       const SizedBox(height: 12),
-      const Caption('MUSIC AUR SPONSOR'),
+      const Caption('MUSIC AND SPONSOR'),
       for (final m in _list(e['music'])) Text('${m['cleared'] == true ? '✓' : '✗'} ${_s(m['title'])} · ${_s(m['licence_label'])}'),
       for (final r in _list(e['reads']))
         Text('${_m(r['disclosure'])['ok'] == true ? '✓' : '✗'} ${_s(r['sponsor'])} (${_s(r['slot'])}-roll): ${_s(r['script'])}',
             style: const TextStyle(fontSize: 12.5)),
       Wrap(spacing: 8, runSpacing: 6, children: [
-        GlassButton(label: 'Music jodo', height: 38, onTap: live ? null : () async {
-          final f = await _form(context, 'Music', const [('music', 'M-001 / naam')]);
+        GlassButton(label: 'Add music', height: 38, onTap: live ? null : () async {
+          final f = await _form(context, 'Music', const [('music', 'M-001 / name')]);
           if (f == null) return;
           await _run('POST', '$_base/music', f);
         }),
@@ -608,8 +608,8 @@ class _PodcastEpisodePageState extends State<PodcastEpisodePage> {
             if (f == null) return;
             await _run('POST', '$_base/posted', f);
           }),
-          GlassButton(label: 'Feed se hatao', height: 40, color: C.bad, onTap: () async {
-            final f = await _form(context, 'Why remove it?', const [('reason', 'Wajah')]);
+          GlassButton(label: 'Remove from feed', height: 40, color: C.bad, onTap: () async {
+            final f = await _form(context, 'Why remove it?', const [('reason', 'Reason')]);
             if (f == null) return;
             await _run('POST', '$_base/unpublish', f);
           }),

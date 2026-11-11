@@ -39,7 +39,7 @@ Future<Map<String, dynamic>?> _call(BuildContext context, Santosh app, String me
 }
 
 Future<Map<String, String>?> _form(BuildContext context, String title, List<(String, String)> fields,
-    {String ok = 'Aage', Map<String, String>? initial, Set<String> multi = const {}}) async {
+    {String ok = 'Next', Map<String, String>? initial, Set<String> multi = const {}}) async {
   final c = {for (final (k, _) in fields) k: TextEditingController(text: initial?[k] ?? '')};
   final res = await showDialog<bool>(
     context: context,
@@ -364,7 +364,7 @@ class _IspnocScreenState extends State<IspnocScreen> {
 
   Future<void> _addOlt([Map<String, dynamic>? o]) async {
     final f = await _form(context, o == null ? 'New OLT' : _s(o['name']), [
-      if (o == null) ('name', 'Naam (jaise OLT-AKOT-1)'),
+      if (o == null) ('name', 'Name (e.g. OLT-AKOT-1)'),
       ('make', 'Make: syrotech / vsol / cdata / bdcom / huawei / zte / other'),
       ('model', 'Model'),
       ('tech', 'gpon / epon'),
@@ -392,7 +392,7 @@ class _IspnocScreenState extends State<IspnocScreen> {
   }
 
   Future<void> _findCustomer() async {
-    final f = await _form(context, 'Find a customer', const [('q', 'Naam / mobile / SN / MAC / account')], ok: 'Find');
+    final f = await _form(context, 'Find a customer', const [('q', 'Name / mobile / SN / MAC / account')], ok: 'Find');
     if (f == null || (f['q'] ?? '').isEmpty || !mounted) return;
     final r = await _call(context, widget.app, 'GET', '/api/ispnoc/onts?q=${Uri.encodeQueryComponent(f['q']!)}');
     if (r == null || !mounted) return;
@@ -400,7 +400,7 @@ class _IspnocScreenState extends State<IspnocScreen> {
     await showDialog<void>(
       context: context,
       builder: (d) => AlertDialog(
-        title: Text('${onts.length} mile'),
+        title: Text('${onts.length} found'),
         content: SingleChildScrollView(
           child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
             for (final o in onts.take(30))
@@ -413,7 +413,7 @@ class _IspnocScreenState extends State<IspnocScreen> {
               ),
           ]),
         ),
-        actions: [TextButton(onPressed: () => Navigator.pop(d), child: const Text('Theek'))],
+        actions: [TextButton(onPressed: () => Navigator.pop(d), child: const Text('OK'))],
       ),
     );
   }
@@ -423,7 +423,7 @@ class _IspnocScreenState extends State<IspnocScreen> {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Glass(
         child: Text(
-            '${_list(n['olts']).length} OLT · ${n['onts'] ?? 0} customer ONT · ${n['onts_down'] ?? 0} band · ${n['weak_rx'] ?? 0} low light · '
+            '${_list(n['olts']).length} OLT · ${n['onts'] ?? 0} customer ONT · ${n['onts_down'] ?? 0} down · ${n['weak_rx'] ?? 0} low light · '
             '${_list(n['splitters']).length} splitter',
             style: const TextStyle(fontWeight: FontWeight.w700)),
       ),
@@ -433,7 +433,7 @@ class _IspnocScreenState extends State<IspnocScreen> {
         GlassButton(label: 'Import from a sheet', icon: Icons.table_view_rounded, onTap: _busy ? null : _import),
         GlassButton(label: 'Find a customer', icon: Icons.search_rounded, onTap: _findCustomer),
         GlassButton(
-            label: 'Light ka hisaab',
+            label: 'Light budget',
             icon: Icons.calculate_rounded,
             onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => _OpticsPage(app: widget.app)))),
       ]),
@@ -456,7 +456,7 @@ class _IspnocScreenState extends State<IspnocScreen> {
                     Text(_s(o['name']), style: const TextStyle(fontWeight: FontWeight.w800)),
                     Text(
                         '${_s(o['make'])} ${_s(o['model'])} · ${_s(o['tech']).toUpperCase()} · ${_s(o['ip'])} · ${_s(o['site'])} · '
-                        '${o['onts']} ONT, ${o['down']} band',
+                        '${o['onts']} ONT, ${o['down']} down',
                         style: const TextStyle(color: C.muted, fontSize: 12)),
                   ]),
                 ),
@@ -471,7 +471,7 @@ class _IspnocScreenState extends State<IspnocScreen> {
     final f = await _form(context, 'Change on equipment (a card will be made)', const [
       ('action', 'What: reboot_ont / pon_reset / ont_disable / ont_enable / uplink_reset / custom'),
       ('olt', 'OLT (name or IP)'),
-      ('pon', 'PON (jaise 0/1)'),
+      ('pon', 'PON (e.g. 0/1)'),
       ('onu', 'ONU number'),
       ('port', 'Uplink port (for uplink_reset)'),
       ('commands', 'Your own lines (if custom, one command per line)'),
@@ -511,13 +511,13 @@ class _IspnocScreenState extends State<IspnocScreen> {
       ('upstream', 'Where the bandwidth comes from (BSNL / Airtel / ...)'),
       ('optics', 'Optics: gpon_b+ / gpon_c+ / epon_px20 / epon_px20+'),
       ('bsnl_sla_hours', 'SLA hours from the BSNL agreement (from the agreement)'),
-      ('field_name', 'Field fibre team: naam'),
+      ('field_name', 'Field fibre team: name'),
       ('field_phone', 'Field fibre team: mobile'),
-      ('noc_name', 'NOC: naam'),
+      ('noc_name', 'NOC: name'),
       ('noc_phone', 'NOC: mobile'),
       ('bsnl_name', 'BSNL contact: name (SDE / JTO)'),
       ('bsnl_phone', 'BSNL contact: mobile'),
-      ('morning_time', 'Subah ka note (HH:MM)'),
+      ('morning_time', 'Morning note (HH:MM)'),
     ], initial: {
       'isp_name': _s(st['isp_name']),
       'model': _s(st['model']),
@@ -549,7 +549,7 @@ class _IspnocScreenState extends State<IspnocScreen> {
   }
 
   Future<void> _newCollector() async {
-    final f = await _form(context, 'New collector', const [('name', 'Naam (jaise Akot POP box)'), ('site', 'Site / POP')], ok: 'Make');
+    final f = await _form(context, 'New collector', const [('name', 'Name (e.g. Akot POP box)'), ('site', 'Site / POP')], ok: 'Make');
     if (f == null || (f['name'] ?? '').isEmpty) return;
     final r = await _run('POST', '/api/ispnoc/collectors', f);
     if (r == null || !mounted) return;
@@ -629,7 +629,7 @@ class _IspnocScreenState extends State<IspnocScreen> {
       Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text(_s(st['isp_name']).isEmpty ? 'No ISP name given' : _s(st['isp_name']), style: const TextStyle(fontWeight: FontWeight.w800)),
-          Text('Roop: ${_s(st['model'])} · upstream: ${_s(st['upstream'])} · optics: ${_s(st['optics_label'])}',
+          Text('Model: ${_s(st['model'])} · upstream: ${_s(st['upstream'])} · optics: ${_s(st['optics_label'])}',
               style: const TextStyle(color: C.muted, fontSize: 12.5)),
           Text(st['bsnl_sla_hours'] == null ? 'BSNL SLA hours: not given (enter from the agreement)' : 'BSNL SLA: ${_s(st['bsnl_sla_hours'])} hours',
               style: const TextStyle(color: C.muted, fontSize: 12.5)),
@@ -638,7 +638,7 @@ class _IspnocScreenState extends State<IspnocScreen> {
         ]),
       ),
       const SizedBox(height: 8),
-      GlassButton(label: 'Badlo', icon: Icons.edit_rounded, onTap: _busy ? null : _settings),
+      GlassButton(label: 'Change', icon: Icons.edit_rounded, onTap: _busy ? null : _settings),
       const SizedBox(height: 10),
       Text('Collector (on your network)', style: display(14)),
       const Text('A small script that runs on your POP computer: it takes the OLT syslog, runs only "show" commands, and sends signed data to Hoola.',
@@ -679,7 +679,7 @@ class _IspnocScreenState extends State<IspnocScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('NOC Sahayak (ISP network)')),
+        appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('NOC Assistant (ISP network)')),
         floatingActionButton: _tab == 0
             ? FloatingActionButton.extended(onPressed: () => setState(() => _tab = 1), icon: const Icon(Icons.notifications_active_rounded), label: const Text('Add an alarm'))
             : null,
@@ -688,7 +688,7 @@ class _IspnocScreenState extends State<IspnocScreen> {
             onRefresh: _load,
             child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 90), children: [
               Wrap(spacing: 6, runSpacing: 6, children: [
-                for (final (i, t) in const [(0, 'Aaj'), (1, 'Alarm'), (2, 'Tickets'), (3, 'Network'), (4, 'Change'), (5, 'Niyam')])
+                for (final (i, t) in const [(0, 'Today'), (1, 'Alarm'), (2, 'Tickets'), (3, 'Network'), (4, 'Change'), (5, 'Rules')])
                   ChoiceChip(label: Text(t), selected: _tab == i, onSelected: (_) => setState(() => _tab = i)),
               ]),
               const SizedBox(height: 12),
@@ -761,7 +761,7 @@ class _IspnocFaultPageState extends State<IspnocFaultPage> {
                         style: const TextStyle(fontSize: 12.5)),
                   if (_m(f['location']).isNotEmpty) ...[
                     const SizedBox(height: 10),
-                    Text('Jagah', style: display(14)),
+                    Text('Location', style: display(14)),
                     for (final e in _m(f['location']).entries.where((e) => _s(e.value).isNotEmpty && !_s(e.key).endsWith('maps')))
                       Text('${e.key}: ${_s(e.value)}', style: const TextStyle(fontSize: 12.5)),
                     Wrap(spacing: 8, children: [
@@ -828,14 +828,14 @@ class _IspnocFaultCardState extends State<IspnocFaultCard> {
               if (_s(f['pon']).isNotEmpty) 'PON ${_s(f['pon'])}',
               if (_s(f['scope']) == 'ont' || _s(f['scope']) == 'splitter') _s(f['target']),
               '${f['n_affected']} customer',
-              'kab se ${_s(f['started'])} (${_s(f['duration'])})',
+              'since ${_s(f['started'])} (${_s(f['duration'])})',
             ].join(' · '),
             style: const TextStyle(color: C.muted, fontSize: 12)),
         const SizedBox(height: 6),
         Text(_s(f['explain']), style: const TextStyle(fontSize: 13, height: 1.35)),
         for (final r in _strs(f['reasons']).take(widget.full ? 6 : 2)) Text('• $r', style: const TextStyle(fontSize: 12, color: C.muted)),
         if (_s(f['due']).isNotEmpty && open)
-          Text('${_s(f['team_label'])} · SLA ${_s(f['sla_hours'])} ghante (due ${_s(f['due'])})', style: const TextStyle(fontSize: 12, color: C.accentSoft)),
+          Text('${_s(f['team_label'])} · SLA ${_s(f['sla_hours'])} hours (due ${_s(f['due'])})', style: const TextStyle(fontSize: 12, color: C.accentSoft)),
         for (final n in _strs(f['notes']).take(widget.full ? 0 : 1)) Text(n, style: const TextStyle(fontSize: 12, color: C.warn)),
         const SizedBox(height: 8),
         Wrap(spacing: 8, runSpacing: 8, children: [
@@ -862,7 +862,7 @@ class _IspnocFaultCardState extends State<IspnocFaultCard> {
                 onTap: _busy
                     ? null
                     : () async {
-                        final n = await _form(context, 'What was done?', const [('note', 'Note (jaise "splice kiya")')], ok: 'Theek');
+                        final n = await _form(context, 'What was done?', const [('note', 'Note (e.g. "spliced")')], ok: 'OK');
                         if (n == null || !context.mounted) return;
                         await _after(await _call(context, widget.app, 'POST', '/api/ispnoc/faults/${_s(f['id'])}/resolve', n));
                       }),
@@ -930,7 +930,7 @@ class _IspnocTicketCardState extends State<IspnocTicketCard> {
               if (_s(t['fault']).isNotEmpty) _s(t['fault']),
               if (_s(t['eta']).isNotEmpty) 'ETA ${_s(t['eta'])}',
               if (_s(t['due']).isNotEmpty) 'SLA due ${_s(t['due'])}',
-              if (t['mttr_hours'] != null) 'MTTR ${_s(t['mttr_hours'])} ghante',
+              if (t['mttr_hours'] != null) 'MTTR ${_s(t['mttr_hours'])} hours',
               if (_s(t['ext_ref']).isNotEmpty) 'Docket ${_s(t['ext_ref'])}',
             ].join(' · '),
             style: TextStyle(color: t['late'] == true ? C.bad : C.muted, fontSize: 12)),
@@ -1070,9 +1070,9 @@ class _IspnocChangeCardState extends State<IspnocChangeCard> {
           Row(children: [
             Expanded(child: GradientButton(label: 'Yes, do it', icon: Icons.check_rounded, height: 44, onTap: _busy ? null : () => _decide(true))),
             const SizedBox(width: 8),
-            Expanded(child: GlassButton(label: 'Mana', icon: Icons.close_rounded, height: 44, onTap: _busy ? null : () => _decide(false))),
+            Expanded(child: GlassButton(label: 'No', icon: Icons.close_rounded, height: 44, onTap: _busy ? null : () => _decide(false))),
             const SizedBox(width: 8),
-            GlassButton(label: 'Badlo', icon: Icons.edit_rounded, height: 44, onTap: _busy ? null : _edit),
+            GlassButton(label: 'Change', icon: Icons.edit_rounded, height: 44, onTap: _busy ? null : _edit),
           ])
         else if (st == 'approved')
           Row(children: [
@@ -1168,7 +1168,7 @@ class _IspnocReportPageState extends State<_IspnocReportPage> {
           Wrap(spacing: 6, children: [
             for (final d in const [7, 30, 90])
               ChoiceChip(
-                  label: Text('$d din'),
+                  label: Text('$d days'),
                   selected: _days == d,
                   onSelected: (_) {
                     setState(() => _days = d);
@@ -1182,7 +1182,7 @@ class _IspnocReportPageState extends State<_IspnocReportPage> {
             Glass(child: Text(_s(r['say']), style: const TextStyle(fontWeight: FontWeight.w700))),
             const SizedBox(height: 8),
             for (final k in _list(r['by_kind']))
-              Text('• ${_s(k['title'])}: ${k['count']} times${k['mttr_hours'] != null ? ', ausat ${_s(k['mttr_hours'])} ghante' : ''}',
+              Text('• ${_s(k['title'])}: ${k['count']} times${k['mttr_hours'] != null ? ', average ${_s(k['mttr_hours'])} hours' : ''}',
                   style: const TextStyle(fontSize: 12.5)),
             const SizedBox(height: 8),
             for (final t in _list(r['teams']))
@@ -1233,7 +1233,7 @@ class _OpticsPageState extends State<_OpticsPage> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Light ka hisaab (power budget)')),
+        appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Light budget (power budget)')),
         body: Aurora(
           child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
             Wrap(spacing: 6, children: [

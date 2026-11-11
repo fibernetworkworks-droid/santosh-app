@@ -358,7 +358,7 @@ class _ShikshaScreenState extends State<ShikshaScreen> {
                 if (_s(p['status']) != 'draft')
                   TextButton(
                       onPressed: () => _run(() => widget.app.api!.call('POST', '/api/pathyakram/shares', body: {'what': 'plan', 'ref': p['number'], 'via': 'file'})),
-                      child: const Text('Baantna (card)')),
+                      child: const Text('Share (card)')),
               ]),
             ]),
           ),

@@ -27,9 +27,9 @@ Color _hex(String h, [Color or = C.chip]) {
 const _status = {'draft': 'Proof', 'waiting': 'Your yes', 'approved': 'Final', 'rejected': 'Declined'};
 Color _stCol(String s) => switch (s) { 'approved' => C.ok, 'waiting' => C.accent, 'rejected' => C.bad, _ => C.chip };
 
-const _setsUi = {'social': 'Social (4)', 'whatsapp': 'WhatsApp', 'all_social': 'Sab platform', 'print': 'Print A4'};
+const _setsUi = {'social': 'Social (4)', 'whatsapp': 'WhatsApp', 'all_social': 'All platforms', 'print': 'Print A4'};
 const _kindsUi = {'poster': 'Poster', 'offer': 'Offer / sale', 'festival': 'Festival', 'event': 'Event', 'product': 'Product',
-  'hiring': 'Hiring', 'announcement': 'Suchna', 'quote': 'Vichar / review'};
+  'hiring': 'Hiring', 'announcement': 'Announcement', 'quote': 'Quote / review'};
 
 /// A proof / final picture (needs the key, so it goes with authHeaders).
 class BrandImage extends StatelessWidget {
@@ -330,7 +330,7 @@ class _BrandDesignPageState extends State<BrandDesignPage> {
         content: TextField(controller: c, minLines: lines, maxLines: 6, autofocus: true, decoration: InputDecoration(hintText: hint)),
         actions: [
           TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Keep it')),
-          FilledButton(onPressed: () => Navigator.pop(d, true), child: const Text('Theek')),
+          FilledButton(onPressed: () => Navigator.pop(d, true), child: const Text('OK')),
         ],
       ),
     );
@@ -340,7 +340,7 @@ class _BrandDesignPageState extends State<BrandDesignPage> {
   Future<void> _ownWords() async {
     final ct = _map(_v!['content']);
     final ctl = {for (final k in ['headline', 'sub', 'offer', 'cta', 'date']) k: TextEditingController(text: _s(ct[k]))};
-    const labels = {'headline': 'Headline', 'sub': 'Line below', 'offer': 'Offer / daam', 'cta': 'Button', 'date': 'Din / tareekh'};
+    const labels = {'headline': 'Headline', 'sub': 'Line below', 'offer': 'Offer / price', 'cta': 'Button', 'date': 'Day / date'};
     final ok = await showDialog<bool>(
       context: context,
       builder: (d) => AlertDialog(
@@ -421,7 +421,7 @@ class _BrandDesignPageState extends State<BrandDesignPage> {
             itemBuilder: (_) => [
               const PopupMenuItem(value: 'copy', child: Text('Make a copy')),
               PopupMenuItem(value: 'template', child: Text(v['template'] == true ? 'Remove from templates' : 'Make a template')),
-              const PopupMenuItem(value: 'delete', child: Text('Hatao')),
+              const PopupMenuItem(value: 'delete', child: Text('Remove')),
             ],
           ),
       ]),
@@ -669,9 +669,9 @@ class _KitTab extends StatelessWidget {
             const SizedBox(width: 14),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(_s(kit['name']).isEmpty ? 'Business ka naam?' : _s(kit['name']), style: display(17)),
+                Text(_s(kit['name']).isEmpty ? 'Business name?' : _s(kit['name']), style: display(17)),
                 const SizedBox(height: 6),
-                GlassButton(label: kit['logo'] == true ? 'Logo badlo' : 'Add logo', icon: Icons.upload_rounded, height: 38, onTap: () async {
+                GlassButton(label: kit['logo'] == true ? 'Change logo' : 'Add logo', icon: Icons.upload_rounded, height: 38, onTap: () async {
                   final f = await pickAttachments(context, max: 1);
                   if (f.isEmpty) return;
                   try {
@@ -701,13 +701,13 @@ class _KitTab extends StatelessWidget {
                   child: Column(children: [
                     Container(width: 48, height: 48, decoration: BoxDecoration(color: _hex(_s(cols[role])), shape: BoxShape.circle, border: Border.all(color: C.line, width: 2))),
                     const SizedBox(height: 4),
-                    Text({'primary': 'Mukhya', 'secondary': 'Other', 'accent': 'Button', 'dark': 'Gehra', 'light': 'Halka'}[role]!, style: const TextStyle(fontSize: 11.5, color: C.muted)),
+                    Text({'primary': 'Primary', 'secondary': 'Other', 'accent': 'Button', 'dark': 'Dark', 'light': 'Light'}[role]!, style: const TextStyle(fontSize: 11.5, color: C.muted)),
                   ]),
                 ),
             ]),
             if ((kit['palette'] as List?)?.isNotEmpty == true) ...[
               const SizedBox(height: 8),
-              Text('Logo se mile: ${(kit['palette'] as List).join('  ')}', style: const TextStyle(color: C.faint, fontSize: 12)),
+              Text('From the logo: ${(kit['palette'] as List).join('  ')}', style: const TextStyle(color: C.faint, fontSize: 12)),
             ],
             const SizedBox(height: 8),
             Wrap(spacing: 6, children: [
@@ -741,7 +741,7 @@ class _KitTab extends StatelessWidget {
                   if (v != null && v.isNotEmpty && context.mounted) await _save(context, {'rule': v});
                 },
                 icon: const Icon(Icons.add_rounded),
-                label: const Text('Jodo'),
+                label: const Text('Add'),
               ),
             ]),
             for (final r in rules)

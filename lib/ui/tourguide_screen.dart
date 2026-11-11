@@ -25,7 +25,7 @@ void _snack(BuildContext c, String t) {
 }
 
 Future<Map<String, String>?> _form(BuildContext context, String title, List<(String, String)> fields,
-    {String ok = 'Aage', Map<String, String> initial = const {}}) async {
+    {String ok = 'Next', Map<String, String> initial = const {}}) async {
   final c = {for (final (k, _) in fields) k: TextEditingController(text: initial[k] ?? '')};
   final res = await showDialog<bool>(
     context: context,
@@ -131,7 +131,7 @@ class _TourguideScreenState extends State<TourguideScreen> {
     final f = await _form(context, 'Paste the enquiry', const [
       ('text', 'WhatsApp / call message (as received)'),
       ('tour', 'Tour (TP-01, ho to)'),
-      ('lead_name', 'Mehmaan name'),
+      ('lead_name', 'Guest name'),
     ], ok: 'Save');
     if (f == null || (f['text'] ?? '').isEmpty) return;
     final r = await _run('POST', '/api/tourguide/bookings/enquiry', f);
@@ -144,7 +144,7 @@ class _TourguideScreenState extends State<TourguideScreen> {
       ('tour', 'Tour (TP-01)'),
       ('day', 'Date (DD-MM-YYYY)'),
       ('start_time', 'Time (07:30)'),
-      ('lead_name', 'Mehmaan name'),
+      ('lead_name', 'Guest name'),
       ('phone', 'Mobile'),
       ('guests', 'How many people'),
       ('language', 'Language (hindi / english / marathi ...)'),
@@ -164,8 +164,8 @@ class _TourguideScreenState extends State<TourguideScreen> {
         .map((p) => [p['name'], p['stop_min'] ?? '', p['open'] ?? '', p['close'] ?? '', p['ticket_in'] ?? '', p['ticket_foreign'] ?? '',
               _strs(p['closed_on']).join(' ')].map(_s).join(' | '))
         .join('\n');
-    final f = await _form(context, t == null ? 'New tour' : 'Tour badlo', const [
-      ('title', 'Naam'),
+    final f = await _form(context, t == null ? 'New tour' : 'Edit tour', const [
+      ('title', 'Name'),
       ('kind', 'city_walk / heritage / temple / trek / food / nature / boat / day_trip'),
       ('city', 'City'),
       ('duration_min', 'How many minutes'),
@@ -197,7 +197,7 @@ class _TourguideScreenState extends State<TourguideScreen> {
 
   Future<void> _settings() async {
     final st = _m(_d?['settings']);
-    final f = await _form(context, 'Niyam', const [
+    final f = await _form(context, 'Rules', const [
       ('business', 'Business name'),
       ('guide_name', 'Your name (in the intro)'),
       ('phone', 'Your mobile'),
@@ -207,7 +207,7 @@ class _TourguideScreenState extends State<TourguideScreen> {
       ('review_link', 'Review link (Google / TripAdvisor)'),
       ('gst_mode', 'GST: none / guide / tour5 / tour18'),
       ('parallel_tours', 'How many tours at once (team)'),
-      ('morning_time', 'Subah ka note (HH:MM)'),
+      ('morning_time', 'Morning note (HH:MM)'),
       ('rules', 'Your rules'),
     ], initial: {
       for (final k in ['business', 'guide_name', 'phone', 'city', 'upi_id', 'cancel_policy', 'review_link', 'gst_mode', 'parallel_tours', 'morning_time', 'rules'])
@@ -232,13 +232,13 @@ class _TourguideScreenState extends State<TourguideScreen> {
   }
 
   Future<void> _ledgerAdd() async {
-    final f = await _form(context, 'Hisaab', const [
+    final f = await _form(context, 'Accounts', const [
       ('kind', 'tip / commission_in / commission_out'),
       ('amount', 'How much'),
       ('party', 'From / to whom'),
       ('booking', 'Booking (B-0001, ho to)'),
       ('note', 'Note'),
-    ], ok: 'Darj');
+    ], ok: 'Save');
     if (f == null) return;
     final body = <String, dynamic>{...f};
     if (f['amount'] != null) body['amount'] = _n(f['amount']);
@@ -247,9 +247,9 @@ class _TourguideScreenState extends State<TourguideScreen> {
 
   Future<void> _spend() async {
     final f = await _form(context, 'Expense (with your yes)', const [
-      ('what', 'Kis cheez ka'),
+      ('what', 'What for'),
       ('amount', 'How much (bill / quote)'),
-      ('party', 'Kisko'),
+      ('party', 'To whom'),
       ('booking', 'Booking (ho to)'),
     ], ok: 'Make card');
     if (f == null) return;
@@ -283,9 +283,9 @@ class _TourguideScreenState extends State<TourguideScreen> {
       if (cards.isNotEmpty) const Caption('NEEDS YOUR YES'),
       for (final c in cards)
         Padding(padding: const EdgeInsets.only(bottom: 8), child: TourguideCardCard(app: widget.app, data: {'card': c}, onDone: _load)),
-      if (_list(d['today']).isNotEmpty) const Caption('AAJ'),
+      if (_list(d['today']).isNotEmpty) const Caption('TODAY'),
       for (final b in _list(d['today'])) _bookingTile(b),
-      if (_list(d['tomorrow']).isNotEmpty) const Caption('KAL'),
+      if (_list(d['tomorrow']).isNotEmpty) const Caption('TOMORROW'),
       for (final b in _list(d['tomorrow'])) _bookingTile(b),
     ]);
   }
@@ -320,7 +320,7 @@ class _TourguideScreenState extends State<TourguideScreen> {
                 Text('• ${_s(p['name'])}  ${_s(p['open']).isEmpty ? 'timing not known' : '${_s(p['open'])}-${_s(p['close'])}'}',
                     style: const TextStyle(fontSize: 12, color: C.faint)),
               if (_strs(t['missing']).isNotEmpty)
-                Text('Baaki: ${_strs(t['missing']).join(', ')}', style: const TextStyle(fontSize: 12.5, color: C.warn)),
+                Text('Missing: ${_strs(t['missing']).join(', ')}', style: const TextStyle(fontSize: 12.5, color: C.warn)),
               const SizedBox(height: 6),
               Wrap(spacing: 8, children: [
                 GlassButton(
@@ -352,7 +352,7 @@ class _TourguideScreenState extends State<TourguideScreen> {
           ]),
         ),
       Row(children: [
-        GlassButton(label: 'Licence jodo', icon: Icons.badge_rounded, height: 40, onTap: _busy ? null : _licence),
+        GlassButton(label: 'Add licence', icon: Icons.badge_rounded, height: 40, onTap: _busy ? null : _licence),
         const SizedBox(width: 8),
         GlassButton(label: 'iitf.gov.in', icon: Icons.open_in_new_rounded, height: 40, onTap: () => Native.openExternal(url: 'https://iitf.gov.in')),
       ]),
@@ -363,7 +363,7 @@ class _TourguideScreenState extends State<TourguideScreen> {
       Row(children: [
         GlassButton(label: 'Tip / commission', icon: Icons.add_rounded, height: 40, onTap: _busy ? null : _ledgerAdd),
         const SizedBox(width: 8),
-        GlassButton(label: 'Kharcha card', icon: Icons.payments_rounded, height: 40, onTap: _busy ? null : _spend),
+        GlassButton(label: 'Expense card', icon: Icons.payments_rounded, height: 40, onTap: _busy ? null : _spend),
       ]),
       for (final x in _list(led['entries']))
         Text('${_s(x['on'])} · ${_s(x['kind'])} · ${_s(x['amount_text'])} · ${_s(x['party'])}',
@@ -383,7 +383,7 @@ class _TourguideScreenState extends State<TourguideScreen> {
           _line('GST', _s(st['gst_note'])),
           _line('Tours at once', _s(st['parallel_tours'])),
           const SizedBox(height: 8),
-          GlassButton(label: 'Badlo', icon: Icons.tune_rounded, onTap: _busy ? null : _settings),
+          GlassButton(label: 'Change', icon: Icons.tune_rounded, onTap: _busy ? null : _settings),
         ]),
       ),
       const SizedBox(height: 10),
@@ -400,7 +400,7 @@ class _TourguideScreenState extends State<TourguideScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const tabs = ['Aaj', 'Booking', 'Tour', 'Licence · Hisaab', 'Niyam'];
+    const tabs = ['Today', 'Booking', 'Tour', 'Licence · Accounts', 'Rules'];
     return Scaffold(
       backgroundColor: C.bgTop,
       appBar: AppBar(
@@ -483,7 +483,7 @@ class _TourguideBookingPageState extends State<TourguideBookingPage> {
   Future<void> _edit() async {
     final b = _b ?? {};
     final f = await _form(context, 'Group file', const [
-      ('lead_name', 'Mehmaan name'),
+      ('lead_name', 'Guest name'),
       ('phone', 'Mobile'),
       ('guests', 'How many people'),
       ('day', 'Date'),
@@ -491,7 +491,7 @@ class _TourguideBookingPageState extends State<TourguideBookingPage> {
       ('language', 'Language'),
       ('pickup', 'Pickup'),
       ('special_needs', 'Special needs'),
-      ('emergency_name', 'Emergency: naam'),
+      ('emergency_name', 'Emergency: name'),
       ('emergency_phone', 'Emergency: number (goes to the ID Locker)'),
       ('text', 'Guests: "name, age, foreigner" on each line (ID at the end if any; goes to the locker)'),
     ], ok: 'Save', initial: {
@@ -518,10 +518,10 @@ class _TourguideBookingPageState extends State<TourguideBookingPage> {
   }
 
   Future<void> _money(String kind) async {
-    final f = await _form(context, switch (kind) { 'received' => 'Paise mile', 'refund' => 'Refund card', _ => 'Discount card' }, [
+    final f = await _form(context, switch (kind) { 'received' => 'Payment received', 'refund' => 'Refund card', _ => 'Discount card' }, [
       ('amount', 'How much'),
       if (kind == 'discount') ('pct', 'Or % (if amount is blank)'),
-      if (kind != 'received') ('reason', 'Wajah'),
+      if (kind != 'received') ('reason', 'Reason'),
       if (kind == 'received') ('ref', 'UTR / ref (last digits)'),
     ]);
     if (f == null) return;
@@ -536,7 +536,7 @@ class _TourguideBookingPageState extends State<TourguideBookingPage> {
     final f = await _form(context, 'Count', [
       ('checkpoint', 'Where (stop)'),
       if (names.isNotEmpty) ('present', 'Who came (comma separated): ${names.join(', ')}') else ('count', 'How many came'),
-    ], ok: 'Darj');
+    ], ok: 'Save');
     if (f == null) return;
     final body = <String, dynamic>{'checkpoint': f['checkpoint'] ?? ''};
     if (f['present'] != null) body['present'] = f['present']!.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
@@ -563,7 +563,7 @@ class _TourguideBookingPageState extends State<TourguideBookingPage> {
                       Pill(_s(b['status_label'])),
                     ]),
                     _line('Tour', _s(b['tour'])),
-                    _line('Kab', '${_s(b['day'])} ${_s(b['start_time'])}'),
+                    _line('When', '${_s(b['day'])} ${_s(b['start_time'])}'),
                     _line('Mobile', _s(b['phone'])),
                     _line('Language', _s(b['language_label'])),
                     _line('Pickup', _s(b['pickup'])),
@@ -571,7 +571,7 @@ class _TourguideBookingPageState extends State<TourguideBookingPage> {
                     _line('Emergency', _s(b['emergency'])),
                     _line('Total', '${_s(b['total_text'])} (${_s(b['how'])})'),
                     _line('Received', _s(b['paid'])),
-                    _line('Baaki', _s(b['due_text'])),
+                    _line('Due', _s(b['due_text'])),
                     _line('Trip', _s(b['travel_trip'])),
                     for (final g in _list(b['guest_list']))
                       Text('• ${_s(g['name'])} ${_s(g['age'])} ${_s(g['nationality']) == 'foreign' ? '(videshi)' : ''} ${_s(g['id_masked'])}',
@@ -580,8 +580,8 @@ class _TourguideBookingPageState extends State<TourguideBookingPage> {
                 ),
                 const SizedBox(height: 10),
                 Wrap(spacing: 8, runSpacing: 8, children: [
-                  GlassButton(label: 'File badlo', icon: Icons.edit_rounded, height: 38, onTap: _busy ? null : _edit),
-                  GlassButton(label: 'Jagah roko', height: 38, onTap: _busy ? null : () => _post('hold')),
+                  GlassButton(label: 'Edit file', icon: Icons.edit_rounded, height: 38, onTap: _busy ? null : _edit),
+                  GlassButton(label: 'Hold the slot', height: 38, onTap: _busy ? null : () => _post('hold')),
                   GradientButton(label: 'Confirm (card)', icon: Icons.verified_rounded, height: 38, onTap: _busy ? null : () => _post('confirm')),
                   GlassButton(
                       label: 'Din ka plan',
@@ -617,7 +617,7 @@ class _TourguideBookingPageState extends State<TourguideBookingPage> {
                               if (r != null && mounted) setState(() => _script = _s(r['text']));
                             }),
                   GlassButton(label: 'Reminder for tomorrow (card)', height: 38, onTap: _busy ? null : () => _post('message', {'kind': 'reminder'})),
-                  GlassButton(label: 'Paise mile', height: 38, onTap: _busy ? null : () => _money('received')),
+                  GlassButton(label: 'Payment received', height: 38, onTap: _busy ? null : () => _money('received')),
                   GlassButton(label: 'Refund', height: 38, onTap: _busy ? null : () => _money('refund')),
                   GlassButton(label: 'Discount', height: 38, onTap: _busy ? null : () => _money('discount')),
                   GlassButton(label: 'Train / flight', height: 38, onTap: _busy ? null : () => _post('travel')),
@@ -706,7 +706,7 @@ class _TourguideCardCardState extends State<TourguideCardCard> {
   }
 
   Future<void> _paid() async {
-    final f = await _form(context, 'I gave it', const [('ref', 'UTR / ref (last digits)')], ok: 'Darj');
+    final f = await _form(context, 'I gave it', const [('ref', 'UTR / ref (last digits)')], ok: 'Save');
     if (f == null) return;
     final m = await _call(context, widget.app, 'POST', '/api/tourguide/cards/${_s(_c['id'])}/paid', {'ref': f['ref'] ?? ''});
     if (m != null && mounted) setState(() => _c = _m(m['card']).isEmpty ? _c : _m(m['card']));
@@ -739,7 +739,7 @@ class _TourguideCardCardState extends State<TourguideCardCard> {
             child: Text(_s(show['text']), style: const TextStyle(fontSize: 12.5)),
           ),
         _line('Total', _s(show['amount_text'])),
-        _line('Wajah', _s(show['reason'])),
+        _line('Reason', _s(show['reason'])),
         _line('Policy', _s(show['policy'])),
         _line('GST', _s(show['gst_note'])),
         for (final x in _strs(show['checks'])) Text('⚠ $x', style: const TextStyle(fontSize: 12.5, color: C.warn)),
@@ -806,7 +806,7 @@ class TourguidePlanCard extends StatelessWidget {
           const Text('Din ka plan', style: TextStyle(fontWeight: FontWeight.w800)),
           _line('Meeting point', _s(p['meeting_point'])),
           for (final x in _list(p['stops']))
-            Text('${_s(x['arrive'])}-${_s(x['leave'])}  ${_s(x['name'])}  (khule ${_s(x['open'])}-${_s(x['close'])}, ticket ${_s(x['ticket'])})',
+            Text('${_s(x['arrive'])}-${_s(x['leave'])}  ${_s(x['name'])}  (open ${_s(x['open'])}-${_s(x['close'])}, ticket ${_s(x['ticket'])})',
                 style: const TextStyle(fontSize: 12.5)),
           _line('Ticket total', _s(p['ticket_text'])),
           for (final w in _strs(p['warnings'])) Text('⚠ $w', style: const TextStyle(fontSize: 12.5, color: C.warn)),

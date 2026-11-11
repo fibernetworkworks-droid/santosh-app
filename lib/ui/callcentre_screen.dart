@@ -138,7 +138,7 @@ class _CallCentreScreenState extends State<CallCentreScreen> {
             Icon(on ? Icons.support_agent_rounded : Icons.phone_disabled_rounded, color: on ? C.ok : C.muted),
             const SizedBox(width: 10),
             Expanded(
-                child: Text(on ? 'AI line is on' : 'AI line band',
+                child: Text(on ? 'AI line is on' : 'AI line off',
                     style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16))),
             Switch(
                 value: on,
@@ -408,7 +408,7 @@ class _CallCentreScreenState extends State<CallCentreScreen> {
             onPressed: _busy
                 ? null
                 : () async {
-                    final f = await _form(context, 'Opening hours', const [('open', 'Opens (10:00)'), ('close', 'Band (19:00)')],
+                    final f = await _form(context, 'Opening hours', const [('open', 'Opens (10:00)'), ('close', 'Closes (19:00)')],
                         initial: {'open': _s(h['open']), 'close': _s(h['close'])});
                     if (f != null) await _settings({'hours': {'open': f['open'] ?? '10:00', 'close': f['close'] ?? '19:00', 'days': days.toList()}});
                   },
@@ -496,7 +496,7 @@ class _CallCentreScreenState extends State<CallCentreScreen> {
             onPressed: _busy
                 ? null
                 : () async {
-                    final f = await _form(context, 'Cost', const [('rate', '₹ per minute (bill se)'), ('max', 'Ek call max minute')],
+                    final f = await _form(context, 'Cost', const [('rate', '₹ per minute (bill se)'), ('max', 'Max minutes per call')],
                         initial: {'rate': _s(st['rate_inr_per_min']), 'max': _s(st['max_minutes'])});
                     if (f != null) {
                       await _settings({
@@ -512,7 +512,7 @@ class _CallCentreScreenState extends State<CallCentreScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Call Centre Sahayak')),
+        appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Call Centre Assistant')),
         body: Aurora(
           child: RefreshIndicator(
             onRefresh: _load,

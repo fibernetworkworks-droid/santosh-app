@@ -19,7 +19,7 @@ List<Map<String, dynamic>> _list(dynamic l) =>
     List<Map<String, dynamic>>.from(((l as List?) ?? const []).whereType<Map>().map((e) => Map<String, dynamic>.from(e)));
 List<String> _strs(dynamic l) => ((l as List?) ?? const []).map((e) => '$e').toList();
 num? _n(String? v) => (v == null || v.trim().isEmpty) ? null : num.tryParse(v.replaceAll(',', '').trim());
-String _rs(dynamic v) => v == null ? '[daam?]' : '₹${(v is num ? v : num.tryParse('$v') ?? 0).toStringAsFixed(0)}';
+String _rs(dynamic v) => v == null ? '[price?]' : '₹${(v is num ? v : num.tryParse('$v') ?? 0).toStringAsFixed(0)}';
 
 void _snack(BuildContext c, String t) {
   if (t.trim().isEmpty) return;
@@ -27,7 +27,7 @@ void _snack(BuildContext c, String t) {
 }
 
 Future<Map<String, String>?> _form(BuildContext context, String title, List<(String, String)> fields,
-    {String ok = 'Aage', Map<String, String> initial = const {}}) async {
+    {String ok = 'Next', Map<String, String> initial = const {}}) async {
   final c = {for (final (k, _) in fields) k: TextEditingController(text: initial[k] ?? '')};
   final res = await showDialog<bool>(
     context: context,
@@ -154,7 +154,7 @@ class _MotiondeskScreenState extends State<MotiondeskScreen> {
       if (_list(_d?['cards']).isNotEmpty) const Caption('WAITING FOR YOUR YES'),
       for (final c in _list(_d?['cards']))
         Padding(padding: const EdgeInsets.only(bottom: 10), child: MotiondeskCardCard(app: widget.app, data: {'card': c}, onDone: _load)),
-      for (final (k, label) in const [('late', 'DEADLINE PASSED'), ('due', 'DEADLINE IN 2 DAYS'), ('unpaid', 'PAISE BAAKI'), ('expiring', 'LICENCE KHATAM HONE WALE')])
+      for (final (k, label) in const [('late', 'DEADLINE PASSED'), ('due', 'DEADLINE IN 2 DAYS'), ('unpaid', 'PAYMENT PENDING'), ('expiring', 'LICENCES EXPIRING')])
         if (_strs(day[k]).isNotEmpty) ...[Caption(label), for (final x in _strs(day[k])) Text('• $x'), const SizedBox(height: 8)],
     ]);
   }
@@ -162,8 +162,8 @@ class _MotiondeskScreenState extends State<MotiondeskScreen> {
   Future<void> _newJob() async {
     final clients = _list(_d?['clients']);
     final f = await _form(context, 'New job', [
-      ('client', 'Client (naam / C-number)${clients.isEmpty ? '' : ': ${clients.map((c) => _s(c['name'])).take(4).join(', ')}'}'),
-      ('title', 'Kaam name'),
+      ('client', 'Client (name / C-number)${clients.isEmpty ? '' : ': ${clients.map((c) => _s(c['name'])).take(4).join(', ')}'}'),
+      ('title', 'Job name'),
       ('brief', 'Brief (client\'s words: what, for whom, where it will run)'),
       ('engine', 'Engine: motion / blender3d / brand / photo'),
       ('kind', 'Motion type: explainer / logo / offer / recipe / custom'),
@@ -214,7 +214,7 @@ class _MotiondeskScreenState extends State<MotiondeskScreen> {
                 ? null
                 : () async {
                     final f = await _form(context, 'Client and their brand kit', const [
-                      ('name', 'Naam'),
+                      ('name', 'Name'),
                       ('contact', 'Contact person'),
                       ('phone', 'Mobile'),
                       ('email', 'Email'),
@@ -223,7 +223,7 @@ class _MotiondeskScreenState extends State<MotiondeskScreen> {
                       ('accent', 'Accent colour'),
                       ('font', 'Font name'),
                       ('font_source', 'Font source: google_fonts / adobe_fonts / client / own'),
-                      ('tone', 'Tone (jaise warm, premium)'),
+                      ('tone', 'Tone (e.g. warm, premium)'),
                     ], ok: 'Save');
                     if (f == null) return;
                     await _run('POST', '/api/motiondesk/clients', {
@@ -265,14 +265,14 @@ class _MotiondeskScreenState extends State<MotiondeskScreen> {
 
   Widget _licence() => ListView(padding: const EdgeInsets.all(16), children: [
         GradientButton(
-            label: 'Font / music / stock jodo',
+            label: 'Add font / music / stock',
             icon: Icons.library_add_rounded,
             height: 46,
             onTap: _busy
                 ? null
                 : () async {
                     final f = await _form(context, 'Licence register', const [
-                      ('name', 'Naam'),
+                      ('name', 'Name'),
                       ('kind', 'What: font / music / sfx / stock_video / stock_image / template / 3d_model'),
                       ('source', 'From where: google_fonts / adobe_fonts / envato / artlist / epidemic / pixabay / own / client'),
                       ('licence_ref', 'Licence ID / invoice no.'),
@@ -310,7 +310,7 @@ class _MotiondeskScreenState extends State<MotiondeskScreen> {
         Text('Advance ${_s(st['advance_pct'])}% · Bill in ${_s(st['pay_days'])} days · Rights: ${_s(st['rights'])}'),
         const SizedBox(height: 8),
         GlassButton(
-            label: 'Badlo',
+            label: 'Change',
             icon: Icons.edit_rounded,
             height: 40,
             onTap: _busy
@@ -318,7 +318,7 @@ class _MotiondeskScreenState extends State<MotiondeskScreen> {
                 : () async {
                     final f = await _form(
                         context,
-                        'Studio niyam',
+                        'Studio rules',
                         const [
                           ('studio', 'Studio name'),
                           ('gstin', 'GSTIN'),
@@ -326,7 +326,7 @@ class _MotiondeskScreenState extends State<MotiondeskScreen> {
                           ('gst_pct', 'GST %'),
                           ('sac', 'SAC'),
                           ('rounds', 'Change rounds included'),
-                          ('round_fee', 'Extra round ka daam (₹)'),
+                          ('round_fee', 'Price of an extra round (₹)'),
                           ('advance_pct', 'Advance %'),
                           ('pay_days', 'Bill within how many days'),
                           ('rights', 'Rights: licence / assign'),
@@ -360,11 +360,11 @@ class _MotiondeskScreenState extends State<MotiondeskScreen> {
         selectedIndex: _tab,
         onDestinationSelected: (i) => setState(() => _tab = i),
         destinations: const [
-          NavigationDestination(icon: Icon(Icons.today_rounded), label: 'Aaj'),
-          NavigationDestination(icon: Icon(Icons.movie_filter_rounded), label: 'Kaam'),
+          NavigationDestination(icon: Icon(Icons.today_rounded), label: 'Today'),
+          NavigationDestination(icon: Icon(Icons.movie_filter_rounded), label: 'Jobs'),
           NavigationDestination(icon: Icon(Icons.people_rounded), label: 'Clients'),
           NavigationDestination(icon: Icon(Icons.verified_user_rounded), label: 'Licence'),
-          NavigationDestination(icon: Icon(Icons.tune_rounded), label: 'Niyam'),
+          NavigationDestination(icon: Icon(Icons.tune_rounded), label: 'Rules'),
         ],
       ),
     );
@@ -447,7 +447,7 @@ class _MotiondeskJobPageState extends State<MotiondeskJobPage> {
                         }),
           ]),
           const SizedBox(height: 12),
-          Caption('STORYBOARD v${_s(j['sb_version'])} · ${_s(j['seconds'])} sec${j['storyboard_approved'] == true ? ' · client ne maana' : ''}'),
+          Caption('STORYBOARD v${_s(j['sb_version'])} · ${_s(j['seconds'])} sec${j['storyboard_approved'] == true ? ' · client approved' : ''}'),
           for (final f in _list(j['frames']))
             Glass(
                 margin: const EdgeInsets.only(bottom: 6),
@@ -520,7 +520,7 @@ class _MotiondeskJobPageState extends State<MotiondeskJobPage> {
                 onTap: _busy
                     ? null
                     : () async {
-                        final f = await _form(context, 'Template name', const [('name', 'Naam')]);
+                        final f = await _form(context, 'Template name', const [('name', 'Name')]);
                         if (f != null) _act('template', f);
                       }),
           ]),
@@ -541,14 +541,14 @@ class _MotiondeskJobPageState extends State<MotiondeskJobPage> {
                       onPressed: _busy
                           ? null
                           : () async {
-                              final f = await _form(context, 'Paise mile', const [('amount', 'How much (₹)'), ('ref', 'UTR / ref (aakhri ank)')]);
+                              final f = await _form(context, 'Payment received', const [('amount', 'How much (₹)'), ('ref', 'UTR / ref (last digits)')]);
                               if (f == null) return;
                               if (!context.mounted) return;
                               await _call(context, widget.app, 'POST', '/api/motiondesk/invoices/${_s(i['id'])}/paid',
                                   {'amount': _n(f['amount']), 'ref': f['ref'] ?? ''});
                               await _load();
                             },
-                      child: const Text('Paise mile')),
+                      child: const Text('Payment received')),
             ),
         ]),
       ),

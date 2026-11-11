@@ -96,7 +96,7 @@ class _CallQualityScreenState extends State<CallQualityScreen> {
   String _n(dynamic x, {String unit = ''}) => x == null ? 'not known yet' : '$x$unit';
 
   Color _gradeColor(String g) => g == 'good' ? C.ok : (g == 'bad' ? C.bad : C.warn);
-  String _gradeWord(String g) => g == 'good' ? 'Good' : (g == 'bad' ? 'Bad' : 'Theek');
+  String _gradeWord(String g) => g == 'good' ? 'Good' : (g == 'bad' ? 'Bad' : 'Fair');
 
   Widget _grades(Map<String, dynamic> o) {
     final g = Map<String, dynamic>.from((o['grades'] as Map?) ?? const {});
@@ -142,7 +142,7 @@ class _CallQualityScreenState extends State<CallQualityScreen> {
   }
 
   String _endWord(String k) => const {
-        'hung_up': 'aapne kaata',
+        'hung_up': 'you hung up',
         'dropped': 'line dropped',
         'error': 'error',
         'stall': 'went silent',
@@ -158,7 +158,7 @@ class _CallQualityScreenState extends State<CallQualityScreen> {
               padding: const EdgeInsets.symmetric(vertical: 6),
               child: Row(children: [
                 SizedBox(width: 70, child: Text('v${r['version']}', style: const TextStyle(fontWeight: FontWeight.w700))),
-                Expanded(child: Text('${r['calls']} calls · ${_n(r['good_pct'], unit: '% achhi')} · ${_ms(r['reply_start_ms_p50'])}',
+                Expanded(child: Text('${r['calls']} calls · ${_n(r['good_pct'], unit: '% good')} · ${_ms(r['reply_start_ms_p50'])}',
                     style: const TextStyle(fontSize: 13))),
               ]),
             ),
@@ -176,7 +176,7 @@ class _CallQualityScreenState extends State<CallQualityScreen> {
                       ? Icons.check_circle_rounded
                       : (c['grade'] == 'bad' ? Icons.error_rounded : Icons.remove_circle_outline_rounded),
                   color: _gradeColor('${c['grade']}')),
-              title: Text('${_when(c['started'])} · ${_mins(c['seconds'])} · ${c['turns'] ?? 0} baat'
+              title: Text('${_when(c['started'])} · ${_mins(c['seconds'])} · ${c['turns'] ?? 0} turns'
                   '${c['rating'] == true ? ' · 👍' : (c['rating'] == false ? ' · 👎' : '')}'),
               subtitle: Text(
                   [
@@ -257,7 +257,7 @@ class _CallQualityScreenState extends State<CallQualityScreen> {
         if ('${t['note'] ?? ''}'.isNotEmpty)
           Padding(padding: const EdgeInsets.only(top: 4), child: Text('You wrote: ${t['note']}', style: const TextStyle(color: C.bad, fontSize: 12.5))),
         const SizedBox(height: 8),
-        Wrap(children: [btn('pass', 'Sahi', C.ok), btn('fail', 'Galat', C.bad), btn('skip', 'Skip', C.muted)]),
+        Wrap(children: [btn('pass', 'Right', C.ok), btn('fail', 'Wrong', C.bad), btn('skip', 'Skip', C.muted)]),
       ]),
     );
   }
@@ -283,7 +283,7 @@ class _CallQualityScreenState extends State<CallQualityScreen> {
                 Wrap(spacing: 8, children: [
                   for (final d in const [7, 30, 90])
                     ChoiceChip(
-                      label: Text('$d din'),
+                      label: Text('$d days'),
                       selected: _days == d,
                       onSelected: (_) {
                         setState(() => _days = d);
@@ -297,7 +297,7 @@ class _CallQualityScreenState extends State<CallQualityScreen> {
                 if (vs.length > 1) ...[_title('Every version'), _versions(vs)],
                 if (rs.isNotEmpty) ...[_title('Previous calls'), _recent(rs)],
                 _title('Listening test · v${ear?['version'] ?? ''}',
-                    trailing: Text('${ear?['passed'] ?? 0} sahi · ${ear?['failed'] ?? 0} galat · ${ear?['done'] ?? 0}/${ear?['total'] ?? 0}',
+                    trailing: Text('${ear?['passed'] ?? 0} right · ${ear?['failed'] ?? 0} wrong · ${ear?['done'] ?? 0}/${ear?['total'] ?? 0}',
                         style: const TextStyle(color: C.muted, fontSize: 12.5))),
                 const Padding(
                   padding: EdgeInsets.only(bottom: 10),
@@ -308,7 +308,7 @@ class _CallQualityScreenState extends State<CallQualityScreen> {
                   Padding(
                     padding: const EdgeInsets.only(bottom: 10),
                     child: Text(
-                        'v${cmp['against']} ke muqable: ${(cmp['better'] as List?)?.length ?? 0} better, '
+                        'vs v${cmp['against']}: ${(cmp['better'] as List?)?.length ?? 0} better, '
                         '${(cmp['worse'] as List?)?.length ?? 0} worse, ${cmp['same'] ?? 0} same.',
                         style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
                   ),

@@ -232,7 +232,7 @@ class _InfluencerScreenState extends State<InfluencerScreen> {
                     const SizedBox(height: 8),
                     Text(_s(r['note']), style: const TextStyle(fontSize: 11.5, color: C.faint)),
                   ])),
-                  actions: [TextButton(onPressed: () => Navigator.pop(d), child: const Text('Band'))],
+                  actions: [TextButton(onPressed: () => Navigator.pop(d), child: const Text('Close'))],
                 ));
               }),
             ]),

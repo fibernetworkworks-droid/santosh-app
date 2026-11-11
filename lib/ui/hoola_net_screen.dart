@@ -201,7 +201,7 @@ class _HoolaNetScreenState extends State<HoolaNetScreen> {
               ),
             ),
           ],
-          GradientButton(label: inv == null ? 'QR banaiye' : 'New QR', icon: Icons.qr_code_2_rounded, height: 46, onTap: _makeInvite),
+          GradientButton(label: inv == null ? 'Make a QR' : 'New QR', icon: Icons.qr_code_2_rounded, height: 46, onTap: _makeInvite),
         ]),
       ),
       const SizedBox(height: 14),
@@ -320,7 +320,7 @@ class _HoolaNetScreenState extends State<HoolaNetScreen> {
               ]),
               const SizedBox(height: 10),
               Row(children: [
-                TextButton(onPressed: () => act('remove'), child: const Text('Hataiye')),
+                TextButton(onPressed: () => act('remove'), child: const Text('Remove')),
                 const Spacer(),
                 TextButton(onPressed: () => act(l['status'] == 'blocked' ? 'unblock' : 'block'),
                     child: Text(l['status'] == 'blocked' ? 'Unblock' : 'Block', style: const TextStyle(color: C.bad))),
@@ -367,8 +367,8 @@ class _HoolaNetScreenState extends State<HoolaNetScreen> {
       for (final l in active) tile(l, '@${l['handle']} · ${_relations[l['relation']] ?? ''}'),
       if (waiting.isNotEmpty) const Padding(padding: EdgeInsets.only(top: 12), child: Text('Waiting for your yes', style: TextStyle(fontWeight: FontWeight.w700))),
       for (final l in waiting) tile(l, '@${l['handle']} · request sent'),
-      if (other.isNotEmpty) const Padding(padding: EdgeInsets.only(top: 12), child: Text('Band', style: TextStyle(fontWeight: FontWeight.w700))),
-      for (final l in other) tile(l, l['status'] == 'blocked' ? 'Block' : 'Mana kiya'),
+      if (other.isNotEmpty) const Padding(padding: EdgeInsets.only(top: 12), child: Text('Closed', style: TextStyle(fontWeight: FontWeight.w700))),
+      for (final l in other) tile(l, l['status'] == 'blocked' ? 'Block' : 'Declined'),
       if (_links.isEmpty)
         const Padding(
           padding: EdgeInsets.all(20),
@@ -389,7 +389,7 @@ class _HoolaNetScreenState extends State<HoolaNetScreen> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('${l['label'] ?? ''} se baat'),
+        title: Text('Chat with ${l['label'] ?? ''}'),
         content: TextField(controller: c, minLines: 2, maxLines: 5, decoration: InputDecoration(hintText: 'What should ${app.aName} say to their Hoola?')),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
@@ -445,7 +445,7 @@ class _HoolaNetScreenState extends State<HoolaNetScreen> {
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(fontWeight: FontWeight.w700)),
             subtitle: Text(
-                '${t['last_dir'] == 'out' ? 'Aapka ${t['my_avatar'] ?? app.aName}: ' : ''}'
+                '${t['last_dir'] == 'out' ? 'Your ${t['my_avatar'] ?? app.aName}: ' : ''}'
                 '${t['last_kind'] == 'file' ? '📎 ' : ''}${(t['last'] as String? ?? '').isNotEmpty ? t['last'] : (t['subject'] ?? '')}',
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis),
@@ -481,7 +481,7 @@ class _HoolaNetScreenState extends State<HoolaNetScreen> {
           ),
           actions: [
             TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
-            TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Banaiye')),
+            TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Create')),
           ],
         ),
       ),
@@ -504,7 +504,7 @@ class _HoolaNetScreenState extends State<HoolaNetScreen> {
             contentPadding: EdgeInsets.zero,
             leading: Text(g['emoji'] as String? ?? '👥', style: const TextStyle(fontSize: 26)),
             title: Text(g['name'] as String? ?? ''),
-            subtitle: Text(g['status'] == 'invited' ? 'You have an invite' : '${g['count']} log · ${g['role'] == 'admin' ? 'aap admin' : g['hub']}'),
+            subtitle: Text(g['status'] == 'invited' ? 'You have an invite' : '${g['count']} people · ${g['role'] == 'admin' ? 'you are admin' : g['hub']}'),
             onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => HoolaGroupScreen(app: app, gid: g['gid'] as String))),
           ),
         if (_groups.isEmpty)
@@ -525,7 +525,7 @@ class _HoolaNetScreenState extends State<HoolaNetScreen> {
             backgroundColor: Colors.transparent,
             actions: [
               IconButton(
-                tooltip: 'Dosti',
+                tooltip: 'Friends',
                 icon: const Icon(Icons.diversity_3_rounded),
                 onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => DostiScreen(app: app))),
               ),
@@ -669,7 +669,7 @@ class _HoolaThreadScreenState extends State<HoolaThreadScreen> {
           const Divider(height: 1),
           ListTile(
               leading: const Icon(Icons.auto_awesome_rounded, color: C.teal),
-              title: Text('${app.aName} se banwaiye'),
+              title: Text('Have ${app.aName} make it'),
               subtitle: const Text('PDF (quotation, note, agenda) or picture'),
               onTap: () => Navigator.pop(ctx, 'make')),
         ]),
@@ -712,7 +712,7 @@ class _HoolaThreadScreenState extends State<HoolaThreadScreen> {
                     onSelected: (_) => set(() => kind = e.key),
                   ),
               ]),
-              TextField(controller: title, decoration: const InputDecoration(hintText: 'Title (jaise: FNW Quotation)')),
+              TextField(controller: title, decoration: const InputDecoration(hintText: 'Title (e.g. FNW Quotation)')),
               TextField(
                 controller: content,
                 minLines: 3,
@@ -860,7 +860,7 @@ class _HoolaThreadScreenState extends State<HoolaThreadScreen> {
                   child: Text('${app.aName} is talking by itself · Goal: ${_t['goal'] ?? ''}',
                       style: const TextStyle(color: C.teal, fontSize: 12.5)),
                 ),
-                TextButton(onPressed: _toggleHandle, child: const Text('Rokiye')),
+                TextButton(onPressed: _toggleHandle, child: const Text('Stop')),
               ]),
             ),
           Expanded(
@@ -951,11 +951,11 @@ class _Bubble extends StatelessWidget {
   String _status(String s) => switch (s) {
         'pending' => 'waiting for your decision',
         'snoozed' => 'later',
-        'declined' => 'mana kiya',
+        'declined' => 'declined',
         'blocked' => 'blocked',
         'refused' => 'their Hoola did not accept it',
         'accepted' => 'said yes ✓',
-        'handled' => 'Hoola ne sambhala',
+        'handled' => 'Handled by Hoola',
         _ => '',
       };
 
@@ -980,7 +980,7 @@ class _Bubble extends StatelessWidget {
       if (b['amount'] != null) '₹${b['amount']} ${b['upi_note'] ?? ''}',
       // v0.160 Dosti: work experience / skills / a document asked for, shown inside the bubble
       for (final e in (b['experiences'] as List? ?? const []))
-        if (e is Map) '🧠 ${e['title'] ?? ''}${(e['learned'] ?? '') != '' ? '\n   seekha: ${e['learned']}' : ''}',
+        if (e is Map) '🧠 ${e['title'] ?? ''}${(e['learned'] ?? '') != '' ? '\n   learned: ${e['learned']}' : ''}',
       for (final k in (b['skills'] as List? ?? const []))
         if (k is Map) '🎓 skill: ${k['name'] ?? ''}',
       if (b['doc'] is Map && ((b['doc'] as Map)['what'] ?? '') != '') '📄 asked for: ${(b['doc'] as Map)['what']}',
@@ -1020,7 +1020,7 @@ class _Bubble extends StatelessWidget {
                 padding: const EdgeInsets.only(top: 6),
                 child: Wrap(spacing: 6, children: [
                   FilledButton.tonal(onPressed: () => onDecide('accept'), child: const Text('Yes')),
-                  TextButton(onPressed: () => onDecide('decline'), child: const Text('Mana', style: TextStyle(color: C.bad))),
+                  TextButton(onPressed: () => onDecide('decline'), child: const Text('Decline', style: TextStyle(color: C.bad))),
                   if (const {'message', 'ask', 'meeting', 'task', 'reminder', 'voice_note'}.contains(m['kind']))
                     TextButton(onPressed: () => onDecide('handle'), child: Text('${app.aName}, handle it', style: const TextStyle(color: C.teal))),
                 ]),
@@ -1169,7 +1169,7 @@ class _HoolaGroupScreenState extends State<HoolaGroupScreen> {
               padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
               child: Column(children: [
                 Row(children: [
-                  for (final k in const {'message': 'Baat', 'ask': 'Question', 'task': 'Kaam do'}.entries)
+                  for (final k in const {'message': 'Message', 'ask': 'Question', 'task': 'Give a task'}.entries)
                     Padding(
                       padding: const EdgeInsets.only(right: 6),
                       child: ChoiceChip(

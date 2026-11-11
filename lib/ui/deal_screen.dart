@@ -64,7 +64,7 @@ const _payWord = {
   'due': 'balance due', 'requested': 'payment card sent', 'claimed': 'sent (not confirmed)', 'part_paid': 'got some',
   'paid': 'got everything', 'khata': 'on credit', 'refund_due': 'refund still to give', 'refunded': 'refunded',
 };
-const _payChoiceWord = {'upi': 'by UPI', 'counter': 'At the counter', 'khata': 'Credit (udhaar)'};
+const _payChoiceWord = {'upi': 'by UPI', 'counter': 'At the counter', 'khata': 'Credit'};
 const _reasonWord = {
   'short': 'Came short', 'damaged': 'Broken / faulty', 'wrong': 'Wrong item', 'expired': 'Expiry passed', 'price': 'Wrong price',
   'other': 'Something else',
@@ -1239,7 +1239,7 @@ class _DealsScreenState extends State<DealsScreen> {
       if (_rules['khata'] != true)
         const Padding(
           padding: EdgeInsets.only(top: 6),
-          child: Text('Credit (udhaar) shows in a quote only if you turn it on in the rules.', style: TextStyle(color: C.faint, fontSize: 12)),
+          child: Text('Credit shows in a quote only if you turn it on in the rules.', style: TextStyle(color: C.faint, fontSize: 12)),
         ),
       const SizedBox(height: 12),
       if (owed.isNotEmpty) const Text('My customers', style: TextStyle(fontWeight: FontWeight.w800)),
@@ -1307,7 +1307,7 @@ class _DealsScreenState extends State<DealsScreen> {
           ),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
-            title: const Text('Credit (udhaar)'),
+            title: const Text('Credit'),
             subtitle: const Text('Only customers whose credit account you open', style: TextStyle(fontSize: 12)),
             value: _rules['khata'] == true,
             onChanged: (x) => _setRule({'khata': x}),

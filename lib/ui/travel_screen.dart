@@ -303,7 +303,7 @@ class _TravelTripPageState extends State<TravelTripPage> {
   Future<void> _addTraveller() async {
     final f = await _form(context, 'Add traveller', const [
       ('name', 'Name (as on the ID)'),
-      ('age', 'Umar'),
+      ('age', 'Age'),
       ('gender', 'M / F'),
       ('berth', 'Berth preference (lower / upper / side)'),
       ('id_kind', 'ID type (aadhaar / passport / voter / dl)'),

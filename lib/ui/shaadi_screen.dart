@@ -217,7 +217,7 @@ class _ShaadiScreenState extends State<ShaadiScreen> {
     const tabs = ['Today', 'Weddings', 'Rules'];
     return Scaffold(
       backgroundColor: C.bgTop,
-      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Shaadi Sahayak'),
+      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Wedding Assistant'),
           actions: [IconButton(icon: const Icon(Icons.refresh_rounded), onPressed: _load)]),
       body: Column(children: [
         SizedBox(
@@ -446,7 +446,7 @@ class _ShaadiWeddingPageState extends State<ShaadiWeddingPage> {
       for (final x in _list(r['waiting']))
         Glass(margin: const EdgeInsets.only(top: 6), padding: const EdgeInsets.all(10), child: Row(children: [
           Expanded(child: Text('${_s(x['name'])} · ${_s(x['heads'])} log · ${_s(x['arrive'])} → ${_s(x['depart'])}')),
-          GlassButton(label: 'Room do', height: 36, onTap: _busy ? null : () async {
+          GlassButton(label: 'Assign room', height: 36, onTap: _busy ? null : () async {
             final f = await _form(context, 'Which room?', const [('room', 'Room label (e.g. D-1)')]);
             if (f != null) await _run('POST', '$_base/rooms/assign', {'guest': _s(x['id']), 'room': f['room']});
           }),
@@ -626,7 +626,7 @@ class _ShaadiWeddingPageState extends State<ShaadiWeddingPage> {
     final w = _w;
     return Scaffold(
       backgroundColor: C.bgTop,
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(w == null ? 'Shaadi' : '${_s(w['number'])} · ${_s(w['title'])}'),
+      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(w == null ? 'Wedding' : '${_s(w['number'])} · ${_s(w['title'])}'),
           actions: [IconButton(icon: const Icon(Icons.refresh_rounded), onPressed: _load)]),
       body: w == null
           ? const Center(child: CircularProgressIndicator())

@@ -21,7 +21,7 @@ class CalendarEventCard extends StatelessWidget {
       'added' => ('IN CALENDAR', C.ok),
       'updated' => ('CHANGED', C.ok),
       'cancelled' => ('CANCEL', C.muted),
-      'declined' => ('MANA KIYA', C.muted),
+      'declined' => ('DECLINED', C.muted),
       'accepted' => ('SAID YES', C.ok),
       'tentative' => ('MAYBE', C.warn),
       'soon' => ('STARTING SOON', C.warn),
@@ -169,7 +169,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     if (a['status'] == 'error') Text(a['error'] as String? ?? 'Login fail', style: const TextStyle(color: C.bad, fontSize: 12)),
                   ])),
                   if (a['removable'] == true)
-                    IconButton(tooltip: 'Hataiye', icon: const Icon(Icons.close_rounded, color: C.muted),
+                    IconButton(tooltip: 'Remove', icon: const Icon(Icons.close_rounded, color: C.muted),
                         onPressed: () => _do(() => app.api!.calendarRemove(a['key'] as String))),
                 ])),
               ),
@@ -227,7 +227,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
               Wrap(spacing: 8, runSpacing: 8, children: [
                 for (final m in const [0, 5, 10, 15, 30])
                   ChoiceChip(
-                    label: Text(m == 0 ? 'Band' : '$m min'),
+                    label: Text(m == 0 ? 'Off' : '$m min'),
                     selected: alert == m,
                     showCheckmark: false,
                     selectedColor: C.accent,

@@ -170,7 +170,7 @@ class _FinalScreenState extends State<FinalScreen> {
                       const SizedBox(width: 8),
                       _shareTile('yt', Icons.smart_display_rounded, 'YouTube', 'com.google.android.youtube'),
                       const SizedBox(width: 8),
-                      _shareTile('more', Icons.share_rounded, 'Aur', ''),
+                      _shareTile('more', Icons.share_rounded, 'More', ''),
                     ]),
                   ),
                   Padding(

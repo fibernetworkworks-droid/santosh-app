@@ -394,7 +394,7 @@ class _SamudaayScreenState extends State<SamudaayScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Community Sahayak')),
+        appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Community Assistant')),
         body: Aurora(
           child: RefreshIndicator(
             onRefresh: _load,

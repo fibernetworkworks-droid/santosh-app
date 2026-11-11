@@ -280,7 +280,7 @@ class _EventplanScreenState extends State<EventplanScreen> {
     const tabs = ['Today', 'Events', 'Vendors', 'Rules'];
     return Scaffold(
       backgroundColor: C.bgTop,
-      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Event Sahayak'),
+      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Event Assistant'),
           actions: [IconButton(icon: const Icon(Icons.refresh_rounded), onPressed: _load)]),
       body: Column(children: [
         SizedBox(
@@ -446,7 +446,7 @@ class _EventplanEventPageState extends State<EventplanEventPage> {
     final cues = _list(_m(_e?['show'])['cues']);
     final text = cues.map((c) => '${_s(c['time'])} ${_s(c['what'])}${c['mins'] == null ? '' : ' (${_s(c['mins'])} min)'}'
         '${_s(c['who']).isEmpty ? '' : ' - ${_s(c['who'])}'}${_s(c['where']).isEmpty ? '' : ' | ${_s(c['where'])}'}').join('\n');
-    final f = await _form(context, 'Run of show', const [('text', 'Har line: 18:30 Welcome (10 min) - Riya | stage')],
+    final f = await _form(context, 'Run of show', const [('text', 'Each line: 18:30 Welcome (10 min) - Riya | stage')],
         initial: {'text': text}, multi: const {'text'});
     if (f == null) return;
     await _run('POST', '$_base/show', {'text': f['text'] ?? '', 'replace': true});
@@ -505,7 +505,7 @@ class _EventplanEventPageState extends State<EventplanEventPage> {
             Glass(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(_s(b['say']), style: const TextStyle(fontSize: 13)),
               for (final l in _list(b['lines']))
-                Text('${_s(l['id'])} ${_s(l['head_label'])}: ${_s(l['item'])} · kharcha ${_rs(l['cost'])} → client ${_rs(l['client_price'])}'
+                Text('${_s(l['id'])} ${_s(l['head_label'])}: ${_s(l['item'])} · cost ${_rs(l['cost'])} → client ${_rs(l['client_price'])}'
                     '${l['pure_agent'] == true ? ' (direct)' : ''}', style: TextStyle(fontSize: 12, color: l['cost'] == null ? C.warn : C.ink)),
               for (final w in _strs(b['warnings'])) Text('⚠ $w', style: const TextStyle(fontSize: 12, color: C.warn)),
             ])),

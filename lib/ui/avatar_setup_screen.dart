@@ -212,7 +212,7 @@ class _AvatarSetupScreenState extends State<AvatarSetupScreen> {
             maxLength: 20,
             textCapitalization: TextCapitalization.words,
             style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
-            decoration: const InputDecoration(border: InputBorder.none, counterText: '', hintText: 'Jaise Santosh'),
+            decoration: const InputDecoration(border: InputBorder.none, counterText: '', hintText: 'e.g. Santosh'),
             onChanged: (_) => setState(() {}),
           ),
         ),
@@ -270,7 +270,7 @@ class _AvatarSetupScreenState extends State<AvatarSetupScreen> {
         const SizedBox(width: 12),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('$_n ka roop', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+            Text('$_n\'s look', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
             const SizedBox(height: 2),
             Text(_gender == 'f' ? '100 voices, from all over the world. This is what will show on calls, chat and the Hoola Network.'
                 : '100 voices, from all over the world, or the original Santosh. This is what will show on calls, chat and the Hoola Network.', style: const TextStyle(color: C.muted, fontSize: 12.5)),
@@ -428,7 +428,7 @@ class _AvatarSetupScreenState extends State<AvatarSetupScreen> {
           Align(
             alignment: Alignment.centerRight,
             child: TextButton.icon(
-                onPressed: _busy ? null : _understand, icon: const Icon(Icons.auto_awesome_rounded, size: 18), label: const Text('Samjho')),
+                onPressed: _busy ? null : _understand, icon: const Icon(Icons.auto_awesome_rounded, size: 18), label: const Text('Understand')),
           ),
         ]),
       ),
@@ -438,7 +438,7 @@ class _AvatarSetupScreenState extends State<AvatarSetupScreen> {
       ]),
       _section('VIPs: can always reach me', 'Name or Hoola ID, comma separated'),
       Glass(child: TextField(controller: _vip, decoration: const InputDecoration(border: InputBorder.none, hintText: 'Family, Swati, @kunal.raj'))),
-      _section('Seedha mana', 'Requests $_n should refuse by itself'),
+      _section('Refuse directly', 'Requests $_n should refuse by itself'),
       Glass(child: TextField(controller: _blocked, decoration: const InputDecoration(border: InputBorder.none, hintText: 'loan, insurance, sales pitch'))),
       _section('What can come in', 'Direct = $_n takes it · Ask = asks you first · Refuse = no'),
       for (final e in _kinds.entries)
@@ -448,9 +448,9 @@ class _AvatarSetupScreenState extends State<AvatarSetupScreen> {
             Expanded(child: Text(e.value, style: const TextStyle(fontSize: 13))),
             Wrap(spacing: 6, children: [
               if (!_alwaysAsk.contains(e.key))
-                _chip('Seedha', accept[e.key] == 'auto', () => setState(() => accept[e.key] = 'auto')),
+                _chip('Auto', accept[e.key] == 'auto', () => setState(() => accept[e.key] = 'auto')),
               _chip('Ask', (accept[e.key] ?? 'ask') == 'ask', () => setState(() => accept[e.key] = 'ask')),
-              _chip('Mana', accept[e.key] == 'never', () => setState(() => accept[e.key] = 'never')),
+              _chip('Refuse', accept[e.key] == 'never', () => setState(() => accept[e.key] = 'never')),
             ]),
           ]),
         ),
@@ -508,7 +508,7 @@ class _AvatarSetupScreenState extends State<AvatarSetupScreen> {
       Wrap(spacing: 8, runSpacing: 8, children: [
         for (final e in _langs.entries) _chip(e.value, (_rules['language'] ?? 'hinglish') == e.key, () => setState(() => _rules['language'] = e.key)),
       ]),
-      _section('Seekhna'),
+      _section('Learning'),
       SwitchListTile(
         dense: true,
         contentPadding: EdgeInsets.zero,
@@ -532,7 +532,7 @@ class _AvatarSetupScreenState extends State<AvatarSetupScreen> {
   }
 
   Widget _confirmPage() => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Text('Namaste! Main $_n.', style: display(26)),
+        Text('Hello! I am $_n.', style: display(26)),
         const SizedBox(height: 6),
         Text(_gv('These are your rules. $_n will talk to other Hoolas according to them. You can change them any time in Profile > My Rules.'),
             style: const TextStyle(color: C.muted, fontSize: 13.5)),
@@ -591,7 +591,7 @@ class _AvatarSetupScreenState extends State<AvatarSetupScreen> {
                 if (canBack)
                   Padding(
                     padding: const EdgeInsets.only(right: 10),
-                    child: TextButton(onPressed: _busy ? null : () => setState(() => _page -= 1), child: const Text('Peeche')),
+                    child: TextButton(onPressed: _busy ? null : () => setState(() => _page -= 1), child: const Text('Back')),
                   ),
                 Expanded(
                   child: GradientButton(

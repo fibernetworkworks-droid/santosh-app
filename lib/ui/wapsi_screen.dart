@@ -40,7 +40,7 @@ Future<Map<String, String>?> _form(BuildContext context, String title, List<(Str
       ),
       actions: [
         TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Keep it')),
-        TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Aage')),
+        TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Next')),
       ],
     ),
   );
@@ -124,14 +124,14 @@ class _WapsiScreenState extends State<WapsiScreen> {
 
   Future<void> _newReturn() async {
     final f = await _form(context, 'New return', const [
-      ('name', 'Graahak name'),
+      ('name', 'Customer name'),
       ('phone', 'Phone'),
       ('items', 'Goods (e.g. Kurti x1 @ 899)'),
       ('reason', 'What is the problem (in the customer\'s words)'),
       ('delivered_on', 'Delivery date (DD-MM-YYYY)'),
       ('order_ref', 'Order number'),
       ('pincode', 'PIN code'),
-      ('address', 'Pickup ka pata'),
+      ('address', 'Pickup address'),
     ]);
     if (f == null) return;
     final r = await _run(() => _call(widget.app, 'POST', '/api/wapsi/returns', body: {
@@ -178,7 +178,7 @@ class _WapsiScreenState extends State<WapsiScreen> {
     return ListView(padding: const EdgeInsets.all(16), children: [
       Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('Aaj', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+          const Text('Today', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
           const SizedBox(height: 6),
           if (parts.isEmpty) const Text('All good. No return is waiting for you.', style: TextStyle(color: C.muted)),
           for (final p in parts) Padding(padding: const EdgeInsets.only(top: 4), child: Text('• $p')),
@@ -194,7 +194,7 @@ class _WapsiScreenState extends State<WapsiScreen> {
 
   Widget _returns() => ListView(padding: const EdgeInsets.all(16), children: [
         Wrap(spacing: 8, runSpacing: 8, children: [
-          for (final (k, l) in const [('open', 'Khule'), ('new', 'Naye'), ('refund_waiting', 'Refund baaki'), ('refunded', 'Done'), ('rejected', 'Mana'), ('', 'Sab')])
+          for (final (k, l) in const [('open', 'Open'), ('new', 'New'), ('refund_waiting', 'Refund pending'), ('refunded', 'Done'), ('rejected', 'Declined'), ('', 'All')])
             ChoiceChip(
               label: Text(l),
               selected: _filter == k,
@@ -256,13 +256,13 @@ class _WapsiScreenState extends State<WapsiScreen> {
           Text(_s(_m(st['warehouse'])['address']), style: const TextStyle(color: C.muted)),
           const SizedBox(height: 8),
           GlassButton(
-            label: 'Badlo',
+            label: 'Change',
             icon: Icons.store_rounded,
             onTap: () async {
               final w = _m(st['warehouse']);
-              final f = await _form(context, 'Dukaan / warehouse', const [
+              final f = await _form(context, 'Shop / warehouse', const [
                 ('business', 'Business name'), ('gstin', 'GSTIN'), ('state', 'State'), ('w_phone', 'Warehouse phone'),
-                ('w_address', 'Warehouse ka pata'), ('w_city', 'City'), ('w_pincode', 'PIN'),
+                ('w_address', 'Warehouse address'), ('w_city', 'City'), ('w_pincode', 'PIN'),
               ], init: {'business': _s(st['business']), 'gstin': _s(st['gstin']), 'state': _s(st['state']), 'w_phone': _s(w['phone']),
                 'w_address': _s(w['address']), 'w_city': _s(w['city']), 'w_pincode': _s(w['pincode'])});
               if (f == null) return;
@@ -281,7 +281,7 @@ class _WapsiScreenState extends State<WapsiScreen> {
       Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           const Text('Courier and gateway (only here, never in the chat)', style: TextStyle(fontWeight: FontWeight.w800)),
-          Text('Courier: ${_s(st['courier'])}${st['courier_joined'] == true ? ' (juda)' : ''} · Gateway: ${_s(st['pg']).isEmpty ? '-' : _s(st['pg'])}${st['pg_joined'] == true ? ' (juda)' : ''}',
+          Text('Courier: ${_s(st['courier'])}${st['courier_joined'] == true ? ' (connected)' : ''} · Gateway: ${_s(st['pg']).isEmpty ? '-' : _s(st['pg'])}${st['pg_joined'] == true ? ' (connected)' : ''}',
               style: const TextStyle(color: C.muted)),
           const SizedBox(height: 8),
           Wrap(spacing: 8, runSpacing: 8, children: [
@@ -322,11 +322,11 @@ class _WapsiScreenState extends State<WapsiScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const tabs = ['Aaj', 'Returns', 'Refund', 'Niyam'];
+    const tabs = ['Today', 'Returns', 'Refund', 'Rules'];
     return Scaffold(
       backgroundColor: C.bgTop,
       appBar: AppBar(
-        title: const Text('Wapsi sahayak'),
+        title: const Text('Returns assistant'),
         backgroundColor: Colors.transparent,
         actions: [IconButton(onPressed: _load, icon: const Icon(Icons.refresh_rounded))],
       ),
@@ -549,7 +549,7 @@ class _WapsiReturnPageState extends State<WapsiReturnPage> {
               Pill(_s(r['status_label']), fg: _statusColor(st)),
             ]),
             for (final i in _list(r['items'])) Text('${_s(i['name'])} x${_s(i['qty'])} · ${rs(i['price'])}', style: const TextStyle(fontSize: 13)),
-            if (_s(r['reason_text']).isNotEmpty) Text('Graahak: "${_s(r['reason_text'])}"', style: const TextStyle(fontSize: 12.5, color: C.muted)),
+            if (_s(r['reason_text']).isNotEmpty) Text('Customer: "${_s(r['reason_text'])}"', style: const TextStyle(fontSize: 12.5, color: C.muted)),
             Text('Order ${_s(r['order_ref'])} · delivery ${_s(_m(r['order'])['delivered_on'])} · ${_s(cust['phone'])}', style: const TextStyle(fontSize: 12, color: C.faint)),
           ]),
         ),
@@ -592,7 +592,7 @@ class _WapsiReturnPageState extends State<WapsiReturnPage> {
           if (['new', 'need_info', 'qc_failed'].contains(st)) ...[
             GradientButton(label: 'Approved', icon: Icons.check_rounded, height: 44, onTap: _busy ? null : () => _decide('approve')),
             GlassButton(label: 'Ask for information', icon: Icons.help_outline_rounded, onTap: _busy ? null : () => _decide('ask')),
-            GlassButton(label: 'Mana', icon: Icons.close_rounded, color: C.bad, onTap: _busy ? null : () => _decide('reject')),
+            GlassButton(label: 'No', icon: Icons.close_rounded, color: C.bad, onTap: _busy ? null : () => _decide('reject')),
           ],
           if (st == 'pickup_manual' || st == 'approved') ...[
             GlassButton(label: 'Pickup book', icon: Icons.local_shipping_rounded, onTap: _busy ? null : () => _run(() => _call(widget.app, 'POST', '$_base/pickup', body: {}))),

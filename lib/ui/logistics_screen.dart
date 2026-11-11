@@ -319,7 +319,7 @@ class _LogisticsScreenState extends State<LogisticsScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Logistics Sahayak')),
+        appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Logistics Assistant')),
         floatingActionButton: _tab <= 1
             ? FloatingActionButton.extended(onPressed: _busy ? null : _newShipment, icon: const Icon(Icons.local_shipping_rounded), label: const Text('New goods'))
             : null,

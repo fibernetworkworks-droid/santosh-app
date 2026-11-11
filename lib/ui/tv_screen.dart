@@ -248,7 +248,7 @@ class _TvScreenState extends State<TvScreen> {
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(children: [
-                _chip('Sab', ''),
+                _chip('All', ''),
                 for (final c in _cats) _chip('${c['label']} · ${c['count']}', c['id'] as String),
               ]),
             ),
@@ -317,7 +317,7 @@ class _CountrySheetState extends State<_CountrySheet> {
                 style: const TextStyle(color: C.ink),
                 decoration: const InputDecoration(
                     prefixIcon: Icon(Icons.public_rounded, color: C.muted),
-                    hintText: 'Desh dhoondhiye…',
+                    hintText: 'Search countries…',
                     border: InputBorder.none,
                     enabledBorder: InputBorder.none,
                     focusedBorder: InputBorder.none),
@@ -327,7 +327,7 @@ class _CountrySheetState extends State<_CountrySheet> {
           ),
           Expanded(
             child: ListView(children: [
-              if (q.isEmpty) _row('🌍', 'Whole world', '$all channels · ${widget.countries.length} desh', ''),
+              if (q.isEmpty) _row('🌍', 'Whole world', '$all channels · ${widget.countries.length} countries', ''),
               for (final c in shown)
                 _row(c['flag'] as String? ?? '📺', c['name'] as String? ?? '', '${c['count']} channels', c['code'] as String),
             ]),
@@ -536,7 +536,7 @@ class _TvPlayerScreenState extends State<TvPlayerScreen> {
               if (widget.lineup.length > 1) ...[
                 const SizedBox(height: 16),
                 Row(children: [
-                  Expanded(child: GlassButton(label: 'Pichla', icon: Icons.skip_previous_rounded, height: 44, onTap: () => _step(-1))),
+                  Expanded(child: GlassButton(label: 'Previous', icon: Icons.skip_previous_rounded, height: 44, onTap: () => _step(-1))),
                   const SizedBox(width: 10),
                   Expanded(child: GlassButton(label: 'Next', icon: Icons.skip_next_rounded, height: 44, onTap: () => _step(1))),
                 ]),

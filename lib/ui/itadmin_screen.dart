@@ -466,7 +466,7 @@ class _ItadminScreenState extends State<ItadminScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('IT Admin Sahayak')),
+        appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('IT Admin Assistant')),
         body: Aurora(
           child: RefreshIndicator(
             onRefresh: _load,

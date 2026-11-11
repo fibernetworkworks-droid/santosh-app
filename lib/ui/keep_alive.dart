@@ -184,7 +184,7 @@ class _KeepAliveScreenState extends State<KeepAliveScreen> with WidgetsBindingOb
     final brand = r == null ? '' : HoolaKeepAlive._brandName(r);
     return Scaffold(
       backgroundColor: C.bgBottom,
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text('${widget.app.aName} band na ho')),
+      appBar: AppBar(backgroundColor: Colors.transparent, title: Text('Keep ${widget.app.aName} running')),
       body: RefreshIndicator(
         onRefresh: _load,
         child: ListView(padding: const EdgeInsets.fromLTRB(16, 4, 16, 28), children: [

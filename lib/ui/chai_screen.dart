@@ -51,7 +51,7 @@ class ChaiScreen extends StatelessWidget {
         child: Scaffold(
           appBar: AppBar(
             backgroundColor: Colors.transparent,
-            title: const Text('Chai stall sahayak'),
+            title: const Text('Chai stall assistant'),
             bottom: const TabBar(tabs: [Tab(text: 'Today'), Tab(text: 'Tomorrow'), Tab(text: 'Galla'), Tab(text: 'Menu')]),
           ),
           body: Aurora(
@@ -413,7 +413,7 @@ class _ChaiPlanCardState extends State<ChaiPlanCard> {
             child: Text('To buy: ${[
               if ((buy['milk_l'] ?? 0) > 0) 'milk${_q(buy['milk_l'])} L',
               if ((buy['sugar_kg'] ?? 0) > 0) 'sugar${_q(buy['sugar_kg'])} kg',
-              if ((buy['tea_kg'] ?? 0) > 0) 'patti ${_q(buy['tea_kg'])} kg',
+              if ((buy['tea_kg'] ?? 0) > 0) 'tea leaves ${_q(buy['tea_kg'])} kg',
             ].join(', ')}', style: const TextStyle(color: C.accent, fontWeight: FontWeight.w700)),
           ),
         if (reasons.isNotEmpty)

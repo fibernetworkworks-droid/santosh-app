@@ -161,7 +161,7 @@ class _KharchaScreenState extends State<KharchaScreen> {
                     Padding(
                       padding: const EdgeInsets.only(left: 6),
                       child: ChoiceChip(
-                          label: Text('$d din'),
+                          label: Text('$d days'),
                           selected: _days == d,
                           onSelected: (_) {
                             setState(() => _days = d);
