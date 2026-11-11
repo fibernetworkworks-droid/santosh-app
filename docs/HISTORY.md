@@ -2151,3 +2151,59 @@ reads the top resumed activity, force-stops it when it is not our app / the laun
 before each screen, before and after each tap, before the scroll check. Any of her real apps with a button that opens
 another app (calendar, contacts, Play, a browser, a share sheet) would have failed the same way. Tests:
 test_v0820_device_check_front.py (3, a fake adb on PATH). NOT VERIFIED until this push's appgen-check.
+
+
+## v0.821.0 HOOLA 3D CHARACTERS - the 3D kit's characters (owner: "GO COMPLEX 3D CHARACTERS BUILD")
+
+Before this the kit's player was a capsule and an enemy a ball. A 3D game with people in it meant the model writing
+bodies and walk cycles from scratch, which is exactly where 3D builds broke. Now the kit carries the characters.
+
+**What it is** (all in `server/app/gamedesk/kit/hoola_3d.gd`, `const VERSION := 2`, Hoola's own file):
+- `class Figure extends Node3D` - a jointed character built from primitives: hips, torso, head, two arms (shoulder +
+  elbow + hand), two legs (hip + knee + foot), eyes, hair, hat, outfit, an item in the right hand. `kind: "animal"` =
+  a four-legged body with head, ears, tail and optional horns. `style: "robot"` = box parts, glowing eyes, antenna.
+- Animation is procedural, joint targets blended every frame: `set_motion(0..1, on_floor, up_speed)` picks idle / walk /
+  run / jump / fall; `play()` runs a one-off - attack (signal `strike` at 40 %), hurt, wave, talk, die (stays down,
+  further play() ignored). Signal `finished(anim)`.
+- 11 ready-made looks in `LOOKS` (hero, girl, boy, elder, farmer, guard, villain, king, robot, dog, cow);
+  `look(preset, changes)` changes skin / shirt / pants / shoes / hair / eyes / hat_color, height, build
+  (slim / normal / stocky), hair_style (short / long / bun / none), hat (cap / turban / crown / helmet / antenna),
+  outfit (kurta / dress), item (sword / staff / lamp).
+- Her approved ANIMATED model instead of the drawn body: `"model": "<key>"` in the look, or `figure_from(parent, pos,
+  node)`. The model is sized to the height asked for (bounds of its meshes), turned to face the kit's forward, and its
+  clips are matched by name (idle / walk / run / jump / fall / attack / hurt / die / wave / talk; idle-walk-run set to
+  loop). No model = the drawn character, so a game never breaks on a missing asset.
+- `spawn_hero(parent, pos, look, speed, jump_height, hp)` - the v1 Player with a Figure for a body. With a sword (or
+  `"attack": true`) the action key F / J / X or the new violet on-screen button (`act_button`, drawn only when
+  `act_on`) strikes: every foe within 2.2 m and in front loses `power` health.
+- `foe(parent, pos, look, patrol_to, speed, chase_range, hp)` - the v1 Enemy with a Figure and health: a blow staggers
+  it (0.45 s, pushed back 0.6 m), at 0 it falls and is freed after 1.2 s. Its touch still costs 1 hp (it swings),
+  landing on it still removes it. New signal `enemy_defeated(left)` for strike or stomp; `enemy_stomped` unchanged.
+- `npc(parent, pos, who, lines, look, talk_range)` - turns to the player, waves when the player comes near, shows
+  "..." above the head, and says the next line each time the action key is pressed beside it (the last line repeats).
+  `hud.say(who, text)` shows it for 3.5 s; signal `npc_talked(who, index)`; HoolaProbe event "talk".
+- `figure(parent, pos, look)` - a character that only stands there, for the game's own logic.
+- v1 is untouched: `spawn_player`, `enemy` and every signal keep their names and argument order (a test holds it).
+
+**The model is told** in `kit3d.API` (rides only in a 3D design): use the characters, never build people from your own
+meshes, never write a walk cycle, at most 12 characters a level. Tests hold every preset, option and animation name in
+the API text to something the kit really reads.
+
+**Proof game**: Diya Run 3D now has the hero with a sword, a guard and a tall villain (2 and 3 health), Dadi who says
+what to do, and a dog. The test player still wins it with the same keys (6.6 s, 24.4 m, 6 of 8 coins, 3 lives).
+
+**Measured here** (Godot 4.7.2 headless, `kit3d.self_test`, 10 checks, all pass): 11 looks built, fewest joints 8; a
+walking figure's leg swings 0.8 rad and the two legs are never on the same side; at rest 0.0; one strike signal, the
+attack ends and the figure is idle again; die tips the body 1.5 rad and it stays down; the dog's leg swings 0.6 rad.
+Hero with sword: first blow 2 -> 1 health, second fells the foe, the foe behind keeps 2, the hero keeps 3 lives. Dadi:
+lines 0, 1, 2, 2 and the HUD reads "Dadi: Then come to the temple"; the person 17 m away says nothing. Kenney's CC0
+`platformer_character.glb` wrapped as a figure: 1.6 m tall as asked, plays walk / jump / idle. Web export + browser:
+playtest ok, touch collected 2 coins, download 10.2 MB (was 9.7). I looked at the pictures: the eleven looks are
+distinct and read as people / robot / animals.
+
+**NOT VERIFIED / not built**: no MODEL-written game with characters yet (needs her server and credit); the looks are
+low-poly shapes, not sculpted characters; no faces beyond eyes; no skinned-mesh generation (Meshy waits for her key);
+foes do not path round walls; no ranged attacks; talking has no choices.
+
+Files: `gamedesk/kit/hoola_3d.gd` (709 -> 1519 lines), `kit/proof_main.gd`, `kit/selftest_main.gd`, `kit3d.py`,
+`tests/test_v0821_characters.py` (12).
