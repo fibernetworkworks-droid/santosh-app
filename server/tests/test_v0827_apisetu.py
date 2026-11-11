@@ -103,3 +103,47 @@ def test_check_skips_without_keys_and_vps_ops_has_the_job(asenv, monkeypatch):
     from pathlib import Path
     wf = (Path(__file__).resolve().parents[2] / ".github/workflows/vps-ops.yml").read_text()
     assert "- apisetu_check" in wf and "python -m app.bahi.apisetucheck" in wf and "APISETU_API_KEY" in wf
+
+
+def test_v0828_relay_is_used_and_its_failures_say_what_to_do(asenv, monkeypatch):
+    apisetu, plug, seen = asenv
+    from app.config import get_settings
+    monkeypatch.setenv("DATA_GOV_IN_BASE", "https://hoola-dg.example.workers.dev/")
+    get_settings.cache_clear()
+    assert apisetu.base() == "https://hoola-dg.example.workers.dev/gstn/v1" and apisetu.via_relay()
+    plug(lambda req: httpx.Response(200, json=REC))
+    apisetu.taxpayer("33AAACC1206D1ZN")
+    assert str(seen[-1].url) == "https://hoola-dg.example.workers.dev/gstn/v1/taxpayers/33AAACC1206D1ZN"
+    plug(lambda req: httpx.Response(404, text="Not found"))           # the old worker, before the new code is pasted
+    with pytest.raises(apisetu.ApiSetuError) as e:
+        apisetu.taxpayer("33AAACC1206D1ZN")
+    assert "worker.js" in e.value.message and "does not forward API Setu" in e.value.message
+    monkeypatch.setenv("APISETU_GSTN_BASE", "https://apisetu.gov.in/gstn/v1")    # explicit wins
+    get_settings.cache_clear()
+    assert apisetu.base() == "https://apisetu.gov.in/gstn/v1" and not apisetu.via_relay()
+
+    def slow(req):
+        raise httpx.ReadTimeout("timed out", request=req)
+    plug(slow)
+    with pytest.raises(apisetu.ApiSetuError) as e:
+        apisetu.taxpayer("33AAACC1206D1ZN")
+    assert e.value.code == "unreachable" and "DATA_GOV_IN_BASE" in e.value.message and KEY not in e.value.message
+
+
+def test_v0828_the_relay_worker_forwards_only_the_gstin_lookup():
+    from pathlib import Path
+    js = (Path(__file__).resolve().parents[2] / "deploy/datagov-relay/worker.js").read_text()
+    assert "/^\\/gstn\\/v[12]\\/taxpayers\\/[0-9A-Z]{15}$/" in js and "https://apisetu.gov.in" in js
+    assert '["X-APISETU-CLIENTID", "X-APISETU-APIKEY"]' in js and 'request.method !== "GET"' in js
+    assert '"/resource/"' in js and "api.data.gov.in" in js                        # data.gov.in relay kept
+
+
+def test_v0828_wb_check_explains_an_unknown_gst_username(capsys, monkeypatch):
+    from app.bahi import wbcheck
+    monkeypatch.setattr(wbcheck, "run", lambda: {"env": "sandbox", "paste": [], "passed": 4, "failed": 1, "skipped": 0,
+                                                 "steps": [{"step": "otp_request", "result": "FAIL",
+                                                            "line": "refused: user name does not exists"}]})
+    monkeypatch.setattr(wbcheck.wb, "configured", lambda p: True)
+    assert wbcheck.main() == 1
+    out = capsys.readouterr().out
+    assert "does not know the name" in out and "gst_username and the GSTIN it" in out

@@ -172,6 +172,12 @@ def main() -> int:
         print("Every value looks well pasted, so WhiteBooks itself is refusing this account: in the Developer Hub the products may"
               " still be 'not subscribed' / not active for the sandbox. Ask WhiteBooks support (Get Support in the Hub) to activate"
               " sandbox API access for GST, e-Invoice and e-Way Bill on your developer account, then run wb_check again.")
+    if any(s["step"] == "otp_request" and s["result"] == "FAIL" and re.search(r"user ?name", s["line"], re.I)
+           for s in res["steps"]):
+        print("The GST sandbox does not know the name in WHITEBOOKS_SANDBOX_GST_USERNAME, so the OTP login (and the token, refresh"
+              " and ledger after it) cannot run. A username given for the public taxpayer search is not a login - GSTIN search"
+              " needs no username at all. Ask WhiteBooks support for the GST sandbox LOGIN: its gst_username and the GSTIN it"
+              " belongs to (put them in WHITEBOOKS_SANDBOX_GST_USERNAME / WHITEBOOKS_SANDBOX_GST_GSTIN), then run wb_check again.")
     if not wb.configured("gst"):
         print("Set in the server's .env (names only - never paste the values in chat):")
         for line in wb.env_lines():

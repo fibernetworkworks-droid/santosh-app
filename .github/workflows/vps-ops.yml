@@ -438,7 +438,7 @@ jobs:
               apisetu_check)
                 # v0.827 API Setu GSTN Tax Payer API: which APISETU_* key NAMES are set (values never printed), then ONE public
                 # taxpayer lookup by the running app - PASS / FAIL with the plain reason; the reply SHAPE goes to data/bahi/apisetu_shape.json
-                echo 'echo "== API Setu keys in $CORE/.env (names only)"; for k in APISETU_CLIENT_ID APISETU_API_KEY APISETU_TEST_GSTIN; do if grep -qE "^$k=.+" $CORE/.env 2>/dev/null; then echo "  set      $k"; else echo "  missing  $k"; fi; done'
+                echo 'echo "== API Setu keys in $CORE/.env (names only)"; for k in APISETU_CLIENT_ID APISETU_API_KEY APISETU_TEST_GSTIN APISETU_GSTN_BASE DATA_GOV_IN_BASE; do if grep -qE "^$k=.+" $CORE/.env 2>/dev/null; then echo "  set      $k"; else echo "  missing  $k"; fi; done'
                 echo 'echo "== lookup"; cd $CORE && timeout 60 .venv/bin/python -m app.bahi.apisetucheck 2>&1 | tail -25' ;;
               studio_apis)
                 # v0.308 which real engine behind Create is switched on: key NAMES present in the .env (values never

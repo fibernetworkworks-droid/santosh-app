@@ -48,8 +48,24 @@ def configured() -> bool:
     return bool(cid and key)
 
 
+OFFICIAL = "https://apisetu.gov.in/gstn/v1"
+
+
 def base() -> str:
-    return (clean(get_settings().apisetu_gstn_base) or "https://apisetu.gov.in/gstn/v1").rstrip("/")
+    """APISETU_GSTN_BASE if set; else the owner's data.gov.in relay worker (v0.828: the same worker forwards API Setu - NIC
+    drops connections from cloud servers for both); else apisetu.gov.in itself."""
+    st = get_settings()
+    explicit = clean(st.apisetu_gstn_base)
+    if explicit:
+        return explicit.rstrip("/")
+    relay = clean(getattr(st, "data_gov_in_base", "")).rstrip("/")
+    if relay.startswith("https://"):
+        return relay + "/gstn/v1"
+    return OFFICIAL
+
+
+def via_relay() -> bool:
+    return not base().startswith("https://apisetu.gov.in/")
 
 
 def _iso(d: str) -> str:
@@ -89,7 +105,12 @@ def taxpayer(gstin: str, *, raw: bool = False) -> dict[str, Any]:
             r = c.get(f"{base()}/taxpayers/{g}", headers={"X-APISETU-CLIENTID": cid, "X-APISETU-APIKEY": key,
                                                           "Accept": "application/json"})
     except httpx.HTTPError as e:
-        raise ApiSetuError("unreachable", f"API Setu could not be reached from this server ({type(e).__name__})") from None
+        why = f"({type(e).__name__})"
+        if not via_relay() and isinstance(e, (httpx.TimeoutException, httpx.ConnectError)):
+            why += (" - apisetu.gov.in answers elsewhere but drops this server, like data.gov.in does. Paste the updated "
+                    "deploy/datagov-relay/worker.js into your Cloudflare relay worker and set DATA_GOV_IN_BASE (or "
+                    "APISETU_GSTN_BASE=<worker>/gstn/v1) in the VPS .env")
+        raise ApiSetuError("unreachable", f"API Setu could not be reached from this server {why}") from None
     try:
         data = r.json()
     except ValueError:
@@ -104,7 +125,9 @@ def taxpayer(gstin: str, *, raw: bool = False) -> dict[str, Any]:
         code = "record_not_found" if data else "no_such_path"
     if r.status_code >= 500:
         code = code or "unavailable"
-    msg = PLAIN.get(code) or {"no_such_path": f"API Setu has no such address ({base()}) - check APISETU_GSTN_BASE",
+    no_path = (f"your relay worker ({base()}) does not forward API Setu yet - paste the updated deploy/datagov-relay/worker.js "
+               "into it" if via_relay() else f"API Setu has no such address ({base()}) - check APISETU_GSTN_BASE")
+    msg = PLAIN.get(code) or {"no_such_path": no_path,
                               "unavailable": "API Setu / GSTN is down or busy right now - try again later"}.get(code) \
         or f"API Setu answered HTTP {r.status_code}"
     if said and said.lower() not in msg.lower():

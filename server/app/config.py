@@ -1057,7 +1057,7 @@ class Settings(BaseSettings):
     # app client id + API key, VPS .env ONLY (never in chat / the repo / any reply). `python -m app.bahi.apisetucheck` tests it.
     apisetu_client_id: str = ""
     apisetu_api_key: str = ""
-    apisetu_gstn_base: str = "https://apisetu.gov.in/gstn/v1"
+    apisetu_gstn_base: str = ""             # empty = through DATA_GOV_IN_BASE (the same relay worker) when set, else apisetu.gov.in
     apisetu_timeout_s: float = 20.0
     apisetu_test_gstin: str = ""            # the GSTIN apisetucheck looks up; empty = WhiteBooks' GST test GSTIN, else a known one
     ecourtsindia_api_key: str = ""          # v0.763 ecourtsindia.com (eci_live_...) - PAID per call, ONE server key, VPS .env only
