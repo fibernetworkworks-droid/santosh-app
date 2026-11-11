@@ -113,7 +113,8 @@ def test_console_stamps_0_4_8_5():
     # stamps as part of the bump, so the typed number goes and the COUNT - the real guard - stays.
     # v0.768: 28 -> 27. code.js left the console page - Hoola Code is its own page (/console/code, hoolacode.html).
     # v0.781: 27 -> 28. connectors.js joined the console page (the Connectors page).
-    assert s.count(f'v={APP_VERSION}') == 28, f"expected 28 stamps at {APP_VERSION}, got {s.count(f'v={APP_VERSION}')}"
+    # v0.772 AI APPS: 28 -> 29. aiapps.js joined the console page (its stylesheet is loaded by the script, not v2.html).
+    assert s.count(f'v={APP_VERSION}') == 29, f"expected 29 stamps at {APP_VERSION}, got {s.count(f'v={APP_VERSION}')}"
     assert 'v=0.482.0' not in s and 'v=0.473.0' not in s
     assert f'console/skills.js?v={APP_VERSION}' in s and 'id="v-skills"' in s
 
