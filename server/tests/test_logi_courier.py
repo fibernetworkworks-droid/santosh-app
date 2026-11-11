@@ -103,7 +103,7 @@ def cr(env, monkeypatch, tmp_path):
 def test_rules():
     from app.courier import rules as R
     w = R.weights(0.8, {"l": 40, "b": 30, "h": 20})
-    assert w["volumetric_kg"] == 4.8 and w["chargeable_kg"] == 5.0 and w["by"] == "volumetric" and any("Dabba bada" in n for n in w["notes"])
+    assert w["volumetric_kg"] == 4.8 and w["chargeable_kg"] == 5.0 and w["by"] == "volumetric" and any("The box is big" in n for n in w["notes"])
     assert R.weights(1.2, {"l": 10, "b": 10, "h": 10})["chargeable_kg"] == 1.5 and R.slab(0.5) == 0.5
     assert R.state_of("Undelivered - Customer not available") == "exception" and R.state_of("Delivered") == "delivered"
     assert R.state_of("Out For Delivery") == "out_for_delivery" and R.state_of("RTO Initiated") == "rto"
@@ -167,7 +167,7 @@ def test_parcel_quote_card_and_her_tap(cr):
     assert t["parcel"]["status"] == "in_transit" and t["parcel"]["raw"] == "Reached at destination hub" and t["parcel"]["edd"] == "2026-10-27"
     fake.track_status = "Kuch alag sa shabd"
     t = S.track(T, "P-0001")
-    assert t["parcel"]["status"] == "in_transit" and "jo courier ne likha" in t["say"]
+    assert t["parcel"]["status"] == "in_transit" and "what the courier wrote" in t["say"]
     fake.track_status = "Undelivered - Consignee not available"
     t = S.track(T, "P-0001")
     assert t["parcel"]["status"] == "exception" and t["parcel"]["ndr"]["reason"] == "not_available"
@@ -245,7 +245,7 @@ def test_customer_cod_manifest_and_return(cr, monkeypatch):
     fake.track_status = "Undelivered - address incomplete"
     S.track(T, p1["number"])
     fx = asyncio.run(COURIER_BIZ_HANDLERS["biz_parcel_fix"](cust, address="12 MG Road, near Camp temple", note="landmark diya"))
-    assert "dukaan" in fx["say"]
+    assert "shop" in fx["say"]
     assert S.cards(T)[0]["kind"] == "ndr" and S.cards(T)[0]["body"]["by"] == "customer"           # her card, nothing sent
     assert not any("/ndr/" in c[2] for c in fake.calls)
     # delivered COD -> remittance sheet

@@ -127,8 +127,8 @@ def scrub(text: str) -> tuple[str, str]:
     from ..net.policy import secret_found
     t = str(text or "")
     found = secret_found(t)
-    out = _SECRET.sub(lambda m: f"{m.group(1)} [hataya]", t)
-    out = re.sub(r"\b(?:\d[ -]?){13,19}\b", "[hataya]", out)
+    out = _SECRET.sub(lambda m: f"{m.group(1)} [removed]", t)
+    out = re.sub(r"\b(?:\d[ -]?){13,19}\b", "[removed]", out)
     if not found and out != t:
         found = "password"
     return out, found

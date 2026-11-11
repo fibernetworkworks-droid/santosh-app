@@ -49,7 +49,7 @@ def test_rules_and_playbooks():
     assert R.cert_in("individual", "malware")["applies"] is False
     assert R.cert_in("company", "phishing", {})["applies"] is None
     assert "12 Oct 2027" in R.os_note("Windows 10 Pro 22H2", date(2026, 10, 23)) and R.os_note("Windows 11", date(2026, 10, 23)) == ""
-    assert "koi security update nahi" in R.os_note("Windows 7", date(2026, 10, 23))
+    assert "no security updates" in R.os_note("Windows 7", date(2026, 10, 23))
     ph = R.phish_check("URGENT: aapka account 24 ghante mein block ho jayega. KYC update karein: http://sbi-kyc-update.in/login "
                        "aur OTP batayein. Attached: KYC_form.html", sender="alerts@sbi-secure-mail.com")
     ids = {f["id"] for f in ph["flags"]}
@@ -76,7 +76,7 @@ def test_steps_and_her_haan_on_settings(hd):
         r = S.step(T, tid, "not_fixed", actor="owner")
     assert r["ticket"]["status"] == "waiting_haan" and r["ticket"]["current"]["id"] == "default_printer"
     ch = r["ticket"]["change"]
-    assert ch and ch["status"] == "waiting" and ch["kind"] == "setting" and "haan" in r["say"].lower()
+    assert ch and ch["status"] == "waiting" and ch["kind"] == "setting" and "approval" in r["say"].lower()
     assert "helpdesk_change" in kinds(S)
     # staff can't do a system change before her Haan; the tool path can't approve
     with pytest.raises(S.HelpdeskError):
@@ -108,15 +108,15 @@ def test_steps_and_her_haan_on_settings(hd):
             break
         S.step(T, t3, "not_fixed")
     r = S.step(T, t3, "fixed", actor="owner")
-    assert r["resolved"] and "Owner ne khud kiya" in r["ticket"]["steps"][-1]["note"] + "".join(x["note"] for x in r["ticket"]["steps"])
+    assert r["resolved"] and "Done by the owner" in r["ticket"]["steps"][-1]["note"] + "".join(x["note"] for x in r["ticket"]["steps"])
 
 
 def test_secrets_scrubbed_and_account(hd):
     S = hd
     out = S.new_ticket(T, "Gmail login nahi ho raha, password is Ramesh@1234 aur account lock ho gaya")
     tk = out["ticket"]
-    assert "Ramesh@1234" not in tk["text"] and "[hataya]" in tk["text"] and "badal dijiye" in out["say"]
-    assert tk["category"] == "account" and "Password / OTP Hoola ko kabhi mat" in out["say"]
+    assert "Ramesh@1234" not in tk["text"] and "[removed]" in tk["text"] and "Change that password" in out["say"]
+    assert tk["category"] == "account" and "Never tell Hoola a password / OTP" in out["say"]
     r = S.step(T, tk["id"], "not_fixed", note="otp 482913 aaya tha")
     assert "482913" not in str(S.get_ticket(T, tk["id"])["log"]) and "482913" not in str(r["ticket"]["steps"])
 
@@ -129,7 +129,7 @@ def test_assets_repeat_escalate(hd):
     a = S.save_asset(T, name="Billing PC", kind="pc", brand="Dell", model="Vostro 3681", serial="7XK9P2", user="Sunita", os="Windows 10",
                      bought="2019-06-01", warranty_until="2022-06-01", vendor="Sai")["asset"]
     assert a["vendor"] == "Sai Computers" and a["tag"] == "A-001"
-    assert any("Windows 10" in x for x in a["advice"]) and any("saal purana" in x for x in a["advice"])
+    assert any("Windows 10" in x for x in a["advice"]) and any("years old" in x for x in a["advice"])
     with pytest.raises(S.HelpdeskError):
         S.save_vendor(T, "Bad", phone="12345")
     ids = []
@@ -137,9 +137,9 @@ def test_assets_repeat_escalate(hd):
         r = S.new_ticket(T, "Sunita ka PC chalu nahi ho raha, blue screen", person="Sunita")
         ids.append(r["ticket"]["id"])
         assert r["ticket"]["asset"]["tag"] == "A-001"                         # her one PC picked by person + kind
-    assert "90 din mein 2 baar" in r["say"]
+    assert "2 problems in the last 90 days" in r["say"]
     av = S.asset_view(T, "A-001")
-    assert av["repeat"]["count_90d"] == 3 and any("AMC" not in x and "baar" in x for x in av["advice"]) and len(av["tickets"]) == 3
+    assert av["repeat"]["count_90d"] == 3 and any("AMC" not in x and "times" in x for x in av["advice"]) and len(av["tickets"]) == 3
     e = S.escalate(T, ids[-1])
     esc = e["escalation"]
     assert esc["vendor"]["name"] == "Sai Computers" and "7XK9P2" in esc["text"] and "Ingle Traders" in esc["text"]
@@ -157,7 +157,7 @@ def test_assets_repeat_escalate(hd):
             out = S.decide_change(T, v["change"]["id"], False, v["change"]["hash"], by_tap=True)
             continue
         out = S.step(T, n, "not_fixed")
-    assert S.get_ticket(T, n)["status"] == "waiting_tech" and "upay khatam" in out["say"]
+    assert S.get_ticket(T, n)["status"] == "waiting_tech" and "Nothing more can be tried in the office" in out["say"]
     assert S.get_ticket(T, n)["escalation"]["links"]
     sync = S.sync_pcs(T)
     assert sync["added"] == []
@@ -184,21 +184,21 @@ def test_phishing_cert_in_clock_and_tick(hd, monkeypatch):
     inc = r["incident"]
     assert inc["analysis"]["verdict"] == "likely_phish" and r["cert_in"]["applies"] is True and inc["report_due"]
     assert "incident@cert-in.org.in" in r["cert_in_draft"] and "Ingle Traders" in r["cert_in_draft"]
-    assert any("password badaliye" in x for x in r["actions"]) and any("net hataiye" in x for x in r["actions"])
+    assert any("change the password" in x for x in r["actions"]) and any("off the network" in x for x in r["actions"])
     tk = r["ticket"]
     assert tk["security"] and tk["priority"] in ("P1", "P2") and tk["category"] == "security" and tk["current"]["id"] == "disconnect"
     assert S.EVENTS[-1][0] == "helpdesk_alert"
     n0 = datetime.now(timezone.utc)
     S.EVENTS.clear()
     out = S.tick(n0 + timedelta(hours=4, minutes=30))
-    assert out["cert_in"] == 1 and any("bache" in p.get("say", "") for _, p in S.EVENTS)
+    assert out["cert_in"] == 1 and any("hours left" in p.get("say", "") for _, p in S.EVENTS)
     out = S.tick(n0 + timedelta(hours=6, minutes=5))
-    assert out["cert_in"] >= 1 and any("6 ghante poore" in p.get("say", "") for _, p in S.EVENTS)
+    assert out["cert_in"] >= 1 and any("6 hours are over" in p.get("say", "") for _, p in S.EVENTS)
     S.EVENTS.clear()
     assert S.tick(n0 + timedelta(hours=7))["cert_in"] == 0                   # said once
     monkeypatch.setattr(S, "clock", lambda: n0 + timedelta(hours=7))
     rep = S.cert_in_reported(T, inc["id"], "CERTIn-2026-1234")
-    assert rep["incident"]["status"] == "reported" and "6 ghante ke baad" in rep["say"]
+    assert rep["incident"]["status"] == "reported" and "after the 6 hours" in rep["say"]
     # money gone -> P1 + 1930 first; just a mail received -> no clock
     m = S.report_phish(T, "Your parcel is held at customs, pay Rs 49 fee: bit.ly/xyz", sender="+91 90000 00000", money=True)
     assert m["ticket"]["priority"] == "P1" and "1930" in m["actions"][0]
@@ -218,14 +218,14 @@ def test_sla_alerts_and_morning(hd, monkeypatch):
     n0 = datetime.now(timezone.utc)
     S.EVENTS.clear()
     S.tick(n0 + timedelta(minutes=30))
-    assert any("jawab nahi diya" in p.get("say", "") for _, p in S.EVENTS)
+    assert any("no response yet" in p.get("say", "") for _, p in S.EVENTS)
     S.EVENTS.clear()
     S.tick(n0 + timedelta(hours=3))
     says = [p.get("say", "") for k, p in S.EVENTS if k == "helpdesk_alert"]
-    assert any("samay nikal gaya" in x for x in says) and not any("jawab nahi diya" in x for x in says)
+    assert any("past its fix time" in x for x in says) and not any("no response yet" in x for x in says)
     monkeypatch.setattr(S, "clock", lambda: n0 + timedelta(hours=3))
     d = S.day(T)
-    assert d["late"] and "der se" in d["say"]
+    assert d["late"] and "late" in d["say"]
     # morning note once a day
     from app.life import tz_of
     loc = datetime(2030, 1, 7, 10, 0, tzinfo=tz_of(T))

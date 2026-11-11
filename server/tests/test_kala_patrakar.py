@@ -172,7 +172,7 @@ def test_reply_publish_correction_only_by_her_tap(pk, monkeypatch):
         S.reply_none(T, rid)                                                   # deadline not passed yet
     S.CLK["t"] = datetime(2026, 10, 27, 5, 0, tzinfo=timezone.utc)
     line = S.reply_none(T, rid)["line"]
-    assert "jawab nahi mila" in line
+    assert "no reply had been received" in line
     assert S.tick(datetime(2026, 10, 27, 5, 0, tzinfo=timezone.utc))["alerts"] >= 0
     S.story_update(T, st["number"], body=f"Gaon walon ka aarop hai ki dukaan malik ne 200 bori anaaj ka ghotala kiya. {line}")
     pub = S.publish_request(T, st["number"], dest="copy")
@@ -202,7 +202,7 @@ def test_victim_block_election_and_pitch(pk):
     st = S.story_new(T, pitch="Chunav", area="Akola")["story"]
     S.story_update(T, st["number"], headline="Akola chunav: pratyashi ki rally", body="Pratyashi ne aaj rally ki.")
     r = S.publish_request(T, st["number"])
-    assert r["status"] == "blocked" and "48 ghante" in r["say"]                # 23 Oct 10:30 IST is inside the 48 h window
+    assert r["status"] == "blocked" and "48 hours" in r["say"]                # 23 Oct 10:30 IST is inside the 48 h window
     st2 = S.story_new(T, pitch="Ghatna", protect=["Pooja"])["story"]
     S.story_update(T, st2["number"], headline="Balatkar ka maamla", body="Police ke mutabik Pooja ke saath balatkar hua.")
     assert S.publish_request(T, st2["number"])["status"] == "blocked"
