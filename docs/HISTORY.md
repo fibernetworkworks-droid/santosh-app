@@ -1126,3 +1126,55 @@ English-tools commit `d84057023` had left the v0.545 scenes test asserting the o
 **NOT VERIFIED, said plainly:** a real Godot build inside the play frame; a live agent reply in a game's thread (no model
 key in tests); the 8 embedded tabs are the console's own pages restyled toward the approved design with scoped CSS, not
 redrawn to it pixel for pixel. The phone app gets nothing new — on the phone, games stay in chat.
+
+## v0.791.0 HOOLA CODE SAFETY + RESUME (built as 0.789; their CHHOTA BADLAAV took 0.789.0 and HOOLA GAME DEV 0.790.0) — the working-copy engine made safe against planted links, and a round a restart cut is continued (owner: "GO PHASE 4 WITH 2 LIVE SESSIONS" -> "MERGE")
+
+**What happened.** Two sessions built Phase 4 of `docs/HOOLA_CODE_WEB_PLAN.md` at the same time. The other one reached
+main first as v0.787.0 HOOLA CODE ENGINE (`devsahayak/engine.py`) and is proved on real Docker; this session's own
+engine (`devsahayak/wsp.py`: a long-lived box per session, pause / resume, Terminal and Files pane tabs) was never
+proved on Docker. Two engines for one job would be wrong, so **the shipped engine is THE engine and this session's was
+withdrawn** (it is in the branch history, commits 58a13e679..d0b7a8f4e, if a piece is ever wanted). Only what it had
+that the shipped engine lacked is re-landed here, on the shipped engine.
+
+**1. The link wall (a real hole, found by comparing the two engines).** A command in the box can run
+`ln -s /any/path/on/the/server name`. Inside the box that link leads nowhere, but the SERVER works on the same folder:
+`read name` returned the server's own file to the model, `write` / `edit` overwrote it, the file browser showed it, and
+the harvest put its content into the pull request. Now `Session.real(rel)` is the only way to a path: it refuses a link
+and anything behind a linked folder, and it is used by read, write, edit, multi_edit, ls (a link is listed as
+"-> (a link; not followed)"), the walk / glob, the harvest ("a link - Hoola never follows one", said in risk) and
+`files()` for the page. The test fails on the engine as shipped (the model was handed the outside file).
+
+**2. Keys.** A key that appears in a file AFTER the clone (a command wrote it) is hidden the first time it is read, added
+to the session's hidden list, never changed and never in the PR; `engine.scrub` hides a key-looking line of a command's
+output before the model or the page sees it; a command with a key in its own text is refused.
+
+**3. A round cut by a server restart is continued.** A background run writes what it is on the row (`DevTask.job` =
+{what, words, beat, tries}) and beats every 30 s on its own small thread while the round lives (one long command says
+nothing for minutes). `service._resume_cut_runs` (in the tick): a job still on the row, nobody in this process running
+it, heartbeat older than 3 minutes = cut -> `engine.run(resume=True)` goes on from the saved conversation in the same
+working copy with one line telling the model the server restarted (her message is not sent twice: `_said`). Twice at
+most, then failed with words she can act on. A run of the OLD loop has nothing saved: after 30 silent minutes it is
+marked "start this again as a new session" instead of looking busy for ever.
+
+**4. Her repo's box.** `service.save_repo` + `PATCH /api/devsahayak/repos/{owner}/{name}` + a form under each repo in
+Settings ("How this repo runs in the box"): her setup command (counts as declared, so the dependencies are installed;
+the box image is keyed on it, a changed command = a new box), her test command, plain variables for every command
+(`box.run_in(env=)`). A sudo / docker command, a key in a command, and a name or value that looks like a secret are
+refused by name.
+
+**5. A question she can answer with a tap.** `done` may carry `choices` (2-4) beside a question; they show as buttons
+(`ws.choices`) and her tap is sent as her answer. Cleared when the next round starts.
+
+**6. Fixed on the way.** A revision on an open PR let go of the row before writing it (`s.expunge` before a flush), so
+the round count, the security notes and Hoola's explanation of that round were never saved - the "6 rounds" limit never
+counted on an open PR.
+
+**Files.** `devsahayak/engine.py`, `service.py`, `api.py`, `models.py` (three nullable columns on repos, `job` on
+tasks), `devlab/box.py` (`run_in(env=)`), `static/console/code.js`, `v2.css`; tests `test_v0789_hoola_code_safety.py`
+(9, incl. a browser walk) + the v0.787 engine suite and the older Hoola Code suites green.
+
+**NOT VERIFIED.** Docker is not on the machine this was built on: a local folder stood in for the box in these tests,
+so the env variables and the scrubbed output have not been through a real `docker run`. No real restart has cut a real
+round. **NOT BUILT (this session's withdrawn engine had them, unproved):** background commands, a Terminal pane,
+pausing an idle working copy to free disk before the 14-day sweep. Deploy: vps-ops deploy, server-only, no new pip;
+four nullable columns create themselves.

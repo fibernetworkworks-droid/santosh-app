@@ -2910,3 +2910,9 @@ Task ID: v0.789.0 CHHOTA BADLAAV (built as 0.785; their HOOLA AI APPS took 0.785
 Task: owner "GO L4" - E1 line-edit tools + E2 tiered checks in the Web Studio.
 Work Log: site/lineedit.py; website_dekho what=search, website action=edit_lines / write_file; checks.run quick; save_version quick + _quick_merge; blockers + Go live starts the full check; Studio version card; 8 tests; real Chromium quick check 6.2 s.
 Stage Summary: pushed; server deploy only. Next: L5 YEH WALA (preview toolbar, element pills, style panel) on her GO.
+
+Task ID: v0.791.0 HOOLA CODE SAFETY + RESUME (built as 0.789; re-versioned on merge: CHHOTA BADLAAV took 0.789.0, HOOLA GAME DEV 0.790.0)
+Ask: GO PHASE 4 WITH 2 LIVE SESSIONS -> MERGE.
+What happened: another session shipped Phase 4 first (v0.787 HOOLA CODE ENGINE, proved on real Docker). This session's parallel engine (wsp.py) was withdrawn, not merged; its missing pieces were re-landed on the shipped engine.
+Built: link wall (the server never follows a link a box command planted), keys hidden after the clone + in output, restart pickup (job heartbeat + resume), per-repo setup / test / variables, question choices, the lost round-count save; 9 tests incl. a browser walk.
+Deploy: vps-ops deploy (server-only; no new pip; four nullable columns self-heal). Not verified on real Docker here.
