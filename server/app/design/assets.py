@@ -20,7 +20,7 @@ ASSET_MAX = 10 * 1024 * 1024
 THUMB_MAX = 300 * 1024
 PIXELS_MAX = 64_000_000
 _PNG = b"\x89PNG\r\n\x1a\n"
-_SVG_BAD_TAGS = frozenset("script foreignobject iframe embed object handler listener set animate".split())
+_SVG_BAD_TAGS = frozenset("script foreignobject iframe embed object handler listener".split())
 _SVG_BAD_TEXT = re.compile(r"<!entity|<\?xml-stylesheet|<script|javascript:", re.I)
 _SHA = re.compile(r"^[0-9a-f]{64}$")
 
@@ -53,7 +53,8 @@ def _check_raster(data: bytes, mime: str) -> tuple[int, int]:
         return 0, 0
     try:
         with Image.open(io.BytesIO(data)) as im:
-            if Image.MIME.get(im.format or "") != mime:
+            kind = "JPEG" if im.format == "MPO" else im.format      # a phone's multi-picture JPEG is a JPEG
+            if Image.MIME.get(kind or "") != mime:
                 raise BadImage("The file is not the kind of image its first bytes claim.")
             w, h = im.size
             if w * h > PIXELS_MAX:
@@ -89,9 +90,11 @@ def _check_svg(data: bytes) -> tuple[int, int]:
         if not isinstance(el.tag, str):
             continue
         if _local(el.tag) in _SVG_BAD_TAGS:
-            raise BadImage("This SVG carries a script, an animation or embedded HTML, so it is not kept.")
+            raise BadImage("This SVG carries a script or embedded HTML, so it is not kept.")
         for key, value in el.attrib.items():
-            if _local(key).startswith("on") or "javascript:" in "".join(value.split()).lower():
+            name, flat = _local(key), "".join(value.split()).lower()
+            # an animation may also WRITE a handler or a link: <set attributeName="onload" ...>
+            if name.startswith("on") or "javascript:" in flat or (name == "attributename" and flat.startswith(("on", "href", "xlink:href"))):
                 raise BadImage("This SVG carries an event handler, so it is not kept.")
 
     def px(value: str | None) -> int:
