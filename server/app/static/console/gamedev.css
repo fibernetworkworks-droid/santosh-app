@@ -614,3 +614,6 @@ body.gdv-body{overflow:auto;background:var(--bg);color:var(--ink);font:15px/1.5 
 /* motion only when it is welcome */
 @media (prefers-reduced-motion:reduce){.gdv-engine *,.gdv-engine *::before,.gdv-engine *::after{animation:none !important;transition:none !important}}
 html.calm.gdv-engine *,html.calm.gdv-engine *::before,html.calm.gdv-engine *::after{animation:none !important;transition:none !important}
+/* a two-word role chip on a board card wraps instead of running into the line under it; the viewport keeps its own height */
+.gdv-embed .gs-role{height:auto;min-height:22px;padding:2px 8px;line-height:1.35;white-space:normal}
+.gdv-editor .gdv-vp{align-self:start}
