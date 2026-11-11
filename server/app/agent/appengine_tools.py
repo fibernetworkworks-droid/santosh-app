@@ -11,8 +11,8 @@ from typing import Any
 
 from .tools import Ctx, ToolError
 
-READS = {"list", "status", "view", "search", "logs", "files", "check"}
-CHANGES = {"create", "write", "edit_lines", "rename", "delete", "add_dependency", "tokens", "build"}
+READS = {"list", "status", "view", "search", "logs", "files", "check", "cloud", "cloud_rows"}
+CHANGES = {"create", "write", "edit_lines", "rename", "delete", "add_dependency", "tokens", "build", "cloud_change"}
 
 APPENGINE_TOOLS = [
     {"name": "app_engine", "description": (
@@ -34,7 +34,18 @@ APPENGINE_TOOLS = [
         "done; a failed build names file and line, and action=logs also lists errors the preview itself reported (with "
         "the app's file and line). When she selected a part, her message names its file:line - view that line first. "
         "Going live is HER tap in the Studio - never claim it is live. `app` = the app's id or number (the Studio "
-        "turn already names it)."),
+        "turn already names it). HOOLA CLOUD (saved data + sign-in): action=cloud shows its lists, rules in plain words and "
+        "the rule audit; action=cloud_change changes=[...] applies changes as ONE run - ops: add_list {key, label, fields: "
+        "[{key, label, type: text|long_text|number|phone|email|date|choice|yes_no|url, required, options, admin_only, "
+        "private}], rules: {create: public|member|admin, read: public|members|own|admin, update: own|admin, delete: "
+        "own|admin}, samples}, add_field {list, ...field}, add_option {list, field, option}, hide_field / show_field "
+        "{list, field}, hide_list / show_list {list}, label {list, field?, label}, rules {list, create?, read?, update?, "
+        "delete?}, signup {on}. Only ADDITIVE changes: drop / rename / type change / remove_option are never done by you "
+        "(they wait for her 'I accept data loss' tap; use hide + add instead). Personal data (email, phone, name, address) "
+        "is never readable by anyone on the internet unless she said so (then confirm_public: true). The app uses it ONLY "
+        "via src/lib/hoola.ts: hoola.db.collection(\"list\").list() / create / update / remove, hoola.auth.signUp / "
+        "signIn / signOut / me / onChange; every rule is checked on the server. action=cloud_rows {list} reads the PREVIEW "
+        "(sample) data only - her visitors' live data is never read by you."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": sorted(READS | CHANGES)},
          "app": {"type": "string", "description": "the app id or number (default: the app this Studio chat is about)"},
@@ -50,7 +61,9 @@ APPENGINE_TOOLS = [
              "first_line": {"type": "integer"}, "last_line": {"type": "integer"}}, "required": ["search", "replace"]}},
          "from_line": {"type": "integer"}, "to_line": {"type": "integer"},
          "query": {"type": "string", "description": "search: text to find"},
-         "package": {"type": "string", "description": "add_dependency: a vetted package name"}},
+         "package": {"type": "string", "description": "add_dependency: a vetted package name"},
+         "changes": {"type": "array", "items": {"type": "object"}, "description": "cloud_change: the Hoola Cloud changes, applied as one run"},
+         "list": {"type": "string", "description": "cloud_rows: the list to read (preview data)"}},
          "required": ["action"]}},
 ]
 
@@ -108,6 +121,22 @@ def _call(ctx: Ctx, action: str, app: str, kw: dict[str, Any]) -> dict[str, Any]
         return AE.set_tokens(t, a, kw.get("values") or {}, kw.get("palette") or "")
     if action == "build":
         return AE.wait_build(t, a)
+    if action in ("cloud", "cloud_rows", "cloud_change"):
+        from ..appengine import cloud as CL
+        r = AE._load(t, a)
+        try:
+            if action == "cloud":
+                o = CL.overview(r)
+                return {k: o[k] for k in ("schema", "audit", "pending", "datasets", "not_built")}
+            if action == "cloud_rows":
+                return {"dataset": "preview", "rows": CL.owner_rows(r, "preview", kw.get("list") or "", 50)}
+            return CL.apply_changes(r, kw.get("changes") or [], "hoola")
+        except CL.CloudError as e:
+            if action == "cloud_change" and isinstance(e.data, dict) and e.data.get("destructive"):
+                CL.queue_pending(r, e.data["destructive"])
+                raise ToolError(str(e) + " The data-loss card is now waiting in the Studio's Cloud tab; tell her what it "
+                                "would delete and that it is her choice.")
+            raise ToolError(str(e))
     raise ToolError(f"Unknown action '{action}'.")
 
 

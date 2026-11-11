@@ -2579,3 +2579,65 @@ relay that has the old code says to paste the new worker. vps-ops apisetu_check 
 names. Tests in test_v0827_apisetu.py (+3) and the BAHI suite green.
 
 NOT VERIFIED: API Setu through the relay has not answered live; the GST sandbox login is still waiting on WhiteBooks.
+
+## v0.831.0 HOOLA CLOUD (L10 of docs/LOVABLE_STUDIO_PLAN.md, owner: "GO L10")
+
+Saved data, sign-in and server-checked rules for the Web Studio's React apps (App Engine), built on what exists.
+
+- **The core = the website-app backend** (`site/webapp.py`, unchanged): members with PBKDF2 passwords, roles member /
+  staff / admin in its own member table (never a field a user can edit), signed tokens, rows, and the fixed rule
+  vocabulary (create public | member | admin, read public | members | own | admin, update / delete own | admin) checked
+  on EVERY call. `admin_only` fields cannot be set by members; `private` fields are hidden from them.
+- **`appengine/cloud.py`** (NEW):
+  - the SCHEMA is server data (`<app>/cloud/schema.json` + `migrations.json`), not app code - restoring old code never
+    touches data;
+  - MIGRATIONS: additive ops only - add_list (seeds 3 marked sample rows in preview), add_field, add_option,
+    hide_field / show_field, hide_list / show_list, label, rules, signup - applied as ONE numbered run (any bad change =
+    nothing changes); drop_list / drop_field / rename_field / rename_list / change_type / remove_option are REFUSED with
+    the add-copy-hide way, queued as her data-loss card, and run only by her tap with confirm + accept_data_loss
+    (both datasets purged / rewritten);
+  - the RULE AUDIT: each list's rules in plain words (read / add / change / delete) + flags (high: anyone on the
+    internet reads personal fields; medium: every member reads everyone's personal fields; info: public on purpose,
+    public add); a change that makes personal fields (email, phone, name, address, city...) public is refused at plan
+    time unless it says confirm_public;
+  - `src/lib/cloud.types.ts` (locked) generated from the lists, so `hoola.db.collection("orders")` is typed and tsc
+    checks the app's code against the data;
+  - TWO DATASETS: core keys `ae:<app>:p` (preview, samples marked) and `ae:<app>:l` (live) - publish never copies a
+    preview row or a preview account; the live door exists only while the app is live;
+  - the public API `POST /api/cloud/<key>/<op>` (schema, signup, signin, me, signout, list, create, update, remove; CORS;
+    32 KB; English errors for her visitors), key `p-<preview token>` / `l-<slug>`.
+- **Every app now runs in a SEALED frame** under a Hoola **shell** page (`appengine/shell.js`, served at the app's
+  address; the app itself is under `__app/`): the shell keeps the visitor's sign-in (localStorage per app; in the
+  Studio only in memory) and makes the Cloud calls; the app asks through `src/lib/hoola.ts` (locked: postMessage RPC,
+  `hoola.auth` signUp / signIn / signOut / me / onChange, `hoola.db.collection(list).list / create / update / remove`).
+  Why: all live apps share Hoola's address (`/apps/<slug>/`), so an app holding tokens could read another app's; in a
+  sealed frame the app has no storage, no cookies and no token at all. `main.tsx` keeps the address bar in step
+  (`NavSync`). A rule now refuses `localStorage` / `sessionStorage` / `indexedDB` / `document.cookie` in app code (they do
+  not exist in the frame). The preview app page carries no frame-ancestors (a blank-origin shell cannot match one); a
+  live app keeps `frame-ancestors 'self'`.
+- Tool `app_engine`: `cloud` (lists + audit + counts), `cloud_change` (one run; a destructive ask = her card),
+  `cloud_rows` (PREVIEW data only - her visitors' live data is never read by the model); Plan / Chat refuse
+  `cloud_change`; the turn's `<app_engine_project>` block lists the lists, rules and flags.
+- Studio routes (her login): GET `/api/appengine/{id}/cloud`, POST `/cloud/changes` (additive, or the data-loss card),
+  POST `/cloud/pending/clear`, GET `/cloud/{ds}/rows/{list}`, GET `/cloud/{ds}/members`, POST
+  `/cloud/{ds}/members/{mid}/role`, POST `/cloud/preview/samples|clear`. Deleting an app deletes its Cloud data.
+- Studio **Cloud** tab: Preview data / Live data, every list with its fields, rules in words and flags, its rows (Sample
+  badge), members with a role select (her tap), fresh samples / clear preview data, the data-loss card (tick "I accept
+  data loss", then Apply), the history of changes, and what is not connected yet.
+
+### Measured here (real box + real Chromium)
+- Proof card 5/5 + 8/8: every app runs sealed (`localStorage` throws inside it), the shell page carries no app code;
+  the clinic app saves patients' requests through Hoola Cloud; the server held the rules (a visitor adds but cannot
+  read; a signed-up member cannot read others' or change status); after publish the live data held ONLY the live
+  visitor's request - no sample rows, no preview row, no preview account.
+- Tests `test_v0827_hoola_cloud.py` (6): migrations (5 destructive ops refused + nothing changes, one-run all-or-nothing,
+  the tool queues her card, her tap purges values in both datasets), hide keeps values, the rule audit + every rule on
+  the server (incl. a member trying to grant themselves a role - ignored), preview vs live, shell / sealed app / routes /
+  tool / Plan mode, and the Cloud tab in a browser. The v0.824 / v0.826 suites updated for the shell (the app is under
+  `__app/` now) and green: 28 passed with teen mode.
+
+### NOT built / NOT verified
+- NOT VERIFIED on her VPS or with a real model writing a Cloud app.
+- Not connected yet (said on the Cloud tab and in hoola.ts): files, server functions (DIMAAG), live updates, payments,
+  AI from the app, phone OTP / Google sign-in, a password-reset email.
+- Sign-in on a live app is per browser (the shell's storage); an app on its own domain is not built.

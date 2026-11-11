@@ -3029,3 +3029,9 @@ Task ID: v0.830.0 API SETU RELAY + GST LOGIN HINT (built as 0.828; their HOOLA C
 Task: owner "CHECK" on the v0.827 wb_check + apisetu_check runs.
 Work Log: read runs 43003949634 (deploy), 43004320897 (wb_check: search PASS, OTP 'user name does not exists', rettrack bare refusal), 43004363250 (apisetu_check: ReadTimeout); apisetu.gov.in answers 401 in 2 s from outside -> NIC drops the VPS; relay worker extended to API Setu; base() falls back to DATA_GOV_IN_BASE; wb_check GST-login hint; 3 tests; merged main.
 Stage Summary: on branch claude/exciting-hawking-113x8i. Next: she pastes the new worker.js into her Cloudflare worker, deploy, apisetu_check; asks WhiteBooks for the GST sandbox login (username + GSTIN).
+
+---
+Task ID: v0.831.0 HOOLA CLOUD (L10)
+Task: owner "GO L10" on docs/LOVABLE_STUDIO_PLAN.md.
+Work Log: appengine/cloud.py (schema, additive one-run migrations, data-loss card, rule audit, typed lists, preview vs live, public API on site/webapp.py), sealed app frame + shell.js + hoola.ts RPC, tool cloud / cloud_change / cloud_rows, 8 Studio routes + Cloud tab, proof clinic app on Cloud; 6 tests incl. a browser walk; v0.824 / v0.826 tests moved to __app/.
+Stage Summary: pushed. Server deploy (no new pip; the image needs no rebuild). Next: L11 SABOOT (auto tests + browser check before done, scans, publish block) on her GO.

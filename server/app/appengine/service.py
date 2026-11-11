@@ -258,8 +258,15 @@ def delete_app(tenant: str, ref: str) -> dict[str, Any]:
     r = _load(tenant, ref)
     if r.live_version:
         raise AppEngineError("This app is live; take it down first (Studio > Publish > Take down).", 409)
+    from sqlalchemy import delete as _sqldel
+    from ..site import webapp as W
+    from . import cloud as CL
+    W.ensure_tables()
     with session() as s:
         s.delete(s.get(AppProject, r.id))
+        for ds in CL.DATASETS:                        # v0.827 its Hoola Cloud data (both datasets) goes with it
+            s.execute(_sqldel(W.SiteAppRow).where(W.SiteAppRow.site_id == CL.site_key(r, ds)))
+            s.execute(_sqldel(W.SiteAppMember).where(W.SiteAppMember.site_id == CL.site_key(r, ds)))
     shutil.rmtree(pdir(r.tenant_id, r.id), ignore_errors=True)
     return {"ok": True, "say": f"App {r.number} deleted."}
 
@@ -679,6 +686,8 @@ def _refresh_template(r: AppProject) -> None:
             (d / rel).parent.mkdir(parents=True, exist_ok=True)
             if not (d / rel).exists() or (d / rel).read_bytes() != f.read_bytes():
                 shutil.copy2(f, d / rel)
+    from . import cloud as CL
+    CL.write_types(r, quiet=True)                       # v0.827 the typed lists of its Hoola Cloud
     t = _theme(r)
     css = TK.css(t)
     tf = d / "src" / "styles" / "tokens.css"
@@ -853,6 +862,46 @@ CSP = ("default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline';
        "form-action 'self'; object-src 'none'")
 
 
+SHELL_CSP = ("default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self'; frame-src 'self'; "
+             "img-src 'self' data:; frame-ancestors 'self'; base-uri 'none'; form-action 'self'; object-src 'none'")
+
+
+def _shell(r, prefix: str, ds: str) -> tuple[bytes, str, dict[str, str]]:
+    """v0.827 the page at the app's address: Hoola's shell, which frames the sealed app and keeps its sign-in."""
+    from . import cloud as CL
+    cfg = {"base": prefix, "cloud": f"/api/cloud/{CL.key_of(r, ds)}", "key": r.slug + (":p" if ds == "preview" else ""),
+           "title": r.name}
+    meta = _esc(json.dumps(cfg)).replace("'", "&#39;")
+    html = (f'<!doctype html>\n<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, '
+            f'initial-scale=1"><title>{_esc(r.name)}</title><link rel="icon" href="data:,"><meta name="hoola-app" content=\'{meta}\'>'
+            '<style>html,body{margin:0;height:100%;background:#fff}</style>'
+            f'<script src="{prefix}__hoola/shell.js" defer></script></head><body></body></html>\n')
+    hdr = {"Content-Security-Policy": SHELL_CSP, "X-Content-Type-Options": "nosniff", "Cache-Control": "no-store",
+           "Referrer-Policy": "strict-origin-when-cross-origin"}
+    if ds == "preview":
+        hdr["X-Robots-Tag"] = "noindex, nofollow"
+    return html.encode("utf-8"), "text/html; charset=utf-8", hdr
+
+
+def _route(r, root_: Path, rel: str, prefix: str, ds: str) -> tuple[bytes, str, dict[str, str]]:
+    """shell page / its script / the sealed app under __app/ (v0.827: every app runs in a sealed frame)."""
+    here = Path(__file__).resolve().parent
+    if rel == "__app/__hoola/preview.js":            # the app page asks for its helper relative to its own base
+        rel = "__hoola/preview.js"
+    if rel in ("__hoola/shell.js", "__hoola/preview.js"):
+        if rel.endswith("preview.js") and ds != "preview":
+            raise AppEngineError("not found", 404)
+        return (here / rel.split("/")[1]).read_bytes(), "application/javascript", {
+            "Content-Security-Policy": CSP, "Cache-Control": "no-store", "Access-Control-Allow-Origin": "*",
+            "X-Content-Type-Options": "nosniff"}
+    if rel == "__app" or rel.startswith("__app/"):
+        return _serve(root_, rel[len("__app/"):] if rel.startswith("__app/") else "", prefix + "__app/", ds == "preview")
+    last = rel.rsplit("/", 1)[-1]
+    if rel and "." in last:
+        raise AppEngineError("not found", 404)
+    return _shell(r, prefix, ds)
+
+
 def _serve(root_: Path, path: str, prefix: str, preview: bool) -> tuple[bytes, str, dict[str, str]]:
     rel = (path or "").lstrip("/")
     if ".." in rel.split("/") or "\0" in rel:
@@ -867,7 +916,11 @@ def _serve(root_: Path, path: str, prefix: str, preview: bool) -> tuple[bytes, s
         raise AppEngineError("not found", 404)
     data = f.read_bytes()
     ext = f.suffix.lower()
-    hdr = {"Content-Security-Policy": CSP, "X-Content-Type-Options": "nosniff", "Referrer-Policy": "strict-origin-when-cross-origin",
+    # v0.827 in the Studio the shell itself runs in a sealed (blank-origin) frame, so the preview app cannot demand a
+    # same-origin parent; a LIVE app keeps frame-ancestors 'self' (its shell is the top page)
+    # (no frame-ancestors at all: '*' does not match a blank-origin parent; the preview is reached only by its secret link)
+    csp = CSP.replace(" frame-ancestors 'self';", "") if preview else CSP
+    hdr = {"Content-Security-Policy": csp, "X-Content-Type-Options": "nosniff", "Referrer-Policy": "strict-origin-when-cross-origin",
            "Permissions-Policy": "camera=(), microphone=(), geolocation=()"}
     if ext == ".html":
         txt = data.decode("utf-8", "replace")
@@ -880,7 +933,7 @@ def _serve(root_: Path, path: str, prefix: str, preview: bool) -> tuple[bytes, s
         hdr["Cache-Control"] = "no-store" if preview else ("public, max-age=31536000, immutable" if "/assets/" in f"/{rel}" else "public, max-age=300")
     if preview:
         hdr["X-Robots-Tag"] = "noindex, nofollow"
-        hdr["Access-Control-Allow-Origin"] = "*"
+    hdr["Access-Control-Allow-Origin"] = "*"        # the app runs in a sealed frame (a blank origin): its files load with CORS
     return data, TYPES.get(ext, "application/octet-stream"), hdr
 
 
@@ -900,13 +953,9 @@ def preview_file(token: str, path: str) -> tuple[bytes, str, dict[str, str]]:
     if not v or not (ver_dir(r, v) / "dist").exists():
         raise AppEngineError("not built yet", 404)
     prefix = f"/api/app-preview/{token}/" + (f"__v/{v}/" if m else "")
-    if rel == "__hoola/preview.js":
-        return (Path(__file__).resolve().parent / "preview.js").read_bytes(), "application/javascript", {
-            "Content-Security-Policy": CSP, "Cache-Control": "no-store", "Access-Control-Allow-Origin": "*",
-            "X-Content-Type-Options": "nosniff", "X-Robots-Tag": "noindex, nofollow"}
     if rel.endswith(".map"):                         # hidden maps stay on the server (the error collector reads them)
         raise AppEngineError("not found", 404)
-    return _serve(ver_dir(r, v) / "dist", rel, prefix, True)
+    return _route(r, ver_dir(r, v) / "dist", rel, prefix, "preview")
 
 
 def live_file(slug: str, path: str) -> tuple[bytes, str, dict[str, str]]:
@@ -916,7 +965,7 @@ def live_file(slug: str, path: str) -> tuple[bytes, str, dict[str, str]]:
         if r is None or not r.live_version:
             raise AppEngineError("not found", 404)
         s.expunge(r)
-    return _serve(live_dir(r), path, f"/apps/{r.slug}/", False)
+    return _route(r, live_dir(r), (path or "").lstrip("/"), f"/apps/{r.slug}/", "live")
 
 
 # ------------------------------------------------------------------ the turn's block (the app she is working on)
@@ -947,6 +996,11 @@ def prompt_block(tenant: str) -> str:
     try:
         from . import pick as PK
         state += PK.open_block(r)
+    except Exception:                                # noqa: BLE001
+        pass
+    try:
+        from . import cloud as CL
+        state += CL.prompt_block(r)
     except Exception:                                # noqa: BLE001
         pass
     return (f"<app_engine_project>\nYou are working on App Engine app {r.number} \"{r.name}\" (app id {r.id}), a real "

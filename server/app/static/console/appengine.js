@@ -98,7 +98,7 @@
   async function workspace(id, tab) {
     const {api, APP} = k();
     if (ST.id !== id) Object.assign(ST, {id, conv: '', rows: [], waiting: false, file: '', fileCode: null, err: '', sig: '', device: 'pc'});
-    ST.tab = ['preview', 'code', 'design', 'versions', 'publish'].includes(tab) ? tab : 'preview';
+    ST.tab = ['preview', 'code', 'design', 'cloud', 'versions', 'publish'].includes(tab) ? tab : 'preview';
     ST.app = await api('GET', `/api/appengine/${enc(id)}`);
     ST.conv = S(ST.app.conversation_id);
     if (!ST.conv) ST.conv = await newConv(ST.app);
@@ -135,7 +135,7 @@
   }
 
   function drawTabs() {
-    const T = [['preview', 'Preview'], ['code', 'Code'], ['design', 'Design'], ['versions', 'Versions'], ['publish', 'Publish']];
+    const T = [['preview', 'Preview'], ['code', 'Code'], ['design', 'Design'], ['cloud', 'Cloud'], ['versions', 'Versions'], ['publish', 'Publish']];
     const el = document.getElementById('aeTabs'); if (!el) return;
     el.innerHTML = T.map(([key, label]) => `<button type="button" role="tab" aria-selected="${ST.tab === key}" data-ae="tab" data-ae-tab="${key}">${label}</button>`).join('');
   }
@@ -180,6 +180,45 @@
         <div class="ae-pals">${Object.entries(PALS).map(([n, c]) => `<button type="button" class="ae-pal${S(full.palette) === n ? ' on' : ''}" data-ae="pal" data-ae-pal="${n}" aria-pressed="${S(full.palette) === n}"><span class="sw">${c.map(x => `<i style="background:${x}"></i>`).join('')}</span><span>${n[0].toUpperCase() + n.slice(1)}</span></button>`).join('')}</div>
         <div class="ae-toks">${Object.entries(cols).map(([n, v]) => `<div class="ae-tok"><i style="background:${esc(v)}"></i><b>${esc(n)}</b><code>${esc(v)}</code></div>`).join('')}</div>
         <p class="mut sm">Text on background: contrast ${esc(th.contrast_ink_on_bg)} · text on buttons: ${esc(th.contrast_primary_ink)} (4.5 or more reads well).</p></div>`;
+      return;
+    }
+    if (ST.tab === 'cloud') {                                   // v0.827 HOOLA CLOUD: her data, rules, members
+      let o;
+      try { o = await api('GET', `/api/appengine/${enc(a.id)}/cloud`); } catch (e) { if (fresh()) el.innerHTML = `<div class="ae-probs">${esc(e.message)}</div>`; return; }
+      if (!fresh()) return;
+      const ds = ST.ds === 'live' ? 'live' : 'preview';
+      const lists = L((o.schema || {}).lists).filter(x => !x.hidden);
+      const rowsBy = {};
+      await Promise.all(lists.map(async x => { try { rowsBy[x.key] = L((await api('GET', `/api/appengine/${enc(a.id)}/cloud/${ds}/rows/${enc(x.key)}`)).rows); } catch (e) { rowsBy[x.key] = []; } }));
+      let mem = [];
+      try { mem = L((await api('GET', `/api/appengine/${enc(a.id)}/cloud/${ds}/members`)).members); } catch {}
+      if (!fresh()) return;
+      const lvl = {high: 'bad', medium: 'warn', info: ''};
+      const auditOf = k2 => L(o.audit).find(x => x.list === k2) || {};
+      const pend = L(o.pending);
+      const card = pend.length ? `<div class="ae-loss" role="alertdialog" aria-label="Data loss"><b>Hoola asked for a change that loses data</b>
+          <ul>${pend.map(c => `<li><code>${esc(c.op)}</code> ${esc([c.list, c.field].filter(Boolean).join('.'))}${c.to ? ' → ' + esc(c.to) : ''}${c.type ? ' → ' + esc(c.type) : ''}</li>`).join('')}</ul>
+          <p class="sm">This deletes or changes saved data in BOTH preview and live. It cannot be undone.</p>
+          <label class="ae-row sm"><input type="checkbox" id="aeLossOk"> I accept data loss</label>
+          <div class="ae-row"><button class="b sm" type="button" data-ae="loss-yes" style="border-color:var(--bad);color:var(--bad)">Apply</button><button class="b ghost sm" type="button" data-ae="loss-no">Not now</button></div></div>` : '';
+      const listHtml = x => { const au = auditOf(x.key), rows = rowsBy[x.key] || [], flds = L(x.fields).filter(f => !f.hidden);
+        return `<section class="ae-cl"><div class="ae-row"><h3>${esc(x.label)}</h3><code class="mut sm">${esc(x.key)}</code><span class="sp"></span><span class="mut sm">${rows.length} ${ds} ${rows.length === 1 ? 'entry' : 'entries'}</span></div>
+          <p class="sm ae-who">Read: <b>${esc(au.read || '')}</b> · Add: <b>${esc(au.add || '')}</b> · Change: <b>${esc(au.change || '')}</b></p>
+          ${L(au.flags).map(f => `<p class="sm ae-flag ${lvl[f.level] || ''}">${esc(f.say)}</p>`).join('')}
+          <div class="ae-tbl"><table><thead><tr>${flds.map(f => `<th>${esc(f.label)}${f.required ? ' *' : ''}</th>`).join('')}<th></th></tr></thead>
+          <tbody>${rows.slice(0, 50).map(rw => `<tr>${flds.map(f => `<td>${esc(S(rw[f.key]))}</td>`).join('')}<td>${rw.sample ? '<span class="pill">Sample</span>' : ''}</td></tr>`).join('') || `<tr><td colspan="${flds.length + 1}" class="mut">No entries in ${ds} yet.</td></tr>`}</tbody></table></div></section>`; };
+      el.innerHTML = `<div class="ae-pad ae-cloud"><div class="ae-row"><h3>Hoola Cloud</h3><span class="pill">schema v${esc((o.schema || {}).version || 0)}</span><span class="sp"></span>
+          <div class="seg" role="group" aria-label="Which data"><button type="button" data-ae="ds" data-ae-ds="preview" aria-pressed="${ds === 'preview'}">Preview data</button><button type="button" data-ae="ds" data-ae-ds="live" aria-pressed="${ds === 'live'}">Live data</button></div></div>
+        <p class="mut sm">Saved data and sign-in for this app. Every rule is checked on Hoola's server. Preview data (with sample rows) and live data (your visitors) are kept apart: publishing never copies one into the other.</p>
+        ${card}
+        ${lists.length ? lists.map(listHtml).join('') : '<div class="panel mut">No saved data yet. Ask Hoola, for example: "save the orders and let customers sign in".</div>'}
+        <section class="ae-cl"><div class="ae-row"><h3>Members (${ds})</h3><span class="sp"></span>${ds === 'preview' ? '<button class="b ghost sm" type="button" data-ae="samples">Fresh sample rows</button><button class="b ghost sm" type="button" data-ae="clearprev">Clear preview data</button>' : ''}</div>
+          ${mem.length ? `<div class="ae-tbl"><table><thead><tr><th>Email</th><th>Name</th><th>Role</th></tr></thead><tbody>${mem.map(m => `<tr><td>${esc(m.email)}</td><td>${esc(m.name)}</td><td><select data-ae-role="${esc(m.id)}" aria-label="Role of ${esc(m.email)}">${['member', 'staff', 'admin'].map(rl => `<option${rl === m.role ? ' selected' : ''}>${rl}</option>`).join('')}</select></td></tr>`).join('')}</tbody></table></div>`
+            : `<p class="mut sm">No one has signed up in ${ds} yet.</p>`}
+          <p class="mut sm">Roles live in Hoola Cloud, never in the app's data: staff and admin see and change every entry.</p></section>
+        <p class="mut sm">Not connected yet: ${esc(L(o.not_built).join(', '))}.</p>
+        ${L(o.migrations).length ? `<details><summary class="sm">Changes to the lists (${L(o.migrations).length})</summary><ol class="ae-vers">${L(o.migrations).map(m => `<li><b>v${esc(m.n)}</b><span class="mut sm">${esc(m.by)} · ${esc(L(m.changes).map(c => c.op).join(', '))} · ${esc(k().ago(m.at) || '')}</span></li>`).join('')}</ol></details>` : ''}
+      </div>`;
       return;
     }
     if (ST.tab === 'versions') {
@@ -285,6 +324,13 @@
     if (d.t === 'pick') onPick(d);
     if (d.t === 'mode') { ST.select = d.mode === 'select'; const b = document.querySelector('[data-ae="select"]'); if (b) { b.setAttribute('aria-pressed', String(ST.select)); b.classList.toggle('on', ST.select); } }
   });
+  document.addEventListener('change', async e => {               // v0.827 her tap on a member's role
+    const sel = e.target && e.target.closest && e.target.closest('[data-ae-role]');
+    if (!sel) return;
+    const ds = ST.ds === 'live' ? 'live' : 'preview';
+    try { await k().api('POST', `/api/appengine/${enc(ST.id)}/cloud/${ds}/members/${enc(sel.dataset.aeRole)}/role`, {role: sel.value}); k().toast('Role changed; they sign in again.'); }
+    catch (er) { k().toast(er.message, true); }
+  });
   document.addEventListener('input', e => {
     if (e.target && e.target.id === 'aePkText') { ST.ptext = S(e.target.value); livePreview(); const b = document.querySelector('[data-ae="pk-apply"]'); if (b) b.disabled = false; }
   });
@@ -364,6 +410,20 @@
       try { const r = await api('POST', `/api/appengine/${enc(ST.id)}/undo`); toast(S(r.say)); ST.undo = Number(r.left) > 0; if (ST.pick) ST.pick.info = await api('GET', `/api/appengine/${enc(ST.id)}/pick?hs=${enc(ST.pick.hs)}`); }
       catch (e) { toast(e.message, true); }
       drawPick(); return;
+    }
+    if (what === 'ds') { ST.ds = b.dataset.aeDs; await drawView(); return; }
+    if (what === 'samples' || what === 'clearprev') {
+      if (what === 'clearprev' && !(await confirmBox('Clear all PREVIEW data and preview members of this app? Live data is not touched.', 'Clear preview data'))) return;
+      try { const r = await api('POST', `/api/appengine/${enc(ST.id)}/cloud/preview/${what === 'samples' ? 'samples' : 'clear'}`); toast(what === 'samples' ? `${r.made} sample rows added.` : `${r.removed} preview rows removed.`); }
+      catch (e) { toast(e.message, true); }
+      await drawView(); return;
+    }
+    if (what === 'loss-no') { try { await api('POST', `/api/appengine/${enc(ST.id)}/cloud/pending/clear`); } catch (e) { toast(e.message, true); } await drawView(); return; }
+    if (what === 'loss-yes') {
+      if (!document.getElementById('aeLossOk')?.checked) { toast('Tick "I accept data loss" first.', true); return; }
+      try { const r = await api('POST', `/api/appengine/${enc(ST.id)}/cloud/changes`, {accept_data_loss: true, confirm: true}); toast(S(r.say)); }
+      catch (e) { toast(e.message, true); }
+      await drawView(); return;
     }
     if (what === 'dismiss') { try { await api('POST', `/api/appengine/${enc(ST.id)}/errors/${enc(b.dataset.aeFp)}/dismissed`); } catch (e) { toast(e.message, true); } readErrs(); return; }
     if (what === 'fixerr') {
