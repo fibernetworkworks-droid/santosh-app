@@ -63,6 +63,9 @@ KINDS: dict[str, dict[str, Any]] = {
               "cost_inr": round(0.08 * USD_INR), "source": "lyria"},
     "voice": {"label": "Voice line", "media": "audio", "len": (0.2, 30.0), "budget_kb": 1500, "cost_inr": 1, "source": "tts"},
     "model": {"label": "3D model", "media": "model", "budget_kb": 8000, "cost_inr": 0, "source": "blender"},
+    # v0.810 a tileable surface picture for 3D (ground, wall): only from the free library or her own upload, never generated
+    "texture": {"label": "Texture", "media": "image", "alpha": False, "size": (512, 512), "max_side": 1024, "budget_kb": 900,
+                "cost_inr": 0, "source": "library"},
 }
 PAID = {k for k, v in KINDS.items() if v["cost_inr"]}
 MAX_ASSETS = 300
@@ -229,6 +232,8 @@ def request(tenant: str, ref: str, kind: str, key: str = "", words: str = "", **
     if kind not in KINDS:
         raise AssetError("kind = " + ", ".join(KINDS))
     words = re.sub(r"\s+", " ", str(words or "")).strip()[:600]
+    if kind == "texture":
+        raise AssetError("A texture comes from the free library or your own upload; it is not generated.")
     why = G.problem(words)
     if not why and KINDS[kind]["source"] == "photogen":
         from .. import photogen
@@ -280,6 +285,8 @@ def _spec(kind: str, spec: dict, r) -> dict[str, Any]:
         out["w"], out["h"] = max(16, min(side, w)), max(16, min(side, h))
         out["quality"] = "best" if spec.get("quality") == "best" else "fast"
         out["palette_lock"] = spec.get("palette_lock") if spec.get("palette_lock") in ("off", "check", "strict") else "check"
+        if kind == "texture":                           # a photo of brick or grass is not the Bible palette, by nature
+            out["palette_lock"] = spec.get("palette_lock") if spec.get("palette_lock") in ("off", "check", "strict") else "off"
         out["view"] = re.sub(r"\s+", " ", str(spec.get("view") or ("side view" if kind == "sprite" else "")))[:60]
     elif kind == "sfx":
         pre = spec.get("preset") or (spec.get("words") or "")
@@ -877,7 +884,8 @@ def for_game(tenant: str, game_id: str) -> tuple[str, dict[str, Path]] | None:
         m = h.get("meta") or {}
         entries[a.key] = {"kind": a.kind, "path": f"res://{rel}", "v": a.approved,
                           **{k: m[k] for k in ("w", "h", "seconds") if k in m}}
-        ai_made = ai_made or h.get("source") not in ("her upload", "synth")
+        src_name = str(h.get("source") or "")              # v0.810 a free-library asset is made by people, not by AI
+        ai_made = ai_made or (src_name not in ("her upload", "synth") and not src_name.startswith("library:"))
     if not entries:
         return None
     return gd(entries, ai_made), files

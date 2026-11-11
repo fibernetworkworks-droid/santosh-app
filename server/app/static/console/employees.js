@@ -1490,6 +1490,18 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
     if (['sfx', 'music', 'voice'].includes(a.kind)) return `<audio controls preload="none" src="${u}"></audio>`;
     return `<a class="btn soft gs-mini" href="${u}" download="${esc(a.key)}.glb">Download GLB</a>`;
   }
+
+  /* v0.810 the free library's last search, kept across this page's own redraws */
+  let GA_LIB = null;
+  function gaLibHtml() {
+    const L = GA_LIB; if (!L) return '';
+    const down = (L.down || []).map(d => `<div class="badc em-small">${esc(d)}</div>`).join('');
+    if (!(L.items || []).length) return down + '<p class="muted em-small">Nothing found. Try one plain word, like tree or brick.</p>';
+    return down + `<p class="muted em-small">${num(L.items.length)} of ${num(L.found)} shown</p><ul class="gs-log ga-liblist">${L.items.map(i =>
+      `<li><b>${esc(i.name)}</b> <span class="muted">${esc(i.source_name)} · ${esc(i.licence)}${i.kb ? ' · ' + num(i.kb) + ' KB' : ''}${i.triangles ? ' · ' + num(i.triangles) + ' triangles' : ''}</span>
+        <span class="muted em-small">${esc((i.tags || []).slice(0, 5).join(', '))}</span>
+        <button class="btn soft gs-mini" type="button" data-ga-lib='${esc(JSON.stringify({source: i.source, id: i.id, kind: i.kind}))}'>Add</button></li>`).join('')}</ul>`;
+  }
   async function gsAssets(el, id) {
     clearTimeout(GTIMER);
     let v;
@@ -1519,6 +1531,12 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
           <select id="gaQ" aria-label="Quality"><option value="fast">Fast (₹3)</option><option value="best">Best (₹12)</option></select>
           <button class="btn go" type="button" id="gaMake">Make / price it</button>
           <label class="btn soft ga-up">Upload my file<input type="file" id="gaFile" accept=".png,.jpg,.jpeg,.wav,.ogg,.mp3,.glb" hidden></label></div></div>
+      <div class="tile gl ga-lib"><h3>Free library</h3>
+        <p class="muted em-small">3D models and textures you may use in any game for free (CC0): Kenney low-poly pieces kept on Hoola, Poly Haven and ambientCG. Made by people, not by AI. An item you add is a draft until you say OK.</p>
+        <div class="acts"><input id="gaLibQ" maxlength="120" placeholder="Search, e.g. tree, coin, brick wall, car" aria-label="Search the free library" value="${esc((GA_LIB || {}).q || '')}">
+          <select id="gaLibKind" aria-label="Kind"><option value="model"${(GA_LIB || {}).kind === 'texture' ? '' : ' selected'}>3D models</option><option value="texture"${(GA_LIB || {}).kind === 'texture' ? ' selected' : ''}>Textures</option></select>
+          <button class="btn go" type="button" id="gaLibGo">Search</button></div>
+        <div id="gaLibBox">${gaLibHtml()}</div></div>
       ${Object.keys(kinds).filter(k => byKind[k]).map(k => `<section class="tile gl"><h3>${esc(kinds[k].label)}s <span class="muted">${num(byKind[k].length)}</span></h3>
         <div class="ga-grid">${byKind[k].map(a => { const [c, n] = AST_ST[a.status] || ['', a.status]; const ck = a.checks || {};
           return `<div class="ga-item"><div class="ga-prev">${astPreview(a)}</div><div class="ga-h"><b>${esc(a.key)}</b> ${tag(c, n)}</div>
@@ -1552,6 +1570,21 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
         text: el.querySelector('#gaText').value.trim(), palette_lock: el.querySelector('#gaLock').value, quality: el.querySelector('#gaQ').value}),
         (kinds[kind] || {}).cost_inr ? 'On the price card: tap it to make.' : 'Making it.');
     });
+    const libWire = () => el.querySelectorAll('[data-ga-lib]').forEach(b => b.addEventListener('click', () => {
+      const x = JSON.parse(b.dataset.gaLib); b.disabled = true; b.textContent = 'Adding…';
+      go(() => api('POST', `/api/gamestudio/${q}/library`, {source: x.source, id: x.id, kind: x.kind}), 'Added as a draft. Say OK to use it.');
+    }));
+    const libSearch = async () => {
+      const lq = el.querySelector('#gaLibQ').value.trim(), kind = el.querySelector('#gaLibKind').value, box = el.querySelector('#gaLibBox');
+      box.innerHTML = '<p class="muted em-small">Searching…</p>';
+      try { const r = await api('GET', `/api/gamestudio/${q}/library?kind=${encodeURIComponent(kind)}&q=${encodeURIComponent(lq)}`);
+        GA_LIB = {q: lq, kind, items: r.items || [], found: r.found || 0, down: r.down || []}; }
+      catch (e) { GA_LIB = {q: lq, kind, items: [], found: 0, down: [e.message]}; }
+      const b2 = el.querySelector('#gaLibBox'); if (b2) { b2.innerHTML = gaLibHtml(); libWire(); }
+    };
+    el.querySelector('#gaLibGo').addEventListener('click', libSearch);
+    el.querySelector('#gaLibQ').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); libSearch(); } });
+    libWire();
     el.querySelector('#gaFile').addEventListener('change', e => {
       const f = e.target.files[0]; if (!f) return;
       if (f.size > 12 * 1024 * 1024) { toast('12 MB at most.', true); return; }

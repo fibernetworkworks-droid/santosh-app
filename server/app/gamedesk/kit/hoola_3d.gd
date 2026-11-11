@@ -53,6 +53,26 @@ func mat(color: Color, glow: float = 0.0, rough: float = 0.85) -> StandardMateri
 		m.emission_energy_multiplier = glow
 	return m
 
+func paint(node: Node, key: String, tile_m: float = 2.0, fallback: Color = Color("#8A6B4A")) -> void:
+	# one of her APPROVED textures (HoolaAssets) on a block / the ground, repeated every tile_m metres;
+	# when there is no such texture the node simply gets the fallback colour
+	var m := mat(fallback)
+	var a := get_node_or_null("/root/HoolaAssets")
+	if a != null and a.call("has", key):
+		var t: Variant = a.call("tex", key)
+		if t != null and t is Texture2D:
+			m.albedo_color = Color.WHITE
+			m.albedo_texture = t
+			m.uv1_triplanar = true
+			m.uv1_world_triplanar = true
+			m.uv1_scale = Vector3.ONE / max(0.1, tile_m)
+			m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	for c in node.get_children():
+		if c is MeshInstance3D:
+			(c as MeshInstance3D).material_override = m
+	if node is MeshInstance3D:
+		(node as MeshInstance3D).material_override = m
+
 func _probe(key: String, value: Variant) -> void:
 	var p := get_node_or_null("/root/HoolaProbe")
 	if p != null:
