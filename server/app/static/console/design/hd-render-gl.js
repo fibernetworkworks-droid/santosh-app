@@ -58,23 +58,37 @@
     'in vec4 v0; in vec4 v1; in vec4 v2; in vec4 v3; in vec4 v4; flat in float vKind; flat in float vScale;\n' +
     'out vec4 o;\n' +
     'float cov(float lo, float hi, float x) { return clamp(min(x + 0.5, hi) - max(x - 0.5, lo), 0.0, 1.0); }\n' +
+    /* the exact area of the pixel square on the inside of a straight edge: d = how far the pixel centre lies outside it
+       (device pixels), n = the edge's unit normal. A curve is taken as its tangent edge at the pixel. */
+    'float hp(float d, vec2 n) {\n' +
+    '  float a = abs(n.x), b = abs(n.y);\n' +
+    '  if (a < b) { float s = a; a = b; b = s; }\n' +
+    '  float t = -d, h = (a + b) * 0.5, l = (a - b) * 0.5;\n' +
+    '  if (t >= h) return 1.0;\n' +
+    '  if (t <= -h) return 0.0;\n' +
+    '  if (abs(t) <= l) return 0.5 + t / a;\n' +
+    '  float u = h - abs(t), c = u * u / (2.0 * a * b);\n' +
+    '  return t > 0.0 ? 1.0 - c : c;\n' +
+    '}\n' +
     'void main() {\n' +
     '  vec2 fc = gl_FragCoord.xy;\n' +
     '  float c;\n' +
     '  if (vKind < 0.5) c = cov(v2.x, v2.z, fc.x) * cov(v2.y, v2.w, fc.y);\n' +
     '  else {\n' +
     '    vec2 p = vec2(v0.x * fc.x + v0.z * fc.y + v1.x, v0.y * fc.x + v0.w * fc.y + v1.y);\n' +
-    '    vec2 hs = v1.zw * 0.5; vec2 q = p - hs; float d;\n' +
+    '    vec2 hs = v1.zw * 0.5; vec2 q = p - hs; float d; vec2 g;\n' +
     '    if (hs.x <= 0.0 || hs.y <= 0.0) discard;\n' +
     '    if (vKind < 1.5) {\n' +
     '      float r = q.x < 0.0 ? (q.y < 0.0 ? v2.x : v2.w) : (q.y < 0.0 ? v2.y : v2.z);\n' +
-    '      vec2 e = abs(q) - hs + r;\n' +
-    '      d = (length(max(e, 0.0)) + min(max(e.x, e.y), 0.0) - r) * vScale;\n' +
+    '      vec2 e = abs(q) - hs + r, sq = vec2(q.x < 0.0 ? -1.0 : 1.0, q.y < 0.0 ? -1.0 : 1.0);\n' +
+    '      d = length(max(e, 0.0)) + min(max(e.x, e.y), 0.0) - r;\n' +
+    '      g = e.x > 0.0 && e.y > 0.0 ? normalize(e) * sq : (e.x > e.y ? vec2(sq.x, 0.0) : vec2(0.0, sq.y));\n' +
     '    } else {\n' +
-    '      vec2 u = q / hs; float f = dot(u, u) - 1.0; vec2 g = 2.0 * q / (hs * hs);\n' +
-    '      d = f / max(length(g), 1e-6) * vScale;\n' +
+    '      vec2 u = q / hs; d = dot(u, u) - 1.0; g = 2.0 * q / (hs * hs);\n' +
     '    }\n' +
-    '    c = clamp(0.5 - d, 0.0, 1.0);\n' +
+    '    vec2 gd = vec2(dot(g, v0.xy), dot(g, v0.zw));\n' +
+    '    float L = length(gd);\n' +
+    '    if (L < 1e-9) { c = d <= 0.0 ? 1.0 : 0.0; } else c = hp(d / L, gd / L);\n' +
     '  }\n' +
     '  c *= cov(v4.x, v4.z, fc.x) * cov(v4.y, v4.w, fc.y);\n' +
     '  if (c <= 0.0) discard;\n' +
@@ -228,7 +242,7 @@
         if (scratch.size >= 12) { const first = scratch.keys().next().value; const o = scratch.get(first); o.cv.width = 0; o.cv.height = 0; scratch.delete(first); }
         /* an OffscreenCanvas: Chrome takes a <canvas> that is uploaded to WebGL again and again off the GPU (its curves then
            come out of a different rasteriser than the scene's); an OffscreenCanvas keeps the scene's rasteriser */
-        const c = typeof OffscreenCanvas === 'function' ? new OffscreenCanvas(w, h) : document.createElement('canvas');
+        const c = typeof OffscreenCanvas === 'function' && HD.renderGL.offscreen !== false ? new OffscreenCanvas(w, h) : document.createElement('canvas');
         c.width = w; c.height = h;
         e = {cv: c, ctx: c.getContext('2d', {alpha: false})};
         scratch.set(k, e);
@@ -474,5 +488,5 @@
       get stats() { return {tiles: count(), levels: levels.size, layers: depth, freeLayers: free.length, maxLayers, texMB: Math.round(depth * TILE_BYTES / 1048576)}; },
       lose() { if (loseExt) loseExt.loseContext(); }};
   }
-  HD.renderGL = {create, TILE: TS, budgetMB: 256, budgetMoving: 6, budgetIdle: 12, allowSoftware: false};
+  HD.renderGL = {create, TILE: TS, budgetMB: 256, budgetMoving: 6, budgetIdle: 12, allowSoftware: false, offscreen: true, margin: 0};
 })();

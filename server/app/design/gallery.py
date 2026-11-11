@@ -96,17 +96,17 @@ def _sale_poster() -> dict:
     ink, gold = "#FFFFFF", "#FBBF24"
     return stage("Sale poster", 1240, 1754, {"from": "#1E1B4B", "to": "#3B0764", "angle": 160}, [
         E(640, -260, 900, 900, "#7C3AED", opacity=0.35), E(-300, 1180, 820, 820, "#4F46E5", opacity=0.3),
-        E(760, 980, 380, 380, gold, opacity=0.14)],
+        E(860, 560, 300, 300, gold, opacity=0.12)],
         F("Content", "column", [
             F("Top", "column", [
                 pill("SEASON SALE", gold, "#1E1B4B", 32, icon="tag"),
                 T("Big sale\nis here", 168, 700, ink, font="Sora", lineHeight=1.0, letterSpacing=-4),
-                T("Up to [discount]% off on [your best products]. Only for a few days.", 48, 400, "#E0E7FF", lineHeight=1.35, w=900),
+                T("Up to [X]% off on [your best products]. Only for a few days.", 48, 400, "#E0E7FF", lineHeight=1.35, w=900),
             ], gap=48),
             F("Details", "column", [
                 F("Offer", "row", [
-                    F("Badge", "column", [T("FLAT", 32, 600, "#1E1B4B", letterSpacing=4),
-                                          T("[discount]%", 80, 700, "#1E1B4B", font="Sora", lineHeight=1.0),
+                    F("Badge", "column", [T("UP TO", 32, 600, "#1E1B4B", letterSpacing=4),
+                                          T("[X]%", 104, 700, "#1E1B4B", font="Sora", lineHeight=1.0),
                                           T("OFF", 32, 600, "#1E1B4B", letterSpacing=4)],
                       gap=4, align="center", justify="center", w=320, h=320, radius=999, fill=gold),
                     F("Lines", "column", [info_row("calendar", "[Sale dates]", ink, 40, gold),
@@ -277,21 +277,21 @@ def _wedding_card() -> dict:
     maroon, gold, ink = "#7A1F2B", "#B7791F", "#4A1D1F"
     return stage("Wedding invitation", 1200, 1680, "#FFF8EE", [
         R(48, 48, 1104, 1584, "none", stroke={"color": gold, "width": 4}, radius=24),
-        R(72, 72, 1056, 1536, "none", stroke={"color": "#E7C98B", "width": 2}, radius=16),
-        E(400, -200, 400, 400, "#F6E3C0", opacity=0.6)],
+        R(72, 72, 1056, 1536, "none", stroke={"color": "#E7C98B", "width": 2}, radius=16)],
         F("Content", "column", [
             T("॥ श्री गणेशाय नमः ॥", 36, 400, maroon, font="Tiro Devanagari Hindi", align="center"),
             T("शुभ विवाह", 128, 400, maroon, font="Tiro Devanagari Hindi", align="center", lineHeight=1.2),
             T("Together with their families", 36, 500, ink, font="Cormorant Garamond", align="center", letterSpacing=2),
-            F("Names", "column", [T("[Bride's name]", 88, 600, maroon, font="Cormorant Garamond", align="center", lineHeight=1.1),
-                                  T("&", 56, 400, maroon, font="Cormorant Garamond", align="center"),
-                                  T("[Groom's name]", 88, 600, maroon, font="Cormorant Garamond", align="center", lineHeight=1.1)],
+            F("Names", "column", [T("[Bride's name]", 104, 600, maroon, font="Cormorant Garamond", align="center", lineHeight=1.1),
+                                  T("&", 64, 400, maroon, font="Cormorant Garamond", align="center"),
+                                  T("[Groom's name]", 104, 600, maroon, font="Cormorant Garamond", align="center", lineHeight=1.1)],
               gap=8, align="center"),
             T("request the pleasure of your company at their wedding", 36, 400, ink, font="Cormorant Garamond", align="center",
               lineHeight=1.4, w=820),
-            F("When", "column", [T("[Day], [date]", 44, 600, ink, font="Cormorant Garamond", align="center"),
-                                 T("[Time] · [Venue name]", 36, 500, ink, font="Cormorant Garamond", align="center"),
-                                 T("[Venue address]", 32, 400, "#6B4A3A", font="Cormorant Garamond", align="center")], gap=12, align="center"),
+            R(0, 0, 160, 3, gold, name="Rule"),
+            F("When", "column", [T("[Day], [date]", 48, 600, ink, font="Cormorant Garamond", align="center"),
+                                 T("[Time] · [Venue name]", 40, 500, ink, font="Cormorant Garamond", align="center"),
+                                 T("[Venue address]", 36, 400, "#6B4A3A", font="Cormorant Garamond", align="center")], gap=12, align="center"),
             T("आपकी उपस्थिति प्रार्थनीय है", 40, 400, maroon, font="Tiro Devanagari Hindi", align="center"),
         ], pad=[160, 140, 160, 140], gap=48, align="center", justify="center"))
 
@@ -300,31 +300,31 @@ def _menu() -> dict:
     ink, accent, sub = "#1C1917", "#B45309", "#78716C"
 
     def dish(name: str, line: str) -> dict:
-        return F("Dish", "row", [F("Text", "column", [T(name, 32, 600, ink, font="Fraunces"),
-                                                      T(line, 24, 400, sub, font="Inter")], gap=4, w="fill"),
-                                 T("₹[price]", 30, 600, accent, font="Inter")], gap=24, align="start")
+        return F("Dish", "row", [F("Text", "column", [T(name, 40, 600, ink, font="Fraunces"),
+                                                      T(line, 28, 400, sub, font="Inter")], gap=6, w="fill"),
+                                 T("₹[price]", 34, 600, accent, font="Inter")], gap=24, align="start")
 
     def section(title: str, dishes: list[tuple[str, str]]) -> dict:
-        return F(title, "column", [F("Head", "row", [T(title, 40, 600, accent, font="Fraunces"),
+        return F(title, "column", [F("Head", "row", [T(title, 52, 600, accent, font="Fraunces"),
                                                      {"type": "line", "color": "#E7D7C1", "width": 2, "w": "fill"}], gap=24, align="center"),
-                                   *[dish(n, d) for n, d in dishes]], gap=28)
+                                   *[dish(n, d) for n, d in dishes]], gap=36)
     return F("Restaurant menu", "column", [
-        F("Header", "column", [T("[Restaurant name]", 88, 700, ink, font="Fraunces", align="center"),
-                               T("M E N U", 32, 600, accent, font="Inter", align="center", letterSpacing=6)], gap=16, align="center"),
+        F("Header", "column", [T("[Restaurant name]", 104, 700, ink, font="Fraunces", align="center"),
+                               T("MENU", 32, 600, accent, font="Inter", align="center", letterSpacing=12)], gap=16, align="center"),
         F("Columns", "row", [
             F("Left", "column", [section("Starters", [("Paneer tikka", "Smoky cottage cheese, mint chutney"),
                                                       ("Veg spring rolls", "Crisp rolls, sweet chilli dip"),
                                                       ("Masala papad", "Onion, tomato, chaat masala")]),
                                  section("Breads", [("Butter naan", "From the tandoor"), ("Lachha paratha", "Flaky, layered")])],
-              gap=64, w="fill"),
+              gap=80, w="fill"),
             F("Right", "column", [section("Main course", [("Dal makhani", "Slow-cooked black lentils"),
                                                           ("Paneer butter masala", "Rich tomato gravy"),
                                                           ("Veg biryani", "Basmati rice, raita")]),
                                   section("Desserts", [("Gulab jamun", "Two pieces, warm"), ("Kulfi", "Kesar pista")])],
-              gap=64, w="fill"),
+              gap=80, w="fill"),
         ], gap=80),
-        F("Footer", "column", [T("[your address] · [phone number]", 28, 500, sub, font="Inter", align="center"),
-                               T("Prices include [taxes / not including taxes]", 22, 400, sub, font="Inter", align="center")],
+        F("Footer", "column", [T("[your address] · [phone number]", 30, 500, sub, font="Inter", align="center"),
+                               T("Prices [include / do not include] taxes", 24, 400, sub, font="Inter", align="center")],
           gap=8, align="center"),
     ], w=1240, h=1754, pad=[120, 96, 96, 96], gap=80, justify="between", fill="#FFFBF5")
 
@@ -432,7 +432,8 @@ def _certificate() -> dict:
     return stage("Certificate", 1754, 1240, "#FFFDF7", [
         R(40, 40, 1674, 1160, "none", stroke={"color": navy, "width": 6}),
         R(64, 64, 1626, 1112, "none", stroke={"color": "#D6B66E", "width": 2}),
-        E(1400, 880, 200, 200, "#D6B66E"), E(1416, 896, 168, 168, "#FFFDF7", stroke={"color": gold, "width": 3})],
+        E(1400, 880, 200, 200, "#D6B66E"), E(1416, 896, 168, 168, "#FFFDF7", stroke={"color": gold, "width": 3}),
+        I("star", 72, gold, filled=True, x=1464, y=944)],
         F("Content", "column", [
             T("CERTIFICATE", 72, 700, navy, font="Playfair Display", align="center", letterSpacing=12),
             T("of achievement", 40, 400, gold, font="Playfair Display", align="center", letterSpacing=4),

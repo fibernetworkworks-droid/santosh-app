@@ -25,18 +25,21 @@ const fmt = (v, d) => (v === null || v === undefined || Number.isNaN(v)) ? '-' :
 const pct = (arr, p) => { const a = arr.slice().sort((x, y) => x - y); return a.length ? a[Math.min(a.length - 1, Math.floor(a.length * p))] : null; };
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-/* The BUDGETS: about 3 x what this harness measured on the 4-core sandbox (headless, software raster). */
+/* The BUDGETS: measured on the 4-core sandbox (headless Chromium, software raster) with headroom for a busy CI box.
+   Measured (11 Nov 2026): 100k open whole 1,063 ms / page by page 628 ms to first paint (1,806 KB instead of 18,237 KB);
+   index build 66 ms, viewport query 10 us, point 3.9 us, frame move 36 us; one layout edit 2.0 ms; round trip p50 ~1 ms,
+   p95 ~3.6 ms; c1 = 75 % of the JSON bytes, parse + decode 0.4-0.5 ms vs JSON.parse 0.4-0.6 ms. */
 const BUDGET = {
-  open100kLazyMs: 4000,          /* page by page: the first page painted */
-  lazyVsFullMax: 0.75,           /* page by page must open in at most 3/4 of the whole-file time at 100k */
-  indexBuild100kMs: 1500,        /* one page of 100,000 layers, bulk */
-  indexQueryUs: 300,             /* a 1280 x 800 viewport */
-  indexAtUs: 60,                 /* a point */
-  indexMoveUs: 3000,             /* a frame with its children moves, worked in */
-  layoutRunMs: 50,               /* one edit inside a 12,000-layer auto-layout tree */
-  rtt50Ms: 25, rtt95Ms: 80,      /* op -> ack, op -> the others */
+  open100kLazyMs: 3000,          /* page by page: the first page painted */
+  lazyVsFullMax: 0.8,            /* page by page paints in at most 4/5 of the whole-file time at 100k (best of three each) */
+  indexBuild100kMs: 600,         /* one page of 100,000 layers, bulk */
+  indexQueryUs: 150,             /* a 1280 x 800 viewport */
+  indexAtUs: 40,                 /* a point */
+  indexMoveUs: 1000,             /* a frame with its children moves, worked in */
+  layoutRunMs: 30,               /* one edit inside a 12,000-layer auto-layout tree */
+  rtt50Ms: 15, rtt95Ms: 40,      /* op -> ack, op -> the others */
   c1BytesMax: 0.85,              /* c1 <= 85 % of the JSON bytes of a 1,000-op batch */
-  c1ParseMax: 1.6                /* c1 parse + decode <= 1.6 x JSON.parse of the JSON frame */
+  c1ParseMax: 2.0                /* c1 parse + decode <= 2 x JSON.parse of the JSON frame (measured ~1x) */
 };
 
 async function rest(method, p, body) {
@@ -159,12 +162,22 @@ async function main() {
   let browser;
   try { browser = await chromium.launch({executablePath: process.env.HOOLA_CHROMIUM || process.env.CHROMIUM_EXECUTABLE || undefined, headless: true, args: ['--no-sandbox', '--disable-dev-shm-usage', '--js-flags=--expose-gc']}); }
   catch (e) { console.log('SKIP: Chromium can not start here: ' + String(e.message).split('\n')[0]); process.exit(77); }
-  const out = {sizes: {}, index: null, layout: null, rtt: {}, wire: null};
+  const out = {sizes: {}, index: null, layout: null, rtt: {}, wire: null}, files = {};
   const errors = [];
   try {
     /* ------------------------------------------------------------ files */
-    const files = {};
     for (const N of SIZES) { const t0 = performance.now(); files[N] = await makeFile(N); files[N].seedS = (performance.now() - t0) / 1000; }
+    for (const N of SIZES) {                                          /* the server alone: socket open -> init in hand (a node client) */
+      const r = files[N].wire = {};
+      for (const [k, q] of [['full', ''], ['lazy', '&lazy=1']]) {
+        for (let rep = 0; rep < 2; rep++) {                          /* the second one finds the room open (the editor's case) */
+          const t0 = performance.now(), c = await sock('file=' + encodeURIComponent(files[N].id) + q);
+          r[k + rep] = {ms: performance.now() - t0, bytes: c.initText.length};
+          if (rep === 0) files[N].keep = c; else { c.ws.close(); files[N].keep.ws.close(); }
+        }
+      }
+      await sleep(300);
+    }
 
     /* ------------------------------------------------------------ open: server -> first paint */
     const ctx = await browser.newContext({viewport: {width: 1280, height: 800}});
@@ -176,13 +189,14 @@ async function main() {
     await page.waitForFunction(() => window.HD && HD.net && HD.render && HD.app, null, {timeout: 30000});
     for (const N of SIZES) {
       const row = out.sizes[N] = {nodes: files[N].nodes};
-      for (const lazy of [false, true]) {
+      const rounds = N >= 50000 ? 3 : 1;                            /* a big file: best of three each way, alternating (GC + the room's load are noisy) */
+      for (const lazy of [].concat(...Array.from({length: rounds}, () => [false, true]))) {
         const r = await page.evaluate(([id, lazy]) => new Promise(done => {
           if (window.gc) window.gc();
           HD.net.options.lazy = lazy;
           const t0 = performance.now(), frames0 = HD.render.stats.frames, bytes0 = HD.net.wire.bytesIn;
-          let tInit = null, tPaint = null, tAll = null, gotInit = false;
-          const offI = HD.net.on('init', () => { gotInit = true; tInit = performance.now() - t0; });
+          let tInit = null, tPaint = null, tAll = null, gotInit = false, bFirst = null;
+          const offI = HD.net.on('init', () => { gotInit = true; tInit = performance.now() - t0; bFirst = HD.net.wire.bytesIn - bytes0; });
           const tick = () => {
             const now = performance.now() - t0;
             if (gotInit && tPaint === null && HD.ui.mounted && HD.render.stats.frames > frames0 && HD.store.count() > 2) tPaint = now;
@@ -191,7 +205,7 @@ async function main() {
               offI();
               if (window.gc) window.gc();
               done({init: tInit, paint: tPaint, all: tAll, nodes: HD.store.count(), heapMB: performance.memory ? performance.memory.usedJSHeapSize / 1048576 : null,
-                bytes: HD.net.wire.bytesIn - bytes0, partial: lazy && HD.net.pages !== null});
+                bytes: HD.net.wire.bytesIn - bytes0, bytesFirst: bFirst, partial: lazy && HD.net.pages !== null});
               return;
             }
             requestAnimationFrame(tick);
@@ -199,8 +213,9 @@ async function main() {
           location.hash = '#/f/' + id;
           requestAnimationFrame(tick);
         }), [files[N].id, lazy]);
-        row[lazy ? 'lazy' : 'full'] = r;
-        if (lazy && N === Math.max.apply(null, SIZES)) {
+        const key = lazy ? 'lazy' : 'full';
+        if (!row[key] || (r.paint !== null && (row[key].paint === null || r.paint < row[key].paint))) row[key] = r;
+        if (lazy && N === Math.max.apply(null, SIZES) && !out.hit) {
           out.hit = await page.evaluate(() => {             /* the editor's own hit test beside HD.index.at, on the page she sees */
             const S = HD.store, pg = HD.sel.page, b = S.worldBounds(pg);
             let s = 5; const r = () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; };
@@ -348,8 +363,12 @@ async function main() {
     const r = out.sizes[N];
     L.push('  ' + String(N).padEnd(32) + ' | ' + String(r.nodes).padEnd(7) + ' | ' + fmt(r.full.init, 0) + ' / ' + fmt(r.full.paint, 0) + ' ms / ' + fmt(r.full.heapMB) + ' MB' +
       '        | ' + fmt(r.lazy.init, 0) + ' / ' + fmt(r.lazy.paint, 0) + ' / ' + fmt(r.lazy.all, 0) + ' ms / ' + fmt(r.lazy.heapMB) + ' MB' + (r.lazy.partial ? '' : ' (whole: under the threshold)') +
-      ' | ' + fmt(r.full.bytes / 1024, 0) + ' KB -> ' + fmt(r.lazy.bytes / 1024, 0) + ' KB');
+      ' | ' + fmt(r.full.bytesFirst / 1024, 0) + ' KB -> ' + fmt(r.lazy.bytesFirst / 1024, 0) + ' KB');
   }
+  L.push('');
+  L.push('server -> init (a node client; cold = the room loads from the database, warm = it is open)');
+  for (const N of SIZES) { const r = files[N] && files[N].wire; if (!r) continue; out.sizes[N].wire = r;
+    L.push('  ' + String(N).padEnd(32) + ' | whole: cold ' + fmt(r.full0.ms, 0) + ' ms, warm ' + fmt(r.full1.ms, 0) + ' ms, ' + fmt(r.full0.bytes / 1024, 0) + ' KB | page by page: cold ' + fmt(r.lazy0.ms, 0) + ' ms, warm ' + fmt(r.lazy1.ms, 0) + ' ms, ' + fmt(r.lazy0.bytes / 1024, 0) + ' KB'); }
   const ix = out.index;
   L.push('');
   L.push('index, 100,000 layers on ONE page | build ms | viewport query us (hits) | point us | frame move us');
@@ -371,6 +390,7 @@ async function main() {
     ok(r.lazy.partial, '100k: it opened page by page');
     ok(r.lazy.paint < BUDGET.open100kLazyMs, '100k page by page: first paint ' + fmt(r.lazy.paint, 0) + ' ms < ' + BUDGET.open100kLazyMs);
     ok(r.lazy.paint < r.full.paint * BUDGET.lazyVsFullMax, '100k: page by page paints in ' + fmt(r.lazy.paint, 0) + ' ms, the whole file in ' + fmt(r.full.paint, 0) + ' ms');
+    ok(files[100000].wire.lazy0.bytes < files[100000].wire.full0.bytes * 0.2, '100k: the first page is a fifth of the file or less (' + files[100000].wire.lazy0.bytes + ' of ' + files[100000].wire.full0.bytes + ' bytes)');
   }
   for (const N of SIZES) ok(out.sizes[N].full.paint !== null && out.sizes[N].lazy.paint !== null, N + ': both opened');
   ok(ix.grid.build < BUDGET.indexBuild100kMs, 'index build ' + fmt(ix.grid.build) + ' ms');
@@ -388,4 +408,5 @@ async function main() {
   console.log(JSON.stringify({ok: true, checks, budget: BUDGET, out}));
 }
 
-main().catch(e => { console.error(e && e.stack || e); console.log(JSON.stringify({ok: false, error: String(e && e.message || e), checks})); process.exit(1); });
+if (require.main === module) main().catch(e => { console.error(e && e.stack || e); console.log(JSON.stringify({ok: false, error: String(e && e.message || e), checks})); process.exit(1); });
+module.exports = {genOps, makeFile, sock, waitFor, codec};

@@ -76,7 +76,8 @@
       (d.notes || []).length ? h('ul', {class: 'hdpa-notes'}, d.notes.map(n => h('li', {text: String(n)}))) : null);
   }
   function chips(perms) {
-    return h('div', {class: 'hdpa-chips'}, perms.length ? perms.map(p => h('span', {class: 'hdpa-chip' + (/^net:|^edit$/.test(p) ? ' strong' : ''), text: words(p)}))
+    const SHORT = {read: 'Reads your design', edit: 'Changes your design', export: 'Makes pictures', storage: 'Keeps its own data'};
+    return h('div', {class: 'hdpa-chips'}, perms.length ? perms.map(p => h('span', {class: 'hdpa-chip' + (/^net:|^edit$/.test(p) ? ' strong' : ''), title: words(p), text: SHORT[p] || ('Talks to ' + String(p).slice(4))}))
       : h('span', {class: 'hdpa-chip', text: 'Asks for nothing'}));
   }
   function words(p) { return HD.plugins && HD.plugins.words ? HD.plugins.words(p) : p; }
@@ -121,7 +122,7 @@
     clear(rows);
     for (const s of all) {
       const m = s.manifest, have = mine.some(p => p.id === m.id);
-      const btn = h('button', {type: 'button', class: 'hd-btn' + (have ? '' : ' pri'), text: have ? 'Added' : 'Add', disabled: have, 'aria-label': (have ? 'Added: ' : 'Add ') + m.name});
+      const btn = h('button', {type: 'button', class: 'hd-btn', text: have ? 'Added' : 'Add', disabled: have, 'aria-label': (have ? 'Added: ' : 'Add ') + m.name});
       btn.addEventListener('click', () => addStarter(s, btn));
       rows.appendChild(h('article', {class: 'hdpa-starter', 'data-starter': m.id},
         h('span', {class: 'hdpa-sicon', 'aria-hidden': 'true'}, icon(s.icon || 'spark')),
@@ -193,7 +194,7 @@
   }
   function card(t) {
     const pic = h('div', {class: 'hdg-thumb'}, icon('frame', 30));
-    const use = h('button', {type: 'button', class: 'hd-btn pri hdg-use', text: 'Use template', 'aria-label': 'Use the template ' + t.name});
+    const use = h('button', {type: 'button', class: 'hd-btn hdg-use', text: 'Use template', 'aria-label': 'Use the template ' + t.name});
     const el = h('article', {class: 'hdg-card', 'data-template': t.id},
       h('button', {type: 'button', class: 'hdg-open', 'aria-label': 'Use the template ' + t.name}, pic,
         h('div', {class: 'hdg-meta'}, h('span', {class: 'hdg-name', text: t.name}),

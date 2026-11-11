@@ -21,9 +21,13 @@
  * which few layers to look at instead of all of them. A layer on a page that is not loaded yet (D9b page by page)
  * is simply not in it until the page arrives.
  *
- * Measured (server/tests/web/design_perf_test.js, 100,000 layers on a page, headless Chromium): the uniform grid
- * (cell = 1.5 x the median layer size) beat the R-tree (bulk loaded, 9 entries a node) on build, viewport query,
- * point query and update; both are here so the harness can measure them again.
+ * Measured (server/tests/web/design_perf_test.js, 100,000 layers on ONE page, headless Chromium, 4 cores):
+ *            build    viewport query   point    a frame (20 layers) moves, worked in
+ *   grid     66 ms    10 us            3.9 us   36 us
+ *   R-tree   105 ms   8 us             2.0 us   89 us
+ * The grid (cell = 3 x the median layer size; 1.5 and 6 were slower) wins what happens every frame of a drag - a
+ * move plus a viewport query, 46 us against 97 us - and the build; the R-tree (rbush's algorithms: bulk load,
+ * least-enlargement insert, overlap-minimising split) answers a lone point faster. Both stay, `engine()` switches.
  */
 (function () {
   'use strict';
@@ -312,9 +316,8 @@
       if (done.has(id)) continue;
       if (!store.has(id)) { drop(id); done.add(id); continue; }
       var n = store.get(id);
-      if (n.type === 'PAGE' || n.type === 'DOCUMENT') {               /* a page itself: its subtree, if it is built */
-        if (n.type === 'PAGE' && !pages.has(id)) continue;
-      }
+      if (n.type === 'DOCUMENT') continue;                            /* the root: its pages answer for themselves */
+      if (n.type === 'PAGE' && !pages.has(id)) continue;              /* a page itself: its subtree, if it is built */
       var pg = topOf(id);
       if (pg === null || !pages.has(pg)) {                              /* not on a built page (or the page is new) */
         store.walk(id, function (k) { done.add(k); drop(k); return true; });

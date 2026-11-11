@@ -14,6 +14,7 @@
 const http = require('http'), fs = require('fs'), path = require('path'), assert = require('node:assert/strict');
 const DESIGN = path.resolve(__dirname, '../../app/static/console/design');
 const SHOTS = process.env.DESIGN_SHOTS || '';
+const ACCEL2D = !!process.env.GL_ACCEL2D;
 const FILES = ['hd-math.js', 'hd-core.js', 'hd-layout.js', 'hd-render.js', 'hd-render-gl.js'].concat(fs.existsSync(path.join(DESIGN, 'hd-index.js')) ? [] : []);
 
 const IN_PAGE = `
@@ -211,8 +212,9 @@ async function main() {
   let browser;
   /* Chrome moves a 2D canvas between its GPU and CPU rasterisers on its own (a canvas that is read back often goes to the
      CPU), and the two anti-alias curves differently. So the pixel comparison runs with every 2D canvas on the CPU
-     rasteriser (one rasteriser, so a difference is OURS); GL_ACCEL2D=1 runs it with Chrome's default instead. */
-  const args = ['--no-sandbox', '--disable-dev-shm-usage', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'].concat(process.env.GL_ACCEL2D ? [] : ['--disable-accelerated-2d-canvas']);
+     rasteriser (one rasteriser, so a difference is OURS; the tiles are painted on a plain <canvas> then, the same kind as the scene);
+     GL_ACCEL2D=1 runs it with Chrome's default instead (GPU rasteriser, tiles on OffscreenCanvas). */
+  const args = ['--no-sandbox', '--disable-dev-shm-usage', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'].concat(ACCEL2D ? [] : ['--disable-accelerated-2d-canvas']);
   try { browser = await chromium.launch({executablePath: exe, headless: true, args}); }
   catch (e) { console.log('SKIP: Chromium can not start here: ' + String(e.message).split('\n')[0]); process.exit(77); }
   const report = {checks: 0, pixels: {}, perf: {}};
@@ -233,11 +235,12 @@ async function main() {
       page.on('console', m => { if (m.type() === 'error' && !/Failed to load resource/.test(m.text())) errors.push('console: ' + m.text()); });
       await page.addInitScript((mode) => { try { localStorage.setItem('hoola.console.token', 'fixture'); if (mode) localStorage.setItem('hd.renderer', mode); else localStorage.removeItem('hd.renderer'); sessionStorage.removeItem('hd.renderer.lost'); } catch (e) { /* no storage */ } }, mode);
       await page.goto(url);
-      await page.evaluate(() => { HD.render.webFonts = false; HD.render.zoomPreview = false; HD.render.init(document.getElementById('c')); });
+      await page.evaluate((cpu) => { HD.render.webFonts = false; HD.render.zoomPreview = false; if (cpu) HD.renderGL.offscreen = false; HD.render.init(document.getElementById('c')); }, !ACCEL2D);
       return {page, errors};
     };
     const shot = async (page, name) => { if (SHOTS) { fs.mkdirSync(SHOTS, {recursive: true}); await page.screenshot({path: path.join(SHOTS, name + '.png')}); } };
-    const pic = (page) => page.evaluate(() => { const p = T.pic(); return {w: p.w, h: p.h, d: Array.from(p.d)}; });
+    /* the picture travels as base64 (a 1280x800 picture at pixel ratio 2 is 16 MB: a JSON array of it would not fit) */
+    const pic = async (page) => { const r = await page.evaluate(() => { const p = T.pic(); let s = ''; for (let i = 0; i < p.d.length; i += 32768) s += String.fromCharCode.apply(null, p.d.subarray(i, i + 32768)); return {w: p.w, h: p.h, b: btoa(s)}; }); return {w: r.w, h: r.h, d: Buffer.from(r.b, 'base64')}; };
     /* a picture of where the two differ: red = more than 24 levels, orange = more than 8, grey = the Canvas2D picture */
     const diffShot = async (page, name, a, b) => {
       const m = new Uint8Array(a.d.length);
@@ -254,7 +257,7 @@ async function main() {
       for (let i = 0; i < a.d.length; i += 4) {
         const d = Math.max(Math.abs(a.d[i] - b.d[i]), Math.abs(a.d[i + 1] - b.d[i + 1]), Math.abs(a.d[i + 2] - b.d[i + 2]));
         sum += d; if (d > max) max = d; if (d > 8) n8++; if (d > 24) n24++;
-        if (d > 100) { n100++; if (bad.length < 10) { const q = i / 4; bad.push([q % a.w, Math.floor(q / a.w), a.d.slice(i, i + 3), b.d.slice(i, i + 3)]); } }
+        if (d > 100) { n100++; if (bad.length < 10) { const q = i / 4; bad.push([q % a.w, Math.floor(q / a.w), Array.from(a.d.slice(i, i + 3)), Array.from(b.d.slice(i, i + 3))]); } }
       }
       return {n8, n24, n100, max, mean: Math.round(sum / (a.d.length / 4) * 1000) / 1000, px: a.d.length / 4, bad};
     };
@@ -282,15 +285,15 @@ async function main() {
       {name: 'z25', v: {x: -900, y: -600, zoom: 2.5}},
       {name: 'z1_33', v: {x: -101, y: -77, zoom: 1.33}}
     ];
-    const compare = async (gen, dpr, tag, limits) => {
+    const compare = async (gen, dpr, tag, limits, curves) => {
       const G = await open('gl', 1280, 800, dpr), D = await open('2d', 1280, 800, dpr), out = {};
-      for (const P of [G, D]) await P.page.evaluate(async ([gen, dbg]) => { Object.assign(HD.render.debug, dbg); if (dbg.margin && HD.renderGL) HD.renderGL.margin = dbg.margin; T[gen](300); HD.render.setView({x: 0, y: 0, zoom: 1}); HD.render.settle(); await HD.render.ready(HD.sel.page); await new Promise(r => setTimeout(r, 150)); HD.render.settle(); }, [gen, JSON.parse(process.env.GL_DEBUG || '{}')]);
+      for (const P of [G, D]) await P.page.evaluate(async ([gen, dbg]) => { Object.assign(HD.render.debug, dbg); HD.render.gpuCurves = !!dbg.curves; if (dbg.margin && HD.renderGL) HD.renderGL.margin = dbg.margin; T[gen](300); HD.render.setView({x: 0, y: 0, zoom: 1}); HD.render.settle(); await HD.render.ready(HD.sel.page); await new Promise(r => setTimeout(r, 150)); HD.render.settle(); }, [gen, Object.assign({curves: !!curves}, JSON.parse(process.env.GL_DEBUG || '{}'))]);
       for (const vw of views) {
         const g = await G.page.evaluate((v) => { HD.render.setView(v); const t = HD.render.settle(); return {t, st: Object.assign({}, HD.render.stats.gl)}; }, vw.v);
         /* the Canvas2D picture at rest (its bitmaps are shown 1:1 only once nothing has moved for a moment) */
         await D.page.evaluate(async (v) => { HD.render.setView(v); HD.render.flush(); await new Promise(r => setTimeout(r, 330)); HD.render.invalidate(true); HD.render.flush(); }, vw.v);
         const ga = await pic(G.page), da = await pic(D.page), d = diffOf(ga, da);
-        if (process.env.GL_PROBE) for (const q of JSON.parse(process.env.GL_PROBE)) { const i = (q[1] * ga.w + q[0]) * 4; console.log(vw.name, q, 'gl', ga.d.slice(i, i + 3), '2d', da.d.slice(i, i + 3)); }
+        if (process.env.GL_PROBE) for (const q of JSON.parse(process.env.GL_PROBE)) { const i = (q[1] * ga.w + q[0]) * 4; console.log(vw.name, q, 'gl', Array.from(ga.d.slice(i, i + 3)), '2d', Array.from(da.d.slice(i, i + 3))); }
         d.gpuTiles = g.st.gpuTiles; d.cpuTiles = g.st.cpuTiles;
         out[vw.name] = d;
         if (SHOTS) { await shot(G.page, tag + '_' + vw.name + '_gl'); await shot(D.page, tag + '_' + vw.name + '_2d'); await diffShot(D.page, tag + '_' + vw.name + '_diff', ga, da); }
@@ -299,13 +302,155 @@ async function main() {
       for (const P of [G, D]) { assert.deepEqual(P.errors, [], tag + ' page errors'); await P.page.close(); }
       return out;
     };
-    report.pixels.gallery = await compare('gallery', 1, 'gallery', {n100: 0, n24: 0.0005});
-    report.pixels.gallery_dpr2 = await compare('gallery', 2, 'gallery2', {n100: 0, n24: 0.0005});
-    ok('pixels: gallery');
-    report.pixels.shapes = await compare('shapes', 1, 'shapes', {n100: 0, n24: 0.002});
+    if (process.env.GL_SKIP_GALLERY !== '1') {
+      report.pixels.gallery = await compare('gallery', 1, 'gallery', {n100: 0, n24: 0.0005});
+      report.pixels.gallery_dpr2 = await compare('gallery', 2, 'gallery2', {n100: 0, n24: 0.0005});
+      ok('pixels: gallery');
+    }
+    /* upright boxes on the GPU: area coverage on both sides, so the same pixels */
+    report.pixels.shapes = await compare('shapes', 1, 'shapes', {n100: 0, n24: 0.0002});
     const gpuUsed = Object.values(report.pixels.shapes).reduce((s, d) => s + d.gpuTiles, 0);
     assert.ok(gpuUsed > 0, 'the plain-shape page takes the GPU fast path');
+    /* curves and turned edges on the GPU too (HD.render.gpuCurves, off by default): the shader takes the true area under
+       the tangent edge, Skia's scan converter does not - edge pixels only, measured and bounded here */
+    report.pixels.shapes_curves = await compare('shapes', 1, 'shapesc', {n100: 0, n24: 0.004}, true);
     ok('pixels: GPU fast path');
+
+    /* ================================================================ 3. edits and pans: the tiles follow every edit */
+    {
+      const G = await open('gl');
+      const r = await G.page.evaluate(async () => {
+        const R = HD.render, S = HD.store;
+        T.mixed(800, 11);
+        const pg = HD.sel.page, rnd = T.rng(5);
+        S.tx('x', () => {
+          const g = S.create('FRAME', pg, {x: 300, y: 120, w: 200, h: 160, rot: 15, opacity: 0.7, fills: [{type: 'solid', color: '#7C5CFF'}], effects: [{type: 'drop', x: 6, y: 10, blur: 16, color: '#000000', opacity: 0.4}]});
+          S.create('TEXT', g, {x: 10, y: 10, chars: 'Rotated card', fontSize: 20, fills: [{type: 'solid', color: '#FFFFFF'}]});
+          S.create('ELLIPSE', g, {x: 120, y: 80, w: 120, h: 120, fills: [{type: 'solid', color: '#FFB15C'}], blend: 'multiply'});
+        });
+        R.setView({x: 20, y: 10, zoom: 0.8}); R.settle();
+        await new Promise(r => setTimeout(r, 200)); R.settle();
+        const bad = [], partial = [], kinds = {};
+        for (let step = 0; step < 50; step++) {
+          const k = Math.floor(rnd() * 9), ids = S.children(pg), id = ids[Math.floor(rnd() * Math.min(ids.length, 40))];
+          const kids = S.children(id), kid = kids.length ? kids[Math.floor(rnd() * kids.length)] : id;
+          let what = '';
+          if (k === 0) { what = 'moveTop'; S.tx('m', () => S.set(id, {x: S.get(id).x + (rnd() * 80 - 40), y: S.get(id).y + (rnd() * 60 - 30)})); }
+          else if (k === 1) { what = 'moveKid'; S.tx('m', () => S.set(kid, {x: (S.get(kid).x || 0) + (rnd() * 40 - 20)})); }
+          else if (k === 2) { what = 'fill'; S.tx('m', () => S.set(kid, {fills: [{type: 'solid', color: T.COL[step % 10]}]})); }
+          else if (k === 3) { what = 'pan'; const v = R.view; R.setView({x: v.x + Math.round(rnd() * 300 - 150), y: v.y + Math.round(rnd() * 200 - 100), zoom: v.zoom}); }
+          else if (k === 4) { what = 'delete'; if (ids.length > 20) S.tx('m', () => S.remove([kid])); }
+          else if (k === 5) { what = 'create'; S.tx('m', () => S.create('RECT', rnd() < 0.5 ? pg : id, {x: rnd() * 600, y: rnd() * 400, w: 50, h: 50, fills: [{type: 'solid', color: '#F87171'}], effects: rnd() < 0.5 ? [{type: 'drop', x: 2, y: 4, blur: 8, color: '#000000', opacity: 0.5}] : undefined})); }
+          else if (k === 6) { what = 'rot+opacity'; S.tx('m', () => S.set(id, {rot: Math.round(rnd() * 40), opacity: 0.4 + rnd() * 0.6})); }
+          else if (k === 7) { what = 'reorder'; S.tx('m', () => S.move([id], pg, ids[0])); }
+          else { what = 'zoom'; const v = R.view, z = Math.max(0.5, Math.min(1.6, v.zoom * (rnd() < 0.5 ? 1.15 : 0.87))); R.setView({zoom: z, x: 450 - (450 - v.x) * z / v.zoom, y: 300 - (300 - v.y) * z / v.zoom}); }
+          R.flush(); const first = R.stats.gl ? R.stats.gl.partial : 0;
+          R.settle(); if (first) partial.push(first);
+          kinds[what] = (kinds[what] || 0) + 1;
+          const a = T.pic();
+          R.invalidate(true); R.settle();
+          const d = T.diff(a, T.pic());
+          /* the render test's own bar for incremental vs full: a heavy subtree drawn straight while it is being edited and from its
+             bitmap afterwards may differ by a few anti-aliased pixels */
+          if (d.n100 > 12 || d.n24 > 300) bad.push(step + ':' + what + ' ' + JSON.stringify({n24: d.n24, n100: d.n100, bad: d.bad.slice(0, 3)}));
+        }
+        /* a pan over tiles already made paints nothing: one draw call of tiles (the ring outside the screen is made too) */
+        R.setView({x: 20, y: 10, zoom: 1}); R.settle();
+        for (let i = 0; i < 20; i++) R.flush();        /* the ring just outside the screen */
+        const pan = [];
+        for (let i = 0; i < 24; i++) { const v = R.view; R.setView({x: v.x + (i < 12 ? 7 : -7), y: v.y + (i < 12 ? 3 : -3), zoom: 1}); R.flush(); pan.push([R.stats.gl.rendered, R.stats.gl.drawCalls, R.stats.gl.quads]); }
+        return {bad, partial, kinds, pan, renderer: R.renderer};
+      });
+      assert.equal(r.renderer, 'gl');
+      assert.deepEqual(r.bad, [], 'tiles after edits must equal tiles made from scratch: ' + r.bad.join(' | '));
+      assert.ok(r.partial.length > 5, 'an edit repaints only the changed part of a tile: ' + JSON.stringify(r.partial));
+      assert.ok(r.pan.every(q => q[0] === 0 && q[1] === 1), 'a pan over made tiles = no painting, one draw call: ' + JSON.stringify(r.pan));
+      report.edits = {kinds: r.kinds, partialRepaints: r.partial.length, panFrames: r.pan.slice(0, 4)};
+      assert.deepEqual(G.errors, []);
+      await G.page.close();
+      ok('edits + pans');
+    }
+
+    /* ================================================================ 4. export + hit tests: the same code in both modes */
+    {
+      const G = await open('gl'), D = await open('2d');
+      const probe = async (P) => P.page.evaluate(async () => {
+        const R = HD.render, ids = T.gallery(); R.setView({x: 0, y: 0, zoom: 1}); R.settle(); await R.ready(HD.sel.page); R.settle();
+        const hash = (cv) => { const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data; let x = 0x811c9dc5; for (let k = 0; k < d.length; k++) { x ^= d[k]; x = Math.imul(x, 0x01000193); } return cv.width + 'x' + cv.height + ':' + (x >>> 0); };
+        const hits = []; for (let y = 5; y < 700; y += 23) for (let x = 5; x < 1250; x += 29) hits.push(R.hitTest(x, y), R.hitTest(x, y, {deep: true}));
+        const rect = R.nodesInRect({x: 100, y: 100, w: 600, h: 400});
+        return {png: hash(R.toCanvas(ids.big, 1)), page: hash(R.toCanvas(HD.sel.page, 0.5)), svg: R.toSVG(ids.inst2).length + ':' + R.toSVG(HD.sel.page).length, hits: hits.join(','), rect: rect.join(',')};
+      });
+      const a = await probe(G), b = await probe(D);
+      assert.deepEqual(a, b, 'export and hit tests do not depend on the renderer');
+      /* a lost context: Canvas2D at once, no error, the same picture, and it stays Canvas2D for the session */
+      const lost = await G.page.evaluate(async () => {
+        const R = HD.render, before = R.renderer;
+        R.glEngine.lose();
+        await new Promise(r => setTimeout(r, 200));
+        R.flush();
+        const after = R.renderer, why = R.rendererWhy, glc = document.querySelectorAll('canvas.hd-canvas-gl').length;
+        await new Promise(r => setTimeout(r, 350)); R.invalidate(true); R.flush();
+        const pic = T.pic();
+        R.init(document.getElementById('c'));                 /* same canvas again */
+        const c2 = document.createElement('canvas'); c2.style.cssText = 'position:absolute;inset:0;width:100%;height:100%'; document.getElementById('stage').appendChild(c2);
+        R.init(c2); R.flush();
+        let s = ''; for (let i = 0; i < pic.d.length; i += 32768) s += String.fromCharCode.apply(null, pic.d.subarray(i, i + 32768));
+        return {before, after, why, glc, again: R.renderer, flag: sessionStorage.getItem('hd.renderer.lost'), b: btoa(s), w: pic.w, h: pic.h};
+      });
+      await D.page.evaluate(async () => { await new Promise(r => setTimeout(r, 350)); HD.render.invalidate(true); HD.render.flush(); });
+      const d2 = diffOf({w: lost.w, h: lost.h, d: Buffer.from(lost.b, 'base64')}, await pic(D.page));
+      assert.equal(lost.before, 'gl'); assert.equal(lost.after, '2d', 'a lost context falls back to Canvas2D'); assert.equal(lost.glc, 0);
+      assert.equal(lost.again, '2d', 'and stays there for the session'); assert.match(lost.why, /lost/); assert.ok(lost.flag);
+      assert.ok(d2.n100 === 0 && d2.n24 < 50, 'after the fallback the picture is the Canvas2D one: ' + JSON.stringify(d2));
+      assert.deepEqual(G.errors.filter(e => !/WebGL/.test(e)), [], 'no page error after a lost context');
+      report.contextLoss = {why: lost.why, diff: {n24: d2.n24, n100: d2.n100}};
+      for (const P of [G, D]) await P.page.close();
+      ok('export + hit tests + lost context');
+    }
+
+    /* ================================================================ 5. speed */
+    if (process.env.GL_PERF !== '0') {
+      const sizes = (process.env.GL_PERF_SIZES || '5000,20000,100000').split(',').map(Number);
+      for (const n of sizes) {
+        for (const mode of ['2d', 'gl']) {
+          const P = await open(mode);
+          const r = await P.page.evaluate(async (n) => {
+            const R = HD.render, S = HD.store, o = {};
+            let t = performance.now(); T.mixed(n, 3); o.genMs = Math.round(performance.now() - t);
+            const doc = JSON.parse(JSON.stringify(S.serverDoc()));
+            const b = S.worldBounds ? null : null;
+            /* load to first paint: the document is loaded and the view put in the middle at 100% */
+            R.setView({x: 0, y: 0, zoom: 1}); R.flush();
+            t = performance.now();
+            S.load(doc, 1); if (HD.sel.page !== '0:1') HD.sel.setPage('0:1');
+            const ks = S.children('0:1'), mid = ks[ks.length >> 1], mb = S.worldBounds(mid);
+            R.setView({x: 640 - mb.x, y: 400 - mb.y, zoom: 1}); R.flush(); R.finish();
+            o.firstPaint = Math.round(performance.now() - t);
+            R.settle(); R.finish(); o.complete = Math.round(performance.now() - t);
+            await new Promise(r => setTimeout(r, 350)); R.settle();
+            for (let i = 0; i < 20; i++) R.flush();
+            o.pan100 = T.frames(60, (v) => ({x: v.x - 6, y: v.y - 2, zoom: 1}));
+            R.settle(); for (let i = 0; i < 20; i++) R.flush();
+            o.composite = T.frames(40, (v, i) => ({x: v.x + (i % 20 < 10 ? 5 : -5), y: v.y, zoom: 1}));
+            o.zoom = T.frames(40, (v, i) => { const z = v.zoom * (i < 20 ? 1.04 : 1 / 1.04); return {zoom: z, x: 640 - (640 - v.x) * z / v.zoom, y: 400 - (400 - v.y) * z / v.zoom}; });
+            t = performance.now(); R.settle(); R.finish(); o.zoomSettle = Math.round(performance.now() - t);
+            R.zoomToFit(null, false); t = performance.now(); R.settle(); R.finish(); o.fitPaint = Math.round(performance.now() - t); o.fitZoom = Math.round(R.view.zoom * 1000) / 1000;
+            await new Promise(r => setTimeout(r, 350)); R.settle(); for (let i = 0; i < 20; i++) R.flush();
+            o.panFit = T.frames(40, (v) => ({x: v.x - 7, y: v.y - 3, zoom: v.zoom}));
+            o.gl = R.stats.gl ? {texMB: R.stats.gl.texMB, usedMB: R.stats.gl.usedMB, tiles: R.stats.gl.tiles, levels: R.stats.gl.levels} : null;
+            o.renderer = R.renderer;
+            return o;
+          }, n);
+          assert.equal(r.renderer, mode);
+          assert.deepEqual(P.errors, [], mode + ' ' + n + ' page errors');
+          report.perf[mode + '_' + n] = r;
+          await P.page.close();
+          if (process.env.DESIGN_VERBOSE) console.log(mode, n, JSON.stringify(r));
+        }
+      }
+      ok('speed measured');
+    }
 
     console.log(JSON.stringify(report));
   } finally {

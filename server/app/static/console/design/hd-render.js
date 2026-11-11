@@ -1777,6 +1777,7 @@
         continue;
       }
       if (Array.isArray(n.grids) && n.grids.length) gridIds.add(id); else if (gridIds.size) gridIds.delete(id);
+      if (HX.ok && n.strokeWeight !== undefined) { const v = num(+n.strokeWeight, 1); if (v > HX.sw) HX.sw = v; }
       if (n.type === 'DOCUMENT') { resEpoch++; clearCache(); sceneFull = true; any = true; continue; }
       if (n.type === 'PAGE') { sceneFull = true; any = true; if (r !== undefined) r.cv = stamp; continue; }
       const ps = props ? props.get(id) : null, cls = classify(ps);
@@ -1796,7 +1797,7 @@
     schedule();
   }
   function onLoad() {
-    D.clear(); clearCache(); pending.clear(); damage = []; gridIds.clear(); gridScan = true;
+    D.clear(); clearCache(); pending.clear(); damage = []; gridIds.clear(); gridScan = true; HX.ok = false; PX.ok = false; PX.pos = null;
     resEpoch++; compEpoch++; instSeen = false; sceneFull = true; last.valid = false;
     schedule();
   }
@@ -2241,6 +2242,45 @@
     if (anyVis(L.paints(n, 'strokes')) && nearOutline(g, w, h, x, y, Math.max(num(+G(n, 'strokeWeight'), 1), tol))) return id;
     return null;
   }
+  /* D9b's spatial index (hd-index.js), when it is there: the few top-level layers worth asking, in paint order. It keeps
+     every layer's OWN box; what a layer can be hit by reaches past that box by at most its stroke (or the tolerance),
+     so the question is asked with the page's widest stroke added. null = ask every layer (no index, a small page, a
+     mask straight on the page). */
+  const HX = {page: null, sw: 1, ok: false};
+  function idxStroke(page) {
+    if (HX.ok && HX.page === page) return HX.sw;
+    const s = S();
+    let m = 1, g = 0;
+    if (s.walk) s.walk(page, (id) => { const n = s.get(id); if (g++ < 400000 && n && n.strokeWeight !== undefined) { const v = num(+n.strokeWeight, 1); if (v > m) m = v; } });
+    HX.page = page; HX.sw = m; HX.ok = true;
+    return m;
+  }
+  function idxCandidates(page, x0, y0, x1, y1, point) {
+    const X = HD.index, s = S();
+    if (!X || typeof X.query !== 'function' || debug.noIndex) return null;
+    const ks = s.children(page);
+    if (ks.length < 64) return null;
+    const pn = s.get(page);
+    if (!pn || (derive(page, pn).flags & F_MASKKID) !== 0) return null;
+    let ids;
+    try { ids = point && typeof X.at === 'function' ? X.at((x0 + x1) / 2, (y0 + y1) / 2, page, {tol: (x1 - x0) / 2}) : X.query({x: x0, y: y0, w: x1 - x0, h: y1 - y0}, page); } catch (e) { return null; }
+    if (!Array.isArray(ids)) return null;
+    if (PX.page !== page || PX.kids !== ks || PX.pos === null) { PX.pos = new Map(); for (let i = 0; i < ks.length; i++) PX.pos.set(ks[i], i); if (PX.kids !== ks) { PX.ok = false; PX.kids = ks; PX.page = page; } }
+    const pos = PX.pos, seen = new Set();
+    for (let k = 0; k < ids.length; k++) {
+      let c = ids[k], n = s.get(c), g = 0;
+      while (n !== undefined && n.parent !== page && g++ < 2000) { c = n.parent; n = c ? s.get(c) : undefined; }
+      if (n === undefined) continue;
+      const i = pos.get(c);
+      if (i !== undefined) seen.add(i);
+    }
+    return Int32Array.from(seen).sort();
+  }
+  function hitKidsList(pid, list, x, y, tol, withLocked) {
+    const s = S(), ks = s.children(pid);
+    for (let k = list.length - 1; k >= 0; k--) { const id = ks[list[k]], n = s.get(id); if (!n) continue; const hit = hitNode(n, id, null, x, y, tol, withLocked); if (hit !== null) return hit; }
+    return null;
+  }
   function chainOf(id) {
     const s = S(), out = [];
     let c = id, g = 0;
@@ -2251,7 +2291,8 @@
     const s = S(), page = HD.sel && HD.sel.page;
     if (!s || !page || !s.has(page)) return null;
     const tol = (opts && typeof opts.tol === 'number' ? opts.tol : 4) / (view.zoom || 1);
-    const leaf = hitKids(page, null, wx, wy, tol, !!(opts && opts.locked));
+    const cand = idxCandidates(page, wx - tol - idxStroke(page), wy - tol - idxStroke(page), wx + tol + idxStroke(page), wy + tol + idxStroke(page), true);
+    const leaf = cand === null ? hitKids(page, null, wx, wy, tol, !!(opts && opts.locked)) : hitKidsList(page, cand, wx, wy, tol, !!(opts && opts.locked));
     if (leaf !== null) return leaf;
     if (opts && opts.labels === false) return null;
     const sp = worldToScreen(wx, wy);
@@ -2283,8 +2324,9 @@
     if (!s || !page || !rect) return out;
     const r = {x: rect.w < 0 ? rect.x + rect.w : rect.x, y: rect.h < 0 ? rect.y + rect.h : rect.y, w: Math.abs(rect.w), h: Math.abs(rect.h)};
     const ok = (n) => n && n.visible !== false && G(n, 'locked') !== true;
-    const ks = s.children(page);
-    for (let i = 0; i < ks.length; i++) {
+    const ks = s.children(page), cand = idxCandidates(page, r.x, r.y, r.x + r.w, r.y + r.h, false);
+    for (let q = 0, lim = cand === null ? ks.length : cand.length; q < lim; q++) {
+      const i = cand === null ? q : cand[q];
       const n = s.get(ks[i]);
       if (!ok(n)) continue;
       const m = localMat(n, [1, 0, 0, 1, 0, 0]), w = W(n), h = H(n);
@@ -2791,9 +2833,12 @@
     colNums.set(str, v);
     return v;
   }
-  /* kind 0 = an upright rect given in device pixels (x0, y0, x1, y1 in w, h, r0, r1); 1 = a rounded box under a matrix;
+  /* kind 0 = an upright rect given in device pixels (x0, y0, x1, y1 where the radii go); 1 = a rounded box under a matrix;
      2 = an ellipse under a matrix. clip = [x0, y0, x1, y1] in device pixels. */
   function gsPush(kind, ma, mb, mc, md, me, mf, w, h, r, col, alpha, clip) {
+    /* upright boxes are exact on both sides (area coverage); curves and turned edges only within ~30% of one pixel's
+       coverage (Skia's own scan converter differs from the true area), so they ride the GPU only when asked to */
+    if (kind !== 0 && api.gpuCurves !== true) return false;
     const a = col[3] * alpha;
     if (!(a > 0)) return true;
     if (GS.buf.length < (GS.n + 1) * GSW) { const nb = new Float32Array(GS.buf.length * 2); nb.set(GS.buf); GS.buf = nb; }
@@ -2802,7 +2847,7 @@
     if (kind === 0) {
       x0 = Math.min(me, me + w); x1 = Math.max(me, me + w); y0 = Math.min(mf, mf + h); y1 = Math.max(mf, mf + h);
       B[o] = 1; B[o + 1] = 0; B[o + 2] = 0; B[o + 3] = 1; B[o + 4] = 0; B[o + 5] = 0;
-      B[o + 6] = x0; B[o + 7] = y0; B[o + 8] = x1; B[o + 9] = y1; B[o + 10] = 0; B[o + 11] = 0; B[o + 25] = 1;
+      B[o + 6] = 0; B[o + 7] = 0; B[o + 8] = x0; B[o + 9] = y0; B[o + 10] = x1; B[o + 11] = y1; B[o + 25] = 1;
     } else {
       const det = ma * md - mb * mc;
       if (Math.abs(det) < 1e-12) return true;
@@ -2886,8 +2931,8 @@
       if (p.type !== 'solid' && p.type !== undefined) return false;
       const cn = colNum(rgba(p.color, p.opacity));
       if (cn === null) return false;
-      if (kind === 1 && g.k === R_RECT && mb === 0 && mc === 0) gsPush(0, 1, 0, 0, 1, me, mf, ma * w, md * h, null, cn, op, clip);
-      else gsPush(kind, ma, mb, mc, md, me, mf, w, h, g.k === R_RR ? g.r : null, cn, op, clip);
+      if (kind === 1 && g.k === R_RECT && mb === 0 && mc === 0) { if (!gsPush(0, 1, 0, 0, 1, me, mf, ma * w, md * h, null, cn, op, clip)) return false; }
+      else if (!gsPush(kind, ma, mb, mc, md, me, mf, w, h, g.k === R_RR ? g.r : null, cn, op, clip)) return false;
     }
     if (hasKids) {
       let kclip = clip;
@@ -3079,7 +3124,7 @@
     /* D9a: settle() = flush until complete, snapshot() = the on-screen picture, finish() = wait for the GPU */
     settle, snapshot, finish, paintTile: tilePaint, tileShapes,
     get renderer() { return gl !== null ? 'gl' : '2d'; }, get rendererWhy() { return glWhy; }, get glEngine() { return gl; },
-    bounds: boundsOf, worldMatrix: worldMat, assetURL: null, webFonts: true, pixelGrid: true, frameLabels: true, zoomPreview: true, showGrids: true,
+    bounds: boundsOf, worldMatrix: worldMat, assetURL: null, gpuCurves: false, webFonts: true, pixelGrid: true, frameLabels: true, zoomPreview: true, showGrids: true,
     /* path + boolean geometry, shared with hd-vector.js (vector edit, flatten): all pure */
     geom: {parsePath, segsToD, pathBBox, vectorSegs, outlineSegs, gridSpans, isBool(n) { return !!n && dtype(n) === 'BOOL'; },
       /* the outline of a boolean group as path data in the group's own space ('' when nothing is left) */
