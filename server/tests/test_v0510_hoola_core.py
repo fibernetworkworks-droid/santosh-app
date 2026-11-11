@@ -811,7 +811,7 @@ def test_app_version_pin():
 
 def test_pubspec_pin():
     pub = (REPO_ROOT / "pubspec.yaml").read_text(encoding="utf-8")
-    assert "version: 0.793.0+792" in pub
+    assert "version: 0.794.0+793" in pub
 
 
 def test_main_story_markers():

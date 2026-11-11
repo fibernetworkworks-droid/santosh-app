@@ -185,7 +185,7 @@ def test_version(env):
     # story pin moved to the newest story (the newest-story precedent)
     assert "HOOLA RETRIEVE" in story and "index()" in story and "retriever" in story  # the newest-story precedent (the P5 markers live in the Previous chain)
     pub = (REPO_ROOT / "pubspec.yaml").read_text(encoding="utf-8")
-    assert "version: 0.793.0+792" in pub
+    assert "version: 0.794.0+793" in pub
 
 
 # ------------------------------------------------------------------ (7) kill switches

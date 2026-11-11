@@ -255,4 +255,4 @@ def test_app_version_pin():
 
 def test_pubspec_pin():
     pub = (ROOT / "pubspec.yaml").read_text()
-    assert "version: 0.793.0+792" in pub
+    assert "version: 0.794.0+793" in pub

@@ -570,4 +570,4 @@ def test_version(env):
     # release's story carries the marker; the older stories live in git history)
     assert "HOOLA RETRIEVE" in story and "aep/retrieve.py" in story  # the newest-story precedent (the P5 markers live in the Previous chain)
     pub = (REPO_ROOT / "pubspec.yaml").read_text(encoding="utf-8")
-    assert "version: 0.793.0+792" in pub
+    assert "version: 0.794.0+793" in pub
