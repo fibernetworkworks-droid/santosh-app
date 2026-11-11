@@ -101,7 +101,7 @@ def check(raw: Any, sch: dict[str, Any], spec: dict[str, Any] | None = None) -> 
     items = raw.get("scenarios") if isinstance(raw, dict) else raw
     items = items if isinstance(items, list) else []
     if len(items) > CAPS["scenarios"]:
-        ck.warnings.append(f"there are {len(items)} scenarios, only the first {CAPS['scenarios']} will run")
+        ck.warnings.append(f"{len(items)} scenarios given, only the first {CAPS['scenarios']} will run")
     out: list[dict[str, Any]] = []
     for i, sc in enumerate(items[:CAPS["scenarios"]]):
         where = f"scenario {i + 1}"
@@ -123,7 +123,7 @@ def check(raw: Any, sch: dict[str, Any], spec: dict[str, Any] | None = None) -> 
             if s is not None:
                 steps.append(s)
         if len(actors) > CAPS["actors"]:
-            ck.err(where, f"there are {len(actors)} people, the limit is {CAPS['actors']}")
+            ck.err(where, f"{len(actors)} people, the limit is {CAPS['actors']}")
         if steps and ck.errors == []:
             pass
         if steps:
@@ -158,7 +158,7 @@ def _step(ck: Checker, where: str, st: Any, actors: set[str]) -> dict[str, Any] 
     actors.add(who)
     must = str(st.get("must") or "ok").strip().lower()
     if must not in MUST:
-        ck.err(where, f"must can only be {' / '.join(MUST)}")
+        ck.err(where, f"must can only be {' / '.join(MUST)}, nothing else")
         return None
     out["must"] = must
 
@@ -739,7 +739,7 @@ def rules_run(r: AppProject) -> dict[str, Any]:
             try:
                 got = L.call_function(c["fns"], f["name"], test.get("args") or [])
                 if test.get("fails"):
-                    rows.append({"kind": "function", "what": what, "state": "fail", "why": f"should have failed, got {got!r}"})
+                    rows.append({"kind": "function", "what": what, "state": "fail", "why": f"should have failed, got {got!r} instead"})
                 elif "expect" in test and str(got) != str(test["expect"]):
                     rows.append({"kind": "function", "what": what, "state": "fail",
                                  "why": f"expected {test['expect']!r}, got {got!r}"})

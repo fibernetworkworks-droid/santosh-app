@@ -287,7 +287,7 @@ def grade_code(tenant: str, learner_ref: str, assessment: str, code: str, tests:
                           marks=marks, max_marks=float(max_marks), by="hoola:code", note=f"{passed}/{len(tests)} tests"))
     return {"learner": lv["number"], "passed": passed, "tests": len(tests), "marks": marks, "max": float(max_marks),
             "details": [{"call": t["call"], **x} for t, x in zip(tests, res)],
-            "say": f"{lv['name']}: {passed}/{len(tests)} tests paas, {marks}/{max_marks} (UNSIGNED - teacher sign-off kare)."}
+            "say": f"{lv['name']}: {passed}/{len(tests)} tests passed, {marks}/{max_marks} (UNSIGNED - the teacher must sign off)."}
 
 
 RUBRIC_GRADE = """You suggest marks for one student's written answer using the teacher's rubric. For EACH criterion pick

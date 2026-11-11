@@ -745,7 +745,7 @@ def drop(tenant: str, ref: str, reason: str = "") -> dict:
         r = _find_opp(s, tenant, ref)
         r.status, r.bucket = "dropped", ""
         if reason:
-            r.note = (r.note + " Chhoda: " + R.tidy(reason, 300)).strip()
+            r.note = (r.note + " Dropped: " + R.tidy(reason, 300)).strip()
         num = r.number
     return {"say": f"{num} dropped" + (f" ({R.tidy(reason, 80)})" if reason else "") + "."}
 
@@ -1745,7 +1745,7 @@ def day(tenant: str) -> dict:
     if over:
         parts.append("over capacity: " + ", ".join(R.BUCKET_LABEL[b] for b in over))
     if drafts:
-        parts.append(f"{len(drafts)} spec adhoore")
+        parts.append(f"{len(drafts)} specs incomplete")
     if waiting:
         parts.append(f"{len(waiting)} publish cards waiting for your tap")
     if due:

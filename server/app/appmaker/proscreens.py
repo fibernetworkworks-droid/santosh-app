@@ -22,7 +22,7 @@ PRO_SCREENS: dict[str, dict[str, Any]] = {
                       "QR sign-in: 'scan the code on the office screen' frame + manual OTP fallback"),
     "login_email": _s("Email login", "email login", "email + password or a one-time magic link; reset flow", "",
                       "email + password fields with show / hide, 'forgot password', primary Login, magic-link text button",
-                      "magic link first: email field, 'link bhejo', then a check-your-inbox state with a big mail icon",
+                      "magic link first: email field, 'send link', then a check-your-inbox state with a big mail icon",
                       "card with email, password, strength meter on sign-up mode, terms check row",
                       "large title, email then password on the next step (two-step), back chevron",
                       "brand hero, glass card form, 'Google / Apple se login' rows below (only if enabled)",

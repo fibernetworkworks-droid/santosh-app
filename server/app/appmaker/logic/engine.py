@@ -1209,7 +1209,7 @@ def run_schedule(r: AppProject, name: str, force: bool = False) -> dict[str, Any
         if sd.get("once_per_row"):
             store(r, x.id, {mark: now().isoformat()})
     STATS["scheduled"] += 1
-    audit(r, "schedule", coll=sd["coll"], what=f"{sd['label']}: {acted} entries" + (" (haath se)" if force else ""))
+    audit(r, "schedule", coll=sd["coll"], what=f"{sd['label']}: {acted} entries" + (" (manual)" if force else ""))
     return {"name": name, "matched": hit, "acted": acted}
 
 
