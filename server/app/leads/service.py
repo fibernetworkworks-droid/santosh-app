@@ -579,7 +579,7 @@ async def enrich(tenant: str, ask: str = "", row_ids: list[str] | None = None, q
                 sdom = (urlparse(site).hostname or "").replace("www.", "")
                 if dom and sdom and (dom == sdom or dom.endswith("." + sdom) or sdom.endswith("." + dom)):
                     grade = "galat"
-                    note += " - email_grade galat (the site itself is dead)"
+                    note += " - email_grade set to galat = wrong (the site itself is dead)"
             return {"kind": "dead", "grade": grade,
                     "apply": {"email_grade": grade, "enriched_from": site, "enrich_note": note, "socials": {}},
                     "detail": {"id": row.id, "name": row.name, "result": "dead_site", "grade": grade}}
@@ -1133,7 +1133,7 @@ def add_row(tenant: str, row: dict, source_lane: str, source_url: str, run_id: s
         raise LeadsError(f"source_lane '{source_lane}' is wrong - lanes: {', '.join(R.LANES)}. "
                          f"A row without a valid source is not stored.")
     if not str(source_url or "").strip():
-        raise LeadsError("source_url khaali hai (source_url is empty) - every row must carry its source (provenance).")
+        raise LeadsError("source_url is empty - every row must carry its source (provenance).")
     row = _clean_row(row)
     ktype, kval = identity_key(row)
     return _write_row(tenant, None, ktype, kval, row, str(run_id or ""), source_lane, source_url[:500], parser_version)

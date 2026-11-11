@@ -64,7 +64,7 @@ def contract() -> dict[str, Any]:
         "pricing": "LEADS_VENDOR_PRICE_PER_ROW_INR priced on the plan card BEFORE the run; estimate over "
                    "LEADS_VENDOR_RUN_CAP_INR refuses at plan time; the bill uses the vendor's reported cost_inr "
                    "when given, else says ESTIMATE",
-        "written_to": "the vendor's OWN documented contract once she names the vendor (plan 12.4; SACH BOLO - "
+        "written_to": "the vendor's OWN documented contract once the user names the vendor (plan 12.4; "
                       "never reverse-engineered). This generic contract is Hoola's side only.",
     }
 

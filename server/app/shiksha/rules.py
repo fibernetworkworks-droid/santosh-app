@@ -86,7 +86,7 @@ def check_question(q: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
              "tf": "true_false", "fill": "fill_blank", "vsa": "very_short", "sa": "short", "la": "long", "case": "case_based",
              "source_based": "case_based", "numerical": "numeric", "programming": "code"}.get(qtype, qtype)
     if qtype not in QTYPES:
-        p.append(f"! type '{qtype}' samajh nahi aaya")
+        p.append(f"! type '{qtype}' was not understood")
         qtype = "short"
     text = _s(q.get("text") or q.get("question"), 6000)
     if len(text) < 8:
