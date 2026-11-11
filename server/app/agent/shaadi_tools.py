@@ -27,11 +27,11 @@ SHAADI_TOOLS = [
         "what+days (new). guest: wedding, name, side bride|groom|common, phone, adults, kids, group, invited [fns], diet, city, "
         "needs_room, arrive, depart, travel_mode, travel_from. guests_import: file_id. rsvp: wedding, guest, answer yes|no|maybe, fn. "
         "room: place, label, capacity, check_in, check_out, rate, count. room_assign: guest, room (overbooking refused). trip*: from "
-        "(city -> Travel Sahayak draft). vendor: name, kind, phone, functions, quote (HER word), quote_note, per_plate, plates, "
+        "(city -> Travel Assistant draft). vendor: name, kind, phone, functions, quote (HER word), quote_note, per_plate, plates, "
         "schedule [{label, amount|pct, due}]. book: vendor -> CARD. pay: vendor, item -> CARD. paid*: vendor, item, amount, ref. spend: "
         "what, amount, head, fn, payee -> CARD. budget: amount, head, fn. quote: lines [{name, amount}] -> client CARD (agency). "
         "client_pay: stage. invite_text: kind invite|rsvp, fn, lang hinglish|hindi|marathi|english. message: text, kind, to "
-        "guests|vendors, fn, side, pending -> CARD. invite_design (Brand Sahayak). gift*: giver, value, kind cash|upi|cheque|gold|item, "
+        "guests|vendors, fn, side, pending -> CARD. invite_design (Brand Assistant). gift*: giver, value, kind cash|upi|cheque|gold|item, "
         "what, relation, side, for_whom, fn. gift_list*: for_whom bride|groom (Dowry Rules 1985 list PDF). forget*: wedding (DPDP, after done). * = owner only."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": _ACTIONS}, "wedding": {"type": "string"}, "title": {"type": "string"},

@@ -33,7 +33,7 @@ RENTDESK_TOOLS = [
         "missing, note}], meters {electricity: n}, keys, close. action=settlement: tenancy (start). action=deduct: settlement, what, "
         "amount (HER number), reason, remove. action=settle: settlement -> deduction CARD. action=refund_done (owner): settlement, amount, "
         "ref. action=settlement_file: settlement. action=forget (owner): person (DPDP, after the tenancy ended). action=register (Excel). "
-        "action=from_deal (owner): deal (Property Sahayak D-0001 rent deal), start -> a DRAFT tenancy from that deal (nothing billed / sent)."),
+        "action=from_deal (owner): deal (Property Assistant D-0001 rent deal), start -> a DRAFT tenancy from that deal (nothing billed / sent)."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["settings", "unit", "person", "tenancy", "update", "activate", "check", "agreement",
                                                "received", "receipt", "charge", "waive", "pay_link", "message", "rent_change", "notice",

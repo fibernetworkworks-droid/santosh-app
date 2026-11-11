@@ -26,7 +26,7 @@ DEVOPS_TOOLS = [
         "say it is deployed or approved). action=rollback: repo, to (commit; empty = previous good deploy), note -> card only. "
         "action=repo_add (owner): repo owner/name, deploy_workflow (file name), environment, rollback_workflow. action=repo_remove "
         "(owner). action=settings (owner): team, morning_time, rules (her deploy rules, one per line). action=forget_logs (owner). "
-        "Never ask for / repeat a token, password or key: GitHub token and collector setup are done in the app (DevOps > Niyam)."),
+        "Never ask for / repeat a token, password or key: GitHub token and collector setup are done in the app (DevOps > Rules)."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["sync", "diagnose", "explain_log", "logs", "cluster", "script", "check_script", "checklist",
                                                "tick", "endpoint_add", "endpoint_remove", "watch", "deploy", "rollback", "repo_add",

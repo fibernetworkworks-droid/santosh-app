@@ -10,8 +10,8 @@ from .tools import Ctx, ToolError
 
 PRODUCT_TOOLS = [
     {"name": "product", "description": (
-        "Product manager's coworker: feedback -> roadmap -> specs -> release notes. action=harvest (days): read Feedback Sahayak "
-        "themes, Seva support tickets / unanswered questions and Telecaller objections into the opportunity backlog (same "
+        "Product manager's coworker: feedback -> roadmap -> specs -> release notes. action=harvest (days): read Feedback Assistant "
+        "themes, customer support tickets / unanswered questions and Telecaller objections into the opportunity backlog (same "
         "problem = joined, never doubled). action=idea: text or file_id (her ideas / notes; source=competitor + competitor name "
         "for competitor notes) -> customer problems. action=opportunity: title, problem, who, quote, note. action=update: ref, "
         "title / problem / who / theme / goal (KPI) / note / status. action=score: ref + HER numbers only: reach (people in 3 "
@@ -23,7 +23,7 @@ PRODUCT_TOOLS = [
         "put the suggestion on the roadmap). action=roadmap_files. action=ship: ref, day. action=result: ref (before / after). "
         "action=spec: ref (opportunity), note -> PRD with Given/When/Then. action=spec_edit: spec, fields {section: value}. "
         "action=spec_revise: spec, instruction. action=spec_files: spec (Word + Markdown + .feature). action=tasks: spec (dev / QA "
-        "task list for the Developer / QA Sahayak). action=release: version, text (what shipped), opps, since, github (merged PRs), "
+        "task list for the Developer / QA Assistant). action=release: version, text (what shipped), opps, since, github (merged PRs), "
         "day. action=release_edit: release, hinglish [lines], english [lines], title. action=release_files: release. "
         "action=publish: what release|roadmap, ref, dest github|page|copy, lang -> a CARD for her tap (never published by you). "
         "action=metric: kpi, value, day, note (her number). action=kpi*: name, definition, unit, target, better up|down, remove. "

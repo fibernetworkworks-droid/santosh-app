@@ -1536,7 +1536,7 @@ TOOL_LANES: dict[str, str] = {
     "maps_nearby": "LANE: what is AROUND a point, by category (pharmacy, bank, gas_station...). A place you can name "
                    "-> maps_search. Phone / website / rating / timings of one result -> maps_place. Circle only, "
                    "50 km max, 20 results, no next page.",
-    "maps_nearest": "LANE: which of a LIST she already has is nearest by real road time (godowns, branches, workers vs "
+    "maps_nearest": "LANE: which of a LIST she already has is nearest by real road time (warehouses, branches, workers vs "
                     "a customer). Finding places of a kind -> maps_nearby. One trip's route -> maps_directions.",
     "maps_address_check": "LANE: is THIS delivery address good (PIN, completeness, how far Google matched it). One address "
                           "per call. Finding places -> maps_nearby / maps_search. A point's address -> maps_pata.",
@@ -1599,7 +1599,7 @@ TOOL_LANES: dict[str, str] = {
                      "haal_ki_chats.",
     "yaad_khojo": "LANE: the ONE memory door - facts, past chats / calls / jobs, work notes, her graph and page in one "
                   "search. Her documents' contents -> gyaan_khojo; by date -> haal_ki_chats.",
-    "gyaan_khojo": "LANE: search inside HER files and documents (Gyaan, Drive folders). A file she attached in this "
+    "gyaan_khojo": "LANE: search inside HER files and documents (Knowledge, Drive folders). A file she attached in this "
                    "chat -> file_read; her chats -> yaad_khojo.",
     "haal_ki_chats": "LANE: her other chats by DATE ('aaj', 'kal', 'is hafte'). By topic -> yaad_khojo.",
     "file_read": "LANE: read a file she attached (file_id). The layout / pages of a document -> doc_preview; her "

@@ -64,7 +64,7 @@ SITE_TOOLS = [
         "(pages, users, data lists, rules / workflows / approvals, features) - nothing is built; show its lines and ask. "
         "action=architect_change + spec + instruction = her change to ANY part of the card (pages, users, data, payments, "
         "notifications...; after the build only what it touches is rebuilt / drafted). action=architect_data + spec (A-00xx) + instruction = redo only the data / rules part. "
-        "action=phone_app + site = the website's app as an Android / iPhone app on the SAME data (App Sahayak's plan card). action=architect_ok + spec + "
+        "action=phone_app + site = the website's app as an Android / iPhone app on the SAME data (App Assistant's plan card). action=architect_ok + spec + "
         "hash (+ modules to keep: pages, users, data, logic, features) ONLY after she clearly said yes to THAT card -> the "
         "website + its app backend are built. LOGIC on an existing site (relations, formulas, workflows, maker-checker "
         "approvals, SLA reminders): action=logic + instruction = a checked DRAFT; action=logic_ok + hash ONLY after her "

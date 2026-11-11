@@ -80,7 +80,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
     if action in OWNER_ONLY and not _owner(ctx):
         raise ToolError("Only the owner can do this.")
     if TOKEN_RX.search(" ".join(_s(v) for v in a.values())):
-        raise ToolError("No tokens in chat: add it in the app under Docs Sahayak > Sources. Rotate this token on GitHub.")
+        raise ToolError("No tokens in chat: add it in the app under Docs Assistant > Sources. Rotate this token on GitHub.")
     p, d = _s(a.get("product")), _s(a.get("doc"))
     try:
         if action == "add_product":

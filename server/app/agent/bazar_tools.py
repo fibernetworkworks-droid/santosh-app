@@ -13,11 +13,11 @@ BAZAR_TOOLS = [
         "Find Santosh Connectors (plugins) for a task: bill payments (142 billers: electricity/gas/LPG/mobile/broadband/DTH, "
         "water & property tax, FASTag, EMIs/fees/society), local shops (142 types: kirana, dairy, tiffin, medical, clinic, salon, "
         "tailor, coaching, PG...), UPI apps and rent, ride apps, food/grocery apps (Swiggy, Instamart, Zomato, Zepto...), "
-        "business tools (GST invoice/quotation PDFs, udhar ledger, staff attendance, salary slips, rent receipts), money helpers "
+        "business tools (GST invoice/quotation PDFs, credit ledger, staff attendance, salary slips, rent receipts), money helpers "
         "(EMI, subscriptions, price watch, tax due dates, scam-message check, SOS), bank/card/investment readers (94: read SMS "
         "the user shares; never move money) and 227 handoffs (government & exam portals, travel, couriers, health, farming: "
         "Santosh prepares details, the user finishes on the official site/app), and Santosh Shopping (pack santosh-shopping: "
-        "product search across ONDC sellers, Shopify brand stores and local Bazar shops, cart, all-in price on a confirm card, "
+        "product search across ONDC sellers, Shopify brand stores and local shops, cart, all-in price on a confirm card, "
         "UPI pay, track/cancel/return; Flipkart is search + link only). "
         "Query in any language, e.g. 'bijli bill msedcl', 'pani bill', 'fastag', 'gst invoice', 'udhar', 'passport', 'hdfc'. "
         "Also searches the user's own MCP servers and, when few packs match, the MCP directory of ~63,700 MCP servers worldwide (npm, PyPI, GitHub lists, mcp.so, mcpservers.org, Apify) "
@@ -26,7 +26,7 @@ BAZAR_TOOLS = [
      "input_schema": {"type": "object", "properties": {
          "query": {"type": "string"}, "category": {"type": "string", "description": "Optional category filter"}}}},
     {"name": "bazar_run", "description": (
-        "Run one tool of a Bazar pack found with bazar_find. Give pack_id, tool and args matching that tool's input_schema. "
+        "Run one tool of a Connectors pack found with bazar_find. Give pack_id, tool and args matching that tool's input_schema. "
         "Read tools return data. Tools that spend money or message people return needs_approval: a confirm card is shown "
         "to the user; tell them the total and to tap Approve. Never claim an order/payment is done until the user approved "
         "and the result says so. Results with an app/UPI/website link show an Open button; PDFs a download card in the chat."),
@@ -55,13 +55,13 @@ BAZAR_TOOLS = [
         "a sign-in a Link button appears; API keys are entered by the user in the app, never in chat. "
         "action=list: the user's servers and status. action=remove: disconnect (pack_id). After adding, use "
         "bazar_run with the returned pack_id; any tool that is not a plain read shows a confirm card first. "
-        "GitHub (featured=github, GitHub's official MCP server): connects with the token she already gave Developer Sahayak "
+        "GitHub (featured=github, GitHub's official MCP server): connects with the token she already gave Developer Assistant "
         "(one call), else she adds a fine-grained token in the app; readonly=true = only read tools; toolsets = which parts "
         "(context, repos, issues, pull_requests, actions, users default; + code_security, dependabot, secret_protection, "
         "notifications, discussions, gists, labels, projects, orgs, security_advisories, stargazers, git). Calling connect again "
         "with other readonly / toolsets changes them. Lockdown is always on (public issue text from people without push "
         "access stays hidden); every write (create / update / merge / push / comment / run workflow) waits for her tap. "
-        "Code changes as a PR with checks = the dev tool (Developer Sahayak). "
+        "Code changes as a PR with checks = the dev tool (Developer Assistant). "
         "Supabase (featured=supabase, Supabase's official MCP server): one tap + her Supabase sign-in (or a sbp_ token she adds "
         "in the app). project = her project ref (20 small letters) to limit Hoola to ONE project (recommended); readonly "
         "defaults to true (SQL runs as a read-only Postgres user); toolsets here = Supabase feature groups (database, "
@@ -96,7 +96,7 @@ BAZAR_TOOLS = [
          "action": {"type": "string", "enum": ["list", "connect", "tools", "remove"]},
          "toolkit": {"type": "string", "description": "app slug: slack, notion, jira, hubspot ..."},
          "query": {"type": "string"}}, "required": ["action"]}},
-    {"name": "bazar_activity", "description": "The user's recent Bazar orders and payments with their status.",
+    {"name": "bazar_activity", "description": "The user's recent Connectors orders and payments with their status.",
      "input_schema": {"type": "object", "properties": {}}},
 ]
 

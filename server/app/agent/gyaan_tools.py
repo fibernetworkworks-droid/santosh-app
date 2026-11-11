@@ -10,9 +10,9 @@ from .tools import Ctx, ToolError
 
 GYAAN_TOOLS = [
     {"name": "gyaan_khojo", "description": (
-        "Search the owner's OWN knowledge (Gyaan): her files (chat / call attachments, files added to Gyaan), Google Drive "
+        "Search the owner's OWN knowledge: her files (chat / call attachments, files added to Knowledge), Google Drive "
         "folders she connected, her mail (if she turned it on), saved notes, web pages she added, her own business records "
-        "(profile, Seva FAQ / policy, Kalam facts, price list), and past chats / calls. People / firms are matched by name "
+        "(profile, support FAQ / policy, content facts, price list), and past chats / calls. People / firms are matched by name "
         "in any spelling or script ('Gupta ji', 'गुप्ता', 'Ganesh Traders'). Use it for ANY question "
         "about her business, documents, bills, prices, people, dates, agreements, earlier conversations ('how much is the rent', "
         "'what is GSTIN', 'when will Kunal's order arrive', 'what was decided last time'). Default: ONE call. Send `queries` = 2-3 "
@@ -32,14 +32,14 @@ GYAAN_TOOLS = [
          "top": {"type": "integer", "description": "How many hits (default 6, max 10)"}},
          "required": ["query"]}},
     {"name": "gyaan", "description": (
-        "Manage her knowledge base (Gyaan). action=status (what is in it, embedder, Drive folders, mail on/off) | list "
+        "Manage her knowledge base (Knowledge). action=status (what is in it, embedder, Drive folders, mail on/off) | list "
         "(docs; q to filter) | add_file (file_id of a file she sent) | add_note (title, text: something she wants kept "
         "word for word) | add_drive (folder: name or link of a Google Drive folder; synced daily) | sync (re-read Drive "
         "folders, web pages, mail and records now) | mail_on / mail_off (owner only; mail_off also forgets mail) | add_web "
         "(url of a PUBLIC page: her site, a supplier price page, a scheme's rules; follow = also read up to N links on that "
         "site, max 11; re-read weekly) | remove_watch (watch_id of a Drive folder / web page) | records_on / records_off "
-        "(her business profile, Seva FAQ / policy, Kalam facts and price list in Gyaan; owner only) | names (q: the people / "
-        "firms in her Gyaan and how many documents name them) | who (name: which documents name them and who appears with "
+        "(her business profile, support FAQ / policy, content facts and price list in Knowledge; owner only) | names (q: the people / "
+        "firms in her Knowledge and how many documents name them) | who (name: which documents name them and who appears with "
         "them) | forget (doc_id, or title words) | forget_all (owner only, confirm=true) | eval (test search quality). "
         "v0.512 her APPROVED jawabs: save_answer (question + text: the answer she wants returned word for word "
         "whenever that question is asked — served BEFORE any search, masked of secrets) | answers (the saved list with "
@@ -68,7 +68,7 @@ async def gyaan_khojo(ctx: Ctx, query: str = "", queries: list | None = None, so
     from ..gyaan import answer, search
     if not _owner(ctx):
         # staff / customers never read the owner's private knowledge base (customers have biz_seva_answer)
-        raise ToolError("Gyaan is for the owner only.")
+        raise ToolError("The knowledge base is for the owner only.")
     top = max(1, min(int(top or 6), 10))
     # v0.512 her APPROVED jawabs first (the Dify annotation-reply idea, house rails): a saved answer
     # for this question returns BEFORE any retrieval spends a token. A miss never blocks.
@@ -101,7 +101,7 @@ async def gyaan(ctx: Ctx, action: str = "status", file_id: str = "", title: str 
     from ..gyaan import ingest
     t = ctx.tenant_id
     if not _owner(ctx) and action not in ("status", "list", "names", "who", "answers"):
-        raise ToolError("Only the owner can change Gyaan.")
+        raise ToolError("Only the owner can change the knowledge base.")
     try:
         if action == "status":
             return await asyncio.to_thread(ingest.status, t)
@@ -145,7 +145,7 @@ async def gyaan(ctx: Ctx, action: str = "status", file_id: str = "", title: str 
             return await asyncio.to_thread(ingest.who, t, (name or q).strip())
         if action in ("mail_on", "mail_off"):
             if (getattr(ctx, "actor", "owner") or "owner") != "owner" and not str(ctx.actor).startswith("approved:"):
-                raise ToolError("Only the owner herself can add mail to Gyaan.")
+                raise ToolError("Only the owner herself can add mail to the knowledge base.")
             s = await asyncio.to_thread(ingest.save_settings, t, mail_on=(action == "mail_on"))
             res: dict[str, Any] = {"settings": s}
             if action == "mail_on":
@@ -159,9 +159,9 @@ async def gyaan(ctx: Ctx, action: str = "status", file_id: str = "", title: str 
             raise ToolError("doc_id or title needed.")
         if action == "forget_all":
             if (getattr(ctx, "actor", "owner") or "owner") != "owner":
-                raise ToolError("Only the owner can erase all of Gyaan.")
+                raise ToolError("Only the owner can erase the whole knowledge base.")
             if not confirm:
-                return {"needs_confirm": True, "say": "All of Gyaan (files, Drive, mail, notes) will be erased. Sure? Call again with confirm=true."}
+                return {"needs_confirm": True, "say": "The whole knowledge base (files, Drive, mail, notes) will be erased. Sure? Call again with confirm=true."}
             return await asyncio.to_thread(ingest.forget_all, t)
         if action == "eval":
             from ..gyaan import evaluate

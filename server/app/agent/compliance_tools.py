@@ -13,7 +13,7 @@ COMPLIANCE_TOOLS = [
         "Compliance officer for HER business: statutory calendar (GST, TDS / TCS, PF / ESIC, PT, LWF, labour-code returns, Shop Act, "
         "FSSAI, fire NOC, pollution consent, trade / factory licence, MSME-1, ROC basics) with due dates, owners, evidence and status. "
         "Never invent a date, fee, section or penalty: the catalogue has dated starters with sources, her own date wins; say 'confirm with "
-        "your CA / CS'. GST / payroll / Daftar renewals / Company Secretary items are READ from those Assistants, not copied. "
+        "your CA / CS'. GST / payroll / office renewals / Company Secretary items are READ from those Assistants, not copied. "
         "action=facts*: entity proprietor|partnership|llp|pvt_ltd|public_ltd|opc|trust|society|huf, state (name or GST code), employees, "
         "contract_workers, contractor (bool), turnover (Rs, last FY), gstin, gst_scheme monthly|qrmp|composition, tan, salary_tds, tcs, "
         "pt_yearly, sectors [shop, office, restaurant, factory, manufacturing, food, it, trading, construction...], food_kind none|"
@@ -45,7 +45,7 @@ COMPLIANCE_TOOLS = [
     {"name": "compliance_dekho", "description": (
         "Read compliance (nothing changes). what=day (late with penalty andaaza, this week, her taps waiting, questions) | applicability "
         "(what applies and why, with sources; questions she must answer) | calendar (area, state late|due|upcoming|no_date|done, ahead days; "
-        "incl. linked GST / payroll / Daftar / CS rows) | item (item) | certificate (month: draft content) | rules (catalogue + sources) | "
+        "incl. linked GST / payroll / office / CS rows) | item (item) | certificate (month: draft content) | rules (catalogue + sources) | "
         "settings."),
      "input_schema": {"type": "object", "properties": {
          "what": {"type": "string", "enum": ["day", "applicability", "calendar", "item", "certificate", "rules", "settings"]},

@@ -398,7 +398,7 @@ async def officehours_dekho(ctx: Ctx, what="list", officehours_id="", **_):
 OFFICEHOURS_TOOLS = [
     {"name": "officehours", "description": (
         "Office hours (v0.495, the gstack idea, house-sized): BEFORE building anything new, open a design "
-        "doc and think it through with her. action=start (topic, her_words, pain) opens a baithak and "
+        "doc and think it through with her. action=start (topic, her_words, pain) opens a session and "
         "returns SIX forcing questions (real pain examples, today's jugaad, the smallest self-useful "
         "wedge, kill criteria) — ask them ONE at a time, push back on her framing when her words and her "
         "pain differ. action=doc writes the doc: reframe, capabilities, premises (challenge -> her "
@@ -413,7 +413,7 @@ OFFICEHOURS_TOOLS = [
          "her_words": {"type": "string", "description": "(start) her own words, so the doc stays honest to them"},
          "pain": {"type": "string", "description": "(start) the real pain she described, with her example"},
          "officehours_id": {"type": "string",
-                            "description": "(doc/review/decide/stop) from the start result; empty = the latest open baithak"},
+                            "description": "(doc/review/decide/stop) from the start result; empty = the latest open session"},
          "reframe": {"type": "string", "description": "(doc) what she asked vs what she actually needs"},
          "capabilities": {"type": "array", "items": {"type": "string"},
                           "description": "(doc) what the thing must DO (max 7 short points)"},
@@ -436,7 +436,7 @@ OFFICEHOURS_TOOLS = [
          "next_step": {"type": "string", "description": "(decide) the first concrete next step, if she named one"}},
          "required": ["action"]}},
     {"name": "officehours_dekho", "description": (
-        "Read office hours (nothing changes): what=list shows the latest baithaks (topic, status, wedge), "
+        "Read office hours (nothing changes): what=list shows the latest sessions (topic, status, wedge), "
         "what=doc returns ONE full design doc (reframe, capabilities, premises, options, recommendation, "
         "wedge, decision, next_step, review count), what=reviews returns every review lens row of a doc. "
         "No officehours_id = the latest one. Use it to recall a past session before she repeats herself."),

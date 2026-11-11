@@ -208,7 +208,7 @@ def test_blind_count_variance_and_her_tap(wh):
     out = S.decide_adjust(T, adj["id"], True, adj["hash"], by_tap=True)
     assert out["status"] == "approved"
     assert S.bin_view(T, "A-1-1")["used"] == 17 and stock_qty("Atta 50kg") == 18
-    with pytest.raises(S.WarehouseError, match="pehle se approved"):
+    with pytest.raises(S.WarehouseError, match="already approved"):
         S.decide_adjust(T, adj["id"], True, adj["hash"], by_tap=True)
     led = S.ledger(T, sku="atta")["moves"]
     assert any(m["kind"] == "adjust" and m["ref"] == adj["number"] and m["synced"] for m in led)
@@ -282,9 +282,9 @@ def test_tools_actors(wh):
         run("warehouse", action="settings", name="X")
     assert run("warehouse", action="count", bins=["A-1-1"])["number"]
     ctx.actor = "customer:wa:9811111111"
-    with pytest.raises(ToolError, match="graahak"):
+    with pytest.raises(ToolError, match="customers"):
         run("warehouse_dekho", what="day")
-    with pytest.raises(ToolError, match="graahak"):
+    with pytest.raises(ToolError, match="customers"):
         run("warehouse", action="pick", text="atta 1")
     ctx.actor = "owner"
     d = run("warehouse_dekho", what="rules")

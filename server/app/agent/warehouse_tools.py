@@ -10,16 +10,16 @@ from .tools import Ctx, ToolError
 
 WAREHOUSE_TOOLS = [
     {"name": "warehouse", "description": (
-        "Warehouse / godown manager: stock by bin, inward, picking, cycle counts. Item names are matched to HER stock list (Hoola "
+        "Warehouse manager: stock by bin, inward, picking, cycle counts. Item names are matched to HER stock list (Hoola "
         "Deals); prices are read from there, never typed here. action=bin: code (A-12 / B-03-2-4) or zone+aisle+rack+bin, kind "
         "pick|bulk|receiving|dispatch|quarantine|damage, capacity (units). action=bins_many: zone, aisles, racks, bins, kind, capacity. "
         "action=sku: name or sku, code, barcode (her pack barcode), unit, track none|batch|serial, abc (fix a class), home_bin. "
         "action=opening: lines [{item, qty, bin, batch, expiry}] (stock already lying in bins). action=grn (goods received): lines "
         "[{item, qty, batch, expiry, mfg, serials, damaged}] or text, or file_id (CSV / Excel sheet; for a challan PHOTO read it with "
         "file_read first and send lines), supplier, doc (challan / PO / bill no), expected [{item, qty}] (PO, to find short "
-        "receipt), purchase (Thok purchase id). action=putaway: grn (accept Hoola's suggestion) or lines [{item, to_bin, qty, "
+        "receipt), purchase (Wholesale purchase id). action=putaway: grn (accept Hoola's suggestion) or lines [{item, to_bin, qty, "
         "from_bin, batch}], force. action=move: item, from_bin, to_bin, qty, batch. action=pick: source list|deal|thok, refs (deal / "
-        "Thok bill numbers; empty = all open), lines or text (her list), party -> pick list with a walking path (FEFO, waves). "
+        "Wholesale bill numbers; empty = all open), lines or text (her list), party -> pick list with a walking path (FEFO, waves). "
         "action=pick_done: pick, picked [{n, qty, serials}] or all=true, finish, picker. action=pick_cancel: pick. action=pick_sheet: "
         "pick (PDF). action=classify (ABC). action=count: bins [codes] or sku, or nothing = today's due bins -> BLIND count. "
         "action=count_enter: count, entries [{bin, item, batch, qty}]. action=count_close: count, zero_missing. action=recount: count. "
@@ -51,7 +51,7 @@ WAREHOUSE_TOOLS = [
          "rules": {"type": "string"}},
          "required": ["action"]}},
     {"name": "warehouse_dekho", "description": (
-        "Read the godown (nothing changes). what=day (counts due, open picks, receiving to put away, expiry, cards waiting, stock "
+        "Read the warehouse (nothing changes). what=day (counts due, open picks, receiving to put away, expiry, cards waiting, stock "
         "list differences) | bins (zone, kind) | bin (bin: what is in it + moves) | stock (bin / sku) | skus (q) | sku (sku) | "
         "ledger (sku, bin, days) | grns | grn (grn) | picks (status) | pick (pick) | counts (status) | count (count; blind) | due "
         "(what to count) | adjustments (status) | expiry (days) | slow (slow / dead stock) | recon (bins vs stock list) | settings | "
@@ -93,7 +93,7 @@ def _by(ctx: Ctx) -> str:
 def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
     from ..warehouse import service as S
     if _actor(ctx).startswith("customer:"):
-        raise ToolError("Godown work is not for customers.")
+        raise ToolError("Warehouse work is not for customers.")
     if action in _OWNER_ONLY and not _owner(ctx):
         raise ToolError("Only the owner can change this.")
     t, conv, by = ctx.tenant_id, ctx.conversation_id, _by(ctx)
@@ -213,7 +213,7 @@ async def warehouse(ctx: Ctx, action, **a: Any):
 
 async def warehouse_dekho(ctx: Ctx, what, **a: Any):
     if _actor(ctx).startswith("customer:"):
-        raise ToolError("Godown information is not for customers.")
+        raise ToolError("Warehouse information is not for customers.")
     return await asyncio.to_thread(_read, ctx, str(what), a)
 
 

@@ -20,7 +20,7 @@ APP_TOOLS = [
         "'just the first one'). A brand she names is only a reference: the app gets its own name and design. A few words are enough: the 1 lakh app brief library knows 1,000 kinds of "
         "business x 10 app goals x 10 premium styles, and the 1 CRORE APP IDEA library (app_dekho what=ideas) adds WHO the "
         "app is for (customers / owner / staff / delivery partner / dealers / members / managers), the ONE special thing "
-        "(WhatsApp-first, daily subscription, voice in Hindi, offline, QR pickup, live tracking, udhaar reminders, parents' "
+        "(WhatsApp-first, daily subscription, voice in Hindi, offline, QR pickup, live tracking, credit reminders, parents' "
         "view, route plan, photo proof...), scale (one shop / branches / city network), market (town, metro, all-India, NRI) "
         "and positioning. When her ask is vague, first show 2-3 precise ideas (app_dekho what=ideas q=her words) and start "
         "the one she picks with idea=<its id>; when she was specific, start straight away (the best idea is picked from her "
@@ -107,7 +107,7 @@ APP_TOOLS = [
         "v0.362 action=variants (owner only; product = id or name, variants = [{name, price}], [] removes; no product = list): sizes / "
         "weights of a product, each with its own price and stock - every app screen shows them as chips. "
         "v0.361 action=hisaab (owner only; month YYYY-MM, default this / last month): her month's orders, sales, GST, credit notes and "
-        "udhaar in one line; the CSV files for her CA download from the app data page (Accounts). Nothing is filed. "
+        "credit (udhaar) in one line; the CSV files for her CA download from the app data page (Accounts). Nothing is filed. "
         "v0.360 action=delivery (owner only; delivery = {fee, free_above, pins \"411001, 411002\", hours {open HH:MM, close HH:MM, days [0=Mon..6]}, "
         "off}; none = show): her shop app's delivery charge (added by the server), area and hours - an order outside them is still taken with a note. "
         "v0.359 action=khata (owner only): no member = who owes how much; member (id or name) = that customer's entries; with amount "
@@ -601,7 +601,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         return v
     if action == "khata":                     # v0.359 KHATA: her customers' udhaar
         if not _owner(ctx):
-            raise ToolError("Only the owner can see / write the khata.")
+            raise ToolError("Only the owner can see / write the ledger (khata).")
         from ..appmaker import backend as BE
         from ..appmaker import khata as KH
         from ..site import webapp as W

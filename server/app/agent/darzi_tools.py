@@ -113,7 +113,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         if action == "rules":
             keys = ("shop_name", "unit", "pieces_per_day", "closed_days", "rush_percent", "min_days", "prices", "rules",
                     "ready_template", "morning_time", "remeasure_months")
-            return {"rules": D.save_settings(ctx.tenant_id, **{k: a[k] for k in keys if k in a}), "say": "Niyam save."}
+            return {"rules": D.save_settings(ctx.tenant_id, **{k: a[k] for k in keys if k in a}), "say": "Rules saved."}
     except D.DarziError as e:
         raise ToolError(str(e))
     raise ToolError("action = new_order | measure | status | update | pay | deliver | cancel | slip | ready_message | rules")
