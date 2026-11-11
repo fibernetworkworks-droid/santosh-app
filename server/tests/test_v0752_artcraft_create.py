@@ -142,7 +142,7 @@ def test_studio_wiring():
     st = Path(__file__).resolve().parents[1] / "app" / "static" / "console"
     js, v2 = (st / "studio.js").read_text(), (st / "v2.js").read_text()
     assert "V.artcraft = " in js and "W.artcraft = " in js and "/api/shilp/generate" in js and "confirm: true" in js
-    assert "ctx.artcraft?.() ? [...TOOLS, ['artcraft'" in js and "artcraft: () => !!CONFIG?.artcraft" in v2
+    assert "...(ctx.artcraft?.() ? [['artcraft', 'ArtCraft', 'spark']] : [])" in js and "artcraft: () => !!CONFIG?.artcraft" in v2
 
 
 OV = {"enabled": True, "key_set": True, "setup": "", "lane_error": "", "documented_example": "seedance_2p0",
