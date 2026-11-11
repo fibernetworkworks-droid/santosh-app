@@ -105,7 +105,7 @@ def test_brain_cannot_leak_secrets_or_take_money(env, brain):
     assert out["handling"] == "handback"
     r = net.send("default", "Kunal", "payment_request", {"amount": 100, "upi_id": "m@okicici"})
     k = ev("kunal", "hoola_knock")[-1]
-    with pytest.raises(net.NetError, match="aapko hi"):
+    with pytest.raises(net.NetError, match="yours to decide"):
         net.decide("kunal", k["id"], "handle")
     _ = r
 

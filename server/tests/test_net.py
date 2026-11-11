@@ -47,7 +47,7 @@ def test_ids_handles_and_lookalikes(env):
     for bad in ("sbi.help", "ab", "UPPER CASE", "meghana.fnvv", "kunal.ra j"):
         with pytest.raises(idn.IdError):
             idn.set_handle("kunal", bad)
-    with pytest.raises(idn.IdError, match="kisi aur"):
+    with pytest.raises(idn.IdError, match="someone else"):
         idn.set_handle("kunal", "meghana.fnw")
     env_ = idn.sign("default", {"id": "x", "to": "y", "body": {"text": "hi"}})
     assert idn.verify(env_, a["public_key"])
@@ -83,7 +83,7 @@ def test_message_knock_decide_reply(env):
     net.decide("kunal", knock["id"], "accept", note="Haan, kal 5 baje")
     got = ev("default", "hoola_msg")[-1]
     assert "le liya" in got["text"] and "kal 5 baje" in got["text"]
-    with pytest.raises(net.NetError, match="faisla"):
+    with pytest.raises(net.NetError, match="already been decided"):
         net.decide("kunal", knock["id"], "accept")
     net.reply("kunal", knock["thread_id"], "Slides bhi le aana")
     assert ev("default", "hoola_msg")[-1]["text"].endswith("Slides bhi le aana")
@@ -181,7 +181,7 @@ def test_invite_qr_and_phone(env):
     assert inv["qr_png_b64"] and "connect?c=" in inv["deep_link"]
     net.connect("kunal", invite_code=inv["code"])
     assert net.connections("default", "incoming")[0]["via"] == "qr"
-    with pytest.raises(net.NetError, match="purana"):
+    with pytest.raises(net.NetError, match="too old"):
         net.connect("kunal", invite_code=inv["code"])
     with pytest.raises(net.NetError, match="number"):
         net.resolve("kunal", "9876543210")

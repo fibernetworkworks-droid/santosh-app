@@ -78,9 +78,9 @@ def test_upi_payment_locked_pinned_payee_receipt_and_check(env):
     dl.packing("kunal", sid)
     dl.mark_ready("kunal", sid, place="Counter 1", minutes=120)
     code = _last("default")["ready"]["code"]
-    with pytest.raises(dl.DealError, match="Pehle paisa"):
+    with pytest.raises(dl.DealError, match="Money first"):
         dl.handed_over("kunal", sid, code)
-    with pytest.raises(dl.DealError, match="zyada"):
+    with pytest.raises(dl.DealError, match="cannot be more than"):
         dp.received("kunal", sid, 9999)
     out = dp.received("kunal", sid, mode="upi", utr="412345678901")
     assert out["receipt"] == "R-0001" and out["status"] == "paid"
@@ -142,7 +142,7 @@ def test_cancel_window_request_and_refund_due(env):
     r = dl.cancel("default", bid, "zaroorat nahi")
     assert r["status"] == "cancel_requested" and dl.show("default", bid)["state"] == "accepted"
     assert _last("kunal")["card"] == "cancel_req" and "cancel_no" in dl.show("kunal", sid)["actions"]
-    with pytest.raises(dl.DealError, match="pehle se"):
+    with pytest.raises(dl.DealError, match="already been sent"):
         dl.cancel("default", bid, "phir se")
     dp.cancel_answer("kunal", sid, False, "maal pack ho chuka")
     assert "did not accept" in _last("default")["say"] and dl.show("default", bid)["state"] == "accepted"
@@ -164,7 +164,7 @@ def test_dispute_answer_escalate_and_window(env):
     bid, sid = _order(dl, pay="counter", items=LIST[:2])
     dl.mark_ready("kunal", sid, place="Gate", minutes=60)
     code = _last("default")["ready"]["code"]
-    with pytest.raises(dl.DealError, match="poora"):
+    with pytest.raises(dl.DealError, match="The full"):
         dl.handed_over("kunal", sid, code, collect={"mode": "cash", "amount": 100})
     dl.handed_over("kunal", sid, code, collect={"mode": "cash", "amount": dl.show("kunal", sid)["pay"]["due_left"]})
     with pytest.raises(dl.DealError, match="did not have"):
@@ -172,7 +172,7 @@ def test_dispute_answer_escalate_and_window(env):
     dp.dispute("default", bid, "damaged", [{"item": "Tata Salt 1kg", "qty": 2}], "do packet phate the")
     dc = _last("kunal")
     assert dc["card"] == "dispute" and "Tata Salt 1kg (2)" in dc["say"] and dl.show("kunal", sid)["state"] == "disputed"
-    with pytest.raises(dl.DealError, match="wajah"):
+    with pytest.raises(dl.DealError, match="reason for declining"):
         dp.resolve("kunal", sid, "reject")
     dp.resolve("kunal", sid, "refund", 52.5, "maafi")
     assert _last("default")["card"] == "resolve" and dl.show("default", bid)["pay"]["refund_due"] == 52.5
@@ -234,7 +234,7 @@ def test_khata_limit_book_and_settle(env):
     assert "am=3000.00" in kh.trust_payee("default", "@kunal.raj")["url"]
     kh.claim_paid("default", "@kunal.raj", "412345678901")
     assert _last("kunal", "hoola_khata")["card"] == "money"
-    with pytest.raises(kh.KhataError, match="zyada"):
+    with pytest.raises(kh.KhataError, match="more than that"):
         kh.received("kunal", "@meghana.fnw", 9000)
     out = kh.received("kunal", "@meghana.fnw", 3000, "upi", "412345678901")
     assert out["receipt"].startswith("R-") and out["balance"] == 2310

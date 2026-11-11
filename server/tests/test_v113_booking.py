@@ -56,7 +56,7 @@ def test_booking_slots_address_job_card_bill_and_receipt(env):
     slot = q["slots"][1]
     with pytest.raises(dl.DealError, match="Choose one of these times"):
         dl.confirm("default", bid, by_tap=True, slot="2020-01-01T10:00:00+00:00")
-    with pytest.raises(dl.DealError, match="pata"):
+    with pytest.raises(dl.DealError, match="address"):
         dl.confirm("default", bid, by_tap=True, slot=slot)
     from app import main
     with TestClient(main.app) as cl:
@@ -132,7 +132,7 @@ def test_warranty_claim_revisit_and_expiry(env):
     # inside the warranty: claim -> free revisit slots -> her tap -> done
     jb.claim("default", bid, "Phir se tapak raha hai")
     assert _last("kunal")["card"] == "warranty" and "warranty_slots" in dl.show("kunal", sid)["actions"]
-    with pytest.raises(dl.DealError, match="pehle se"):
+    with pytest.raises(dl.DealError, match="already open"):
         jb.claim("default", bid, "phir")
     jb.offer_slots("kunal", sid, "warranty")
     off = dl.show("default", bid)["job"]["offer"]
@@ -148,7 +148,7 @@ def test_warranty_claim_revisit_and_expiry(env):
     d = dl._get("default", bid)
     d.job = dict(d.job, warranty=dict(d.job["warranty"], until=(dl.now() - timedelta(days=1)).date().isoformat()))
     dl._save(d)
-    with pytest.raises(dl.DealError, match="khatam"):
+    with pytest.raises(dl.DealError, match="has ended"):
         jb.claim("default", bid, "phir dikkat")
 
 

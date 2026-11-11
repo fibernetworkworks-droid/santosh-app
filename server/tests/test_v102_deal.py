@@ -106,7 +106,7 @@ def test_rules_auto_quote_auto_accept_and_partial_stock(env):
     dl.confirm("default", bid, by_tap=True)
     b = dl.show("default", bid)
     assert b["state"] == "accepted" and b["number"].startswith("D-")
-    assert "niyam" in _deal("kunal")["say"]
+    assert "under your rules" in _deal("kunal")["say"]
     # above his auto limit: his card, not an automatic yes
     dl.set_rules("kunal", auto_accept_max=1000)
     bid2 = dl.ask("default", "@kunal.raj", LIST[:1])["deal"]["id"]
@@ -135,7 +135,7 @@ def test_buyer_checks_every_number_and_the_order_of_steps(env):
     r = net._post("kunal", s.peer, "deal_quote", {"v": 1, "lines": good["lines"], "subtotal": good["subtotal"], "gst": good["gst"],
                                                   "total": good["total"], "valid_until": bad["valid_until"],
                                                   "step": s.step + 1, "prev": "f" * 64}, s.dkey, s.thread_id)
-    assert r["ok"] is False and "kram" in r["reason"]
+    assert r["ok"] is False and "out of order" in r["reason"]
     # the buyer can't send seller steps, and a seller can't confirm for the buyer
     with pytest.raises(dl.DealError):
         dl.send_quote("default", bid)
@@ -153,7 +153,7 @@ def test_expiry_changed_quote_and_cancel(env):
     dl.send_quote("kunal", sid, lines=[{"item": "Parle-G", "price": 440}])
     q = dl.show("default", bid)["quote"]
     assert q["v"] == 2 and q["lines"][0]["price"] == 440
-    with pytest.raises(dl.DealError, match="badal"):
+    with pytest.raises(dl.DealError, match="changed"):
         dl.confirm("default", bid, v=1, by_tap=True)
     # the quote runs out of time: no confirm, and the background tick marks it on both sides
     from app.db import session

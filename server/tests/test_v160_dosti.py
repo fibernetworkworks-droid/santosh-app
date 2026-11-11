@@ -163,20 +163,20 @@ def test_documents_go_only_on_her_tap(env, ai):
     out = asyncio.run(dispatch("hoola_dosti", {"action": "doc_requests"}, Ctx("default", net.home_conv("default"))))
     assert out["doc_requests"][0]["status"] == "waiting"
     assert dosti.doc_answer("default", ask["id"], "send", gst)["status"] == "needs_tap"
-    with pytest.raises(dosti.DostiError, match="pehchaan"):
+    with pytest.raises(dosti.DostiError, match="dentity document"):
         dosti.doc_answer("default", ask["id"], "send", aad, by_tap=True)
     res = dosti.doc_answer("default", ask["id"], "send", gst, by_tap=True)
     assert res["status"] == "sent" and res["send"]["status"] in ("pending", "auto")
     k = ev("kunal", "hoola_knock")[-1]
     assert k["name"] == "FNW GST certificate.pdf"
-    with pytest.raises(dosti.DostiError, match="jawab ho chuka"):
+    with pytest.raises(dosti.DostiError, match="already been answered"):
         dosti.doc_answer("default", ask["id"], "decline", by_tap=True)
     # a document asked inside free talk becomes the same card; a no goes back politely
     dosti.ask_doc("kunal", "@meghana.fnw", "rate list")
     a2 = [x for x in dosti.doc_asks("default") if x["what"] == "rate list"][0]
     assert dosti.doc_answer("default", a2["id"], "decline", by_tap=True)["status"] == "declined"
     assert [x for x in dosti.doc_asks("kunal") if x["what"] == "rate list"][0]["status"] == "declined"
-    with pytest.raises(dosti.DostiError, match="pehchaan"):
+    with pytest.raises(dosti.DostiError, match="dentity document"):
         dosti.ask_doc("kunal", "@meghana.fnw", "Aapka Aadhaar card")
     # the brain spotting a document request in a chat makes the card too
     t = dosti.talk("kunal", "@meghana.fnw", "Kya mujhe aapka GST certificate mil sakta hai?")

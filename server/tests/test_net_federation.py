@@ -146,12 +146,12 @@ def test_blocked_servers_and_off_switch(remote, monkeypatch):
     from app.net import service as net
     monkeypatch.setenv("HOOLA_BLOCKED_SERVERS", REMOTE)
     get_settings.cache_clear()
-    with pytest.raises(net.NetError, match="band"):
+    with pytest.raises(net.NetError, match="is off"):
         net.connect("default", "@kunal@" + REMOTE)
     monkeypatch.setenv("HOOLA_BLOCKED_SERVERS", "")
     monkeypatch.setenv("HOOLA_FEDERATION", "false")
     get_settings.cache_clear()
-    with pytest.raises(net.NetError, match="band"):
+    with pytest.raises(net.NetError, match="is off"):
         net.resolve("default", "@kunal@" + REMOTE)
 
 

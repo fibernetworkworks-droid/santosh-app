@@ -64,7 +64,7 @@ def test_trust_tiers_drive_auto_accept_and_reports_limit(env):
     trust.report("kunal", "@meghana.fnw", "spam")
     trust.report("kunal", "@meghana.fnw", "spam")          # once per reporter
     assert trust.limited(meg) and trust.tier("kunal", meg)["tier"] == "blocked"
-    with pytest.raises(dl.DealError, match="bahut saari"):
+    with pytest.raises(dl.DealError, match="too many lists"):
         dl.ask("default", "@kunal.raj", LIST[:1])
     # the tool: trust changes are the owner's word only
     with pytest.raises(ToolError, match="owner"):
@@ -130,7 +130,7 @@ def test_compare_three_holds_quotes_sorts_and_thanks_the_rest(env):
     dl.set_stock("swati", [{"name": "Parle-G", "price": 440, "gst_pct": 18, "qty": 40},
                            {"name": "Tata Salt 1kg", "price": 24, "gst_pct": 5, "qty": 5}])
     items = [{"item": "Parle-G", "qty": 10}, {"item": "Tata Salt 1kg", "qty": 20}]
-    with pytest.raises(rfq.RfqError, match="2 se 5"):
+    with pytest.raises(rfq.RfqError, match="2 to 5"):
         rfq.start("ravi", ["@kunal.raj"], items)
     out = rfq.start("ravi", ["@kunal.raj", "@swati.tech", "@nobody.here"], items, window_minutes=30)
     rid = out["rfq"]["id"]

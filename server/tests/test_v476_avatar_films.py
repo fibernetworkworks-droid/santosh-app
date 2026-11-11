@@ -115,7 +115,7 @@ def test_validate_spec_guards():
         av.validate_spec({"shape": "talking_head"})
     with pytest.raises(frames.FramesError, match="items"):
         av.validate_spec({"shape": "product", "script": "a. b."})
-    with pytest.raises(frames.FramesError, match="zyada"):
+    with pytest.raises(frames.FramesError, match="no more than"):
         av.validate_spec({"script": "ok. " * av.MAX_SENTENCES + "ek aur."})
     with pytest.raises(frames.FramesError, match="assets/"):
         av.validate_spec({"script": "hi.", "avatar": "/etc/passwd"})

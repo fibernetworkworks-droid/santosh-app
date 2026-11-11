@@ -77,7 +77,7 @@ def test_chain_pass_loops_and_signatures(env):
     chn.act("swati", c["chain_id"], "pass", to="@ravi.field", note="Ravi tum kar lo")
     got = ev("ravi", "hoola_chain")[-1]
     assert got["event"] == "with_me" and got["hops"] == 2
-    with pytest.raises(net.NetError, match="chakkar"):
+    with pytest.raises(net.NetError, match="no loops"):
         chn.act("ravi", c["chain_id"], "pass", to="@kunal.raj")
     chn.act("ravi", c["chain_id"], "done", note="Backup le liya")
     k = [e for e in ev("kunal", "hoola_chain") if e["event"] == "progress"]
