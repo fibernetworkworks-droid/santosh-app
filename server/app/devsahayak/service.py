@@ -31,7 +31,7 @@ import re
 from datetime import datetime, timedelta, timezone
 from typing import Any, Callable
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 
 from ..db import new_id, now, session
 from . import plan as P
@@ -355,7 +355,8 @@ def _log(t: DevTask, line: str) -> None:
 def task_view(t: DevTask, full: bool = False) -> dict[str, Any]:
     ch = _j(t.changes, [])
     v = {"id": t.id, "number": t.number, "kind": t.kind, "kind_label": KINDS.get(t.kind, t.kind), "repo": t.repo,
-         "status": t.status, "status_label": STATUS.get(t.status, t.status), "title": t.pr_title or t.text[:80],
+         "status": t.status, "status_label": STATUS.get(t.status, t.status), "title": t.title or t.pr_title or t.text[:80],
+         "archived": bool(t.archived_at),
          "explain": t.explain, "branch": t.branch, "pr_number": t.pr_number, "pr_url": t.pr_url, "head_sha": t.head_sha[:12],
          "ci": _j(t.ci, {}), "error": t.error, "hash": t.hash if t.status in ("ready", "plan_wait") else "",
          "files": [{"path": c["path"], "why": c.get("why", ""), "added": c.get("added", 0), "removed": c.get("removed", 0),
@@ -374,7 +375,8 @@ def task_view(t: DevTask, full: bool = False) -> dict[str, Any]:
         v["pr_body"] = t.pr_body
         v["log"] = _j(t.log, [])
         v["steps"] = _j(t.steps or "", [])
-        v["notes_waiting"] = len(_j(t.notes or "", []))
+        v["notes"] = [str(x) for x in _j(t.notes or "", [])]      # v0.768 her queued words, shown until Hoola reads them
+        v["notes_waiting"] = len(v["notes"])
     return v
 
 
@@ -385,11 +387,19 @@ def _card(tenant: str, t: DevTask, say: str) -> dict[str, Any]:
     return v
 
 
-def tasks(tenant: str, status: str = "", limit: int = 40) -> list[dict[str, Any]]:
+def tasks(tenant: str, status: str = "", limit: int = 40, archived: bool = False, q_text: str = "") -> list[dict[str, Any]]:
+    """Her sessions, newest first. v0.768: archived ones are out of the list unless asked for; q_text searches her
+    words, the title and the repo."""
     with session() as s:
         q = select(DevTask).where(DevTask.tenant_id == tenant)
         if status:
             q = q.where(DevTask.status == status)
+        q = q.where(DevTask.archived_at.is_not(None) if archived else DevTask.archived_at.is_(None))
+        words = (q_text or "").strip()[:80]
+        if words:
+            like = "%" + words.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
+            q = q.where(or_(DevTask.title.ilike(like, escape="\\"), DevTask.pr_title.ilike(like, escape="\\"),
+                            DevTask.text.ilike(like, escape="\\"), DevTask.repo.ilike(like, escape="\\")))
         return [task_view(t) for t in s.scalars(q.order_by(DevTask.created_at.desc()).limit(max(1, min(100, limit)))).all()]
 
 
@@ -845,6 +855,57 @@ def stop(tenant: str, ref: str) -> dict[str, Any]:
 
 def running(tid: str) -> bool:
     return tid in _RUNNING
+
+
+def drop_note(tenant: str, ref: str, index: int) -> dict[str, Any]:
+    """v0.768 she takes a queued note back before Hoola has read it: the text returns to her box. A note already read
+    is part of the work and cannot be taken back."""
+    with session() as s:
+        t = _find_task(s, tenant, ref)
+        notes = [str(x) for x in _j(t.notes or "", [])]
+        if not 0 <= index < len(notes):
+            raise DevError("Hoola has already read that note.")
+        text = notes.pop(index)
+        t.notes = json.dumps(notes) if notes else None
+    return {"ok": True, "text": text, "left": len(notes)}
+
+
+def rename(tenant: str, ref: str, title: str) -> dict[str, Any]:
+    """v0.768 her own name for a session. Only the name in Hoola changes - never the PR title on GitHub."""
+    clean, _ = _clean_text(title or "")
+    clean = " ".join(clean.split())[:200]
+    with session() as s:
+        t = _find_task(s, tenant, ref)
+        t.title = clean or None                 # empty = back to the name Hoola gave it
+        s.flush()
+        return task_view(t)
+
+
+def archive(tenant: str, ref: str, on: bool = True) -> dict[str, Any]:
+    """v0.768 archive = out of the list, everything kept; unarchive brings it back. A running job is not archived."""
+    with session() as s:
+        t = _find_task(s, tenant, ref)
+        if on and t.id in _RUNNING:
+            raise DevError("Hoola is still working on this - stop it first.")
+        t.archived_at = now() if on else None
+        s.flush()
+        return task_view(t)
+
+
+def delete_task(tenant: str, ref: str) -> dict[str, Any]:
+    """v0.768 delete a session from Hoola for good (her tap + confirm on the page). Nothing changes on GitHub: an open
+    PR and its branch stay. A merge card still waiting for this session goes stale."""
+    with session() as s:
+        t = _find_task(s, tenant, ref)
+        if t.id in _RUNNING:
+            raise DevError("Hoola is still working on this - stop it first.")
+        for a in s.scalars(select(DevAction).where(DevAction.tenant_id == tenant, DevAction.task_id == t.id,
+                                                   DevAction.status == "waiting")).all():
+            a.status = "stale"
+        pr, tid = t.pr_number, t.id
+        s.delete(t)
+    _STOP.discard(tid)
+    return {"ok": True, "deleted": tid, "pr_left_open": pr or 0}
 
 
 def _in_thread(tenant: str, tid: str, fn: Callable[..., Any], *a: Any, **kw: Any) -> dict[str, Any]:

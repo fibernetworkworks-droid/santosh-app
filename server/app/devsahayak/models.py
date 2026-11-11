@@ -83,6 +83,8 @@ class DevTask(Base):
     log: Mapped[str] = mapped_column(Text, default="[]")
     steps: Mapped[str | None] = mapped_column(Text, nullable=True)          # v0.748 HOOLA CODE: structured steps (JSON) for the console
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)          # v0.748 her notes while it works, not yet read (JSON)
+    title: Mapped[str | None] = mapped_column(String(200), nullable=True)    # v0.768 her own name for the session (rename)
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)   # v0.768 archived = out of the list, kept
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, index=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, onupdate=now)
 
