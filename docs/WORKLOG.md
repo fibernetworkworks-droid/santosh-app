@@ -2835,8 +2835,19 @@ overview, status.connected). studio.spec_for draws the brand colour. Tests: test
 rewritten browser walk in test_v0747 (real Chromium via HOOLA_CHROMIUM). Not built and said on the page: tables,
 rupee meter, share links, AI mark, GPU-backed apps, public API. No credentials in this entry.
 
+Task ID: v0.775.0 LANGGRAPH G3
+Ask: GO G3 (done-truth from the ledger + nudges in the check node).
+Built: agent/turnfacts.py facts + verdicts + Judge, turngraph check node; chat_graph still off; 25 tests.
+Deploy: vps-ops deploy (langgraph pip install from v0.761 if not done).
+
+
+Task ID: v0.776.0 HOOLA CODE PHASE 2 (built as 0.774; re-versioned twice on merge: HOOLA INTERACTIVE took 0.774.0, LANGGRAPH G3 0.775.0)
+Ask: GO PHASE 2 (review and the pull request), then MERGE.
+Built: Changes pane + Compare against, line comments riding the next message, answer continues the session, own review card, per-PR auto-fix, archive after merge; 10 tests incl. 3 browser walks.
+Deploy: vps-ops deploy (server-only; no new pip; two nullable columns self-heal).
+
 ---
-Task ID: v0.775.0 CHAT JAISA (L1)
+Task ID: v0.777.0 CHAT JAISA (L1)
 Task: owner "GO L1" - Lovable-grade Studio chat (live stream, soft words, thinking, past-tense steps, Details, rupees, queue, attachments).
-Work Log: webstudio.js thread rewritten on HoolaStream; turncost + usage.turn_meter + /costs; 5 new tests + older Studio suites green; re-versioned 0.771 -> 0.775 (other sessions took 0.771-0.774).
+Work Log: webstudio.js thread rewritten on HoolaStream; turncost + usage.turn_meter + /costs; 5 new tests + older Studio suites green; re-versioned 0.771 -> 0.777 (other sessions took 0.771-0.776).
 Stage Summary: pushed; server deploy only (no APK needed). Next: L2 TEEN MODE on her GO.

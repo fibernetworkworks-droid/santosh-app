@@ -191,6 +191,14 @@ class Gh:
         out = self.req("GET", f"/repos/{full}/pulls/{int(n)}/files", params={"per_page": 100})
         return out if isinstance(out, list) else []
 
+    def branches(self, full: str) -> list[str]:
+        out = self.req("GET", f"/repos/{full}/branches", params={"per_page": 100})
+        return [str(b.get("name") or "") for b in out if b.get("name")] if isinstance(out, list) else []
+
+    def compare(self, full: str, base: str, head: str) -> dict[str, Any]:
+        """base...head, as GitHub computes it (from their merge base): files with their patches."""
+        return self.req("GET", f"/repos/{full}/compare/{quote(base, safe='/')}...{quote(head, safe='/')}", params={"per_page": 100})
+
     def open_prs(self, full: str) -> list[dict[str, Any]]:
         out = self.req("GET", f"/repos/{full}/pulls", params={"state": "open", "per_page": 30})
         return out if isinstance(out, list) else []

@@ -1957,6 +1957,8 @@ class _Turn:
         self.blocks: list = []
         self.stop = ""
         self.tool_runner = None   # G1: the graph path wraps each tool call in its ledger (None = _run_tool directly)
+        self.judge = None         # G3: the graph path's check node judges the answer from the turn's facts (None = the
+                                  # old regex checks + nudges, unchanged)
         for k in self._FIELDS:
             setattr(self, k, kw.get(k))
 
@@ -2278,7 +2280,8 @@ async def _turn_after_model(t: "_Turn", blocks: list, stop: str) -> str:
                 final_text, srcs = _gyaan.finish(conversation_id, final_text, state.get("request", ""))
                 if not state.get("answer_only"):
                     final_text = await _gyaan.ground(conversation_id, final_text)
-            plain_nudge = await _plain_check(state, final_text, settings, conversation_id)
+            plain_nudge = (await t.judge.plain(final_text) if t.judge is not None
+                           else await _plain_check(state, final_text, settings, conversation_id))
             if plain_nudge:
                 # the draft stays in the model's history (so it can correct itself) but is never a chat message;
                 # the words she saw stream are voided and the corrected answer is written into the same block
@@ -2314,7 +2317,8 @@ async def _turn_after_model(t: "_Turn", blocks: list, stop: str) -> str:
                     bus.publish(conversation_id, "gyaan_sources", {"sources": srcs})
             bus.publish(conversation_id, "message", {"role": "assistant", "text": final_text, "source": "agent", **_tag(live)})
         if stop != "tool_use":
-            if stop == "max_tokens":
+            if stop == "max_tokens" and (t.judge is None or t.judge.take("max_tokens", "the reply was cut off "
+                                                                         "(max_tokens): continue from the cut")):
                 # v0.187 the words were cut mid-thought: continue exactly where the cut happened, in goal mode and out
                 # v0.473 and give the next call more room (a big tool input cut at 2,000 tokens would be cut again)
                 state["max_tokens"] = min(16000, 2 * (state.get("max_tokens") or settings.agent_max_tokens))
@@ -2324,39 +2328,19 @@ async def _turn_after_model(t: "_Turn", blocks: list, stop: str) -> str:
                 history.append({"role": "user", "content": [{"type": "text", "text": nudge}]})
                 _save(conversation_id, "user", [{"type": "text", "text": nudge}])
                 return "model"
-            if plain_loop_on(settings):   # parity Phase 5b: no after-answer self-check (the kept checks ran above)
-                nudge = ""
+            if t.judge is not None:
+                # G3: the graph's check node - the claims judged against the turn's facts, then the plan / promise
+                # nudges, one decision with one budget (agent/turnfacts.py)
+                nudge = await t.judge.final(final_text)
             else:
-                nudge = await _pakka_check(state, final_text, settings, ran_tools, conversation_id)
-            if not nudge and settings.agent_goal:
-                # v0.187 goal mode: text never ends a turn while the goal's steps are open
-                g = _goal.active_for(conversation_id)
-                if g is not None and state.get("auto_plan") == g.get("id") and _goal.steps_left(g) \
-                        and not _aage_promised(final_text):
-                    # v0.311 the server's own one-step plan closes with the model's real final answer (no
-                    # "text mein mat ruko" loop over a plan the model never wrote); a mere promise still goes on
-                    _close_auto_plan(tenant_id, conversation_id, g, final_text, state.get("calls"))
-                    g = None
-                if g is not None and VOICE_BRAIN_NOW.get() and not any(
-                        (c or {}).get("tool") == "kaam_plan" for c in (state.get("calls") or [])):
-                    # CALL PAR TEAM: a call question that did not touch the job ("kal ka mausam?") is answered as it
-                    # is - the open job's rounds carry on in the background, they do not take her call ask over
-                    g = None
-                if g is not None and _goal.steps_left(g) and state.get("goal_nudges", 0) < 8:
-                    state["goal"] = g
-                    state["goal_nudges"] = state.get("goal_nudges", 0) + 1
-                    nudge = _goal.nudge_text(g)
-            # v0.727 a promise with NO tool at all is checked too: "Starting one fresh build now." after "where do I
-            # check that" ran nothing and nothing ever started (was gated on ran_tools)
-            if not nudge and getattr(settings, "agent_aage", True) \
-                    and conversation_id not in _stopped and not state.get("halted"):
-                # v0.311 AAGE BADHO: a text-only reply that only PROMISES more work ("ab doosra hissa dekh raha
-                # hoon") is not a finished job - before, the loop took it as the answer and nothing more ran
-                from . import aage as _aage
-                if state.get("aage", 0) < _aage.MAX_PER_TURN and _aage.promised(final_text):
-                    state["aage"] = state.get("aage", 0) + 1
-                    _aage.STATS["nudged"] += 1
-                    nudge = _aage.NUDGE
+                if plain_loop_on(settings):   # parity Phase 5b: no after-answer self-check (the kept checks ran above)
+                    nudge = ""
+                else:
+                    nudge = await _pakka_check(state, final_text, settings, ran_tools, conversation_id)
+                if not nudge:
+                    nudge = _goal_nudge(t, final_text)
+                if not nudge:
+                    nudge = _promise_nudge(t, final_text)
             if nudge:
                 history.append({"role": "user", "content": [{"type": "text", "text": nudge}]})
                 _save(conversation_id, "user", [{"type": "text", "text": nudge}])
@@ -2396,6 +2380,50 @@ async def _turn_after_model(t: "_Turn", blocks: list, stop: str) -> str:
                                                                                mcp_route, tools)
         t.sys_fams, t.system = sys_fams, system
         t.blocks, t.stop = blocks, stop
+
+
+GOAL_NUDGES_MAX = 8   # v0.187 the goal nudge's cap a turn (G3: the check node's budget reads the same number)
+
+
+def _goal_nudge(t: "_Turn", final_text: str) -> str:
+    """v0.187 goal mode: text never ends a turn while the goal's steps are open. Returns the nudge or ''.
+    (G3: lifted out of _turn_after_model unchanged so the old loop and the graph's check node share one copy.)"""
+    conversation_id, settings, state, tenant_id = t.conversation_id, t.settings, t.state, t.tenant_id
+    if not settings.agent_goal:
+        return ""
+    from . import goal as _goal
+    g = _goal.active_for(conversation_id)
+    if g is not None and state.get("auto_plan") == g.get("id") and _goal.steps_left(g) \
+            and not _aage_promised(final_text):
+        # v0.311 the server's own one-step plan closes with the model's real final answer (no
+        # "text mein mat ruko" loop over a plan the model never wrote); a mere promise still goes on
+        _close_auto_plan(tenant_id, conversation_id, g, final_text, state.get("calls"))
+        g = None
+    if g is not None and VOICE_BRAIN_NOW.get() and not any(
+            (c or {}).get("tool") == "kaam_plan" for c in (state.get("calls") or [])):
+        # CALL PAR TEAM: a call question that did not touch the job ("kal ka mausam?") is answered as it
+        # is - the open job's rounds carry on in the background, they do not take her call ask over
+        g = None
+    if g is not None and _goal.steps_left(g) and state.get("goal_nudges", 0) < GOAL_NUDGES_MAX:
+        state["goal"] = g
+        state["goal_nudges"] = state.get("goal_nudges", 0) + 1
+        return _goal.nudge_text(g)
+    return ""
+
+
+def _promise_nudge(t: "_Turn", final_text: str) -> str:
+    """v0.311 AAGE BADHO: a text-only reply that only PROMISES more work ("ab doosra hissa dekh raha hoon") is not a
+    finished job - before, the loop took it as the answer and nothing more ran. Returns the nudge or ''.
+    v0.727 a promise with NO tool at all is checked too: "Starting one fresh build now." after "where do I check
+    that" ran nothing and nothing ever started (was gated on ran_tools)."""
+    conversation_id, settings, state = t.conversation_id, t.settings, t.state
+    if getattr(settings, "agent_aage", True) and conversation_id not in _stopped and not state.get("halted"):
+        from . import aage as _aage
+        if state.get("aage", 0) < _aage.MAX_PER_TURN and _aage.promised(final_text):
+            state["aage"] = state.get("aage", 0) + 1
+            _aage.STATS["nudged"] += 1
+            return _aage.NUDGE
+    return ""
 
 
 async def _turn_tools(t: "_Turn", blocks: list):
@@ -2713,7 +2741,8 @@ def turn_loop_source() -> str:
     """The source of the whole turn loop in its old order (source-pin tests read this since the G0 split)."""
     import inspect as _insp
     return "\n".join(_insp.getsource(f) for f in (_steps_inner, _turn_prepare, _turn_model, _turn_halted,
-                                                      _turn_after_model, _turn_tools, _turn_capped, _turn_silent))
+                                                      _turn_after_model, _goal_nudge, _promise_nudge, _turn_tools,
+                                                      _turn_capped, _turn_silent))
 
 
 
@@ -2829,8 +2858,7 @@ async def _pakka_check(state: dict, final_text: str, settings, ran_tools: bool, 
     """v0.78 self-check before the turn ends: real results vs. her request. Returns a nudge to keep working, or ''.
     Sets state['correct'] when the answer claims more than was done, state['left'] when something stays open.
     v0.187 goal mode: 4 self-checks a turn instead of 2."""
-    from . import draftcheck, pakka
-    cap = pakka.SELF_CHECKS_GOAL if state.get("goal") else pakka.SELF_CHECKS_PER_TURN
+    from . import draftcheck
     if conversation_id in _stopped or state["breaker"].stopped or state.get("halted"):
         return ""
     if settings.draft_check:
@@ -2847,6 +2875,16 @@ async def _pakka_check(state: dict, final_text: str, settings, ran_tools: bool, 
         fake = draftcheck.fake_done(state, final_text, conversation_id, since)
         if fake:
             return fake
+    return await _pakka_rest(state, final_text, settings, ran_tools, conversation_id)
+
+
+async def _pakka_rest(state: dict, final_text: str, settings, ran_tools: bool, conversation_id: str) -> str:
+    """The part of `_pakka_check` after the free claim check (G3: the graph's check node judges claims from the turn's
+    facts instead, then runs this - the kaam backstop and the model self-check - unchanged)."""
+    from . import draftcheck, pakka
+    cap = pakka.SELF_CHECKS_GOAL if state.get("goal") else pakka.SELF_CHECKS_PER_TURN
+    if conversation_id in _stopped or state["breaker"].stopped or state.get("halted"):
+        return ""
     calls = state.get("calls") or []
     if not ran_tools or not calls or state.get("checks", 0) >= cap:
         return ""
@@ -2934,6 +2972,13 @@ async def _plain_check(state: dict, final_text: str, settings, conversation_id: 
             return ""
         if state.get("correct"):
             return ""
+    return _plain_rest(state, final_text, settings)
+
+
+def _plain_rest(state: dict, final_text: str, settings) -> str:
+    """The part of `_plain_check` after the free claim check: "done" while every tool of the turn failed, said as an
+    action claim (G3: the graph's check node judges claims from the turn's facts, then runs this unchanged)."""
+    from . import draftcheck
     if settings.kaam_enabled and state.get("calls"):
         from . import kaam_laws as _kaam
         from . import pakka
@@ -3013,7 +3058,7 @@ async def run_turn(conversation_id: str, user_text: str, tenant_id: str | None =
         _gtok = turnrun.CURRENT.set(_gr)
     _tc_on = bool(getattr(get_settings(), "chat_turn_cost", True))
     _tc_acc, _tc_tok, _tc_t0 = {"usd": 0.0, "calls": 0}, None, None
-    if _tc_on:                         # v0.775 CHAT JAISA: this turn's own rupees (turncost), shown in the Studio
+    if _tc_on:                         # v0.777 CHAT JAISA: this turn's own rupees (turncost), shown in the Studio
         from .. import usage as _usage
         from ..db import now as _now
         _tc_tok, _tc_t0 = _usage._TURN.set(_tc_acc), _now()

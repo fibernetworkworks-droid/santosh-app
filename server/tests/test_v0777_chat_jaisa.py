@@ -1,4 +1,4 @@
-"""v0.775 CHAT JAISA (L1 of docs/LOVABLE_STUDIO_PLAN.md, owner: "GO L1"): the Web Studio chat like Lovable - the live
+"""v0.777 CHAT JAISA (L1 of docs/LOVABLE_STUDIO_PLAN.md, owner: "GO L1"): the Web Studio chat like Lovable - the live
 event stream instead of 1.5 s polling, soft word fade, a Thinking shimmer, present -> past tool verbs, a Details view
 (Timeline + Changes), the turn's own rupees, queued follow-ups, attachments + long-paste chips."""
 import asyncio

@@ -105,7 +105,7 @@ def run_meter(acc: dict | None = None):
     finally:
         _RUN.reset(tok)
 
-# v0.775 CHAT JAISA: a TURN-scoped meter beside the run meter (a research run inside a chat turn keeps its own meter AND
+# v0.777 CHAT JAISA: a TURN-scoped meter beside the run meter (a research run inside a chat turn keeps its own meter AND
 # still counts in the turn's rupees). santosh.run_turn binds it; turncost.record writes one row when the turn ends.
 _TURN: contextvars.ContextVar[dict | None] = contextvars.ContextVar("hoola_usage_turn", default=None)
 
@@ -258,7 +258,7 @@ def record(model: str, tok_in: int = 0, tok_out: int = 0, cache_read: int = 0, c
         feature = feature or f
         usd = cost(model, tok_in, tok_out, cache_read, cache_write, audio_in, audio_out, sec_in, sec_out)
         tacc = _TURN.get()
-        if tacc is not None:        # v0.775 the chat turn this call belongs to counts it too
+        if tacc is not None:        # v0.777 the chat turn this call belongs to counts it too
             tacc["usd"] += usd
             tacc["calls"] += 1
         acc = _RUN.get()

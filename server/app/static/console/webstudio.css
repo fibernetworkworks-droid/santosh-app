@@ -481,7 +481,7 @@ dialog.tpld:not([open]){display:none}
 .doc .secs{margin:6px 0 0;padding-left:18px;font-size:13px;color:var(--lit,inherit)}
 .doc .secs li{margin:2px 0;overflow-wrap:anywhere}
 
-/* v0.775 CHAT JAISA (L1, docs/LOVABLE_STUDIO_PLAN.md): the live thread. Words land out of a soft focus (md.js wraps
+/* v0.777 CHAT JAISA (L1, docs/LOVABLE_STUDIO_PLAN.md): the live thread. Words land out of a soft focus (md.js wraps
    only the newest words), "Thinking…" shimmers, queued messages wait greyed, attachments ride as chips, Details opens
    the turn's Timeline + Changes where the preview sits. Every motion has a reduced-motion fallback. */
 .msgs{position:relative}

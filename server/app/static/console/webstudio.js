@@ -122,7 +122,7 @@
   async function route() {
     stopPoll(); clearTimeout(THREAD.timer); EDIT = false;
     const p = parts();
-    if (!(p[0] === 'site' && p[1])) stopStream();                 // v0.775 the thread's live stream ends with the site
+    if (!(p[0] === 'site' && p[1])) stopStream();                 // v0.777 the thread's live stream ends with the site
     if (!(p[0] === 'site' && p[1] && LIVE.site === decodeURIComponent(p[1]))) stopLive();
     try {
       if (p[0] === 'site' && p[1]) return await openSite(decodeURIComponent(p[1]), p[2] || '');
@@ -1119,7 +1119,7 @@
   async function reload() { if (!CUR) return; try { CUR = await api('GET', `/api/sites/${enc(CUR.id)}`); drawState(); drawPane(); } catch (e) { toast(e.message, true); } }
 
   /* ---------- the site's own Hoola thread (never the home chat) ----------
-     v0.775 CHAT JAISA (built as 0.771) (L1 of docs/LOVABLE_STUDIO_PLAN.md): the thread rides the conversation's LIVE event stream
+     v0.777 CHAT JAISA (built as 0.771) (L1 of docs/LOVABLE_STUDIO_PLAN.md): the thread rides the conversation's LIVE event stream
      (stream.js, /events?live=1) instead of polling every 1.5 s: the reply arrives word by word (HoolaStream.Pacer) and
      each new word fades in out of a soft focus (HoolaMD.Live soft); "Thinking…" shimmers while the model reasons and
      folds into "Thought for 12s"; each tool step shows live (present tense) and turns past tense when done ("Reading
@@ -1753,7 +1753,7 @@
     finally { BUSY = false; if (btn?.isConnected) btn.disabled = false; }
   });
 
-  APP.addEventListener('paste', e => { if (e.target.id === 'wsTh') pasted(e); });          // v0.775 attachments
+  APP.addEventListener('paste', e => { if (e.target.id === 'wsTh') pasted(e); });          // v0.777 attachments
   APP.addEventListener('change', e => { if (e.target.id === 'wsFile') { [...e.target.files].slice(0, 6).forEach(f => addFile(f)); e.target.value = ''; } });
   APP.addEventListener('dragover', e => { if (e.target.closest?.('.chat') && e.dataTransfer?.types?.includes('Files')) { e.preventDefault(); e.target.closest('.chat').classList.add('drop'); } });
   APP.addEventListener('dragleave', e => { e.target.closest?.('.chat')?.classList.remove('drop'); });

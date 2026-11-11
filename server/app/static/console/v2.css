@@ -3852,6 +3852,7 @@ html.human #app .landing .halo{display:none}
 #app .hcd-cp{display:flex;align-items:flex-end;gap:10px;margin-top:8px;margin-bottom:16px;border:1px solid var(--hair2);border-radius:16px;padding:10px 10px 10px 16px;background:var(--surface);box-shadow:var(--sh);box-sizing:border-box;width:calc(100% - 48px)}
 #app .hcd-cp[hidden]{display:none}
 #app .hcd-cp textarea{flex:1;min-width:0;border:0;outline:none;resize:none;background:transparent;font:400 14.5px/1.5 var(--fd);color:var(--ink);padding:6px 0;max-height:160px}
+#app .hcd-cp textarea::placeholder{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #app .hcd-cpb{display:inline-flex}
 #app .hcd-stop{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 12px;border:0;border-radius:10px;background:var(--ink);color:var(--bg);font:500 13px var(--fd);cursor:pointer}
 #app .hcd-stop:disabled{opacity:.5;cursor:not-allowed}
@@ -3877,6 +3878,52 @@ html.human #app .landing .halo{display:none}
 #app .hcd-stage.now span{font-weight:600}
 #app .hcd-stage small{font-size:12px;color:var(--mut)}
 #app .hcd-ring{width:10px;height:10px;margin:0 3px;border-radius:50%;border:1.5px solid var(--hair2);box-sizing:border-box;display:inline-block}
+/* Phase 2: the Changes pane (beside the chat), comments on lines, the queued-comments strip */
+#app .hcd-pane{flex:1.35 1 0;min-width:0;display:flex;flex-direction:column;border-left:1px solid var(--line);background:var(--bg);container:hcdp / inline-size}
+#app .hcd-pane[hidden]{display:none}
+#app .hcd[data-pane="on"] .hcd-rail{display:none}
+#app .hcd[data-pane="on"] .hcd-main{flex:1 1 0;min-width:min(360px,100%)}
+@container hcdb (max-width:700px){#app .hcd-pane{position:absolute;inset:0;z-index:2;border-left:0}}
+#app .hcd-ph{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-height:52px;padding:6px 10px 6px 16px;border-bottom:1px solid var(--line);font-size:13.5px;box-sizing:border-box}
+#app .hcd-ph b{font-weight:600}
+#app .hcd-pnote{margin:0;padding:6px 16px;font-size:12.5px;color:var(--mut);background:var(--sunk);border-bottom:1px solid var(--line)}
+#app .hcd-pb{flex:1;display:flex;min-height:0}
+#app .hcd-pfs{flex:0 0 230px;overflow-y:auto;border-right:1px solid var(--line);padding:8px;display:flex;flex-direction:column;gap:2px;box-sizing:border-box}
+@container hcdp (max-width:620px){#app .hcd-pb{flex-direction:column}#app .hcd-pfs{flex:0 0 auto;max-height:112px;border-right:0;border-bottom:1px solid var(--line)}}
+#app button.hcd-file{width:100%;border:0;background:transparent;border-radius:7px;padding:5px 8px;font:inherit;color:inherit;cursor:pointer;text-align:left;align-items:center}
+#app button.hcd-file:hover,#app button.hcd-file.on{background:var(--sunk)}
+#app .hcd-rc button.hcd-file{padding:4px 6px;margin:0 -6px;width:calc(100% + 12px)}
+#app .hcd-file code{background:transparent;padding:0}
+#app .hcd-dv{container:hcdd / inline-size;flex:1;min-width:0;overflow:auto;font-family:var(--fm,'JetBrains Mono',monospace);font-size:12.5px;line-height:1.7}
+#app .hcd-dh{position:sticky;left:0;top:0;z-index:1;display:flex;align-items:center;gap:10px;padding:7px 14px;background:var(--sunk);border-bottom:1px solid var(--line);font-family:var(--fd)}
+#app .hcd-dh code{background:transparent;padding:0;font-weight:500}
+#app .hcd-dh .hcd-mut{margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#app .hcd-dl{display:grid;grid-template-columns:24px 44px 44px max-content;width:max-content;min-width:100%;white-space:pre;color:var(--ink)}
+#app .hcd-dl i{font-style:normal;color:var(--mut);text-align:right;padding-right:10px;user-select:none}
+#app .hcd-dl code{background:transparent;padding:0 16px 0 4px;border-radius:0;font-size:12.5px}
+#app .hcd-dl.add{background:var(--ok-soft)}#app .hcd-dl.del{background:rgb(var(--bad-rgb) / .08)}#app .hcd-dl.hunk{background:var(--sunk);color:var(--mut)}
+#app .hcd-dl.hunk code{color:var(--mut)}
+#app .hcd-cadd{width:18px;height:18px;margin:2px 0 0 4px;padding:0;border:0;border-radius:5px;background:var(--pri);color:var(--on-acc,#fff);font:600 13px/1 var(--fd);cursor:pointer;opacity:0}
+#app .hcd-dl:hover .hcd-cadd,#app .hcd-cadd:focus-visible{opacity:1}
+@media (hover:none){#app .hcd-cadd{opacity:.55}}
+#app .hcd-cq,#app .hcd-cbox{position:sticky;left:0;box-sizing:border-box;width:min(560px,calc(100cqw - 56px));margin:6px 16px 8px 40px;font-family:var(--fd);white-space:normal}
+#app .hcd-cq{display:flex;align-items:center;gap:8px;border:1px solid var(--hair2);border-radius:10px;padding:5px 5px 5px 12px;font-size:13.5px;line-height:1.45;background:var(--surface)}
+#app .hcd-cq>span{flex:1;min-width:0;overflow-wrap:anywhere}
+#app .hcd-cq b{font-weight:600}
+#app .hcd-cbox{border:1px solid var(--pri);border-radius:12px;padding:10px 12px;background:var(--pri-soft)}
+#app .hcd-cbox textarea{display:block;width:100%;box-sizing:border-box;border:1px solid var(--hair2);border-radius:8px;padding:8px 10px;resize:vertical;background:var(--bg);font:400 14px/1.45 var(--fd);color:var(--ink)}
+#app .hcd-cbox .hcd-acts{margin-top:8px}
+#app .hcd-cbox .hcd-mut{margin:0;font-size:12px}
+#app .hcd-more{margin:10px 16px;font-family:var(--fd)}
+#app .hcd-cc{width:calc(100% - 48px);max-width:760px;margin:0 auto;box-sizing:border-box}
+#app .hcd-ccn{display:flex;align-items:center;gap:8px;margin-top:8px;border:1px solid var(--hair2);border-radius:12px;padding:5px 6px 5px 14px;font-size:13.5px;background:var(--pri-soft);color:var(--pri-ink)}
+#app .hcd-ccn b{font-weight:600}
+#app .hcd-rev .hcd-cm{display:flex;gap:12px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap}
+#app .hcd-rev .hcd-cm>div:first-child{flex:1;min-width:220px}
+#app .hcd-rev .hcd-cm .hcd-acts{margin:0;flex-wrap:nowrap}
+#app .hcd-btn[aria-pressed="true"]{background:var(--sunk);border-color:var(--mut)}
+#app .hcd-row .hcd-icb{width:24px;height:24px;margin:-3px -4px -3px 0}
+#app .hcd-fold.row{margin:6px 0}
 /* pills, cards */
 #app .hcd-pill{display:inline-flex;align-items:center;height:24px;padding:0 10px;border-radius:999px;font-size:12px;font-weight:500;white-space:nowrap;background:var(--sunk);color:var(--lit)}
 #app .hcd-pill.ok{background:var(--ok-soft);color:var(--ok)}#app .hcd-pill.warn{background:var(--warn-soft);color:var(--warn)}

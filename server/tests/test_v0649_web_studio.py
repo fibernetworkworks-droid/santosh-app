@@ -28,7 +28,7 @@ CONSOLE = Path(__file__).resolve().parents[1] / "app" / "static" / "console"
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.775.0"
+    assert APP_VERSION == "0.777.0"
 
 
 def test_studio_is_its_own_app():
@@ -179,7 +179,7 @@ def test_studio_in_a_real_browser(arena_server, arch_env, monkeypatch):
     page.wait_for_selector("#wsState details.actd", timeout=15000)
     assert re.match(r"Worked for \d+(m \d+)?s · \d+ steps", page.inner_text("#wsState details.actd summary"))
     page.click("#wsState details.actd summary")
-    # v0.775 CHAT JAISA: a FINISHED step reads past tense (Lovable's Reading -> Read), so the done list says "Planned"
+    # v0.777 CHAT JAISA: a FINISHED step reads past tense (Lovable's Reading -> Read), so the done list says "Planned"
     assert page.locator("#wsState .acts li").count() >= 4 and "Planned three designs" in page.inner_text("#wsState .acts")
     assert page.locator("#ws .lks button").count() == 3 and "every page works" in page.inner_text("#ws .ptop + .ptop")
     assert page.locator("#ws #wsPane .frame iframe").count() == 1

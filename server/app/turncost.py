@@ -1,4 +1,4 @@
-"""v0.775 CHAT JAISA - what one chat turn cost, in rupees, from the server's own meter (L1 of docs/LOVABLE_STUDIO_PLAN.md).
+"""v0.777 CHAT JAISA - what one chat turn cost, in rupees, from the server's own meter (L1 of docs/LOVABLE_STUDIO_PLAN.md).
 
 `santosh.run_turn` runs every turn inside `usage.turn_meter()`: each model call the turn makes (and the work it starts in
 the same context) adds its USD to that turn's own dict. At the end of the turn ONE row is written here: when it started /

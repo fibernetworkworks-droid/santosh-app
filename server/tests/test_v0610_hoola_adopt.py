@@ -24,7 +24,7 @@ authed turn lane; 'CONTINUE'). The adoption seam (server/app/agent/aeptune.py)
     events (the assistant one sourced 'aep'), the payload is the honest shape.
 (9) INERTNESS: a fresh interpreter imports app.agent.aeptune with ZERO extra
     threads / env / files (the P1 law re-run on the adoption seam).
-(10) VERSION PINS: APP_VERSION 0.684.0 (the coherent re-application onto their v0.670.0 base - built as 0.610.0), pubspec 0.773.0+772, the story line.
+(10) VERSION PINS: APP_VERSION 0.684.0 (the coherent re-application onto their v0.670.0 base - built as 0.610.0), pubspec 0.777.0+776, the story line.
 
 No test touches the network; the fake brain is injected, never the live llm.
 """
@@ -333,8 +333,8 @@ def test_import_is_inert_fresh_interpreter():
 # ---------------------------------------------------------------------------
 def test_version_pins():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.775.0"
-    assert "0.775.0+774" in (REPO_ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.777.0"
+    assert "0.777.0+776" in (REPO_ROOT / "pubspec.yaml").read_text()
     line = (SERVER / "app" / "main.py").read_text().splitlines()[35]
-    assert line.startswith('APP_VERSION = "0.775.0"')
+    assert line.startswith('APP_VERSION = "0.777.0"')
     assert "HOOLA ADOPT" in line   # the newest story names the adoption phase
