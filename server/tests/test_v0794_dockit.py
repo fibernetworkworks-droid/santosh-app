@@ -168,9 +168,9 @@ def test_reachable_on_a_call():
 
 def test_guide_and_not_yet_are_honest(tool_env):
     g = run(T.pdf_kit(tool_env.ctx, action="guide"))
-    assert "NOT YET" in g["guide"] and "sign" in g["not_yet"] and g["engines"]["pikepdf"]
-    with pytest.raises(T.ToolError, match="cannot 'sign' yet"):
-        run(T.pdf_kit(tool_env.ctx, action="sign", file_id="a"))
+    assert "NOT YET" in g["guide"] and "compare" in g["not_yet"] and g["engines"]["pikepdf"]
+    with pytest.raises(T.ToolError, match="cannot 'compare' yet"):
+        run(T.pdf_kit(tool_env.ctx, action="compare", file_id="a"))
 
 
 def test_tool_merge_split_remove_extract(tool_env):

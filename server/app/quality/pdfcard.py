@@ -11,7 +11,7 @@ from typing import Any, Callable
 
 import pikepdf
 
-from ..dockit import archive, convert, core, edit, fromdoc, ocrlayer, optimize, organize, secure, stamp
+from ..dockit import archive, convert, core, edit, forms, fromdoc, ocrlayer, optimize, organize, secure, sign, stamp
 from ..dockit.core import DocError
 
 
@@ -200,6 +200,26 @@ def embedded_font_pdf() -> bytes:
     c.showPage()
     c.save()
     return b.getvalue()
+
+
+def signature_photo() -> bytes:
+    """A made-up squiggle in dark ink on white paper, as a phone photo would be."""
+    from PIL import Image, ImageDraw
+    im = Image.new("RGB", (600, 200), (250, 250, 246))
+    d = ImageDraw.Draw(im)
+    d.line([(30, 150), (120, 50), (200, 150), (300, 60), (420, 150), (560, 70)], fill=(15, 15, 40), width=7)
+    b = io.BytesIO()
+    im.save(b, "JPEG", quality=90)
+    return b.getvalue()
+
+
+def blank_form() -> bytes:
+    out, _ = forms.create(text_pdf(1), [
+        {"name": "Full name", "type": "text", "page": 1, "x": 20, "y": 30, "w": 80, "h": 8},
+        {"name": "agree", "type": "checkbox", "page": 1, "x": 20, "y": 45},
+        {"name": "city", "type": "choice", "page": 1, "x": 20, "y": 55, "options": ["Akola", "Pune", "Mumbai"]},
+        {"name": "Sign here", "type": "signature", "page": 1, "x": 110, "y": 230}])
+    return out
 
 
 # ---------------------------------------------------------------------------------------------------- scoring
@@ -569,6 +589,86 @@ def cases() -> list[dict[str, Any]]:
         t = convert.page_texts(r["bytes"])[0]
         return "ABCPE1234F" not in t and "Name" in t and r["text_layer_pages"] == [1], "other words searchable again"
 
+    def form_detect_fill():
+        f = blank_form()
+        names = {x["name"]: x["kind"] for x in forms.detect(f)}
+        r = forms.fill(f, {"Full name": "Ramesh Kumar", "agree": "yes", "city": "pune"})
+        got = {x["name"]: x["value"] for x in forms.detect(r["bytes"])}
+        ok = names == {"Full name": "text", "agree": "checkbox", "city": "choice", "Sign here": "signature"} and \
+            got["Full name"] == "Ramesh Kumar" and got["city"] == "Pune" and got["agree"] not in ("", "Off")
+        return ok, "4 fields found; text, tick and choice read back as filled"
+
+    def form_refusals():
+        f = blank_form()
+        msgs = []
+        for vals in ({"Name": "x"}, {"city": "Delhi"}, {"Sign here": "x"}):
+            try:
+                forms.fill(f, vals)
+                msgs.append("")
+            except DocError as e:
+                msgs.append(str(e))
+        ok = "Did you mean: Full name" in msgs[0] and "Akola, Pune, Mumbai" in msgs[1] and "action=sign" in msgs[2]
+        return ok, "wrong name / choice / signature box each refused with the right words"
+
+    def form_flatten_batch():
+        f = blank_form()
+        flat = forms.fill(f, {"Full name": "Ramesh Kumar", "city": "Akola"}, flatten=True)["bytes"]
+        rows = forms.fill_rows(f, [{"Full name": "A One", "city": "Pune"}, {"Full name": "B Two", "city": "Goa"}],
+                               name_from="Full name")
+        ok = "Ramesh Kumar" in convert.page_texts(flat)[0] and not forms.detect(flat) and \
+            [r["ok"] for r in rows] == [True, False]
+        return ok, "flattened text on the page, no fields left; batch: good row made, bad row named"
+
+    def sign_place_digital():
+        sign._MEM.clear()
+        sign.save_signature("__card__", signature_photo())
+        placed = sign.place(text_pdf(2), "__card__", name="Card Owner")
+        spot = ink(placed, 2, lambda r, g, b: b - r > 25 and r < 200, scale=1.5)    # the blue-black ink, not black text
+        d = sign.digital(placed, "__card__", name="Card Owner")
+        v = sign.verify(d["bytes"], "__card__")["signatures"][0]
+        return bool(spot) and v["intact"] and v["valid"] and v["her_hoola_certificate"], \
+            "signature picture placed (ink seen) + digital signature valid with her certificate"
+
+    def sign_tamper():
+        sign._MEM.clear()
+        d = sign.digital(text_pdf(2), "__card__", name="Card Owner")["bytes"]
+        cut = len(d) // 2
+        bad = d[:cut] + bytes([d[cut] ^ 0x01]) + d[cut + 1:]
+        try:
+            v = sign.verify(bad, "__card__")
+            caught = "changed" in v["say"] or any(not s.get("intact", True) or "error" in s for s in v["signatures"])
+        except DocError:
+            caught = True
+        return caught, "one changed byte after signing is caught"
+
+    def sign_field_and_second():
+        sign._MEM.clear()
+        d1 = sign.digital(blank_form(), "__card__", field="Sign here")["bytes"]
+        d2 = sign.digital(d1, "__card__")["bytes"]
+        vs = sign.verify(d2, "__card__")["signatures"]
+        return len(vs) == 2 and all(x["intact"] for x in vs), "the form's own box signed, then a second signature; both valid"
+
+    def sign_request_flow():
+        sign._MEM.clear()
+        q = sign.request("__card__", "card-conv", text_pdf(2), "Lease.pdf", [{"name": "First"}, {"name": "Second"}])
+        k1, k2 = (x["link"].split("/sign/")[1] for x in q["links"])
+        req, s2, i2 = sign.load_request(k2)
+        try:
+            sign.complete_one(req, s2, i2, signature_photo(), "Second", "1.1.1.1", "card")
+            order_kept = False
+        except DocError:
+            order_kept = True
+        req, s1, i1 = sign.load_request(k1)
+        sign.complete_one(req, s1, i1, signature_photo(), "First Person", "1.1.1.1", "card")
+        req, s2, i2 = sign.load_request(k2)
+        fin = sign.complete_one(req, s2, i2, signature_photo(), "Second Person", "2.2.2.2", "card")
+        last = convert.page_texts(fin["bytes"])[-1]
+        v = sign.verify(fin["bytes"], "__card__")["signatures"]
+        ok = order_kept and fin["done"] and "Signing record" in last and "Second Person" in last and v and v[-1]["intact"]
+        for ext in (".pdf", ".json"):                       # the card leaves nothing behind on her server
+            (sign._req_dir() / f"{q['request_id']}{ext}").unlink(missing_ok=True)
+        return ok, "order kept; record page added; sealed"
+
     return [
         _case("merge", "merge 2 PDFs + a photo, bookmarks", merge),
         _case("split_every", "split every 5 pages", split_every),
@@ -627,6 +727,14 @@ def cases() -> list[dict[str, Any]]:
         _case("pdfa_pages", "PDF/A-2b, fonts missing", pdfa_pages, ocrlayer.ready, "Tesseract not installed"),
         _case("redact_text_layer", "redacted page stays searchable", redact_keeps_words, ocrlayer.ready,
               "Tesseract not installed"),
+        # D5
+        _case("form_fill", "form fields found + filled", form_detect_fill),
+        _case("form_refusals", "form refusals name the right fix", form_refusals),
+        _case("form_flatten_batch", "flatten + batch from rows", form_flatten_batch),
+        _case("sign_place_digital", "signature placed + digital signature", sign_place_digital),
+        _case("sign_tamper", "a change after signing is caught", sign_tamper),
+        _case("sign_field_second", "sign a form's box, then sign again", sign_field_and_second),
+        _case("sign_request", "two people sign in order, sealed", sign_request_flow),
     ]
 
 

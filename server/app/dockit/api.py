@@ -154,3 +154,119 @@ async def key_submit(token: str, request: Request):
         return _page("Unlocked", f"<h1 class=\"ok\">{n} is unlocked</h1><p>A copy without the password is in your "
                      "chat now. Your password was used once and is not kept.</p>")
     return _page(*GONE, status=410)
+
+
+# ------------------------------------------------------------------------------------------- /sign/<key> (D5)
+def _sign_headers(nonce: str) -> dict[str, str]:
+    return HEADERS | {"Content-Security-Policy": f"default-src 'none'; img-src data:; style-src 'unsafe-inline'; "
+                                                 f"script-src 'nonce-{nonce}'; form-action 'self'"}
+
+
+def _sign_page(title: str, body: str, nonce: str = "", status: int = 200) -> HTMLResponse:
+    r = _page(title, body, status)
+    if nonce:
+        r.headers.update(_sign_headers(nonce))
+    return HTMLResponse(r.body.decode().replace("<p><small>Hoola never sees or keeps this password. This page works "
+                                                "once.</small></p>", ""), status_code=status,
+                        headers=_sign_headers(nonce) if nonce else HEADERS)
+
+
+@router.get("/sign/{key}")
+async def sign_page(key: str):
+    import secrets as _s
+    import time as _t
+    from . import sign
+    got = sign.load_request(key)
+    if got is None:
+        return _sign_page("Signing link", "<h1>This signing link is not valid</h1><p>Ask the sender for a new one.</p>",
+                          status=404)
+    req, signer, idx = got
+    fn = html.escape(req["file_name"])
+    if req["expires"] < _t.time():
+        return _sign_page("Signing link", f"<h1>This link has expired</h1><p>{fn} can no longer be signed here.</p>",
+                          status=410)
+    if signer["signed_at"]:
+        return _sign_page("Signed", f"<h1 class=\"ok\">You have signed {fn}</h1><p>Thank you. Nothing more to do.</p>")
+    turn = sign.turn_of(req)
+    if turn != idx:
+        who = html.escape(req["signers"][turn]["name"])
+        return _sign_page("Not your turn yet", f"<h1>Waiting for {who}</h1><p>{fn} is signed in order. Open this same "
+                          "link again after they have signed.</p>")
+    nonce = _s.token_urlsafe(12)
+    import asyncio as _a
+    pics = "".join(f'<img alt="page {i + 1}" src="{u}" style="width:100%;border:1px solid #ddd;border-radius:8px;'
+                   f'margin:6px 0">' for i, u in enumerate(await _a.to_thread(sign.page_pictures, req)))
+    msg = f"<p>{html.escape(req['message'])}</p>" if req.get("message") else ""
+    body = f"""<h1>Sign {fn}</h1><p>Hello {html.escape(signer['name'])}. Please read the document, then sign below.</p>
+{msg}<details><summary>Read the document</summary>{pics}</details>
+<form method="post" id="f" autocomplete="off">
+<p><b>Your signature</b> (draw with your finger or mouse)</p>
+<canvas id="c" width="600" height="200" style="width:100%;height:160px;border:1px dashed #8a86a8;border-radius:10px;
+touch-action:none;background:#fff"></canvas>
+<p><a href="#" id="clr">Clear</a></p>
+<input name="sig" id="sig" type="hidden">
+<input name="name" placeholder="Type your full name" required maxlength="80">
+<label style="display:block;margin:10px 0"><input type="checkbox" name="agree" required style="width:auto">
+I have read this document and I agree to sign it electronically.</label>
+<button>Sign</button></form>
+<p><small>Your name, the time, your IP address and device are recorded on a signing page added to the document.</small></p>
+<script nonce="{nonce}">
+const c=document.getElementById('c'),x=c.getContext('2d');let d=false,inked=false;x.lineWidth=4;x.lineCap='round';
+x.strokeStyle='#14205a';
+const p=e=>{{const r=c.getBoundingClientRect(),t=e.touches?e.touches[0]:e;return[(t.clientX-r.left)*c.width/r.width,
+(t.clientY-r.top)*c.height/r.height]}};
+const s=e=>{{d=true;const[a,b]=p(e);x.beginPath();x.moveTo(a,b);e.preventDefault()}};
+const m=e=>{{if(!d)return;const[a,b]=p(e);x.lineTo(a,b);x.stroke();inked=true;e.preventDefault()}};
+const u=()=>{{d=false}};
+['mousedown','touchstart'].forEach(k=>c.addEventListener(k,s));['mousemove','touchmove'].forEach(k=>c.addEventListener(k,m));
+['mouseup','mouseleave','touchend'].forEach(k=>c.addEventListener(k,u));
+document.getElementById('clr').onclick=e=>{{e.preventDefault();x.clearRect(0,0,c.width,c.height);inked=false}};
+document.getElementById('f').onsubmit=e=>{{if(!inked){{e.preventDefault();alert('Please draw your signature.');return}}
+document.getElementById('sig').value=c.toDataURL('image/png')}};
+</script>"""
+    return _sign_page(f"Sign {req['file_name']}", body, nonce)
+
+
+@router.post("/sign/{key}")
+async def sign_submit(key: str, request: Request):
+    import base64 as _b
+    from . import sign
+    from .core import DocError
+    got = sign.load_request(key)
+    if got is None:
+        return _sign_page("Signing link", "<h1>This signing link is not valid</h1>", status=404)
+    req, signer, idx = got
+    try:
+        form = await request.form()
+    except Exception:
+        form = {}
+    sig = str(form.get("sig") or "")
+    if not sig.startswith("data:image/png;base64,") or len(sig) > 3_000_000 or not form.get("agree"):
+        return _sign_page("Sign", "<h1>Please draw your signature and tick the box</h1><p><a href=\"\">Back</a></p>",
+                          status=400)
+    try:
+        png = _b.b64decode(sig.split(",", 1)[1], validate=True)
+        ip = (request.headers.get("x-forwarded-for") or (request.client.host if request.client else "") or "").split(",")[0]
+        import asyncio as _a                       # pyHanko runs its own event loop: never on the server's loop
+        res = await _a.to_thread(sign.complete_one, req, signer, idx, png, str(form.get("name") or ""), ip.strip(),
+                                 request.headers.get("user-agent") or "")
+    except DocError as e:
+        return _sign_page("Sign", f"<h1>Could not sign</h1><p class=\"bad\">{html.escape(str(e))}</p>", status=400)
+    except Exception as e:
+        log.info("sign page failed: %s", type(e).__name__)
+        return _sign_page("Sign", "<h1>Could not sign</h1><p class=\"bad\">Something went wrong; try again.</p>", status=500)
+    fn = html.escape(req["file_name"])
+    try:
+        from ..agent.make_tools import _safe
+        if res.get("done"):
+            _deliver(req | {"tenant": req["tenant"], "conv": req["conv"]}, _safe(f"{req['file_name'].rsplit('.', 1)[0]} "
+                                                                                  "(signed)", ".pdf"), res["bytes"])
+        else:
+            from ..events import bus
+            bus.publish(req["conv"], "message", {"role": "assistant", "text": f"{signer['name']} signed {req['file_name']}. "
+                        f"Next: {req['signers'][sign.turn_of(req)]['name']}.", "source": "pdf_kit"})
+    except Exception as e:
+        log.info("sign delivery failed: %s", type(e).__name__)
+    return _sign_page("Signed", f"<h1 class=\"ok\">Thank you - you have signed {fn}</h1>" +
+                      ("<p>Everyone has signed. The sender now has the signed copy with the signing record.</p>"
+                       if res.get("done") else "<p>The next person has been told it is their turn.</p>"))

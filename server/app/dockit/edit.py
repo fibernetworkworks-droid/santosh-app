@@ -335,6 +335,7 @@ def bookmarks(data: bytes, items: list[dict] | None = None, clear: bool = False)
 
 def flatten(data: bytes) -> tuple[bytes, dict]:
     """Form fields and comments become part of the page (nobody can change the filled values afterwards)."""
+    import pikepdf
     with core.open_pdf(data) as pdf:
         annots = sum(len(p.obj.get("/Annots", [])) for p in pdf.pages)
         fields = len(pdf.Root.get("/AcroForm", {}).get("/Fields", [])) if "/AcroForm" in pdf.Root else 0
@@ -345,6 +346,9 @@ def flatten(data: bytes) -> tuple[bytes, dict]:
         pdf.flatten_annotations("all")
         if "/AcroForm" in pdf.Root:
             del pdf.Root.AcroForm
+        for p in pdf.pages:                   # widgets left without a form (e.g. empty signature boxes) go too
+            if "/Annots" in p.obj:
+                p.obj.Annots = pikepdf.Array([a for a in p.obj.Annots if a.get("/Subtype") != "/Widget"])
         left = sum(len(p.obj.get("/Annots", [])) for p in pdf.pages)
         return core.save(pdf), {"annotations_before": annots, "form_fields": fields, "annotations_left": left}
 

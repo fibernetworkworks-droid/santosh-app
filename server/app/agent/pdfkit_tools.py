@@ -14,7 +14,7 @@ import zipfile
 from pathlib import Path
 from typing import Any
 
-from ..dockit import archive, check, convert, core, edit, fromdoc, health, ocrlayer, optimize, organize, secure, stamp, vault
+from ..dockit import archive, check, convert, core, edit, forms, fromdoc, health, ocrlayer, optimize, organize, secure, sign, stamp, vault
 from ..dockit.core import DocError
 from .tools import Ctx, ToolError
 
@@ -26,11 +26,15 @@ ACTIONS = ("guide", "info", "merge", "split", "remove", "extract", "organize", "
            # D3 (v0.805): security
            "protect", "unlock", "redact", "redact_apply",
            # D4 (v0.807): read + convert
-           "ocr", "to_word", "to_excel", "to_powerpoint", "pdfa", "web_to_pdf")
+           "ocr", "to_word", "to_excel", "to_powerpoint", "pdfa", "web_to_pdf",
+           # D5 (v0.814): forms + signing
+           "form_fields", "form_fill", "form_create", "signature_save", "sign", "sign_verify", "sign_request",
+           "sign_status", "sign_cancel")
 ZIP_OVER = 10            # more output files than this arrive as one ZIP (plus the ZIP only)
-NOT_YET = ("fill forms, sign (D5); compare two PDFs, translate keeping the layout (D6); changing the PDF's OWN "
-           "existing words in place (a white box + new text on top is offered, said as such); cracking or guessing any "
-           "password (never)")
+NOT_YET = ("compare two PDFs, translate keeping the layout (D6); a LEGALLY valid digital signature of her identity (Class "
+           "3 DSC on her USB token, or Aadhaar eSign through a licensed provider - owner decision D4); OTP checks for "
+           "outside signers; changing the PDF's OWN existing words in place (a white box + new text on top is offered, "
+           "said as such); cracking or guessing any password (never)")
 
 GUIDE = (
     "PDF_KIT GUIDE. Her own PDFs (and pictures / Office files) -> NEW files back in chat. Runs on the server: free, no "
@@ -103,6 +107,22 @@ GUIDE = (
     "it - otherwise say 'made to PDF/A rules, not validated').\n"
     "  web_to_pdf (url = a public web page printed by Hoola's own browser; page_size A4|Letter, landscape; private / "
     "local addresses refused).\n"
+    "D5 forms + signing:\n"
+    "  form_fields (the fillable boxes: name, kind, choices, required, page). form_fill (values {field name: value}; "
+    "checkbox yes/no, radio / choice must be one of the choices; a Pehchaan Locker reference {id:abc} is typed in "
+    "here and never shown; rows_file_id = a CSV / Excel sheet whose columns are field names -> one filled PDF per row, "
+    "name_from = the column for each file's name; flatten=true locks the values into the page). form_create (fields=[{"
+    "name, type text|checkbox|radio|choice|signature, page, x, y, w, h (mm or % from the top-left), options, value, "
+    "required, max_len}] = a real fillable form from a plain PDF).\n"
+    "  signature_save (file_id = a photo of HER signature on white paper, or her stamp; kind signature|initials|stamp; "
+    "kept sealed for every later sign). sign (mode place = her saved signature picture on pages (default last) at x, y "
+    "with her name + date - an ELECTRONIC signature; mode digital = a cryptographic signature with her Hoola document "
+    "certificate: proves the file is unchanged since, NOT her legal identity - say so; field = an existing empty "
+    "signature box; both = place then digital). sign_verify (every signature: who, when, unchanged or not). "
+    "sign_request (signers=[{name, page, x, y}] in signing order -> one private link each for HER to send them; each "
+    "signs on the page in turn, the last signature adds a signing record page and seals the file, and the signed copy "
+    "arrives in this chat; no OTP check - the record says identity = whoever held the link) | sign_status / "
+    "sign_cancel (request_id).\n"
     "Recipes: 'WhatsApp pe nahi ja rahi' = compress (or target_kb 15000 for email). 'Portal 200 KB maangta hai' = "
     "compress target_kb=200. 'Page 3 hata do' = remove pages=3. 'Sirf pehla aur aakhri page' = extract pages='first,last'. "
     "'Har page alag' = split mode=each. 'Ye photos ek PDF mein' = to_pdf page_size=a4 margin=small. 'Word ko PDF' = "
@@ -127,15 +147,16 @@ PDF_KIT_TOOLS = [
         "protect (password lock: Hoola's password shown on a one-time link, or hers typed there) | unlock | redact "
         "(Aadhaar / PAN / card / account / phone / email / GSTIN presets + words + boxes: preview first) | "
         "redact_apply (true removal) | ocr (searchable scans, 13 Indian languages) | to_word | to_excel | "
-        "to_powerpoint | pdfa | web_to_pdf (a web page link -> PDF). Not yet (say so): fill forms, sign, compare. "
-        "A password never goes through the chat."),
+        "to_powerpoint | pdfa | web_to_pdf (a web page link -> PDF) | form_fields | form_fill (incl. a sheet of rows) | "
+        "form_create | signature_save | sign (her signature picture and / or a digital signature) | sign_verify | "
+        "sign_request (others sign on a private page, in order) | sign_status | sign_cancel. Not yet (say so): compare, "
+        "translate, a legally valid identity signature (DSC / Aadhaar eSign). A password never goes through the chat."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": list(ACTIONS)},
          "file_id": {"type": "string"},
          "file_ids": {"type": "array", "items": {"type": "string"}, "description": "her files in order"},
          "pages": {"type": "string", "description": "e.g. 1-3,5 | 8- | odd | even | last | last-2"},
          "order": {"type": "string", "description": "organize: the new page order, e.g. 3,1,2,blank,4-"},
-         "mode": {"type": "string", "enum": list(organize.SPLIT_MODES)},
          "ranges": {"type": "array", "items": {"type": "string"}},
          "every": {"type": "integer"}, "max_kb": {"type": "integer"},
          "merge_ranges": {"type": "boolean"},
@@ -193,6 +214,21 @@ PDF_KIT_TOOLS = [
          "pdfa_mode": {"type": "string", "enum": ["auto", "keep", "pages"]},
          "url": {"type": "string", "description": "web_to_pdf: the public page"},
          "landscape": {"type": "boolean"},
+         "values": {"type": "object", "description": "form_fill: {field name: value}"},
+         "rows_file_id": {"type": "string", "description": "form_fill: a CSV / Excel sheet, one PDF per row"},
+         "name_from": {"type": "string"}, "flatten": {"type": "boolean"},
+         "fields": {"type": "array", "items": {"type": "object", "properties": {
+             "name": {"type": "string"}, "type": {"type": "string", "enum": list(forms.KINDS)}}}},
+         "kind": {"type": "string", "enum": ["signature", "initials", "stamp"]},
+         "mode": {"type": "string", "enum": [*organize.SPLIT_MODES, "place", "digital", "both"]},
+         "field": {"type": "string"}, "reason": {"type": "string"}, "location": {"type": "string"},
+         "signers": {"type": "array", "items": {"type": "object", "properties": {"name": {"type": "string"}}}},
+         "days": {"type": "integer"}, "message": {"type": "string"}, "request_id": {"type": "string"},
+         "x": {"type": "string", "description": "sign: mm or % from the left"},
+         "y": {"type": "string", "description": "sign: mm or % from the top"},
+         "w": {"type": "number", "description": "sign: signature width in mm"},
+         "page": {"type": "integer", "description": "sign digital: the page for the visible stamp"},
+         "date": {"type": "boolean", "description": "sign place: today's date under her name"},
      }, "required": ["action"]}},
 ]
 PDF_KIT_LABELS = {"pdf_kit": "PDF par kaam kar raha hoon"}
@@ -330,6 +366,8 @@ def _run(ctx: Ctx, action: str, a: dict) -> dict[str, Any]:
 
     if action == "redact_apply":
         return _redact_apply(ctx, a)
+    if action in ("signature_save", "sign_status", "sign_cancel"):
+        return _d5_plain(ctx, action, a)
     if action == "web_to_pdf":
         size = {"a4": "A4", "letter": "Letter", "legal": "Legal", "a5": "A5"}.get(str(a.get("page_size") or "a4").lower(), "A4")
         pdf, title = archive.url_to_pdf(str(a.get("url") or ""), size, bool(a.get("landscape")))
@@ -436,6 +474,8 @@ def _run(ctx: Ctx, action: str, a: dict) -> dict[str, Any]:
         return _d3(ctx, action, a, fid, data, name, st, n_in, custom)
     if action in D4:
         return _d4(ctx, action, a, data, name, st, n_in, custom)
+    if action in D5:
+        return _d5(ctx, action, a, data, name, st, n_in, custom)
     raise ToolError(f"action must be one of: {', '.join(ACTIONS)}.")
 
 
@@ -705,3 +745,81 @@ def _check_office(blob: bytes, ext: str) -> None:
             Presentation(io.BytesIO(blob))
     except Exception as e:
         raise DocError(f"Check failed: the {ext[1:]} file does not open ({type(e).__name__}); nothing was delivered.")
+
+
+D5 = ("form_fields", "form_fill", "form_create", "sign", "sign_verify", "sign_request")
+
+
+def _d5_plain(ctx: Ctx, action: str, a: dict) -> dict[str, Any]:
+    if action == "signature_save":
+        nm, raw = _get(ctx, _one(a))
+        if not convert.is_image(raw):
+            raise ToolError(f"{nm} is not a picture: send a photo of her signature on white paper (PNG / JPG).")
+        r = sign.save_signature(ctx.tenant_id, raw, str(a.get("kind") or "signature"))
+        return r | {"say": f"Her {r['saved']} is saved for signing." + ("" if r["kept_after_restart"] else
+                    " (The server has no SECRET_KEY, so it is kept only until the next restart.)")}
+    rid = str(a.get("request_id") or "")
+    if action == "sign_status":
+        return sign.status(ctx.tenant_id, rid)
+    return sign.cancel(ctx.tenant_id, rid)
+
+
+def _d5(ctx: Ctx, action: str, a: dict, data: bytes, name: str, st: str, n_in: int, custom: str) -> dict[str, Any]:
+    if action == "form_fields":
+        fl = forms.detect(data)
+        return {"name": name, "fields": fl[:200], "count": len(fl),
+                "say": "" if fl else "This PDF has no fillable boxes. form_create adds them; action=add types on it."}
+    if action == "form_fill":
+        flat = bool(a.get("flatten"))
+        if a.get("rows_file_id"):
+            rn, rd = _get(ctx, str(a["rows_file_id"]))
+            rows = forms.read_rows(rn, rd)
+            done = forms.fill_rows(data, rows, str(a.get("name_from") or ""), ctx.tenant_id, flat if
+                                   a.get("flatten") is not None else True)
+            good = [r for r in done if r["ok"]]
+            items = [(_fname(f"{st} - {r['label']}", ".pdf"), r["bytes"]) for r in good]
+            for _, b in items:
+                check.pdf_out(b, n_in, "a filled copy")
+            out = _deliver_many(ctx, items, f"{st} filled", True) if items else {"count": 0}
+            failed = [{"row": r["label"], "why": r["error"]} for r in done if not r["ok"]]
+            return out | {"filled": len(good), "failed": failed[:50]}
+        r = forms.fill(data, dict(a.get("values") or {}), ctx.tenant_id, flat)
+        out = _deliver_pdf(ctx, r["bytes"], _fname(f"{st} (filled)", ".pdf", custom), n_in,
+                           ["every value read back from the file"])
+        return out | {"filled": r["filled"], "locker_used": r["locker"], "flattened": r["flattened"]}
+    if action == "form_create":
+        res, made = forms.create(data, list(a.get("fields") or []))
+        return _deliver_pdf(ctx, res, _fname(f"{st} (fillable)", ".pdf", custom), n_in) | {"fields_added": made}
+    if action == "sign_verify":
+        return {"name": name} | sign.verify(data, ctx.tenant_id)
+    if action == "sign_request":
+        r = sign.request(ctx.tenant_id, str(getattr(ctx, "conversation_id", "") or ""), data, name,
+                         list(a.get("signers") or []), int(a.get("days") or sign.REQ_DAYS), str(a.get("message") or ""))
+        return r | {"say": "Give her these private links to send (WhatsApp / email - her choice; sending them needs her "
+                           "tap). They sign in this order; the signed copy with its signing record arrives in this chat."}
+    # sign
+    mode = str(a.get("mode") or "place").lower()
+    if mode not in ("place", "digital", "both"):
+        raise ToolError("sign mode = place | digital | both.")
+    img = None
+    if a.get("image_file_id"):
+        img = _get(ctx, str(a["image_file_id"]))[1]
+        if not convert.is_image(img):
+            raise ToolError("image_file_id must be a picture of her signature.")
+    res, notes = data, []
+    if mode in ("place", "both"):
+        res = sign.place(res, ctx.tenant_id, a.get("pages") or "last", a.get("x"), a.get("y"), a.get("w") or 45,
+                         str(a.get("kind") or "signature"), str(a.get("name") or ""), a.get("date") is not False, img)
+        notes.append(sign.WHAT_IT_IS["place"])
+    extra: dict[str, Any] = {}
+    if mode in ("digital", "both"):
+        d = sign.digital(res, ctx.tenant_id, str(a.get("name") or ""), str(a.get("reason") or ""),
+                         str(a.get("location") or ""), str(a.get("field") or ""), visible=mode == "digital",
+                         page=int(a.get("page") or 0) if str(a.get("page") or "").isdigit() else 0)
+        res = d["bytes"]
+        notes.append(sign.WHAT_IT_IS["digital"])
+        extra = {"certificate": d["certificate"], "signature_field": d["field"]}
+        if not d["kept_after_restart"]:
+            notes.append("The server has no SECRET_KEY, so her certificate is kept only until the next restart.")
+    out = _deliver_pdf(ctx, res, _fname(f"{st} (signed)", ".pdf", custom), n_in)
+    return out | extra | {"what_it_is": " ".join(notes)}

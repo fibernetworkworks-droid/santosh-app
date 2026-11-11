@@ -42,7 +42,7 @@ def test_schema_and_not_yet():
     for a in T.D4 + ("web_to_pdf",):
         assert a in spec["input_schema"]["properties"]["action"]["enum"]
     assert toolsearch.schema_ok(spec)
-    assert "OCR" not in T.NOT_YET and "sign" in T.NOT_YET
+    assert "OCR" not in T.NOT_YET and "compare" in T.NOT_YET
 
 
 def test_indian_numbers():

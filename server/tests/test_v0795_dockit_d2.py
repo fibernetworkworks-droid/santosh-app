@@ -42,7 +42,7 @@ def test_every_d2_action_is_in_the_schema_and_the_schema_is_valid():
     for a in T.D2:
         assert a in enum and a in T.ACTIONS
     assert toolsearch.schema_ok(spec)
-    assert "watermark" not in T.NOT_YET and "sign" in T.NOT_YET
+    assert "watermark" not in T.NOT_YET and "compare" in T.NOT_YET
 
 
 def test_page_numbers_through_the_tool(env):
