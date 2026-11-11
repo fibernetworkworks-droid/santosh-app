@@ -44,7 +44,7 @@ window.HoolaWorkspace = ctx => {
     root.innerHTML=`<div class="cw-studio"><form class="cw-form cw-rail" id="cw-form">
         <div class="cw-head"><span class="cw-eyebrow">Create</span><h2>${m.title}</h2></div>
         <div class="cw-tabs" role="group" aria-label="Creation type">${Object.entries(MODES).map(([k,v])=>`<button type="button" data-mode="${k}" aria-pressed="${k===mode}">${v.label}</button>`).join('')}</div>
-        <div class="cw-tool"><b>${m.tool}</b><span>${mode==='image'?'Readable text in Hindi, Marathi or English':mode==='video'?(d.vengine==='film'?'Storyboard and price first, video only on your Haan':'Free in-house render: animated MP4 in chat in about 2 minutes'):mode==='research'?'Cited sources, facts kept apart from guesses':'Word, PDF, Excel or slides from your sources'}</span></div>
+        <div class="cw-tool"><b>${m.tool}</b><span>${mode==='image'?'Readable text in Hindi, Marathi or English':mode==='video'?(d.vengine==='film'?'Storyboard and price first, video only on your approval':'Free in-house render: animated MP4 in chat in about 2 minutes'):mode==='research'?'Cited sources, facts kept apart from guesses':'Word, PDF, Excel or slides from your sources'}</span></div>
         <div class="cw-box">
           <div class="cw-lrow"><label class="cw-label" for="cw-prompt">${mode==='research'?'What do you want to find out?':'Prompt'}</label><button class="cw-link" type="button" data-cw="example">Try an example</button></div>
           <textarea id="cw-prompt" maxlength="12000" required placeholder="${esc(m.hint)}">${esc(d.text||'')}</textarea>

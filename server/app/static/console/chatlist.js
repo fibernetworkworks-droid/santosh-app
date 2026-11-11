@@ -76,7 +76,7 @@ function secHead(p, rows, closed) {
   const live = closed && rows.some(r => BUSY.has(r.id) || UNREAD.has(r.id));
   return `<div class="sgh${closed ? ' closed' : ''}" data-sec="${esc(p.id)}">
     <button type="button" class="sgc" data-a="tog" aria-expanded="${!closed}" aria-label="${closed ? 'Open project' : 'Collapse project'}: ${esc(p.name)}">${IC.chev}</button>
-    <button type="button" class="sgn" data-a="open" title="${esc(p.name)} — session kholiye">${secIcon(p)}<span class="sgnt">${esc(p.name)}</span></button>
+    <button type="button" class="sgn" data-a="open" title="${esc(p.name)} — open the session">${secIcon(p)}<span class="sgnt">${esc(p.name)}</span></button>
     ${live ? '<i class="udot" aria-label="something is running"></i>' : ''}<small class="sgn-n">${rows.length || ''}</small>
     <span class="sgacts"><button type="button" class="ib" data-a="new" aria-label="New chat: ${esc(p.name)}">+</button></span>
   </div>`;
@@ -232,7 +232,7 @@ async function find(q, res) {
   if (me !== FIND_SEQ) return;                        // she typed again while this fetch was out
   /* v0.178 the server sends <<match>> marks from FTS5 (snippet()); paint them after esc, never before */
   const mark = s => esc(s || '').replace(/&lt;&lt;/g, '<mark>').replace(/&gt;&gt;/g, '</mark>');
-  const who = h => h.role === 'user' ? 'Aap' : h.role === 'title' ? 'Naam' : (ctx.avatar ? ctx.avatar() : 'Hoola');
+  const who = h => h.role === 'user' ? 'You' : h.role === 'title' ? 'Name' : (ctx.avatar ? ctx.avatar() : 'Hoola');
   const chip = cid => { const p = secOf(LIST.find(x => x.id === cid) || {}); return p ? `<i class="srsec" aria-hidden="true">📁 ${esc(p.name)}</i>` : ''; };   // v0.193
   res.innerHTML = r.length
     ? `<div class="scount">${r.length} matches · press Enter to open</div>` + r.map(h => `<button type="button" class="sr" role="option" data-c="${esc(h.conversation_id)}" data-e="${h.event_id || 0}">
