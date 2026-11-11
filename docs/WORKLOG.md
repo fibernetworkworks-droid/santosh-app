@@ -2883,3 +2883,9 @@ Task ID: v0.784.0 SAWAAL CARD (built as 0.783; their LANGGRAPH G4 took 0.783.0; 
 Task: owner "GO L3" - design question cards with visual options before a Studio Build, skipped when her words name the design.
 Work Log: site/designq.py + 2 routes; S.new reads designq.PENDING; look 1 'Your choices' + her hero; Studio question card (webstudio.js/css); switch studio_design_questions; 6 new tests + older Studio suites.
 Stage Summary: pushed; server deploy only. Next: L4 CHHOTA BADLAAV (line edits + tiered checks) on her GO.
+
+---
+Task ID: v0.785.0 VIDEO LEARNER PREMIUM
+Ask: read the AI Employees Video Learner code + design -> "FIX ALL 7 PROPERLY ... MAKE ENTIRE SECTION PROPER AND PREMIUM ... VISUAL GRAPHICAL ANIMATION".
+Built: 7 fixes (pill class, Re-learn replaces, run kept + Proven by real work, file picker steps, stage durations, uploads kept, restart pick-up) + the page redrawn (seekh.js, skv- CSS, hub card); 20 tests incl. a browser walk.
+Deploy: vps-ops deploy (server-only; no new pip, no new tables; data/seekh/media + data/seekh/jobs are created by themselves).

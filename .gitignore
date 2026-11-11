@@ -36,3 +36,6 @@ lab_listen/
 # committed by accident. Nothing reads them from the repo.
 server/data/coder/spool/
 server/data/devlab/
+
+# v0.785 the Video Learner's runtime data (a test run once committed its sidecar and broke test_offline_status_action)
+server/data/seekh/

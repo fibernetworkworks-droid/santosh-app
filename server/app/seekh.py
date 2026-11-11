@@ -141,6 +141,9 @@ def _classify(ref: str) -> tuple[str, str]:
     r = str(ref or "").strip()
     if not r:
         raise SeekhError("Which video? Give a YouTube link, a video file you attached, or a direct video URL.")
+    m = re.fullmatch(r"kept:([\w-]{4,80})", r)
+    if m:                                               # v0.785 the learner's own copy of an earlier upload
+        return "kept", m.group(1)
     from .youtube.client import video_id
     vid = video_id(r)
     if vid:
@@ -180,14 +183,88 @@ def _load(tenant: str) -> list[dict[str, Any]]:
 
 
 def _save(tenant: str, rows: list[dict[str, Any]]) -> None:
-    _sidecar_path(tenant).write_text(json.dumps(rows[-MAX_SIDECAR:], ensure_ascii=False, indent=1),
-                                     encoding="utf-8")
+    for r in rows[:-MAX_SIDECAR]:                       # a row that falls off the list takes its kept video with it
+        _media_drop(tenant, r)
+    p = _sidecar_path(tenant)
+    tmp = p.with_suffix(".tmp")
+    tmp.write_text(json.dumps(rows[-MAX_SIDECAR:], ensure_ascii=False, indent=1), encoding="utf-8")
+    tmp.replace(p)                                      # atomic: a reader never sees half a file
 
 
 def listing(tenant: str, limit: int = 20) -> dict[str, Any]:
     """action=status: what was learned from which video, newest first."""
     rows = list(reversed(_load(tenant)))
     return {"watches": rows[:limit], "total": len(rows)}
+
+
+# ---------------------------------------------------------------- v0.785 the learner's OWN copy of an uploaded video
+# An uploaded video rides the chat file lane, which is swept after 24 hours - so the task page could not play it the
+# next day and Re-learn failed. The learner now keeps its own copy beside the sidecar (one file per learned row,
+# removed with the row, a per-tenant size cap that drops the oldest copies first).
+_SIDECAR_LOCK = threading.RLock()
+_EXT = {"video/mp4": ".mp4", "video/webm": ".webm", "video/quicktime": ".mov", "video/x-matroska": ".mkv",
+        "video/3gpp": ".3gp", "video/x-msvideo": ".avi", "video/mpeg": ".mpeg", "video/ogg": ".ogv"}
+
+
+def _media_dir(tenant: str) -> Path:
+    p = _dir() / "media" / _safe(tenant)
+    p.mkdir(parents=True, exist_ok=True)
+    return p
+
+
+def _media_drop(tenant: str, row: dict[str, Any]) -> None:
+    m = (row or {}).get("media") or {}
+    if m.get("file"):
+        try:
+            (_media_dir(tenant) / Path(str(m["file"])).name).unlink(missing_ok=True)
+        except Exception:                               # noqa: BLE001
+            log.exception("seekh media drop")
+
+
+def _media_keep(tenant: str, rid: str, stash) -> dict[str, Any] | None:
+    """Write the watched bytes under the row's id. Never raises: a copy that cannot be kept is only a lost replay."""
+    try:
+        from .config import get_settings
+        st = get_settings()
+        if not stash or not getattr(st, "seekh_keep_media", True):
+            return None
+        data, mime, name = stash
+        cap = int(getattr(st, "seekh_media_max_mb", 1024)) * 1024 * 1024
+        if not data or len(data) > cap:
+            return None
+        ext = _EXT.get(str(mime).split(";")[0].strip().lower()) or (Path(str(name)).suffix.lower()[:6] or ".mp4")
+        fn = re.sub(r"[^\w-]", "_", rid)[:60] + (ext if re.fullmatch(r"\.[a-z0-9]{2,5}", ext) else ".mp4")
+        d = _media_dir(tenant)
+        (d / fn).write_bytes(data)
+        return {"file": fn, "mime": str(mime).split(";")[0].strip() or "video/mp4", "name": str(name or "video")[:160],
+                "size": len(data)}
+    except Exception:                                   # noqa: BLE001
+        log.exception("seekh media keep")
+        return None
+
+
+def _media_trim(tenant: str, rows: list[dict[str, Any]]) -> None:
+    """The size cap: the oldest kept copies go first (the learned steps stay; only the replay is lost)."""
+    from .config import get_settings
+    cap = int(getattr(get_settings(), "seekh_media_max_mb", 1024)) * 1024 * 1024
+    total = sum(int((r.get("media") or {}).get("size") or 0) for r in rows)
+    for r in rows:                                      # rows are oldest first
+        if total <= cap:
+            break
+        if r.get("media"):
+            total -= int(r["media"].get("size") or 0)
+            _media_drop(tenant, r)
+            r.pop("media", None)
+
+
+def media_file(tenant: str, tid: str) -> tuple[Path, str, str]:
+    """(path, mime, name) of the kept video of one of her rows - the page's player and Re-learn read it."""
+    for r in _load(tenant):
+        if _row_id(r) == tid and (r.get("media") or {}).get("file"):
+            p = _media_dir(tenant) / Path(str(r["media"]["file"])).name
+            if p.is_file():
+                return p, str(r["media"].get("mime") or "video/mp4"), str(r["media"].get("name") or "video")
+    raise SeekhError("This video is not kept any more - give its link or upload it again.")
 
 
 # ---------------------------------------------------------------- stage 2 doors (all existing)
@@ -270,6 +347,15 @@ def _perceive_file(tenant: str, fid: str, st) -> str:
         raise SeekhError("This is not a video file - Hoola can only learn from a video.")
     if float(info.get("duration") or 0) > float(st.seekh_file_max_s):
         raise SeekhError(f"The video is longer than {int(st.seekh_file_max_s) // 60} minutes - send a shorter part.")
+    _LIVE.media = (data, mime, name)                    # v0.785 kept beside the learned row (the chat lane is swept)
+    return _gemini_watch_bytes(data, mime, _PERCEIVE_ASK)
+
+
+def _perceive_kept(tenant: str, tid: str, st) -> str:
+    """v0.785 Re-learn / Try again from the learner's own copy of an earlier upload."""
+    p, mime, name = media_file(tenant, tid)
+    data = p.read_bytes()
+    _LIVE.media = (data, mime, name)
     return _gemini_watch_bytes(data, mime, _PERCEIVE_ASK)
 
 
@@ -304,6 +390,7 @@ def _perceive_url(url: str, st) -> str:
         raise SeekhError("That link is not a video file.")
     if float(info.get("duration") or 0) > float(st.seekh_file_max_s):
         raise SeekhError(f"The video is longer than {int(st.seekh_file_max_s) // 60} minutes - send a shorter part.")
+    _LIVE.media = (data, mime, url.split("?")[0].split("/")[-1] or "video.mp4")   # v0.785 plays on the page later
     return _gemini_watch_bytes(data, mime, _PERCEIVE_ASK)
 
 
@@ -473,21 +560,52 @@ def _emit(on_stage, stage: str, data: dict[str, Any] | None = None) -> None:
 
 
 def watch(tenant: str, ref: str, title: str = "", actor: str = "owner",
-          on_stage=None, cancel: "threading.Event | None" = None) -> dict[str, Any]:
-    """v0.745: the live notes sink + Stop flag wrap the v0.713 pipeline below."""
+          on_stage=None, cancel: "threading.Event | None" = None, replace: str = "") -> dict[str, Any]:
+    """v0.745: the live notes sink + Stop flag wrap the v0.713 pipeline below.
+    v0.785: `replace` = the row this watch re-learns (Re-learn / Try again): on success the old row, its learned
+    procedure and its never-run recipe draft are retired, so her list never holds the same task twice."""
     from .config import get_settings
     live = bool(on_stage) and bool(getattr(get_settings(), "seekh_live_notes", True))
     _LIVE.on_text = (lambda acc: _emit(on_stage, "partial", {"perception": acc})) if live else None
     _LIVE.cancel = cancel
+    _LIVE.media = None
     try:
-        return _watch(tenant, ref, title, actor, on_stage)
+        return _watch(tenant, ref, title, actor, on_stage, replace)
+    except Exception as e:
+        if not isinstance(e, SeekhStopped):             # a failed watch keeps its upload for Try again
+            try:
+                e.media = getattr(_LIVE, "media", None)
+            except Exception:                           # noqa: BLE001
+                pass
+        raise
     finally:
         _LIVE.on_text = None
         _LIVE.cancel = None
+        _LIVE.media = None
+
+
+def _retire(tenant: str, row: dict[str, Any], keep_recipe: str = "") -> None:
+    """Take one row's belongings away: its learned procedure, a recipe draft that never ran, its kept video.
+    A recipe that has really run is hers and stays."""
+    if row.get("procedure_id"):
+        from . import procedures as pr
+        try:
+            pr.delete(tenant, row["procedure_id"])
+        except Exception:                               # noqa: BLE001 - already gone is fine
+            pass
+    if row.get("recipe") and row.get("recipe") != keep_recipe:
+        try:
+            from .operator.memory import Memory
+            p = Memory(_operator_home(tenant)).recipe_path(row["recipe"])
+            if p.exists() and int(json.loads(p.read_text(encoding="utf-8")).get("runs", 0) or 0) == 0:
+                p.unlink()
+        except Exception:                               # noqa: BLE001
+            log.exception("seekh retire recipe")
+    _media_drop(tenant, row)
 
 
 def _watch(tenant: str, ref: str, title: str = "", actor: str = "owner",
-           on_stage=None) -> dict[str, Any]:
+           on_stage=None, replace: str = "") -> dict[str, Any]:
     """Watch one video and keep its way of working. Raises SeekhError honestly; never fakes a step.
     on_stage(stage, data) is called at every real pipeline boundary so a UI can show live progress:
     classify -> fetch -> notes (the perception text) -> distill_start -> distill (the salvaged recipe)
@@ -501,14 +619,23 @@ def _watch(tenant: str, ref: str, title: str = "", actor: str = "owner",
     kind, key = _classify(ref)
     _emit(on_stage, "classify", {"kind": kind, "key": str(key)[:200]})
     today = dt.date.today().isoformat()
-    if sum(1 for r in _load(tenant) if str(r.get("day", "")) == today and r.get("status") != "failed") \
+    before = _load(tenant)
+    if sum(1 for r in before if str(r.get("day", "")) == today and r.get("status") != "failed") \
             >= int(st.seekh_max_per_day):
         raise SeekhError(f"{st.seekh_max_per_day} videos already learned today - try again tomorrow.")
+    source = f"{kind}:{key}"[:200]
+    if kind == "kept":                                  # the row keeps the label of where the video first came from
+        was = next((r for r in before if _row_id(r) == key), None)
+        source = str((was or {}).get("source") or "file:kept")[:200]
+        if source.startswith("kept:"):
+            source = "file:kept"
     _emit(on_stage, "fetch", {"kind": kind})
     if kind == "youtube":
         perception = _perceive_youtube(key, tenant)
     elif kind == "file":
         perception = _perceive_file(tenant, key, st)
+    elif kind == "kept":
+        perception = _perceive_kept(tenant, key, st)
     else:
         perception = _perceive_url(key, st)
     _check_stop()
@@ -523,30 +650,45 @@ def _watch(tenant: str, ref: str, title: str = "", actor: str = "owner",
     recipe = ""
     if sk["kind"] == "website_work":
         try:
-            recipe = _save_recipe_draft(tenant, sk, f"{kind}:{key}")["name"]
+            recipe = _save_recipe_draft(tenant, sk, source)["name"]
         except Exception:                               # noqa: BLE001 - the procedure stands without it
             log.exception("seekh recipe draft failed")
     _emit(on_stage, "memory", {"procedure_id": proc["id"], "recipe": recipe})
-    rows = _load(tenant)
-    rows.append({"id": proc["id"], "status": "learned",
-                 "ts": dt.datetime.now().isoformat(timespec="seconds"), "day": today,
-                 "source": f"{kind}:{key}"[:200], "title": sk["title"], "procedure_id": proc["id"],
-                 "recipe": recipe, "steps": len(sk["steps"]), "confidence": sk["confidence"],
-                 "kind": sk["kind"], "site": sk.get("site", ""), "wins": 0, "fails": 0,
-                 # v0.745 the task page reads these (values are hints / variable names, never her data)
-                 "detail": {"steps": [{"n": x.get("n"), "action": x.get("action"), "note": x.get("note", ""),
-                                       "evidence": x.get("evidence", []), "value_hint": x.get("value_hint", ""),
-                                       "value_var": x.get("value_var", "")} for x in sk["steps"]],
-                            "preconditions": sk["preconditions"], "gotchas": sk["gotchas"],
-                            "unsure": sk["unsure"], "start_url": sk.get("start_url", "")}})
-    _save(tenant, rows)
+    row = {"id": proc["id"], "status": "learned",
+           "ts": dt.datetime.now().isoformat(timespec="seconds"), "day": today,
+           "source": source, "title": sk["title"], "procedure_id": proc["id"],
+           "recipe": recipe, "steps": len(sk["steps"]), "confidence": sk["confidence"],
+           "kind": sk["kind"], "site": sk.get("site", ""), "wins": 0, "fails": 0,
+           # v0.745 the task page reads these (values are hints / variable names, never her data)
+           "detail": {"steps": [{"n": x.get("n"), "action": x.get("action"), "note": x.get("note", ""),
+                                 "evidence": x.get("evidence", []), "value_hint": x.get("value_hint", ""),
+                                 "value_var": x.get("value_var", "")} for x in sk["steps"]],
+                      "preconditions": sk["preconditions"], "gotchas": sk["gotchas"],
+                      "unsure": sk["unsure"], "start_url": sk.get("start_url", "")}}
+    old = None
+    with _SIDECAR_LOCK:
+        rows = _load(tenant)
+        if replace:
+            old = next((r for r in rows if _row_id(r) == replace and _row_id(r) != row["id"]), None)
+        media = _media_keep(tenant, row["id"], getattr(_LIVE, "media", None))
+        if media:
+            row["media"] = media
+        if old is not None:                             # v0.785 Re-learn REPLACES: the old row leaves the list
+            rows = [r for r in rows if r is not old]
+            row["relearned"] = int(old.get("relearned") or 0) + 1
+        rows.append(row)
+        _media_trim(tenant, rows)
+        _save(tenant, rows)
+    if old is not None:
+        _retire(tenant, old, keep_recipe=recipe)
     out = {"learned": sk["title"], "kind": sk["kind"], "site": sk["site"], "procedure_id": proc["id"],
+            "id": proc["id"], "replaced": _row_id(old) if old is not None else "",
             "recipe": recipe,
             "steps": [{"n": s.get("n"), "action": s.get("action"), "note": s.get("note", ""),
                        "evidence": s.get("evidence", []), "value_hint": s.get("value_hint", "")}
                       for s in sk["steps"]],
             "preconditions": sk["preconditions"], "gotchas": sk["gotchas"], "unsure": sk["unsure"],
-            "confidence": sk["confidence"], "source": f"{kind}:{key}"[:200],
+            "confidence": sk["confidence"], "source": source,
             "say": "Learned - it is in your learned tasks and comes back by itself when you ask for this kind of "
                    "work. So far it has only been watched: it counts as proven once it has worked for real.",
             "note_for_you": "Learned is NOT proven: until one real run has worked, say exactly that. Tell her "
@@ -562,20 +704,42 @@ def _row_id(r: dict[str, Any]) -> str:
     return str(r.get("id") or r.get("procedure_id") or "")
 
 
-def record_failure(tenant: str, ref: str, title: str, error: str) -> dict[str, Any]:
-    """A watch that could not learn stays on her list with its reason and Try again (never counts toward today)."""
+def record_failure(tenant: str, ref: str, title: str, error: str, media=None, replace: str = "") -> dict[str, Any]:
+    """A watch that could not learn stays on her list with its reason and Try again (never counts toward today).
+    v0.785: an uploaded video is kept with the row, so Try again still works after the chat lane is swept; a
+    retry that fails again replaces its own earlier failure row (never a learned task)."""
     try:
         kind, key = _classify(ref)
         source = f"{kind}:{key}"[:200]
     except SeekhError:
-        source = str(ref or "")[:200]
+        kind, key, source = "", "", str(ref or "")[:200]
     row = {"id": "f" + uuid.uuid4().hex[:12], "status": "failed", "ts": dt.datetime.now().isoformat(timespec="seconds"),
            "day": dt.date.today().isoformat(), "source": source, "ref": str(ref or "")[:300],
            "title": re.sub(r"\s+", " ", str(title or "")).strip()[:TITLE_MAX], "error": str(error or "")[:300],
            "steps": 0, "confidence": 0}
-    rows = _load(tenant)
-    rows.append(row)
-    _save(tenant, rows)
+    old = None
+    with _SIDECAR_LOCK:
+        rows = _load(tenant)
+        if replace:
+            old = next((r for r in rows if _row_id(r) == replace and r.get("status") == "failed"), None)
+        if kind == "kept":
+            was = next((r for r in rows if _row_id(r) == key), None)
+            if was is not None and was.get("status") != "failed":
+                media = None                            # a learned task keeps its own copy: Try again reads that one
+                row["source"] = str(was.get("source") or source)[:200]
+            elif was is not None:
+                row["source"] = str(was.get("source") or source)[:200]
+        kept = _media_keep(tenant, row["id"], media) if media else None
+        if kept:
+            row["media"] = kept
+            row["ref"] = f"kept:{row['id']}"
+        if old is not None:
+            rows = [r for r in rows if r is not old]
+        rows.append(row)
+        _media_trim(tenant, rows)
+        _save(tenant, rows)
+    if old is not None:
+        _media_drop(tenant, old)
     return row
 
 
@@ -602,45 +766,149 @@ def task(tenant: str, tid: str) -> dict[str, Any]:
 
 
 def forget(tenant: str, tid: str) -> bool:
-    """Remove a task from her list, its learned procedure and its never-run recipe draft. A recipe that has
-    really run is hers and stays."""
-    rows = _load(tenant)
-    hit = next((r for r in rows if _row_id(r) == tid), None)
-    if hit is None:
-        raise SeekhError("That learned task was not found.")
-    _save(tenant, [r for r in rows if r is not hit])
-    if hit.get("procedure_id"):
-        from . import procedures as pr
-        try:
-            pr.delete(tenant, hit["procedure_id"])
-        except Exception:                               # noqa: BLE001 - already gone is fine
-            pass
-    if hit.get("recipe"):
-        try:
-            from .operator.memory import Memory
-            p = Memory(_operator_home(tenant)).recipe_path(hit["recipe"])
-            if p.exists() and int(json.loads(p.read_text(encoding="utf-8")).get("runs", 0) or 0) == 0:
-                p.unlink()
-        except Exception:                               # noqa: BLE001
-            log.exception("seekh forget recipe")
+    """Remove a task from her list, its learned procedure, its never-run recipe draft and its kept video. A
+    recipe that has really run is hers and stays."""
+    with _SIDECAR_LOCK:
+        rows = _load(tenant)
+        hit = next((r for r in rows if _row_id(r) == tid), None)
+        if hit is None:
+            raise SeekhError("That learned task was not found.")
+        _save(tenant, [r for r in rows if r is not hit])
+    _retire(tenant, hit)
     return True
 
 
-def mark(tenant: str, tid: str, ok: bool) -> dict[str, Any]:
+def mark(tenant: str, tid: str, ok: bool, skip: bool = False) -> dict[str, Any]:
     """Her answer after a run: worked -> one more win (Proven), wrong -> one fail. Also scored on the learned
-    procedure so the chat's own hints learn the same."""
-    rows = _load(tenant)
-    hit = next((r for r in rows if _row_id(r) == tid), None)
-    if hit is None or hit.get("status") == "failed":
-        raise SeekhError("That learned task was not found.")
-    key = "wins" if ok else "fails"
-    hit[key] = int(hit.get(key) or 0) + 1
-    hit["last_run"] = dt.datetime.now().isoformat(timespec="seconds")
-    _save(tenant, rows)
+    procedure so the chat's own hints learn the same. v0.785: the open run is closed here; a run the operator
+    already counted as a win is never counted twice (and "wrong" takes that win back); skip = close it unscored."""
+    undo = False
+    with _SIDECAR_LOCK:
+        rows = _load(tenant)
+        hit = next((r for r in rows if _row_id(r) == tid), None)
+        if hit is None or hit.get("status") == "failed":
+            raise SeekhError("That learned task was not found.")
+        run = hit.pop("run", None) or {}
+        scored = bool(run.get("scored"))
+        if skip:
+            _save(tenant, rows)
+            return hit
+        if scored and ok:                               # the operator's own finish already made it Proven
+            hit["proven_by"] = "you"
+            _save(tenant, rows)
+            return hit
+        if scored and not ok:
+            hit["wins"] = max(0, int(hit.get("wins") or 0) - 1)
+            undo = True
+        key = "wins" if ok else "fails"
+        hit[key] = int(hit.get(key) or 0) + 1
+        if ok:
+            hit["proven_by"] = "you"
+        hit["last_run"] = dt.datetime.now().isoformat(timespec="seconds")
+        _save(tenant, rows)
     if hit.get("procedure_id"):
         from . import procedures as pr
         try:
-            pr.record_run(tenant, hit["procedure_id"], ok)
+            pr.record_run(tenant, hit["procedure_id"], ok, undo_win=undo)
         except Exception:                               # noqa: BLE001
             log.exception("seekh mark procedure")
     return hit
+
+
+# ---------------------------------------------------------------- v0.785 the run: kept on the server, proven by real work
+RUN_STALE_H = 12            # a run nobody answered: the page stops asking "Did it work?" after this
+
+
+def run_start(tenant: str, tid: str, cid: str, after: int = 0) -> dict[str, Any]:
+    """Do it now was sent: remember which chat carries this run, so leaving the page (or a reload) loses nothing -
+    the task shows "Hoola is doing it" / "Did it work?" until she answers."""
+    with _SIDECAR_LOCK:
+        rows = _load(tenant)
+        hit = next((r for r in rows if _row_id(r) == tid), None)
+        if hit is None or hit.get("status") == "failed":
+            raise SeekhError("That learned task was not found.")
+        hit["run"] = {"cid": str(cid or "")[:80], "after": int(after or 0), "scored": False,
+                      "ts": dt.datetime.now().isoformat(timespec="seconds")}
+        _save(tenant, rows)
+        return hit
+
+
+def run_view(tenant: str, tid: str) -> dict[str, Any]:
+    """The open run of one task + the cards of ITS chat that really wait for her right now (their own latest
+    state, the same check the chat itself uses)."""
+    hit = next((r for r in _load(tenant) if _row_id(r) == tid), None)
+    if hit is None:
+        raise SeekhError("That learned task was not found.")
+    run = dict(hit.get("run") or {})
+    waiting: list[dict[str, Any]] = []
+    if run.get("cid"):
+        try:
+            from . import events
+            waiting = [{"id": w["id"], "kind": w["kind"], "title": w["title"]}
+                       for w in events.waiting_cards(tenant, 6, conversation_id=run["cid"])
+                       if int(w["id"]) > int(run.get("after") or 0)]
+        except Exception:                               # noqa: BLE001 - the page falls back to "Open in chat"
+            log.exception("seekh run cards")
+    busy = False                                        # is Hoola still on it? (the chat turn, or its browser job)
+    if run.get("cid"):
+        try:
+            from .agent.santosh import turn_running
+            busy = bool(turn_running(run["cid"]))
+        except Exception:                               # noqa: BLE001
+            pass
+        if not busy:
+            try:
+                from sqlalchemy import select
+                from .db import session
+                from .operator.models import OperatorTask
+                with session() as s:
+                    busy = s.scalars(select(OperatorTask.id).where(
+                        OperatorTask.tenant_id == tenant, OperatorTask.conversation_id == run["cid"],
+                        OperatorTask.status.in_(("queued", "running", "waiting")))).first() is not None
+            except Exception:                           # noqa: BLE001
+                pass
+    return {"id": tid, "run": run or None, "waiting": waiting, "busy": busy, "wins": int(hit.get("wins") or 0),
+            "fails": int(hit.get("fails") or 0), "proven_by": hit.get("proven_by", "")}
+
+
+def _words(text: str) -> set[str]:
+    return {w for w in re.findall(r"[a-z0-9]{3,}", str(text or "").lower())}
+
+
+def operator_done(tenant: str, task: str, recipe: "str | list[str]" = "", conversation_id: str = "") -> str:
+    """Called when a computer-operator job FINISHES WELL. A learned task that this job was doing becomes Proven by
+    the real work itself - asked from this page or from the chat. Matching, strongest first: the open run of that
+    chat; the recipe the job saved or ran; the task's own title inside the job's words. Returns the row id."""
+    hit_id, pid = "", ""
+    with _SIDECAR_LOCK:
+        rows = _load(tenant)
+        live = [r for r in rows if r.get("status") != "failed" and (r.get("kind") in ("website_work", None, ""))]
+        hit = next((r for r in live if conversation_id and (r.get("run") or {}).get("cid") == conversation_id
+                    and not (r.get("run") or {}).get("scored")), None)
+        names = {str(x) for x in ([recipe] if isinstance(recipe, str) else list(recipe or [])) if x}
+        if hit is None and names:
+            hit = next((r for r in live if r.get("recipe") and r.get("recipe") in names), None)
+        if hit is None:
+            q = _words(task)
+            best = 0.0
+            for r in live:
+                t = _words(r.get("title"))
+                score = len(t & q) / len(t) if len(t) >= 2 else 0.0
+                if score >= 0.6 and score > best:
+                    hit, best = r, score
+        if hit is None:
+            return ""
+        hit["wins"] = int(hit.get("wins") or 0) + 1
+        hit["last_run"] = dt.datetime.now().isoformat(timespec="seconds")
+        hit.setdefault("proven_by", "run")
+        if hit.get("run"):
+            hit["run"]["scored"] = True
+        _save(tenant, rows)
+        hit_id, pid = _row_id(hit), str(hit.get("procedure_id") or "")
+    if pid:
+        from . import procedures as pr
+        try:
+            pr.record_run(tenant, pid, True)
+        except Exception:                               # noqa: BLE001
+            log.exception("seekh operator_done procedure")
+    return hit_id

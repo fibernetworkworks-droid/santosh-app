@@ -106,6 +106,7 @@ def env(tmp_path, monkeypatch):
     monkeypatch.setenv("VOICE_TOOL_ACK", "false")
     monkeypatch.setenv("VIDEO_EDIT_WORKER", "false")   # tests call videoedit.run_job themselves
     monkeypatch.setenv("OPERATOR_WORKER", "false")     # tests call operator.run_job themselves
+    monkeypatch.setenv("SEEKH_RESUME", "false")        # v0.785 no test picks up a video watch another run left on disk
     monkeypatch.setenv("GOAL_VERIFY_LINKS", "false")   # v0.443 the done=verified gate never reaches the network in tests
     monkeypatch.setenv("CHAT_HEAL_AI", "false")        # v0.158 no model judge of call cards in tests
     monkeypatch.setenv("AGENT_SELF_CHECK", "false")    # v0.78: scripted model tests don't expect the extra check call
