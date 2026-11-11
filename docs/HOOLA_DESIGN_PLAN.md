@@ -51,7 +51,8 @@ Properties (all optional; defaults in brackets). Unknown properties are kept and
 | paint | `{type:"solid", color:"#RRGGBB", opacity:1, visible:true}` · `{type:"linear"|"radial"|"angular", stops:[{pos:0..1,color:"#RRGGBB",opacity}], from:[x,y], to:[x,y]}` (from/to in 0..1 of the node box) · `{type:"image", hash:"<asset hash>", mode:"fill"|"fit"|"crop"|"tile", opacity}` |
 | corners | `radius` number or `[tl,tr,br,bl]` [0] |
 | effects | `effects`: `[{type:"drop"|"inner", x,y,blur,spread,color,opacity,visible}, {type:"blur"|"bgblur", blur, visible}]` |
-| frame | `clip` [true for FRAME/COMPONENT/INSTANCE] · `layout`: `{mode:"none"|"h"|"v", gap:0, pad:[t,r,b,l], alignMain:"start"|"center"|"end"|"between", alignCross:"start"|"center"|"end"|"stretch", wrap:false}` · `grids` [] |
+| frame | `clip` [true for FRAME/COMPONENT/INSTANCE] · `layout`: `{mode:"none"|"h"|"v", gap:0, pad:[t,r,b,l], alignMain:"start"|"center"|"end"|"between", alignCross:"start"|"center"|"end"|"stretch", wrap:false}` · `grids`: `[{type:"grid"|"columns"|"rows", size, count, gutter, margin, align:"stretch"|"start"|"center"|"end", color, opacity, visible}]` (layout grids: drawn over the frame, never exported) |
+| boolean group | GROUP `bool`: `union|subtract|intersect|exclude` (absent = a plain group). The group is ONE shape: the outline of its children combined bottom-first (subtract = the first child minus the rest); the group's own `fills` / `strokes` / `effects` style the result, the children's paints are not drawn; text and lines take no part |
 | child-in-layout | `sizeH` `sizeV`: `fixed|hug|fill` [fixed] · `layoutPos`: `auto|absolute` [auto] · `minW maxW minH maxH` |
 | constraints | `cons`: `{h:"left"|"right"|"leftright"|"center"|"scale", v:"top"|"bottom"|"topbottom"|"center"|"scale"}` [left, top] |
 | shapes | POLYGON `sides` [3] · STAR `sides` [5] `ratio` [0.5] · LINE uses `w` as length, `h`=0 · VECTOR `path` (SVG path `d`, coordinates in the node's own 0..w / 0..h box) `fillRule` |
@@ -60,7 +61,7 @@ Properties (all optional; defaults in brackets). Unknown properties are kept and
 | styles / variables | kept on the root node: `styles`: `{"<sid>": {kind:"fill"|"text"|"effect", name, value}}` · `vars`: `{"<vid>": {name, type:"color"|"number"|"string"|"bool", modes:{"<mode>":value}}}` · `modes`: [..] · a node links with `fillStyle` `textStyle` `effectStyle` and `bind`: `{"<prop>": "<vid>"}` |
 | prototype | `reactions`: `[{trigger:"click"|"hover"|"press"|"drag"|"after", delay, action:"navigate"|"back"|"overlay"|"swap"|"close"|"url"|"scroll", to:"<node id>", url, anim:{type:"instant"|"dissolve"|"smart"|"move"|"push"|"slide", dir, dur, ease}}]` · FRAME `protoStart` [false] · `scroll`: `none|v|h|both` · `fixed` [false] |
 | export | `exports`: `[{fmt:"png"|"jpg"|"svg"|"pdf", scale:1, suffix:""}]` |
-| page | `bg` ["#F5F5F5"] |
+| page | `bg` ["#F5F5F5"] · `guides`: `[{axis:"x"|"y", pos}]` (ruler guides; axis x = an upright line at world x = pos) |
 
 GROUP: `x y w h` are DERIVED from its children by the editing client (written as normal ops in the same batch).
 
@@ -203,6 +204,38 @@ exact API; this is the short list of what differs from sections 2-3.
   `/api/design`. `HD.tools.current` is the tool NAME; `HD.tools.act.*` holds the edit commands (group, align, paste...).
 - Feature files (second wave), loaded after `hd-ui.js` and before `hd-app.js`, each with its own stylesheet
   `design-<name>.css`: `hd-vector.js` `hd-components.js` `hd-export.js` `hd-collab.js` `hd-proto.js` `hd-ai.js`.
+- D2 design depth (`hd-vector.js`; path + boolean geometry in `HD.render.geom`): `HD.vector.edit(id) / leave() /
+  editing`, `toVector(id)`, `editShape()`, `bool(op)`, `flatten()`, `mask()`, `rulers`, `grids`, `guides()`,
+  `setGuides(list)`. New UI extension point `HD.ui.designSection(fn(el, ids))` (a section in the Design panel);
+  `HD.ui.state.paint` = the paint open in the colour picker (`get()`, `set(paint, gesture)`, `stop`);
+  `HD.tools.snapExtra(parent)` = extra snap boxes (the guides). A mask shows the siblings above it up to the next mask,
+  by the ALPHA of its own picture. "auto" line height = the font's own ascent + descent. Radial and sweep gradients live
+  in the 0..1 space of the box (an ellipse in a box that is not square). A VECTOR `path` whose bounds are not the box
+  is moved and scaled to fit it. An instance at another size than its component is laid out again
+  (`HD.layout.virtual`) when the component has auto layout or constraints, scaled otherwise.
+  Not exact, said plainly: boolean crossings are found on curves cut into straight pieces (right to about 0.02 of a
+  layer unit; the result is written back as the original curves); shadow spread on text / paths / groups is a
+  16-sided ring (about 2% of the spread); a sweep gradient in SVG is a picture (up to 1024 px); Flatten does not
+  outline strokes or text; text and lines take no part in a boolean.
+
+- D5 together, as built (`hd-collab.js`, `design-collab.css`; test `server/tests/test_v0777_design_collab.py` +
+  `web/design_collab_test.js` = two editors and one signed-out link visitor on a real server):
+  REST added: `POST /versions/{vid}/duplicate {name?}` (a NEW file from a version) · `POST /files/{id}/versions`
+  takes `note` · comments take `ox` / `oy` (the pin's place inside `node`, its own box; `x` / `y` stay the page point) ·
+  public `GET /shared/{token}/comments` (read only). Limits (`design/limits.py`, in memory): 30 comment writes a
+  minute per person, 120 doc + comment reads and 1,200 images a minute per link and address -> 429. `share none` shows
+  the link's guests out (4404); editors stay. `design/assets.sweep()` (worker slot `design_asset_jobs`, once a day)
+  deletes images no document, journal or kept version draws AND that were last uploaded over 7 days ago.
+  Presence frames may also carry `vs` [canvas w, h], `chat` (cursor chat, 80 chars), `spot` (follow-me stamp); the
+  server passes them through untouched. Client: `HD.net.connect(id, {share})`, `net.share`, `net.me`, `net.extra`
+  (cid -> {vs, chat, chatAt, spot, at}), `net.setPresence({...})`, `net.hold()` / `net.release()` (a version preview:
+  nothing sent, remote ops not applied, store locked; release fetches the live document again), `on('reload')`
+  (the status stays `live` while a restored document is fetched). `HD.app.on('open'|'close', fn(file))`,
+  `HD.app.link(node?, token?)`, `HD.app.focusNode(id)`, `HD.app.rawFetch`; addresses `#/s/<token>` (view-only, no
+  sign-in; while it is open every non-`/shared` `/api` call is answered 403 in the page) and `?node=<id>` on both.
+  The built-in commands are now registered when `hd-ui.js` loads, so a feature file may call `HD.ui.command` at load.
+  NOT built: unread comments kept on the server (they are per browser, localStorage), edit-role sharing (so every
+  comment in a file is its owner's and "Mine" = all), a prototype-only share link, dimming an idle person's cursor.
 
 Measured (headless Chromium, software raster, 1280x800): pan 5 ms / frame with 5,000 layers, under 10 ms with 20,000;
 server about 20,000 op batches / s, ack p50 0.23 ms; a killed server lost nothing. 10,000 layers scroll in the layers

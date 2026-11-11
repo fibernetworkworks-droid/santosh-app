@@ -1367,6 +1367,10 @@
   function spreadLayer(src, LW, LH, r) {
     let A = getLayer(LW, LH), B = getLayer(LW, LH);
     stats.layers += 2;
+    /* a pooled canvas can be bigger than the layer and hold old pixels out there; a stamp at a part of a pixel would
+       pull them in at the edge, so the rim is wiped before every pass */
+    const rim = (l) => { const c = l.ctx, cw = l.cv.width, ch = l.cv.height; c.setTransform(1, 0, 0, 1, 0, 0); c.globalCompositeOperation = 'source-over'; if (cw > LW) c.clearRect(LW, 0, cw - LW, ch); if (ch > LH) c.clearRect(0, LH, cw, ch - LH); };
+    rim(A); rim(B);
     const ac = A.ctx;
     if (r > 0) ac.drawImage(src.cv, 0, 0, LW, LH, 0, 0, LW, LH);
     else { ac.fillStyle = '#000000'; ac.fillRect(0, 0, LW, LH); ac.globalCompositeOperation = 'destination-out'; ac.drawImage(src.cv, 0, 0, LW, LH, 0, 0, LW, LH); ac.globalCompositeOperation = 'source-over'; }
@@ -1376,6 +1380,7 @@
       bc.setTransform(1, 0, 0, 1, 0, 0); bc.globalCompositeOperation = 'source-over'; bc.clearRect(0, 0, LW, LH);
       bc.drawImage(A.cv, 0, 0, LW, LH, 0, 0, LW, LH);
       for (let k = 0; k < N; k++) { const a = k * TAU / N; bc.drawImage(A.cv, 0, 0, LW, LH, Math.cos(a) * step, Math.sin(a) * step, LW, LH); }
+      rim(B);
       const t = A; A = B; B = t;
       left -= step; done += step;
     }

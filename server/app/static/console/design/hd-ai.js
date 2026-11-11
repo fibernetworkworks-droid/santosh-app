@@ -36,10 +36,18 @@
   let settleT = 0;
   function subtree(root) { const ids = []; HD.store.walk(root, id => { ids.push(id); return ids.length < 5000; }); return ids; }
   async function fontsOf(ids) {
-    const fams = new Set();
-    for (const id of ids) { const n = HD.store.get(id); if (n && n.type === 'TEXT') fams.add(n.font || 'Inter'); }
-    const waits = Array.from(fams).map(f => { try { return Promise.resolve(ui.loadFont(f)).catch(() => false); } catch (e) { return Promise.resolve(false); } });
-    await Promise.race([Promise.all(waits), sleep(4000)]);
+    /* the families through the editor's own loader (it adds the stylesheet), then every WEIGHT really used: a bold
+       headline measured before its bold face arrived would be sized with a stand-in */
+    const fams = new Set(), faces = new Map();
+    for (const id of ids) { const n = HD.store.get(id); if (!n || n.type !== 'TEXT') continue; const f = String(n.font || 'Inter').replace(/["\\]/g, ''), w = Math.round(+n.fontWeight || 400);
+      fams.add(f); faces.set(w + ' 16px "' + f + '"', String(n.chars || 'Aa').slice(0, 24)); }
+    const first = Array.from(fams).map(f => { try { return Promise.resolve(ui.loadFont(f)).catch(() => false); } catch (e) { return Promise.resolve(false); } });
+    await Promise.race([Promise.all(first), sleep(4000)]);
+    if (document.fonts && document.fonts.load) {
+      const rest = Array.from(faces).map(e => document.fonts.load(e[0], e[1]).catch(() => null));
+      await Promise.race([Promise.all(rest), sleep(3000)]);
+    }
+    try { if (HD.layout.fontsChanged) HD.layout.fontsChanged(); } catch (e) { /* the layout keeps its own measure */ }
   }
   async function settle(roots) {
     roots = roots.filter(id => HD.store.has(id));
@@ -176,7 +184,7 @@
   function secsText() { const s = Math.floor((performance.now() - st.t0) / 1000); return s + ' s'; }
   function chip(value, label) {
     return h('button', {class: 'hdai-chip' + (st.preset === value ? ' on' : ''), type: 'button', 'aria-pressed': st.preset === value ? 'true' : 'false', text: label,
-      on: {click: () => { st.preset = value; paint(); }}});
+      on: {click: () => { st.preset = value; paint(); const f = st.panel && st.panel.querySelector('.hdai-in'); if (f) f.focus({preventScroll: true}); }}});
   }
   function resultView() {
     const L = st.last, box = h('div', {class: 'hdai-result', role: 'status', 'aria-live': 'polite'});

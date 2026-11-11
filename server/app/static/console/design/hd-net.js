@@ -176,8 +176,8 @@
     var tk = shareToken ? '' : token();
     if (!tk && !shareToken) { want = false; store.readOnly = true; setStatus('auth', {code: 4401}); return; }
     if (!full && !(quiet && net.status === 'live')) setStatus('connecting');
-    var url = (W.location.protocol === 'https:' ? 'wss' : 'ws') + '://' + W.location.host + '/api/design/ws?' +
-      (shareToken ? 'share=' + encodeURIComponent(shareToken) : 'file=' + encodeURIComponent(fileId));
+    var url = (W.location.protocol === 'https:' ? 'wss' : 'ws') + '://' + W.location.host +
+      (shareToken ? '/api/design/ws?share=' + encodeURIComponent(shareToken) : '/api/design/ws?file=' + encodeURIComponent(fileId));
     var g = ++gen, sock;
     try { sock = new W.WebSocket(url, shareToken ? ['hoola'] : ['hoola', 'hoola-key.' + tk]); }
     catch (e) { lost(); return; }

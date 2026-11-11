@@ -848,7 +848,7 @@
     const s = ui.section(el, boolSel ? 'Boolean' : 'Shape'), row = h('div', {class: 'hdv-ops'});
     const btn = (text, title, run) => h('button', {class: 'hd-btn', type: 'button', text: text, title: title, on: {click: run}});
     if (boolSel || many) {
-      const opts = (boolSel ? [] : [['', 'Combine…']]).concat([['union', 'Union'], ['subtract', 'Subtract'], ['intersect', 'Intersect'], ['exclude', 'Exclude']]);
+      const opts = (boolSel ? [] : [['', 'Combine\u2026']]).concat([['union', 'Union'], ['subtract', 'Subtract'], ['intersect', 'Intersect'], ['exclude', 'Exclude']]);
       row.appendChild(ui.select(opts, () => { const n = S().get(ids[0]); return boolSel && n ? n.bool : ''; }, v => { if (v) bool(v); }, boolSel ? 'How the shapes are combined' : 'Combine the shapes'));
     }
     if (shape) row.appendChild(btn('Edit shape', 'Edit the points of this shape (Enter)', editShape));

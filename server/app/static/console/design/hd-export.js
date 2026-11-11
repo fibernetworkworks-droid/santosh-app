@@ -1257,7 +1257,7 @@
     const rootName = String(opts.name || title || root.getAttribute('id') || '').slice(0, 120);
     let spec = {type: 'FRAME', kids: kids, props: {clip: true, fills: []}, opacity: clamp(num(parseFloat(rootStyle.opacity), 1), 0, 1), name: rootName || 'SVG', x: 0, y: 0, w: vw, h: vh, rot: 0, fixed: true};
     /* the picture is one frame that fills it (a frame exported from a design tool): that frame is the result, not a frame inside a frame */
-    const only = kids.length === 1 ? kids[0] : null;
+    const only = kids.length === 1 ? kids[0] : kids.length > 1 ? frameFromGroup(kids) : null;                 /* ... or a background rectangle with everything on it */
     if (only && only.type === 'FRAME' && spec.opacity === 1 && Math.abs(only.x) < 0.011 && Math.abs(only.y) < 0.011 && Math.abs(only.w - vw) < 0.011 && Math.abs(only.h - vh) < 0.011) { spec = only; spec.name = rootName || only.name || 'SVG'; st.count--; }
     return {spec: spec, w: vw, h: vh, count: st.count + 1, capped: st.capped, left: st.left, uploads: st.uploads};
   }
