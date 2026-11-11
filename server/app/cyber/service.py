@@ -972,7 +972,7 @@ def sync_assets(tenant: str) -> dict:
             r = add_software(tenant, row["product"], row["vendor"], row["version"], "", row["where"], a["id"])
             if r["say"] != "Already in the list.":
                 added += 1
-    return {"added": added, "software": software(tenant), "say": f"{added} item(s) added from IT Helpdesk devices."}
+    return {"added": added, "software": software(tenant), "say": f"From IT Helpdesk devices: {added} item(s) added."}
 
 
 def refresh_advisories(tenant: str, days: int = 30, conv: str = "") -> dict:
@@ -1311,7 +1311,7 @@ def note_files(tenant: str, ref: str, conv: str = "") -> dict:
         _publish(tenant, "pc_file", {**f, "source": "cyber", "title": title}, conv)
     with session() as s:
         _tl(_inc(s, tenant, ref), "Incident note file (Word" + (" + PDF" if len(files) > 1 else "") + ")")
-    return {"files": files, "text": text, "say": f"Incident note for {v['number']} as Word" + (" and PDF" if len(files) > 1 else "") + "."}
+    return {"files": files, "text": text, "say": f"{v['number']}: incident note as Word" + (" and PDF" if len(files) > 1 else "") + "."}
 
 
 # ---------------------------------------------------------------- 5. containment: cards, only her tap
