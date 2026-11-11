@@ -552,6 +552,13 @@ async function main() {
       S.tx('m', () => S.set(card, {x: 30, y: 10})); R.flush(); o.moved = T.px(92, 42); o.movedOld = T.px(22, 180); o.moveStats = [R.stats.built, R.stats.blits > 0, R.stats.mode];
       /* opacity is applied when the bitmap is placed */
       S.tx('o', () => S.set(card, {opacity: 0.5})); R.flush(); o.half = T.px(92, 42); o.halfBuilt = R.stats.built;
+      /* a layer that mixes with what is under its frame keeps the frame out of the cache (the picture must not depend on it) */
+      let under, fr;
+      S.tx('b', () => { under = S.create('RECT', pg, {x: 20, y: 600, w: 300, h: 200, fills: [{type: 'solid', color: '#FFFF00'}]}); fr = S.create('FRAME', pg, {x: 40, y: 620, w: 260, h: 160, clip: false});
+        for (let i = 0; i < 20; i++) S.create('RECT', fr, {x: i * 12, y: 100, w: 10, h: 40, fills: [{type: 'solid', color: '#120E2A'}]});
+        S.create('RECT', fr, {x: 0, y: 0, w: 200, h: 80, fills: [{type: 'solid', color: '#00FFFF'}], blend: 'multiply'}); });
+      R.setView({x: 0, y: -560, zoom: 1}); R.flush(); o.mix1 = T.px(100, 100); await new Promise(r => setTimeout(r, 330)); R.invalidate(true); R.flush(); o.mix2 = T.px(100, 100);
+      R.setView({x: 20, y: 20, zoom: 1}); R.flush();
       /* the cache keeps to its cap: least recently used bitmaps go */
       o.mbBefore = R.stats.cacheMB; R.cacheCapMB = 1; R.setView({x: 20, y: -900, zoom: 1}); R.flush(); await new Promise(r => setTimeout(r, 300)); R.invalidate(true); R.flush(); R.invalidate(true); R.flush();
       o.mbAfter = R.stats.cacheMB; o.stillRight = T.px(62 + 260, 52 + 900 - 800 + 0) ; R.cacheCapMB = 256;
@@ -561,6 +568,7 @@ async function main() {
     isColor(stale.after, [0, 255, 0], 'a change made off screen is there when the frame comes back'); isColor(stale.afterCold, [0, 255, 0], 'and stays after the bitmap is made again');
     isColor(stale.moved, [0, 255, 0], 'a moved frame'); isColor(stale.movedOld, BG, 'left its old place'); assert.deepEqual(stale.moveStats, [0, true, 'part'], 'moving a frame reuses its bitmap');
     isColor(stale.half, [122, 250, 122], 'opacity on a cached frame'); assert.equal(stale.halfBuilt, 0);
+    isColor(stale.mix1, [0, 255, 0], 'multiply reaches through its frame to the layer below'); isColor(stale.mix2, [0, 255, 0], 'and still does when the frame has gone cold');
     assert.ok(stale.mbBefore > 1.2 && stale.mbAfter <= 1.01, 'the bitmap cache keeps to its cap: ' + stale.mbBefore + ' MB -> ' + stale.mbAfter + ' MB');
     ok('incremental == full');
 
@@ -732,7 +740,11 @@ async function main() {
       const zs = [], modes = {};
       for (let i = 0; i < 24; i++) { const v = R.view, z = v.zoom * 1.04, t = performance.now(); R.setView({zoom: z, x: 640 - (640 - v.x) * z / v.zoom, y: 400 - (400 - v.y) * z / v.zoom}); R.flush(); R.canvas.getContext('2d').getImageData(0, 0, 1, 1); zs.push(performance.now() - t); modes[R.stats.mode] = (modes[R.stats.mode] || 0) + 1; await new Promise(r => setTimeout(r, 8)); }
       out.zoom20000 = T.stat(zs); out.zoomModes = modes;
-      await new Promise(r => setTimeout(r, 400)); out.settled = R.stats.mode;
+      /* a moving mouse (overlay redraws) must not keep the real picture away */
+      const seen = [], off = R.on('frame', st => seen.push(st.mode));
+      for (let i = 0; i < 30; i++) { R.invalidate(); R.flush(); await new Promise(r => setTimeout(r, 10)); }
+      off(); out.tail = seen.slice(-10).filter(m => m === 'preview').length; out.settled = R.stats.mode;
+      const shown = T.snap(); R.invalidate(true); R.flush(); out.afterZoom = T.diff(shown, T.snap());
       out.cacheMB = R.stats.cacheMB;
       return out;
     });
@@ -742,6 +754,7 @@ async function main() {
     assert.ok(perf.n5000_cards.panZoomedOut.avg < 16 && perf.n5000_flat.panZoomedOut.avg < 16, '5,000 nodes all on screen: a pan frame must stay under 16 ms: ' + JSON.stringify([perf.n5000_cards.panZoomedOut, perf.n5000_flat.panZoomedOut]));
     assert.ok(perf.n20000_cards.panZoomedOut.avg < 33 && perf.n20000_flat.panZoomedOut.avg < 33, '20,000 nodes zoomed out: ' + JSON.stringify([perf.n20000_cards.panZoomedOut, perf.n20000_flat.panZoomedOut]));
     assert.ok(perf.n5000_cards.drag.avg < 16 && perf.n20000_flat.drag.avg < 33, 'dragging one node repaints a small part: ' + JSON.stringify([perf.n5000_cards.drag, perf.n20000_flat.drag]));
+    assert.ok(perf.tail === 0 && perf.afterZoom.big <= 12 && perf.afterZoom.small <= 600, 'the real picture comes ~90 ms after the zoom stops, even while overlays keep redrawing: ' + JSON.stringify([perf.tail, perf.afterZoom]));
     assert.ok((perf.zoomModes.preview || 0) >= 10 && perf.settled !== 'preview', 'zooming a heavy page shows a scaled preview, then the real picture: ' + JSON.stringify(perf.zoomModes) + ' ' + perf.settled);
     assert.ok(perf.cacheMB <= 256, 'the bitmap cache keeps to its cap');
     assert.deepEqual(P.errors, []);

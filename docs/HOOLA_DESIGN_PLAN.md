@@ -174,3 +174,36 @@ all user text is escaped with `HD.ui.esc`; remote text (names, comments, layer n
 
 No Figma branding or assets. No reading of `.fig` binaries taken from Figma's servers without her own token.
 No offline desktop app. FigJam / Slides / Sites equivalents are separate products (Web Studio is Hoola's "Sites").
+
+## 6. As built after the first wave (read this before extending) 
+
+The file headers of `hd-core.js`, `hd-net.js`, `hd-render.js`, `hd-layout.js`, `hd-tools.js`, `hd-ui.js` are the
+exact API; this is the short list of what differs from sections 2-3.
+
+- Store: `prop(id, name)` = value with the type default (defaults are never written into ops; always read with it).
+  `get(id)` is the LIVE node and `children(id)` a FROZEN array: never mutate, build new arrays / objects for `set`.
+  `gesture()` / `gestureEnd()` make a whole drag one undo step. `readOnly` is true for view-only files.
+  The store keeps a SHADOW (the server's document); screen = shadow + un-acked local ops.
+- Server: the WebSocket is accepted first and then closed with 4401 / 4404 (a browser needs that to read the code).
+  A view-only connection is `/api/design/ws?share=<token>` with NO sign-in; its ops are all rejected.
+  `init.users` lists the OTHER people; own identity is `init.you`. Comment frame =
+  `{"t":"comment","action":"add"|"update"|"delete","comment":{...}}`. Extra public route
+  `GET /api/design/shared/{token}/assets/{sha}`. REST lists come wrapped: `{files:[]}` `{versions:[]}` `{comments:[]}`.
+  Server-side entry points for other code: `design.room.HUB.apply_ops(...)` and `HUB.new_cid(...)` (ops applied through
+  the room reach every open editor), `design.store` = all DB access, `design.doc` = the document rules.
+- Render: `view.x / view.y` = SCREEN position of world (0,0). `invalidate()` redraws overlays only, `invalidate(true)`
+  forces a document repaint. Extras: `hitChain`, `toCanvas(id, scale, {bg, bounds})`, `toSVG(id, {bg, bounds})`,
+  `exportBounds`, `ready(id, ms)`, `loadFont`, `setEditing(id)`, `bounds(ids)`, `on('view'|'frame', fn)`, `stats`.
+- UI extension points (use these; do not edit the first-wave files): `HD.ui.hook(name, fn)` with names
+  `share(file)` · `export(ids[])` · `exportSection(el, ids[])` · `present(frameId|null)` (also fired by
+  `#/f/<id>/p/<node>`) · `comment({x,y,sx,sy,page,node})` · `importSvg(svgText, {x,y,page})` · `ai({page,x,y})` ·
+  `versions(file)`; `HD.ui.registerPanel(side, id, {title, render(el), when})`,
+  `HD.ui.registerMenu('context'|'main'|'view', item | fn(ids, e))`, `HD.ui.registerShortcut(combo, fn, label)`,
+  `HD.ui.command({id, label, group, keys, run, when, edit})`. `HD.ui.api(method, '/files/...')` is prefixed with
+  `/api/design`. `HD.tools.current` is the tool NAME; `HD.tools.act.*` holds the edit commands (group, align, paste...).
+- Feature files (second wave), loaded after `hd-ui.js` and before `hd-app.js`, each with its own stylesheet
+  `design-<name>.css`: `hd-vector.js` `hd-components.js` `hd-export.js` `hd-collab.js` `hd-proto.js` `hd-ai.js`.
+
+Measured (headless Chromium, software raster, 1280x800): pan 5 ms / frame with 5,000 layers, under 10 ms with 20,000;
+server about 20,000 op batches / s, ack p50 0.23 ms; a killed server lost nothing. 10,000 layers scroll in the layers
+panel with 39 DOM rows.

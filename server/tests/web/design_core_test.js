@@ -846,6 +846,7 @@ function canon(v) {
   return v;
 }
 
+const CHECK_EVERY = +process.env.HD_CHECK || 1;                    /* a long soak: HD_SEEDS=3000 HD_CHECK=40 */
 const EDIT = +process.env.HD_EDIT || 0.4;                          /* share of steps that are edits: lower = a faster network */
 const TRACE = process.env.HD_TRACE || '';                          /* HD_SEED=2 HD_TRACE=11:15 node design_core_test.js */
 function converge(seed, steps, drops) {
@@ -915,8 +916,9 @@ function converge(seed, steps, drops) {
     for (const u of c.unacked) c.up.push(u);
   }
   const WATCH = process.env.HD_WATCH || '', seen = new Map();        /* HD_WATCH=11:13 prints when a node appears / goes */
+  let tick = 0;
   const watch = () => {
-    for (const c of clients) {                                      /* THE invariant, after every single step */
+    if (++tick % CHECK_EVERY === 0) for (const c of clients) {       /* THE invariant, after every single step */
       const off = c.S.syncCheck();
       if (off.length) assert.fail('seed ' + seed + ': client ' + c.cid + ' screen is not server copy + waiting ops at ' + JSON.stringify(c.S.syncCheck(true).slice(0, 3)));
     }
@@ -1406,6 +1408,41 @@ test('perf: 50,000 nodes load < 1 s; 1,000 sets in one tx < 50 ms', () => {
   S.tx('paste', () => { for (let i = 0; i < 5000; i++) S.create('RECT', frames[1], {x: i}); });
   const createMs = Number(process.hrtime.bigint() - t0) / 1e6;
   assert.equal(S.children(frames[1]).length, 99 + 5000);
+
+  /* the same with the multiplayer book-keeping on: a second copy of the document (what the server has) */
+  const S2 = makeEnv().HD.store;
+  S2.tracking(true);
+  const doc2 = JSON.parse(json);
+  t0 = process.hrtime.bigint();
+  S2.load(doc2, 2);
+  const loadLiveMs = Number(process.hrtime.bigint() - t0) / 1e6;
+  const sent = [];
+  S2.onOps((o, b) => sent.push(b));
+  S2.on('change', () => {});
+  const fr2 = S2.children('0:1'), kids2 = S2.children(fr2[3]);
+  S2.tx('warm', () => { for (let i = 0; i < 99; i++) S2.set(kids2[i], {y: 7 + i}); });
+  t0 = process.hrtime.bigint();
+  S2.tx('1000 sets, waiting', () => { for (let i = 0; i < 1000; i++) S2.set(S2.children(fr2[i % 400])[i % 99], {x: 4000 + i}); });
+  const setLiveMs = Number(process.hrtime.bigint() - t0) / 1e6;
+  const remote = [];
+  for (let i = 0; i < 1000; i++) remote.push({id: S2.children(fr2[400 + (i % 90)])[i % 99], p: {x: i, name: 'r' + i}});
+  t0 = process.hrtime.bigint();
+  S2.applyRemote(remote);                                           /* 1,000 remote sets while 1,099 of ours wait */
+  const remoteMs = Number(process.hrtime.bigint() - t0) / 1e6;
+  S2.move([kids2[0]], fr2[4], null);                                /* a waiting tree change of ours ... */
+  t0 = process.hrtime.bigint();
+  S2.applyRemote([{id: '9:1', p: {type: 'RECT', parent: fr2[5], idx: 'zz', name: 'theirs'}}]);   /* ... meets one of theirs: full rebase */
+  const rebaseMs = Number(process.hrtime.bigint() - t0) / 1e6;
+  assert.ok(S2.has('9:1') && S2.parent(kids2[0]) === fr2[4]);
+  deq(S2.syncCheck(), []);
+  t0 = process.hrtime.bigint();
+  for (const b of sent) S2.acked(b);
+  const ackMs = Number(process.hrtime.bigint() - t0) / 1e6;
+  assert.equal(S2.pendingCount(), 0);
+  console.log('  perf (live file): load ' + loadLiveMs.toFixed(1) + ' ms | 1,000 sets in one tx ' + setLiveMs.toFixed(2) +
+    ' ms | 1,000 remote sets ' + remoteMs.toFixed(2) + ' ms | a full rebase of 50,000 nodes ' + rebaseMs.toFixed(1) +
+    ' ms | acks ' + ackMs.toFixed(2) + ' ms');
+  assert.ok(loadLiveMs < 1000 && setLiveMs < 50 && rebaseMs < 500);
 
   console.log('  perf: load ' + count + ' nodes ' + loadMs.toFixed(1) + ' ms | walk all ' + walkMs.toFixed(1) +
     ' ms | world bounds of all ' + boundsMs.toFixed(1) + ' ms | 1,000 sets in one tx ' + setMs.toFixed(2) +

@@ -33,7 +33,8 @@
   const NONVIS = {name: 1, locked: 1, cons: 1, reactions: 1, exports: 1, desc: 1, protoStart: 1, scroll: 1, fixed: 1, grids: 1,
     sizeH: 0, sizeV: 0, layoutPos: 1, minW: 1, maxW: 1, minH: 1, maxH: 1, layout: 1};
   const POSONLY = {x: 1, y: 1, rot: 1, flipH: 1, flipV: 1, parent: 1, idx: 1, visible: 1, opacity: 1, blend: 1, mask: 1};
-  const F_FX = 1, F_BG = 2, F_INST = 4, F_TEXT = 8, F_IMG = 16, F_MASKKID = 32, F_UP = F_BG | F_INST | F_IMG | F_TEXT;
+  const F_FX = 1, F_BG = 2, F_INST = 4, F_TEXT = 8, F_IMG = 16, F_MASKKID = 32, F_BLENDKID = 64, F_UP = F_BG | F_INST | F_IMG | F_TEXT | F_BLENDKID;
+  function blends(n) { const b = n.blend; return b !== undefined && b !== 'normal' && b !== 'pass' && BLEND[b] !== undefined && BLEND[b] !== 'source-over'; }
   const HAS_FILTER = (function () { try { const c = document.createElement('canvas').getContext('2d'); return typeof c.filter === 'string'; } catch (e) { return false; } })();
   const HAS_RR = typeof CanvasRenderingContext2D !== 'undefined' && typeof CanvasRenderingContext2D.prototype.roundRect === 'function';
   const HAS_CONIC = typeof CanvasRenderingContext2D !== 'undefined' && typeof CanvasRenderingContext2D.prototype.createConicGradient === 'function';
@@ -49,7 +50,7 @@
   let raf = 0, anim = null, sceneFull = true, overlayDirty = true, wantExact = false, settleTimer = 0;
   let last = {s: 0, tx: 0, ty: 0, page: null, w: 0, h: 0, valid: false};
   let serial = 1, clock = 1, compEpoch = 1, resEpoch = 1, imgEpoch = 1, instSeen = false, lastZoomAt = 0, lastChangeAt = 0;
-  let editingId = null, pruneDue = false, lastFullMs = 0, lastRealAt = 0, forceReal = false, zoomTimer = 0;
+  let editingId = null, pruneDue = false, lastFullMs = 0, lastRealAt = 0, forceReal = false, zoomTimer = 0, pvScale = 0;
   const pending = new Set();               /* node ids changed since the last paint */
   let damage = [];                         /* world rects [x0,y0,x1,y1] that were painted on and are now stale */
   const stats = {ms: 0, nodes: 0, culled: 0, flat: 0, blits: 0, built: 0, layers: 0, mode: '', frames: 0, cacheMB: 0, cacheN: 0, regions: 0};
@@ -569,6 +570,7 @@
         const cr = derive(ks[i], cn);
         cnt += cr.n; cost += cr.cost; flags |= cr.flags & F_UP;
         if (cn.mask === true) flags |= F_MASKKID;
+        if (blends(cn)) flags |= F_BLENDKID;        /* it mixes with what lies under this frame: the frame can not live in a bitmap */
         if (!clip && cn.visible !== false) {
           if (!cn.rot && cn.flipH !== true && cn.flipV !== true) {
             const cx = num(cn.x, 0), cy = num(cn.y, 0);
@@ -638,6 +640,7 @@
     const f = L.paints(n, 'fills');
     for (let i = 0; i < f.length; i++) if (f[i] && f[i].type === 'image') v.flags |= F_IMG;
     if (n.type === 'TEXT') v.flags |= F_TEXT;
+    if (blends(n)) v.flags |= F_BLENDKID;
     const fx = fxList(n);
     if (fx) for (let i = 0; i < fx.length; i++) if (fx[i].type === 'bgblur') v.flags |= F_BG;
     return v;
@@ -895,7 +898,7 @@
       }
     }
     stats.nodes++;
-    if (rec !== null && T.cache && rec.cost >= COST_MIN && (rec.flags & F_BG) === 0) {
+    if (rec !== null && T.cache && rec.cost >= COST_MIN && (rec.flags & (F_BG | F_BLENDKID)) === 0) {
       if (tryCache(T, n, id, rec, type, w, h, op, blendOp, ma, mb, mc, md, me, mf, dx0, dy0, dx1, dy1)) return;
     }
     paintBody(T, n, id, v, rec, type, w, h, op, blendOp, ma, mb, mc, md, me, mf, dx0, dy0, dx1, dy1);
@@ -1413,9 +1416,11 @@
         page === last.page && lastFullMs > 8 && api.zoomPreview !== false) {
       const k = bs / last.s;
       if (k > 0.45 && k < 2.2 && !(t0 - lastZoomAt < 120 && t0 - lastRealAt > 320)) {
-        lastZoomAt = t0;
-        clearTimeout(zoomTimer);
-        zoomTimer = setTimeout(() => { zoomTimer = 0; forceReal = true; schedule(); }, 90);
+        if (bs !== pvScale) {                        /* only a frame that really zoomed pushes the real paint further away */
+          pvScale = bs; lastZoomAt = t0;
+          clearTimeout(zoomTimer);
+          zoomTimer = setTimeout(() => { zoomTimer = 0; forceReal = true; schedule(); }, 90);
+        }
         present(pn, page, bs, tx, ty, {k, ox: tx - last.tx * k, oy: ty - last.ty * k});
         stats.ms = now() - t0; stats.mode = 'preview'; stats.frames++;
         emit('view', view);
@@ -1423,7 +1428,7 @@
         return;
       }
     }
-    forceReal = false;
+    forceReal = false; pvScale = 0;
     if (sceneFull || viewChanged || page !== last.page || pending.size > 0 || damage.length > 0) {
       let full = sceneFull || !last.valid || page !== last.page || bs !== last.s || debug.noDirty;
       const zooming = last.valid && bs !== last.s;
