@@ -2504,3 +2504,40 @@ token is not for) - exactly what part 2 fixes.
 
 NOT VERIFIED: API Setu has not answered a live call from her server; nothing uses the lookup yet beyond the check (next: supplier
 GSTIN status in the BAHI register, and a free official answer ahead of the paid gstin_verify).
+
+## v0.828.0 HOOLA CODE MEMORY (built as 0.826; other sessions took 0.826-0.827 meanwhile - REBASE PROTOCOL, all kept)
+Owner (11 Nov 2026): "https://github.com/thedotmack/claude-mem.git --- check this repo and devlope same for hoola code".
+claude-mem (Apache-2.0) read at 6b779c0: hooks hand every tool call to a local worker, an observer agent turns them into
+typed observations + a session summary (SQLite + FTS5, Chroma), the next session starts with a compact layered index
+fitted to a measured budget (ContextBudget: drop the costliest-loss-last items whole), and the agent reads more with three
+MCP steps (search -> timeline -> get_observations). Ideas only - no upstream code (TypeScript; Hoola is Python).
+FOUND FIRST: Hoola's CHAT already has claude-mem since v0.485 (HOOLA CODER, `server/app/coder/`: capture -> spool ->
+observer -> vault -> three-layer search -> primer), but it is tenant / chat scoped and the Hoola Code engine never used it.
+So this release is the coding engine's OWN memory, PER REPO (two repos' "fixed the login bug" must not merge):
+- `server/app/devsahayak/memory.py`: SQLite + FTS5 (LIKE fallback) at data/devsahayak/memory.db, rows scoped (tenant,
+  repo); the same title in the same repo = the same memory re-confirmed (hits + 1, newest wording).
+- CAPTURE (`capture`, from `engine.run` right after a round): the engine already has the whole round, so there is no live
+  per-tool observer - ONE call on `dev_memory_model` (Haiku, no thinking, effort low) reads her request, the steps, what
+  the coder said, its explain / test plan / risk, the files changed and the reality verdict, and answers JSON: up to 6
+  observations (claude-mem's types minus 'sensitive', which is never stored; its 7 concepts) + a summary (request /
+  investigated / learned / completed / next steps). `dev_memory_mode=chill` = only what is painful to rediscover (3 max).
+- PRIVACY: `coder.redact` (strip_private + redact_secrets) on the record BEFORE the model and on every field AFTER it; an
+  all-<private> ask = no call, nothing kept.
+- THE NEXT SESSION (`primer`, in `_first_message` of a NEW session only): `<repo_memory>` = the last session's summary,
+  earlier sessions in one line each, an index `#id [type] title - files xN`, and 3 decisions / alerts / fixes in full;
+  fitted to `dev_memory_primer_chars` (6000) by measuring and dropping full narratives, then the last-session block, then
+  older summaries, then the oldest index lines - whole items only, header + footer always kept.
+- THE TOOL (`memory`): search (index with ids) -> timeline (around one) -> get (full details, chosen ids) + save (a note
+  on purpose, typed). Page steps `memory` (remembered / searched / read / saved).
+- HER PAGE: Settings > a repo > "What Hoola remembers" - sessions + notes, Delete each, "Forget everything about this
+  repo"; routes GET /api/devsahayak/memory?repo=&q=, GET /memory/{id}, DELETE /memory/{id}?kind=obs|summary,
+  DELETE /memory?repo=.
+- Switches: `dev_memory` (pinned off in conftest so scripted rounds keep their turns), `dev_memory_model`,
+  `dev_memory_mode`, `dev_memory_primer_chars`.
+Tests `server/tests/test_v0828_code_memory.py` (7): store / dedupe / search / timeline / get / walls between repos and
+tenants / forget; private text and keys never kept; the primer fitted to its budget; the tool's three steps + save; the
+observer call (Haiku, no tools, key not sent) stores observations + summary, an all-private ask makes no call, bad JSON
+keeps nothing; END TO END session 2 starts with session 1's memory in its first message and finds it with the tool.
+NOT VERIFIED: no real model has been the observer (scripted only); its cost (one Haiku call per round) not measured;
+NOT built from claude-mem: Chroma vector search (FTS5 only), the live web viewer / My Work, TeamBrain, cloud sync,
+`/learn-codebase` front-loading, and a bridge into the chat's v0.485 vault.

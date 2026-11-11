@@ -16,7 +16,7 @@ ASSETS = Path(__file__).resolve().parents[1] / "app" / "site" / "assets"
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.827.0"
+    assert APP_VERSION == "0.828.0"
 
 
 def test_the_vendored_libraries_are_what_they_say():

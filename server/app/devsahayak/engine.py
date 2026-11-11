@@ -521,13 +521,20 @@ def reality_check(tools: Any, ses: Any, t: Any, follow_up: str, finish: dict[str
 
 
 def tools_for_round() -> list[dict[str, Any]]:
+    extra: list[dict[str, Any]] = []
     try:
         from . import subagent as SA
         if SA.on():
-            return TOOLS + [SA.AGENT_TOOL]
+            extra.append(SA.AGENT_TOOL)
     except Exception:
         pass
-    return TOOLS
+    try:
+        from . import memory as M
+        if M.on():
+            extra.append(M.TOOL)                          # the repo's memory (claude-mem's three steps)
+    except Exception:
+        pass
+    return TOOLS + extra
 
 
 def scrub(text: str) -> str:
@@ -993,7 +1000,19 @@ def _first_message(t: Any, rules: str, issue_txt: str, plan_txt: str, attach_txt
             + (f"\nHer declared test command for this repo: `{lab_cmd}`.\n" if lab_cmd else "")
             + (f"\nHidden (they hold secrets): {', '.join(hidden[:20])}\n" if hidden else "")
             + "\nTop level: " + ", ".join(top) + "\n" + rules_txt
+            + _memory_primer(t)
             + "\nStart by exploring. Call done when this round is finished.")
+
+
+def _memory_primer(t: Any) -> str:
+    """The repo's memory from earlier sessions, as an index (devsahayak/memory.py); '' when there is none."""
+    try:
+        from . import memory as M
+        txt = M.primer(str(getattr(t, "tenant_id", "") or ""), str(getattr(t, "repo", "") or ""))
+        return ("\n" + txt + "\n") if txt else ""
+    except Exception as e:                                # memory never stops a session
+        log.warning("memory primer left out: %s", e)
+        return ""
 
 
 def run(g: Any, t: Any, token: str, rules: str, allow_workflows: bool = False, issue_txt: str = "",
@@ -1050,12 +1069,28 @@ def run(g: Any, t: Any, token: str, rules: str, allow_workflows: bool = False, i
     if beat:
         threading.Thread(target=_heart, name=f"dev-beat-{t.id}", daemon=True).start()
     try:
-        return _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped, plan_txt, attach, sha,
-                      follow_up, system_extra, ses, resume=resume, hers=hers, env=env, net=net, refs=refs)
+        res = _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped, plan_txt, attach, sha,
+                     follow_up, system_extra, ses, resume=resume, hers=hers, env=env, net=net, refs=refs)
+        _remember(t, follow_up, res, ses, emit)          # the memory observer for this round
+        return res
     finally:
         alive.set()
         LIVE.discard(t.id)
         sem.release()
+
+
+def _remember(t: Any, follow_up: str, res: Any, ses: Any, emit: Any) -> None:
+    """The memory observer for the round that just ended (one cheap model call) - never fails the round."""
+    try:
+        from . import memory as M
+        if not M.on():
+            return
+        _, _, ctx, out = res
+        got = M.capture(t, follow_up, ctx, out, ses.messages())
+        if got.get("observations") or got.get("summary"):
+            emit({"k": "memory", "action": "remembered", "n": got.get("observations", 0)})
+    except Exception as e:
+        log.warning("memory capture skipped: %s", e)
 
 
 def _said(msgs: list[dict], text: str) -> bool:
@@ -1201,6 +1236,14 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
                         continue
                 finish = dict(inp)
                 results.append({"type": "tool_result", "tool_use_id": b["id"], "content": "Finished."})
+                continue
+            if b["name"] == "memory":                      # the repo's memory: search / timeline / get / save
+                from . import memory as M
+                out, ev = M.tool(str(getattr(t, "tenant_id", "") or ""), str(getattr(t, "repo", "") or ""), str(t.id), inp)
+                if ev:
+                    emit(ev)
+                tools.trail.append(f"memory {inp.get('action', '')}")
+                results.append({"type": "tool_result", "tool_use_id": b["id"], "content": out[:30000]})
                 continue
             if b["name"] == "agent":
                 out = agent_out.get(b["id"], "Agents are switched off on this server - do the work yourself.")
