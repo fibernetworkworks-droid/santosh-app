@@ -63,7 +63,7 @@ KINDS: dict[str, dict[str, Any]] = {
               "cost_inr": round(0.08 * USD_INR), "source": "lyria"},
     "voice": {"label": "Voice line", "media": "audio", "len": (0.2, 30.0), "budget_kb": 1500, "cost_inr": 1, "source": "tts"},
     "model": {"label": "3D model", "media": "model", "budget_kb": 8000, "cost_inr": 0, "source": "blender"},
-    # v0.810 a tileable surface picture for 3D (ground, wall): only from the free library or her own upload, never generated
+    # v0.811 a tileable surface picture for 3D (ground, wall): only from the free library or her own upload, never generated
     "texture": {"label": "Texture", "media": "image", "alpha": False, "size": (512, 512), "max_side": 1024, "budget_kb": 900,
                 "cost_inr": 0, "source": "library"},
 }
@@ -884,7 +884,7 @@ def for_game(tenant: str, game_id: str) -> tuple[str, dict[str, Path]] | None:
         m = h.get("meta") or {}
         entries[a.key] = {"kind": a.kind, "path": f"res://{rel}", "v": a.approved,
                           **{k: m[k] for k in ("w", "h", "seconds") if k in m}}
-        src_name = str(h.get("source") or "")              # v0.810 a free-library asset is made by people, not by AI
+        src_name = str(h.get("source") or "")              # v0.811 a free-library asset is made by people, not by AI
         ai_made = ai_made or (src_name not in ("her upload", "synth") and not src_name.startswith("library:"))
     if not entries:
         return None

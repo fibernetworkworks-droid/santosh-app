@@ -680,7 +680,7 @@ async def game_assets(ctx: Ctx, action="", id="", kind="", key="", words="", siz
         if action == "list":
             await run(A.collect_models, t, id)
             return _asset_short(await run(A.assets, t, id))
-        if action == "library":                            # v0.810 the free CC0 library: search only
+        if action == "library":                            # v0.811 the free CC0 library: search only
             from ..gamedesk import library as L
             try:
                 got = await run(L.search, words, kind if kind in ("model", "texture") else "model", source, 12)

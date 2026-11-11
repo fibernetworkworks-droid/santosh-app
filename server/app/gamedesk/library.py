@@ -1,4 +1,4 @@
-"""v0.810 GAME TOOL HUB wave 1 (docs/GAME_TOOL_HUB_PLAN.md section 4): FREE 3D models and textures for her games from
+"""v0.811 GAME TOOL HUB wave 1 (docs/GAME_TOOL_HUB_PLAN.md section 4): FREE 3D models and textures for her games from
 three libraries whose own licence allows it, each through its official route only.
 
 - kenney    : 53 low-poly models (platformer, city, shooter, racing pieces) shipped ON Hoola's disk. They come from

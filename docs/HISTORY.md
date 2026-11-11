@@ -1820,3 +1820,39 @@ stopping-power labs, XRD, nano XRD, band gap, piezo, Gouy, plus existing Quincke
 ug_comp_w8 (19 computational labs on comp4-workstation, every one checked against an exact or independent answer), plus
 pg:millikan-oil-drop. Coverage 456 -> 525 of 807 (school 78.4 / 91.5 %, B.Sc 86.8 %, M.Sc 38.1 %, PhD 28.6 %).
 Not built and constants from memory: docs/PRAYOG_PHYSICS_LAKH_PLAN.md, "Wave 8".
+
+
+## v0.811.0 GAME FREE LIBRARY - Tool Hub wave 1 (owner: "GO TOOL HUB WAVE 1" - the second of three, "ALL ONE BY ONE")
+
+3D games needed real models and surfaces; until now Hoola could only place a model she uploaded herself. Now three
+free libraries are connected, each through its official route (docs/GAME_TOOL_HUB_PLAN.md rows 47-49).
+
+- **Kenney** - 53 low-poly models (platformer pieces, city blocks and roads, shooter props, racing track + trucks),
+  2.7 MB, kept on Hoola's disk in `server/app/gamedesk/library/kenney/` with `index.json` and `LICENSE-KENNEY.md`.
+  They come from Kenney's own GitHub starter kits (KenneyNL/Starter-Kit-3D-Platformer, -City-Builder, -FPS, -Racing),
+  whose READMEs state the models are CC0. kenney.nl has no API and its download sits behind a donate dialog, so
+  nothing there is automated. Each GLB pointed at a shared `Textures/colormap.png`; Hoola embedded it so every file
+  stands alone. All 53 were loaded in real Godot.
+- **Poly Haven** - public API (api.polyhaven.com, no key, unique User-Agent as its terms ask): models (the 1k glTF +
+  .bin + textures packed into one GLB; over 12 MB is refused as too big for a web game) and textures (1k colour map).
+- **ambientCG** - public API v2: materials; the colour map is taken out of the 1K-JPG zip.
+- `gamedesk/glbpack.py`: `embed` / `pack` put every outside buffer and picture inside the GLB; a uri the caller did
+  not hand in is an error, never a fetch. `facts` reads meshes / triangles / animations from the file itself.
+- `gamedesk/library.py`: `search(q, kind, source)` (a library that is down is named and the others still answer),
+  `get`, `add(tenant, project, source, id, kind, key)`. One network door `_fetch`: https only, a fixed host allowlist
+  checked on every redirect hop, a byte ceiling per download.
+- An added item is a DRAFT asset exactly like her own upload (`source library:<name>`, licence + credit + origin in
+  its history) and enters a game only after her OK. It is never called AI: the game's AI credit line is not triggered,
+  and the provenance page lists it as a library asset with its licence (class `library`). Fixed on the way: her own
+  uploads were classified `unknown` there (the stored source is "her upload", the table said "upload").
+- New asset kind `texture` (512 x 512, palette check off by default, free, only from the library or her upload - a
+  request to generate one is refused). `Hoola3D.paint(node, key, tile_m, fallback)` puts it on a block or the ground
+  (triplanar, so it tiles in metres); `Hoola3D.model(...)` already places an approved model.
+- Where she uses it: Assets page > Free library (search, 3D models / Textures, Add); routes GET / POST
+  `/api/gamestudio/{id}/library`; Hoola's tool `game_assets` action `library` / `library_add`, told to look in the
+  library before making or generating a model.
+
+Tests: `test_v0811_game_library.py` 13 (packer, Kenney files, search with one library down, host allowlist, draft ->
+OK -> in the game and not AI, Poly Haven pack + size refusal, textures, routes, tool, real Godot loading a library
+model + texture through the kit, and the real libraries when HOOLA_LIVE_LIBRARY=1 - run green here). NOT built: Meshy
+(her key and her decision on vendor accounts first), HDRI skies, picture previews in the panel, Kenney 2D / audio packs.

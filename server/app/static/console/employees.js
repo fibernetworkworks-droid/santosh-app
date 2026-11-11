@@ -1491,7 +1491,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
     return `<a class="btn soft gs-mini" href="${u}" download="${esc(a.key)}.glb">Download GLB</a>`;
   }
 
-  /* v0.810 the free library's last search, kept across this page's own redraws */
+  /* v0.811 the free library's last search, kept across this page's own redraws */
   let GA_LIB = null;
   function gaLibHtml() {
     const L = GA_LIB; if (!L) return '';

@@ -1,4 +1,4 @@
-"""v0.810 GAME TOOL HUB wave 1: free 3D models and textures from three CC0 libraries - Kenney (on Hoola's disk),
+"""v0.811 GAME TOOL HUB wave 1: free 3D models and textures from three CC0 libraries - Kenney (on Hoola's disk),
 Poly Haven and ambientCG (their public APIs) - added as DRAFT assets that enter a game only after her OK.
 
 The network is faked here (`library._fetch`), except one test that reaches the real libraries only when

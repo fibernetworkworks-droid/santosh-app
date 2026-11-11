@@ -1,4 +1,4 @@
-"""v0.810 GAME TOOL HUB wave 1: one self-contained .glb from a glTF that points at outside files.
+"""v0.811 GAME TOOL HUB wave 1: one self-contained .glb from a glTF that points at outside files.
 
 A game ships ONE file per model (`res://assets/<key>.glb`). Library models rarely arrive that way: Kenney's GLBs point
 at a shared `Textures/colormap.png`, Poly Haven serves a .gltf + .bin + texture files. `embed` / `pack` put every

@@ -53,7 +53,7 @@ GENERATIVE = {"photogen": "a generative image model", "lyria": "a generative mus
 PROCEDURAL = {"synth": "built by code from a preset and a seed (no model: arithmetic)",
               "blender": "built by a Blender script (no model: geometry from code)"}
 HER_OWN = {"upload": "her own file, uploaded by her", "her upload": "her own file, uploaded by her"}
-# v0.810 the free library: made by people, published CC0, never AI. Named with its library and licence.
+# v0.811 the free library: made by people, published CC0, never AI. Named with its library and licence.
 LIBRARY = {"library:kenney": "from the free library: Kenney, CC0 (made by a person, not by AI)",
            "library:polyhaven": "from the free library: Poly Haven, CC0 (made by people, not by AI)",
            "library:ambientcg": "from the free library: ambientCG, CC0 (made by a person, not by AI)"}
