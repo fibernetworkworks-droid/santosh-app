@@ -112,7 +112,8 @@ def test_console_stamps_0_4_8_5():
     # APP_VERSION. Two sessions' conventions disagreed; CLAUDE.md's version ritual lists the console
     # stamps as part of the bump, so the typed number goes and the COUNT - the real guard - stays.
     # v0.768: 28 -> 27. code.js left the console page - Hoola Code is its own page (/console/code, hoolacode.html).
-    assert s.count(f'v={APP_VERSION}') == 27, f"expected 27 stamps at {APP_VERSION}, got {s.count(f'v={APP_VERSION}')}"
+    # v0.781: 27 -> 28. connectors.js joined the console page (the Connectors page).
+    assert s.count(f'v={APP_VERSION}') == 28, f"expected 28 stamps at {APP_VERSION}, got {s.count(f'v={APP_VERSION}')}"
     assert 'v=0.482.0' not in s and 'v=0.473.0' not in s
     assert f'console/skills.js?v={APP_VERSION}' in s and 'id="v-skills"' in s
 
@@ -130,4 +131,4 @@ def test_pubspec_pin():
     pub = (ROOT.parents[0] / 'pubspec.yaml').read_text(encoding='utf-8') if (ROOT.parents[0] / 'pubspec.yaml').exists() else None
     if pub is None:  # tests dir is server/tests; pubspec is at repo root
         pub = (ROOT / 'pubspec.yaml').read_text(encoding='utf-8')
-    assert 'version: 0.780.0+779' in pub
+    assert 'version: 0.781.0+780' in pub

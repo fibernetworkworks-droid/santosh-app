@@ -140,6 +140,8 @@ def headers_of(c: dict[str, Any], readonly: bool | None = None, toolsets: list[s
 def public(c: dict[str, Any], status: str = "") -> dict[str, Any]:
     out = {"id": c["id"], "name": c["name"], "category": c["category"], "does": c.get("does", ""), "auth": c["auth"],
            "one_tap": c["auth"] in ONE_TAP, "how_to_connect": how(c), "docs": c.get("source", "")}
+    from .oneline import oneline
+    out["line"] = oneline(c.get("does", ""), c["name"], category=c["category"])
     if c.get("url_hint"):
         out["url_hint"] = c["url_hint"]
     if c.get("india"):

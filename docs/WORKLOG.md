@@ -2856,3 +2856,8 @@ Task ID: v0.779.0 HOOLA CODE PHASE 3 (built as 0.777; re-versioned twice on merg
 Ask: GO PHASE 3 (the composer).
 Built: one box + one row (branch, mode, model + effort, usage ring), kind from her words, slash commands, pictures + text files on the first message, per-session cost, link pre-fill; 8 tests incl. 2 browser walks.
 Deploy: vps-ops deploy (server-only; no new pip; five nullable columns self-heal; pictures under data/devsahayak/).
+
+Task ID: v0.781.0 CONNECTORS PAGE (built as 0.776; rebased twice, on their v0.780.0)
+Ask: check connectors on the web console (phone-only) -> "GO BUILD FULL CONNECTORS PAGE ... A SHORT 1 LINER BELOW EVERY CONNECTOR -- AS WE USE COMPOSIO".
+Built: static/console/connectors.js (6 tabs), bazar/oneline.py (line on every list), bazar/donepage.py (sign-in done page for web + phone); 12 tests incl. a browser walk.
+Deploy: vps-ops deploy (server-only; no new pip, no new tables). Note: ~/santosh_app is the deploy copy (reset --hard on deploy) - work in a worktree.

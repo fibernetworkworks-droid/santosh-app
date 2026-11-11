@@ -802,3 +802,38 @@ logo, nav with accent icons on the active row, a Shortcuts card, Settings / Back
 are chips, the toast is a dark pill at the top, selects have a chevron, focus rings are violet. Dark mode redrawn. The page no
 longer loads v2.css. Bug found by looking at the screenshots: `.wf p{margin:0}` outranked every class margin - now `:where()`.
 Checked by eye: home, transcript, dictionary, snippets, style, files, settings, recording, phone, dark.
+
+## v0.781.0 CONNECTORS PAGE (built as 0.776; their HOOLA CODE PHASE 2 took 0.776.0, CHAT JAISA 0.777.0, HOOLA FLOW 0.778.0, HOOLA CODE PHASE 3 0.779.0 and HOOLA FLOW REDRAWN 0.780.0 - REBASE PROTOCOL twice, all kept)
+Owner: "LETS WORK ON CONNECTOR IN WEB CONSOLE --- CURRENTLY IT IS ONLY AT APP SIDE --- CHECK THIS FIRST" -> "GO BUILD FULL CONNECTORS
+PAGE -- MAKE IT MORE PREMIUM, PROFESSIONAL AND ADVANCE AND A SHORT 1 LINER BELOW EVERY CONNECTOR -- AS WE USE COMPOISO FOR THIS".
+- The check: the phone had the whole Connect tab (bazar_screen / mcp_screen / publicapis_screen); the console had only approval cards, the Google
+  connect button, Systems and app-backend connectors. Every server route already existed; the gap was the page - plus ONE server defect: both
+  sign-in callbacks (`/bazar/link/callback`, `/bazar/composio/callback`) always jumped to `santosh://bazar?linked=1`, a dead page on a computer.
+- NEW `static/console/connectors.js` (HoolaConnectors, sidebar row "Connectors" after Tools, account menu + command palette, view #v-connectors):
+  hero with Connected / Apps available / app actions this month (Composio cap meter); tabs Apps | Connected | MCP servers | Built in | Public APIs |
+  Limits & safety (last tab remembered). Apps = Composio's catalogue: debounced search (results-only redraw, typing never lost), categories with
+  counts, All / Connected / Ready to connect, 48 a page + Show more, cards (logo or initial tile, name, category, status pill, ONE-LINE description,
+  actions count, Connect / Add key / Manage), a drawer (full text, safety facts, "via Composio", Remove, try lines that go into the composer and are
+  never sent by themselves). Connect = a sign-in window opened inside the click (no popup blocker), the address set after the server answers; key
+  apps = a modal built from Composio's own fields. MCP servers = her own servers (tools on / off / ask first with locked tools respected, change
+  key, remove, sign in), "Add a server" by https address, the 68 official servers by category (sign-in, API key incl. GitHub read-only / Supabase
+  project + read-only, personal address with Zoho's steps), the worldwide directory (one-tap with keys / caution flow; says plainly when the
+  server has it off). Built in = linked accounts (link / unlink) + the plugin catalogue grouped and searchable ("Ask Hoola" prefills; phone-only
+  UPI / cab apps say "On your phone"). Public APIs = search / category / key filter, add / remove a key (sealed). Limits & safety = spending
+  limits + delivery details (PUT /api/bazar/settings) and the house safety rules. A list that fails to load shows its error + Try again, never
+  an empty list. Styles = the `.cx-` block at the end of v2.css (tokens, light + dark, CRISP TEXT: no spinner rings, no blur; reduced motion off).
+- NEW `bazar/oneline.py`: the short line under every connector, made on the server - first sentence, "<App> is a ..." dropped, word-boundary cut
+  under 90 characters with an ellipsis, links / markdown removed, honest fallback. `line` added to Composio apps, featured servers, her MCP
+  servers, linked accounts, the plugin catalogue and directory results (the full `does` stays).
+- NEW `bazar/donepage.py`: one sign-in done page (English, escaped, light / dark). The console writes `hoola.connect.pending` before opening the
+  sign-in; the done page (same origin) sees it, tells the console through BroadcastChannel('hoola-connect') + a localStorage `hoola.connect.done`
+  write, and closes itself; with no marker (the phone's browser) it keeps the old santosh:// deep link. The MCP redirect_uri and the Composio
+  callback URL are unchanged.
+- Found while building: this checkout folder is the VPS deploy copy - every deploy runs `git reset --hard origin/main` there, which wiped
+  uncommitted edits mid-session; the work moved to a separate git worktree. Work in a worktree, never in ~/santosh_app.
+Tests: test_v0781_connectors_page.py (12: one-liner rules, `line` on Composio / featured / catalogue / connections, done page web + phone +
+escaping, both callbacks English, a key never echoed, console wiring, the page calls ONLY routes the server has (FastAPI 0.14x lazy routers
+walked), no inline handlers, a Playwright walk at 1280 + 390 px: cards with their line, initial tiles, no sideways scroll, key modal, sign-in
+window -> done page -> the console toast, drawer try line into the composer, every tab) + test_bazar / v0276 composio / custom_mcp / bazar_p1 /
+v0303 / v116 handoff / v0475 green (111). Console stamps 27 -> 28. NOT VERIFIED live: a real Composio or MCP sign-in started from the console
+(the done-page hand-off assumes PUBLIC_BASE_URL is the same host as the console - true on hoola.ainewtika.com).
