@@ -162,4 +162,4 @@ def test_sheet_tool_schema_offers_drive_source():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.823.0"
+    assert APP_VERSION == "0.824.0"

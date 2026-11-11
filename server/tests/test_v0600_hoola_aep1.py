@@ -125,12 +125,12 @@ def test_audit_cli_lanes(capsys):
 # ---------------------------------------------------------------------------
 def test_registry_count_holds_the_merged_arithmetic():
     from app.agent.tools import TOOLS
-    assert len(TOOLS) == 626, "625 + 1 hoola_design (v0.817.0 HOOLA DESIGN: the design editor's one tool). 624 + 1 ai_app (v0.785 HOOLA AI APPS). 623 + 1 video_kit (v0.772 VIDEO KIT: exact ffmpeg video edits). 617 + 1 shilp (v0.730 SHILP MANCH: the ArtCraft generation lane, their Omni API api.storyteller.ai, BYOK - owner 'MAKE A PLAN FOR HOOLA AI THUS HOOLA USER CAN USE THIS' -> the plan's W0). 616 + 1 seekh_video (v0.713 SEEKH MANCH: the learn-from-video bridge tool, owner 'GO' on the SEEKH MANCH plan). 608 + 1 kala (v0.681 KALA MANCH: the T5 knowledge-skill catalog family, owner 'GO' on the google/skills deploy plan). " "607 + 1 duniya (v0.667 DUNIYA MANCH: the T4 keyless-public-web family, owner 'T4'). " "606 + 1 jharokha (v0.665 JHAROKHA MANCH: the T3 local-browser family). " + (
+    assert len(TOOLS) == 627, "626 + 1 app_engine (v0.824 APP ENGINE 1: the Web Studio React app lane - one new tool). 625 + 1 hoola_design (v0.817.0 HOOLA DESIGN: the design editor's one tool). 624 + 1 ai_app (v0.785 HOOLA AI APPS). 623 + 1 video_kit (v0.772 VIDEO KIT: exact ffmpeg video edits). 617 + 1 shilp (v0.730 SHILP MANCH: the ArtCraft generation lane, their Omni API api.storyteller.ai, BYOK - owner 'MAKE A PLAN FOR HOOLA AI THUS HOOLA USER CAN USE THIS' -> the plan's W0). 616 + 1 seekh_video (v0.713 SEEKH MANCH: the learn-from-video bridge tool, owner 'GO' on the SEEKH MANCH plan). 608 + 1 kala (v0.681 KALA MANCH: the T5 knowledge-skill catalog family, owner 'GO' on the google/skills deploy plan). " "607 + 1 duniya (v0.667 DUNIYA MANCH: the T4 keyless-public-web family, owner 'T4'). " "606 + 1 jharokha (v0.665 JHAROKHA MANCH: the T3 local-browser family). " + (
         "584 = 581 + 1 paisa_sahayak (their v0.588 PAISA SAHAYAK) + 2 sandarbh "
         "(their v0.590 SANDARBH MANCH: workspace + kgmemory); the merged "
         "arithmetic the w35 pin carries after their PIN REPAIR")
     src = (A.REPO_ROOT / "server" / "tests" / "test_v0565_construction_w35.py").read_text()
-    assert "len(TOOLS) == 626" in src, "the w35 pin must carry the merged arithmetic (607 + 1 duniya, v0.667)"
+    assert "len(TOOLS) == 627" in src, "the w35 pin must carry the merged arithmetic (607 + 1 duniya, v0.667)"
     assert "paisa_sahayak" in src and "sandarbh" in src
 
 
@@ -167,8 +167,8 @@ def test_version_pins():
     from pathlib import Path
     from app.main import APP_VERSION
     root = Path(__file__).resolve().parents[2]
-    assert APP_VERSION == "0.823.0"
-    assert "0.823.0+822" in (root / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.824.0"
+    assert "0.824.0+823" in (root / "pubspec.yaml").read_text()
     line = (root / "server" / "app" / "main.py").read_text().splitlines()[35]
     assert "HOOLA AEP 1.0" in line and "PARITY" in line.upper()
     assert "HOOLA HUB" in line  # the P7 name rides the Previous chain

@@ -298,6 +298,11 @@ build and only start after L0 numbers say where the Site Engine stops; L12-L15 f
 3. **Free allowances**: free fixes per day and free style / text edits - the numbers she wants to give users.
 4. **Brand**: Hoola identity everywhere (recommended and assumed); no Lovable brand elements.
 
+**At L8 (v0.824, owner "GO L8") these four were not answered, so the recommendations above were taken and are
+switchable:** previews on her VPS in Docker, at most 2 builds at once (`app_engine_previews`); no extra model call (the
+Studio turn's model writes through `app_engine`); no free allowance built or promised; "Hoola App Engine" as the name.
+L8 measured the box here: ~6 s a build (template 4.6 s), image ~660 MB; her VPS numbers come from vps-ops `appengine_check`.
+
 ## 12. What is NOT in this plan (on purpose)
 
 - Copying Lovable's code, assets, fonts, copy or name - patterns only.

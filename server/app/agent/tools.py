@@ -1375,6 +1375,16 @@ TOOL_LABELS.update(HOME_LABELS)
 HANDLERS.update(HOME_HANDLERS)
 del _seen
 
+# v0.814 APP ENGINE 1 (L8 of docs/LOVABLE_STUDIO_PLAN.md): ONE tool app_engine for the Web Studio's React apps -
+# view / search / edit_lines / write / rename / delete / add_dependency / tokens / build / logs, every write checked by
+# appengine/rules.py (paths, safety, design drift); going live stays her tap in the Studio.
+from .appengine_tools import APPENGINE_HANDLERS, APPENGINE_LABELS, APPENGINE_TOOLS  # noqa: E402
+_seen = {t["name"] for t in TOOLS}
+TOOLS.extend(t for t in APPENGINE_TOOLS if t["name"] not in _seen)
+TOOL_LABELS.update(APPENGINE_LABELS)
+HANDLERS.update(APPENGINE_HANDLERS)
+del _seen
+
 # v0.486.0 BYOX SKILL PACK: Build-Your-Own-X — 31 categories, seed default on.
 # byox_list / byox_guide / byox_plan admitted under the "byox" family.
 from .byox_tools import BYOX_HANDLERS, BYOX_LABELS, BYOX_TOOLS  # noqa: E402

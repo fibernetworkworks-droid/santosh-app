@@ -2993,3 +2993,9 @@ Task ID: v0.819.0 WHITEBOOKS PASTE CHECK (built as 0.814)
 Task: owner ran vps-ops wb_check (run 42986671553): all keys set, every product refused WB_ERR_9001.
 Work Log: requests re-read against the specs (match); values cleaned before use; wb_check prints a paste check (no values) + an activation hint; EWB refusal named; 2 tests.
 Stage Summary: on branch claude/exciting-hawking-113x8i. Next: she re-checks the paste lines / asks WhiteBooks to activate sandbox access, then wb_check again.
+
+---
+Task ID: v0.824.0 APP ENGINE 1 (L8; built as 0.814, main had moved to 0.823.0)
+Task: owner "GO L8" on docs/LOVABLE_STUDIO_PLAN.md (her 4 L8 decisions unanswered - the plan's defaults taken, all switchable).
+Work Log: server/app/appengine/ (template, tokens, rules, image + lock, runner, service, proof), agent/appengine_tools.py (app_engine, registry 627), turnmode APP + prompt block + sticky family, 13 routes, Studio Apps page + workspace (appengine.js/.css), vps-ops appengine_setup / appengine_check; 9 tests incl. the five asks in the real box + a browser walk.
+Stage Summary: pushed. Server deploy + vps-ops appengine_setup, then appengine_check. Not verified on her VPS or with a real model. Next: L9 on her GO.

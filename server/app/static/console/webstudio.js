@@ -55,6 +55,7 @@
 
   const ICON = {
     home: '<path d="M4 11l8-7 8 7v9H4z"/>',
+    app: '<rect x="3" y="4" width="18" height="16" rx="3"/><path d="M3 9h18M8 13l-2 2 2 2M16 13l2 2-2 2"/>',
     clip: '<path d="M20 11l-8.5 8.5a5 5 0 0 1-7-7L13 4a3.5 3.5 0 0 1 5 5l-8.5 8.5a2 2 0 0 1-3-3L14 7"/>', down: '<path d="M12 5v14M5 12l7 7 7-7"/>',
     list: '<path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/>', doc: '<path d="M6 3h9l4 4v14H6z"/><path d="M9 12h7M9 16h7"/>', grid: '<rect x="3" y="4" width="18" height="16" rx="3"/><path d="M3 9h18"/>',
     tpl: '<rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="3" width="8" height="8" rx="2"/><rect x="3" y="13" width="8" height="8" rx="2"/><rect x="13" y="13" width="8" height="8" rx="2"/>',
@@ -133,6 +134,9 @@
     try {
       if (p[0] === 'site' && p[1]) return await openSite(decodeURIComponent(p[1]), p[2] || '');
       if (p[0] === 'plan' && p[1]) return await openPlan(decodeURIComponent(p[1]));
+      if ((p[0] === 'apps' || p[0] === 'app') && window.HoolaAppEngine) {   // v0.814 APP ENGINE 1: the React app lane
+        CUR = null; CARD = null; await loadLists(); return await window.HoolaAppEngine.open(p);
+      }
       CUR = null; CARD = null;
       await loadLists();
       drawHome(p[0] === 'sites' ? 'sites' : p[0] === 'starred' ? 'starred' : p[0] === 'templates' ? 'templates' : 'home');
@@ -167,7 +171,7 @@
     return `<aside class="side" aria-label="Web Studio">
       <div class="brand"><div class="mark" aria-hidden="true"><span></span></div><div><b>Hoola</b><span>Web Studio</span></div></div>
       <button class="new" type="button" data-act="new" title="New website (${MAC ? '⌘' : 'Ctrl'} K)"><span>${ico('plus', 16)}New website</span><kbd>${MAC ? '⌘ K' : 'Ctrl K'}</kbd></button>
-      ${nav('#/', 'home', 'Home', 'home')}${nav('#/sites/search', 'search', 'Search', 'search')}${nav('#/sites', 'sites', 'All websites', 'grid')}${nav('#/starred', 'starred', 'Starred', 'star')}${nav('#/templates', 'templates', 'Templates', 'tpl')}
+      ${nav('#/', 'home', 'Home', 'home')}${nav('#/sites/search', 'search', 'Search', 'search')}${nav('#/sites', 'sites', 'All websites', 'grid')}${nav('#/starred', 'starred', 'Starred', 'star')}${nav('#/apps', 'apps', 'Apps', 'app')}${nav('#/templates', 'templates', 'Templates', 'tpl')}
       ${st.length ? `<div class="lbl">Starred</div>${st.map(recRow).join('')}` : ''}
       ${rec ? `<div class="lbl">Recent</div>${rec}` : ''}
       <div class="sp"></div>
@@ -2334,5 +2338,7 @@
   APP.addEventListener('dragleave', e => { e.target.closest?.('.chat')?.classList.remove('drop'); });
   APP.addEventListener('drop', e => { const c = e.target.closest?.('.chat'); if (!c || !e.dataTransfer?.files?.length) return; e.preventDefault(); c.classList.remove('drop'); [...e.dataTransfer.files].slice(0, 6).forEach(f => addFile(f)); });
 
+  // v0.814 APP ENGINE 1: appengine.js draws the app pages with the Studio's own helpers and sidebar
+  window.HoolaWSKit = {api, esc, enc, ico, toast, sidebar, go, store, pill, ago, md: window.HoolaMD, APP, clean};
   route();
 })();

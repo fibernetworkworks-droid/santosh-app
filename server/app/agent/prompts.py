@@ -552,6 +552,12 @@ def system_prompt(dry_run: bool, context: str = "", tenant: str | None = None, f
             job += f"\n\n{sb}" if sb else ""
         except Exception:
             pass
+        try:                                         # v0.814 APP ENGINE 1: the React app this Studio turn is about
+            from ..appengine.service import prompt_block as ae_block
+            aeb = ae_block(tenant)
+            job += f"\n\n{aeb}" if aeb else ""
+        except Exception:
+            pass
         try:
             from ..appmaker.service import prompt_block as app_block
             apb = app_block(tenant)

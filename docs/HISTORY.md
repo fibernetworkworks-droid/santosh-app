@@ -2257,3 +2257,107 @@ cost of one reality-check conversation per 30+ line round is not measured.
 - C. DESIGN -> APP STUDIO (`design/toapp.py`, `hd-bridge-app.js`): frames read as screens (headings / inputs / buttons / lists of N / bars / links between screens, size class with warnings), matched to App Studio screen kinds by name; `POST /api/design/files/{id}/to-app` (pictures PNG base64, 3 MB each / 16 MB total / 20 frames) -> App Studio's own design run (`appmaker/service.py` get / new / _load / _save(plan) / _start("design")), pictures in `<app>/from_design/`. NEVER approves (App Studio's approve() is her tap only): screens end "ready, waiting for her OK"; an already approved app loses its approval by App Studio's own run and she is warned. Never builds or submits.
 - PROOF: figma 21 tests (incl. a browser walk), toweb 13 + a browser walk at 1280 / 390 px with no sideways scroll, toapp 9 (one runs App Studio's real design step with her frame in the screen-writer prompt); with every earlier design suite: 167 pytest + 9 browser walks green on one tree.
 - NOT VERIFIED: no REAL Figma API call was ever made (no token in the sandbox) - shapes assumed from Figma's documentation (relativeTransform with geometry=paths, children of groups / booleans relative to the nearest frame, error bodies, UTF-16 style override positions, transition units); her first import is the live test. App Studio does not show the uploaded pictures yet (its screen writer reads the structure); a sent web section has no Undo in Web Studio (restore the previous version in History); toapp calls App Studio's private _load / _save / _start (the same path its own change() uses).
+## v0.824.0 APP ENGINE 1 (built as 0.814; other sessions took 0.814-0.823 while it was built - REBASE PROTOCOL, all kept)
+
+Owner: "GO L8" on `docs/LOVABLE_STUDIO_PLAN.md` (L8 = the first App Engine phase: template + tokens + drift check, the
+devlab-style box build, the preview, the tool set, build + static publish; proof = 5 card asks built in the box).
+
+**Her four L8 decisions were not answered, so the plan's own recommendations were taken (all switchable):**
+1. Where it runs: THIS server, in Docker, at most 2 builds at once (`app_engine_previews` 2; a third says "queued").
+2. Model per job: no new model call - whoever answers the Studio turn writes the code through the tool.
+3. Free allowances: none built, none promised (a build spends no model money).
+4. Brand: "Hoola App Engine" (working name; Hoola identity only, nothing of Lovable's).
+
+### What it is
+A second engine in the Web Studio beside the Site Engine: a real React 18 + TypeScript + Vite 7 + Tailwind v4 app per
+project, the code written through ONE tool and built in a locked Docker box.
+
+- `server/app/appengine/` (NEW):
+  - `template/` = the one template (`vite.config.ts`, `tsconfig.json`, `index.html`, `src/main.tsx` with
+    BrowserRouter basename from `<base href>`, `src/index.css`, `src/lib/utils.ts` (cn), `src/lib/hoola.ts` (Hoola
+    Cloud NOT connected - says so), `src/components/ui/` = Hoola's kit: button / card / input / textarea / label /
+    badge / tabs / dialog / table on `cva` variants, `AGENTS.md`, `public/favicon.svg`).
+  - `image.py` = the build image `hoola-appengine:base` (node:22-bookworm-slim + every vetted package from the
+    COMMITTED lock file `image/package-lock.json`, `npm ci`; Dockerfile text in Python - the v0.532 lesson);
+    `CORE` (template deps), `DEV` (vite / tailwind / typescript / types), `EXTRA` = 9 vetted extras added only by
+    `add_dependency` (radix select / popover / switch / checkbox / tooltip / accordion / dropdown-menu, embla
+    carousel, motion). Versions pinned exactly, each published before 28 Oct 2026. `build(prebuilt=)` = the same
+    lock installed on the host and copied in (for a server whose docker build cannot reach npm - this sandbox).
+  - `tokens.py` = the design system is ONE file, `src/styles/tokens.css` (Tailwind v4 `@theme`, default palette OFF
+    with `--color-*: initial`): bg surface ink muted line primary primary-ink accent ok warn bad, rounded-card /
+    rounded-control, shadow-card, font-head / font-body; 5 palettes (calm warm fresh bold night) or her #rrggbb
+    values; muted / line / primary-ink derived (contrast measured); a Web Studio look can seed it (`from_site_look`).
+  - `rules.py` = checked in CODE on every write: PATHS (src/ minus locked files, public/, index.html, AGENTS.md,
+    .hoola/plan/*.md; no `..`, hidden files, other types; 200 KB / 400 files), SAFETY (no eval / new Function /
+    document.write / innerHTML / dangerouslySetInnerHTML, no outside address in fetch / import / script / CSS,
+    index.html keeps only its module script, no script in SVG, an import must name a package THIS app lists - a
+    vetted-but-not-added one says to add it, anything else is refused with the vetted list), DRIFT (hex / rgb / hsl
+    colours, Tailwind palette colours incl. white / black, one-off `[value]` classes refused; `data-[..]` variants,
+    `bg-ink/40` opacity and `href="#faq"` allowed). A refusal names file:line and the token to use.
+  - `runner.py` = the build: `tsc --noEmit` + `vite build --configLoader runner` in the box with `--network none`,
+    `--read-only`, tmpfs /tmp, uid 1000, cap-drop ALL, no-new-privileges, 1.5 GB / 2 CPUs / 256 pids, 240 s; the
+    app's files mounted READ-ONLY, only the out folder writable; nothing installed (the image's node_modules).
+    Semaphore = `app_engine_previews`; `app_engine_runner=local` only for development.
+  - `service.py` = create (template + package.json + tokens + title + brief in .hoola/plan), list / get, view
+    (numbered lines, 400 at a time), search, write, edit_lines (the plan's 5.3: exact search -> replace, must
+    appear once, `first_line` / `last_line` range, a `...` line skips a long middle, several edits located in the
+    ORIGINAL file, overlaps refused, all or nothing, a refused edit changes nothing), rename, delete (App.tsx /
+    index.html refused), add_dependency (vetted only, nothing downloaded), set_tokens; a change schedules a build
+    ~2 s after the last write (debounced), `build` / `wait_build`; a good build = version N (source + dist kept,
+    30 kept, the live one never pruned); a failed build keeps the last good version on screen and its problems
+    (file + line) in `last_build`; `logs`; `check_all`; publish = her tap only (`confirm`), the exact version,
+    refused (409) while TypeScript or the code check finds a problem; unpublish; preview (`/api/app-preview/
+    <token>/`, `__v/<n>/` for older versions) and live (`/apps/<slug>/`) serving: `<base href>` injected, SPA
+    routes fall back to index.html, missing asset = 404, strict CSP (script-src 'self', connect-src 'self'),
+    noindex + no-store on the preview, immutable cache for live assets.
+  - `models.py` = table `ae_projects` (registered in db.init_db AND self-healing; `app_projects` was App Sahayak's).
+  - `proof_apps.py` + `proof.py` + `__main__.py` = the L8 card (`python -m app.appengine status | setup | proof`).
+- `server/app/agent/appengine_tools.py` (NEW): ONE tool `app_engine` (registry 626 -> 627, family `appengine`):
+  actions list / status / files / view / search / logs / check (reads) and create / write / edit_lines / rename /
+  delete / add_dependency / tokens / build (changes). Publish refused ("her tap in the Studio"); changes refused in
+  Plan / Chat mode by the tool itself (`turnmode._SPLIT` lets the tool through so its reads stay open); changes only
+  from the owner's own turns.
+- `agent/turnmode.py`: `(app id X)` in the Studio hint -> `APP` contextvar; `agent/prompts.py` adds
+  `<app_engine_project>` (app, state incl. a failed last build, packages, file list, AGENTS.md, the rules);
+  `agent/admit.py`: a turn with an app always has the tool (`sticky_families`) + words (react app, web app...).
+- Routes (`main.py`, `_ae`): GET / POST `/api/appengine`, GET (`?full=0` light) / PATCH / DELETE `/api/appengine/{id}`,
+  GET `/file`, POST `/build`, GET `/logs`, POST `/tokens`, POST `/publish` (version + confirm), POST `/unpublish`;
+  public GET `/api/app-preview/{token}/...` and `/apps/{slug}/...`.
+- Studio (`static/console/appengine.js` + `appengine.css`, hooks in webstudio.js: the `Apps` sidebar row, routes
+  `#/apps` and `#/app/<id>/<tab>`, `window.HoolaWSKit`): Apps page (Beta; New app = name + what it should do +
+  colour palette swatches; the box's state said plainly when it cannot build) and the workspace: the app's own Hoola
+  chat on the left (its own conversation; the first message = "Build this app: <her words>"; Hoola is working + a
+  clock), Preview (computer / phone, failed-build or TypeScript problems with file:line, open in a new tab), Code
+  (file list + read-only source), Design (palettes + every token with contrast), Versions (open any), Publish (her
+  tap + a confirm dialog, the reasons when it is refused, Take down). Polls the light row every 2 s while building.
+- Config: `app_engine` (on), `app_engine_previews` (2), `app_engine_runner` ("box").
+- vps-ops: `appengine_setup` (build the image) and `appengine_check` (status + the proof).
+
+### Measured here (sandbox, Docker 29.9, real box)
+- The bare template builds in 4.6 s; the five card asks in 5.8-8.0 s each (median 6.2 s), JS ~475 KB.
+- **Proof card: 5/5 apps PASS** (shop staff tasks, clinic appointment request with zod validation + a second route,
+  sales dashboard with recharts + tabs, mithai catalogue with a cart dialog, coaching timetable with date-fns) -
+  built, TypeScript clean, rules clean, opened in Chromium with 0 page errors, her words on screen, one click works,
+  no sideways scroll on a 390 px phone, published by the tap path, `/apps/<slug>/` serves it; **8/8 planted bad
+  writes refused** (one-off colour, palette colour, raw colour, outside fetch, unvetted package, raw HTML, a locked
+  file, a path outside the app).
+- Tests `test_v0814_app_engine.py` (9): rules, tokens, the tool's exact edits, Plan mode + her tap + who may change,
+  the turn block + family + registry, routes + her key, the box (TypeScript problem builds but cannot go live, a
+  failed build keeps the old version, fix -> publish -> live -> take down), the five asks, and a browser walk of the
+  Studio pages (create -> the chat builds it -> preview works -> code -> design -> rebuild -> publish -> live -> phone).
+
+- Found by its own browser walk (failed 1 run in 3, only after other tests): a tab redraw that waited on the server
+  (Design) could land after she had moved to Publish and paint over it; every redraw now carries a ticket and a stale
+  one is dropped. Re-run green 3 times after the fix.
+- Wider sweep: 982 passed; the 13 reds (crawl jobs x10, officehours / magic21 / crew story pins) fail identically on
+  untouched main 0.819.0 - not this release.
+
+### NOT built / NOT verified, said plainly
+- NOT VERIFIED on her VPS: the image is not built there yet (run vps-ops `appengine_setup`, then `appengine_check`);
+  her VPS's real build time and RAM per build are not measured (the plan's "estimate until L8 measures it" is
+  measured HERE only).
+- NOT VERIFIED with a real model: no model has written an app; the proof's files are fixed (it proves the engine).
+- Not built (later phases): Hoola Cloud data / sign-in (L10 - apps keep sample data on the page and say so), hot
+  reload (each change is a fresh ~6 s build, not Vite's dev server), the preview error collector + click-to-source +
+  style panel (L9), tests / browser check before done + scans (L11), prerendered HTML for SEO, a custom domain for
+  an app, GitHub sync (L14), drafts (L13), growing the vetted list by her tap.

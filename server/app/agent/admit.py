@@ -323,6 +323,7 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
     "desk": ("yaad khojo", "doc desk", "milaan"),
     "website": ("website", "web site", "site banao", "landing page", "domain"),
     "site": ("website", "web site", "site banao", "landing page", "domain"),
+    "appengine": ("react app", "app engine", "web app", "dashboard app", "tsx", "vite"),   # v0.814 + every Studio app turn (sticky_families)
     "sitesup": ("site supervisor", "sitesup", "dpr", "attendance", "challan"),
     "qa": ("qa", "retest"),
     "app": ("app banao", "app design", "android app", "apk"),
@@ -964,6 +965,12 @@ def sticky_families(conversation_id: str) -> set[str]:
     """v0.311 families a chat keeps once it used them, whatever her next words are: a chat with a WhatsApp campaign
     (or a lead list uploaded into it) keeps the campaign tools for "Kaisa raha?" / "Haan, sabne consent diya hai"."""
     out: set[str] = set()
+    try:                                     # v0.814 a Web Studio turn about an App Engine app always has its tool
+        from . import turnmode as _tm
+        if _tm.APP.get():
+            out.add("appengine")
+    except Exception:
+        pass
     if not conversation_id:
         return out
     try:
