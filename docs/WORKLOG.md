@@ -2861,3 +2861,9 @@ Task ID: v0.781.0 CONNECTORS PAGE (built as 0.776; rebased twice, on their v0.78
 Ask: check connectors on the web console (phone-only) -> "GO BUILD FULL CONNECTORS PAGE ... A SHORT 1 LINER BELOW EVERY CONNECTOR -- AS WE USE COMPOSIO".
 Built: static/console/connectors.js (6 tabs), bazar/oneline.py (line on every list), bazar/donepage.py (sign-in done page for web + phone); 12 tests incl. a browser walk.
 Deploy: vps-ops deploy (server-only; no new pip, no new tables). Note: ~/santosh_app is the deploy copy (reset --hard on deploy) - work in a worktree.
+
+---
+Task ID: v0.782.0 TEEN MODE (L2)
+Task: owner "GO L2" - Build / Plan / Chat in the Web Studio, server-enforced; plans as versions; Start building card; site instructions.
+Work Log: agent/turnmode.py + _run_tool guard; site/plans.py + routes; Studio composer / plan card / Plan view / instructions; 7 new tests + 131 older green; re-versioned 0.778 -> 0.782.
+Stage Summary: pushed; server deploy only. Next: L3 SAWAAL CARD (design question cards) on her GO.

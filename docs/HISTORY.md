@@ -837,3 +837,27 @@ walked), no inline handlers, a Playwright walk at 1280 + 390 px: cards with thei
 window -> done page -> the console toast, drawer try line into the composer, every tab) + test_bazar / v0276 composio / custom_mcp / bazar_p1 /
 v0303 / v116 handoff / v0475 green (111). Console stamps 27 -> 28. NOT VERIFIED live: a real Composio or MCP sign-in started from the console
 (the done-page hand-off assumes PUBLIC_BASE_URL is the same host as the console - true on hoola.ainewtika.com).
+
+## v0.782.0 TEEN MODE (built as 0.778; L2 of docs/LOVABLE_STUDIO_PLAN.md, owner: "GO L2"; 0.778-0.781 taken meanwhile - REBASE PROTOCOL, all kept)
+Build / Plan / Chat in the Web Studio chat, like Lovable - and enforced on the server, not only asked of the model:
+- MODES: the composer has Build | Plan | Chat (Alt+P cycles; a message starting /plan, /chat or /build runs in that mode once). Every
+  Studio message carries `[Web console mode: build|plan|chat]` (inside her message, so an inbox re-run after a restart keeps it).
+- SERVER: `agent/turnmode.py` - `begin()` reads the mode + the site id at the start of `_run_turn`; `santosh._run_tool` asks
+  `allowed(tool)` before ANY tool runs: in Plan / Chat every changing tool is refused (ToolError with what to do instead); reads
+  (draftcheck._is_read) and page readers (web_fetch, scrape_page, reach, duniya, api_box, jharokha, open_website) stay open. The mode's
+  rules + her site instructions join the turn's hint (both prompt paths). Switches `studio_modes` (on), `studio_chat_model` ("" = same).
+- PLANS: a Plan answer becomes a numbered version on the site (`site/plans.py`, table `site_docs`, registered + ensure_table; the same text
+  twice = one version; one approved at a time, the older -> superseded). Routes: GET/POST /api/sites/{id}/plans,
+  POST /api/sites/{id}/plans/{v}/approve|skip|draft (her site only, 404 otherwise). In the chat: a plan card (v1, Open plan / Approve / Skip);
+  the Plan view in the right pane: versions (older / newer), Edit (her edit = a new version, source 'her'), Comment on selection (Hoola
+  rewrites that part in Plan mode = a new version), Approve -> the plan is approved and ONE Build message carries the approved text (one
+  line, so her bubble shows only "Build the approved plan (vN)."), Skip. A plan's list right under its heading renders as a list.
+- CHAT: a Chat answer ending with `[[start-building: ...]]` shows a Start building card (uses money; Build sends that line in Build mode,
+  Skip hides it); the marker never shows, even while streaming.
+- INSTRUCTIONS: Settings > Instructions for Hoola (10,000 characters, GET/PUT /api/sites/{id}/instructions), read on every Studio turn for
+  this site in every mode.
+- Pins moved on purpose: test_v0649 Plan-hint wording; test_v0777 reduced-motion check now reads every reduced-motion block.
+Tests: test_v0782_teen_mode.py (7: the mode line + guard, _run_tool refusing a change before dispatch, plan versions / status / instructions,
+routes hers-only, the turn hint, source wiring, a Playwright walk: Plan -> card v1 -> Open -> Edit -> v2 -> Approve -> one Build message with
+the approved text; Chat -> Start building -> Build; Alt+P; instructions saved). Older Studio + agent suites green (131).
+NOT VERIFIED live: a real model's Plan / Chat answers on her server (the walk uses scripted replies).

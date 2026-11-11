@@ -28,7 +28,7 @@ CONSOLE = Path(__file__).resolve().parents[1] / "app" / "static" / "console"
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.781.0"
+    assert APP_VERSION == "0.782.0"
 
 
 def test_studio_is_its_own_app():
@@ -44,7 +44,7 @@ def test_studio_is_its_own_app():
     assert "/plan`, {conversation_id: conv}" in js and "/approve`, {hash: d.hash" in js and "/revise`, {words: t}" in js
     assert "/look`, {index: LOOK" in js and "data-dev" in js and "tablet" in js
     # her own thread per site, never the home chat; every server value through esc(); colours only as #hex
-    assert "never start a new website unless I ask" in js and "hoola.wdp.conv." in js and "Plan mode: reply with a short plan" in js
+    assert "never start a new website unless I ask" in js and "hoola.wdp.conv." in js and "Plan mode: reply with the PLAN only" in js   # v0.782 TEEN MODE: the plan hint now asks for the plan's sections
     assert js.count("esc(") > 100 and ".map(HEX)" in js
     for act in ("golive", "rollback", "takedown", "delete"):
         assert "confirm(" in js.split(f"act === '{act}'", 1)[1][:400]
