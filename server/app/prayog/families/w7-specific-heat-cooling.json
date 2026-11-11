@@ -1,0 +1,37 @@
+{
+ "base": "w7-specific-heat-cooling",
+ "rig": "w7-heat-bench",
+ "chapter": "Heat and thermodynamics",
+ "variants": [
+  {
+   "key": "kerosene",
+   "title": "Specific heat of kerosene by the method of cooling",
+   "sample": "Kerosene",
+   "method": "Twin calorimeters cooling in one enclosure",
+   "unknown": "the specific heat capacity of kerosene",
+   "params": {
+    "cl": 2010,
+    "rhol": 810
+   },
+   "note": "Kerosene: about 2010 J/(kg K), less than half of water's, so it cools in under half the time.",
+   "source": {
+    "title": "Engineering ToolBox, specific heat and density of liquids: kerosene 2010 J/(kg K), 810 kg/m3 (from memory - verify)"
+   }
+  },
+  {
+   "key": "turpentine",
+   "title": "Specific heat of turpentine by the method of cooling",
+   "sample": "Turpentine",
+   "method": "Twin calorimeters cooling in one enclosure",
+   "unknown": "the specific heat capacity of turpentine",
+   "params": {
+    "cl": 1760,
+    "rhol": 870
+   },
+   "note": "Turpentine: about 1760 J/(kg K) and 870 kg/m3.",
+   "source": {
+    "title": "Engineering ToolBox, specific heat and density of liquids: turpentine 1760 J/(kg K), 870 kg/m3 (from memory - verify)"
+   }
+  }
+ ]
+}

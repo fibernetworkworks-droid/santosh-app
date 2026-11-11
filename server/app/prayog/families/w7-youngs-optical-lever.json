@@ -1,0 +1,55 @@
+{
+ "base": "w7-youngs-optical-lever",
+ "rig": "w7-optical-lever",
+ "chapter": "Properties of matter: elasticity, viscosity, surface tension",
+ "variants": [
+  {
+   "key": "steel",
+   "title": "Optical lever: Young's modulus of a steel wire",
+   "sample": "Mild steel wire, SWG 24 (0.559 mm)",
+   "method": "Optical lever, telescope and scale",
+   "unknown": "Young's modulus of steel",
+   "params": {
+    "Y": 200000000000.0,
+    "d": 0.000559,
+    "L": 1.0
+   },
+   "note": "Steel is the stiffest of the three wires: 1 kg stretches it by only 0.2 mm.",
+   "source": {
+    "title": "CRC Handbook of Chemistry and Physics, elastic constants of metals; BS 3737 standard wire gauge: steel about 200 GPa, SWG 24 = 0.559 mm (from memory - verify)"
+   }
+  },
+  {
+   "key": "brass",
+   "title": "Optical lever: Young's modulus of a brass wire",
+   "sample": "Brass wire, SWG 22 (0.711 mm)",
+   "method": "Optical lever, telescope and scale",
+   "unknown": "Young's modulus of brass",
+   "params": {
+    "Y": 100000000000.0,
+    "d": 0.000711,
+    "L": 1.0
+   },
+   "note": "Brass is about half as stiff as steel.",
+   "source": {
+    "title": "CRC Handbook of Chemistry and Physics, elastic constants of metals; BS 3737 standard wire gauge: brass about 100 GPa, SWG 22 = 0.711 mm (from memory - verify)"
+   }
+  },
+  {
+   "key": "copper",
+   "title": "Optical lever: Young's modulus of a copper wire",
+   "sample": "Copper wire, SWG 22 (0.711 mm)",
+   "method": "Optical lever, telescope and scale",
+   "unknown": "Young's modulus of copper",
+   "params": {
+    "Y": 110000000000.0,
+    "d": 0.000711,
+    "L": 1.0
+   },
+   "note": "Copper is a little stiffer than brass; keep the load small so it stays elastic.",
+   "source": {
+    "title": "CRC Handbook of Chemistry and Physics, elastic constants of metals; BS 3737 standard wire gauge: copper about 110 GPa, SWG 22 = 0.711 mm (from memory - verify)"
+   }
+  }
+ ]
+}

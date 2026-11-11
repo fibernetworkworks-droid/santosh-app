@@ -274,7 +274,7 @@ def test_tools_api_hire_and_ui(st, monkeypatch):  # noqa: F811
     cat = hire.CATALOG
     assert cat["procgen_dev"]["live"] and cat["physics_dev"]["live"] and cat["procgen_dev"]["group"] == hire.GAME_GROUP
     ctx = Ctx(tenant_id="default", conversation_id="c1")
-    with pytest.raises(tools.ToolError, match="hired nahi"):
+    with pytest.raises(tools.ToolError, match="is not hired"):   # English since d84057023 (tools wave 3)
         asyncio.run(tools.HANDLERS["game_world"](ctx, action="make", kind="city"))
     c = TestClient(app)
     assert c.post("/api/gamedesk/worlds", json={"kind": "city"}).status_code == 400            # not hired

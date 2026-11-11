@@ -226,7 +226,8 @@
       "coefficient of friction"
      ],
      "conditions": [],
-     "kernel": "incline-friction"
+     "kernel": "incline-friction",
+     "built": "w7-incline-trolley"
     },
     {
      "id": "air-track-collisions",
@@ -265,7 +266,8 @@
       "momentum and energy conservation"
      ],
      "conditions": [],
-     "kernel": "collision-2d"
+     "kernel": "collision-2d",
+     "built": "w7-collision-2d"
     },
     {
      "id": "bar-pendulum-g",
@@ -295,7 +297,8 @@
       "largest amplitude for which the SHM period holds"
      ],
      "conditions": [],
-     "kernel": "compound-pendulum"
+     "kernel": "compound-pendulum",
+     "built": "w7-bar-pendulum-shm-limit"
     },
     {
      "id": "bar-pendulum-damping",
@@ -313,7 +316,8 @@
       "quality factor"
      ],
      "conditions": [],
-     "kernel": "damped-pendulum"
+     "kernel": "damped-pendulum",
+     "built": "w7-bar-pendulum-damping"
     },
     {
      "id": "kater-pendulum",
@@ -330,7 +334,8 @@
       "T1 approximately equal to T2",
       "T1 not equal to T2"
      ],
-     "kernel": "kater-pendulum"
+     "kernel": "kater-pendulum",
+     "built": "w7-kater-pendulum"
     },
     {
      "id": "simple-pendulum-damping",
@@ -346,7 +351,8 @@
       "quality factor"
      ],
      "conditions": [],
-     "kernel": "damped-pendulum"
+     "kernel": "damped-pendulum",
+     "built": "w7-simple-pendulum-damping"
     },
     {
      "id": "spring-mass-static-dynamic",
@@ -362,7 +368,8 @@
       "mass of the spring"
      ],
      "conditions": [],
-     "kernel": "spring-mass"
+     "kernel": "spring-mass",
+     "built": "w7-spring-static-dynamic"
     },
     {
      "id": "spring-rigidity-modulus",
@@ -376,7 +383,8 @@
       "modulus of rigidity of the spring wire"
      ],
      "conditions": [],
-     "kernel": "spring-mass"
+     "kernel": "spring-mass",
+     "built": "w7-spring-rigidity"
     },
     {
      "id": "springs-series-parallel",
@@ -393,7 +401,8 @@
       "series",
       "parallel"
      ],
-     "kernel": "spring-mass"
+     "kernel": "spring-mass",
+     "built": "w7-springs-series-parallel"
     },
     {
      "id": "coupled-pendulums",
@@ -409,7 +418,8 @@
       "beat period"
      ],
      "conditions": [],
-     "kernel": "coupled-oscillator"
+     "kernel": "coupled-oscillator",
+     "built": "w7-coupled-pendulums"
     },
     {
      "id": "coupled-spring-oscillators",
@@ -427,7 +437,8 @@
       "undamped",
       "damped"
      ],
-     "kernel": "coupled-oscillator"
+     "kernel": "coupled-oscillator",
+     "built": "w7-coupled-spring-oscillators"
     },
     {
      "id": "two-d-oscillation-momentum",
@@ -474,7 +485,8 @@
       "period and g"
      ],
      "conditions": [],
-     "kernel": "compound-pendulum"
+     "kernel": "compound-pendulum",
+     "built": "w7-arduino-pendulum-photogate"
     }
    ]
   },
@@ -497,7 +509,8 @@
       "Young's modulus"
      ],
      "conditions": [],
-     "kernel": "elastic-wire"
+     "kernel": "elastic-wire",
+     "built": "w7-youngs-optical-lever"
     },
     {
      "id": "searle-youngs-modulus-wire",
@@ -535,7 +548,8 @@
       "Poisson's ratio"
      ],
      "conditions": [],
-     "kernel": "searle-bars"
+     "kernel": "searle-bars",
+     "built": "w7-searle-elastic-constants"
     },
     {
      "id": "maxwell-needle",
@@ -552,7 +566,8 @@
       "modulus of rigidity"
      ],
      "conditions": [],
-     "kernel": "torsion-oscillator"
+     "kernel": "torsion-oscillator",
+     "built": "w7-maxwell-needle"
     },
     {
      "id": "static-torsion-rigidity",
@@ -669,7 +684,8 @@
       "room temperature",
       "several temperatures"
      ],
-     "kernel": "capillary-rise"
+     "kernel": "capillary-rise",
+     "built": "w7-capillary-temperature"
     },
     {
      "id": "jaeger-surface-tension",
@@ -820,7 +836,8 @@
       "relative amplitudes of harmonics"
      ],
      "conditions": [],
-     "kernel": "fourier-harmonics"
+     "kernel": "fourier-harmonics",
+     "built": "w7-harmonics-cro"
     },
     {
      "id": "microphone-frequency-response",
@@ -855,7 +872,8 @@
       "mechanical equivalent of heat J"
      ],
      "conditions": [],
-     "kernel": "constant-flow-calorimeter"
+     "kernel": "constant-flow-calorimeter",
+     "built": "w7-callendar-barnes"
     },
     {
      "id": "searle-thermal-conductivity",
@@ -889,7 +907,8 @@
       "thermal conductivity"
      ],
      "conditions": [],
-     "kernel": "heat-wave-bar"
+     "kernel": "heat-wave-bar",
+     "built": "w7-angstrom-bar"
     },
     {
      "id": "lees-disc",
@@ -995,7 +1014,8 @@
       "cooling constant (Newton's law of cooling)"
      ],
      "conditions": [],
-     "kernel": "newton-cooling"
+     "kernel": "newton-cooling",
+     "built": "w7-cooling-curve-daq"
     },
     {
      "id": "specific-heat-by-cooling",
@@ -1012,7 +1032,8 @@
       "specific heat capacity"
      ],
      "conditions": [],
-     "kernel": "newton-cooling"
+     "kernel": "newton-cooling",
+     "built": "w7-specific-heat-cooling"
     },
     {
      "id": "stefan-constant",
@@ -1027,7 +1048,8 @@
       "exponent of T in radiated power"
      ],
      "conditions": [],
-     "kernel": "blackbody-radiator"
+     "kernel": "blackbody-radiator",
+     "built": "w7-stefan-lamp"
     }
    ]
   },
@@ -1098,7 +1120,8 @@
       "refractive index"
      ],
      "conditions": [],
-     "kernel": "total-internal-reflection"
+     "kernel": "total-internal-reflection",
+     "built": "tir-gaussian-eyepiece"
     },
     {
      "id": "wollaston-air-film",
@@ -1115,7 +1138,8 @@
       "refractive index"
      ],
      "conditions": [],
-     "kernel": "total-internal-reflection"
+     "kernel": "total-internal-reflection",
+     "built": "wollaston-air-film"
     },
     {
      "id": "lens-combination-nodal-slide",
@@ -1130,7 +1154,8 @@
       "positions of cardinal points"
      ],
      "conditions": [],
-     "kernel": "thick-lens"
+     "kernel": "thick-lens",
+     "built": "nodal-slide-lens-combination"
     }
    ]
   },
@@ -1172,7 +1197,8 @@
       "thickness of a mica sheet"
      ],
      "conditions": [],
-     "kernel": "interference-biprism"
+     "kernel": "interference-biprism",
+     "built": "fresnel-biprism"
     },
     {
      "id": "air-wedge",
@@ -1208,7 +1234,8 @@
       "refractive index of air"
      ],
      "conditions": [],
-     "kernel": "interference-michelson"
+     "kernel": "interference-michelson",
+     "built": "michelson-fringe-counting"
     },
     {
      "id": "michelson-sodium-doublet",
@@ -1222,7 +1249,8 @@
       "separation of the sodium D lines"
      ],
      "conditions": [],
-     "kernel": "interference-michelson"
+     "kernel": "interference-michelson",
+     "built": "michelson-sodium-doublet"
     },
     {
      "id": "fabry-perot",
@@ -1237,7 +1265,8 @@
       "finesse"
      ],
      "conditions": [],
-     "kernel": "interference-fabry-perot"
+     "kernel": "interference-fabry-perot",
+     "built": "fabry-perot"
     },
     {
      "id": "fourier-transform-spectroscopy",
@@ -1254,7 +1283,8 @@
       "transmission of interference filters"
      ],
      "conditions": [],
-     "kernel": "interference-michelson"
+     "kernel": "interference-michelson",
+     "built": "fourier-transform-spectroscopy"
     },
     {
      "id": "laser-double-slit",
@@ -1381,7 +1411,8 @@
       "mean particle size"
      ],
      "conditions": [],
-     "kernel": "diffraction-particles"
+     "kernel": "diffraction-particles",
+     "built": "lycopodium-particle-size"
     },
     {
      "id": "telescope-resolving-power",
@@ -1395,7 +1426,8 @@
       "resolving power"
      ],
      "conditions": [],
-     "kernel": "resolution-aperture"
+     "kernel": "resolution-aperture",
+     "built": "telescope-resolving-power"
     }
    ]
   },
@@ -1418,7 +1450,8 @@
       "polarisation direction"
      ],
      "conditions": [],
-     "kernel": "polariser-analyser"
+     "kernel": "polariser-analyser",
+     "built": "malus-law"
     },
     {
      "id": "polarimeter-sugar",
@@ -1451,7 +1484,8 @@
       "ellipticity and orientation"
      ],
      "conditions": [],
-     "kernel": "retarder-analysis"
+     "kernel": "retarder-analysis",
+     "built": "babinet-compensator"
     },
     {
      "id": "brewster-angle",
@@ -1466,7 +1500,8 @@
       "refractive index of glass"
      ],
      "conditions": [],
-     "kernel": "fresnel-reflection"
+     "kernel": "fresnel-reflection",
+     "built": "brewster-angle"
     }
    ]
   },
@@ -1488,7 +1523,8 @@
       "numerical aperture"
      ],
      "conditions": [],
-     "kernel": "fibre-acceptance"
+     "kernel": "fibre-acceptance",
+     "built": "fibre-numerical-aperture"
     },
     {
      "id": "fibre-near-field-profile",
@@ -1502,7 +1538,8 @@
       "refractive-index profile"
      ],
      "conditions": [],
-     "kernel": "fibre-modes"
+     "kernel": "fibre-modes",
+     "built": "fibre-near-field-profile"
     },
     {
      "id": "fibre-bending-loss",
@@ -1516,7 +1553,8 @@
       "loss vs bend radius"
      ],
      "conditions": [],
-     "kernel": "fibre-loss"
+     "kernel": "fibre-loss",
+     "built": "fibre-bending-loss"
     },
     {
      "id": "fibre-splice-loss",
@@ -1530,7 +1568,8 @@
       "splice loss"
      ],
      "conditions": [],
-     "kernel": "fibre-loss"
+     "kernel": "fibre-loss",
+     "built": "fibre-splice-loss"
     },
     {
      "id": "fibre-mode-field-diameter",
@@ -1544,7 +1583,8 @@
       "mode field diameter"
      ],
      "conditions": [],
-     "kernel": "fibre-modes"
+     "kernel": "fibre-modes",
+     "built": "fibre-mode-field-diameter"
     },
     {
      "id": "laser-thermal-expansion-quartz",
@@ -1558,7 +1598,8 @@
       "coefficient of linear expansion"
      ],
      "conditions": [],
-     "kernel": "interference-michelson"
+     "kernel": "interference-michelson",
+     "built": "laser-thermal-expansion-quartz"
     },
     {
      "id": "solid-state-laser-characteristics",
@@ -1572,7 +1613,8 @@
       "threshold current and slope efficiency"
      ],
      "conditions": [],
-     "kernel": "laser-diode"
+     "kernel": "laser-diode",
+     "built": "solid-state-laser-characteristics"
     },
     {
      "id": "fourier-optics-4f",
@@ -1625,7 +1667,8 @@
       "critical damping resistance"
      ],
      "conditions": [],
-     "kernel": "ballistic-galvanometer"
+     "kernel": "ballistic-galvanometer",
+     "built": "ballistic-galvanometer-constants"
     },
     {
      "id": "high-resistance-leakage",
@@ -1639,7 +1682,8 @@
       "high resistance"
      ],
      "conditions": [],
-     "kernel": "ballistic-galvanometer"
+     "kernel": "ballistic-galvanometer",
+     "built": "high-resistance-leakage"
     },
     {
      "id": "rayleigh-self-inductance",
@@ -1653,7 +1697,8 @@
       "self-inductance"
      ],
      "conditions": [],
-     "kernel": "ballistic-galvanometer"
+     "kernel": "ballistic-galvanometer",
+     "built": "rayleigh-self-inductance"
     },
     {
      "id": "mutual-inductance-absolute",
@@ -1667,7 +1712,8 @@
       "mutual inductance"
      ],
      "conditions": [],
-     "kernel": "ballistic-galvanometer"
+     "kernel": "ballistic-galvanometer",
+     "built": "mutual-inductance-absolute"
     },
     {
      "id": "solenoid-field",
@@ -1684,7 +1730,8 @@
       "field along the axis and dB/dx"
      ],
      "conditions": [],
-     "kernel": "solenoid-field"
+     "kernel": "solenoid-field",
+     "built": "solenoid-field"
     },
     {
      "id": "potentiometer-low-resistance",
@@ -1698,7 +1745,8 @@
       "unknown low resistance"
      ],
      "conditions": [],
-     "kernel": "potentiometer"
+     "kernel": "potentiometer",
+     "built": "potentiometer-low-resistance"
     },
     {
      "id": "carey-foster-bridge",
@@ -1713,7 +1761,8 @@
       "resistance per unit length of the bridge wire"
      ],
      "conditions": [],
-     "kernel": "wheatstone-bridge"
+     "kernel": "wheatstone-bridge",
+     "built": "carey-foster-bridge"
     },
     {
      "id": "faraday-lenz-arduino",
@@ -1728,7 +1777,8 @@
       "dipole moment of the magnet"
      ],
      "conditions": [],
-     "kernel": "induction-falling-magnet"
+     "kernel": "induction-falling-magnet",
+     "built": "faraday-lenz-falling-magnet"
     },
     {
      "id": "galvanometer-conversion",
@@ -1745,7 +1795,8 @@
       "voltmeter",
       "ammeter"
      ],
-     "kernel": "meter-conversion"
+     "kernel": "meter-conversion",
+     "built": "galvanometer-conversion"
     },
     {
      "id": "constant-current-voltage-source",
@@ -1762,7 +1813,8 @@
       "constant-current source",
       "constant-voltage source"
      ],
-     "kernel": "source-regulation"
+     "kernel": "source-regulation",
+     "built": "constant-current-voltage-source"
     },
     {
      "id": "bh-curve",
@@ -1780,7 +1832,8 @@
       "retentivity and coercivity"
      ],
      "conditions": [],
-     "kernel": "hysteresis"
+     "kernel": "hysteresis",
+     "built": "bh-curve"
     },
     {
      "id": "earth-field-magnetometer",
@@ -1798,7 +1851,8 @@
       "horizontal component of Earth's field"
      ],
      "conditions": [],
-     "kernel": "magnetometer"
+     "kernel": "magnetometer",
+     "built": "earth-field-magnetometer"
     },
     {
      "id": "earth-inductor",
@@ -1813,7 +1867,8 @@
       "horizontal and vertical components"
      ],
      "conditions": [],
-     "kernel": "ballistic-galvanometer"
+     "kernel": "ballistic-galvanometer",
+     "built": "earth-inductor"
     },
     {
      "id": "pspice-circuits",
@@ -1859,7 +1914,8 @@
       "self-inductance"
      ],
      "conditions": [],
-     "kernel": "ac-bridge"
+     "kernel": "ac-bridge",
+     "built": "anderson-bridge"
     },
     {
      "id": "owen-bridge",
@@ -1890,7 +1946,8 @@
       "capacitance"
      ],
      "conditions": [],
-     "kernel": "ac-bridge"
+     "kernel": "ac-bridge",
+     "built": "lcr-universal-bridge"
     },
     {
      "id": "q-meter",
@@ -1904,7 +1961,8 @@
       "Q vs frequency"
      ],
      "conditions": [],
-     "kernel": "q-meter"
+     "kernel": "q-meter",
+     "built": "q-meter"
     },
     {
      "id": "series-lcr-resonance",
@@ -1972,7 +2030,8 @@
       "time constant"
      ],
      "conditions": [],
-     "kernel": "rc-transient"
+     "kernel": "rc-transient",
+     "built": "rc-rl-time-constant"
     },
     {
      "id": "rc-frequency-response",
@@ -2067,7 +2126,8 @@
       "step-up",
       "step-down"
      ],
-     "kernel": "transformer"
+     "kernel": "transformer",
+     "built": "transformer-step-up-down"
     },
     {
      "id": "ac-dc-generator-demo",
@@ -2082,7 +2142,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "generator"
+     "kernel": "generator",
+     "built": "ac-dc-generator"
     },
     {
      "id": "motor-speed",
@@ -2096,7 +2157,8 @@
       "speed vs supply voltage"
      ],
      "conditions": [],
-     "kernel": "dc-motor"
+     "kernel": "dc-motor",
+     "built": "dc-motor-speed"
     },
     {
      "id": "switch-board-fuse",

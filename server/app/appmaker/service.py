@@ -453,7 +453,7 @@ def _say(v: dict[str, Any]) -> str:
                 f"Tap karke chalaiye: {v.get('preview')}" + (f" ({c.get('blanks')} jagah aapki jaankari baaki)" if c.get("blanks") else "")
                 + ". Pasand ho to 'Design pakka' dabaiye.")
     if st == "approved":
-        return f"Design pakka (v{v['version']}). Ab isi design se asli Android / iPhone app banegi."
+        return f"Design approved (v{v['version']}). The real Android and iPhone apps are built from this design."
     if st == "failed":
         return f"App design mein dikkat: {v.get('error')}"
     if st == "stopped":

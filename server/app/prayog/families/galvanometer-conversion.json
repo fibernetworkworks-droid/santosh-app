@@ -1,0 +1,21 @@
+{
+ "base": "galvanometer-conversion",
+ "rig": "em-ug-instruments",
+ "chapter": "Electricity and magnetism",
+ "variants": [
+  {
+   "key": "ammeter",
+   "title": "Making an ammeter from a galvanometer",
+   "sample": "Generic 30-0-30 moving-coil galvanometer",
+   "method": "Shunt in parallel",
+   "unknown": "shunt resistance and calibration",
+   "aim": "Find the resistance and the figure of merit of a galvanometer by half deflection, work out the shunt that makes it a 0 - 0.3 A ammeter, and calibrate it against a standard ammeter.",
+   "params": {
+    "mode": 1.0
+   },
+   "source": {
+    "title": "University of Delhi B.Sc. (Hons.) Physics practical lists (LOCF 2019 / UGCF 2022)"
+   }
+  }
+ ]
+}

@@ -90,7 +90,7 @@ def test_studio_script_markers():
     for m in ("'/api/apps'", "/api/apps-ideas?", "/plan', {drop:", "/look', {index:", "/approve', {hash: S(CUR.hash)}",
               "/android`", "/ios`", "/store`", "/appstore`", "/crashes`", "/rollout`", "/ops?days=7", "/members`",
               "track: 'production', her_tap: true", "/appstore/submit', {her_tap: true}", "/rollout/' + what, {her_tap: true}",
-              "App Studio: this chat is only about app", "hoola.as.conv.", "data-t0", "Design pakka", "qrcode(0, 'M')"):
+              "App Studio: this chat is only about app", "hoola.as.conv.", "data-t0", "Approve design", "qrcode(0, 'M')"):
         assert m in js, m
     assert "allow-same-origin" not in js                         # the model-written prototype never shares our origin
     assert js.count("confirm(") >= 7                             # every irreversible / public step asks first
@@ -145,7 +145,7 @@ def test_every_studio_page_in_a_real_browser(app_env, arena_server):
                 pg.screenshot(path=f"{os.environ['APP_SHOTS']}/{view}.png")
         pg.goto(base + f"/console/apps#/app/{v['id']}/screens")
         pg.wait_for_selector("#asPane .scrn img[src^='blob:']", timeout=20000)         # real screen images with her token
-        # "Design pakka" is open only when the server's checks have nothing blocking (and then it sends the hash)
+        # "Approve design" is open only when the server's checks have nothing blocking (and then it sends the hash)
         assert pg.locator("#asPane [data-act='approve']").is_enabled() == (not v["checks"]["blocking"])
         if v["checks"]["blocking"]:
             assert "blocking" in pg.inner_text("#asPane")
