@@ -4494,3 +4494,10 @@ html.human #app .landing .halo{display:none}
 #app .hcd-tree{display:grid;gap:2px;max-height:60vh;overflow:auto;margin:10px 0}
 #app .hcd-btn.sm{padding:3px 9px;font-size:12px;min-height:0}
 #app .hcd-tree .hcd-file code{direction:ltr;text-overflow:clip}
+
+/* ---- Hoola Code: how a repo runs in the box (settings) ---- */
+#app .hcd-rbox{margin:2px 0 10px;border:1px solid var(--line);border-radius:10px;padding:6px 10px}
+#app .hcd-rbox summary{cursor:pointer;font-size:13px;font-weight:500;padding:2px 0;color:var(--lit)}
+#app .hcd-rboxf{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+#app .hcd-rboxf small{font-weight:400;color:var(--mut);margin-left:6px}
+#app .hcd-rboxf input,#app .hcd-rboxf textarea{font:12.5px/1.4 var(--fm,'JetBrains Mono',monospace);width:100%;box-sizing:border-box}

@@ -182,7 +182,7 @@ def _limits(network: bool, writable: bool = False) -> list[str]:
 
 
 def run_in(image: str, files_dir: str, command: str, timeout: int = CHECK_TIMEOUT, network: bool = False,
-           commit_to: str = "") -> dict[str, Any]:
+           commit_to: str = "", env: dict[str, str] | None = None) -> dict[str, Any]:
     """Run ONE shell command on a copy of her files inside `image`.
 
     network=False (a check) means there is no route out at all. commit_to != "" keeps the container and commits it as
@@ -196,6 +196,8 @@ def run_in(image: str, files_dir: str, command: str, timeout: int = CHECK_TIMEOU
     # writes is that we are about to commit it. No caller can unseal a check by passing a flag.
     args = [d, "run", "--name", name] + [a for a in _limits(network, writable=keep) if not (keep and a == "--rm")]
     shell = f'mkdir -p "$HOME" 2>/dev/null || true; {command}'
+    for k, v in (env or {}).items():          # her plain per-repo variables (never a secret: refused where they are saved)
+        args += ["--env", f"{k}={v}"]
     args += ["-v", f"{os.path.abspath(files_dir)}:{WORK}:rw", image, "bash", "-lc", shell]
     rc, txt, secs = _run(args, timeout + 30)
     timed_out = rc == 124 or f"[timed out after {timeout + 30}s]" in txt

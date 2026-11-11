@@ -67,6 +67,11 @@ def make_router(require_key, current_tenant) -> APIRouter:
         return await run(S.add_repo, tenant, str(b.get("repo") or ""), str(b.get("deploy_workflow") or ""), str(b.get("deploy_ref") or ""),
                          str(b.get("notes") or ""))
 
+    @r.patch("/repos/{owner}/{name}")
+    async def patch_repo(owner: str, name: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        b = _b(body)             # how this repo runs in the box: her setup command, her test command, plain variables
+        return await run(S.save_repo, tenant, f"{owner}/{name}", b.get("setup_cmd"), b.get("test_cmd"), b.get("env_vars"))
+
     @r.delete("/repos/{owner}/{name}")
     async def del_repo(owner: str, name: str, tenant: str = Depends(current_tenant)):
         return await run(S.remove_repo, tenant, f"{owner}/{name}")
