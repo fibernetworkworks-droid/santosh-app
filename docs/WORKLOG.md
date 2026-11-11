@@ -2920,3 +2920,9 @@ Task ID: v0.792.0 VIDEO LEARNER PREMIUM (built as 0.785)
 Ask: read the AI Employees Video Learner code + design -> "FIX ALL 7 PROPERLY ... MAKE ENTIRE SECTION PROPER AND PREMIUM ... VISUAL GRAPHICAL ANIMATION".
 Built: 7 fixes (pill class, Re-learn replaces, run kept + Proven by real work, file picker steps, stage durations, uploads kept, restart pick-up) + the page redrawn (seekh.js, skv- CSS, hub card); 20 tests incl. a browser walk.
 Deploy: vps-ops deploy (server-only; no new pip, no new tables; data/seekh/media + data/seekh/jobs are created by themselves).
+
+---
+Task ID: DOCUMENT KIT PLAN (11 Nov 2026)
+Ask: read every ilovepdf.com tool, compare with Hoola, make the ultimate backend plan.
+Built: docs/DOCUMENT_KIT_PLAN.md (32 tools mapped, gap table, pdf_kit + dockit engine design, laws, phases D0-D8, 5 owner decisions). No code changed.
+Next: owner picks D1-D5, then D0 (setup_docs.sh + pdf proof card).
