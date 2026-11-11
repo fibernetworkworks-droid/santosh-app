@@ -341,7 +341,7 @@ def test_run_refuses_before_any_work_and_says_so(tool_env):
         run(T.image_edit(tool_env.ctx, "run", file_ids=["id"], steps=[{"op": "edit", "what": "change the date of birth"}]))
     ok = run(T.image_edit(tool_env.ctx, "run", file_ids=["id"], steps=[{"op": "resize", "width": 200}, {"op": "adjust", "brightness": 10}]))
     assert ok["status"] == "done"                                                          # resizing her own ID photo is fine
-    with pytest.raises(T.ToolError, match="Kaunsi photo"):
+    with pytest.raises(T.ToolError, match="Which photo"):
         run(T.image_edit(tool_env.ctx, "run", steps=[{"op": "resize", "width": 10}]))
     with pytest.raises(T.ToolError):
         run(T.image_edit(tool_env.ctx, "run", file_ids=[f"x{i}" for i in range(11)], steps=[{"op": "resize", "width": 10}]))

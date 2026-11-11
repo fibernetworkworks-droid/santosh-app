@@ -160,7 +160,7 @@ def _check_electron(rea: Session, path: Path, out: dict[str, Any]) -> list[dict[
 def _run(name: str, path: Path, kind: str, out: dict[str, Any]) -> list[dict[str, str]]:
     flags: list[dict[str, str]] = []
     if an.double_extension(name):
-        flags.append(an._flag("high", "the name looks like a document / photo but it is really a program (the double-extension trick)", "double_ext"))
+        flags.append(an._flag("high", "the name looks like a document / photo but it is really a program (a pseudo extension: the two-extension trick)", "double_ext"))
     if kind == "script":
         lvl = an.SCRIPT_EXT.get(Path(name.lower()).suffix, "medium")
         flags.append(an._flag(lvl, f"'{Path(name).suffix}' file runs commands as soon as it is opened", "script"))

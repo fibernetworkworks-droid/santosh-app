@@ -225,7 +225,7 @@ class Session:
     def call(self, tool: str, args: dict[str, Any]) -> dict[str, Any]:
         """Returns REA's structured result (normalized_result etc.). Raises ReaError on a tool error."""
         if tool not in ALLOWED:
-            raise ReaError(f"'{tool}' is turned off in App Check (only file-reading tools run).")
+            raise ReaError(f"'{tool}' App Jaanch mein band hai (sirf file padhne wale tools chalte hain).")
         res = self._rpc("tools/call", {"name": tool, "arguments": args})
         data = res.get("structuredContent")
         if data is None:
