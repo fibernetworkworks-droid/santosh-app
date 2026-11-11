@@ -70,7 +70,7 @@ def test_supplies_learn_reorder_point_and_make_a_spend_card(env):
     # her Haan: on order, vendor draft (never sent by Hoola)
     got = O.decide_spend(T, sp["number"], True)
     assert got["spend"]["status"] == "approved" and got["spend"]["wa_link"].startswith("https://wa.me/919820011111")
-    assert "apne app se" in got["say"]
+    assert "from your own app" in got["say"]
     assert O.items(T, "toner")[0]["on_order"] >= 15 and not O.items(T, "toner")[0]["low"]
     r = O.restock(T, "toner", sp["lines"][0]["qty"], price=2200)
     assert "zyada" in r["price_note"] and r["on_order"] == 0
@@ -106,13 +106,13 @@ def test_renewals_windows_notice_rise_and_roll(env):
     O.renewal_add(T, "AC AMC", "5 din", kind="amc", notice_by="2 din", amount=12000)
     d = O.send_morning(T)
     names = {x["name"] for x in d["renewals"]}
-    assert names == {"Fire NOC Form B", "AC AMC"} and "Mana karne ki aakhri tareekh" in d["text"]
+    assert names == {"Fire NOC Form B", "AC AMC"} and "Last date to cancel" in d["text"]
     assert not O.send_morning(T)["renewals"]                          # same window = no repeat reminder
     pay = O.renewal_pay(T, "AC AMC")
     assert pay["spend"]["amount"] == "₹12,000" and pay["spend"]["status"] == "pending"
     O.renewal_done(T, "AC AMC", paid=12000)
     done = O.renewal_done(T, "AC AMC", paid=14000)
-    assert "zyada" in done["warn"]
+    assert "higher" in done["warn"]
     assert done["renewal"]["due_on"] > _iso(300)                      # rolled a year ahead each time
     st = {x["name"]: x["added"] for x in O.starters(T)}
     assert len(st) > 10 and st["AC AMC"] is True and st["Pest control"] is False
@@ -136,7 +136,7 @@ def test_petty_bills_msme_and_duplicates(env):
     O = _O()
     O.petty_add(T, 5000, "float", kind="in")
     out = O.petty_add(T, 300, "chai biscuit", by="Ramesh")
-    assert out["balance"] == "₹4,700" and "Bill ki photo" in out["say"]
+    assert out["balance"] == "₹4,700" and "photo of the bill" in out["say"]
     O.vendor_upsert(T, "Small Supplier", udyam=True, gstin="27AAPFU0939F1ZV")
     b = O.bill_add(T, "Small Supplier", 11800, number="INV-77", bill_date=_iso(-40), gst=1800)
     assert any("MSME" in f for f in b["bill"]["flags"])
@@ -153,7 +153,7 @@ def test_weekly_note_and_morning_card(env):
     O.ticket_new(T, "Wifi band hai", priority="high")
     O.deadline_add(T, "GST data to CA", "3 din", owner="Priya")
     n = O.weekly_note(T, make_file=True, conv=conv_ctx().conversation_id)
-    assert "Repair aur maintenance" in n["text"] and "A4 paper" in n["text"] and n["numbers"]["tickets_opened"] == 1
+    assert "Repairs and maintenance" in n["text"] and "A4 paper" in n["text"] and n["numbers"]["tickets_opened"] == 1
     assert "GST data to CA" in n["text"]
     assert n.get("file", {}).get("file_id")
     assert _events("office_note")
@@ -178,7 +178,7 @@ def test_tools_owner_only_and_employee_wiring(env):
     assert run("office", action="ticket_new", title="Printer jam")["ticket"]["category"] == "printer"
     assert run("office", action="spend_request", title="Naya chair", amount=3500, kind="purchase")["spend"]["status"] == "pending"
     assert run("office_dekho", what="spends")["spends"]
-    assert run("office_dekho", what="today")["today"].startswith("Office ka din")
+    assert run("office_dekho", what="today")["today"].startswith("Office today")
     staff = Ctx(T, ctx.conversation_id, actor="staff:x")
     with pytest.raises(ToolError):
         asyncio.run(HANDLERS["office"](staff, action="rules", month_budget=1))

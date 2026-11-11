@@ -73,7 +73,7 @@ def test_a_post_reaches_her_blog_only_with_her_haan(site_env, kalam):
     with pytest.raises(kalam.KalamError):
         kalam.decide_publish(T, pid, True, card_hash="not-the-card")
     out = kalam.decide_publish(T, pid, True, card_hash=req["card"]["hash"])
-    assert "website ke blog par" in out["say"] and out["published"]["slug"] == "diwali-mithai"
+    assert "on the website's blog" in out["say"] and out["published"]["slug"] == "diwali-mithai"
     g = S.get(T, sid)
     assert g["version"] == ver + 1
     o = B.out_dir(T, sid, g["version"])

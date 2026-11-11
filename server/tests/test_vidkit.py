@@ -89,7 +89,7 @@ def test_info_and_verdict(media):
     p = ops.probe(media.land)
     assert (p["width"], p["height"], p["has_audio"]) == (640, 360, True) and abs(p["duration"] - 6) < 0.1
     assert "9:16" in ops.verdict(p)
-    with pytest.raises(ops.VideoError, match="video nahi"):
+    with pytest.raises(ops.VideoError, match="no video"):
         ops.probe(media.music)
 
 
@@ -189,7 +189,7 @@ def test_compress_hits_the_target_size(media):
     assert ops.probe(media.busy)["size"] > 1048576
     r = ops.compress(media.busy, 0.5)
     assert len(r["bytes"]) <= 0.5 * 1048576 and r["out"]["has_audio"]
-    with pytest.raises(ops.VideoError, match="pehle se"):
+    with pytest.raises(ops.VideoError, match="already"):
         ops.compress(media.land, "whatsapp")
     assert ops.compress(media.land)["target_mb"] is None
 
