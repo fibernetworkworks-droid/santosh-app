@@ -935,6 +935,7 @@ def init_db(url: str | None = None):
     from .agent import goal as _goal  # noqa: F401  (v0.186 goal_runs: lamba kaam pakka)
     from .agent import compact as _compact  # noqa: F401  (v0.242 chat_compact: Claude-style chat checkpoints)
     from . import aboutme as _aboutme  # noqa: F401  (v0.250 about_me: her memory page)
+    from .prompting import store as _prompt_store  # noqa: F401  (HOOLA PROMPTING: prompt_saved)
     from . import kaamwatch as _kaamwatch  # noqa: F401  (v0.136 live job watch)
     from . import kaam_followup as _kaam_followup  # noqa: F401  (v0.190.1 P0: this model only ever had LAZY
         # imports - worker.tick and kaamwatch.enqueue both import it inside the function - so create_all()

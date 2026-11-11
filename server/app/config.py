@@ -503,6 +503,8 @@ class Settings(BaseSettings):
     seekh_media_max_mb: int = 1024         # v0.785 kept videos per owner; over it the oldest copies go (the learned steps stay)
     interactive_page: bool = True          # v0.747 HOOLA INTERACTIVE: the console's video studio (one line -> scenes -> HyperFrames MP4)
     hoola_code_page: bool = True          # v0.748 HOOLA CODE: Developer Sahayak as a console page (sessions, live steps, plan, PR, reviews)
+    prompting_page: bool = True           # HOOLA PROMPTING: /console/prompting + /api/prompting/* + the Improve button
+    prompting_fill_model: bool = True     # the one small model call that proposes slots (off = a brief from code alone)
     flow_page: bool = True                # v0.751 HOOLA FLOW: the Kaan pack as a console page (dictate, files, live captions, words, settings)
     flow_composer_mic: bool = True        # v0.751 the chat box mic dictates through Kaan when its engine is ready (else the browser's own)
     shilp_page: bool = True               # v0.752 ARTCRAFT IN CREATE: the Create studio's ArtCraft tool over the shilp lane (/api/shilp)

@@ -1774,6 +1774,18 @@ def hoola_flow_page():
         "X-Content-Type-Options": "nosniff", "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
 
 
+@app.get("/console/prompting")
+@app.get("/console/prompting/")
+def hoola_prompting_page():
+    """HOOLA PROMPTING as its own full-screen app (docs/HOOLA_PROMPTING_PLAN.md P3): the workbench, recipes and her saved
+    prompts. Same sign-in as the console (its token in this browser), the /api/prompting routes, the same strict CSP."""
+    if not getattr(get_settings(), "prompting_page", True):
+        return RedirectResponse("/console/", status_code=307)
+    return FileResponse(STATIC / "console" / "promptapp.html", headers={
+        **_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP, "X-Frame-Options": "DENY",
+        "X-Content-Type-Options": "nosniff", "Permissions-Policy": "microphone=(), camera=(), geolocation=()"})
+
+
 @app.get("/api/console/config")
 def console_config():
     from . import accounts
@@ -1786,6 +1798,7 @@ def console_config():
             "interactive": bool(getattr(st, "interactive_page", False)),
             "hoola_code": bool(getattr(st, "hoola_code_page", False)),
             "flow": bool(getattr(st, "flow_page", False)),
+            "prompting": bool(getattr(st, "prompting_page", True)),
             "flow_mic": bool(getattr(st, "flow_page", False) and getattr(st, "flow_composer_mic", False)),
             "artcraft": bool(getattr(st, "shilp_page", False) and getattr(st, "shilp_enabled", False))}
 
@@ -5424,6 +5437,12 @@ from .aiapps.mcp import make_router as _aiapps_mcp_router  # noqa: E402  (app ke
 
 for _mk in (_aiapps_builder_router, _aiapps_keys_router, _aiapps_owner_router, _aiapps_public_router, _aiapps_mcp_router):
     app.include_router(_mk(require_key, current_tenant))
+
+# HOOLA PROMPTING (docs/HOOLA_PROMPTING_PLAN.md P1-P3): her rough line -> a brief she can see and edit -> the prompt each
+# engine wants. Text only: no route here sends, spends, builds or publishes.
+from .prompting.api import make_router as _prompting_router  # noqa: E402
+
+app.include_router(_prompting_router(require_key, current_tenant))
 
 # v0.137 Tech suite: 9 Technology & software Sahayaks (each module owns its /api/<mod>/* routes; the few public ones
 # - ispnoc / devops collectors, docwriter / product published pages - verify their own signature / token in code)
