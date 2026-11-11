@@ -54,7 +54,7 @@ def ffmpeg_ok() -> bool:
 def _num(v: Any, name: str, lo: float, hi: float, default: float | None = None) -> float:
     if v is None or v == "":
         if default is None:
-            raise VideoError(f"{name} chahiye.")
+            raise VideoError(f"{name} is needed.")
         return default
     try:
         x = float(v)

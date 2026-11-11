@@ -44,26 +44,43 @@ ALL_KEYS = TEXT_KEYS + ("value", "new", "old")
 # Six starter shapes. Every changing word is a {variable}: nothing here states a price, date or name.
 BUILTIN: list[dict[str, Any]] = [
     {"id": "tp_offer", "name": "Festival offer", "group": "Offers", "shape": "talking_head", "aspect": "16:9", "closing": "{shop}",
-     "scenes": [{"say": "Is {festival} par {shop} mein khaas offer.", "look": {"kind": "title", "text": "{festival} offer"}},
-                {"say": "{item} ab sirf {price} mein.", "look": {"kind": "price", "new": "{price}", "label": "{item}"}},
-                {"say": "Offer {last_date} tak. Aaj hi aaiye.", "look": {"kind": "lower_third", "title": "{shop}", "sub": "Offer {last_date} tak"}}]},
+     "scenes": [{"say": "This {festival}, a special offer at {shop}.", "look": {"kind": "title", "text": "{festival} offer"}},
+                {"say": "{item} is now only {price}.", "look": {"kind": "price", "new": "{price}", "label": "{item}"}},
+                {"say": "The offer runs until {last_date}. Come in today.", "look": {"kind": "lower_third", "title": "{shop}", "sub": "Offer until {last_date}"}}]},
     {"id": "tp_rate", "name": "Rate update", "group": "Updates", "shape": "talking_head", "aspect": "16:9", "closing": "{shop}",
-     "scenes": [{"say": "Aaj ka {item} rate sun lijiye.", "look": {"kind": "title", "text": "{item} rate"}},
-                {"say": "{item} ka rate {rate} hai.", "look": {"kind": "big_number", "value": "{rate}", "label": "{item}"}}]},
+     "scenes": [{"say": "Here is today's rate for {item}.", "look": {"kind": "title", "text": "{item} rate"}},
+                {"say": "The rate for {item} is {rate}.", "look": {"kind": "big_number", "value": "{rate}", "label": "{item}"}}]},
     {"id": "tp_batch", "name": "New batch opening", "group": "Lessons", "shape": "talking_head", "aspect": "16:9", "closing": "{institute}",
-     "scenes": [{"say": "{institute} mein {course} ka naya batch shuru ho raha hai.", "look": {"kind": "title", "text": "{course}"}},
-                {"say": "Batch {start_date} se shuru hoga.", "look": {"kind": "lower_third", "title": "Shuru: {start_date}", "sub": "{institute}"}},
-                {"say": "Seat pakki karne ke liye aaj hi sampark kijiye.", "look": {"kind": "none"}}]},
+     "scenes": [{"say": "A new batch of {course} is starting at {institute}.", "look": {"kind": "title", "text": "{course}"}},
+                {"say": "The batch starts on {start_date}.", "look": {"kind": "lower_third", "title": "Starts: {start_date}", "sub": "{institute}"}},
+                {"say": "Contact us today to confirm your seat.", "look": {"kind": "none"}}]},
     {"id": "tp_timing", "name": "Timing change", "group": "Updates", "shape": "talking_head", "aspect": "16:9", "closing": "{place}",
-     "scenes": [{"say": "{place} ka samay badal gaya hai.", "look": {"kind": "title", "text": "Naya samay"}},
-                {"say": "Ab hum {days} ko {hours} khule rahenge.", "look": {"kind": "lower_third", "title": "{hours}", "sub": "{days}"}}]},
+     "scenes": [{"say": "The timings of {place} have changed.", "look": {"kind": "title", "text": "New timings"}},
+                {"say": "We are now open {hours}, {days}.", "look": {"kind": "lower_third", "title": "{hours}", "sub": "{days}"}}]},
     {"id": "tp_thanks", "name": "Thank-you to a customer", "group": "Greetings", "shape": "talking_head", "aspect": "16:9", "closing": "{shop}",
-     "scenes": [{"say": "{name} ji, {shop} par bharosa karne ke liye dhanyavaad.", "look": {"kind": "title", "text": "Dhanyavaad, {name} ji"}},
-                {"say": "Aapki seva mein hum hamesha taiyaar hain.", "look": {"kind": "none"}}]},
+     "scenes": [{"say": "{name}, thank you for trusting {shop}.", "look": {"kind": "title", "text": "Thank you, {name}"}},
+                {"say": "We are always here to serve you.", "look": {"kind": "none"}}]},
     {"id": "tp_reel", "name": "Quick reel", "group": "Offers", "shape": "reel", "aspect": "9:16", "closing": "{shop}",
      "scenes": [{"say": "{hook}", "look": {"kind": "none"}}, {"say": "{point}", "look": {"kind": "none"}},
-                {"say": "Aaj hi {shop} aaiye.", "look": {"kind": "none"}}]},
+                {"say": "Visit {shop} today.", "look": {"kind": "none"}}]},
 ]
+# The same starters as they are spoken when the video's language is Hindi (Hindi words in Latin script). Same variables.
+BUILTIN_HI: dict[str, list[dict[str, Any]]] = {
+    "tp_offer": [{"say": "Is {festival} par {shop} mein khaas offer.", "look": {"kind": "title", "text": "{festival} offer"}},
+                 {"say": "{item} ab sirf {price} mein.", "look": {"kind": "price", "new": "{price}", "label": "{item}"}},
+                 {"say": "Offer {last_date} tak. Aaj hi aaiye.", "look": {"kind": "lower_third", "title": "{shop}", "sub": "Offer {last_date} tak"}}],
+    "tp_rate": [{"say": "Aaj ka {item} rate sun lijiye.", "look": {"kind": "title", "text": "{item} rate"}},
+                {"say": "{item} ka rate {rate} hai.", "look": {"kind": "big_number", "value": "{rate}", "label": "{item}"}}],
+    "tp_batch": [{"say": "{institute} mein {course} ka naya batch shuru ho raha hai.", "look": {"kind": "title", "text": "{course}"}},
+                 {"say": "Batch {start_date} se shuru hoga.", "look": {"kind": "lower_third", "title": "Shuru: {start_date}", "sub": "{institute}"}},
+                 {"say": "Seat pakki karne ke liye aaj hi sampark kijiye.", "look": {"kind": "none"}}],
+    "tp_timing": [{"say": "{place} ka samay badal gaya hai.", "look": {"kind": "title", "text": "Naya samay"}},
+                  {"say": "Ab hum {days} ko {hours} khule rahenge.", "look": {"kind": "lower_third", "title": "{hours}", "sub": "{days}"}}],
+    "tp_thanks": [{"say": "{name} ji, {shop} par bharosa karne ke liye dhanyavaad.", "look": {"kind": "title", "text": "Dhanyavaad, {name} ji"}},
+                  {"say": "Aapki seva mein hum hamesha taiyaar hain.", "look": {"kind": "none"}}],
+    "tp_reel": [{"say": "{hook}", "look": {"kind": "none"}}, {"say": "{point}", "look": {"kind": "none"}},
+                {"say": "Aaj hi {shop} aaiye.", "look": {"kind": "none"}}],
+}
 
 
 def _clip(v: Any, n: int) -> str:
@@ -207,9 +224,11 @@ def template_remove(tenant: str, tid: str) -> bool:
         return True
 
 
-def _template(d: dict[str, Any], tid: str) -> dict[str, Any]:
+def _template(d: dict[str, Any], tid: str, lang: str = "") -> dict[str, Any]:
     for t in d["templates"] + BUILTIN:
         if t["id"] == tid:
+            if lang == "hi" and tid in BUILTIN_HI and t in BUILTIN:
+                return {**t, "scenes": BUILTIN_HI[tid]}
             return t
     raise S.StudioError("That template was not found.")
 
@@ -219,7 +238,7 @@ def template_use(tenant: str, tid: str, values: dict[str, Any], lang: str = "hi"
     """Fill a template from HER values. A variable she left empty refuses by name - nothing is ever filled in for her."""
     with S._LOCK:
         d = _d(tenant)
-        t = _template(d, tid)
+        t = _template(d, tid, lang)
         vals = {str(k): _clip(v, 60) for k, v in (values or {}).items()}
         missing = [v for v in variables(t["scenes"], t.get("closing", "")) if not vals.get(v)]
         if missing:
