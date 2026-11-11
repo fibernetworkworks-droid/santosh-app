@@ -2809,3 +2809,15 @@ research and make a same plan for Hoola Interactive end to end". Three research 
 docs/research/heygen/ (4 files). Plan written: docs/HOOLA_INTERACTIVE_CONSOLE_PLAN.md (12 pages, feature matrix,
 tables, routes, API, meter, safety rules, phases I0-I11, her decisions, not-verified list). Docs only: no code, no
 version bump. No credentials in this entry.
+
+Task ID: v0.770.0 LANGGRAPH G2
+Ask: GO G2 (one run per chat + Stop as state).
+Built: agent/turnrun.py tickets + stop flag/event, turngraph stop checks, turn_inbox no double start; chat_graph still off; 14 tests.
+Deploy: vps-ops deploy (langgraph pip install from v0.761 if not done).
+
+
+---
+Task ID: LOVABLE STUDIO PLAN (11 Nov 2026)
+Task: owner - deep research on Lovable (design, logic, steps, strategy, chat motion) + an end-to-end plan for Hoola Web Studio.
+Work Log: 4 parallel research passes (engine/tools, UI/motion, strategy, Hoola Studio map); captured in docs/research/lovable/00_INDEX.md; plan in docs/LOVABLE_STUDIO_PLAN.md.
+Stage Summary: docs only, no version bump; waiting for her GO on L0 and her 4 decisions before L8.
