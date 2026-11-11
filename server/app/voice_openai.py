@@ -534,6 +534,16 @@ class OpenAICall(v.Call):
         secs = (self.stats.get("ended") or time.time()) - (self.stats.get("started") or time.time())
         voiceengine.add_usage(self.tenant, seconds=max(0.0, secs))
 
+    # ---------------- the wire (v0.816: the newer engines in voice_more.py swap only these) ----------------
+    async def _open(self):
+        return await connect()
+
+    async def _configure(self, session, context: str, mcp_defs) -> None:
+        await session.send({"type": "session.update", "session": session_config(self, context, mcp_defs)})
+
+    def _session_min(self) -> int:
+        return get_settings().voice_openai_session_min
+
     # ---------------- the call ----------------
     async def run(self) -> None:
         loop = asyncio.get_running_loop()
@@ -553,13 +563,13 @@ class OpenAICall(v.Call):
                 err: Exception | None = None
                 session = None
                 try:
-                    session = await asyncio.wait_for(connect(), timeout=20)
+                    session = await asyncio.wait_for(self._open(), timeout=20)
                     self._session = session
                     self._responding = self._want_response = False
-                    await session.send({"type": "session.update", "session": session_config(self, context, mcp_defs)})
+                    await self._configure(session, context, mcp_defs)
                     if first:
                         await self.send_json({"type": "ready", "voice": self.voice, "call_id": self.call_id,
-                                              "vad": v.vad_config(), "engine": "openai", "conv": self.conv})
+                                              "vad": v.vad_config(), "engine": self.engine, "conv": self.conv})
                         drop, kind = "", ""
                         try:
                             from . import yaad
@@ -587,7 +597,7 @@ class OpenAICall(v.Call):
                     down = asyncio.create_task(self.downlink(session))
                     closed = asyncio.create_task(self.closed.wait())
                     watch = asyncio.create_task(self._stall_watch(session))
-                    limit = asyncio.create_task(self._session_limit(max(5, st.voice_openai_session_min) * 60))
+                    limit = asyncio.create_task(self._session_limit(max(5, self._session_min()) * 60))
                     done, _ = await asyncio.wait({up, down, closed, watch, limit}, return_when=asyncio.FIRST_COMPLETED)
                     for x in (up, down, closed, watch, limit):
                         x.cancel()
@@ -598,7 +608,7 @@ class OpenAICall(v.Call):
                     if limit in done:
                         self.stats["session_moves"] = self.stats.get("session_moves", 0) + 1
                     elif not self.closed.is_set() and loop.time() - started < 30:
-                        err = RuntimeError("OpenAI ne session turant band kar diya")
+                        err = RuntimeError(f"{self.engine} closed the session at once")
                 except asyncio.CancelledError:
                     raise
                 except Exception as e:
@@ -612,7 +622,7 @@ class OpenAICall(v.Call):
                     failures = 0
                     continue
                 failures += 1
-                log.warning("openai voice session error (%s): %r", failures, err)
+                log.warning("%s voice session error (%s): %r", self.engine, failures, err)
                 self.first_error = self.first_error or str(err)
                 if failures >= 3:
                     self._end_reason = getattr(self, "_end_reason", "") or "error"
