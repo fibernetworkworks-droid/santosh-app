@@ -1,12 +1,42 @@
-## v0.742.0 AIHUBMIX — free GLM 5.3 Flash (and more) for testing every Hoola feature (10 Nov 2026; owner: "AIHubMix -- LETS DO IT")
 
-AIHubMix (aihubmix.com/models/free, read 10 Nov) runs 71 models billed at $0. The catch is a one-time $1 top-up, after which each account gets 100 requests a day, 10 a minute, and 1M tokens a day shared across its free models. Its tool support is not published per model.
-- `agent/providers.py`: new provider `aihubmix` (https://aihubmix.com/v1, key `AIHUBMIX_API_KEY`). `providers.free()` is True for OpenRouter `:free` and AIHubMix `-free` names, so the dropdown shows them as Free.
-- The WHOLE server can run on it with only that key: `GLM_MODEL=aihubmix:coding-glm-5.3-flash-free`. `llm.glm_ready()` is now `providers.ready(GLM_MODEL)`, and `llm.model_in_force()` (her pick, else GLM_MODEL) decides the provider in `_target` / `is_openrouter` / `is_nvidia` / picture checks. `glmdoor._ready` and `modelchoice.offered` follow, so background jobs, Web Studio and the SDK door use it too.
-- `modelprofile._norm` drops `coding-` and `-free / :free / -latest / -instruct / -it / -preview`, so `coding-glm-5.3-flash-free` is matched to `z-ai/glm-5.3-flash` in OpenRouter's catalogue and gets its pictures / tools / window.
-- `santosh._friendly_error`: an AIHubMix 429 or limit says the free limit is used up (per minute / per day), not "something went wrong".
-- Tests: `test_v0742_aihubmix.py` has 5 tests: names + free flag + matching, the whole server on AIHubMix with only its key (url, key, model, no extra fields, GLM 5.3 Flash's abilities, pictures stay on it), the SDK door, the dropdown showing Free, and the plain limit line.
-- NOT VERIFIED LIVE: no AIHubMix key yet. Whether its free GLM 5.3 Flash accepts tools like the paid one is unknown until the first call. Its data terms were not read; use it for test chats only.
+
+## v0.799.0 DESK ROOM (built as 0.796; their 0.796-0.798 took the numbers, all kept) - a console desk for every live AI employee (owner: "LOT OF EMPLOYEE HAS BEEN DEVELOPED IN APP BUT IT IS NOT AVAILABLE IN WEB CONSOLE CHECK THIS FIRST THEN CATEGORY WISE DEVELOP AND DESIGN IT IN CONSOLE")
+
+THE AUDIT (catalog `employee/hire.py` x console `employees.js` DESKS x `v2.html` views): 84 employees, 63 live. Every live one
+in Games (10), Education (6), Enterprise (10), Business (seo / social / leads), cad, architect and film already had a console
+desk. 31 did not, and their "Open desk" tap went to `<key>desk`, a view that does not exist - nothing happened:
+Finance & Banking (paisa_sahayak, vitt_sahayak, risk_desk), Retail & E-commerce (dukaan_desk, retail_growth, retail_trust),
+Health Insurance (bima_desk, bima_assist, bima_risk), Voice (kaan) and Construction & Real Estate (21 const_* seats). They were
+never desks on the PHONE either: they are chat tools, and `employees_screen.dart` `_deskFor` falls back to the SEO desk for
+them (not changed in this release - phone code compiles only on CI).
+
+WHAT WAS BUILT
+- `server/app/employee/deskroom.py`: `DEPTS` (four departments, their lanes; Construction in five lanes), `tools_of(key)` (the
+  employee's own tool + its read-only `<key>_dekho` when it exists), `spec(tool)` = the tool's schema + its FULL description from
+  its own module (the registry copy is cut to 1,200 chars for the model and lost later actions' inputs) read into one form per
+  action: the fields that action names, choices from `a|b|c`, hints from `( )`, `[{a, b}]` = a row table with those columns,
+  `[x]` = one per line, `{k: v}` = key: value lines, `file_id` = a file picker, and what the action gives back (`->`). 423
+  actions, 409 read exactly; the 14 whose inputs the tool never lists say so and show every field folded. `run()` = the SAME
+  `dispatch` the chat uses, `Ctx(actor="owner")`, the conversation = her Hoola updates chat (cards land there); hired only,
+  paused refused, never another employee's tool, unknown fields dropped, a 9+ digit account / card number cut to its last
+  four, 90 s cap, output scrubbed. Routes: GET /api/deskroom, GET /api/deskroom/{dept}, POST /api/deskroom/{key}/run.
+- `server/app/static/console/deptdesk.js` (view `deptdesk`): crumb, department switcher, hero (serif title, line, a line drawing
+  per department that traces itself once, employees / working / actions counts), employee rail by lane with status dots, the
+  employee panel (pitch, Working / Paused / Not hired; not hired = what it does / never / needs + Hire on the careful trust
+  level), Work / Records tabs, action chips with what each gives, Find an action when there are many, the form (number / text
+  / choice / Default-Yes-No / row table with + Add row and Paste from Excel / lists / file), Run (Ctrl+Enter), and the result as
+  tiles, tables, flag lists, letters in the reading serif and a notes callout, with Copy. Records opens today's desk (`day`) or
+  the first list by itself. Ask in chat puts a line in the chat box, never sends it.
+- `employees.js`: the 30 keys -> 'deptdesk' (opened on that employee), kaan -> 'flow' (Hoola Flow is Kaan's console page).
+- `v2.css` block "v0.796 DESK ROOM": tokens only, light / dark / system, scale 12.5-32, weights <= 600, entrances once and
+  BACKWARDS (the form and result animate only when they first appear, never on a repaint), only the running dot loops.
+- Tests `test_v0799_desk_room.py` (8): every live employee opens a real view (the audit, held), the four departments = every
+  live seat, forms from the full description (>95% exact), routes + hire gate + real runs (loan EMI 16,607.15, a store GRN read
+  back as stock, paused refused, account masked), dispatch-as-owner pin, console wiring, crisp CSS, a real-browser walk in light
+  1280 and dark 390. Pins moved in test_v0453 / test_v0456 (openView now passes the key for deptdesk too).
+
+NOT VERIFIED: not opened on her live console yet; actions that make a card were not walked to the card; the phone still opens
+the SEO desk for these 31 (a phone desk is the next step if she wants it).
 
 ## v0.741.0 MORE PROVIDERS — Gemini / Groq / Mistral / NVIDIA / Z.ai in the model dropdown (10 Nov 2026; owner: "CHECK ALL MORE FREE POWERFUL OPTION" -> "GO")
 
@@ -1373,54 +1403,132 @@ vendor MCPs sign in with OAuth to HER vendor account — whether that fits her "
 
 Also healed: four game-role tests still asserted the old Hinglish "hired nahi" after main's English-tools commit d84057023.
 
-## v0.798.0 HOOLA CODE PHASE 5 (built as 0.794; their PROMPT NAAP took 0.794.0, YEH WALA 0.795.0, PRAYOGSHALA WAVE 7 0.796.0 and 3D SCENES + GAME TOOL HUB 0.797.0) — around the session: thinking, passes, reviewers' comments, the suggestion, scheduled tasks + trigger, phone push, read-only link (owner: "GO PHASE 5")
 
-Phase 5 of `docs/HOOLA_CODE_WEB_PLAN.md`. Nothing here changes what a session may do: a scheduled or triggered run is an
-ordinary session, so the checks on a change, her PR tap and her merge tap are the same code. New module
-`server/app/devsahayak/around.py`; the page is `static/console/code.js` (+ `hoolacode.js` for the read-only page).
+## v0.800.0 HOOLA VOCAL (built as 0.787; owner: "NOW LETS WORK ON 11LABS ::: HOOLA VOCAL ::: clone VoiceStudio and make same 11labs for hoola end to end")
 
-**What she gets**
-- **Thinking view.** The model's own thinking is kept per step (`engine._round` emits `{"k": "think"}`, scrubbed for
-  keys, 3,000 chars a step). Session menu > Transcript view: Normal / Thinking / Verbose. It is shown, never sent
-  anywhere else.
-- **Passes card** (right rail). The plan pass, Hoola's own review, a CI fix round and a reviewers'-comments round each
-  write a start and an end step (`service._pass`), with how they ended ("3 steps planned", "clean", "2 point(s) to fix").
-- **Reviewers' comments.** People's comments on her pull request are read from GitHub (`gh.pr_comments`: line comments +
-  conversation; bots left out; text scrubbed) and shown on a card. "Fix N comments" = one round on the same PR with the
-  comments as DATA (`<pr_review_comments>`: Hoola decides which are right and says which it did not follow). The same
-  comment is never asked twice (`DevTask.pr_notes` seen list). By itself only when the PR's Auto-fix switch is on AND
-  the repo is private (on a public repo anyone can comment, so it always waits for her tap), at most 6 rounds a PR.
-- **A suggested next message** (ghost text in the message box; Tab takes it). One small call when a round ends
-  (`around.make_hint`, `dev_hint`, `dev_hint_model` = Haiku, no tools, 60 tokens). NONE / too long / a key = nothing shown.
-- **Scheduled tasks** (sidebar > Scheduled, `#/scheduled`). A task that starts by itself: every day / Monday to Friday /
-  one weekday, a time in India time, or only on demand; Run now; Pause; history of its sessions. At most 12; never more
-  often than daily; a missed slot (server down) runs once; a run still working is not started twice.
-  Table `devsahayak_schedules`, worker `around.tick_schedules` from `service.tick`.
-- **Trigger address** for her own program: `POST /api/devsahayak/hooks/<id>` with `Authorization: Bearer hct_...`.
-  The token is shown ONCE and only its sha256 is stored; a new token ends the old one; wrong id and wrong token give the
-  same 401; 10 runs an hour (429); a paused task answers 409. The caller's `text` is added to the task inside
-  `<trigger_payload>` as DATA, never instructions. The answer carries only `{ok, session}`.
-- **Phone push** when a background run ends: "Hoola Code: done" (PR ready) or "Hoola Code needs you" (failed, or Hoola
-  asked a question). One event per run (`around.tell_end`, flag `end` on `devsahayak_task`); states that already push
-  from their own card (ready / plan / explained / refused / CI failed) are not told twice.
-- **Read-only link** to one session (session menu > Share a read-only link, confirm first). Random 43-character token,
-  7 days, she can stop it at once; an ended link never comes back to life. The page `/console/code/shared/<token>` needs
-  no sign-in and can only ask `GET /api/devsahayak/shared/<token>`; the view is REDUCED: repo name without the owner, no
-  attachments, no cost, no PR link, no hidden-file list, no buttons that act (no composer, no merge, no comments on
-  lines, no Compare). Headers: noindex, no-referrer, frame DENY.
+Full plan, the licence finding and the ElevenLabs-by-feature table: `docs/HOOLA_VOCAL_PLAN.md`.
 
-**Routes** (all under `/api/devsahayak`): GET/POST `/schedules`, PATCH/DELETE `/schedules/{id}`, POST `/schedules/{id}/run`,
-POST/DELETE `/schedules/{id}/trigger`, POST `/tasks/{id}/share`, GET `/tasks/{id}/comments`, POST
-`/tasks/{id}/bg/fix_comments`; public: POST `/hooks/{id}`, GET `/shared/{token}`; page `/console/code/shared/{token}`.
-**Columns** (nullable, self-heal): `DevTask.share`, `share_until`, `hint`, `sched_id`, `pr_notes`.
-**Switches:** `dev_hint` (True), `dev_hint_model`. conftest pins `DEV_HINT=false` for the older suites.
+- **Licence:** VoiceStudio is AGPL-3.0 and its default weights are CC-BY-NC. Read for the feature map only; ZERO code or weights
+  copied (a test asserts it). Everything runs on Hoola's own engines.
+- **Server:** NEW `server/app/vocal/service.py` (rules) + `vocal/api.py` (20 routes under `/api/vocal`), switch `vocal_page`,
+  console flag `vocal`. Storage `data/vocal/<tenant>/vocal.json` + `audio/` + `samples/`.
+  `tts`, `dialogue`, `preview`, `voice_clone` (consent must be True; bytes sniffed, never the file name), `voice_design`
+  (refuses "sound like ..."), `voice_remove` (deletes the recording), `rule_add/remove` + `apply_rules`, `pieces` (cut at sentence
+  ends) + `join_wavs` (one format only - two kinds of voice in one dialogue are refused, not garbled), `sfx`, `cleanup`, `music`,
+  `project_save` / `chapter_make` / `project_export`, `history_remove`, `audio_file` (id shape checked, tenant-scoped), `usage`,
+  `connected()` = the honest switchboard.
+- **Console:** NEW `static/console/vocal.js` (overlay `#hvRoot`, twelve pages, a player bar), sidebar row "Hoola Vocal" under Hoola
+  Interactive. The Interactive design block in v2.css is now scoped `:is(#hiRoot,#hvRoot)`; Vocal's own pieces are the `.hv-*` rules.
+- **Live bug fixed (in Hoola Interactive since v0.774):** `v2.js` line 234 sends every click on `[data-v]` to `go()`. Both pages'
+  tabs carried `data-v`, so one tab click hid the page and returned her to chat. Renamed `data-val`. RULE: inside a full-page overlay
+  never use `data-v`.
+- **Tests:** `test_v0787_hoola_vocal.py` (11): rules applied by code, long text cut and rejoined exactly, consent, sniffed bytes, no
+  named-person imitation, dialogue casting, chapters + export, effects determinism, history / usage, the not-connected switchboard,
+  no AGPL names, and a real-Chromium walk of all twelve pages (title once, no sideways scroll, her text never run as HTML, a tab
+  click stays on the page, the typed line reaches the server with her voice and language).
+- **NOT VERIFIED:** every engine was faked in the tests. No real voice has been heard from this page. Clone and design need the GPU
+  lab, which is not connected on her server.
 
-**Tests** `server/tests/test_v0794_hoola_code_around.py` (12): thinking kept + scrubbed; pass start / end; comments read
-as data, fixed once, never twice, "nothing to fix" is not a failed session; auto only private + Auto-fix; the suggestion
-(one call, small model, no tools, NONE / long / key dropped, renewed each round); when a schedule is due; schedule rules
-+ one run for missed slots + pause + Run now + limit 12; trigger (hash only, 401 / 409 / 429, payload as data, new token
-ends the old); share (reduced view, expiry, stop, headers); end-of-run push told once; two browser walks (session page +
-Scheduled page + trigger + share; the read-only page makes only its one GET, with no Authorization header).
+## v0.801.0 APP STUDIO PREMIUM PASS (built as 0.797; their 3D SCENES + GAME TOOL HUB took 0.797.0, HOOLA CODE PHASE 5 0.798.0, DESK ROOM 0.799.0, HOOLA VOCAL 0.800.0 - REBASE PROTOCOL, all kept; owner: "THE WEB CONSOLE APP DEVELOPMENT SECTION LOOKS STALE AND OLD --- MAKE ALL PAGES FUNCTION PROPERLY, ALIGN THE TEXT, TAB, BUTTONS ETC PERFECT, MAKE IT MORE ADVANCED AND PREMIUM")
+
+Every page of /console/apps was first walked in a real Chromium on a seeded built app (a kirana shop app with a finished
+design and an Android build) at 1440 px light, 1440 px dark and 390 px, with screenshots of each page, before anything
+changed. Every page loaded with no script error; what was wrong was the finish:
+
+- Headers: Plan / Looks / Screens / Data / Business / iPhone had a title, Store / Health / Settings had none, Prototype
+  had a different bar 10 px off the others. Now ONE header on every page (`head(title, right, sub)` -> `.phd`: 22 px
+  title, one plain line under it, controls on the right), and ONE panel header row (`ph()` -> `.pnh`); plan
+  sub-sections are `.psub`. The test holds that no panel keeps a bare `<b>` title.
+- Tabs: the tab row ran past the pane (Settings fell off at 1440 px once icons were added). Now an underlined tab bar
+  (ink line under the current page, icons per page) sized by a container query on the pane: icons only where they fit.
+- Buttons: violet and black primaries mixed, sizes 28-34 px. Now one scale (34 / 30 px), primary = ink like Publish
+  (violet stays the working colour), Business cards keep their button on the bottom line.
+- Store: the raw browser "Choose File" box replaced by a styled key-file picker that shows the chosen name.
+- Android: the 4-step pipeline is one strip with a coloured bar under each finished / running step.
+- Settings: App details in two columns; inputs could run past the card edge (no min-width) - fixed.
+- Work card: said "Starting..." after its steps had run (now "After: <last step>") and showed "0s" for steps with no
+  recorded time (now no clock under 1 s).
+- iPhone: the runner note said "iPhone apps compile on a Mac. iPhone apps compile only on a Mac: ... (APP_BUILD_MODE=
+  github) (...)." - now `iosWhy()` says it once, brackets dropped.
+- Plurals ("1 calls"), language codes shown as names (hinglish / en / hi -> Hinglish / English / Hindi).
+- Phone width: a later Web Studio rule pinned the chat column at 440 px and pushed the page sideways - the chat takes the
+  full width, the top bar keeps Publish whole and the rest as icons.
+- English: "Design pakka" -> "Approve design", "Haan, make 3 looks" -> "Approve plan · make 3 looks", "Waiting for your
+  Haan", the feature-switch / language / list-change examples, and two server lines the Studio shows: the approve line
+  (`appmaker/service.py`) and the crash summary (`appmaker/quality.py`, "No crash from any phone in N days").
+- Motion: the page fades in once when she opens a page (`pane.dataset.fresh`, class `pin` - `.in` is the input class and
+  drew a border round the whole page), never on the 2 s poll redraw; off under reduced motion.
+
+Styles = the `v0.794 APP STUDIO PREMIUM PASS` block at the end of `appstudio.css`, scoped `.ws-app`, tokens only (the
+test holds no raw hex in it). Tests: NEW `test_v0801_app_studio_premium.py` (markers, English server lines, a real-browser
+walk of all 12 pages at 1440 and 390 px: header first, one current tab, no boxed body, no sideways scroll, panel headers,
+no Hinglish, no "0s", the tab bar fits; motion once per page); `test_v0693_app_studio.py` pin moved to "Approve design".
+NOT VERIFIED: on her own server with a real build in progress; the thread's older Hinglish job lines from other server
+messages (design ready / failed / stopped) are unchanged.
+
+## v0.802.0 GALTI PAKDO - the preview tells Hoola when it breaks; Try to fix follows a ladder (L6 of docs/LOVABLE_STUDIO_PLAN.md, owner: "GO L6")
+Before: an error in the preview was invisible to Hoola (and a section script's error was swallowed by its own try/catch);
+she had to notice it and describe it. Lovable's error collector + Try to fix, in Hoola's shape:
+- COLLECTOR (`hoola-site.js`, last block): runs ONLY in a frame whose page is /api/site-preview/... - `error`,
+  `unhandledrejection` (AbortError skipped), failed `fetch` (5xx = Data error, network = Data error) and `window.__hoolaErr`
+  (called by the build's per-section catch with `pages/<page>/<section>.js`; on her live site nothing defines it, so the catch
+  stays silent as before). Max 20 per page load, posted to the parent window only.
+- RELAY (Studio): only messages from its own preview frame; batched 1.2 s; POST /api/sites/{id}/preview-errors with her login
+  (64 KB cap -> 413, 20 items, masked by `ops.clean_message`: emails, long numbers, query strings; the preview's private link
+  is cut from messages and stacks).
+- STORE (`site/galti.py`, table `site_errors`, registered in db.init_db + self-heal): one row per fingerprint (kind +
+  message with numbers folded + file + line): count, page, version, stack (6 lines), first / last seen, status
+  (open / ignored / fixed - it reopens if it comes back), the LEDGER of attempts. A site that stopped on a build problem
+  shows a Build problem card (GET /api/sites/{id}/errors).
+- CARDS: above the chat box (up to 3 + "N more") and a "This page hit a problem" bar over the preview: title (Page error /
+  Data error / Build problem), page, times seen, version, Show details (file:line, stack, attempts), Ignore, Try to fix
+  (Ctrl+Enter when the chat box is empty).
+- THE LADDER (plan section 8): Try to fix -> POST /api/sites/{id}/errors/{eid}/fix -> the Build message + `<error_to_fix>`
+  (the error, its file, every earlier attempt and its result) read ONCE by that turn via `turnmode.site_block`; the model is
+  told to find the cause first, change as little as possible (edit_lines) and NOT claim it fixed. An attempt is marked
+  'did not fix' when the same error is seen on a version newer than the one it started from. After two that did not hold,
+  the button and the server switch to "Plan for root cause" (Plan mode, "what have we already tried") - never a third blind
+  patch. Not seen on a newer version after an attempt = "Not seen since vN" (proven by the preview, never claimed).
+- AGENT: `website_dekho what=errors` (+ all) - the open errors with the ledger; the description says read before fixing.
+NOT BUILT: the plan's "5 free fixes a day" (Hoola has no per-turn charge to waive, so nothing says free); ladder steps 3-6
+stay manual (History > restore a version already exists; rebuild one section = action=change; remix not built).
+Tests: test_v0802_galti_pakdo.py (8: one card per fingerprint + masking + caps + her sites only, the ladder two fixes then a
+plan with the ledger in the turn, not-seen-since / ignore / reopen, build problem + routes + the agent read + 413, section
+errors only in the preview, the preview link never kept, source wiring, and the PLANTED-ERROR walk: a section that throws ->
+the card names pages/home/hero.js -> Try to fix -> one exact edit -> the next preview is clean - fixed on try 1).
+NOT VERIFIED live: a real model fixing a real error from <error_to_fix> on her server.
+
+
+## v0.803.0 GAME DEV ENGINE LOOK (built as 0.802; their GALTI PAKDO took 0.802.0, both kept; owner: "NOW MAKE IT MORE STUNING ADVANCE AND A REAL GAME ENGINE FEEL DESIGN WITH ANIMATIONS AND GRAPHICAL VISUALIZATION IN IT" -> five engine boards on the design canvas (v2 · Engine look) -> "GO BUILD - WHOLE APP, REAL GAME IN VIEWPORT")
+
+The whole Hoola Game Dev app (`/console/games`) redrawn as a game engine, behaviour unchanged.
+
+- **Always dark.** `gamedev.js` sets `data-theme="dark"` + `html.gdv-engine` on load; `gamedev.css` puts one engine palette on
+  `:root.gdv-engine[data-theme]` (specificity above v2.css's dark block). The embedded console game pages (board, bible,
+  scenes, QA, release, crew roles...) read the same tokens, so they wear the engine look without their own CSS changing.
+- **Home.** Engine bar (`#gdvEbar`, `drawEbar`) with only real numbers: Godot ready / not installed, games being made, games
+  that play. Hero with a living pipeline loop (`loopHtml`: Hoola's six steps, work flowing round; the middle names her newest
+  game that plays). Game cards get a living drawn thumbnail when there is no screenshot (`sceneArt`: runner / night skyline /
+  tile board - decoration) and a status badge. Studio charts (`statsHtml`, `#gdvStatsBox`, redrawn by the home poll) from her
+  own games only: the state split, versions built per game, frame rate measured on the server - a card with nothing real
+  to show is left out. The six steps became a connected strip.
+- **Workspace = editor.** Engine top bar (web build version + server fps chips when measured), the Hoola chat as a dock,
+  tabs. The Play tab (key `play`, label "Editor") is the REAL game in the viewport - the same web build the private link
+  opens - with its own toolbar (`viewportAct`): play from the start, stop (the frame goes blank, an overlay offers Play),
+  phone / tablet / computer size, full screen (falls back to a toast), open in a new tab. Inspector: version, screen,
+  measured performance as bars, Hoola's checks, the private link + QR, the change box / progress. Output dock: the real
+  checks, warnings and version notes as a log; a versions timeline with the restore buttons.
+- **The viewport is never rebuilt by a poll.** `.gdv-stage[data-key]` = play link + live version: the same key keeps the
+  stage node (only the inspector and the dock are swapped), a NEW version reloads it (before, the same link kept showing
+  the old build until a reload).
+- **Build pipeline** (`pipeHtml`) on the progress card: design, code, build, bots play, your link - the real stage glows,
+  work flows along the line into it; the pct / say / stage hooks still update in place.
+- design.md shown as an editor file tab. Every loop is off under the computer's reduce-motion setting and Hoola's Calm.
+  Type rules kept: weights <= 600, nothing under 12px, no all-caps (mono labels are lower case).
+- Board embed fix: a two-word role chip on a task card wraps instead of overlapping the line under it.
+
+Tests: `test_v0783_gamedev.py` 20 + the release suites; screenshots checked by eye at 1440 and 390 (home, editor, design,
+building, board, crew). NOT VERIFIED: on her server with a real Godot build (the walk uses a stand-in web page as the game).
 
 **NOT VERIFIED:** no real Claude suggestion, no real GitHub comment feed, no real FCM push, no real program calling the
 trigger. The trigger's hourly limit is per task row (not per IP). The phone app has no Scheduled screen (console only).
@@ -1428,7 +1536,7 @@ trigger. The trigger's hourly limit is per task row (not per IP). The phone app 
 panes). Deploy: vps-ops deploy (server-only; no new pip; one new table + five nullable columns make themselves).
 
 
-## v0.799.0 HOOLA PROMPTING P1-P3 - the understanding engine, the Improve button, the Prompting page (built as 0.796; their 0.796.0-0.798.0 took the numbers - REBASE PROTOCOL, all kept; owner: "GO P1 TO P3")
+## v0.804.0 HOOLA PROMPTING P1-P3 - the understanding engine, the Improve button, the Prompting page (built as 0.796; their 0.796.0-0.803.0 took the numbers - REBASE PROTOCOL, all kept; owner: "GO P1 TO P3")
 
 Plan: `docs/HOOLA_PROMPTING_PLAN.md` parts 2-6 and 11. Research: `docs/research/prompting/00_INDEX.md`. The owner chose to
 test everything together at the end, so P0's live card has NOT run: these three sections are built without its numbers.
@@ -1473,7 +1581,7 @@ Hoola chat, Copy, Save), Recipes (search, kind, blanks form; a website template 
 Run only HANDS THE TEXT OVER (`hoola.prompt.toWeb` read once by webstudio.js into its box; `hoola.flow.toChat` for the
 chat box) - nothing is sent or built for her.
 
-**Tests** `server/tests/test_v0799_prompting.py` - 17, no model: section guess, locked facts, code slots, the model
+**Tests** `server/tests/test_v0804_prompting.py` - 17, no model: section guess, locked facts, code slots, the model
 checked by code, model outage, answers / removals / validate, score reasons, dialects, brand fill, recipes, routes end
 to end, tenant fence, switch off, wiring, and 2 real-browser walks (the page at 1360 + 390 px; the console chat box and
 the Web Studio with Use + Undo). Screens were looked at by eye (light). Stamp count in v2.html 29 -> 31.

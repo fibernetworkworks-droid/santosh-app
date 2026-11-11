@@ -1,4 +1,4 @@
-"""v0.799 HOOLA PROMPTING P1-P3 (built as 0.796) (docs/HOOLA_PROMPTING_PLAN.md): the understanding engine (a prompt = a BRIEF: her
+"""v0.804 HOOLA PROMPTING P1-P3 (built as 0.796) (docs/HOOLA_PROMPTING_PLAN.md): the understanding engine (a prompt = a BRIEF: her
 facts locked, a guess labelled a guess, nothing silent, no magic phrase), the Improve button, and the Prompting page.
 No model runs here: the one small fill call is replaced by a fake."""
 import json
@@ -421,5 +421,5 @@ def test_first_visit_race_on_the_connectors_user_row(env):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.799.0"
-    assert "0.799.0+798" in (REPO / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.804.0"
+    assert "0.804.0+803" in (REPO / "pubspec.yaml").read_text()

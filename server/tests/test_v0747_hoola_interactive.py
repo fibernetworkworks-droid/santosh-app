@@ -242,6 +242,11 @@ def test_the_page_in_a_real_browser(arena_server):  # noqa: F811
         if shots:
             pg.wait_for_timeout(1000)
             pg.screenshot(path=f"{shots}/hi-{page}.png")
+    pg.locator("#hiRoot .hi-rb[data-p='projects']").click()
+    pg.locator("#hiRoot .hi-tab", has_text="Drafts").click()                        # v0.787: a tab click must stay on the page - the console
+    assert pg.evaluate("document.querySelector('#hiRoot').hidden") is False            # sends any click on [data-v] to go(), which threw her back to chat
+    assert "Menu" in pg.locator("#hiView").text_content()
+    assert "data-v=" not in (Path(__file__).resolve().parents[1] / "app/static/console/interactive.js").read_text()
     pg.locator("#hiRoot .hi-rb[data-p='avatars']").click()
     pg.wait_for_function("() => document.querySelectorAll('#hiRoot img[data-av]').length === 0")   # the empty picture became initials
     assert "PR" in pg.locator("#hiRoot .hi-face").first.text_content()
@@ -298,15 +303,15 @@ def test_the_premium_pass_keeps_the_console_rules():
     import re
     con = pathlib.Path(__file__).resolve().parents[1] / "app" / "static" / "console"
     css = (con / "v2.css").read_text()
-    blk = css[css.index("v0.775 HOOLA INTERACTIVE, PREMIUM PASS"):css.index("@media (prefers-reduced-motion:reduce){ #hiRoot") + 200]
+    blk = css[css.index("v0.775 HOOLA INTERACTIVE, PREMIUM PASS"):css.index("@media (prefers-reduced-motion:reduce){ :is(#hiRoot,#hvRoot)") + 240]
     assert "backdrop-filter" not in blk and "text-transform" not in blk
     assert not re.search(r"font(-weight)?:\s*(700|800|900)\b", blk)                 # nothing above 600
     assert not re.search(r"font-size:\s*(9|10|11)(\.\d+)?px", blk)                  # nothing under 12px
-    assert "#hiRoot *,#hiRoot *::before,#hiRoot *::after{animation:none!important;transition:none!important}" in blk
+    assert ":is(#hiRoot,#hvRoot) *,:is(#hiRoot,#hvRoot) *::before,:is(#hiRoot,#hvRoot) *::after{animation:none!important;transition:none!important}" in blk
     assert not re.search(r"animation:[^;}]*\b(both|forwards)\b", blk) and "var(--logo)" not in blk   # no held animation; Sora stays on the logo
     assert blk.count("infinite") == 2                                               # only "working now": the live chip and the running step
     for line in blk.splitlines():                                                   # every rule of the page is scoped to the page
-        if "{" in line and not line.lstrip().startswith(("@", "/*", "}", "from", "0%", "radial", "linear", "box-shadow", "background")) and "#hiRoot" not in line.split("{")[0]:
+        if "{" in line and not line.lstrip().startswith(("@", "/*", "}", "from", "0%", "radial", "linear", "box-shadow", "background")) and "#hiRoot" not in line.split("{")[0] and "#hvRoot" not in line.split("{")[0]:
             assert line.startswith("  ") or line.strip().startswith(("--", "display", "transition")), line[:80]
     js = (con / "interactive.js").read_text()
     for bad in ('class="top"', 'class="tag ', 'hi-chip live', 'hi-pill', 'font-weight:700'):
