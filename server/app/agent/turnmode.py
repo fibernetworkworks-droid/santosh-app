@@ -89,8 +89,15 @@ def site_block(tenant: str) -> str:
     site = SITE.get()
     if not site:
         return ""
+    out = ""
     try:
         from ..site import plans as P
-        return P.prompt_block(tenant, site, build=MODE.get() == "")
+        out = P.prompt_block(tenant, site, build=MODE.get() == "")
     except Exception:
-        return ""
+        out = ""
+    try:                                     # v0.795 YEH WALA: the elements she pointed at, read once by this turn
+        from ..site import yehwala as YW
+        out += YW.selection_block(tenant, site)
+    except Exception:
+        pass
+    return out
