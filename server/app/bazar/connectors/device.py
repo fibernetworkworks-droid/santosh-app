@@ -95,7 +95,7 @@ def cloud_client(ctx: Ctx, provider: str) -> CloudClient:
     conn = ctx.session.scalars(select(Connection).where(Connection.user_id == ctx.user.id, Connection.provider == provider,
                                                         Connection.status == "active")).first()
     if conn is None:
-        raise ToolError(f"Link your {PROVIDERS[provider]} account first (Santosh app › Ghar › Link {PROVIDERS[provider]}).")
+        raise ToolError(f"Link your {PROVIDERS[provider]} account first (Hoola app › Home › Link {PROVIDERS[provider]}).")
 
     def save(tok: Token) -> None:
         conn.token_enc = vault().seal(tok.dump())
@@ -288,9 +288,9 @@ class DeviceExecutor:
         if not devs:
             if pack.config["channel"] == "bt_hid":
                 raise ToolError("Pair the TV with Hoola once: say 'connect the TV by Bluetooth' (bluetooth action=tv_pair) or "
-                                "open Hoola › Ghar › TV.")
+                                "open Hoola › Home › TV.")
             if pack.config["channel"] == "ir":
-                raise ToolError("Add your AC once: Santosh app › Ghar › Add AC. I'll test the remote signal with you.")
+                raise ToolError("Add your AC once: Hoola app › Home › Add AC. I'll test the remote signal with you.")
             raise ToolError(f"I couldn't find a {what} in your {pack.name} account.")
         if name:
             n = _norm(name)
@@ -418,7 +418,7 @@ class DeviceExecutor:
     def _ir_ac(self, pack: Pack, args: dict[str, Any], ctx: Ctx) -> dict[str, Any]:
         dev = self.pick(ctx, pack, "ac", args.get("device"))
         if not dev.protocol:
-            raise ToolError(f"{dev.name}'s remote isn't confirmed yet. Open Santosh app › Ghar › {dev.name} › Test remote.")
+            raise ToolError(f"{dev.name}'s remote isn't confirmed yet. Open Hoola app › Home › {dev.name} › Test remote.")
         cur = ir.AcState.from_dict(dev.state.get("ac"))
         st, notes = self._apply(cur, args)
         sig = ir.encode(dev.protocol, st)

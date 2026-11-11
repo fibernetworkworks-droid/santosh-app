@@ -733,10 +733,10 @@ def qa_line(qa: dict[str, Any] | None) -> str:
         bits.append(f"{fl['tapped']} buttons tapped" + (f", {len(fl.get('dead') or [])} did nothing" if fl.get("dead") else ""))
     big = qa.get("tablet") or {}                                  # v0.370 the same screens on a tablet
     if big.get("total"):
-        bits.append(f"Tablet par {big.get('opened')}/{big.get('total')} screens" + (f" ({len(big.get('crashed') or [])} crash: "
+        bits.append(f"on a tablet {big.get('opened')}/{big.get('total')} screens" + (f" ({len(big.get('crashed') or [])} crash: "
                     + ", ".join((big.get('crashed') or [])[:4]) + ")" if big.get("crashed") else ""))
     if qa.get("a11y_count"):
-        bits.append(f"{qa['a11y_count']} accessibility baatein")
+        bits.append(f"{qa['a11y_count']} accessibility points")
     return " " + ", ".join(bits) + "."
 
 

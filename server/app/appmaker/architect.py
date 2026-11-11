@@ -498,7 +498,7 @@ def build(r: AppProject, key: str, run_tests: bool = True) -> dict[str, Any]:
                                                    "errors": [], "warnings": got["warnings"],
                                                    "schema_changes": [], "at": now().isoformat()}})
                 next_steps.append("On the app's Logic card tap 'Apply' (the logic is switched on only by your tap)")
-                done.append(f"{len(got['summary'])} logic cheezein draft ho gayin")
+                done.append(f"{len(got['summary'])} logic items drafted")
         except Exception as e:                                          # noqa: BLE001
             problems.append(f"logic: {type(e).__name__}: {str(e)[:100]}")
 

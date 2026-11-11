@@ -854,7 +854,7 @@ def save_hook(r: AppProject, h: dict[str, Any]) -> dict[str, Any]:
     sch = BE.schema(r)
     key = str(h.get("key") or "").strip()
     if not re.fullmatch(r"[a-z][a-z0-9_]{0,39}", key):
-        raise ConnError("Hook key: chhote akshar / ank / _ .", 400)
+        raise ConnError("Hook key: lowercase letters / digits / _ only.", 400)
     coll = str(h.get("coll") or "")
     c = next((x for x in sch["collections"] if x["key"] == coll), None)
     if c is None:

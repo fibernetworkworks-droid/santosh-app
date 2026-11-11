@@ -21,7 +21,7 @@ APP KIT YOU DESIGN WITH (already loaded; native-looking on Android AND iPhone - 
   Cart badge: <button class="ab-act" data-go="cart" data-cart aria-label="Cart"><i data-ic="cart"></i><span class="badge-dot">2</span></button>.
 - Type: .t-display .t-h1 .t-h2 .t-title .t-body .t-small .t-label (caps) .muted .strong .primary .accent .price .price-big .price-old.
 - Layout: .row (+ .between .top) .col .grow .grid2 .grid3 .grid4 .rail (horizontal swipe row) .chips (swipe row of .chip,
-  add data-single for one choice) .section-h (title + <a class="link" href="#" data-go="...">Sab dekho</a>) .sep .spacer .center .clamp2.
+  add data-single for one choice) .section-h (title + <a class="link" href="#" data-go="...">See all</a>) .sep .spacer .center .clamp2.
 - Cards: .card (+ .card-tight .card-hero .card-tint), list: <div class="list"><button class="li" data-go="..."><span class="li-lead">
   <i data-ic="..."></i></span><span class="li-main"><span class="t-title">..</span><span class="t-small">..</span></span><span class="li-trail">
   <i data-ic="chev-r"></i></span></button></div>.

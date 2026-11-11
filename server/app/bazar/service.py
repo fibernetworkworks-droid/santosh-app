@@ -58,10 +58,10 @@ STATUS_TEXT = {
     "needs_link": "user must link this account once (Connect tab)",
     "not_configured": "provider access not configured on the server yet",
     "core": "built into Santosh",
-    "no_device": "no device of this kind added yet: Santosh app > Ghar (add the speaker/TV/AC or link the brand account there)",
+    "no_device": "no device of this kind added yet: Hoola app > Home (add the speaker/TV/AC or link the brand account there)",
     "pc_offline": "the PC is offline: switch it on and open Santosh Desktop",
     "pc_not_paired": "no PC paired yet: Hoola app > Main > My PC",
-    "needs_key": "add this server's API key once in the Santosh app (Connect > MCP servers); never in chat",
+    "needs_key": "add this server's API key once in the Hoola app (Connect > MCP servers); never in chat",
 }
 
 # v0.303 SAAF CONNECT: what a user never sees in the Connect tab / bazar_find (nothing is deleted; CONNECT_CLEAN=false
@@ -275,7 +275,7 @@ def find(tenant_id: str, query: str = "", category: str = "", limit: int = 6) ->
             for p in reg.all():
                 cats[p.category] = cats.get(p.category, 0) + 1
             return {"total_packs": len(reg.packs), "categories": cats,
-                    "hint": "Ask with a query like 'bijli bill', 'kirana', 'phonepe', 'uber', 'swiggy'."}
+                    "hint": "Ask with a query like 'electricity bill', 'kirana', 'phonepe', 'uber', 'swiggy'."}
         mine = [custom_mcp.to_pack(r) for r in custom_mcp.user_rows(s, user.id)]
         if mine:
             wants_mine = bool(re.search(r"\b(mcp|my servers?|mere server)\b", query.lower()))
@@ -659,7 +659,7 @@ def voice_reject(tenant_id: str, conversation_id: str, since=None) -> dict[str, 
         return None
     title = said[0]
     if len(said) > 1:
-        title = f"{len(said)} manzooriyan"
+        title = f"{len(said)} approvals"
     return {"rejected": said, "say": f"(System: the user said no — the step '{title}' is cancelled, nothing was done. "
                                      "Say it in one short line and ask what to do next.)"}
 
@@ -1084,7 +1084,7 @@ def mcp_connect_featured(tenant_id: str, fid: str, url: str = "", key: str = "",
         key = _reuse_token(tenant_id, c["options"]["reuse"])
         reused = bool(key)
     if c["auth"] == "api_key" and not key:
-        raise ToolError(f"{c['name']} needs its API key. Add it in the Santosh app (Connect > MCP servers), never in chat.")
+        raise ToolError(f"{c['name']} needs its API key. Add it in the Hoola app (Connect > MCP servers), never in chat.")
     if key and c.get("key_format") == "basic" and ":" in key and not key.lower().startswith("basic "):
         import base64
         key = "Basic " + base64.b64encode(key.strip().encode()).decode()   # e.g. Razorpay key_id:key_secret

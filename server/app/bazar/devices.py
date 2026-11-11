@@ -152,7 +152,7 @@ def add_device(tenant: str, kind: str, name: str, room: str = "", brand: str = "
             out["setup"] = {"try_protocols": [{"protocol": p, "label": ir.PROTOCOLS[p]["label"]} for p in ir.try_order(d.brand)],
                             "how": "Point the phone at the AC and tap Test for each remote type until the AC beeps."}
         if kind == "tv":
-            out["setup"] = {"how": "Tap 'Remote test / jodiye': Hoola connects to a TV already paired with the phone, or makes "
+            out["setup"] = {"how": "Tap 'Remote test / connect': Hoola connects to a TV already paired with the phone, or makes "
                                    "the phone visible so the TV can add it (TV > Bluetooth > Add accessory > this phone's "
                                    "name). For YouTube/Netflix keep the phone on the same Wi-Fi as the TV."}
         return out
@@ -242,7 +242,7 @@ def link_start(tenant: str, provider: str) -> dict[str, Any]:
     if provider == "lg_thinq":
         return {"provider": provider, "name": PROVIDERS[provider], "url": authorize_url(provider, st, ""), "token_in_app": True,
                 "how": "Open this page, sign in to LG, create a personal access token with device permissions, "
-                       "then paste it in Santosh › Ghar › LG ThinQ. Never paste it in chat."}
+                       "then paste it in Hoola › Home › LG ThinQ. Never paste it in chat."}
     state = secrets.token_urlsafe(24)
     with session() as s:
         _user(s, tenant)
@@ -264,11 +264,11 @@ def link_finish(provider: str, state: str, code: str) -> tuple[str, list[str]]:
     with session() as s:
         row = s.get(KVState, f"dev_state:{state}") if state else None
         if row is None:
-            raise ToolError("This sign-in link has expired. Start again from Santosh › Ghar.")
+            raise ToolError("This sign-in link has expired. Start again from Hoola › Home.")
         data = json.loads(row.value or "{}")
         s.delete(row)
     if data.get("provider") != provider or float(data.get("exp", 0)) < time.time():
-        raise ToolError("This sign-in link has expired. Start again from Santosh › Ghar.")
+        raise ToolError("This sign-in link has expired. Start again from Hoola › Home.")
     uid = data["uid"]
     st = get_settings()
     tok = exchange_code(provider, st, code, transport=cloud_transport(st))
