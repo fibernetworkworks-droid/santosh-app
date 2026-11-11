@@ -282,11 +282,13 @@ def gd_server(env, monkeypatch, tmp_path):
 class Walk:
     """One browser context; every page error and console error is kept with the step it happened in."""
 
-    def __init__(self, browser, base, key, width=1440):
+    def __init__(self, browser, base, key, width=1440, height=900, init=""):
         self.base, self.step, self.errors, self.bad_http = base, "boot", [], []
-        self.ctx = browser.new_context(viewport={"width": width, "height": 900})
+        self.ctx = browser.new_context(viewport={"width": width, "height": height})
         # init scripts run in EVERY frame, the sandboxed play frame too (opaque origin: localStorage throws there)
         self.ctx.add_init_script(f"if (window === window.top) localStorage.setItem('hoola.console.token', '{key}')")
+        if init:
+            self.ctx.add_init_script("if (window === window.top) {" + init + "}")
         # the page links Google Fonts; the sandbox may have no route out, and a font is not what is under test
         self.ctx.route("https://fonts.googleapis.com/**", lambda r: r.fulfill(body="", content_type="text/css"))
         self.ctx.route("https://fonts.gstatic.com/**", lambda r: r.fulfill(body=b"", content_type="font/woff2"))
@@ -306,8 +308,11 @@ class Walk:
         self.pg.wait_for_selector(sel, timeout=timeout)
         self.pg.wait_for_timeout(400)                     # late async renders get the chance to throw inside the step
 
-    def check(self):
-        assert not self.errors, "\n".join(self.errors + ["-- http >= 400 seen:"] + self.bad_http)
+    def check(self, allow: str = ""):
+        """allow = a regex for console lines a test PROVOKES on purpose (the browser logs every failed fetch it was
+        told to fail, e.g. 'Failed to load resource: ... status of 500'). Page errors are never allowed."""
+        errs = [e for e in self.errors if not (allow and "pageerror" not in e and re.search(allow, e))]
+        assert not errs, "\n".join(errs + ["-- http >= 400 seen:"] + self.bad_http)
 
     def close(self):
         self.ctx.close()

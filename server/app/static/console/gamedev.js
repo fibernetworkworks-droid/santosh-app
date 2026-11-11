@@ -59,13 +59,14 @@
     say: text => { const t = $('#gdvTh') || $('#gdvAsk'); if (t) { t.value = S(text); t.focus(); } }});
   const PROJECT_PAGES = ['board', 'bible', 'scenes', 'assets', 'qa', 'release', 'liveops', 'prov'];   // these need a long project
   let EMBED = null;
-  function stopEmbed() { try { E.gameEmbed.stop(); } catch {} if (EMBED) { EMBED.remove(); EMBED = null; } }
+  function stopEmbed() { try { E.gameEmbed.stop(); } catch {} if (EMBED) { EMBED.remove(); EMBED = null; } const p = $('#gdvPane'); if (p) p.classList.remove('gdv-pane-embed'); }
   function embed(host, page, sid) {
     stopEmbed();
     const div = document.createElement('div');
     div.className = 'gdv-embed'; div.dataset.page = page;
     div.innerHTML = '<div class="gdv-loading">Loading…</div>';
     host.appendChild(div); EMBED = div;
+    host.closest('.gdv-pane')?.classList.add('gdv-pane-embed');
     const fail = e => { if (div.isConnected) div.innerHTML = `<div class="gdv-panel"><p class="gdv-bad">${esc(e && e.message || e)}</p></div>`; };
     try { const p = E.gameEmbed(div, page, sid || ''); if (p && typeof p.catch === 'function') p.catch(fail); }
     catch (e) { fail(e); }
@@ -117,7 +118,7 @@
 
   /* ---------- state ---------- */
   let GAMES = [], HEALTH = {}, ORIENT = ['portrait', 'landscape'], PROJECTS = [], EMP = {employees: [], hired: {}}, EMP_OK = false;
-  let POLL = null, PENDING = null, HOMEPOLL = null;
+  let POLL = null, PENDING = null, HOMEPOLL = null, PENDING_CONV = '', ARENA_OK = null;   // ARENA_OK: null = not asked yet, false = 403 once
   const W = {id: '', game: null, tab: '', sub: '', sig: ''};
   const convKey = id => 'hoola.gamedev.conv.' + id;
   const sidOf = gid => S((PROJECTS.find(p => S(M(p.game).id) === S(gid)) || {}).id);
@@ -152,7 +153,7 @@
   async function route() {
     const r = parse();
     if (r.view === 'game') {
-      if (W.id === r.id && $('#gdvPane')) { stopEmbed(); clearTimeout(POLL); W.tab = r.tab || defTab(W.game || {}); W.sub = r.sub; drawTabs(); drawPane(); startPoll(); return; }
+      if (W.id === r.id && $('#gdvPane')) { stopEmbed(); clearTimeout(POLL); W.tab = TAB_KEYS.includes(r.tab) ? r.tab : defTab(W.game || {}); W.sub = r.sub; drawTabs(); drawPane(); startPoll(); return; }
       stopAll();
       return openGame(r.id, r.tab, r.sub);
     }
@@ -166,25 +167,49 @@
     if (r.view === 'home') drawHome(main);
     else if (r.view === 'games') drawAll(main);
     else if (r.view === 'crew') r.role ? drawRole(main, r.role, '') : drawCrew(main, '', '');
-    else if (r.view === 'arena') drawEmbedPage(main, 'arena', 'Game Arena', 'Are our games getting better? Fixed briefs, built and judged by playing them.');
+    else if (r.view === 'arena') {
+      if (ARENA_OK === null) { try { await api('GET', '/api/gamedesk/arena'); ARENA_OK = true; } catch (e) { if (e.status === 403) { ARENA_OK = false; drawSide('arena'); } } }
+      if (parse().view !== 'arena') return;
+      drawEmbedPage(main, 'arena', 'Game Arena', 'Are our games getting better? Fixed briefs, built and judged by playing them.');
+    }
     else if (r.view === 'big') drawEmbedPage(main, 'big', 'Big studio', 'Your own Unity, Unreal or Godot project on your machines. The crew works inside your editor.');
-    if (['home', 'games'].includes(r.view) && GAMES.some(busy)) HOMEPOLL = setTimeout(() => { if (['home', 'games'].includes(parse().view)) route(); }, 5000);
+    if (['home', 'games'].includes(r.view)) homePoll(r.view);
+  }
+  /* the home / All games poll: only the lists are redrawn - never the ask box, its text, the focus or the scroll */
+  function homePoll(view) {
+    clearTimeout(HOMEPOLL); HOMEPOLL = null;
+    if (!GAMES.some(busy)) return;
+    HOMEPOLL = setTimeout(async () => {
+      if (parse().view !== view) return;
+      try { await loadHome(); } catch { return homePoll(view); }
+      if (parse().view !== view) return;
+      const rb = $('#gdvRecentBox'); if (rb) rb.innerHTML = recentHtml();
+      if (view === 'home') {
+        const wb = $('#gdvWaitBox'); if (wb) wb.innerHTML = waitHtml();
+        const gb = $('#gdvGamesBox'); if (gb) gb.innerHTML = gamesHtml();
+      } else { const ab = $('#gdvAllBox'); if (ab) ab.innerHTML = allHtml(); }
+      homePoll(view);
+    }, 5000);
   }
 
   /* ---------- the home sidebar ---------- */
   function drawSide(on) {
     const side = APP.querySelector('aside.gdv-side'); if (!side) return;
     const nav = (k, href, icon, label) => `<a class="gdv-nav" data-gdv-nav="${k}" href="${href}"${on === k ? ' aria-current="page"' : ''}>${ico(icon, 17)}<span>${esc(label)}</span></a>`;
-    const recent = GAMES.slice().sort((a, b) => isoS(b.created_at) - isoS(a.created_at)).slice(0, 6);
     const h = HEALTH;
     side.innerHTML = `<div class="gdv-brand"><span class="gdv-mark" aria-hidden="true">${ico('pad', 18)}</span><div><b>Hoola</b><span>Game Dev</span></div></div>
       <a class="gdv-new" href="#/" data-gdv-act="new-game"><span>${ico('plus', 16)}New game</span><kbd>Ctrl K</kbd></a>
-      <nav class="gdv-navs" aria-label="Game Dev">${nav('home', '#/', 'home', 'Home')}${nav('games', '#/games', 'grid', 'All games')}${nav('crew', '#/crew', 'crew', 'Crew')}${nav('arena', '#/arena', 'trophy', 'Game Arena')}${nav('big', '#/big', 'cube', 'Big studio')}</nav>
-      ${recent.length ? `<div class="gdv-sidelabel">Recent</div><div class="gdv-recent">${recent.map(g => `<a class="gdv-rec" href="#/game/${enc(g.id)}/${defTab(g)}"><span class="gdv-dot gdv-${stOf(g)[1] || 'none'}" aria-hidden="true"></span><span class="gdv-ell">${esc(gname(g))}</span><span class="gdv-sr">${esc(stOf(g)[0])}</span></a>`).join('')}</div>` : ''}
+      <nav class="gdv-navs" aria-label="Game Dev">${nav('home', '#/', 'home', 'Home')}${nav('games', '#/games', 'grid', 'All games')}${nav('crew', '#/crew', 'crew', 'Crew')}${ARENA_OK === false ? '' : nav('arena', '#/arena', 'trophy', 'Game Arena')}${nav('big', '#/big', 'cube', 'Big studio')}</nav>
+      <div id="gdvRecentBox">${recentHtml()}</div>
       <span class="gdv-grow"></span>
       <div class="gdv-health${h.ready ? '' : ' gdv-health-bad'}"><span><span class="gdv-dot gdv-${h.ready ? 'ok' : 'bad'}" aria-hidden="true"></span>${h.ready ? `Godot ${esc(h.version || '')} ready` : 'Godot is not installed'}</span>
         <span class="gdv-small">${h.ready ? 'Builds and test-plays run on your Hoola server.' : 'Designs can be written; builds wait until Godot is set up on the server.'}</span></div>
       <a class="gdv-nav" href="/console/">${ico('back', 17)}<span>Back to Hoola</span></a>`;
+  }
+
+  function recentHtml() {
+    const recent = GAMES.slice().sort((a, b) => isoS(b.created_at) - isoS(a.created_at)).slice(0, 6);
+    return recent.length ? `<div class="gdv-sidelabel">Recent</div><div class="gdv-recent">${recent.map(g => `<a class="gdv-rec" href="#/game/${enc(g.id)}/${defTab(g)}"><span class="gdv-dot gdv-${stOf(g)[1] || 'none'}" aria-hidden="true"></span><span class="gdv-ell">${esc(gname(g))}</span><span class="gdv-sr">${esc(stOf(g)[0])}</span></a>`).join('')}</div>` : '';
   }
 
   /* ---------- home ---------- */
@@ -210,8 +235,14 @@
         <span class="gdv-small">${esc(meta)}</span><span class="gdv-small gdv-ell">${esc(line)}</span>
         ${busy(g) ? `<span class="gdv-bar" aria-hidden="true"><i style="width:${Math.max(4, Math.min(100, N(g.pct)))}%"></i></span>` : ''}</span></a>`;
   }
-  function drawHome(main) {
+  function waitHtml() {
     const wait = GAMES.filter(g => g.status === 'design_ready');
+    return wait.length ? `<section class="gdv-sec"><h2>Waiting for your OK</h2>${wait.map(g => `<a class="gdv-wait" href="#/game/${enc(g.id)}/design"><span class="gdv-waitic" aria-hidden="true">${ico('doc', 20)}</span>
+          <span class="gdv-waitt"><b>${esc(gname(g))} · design doc is ready</b><span>Read the one-page design. Say "theek hai" and Hoola builds it, or tell it what to change.</span></span>
+          <span class="gdv-b">Read the design</span></a>`).join('')}</section>` : '';
+  }
+  const gamesHtml = () => GAMES.length ? `<div class="gdv-grid">${GAMES.slice(0, 8).map(card).join('')}</div>` : '<div class="gdv-panel gdv-mut">No games yet. Describe one above and Hoola writes its design first.</div>';
+  function drawHome(main) {
     const playable = GAMES.find(g => N(g.version) && !projOf(g.id));
     const withProj = GAMES.find(g => projOf(g.id));
     const longHref = withProj ? `#/game/${enc(withProj.id)}/board` : playable ? `#/game/${enc(playable.id)}/board` : '#/games';
@@ -233,11 +264,9 @@
         <div class="gdv-chips" role="group" aria-label="Start from a kind of game">${KINDS.map(([k, v]) => `<button class="gdv-chip" type="button" data-gdv-fill="${esc(v)}">${esc(k)}</button>`).join('')}</div>
       </section>
       <section class="gdv-steps" aria-label="How every game is made">${STEPS.map(([b, s], i) => `<div class="gdv-step"><span class="gdv-small">${i + 1}</span><b>${esc(b)}</b><span class="gdv-small">${esc(s)}</span></div>`).join('')}</section>
-      ${wait.length ? `<section class="gdv-sec"><h2>Waiting for your OK</h2>${wait.map(g => `<a class="gdv-wait" href="#/game/${enc(g.id)}/design"><span class="gdv-waitic" aria-hidden="true">${ico('doc', 20)}</span>
-          <span class="gdv-waitt"><b>${esc(gname(g))} · design doc is ready</b><span>Read the one-page design. Say "theek hai" and Hoola builds it, or tell it what to change.</span></span>
-          <span class="gdv-b">Read the design</span></a>`).join('')}</section>` : ''}
+      <div id="gdvWaitBox">${waitHtml()}</div>
       <section class="gdv-sec"><div class="gdv-sech"><h2>Your games</h2>${GAMES.length > 8 ? '<a href="#/games">View all</a>' : ''}</div>
-        ${GAMES.length ? `<div class="gdv-grid">${GAMES.slice(0, 8).map(card).join('')}</div>` : '<div class="gdv-panel gdv-mut">No games yet. Describe one above and Hoola writes its design first.</div>'}</section>
+        <div id="gdvGamesBox">${gamesHtml()}</div></section>
       <section class="gdv-sec"><h2>Or start from</h2><div class="gdv-starts">
         <button class="gdv-start" type="button" data-gdv-act="focus-ask"><span class="gdv-startic" aria-hidden="true">${ico('pen', 20)}</span><span><b>Describe it</b><span>Two lines in your own words.</span></span></button>
         <a class="gdv-start" href="${longHref}"><span class="gdv-startic" aria-hidden="true">${ico('board', 20)}</span><span><b>A long project</b><span>Turn a game that plays into a board, milestones and nightly builds.</span></span></a>
@@ -248,13 +277,16 @@
   }
   const FILTERS = [['all', 'All'], ['plays', 'Plays'], ['wait', 'Waiting for your OK'], ['busy', 'Being made'], ['failed', 'Did not work']];
   let FILTER = 'all';
-  function drawAll(main) {
+  function allHtml() {
     const pick = g => FILTER === 'all' || (FILTER === 'plays' && N(g.version)) || (FILTER === 'wait' && g.status === 'design_ready') ||
       (FILTER === 'busy' && busy(g)) || (FILTER === 'failed' && ['failed', 'cancelled'].includes(g.status));
     const rows = GAMES.filter(pick);
+    return rows.length ? `<div class="gdv-grid">${rows.map(card).join('')}</div>` : `<div class="gdv-panel gdv-mut">${GAMES.length ? 'No game in this list.' : 'No games yet.'} <a href="#/">Make one</a></div>`;
+  }
+  function drawAll(main) {
     main.innerHTML = `<div class="gdv-page"><div class="gdv-pageh"><h1>All games</h1><span class="gdv-mut">${GAMES.length} game${GAMES.length === 1 ? '' : 's'}</span></div>
       <div class="gdv-chips gdv-left" role="group" aria-label="Show">${FILTERS.map(([k, t]) => `<button class="gdv-chip" type="button" data-gdv-filter="${k}" aria-pressed="${FILTER === k}">${esc(t)}</button>`).join('')}</div>
-      ${rows.length ? `<div class="gdv-grid">${rows.map(card).join('')}</div>` : `<div class="gdv-panel gdv-mut">${GAMES.length ? 'No game in this list.' : 'No games yet.'} <a href="#/">Make one</a></div>`}</div>`;
+      <div id="gdvAllBox">${allHtml()}</div></div>`;
   }
 
   /* ---------- start a game from the home ask ---------- */
@@ -273,14 +305,17 @@
     STARTING = true;
     const btn = APP.querySelector('form[data-gdv-form="ask"] .gdv-send'); if (btn) btn.disabled = true;
     try {
-      const conv = await newConv('Game · new');
+      // one pending conversation for every attempt: a refused start (limits, hire, a word the rules refuse) reuses it
+      // next time instead of leaving an empty chat behind per attempt
+      const conv = PENDING_CONV || await newConv('Game · new');
+      PENDING_CONV = conv;
       let v;
       try { v = await api('POST', '/api/game', {brief, orientation, conversation_id: conv}); }
       catch (e) {
         if (e.status === 400 && /hired|hire/i.test(e.message)) { EMP_OK = true; EMP.hired = {...M(EMP.hired), game_dev: 'none'}; drawHome($('#gdvMain')); }
         throw e;
       }
-      PENDING = null;
+      PENDING = null; PENDING_CONV = '';
       store.set(convKey(v.id), conv);
       api('PATCH', `/api/conversations/${enc(conv)}`, {title: `Game · ${gname(v)}`}).catch(() => {});
       toast('Writing the design doc. Nothing is built until you say OK.');
@@ -427,12 +462,23 @@
       return embed(pane, W.tab, sid);
     }
   }
-  const sigOf = g => [g.status, g.pct, g.stage, g.version, g.versions, S(g.design).length, g.error].join('|');
+  // the pane is rebuilt only when the game really changed; pct / stage are written into the progress card in place,
+  // so the Play tab's iframe (and anything she typed) survives a build that is still running
+  const sigOf = g => [g.status, g.version, g.versions, S(g.design).length, g.error, S(g.play_url || g.url)].join('|');
+  function progressInPlace(g) {
+    APP.querySelectorAll('.gdv-prog').forEach(card => {
+      const pct = Math.round(N(g.pct));
+      const say = card.querySelector('[data-gdv-say]'); if (say) say.textContent = S(g.say) || stOf(g)[0];
+      const pc = card.querySelector('[data-gdv-pct]'); if (pc) pc.textContent = pct + '%';
+      const bar = card.querySelector('.gdv-bar'); if (bar) { bar.setAttribute('aria-valuenow', String(pct)); const i = bar.querySelector('i'); if (i) i.style.width = Math.max(4, Math.min(100, N(g.pct))) + '%'; }
+      const st = card.querySelector('[data-gdv-stage]'); if (st) { st.textContent = S(g.stage); st.hidden = !S(g.stage); }
+    });
+  }
 
   function progressHtml(g) {
-    return `<div class="gdv-panel gdv-prog" role="status"><div class="gdv-progh"><span class="gdv-dot gdv-v" aria-hidden="true"></span><b>${esc(S(g.say) || stOf(g)[0])}</b><span class="gdv-small">${Math.round(N(g.pct))}%</span></div>
+    return `<div class="gdv-panel gdv-prog" role="status"><div class="gdv-progh"><span class="gdv-dot gdv-v" aria-hidden="true"></span><b data-gdv-say>${esc(S(g.say) || stOf(g)[0])}</b><span class="gdv-small" data-gdv-pct>${Math.round(N(g.pct))}%</span></div>
       <div class="gdv-bar" role="progressbar" aria-label="Progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(N(g.pct))}"><i style="width:${Math.max(4, Math.min(100, N(g.pct)))}%"></i></div>
-      ${g.stage ? `<p class="gdv-small">${esc(g.stage)}</p>` : ''}
+      <p class="gdv-small" data-gdv-stage${g.stage ? '' : ' hidden'}>${esc(g.stage)}</p>
       <p class="gdv-small">${g.status === 'designing' ? 'The design doc usually takes under a minute. Nothing is built until you say OK.' : 'Building takes a few minutes. Hoola plays the game before you see it.'}</p>
       <div class="gdv-acts"><button class="gdv-b" type="button" data-gdv-act="cancel">Stop</button></div></div>`;
   }
@@ -519,22 +565,38 @@
     const id = W.id;
     POLL = setTimeout(async () => {
       if (W.id !== id || parse().view !== 'game') return;
-      let g; try { g = await api('GET', `/api/game/${enc(id)}`); } catch { return startPoll(); }
+      let g;
+      try { g = await api('GET', `/api/game/${enc(id)}`); }
+      catch (e) {
+        if (e.status === 404 || /nahi mila/i.test(e.message)) { if (W.id === id) { stopAll(); W.id = ''; toast('This game was deleted.'); location.hash = '#/'; } return; }
+        return startPoll();
+      }
       if (W.id !== id) return;
       const was = busy(W.game); W.game = g; drawTop();
       if (was && !busy(g)) {
         const c = store.get(convKey(id)); if (c && S(g.title)) api('PATCH', `/api/conversations/${enc(c)}`, {title: `Game · ${gname(g)}`}).catch(() => {});
         await loadProjects(); toast(N(g.version) ? 'Ready to play.' : g.status === 'design_ready' ? 'The design doc is ready.' : S(g.say)); }
-      const typing = paneEl() && paneEl().contains(document.activeElement) && /TEXTAREA|INPUT/.test(document.activeElement.tagName);
+      const pane = paneEl();
+      const typing = pane && ((pane.contains(document.activeElement) && /TEXTAREA|INPUT|SELECT/.test(document.activeElement.tagName)) ||
+        ['#gdvChange', '#gdvNewVer', '#gdvGoal'].some(q => S(pane.querySelector(q)?.value).trim()));
       if (['design', 'play'].includes(W.tab) && sigOf(g) !== W.sig && !typing) drawPane();
+      else progressInPlace(g);
       if (!THREAD.rows.length) drawMsgs();
       startPoll();
     }, 3000);
   }
   async function reloadGame() {
     if (!W.id) return;
-    try { W.game = await api('GET', `/api/game/${enc(W.id)}`); } catch (e) { toast(e.message, true); return; }
-    await loadProjects(); drawTop(); drawPane(); startPoll(); drawMsgs();
+    const id = W.id;
+    let g;
+    try { g = await api('GET', `/api/game/${enc(id)}`); }
+    catch (e) {
+      if ((e.status === 404 || /nahi mila/i.test(e.message)) && W.id === id) { stopAll(); W.id = ''; toast('This game was deleted.'); location.hash = '#/'; return; }
+      toast(e.message, true); return;
+    }
+    if (W.id !== id) return;
+    W.game = g;
+    await loadProjects(); if (W.id !== id) return; drawTop(); drawPane(); startPoll(); drawMsgs();
   }
 
   /* ---------- actions ---------- */
@@ -558,9 +620,14 @@
       if (k === 'cancel') { el.disabled = true; await api('POST', `/api/game/${q}/cancel`, {}); toast('Stopped.'); return reloadGame(); }
       if (k === 'retry') {
         el.disabled = true;
-        const conv = store.get(convKey(g.id)) || '';
-        const v = await api('POST', '/api/game', {brief: S(g.brief), orientation: S(g.orientation) || 'portrait', conversation_id: conv});
-        if (conv) store.set(convKey(v.id), conv);
+        // the FULL brief (GET /api/game/<id> returns it untruncated) and a FRESH thread: the old game's talk stays with it
+        const full = await api('GET', `/api/game/${q}`).catch(() => g);
+        const conv = PENDING_CONV || await newConv('Game · new');
+        PENDING_CONV = conv;
+        const v = await api('POST', '/api/game', {brief: S(full.brief || g.brief), orientation: S(g.orientation) || 'portrait', conversation_id: conv});
+        PENDING_CONV = '';
+        store.set(convKey(v.id), conv);
+        api('PATCH', `/api/conversations/${enc(conv)}`, {title: `Game · ${gname(v)}`}).catch(() => {});
         toast('Starting again from the same idea.');
         location.hash = `#/game/${enc(v.id)}/design`; return;
       }
@@ -608,19 +675,27 @@
   let TICK = null;
   function tickClocks() { APP.querySelectorAll('[data-t0]').forEach(e => { const t0 = Number(e.dataset.t0); if (t0) e.textContent = dur(nowS() - t0); }); }
   function startTick() { if (!TICK) TICK = setInterval(tickClocks, 1000); tickClocks(); }
+  // the game's own thread: what this browser remembers, else the conversation the server recorded for the game, else a
+  // new one. A stored thread is forgotten ONLY when the server says it does not exist (404); any other failure is a
+  // real error (offline, 500) and must not cost her the mapping.
   async function ensureConv() {
     const g = W.game;
     if (THREAD.conv && THREAD.game === g.id) return THREAD.conv;
     THREAD.game = g.id;
-    let c = store.get(convKey(g.id));
-    if (c) { try { await api('GET', `/api/conversations/${enc(c)}/messages?limit=1`); } catch { c = ''; } }
+    let c = store.get(convKey(g.id)) || S(g.conversation_id);
+    if (c) {
+      try { await api('GET', `/api/conversations/${enc(c)}/messages?limit=1`); store.set(convKey(g.id), c); }
+      catch (e) { if (e.status === 404) { store.del(convKey(g.id)); c = ''; } else throw e; }
+    }
     if (!c) { c = await newConv(`Game · ${gname(g)}`); store.set(convKey(g.id), c); }
     THREAD.conv = c;
     return c;
   }
   async function openThread() {
     clearTimeout(THREAD.timer);
-    Object.assign(THREAD, {game: W.id, conv: store.get(convKey(W.id)), rows: [], live: '', sig: '', waiting: false, since: 0, steps: [], stepsRead: false, startedS: 0});
+    let c = store.get(convKey(W.id));
+    if (!c && W.game && S(W.game.conversation_id)) { c = S(W.game.conversation_id); store.set(convKey(W.id), c); }
+    Object.assign(THREAD, {game: W.id, conv: c, rows: [], live: '', sig: '', waiting: false, since: 0, steps: [], stepsRead: false, startedS: 0});
     drawMsgs();
     if (THREAD.conv) await readThread();
   }
@@ -629,6 +704,7 @@
   async function readSteps(c) {
     try {
       const r = await api('GET', `/api/conversations/${enc(c)}/timeline?limit=200&steps=1`);
+      if (c !== THREAD.conv) return;
       const by = new Map();
       for (const ev of L(r.events)) {
         if (ev.kind !== 'step') continue;
@@ -639,6 +715,7 @@
         if (pl.label) x.label = S(pl.label);
         by.set(k, x);
       }
+      if (c !== THREAD.conv) return;
       THREAD.steps = [...by.values()].filter(x => x.at).sort((a, b) => a.at - b.at);
     } catch {}
   }
@@ -706,11 +783,12 @@
     if (THREAD.waiting) {
       let snap = null;
       try { const res = await api('GET', `/api/conversations/${enc(c)}/live`, undefined, {raw: true}); if (res.status === 200) snap = await res.json(); } catch {}
+      if (c !== THREAD.conv) return;
       THREAD.live = S(snap?.text);
       const talk = THREAD.rows.filter(m => (m.role === 'user' || m.role === 'assistant') && S(m.text).trim());
       let lu = -1; talk.forEach((m, i) => { if (m.role === 'user') lu = i; });
       const answered = lu >= 0 && Number(talk[lu].id) > THREAD.since && talk.slice(lu + 1).some(m => m.role === 'assistant');
-      if (answered && !snap) { THREAD.waiting = false; THREAD.live = ''; THREAD.startedS = 0; await readSteps(c); reloadGame(); }
+      if (answered && !snap) { THREAD.waiting = false; THREAD.live = ''; THREAD.startedS = 0; await readSteps(c); if (c !== THREAD.conv) return; reloadGame(); }
       else if (Date.now() - THREAD.started > 15 * 60e3) THREAD.waiting = false;
     }
     if (c !== THREAD.conv || parse().view !== 'game') return;
@@ -720,12 +798,15 @@
   async function ask(text) {
     text = S(text).trim(); const g = W.game; if (!text || !g) return;
     try {
+      const gid = g.id;
       const c = await ensureConv();
+      if (W.id !== gid || c !== THREAD.conv) return;
       THREAD.since = Math.max(0, ...THREAD.rows.map(m => Number(m.id) || 0));
       THREAD.rows.push({id: 'local-' + Date.now(), role: 'user', text});
       THREAD.waiting = true; THREAD.started = Date.now(); THREAD.startedS = nowS(); THREAD.live = ''; drawMsgs();
       const sid = sidOf(g.id);
-      const hints = [`Game Dev: this chat is only about game ${S(g.number)} "${gname(g)}" (game id ${S(g.id)}, studio project ${sid || 'none'}). Work on THIS game with game_desk / game_studio and the other game_* tools; never start a new game unless I ask.`];
+      const br = v => S(v).replace(/\s+/g, ' ').replace(/\[/g, '(').replace(/\]/g, ')');   // a ] in a title would end the hint early and clean() could not strip it
+      const hints = [`Game Dev: this chat is only about game ${br(g.number)} "${br(gname(g))}" (game id ${S(g.id)}, studio project ${sid || 'none'}). Work on THIS game with game_desk / game_studio and the other game_* tools; never start a new game unless I ask.`];
       await api('POST', `/api/conversations/${enc(c)}/messages`, {text, client_id: 'gdv-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8), hints});
       clearTimeout(THREAD.timer); THREAD.timer = setTimeout(readThread, 900);
     } catch (e) { THREAD.waiting = false; THREAD.rows = THREAD.rows.filter(r => !S(r.id).startsWith('local-')); THREAD.sig = ''; drawMsgs(); toast(e.message, true); }
@@ -742,13 +823,20 @@
     if (e.key !== 'Enter' || e.shiftKey || e.isComposing) return;
     if (e.target.id === 'gdvTh' || e.target.id === 'gdvAsk') { e.preventDefault(); e.target.closest('form')?.requestSubmit(); }
   });
-  APP.addEventListener('click', e => {
+  APP.addEventListener('click', async e => {
+    const cp = e.target.closest('.gdv-chat [data-copy]');
+    if (cp) {
+      const code = cp.closest('.cb')?.querySelector('code');
+      try { await navigator.clipboard.writeText(code ? code.textContent || '' : ''); toast('Copied.'); cp.textContent = 'Copied'; setTimeout(() => { cp.textContent = 'Copy'; }, 1500); }
+      catch { toast('Could not copy. Select the text and copy it by hand.', true); }
+      return;
+    }
     const fill = e.target.closest('[data-gdv-fill]');
     if (fill) { const t = $('#gdvAsk'); if (t) { t.value = S(fill.dataset.gdvFill); t.focus(); t.setSelectionRange(t.value.length, t.value.length); } return; }
     const fth = e.target.closest('[data-gdv-fill-th]');
     if (fth) { const t = $('#gdvTh'); if (t) { t.value = S(fth.dataset.gdvFillTh); t.focus(); } return; }
     const flt = e.target.closest('[data-gdv-filter]');
-    if (flt) { FILTER = flt.dataset.gdvFilter; drawAll($('#gdvMain')); return; }
+    if (flt) { FILTER = flt.dataset.gdvFilter; APP.querySelectorAll('[data-gdv-filter]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.gdvFilter === FILTER))); const ab = $('#gdvAllBox'); if (ab) ab.innerHTML = allHtml(); return; }
     const a = e.target.closest('[data-gdv-act]'); if (!a) return;
     const k = a.dataset.gdvAct;
     if (k === 'hire') { e.preventDefault(); a.disabled = true; return hire(a.dataset.key || 'game_dev'); }
@@ -760,6 +848,8 @@
   });
   document.addEventListener('keydown', e => {
     if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) {
+      const t = e.target;
+      if (t && t.closest && (t.closest('input,textarea,select,[contenteditable="true"]') || t.closest('.gdv-embed'))) return;
       e.preventDefault();
       if (parse().view === 'home' && $('#gdvAsk')) $('#gdvAsk').focus();
       else { location.hash = '#/'; setTimeout(() => $('#gdvAsk')?.focus(), 400); }
