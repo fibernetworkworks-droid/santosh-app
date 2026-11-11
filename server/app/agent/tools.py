@@ -1310,6 +1310,16 @@ TOOL_LABELS.update(AUDIO_EDIT_LABELS)
 HANDLERS.update(AUDIO_EDIT_HANDLERS)
 del _seen
 
+# VIDEO KIT: ONE video_kit tool (app/vidkit): exact ffmpeg video edits on the server - trim / cut / crop / reframe 9:16 /
+# speed / colour / text / her logo / blur area / compress / join / slideshow / music / captions / frames / GIF / split /
+# picture-in-picture. No key, no model. video_edit (the AI Reel editor from a brief) stays as it is.
+from .vidkit_tools import VIDEO_KIT_HANDLERS, VIDEO_KIT_LABELS, VIDEO_KIT_TOOLS  # noqa: E402
+_seen = {t["name"] for t in TOOLS}
+TOOLS.extend(t for t in VIDEO_KIT_TOOLS if t["name"] not in _seen)
+TOOL_LABELS.update(VIDEO_KIT_LABELS)
+HANDLERS.update(VIDEO_KIT_HANDLERS)
+del _seen
+
 # v0.477 HOOLA SELF-TEACH: ONE skill_manage tool (the coder/skills_tool surface) - Santosh can
 # author and improve reusable skills mid-conversation; the coder nudge resets its counter on use.
 from ..coder.skills_tool import SKILL_HANDLERS, SKILL_LABELS, SKILL_TOOLS  # noqa: E402

@@ -581,3 +581,36 @@ connector accounts and live tracking stay her next steps and are never counted a
 Tests `test_v0771_proof_apps.py` 5 (all five proved, >= 2 real refusals per app + what is not proved named, her
 credentials stay next steps, only the hidden tenant touched, a second run starts fresh); test_v0542_naksha 13/13,
 test_v0540_jaanch + test_routines 19/19 green with the fixes.
+
+## v0.772.0 VIDEO KIT (built as 0.771.0; their PROOF APPS took 0.771.0, both kept) - exact video edits on the server's ffmpeg (owner: "NOW START VIDEO EDITING")
+
+The third editing desk after IMAGE EDIT (v0.768) and AUDIO EDIT (v0.769). Hoola already had `video_edit` (v0.65, the AI
+editor that watches footage and makes a Reel from a brief) and the Edit Desk (a freelance editor's business desk on top of
+it). What was missing was the plain, exact edit she can name: "pehle 3 second hatao", "reel size mein karo", "WhatsApp ke
+liye chhota karo", "number plate blur karo". NEW `server/app/vidkit/ops.py` + tool `video_kit` (`agent/vidkit_tools.py`),
+registry 623 -> 624, family `video_kit` with its own words in `admit.EXTRA_KEYS`, a prompt line beside audio_edit.
+
+- **run** = up to 15 steps turned into ONE ffmpeg filter graph (labelled video segments + a plain audio chain): trim, cut,
+  speed (0.25-4, audio pitch kept), reverse (<= 60 s), fade, crop (aspect + position or a box in px / %), reframe (9:16 with
+  a soft blurred background, a colour pad, or a crop), resize (presets / width / percent), rotate, flip, colour (brightness /
+  contrast / saturation -100..100, gamma), 9 looks, sharpen, grain removal (hqdn3d), light stabilising (deshake), blur_area
+  (time window; chroma radius kept inside the half-size planes - found by a test on a small box), text (rendered by the
+  image_edit text engine onto a transparent PNG so Hindi + English + the rupee sign all have glyphs), her logo (her photo
+  file only), zoom, fps, mute, volume, loudness, sound noise removal. Frame sizes are tracked through the chain; the output
+  is even-sized, yuv420p, max 1080p, H.264 + AAC + faststart (or webm / mov), with `-map_metadata -1`.
+- **other actions**: info (+ a verdict with tips), convert, compress (to a target MB / whatsapp / email, resolution picked
+  from the bitrate, up to 3 tries until it fits, honest refusal when it cannot be watchable), join (any shapes -> the first
+  clip's frame, blur / pad fit, xfade + acrossfade), slideshow (photos, gentle zoom, fades, her music), music (looped to the
+  video, ducked under speech with sidechaincompress, or replacing silence), captions (ASS script at the video's own pixel
+  size via libass with `shaping=complex` - plain SRT burning broke Hindi conjuncts (नमस्ते showed a halant); her SRT /
+  SRT text / auto via faster-whisper when installed, else it names the kaan -> SRT route; the .srt comes back too),
+  frames / contact sheet, GIF (palettegen, <= 15 s), split (every / at, exact re-encoded cuts), combine (PiP / side by
+  side / top-bottom).
+- **refused by name**: delogo / remove_watermark / face_swap / deepfake / voice_clone - and the guide says others' videos
+  are not downloaded and new AI footage belongs to Create / video_studio.
+- Phone videos with rotation metadata are probed with their turned size (ffmpeg auto-rotates on decode).
+
+Tests `server/tests/test_vidkit.py` 26 on real generated video (pixel checks for reframe / crop / flip / text / logo / blur,
+lengths for trim / cut / speed / join / crossfade / slideshow, size for compress, metadata gone, 1080p cap, the tool with
+batch + one-bad-file + refusals before any file is touched). NOT VERIFIED: auto captions on the VPS (depends on
+faster-whisper being installed there); long (30-60 min) videos timed only by the timeout rule, not on her server.
