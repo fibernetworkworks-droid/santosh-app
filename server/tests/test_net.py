@@ -82,7 +82,7 @@ def test_message_knock_decide_reply(env):
     assert net.inbox("kunal")[0]["id"] == knock["id"]
     net.decide("kunal", knock["id"], "accept", note="Haan, kal 5 baje")
     got = ev("default", "hoola_msg")[-1]
-    assert "le liya" in got["text"] and "kal 5 baje" in got["text"]
+    assert "has taken" in got["text"] and "kal 5 baje" in got["text"]
     with pytest.raises(net.NetError, match="already been decided"):
         net.decide("kunal", knock["id"], "accept")
     net.reply("kunal", knock["thread_id"], "Slides bhi le aana")
@@ -140,7 +140,7 @@ def test_meeting_with_slots_and_auto_fix(env, monkeypatch):
     assert len(k["slot_labels"]) == 2
     net.decide("kunal", k["id"], "accept", slot=1)
     m = ev("default", "hoola_msg")[-1]
-    assert m["kind"] == "meeting_ok" and "pakki" in m["text"] and m["event"]["where"] == "reminder"
+    assert m["kind"] == "meeting_ok" and "meeting confirmed" in m["text"] and m["event"]["where"] == "reminder"
     from app.db import Reminder, session
     with session() as s:
         assert {x.tenant_id for x in s.query(Reminder).all()} == {"default", "kunal"}
@@ -151,7 +151,7 @@ def test_meeting_with_slots_and_auto_fix(env, monkeypatch):
     monkeypatch.setattr(cs, "agenda", lambda *a, **k: {"events": []})
     r = net.send("default", "Kunal", "meeting", {"title": "Follow-up", "slots": [when], "minutes": 20})
     assert r["status"] == "auto"
-    assert "khud fix kar di" in ev("kunal", "hoola_msg")[-1]["text"]
+    assert "fixed the meeting myself" in ev("kunal", "hoola_msg")[-1]["text"]
     assert ev("default", "hoola_msg")[-1]["kind"] == "meeting_ok"
 
 

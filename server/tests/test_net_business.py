@@ -81,7 +81,7 @@ def test_chain_pass_loops_and_signatures(env):
         chn.act("ravi", c["chain_id"], "pass", to="@kunal.raj")
     chn.act("ravi", c["chain_id"], "done", note="Backup le liya")
     k = [e for e in ev("kunal", "hoola_chain") if e["event"] == "progress"]
-    assert k and "poora" in k[-1]["text"] and chn.chains("kunal")[0]["status"] == "done"
+    assert k and "finished" in k[-1]["text"] and chn.chains("kunal")[0]["status"] == "done"
     # a forged trail is refused
     from app.net import identity as idn
     row = chn._row("ravi", c["chain_id"])

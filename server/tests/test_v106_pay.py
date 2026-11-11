@@ -54,7 +54,7 @@ def test_upi_payment_locked_pinned_payee_receipt_and_check(env):
     # his rule: the UPI payment card went by itself, locked to the total (10 x 450 + 18% = 5310)
     card = _last("default")
     assert card["card"] == "pay" and card["pay"]["due_left"] == 5310 and card["pay"]["status"] == "requested"
-    assert "PIN aap hi" in card["say"] and "Pehli baar" in card["say"]
+    assert "only you enter the PIN" in card["say"] and "First payment" in card["say"]
     # her Hoola builds the link itself, and only after she trusts this payee (first time)
     lk = dp.pay_link("default", bid)
     assert lk["status"] == "new_payee" and "url" not in lk
@@ -117,11 +117,11 @@ def test_amount_tamper_and_changed_payee_are_stopped(env):
     with pytest.raises(dl.DealError, match="still due"):
         dp.request_payment("kunal", sid, 6000)
     dp.request_payment("kunal", sid, 2000)
-    assert "hissa" in _last("default")["say"] and dp.pay_link("default", bid)["amount"] == 2000
+    assert "part payment" in _last("default")["say"] and dp.pay_link("default", bid)["amount"] == 2000
     # next order: he changed his UPI ID -> her Hoola blocks the link until she checks and taps
     dl.set_rules("kunal", upi_id="someone.else@ybl")
     bid2, sid2 = _order(dl)
-    assert "UPI badla" in _last("default")["say"]
+    assert "UPI has changed" in _last("default")["say"]
     lk = dp.pay_link("default", bid2)
     assert lk["status"] == "payee_changed" and lk["was"] == "kunal.traders@okhdfcbank" and "url" not in lk
     assert dp.trust_payee("default", bid2)["status"] == "ok"

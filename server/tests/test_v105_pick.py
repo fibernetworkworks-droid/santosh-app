@@ -182,7 +182,7 @@ def test_low_stock_cancel_note_tools_and_api(env):
     dl.mark_ready("kunal", sid)
     code = _last("default")["ready"]["code"]
     dl.handed_over("kunal", sid, code, collect={"mode": "cash", "amount": dl.show("kunal", sid)["pay"]["due_left"]})
-    assert "Stock kam: Parle-G" in _last("kunal")["say"]
+    assert "Low stock: Parle-G" in _last("kunal")["say"]
     assert [x["name"] for x in dl.low_stock("kunal")] == ["Parle-G"]
     # a cancelled order tells the packer to stop
     bid = dl.ask("default", "@kunal.raj", [{"item": "Tata Salt 1kg", "qty": 2}])["deal"]["id"]

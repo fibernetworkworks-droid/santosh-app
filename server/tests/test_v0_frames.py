@@ -176,7 +176,7 @@ def test_worker_lock_second_render_refused(hf, monkeypatch):
     try:
         with pytest.raises(frames.FramesError) as ei:
             frames.run("t1", "render", html=GOOD_HTML)
-        assert "Ek render" in str(ei.value) or "chal raha" in str(ei.value)
+        assert "A render" in str(ei.value) or "running" in str(ei.value)
     finally:
         frames._render_lock.release()
 

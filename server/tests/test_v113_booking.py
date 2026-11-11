@@ -70,7 +70,7 @@ def test_booking_slots_address_job_card_bill_and_receipt(env):
     assert slot not in bk.free_slots("kunal")                           # the slot is held now
     # on the way -> arrived -> extra work found -> HER yes / no per line (the model can't)
     jb.on_the_way("kunal", sid, 30)
-    assert dl.show("default", bid)["state"] == "on_way" and "raste" in _last("default")["say"]
+    assert dl.show("default", bid)["state"] == "on_way" and "on the way" in _last("default")["say"]
     jb.arrived("kunal", sid)
     assert dl.show("default", bid)["state"] == "working"
     jb.estimate("kunal", sid, [{"item": "Cartridge", "price": 350, "gst_pct": 18, "note": "andar ka purana kharab"},
@@ -110,7 +110,7 @@ def test_booking_slots_address_job_card_bill_and_receipt(env):
     assert b["adjusted"] and b["total"] == round(400 * 1.18 + 350 * 1.18, 2)
     v = dl.show("default", bid)
     assert v["state"] == "handed_over" and v["job"]["bill"]["total"] == b["total"] and v["job"]["warranty"]["days"] == 30
-    assert _last("default")["card"] == "check" and "warranty 30 din" in _last("default")["say"]
+    assert _last("default")["card"] == "check" and "warranty 30 days" in _last("default")["say"]
     assert v["pay"]["due_left"] == b["total"]
     dp.received("kunal", sid, mode="cash")
     dp.all_ok("default", bid)
@@ -143,7 +143,7 @@ def test_warranty_claim_revisit_and_expiry(env):
     rv = dl.show("kunal", sid)["job"]["revisit"]
     assert rv["status"] == "booked" and off["slots"][0] not in bk.free_slots("kunal")
     jb.warranty_done("kunal", sid, "Washer badla")
-    assert not dl.show("default", bid)["job"]["claim"]["open"] and "muft" in _last("default")["say"]
+    assert not dl.show("default", bid)["job"]["claim"]["open"] and "for free" in _last("default")["say"]
     # after the warranty ends: no claim
     d = dl._get("default", bid)
     d.job = dict(d.job, warranty=dict(d.job["warranty"], until=(dl.now() - timedelta(days=1)).date().isoformat()))
@@ -179,7 +179,7 @@ def test_slots_are_held_reschedule_and_reminders(env):
         d.ask = dict(d.ask, slot=(dl.now() + timedelta(hours=5)).replace(microsecond=0).isoformat())
         dl._save(d)
     bk.tick()
-    assert "Kal / aaj" in _last("default")["say"] and "Aaj ka kaam J-" in _last("kunal")["say"]
+    assert "Coming up" in _last("default")["say"] and "Today's job J-" in _last("kunal")["say"]
     n = len(ev("default", "hoola_deal"))
     bk.tick()
     assert len(ev("default", "hoola_deal")) == n
@@ -217,7 +217,7 @@ def test_tools_rate_card_hours_and_limits(env):
         bk.set_rules("kunal", open_at="20:00", close_at="09:00")
     out = asyncio.run(dispatch("hoola_booking", {"action": "book", "to": "@kunal.raj", "what": "AC service, thanda nahi",
                                                  "area": "Baner"}, Ctx("default", net.home_conv("default"))))
-    assert out["deal"]["service"] and "pata bhi tabhi" in out["say"]
+    assert out["deal"]["service"] and "address goes only then" in out["say"]
     from app import main
     with TestClient(main.app) as cl:
         assert cl.get("/api/net/bookings").json()["bookings"]

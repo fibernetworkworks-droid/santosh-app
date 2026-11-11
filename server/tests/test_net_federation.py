@@ -165,7 +165,7 @@ def test_a2a_only_reaches_public_businesses(remote):
                                    "params": {"message": {"role": "user", "parts": [{"kind": "text", "text": "Akola mein plans?"}],
                                                           "metadata": {"to": "kunal.raj"}}}}).json()
         assert ok["result"]["status"]["state"] == "working"          # v0.116 waits for the owner's answer
-        assert "bahar ke" in ev("kunal", "a2a_task")[-1]["say"].lower()
+        assert "outside" in ev("kunal", "a2a_task")[-1]["say"].lower()
         no = cl.post("/a2a", json={"jsonrpc": "2.0", "id": 2, "method": "message/send",
                                    "params": {"message": {"parts": [{"kind": "text", "text": "hi"}], "metadata": {"to": "meghana.fnw"}}}}).json()
         assert no["error"]["code"] == -32602

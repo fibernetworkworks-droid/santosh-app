@@ -91,7 +91,7 @@ def test_verified_business_credential_checked_in_code(env):
     assert not trust.check(bad, kunal)["ok"]
     assert not trust.check(cred, net.resolve("kunal", "@meghana.fnw"))["ok"]
     other = dict(cred, iss="evil.example")
-    assert "bharosemand" in trust.check(other, kunal)["why"]
+    assert "not a verifier we trust" in trust.check(other, kunal)["why"]
     assert not trust.check({"type": "x"}, kunal)["ok"]
     # it rides in the quote; her Hoola checks it; the payee shows verified only when it is the bank-matched UPI
     bid = dl.ask("default", "@kunal.raj", LIST[:1])["deal"]["id"]
@@ -101,7 +101,7 @@ def test_verified_business_credential_checked_in_code(env):
     assert b["vbc"]["ok"] and b["vbc"]["name"] == "Kunal Traders"
     dl.confirm("default", bid, by_tap=True, pay="upi")
     dl.accept("kunal", sid)
-    assert "Verified business" in _last("default")["say"]
+    assert "verified business" in _last("default")["say"]
     from app.net import dealpay as dp
     assert dp.pay_link("default", bid)["business_verified"] is True
     # he changes the UPI ID afterwards: no longer the verified payee (and her Hoola says so)
@@ -111,12 +111,12 @@ def test_verified_business_credential_checked_in_code(env):
     dl.send_quote("kunal", sid2)
     dl.confirm("default", bid2, by_tap=True, pay="upi")
     dl.accept("kunal", sid2)
-    assert "verified UPI kunal.traders@okhdfcbank" in _last("default")["say"]
+    assert "verified UPI is kunal.traders@okhdfcbank" in _last("default")["say"]
     assert dp.pay_link("default", bid2)["business_verified"] is False
     # the operator takes the badge back: the same credential stops working at once on this server
     from app.net import business as biz
     biz.operator_verify("kunal", False)
-    assert "wapas" in trust.check(cred, kunal)["why"] and trust.credential("kunal") is None
+    assert "withdrawn" in trust.check(cred, kunal)["why"] and trust.credential("kunal") is None
     # without the bank-name check the credential carries no UPI at all
     _verified_kunal(bank_ok=False)
     assert trust.credential("kunal")["upi"] == ""
@@ -207,7 +207,7 @@ def test_standing_order_signed_once_checked_every_run(env):
     out = md.run_now("default", mid)
     bid = out["deal"]["id"]
     c = _last("default")
-    assert c["card"] == "confirm" and "pehla order" in c["say"]
+    assert c["card"] == "confirm" and "first order" in c["say"]
     dl.confirm("default", bid, by_tap=True, pay="counter")
     assert md._get("default", mid).base
     # run 2: inside the rule -> held, placed by itself after the hold
@@ -225,7 +225,7 @@ def test_standing_order_signed_once_checked_every_run(env):
     dl.set_stock("kunal", [{"name": "Parle-G", "price": 495, "gst_pct": 18, "qty": 40, "unit": "carton"}])
     bid = md.run_now("default", mid)["deal"]["id"]
     c = _last("default")
-    assert c["card"] == "confirm" and "Parle-G ka daam" in c["say"] and "10% zyada" in c["say"]
+    assert c["card"] == "confirm" and "Parle-G: price went from" in c["say"] and "10% more" in c["say"]
     md._update_run(mid, bid, status="holding", hold_until=(dl.now() - timedelta(minutes=1)).isoformat())
     assert md.allows("default", mid, dl._get("default", bid)) is False                   # code re-checks, not the status
     # run 4: back to normal price, she stops this one run

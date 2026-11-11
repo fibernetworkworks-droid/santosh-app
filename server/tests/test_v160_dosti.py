@@ -131,7 +131,7 @@ def test_free_talk_runs_by_itself_shares_experience_and_stops_loops(env, ai, mon
     for _ in range(6):
         dosti.tick()
     paused = [e for e in ev("default", "hoola_dosti") + ev("kunal", "hoola_dosti") if e.get("card") == "paused"]
-    assert paused and "baar aapas mein" in paused[0]["why"]
+    assert paused and "back-and-forth" in paused[0]["why"]
     th = {x["thread_id"]: x for x in dosti.threads("default")}
     assert th[tid_d]["paused"] or any(x["paused"] for x in dosti.threads("kunal"))
     dosti.pause("default", tid_d, False)
@@ -219,7 +219,7 @@ def test_skills_from_friends_only_on_her_yes_and_skill_video(env, ai, monkeypatc
     dosti.sync("default")
     e = dosti.experiences("default")[0]
     assert dosti.make_video("default", e["id"])["status"] == "rendering" and made["kind"] == "explainer"
-    assert "SSL" in made["data"]["tagline"] and made["data"]["cta"]["extra"] == "AI se bana"
+    assert "SSL" in made["data"]["tagline"] and made["data"]["cta"]["extra"] == "Made with AI"
     import tempfile
     from pathlib import Path
     mp4 = Path(tempfile.mkdtemp()) / "v.mp4"
