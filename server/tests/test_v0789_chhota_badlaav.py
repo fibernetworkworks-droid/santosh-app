@@ -1,4 +1,4 @@
-"""v0.787 CHHOTA BADLAAV (L4 of docs/LOVABLE_STUDIO_PLAN.md, owner: "GO L4"): small exact changes to a website's code
+"""v0.789 CHHOTA BADLAAV (L4 of docs/LOVABLE_STUDIO_PLAN.md, owner: "GO L4"): small exact changes to a website's code
 (search -> one exact replace, no AI rewrite) and tiered checks (a one-section change is checked on its own page only;
 the full check runs again before the site goes live)."""
 import asyncio

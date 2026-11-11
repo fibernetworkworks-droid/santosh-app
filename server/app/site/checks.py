@@ -333,7 +333,7 @@ def _run_pages(b, out: Path, pages: list[str], shots_dir: Path | None, axe, repo
 
 def run(out: Path, plan: dict[str, Any], shots_dir: Path | None = None, video: bool = True,
         only: list[str] | None = None, quick: bool = False) -> dict[str, Any]:
-    """quick=True (v0.787 CHHOTA BADLAAV, a small change): only the `only` pages in the browser (scroll width, contrast /
+    """quick=True (v0.789 CHHOTA BADLAAV, a small change): only the `only` pages in the browser (scroll width, contrast /
     a11y, console errors, that page's links, h1, weight) - no Lighthouse, no whole-site link scan, no share picture /
     video. The full check still runs before the site goes live (hosting.blockers)."""
     if available():

@@ -34,7 +34,7 @@ SITE_TOOLS = [
         "from data_fetch / an ERP read) -> a PREVIEW only (new / changed / rejected rows, thin + duplicate pages, the column "
         "mapping); nothing is written - SHE taps Apply on the console's Catalogue card (a file she has goes there too). "
         "Never type thousands of items into action=change. "
-        "SMALL EXACT CHANGES FIRST (v0.787): for a change of one word, colour, price, link, class or button text, use "
+        "SMALL EXACT CHANGES FIRST (v0.789): for a change of one word, colour, price, link, class or button text, use "
         "website_dekho what=search + q (the text / colour / class) -> it names the file and line; then action=edit_lines + "
         "site + file + search (the EXACT text from that file, it must appear once) + replace. No AI rewrite, the same safety "
         "cleaner, one Undo, a version checked on that page in seconds. action=write_file + file + code = the whole file (rare). "
@@ -235,7 +235,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
                 "say": "Build started. Each section shows in the live preview as soon as it is made."}
     if action == "change":
         return S.change(t, site, str(a.get("instruction") or ""), conv)
-    if action in ("edit_lines", "write_file"):    # v0.787 CHHOTA BADLAAV: exact search / replace, no AI rewrite
+    if action in ("edit_lines", "write_file"):    # v0.789 CHHOTA BADLAAV: exact search / replace, no AI rewrite
         from ..site import lineedit as LE
         try:
             if action == "edit_lines":
@@ -408,7 +408,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> Any:
         r = SC.report(t, site, int(a.get("days") or 30))
         r.pop("site", None)
         return r
-    if what == "search":                          # v0.787 where a text is in the site's code (for edit_lines)
+    if what == "search":                          # v0.789 where a text is in the site's code (for edit_lines)
         from ..db import session
         from ..site import lineedit as LE
         with session() as s_:

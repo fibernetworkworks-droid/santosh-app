@@ -345,7 +345,7 @@ def view(r: Site, full: bool = True) -> dict[str, Any]:
                   "checks": {"blocking": checks.get("blocking", [])[:12], "warnings": checks.get("warnings", [])[:12],
                              "passed": checks.get("passed"), "source": checks.get("source"),
                              "journeys": checks.get("journeys") or [],           # v0.400 the visitor tests
-                             "tier": checks.get("tier") or "", "checked_pages": checks.get("checked_pages") or [],   # v0.787
+                             "tier": checks.get("tier") or "", "checked_pages": checks.get("checked_pages") or [],   # v0.789
                              "quick_s": checks.get("quick_s")},
                   "shots": _j(r.board, {}).get("shots", {}), "photos": [p.get("name") for p in _j(r.photos, [])],
                   "languages": _j(r.languages, ["en"]),
@@ -2846,7 +2846,7 @@ def _editable(tenant: str, ref: str) -> Site:
 
 def _after_edit(r: Site, note: str, quick: list[str] | None = None) -> dict[str, Any]:
     """Both previews at once (edit + live), then one checked version in the background (edits close together = one).
-    quick = the page(s) of a one-section change: only those are checked (v0.787); edits that pile up get a full check."""
+    quick = the page(s) of a one-section change: only those are checked (v0.789); edits that pile up get a full check."""
     r = _load(r.id)
     _assemble_edit(r)
     if busy(r.id):                     # her last edits are being checked from the live copy: the next save rebuilds it
@@ -2990,7 +2990,7 @@ def edits(tenant: str, ref: str) -> dict[str, Any]:
 
 
 def _quick_merge(prev: dict[str, Any], q: dict[str, Any], pages: list[str]) -> dict[str, Any]:
-    """v0.787 a quick check of the touched pages joins the last FULL report: those pages' results are replaced, every
+    """v0.789 a quick check of the touched pages joins the last FULL report: those pages' results are replaced, every
     other page keeps its last result, the site-wide visitor journeys and Lighthouse items stay from the full run (they
     run again in the full check before going live)."""
     merged = {**(prev.get("pages") or {}), **(q.get("pages") or {})}
@@ -3030,7 +3030,7 @@ def save_version(site_id: str, note: str = "", quick: list[str] | None = None) -
         shots = B.site_dir(r.tenant_id, r.id) / "shots" / "live"
         live = _assemble_live(r)
         prev = _j(r.checks, {})
-        # v0.787 CHHOTA BADLAAV: a small change (one section) is checked on its own page(s) in seconds, on top of the
+        # v0.789 CHHOTA BADLAAV: a small change (one section) is checked on its own page(s) in seconds, on top of the
         # last FULL check; the full matrix + journeys run again before going live (hosting.blockers asks for it)
         pages = [p for p in dict.fromkeys(quick or []) if p]
         if (pages and getattr(_settings(), "site_quick_checks", True) and prev.get("source") not in (None, "", "none")

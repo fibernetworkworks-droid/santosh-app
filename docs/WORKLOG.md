@@ -2894,8 +2894,19 @@ content, brand-tinted stage, once-only motion); fixed Create Studio's resize err
 Not verified: not seen on the VPS. Pre-existing reds on main left alone (v0221 english, v0255 weights, v0256 crisp).
 Next: she deploys (VPS ops > deploy) and looks; her notes on any page come back here.
 
+Task ID: v0.787.0 HOOLA CODE ENGINE (built as 0.784)
+Ask: "IS HOOLA CODE BACKEND SAME AS CLAUDE CODE" -> no -> "GO STEP 1 AND 2 --- 2 SESSIONS, USE CLAUDE".
+Built: devsahayak/brain.py (Claude-only, thinking, caching, trimming), devsahayak/engine.py (working copy, Claude Code tools, bash in the box, compaction, continue, checkpoints + rewind, 2 live slots), routes ws / files / rewind, page steps + Working copy card; 13 tests incl. real Docker.
+Deploy: vps-ops deploy (server-only; no new pip; working copies under data/devsahayak/ws). Needs Anthropic credit (Hoola Code is Claude-only now). Found: server venv is Python 3.12 vs box 3.13.
+
+Task ID: v0.788.0 LANGGRAPH G5
+Ask: GO G5 (outcome in state + one delivery node).
+Built: turngraph deliver node, agent/turndeliver.py record, kaam_followup reads it; chat_graph still off; 11 tests. Found goal._waiting_on_job pause bug (not fixed).
+Deploy: vps-ops deploy (langgraph pip install from v0.761 if not done).
+
+
 ---
-Task ID: v0.787.0 CHHOTA BADLAAV (built as 0.785; their HOOLA AI APPS took 0.785.0 and HOOLA INTERACTIVE PREMIUM PASS 0.786.0; L4)
+Task ID: v0.789.0 CHHOTA BADLAAV (built as 0.785; their HOOLA AI APPS took 0.785.0, HOOLA INTERACTIVE PREMIUM PASS 0.786.0, HOOLA CODE ENGINE 0.787.0 and LANGGRAPH G5 0.788.0; L4)
 Task: owner "GO L4" - E1 line-edit tools + E2 tiered checks in the Web Studio.
 Work Log: site/lineedit.py; website_dekho what=search, website action=edit_lines / write_file; checks.run quick; save_version quick + _quick_merge; blockers + Go live starts the full check; Studio version card; 8 tests; real Chromium quick check 6.2 s.
 Stage Summary: pushed; server deploy only. Next: L5 YEH WALA (preview toolbar, element pills, style panel) on her GO.

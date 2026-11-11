@@ -1,4 +1,4 @@
-"""v0.787 CHHOTA BADLAAV (L4 of docs/LOVABLE_STUDIO_PLAN.md, owner: "GO L4"): small exact changes to a website's code,
+"""v0.789 CHHOTA BADLAAV (L4 of docs/LOVABLE_STUDIO_PLAN.md, owner: "GO L4"): small exact changes to a website's code,
 the way Lovable's line-replace tool works - instead of asking Opus to write a whole section again for "make the
 button grey".
 

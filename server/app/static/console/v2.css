@@ -4479,3 +4479,18 @@ html.human #app .landing .halo{display:none}
 @keyframes cxSlide{from{transform:translateX(24px);opacity:.4}}
 @media (max-width:640px){.cx-hero{padding:18px}.cx-hero h1{font-size:22px}.cx-stats{display:grid;grid-template-columns:1fr 1fr;width:100%}.cx-stat{min-width:0}.cx-stat.wide{grid-column:1 / -1}.cx-grid{grid-template-columns:1fr}.cx-row{flex-wrap:wrap}.cx-row .cx-rmain{flex-basis:calc(100% - 60px)}.cx-seg{width:100%;overflow-x:auto}.cx-by{display:none}}
 @media (prefers-reduced-motion:reduce){.cx-card,.cx-card:hover{transition:none;transform:none}.cx-scrim,.cx-dialog,.cx-panel,.cx-spin,.cx-card.sk span{animation:none}}
+
+/* v0.784 HOOLA CODE ENGINE: commands run in the box, the to-do list, the working-copy browser */
+#app .hcd-sh{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;color:var(--ink)}
+#app .hcd-term{margin:4px 0 6px 26px;padding:10px 12px;border-radius:10px;background:var(--code-bg);border:1px solid var(--line);font:12px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--lit);white-space:pre-wrap;word-break:break-word;max-height:260px;overflow:auto}
+#app .hcd-term.tall{margin:10px 0;max-height:60vh}
+#app .hcd-todo{display:grid;gap:4px;margin:6px 0 8px}
+#app .hcd-td{display:flex;gap:8px;align-items:baseline;font-size:13px;color:var(--lit)}
+#app .hcd-td i{font-style:normal;width:14px;flex:none;color:var(--mut)}
+#app .hcd-td.in_progress i{color:var(--pri)}
+#app .hcd-td.completed{color:var(--mut)}
+#app .hcd-td.completed i{color:var(--ok)}
+#app .hcd-td.completed span{text-decoration:line-through;text-decoration-color:var(--hair2)}
+#app .hcd-tree{display:grid;gap:2px;max-height:60vh;overflow:auto;margin:10px 0}
+#app .hcd-btn.sm{padding:3px 9px;font-size:12px;min-height:0}
+#app .hcd-tree .hcd-file code{direction:ltr;text-overflow:clip}

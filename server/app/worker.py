@@ -706,6 +706,9 @@ def kaam_jobs() -> None:
         if time.time() - _kaam_last > 86400:
             _kaam_last = time.time()
             kaamwatch.forget_old(30)
+            from .agent import turndeliver
+            if turndeliver.graph_on():   # G5: the graph's delivery records age out with the reports they answer
+                turndeliver.forget_old(7)
     except Exception:
         log.exception("kaam watch tick failed")
 
