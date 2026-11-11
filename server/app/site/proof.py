@@ -175,7 +175,7 @@ def big_set() -> list[dict[str, Any]]:
 def brief(brief_id: str) -> dict[str, Any]:
     b = next((x for x in big_set() if x["id"] == brief_id), None)
     if b is None:
-        raise ValueError("Yeh proof brief nahi hai.")
+        raise ValueError("This is not a proof brief.")
     return b
 
 
@@ -441,7 +441,7 @@ def start(brief_id: str, budget_inr: float = 0.0, builder=None) -> dict[str, Any
     ensure_tables()
     b = brief(brief_id)
     if any(t.is_alive() for t in _RUNNING.values()):
-        raise ValueError("Ek proof pehle se chal raha hai.")
+        raise ValueError("A proof is already running.")
     cap = float(getattr(get_settings(), "site_arena_max_inr", 3000) or 3000)
     budget = min(float(budget_inr or cap), cap)
     with session() as s:
@@ -453,7 +453,7 @@ def start(brief_id: str, budget_inr: float = 0.0, builder=None) -> dict[str, Any
     th = threading.Thread(target=_go, args=(pid, b, budget, builder), name=f"proof-{pid}", daemon=True)
     _RUNNING[pid] = th
     th.start()
-    return {"proof": pid, "budget_inr": budget, "say": f"100-page proof shuru: {b['name']} (v{APP_VERSION}), kharcha seema ₹{budget:,.0f}."}
+    return {"proof": pid, "budget_inr": budget, "say": f"100-page proof started: {b['name']} (v{APP_VERSION}), cost limit ₹{budget:,.0f}."}
 
 
 def _go(pid: str, b: dict[str, Any], budget: float, builder=None) -> None:
@@ -479,10 +479,10 @@ def stop(pid: str) -> dict[str, Any]:
     with session() as s:
         p = s.get(ArenaProof, pid)
         if p is None:
-            raise ValueError("Yeh proof nahi mila.")
+            raise ValueError("This proof was not found.")
         if p.status == "running":
             p.status = "stopped"
-    return {"ok": True, "say": "Proof ruk jayega (chalta kadam poora hone ke baad)."}
+    return {"ok": True, "say": "The proof will stop (after the running step finishes)."}
 
 
 _BOOT = time.time()
@@ -505,8 +505,8 @@ def resume_interrupted() -> int:
             with session() as s:
                 p = s.get(ArenaProof, pid)
                 p.status, p.stage = "failed", ""
-                p.card = json.dumps({**c, "error": "Server restart ho gaya; dobara chalaiye." if kind == "rival" else
-                                     "Do baar server restart mein ruka; dobara chalaiye."}, ensure_ascii=False)
+                p.card = json.dumps({**c, "error": "The server restarted; run it again." if kind == "rival" else
+                                     "Stopped by a server restart twice; run it again."}, ensure_ascii=False)
             continue
         _mark(pid, resumes=int(c.get("resumes") or 0) + 1)
         try:
@@ -541,7 +541,7 @@ def get(pid: str) -> dict[str, Any]:
     with session() as s:
         p = s.get(ArenaProof, pid)
         if p is None:
-            raise ValueError("Yeh proof nahi mila.")
+            raise ValueError("This proof was not found.")
         return _view(p)
 
 
@@ -687,7 +687,7 @@ def rival(brief_id: str, builder: str, url: str, crawl_fn=None, shots_fn=None, j
     try:
         url = WB._check_url(url)
     except Exception as e:
-        raise ValueError(f"Yeh address khul nahi sakta: {e}")
+        raise ValueError(f"This address cannot be opened: {e}")
     with session() as s:
         p = ArenaProof(kind="rival", brief_id=brief_id, builder=(builder or "other")[:40].lower(), url=url[:500],
                        version=APP_VERSION, stage="Crawling")
@@ -716,7 +716,7 @@ def rival(brief_id: str, builder: str, url: str, crawl_fn=None, shots_fn=None, j
         th.start()
     else:
         go()
-    return {"proof": pid, "say": f"{builder or 'Doosri'} website naap raha hoon (150 page tak)."}
+    return {"proof": pid, "say": f"{builder or 'The other'} website is being measured (up to 150 pages)."}
 
 
 # ---------------------------------------------------------------- 5. side by side

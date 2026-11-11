@@ -135,7 +135,7 @@ def path_of(key: str, part: str) -> str:
 def key_of(path: str) -> tuple[str, str]:
     m = re.fullmatch(r"pages/([a-z0-9][a-z0-9/_-]*)/([a-z0-9_]+)\.(html|css|js)", path or "")
     if not m:
-        raise CodeError("Aisi file nahi hai.")
+        raise CodeError("There is no such file.")
     return f"{m.group(1)}__{m.group(2)}", m.group(3)
 
 
@@ -168,7 +168,7 @@ def read(path: str, sections: dict[str, dict[str, Any]], kit_css: str) -> dict[s
     key, part = key_of(path)
     sec = sections.get(key)
     if sec is None:
-        raise CodeError("Yeh section ab nahi hai.")
+        raise CodeError("This section is no longer there.")
     raw = sec.get(part) or ""
     code = pretty_html(raw) if part == "html" else pretty_css(raw) if part == "css" else bare_js(raw)
     return {"path": path, "part": part, "key": key, "code": code}
@@ -177,7 +177,7 @@ def read(path: str, sections: dict[str, dict[str, Any]], kit_css: str) -> dict[s
 def clean(key: str, sec: dict[str, Any], part: str, code: str) -> tuple[dict[str, Any], list[str]]:
     """Her (or Opus's) code for ONE part of a section -> the stored section, through the same cleaner as every build."""
     if len(code or "") > MAX_FILE:
-        raise CodeError("File bahut badi hai (120 KB tak).")
+        raise CodeError("The file is too large (up to 120 KB).")
     raw = {"html": sec.get("html") or "", "css": sec.get("css") or "", "js": bare_js(sec.get("js") or "")}
     raw[part] = code or ""
     sid = B_sid(key)

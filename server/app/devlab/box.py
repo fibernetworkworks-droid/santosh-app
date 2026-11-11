@@ -110,10 +110,10 @@ def available() -> dict[str, Any]:
     """Is the lab usable on this machine? Never raises: the answer is data, with the reason in her words."""
     d = docker()
     if not d:
-        return {"ok": False, "why": "is machine par docker nahi hai (VPS par `docker --version` dekhiye)."}
+        return {"ok": False, "why": "docker is not on this machine (check `docker --version` on the VPS)."}
     rc, txt, _ = _run([d, "version", "--format", "{{.Server.Version}}"], 25)
     if rc != 0:
-        return {"ok": False, "why": "docker daemon jawab nahi de raha: " + txt.strip()[:300]}
+        return {"ok": False, "why": "the docker daemon is not answering: " + txt.strip()[:300]}
     ver = txt.strip().splitlines()[-1][:40] if txt.strip() else "?"
     rc2, imgs, _ = _run([d, "images", "-q", BASE_IMAGE], 25)
     built = bool(imgs.strip())
@@ -121,10 +121,10 @@ def available() -> dict[str, Any]:
     stale = built and rev != BASE_REV
     why = ""
     if not built:
-        why = "base image abhi bani nahi - `python -m app.devlab setup` chalaiye."
+        why = "the base image is not built yet - run `python -m app.devlab setup`."
     elif stale:
-        why = (f"base image purani hai (rev {rev or '1'}, chahiye {BASE_REV}) - `python -m app.devlab setup "
-               "--rebuild` chalaiye, warna purane niyam chalte rahenge.")
+        why = (f"the base image is old (rev {rev or '1'}, needed {BASE_REV}) - run `python -m app.devlab setup "
+               "--rebuild`, otherwise the old rules keep running.")
     return {"ok": True, "docker": ver, "base_image": BASE_IMAGE, "base_built": built,
             "base_rev": rev, "base_rev_wanted": BASE_REV, "base_stale": stale, "why": why}
 
@@ -146,7 +146,7 @@ def build_base(nocache: bool = False) -> dict[str, Any]:
     `server/app`, not deploy/."""
     d = docker()
     if not d:
-        return {"ok": False, "why": "docker nahi hai"}
+        return {"ok": False, "why": "docker is not installed"}
     import tempfile
     with tempfile.TemporaryDirectory(prefix="hoola-devlab-build-") as tmp:
         f = Path(tmp) / "Dockerfile"
@@ -154,7 +154,7 @@ def build_base(nocache: bool = False) -> dict[str, Any]:
         argv = [d, "build", "-t", BASE_IMAGE, "-f", str(f)] + (["--no-cache"] if nocache else []) + [tmp]
         rc, txt, secs = _run(argv, 2400)
     return {"ok": rc == 0, "seconds": round(secs, 1), "out": txt[-4000:], "image": BASE_IMAGE,
-            "why": "" if rc == 0 else "base image nahi bani (log dekhiye)"}
+            "why": "" if rc == 0 else "the base image was not built (see the log)"}
 
 
 def _limits(network: bool, writable: bool = False, net_name: str = "") -> list[str]:
@@ -191,7 +191,7 @@ def run_in(image: str, files_dir: str, command: str, timeout: int = CHECK_TIMEOU
     an image afterwards (that is how a dependency snapshot is made) - only ever used by the setup step."""
     d = docker()
     if not d:
-        return {"rc": 127, "out": "docker nahi hai", "secs": 0.0, "timed_out": False}
+        return {"rc": 127, "out": "docker is not installed", "secs": 0.0, "timed_out": False}
     name = f"hoola-lab-{os.getpid()}-{int(time.time() * 1000) % 1_000_000}"
     keep = bool(commit_to)
     # Writability is DERIVED from commit_to and cannot be asked for: the only reason to let a container keep what it
@@ -215,7 +215,7 @@ def run_in(image: str, files_dir: str, command: str, timeout: int = CHECK_TIMEOU
         if rc == 0 and not timed_out:
             crc, cout, _ = _run([d, "commit", name, commit_to], 300)
             if crc != 0:
-                txt += f"\n[snapshot nahi bani: {cout.strip()[:300]}]"
+                txt += f"\n[snapshot was not made: {cout.strip()[:300]}]"
         _run([d, "rm", "-f", name], 60)
     return {"rc": 124 if timed_out else rc, "out": txt, "secs": secs, "timed_out": timed_out}
 

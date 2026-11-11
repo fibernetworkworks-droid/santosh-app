@@ -263,7 +263,7 @@ CREW_SCHEMA = {
 }
 
 CREW_TOOLS = [CREW_SCHEMA]
-CREW_LABELS = {"crew_run": "Crew bhej raha hoon - choti team ka kaam"}
+CREW_LABELS = {"crew_run": "Sending a crew - a small team's work"}
 CREW_HANDLERS: dict = {"crew_run": None}   # set below
 
 

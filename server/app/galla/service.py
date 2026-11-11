@@ -24,7 +24,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from ..db import Base, new_id, now, session
 from .parse import APPS, parse_alert
 
-DAYS = ("Som", "Mangal", "Budh", "Guru", "Shukra", "Shani", "Ravi")
+DAYS = ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
 
 
 class GallaError(Exception):
@@ -80,7 +80,7 @@ def _paise(v) -> int:
     try:
         return int(round(float(str(v).replace(",", "").replace("₹", "").replace("Rs", "").replace("rs", "").strip()) * 100))
     except (TypeError, ValueError):
-        raise GallaError(f"'{v}' rupaye ki rakam nahi lagti.")
+        raise GallaError(f"'{v}' does not look like a rupee amount.")
 
 
 def today(tenant: str) -> date:
@@ -101,7 +101,7 @@ def _day(tenant: str, v: str | None) -> date:
         if m:
             y = int(m.group(3)) if m.group(3) else t.year
             return date(y + 2000 if y < 100 else y, int(m.group(2)), int(m.group(1)))
-    raise GallaError(f"Din '{v}' samajh nahi aaya (aaj, kal, 2026-10-20, 20/10).")
+    raise GallaError(f"The day '{v}' was not understood (today, yesterday, 2026-10-20, 20/10).")
 
 
 def _nice(d: date) -> str:
@@ -111,7 +111,7 @@ def _nice(d: date) -> str:
 def _hour_label(h: int) -> str:
     def one(x: int) -> str:
         x %= 24
-        return f"{12 if x % 12 == 0 else x % 12} {'subah' if x < 12 else ('dopahar' if x < 16 else ('shaam' if x < 20 else 'raat'))}"
+        return f"{12 if x % 12 == 0 else x % 12} {'am' if x < 12 else 'pm'}"
     return f"{one(h)} - {one(h + 1)}"
 
 
@@ -141,7 +141,7 @@ def save_settings(tenant: str, apps: list[str] | None = None, open_hour: int | N
         for k, v in (("open_hour", open_hour), ("close_hour", close_hour)):
             if v is not None:
                 if not 0 <= int(v) <= 24:
-                    raise GallaError("Ghanta 0 se 24 ke beech.")
+                    raise GallaError("The hour must be between 0 and 24.")
                 setattr(r, k, int(v))
     return settings(tenant)
 
@@ -228,7 +228,7 @@ def ingest_alerts(tenant: str, items: list[dict]) -> dict[str, Any]:
 def add_cash(tenant: str, amount, day: str = "", hour: int | None = None, note: str = "", source: str = "cash") -> dict:
     p = _paise(amount)
     if p <= 0:
-        raise GallaError("Kitne rupaye?")
+        raise GallaError("How many rupees?")
     d = _day(tenant, day)
     tz = _tz(tenant)
     known = hour is not None and 0 <= int(hour) <= 23
@@ -239,16 +239,16 @@ def add_cash(tenant: str, amount, day: str = "", hour: int | None = None, note: 
         s.flush()
         eid = e.id if e else ""
     _publish(tenant, "galla", {"added": 1})
-    return {"id": eid, "say": f"{_rs(p)} {'cash' if source == 'cash' else ''} {_nice(d)} mein likh liya."}
+    return {"id": eid, "say": f"{_rs(p)} {'cash' if source == 'cash' else ''} written for {_nice(d)}."}
 
 
 def void(tenant: str, entry_id: str) -> dict:
     with session() as s:
         e = s.get(GallaEntry, entry_id)
         if e is None or e.tenant_id != tenant:
-            raise GallaError("Entry nahi mili.")
+            raise GallaError("Entry not found.")
         e.void = True
-        return {"ok": True, "say": f"{_rs(e.amount_paise)} hata diya."}
+        return {"ok": True, "say": f"{_rs(e.amount_paise)} removed."}
 
 
 _COLS = {
@@ -302,7 +302,7 @@ def import_statement(tenant: str, name: str, data: bytes) -> dict[str, Any]:
         rows = [r for r in csv.reader(io.StringIO(text))]
     hdr_at = next((i for i, r in enumerate(rows[:30]) if _col(r, "amount") >= 0 and (_col(r, "date") >= 0)), -1)
     if hdr_at < 0:
-        raise GallaError("Is file mein Date aur Amount wale column nahi mile. CSV / Excel statement bhejiye.")
+        raise GallaError("This file has no Date and Amount columns. Send a CSV / Excel statement.")
     h = rows[hdr_at]
     ci = {k: _col(h, k) for k in _COLS}
     tz = _tz(tenant)
@@ -351,7 +351,7 @@ def import_statement(tenant: str, name: str, data: bytes) -> dict[str, Any]:
             added += 1
     if added:
         _publish(tenant, "galla", {"added": added})
-    return {"added": added, "skipped": skipped, "say": f"Statement se {added} payment jode ({skipped} chhode: debit / dobara / galat line)."}
+    return {"added": added, "skipped": skipped, "say": f"Added {added} payments from the statement ({skipped} skipped: debit / repeated / bad line)."}
 
 
 # ---------------------------------------------------------------- out: the day, best hours, trend
@@ -396,17 +396,17 @@ def day_summary(tenant: str, on: str = "") -> dict[str, Any]:
     same = [v["total"] for k, v in past.items() if date.fromisoformat(k).weekday() == d.weekday()][-4:]
     avg_same = int(statistics.mean(same)) if same else 0
     yday = past.get((d - timedelta(days=1)).isoformat(), {}).get("total", 0)
-    lines = [f"{_nice(d)}: kul {_rs(tot)} (UPI {_rs(sum(e.amount_paise for e in upi))} · {len(upi)} payment"
+    lines = [f"{_nice(d)}: total {_rs(tot)} (UPI {_rs(sum(e.amount_paise for e in upi))} · {len(upi)} payments"
              + (f", cash {_rs(sum(e.amount_paise for e in cash))}" if cash else "") + ")."]
     if best:
-        lines.append(f"Sabse zyada bikri: {best[0]['label']} ({best[0]['rupees']}, {best[0]['count']} payment).")
+        lines.append(f"Best seller: {best[0]['label']} ({best[0]['rupees']}, {best[0]['count']} payments).")
     if avg_same:
         diff = round((tot - avg_same) * 100 / avg_same)
-        lines.append(f"Pichhle {len(same)} {DAYS[d.weekday()]} ka ausat {_rs(avg_same)}: aaj {'+' if diff >= 0 else ''}{diff}%.")
+        lines.append(f"Average of the last {len(same)} {DAYS[d.weekday()]}: {_rs(avg_same)}; today {'+' if diff >= 0 else ''}{diff}%.")
     if d == today(tenant) and not upi and not last_alert:
-        lines.append("UPI alerts abhi phone se nahi aa rahe: Chai screen > Galla mein 'UPI alerts' chalu kijiye.")
+        lines.append("UPI alerts are not coming from the phone yet: turn on 'UPI alerts' in Chai screen > Till.")
     if d == today(tenant) and not cash:
-        lines.append("Cash ka hisaab nahi mila: shaam ko bata dijiye ('aaj 1200 cash').")
+        lines.append("No cash figure was given: tell me in the evening ('1200 cash today').")
     return {"date": d.isoformat(), "nice": _nice(d), "total": _rs(tot), "total_paise": tot,
             "upi": _rs(sum(e.amount_paise for e in upi)), "upi_count": len(upi), "cash": _rs(sum(e.amount_paise for e in cash)),
             "cash_paise": sum(e.amount_paise for e in cash), "hours": hours, "best": best,
@@ -422,7 +422,7 @@ def best_hours(tenant: str, days: int = 28) -> dict[str, Any]:
     with session() as s:
         rows = [e for e in _rows(s, tenant, end - timedelta(days=days - 1), end) if e.hour >= 0]
     if not rows:
-        return {"days": days, "hours": [], "text": "Abhi ghante ke hisaab ka data nahi (UPI alerts chalu kijiye)."}
+        return {"days": days, "hours": [], "text": "No hourly data yet (turn on UPI alerts)."}
     n_days = len({e.day for e in rows}) or 1
     agg: dict[int, list[int]] = {}
     wk: dict[int, dict[int, int]] = {}
@@ -437,8 +437,8 @@ def best_hours(tenant: str, days: int = 28) -> dict[str, Any]:
                      "payments_per_day": round(v[1] / n_days, 1)} for h, v in agg.items()), key=lambda x: x["hour"])
     top = sorted(hours, key=lambda x: x["avg_paise"], reverse=True)[:3]
     per_day = {DAYS[w]: _hour_label(max(v, key=v.get)) for w, v in sorted(wk.items())}
-    text = (f"Pichhle {n_days} din: sabse zyada bikri {top[0]['label']} (roz ~{top[0]['avg']}, ~{top[0]['payments_per_day']} payment)"
-            + (f", phir {top[1]['label']}" if len(top) > 1 else "") + ".")
+    text = (f"Last {n_days} days: the best hour is {top[0]['label']} (~{top[0]['avg']} a day, ~{top[0]['payments_per_day']} payments)"
+            + (f", then {top[1]['label']}" if len(top) > 1 else "") + ".")
     return {"days": n_days, "hours": hours, "top": top, "per_weekday": per_day, "text": text}
 
 

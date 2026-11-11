@@ -145,7 +145,7 @@ class Who:
 
 def _need(w: Who, role: str) -> None:
     if not w.can(role):
-        raise CmsError("Iske liye aapka role chhota hai.", 403)
+        raise CmsError("Your role does not allow this.", 403)
 
 
 def _sign(body: str) -> str:
@@ -161,15 +161,15 @@ def who(site_id: str, token: str) -> Who:
     try:
         sid, mid, gen, exp, sig = str(token or "").split(".")
     except ValueError:
-        raise CmsError("Pehle login kijiye.", 401)
+        raise CmsError("Sign in first.", 401)
     body = f"{sid}.{mid}.{gen}.{exp}"
     if sid != site_id or not exp.isdigit() or int(exp) < time.time() or not hmac.compare_digest(sig, _sign(body)):
-        raise CmsError("Login purana ho gaya; dobara login kijiye.", 401)
+        raise CmsError("The sign-in has expired; sign in again.", 401)
     ensure_tables()
     with session() as s:
         m = s.get(SiteCmsMember, mid)
         if m is None or m.site_id != site_id or m.status != "active" or str(m.gen) != gen:
-            raise CmsError("Login band hai.", 401)
+            raise CmsError("This sign-in is turned off.", 401)
         m.seen = now()
         s.flush()
         s.expunge(m)
@@ -179,7 +179,7 @@ def who(site_id: str, token: str) -> Who:
 def _clean_email(e: str) -> str:
     e = str(e or "").strip().lower()
     if not re.fullmatch(r"[^@\s]{1,64}@[^@\s]{1,120}\.[a-z]{2,12}", e):
-        raise CmsError("Sahi email likhiye.")
+        raise CmsError("Enter a valid email.")
     return e
 
 
@@ -195,7 +195,7 @@ def invite(site_id: str, email: str, name: str, role: str, base: str = "") -> di
         m = next((x for x in team if x.email == email), None)
         if m is None:
             if len(team) >= MAX_TEAM:
-                raise CmsError(f"Ek website par {MAX_TEAM} log tak.")
+                raise CmsError(f"A website can have up to {MAX_TEAM} people.")
             m = SiteCmsMember(site_id=site_id, email=email)
             s.add(m)
         m.name = re.sub(r"[\x00-\x1f<>]", "", str(name or "")).strip()[:80] or m.name or email.split("@")[0]
@@ -208,18 +208,18 @@ def invite(site_id: str, email: str, name: str, role: str, base: str = "") -> di
     STATS["invites"] += 1
     link = f"{base.rstrip('/')}/cms/{site_id}/?invite={tok}"
     return {"member": mid, "link": link, "expires_days": INVITE_DAYS,
-            "say": f"{email} ko yeh link bhejiye ({INVITE_DAYS} din chalega, ek baar): {link}"}
+            "say": f"Send this link to {email} (works for {INVITE_DAYS} days, once): {link}"}
 
 
 def accept(site_id: str, tok: str, password: str, name: str = "") -> dict[str, Any]:
     ensure_tables()
     if len(str(password or "")) < 10:
-        raise CmsError("Password kam se kam 10 akshar ka.")
+        raise CmsError("The password must be at least 10 characters.")
     h = hashlib.sha256(str(tok or "").encode()).hexdigest()
     with session() as s:
         m = s.scalars(select(SiteCmsMember).where(SiteCmsMember.site_id == site_id, SiteCmsMember.invite_h == h)).first()
         if m is None or m.status == "removed" or not m.invite_exp or _aware(m.invite_exp) < now():
-            raise CmsError("Yeh invite link purana ya galat hai; website ki maalkin se naya maangiye.", 403)
+            raise CmsError("This invite link is old or wrong; ask the website's owner for a new one.", 403)
         m.pw, m.invite_h, m.invite_exp, m.status = W.hash_pw(str(password)), "", None, "active"
         m.gen = (m.gen or 0) + 1
         if name:
@@ -241,7 +241,7 @@ def login(site_id: str, email: str, password: str, ip: str = "") -> dict[str, An
         if ok:
             s.expunge(m)
     if not ok:
-        raise CmsError("Email ya password galat.", 401)
+        raise CmsError("Wrong email or password.", 401)
     STATS["logins"] += 1
     return {"token": _token(m), "me": _me(m)}
 
@@ -265,7 +265,7 @@ def set_member(site_id: str, mid: str, role: str = "", remove: bool = False) -> 
     with session() as s:
         m = s.get(SiteCmsMember, mid)
         if m is None or m.site_id != site_id:
-            raise CmsError("Yeh vyakti team mein nahi.", 404)
+            raise CmsError("This person is not in the team.", 404)
         if remove:
             m.status, m.invite_h = "removed", ""
         elif role in ROLES:
@@ -292,7 +292,7 @@ def page_texts(site_id: str, slug: str) -> list[dict[str, Any]]:
     plan = _j(r.plan, {})
     page = next((p for p in plan.get("pages", []) if p["slug"] == slug and not p.get("template_of")), None)
     if page is None:
-        raise CmsError("Yeh page website mein nahi.", 404)
+        raise CmsError("This page is not in the website.", 404)
     out = []
     from bs4 import BeautifulSoup
     for sec in page.get("sections", []):
@@ -345,7 +345,7 @@ def draft(site_id: str, w: Who, did: str) -> dict[str, Any]:
     with session() as s:
         d = s.get(SiteCmsDraft, did)
         if d is None or d.site_id != site_id or (not w.can("editor") and d.author != w.id and d.status != "published"):
-            raise CmsError("Draft nahi mila.", 404)
+            raise CmsError("Draft not found.", 404)
         return _view(d, True)
 
 
@@ -360,15 +360,15 @@ def _clean_ops(site_id: str, slug: str, ops: Any) -> list[dict[str, Any]]:
         op = str(o.get("op") or "text")
         t = texts.get(k)
         if t is None or op not in ("text", "link") or (op == "link" and t["kind"] != "link"):
-            raise CmsError("Is page par yeh hissa badla nahi ja sakta.")
+            raise CmsError("This part of the page cannot be changed.")
         v = re.sub(r"\s+", " ", str(o.get("value") or "")).strip()[:2000]
         if not v:
-            raise CmsError("Khaali text nahi chalega.")
+            raise CmsError("Empty text is not allowed.")
         if op == "link" and not B._ok_href(v):
-            raise CmsError("Link: https://..., tel:, mailto: ya site ka apna page.")
+            raise CmsError("Link: https://..., tel:, mailto: or one of the site's own pages.")
         out.append({"key": k[0], "e": k[1], "op": op, "value": v, "was": t["href"] if op == "link" else t["text"]})
     if not out:
-        raise CmsError("Koi badlav nahi.")
+        raise CmsError("No changes.")
     return out
 
 
@@ -380,20 +380,20 @@ def save(site_id: str, w: Who, body: dict[str, Any], did: str = "") -> dict[str,
     with session() as s:
         d = s.get(SiteCmsDraft, did) if did else None
         if did and (d is None or d.site_id != site_id):
-            raise CmsError("Draft nahi mila.", 404)
+            raise CmsError("Draft not found.", 404)
         if d is not None:
             if d.status in ("published", "withdrawn"):
-                raise CmsError("Chhapa hua draft badla nahi jaata; naya draft banaiye.", 409)
+                raise CmsError("A published draft cannot be changed; make a new draft.", 409)
             if not (w.can("editor") or (d.author == w.id and d.status in ("draft", "returned"))):
-                raise CmsError("Yeh draft abhi aap badal nahi sakte.", 403)
+                raise CmsError("You cannot change this draft right now.", 403)
             kind = d.kind
         else:
             if kind not in ("post", "page"):
-                raise CmsError("Post ya page.")
+                raise CmsError("Post or page.")
             n = s.scalar(select(__import__("sqlalchemy").func.count()).select_from(SiteCmsDraft).where(
                 SiteCmsDraft.site_id == site_id, SiteCmsDraft.status.in_(("draft", "review", "approved", "returned", "scheduled"))))
             if (n or 0) >= 500:
-                raise CmsError("Bahut saare khule drafts; pehle kuch chhapiye ya hataiye.")
+                raise CmsError("Too many open drafts; publish or remove some first.")
             d = SiteCmsDraft(site_id=site_id, kind=kind, author=w.id, author_name=w.name)
             s.add(d)
             STATS["drafts"] += 1
@@ -401,12 +401,12 @@ def save(site_id: str, w: Who, body: dict[str, Any], did: str = "") -> dict[str,
             title = re.sub(r"[\x00-\x1f]", "", str(body.get("title") or d.title or "")).strip()[:200]
             text = str(body.get("body") if body.get("body") is not None else d.body or "")[:MAX_BODY]
             if not title or not text.strip():
-                raise CmsError("Post ka title aur likha hua dono chahiye.")
+                raise CmsError("A post needs both a title and its text.")
             target = str(body.get("target") if body.get("target") is not None else d.target or "")[:100]
             if target:
                 from . import blog as BL
                 if not any(p["slug"] == target for p in BL.posts(site_id)):
-                    raise CmsError("Yeh post blog mein nahi.", 404)
+                    raise CmsError("This post is not in the blog.", 404)
             meta = {k: str(v)[:400] for k, v in (body.get("meta") or _j(d.meta, {})).items() if k in ("excerpt", "category", "cover")}
             d.title, d.body, d.target, d.meta = title, text, target, json.dumps(meta, ensure_ascii=False)
         else:
@@ -428,40 +428,40 @@ def move(site_id: str, w: Who, did: str, to: str, note: str = "", when: str = ""
     with session() as s:
         d = s.get(SiteCmsDraft, did)
         if d is None or d.site_id != site_id:
-            raise CmsError("Draft nahi mila.", 404)
+            raise CmsError("Draft not found.", 404)
         st = d.status
         if to == "review":
             if not (d.author == w.id or w.can("editor")) or st not in ("draft", "returned"):
-                raise CmsError("Review ke liye sirf apna draft bhejiye.", 409)
+                raise CmsError("Send only your own draft for review.", 409)
         elif to in ("approved", "returned"):
             _need(w, "editor")
             if st != "review":
-                raise CmsError("Pehle draft review mein aaye.", 409)
+                raise CmsError("The draft must be in review first.", 409)
             if d.author == w.id and not w.owner:
-                raise CmsError("Apna draft aap khud approve nahi kar sakte - doosra editor dekhe.", 403)
+                raise CmsError("You cannot approve your own draft - another editor must look at it.", 403)
             d.reviewer = w.name
             if to == "returned":
-                d.note = re.sub(r"[\x00-\x08]", "", note or "").strip()[:1000] or "Dobara dekhiye."
+                d.note = re.sub(r"[\x00-\x08]", "", note or "").strip()[:1000] or "Please look again."
         elif to in ("published", "scheduled"):
             _need(w, "publisher")
             if st != "approved" and not w.owner:
-                raise CmsError("Sirf approve hua draft chhapta hai.", 409)
+                raise CmsError("Only an approved draft can be published.", 409)
             if to == "scheduled":
                 try:
                     at = datetime.fromisoformat(str(when))
                 except ValueError:
-                    raise CmsError("Samay jaise 2026-11-20T10:00+05:30.")
+                    raise CmsError("Give the time like 2026-11-20T10:00+05:30.")
                 at = at if at.tzinfo else at.replace(tzinfo=timezone(timedelta(hours=5, minutes=30)))
                 if at <= now() + timedelta(minutes=1):
-                    raise CmsError("Aage ka samay chuniye.")
+                    raise CmsError("Pick a time in the future.")
                 d.publish_at = at
             else:
                 publish_now = True
         elif to == "withdrawn":
             if not (d.author == w.id or w.can("editor")) or st == "published":
-                raise CmsError("Yeh draft hataya nahi ja sakta.", 409)
+                raise CmsError("This draft cannot be removed.", 409)
         else:
-            raise CmsError("Kya karna hai samajh nahi aaya.")
+            raise CmsError("The action was not understood.")
         if not publish_now:
             d.status = to
         d.updated = now()
@@ -480,7 +480,7 @@ def publish(site_id: str, did: str, w: Who) -> dict[str, Any]:
     with session() as s:
         d = s.get(SiteCmsDraft, did)
         if d is None or d.site_id != site_id or d.status in ("published", "withdrawn"):
-            raise CmsError("Draft chhapne layak nahi.", 409)
+            raise CmsError("The draft is not ready to publish.", 409)
         s.expunge(d)
     r = _site(site_id)
     conflicts: list[str] = []
@@ -491,7 +491,7 @@ def publish(site_id: str, did: str, w: Who) -> dict[str, Any]:
             with session() as s:
                 p = s.scalars(select(BL.SiteBlogPost).where(BL.SiteBlogPost.site_id == site_id, BL.SiteBlogPost.slug == d.target)).first()
                 if p is None:
-                    raise CmsError("Woh post ab blog mein nahi.", 409)
+                    raise CmsError("That post is no longer in the blog.", 409)
                 before = {"title": p.title, "body": p.body, "excerpt": p.excerpt, "category": p.category}
                 p.title, p.body = d.title, d.body
                 p.excerpt = meta.get("excerpt") or BL._first_line(d.body)
@@ -511,16 +511,16 @@ def publish(site_id: str, did: str, w: Who) -> dict[str, Any]:
         for o in _j(d.ops, []):
             sec = secs.get(o["key"])
             if sec is None:
-                conflicts.append(f"{o['key']}: section ab nahi")
+                conflicts.append(f"{o['key']}: the section is no longer there")
                 continue
             try:
                 now_d = E.describe(sec["html"], o["e"])
             except E.EditError:
-                conflicts.append(f"{o['key']} #{o['e']}: hissa ab nahi")
+                conflicts.append(f"{o['key']} #{o['e']}: the part is no longer there")
                 continue
             cur = now_d["href"] if o["op"] == "link" else now_d["text"]
             if cur != o["was"]:                           # changed by someone else since the draft was written
-                conflicts.append(f'"{o["was"][:40]}" ab "{cur[:40]}" hai')
+                conflicts.append(f'"{o["was"][:40]}" is now "{cur[:40]}"')
                 continue
             h, _what = E.apply(sec["html"], o["e"], o["op"], o["value"], photos, B._ok_href)
             secs[o["key"]] = {**sec, "html": h, "edited": True}
@@ -528,7 +528,7 @@ def publish(site_id: str, did: str, w: Who) -> dict[str, Any]:
             after_ops.append(o)
         if conflicts and not after_ops:
             STATS["conflicts"] += 1
-            raise CmsError("Page beech mein badal gaya; draft dobara banaiye. " + "; ".join(conflicts[:4]), 409)
+            raise CmsError("The page changed in the meantime; make the draft again. " + "; ".join(conflicts[:4]), 409)
         for k in {o["key"] for o in after_ops}:
             S._put_sec(r, k, secs[k])
         before, after, target = {"ops": before_ops}, {"ops": after_ops}, d.target
@@ -543,7 +543,7 @@ def publish(site_id: str, did: str, w: Who) -> dict[str, Any]:
     STATS["published"] += 1
     S._blog_rebuild(_site(site_id), f"team: {d.title[:60]} ({w.name})", live=True)
     return {**draft(site_id, Who(owner=True, site_id=site_id), did), "skipped": conflicts,
-            "say": "Chhap diya; nayi version jaanch ke baad live address par bhi chali jayegi (agar live pichhli version thi)."}
+            "say": "Published; after the checks the new version also goes to the live address (if the last version was live)."}
 
 
 def history(site_id: str, kind: str = "", target: str = "") -> list[dict[str, Any]]:
@@ -572,7 +572,7 @@ def restore(site_id: str, rid: str, w: Who) -> dict[str, Any]:
     with session() as s:
         x = s.get(SiteCmsRev, rid)
         if x is None or x.site_id != site_id:
-            raise CmsError("Revision nahi mili.", 404)
+            raise CmsError("Revision not found.", 404)
         s.expunge(x)
     before = _j(x.before, {})
     if x.kind == "post":
@@ -585,7 +585,7 @@ def restore(site_id: str, rid: str, w: Who) -> dict[str, Any]:
             with session() as s:
                 p = s.scalars(select(BL.SiteBlogPost).where(BL.SiteBlogPost.site_id == site_id, BL.SiteBlogPost.slug == x.target)).first()
                 if p is None:
-                    raise CmsError("Woh post ab blog mein nahi.", 409)
+                    raise CmsError("That post is no longer in the blog.", 409)
                 cur = {"title": p.title, "body": p.body, "excerpt": p.excerpt, "category": p.category}
                 p.title, p.body, p.excerpt, p.category = before["title"], before["body"], before.get("excerpt", ""), before.get("category", "")
                 p.words, p.updated_at = BL.words_in(p.body), now()
@@ -641,7 +641,7 @@ def tick(at: datetime | None = None) -> int:
             with session() as s:
                 d = s.get(SiteCmsDraft, did)
                 if d is not None:
-                    d.status, d.note = "returned", "Time par chhap nahi paya (page beech mein badla?) - dobara dekhiye."
+                    d.status, d.note = "returned", "Could not be published on time (did the page change in the meantime?) - look again."
     return n
 
 

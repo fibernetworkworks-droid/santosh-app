@@ -105,7 +105,7 @@ def _site_id(tenant: str, ref: str) -> str:
 def _order(s, site_id: str, number: str) -> SH.SiteShopOrder:
     o = s.scalars(select(SH.SiteShopOrder).where(SH.SiteShopOrder.site_id == site_id, SH.SiteShopOrder.number == number)).first()
     if o is None:
-        raise SH.ShopError("Yeh order nahi mila.", 404)
+        raise SH.ShopError("This order was not found.", 404)
     return o
 
 
@@ -151,11 +151,11 @@ def invoice_pdf(site_id: str, number: str, doc: str = "", gstin: str = "") -> tu
     ensure_tables()
     p = _project(site_id)
     if p is None or not G.on(p):
-        raise SH.ShopError("GST bill ke liye pehle apna GSTIN daaliye (Shop tab > GST).", 409)
+        raise SH.ShopError("For a GST bill, enter your GSTIN first (Shop tab > GST).", 409)
     with session() as s:
         o = _order(s, site_id, number)
         if o.status in ("new", "payment_told") and not o.utr:
-            raise SH.ShopError("Invoice payment / pakka hone ke baad banta hai.", 409)
+            raise SH.ShopError("An invoice is made after payment / confirmation.", 409)
         s.expunge(o)
     rid = _shadow(p, o, gstin)
     with session() as s:
@@ -170,7 +170,7 @@ def invoice_pdf(site_id: str, number: str, doc: str = "", gstin: str = "") -> tu
             s.expunge(row)
         d = json.loads(row.data or "{}")
     if doc == "credit" and not d.get("_cn_no"):
-        raise SH.ShopError("Is order ka credit note nahi bana (order radd nahi hua).", 404)
+        raise SH.ShopError("No credit note was made for this order (the order was not cancelled).", 404)
     out = RC.pdf(p, WEB_C, row, d, "" if doc == "credit" else "invoice")
     no = d.get("_cn_no") if doc == "credit" else d.get("_inv_no")
     return out, str(no or "invoice").replace("/", "-")
@@ -199,19 +199,19 @@ def apply_vendor(site_id: str, body: dict[str, Any], ip: str = "") -> dict[str, 
     name = SH._tidy(body.get("name"), 120)
     phone = re.sub(r"\D", "", str(body.get("phone") or ""))[-10:]
     if not name or len(phone) != 10 or phone[0] not in "6789":
-        raise SH.ShopError("Naam aur 10 ankon ka mobile chahiye.")
+        raise SH.ShopError("A name and a 10-digit mobile number are needed.")
     gstin = str(body.get("gstin") or "").strip().upper()
     if gstin:
         from ..appmaker import gst as G
         if not G.valid_gstin(gstin):
-            raise SH.ShopError("GSTIN sahi nahi lagta.")
+            raise SH.ShopError("The GSTIN does not look right.")
     with session() as s:
         if s.scalars(select(SiteShopVendor).where(SiteShopVendor.site_id == site_id, SiteShopVendor.phone == phone)).first():
-            raise SH.ShopError("Is number se pehle hi arzi aa chuki hai.", 409)
+            raise SH.ShopError("An application has already come from this number.", 409)
         s.add(SiteShopVendor(site_id=site_id, name=name, phone=phone, email=SH._tidy(body.get("email"), 160), gstin=gstin,
                              about=SH._tidy(body.get("about"), 600)))
     STATS["vendors"] += 1
-    return {"ok": True, "say": "Arzi mil gayi. Dukaan ki maalkin dekhkar jawab dengi."}
+    return {"ok": True, "say": "Application received. The shop owner will look at it and reply."}
 
 
 def _vview(v: SiteShopVendor, with_token: bool = False) -> dict[str, Any]:
@@ -240,7 +240,7 @@ def set_vendor(tenant: str, ref: str, vid: str, body: dict[str, Any]) -> dict[st
     with session() as s:
         v = s.get(SiteShopVendor, vid)
         if v is None or v.site_id != site_id:
-            raise SH.ShopError("Seller nahi mila.", 404)
+            raise SH.ShopError("Seller not found.", 404)
         if "commission" in body:
             try:
                 c = int(body["commission"])
@@ -252,7 +252,7 @@ def set_vendor(tenant: str, ref: str, vid: str, body: dict[str, Any]) -> dict[st
         if "account" in body:
             acc = str(body.get("account") or "").strip()
             if acc and not re.fullmatch(r"acc_[A-Za-z0-9]{6,40}", acc):
-                raise SH.ShopError("Razorpay Route ka linked account id (acc_...) daaliye; bank number kabhi nahi.")
+                raise SH.ShopError("Enter the Razorpay Route linked account id (acc_...); never a bank account number.")
             v.account = acc
         st = str(body.get("status") or "")
         if st in ("approved", "blocked", "pending"):
@@ -272,7 +272,7 @@ def approve_product(tenant: str, ref: str, slug: str, ok: bool = True) -> dict[s
     with session() as s:
         p = s.scalars(select(SH.SiteShopProduct).where(SH.SiteShopProduct.site_id == site_id, SH.SiteShopProduct.slug == slug)).first()
         if p is None:
-            raise SH.ShopError("Product nahi mila.", 404)
+            raise SH.ShopError("Product not found.", 404)
         p.mod = "ok" if ok else "rejected"
         p.active = 1 if ok else 0
     return {"ok": True, "slug": slug, "on_sale": ok}
@@ -281,7 +281,7 @@ def approve_product(tenant: str, ref: str, slug: str, ok: bool = True) -> dict[s
 def _vendor_by_token(s, site_id: str, token: str) -> SiteShopVendor:
     v = s.scalars(select(SiteShopVendor).where(SiteShopVendor.site_id == site_id, SiteShopVendor.token == token)).first() if token else None
     if v is None or v.status != "approved":
-        raise SH.ShopError("Yeh seller link nahi chalta.", 404)
+        raise SH.ShopError("This seller link does not work.", 404)
     return v
 
 
@@ -314,18 +314,18 @@ def vendor_add_product(site_id: str, token: str, body: dict[str, Any]) -> dict[s
         vid = v.id
     title = SH._tidy(body.get("title"), 120)
     if not title:
-        raise SH.ShopError("Product ka naam chahiye.")
+        raise SH.ShopError("The product needs a name.")
     slug = SH._slug(title)
     with session() as s:
         if s.scalars(select(SH.SiteShopProduct).where(SH.SiteShopProduct.site_id == site_id, SH.SiteShopProduct.slug == slug)).first():
-            raise SH.ShopError("Is naam ka product pehle se hai.", 409)
+            raise SH.ShopError("A product with this name already exists.", 409)
         price = SH.paise(body.get("price"))
         if price <= 0:
-            raise SH.ShopError("Daam sahi nahi.")
+            raise SH.ShopError("The price is not right.")
         stock = body.get("stock")
         s.add(SH.SiteShopProduct(site_id=site_id, slug=slug, title=title, price=price, unit=SH._tidy(body.get("unit"), 30),
                                  stock=int(stock) if str(stock or "").isdigit() else None, active=0, vendor=vid, mod="pending"))
-    return {"ok": True, "slug": slug, "say": "Product bhej diya; maalkin ke OK ke baad dukaan mein dikhega."}
+    return {"ok": True, "slug": slug, "say": "Product sent; it shows in the shop after the owner's OK."}
 
 
 def vendor_transfers(p, pid: str, payment_id: str, order_id: str) -> int:
@@ -368,7 +368,7 @@ def vendor_transfers(p, pid: str, payment_id: str, order_id: str) -> int:
         STATS["transfers"] += len(ids)
     except GW.GwError as e:
         res = f"failed: {e}"
-        PY._note(p, f"Seller payout nahi gaya (order {order_id}): {e}. Razorpay dashboard > Route mein dekhiye.")
+        PY._note(p, f"The seller payout did not go through (order {order_id}): {e}. Look in Razorpay dashboard > Route.")
     with session() as s:
         x = s.get(AppPayment, pid)
         m = json.loads(x.meta or "{}")
@@ -401,7 +401,7 @@ def set_courier(tenant: str, ref: str, body: dict[str, Any]) -> dict[str, Any]:
     email, pw = str(body.get("email") or "").strip(), str(body.get("password") or "")
     pickup = SH._tidy(body.get("pickup"), 60) or "Primary"
     if not email or not pw:
-        raise SH.ShopError("Shiprocket API user ka email aur password chahiye (Settings > API > Add new API user).")
+        raise SH.ShopError("The Shiprocket API user's email and password are needed (Settings > API > Add new API user).")
     _sr_login(email, pw)
     weight = max(0.05, min(30.0, float(body.get("weight") or 0.5)))
     box = {k: max(1, min(150, int(body.get(k) or d))) for k, d in (("length", 20), ("breadth", 15), ("height", 10))}
@@ -432,7 +432,7 @@ def _sr_login(email: str, pw: str) -> str:
     except (httpx.HTTPError, ValueError):
         tok = ""
     if not tok:
-        raise SH.ShopError("Shiprocket ne login nahi maana (API user ka email / password dekhiye).", 400)
+        raise SH.ShopError("Shiprocket did not accept the sign-in (check the API user's email / password).", 400)
     return tok
 
 
@@ -440,7 +440,7 @@ def _sr_token(site_id: str) -> str:
     from ..bazar.security import vault
     c = _sr_cfg(site_id)
     if not c.get("sealed"):
-        raise SH.ShopError("Pehle Shiprocket jodiye (Shop tab > Courier).", 409)
+        raise SH.ShopError("Connect Shiprocket first (Shop tab > Courier).", 409)
     k = json.loads(vault().open(c["sealed"]))
     return _sr_login(k["email"], k["password"])
 
@@ -453,9 +453,9 @@ def ship(tenant: str, ref: str, number: str) -> dict[str, Any]:
     with session() as s:
         o = _order(s, site_id, number)
         if o.status not in ("confirmed", "packed"):
-            raise SH.ShopError("Sirf pakka / pack hua order bhej sakte hain.", 409)
+            raise SH.ShopError("Only a confirmed / packed order can be shipped.", 409)
         if (json.loads(o.history or "[]") and any(h.get("awb") for h in json.loads(o.history or "[]"))):
-            raise SH.ShopError("Yeh order pehle hi courier ko diya ja chuka hai.", 409)
+            raise SH.ShopError("This order has already been given to the courier.", 409)
         items = json.loads(o.items or "[]")
         body = {"order_id": o.number, "order_date": (o.created_at or now()).strftime("%Y-%m-%d %H:%M"), "pickup_location": c["pickup"],
                 "billing_customer_name": o.name, "billing_last_name": "", "billing_address": o.address[:190], "billing_city": "",
@@ -472,16 +472,16 @@ def ship(tenant: str, ref: str, number: str) -> dict[str, Any]:
             d1 = r1.json() if r1.status_code == 200 else {}
             sid_ = d1.get("shipment_id")
             if not sid_:
-                raise SH.ShopError(f"Shiprocket ne order nahi liya: {str(d1.get('message') or r1.text)[:160]}", 502)
+                raise SH.ShopError(f"Shiprocket did not take the order: {str(d1.get('message') or r1.text)[:160]}", 502)
             r2 = h.post(f"{SR}/courier/assign/awb", json={"shipment_id": sid_}, headers=hdr)
             d2 = (r2.json() or {}).get("response", {}).get("data", {}) if r2.status_code == 200 else {}
             awb = str(d2.get("awb_code") or "")
             if not awb:
-                raise SH.ShopError("AWB nahi mila (Shiprocket wallet / pincode service dekhiye).", 502)
+                raise SH.ShopError("No AWB was given (check the Shiprocket wallet / pincode service).", 502)
             r3 = h.post(f"{SR}/courier/generate/label", json={"shipment_id": [sid_]}, headers=hdr)
             label = str((r3.json() or {}).get("label_url") or "") if r3.status_code == 200 else ""
     except httpx.HTTPError as e:
-        raise SH.ShopError(f"Shiprocket tak nahi pahunche: {type(e).__name__}", 502)
+        raise SH.ShopError(f"Could not reach Shiprocket: {type(e).__name__}", 502)
     with session() as s:
         o = _order(s, site_id, number)
         o.status, o.updated_at = "shipped", now()
@@ -517,19 +517,19 @@ def hold_cart(site_id: str, body: dict[str, Any], ip: str = "") -> dict[str, Any
     """The customer ticked "remind me": only then is the cart kept (phone + items), with a STOP link."""
     ensure_tables()
     if body.get("consent") is not True:
-        raise SH.ShopError("Yaad dilane ke liye haan (tick) zaroori hai.")
+        raise SH.ShopError("A yes (tick) is required for reminders.")
     SH._rate(f"cart:{hashlib.sha256((ip + site_id).encode()).hexdigest()[:20]}", 10, 3600)
     phone = re.sub(r"\D", "", str(body.get("phone") or ""))[-10:]
     if len(phone) != 10 or phone[0] not in "6789":
-        raise SH.ShopError("10 ankon ka mobile chahiye.")
+        raise SH.ShopError("A 10-digit mobile number is needed.")
     items = [{"slug": SH._slug(x.get("slug")), "qty": int(x.get("qty") or 1)} for x in (body.get("items") or [])[:SH.MAX_LINES]
              if isinstance(x, dict) and SH._slug(x.get("slug"))]
     if not items:
-        raise SH.ShopError("Cart khaali hai.")
+        raise SH.ShopError("The cart is empty.")
     with session() as s:
         c = s.scalars(select(SiteShopCart).where(SiteShopCart.site_id == site_id, SiteShopCart.phone == phone)).first()
         if c is not None and c.status == "stopped":
-            raise SH.ShopError("Aapne yaad dilana band kiya tha.", 409)
+            raise SH.ShopError("You had turned reminders off.", 409)
         if c is None:
             c = SiteShopCart(site_id=site_id, phone=phone, token=secrets.token_urlsafe(16))
             s.add(c)
@@ -543,9 +543,9 @@ def stop_cart(site_id: str, token: str) -> dict[str, Any]:
     with session() as s:
         c = s.scalars(select(SiteShopCart).where(SiteShopCart.site_id == site_id, SiteShopCart.token == token)).first()
         if c is None:
-            raise SH.ShopError("Link nahi chala.", 404)
+            raise SH.ShopError("The link did not work.", 404)
         c.status, c.items = "stopped", "[]"
-    return {"ok": True, "say": "Theek hai, ab yaad nahi dilayenge."}
+    return {"ok": True, "say": "OK, no more reminders."}
 
 
 def ordered(site_id: str, phone: str) -> None:
@@ -572,10 +572,10 @@ def carts(tenant: str, ref: str) -> dict[str, Any]:
         out = []
         for c in rows:
             what = ", ".join(titles.get(x["slug"], x["slug"]) for x in json.loads(c.items or "[]"))[:200]
-            msg = f"Namaste {c.name or ''}! {shop_name} se: aapke cart mein {what} rakha hai. Order karna ho to website par poora kar lijiye. Na chahiye to STOP likhiye."
+            msg = f"Hello {c.name or ''}! From {shop_name}: {what} is waiting in your cart. To order, finish it on the website. Reply STOP if you do not want reminders."
             out.append({"id": c.id, "name": c.name, "phone": c.phone[:2] + "******" + c.phone[-2:], "items": what,
                         "wa": "https://wa.me/91" + c.phone + "?text=" + urllib.parse.quote(msg)})
-    return {"carts": out, "note": "Sirf unke cart jinhone 'yaad dilana' tick kiya. Link aap dabati hain; Hoola khud kuch nahi bhejta."}
+    return {"carts": out, "note": "Only the carts of people who ticked 'remind me'. You tap the link; Hoola sends nothing by itself."}
 
 
 def mark_reminded(tenant: str, ref: str, cid: str) -> dict[str, Any]:
@@ -583,7 +583,7 @@ def mark_reminded(tenant: str, ref: str, cid: str) -> dict[str, Any]:
     with session() as s:
         c = s.get(SiteShopCart, cid)
         if c is None or c.site_id != site_id:
-            raise SH.ShopError("Cart nahi mila.", 404)
+            raise SH.ShopError("Cart not found.", 404)
         c.status, c.updated_at = "reminded", now()
     return {"ok": True}
 

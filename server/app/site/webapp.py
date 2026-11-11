@@ -161,7 +161,7 @@ def clean_schema(raw: Any) -> dict[str, Any]:
 def coll(schema: dict[str, Any], key: str) -> dict[str, Any]:
     c = next((x for x in (schema or {}).get("collections", []) if x["key"] == key), None)
     if c is None:
-        raise AppError("Yeh list is website mein nahi hai.", 404)
+        raise AppError("This list is not in this website.", 404)
     return c
 
 
@@ -237,22 +237,22 @@ def rate(key: str, n: int, per: int) -> None:
             _RATE.pop(k, None)
     hits = [x for x in _RATE.get(key, []) if t - x < per]
     if len(hits) >= n:
-        raise AppError("Bahut zyada koshish; thodi der baad.", 429)
+        raise AppError("Too many tries; try again in a little while.", 429)
     _RATE[key] = hits + [t]
 
 
 def signup(site_id: str, schema: dict[str, Any], email: str, password: str, name: str, ip: str) -> dict[str, Any]:
     if not schema.get("signup", True):
-        raise AppError("Is website par naye account band hain; dukaan se baat kijiye.", 403)
+        raise AppError("New accounts are closed on this website; talk to the shop.", 403)
     rate(f"su|{site_id}|{ip}", 5, 3600)
     email = (email or "").strip().lower()
     if not EMAIL.match(email):
-        raise AppError("Email sahi nahi lagta.")
+        raise AppError("The email does not look right.")
     if len(password or "") < 8:
-        raise AppError("Password kam se kam 8 akshar ka ho.")
+        raise AppError("The password must be at least 8 characters.")
     with session() as s:
         if s.scalars(select(SiteAppMember).where(SiteAppMember.site_id == site_id, SiteAppMember.email == email)).first():
-            raise AppError("Is email se account pehle se hai; login kijiye.")
+            raise AppError("There is already an account with this email; sign in.")
         m = SiteAppMember(site_id=site_id, email=email, name=(name or "").strip()[:120], pw=hash_pw(password))
         s.add(m)
         s.flush()
@@ -269,7 +269,7 @@ def login(site_id: str, email: str, password: str, ip: str) -> dict[str, Any]:
         if m is not None:
             s.expunge(m)
     if m is None or not check_pw(password or "", m.pw):
-        raise AppError("Email ya password galat.", 401)
+        raise AppError("Wrong email or password.", 401)
     STATS["logins"] += 1
     return {"token": make_token(site_id, m), "me": view_member(m)}
 
@@ -308,7 +308,7 @@ class Who:
         return self.owner or bool(self.m and self.m.role in ("staff", "admin"))
 
 
-def _deny(msg: str = "Iski ijaazat nahi.", code: int = 403):
+def _deny(msg: str = "This is not allowed.", code: int = 403):
     STATS["denied"] += 1
     raise AppError(msg, code)
 
@@ -316,14 +316,14 @@ def _deny(msg: str = "Iski ijaazat nahi.", code: int = 403):
 def _value(f: dict[str, Any], v: Any) -> Any:
     if v is None or (isinstance(v, str) and not v.strip()):
         if f.get("required"):
-            raise AppError(f"{f['label']} bharna zaroori hai.")
+            raise AppError(f"{f['label']} is required.")
         return f.get("default", "") if f["type"] == "choice" else ""
     t = f["type"]
     if t == "number":
         try:
             n = float(str(v).replace(",", ""))
         except ValueError:
-            raise AppError(f"{f['label']}: number chahiye.")
+            raise AppError(f"{f['label']}: a number is needed.")
         return int(n) if n.is_integer() else round(n, 4)
     if t == "yes_no":
         return str(v).lower() in ("1", "true", "yes", "haan", "on")
@@ -331,11 +331,11 @@ def _value(f: dict[str, Any], v: Any) -> Any:
     if t == "phone":
         d = re.sub(r"\D", "", s)[-10:]
         if len(d) != 10:
-            raise AppError(f"{f['label']}: 10 ank ka mobile number.")
+            raise AppError(f"{f['label']}: a 10-digit mobile number.")
         return d
     if t == "email":
         if not EMAIL.match(s):
-            raise AppError(f"{f['label']}: email sahi nahi.")
+            raise AppError(f"{f['label']}: the email is not right.")
         return s.lower()
     if t == "date":
         try:
@@ -344,11 +344,11 @@ def _value(f: dict[str, Any], v: Any) -> Any:
             raise AppError(f"{f['label']}: tareekh YYYY-MM-DD.")
     if t == "url":                                  # v0.581 https only, no spaces / quotes (it is shown as a link / player)
         if not re.fullmatch(r"https://[^\s\"'<>]{3,500}", s):
-            raise AppError(f"{f['label']}: https:// se shuru hone wala poora link chahiye.")
+            raise AppError(f"{f['label']}: a full link starting with https:// is needed.")
         return s
     if t == "choice":
         if s not in f["options"]:
-            raise AppError(f"{f['label']}: in mein se chuniye: {', '.join(f['options'])}.")
+            raise AppError(f"{f['label']}: pick one of these: {', '.join(f['options'])}.")
         return s
     return s[:4000 if t in ("long_text", "richtext") else 300]   # v0.425 richtext = long markdown text
 
@@ -364,7 +364,7 @@ def _clean(c: dict[str, Any], data: dict[str, Any], who: Who, partial: bool = Fa
             continue
         out[f["key"]] = _value(f, data.get(f["key"]))
     if len(json.dumps(out, ensure_ascii=False)) > MAX_ROW:
-        raise AppError("Bahut lamba; chhota kijiye.")
+        raise AppError("Too long; make it shorter.")
     return out
 
 
@@ -417,7 +417,7 @@ def create(site_id: str, schema: dict[str, Any], key: str, data: dict[str, Any],
     c = coll(schema, key)
     rule = c["rules"]["create"]
     if rule == "member" and who.m is None and not who.owner:
-        _deny("Pehle login kijiye.", 401)
+        _deny("Sign in first.", 401)
     if rule == "admin" and not who.staff:
         _deny()
     if not who.owner:
@@ -426,7 +426,7 @@ def create(site_id: str, schema: dict[str, Any], key: str, data: dict[str, Any],
     with session() as s:
         n = s.scalar(select(func.count()).select_from(SiteAppRow).where(SiteAppRow.site_id == site_id)) or 0
         if n >= cap:
-            raise AppError("Is website ki data seema poori ho gayi; dukaan se baat kijiye.", 507)
+            raise AppError("This website's data limit is full; talk to the shop.", 507)
         row = SiteAppRow(site_id=site_id, coll=key, owner=who.id, data=json.dumps(clean, ensure_ascii=False))
         s.add(row)
         s.flush()
@@ -439,7 +439,7 @@ def rows(site_id: str, schema: dict[str, Any], key: str, who: Who, limit: int = 
     c = coll(schema, key)
     r = c["rules"]["read"]
     if not who.staff and (r == "admin" or (r in ("members", "own", "gated") and who.m is None)):
-        _deny("Pehle login kijiye." if who.m is None else "Iski ijaazat nahi.", 401 if who.m is None else 403)
+        _deny("Sign in first." if who.m is None else "This is not allowed.", 401 if who.m is None else 403)
     with session() as s:
         q = select(SiteAppRow).where(SiteAppRow.site_id == site_id, SiteAppRow.coll == key)
         if not who.staff and r == "own":
@@ -455,7 +455,7 @@ def update(site_id: str, schema: dict[str, Any], key: str, row_id: str, data: di
     with session() as s:
         row = s.get(SiteAppRow, row_id)
         if row is None or row.site_id != site_id or row.coll != key:
-            raise AppError("Yeh entry nahi mili.", 404)
+            raise AppError("This entry was not found.", 404)
         if not _can_write(c, who, row, "update"):
             _deny()
         d = json.loads(row.data or "{}")
@@ -471,7 +471,7 @@ def delete(site_id: str, schema: dict[str, Any], key: str, row_id: str, who: Who
     with session() as s:
         row = s.get(SiteAppRow, row_id)
         if row is None or row.site_id != site_id or row.coll != key:
-            raise AppError("Yeh entry nahi mili.", 404)
+            raise AppError("This entry was not found.", 404)
         if not _can_write(c, who, row, "delete"):
             _deny()
         s.delete(row)
@@ -491,7 +491,7 @@ def set_role(site_id: str, member_id: str, role: str) -> dict[str, Any]:
     with session() as s:
         m = s.get(SiteAppMember, member_id)
         if m is None or m.site_id != site_id:
-            raise AppError("Yeh member nahi mila.", 404)
+            raise AppError("This member was not found.", 404)
         m.role = role
         m.gen = (m.gen or 0) + 1            # a new role = log in again
         s.flush()
@@ -561,7 +561,7 @@ def stats(site_id: str, schema: dict[str, Any], who: Who, days: int = 30) -> dic
     from datetime import timedelta
     from .care import IST
     if not who.staff:
-        _deny("Yeh sirf staff ke liye hai.", 401 if who.m is None else 403)
+        _deny("This is only for staff.", 401 if who.m is None else 403)
     days = max(7, min(int(days or 30), 90))
     last = datetime.now(timezone.utc).astimezone(IST).date()
     ds = [(last - timedelta(days=days - 1 - i)).isoformat() for i in range(days)]

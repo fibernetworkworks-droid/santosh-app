@@ -58,7 +58,7 @@ def main(argv: list[str] | None = None) -> int:
         print(out.grep_log(a.log, a.pattern))
         return 0
     if not a.repo:
-        print("--repo owner/name chahiye", file=sys.stderr)
+        print("--repo owner/name is needed", file=sys.stderr)
         return 2
     r = service.check(a.repo, a.ref, a.token, a.cmd, {"ok": "1"}, a.timeout, a.setup)
     if a.json:

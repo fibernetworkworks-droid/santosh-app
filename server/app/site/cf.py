@@ -31,7 +31,7 @@ def set_transport(t: httpx.BaseTransport | None) -> None:
 class Cloudflare:
     def __init__(self, token: str):
         if not token:
-            raise CfError("Cloudflare token nahi hai.")
+            raise CfError("There is no Cloudflare token.")
         self.token = token
 
     def _req(self, method: str, path: str, json: Any = None, params: dict | None = None) -> Any:
@@ -40,15 +40,15 @@ class Cloudflare:
                 r = c.request(method, base() + path, json=json, params=params,
                               headers={"Authorization": f"Bearer {self.token}", "Content-Type": "application/json"})
         except httpx.HTTPError as e:
-            raise CfError(f"Cloudflare tak nahi pahunch paya: {e.__class__.__name__}")
+            raise CfError(f"Could not reach Cloudflare: {e.__class__.__name__}")
         try:
             body = r.json()
         except ValueError:
-            raise CfError(f"Cloudflare ka jawab samajh nahi aaya ({r.status_code}).")
+            raise CfError(f"Cloudflare's answer was not understood ({r.status_code}).")
         if r.status_code >= 400 or not body.get("success", False):
             errs = "; ".join(f"{e.get('code')}: {e.get('message')}" for e in body.get("errors") or []) or str(r.status_code)
             if r.status_code in (401, 403):
-                raise CfError(f"Cloudflare ne mana kiya (token ki permission kam hai ya galat): {errs}")
+                raise CfError(f"Cloudflare refused (the token's permission is too low or wrong): {errs}")
             raise CfError(f"Cloudflare: {errs}")
         return body.get("result")
 

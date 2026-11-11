@@ -154,11 +154,11 @@ def dashboard(tenant: str, ref: str = "", days: int = 30) -> dict[str, Any]:
     status_mix = [[SH.WORDS.get(k, k), n, k] for k, n in sorted(mix.items(), key=lambda x: SH.STATUSES.index(x[0])
                                                                  if x[0] in SH.STATUSES else 99)]
     best = max(range(days), key=lambda i: series["visits"][i]) if v else -1
-    say = (f"{r.name}: {days} din mein {v} visit" + (f" ({'+' if v >= vp else ''}{v - vp} pichhle {days} din se)" if vp else "")
-           + f", {e} enquiry/booking" + (f" ({conv}%)" if v else "")
-           + (f", {o} order, ₹{SH.rupees(sa)} ki pakki bikri" if (shop_on or o) else "")
-           + (f", {app['total']} naye record" if app else "")
-           + (f"; sabse zyada visit {cur_days[best]} ko ({series['visits'][best]})" if best >= 0 else "") + ".")
+    say = (f"{r.name}: {v} visits in {days} days" + (f" ({'+' if v >= vp else ''}{v - vp} vs the {days} days before)" if vp else "")
+           + f", {e} enquiries/bookings" + (f" ({conv}%)" if v else "")
+           + (f", {o} orders, ₹{SH.rupees(sa)} in confirmed sales" if (shop_on or o) else "")
+           + (f", {app['total']} new records" if app else "")
+           + (f"; most visits on {cur_days[best]} ({series['visits'][best]})" if best >= 0 else "") + ".")
     return {"site": {"id": r.id, "name": r.name}, "days": days, "from": cur_days[0], "to": cur_days[-1],
             "kpis": kpis, "series": series, "top_pages": top_pages, "top_products": top_products,
             "status_mix": status_mix, "app": app, "shop": bool(shop_on or o or op), "say": say}

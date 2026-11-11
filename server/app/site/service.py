@@ -113,8 +113,8 @@ def _work(site: Site, phase: str, label: str, note: str = "", sections: list | N
     Studio's own log (`activity`); act=False when the caller writes a finer step itself."""
     if act:
         if phase == "start":
-            ACT.step(site.tenant_id, site.id, label, ACT.note_en(label, note), key="photos" if label == "Tasveeren bana raha hoon" else "",
-                     alongside=label == "Tasveeren bana raha hoon")
+            ACT.step(site.tenant_id, site.id, label, ACT.note_en(label, note), key="photos" if label == "Making photos for your business" else "",
+                     alongside=label == "Making photos for your business")
         elif phase in ("done", "waiting"):
             ACT.end(site.tenant_id, site.id, label, ACT.note_en(label, note))
         elif phase in ("error", "stopped"):
@@ -154,7 +154,7 @@ def _find(s, tenant: str, ref: str) -> Site:
         if r is None:
             r = s.scalars(q.where(Site.name.ilike(f"%{ref}%")).order_by(Site.updated_at.desc())).first()
     if r is None:
-        raise SiteError("Yeh website nahi mili." if ref else "Abhi koi website nahi hai. 'website banao' kahiye.")
+        raise SiteError("This website was not found." if ref else "There is no website yet. Say 'make a website'.")
     return r
 
 
@@ -242,11 +242,11 @@ def facts_from_text(text: str) -> dict[str, Any]:
 def missing_questions(facts: dict[str, Any], br: dict[str, Any]) -> list[str]:
     q: list[str] = []
     if not facts.get("name"):
-        q.append("Business / dukaan ka naam kya hai?")
+        q.append("What is the name of the business or shop?")
     if not (facts.get("phone") or facts.get("whatsapp")):
-        q.append("Customer kis number par call / WhatsApp karein?")
+        q.append("Which number should customers call or WhatsApp?")
     if not (facts.get("address") or facts.get("city")):
-        q.append("Address ya area / shehar?")
+        q.append("Address, or area / city?")
     for x in br.get("questions", []):
         if len(q) >= 3:
             break
@@ -383,7 +383,7 @@ def _estimate(r: Site, plan: dict[str, Any]) -> dict[str, Any] | None:
         if plan.get("big"):                  # v0.315 list pages cost no AI: say how many pages the money buys
             z = SM.counts(plan)
             est["pages"] = z["total"]
-            est["say"] += f" · {z['total']} pages ({z['items']} lists se, bina AI kharch)"
+            est["say"] += f" · {z['total']} pages ({z['items']} from lists, at no AI cost)"
         return est
     except Exception:
         log.info("site estimate skipped", exc_info=True)
@@ -398,32 +398,32 @@ def _public_facts(f: dict[str, Any]) -> dict[str, Any]:
 def _say(v: dict[str, Any]) -> str:
     st = v["status"]
     if st == "planned" and v.get("mapping"):
-        return "Site map ban raha hai (badi website): plan card ek-do minute mein."
+        return "Building the site map (large website): the plan card will be here in a minute or two."
     if st == "planned" and v.get("size"):
         z = v["size"]
-        return (f"{v['name'] or 'Website'} ka site map taiyaar: {z['total']} pages ({z['designed']} designed, {z['items']} "
-                f"lists se, {z['legal']} legal). 'Haan' par 3 looks banaunga."
+        return (f"{v['name'] or 'Website'} site map is ready: {z['total']} pages ({z['designed']} designed, {z['items']} "
+                f"from lists, {z['legal']} legal). Say 'Yes' and I will make 3 looks."
                 + (f" {v['estimate']['say']}." if v.get("estimate") else ""))
     if st == "planned":
-        return (f"{v['name'] or 'Website'} ka plan taiyaar: {len(v.get('plan', {}).get('pages', []))} pages. "
-                + ("Pehle " + str(len(v.get("questions", []))) + " sawaal ke jawab, phir " if v.get("questions") else "")
-                + "'Haan' par 3 looks banaunga."
+        return (f"{v['name'] or 'Website'} plan is ready: {len(v.get('plan', {}).get('pages', []))} pages. "
+                + ("Answer " + str(len(v.get("questions", []))) + " questions first. " if v.get("questions") else "")
+                + "Say 'Yes' and I will make 3 looks."
                 + (f" {v['estimate']['say']}." if v.get("estimate") else ""))
     if st == "looks":
-        return ("3 looks taiyaar hain, ek chuniye (ya 'pehle wala, doosre ke rang')."
+        return ("3 looks are ready, pick one (or say 'the first one, with the colours of the second')."
                 + (f" {v['estimate']['say']}." if v.get("estimate") else ""))
     if st == "building":
-        return f"Ban raha hai: {v['board'].get('now') or ''} ({v['board'].get('pct', 0)}%)."
+        return f"Building: {v['board'].get('now') or ''} ({v['board'].get('pct', 0)}%)."
     if st == "checking":
-        return "Jaanch chal rahi hai (speed, mobile, contrast, links)."
+        return "Checks are running (speed, mobile, contrast, links)."
     if st == "ready":
         s = v.get("scores") or {}
-        return (f"Website v{v['version']} taiyaar. Speed {s.get('performance', '-')}, Access {s.get('accessibility', '-')}, "
+        return (f"Website v{v['version']} is ready. Speed {s.get('performance', '-')}, Access {s.get('accessibility', '-')}, "
                 f"SEO {s.get('seo', '-')}. Preview: {v.get('preview')}")
     if st == "failed":
-        return f"Website banane mein dikkat: {v.get('error')}"
+        return f"The website build hit a problem: {v.get('error')}"
     if st == "stopped":
-        return "Website ka kaam rok diya. 'aage badhao' kahiye to wahin se shuru."
+        return "Work on the website is paused. Say 'continue' and it starts from the same place."
     return ""
 
 
@@ -478,7 +478,7 @@ def new(tenant: str, brief: str, conv: str = "", name: str = "", field: str = ""
     library's page set is only the base for legal pages / CTA / pages the plan left without sections)."""
     brief = _tidy(brief, 2000)
     if not brief and not field:
-        raise SiteError("Kis cheez ki website? Do-teen shabd kaafi hain, jaise 'mithai dukaan ki website'.")
+        raise SiteError("A website for what? Two or three words are enough, like 'website for a sweet shop'.")
     from . import guard
     bad = guard.brief_problem(brief + " " + name)
     if bad:
@@ -486,7 +486,7 @@ def new(tenant: str, brief: str, conv: str = "", name: str = "", field: str = ""
     u = L.understand(brief or field)
     fid = field if field in L.fields() else u.get("field") or ""
     if not fid:
-        raise SiteError(u.get("ask") or "Aapka kaam kis cheez ka hai?")
+        raise SiteError(u.get("ask") or "What kind of work do you do?")
     g = goal if goal in T.GOALS else L.guess_goal(brief, L.fields()[fid]["goal"])
     styles = L._styles_for(fid, g)
     if style in T.STYLES:
@@ -522,7 +522,7 @@ def new(tenant: str, brief: str, conv: str = "", name: str = "", field: str = ""
                  style=styles[0], styles=_jd(styles), facts=_jd(facts), answers=_jd({"_questions": qs}),
                  plan=_jd(plan), status="planned", stage="plan", conv=conv or "", client=_tidy(client, 120),
                  staff=_tidy(staff, 60), languages=_jd([lang]), preview_token=secrets.token_urlsafe(18))
-        r.board = _jd(_board(r, plan, now_line="Plan taiyaar"))
+        r.board = _jd(_board(r, plan, now_line="Plan ready"))
         s.add(r)
         s.flush()
         s.expunge(r)
@@ -555,7 +555,7 @@ def answer(tenant: str, ref: str, answers: dict[str, Any]) -> dict[str, Any]:
             if k == "upi":                     # v0.301 her UPI ID for Pay buttons (only hers, only in her words)
                 from . import live as LV
                 if not LV.vpa_ok(v):
-                    raise SiteError("UPI ID sahi nahi lagta (jaise sharmasweets@okicici).")
+                    raise SiteError("This UPI ID does not look right (example: sharmasweets@okicici).")
                 facts[k] = v.strip()
             elif k in ("name", "phone", "whatsapp", "email", "address", "city", "hours", "tagline", "about", "owner", "youtube"):
                 facts[k] = v
@@ -646,9 +646,9 @@ def fill_blanks(r: Site) -> dict[str, Any]:
     note = "FILL BLANKS: the owner has now answered. Replace every <em class=\"blank\"> you can with the real fact from " \
            "FACTS; keep everything else (design, words, motion) exactly. Leave a blank only when FACTS still don't have it."
     _save(r.id, status="building", stage="build", error="")
-    _start(r.id, "build", only=remaining, note="Aapke jawab website mein bhar diye", extra={k: note for k in remaining})
-    say = "Aapke jawab website mein bhar raha hoon" + (f" ({swapped} jagah turant)" if swapped else "") + \
-        (f"; {len(remaining)} hisse dobara likh raha hoon" if remaining else "") + ". Phir jaanch karke naya version."
+    _start(r.id, "build", only=remaining, note="Your answers filled into the website", extra={k: note for k in remaining})
+    say = "Filling your answers into the website" + (f" ({swapped} places done right away)" if swapped else "") + \
+        (f"; {len(remaining)} parts are being rewritten" if remaining else "") + ". Then checks and a new version."
     return {"started": True, "swapped": swapped, "rewrite": remaining, "say": say}
 
 
@@ -657,9 +657,9 @@ def approve_plan(tenant: str, ref: str, conv: str = "", pages: list[str] | None 
     with session() as s:
         r = _find(s, tenant, ref)
         if r.status not in ("planned", "looks", "failed", "stopped"):
-            raise SiteError(f"Website abhi '{r.status}' hai.")
+            raise SiteError(f"The website is '{r.status}' right now.")
         if r.stage == "sitemap":
-            raise SiteError("Site map abhi ban raha hai; ek-do minute mein plan card aa jayega.")
+            raise SiteError("The site map is still being made; the plan card will be here in a minute or two.")
         if pages:
             plan = _j(r.plan, {})
             keep = [p for p in plan.get("pages", []) if p["slug"] in pages or p["slug"] in ("home", "privacy") or
@@ -674,7 +674,7 @@ def approve_plan(tenant: str, ref: str, conv: str = "", pages: list[str] | None 
         r.looks = "[]"                       # v0.223 empty while generating (recover_stuck tells a dead job by it)
         if conv:
             r.conv = conv
-        r.board = _jd(_board(r, now_line="3 looks bana raha hoon"))
+        r.board = _jd(_board(r, now_line="Making 3 looks"))
         r.updated_at = now()
         s.flush()
         s.expunge(r)
@@ -691,7 +691,7 @@ def _sitemap_begin(r: Site, want: int, words: str = "") -> Site:
     """Mark the site as 'site map being made' and start the job (Opus takes a minute or two for a big site)."""
     want = max(10, min(int(want), SM.max_pages()))
     board = _j(r.board, {})
-    board["now"] = f"Site map bana raha hoon (~{want} pages)"
+    board["now"] = f"Building the site map (~{want} pages)"
     board["map_want"], board["map_words"] = want, _tidy(words, 2000)    # v0.330 a restart can start it again
     r = _save(r.id, stage="sitemap", board=board, error="")
     _start(r.id, "sitemap", want=want, words=words)
@@ -710,7 +710,7 @@ def sitemap_job(site_id: str, want: int = 25, words: str = "") -> None:
             plan["spec"] = current["spec"]
     except Exception as e:
         log.exception("site map failed")
-        r = _save(site_id, stage="plan", error=_tidy(f"Site map nahi ban paya: {e}", 300))
+        r = _save(site_id, stage="plan", error=_tidy(f"The site map could not be made: {e}", 300))
         _emit(r, push=True)
         return
     r = _load(site_id)
@@ -724,7 +724,7 @@ def sitemap_job(site_id: str, want: int = 25, words: str = "") -> None:
             _BUILD_AFTER.add(site_id)
         return
     gate = plan.get("gate") or []
-    line = f"Site map taiyaar: {n['total']} pages" + (f". SEO note: {gate[0]['say']}" if gate else "")
+    line = f"Site map ready: {n['total']} pages" + (f". SEO note: {gate[0]['say']}" if gate else "")
     r = _save(site_id, plan=plan, stage="plan", board=_board(r, plan, now_line=line[:300]))
     _emit(r, push=True)
 
@@ -735,14 +735,14 @@ def grow(tenant: str, ref: str, pages: int = 0, words: str = "") -> dict[str, An
         r = _find(s, tenant, ref)
         s.expunge(r)
     if busy(r.id) or r.status in ("building", "checking") or r.stage == "sitemap":
-        raise SiteError("Abhi is website par kaam chal raha hai; poora hone ke baad site map badhaunga.")
+        raise SiteError("Work is running on this website; I will grow the site map once it is finished.")
     if r.status == "looks" and not _j(r.looks, []):
-        raise SiteError("Looks ban rahe hain; unke baad.")
+        raise SiteError("The looks are being made; after them.")
     want = int(pages or 0) or SM.wanted(words) or max(25, SM.counts(_j(r.plan, {}))["total"] + 10)
     r = _sitemap_begin(r, want, _tidy(words, 2000))
     _emit(r)
     v = view(r)
-    return {**v, "say": f"Site map bana raha hoon (~{min(want, SM.max_pages())} pages); plan card par aa jayega."}
+    return {**v, "say": f"Building the site map (~{min(want, SM.max_pages())} pages); it will show on the plan card."}
 
 
 def _slots() -> threading.BoundedSemaphore:
@@ -784,7 +784,7 @@ def _after_job(site_id: str) -> None:
         change(r.tenant_id, site_id, " ".join(q), r.conv)
     except Exception as e:
         log.exception("queued change failed")
-        r = _save(site_id, error=_tidy(f"Queue wala badlav nahi ho paya: {e}", 300))
+        r = _save(site_id, error=_tidy(f"The queued change could not be made: {e}", 300))
         _emit(r, push=True)
 
 
@@ -843,7 +843,7 @@ def recover_stuck(now_ts: float | None = None) -> int:
             _save(r.id, recovered=(r.recovered or 0) + 1)
             _start(r.id, "sitemap", want=int(b["map_want"]), words=str(b.get("map_words") or ""))
             continue
-        r = _save(r.id, stage="plan", error="Site map banate waqt server ruk gaya; 'bada site map banao' phir se kahiye.")
+        r = _save(r.id, stage="plan", error="The server stopped while the site map was being made; say 'make a big site map' again.")
         _emit(r, push=True)
     out += _recover_side_jobs(t)              # v0.400 code asks and translations cut short by a restart
     with session() as s:
@@ -868,8 +868,8 @@ def recover_stuck(now_ts: float | None = None) -> int:
             r = _save(r.id, status="stopped")
             _emit(r)
         else:
-            r = _save(r.id, status="failed", error="Server ruk gaya tha, kaam beech mein ruk gaya. 'Phir se chalao' dabaiye.")
-            _work(r, "error", "Kaam beech mein ruk gaya", r.error)
+            r = _save(r.id, status="failed", error="The server stopped and the work was cut off midway. Tap 'Run again'.")
+            _work(r, "error", "Stopped with a problem", r.error)
             _emit(r, push=True)
     return out
 
@@ -889,7 +889,7 @@ def _recover_side_jobs(t: float) -> int:
             except ValueError:
                 continue
             if d.get("status") == "working" and f.stat().st_mtime < _BOOT and t - f.stat().st_mtime > 60:
-                d.update(status="failed", say="Server restart ho gaya tha, yeh code ka kaam beech mein ruk gaya; dobara kahiye.")
+                d.update(status="failed", say="The server restarted and this code job was cut off midway; ask again.")
                 f.write_text(json.dumps(d, ensure_ascii=False))
                 n += 1
     except OSError:
@@ -1105,7 +1105,7 @@ def _translate(r: Site) -> int:
     made = 0
     for lang in langs:
         if LG.stale(r.tenant_id, r.id, lang, secs):
-            _work(r, "start", f"{LG.LANGS[lang]} mein likh raha hoon", f"{len(LG.stale(r.tenant_id, r.id, lang, secs))} hisse")
+            _work(r, "start", f"Writing in {LG.LANGS[lang]}", f"{len(LG.stale(r.tenant_id, r.id, lang, secs))} parts")
         made += LG.translate(r.tenant_id, r.id, lang, secs, _j(r.plan, {}), _facts_text(_j(r.facts, {})),
                              lambda k: sec_id(*k.split("__", 1)), width)
     try:                                       # v0.366 her blog posts follow every language too
@@ -1124,10 +1124,10 @@ def set_languages(tenant: str, ref: str, extra: Any) -> dict[str, Any]:
         want = [x for x in LG.pick(extra) if x != first]
         bad = [w for w in (extra if isinstance(extra, list) else []) if str(w).strip() and not LG.pick([w])]
         if bad:
-            raise SiteError("Yeh bhasha abhi nahi: " + ", ".join(map(str, bad[:3])) + ". Ho sakti hain: "
+            raise SiteError("This language is not available yet: " + ", ".join(map(str, bad[:3])) + ". Available: "
                             + ", ".join(f"{LG.ENGLISH[k]} ({k})" for k in LG.LANGS))
         if len(want) > LG.MAX_EXTRA:
-            raise SiteError(f"Ek website par pehli bhasha ke alawa {LG.MAX_EXTRA} bhashayen tak.")
+            raise SiteError(f"A website can have up to {LG.MAX_EXTRA} languages besides the first.")
         old = extra_languages(r)
         r.languages = _jd([first] + want)
         s.flush()
@@ -1135,25 +1135,25 @@ def set_languages(tenant: str, ref: str, extra: Any) -> dict[str, Any]:
     names = ", ".join(LG.LANGS[x] for x in want)
     if r.status in ("planned", "looks", "draft") or not _sections(r):
         return {**view(r, False), "languages": [first] + want,
-                "say": f"Theek hai: website {names} mein bhi banegi." if want else "Ek hi bhasha rahegi."}
+                "say": f"OK: the website will also be made in {names}." if want else "Only one language stays."}
     if want == old:
-        return {**view(r, False), "languages": [first] + want, "say": "Bhashayen pehle jaisi hi hain."}
+        return {**view(r, False), "languages": [first] + want, "say": "The languages are the same as before."}
     if not _start(r.id, "translate"):
         _SAVE_PENDING.add(r.id)
     return {**view(_load(r.id), False), "languages": [first] + want,
-            "say": (f"{names} version bana raha hoon; har hissa Opus likhega, phir nayi version." if want
-                    else "Doosri bhashayen hata raha hoon; nayi version banegi.")}
+            "say": (f"{names} version is being made; Opus writes every part, then there is a new version." if want
+                    else "Removing the other languages; a new version will be made.")}
 
 
 def set_language(tenant: str, ref: str, second: str) -> dict[str, Any]:
     """v0.301 (kept): ONE second language, or '' = none. v0.366 set_languages takes several."""
     second = (second or "").strip().lower()
     if second and second not in LG.LANGS:
-        raise SiteError("Doosri bhasha: " + " / ".join(LG.LANGS) + " (pehli se alag).")
+        raise SiteError("Second language: " + " / ".join(LG.LANGS) + " (different from the first).")
     with session() as s:
         first = _j(_find(s, tenant, ref).languages, ["en"])[0]
     if second and second == first:
-        raise SiteError("Doosri bhasha pehli se alag honi chahiye.")
+        raise SiteError("The second language must be different from the first.")
     return set_languages(tenant, ref, [second] if second else [])
 
 
@@ -1165,7 +1165,7 @@ def translate_job(site_id: str) -> None:
             _translate(r)
         except Exception:
             log.exception("translation failed")
-    save_version(site_id, "doosri bhasha")
+    save_version(site_id, "second language")
 
 
 def _facts_text(f: dict[str, Any]) -> str:
@@ -1314,7 +1314,7 @@ def write_section(r: Site, slug: str, s: dict[str, Any], others: list[str], extr
     with ST.watch(r.id, key, label, slug, look, kind):
         raw = AI.ask_json(system or AI.SECTION_SYSTEM, _section_prompt(r, slug, s, others, extra), 9000, "build")
         if not raw.get("html"):
-            raise SiteError(f"{s['type']} section nahi ban paya (model ne khaali diya).")
+            raise SiteError(f"{s['type']} section could not be made (the model returned nothing).")
         h, css, js, problems = B.sanitize_section(sec_id(slug, s["type"]), raw)
         ST.finish(r.id, key, True, html=B.samples(h, _j(r.facts, {})), css=css)
     h, _n = E.tag(h)                  # v0.295 every word / link / picture she may edit gets its number
@@ -1356,7 +1356,7 @@ def make_looks(site_id: str) -> None:
         except Exception as e:
             log.exception("looks failed")
             r = _save(site_id, status="failed", error=_tidy(str(e), 300))
-            _work(r, "error", "Looks nahi bane", str(e))
+            _work(r, "error", "The looks could not be made", str(e))
             _emit(r, push=True)
 
 
@@ -1418,7 +1418,7 @@ def _make_looks(r: Site) -> None:
     toks = [B.tokens(st, br["palettes"][0], facts.get("brand_colors")) for st, br in zip(styles, briefs)]
     if mine:
         toks[0] = B.tokens(mine["style"], briefs[0]["palettes"][0], None, mine.get("overrides") or {})
-    _work(r, "start", "3 looks soch raha hoon", f"{len(styles)} design ek saath")
+    _work(r, "start", "Planning three designs", f"{len(styles)} designs at once")
 
     def dna_of(i: int, siblings: list) -> dict[str, Any] | None:
         return Q.make_dna(brief_text(briefs[i], _j(r.plan, {})), styles[i], _j(r.plan, {}), _facts_text(facts),
@@ -1446,7 +1446,7 @@ def _make_looks(r: Site) -> None:
         d = B.site_dir(r.tenant_id, r.id) / "looks" / str(i)
         d.mkdir(parents=True, exist_ok=True)
         dirs.append(d)
-    _work(r, "start", "3 looks ban rahe hain", f"{len(styles) * (1 + len(more))} hisse ek saath", act=False)
+    _work(r, "start", "Writing the top of every look", f"{len(styles) * (1 + len(more))} parts at once", act=False)
 
     # wave 2: every look's hero + page-top sections at the same time
     hero_d = _home_hero(_j(r.plan, {}))       # v0.708 the plan's own front door, not the library's marketing hero
@@ -1462,9 +1462,9 @@ def _make_looks(r: Site) -> None:
             for i in range(len(styles))] + [(i, s, False) for i in range(len(styles)) for s in more]
     secs: list[dict[str, dict[str, Any]]] = [{} for _ in styles]
     cnt_lock, cnt = threading.Lock(), {"n": 0}
-    ACT.step(r.tenant_id, r.id, "3 looks ban rahe hain", "", key="tops", done=0, total=len(jobs))
+    ACT.step(r.tenant_id, r.id, "Writing the top of every look", "", key="tops", done=0, total=len(jobs))
     ST.clear(r.id)                             # v0.664 the three looks' canvases: what each one is drawn with
-    ST.set_looks(r.id, [{"label": (("Your choices" if mine.get("source") == "answers" else "Aapke design se")) if (mine and i == 0) else T.STYLES[styles[i]]["label"],
+    ST.set_looks(r.id, [{"label": (("Your choices" if mine.get("source") == "answers" else "From your design")) if (mine and i == 0) else T.STYLES[styles[i]]["label"],
                          "style": styles[i], "tokens": toks[i], "types": ["hero"] + [x["type"] for x in more]}
                         for i in range(len(styles))])
 
@@ -1486,7 +1486,7 @@ def _make_looks(r: Site) -> None:
         (dirs[i] / ("hero.json" if hero else f"{k}.json")).write_text(json.dumps(out))
         with cnt_lock:
             cnt["n"] += 1
-            ACT.step(r.tenant_id, r.id, "3 looks ban rahe hain", f"Look {i + 1}: {T.label_of(sec['type'])} written",
+            ACT.step(r.tenant_id, r.id, "Writing the top of every look", f"Look {i + 1}: {T.label_of(sec['type'])} written",
                      key="tops", done=cnt["n"], total=len(jobs))
     width = max(1, min(12, int(getattr(_settings(), "site_look_parallel", 6) or 1)))
     with ThreadPoolExecutor(max_workers=width, thread_name_prefix=f"look-{r.id[:6]}") as ex:
@@ -1510,7 +1510,7 @@ def _make_looks(r: Site) -> None:
             shots = rep["pages"].get("home", {}).get("shots", {})
         except C.CheckError as e:
             log.info("look screenshots skipped: %s", e)
-        return {"style": styles[i], "label": (("Your choices" if mine.get("source") == "answers" else "Aapke design se")) if (mine and i == 0) else T.STYLES[styles[i]]["label"],
+        return {"style": styles[i], "label": (("Your choices" if mine.get("source") == "answers" else "From your design")) if (mine and i == 0) else T.STYLES[styles[i]]["label"],
                 "tokens": toks[i], "shots": shots, "dna": dnas[i], "mine": bool(mine and i == 0)}
     ACT.step(r.tenant_id, r.id, "Putting the 3 looks together and taking screenshots",
              "computer and phone views of each look", key="shots")
@@ -1529,8 +1529,8 @@ def _make_looks(r: Site) -> None:
     for i, lk in enumerate(looks):
         lk["full"] = bool(full[i]) if i < len(full) else False
     r = _save(r.id, looks=looks, style=styles[0], status="looks", stage="look",
-              board=_board(r, now_line="3 looks taiyaar: ek chuniye"))
-    _work(r, "waiting", "Look chuniye", "3 looks taiyaar")
+              board=_board(r, now_line="3 looks ready: pick one"))
+    _work(r, "waiting", "Pick a look", "3 looks ready")
     _emit(r, push=True)
 
 
@@ -1563,7 +1563,7 @@ def _full_looks(r: Site, views: list, toks: list, secs: list[dict[str, dict[str,
     def note() -> None:
         with lock:
             cur = _load(r.id)
-            rr = _save(r.id, board=_board(cur, now_line=f"Har page likh raha hoon ({done['n']}/{len(todo)})"))
+            rr = _save(r.id, board=_board(cur, now_line=f"Writing every page ({done['n']}/{len(todo)})"))
         _emit(rr)
 
     def one(job) -> None:
@@ -1576,12 +1576,12 @@ def _full_looks(r: Site, views: list, toks: list, secs: list[dict[str, dict[str,
             log.info("full look section %s skipped: %s", k, e)
         with lock:
             done["n"] += 1
-            ACT.step(r.tenant_id, r.id, "Teeno looks ke har page", f"{p['title']} page → {T.label_of(s['type'])}",
+            ACT.step(r.tenant_id, r.id, "Writing every page for the looks", f"{p['title']} page → {T.label_of(s['type'])}",
                      key="pages", done=done["n"], total=len(todo))
         note()
     if todo:
-        _work(r, "start", "Teeno looks ke har page", f"{len(todo)} hisse ek baar likhe jaa rahe hain", act=False)
-        ACT.step(r.tenant_id, r.id, "Teeno looks ke har page", f"{len(todo)} page parts, written once for all three",
+        _work(r, "start", "Writing every page for the looks", f"{len(todo)} parts, each written once", act=False)
+        ACT.step(r.tenant_id, r.id, "Writing every page for the looks", f"{len(todo)} page parts, written once for all three",
                  key="pages", done=0, total=len(todo))
         width = max(1, min(12, int(getattr(st, "site_look_parallel", 6) or 1)))
         with ThreadPoolExecutor(max_workers=width, thread_name_prefix=f"lookall-{r.id[:6]}") as ex:
@@ -1609,9 +1609,9 @@ def choose_look(tenant: str, ref: str, index: int, colors_from: int | None = Non
         r = _find(s, tenant, ref)
         looks = _j(r.looks, [])
         if r.status not in ("looks", "ready", "stopped", "failed") or not looks:
-            raise SiteError("Pehle looks banne dijiye.")
+            raise SiteError("Let the looks be made first.")
         if not 0 <= int(index) < len(looks):
-            raise SiteError("Is number ka look nahi hai.")
+            raise SiteError("There is no look with this number.")
         lk = looks[int(index)]
         tk = dict(lk["tokens"])
         if colors_from is not None and 0 <= int(colors_from) < len(looks):
@@ -1632,7 +1632,7 @@ def choose_look(tenant: str, ref: str, index: int, colors_from: int | None = Non
         for f in ld.glob("home__*.json"):     # v0.292 the look's other sections are kept, not written again
             shutil.copy(f, B.src_dir(tenant, r.id) / "sections" / f.name)
             done[f.stem] = "done"
-        r.board = _jd(_board(r, states=done, now_line="Banana shuru"))
+        r.board = _jd(_board(r, states=done, now_line="Build started"))
         r.updated_at = now()
         s.flush()
         s.expunge(r)
@@ -1651,7 +1651,7 @@ def run_build(site_id: str, only: list[str] | None = None, note: str = "", extra
         except Exception as e:
             log.exception("site build failed")
             r = _save(site_id, status="failed", error=_tidy(str(e), 300))
-            _work(r, "error", "Website banane mein dikkat", str(e))
+            _work(r, "error", "The build hit a problem", str(e))
             _emit(r, push=True)
 
 
@@ -1810,8 +1810,8 @@ def _write_sections(r: Site, plan: dict[str, Any], states: dict[str, str], extra
             if v == "building":
                 states[k] = "todo"
         cur = _load(r.id)
-        rr = _save(r.id, status="stopped", board=_board(cur, plan, states, "Rok diya"))
-        _work(rr, "stopped", "Rok diya", "Aapke kehne par roka")
+        rr = _save(r.id, status="stopped", board=_board(cur, plan, states, "Paused"))
+        _work(rr, "stopped", "Paused", "Paused because you asked")
         _emit(rr, push=False)
         return False
     _assemble_live(_load(r.id))              # v0.400 the preview has every section (the 20 s rebuilds may have skipped the last)
@@ -1823,7 +1823,7 @@ def _ensure_kit(r: Site) -> Site:
     look = _j(r.look, {})
     if not K.on() or look.get("kit") or not look.get("tokens"):
         return r
-    _work(r, "start", "Design kit bana raha hoon", "buttons, cards, headings - har page ek jaisa")
+    _work(r, "start", "Making the design kit", "buttons, cards, headings - the same on every page")
     try:
         kit = K.make(look["tokens"], look.get("dna"), r.style, brief_text(L.brief(r.field, r.goal, r.style), _j(r.plan, {})))
     except Exception:
@@ -1844,7 +1844,7 @@ def _run_build(r: Site, only: list[str] | None, note: str, extra: dict[str, str]
         for s in p.get("sections", []):
             k = sec_key(p["slug"], s["type"])
             states[k] = "done" if (k in have and (only is None or k not in only)) else "todo"
-    r = _save(r.id, status="building", stage="build", board=_board(r, plan, states, "Banana shuru"))
+    r = _save(r.id, status="building", stage="build", board=_board(r, plan, states, "Build started"))
     _emit(r)
     if any(v != "done" for v in states.values()):
         r = _ensure_kit(r)
@@ -1855,8 +1855,8 @@ def _run_build(r: Site, only: list[str] | None, note: str, extra: dict[str, str]
     except Exception:
         log.exception("translation during build failed")
     # checks + fix rounds
-    r = _save(r.id, status="checking", stage="checks", board=_board(r, plan, states, "Jaanch: speed, mobile, contrast, links"))
-    _work(r, "start", "Jaanch chal rahi hai", "speed · mobile · contrast · links")
+    r = _save(r.id, status="checking", stage="checks", board=_board(r, plan, states, "Checks: speed, mobile, contrast, links"))
+    _work(r, "start", "Running checks", "speed · mobile · contrast · links")
     _emit(r)
     shots = B.site_dir(r.tenant_id, r.id) / "shots" / "live"
     report: dict[str, Any] = {}
@@ -1878,8 +1878,8 @@ def _run_build(r: Site, only: list[str] | None, note: str, extra: dict[str, str]
         for k in fixable:
             states[k] = "fixing"
         names = ", ".join(k.replace("__", " → ") for k in list(fixable)[:4])
-        r = _save(r.id, board=_board(r, plan, states, f"Theek kar raha hoon: {names}"))
-        _work(r, "start", "Theek kar raha hoon", f"{len(fixable)} hisse · " + "; ".join(sum(fixable.values(), []))[:90])
+        r = _save(r.id, board=_board(r, plan, states, f"Fixing: {names}"))
+        _work(r, "start", "Fixing what the checks found", f"{len(fixable)} parts · " + "; ".join(sum(fixable.values(), []))[:90])
         _emit(r)
 
         def fix_one(item, r=r):
@@ -1907,12 +1907,12 @@ def _run_build(r: Site, only: list[str] | None, note: str, extra: dict[str, str]
         C.media(_assemble_live(r), shots)
     except Exception:
         log.info("og / scroll video skipped", exc_info=True)
-    r = _save(r.id, board=_board(r, plan, states, "Visitor ki tarah chala ke dekh raha hoon"))
+    r = _save(r.id, board=_board(r, plan, states, "Walking through it like a visitor"))
     report = _journeys(r, report)             # v0.400 Hoola walks the site like a visitor before she sees it
     report = _gates(r, report)                # v0.551 SURAKSHA GATES: security / legal / accessibility on every page
     if only:                                  # v0.617 KUCHH NA CHHOOTE: a change in her words kept what the site carried
         report = _kept(r, report, " ".join([note or ""] + [str(x) for x in (extra or {}).values()]))
-    _make_version(r, plan, report, shots, states, note or "pehla version", crit)
+    _make_version(r, plan, report, shots, states, note or "first version", crit)
     _save(r.id, recovered=0)       # v0.223 a finished build earns a fresh auto-restart; queued changes run in _after_job
 
 
@@ -1946,8 +1946,8 @@ def _kept(r: Site, report: dict[str, Any], words: str) -> dict[str, Any]:
     out = {**report, "kept": res}
     if res.get("lost"):
         out["warnings"] = list(report.get("warnings") or []) + [
-            {"kind": "kept", "text": f"Badlav ke baad nahi mila: {x['say']}", "sections": []} for x in res["lost"]]
-        _work(r, "waiting", "Kuchh cheezein nahi mili", KP.say_line(res["lost"]))
+            {"kind": "kept", "text": f"Not found after the change: {x['say']}", "sections": []} for x in res["lost"]]
+        _work(r, "waiting", "Some things were not found", KP.say_line(res["lost"]))
     return out
 
 
@@ -2023,7 +2023,7 @@ def _make_version(r: Site, plan: dict[str, Any], report: dict[str, Any], shots: 
         _L.ready(str(r.id), usd=float(getattr(r, "cost_usd", 0) or 0))
     except Exception:
         pass
-    _work(r, "done", "Website taiyaar", f"v{ver} · speed {scores.get('performance', '-')} · access {scores.get('accessibility', '-')}")
+    _work(r, "done", "Website ready", f"v{ver} · speed {scores.get('performance', '-')} · access {scores.get('accessibility', '-')}")
     _emit(r, push=push)
     _keep_versions(r, 20)
     return ver
@@ -2092,8 +2092,8 @@ def _critique_round(r: Site, plan: dict[str, Any], shots: Path, report: dict[str
             return None
     if jobs:
         names = ", ".join(f"{(j[0].get('title') or j[0]['slug'])} → {j[4].get(j[1]) or T.label_of(j[1])}" for j in jobs[:4])
-        r = _save(r.id, board=_board(r, plan, None, f"Behtar kar raha hoon: {names}"))
-        _work(r, "start", "Apna kaam dekh ke behtar kar raha hoon", f"{len(jobs)} hisse · {names}"[:120])
+        r = _save(r.id, board=_board(r, plan, None, f"Improving: {names}"))
+        _work(r, "start", "Reviewing my own work and improving it", f"{len(jobs)} parts · {names}"[:120])
         _emit(r)
         with ThreadPoolExecutor(max_workers=width, thread_name_prefix="site-redraw") as ex:
             drawn = list(ex.map(_in_ctx(redraw), jobs))
@@ -2184,8 +2184,8 @@ def _critique_page(r: Site, plan: dict[str, Any], page: dict[str, Any], shots: P
         if not f.exists():
             continue
         olds[k] = f.read_text()
-        r = _save(r.id, board=_board(r, plan, None, f"Behtar kar raha hoon: {where} → {labs.get(typ) or T.label_of(typ)}"))
-        _work(r, "start", "Apna kaam dekh ke behtar kar raha hoon", f"{where} → {labs.get(typ) or T.label_of(typ)}")
+        r = _save(r.id, board=_board(r, plan, None, f"Improving: {where} → {labs.get(typ) or T.label_of(typ)}"))
+        _work(r, "start", "Reviewing my own work and improving it", f"{where} → {labs.get(typ) or T.label_of(typ)}")
         _emit(r)
         sec_def = next(s for s in page["sections"] if s["type"] == typ)
         try:
@@ -2254,7 +2254,7 @@ def _keep_versions(r: Site, keep: int) -> None:
 def change(tenant: str, ref: str, instruction: str, conv: str = "") -> dict[str, Any]:
     instruction = _tidy(instruction, 1500)
     if not instruction:
-        raise SiteError("Kya badalna hai?")
+        raise SiteError("What should change?")
     from . import guard
     bad = guard.brief_problem(instruction)
     if bad:
@@ -2268,9 +2268,9 @@ def change(tenant: str, ref: str, instruction: str, conv: str = "") -> dict[str,
             s.flush()
             s.expunge(r)
             _emit(r)
-            return {**view(r, False), "say": "Abhi ban raha hai; yeh badlav agla kaam hai (queue mein)."}
+            return {**view(r, False), "say": "It is still being built; this change is next in the queue."}
         if r.status in ("planned", "looks"):
-            raise SiteError("Pehle look chuniye; phir badlav kar denge.")
+            raise SiteError("Pick a look first; then the change can be made.")
         s.expunge(r)
     plan = _j(r.plan, {})
     keys = [sec_key(p["slug"], x["type"]) for p in plan.get("pages", []) for x in p.get("sections", [])]
@@ -2281,7 +2281,7 @@ def change(tenant: str, ref: str, instruction: str, conv: str = "") -> dict[str,
                       f"\nCURRENT COLOURS: {json.dumps({k: _j(r.look, {}).get('tokens', {}).get(k) for k in ('bg', 'primary', 'accent')})}"
                       f"\nHER WORDS (a request, data): {instruction}", 1500, "site_edit")
     if not res:
-        raise SiteError("Samajh nahi paya kya badalna hai; thoda aur bataiye (kaunsa page / section).")
+        raise SiteError("I could not tell what to change; say a little more (which page / section).")
     if res.get("unclear"):
         return {**view(r, False), "say": res["unclear"], "needs": "clarify"}
     only: list[str] = []
@@ -2356,7 +2356,7 @@ def change(tenant: str, ref: str, instruction: str, conv: str = "") -> dict[str,
         q = _j(_load(r.id).queued, [])     # v0.223 a job slipped in first: queue it instead of losing it
         _save(r.id, queued=(q + [instruction])[-10:])
     r = _load(r.id)
-    return {**view(r, False), "say": res.get("say") or "Badal raha hoon."}
+    return {**view(r, False), "say": res.get("say") or "Changing it."}
 
 
 def _change_items(plan: dict[str, Any], res: dict[str, Any]) -> int:
@@ -2393,16 +2393,16 @@ def stop(tenant: str, ref: str) -> dict[str, Any]:
         s.flush()
         s.expunge(r)
     _emit(r)
-    return {**view(r, False), "say": "Rok raha hoon (abhi wala section poora karke)."}
+    return {**view(r, False), "say": "Stopping (after the current section is finished)."}
 
 
 def resume(tenant: str, ref: str) -> dict[str, Any]:
     with session() as s:
         r = _find(s, tenant, ref)
         if r.status not in ("stopped", "failed"):
-            raise SiteError(f"Website abhi '{r.status}' hai.")
+            raise SiteError(f"The website is '{r.status}' right now.")
         if busy(r.id):
-            raise SiteError("Pichla kaam abhi ruk raha hai; ek minute baad 'Phir se chalao' dabaiye.")
+            raise SiteError("The last job is still stopping; tap 'Run again' in a minute.")
         r.stop, r.error = False, ""
         has_look = bool(_j(r.look, {}).get("tokens"))
         s.flush()
@@ -2422,7 +2422,7 @@ def add_lottie(tenant: str, ref: str, data: bytes | None = None, file_id: str = 
         try:
             _n, _m, data = ms.load_files(tenant, [{"type": "file", "file_id": file_id}])[0]
         except Exception as e:
-            raise SiteError(f"File {file_id} nahi mili: {e}")
+            raise SiteError(f"File {file_id} was not found: {e}")
     with session() as s:
         r = _find(s, tenant, ref)
         s.expunge(r)
@@ -2430,8 +2430,8 @@ def add_lottie(tenant: str, ref: str, data: bytes | None = None, file_id: str = 
         out = LT.store(B.src_dir(tenant, r.id), name, data or b"")
     except LT.LottieError as e:
         raise SiteError(str(e))
-    return {"ok": True, **out, "say": f"Animation '{out['name']}' rakh li ({out['seconds']} s). Kahan lagani hai bataiye "
-                                      f"(jaise 'hero mein {out['name']} animation lagao')."}
+    return {"ok": True, **out, "say": f"Animation '{out['name']}' is saved ({out['seconds']} s). Tell me where to put it "
+                                      f"(for example 'put the {out['name']} animation in the hero')."}
 
 
 def add_photo(tenant: str, ref: str, data: bytes | None = None, file_id: str = "", about: str = "", name: str = "") -> dict:
@@ -2440,22 +2440,22 @@ def add_photo(tenant: str, ref: str, data: bytes | None = None, file_id: str = "
         try:
             _n, _m, data = ms.load_files(tenant, [{"type": "file", "file_id": file_id}])[0]
         except Exception as e:
-            raise SiteError(f"File {file_id} nahi mili: {e}")
+            raise SiteError(f"File {file_id} was not found: {e}")
     if not data:
-        raise SiteError("Photo khaali hai.")
+        raise SiteError("The photo is empty.")
     if len(data) > 25 * 1024 * 1024:
-        raise SiteError("Photo 25 MB se badi hai.")
+        raise SiteError("The photo is larger than 25 MB.")
     try:
         jpg, size = B.make_photo(data)
     except Exception:
-        raise SiteError("Yeh photo khul nahi rahi (JPEG / PNG / WebP bhejiye).")
+        raise SiteError("This photo will not open (send a JPEG / PNG / WebP).")
     with session() as s:
         r = _find(s, tenant, ref)
         s.expunge(r)
     nm = _store_photo(r.id, jpg, size, about, name)
     r = _load(r.id)
     return {"ok": True, "name": nm, "photos": [p["name"] for p in _j(r.photos, [])],
-            "say": f"Photo '{nm}' rakh li. Kahan lagani hai bataiye (jaise 'hero mein {nm} lagao')."}
+            "say": f"Photo '{nm}' is saved. Tell me where to put it (for example 'put {nm} in the hero')."}
 
 
 def _store_photo(site_id: str, jpg: bytes, size: tuple[int, int], about: str = "", name: str = "",
@@ -2482,7 +2482,7 @@ def _ensure_pictures(r: Site) -> int:
     need = P.wanted() - len(have)
     if need <= 0:
         return 0
-    _work(r, "start", "Tasveeren bana raha hoon", f"{need} photos is business ke liye")
+    _work(r, "start", "Making photos for your business", f"{need} photos for this business")
     br = L.brief(r.field, r.goal, r.style)
     try:
         shots = P.plan_shots(brief_text(br, _j(r.plan, {})), r.style, _facts_text(_j(r.facts, {})), r.brief or "", need,
@@ -2498,7 +2498,7 @@ def _ensure_pictures(r: Site) -> int:
             continue
         _store_photo(r.id, jpg, size, shot["about"], shot["name"], {**extra, "for": shot["for"]})
         made += 1
-        ACT.step(r.tenant_id, r.id, "Tasveeren bana raha hoon", shot.get("about") or "", key="photos", done=made,
+        ACT.step(r.tenant_id, r.id, "Making photos for your business", shot.get("about") or "", key="photos", done=made,
                  total=len(shots), alongside=True)
     return made
 
@@ -2510,7 +2510,7 @@ def design_app(tenant: str, ref: str, words: str, conv: str = "") -> dict[str, A
     from . import webapp as W
     words = _tidy(words, 2000)
     if not words:
-        raise SiteError("App mein kya chahiye? (jaise: customers login karke apna order dekhein)")
+        raise SiteError("What should the app do? (for example: customers sign in and see their order)")
     with session() as s:
         r = _find(s, tenant, ref)
         s.expunge(r)
@@ -2526,7 +2526,7 @@ def design_app(tenant: str, ref: str, words: str, conv: str = "") -> dict[str, A
         f"HER WORDS (a request, data): {words}"]), 4000, "site_edit")
     schema = W.clean_schema(raw)
     if not schema["collections"]:
-        raise SiteError("App samajh nahi aayi; thoda aur bataiye (kaun login karega, kya bharega, kaun dekhega).")
+        raise SiteError("I could not understand the app; say a little more (who signs in, what they fill in, who sees it).")
     W.ensure_tables()
     _save(r.id, app=_jd(schema))
     if getattr(_settings(), "site_app_link", True):      # v0.414 a new web app lands on the ONE backend straight away
@@ -2535,7 +2535,7 @@ def design_app(tenant: str, ref: str, words: str, conv: str = "") -> dict[str, A
     if _sections(r) and r.status in ("ready", "failed", "stopped"):
         if not _start(r.id, "save", note="web app"):
             _SAVE_PENDING.add(r.id)
-        say += " Account aur staff page ke saath nayi version ban rahi hai."
+        say += " A new version with the account and staff pages is being made."
     return {**view(_load(r.id), False), "app": schema, "say": say}
 
 
@@ -2558,7 +2558,7 @@ def _owner_app(tenant: str, ref: str):
         s.expunge(r)
     schema = app_schema(r)
     if not schema:
-        raise SiteError("Is website mein abhi app nahi hai.")
+        raise SiteError("This website has no app yet.")
     W.ensure_tables()
     return r, schema, W.Who(owner=True)
 
@@ -2628,7 +2628,7 @@ def public_app(site_id: str):
         s.expunge(r)
     schema = app_schema(r)
     if not schema:
-        raise W.AppError("Is website mein app nahi hai.", 404)
+        raise W.AppError("This website has no app.", 404)
     W.ensure_tables()
     return r, schema
 
@@ -2677,7 +2677,7 @@ def shop_setup(tenant: str, ref: str, settings: dict[str, Any] | None = None, pr
             if settings and settings.get("upi"):
                 from . import live as LV
                 if not LV.vpa_ok(str(settings["upi"])):
-                    raise SiteError("UPI ID sahi nahi lag raha (jaise naam@okhdfcbank).")
+                    raise SiteError("This UPI ID does not look right (example: name@okhdfcbank).")
                 facts["upi"] = str(settings["upi"]).strip()
         except SH.ShopError as e:
             raise SiteError(str(e))
@@ -2694,10 +2694,10 @@ def shop_setup(tenant: str, ref: str, settings: dict[str, Any] | None = None, pr
     r = _load(r.id)
     cfg = _shop_cfg(r)
     if r.version and r.status in ("ready", "stopped", "failed") and _sections(r):
-        _after_edit(r, "dukaan badli")
-    warn = "" if cfg["upi"] or cfg["cod"] or not cfg["on"] else " UPI ID ya Cash on delivery chahiye, tabhi order aa payenge."
-    return {**shop_info(tenant, r.id), "say": (f"Dukaan {'chalu' if cfg['on'] else 'band'}: {counts['added']} naye products, "
-                                               f"{counts['changed']} badle.{warn}")}
+        _after_edit(r, "shop changed")
+    warn = "" if cfg["upi"] or cfg["cod"] or not cfg["on"] else " A UPI ID or Cash on delivery is needed before orders can come in."
+    return {**shop_info(tenant, r.id), "say": (f"Shop {'on' if cfg['on'] else 'off'}: {counts['added']} new products, "
+                                               f"{counts['changed']} changed.{warn}")}
 
 
 def shop_public(site_id: str) -> tuple[Site, dict[str, Any]]:
@@ -2713,10 +2713,10 @@ def shop_order(site_id: str, body: dict[str, Any], ip: str = "") -> dict[str, An
     """A customer's order from her website; she hears of it at once."""
     r, cfg = shop_public(site_id)
     out = SH.place(site_id, r.tenant_id, cfg, body, ip)
-    how = {"upi": "UPI", "cod": "Cash on delivery", "online": "online payment - pakka tab hoga jab gateway bataye"}.get(out["method"], out["method"])
+    how = {"upi": "UPI", "cod": "Cash on delivery", "online": "online payment - confirmed only when the gateway says so"}.get(out["method"], out["method"])
     _publish(r.tenant_id, "site_order", {"site": r.name, "number": out["number"], "total": out["total"], "method": out["method"],
                                          "items": len(out["items"]),
-                                         "say": f"{r.name or 'Website'} par naya order {out['number']}: {out['total']} ({how})"}, r.conv)
+                                         "say": f"{r.name or 'Website'} has a new order {out['number']}: {out['total']} ({how})"}, r.conv)
     return out
 
 
@@ -2724,8 +2724,8 @@ def shop_paid(site_id: str, number: str, token: str, utr: str, ip: str = "") -> 
     r, _cfg = shop_public(site_id)
     out = SH.tell_paid(site_id, number, token, utr, ip)
     _publish(r.tenant_id, "site_order", {"site": r.name, "number": number, "total": out["total"], "status": out["status"],
-                                         "say": f"Order {number}: customer ne UPI payment bataya ({out['total']}), apne bank / UPI app "
-                                                f"mein dekhkar 'Pakka' kijiye."}, r.conv)
+                                         "say": f"Order {number}: the customer reports a UPI payment ({out['total']}). Check your bank / UPI app, "
+                                                f"then tap 'Confirm'."}, r.conv)
     return out
 
 
@@ -2775,7 +2775,7 @@ def book_post(site_id: str, data: dict[str, Any], ip: str = "") -> dict[str, Any
         raise SiteError("bad form")
     slot = _tidy(data.get("slot"), 40)
     if not slot or not LV.slot_ok(site_id, slot):
-        raise SiteError("Yeh samay ab khaali nahi; doosra chuniye.")
+        raise SiteError("This time is no longer free; pick another.")
     out = _lead_post(site_id, {**data, "message": data.get("message") or ""}, ip, kind="booking", slot=slot)
     if not out.get("id"):
         return out
@@ -2786,7 +2786,7 @@ def book_post(site_id: str, data: dict[str, Any], ip: str = "") -> dict[str, Any
     _publish(tenant, "site_lead", {"id": out["id"], "site": sname, "booking": True, "slot": slot, "when": label,
                                    "name": _tidy(data.get("name"), 120), "phone": B.digits(str(data.get("phone") or "")),
                                    "message": _tidy(data.get("message"), 300), "push": True,
-                                   "say": f"{sname or 'Website'} par booking ki request: {label}. Pakka karein?"}, conv)
+                                   "say": f"{sname or 'Website'}: booking request for {label}. Confirm it?"}, conv)
     return {"ok": True}
 
 
@@ -2796,16 +2796,16 @@ def booking_decide(tenant: str, lead_id: str, yes: bool) -> dict[str, Any]:
     with session() as s:
         x = s.get(SiteLead, lead_id)
         if x is None or x.tenant_id != tenant or (x.kind or "") != "booking":
-            raise SiteError("Yeh booking request nahi mili.")
+            raise SiteError("This booking request was not found.")
         if x.status not in ("new",):
-            raise SiteError(f"Yeh request pehle hi '{x.status}' hai.")
+            raise SiteError(f"This request is already '{x.status}'.")
         x.status = "confirmed" if yes else "declined"
         name, phone, slot = x.name, x.phone, x.slot
     when = BK.say_slot(tenant, slot) if slot else ""
     wa = f"https://wa.me/91{phone}" if phone else ""
     return {"ok": True, "status": "confirmed" if yes else "declined", "whatsapp": wa,
-            "say": (f"Pakka: {name or phone}, {when}. Unhe call / WhatsApp karke bata dijiye." if yes
-                    else f"Mana kar diya ({when} phir khaali hai). Unhe bata dijiye.")}
+            "say": (f"Confirmed: {name or phone}, {when}. Call or WhatsApp them to let them know." if yes
+                    else f"Declined ({when} is free again). Let them know.")}
 
 
 # ---------------------------------------------------------------- v0.295 editing like Lovable: her own hands, no AI
@@ -2848,9 +2848,9 @@ def _editable(tenant: str, ref: str) -> Site:
         r = _find(s, tenant, ref)
         s.expunge(r)
     if busy(r.id) and _JOBS.get(r.id) != "save":      # her edits may go on while her last edits are being checked
-        raise SiteError("Website abhi ban rahi hai; khatam hote hi badal sakti hain.")
+        raise SiteError("The website is still being built; you can change it as soon as it finishes.")
     if r.status in ("planned", "looks", "draft") or not _sections(r):
-        raise SiteError("Pehle website banne dijiye; phir khud badal sakti hain.")
+        raise SiteError("Let the website be built first; then you can change it yourself.")
     return r
 
 
@@ -2885,7 +2885,7 @@ def edit_element(tenant: str, ref: str, key: str, e: str, op: str, value: str = 
     r = _editable(tenant, ref)
     secs = _sections(r)
     if key not in secs:
-        raise SiteError("Yeh section ab nahi hai; preview taaza kijiye.")
+        raise SiteError("This section is no longer there; refresh the preview.")
     before = secs[key]
     try:
         if op == "style":                     # v0.795 YEH WALA: the free style panel (site tokens only, no AI)
@@ -2905,11 +2905,11 @@ def edit_element(tenant: str, ref: str, key: str, e: str, op: str, value: str = 
     except M.MediaError as er:
         raise SiteError(str(er))
     if h == before["html"]:
-        return {**view(r, False), "say": "Kuch badla nahi."}
+        return {**view(r, False), "say": "Nothing changed."}
     _put_sec(r, key, {**before, "html": h, "edited": True})
     _push_edit(r, {"kind": "section", "key": key, "op": op, "what": what, "before": before})
-    out = _after_edit(r, f"Aapka badlav: {what}", quick=[key.split("__", 1)[0]])
-    return {**out, "say": f"Badal diya: {what}. Wapas chahiye to Undo."}
+    out = _after_edit(r, f"Your change: {what}", quick=[key.split("__", 1)[0]])
+    return {**out, "say": f"Changed: {what}. Use Undo to take it back."}
 
 
 def _insert_markup(r: Site, value: str) -> tuple[str, str]:
@@ -2918,28 +2918,28 @@ def _insert_markup(r: Site, value: str) -> tuple[str, str]:
     try:
         spec = json.loads(value or "{}")
     except ValueError:
-        raise SiteError("Kya jodna hai samajh nahi aaya.")
+        raise SiteError("I could not tell what to add.")
     kind = str(spec.get("kind") or "")
     cap = _tidy(spec.get("caption"), 160)
     src = B.src_dir(r.tenant_id, r.id)
     if kind == "photo":
         name = str(spec.get("name") or "")
         if name not in {p["name"] for p in _j(r.photos, [])}:
-            raise SiteError("Yeh photo is website mein nahi hai; pehle upload kijiye.")
-        return M.block(None, "photo", cap, photo=name), f"photo jodi ({name})"
+            raise SiteError("This photo is not in this website; upload it first.")
+        return M.block(None, "photo", cap, photo=name), f"photo added ({name})"
     if kind == "youtube":
         from . import live as LV
         vid = LV.youtube_id(str(spec.get("url") or ""))
         if not vid:
-            raise SiteError("Yeh YouTube link nahi lag raha (youtube.com/watch?v=... ya youtu.be/... chahiye).")
-        return M.block(None, "youtube", cap, url=f"https://youtu.be/{vid}"), "YouTube video jodi"
+            raise SiteError("This does not look like a YouTube link (it needs youtube.com/watch?v=... or youtu.be/...).")
+        return M.block(None, "youtube", cap, url=f"https://youtu.be/{vid}"), "YouTube video added"
     if kind in ("video", "audio", "file"):
         item = M.find(src, str(spec.get("name") or ""))
         if not item or item["kind"] != kind:
-            raise SiteError("Yeh file nahi mili; dobara upload kijiye.")
+            raise SiteError("This file was not found; upload it again.")
         word = {"video": "video", "audio": "audio", "file": "download file"}[kind]
-        return M.block(item, kind, cap), f"{word} jodi ({item['name']})"
-    raise SiteError("Photo, video, audio ya file mein se chuniye.")
+        return M.block(item, kind, cap), f"{word} added ({item['name']})"
+    raise SiteError("Pick one of photo, video, audio or file.")
 
 
 def add_media(tenant: str, ref: str, data: bytes, filename: str, about: str = "") -> dict[str, Any]:
@@ -2952,7 +2952,7 @@ def add_media(tenant: str, ref: str, data: bytes, filename: str, about: str = ""
     except M.MediaError as e:
         raise SiteError(str(e))
     return {"ok": True, **item, "size": M.size_text(item["bytes"]),
-            "say": f"{item['kind'].capitalize()} '{item['name']}' rakh li ({M.size_text(item['bytes'])})."}
+            "say": f"{item['kind'].capitalize()} '{item['name']}' is saved ({M.size_text(item['bytes'])})."}
 
 
 def set_theme(tenant: str, ref: str, tokens: dict[str, Any]) -> dict[str, Any]:
@@ -2962,17 +2962,17 @@ def set_theme(tenant: str, ref: str, tokens: dict[str, Any]) -> dict[str, Any]:
     tk = dict(look.get("tokens") or {})
     want = {k: v for k, v in (tokens or {}).items() if k in ("primary", "accent", "bg", "surface", "ink", "radius")}
     if not want:
-        raise SiteError("Kaunsa rang badalna hai?")
+        raise SiteError("Which colour should change?")
     for k, v in want.items():
         if k != "radius" and not B._hex_ok(str(v)):
-            raise SiteError(f"{k}: '{v}' rang nahi lagta (jaise #7C5CFF).")
+            raise SiteError(f"{k}: '{v}' does not look like a colour (example: #7C5CFF).")
     new_tk = B.tokens(r.style, tk.get("palette") or "paper_ink", None,
                       {**{k: tk.get(k) for k in ("primary", "accent", "bg", "surface", "ink")}, **want,
                        "radius": want.get("radius", tk.get("radius"))})
     _push_edit(r, {"kind": "theme", "what": "rang / shape", "before": tk})
     _save(r.id, look={**look, "tokens": new_tk})
-    out = _after_edit(r, "Aapke rang")
-    return {**out, "tokens": {k: new_tk.get(k) for k in want}, "say": "Rang badal diye. Wapas chahiye to Undo."}
+    out = _after_edit(r, "Your colours")
+    return {**out, "tokens": {k: new_tk.get(k) for k in want}, "say": "Colours changed. Use Undo to take it back."}
 
 
 def undo_edit(tenant: str, ref: str) -> dict[str, Any]:
@@ -2980,7 +2980,7 @@ def undo_edit(tenant: str, ref: str) -> dict[str, Any]:
     r = _editable(tenant, ref)
     h = _edits(r)
     if not h:
-        raise SiteError("Wapas karne ko koi badlav nahi.")
+        raise SiteError("There is no change to undo.")
     last = h.pop()
     if last["kind"] == "theme":
         look = _j(r.look, {})
@@ -2995,7 +2995,7 @@ def undo_edit(tenant: str, ref: str) -> dict[str, Any]:
         _put_sec(r, last["key"], last["before"])
     _edits_path(r).write_text(json.dumps(h))
     out = _after_edit(r, f"Undo: {last.get('what', '')}")
-    return {**out, "say": f"Wapas kar diya: {last.get('what', '')}."}
+    return {**out, "say": f"Undone: {last.get('what', '')}."}
 
 
 def edits(tenant: str, ref: str) -> dict[str, Any]:
@@ -3037,7 +3037,7 @@ def save_version(site_id: str, note: str = "", quick: list[str] | None = None) -
     r = _load(site_id)
     with scope(r.tenant_id, "site"):
         plan = _j(r.plan, {})
-        r = _save(r.id, status="checking", stage="checks", board=_board(r, plan, None, "Aapke badlav jaanch raha hoon"))
+        r = _save(r.id, status="checking", stage="checks", board=_board(r, plan, None, "Checking your changes"))
         _emit(r)
         try:                                  # v0.301 her edits reach the second language too
             _translate(r)
@@ -3061,7 +3061,7 @@ def save_version(site_id: str, note: str = "", quick: list[str] | None = None) -
                 report["tier"], report["checked_pages"] = "quick", pages
                 report["quick_s"] = round(time.monotonic() - t0, 1)
                 log.info("site %s quick check %s in %.1f s", r.id, pages, report["quick_s"])
-                _make_version(r, plan, report, shots, None, note or "aapke badlav", None, push=False)
+                _make_version(r, plan, report, shots, None, note or "your changes", None, push=False)
                 return
         try:
             report = C.run(live, plan, shots, video=False)
@@ -3071,7 +3071,7 @@ def save_version(site_id: str, note: str = "", quick: list[str] | None = None) -
         report = _journeys(r, report)         # v0.400 her edits too: the shop / form / menu still work
         report = _gates(r, report)            # v0.551 and the gates again on what she changed
         report["tier"] = "full"
-        _make_version(r, plan, report, shots, None, note or "aapke badlav", None, push=False)
+        _make_version(r, plan, report, shots, None, note or "your changes", None, push=False)
 
 
 # ---------------------------------------------------------------- reading
@@ -3106,7 +3106,7 @@ def rename(tenant: str, ref: str, name: str) -> dict[str, Any]:
     the address and the live site stay as they are (the business name inside the pages is in her details)."""
     name = re.sub(r"\s+", " ", str(name or "")).strip()
     if not 1 <= len(name) <= 80:
-        raise SiteError("Naam 1 se 80 akshar ka rakhiye.")
+        raise SiteError("The name must be 1 to 80 characters.")
     with session() as s:
         r = _find(s, tenant, ref)
         sid, facts, early = r.id, _j(r.facts, {}), r.status in ("planned", "looks") and not r.version
@@ -3122,7 +3122,7 @@ def delete(tenant: str, ref: str) -> dict[str, Any]:
         r = _find(s, tenant, ref)
         sid, name = r.id, r.name
     if busy(sid):
-        raise SiteError("Website abhi ban rahi hai; pehle 'Rokiye', phir delete kijiye.")
+        raise SiteError("The website is still being built; tap 'Stop' first, then delete.")
     # v0.223 a deleted site must not stay live: its addresses, served files and Cloudflare hostnames go first
     # (before, only the Hoola records went and the site kept answering on the internet, unmanageable)
     took = ""
@@ -3132,14 +3132,14 @@ def delete(tenant: str, ref: str) -> dict[str, Any]:
             took = " " + H.take_down(tenant, sid)["say"]
     except Exception:
         log.exception("take down before delete failed")
-        raise SiteError("Website ko internet se hatane mein dikkat aayi; abhi delete nahi ki. Thodi der baad dobara.")
+        raise SiteError("There was a problem taking the website off the internet; it is not deleted yet. Try again in a little while.")
     with session() as s:
         r = s.get(Site, sid)
         s.delete(r)
         for v in s.scalars(select(SiteVersion).where(SiteVersion.site_id == sid)).all():
             s.delete(v)
     shutil.rmtree(B.site_dir(tenant, sid), ignore_errors=True)
-    return {"ok": True, "say": f"{name or 'Website'} hata di.{took}"}
+    return {"ok": True, "say": f"{name or 'Website'} deleted.{took}"}
 
 
 def export_bytes(tenant: str, ref: str, fmt: str = "zip") -> tuple[str, bytes]:
@@ -3148,7 +3148,7 @@ def export_bytes(tenant: str, ref: str, fmt: str = "zip") -> tuple[str, bytes]:
         r = _find(s, tenant, ref)
         s.expunge(r)
     if not r.version:
-        raise SiteError("Abhi koi version nahi bana.")
+        raise SiteError("No version has been made yet.")
     out = B.out_dir(tenant, r.id, r.version)
     if fmt == "react":                    # v0.305 a React (Vite) project a developer can carry on with
         from . import reactx
@@ -3164,7 +3164,7 @@ def export(tenant: str, ref: str, fmt: str = "zip") -> dict[str, Any]:
     from ..chatfiles import store
     meta = store(tenant, name, data, "application/zip")
     return {"ok": True, "file_id": meta.get("file_id"), "name": name, "bytes": len(data),
-            "say": f"{name} taiyaar ({len(data) // 1024} KB); kisi bhi hosting par chal jayegi."}
+            "say": f"{name} is ready ({len(data) // 1024} KB); it runs on any hosting."}
 
 
 def everything(tenant: str) -> dict[str, Any]:
@@ -3276,7 +3276,7 @@ def _lead_post(site_id: str, data: dict[str, Any], ip: str = "", kind: str = "en
         return {"ok": True}
     from . import gates as G
     if G.turnstile_on() and not turnstile_ok(str(data.get("cf-turnstile-response") or ""), ip):
-        raise SiteError("Robot jaanch poori nahi hui - page dobara khol kar bhejiye.")
+        raise SiteError("The robot check did not finish - open the page again and send.")
     iph = hashlib.sha256(f"{ip}|{site_id}".encode()).hexdigest()[:24]
     t = time.time()
     if len(_RATE) > 5000:                 # v0.223 old entries go (the dict grew without end)
@@ -3284,16 +3284,16 @@ def _lead_post(site_id: str, data: dict[str, Any], ip: str = "", kind: str = "en
             _RATE.pop(key, None)
     hits = [x for x in _RATE.get(iph, []) if t - x < 600]
     if len(hits) >= 5:
-        raise SiteError("Bahut zyada baar bheja; thodi der baad.")
+        raise SiteError("Sent too many times; try again in a little while.")
     _RATE[iph] = hits + [t]
     name = _tidy(data.get("name"), 120)
     phone = B.digits(str(data.get("phone") or data.get("mobile") or ""))
     email = _tidy(data.get("email"), 160)
     msg = _tidy(data.get("message") or data.get("msg") or data.get("need"), 2000)
     if not phone and not email:
-        raise SiteError("Phone ya email chahiye.")
+        raise SiteError("A phone number or email is needed.")
     if phone and len(phone) != 10:
-        raise SiteError("Phone number sahi nahi.")
+        raise SiteError("The phone number is not right.")
     with session() as s:
         r = s.get(Site, site_id)
         if r is None:
@@ -3301,7 +3301,7 @@ def _lead_post(site_id: str, data: dict[str, Any], ip: str = "", kind: str = "en
         day = datetime.now(timezone.utc) - timedelta(days=1)
         n = s.scalar(select(func.count()).select_from(SiteLead).where(SiteLead.site_id == site_id, SiteLead.created_at >= day)) or 0
         if n >= 200:
-            raise SiteError("Aaj ke liye bahut enquiries; kal dobara.")
+            raise SiteError("Too many enquiries for today; try again tomorrow.")
         lead = SiteLead(site_id=site_id, tenant_id=r.tenant_id, name=name, phone=phone, email=email, message=msg,
                         page=_tidy(data.get("page"), 160), ip_hash=iph, kind=kind, slot=slot)
         s.add(lead)
@@ -3315,7 +3315,7 @@ def _lead_post(site_id: str, data: dict[str, Any], ip: str = "", kind: str = "en
         log.info("lead to telecall skipped", exc_info=True)
     if kind == "enquiry":
         _publish(tenant, "site_lead", {"id": lid, "site": sname, "name": name, "phone": phone, "email": email,
-                                       "message": msg[:300], "say": f"{sname or 'Website'} par nayi enquiry: {name or phone}"}, conv)
+                                       "message": msg[:300], "say": f"{sname or 'Website'}: new enquiry from {name or phone}"}, conv)
     return {"ok": True, "id": lid}
 
 
@@ -3407,7 +3407,7 @@ def _built(tenant: str, ref: str) -> Site:
         r = _find(s, tenant, ref)
         s.expunge(r)
     if not r.version:
-        raise SiteError("Website abhi bani nahi; pehle website banne dijiye, phir blog.")
+        raise SiteError("The website is not built yet; let the website be built first, then the blog.")
     return r
 
 
@@ -3420,8 +3420,8 @@ def blog_target(tenant: str, ref: str = "") -> dict[str, Any]:
     if len(built) == 1:
         return {"id": built[0]["id"], "name": built[0]["name"]}
     if not built:
-        raise SiteError("Abhi koi bani hui website nahi hai; pehle website banwaiye.")
-    raise SiteError("Kis website par? " + ", ".join(f"{x['name']} ({x['number']})" for x in built[:6]))
+        raise SiteError("There is no built website yet; get the website made first.")
+    raise SiteError("On which website? " + ", ".join(f"{x['name']} ({x['number']})" for x in built[:6]))
 
 
 def blog_publish(tenant: str, site_id: str, piece: dict[str, Any], when: str = "") -> dict[str, Any]:
@@ -3432,7 +3432,7 @@ def blog_publish(tenant: str, site_id: str, piece: dict[str, Any], when: str = "
         try:
             at = datetime.fromisoformat(when)
         except ValueError:
-            raise SiteError("Post ka samay samajh nahi aaya.")
+            raise SiteError("I could not understand the time for the post.")
     try:
         post = BL.put(tenant, r.id, piece, at)
     except BL.BlogError as e:
@@ -3441,11 +3441,11 @@ def blog_publish(tenant: str, site_id: str, piece: dict[str, Any], when: str = "
     from . import hosting as H
     lv = H.live_version(r)
     if post["status"] == "scheduled":
-        return {"post": post, "url": url, "say": f"'{post['title']}' {post['date']} ko website par aayega" +
-                (" (live site par bhi)." if lv else ".")}
+        return {"post": post, "url": url, "say": f"'{post['title']}' will go on the website on {post['date']}" +
+                (" (on the live site too)." if lv else ".")}
     _blog_rebuild(r, f"blog: {post['title'][:60]}", live=True)
-    return {"post": post, "url": url, "say": f"'{post['title']}' website ke blog par lag raha hai; nayi version jaanch ke baad "
-            + ("live address par bhi chali jayegi." if lv == r.version else "bani rahegi (live karne ke liye 'live karo').")}
+    return {"post": post, "url": url, "say": f"'{post['title']}' is going on the website's blog; after the checks the new version "
+            + ("also goes to the live address." if lv == r.version else "stays ready (say 'go live' to put it live).")}
 
 
 def blog_info(tenant: str, ref: str) -> dict[str, Any]:
@@ -3461,7 +3461,7 @@ def blog_info(tenant: str, ref: str) -> dict[str, Any]:
             "choices": [{"code": k, "label": LG.LANGS[k], "english": LG.ENGLISH[k]} for k in LG.LANGS if k != first],
             "max_extra": LG.MAX_EXTRA, "photos": [p["name"] for p in _j(r.photos, [])],
             "say": f"{sum(1 for x in items if x['status'] == 'published')} post live, "
-                   f"{sum(1 for x in items if x['status'] == 'scheduled')} time par."}
+                   f"{sum(1 for x in items if x['status'] == 'scheduled')} scheduled."}
 
 
 def blog_act(tenant: str, ref: str, slug: str, action: str, cover: str = "", tapped: bool = False) -> dict[str, Any]:
@@ -3471,21 +3471,21 @@ def blog_act(tenant: str, ref: str, slug: str, action: str, cover: str = "", tap
     try:
         if action in ("hide", "show"):
             post = BL.set_status(r.id, slug, "hidden" if action == "hide" else "published")
-            say = f"'{post['title']}' " + ("hata diya (wapas laa sakte hain)." if action == "hide" else "wapas laga diya.")
+            say = f"'{post['title']}' " + ("hidden (you can bring it back)." if action == "hide" else "is back on the blog.")
         elif action == "delete":
             if not tapped:
-                raise SiteError("Post mitana sirf aapke tap se: Website > Blog mein 'Delete' dabaiye.")
+                raise SiteError("A post is deleted only by your own tap: press 'Delete' in Website > Blog.")
             post = BL.delete(r.id, slug)
-            say = f"'{post['title']}' mita diya."
+            say = f"'{post['title']}' deleted."
         elif action == "cover":
             post = BL.set_cover(r.id, slug, cover, [p["name"] for p in _j(r.photos, [])])
-            say = "Cover photo badal di."
+            say = "Cover photo changed."
         else:
             raise SiteError("Action: hide / show / delete / cover.")
     except BL.BlogError as e:
         raise SiteError(str(e))
     _blog_rebuild(r, f"blog: {action} {slug}", live=tapped)
-    return {"post": post, "say": say + ("" if tapped else " Nayi version banegi; live karne ke liye 'live karo' kahiye.")}
+    return {"post": post, "say": say + ("" if tapped else " A new version will be made; say 'go live' to put it live.")}
 
 
 def blog_tick() -> int:
@@ -3494,7 +3494,7 @@ def blog_tick() -> int:
     for site_id, _slug in BL.due():
         try:
             r = _load(site_id)
-            _blog_rebuild(r, "blog: time par post", live=True)
+            _blog_rebuild(r, "blog: scheduled post", live=True)
             n += 1
         except Exception:
             log.exception("scheduled post rebuild failed")
@@ -3539,29 +3539,29 @@ def code_write(tenant: str, ref: str, path: str, code: str) -> dict[str, Any]:
             before = _kit_css(r)
             new = K.clean(code or "")
             if new == before:
-                return {**code_read(tenant, ref, path), "say": "Kuch badla nahi.", "removed": []}
+                return {**code_read(tenant, ref, path), "say": "Nothing changed.", "removed": []}
             dropped = [] if len(new) >= 0.8 * len(re.sub(r"\s+", "", code or "")) else [
                 "only .k-* rules are kept in the design kit (no element / id / global selectors, no url(), no fonts)"]
             _save(r.id, look={**look, "kit": {**(look.get("kit") or {}), "css": new}})
             _push_edit(r, {"kind": "kit", "what": "design kit code", "before": before})
             _after_edit(_load(r.id), "Code: design kit")
-            return {**code_read(tenant, ref, path), "removed": dropped, "say": "Design kit save ho gaya." +
-                    (" Kuch hissa hata diya: " + dropped[0] if dropped else "")}
+            return {**code_read(tenant, ref, path), "removed": dropped, "say": "Design kit saved." +
+                    (" Some parts were removed: " + dropped[0] if dropped else "")}
         key, part = CD.key_of(path)
         secs = _sections(r)
         if key not in secs:
-            raise SiteError("Yeh section ab nahi hai.")
+            raise SiteError("This section is no longer there.")
         before = secs[key]
         new, problems = CD.clean(key, before, part, code)
     except CD.CodeError as e:
         raise SiteError(str(e))
     if all(new.get(x) == before.get(x) for x in ("html", "css", "js")):
-        return {**code_read(tenant, ref, path), "say": "Kuch badla nahi.", "removed": problems}
+        return {**code_read(tenant, ref, path), "say": "Nothing changed.", "removed": problems}
     _put_sec(r, key, new)
     _push_edit(r, {"kind": "section", "key": key, "op": "code", "what": f"code: {path}", "before": before})
     _after_edit(r, f"Code: {path}", quick=[key.split("__", 1)[0]])
     return {**code_read(tenant, ref, path), "removed": problems,
-            "say": "Save ho gaya; jaanch ke baad nayi version." + (" Safety ke liye hataya: " + "; ".join(problems[:4]) if problems else "")}
+            "say": "Saved; a new version after the checks." + (" Removed for safety: " + "; ".join(problems[:4]) if problems else "")}
 
 
 def code_ask(tenant: str, ref: str, instruction: str, path: str = "", conv: str = "") -> dict[str, Any]:
@@ -3569,7 +3569,7 @@ def code_ask(tenant: str, ref: str, instruction: str, path: str = "", conv: str 
     the console reads the result with code_task."""
     instruction = _tidy(instruction, 1500)
     if not instruction:
-        raise SiteError("Kya badalna hai? Ek line likhiye.")
+        raise SiteError("What should change? Write one line.")
     r = _editable(tenant, ref)
     keys: list[str] = []
     if path and path != "design/kit.css":
@@ -3579,12 +3579,12 @@ def code_ask(tenant: str, ref: str, instruction: str, path: str = "", conv: str 
             raise SiteError(str(e))
     task = secrets.token_hex(8)
     CD.save_task(_code_dir(r), task, {"status": "working", "instruction": instruction, "keys": keys, "conv": conv,
-                                      "path": path, "say": "Code badal raha hoon..."})
+                                      "path": path, "say": "Changing the code..."})
     if not _start(r.id, "code", task=task):
-        CD.save_task(_code_dir(r), task, {"status": "failed", "say": "Website abhi kisi aur kaam mein hai; thodi der baad."})
-        raise SiteError("Website abhi kisi aur kaam mein hai; thodi der baad kahiye.")
+        CD.save_task(_code_dir(r), task, {"status": "failed", "say": "The website is busy with other work; try again in a little while."})
+        raise SiteError("The website is busy with other work; try again in a little while.")
     t = CD.load_task(_code_dir(r), task) or {}
-    return {"task": task, "status": t.get("status", "working"), "say": t.get("say") or "Code badal raha hoon (Opus)...",
+    return {"task": task, "status": t.get("status", "working"), "say": t.get("say") or "Changing the code (Opus)...",
             **({k: t[k] for k in ("diff", "files", "summary", "removed") if k in t})}
 
 
@@ -3594,7 +3594,7 @@ def code_task(tenant: str, ref: str, task: str) -> dict[str, Any]:
         s.expunge(r)
     t = CD.load_task(_code_dir(r), task)
     if t is None:
-        raise SiteError("Yeh kaam nahi mila.")
+        raise SiteError("This job was not found.")
     return {"task": task, **t}
 
 
@@ -3608,7 +3608,7 @@ def code_job(site_id: str, task: str = "") -> None:
             out = _code_change(r, t.get("instruction") or "", t.get("keys") or [])
         except Exception as e:
             log.exception("code change failed")
-            out = {"status": "failed", "say": f"Code nahi badal paya: {_tidy(str(e), 200)}"}
+            out = {"status": "failed", "say": f"The code could not be changed: {_tidy(str(e), 200)}"}
     CD.save_task(folder, task, {**t, **out})
     if t.get("conv"):
         try:
@@ -3622,7 +3622,7 @@ def _code_change(r: Site, instruction: str, keys: list[str]) -> dict[str, Any]:
     secs = _sections(r)
     keys = [k for k in keys if k in secs] or CD.pick(instruction, secs, T.label_of)
     if not keys:
-        return {"status": "failed", "say": "Website mein abhi koi section nahi."}
+        return {"status": "failed", "say": "The website has no sections yet."}
     files = [{"key": k, "html": E.strip(secs[k].get("html") or ""), "css": secs[k].get("css") or "",
               "js": CD.bare_js(secs[k].get("js") or "")} for k in keys]
     raw = AI.ask_json(CD.CODE_SYSTEM, f"HER WORDS: {instruction}\n\nSITE FACTS (data): {_facts_text(_j(r.facts, {}))[:2500]}\n"
@@ -3630,7 +3630,7 @@ def _code_change(r: Site, instruction: str, keys: list[str]) -> dict[str, Any]:
                       12000, "site_edit")
     got = (raw or {}).get("files") if isinstance(raw, dict) else None
     if not isinstance(got, list) or not got:
-        return {"status": "failed", "say": "Opus se badla hua code nahi aaya; dobara kahiye ya zyada saaf likhiye."}
+        return {"status": "failed", "say": "Opus did not return changed code; ask again or write it more clearly."}
     befores, diffs, changed, problems = {}, [], [], []
     for f in got[:6]:
         if not isinstance(f, dict) or f.get("key") not in keys:
@@ -3652,11 +3652,11 @@ def _code_change(r: Site, instruction: str, keys: list[str]) -> dict[str, Any]:
         changed.append(k)
         problems += [p for p in probs + probs2 + probs3 if p not in problems]
     if not changed:
-        return {"status": "done", "say": "Code waisa hi raha (kuch badalne ko nahi mila).", "diff": "", "files": []}
+        return {"status": "done", "say": "The code stayed the same (nothing to change was found).", "diff": "", "files": []}
     _push_edit(r, {"kind": "multi", "what": f"code: {instruction[:60]}", "befores": befores})
     _assemble_edit(_load(r.id))
     _SAVE_PENDING.add(r.id)                  # the checked version is made right after this job (_after_job)
     summary = _tidy(str((raw or {}).get("summary") or ""), 200)
     return {"status": "done", "files": [CD.path_of(k, "html") for k in changed], "diff": "\n".join(diffs)[:60000],
             "summary": summary, "removed": problems[:8],
-            "say": (summary or f"{len(changed)} section ka code badal diya") + ". Jaanch ke baad nayi version; galat lage to Undo."}
+            "say": (summary or f"Code changed in {len(changed)} section(s)") + ". A new version after the checks; use Undo if it looks wrong."}

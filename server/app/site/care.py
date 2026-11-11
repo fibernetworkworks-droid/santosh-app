@@ -142,7 +142,7 @@ def _drift(r: Site) -> list[str]:
     for k, label in (("phone", "phone"), ("whatsapp", "WhatsApp"), ("address", "pata"), ("email", "email")):
         a, b = str(was.get(k) or "").strip(), str(now_f.get(k) or "").strip()
         if a and b and a != b:
-            out.append(f"Website par {label} '{a}' hai, aapke profile mein ab '{b}'. Badalna ho to 'website mein naya {label}' kahiye.")
+            out.append(f"The website shows {label} '{a}', your profile now has '{b}'. To change it say 'new {label} on the website'.")
     return out
 
 
@@ -181,45 +181,45 @@ def report(tenant: str, ref: str = "", days: int = 30) -> dict[str, Any]:
     chk = json.loads(r.checks or "{}")
     tips: list[str] = []
     if not hosts:
-        tips.append("Website abhi live nahi; 'website live karo' kahiye.")
+        tips.append("The website is not live yet; say 'put the website live'.")
     if live_v and r.version > live_v:
-        tips.append(f"v{r.version} bana hua hai par live v{live_v} hai; naya live karne ke liye card bhejun?")
+        tips.append(f"v{r.version} is built but v{live_v} is live; shall I send the card to put the new one live?")
     if up + down and down / (up + down) > 0.02:
-        tips.append(f"Is mahine {down} baar site nahi khuli; hosting / DNS dekhna chahiye.")
+        tips.append(f"The site did not open {down} times this month; the hosting / DNS should be looked at.")
     if sum(x.missing for x in cur) > 20:
-        tips.append("Kai log aisi pages khol rahe hain jo nahi hain (purane link?); 'purane link ki page bana do' kaha ja sakta hai.")
+        tips.append("Many people are opening pages that do not exist (old links?); you can ask 'make pages for the old links'.")
     for host, d in ssl.items():
         if d < 15:
-            tips.append(f"{host} ka SSL {d} din mein khatam; Cloudflare apne aap naya karta hai, na hua to Hoola batayega.")
+            tips.append(f"The SSL of {host} expires in {d} days; Cloudflare renews it by itself, and Hoola will tell you if it does not.")
     for d in doms:
         try:
             left = (datetime.fromisoformat(d["expires_at"]) - datetime.now(timezone.utc)).days
         except ValueError:
             continue
         if left < 45:
-            tips.append(f"{d['domain']} {left} din mein khatam; renew ₹{d['renew_inr']:,.0f}.")
+            tips.append(f"{d['domain']} expires in {left} days; renewal ₹{d['renew_inr']:,.0f}.")
     if views and leads == 0 and views > 200:
-        tips.append("Log aa rahe hain par enquiry nahi; contact / WhatsApp button upar laane ka badlav bolun?")
+        tips.append("People are coming but there are no enquiries; shall I suggest a change that moves the contact / WhatsApp button up?")
     if views_prev and views < 0.6 * views_prev:
-        tips.append("Pichhle mahine se visit kaafi kam; SEO sahayak se jaanch karwa sakte hain.")
+        tips.append("Visits are much lower than last month; you can have the SEO assistant check.")
     ops_ = None
     try:                                         # v0.564 her visitors' errors + real-visit speed in the same note
         from . import ops as OPS
         ops_ = OPS.summary(r.id, days)
         if ops_["errors"] >= 50:
-            tips.append(f"Visitors ke browser mein {ops_['errors']} JavaScript galtiyan aayin; 'website ki galti dekho' kahiye.")
+            tips.append(f"Visitors' browsers hit {ops_['errors']} JavaScript errors; say 'show the website errors'.")
         lcp = (ops_["speed"].get("lcp") or {})
         if lcp and lcp.get("grade") == "poor":
-            tips.append(f"Main hissa dikhne mein {lcp['p75']} lag raha hai (75% visits); 'website tez karo' kahiye.")
+            tips.append(f"The main part takes {lcp['p75']} to show (75% of visits); say 'make the website faster'.")
     except Exception:
         log.debug("care ops summary failed", exc_info=True)
     tips += _drift(r)
     if chk.get("blocking"):
-        tips.append(f"Pichhli jaanch mein {len(chk['blocking'])} zaroori kami thi; 'website theek karo' kahiye.")
+        tips.append(f"The last check found {len(chk['blocking'])} required gaps; say 'fix the website'.")
     conv = round(100 * leads / views, 1) if views else 0.0
-    say = (f"{r.name or r.number or 'Website'}: {days} din mein {views} visit"
-           + (f" ({'+' if views >= views_prev else ''}{views - views_prev} pichhle se)" if views_prev else "")
-           + f", {leads} enquiry" + (f" ({conv}%)" if views else "")
+    say = (f"{r.name or r.number or 'Website'}: {views} visits in {days} days"
+           + (f" ({'+' if views >= views_prev else ''}{views - views_prev} vs the period before)" if views_prev else "")
+           + f", {leads} enquiries" + (f" ({conv}%)" if views else "")
            + (f", uptime {round(100 * up / (up + down), 1)}%" if up + down else "") + ".")
     return {"site": S.view(r, False), "days": days, "views": views, "views_prev": views_prev, "leads": leads,
             "leads_prev": leads_prev, "conversion_pct": conv,
@@ -283,7 +283,7 @@ def assign(tenant: str, ref: str, client: str | None = None, staff: str | None =
         if staff is not None:
             r.staff = staff.strip()[:60]
         out = {"site": r.number, "client": r.client, "staff": r.staff}
-    out["say"] = f"{out['site']}: client '{out['client'] or '-'}', staff '{out['staff'] or 'sirf aap'}'."
+    out["say"] = f"{out['site']}: client '{out['client'] or '-'}', staff '{out['staff'] or 'only you'}'."
     return out
 
 
@@ -311,8 +311,8 @@ def client_report(tenant: str, client: str) -> dict[str, Any]:
     g = next((x for x in clients(tenant) if x["client"].lower() == (client or "").strip().lower()), None)
     if g is None:
         from .service import SiteError
-        raise SiteError("Is naam ka client nahi mila.")
+        raise SiteError("No client with this name was found.")
     lines = [f"{x['number']} {x['name']}: {'live ' + x['live'] if x['live'] else x['status']}, 30 din: {x['views_30d']} visit, "
              f"{x['leads_30d']} enquiry" for x in g["sites"]]
-    return {**g, "text": f"{g['client'] or 'Bina client'}\n" + "\n".join(lines),
-            "say": f"{g['client']}: {len(g['sites'])} website, 30 din mein {g['views']} visit, {g['leads']} enquiry."}
+    return {**g, "text": f"{g['client'] or 'No client'}\n" + "\n".join(lines),
+            "say": f"{g['client']}: {len(g['sites'])} websites, {g['views']} visits and {g['leads']} enquiries in 30 days."}

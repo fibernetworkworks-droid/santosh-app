@@ -63,7 +63,7 @@ def link(tenant: str, ref: str) -> dict[str, Any]:
         s.expunge(r)
     p = project(r)
     if p is not None:
-        return {"app": p.id, "number": p.number, "linked": True, "say": f"Website pehle se app {p.number} ke dimaag par hai."}
+        return {"app": p.id, "number": p.number, "linked": True, "say": f"The website already runs on the brain of app {p.number}."}
     W.ensure_tables()
     sch = _j(r.app, {}) if isinstance(_j(r.app, {}), dict) else {}
     cols = [c for c in (sch.get("collections") or [])]
@@ -80,7 +80,7 @@ def link(tenant: str, ref: str) -> dict[str, Any]:
         pid, number = p.id, p.number
     _join(r.id, pid)
     return {"app": pid, "number": number, "linked": True,
-            "say": f"Website ab app {number} ke dimaag par chalegi: wahi lists, wahi log, ab rishte / workflow / approvals ke saath."}
+            "say": f"The website now runs on the brain of app {number}: the same lists, the same people, now with links / workflow / approvals."}
 
 
 def attach(tenant: str, site_id: str, pid: str) -> dict[str, Any]:
@@ -94,7 +94,7 @@ def attach(tenant: str, site_id: str, pid: str) -> dict[str, Any]:
         if r is None or p is None or r.tenant_id != tenant or p.tenant_id != tenant:
             raise W.AppError("not found", 404)
         if linked_id(r):
-            raise W.AppError("Website pehle se ek app se judi hai.", 409)
+            raise W.AppError("The website is already linked to an app.", 409)
         be = _j(p.backend, {}) or {}
         be["site"] = r.id
         p.backend = json.dumps(be, ensure_ascii=False)
@@ -195,7 +195,7 @@ def call(site_id: str, op: str, token: str = "", body: dict[str, Any] | None = N
             return W.delete(site_id, sch, kw["key"], kw["row_id"], w)
         if op == "members":
             if not w.staff:
-                raise W.AppError("Iski ijaazat nahi.", 403)
+                raise W.AppError("This is not allowed.", 403)
             return {"members": W.members(site_id), "admin": bool(w.m and w.m.role == "admin")}
         if op == "role":
             return _role(w, kw["member_id"], body, lambda mid, role: W.set_role(site_id, mid, role))
@@ -204,7 +204,7 @@ def call(site_id: str, op: str, token: str = "", body: dict[str, Any] | None = N
         if op in ("approvals", "decide", "related", "fn", "otp_start", "otp_verify", "2fa_login", "sessions", "session_end",
                   "logout_all", "2fa_start", "2fa_confirm", "2fa_off", "export", "delete_me", "audit", "matrix", "upload",
                   "pay_plans", "pay_subscribe", "pay_subs", "pay_cancel") or op in LIVE_OPS:
-            raise W.AppError("Is website mein yeh abhi nahi; pehle website ko app ke dimaag se jodiye.", 404)
+            raise W.AppError("This website does not have this yet; link the website to the app's brain first.", 404)
         raise W.AppError("not found", 404)
     from ..appmaker import backend as BE
     from ..appmaker.logic import engine as LE
@@ -220,7 +220,7 @@ def call(site_id: str, op: str, token: str = "", body: dict[str, Any] | None = N
         # the new page script always sends the tick (true / false); a page built before v0.434 sends nothing - it still
         # works (until its next rebuild ships the new script) but no consent is recorded for it
         if "consent" in body and body.get("consent") is not True:
-            raise W.AppError("Account banane ke liye privacy notice par haan (tick) zaroori hai.", 400)
+            raise W.AppError("To create an account, a yes (tick) on the privacy notice is required.", 400)
         out = BE.signup(p, str(body.get("email") or ""), str(body.get("password") or ""), str(body.get("name") or ""), ip)
         mem = W.member_of(site, out.get("token") or "")
         if mem is not None:
@@ -251,7 +251,7 @@ def call(site_id: str, op: str, token: str = "", body: dict[str, Any] | None = N
         return {"ok": True}
     if op in ("sessions", "session_end", "logout_all", "2fa_start", "2fa_confirm", "2fa_off", "export", "delete_me"):
         if not w.m:
-            raise W.AppError("Pehle login kijiye.", 401)
+            raise W.AppError("Sign in first.", 401)
         if op == "sessions":
             return {"sessions": SEC.sessions(site, w.m, token)}
         if op == "session_end":
@@ -275,11 +275,11 @@ def call(site_id: str, op: str, token: str = "", body: dict[str, Any] | None = N
         return out
     if op == "audit":                                    # admin only (her own view is the console)
         if not (w.m and w.m.role == "admin"):
-            raise W.AppError("Audit log sirf admin dekh sakte hain.", 403)
+            raise W.AppError("Only admins can see the audit log.", 403)
         return {"audit": SEC.audit(site, int(kw.get("limit") or 200), str(kw.get("coll") or ""))}
     if op == "matrix":
         if not w.staff:
-            raise W.AppError("Iski ijaazat nahi.", 403)
+            raise W.AppError("This is not allowed.", 403)
         return {"matrix": SEC.matrix(BE.schema(p))}
     if op == "upload":
         return BE.upload(p, w, kw.get("raw") or b"", ip)
@@ -288,7 +288,7 @@ def call(site_id: str, op: str, token: str = "", body: dict[str, Any] | None = N
         if op == "pay_plans":
             return PY.plans(p)
         if not w.m:
-            raise W.AppError("Pehle login kijiye.", 401)
+            raise W.AppError("Sign in first.", 401)
         if op == "pay_subscribe":
             return PY.subscribe(p, w, str(kw.get("key") or ""))
         if op == "pay_subs":
@@ -306,7 +306,7 @@ def call(site_id: str, op: str, token: str = "", body: dict[str, Any] | None = N
         return BE.delete(p, kw["key"], kw["row_id"], w)
     if op == "members":
         if not w.staff:
-            raise W.AppError("Iski ijaazat nahi.", 403)
+            raise W.AppError("This is not allowed.", 403)
         return {"members": BE.members(p), "admin": bool(w.m and w.m.role == "admin")}
     if op == "role":
         return _role(w, kw["member_id"], body, lambda mid, role: BE.set_role(p, mid, role))
@@ -314,7 +314,7 @@ def call(site_id: str, op: str, token: str = "", body: dict[str, Any] | None = N
         return W.stats(BE.bid(p), BE.schema(p), w, int(kw.get("days") or 30))
     if op == "approvals":
         if not w.m:
-            raise W.AppError("Pehle login kijiye.", 401)
+            raise W.AppError("Sign in first.", 401)
         return {"approvals": LE.approvals(p, w)}
     if op == "decide":
         return LE.decide(p, kw["appr_id"], str(body.get("decision") or ""), str(body.get("note") or "")[:300], w)
@@ -388,7 +388,7 @@ def live_open(site_id: str, token: str):
     r, _ = S.public_app(site_id)
     p = project(r)
     if p is None:
-        raise W.AppError("Is website mein live abhi nahi; pehle website ko app ke dimaag se jodiye.", 404)
+        raise W.AppError("This website does not have live yet; link the website to the app's brain first.", 404)
     return p, _who(site_id, p, token)
 
 
@@ -403,9 +403,9 @@ def queue_project(site_id: str):
 
 def _role(w: W.Who, member_id: str, body: dict[str, Any], setter) -> dict[str, Any]:
     if not (w.m and w.m.role == "admin"):
-        raise W.AppError("Role sirf admin badal sakta hai.", 403)
+        raise W.AppError("Only an admin can change a role.", 403)
     if member_id == w.m.id:
-        raise W.AppError("Apna role khud nahi badal sakte.", 400)
+        raise W.AppError("You cannot change your own role.", 400)
     return setter(member_id, str(body.get("role") or ""))
 
 
@@ -418,7 +418,7 @@ def logic_view(tenant: str, ref: str) -> dict[str, Any]:
         s.expunge(r)
     p = project(r)
     if p is None:
-        return {"linked": False, "say": "Website abhi seedhi lists par hai; niyam / workflow chahiye to 'logic' kahiye - pehle jod denge."}
+        return {"linked": False, "say": "The website is on plain lists right now; if you want rules / workflow say 'logic' - it gets linked first."}
     return {"linked": True, "app": p.id, "number": p.number, **LS.view(p)}
 
 
@@ -441,10 +441,10 @@ def logic_apply(tenant: str, ref: str, h: str) -> dict[str, Any]:
         s.expunge(r)
     p = project(r)
     if p is None:
-        raise W.AppError("Pehle logic ka draft banaiye.", 409)
+        raise W.AppError("Make the logic draft first.", 409)
     out = LS.apply(p, h)
     try:                                    # new lists / fields reach the account + staff pages
-        S._after_edit(S._load(r.id), "logic: nayi lists / niyam")
+        S._after_edit(S._load(r.id), "logic: new lists / rules")
     except Exception:
         log.info("site rebuild after logic skipped", exc_info=True)
     return out
@@ -497,7 +497,7 @@ def phone_app(tenant: str, ref: str, conv: str = "") -> dict[str, Any]:
     p = project(S._load(r.id))
     if p.status not in ("web",):
         return {"app": p.id, "number": p.number, "status": p.status,
-                "say": f"Is website ki phone app pehle se app {p.number} mein ban rahi hai ({p.status})."}
+                "say": f"This website's phone app is already being made in app {p.number} ({p.status})."}
     facts = _j(r.facts, {})
     try:
         tmp = AS.new(tenant, (r.brief or r.name or "")[:1800], conv, name=r.name or facts.get("name") or "",
@@ -526,8 +526,8 @@ def phone_app(tenant: str, ref: str, conv: str = "") -> dict[str, Any]:
     AS._emit(row, push=True)
     v = AS.view(row)
     return {"app": row.id, "number": row.number, "status": row.status, "app_key": (_j(row.android, {}) or {}).get("app_key", ""),
-            "say": f"Phone app ka plan taiyaar (app {row.number}) - wahi data jo website par hai. Plan card par haan kahiye, "
-                   "phir 3 looks; build ke baad Android / iPhone app aur website ek hi data dekhenge.", "view": v}
+            "say": f"The phone app plan is ready (app {row.number}) - the same data as the website. Approve on the plan card, "
+                   "then 3 looks; after the build the Android / iPhone app and the website see the same data.", "view": v}
 
 
 # ---------------------------------------------------------------- v0.434 her view: who changed what, who may do what
