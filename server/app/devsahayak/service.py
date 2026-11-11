@@ -1060,6 +1060,7 @@ def _progress(tid: str, line: str) -> None:
 
 
 # ---------------------------------------------------------------- v0.748 HOOLA CODE: the console's live session
+ROUNDS_BOX = 40                 # Phase 4: rounds on one PR in a workspace session (a conversation; the old engine keeps 6 / 4)
 _RUNNING: set[str] = set()      # tasks whose work runs in a background thread right now (this process)
 _STOP: set[str] = set()         # her Stop: the loop ends at its next step
 _BEAT: dict[str, float] = {}    # Phase 4: when each running session last wrote its heartbeat (this process)
@@ -1178,9 +1179,10 @@ def answer(tenant: str, ref: str, text: str) -> dict[str, Any]:
         raise DevError("Write your answer.")
     with session() as s:
         t = _find_task(s, tenant, ref)
-        ws_q = _ws_view(t.id).get("question")
-    if ws_q:                                    # Phase 4: asked with ask_her - the answer is her next message
-        return message(tenant, ref, clean)
+        wv = _ws_view(t.id)
+    from . import wsp as WS
+    if wv.get("question") or (wv.get("state") and WS.ready(tenant)["ok"]):
+        return message(tenant, ref, clean)      # Phase 4: this session has a conversation - her answer is its next message
     with session() as s:
         t = _find_task(s, tenant, ref)
         q = _question(t)
@@ -1614,6 +1616,9 @@ def _work(tenant: str, tid: str, g: Gh, extra_files: list[str], warn: str, ask_p
         # Unavailable only BEFORE the model has done anything, so the old engine below can take the turn cleanly.
         from . import loop as L
         from . import wsp as WS
+        if (follow or resume) and not WS.ready(tenant)["ok"]:
+            raise DevError("The box is not available right now, so this session cannot go on. Your work in it is kept - "
+                           "send the message again in a minute.")
         if WS.ready(tenant)["ok"]:
             try:
                 base_sha, read, ctx, out = WS.turn(tenant, t, g, cfg, _token(tenant), extra_files=extra_files,
@@ -1623,6 +1628,9 @@ def _work(tenant: str, tid: str, g: Gh, extra_files: list[str], warn: str, ask_p
                                                    minutes=float(_setting("dev_loop_minutes", 20)))
             except WS.Unavailable as e:
                 log.info("workspace engine not used for %s: %s", t.number, e)
+                if follow or resume:            # her words continue a conversation that lives in the box: without it there is nothing to continue
+                    raise DevError(f"The box is not available right now ({str(e)[:160]}), so this session cannot go on. "
+                                   "Your work in it is kept - send the message again in a minute.")
                 _progress(tid, f"{t.number}: the box could not be used ({str(e)[:120]}) - working without it")
                 base_sha = None
             except (L.Stopped, L.LoopUnavailable, GhError, DevError):
@@ -1824,7 +1832,7 @@ def revise(tenant: str, ref: str, words: str, conv: str = "", comments: Any = No
         t = _find_task(s, tenant, ref)
         if t.status not in ("pr_open", "checks_failed", "ready", "refused"):
             raise DevError(f"Yeh kaam '{STATUS.get(t.status, t.status)}' hai; naya kaam shuru kijiye.")
-        if t.rounds >= 6:
+        if t.rounds >= (ROUNDS_BOX if _ws_view(t.id).get("state") else 6):
             raise DevError("Is PR par bahut round ho gaye; naya kaam shuru kijiye.")
         s.expunge(t)
     return _round(tenant, t, f"<her_change>\n{clean}\n</her_change>\nApply her change to the work below.", warn)
@@ -1836,7 +1844,7 @@ def fix_ci(tenant: str, ref: str) -> dict[str, Any]:
         raise DevError("CI fail nahi hai: " + str(st["ci"].get("say") or ""))
     with session() as s:
         t = _find_task(s, tenant, ref)
-        if t.rounds >= 4:
+        if t.rounds >= (ROUNDS_BOX if _ws_view(t.id).get("state") else 4):
             raise DevError("CI theek karne ke 4 round ho gaye; ab aap / team dekhiye.")
         s.expunge(t)
     fails = _j(t.ci, {}).get("failures") or []
@@ -2932,14 +2940,19 @@ def _resume_cut_runs() -> None:
     for tenant, tid, job in rows:
         if not job or tid in _RUNNING or _beat_fresh(job, 180):
             continue
+        boxed = bool(_ws_view(tid).get("state"))
+        if not boxed and _beat_fresh(job, 1800):
+            continue                            # the old engine has no steady heartbeat: only a long silence means it is gone
         tries = int(job.get("tries") or 0)
         what = str(job.get("what") or "")
-        if tries >= 2 or what not in ("work", "revise", "fix_ci") or not WS.ready(tenant)["ok"]:
+        if not boxed or tries >= 2 or what not in ("work", "revise", "fix_ci") or not WS.ready(tenant)["ok"]:
             with session() as s:
                 row = s.get(DevTask, tid)
                 row.job = None
                 if row.status in ("new",):
-                    row.status, row.error = "failed", "The server restarted while Hoola was working. Send a message to go on."
+                    row.status = "failed"
+                    row.error = ("The server restarted while Hoola was working. " + ("Send a message to go on."
+                                 if boxed else "Start this again as a new session."))
                 _log(row, "run could not be continued after a restart")
             continue
         job = {**job, "tries": tries + 1}

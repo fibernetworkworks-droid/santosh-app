@@ -739,3 +739,88 @@ def test_box_settings_for_a_repo_in_a_browser(arena_server):  # noqa: F811
                      "env_vars": {"APP_ENV": "test", "CITY": "akola"}}) in calls
     assert errs == []
     ctx.close()
+
+
+# ---------------------------------------------------------------- the real box: what is asked of Docker
+def test_a_live_box_gets_the_same_walls_as_a_check(monkeypatch):
+    """Docker is not on the test machine, so this reads the commands the engine WOULD run. A live box must be built
+    from the same limits as a check - it can never be given a network, a capability, root or a writable root."""
+    from app.devlab import box
+    seen = []
+    monkeypatch.setattr(box, "docker", lambda: "/usr/bin/docker")
+    monkeypatch.setattr(box, "_run", lambda argv, timeout, cwd="": (seen.append(argv), (0, "true\n", 0.1))[1])
+    assert box.start_live(box.live_name("DT_Ab-9!"), "hoola-devlab:x", "/data/devws/dt9/work", mem="1g")["ok"]
+    rm, run = seen[0], seen[1]
+    assert rm[1:3] == ["rm", "-f"] and rm[3] == "hoola-ws-dt_ab-9"                      # the name is made safe
+    j = " ".join(run)
+    assert run[1:3] == ["run", "-d"] and "--init" in run and run[-2:] == ["sleep", "infinity"]
+    for wall in ("--network none", "--read-only", "--cap-drop ALL", "--security-opt no-new-privileges", "--user 1000:1000",
+                 "--pids-limit 512", "--memory 1g", "--memory-swap 1g", "--cpus 2", "--rm"):
+        assert wall in j, wall
+    assert "--privileged" not in j and "bridge" not in j and "docker.sock" not in j and "--env HOOLA_T" not in j
+    assert "-v /data/devws/dt9/work:/work:rw" in j and j.count(" -v ") == 1              # the checkout is the ONLY mount
+    seen.clear()
+    r = box.exec_live("hoola-ws-dt9", "pytest -q", timeout=120, env={"APP_ENV": "test"})
+    ex = seen[0]
+    assert ex[1] == "exec" and ex[ex.index("--user") + 1] == "1000:1000" and "--env" in ex and "APP_ENV=test" in ex
+    i = ex.index("hoola-ws-dt9")
+    assert ex[i + 1:i + 5] == ["timeout", "-k", "5", "120"] and ex[i + 5:i + 7] == ["bash", "-lc"]   # the limit runs INSIDE the box
+    assert ex[-1].endswith("cd /work; pytest -q") and r["rc"] == 0 and "--privileged" not in ex
+    seen.clear()
+    assert box.bg_start("hoola-ws-dt9", "bg1", "npm run dev", limit=900)["ok"]
+    bg = seen[0]
+    assert bg[1:3] == ["exec", "-d"] and "timeout -k 5 900 bash -lc 'npm run dev'" in bg[-1] and "/tmp/hoola-bg/bg1.log" in bg[-1]
+    seen.clear()
+    assert box.stop_live("hoola-ws-dt9", "/data/devws/dt9/work")
+    assert "chmod -R a+rwX /work" in " ".join(seen[1]) and seen[-1][1:3] == ["rm", "-f"]   # the server can remove the files after
+    # the switch is OFF in the code, and her number is 2
+    from app.config import Settings
+    assert Settings.model_fields["dev_workspace"].default is False and Settings.model_fields["dev_workspace_live"].default == 2
+    wf = (Path(__file__).resolve().parents[2] / ".github/workflows/vps-ops.yml").read_text()
+    assert "- ws_check" in wf and "- ws_flip" in wf and "app.devsahayak.wsp check" in wf and "DEV_WORKSPACE=true" in wf
+
+
+def test_her_answer_and_her_follow_up_are_never_lost_or_redone(ws, monkeypatch):
+    S, WS = ws, ws.WS
+    # a vague ask answered with a question the OLD way (done + '?'): in a box session her answer is still the next
+    # message of the same conversation - her words reach the model, and her first ask is not rewritten
+    script = _brain(monkeypatch, [[tu(1, "list_dir", path="")],
+                                  [tu(2, "done", explain="What do you see on the screen when it goes wrong?")]])
+    v = S.start_bg(T, "fix", "Checkout mein kuch gadbad hai")
+    t = _wait(S, v["id"], lambda t: t["status"] == "explained")
+    assert t["question"].endswith("?") and t["ws"]["state"] == "live"
+    script.turns += [[tu(3, "done", explain="Then the cause is the division by the number of items.")]]
+    S.answer(T, v["id"], "A ZeroDivisionError on an empty cart")
+    t = _wait(S, v["id"], lambda t: len(script.turns) == 0)
+    assert "ZeroDivisionError on an empty cart" in json.dumps(script.seen[-1]) and "her_message" in json.dumps(script.seen[-1])
+    assert t["text"] == "Checkout mein kuch gadbad hai" and "division" in t["explain"]
+    # the box cannot come back for her next message: nothing is redone from the top and the model is not called -
+    # she is told, and her work is kept
+    assert WS.pause(v["id"]) and S.get_task(T, v["id"])["ws"]["state"] == "paused"
+    S.BOXX.fail_fetch = True
+    script.turns += [[tu(4, "done", explain="must not be reached")]]
+    S.message(T, v["id"], "Fix it then")
+    t = _wait(S, v["id"], lambda t: t["status"] == "failed")
+    assert t["status"] == "failed" and "box is not available" in t["error"] and "kept" in t["error"] and len(script.turns) == 1
+    assert (WS._meta(v["id"]) / "history.json").exists() and S.get_task(T, v["id"])["ws"]["state"] == "paused"
+    S.BOXX.fail_fetch = False
+    S.message(T, v["id"], "Fix it then")                                   # ... and the same message works a minute later
+    t = _wait(S, v["id"], lambda t: len(script.turns) == 0)
+    assert "Fix it then" in json.dumps(script.seen[-1]) and t["ws"]["state"] == "live"
+
+
+def test_a_conversation_is_not_six_messages_long(ws, monkeypatch):
+    S = ws
+    from app.db import session
+    from app.devsahayak.models import DevTask
+    script = _brain(monkeypatch, [[tu(1, "new_file", path="a.md", content="0\n")], [tu(2, "done", explain="a", pr_title="a")]])
+    v = S.start_bg(T, "docs", "Add a.md")
+    _wait(S, v["id"], lambda t: t["status"] in ("pr_open", "ci_running"))
+    with session() as s_:
+        row = s_.get(DevTask, v["id"])
+        row.status, row.rounds = "pr_open", 9                               # well past the old engine's six
+    script.turns += [[tu(3, "read_file", path="a.md")], [tu(4, "edit_file", path="a.md", old="0\n", new="1\n")], [tu(5, "done", explain="b")]]
+    S.message(T, v["id"], "Make it 1")
+    t = _wait(S, v["id"], lambda t: t["rounds"] == 10)
+    assert t["rounds"] == 10 and t["explain"] == "b"                        # the round and what Hoola said about it ARE saved now
+    assert S.FAKE.files_at(S.FAKE.refs[t["branch"]])["a.md"] == "1\n" and S.ROUNDS_BOX == 40

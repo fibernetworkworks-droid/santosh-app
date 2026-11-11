@@ -896,3 +896,103 @@ Tests: test_v0784_sawaal_card.py (6: library-only options + skip rules + switch,
 the build carrying picks, look 1 built from her palette, source wiring, a Playwright walk at 1440 px (pick, build, POST carries the picks,
 'Your choices' look) and 390 px (fits, Back keeps her words)).
 NOT VERIFIED live: a real Opus build of look 1 from her picks on her server (tests use the fake site AI).
+
+## v0.785.0 HOOLA CODE PHASE 4 (built as 0.783; their LANGGRAPH G4 took 0.783.0 and SAWAAL CARD 0.784.0) — the workspace engine: a real checkout in a locked box, commands, a conversation (owner: "GO PHASE 4 WITH 2 LIVE SESSIONS")
+
+Phase 4 of `docs/HOOLA_CODE_WEB_PLAN.md`, the one that changes HOW Hoola codes. Until now a session was a task: the
+repo was read through the GitHub API, edits lived in memory, and the only thing Hoola could run was her one declared
+check on a throwaway clone. Now a session gets a REAL CHECKOUT that stays for its life, in one locked box, and the
+session is a conversation. It ships behind a switch (`dev_workspace`, default OFF, pinned by a test); the old engine is
+the fallback whenever the box cannot open.
+
+**What a session can do with the engine on**
+- **Run commands** (`run_command`): any one-line shell command in the repo root, inside the session's box. Real output
+  and exit code come back (failure keeps its end; the whole output is in a log `grep_log` can search). `background=true`
+  starts something that keeps running (limit 15 min) and `command_output` reads it. Her declared check is still
+  `run_check`, now run in the same live box.
+- **Keep its files between messages.** Edits are written to the checkout on disk. A file a command changes or creates
+  (a formatter, a code generator) is part of the change, measured against a manifest of the base commit; the repo's own
+  root `.gitignore` and the usual junk folders are left out.
+- **Hold a conversation.** Her next message continues the same model history (`data/devws/<task>/meta/history.json`,
+  saved after every step). ONE door for it: `POST /api/devsahayak/tasks/{id}/message` (`service.message`) - a note while
+  Hoola works, a revision on an open PR or a prepared change, or simply the next message anywhere else. A session that
+  only explained is no longer "finished". Old tool output is cleared from a long history past 160k characters (newest 14
+  results kept whole; what she and Hoola said is never cut).
+- **Keep its own list** (`todo`) - shown in the Progress card in place of the guessed stages.
+- **Ask her ONE question with choices** (`ask_her`) in the middle of work: the turn ends, the half-done work stays in
+  the box, her tap on a choice (or her own words) continues the same conversation.
+- **Be rewound.** A snapshot (changed files + the conversation) is kept before each message of hers. `POST
+  /tasks/{id}/rewind {n}` puts the files and the conversation back to before message n and returns her words to the
+  box. A commit that already reached her pull request cannot be rewound here, and the page says so.
+
+**Her number: two live sessions.** `dev_workspace_live = 2` for the whole server. A third session pauses the idle one
+used longest ago: its edits are saved (`meta/saved.json`), its box and files are removed, and its next message
+rebuilds both (fresh clone at the same commit + her saved edits + the conversation). When both are busy the newcomer
+waits (up to 20 min) and its step says why. A live session nobody used for 30 minutes is paused by the worker; a box
+that belongs to no live session is removed. Deleting a session, or merging its PR, removes its box and every file.
+
+**The walls (unchanged, and a few new ones)**
+- Her GitHub token never enters the box: the clone is made outside it at an exact commit, `.git` is stripped, and every
+  commit still goes through the GitHub API from the server, on a `hoola/*` branch only. The checks on a change (secrets,
+  paths, limits, workflows), her PR tap and her merge tap are the same code as before.
+- The live box is built from the same `_limits()` as a check, so it can never be given more: no network, no
+  capabilities, non-root, read-only root, memory / CPU / pids caps. The time limit is per command and runs INSIDE the
+  box (`timeout`), so the process itself is killed.
+- Code in the box can create a link that points anywhere on the server: the engine never follows one (not for reading,
+  editing, listing, the Files pane, a pause or a snapshot).
+- A file that holds a key is not shown and not part of a change; a line of command output that looks like a key is
+  hidden before the model or her terminal sees it; a command with a key in its own text is refused.
+- Every command runs with `umask 0`, and the checkout is opened up for the box user at clone time, so the server can
+  still edit and remove what the box wrote whatever user each of them runs as.
+- Per-repo box settings (`PATCH /api/devsahayak/repos/{owner}/{name}`): her setup command, her test command, plain
+  environment variables. A name or value that looks like a secret is refused by name.
+
+**Nothing lost, nothing redone.** In a box session her answer to a question is always the next message of the same
+conversation (the old "add it to her ask and start again from the top" is not used), and when the box cannot come back
+for a follow-up message the first ask is NOT done again: the model is not called, she is told the box is not available
+and that her work is kept, and the same message works when the box is back. A PR in a box session takes 40 rounds
+(`ROUNDS_BOX`), not the old engine's 6 / 4 - a conversation is not six messages long.
+
+**Durable resume.** A background run now writes what it is (`DevTask.job` = {what, beat, tries}) with a heartbeat. The
+worker's minute (`service._resume_cut_runs`) finds a run a server restart cut - job still on the row, nobody running
+it, heartbeat older than 3 minutes - and continues it from the last step it saved, twice at most; after that it is
+marked failed with words she can act on. A box turn beats every 30 seconds on its own small thread, because one long
+command says nothing for minutes. A run of the OLD engine is never continued (it has nothing saved to continue from):
+after 30 silent minutes it is marked failed with "start this again as a new session" instead of looking busy for ever.
+
+**The page** (`code.js`, same mount-once rule): the pane has three tabs - Changes, **Files** (the box's own copy,
+folder by folder, read only, changed / new marked) and **Terminal** (output only: command, why, exit, time, output with
+its end first). A **Box** card in the rail (Live / Paused / Working, "1 of 2", her test command). Hoola's list in
+Progress. Her later messages are their own bubbles with "Rewind to before this", and the work between them folds.
+Question choices are buttons. Settings: "How this repo runs in the box" per repo and a "Session boxes" card.
+
+**Files.** NEW `server/app/devsahayak/wsp.py` (the engine: `DockerBox` behind one object, `DiskWorkspace`, cap / pause /
+close, snapshots, `turn`, `tick`, `selftest`); `devlab/box.py` (+ `start_live`, `exec_live`, `bg_*`, `stop_live`,
+`live_boxes`); `devsahayak/loop.py` (`first_message` shared by both engines); `service.py` (`_work` / `_round` take the
+box turn first, `message`, `rewind`, `terminal`, `box_files`, `box_file`, `save_repo`, `_resume_cut_runs`, the job
+heartbeat); `models.py` (table `devsahayak_workspaces`, `DevTask.job`, `DevRepo.setup_cmd / test_cmd / env_vars`);
+`api.py` (6 routes); `config.py` (9 `dev_workspace*` settings); `code.js`, `v2.css`; vps-ops `ws_check` + `ws_flip`.
+
+**Found and fixed on the way:** on an open PR the old revise path let go of the row before writing it, so the round
+count, the security notes and Hoola's explanation of a revision were never saved (`_round`: flush before expunge) - the
+"6 rounds" limit never counted.
+
+**Tests** `test_v0783_hoola_code_workspace.py` (20): a real checkout + commands + PR, the conversation continues, one
+question with choices, two live / third pauses / it comes back / all busy waits, idle pause + stray box, rewind,
+no rewind past a pushed commit, a turn cut by a restart is continued, links and keys, repo box settings, switch off =
+old engine untouched, box cannot open = old engine takes the FIRST turn (a follow-up is never redone), her answer
+reaches the model, 40 rounds, the Docker commands a live box is started / used with, history trimming, routes, and three browser walks
+(terminal / files / list / rewind; question choices + the conversation box; repo box settings). Docker is not on the
+test machine, so a local folder stands in for the box there.
+
+**NOT VERIFIED, said plainly.** No real Docker box has run this engine: the live-box functions in `box.py` are written
+against Docker's documented flags and have never executed. `ws_check` on her VPS is what proves them (start, files
+kept, no internet, read-only root, not root, time limit, background command, cleanup). No real model and no real
+GitHub repo has been through a box turn. The coding cards (`python -m app.quality code`, hard, mobile) have NOT been
+re-run with the engine on - the plan says Phase 4 must not lower one, so they must be run before the switch stays on.
+**Known limits of this version:** a deleted or renamed file is not sent in a change (the model and she are told); a
+live checkout has no hard disk quota beyond the 600 MB clone limit; a command already running cannot be stopped before
+its own time limit; pictures on follow-up messages are not built; the phone app has no box screens.
+
+**To turn it on:** vps-ops **deploy**, then **ws_check** (every line must say ok), then **ws_flip** (sets
+DEV_WORKSPACE=true and restarts). No new pip package. One new table and five nullable columns create themselves.

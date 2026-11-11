@@ -2883,3 +2883,8 @@ Task ID: v0.784.0 SAWAAL CARD (built as 0.783; their LANGGRAPH G4 took 0.783.0; 
 Task: owner "GO L3" - design question cards with visual options before a Studio Build, skipped when her words name the design.
 Work Log: site/designq.py + 2 routes; S.new reads designq.PENDING; look 1 'Your choices' + her hero; Studio question card (webstudio.js/css); switch studio_design_questions; 6 new tests + older Studio suites.
 Stage Summary: pushed; server deploy only. Next: L4 CHHOTA BADLAAV (line edits + tiered checks) on her GO.
+
+Task ID: v0.785.0 HOOLA CODE PHASE 4 (built as 0.783; re-versioned on merge: LANGGRAPH G4 took 0.783.0, SAWAAL CARD 0.784.0)
+Ask: GO PHASE 4 WITH 2 LIVE SESSIONS (the workspace engine).
+Built: devsahayak/wsp.py (real checkout in one locked box per session, run_command / background / todo / ask_her, conversation history, 2 live + pause / resume, snapshots + rewind, restart pickup), devlab/box.py live-box functions, message / rewind / terminal / files routes, per-repo box settings, page tabs Files + Terminal + Box card; fixed revise-on-open-PR not saving its round; 20 tests incl. 3 browser walks.
+Deploy: vps-ops deploy, then ws_check (every line ok), then ws_flip (DEV_WORKSPACE=true). No new pip; one new table + five nullable columns self-heal. NOT verified on a real Docker box or model; coding cards not re-run with the engine on.

@@ -1188,6 +1188,16 @@ def turn(tenant: str, t: Any, g: Any, cfg: Any, token: str, *, extra_files: list
     L.STATS["runs"] += 1
     L.pick(t)
     messages: list[dict] = []
+    alive = threading.Event()
+
+    def _heart() -> None:           # a steady heartbeat while the turn lives (a long command says nothing for minutes)
+        while not alive.wait(30):
+            if beat:
+                try:
+                    beat()
+                except Exception:  # noqa: BLE001
+                    pass
+    threading.Thread(target=_heart, name=f"dev-beat-{tid}", daemon=True).start()
     try:
         try:
             dw, ctx = _open(tid, tenant, t, g, token, emit, bool(getattr(cfg, "allow_workflows", False)))
@@ -1342,6 +1352,7 @@ def turn(tenant: str, t: Any, g: Any, cfg: Any, token: str, *, extra_files: list
         _save_json(_meta(tid) / "seen.json", {"read": sorted(dw.read), "rules": list(dict.fromkeys(dw.rules_shown))})
         return dw.base, read, {"found": found, "context": ""}, out
     finally:
+        alive.set()
         if messages:
             try:
                 _save_history(tid, messages)

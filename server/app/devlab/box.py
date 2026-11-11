@@ -302,7 +302,8 @@ def exec_live(name: str, command: str, timeout: int = 300, env: dict[str, str] |
     d = docker()
     if not d:
         return {"rc": 127, "out": "docker is not installed", "secs": 0.0, "timed_out": False}
-    shell = f'mkdir -p "$HOME" 2>/dev/null || true; cd {WORK}; {command}'
+    # umask 0: what a command creates stays writable for the server too, whatever user the server runs as
+    shell = f'mkdir -p "$HOME" 2>/dev/null || true; umask 0000; cd {WORK}; {command}'
     args = [d, "exec", "--user", "1000:1000", "--workdir", WORK] + _env_flags(env)
     args += [name, "timeout", "-k", "5", str(int(timeout)), "bash", "-lc", shell]
     rc, txt, secs = _run(args, int(timeout) + 30)
@@ -317,7 +318,7 @@ def bg_start(name: str, slot: str, command: str, limit: int = 900, env: dict[str
     d = docker()
     if not d:
         return {"ok": False, "why": "docker is not installed"}
-    inner = (f"mkdir -p {BG_DIR}; cd {WORK}; rm -f {BG_DIR}/{slot}.rc; "
+    inner = (f"mkdir -p {BG_DIR}; umask 0000; cd {WORK}; rm -f {BG_DIR}/{slot}.rc; "
              f"(timeout -k 5 {int(limit)} bash -lc {shlex.quote(command)} > {BG_DIR}/{slot}.log 2>&1 & "
              f"echo $! > {BG_DIR}/{slot}.pid; wait $!; echo $? > {BG_DIR}/{slot}.rc)")
     args = [d, "exec", "-d", "--user", "1000:1000", "--workdir", WORK] + _env_flags(env) + [name, "bash", "-lc", inner]
