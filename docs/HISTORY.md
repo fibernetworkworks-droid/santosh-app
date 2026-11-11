@@ -861,3 +861,38 @@ Tests: test_v0782_teen_mode.py (7: the mode line + guard, _run_tool refusing a c
 routes hers-only, the turn hint, source wiring, a Playwright walk: Plan -> card v1 -> Open -> Edit -> v2 -> Approve -> one Build message with
 the approved text; Chat -> Start building -> Build; Alt+P; instructions saved). Older Studio + agent suites green (131).
 NOT VERIFIED live: a real model's Plan / Chat answers on her server (the walk uses scripted replies).
+
+## v0.783.0 LANGGRAPH G4 — a long job continues on one thread (11 Nov 2026; owner: "GO G4")
+
+Phase G4 of `docs/LANGGRAPH_TURN_PLAN.md` (bug classes 1 + 5), only when `chat_graph` is on (default OFF; old goal rounds unchanged).
+- One job thread `"<conv>:job-<goal id>"`; the graph gains a `carry` node compiled with interrupt_before. A turn of her job (her words / a round / a routine's job - never a wake or a call's quick brain turn) that reaches finish with the goal still open routes to carry and stops there, checkpointed; `_park` copies that checkpoint onto the job thread (next node kept, the job's earlier facts + counters merged, ledger rows moved - NEW `toolledger.move`), the source thread deleted.
+- The goal round (`goal.maybe_continue` -> `_schedule` -> `_continuation`) stays the scheduler - her authority (v0.222), rounds / minutes limits and the "Shall I carry on?" ask, waits on her / on a job, Stop - but sets `turngraph.JOB_RUN` so `run_steps` resumes the job thread with ainvoke(None): at carry = a new segment (fresh step budget, goal breaker, max tokens, G3 nudge budget; facts carried; messages = the thread's own + rows saved since, so memory is not re-read), elsewhere = the cut segment continues from its last finished node. A stale job (goal gone) does nothing and the thread is deleted.
+- Restart between segments: `recover_tick` schedules the round, it runs the next segment (no RESUME_NOTE, nothing redone). Restart mid-tool: the cut step resumes, G1 ledger rules (done reused, interrupted read re-run, interrupted send ambiguous). Deadline cut: `santosh` timeout branch calls `park_cut`, she sees the round-timeout text, the next round continues from the cut step. `resume_tick` / `recover_tick` skip chats G2 shows busy. Graph-only fix in `goal._schedule`: a round's own pending entry no longer blocks scheduling the next (old path untouched).
+- Cleanup: END deletes its thread and the job threads of this chat's finished / failed / stopped goals; a blocked goal keeps its thread for her yes.
+- TESTS: NEW `test_g4_turngraph.py` 9; g0-g3, v0186 long goal, v0226 / v0228 long jobs, v0443 done verified, v0222 goal hers, harness2/3, routines, v0657, v0649, v0727 same off and on.
+- NOT COVERED: facts from her in-between turn reach the job only if that turn ends at a boundary; that turn can replace a cut job checkpoint (the cut tool is then not resumed); a 10-min goal recovery before the G1 sweep runs fresh from history; no age-based cleanup of a forever-blocked job; a narrow race on saving the round line; rounds still exist as the scheduler (only the fresh turn per round is gone); nothing verified live. Next: G5 single delivery node.
+
+
+## v0.784.0 SAWAAL CARD - design questions she can see before a Studio Build (L3 of docs/LOVABLE_STUDIO_PLAN.md, owner: "GO L3")
+Lovable asks a few design questions before it builds; Hoola Studio built straight from one line. Now a Build from the Studio home
+first shows "A few quick choices" (up to four, the first option of each already picked):
+- THE FEEL: four styles (her field's three from `library.understand` + the next different one), each card drawn in that style's own
+  colours, corner and heading font.
+- THE COLOURS: four real palettes as swatches (two for the first feel, one each for the next two; `library.palettes_for`).
+- THE TYPE: four font pairs written in their own fonts - the bundled woff2 files served by GET /api/site-design/font/{fn} (strict file
+  name pattern, nothing from outside).
+- THE TOP OF THE HOME PAGE: four hero layouts drawn as wireframes (split / full / grid / big type / centred, read from each hero's
+  own description), different shapes first.
+Every option is an id in `site/taxonomy.py`, so whatever she picks the builder can really make (GET /api/site-design/questions).
+SKIPPED when her words already decide the design: a colour (English or Hindi words), a hex code, a font name, a style name, or
+screenshot / Figma / old site / brand colours - and for a template (it has its own design). Skip = Hoola picks; Back = her words kept.
+HER PICKS: POST /api/sites carries `design`; `designq.ref_from` keeps only library ids and makes a v0.567-shaped `design_ref`
+(source 'answers', palette colours as overrides, the font pair, the style's corner, the hero); the route sets `designq.PENDING` and
+`S.new` puts it on the row BEFORE any job starts (no race with the looks job). `_make_looks` then builds look 1 from it ("Your choices",
+her front layout) while looks 2-3 stay Hoola's alternatives. Switch `studio_design_questions` (default on; conftest pins it off so the
+older Studio walks keep going straight to the workspace).
+Pins moved on purpose: test_v0707 source pin now reads `await startFromAsk(t, design)` (the order it checks is unchanged).
+Tests: test_v0784_sawaal_card.py (6: library-only options + skip rules + switch, picks -> design_ref, routes incl. font + traversal 404 +
+the build carrying picks, look 1 built from her palette, source wiring, a Playwright walk at 1440 px (pick, build, POST carries the picks,
+'Your choices' look) and 390 px (fits, Back keeps her words)).
+NOT VERIFIED live: a real Opus build of look 1 from her picks on her server (tests use the fake site AI).
