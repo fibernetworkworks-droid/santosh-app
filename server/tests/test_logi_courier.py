@@ -119,7 +119,7 @@ def test_rules():
     assert R.choose(opts, r, cod=True, kg=1)["best"]["courier"] == "Delhivery Surface"           # her COD rule
     assert R.choose(opts, {"prefer": "fastest"}, cod=False, kg=1)["best"]["courier"] == "Delhivery Surface"
     assert R.choose([{"courier": "X", "rate": None}], {}, False, 1)["best"]["rate"] is None      # never invented
-    assert R.goods_check("2 power bank aur patakhe")["prohibited"] == ["aag pakadne wali cheez"]
+    assert R.goods_check("2 power bank aur patakhe")["prohibited"] == ["flammable items"]
     assert R.goods_check("power bank 10000mAh")["restricted"]
     assert R.mask_phone("9876543210") == "98XXXXXX10" and R.pincode_ok("411001") and not R.pincode_ok("011001")
     h = R.remit_header(["Order ID", "AWB No", "COD Amount", "UTR", "Remittance Date"])

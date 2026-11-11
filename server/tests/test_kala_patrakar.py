@@ -86,7 +86,7 @@ def test_rules_red_flags():
     cl = R.extract_claims('Kul kharch 4.5 crore hua. Neta ne rishwat li. "Hum sach bolenge yahi hai" kaha.')
     assert {c["kind"] for c in cl} == {"quote", "stat", "allegation"}
     assert R.style_fix("Woh chor hai", [{"from": "chor", "to": "aaropi"}]) == ("Woh aaropi hai", ["chor -> aaropi"])
-    assert R.clean("otp 123456 aur 4111 1111 1111 1111") == "otp [hataya] aur [hataya]"
+    assert R.clean("otp 123456 aur 4111 1111 1111 1111") == "otp [removed] aur [removed]"
 
 
 def test_sources_sealed_and_reveal_only_by_tap(pk):
