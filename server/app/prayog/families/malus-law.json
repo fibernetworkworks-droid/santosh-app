@@ -1,0 +1,90 @@
+{
+ "base": "malus-law",
+ "rig": "w7-optics-bench",
+ "chapter": "Polarisation",
+ "variants": [
+  {
+   "key": "hene",
+   "title": "Malus's law: polarisation direction of a He-Ne laser",
+   "sample": "Polarised He-Ne laser",
+   "unknown": "the direction of polarisation",
+   "params": {
+    "th0": 0.6108652381980153,
+    "ext": 0.002
+   },
+   "source": {
+    "title": "Polarised He-Ne laser tubes are specified at 500 : 1 polarisation ratio (typical data sheet)",
+    "note": "from memory - verify"
+   }
+  },
+  {
+   "key": "lamp-polariser",
+   "title": "Malus's law: lamp with a polariser",
+   "sample": "Filament lamp with a sheet polariser",
+   "unknown": "the direction of polarisation set by the polariser",
+   "params": {
+    "th0": 1.2217304763960306,
+    "ext": 0.0005
+   },
+   "source": {
+    "title": "Sheet polariser pair: extinction ratio of order 2000 : 1 (generic value)"
+   }
+  },
+  {
+   "key": "laser-diode",
+   "title": "Malus's law: polarisation direction of a laser diode",
+   "sample": "Laser diode module",
+   "unknown": "the direction of polarisation",
+   "params": {
+    "th0": 1.5707963267948966,
+    "ext": 0.01
+   },
+   "source": {
+    "title": "Laser diodes are polarised along the junction, about 100 : 1 (generic value)"
+   }
+  },
+  {
+   "key": "verify",
+   "title": "Malus's law: the cosine-squared law verified",
+   "sample": "Polarised He-Ne laser",
+   "unknown": "the power of the cosine in Malus's law",
+   "params": {
+    "mode": 1,
+    "th0": 0.6108652381980153,
+    "ext": 0.002
+   },
+   "source": {
+    "title": "Malus's law, I = I0 cos^2(theta) (Born and Wolf, Principles of Optics)"
+   }
+  },
+  {
+   "key": "extinction-hene",
+   "title": "Malus's law: extinction ratio of a He-Ne laser",
+   "sample": "Polarised He-Ne laser",
+   "unknown": "the extinction ratio",
+   "params": {
+    "mode": 2,
+    "th0": 0.6108652381980153,
+    "ext": 0.002
+   },
+   "source": {
+    "title": "Polarised He-Ne laser tubes are specified at 500 : 1 polarisation ratio (typical data sheet)",
+    "note": "from memory - verify"
+   }
+  },
+  {
+   "key": "extinction-diode",
+   "title": "Malus's law: extinction ratio of a laser diode",
+   "sample": "Laser diode module",
+   "unknown": "the extinction ratio",
+   "params": {
+    "mode": 2,
+    "th0": 1.5707963267948966,
+    "ext": 0.01
+   },
+   "source": {
+    "title": "Laser diodes are polarised along the junction, about 100 : 1 (generic value)"
+   }
+  }
+ ]
+}

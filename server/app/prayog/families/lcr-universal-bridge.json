@@ -1,0 +1,51 @@
+{
+ "base": "lcr-universal-bridge",
+ "rig": "em-ug-instruments",
+ "chapter": "AC circuits and bridges",
+ "variants": [
+  {
+   "key": "resistance",
+   "title": "Resistance with a universal LCR bridge",
+   "sample": "Unknown resistor, unmarked",
+   "method": "Wheatstone (R) function",
+   "unknown": "resistance",
+   "aim": "Set a universal bridge to its R function, balance it with the main dial on three ranges, and read the resistance of an unmarked resistor.",
+   "params": {
+    "fn": 0.0
+   },
+   "source": {
+    "title": "University of Delhi B.Sc. (Hons.) Physics practical lists (LOCF 2019 / UGCF 2022)"
+   }
+  },
+  {
+   "key": "capacitance",
+   "title": "Capacitance with a universal LCR bridge",
+   "sample": "Unknown capacitor, unmarked",
+   "method": "Series-capacitance comparison (C) function",
+   "unknown": "capacitance",
+   "aim": "Set a universal bridge to its C function, balance it with the main dial and the loss dial on three ranges, and read the capacitance of an unmarked capacitor.",
+   "params": {
+    "fn": 2.0
+   },
+   "source": {
+    "title": "University of Delhi B.Sc. (Hons.) Physics practical lists (LOCF 2019 / UGCF 2022)"
+   }
+  },
+  {
+   "key": "inductance-250mh",
+   "title": "Inductance of a 250 mH-class coil with a universal LCR bridge",
+   "sample": "Unknown coil, generic air-cored winding",
+   "method": "Maxwell-Wien (L) function",
+   "unknown": "inductance",
+   "params": {
+    "fn": 1.0,
+    "Lx": 0.25,
+    "rx": 120.0
+   },
+   "source": {
+    "title": "Illustrative laboratory values",
+    "note": "Chosen to be typical of a teaching laboratory; not a property of a named material."
+   }
+  }
+ ]
+}

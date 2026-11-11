@@ -1233,3 +1233,20 @@ so the env variables and the scrubbed output have not been through a real `docke
 round. **NOT BUILT (this session's withdrawn engine had them, unproved):** background commands, a Terminal pane,
 pausing an idle working copy to free disk before the 14-day sweep. Deploy: vps-ops deploy, server-only, no new pip;
 four nullable columns create themselves.
+
+
+## v0.794.0 PRAYOGSHALA WAVE 7 (owner: "Coverage 44.9% ... NOW LETS WORK ON PENDING LAB WORK END TO END")
+
+94 physics set-ups built and walked in a real browser within tolerance, by four build agents in their own pack trios
+(kernels + JS twin + labs + rigs): school_w7 (32: Class 6-12 motion, measuring, pressure / floatation, heat, sound,
+electricity), ug_mech_w7 (22: pendulums, springs, coupled oscillators, Searle, Maxwell needle, optical lever, trolley,
+2-D collision (SIMULATED DATA), harmonics, Callendar-Barnes, Angstrom, cooling, Stefan, capillary vs temperature),
+ug_optics_w7 (20: TIR, Wollaston, nodal slide, biprism, Michelson x2, Fabry-Perot, FTS, lycopodium, resolving power,
+Malus, Babinet, Brewster, five fibre set-ups, quartz expansion, laser characteristics), ug_em_w7 (20: ballistic
+galvanometer family, solenoid, Carey Foster, potentiometer, Anderson, universal bridge, Q-meter, RC / RL, transformer,
+motor, generator, falling magnet, galvanometer conversion, CC / CV source, magnetometer, B-H curve). Coverage
+362 -> 456 of 807 (school 6-10 78.4 %, 11-12 91.5 %, B.Sc 65.4 %, M.Sc 37.6 %, PhD 28.6 %).
+Engine: `tools/prayog_claim.py` takes "<level>:<id>" and warns on ambiguous bare ids (four optics claims would have
+overwritten M.Sc rows). Tests: test_v0418_prayog.py was red on main (22-lab pins; twin loaded kernels.js only) - it now
+counts every pack and the JS twin loads every pack, so pack kernels and calcs are compared numerically (39 / 39 green).
+Skipped rows and every constant written from memory: docs/PRAYOG_PHYSICS_LAKH_PLAN.md, "Wave 7".

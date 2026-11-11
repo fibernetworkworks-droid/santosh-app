@@ -1,0 +1,25 @@
+{
+ "base": "solid-state-laser-characteristics",
+ "rig": "w7-optics-bench",
+ "chapter": "Lasers, fibre optics and applied optics",
+ "variants": [
+  {
+   "key": "threshold",
+   "title": "Laser diode: threshold current",
+   "sample": "Laser diode under test (generic 650 nm diode, values illustrative)",
+   "unknown": "the threshold current",
+   "params": {
+    "mode": 0
+   }
+  },
+  {
+   "key": "slope",
+   "title": "Laser diode: slope efficiency",
+   "sample": "Laser diode under test (generic 650 nm diode, values illustrative)",
+   "unknown": "the slope efficiency",
+   "params": {
+    "mode": 1
+   }
+  }
+ ]
+}

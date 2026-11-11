@@ -1,0 +1,33 @@
+{
+ "base": "wollaston-air-film",
+ "rig": "w7-optics-bench",
+ "chapter": "Geometrical optics and the spectrometer",
+ "variants": [
+  {
+   "key": "water",
+   "title": "Wollaston's air film: refractive index of water",
+   "sample": "Distilled water in the glass cell",
+   "unknown": "the refractive index of water",
+   "params": {
+    "n": 1.333
+   },
+   "source": {
+    "title": "CRC Handbook of Chemistry and Physics: water, nD = 1.3330 at 20 C"
+   }
+  },
+  {
+   "key": "kerosene",
+   "title": "Wollaston's air film: refractive index of kerosene",
+   "sample": "Kerosene in the glass cell",
+   "unknown": "the refractive index of kerosene",
+   "params": {
+    "n": 1.44
+   },
+   "note": "Kerosene is a mixture; its index varies with the grade between about 1.43 and 1.45.",
+   "source": {
+    "title": "Kerosene, nD about 1.44 at 20 C (typical handbook value)",
+    "note": "from memory - verify"
+   }
+  }
+ ]
+}

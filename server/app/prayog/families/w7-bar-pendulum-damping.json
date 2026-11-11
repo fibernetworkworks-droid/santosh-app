@@ -1,0 +1,35 @@
+{
+ "base": "w7-bar-pendulum-damping",
+ "rig": "w7-oscillation-bench",
+ "chapter": "Oscillations, waves and acoustics",
+ "variants": [
+  {
+   "key": "small-vane",
+   "title": "Damped bar pendulum: small damper vane",
+   "sample": "Generic small aluminium damper vane, 5 cm × 5 cm",
+   "method": "Amplitude read every 10 oscillations",
+   "unknown": "the damping coefficient and the quality factor",
+   "params": {
+    "gam": 0.01
+   },
+   "note": "A small vane takes little energy each swing: the amplitude halves in about 70 s.",
+   "source": {
+    "title": "Generic apparatus: the value is a setting of this bench, not a property of a named material"
+   }
+  },
+  {
+   "key": "large-vane",
+   "title": "Damped bar pendulum: large damper vane",
+   "sample": "Generic large aluminium damper vane, 9 cm × 9 cm",
+   "method": "Amplitude read every 10 oscillations",
+   "unknown": "the damping coefficient and the quality factor",
+   "params": {
+    "gam": 0.028
+   },
+   "note": "About three times the area: the damping coefficient is about three times larger and Q about three times smaller, while the period hardly changes.",
+   "source": {
+    "title": "Generic apparatus: the value is a setting of this bench, not a property of a named material"
+   }
+  }
+ ]
+}

@@ -1,0 +1,50 @@
+{
+ "base": "w7-harmonics-cro",
+ "rig": "w7-harmonics-bench",
+ "chapter": "Oscillations, waves and acoustics",
+ "variants": [
+  {
+   "key": "square",
+   "title": "Harmonics of a square wave on a CRO",
+   "sample": "Square wave, 1 kHz, ±2 V (generic function generator)",
+   "method": "Tunable band-pass filter and CRO",
+   "unknown": "the relative amplitudes of the harmonics",
+   "params": {
+    "shape": 0
+   },
+   "note": "Only odd harmonics, with amplitudes 4A/(nπ): they fall as 1/n.",
+   "source": {
+    "title": "Fourier series of standard waveforms (Arfken and Weber, Mathematical Methods for Physicists); generic bench signal, 1 kHz"
+   }
+  },
+  {
+   "key": "triangle",
+   "title": "Harmonics of a triangular wave on a CRO",
+   "sample": "Triangular wave, 1 kHz, ±2 V (generic function generator)",
+   "method": "Tunable band-pass filter and CRO",
+   "unknown": "the relative amplitudes of the harmonics",
+   "params": {
+    "shape": 1
+   },
+   "note": "Only odd harmonics, with amplitudes 8A/(n²π²): they fall as 1/n², so the wave is nearly a sine.",
+   "source": {
+    "title": "Fourier series of standard waveforms (Arfken and Weber, Mathematical Methods for Physicists); generic bench signal, 1 kHz"
+   }
+  },
+  {
+   "key": "clipped-sine",
+   "title": "Harmonics of a clipped sine wave on a CRO",
+   "sample": "Sine wave of ±2 V clipped flat at ±1 V, 1 kHz (generic bench signal)",
+   "method": "Tunable band-pass filter and CRO",
+   "unknown": "the relative amplitudes of the harmonics",
+   "params": {
+    "shape": 2,
+    "clip": 0.5
+   },
+   "note": "Clipping a sine at half its height adds odd harmonics: the third is about 23 % of the fundamental.",
+   "source": {
+    "title": "Fourier series of standard waveforms (Arfken and Weber, Mathematical Methods for Physicists); generic bench signal, 1 kHz"
+   }
+  }
+ ]
+}

@@ -1,0 +1,35 @@
+{
+ "base": "w7-springs-series-parallel",
+ "rig": "w7-oscillation-bench",
+ "chapter": "Oscillations, waves and acoustics",
+ "variants": [
+  {
+   "key": "series",
+   "title": "Two springs in series: effective spring constant",
+   "sample": "Two generic light steel springs, 30 N/m and 45 N/m, end to end",
+   "method": "Period and extension against load",
+   "unknown": "the effective spring constant",
+   "params": {
+    "mode": 1
+   },
+   "note": "In series the extensions add: 1/k = 1/k1 + 1/k2.",
+   "source": {
+    "title": "Generic apparatus: the value is a setting of this bench, not a property of a named material"
+   }
+  },
+  {
+   "key": "parallel",
+   "title": "Two springs in parallel: effective spring constant",
+   "sample": "Two generic light steel springs, 30 N/m and 45 N/m, side by side",
+   "method": "Period and extension against load",
+   "unknown": "the effective spring constant",
+   "params": {
+    "mode": 2
+   },
+   "note": "In parallel the forces add: k = k1 + k2.",
+   "source": {
+    "title": "Generic apparatus: the value is a setting of this bench, not a property of a named material"
+   }
+  }
+ ]
+}
