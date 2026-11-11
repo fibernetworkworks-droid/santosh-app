@@ -47,7 +47,7 @@ def test_tips_provenance_in_module():
 
 def test_tips_house_register():
     # Hinglish house flavour, not upstream English
-    assert "kaam" in K.TIPS.lower() and "ho gaya" in K.TIPS.lower()
+    assert "kaam" in K.TIPS.lower() and "'done' without a proof" in K.TIPS.lower()
     assert "KAAM MANCH (v0.688" in K.TIPS
 
 
