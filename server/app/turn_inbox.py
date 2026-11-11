@@ -186,6 +186,18 @@ async def run_owned(inbox_id: str | None, conversation_id: str, text: str, tenan
     """The background task: the normal turn, wrapped in the inbox states. Used by the endpoint (fresh) and by
     the sweep's re-run (save_user decided there)."""
     from .agent import run_turn
+    _g2 = bool(getattr(get_settings(), "chat_graph", False))
+    if _g2 and inbox_id:
+        from .agent import turnrun
+        if turnrun.owns(inbox_id):
+            # G2 one run per chat: this row already has a turn running / queued in this process - never twice (its
+            # status belongs to that turn, so it is not touched here)
+            STATS["duplicate_run"] = STATS.get("duplicate_run", 0) + 1
+            log.warning("turn inbox: %s is already running here - the second start is dropped", inbox_id)
+            return ""
+    if _g2 and inbox_id:
+        from .agent import turnrun
+        turnrun.claim_inbox(inbox_id)
     mark(inbox_id, "running")
     tok = CURRENT.set(inbox_id)
     gtok = GRAPH_TURN.set((inbox_id, conversation_id) if inbox_id else None)
@@ -197,6 +209,13 @@ async def run_owned(inbox_id: str | None, conversation_id: str, text: str, tenan
         if actor:
             kw["actor"] = actor
         out = await run_turn(conversation_id, text, tenant, voice, **kw)
+        if _g2 and inbox_id:
+            from .agent import turnrun
+            if turnrun.was_stopped(inbox_id):
+                # G2 Stop as state: she stopped this run - it stays 'stopped' (the sweep never re-runs or resumes it)
+                mark(inbox_id, "stopped")
+                STATS["stopped"] = STATS.get("stopped", 0) + 1
+                return out
         mark(inbox_id, "done")
         STATS["done"] += 1
         return out
@@ -206,6 +225,9 @@ async def run_owned(inbox_id: str | None, conversation_id: str, text: str, tenan
         mark(inbox_id, "failed")
         raise
     finally:
+        if _g2 and inbox_id:
+            from .agent import turnrun
+            turnrun.release_inbox(inbox_id)
         try:
             CURRENT.reset(tok)
         except ValueError:
@@ -309,6 +331,13 @@ async def sweep() -> int:
             conv = r["conversation_id"]
             if not conv or santosh.turn_running(conv):
                 continue                       # a live turn (maybe queued behind her previous one) owns this chat
+            if getattr(st, "chat_graph", False):
+                from .agent import turnrun
+                if turnrun.busy(conv) or turnrun.owns(r["id"]):
+                    # G2: a run of this chat is live or QUEUED here (its ticket is held while it waits for the lock,
+                    # and the lock is briefly free between two runs) - the row belongs to that run, never a second
+                    STATS["skipped_busy"] = STATS.get("skipped_busy", 0) + 1
+                    continue
             context = r["context"]
             graph_resume = False
             began = r["started_at"] or _her_row_at(conv, r["created_at"], r["text"])

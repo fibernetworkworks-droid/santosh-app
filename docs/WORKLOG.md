@@ -2801,3 +2801,8 @@ Ask: GO G1 (resume after restart + tool ledger).
 Built: turngraph resume, agent/toolledger.py, turn_inbox graph_resume sweep; chat_graph still off; 9 tests.
 Deploy: vps-ops deploy (langgraph pip install from v0.761 still needed if not done).
 
+Task ID: v0.770.0 LANGGRAPH G2
+Ask: GO G2 (one run per chat + Stop as state).
+Built: agent/turnrun.py tickets + stop flag/event, turngraph stop checks, turn_inbox no double start; chat_graph still off; 14 tests.
+Deploy: vps-ops deploy (langgraph pip install from v0.761 if not done).
+
