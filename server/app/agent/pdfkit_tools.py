@@ -10,11 +10,12 @@ from __future__ import annotations
 
 import asyncio
 import io
+import threading
 import zipfile
 from pathlib import Path
 from typing import Any
 
-from ..dockit import archive, check, convert, core, edit, forms, fromdoc, health, ocrlayer, optimize, organize, secure, sign, smart, stamp, vault
+from ..dockit import archive, check, convert, core, edit, flows, forms, fromdoc, health, ocrlayer, optimize, organize, secure, sign, smart, stamp, vault
 from ..dockit.core import DocError
 from .tools import Ctx, ToolError
 
@@ -31,7 +32,9 @@ ACTIONS = ("guide", "info", "merge", "split", "remove", "extract", "organize", "
            "form_fields", "form_fill", "form_create", "signature_save", "sign", "sign_verify", "sign_request",
            "sign_status", "sign_cancel",
            # D6 (v0.819): compare + AI
-           "compare", "summarize", "ask", "translate", "smart_split")
+           "compare", "summarize", "ask", "translate", "smart_split",
+           # D7 (v0.821): workflows + batch
+           "flow", "flow_save", "flow_list", "flow_delete")
 ZIP_OVER = 10            # more output files than this arrive as one ZIP (plus the ZIP only)
 NOT_YET = ("a LEGALLY valid digital signature of her identity (Class 3 DSC on her USB token, or Aadhaar eSign through a "
            "licensed provider - owner decision D4); OTP checks for outside signers; changing the PDF's OWN existing words "
@@ -137,6 +140,18 @@ GUIDE = (
     "not fit are listed - check them.\n"
     "  smart_split (a bundle of many documents): the AI names where each starts -> a PLAN only; show her the list and "
     "on her yes call split mode=ranges with its ranges.\n"
+    "D7 workflows + batch:\n"
+    "  flow (steps=[{action:'merge'}, {action:'page_numbers'}, {action:'compress', target_kb:5000}, {action:'protect'}], "
+    "file_ids) runs the whole chain as ONE job; only the final file reaches her chat. Or workflow='<her saved name>' / a "
+    "ready-made one: ca (join, number, under 5 MB, lock) | portal (photos -> PDF under 200 KB) | scan (photos -> "
+    "searchable PDF) | whatsapp | office. batch=true (or many files with a chain that does not start with merge) = the "
+    "chain runs on EACH file on its own; one file failing never stops the others; more than 3 results arrive as one "
+    "ZIP. save_as='CA ke liye' saves the chain under her name. merge / to_pdf / interleave only as step 1; protect / "
+    "split / to_images / to_word / to_excel / to_powerpoint / to_text only last; redact, unlock, sign_request and the AI "
+    "steps are never inside a chain (each needs her on its own).\n"
+    "  flow_save (workflow, steps) | flow_list (hers + ready-made) | flow_delete (workflow).\n"
+    "  Big files: a Drive file works as an input as file_id 'drive:<the drive ref from drive_find>' (past the 25 MB chat "
+    "limit). Results are kept 24 hours: to keep one, email it or save it to her Drive (on her tap).\n"
     "Recipes: 'WhatsApp pe nahi ja rahi' = compress (or target_kb 15000 for email). 'Portal 200 KB maangta hai' = "
     "compress target_kb=200. 'Page 3 hata do' = remove pages=3. 'Sirf pehla aur aakhri page' = extract pages='first,last'. "
     "'Har page alag' = split mode=each. 'Ye photos ek PDF mein' = to_pdf page_size=a4 margin=small. 'Word ko PDF' = "
@@ -165,7 +180,8 @@ PDF_KIT_TOOLS = [
         "form_create | signature_save | sign (her signature picture and / or a digital signature) | sign_verify | "
         "sign_request (others sign on a private page, in order) | sign_status | sign_cancel | compare (two versions: what "
         "changed, money / dates first) | summarize | ask (answers with page numbers, numbers checked) | translate "
-        "(keeping the layout) | smart_split. Not yet (say so): a legally valid identity signature (DSC / Aadhaar "
+        "(keeping the layout) | smart_split | flow (a saved chain of steps on one file or a whole batch, e.g. 'CA ke "
+        "liye': merge -> page numbers -> under 5 MB -> lock) | flow_save | flow_list | flow_delete. Not yet (say so): a legally valid identity signature (DSC / Aadhaar "
         "eSign). A password never goes through the chat."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": list(ACTIONS)},
@@ -248,6 +264,13 @@ PDF_KIT_TOOLS = [
          "w": {"type": "number", "description": "sign: signature width in mm"},
          "page": {"type": "integer", "description": "sign digital: the page for the visible stamp"},
          "date": {"type": "boolean", "description": "sign place: today's date under her name"},
+         "steps": {"type": "array", "items": {"type": "object", "properties": {"action": {"type": "string",
+                   "enum": list(flows.STEPS)}}, "required": ["action"]},
+                   "description": "flow: the chain; each step = {action, its options}"},
+         "workflow": {"type": "string", "description": "flow / flow_save / flow_delete: her saved name or ca | portal | "
+                      "scan | whatsapp | office"},
+         "save_as": {"type": "string", "description": "flow: also save these steps under this name"},
+         "batch": {"type": "boolean", "description": "flow: run the chain on each file on its own"},
      }, "required": ["action"]}},
 ]
 PDF_KIT_LABELS = {"pdf_kit": "PDF par kaam kar raha hoon"}
@@ -262,6 +285,40 @@ def _get(ctx: Ctx, fid: str) -> tuple[str, bytes]:
 def _put(ctx: Ctx, name: str, data: bytes) -> dict[str, Any]:
     from .make_tools import _deliver
     return _deliver(ctx, name, data, "pdf_kit")
+
+
+# D7 (v0.821): a workflow keeps its in-between files in memory - only the LAST step's files reach her chat.
+_MEM = threading.local()
+
+
+def _src(ctx: Ctx, fid: str) -> tuple[str, bytes]:
+    m = getattr(_MEM, "files", None)
+    if m is not None and fid in m:
+        return m[fid]
+    if str(fid).startswith("drive:"):            # D7: a big file straight from her Google Drive (past the 25 MB chat cap)
+        return _drive(ctx, str(fid)[6:])
+    return _get(ctx, fid)
+
+
+def _dst(ctx: Ctx, name: str, data: bytes) -> dict[str, Any]:
+    m = getattr(_MEM, "files", None)
+    if m is not None:
+        k = f"mem_{len(m) + 1}"
+        m[k] = (name, data)
+        _MEM.made.append(k)
+        return {"file_id": k, "name": name}
+    return _put(ctx, name, data)
+
+
+def _drive(ctx: Ctx, ref: str) -> tuple[str, bytes]:
+    from ..drive import service as dsv
+    try:
+        name, _mt, data, _c, _f = dsv.fetch(ctx.tenant_id, ref, None)
+    except Exception as e:    # noqa: BLE001 - not connected / not found / not hers: said plainly
+        raise ToolError(f"Could not read that Drive file: {e}")
+    if len(data) > core.MAX_MB * 1024 * 1024:
+        raise ToolError(f"That Drive file is over {core.MAX_MB} MB; Hoola works on files up to {core.MAX_MB} MB.")
+    return name, data
 
 
 def _fname(base: str, ext: str, custom: str = "", i: int = 0, n: int = 1) -> str:
@@ -292,7 +349,7 @@ def _one(a: dict) -> str:
 
 
 def _pdf_in(ctx: Ctx, fid: str) -> tuple[str, bytes]:
-    name, data = _get(ctx, fid)
+    name, data = _src(ctx, fid)
     if not core.is_pdf(data):
         hint = " It is a picture: use action=to_pdf first." if convert.is_image(data) else ""
         raise ToolError(f"{name} is not a PDF.{hint}")
@@ -301,7 +358,7 @@ def _pdf_in(ctx: Ctx, fid: str) -> tuple[str, bytes]:
 
 def _deliver_pdf(ctx: Ctx, data: bytes, name: str, expect: int | None = None, extra: list[str] | None = None) -> dict:
     said = check.pdf_out(data, expect, name)
-    view = _put(ctx, name, data)
+    view = _dst(ctx, name, data)
     return {"file_id": view.get("file_id"), "name": view.get("name"), "pages": core.page_count(data),
             "kb": core.kb(len(data)), "checked": check.summary(said + (extra or []))}
 
@@ -321,12 +378,12 @@ def _deliver_many(ctx: Ctx, items: list[tuple[str, bytes]], zip_name: str, force
                 z.writestr(n, data)
         blob = buf.getvalue()
         check.expect(len(zipfile.ZipFile(io.BytesIO(blob)).namelist()) == len(items), "the ZIP is missing files")
-        view = _put(ctx, _fname(zip_name, ".zip"), blob)
+        view = _dst(ctx, _fname(zip_name, ".zip"), blob)
         return {"zip": {"file_id": view.get("file_id"), "name": view.get("name"), "kb": core.kb(len(blob))},
                 "count": len(items), "files": [n for n, _ in items]}
     out = []
     for name, data in items:
-        view = _put(ctx, name, data)
+        view = _dst(ctx, name, data)
         out.append({"file_id": view.get("file_id"), "name": view.get("name"), "kb": core.kb(len(data))})
     return {"count": len(out), "files": out}
 
@@ -337,7 +394,7 @@ def _run(ctx: Ctx, action: str, a: dict) -> dict[str, Any]:
     if action == "info":
         rows = []
         for fid in _ids(a)[:core.MAX_FILES] or [_one(a)]:
-            name, data = _get(ctx, fid)
+            name, data = _src(ctx, fid)
             if not core.is_pdf(data):
                 rows.append({"file_id": fid, "name": name, "error": "not a PDF"})
                 continue
@@ -351,7 +408,7 @@ def _run(ctx: Ctx, action: str, a: dict) -> dict[str, Any]:
         ids = _ids(a)
         if len(ids) < 2:
             raise ToolError("Merging needs at least 2 files (file_ids in her order).")
-        files = [_get(ctx, f) for f in ids]
+        files = [_src(ctx, f) for f in ids]
         data = organize.merge(files, bookmarks=a.get("bookmarks") is not False)
         base = f"{core.stem(files[0][0])} + {len(files) - 1} more"
         return {"merged": len(files)} | _deliver_pdf(ctx, data, _fname(base, ".pdf", custom))
@@ -360,7 +417,7 @@ def _run(ctx: Ctx, action: str, a: dict) -> dict[str, Any]:
         ids = _ids(a)
         if not ids:
             raise ToolError("Which files? Pictures or Word / Excel / PowerPoint files, by file_id.")
-        files = [_get(ctx, f) for f in ids]
+        files = [_src(ctx, f) for f in ids]
         pics = [(n, d) for n, d in files if convert.is_image(d)]
         docs = [(n, d) for n, d in files if not convert.is_image(d)]
         made: list[dict] = []
@@ -385,6 +442,8 @@ def _run(ctx: Ctx, action: str, a: dict) -> dict[str, Any]:
 
     if action == "redact_apply":
         return _redact_apply(ctx, a)
+    if action in D7:
+        return _d7(ctx, action, a)
     if action in ("signature_save", "sign_status", "sign_cancel"):
         return _d5_plain(ctx, action, a)
     if action == "compare":
@@ -485,7 +544,7 @@ def _run(ctx: Ctx, action: str, a: dict) -> dict[str, Any]:
             out["note"] = ("These pages are pictures (scanned): they have no text to take out. file_read reads them "
                            "with OCR; a searchable PDF comes later (D4).")
         if r["text"].strip():
-            view = _put(ctx, _fname(st, "." + fmt, custom), r["text"].encode("utf-8"))
+            view = _dst(ctx, _fname(st, "." + fmt, custom), r["text"].encode("utf-8"))
             out |= {"file_id": view.get("file_id"), "name": view.get("name"), "preview": r["text"][:600]}
         return out
 
@@ -507,7 +566,7 @@ D2 = ("page_numbers", "watermark", "header_footer", "crop", "add", "highlight", 
 
 
 def _image(ctx: Ctx, fid: str) -> bytes:
-    nm, raw = _get(ctx, fid)
+    nm, raw = _src(ctx, fid)
     if not convert.is_image(raw):
         raise ToolError(f"{nm} is not a picture (her logo / signature / stamp must be a PNG or JPG).")
     return raw
@@ -603,9 +662,24 @@ async def pdf_kit(ctx: Ctx, action: str = "guide", **a: Any):
     if action not in ACTIONS:
         raise ToolError(f"pdf_kit cannot '{action}' yet. Actions: {', '.join(ACTIONS)}. Not yet: {NOT_YET}.")
     try:
-        return await asyncio.to_thread(_run, ctx, action, a)
+        out = await asyncio.to_thread(_run, ctx, action, a)
     except DocError as e:
         raise ToolError(str(e))
+    return _kept(out)
+
+
+def _kept(out: Any) -> Any:
+    """D7: every card says how long her file stays (the 24 h file life) and how to keep it."""
+    if isinstance(out, dict) and (out.get("file_id") or out.get("zip") or out.get("report") or out.get("preview_file_id")
+                                  or any(isinstance(f, dict) and f.get("file_id") and "size_kb" not in f   # a made file,
+                                         for f in (out.get("files") or []))):                              # not an info row
+        try:
+            from ..config import get_settings
+            h = int(get_settings().pc_file_hours or 24)
+        except Exception:   # noqa: BLE001
+            h = 24
+        out["kept_for"] = f"{h} hours - to keep it, email it or save it to her Drive (her tap)"
+    return out
 
 
 PDF_KIT_HANDLERS = {"pdf_kit": pdf_kit}
@@ -623,7 +697,7 @@ def _d3(ctx: Ctx, action: str, a: dict, fid: str, data: bytes, name: str, st: st
         if a.get("open_lock") is False:
             res = secure.protect(data, "", allow, open_lock=False)
             said = secure.check_protected(res, "", False, allow)
-            view = _put(ctx, out_name, res)
+            view = _dst(ctx, out_name, res)
             return {"file_id": view.get("file_id"), "name": view.get("name"), "kb": core.kb(len(res)),
                     "checked": check.summary(said), "say": "Restricted (no open password): viewers honour the "
                     "restrictions, but they are not a real lock - for a real lock use an open password."}
@@ -636,7 +710,7 @@ def _d3(ctx: Ctx, action: str, a: dict, fid: str, data: bytes, name: str, st: st
         pw = secure.make_password()
         res = secure.protect(data, pw, allow, True)
         said = secure.check_protected(res, pw, True, allow)
-        view = _put(ctx, out_name, res)
+        view = _dst(ctx, out_name, res)
         token = vault.put("show_password", ctx.tenant_id, conv, {"password": pw, "meta": {"name": out_name}}, hours=24)
         del pw
         return {"file_id": view.get("file_id"), "name": view.get("name"), "kb": core.kb(len(res)),
@@ -675,7 +749,7 @@ def _d3(ctx: Ctx, action: str, a: dict, fid: str, data: bytes, name: str, st: st
         out["say"] = "Nothing matching was found to remove."
         return out
     prev = secure.preview(data, hits)
-    view = _put(ctx, _fname(f"{st} (redaction PREVIEW)", ".pdf", custom), prev)
+    view = _dst(ctx, _fname(f"{st} (redaction PREVIEW)", ".pdf", custom), prev)
     whole = (a.get("pages") or "all") == "all"
     token = vault.put("redact", ctx.tenant_id, conv, {"file_id": fid, "hits": hits, "presets": (presets or []) if whole
                                                       else [], "terms": terms, "out_name": _fname(f"{st} (redacted)",
@@ -740,7 +814,7 @@ def _d4(ctx: Ctx, action: str, a: dict, data: bytes, name: str, st: str, n_in: i
             r = fromdoc.to_pptx(data, a.get("pages") or "all")
             meta = {"slides": r["slides"]}
         _check_office(r["bytes"], ext)
-        view = _put(ctx, _fname(st, ext, custom), r["bytes"])
+        view = _dst(ctx, _fname(st, ext, custom), r["bytes"])
         return {"file_id": view.get("file_id"), "name": view.get("name"), "kb": core.kb(len(r["bytes"])),
                 "checked": f"checked: the {ext[1:]} file opens", **meta, "notes": r.get("notes", []),
                 **({"ocr_pages": r["ocr_pages"]} if r.get("ocr_pages") else {})}
@@ -775,7 +849,7 @@ D5 = ("form_fields", "form_fill", "form_create", "sign", "sign_verify", "sign_re
 
 def _d5_plain(ctx: Ctx, action: str, a: dict) -> dict[str, Any]:
     if action == "signature_save":
-        nm, raw = _get(ctx, _one(a))
+        nm, raw = _src(ctx, _one(a))
         if not convert.is_image(raw):
             raise ToolError(f"{nm} is not a picture: send a photo of her signature on white paper (PNG / JPG).")
         r = sign.save_signature(ctx.tenant_id, raw, str(a.get("kind") or "signature"))
@@ -795,7 +869,7 @@ def _d5(ctx: Ctx, action: str, a: dict, data: bytes, name: str, st: str, n_in: i
     if action == "form_fill":
         flat = bool(a.get("flatten"))
         if a.get("rows_file_id"):
-            rn, rd = _get(ctx, str(a["rows_file_id"]))
+            rn, rd = _src(ctx, str(a["rows_file_id"]))
             rows = forms.read_rows(rn, rd)
             done = forms.fill_rows(data, rows, str(a.get("name_from") or ""), ctx.tenant_id, flat if
                                    a.get("flatten") is not None else True)
@@ -826,7 +900,7 @@ def _d5(ctx: Ctx, action: str, a: dict, data: bytes, name: str, st: str, n_in: i
         raise ToolError("sign mode = place | digital | both.")
     img = None
     if a.get("image_file_id"):
-        img = _get(ctx, str(a["image_file_id"]))[1]
+        img = _src(ctx, str(a["image_file_id"]))[1]
         if not convert.is_image(img):
             raise ToolError("image_file_id must be a picture of her signature.")
     res, notes = data, []
@@ -884,7 +958,7 @@ def _d6(ctx: Ctx, action: str, a: dict, data: bytes, name: str, st: str, n_in: i
         out = _deliver_pdf(ctx, r["bytes"], fname)
     else:
         _check_office(r["bytes"], ".docx")
-        view = _put(ctx, fname, r["bytes"])
+        view = _dst(ctx, fname, r["bytes"])
         out = {"file_id": view.get("file_id"), "name": view.get("name"), "kb": core.kb(len(r["bytes"]))}
     return out | {"language": r["language"], "note": r["note"], "check_these": r["flagged"][:30],
                   "did_not_fit": r["overflow"][:30]}
@@ -902,3 +976,124 @@ def _warn(chk: dict, r: dict) -> dict[str, Any]:
     if r.get("unreadable_pages"):
         notes.append(f"Pages {r['unreadable_pages'][:20]} could not be read (scans without the text reader).")
     return {"warnings": notes} if notes else {}
+
+
+D7 = ("flow", "flow_save", "flow_list", "flow_delete")
+BATCH_ZIP_OVER = 3
+
+
+def _d7(ctx: Ctx, action: str, a: dict) -> dict[str, Any]:
+    tenant = ctx.tenant_id
+    if action == "flow_list":
+        return flows.listing(tenant)
+    wname = str(a.get("workflow") or a.get("save_as") or "").strip()
+    if action == "flow_delete":
+        return flows.delete(tenant, wname)
+    if action == "flow_save":
+        r = flows.save(tenant, wname, a.get("steps"))
+        return r | {"say": f"Saved '{r['saved']}': {r['steps']}. Next time: 'run {r['saved']} on these files'."}
+    # flow
+    saved_name = ""
+    if a.get("steps"):
+        steps = flows.check(a.get("steps"))
+        title = wname or "workflow"
+        if a.get("save_as"):
+            flows.save(tenant, str(a["save_as"]), steps)
+            saved_name = str(a["save_as"])
+    elif wname:
+        title, steps = flows.find(tenant, wname)
+    else:
+        raise ToolError("flow needs steps=[...] or workflow='<her saved name>'. flow_list shows hers and the ready-made ones.")
+    ids = _ids(a) or ([str(a["file_id"])] if a.get("file_id") else [])
+    if not ids:
+        raise ToolError("flow needs her files: file_ids (or file_id).")
+    first_joins = steps[0]["action"] in ("merge", "interleave") or (steps[0]["action"] == "to_pdf"
+                                                                    and a.get("separate") is not True)
+    batch = bool(a.get("batch")) or (len(ids) > 1 and not first_joins)
+    if batch and steps[0]["action"] in ("merge", "interleave"):
+        raise ToolError("A batch runs the chain on each file on its own, so it cannot start with merge / interleave. "
+                        "Drop batch to join them first.")
+    groups = [[f] for f in ids] if batch else [ids]
+    if len(groups) > flows.MAX_BATCH:
+        raise ToolError(f"A batch can take up to {flows.MAX_BATCH} files at once; this has {len(groups)}.")
+    items: list[tuple[str, bytes]] = []
+    done, failed, links, notes = [], [], [], []
+    for g in groups:
+        try:
+            got, extra = _chain(ctx, steps, g, title)
+        except (DocError, ToolError) as e:
+            if not batch:
+                raise
+            failed.append({"file_id": g[0], "why": str(e)[:300]})
+            continue
+        items += got
+        done.append({"from": g[0], "made": [n for n, _ in got]})
+        links += extra["links"]
+        notes += extra["notes"]
+    if not items:
+        raise ToolError("Nothing was made: " + "; ".join(f["why"] for f in failed[:5]))
+    zip_name = f"{title} ({len(done)} files)" if batch else title
+    out = _deliver_many(ctx, items, zip_name, force_zip=batch and len(items) > BATCH_ZIP_OVER)
+    if len(items) == 1 and out.get("files"):
+        out |= {"file_id": out["files"][0]["file_id"], "name": out["files"][0]["name"]}
+    if wname and not a.get("steps"):
+        flows.counted(tenant, wname)
+    res: dict[str, Any] = out | {"workflow": title, "steps": flows.describe(steps), "ran_on": len(done)}
+    if batch:
+        res["failed"] = failed
+    if links:
+        res["password_links"] = links[:50]
+        res["say"] = ("Locked with passwords Hoola made. The passwords are NOT in this chat: give her the link(s); each "
+                      "shows its password once. Never write a password in the chat.")
+    if notes:
+        res["notes"] = notes[:30]
+    if saved_name:
+        res["saved_as"] = saved_name
+    return res
+
+
+def _chain(ctx: Ctx, steps: list[dict], ids: list[str], title: str) -> tuple[list[tuple[str, bytes]], dict]:
+    """One file (or one group for step 1) through every step; in-between files stay in memory."""
+    _MEM.files, _MEM.made = {}, []
+    links, notes = [], []
+    try:
+        src_name = _src(ctx, ids[0])[0]
+        cur = list(ids)
+        for i, st in enumerate(steps):
+            act = st["action"]
+            args = {k: v for k, v in st.items() if k != "action"}
+            if i == 0 and act in flows.FIRST:
+                args["file_ids"] = cur
+            else:
+                args["file_id"] = cur[0]
+            _MEM.made = []
+            try:
+                r = _run(ctx, act, args)
+            except DocError as e:
+                raise DocError(f"Step {i + 1} ({act}): {e}")
+            except ToolError as e:
+                raise ToolError(f"Step {i + 1} ({act}): {e}")
+            if isinstance(r, dict):
+                if r.get("password_link"):
+                    links.append({"file": r.get("name"), "link": r["password_link"]})
+                for k in ("say", "note"):
+                    if r.get(k) and act in ("compress", "pdfa", "ocr"):
+                        notes.append(f"{act}: {str(r[k])[:200]}")
+                if r.get("target_met") is False:
+                    notes.append(f"{act}: the size she asked for could not be reached; the smallest readable file was used.")
+            made = [k for k in _MEM.made if k in _MEM.files]
+            if made:
+                cur = made
+            # no file made (e.g. nothing to OCR) = the chain carries on with the same file
+        files = _MEM.files
+        out = [files[k] if k in files else _src(ctx, k) for k in cur]
+    finally:
+        _MEM.files = None
+        _MEM.made = []
+    if len(out) == 1:                              # one result: a clean name, not 'x (numbered) (smaller) (locked)'
+        n, b = out[0]
+        ext = Path(n).suffix or ".pdf"
+        out = [(_fname(f"{core.stem(src_name)} ({title})", ext), b)]
+        for ln in links:
+            ln["file"] = out[0][0]
+    return out, {"links": links, "notes": notes}

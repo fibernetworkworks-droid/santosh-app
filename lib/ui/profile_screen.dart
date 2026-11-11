@@ -6,6 +6,7 @@ import '../state.dart';
 import 'artifacts_screen.dart';
 import 'bazar_screen.dart';
 import 'calendar_screen.dart';
+import 'documents_screen.dart';
 import 'drive_screen.dart';
 import 'email_screen.dart';
 import 'forms_screen.dart';
@@ -1177,6 +1178,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
           subtitle: const Text('Check an APK / EXE before installing: is it a fraud app?'),
           trailing: const Icon(Icons.chevron_right_rounded),
           onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => AppCheckScreen(app: app))),
+        ),
+      ),
+      const SizedBox(height: 18),
+      Glass(   // v0.821 HOOLA DOCUMENTS (pdf_kit D7): every PDF tool + Scan to PDF + workflows
+        child: ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: const Icon(Icons.picture_as_pdf_rounded, color: C.accent),
+          title: const Text('Documents', style: TextStyle(fontWeight: FontWeight.w700)),
+          subtitle: const Text('Scan to PDF, merge, compress, convert, lock, sign, workflows'),
+          trailing: const Icon(Icons.chevron_right_rounded),
+          onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => DocumentsScreen(app: app))),
         ),
       ),
       const SizedBox(height: 18),

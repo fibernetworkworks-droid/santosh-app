@@ -535,6 +535,7 @@ class Settings(BaseSettings):
     prompting_ledger: bool = True         # NATIJA KHATA: the outcome ledger (shape only, never her words)
     prompting_fill_model: bool = True     # the one small model call that proposes slots (off = a brief from code alone)
     flow_page: bool = True                # v0.751 HOOLA FLOW: the Kaan pack as a console page (dictate, files, live captions, words, settings)
+    documents_page: bool = True           # v0.821 HOOLA DOCUMENTS (pdf_kit D7): /console/documents + /api/dockit/* (the iLovePDF-style desk)
     flow_composer_mic: bool = True        # v0.751 the chat box mic dictates through Kaan when its engine is ready (else the browser's own)
     shilp_page: bool = True               # v0.752 ARTCRAFT IN CREATE: the Create studio's ArtCraft tool over the shilp lane (/api/shilp)
     cinema_page: bool = True              # v0.807 HOOLA CINEMA: the Create studio's Cinema section (/api/cinema): motion transfer, character

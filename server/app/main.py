@@ -1822,6 +1822,19 @@ def hoola_prompting_page():
         "X-Content-Type-Options": "nosniff", "Permissions-Policy": "microphone=(), camera=(), geolocation=()"})
 
 
+@app.get("/console/documents")
+@app.get("/console/documents/")
+def hoola_documents_page():
+    """v0.821 HOOLA DOCUMENTS (docs/DOCUMENT_KIT_PLAN.md D7): the iLovePDF-style desk as its own page - every pdf_kit
+    tool as a card, her files uploaded once, saved workflows run on one file or a batch. Same sign-in as the console,
+    the /api/dockit routes, the same strict CSP. Switched off = back to the console."""
+    if not getattr(get_settings(), "documents_page", True):
+        return RedirectResponse("/console/", status_code=307)
+    return FileResponse(STATIC / "console" / "docsapp.html", headers={
+        **_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP, "X-Frame-Options": "DENY",
+        "X-Content-Type-Options": "nosniff", "Permissions-Policy": "microphone=(), camera=(), geolocation=()"})
+
+
 @app.get("/api/console/config")
 def console_config():
     from . import accounts
@@ -1837,6 +1850,7 @@ def console_config():
             "design": bool(getattr(st, "design_page", False)),
             "flow": bool(getattr(st, "flow_page", False)),
             "prompting": bool(getattr(st, "prompting_page", True)),
+            "documents": bool(getattr(st, "documents_page", True)),   # v0.821 HOOLA DOCUMENTS (pdf_kit D7)
             "flow_mic": bool(getattr(st, "flow_page", False) and getattr(st, "flow_composer_mic", False)),
             "cinema": bool(getattr(st, "cinema_page", False)),   # v0.807 Hoola Cinema inside Create
             "artcraft": bool(getattr(st, "shilp_page", False) and getattr(st, "shilp_enabled", False))}
@@ -2190,6 +2204,8 @@ from .quicklane import router as quicklane_router               # noqa: E402
 app.include_router(quicklane_router)                            # POST /api/pc/quickask (+ /messages)
 from .dockit.api import router as dockit_router                 # noqa: E402
 app.include_router(dockit_router)                               # v0.819 /pdf/key/<token> + /sign/<key>: one-time password + signing pages (pdf_kit D3 / D5)
+from .dockit.desk import make_router as _dockit_desk_router   # noqa: E402
+app.include_router(_dockit_desk_router(require_key, current_tenant))   # v0.821 /api/dockit/*: the Documents page + phone screen (pdf_kit D7)
 # v0.663.0 KAAN W5 - the HTTP + MCP doors beside the agent tool: the SAME KS functions, the SAME
 # gates (audio ingest rides kaan_audio; reads gate-free by the W1 law), tenant-scoped by the SAME
 # auth (API key, product session, or a paired device token - the extension pairs through

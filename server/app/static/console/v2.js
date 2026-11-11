@@ -141,6 +141,7 @@ let HVO = null;         // v0.787 HOOLA VOCAL (vocal.js) - the voice studio, its
 let HIV = null;         // v0.747 HOOLA INTERACTIVE (interactive.js) - the video studio, its own sidebar row
 let HCD = null;         // v0.748 HOOLA CODE (code.js) - Developer Sahayak as a console page
 let IMP = null, IMP_BACK = null, IMP_DONE = '';   // HOOLA PROMPTING: the Improve sheet (improve.js); her original text for Undo
+IC.documents = '<path d="M7 3h7l5 5v13H7z"/><path d="M14 3v5h5"/><path d="M10 13h6M10 17h4"/>';   // v0.821 HOOLA DOCUMENTS
 IC.prompting = '<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/>';
 let FLW = null;         // v0.751 HOOLA FLOW (flow.js) - the Kaan pack as a console page
 let FLOW_TEXT = '';   // v0.777 text from the Hoola Flow page waiting for the chat box
@@ -202,6 +203,7 @@ function go(v, arg) {
   if (v === 'gamedev') { location.assign('/console/games' + (arg ? '#/game/' + encodeURIComponent(arg) : '')); return; }   // v0.783 Hoola Game Dev = its own app
   if (v === 'appdev') { location.assign('/console/apps' + (arg ? '#/app/' + encodeURIComponent(arg) : '')); return; }   // v0.693 App Studio = its own app
   if (v === 'prompting') { location.assign('/console/prompting'); return; }   // HOOLA PROMPTING = its own page
+  if (v === 'documents') { location.assign('/console/documents' + (arg ? '#/t/' + encodeURIComponent(arg) : '')); return; }   // v0.821 HOOLA DOCUMENTS = its own page (pdf_kit D7)
   if (v === 'flow') { location.assign('/console/flow' + (arg ? '#/t/' + encodeURIComponent(arg) : '')); return; }   // v0.777 Hoola Flow = its own page, like Wispr Flow
   if (v === 'code') { location.assign('/console/code' + (arg ? '#/s/' + encodeURIComponent(arg) : '')); return; }   // v0.768 Hoola Code = its own page with its own sidebar
   if (v === 'design') { location.assign('/console/design' + (arg ? '#/f/' + encodeURIComponent(arg) : '')); return; }   // v0.777 Hoola Design = its own app
@@ -361,6 +363,7 @@ async function enter() {
                           say: text => { go('chat'); msg.value = text; msg.dispatchEvent(new Event('input')); composer.requestSubmit(); }});
     if (!NAV.some(([k]) => k === 'hire')) NAV.unshift(['hire', 'AI Employees']);   // v0.443 her AI staff is the FIRST section
   }
+  if (CONFIG.documents && !NAV.some(([k]) => k === 'documents')) NAV.splice(Math.max(0, NAV.findIndex(([k]) => k === 'kaam')), 0, ['documents', 'Documents']);   // v0.821 HOOLA DOCUMENTS
   if (CONFIG.prompting && window.HoolaImprove && !IMP) {   // HOOLA PROMPTING: a sidebar row + the Improve button in the chat box
     IMP = HoolaImprove({api, esc, toast});
     if (!NAV.some(([k]) => k === 'prompting')) NAV.splice(NAV.findIndex(([k]) => k === 'creative') + 1, 0, ['prompting', 'Hoola Prompting']);

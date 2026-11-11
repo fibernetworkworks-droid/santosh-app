@@ -263,6 +263,30 @@ def first_line(data: bytes, page: int = 1) -> str:
     return t.strip().splitlines()[0] if t.strip() else ""
 
 
+def _tool(files: dict[str, tuple[str, bytes]], action: str, **a: Any) -> tuple[dict[str, Any], list[tuple[str, bytes]]]:
+    """Run the real pdf_kit tool with her files in memory (nothing is stored, nothing reaches a chat)."""
+    import asyncio
+    from types import SimpleNamespace
+    from ..agent import pdfkit_tools as T
+    made: list[tuple[str, bytes]] = []
+
+    def get(ctx, fid):
+        if fid not in files:
+            raise T.ToolError("not found")
+        return files[fid]
+
+    def put(ctx, name, data):
+        made.append((name, data))
+        return {"file_id": f"o{len(made)}", "name": name}
+    old = T._get, T._put
+    T._get, T._put = get, put
+    try:
+        r = asyncio.run(T.pdf_kit(SimpleNamespace(tenant_id="__pdfcard__", conversation_id="", actor="owner"), action, **a))
+    finally:
+        T._get, T._put = old
+    return r, made
+
+
 def _case(cid: str, what: str, fn: Callable[[], tuple[bool, str]], needs: Callable[[], bool] | None = None,
           why: str = "") -> dict[str, Any]:
     return {"id": cid, "what": what, "fn": fn, "needs": needs, "why": why}
@@ -742,6 +766,42 @@ def cases() -> list[dict[str, Any]]:
             r = smart.smart_split(text_pdf(5))
         return r["ranges"] == ["1-2", "3-5"], f"plan {r['ranges']} (a page that does not exist dropped)"
 
+    def flow_chain():
+        r, made = _tool({"a": ("Bill A.pdf", text_pdf(3, "A")), "b": ("Bill B.pdf", text_pdf(2, "B"))}, "flow",
+                        file_ids=["a", "b"], workflow="ca")
+        name, blob = made[0]
+        try:
+            pikepdf.open(io.BytesIO(blob)).close()
+            locked = False
+        except pikepdf.PasswordError:
+            locked = True
+        ok = len(made) == 1 and locked and bool(r.get("password_links")) and "(For the CA)" in name
+        return ok, f"{len(made)} file delivered (in-between files kept in memory), locked, password on a one-time link"
+
+    def flow_batch():
+        files = {"a": ("A.pdf", text_pdf(3, "A")), "b": ("B.pdf", text_pdf(2, "B")), "bad": ("x.pdf", b"%PDF-1.4 broken")}
+        r, made = _tool(files, "flow", file_ids=["a", "bad", "b"], steps=[{"action": "rotate", "degrees": 90},
+                                                                           {"action": "page_numbers"}], batch=True)
+        pages = sorted(n_pages(b) for _, b in made)
+        ok = pages == [2, 3] and len(r["failed"]) == 1 and r["ran_on"] == 2
+        return ok, f"2 of 3 made, 1 failed and named, the others not stopped (pages {pages})"
+
+    def flow_rules():
+        from ..dockit import flows
+        bad = [[{"action": "redact"}], [{"action": "compress"}, {"action": "merge"}],
+               [{"action": "protect"}, {"action": "compress"}], [{"action": "protect", "password": "mine"}],
+               [{"action": "summarize"}], [{"action": "sign", "mode": "digital"}], [{"action": "nope"}],
+               [{"action": "compress"}] * (flows.MAX_STEPS + 1)]
+        refused = 0
+        for st in bad:
+            try:
+                flows.check(st)
+            except DocError:
+                refused += 1
+        good = flows.check([{"action": "merge"}, {"action": "compress", "target_kb": 900, "file_id": "x"}, "protect"])
+        ok = refused == len(bad) and "file_id" not in good[1] and good[2] == {"action": "protect"}
+        return ok, f"{refused}/{len(bad)} broken chains refused before anything ran"
+
     return [
         _case("merge", "merge 2 PDFs + a photo, bookmarks", merge),
         _case("split_every", "split every 5 pages", split_every),
@@ -815,6 +875,10 @@ def cases() -> list[dict[str, Any]]:
         _case("translate", "translate keeping the layout (scripted model)", translate_layout),
         _case("translate_flags", "translation number check (scripted model)", translate_flags_numbers),
         _case("smart_split", "smart split = a checked plan (scripted model)", smart_split_plan),
+        # D7
+        _case("flow_chain", "workflow: CA chain -> one locked file", flow_chain),
+        _case("flow_batch", "workflow batch: one bad file never stops the rest", flow_batch),
+        _case("flow_rules", "workflow rules refuse broken chains first", flow_rules),
     ]
 
 
