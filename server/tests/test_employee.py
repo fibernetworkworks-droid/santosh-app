@@ -102,7 +102,7 @@ def test_pause_stops_the_job_not_reading(env):
     run(dispatch("list_reminders", {}, _ctx("routine")))                                   # reading is fine
     run(dispatch("remember", {"fact": "Ghar ki chaabi drawer mein"}, _ctx()))              # her personal things go on
     assert any(a["outcome"] == "paused" for a in emp.audit("default"))
-    assert "KAAM ROK" in emp.prompt_block("default")
+    assert "PAUSED WORK" in emp.prompt_block("default")
     emp.set_pause("default", False)
     run(dispatch("create_reminder", {"text": "X", "when": "2027-01-15T09:00"}, _ctx()))
 
@@ -227,13 +227,13 @@ def test_team_task_over_hoola_network(env, monkeypatch):
 
     monkeypatch.setattr("app.agent.run_turn", fake_turn)
     assert run(network.run_pending()) == 1
-    assert seen["actor"] == f"staff:{m['id']}" and "Yeh owner nahi hain" in seen["text"]
+    assert seen["actor"] == f"staff:{m['id']}" and "They are not the owner" in seen["text"]
     assert network.tasks("default")[0]["status"] == "done"
     got = [e for e in _events(net.home_conv("kunal"), "hoola_msg") if e.get("kind") == "staff_done"]
     assert got and "4 appointments" in got[0]["text"] and "9876543210" not in got[0]["text"]   # phone numbers scrubbed
     emp.set_pause("default", True)
     r = network.send_task("kunal", "@meghana.fnw", "Aur ek kaam")
-    assert r["status"] == "refused" and "rok" in r["reason"]
+    assert r["status"] == "refused" and "paused" in r["reason"]
 
 
 def test_api(env):
