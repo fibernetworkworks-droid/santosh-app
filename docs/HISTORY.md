@@ -1051,3 +1051,78 @@ Phase G5 of `docs/LANGGRAPH_TURN_PLAN.md` (bug class 2: told late / twice / neve
 - TESTS: NEW `test_g5_turngraph.py` 11; g0-g4, v0260, v0552, v0652, v0657, v0714, v0722, v0186, v0226, harness2/3, routines, v0649 same off and on (v0554 card khabar 3 reds also fail at v0.783).
 - NOT COVERED: voice late results / card notes / call brain answers (G6); a stopped run that crashed before deliver may have its stopped report told once more; `_recent_said` not consulted on the graph path (a service that posts its own line + a followup could show twice); a long job end still sends 2 phone notifications (goal card + final message); a crash inside `check` after it published could publish again (G1 node re-run gap). FOUND, not fixed, both paths: with kaamwatch on, `goal._waiting_on_job` counts the job's own `goal:` kaam_jobs row as a running job, so a long job can pause up to an hour after its first segment. Nothing verified live. Next: G6 voice as a channel.
 
+
+## v0.789.0 CHHOTA BADLAAV - small exact edits + tiered checks (L4 of docs/LOVABLE_STUDIO_PLAN.md, owner: "GO L4")
+Before: "make the button grey" went through `website action=change` -> Opus wrote the whole section again -> the full
+Chromium matrix + journeys + gates. Lovable changes a few lines (line-replace) and checks only what changed.
+E1 LINE EDITS (`site/lineedit.py`, no model call):
+- `website_dekho what=search` + q: every place the text / colour / class is in the site's code (pages/<page>/<section>.html |
+  css | js + design/kit.css), with file and line (30 shown, total counted).
+- `website action=edit_lines` + site + file + search + replace: one exact replace. The search text must appear EXACTLY once:
+  0 = refused naming the closest lines, 2+ = refused asking for more of the surrounding text, search == replace / empty =
+  refused. The result goes through `code_write` - the same safety cleaner as every build, one Undo step - and returns the diff.
+- `website action=write_file` + file + code: the whole file (rare).
+- The `website` description now says SMALL EXACT CHANGES FIRST; action=change stays for new sections / layout / many parts.
+  Both live in the existing tools (registry count unchanged); Plan / Chat mode still refuse `website` (turnmode).
+E2 TIERED CHECKS:
+- `checks.run(..., only=pages, quick=True)`: only those pages in the browser (scroll width, a11y / contrast, console errors, the
+  page's links, h1, weight) - no Lighthouse, no whole-site link scan, no share picture / video.
+- `service.save_version(quick=pages)`: used by edit_lines / write_file / a code file / her own-hand preview edit (one section).
+  Needs a FULL report to stand on (else the full check runs); `_quick_merge` replaces only the touched pages' results, keeps
+  every other page, the visitor journeys and Lighthouse items from the last full run; the gates re-run; report `tier: quick`,
+  `checked_pages`, `quick_s`. Edits that pile up while a job runs, Opus code changes and action=change keep the full check.
+- `hosting.blockers` refuses Go live (and the blog's auto-update of a live site) while the last report is quick; her Go live
+  tap (`launch_request`) starts the full check, then the card is hers again.
+- Studio version card: "Quick check of home in 6.2s · the full check runs before going live".
+- Switch `site_quick_checks` (default on).
+MEASURED HERE (real Chromium, the test site): one page quick-checked in 6.2 s, the whole edit 6.3 s - the plan's target was
+< 20 s. The edit itself costs Rs 0; the turn that asks for it is the only model cost (not measured on her server).
+Tests: test_v0789_chhota_badlaav.py (8: search file + line, exact-once edits + refusals + cleaner + Undo, quick check then full
+before live, switch off / no base = full, the merge rule, the agent tool actions + Plan mode, the real Chromium timing, the
+Studio line).
+NOT VERIFIED live: a real model choosing edit_lines for "make the button grey" on her server, and the rupees of that turn.
+## v0.790.0 HOOLA GAME DEV — game making as its own full-screen app (built as 0.783; owner: "CAN WE DEVLOPE A SEPERATE CONSOLE SECTION / FEATURE -- NAME IT A HOOLA GAME DEV" → "FIEST SHOW ME ALL DESIGN AND PAGES" → "GO BUILD -- DEPLOYE SEVERAL AGENTS TO DEPOLY IF PERFECTLY")
+
+**What it is.** `/console/games`, the twin of Web Studio (`/console/web`) and App Studio (`/console/apps`): a full-screen
+app with its own sidebar, opened from a new **Game Dev** row in the console sidebar (`v2.js` NAV, right after App
+Development). Before a line was built, the owner was shown a 14-page clickable design canvas (Home, Design doc, Play,
+Board, Bible, Scenes, Assets, QA, Release, Live ops, Where it came from, Crew, Game Arena, Big studio) and approved it.
+
+**Pages.** Home (ask box + kinds of game + the six steps every game goes through + "Waiting for your OK" + your games +
+"Or start from"); a game workspace = top bar, **the game's own Hoola thread** on the left (a conversation per game, like App
+Studio's per app), and tabs: **Design** (the design doc rendered by HoolaMD, "Theek hai, bana do", change it in words;
+progress card while it builds) · **Play** (the game in a phone frame from its private `/play/` link in an iframe sandboxed
+WITHOUT same-origin, QR + copy, what Hoola's bots proved, fun said plainly as not assessed, versions with "Go back to this"
+when there is a long project) · Board · Bible · Scenes · Assets · QA · Release · Live ops · Where it came from · Crew; plus
+studio-wide Crew (role cards, hired / not hired), Game Arena and Big studio. A tab that needs a long project offers "Make it a
+long project" for a game that already plays.
+
+**How it reuses the tested pages.** `employees.js` gains ONE export, `gameEmbed(el, page, studio)`, that renders the
+console's existing Game Desk pages (board, bible, scenes, assets, qa, release, liveops, prov, runtime and every role page,
+arena, big) into a pane with the desk's own flags reset for it; `gameEmbed.stop()` ends any poll when a pane is left. While a
+page is embedded, its own error path (`game(el)` / `roleBack`) can never draw the whole Game Desk home into a tab — a calm
+"Try again" panel instead. The console's own Game Desk is unchanged. Server: `gamedesk/service.view()` now carries the game's
+`conversation_id` (so its thread is the same on any browser) and the full `brief` on GET (so "Try again" after a failed first
+build loses nothing). Route `game_dev_page` in `main.py` with the console's strict CSP, `X-Frame-Options: DENY`, nosniff.
+
+**How it was built — several agents, as asked.** The lead laid the foundation (route, sidebar row, `gameEmbed`, the page
+shell) and a fixed DOM contract; a **builder** wrote `gamedev.js` / `gamedev.css` (every class `gdv-*`, every colour a v2.css
+token so dark mode works) and walked it in real Chromium; a **tester** wrote `tests/test_v0783_gamedev.py` against the
+contract in parallel (route + headers, load order, the sidebar row, `gameEmbed` run in node, escaping scan, no keys / eval, a
+hire gate, and a full real-browser walk of every page at 1440 and 390 px with page + console errors failing every step); then
+an **independent reviewer** read the code against the design and the real server. It found 14 problems, most reproduced:
+the game being played restarted every ~3 s while the next version built; the home poll wiped what she was typing every 5 s;
+a single server hiccup threw a game's thread away; an embedded page's error path drew the whole Game Desk home (with its
+own "New game" form) into a tab; stale replies from a game she had left could paint into the one she opened; hint lines
+leaked into her bubble when a title held a `]`; embedded pages showed weight 700 and Sora headings. All 14 were fixed, and
+each has a regression test that fails on the old behaviour — including one the lead caught itself: re-inserting an iframe
+RELOADS it, so "keep the same node" would have passed a node-identity test while the game still restarted; the fix never
+touches the stage that holds the frame. **20 tests, 20 pass.**
+
+**Also found while building:** the earlier dependency reinstall had pulled a newer pip Playwright (1.64.1) that cannot find
+this machine's pre-installed Chromium (revision 1243); it was pinned back to 1.63.0, the version that matches. And main's
+English-tools commit `d84057023` had left the v0.545 scenes test asserting the old Hinglish refusal; its pin was healed.
+
+**NOT VERIFIED, said plainly:** a real Godot build inside the play frame; a live agent reply in a game's thread (no model
+key in tests); the 8 embedded tabs are the console's own pages restyled toward the approved design with scoped CSS, not
+redrawn to it pixel for pixel. The phone app gets nothing new — on the phone, games stay in chat.
