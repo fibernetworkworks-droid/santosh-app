@@ -320,6 +320,9 @@ def blockers(r: Site) -> list[str]:
     samples = (chk.get("scores") or {}).get("samples", 0)     # v0.714 app screens drawn with sample rows
     if samples:
         out.append(f"{samples} app screen abhi sample data dikha rahi hai - asli list judne ke baad hi live")
+    if chk.get("tier") == "quick":           # v0.789 the last change had only the quick check of its own page
+        out.append("the last change had the quick check only (its own page); the full check of every page runs first "
+                   "(about a minute), then tap Go live again")
     if r.status != "ready":
         out.append(f"website abhi '{r.status}' hai")
     if not r.version:
@@ -340,6 +343,9 @@ def launch_request(tenant: str, ref: str, free: bool = True, conv: str = "") -> 
             if not hosts:
                 raise
             log.info("no free host: %s", e)
+    if _j(r.checks, {}).get("tier") == "quick" and r.status == "ready" and not S.busy(r.id):
+        S._start(r.id, "save", note="Full check before going live")      # v0.789 the full check she needs, started now
+        r = S._load(r.id)
     blk = blockers(r)
     card = {"site": S.view(r, False), "hosts": hosts, "version": r.version, "blockers": blk, "hash": _live_hash(r, hosts),
             "scores": _j(r.scores, {}), "preview": S.preview_url(r), "kind": "launch",

@@ -67,6 +67,11 @@ def make_router(require_key, current_tenant) -> APIRouter:
         return await run(S.add_repo, tenant, str(b.get("repo") or ""), str(b.get("deploy_workflow") or ""), str(b.get("deploy_ref") or ""),
                          str(b.get("notes") or ""))
 
+    @r.patch("/repos/{owner}/{name}")
+    async def patch_repo(owner: str, name: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        b = _b(body)             # how this repo runs in the box: her setup command, her test command, plain variables
+        return await run(S.save_repo, tenant, f"{owner}/{name}", b.get("setup_cmd"), b.get("test_cmd"), b.get("env_vars"))
+
     @r.delete("/repos/{owner}/{name}")
     async def del_repo(owner: str, name: str, tenant: str = Depends(current_tenant)):
         return await run(S.remove_repo, tenant, f"{owner}/{name}")
@@ -160,6 +165,19 @@ def make_router(require_key, current_tenant) -> APIRouter:
     @r.delete("/tasks/{tid}/note/{index}")
     async def drop_note(tid: str, index: int, tenant: str = Depends(current_tenant)):
         return await run(S.drop_note, tenant, tid, index)
+
+    @r.get("/tasks/{tid}/ws")
+    async def ws_view(tid: str, tenant: str = Depends(current_tenant)):
+        """v0.784 the session's working copy: checkpoints, to-do list, live / slots."""
+        return await run(S.ws_task_view, tenant, tid)
+
+    @r.get("/tasks/{tid}/files")
+    async def ws_files(tid: str, path: str = "", tenant: str = Depends(current_tenant)):
+        return await run(S.ws_files, tenant, tid, path)
+
+    @r.post("/tasks/{tid}/rewind")
+    async def ws_rewind(tid: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        return await run(S.ws_rewind, tenant, tid, int(_b(body).get("n") or 0))
 
     @r.get("/tasks/{tid}")
     async def get_task(tid: str, tenant: str = Depends(current_tenant)):

@@ -1,0 +1,35 @@
+{
+ "base": "w7-kater-pendulum",
+ "rig": "w7-oscillation-bench",
+ "chapter": "Oscillations, waves and acoustics",
+ "variants": [
+  {
+   "key": "equal-periods",
+   "title": "Kater's pendulum: T1 approximately equal to T2",
+   "sample": "Brass Kater's pendulum, weights adjusted",
+   "method": "Bessel's formula, periods nearly equal",
+   "unknown": "the acceleration due to gravity",
+   "params": {
+    "k2": 0.2103
+   },
+   "note": "The weights have been slid until the two periods agree to a few parts in ten thousand; the second term of Bessel's formula is then almost nothing.",
+   "source": {
+    "title": "Generic apparatus: the value is a setting of this bench, not a property of a named material"
+   }
+  },
+  {
+   "key": "unequal-periods",
+   "title": "Kater's pendulum: T1 not equal to T2",
+   "sample": "Brass Kater's pendulum, weights not adjusted",
+   "method": "Bessel's formula, periods unequal",
+   "unknown": "the acceleration due to gravity",
+   "params": {
+    "k2": 0.19
+   },
+   "note": "The two periods differ by about 2 %. Bessel's formula still gives g, but now h1 − h2 must be known well.",
+   "source": {
+    "title": "Generic apparatus: the value is a setting of this bench, not a property of a named material"
+   }
+  }
+ ]
+}

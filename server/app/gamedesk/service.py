@@ -169,13 +169,14 @@ def view(r: GameProject, full: bool = False) -> dict[str, Any]:
            "queued": "Line mein", "writing": "Code likh raha hoon", "building": "Godot mein bana raha hoon",
            "testing": "Khud khel kar jaanch raha hoon", "done": "Game taiyaar hai: link kholkar khelo",
            "failed": "Nahi ban paya", "cancelled": "Rok diya"}.get(r.status, r.status)
-    d = {"id": r.id, "number": r.number, "title": r.title or r.brief[:60], "brief": r.brief[:400], "status": r.status,
+    d = {"id": r.id, "number": r.number, "title": r.title or r.brief[:60], "brief": r.brief if full else r.brief[:400], "status": r.status,
          "stage": r.stage, "pct": r.pct, "error": r.error, "orientation": r.orientation, "say": say,
          "design": r.design if (full or r.status == "design_ready") else "", "url": url, "play_url": url,
          "version": live.get("n", 0), "versions": len(vers), "notes": live.get("notes", ""),
          "shots": [shot_url(r, live["n"], s) for s in live.get("shots", [])] if live else [],
          "numbers": live.get("numbers", {}), "warnings": (last.get("warnings") or [])[:6],
-         "checks": last.get("checks", []), "created_at": r.created_at.isoformat() if r.created_at else None}
+         "checks": last.get("checks", []), "created_at": r.created_at.isoformat() if r.created_at else None,
+         "conversation_id": r.conversation_id or ""}   # v0.785 Hoola Game Dev opens the game's OWN thread on any browser
     if full:
         d["history"] = [{"n": v.get("n"), "words": v.get("words", ""), "ok": v.get("ok"), "notes": v.get("notes", ""),
                          "at": v.get("at"), "fixed": v.get("fixed", 0), "errors": (v.get("errors") or [])[:4]} for v in vers]

@@ -1,0 +1,27 @@
+{
+ "base": "fabry-perot",
+ "rig": "w7-optics-bench",
+ "chapter": "Interference",
+ "variants": [
+  {
+   "key": "finesse",
+   "title": "Fabry-Perot interferometer: finesse of 90 % mirrors",
+   "sample": "Plates coated to reflect 90 % (generic coatings), He-Ne laser",
+   "unknown": "the finesse",
+   "params": {
+    "mode": 1,
+    "R": 0.9
+   }
+  },
+  {
+   "key": "finesse-r95",
+   "title": "Fabry-Perot interferometer: finesse of 95 % mirrors",
+   "sample": "Plates coated to reflect 95 % (generic coatings), He-Ne laser",
+   "unknown": "the finesse",
+   "params": {
+    "mode": 1,
+    "R": 0.95
+   }
+  }
+ ]
+}

@@ -993,3 +993,408 @@ motion can be switched off, no clashing class names). Needs `HOOLA_CHROMIUM=/opt
 and `animation:hmWord ... both`).
 
 **NOT VERIFIED:** she has not seen it on her server. Checked here in light, dark, 1366 x 660 and 400 px wide.
+
+## v0.787.0 HOOLA CODE ENGINE (built as 0.784; their SAWAAL CARD took 0.784.0, 0.785.0 and HOOLA INTERACTIVE PREMIUM PASS 0.786.0 - REBASE PROTOCOL, all kept)
+Owner: "NOW CHECK IS HOOLA CODE BACKEND IS SAME AS CLAUDE CODE" -> the honest answer was no (the workflow was Claude-Code-like,
+the ENGINE was a GitHub-API task: files read one by one, edits in memory, GitHub code search = 3 words / 10 file names / rate
+limited / silent on failure, ONE declared check command, 40 steps / 20 min, nothing trimmed or cached, no thinking, every
+follow-up a fresh run, and on her server every call went to GLM-5.3-Flash) -> "GO STEP 1 AND 2 --- 2 SESSIONS, USE CLAUDE".
+- STEP 1 `devsahayak/brain.py` = one Claude call for every Hoola Code loop (the new engine, the old 8-tool loop, plan and review
+  passes): Claude's OWN past SAB GLM / claude_one_model (`dev_claude`, the architect's v0.710 pattern: glmdoor.CLAUDE_ONLY +
+  usage.ONE_MODEL_BYPASS), adaptive thinking (`dev_think`; a refused field is dropped once and remembered), prompt caching
+  (system + last tool + last message), old tool output trimmed in place past `dev_ws_clear_chars` (newest 6 kept). The model
+  picker now offers Claude's models instead of "forced GLM". `model_json` (one-shot / reviews) is Claude's too. A failed GitHub
+  code search is now SAID to the model ("GitHub code search FAILED ...") instead of looking like "no file found".
+- STEP 2 `devsahayak/engine.py` = the working copy (Phase 4 of docs/HOOLA_CODE_WEB_PLAN.md): data/devsahayak/ws/<task>/repo cloned
+  once (outside the box, no token inside), a LOCAL git repo started in it (base commit; node_modules / venv / caches excluded);
+  files holding secrets replaced by a marker before anything sees them and never changeable. Claude Code's tools: read (line
+  numbers, offset / limit) / write / edit / multi_edit (read-first, unique-or-replace_all) / glob / grep (git grep: extended regex,
+  files / content with line numbers / count, context, glob filter; hidden files excluded) / ls / bash (ONE command in the devlab
+  box on THIS checkout: no network, uid 1000, read-only root, caps; the repo's dependency snapshot when it DECLARES a setup, else
+  the base image; devlab's refusals; 80 a round) / todo_write / show_diff / done. 150 steps / 60 min a round. Past
+  `dev_ws_compact_chars` the older conversation is COMPACTED by one model call (cut before an assistant turn so no tool_result
+  loses its tool_use). messages.json per session: "Ask for a change", a CI failure, her own review points and a follow-up on an
+  explained / failed / stopped session (status CONTINUE, no PR yet) CONTINUE the same conversation in the same checkout
+  ("yes, fix it" after an explanation switches the kind). A checkpoint (local commit) after every round; rewind = the checkout
+  and the conversation as they were (POST /tasks/{id}/rewind; GitHub untouched until the next push). After a push the checkout
+  is marked (the next round diffs from the PR head); a branch moved by someone else = a fresh copy, conversation kept.
+  TWO AT A TIME: `dev_ws_live` = 2 (owner) sessions run at once server-wide, the next waits and says so on the page. Disk:
+  working copies of deleted / archived / merged / closed sessions and idle ones (`dev_ws_keep_days` 14) swept hourly by the tick.
+  engine.run returns the old loop's (base_sha, read, ctx, out), so _prepare's safety rules, the PR, the bug proof, the CI rounds,
+  the own review and her taps are unchanged code. No box / no git / switch off = the old loop, said in the log.
+- Routes: GET /api/devsahayak/tasks/{id}/ws, GET .../files?path=, POST .../rewind. The full task view carries `ws` + `can_continue`.
+- Page (code.js): steps for commands in the box ($ command · exit · seconds, output folded open on failure), the to-do list,
+  compaction / waiting for a slot / checkpoint / rewind; a "Working copy" rail card (to-do, checkpoints with Go back, secret
+  files hidden, Browse files dialog with a folder tree + file view); a finished session with a working copy takes a follow-up;
+  a box command counts as "Run your tests" in Progress.
+- Found by its own tests: the follow-up opened the work while holding the DB write lock (SQLite "database is locked");
+  `error` is NOT NULL ("" not None).
+Tests: test_v0787_hoola_code_engine.py (13: brain = Claude + thinking + cache + effort, refused thinking dropped once, trim keeps the
+newest, old loop on the brain + a failed search said, Claude picker, 2 slots then wait, compaction keeps tool pairs, every tool on a
+real checkout (secrets hidden / unsearchable / unchangeable, workflows refused), bash in the REAL box (no internet, sudo refused, no
+secrets inside), a whole session through the service with real Docker: work -> continue -> rewind -> files -> delete, an explained
+session taking "yes, fix it") + the older Hoola Code / lab / plan / review suites green with the engine pinned off in conftest.
+NOT VERIFIED live: no real session has run on her server yet (no GitHub token / repo saved there); Anthropic credit must be there
+(Hoola Code is Claude-only now); restart mid-round is not resumed (the conversation and checkout survive on disk, the round does not
+restart by itself); background commands, env vars / setup script per repo in the page, network allow-lists are not built.
+FOUND while testing (her server, not this change): the server's venv is Python 3.12.3 while the devlab box is 3.13 (CLAUDE.md said
+her server runs 3.13) - test_v0456_devlab's 'box python vs server python' check says GADBAD. The same test found the box base image
+at rev 2 and rebuilt it to rev 3 (what lab_check would do).
+
+## v0.788.0 LANGGRAPH G5 — outcome in state + one delivery node (11 Nov 2026; owner: "GO G5")
+
+Phase G5 of `docs/LANGGRAPH_TURN_PLAN.md` (bug class 2: told late / twice / never / wrong chat), only when `chat_graph` is on (default OFF; every old delivery path unchanged).
+- The graph gains `deliver` (finish -> deliver -> carry | END), resumable. State: `result` (done / partial / stuck / stopped / failed - from her Stop, the ending goal, the breaker / LAST_OUTCOME, step cap / carry, G3 facts), `dkey` (idempotency key `turn:<thread>:<nonce>` minted by prepare / carry and checkpointed; wake reports `news:<followup id>`), `dmark`, `delivery`, `notified`.
+- NEW `agent/turndeliver.py`: table `turn_deliveries` (in `db.init_db` + `ensure_table`), per-channel stamps (intent before a send, sent after), job aliases `job:<key>:<state>`, the right-chat rule (the turn's own chat, else her pinned updates chat - v0.714), the `NEWS` contextvar for wake turns. Chat: the reply the turn's step already saved + streamed is found by id after `dmark` and stamped (written by the node only if no step wrote one, row + stamp in one transaction). Push rides that message event (push.on_event gates unchanged). Call note + ring only for news (wake reports, a long job ending in a background run) via `kaamwatch._voice` / `kaam_followup._ring` (quiet hours, cap, never over a live call), once each.
+- `kaam_followup` on the graph path reads the record (job aliases written by the run that ended the job) instead of `_answered_since` / `_recent_said` timing, and a report queued during a live graph run waits for its record instead of the 5-minute dry line. `turn_inbox` sweep resumes a turn cut at finish / deliver. `worker` drops delivery records older than 7 days.
+- Restart: after deliver sent but before its checkpoint -> the re-run finds the stamps, sends nothing; after the answer streamed but before deliver -> the sweep resumes at deliver, stamps the existing row; a wake reply that landed before a crash is recognised, its missing call note / ring sent once, no second wake.
+- TESTS: NEW `test_g5_turngraph.py` 11; g0-g4, v0260, v0552, v0652, v0657, v0714, v0722, v0186, v0226, harness2/3, routines, v0649 same off and on (v0554 card khabar 3 reds also fail at v0.783).
+- NOT COVERED: voice late results / card notes / call brain answers (G6); a stopped run that crashed before deliver may have its stopped report told once more; `_recent_said` not consulted on the graph path (a service that posts its own line + a followup could show twice); a long job end still sends 2 phone notifications (goal card + final message); a crash inside `check` after it published could publish again (G1 node re-run gap). FOUND, not fixed, both paths: with kaamwatch on, `goal._waiting_on_job` counts the job's own `goal:` kaam_jobs row as a running job, so a long job can pause up to an hour after its first segment. Nothing verified live. Next: G6 voice as a channel.
+
+
+## v0.789.0 CHHOTA BADLAAV - small exact edits + tiered checks (L4 of docs/LOVABLE_STUDIO_PLAN.md, owner: "GO L4")
+Before: "make the button grey" went through `website action=change` -> Opus wrote the whole section again -> the full
+Chromium matrix + journeys + gates. Lovable changes a few lines (line-replace) and checks only what changed.
+E1 LINE EDITS (`site/lineedit.py`, no model call):
+- `website_dekho what=search` + q: every place the text / colour / class is in the site's code (pages/<page>/<section>.html |
+  css | js + design/kit.css), with file and line (30 shown, total counted).
+- `website action=edit_lines` + site + file + search + replace: one exact replace. The search text must appear EXACTLY once:
+  0 = refused naming the closest lines, 2+ = refused asking for more of the surrounding text, search == replace / empty =
+  refused. The result goes through `code_write` - the same safety cleaner as every build, one Undo step - and returns the diff.
+- `website action=write_file` + file + code: the whole file (rare).
+- The `website` description now says SMALL EXACT CHANGES FIRST; action=change stays for new sections / layout / many parts.
+  Both live in the existing tools (registry count unchanged); Plan / Chat mode still refuse `website` (turnmode).
+E2 TIERED CHECKS:
+- `checks.run(..., only=pages, quick=True)`: only those pages in the browser (scroll width, a11y / contrast, console errors, the
+  page's links, h1, weight) - no Lighthouse, no whole-site link scan, no share picture / video.
+- `service.save_version(quick=pages)`: used by edit_lines / write_file / a code file / her own-hand preview edit (one section).
+  Needs a FULL report to stand on (else the full check runs); `_quick_merge` replaces only the touched pages' results, keeps
+  every other page, the visitor journeys and Lighthouse items from the last full run; the gates re-run; report `tier: quick`,
+  `checked_pages`, `quick_s`. Edits that pile up while a job runs, Opus code changes and action=change keep the full check.
+- `hosting.blockers` refuses Go live (and the blog's auto-update of a live site) while the last report is quick; her Go live
+  tap (`launch_request`) starts the full check, then the card is hers again.
+- Studio version card: "Quick check of home in 6.2s · the full check runs before going live".
+- Switch `site_quick_checks` (default on).
+MEASURED HERE (real Chromium, the test site): one page quick-checked in 6.2 s, the whole edit 6.3 s - the plan's target was
+< 20 s. The edit itself costs Rs 0; the turn that asks for it is the only model cost (not measured on her server).
+Tests: test_v0789_chhota_badlaav.py (8: search file + line, exact-once edits + refusals + cleaner + Undo, quick check then full
+before live, switch off / no base = full, the merge rule, the agent tool actions + Plan mode, the real Chromium timing, the
+Studio line).
+NOT VERIFIED live: a real model choosing edit_lines for "make the button grey" on her server, and the rupees of that turn.
+## v0.790.0 HOOLA GAME DEV — game making as its own full-screen app (built as 0.783; owner: "CAN WE DEVLOPE A SEPERATE CONSOLE SECTION / FEATURE -- NAME IT A HOOLA GAME DEV" → "FIEST SHOW ME ALL DESIGN AND PAGES" → "GO BUILD -- DEPLOYE SEVERAL AGENTS TO DEPOLY IF PERFECTLY")
+
+**What it is.** `/console/games`, the twin of Web Studio (`/console/web`) and App Studio (`/console/apps`): a full-screen
+app with its own sidebar, opened from a new **Game Dev** row in the console sidebar (`v2.js` NAV, right after App
+Development). Before a line was built, the owner was shown a 14-page clickable design canvas (Home, Design doc, Play,
+Board, Bible, Scenes, Assets, QA, Release, Live ops, Where it came from, Crew, Game Arena, Big studio) and approved it.
+
+**Pages.** Home (ask box + kinds of game + the six steps every game goes through + "Waiting for your OK" + your games +
+"Or start from"); a game workspace = top bar, **the game's own Hoola thread** on the left (a conversation per game, like App
+Studio's per app), and tabs: **Design** (the design doc rendered by HoolaMD, "Theek hai, bana do", change it in words;
+progress card while it builds) · **Play** (the game in a phone frame from its private `/play/` link in an iframe sandboxed
+WITHOUT same-origin, QR + copy, what Hoola's bots proved, fun said plainly as not assessed, versions with "Go back to this"
+when there is a long project) · Board · Bible · Scenes · Assets · QA · Release · Live ops · Where it came from · Crew; plus
+studio-wide Crew (role cards, hired / not hired), Game Arena and Big studio. A tab that needs a long project offers "Make it a
+long project" for a game that already plays.
+
+**How it reuses the tested pages.** `employees.js` gains ONE export, `gameEmbed(el, page, studio)`, that renders the
+console's existing Game Desk pages (board, bible, scenes, assets, qa, release, liveops, prov, runtime and every role page,
+arena, big) into a pane with the desk's own flags reset for it; `gameEmbed.stop()` ends any poll when a pane is left. While a
+page is embedded, its own error path (`game(el)` / `roleBack`) can never draw the whole Game Desk home into a tab — a calm
+"Try again" panel instead. The console's own Game Desk is unchanged. Server: `gamedesk/service.view()` now carries the game's
+`conversation_id` (so its thread is the same on any browser) and the full `brief` on GET (so "Try again" after a failed first
+build loses nothing). Route `game_dev_page` in `main.py` with the console's strict CSP, `X-Frame-Options: DENY`, nosniff.
+
+**How it was built — several agents, as asked.** The lead laid the foundation (route, sidebar row, `gameEmbed`, the page
+shell) and a fixed DOM contract; a **builder** wrote `gamedev.js` / `gamedev.css` (every class `gdv-*`, every colour a v2.css
+token so dark mode works) and walked it in real Chromium; a **tester** wrote `tests/test_v0783_gamedev.py` against the
+contract in parallel (route + headers, load order, the sidebar row, `gameEmbed` run in node, escaping scan, no keys / eval, a
+hire gate, and a full real-browser walk of every page at 1440 and 390 px with page + console errors failing every step); then
+an **independent reviewer** read the code against the design and the real server. It found 14 problems, most reproduced:
+the game being played restarted every ~3 s while the next version built; the home poll wiped what she was typing every 5 s;
+a single server hiccup threw a game's thread away; an embedded page's error path drew the whole Game Desk home (with its
+own "New game" form) into a tab; stale replies from a game she had left could paint into the one she opened; hint lines
+leaked into her bubble when a title held a `]`; embedded pages showed weight 700 and Sora headings. All 14 were fixed, and
+each has a regression test that fails on the old behaviour — including one the lead caught itself: re-inserting an iframe
+RELOADS it, so "keep the same node" would have passed a node-identity test while the game still restarted; the fix never
+touches the stage that holds the frame. **20 tests, 20 pass.**
+
+**Also found while building:** the earlier dependency reinstall had pulled a newer pip Playwright (1.64.1) that cannot find
+this machine's pre-installed Chromium (revision 1243); it was pinned back to 1.63.0, the version that matches. And main's
+English-tools commit `d84057023` had left the v0.545 scenes test asserting the old Hinglish refusal; its pin was healed.
+
+**NOT VERIFIED, said plainly:** a real Godot build inside the play frame; a live agent reply in a game's thread (no model
+key in tests); the 8 embedded tabs are the console's own pages restyled toward the approved design with scoped CSS, not
+redrawn to it pixel for pixel. The phone app gets nothing new — on the phone, games stay in chat.
+
+## v0.791.0 KHUD PE NA RUKE — a long job no longer waits on itself (11 Nov 2026; found while building G5)
+
+With kaamwatch on (the production default), `goal._waiting_on_job` counted the long job's OWN kaam_jobs row (kind `goal`, state working) as another running job of the chat, so `maybe_continue` paused the job for up to `JOB_WAIT_S` (an hour) after its first round instead of scheduling the next one. The query now skips `kind == "goal"`; a real job of the chat (cloud PC, website, video...) still holds the goal as v0.238 intended. Both paths (old goal rounds and the G4 graph job). Test: `test_v0238_data_desk.py::test_the_long_jobs_own_row_does_not_hold_it`; the G5 test's patch-around removed. Long-job suites (v0186, v0226, v0228, v0222, v0443, g4, g5) green. NOT VERIFIED live.
+
+
+## v0.792.0 VIDEO LEARNER PREMIUM (built as 0.785.0 - their HOOLA AI APPS took 0.785.0 and 0.786-0.791 went to INTERACTIVE PREMIUM / CODE ENGINE / G5 / CHHOTA BADLAAV / GAME DEV / KHUD PE NA RUKE, REBASE PROTOCOL, all kept; 11 Nov 2026; owner: "CHECK A AI EMPLOYEE SECTION ... HOOLA AI LEARNER FROM VIDEO READ THIS CODE AND DESIGN FIRST" -> seven problems reported -> "FIX ALL 7 PROPERLY. ALSO MAKE ENTIRE SECTION PROPER AND PREMIUM WITH PERFECT ALIGNMENT OF TEXT, BUTTON, TEXTURE ... WITH SOME VISUAL GRAPHICAL ANIMATION IN IT")
+
+Read first, by rendering the four screens with the page's own files: seven real problems. All seven fixed, then the page redrawn.
+1. THE LEARNING PILL: it wore the class `live`, which is the chat's side panel (`.live,.studio,.panel{width:var(--right);flex-direction:column}`, and a
+   fixed bottom sheet under 640 px) - so it stretched into a bar on desktop and was pinned to the bottom of a phone. It is `.skv-pill.lrn` now.
+2. RE-LEARN REPLACES: the confirm said "replace", the code added a second row. `seekh.watch(..., replace=<row id>)` retires the old row, its learned
+   procedure, its never-run recipe draft and its kept video (`_retire`); `relearned` counts it; a failed Re-learn keeps what was learned. Try again on a
+   failed row replaces that failure row (success or a second failure), never a learned task. Console `POST /watch {replace}`.
+3. PROVEN: the run lived only in the page's memory. Now `POST /api/seekh/console/run {id, conversation_id, after}` keeps it on the task row
+   (`run: {cid, after, ts, scored}`); the list and the task show "Hoola is doing it" / "Did it work?"; `GET /run?id=` gives the cards of THAT chat that
+   really wait (`events.waiting_cards`) and `busy` (the chat turn or an active OperatorTask of that chat) - so "Did it work?" no longer appears between
+   two tool calls. `seekh.operator_done(tenant, task, recipes, conversation_id)` is called from operator `_wrap` on status done: the open run of that
+   chat, else the recipe that ran / was saved (`job.ran_recipe`), else the task's title inside the job's words (>= 60 % of its words) -> one win,
+   `proven_by: run`. Her Yes afterwards does not count twice; "Something was wrong" takes that win back (`procedures.record_run(undo_win=)`);
+   `{skip: true}` closes a run unscored.
+4. FILE STEPS: an `upload` step gets a file picker (25 MB, the chat lane); the files ride the same chat turn (`send(text, files)` in v2.js) and are
+   named in the message.
+5. STAGE TIMES: the page showed when a stage began. It shows how long each took (the job snapshot carries `first_note`, the moment the first streamed
+   words arrived), the running stage counts up, and the rail fills.
+6. UPLOADS KEPT: the chat file lane is swept after 24 h. The learner keeps its own copy (`data/seekh/media/<tenant>/<row id>.<ext>`, `media` on the
+   row, `GET /api/seekh/console/media?id=`), also for a failed watch (Try again) and for direct video links (they now play on the page). Ref
+   `kept:<row id>` re-learns from it. Removed with its row; cap `seekh_media_max_mb` (1024) drops the oldest copies, the learned steps stay;
+   `seekh_keep_media`.
+7. RESTART: every job keeps a record beside the sidecar (`data/seekh/jobs/<id>.json`: stage, notes so far, heartbeat every 5 s, pid + boot mark). A
+   record quiet for 30 s that no live process owns is picked up again ONCE with the same id (claimed by an O_EXCL file, so one worker only) - at
+   startup (`recover_later` in lifespan) and when the page asks; a second loss becomes a failure row with Try again. The record also lets any worker
+   answer the poll and pass Stop (a flag file). Switch `seekh_resume` (conftest: off). The page says "started this video again".
+Also: `_save` writes the sidecar atomically under a lock; a runtime sidecar (`server/data/seekh/default.json`) had been committed and made
+`test_offline_status_action` fail on a clean checkout - removed and git-ignored.
+
+THE PAGE (`static/console/seekh.js` rewritten, `skv-` block in v2.css replaced; console tokens only, Light / Dark / phone checked by eye):
+- Home: hero card with a drawn loop (a video is scanned, three moments light up, they become three ticked steps, a pointer does them), her numbers
+  (tasks learned / proven / steps known / today's meter, counted up once), a bar for a run that is open now, the teach card (link, name, upload, drop
+  veil), learned tasks as cards with a confidence ring, a segmented filter, an illustrated empty state.
+- Watching: the video on the brand-gradient live edge, a "Hoola is watching / writing notes" tag with moving bars, notes that arrive one by one (only
+  new notes animate; the list is patched, not redrawn), the stages on a filling rail with durations, notes / time so far.
+- Learned task: steps as a numbered timeline with an icon per kind of step and the time chips, three boxes with icons, a sticky card with the big
+  confidence ring, how it went so far, the form (text boxes + file pickers), Do it now.
+- Doing it: a browser drawing whose fields fill while Hoola works (green when done), the live step, Waiting for you -> Answer opens THAT chat
+  (`chat(id)`), steps patched by key, Hoola's reply, Did it work? (Yes / Something was wrong / Not sure yet), a short Proven celebration.
+- AI Employees hub card: dotted violet edge, a light scanning the camera icon, a solid Open pill.
+- One scale: text 12.5 / 13 / 14 / 15 / 16 / 21 / 30, weights <= 600, corners 11 / 16 / 20, controls 32 / 38 / 46 px. CRISP TEXT kept: only drawings,
+  dots, bars and rings move; entrances fill backwards; texture only behind drawings; reduced motion / calm switch it all off.
+Pins moved on purpose: test_v0718 `test_router_mounted_with_three_doors` reads the lane's own router (FastAPI 0.162 in the sandbox keeps included
+routers nested in `app.routes`), the v2.js wiring window 1400 -> 2400 chars, the stale `?v=0.748.0` stamp pin -> the current stamp.
+Tests: tests/test_v0785_video_learner_premium.py (20, incl. a browser walk at 1280 and 390 px that measures the pill, the stage durations, the
+row buttons' shared right edge and no sideways overflow); v0713 / v0718 / v0745 green.
+NOT VERIFIED: a real Gemini watch, a real operator run reaching `operator_done`, a real pm2 restart mid-watch (tested with a planted record), the
+multi-worker path (records + flag file) on a live server. NOT built: a live picture of Hoola's browser on the run screen; an OTP typed on this page.
+
+## v0.793.0 HOOLA CODE SAFETY + RESUME (built as 0.789; their CHHOTA BADLAAV took 0.789.0, HOOLA GAME DEV 0.790.0, KHUD PE NA RUKE 0.791.0 and VIDEO LEARNER PREMIUM 0.792.0) — the working-copy engine made safe against planted links, and a round a restart cut is continued (owner: "GO PHASE 4 WITH 2 LIVE SESSIONS" -> "MERGE")
+
+**What happened.** Two sessions built Phase 4 of `docs/HOOLA_CODE_WEB_PLAN.md` at the same time. The other one reached
+main first as v0.787.0 HOOLA CODE ENGINE (`devsahayak/engine.py`) and is proved on real Docker; this session's own
+engine (`devsahayak/wsp.py`: a long-lived box per session, pause / resume, Terminal and Files pane tabs) was never
+proved on Docker. Two engines for one job would be wrong, so **the shipped engine is THE engine and this session's was
+withdrawn** (it is in the branch history, commits 58a13e679..d0b7a8f4e, if a piece is ever wanted). Only what it had
+that the shipped engine lacked is re-landed here, on the shipped engine.
+
+**1. The link wall (a real hole, found by comparing the two engines).** A command in the box can run
+`ln -s /any/path/on/the/server name`. Inside the box that link leads nowhere, but the SERVER works on the same folder:
+`read name` returned the server's own file to the model, `write` / `edit` overwrote it, the file browser showed it, and
+the harvest put its content into the pull request. Now `Session.real(rel)` is the only way to a path: it refuses a link
+and anything behind a linked folder, and it is used by read, write, edit, multi_edit, ls (a link is listed as
+"-> (a link; not followed)"), the walk / glob, the harvest ("a link - Hoola never follows one", said in risk) and
+`files()` for the page. The test fails on the engine as shipped (the model was handed the outside file).
+
+**2. Keys.** A key that appears in a file AFTER the clone (a command wrote it) is hidden the first time it is read, added
+to the session's hidden list, never changed and never in the PR; `engine.scrub` hides a key-looking line of a command's
+output before the model or the page sees it; a command with a key in its own text is refused.
+
+**3. A round cut by a server restart is continued.** A background run writes what it is on the row (`DevTask.job` =
+{what, words, beat, tries}) and beats every 30 s on its own small thread while the round lives (one long command says
+nothing for minutes). `service._resume_cut_runs` (in the tick): a job still on the row, nobody in this process running
+it, heartbeat older than 3 minutes = cut -> `engine.run(resume=True)` goes on from the saved conversation in the same
+working copy with one line telling the model the server restarted (her message is not sent twice: `_said`). Twice at
+most, then failed with words she can act on. A run of the OLD loop has nothing saved: after 30 silent minutes it is
+marked "start this again as a new session" instead of looking busy for ever.
+
+**4. Her repo's box.** `service.save_repo` + `PATCH /api/devsahayak/repos/{owner}/{name}` + a form under each repo in
+Settings ("How this repo runs in the box"): her setup command (counts as declared, so the dependencies are installed;
+the box image is keyed on it, a changed command = a new box), her test command, plain variables for every command
+(`box.run_in(env=)`). A sudo / docker command, a key in a command, and a name or value that looks like a secret are
+refused by name.
+
+**5. A question she can answer with a tap.** `done` may carry `choices` (2-4) beside a question; they show as buttons
+(`ws.choices`) and her tap is sent as her answer. Cleared when the next round starts.
+
+**6. Fixed on the way.** A revision on an open PR let go of the row before writing it (`s.expunge` before a flush), so
+the round count, the security notes and Hoola's explanation of that round were never saved - the "6 rounds" limit never
+counted on an open PR.
+
+**Files.** `devsahayak/engine.py`, `service.py`, `api.py`, `models.py` (three nullable columns on repos, `job` on
+tasks), `devlab/box.py` (`run_in(env=)`), `static/console/code.js`, `v2.css`; tests `test_v0789_hoola_code_safety.py`
+(9, incl. a browser walk) + the v0.787 engine suite and the older Hoola Code suites green.
+
+**NOT VERIFIED.** Docker is not on the machine this was built on: a local folder stood in for the box in these tests,
+so the env variables and the scrubbed output have not been through a real `docker run`. No real restart has cut a real
+round. **NOT BUILT (this session's withdrawn engine had them, unproved):** background commands, a Terminal pane,
+pausing an idle working copy to free disk before the 14-day sweep. Deploy: vps-ops deploy, server-only, no new pip;
+four nullable columns create themselves.
+
+
+## v0.796.0 PRAYOGSHALA WAVE 7 (built as 0.794.0; re-versioned past 0.795.0, all kept) (owner: "Coverage 44.9% ... NOW LETS WORK ON PENDING LAB WORK END TO END")
+
+94 physics set-ups built and walked in a real browser within tolerance, by four build agents in their own pack trios
+(kernels + JS twin + labs + rigs): school_w7 (32: Class 6-12 motion, measuring, pressure / floatation, heat, sound,
+electricity), ug_mech_w7 (22: pendulums, springs, coupled oscillators, Searle, Maxwell needle, optical lever, trolley,
+2-D collision (SIMULATED DATA), harmonics, Callendar-Barnes, Angstrom, cooling, Stefan, capillary vs temperature),
+ug_optics_w7 (20: TIR, Wollaston, nodal slide, biprism, Michelson x2, Fabry-Perot, FTS, lycopodium, resolving power,
+Malus, Babinet, Brewster, five fibre set-ups, quartz expansion, laser characteristics), ug_em_w7 (20: ballistic
+galvanometer family, solenoid, Carey Foster, potentiometer, Anderson, universal bridge, Q-meter, RC / RL, transformer,
+motor, generator, falling magnet, galvanometer conversion, CC / CV source, magnetometer, B-H curve). Coverage
+362 -> 456 of 807 (school 6-10 78.4 %, 11-12 91.5 %, B.Sc 65.4 %, M.Sc 37.6 %, PhD 28.6 %).
+Engine: `tools/prayog_claim.py` takes "<level>:<id>" and warns on ambiguous bare ids (four optics claims would have
+overwritten M.Sc rows). Tests: test_v0418_prayog.py was red on main (22-lab pins; twin loaded kernels.js only) - it now
+counts every pack and the JS twin loads every pack, so pack kernels and calcs are compared numerically (39 / 39 green).
+Skipped rows and every constant written from memory: docs/PRAYOG_PHYSICS_LAKH_PLAN.md, "Wave 7".
+## v0.794.0 PROMPT NAAP - P0 of HOOLA PROMPTING: measure before building (built as 0.785; their 0.785.0-0.793.0 took the numbers - REBASE PROTOCOL, all kept; owner pasted the P0 step of the plan = GO)
+
+Plan: `docs/HOOLA_PROMPTING_PLAN.md` part 11. Research: `docs/research/prompting/00_INDEX.md`. No user-facing change.
+
+**The question:** does a complete brief beat her rough line in Hoola's OWN engines, and by how much, per section? A
+section with no gain is dropped before it is built.
+
+**Files**
+- `server/app/quality/prompt_asks.py` - 60 asks, 20 each for web / image / script, 10 Hinglish + 10 English per
+  section. Each has `raw` (her rough line), `brief` (the same job filled in BY HAND in the section's anatomy), `must`
+  (what she wanted, checkable) and `facts` (literals that must come back unchanged; a list = alternative spellings,
+  because a Hinglish script may say "5 baje" for "5 am"). Made-up businesses, no phone numbers.
+- `server/app/quality/promptcard.py` - the scorer, the free card, the live card, her verdicts.
+- `python -m app.quality prompt` (free) | `--live --budget-inr N [--section] [--limit N per section] [--only] [--judge]`
+  | `--status` | `verdict <id> raw|brief|same ["why"]`.
+- `GET /api/quality/prompt`; vps-ops `prompt_card_check` (free) and `prompt_card_try` (2 asks per section, Rs 250 cap).
+- `server/tests/test_v0794_prompt_card.py` - 11 tests, engines replaced by fakes, no model.
+
+**What runs live**
+- web = the website architect's PLAN only (`architect._ask` + `clean` + `depth`): one call, no project row, no build.
+- script = `create.service.write("script", ...)`; the brief arm also sets format / length / language / tone.
+- image = `photogen.make` (fast), the PNG kept in `data/quality/promptcard-img/`, then ONE reader call answering
+  yes / no per statement from the picture.
+- optional `--judge` = a blind pick for web / script with the shown order alternating; the card prints how often
+  the first-shown side won.
+
+**Scoring (code, 0-100)** web: must 55, facts 20, architect depth 15, nothing invented 10. script: must 50, facts 25,
+length band 10, nothing invented 15. image: share of statements the reader confirms. A pair is a win only with a
+lead over 5 points. Section rule: BUILD = gain >= 10 AND the brief clearly better in >= 60% of pairs; DROP = gain
+< 4; else RETHINK; under 8 finished pairs = no verdict; once she has picked 5 pairs of a section her picks decide.
+All thresholds and weights are judgement, not measured.
+
+**Money** a live card refuses to start without `--budget-inr`; each ask is a PAIR (raw then brief) and a pair starts
+only when the budget has room for both, sections interleaved, so a budget that runs out leaves both arms with the
+same coverage. Rupees = `usage.run_meter` x the server's rate (+ the picture engine's flat price when its call was
+not metered). Three dead pairs in a row stop the card.
+
+**Found by its own checks while building**
+1. The architect's plan carries HER words back (`spec["words"]`), so with the same plan the brief arm scored 88 and
+   the raw arm 37 - the brief was being paid for its own text. The web runner drops that field and `unecho()` removes
+   any pasted-back copy (whole, or any line of 40+ characters) before scoring; a test holds "same plan = same marks".
+2. The picture engine's own guard refuses a national-flag picture - the free card asks the engines' free guards for
+   every ask, found it, and the ask was replaced (kites).
+3. A price followed by a full stop ("Rs 299.") read as invented; a JSON-escaped rupee sign was not read.
+
+**Not verified / limits**
+- NO live card has run. There are no numbers. Rs 25 / 3 / 4 a run are ASSUMED (about Rs 1,280 for all 120 runs).
+- The brief is hand-filled: this is the CEILING of the idea. BUILD means worth building; whether Hoola can fill the
+  brief itself is P1's proof.
+- web scores the PLAN, not a built site. The script length band is rough (2-9 words a second over the whole
+  screenplay). The picture reader is a model: its yes / no can be wrong; her verdict on the saved PNGs outranks it.
+- The engines run on whatever model the server routes to (GLM door / one-model rules apply as in production).
+- Older reds proven on the commit before this one, untouched: test_v0240_calm_brand::test_version (28 == 25),
+  test_v0649_web_studio three-looks walk, test_v0693_app_studio design-run, test_v0784_sawaal_card look-one.
+
+## v0.795.0 YEH WALA - point at the page instead of describing it (L5 of docs/LOVABLE_STUDIO_PLAN.md, owner: "GO L5")
+Before: Edit mode only typed words / swapped a picture; to change anything else she had to describe where it was, and
+"AI se badlo" pasted quoted text into the box (plan gap D3). Now the Studio preview has Lovable's pointing tools, in Hoola's look.
+- PREVIEW TOOLBAR (`webstudio.js` YW block, `#wsYW`): Select / Text / Draw / Comment (keys S T D C), Comments count, Undo, Done,
+  hide; drag the grip and it snaps to left / centre / right (remembered in this browser). The composer's Select button opens it
+  in Select. `hoola-edit.js` gained the modes (select / comment / view) through `edit-cmd` messages from its parent only;
+  Text mode is the v0.295 behaviour unchanged (the phone app's edit mode too).
+- SELECT -> MODEL (E3): click a part (Ctrl / Shift adds, up to 8): a violet outline + name tooltip in the page, a pill in the
+  composer ("Home · Hero · heading 'Sharma Sweets'"). On send, PUT /api/sites/{id}/selection (each part checked against the
+  section store: `yehwala._element`) and the hint "selected elements: N"; `turnmode.site_block` adds `<selected_elements>`
+  (label, page, the code FILE for edit_lines, the element's HTML without edit numbers, its style picks) ONCE to that turn,
+  then it is gone (30 min limit). Her bubble shows only her words.
+- STYLE PANEL (one part selected; free, no model): text colour / background from the site's own tokens (brand, accent, text,
+  soft, page, panel, dark), size steps, weight, align, padding 0-4, corners; "As designed" removes a pick. Stored as
+  `hs-u-<prop>-<value>` classes (`edit.style`, list `edit.STYLE`; utilities in `hoola-site.css` use the token variables, so a
+  raw colour can never be written - refused). Each pick = `edit_element op=style` -> one Undo step, a quick-checked version
+  (v0.789 tier). Measured in the test: 0 model calls, Rs 0.
+- COMMENTS for her team (`site_comments`, registered in db.init_db + self-heal): on a part of the page, numbered pins in the
+  preview, list with Resolve / Reopen / Delete; never sent to Hoola. GET/POST /api/sites/{id}/comments,
+  POST /api/sites/{id}/comments/{cid}/{resolved|open|deleted}.
+- DRAW: pen strokes + numbered notes over the preview frame; Send to Hoola = POST /api/sites/{id}/markup -> the server's
+  Chromium screenshots THAT page (the site's own files only) at her width / height / scroll, draws her strokes + note numbers,
+  adds the notes as a list under the picture, stores it as her chat file and attaches it to her message. Side panels step
+  aside while drawing.
+- GET /api/sites/{id}/element = one part as the style panel needs it.
+Tests: test_v0795_yeh_wala.py (6: tokens-only free style + Undo + it reaches the built page, selection once + her sites only,
+comments CRUD, the marked-up screenshot (real Chromium), source wiring, a Playwright walk: Select -> pill + style panel ->
+brand colour -> new version -> her message carries <selected_elements> -> Comment pin + list -> Draw + Send -> hide / Done).
+NOT VERIFIED live: a real model acting on <selected_elements> and on a marked-up screenshot on her server.
+
+## v0.797.0 3D SCENES + THE GAME TOOL HUB (owner: "HOW BIG 3D GRAPHICAL STUNING GAME CAN BE BUILD VIA HOOLA AI --- IS THERE ANY WAY THAT OUR ENGINE WILL CONNECTED TO 100 OF PERFECT GAMING DESIGNING TOOLS" → "GO BOTH")
+
+**1. 3D scenes as checked data.** `gamedesk/scene.py` gains the 3D half of the v0.545 rule — the model writes a SPEC,
+Hoola checks it in code and GENERATES the `.tscn`, and every scene is loaded in the real engine before she sees it.
+Measured in Godot 4.7.2 headless BEFORE a line was written: Vector3 position / rotation_degrees / scale, primitive meshes
+carrying a StandardMaterial3D (albedo, metallic, roughness, emission), lights with shadows, a current Camera3D, a
+WorldEnvironment (colour or procedural sky, ambient, fog, glow), 3D collision shapes, Vector3 animation tracks, and a
+`.glb` model placed by name all load exactly as written; a `.glb` imports headless and instances. The spec now takes:
+20 3D node types (NODES3D), `mesh` on a MeshInstance3D (box / sphere / cylinder / capsule / plane / prism / torus +
+`material`), `environment` on a WorldEnvironment (sky top / horizon / ground or a background colour, ambient, fog, glow),
+3D shapes (box / sphere / capsule / cylinder), light / camera props, and **her APPROVED 3D models** from the Assets tab
+placed with `{"model": "<asset key>"}` → `res://assets/<key>.glb` (`scene._models_of` reads the same files a build
+copies; a model that was not approved, a path-like key, a model root, or model + type together are refused by name).
+`verify()` copies the models in and runs Godot's import first, exactly as a build does, so a model that cannot import is a
+FAIL, never a pass; the probe now also reports `three`, `meshes`, `lights`, `cameras`. Every unknown key inside a mesh,
+material or environment is dropped AND named (a `script` key inside a mesh is refused like a `source` key on a node), and
+the emitted text is still re-scanned for an embedded script. The SCENE prompt teaches what a stunning 3D scene is made of
+(a sky, one sun with shadows, a little fog, a framing camera, real roughness / metal, emission where things glow, models /
+instances for repeats); the tool description was rewritten to keep every honesty rule inside the registry's 1,200-character
+cut (the first draft lost "cannot SEE how it looks" to that cut — caught by the suite). Proved live: a 15-node courtyard
+with sky, sun shadows, fog, glow, a glowing spinning diya and three instances of a real `.glb` chair → PASS with 5 meshes,
+1 light, 1 camera and the `spin` animation counted by the engine; the same scene with a missing model file → FAIL.
+`tests/test_v0792_scenes3d.py` (20) + the 2D suite (13) = 33 green. NOT BUILT: TileMaps / GridMaps and shaders. A headless
+check proves a 3D scene loads and counts what is in it; it cannot SEE how it looks — said in the tool, the view and the code.
+
+**2. The Game Tool Hub, researched.** `docs/GAME_TOOL_HUB_PLAN.md`: 110 game-making tools classified into four lanes
+(Hoola's own server / cloud API with her key / the vendor's own MCP / her own machine), each with its official API, official
+MCP, the licence clause that decides, cost, and status — **62 have an official route today** (lane 1: 15, lane 2: 25,
+lane 3: 13, lane 4: 9; 19 already built), 8 need a partner deal, 9 are blocked (no API or the licence forbids Hoola's shape),
+31 unverified with what would settle each. Build waves start with CC0 libraries (Poly Haven, Kenney, ambientCG) and her-key
+3D / audio (Meshy, Tripo, ElevenLabs). Findings that tighten the moat plan: **Epic DOES ship "Unreal MCP" in UE 5.8**
+(Experimental, localhost, no auth — re-checked by the lead on Epic's own page); the AI-3D vendors' terms forbid a shared
+Newtika account (her key and her plan, always); Tripo's free tier keeps all rights; Blender's new official MCP runs
+model-written code unguarded, so Hoola's guarded runner stays the server path. One question is the owner's: most official
+vendor MCPs sign in with OAuth to HER vendor account — whether that fits her "no consumer-subscription OAuth" rule.
+
+Also healed: four game-role tests still asserted the old Hinglish "hired nahi" after main's English-tools commit d84057023.
+
+
+## v0.798.0 HOOLA VOCAL (built as 0.787; owner: "NOW LETS WORK ON 11LABS ::: HOOLA VOCAL ::: clone VoiceStudio and make same 11labs for hoola end to end")
+
+Full plan, the licence finding and the ElevenLabs-by-feature table: `docs/HOOLA_VOCAL_PLAN.md`.
+
+- **Licence:** VoiceStudio is AGPL-3.0 and its default weights are CC-BY-NC. Read for the feature map only; ZERO code or weights
+  copied (a test asserts it). Everything runs on Hoola's own engines.
+- **Server:** NEW `server/app/vocal/service.py` (rules) + `vocal/api.py` (20 routes under `/api/vocal`), switch `vocal_page`,
+  console flag `vocal`. Storage `data/vocal/<tenant>/vocal.json` + `audio/` + `samples/`.
+  `tts`, `dialogue`, `preview`, `voice_clone` (consent must be True; bytes sniffed, never the file name), `voice_design`
+  (refuses "sound like ..."), `voice_remove` (deletes the recording), `rule_add/remove` + `apply_rules`, `pieces` (cut at sentence
+  ends) + `join_wavs` (one format only - two kinds of voice in one dialogue are refused, not garbled), `sfx`, `cleanup`, `music`,
+  `project_save` / `chapter_make` / `project_export`, `history_remove`, `audio_file` (id shape checked, tenant-scoped), `usage`,
+  `connected()` = the honest switchboard.
+- **Console:** NEW `static/console/vocal.js` (overlay `#hvRoot`, twelve pages, a player bar), sidebar row "Hoola Vocal" under Hoola
+  Interactive. The Interactive design block in v2.css is now scoped `:is(#hiRoot,#hvRoot)`; Vocal's own pieces are the `.hv-*` rules.
+- **Live bug fixed (in Hoola Interactive since v0.774):** `v2.js` line 234 sends every click on `[data-v]` to `go()`. Both pages'
+  tabs carried `data-v`, so one tab click hid the page and returned her to chat. Renamed `data-val`. RULE: inside a full-page overlay
+  never use `data-v`.
+- **Tests:** `test_v0787_hoola_vocal.py` (11): rules applied by code, long text cut and rejoined exactly, consent, sniffed bytes, no
+  named-person imitation, dialogue casting, chapters + export, effects determinism, history / usage, the not-connected switchboard,
+  no AGPL names, and a real-Chromium walk of all twelve pages (title once, no sideways scroll, her text never run as HTML, a tab
+  click stays on the page, the typed line reaches the server with her voice and language).
+- **NOT VERIFIED:** every engine was faked in the tests. No real voice has been heard from this page. Clone and design need the GPU
+  lab, which is not connected on her server.

@@ -473,6 +473,6 @@ def test_the_spec_promises_the_ladder():
 
 def test_app_version_is_the_conscious_bump():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.786.0"
+    assert APP_VERSION == "0.798.0"
     root = Path(__file__).resolve().parents[2]
-    assert "0.786.0+785" in (root / "pubspec.yaml").read_text()
+    assert "0.798.0+797" in (root / "pubspec.yaml").read_text()

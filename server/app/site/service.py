@@ -344,7 +344,9 @@ def view(r: Site, full: bool = True) -> dict[str, Any]:
                   "design": _dna_view(_j(r.look, {}).get("dna")), "estimate": _estimate(r, plan),
                   "checks": {"blocking": checks.get("blocking", [])[:12], "warnings": checks.get("warnings", [])[:12],
                              "passed": checks.get("passed"), "source": checks.get("source"),
-                             "journeys": checks.get("journeys") or []},          # v0.400 the visitor tests
+                             "journeys": checks.get("journeys") or [],           # v0.400 the visitor tests
+                             "tier": checks.get("tier") or "", "checked_pages": checks.get("checked_pages") or [],   # v0.789
+                             "quick_s": checks.get("quick_s")},
                   "shots": _j(r.board, {}).get("shots", {}), "photos": [p.get("name") for p in _j(r.photos, [])],
                   "languages": _j(r.languages, ["en"]),
                   "media": [{k: m.get(k) for k in ("name", "kind", "ext", "bytes", "about")}      # v0.338 her uploads
@@ -2842,13 +2844,14 @@ def _editable(tenant: str, ref: str) -> Site:
     return r
 
 
-def _after_edit(r: Site, note: str) -> dict[str, Any]:
-    """Both previews at once (edit + live), then one checked version in the background (edits close together = one)."""
+def _after_edit(r: Site, note: str, quick: list[str] | None = None) -> dict[str, Any]:
+    """Both previews at once (edit + live), then one checked version in the background (edits close together = one).
+    quick = the page(s) of a one-section change: only those are checked (v0.789); edits that pile up get a full check."""
     r = _load(r.id)
     _assemble_edit(r)
     if busy(r.id):                     # her last edits are being checked from the live copy: the next save rebuilds it
         _SAVE_PENDING.add(r.id)
-    elif not _start(r.id, "save", note=note):
+    elif not _start(r.id, "save", note=note, **({"quick": quick} if quick else {})):
         _SAVE_PENDING.add(r.id)
     r = _load(r.id)
     _emit(r)
@@ -2875,7 +2878,13 @@ def edit_element(tenant: str, ref: str, key: str, e: str, op: str, value: str = 
         raise SiteError("Yeh section ab nahi hai; preview taaza kijiye.")
     before = secs[key]
     try:
-        if op == "insert":                    # v0.338 a photo / video / audio / file she adds after what she clicked
+        if op == "style":                     # v0.795 YEH WALA: the free style panel (site tokens only, no AI)
+            try:
+                spec = json.loads(value or "{}")
+            except ValueError:
+                spec = {}
+            h, what = E.style(before["html"], str(e), str(spec.get("prop") or ""), str(spec.get("value") or ""))
+        elif op == "insert":                  # v0.338 a photo / video / audio / file she adds after what she clicked
             markup, what = _insert_markup(r, value)
             h, _ = E.insert(before["html"], str(e), markup)
             h, _n = E.tag(h)
@@ -2889,7 +2898,7 @@ def edit_element(tenant: str, ref: str, key: str, e: str, op: str, value: str = 
         return {**view(r, False), "say": "Kuch badla nahi."}
     _put_sec(r, key, {**before, "html": h, "edited": True})
     _push_edit(r, {"kind": "section", "key": key, "op": op, "what": what, "before": before})
-    out = _after_edit(r, f"Aapka badlav: {what}")
+    out = _after_edit(r, f"Aapka badlav: {what}", quick=[key.split("__", 1)[0]])
     return {**out, "say": f"Badal diya: {what}. Wapas chahiye to Undo."}
 
 
@@ -2986,7 +2995,31 @@ def edits(tenant: str, ref: str) -> dict[str, Any]:
     return {"edits": [{"what": x.get("what"), "op": x.get("op", x.get("kind")), "at": x.get("at")} for x in reversed(_edits(r))]}
 
 
-def save_version(site_id: str, note: str = "") -> None:
+def _quick_merge(prev: dict[str, Any], q: dict[str, Any], pages: list[str]) -> dict[str, Any]:
+    """v0.789 a quick check of the touched pages joins the last FULL report: those pages' results are replaced, every
+    other page keeps its last result, the site-wide visitor journeys and Lighthouse items stay from the full run (they
+    run again in the full check before going live)."""
+    merged = {**(prev.get("pages") or {}), **(q.get("pages") or {})}
+    q_page = {id(x) for pr in (q.get("pages") or {}).values() for x in (pr.get("issues") or []) + (pr.get("warnings") or [])}
+    keep = ("journey", "lighthouse")
+    blocking = [x for pr in merged.values() for x in pr.get("issues") or []]
+    blocking += [x for x in q.get("blocking") or [] if id(x) not in q_page]
+    blocking += [x for x in prev.get("blocking") or [] if x.get("kind") in keep]
+    warnings = [x for pr in merged.values() for x in pr.get("warnings") or []]
+    warnings += [x for x in q.get("warnings") or [] if id(x) not in q_page]
+    warnings += [x for x in prev.get("warnings") or [] if x.get("kind") in keep]
+    scores = {**(prev.get("scores") or {}), **{k: v for k, v in (q.get("scores") or {}).items()
+                                               if k not in ("performance", "accessibility", "seo", "best_practices")}}
+    scores["blanks"] = sum(pr.get("blanks", 0) for pr in merged.values())
+    scores["samples"] = sum(pr.get("samples", 0) for pr in merged.values())
+    out = {**prev, "pages": merged, "blocking": blocking, "warnings": warnings, "scores": scores,
+           "tier": "quick", "checked_pages": list(pages)}
+    out.pop("gates", None)
+    out["passed"] = not blocking
+    return out
+
+
+def save_version(site_id: str, note: str = "", quick: list[str] | None = None) -> None:
     """v0.295 her own-hand edits become a checked version: the same Chromium checks as a build, but no AI fix rounds
     and no critique (her words are hers). A blocking problem shows on the Checks tab like after any build."""
     from ..usage import scope
@@ -3002,6 +3035,24 @@ def save_version(site_id: str, note: str = "") -> None:
             log.exception("translation during save failed")
         shots = B.site_dir(r.tenant_id, r.id) / "shots" / "live"
         live = _assemble_live(r)
+        prev = _j(r.checks, {})
+        # v0.789 CHHOTA BADLAAV: a small change (one section) is checked on its own page(s) in seconds, on top of the
+        # last FULL check; the full matrix + journeys run again before going live (hosting.blockers asks for it)
+        pages = [p for p in dict.fromkeys(quick or []) if p]
+        if (pages and getattr(_settings(), "site_quick_checks", True) and prev.get("source") not in (None, "", "none")
+                and prev.get("pages")):
+            t0 = time.monotonic()
+            try:
+                q = C.run(live, plan, shots, video=False, only=pages, quick=True)
+            except C.CheckError:
+                q = None
+            if q is not None:
+                report = _gates(r, _quick_merge(prev, q, pages))
+                report["tier"], report["checked_pages"] = "quick", pages
+                report["quick_s"] = round(time.monotonic() - t0, 1)
+                log.info("site %s quick check %s in %.1f s", r.id, pages, report["quick_s"])
+                _make_version(r, plan, report, shots, None, note or "aapke badlav", None, push=False)
+                return
         try:
             report = C.run(live, plan, shots, video=False)
         except C.CheckError as e:
@@ -3009,6 +3060,7 @@ def save_version(site_id: str, note: str = "") -> None:
                       "passed": None, "source": "none", "pages": {}}
         report = _journeys(r, report)         # v0.400 her edits too: the shop / form / menu still work
         report = _gates(r, report)            # v0.551 and the gates again on what she changed
+        report["tier"] = "full"
         _make_version(r, plan, report, shots, None, note or "aapke badlav", None, push=False)
 
 
@@ -3490,7 +3542,7 @@ def code_write(tenant: str, ref: str, path: str, code: str) -> dict[str, Any]:
         return {**code_read(tenant, ref, path), "say": "Kuch badla nahi.", "removed": problems}
     _put_sec(r, key, new)
     _push_edit(r, {"kind": "section", "key": key, "op": "code", "what": f"code: {path}", "before": before})
-    _after_edit(r, f"Code: {path}")
+    _after_edit(r, f"Code: {path}", quick=[key.split("__", 1)[0]])
     return {**code_read(tenant, ref, path), "removed": problems,
             "say": "Save ho gaya; jaanch ke baad nayi version." + (" Safety ke liye hataya: " + "; ".join(problems[:4]) if problems else "")}
 

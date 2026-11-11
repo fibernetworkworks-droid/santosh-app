@@ -1,0 +1,46 @@
+{
+ "base": "laser-thermal-expansion-quartz",
+ "rig": "w7-optics-bench",
+ "chapter": "Lasers, fibre optics and applied optics",
+ "variants": [
+  {
+   "key": "fused",
+   "title": "Thermal expansion of fused quartz using a laser",
+   "sample": "Fused quartz rod, 20 cm",
+   "unknown": "the coefficient of linear expansion",
+   "params": {
+    "al": 5.5e-07
+   },
+   "source": {
+    "title": "Fused quartz (vitreous silica): linear expansion coefficient about 0.55 x 10^-6 per kelvin",
+    "note": "from memory - verify"
+   }
+  },
+  {
+   "key": "crystal-parallel",
+   "title": "Thermal expansion of crystal quartz along the optic axis",
+   "sample": "Crystal quartz rod cut along the optic axis, 20 cm",
+   "unknown": "the coefficient of linear expansion",
+   "params": {
+    "al": 7.1e-06
+   },
+   "source": {
+    "title": "Crystalline quartz: expansion coefficient about 7.1 x 10^-6 per kelvin parallel to the optic axis",
+    "note": "from memory - verify"
+   }
+  },
+  {
+   "key": "crystal-perpendicular",
+   "title": "Thermal expansion of crystal quartz across the optic axis",
+   "sample": "Crystal quartz rod cut across the optic axis, 20 cm",
+   "unknown": "the coefficient of linear expansion",
+   "params": {
+    "al": 1.32e-05
+   },
+   "source": {
+    "title": "Crystalline quartz: expansion coefficient about 13.2 x 10^-6 per kelvin perpendicular to the optic axis",
+    "note": "from memory - verify"
+   }
+  }
+ ]
+}

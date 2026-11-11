@@ -1,0 +1,34 @@
+{
+ "base": "fresnel-biprism",
+ "rig": "w7-optics-bench",
+ "chapter": "Interference",
+ "variants": [
+  {
+   "key": "sodium",
+   "title": "Fresnel's biprism: wavelength of sodium light",
+   "sample": "Sodium vapour lamp",
+   "unknown": "the wavelength of sodium light",
+   "params": {
+    "lam": 5.893e-07
+   },
+   "source": {
+    "title": "NIST Atomic Spectra Database: sodium D lines 588.995 nm and 589.592 nm (mean 589.3 nm)"
+   }
+  },
+  {
+   "key": "mica",
+   "title": "Fresnel's biprism: thickness of a mica sheet",
+   "sample": "Thin sheet of muscovite mica over one half of the biprism, sodium vapour lamp",
+   "unknown": "the thickness of the mica sheet",
+   "params": {
+    "mode": 1,
+    "t": 1.2e-05
+   },
+   "note": "The central fringe is found with white light; sodium light then measures the shift.",
+   "source": {
+    "title": "Muscovite mica: refractive index about 1.58 for sodium light",
+    "note": "from memory - verify"
+   }
+  }
+ ]
+}

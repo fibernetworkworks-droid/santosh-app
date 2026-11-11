@@ -1,0 +1,25 @@
+{
+ "base": "bh-curve",
+ "rig": "em-ug-instruments",
+ "chapter": "Electricity and magnetism",
+ "variants": [
+  {
+   "key": "hard-steel",
+   "title": "B-H curve and hysteresis loss of hard steel",
+   "sample": "Hardened carbon steel ring",
+   "method": "Oscilloscope loop tracer",
+   "unknown": "hysteresis loss, retentivity and coercivity",
+   "aim": "Trace the B-H loop of a hardened steel ring on an oscilloscope, drive it to saturation, and read its coercivity, its retentivity and the hysteresis loss per cycle from the loop.",
+   "params": {
+    "Hc": 4000.0,
+    "a": 6000.0,
+    "H0": 28000.0,
+    "Ms": 2.0
+   },
+   "source": {
+    "title": "Hardened carbon steel loop values (coercive field of order 4 kA/m, saturation about 2.0 T)",
+    "note": "from memory - verify against Cullity and Graham, Introduction to Magnetic Materials, or Bozorth, Ferromagnetism"
+   }
+  }
+ ]
+}
