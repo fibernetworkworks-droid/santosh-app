@@ -15,7 +15,7 @@ from .common import CstError, _dump, _j, _num, publish, today
 def training_add(tenant: str, project: str, rows: list, conv: str = "") -> dict:
     """#83: rows [name, trade, training, date, valid_till] - as per the register/log she pastes."""
     if not rows:
-        raise CstError("Training rows chahiye [name, trade, training, date, valid_till].")
+        raise CstError("Training rows are needed [name, trade, training, date, valid_till].")
     made = 0
     with session() as s:
         for r in rows:
@@ -28,7 +28,7 @@ def training_add(tenant: str, project: str, rows: list, conv: str = "") -> dict:
             made += 1
     publish(tenant, "const_ehs", {"kind": "training", "project": project, "rows": made}, conv)
     return {"ok": True, "rows": made,
-            "said": f"{made} training row(s) likhi - validity register ki hai, certificate copy aapki file mein."}
+            "said": f"{made} training row(s) written - the validity is the register's, the certificate copy is in your file."}
 
 
 def training_due(tenant: str, project: str = "") -> dict:
@@ -54,7 +54,7 @@ def training_due(tenant: str, project: str = "") -> dict:
         else:
             valid += 1
     return {"ok": True, "expired": expired, "due_30d": due, "valid": valid,
-            "said": ("Refresher training EHS head hi schedule karega - yeh sirf expiry ka hisaab hai.")}
+            "said": ("Only the EHS head schedules refresher training - this is just the expiry arithmetic.")}
 
 
 def env_add(tenant: str, project: str, kind: str, rows: list, source: str = "", conv: str = "") -> dict:
@@ -63,9 +63,9 @@ def env_add(tenant: str, project: str, kind: str, rows: list, source: str = "", 
     if kind not in ("env_read", "env_limit"):
         raise CstError("kind env_read | env_limit.")
     if kind == "env_limit" and not source:
-        raise CstError("Limit ke saath source zaroori hai (CPCB/SPCB norm ka naam).")
+        raise CstError("A limit needs a source (the name of the CPCB/SPCB norm).")
     if not rows:
-        raise CstError("rows chahiye.")
+        raise CstError("rows are needed.")
     made = 0
     with session() as s:
         for r in rows:
@@ -79,7 +79,7 @@ def env_add(tenant: str, project: str, kind: str, rows: list, source: str = "", 
             made += 1
     publish(tenant, "const_ehs", {"kind": kind, "project": project, "rows": made}, conv)
     return {"ok": True, "rows": made, "source": source,
-            "said": f"{made} {kind} row(s) - readings aapki monitoring report se."}
+            "said": f"{made} {kind} row(s) - readings from your monitoring report."}
 
 
 def env_check(tenant: str, project: str) -> dict:
@@ -92,7 +92,7 @@ def env_check(tenant: str, project: str) -> dict:
                                                     M.CEhsItem.project == project,
                                                     M.CEhsItem.kind == "env_limit")).all()
     if not limits:
-        raise CstError("Pehle limits jodo (kind=env_limit, source ke saath) - bina limit exceedance nahi.")
+        raise CstError("Add limits first (kind=env_limit, with a source) - no exceedance without a limit.")
     lm = {}
     for l in limits:
         d = _j(l.data, {})
@@ -110,8 +110,8 @@ def env_check(tenant: str, project: str) -> dict:
                     "verdict": "EXCEEDS" if exceed else "within"})
     n_ex = sum(1 for o in out if o.get("verdict") == "EXCEEDS")
     return {"ok": True, "rows": out, "exceeds": n_ex,
-            "said": (f"{n_ex} row(s) limit cross karti hain - report SPCB/EHS head ko bhejne ka decision aapka."
-                     if n_ex else "Sab readings fed limits ke andar.")}
+            "said": (f"{n_ex} row(s) cross the limit - sending the report to the SPCB/EHS head is your decision."
+                     if n_ex else "All readings are within the fed limits.")}
 
 
 def camp_add(tenant: str, project: str, rows: list) -> dict:
@@ -133,7 +133,7 @@ def camp_check(tenant: str, project: str, rows: list, by: str = "") -> dict:
     """#86: facilities checklist [item, status] - a status WITHOUT `by` refuses (the clash_mark law);
     the welfare verdict stays the labour welfare officer's."""
     if not by:
-        raise CstError("Checklist ki status ke saath US KA NAAM jo check kar raha hai (welfare officer).")
+        raise CstError("The checklist status needs the NAME of the person checking (welfare officer).")
     made = 0
     with session() as s:
         for r in rows:
@@ -143,4 +143,4 @@ def camp_check(tenant: str, project: str, rows: list, by: str = "") -> dict:
                              data=_dump({"status": str(r[1])[:40], "by": by})))
             made += 1
     return {"ok": True, "rows": made, "by": by,
-            "said": f"{made} check row(s), checker: {by}. Welfare ka verdict officer ka hai."}
+            "said": f"{made} check row(s), checker: {by}. The welfare verdict is the officer's."}

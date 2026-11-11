@@ -40,7 +40,7 @@ def earthwork(length: float, breadth: float, depth: float, lead_m: float = 0.0, 
     """IS 1200 (Part 1) earthwork: L x B x D in m3; lead & lift recorded as fed, never assumed."""
     ins = {"length": length, "breadth": breadth, "depth": depth, "lead_m": lead_m, "lift_m": lift_m}
     if length <= 0 or breadth <= 0 or depth <= 0:
-        raise ValueError("Earthwork ke liye length, breadth, depth - teeno positive chahiye.")
+        raise ValueError("Earthwork needs length, breadth, depth - all three positive.")
     f = "L x B x D" + (f" | lead {lead_m:g} m, lift {lift_m:g} m (recorded as fed)" if lead_m or lift_m else "")
     return _trail(length * breadth * depth, "m3", f, ins, "IS 1200 (Part 1) earthwork")
 
@@ -49,14 +49,14 @@ def concrete(length: float, breadth: float, depth: float, openings_m2: float = 0
     """IS 1200 (Part 2) concrete: net volume; openings / fittings up to 0.1 m2 are NOT deducted."""
     ins = {"length": length, "breadth": breadth, "depth": depth, "openings_m2": openings_m2}
     if length <= 0 or breadth <= 0 or depth <= 0:
-        raise ValueError("Concrete ke liye length, breadth, depth - teeno positive chahiye.")
+        raise ValueError("Concrete needs length, breadth, depth - all three positive.")
     gross = length * breadth * depth
     if openings_m2 > 0.1:
         net = gross - openings_m2 * depth
         f = f"L x B x D - openings {openings_m2:g} m2 x depth (> 0.1 m2 deducted)"
     else:
         net = gross
-        f = "L x B x D (openings <= 0.1 m2 - koi katauti nahi)"
+        f = "L x B x D (openings <= 0.1 m2 - no deduction)"
     return _trail(max(net, 0.0), "m3", f, ins, "IS 1200 (Part 2) concrete")
 
 
@@ -64,14 +64,14 @@ def brickwork(length: float, height: float, thickness: float, openings_m2: float
     """IS 1200 (Part 3) brickwork: L x H x T in m3; openings above 0.1 m2 deducted (area x thickness)."""
     ins = {"length": length, "height": height, "thickness": thickness, "openings_m2": openings_m2}
     if length <= 0 or height <= 0 or thickness <= 0:
-        raise ValueError("Brickwork ke liye length, height, thickness - teeno positive chahiye.")
+        raise ValueError("Brickwork needs length, height, thickness - all three positive.")
     gross = length * height * thickness
     if openings_m2 > 0.1:
         net = gross - openings_m2 * thickness
         f = f"L x H x T - openings {openings_m2:g} m2 x T (> 0.1 m2 deducted)"
     else:
         net = gross
-        f = "L x H x T (openings <= 0.1 m2 - koi katauti nahi)"
+        f = "L x H x T (openings <= 0.1 m2 - no deduction)"
     return _trail(max(net, 0.0), "m3", f, ins, "IS 1200 (Part 3) brickwork")
 
 
@@ -80,16 +80,16 @@ def plaster(length: float, height: float, openings_m2: float = 0.0) -> dict:
     deducted (jambs compensate); above 3 m2 fully deducted (jambs measured separately)."""
     ins = {"length": length, "height": height, "openings_m2": openings_m2}
     if length <= 0 or height <= 0:
-        raise ValueError("Plaster ke liye length aur height positive chahiye.")
+        raise ValueError("Plaster needs a positive length and height.")
     area = length * height
     if openings_m2 <= 0.5:
-        net, f = area, "L x H (openings <= 0.5 m2 - koi katauti nahi)"
+        net, f = area, "L x H (openings <= 0.5 m2 - no deduction)"
     elif openings_m2 <= 3.0:
         net = area - openings_m2 * 0.5
         f = f"L x H - 50% of openings {openings_m2:g} m2 (jambs compensate)"
     else:
         net = area - openings_m2
-        f = f"L x H - openings {openings_m2:g} m2 full (jambs alag naape jaate hain)"
+        f = f"L x H - openings {openings_m2:g} m2 in full (jambs are measured separately)"
     return _trail(max(net, 0.0), "m2", f, ins, "IS 1200 (Part 12) plaster & pointing")
 
 
@@ -97,7 +97,7 @@ def formwork(length: float, height: float) -> dict:
     """IS 1200 (Part 5) formwork: the contact area actually shuttered, L x H in m2."""
     ins = {"length": length, "height": height}
     if length <= 0 or height <= 0:
-        raise ValueError("Formwork ke liye length aur height positive chahiye.")
+        raise ValueError("Formwork needs a positive length and height.")
     return _trail(length * height, "m2", "L x H (contact area)", ins, "IS 1200 (Part 5) formwork")
 
 
@@ -108,7 +108,7 @@ def steel_weight(length_m: float, dia_mm: float, nos: float = 1.0) -> dict:
     """IS 1200 (Part 8) steelwork: n x L x d^2/162 kg - the identity shown in the formula string."""
     ins = {"length_m": length_m, "dia_mm": dia_mm, "nos": nos}
     if length_m <= 0 or dia_mm <= 0 or nos <= 0:
-        raise ValueError("Steel ke liye length, dia, nos - sab positive chahiye.")
+        raise ValueError("Steel needs length, dia, nos - all positive.")
     w = nos * length_m * dia_mm * dia_mm / BAR_D2_162
     return _trail(w, "kg", f"{nos:g} x {length_m:g} m x {dia_mm:g}^2 / 162 (pi/4 x d^2 x 7850 kg/m3)", ins,
                   "IS 1200 (Part 8) steelwork")
@@ -121,19 +121,19 @@ def bbs(bars: list) -> dict:
     rows, total = [], 0.0
     for i, b in enumerate(bars or []):
         if not isinstance(b, dict):
-            raise ValueError(f"bar #{i + 1} samajh nahi aayi ({{shape, dia, length, nos}} bhejo).")
+            raise ValueError(f"bar #{i + 1} could not be read (send {{shape, dia, length, nos}}).")
         w = steel_weight(_n(b.get("length")), _n(b.get("dia")), _n(b.get("nos"), 1.0))
         rows.append({"shape": str(b.get("shape", ""))[:60], "dia": _n(b.get("dia")),
                      "length": _n(b.get("length")), "nos": _n(b.get("nos"), 1.0),
                      "weight_kg": w["qty"], "formula": w["formula"]})
         total += w["qty"]
     if not rows:
-        raise ValueError("BBS ke liye bars bhejo [{shape, dia, length, nos}].")
+        raise ValueError("Send bars for the BBS [{shape, dia, length, nos}].")
     return {"rows": rows, "total_kg": round(total, 2), "qty": round(total, 3), "unit": "kg",
             "formula": "sum of n x L x d^2/162 per row", "inputs": {"bars": len(rows)},
             "is_ref": "IS 1200 (Part 8) steelwork; shapes per SP 34",
-            "say": f"BBS DRAFT: {len(rows)} bar types, total {total:,.1f} kg. Site engineer drawing se check "
-                   "karega - yeh working paper hai, schedule ka final check usi ka."}
+            "say": f"BBS DRAFT: {len(rows)} bar types, total {total:,.1f} kg. The site engineer checks it against the "
+                   "drawing - this is a working paper, the final check of the schedule is theirs."}
 
 
 def _n(v, default=0.0) -> float:
@@ -161,8 +161,8 @@ def compute(kind: str, params: dict) -> dict:
     """Dispatch one take-off through the library; an unknown kind refuses with the menu."""
     fn = LIBRARY.get((kind or "").strip().lower())
     if fn is None:
-        raise ValueError(f"Yeh formula library mein nahi hai ({KINDS}). Jo nahi hai woh refuse hota hai - "
-                         "guess nahi karta; rule ke saath batao to pack jud jayega.")
+        raise ValueError(f"This formula is not in the library ({KINDS}). What is not there is refused - "
+                         "nothing is guessed; give it with its rule and the pack can be added.")
     f, keys = fn
     return f(**{k: _n(params.get(k)) for k in keys})
 
@@ -171,7 +171,7 @@ def recompute(trail: dict) -> float:
     """The trail law: stored inputs through the same formula - the SAME float, bit-for-bit."""
     fn = LIBRARY.get((trail.get("kind") or "").strip().lower())
     if fn is None:
-        raise ValueError("trail ka kind library mein nahi")
+        raise ValueError("the trail's kind is not in the library")
     f, keys = fn
     out = f(**{k: _n((trail.get("inputs") or {}).get(k)) for k in keys})
     return out["qty"]

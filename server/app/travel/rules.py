@@ -35,7 +35,7 @@ SOURCES = [
     {"what": "Indian passport services (renewal, Tatkaal passport)", "url": "https://www.passportindia.gov.in", "date": "2026-10"},
 ]
 
-DISCLAIM = "Niyam badalte rehte hain: IRCTC / airline / embassy ki official site par ek baar pakka kar lijiye."
+DISCLAIM = "Rules keep changing: confirm once on the official IRCTC / airline / embassy site."
 
 # ----------------------------------------------------------------------------- railways
 CLASSES = {
@@ -92,9 +92,9 @@ def tatkal_open(journey: date, cls: str) -> dict[str, Any]:
     at = datetime.combine(journey - timedelta(days=1), t)
     return {"at": at.isoformat(timespec="minutes"), "class": cls, "ac": cls in AC_CLASSES,
             "agents_from": (at + timedelta(minutes=30)).isoformat(timespec="minutes"),
-            "say": (f"Tatkal ({CLASSES.get(cls, cls)}) {at:%d %b} ko {at:%H:%M} baje khulega. IRCTC account Aadhaar se "
-                    "verified hona chahiye aur Aadhaar wale mobile par OTP aayega; agent pehle 30 minute book nahi kar sakte. "
-                    "Tatkal ticket cancel karne par aam taur par paisa wapas nahi milta.")}
+            "say": (f"Tatkal ({CLASSES.get(cls, cls)}) opens on {at:%d %b} at {at:%H:%M}. The IRCTC account must be Aadhaar-"
+                    "verified and the OTP comes to the Aadhaar-linked mobile; agents cannot book in the first 30 minutes. "
+                    "A cancelled Tatkal ticket is usually not refunded.")}
 
 
 def chart_time(depart: datetime) -> datetime:
@@ -119,8 +119,8 @@ def web_checkin(depart: datetime, international: bool = False) -> dict[str, Any]
     opens = depart - timedelta(hours=48)
     closes = depart - timedelta(minutes=75 if international else 60)
     return {"opens": opens.isoformat(timespec="minutes"), "closes": closes.isoformat(timespec="minutes"),
-            "say": (f"Web check-in aam taur par {opens:%d %b %H:%M} se {closes:%d %b %H:%M} tak (airline ki site par pakka "
-                    "karein). Airport " + ("3 ghante" if international else "2 ghante") + " pehle pahunchiye.")}
+            "say": (f"Web check-in is usually from {opens:%d %b %H:%M} to {closes:%d %b %H:%M} (confirm on the airline's "
+                    "site). Reach the airport " + ("3 hours" if international else "2 hours") + " before departure.")}
 
 
 # ----------------------------------------------------------------------------- countries / visa (only what is certain)
@@ -137,10 +137,10 @@ CITY_COUNTRY = {
 SCHENGEN = {"france", "italy", "switzerland", "netherlands", "germany", "spain", "austria", "czechia", "greece", "portugal",
             "belgium", "sweden", "norway", "denmark", "finland", "poland", "hungary", "croatia"}
 VISA = {
-    "nepal": {"name": "Nepal", "need": False, "note": "Bharatiya nagrikon ko visa nahi chahiye; valid passport ya Voter ID saath rakhiye.",
+    "nepal": {"name": "Nepal", "need": False, "note": "Indian citizens do not need a visa; carry a valid passport or Voter ID.",
               "official": "https://www.immigration.gov.np"},
-    "bhutan": {"name": "Bhutan", "need": False, "note": "Visa nahi, par entry permit aur Sustainable Development Fee lagti hai; "
-                                                        "passport ya Voter ID chahiye.", "official": "https://www.visitbhutan.com"},
+    "bhutan": {"name": "Bhutan", "need": False, "note": "No visa, but an entry permit and the Sustainable Development Fee apply; "
+                                                        "a passport or Voter ID is needed.", "official": "https://www.visitbhutan.com"},
     "uae": {"name": "UAE", "need": None, "official": "https://icp.gov.ae"},
     "thailand": {"name": "Thailand", "need": None, "official": "https://www.thaievisa.go.th"},
     "singapore": {"name": "Singapore", "need": None, "official": "https://www.ica.gov.sg"},
@@ -158,7 +158,7 @@ VISA = {
     "azerbaijan": {"name": "Azerbaijan", "need": None, "official": "https://evisa.gov.az"},
     "mauritius": {"name": "Mauritius", "need": None, "official": "https://passport.govmu.org"},
     "schengen": {"name": "Schengen (Europe)", "need": True, "official": "https://home-affairs.ec.europa.eu/policies/schengen-borders-and-visa/visa-policy_en",
-                 "note": "Schengen visa ke liye kam se kam EUR 30,000 ka medical travel insurance zaroori hai."},
+                 "note": "A Schengen visa requires medical travel insurance of at least EUR 30,000."},
 }
 
 
@@ -180,10 +180,10 @@ def visa_info(country: str) -> dict[str, Any]:
     v = dict(VISA.get(key) or {"name": country.replace("_", " ").title(), "need": None, "official": ""})
     v["country"] = country
     if v.get("need") is None:
-        v["say"] = (f"{v['name']}: visa / e-visa / visa-on-arrival ka niyam Bharatiya passport ke liye badalta rehta hai; "
-                    f"pakka type official site par dekhiye{(': ' + v['official']) if v.get('official') else ''}.")
+        v["say"] = (f"{v['name']}: the visa / e-visa / visa-on-arrival rule for Indian passports keeps changing; "
+                    f"check the exact type on the official site{(': ' + v['official']) if v.get('official') else ''}.")
     elif v["need"]:
-        v["say"] = f"{v['name']}: visa pehle se lena hoga. Official: {v['official']}. " + v.get("note", "")
+        v["say"] = f"{v['name']}: a visa must be obtained in advance. Official: {v['official']}. " + v.get("note", "")
     else:
         v["say"] = f"{v['name']}: " + v.get("note", "")
     return v
@@ -194,14 +194,14 @@ def passport_check(expiry: str, return_date: str, country: str = "") -> dict[str
     try:
         exp, ret = date.fromisoformat(expiry), date.fromisoformat(return_date)
     except (TypeError, ValueError):
-        return {"ok": None, "say": "Passport ki expiry date bataiye (DD-MM-YYYY), tab check karunga."}
+        return {"ok": None, "say": "Give the passport's expiry date (DD-MM-YYYY) and I will check."}
     months = (exp.year - ret.year) * 12 + (exp.month - ret.month) - (1 if exp.day < ret.day else 0)
     need = 3 if country in SCHENGEN else 6
     ok = months >= need
-    say = (f"Passport wapsi ke baad {months} mahine valid hai" + (" - theek hai." if ok else
-           f" - kam se kam {need} mahine chahiye. Jaldi renew karaiye (passportindia.gov.in; jaldi ho to Tatkaal)."))
+    say = (f"The passport is valid for {months} months after the return" + (" - that is fine." if ok else
+           f" - at least {need} months are needed. Renew it soon (passportindia.gov.in; Tatkaal if urgent)."))
     if country in SCHENGEN:
-        say += " Schengen: passport pichhle 10 saal mein bana ho aur 2 khaali page."
+        say += " Schengen: the passport must be issued in the last 10 years and have 2 blank pages."
     return {"ok": ok, "months_after_return": months, "need_months": need, "say": say}
 
 
@@ -213,36 +213,36 @@ def doc_checklist(info: dict[str, Any]) -> list[dict[str, Any]]:
     country = info.get("country") or ""
     out: list[dict[str, Any]] = []
 
-    def add(i, title, why="", who="sab", must=True, src=""):
+    def add(i, title, why="", who="everyone", must=True, src=""):
         out.append({"id": i, "title": title, "why": why, "who": who, "must": must, "src": src})
 
     trav = info.get("travellers") or []
     if "train" in modes:
-        add("train_id", "Har yatri ka original photo ID (train)", "TTE maang sakta hai: " + ", ".join(TRAIN_ID[:5]) + "...")
-        add("train_ticket", "E-ticket / SMS (PNR wala)", "Print zaroori nahi, SMS / app mein ticket kaafi hai.")
+        add("train_id", "Original photo ID for every traveller (train)", "The TTE may ask for it: " + ", ".join(TRAIN_ID[:5]) + "...")
+        add("train_ticket", "E-ticket / SMS (with the PNR)", "A printout is not needed; the SMS / ticket in the app is enough.")
         if info.get("tatkal"):
-            add("tatkal_aadhaar", "IRCTC account Aadhaar se verified + Aadhaar wala mobile saath",
-                "Tatkal ke liye Aadhaar OTP zaroori (15 Jul 2025 se).", src=SOURCES[2]["url"])
+            add("tatkal_aadhaar", "IRCTC account verified with Aadhaar + the Aadhaar-linked mobile with you",
+                "Aadhaar OTP is required for Tatkal (from 15 Jul 2025).", src=SOURCES[2]["url"])
     if "flight" in modes:
-        add("flight_id", "Photo ID (flight)", "Airport entry ke liye: " + ", ".join(FLIGHT_ID[:4]) + "...")
-        add("boarding", "Boarding pass (web check-in ke baad)")
-        add("digiyatra", "DigiYatra app (marzi se)", "38 airports par bina kaagaz entry; domestic mein marzi.", must=False,
+        add("flight_id", "Photo ID (flight)", "For airport entry: " + ", ".join(FLIGHT_ID[:4]) + "...")
+        add("boarding", "Boarding pass (after web check-in)")
+        add("digiyatra", "DigiYatra app (optional)", "Paperless entry at 38 airports; optional for domestic travel.", must=False,
             src=SOURCES[4]["url"])
     if "bus" in modes:
         add("bus_ticket", "Bus ticket / SMS + photo ID")
     if "hotel" in modes or intl:
-        add("hotel_voucher", "Hotel booking voucher / confirmation", "Check-in par photo ID bhi maangte hain.")
+        add("hotel_voucher", "Hotel booking voucher / confirmation", "A photo ID is also asked for at check-in.")
     if intl:
-        add("passport", "Passport (wapsi ke baad 6 mahine valid, 2 khaali page)", src=SOURCES[6]["url"])
+        add("passport", "Passport (valid 6 months after the return, 2 blank pages)", src=SOURCES[6]["url"])
         v = visa_info(country)
         if v.get("need") is not False:
-            add("visa", f"Visa / e-visa ({v.get('name') or 'desh'})", v.get("say", "Official site par type check karein."),
+            add("visa", f"Visa / e-visa ({v.get('name') or 'country'})", v.get("say", "Check the visa type on the official site."),
                 must=True, src=v.get("official", ""))
-        add("return_ticket", "Wapsi ka ticket + hotel booking ki copy", "Immigration maang sakta hai.")
+        add("return_ticket", "Return ticket + a copy of the hotel booking", "Immigration may ask for it.")
         add("insurance", "Travel insurance", (VISA["schengen"]["note"] if country in SCHENGEN else
-                                             "Medical emergency ke liye accha; kuch desh ke visa mein zaroori."),
+                                             "Good for medical emergencies; required for the visa of some countries."),
             must=country in SCHENGEN)
-        add("forex", "Forex card / thoda cash (desh ki currency)", must=False)
+        add("forex", "Forex card / some cash (the country's currency)", must=False)
         add("photos", "Passport size photos (2-4)", must=False)
     for t in trav:
         try:
@@ -250,12 +250,12 @@ def doc_checklist(info: dict[str, Any]) -> list[dict[str, Any]]:
         except (TypeError, ValueError):
             age = -1
         if 0 <= age < 18:
-            add(f"minor_{t.get('name', '')[:20]}", f"{t.get('name') or 'Bachche'}: birth certificate / school ID",
-                "Bachchon ki age proof ke liye.", who=t.get("name") or "bachcha")
+            add(f"minor_{t.get('name', '')[:20]}", f"{t.get('name') or 'Child'}: birth certificate / school ID",
+                "As proof of the child's age.", who=t.get("name") or "child")
         if age >= 60 and "train" in modes:
-            add(f"senior_{t.get('name', '')[:20]}", f"{t.get('name')}: age proof saath (lower berth quota ke liye)",
+            add(f"senior_{t.get('name', '')[:20]}", f"{t.get('name')}: carry age proof (for the lower berth quota)",
                 who=t.get("name") or "", must=False)
-    add("emergency", "Emergency contact + zaroori dawaiyan", must=False)
+    add("emergency", "Emergency contact + essential medicines", must=False)
     return out
 
 
@@ -263,24 +263,24 @@ def doc_checklist(info: dict[str, Any]) -> list[dict[str, Any]]:
 def packing(days: int, month: int, kind: str = "", international: bool = False, kids: bool = False) -> list[str]:
     days = max(1, min(int(days or 1), 30))
     k = (kind or "").lower()
-    out = [f"Kapde {days} din ke (+1 extra)", "Phone charger + power bank", "Zaroori dawaiyan + first-aid", "Photo ID (original)",
-           "Toothbrush / toiletries", "Paani ki bottle", "Thoda cash + UPI wala phone"]
+    out = [f"Clothes for {days} days (+1 extra)", "Phone charger + power bank", "Essential medicines + first-aid", "Photo ID (original)",
+           "Toothbrush / toiletries", "Water bottle", "Some cash + a phone with UPI"]
     if month in (11, 12, 1, 2) or any(w in k for w in ("hill", "pahad", "manali", "shimla", "kashmir", "ladakh", "snow")):
-        out += ["Garam kapde / jacket", "Topi, muffler, gloves"]
+        out += ["Warm clothes / jacket", "Cap, muffler, gloves"]
     if month in (6, 7, 8, 9):
-        out += ["Chhata / raincoat", "Jaldi sookhne wale kapde"]
+        out += ["Umbrella / raincoat", "Quick-dry clothes"]
     if month in (3, 4, 5) or any(w in k for w in ("beach", "goa", "samudra")):
-        out += ["Sunscreen, topi, chashma", "Halke cotton kapde"]
+        out += ["Sunscreen, cap, sunglasses", "Light cotton clothes"]
     if any(w in k for w in ("beach", "goa", "samudra", "andaman")):
-        out += ["Swimwear", "Chappal"]
+        out += ["Swimwear", "Sandals"]
     if any(w in k for w in ("mandir", "temple", "tirth", "yatra", "pilgrim", "darshan")):
-        out += ["Darshan ke liye saade kapde", "Mandir ke niyam (dress code) check karein"]
+        out += ["Simple clothes for the temple visit", "Check the temple's rules (dress code)"]
     if any(w in k for w in ("business", "meeting", "office", "conference")):
-        out += ["Formal kapde", "Laptop + charger", "Visiting card"]
+        out += ["Formal clothes", "Laptop + charger", "Visiting card"]
     if international:
-        out += ["Passport + visa copy (phone mein bhi)", "Travel adapter (plug)", "Forex card"]
+        out += ["Passport + visa copy (also on your phone)", "Travel adapter (plug)", "Forex card"]
     if kids:
-        out += ["Bachchon ke snacks, khilone", "Bachchon ki dawai"]
+        out += ["Snacks and toys for the children", "Children's medicines"]
     return list(dict.fromkeys(out))
 
 
@@ -433,18 +433,18 @@ def compare(options: list[dict[str, Any]], nights: int = 1) -> dict[str, Any]:
         for r in table:
             tags = []
             if r["id"] == cheapest and len(priced) > 1:
-                tags.append("sabse sasta")
+                tags.append("cheapest")
             if r["id"] == fastest and len(timed) > 1:
-                tags.append("sabse tez")
+                tags.append("fastest")
             if r["id"] == best and len(rated) > 1:
-                tags.append("sabse achhi rating")
+                tags.append("best rated")
             if r["total_paise"] is None:
-                tags.append("daam pata nahi")
+                tags.append("price not known")
             r["tags"] = tags
         table.sort(key=lambda r: (r["total_paise"] is None, r["total_paise"] or 0))
         notes = []
         if priced and len(priced) < len(table):
-            notes.append("Kuch options ka daam nahi diya: unhe tulna mein peeche rakha.")
+            notes.append("Some options have no price: they are placed last in the comparison.")
         out[mode] = {"rows": table, "cheapest": cheapest, "fastest": fastest, "best_rated": best, "notes": notes}
     return out
 
@@ -460,6 +460,6 @@ def holiday_note(hols: list[dict[str, Any]], start: date, end: date) -> list[dic
         if start - timedelta(days=3) <= d <= end + timedelta(days=3):
             long_wk = d.weekday() in (0, 4) or (d.weekday() in (5, 6))
             out.append({"date": h["date"], "name": h.get("name", ""), "kind": h.get("kind", ""),
-                        "say": f"{d:%d %b} {h.get('name', '')}: bheed aur kiraya zyada ho sakta hai"
-                               + (" (lamba weekend)" if long_wk else "") + "; jaldi book karein."})
+                        "say": f"{d:%d %b} {h.get('name', '')}: it may be crowded and fares may be higher"
+                               + (" (long weekend)" if long_wk else "") + "; book early."})
     return out

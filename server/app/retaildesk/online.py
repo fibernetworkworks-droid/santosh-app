@@ -23,16 +23,16 @@ def rto_risk(orders: list[dict]) -> dict[str, Any]:
         addr = str(o.get("address") or "")
         if not re.fullmatch(r"\d{6}", str(o.get("pincode") or "").strip()):
             pts += 3
-            why.append("6 ank ka pincode nahi")
+            why.append("pincode does not have 6 numerals")
         if len(addr.strip()) < 25:
             pts += 2
-            why.append("pata bahut chhota")
+            why.append("address is too short")
         if not re.search(r"\d", addr):
             pts += 2
-            why.append("pate mein ghar / plot number nahi")
+            why.append("no house / plot number in the address")
         if not re.fullmatch(r"[6-9]\d{9}", re.sub(r"\D", "", str(o.get("phone") or ""))[-10:] or "x"):
             pts += 3
-            why.append("phone number 10 ank ka nahi")
+            why.append("phone number does not have 10 numerals")
         if o.get("cod") in (True, "true", "yes", "1", 1):
             pts += 2
             why.append("COD order")
@@ -41,18 +41,18 @@ def rto_risk(orders: list[dict]) -> dict[str, Any]:
                 why.append("COD par bada amount")
         if _f(o.get("prior_rto")) > 0:
             pts += 3
-            why.append("is customer ka pehle RTO hua")
+            why.append("this customer had an RTO before")
         out.append({"id": o.get("id"), "points": pts, "level": "high" if pts >= 7 else ("medium" if pts >= 4 else "low"), "why": why,
-                    "suggest": {"high": "Dispatch se pehle customer se confirm kijiye (call / WhatsApp)", "medium": "Pata aur phone ek baar dekh lijiye"}.get(
+                    "suggest": {"high": "Confirm with the customer before dispatch (call / WhatsApp)", "medium": "Check the address and phone once"}.get(
                         "high" if pts >= 7 else ("medium" if pts >= 4 else ""), "")})
     return {"orders": out, "high": sum(r["level"] == "high" for r in out), "kind": "heuristic score, not a verdict on the customer",
-            "note": "Yeh ginti pate/phone/COD jaise saaf sanketon par hai. Kisi customer ko rokna ya order cancel karna aapka faisla hai.",
-            "decider": "Confirm call, dispatch ya cancel owner / ops manager ka tap hai."}
+            "note": "This count is on plain signals like address / phone / COD. Stopping a customer or cancelling an order is your decision.",
+            "decider": "The confirm call, dispatch or cancel is the owner's / ops manager's tap."}
 
 
 def reconcile(sales: list[dict], settlements: list[dict], tolerance: Any = 1.0) -> dict[str, Any]:
     if not sales or not settlements:
-        raise ValueError("sales aur settlements rows do: [{ref, amount}] / [{ref, amount, fee}].")
+        raise ValueError("Give sales and settlements rows: [{ref, amount}] / [{ref, amount, fee}].")
     tol = _f(tolerance)
     st = {str(s.get("ref")): s for s in settlements}
     seen, rows = set(), []
@@ -72,8 +72,8 @@ def reconcile(sales: list[dict], settlements: list[dict], tolerance: Any = 1.0) 
     bad = [r for r in rows if r["status"] != "match"] + extra
     return {"rows": rows + extra, "matched": sum(r["status"] == "match" for r in rows), "to_check": len(bad),
             "fees_total": round(sum(_f(s.get("fee")) for s in settlements), 2),
-            "not_checked": "GST on fee, chargeback ka karan, COD remittance ki timeline.",
-            "decider": "Gateway / courier se dispute aur books ka sudhaar aapka accountant karta hai."}
+            "not_checked": "GST on the fee, the reason for a chargeback, the COD remittance timeline.",
+            "decider": "Disputes with the gateway / courier and corrections to the books are done by your accountant."}
 
 
 _CLAIMS = [(r"\b100\s*%\s*(genuine|original|authentic|pure|natural|safe)\b", "absolute claim"), (r"\b(cure[sd]?|treats?|heals?|diabetes|cancer|covid)\b", "health claim"),
@@ -88,11 +88,11 @@ def claims(text: str, spec: dict | None = None) -> dict[str, Any]:
     flags = []
     for pat, kind in _CLAIMS:
         for m in re.finditer(pat, t, re.I):
-            flags.append({"words": m.group(0), "kind": kind, "ask": "Iska saboot / spec aapke paas hai? Nahi to hataiye ya naram kijiye."})
+            flags.append({"words": m.group(0), "kind": kind, "ask": "Do you have proof / a spec for this? If not, remove it or soften it."})
     missing = [k for k in ("brand", "weight_or_size", "mrp", "hsn", "country_of_origin", "manufacturer") if not (spec or {}).get(k)]
     return {"flags": flags, "missing_listing_facts": missing,
-            "note": "Yeh shabd-suchi se pakadta hai; kaun sa daava sahi hai yeh aap / merchandiser jaante hain. Packaged saaman par naap-tol, MRP, nirmaata ka pata jaise vivaran chahiye (verify).",
-            "decider": "Listing publish karna aur daave rakhna merchandiser / owner ka faisla hai."}
+            "note": "This works from a word list; which claim is true is known to you / the merchandiser. Packaged goods need details such as weights and measures, MRP and the manufacturer's address (verify).",
+            "decider": "Publishing the listing and keeping the claims is the merchandiser's / owner's decision."}
 
 
 def landed(offers: list[dict]) -> dict[str, Any]:
@@ -103,9 +103,9 @@ def landed(offers: list[dict]) -> dict[str, Any]:
         total = _f(o.get("price")) + _f(o.get("shipping")) + _f(o.get("cod_fee")) - _f(o.get("coupon_off"))
         rows.append({"seller": o.get("seller"), "landed_total": round(total, 2), "return_days": o.get("return_days"), "price": _f(o.get("price"))})
     rows.sort(key=lambda r: r["landed_total"])
-    note = "Sabse sasta landed total alag hai sticker price se." if rows and rows[0]["price"] != min(r["price"] for r in rows) else ""
-    return {"ranked": rows, "cheapest": rows[0]["seller"], "note": note, "not_checked": "Seller asli hai ya nahi, coupon asli hai ya nahi, product ki quality.",
-            "decider": "Kharidna aapke tap par hai; yahan kuch nahi khareeda gaya."}
+    note = "The cheapest landed total is different from the sticker price." if rows and rows[0]["price"] != min(r["price"] for r in rows) else ""
+    return {"ranked": rows, "cheapest": rows[0]["seller"], "note": note, "not_checked": "Whether the seller is genuine, whether the coupon is genuine, the product's quality.",
+            "decider": "Buying is on your tap; nothing was bought here."}
 
 
 def shop_scam(url: str = "", price: Any = None, market_price: Any = None, text: str = "") -> dict[str, Any]:
@@ -117,18 +117,18 @@ def shop_scam(url: str = "", price: Any = None, market_price: Any = None, text: 
         res["link"] = SC.analyse_url(url)
     p, m = _f(price), _f(market_price)
     if p and m and p < 0.5 * m:
-        sig.append(f"Bhaav {p:g} bazaar ke {m:g} ka aadha se bhi kam: too-good-to-be-true.")
-    for pat, why in ((r"\b(pay|send)\b.*\b(advance|upi|gift card)\b", "pehle paisa maang raha hai"), (r"\b(only|just)\b.*\b(whatsapp|telegram)\b", "sirf chat par order"),
-                     (r"\b(cash on delivery not available|no returns?)\b", "COD / return nahi"), (r"\b(last chance|offer ends|hurry)\b", "jaldi karwa raha hai")):
+        sig.append(f"Price {p:g} is less than half the market's {m:g}: too-good-to-be-true.")
+    for pat, why in ((r"\b(pay|send)\b.*\b(advance|upi|gift card)\b", "asks for money first"), (r"\b(only|just)\b.*\b(whatsapp|telegram)\b", "orders only on chat"),
+                     (r"\b(cash on delivery not available|no returns?)\b", "no COD / returns"), (r"\b(last chance|offer ends|hurry)\b", "pushes you to hurry")):
         if re.search(pat, text or "", re.I):
             sig.append(why)
-    return {"signals": sig, **res, "kind": "signals, not proof", "next": "Pehle chhote order / COD se; card ya OTP kabhi mat dijiye; shikayat ke liye platform ya consumer helpline.",
-            "decider": "Khareedna ya na khareedna aapka faisla hai."}
+    return {"signals": sig, **res, "kind": "signals, not proof", "next": "Start with a small order / COD; never give a card or OTP; for a complaint use the platform or the consumer helpline.",
+            "decider": "To buy or not is your decision."}
 
 
 def gst_split(lines: list[dict], seller_state: str = "", buyer_state: str = "", price_includes_gst: bool = True) -> dict[str, Any]:
     if not lines:
-        raise ValueError("lines rows do: name, qty, price, gst_pct (aur hsn).")
+        raise ValueError("Give lines rows: name, qty, price, gst_pct (and hsn).")
     intra = bool(seller_state and buyer_state and seller_state.strip().lower() == buyer_state.strip().lower())
     rows, tt, tx = [], 0.0, 0.0
     for l in lines[:500]:
@@ -146,7 +146,7 @@ def gst_split(lines: list[dict], seller_state: str = "", buyer_state: str = "", 
         tt += taxable
         tx += tax
     return {"lines": rows, "taxable_total": round(tt, 2), "tax_total": round(tx, 2), "grand_total": round(tt + tx, 2),
-            "supply": "intra-state (CGST+SGST)" if intra else "inter-state (IGST)" if (seller_state and buyer_state) else "state nahi diya: IGST maana",
+            "supply": "intra-state (CGST+SGST)" if intra else "inter-state (IGST)" if (seller_state and buyer_state) else "state not given: IGST assumed",
             "missing_hsn": [l.get("name") for l in lines if not l.get("hsn")],
-            "not_checked": "Dar sahi hai ya nahi (aap dete hain), composition scheme, e-invoice seema, rounding niyam.",
-            "decider": "Invoice jaari karna aur GST file karna aap / aapka CA karta hai."}
+            "not_checked": "Whether the rate is right (you give it), composition scheme, e-invoice threshold, rounding rules.",
+            "decider": "Issuing the invoice and filing GST is done by you / your CA."}

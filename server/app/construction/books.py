@@ -18,12 +18,12 @@ HEADS = ("labour", "material", "hire", "subcontract", "approval", "misc", "recei
 def entry(tenant: str, project: str, side: str, amount, head: str = "misc", party: str = "", day: str = "",
           settled: bool = True, due_day: str = "", ref: str = "", note: str = "", conv: str = "") -> dict:
     if (side or "") not in ("in", "out"):
-        raise CstError("side: in (aaya) | out (gaya / dena hai)")
+        raise CstError("side: in (received) | out (paid / payable)")
     amt = round(_num(amount), 2)
     if amt <= 0:
-        raise CstError("Rakam bataiye.")
+        raise CstError("Give the amount.")
     if not str(project or "").strip():
-        raise CstError("Project bataiye.")
+        raise CstError("Give the project.")
     h = (head or "misc").strip().lower()
     if h not in HEADS:
         raise CstError("head: " + " | ".join(HEADS))
@@ -39,10 +39,10 @@ def entry(tenant: str, project: str, side: str, amount, head: str = "misc", part
                                                                        CBookEntry.project == project.strip()[:160], CBookEntry.side == "out")).all())
     from .common import publish
     publish(tenant, "const_books", {"kind": "entry", "project": project, "side": side, "amount": amt}, conv)
-    say = (f"{project}: {'aaya' if side == 'in' else 'gaya'} {_rs(amt)} ({h}{' - ' + party if party else ''}). "
+    say = (f"{project}: {'received' if side == 'in' else 'paid'} {_rs(amt)} ({h}{' - ' + party if party else ''}). "
            f"Project book: in {_rs(inc)}, out {_rs(out)}, balance {_rs(inc - out)}.")
     if side == "out" and not settled:
-        say += f" ABHI TAK UNSETTLED - due {(dd or d).strftime('%d %b')} se ageing chalegi."
+        say += f" STILL UNSETTLED - ageing runs from due date {(dd or d).strftime('%d %b')}."
     return {"in": round(inc, 2), "out": round(out, 2), "say": say}
 
 
@@ -58,16 +58,16 @@ def settle(tenant: str, ref: str = "", entry_id: str = "", day: str = "") -> dic
         elif ref:
             x = next((r for r in rows if ref.lower() in (r.ref or "").lower() or ref.lower() in (r.party or "").lower()), None)
         if not x:
-            raise CstError("Unsettled entry nahi mili (id / ref / party se dhoondo).")
+            raise CstError("Unsettled entry not found (search by id / ref / party).")
         x.settled = True
         x.due_day = d.isoformat()
         pid, amt, party = x.project, x.amount, x.party
-    return {"say": f"{party} ({pid}) ki {_rs(amt)} settled ho gayi."}
+    return {"say": f"{party} ({pid}): {_rs(amt)} settled."}
 
 
 def book(tenant: str, project: str) -> dict:
     if not str(project or "").strip():
-        raise CstError("Project bataiye.")
+        raise CstError("Give the project.")
     p = project.strip()[:160]
     with session() as s:
         rows = s.scalars(select(CBookEntry).where(CBookEntry.tenant_id == tenant, CBookEntry.project == p)
@@ -81,8 +81,8 @@ def book(tenant: str, project: str) -> dict:
     due = round(sum(r.amount for r in rows if r.side == "out" and not r.settled), 2)
     lines = [f"{r.day} {'+' if r.side == 'in' else '-'}{_rs(r.amount)} {r.head}{' - ' + r.party if r.party else ''}{' (UNSETTLED)' if (r.side == 'out' and not r.settled) else ''}"
              for r in rows[-12:]]
-    say = (f"{p} ki kitab: in {_rs(inc)}, out {_rs(out)}, balance {_rs(inc - out)}, abhi baki {_rs(due)}. "
-           "Khaarch: " + ", ".join(f"{k} {_rs(v)}" for k, v in sorted(by_head.items(), key=lambda x: -x[1])[:5]) + ".")
+    say = (f"{p} book: in {_rs(inc)}, out {_rs(out)}, balance {_rs(inc - out)}, still pending {_rs(due)}. "
+           "Expenses: " + ", ".join(f"{k} {_rs(v)}" for k, v in sorted(by_head.items(), key=lambda x: -x[1])[:5]) + ".")
     return {"in": inc, "out": out, "balance": round(inc - out, 2), "unsettled": due, "by_head": by_head,
             "lines": lines, "say": say}
 
@@ -106,7 +106,7 @@ def ageing(tenant: str, project: str = "") -> dict:
         if r.party:
             parties[r.party] = round(parties.get(r.party, 0.0) + r.amount, 2)
     total = round(sum(buckets.values()), 2)
-    say = (f"Ageing{' (' + project + ')' if project else ''}: total dena {_rs(total)} - 0-30 din {_rs(buckets['0-30'])}, "
+    say = (f"Ageing{' (' + project + ')' if project else ''}: total payable {_rs(total)} - 0-30 days {_rs(buckets['0-30'])}, "
            f"31-60 {_rs(buckets['31-60'])}, 60+ {_rs(buckets['60+'])}."
-           + (" Sabse bade: " + ", ".join(f"{k} {_rs(v)}" for k, v in sorted(parties.items(), key=lambda x: -x[1])[:3]) if parties else ""))
+           + (" Largest: " + ", ".join(f"{k} {_rs(v)}" for k, v in sorted(parties.items(), key=lambda x: -x[1])[:3]) if parties else ""))
     return {"buckets": buckets, "parties": parties, "total": total, "say": say}

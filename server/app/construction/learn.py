@@ -15,7 +15,7 @@ from .common import CstError, _dump, _j, _num, publish
 def trainee_add(tenant: str, project: str, rows: list, conv: str = "") -> dict:
     """#121: rows [name, trade, batch]."""
     if not rows:
-        raise CstError("Trainee rows chahiye [name, trade, batch].")
+        raise CstError("Trainee rows are needed [name, trade, batch].")
     made = 0
     with session() as s:
         for r in rows:
@@ -26,7 +26,7 @@ def trainee_add(tenant: str, project: str, rows: list, conv: str = "") -> dict:
                                            "batch": str(r[2])[:40] if len(r) > 2 else ""})))
             made += 1
     publish(tenant, "const_learn", {"kind": "trainees", "project": project, "rows": made}, conv)
-    return {"ok": True, "rows": made, "said": f"{made} trainee register mein."}
+    return {"ok": True, "rows": made, "said": f"{made} trainee(s) in the register."}
 
 
 def module_add(tenant: str, project: str, rows: list) -> dict:
@@ -40,7 +40,7 @@ def module_add(tenant: str, project: str, rows: list) -> dict:
                                data=_dump({"hours": _num(r[1]) if len(r) > 1 else 0.0,
                                            "status": str(r[2])[:24] if len(r) > 2 else "planned"})))
             made += 1
-    return {"ok": True, "rows": made, "said": f"{made} module row(s) - certificate training centre deta hai."}
+    return {"ok": True, "rows": made, "said": f"{made} module row(s) - the training centre gives the certificate."}
 
 
 def assess_add(tenant: str, project: str, rows: list) -> dict:
@@ -63,13 +63,13 @@ def assess_add(tenant: str, project: str, rows: list) -> dict:
 def assess_sum(tenant: str, project: str, pass_pct: float) -> dict:
     """Pass list = arithmetic on HER pass line."""
     if not (0 < pass_pct <= 100):
-        raise CstError("pass_pct 0-100 ke beech do (aapki pass policy).")
+        raise CstError("Give pass_pct between 0 and 100 (your pass policy).")
     with session() as s:
         rows = s.scalars(select(M.ClearnItem).where(M.ClearnItem.tenant_id == tenant,
                                                     M.ClearnItem.project == project,
                                                     M.ClearnItem.kind == "assess")).all()
     if not rows:
-        raise CstError("Assessments nahi mili - pehle action=assess_add.")
+        raise CstError("No assessments found - run action=assess_add first.")
     by_trainee: dict[str, dict] = {}
     for r in rows:
         d = _j(r.data, {})
@@ -82,7 +82,7 @@ def assess_sum(tenant: str, project: str, pass_pct: float) -> dict:
             "avg_pct": round(sum(v["pcts"]) / len(v["pcts"]), 1),
             "verdict": "pass" if v["passed"] == v["modules"] else "re-test"} for k, v in by_trainee.items()]
     return {"ok": True, "pass_pct": pass_pct, "results": out,
-            "said": "Pass line AAPKI policy par hai; re-test aur certificate training centre ke haath mein."}
+            "said": "The pass line is on YOUR policy; re-tests and certificates are in the training centre's hands."}
 
 
 def topic_add(tenant: str, project: str, rows: list) -> dict:
@@ -96,14 +96,14 @@ def topic_add(tenant: str, project: str, rows: list) -> dict:
                                data=_dump({"syllabus_ref": str(r[1])[:120] if len(r) > 1 else "",
                                            "status": str(r[2])[:24] if len(r) > 2 else "pending"})))
             made += 1
-    return {"ok": True, "rows": made, "said": f"{made} topic row(s) - syllabus mapping ke saath."}
+    return {"ok": True, "rows": made, "said": f"{made} topic row(s) - with the syllabus mapping."}
 
 
 def quiz_add(tenant: str, project: str, topic: str, rows: list) -> dict:
     """#122: rows [question, correct_answer, option_b, option_c, option_d] - answer key saath mein
     (row 1 = correct). Scoring attempt par hoti hai."""
     if not rows:
-        raise CstError("Quiz rows chahiye [question, correct, b, c, d].")
+        raise CstError("Quiz rows are needed [question, correct, b, c, d].")
     made = 0
     with session() as s:
         for r in rows:
@@ -113,7 +113,7 @@ def quiz_add(tenant: str, project: str, topic: str, rows: list) -> dict:
                                data=_dump({"q": str(r[0])[:300], "answer": str(r[1])[:200],
                                            "opts": [str(x)[:200] for x in r[2:5]]})))
             made += 1
-    return {"ok": True, "rows": made, "said": f"{made} question(s) '{topic}' mein, answer key saath."}
+    return {"ok": True, "rows": made, "said": f"{made} question(s) in '{topic}', with the answer key."}
 
 
 def quiz_score(tenant: str, project: str, topic: str, rows: list) -> dict:
@@ -124,7 +124,7 @@ def quiz_score(tenant: str, project: str, topic: str, rows: list) -> dict:
                                                   M.ClearnItem.kind == "quiz",
                                                   M.ClearnItem.name == topic)).all()
     if not qs:
-        raise CstError(f"Topic '{topic}' mein quiz nahi mila.")
+        raise CstError(f"Topic '{topic}' has no quiz.")
     key = [_j(q.data, {}).get("answer") for q in qs]
     out = []
     for r in rows:
@@ -136,7 +136,7 @@ def quiz_score(tenant: str, project: str, topic: str, rows: list) -> dict:
         out.append({"trainee": str(r[0])[:120], "score": right, "of": len(key),
                     "pct": round(right / len(key) * 100, 1) if key else 0.0})
     return {"ok": True, "topic": topic, "results": out,
-            "said": "Score arithmetic hai; samjhana tutor (main) karta hoon - marks sheet aapki."}
+            "said": "The score is arithmetic; explaining is the tutor's (my) job - the marks sheet is yours."}
 
 
 def coach_check(tenant: str, project: str, rows: list) -> dict:
@@ -151,14 +151,14 @@ def coach_check(tenant: str, project: str, rows: list) -> dict:
                                            "note": str(r[2])[:200] if len(r) > 2 else ""})))
             made += 1
     return {"ok": True, "rows": made,
-            "said": "Checklist likhi - hisaab-kitaab ka discipline, advice CA ki (tier C)."}
+            "said": "Checklist written - this is bookkeeping discipline; advice is the CA's (tier C)."}
 
 
 def coach_note(tenant: str, project: str, text: str, conv: str = "") -> dict:
     if not text:
-        raise CstError("Note ka text do.")
+        raise CstError("Give the note's text.")
     with session() as s:
         s.add(M.ClearnItem(tenant_id=tenant, project=project, kind="coach_note", name=text[:160],
                            data=_dump({"text": text[:500]})))
     publish(tenant, "const_learn", {"kind": "coach_note", "project": project}, conv)
-    return {"ok": True, "said": "Coaching note register mein."}
+    return {"ok": True, "said": "Coaching note in the register."}

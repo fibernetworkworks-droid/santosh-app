@@ -15,7 +15,7 @@ from .models import CStoreGrn, CStoreIssue, CStoreLot
 def upsert_lot(tenant: str, item: str, unit: str = "", min_qty=None, max_qty=None, note: str = "") -> dict:
     name = str(item or "").strip()
     if not name:
-        raise CstError("Item ka naam bataiye (jaise 'Cement OPC 53').")
+        raise CstError("Give the item's name (for example 'Cement OPC 53').")
     with _LOCK, session() as s:
         x = next((r for r in s.scalars(select(CStoreLot).where(CStoreLot.tenant_id == tenant)).all()
                   if r.item.lower() == name.lower()), None)
@@ -33,14 +33,14 @@ def upsert_lot(tenant: str, item: str, unit: str = "", min_qty=None, max_qty=Non
             x.note = note[:200]
         s.flush()                                               # defaults (min/max 0.0) land before the say
         return {"item": x.item, "unit": x.unit, "min_qty": x.min_qty, "max_qty": x.max_qty,
-                "say": f"{'Naya' if new else 'Update'} store item: {x.item} ({x.unit or '-'}), min {x.min_qty:g}, max {x.max_qty:g}."}
+                "say": f"{'New' if new else 'Updated'} store item: {x.item} ({x.unit or '-'}), min {x.min_qty:g}, max {x.max_qty:g}."}
 
 
 def grn(tenant: str, item: str, qty, rate=None, vendor: str = "", invoice_no: str = "", vehicle: str = "",
         site: str = "", day: str = "", ok: bool = True, note: str = "", by: str = "", conv: str = "") -> dict:
     q = _num(qty)
     if not str(item or "").strip() or q <= 0:
-        raise CstError("Item aur maatra (qty) bataiye.")
+        raise CstError("Give the item and the quantity (qty).")
     d = _date(day, today(tenant))
     with _LOCK, session() as s:
         lot = _lot(s, tenant, item, unit_hint="")
@@ -48,8 +48,8 @@ def grn(tenant: str, item: str, qty, rate=None, vendor: str = "", invoice_no: st
                         invoice_no=str(invoice_no)[:60], vehicle=str(vehicle)[:40], site=site[:160],
                         day=d.isoformat(), ok=bool(ok), note=note[:300], by=by[:80]))
         lot_id, bal, minq, unit = lot.id, balance(s, tenant, lot.item), lot.min_qty, lot.unit
-    alert = f" Reorder level {minq:g} {unit} se neeche!" if (minq and bal <= minq) else ""
-    say = f"GRN: {lot.item} {q:g} {unit} aaya ({vendor or 'vendor? '}, challan {invoice_no or '-'}). Stock ab {bal:g} {unit}.{alert}"
+    alert = f" Below the reorder level {minq:g} {unit}!" if (minq and bal <= minq) else ""
+    say = f"GRN: {lot.item} {q:g} {unit} received ({vendor or 'vendor? '}, challan {invoice_no or '-'}). Stock now {bal:g} {unit}.{alert}"
     publish(tenant, "const_store", {"kind": "grn", "item": lot.item, "qty": q}, conv)
     return {"item": lot.item, "balance": bal, "say": say}
 
@@ -58,19 +58,19 @@ def issue(tenant: str, item: str, qty, site: str = "", gang: str = "", purpose: 
           waste: bool = False, by: str = "", note: str = "", conv: str = "") -> dict:
     q = _num(qty)
     if not str(item or "").strip() or q <= 0:
-        raise CstError("Item aur maatra (qty) bataiye.")
+        raise CstError("Give the item and the quantity (qty).")
     d = _date(day, today(tenant))
     with _LOCK, session() as s:
         lot = _lot(s, tenant, item, unit_hint="")
         bal = balance(s, tenant, lot.item)
         if bal < q:
-            raise CstError(f"{lot.item}: stock {bal:g} {lot.unit} hai, {q:g} nahi. Pehle GRN yaado.")
+            raise CstError(f"{lot.item}: {bal:g} {lot.unit} in stock, not {q:g}. Record the GRN first.")
         s.add(CStoreIssue(tenant_id=tenant, item=lot.item.lower(), unit=lot.unit, qty=q, site=site[:160], gang=gang[:120],
                           purpose=purpose[:200], day=d.isoformat(), waste=bool(waste), by=by[:80], note=note[:300]))
         bal2 = balance(s, tenant, lot.item)
         lot_id, minq, unit, lot_name = lot.id, lot.min_qty, lot.unit, lot.item
-    alert = f" Reorder level {minq:g} {unit} se neeche!" if (minq and bal2 <= minq) else ""
-    say = f"Issue: {lot_name} {q:g} {unit} {'(wastage likha)' if waste else ''} -> {site or '-'}{' / ' + gang if gang else ''}. Stock ab {bal2:g} {unit}.{alert}"
+    alert = f" Below the reorder level {minq:g} {unit}!" if (minq and bal2 <= minq) else ""
+    say = f"Issue: {lot_name} {q:g} {unit} {'(recorded as wastage)' if waste else ''} -> {site or '-'}{' / ' + gang if gang else ''}. Stock now {bal2:g} {unit}.{alert}"
     publish(tenant, "const_store", {"kind": "issue", "item": lot_name, "qty": q}, conv)
     return {"item": lot_name, "balance": bal2, "say": say}
 
@@ -100,7 +100,7 @@ def reconcile(tenant: str, item: str = "") -> dict:
         if item:
             rows = [r for r in rows if r.item.lower() == str(item).strip().lower()]
             if not rows:
-                raise CstError(f"'{item}' store mein nahi.")
+                raise CstError(f"'{item}' is not in the store.")
         out = []
         for lot in rows:
             got = sum(g.qty for g in s.scalars(select(CStoreGrn).where(CStoreGrn.tenant_id == tenant, CStoreGrn.item == lot.item.lower())).all())
@@ -113,11 +113,11 @@ def reconcile(tenant: str, item: str = "") -> dict:
                         "waste": round(waste, 3), "on_hand": on_hand, "wastage_pct": w_pct,
                         "min": lot.min_qty, "reorder": bool(lot.min_qty and on_hand <= lot.min_qty)})
         low = [r["item"] for r in out if r["reorder"]]
-        say = (f"Milan: {len(out)} item. " + "; ".join(
-            f"{r['item']}: aaya {r['received']:g}, gaya {r['issued']:g}, barbadi {r['waste']:g} ({r['wastage_pct']:g}%), bacha {r['on_hand']:g} {r['unit']}"
+        say = (f"Reconciliation: {len(out)} items. " + "; ".join(
+            f"{r['item']}: received {r['received']:g}, issued {r['issued']:g}, wastage {r['waste']:g} ({r['wastage_pct']:g}%), on hand {r['on_hand']:g} {r['unit']}"
             for r in out[:4]) + ("..." if len(out) > 4 else ""))
         if low:
-            say += f" DOBARA MANGWAO: {', '.join(low)}."
+            say += f" REORDER: {', '.join(low)}."
         return {"items": out, "say": say}
 
 

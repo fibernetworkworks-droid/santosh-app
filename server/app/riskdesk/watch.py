@@ -10,7 +10,7 @@ def _t(v: Any) -> dt.datetime:
     try:
         return dt.datetime.fromisoformat(str(v).replace("Z", "+00:00")).replace(tzinfo=None)
     except ValueError:
-        raise ValueError(f"Samay samajh nahi aaya: '{v}' (2026-11-05T14:30:00 jaisa likhiye).")
+        raise ValueError(f"Could not read the time: '{v}' (write it like 2026-11-05T14:30:00).")
 
 
 def _f(v: Any) -> float:
@@ -48,8 +48,8 @@ def velocity(txns: list[dict], window_minutes: Any = 10, max_count: Any = 5, max
         if len(accs) >= int(_f(shared_device_accounts)):
             hits.append({"rule": "shared_device", "device": d, "accounts": sorted(accs), "count": len(accs)})
     return {"rule_hits": hits, "kind": "rule hit, not a verdict", "accounts_seen": len(by),
-            "not_checked": "Customer ka asli vyavhaar, geo / device ki sachchai, pichhla itihaas.",
-            "decider": "Block ya release fraud analyst karta hai; yahan koi transaction roka ya chhoda nahi gaya."}
+            "not_checked": "The customer's real behaviour, whether the geo / device is true, past history.",
+            "decider": "Block or release is done by the fraud analyst; no transaction was stopped or released here."}
 
 
 def wash(trades: list[dict], qty_tolerance_pct: Any = 5, window_minutes: Any = 60) -> dict[str, Any]:
@@ -72,8 +72,8 @@ def wash(trades: list[dict], qty_tolerance_pct: Any = 5, window_minutes: Any = 6
                 if abs(s[2] - b[2]) <= tol * b[2]:
                     used.add(k)
                     out.append({"client": cl, "symbol": sym, "buy": {"ts": b[0].isoformat(), "qty": b[2], "price": b[3]}, "sell": {"ts": s[0].isoformat(), "qty": s[2], "price": s[3]},
-                                "why": "Usi client ne usi share mein lagbhag barabar qty kharidi aur bechi, kam samay mein."})
+                                "why": "The same client bought and sold almost the same qty of the same share within a short time."})
                     break
-    return {"round_trips": out, "kind": "pattern flag, not an accusation", "note": "Aksar yeh asli (hedge / arbitrage / square-off) hota hai; evidence ke liye hai.",
-            "not_checked": "Counterparty, order book, intent: sirf trade rows dekhi gayi.",
-            "decider": "Jaanch aur nirnay surveillance / compliance officer ka hai."}
+    return {"round_trips": out, "kind": "pattern flag, not an accusation", "note": "This is often genuine (hedge / arbitrage / square-off); it is here as evidence.",
+            "not_checked": "Counterparty, order book, intent: only the trade rows were looked at.",
+            "decider": "The investigation and the decision are the surveillance / compliance officer's."}

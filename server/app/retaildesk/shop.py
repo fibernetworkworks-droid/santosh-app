@@ -22,7 +22,7 @@ def _d(v: Any) -> dt.date:
             return dt.datetime.strptime(s, f).date()
         except ValueError:
             pass
-    raise ValueError(f"Tareekh samajh nahi aayi: '{v}' (YYYY-MM-DD likhiye).")
+    raise ValueError(f"Could not read the date: '{v}' (write it as YYYY-MM-DD).")
 
 
 def day_summary(sales: list[dict]) -> dict[str, Any]:
@@ -45,13 +45,13 @@ def day_summary(sales: list[dict]) -> dict[str, Any]:
             "credit_given": round(mode.get("credit", 0.0), 2), "best_hour": best[0] if best else None,
             "best_hour_amount": round(best[1], 2) if best else None,
             "top_items": [{"item": k, "amount": round(v, 2)} for k, v in sorted(item.items(), key=lambda kv: -kv[1])[:5]],
-            "decider": "Yeh sirf aapke diye hue bills ka hisaab hai; credit dena ya na dena aapka faisla hai."}
+            "decider": "This is only a summary of the bills you gave; giving credit or not is your decision."}
 
 
 def forecast(weekly_sales: list[Any], weeks: int = 4, festival_boost: dict | None = None) -> dict[str, Any]:
     ws = [_f(x) for x in weekly_sales or []]
     if len(ws) < 4:
-        raise ValueError("Kam se kam 4 hafte ki bikri do (weekly_sales: [..]).")
+        raise ValueError("Give at least 4 weeks of sales (weekly_sales: [..]).")
     recent = ws[-4:]
     base = sum(recent) / 4.0
     trend = (recent[-1] - recent[0]) / 3.0
@@ -62,9 +62,9 @@ def forecast(weekly_sales: list[Any], weeks: int = 4, festival_boost: dict | Non
         out.append({"week_ahead": i, "estimate": round(v, 2), "festival_multiplier": boost.get(i, 1.0)})
     spread = max(recent) - min(recent)
     return {"base_avg_last4": round(base, 2), "weekly_trend": round(trend, 2), "forecast": out,
-            "range_note": f"Pichhle 4 hafton mein upar-neeche {round(spread, 2)} ka fark tha, isliye har andaaza itna upar-neeche ho sakta hai.",
-            "assumed": "Simple averaging + aadha trend; tyohaar ka asar sirf aapke diye multiplier se.",
-            "decider": "Maal mangwana / udhaar lena aapka faisla hai; yeh andaaza hai, vaada nahi."}
+            "range_note": f"The last 4 weeks varied by {round(spread, 2)} up and down, so each estimate can be off by about that much.",
+            "assumed": "Simple averaging + half the trend; the festival effect only from the multiplier you gave.",
+            "decider": "Ordering stock / taking credit is your decision; this is an estimate, not a promise."}
 
 
 def reorder(items: list[dict], today: Any = None, cover_days: Any = 7, expiry_days: Any = 30, dead_days: Any = 45) -> dict[str, Any]:
@@ -93,8 +93,8 @@ def reorder(items: list[dict], today: Any = None, cover_days: Any = 7, expiry_da
                 tied += val
     return {"reorder": [r for r in rows if r["order_qty"]], "all": rows, "expiring": sorted(expiring, key=lambda e: e["days_left"]),
             "dead_stock": sorted(dead, key=lambda d: -d["cash_stuck"]), "cash_stuck_in_dead_stock": round(tied, 2),
-            "formula": f"order = daily_sales x (lead_days + {cd:g} din cover) - stock",
-            "decider": "Order dena aapka tap hai, supplier ko yahan kuch nahi bheja gaya."}
+            "formula": f"order = daily_sales x (lead_days + {cd:g} days cover) - stock",
+            "decider": "Placing the order is your tap; nothing was sent to the supplier here."}
 
 
 def margin(items: list[dict]) -> dict[str, Any]:
@@ -105,14 +105,14 @@ def margin(items: list[dict]) -> dict[str, Any]:
         c, s, m = _f(it.get("cost")), _f(it.get("selling")), _f(it.get("mrp"))
         r = {"name": it.get("name"), "margin_pct_on_selling": round(100 * (s - c) / s, 1) if s else None, "markup_pct_on_cost": round(100 * (s - c) / c, 1) if c else None}
         if m and s > m:
-            flags.append({"name": it.get("name"), "issue": f"Bikri bhaav {s:g} MRP {m:g} se zyada hai: MRP se upar bechna kaanooni taur par galat hai."})
+            flags.append({"name": it.get("name"), "issue": f"Selling price {s:g} is above the MRP {m:g}: selling above MRP is against the law."})
         if c and s < c:
-            flags.append({"name": it.get("name"), "issue": f"Bikri bhaav {s:g} laagat {c:g} se kam hai: har bikri par ghaata."})
+            flags.append({"name": it.get("name"), "issue": f"Selling price {s:g} is below the cost {c:g}: a loss on every sale."})
         out.append(r)
-    return {"items": out, "flags": flags, "decider": "Bhaav tay karna aapka kaam hai; yeh kuch badalta nahi."}
+    return {"items": out, "flags": flags, "decider": "Setting prices is your job; this changes nothing."}
 
 
-_CAL = [("GSTR-1", 11, "mahine ki 11 tareekh (monthly filer)"), ("GSTR-3B", 20, "mahine ki 20 tareekh (monthly filer; QRMP mein alag)")]
+_CAL = [("GSTR-1", 11, "the 11th of the month (monthly filer)"), ("GSTR-3B", 20, "the 20th of the month (monthly filer; different under QRMP)")]
 
 
 def licences(items: list[dict], today: Any = None, warn_days: Any = 45) -> dict[str, Any]:
@@ -130,8 +130,8 @@ def licences(items: list[dict], today: Any = None, warn_days: Any = 45) -> dict[
             nxt = dt.date(t.year + (t.month == 12), (t.month % 12) + 1, day)
         gst.append({"name": name, "next_due": nxt.isoformat(), "note": note})
     return {"licences": sorted(rows, key=lambda r: r["days_left"]), "gst_dates": gst, "verify": True,
-            "note": "GST ki tareekhein yaad se hain (verify): apni filing frequency aur taaza notification dekhiye. Licence ki list aapki diye hue entries se hai; hamare paas aapke licence ka koi record nahi.",
-            "decider": "Renewal aur filing aap / aapka CA karte hain."}
+            "note": "The GST dates are from memory (verify): check your filing frequency and the latest notification. The licence list is from the entries you gave; we have no record of your licences.",
+            "decider": "Renewal and filing are done by you / your CA."}
 
 
 def oversell(channels: list[dict], safety_stock: Any = 0) -> dict[str, Any]:
@@ -145,5 +145,5 @@ def oversell(channels: list[dict], safety_stock: Any = 0) -> dict[str, Any]:
              "oversold": _f(c.get("open_orders")) > _f(c.get("stock"))} for c in channels]
     return {"total_stock": total, "open_orders": committed, "safety_stock": ss, "sellable_now": max(0.0, free), "short_by": max(0.0, -free),
             "channels": rows, "risk": "OVERSELL" if free < 0 else ("tight" if free < ss else "ok"),
-            "suggest": "Is item ko sab channel par turant rok dijiye ya stock sahi kijiye." if free < 0 else "",
-            "decider": "Listing rokna / stock badalna aapka tap hai; yahan kuch nahi badla."}
+            "suggest": "Stop this item on all channels at once, or correct the stock." if free < 0 else "",
+            "decider": "Stopping a listing / changing stock is your tap; nothing was changed here."}

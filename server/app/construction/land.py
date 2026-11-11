@@ -23,11 +23,11 @@ def _w(data: dict) -> dict:
 def parcel_add(tenant: str, project: str, survey_no: str, village: str, area: float,
                area_source: str, area_unit: str = "sqm", note: str = "", conv: str = "") -> dict:
     if not project or not survey_no:
-        raise CstError("Project aur survey no dono chahiye.")
+        raise CstError("Both the project and the survey no are needed.")
     if area <= 0:
-        raise CstError("Area 0 se bada hona chahiye - aur source ka naam zaroori hai (7/12 / mutation / agreement).")
+        raise CstError("The area must be more than 0 - and the name of the source is required (7/12 / mutation / agreement).")
     if not area_source:
-        raise CstError("Area bina source ke nahi likhte (7/12 / mutation / agreement ka naam do).")
+        raise CstError("An area is not written without a source (name the 7/12 / mutation / agreement).")
     with session() as s:
         p = M.CLandParcel(tenant_id=tenant, project=project, survey_no=survey_no, village=village,
                           area=area, area_unit=area_unit, area_source=area_source, note=note)
@@ -52,14 +52,14 @@ def item_add(tenant: str, project: str, kind: str, rows: list, by: str = "", sou
     kind=worksheet: fsi (FED w/ source) + rows [use, builtup] - permissible = fsi x plot area.
     kind=finance: [head, amount]; kind=funding: [source, amount]; kind=jv: [party, share_pct]."""
     if kind not in _KINDS:
-        raise CstError(f"kind '{kind}' galat - inme se: {', '.join(_KINDS)}.")
+        raise CstError(f"kind '{kind}' is not valid - one of: {', '.join(_KINDS)}.")
     if not rows or not isinstance(rows, list):
-        raise CstError("rows chahiye (list of lists).")
+        raise CstError("rows are needed (list of lists).")
     if kind == "title":
         if not by:
-            raise CstError("Title document ki status ke saath US KA NAAM aata hai jisne kahi (the clash_mark law).")
+            raise CstError("A title document's status comes with the NAME of the person who stated it (the clash_mark law).")
     if kind in ("worksheet", "finance", "jv") and not source:
-        raise CstError(f"{kind} row ka source batao (FSI zone row / deed / cost sheet) - bina source ka number nahi likhte.")
+        raise CstError(f"{kind} row needs a source (FSI zone row / deed / cost sheet) - a number without a source is not written.")
     made = []
     with session() as s:
         for r in rows:
@@ -103,7 +103,7 @@ def records_recon(tenant: str, project: str, parcel: str = "") -> dict:
         if parcel:
             parcels = [p for p in parcels if p.id == parcel]
         if not parcels:
-            raise CstError("Parcel nahi mila - pehle action=parcel_add se jodo.")
+            raise CstError("Parcel not found - add it with action=parcel_add first.")
         items = s.scalars(select(M.CLandItem).where(M.CLandItem.tenant_id == tenant,
                                                     M.CLandItem.project == project,
                                                     M.CLandItem.kind == "record")).all()
@@ -116,11 +116,11 @@ def records_recon(tenant: str, project: str, parcel: str = "") -> dict:
         out.append({"parcel": p.id, "survey_no": p.survey_no, "claimed": p.area,
                     "claimed_source": p.area_source, "records": len(recs),
                     "records_total": total, "diff": diff,
-                    "verdict": "match" if abs(diff) < 0.005 else "MISMATCH - dekho kaunsi entry",
+                    "verdict": "match" if abs(diff) < 0.005 else "MISMATCH - check which entry",
                     "entries": [{"doc_no": r.get("doc_no"), "area": r.get("area"),
                                  "date": r.get("date")} for r in recs]})
     return {"ok": True, "kind": "records_recon", "parcels": out,
-            "said": "Reconciliation ARITHMETIC hai - land record ka adhikarik hisaab revenue consultant ka hai."}
+            "said": "The reconciliation is ARITHMETIC - the authoritative account of the land record is the revenue consultant's."}
 
 
 def feasibility(tenant: str, project: str, plot_area: float, fsi: float, fsi_source: str,
@@ -128,9 +128,9 @@ def feasibility(tenant: str, project: str, plot_area: float, fsi: float, fsi_sou
     """#4: permissible built-up = FSI x plot area (both FED, FSI needs its source); consumed vs
     balance against the FED worksheet rows."""
     if plot_area <= 0 or fsi <= 0:
-        raise CstError("Plot area aur FSI dono chahiye (0 se bade).")
+        raise CstError("Both the plot area and the FSI are needed (more than 0).")
     if not fsi_source:
-        raise CstError("FSI bina source ke nahi - zone/DC rule ka naam do (DCR/DCP row ya approval letter).")
+        raise CstError("No FSI without a source - name the zone/DC rule (DCR/DCP row or approval letter).")
     permissible = round(fsi * plot_area, 2)
     with session() as s:
         rows = s.scalars(select(M.CLandItem).where(M.CLandItem.tenant_id == tenant,
@@ -141,7 +141,7 @@ def feasibility(tenant: str, project: str, plot_area: float, fsi: float, fsi_sou
            "permissible_builtup": permissible, "programme_rows": len(rows),
            "programme_builtup": used, "balance": round(permissible - used, 2),
            "consumed_pct": round(used / permissible * 100, 1) if permissible else 0.0,
-           "said": "FSI aapke diye source se hai - development potential ka FINAL word DM / architect ka hai."}
+           "said": "The FSI is from the source you gave - the FINAL word on development potential is the DM's / architect's."}
     with session() as s:
         s.add(M.CLandItem(tenant_id=tenant, project=project, kind="worksheet", name=name or "feasibility",
                           data=_dump(res), source=fsi_source, by="",
@@ -153,13 +153,13 @@ def jv_entitlement(tenant: str, project: str, developable_area: float) -> dict:
     """#6: each party's share of the developable area - shares AS FED from the deed (with source);
     the agreement itself is signed by the owner (gates)."""
     if developable_area <= 0:
-        raise CstError("Developable area 0 se bada hona chahiye.")
+        raise CstError("The developable area must be more than 0.")
     with session() as s:
         rows = s.scalars(select(M.CLandItem).where(M.CLandItem.tenant_id == tenant,
                                                    M.CLandItem.project == project,
                                                    M.CLandItem.kind == "jv")).all()
     if not rows:
-        raise CstError("JV share rows nahi mili - action=item_add, kind=jv se deed ke shares jodo (source ke saath).")
+        raise CstError("No JV share rows found - add the deed's shares with action=item_add, kind=jv (with a source).")
     shares = []
     tot = 0.0
     for r in rows:
@@ -170,8 +170,8 @@ def jv_entitlement(tenant: str, project: str, developable_area: float) -> dict:
                        "area": round(developable_area * pct / 100, 2)})
     res = {"developable_area": developable_area, "share_total_pct": round(tot, 2),
            "shares": shares,
-           "said": ("Share total 100% nahi hai - dekho." if abs(tot - 100) > 0.01
-                    else "Shares 100% hue. Yeh arithmetic hai - deed ke terms advocate hi padhenge.")}
+           "said": ("The share total is not 100% - check it." if abs(tot - 100) > 0.01
+                    else "Shares add up to 100%. This is arithmetic - only the advocate reads the deed's terms.")}
     res["verdict_ok"] = abs(tot - 100) <= 0.01
     return {"ok": True, "kind": "jv_entitlement", **res}
 
@@ -181,7 +181,7 @@ def finance_sum(tenant: str, project: str, interest_rate_pct: float, rate_source
     """#5: totals of the FED cost heads and funding rows, equity:debt, simple interest outgo on the
     FED rate (with its source). NO advice: the funding structure is the CFO's (gates)."""
     if not rate_source:
-        raise CstError("Interest rate ka source batao (sanction letter / term sheet).")
+        raise CstError("Give the source of the interest rate (sanction letter / term sheet).")
     with session() as s:
         fin = s.scalars(select(M.CLandItem).where(M.CLandItem.tenant_id == tenant,
                                                   M.CLandItem.project == project,
@@ -203,7 +203,7 @@ def finance_sum(tenant: str, project: str, interest_rate_pct: float, rate_source
             "interest_rate_pct": interest_rate_pct, "rate_source": rate_source, "years": years,
             "interest_outgo_simple": interest,
             "cost_rows": len(fin), "funding_rows": len(fund),
-            "said": f"Hisab: cost {_rs(cost)}, funding {_rs(equity + debt)} (equity {_rs(equity)} / debt {_rs(debt)}). Structure CFO tay karega - Hoola sirf jodta hai."}
+            "said": f"Summary: cost {_rs(cost)}, funding {_rs(equity + debt)} (equity {_rs(equity)} / debt {_rs(debt)}). The CFO decides the structure - Hoola only adds it up."}
 
 
 def dekho(tenant: str, what: str, project: str = "", kind: str = "", parcel: str = "") -> dict:
@@ -225,4 +225,4 @@ def dekho(tenant: str, what: str, project: str = "", kind: str = "", parcel: str
             rows = s.scalars(q).all()
             return {"items": [{"id": r.id, "project": r.project, "kind": r.kind, "name": r.name,
                                "data": _j(r.data, {}), "by": r.by, "source": r.source} for r in rows]}
-    raise CstError("what galat - parcels | items.")
+    raise CstError("what is not valid - parcels | items.")

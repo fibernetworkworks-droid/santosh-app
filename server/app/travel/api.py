@@ -167,7 +167,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
             with session() as s:
                 q = s.get(TravelQuote, qid)
                 if q is None or q.tenant_id != tenant or q.status != "approved":
-                    raise S.TravelError("Yeh quote abhi approve nahi hua.")
+                    raise S.TravelError("This quote is not approved yet.")
                 return S.quote_pdf(S._j(q.card, {})), q.number
         data, num = await run(_get)
         return Response(data, media_type="application/pdf", headers={"Content-Disposition": f'inline; filename="Quote-{num}.pdf"'})

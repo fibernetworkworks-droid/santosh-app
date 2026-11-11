@@ -139,7 +139,7 @@ def is_link_state(state: str) -> bool:
 
 def connect_url(tenant: str) -> str:
     if not configured():
-        raise MetaAdsError("Server par Meta app ki keys abhi nahi lagi (.env: META_APP_ID / META_APP_SECRET, PUBLIC_BASE_URL).")
+        raise MetaAdsError("The Meta app keys are not set on the server yet (.env: META_APP_ID / META_APP_SECRET, PUBLIC_BASE_URL).")
     st = get_settings()
     state = "mad_" + secrets.token_urlsafe(24)
     with session() as s:
@@ -160,7 +160,7 @@ def _exchange(code: str) -> tuple[str, int]:
                                                  "redirect_uri": redirect_uri(), "code": code})
     tok = str(short.get("access_token") or "")
     if not tok:
-        raise MetaAdsError("Facebook ne token nahi diya; dobara 'Connect with Facebook' dabaiye.")
+        raise MetaAdsError("Facebook did not give a token; tap 'Connect with Facebook' again.")
     try:
         long = _g("GET", "oauth/access_token", app, {"grant_type": "fb_exchange_token", "client_id": st.meta_app_id,
                                                     "client_secret": st.meta_app_secret, "fb_exchange_token": tok})
@@ -208,13 +208,13 @@ def finish_link(code: str, state: str) -> dict[str, Any]:
     with session() as s:
         row = s.get(MailLinkState, state)
         if row is None or row.provider != "metaads" or as_utc(row.created_at) < now() - timedelta(minutes=30):
-            raise MetaAdsError("Yeh link purana ho gaya. Dobara 'Connect with Facebook' dabaiye.")
+            raise MetaAdsError("This link has expired. Tap 'Connect with Facebook' again.")
         tenant = row.tenant_id
         s.delete(row)
     token, life = _exchange(code)
     got = _granted(token)
     if got and not {"ads_management", "ads_read"} & got:
-        raise MetaAdsError("Facebook par ads ki permission nahi di gayi. Dobara jodte waqt 'ad accounts' allow kijiye.")
+        raise MetaAdsError("Ads permission was not given on Facebook. When you connect again, allow 'ad accounts'.")
     accts, pages = _accounts(token), _pages(token)
     with session() as s:
         r = A._row(s, tenant)
@@ -237,17 +237,17 @@ def choose(tenant: str, account: str = "", page: str = "") -> dict[str, Any]:
     with session() as s:
         r = A._row(s, tenant)
         if r.meta_via != "login":
-            raise MetaAdsError("Pehle 'Connect with Facebook' dabaiye.")
+            raise MetaAdsError("First tap 'Connect with Facebook'.")
         if account:
             a = next((x for x in _j(r.meta_accounts, []) if x["id"] == account), None)
             if a is None:
-                raise MetaAdsError("Yeh ad account aapke Facebook login mein nahi mila.")
+                raise MetaAdsError("This ad account was not found in your Facebook login.")
             if not a.get("active"):
-                raise MetaAdsError("Yeh ad account Meta mein band / ruka hua hai (Ads Manager > Account status dekhiye).")
+                raise MetaAdsError("This ad account is closed / on hold in Meta (see Ads Manager > Account status).")
             r.meta_account, r.meta_name, r.meta_currency = a["id"], a["name"], a["currency"]
         if page:
             if page not in {p["id"] for p in _j(r.meta_pages, [])}:
-                raise MetaAdsError("Yeh Page aapke Facebook login mein nahi mila.")
+                raise MetaAdsError("This Page was not found in your Facebook login.")
             r.meta_page = page
         return {"account": r.meta_account, "name": r.meta_name, "currency": r.meta_currency, "page": r.meta_page}
 
@@ -259,7 +259,7 @@ def _ctx(tenant: str) -> tuple[str, str, str, str]:
         r = A._row(s, tenant)
         cur, page, exp = r.meta_currency, r.meta_page, as_utc(r.meta_expires)
     if exp and exp < now():
-        raise MetaAdsError("Facebook login purana ho gaya (60 din). 'Connect with Facebook' dobara dabaiye.")
+        raise MetaAdsError("The Facebook login has expired (60 days). Tap 'Connect with Facebook' again.")
     return acct, tok, cur, page
 
 
@@ -275,48 +275,48 @@ def draft_problems(tenant: str, d: MetaAdDraft) -> list[str]:
     from .rules import banned, financial
     out = []
     if d.goal not in GOALS:
-        out.append("Ad ka maqsad chuniye: WhatsApp / Messenger / Instagram chats, website ya post boost.")
+        out.append("Choose the ad's goal: WhatsApp / Messenger / Instagram chats, website or post boost.")
     page = _page_of(tenant, d.page_id)
     if page is None:
-        out.append("Facebook Page chuniye - har ad kisi Page ke naam se chalta hai.")
+        out.append("Choose a Facebook Page - every ad runs in the name of a Page.")
     if d.goal == "instagram" and page is not None and not page.get("ig_id"):
-        out.append("Is Page se koi Instagram professional account juda nahi hai (Page settings > Linked accounts).")
+        out.append("No Instagram professional account is linked to this Page (Page settings > Linked accounts).")
     if d.goal == "boost":
         if not re.fullmatch(r"(\d{5,25}_)?\d{5,25}", d.post_id or ""):
-            out.append("Kaunsi Page post boost karni hai, chuniye.")
+            out.append("Choose which Page post to boost.")
     else:
         if not d.image_asset:
-            out.append("Ad ki photo chahiye (chaukor ya 4:5, jaise 1080x1080).")
+            out.append("The ad needs a picture (square or 4:5, for example 1080x1080).")
         if not d.text.strip():
-            out.append("Ad ka text chahiye.")
+            out.append("The ad needs text.")
         if len(d.text) > LIMITS["text"]:
-            out.append(f"Text {LIMITS['text']} akshar se lamba hai.")
+            out.append(f"The text is longer than {LIMITS['text']} characters.")
         if len(d.headline) > LIMITS["headline"]:
-            out.append(f"Headline {LIMITS['headline']} akshar tak rakhiye (phone par kat jaati hai).")
+            out.append(f"Keep the headline within {LIMITS['headline']} characters (it gets cut off on phones).")
         if len(d.description) > LIMITS["description"]:
-            out.append(f"Description {LIMITS['description']} akshar tak.")
+            out.append(f"Description: up to {LIMITS['description']} characters.")
     if d.goal == "website" and not re.match(r"^https://[^\s/]+\.[^\s]+", d.link or ""):
-        out.append("Website ka address (https://...) chahiye.")
+        out.append("A website address (https://...) is needed.")
     if d.platforms not in ("both", "facebook", "instagram"):
-        out.append("Kahan dikhana hai: dono / sirf Facebook / sirf Instagram.")
+        out.append("Where to show it: both / Facebook only / Instagram only.")
     if d.goal == "instagram" and d.platforms == "facebook":
-        out.append("Instagram chats wala ad Instagram par hi chalega.")
+        out.append("An Instagram chats ad runs only on Instagram.")
     if not (13 <= d.age_min <= d.age_max <= 65) or d.age_min < 18:
-        out.append("Umar 18 se 65 ke beech.")
+        out.append("Age between 18 and 65.")
     if d.gender not in ("all", "men", "women"):
         out.append("Gender: all / men / women.")
     if d.special and d.special not in SPECIAL:
-        out.append("Special ad category: HOUSING / EMPLOYMENT / FINANCIAL_PRODUCTS_SERVICES ya khaali.")
+        out.append("Special ad category: HOUSING / EMPLOYMENT / FINANCIAL_PRODUCTS_SERVICES or empty.")
     if not (1 <= int(d.radius_km or 0) <= 80):
-        out.append("Sheher ke aas-paas 1 se 80 km.")
+        out.append("1 to 80 km around the city.")
     if not (1 <= int(d.daily or 0) <= _cap()):
-        out.append(f"Roz ka budget 1 se {_cap()} ke beech rakhiye (Hoola ki seema).")
+        out.append(f"Keep the daily budget between 1 and {_cap()} (Hoola's limit).")
     if not (1 <= int(d.days or 0) <= 30):
-        out.append("Kitne din chalana hai: 1 se 30.")
+        out.append("How many days to run: 1 to 30.")
     words = " ".join([d.text, d.headline, d.description])
     out += banned(words)
     if financial(words):
-        out.append("Paisa / loan / investment wala ad: Meta ki financial services category aur SEBI niyam pehle; Hoola aisa ad nahi banata.")
+        out.append("Money / loan / investment ad: Meta's financial services category and SEBI rules come first; Hoola does not make such ads.")
     return out
 
 
@@ -359,8 +359,8 @@ def new_draft(tenant: str, goal: str = "whatsapp", **kw: Any) -> dict[str, Any]:
     biz = biz or str(prof.get("business") or "")
     city = str(prof.get("city") or "")
     sells = (offer or str(prof.get("sells") or "")).strip()
-    ask = {"whatsapp": "WhatsApp par message kijiye", "messenger": "Message kijiye", "instagram": "DM kijiye",
-           "website": "Abhi dekhiye", "boost": ""}.get(goal, "")
+    ask = {"whatsapp": "Message us on WhatsApp", "messenger": "Send us a message", "instagram": "Send us a DM",
+           "website": "See it now", "boost": ""}.get(goal, "")
     text = (f"{biz}" + (f", {city}" if city else "") + (f": {sells}" if sells else "") + (f". {ask}." if ask else "")).strip(" :.,")
     d = MetaAdDraft(tenant_id=tenant, goal=goal if goal in GOALS else "whatsapp", page_id=page,
                     text=text[:LIMITS["text"]], headline=(sells.split(",")[0].strip() or biz)[:LIMITS["headline"]],
@@ -376,9 +376,9 @@ def set_draft(tenant: str, did: str, **kw: Any) -> dict[str, Any]:
     with session() as s:
         d = s.get(MetaAdDraft, did)
         if d is None or d.tenant_id != tenant:
-            raise MetaAdsError("Yeh ad draft nahi mila.")
+            raise MetaAdsError("Ad draft not found.")
         if d.status not in EDITABLE:
-            raise MetaAdsError("Yeh ad Meta mein ban chuka; badlav Ads Manager mein kijiye ya naya draft banaiye.")
+            raise MetaAdsError("This ad is already created in Meta; change it in Ads Manager or make a new draft.")
         _apply(d, kw)
         d.status, d.error = "draft", ""
         return _view(tenant, d)
@@ -408,7 +408,7 @@ def _cities(token: str, names: list[str], km: int) -> list[dict[str, Any]]:
         js = _g("GET", "search", token, {"type": "adgeolocation", "location_types": ["city"], "country_code": "IN", "q": n, "limit": 1})
         hit = (js.get("data") or [None])[0]
         if not hit or not hit.get("key"):
-            raise MetaAdsError(f"Meta ko '{n}' sheher nahi mila; naam English mein likhiye (jaise Akola).")
+            raise MetaAdsError(f"Meta could not find the city '{n}'; write the name in English (for example Akola).")
         out.append({"key": str(hit["key"]), "radius": int(km), "distance_unit": "kilometer"})
     return out
 
@@ -441,12 +441,12 @@ def _creative(tenant: str, d: MetaAdDraft, acct: str, token: str, name: str) -> 
     with session() as s:
         a = s.get(SocialAsset, d.image_asset)
         if a is None or a.tenant_id != tenant or a.kind != "image":
-            raise MetaAdsError("Ad ki photo nahi mili; dobara jodiye.")
+            raise MetaAdsError("The ad's picture was not found; add it again.")
         data = Path(a.path).read_bytes()
     up = _g("POST", f"{acct}/adimages", token, {"bytes": base64.b64encode(data).decode()})
     img = next(iter((up.get("images") or {}).values()), {})
     if not img.get("hash"):
-        raise MetaAdsError("Meta ne photo nahi li; doosri photo try kijiye.")
+        raise MetaAdsError("Meta did not accept the picture; try another one.")
     goal = d.goal
     link = d.link if goal == "website" else RECIPE[goal][4]
     cta: dict[str, Any] = {"type": RECIPE[goal][3]}
@@ -467,7 +467,7 @@ def _load(tenant: str, did: str) -> MetaAdDraft:
     with session() as s:
         d = s.get(MetaAdDraft, did)
         if d is None or d.tenant_id != tenant:
-            raise MetaAdsError("Yeh ad draft nahi mila.")
+            raise MetaAdsError("Ad draft not found.")
         s.expunge(d)
     return d
 
@@ -475,7 +475,7 @@ def _load(tenant: str, did: str) -> MetaAdDraft:
 def _ready(tenant: str, did: str) -> MetaAdDraft:
     d = _load(tenant, did)
     if d.status not in EDITABLE:
-        raise MetaAdsError("Yeh ad pehle hi Meta mein ban chuka.")
+        raise MetaAdsError("This ad is already created in Meta.")
     bad = draft_problems(tenant, d)
     if bad:
         raise MetaAdsError(" ".join(bad))
@@ -526,7 +526,7 @@ def create(tenant: str, did: str) -> dict[str, Any]:
                                                             "creative": {"creative_id": str(cr.get("id") or "")},
                                                             "status": "PAUSED"}).get("id") or "")
     except MetaAdsError as e:
-        left = f" Ek adhoora, PAUSED campaign '{name}' Ads Manager mein reh gaya - wahan delete kar sakti hain." if made.get("campaign_id") else ""
+        left = f" An unfinished, PAUSED campaign '{name}' was left in Ads Manager - you can delete it there." if made.get("campaign_id") else ""
         _mark(tenant, did, status="failed", error=(str(e) + left)[:600], **made)
         raise MetaAdsError(str(e) + left)
     return _mark(tenant, did, status="created", error="", **made)
@@ -536,12 +536,12 @@ def start(tenant: str, did: str, confirm: bool = False) -> dict[str, Any]:
     """Her tap after a confirm: Meta may now spend up to the daily budget; Meta itself stops the ad set after her days."""
     from ..social.desk import _local
     if not confirm:
-        raise MetaAdsError("Start karne se pehle haan chahiye: is ad par roz ka budget kharch hoga.")
+        raise MetaAdsError("Your approval is needed before starting: this ad will spend its daily budget.")
     d = _load(tenant, did)
     if d.status not in ("created", "paused") or not (d.campaign_id and d.adset_id and d.ad_id):
-        raise MetaAdsError("Pehle ad ko Meta mein (paused) banaiye.")
+        raise MetaAdsError("First create the ad in Meta (paused).")
     if int(d.daily) > _cap():
-        raise MetaAdsError(f"Roz ka budget Hoola ki seema ({_cap()}) se zyada hai.")
+        raise MetaAdsError(f"The daily budget is above Hoola's limit ({_cap()}).")
     _acct, tok, _cur, _page = _ctx(tenant)
     end = datetime.now(timezone.utc) + timedelta(days=max(1, int(d.days)))
     _g("POST", d.adset_id, tok, {"end_time": end.strftime("%Y-%m-%dT%H:%M:%S+0000")})
@@ -554,7 +554,7 @@ def start(tenant: str, did: str, confirm: bool = False) -> dict[str, Any]:
 def pause(tenant: str, did: str, ended: bool = False) -> dict[str, Any]:
     d = _load(tenant, did)
     if not d.campaign_id:
-        raise MetaAdsError("Yeh ad Meta mein bana hi nahi.")
+        raise MetaAdsError("This ad was never created in Meta.")
     _acct, tok, _cur, _page = _ctx(tenant)
     _g("POST", d.campaign_id, tok, {"status": "PAUSED"})
     return _mark(tenant, did, status="ended" if ended else "paused")

@@ -52,9 +52,9 @@ UNIT_WORDS = {"bori": "BAG", "bag": "BAG", "bags": "BAG", "katta": "BAG", "kg": 
 
 STATUSES = ("booked", "loaded", "dispatched", "in_transit", "reached_hub", "out_for_delivery", "delivered", "held", "breakdown",
             "delayed", "returned", "cancelled")
-LABEL = {"booked": "Booking", "loaded": "Load ho gaya", "dispatched": "Nikal gaya", "in_transit": "Raste mein", "reached_hub": "Hub / godown pahuncha",
-         "out_for_delivery": "Delivery ke liye nikla", "delivered": "Deliver ho gaya", "held": "Ruka hua (check / naka)", "breakdown": "Gaadi kharab",
-         "delayed": "Der", "returned": "Wapas", "cancelled": "Cancel"}
+LABEL = {"booked": "Booking", "loaded": "Loaded", "dispatched": "Dispatched", "in_transit": "In transit", "reached_hub": "Reached hub / warehouse",
+         "out_for_delivery": "Out for delivery", "delivered": "Delivered", "held": "Held (check / checkpost)", "breakdown": "Vehicle breakdown",
+         "delayed": "Delayed", "returned": "Returned", "cancelled": "Cancelled"}
 OPEN = ("booked", "loaded", "dispatched", "in_transit", "reached_hub", "out_for_delivery", "held", "breakdown", "delayed")
 MOVING = ("dispatched", "in_transit", "reached_hub", "out_for_delivery", "held", "breakdown", "delayed")
 STATUS_WORDS = (("out_for_delivery", ("out for delivery", "delivery ke liye", "delivery pe nikla", "delivery par nikla")),
@@ -68,11 +68,11 @@ STATUS_WORDS = (("out_for_delivery", ("out for delivery", "delivery ke liye", "d
                 ("in_transit", ("raste mein", "on the way", "in transit", "chal rahi", "highway")),
                 ("cancelled", ("cancel",)))
 
-NEVER = ("Graahak ko message sirf aapki haan / aapke bhejne se jaata hai (WhatsApp draft, ya business WhatsApp par aapka tap).",
-         "E-way bill portal par banana / Part B badalna / extension = filing: sirf aapke tap se (GSP API ya aap khud portal par, OTP aapka).",
-         "Tracking ki koi baat Hoola apne se nahi banata: sirf aapka / transporter / driver / courier ka bataya hua.",
-         "Paisa Hoola na leta hai na bhejta hai (bhada, COD, claim).",
-         "Driver ki location sirf woh jo aap / driver khud share kare.")
+NEVER = ("A message goes to a customer only with your approval / when you send it (WhatsApp draft, or your tap on business WhatsApp).",
+         "Creating an e-way bill on the portal / changing Part B / an extension = filing: only with your tap (GSP API, or you yourself on the portal with your OTP).",
+         "Hoola never makes up tracking information: only what you / the transporter / the driver / the courier reported.",
+         "Hoola neither receives nor sends money (freight, COD, claims).",
+         "The driver's location is only what you / the driver share yourselves.")
 
 _VEH = re.compile(r"^[A-Z]{2}\d{1,2}[A-Z]{0,3}\d{4}$")
 _VEH_BH = re.compile(r"^\d{2}BH\d{4}[A-Z]{1,2}$")
@@ -101,9 +101,9 @@ def ewb_needed(value: float, from_state: str, to_state: str) -> dict:
     intra = not to_state or not from_state or from_state == to_state
     limit = EWB_INTRA.get(from_state, EWB_INTER) if intra else EWB_INTER
     need = float(value or 0) > limit
-    where = "rajya ke andar" if intra else "doosre rajya"
-    why = (f"Maal ki keemat Rs {value:,.0f} > Rs {limit:,.0f} ({where}): e-way bill zaroori." if need
-           else f"Rs {value:,.0f} ({where}, limit Rs {limit:,.0f}): e-way bill zaroori nahi (job work / kuch khaas maal mein phir bhi lagta hai).")
+    where = "within the state" if intra else "another state"
+    why = (f"Goods value Rs {value:,.0f} > Rs {limit:,.0f} ({where}): an e-way bill is required." if need
+           else f"Rs {value:,.0f} ({where}, limit Rs {limit:,.0f}): no e-way bill is required (job work / some special goods still need one).")
     return {"needed": need, "limit": limit, "intra": intra, "why": why}
 
 
@@ -130,17 +130,17 @@ def ewb_alert(upto: datetime | None, at: datetime, generated: datetime | None = 
         return None
     a, b = extend_window(upto)
     if generated and (at - generated).days >= MAX_EXTEND_DAYS:
-        return {"level": "bad", "kind": "ewb_max", "text": "E-way bill 360 din se purana: ab extend nahi hoga, naya banana padega."}
+        return {"level": "bad", "kind": "ewb_max", "text": "The e-way bill is more than 360 days old: it cannot be extended now, a new one must be made."}
     if at > b:
-        return {"level": "bad", "kind": "ewb_expired", "text": "E-way bill khatam ho gaya aur extension ka samay bhi nikal gaya: maal ruk sakta hai (Rs 10,000 ya tax). Naya EWB banana padega."}
+        return {"level": "bad", "kind": "ewb_expired", "text": "The e-way bill has expired and the extension window has also passed: the goods can be detained (Rs 10,000 or the tax). A new EWB must be made."}
     if at > upto:
         return {"level": "bad", "kind": "ewb_expired",
-                "text": f"E-way bill khatam: extension abhi ho sakta hai ({b.strftime('%d %b %H:%M')} tak)."}
+                "text": f"E-way bill expired: it can still be extended (until {b.strftime('%d %b %H:%M')})."}
     if at >= a:
         return {"level": "warn", "kind": "ewb_expiring",
-                "text": f"E-way bill {upto.strftime('%d %b %H:%M')} ko khatam: maal raste mein hai to extension ab maang sakte hain."}
+                "text": f"E-way bill expires at {upto.strftime('%d %b %H:%M')}: if the goods are in transit, you can ask for an extension now."}
     if upto - at <= timedelta(hours=24):
-        return {"level": "info", "kind": "ewb_soon", "text": f"E-way bill kal tak ({upto.strftime('%d %b %H:%M')}) valid."}
+        return {"level": "info", "kind": "ewb_soon", "text": f"E-way bill valid until tomorrow ({upto.strftime('%d %b %H:%M')})."}
     return None
 
 
@@ -154,9 +154,9 @@ def doc_too_old(doc: date | None, on: date) -> bool:
 
 def liability_cap(freight: float, declared: float, higher_risk: bool = False) -> dict:
     if higher_risk:
-        return {"cap": float(declared or 0), "text": "Zyada risk rate tay hua: poori declared value tak zimmedari."}
+        return {"cap": float(declared or 0), "text": "Higher risk rate agreed: liable up to the full declared value."}
     cap = min(LIABILITY_X_FREIGHT * float(freight or 0), float(declared or 0)) if declared else LIABILITY_X_FREIGHT * float(freight or 0)
-    return {"cap": r2(cap), "text": f"Nuksaan par carrier ki zimmedari bhade ka 10 guna (Rs {cap:,.0f}) tak, declared value se zyada nahi (Rule 12(1))."}
+    return {"cap": r2(cap), "text": f"For loss, the carrier is liable up to 10 times the freight (Rs {cap:,.0f}), not more than the declared value (Rule 12(1))."}
 
 
 def claim_by(booked: date) -> date:
@@ -206,30 +206,30 @@ def first(name: str) -> str:
 
 def customer_text(kind: str, f: dict) -> str:
     """Hinglish drafts. Facts we don't have stay as [blanks]; nothing is guessed."""
-    nm = first(f.get("name", "")) or "ji"
-    biz = f.get("business") or "[aapki firm]"
+    nm = first(f.get("name", "")) or "there"
+    biz = f.get("business") or "[your firm]"
     ref = f.get("ref") or ""
-    goods = f.get("goods") or "aapka maal"
-    veh = f.get("vehicle") or "[gaadi no.]"
-    eta = f.get("eta") or "[pahunchne ka samay]"
+    goods = f.get("goods") or "your goods"
+    veh = f.get("vehicle") or "[vehicle no.]"
+    eta = f.get("eta") or "[arrival time]"
     lr = f" (LR {f['lr']})" if f.get("lr") else ""
     ewb = f" E-way bill: {f['ewb']}." if f.get("ewb") else ""
     awb = f" Tracking: {f['courier']} {f['awb']}." if f.get("awb") else ""
     driver = f" Driver: {f['driver']}." if f.get("driver") else ""
     if kind == "dispatch":
-        return (f"Namaste {nm}, {biz} se {goods} {ref} aaj nikal gaya hai{lr}. Gaadi: {veh}.{driver}{ewb}{awb} "
-                f"Andaazan pahunchne ka samay: {eta}. Koi baat ho to isi number par bataiye.")
+        return (f"Hello {nm}, from {biz}: {goods} {ref} left today{lr}. Vehicle: {veh}.{driver}{ewb}{awb} "
+                f"Expected arrival: {eta}. If you need anything, tell us on this number.")
     if kind == "in_transit":
-        where = f.get("where") or "[abhi kahan]"
-        return f"Namaste {nm}, aapka maal {ref}{lr} raste mein hai, abhi {where} ke paas. Pahunchne ka andaaza: {eta}.{awb}"
+        where = f.get("where") or "[current location]"
+        return f"Hello {nm}, your goods {ref}{lr} are on the way, now near {where}. Expected arrival: {eta}.{awb}"
     if kind == "delay":
-        why = f.get("reason") or "[der ki wajah]"
-        return (f"Namaste {nm}, maafi chahte hain: aapke maal {ref}{lr} mein der ho rahi hai ({why}). Naya andaaza: {eta}. "
-                f"Hum lagatar nazar rakh rahe hain, aur update denge.")
+        why = f.get("reason") or "[reason for delay]"
+        return (f"Hello {nm}, we are sorry: your goods {ref}{lr} are delayed ({why}). New estimate: {eta}. "
+                f"We are watching it closely and will update you.")
     if kind == "out_for_delivery":
-        return f"Namaste {nm}, aapka maal {ref}{lr} aaj delivery ke liye nikal gaya hai (gaadi {veh}). Kripya maal lene ke liye koi uplabdh rahe."
+        return f"Hello {nm}, your goods {ref}{lr} are out for delivery today (vehicle {veh}). Please have someone available to receive them."
     if kind == "delivered":
-        who = f" {f['receiver']} ji ne liya." if f.get("receiver") else ""
-        return (f"Namaste {nm}, aapka maal {ref}{lr} deliver ho gaya hai.{who} Kripya packets gin kar dekh lijiye; koi kami / nuksaan ho "
-                f"to aaj hi bataiye. Dhanyavaad, {biz}.")
-    return f"Namaste {nm}, aapke maal {ref}{lr} ke baare mein: [baat]."
+        who = f" Received by {f['receiver']}." if f.get("receiver") else ""
+        return (f"Hello {nm}, your goods {ref}{lr} have been delivered.{who} Please count the packages and check; if anything is short / damaged, "
+                f"tell us today. Thank you, {biz}.")
+    return f"Hello {nm}, about your goods {ref}{lr}: [message]."

@@ -17,7 +17,7 @@ KINDS = ("oac", "site", "coord", "client", "weekly")
 def meet(tenant: str, title: str, kind: str = "site", day: str = "", site: str = "", project: str = "",
          attendees: str = "", minutes: list | None = None, actions: list | None = None, conv: str = "") -> dict:
     if not str(title or "").strip():
-        raise CstError("Baithak ka title bataiye.")
+        raise CstError("Give the meeting's title.")
     k = (kind or "site").strip().lower()
     if k not in KINDS:
         raise CstError("kind: " + " | ".join(KINDS))
@@ -40,30 +40,30 @@ def meet(tenant: str, title: str, kind: str = "site", day: str = "", site: str =
                 s.flush()
                 added.append({"id": row.id, "what": row.what[:60], "who": row.who, "due": row.due})
     publish(tenant, "const_meet", {"kind": "meet", "title": title[:80], "actions": len(added)}, conv)
-    say = (f"Baithak record: '{title[:60]}' ({k}, {d.strftime('%d %b')})"
+    say = (f"Meeting recorded: '{title[:60]}' ({k}, {d.strftime('%d %b')})"
            + (f", {len(minutes or [])} minute points" if minutes else "")
-           + (f", {len(added)} action items - chase Hoola karega." if added else "."))
+           + (f", {len(added)} action items - Hoola will chase them." if added else "."))
     return {"meet_id": mid, "actions": added, "say": say}
 
 
 def minute(tenant: str, meet_id: str, text: str, by: str = "") -> dict:
     if not str(text or "").strip():
-        raise CstError("Minute bataiye.")
+        raise CstError("Give the minute.")
     with _LOCK, session() as s:
         x = s.get(CMeet, meet_id)
         if not x or x.tenant_id != tenant:
-            raise CstError("Baithak nahi mili.")
+            raise CstError("Meeting not found.")
         rows = _j(x.minutes, [])
         rows.append({"text": str(text)[:500], "by": str(by)[:80]})
         x.minutes = _dump(rows[-40:])
         x.status = "minuted"
         title = x.title
-    return {"say": f"Minute juda: '{title[:50]}' - {text[:80]}"}
+    return {"say": f"Minute added: '{title[:50]}' - {text[:80]}"}
 
 
 def action(tenant: str, meet_id: str = "", what: str = "", who: str = "", due: str = "") -> dict:
     if not str(what or "").strip():
-        raise CstError("Action kya hai, bataiye.")
+        raise CstError("Tell me what the action is.")
     d = _date(due, today(tenant))
     with _LOCK, session() as s:
         row = CActionItem(tenant_id=tenant, meet_id=meet_id[:40], what=what.strip()[:500], who=who[:160],
@@ -77,15 +77,15 @@ def action(tenant: str, meet_id: str = "", what: str = "", who: str = "", due: s
 def action_done(tenant: str, action_id: str, actor: str) -> dict:
     """Closed on the owner's / PM's word - Hoola never marks an action done by itself."""
     if actor != "owner" and not str(actor).startswith("approved:"):
-        raise CstError("Action band karne ki haan owner / PM ki.")
+        raise CstError("Only the owner / PM can approve closing an action.")
     with _LOCK, session() as s:
         x = s.get(CActionItem, action_id)
         if not x or x.tenant_id != tenant:
-            raise CstError("Action nahi mila.")
+            raise CstError("Action not found.")
         x.status = "done"
         x.done_on = today(tenant).isoformat()
         what = x.what
-    return {"say": f"Action band: {what[:70]}."}
+    return {"say": f"Action closed: {what[:70]}."}
 
 
 def open_actions(tenant: str) -> dict:
@@ -94,8 +94,8 @@ def open_actions(tenant: str) -> dict:
         rows = s.scalars(select(CActionItem).where(CActionItem.tenant_id == tenant, CActionItem.status == "open")
                          .order_by(CActionItem.due)).all()
     late = [r for r in rows if r.due < t0.isoformat()]
-    say = (f"Actions: {len(rows)} khuli" + (f", {len(late)} due nikal gayi" if late else "") + "."
-           + (" Sabse purani: " + "; ".join(f"{r.what[:40]} ({r.who or '-'}, due {r.due})" for r in (late or rows)[:2]) if rows else ""))
+    say = (f"Actions: {len(rows)} open" + (f", {len(late)} past due" if late else "") + "."
+           + (" Oldest: " + "; ".join(f"{r.what[:40]} ({r.who or '-'}, due {r.due})" for r in (late or rows)[:2]) if rows else ""))
     return {"open": len(rows), "late": len(late),
             "rows": [{"id": r.id, "what": r.what[:120], "who": r.who, "due": r.due, "meet_id": r.meet_id} for r in rows[:15]],
             "say": say}
@@ -105,7 +105,7 @@ def minutes_pdf(tenant: str, meet_id: str) -> bytes:
     with session() as s:
         x = s.get(CMeet, meet_id)
         if not x or x.tenant_id != tenant:
-            raise CstError("Baithak nahi mili.")
+            raise CstError("Meeting not found.")
         minutes = _j(x.minutes, [])
         actions = s.scalars(select(CActionItem).where(CActionItem.meet_id == x.id)).all()
         title, kind, day, site, project, att = x.title, x.kind, x.day, x.site, x.project, x.attendees
