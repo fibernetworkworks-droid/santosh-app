@@ -155,6 +155,11 @@ def save_asset(tenant: str, data: bytes) -> dict:
     path = _tenant_dir(tenant) / "assets" / sha
     if not path.is_file():
         _write(path, data)
+    else:
+        try:
+            os.utime(path)                               # uploaded again: it is fresh for the sweep below
+        except OSError:
+            pass
     return {"hash": sha, "mime": mime, "w": w, "h": h, "size": len(data)}
 
 
@@ -170,3 +175,52 @@ def save_thumb(tenant: str, file_id: str, data: bytes) -> None:
 
 def drop_thumb(tenant: str, file_id: str) -> None:
     thumb_path(tenant, file_id).unlink(missing_ok=True)
+
+
+# ----------------------------------------------------------------------------------------------- sweep
+SWEEP_DAYS = 7
+
+
+def sweep(max_age_days: float | None = None, now: float | None = None) -> dict:
+    """Delete the images nothing draws any more: not in the current document of any file of that person (the
+    trash included), not in the journal, not in any kept version - AND last uploaded more than `max_age_days`
+    ago, so a picture that was just uploaded, or just removed and may come back with an undo, is never taken.
+    Returns {"checked", "deleted", "bytes"}. Thumbnails are not touched. Safe to run while people are editing."""
+    import time
+
+    from . import store
+    days = SWEEP_DAYS if max_age_days is None else max_age_days
+    cutoff = (time.time() if now is None else now) - days * 86400
+    folders: dict[Path, set[str]] = {}
+    for tenant in store.tenants():                       # two ids can share one cleaned folder name: their refs add up
+        folders.setdefault(_tenant_dir(tenant) / "assets", set()).add(tenant)
+    out = {"checked": 0, "deleted": 0, "bytes": 0}
+    for folder, owners in folders.items():
+        if not folder.is_dir():
+            continue
+        old = []
+        for path in folder.iterdir():
+            if not _SHA.match(path.name):
+                continue                                 # a half-written temp file, or something that is not ours
+            out["checked"] += 1
+            try:
+                stat = path.stat()
+            except OSError:
+                continue
+            if stat.st_mtime < cutoff:
+                old.append((path, stat.st_size))
+        if not old:
+            continue
+        used: set[str] = set()
+        for tenant in owners:                            # read only when there is something old enough to judge
+            used |= store.asset_refs(tenant)
+        for path, size in old:
+            if path.name in used:
+                continue
+            try:
+                path.unlink()
+            except OSError:
+                continue
+            out["deleted"] += 1
+            out["bytes"] += size
+    return out

@@ -124,10 +124,10 @@ def _load(file_id: str, tenant: str | None, max_nodes: int, allow_trashed: bool 
             "base_seq": raw["seq"], "tail": tail, "replayed": replayed}
 
 
-def _snapshot(file_id: str, nodes: dict, seq: int, version_every_s: float, keep: int) -> str:
+def _snapshot(file_id: str, nodes: dict, seq: int, version_every_s: float, keep: int, by: str = "") -> str:
     """Worker thread: document -> JSON -> zlib -> the file row (and the journal trimmed below `seq`)."""
     doc_json = dumps_nodes(nodes)
-    store.save_snapshot(file_id, store.pack(doc_json), seq, len(nodes), version_every_s, keep)
+    store.save_snapshot(file_id, store.pack(doc_json), seq, len(nodes), version_every_s, keep, by)
     return doc_json
 
 
@@ -153,6 +153,7 @@ class Room:
         self._saved_seq: int = built["base_seq"]
         self._since: int = built["replayed"]            # ops accepted since the last checkpoint
         self._last_op = time.monotonic()
+        self._last_by = ""                               # who made the newest accepted edit (named on an automatic version)
         self._journal: list[tuple] = []
         self._writer: asyncio.Task | None = None        # the journal write in flight
         self._saver: asyncio.Task | None = None         # the every-N-ops checkpoint in flight
@@ -217,6 +218,12 @@ class Room:
         for conn in list(self.conns.values()):
             self.drop(conn, code)
 
+    def kick_guests(self, code: int) -> None:
+        """The share link was switched off: every view-only guest is shown out, the editors stay."""
+        for conn in list(self.conns.values()):
+            if conn.role != "edit":
+                self.drop(conn, code)
+
     def _fan(self, frame: str, skip: Conn | None = None, lossy: bool = False) -> None:
         for conn in self.conns.values():
             if conn is not skip:
@@ -274,7 +281,10 @@ class Room:
             if conn.strikes >= VIEW_STRIKES:
                 self.drop(conn, 4403)
             return True
+        before = self.seq
         rejected = self._commit(ops, conn.cid, size > MAX_OP_BYTES, conn)
+        if self.seq != before:
+            self._last_by = conn.name
         conn.send(f'{{"t":"ack","n":{n},"seq":{self.seq},"rejected":{dumps(rejected)}}}')
         return True
 
@@ -334,7 +344,7 @@ class Room:
                 return True
             seq, nodes, counted = self.seq, self.doc.copy_nodes(), self._since
             try:
-                doc_json = await bg(_snapshot, self.file_id, nodes, seq, self._version_s, self._keep)
+                doc_json = await bg(_snapshot, self.file_id, nodes, seq, self._version_s, self._keep, self._last_by)
             except Exception:                            # noqa: BLE001
                 log.exception("design checkpoint failed for %s at seq %d", self.file_id, seq)
                 return False
@@ -444,6 +454,12 @@ class Hub:
         if room is not None:
             room.closed = True
             room.kick(code)
+
+    def unshared(self, file_id: str) -> None:
+        """The share link of a file was switched off: its guests leave (4404, the same as a link that never was)."""
+        room = self.rooms.get(file_id)
+        if room is not None:
+            room.kick_guests(4404)
 
     def restored(self, file_id: str) -> None:
         """The file came back from the trash while its room was still unloading: it may be joined again."""

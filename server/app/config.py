@@ -493,6 +493,11 @@ class Settings(BaseSettings):
     design_autoversion_min: int = 30      # an automatic version every this many minutes of editing (0 = none)
     design_autoversion_keep: int = 50     # automatic versions kept per file (named ones are never pruned)
     design_socket_idle_s: float = 60.0    # an editor that sends nothing for this long (it pings every 15 s) is let go
+    design_ai: bool = True                # v0.777 HOOLA DESIGN AI: "Ask Hoola" (one line -> a designed frame, POST /api/design/files/{id}/ai) + the hoola_design tool
+    design_ai_model: str = ""             # the model that designs ('' = the house's strong model, else the chat model: agent/door.model_for)
+    design_ai_engine: str = "auto"        # auto = the model when one is configured, else the built-in layouts | template = built-in layouts only
+    design_ai_per_hour: int = 20          # designs one tenant may ask for in an hour (per server process)
+    design_ai_timeout_s: float = 120.0    # one model call may take this long; after it the request fails plainly
     flow_page: bool = True                # v0.751 HOOLA FLOW: the Kaan pack as a console page (dictate, files, live captions, words, settings)
     flow_composer_mic: bool = True        # v0.751 the chat box mic dictates through Kaan when its engine is ready (else the browser's own)
     shilp_page: bool = True               # v0.752 ARTCRAFT IN CREATE: the Create studio's ArtCraft tool over the shilp lane (/api/shilp)

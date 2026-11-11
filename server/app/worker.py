@@ -490,6 +490,29 @@ async def expire_stale_asks() -> None:
         log.exception("studio approval expiry failed")
 
 
+_design_gc_last = 0.0
+
+
+async def design_asset_jobs() -> None:
+    """v0.777 HOOLA DESIGN: once a day, delete uploaded images no document or kept version draws any more
+    (design/assets.sweep: older than 7 days only). Off with design_page; never on the event loop."""
+    global _design_gc_last
+    if time.time() - _design_gc_last < 86400:
+        return
+    first = _design_gc_last == 0.0
+    _design_gc_last = time.time() - (86400 - 900 if first else 0)     # the first sweep waits 15 min after a start
+    st = get_settings()
+    if first or not getattr(st, "design_page", False):
+        return
+    from .design import assets as _design_assets
+    days = float(getattr(st, "design_asset_gc_days", _design_assets.SWEEP_DAYS) or 0)
+    if days <= 0:
+        return
+    done = await asyncio.to_thread(_design_assets.sweep, days)
+    if done.get("deleted"):
+        log.info("design images swept: %s deleted, %s bytes freed, %s checked", done["deleted"], done["bytes"], done["checked"])
+
+
 _SLOT_FAIL: dict[str, float] = {}
 # wave 13: what the worker is doing, for /healthz (a hung slot used to stop reminders / follow-ups for good, silently)
 BEAT = {"tick_at": 0.0, "slot_at": 0.0, "slot": "", "ticks": 0, "slot_timeouts": 0}
@@ -527,7 +550,7 @@ async def tick() -> None:
         run_routines, expire_device_actions, expire_stale_asks, bazar_reminders, offline_digests, pc_cleanup,
         home_device_alerts, mail_jobs, employee_jobs, kaam_jobs, followup_jobs, goal_resume_jobs, inbox_jobs,
         team_jobs, research_jobs, scrape_crawl_jobs, dhara_jobs, eventlog_jobs, kaan_jobs, aboutme_jobs, applogic_jobs,
-        game_studio_jobs, coder_jobs, bahar_jobs, app_ops_jobs, api_box_jobs,
+        game_studio_jobs, coder_jobs, bahar_jobs, app_ops_jobs, api_box_jobs, design_asset_jobs,
     ):
         await _slot(fn)
     BEAT["slot"] = ""

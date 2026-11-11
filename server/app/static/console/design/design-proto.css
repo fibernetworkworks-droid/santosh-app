@@ -1,1 +1,78 @@
-/* HOOLA DESIGN - styles for hd-proto.js (D6 prototype). */
+/* HOOLA DESIGN - styles for hd-proto.js (D6 prototype): the Prototype tab, the interaction popover, the player.
+   Same tokens as design.css: one sans, no weight above 600, nothing under 12px, solid backgrounds under text. */
+
+/* ---------- the Prototype tab ---------- */
+.hdp-panel{overflow-x:hidden}
+.hdp-row{display:flex;align-items:center;gap:8px;margin-bottom:6px;min-width:0}
+.hdp-row:last-child{margin-bottom:0}
+.hdp-lab{flex:none;width:74px;font-size:12.5px;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hdp-row .hd-sel,.hdp-row .hd-in{flex:1 1 0;min-width:0}
+.hdp-row.two .hd-in{flex:1 1 0}
+.hdp-ix{display:flex;align-items:center;gap:2px;margin:0 -4px 2px;padding:0 2px 0 0;border-radius:8px}
+.hdp-ix:last-child{margin-bottom:0}
+.hdp-ix:hover{background:var(--sunk)}
+.hdp-ix.on{background:var(--pri-soft)}
+.hdp-ixb,.hdp-flowrow{flex:1;min-width:0;display:flex;align-items:center;gap:5px;height:30px;padding:0 6px;border-radius:8px;text-align:left;font-size:13px;color:var(--ink)}
+.hdp-ixt{flex:none;color:var(--mut);white-space:nowrap}
+.hdp-ixarrow{flex:none;color:var(--dim);display:grid;place-items:center}
+.hdp-ixw{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500}
+.hdp-ixw.miss{color:var(--warn);font-weight:400}
+.hdp-ix.on .hdp-ixt,.hdp-ix.on .hdp-ixw{color:var(--pri-ink)}
+.hdp-flowrow{color:var(--pri-ink)}
+.hdp-flowrow span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500;color:var(--ink)}
+.hdp-flowrow .hdp-flowframe{margin-left:auto;font-weight:400;color:var(--dim);font-size:12.5px;flex:none;max-width:45%}
+.hdp-tip{padding-top:10px !important}
+.hdp-acts{display:flex;flex-wrap:wrap;gap:8px;padding:2px 12px 14px}
+.hdp-acts .hd-btn{max-width:100%}
+
+/* ---------- one interaction, in a popover ---------- */
+.hdp-pop{width:272px;padding:10px 12px 12px;overflow-x:hidden}
+.hdp-edhead{display:flex;align-items:baseline;gap:8px;margin-bottom:8px;min-width:0}
+.hdp-edhead h3{font-size:13px;font-weight:600;flex:none}
+.hdp-edfrom{font-size:12.5px;color:var(--dim);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hdp-sep{height:1px;background:var(--line);margin:8px -12px}
+.hdp-destbox{display:flex;flex-direction:column;gap:6px;margin-bottom:6px}
+.hdp-destbox .hdp-lab{width:auto}
+.hdp-dest{max-height:150px;overflow:auto;border:1px solid var(--line);border-radius:8px;padding:3px;background:var(--surface)}
+.hdp-dest .hd-note{padding:6px 8px}
+.hdp-di{display:flex;align-items:center;gap:7px;width:100%;min-height:28px;padding:3px 7px;border-radius:6px;font-size:13px;text-align:left;color:var(--ink)}
+.hdp-di span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hdp-di .hd-ic{color:var(--dim)}
+.hdp-di:hover:not(:disabled),.hdp-di:focus-visible{background:var(--sunk);outline:none}
+.hdp-di.on{background:var(--pri-soft);color:var(--pri-ink);font-weight:500}
+.hdp-di.on .hd-ic{color:var(--pri-ink)}
+.hdp-di:disabled{cursor:default}
+.hdp-dir{flex:1}
+.hdp-dir .hd-segb{flex:1}
+.hdp-key{flex:1;justify-content:center;height:28px}
+.hdp-key.on{border-color:var(--pri);color:var(--pri-ink);background:var(--pri-soft)}
+.hdp-edfoot{display:flex;justify-content:flex-end;margin-top:10px}
+.hdp-del{color:var(--bad)}
+.hdp-pop .hd-note{padding:0 0 4px}
+
+/* ---------- the player: a full-window layer over the editor ---------- */
+.hdp{position:fixed;inset:0;z-index:50;display:flex;flex-direction:column;background:var(--stage);color:var(--ink);outline:none}
+.hdp-bar{height:var(--top);flex:none;display:flex;align-items:center;gap:10px;padding:0 10px;background:var(--surface);border-bottom:1px solid var(--line);min-width:0}
+.hdp-l,.hdp-c,.hdp-r{display:flex;align-items:center;gap:6px;min-width:0}
+.hdp-l{flex:1 1 0}
+.hdp-r{flex:1 1 0;justify-content:flex-end}
+.hdp-c{flex:none;gap:2px}
+.hdp-name{font-size:13px;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-left:4px}
+.hdp-count{font-size:13px;color:var(--mut);font-variant-numeric:tabular-nums;min-width:52px;text-align:center;white-space:nowrap}
+.hdp-flow{max-width:200px}
+.hdp-flow span{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.hdp-stage{flex:1;min-height:0;position:relative;overflow:hidden}
+.hdp-canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;user-select:none;-webkit-user-select:none}
+.hdp:fullscreen .hdp-bar{display:none}
+.hdp-ask{position:absolute;inset:0;z-index:2;background:rgb(10 8 24 / .46);display:grid;place-items:center;padding:16px}
+.hdp-askbox{width:min(420px,100%);background:var(--surface);border:1px solid var(--hair);border-radius:14px;box-shadow:var(--sh);padding:18px 18px 16px;display:flex;flex-direction:column;gap:8px}
+.hdp-askbox h2{font-size:16px;font-weight:600}
+.hdp-askbox p{font-size:13px;color:var(--mut);line-height:1.45}
+.hdp-askbox .hdp-url{color:var(--ink);background:var(--sunk);border-radius:8px;padding:8px 10px;word-break:break-all;font-size:13px}
+.hdp-askbtns{display:flex;justify-content:flex-end;gap:8px;margin-top:6px}
+.hdp-clip{position:fixed;left:-9999px;top:0;opacity:0}
+@media (max-width:760px){
+  .hdp-bar{gap:4px;padding:0 6px}
+  .hdp-l .hd-btn span,.hdp-r .hd-btn span,.hdp-name{display:none}
+  .hdp-r .hd-seg{display:none}
+}

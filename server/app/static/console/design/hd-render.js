@@ -52,6 +52,8 @@
   let serial = 1, clock = 1, compEpoch = 1, resEpoch = 1, imgEpoch = 1, instSeen = false, lastZoomAt = 0, lastChangeAt = 0;
   let editingId = null, pruneDue = false, lastFullMs = 0, lastRealAt = 0, forceReal = false, zoomTimer = 0, pvScale = 0;
   const pending = new Set();               /* node ids changed since the last paint */
+  const gridIds = new Set();               /* frames that carry layout grids (drawn over the scene, never into it or an export) */
+  let gridScan = true;
   let damage = [];                         /* world rects [x0,y0,x1,y1] that were painted on and are now stale */
   const stats = {ms: 0, nodes: 0, culled: 0, flat: 0, blits: 0, built: 0, layers: 0, mode: '', frames: 0, cacheMB: 0, cacheN: 0, regions: 0};
   let labelRects = [];
@@ -86,18 +88,22 @@
   function anyVis(a) { for (let i = 0; i < a.length; i++) if (vis(a[i])) return true; return false; }
   function countVis(a) { let c = 0; for (let i = 0; i < a.length; i++) if (vis(a[i])) c++; return c; }
   const gradCache = new WeakMap();
+  /* A radial / sweep gradient is defined in the 0..1 space of the box, so in a box that is not square it is an ELLIPSE
+     (a sweep is stretched the same way). The canvas only makes round ones: for such a box the gradient is built in unit
+     space (unit: true) and must be painted with the box's scale on the context (unitFill / maskDraw do that). */
+  function unitGrad(p, w, h) { return (p.type === 'radial' || p.type === 'angular') && w > EPS && h > EPS && Math.abs(w - h) > 0.01 * Math.max(w, h); }
   function gradient(ctx, p, w, h) {
     const c = gradCache.get(p);
     if (c !== undefined && c.w === w && c.h === h) return c.g;
     const stops = Array.isArray(p.stops) && p.stops.length ? p.stops : [{pos: 0, color: '#000000'}, {pos: 1, color: '#FFFFFF'}];
     let g = null;
-    const lin = p.type === 'linear';
+    const lin = p.type === 'linear', unit = unitGrad(p, w, h), uw = unit ? 1 : w, uh = unit ? 1 : h;
     const f = Array.isArray(p.from) ? p.from : (lin ? [0.5, 0] : [0.5, 0.5]);
     const t = Array.isArray(p.to) ? p.to : (lin ? [0.5, 1] : [1, 0.5]);
-    const fx = num(+f[0], 0.5) * w, fy = num(+f[1], 0) * h, tx = num(+t[0], 0.5) * w, ty = num(+t[1], 1) * h;
+    const fx = num(+f[0], 0.5) * uw, fy = num(+f[1], 0) * uh, tx = num(+t[0], 0.5) * uw, ty = num(+t[1], 1) * uh;
     try {
       if (lin) g = ctx.createLinearGradient(fx, fy, tx, ty);
-      else if (p.type === 'radial') g = ctx.createRadialGradient(fx, fy, 0, fx, fy, Math.max(0.01, Math.hypot(tx - fx, ty - fy)));
+      else if (p.type === 'radial') g = ctx.createRadialGradient(fx, fy, 0, fx, fy, Math.max(unit ? 1e-5 : 0.01, Math.hypot(tx - fx, ty - fy)));
       else if (HAS_CONIC) g = ctx.createConicGradient(Math.atan2(ty - fy, tx - fx), fx, fy);
       if (g) for (let i = 0; i < stops.length; i++) { const s = stops[i]; if (s) g.addColorStop(Math.max(0, Math.min(1, num(+s.pos, 0))), rgba(s.color, s.opacity)); }
     } catch (e) { g = null; }
@@ -229,19 +235,47 @@
       px = e1x; py = e1y;
     }
   }
-  /* path data -> absolute segments ['M',x,y] ['L',x,y] ['C',x1,y1,x2,y2,x,y] ['Z'] */
+  /* path data -> absolute segments ['M',x,y] ['L',x,y] ['C',x1,y1,x2,y2,x,y] ['Z'].
+     Reads every SVG command (M L H V C S Q T A Z and the relative forms), numbers without separators ("1.5.5", "1-2",
+     "1e-3"), arc flags written together ("a1 1 0 01 5 5") and repeated arguments; like a browser it keeps what came
+     before the first thing it can not read. */
+  const PATH_CMDS = 'MmLlHhVvCcSsQqTtAaZz';
   function parsePath(d) {
-    const out = [];
-    const tok = String(d).match(/[a-zA-Z]|[-+]?(?:\d*\.\d+|\d+\.?)(?:[eE][-+]?\d+)?/g) || [];
-    let i = 0, cmd = '', cx = 0, cy = 0, sx = 0, sy = 0, lx = 0, ly = 0, lc = '', guard = 0;
-    const nx = () => { const v = +tok[i++]; return v === v ? v : 0; };
-    while (i < tok.length && guard++ < 200000) {
-      if (/[a-zA-Z]/.test(tok[i])) cmd = tok[i++];
-      else if (!cmd) { i++; continue; }
+    const out = [], s = typeof d === 'string' ? d : '', n = s.length;
+    let i = 0, cmd = '', cx = 0, cy = 0, sx = 0, sy = 0, lx = 0, ly = 0, lc = '', guard = 0, bad = false;
+    const ws = () => { while (i < n) { const c = s.charCodeAt(i); if (c === 32 || c === 44 || (c >= 9 && c <= 13)) i++; else break; } };
+    const nx = () => {
+      ws();
+      const st = i;
+      let c = s.charCodeAt(i), dig = 0;
+      if (c === 45 || c === 43) i++;
+      while (i < n && (c = s.charCodeAt(i)) >= 48 && c <= 57) { i++; dig++; }
+      if (i < n && s.charCodeAt(i) === 46) { i++; while (i < n && (c = s.charCodeAt(i)) >= 48 && c <= 57) { i++; dig++; } }
+      if (!dig) { bad = true; i = st; return 0; }
+      if (i < n && (s.charCodeAt(i) === 101 || s.charCodeAt(i) === 69)) {
+        const save = i;
+        let ed = 0;
+        i++;
+        if (i < n && (s.charCodeAt(i) === 45 || s.charCodeAt(i) === 43)) i++;
+        while (i < n && (c = s.charCodeAt(i)) >= 48 && c <= 57) { i++; ed++; }
+        if (!ed) i = save;
+      }
+      const v = +s.slice(st, i);
+      return v === v && v !== Infinity && v !== -Infinity ? v : 0;
+    };
+    const flag = () => { ws(); const c = s.charCodeAt(i); if (c === 48 || c === 49) { i++; return c === 49 ? 1 : 0; } bad = true; return 0; };
+    const more = () => { ws(); if (i >= n) return false; const c = s.charCodeAt(i); return (c >= 48 && c <= 57) || c === 46 || c === 45 || c === 43; };
+    while (guard++ < 400000) {
+      ws();
+      if (i >= n) break;
+      const ch = s.charAt(i);
+      if (PATH_CMDS.indexOf(ch) >= 0) { cmd = ch; i++; }
+      else if (!cmd || !more()) break;
       const rel = cmd === cmd.toLowerCase(), C = cmd.toUpperCase();
       const ox = rel ? cx : 0, oy = rel ? cy : 0;
       if (C === 'Z') { out.push(['Z']); cx = sx; cy = sy; lc = C; cmd = ''; continue; }
-      if (i >= tok.length) break;
+      if (!more()) break;
+      const at = i, len = out.length;
       if (C === 'M') { cx = nx() + ox; cy = nx() + oy; sx = cx; sy = cy; out.push(['M', cx, cy]); cmd = rel ? 'l' : 'L'; }
       else if (C === 'L') { cx = nx() + ox; cy = nx() + oy; out.push(['L', cx, cy]); }
       else if (C === 'H') { cx = nx() + ox; out.push(['L', cx, cy]); }
@@ -250,8 +284,15 @@
       else if (C === 'S') { const sm = lc === 'C' || lc === 'S', a = sm ? 2 * cx - lx : cx, b = sm ? 2 * cy - ly : cy, c = nx() + ox, e = nx() + oy, x = nx() + ox, y = nx() + oy; out.push(['C', a, b, c, e, x, y]); lx = c; ly = e; cx = x; cy = y; }
       else if (C === 'Q') { const qx = nx() + ox, qy = nx() + oy, x = nx() + ox, y = nx() + oy; out.push(['C', cx + 2 / 3 * (qx - cx), cy + 2 / 3 * (qy - cy), x + 2 / 3 * (qx - x), y + 2 / 3 * (qy - y), x, y]); lx = qx; ly = qy; cx = x; cy = y; }
       else if (C === 'T') { const sm = lc === 'Q' || lc === 'T', qx = sm ? 2 * cx - lx : cx, qy = sm ? 2 * cy - ly : cy, x = nx() + ox, y = nx() + oy; out.push(['C', cx + 2 / 3 * (qx - cx), cy + 2 / 3 * (qy - cy), x + 2 / 3 * (qx - x), y + 2 / 3 * (qy - y), x, y]); lx = qx; ly = qy; cx = x; cy = y; }
-      else if (C === 'A') { const rx = nx(), ry = nx(), ph = nx(), fa = nx() ? 1 : 0, fs = nx() ? 1 : 0, x = nx() + ox, y = nx() + oy, cs = []; arcToCubics(cx, cy, rx, ry, ph, fa, fs, x, y, cs); for (const q of cs) out.push(['C', q[0], q[1], q[2], q[3], q[4], q[5]]); cx = x; cy = y; }
-      else { i++; continue; }
+      else if (C === 'A') {
+        const rx = nx(), ry = nx(), ph = nx(), fa = flag(), fs = flag(), x = nx() + ox, y = nx() + oy, cs = [];
+        if (!bad) {
+          if (Math.abs(x - cx) < 1e-12 && Math.abs(y - cy) < 1e-12) { /* an arc to where it starts draws nothing */ }
+          else { arcToCubics(cx, cy, rx, ry, ph, fa, fs, x, y, cs); for (const q of cs) out.push(['C', q[0], q[1], q[2], q[3], q[4], q[5]]); }
+          cx = x; cy = y;
+        }
+      }
+      if (bad) { out.length = len; i = at; break; }       /* a half-written command is dropped, what came before stays */
       lc = C;
     }
     return out;
@@ -282,13 +323,33 @@
     bboxCache.set(d, r);
     return r;
   }
-  /* the scale that fits a VECTOR's path (written for its box) into the box it has now */
-  function vecScale(d, w, h) {
-    const b = pathBBox(d);
-    let sx = 1, sy = 1;
-    if (b.x1 > EPS && Math.abs(b.x1 - w) > Math.max(0.02, 0.002 * w)) sx = w / b.x1;
-    if (b.y1 > EPS && Math.abs(b.y1 - h) > Math.max(0.02, 0.002 * h)) sy = h / b.y1;
-    return [sx, sy, b.closed];
+  /* the map that fits a VECTOR's path into the box it has now: [sx, sy, tx, ty, closed]. The contract says the path is
+     written in the node's own 0..w / 0..h box; a path whose own bounds sit somewhere else (an imported one that starts
+     at 40,40; one written for another size) is moved and scaled so that its bounds become the box. */
+  function vecFit(d, w, h) {
+    const b = pathBBox(d), bw = b.x1 - b.x0, bh = b.y1 - b.y0, tw = Math.max(0.02, 0.002 * w), th = Math.max(0.02, 0.002 * h);
+    let sx = 1, sy = 1, tx = 0, ty = 0;
+    if (bw > EPS && Math.abs(bw - w) > tw) sx = w / bw;
+    if (bh > EPS && Math.abs(bh - h) > th) sy = h / bh;
+    if (Math.abs(b.x0) > tw) tx = -b.x0 * sx;
+    if (Math.abs(b.y0) > th) ty = -b.y0 * sy;
+    return [sx, sy, tx, ty, b.closed];
+  }
+  /* the segments of a VECTOR as they are drawn: absolute, inside the node's box */
+  function vectorSegs(n) {
+    const d = typeof n.path === 'string' ? n.path : '', f = vecFit(d, W(n), H(n)), segs = parsePath(d);
+    if (f[0] === 1 && f[1] === 1 && f[2] === 0 && f[3] === 0) return segs;
+    for (const sg of segs) for (let i = 1; i < sg.length; i += 2) { sg[i] = sg[i] * f[0] + f[2]; sg[i + 1] = sg[i + 1] * f[1] + f[3]; }
+    return segs;
+  }
+  function segsToD(segs) {
+    let out = '';
+    for (const sg of segs) {
+      if (sg[0] === 'Z') out += 'Z';
+      else if (sg[0] === 'C') out += 'C' + fnum(sg[1]) + ' ' + fnum(sg[2]) + ' ' + fnum(sg[3]) + ' ' + fnum(sg[4]) + ' ' + fnum(sg[5]) + ' ' + fnum(sg[6]);
+      else out += sg[0] + fnum(sg[1]) + ' ' + fnum(sg[2]);
+    }
+    return out;
   }
   const pathCache = new Map();
   function cachePath(key, make) {
@@ -316,18 +377,19 @@
   const G_RECT = {k: R_RECT, r: null, p: null, rule: 'nonzero', open: false, inv: null};
   const G_ELL = {k: R_ELL, r: null, p: null, rule: 'nonzero', open: false, inv: null};
   const G_LINE = {k: R_LINE, r: null, p: null, rule: 'nonzero', open: true, inv: null};
-  function geomOf(n, type, w, h) {
+  function geomOf(n, type, w, h, id, v, rec) {
     if (type === 'ELLIPSE') return G_ELL;
+    if (type === 'BOOL') return boolGeom(n, id, v, rec);
     if (type === 'LINE') return G_LINE;
     if (type === 'VECTOR') {
       const d = typeof n.path === 'string' ? n.path : '';
       const rule = n.fillRule === 'evenodd' ? 'evenodd' : 'nonzero';
       return cachePath('V' + rule + '|' + w + '|' + h + '|' + d, () => {
         let p;
-        const sc = vecScale(d, w, h);
+        const sc = vecFit(d, w, h);
         try { p = new Path2D(d); } catch (e) { p = new Path2D(); }
-        if (sc[0] !== 1 || sc[1] !== 1) { const q = new Path2D(); try { q.addPath(p, new DOMMatrix([sc[0], 0, 0, sc[1], 0, 0])); p = q; } catch (e) { /* unscaled */ } }
-        return {k: R_PATH, r: null, p, rule, open: !sc[2], inv: null};
+        if (sc[0] !== 1 || sc[1] !== 1 || sc[2] !== 0 || sc[3] !== 0) { const q = new Path2D(); try { q.addPath(p, new DOMMatrix([sc[0], 0, 0, sc[1], sc[2], sc[3]])); p = q; } catch (e) { /* as written */ } }
+        return {k: R_PATH, r: null, p, rule, open: !sc[4], inv: null};
       });
     }
     if (type === 'POLYGON' || type === 'STAR') {
@@ -403,6 +465,267 @@
       case R_LINE: ctx.lineWidth = sw; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(w, 0); ctx.stroke(); break;
       default: break;
     }
+  }
+
+  /* ------------------------------------------------------------------ outlines as segments, boolean groups */
+  const KAPPA = 0.5522847498307936;
+  /* the outline of a shape as absolute segments in its own box (what a boolean, "Flatten" and "Edit shape" work on) */
+  function outlineSegs(n, type, w, h) {
+    if (type === 'VECTOR') return {segs: vectorSegs(n), rule: n.fillRule === 'evenodd' ? 'evenodd' : 'nonzero'};
+    const out = [];
+    if (type === 'LINE') { out.push(['M', 0, 0], ['L', w, 0]); return {segs: out, rule: 'nonzero', open: true}; }
+    if (type === 'ELLIPSE') {
+      const rx = w / 2, ry = h / 2, kx = rx * KAPPA, ky = ry * KAPPA;
+      out.push(['M', w, ry], ['C', w, ry + ky, rx + kx, h, rx, h], ['C', rx - kx, h, 0, ry + ky, 0, ry], ['C', 0, ry - ky, rx - kx, 0, rx, 0], ['C', rx + kx, 0, w, ry - ky, w, ry], ['Z']);
+      return {segs: out, rule: 'nonzero'};
+    }
+    if (type === 'POLYGON' || type === 'STAR') {
+      const pts = polyPoints(G(n, 'sides'), type === 'STAR' ? G(n, 'ratio') : 1, type === 'STAR');
+      for (let i = 0; i < pts.length; i += 2) out.push([i ? 'L' : 'M', pts[i] * w, pts[i + 1] * h]);
+      out.push(['Z']);
+      return {segs: out, rule: 'nonzero'};
+    }
+    const r = radii(n, w, h) || [0, 0, 0, 0], a = r[0], b = r[1], c = r[2], d = r[3], k = 1 - KAPPA;
+    out.push(['M', a, 0], ['L', w - b, 0]);
+    if (b) out.push(['C', w - b * k, 0, w, b * k, w, b]);
+    out.push(['L', w, h - c]);
+    if (c) out.push(['C', w, h - c * k, w - c * k, h, w - c, h]);
+    out.push(['L', d, h]);
+    if (d) out.push(['C', d * k, h, 0, h - d * k, 0, h - d]);
+    out.push(['L', 0, a]);
+    if (a) out.push(['C', 0, a * k, a * k, 0, a, 0]);
+    out.push(['Z']);
+    return {segs: out, rule: 'nonzero'};
+  }
+  const BOOL = {union: 1, subtract: 1, intersect: 1, exclude: 1};
+  const BTOL = 0.02;                       /* a curve is cut into straight pieces no further than this from it (in layer units) */
+  /* GROUP + bool = one shape: its own fills / strokes / effects style the RESULT of its children's outlines */
+  function dtype(n) { return n.type === 'GROUP' && n.bool !== undefined && BOOL[n.bool] === 1 ? 'BOOL' : n.type; }
+  function boolKids(id, v) {
+    const out = [];
+    if (v !== null && v !== undefined) { for (let i = 0; i < v.kids.length; i++) out.push({n: v.kids[i].n, id: v.kids[i].key, v: v.kids[i]}); return out; }
+    const s = S(), ks = s.children(id);
+    for (let i = 0; i < ks.length; i++) { const cn = s.get(ks[i]); if (cn) out.push({n: cn, id: ks[i], v: null}); }
+    return out;
+  }
+  /* a node as an operand: {op, kids} or a leaf {a, b: index range of its curves, rule, box} */
+  function operandOf(n, id, v, m, depth, W0) {
+    if (n.visible === false || depth > 12) return null;
+    const type = n.type;
+    const lm = mul(m, localMat(n, [1, 0, 0, 1, 0, 0]));
+    if (type === 'GROUP') {
+      const kids = boolKids(id, v), ops = [];
+      for (const k of kids) { const o = operandOf(k.n, k.id, k.v, lm, depth + 1, W0); if (o) ops.push(o); }
+      if (!ops.length) return null;
+      return ops.length === 1 ? ops[0] : {op: BOOL[n.bool] === 1 ? n.bool : 'union', kids: ops};
+    }
+    if (type === 'TEXT' || type === 'LINE') return null;        /* no area of their own: they take no part */
+    const o = outlineSegs(n, type, W(n), H(n));
+    return leafOf(o.segs, o.rule, lm, W0);
+  }
+  function leafOf(segs, rule, m, W0) {
+    const cv = W0.curves, a = cv.length;
+    let px = 0, py = 0, sx = 0, sy = 0, open = false;
+    const X = (x, y) => m[0] * x + m[2] * y + m[4], Y = (x, y) => m[1] * x + m[3] * y + m[5];
+    const line = (x0, y0, x1, y1) => { if (Math.abs(x0 - x1) > 1e-9 || Math.abs(y0 - y1) > 1e-9) cv.push([x0, y0, x1, y1]); };
+    const close = () => { if (open) line(px, py, sx, sy); open = false; };
+    for (const sg of segs) {
+      if (sg[0] === 'M') { close(); px = sx = X(sg[1], sg[2]); py = sy = Y(sg[1], sg[2]); }
+      else if (sg[0] === 'L') { const x = X(sg[1], sg[2]), y = Y(sg[1], sg[2]); line(px, py, x, y); px = x; py = y; open = true; }
+      else if (sg[0] === 'C') {
+        const x1 = X(sg[1], sg[2]), y1 = Y(sg[1], sg[2]), x2 = X(sg[3], sg[4]), y2 = Y(sg[3], sg[4]), x = X(sg[5], sg[6]), y = Y(sg[5], sg[6]);
+        if (Math.abs((x1 - px) * (y - py) - (y1 - py) * (x - px)) < 1e-9 && Math.abs((x2 - px) * (y - py) - (y2 - py) * (x - px)) < 1e-9 && (x1 - px) * (x - x1) + (y1 - py) * (y - y1) >= 0 && (x2 - x1) * (x - x2) + (y2 - y1) * (y - y2) >= 0 && (x2 - x1) * (x - px) + (y2 - y1) * (y - py) >= 0) line(px, py, x, y);
+        else cv.push([px, py, x1, y1, x2, y2, x, y]);
+        px = x; py = y; open = true;
+      } else if (sg[0] === 'Z') { close(); px = sx; py = sy; }
+    }
+    close();
+    if (cv.length === a) return null;
+    return {a, b: cv.length, rule, e0: 0, e1: 0, x0: 0, y0: 0, x1: 0, y1: 0};
+  }
+  function cubicAt(c, t) {
+    const u = 1 - t, a = u * u * u, b = 3 * u * u * t, d = 3 * u * t * t, e = t * t * t;
+    return [a * c[0] + b * c[2] + d * c[4] + e * c[6], a * c[1] + b * c[3] + d * c[5] + e * c[7]];
+  }
+  function blossom(p0, p1, p2, p3, u, v, w) {
+    const a = p0 + (p1 - p0) * u, b = p1 + (p2 - p1) * u, c = p2 + (p3 - p2) * u, d = a + (b - a) * v, e = b + (c - b) * v;
+    return d + (e - d) * w;
+  }
+  function insideLeaf(lf, E, x, y) {
+    if (x < lf.x0 || x > lf.x1 || y < lf.y0 || y > lf.y1) return false;
+    let wn = 0;
+    for (let i = lf.e0; i < lf.e1; i += 4) {
+      const y0 = E[i + 1], y1 = E[i + 3];
+      if (y0 <= y) { if (y1 > y && (E[i + 2] - E[i]) * (y - y0) - (x - E[i]) * (y1 - y0) > 0) wn++; }
+      else if (y1 <= y && (E[i + 2] - E[i]) * (y - y0) - (x - E[i]) * (y1 - y0) < 0) wn--;
+    }
+    return lf.rule === 'evenodd' ? (wn & 1) !== 0 : wn !== 0;
+  }
+  function insideOp(o, E, x, y) {
+    if (o.op === undefined) return insideLeaf(o, E, x, y);
+    const ks = o.kids;
+    if (o.op === 'union') { for (let i = 0; i < ks.length; i++) if (insideOp(ks[i], E, x, y)) return true; return false; }
+    if (o.op === 'intersect') { for (let i = 0; i < ks.length; i++) if (!insideOp(ks[i], E, x, y)) return false; return true; }
+    if (o.op === 'subtract') { if (!insideOp(ks[0], E, x, y)) return false; for (let i = 1; i < ks.length; i++) if (insideOp(ks[i], E, x, y)) return false; return true; }
+    let c = false;
+    for (let i = 0; i < ks.length; i++) if (insideOp(ks[i], E, x, y)) c = !c;
+    return c;
+  }
+  /* The real outline of a boolean: every curve is cut into short straight pieces, the pieces are cut where they cross,
+     a piece stays when the result is inside on one side of it and outside on the other, the kept pieces are chained
+     into closed loops and written back as the ORIGINAL curves between the crossings (so the result is curves, not a
+     polygon). Crossings are found on the straight pieces: they are right to about BTOL of a layer unit. */
+  function boolCompute(root, curves) {
+    const E = [];                                   /* the uncut pieces of every leaf, 4 numbers each: for the inside test */
+    const P = [];                                   /* pieces: [x0, y0, x1, y1, curve, t0, t1] */
+    const flat = (lf) => {
+      lf.e0 = E.length;
+      let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+      for (let ci = lf.a; ci < lf.b; ci++) {
+        const c = curves[ci];
+        let N = 1;
+        if (c.length === 8) {
+          const dd = Math.max(Math.hypot(c[0] - 2 * c[2] + c[4], c[1] - 2 * c[3] + c[5]), Math.hypot(c[2] - 2 * c[4] + c[6], c[3] - 2 * c[5] + c[7]));
+          N = Math.max(1, Math.min(400, Math.ceil(Math.sqrt(0.75 * dd / BTOL))));
+        }
+        let px = c[0], py = c[1];
+        for (let k = 1; k <= N; k++) {
+          const q = c.length === 8 ? (k === N ? [c[6], c[7]] : cubicAt(c, k / N)) : [c[2], c[3]];
+          if (px !== q[0] || py !== q[1]) { E.push(px, py, q[0], q[1]); P.push([px, py, q[0], q[1], ci, (k - 1) / N, k / N]); }
+          if (px < x0) x0 = px; if (px > x1) x1 = px; if (py < y0) y0 = py; if (py > y1) y1 = py;
+          px = q[0]; py = q[1];
+        }
+        if (px < x0) x0 = px; if (px > x1) x1 = px; if (py < y0) y0 = py; if (py > y1) y1 = py;
+      }
+      lf.e1 = E.length; lf.x0 = x0; lf.y0 = y0; lf.x1 = x1; lf.y1 = y1;
+    };
+    const walk = (o) => { if (o.op === undefined) flat(o); else for (const k of o.kids) walk(k); };
+    walk(root);
+    const n = P.length;
+    if (!n || n > 60000) return null;
+    /* cut the pieces where they cross or lie on each other */
+    const order = [];
+    for (let i = 0; i < n; i++) order.push(i);
+    const minX = (p) => (p[0] < p[2] ? p[0] : p[2]), maxX = (p) => (p[0] > p[2] ? p[0] : p[2]);
+    order.sort((a, b) => minX(P[a]) - minX(P[b]));
+    const cuts = new Array(n);
+    const cut = (i, s, x, y) => { if (s > 1e-9 && s < 1 - 1e-9) (cuts[i] || (cuts[i] = [])).push([s, x, y]); };
+    for (let oi = 0; oi < n; oi++) {
+      const i = order[oi], a = P[i], ax1 = maxX(a), ay0 = Math.min(a[1], a[3]), ay1 = Math.max(a[1], a[3]);
+      const rx = a[2] - a[0], ry = a[3] - a[1], rr = rx * rx + ry * ry;
+      for (let oj = oi + 1; oj < n; oj++) {
+        const j = order[oj], b = P[j];
+        if (minX(b) > ax1 + 1e-9) break;
+        if (Math.min(b[1], b[3]) > ay1 + 1e-9 || Math.max(b[1], b[3]) < ay0 - 1e-9) continue;
+        const sx = b[2] - b[0], sy = b[3] - b[1], qx = b[0] - a[0], qy = b[1] - a[1];
+        const den = rx * sy - ry * sx, ss = sx * sx + sy * sy;
+        if (Math.abs(den) > 1e-12 * Math.sqrt(rr * ss)) {
+          const t = (qx * sy - qy * sx) / den, u = (qx * ry - qy * rx) / den;
+          if (t < -1e-9 || t > 1 + 1e-9 || u < -1e-9 || u > 1 + 1e-9) continue;
+          /* one point for both, so the two cuts meet exactly; an end point keeps its own coordinates */
+          let x = a[0] + t * rx, y = a[1] + t * ry;
+          if (t <= 1e-9) { x = a[0]; y = a[1]; } else if (t >= 1 - 1e-9) { x = a[2]; y = a[3]; } else if (u <= 1e-9) { x = b[0]; y = b[1]; } else if (u >= 1 - 1e-9) { x = b[2]; y = b[3]; }
+          cut(i, t, x, y); cut(j, u, x, y);
+        } else if (Math.abs(qx * ry - qy * rx) <= 1e-9 * Math.sqrt(rr)) {
+          /* on one line: each is cut at the other's ends */
+          const t0 = (qx * rx + qy * ry) / rr, t1 = ((b[2] - a[0]) * rx + (b[3] - a[1]) * ry) / rr;
+          cut(i, t0, b[0], b[1]); cut(i, t1, b[2], b[3]);
+          cut(j, (-qx * sx - qy * sy) / ss, a[0], a[1]); cut(j, ((a[2] - b[0]) * sx + (a[3] - b[1]) * sy) / ss, a[2], a[3]);
+        }
+      }
+    }
+    /* keep the pieces that lie on the edge of the result, the inside on their left */
+    const kept = [], seen = new Set();
+    const key = (x, y) => Math.round(x * 1e5) + ',' + Math.round(y * 1e5);
+    const take = (x0, y0, x1, y1, ci, t0, t1) => {
+      const dx = x1 - x0, dy = y1 - y0, len = Math.hypot(dx, dy);
+      if (len < 1e-7) return;
+      const mx = (x0 + x1) / 2, my = (y0 + y1) / 2, d = Math.min(2e-3, len * 0.25), nx = -dy / len * d, ny = dx / len * d;
+      const l = insideOp(root, E, mx + nx, my + ny), r = insideOp(root, E, mx - nx, my - ny);
+      if (l === r) return;
+      const pc = l ? [x0, y0, x1, y1, ci, t0, t1] : [x1, y1, x0, y0, ci, t1, t0];
+      const k = key(pc[0], pc[1]) + '>' + key(pc[2], pc[3]);
+      if (seen.has(k)) return;
+      seen.add(k);
+      kept.push(pc);
+    };
+    for (let i = 0; i < n; i++) {
+      const p = P[i], cs = cuts[i];
+      if (!cs) { take(p[0], p[1], p[2], p[3], p[4], p[5], p[6]); continue; }
+      cs.sort((u, v) => u[0] - v[0]);
+      let s0 = 0, x0 = p[0], y0 = p[1];
+      for (let k = 0; k <= cs.length; k++) {
+        const s1 = k < cs.length ? cs[k][0] : 1, x1 = k < cs.length ? cs[k][1] : p[2], y1 = k < cs.length ? cs[k][2] : p[3];
+        if (s1 - s0 > 1e-9) take(x0, y0, x1, y1, p[4], p[5] + s0 * (p[6] - p[5]), p[5] + s1 * (p[6] - p[5]));
+        s0 = s1; x0 = x1; y0 = y1;
+      }
+    }
+    if (!kept.length) return {d: '', n: 0};
+    /* chain into loops */
+    const from = new Map();
+    for (let i = 0; i < kept.length; i++) { const k = key(kept[i][0], kept[i][1]); let l = from.get(k); if (!l) { l = []; from.set(k, l); } l.push(i); }
+    const used = new Uint8Array(kept.length), loops = [];
+    const cont = (a, b) => a[4] === b[4] && Math.abs(a[6] - b[5]) < 1e-9 && (a[6] - a[5]) * (b[6] - b[5]) > 0;
+    for (let i = 0; i < kept.length; i++) {
+      if (used[i]) continue;
+      const loop = [], startK = key(kept[i][0], kept[i][1]);
+      let cur = i, g = 0;
+      while (cur >= 0 && g++ < kept.length + 2) {
+        used[cur] = 1; loop.push(kept[cur]);
+        const pc = kept[cur], ek = key(pc[2], pc[3]);
+        if (ek === startK) break;
+        const l = from.get(ek);
+        let next = -1;
+        if (l) { for (const c of l) if (!used[c] && cont(pc, kept[c])) { next = c; break; } if (next < 0) for (const c of l) if (!used[c]) { next = c; break; } }
+        if (next < 0) {                               /* a gap from rounding: the nearest free start within a hair */
+          let best = 1e-3;
+          for (let c = 0; c < kept.length; c++) if (!used[c]) { const dd = Math.hypot(kept[c][0] - pc[2], kept[c][1] - pc[3]); if (dd < best) { best = dd; next = c; } }
+        }
+        cur = next;
+      }
+      if (loop.length > 1) loops.push(loop);
+    }
+    /* write the loops as the original curves between the crossings */
+    let d = '';
+    const f = (v) => { v = Math.round(v * 1000) / 1000; return Object.is(v, -0) ? '0' : String(v); };
+    for (const loop of loops) {
+      let st = 0;
+      for (let k = 0; k < loop.length; k++) { if (!cont(loop[(k + loop.length - 1) % loop.length], loop[k])) { st = k; break; } }
+      const L2 = loop.slice(st).concat(loop.slice(0, st));
+      d += 'M' + f(L2[0][0]) + ' ' + f(L2[0][1]);
+      for (let k = 0; k < L2.length;) {
+        let e = k;
+        while (e + 1 < L2.length && cont(L2[e], L2[e + 1])) e++;
+        const a = L2[k], b = L2[e], c = curves[a[4]];
+        if (c.length === 4) d += 'L' + f(b[2]) + ' ' + f(b[3]);
+        else {
+          const t0 = a[5], t1 = b[6];
+          const sxx = blossom(c[0], c[2], c[4], c[6], t0, t0, t0), syy = blossom(c[1], c[3], c[5], c[7], t0, t0, t0);
+          const exx = blossom(c[0], c[2], c[4], c[6], t1, t1, t1), eyy = blossom(c[1], c[3], c[5], c[7], t1, t1, t1);
+          d += 'C' + f(blossom(c[0], c[2], c[4], c[6], t0, t0, t1) + a[0] - sxx) + ' ' + f(blossom(c[1], c[3], c[5], c[7], t0, t0, t1) + a[1] - syy) + ' ' +
+            f(blossom(c[0], c[2], c[4], c[6], t0, t1, t1) + b[2] - exx) + ' ' + f(blossom(c[1], c[3], c[5], c[7], t0, t1, t1) + b[3] - eyy) + ' ' + f(b[2]) + ' ' + f(b[3]);
+        }
+        k = e + 1;
+      }
+      d += 'Z';
+    }
+    return {d, n: loops.length};
+  }
+  /* the shape of a boolean group in its own space: {k: R_PATH, p, rule, d} (kept until something inside it changes) */
+  function boolGeom(n, id, v, rec) {
+    const holder = v !== null && v !== undefined ? v : (rec || (id !== undefined && id !== null ? derive(id, n) : null));
+    const stamp = v !== null && v !== undefined ? 'v' : holder ? holder.cv + ':' + resEpoch + ':' + compEpoch + ':' + n.bool : '';
+    if (holder && holder.bg && holder.bgk === stamp) return holder.bg;
+    const W0 = {curves: []}, kids = boolKids(id, v), ops = [];
+    const I = [1, 0, 0, 1, 0, 0];
+    for (const k of kids) { const o = operandOf(k.n, k.id, k.v, I, 1, W0); if (o) ops.push(o); else if (n.bool === 'subtract' && !ops.length && k.n.visible !== false) break; }
+    let res = null;
+    if (ops.length) { try { res = boolCompute(ops.length === 1 ? ops[0] : {op: n.bool, kids: ops}, W0.curves); } catch (e) { res = null; if (window.console) console.error('[HD.render] boolean', e); } }
+    let g;
+    if (!res || !res.d) g = {k: R_PATH, r: null, p: new Path2D(), rule: 'nonzero', open: false, inv: null, d: '', ok: !!res};
+    else { let p; try { p = new Path2D(res.d); } catch (e) { p = new Path2D(); } g = {k: R_PATH, r: null, p, rule: 'nonzero', open: false, inv: null, d: res.d, ok: true}; }
+    if (holder) { holder.bg = g; holder.bgk = stamp; }
+    return g;
   }
 
   /* ------------------------------------------------------------------ images */
@@ -504,7 +827,7 @@
   const D = new Map();
   function newRec(par) {
     return {cv: 0, v: -1, re: 0, ce: 0, x0: 0, y0: 0, x1: 0, y1: 0, n: 1, cost: 1, flags: 0, par, hot: 0,
-      wx0: 0, wy0: 0, wx1: 0, wy1: 0, serial: 0, tl: null, vt: null, vtk: ''};
+      wx0: 0, wy0: 0, wx1: 0, wy1: 0, serial: 0, tl: null, vt: null, vtk: '', bg: null, bgk: ''};
   }
   function recOf(id, n) {
     let r = D.get(id);
@@ -543,7 +866,7 @@
       const sw = Math.max(0, num(+G(n, 'strokeWeight'), 1)), al = G(n, 'strokeAlign');
       let so = al === 'outside' ? sw : al === 'inside' ? 0 : sw / 2;
       if (type === 'LINE') so = sw;
-      else if (type === 'VECTOR' || type === 'POLYGON' || type === 'STAR' || type === 'TEXT') so = sw * 2 + 1;
+      else if (type === 'VECTOR' || type === 'POLYGON' || type === 'STAR' || type === 'TEXT' || (type === 'GROUP' && n.bool !== undefined)) so = sw * 2 + 1;
       x0 -= so; y0 -= so; x1 += so; y1 += so; cost++;
     }
     const fp = L.paints(n, 'fills');
@@ -610,8 +933,9 @@
     for (const e of all) { const o = e.path === '' ? e.ov[''] : undefined; if (o && typeof o === 'object') Object.assign(rootN, o); }
     const seen2 = new Set(seen);
     seen2.add(inst.comp);
-    const v = {n: rootN, id: inst.comp, key, kids: [], sx: 1, sy: 1, count: 1, flags: 0, ext: null};
+    const v = {n: rootN, id: inst.comp, key, kids: [], sx: 1, sy: 1, count: 1, flags: 0, ext: null, inst: true, cw: 0, ch: 0};
     const cw = W(comp), ch = H(comp);
+    v.cw = cw; v.ch = ch;
     v.sx = cw > EPS ? W(rootN) / cw : 1; v.sy = ch > EPS ? H(rootN) / ch : 1;
     const ks = s.children(inst.comp);
     for (let i = 0; i < ks.length; i++) { const k = vNode(ks[i], all, depth, key, seen2); if (k) { v.kids.push(k); v.count += k.count; v.flags |= k.flags; } }
@@ -650,7 +974,24 @@
     if (r.vt !== null && r.vtk === key) return r.vt;
     r.vt = instRoot(n, [], 0, id, new Set());
     r.vtk = key;
+    fitInst(r.vt, 0);
     return r.vt;
+  }
+  /* An instance at another size than its component. When the component has auto layout, or its children carry
+     constraints, the children are laid out again for the new size (HD.layout.virtual, the same code that lays out real
+     frames); only a component with neither is simply scaled, as before. Top down, so an instance inside it that got a
+     new size from that layout is fitted in its turn. */
+  function fitInst(v, depth) {
+    if (v.inst === true && depth < 8) {
+      v.sx = v.cw > EPS ? W(v.n) / v.cw : 1; v.sy = v.ch > EPS ? H(v.n) / v.ch : 1;
+      if ((Math.abs(v.sx - 1) > 1e-6 || Math.abs(v.sy - 1) > 1e-6) && v.kids.length && typeof L.virtual === 'function') {
+        const l = v.n.layout;
+        let wants = !!(l && (l.mode === 'h' || l.mode === 'v'));
+        for (let i = 0; i < v.kids.length && !wants; i++) { const c = v.kids[i].n.cons; if (c !== undefined && c !== null) wants = true; }
+        if (wants && L.virtual(v, v.cw, v.ch)) { v.sx = 1; v.sy = 1; }
+      }
+    }
+    for (let i = 0; i < v.kids.length; i++) fitInst(v.kids[i], v.kids[i].inst === true ? depth + 1 : depth);
   }
   /* extent of a virtual node in its own space (kept on the tree, which is rebuilt whenever anything it shows changes) */
   function vExt(v) {
@@ -770,36 +1111,53 @@
   }
 
   /* ------------------------------------------------------------------ painting */
-  function paintKidsFrom(T, id, v, start, a, b, c, d, e, f) {
+  function paintKidsFrom(T, id, v, start, a, b, c, d, e, f, end) {
     if (v !== null) {
-      const ks = v.kids;
-      for (let i = start; i < ks.length; i++) {
+      const ks = v.kids, lim = end === undefined ? ks.length : end;
+      for (let i = start; i < lim; i++) {
         const k = ks[i];
-        if (k.n.mask === true && k.n.visible !== false) { paintMasked(T, id, v, i, k.n, k.key, k, a, b, c, d, e, f); return; }
+        if (k.n.mask === true && k.n.visible !== false) { i = paintMasked(T, id, v, i, k.n, k.key, k, a, b, c, d, e, f, lim) - 1; continue; }
         paintNode(T, k.n, k.key, k, a, b, c, d, e, f);
       }
       return;
     }
-    const s = S(), ks = s.children(id);
-    for (let i = start; i < ks.length; i++) {
+    const s = S(), ks = s.children(id), lim = end === undefined ? ks.length : end;
+    for (let i = start; i < lim; i++) {
       const cn = s.get(ks[i]);
       if (cn === undefined) continue;
-      if (cn.mask === true && cn.visible !== false) { paintMasked(T, id, null, i, cn, ks[i], null, a, b, c, d, e, f); return; }
+      if (cn.mask === true && cn.visible !== false) { i = paintMasked(T, id, null, i, cn, ks[i], null, a, b, c, d, e, f, lim) - 1; continue; }
       paintNode(T, cn, ks[i], null, a, b, c, d, e, f);
     }
   }
-  /* a mask clips every later sibling to its own shape (its own picture is not drawn) */
-  function paintMasked(T, pid, pv, i, mn, mid, mv, a, b, c, d, e, f) {
-    const ctx = T.ctx, w = W(mn), h = H(mn);
+  /* can this mask be a plain clip? Only a simple outline that is fully opaque inside (or has no paint at all: then its
+     outline is taken); anything else masks by the ALPHA of its own picture: a see-through fill shows less, a stroke
+     alone shows a ring, a gradient to transparent fades what is under it */
+  function clipMask(mn) {
+    if (GEO_MASK[mn.type] !== 1 || mn.effects !== undefined || mn.effectStyle !== undefined || (mn.opacity !== undefined && mn.opacity < 0.999) || mn.bind !== undefined) return false;
+    const f = L.paints(mn, 'fills'), st = L.paints(mn, 'strokes');
+    const strokes = anyVis(st) && num(+G(mn, 'strokeWeight'), 1) > 0;
+    if (!anyVis(f)) return !strokes;
+    if (strokes && G(mn, 'strokeAlign') !== 'inside') return false;
+    for (let i = 0; i < f.length; i++) { const p = f[i]; if (vis(p) && (p.type === 'solid' || p.type === undefined) && (p.opacity === undefined || p.opacity >= 0.999) && rgba(p.color, 1).charCodeAt(0) === 35) return true; }
+    return false;
+  }
+  /* a mask shows the siblings above it (up to the next mask) only where it is; its own picture is not drawn.
+     Returns the index of the sibling the caller goes on with. */
+  function paintMasked(T, pid, pv, i, mn, mid, mv, a, b, c, d, e, f, lim) {
+    const ctx = T.ctx, w = W(mn), h = H(mn), s = S();
+    const list = pv !== null ? pv.kids : s.children(pid);
+    let j = i + 1;
+    for (; j < lim; j++) { const kn = pv !== null ? list[j].n : s.get(list[j]); if (kn && kn.mask === true && kn.visible !== false) break; }
+    if (j === i + 1) return j;
     localMat(mn, LM);
     const ma = a * LM[0] + c * LM[1], mb = b * LM[0] + d * LM[1], mc = a * LM[2] + c * LM[3], md = b * LM[2] + d * LM[3], me = a * LM[4] + c * LM[5] + e, mf = b * LM[4] + d * LM[5] + f;
-    if (GEO_MASK[mn.type] === 1) {
+    if (clipMask(mn)) {
       ctx.save();
       ctx.setTransform(ma, mb, mc, md, me, mf);
       clipGeom(ctx, geomOf(mn, mn.type, w, h), w, h);
-      paintKidsFrom(T, pid, pv, i + 1, a, b, c, d, e, f);
+      paintKidsFrom(T, pid, pv, i + 1, a, b, c, d, e, f, j);
       ctx.restore();
-      return;
+      return j;
     }
     let x0 = 0, y0 = 0, x1 = w, y1 = h;
     if (mv === null) { const r = derive(mid, mn); x0 = r.x0; y0 = r.y0; x1 = r.x1; y1 = r.y1; } else { const ex = vExt(mv); x0 = ex[0]; y0 = ex[1]; x1 = ex[2]; y1 = ex[3]; }
@@ -807,13 +1165,13 @@
     const B = T.bounds;
     const lx0 = Math.max(Math.floor(BX[0]) - 1, B[0]), ly0 = Math.max(Math.floor(BX[1]) - 1, B[1]), lx1 = Math.min(Math.ceil(BX[2]) + 1, B[2]), ly1 = Math.min(Math.ceil(BX[3]) + 1, B[3]);
     const LW = lx1 - lx0, LH = ly1 - ly0;
-    if (LW <= 0 || LH <= 0 || LW * LH > 5e7) return;
+    if (LW <= 0 || LH <= 0 || LW * LH > 5e7) return j;
     const saveLD = LD;
     try {
       const A = getLayer(LW, LH), Bm = getLayer(LW, LH);
       stats.layers += 2;
-      paintKidsFrom(subT(T, A.ctx, lx0, ly0, LW, LH), pid, pv, i + 1, a, b, c, d, e - lx0, f - ly0);
-      const mask2 = mn.opacity === undefined && mn.blend === undefined ? mn : Object.assign({}, mn, {opacity: 1, blend: 'normal'});
+      paintKidsFrom(subT(T, A.ctx, lx0, ly0, LW, LH), pid, pv, i + 1, a, b, c, d, e - lx0, f - ly0, j);
+      const mask2 = mn.blend === undefined ? mn : Object.assign({}, mn, {blend: 'normal'});
       paintNode(subT(T, Bm.ctx, lx0, ly0, LW, LH), mask2, mid, mv, a, b, c, d, e - lx0, f - ly0);
       A.ctx.setTransform(1, 0, 0, 1, 0, 0);
       A.ctx.globalAlpha = 1; A.ctx.globalCompositeOperation = 'destination-in';
@@ -823,12 +1181,13 @@
       ctx.globalAlpha = 1;
       ctx.drawImage(A.cv, 0, 0, LW, LH, lx0, ly0, LW, LH);
     } finally { LD = saveLD; }
+    return j;
   }
 
   function paintNode(T, n, id, v, a, b, c, d, e, f) {
     if (n === undefined || n === null || n.visible === false) return;
     if (n.bind !== undefined && G(n, 'visible') === false) return;
-    const type = n.type;
+    const type = n.type === 'GROUP' ? dtype(n) : n.type;
     if (type === 'TEXT' && id === editingId) return;
     const w = W(n), h = type === 'LINE' ? 0 : num(n.h, 100);
     let ma, mb, mc, md, me, mf;
@@ -932,7 +1291,7 @@
       else if (e.type === 'blur') { if (bl * scale >= 0.4) blur = Math.max(blur, bl); }
       else if (e.type === 'bgblur') bg = Math.max(bg, bl);
     }
-    const g = type === 'TEXT' || type === 'GROUP' || type === 'LINE' ? null : geomOf(n, type, w, h);
+    const g = type === 'TEXT' || type === 'GROUP' || type === 'LINE' ? null : geomOf(n, type, w, h, id, v, rec);
     const geo = g !== null && g.k !== R_PATH && anyVis(L.paints(n, 'fills'));
     if (bg > 0 && g !== null && HAS_FILTER && bg * scale >= 0.4) backdropBlur(T, g, w, h, bg * scale / 2, ma, mb, mc, md, me, mf);
     const needLayer = blur > 0 || (drops !== null && !geo) || ((op < 1 || blendOp !== 'source-over') && (hasKids || drops !== null || paintCount(n, type) > 1)) || (inners !== null && g === null);
@@ -980,13 +1339,15 @@
         const fc = F.ctx;
         fc.setTransform(1, 0, 0, 1, 0, 0);
         if (drops !== null) for (let i = 0; i < drops.length; i++) {
-          const s = drops[i];
+          const s = drops[i], spr = num(+s.spread, 0) * scale, ld0 = LD;
+          const src = Math.abs(spr) >= 0.3 ? spreadLayer(Cn, LW, LH, spr) : Cn;
           fc.save();
           fc.shadowColor = rgba(s.color || '#000000', s.opacity === undefined ? 0.25 : s.opacity);
           fc.shadowBlur = Math.max(0, num(+s.blur, 0)) * scale;
           fc.shadowOffsetX = FAR + (ma * num(+s.x, 0) + mc * num(+s.y, 0)); fc.shadowOffsetY = mb * num(+s.x, 0) + md * num(+s.y, 0);
-          fc.drawImage(Cn.cv, 0, 0, LW, LH, -FAR, 0, LW, LH);
+          fc.drawImage(src.cv, 0, 0, LW, LH, -FAR, 0, LW, LH);
           fc.restore();
+          LD = ld0;
         }
         fc.drawImage(Cn.cv, 0, 0, LW, LH, 0, 0, LW, LH);
       } else paintContent(T2, n, id, v, rec, type, w, h, 1, inners, scale, ma, mb, mc, md, e2, f2);
@@ -999,6 +1360,33 @@
       ctx.globalAlpha = 1;
       if (blendOp !== 'source-over') ctx.globalCompositeOperation = 'source-over';
     } finally { LD = saveLD; }
+  }
+  /* A picture grown (r > 0) or shrunk (r < 0) by r pixels all round: the "spread" of a shadow for everything that has
+     no simple outline to grow (text, groups, paths, lines, boolean groups). It is stamped around a ring in steps that
+     never leave a gap (1, 2, 4 ... pixels), so the edge is a 16-sided ring, round to about 2% of r. */
+  function spreadLayer(src, LW, LH, r) {
+    let A = getLayer(LW, LH), B = getLayer(LW, LH);
+    stats.layers += 2;
+    const ac = A.ctx;
+    if (r > 0) ac.drawImage(src.cv, 0, 0, LW, LH, 0, 0, LW, LH);
+    else { ac.fillStyle = '#000000'; ac.fillRect(0, 0, LW, LH); ac.globalCompositeOperation = 'destination-out'; ac.drawImage(src.cv, 0, 0, LW, LH, 0, 0, LW, LH); ac.globalCompositeOperation = 'source-over'; }
+    let left = Math.abs(r), done = 0, guard = 0;
+    while (left > 0.05 && guard++ < 14) {
+      const step = Math.min(left, done === 0 ? 1 : 1 + done), N = step <= 1.5 ? 8 : 16, bc = B.ctx;
+      bc.setTransform(1, 0, 0, 1, 0, 0); bc.globalCompositeOperation = 'source-over'; bc.clearRect(0, 0, LW, LH);
+      bc.drawImage(A.cv, 0, 0, LW, LH, 0, 0, LW, LH);
+      for (let k = 0; k < N; k++) { const a = k * TAU / N; bc.drawImage(A.cv, 0, 0, LW, LH, Math.cos(a) * step, Math.sin(a) * step, LW, LH); }
+      const t = A; A = B; B = t;
+      left -= step; done += step;
+    }
+    if (r > 0) return A;
+    const bc = B.ctx;                                  /* shrunk = the picture without its grown outside */
+    bc.setTransform(1, 0, 0, 1, 0, 0); bc.globalCompositeOperation = 'source-over'; bc.clearRect(0, 0, LW, LH);
+    bc.drawImage(src.cv, 0, 0, LW, LH, 0, 0, LW, LH);
+    bc.globalCompositeOperation = 'destination-out';
+    bc.drawImage(A.cv, 0, 0, LW, LH, 0, 0, LW, LH);
+    bc.globalCompositeOperation = 'source-over';
+    return B;
   }
   /* shadows of a simple filled shape, drawn from its geometry: only the shadow lands (the shape itself is drawn far away) */
   function geoShadows(ctx, g, n, w, h, drops, scale, alpha, ma, mb, mc, md, me, mf) {
@@ -1085,8 +1473,59 @@
       if (!vis(p)) continue;
       if (p.type === 'image') { imagePaint(ctx, p, g, w, h, alpha); continue; }
       if (!usePaint(ctx, p, w, h, alpha, false)) continue;
+      if (unitGrad(p, w, h)) {
+        /* the shape as a clip, the gradient painted through the box's scale: an ellipse, exactly */
+        const a = ctx.globalAlpha;
+        ctx.save();
+        clipGeom(ctx, g, w, h);
+        ctx.globalAlpha = a;
+        ctx.transform(w, 0, 0, h, 0, 0);
+        ctx.fillRect(0, 0, 1, 1);
+        ctx.restore();
+        continue;
+      }
       fillGeom(ctx, g, w, h, 0);
     }
+  }
+  /* Draw a silhouette (drawMask paints it in black, in the node's own space) and colour it with paints: for the cases a
+     plain fill / stroke can not do - a gradient that needs the box's scale on a stroke or on text, a text stroke that
+     stays inside or outside the letters. x0..y1 = the part of the node's space the silhouette can touch. */
+  function maskDraw(ctx, paints, w, h, alpha, x0, y0, x1, y1, drawMask) {
+    let m;
+    try { const t = ctx.getTransform(); m = [t.a, t.b, t.c, t.d, t.e, t.f]; } catch (e) { return false; }
+    boxUnder(m[0], m[1], m[2], m[3], m[4], m[5], x0, y0, x1, y1);
+    const cv = ctx.canvas, cw = cv ? cv.width : 1e5, ch = cv ? cv.height : 1e5;
+    const lx0 = Math.max(0, Math.floor(BX[0]) - 1), ly0 = Math.max(0, Math.floor(BX[1]) - 1), lx1 = Math.min(cw, Math.ceil(BX[2]) + 1), ly1 = Math.min(ch, Math.ceil(BX[3]) + 1);
+    const LW = lx1 - lx0, LH = ly1 - ly0;
+    if (LW <= 0 || LH <= 0 || LW * LH > 1.3e8) return true;
+    const saveLD = LD;
+    try {
+      const M = getLayer(LW, LH), mc = M.ctx;
+      stats.layers++;
+      mc.setTransform(m[0], m[1], m[2], m[3], m[4] - lx0, m[5] - ly0);
+      mc.fillStyle = '#000000'; mc.strokeStyle = '#000000';
+      drawMask(mc);
+      mc.setTransform(1, 0, 0, 1, 0, 0); mc.globalCompositeOperation = 'source-over'; mc.globalAlpha = 1; mc.setLineDash(NODASH);
+      for (let i = 0; i < paints.length; i++) {
+        const p = paints[i];
+        if (!vis(p)) continue;
+        const Pn = getLayer(LW, LH), pc = Pn.ctx;
+        pc.drawImage(M.cv, 0, 0, LW, LH, 0, 0, LW, LH);
+        pc.globalCompositeOperation = 'source-in';
+        pc.setTransform(m[0], m[1], m[2], m[3], m[4] - lx0, m[5] - ly0);
+        if (!usePaint(pc, p, w, h, 1, false)) { LD--; continue; }
+        const pa = pc.globalAlpha;
+        if (unitGrad(p, w, h)) { pc.transform(w, 0, 0, h, 0, 0); pc.fillRect(x0 / w, y0 / h, (x1 - x0) / w, (y1 - y0) / h); }
+        else pc.fillRect(x0, y0, x1 - x0, y1 - y0);
+        ctx.save();
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.globalAlpha = alpha * pa;
+        ctx.drawImage(Pn.cv, 0, 0, LW, LH, lx0, ly0, LW, LH);
+        ctx.restore();
+        LD--;
+      }
+    } finally { LD = saveLD; }
+    return true;
   }
   function imagePaint(ctx, p, g, w, h, alpha) {
     const im = image(p.hash);
@@ -1136,7 +1575,13 @@
     if (hasDash) ctx.setLineDash(dash);
     for (let i = 0; i < strokes.length; i++) {
       const p = strokes[i];
-      if (!vis(p) || !usePaint(ctx, p, w, h, alpha, true)) continue;
+      if (!vis(p)) continue;
+      if (unitGrad(p, w, h)) {
+        const cap = ctx.lineCap, join = ctx.lineJoin, o = sw * 2 + 2;
+        maskDraw(ctx, [p], w, h, alpha, -o, -o, w + o, h + o, (mc) => { mc.lineCap = cap; mc.lineJoin = join; mc.miterLimit = 4; if (hasDash) mc.setLineDash(dash); strokeGeom(mc, g, w, h, sw, align); });
+        continue;
+      }
+      if (!usePaint(ctx, p, w, h, alpha, true)) continue;
       strokeGeom(ctx, g, w, h, sw, align);
     }
     if (hasDash) ctx.setLineDash(NODASH);
@@ -1147,7 +1592,7 @@
     const ctx = T.ctx;
     if (type === 'TEXT') { ctx.setTransform(ma, mb, mc, md, me, mf); paintText(T, ctx, n, rec, w, h, alpha, scale); return; }
     if (type === 'GROUP' || type === 'PAGE') { paintKidsFrom(T, id, v, 0, ma, mb, mc, md, me, mf); return; }
-    const g = geomOf(n, type, w, h);
+    const g = geomOf(n, type, w, h, id, v, rec);
     const fills = L.paints(n, 'fills');
     if (fills.length !== 0 && g.k !== R_LINE) {
       ctx.setTransform(ma, mb, mc, md, me, mf);
@@ -1215,15 +1660,30 @@
     for (let i = 0; i < lay.lines.length; i++) { const sg = lay.lines[i].segs; for (let j = 0; j < sg.length; j++) if (!famReady(sg[j].st.font)) needFont(sg[j].st); }
     ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
     const strokes = L.paints(n, 'strokes'), sw = num(+G(n, 'strokeWeight'), 1);
-    const hasStroke = strokes.length !== 0 && sw > 0 && anyVis(strokes), outside = hasStroke && G(n, 'strokeAlign') === 'outside';
+    const hasStroke = strokes.length !== 0 && sw > 0 && anyVis(strokes), sAlign = hasStroke ? (G(n, 'strokeAlign') || 'center') : 'center';
+    const join = G(n, 'strokeJoin') === 'miter' ? 'miter' : 'round';
+    /* where the letters (and their stroke) can reach, in the node's own space */
+    let bx0 = 0, by0 = 0, bx1 = w, by1 = h;
+    const slop = num(+G(n, 'fontSize'), 16) * 0.5 + (hasStroke ? sw * 2 + 2 : 0);
+    for (let i = 0; i < lay.lines.length; i++) { const ln = lay.lines[i]; bx0 = Math.min(bx0, ln.x - slop); bx1 = Math.max(bx1, ln.x + ln.w + slop); by0 = Math.min(by0, ln.y - slop); by1 = Math.max(by1, ln.y + ln.h + slop); }
+    const tb = (c) => { c.textBaseline = 'alphabetic'; c.textAlign = 'left'; };
     const doStroke = (width) => {
-      ctx.lineJoin = G(n, 'strokeJoin') === 'miter' ? 'miter' : 'round'; ctx.miterLimit = 4; ctx.lineWidth = width;
-      for (let i = 0; i < strokes.length; i++) { const p = strokes[i]; if (vis(p) && usePaint(ctx, p, w, h, alpha, true)) { textPass(ctx, lay, false, true); textPass(ctx, lay, true, true); } }
+      ctx.lineJoin = join; ctx.miterLimit = 4; ctx.lineWidth = width;
+      for (let i = 0; i < strokes.length; i++) {
+        const p = strokes[i];
+        if (!vis(p)) continue;
+        if (unitGrad(p, w, h)) { maskDraw(ctx, [p], w, h, alpha, bx0, by0, bx1, by1, (mc) => { tb(mc); mc.lineJoin = join; mc.miterLimit = 4; mc.lineWidth = width; textPass(mc, lay, false, true); textPass(mc, lay, true, true); }); continue; }
+        if (usePaint(ctx, p, w, h, alpha, true)) { textPass(ctx, lay, false, true); textPass(ctx, lay, true, true); }
+      }
     };
-    if (outside) doStroke(sw * 2);
     let ownRuns = false;
     for (let i = 0; i < lay.lines.length && !ownRuns; i++) { const sg = lay.lines[i].segs; for (let j = 0; j < sg.length; j++) if (sg[j].st.fills !== undefined) { ownRuns = true; break; } }
-    for (let i = 0; i < fills.length; i++) { const p = fills[i]; if (vis(p) && usePaint(ctx, p, w, h, alpha, false)) textPass(ctx, lay, false, false); }
+    for (let i = 0; i < fills.length; i++) {
+      const p = fills[i];
+      if (!vis(p)) continue;
+      if (unitGrad(p, w, h)) { maskDraw(ctx, [p], w, h, alpha, bx0, by0, bx1, by1, (mc) => { tb(mc); textPass(mc, lay, false, false); }); continue; }
+      if (usePaint(ctx, p, w, h, alpha, false)) textPass(ctx, lay, false, false);
+    }
     if (ownRuns) {
       for (let i = 0; i < lay.lines.length; i++) {
         const ln = lay.lines[i], sg = ln.segs;
@@ -1239,7 +1699,22 @@
         }
       }
     }
-    if (hasStroke && !outside) doStroke(sw);
+    if (hasStroke && sAlign === 'center') doStroke(sw);
+    else if (hasStroke) {
+      /* a stroke that stays inside (or outside) the letters: twice as wide, then cut by the letters themselves */
+      const inside = sAlign === 'inside';
+      maskDraw(ctx, strokes, w, h, alpha, bx0, by0, bx1, by1, (mc) => {
+        tb(mc); mc.lineJoin = join; mc.miterLimit = 4; mc.lineWidth = sw * 2;
+        textPass(mc, lay, false, true); textPass(mc, lay, true, true);
+        mc.globalCompositeOperation = inside ? 'destination-in' : 'destination-out';
+        if (inside) {
+          /* destination-in keeps only what the LAST drawn piece covers: so cut with one picture of all the letters */
+          const saveLD2 = LD, cvs = mc.canvas, G2 = getLayer(cvs.width, cvs.height), gc = G2.ctx;
+          try { gc.setTransform(mc.getTransform()); tb(gc); gc.fillStyle = '#000000'; textPass(gc, lay, false, false); textPass(gc, lay, true, false);
+            mc.save(); mc.setTransform(1, 0, 0, 1, 0, 0); mc.drawImage(G2.cv, 0, 0); mc.restore(); } finally { LD = saveLD2; }
+        } else { textPass(mc, lay, false, false); textPass(mc, lay, true, false); }
+      });
+    }
     ctx.globalAlpha = 1;
   }
 
@@ -1288,12 +1763,14 @@
     for (const id of ev.ids) {
       const n = s.get(id), r = D.get(id);
       if (n === undefined) {
+        gridIds.delete(id);
         if (r !== undefined) { addOld(r); bumpUp(r.par, stamp, t); D.delete(id); }
         const en = C.get(id);
         if (en !== undefined) dropEntry(id, en);
         pruneDue = true; any = true;
         continue;
       }
+      if (Array.isArray(n.grids) && n.grids.length) gridIds.add(id); else if (gridIds.size) gridIds.delete(id);
       if (n.type === 'DOCUMENT') { resEpoch++; clearCache(); sceneFull = true; any = true; continue; }
       if (n.type === 'PAGE') { sceneFull = true; any = true; if (r !== undefined) r.cv = stamp; continue; }
       const ps = props ? props.get(id) : null, cls = classify(ps);
@@ -1313,7 +1790,7 @@
     schedule();
   }
   function onLoad() {
-    D.clear(); clearCache(); pending.clear(); damage = [];
+    D.clear(); clearCache(); pending.clear(); damage = []; gridIds.clear(); gridScan = true;
     resEpoch++; compEpoch++; instSeen = false; sceneFull = true; last.valid = false;
     schedule();
   }
@@ -1508,6 +1985,54 @@
     labelFit.set(k, v);
     return v;
   }
+  /* layout grids: `grids` on a frame = [{type: 'grid' | 'columns' | 'rows', size, count, gutter, margin, align, color,
+     opacity, visible}], drawn over the picture inside the frame's box. Never part of the scene, a bitmap or an export. */
+  function gridSpans(g, total) {
+    const count = Math.max(1, Math.min(200, Math.round(num(+g.count, 5)))), gut = Math.max(0, num(+g.gutter, 20)), mar = Math.max(0, num(+g.margin, 0));
+    const al = g.align === 'start' || g.align === 'center' || g.align === 'end' ? g.align : 'stretch';
+    let size = Math.max(0, num(+g.size, 0)), at = mar;
+    if (al === 'stretch' || !(size > 0)) size = Math.max(0, (total - 2 * mar - gut * (count - 1)) / count);
+    else { const all = size * count + gut * (count - 1); at = al === 'center' ? (total - all) / 2 : al === 'end' ? total - mar - all : mar; }
+    const out = [];
+    for (let i = 0; i < count; i++) out.push(at + i * (size + gut), size);
+    return out;
+  }
+  function drawGrids(c, page, bs, tx, ty) {
+    const s = S();
+    if (gridScan) { gridScan = false; if (s.walk && s.ROOT && s.has(s.ROOT)) { let g = 0; s.walk(s.ROOT, (id) => { const n = s.get(id); if (g++ < 400000 && n && Array.isArray(n.grids) && n.grids.length) gridIds.add(id); }); } }
+    if (!gridIds.size) return;
+    for (const id of gridIds) {
+      const n = s.get(id);
+      if (!n || !Array.isArray(n.grids) || n.visible === false || n.type === 'PAGE' || n.type === 'DOCUMENT') continue;
+      let onPage = false, hidden = false, c0 = n.parent, g0 = 0;
+      while (c0 && g0++ < 2000) { const pn = s.get(c0); if (!pn) break; if (c0 === page) { onPage = true; break; } if (pn.visible === false) { hidden = true; break; } c0 = pn.parent; }
+      if (!onPage || hidden) continue;
+      const m = worldMat(id), w = W(n), h = H(n);
+      boxUnder(m[0] * bs, m[1] * bs, m[2] * bs, m[3] * bs, m[4] * bs + tx, m[5] * bs + ty, 0, 0, w, h);
+      if (BX[2] < 0 || BX[3] < 0 || BX[0] > canvas.width || BX[1] > canvas.height) continue;
+      const k = Math.sqrt(Math.abs(m[0] * m[3] - m[1] * m[2])) * bs;      /* device pixels per layer unit */
+      c.save();
+      c.setTransform(m[0] * bs, m[1] * bs, m[2] * bs, m[3] * bs, m[4] * bs + tx, m[5] * bs + ty);
+      c.beginPath(); c.rect(0, 0, w, h); c.clip();
+      for (let i = 0; i < n.grids.length; i++) {
+        const g = n.grids[i];
+        if (!g || g.visible === false) continue;
+        const type = g.type === 'columns' || g.type === 'rows' ? g.type : 'grid';
+        c.fillStyle = rgba(typeof g.color === 'string' ? g.color : '#FF0000', Math.max(0, Math.min(1, num(+g.opacity, 0.1))));
+        if (type === 'grid') {
+          const sz = Math.max(1, num(+g.size, 10)), lw = 1 / k;
+          if (sz * k < 4 || w / sz > 4000 || h / sz > 4000) continue;            /* too fine to tell apart at this zoom */
+          for (let x = sz; x < w - 0.001; x += sz) c.fillRect(x - lw / 2, 0, lw, h);
+          for (let y = sz; y < h - 0.001; y += sz) c.fillRect(0, y - lw / 2, w, lw);
+        } else {
+          const sp = gridSpans(g, type === 'columns' ? w : h);
+          for (let j = 0; j < sp.length; j += 2) { if (type === 'columns') c.fillRect(sp[j], 0, sp[j + 1], h); else c.fillRect(0, sp[j], w, sp[j + 1]); }
+        }
+      }
+      c.restore();
+    }
+    c.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
   function present(pn, page, bs, tx, ty, pv) {
     const c = vctx, s = S();
     c.setTransform(1, 0, 0, 1, 0, 0);
@@ -1559,6 +2084,7 @@
         }
       }
     }
+    if (api.showGrids !== false && pn) drawGrids(c, page, bs, tx, ty);
     if (last.dbg) { c.setTransform(1, 0, 0, 1, 0, 0); c.strokeStyle = 'rgba(255,0,80,0.8)'; c.lineWidth = 1; for (let i = 0; i < last.dbg.length; i += 4) c.strokeRect(last.dbg[i] + 0.5, last.dbg[i + 1] + 0.5, last.dbg[i + 2] - last.dbg[i] - 1, last.dbg[i + 3] - last.dbg[i + 1] - 1); c.setTransform(dpr, 0, 0, dpr, 0, 0); }
     for (let i = 0; i < overlays.length; i++) {
       c.save();
@@ -1633,11 +2159,11 @@
     if (g.k === R_PATH) { const c = hctx(); c.lineWidth = Math.max(0.01, d * 2); return c.isPointInStroke(g.p, x, y); }
     return inGeom(g, w, h, x, y, d) && !inGeom(g, w, h, x, y, -d);
   }
-  function hitShape(n, type, w, h, x, y, tol) {
+  function hitShape(n, type, w, h, x, y, tol, id, v, rec) {
     if (type === 'TEXT') return x >= -tol && x <= w + tol && y >= -tol && y <= h + tol;
     const sw = anyVis(L.paints(n, 'strokes')) ? Math.max(0, num(+G(n, 'strokeWeight'), 1)) : 0;
     if (type === 'LINE') return x >= -tol && x <= w + tol && Math.abs(y) <= Math.max(sw / 2, tol);
-    const g = geomOf(n, type, w, h);
+    const g = geomOf(n, type, w, h, id, v, rec);
     const filled = anyVis(L.paints(n, 'fills'));
     if (filled && inGeom(g, w, h, x, y, 0)) return true;
     if (!filled || sw > 0) return nearOutline(g, w, h, x, y, Math.max(G(n, 'strokeAlign') === 'center' ? sw / 2 : sw, tol));
@@ -1675,7 +2201,7 @@
     if (n.visible === false || (!withLocked && G(n, 'locked') === true)) return null;
     const P = [0, 0];
     toLocal(n, px, py, P);
-    const x = P[0], y = P[1], type = n.type, w = W(n), h = H(n);
+    const x = P[0], y = P[1], type = n.type === 'GROUP' ? dtype(n) : n.type, w = W(n), h = H(n);
     let rec = null;
     if (v === null) {
       rec = derive(id, n);
@@ -1683,6 +2209,12 @@
     }
     const real = v === null;
     if (type === 'INSTANCE' && real) { v = instTree(id, n, rec); n = v.n; }
+    if (type === 'BOOL') {
+      /* a boolean is hit where its RESULT is; the part under the pointer is offered as the deeper hit */
+      if (!hitShape(n, type, w, h, x, y, tol, id, v, rec)) return null;
+      const k = hitKids(id, v, x, y, tol, withLocked);
+      return k !== null ? k : id;
+    }
     if (CONT[type] !== 1) return hitShape(n, type, w, h, x, y, tol) ? id : null;
     const g = type === 'GROUP' ? null : geomOf(n, type, w, h);
     const inBox = g === null ? true : inGeom(g, w, h, x, y, 0);
@@ -1846,6 +2378,7 @@
   /* ------------------------------------------------------------------ export: SVG */
   function esc(v) { return String(v).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\uFFFE\uFFFF]/g, '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
   function fnum(v) { v = Math.round(num(+v, 0) * 1000) / 1000; return Object.is(v, -0) ? '0' : String(v); }
+  function fnum6(v) { v = Math.round(num(+v, 0) * 1e6) / 1e6; return Object.is(v, -0) ? '0' : String(v); }
   function hex6(color) {
     if (typeof color !== 'string' || color[0] !== '#') return ['#000000', 1];
     let h = color.slice(1);
@@ -1865,6 +2398,7 @@
     const defs = [];
     let uid = 0;
     const nid = (p) => 'hd' + p + (++uid);
+    const boolD = new Map();               /* a boolean group -> the path data of its result */
     const dataURLs = new Map();
     const dataURL = (hash) => {
       if (dataURLs.has(hash)) return dataURLs.get(hash);
@@ -1880,14 +2414,9 @@
     function shape(n, type, w, h, grow, attrs) {
       if (type === 'ELLIPSE') return '<ellipse cx="' + fnum(w / 2) + '" cy="' + fnum(h / 2) + '" rx="' + fnum(Math.max(0, w / 2 + grow)) + '" ry="' + fnum(Math.max(0, h / 2 + grow)) + '"' + attrs + '/>';
       if (type === 'LINE') return '<line x1="0" y1="0" x2="' + fnum(w) + '" y2="0"' + attrs + '/>';
+      if (type === 'BOOL') return '<path d="' + (boolD.get(n) || 'M0 0') + '"' + attrs + '/>';
       if (type === 'VECTOR') {
-        const d = typeof n.path === 'string' ? n.path : '', sc = vecScale(d, w, h);
-        let out = '';
-        for (const sg of parsePath(d)) {
-          if (sg[0] === 'Z') out += 'Z';
-          else if (sg[0] === 'C') out += 'C' + fnum(sg[1] * sc[0]) + ' ' + fnum(sg[2] * sc[1]) + ' ' + fnum(sg[3] * sc[0]) + ' ' + fnum(sg[4] * sc[1]) + ' ' + fnum(sg[5] * sc[0]) + ' ' + fnum(sg[6] * sc[1]);
-          else out += sg[0] + fnum(sg[1] * sc[0]) + ' ' + fnum(sg[2] * sc[1]);
-        }
+        const out = segsToD(vectorSegs(n));
         return '<path d="' + out + '"' + (n.fillRule === 'evenodd' ? ' fill-rule="evenodd"' : '') + attrs + '/>';
       }
       if (type === 'POLYGON' || type === 'STAR') {
@@ -1907,14 +2436,36 @@
       const po = p.opacity === undefined ? 1 : p.opacity;
       if (p.type === 'solid' || p.type === undefined) { const c = hex6(p.color); return [c[0], c[1] * po]; }
       const stops = Array.isArray(p.stops) && p.stops.length ? p.stops : [{pos: 0, color: '#000000'}, {pos: 1, color: '#FFFFFF'}];
-      if (p.type === 'angular') { const c = hex6(stops[0].color); return [c[0], c[1] * po * (stops[0].opacity === undefined ? 1 : stops[0].opacity)]; }
       const lin = p.type === 'linear';
       const f = Array.isArray(p.from) ? p.from : (lin ? [0.5, 0] : [0.5, 0.5]), t = Array.isArray(p.to) ? p.to : (lin ? [0.5, 1] : [1, 0.5]);
-      const fx = num(+f[0], 0.5) * w, fy = num(+f[1], 0) * h, tx = num(+t[0], 0.5) * w, ty = num(+t[1], 1) * h;
+      if (p.type === 'angular') {
+        /* SVG has no sweep gradient: it is painted into a picture (up to 1024 px a side) and used as a pattern over the
+           box. Close, not exact: it softens when zoomed far in, and a stroke outside the box takes the nearest edge colour. */
+        let u = null;
+        if (HAS_CONIC && w > EPS && h > EPS) {
+          try {
+            const k = Math.min(4, 1024 / Math.max(w, h)), cv = document.createElement('canvas');
+            cv.width = Math.max(2, Math.round(w * k)); cv.height = Math.max(2, Math.round(h * k));
+            const cx = cv.getContext('2d'), fx0 = num(+f[0], 0.5), fy0 = num(+f[1], 0.5), tx0 = num(+t[0], 1), ty0 = num(+t[1], 0.5);
+            cx.scale(cv.width, cv.height);
+            const g = unitGrad(p, w, h) ? cx.createConicGradient(Math.atan2(ty0 - fy0, tx0 - fx0), fx0, fy0) : cx.createConicGradient(Math.atan2((ty0 - fy0) * h, (tx0 - fx0) * w), fx0, fy0);
+            for (const sp of stops) if (sp) g.addColorStop(Math.max(0, Math.min(1, num(+sp.pos, 0))), rgba(sp.color, sp.opacity));
+            cx.fillStyle = g; cx.fillRect(0, 0, 1, 1);
+            u = cv.toDataURL('image/png');
+          } catch (e) { u = null; }
+        }
+        if (!u) { const c = hex6(stops[0].color); return [c[0], c[1] * po * (stops[0].opacity === undefined ? 1 : stops[0].opacity)]; }
+        const pid = nid('p');
+        defs.push('<pattern id="' + pid + '" patternUnits="userSpaceOnUse" x="0" y="0" width="' + fnum(w) + '" height="' + fnum(h) + '"><image href="' + esc(u) + '" x="0" y="0" width="' + fnum(w) + '" height="' + fnum(h) + '" preserveAspectRatio="none"/></pattern>');
+        return ['url(#' + pid + ')', po];
+      }
+      const unit = unitGrad(p, w, h), uw = unit ? 1 : w, uh = unit ? 1 : h;
+      const fx = num(+f[0], 0.5) * uw, fy = num(+f[1], 0) * uh, tx = num(+t[0], 0.5) * uw, ty = num(+t[1], 1) * uh;
       const gid = nid('g');
       let st = '';
       for (const sp of stops) { if (!sp) continue; const c = hex6(sp.color), o = c[1] * (sp.opacity === undefined ? 1 : sp.opacity); st += '<stop offset="' + fnum(Math.max(0, Math.min(1, num(+sp.pos, 0)))) + '" stop-color="' + c[0] + '"' + (o < 1 ? ' stop-opacity="' + fnum(o) + '"' : '') + '/>'; }
       if (lin) defs.push('<linearGradient id="' + gid + '" gradientUnits="userSpaceOnUse" x1="' + fnum(fx) + '" y1="' + fnum(fy) + '" x2="' + fnum(tx) + '" y2="' + fnum(ty) + '">' + st + '</linearGradient>');
+      else if (unit) defs.push('<radialGradient id="' + gid + '" gradientUnits="userSpaceOnUse" cx="' + fnum6(fx) + '" cy="' + fnum6(fy) + '" r="' + fnum6(Math.max(1e-5, Math.hypot(tx - fx, ty - fy))) + '" gradientTransform="scale(' + fnum(w) + ' ' + fnum(h) + ')">' + st + '</radialGradient>');
       else defs.push('<radialGradient id="' + gid + '" gradientUnits="userSpaceOnUse" cx="' + fnum(fx) + '" cy="' + fnum(fy) + '" r="' + fnum(Math.max(0.01, Math.hypot(tx - fx, ty - fy))) + '">' + st + '</radialGradient>');
       return ['url(#' + gid + ')', po];
     }
@@ -1955,7 +2506,7 @@
       const strokes = L.paints(n, 'strokes'), sw = num(+G(n, 'strokeWeight'), 1);
       if (!(sw > 0) || !strokes.length) return '';
       let align = G(n, 'strokeAlign') || 'center';
-      const pathy = type === 'VECTOR' || type === 'POLYGON' || type === 'STAR';
+      const pathy = type === 'VECTOR' || type === 'POLYGON' || type === 'STAR' || type === 'BOOL';
       if (type === 'LINE' || (type === 'VECTOR' && !pathBBox(typeof n.path === 'string' ? n.path : '').closed)) align = 'center';
       let out = '';
       for (const p of strokes) {
@@ -1972,21 +2523,35 @@
       const lay = L.textLayout(n), fills = L.paints(n, 'fills');
       let fill = ['none', 1];
       for (const p of fills) if (vis(p)) fill = p.type === 'image' ? ['#888888', 1] : paintRef(p, w, h);
-      const strokes = L.paints(n, 'strokes'), sw = num(+G(n, 'strokeWeight'), 1);
-      let strokeA = '';
-      for (const p of strokes) if (vis(p) && sw > 0 && p.type !== 'image') { const r = paintRef(p, w, h), outside = G(n, 'strokeAlign') === 'outside'; strokeA = ' stroke="' + r[0] + '"' + (r[1] < 1 ? ' stroke-opacity="' + fnum(r[1]) + '"' : '') + ' stroke-width="' + fnum(outside ? sw * 2 : sw) + '" stroke-linejoin="round"' + (outside ? ' paint-order="stroke"' : ''); }
-      let out = '<text xml:space="preserve" fill="' + fill[0] + '"' + (fill[1] < 1 ? ' fill-opacity="' + fnum(fill[1]) + '"' : '') + strokeA + '>';
-      for (const ln of lay.lines) for (const sg of ln.segs) {
-        if (sg.sp && sg.st.deco === 'none') continue;
-        const st = sg.st;
-        let a = ' x="' + fnum(sg.x) + '" y="' + fnum(ln.base) + '" font-family="' + esc(st.font) + ', Inter, sans-serif" font-size="' + fnum(st.size) + '" font-weight="' + st.weight + '"';
-        if (st.italic) a += ' font-style="italic"';
-        if (st.ls) a += ' letter-spacing="' + fnum(st.ls) + '"';
-        if (st.deco === 'underline') a += ' text-decoration="underline"'; else if (st.deco === 'strike') a += ' text-decoration="line-through"';
-        if (Array.isArray(st.fills)) for (const p of st.fills) if (vis(p) && p.type !== 'image') { const r = paintRef(p, w, h); a += ' fill="' + r[0] + '"' + (r[1] < 1 ? ' fill-opacity="' + fnum(r[1]) + '"' : ''); }
-        out += '<tspan' + a + '>' + esc(sg.text) + '</tspan>';
+      const strokes = L.paints(n, 'strokes'), sw = num(+G(n, 'strokeWeight'), 1), align = G(n, 'strokeAlign') || 'center';
+      const spans = (own) => {
+        let t = '';
+        for (const ln of lay.lines) for (const sg of ln.segs) {
+          if (sg.sp && sg.st.deco === 'none') continue;
+          const st = sg.st;
+          let a = ' x="' + fnum(sg.x) + '" y="' + fnum(ln.base) + '" font-family="' + esc(st.font) + ', Inter, sans-serif" font-size="' + fnum(st.size) + '" font-weight="' + st.weight + '"';
+          if (st.italic) a += ' font-style="italic"';
+          if (st.ls) a += ' letter-spacing="' + fnum(st.ls) + '"';
+          if (st.deco === 'underline') a += ' text-decoration="underline"'; else if (st.deco === 'strike') a += ' text-decoration="line-through"';
+          if (own && Array.isArray(st.fills)) for (const p of st.fills) if (vis(p) && p.type !== 'image') { const r = paintRef(p, w, h); a += ' fill="' + r[0] + '"' + (r[1] < 1 ? ' fill-opacity="' + fnum(r[1]) + '"' : ''); }
+          t += '<tspan' + a + '>' + esc(sg.text) + '</tspan>';
+        }
+        return t;
+      };
+      const bare = spans(false);
+      let out = '<text xml:space="preserve" fill="' + fill[0] + '"' + (fill[1] < 1 ? ' fill-opacity="' + fnum(fill[1]) + '"' : '') + '>' + spans(true) + '</text>';
+      /* strokes as their own text on top: centre = as wide as asked; inside / outside = twice as wide, cut by the letters */
+      let cut = '';
+      for (const p of strokes) {
+        if (!vis(p) || !(sw > 0) || p.type === 'image') continue;
+        const r = paintRef(p, w, h);
+        if (align !== 'center' && !cut) {
+          if (align === 'inside') { const cid = nid('c'); defs.push('<clipPath id="' + cid + '"><text xml:space="preserve">' + bare + '</text></clipPath>'); cut = ' clip-path="url(#' + cid + ')"'; }
+          else { const mid = nid('m'), o = sw * 2 + num(+G(n, 'fontSize'), 16); defs.push('<mask id="' + mid + '" maskUnits="userSpaceOnUse" x="' + fnum(-o) + '" y="' + fnum(-o) + '" width="' + fnum(Math.max(w, lay.cw) + 2 * o) + '" height="' + fnum(Math.max(h, lay.ch) + 2 * o) + '"><rect x="' + fnum(-o) + '" y="' + fnum(-o) + '" width="' + fnum(Math.max(w, lay.cw) + 2 * o) + '" height="' + fnum(Math.max(h, lay.ch) + 2 * o) + '" fill="#fff"/><text xml:space="preserve" fill="#000">' + bare + '</text></mask>'); cut = ' mask="url(#' + mid + ')"'; }
+        }
+        out += '<text xml:space="preserve" fill="none" stroke="' + r[0] + '"' + (r[1] < 1 ? ' stroke-opacity="' + fnum(r[1]) + '"' : '') + ' stroke-width="' + fnum(align === 'center' ? sw : sw * 2) + '" stroke-linejoin="' + (G(n, 'strokeJoin') === 'miter' ? 'miter' : 'round') + '"' + cut + '>' + bare + '</text>';
       }
-      return out + '</text>';
+      return out;
     }
     function filterOf(fx, box) {
       const fid = nid('f');
@@ -1997,8 +2562,8 @@
         const c = hex6(e.color || '#000000'), o = c[1] * (e.opacity === undefined ? 0.25 : e.opacity), sd = fnum(Math.max(0, num(+e.blur, 0)) / 2), sp = num(+e.spread, 0);
         if (e.type === 'drop') {
           const r = 'd' + (++k);
-          body += (sp > 0 ? '<feMorphology in="SourceAlpha" operator="dilate" radius="' + fnum(sp) + '" result="' + r + 'm"/>' : '') +
-            '<feGaussianBlur in="' + (sp > 0 ? r + 'm' : 'SourceAlpha') + '" stdDeviation="' + sd + '" result="' + r + 'b"/><feOffset in="' + r + 'b" dx="' + fnum(e.x) + '" dy="' + fnum(e.y) + '" result="' + r + 'o"/>' +
+          body += (sp !== 0 ? '<feMorphology in="SourceAlpha" operator="' + (sp > 0 ? 'dilate' : 'erode') + '" radius="' + fnum(Math.abs(sp)) + '" result="' + r + 'm"/>' : '') +
+            '<feGaussianBlur in="' + (sp !== 0 ? r + 'm' : 'SourceAlpha') + '" stdDeviation="' + sd + '" result="' + r + 'b"/><feOffset in="' + r + 'b" dx="' + fnum(e.x) + '" dy="' + fnum(e.y) + '" result="' + r + 'o"/>' +
             '<feFlood flood-color="' + c[0] + '" flood-opacity="' + fnum(o) + '" result="' + r + 'f"/><feComposite in="' + r + 'f" in2="' + r + 'o" operator="in" result="' + r + '"/>';
           merge += '<feMergeNode in="' + r + '"/>';
         } else if (e.type === 'inner') {
@@ -2020,10 +2585,17 @@
         const kv = v !== null ? list[i] : null, kn = v !== null ? kv.n : s.get(list[i]), kid = v !== null ? kv.key : list[i];
         if (!kn || kn.visible === false) continue;
         if (kn.mask === true) {
+          /* the mask covers the siblings above it, up to the next mask */
+          let j = i + 1;
+          for (; j < list.length; j++) { const jn = v !== null ? list[j].n : s.get(list[j]); if (jn && jn.mask === true && jn.visible !== false) break; }
           const mid = nid('m');
-          const mk = Object.assign({}, kn, {mask: false});
+          let mk = Object.assign({}, kn, {mask: false});
+          if (clipMask(kn) && !anyVis(L.paints(kn, 'fills'))) mk = Object.assign(mk, {fills: [{type: 'solid', color: '#000000'}]});
           defs.push('<mask id="' + mid + '" style="mask-type:alpha">' + node(mk, kid, kv) + '</mask>');
-          return out + '<g mask="url(#' + mid + ')">' + kidsOf(id, v, list.slice(i + 1)) + '</g>';
+          const inner = kidsOf(id, v, list.slice(i + 1, j));
+          if (inner) out += '<g mask="url(#' + mid + ')">' + inner + '</g>';
+          i = j - 1;
+          continue;
         }
         out += node(kn, kid, kv);
       }
@@ -2031,11 +2603,12 @@
     }
     function node(n, id, v) {
       if (!n || n.visible === false) return '';
-      let type = n.type;
+      let type = n.type === 'GROUP' ? dtype(n) : n.type;
       const real = v === null;
       let rec = null;
       if (real) rec = derive(id, n);
       if (type === 'INSTANCE' && real) { v = instTree(id, n, rec); n = v.n; }
+      if (type === 'BOOL') boolD.set(n, boolGeom(n, id, v, rec).d);
       const w = W(n), h = H(n);
       const m = localMat(n, [1, 0, 0, 1, 0, 0]);
       let attrs = '';
@@ -2135,7 +2708,20 @@
     drawNode, toCanvas, toSVG, image,
     /* helpers beyond the contract */
     resize, flush, on, stats, debug, hitChain, setEditing, loadFont, fontLoaded, ready, exportBounds, clearCaches,
-    bounds: boundsOf, worldMatrix: worldMat, assetURL: null, webFonts: true, pixelGrid: true, frameLabels: true, zoomPreview: true,
+    bounds: boundsOf, worldMatrix: worldMat, assetURL: null, webFonts: true, pixelGrid: true, frameLabels: true, zoomPreview: true, showGrids: true,
+    /* path + boolean geometry, shared with hd-vector.js (vector edit, flatten): all pure */
+    geom: {parsePath, segsToD, pathBBox, vectorSegs, outlineSegs, gridSpans, isBool(n) { return !!n && dtype(n) === 'BOOL'; },
+      /* the outline of a boolean group as path data in the group's own space ('' when nothing is left) */
+      boolPath(id) { const n = S().get(id); if (!n || dtype(n) !== 'BOOL') return null; const g = boolGeom(n, id, null, null); return {d: g.d, rule: g.rule, ok: g.ok}; },
+      /* a boolean of layers that are not a group (yet): the outline of op(ids...) as path data in the space of `parent`
+         (ids bottom first; text and lines take no part); null when nothing takes part */
+      combine(op, ids, parent) {
+        const s = S(), W0 = {curves: []}, ops = [], pm = inv(worldMat(parent));
+        for (const id of ids) { const n = s.get(id); if (!n) continue; const o = operandOf(n, id, null, mul(pm, worldMat(n.parent)), 1, W0); if (o) ops.push(o); else if (op === 'subtract' && !ops.length) return null; }
+        if (!ops.length) return null;
+        const r = boolCompute(ops.length === 1 ? ops[0] : {op: BOOL[op] === 1 ? op : 'union', kids: ops}, W0.curves);
+        return r ? r.d : null;
+      }},
     get canvas() { return canvas; }, get dpr() { return dpr; }, get size() { return {w: cssW, h: cssH}; },
     get cacheCapMB() { return CACHE_CAP / 1048576; }, set cacheCapMB(v) { CACHE_CAP = Math.max(1, +v || 256) * 1048576; evict(); }
   };

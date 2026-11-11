@@ -59,6 +59,7 @@ class DesignVersion(Base):
     seq: Mapped[int] = mapped_column(Integer, default=0)
     node_count: Mapped[int] = mapped_column(Integer, default=0)
     by_name: Mapped[str] = mapped_column(String(200), default="")
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)             # what changed, in her words (D5)
     snapshot: Mapped[bytes] = mapped_column(LargeBinary, deferred=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
@@ -72,6 +73,10 @@ class DesignComment(Base):
     page: Mapped[str] = mapped_column(String(64), default="")
     x: Mapped[float] = mapped_column(Float, default=0.0)
     y: Mapped[float] = mapped_column(Float, default=0.0)
+    # D5: where the pin sits INSIDE its node (the node's own 0..w / 0..h box), so it follows the node when that
+    # moves, turns or is reparented; x / y stay the page point it was dropped on (used when the node is gone).
+    ox: Mapped[float | None] = mapped_column(Float, nullable=True)
+    oy: Mapped[float | None] = mapped_column(Float, nullable=True)
     text: Mapped[str] = mapped_column(Text, default="")
     parent: Mapped[str | None] = mapped_column(String(40), nullable=True)     # the comment this one replies to
     resolved: Mapped[bool] = mapped_column(Boolean, default=False)
@@ -103,6 +108,8 @@ def ensure_tables() -> None:
         eng = _db._engine
     if _ready_for == id(eng):
         return
-    for model in (DesignFile, DesignOp, DesignVersion, DesignComment, DesignShare):
-        model.__table__.create(eng, checkfirst=True)
+    tables = [m.__table__ for m in (DesignFile, DesignOp, DesignVersion, DesignComment, DesignShare)]
+    for table in tables:
+        table.create(eng, checkfirst=True)
+    _db.add_missing_columns_for(eng, *tables)        # a column added after the table was born (design_versions.note)
     _ready_for = id(eng)

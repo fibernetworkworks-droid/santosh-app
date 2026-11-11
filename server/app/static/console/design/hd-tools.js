@@ -250,6 +250,7 @@
     const kids = HD.store.children(par); let n = 0;
     for (const k of kids) { if (ex.has(k) || prop(k, 'visible') === false) continue; if (++n > 400) break; out.push(aabb(k)); }
     if (!pageLike(par)) out.push(Object.assign({parent: true}, aabb(par)));
+    if (HD.tools.snapExtra) { try { for (const c of HD.tools.snapExtra(par) || []) out.push(c); } catch (e) { /* guides are optional */ } }   /* ruler guides (hd-vector.js) */
     return out;
   }
   function snapAxis(vals, cands, axis, thr) {

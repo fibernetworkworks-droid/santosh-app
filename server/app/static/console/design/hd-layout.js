@@ -7,7 +7,8 @@
   'use strict';
   const HD = window.HD = window.HD || {};
   const EPS = 0.01;
-  const ST = () => HD.store;
+  let VS = null;                          /* a stand-in store while an instance is laid out virtually (see virtual()) */
+  const ST = () => VS || HD.store;
 
   /* ------------------------------------------------------------------ defaults, styles, variables */
   const BASE = {
@@ -137,7 +138,14 @@
     metrics.set(st.css, m);
     return m;
   }
-  function lineHeightOf(st) { return st.lh === 'auto' ? Math.round(st.size * 1.2 * 100) / 100 : st.lh; }
+  /* "auto" line height = what the FONT asks for: its own ascent + descent (Inter 1.21, Noto Sans Devanagari 1.36,
+     a display face often 1.0 - 1.1), not one factor for every face. textLayout is the only user, and the renderer draws
+     from textLayout, so measuring and drawing can not disagree. */
+  function lineHeightOf(st) {
+    if (st.lh !== 'auto') return st.lh;
+    const m = fontMetrics(st), v = Math.round((m.asc + m.desc) * 100) / 100;
+    return v > 0 ? v : Math.round(st.size * 1.2 * 100) / 100;
+  }
   function applyCase(t, tc, wordStart) {
     if (tc === 'upper') return t.toUpperCase();
     if (tc === 'lower') return t.toLowerCase();
@@ -314,7 +322,7 @@
   function fontsChanged() { fontEpoch++; widths.clear(); metrics.clear(); layouts.clear(); }
 
   /* ------------------------------------------------------------------ run */
-  const rec = new Map();          /* id -> {w, h, parent}: the size each container had when it was last laid out */
+  let rec = new Map();            /* id -> {w, h, parent}: the size each container had when it was last laid out */
   let running = false, pendingSync = null;
   const CONTAINER = {FRAME: 1, COMPONENT: 1, COMPONENT_SET: 1, SECTION: 1, GROUP: 1, INSTANCE: 1};
 
@@ -380,7 +388,7 @@
     const wA = textAuto(n, true), hA = textAuto(n, false);
     if (!wA && !hA) return;
     const t = textLayout(n), vals = {};
-    noteFonts(id, t);
+    if (!VS) noteFonts(id, t);
     if (wA) vals.w = t.w;
     if (hA) vals.h = t.h;
     put(id, vals);
@@ -550,11 +558,15 @@
     const gapCross = num(L.gapCross, gap);
     const kidsAll = s.children(id) || [], kids = [];
     for (let i = 0; i < kidsAll.length; i++) { const c = s.get(kidsAll[i]); if (inFlow(c)) kids.push(kidsAll[i]); }
-    const mainOf = (c) => (horiz ? W(c) : H(c)), crossOf = (c) => (horiz ? H(c) : W(c));
+    /* a turned child takes the room of its turned box (the box around its four corners) and is placed by that box;
+       it keeps its own size: "fill" and "stretch" do not apply to it */
+    const turned = (c) => { const r = num(c.rot, 0) % 360; return Math.abs(r) > 0.001 && Math.abs(Math.abs(r) - 360) > 0.001; };
+    const box = (c) => { const b = localCorners(c); return [b[2] - b[0], b[3] - b[1], b[0] - num(c.x, 0), b[1] - num(c.y, 0)]; };
+    const mainOf = (c) => (turned(c) ? box(c)[horiz ? 0 : 1] : horiz ? W(c) : H(c)), crossOf = (c) => (turned(c) ? box(c)[horiz ? 1 : 0] : horiz ? H(c) : W(c));
     const setMain = (cid, v) => put(cid, horiz ? {w: v} : {h: v}), setCross = (cid, v) => put(cid, horiz ? {h: v} : {w: v});
-    const fillsMain = (c) => !hugMain && c.type !== 'GROUP' && G(c, horiz ? 'sizeH' : 'sizeV') === 'fill' && !(c.type === 'LINE' && !horiz);
+    const fillsMain = (c) => !hugMain && c.type !== 'GROUP' && !turned(c) && G(c, horiz ? 'sizeH' : 'sizeV') === 'fill' && !(c.type === 'LINE' && !horiz);
     const fillsCross = (c) => {
-      if (c.type === 'GROUP' || (c.type === 'LINE' && horiz)) return false;
+      if (c.type === 'GROUP' || (c.type === 'LINE' && horiz) || turned(c)) return false;
       const sz = G(c, horiz ? 'sizeV' : 'sizeH');
       if (sz === 'fill') return true;
       if (alignCross !== 'stretch' || sz === 'hug') return false;
@@ -661,7 +673,8 @@
         let cr = crossAt;
         if (alignCross === 'center') cr += (lineCross[li] - cc) / 2;
         else if (alignCross === 'end') cr += lineCross[li] - cc;
-        put(cid, horiz ? {x: at, y: cr} : {x: cr, y: at});
+        if (turned(c)) { const b = box(c); put(cid, horiz ? {x: at - b[2], y: cr - b[3]} : {x: cr - b[2], y: at - b[3]}); }
+        else put(cid, horiz ? {x: at, y: cr} : {x: cr, y: at});
         at += cm + g;
       }
       crossAt += lineCross[li] + gapCross;
@@ -683,6 +696,43 @@
       else if (hasLayout(n)) layoutAuto(id, ctx);
       else if (CONTAINER[n.type]) applyConstraints(id, ctx);
     } finally { ctx.depth--; }
+  }
+
+  /* VIRTUAL LAYOUT. The renderer draws an instance from its component without copying nodes: a tree of {n, key, kids}.
+     When the instance has another size than the component, virtual(root, w0, h0) lays that tree out again for the size
+     its root has now (w0 / h0 = the component's size) - the same auto layout and constraints that real frames get,
+     pointed at a small stand-in for the store. A node it moves gets a NEW n object: the component's own nodes are
+     never written. A nested instance is one box here (the renderer fits it in its turn). True when it ran. */
+  function virtual(root, w0, h0) {
+    if (running || VS || !root || !root.kids || !root.kids.length) return false;
+    const map = new Map();
+    const add = (v, par) => {
+      const e = {v, n: v.n, par, kids: NONE, dirty: false};
+      map.set(v.key, e);
+      if (v.kids && v.kids.length && (par === null || v.inst !== true)) { e.kids = v.kids.map(k => k.key); for (let i = 0; i < v.kids.length; i++) add(v.kids[i], v.key); }
+    };
+    add(root, null);
+    if (map.size > 20000) return false;
+    const re = map.get(root.key), w1 = W(root.n), h1 = H(root.n), saveRec = rec;
+    let ok = true;
+    re.n = Object.assign({}, root.n, {type: 'FRAME', w: w0, h: h0, sizeH: 'fixed', sizeV: 'fixed'});
+    VS = {ROOT: null, readOnly: false,
+      get(k) { const e = map.get(k); return e ? e.n : undefined; },
+      has(k) { return map.has(k); },
+      children(k) { const e = map.get(k); return e ? e.kids : NONE; },
+      parent(k) { const e = map.get(k); return e && e.par !== null ? e.par : undefined; },
+      set(k, vals) { const e = map.get(k); if (e) { e.n = Object.assign({}, e.n, vals); e.dirty = true; } }};
+    rec = new Map(); running = true;
+    try {
+      for (const k of map.keys()) remember(k);
+      re.n = Object.assign({}, re.n, {w: w1, h: h1});
+      const ctx = {changed: new Set([root.key]), depth: 0, props: new Map([[root.key, new Set(['w', 'h'])]])};
+      if (hasLayout(re.n)) layoutAuto(root.key, ctx); else applyConstraints(root.key, ctx);
+    } catch (e) { ok = false; if (window.console) console.error('[HD.layout] virtual', e); }
+    finally { rec = saveRec; VS = null; running = false; }
+    if (!ok) return false;
+    for (const e of map.values()) if (e.dirty && e.v !== root) e.v.n = e.n;
+    return true;
   }
 
   function layoutSelf(id, ctx) {
@@ -776,7 +826,7 @@
     /* helpers beyond the contract (the renderer is built on them) */
     textLayout, fontsChanged, prop: G, paints, effects, defaultsOf: def, varValue: varVal, styleValue: styleVal,
     fontCss(n) { return baseStyle(n).css; }, baseStyle, setFont, hasLetterSpacing: HAS_LS, hasLayout,
-    remember, rememberAll, hook, varMode: null, reflow, fontHook: null,
+    remember, rememberAll, hook, varMode: null, reflow, fontHook: null, virtual,
     get fontEpoch() { return fontEpoch; }
   };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', hook); else setTimeout(hook, 0);

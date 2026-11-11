@@ -205,6 +205,9 @@ async function main() {
         t3 = S.create('TEXT', pg, {x: 0, y: 200, w: 80, h: 30, autoResize: 'none', chars: 'fixed box text that overflows', fontSize: 16});
       });
       const m1 = HD.layout.measureText(S.get(t1)), m2 = HD.layout.measureText(S.get(t2));
+      /* "auto" line height = the font's own ascent + descent, read here straight from the canvas */
+      const fontLh = (id) => { const c = document.createElement('canvas').getContext('2d'); c.font = HD.layout.fontCss(S.get(id)); const t = c.measureText('Hg'); return Math.round((t.fontBoundingBoxAscent + t.fontBoundingBoxDescent) * 100) / 100; };
+      o.lh1 = fontLh(t1); o.lh2 = fontLh(t2);
       o.t1 = box(t1); o.m1 = [m1.w, m1.h, m1.lines.length, m1.lineHeight]; o.t2 = box(t2); o.m2 = {n: m2.lines.length, widest: Math.max.apply(null, m2.lines.map(l => l.w)), h: m2.h, lh: m2.lineHeight, joined: m2.lines.map(l => l.text.trim()).join(' ')}; o.t3 = box(t3);
       S.tx('nl', () => S.set(t1, {chars: 'Hello\nworld\n'}));
       o.t1nl = [box(t1)[3], HD.layout.measureText(S.get(t1)).lines.length];
@@ -271,12 +274,13 @@ async function main() {
       S.tx('rm', () => { S.set(g, {rot: 0}); }); S.tx('rm2', () => S.remove([g1])); o.grp4 = {g: box(g).slice(2), g2: box(g2)};
       return o;
     });
-    assert.ok(lay.t1[2] > 60 && lay.t1[2] < 200 && lay.t1[3] === 24, 'a wh text hugs its words: ' + lay.t1);
-    assert.deepEqual(lay.m1.slice(0, 3), [lay.t1[2], lay.t1[3], 1]); assert.equal(lay.m1[3], 24);
-    assert.ok(lay.t2[2] === 120 && lay.m2.n >= 3 && lay.m2.widest <= 120.01 && lay.t2[3] === Math.round(lay.m2.n * 19.2 * 100) / 100, 'an h text wraps inside its width and grows down: ' + JSON.stringify(lay.m2));
+    assert.ok(lay.lh1 > 20 && lay.lh1 < 30 && lay.lh2 > 16 && lay.lh2 < 24, 'the font gives a sane line: ' + lay.lh1 + ' / ' + lay.lh2);
+    assert.ok(lay.t1[2] > 60 && lay.t1[2] < 200 && lay.t1[3] === lay.lh1, 'a wh text hugs its words, one line of the font\'s own height: ' + lay.t1 + ' vs ' + lay.lh1);
+    assert.deepEqual(lay.m1.slice(0, 3), [lay.t1[2], lay.t1[3], 1]); assert.equal(lay.m1[3], lay.lh1);
+    assert.ok(lay.t2[2] === 120 && lay.m2.n >= 3 && lay.m2.widest <= 120.01 && lay.t2[3] === Math.round(lay.m2.n * lay.lh2 * 100) / 100, 'an h text wraps inside its width and grows down: ' + JSON.stringify(lay.m2));
     assert.equal(lay.m2.joined, 'The quick brown fox jumps over the lazy dog');
     assert.deepEqual(lay.t3, [0, 200, 80, 30]);
-    assert.deepEqual(lay.t1nl, [72, 3]);
+    assert.deepEqual(lay.t1nl, [Math.round(3 * lay.lh1 * 100) / 100, 3]);
     assert.ok(lay.t1up > lay.t1[2], 'upper case + letter spacing is wider');
     const cw = lay.cw;
     assert.deepEqual(lay.al1, {f: [300, 0, 400, 76], a: [16, 18, 50, 40], b: [76, 8, Math.round((400 - 32 - 50 - 20 - cw) * 100) / 100, 60], c: [400 - 16 - cw, Math.round((8 + (60 - lay.ch) / 2) * 100) / 100, cw, lay.ch]});
@@ -362,7 +366,7 @@ async function main() {
     const big = ink.big;
     assert.ok(big.ink[1] >= big.box[1] && big.ink[3] <= big.box[1] + big.box[3] + 1 && big.ink[0] >= big.box[0] - 2 && big.ink[2] <= big.box[0] + big.box[2] + 2, 'the glyphs sit inside the text box: ' + JSON.stringify(big));
     const capTop = (big.ink[1] - big.box[1]) / big.box[3], descBottom = (big.ink[3] - big.box[1]) / big.box[3];
-    assert.ok(capTop > 0.08 && capTop < 0.4 && descBottom > 0.8 && descBottom <= 1.02, 'cap height and descender sit where a 1.2 line puts them: ' + capTop.toFixed(2) + ' / ' + descBottom.toFixed(2));
+    assert.ok(capTop > 0.08 && capTop < 0.4 && descBottom > 0.8 && descBottom <= 1.02, 'cap height and descender sit where the font\'s own line puts them: ' + capTop.toFixed(2) + ' / ' + descBottom.toFixed(2));
     const cMid = (ink.center.ink[0] + ink.center.ink[2]) / 2, cBox = ink.center.box[0] + ink.center.box[2] / 2;
     assert.ok(Math.abs(cMid - cBox) < 6, 'centered text is centered: ' + cMid + ' vs ' + cBox);
     assert.ok(Math.abs(ink.right.ink[2] - (ink.right.box[0] + ink.right.box[2])) < 4 && ink.right.ink[3] > ink.right.box[1] + ink.right.box[3] - 8 && ink.right.ink[1] > ink.right.box[1] + 30, 'right + bottom aligned text: ' + JSON.stringify(ink.right));
@@ -592,7 +596,7 @@ async function main() {
       });
       R.setView({x: 0, y: 0, zoom: 1}); R.flush();
       o.px = [T.px(40, 40), T.px(130, 40), T.px(256, 40), T.px(330, 40), T.px(40, 230), T.px(140, 240), T.px(340, 240), T.px(540, 240), T.px(600, 240)];
-      o.textH = T.box(t)[3];
+      o.textH = T.box(t)[3]; o.textLh = HD.layout.measureText(S.get(t)).lineHeight; o.textSize = HD.layout.baseStyle(S.get(t)).size;
       S.tx('var', () => S.set('0:0', {modes: ['dark', 'light']})); R.flush(); o.dark = [T.px(130, 40), T.px(330, 40)];
       S.tx('style', () => S.set('0:0', {styles: Object.assign({}, S.get('0:0').styles, {s1: {kind: 'fill', name: 'Brand', value: solid('#FF00FF')}})})); R.flush(); o.restyled = T.px(40, 40);
       o.hit = [R.hitTest(540, 240, {deep: true}) === iB2, R.hitTest(600, 240, {deep: true}) === iB2, R.hitTest(660, 240, {deep: true}), R.hitTest(40, 230, {deep: true}) === a1];
@@ -602,7 +606,7 @@ async function main() {
     isColor(sys.px[0], [0, 255, 0], 'a fill style wins over the own fill'); isColor(sys.px[1], BLUE, 'a colour variable'); isColor(sys.px[2], RED, 'an effect style'); isColor(sys.px[3], [122, 122, 122], 'a number variable on opacity');
     isColor(sys.px[4], RED, 'component A'); isColor(sys.px[5], [0, 255, 0], 'an instance inside a component, with its override'); isColor(sys.px[6], [0, 255, 0], 'an instance of a component that holds an instance');
     isColor(sys.px[7], WHITE, 'the outer override moved the inner instance away'); isColor(sys.px[8], BLUE, 'an override through two levels: the outer instance wins');
-    assert.equal(sys.textH, 48, 'a text style sets the size the text is measured with');
+    assert.ok(sys.textSize === 40 && sys.textH === sys.textLh && sys.textH > 40 && sys.textH < 60, 'a text style sets the size the text is measured with: ' + sys.textSize + ' / ' + sys.textH);
     isColor(sys.dark[0], [255, 255, 0], 'the other mode of a variable'); isColor(sys.dark[1], BLACK, 'number variable, other mode'); isColor(sys.restyled, [255, 0, 255], 'a changed style repaints its users');
     assert.deepEqual(sys.hit, [true, true, null, true]); assert.equal(sys.svg, 0);
     ok('styles, variables, nested instances');

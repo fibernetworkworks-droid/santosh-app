@@ -276,7 +276,10 @@
       hueEl.firstChild.style.left = (hue / 360 * 100) + '%'; alEl.lastChild.style.left = (c.a * 100) + '%'; alEl.firstChild.style.backgroundImage = 'linear-gradient(90deg, ' + rgba(c.hex, 0) + ', ' + rgba(c.hex, 1) + ')';
       if (document.activeElement !== hexIn) hexIn.value = c.hex.slice(1); if (document.activeElement !== opIn) opIn.value = fmt(c.a * 100, 0) + '%';
     }
-    const handle = pop(anchor, root, {cls: 'hd-pop-picker', label: o.title || 'Colour picker', level: o.level || 0, side: o.side || 'left', onClose: () => { if (g) g.end(); if (o.onClose) o.onClose(); }});
+    const handle = pop(anchor, root, {cls: 'hd-pop-picker', label: o.title || 'Colour picker', level: o.level || 0, side: o.side || 'left', onClose: () => { if (g) g.end(); if (ui.paint === live) ui.paint = null; if (HD.render.invalidate) HD.render.invalidate(); if (o.onClose) o.onClose(); }});
+    /* the paint being edited, for on-canvas handles (hd-vector.js): get() -> paint, set(paint, gesture|null), stop */
+    const live = {get: cur, set: (p, viaG) => { o.set(p, viaG || null); sync(); }, get stop() { return stop; }, set stop(i) { stop = i; sync(); }, level: o.level || 0, solidOnly: !!o.solidOnly};
+    ui.paint = live; if (HD.render.invalidate) HD.render.invalidate();
     sync(); handle.place(); handle.sync = sync; return handle;
   }
   async function uploadImage(fileOrBlob) {
@@ -567,9 +570,9 @@
     for (let i = a; i < b; i++) { const r = rows[i], n = HD.store.get(r.id); if (!n) continue; const isSel = selSet.has(r.id); let inSel = false;
       if (!isSel && selSet.size && r.depth) { let c = HD.store.parent(r.id), g = 0; while (c && g++ < 60) { if (selSet.has(c)) { inSel = true; break; } c = HD.store.parent(c); } }
       const hidden = n.visible === false, locked = n.locked === true, img = n.type === 'RECT' && Array.isArray(n.fills) && n.fills.some(f => f && f.type === 'image');
-      const key = [i, r.depth, r.has ? 1 : 0, r.open ? 1 : 0, isSel ? 1 : 0, inSel ? 1 : 0, hidden ? 1 : 0, locked ? 1 : 0, img ? 1 : 0, edit ? 1 : 0, n.type, n.name].join('\u0001'), old = L.cache.get(r.id);
+      const key = [i, r.depth, r.has ? 1 : 0, r.open ? 1 : 0, isSel ? 1 : 0, inSel ? 1 : 0, hidden ? 1 : 0, locked ? 1 : 0, img ? 1 : 0, edit ? 1 : 0, n.type, n.name, n.mask === true ? 1 : 0, n.bool || ''].join('\u0001'), old = L.cache.get(r.id);
       if (old && old.key === key) { next.set(r.id, old); order.push(old.el); continue; } same = false;
-      const el = h('div', {class: 'hd-lrow' + (isSel ? ' sel' : inSel ? ' insel' : '') + (hidden ? ' off' : '') + (n.type === 'COMPONENT' || n.type === 'INSTANCE' || n.type === 'COMPONENT_SET' ? ' comp' : ''), role: 'treeitem', 'aria-selected': String(isSel), 'aria-level': String(r.depth + 1), 'aria-expanded': r.has ? String(r.open) : null, 'data-id': r.id, style: {top: (i * H) + 'px', paddingLeft: (6 + r.depth * 14) + 'px'}},
+      const el = h('div', {class: 'hd-lrow' + (isSel ? ' sel' : inSel ? ' insel' : '') + (hidden ? ' off' : '') + (n.type === 'COMPONENT' || n.type === 'INSTANCE' || n.type === 'COMPONENT_SET' ? ' comp' : '') + (n.mask === true ? ' mask' : '') + (n.type === 'GROUP' && n.bool ? ' bool' : ''), role: 'treeitem', 'data-bool': n.type === 'GROUP' && n.bool ? String(n.bool) : null, 'aria-selected': String(isSel), 'aria-level': String(r.depth + 1), 'aria-expanded': r.has ? String(r.open) : null, 'data-id': r.id, style: {top: (i * H) + 'px', paddingLeft: (6 + r.depth * 14) + 'px'}},
         r.has ? h('button', {class: 'hd-lcaret' + (r.open ? ' open' : ''), type: 'button', tabIndex: -1, 'aria-label': r.open ? 'Collapse' : 'Expand'}, icon('right', 10)) : h('span', {class: 'hd-lcaret none'}),
         h('span', {class: 'hd-ltype', title: 'Double-click to zoom to this layer'}, icon(img ? 'image' : TYPE_ICON[n.type] || 'rect', 14)),
         h('span', {class: 'hd-lname', text: n.name || n.type}),
@@ -664,7 +667,11 @@
     if (all(['TEXT'])) secText(el, ids);
     if (!all(['GROUP']) || ids.length > 1) { secPaints(el, ids, 'fills', 'Fill'); secPaints(el, ids, 'strokes', 'Stroke'); }
     secEffects(el, ids); secExport(el, ids);
+    for (const f of designSecs) { try { f(el, ids); } catch (e) { if (window.console) console.error(e); } }
   }
+  /* designSection(fn(el, ids)): a later phase adds its own section to the Design panel (built with HD.ui.section) */
+  const designSecs = [];
+  function designSection(fn) { if (typeof fn === 'function') { designSecs.push(fn); ui.sig = ''; refresh(); } }
   function typeLabel(t) { return ({RECT: 'Rectangle', ELLIPSE: 'Ellipse', LINE: 'Line', POLYGON: 'Polygon', STAR: 'Star', VECTOR: 'Vector', TEXT: 'Text', FRAME: 'Frame', GROUP: 'Group', SECTION: 'Section', COMPONENT: 'Component', COMPONENT_SET: 'Component set', INSTANCE: 'Instance'})[t] || 'Layer'; }
   function colorLine(o) {   /* swatch + hex + opacity for one paint; o: {get, set(p, g), title, solidOnly, remove, hide} */
     const sw = h('button', {class: 'hd-sw big', type: 'button', title: 'Change the colour', 'aria-label': (o.title || 'Colour') + ': change'}), hex = h('input', {class: 'hd-in hd-hex', type: 'text', 'aria-label': (o.title || 'Colour') + ' hex', spellcheck: 'false', maxlength: '24'}), op = h('input', {class: 'hd-in hd-opin', type: 'text', 'aria-label': (o.title || 'Colour') + ' opacity', inputmode: 'decimal'});
@@ -979,15 +986,20 @@
       window.addEventListener('keydown', onKey); document.addEventListener('copy', onCopy); document.addEventListener('cut', onCopy); document.addEventListener('paste', onPaste);
       window.addEventListener('resize', sizeMode); window.addEventListener('dragover', ev => { if (ui.mounted && ev.dataTransfer && Array.from(ev.dataTransfer.types || []).indexOf('Files') >= 0) ev.preventDefault(); }); window.addEventListener('drop', onDrop);
       if (window.HoolaTheme) window.HoolaTheme.onChange(() => { if (ui.mounted) HD.render.invalidate(); });
-      if (!commands.length) defaultCommands(); }
+      }
     sizeMode(); paintAll(); ui.canvas.focus({preventScroll: true});
   }
   function unmount() { if (!ui.mounted) return; closePops(0); closeModal(); if (T().text && T().text.el) T().text.commit(); ui.mounted = false; if (ui.root) { clear(ui.root); ui.root.classList.remove('hd-editor', 'hd-noui', 'hd-small'); } ui.root = null; for (const f of offs.splice(0)) f(); }
 
+  /* The built-in commands exist from load, BEFORE any feature file adds its own: a feature file that calls
+     HD.ui.command() while loading used to leave the editor without every default shortcut (the old test was
+     "no command yet"), and a feature's shortcut now wins over a default on the same keys. */
+  defaultCommands();
+
   HD.ui = {
     mount: mount, unmount: unmount, toast: toast, refresh: refresh, api: api, esc: esc,
     registerPanel: registerPanel, registerMenu: registerMenu, registerShortcut: registerShortcut, command: command, run: runCmd,
-    hook: hook, fire: fire, hooks: hooks, contextMenu: contextMenu, menu: menu, pop: pop, closePops: closePops, palette: palette, shortcuts: shortcutSheet,
+    hook: hook, fire: fire, hooks: hooks, designSection: designSection, contextMenu: contextMenu, menu: menu, pop: pop, closePops: closePops, palette: palette, shortcuts: shortcutSheet,
     icon: icon, h: h, clear: clear, numField: numField, select: select, seg: seg, section: section, row: row, colorLine: colorLine, paintPicker: paintPicker,
     loadFont: loadFont, fonts: FONTS, setPage: setPage, renameLayer: renameLayer, revealLayers(ids) { reveal([].concat(ids)); layersPaint(); }, uploadImage: uploadImage, keysLabel: keysLabel, modal: openModal, closeModal: closeModal, MIXED: MIXED,
     get token() { return TOKEN; }, get mounted() { return ui.mounted; }, state: ui

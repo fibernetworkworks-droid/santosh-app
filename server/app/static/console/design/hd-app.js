@@ -1,18 +1,38 @@
 /* HOOLA DESIGN - the app (docs/HOOLA_DESIGN_PLAN.md, section 3: HD.app).
    Signs in with the console's token, routes  #/  (your files)  and  #/f/<file id>  (the editor), opens a file
    (file row -> live room -> first document -> editor), keeps the file's thumbnail fresh and guards changes that
-   have not reached the server yet. Later phases add feature files after this one and plug in through HD.ui. */
+   have not reached the server yet. Later phases add feature files after this one and plug in through HD.ui.
+   Phase D5:  #/s/<share token>  opens a VIEW-ONLY editor with no sign-in at all (the public /shared routes and
+   the ?share= socket; while it is open every other /api call is answered here with a 403, so nothing can send a
+   signed-out visitor to the sign-in page); "?node=<id>" after either address selects that layer and zooms to it;
+   on('open' | 'close', fn(file)) tells feature files when an editor is mounted / about to go. */
 (function () {
   'use strict';
   const HD = window.HD = window.HD || {};
   const ui = HD.ui, h = ui.h, icon = ui.icon, clear = ui.clear;
-  const app = HD.app = {file: null, boot: boot, openFile: openFile, closeFile: closeFile, route: route, home: showHome, saveThumb: saveThumb};
-  let root = null, opening = 0, wired = false, thumbT = 0, thumbDirty = false, editorEl = null, lastThumb = null;
+  const em = new HD.Emitter(), rawFetch = window.fetch.bind(window);
+  const app = HD.app = {file: null, boot: boot, openFile: openFile, openShared: openShared, closeFile: closeFile, route: route, home: showHome, saveThumb: saveThumb, focusNode: focusNode,
+    on: (evt, fn) => em.on(evt, fn), rawFetch: rawFetch, link: link};
+  let root = null, opening = 0, wired = false, thumbT = 0, thumbDirty = false, editorEl = null, lastThumb = null, shared = null;
   const enc = encodeURIComponent;
+  const SHARE_RE = /^#\/s\/([^/?#]+)(?:\/p\/([^/?#]+))?/;
+  const hashNode = () => { const m = /[?&]node=([^&#]+)/.exec(location.hash || ''); try { return m ? decodeURIComponent(m[1]) : null; } catch (e) { return null; } };
+  /* the address of this file (or of one layer in it): signed-in people get #/f/<id>, a share link stays #/s/<token> */
+  function link(node, token) { const f = app.file; if (!f) return ''; const t = token === undefined ? f.share : token;
+    return location.origin + location.pathname + (t ? '#/s/' + enc(t) : '#/f/' + enc(f.id)) + (node ? '?node=' + enc(node) : ''); }
+  /* While a share link is open, nothing but the public /shared routes may be asked of the server: a signed-out
+     visitor would get a 401, and HD.ui.api answers a 401 by leaving for the sign-in page. Every other /api call
+     is answered right here instead, whoever makes it. */
+  window.fetch = function (input, init) {
+    if (shared) { let path = typeof input === 'string' ? input : (input && input.url) || ''; try { path = new URL(path, location.href).pathname; } catch (e) { /* keep it */ }
+      if (/^\/api\//.test(path) && !/^\/api\/design\/shared\//.test(path)) return Promise.resolve(new Response(JSON.stringify({detail: 'This is a view-only link. Sign in to do that.'}), {status: 403, headers: {'Content-Type': 'application/json'}})); }
+    return rawFetch(input, init);
+  };
+  function sharedMode(token) { shared = token || null; if (HD.render) HD.render.assetURL = token ? (hash => '/api/design/shared/' + enc(token) + '/assets/' + enc(hash)) : null; }
 
   function boot() {
     root = document.getElementById('hd-app'); if (!root) { root = h('div', {id: 'hd-app'}); document.body.appendChild(root); }
-    if (!ui.token) { location.replace('/console/'); return; }
+    if (!ui.token && !SHARE_RE.test(location.hash || '')) { location.replace('/console/'); return; }
     window.addEventListener('hashchange', route);
     window.addEventListener('beforeunload', ev => { if (!app.file) return; if (thumbDirty) saveThumb(true);
       if (HD.net && HD.net.pending && HD.net.pending() > 0 && HD.store && !HD.store.readOnly) { ev.preventDefault(); ev.returnValue = 'Some changes have not reached the server yet.'; } });
@@ -20,11 +40,26 @@
     route();
   }
   function route() {
+    const sm = SHARE_RE.exec(location.hash || '');
+    if (sm) { let token = sm[1], play = sm[2] || null; try { token = decodeURIComponent(token); if (play) play = decodeURIComponent(play); } catch (e) { /* as typed */ }
+      if (app.file && app.file.share === token) { if (play) ui.fire('present', play); else focusNode(hashNode()); return; }
+      openShared(token).then(ok => { if (ok && play && ui.hooks.present) ui.fire('present', play); }); return; }
+    if (!ui.token) { location.replace('/console/'); return; }      /* signed out, and not a share link */
     const m = /^#\/f\/([^/?#]+)(?:\/p\/([^/?#]+))?/.exec(location.hash || '');
     if (!m) { closeFile(); showHome(); return; }
     const id = decodeURIComponent(m[1]), node = m[2] ? decodeURIComponent(m[2]) : null;
-    if (app.file && app.file.id === id) { if (node) ui.fire('present', node); return; }
+    if (app.file && app.file.id === id && !app.file.share) { if (node) ui.fire('present', node); else focusNode(hashNode()); return; }
     openFile(id).then(ok => { if (ok && node && ui.hooks.present) ui.fire('present', node); });
+  }
+  /* select one layer and bring it into view (the "?node=" of a copied link) */
+  function focusNode(id) {
+    if (!id || !app.file || !HD.store.has(id)) return false; const st = HD.store, n = st.get(id); if (!n || n.type === 'DOCUMENT') return false;
+    const pg = n.type === 'PAGE' ? id : st.pageOf(id); if (pg && pg !== HD.sel.page) { if (ui.setPage) ui.setPage(pg); else HD.sel.setPage(pg); }
+    if (n.type === 'PAGE') { try { HD.render.zoomToFit(undefined, true); } catch (e) { /* empty page */ } return true; }
+    HD.sel.set([id]); if (ui.revealLayers) { try { ui.revealLayers([id]); } catch (e) { /* the layers list is not up yet */ } }
+    const cv = HD.tools.canvas, b = st.worldBounds(id); if (!cv || !b || !(b.w > 0) || !(b.h > 0)) return true;
+    const z = Math.max(0.02, Math.min(1, Math.min(cv.clientWidth / b.w, cv.clientHeight / b.h) * 0.82));
+    HD.render.setView(HD.tools.view.at(z, b.x + b.w / 2, b.y + b.h / 2, cv.clientWidth / 2, cv.clientHeight / 2), true); return true;
   }
 
   /* ---------------------------------------------------------------- opening a file */
@@ -33,10 +68,30 @@
     clear(root); root.appendChild(h('div', {class: 'hd-home'}, h('div', {class: 'hd-empty', role: 'alert'}, h('div', {class: 'hd-art', 'aria-hidden': 'true'}, h('i'), h('i'), h('i'), h('i'), h('i'), h('i')), h('h2', {text: title}), h('p', {text: text}),
       h('button', {class: 'hd-btn pri big', type: 'button', text: 'Back to your files', on: {click: () => { location.hash = '#/'; }}}))));
   }
-  function waitInit(id) {
+  /* a share link that does not open: a page that says so, never a blank screen and never the sign-in wall */
+  function sharedProblem(title, text, again) {
+    clear(root); document.title = 'Hoola Design'; root.appendChild(h('div', {class: 'hd-home'}, h('div', {class: 'hd-empty hd-co-gone', role: 'alert'}, h('div', {class: 'hd-art', 'aria-hidden': 'true'}, h('i'), h('i'), h('i'), h('i'), h('i'), h('i')), h('h2', {text: title}), h('p', {text: text}),
+      h('div', {class: 'hd-co-gone-acts'}, again ? h('button', {class: 'hd-btn big', type: 'button', text: 'Try again', on: {click: again}}) : null,
+        h('a', {class: 'hd-btn pri big', href: '/console/', text: ui.token ? 'Open Hoola' : 'Sign in to Hoola'})))));
+  }
+  function waitInit(id, opts) {
     return new Promise(resolve => { let done = false; const offs = []; const fin = v => { if (done) return; done = true; for (const o of offs) { try { if (typeof o === 'function') o(); } catch (e) { /* listener already gone */ } } resolve(v); };
       offs.push(HD.net.on('init', () => fin('live'))); offs.push(HD.net.on('status', s => { if (s === 'auth' || s === 'forbidden' || s === 'notfound') fin(s); }));
-      try { HD.net.connect(id); } catch (e) { fin('offline'); } setTimeout(() => fin('offline'), 9000); });
+      try { HD.net.connect(id, opts); } catch (e) { fin('offline'); } setTimeout(() => fin('offline'), 9000); });
+  }
+  async function openShared(token) {
+    shut(); const my = ++opening; loading('Opening the shared design…'); let d = null, why = '';
+    try { const r = await rawFetch('/api/design/shared/' + enc(token) + '/doc', {credentials: 'omit', cache: 'no-store'});
+      if (r.ok) d = await r.json(); else why = r.status === 429 ? 'busy' : r.status === 404 || r.status === 422 ? 'gone' : 'down'; } catch (e) { why = 'down'; }
+    if (my !== opening) return false;
+    if (!d || !d.doc) { if (why === 'gone') sharedProblem('This link is not active', 'The owner may have switched the link off, or the file is no longer there. Ask them to share it again.');
+      else if (why === 'busy') sharedProblem('Too many requests', 'This link was opened very often in the last minute. Please wait a minute and try again.', () => openShared(token));
+      else sharedProblem('The shared design could not be opened', 'The server did not answer. Check your connection and try again.', () => openShared(token)); return false; }
+    const info = d.file || {}; app.file = {id: info.id || '', name: info.name || 'Untitled', role: 'view', share: token}; sharedMode(token);
+    const state = await waitInit(app.file.id, {share: token}); if (my !== opening) return false;
+    if (state === 'notfound' || state === 'auth' || state === 'forbidden') { app.file = null; HD.net.close(); sharedMode(null); sharedProblem('This link is not active', 'The owner may have switched the link off, or the file is no longer there. Ask them to share it again.'); return false; }
+    if (state !== 'live') { HD.store.load(d.doc, 0); HD.tools.readOnly = true; }     /* no live room right now: what the link showed a moment ago */
+    mountEditor(my); return true;
   }
   async function openFile(id) {
     shut(); const my = ++opening; loading('Opening your design…'); let meta;
@@ -50,34 +105,42 @@
       try { const d = await ui.api('GET', '/files/' + enc(app.file.id) + '/doc'); if (my !== opening) return false; HD.store.load(d.doc || {nodes: {}}, 0); HD.tools.readOnly = true; }
       catch (e) { if (my === opening) { app.file = null; HD.net.close(); problem('This file could not be opened', e.message || 'The server did not answer. Please try again.'); } return false; }
     }
+    mountEditor(my); return true;
+  }
+  function mountEditor(my) {
     syncRole(); wire(); clear(root); editorEl = h('div', {class: 'hd-editor-host', style: {height: '100%'}}); root.appendChild(editorEl); ui.mount(editorEl);
-    document.title = app.file.name + ' – Hoola Design'; thumbDirty = false;
-    requestAnimationFrame(() => { if (my !== opening || !app.file) return; try { HD.render.zoomToFit(undefined, false); } catch (e) { /* an empty page */ } loadFonts(); ui.refresh(); });
-    return true;
+    document.title = app.file.name + ' – Hoola Design'; thumbDirty = false; const node = hashNode();
+    em.emit('open', app.file);
+    requestAnimationFrame(() => { if (my !== opening || !app.file) return; try { HD.render.zoomToFit(undefined, false); } catch (e) { /* an empty page */ } if (node) focusNode(node); loadFonts(); ui.refresh(); });
   }
   function syncRole() { if (!app.file) return; const nf = HD.net.file; if (nf && nf.name) app.file.name = nf.name; if (HD.net.role) { app.file.role = HD.net.role === 'view' ? 'view' : 'edit'; HD.tools.readOnly = false; }
     if (app.file.role === 'view' && HD.tools.current && !{move: 1, hand: 1, comment: 1, zoom: 1}[HD.tools.current]) HD.tools.set('move'); }
   function wire() {
     if (wired) return; wired = true;
     HD.net.on('init', () => { if (!app.file) return; syncRole(); document.title = app.file.name + ' – Hoola Design'; loadFonts(); ui.refresh(); });
-    HD.net.on('status', s => { if (!app.file) return; if (s === 'auth') location.replace('/console/'); else if (s === 'notfound') { const was = app.file; closeFile(); problem('This file is no longer here', '“' + was.name + '” was moved to the trash or deleted.'); } else if (s === 'forbidden') { app.file.role = 'view'; ui.refresh(); } });
+    HD.net.on('status', s => { if (!app.file) return; const was = app.file;
+      if (was.share) { if (s === 'notfound' || s === 'auth') { closeFile(); sharedProblem('This link was switched off', 'The owner stopped sharing “' + was.name + '”, or the file is no longer there. Ask them to share it again.'); } return; }
+      if (s === 'auth') location.replace('/console/'); else if (s === 'notfound') { closeFile(); problem('This file is no longer here', '“' + was.name + '” was moved to the trash or deleted.'); } else if (s === 'forbidden') { app.file.role = 'view'; ui.refresh(); } });
     HD.net.on('file', f => { if (app.file && f && f.name) document.title = f.name + ' – Hoola Design'; });
     HD.net.on('reject', () => ui.toast('The server did not accept one change, so it was taken back.', true));
-    HD.store.on('change', ch => { if (!app.file || (ch && ch.remote)) return; thumbDirty = true; clearTimeout(thumbT); thumbT = setTimeout(() => saveThumb(false), 30000); });
+    HD.store.on('change', ch => { if (!app.file || app.file.share || (ch && ch.remote)) return; thumbDirty = true; clearTimeout(thumbT); thumbT = setTimeout(() => saveThumb(false), 30000); });
   }
   function loadFonts() { const seen = new Set(); let n = 0; for (const p of HD.store.pages()) HD.store.walk(p, (id, node) => { if (++n > 20000) return false; if (node && node.type === 'TEXT') seen.add(node.font || 'Inter'); return true; }); seen.forEach(f => ui.loadFont(f)); }
   function closeFile() { opening++; shut(); }
   function shut() {
-    clearTimeout(thumbT); if (!app.file) return; if (thumbDirty) lastThumb = saveThumb(false);
+    clearTimeout(thumbT); if (!app.file) { sharedMode(null); return; } if (thumbDirty) lastThumb = saveThumb(false);
+    try { em.emit('close', app.file); } catch (e) { /* a listener must not keep a file open */ }
     try { ui.unmount(); } catch (e) { /* not mounted */ } try { HD.net.close(); } catch (e) { /* not connected */ }
-    app.file = null; editorEl = null; HD.tools.readOnly = false; document.title = 'Hoola Design';
+    sharedMode(null); app.file = null; editorEl = null; HD.tools.readOnly = false; document.title = 'Hoola Design';
   }
 
   /* ---------------------------------------------------------------- thumbnail (the first frame, else the first layer) */
   function thumbTarget() { const pages = HD.store.pages(); for (const p of pages) { const kids = HD.store.children(p); if (!kids.length) continue; const frame = kids.find(k => { const n = HD.store.get(k); return n && (n.type === 'FRAME' || n.type === 'COMPONENT') && n.visible !== false; }); return frame || kids[0]; } return null; }
   function toBlob(cv) { return new Promise(resolve => { try { cv.toBlob(b => resolve(b), 'image/png'); } catch (e) { resolve(null); } }); }
   async function saveThumb(leaving) {
-    const f = app.file; if (!f || f.role === 'view' || !HD.render || !HD.render.toCanvas) return; thumbDirty = false; clearTimeout(thumbT);
+    const f = app.file; if (!f || f.role === 'view' || f.share || !HD.render || !HD.render.toCanvas) return;
+    if (HD.net && HD.net.held) { if (!leaving) { clearTimeout(thumbT); thumbT = setTimeout(() => saveThumb(false), 30000); } return; }   /* a version preview is on screen: never the file's picture */
+    thumbDirty = false; clearTimeout(thumbT);
     try { const id = thumbTarget(); if (!id) return; const b = HD.store.worldBounds(id), side = Math.max(b.w, b.h, 1); let scale = Math.min(1, 480 / side), blob = null;
       for (let i = 0; i < 4; i++) { const cv = HD.render.toCanvas(id, scale, {bg: '#FFFFFF'}); if (!cv || !cv.width || !cv.height) return; blob = await toBlob(cv); if (blob && blob.size <= 290 * 1024) break; scale *= 0.6; blob = null; }
       if (!blob) return;

@@ -1,1 +1,138 @@
-/* HOOLA DESIGN - styles for hd-collab.js (D5 together). */
+/* HOOLA DESIGN - styles for hd-collab.js (D5 together): comments, version history, share, follow + presence.
+   Same tokens and rules as design.css: one sans, nothing under 12px, no weight above 600, no all-caps, a solid
+   background under every text. The pins themselves are drawn on the canvas, not here. */
+.hd-co-offscreen{position:fixed;left:-9999px;top:0;width:10px;height:10px;opacity:0}
+.hd-co-av{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;flex:none;font-size:12px;font-weight:600;color:#fff;line-height:1}
+.hd-co-av.sm{width:20px;height:20px}
+.hd-co-at{color:var(--pri-ink);background:var(--pri-soft);border-radius:4px;padding:0 3px;font-weight:500}
+
+/* ---------- the writing box ---------- */
+.hd-co-writer{display:flex;flex-direction:column;gap:6px;min-width:0}
+.hd-co-ta{display:block;width:100%;min-height:34px;max-height:160px;resize:none;background:var(--sunk);border:1px solid transparent;border-radius:8px;padding:7px 9px;font-size:13px;line-height:1.45;color:var(--ink)}
+.hd-co-ta:hover{border-color:var(--hair2)}
+.hd-co-ta:focus{outline:none;border-color:var(--pri);background:var(--surface)}
+.hd-co-ta::placeholder{color:var(--dim)}
+.hd-co-wfoot{display:flex;align-items:center;gap:6px;min-width:0}
+.hd-co-hint{flex:1;min-width:0;font-size:12px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hd-co-ats{display:flex;flex-direction:column;gap:1px;padding:4px;border:1px solid var(--hair);border-radius:9px;background:var(--surface);box-shadow:var(--sh2)}
+.hd-co-atb{display:flex;align-items:center;gap:8px;height:30px;padding:0 7px;border-radius:6px;font-size:13px;color:var(--ink);text-align:left}
+.hd-co-atb.cur,.hd-co-atb:hover{background:var(--sunk)}
+
+/* ---------- a thread by its pin ---------- */
+.hd-co-pop{width:316px;padding:0;overflow:visible}
+.hd-co-thread{display:flex;flex-direction:column;max-height:min(520px,calc(100vh - 32px))}
+.hd-co-thread.new{padding:10px}
+.hd-co-thead{display:flex;align-items:center;gap:6px;height:40px;padding:0 6px 0 12px;border-bottom:1px solid var(--line);flex:none}
+.hd-co-ttitle{font-size:13px;font-weight:600;color:var(--ink)}
+.hd-co-chip{font-size:12px;font-weight:500;padding:1px 7px;border-radius:999px;background:var(--sunk);color:var(--mut)}
+.hd-co-chip.ok{background:var(--ok-soft);color:var(--ok)}
+.hd-co-msgs{overflow:auto;padding:6px 0;min-height:0}
+.hd-co-msg{display:flex;gap:9px;padding:7px 10px 7px 12px}
+.hd-co-mbody{flex:1;min-width:0}
+.hd-co-mhead{display:flex;align-items:center;gap:7px;min-height:24px}
+.hd-co-who{font-size:13px;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.hd-co-when{font-size:12px;color:var(--dim);white-space:nowrap;flex:none}
+.hd-co-text{font-size:13px;line-height:1.5;color:var(--ink);white-space:pre-wrap;overflow-wrap:anywhere;user-select:text}
+.hd-co-more{opacity:0}
+.hd-co-msg:hover .hd-co-more,.hd-co-more:focus-visible,.hd-co-more[aria-expanded="true"]{opacity:1}
+.hd-co-thread > .hd-co-writer{padding:8px 10px 10px;border-top:1px solid var(--line);flex:none}
+.hd-co-ro{padding:10px 12px 12px;border-top:1px solid var(--line);font-size:12.5px;color:var(--mut);line-height:1.45}
+.hd-co-ro a{color:var(--pri-ink);font-weight:500}
+
+/* ---------- the Comments tab + the History tab ---------- */
+.hd-co-phead{display:flex;align-items:center;gap:6px;padding:8px 8px 8px 10px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--side-bg);z-index:1}
+.hd-co-ptitle{font-size:13px;font-weight:600;color:var(--ink);padding-left:2px}
+.hd-co-filter{flex:1;min-width:0}
+.hd-co-filter .hd-segb{flex:1;padding:0 6px;white-space:nowrap}
+.hd-co-list{padding:4px}
+.hd-co-empty{display:flex;flex-direction:column;align-items:center;gap:8px;padding:34px 16px;text-align:center;color:var(--dim)}
+.hd-co-empty p{font-size:13px;color:var(--mut)}
+.hd-co-empty .hd-note{color:var(--dim)}
+.hd-co-row{display:flex;gap:9px;width:100%;padding:9px 8px;border-radius:9px;text-align:left;align-items:flex-start}
+.hd-co-row:hover{background:var(--sunk)}
+.hd-co-row.on{background:var(--pri-soft)}
+.hd-co-rbody{display:flex;flex-direction:column;gap:2px;flex:1;min-width:0}
+.hd-co-rhead{display:flex;align-items:center;gap:6px;min-width:0}
+.hd-co-dot{width:8px;height:8px;border-radius:50%;background:var(--saf);flex:none;margin-left:auto}
+.hd-co-rtext{font-size:13px;line-height:1.4;color:var(--lit);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
+.hd-co-row.unread .hd-co-rtext{color:var(--ink);font-weight:500}
+.hd-co-rmeta{font-size:12px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+.hd-co-vact{padding:10px 10px 4px}
+.hd-co-wide{width:100%;justify-content:center}
+.hd-co-vform{display:flex;flex-direction:column;gap:6px;padding:10px 10px 6px}
+.hd-co-vlist{padding:6px 4px 12px}
+.hd-co-vday{font-size:12px;font-weight:500;color:var(--dim);padding:12px 8px 4px}
+.hd-co-vrow{display:flex;gap:10px;align-items:flex-start;width:100%;padding:8px 6px 8px 8px;border-radius:9px;text-align:left}
+.hd-co-vrow:hover:not(:disabled){background:var(--sunk)}
+.hd-co-vrow.on{background:var(--pri-soft)}
+.hd-co-vrow:disabled{opacity:.6;cursor:default}
+.hd-co-vdot{width:9px;height:9px;border-radius:50%;margin-top:5px;flex:none;background:var(--pri)}
+.hd-co-vrow.auto .hd-co-vdot{background:transparent;box-shadow:inset 0 0 0 1.5px var(--dim)}
+.hd-co-vdot.live{background:var(--ok)}
+.hd-co-vbody{display:flex;flex-direction:column;gap:1px;flex:1;min-width:0}
+.hd-co-vname{font-size:13px;font-weight:500;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hd-co-vrow.auto .hd-co-vname{font-weight:400;color:var(--lit)}
+.hd-co-vmeta{font-size:12px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hd-co-vnote{font-size:12.5px;color:var(--mut);line-height:1.4;margin-top:2px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
+.hd-co-vmore{opacity:0}
+.hd-co-vrow:hover .hd-co-vmore,.hd-co-vrow.on .hd-co-vmore,.hd-co-vmore:focus-visible{opacity:1}
+
+/* the bar over the canvas while an old version is on screen (the "view only" banner steps aside) */
+.hd-co-previewing .hd-banner{display:none !important}
+.hd-co-previewing .hd-stage{box-shadow:inset 0 0 0 3px var(--saf)}
+.hd-co-vbar{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:4;display:flex;align-items:center;gap:8px;padding:6px 6px 6px 12px;border-radius:12px;background:var(--surface);border:1px solid var(--hair);box-shadow:var(--sh);max-width:calc(100% - 24px);color:var(--mut)}
+.hd-co-vtext{font-size:13px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:60px;margin-right:4px}
+.hd-co-vtext b{font-weight:600}
+.hd-co-vwhen{color:var(--mut)}
+
+/* ---------- dialogs: share, restore, the copy that was made ---------- */
+.hd-co-dialog{width:min(480px,100%)}
+.hd-co-dhead{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 12px 10px 18px;border-bottom:1px solid var(--line)}
+.hd-co-dhead h2{font-size:16px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.hd-co-dbody{padding:14px 18px 16px;display:flex;flex-direction:column;gap:10px;overflow:auto;font-size:13px;line-height:1.5;color:var(--ink)}
+.hd-co-dbody p{color:var(--lit)}
+.hd-co-dbody p b{font-weight:600;color:var(--ink)}
+.hd-co-dfoot{display:flex;justify-content:flex-end;align-items:center;gap:8px;padding:10px 14px 14px}
+.hd-co-dfoot.flat{padding:2px 0 0;justify-content:flex-start}
+.hd-co-lead{color:var(--ink) !important}
+.hd-co-sub{font-size:12.5px;color:var(--mut) !important;margin-top:2px}
+.hd-co-linkrow{display:flex;gap:6px;align-items:center}
+.hd-co-url{height:32px;font-size:12.5px;font-family:var(--mono)}
+.hd-co-linkrow .hd-btn{height:32px}
+.hd-co-sharehead{display:flex;gap:12px;align-items:flex-start}
+.hd-co-shareic{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;background:var(--sunk);color:var(--mut);flex:none}
+.hd-co-shareic.on{background:var(--ok-soft);color:var(--ok)}
+.hd-co-sharetext{display:flex;flex-direction:column;gap:2px;min-width:0}
+.hd-co-sharetext b{font-size:14px;font-weight:600;color:var(--ink)}
+.hd-co-sharetext span{font-size:12.5px;color:var(--mut);line-height:1.45}
+.hd-co-sep{height:1px;background:var(--line);margin:4px 0}
+.hd-co-err{font-size:12.5px;color:var(--bad)}
+.hd-btn.danger{color:var(--bad)}
+.hd-btn.danger:hover:not(:disabled){background:rgb(var(--bad-rgb) / .1);border-color:rgb(var(--bad-rgb) / .4)}
+a.hd-btn{text-decoration:none}
+
+/* ---------- people: idle, following, spotlight, cursor chat ---------- */
+.hd-person{cursor:pointer;transition:opacity .2s var(--ease)}
+.hd-person.hd-co-idle{opacity:.42}
+.hd-person.hd-co-on{box-shadow:0 0 0 2px var(--surface),0 0 0 4px var(--co,var(--pri))}
+.hd-co-follow{position:absolute;inset:0;z-index:2;pointer-events:none;box-shadow:inset 0 0 0 3px var(--co,var(--pri))}
+.hd-co-fchip{pointer-events:auto;position:absolute;top:0;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:8px;height:28px;padding:0 6px 0 12px;border-radius:0 0 10px 10px;background:var(--co,var(--pri));color:#fff;font-size:13px;font-weight:500;max-width:calc(100% - 40px)}
+.hd-co-fname{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hd-co-fstop{font-size:12px;font-weight:600;padding:2px 8px;border-radius:6px;background:rgb(0 0 0 / .26);flex:none}
+.hd-co-fchip:hover .hd-co-fstop{background:rgb(0 0 0 / .42)}
+.hd-co-spot{position:absolute;top:52px;left:50%;transform:translateX(-50%);z-index:4;display:flex;align-items:center;gap:9px;padding:7px 7px 7px 10px;border-radius:12px;background:var(--surface);border:1px solid var(--hair);box-shadow:var(--sh);max-width:calc(100% - 24px)}
+.hd-co-spottext{font-size:13px;color:var(--lit);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.hd-co-spottext b{font-weight:600;color:var(--ink)}
+.hd-co-chat{position:fixed;z-index:70;padding:3px;border-radius:4px 14px 14px 14px;background:var(--co,var(--pri));box-shadow:var(--sh2)}
+.hd-co-chatin{display:block;width:150px;max-width:360px;height:26px;border:0;outline:none;background:transparent;color:#fff;font-size:13px;font-weight:500;padding:0 8px}
+.hd-co-chatin::placeholder{color:rgb(255 255 255 / .72)}
+.hd-co-chat.sent{pointer-events:none}
+
+/* ---------- the signed-out viewer ---------- */
+.hd-co-view{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 10px 0 8px;border-radius:999px;background:var(--pri-soft);color:var(--pri-ink);font-size:12.5px;font-weight:500;white-space:nowrap;flex:none;margin-right:4px}
+.hd-co-signin{margin-left:4px}
+.hd-co-guest .hd-top .hd-undo,.hd-co-guest .hd-top .hd-redo{display:none}
+.hd-co-gone-acts{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:6px}
+@media (max-width:1240px){ .hd-co-view span{display:none} .hd-co-view{padding:0 7px} .hd-co-vbar .hd-co-vwhen{display:none} }
+@media (max-width:1100px){ .hd-co-hint{display:none} }

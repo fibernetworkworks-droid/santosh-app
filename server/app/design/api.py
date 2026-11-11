@@ -15,7 +15,7 @@ from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel
 
 from ..config import get_settings
-from . import assets, store
+from . import assets, limits, store
 from .doc import Doc, dumps, dumps_nodes, new_document
 from .room import HUB, bg
 
@@ -37,6 +37,11 @@ class FilePatch(BaseModel):
 
 class VersionIn(BaseModel):
     label: str = ""
+    note: str = ""
+
+
+class NameIn(BaseModel):
+    name: str | None = None
 
 
 class CommentIn(BaseModel):
@@ -45,6 +50,8 @@ class CommentIn(BaseModel):
     page: str = ""
     x: float = 0.0
     y: float = 0.0
+    ox: float | None = None                # the pin's place inside `node` (its own box), so it follows the node
+    oy: float | None = None
     parent: str | None = None
 
 
@@ -200,7 +207,8 @@ def make_router(require_key: Callable, current_tenant: Callable) -> APIRouter:
     async def version_new(file_id: str, body: VersionIn | None = None, tenant: str = Depends(current_tenant)):
         seq, doc_json = _found(await HUB.read(file_id, tenant))
         count, by = await bg(_node_count, doc_json), await bg(store.who, tenant)
-        return _found(await bg(store.add_version, tenant, file_id, (body or VersionIn()).label, doc_json, seq, count, by))
+        body = body or VersionIn()
+        return _found(await bg(store.add_version, tenant, file_id, body.label, doc_json, seq, count, by, body.note))
 
     @r.get("/versions/{version_id}/doc")
     async def version_doc(version_id: str, tenant: str = Depends(current_tenant)):
@@ -221,6 +229,11 @@ def make_router(require_key: Callable, current_tenant: Callable) -> APIRouter:
             raise HTTPException(404, "File not found") from None
         return {"ok": True, "seq": new_seq, "saved": kept}
 
+    @r.post("/versions/{version_id}/duplicate")
+    async def version_duplicate(version_id: str, body: NameIn | None = None, tenant: str = Depends(current_tenant)):
+        """A NEW file that starts as this version. The file the version belongs to is not touched."""
+        return _found(await bg(store.file_from_version, tenant, version_id, (body or NameIn()).name or ""), "Version")
+
     # --------------------------------------------------------------------------------------- comments
     @r.get("/files/{file_id}/comments")
     async def comments(file_id: str, tenant: str = Depends(current_tenant)):
@@ -229,12 +242,14 @@ def make_router(require_key: Callable, current_tenant: Callable) -> APIRouter:
     @r.post("/files/{file_id}/comments")
     async def comment_new(file_id: str, body: CommentIn, tenant: str = Depends(current_tenant)):
         text = body.text.strip()
-        if not text or not (math.isfinite(body.x) and math.isfinite(body.y)):
+        inside = [v for v in (body.ox, body.oy) if v is not None]
+        if not text or not all(math.isfinite(v) for v in (body.x, body.y, *inside)):
             raise HTTPException(400, "A comment needs some text and a place on the page.")
+        limits.COMMENTS.check(tenant)
         by = await bg(store.who, tenant)
         try:
             out = _found(await bg(store.add_comment, tenant, file_id, by, text, body.node, body.page, body.x, body.y,
-                                  body.parent))
+                                  body.parent, body.ox, body.oy))
         except ValueError as e:
             raise HTTPException(400, str(e)) from None
         HUB.tell(file_id, dumps({"t": "comment", "action": "add", "comment": out}))
@@ -245,6 +260,8 @@ def make_router(require_key: Callable, current_tenant: Callable) -> APIRouter:
         text = body.text.strip() if body.text is not None else None
         if text == "":
             raise HTTPException(400, "A comment can not be empty; delete it instead.")
+        if text is not None:
+            limits.COMMENTS.check(tenant)
         out = _found(await bg(store.patch_comment, tenant, comment_id, text, body.resolved), "Comment")
         HUB.tell(out["file"], dumps({"t": "comment", "action": "update", "comment": out}))
         return out
@@ -279,26 +296,46 @@ def make_router(require_key: Callable, current_tenant: Callable) -> APIRouter:
         role = (body or ShareIn()).role
         if role not in ("view", "none"):
             raise HTTPException(400, 'role is "view" or "none"')
-        return _found(await bg(store.set_share, tenant, file_id, role))
+        out = _found(await bg(store.set_share, tenant, file_id, role))
+        if role == "none":
+            HUB.unshared(file_id)                        # the guests who came in through the link leave now
+        return out
 
     @pub.get("/shared/{token}/doc", dependencies=[Depends(_on)])
-    async def shared_doc(token: str):
+    async def shared_doc(token: str, request: Request):
         """The public, read-only door of a share link."""
+        limits.SHARED_READS.check(f"{token[:64]}|{limits.caller(request)}")
         target = _found(await bg(store.share_target, token), "Shared file")
         seq, doc_json = _found(await HUB.read(target["file"], None), "Shared file")
         info = dumps({"id": target["file"], "name": target["name"], "role": "view"})
         return _doc_response(seq, doc_json, f',"file":{info}')
 
+    @pub.get("/shared/{token}/comments", dependencies=[Depends(_on)])
+    async def shared_comments(token: str, request: Request):
+        """The comments of a shared file, to READ: a guest can not write, change or resolve one."""
+        limits.SHARED_READS.check(f"{token[:64]}|{limits.caller(request)}")
+        target = _found(await bg(store.share_target, token), "Shared file")
+        return {"comments": await bg(store.list_comments, None, target["file"])}
+
     @pub.get("/shared/{token}/assets/{sha}", dependencies=[Depends(_on)])
-    async def shared_asset(token: str, sha: str):
+    async def shared_asset(token: str, sha: str, request: Request):
         """The images a shared file draws (the viewer has no key for /assets)."""
+        limits.SHARED_IMAGES.check(f"{token[:64]}|{limits.caller(request)}")
         target = _found(await bg(store.share_target, token), "Shared file")
         return await bg(_asset, target["tenant"], sha)
 
     # --------------------------------------------------------------------------------------------- AI
-    # HOOK (phase D5, added by another phase): POST /files/{file_id}/ai {prompt, page, x, y}.
-    # It must build ops and hand them to `await HUB.apply_ops(file_id, tenant, ops)` - never write the document
-    # itself - with node ids minted under `await HUB.new_cid(file_id)`, so every open editor sees the result.
+    @r.post("/files/{file_id}/ai")
+    async def ai_design(file_id: str, body: dict, tenant: str = Depends(current_tenant)):
+        """"Ask Hoola" (phase D5): {prompt, page, x, y, mode: "new" | "edit", selection: [ids], preset?, brand?,
+        variant?} -> a designed frame, or a change to the selected layers. design/ai.py makes the ops (the model
+        only ever writes a validated spec) and applies them THROUGH the room with ids minted under HUB.new_cid, so
+        every open editor sees the result appear. Answers the new root ids: the caller's "Remove" deletes them."""
+        from . import ai
+        try:
+            return await ai.from_request(tenant, file_id, body)
+        except ai.AiError as e:
+            raise HTTPException(e.status, str(e)) from None
 
     # -------------------------------------------------------------------------------------- WebSocket
     @pub.websocket("/ws")
