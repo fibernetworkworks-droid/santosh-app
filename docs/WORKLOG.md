@@ -2987,3 +2987,9 @@ Task ID: v0.816.0 NATIJA KHATA (HOOLA PROMPTING P4; built as 0.806, main had mov
 Ask: "GO" after P1-P3 went live.
 Built: prompting/ledger.py (prompt_runs, prompt_prefs; shape only), 7 ledger routes, hooks in sites / Create image / Script writer / chat, Results tab, recipe order by kept rate; 14 tests incl. a browser walk.
 Deploy: vps-ops deploy (server-only; no new pip; two new tables self-heal). Not verified live. Next: P5 on her GO.
+
+---
+Task ID: v0.819.0 WHITEBOOKS PASTE CHECK (built as 0.814)
+Task: owner ran vps-ops wb_check (run 42986671553): all keys set, every product refused WB_ERR_9001.
+Work Log: requests re-read against the specs (match); values cleaned before use; wb_check prints a paste check (no values) + an activation hint; EWB refusal named; 2 tests.
+Stage Summary: on branch claude/exciting-hawking-113x8i. Next: she re-checks the paste lines / asks WhiteBooks to activate sandbox access, then wb_check again.

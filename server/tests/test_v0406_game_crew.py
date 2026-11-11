@@ -22,7 +22,7 @@ def cw(st, monkeypatch):  # noqa: F811
 def test_roster_is_a_whole_studio(env):
     from app.gamedesk import crew as C
     r = C.roster()
-    assert r["count"] == 49 and [len(t["roles"]) for t in r["tiers"]] == [3, 8, 23, 15]
+    assert r["count"] == 57 and [len(t["roles"]) for t in r["tiers"]] == [3, 8, 23, 23]   # v0.814 +8 engine roles (The Agency)
     assert {"creative_director", "technical_director", "producer"} == {k for k, v in C.ROLES.items() if v["tier"] == C.D}
     for k, v in C.ROLES.items():
         assert not v["lead"] or v["lead"] in C.ROLES, k
@@ -178,13 +178,13 @@ def test_tool_api_and_ui(cw, monkeypatch):
     hire.hire("default", "game_dev")
     ctx = Ctx(tenant_id="default", conversation_id="c1")
     out = asyncio.run(tools.HANDLERS["game_studio"](ctx, action="crew"))
-    assert out["count"] == 49 and "combat" in out["teams"]
+    assert out["count"] == 57 and "combat" in out["teams"]
     out = asyncio.run(tools.HANDLERS["game_studio"](ctx, action="add", title="Fix the pause menu button", criteria=["Pause shows a Resume button"]))
     assert out["added"]["role"] == "ui_programmer" and out["added"]["criteria"][0]["text"] == "Pause shows a Resume button"
     g = asyncio.run(tools.HANDLERS["game_studio"](ctx, action="gate", milestone_key="proto"))
     assert g["verdict"] == "CONCERNS"
     c = TestClient(app)
-    assert c.get("/api/gamestudio/crew").json()["count"] == 49
+    assert c.get("/api/gamestudio/crew").json()["count"] == 57
     assert c.post(f"/api/gamestudio/{cw['sid']}/gate", json={"milestone": "beta"}).json()["verdict"] == "NOT ASSESSED"
     assert c.post(f"/api/gamestudio/{cw['sid']}/task/T-0001", json={"action": "review"}).status_code == 400   # not built yet
     r = c.post(f"/api/gamestudio/{cw['sid']}/tasks", json={"title": "Write patch notes", "role": "release_manager"})

@@ -10,7 +10,20 @@ mkdir -p "$OUT/tablet"
 adb install -r "$DBG" < /dev/null > "$OUT/tablet_install.txt" 2>&1
 adb shell wm size 1600x2560 < /dev/null; adb shell wm density 320 < /dev/null
 sleep 3
+# v0.820 a tap may open ANOTHER app (contacts picker, calendar, Play / browser for "Rate this app", a share sheet).
+# Our force-stop does not close it, and it stays in front of every later screen (v0.815's first run: 7 screens "not
+# opened" behind the contacts picker). Before each screen / tap: close whatever non-launcher app is on top, go home.
+clean_front() {
+  local top
+  top=$(adb shell dumpsys activity activities < /dev/null 2>/dev/null | tr -d '\r' \
+        | grep -m1 -E 'topResumedActivity|mResumedActivity' | grep -oE '[A-Za-z0-9_.]+/[A-Za-z0-9_.$]+' | head -1 | cut -d/ -f1)
+  if [ -n "$top" ] && [ "$top" != "$PKG" ] && ! printf '%s' "$top" | grep -qiE 'launcher|systemui'; then
+    adb shell am force-stop "$top" < /dev/null
+  fi
+  adb shell input keyevent KEYCODE_HOME < /dev/null
+}
 for id in "$@"; do
+  clean_front
   adb shell am force-stop "$PKG" < /dev/null
   adb shell am start -W -n "$PKG/hoola.app.MainActivity" --es hoola_screen "$id" < /dev/null > /dev/null 2>&1
   sleep 2
