@@ -137,14 +137,16 @@ def test_the_page_in_a_real_browser(arena_server):  # noqa: F811
     pg.route("**/api/devsahayak", lambda r: r.fulfill(json=OV))
     pg.route("**/api/devsahayak/tasks/dt1", lambda r: r.fulfill(json=FULL))
     pg.route("**/api/devsahayak/tasks/dt2", lambda r: r.fulfill(json=PLAN))
+    from app.config import get_settings
+    get_settings().hoola_code_page = True                       # conftest pins the page off for the old suites
     pg.goto(base + "/console/")
     pg.wait_for_selector("#composer")
     pg.wait_for_selector(".sn[data-v='code']")
-    pg.locator(".sn[data-v='code']").click()
+    pg.locator(".sn[data-v='code']").click()                   # v0.768: the row opens Hoola Code's own page
     pg.wait_for_selector(".hcd-home")
     home = pg.locator(".hcd").text_content()
-    assert "What should Hoola code today?" in home and "Running" in home and "Needs you" in home and "<b>Orders to Postgres</b>" in home
-    assert pg.locator(".hcd-kind[data-kind]").count() == 5
+    assert "What should Hoola code today?" in home and "Working" in home and "Plan waits for your OK" in home and "<b>Orders to Postgres</b>" in home
+    assert pg.locator("#hcdKind option").count() == 5
     pg.locator("[data-tid='dt1']").click()
     pg.wait_for_selector(".hcd-step")
     s = pg.locator(".hcd-feed").text_content()

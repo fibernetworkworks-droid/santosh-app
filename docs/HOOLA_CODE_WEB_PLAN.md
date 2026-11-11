@@ -4,6 +4,8 @@ Owner: "MAKE IT SAME EXACTLY AS CLAUDE CODE LOOKS IN WEB" -> "FIRST DO DEEP RESE
 ALL 100 % FEATURES AND MAKE A PLAN SAME FOR HOOLA CODE". Nothing in this document is built yet. Read it before touching
 `static/console/code.js` or `server/app/devsahayak/`.
 
+**Status (v0.768.0):** Phase 0 (design canvas) and Phase 1 (shell + session) are BUILT, and on her word Hoola Code is now its own page at `/console/code` with only its own sidebar. Phases 2-6 are not built. Details: `grep -n "v0.768.0" docs/HISTORY.md`.
+
 ## 1. How the research was done, and its limits
 
 Two read-only passes on 11 Nov 2026: one over Anthropic's own docs for every feature (about 25 pages under

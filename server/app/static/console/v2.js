@@ -187,6 +187,7 @@ function drawNav() {
 function go(v, arg) {
   if (v === 'creative' && CREATE) { CREATE.open(); return; }    // v0.259 Create = the full-screen Create Studio
   if (v === 'appdev') { location.assign('/console/apps' + (arg ? '#/app/' + encodeURIComponent(arg) : '')); return; }   // v0.693 App Studio = its own app
+  if (v === 'code') { location.assign('/console/code' + (arg ? '#/s/' + encodeURIComponent(arg) : '')); return; }   // v0.768 Hoola Code = its own page with its own sidebar
   if (v === 'webdev') { location.assign('/console/web' + (arg ? '#/site/' + encodeURIComponent(arg) : '')); return; }   // v0.649 Web Studio = its own app
   VIEW = v; $$('.view').forEach(x => x.hidden = x.id !== 'v-' + v);
   $('#ttl').textContent = {chat: chatFolder(), aaj:'· Today', kaam:'· All tools', baat:'· Baat', main:'· Main', bana:'· Creations', project:'· Folder', arena:'· Design Arena', lab:'· Prayogshala', hire:'· AI Employees', seekh:'· Video Learner', interactive:'· Hoola Interactive', code:'· Hoola Code', seodesk:'· SEO Desk', socialdesk:'· Social Desk', caddesk:'· CAD Desk', gamedesk:'· Game Desk', archdesk:'· Architecture Desk', edudesk:'· Education Desk', skills:'· Skills', filmdesk:'· Film Desk', leadsdesk:'· Leads Desk'}[v] || '';
@@ -200,8 +201,6 @@ function go(v, arg) {
   if (v === 'systems') ENT?.open($('#systems'), arg || 'erp');   // v0.453 an Enterprise employee's Open desk lands on its own role   // v0.396 CONNECT: her own ERP / CRM address + key
   if (v === 'hire') EMP?.hub($('#hire'));
   if (v !== 'interactive') HIV?.leave();
-  if (v !== 'code') HCD?.leave();
-  if (v === 'code') HCD?.open($('#code'));   // v0.748 HOOLA CODE
   if (v !== 'flow') FLW?.leave();
   if (v === 'flow') FLW?.open($('#flow'));   // v0.751 HOOLA FLOW
   if (v === 'seekh') SKH?.open($('#seekh'));   // v0.718 the HOOLA AI Video Learner (from the AI Employees hub)
@@ -345,8 +344,7 @@ async function enter() {
       onState: (on, why) => { $('#micBtn').classList.toggle('on', !!on); $('#micBtn').classList.toggle('busy', why === 'writing');
         $('#micBtn').title = on ? 'Hoola Flow is listening - click (or Ctrl + Space) to finish' : 'Speak to type (Hoola Flow) - Ctrl + Space'; }});
   }
-  if (CONFIG.hoola_code && window.HoolaCode && !HCD) {   // v0.748 HOOLA CODE: a row right under Create / Hoola Interactive
-    HCD = HoolaCode({api, esc, toast});
+  if (CONFIG.hoola_code) {   // v0.748 HOOLA CODE: a row right under Create / Hoola Interactive; v0.768 the row opens /console/code
     if (!NAV.some(([k]) => k === 'code')) NAV.splice(NAV.findIndex(([k]) => k === 'creative') + 1, 0, ['code', 'Hoola Code']);
   }
   if (CONFIG.interactive && window.HoolaInteractive && !HIV) {   // v0.747 HOOLA INTERACTIVE: a row right under Create

@@ -2801,3 +2801,8 @@ Ask: GO G1 (resume after restart + tool ledger).
 Built: turngraph resume, agent/toolledger.py, turn_inbox graph_resume sweep; chat_graph still off; 9 tests.
 Deploy: vps-ops deploy (langgraph pip install from v0.761 still needed if not done).
 
+
+Task ID: v0.768.0 HOOLA CODE PHASE 1
+Ask: GO PHASE 1 (docs/HOOLA_CODE_WEB_PLAN.md) + mid-build "create a separate page with its own side bar for Hoola Code".
+Built: /console/code (hoolacode.html / hoolacode.js), code.js rewritten (three zones, folded steps, rail cards, queue take-back, menus, All sessions), devsahayak rename / archive / delete / drop_note + routes; typing-wiped-by-refresh bug and the rotating ring fixed; 8 tests incl. 4 browser walks.
+Deploy: vps-ops deploy (server-only; no new pip, two nullable columns self-heal).

@@ -75,8 +75,8 @@ def make_router(require_key, current_tenant) -> APIRouter:
 
     # ---- tasks
     @r.get("/tasks")
-    async def list_tasks(status: str = "", limit: int = 40, tenant: str = Depends(current_tenant)):
-        return {"tasks": await run(S.tasks, tenant, status, limit)}
+    async def list_tasks(status: str = "", limit: int = 40, archived: int = 0, q: str = "", tenant: str = Depends(current_tenant)):
+        return {"tasks": await run(S.tasks, tenant, status, limit, bool(archived), q)}
 
     @r.post("/tasks")
     async def new_task(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
@@ -115,6 +115,26 @@ def make_router(require_key, current_tenant) -> APIRouter:
         else:
             raise HTTPException(404, "plan_ok | revise | fix_ci | begin")
         return await run(S.in_background, tenant, tid, what, **kw)
+
+    # ---- v0.768 the session list: her own name for a session, archive / unarchive, delete, take a queued note back
+    @r.patch("/tasks/{tid}")
+    async def patch_task(tid: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        b, out = _b(body), None
+        if "title" in b:
+            out = await run(S.rename, tenant, tid, str(b.get("title") or ""))
+        if "archived" in b:
+            out = await run(S.archive, tenant, tid, bool(b.get("archived")))
+        if out is None:
+            raise HTTPException(400, "title | archived")
+        return out
+
+    @r.delete("/tasks/{tid}")
+    async def delete_task(tid: str, tenant: str = Depends(current_tenant)):
+        return await run(S.delete_task, tenant, tid)
+
+    @r.delete("/tasks/{tid}/note/{index}")
+    async def drop_note(tid: str, index: int, tenant: str = Depends(current_tenant)):
+        return await run(S.drop_note, tenant, tid, index)
 
     @r.get("/tasks/{tid}")
     async def get_task(tid: str, tenant: str = Depends(current_tenant)):
