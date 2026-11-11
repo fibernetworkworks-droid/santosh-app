@@ -1235,6 +1235,21 @@ pausing an idle working copy to free disk before the 14-day sweep. Deploy: vps-o
 four nullable columns create themselves.
 
 
+## v0.796.0 PRAYOGSHALA WAVE 7 (built as 0.794.0; re-versioned past 0.795.0, all kept) (owner: "Coverage 44.9% ... NOW LETS WORK ON PENDING LAB WORK END TO END")
+
+94 physics set-ups built and walked in a real browser within tolerance, by four build agents in their own pack trios
+(kernels + JS twin + labs + rigs): school_w7 (32: Class 6-12 motion, measuring, pressure / floatation, heat, sound,
+electricity), ug_mech_w7 (22: pendulums, springs, coupled oscillators, Searle, Maxwell needle, optical lever, trolley,
+2-D collision (SIMULATED DATA), harmonics, Callendar-Barnes, Angstrom, cooling, Stefan, capillary vs temperature),
+ug_optics_w7 (20: TIR, Wollaston, nodal slide, biprism, Michelson x2, Fabry-Perot, FTS, lycopodium, resolving power,
+Malus, Babinet, Brewster, five fibre set-ups, quartz expansion, laser characteristics), ug_em_w7 (20: ballistic
+galvanometer family, solenoid, Carey Foster, potentiometer, Anderson, universal bridge, Q-meter, RC / RL, transformer,
+motor, generator, falling magnet, galvanometer conversion, CC / CV source, magnetometer, B-H curve). Coverage
+362 -> 456 of 807 (school 6-10 78.4 %, 11-12 91.5 %, B.Sc 65.4 %, M.Sc 37.6 %, PhD 28.6 %).
+Engine: `tools/prayog_claim.py` takes "<level>:<id>" and warns on ambiguous bare ids (four optics claims would have
+overwritten M.Sc rows). Tests: test_v0418_prayog.py was red on main (22-lab pins; twin loaded kernels.js only) - it now
+counts every pack and the JS twin loads every pack, so pack kernels and calcs are compared numerically (39 / 39 green).
+Skipped rows and every constant written from memory: docs/PRAYOG_PHYSICS_LAKH_PLAN.md, "Wave 7".
 ## v0.794.0 PROMPT NAAP - P0 of HOOLA PROMPTING: measure before building (built as 0.785; their 0.785.0-0.793.0 took the numbers - REBASE PROTOCOL, all kept; owner pasted the P0 step of the plan = GO)
 
 Plan: `docs/HOOLA_PROMPTING_PLAN.md` part 11. Research: `docs/research/prompting/00_INDEX.md`. No user-facing change.
@@ -1319,3 +1334,41 @@ Tests: test_v0795_yeh_wala.py (6: tokens-only free style + Undo + it reaches the
 comments CRUD, the marked-up screenshot (real Chromium), source wiring, a Playwright walk: Select -> pill + style panel ->
 brand colour -> new version -> her message carries <selected_elements> -> Comment pin + list -> Draw + Send -> hide / Done).
 NOT VERIFIED live: a real model acting on <selected_elements> and on a marked-up screenshot on her server.
+
+## v0.797.0 3D SCENES + THE GAME TOOL HUB (owner: "HOW BIG 3D GRAPHICAL STUNING GAME CAN BE BUILD VIA HOOLA AI --- IS THERE ANY WAY THAT OUR ENGINE WILL CONNECTED TO 100 OF PERFECT GAMING DESIGNING TOOLS" → "GO BOTH")
+
+**1. 3D scenes as checked data.** `gamedesk/scene.py` gains the 3D half of the v0.545 rule — the model writes a SPEC,
+Hoola checks it in code and GENERATES the `.tscn`, and every scene is loaded in the real engine before she sees it.
+Measured in Godot 4.7.2 headless BEFORE a line was written: Vector3 position / rotation_degrees / scale, primitive meshes
+carrying a StandardMaterial3D (albedo, metallic, roughness, emission), lights with shadows, a current Camera3D, a
+WorldEnvironment (colour or procedural sky, ambient, fog, glow), 3D collision shapes, Vector3 animation tracks, and a
+`.glb` model placed by name all load exactly as written; a `.glb` imports headless and instances. The spec now takes:
+20 3D node types (NODES3D), `mesh` on a MeshInstance3D (box / sphere / cylinder / capsule / plane / prism / torus +
+`material`), `environment` on a WorldEnvironment (sky top / horizon / ground or a background colour, ambient, fog, glow),
+3D shapes (box / sphere / capsule / cylinder), light / camera props, and **her APPROVED 3D models** from the Assets tab
+placed with `{"model": "<asset key>"}` → `res://assets/<key>.glb` (`scene._models_of` reads the same files a build
+copies; a model that was not approved, a path-like key, a model root, or model + type together are refused by name).
+`verify()` copies the models in and runs Godot's import first, exactly as a build does, so a model that cannot import is a
+FAIL, never a pass; the probe now also reports `three`, `meshes`, `lights`, `cameras`. Every unknown key inside a mesh,
+material or environment is dropped AND named (a `script` key inside a mesh is refused like a `source` key on a node), and
+the emitted text is still re-scanned for an embedded script. The SCENE prompt teaches what a stunning 3D scene is made of
+(a sky, one sun with shadows, a little fog, a framing camera, real roughness / metal, emission where things glow, models /
+instances for repeats); the tool description was rewritten to keep every honesty rule inside the registry's 1,200-character
+cut (the first draft lost "cannot SEE how it looks" to that cut — caught by the suite). Proved live: a 15-node courtyard
+with sky, sun shadows, fog, glow, a glowing spinning diya and three instances of a real `.glb` chair → PASS with 5 meshes,
+1 light, 1 camera and the `spin` animation counted by the engine; the same scene with a missing model file → FAIL.
+`tests/test_v0792_scenes3d.py` (20) + the 2D suite (13) = 33 green. NOT BUILT: TileMaps / GridMaps and shaders. A headless
+check proves a 3D scene loads and counts what is in it; it cannot SEE how it looks — said in the tool, the view and the code.
+
+**2. The Game Tool Hub, researched.** `docs/GAME_TOOL_HUB_PLAN.md`: 110 game-making tools classified into four lanes
+(Hoola's own server / cloud API with her key / the vendor's own MCP / her own machine), each with its official API, official
+MCP, the licence clause that decides, cost, and status — **62 have an official route today** (lane 1: 15, lane 2: 25,
+lane 3: 13, lane 4: 9; 19 already built), 8 need a partner deal, 9 are blocked (no API or the licence forbids Hoola's shape),
+31 unverified with what would settle each. Build waves start with CC0 libraries (Poly Haven, Kenney, ambientCG) and her-key
+3D / audio (Meshy, Tripo, ElevenLabs). Findings that tighten the moat plan: **Epic DOES ship "Unreal MCP" in UE 5.8**
+(Experimental, localhost, no auth — re-checked by the lead on Epic's own page); the AI-3D vendors' terms forbid a shared
+Newtika account (her key and her plan, always); Tripo's free tier keeps all rights; Blender's new official MCP runs
+model-written code unguarded, so Hoola's guarded runner stays the server path. One question is the owner's: most official
+vendor MCPs sign in with OAuth to HER vendor account — whether that fits her "no consumer-subscription OAuth" rule.
+
+Also healed: four game-role tests still asserted the old Hinglish "hired nahi" after main's English-tools commit d84057023.

@@ -1,0 +1,15 @@
+{
+ "base": "w7-collision-2d",
+ "rig": "w7-air-table",
+ "chapter": "Mechanics",
+ "variants": [
+  {"key": "elastic", "title": "Virtual air table: elastic collision of two pucks", "sample": "Pucks of 200 g and 300 g with springy magnet rings (e = 1)",
+   "method": "Elastic: strobe tracks at several sideways offsets", "unknown": "whether momentum and kinetic energy are conserved",
+   "params": {"e": 1.0}, "note": "SIMULATED DATA. With springy rings the kinetic energy is kept as well as the momentum.",
+   "source": {"title": "Generic apparatus", "note": "virtual bench: masses and restitution are settings, not measured values"}},
+  {"key": "inelastic", "title": "Virtual air table: inelastic collision of two pucks", "sample": "Pucks of 200 g and 300 g with soft felt rings (e = 0.4)",
+   "method": "Inelastic: strobe tracks at several sideways offsets", "unknown": "whether momentum and kinetic energy are conserved",
+   "params": {"e": 0.4}, "note": "SIMULATED DATA. Soft rings keep the momentum but lose part of the kinetic energy, most of it in a head-on hit.",
+   "source": {"title": "Generic apparatus", "note": "virtual bench: masses and restitution are settings, not measured values"}}
+ ]
+}

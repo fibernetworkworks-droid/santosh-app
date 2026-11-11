@@ -1,0 +1,37 @@
+{
+ "base": "rc-rl-time-constant",
+ "rig": "em-ug-instruments",
+ "chapter": "AC circuits and bridges",
+ "variants": [
+  {
+   "key": "rl",
+   "title": "Time constant of an RL circuit",
+   "sample": "RL circuit: unknown coil in series with a resistance box",
+   "method": "Square wave and oscilloscope, voltage across R",
+   "unknown": "time constant",
+   "aim": "Apply a square wave to a resistance and a coil in series, watch the voltage across the resistance on an oscilloscope and measure the time the current takes to reach 63.2 % of its final value.",
+   "params": {
+    "mode": 1.0,
+    "R": 1000.0
+   },
+   "source": {
+    "title": "University of Delhi B.Sc. (Hons.) Physics practical lists (LOCF 2019 / UGCF 2022)"
+   }
+  },
+  {
+   "key": "rc-022",
+   "title": "Time constant of an RC circuit: a second capacitor",
+   "sample": "RC circuit: unknown capacitor, generic polyester type",
+   "method": "Square wave and oscilloscope, voltage across C",
+   "unknown": "time constant",
+   "params": {
+    "mode": 0.0,
+    "C": 2.2e-07
+   },
+   "source": {
+    "title": "Illustrative laboratory values",
+    "note": "Chosen to be typical of a teaching laboratory; not a property of a named material."
+   }
+  }
+ ]
+}

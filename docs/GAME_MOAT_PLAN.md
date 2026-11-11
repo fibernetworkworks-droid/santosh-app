@@ -331,6 +331,7 @@ hold on a user's behalf.
 - **Apple's AI-disclosure position** — I read the guidelines (last updated 16 Oct 2026) and found **no AI-asset
   disclosure rule**; secondary sources contradict each other. **Google Play's claimed April 2026 in-app AI label** is
   in compliance blogs only and is **not** in the policy text.
+- **SETTLED 11 Nov 2026 (docs/GAME_TOOL_HUB_PLAN.md, re-checked by the lead on the page itself): Epic DOES ship "Unreal MCP" in UE 5.8** - an Experimental plugin that embeds an MCP server in the editor, bound to http://127.0.0.1:8000/mcp with no auth layer (https://dev.epicgames.com/documentation/unreal-engine/unreal-mcp-in-unreal-editor?application_version=5.8). Original note kept below for history.
 - **Whether Epic ships an official MCP server** in UE 5.8 — two reports conflict (full-engine plugin vs UEFN-only
   beta), no Epic first-party confirmation. **Unity's is confirmed official; Epic's is not.**
 - **Licence terms for Meshy (CC BY 4.0 free tier), Tripo (non-commercial free tier), Hunyuan3D (1M MAU cap, EU/UK/South
