@@ -56,7 +56,7 @@ def test_coverage_flags_are_labelled_and_never_a_verdict():
     assert {f["kind"] for f in c["flags"]} <= {"measured", "heuristic"}
     assert "Scene 3" in text and "INT/EXT" in text                                                  # scene 3 heading has no time of day
     assert "Guard" in text and "only one line" in text                                                    # one-line, one-scene role
-    assert "soch / ehsaas" in text and "scene 1" in text                                            # 'thinks' in an action line
+    assert "thought / feeling" in text and "scene 1" in text                                            # 'thinks' in an action line
     assert "target 600 s" in text                                                                   # runtime target far off
     assert "pass" in c["kind_note"].lower() and "insaan" in c["kind_note"]
     for bad in ("recommend", "greenlight"):
