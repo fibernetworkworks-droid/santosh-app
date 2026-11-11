@@ -85,10 +85,10 @@ def _iso(v) -> str:
 def _clean(text, n: int = 500) -> str:
     """Her / outside words: secrets never kept; Aadhaar / PAN go only by the locker reference."""
     t = str(text or "")
-    t = re.sub(r"\b(otp|pin|cvv|password|upi pin)\b\s*(?:is|hai|:|=)?\s*\S+", lambda m: f"{m.group(1)} [hataya]", t, flags=re.I)
-    t = re.sub(r"\b(?:\d[ -]?){13,19}\b", "[hataya]", t)
-    t = re.sub(r"\b\d{4}\s?\d{4}\s?\d{4}\b", "[hataya]", t)
-    t = re.sub(r"\b[A-Z]{5}\d{4}[A-Z]\b", "[PAN hataya]", t)
+    t = re.sub(r"\b(otp|pin|cvv|password|upi pin)\b\s*(?:is|hai|:|=)?\s*\S+", lambda m: f"{m.group(1)} [removed]", t, flags=re.I)
+    t = re.sub(r"\b(?:\d[ -]?){13,19}\b", "[removed]", t)
+    t = re.sub(r"\b\d{4}\s?\d{4}\s?\d{4}\b", "[removed]", t)
+    t = re.sub(r"\b[A-Z]{5}\d{4}[A-Z]\b", "[PAN removed]", t)
     return t.strip()[:n]
 
 
@@ -212,7 +212,7 @@ def save_settings(tenant: str, **kw) -> dict:
                 if g:
                     from ..india.money import gstin_ok
                     if not gstin_ok(g):
-                        raise ArchError("GSTIN sahi nahi lag raha (check digit).")
+                        raise ArchError("The GSTIN does not look right (check digit).")
                 v = g
             elif k == "ruleset":
                 if v not in R.RULESETS:
@@ -232,13 +232,13 @@ def save_settings(tenant: str, **kw) -> dict:
                     clean.append({"key": re.sub(r"\W+", "_", str(x.get("key") or lab).lower())[:20] or f"s{len(clean) + 1}",
                                   "label": lab, "pct": pct})
                 if clean and abs(sum(c["pct"] for c in clean) - 100) > 0.01:
-                    raise ArchError(f"Stage % ka jod {sum(c['pct'] for c in clean):g} hai; 100 hona chahiye.")
+                    raise ArchError(f"The stage % adds up to {sum(c['pct'] for c in clean):g}; it must be 100.")
                 v = _d(clean) if clean else ""
             else:
                 v = _clean(v, 2000) if k in ("terms", "rules", "address") else str(v).strip()[:160]
             setattr(r, k, v)
         out = _set_view(r)
-    out["say"] = "Settings save."
+    out["say"] = "Settings saved."
     return out
 
 
@@ -256,7 +256,7 @@ def _proj(s, tenant: str, ref: str) -> ArchProject:
         act = [p for p in rows if p.status == "active"]
         if len(act) == 1:
             return act[0]
-        raise ArchError("Kaun sa project? (number / naam)")
+        raise ArchError("Which project? (number / name)")
     for p in rows:
         if p.id == ref or p.number.lower() == ref.lower():
             return p
@@ -264,8 +264,8 @@ def _proj(s, tenant: str, ref: str) -> ArchProject:
     if len(hits) == 1:
         return hits[0]
     if hits:
-        raise ArchError("Kai project milte hain: " + ", ".join(f"{p.number} {p.name}" for p in hits[:5]))
-    raise ArchError(f"Project '{ref}' nahi mila.")
+        raise ArchError("Several projects match: " + ", ".join(f"{p.number} {p.name}" for p in hits[:5]))
+    raise ArchError(f"Project '{ref}' not found.")
 
 
 def _docs_view(p: ArchProject) -> list[dict]:
@@ -303,7 +303,7 @@ def save_project(tenant: str, name: str = "", ref: str = "", **kw) -> dict:
             made = False
         else:
             if not str(name or "").strip():
-                raise ArchError("Project ka naam chahiye.")
+                raise ArchError("The project needs a name.")
             st = _st(s, tenant)
             p = ArchProject(tenant_id=tenant, number=f"P-{_next(s, tenant, 'project'):03d}", name=_clean(name, 160),
                             ruleset=st.ruleset or "udcpr")
@@ -318,25 +318,25 @@ def save_project(tenant: str, name: str = "", ref: str = "", **kw) -> dict:
         if kw.get("client_phone") is not None:
             ph = _phone(kw["client_phone"])
             if kw["client_phone"] and not ph:
-                raise ArchError("Client ka phone 10 ank ka mobile hona chahiye.")
+                raise ArchError("The client's phone must be a 10-digit mobile number.")
             p.client_phone = ph
         if kw.get("client_gstin"):
             from ..india.money import gstin_ok
             g = str(kw["client_gstin"]).strip().upper()
             if not gstin_ok(g):
-                raise ArchError("Client ka GSTIN sahi nahi lag raha.")
+                raise ArchError("The client's GSTIN does not look right.")
             p.client_gstin = g
         if kw.get("client_pan_ref") is not None:
             ref_s = str(kw["client_pan_ref"]).strip()
             if ref_s and not re.fullmatch(r"\{id:[A-Za-z0-9_\-]{3,40}\}", ref_s):
-                raise ArchError("PAN sirf Pehchaan Locker ke {id:...} reference se.")
+                raise ArchError("PAN only by an ID Locker {id:...} reference.")
             p.client_pan_ref = ref_s
         if kw.get("pin") is not None:
             pin = re.sub(r"\D", "", str(kw["pin"]))
             if pin:
                 from ..india import pincode
                 if not pincode.valid(pin):
-                    raise ArchError("Yeh PIN code India Post ki list mein nahi hai.")
+                    raise ArchError("This PIN code is not in the India Post list.")
             p.pin = pin
         if kw.get("authority"):
             if kw["authority"] not in R.AUTHORITIES:
@@ -361,7 +361,7 @@ def save_project(tenant: str, name: str = "", ref: str = "", **kw) -> dict:
             if k in ("area_sqm", "road_width_m", "road_widening_sqm", "reservation_sqm"):
                 n = R.area_sqm(v) if k.endswith("sqm") else R.num(v)
                 if n is not None and n < 0:
-                    raise ArchError(f"{k} minus nahi ho sakta.")
+                    raise ArchError(f"{k} cannot be negative.")
                 plot[k] = n
             elif k in ("trees", "near_airport", "heritage", "coastal", "railway", "highway", "promoter", "fsi_on_gross", "congested"):
                 plot[k] = bool(v)
@@ -372,8 +372,8 @@ def save_project(tenant: str, name: str = "", ref: str = "", **kw) -> dict:
         p.plot = _d(plot)
         s.flush()
         v = _proj_view(p, True)
-    v["say"] = (f"{v['number']} {'bana' if made else 'update'}: {v['name']}." +
-                (f" Kaagaz baaki: {', '.join(v['docs_missing'][:4])}." if v["docs_missing"] else ""))
+    v["say"] = (f"{v['number']} {'created' if made else 'updated'}: {v['name']}." +
+                (f" Documents pending: {', '.join(v['docs_missing'][:4])}." if v["docs_missing"] else ""))
     return v
 
 
@@ -406,7 +406,7 @@ def doc(tenant: str, ref: str, key: str, state: str = "have", file_id: str = "",
     if state not in ("have", "missing", "na"):
         raise ArchError("state = have | missing | na")
     if file_id and not _file_ok(tenant, file_id):
-        raise ArchError("Yeh file nahi mili (file_id).")
+        raise ArchError("This file was not found (file_id).")
     with _LOCK, session() as s:
         p = _proj(s, tenant, ref)
         d = _j(p.docs, {})
@@ -422,7 +422,7 @@ def doc(tenant: str, ref: str, key: str, state: str = "have", file_id: str = "",
         d.setdefault(k, {}).update({"state": state, "file_id": file_id or d.get(k, {}).get("file_id", ""), "note": _clean(note, 200)})
         p.docs = _d(d)
         v = _proj_view(p, True)
-    return {"docs": v["docs"], "say": f"{k}: {state}." + (f" Baaki: {', '.join(v['docs_missing'][:4])}." if v["docs_missing"] else " Saare kaagaz aa gaye.")}
+    return {"docs": v["docs"], "say": f"{k}: {state}." + (f" Pending: {', '.join(v['docs_missing'][:4])}." if v["docs_missing"] else " All documents are in.")}
 
 
 def forget(tenant: str, ref: str) -> dict:
@@ -430,10 +430,10 @@ def forget(tenant: str, ref: str) -> dict:
     with _LOCK, session() as s:
         p = _proj(s, tenant, ref)
         if p.status not in ("done", "dropped"):
-            raise ArchError("Pehle project 'done' ya 'dropped' kijiye.")
+            raise ArchError("First mark the project 'done' or 'dropped'.")
         p.client_phone = p.client_email = p.client_pan_ref = ""
         p.forgotten = True
-        return {"say": f"{p.number}: client ka phone / email / PAN reference mita diya."}
+        return {"say": f"{p.number}: the client's phone / email / PAN reference has been erased."}
 
 
 # ---------------------------------------------------------------- area statement + zoning check
@@ -494,7 +494,7 @@ def approvals(tenant: str, ref: str) -> dict:
         subs = [_sub_view(x) for x in s.scalars(select(ArchSubmission).where(ArchSubmission.project_id == p.id)
                                                  .order_by(ArchSubmission.created_at.desc())).all()[:30]]
     return {"authority": auth["label"], "portal": auth["portal"], "steps": auth["steps"], "items": items, "submissions": subs,
-            "note": "Portal par login, scrutiny fee aur OTP aap khud. Hoola sirf kaagaz aur steps taiyaar karta hai."}
+            "note": "You do the portal login, scrutiny fee and OTP yourself. Hoola only prepares the documents and steps."}
 
 
 _APPROVAL_STATES = ("pending", "needed", "applied", "query", "granted", "refused", "not_needed")
@@ -505,7 +505,7 @@ def approval_set(tenant: str, ref: str, key: str, status: str, ref_no: str = "",
     if status not in _APPROVAL_STATES:
         raise ArchError("status = " + " | ".join(_APPROVAL_STATES))
     if file_id and not _file_ok(tenant, file_id):
-        raise ArchError("Yeh file nahi mili (file_id).")
+        raise ArchError("This file was not found (file_id).")
     k = key if key in R.STAGE_LABEL else re.sub(r"\W+", "_", str(key).lower())[:30]
     with _LOCK, session() as s:
         p = _proj(s, tenant, ref)
@@ -539,40 +539,40 @@ def _sub_snapshot(s, tenant: str, p: ArchProject, stage: str) -> dict:
     blockers, warnings = [], []
     for d in docs:
         if d["state"] == "missing" and d["key"] in ("title", "property_card", "measurement", "zone", "deed"):
-            blockers.append(f"Kaagaz baaki: {d['label']}")
+            blockers.append(f"Document pending: {d['label']}")
         elif d["state"] == "missing":
-            warnings.append(f"Kaagaz: {d['label']} (zaroori ho to)")
+            warnings.append(f"Document: {d['label']} (if required)")
     for pre in _PREREQ.get(stage, []):
         if (ap.get(pre) or {}).get("status") != "granted":
-            blockers.append(f"Pehle {R.STAGE_LABEL[pre]} milna chahiye.")
+            blockers.append(f"First {R.STAGE_LABEL[pre]} must be received.")
     if stage == "building_permission":
         if not area:
-            blockers.append("Area statement abhi nahi bana (archassist action=area).")
+            blockers.append("The area statement is not made yet (archassist action=area).")
         else:
             for c in area.get("checks", []):
                 if c["status"] == "fail":
-                    blockers.append(f"Niyam se bahar: {c['item']} ({c.get('got')} vs {c.get('need')})")
+                    blockers.append(f"Outside the rules: {c['item']} ({c.get('got')} vs {c.get('need')})")
                 elif c["status"] == "check":
-                    warnings.append(f"Dekhna hai: {c['item']}")
+                    warnings.append(f"To check: {c['item']}")
     if stage.startswith("noc_") and (ap.get(stage) or {}).get("status") == "not_needed":
-        warnings.append("Aapne yeh NOC 'zaroori nahi' kaha tha.")
+        warnings.append("You said this NOC is 'not required'.")
     if stage == "oc":
         for k, x in ap.items():
             if k.startswith("noc_") and x.get("status") not in ("granted", "not_needed"):
-                blockers.append(f"{R.STAGE_LABEL.get(k, k)} abhi '{x.get('status')}' hai.")
+                blockers.append(f"{R.STAGE_LABEL.get(k, k)} is currently '{x.get('status')}'.")
     st = _st(s, tenant)
     if not st.coa_no:
-        blockers.append("Aapka CoA registration number settings mein daaliye (har submission par lagta hai).")
+        blockers.append("Enter your CoA registration number in settings (it goes on every submission).")
     elif st.coa_valid_to and _date(st.coa_valid_to) and _date(st.coa_valid_to) < today(tenant):
-        blockers.append("CoA registration ki tareekh nikal gayi: renew kijiye.")
+        blockers.append("Your CoA registration has expired: renew it.")
     drs = s.scalars(select(ArchDrawing).where(ArchDrawing.project_id == p.id, ArchDrawing.status != "superseded")).all()
     dview = [{"sheet": d.sheet, "rev": d.rev, "title": d.title, "has_file": bool((_j(d.revisions, []) or [{}])[-1].get("file_id"))}
              for d in sorted(drs, key=lambda d: d.sheet)]
     if not dview and stage in ("building_permission", "oc"):
-        blockers.append("Drawing register khaali: submission ki sheets daaliye.")
+        blockers.append("The drawing register is empty: add the submission sheets.")
     for d in dview:
         if not d["has_file"]:
-            warnings.append(f"Sheet {d['sheet']} {d['rev']} ki file nahi judi.")
+            warnings.append(f"Sheet {d['sheet']} {d['rev']} has no file attached.")
     auth = R.AUTHORITIES.get(p.authority) or R.AUTHORITIES["custom"]
     return {"project": f"{p.number} {p.name}", "stage": stage, "authority": auth["label"], "docs": [d["label"] for d in docs if d["state"] == "have"],
             "drawings": dview, "area": area.get("statement", {}), "blockers": blockers, "warnings": warnings, "steps": auth["steps"]}
@@ -594,38 +594,38 @@ def submission_request(tenant: str, ref: str, stage: str, conv: str = "", note: 
         s.add(x)
         s.flush()
         v = _sub_view(x)
-    v["say"] = (f"{v['number']} {v['stage_label']}: " + (f"{len(v['blockers'])} rukawat - pehle yeh: {v['blockers'][0]}."
-                                                          if v["blockers"] else "kaagaz taiyaar. Aapki haan ka card bheja hai."))
+    v["say"] = (f"{v['number']} {v['stage_label']}: " + (f"{len(v['blockers'])} blockers - first this: {v['blockers'][0]}."
+                                                          if v["blockers"] else "documents ready. The approval card has been sent."))
     _publish(tenant, "archassist_submission", {"submission": v, "say": v["say"]}, conv)
     return v
 
 
 def decide_submission(tenant: str, sub_id: str, yes: bool, card_hash: str = "", reason: str = "", by_tap: bool = False) -> dict:
     if not by_tap:
-        raise ArchError("Submission ki haan sirf aapke tap se (app ka card).")
+        raise ArchError("A submission is approved only on your tap (the app's card).")
     with _LOCK, session() as s:
         x = s.get(ArchSubmission, sub_id)
         if x is None or x.tenant_id != tenant:
-            raise ArchError("Card nahi mila.")
+            raise ArchError("Card not found.")
         if x.status != "waiting":
-            return {"submission": _sub_view(x), "say": f"{x.number} pehle hi '{x.status}' hai."}
+            return {"submission": _sub_view(x), "say": f"{x.number} is already '{x.status}'."}
         p = s.get(ArchProject, x.project_id)
         snap_now = _sub_snapshot(s, tenant, p, x.stage)
         now_hash = _hash({"stage": x.stage, "project": p.id, "snap": snap_now})
         if not card_hash or card_hash != x.hash or now_hash != x.hash:
             x.status = "stale"
-            raise ArchError("Project badal gaya hai; naya card banaiye.")
+            raise ArchError("The project has changed; make a new card.")
         if yes and snap_now["blockers"]:
-            raise ArchError("Rukawat baaki hai: " + snap_now["blockers"][0])
+            raise ArchError("A blocker remains: " + snap_now["blockers"][0])
         x.status = "approved" if yes else "rejected"
         x.note = _clean(reason, 300) or x.note
         x.decided_at = now()
         v = _sub_view(x)
     if yes:
-        v["say"] = (f"{v['number']} maana. Ab {v['authority']} portal par aap login karke file kijiye (fee / OTP aap khud): "
-                    + " -> ".join(v["steps"][:4]) + ". Inward / application number milte hi batana.")
+        v["say"] = (f"{v['number']} approved. Now log in to the {v['authority']} portal yourself and file it (you pay the fee / enter the OTP): "
+                    + " -> ".join(v["steps"][:4]) + ". Tell me the inward / application number as soon as you get it.")
     else:
-        v["say"] = f"{v['number']}: abhi submit nahi."
+        v["say"] = f"{v['number']}: not submitted for now."
     return v
 
 
@@ -635,9 +635,9 @@ def submission_update(tenant: str, sub_id: str, status: str, ref_no: str = "", o
     with _LOCK, session() as s:
         x = s.get(ArchSubmission, sub_id)
         if x is None or x.tenant_id != tenant:
-            raise ArchError("Submission nahi mila.")
+            raise ArchError("Submission not found.")
         if x.status in ("waiting", "rejected", "stale"):
-            raise ArchError(f"{x.number} abhi '{x.status}' hai: pehle aapki haan (card par tap).")
+            raise ArchError(f"{x.number} is currently '{x.status}': your approval comes first (tap on the card).")
         x.status, x.ref = status, _clean(ref_no, 80) or x.ref
         x.on = _iso(on) or x.on or today(tenant).isoformat()
         x.valid_to = _iso(valid_to) or x.valid_to
@@ -666,9 +666,9 @@ def drawing(tenant: str, ref: str, sheet: str, title: str = "", discipline: str 
             rev: str = "", file_id: str = "", note: str = "", by: str = "Owner", revise: bool = False) -> dict:
     sheet = str(sheet or "").strip().upper()
     if not R.sheet_ok(sheet):
-        raise ArchError("Sheet number jaise A-101 / S-02 (24 akshar tak).")
+        raise ArchError("Sheet number like A-101 / S-02 (up to 24 characters).")
     if file_id and not _file_ok(tenant, file_id):
-        raise ArchError("Yeh file nahi mili (file_id).")
+        raise ArchError("This file was not found (file_id).")
     if status and status not in ("draft", "for_approval", "for_construction", "superseded"):
         raise ArchError("status = draft | for_approval | for_construction | superseded")
     with _LOCK, session() as s:
@@ -679,7 +679,7 @@ def drawing(tenant: str, ref: str, sheet: str, title: str = "", discipline: str 
             disc = (discipline or sheet[:1]).upper()[:1]
             d = ArchDrawing(tenant_id=tenant, project_id=p.id, sheet=sheet, title=_clean(title, 160), scale=_clean(scale, 20),
                             discipline=disc if disc in R.DISCIPLINES else "A", rev=(rev or "R0")[:10], status=status or "draft")
-            d.revisions = _d([{"rev": d.rev, "on": on, "note": _clean(note, 200) or "Pehli baar", "file_id": file_id, "by": by}])
+            d.revisions = _d([{"rev": d.rev, "on": on, "note": _clean(note, 200) or "First issue", "file_id": file_id, "by": by}])
             s.add(d)
             made = True
         else:
@@ -694,9 +694,9 @@ def drawing(tenant: str, ref: str, sheet: str, title: str = "", discipline: str 
             if revise or (rev and rev != d.rev):
                 new = (rev or R.next_rev(d.rev))[:10]
                 if any(r.get("rev") == new for r in revs):
-                    raise ArchError(f"Revision {new} pehle se hai.")
+                    raise ArchError(f"Revision {new} already exists.")
                 if not note:
-                    raise ArchError("Revision mein kya badla, likhiye (note).")
+                    raise ArchError("Write what changed in the revision (note).")
                 revs.append({"rev": new, "on": on, "note": _clean(note, 200), "file_id": file_id, "by": by})
                 d.rev = new
                 # the waiting transmittals that carry this sheet are now out of date
@@ -709,7 +709,7 @@ def drawing(tenant: str, ref: str, sheet: str, title: str = "", discipline: str 
             d.revisions = _d(revs)
         s.flush()
         v = _dr_view(d)
-    v["say"] = f"Sheet {v['sheet']} {'register mein' if made else 'update'}: rev {v['rev']}."
+    v["say"] = f"Sheet {v['sheet']} {'added to the register' if made else 'updated'}: rev {v['rev']}."
     return v
 
 
@@ -739,30 +739,30 @@ def transmittal_request(tenant: str, ref: str, to_kind: str, to_name: str, sheet
     if purpose not in R.PURPOSES:
         raise ArchError("purpose = " + " | ".join(R.PURPOSES))
     if not str(to_name or "").strip():
-        raise ArchError("Kise bhejna hai (naam)?")
+        raise ArchError("Who should it go to (name)?")
     with _LOCK, session() as s:
         p = _proj(s, tenant, ref)
         drs = {d.sheet: d for d in s.scalars(select(ArchDrawing).where(ArchDrawing.project_id == p.id)).all()}
         want = [str(x).strip().upper() for x in (sheets or []) if str(x).strip()]
         if not want:
-            raise ArchError("Kaun si sheets? (sheet numbers)")
+            raise ArchError("Which sheets? (sheet numbers)")
         items, warn = [], []
         for sh in want:
             d = drs.get(sh)
             if d is None:
-                raise ArchError(f"Sheet {sh} register mein nahi.")
+                raise ArchError(f"Sheet {sh} is not in the register.")
             if d.status == "superseded":
-                raise ArchError(f"Sheet {sh} superseded hai.")
+                raise ArchError(f"Sheet {sh} is superseded.")
             revs = _j(d.revisions, [])
             fid = revs[-1].get("file_id", "") if revs else ""
             if not fid:
-                warn.append(f"{sh} {d.rev} ki file nahi judi")
+                warn.append(f"{sh} {d.rev} has no file attached")
             if purpose == "for_construction" and d.status != "for_construction":
-                warn.append(f"{sh} abhi '{d.status}' hai, construction ke liye nahi")
+                warn.append(f"{sh} is currently '{d.status}', not for construction")
             items.append({"drawing_id": d.id, "sheet": d.sheet, "rev": d.rev, "title": d.title, "file_id": fid,
                           "copies": max(1, int(copies or 1)), "format": "PDF"})
         if to_kind == "authority" and not _st(s, tenant).coa_no:
-            warn.append("CoA number settings mein nahi (authority ko jaati sheet par chahiye)")
+            warn.append("The CoA number is not in settings (needed on a sheet going to the authority)")
         t = ArchTransmittal(tenant_id=tenant, project_id=p.id, number=f"T-{_next(s, tenant, 'transmittal'):04d}", to_kind=to_kind,
                             to_name=_clean(to_name, 160), to_contact=_clean(to_contact, 120), purpose=purpose, items=_d(items),
                             note=_clean(note, 500), status="waiting")
@@ -772,8 +772,8 @@ def transmittal_request(tenant: str, ref: str, to_kind: str, to_name: str, sheet
         v = _tr_view(t)
         v["project"] = f"{p.number} {p.name}"
     v["warnings"] = warn
-    v["say"] = (f"{v['number']}: {len(items)} sheet {v['to_label']} {v['to_name']} ko ({v['purpose_label']}). Aapki haan ka card bheja hai"
-                + (f"; dhyaan: {'; '.join(warn[:3])}" if warn else "") + ".")
+    v["say"] = (f"{v['number']}: {len(items)} sheets to {v['to_label']} {v['to_name']} ({v['purpose_label']}). The approval card has been sent"
+                + (f"; note: {'; '.join(warn[:3])}" if warn else "") + ".")
     _publish(tenant, "archassist_transmittal", {"transmittal": v, "say": v["say"]}, conv)
     return v
 
@@ -825,27 +825,27 @@ def _tr_pdf(st: ArchSettings, p: ArchProject, t: ArchTransmittal, on: str) -> by
 def decide_transmittal(tenant: str, tr_id: str, yes: bool, card_hash: str = "", reason: str = "", by_tap: bool = False,
                        conv: str = "") -> dict:
     if not by_tap:
-        raise ArchError("Drawing issue karne ki haan sirf aapke tap se (app ka card).")
+        raise ArchError("Drawings are issued only on your tap (the app's card).")
     with _LOCK, session() as s:
         t = s.get(ArchTransmittal, tr_id)
         if t is None or t.tenant_id != tenant:
-            raise ArchError("Card nahi mila.")
+            raise ArchError("Card not found.")
         if t.status != "waiting":
-            return {"transmittal": _tr_view(t), "say": f"{t.number} pehle hi '{t.status}' hai."}
+            return {"transmittal": _tr_view(t), "say": f"{t.number} is already '{t.status}'."}
         if not card_hash or card_hash != t.hash or _hash(_tr_show(t)) != t.hash:
             t.status = "stale"
-            raise ArchError("Card badal gaya hai; naya card banaiye.")
+            raise ArchError("The card has changed; make a new card.")
         items = _j(t.items, [])
         for i in items:                                   # a sheet revised after the card = old card
             d = s.get(ArchDrawing, i["drawing_id"])
             if d is None or d.rev != i["rev"]:
                 t.status = "stale"
-                raise ArchError(f"Sheet {i['sheet']} ki revision badal gayi; naya card banaiye.")
+                raise ArchError(f"Sheet {i['sheet']}'s revision has changed; make a new card.")
         t.decided_at = now()
         t.reason = _clean(reason, 300)
         if not yes:
             t.status = "rejected"
-            return {"transmittal": _tr_view(t), "say": f"{t.number}: issue nahi kiya."}
+            return {"transmittal": _tr_view(t), "say": f"{t.number}: not issued."}
         on = today(tenant).isoformat()
         st, p = _st(s, tenant), s.get(ArchProject, t.project_id)
         pdf = _tr_pdf(st, p, t, on)
@@ -861,12 +861,12 @@ def decide_transmittal(tenant: str, tr_id: str, yes: bool, card_hash: str = "", 
     f = _store(tenant, f"Transmittal_{num}.pdf", pdf, "application/pdf", conv, f"Transmittal {num}")
     with session() as s:
         s.get(ArchTransmittal, tr_id).file_id = f.get("file_id", "")
-    text = f"Namaste {to_name}, {pname} ki drawings ({sheets}) transmittal {num} ke saath bhej rahe hain. Kripya received confirm kijiye."
+    text = f"Hello {to_name}, the {pname} drawings ({sheets}) are being sent with transmittal {num}. Please confirm receipt."
     links = {"whatsapp": _wa(to_contact, text)}
     if "@" in to_contact:
         links["email"] = _mail(to_contact, f"{pname}: drawings {num}", text)
     return {"transmittal_id": tr_id, "file": f, "text": text, "links": links,
-            "say": f"{num} issue maana. Transmittal PDF bana; drawings ki files aur yeh message aap khud bhejiye (Hoola nahi bhejta)."}
+            "say": f"{num} issue approved. The transmittal PDF is ready; you send the drawing files and this message yourself (Hoola does not send them)."}
 
 
 # ---------------------------------------------------------------- RERA architect certificate (draft; issued via transmittal)
@@ -876,20 +876,20 @@ def rera_certificate(tenant: str, ref: str, building: str, pct_done, as_on: str 
     transmittal (her tap) issues. Hoola never makes up a percentage."""
     pct = R.num(pct_done)
     if pct is None or not 0 <= pct <= 100:
-        raise ArchError("Kaam kitna % hua (aapki site visit se) chahiye.")
+        raise ArchError("The % of work done (from your site visit) is needed.")
     from .. import officegen
     with session() as s:
         p = _proj(s, tenant, ref)
         st = _st(s, tenant)
         if not p.rera_no:
-            raise ArchError("Project ka RERA registration number pehle daaliye.")
+            raise ArchError("First enter the project's RERA registration number.")
         lines = [f"# Architect's Certificate (Form 1 style) - DRAFT", f"Project: {p.name}", f"RERA registration no.: {p.rera_no}",
                  f"Building / wing: {_clean(building, 80) or '[building]'}", f"As on: {_iso(as_on) or today(tenant).isoformat()}",
                  f"Work done (as seen by me on site): {pct:g}%"]
         for k, v in (stages or {}).items():
             lines.append(f"- {_clean(k, 60)}: {_clean(v, 40)}")
         lines += ["", f"{st.architect or '[architect]'}  CoA Reg. No. {st.coa_no or '[ ]'}",
-                  "Yeh draft hai: MahaRERA ke current format se milaiye; sign aap khud kijiye."]
+                  "This is a draft: check it against MahaRERA's current format; you sign it yourself."]
         pnum = p.number
     data = officegen.make_docx("Architect certificate", "\n".join(lines))
     bslug = re.sub(r"\W+", "_", building or "bldg")
@@ -898,10 +898,10 @@ def rera_certificate(tenant: str, ref: str, building: str, pct_done, as_on: str 
     sheet = ("RERA-F1-" + re.sub(r"[^A-Za-z0-9]", "", building or "B")[:8]).upper()
     try:
         drawing(tenant, ref, sheet, title=f"RERA Form 1 certificate {building} {pct:g}%", discipline="A", file_id=f.get("file_id", ""),
-                note=f"{pct:g}% as on {as_on or 'aaj'}", revise=bool(_sheet_exists(tenant, ref, sheet)))
+                note=f"{pct:g}% as on {as_on or 'today'}", revise=bool(_sheet_exists(tenant, ref, sheet)))
     except ArchError:
         pass
-    return {"file": f, "sheet": sheet, "say": f"Form 1 certificate draft bana ({pct:g}%). Promoter ko dena = transmittal (sheet {sheet}) + aapka tap."}
+    return {"file": f, "sheet": sheet, "say": f"Form 1 certificate draft made ({pct:g}%). Giving it to the promoter = a transmittal (sheet {sheet}) + your tap."}
 
 
 def _sheet_exists(tenant: str, ref: str, sheet: str) -> bool:
@@ -915,7 +915,7 @@ def consultant(tenant: str, name: str, kind: str = "structural", phone: str = ""
     if kind not in R.CONSULTANT_KINDS:
         raise ArchError("kind = " + " | ".join(R.CONSULTANT_KINDS))
     if not str(name or "").strip():
-        raise ArchError("Naam chahiye.")
+        raise ArchError("A name is needed.")
     with _LOCK, session() as s:
         c = s.scalars(select(ArchConsultant).where(ArchConsultant.tenant_id == tenant, ArchConsultant.name == name.strip())).first()
         if c is None:
@@ -929,7 +929,7 @@ def consultant(tenant: str, name: str, kind: str = "structural", phone: str = ""
                 setattr(c, k, _clean(v, 160))
         s.flush()
         return {"id": c.id, "name": c.name, "kind": c.kind, "phone": c.phone, "email": c.email, "firm": c.firm, "licence": c.licence,
-                "say": f"{R.CONSULTANT_KINDS[kind]} consultant {c.name} save."}
+                "say": f"{R.CONSULTANT_KINDS[kind]} consultant {c.name} saved."}
 
 
 def consultants(tenant: str) -> list[dict]:
@@ -948,7 +948,7 @@ def _rfi_view(r: ArchRfi, on: date | None = None) -> dict:
 def rfi(tenant: str, ref: str, subject: str, question: str, party: str = "", sheets: list | None = None, due: str = "",
         direction: str = "out") -> dict:
     if not str(question or "").strip():
-        raise ArchError("Sawaal kya hai?")
+        raise ArchError("What is the question?")
     with _LOCK, session() as s:
         p = _proj(s, tenant, ref)
         cons = None
@@ -963,10 +963,10 @@ def rfi(tenant: str, ref: str, subject: str, question: str, party: str = "", she
         v = _rfi_view(r, today(tenant))
         pname, phone, email = f"{p.number} {p.name}", (cons.phone if cons else ""), (cons.email if cons else "")
     text = (f"{v['number']} ({pname}): {v['subject']}\n{v['question']}" + (f"\nSheets: {', '.join(v['sheets'])}" if v["sheets"] else "")
-            + (f"\nJawab {v['due']} tak chahiye." if v["due"] else ""))
+            + (f"\nReply needed by {v['due']}." if v["due"] else ""))
     v["text"] = text
     v["links"] = {"whatsapp": _wa(phone, text)} | ({"email": _mail(email, f"{v['number']} {pname}", text)} if email else {})
-    v["say"] = f"{v['number']} bana. Message draft taiyaar - aap bhejiye."
+    v["say"] = f"{v['number']} created. The message draft is ready - you send it."
     return v
 
 
@@ -976,7 +976,7 @@ def rfi_answer(tenant: str, rfi_id: str, answer: str = "", close: bool = False) 
         if r is None or r.tenant_id != tenant:
             r = s.scalars(select(ArchRfi).where(ArchRfi.tenant_id == tenant, ArchRfi.number == str(rfi_id).upper())).first()
         if r is None:
-            raise ArchError("RFI nahi mila.")
+            raise ArchError("RFI not found.")
         if answer:
             r.answer = _clean(answer, 2000)
             r.status = "answered"
@@ -1009,7 +1009,7 @@ def meeting(tenant: str, ref: str, points: list, attendees: list | None = None, 
         if str(x.get("point") or "").strip():
             clean.append({"n": i, "point": _clean(x["point"], 400), "by": _clean(x.get("by"), 80), "due": _iso(x.get("due")), "done": False})
     if not clean:
-        raise ArchError("Meeting ke points chahiye.")
+        raise ArchError("The meeting points are needed.")
     from .. import officegen
     with _LOCK, session() as s:
         p = _proj(s, tenant, ref)
@@ -1025,23 +1025,23 @@ def meeting(tenant: str, ref: str, points: list, attendees: list | None = None, 
                "application/vnd.openxmlformats-officedocument.wordprocessingml.document", conv, f"Minutes {mnum}")
     with session() as s:
         s.get(ArchMeeting, mid).file_id = f.get("file_id", "")
-    text = f"{pname} meeting {mon} ke minutes ({mnum}):\n" + "\n".join(f"{x['n']}. {x['point']}" + (f" - {x['by']}" if x["by"] else "")
+    text = f"{pname} meeting {mon} minutes ({mnum}):\n" + "\n".join(f"{x['n']}. {x['point']}" + (f" - {x['by']}" if x["by"] else "")
                                                                + (f" ({x['due']})" if x["due"] else "") for x in clean)
     return {"id": mid, "number": mnum, "file": f, "text": text, "links": {"whatsapp": _wa("", text)},
-            "say": f"{mnum} minutes bane ({len(clean)} points). Bhejna aapke haath mein."}
+            "say": f"{mnum} minutes made ({len(clean)} points). Sending them is up to you."}
 
 
 def point_done(tenant: str, meeting_id: str, n: int) -> dict:
     with _LOCK, session() as s:
         m = s.get(ArchMeeting, meeting_id)
         if m is None or m.tenant_id != tenant:
-            raise ArchError("Meeting nahi mili.")
+            raise ArchError("Meeting not found.")
         pts = _j(m.points, [])
         for x in pts:
             if int(x.get("n") or 0) == int(n):
                 x["done"] = True
         m.points = _d(pts)
-        return _mt_view(m) | {"say": f"Point {n} ho gaya."}
+        return _mt_view(m) | {"say": f"Point {n} is done."}
 
 
 # ---------------------------------------------------------------- fees + invoices (HER tap, fingerprint once a key is active)
@@ -1057,20 +1057,20 @@ def fee_set(tenant: str, ref: str, basis: str = "", percent=None, project_cost=N
             if v is not None and v != "":
                 n = R.num(v)
                 if n is None or n < 0:
-                    raise ArchError(f"{k} sahi number nahi.")
+                    raise ArchError(f"{k} is not a valid number.")
                 fee[k] = n
         st = _st(s, tenant)
         base = stages or fee.get("stages") or _j(st.fee_stages, []) or [{"key": k, "label": l, "pct": pc} for k, l, pc in R.FEE_STAGES]
         if abs(sum(R.num(x.get("pct")) or 0 for x in base) - 100) > 0.01:
-            raise ArchError("Stage % ka jod 100 hona chahiye.")
+            raise ArchError("The stage % must add up to 100.")
         old = {x.get("key"): x for x in fee.get("stages") or []}
         fee["stages"] = [{"key": x["key"], "label": x.get("label", x["key"]), "pct": R.num(x["pct"]),
                           "invoice": (old.get(x["key"]) or {}).get("invoice", "")} for x in base]
         fee["starter_stages"] = not (stages or _j(st.fee_stages, []))
         p.fee = _d(fee)
         out = _fee_view(fee)
-    out["say"] = (f"Fee: {_rs(out['total'])}" if out["total"] else "Fee basis adhoora (percent + project cost, ya lump sum).") + (
-        " Stages CoA ke reference wale starter hain - aapke agreement ke hisaab se badaliye." if fee["starter_stages"] else "")
+    out["say"] = (f"Fee: {_rs(out['total'])}" if out["total"] else "The fee basis is incomplete (percent + project cost, or lump sum).") + (
+        " The stages are starters from the CoA reference - change them to match your agreement." if fee["starter_stages"] else "")
     return out
 
 
@@ -1112,16 +1112,16 @@ def invoice_request(tenant: str, ref: str, stage: str = "", amount=None, label: 
             if stg.get("invoice"):
                 old = s.get(ArchInvoice, stg["invoice"])
                 if old is not None and old.status in ("waiting", "issued", "paid"):
-                    raise ArchError(f"'{stg['label']}' ka invoice pehle se hai ({old.number or 'card baaki'}).")
+                    raise ArchError(f"'{stg['label']}' already has an invoice ({old.number or 'card pending'}).")
             amt = R.num(amount) if amount not in (None, "") else R.stage_amount(fee, stg["pct"])
             lab = label or f"Professional fee: {stg['label']} ({stg['pct']:g}%)"
         else:
             if stage:
-                raise ArchError("Yeh stage fee mein nahi: " + ", ".join(x["key"] for x in fee.get("stages") or []))
+                raise ArchError("This stage is not in the fee: " + ", ".join(x["key"] for x in fee.get("stages") or []))
             amt = R.num(amount)
             lab = label or "Professional fee"
         if not amt or amt <= 0:
-            raise ArchError("Raqam pata nahi: fee basis (percent + project cost / lump) ya amount daaliye.")
+            raise ArchError("The amount is not known: enter the fee basis (percent + project cost / lump) or an amount.")
         tax = R.gst_split(amt, st.gstin, p.client_gstin)
         tds = R.tds_expected(_fy_billed(s, tenant, p.id, today(tenant)), amt)
         for old in s.scalars(select(ArchInvoice).where(ArchInvoice.project_id == p.id, ArchInvoice.stage == (stage or ""),
@@ -1137,8 +1137,8 @@ def invoice_request(tenant: str, ref: str, stage: str = "", amount=None, label: 
             p.fee = _d(fee)
         v = _inv_view(i)
         v["project"], v["client"] = f"{p.number} {p.name}", p.client
-    v["say"] = (f"Invoice card: {v['label']} {_rs(v['amount'])} + GST = {v['amount_text']}" + (f" (client ~{_rs(v['tds'])} TDS kaatega)" if v["tds"] else "")
-                + ". Aapki haan ke baad hi number lagega.")
+    v["say"] = (f"Invoice card: {v['label']} {_rs(v['amount'])} + GST = {v['amount_text']}" + (f" (the client will deduct ~{_rs(v['tds'])} TDS)" if v["tds"] else "")
+                + ". A number is assigned only after your approval.")
     _publish(tenant, "archassist_invoice", {"invoice": v, "say": v["say"]}, conv)
     return v
 
@@ -1157,7 +1157,7 @@ def invoice_challenge(tenant: str, inv_id: str) -> dict:
     from .. import approvekey as ak
     c = approval_card(tenant, inv_id)
     if not c or c["status"] != "waiting":
-        raise ArchError("Yeh card ab baaki nahi hai.")
+        raise ArchError("This card is no longer pending.")
     nonce = secrets.token_urlsafe(18)
     exp = datetime.now(timezone.utc) + ak.CHALLENGE_TTL
     msg = f"hoola-approve|v1|{tenant}|archassist|{inv_id}|{c['hash']}|{nonce}|{int(exp.timestamp())}"
@@ -1232,16 +1232,16 @@ def _inv_pdf(st: ArchSettings, p: ArchProject, i: ArchInvoice) -> bytes:
 def decide_invoice(tenant: str, inv_id: str, yes: bool, card_hash: str = "", reason: str = "", proof: dict | None = None,
                    by_tap: bool = False, conv: str = "") -> dict:
     if not by_tap:
-        raise ArchError("Invoice ki haan sirf aapke tap se (app ka card).")
+        raise ArchError("An invoice is approved only on your tap (the app's card).")
     with session() as s:
         i = s.get(ArchInvoice, inv_id)
         if i is None or i.tenant_id != tenant:
-            raise ArchError("Card nahi mila.")
+            raise ArchError("Card not found.")
         if i.status != "waiting":
-            return {"invoice": _inv_view(i), "say": f"Invoice pehle hi '{i.status}' hai."}
+            return {"invoice": _inv_view(i), "say": f"The invoice is already '{i.status}'."}
         p = s.get(ArchProject, i.project_id)
         if not card_hash or card_hash != i.hash or _hash(_inv_show(i, p.client)) != i.hash:
-            raise ArchError("Card badal gaya hai; naya card dekhiye.")
+            raise ArchError("The card has changed; check the new card.")
     if yes:
         from .. import approvekey as ak
         if ak.active_on(tenant):
@@ -1257,7 +1257,7 @@ def decide_invoice(tenant: str, inv_id: str, yes: bool, card_hash: str = "", rea
                 if x.get("invoice") == inv_id:
                     x["invoice"] = ""
             p.fee = _d(fee)
-            return {"invoice": _inv_view(i), "say": "Invoice nahi banaya."}
+            return {"invoice": _inv_view(i), "say": "The invoice was not made."}
         st, p = _st(s, tenant), s.get(ArchProject, i.project_id)
         on = today(tenant)
         n = _next(s, tenant, f"inv:{R.fy_of(on)}")
@@ -1270,13 +1270,13 @@ def decide_invoice(tenant: str, inv_id: str, yes: bool, card_hash: str = "", rea
     f = _store(tenant, f"Invoice_{view['number'].replace('/', '-')}.pdf", pdf, "application/pdf", conv, f"Invoice {view['number']}")
     with session() as s:
         s.get(ArchInvoice, inv_id).file_id = f.get("file_id", "")
-    text = f"Namaste {client}, {pname} ka invoice {view['number']}: {view['amount_text']}." + (
-        f" UPI: {upi}." if upi else "") + " Dhanyavaad."
+    text = f"Hello {client}, here is the {pname} invoice {view['number']}: {view['amount_text']}." + (
+        f" UPI: {upi}." if upi else "") + " Thank you."
     links = {"whatsapp": _wa(phone, text)}
     if upi:
         links["upi"] = f"upi://pay?pa={urllib.parse.quote(upi)}&am={view['total']:.2f}&cu=INR&tn={urllib.parse.quote(view['number'])}"
     return {"invoice": view | {"file_id": f.get("file_id", "")}, "file": f, "text": text, "links": links,
-            "say": f"Invoice {view['number']} bana ({view['amount_text']}). PDF aur message aap client ko bhejiye; paise aane par 'paid' bataiye."}
+            "say": f"Invoice {view['number']} is ready ({view['amount_text']}). You send the PDF and the message to the client; tell me 'paid' when the money arrives."}
 
 
 def invoice_paid(tenant: str, inv_id: str, amount=None, tds=None, on: str = "", ref: str = "") -> dict:
@@ -1285,21 +1285,21 @@ def invoice_paid(tenant: str, inv_id: str, amount=None, tds=None, on: str = "", 
         if i is None or i.tenant_id != tenant:
             i = s.scalars(select(ArchInvoice).where(ArchInvoice.tenant_id == tenant, ArchInvoice.number == str(inv_id))).first()
         if i is None:
-            raise ArchError("Invoice nahi mila.")
+            raise ArchError("Invoice not found.")
         if i.status not in ("issued", "paid"):
-            raise ArchError(f"Invoice abhi '{i.status}' hai.")
+            raise ArchError(f"The invoice is currently '{i.status}'.")
         a = R.num(amount)
         t = R.num(tds) or 0.0
         if a is None:
-            raise ArchError("Kitne paise aaye (aapke bank / UPI se)?")
+            raise ArchError("How much money came in (from your bank / UPI)?")
         i.paid_amount, i.tds_deducted = round(i.paid_amount + a, 2), round(i.tds_deducted + t, 2)
         i.paid_on, i.paid_ref = _iso(on) or today(tenant).isoformat(), _clean(ref, 60)
         left = round(i.total - i.paid_amount - i.tds_deducted, 2)
         if left <= 1:
             i.status = "paid"
         v = _inv_view(i)
-    v["say"] = f"{v['number']}: {_rs(a)} aaye" + (f" + TDS {_rs(t)} (26AS mein dekhiye)" if t else "") + (
-        "; poora." if v["status"] == "paid" else f"; baaki {_rs(left)}.")
+    v["say"] = f"{v['number']}: {_rs(a)} received" + (f" + TDS {_rs(t)} (check in 26AS)" if t else "") + (
+        "; paid in full." if v["status"] == "paid" else f"; pending {_rs(left)}.")
     return v
 
 
@@ -1322,7 +1322,7 @@ def day(tenant: str) -> dict:
         if st.coa_valid_to and _date(st.coa_valid_to):
             left = (_date(st.coa_valid_to) - on).days
             if left <= 60:
-                out["coa"] = f"CoA registration {st.coa_valid_to} ({'nikal gayi' if left < 0 else f'{left} din'}): renew kijiye."
+                out["coa"] = f"CoA registration {st.coa_valid_to} ({'expired' if left < 0 else f'{left} days'}): renew it."
         for t in s.scalars(select(ArchTransmittal).where(ArchTransmittal.tenant_id == tenant, ArchTransmittal.status == "waiting")).all():
             out["waiting"].append(f"{t.number} transmittal ({t.to_name})")
         for x in s.scalars(select(ArchSubmission).where(ArchSubmission.tenant_id == tenant, ArchSubmission.status == "waiting")).all():
@@ -1331,7 +1331,7 @@ def day(tenant: str) -> dict:
             if i.status == "waiting":
                 out["waiting"].append(f"Invoice {_rs(i.total)}")
             elif _date(i.issued_on) and (on - _date(i.issued_on)).days >= 30:
-                out["unpaid"].append(f"{i.number} {_rs(i.total - i.paid_amount)} ({(on - _date(i.issued_on)).days} din)")
+                out["unpaid"].append(f"{i.number} {_rs(i.total - i.paid_amount)} ({(on - _date(i.issued_on)).days} days)")
         for r in s.scalars(select(ArchRfi).where(ArchRfi.tenant_id == tenant, ArchRfi.status == "open")).all():
             if r.due and _date(r.due) and _date(r.due) < on:
                 out["rfi_late"].append(f"{r.number} {r.party}: {r.subject}")
@@ -1342,16 +1342,16 @@ def day(tenant: str) -> dict:
                     out["expiring"].append(f"{p.number} {R.STAGE_LABEL.get(k, k)} valid {x['valid_to']}")
     bits = []
     if out["waiting"]:
-        bits.append(f"Aapki haan baaki: {', '.join(out['waiting'][:4])}")
+        bits.append(f"Waiting for your approval: {', '.join(out['waiting'][:4])}")
     if out["rfi_late"]:
         bits.append(f"RFI late: {', '.join(out['rfi_late'][:3])}")
     if out["expiring"]:
-        bits.append(f"Approval ki tareekh paas: {', '.join(out['expiring'][:3])}")
+        bits.append(f"Approval validity ending soon: {', '.join(out['expiring'][:3])}")
     if out["unpaid"]:
-        bits.append(f"Payment baaki: {', '.join(out['unpaid'][:3])}")
+        bits.append(f"Payment pending: {', '.join(out['unpaid'][:3])}")
     if out["coa"]:
         bits.append(out["coa"])
-    out["say"] = ". ".join(bits) + "." if bits else "Architecture office mein aaj sab theek."
+    out["say"] = ". ".join(bits) + "." if bits else "Everything is fine at the architecture office today."
     return out
 
 
@@ -1388,7 +1388,7 @@ def register_file(tenant: str, ref: str, conv: str = "") -> dict:
     wb.save(bio)
     f = _store(tenant, f"Register_{pnum}.xlsx", bio.getvalue(), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                conv, f"Register {pnum}")
-    return {"file": f, "say": f"{pnum} ka drawing / transmittal / approval / RFI / fee register Excel."}
+    return {"file": f, "say": f"{pnum}: drawing / transmittal / approval / RFI / fee register in Excel."}
 
 
 def _tenants() -> list[str]:
@@ -1410,7 +1410,7 @@ def tick(when: datetime | None = None) -> dict:
             with _LOCK, session() as s:
                 for r in s.scalars(select(ArchRfi).where(ArchRfi.tenant_id == tenant, ArchRfi.status == "open")).all():
                     if r.due and _date(r.due) and _date(r.due) < on and _once(s, tenant, f"rfi:{r.id}:{r.due}"):
-                        alerts.append(f"{r.number} ({r.party}) ka jawab {r.due} tak aana tha: yaad dilaiye.")
+                        alerts.append(f"{r.number} ({r.party}) was due to reply by {r.due}: send a reminder.")
                 for p in s.scalars(select(ArchProject).where(ArchProject.tenant_id == tenant, ArchProject.status == "active")).all():
                     for k, x in _j(p.approvals, {}).items():
                         vt = _date(x.get("valid_to"))
@@ -1419,12 +1419,12 @@ def tick(when: datetime | None = None) -> dict:
                         left = (vt - on).days
                         win = next((w for w in (0, 7, 30, 60) if left <= w), None)
                         if win is not None and _once(s, tenant, f"apv:{p.id}:{k}:{x['valid_to']}:{win}"):
-                            alerts.append(f"{p.number} {R.STAGE_LABEL.get(k, k)} {x['valid_to']} ko khatam" + (
-                                " ho gaya" if left < 0 else f" ({left} din)") + ": renewal / revalidation dekhiye.")
+                            alerts.append(f"{p.number} {R.STAGE_LABEL.get(k, k)} validity ends on {x['valid_to']}" + (
+                                " (already passed)" if left < 0 else f" ({left} days)") + ": check renewal / revalidation.")
                 for i in s.scalars(select(ArchInvoice).where(ArchInvoice.tenant_id == tenant, ArchInvoice.status == "issued")).all():
                     d0 = _date(i.issued_on)
                     if d0 and (on - d0).days >= 30 and _once(s, tenant, f"inv:{i.id}:30"):
-                        alerts.append(f"Invoice {i.number} ({_rs(i.total - i.paid_amount)}) 30 din se baaki: client ko yaad dilaiye.")
+                        alerts.append(f"Invoice {i.number} ({_rs(i.total - i.paid_amount)}) pending for 30 days: remind the client.")
                 st = s.get(ArchSettings, tenant)
                 morning = False
                 if st is not None and st.last_morning != on.isoformat():
@@ -1440,7 +1440,7 @@ def tick(when: datetime | None = None) -> dict:
                 out["alerts"] += 1
             if morning:
                 d = day(tenant)
-                if d["say"] != "Architecture office mein aaj sab theek.":
+                if d["say"] != "Everything is fine at the architecture office today.":
                     _publish(tenant, "archassist_day", {"say": d["say"], "waiting": len(d["waiting"]), "rfi_late": len(d["rfi_late"]),
                                                         "expiring": len(d["expiring"]), "unpaid": len(d["unpaid"])})
                     out["morning"] += 1

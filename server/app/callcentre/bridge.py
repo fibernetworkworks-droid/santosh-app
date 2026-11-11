@@ -177,7 +177,7 @@ class CallBridge:
         if not self.script:
             await self._fallback("ai_down")
             return await self._finish()
-        lang = (self.row or {}).get("lang") or self.script["content"].get("default_lang") or "hi-IN"
+        lang = (self.row or {}).get("lang") or self.script["content"].get("default_lang") or R.default_lang()
         self.langst = VL.LangState(lang, "caller")
         self.cc = S.CallCtx(self.tenant, self.call_id, self.caller, self.script | {"lang": lang})
         with S.session() as s:
@@ -363,7 +363,7 @@ class CallBridge:
                 self.disclosed = True
             elif self.replies == 1:
                 self.stats["disclosure_fixed"] += 1
-                self.flags.append({"kind": "disclosure", "text": "pehli line mein AI nahi bola; system ne turant bulwaya"})
+                self.flags.append({"kind": "disclosure", "text": "the first line did not mention AI; the system made it say so at once"})
                 self.note("(System: you did not tell the caller you are an AI assistant. Say it now in one short sentence, "
                           "then continue.)")
         allowed = self.allowed + " " + self.cc.seen_text + " " + " ".join(t for w, t in self.turns if w == "caller")
@@ -482,7 +482,7 @@ class CallBridge:
             await self._transfer()
         if not self.transferred:
             await asyncio.to_thread(S._missed, self.tenant, self.call_id, self.caller, "callback",
-                                    "AI line nahi chal payi; caller ko call back karein")
+                                    "The AI line could not run; call the caller back")
             with contextlib.suppress(Exception):
                 await asyncio.to_thread(self.provider.hangup, self.provider_call)
         self.closed.set()

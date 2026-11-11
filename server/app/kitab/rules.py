@@ -12,7 +12,7 @@ from datetime import date, timedelta
 from typing import Any
 
 PASSES = ("developmental", "line", "copy", "proof")
-PASS_LABEL = {"developmental": "Developmental (kahani / dhaancha)", "line": "Line edit (vakya, lay)",
+PASS_LABEL = {"developmental": "Developmental (story / structure)", "line": "Line edit (sentences, rhythm)",
               "copy": "Copy edit (grammar, consistency)", "proof": "Proofread (typo, spacing)"}
 KINDS = ("fiction", "nonfiction", "poetry", "academic", "children", "translation")
 FORMATS = ("paperback", "hardback", "ebook", "audiobook")
@@ -29,9 +29,9 @@ ROYALTY_NORMS = ("Trade publishers in India often offer about 7.5-10% of MRP on 
 # KDP (kdp.amazon.com help G200634560, read 23 Oct 2026): Amazon.in eBook 70% only for list price Rs 99-599 and, for sales to
 # customers in India, only when enrolled in KDP Select (90-day Amazon-only e-book exclusivity); 35% Rs 49-10,999 (by file size).
 KDP = {"in_70_min": 99, "in_70_max": 599, "in_35_min": 49, "in_35_max": 10999,
-       "note": ("KDP Amazon.in: 70% sirf Rs 99-599 list price par aur India ki bikri ke liye KDP Select (90 din sirf Amazon par "
-                "e-book) zaroori; warna 35%. 70% mein delivery cost katti hai. AI se bana text / cover / anuvaad ho to KDP par "
-                "batana padta hai. Shartein badalti hain: KDP help page dekh kar pakka kijiye.")}
+       "note": ("KDP Amazon.in: 70% only at a list price of Rs 99-599, and for sales in India KDP Select (e-book only on Amazon for 90 days) "
+                "is required; otherwise 35%. Delivery cost is deducted under 70%. AI-made text / cover / translation must be "
+                "declared on KDP. The terms change: confirm on the KDP help page.")}
 
 SOURCES = [
     ("ISBN free from RRRNA (Raja Rammohun Roy National Agency, Ministry of Education) at isbn.gov.in; separate ISBN per format",
@@ -69,8 +69,8 @@ def text_hash(t: str) -> str:
 def clean(s: Any, n: int = 400) -> str:
     """Her / outside text kept as data; OTP / PIN values and card-like numbers removed."""
     t = str(s or "")
-    t = re.sub(r"(?i)\b(otp|pin|cvv|password|passcode)\b\s*[:=]?\s*\S+", r"\1 [hataya]", t)
-    t = re.sub(r"\b(?:\d[ -]?){12,19}\b", "[hataya]", t)
+    t = re.sub(r"(?i)\b(otp|pin|cvv|password|passcode)\b\s*[:=]?\s*\S+", r"\1 [removed]", t)
+    t = re.sub(r"\b(?:\d[ -]?){12,19}\b", "[removed]", t)
     return t.strip()[:n]
 
 
@@ -151,35 +151,35 @@ def code_checks(text: str, lang: str, style: dict | None = None) -> list[dict[st
             continue
         if DEV.search(w) and w in ("धीरे", "जल्दी", "बार", "कभी", "हाँ", "ना", "चल", "हळू", "पटकन"):
             continue
-        out.append(_sug(t, m.start(), m.group(0), w, "repeat", f"'{w}' do baar likha gaya"))
+        out.append(_sug(t, m.start(), m.group(0), w, "repeat", f"'{w}' is written twice"))
     for m in re.finditer(r"(?<=\S)( {2,})(?=\S)", t):
-        out.append(_sug(t, m.start(), m.group(0), " ", "spacing", "do space"))
+        out.append(_sug(t, m.start(), m.group(0), " ", "spacing", "double space"))
     for m in re.finditer(r"(?<=[\wऀ-ॿ])( +)([,;:!?।])", t):
-        out.append(_sug(t, m.start(), m.group(0), m.group(2), "spacing", "chinh se pehle space nahi"))
+        out.append(_sug(t, m.start(), m.group(0), m.group(2), "spacing", "no space before a punctuation mark"))
     if lang == "en":
         for m in re.finditer(r"(?<=[a-z])([,;])(?=[A-Za-z])", t):
-            out.append(_sug(t, m.start(), m.group(1), m.group(1) + " ", "spacing", "comma ke baad space"))
+            out.append(_sug(t, m.start(), m.group(1), m.group(1) + " ", "spacing", "space after a comma"))
         for m in re.finditer(r"(?<=[a-z]{2})\.(?=[A-Z][a-z])", t):
-            out.append(_sug(t, m.start(), ".", ". ", "spacing", "full stop ke baad space"))
+            out.append(_sug(t, m.start(), ".", ". ", "spacing", "space after a full stop"))
         for m in re.finditer(r"(?:^|(?<=[.!?]\s))([a-z])(?=[a-z]+\b)", t):
             if m.start() == 0 and t[:1].islower():
-                out.append(_sug(t, m.start(), m.group(1), m.group(1).upper(), "capital", "vakya bade akshar se"))
+                out.append(_sug(t, m.start(), m.group(1), m.group(1).upper(), "capital", "a sentence starts with a capital letter"))
             elif m.start() > 0:
-                out.append(_sug(t, m.start(), m.group(1), m.group(1).upper(), "capital", "vakya bade akshar se"))
+                out.append(_sug(t, m.start(), m.group(1), m.group(1).upper(), "capital", "a sentence starts with a capital letter"))
     if lang in ("hi", "mr"):
         stop = conv.get("full_stop") or ("danda" if lang == "hi" else "period")
         if stop == "danda":
             for m in re.finditer(r"(?<=[ऀ-ॿ])\.(?=\s|$)", t):
-                out.append(_sug(t, m.start(), ".", "।", "punctuation", "Hindi mein purn viram (।) aapki style sheet ke hisaab se"))
+                out.append(_sug(t, m.start(), ".", "।", "punctuation", "purna viram (।) in Hindi, as per your style sheet"))
         else:
             for m in re.finditer(r"(?<=[ऀ-ॿ])।(?=\s|$)", t):
-                out.append(_sug(t, m.start(), "।", ".", "punctuation", "aapki style sheet: purn viram ke liye '.'"))
+                out.append(_sug(t, m.start(), "।", ".", "punctuation", "your style sheet: '.' for the full stop"))
         for m in re.finditer(r"([ा-ौॢॣ])\1", t):
-            out.append(_sug(t, m.start(), m.group(0), m.group(1), "unicode", "matra do baar lagi"))
+            out.append(_sug(t, m.start(), m.group(0), m.group(1), "unicode", "the matra is applied twice"))
         for m in re.finditer(r"[​‌‍﻿](?![्])", t):
             if m.group(0) in "‌‍" and m.start() > 0 and t[m.start() - 1] == "्":
                 continue
-            out.append(_sug(t, m.start(), m.group(0), "", "unicode", "chhupa hua (zero-width) nishaan"))
+            out.append(_sug(t, m.start(), m.group(0), "", "unicode", "hidden (zero-width) character"))
     q = conv.get("quotes")
     if q == "curly":
         for m in re.finditer(r'"([^"\n]{1,300})"', t):
@@ -191,7 +191,7 @@ def code_checks(text: str, lang: str, style: dict | None = None) -> list[dict[st
         if not wrong or wrong == right:
             continue
         for m in re.finditer(r"(?<![\wऀ-ॿ])" + re.escape(wrong) + r"(?![\wऀ-ॿ])", t):
-            out.append(_sug(t, m.start(), wrong, right, "consistency", f"style sheet: '{right}' likhna tay hai", "copy"))
+            out.append(_sug(t, m.start(), wrong, right, "consistency", f"style sheet: '{right}' is the agreed spelling", "copy"))
     seen, res = set(), []
     for s in sorted(out, key=lambda x: x["at"]):
         k = (s["at"], s["src"])
@@ -226,7 +226,7 @@ def variants(text: str, style: dict | None = None) -> list[dict[str, Any]]:
         a = len(re.findall(r"\b" + uk + r"\b", low))
         b = len(re.findall(r"\b" + us + r"\b", low))
         if a and b and uk not in decided and us not in decided:
-            out.append({"words": {uk: a, us: b}, "why": "British aur American dono spelling: ek tay kijiye"})
+            out.append({"words": {uk: a, us: b}, "why": "both British and American spellings: choose one"})
     groups: dict[str, dict[str, int]] = {}
     for w in re.findall(r"[ऀ-ॿ]+", t):
         if len(w) < 3:
@@ -235,7 +235,7 @@ def variants(text: str, style: dict | None = None) -> list[dict[str, Any]]:
         groups[_deva_key(w)][w] += 1
     for k, g in groups.items():
         if len(g) > 1 and not (set(g) & decided):
-            out.append({"words": g, "why": "nukta / chandrabindu alag-alag: ek tay kijiye"})
+            out.append({"words": g, "why": "nukta / chandrabindu used inconsistently: choose one"})
     names: dict[str, int] = {}
     lowers = set(re.findall(r"\b[a-z]{3,}\b", t))
     for m in re.finditer(r"\b([A-Z][a-z]{2,})\b", t):
@@ -251,7 +251,7 @@ def variants(text: str, style: dict | None = None) -> list[dict[str, Any]]:
                 continue
             if a[0] == b[0] and difflib.SequenceMatcher(None, a.lower(), b.lower()).ratio() >= 0.65 and abs(len(a) - len(b)) <= 2:
                 done.add((a, b))
-                out.append({"words": {a: names[a], b: names[b]}, "why": "naam do tarah likha hai: kaunsa sahi?"})
+                out.append({"words": {a: names[a], b: names[b]}, "why": "the name is written two ways: which is right?"})
     return out[:40]
 
 
@@ -356,7 +356,7 @@ def clean_slabs(slabs: Any) -> list[dict[str, Any]]:
             continue
         pct = _num(s.get("pct"))
         if pct is None or not 0 < pct <= 100:
-            raise ValueError("Har slab ka % chahiye (0-100).")
+            raise ValueError("Every slab needs a % (0-100).")
         upto = s.get("upto")
         out.append({"upto": int(_num(upto)) if _num(upto) else None, "pct": pct})
     out.sort(key=lambda x: (x["upto"] is None, x["upto"] or 0))
@@ -389,29 +389,29 @@ def royalty(slabs: list[dict], units_before: int, units: int, per_unit: float | 
 
 def ebook_kdp(price: float | None, plan: str, delivery: float | None = None, select: bool = False) -> dict[str, Any]:
     if price is None:
-        return {"royalty": None, "say": "List price batayiye (aapka)."}
+        return {"royalty": None, "say": "Give the list price (yours)."}
     notes = []
     if plan == "70":
         if not (KDP["in_70_min"] <= price <= KDP["in_70_max"]):
-            notes.append(f"70% sirf Rs {KDP['in_70_min']}-{KDP['in_70_max']} par; is daam par 35% hi milega.")
+            notes.append(f"70% only at Rs {KDP['in_70_min']}-{KDP['in_70_max']}; at this price you get only 35%.")
             plan = "35"
         elif not select:
-            notes.append("India ki bikri par 70% ke liye KDP Select zaroori (90 din e-book sirf Amazon par).")
+            notes.append("For sales in India, 70% needs KDP Select (e-book only on Amazon for 90 days).")
     if plan == "70":
         if delivery is None:
-            return {"royalty": None, "plan": "70", "notes": notes + ["Delivery cost (KDP ki report se) batayiye; tab hisaab."]}
+            return {"royalty": None, "plan": "70", "notes": notes + ["Give the delivery cost (from KDP's report); then it can be calculated."]}
         return {"royalty": round(0.70 * (price - delivery), 2), "plan": "70", "notes": notes}
     return {"royalty": round(0.35 * price, 2), "plan": "35", "notes": notes}
 
 
 def pod(mrp: float | None, print_cost: float | None, share_pct: float | None) -> dict[str, Any]:
     """Print on demand (Pothi / Notion Press style): (MRP - printing) x her share %. Every number is hers / the platform's."""
-    miss = [n for n, v in (("MRP", mrp), ("print cost", print_cost), ("aapka hissa %", share_pct)) if v is None]
+    miss = [n for n, v in (("MRP", mrp), ("print cost", print_cost), ("your share %", share_pct)) if v is None]
     if miss:
-        return {"royalty": None, "missing": miss, "say": "Chahiye: " + ", ".join(miss)}
+        return {"royalty": None, "missing": miss, "say": "Needed: " + ", ".join(miss)}
     margin = mrp - print_cost
     if margin <= 0:
-        return {"royalty": 0.0, "say": "MRP printing se kam hai: har copy par ghata."}
+        return {"royalty": 0.0, "say": "The MRP is below the printing cost: a loss on every copy."}
     return {"royalty": round(margin * share_pct / 100.0, 2), "margin": round(margin, 2)}
 
 
@@ -421,28 +421,28 @@ def legal_deposit_due(published: date) -> date:
 
 # ---------------------------------------------------------------- checklists
 CHECK_ITEMS = [
-    ("isbn", "ISBN har format ka (isbn.gov.in, muft; title page, verso page, cover, PAN / Udyam)"),
-    ("verso", "Copyright / verso page (© saal + naam, ISBN, edition, publisher, printer, keemat)"),
-    ("permissions", "Doosron ke shabd / kavita / gaane / photo ki likhit anumati"),
-    ("copyright_reg", "Copyright registration (copyright.gov.in, Form XIV; zaroori nahi, saboot ke liye achha)"),
-    ("contract", "Publisher contract padha: hak kitne saal, kahan, kaunse format, royalty, hisaab kab"),
-    ("ai_disclosure", "AI se bana text / cover / anuvaad hai to platform ko batana (KDP poochta hai)"),
-    ("cover_credits", "Cover photo / font / art ka licence"),
-    ("proof_copy", "Printed proof copy dekhi"),
-    ("legal_deposit", "Chhapne ke 30 din ke andar 4 copy: National Library Kolkata + 3 public libraries (Delivery of Books Act 1954)"),
+    ("isbn", "An ISBN for every format (isbn.gov.in, free; title page, verso page, cover, PAN / Udyam)"),
+    ("verso", "Copyright / verso page (© year + name, ISBN, edition, publisher, printer, price)"),
+    ("permissions", "Written permission for other people's words / poems / songs / photos"),
+    ("copyright_reg", "Copyright registration (copyright.gov.in, Form XIV; not required, good as evidence)"),
+    ("contract", "Publisher contract read: rights for how many years, where, which formats, royalty, when accounts are due"),
+    ("ai_disclosure", "If text / cover / translation is AI-made, tell the platform (KDP asks)"),
+    ("cover_credits", "Licence for the cover photo / font / art"),
+    ("proof_copy", "Printed proof copy checked"),
+    ("legal_deposit", "4 copies within 30 days of printing: National Library Kolkata + 3 public libraries (Delivery of Books Act 1954)"),
 ]
 SELFPUB = {
-    "kdp": ["KDP account (tax info, bank)", "e-book: 35% / 70% chuna (70% = Rs 99-599 + India ke liye KDP Select)",
-            "paperback: print cost ke baad royalty dekhi", "AI content sawaal ka jawab", "cover + interior file preview"],
-    "pothi": ["Pothi par account", "PDF interior + cover", "MRP aur unka print cost dekha", "ISBN unka ya apna"],
-    "notionpress": ["Plan / package padha (paise wala ya muft)", "royalty % aur kis par", "ISBN kiske naam", "contract ki muddat"],
+    "kdp": ["KDP account (tax info, bank)", "e-book: 35% / 70% chosen (70% = Rs 99-599 + KDP Select for India)",
+            "paperback: royalty checked after print cost", "AI content question answered", "cover + interior file preview"],
+    "pothi": ["Account on Pothi", "PDF interior + cover", "MRP and their print cost checked", "their ISBN or your own"],
+    "notionpress": ["plan / package read (paid or free)", "royalty % and on what", "ISBN in whose name", "contract term"],
 }
 CHECK_STATUS = ("todo", "doing", "done", "na")
 
 
 def verso_lines(book: dict, year: int) -> list[str]:
     f = book.get("facts") or {}
-    who = book.get("author") or "[lekhak ka naam]"
+    who = book.get("author") or "[author's name]"
     out = [f"© {f.get('year') or year} {who}. All rights reserved.",
            f"First published {f.get('year') or year} by {f.get('publisher') or '[publisher / imprint]'}"
            + (f", {f['address']}" if f.get("address") else ""),
@@ -451,7 +451,7 @@ def verso_lines(book: dict, year: int) -> list[str]:
     for fmt, isbn in (book.get("isbns") or {}).items():
         out.append(f"ISBN {isbn_pretty(isbn)} ({fmt})")
     if not book.get("isbns"):
-        out.append("ISBN [har format ka alag]")
+        out.append("ISBN [a separate one for each format]")
     out.append(f"Price: {f['price']}" if f.get("price") else "Price: [MRP]")
     out.append(f"Printed by {f['printer']}" if f.get("printer") else "Printed by: [printer]")
     if book.get("kind") in ("fiction", "children"):

@@ -198,7 +198,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
             raise HTTPException(404, "no transfer")
         with S.session() as s:
             num = S._row(s, tenant).number
-        return _reply(prov, prov.say(R.CONNECTING[R.lang3(row.get("lang") or "hi-IN")], row.get("lang") or "hi-IN",
+        return _reply(prov, prov.say(R.CONNECTING[R.lang3(row.get("lang") or R.default_lang())], row.get("lang") or R.default_lang(),
                                      dial=row["transfer_to"], caller_id=num))
 
     # Exotel flow helpers (Passthru = 200 / 302 branch; Connect applet dynamic URL; Voicebot dynamic stream URL)
@@ -322,7 +322,7 @@ def _ws_url(tenant: str, d: dict[str, Any]) -> str:
 
 
 def _answer_body(tenant: str, prov: P.Provider, d: dict[str, Any], request: Request) -> tuple[str, str]:
-    lang = d.get("lang") or "hi-IN"
+    lang = d.get("lang") or R.default_lang()
     with S.session() as s:
         r = S._row(s, tenant)
         record, number = r.record, r.number
@@ -360,10 +360,10 @@ def _try(tenant: str, question: str, use_draft: bool = False) -> dict[str, Any]:
     sc = S.draft(tenant) if use_draft else S.approved(tenant)
     sc = sc or S.draft(tenant)
     if not sc:
-        raise S.CcError("Abhi koi script nahi.")
+        raise S.CcError("There is no script yet.")
     f, score = R.best_faq(question, sc["content"].get("faqs") or [])
     if f is None:
-        return {"found": False, "score": score, "say": "Script mein iska jawab nahi: line message lega ya insaan ko jodegi."}
+        return {"found": False, "score": score, "say": "The script has no answer for this: the line will take a message or connect a person."}
     return {"found": True, "q": f["q"], "a": f["a"], "score": score, "version": sc["version"], "status": sc["status"]}
 
 

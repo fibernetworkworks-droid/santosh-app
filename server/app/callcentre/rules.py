@@ -177,10 +177,10 @@ def handover_reason(caller_text: str) -> str:
     return ""
 
 
-REASON_SAY = {"asked_human": "caller ne insaan se baat maangi", "angry": "caller naraz tha",
-              "out_of_script": "sawal script mein nahi tha", "low_confidence": "baat theek se samajh nahi aayi",
-              "dtmf": "caller ne 0 dabaya", "secret": "caller koi gupt number bata raha tha",
-              "ai_down": "AI line chal nahi payi", "time_up": "call ka samay poora"}
+REASON_SAY = {"asked_human": "the caller asked to speak to a person", "angry": "the caller was upset",
+              "out_of_script": "the question was not in the script", "low_confidence": "the caller could not be understood clearly",
+              "dtmf": "the caller pressed 0", "secret": "the caller was giving a secret number",
+              "ai_down": "the AI line could not run", "time_up": "the call time was up"}
 
 PROMISE = re.compile(r"(guarantee|pakka discount|free mein|muft|refund (de|mil) (denge|jayega)|100 ?%|"
                      r"zaroor mil jayega|promise|vaada|वादा|गारंटी|मुफ्त|फ्री में)", re.I)
@@ -203,7 +203,7 @@ def unscripted(reply: str, allowed_text: str) -> list[str]:
     bad = [n for n in sorted(numbers_in(reply)) if n not in have]
     out = [f"number {n}" for n in bad[:5]]
     if PROMISE.search(reply or "") and not PROMISE.search(allowed_text or ""):
-        out.append("vaada / guarantee")
+        out.append("promise / guarantee")
     return out
 
 
@@ -235,13 +235,23 @@ CONNECTING = {"hi-IN": "Aapko hamari team se jod rahe hain, kripya ruke.", "mr-I
               "en-IN": "Connecting you to our team, please hold."}
 
 
+def default_lang() -> str:
+    """The line's language when neither the caller's record nor the script names one: Indian English when Hoola is
+    set to English (the default), Hindi when it follows the user's own language (`hoola_language` = auto)."""
+    try:
+        from .. import lang as _lang
+        return "en-IN" if _lang.english() else "hi-IN"
+    except Exception:
+        return "en-IN"
+
+
 def lang3(code: str) -> str:
-    return code if code in DISCLOSE else "hi-IN"
+    return code if code in DISCLOSE else default_lang()
 
 
 def disclosure(lang: str, biz: str, agent: str, recorded: bool) -> str:
     lg = lang3(lang)
-    return DISCLOSE[lg].format(biz=biz or "hamari dukaan", agent=agent or "Hoola", rec=REC[lg] if recorded else "")
+    return DISCLOSE[lg].format(biz=biz or ("our business" if lg == "en-IN" else "hamari dukaan"), agent=agent or "Hoola", rec=REC[lg] if recorded else "")
 
 
 # ---------------------------------------------------------------- the script (her approved version is the only one that runs)
@@ -278,7 +288,7 @@ def clean_script(c: dict[str, Any]) -> dict[str, Any]:
         ws = [s(w, 30) for w in (f.get("words") or []) if s(w, 30)][:12]
         faqs.append({"id": s(f.get("id"), 12) or hashlib.sha1(q.encode()).hexdigest()[:8], "q": q, "a": a, "words": ws})
     can = c.get("can") if isinstance(c.get("can"), dict) else {}
-    langs = [x for x in (c.get("languages") or ["hi-IN"]) if isinstance(x, str)][:6] or ["hi-IN"]
+    langs = [x for x in (c.get("languages") or [default_lang()]) if isinstance(x, str)][:6] or [default_lang()]
     return {
         "business": s(c.get("business"), 120), "about": s(c.get("about"), 500), "greeting": s(c.get("greeting"), 300),
         "languages": langs, "default_lang": s(c.get("default_lang"), 8) or langs[0],
