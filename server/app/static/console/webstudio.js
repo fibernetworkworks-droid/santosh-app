@@ -111,6 +111,11 @@
 
   let SITES = [], SPECS = [], CUR = null, CARD = null, VIEW = 'preview', DEVICE = 'pc', LOOK = 0, EDIT = false;
   let POLL = null, SIG = '', PREFILL = '', BUSY = false, RO = null;
+  let IMPUI = null, IMP_BACK = null, IMP_DONE = '';     // HOOLA PROMPTING: the Improve sheet + her original words for Undo
+  try {                                                  // "Open in Web Studio" from the Prompting page: lands in the box, never sent
+    const d = localStorage.getItem('hoola.prompt.toWeb');
+    if (d) { localStorage.removeItem('hoola.prompt.toWeb'); PREFILL = String(d).slice(0, 2000); if (location.hash && location.hash !== '#/') location.hash = '#/'; }
+  } catch (e) { /* private window */ }
   /* v0.683 the 1,00,000-prompt template library: her filters, the rows shown, the template she picked */
   const TPL = {q: '', sector: '', kind: '', style: '', rows: [], total: 0, all: 100000, meta: null, t: null};
   let TPLSEL = null;
@@ -266,6 +271,7 @@
           <div class="bar">
             <button class="b ghost" type="button" data-src="old">${ico('globe', 15)}Use my old site</button>
             <button class="b ghost" type="button" data-src="shot">${ico('pic', 15)}From a screenshot</button>
+            ${window.HoolaImprove ? `<button class="b ghost" type="button" data-improve title="See what Hoola understood and turn this into a complete website prompt">Improve</button>` : ''}
             <span class="sp"></span>
             <span class="mut sm mnote" id="wsModeNote">${mode === 'plan' ? 'Plan: a plan for you to check first' : 'Build: 3 full looks first'}</span>
             <div class="seg" role="group" aria-label="Mode"><button type="button" data-mode="build" aria-pressed="${mode === 'build'}">Build</button><button type="button" data-mode="plan" aria-pressed="${mode === 'plan'}">Plan</button></div>
@@ -1304,16 +1310,55 @@
     loadInstr();
   }
 
+  /* ---------- v0.808 WAPAS (L7): any version back, bookmarks, what changed, undo per reply, revert and resend ---------- */
+  const versionsIn = (a, b) => L(CUR?.versions).filter(x => !/^(Restored v\d+|Full check before going live)/.test(S(x.note)))   // a restore is not this answer's change
+    .map(x => ({v: Number(x.version), t: tsec(x.at)})).filter(x => a && x.t >= a - 2 && (!b || x.t < b)).map(x => x.v);
+  const verBefore = a => Math.max(0, ...L(CUR?.versions).filter(x => a && tsec(x.at) < a - 2).map(x => Number(x.version)));
+  const restorable = n => L(CUR?.versions).some(x => Number(x.version) === Number(n) && x.restorable);
+  async function restoreVer(n, why) {
+    if (!CUR) return false;
+    if (!confirm(`${why || `Put the site back to v${n}?`} It becomes a new version (you can undo it from History). Enquiries, orders and other data are not touched.`)) return false;
+    try { const r = await api('POST', `/api/sites/${enc(CUR.id)}/versions/${n}/restore`, {}); toast(S(r.say).slice(0, 180)); await reload(); return true; }
+    catch (er) { toast(er.message, true); return false; }
+  }
+  async function bookmarkVer(n) {
+    const cur = L(CUR?.versions).find(x => Number(x.version) === Number(n));
+    const f = await dialog(`Bookmark v${n}`, `<label class="fld">Name (empty removes it)<input class="in" name="name" maxlength="80" value="${esc(S(cur?.bookmark))}" placeholder="Before the Diwali changes"></label>`);
+    if (!f) return;
+    try { const r = await api('POST', `/api/sites/${enc(CUR.id)}/versions/${n}/bookmark`, {name: S(f.get('name')).trim()}); toast(S(r.say)); await reload(); }
+    catch (er) { toast(er.message, true); }
+  }
+  const DIFFS = {};
+  async function diffVer(n) {
+    const box = APP.querySelector(`[data-diff="${n}"]`); if (!box) return;
+    if (!box.hidden && box.innerHTML) { box.hidden = true; return; }
+    box.hidden = false; box.innerHTML = '<p class="mut sm">Reading the changes…</p>';
+    try {
+      const r = DIFFS[CUR.id + ':' + n] || (DIFFS[CUR.id + ':' + n] = await api('GET', `/api/sites/${enc(CUR.id)}/versions/${n}/diff`));
+      box.innerHTML = `<p class="sm">${esc(S(r.say))}</p>` + L(r.files).map(f => `<details class="dfile"><summary><code class="ell">${esc(S(f.path))}</code><span class="sp"></span><span class="dadd">+${esc(S(f.added))}</span><span class="drem">−${esc(S(f.removed))}</span></summary>
+          ${f.diff ? `<pre class="dpre">${S(f.diff).split('\n').map(ln => `<span class="${ln.startsWith('+') && !ln.startsWith('+++') ? 'a' : ln.startsWith('-') && !ln.startsWith('---') ? 'r' : ''}">${esc(ln)}</span>`).join('\n')}</pre>` : '<p class="mut sm">Too long to show here; open the Code tab.</p>'}</details>`).join('');
+    } catch (er) { box.innerHTML = `<p class="li bad">${esc(er.message)}</p>`; }
+  }
+
   async function historyView(pane, v) {
     pane.innerHTML = viewsBar() + '<div class="empty">Loading versions…</div>';
     let host = null; try { host = await api('GET', `/api/sites/${enc(v.id)}/hosting`); } catch { host = {hosts: []}; }
     if (VIEW !== 'history' || CUR?.id !== v.id) return;
     const live = L(host.hosts).length > 0, vs = L(v.versions);
     const onAir = Math.max(0, ...L(host.hosts).filter(h => S(h.stage) !== 'Offline').map(h => Number(h.live_version) || 0));   // v0.663 the version people really see
-    pane.innerHTML = viewsBar() + `<div class="main" style="max-width:820px"><h2 style="font-size:18px">History</h2>
-      <p class="mut">Every change is a checked version. ${live ? 'Bringing back an older version puts it on your live addresses after you confirm.' : 'Restoring opens once the site is live.'}</p>
-      ${vs.length ? vs.map(x => `<div class="ver">${pill('v' + S(x.version), Number(x.version) === Number(v.version) ? 'ok' : '')}${onAir && Number(x.version) === onAir ? pill('Live', 'ok') : ''}<span class="sp ell">${esc(S(x.note) || 'Version')} <span class="mut sm">· ${esc(S(x.at).slice(0, 16).replace('T', ' '))}</span></span>
-        ${Number(x.version) !== (onAir || Number(v.version)) && live ? `<button class="b sm" type="button" data-act="rollback" data-ver="${esc(S(x.version))}">Restore…</button>` : ''}</div>`).join('') : '<p class="mut">No versions yet.</p>'}</div>`;
+    const bm = vs.filter(x => S(x.bookmark));
+    const row = x => { const n = Number(x.version), cur = n === Number(v.version);
+      return `<div class="verw"><div class="ver">${pill('v' + S(x.version), cur ? 'ok' : '')}${onAir && n === onAir ? pill('Live', 'ok') : ''}${S(x.bookmark) ? `<span class="vbm" title="Bookmark">${ico('star', 12)}${esc(S(x.bookmark))}</span>` : ''}<span class="sp ell">${esc(S(x.note) || 'Version')} <span class="mut sm">· ${esc(S(x.at).slice(0, 16).replace('T', ' '))}${cur ? ' · current' : ''}</span></span>
+        ${x.restorable ? `<button class="b sm ghost" type="button" data-act="ver-diff" data-ver="${n}">Changes</button>` : ''}
+        <button class="ib sm" type="button" data-act="ver-bm" data-ver="${n}" aria-label="Bookmark v${n}" title="Bookmark">${ico('star', 14)}</button>
+        ${!cur && x.restorable ? `<button class="b sm" type="button" data-act="ver-restore" data-ver="${n}">Restore</button>` : ''}
+        ${live && n !== onAir ? `<button class="b sm ghost" type="button" data-act="rollback" data-ver="${n}">Put live…</button>` : ''}</div>
+        <div class="vdiff" data-diff="${n}" hidden></div></div>`; };
+    pane.innerHTML = viewsBar() + `<div class="main" style="max-width:860px"><h2 style="font-size:18px">History</h2>
+      <p class="mut">Every change is a checked version. Restore puts the site's code and design back to that version as a new version (undo it the same way); enquiries, orders and other data are never touched.${live ? ' Put live shows a version on your live address after you confirm.' : ''}</p>
+      ${bm.length ? `<h3 class="vh">Bookmarks</h3>${bm.map(row).join('')}<h3 class="vh">All versions</h3>` : ''}
+      ${vs.length ? vs.map(row).join('') : '<p class="mut">No versions yet.</p>'}
+      ${vs.some(x => !x.restorable) ? '<p class="mut sm">Versions made before this update kept only their built pages, so they cannot be restored here.</p>' : ''}</div>`;
   }
 
   async function publish(pane, v) {
@@ -1390,7 +1435,14 @@
     }, 2000);
   }
   function stopPoll() { if (POLL) { clearTimeout(POLL); POLL = null; } }
-  async function reload() { if (!CUR) return; try { CUR = await api('GET', `/api/sites/${enc(CUR.id)}`); drawState(); drawPane(); loadErrors(); } catch (e) { toast(e.message, true); } }
+  async function reload() {
+    if (!CUR) return;
+    try {
+      const was = Number(CUR.version) || 0;
+      CUR = await api('GET', `/api/sites/${enc(CUR.id)}`); drawState(); drawPane(); loadErrors();
+      if ((Number(CUR.version) || 0) !== was && THREAD.site === S(CUR.id)) { THREAD.sig = ''; drawMsgs(); }   // v0.808 the reply's Version / Undo footer
+    } catch (e) { toast(e.message, true); }
+  }
 
   /* ---------- v0.802 GALTI PAKDO (L6): the preview tells Hoola when it breaks; Try to fix follows a ladder ----------
      The preview frame posts its errors (hoola-site.js, preview only); they are relayed with her login, one card per
@@ -1759,8 +1811,20 @@
       const turns = turnsOf(shown);
       hist.innerHTML = rows.length ? day + turns.map((t, i) => {
         let h = '';
-        if (t.user) h += `<div class="me" data-mid="${esc(S(t.user.id))}">${esc(clean(t.user.text))}${fileChips(t.user.files)}</div>`;
+        const nextStart = Number(turns[i + 1]?.start) || 0;
+        if (t.user) {
+          const editing = THREAD.editing === S(t.user.id);
+          h += editing ? `<form class="meed" data-form="resend" data-mid="${esc(S(t.user.id))}" data-at="${Number(t.start) || 0}"><label class="sr" for="wsReEd">Edit your message</label>
+              <textarea id="wsReEd" rows="3" maxlength="4000">${esc(clean(t.user.text))}</textarea>
+              <div class="inl"><span class="mut sm">${verBefore(t.start) && verBefore(t.start) < Number(CUR?.version) ? `The site goes back to v${verBefore(t.start)} first (later changes stay in History).` : 'Sends it again.'}</span><span class="sp"></span>
+              <button class="b sm" type="button" data-act="msg-cancel">Cancel</button><button class="b sm pri" type="submit">${verBefore(t.start) && verBefore(t.start) < Number(CUR?.version) ? 'Revert and resend' : 'Resend'}</button></div></form>`
+            : `<div class="mewrap"><div class="me" data-mid="${esc(S(t.user.id))}">${esc(clean(t.user.text))}${fileChips(t.user.files)}</div>${S(t.user.id).startsWith('local-') || THREAD.waiting ? '' : `<button class="ib sm meedit" type="button" data-act="msg-edit" data-mid="${esc(S(t.user.id))}" aria-label="Edit and resend this message" title="Edit">${ico('edit', 13)}</button>`}</div>`;
+        }
         if (!t.reply) return h;
+        const made = versionsIn(t.start, nextStart), before = verBefore(t.start), top = made.length ? Math.max(...made) : 0;
+        const vfoot = top ? `<div class="vfoot">${pill('Version ' + top, '')}${made.length > 1 ? `<span class="mut sm">${made.length} versions</span>` : ''}<span class="sp"></span>
+            <button class="b sm ghost" type="button" data-act="ver-bm" data-ver="${top}">${ico('star', 13)}<span>Bookmark</span></button>
+            ${before && restorable(before) ? `<button class="b sm" type="button" data-act="undo-turn" data-ver="${before}" data-top="${top}">${ico('back', 13)}<span>Undo this change</span></button>` : ''}</div>` : '';
         const took = t.start && t.end > t.start ? t.end - t.start : 0, steps = L(t.steps), k = 'turn-' + t.reply.id;
         const inr = t.start ? costFor(t.start, t.end) : null;
         const th = Number(THREAD.thoughts.get(tkey(t.reply.text))) || 0;   // how long the model thought for THIS answer
@@ -1768,7 +1832,7 @@
         const head = bits.length ? `<div class="turnhead"><details class="actd turnw" data-k="${k}"${OPEN_T.has(k) ? ' open' : ''}><summary>${esc(bits.join(' · '))}</summary>${steps.length ? stepList({steps}) : ''}</details>
           <button class="ib sm" type="button" data-act="details" data-ta="${t.start}" data-tb="${t.end}" title="Timeline and changes" aria-label="Details of this answer">${ico('list', 14)}</button></div>` : '';
         const um = modeOfRow(t.user), sb = startBuild(t.reply.text), body = sb ? sb.text : S(t.reply.text);
-        return h + head + who(t.end) + `<div class="ho">${um === 'plan' ? planMd(body) : md(body)}</div>` + (um === 'plan' ? planCard(body) : '') + (sb ? buildCard(sb.ask) : '');
+        return h + head + who(t.end) + `<div class="ho">${um === 'plan' ? planMd(body) : md(body)}</div>` + (um === 'plan' ? planCard(body) : '') + (sb ? buildCard(sb.ask) : '') + vfoot;
       }).join('') : `${S(CUR?.brief).trim() ? `<div class="me">${esc(clean(S(CUR.brief)))}</div>` : ''}${who(0)}<div class="ho"><p>${esc(S(CUR?.say) || 'Ask for anything on this website.')}</p>${CUR?.name_by === 'hoola' ? `<p class="mut sm">I named it <b>${esc(name(CUR))}</b>. Prefer your own name? Use the menu next to the name and pick Rename.</p>` : ''}</div>
          <div class="mut sm">This chat is only about ${esc(name(CUR || {}))}. It stays here, not in your home chat.</div>
          <div style="display:flex;flex-wrap:wrap;gap:6px">${['Add a shop with cart', 'Add online payments', 'Add a Hindi version', 'Add booking slots'].map(t => `<button class="chip" type="button" data-ask="${esc(t)}">${esc(t)}</button>`).join('')}</div>`;
@@ -1982,6 +2046,14 @@
     const d = b.dataset;
     if (d.menu) { e.preventDefault(); openMenu(b, d.menu); return; }
     if (d.tpl) { openTpl(d.tpl); return; }
+    if ('improve' in d) {                       // HOOLA PROMPTING: what Hoola understood, as chips she can change; never a silent rewrite
+      const ta = $('#wsAsk'); if (!ta) return;
+      if (IMP_BACK !== null && ta.value === IMP_DONE) { ta.value = IMP_BACK; IMP_BACK = null; IMP_DONE = ''; b.textContent = 'Improve'; ta.focus(); return; }
+      const mine = ta.value;
+      if (!mine.trim()) { ta.focus(); toast('Write one line about the website first.'); return; }
+      IMPUI = IMPUI || window.HoolaImprove({api, esc, toast});
+      IMPUI.open(mine, {section: 'web', onUse: t => { ta.value = S(t).slice(0, 2000); IMP_BACK = mine; IMP_DONE = ta.value; b.textContent = 'Undo'; ta.focus(); }});
+      return; }
     if (d.act === 'tpl-more') { loadTpl(false); return; }
     if (d.mode) { store.set(MODE_KEY, d.mode); APP.querySelectorAll('[data-mode]').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.mode === d.mode)));
       const n = $('#wsModeNote'); if (n) n.textContent = d.mode === 'plan' ? 'Plan: a plan for you to check first' : 'Build: 3 full looks first'; return; }
@@ -2043,6 +2115,12 @@
       return;
     }
     if (act === 'edit-done') { EDIT = false; YW.strokes = []; YW.notes = []; await reload(); return; }
+    if (act === 'ver-restore') return restoreVer(Number(d.ver));     // v0.808 WAPAS
+    if (act === 'ver-bm') return bookmarkVer(Number(d.ver));
+    if (act === 'ver-diff') return diffVer(Number(d.ver));
+    if (act === 'undo-turn') return restoreVer(Number(d.ver), `Undo this change: put the site back to v${d.ver} (as it was before this answer)?`);
+    if (act === 'msg-edit') { THREAD.editing = d.mid; THREAD.sig = ''; drawMsgs(); $('#wsReEd')?.focus(); return; }
+    if (act === 'msg-cancel') { THREAD.editing = ''; THREAD.sig = ''; drawMsgs(); return; }
     if (act === 'err-fix') return fixError(d.id);           // v0.802 GALTI PAKDO
     if (act === 'err-more') { GALTI.open[d.id] = !GALTI.open[d.id]; return drawErrors(); }
     if (act === 'err-ign') { try { await api('POST', `/api/sites/${enc(CUR.id)}/errors/${enc(d.id)}/ignored`, {}); } catch (er) { return toast(er.message, true); } return loadErrors(); }
@@ -2159,6 +2237,16 @@
     e.preventDefault();
     const kind = f.dataset.form;
     if (kind === 'thread') { const t = f.querySelector('textarea'); const x = S(t.value).trim(); if (!x) return; t.value = ''; return ask(x); }
+    if (kind === 'resend') {                              // v0.808 Revert and resend: the site goes back first, then her edited words go
+      const x = S(f.querySelector('textarea')?.value).trim(); if (!x) return;
+      const before = verBefore(Number(f.dataset.at) || 0);
+      if (before && before < Number(CUR?.version) && restorable(before)) {
+        const ok = await restoreVer(before, `Revert and resend: put the site back to v${before} and send your edited message?`);
+        if (!ok) return;
+      }
+      THREAD.editing = ''; THREAD.sig = '';
+      return ask(x);
+    }
     if (kind === 'instr') {
       try { await api('PUT', `/api/sites/${enc(CUR.id)}/instructions`, {text: S($('#wsInstr')?.value)}); toast('Instructions saved. Hoola reads them on every message about this site.'); }
       catch (er) { toast(er.message, true); }

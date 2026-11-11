@@ -49,6 +49,30 @@ def make_public_router() -> APIRouter:
         if out["status"] != 200:
             raise HTTPException(out["status"], out.get("error") or "Refused.")
         return {"ok": True, "session": out["session"]}
+
+    @p.post("/github/{hook_id}")
+    async def github(hook_id: str, request: Request):
+        """Phase 6: GitHub's webhook deliveries for one repo. Believed only with a matching X-Hub-Signature-256."""
+        from . import events as EV
+        try:
+            size = int(request.headers.get("content-length") or 0)
+        except ValueError:
+            size = 0
+        if not 0 < size <= EV.MAX_BODY:
+            raise HTTPException(401, "Refused.")
+        out = await asyncio.to_thread(EV.receive, hook_id, request.headers.get("x-github-event") or "",
+                                      request.headers.get("x-github-delivery") or "", request.headers.get("x-hub-signature-256") or "",
+                                      await request.body())
+        if out["status"] != 200:
+            raise HTTPException(401, "Refused.")
+        return {"ok": True, "started": int(out.get("started") or 0)}
+
+    @p.get("/labcheck")
+    async def labcheck(request: Request):
+        """Phase 6: for `python -m app.devlab net` - says whether a header arrived, as a fingerprint, never the value."""
+        import hashlib
+        v = request.headers.get("x-hoola-lab-check") or ""
+        return {"seen": hashlib.sha256(v.encode()).hexdigest()[:16] if v else ""}
     return p
 
 
@@ -114,13 +138,13 @@ def make_router(require_key, current_tenant) -> APIRouter:
     async def new_schedule(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
         from . import around as AR
         b = _b(body)
-        return await run(AR.save_schedule, tenant, "", **{k: b[k] for k in ("title", "repo", "base", "kind", "text", "mode", "days", "at", "enabled") if k in b})
+        return await run(AR.save_schedule, tenant, "", **{k: b[k] for k in ("title", "repo", "base", "kind", "text", "mode", "days", "at", "enabled", "event", "filter") if k in b})
 
     @r.patch("/schedules/{sid}")
     async def patch_schedule(sid: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
         from . import around as AR
         b = _b(body)
-        return await run(AR.save_schedule, tenant, sid, **{k: b[k] for k in ("title", "repo", "base", "kind", "text", "mode", "days", "at", "enabled") if k in b})
+        return await run(AR.save_schedule, tenant, sid, **{k: b[k] for k in ("title", "repo", "base", "kind", "text", "mode", "days", "at", "enabled", "event", "filter") if k in b})
 
     @r.delete("/schedules/{sid}")
     async def del_schedule(sid: str, tenant: str = Depends(current_tenant)):
@@ -155,7 +179,35 @@ def make_router(require_key, current_tenant) -> APIRouter:
     @r.patch("/repos/{owner}/{name}")
     async def patch_repo(owner: str, name: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
         b = _b(body)             # how this repo runs in the box: her setup command, her test command, plain variables
-        return await run(S.save_repo, tenant, f"{owner}/{name}", b.get("setup_cmd"), b.get("test_cmd"), b.get("env_vars"))
+        return await run(S.save_repo, tenant, f"{owner}/{name}", b.get("setup_cmd"), b.get("test_cmd"), b.get("env_vars"),
+                         b.get("net_level"), b.get("net_hosts"))
+
+    # ---- Phase 6: a key for one outside host, added by the proxy OUTSIDE the box. Typed only here; never returned.
+    @r.put("/repos/{owner}/{name}/secrets")
+    async def put_secret(owner: str, name: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        b = _b(body)
+        return await run(S.save_repo_secret, tenant, f"{owner}/{name}", str(b.get("host") or ""), str(b.get("header") or "Authorization"),
+                         str(b.get("value") or ""), str(b.get("prefix") or ""))
+
+    @r.delete("/repos/{owner}/{name}/secrets/{host}")
+    async def del_secret(owner: str, name: str, host: str, tenant: str = Depends(current_tenant)):
+        return await run(S.remove_repo_secret, tenant, f"{owner}/{name}", host)
+
+    # ---- Phase 6: GitHub events for one repo (her tap). The secret is in the answer only when SHE must add the webhook.
+    @r.post("/repos/{owner}/{name}/events")
+    async def events_on(owner: str, name: str, tenant: str = Depends(current_tenant)):
+        from . import events as EV
+        return await run(EV.connect, tenant, f"{owner}/{name}")
+
+    @r.delete("/repos/{owner}/{name}/events")
+    async def events_off(owner: str, name: str, tenant: str = Depends(current_tenant)):
+        from . import events as EV
+        return await run(EV.disconnect, tenant, f"{owner}/{name}")
+
+    @r.get("/net")
+    async def net_status(tenant: str = Depends(current_tenant)):
+        from ..devlab import net as NET
+        return await run(NET.status)
 
     @r.delete("/repos/{owner}/{name}")
     async def del_repo(owner: str, name: str, tenant: str = Depends(current_tenant)):
@@ -185,7 +237,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
         return await run(S.start_bg, tenant, str(b.get("kind") or "write"), str(b.get("text") or ""), str(b.get("repo") or ""),
                          int(b.get("issue") or 0), [str(x) for x in files if x][:10], str(b.get("conv") or ""),
                          str(b.get("base") or ""), str(b.get("mode") or ""), str(b.get("model") or ""), str(b.get("effort") or ""),
-                         b.get("images"), b.get("docs"))
+                         b.get("images"), b.get("docs"), b.get("refs"), b.get("also"))
 
     @r.get("/tasks/{tid}/attach/{index}")
     async def attachment(tid: str, index: int, tenant: str = Depends(current_tenant)):

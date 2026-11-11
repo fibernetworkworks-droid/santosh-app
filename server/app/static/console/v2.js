@@ -140,6 +140,8 @@ let SKH = null;         // v0.718 the HOOLA AI Video Learner (seekh.js) - opens 
 let HVO = null;         // v0.787 HOOLA VOCAL (vocal.js) - the voice studio, its own full page
 let HIV = null;         // v0.747 HOOLA INTERACTIVE (interactive.js) - the video studio, its own sidebar row
 let HCD = null;         // v0.748 HOOLA CODE (code.js) - Developer Sahayak as a console page
+let IMP = null, IMP_BACK = null, IMP_DONE = '';   // HOOLA PROMPTING: the Improve sheet (improve.js); her original text for Undo
+IC.prompting = '<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/>';
 let FLW = null;         // v0.751 HOOLA FLOW (flow.js) - the Kaan pack as a console page
 let FLOW_TEXT = '';   // v0.777 text from the Hoola Flow page waiting for the chat box
 let FMIC = null;        // v0.751 the chat box mic through Kaan (flow.js HoolaFlowMic)
@@ -152,6 +154,7 @@ let SK = null;         // v0.481 the Skill Desk (account menu > Skills)
 let CX = null;         // v0.774 the Connectors page (connectors.js): Composio apps, MCP servers, plugins, public APIs, limits
 IC.connectors = '<path d="M9 7V3M15 7V3M7 7h10v4a5 5 0 0 1-10 0zM12 16v5"/>';   // v0.774 a plug
 let FD = null;         // v0.565 the Film Desk (filmdesk.js)
+let BAHI = null;       // v0.807 BAHI: the GST & Accounts desk (bahi.js)
 let DDK = null;        // v0.799 DESK ROOM (built as 0.796): the department desks (deptdesk.js) - Finance, Retail, Health Insurance, Construction
 let AIA = null;        // v0.772 HOOLA AI APPS (aiapps.js): AIs that answer her customers
 IC.aiapps = '<rect x="3" y="4" width="18" height="13" rx="3"/><path d="M8 21l2.5-4M7.5 9.5h.01M12 9.5h.01M16.5 9.5h.01M8 13c1.2 1 2.5 1.4 4 1.4s2.8-.4 4-1.4"/>';   // a chat bubble with a face
@@ -197,11 +200,12 @@ function go(v, arg) {
   if (v === 'creative' && CREATE) { CREATE.open(); return; }    // v0.259 Create = the full-screen Create Studio
   if (v === 'gamedev') { location.assign('/console/games' + (arg ? '#/game/' + encodeURIComponent(arg) : '')); return; }   // v0.783 Hoola Game Dev = its own app
   if (v === 'appdev') { location.assign('/console/apps' + (arg ? '#/app/' + encodeURIComponent(arg) : '')); return; }   // v0.693 App Studio = its own app
+  if (v === 'prompting') { location.assign('/console/prompting'); return; }   // HOOLA PROMPTING = its own page
   if (v === 'flow') { location.assign('/console/flow' + (arg ? '#/t/' + encodeURIComponent(arg) : '')); return; }   // v0.777 Hoola Flow = its own page, like Wispr Flow
   if (v === 'code') { location.assign('/console/code' + (arg ? '#/s/' + encodeURIComponent(arg) : '')); return; }   // v0.768 Hoola Code = its own page with its own sidebar
   if (v === 'webdev') { location.assign('/console/web' + (arg ? '#/site/' + encodeURIComponent(arg) : '')); return; }   // v0.649 Web Studio = its own app
   VIEW = v; $$('.view').forEach(x => x.hidden = x.id !== 'v-' + v);
-  $('#ttl').textContent = {chat: chatFolder(), aaj:'· Today', kaam:'· All tools', baat:'· Baat', main:'· Main', bana:'· Creations', project:'· Folder', arena:'· Design Arena', lab:'· Prayogshala', hire:'· AI Employees', seekh:'· Video Learner', interactive:'· Hoola Interactive', code:'· Hoola Code', seodesk:'· SEO Desk', socialdesk:'· Social Desk', caddesk:'· CAD Desk', gamedesk:'· Game Desk', archdesk:'· Architecture Desk', edudesk:'· Education Desk', skills:'· Skills', connectors:'· Connectors', aiapps:'· AI Apps', filmdesk:'· Film Desk', leadsdesk:'· Leads Desk', deptdesk:'· Department desk'}[v] || '';
+  $('#ttl').textContent = {chat: chatFolder(), aaj:'· Today', kaam:'· All tools', baat:'· Baat', main:'· Main', bana:'· Creations', project:'· Folder', arena:'· Design Arena', lab:'· Prayogshala', hire:'· AI Employees', seekh:'· Video Learner', interactive:'· Hoola Interactive', code:'· Hoola Code', seodesk:'· SEO Desk', socialdesk:'· Social Desk', caddesk:'· CAD Desk', gamedesk:'· Game Desk', archdesk:'· Architecture Desk', edudesk:'· Education Desk', skills:'· Skills', connectors:'· Connectors', aiapps:'· AI Apps', filmdesk:'· Film Desk', leadsdesk:'· Leads Desk', deptdesk:'· Department desk', accountsdesk:'· GST & Accounts'}[v] || '';
   if (v !== 'project') PJ?.draw();
   drawNav(); $('#app').classList.remove('drawer');
   if (v === 'aaj') drawToday(); if (v === 'main') drawMain(); if (v === 'baat') drawBaat();
@@ -231,7 +235,8 @@ function go(v, arg) {
   if (v === 'edudesk') EMP?.edu($('#edudesk'));   // v0.453 Education, Research & Lab
   if (v === 'filmdesk') FD?.open($('#filmdesk'));   // v0.565 Film Desk
   if (v === 'leadsdesk') EMP?.leads($('#leadsdesk'));   // v0.686.0 Leads Desk (the Lead Generation employee)
-  if (v === 'deptdesk') DDK?.open($('#deptdesk'), arg);   // v0.799 DESK ROOM (built as 0.796): a department desk, opened on one employee
+  if (v === 'deptdesk') DDK?.open($('#deptdesk'), arg);
+  if (v === 'accountsdesk') BAHI?.open($('#accountsdesk'));   // v0.807 BAHI: the GST & Accounts employee's desk   // v0.799 DESK ROOM (built as 0.796): a department desk, opened on one employee
   if (v === 'skills') SK?.draw($('#skills'));   // v0.481 the Skill Desk
   if (v === 'creative') WORKSPACE?.open();
   if (v === 'creative') $('#ttl').textContent = '· Creative workspace';
@@ -354,6 +359,23 @@ async function enter() {
                           say: text => { go('chat'); msg.value = text; msg.dispatchEvent(new Event('input')); composer.requestSubmit(); }});
     if (!NAV.some(([k]) => k === 'hire')) NAV.unshift(['hire', 'AI Employees']);   // v0.443 her AI staff is the FIRST section
   }
+  if (CONFIG.prompting && window.HoolaImprove && !IMP) {   // HOOLA PROMPTING: a sidebar row + the Improve button in the chat box
+    IMP = HoolaImprove({api, esc, toast});
+    if (!NAV.some(([k]) => k === 'prompting')) NAV.splice(NAV.findIndex(([k]) => k === 'creative') + 1, 0, ['prompting', 'Hoola Prompting']);
+    const ib = $('#impBtn'), it = $('#impTxt');
+    ib.hidden = false;
+    const reset = () => { IMP_BACK = null; IMP_DONE = ''; it.textContent = 'Improve'; ib.title = 'See what Hoola understood and turn this into a complete prompt'; };
+    msg.addEventListener('input', () => { if (IMP_BACK !== null && msg.value !== IMP_DONE) reset(); });
+    ib.addEventListener('click', () => {
+      if (IMP_BACK !== null && msg.value === IMP_DONE) {          // Undo: her own words back, exactly as she typed them
+        const back = IMP_BACK; reset(); msg.value = back; msg.dispatchEvent(new Event('input')); msg.focus(); return; }
+      const mine = msg.value;
+      if (!mine.trim()) { msg.focus(); toast('Write a few words first.'); return; }
+      IMP.open(mine, {useText: p => (p.out.run.to === 'chat' ? p.out.run.text : p.out.prompt), onUse: t => {
+        msg.value = t; msg.dispatchEvent(new Event('input')); IMP_BACK = mine; IMP_DONE = msg.value;
+        it.textContent = 'Undo'; ib.title = 'Put my own words back'; msg.focus(); }});
+    });
+  }
   if (CONFIG.flow && window.HoolaFlow && !FLW) {   // v0.751 HOOLA FLOW: a row right under Create (with Interactive / Code)
     FLW = HoolaFlow({api, esc, toast, say: (text, send) => { go('chat'); msg.value = text; msg.dispatchEvent(new Event('input')); msg.focus(); if (send) composer.requestSubmit(); }});
     if (!NAV.some(([k]) => k === 'flow')) NAV.splice(NAV.findIndex(([k]) => k === 'creative') + 1, 0, ['flow', 'Hoola Flow']);
@@ -412,6 +434,7 @@ async function enter() {
     ENT = HoolaEnterprise({api, esc, toast});
   }
   if (window.HoolaFilmDesk && !FD) FD = HoolaFilmDesk({api, esc, toast});   // v0.565
+  if (window.HoolaBahi && !BAHI) BAHI = HoolaBahi({api, esc, toast, open: (v, arg) => go(v, arg), title: t => { if (VIEW === 'accountsdesk') $('#ttl').textContent = t; }});   // v0.806
   if (window.HoolaDeptDesk && !DDK) DDK = HoolaDeptDesk({api, esc, toast, open: (v, arg) => go(v, arg),   // v0.799 DESK ROOM (built as 0.796)
     ask: text => { go('chat'); msg.value = text; msg.dispatchEvent(new Event('input')); msg.focus(); },   // lands in the chat box, never sent by itself
     title: t => { if (VIEW === 'deptdesk') $('#ttl').textContent = t; }});

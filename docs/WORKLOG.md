@@ -2939,3 +2939,36 @@ Task ID: v0.802.0 GALTI PAKDO (L6)
 Task: owner "GO L6" - E4 preview error collector + error cards + Try to fix + the debugging ladder with the attempts ledger.
 Work Log: hoola-site.js preview-only collector + build's section catch -> __hoolaErr; site/galti.py (site_errors, ledger, try_fix, pending block); 4 routes; website_dekho what=errors; Studio cards + preview bar + Ctrl+Enter; 9 tests incl. the planted-error walk (fixed on try 1).
 Stage Summary: pushed; server deploy only. Next: L7 WAPAS (versions before launch: restore any, bookmark, undo per reply, per-version diff) on her GO.
+
+Task ID: v0.798.0 HOOLA CODE PHASE 5 (built as 0.794; re-versioned on merge: PROMPT NAAP took 0.794.0, YEH WALA 0.795.0, PRAYOGSHALA WAVE 7 0.796.0 and 3D SCENES + GAME TOOL HUB 0.797.0)
+Ask: GO PHASE 5.
+Built: devsahayak/around.py (schedules + trigger, share link, suggestion, reviewers' comments, end-of-run push), think + pass steps, public routes /hooks/{id} + /shared/{token}, page: Thinking view, Passes card, reviewers' card, ghost text, Scheduled page, share dialog, read-only page; 12 tests incl. 2 browser walks.
+Deploy: vps-ops deploy (server-only; no new pip; table devsahayak_schedules + five nullable columns self-heal). Not verified with a real model, GitHub comment feed or FCM.
+
+---
+Task ID: v0.804.0 HOOLA PROMPTING P1-P3 (built as 0.796; main had moved to 0.797.0, then 0.798.0)
+Ask: "GO P1 TO P3" (owner: test everything together later, after all the build work).
+Built: server/app/prompting/ (anatomy, brief, dialect, context, recipes, store, api), static/console/improve.js + improve.css (the Improve sheet: chat box, Web Studio, Create Image), /console/prompting (promptapp.html, prompting.js, prompting.css), sidebar row; 17 tests incl. 2 browser walks.
+Deploy: vps-ops deploy (server-only; no new pip; one new table prompt_saved self-heals). Next: P4 the outcome ledger on her GO.
+
+Task ID: v0.805.0 LANGGRAPH G6
+Ask: GO G6 (voice as a channel).
+Built: agent/turnchannel.py, call ticket in turndeliver, voice _delegate / _late_result / _check_spoken_claim on the record + facts, stop-words fix on calls; chat_graph still off; 11 tests.
+Deploy: vps-ops deploy (langgraph pip install from v0.761 if not done).
+
+Task ID: v0.806.0 HOOLA CODE PHASE 6 (built as 0.799; re-versioned on merge: their v0.799-v0.805 took the numbers meanwhile)
+Ask: GO PHASE 6.
+Built: devlab/net.py + netproxy.py (network levels, allow-list proxy, outside secrets, `python -m app.devlab net`, vps-ops lab_net_check), devsahayak/events.py (signed GitHub webhook events start scheduled tasks), multi-repo (other_repo tool + linked sessions), settings / composer / scheduled page parts, phone screen redrawn by a parallel agent; closed dialogs emptied; 10 tests incl. a real proxy and a browser walk.
+Deploy: vps-ops deploy, then lab_check, lab_net_check, then DEV_NET=true if all ok. Not verified on real Docker, with a real GitHub delivery, or on a phone.
+
+---
+Task ID: v0.807.0 BAHI A0 (built as 0.806)
+Task: owner "GO A0" on docs/ACCOUNTS_EMPLOYEE_PLAN.md - the GST & Accounts employee's foundation.
+Work Log: server/app/bahi/ (register + adapters + locks + trail, rules as data, WhiteBooks client + sandbox contract check, overview, /api/bahi/*); Hub row live as GST & Accounts; console desk bahi.js; vps-ops wb_check; 14 tests incl. a browser walk; main moved to 0.806 meanwhile - merged, re-versioned 0.807.
+Stage Summary: on branch claude/exciting-hawking-113x8i (main on her word). Next: she puts the WhiteBooks SANDBOX keys in the VPS .env + runs vps-ops wb_check (pins the real reply shapes); then GO A1 (connect her GSTIN).
+
+---
+Task ID: v0.808.0 WAPAS (L7)
+Task: owner "GO L7" - E5 restore any version, bookmarks, undo per reply, diffs, revert and resend; E7 durable live slots.
+Work Log: site/wapas.py (snapshots, restore, bookmark, diff); _make_version snapshot; site_versions.bookmark; 3 routes + website action=restore_version; stream.py on-disk slots; Studio History / reply footer / Edit + Revert and resend; 8 tests incl. a browser walk.
+Stage Summary: pushed; server deploy only. Next: L8 needs her 4 decisions (build server, model per job, free allowances, brand) before the React App Engine.

@@ -935,6 +935,7 @@ def init_db(url: str | None = None):
     from .agent import goal as _goal  # noqa: F401  (v0.186 goal_runs: lamba kaam pakka)
     from .agent import compact as _compact  # noqa: F401  (v0.242 chat_compact: Claude-style chat checkpoints)
     from . import aboutme as _aboutme  # noqa: F401  (v0.250 about_me: her memory page)
+    from .prompting import store as _prompt_store  # noqa: F401  (HOOLA PROMPTING: prompt_saved)
     from . import kaamwatch as _kaamwatch  # noqa: F401  (v0.136 live job watch)
     from . import kaam_followup as _kaam_followup  # noqa: F401  (v0.190.1 P0: this model only ever had LAZY
         # imports - worker.tick and kaamwatch.enqueue both import it inside the function - so create_all()
@@ -961,6 +962,7 @@ def init_db(url: str | None = None):
         # agent_teams table - registered HERE on day one AND self-healing via team.ensure_table())
     from .blender3d import service as _blender3d  # noqa: F401  (v0.141 3D Studio)
     from .engineering import service as _engineering  # noqa: F401  (v0.357 Engineering Desk)
+    from .bahi import models as _bahi_models  # noqa: F401  (v0.807 BAHI - the GST & Accounts employee, A0)
     from .archdesk import models as _archdesk  # noqa: F401  (v0.410 Architecture Desk: arch_projects, arch_reviews)
     from .gamedesk import service as _gamedesk  # noqa: F401  (v0.381 Game Desk)
     from .gamedesk import studio as _gamestudio  # noqa: F401  (v0.386 Studio Project)

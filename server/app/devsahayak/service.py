@@ -253,14 +253,20 @@ _FULL = re.compile(r"^[A-Za-z0-9_.-]{1,100}/[A-Za-z0-9_.-]{1,100}$")
 def repo_view(r: DevRepo) -> dict[str, Any]:
     return {"id": r.id, "repo": r.full_name, "default_branch": r.default_branch, "private": r.private, "language": r.language,
             "deploy_workflow": r.deploy_workflow, "deploy_ref": r.deploy_ref, "notes": r.notes,
-            "setup_cmd": r.setup_cmd or "", "test_cmd": r.test_cmd or "", "env_vars": _j(r.env_vars or "", {})}
+            "setup_cmd": r.setup_cmd or "", "test_cmd": r.test_cmd or "", "env_vars": _j(r.env_vars or "", {}),
+            "net": {"level": r.net_level or "none", "hosts": _j(r.net_hosts or "", []),          # Phase 6 - a secret's value never leaves the server
+                    "secrets": [{"host": x.get("host"), "header": x.get("header"), "prefix": x.get("prefix") or "", "at": x.get("at") or ""}
+                                for x in _j(r.net_secrets or "", [])]},
+            "events": {"on": bool(r.hook_id and r.hook_secret), "by_hoola": bool(r.hook_gh),
+                       "last": (_j(r.hook_seen or "", {}) or {}).get("last") or {}}}
 
 
 _ENV_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]{0,60}$")
 _ENV_SECRETY = re.compile(r"(?i)(password|passwd|secret|token|api[_-]?key|private[_-]?key|credential)")
 
 
-def save_repo(tenant: str, full: str, setup_cmd: Any = None, test_cmd: Any = None, env_vars: Any = None) -> dict[str, Any]:
+def save_repo(tenant: str, full: str, setup_cmd: Any = None, test_cmd: Any = None, env_vars: Any = None,
+              net_level: Any = None, net_hosts: Any = None) -> dict[str, Any]:
     """How THIS repo runs in the box: her own setup command (the one-time dependency install, the only step that gets the
     internet), her own test command, and plain environment variables for every command. None of it is a place for a
     key - the box's output is shown to the AI - so a name or value that looks like a secret is refused here, by name."""
@@ -292,8 +298,84 @@ def save_repo(tenant: str, full: str, setup_cmd: Any = None, test_cmd: Any = Non
                                    "its output is shown to the AI.")
                 clean[k] = v
             r.env_vars = json.dumps(clean) if clean else None
+        if net_level is not None or net_hosts is not None:      # Phase 6: what a command in the box may reach
+            from ..devlab import net as NET
+            if net_level is not None:
+                lv = str(net_level or "none").strip().lower()
+                if lv not in NET.LEVELS:
+                    raise DevError("Network = none | limited | full")
+                r.net_level = None if lv == "none" else lv
+            if net_hosts is not None:
+                try:
+                    hosts = NET.clean_hosts(net_hosts if isinstance(net_hosts, list) else str(net_hosts or "").replace(",", "\n").split())
+                except ValueError as e:
+                    raise DevError(str(e))
+                r.net_hosts = json.dumps(hosts) if hosts else None
         s.flush()
         return repo_view(r)
+
+
+def save_repo_secret(tenant: str, full: str, host: str, header: str = "Authorization", value: str = "", prefix: str = "") -> dict[str, Any]:
+    """Phase 6 - a key for ONE outside host, kept OUTSIDE the box: typed on the settings screen, sealed here, added to
+    the request by the proxy. It is never shown again, never in the box's environment, never given to the AI."""
+    from ..bazar.security import vault
+    from ..devlab import net as NET
+    try:
+        host, header, prefix = NET.clean_secret(host, header, prefix)
+    except ValueError as e:
+        raise DevError(str(e))
+    value = str(value or "").strip()
+    if not (8 <= len(value) <= 4000) or "\n" in value or "\r" in value:
+        raise DevError("Paste the key itself (one line, at least 8 characters).")
+    with session() as s:
+        r = s.scalars(select(DevRepo).where(DevRepo.tenant_id == tenant, DevRepo.full_name == (full or "").strip())).first()
+        if r is None:
+            raise DevError("That repo is not on your list.")
+        rows = [x for x in _j(r.net_secrets or "", []) if x.get("host") != host]
+        if len(rows) >= NET.MAX_SECRETS:
+            raise DevError(f"At most {NET.MAX_SECRETS} secrets a repo. Remove one first.")
+        rows.append({"host": host, "header": header, "prefix": prefix, "sealed": vault().seal(value), "at": now().isoformat()})
+        r.net_secrets = json.dumps(rows)
+        s.flush()
+        return repo_view(r)
+
+
+def remove_repo_secret(tenant: str, full: str, host: str) -> dict[str, Any]:
+    with session() as s:
+        r = s.scalars(select(DevRepo).where(DevRepo.tenant_id == tenant, DevRepo.full_name == (full or "").strip())).first()
+        if r is None:
+            raise DevError("That repo is not on your list.")
+        rows = [x for x in _j(r.net_secrets or "", []) if x.get("host") != str(host or "").strip().lower()]
+        r.net_secrets = json.dumps(rows) if rows else None
+        s.flush()
+        return repo_view(r)
+
+
+def _repo_net(tenant: str, full: str) -> dict[str, Any]:
+    """What the engine hands the box for THIS repo: its level, her hosts, and the outside secrets (opened here, written
+    only into the proxy's rule for one command). Empty while `dev_net` is off - then nothing changes for anyone."""
+    try:
+        from ..devlab import net as NET
+        if not NET.on():
+            return {}
+        from ..bazar.security import vault
+        with session() as s:
+            r = s.scalars(select(DevRepo).where(DevRepo.tenant_id == tenant, DevRepo.full_name == full)).first()
+            if r is None:
+                return {}
+            level, hosts, rows = r.net_level or "none", _j(r.net_hosts or "", []), _j(r.net_secrets or "", [])
+        inject = {}
+        for x in rows:
+            try:
+                val = vault().open(str(x.get("sealed") or ""))
+            except ValueError:
+                continue
+            inject[str(x["host"])] = {"header": str(x.get("header") or "Authorization"),
+                                      "value": (str(x.get("prefix")) + " " if x.get("prefix") else "") + val}
+        return {"level": level, "hosts": hosts, "inject": inject} if (level != "none" or inject) else {}
+    except Exception:
+        log.debug("dev repo net failed", exc_info=True)
+        return {}
 
 
 def _repo_box(tenant: str, full: str) -> tuple[dict[str, str], dict[str, str]]:
@@ -492,6 +574,8 @@ def task_view(t: DevTask, full: bool = False) -> dict[str, Any]:
                       "path": f"/console/code/shared/{t.share}" if t.share else "",
                       "until": _aware(t.share_until).isoformat() if t.share_until else ""}
         v["sched_id"] = t.sched_id or ""
+        v["refs"] = [str(x).split("/")[-1] for x in _j(t.refs or "", [])]      # Phase 6: her other repos attached to read
+        v["group"] = _group(t)                                                  # ... and the sessions doing the same job in other repos
         v["pr_comments"] = (_j(t.pr_notes or "", {}).get("open") or [])[:30]   # reviewers' comments not acted on yet
     return v
 
@@ -665,6 +749,19 @@ def attachment(tenant: str, ref: str, index: int) -> tuple[bytes, str]:
         return (_attach_dir(tid) / str(rows[index]["file"])).read_bytes(), str(rows[index].get("type") or "image/png")
     except OSError:
         raise DevError("That picture is no longer on the server.")
+
+
+def _group(t: DevTask) -> list[dict[str, Any]]:
+    if not t.grp:
+        return []
+    try:
+        with session() as s:
+            rows = s.scalars(select(DevTask).where(DevTask.tenant_id == t.tenant_id, DevTask.grp == t.grp, DevTask.id != t.id)
+                             .order_by(DevTask.created_at).limit(6)).all()
+            return [{"id": x.id, "number": x.number, "repo": x.repo.split("/")[-1], "status": x.status, "pr_number": x.pr_number}
+                    for x in rows]
+    except Exception:
+        return []
 
 
 def _question(t: DevTask, ch: list | None = None) -> str:
@@ -1393,8 +1490,11 @@ def _in_thread(tenant: str, tid: str, fn: Callable[..., Any], *a: Any, job: dict
 
 def start_bg(tenant: str, kind: str, text: str, repo: str = "", issue: int = 0, files: list[str] | None = None,
              conv: str = "", base: str = "", mode: str = "", model: str = "", effort: str = "",
-             images: Any = None, docs: Any = None) -> dict[str, Any]:
+             images: Any = None, docs: Any = None, refs: Any = None, also: Any = None, grp: str = "") -> dict[str, Any]:
     """The console's Start: the same checks as start(), the row at once, the work in the background.
+    Phase 6 (multi-repo): refs = her other repos attached to READ (at most 3, never changed from this session);
+    also = her other repos to CHANGE too - each gets its OWN session and its own pull request (same checks, same taps),
+    started together and shown as one group, each reading the others.
     Phase 3 (the composer): kind 'auto' = read from her words; base = the branch to work from and to open the PR
     against (default: the repo's); mode ask | auto | plan; a model + effort for this session (ignored when the server
     forces one model); pictures and text files she attached."""
@@ -1431,11 +1531,20 @@ def start_bg(tenant: str, kind: str, text: str, repo: str = "", issue: int = 0, 
             raise DevError(str(e))
         if not found:
             raise DevError(f"Branch {base} was not found in {r.full_name}.")
+    mine = {x["repo"] for x in repos(tenant)}
+    pick = lambda xs: [x for x in dict.fromkeys(str(y or "").strip() for y in (xs if isinstance(xs, list) else [])) if x and x != r.full_name]   # noqa: E731
+    also_l, refs_l = pick(also)[:2], pick(refs)
+    for x in also_l + refs_l:
+        if x not in mine:
+            raise DevError(f"{x[:80]} is not on your repo list. Add it in Settings first.")
+    refs_l = [x for x in dict.fromkeys(refs_l + also_l)][:3]
+    if also_l and not grp:
+        grp = new_id("dg")
     number = _next_number(tenant)
     with session() as s:
         t = DevTask(tenant_id=tenant, number=number, kind=kind, repo=r.full_name, text=clean, issue=int(issue or 0), conv=conv,
                     base=base or r.default_branch, mode=mode or None, model=model or None, effort=effort or None,
-                    attach=json.dumps(rows) if rows else None)
+                    attach=json.dumps(rows) if rows else None, refs=json.dumps(refs_l) if refs_l else None, grp=grp or None)
         _log(t, f"{KINDS[kind]} shuru (console)")
         s.add(t)
         s.flush()
@@ -1445,7 +1554,17 @@ def start_bg(tenant: str, kind: str, text: str, repo: str = "", issue: int = 0, 
         d.mkdir(parents=True, exist_ok=True)
         for name, raw in blobs:
             (d / name).write_bytes(raw)
-    return _in_thread(tenant, tid, _work, tenant, tid, g, files or [], warn, job={"what": "work"})
+    out = _in_thread(tenant, tid, _work, tenant, tid, g, files or [], warn, job={"what": "work"})
+    for other in also_l:                         # the same job in her other repo: its own session, its own pull request
+        note = (f"\n\n<multi_repo>\nThis job spans more than one of her repos. THIS session changes only {other}. The same "
+                f"job is being done in {r.full_name} by another session ({number}); you can read that repo with the other_repo "
+                "tool, as it is on its default branch. Do your part here and say in explain what the other repo must match.\n</multi_repo>")
+        try:
+            start_bg(tenant, kind, clean + note, repo=other, mode=mode, model=model, effort=effort, conv=conv,
+                     refs=[r.full_name] + [x for x in refs_l if x != other], grp=grp)
+        except (DevError, GhError) as e:
+            _progress(tid, f"could not start the session in {other}: {str(e)[:160]}")
+    return out
 
 
 def in_background(tenant: str, ref: str, what: str, **kw: Any) -> dict[str, Any]:
@@ -1607,7 +1726,8 @@ def _work(tenant: str, tid: str, g: Gh, extra_files: list[str], warn: str, ask_p
             hers, env = _repo_box(tenant, t.repo)
             base_sha, read, ctx, out = EN.run(g, t, _token(tenant), cfg.rules, cfg.allow_workflows, issue_txt,
                                               on_step=_Step(tid), plan_txt=plan_txt, attach=(att_txt, att_pics),
-                                              follow_up=follow_up, resume=resume, hers=hers, env=env)
+                                              follow_up=follow_up, resume=resume, hers=hers, env=env,
+                                              net=_repo_net(tenant, t.repo), refs=_j(t.refs or "", []))
         except EN.Unavailable as e:
             log.info("workspace engine unavailable for %s (%s): the old loop", tid, e)
             base_sha = None
@@ -1868,7 +1988,8 @@ def _round(tenant: str, t: DevTask, extra: str, warn: str, resume: bool = False)
                 spec = SP.fix_addendum(extra, paths)
             hers, env = _repo_box(tenant, t.repo)
             _, read, _, out = EN.run(g, t, _token(tenant), cfg.rules, cfg.allow_workflows, on_step=_Step(t.id),
-                                     ref_sha=ref, follow_up=extra, system_extra=spec, resume=resume, hers=hers, env=env)
+                                     ref_sha=ref, follow_up=extra, system_extra=spec, resume=resume, hers=hers, env=env,
+                                     net=_repo_net(tenant, t.repo), refs=_j(t.refs or "", []))
             read = []
         except EN.Unavailable as e:
             log.info("workspace engine unavailable for round %s (%s)", t.id, e)
@@ -2535,6 +2656,15 @@ def _follow_deploy(tenant: str, a: DevAction, g: Gh) -> None:
 
 
 # ---------------------------------------------------------------- overview / worker
+def _net_brief() -> dict[str, Any]:
+    """Phase 6, for the settings page: are network levels switched on here, and what "limited" always allows."""
+    try:
+        from ..devlab import net as NET
+        return {"on": NET.on(), "registries": list(NET.REGISTRIES)}
+    except Exception:
+        return {"on": False, "registries": []}
+
+
 def _schedules(tenant: str) -> list[dict[str, Any]]:
     try:
         from . import around as AR
@@ -2547,7 +2677,7 @@ def _schedules(tenant: str) -> list[dict[str, Any]]:
 def overview(tenant: str) -> dict[str, Any]:
     return {"settings": settings(tenant), "repos": repos(tenant), "tasks": tasks(tenant, limit=30),
             "reviews": reviews(tenant), "actions": actions(tenant), "kinds": KINDS,
-            "models": models(tenant), "usage": _usage(tenant), "schedules": _schedules(tenant)}      # Phase 3: the composer's pickers and the usage ring
+            "models": models(tenant), "usage": _usage(tenant), "schedules": _schedules(tenant), "net": _net_brief()}      # Phase 3: the composer's pickers and the usage ring
 
 
 _CI_TRIGGER = re.compile(r"\bpull_request(?:_target)?\b|^on:\s*(?:\[[^\]]*\bpush\b[^\]]*\]|push)\s*$|^\s+push\s*:", re.M)
@@ -3004,6 +3134,9 @@ def tick(at: datetime | None = None) -> None:
     try:
         from . import around as AR
         AR.tick_schedules(at)                   # Phase 5: scheduled coding tasks that are due
+        from ..devlab import net as NET
+        if NET.on():
+            NET.sweep()                         # Phase 6: network passes of commands that died without handing theirs back
     except Exception:
         log.exception("devsahayak schedules tick failed")
     with session() as s:
