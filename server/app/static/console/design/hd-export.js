@@ -335,6 +335,14 @@
   function secRender() {
     const el = sec.el;
     if (!el) return;
+    /* taking a focused box out of the page fires its change handler, which wants to draw the section again: let the
+       drawing that is under way finish, then draw once more */
+    if (sec.drawing) { sec.again = true; return; }
+    sec.drawing = true;
+    try { secDraw(el); } finally { sec.drawing = false; }
+    if (sec.again) { sec.again = false; secRender(); }
+  }
+  function secDraw(el) {
     const ids = sec.ids.filter(id => node(id));
     clear(el); sec.sig = secSig(ids);
     if (!ids.length) return;

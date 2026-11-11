@@ -127,7 +127,7 @@ async function main() {
   const shot = async (page, name) => { if (shots) await page.screenshot({path: path.join(shots, name + '.png')}); };
   const save = async (dl, as) => { const p = path.join(outDir, as); await dl.saveAs(p); report.files[as] = {name: dl.suggestedFilename(), path: p, size: fs.statSync(p).size}; return p; };
   /* the shared layout check does not know about a scrolled panel: a control scrolled away above it is not "outside the window" */
-  const layout = async page => { const scrolled = await page.evaluate(() => Array.from(document.querySelectorAll('.hd-pbody')).some(el => el.scrollTop > 0)); return (await layout(page)).filter(l => !(scrolled && /^outside the window: /.test(l))); };
+  const layout = async page => { const scrolled = await page.evaluate(() => Array.from(document.querySelectorAll('.hd-pbody')).some(el => el.scrollTop > 0)); const all = await page.evaluate(layoutProblems); return all.filter(l => !(scrolled && /^outside the window: /.test(l))); };
   const t00 = Date.now(), step = name => { if (process.env.DESIGN_TRACE) console.error('[' + ((Date.now() - t00) / 1000).toFixed(1) + 's] ' + name); };
   const toastOf = page => page.evaluate(() => { const t = document.querySelector('.hd-toast'); return t ? t.textContent : ''; });
   try {
@@ -137,9 +137,11 @@ async function main() {
     /* ---- it plugged in, and the editor's own commands are still there ---- */
     step("it plugged in, and the editor's own commands are still there");
     const wired = await page.evaluate(() => ({hooks: ['export', 'exportSection', 'importSvg'].every(k => typeof HD.ui.hooks[k] === 'function'), panel: HD.ui.state.panels.right.some(p => p.id === 'inspect'), api: typeof HD.handoff.renderOne,
-      own: HD.ui.run('selectAll'), mine: ['copyPng', 'placeImage', 'saveCopy', 'importCopy', 'inspect'].map(id => HD.ui.run(id) !== undefined)}));
-    ok(wired.hooks && wired.panel && wired.api === 'function', 'the hooks, the Inspect panel and HD.handoff are there'); ok(wired.own === true, 'the editor’s own commands were not lost');
-    await page.keyboard.press('Escape'); await page.evaluate(() => { HD.ui.closeModal(); HD.ui.state.rightTab = 'design'; HD.ui.refresh(); HD.sel.set(['9:1']); }); await page.waitForTimeout(250);
+      own: HD.ui.run('selectAll')}));
+    ok(wired.hooks && wired.panel && wired.api === 'function', 'the hooks, the Inspect panel and HD.handoff are there'); ok(wired.own === true, 'the editor\u2019s own commands were not lost');
+    await page.locator('canvas.hd-canvas').focus(); await page.keyboard.press('Control+K'); await page.waitForSelector('.hd-palq');
+    for (const q of ['Copy as PNG', 'Copy as Flutter', 'Place an image', 'hoola.json', 'Undo', 'Zoom to fit']) { await page.locator('.hd-palq').fill(q); await page.waitForTimeout(40); ok(await page.locator('.hd-pallist .hd-mi').count() >= 1, 'the command palette knows \u201C' + q + '\u201D'); }
+    await page.keyboard.press('Escape'); await page.evaluate(() => { HD.sel.set(['9:1']); }); await page.waitForTimeout(250);
 
     /* ---- the writers: CRC32, file names, sizes ---- */
     step('the writers: CRC32, file names, sizes');
@@ -284,9 +286,13 @@ async function main() {
     ok(hs.left.unsafe >= 5 && hs.left.outside === 4, 'and it says what was left out: ' + JSON.stringify(hs.left)); ok(/were left out/.test(await toastOf(page)), 'in words too');
     const junk = await page.evaluate(async () => { const n0 = HD.store.count(), out = []; for (const t of ['not an svg at all', '<svg xmlns="http://www.w3.org/2000/svg"><rect', '<html><body>x</body></html>', '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"></svg>']) out.push(await HD.handoff.importSvg(t, {x: 0, y: 0})); return [out, HD.store.count() === n0]; });
     eq(junk, [[null, null, null, null], true], 'a broken or empty SVG adds nothing');
-    const cap = await page.evaluate(async () => { let s = '<svg xmlns="http://www.w3.org/2000/svg" width="2000" height="2000">'; for (let i = 0; i < 20600; i++) s += '<rect x="' + (i % 200) * 10 + '" y="' + Math.floor(i / 200) * 10 + '" width="8" height="8"/>'; const t0 = performance.now(), got = await HD.handoff.importSvg(s + '</svg>', {x: 9000, y: 9000}); const out = [got.nodes, got.capped, Math.round(performance.now() - t0)]; HD.store.undo(); return out; });
-    ok(cap[0] <= 20001 && cap[0] >= 20000 && cap[1] === true, 'a huge SVG stops at 20,000 layers and says so: ' + cap); ok(/only the first 20,000/.test(await toastOf(page)), 'the cap is said in words');
-    report.cap_ms = cap[2];
+    /* the cap, in a file of its own (20,000 layers are not dragged through the rest of the walk) */
+    const f2 = await (await page.request.post(origin + '/api/design/files', {headers: {Authorization: 'Bearer fixture-only'}, data: {name: 'Big SVG'}})).json();
+    const big = await newPage(); await big.goto(base + '#/f/' + f2.id); await mounted(big);
+    const cap = await big.evaluate(async () => { let s = '<svg xmlns="http://www.w3.org/2000/svg" width="2000" height="2000">'; for (let i = 0; i < 20600; i++) s += '<rect x="' + (i % 200) * 10 + '" y="' + Math.floor(i / 200) * 10 + '" width="8" height="8"/>'; const t0 = performance.now(), got = await HD.handoff.importSvg(s + '</svg>', {x: 9000, y: 9000}); return [got.nodes, got.capped, Math.round(performance.now() - t0), HD.store.count(), HD.store.canUndo()]; });
+    ok(cap[0] === 20000 && cap[1] === true && cap[3] === 20002, 'a huge SVG stops at 20,000 layers and says so: ' + cap); ok(/only the first 20,000/.test(await toastOf(big)), 'the cap is said in words');
+    await big.waitForFunction(() => HD.store.pendingCount() === 0, null, {timeout: 60000}); eq(Object.keys(mock.files.get(f2.id).doc.nodes).length, 20002, 'and the server took them all');
+    report.cap_ms = cap[2]; await big.close();
 
     /* ---- a real-world style SVG: the numbers, and the browser's own picture of it ---- */
     step("a real-world style SVG: the numbers, and the browser's own p");

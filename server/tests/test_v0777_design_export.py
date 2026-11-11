@@ -143,7 +143,7 @@ def test_export_import_inspect_in_a_real_browser(tmp_path, capsys):
         assert xobj["/Filter"] == "/DCTDecode" and xobj["/ColorSpace"] == "/DeviceRGB" and xobj["/BitsPerComponent"] == 8
         assert (xobj["/Width"], xobj["/Height"]) == (int(w * 2), int(h * 2)), "the page picture is a JPEG at 2x"
         raw = xobj._data                                                       # the stream as stored = the JPEG file itself
-        assert _jpeg_size(raw) == (int(w * 2), int(h * 2)) and len(raw) == xobj["/Length"]
+        assert _jpeg_size(raw) == (int(w * 2), int(h * 2)) and raw[-2:] == b"\xff\xd9", "a whole JPEG, start to end marker"
         assert page.get_contents().get_data().split() == [b"q", str(int(w)).encode(), b"0", b"0", str(int(h)).encode(), b"0", b"0", b"cm", b"/Im0", b"Do", b"Q"]
         assert page.extract_text().strip() == "", "said plainly: an image PDF, no selectable text"
 
