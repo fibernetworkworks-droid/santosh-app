@@ -485,6 +485,7 @@ LABELS_EN = {
     'pc_task_result': 'Checking your PC task',
     'pdf_tools': 'Working on the PDF',
     'pdf_kit': 'Working on the PDF',
+    'hoola_design': 'Working in Hoola Design',
     'video_kit': 'Editing the video',
     'audio_edit': 'Editing the audio',
     'image_edit': 'Editing the picture',
