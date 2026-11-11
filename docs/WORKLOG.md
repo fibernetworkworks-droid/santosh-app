@@ -2871,3 +2871,9 @@ Stage Summary: pushed; server deploy only. Next: L3 SAWAAL CARD (design question
 Task ID: SAVE THE STATE 11 Nov 2026 (connectors)
 Ask: "SAVE THE STATE" after v0.781 CONNECTORS PAGE went live.
 Done: branch stable-2026-11-11-connectors-v782 = 48c3eda0c (the live commit, v0.782.0; live files hash-matched); re-verified in a git-archive copy: markers present + 101 tests green, 0 failed; APK v0.782.0-b2227; checkpoint written in CLAUDE.md. No credentials in this entry.
+
+Task ID: v0.783.0 LANGGRAPH G4
+Ask: GO G4 (long jobs continue on one thread).
+Built: turngraph job thread + carry node + park / park_cut, goal round resumes it, toolledger.move; chat_graph still off; 9 tests.
+Deploy: vps-ops deploy (langgraph pip install from v0.761 if not done).
+
