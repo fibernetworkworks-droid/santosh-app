@@ -116,7 +116,7 @@
   const numStr = v => (v === null || v === undefined || v === '') ? '' : (typeof v === 'number' ? v.toLocaleString('en-IN', {maximumFractionDigits: 1}) : S(v));
 
   /* ---------- state ---------- */
-  let GAMES = [], HEALTH = {}, ORIENT = ['portrait', 'landscape'], PROJECTS = [], EMP = {employees: [], hired: {}};
+  let GAMES = [], HEALTH = {}, ORIENT = ['portrait', 'landscape'], PROJECTS = [], EMP = {employees: [], hired: {}}, EMP_OK = false;
   let POLL = null, PENDING = null, HOMEPOLL = null;
   const W = {id: '', game: null, tab: '', sub: '', sig: ''};
   const convKey = id => 'hoola.gamedev.conv.' + id;
@@ -132,7 +132,7 @@
       api('GET', '/api/employees').catch(() => null)]);
     GAMES = L(d.games); HEALTH = M(d.health); ORIENT = L(d.orientations).length ? L(d.orientations) : ORIENT;
     PROJECTS = L(sp.projects);
-    if (em) EMP = {employees: L(em.employees), hired: M(em.hired)};
+    if (em) { EMP = {employees: L(em.employees), hired: M(em.hired)}; EMP_OK = true; }
   }
   async function loadProjects() { try { PROJECTS = L((await api('GET', '/api/gamestudio')).projects); } catch {} }
 
@@ -194,7 +194,7 @@
   const STEPS = [['Design doc', 'You read it and say OK'], ['Built in Godot', 'Code, scenes, art, sound'], ['Hoola plays it', 'Bots on phone speeds'],
     ['Fixes itself', "A bug closes only when the bot can't find it"], ['Private link', 'Play on any phone'], ['Store + live', 'Play Store, itch.io, PC, then updates']];
   function hireGate() {
-    if (devWorking()) return '';
+    if (devWorking() || !EMP_OK) return '';
     const st = hiredState('game_dev');
     return `<div class="gdv-gate" role="status"><div><b>${st === 'paused' ? 'The Game Developer is paused' : 'The Game Developer is not on your team yet'}</b>
       <span>Games are made by the Game Developer employee. ${st === 'paused' ? 'Resume it to start a new game.' : 'Hire it once (free to hire, it asks you before every build).'}</span></div>
@@ -269,7 +269,7 @@
     if (brief.length < 8) { toast('Write your idea in 2-3 lines first.', true); $('#gdvAsk')?.focus(); return; }
     if (STARTING) return;
     PENDING = {brief, orientation};
-    if (!devWorking()) { drawHome($('#gdvMain')); toast('Hire the Game Developer first, then it starts.', true); return; }
+    if (EMP_OK && !devWorking()) { drawHome($('#gdvMain')); toast('Hire the Game Developer first, then it starts.', true); return; }
     STARTING = true;
     const btn = APP.querySelector('form[data-gdv-form="ask"] .gdv-send'); if (btn) btn.disabled = true;
     try {
@@ -277,7 +277,7 @@
       let v;
       try { v = await api('POST', '/api/game', {brief, orientation, conversation_id: conv}); }
       catch (e) {
-        if (e.status === 400 && /hired|hire/i.test(e.message)) { EMP.hired = {...M(EMP.hired), game_dev: 'none'}; drawHome($('#gdvMain')); }
+        if (e.status === 400 && /hired|hire/i.test(e.message)) { EMP_OK = true; EMP.hired = {...M(EMP.hired), game_dev: 'none'}; drawHome($('#gdvMain')); }
         throw e;
       }
       PENDING = null;
@@ -522,7 +522,9 @@
       let g; try { g = await api('GET', `/api/game/${enc(id)}`); } catch { return startPoll(); }
       if (W.id !== id) return;
       const was = busy(W.game); W.game = g; drawTop();
-      if (was && !busy(g)) { await loadProjects(); toast(N(g.version) ? 'Ready to play.' : g.status === 'design_ready' ? 'The design doc is ready.' : S(g.say)); }
+      if (was && !busy(g)) {
+        const c = store.get(convKey(id)); if (c && S(g.title)) api('PATCH', `/api/conversations/${enc(c)}`, {title: `Game · ${gname(g)}`}).catch(() => {});
+        await loadProjects(); toast(N(g.version) ? 'Ready to play.' : g.status === 'design_ready' ? 'The design doc is ready.' : S(g.say)); }
       const typing = paneEl() && paneEl().contains(document.activeElement) && /TEXTAREA|INPUT/.test(document.activeElement.tagName);
       if (['design', 'play'].includes(W.tab) && sigOf(g) !== W.sig && !typing) drawPane();
       if (!THREAD.rows.length) drawMsgs();

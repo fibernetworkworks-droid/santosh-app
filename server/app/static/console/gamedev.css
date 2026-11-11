@@ -201,7 +201,7 @@ body.gdv-body{overflow:auto;background:var(--bg);color:var(--ink);font:15px/1.5 
 
 .gdv-play{display:grid;grid-template-columns:minmax(260px,auto) minmax(300px,1fr);gap:24px;align-items:start;max-width:1120px;margin:0 auto}
 .gdv-stage{display:flex;flex-direction:column;align-items:center;gap:12px}
-.gdv-phone{border:10px solid var(--ink);border-radius:30px;background:#000000;overflow:hidden;box-shadow:var(--sh)}
+.gdv-phone{border:10px solid #16141F;border-radius:30px;background:#000000;overflow:hidden;box-shadow:var(--sh)}
 .gdv-phone iframe{display:block;width:100%;height:100%;border:0;background:#000000}
 .gdv-port{width:300px;height:533px} .gdv-land{width:min(560px,100%);aspect-ratio:16/9} .gdv-square{width:380px;height:380px}
 .gdv-side2{display:flex;flex-direction:column;gap:14px;min-width:0}
@@ -249,6 +249,7 @@ body.gdv-body{overflow:auto;background:var(--bg);color:var(--ink);font:15px/1.5 
   .gdv-navs{flex-direction:row;flex-wrap:wrap;gap:4px}
   .gdv-side .gdv-grow,.gdv-sidelabel,.gdv-recent{display:none}
   .gdv-health{margin:8px 0 4px}
+  .gdv-new kbd{display:none}
   .gdv-home{padding:28px 16px 56px;gap:36px}
   .gdv-page{padding:20px 16px 48px}
   .gdv-hero h1{font-size:32px}
