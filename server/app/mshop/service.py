@@ -55,27 +55,27 @@ FAULTS: dict[str, dict] = {
                    "warranty": 7, "days": 1},
     "buttons": {"label": "Buttons", "words": ("button", "power key", "volume key", "power button"), "warranty": 30, "days": 1},
     "network": {"label": "Network / SIM", "words": ("network", "sim", "signal", "antenna", "no service"), "warranty": 15, "days": 2},
-    "water": {"label": "Paani / water damage", "words": ("water", "paani", "pani", "geela", "liquid", "bhig"), "warranty": 0, "days": 3},
+    "water": {"label": "Water damage", "words": ("water", "paani", "pani", "geela", "liquid", "bhig"), "warranty": 0, "days": 3},
     "software": {"label": "Software / hang / dead", "words": ("software", "hang", "restart", "update", "flash", "virus", "logo",
                                                               "dead", "bootloop", "slow"), "warranty": 7, "days": 1},
     "motherboard": {"label": "Motherboard / IC", "words": ("ic", "board", "motherboard", "short", "dead set", "emmc"),
                     "warranty": 30, "days": 4},
     "unlock": {"label": "Lock / FRP / pattern hatana", "words": ("frp", "google lock", "icloud", "pattern", "password bhool",
                                                                  "unlock", "lock khol"), "warranty": 0, "days": 1},
-    "other": {"label": "Kuch aur", "words": (), "warranty": 7, "days": 2},
+    "other": {"label": "Something else", "words": (), "warranty": 7, "days": 2},
 }
 STATUSES = ("received", "diagnosing", "waiting_customer", "waiting_part", "repairing", "ready", "delivered", "returned", "cancelled")
-STATUS_LABEL = {"received": "Jama hua", "diagnosing": "Jaanch", "waiting_customer": "Graahak ki haan baaki",
-                "waiting_part": "Part ka intezaar", "repairing": "Repair chal raha", "ready": "Taiyaar", "delivered": "De diya",
-                "returned": "Bina repair wapas", "cancelled": "Cancel"}
+STATUS_LABEL = {"received": "Received", "diagnosing": "Checking", "waiting_customer": "Waiting for customer's approval",
+                "waiting_part": "Waiting for part", "repairing": "Repair in progress", "ready": "Ready", "delivered": "Handed over",
+                "returned": "Returned unrepaired", "cancelled": "Cancelled"}
 OPEN = ("received", "diagnosing", "waiting_customer", "waiting_part", "repairing", "ready")
 ACCESSORIES = ("sim", "memory_card", "cover", "charger", "cable", "earphone", "box", "back_cover")
 OPERATORS = {"jio": "Jio", "airtel": "Airtel", "vi": "Vi", "bsnl": "BSNL", "mtnl": "MTNL"}
-DEFAULT_TERMS = ("Phone mein data ki zimmedari graahak ki. Paani se kharab phone par warranty nahi. "
-                 "Taiyaar phone {unclaimed} din mein na le jaane par dukaan zimmedar nahi. "
-                 "Warranty sirf badle gaye part par, tootne / paani lagne par nahi.")
-DEFAULT_READY = ("Namaste {name} ji, aapka {device} taiyaar hai ({work}). Kul {amount}{balance_line}. "
-                 "{shop} se le jaiye. Job no. {number}.")
+DEFAULT_TERMS = ("The customer is responsible for the data on the phone. No warranty on a water-damaged phone. "
+                 "The shop is not responsible if a ready phone is not collected within {unclaimed} days. "
+                 "Warranty covers only the replaced part, not breakage / water damage.")
+DEFAULT_READY = ("Hello {name}, your {device} is ready ({work}). Total {amount}{balance_line}. "
+                 "Please collect it from {shop}. Job no. {number}.")
 IMEI_CHANGE = re.compile(r"imei\s*(?:change|badal|repair|write|likh|null|fix|thik)|(?:change|badal|repair|write|null|fix)\s*(?:the\s*)?imei", re.I)
 PASSCODE = re.compile(r"((?:pass(?:word|code)?|pattern|pin|lock)\s*(?:code|no\.?|number)?\s*(?:hai|is|:|=|-)?\s*)"
                       r"((?=[0-9A-Za-z]*\d)[0-9A-Za-z]{3,12})", re.I)
@@ -209,7 +209,7 @@ def _paise(v) -> int:
     try:
         return int(round(float(str(v).replace(",", "").replace("₹", "").replace("Rs", "").replace("rs", "").strip()) * 100))
     except ValueError:
-        raise MShopError(f"'{v}' rupaye ki rakam nahi lagti.")
+        raise MShopError(f"'{v}' does not look like an amount in rupees.")
 
 
 def _digits(p: str) -> str:
@@ -265,7 +265,7 @@ def faults_of(text: str, given: list[str] | None = None) -> list[str]:
 
 def _scrub(text: str) -> tuple[str, bool]:
     """A passcode written into notes is removed (Hoola never keeps a customer's lock code)."""
-    out, n = PASSCODE.subn(lambda m: m.group(1) + "[hataya]", text or "")
+    out, n = PASSCODE.subn(lambda m: m.group(1) + "[removed]", text or "")
     return out, n > 0
 
 
@@ -313,17 +313,17 @@ def save_settings(tenant: str, **kw: Any) -> dict[str, Any]:
             if kw.get(k) is not None:
                 v = str(kw[k]).strip()
                 if k == "morning_time" and v and not re.fullmatch(r"\d{1,2}:\d{2}", v):
-                    raise MShopError("Subah ka samay HH:MM mein.")
+                    raise MShopError("Give the morning time as HH:MM.")
                 setattr(r, k, v[:2000])
         if kw.get("gstin") is not None:
             g = str(kw["gstin"]).strip().upper()
             if g and not re.fullmatch(r"\d{2}[A-Z]{5}\d{4}[A-Z][1-9A-Z]Z[0-9A-Z]", g):
-                raise MShopError("GSTIN sahi nahi lagta (15 akshar).")
+                raise MShopError("The GSTIN does not look right (15 characters).")
             r.gstin = g
         if kw.get("gst_on") is not None:
             r.gst_on = bool(kw["gst_on"])
             if r.gst_on and not r.gstin:
-                raise MShopError("GST lagane ke liye pehle GSTIN daaliye.")
+                raise MShopError("Add the GSTIN first to charge GST.")
         if kw.get("enabled") is not None:
             r.enabled = bool(kw["enabled"])
         for k, lo, hi in (("jobs_per_day", 0, 500), ("unclaimed_days", 1, 365), ("remind_days", 0, 15)):
@@ -331,9 +331,9 @@ def save_settings(tenant: str, **kw: Any) -> dict[str, Any]:
                 try:
                     v = int(kw[k])
                 except (TypeError, ValueError):
-                    raise MShopError(f"{k} ek number.")
+                    raise MShopError(f"{k} must be a number.")
                 if not lo <= v <= hi:
-                    raise MShopError(f"{k} {lo} se {hi} ke beech.")
+                    raise MShopError(f"{k} must be between {lo} and {hi}.")
                 setattr(r, k, v)
         for k in ("prices", "warranty", "fix_days", "commission"):
             if kw.get(k):
@@ -352,9 +352,9 @@ def save_settings(tenant: str, **kw: Any) -> dict[str, Any]:
                         try:
                             num = float(v)
                         except (TypeError, ValueError):
-                            raise MShopError(f"{k}: '{v}' number nahi.")
+                            raise MShopError(f"{k}: '{v}' is not a number.")
                         if num < 0 or num > (100 if k == "commission" else 1_000_000):
-                            raise MShopError(f"{k}: {v} sahi nahi.")
+                            raise MShopError(f"{k}: {v} is not valid.")
                         cur[key] = num if k in ("prices", "commission") else int(num)
                 setattr(r, k, json.dumps(cur))
         if kw.get("rules") is not None:
@@ -373,7 +373,7 @@ def _customer(s, tenant: str, name: str = "", phone: str = "") -> MShopCustomer:
         c = rows[0] if len(rows) == 1 else None
     if c is None:
         if not name.strip() and len(ph) != 10:
-            raise MShopError("Graahak ka naam ya 10 ank ka phone chahiye.")
+            raise MShopError("The customer's name or a 10-digit phone number is needed.")
         c = MShopCustomer(tenant_id=tenant, name=(name.strip() or ph)[:120], phone=ph)
         s.add(c)
         s.flush()
@@ -494,7 +494,7 @@ def _get(s, tenant: str, ref: str) -> RepairJob:
             j = s.scalars(select(RepairJob).where(RepairJob.tenant_id == tenant, RepairJob.imei == ref)
                           .order_by(RepairJob.created_at.desc())).first()
     if j is None or j.tenant_id != tenant:
-        raise MShopError(f"Repair job '{ref}' nahi mila.")
+        raise MShopError(f"Repair job '{ref}' not found.")
     return j
 
 
@@ -505,40 +505,40 @@ def check_job(tenant: str, problem: str = "", faults: list[str] | None = None, b
     problems, notes = [], []
     imei_d = re.sub(r"\D", "", imei or "")
     if IMEI_CHANGE.search(problem or ""):
-        problems.append("IMEI badalna / likhna kanoonan mana hai (Telecommunications Act 2023, dhara 42(3)(c): 3 saal tak "
-                        "jail aur ₹50 lakh tak jurmana). Yeh kaam nahi lena.")
+        problems.append("Changing / writing an IMEI is against the law (Telecommunications Act 2023, section 42(3)(c): up to 3 years in "
+                        "jail and a fine of up to ₹50 lakh). Do not take this job.")
     if "unlock" in fs and not proof.strip():
-        problems.append("Lock / FRP / iCloud hatane se pehle saboot ki yeh phone isi graahak ka hai (bill / dabba / pehchaan) "
-                        "dekhiye aur 'proof' mein likhiye.")
+        problems.append("Before removing a lock / FRP / iCloud, see proof that this phone belongs to this customer (bill / box / ID) "
+                        "and write it in 'proof'.")
     if imei_d and not imei_ok(imei_d):
-        notes.append("IMEI 15 ank ka sahi number nahi lagta (check digit galat). Phone mein *#06# dabakar dobara dekhiye; "
-                     "asli hai ya nahi: 'KYM <IMEI>' SMS 14422 par.")
+        notes.append("The IMEI does not look like a valid 15-digit number (check digit wrong). Dial *#06# on the phone and check again; "
+                     "to know if it is genuine: SMS 'KYM <IMEI>' to 14422.")
     t = today(tenant)
     with session() as s:
         sv = _sv(_row(s, tenant))
         need = max(sv["fix_days"].get(f, 1) for f in fs)
         h = _history(s, tenant, brand, model, fs)
         if h["days"] is not None and h["days"] > need:
-            notes.append(f"Pichhle {h['n']} aise kaam mein asal mein ~{h['days']} din lage (niyam {need}).")
+            notes.append(f"The last {h['n']} such jobs actually took ~{h['days']} days (rule {need}).")
             need = h["days"]
         price = sum(float(sv["prices"].get(f) or 0) for f in fs)
         if h["charge"]:
-            notes.append(f"{'Isi model' if h['model_match'] else 'Isi kaam'} ke pichhle {h['n']} job: beech ka bill {_rs(h['charge'])}.")
+            notes.append(f"{'This model' if h['model_match'] else 'This kind of work'}, last {h['n']} jobs: median bill {_rs(h['charge'])}.")
         if price:
-            notes.append(f"Aapki list se: {_rs(int(price * 100))}.")
+            notes.append(f"From your list: {_rs(int(price * 100))}.")
         for f in fs:
             back, done = _comebacks(s, tenant, f)
             if done >= 5 and back / done >= 0.2:
-                notes.append(f"{FAULTS[f]['label']}: {back}/{done} phone warranty mein wapas aaye: part / supplier dekhiye.")
+                notes.append(f"{FAULTS[f]['label']}: {back}/{done} phones came back under warranty: check the part / supplier.")
         w = _warranty_hit(s, tenant, imei_d, _digits(phone), fs)
         if w is not None:
-            notes.append(f"Yeh phone {w.number} mein theek hua tha, warranty {_nice(w.warranty_until)} tak: warranty claim "
-                         "(part ka paisa nahi, sirf owner ki marzi se).")
+            notes.append(f"This phone was repaired in {w.number}, warranty until {_nice(w.warranty_until)}: warranty claim "
+                         "(no charge for the part, only if the owner agrees).")
         if imei_d:
             dup = s.scalars(select(RepairJob).where(RepairJob.tenant_id == tenant, RepairJob.imei == imei_d,
                                                     RepairJob.status.in_(OPEN))).first()
             if dup is not None:
-                problems.append(f"Yeh phone (IMEI) pehle se job {dup.number} mein dukaan par hai.")
+                problems.append(f"This phone (IMEI) is already in the shop as job {dup.number}.")
         earliest = t + timedelta(days=need)
         cap = sv["jobs_per_day"]
         if cap:
@@ -548,12 +548,12 @@ def check_job(tenant: str, problem: str = "", faults: list[str] | None = None, b
                 if n < cap:
                     break
                 earliest += timedelta(days=1)
-        pr = _date(tenant, promised_on, "Tareekh") if promised_on else ""
+        pr = _date(tenant, promised_on, "Date") if promised_on else ""
         if pr:
             if pr < t.isoformat():
-                problems.append(f"{_nice(pr)} beet chuki hai.")
+                problems.append(f"{_nice(pr)} has already passed.")
             elif pr < earliest.isoformat():
-                problems.append(f"{_nice(pr)} bahut jaldi hai: niyam / pichhle kaam se sabse jaldi {_nice(earliest.isoformat())}.")
+                problems.append(f"{_nice(pr)} is too soon: by the rule / past jobs the earliest is {_nice(earliest.isoformat())}.")
     return {"faults": fs, "problems": problems, "notes": notes, "earliest": earliest.isoformat(), "earliest_nice": _nice(earliest.isoformat()),
             "estimate_paise": int(price * 100) or h["charge"], "estimate": _rs(int(price * 100) or h["charge"]) if (price or h["charge"]) else "",
             "warranty_claim_of": w.id if w is not None else "", "your_rules": sv["rules"], "promised_on": pr, "ok": not problems}
@@ -567,14 +567,14 @@ def new_job(tenant: str, name: str = "", phone: str = "", brand: str = "", model
     problem, scrubbed = _scrub(problem)
     condition, s2 = _scrub(condition)
     if not problem.strip():
-        raise MShopError("Phone mein kya kharabi hai?")
+        raise MShopError("What is wrong with the phone?")
     imei_d = re.sub(r"\D", "", imei or "")
     if not promised_on:
         promised_on = check_job(tenant, problem, faults, brand, model, imei_d, phone, "", proof)["earliest"]
     ck = check_job(tenant, problem, faults, brand, model, imei_d, phone, promised_on, proof)
-    hard = [p for p in ck["problems"] if "kanoonan" in p or "beet chuki" in p or "pehle se job" in p]
+    hard = [p for p in ck["problems"] if "against the law" in p or "has already passed" in p or "is already in the shop" in p]
     if hard or (ck["problems"] and not force):
-        return {"saved": False, "check": ck, "say": "Job abhi save nahi kiya. " + " ".join(ck["problems"])}
+        return {"saved": False, "check": ck, "say": "The job is not saved yet. " + " ".join(ck["problems"])}
     with _LOCK, session() as s:
         st = _row(s, tenant)
         c = _customer(s, tenant, name, phone)
@@ -589,10 +589,10 @@ def new_job(tenant: str, name: str = "", phone: str = "", brand: str = "", model
                       technician=technician.strip()[:60])
         s.add(j)
         s.flush()
-        _log(j, f"Job liya: {j.brand} {j.model} - {problem[:120]}; wapsi {_nice(j.promised_on)}"
+        _log(j, f"Job taken: {j.brand} {j.model} - {problem[:120]}; return {_nice(j.promised_on)}"
                 + (f"; advance {_rs(j.paid_paise)}" if j.paid_paise else "")
                 + (f"; warranty claim of earlier job" if j.warranty_of else "")
-                + ("; owner ne niyam se hatkar haan kahi: " + " ".join(ck["problems"]) if ck["problems"] else ""), by)
+                + ("; the owner approved outside the rule: " + " ".join(ck["problems"]) if ck["problems"] else ""), by)
         jid = j.id
     added = []
     for fid in photos or []:
@@ -602,14 +602,14 @@ def new_job(tenant: str, name: str = "", phone: str = "", brand: str = "", model
             log.info("photo skipped: %s", e)
     with session() as s:
         v = _job_view(s, s.get(RepairJob, jid))
-    say = (f"Job {v['number']} save: {v['customer']['name']}, {v['device']}, {', '.join(f['label'] for f in v['faults'])}. "
-           f"Wapsi {v['promised_nice']}" + (f", andaza {v['estimate']}" if v["estimate"] else "") + ".")
+    say = (f"Job {v['number']} saved: {v['customer']['name']}, {v['device']}, {', '.join(f['label'] for f in v['faults'])}. "
+           f"Return {v['promised_nice']}" + (f", estimate {v['estimate']}" if v["estimate"] else "") + ".")
     if added:
-        say += f" {len(added)} photo lagi."
+        say += f" {len(added)} photos added."
     elif not photos:
-        say += " Phone ki photo (aage, peeche, screen) le lijiye: warranty mein kaam aati hai."
+        say += " Take photos of the phone (front, back, screen): they help with warranty."
     if scrubbed or s2:
-        say += " Lock ka password note mein tha, hata diya: Hoola graahak ka password kabhi nahi rakhta."
+        say += " A lock password was in the note and has been removed: Hoola never keeps a customer's password."
     if ck["notes"]:
         say += " Dhyaan: " + " ".join(ck["notes"][:4])
     _publish(tenant, "mshop", {"job": v["id"], "status": v["status"]}, conv)
@@ -626,21 +626,21 @@ def _store_dir(tenant: str, job_id: str) -> Path:
 
 def add_photo(tenant: str, job: str, data: bytes, name: str = "photo.jpg", kind: str = "in", note: str = "") -> dict:
     if not data or len(data) > 15 * 1024 * 1024:
-        raise MShopError("Photo khaali hai ya 15 MB se badi.")
+        raise MShopError("The photo is empty or larger than 15 MB.")
     if not (data[:3] == b"\xff\xd8\xff" or data[:8] == b"\x89PNG\r\n\x1a\n" or data[8:12] == b"WEBP" or data[4:12] in (b"ftypheic", b"ftypmif1")):
-        raise MShopError("Yeh photo nahi lagti (JPG / PNG / WEBP / HEIC).")
+        raise MShopError("This does not look like a photo (JPG / PNG / WEBP / HEIC).")
     kind = kind if kind in ("in", "out", "part") else "in"
     with session() as s:
         j = _get(s, tenant, job)
         n = len(s.scalars(select(RepairPhoto.id).where(RepairPhoto.job_id == j.id)).all())
         if n >= 30:
-            raise MShopError("Ek job mein 30 photo tak.")
+            raise MShopError("Up to 30 photos per job.")
         ext = {b"\x89P": ".png"}.get(data[:2], ".webp" if data[8:12] == b"WEBP" else (".heic" if data[4:8] == b"ftyp" else ".jpg"))
         path = _store_dir(tenant, j.id) / f"{kind}_{n + 1:02d}{ext}"
         path.write_bytes(data)
         p = RepairPhoto(tenant_id=tenant, job_id=j.id, kind=kind, path=str(path), note=note[:200])
         s.add(p)
-        _log(j, f"Photo ({'aate waqt' if kind == 'in' else 'dete waqt' if kind == 'out' else 'part'}) lagi")
+        _log(j, f"Photo ({'on arrival' if kind == 'in' else 'on handover' if kind == 'out' else 'part'}) added")
         s.flush()
         return _photo_view(p)
 
@@ -651,7 +651,7 @@ def attach_chat_photo(tenant: str, job: str, file_id: str, kind: str = "in") -> 
     try:
         name, _mime, data = ms.load_files(tenant, [{"type": "file", "file_id": file_id}])[0]
     except Exception as e:
-        raise MShopError(f"Photo {file_id} nahi mili: {e}")
+        raise MShopError(f"Photo {file_id} not found: {e}")
     return add_photo(tenant, job, data, name, kind)
 
 
@@ -659,7 +659,7 @@ def photo_file(tenant: str, photo_id: str) -> tuple[Path, str]:
     with session() as s:
         p = s.get(RepairPhoto, photo_id)
         if p is None or p.tenant_id != tenant or not Path(p.path).exists():
-            raise MShopError("Photo nahi mili.")
+            raise MShopError("Photo not found.")
         ext = Path(p.path).suffix.lower()
         return Path(p.path), {".png": "image/png", ".webp": "image/webp", ".heic": "image/heic"}.get(ext, "image/jpeg")
 
@@ -678,21 +678,21 @@ def set_status(tenant: str, job: str, status: str, note: str = "", by: str = "ow
     with session() as s:
         j = _get(s, tenant, job)
         if j.status in ("delivered", "cancelled", "returned") and status != "returned":
-            raise MShopError(f"Job {j.number} pehle hi {STATUS_LABEL[j.status]} hai.")
+            raise MShopError(f"Job {j.number} is already {STATUS_LABEL[j.status]}.")
         j.status = status
         if status == "ready":
             j.ready_at = now()
         _log(j, f"Status: {STATUS_LABEL[status]}" + (f" ({note})" if note else ""), by)
         s.flush()
         v = _job_view(s, j, False)
-    out: dict[str, Any] = {"job": v, "say": f"Job {v['number']} ab: {v['status_label']}."}
+    out: dict[str, Any] = {"job": v, "say": f"Job {v['number']} is now: {v['status_label']}."}
     if status == "waiting_customer":
         out["draft"] = estimate_message(tenant, v["id"])
-        out["say"] += " Graahak ko andaze ka message draft taiyaar."
+        out["say"] += " A draft message with the estimate is ready for the customer."
     if status == "ready":
         b = prepare_bill(tenant, v["id"], conv=conv)
         out["bill"] = b["bill"]
-        out["say"] += f" Bill {b['bill']['total']} taiyaar, aapki haan ke baad hi graahak ko 'taiyaar hai' message jayega."
+        out["say"] += f" Bill {b['bill']['total']} is ready; the 'ready' message goes to the customer only after your approval."
     _publish(tenant, "mshop", {"job": v["id"], "status": status}, conv)
     return out
 
@@ -736,9 +736,9 @@ def prepare_bill(tenant: str, job: str, conv: str = "") -> dict[str, Any]:
             base = j.estimate_paise or sum(int(float(sv["prices"].get(f) or 0) * 100) for f in fs) or h["charge"]
             if base:
                 lines.append({"what": ", ".join(FAULTS.get(f, FAULTS["other"])["label"] for f in fs), "paise": base})
-                why.append("Andaze / aapki list / pichhle kaam se" if not j.estimate_paise else "Graahak ko bataya andaza")
+                why.append("From the estimate / your list / past jobs" if not j.estimate_paise else "The estimate told to the customer")
         if j.warranty_of:
-            why.append("Warranty claim: aap chahein to part ka paisa na lein (Mana karke daam badliye).")
+            why.append("Warranty claim: if you wish, do not charge for the part (tap No and change the price).")
         sub = sum(x["paise"] for x in lines)
         gst = int(round(sub * 0.18)) if st.gst_on else 0
         bill = {"lines": lines, "subtotal_paise": sub, "gst_paise": gst, "total_paise": sub + gst, "total": _rs(sub + gst),
@@ -746,13 +746,13 @@ def prepare_bill(tenant: str, job: str, conv: str = "") -> dict[str, Any]:
         if not sub:
             bill["status"] = "needs_price"
         j.bill = json.dumps(bill, ensure_ascii=False)
-        _log(j, f"Bill taiyaar {bill['total']} (owner ki haan baaki)")
+        _log(j, f"Bill ready {bill['total']} (owner's approval pending)")
         s.flush()
         v = _job_view(s, j, False)
     card = {"job_id": v["id"], "number": v["number"], "customer": v["customer"]["name"], "device": v["device"],
             "paid": v["paid"], **bill}
     _publish(tenant, "mshop_bill", card, conv)
-    return {"bill": card, "say": f"{v['number']} ka bill {bill['total']}: aapki haan ka intezaar."}
+    return {"bill": card, "say": f"{v['number']} bill {bill['total']}: waiting for your approval."}
 
 
 def decide_bill(tenant: str, job: str, approve: bool, total=None, conv: str = "") -> dict[str, Any]:
@@ -761,35 +761,35 @@ def decide_bill(tenant: str, job: str, approve: bool, total=None, conv: str = ""
         j = _get(s, tenant, job)
         bill = _j(j.bill, {})
         if not bill:
-            raise MShopError("Abhi bill nahi bana.")
+            raise MShopError("No bill has been made yet.")
         if not approve:
             bill["status"] = "rejected"
             j.bill = json.dumps(bill, ensure_ascii=False)
-            _log(j, "Bill: owner ne mana kiya")
+            _log(j, "Bill: declined by the owner")
             v = _job_view(s, j, False)
-            out = {"job": v, "say": "Theek hai. Sahi rakam bataiye, main bill dobara bana dunga."}
+            out = {"job": v, "say": "All right. Tell me the correct amount and I will make the bill again."}
         else:
             if total not in (None, ""):
                 new = _paise(total)
                 if new <= 0:
-                    raise MShopError("Rakam sahi nahi.")
+                    raise MShopError("The amount is not right.")
                 if new != bill.get("total_paise"):
-                    bill["lines"] = [{"what": "Kul (owner ne tay kiya)", "paise": new}]
+                    bill["lines"] = [{"what": "Total (set by the owner)", "paise": new}]
                     bill["subtotal_paise"], bill["gst_paise"], bill["total_paise"] = new, 0, new
                     bill["total"] = _rs(new)
             if not bill.get("total_paise"):
-                raise MShopError("Bill ki rakam bataiye.")
+                raise MShopError("Give the bill amount.")
             bill["status"] = "approved"
             j.bill = json.dumps(bill, ensure_ascii=False)
-            _log(j, f"Bill pakka (owner ki haan): {bill['total']}")
+            _log(j, f"Bill confirmed (owner's approval): {bill['total']}")
             s.flush()
             v = _job_view(s, j, False)
-            out = {"job": v, "say": f"{v['number']}: {bill['total']} pakka."}
+            out = {"job": v, "say": f"{v['number']}: {bill['total']} confirmed."}
     card = {"job_id": v["id"], "number": v["number"], "customer": v["customer"]["name"], "device": v["device"], "paid": v["paid"], **bill}
     _publish(tenant, "mshop_bill", card, conv)
     if approve and v["status"] == "ready":
         out["ready"] = ready_card(tenant, v["id"], conv)
-        out["say"] += " 'Taiyaar hai' message draft card par: aap bhejengi."
+        out["say"] += " The 'ready' message draft is on the card: you send it."
     return out
 
 
@@ -812,13 +812,13 @@ def ready_card(tenant: str, job: str, conv: str = "") -> dict[str, Any]:
         st = _row(s, tenant)
         bill = _j(j.bill, {})
         if bill.get("status") != "approved":
-            raise MShopError("Pehle bill par aapki haan chahiye (Hoola bina haan ke daam nahi batata).")
+            raise MShopError("Your approval on the bill is needed first (Hoola does not quote a price without approval).")
         v = _job_view(s, j, False)
         bal = v["balance_paise"]
         tpl = st.ready_template or DEFAULT_READY
         vals = {"name": v["customer"]["name"].split(" ")[0], "device": v["device"],
                 "work": ", ".join(f["label"] for f in v["faults"]), "amount": bill["total"],
-                "balance_line": (f", baaki {_rs(bal)}" if bal and bal != bill["total_paise"] else ""),
+                "balance_line": (f", balance {_rs(bal)}" if bal and bal != bill["total_paise"] else ""),
                 "shop": _shop(tenant, st), "number": v["number"]}
         try:
             text = tpl.format(**vals)
@@ -839,9 +839,9 @@ def estimate_message(tenant: str, job: str) -> dict[str, Any]:
         j = _get(s, tenant, job)
         v = _job_view(s, j, False)
         shop = _shop(tenant, _row(s, tenant))
-    text = (f"Namaste {v['customer']['name'].split(' ')[0]} ji, {v['device']} mein "
-            f"{', '.join(f['label'] for f in v['faults'])} ka kaam hai. Andaza {v['estimate'] or '(bataiye)'}"
-            f", {v['promised_nice']} tak. Theek ho to 'haan' likh dijiye. - {shop}")
+    text = (f"Hello {v['customer']['name'].split(' ')[0]}, your {v['device']} needs work on: "
+            f"{', '.join(f['label'] for f in v['faults'])}. Estimate {v['estimate'] or '(to be told)'}"
+            f", by {v['promised_nice']}. If that is fine, reply 'yes'. - {shop}")
     ph = v["customer"]["phone"]
     return {"text": text, "wa_link": f"https://wa.me/91{ph}?text={quote(text)}" if len(ph) == 10 else ""}
 
@@ -854,35 +854,35 @@ def customer_agreed(tenant: str, job: str, estimate=None, by: str = "owner") -> 
             j.estimate_paise = _paise(estimate)
         if j.status == "waiting_customer":
             j.status = "repairing"
-        _log(j, "Graahak ne andaze par haan kahi", by)
+        _log(j, "Customer approved the estimate", by)
         v = _job_view(s, j, False)
-    return {"job": v, "say": f"{v['number']}: graahak ki haan likh li, kaam shuru."}
+    return {"job": v, "say": f"{v['number']}: customer's approval recorded, work started."}
 
 
 def pay(tenant: str, job: str, amount, how: str = "", by: str = "owner") -> dict[str, Any]:
     p = _paise(amount)
     if p <= 0:
-        raise MShopError("Kitne rupaye mile?")
+        raise MShopError("How many rupees were received?")
     with session() as s:
         j = _get(s, tenant, job)
         j.paid_paise += p
-        _log(j, f"Paise mile: {_rs(p)}" + (f" ({how})" if how else ""), by)
+        _log(j, f"Payment received: {_rs(p)}" + (f" ({how})" if how else ""), by)
         v = _job_view(s, j, False)
-    return {"job": v, "say": f"{v['number']}: {_rs(p)} likh liya. Kul mila {v['paid']}" + (f", baaki {v['balance']}" if v["balance"] else "") + "."}
+    return {"job": v, "say": f"{v['number']}: {_rs(p)} recorded. Total received {v['paid']}" + (f", balance {v['balance']}" if v["balance"] else "") + "."}
 
 
 def deliver(tenant: str, job: str, paid_now=None, note: str = "", by: str = "owner", conv: str = "") -> dict[str, Any]:
     with session() as s:
         j = _get(s, tenant, job)
         if j.status in ("cancelled", "delivered"):
-            raise MShopError(f"Job {j.number} pehle hi {STATUS_LABEL[j.status]} hai.")
+            raise MShopError(f"Job {j.number} is already {STATUS_LABEL[j.status]}.")
         if _j(j.bill, {}).get("status") != "approved" and j.status != "returned":
-            raise MShopError("Bill par aapki haan nahi hui: pehle bill pakka kijiye (ya status 'returned' agar bina repair wapas).")
+            raise MShopError("The bill does not have your approval: confirm the bill first (or status 'returned' if it goes back unrepaired).")
         if paid_now not in (None, ""):
             pn = _paise(paid_now)
             if pn:
                 j.paid_paise += pn
-                _log(j, f"Dete waqt mile: {_rs(pn)}", by)
+                _log(j, f"Received on handover: {_rs(pn)}", by)
         sv = _sv(_row(s, tenant))
         t = today(tenant)
         days = [int(p.get("warranty_days") or 0) for p in _j(j.parts, [])] or \
@@ -898,15 +898,15 @@ def deliver(tenant: str, job: str, paid_now=None, note: str = "", by: str = "own
         if not j.ready_at:
             j.ready_at = now()
         took = (t - date.fromisoformat(j.received_on)).days if j.received_on else 0
-        _log(j, f"De diya ({'samay par' if late <= 0 else f'{late} din der se'}, {took} din)"
-                + (f"; warranty {_nice(j.warranty_until)} tak" if j.warranty_until else "") + (f"; {note}" if note else ""), by)
+        _log(j, f"Handed over ({'on time' if late <= 0 else f'{late} days late'}, {took} days)"
+                + (f"; warranty until {_nice(j.warranty_until)}" if j.warranty_until else "") + (f"; {note}" if note else ""), by)
         s.flush()
         v = _job_view(s, j)
-    say = f"{v['number']} {v['customer']['name']} ko de diya." + (f" Warranty {v['warranty_nice']} tak." if v["warranty_until"] else "")
+    say = f"{v['number']} handed over to {v['customer']['name']}." + (f" Warranty until {v['warranty_nice']}." if v["warranty_until"] else "")
     if v["balance_paise"] > 0:
-        say += f" Baaki {v['balance']} lena hai."
+        say += f" Balance {v['balance']} is still to be collected."
     if not any(p["kind"] == "out" for p in v.get("photos", [])):
-        say += " Dete waqt ki photo bhi le lijiye (warranty ke liye)."
+        say += " Take a photo at handover too (for warranty)."
     _publish(tenant, "mshop", {"job": v["id"], "status": v["status"]}, conv)
     return {"job": v, "say": say}
 
@@ -922,26 +922,26 @@ def update_job(tenant: str, job: str, promised_on: str = "", notes: str = "", te
             if ck["problems"] and not force and any("jaldi" in p or "beet" in p for p in ck["problems"]):
                 return {"saved": False, "check": ck, "say": " ".join(ck["problems"])}
             j.promised_on = pr
-            changed.append(f"wapsi {_nice(pr)}")
+            changed.append(f"return {_nice(pr)}")
         if notes:
             clean, sc = _scrub(notes)
             j.notes = (j.notes + "\n" + clean).strip()[-2000:]
-            changed.append("note" + (" (password hataya)" if sc else ""))
+            changed.append("note" + (" (password removed)" if sc else ""))
         if technician:
             j.technician = technician.strip()[:60]
             changed.append(f"technician {j.technician}")
         if imei:
             j.imei = re.sub(r"\D", "", imei)[:20]
-            changed.append("IMEI" + ("" if imei_ok(j.imei) else " (check digit galat)"))
+            changed.append("IMEI" + ("" if imei_ok(j.imei) else " (check digit wrong)"))
         if proof:
             j.proof = proof.strip()[:200]
             changed.append("saboot")
         if estimate not in (None, ""):
             j.estimate_paise = _paise(estimate)
             changed.append(f"andaza {_rs(j.estimate_paise)}")
-        _log(j, "Badla: " + ", ".join(changed or ["kuch nahi"]), by)
+        _log(j, "Changed: " + ", ".join(changed or ["nothing"]), by)
         v = _job_view(s, j, False)
-    return {"saved": True, "job": v, "say": f"{v['number']}: {', '.join(changed) or 'kuch nahi badla'}."}
+    return {"saved": True, "job": v, "say": f"{v['number']}: {', '.join(changed) or 'nothing changed'}."}
 
 
 def get_job(tenant: str, job: str) -> dict[str, Any]:
@@ -989,11 +989,11 @@ def warranty(tenant: str, q: str) -> dict[str, Any]:
                 v["parts_warranty"] = [{"name": p["name"], "days": p.get("warranty_days", 0)} for p in _j(j.parts, [])]
                 hits.append(v)
     if not hits:
-        return {"found": [], "say": "Is IMEI / phone / job ka koi purana repair nahi mila."}
+        return {"found": [], "say": "No earlier repair found for this IMEI / phone / job."}
     a = hits[0]
     say = (f"{a['number']} ({a['device']}, {_nice(a['delivered_on'])}): "
-           + (f"warranty {a['warranty_nice']} tak HAI." if a["under_warranty"] else
-              (f"warranty {a['warranty_nice']} ko khatam ho gayi." if a["warranty_until"] else "is kaam par warranty nahi thi.")))
+           + (f"it IS under warranty until {a['warranty_nice']}." if a["under_warranty"] else
+              (f"warranty ended on {a['warranty_nice']}." if a["warranty_until"] else "this job had no warranty.")))
     return {"found": hits[:10], "say": say}
 
 
@@ -1025,24 +1025,24 @@ def slip_pdf(tenant: str, job: str) -> bytes:
     if sv["gstin"]:
         line(f"GSTIN {sv['gstin']}", 8)
     line(f"Job {v['number']}   ·   {v['received_on']}   ·   {v['status_label']}", 10, True)
-    line(f"Graahak: {v['customer']['name']}  {v['customer']['phone']}")
+    line(f"Customer: {v['customer']['name']}  {v['customer']['phone']}")
     line(f"Phone: {v['device']}   IMEI: {v['imei'] or '-'}")
-    line(f"Kharabi: {v['problem'][:80]}")
-    line(f"Saath mein: {', '.join(v['accessories']) or 'kuch nahi'}")
+    line(f"Fault: {v['problem'][:80]}")
+    line(f"With it: {', '.join(v['accessories']) or 'nothing'}")
     if v["condition"]:
-        line(f"Haalat: {v['condition'][:85]}", 9)
-    line(f"Wapsi: {v['promised_nice']}" + (f"   Andaza: {v['estimate']}" if v["estimate"] else ""), 10, True, 18)
+        line(f"Condition: {v['condition'][:85]}", 9)
+    line(f"Return: {v['promised_nice']}" + (f"   Estimate: {v['estimate']}" if v["estimate"] else ""), 10, True, 18)
     bill = v["bill"]
     if bill.get("status") == "approved":
         for ln in bill.get("lines", []):
             line(f"  {ln['what'][:60]}   {_rs(ln['paise'])}")
         if bill.get("gst_paise"):
             line(f"  GST 18% (SAC 998716)   {_rs(bill['gst_paise'])}")
-        line(f"Kul {bill['total']}   Mila {v['paid']}   Baaki {v['balance'] or _rs(0)}", 11, True)
+        line(f"Total {bill['total']}   Paid {v['paid']}   Balance {v['balance'] or _rs(0)}", 11, True)
     else:
         line(f"Advance: {v['paid']}")
     if v["warranty_until"]:
-        line(f"Warranty: {v['warranty_nice']} tak", 10, True)
+        line(f"Warranty: until {v['warranty_nice']}", 10, True)
     y -= 6
     terms = sv["terms"]
     for k in range(0, len(terms), 95):
@@ -1057,7 +1057,7 @@ def slip_file(tenant: str, job: str, conv: str = "") -> dict[str, Any]:
     v = get_job(tenant, job)
     f = chatfiles.store(tenant, f"Job-{v['number']}.pdf", slip_pdf(tenant, job), "application/pdf")
     _publish(tenant, "pc_file", {**f, "source": "mshop", "title": f"Job {v['number']}"}, conv)
-    return {"file": f, "say": f"Job {v['number']} ki slip (PDF) taiyaar."}
+    return {"file": f, "say": f"Job {v['number']} slip (PDF) is ready."}
 
 
 # ---------------------------------------------------------------- recharges
@@ -1066,13 +1066,13 @@ def add_recharge(tenant: str, number: str, amount, operator: str = "", validity_
     """A recharge she did (in Jio POS Plus / Airtel Mitra / Vi / her app): validity -> expiry reminder, commission."""
     ph = _digits(number)
     if len(ph) != 10:
-        raise MShopError("10 ank ka mobile number chahiye.")
+        raise MShopError("A 10-digit mobile number is needed.")
     p = _paise(amount)
     if p <= 0 or p > 50000 * 100:
-        raise MShopError("Recharge ki rakam sahi nahi.")
+        raise MShopError("The recharge amount is not right.")
     op = str(operator or "").lower().strip()
     op = {"vodafone": "vi", "idea": "vi", "vodafone idea": "vi", "reliance jio": "jio"}.get(op, op)
-    d = date.fromisoformat(_date(tenant, day, "Din")) if day else today(tenant)
+    d = date.fromisoformat(_date(tenant, day, "Day")) if day else today(tenant)
     with session() as s:
         st = _row(s, tenant)
         if not op:
@@ -1091,9 +1091,9 @@ def add_recharge(tenant: str, number: str, amount, operator: str = "", validity_
         s.flush()
         rid = r.id
         exp = r.expires_on
-    say = (f"{OPERATORS.get(op, op or 'Recharge')} {_rs(p)} - {ph[-4:]} likh liya"
-           + (f", plan {_nice(exp)} ko khatam: {_row_remind(tenant)} din pehle yaad dilaunga" if exp else
-              " (validity bataiye to khatam hone se pehle yaad dila dunga)") + ".")
+    say = (f"{OPERATORS.get(op, op or 'Recharge')} {_rs(p)} - {ph[-4:]} recorded"
+           + (f", plan ends on {_nice(exp)}: I will remind you {_row_remind(tenant)} days before" if exp else
+              " (tell me the validity and I will remind you before it ends)") + ".")
     return {"id": rid, "expires_on": exp, "say": say}
 
 
@@ -1103,7 +1103,7 @@ def _row_remind(tenant: str) -> int:
 
 
 def recharges_day(tenant: str, on: str = "") -> dict[str, Any]:
-    d = _date(tenant, on, "Din") if on else today(tenant).isoformat()
+    d = _date(tenant, on, "Day") if on else today(tenant).isoformat()
     with session() as s:
         rows = s.scalars(select(Recharge).where(Recharge.tenant_id == tenant, Recharge.day == d, Recharge.void.is_(False))).all()
         by_op: dict[str, dict] = {}
@@ -1135,8 +1135,8 @@ def due_recharges(tenant: str, within: int | None = None) -> list[dict[str, Any]
         for r in latest.values():
             left = (date.fromisoformat(r.expires_on) - t).days
             if 0 <= left <= days:
-                text = (f"Namaste{' ' + r.name.split(' ')[0] if r.name else ''} ji, aapka {OPERATORS.get(r.operator, '')} plan "
-                        f"{_nice(r.expires_on)} ko khatam ho raha hai. Recharge ke liye {shop} aaiye ya yahan reply kijiye.")
+                text = (f"Hello{' ' + r.name.split(' ')[0] if r.name else ''}, your {OPERATORS.get(r.operator, '')} plan ends on "
+                        f"{_nice(r.expires_on)}. For a recharge, come to {shop} or reply here.")
                 out.append({"id": r.id, "number": r.number, "name": r.name, "operator": OPERATORS.get(r.operator, r.operator),
                             "last_amount": _rs(r.amount_paise), "expires_on": r.expires_on, "nice": _nice(r.expires_on),
                             "days_left": left, "reminded": r.reminded, "text": text,
@@ -1148,7 +1148,7 @@ def mark_reminded(tenant: str, recharge_id: str) -> dict:
     with session() as s:
         r = s.get(Recharge, recharge_id)
         if r is None or r.tenant_id != tenant:
-            raise MShopError("Recharge nahi mila.")
+            raise MShopError("Recharge not found.")
         r.reminded = True
     return {"ok": True}
 
@@ -1157,9 +1157,9 @@ def void_recharge(tenant: str, recharge_id: str) -> dict:
     with session() as s:
         r = s.get(Recharge, recharge_id)
         if r is None or r.tenant_id != tenant:
-            raise MShopError("Recharge nahi mila.")
+            raise MShopError("Recharge not found.")
         r.void = True
-        return {"ok": True, "say": f"{_rs(r.amount_paise)} wala recharge hata diya."}
+        return {"ok": True, "say": f"Recharge of {_rs(r.amount_paise)} removed."}
 
 
 def recent_recharges(tenant: str, limit: int = 60) -> list[dict]:
@@ -1185,23 +1185,23 @@ def day(tenant: str) -> dict[str, Any]:
     unclaimed = [v for v in vs if v["status"] == "ready" and (v.get("waiting_days") or 0) >= min(7, sv["unclaimed_days"])]
     rc = recharges_day(tenant, (today(tenant) - timedelta(days=1)).isoformat())
     due = due_recharges(tenant)
-    lines = ["Mobile dukaan: " + _nice(t)]
+    lines = ["Mobile shop: " + _nice(t)]
     if due_today:
-        lines.append("Aaj wapas dena hai: " + "; ".join(f"{v['customer']['name']} ({v['device']}, {v['number']})" for v in due_today))
+        lines.append("To hand back today: " + "; ".join(f"{v['customer']['name']} ({v['device']}, {v['number']})" for v in due_today))
     if late:
-        lines.append("Der ho gayi: " + "; ".join(f"{v['customer']['name']} {v['number']}" for v in late))
+        lines.append("Late: " + "; ".join(f"{v['customer']['name']} {v['number']}" for v in late))
     if parts:
-        lines.append("Part ka intezaar: " + "; ".join(f"{v['number']} {v['device']}" for v in parts))
+        lines.append("Waiting for a part: " + "; ".join(f"{v['number']} {v['device']}" for v in parts))
     if pend_bills:
-        lines.append(f"{len(pend_bills)} bill aapki haan ka intezaar kar rahe hain.")
+        lines.append(f"{len(pend_bills)} bills are waiting for your approval.")
     if unclaimed:
-        lines.append("Taiyaar, le nahi gaye: " + "; ".join(f"{v['customer']['name']} {v['number']} ({v['waiting_days']} din)" for v in unclaimed))
+        lines.append("Ready, not collected: " + "; ".join(f"{v['customer']['name']} {v['number']} ({v['waiting_days']} days)" for v in unclaimed))
     if due:
-        lines.append(f"{len(due)} graahakon ka recharge {sv['remind_days']} din mein khatam: yaad dilane ke draft taiyaar.")
+        lines.append(f"{len(due)} customers' recharges end within {sv['remind_days']} days: reminder drafts are ready.")
     if rc["count"]:
         lines.append(f"Kal {rc['count']} recharge, {rc['amount']}, commission {rc['commission']}.")
     if len(lines) == 1:
-        lines.append("Aaj koi khaas kaam nahi.")
+        lines.append("No special work today.")
     return {"date": t, "nice": _nice(t), "open": len(vs), "due_today": due_today, "late": late, "waiting_part": parts,
             "unclaimed": unclaimed, "bills_pending": len(pend_bills), "recharge_due": due, "recharges_yesterday": rc,
             "text": "\n".join(lines)}
