@@ -193,8 +193,8 @@ window.HoolaCreate = ctx => {
     ['l', 'Setup'], ['engines', 'Engines', 'sliders'],
   ];
   const TOOLS = [['video','Video','video'],['image','Image','image'],['music','Music','music'],['voice','Voice','mic'],['dubbing','Dubbing','dub'],['editor','Editor','cut']];
-  const tools = () => ctx.artcraft?.() ? [...TOOLS, ['artcraft', 'ArtCraft', 'spark']] : TOOLS;   // v0.752 ArtCraft when the server offers it
-  const TITLE = {artcraft:'ArtCraft', engines:'Engines', studio:'Studio home', video:'Video', image:'Image', music:'Music studio', voice:'Voice studio', dubbing:'Dubbing', editor:'Video editor', director:'Director', script:'Script writer', casting:'AI casting', templates:'Templates', library:'My creations', projects:'Film projects', brand:'Brand kit', learn:'How-to guides'};
+  const tools = () => [...(ctx.cinema?.() && window.HoolaCinema ? [['cinema', 'Hoola Cinema', 'clap']] : []), ...TOOLS, ...(ctx.artcraft?.() ? [['artcraft', 'ArtCraft', 'spark']] : [])];   // v0.807 Hoola Cinema first, v0.752 ArtCraft when the server offers it   // v0.752 ArtCraft when the server offers it
+  const TITLE = {cinema:'Hoola Cinema', artcraft:'ArtCraft', engines:'Engines', studio:'Studio home', video:'Video', image:'Image', music:'Music studio', voice:'Voice studio', dubbing:'Dubbing', editor:'Video editor', director:'Director', script:'Script writer', casting:'AI casting', templates:'Templates', library:'My creations', projects:'Film projects', brand:'Brand kit', learn:'How-to guides'};
   function shellHTML() {
     return `<link rel="stylesheet" href="/static/console/studio.css?v=${esc(ctx.version || '')}">
 <div id="shell">
@@ -264,7 +264,7 @@ ${SPRITE}`;
   }
   function go(v, opts) {
     if (v === 'projects') { DIR.project = ''; DIR.view = null; v = 'director'; }   // v0.320 one film list: Film projects opens the Director's
-    if (!V[v]) v = 'studio';
+    if (!V[v] || (v === 'cinema' && !ctx.cinema?.())) v = 'studio';
     clearTimeout(poll); poll = 0; alive++; closeMenu(); if (!$('#picker').hidden) { $('#picker').hidden = true; $('#picker').innerHTML = ''; }
     artRO?.disconnect(); VIEW = v; const old = $('#view'), el = old.cloneNode(false); old.replaceWith(el);
     el.className = 'view enter'; el.innerHTML = V[v](opts || {}); el.scrollTop = 0;
@@ -333,16 +333,17 @@ ${SPRITE}`;
       : it.mime.startsWith('video/') ? `<video muted playsinline preload="metadata" data-src="${itemPath(it.id)}"></video>`
       : `<span class="audio-ic">${I(it.kind === 'voice' ? 'mic' : 'music', 'width:28px;height:28px')}</span>`;
     return `<div class="res${tall ? ' tall' : ''}" data-item="${it.id}"><button class="thumb" data-open="${it.id}" aria-label="Open ${esc(it.title)}">${media}${it.mime.startsWith('video/') ? `<span class="badge">${I('play', 'width:11px;height:11px')}${esc(it.kind)}</span>` : ''}</button>
-      <span class="acts"><button data-dl="${it.id}" aria-label="Download">${I('dl')}</button>${it.mime.startsWith('image/') ? `<button data-ref="${it.id}" aria-label="Use as a reference">${I('layers')}</button>` : ''}<button data-del="${it.id}" aria-label="Delete">${I('trash')}</button></span>
+      <span class="acts"><button data-dl="${it.id}" aria-label="Download">${I('dl')}</button>${it.mime.startsWith('image/') ? `<button data-ref="${it.id}" aria-label="Use as a reference">${I('layers')}</button>` : ''}${ctx.cinema?.() && window.HoolaCinema && /^(image|video)\//.test(it.mime) ? `<button data-cine="${it.id}" aria-label="Use in Hoola Cinema" title="Use in Hoola Cinema">${I('clap')}</button>` : ''}<button data-del="${it.id}" aria-label="Delete">${I('trash')}</button></span>
       <b class="rt">${esc(it.title)}</b><small>${[when(it.created), it.meta?.style, it.meta?.aspect].filter(Boolean).map(esc).join(' · ')}</small></div>`;
   }
   // the hover actions on result tiles, shared by every page that lists her creations
   async function itemAction(b) {
-    const id = b.dataset.dl || b.dataset.del || b.dataset.open || b.dataset.ref; const it = (D.items || []).find(x => x.id === id); if (!it) return false;
+    const id = b.dataset.dl || b.dataset.del || b.dataset.open || b.dataset.ref || b.dataset.cine; const it = (D.items || []).find(x => x.id === id); if (!it) return false;
     if (b.dataset.dl) { api('POST', '/api/prompting/runs/event', {ref: id, event: 'downloaded'}).catch(() => {}); download(itemPath(id), it.title + '.' + (it.mime.split('/')[1] || 'bin').replace('mpeg', 'mp3').replace('x-wav', 'wav')); return true; }
     if (b.dataset.del) { if (!confirm(`Delete "${it.title}"? This cannot be undone.`)) return true;
       try { await api('DELETE', itemPath(id)); D.items = D.items.filter(x => x.id !== id); b.closest('[data-item]')?.remove(); toast('Deleted'); } catch (e) { toast(e.message, true); } return true; }
     if (b.dataset.ref) { IMG.refs = [...IMG.refs.filter(r => r.file_id !== id), {file_id: id, name: it.title, type: it.mime}].slice(0, 3); go('image'); toast('Added as a reference'); return true; }
+    if (b.dataset.cine) { CIN?.send(id); return true; }   // v0.807 a picture / video handed to Hoola Cinema
     if (b.dataset.open) { lightbox(it); return true; }
     return false;
   }
@@ -419,7 +420,7 @@ ${SPRITE}`;
   <section><div class="sec-h"><h2>Direct your film</h2><a data-go="director">Open Director</a></div>
     ${rail(QUICK.map(([t, k, d], i) => `<button class="qcard" data-quick="${i}"><span class="thumb">${art(k, 'q' + i)}<span class="dur">${d}</span></span><b>${t}</b></button>`).join(''), 'qs')}</section>
   <section id="tools"><div class="sec-h"><h2>Studio tools</h2><span class="dim" style="font-size:14px">Every tool shares your cast and brand kit</span></div>
-    <div class="tools">${(ctx.artcraft?.() ? [...ALLTOOLS, ['artcraft', 'ArtCraft', 'Seedance, Kling, Veo, FLUX… on your ArtCraft credits', 'abstract', 'new']] : ALLTOOLS).map(([v, t, s, k, tag], i) => `<button class="tool" data-go="${v}"><span class="thumb">${art(k, 't' + i)}</span><div style="min-width:0"><b>${t}${tag ? ` <span class="tag ${tag}">${tag === 'hot' ? 'Popular' : 'New'}</span>` : ''}</b><small>${s}</small></div></button>`).join('')}</div></section>
+    <div class="tools">${[...(ctx.cinema?.() && window.HoolaCinema ? [['cinema', 'Hoola Cinema', 'Motion transfer, character swap, talking photos, content factory', 'film', 'new']] : []), ...ALLTOOLS, ...(ctx.artcraft?.() ? [['artcraft', 'ArtCraft', 'Seedance, Kling, Veo, FLUX… on your ArtCraft credits', 'abstract', 'new']] : [])].map(([v, t, s, k, tag], i) => `<button class="tool" data-go="${v}"><span class="thumb">${art(k, 't' + i)}</span><div style="min-width:0"><b>${t}${tag ? ` <span class="tag ${tag}">${tag === 'hot' ? 'Popular' : 'New'}</span>` : ''}</b><small>${s}</small></div></button>`).join('')}</div></section>
   <section><div class="sec-h"><h2>Your recent creations</h2><a data-go="library">See all</a></div><div class="row" id="recent"></div></section>
   <section><div class="sec-h"><h2>Start from a template</h2><a data-go="templates">See all</a></div>
     ${rail(STARTERS.map(([t, v, k], i) => `<button class="tpl" data-start="${i}"><span class="thumb">${art(k, 'tp' + i)}<span class="use">Use this</span></span><b>${t}</b><small>${TITLE[v]}</small></button>`).join(''), 'row')}</section>
@@ -651,6 +652,12 @@ ${SPRITE}`;
     });
   };
 
+  /* ---------------- v0.807 HOOLA CINEMA (cinema.js): one view, its own tools inside; it borrows this studio's helpers ---------------- */
+  const CIN = window.HoolaCinema ? window.HoolaCinema({api, esc, I, $, $$, toast, art, when, D, load, items, running, failed,
+    jobTile, failTile, itemTile, itemAction, paintAll, hydrate, upload, pick, startJob, menu, go: v => go(v), token: () => alive, view: () => VIEW,
+    later: (fn, ms) => { clearTimeout(poll); poll = setTimeout(fn, ms); }}) : null;
+  if (CIN) { V.cinema = CIN.view; W.cinema = CIN.wire; }
+
   /* ---------------- v0.262 EVERY MODEL, PRICE FIRST (owner: "IT MUST INCLUDE ALL MODEL IN IT LETS USER CHOOSE THE RIGHT ONE
      FOR THEM ... USER WILL SEE THE PRICING OF EVERY VIDEO BEFORE GENERATION"): the picker lists every model (ready ones, the
      ones a server key switches on, and the rest of the market) with its rupee price per second at every resolution and
@@ -760,7 +767,14 @@ ${SPRITE}`;
   }
 
   /* ---------------- video (Video Studio, one clip per project) ---------------- */
-  const CAMS = [['Auto', ''], ['Static', 'the camera holds still on a tripod'], ['Dolly in', 'slow dolly in towards the subject'], ['Pan', 'smooth slow pan across the scene'], ['Orbit', 'the camera orbits around the subject'], ['Drone', 'a high aerial drone shot moving forward'], ['Handheld', 'natural handheld camera, slight movement'], ['Slow motion', 'slow motion, smooth and dreamy']];
+  // v0.807 26 camera moves (were 8); the same list Hoola Cinema uses
+  const CAMS = [['Auto', ''], ['Static', 'the camera holds still on a tripod'], ['Dolly in', 'slow dolly in towards the subject'], ['Dolly out', 'slow dolly out that reveals the scene'], ['Crash zoom', 'a sudden fast zoom into the subject'],
+    ['Orbit', 'the camera orbits around the subject'], ['Arc', 'the camera moves in a slow arc around the subject'], ['Crane up', 'a crane shot rising up and over the scene'], ['Crane down', 'a crane shot coming down towards the subject'],
+    ['Tracking', 'a tracking shot moving alongside the subject'], ['Follow', 'the camera follows close behind the subject'], ['Pan', 'smooth slow pan across the scene'], ['Whip pan', 'a very quick pan to the subject with motion blur'],
+    ['Tilt up', 'the camera tilts up from the ground to the subject'], ['Tilt down', 'the camera tilts down from the sky to the subject'], ['Drone', 'a high aerial drone shot moving forward'], ['FPV drone', 'a fast swooping first-person drone flight'],
+    ['Handheld', 'natural handheld camera, slight movement'], ['Bullet time', 'the action freezes while the camera sweeps around the subject'], ['Rack focus', 'the focus shifts from the foreground to the subject'],
+    ['Dutch angle', 'a tilted frame with slow movement'], ['POV', 'a first-person point of view'], ['Low angle', 'a low hero angle looking up, slow push in'], ['Top down', 'an overhead shot looking straight down, turning slowly'],
+    ['Zoom out', 'a slow zoom out that shows the wider place'], ['Slow motion', 'slow motion, smooth and dreamy']];
   const VID = {camera: 'Auto', prompt: '', aspect: '9:16', seconds: 8, res: '1080p', model: '', audio: true, takes: 1, language: 'Hindi', price: null, auto: 'quality', compare: []};
   const vm = () => mOf(VID.model);
   const lenOpts = m => { const a = m?.allowed_durations; if (a?.length) return a; const [lo, hi] = m?.durations?.length ? m.durations : [4, 30];

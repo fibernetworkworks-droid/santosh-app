@@ -1941,7 +1941,50 @@ Arena tests. NOT VERIFIED: no real Arena run has happened yet - it needs her ser
 the spend - so there are still NO quality numbers for any Hoola version, and the 2D / 3D briefs' real pass rate is
 unknown. The brief set (SET_V 1) has no 3D briefs yet.
 
-## v0.814.0 NATIJA KHATA (built as 0.806; their 0.806-0.813 took the numbers) - the outcome ledger of HOOLA PROMPTING (P4 of docs/HOOLA_PROMPTING_PLAN.md, owner: "GO")
+## v0.814.0 HOOLA CINEMA - the Create studio's Cinema section (built as 0.807; their BAHI A0, WAPAS, HOOLA 3D KIT and PRAYOGSHALA WAVE 8 took 0.807.0-0.813.0 (also ECC AGENTS and GAME ARENA RUNNABLE) - REBASE PROTOCOL, all kept; owner: "https://github.com/Autom8AI/Open-Higgsfield-AI.git -- read this repo first" -> "GO BUILD THE WHOLE SET AS HOOLA CINEMA END TO END")
+
+**The read.** `Autom8AI/open-higgsfield-ai` is a fork (MATAI) of Anil-matcha's Open Higgsfield AI: a vanilla-JS page on Netlify
+functions with no models of its own - every generation is a paid call to kie.ai or fal.ai. No LICENSE file (README says MIT).
+Ideas only: zero code copied. Its real lesson was the product gap: Hoola had no video-to-video tools.
+
+**What shipped.** One view `cinema` in the Create studio (`static/console/cinema.js`, which the studio hands its own helpers:
+api, go, menu, upload, itemTile...; it lives in the studio's shadow root and uses its styles) with a hub and ten pages:
+Cinema still, Motion transfer, Character swap, Item swap / edit, Restyle, Talking photo, Lip sync, Picture to video, Content
+factory, Characters. Backend `server/app/cinema/`:
+- `specs.py`: 16 models, each request shape read from the engine's own OpenAPI pages (docs.kie.ai) on 2026-11-11 - which field
+  is a list and which a string, which durations are strings, which resolutions exist, size and length limits. `build()` is the
+  only place a request is shaped and refuses anything the spec does not have. Presets as plain prompt text in Hoola's own words:
+  27 camera rows (Auto + 26), 16 restyle looks, 8 looks, the Cinema still's camera / lens / focal / aperture / light.
+- `kie.py`: createTask, recordInfo, credits, file-stream-upload behind ONE seam `_http`; 401 / 402 final; a createTask is never
+  retried; the key scrubbed from every message.
+- `service.py`: characters (a real person only with a recorded yes), `start()` (every refusal before a file leaves: tool / model
+  match, word screen, rights tick, consent tick, confirm, daily cap, shape pre-check, then bytes-sniffed files, photos re-saved
+  as clean JPEGs, uploads, createTask), talking photo with typed words spoken by Hoola's own voice (`create.service.voice`),
+  the factory (scenes by the model, by rule when none answers; one confirmed batch that stops at the first refusal and keeps
+  what started), `check()` / `refresh()` (finished video fetched once through the shilp link wall, sniffed, kept on the Create
+  shelf with `ai_made`), `connected()` = what is not there, said on the hub.
+- `api.py`: `/api/cinema` (overview), `/start`, `/still/prompt`, `/factory/scenes`, `/factory/start`, `/jobs/{id}/check`,
+  `DELETE /jobs/{id}`, `/characters` (+ DELETE, photo). Behind `cinema_page`.
+Also: 26 camera moves on the Video page (were 8), "Use in Hoola Cinema" on My creations tiles (`CIN.send`).
+
+**Found while building.** (1) `HoolaCreate(...)` runs before `/api/console/config` answers, so `ctx.cinema()` is false at build
+time and the view was never mounted - a studio tool behind a switch is mounted always and gated in `go()`. (2) A missing restyle
+look raised ValueError past the route (a 500) - caught by its test. (3) Playwright's `document.querySelector` does not pierce the
+studio's shadow root, so two overflow checks were passing on nothing; they read `shadowRoot` now.
+
+**Safety note.** `image_edit` and `video_kit` refuse face swap. Cinema's character swap is behind two recorded ticks (her right
+to the video; the person is her or agreed) or a saved character that carries a recorded yes. Listed as an owner decision in
+`docs/HOOLA_CINEMA_PLAN.md`.
+
+**Tests.** `test_v0807_hoola_cinema.py` 14: every request shape, presets, bytes sniffing + clean photos, motion transfer end to
+end with the engine faked at `_http` (upload types, exact createTask body, tenant isolation, finish -> My creations once, no key
+or task id in any answer), result link must be a public https video, characters + consent, talking photo with a Hoola voice,
+restyle / edit refusals, the factory, the daily cap / 402 / no key, the key never in an error, routes + no foreign code, and a
+real-browser walk (hub, ten pages with no overflow and no script error, her text never run as HTML, rights tick blocks the send,
+typed words kept, exact bodies sent, factory scenes edited, 26 camera chips). Stamp count 34 -> 35.
+
+**NOT VERIFIED.** No live engine call; rupee cost per job unknown until one runs; all users share the one server key.
+## v0.815.0 NATIJA KHATA (built as 0.806; their 0.806-0.814 took the numbers) - the outcome ledger of HOOLA PROMPTING (P4 of docs/HOOLA_PROMPTING_PLAN.md, owner: "GO")
 
 What it is: one row per prompt she takes OUT of Hoola Prompting, and what happened to the result afterwards. This is
 the measure the whole feature is judged by, and the data the later phases (recipe order, defaults, self-improvement)

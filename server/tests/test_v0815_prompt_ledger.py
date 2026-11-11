@@ -1,4 +1,4 @@
-"""v0.814 NATIJA KHATA (built as 0.806) - the outcome ledger (plan P4 of docs/HOOLA_PROMPTING_PLAN.md): one row per prompt she took out of
+"""v0.815 NATIJA KHATA (built as 0.806) - the outcome ledger (plan P4 of docs/HOOLA_PROMPTING_PLAN.md): one row per prompt she took out of
 Hoola Prompting and what happened to the result. Shape only - her words are never stored. No model runs here."""
 import json
 from datetime import timedelta
@@ -299,5 +299,5 @@ def test_results_page_in_a_real_browser(arena_server, monkeypatch):  # noqa: F81
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.814.0"
-    assert "0.814.0+813" in (REPO / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.815.0"
+    assert "0.815.0+814" in (REPO / "pubspec.yaml").read_text()
