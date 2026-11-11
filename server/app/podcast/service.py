@@ -1336,7 +1336,7 @@ def read_save(tenant: str, episode: str, sponsor: str, script: str, slot: str = 
         s.flush()
         v = _read_view(s, r)
     claims = v["claims"]
-    say = f"{p.brand}:{slot}-roll script saved." + ("" if v["disclosure"]["ok"] else f" Note: {v['disclosure']['why']}.")
+    say = f"{p.brand}: {slot}-roll script saved." + ("" if v["disclosure"]["ok"] else f" Note: {v['disclosure']['why']}.")
     if claims:
         say += f" Do not say these words without proof from the brand: {', '.join(claims)} (ASCI / CCPA)."
     return {"read": v, "say": say}

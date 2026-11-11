@@ -210,7 +210,7 @@ def test_a_scene_that_did_not_load_can_never_be_approved(st, monkeypatch):  # no
     monkeypatch.setattr(ai, "scene_spec", lambda *a, **k: dict(COIN))
     monkeypatch.setattr(S, "_scripts_of", lambda t, g: dict(SCRIPTS))
     out = S.propose("default", st["sid"], "a coin")
-    assert out["status"] == "failed" and "nahi khula" in out["say"]
+    assert out["status"] == "failed" and "did not open" in out["say"]
     with pytest.raises(S.SceneError, match="never opened"):
         S.approve("default", st["sid"], "Coin")
 

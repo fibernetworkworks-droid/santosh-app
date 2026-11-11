@@ -154,12 +154,12 @@ def test_not_assessed_is_said_out_loud(cw, monkeypatch):
     assert sim["verdict"] == "NOT ASSESSED" and sim["missing"] and sim["note"].startswith("Nothing was simulated")
     S.add_task("default", cw["sid"], "Add a horn")
     text = S.summary("default", cw["sid"])
-    assert "jaancha NAHI gaya" in text                                                     # no nightly = not 'all fine'
+    assert "was NOT checked" in text                                                     # no nightly = not 'all fine'
     monkeypatch.setattr(cw["svc"], "health", lambda: {"ready": False})
     S._night_safe("default", cw["sid"])
     p = S.get("default", cw["sid"])
     assert p["nightly"][0]["skipped"] and p["nightly"][0]["ok"] is None
-    assert "NAHI chala" in S.summary("default", cw["sid"])
+    assert "did NOT run" in S.summary("default", cw["sid"])
 
 
 def test_godot_47_notes_in_the_code_guide(env):

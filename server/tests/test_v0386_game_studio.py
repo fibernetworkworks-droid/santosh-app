@@ -80,7 +80,7 @@ def test_send_back_makes_the_version_before_live_again(st):
     g = svc.get("default", st["gid"])
     assert g["version"] == 1                                             # the play link is version 1 again
     assert [v["rejected"] for v in p["versions"]][:2] == [True, False]
-    assert any(d["text"].startswith("T-0001 wapas") for d in p["decisions"])
+    assert any(d["text"].startswith("T-0001 sent back") for d in p["decisions"])
 
 
 def test_failed_task_is_blocked_and_the_live_game_stays(st, monkeypatch):
