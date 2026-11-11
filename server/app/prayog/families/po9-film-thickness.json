@@ -1,0 +1,20 @@
+{
+ "base": "po9-film-thickness",
+ "rig": "po9-optics-bench",
+ "chapter": "Thin films",
+ "source": {
+  "title": "Mercury green line 546.1 nm; the film is the sample under test"
+ },
+ "variants": [
+  {
+   "key": "feco",
+   "title": "Film thickness by fringes of equal chromatic order",
+   "sample": "Evaporated aluminium film on glass, silvered",
+   "unknown": "the film thickness",
+   "params": {
+    "mode": 1
+   },
+   "method": "fringes of equal chromatic order"
+  }
+ ]
+}

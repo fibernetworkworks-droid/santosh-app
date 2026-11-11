@@ -1,0 +1,94 @@
+{
+ "base": "pc9-qd-bandgap",
+ "rig": "pc9-workstation",
+ "chapter": "Materials synthesis and characterisation",
+ "variants": [
+  {
+   "key": "cds-gap",
+   "title": "CdS quantum dots: optical band gap from the Tauc plot",
+   "sample": "CdS quantum dots",
+   "unknown": "band gap of the dots",
+   "params": {
+    "what": 2
+   },
+   "source": {
+    "title": "Bulk gap, effective masses and dielectric constant",
+    "note": "from memory - verify against a semiconductor data handbook (O. Madelung, Semiconductors: Data Handbook); the dot radius is an illustrative SIMULATED value"
+   }
+  },
+  {
+   "key": "znse",
+   "title": "ZnSe quantum dots: dot size by the Brus equation",
+   "sample": "ZnSe quantum dots",
+   "unknown": "dot radius",
+   "params": {
+    "Eg": 2.7,
+    "me": 0.16,
+    "mh": 0.6,
+    "eps": 8.6,
+    "R": 2.5,
+    "seed": 13
+   },
+   "source": {
+    "title": "Bulk gap, effective masses and dielectric constant",
+    "note": "from memory - verify against a semiconductor data handbook (O. Madelung, Semiconductors: Data Handbook); the dot radius is an illustrative SIMULATED value"
+   }
+  },
+  {
+   "key": "znse-gap",
+   "title": "ZnSe quantum dots: optical band gap from the Tauc plot",
+   "sample": "ZnSe quantum dots",
+   "unknown": "band gap of the dots",
+   "params": {
+    "Eg": 2.7,
+    "me": 0.16,
+    "mh": 0.6,
+    "eps": 8.6,
+    "R": 2.5,
+    "seed": 13,
+    "what": 2
+   },
+   "source": {
+    "title": "Bulk gap, effective masses and dielectric constant",
+    "note": "from memory - verify against a semiconductor data handbook (O. Madelung, Semiconductors: Data Handbook); the dot radius is an illustrative SIMULATED value"
+   }
+  },
+  {
+   "key": "pbs",
+   "title": "PbS quantum dots: dot size by the Brus equation",
+   "sample": "PbS quantum dots",
+   "unknown": "dot radius",
+   "params": {
+    "Eg": 0.41,
+    "me": 0.085,
+    "mh": 0.085,
+    "eps": 17.2,
+    "R": 3.0,
+    "seed": 17
+   },
+   "source": {
+    "title": "Bulk gap, effective masses and dielectric constant",
+    "note": "from memory - verify against a semiconductor data handbook (O. Madelung, Semiconductors: Data Handbook); the dot radius is an illustrative SIMULATED value"
+   }
+  },
+  {
+   "key": "pbs-gap",
+   "title": "PbS quantum dots: optical band gap from the Tauc plot",
+   "sample": "PbS quantum dots",
+   "unknown": "band gap of the dots",
+   "params": {
+    "Eg": 0.41,
+    "me": 0.085,
+    "mh": 0.085,
+    "eps": 17.2,
+    "R": 3.0,
+    "seed": 17,
+    "what": 2
+   },
+   "source": {
+    "title": "Bulk gap, effective masses and dielectric constant",
+    "note": "from memory - verify against a semiconductor data handbook (O. Madelung, Semiconductors: Data Handbook); the dot radius is an illustrative SIMULATED value"
+   }
+  }
+ ]
+}

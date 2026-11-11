@@ -1,0 +1,51 @@
+{
+ "base": "po9-film-strain",
+ "rig": "po9-optics-bench",
+ "chapter": "Thin films",
+ "source": {
+  "title": "Stoney (1909); soda-lime glass E about 72 GPa, nu about 0.23 (from memory - verify)"
+ },
+ "variants": [
+  {
+   "key": "glass-stress",
+   "title": "Residual stress of a film on a glass slide (Stoney)",
+   "sample": "Coated soda-lime glass slide, 1 mm",
+   "unknown": "the film stress",
+   "params": {
+    "mode": 1
+   }
+  },
+  {
+   "key": "si-curvature",
+   "title": "Change in curvature of a coated silicon wafer",
+   "sample": "Coated silicon wafer, 525 µm",
+   "unknown": "the substrate curvature",
+   "params": {
+    "Ms": 180500000000.0,
+    "hs": 0.000525,
+    "sig": 100000000.0,
+    "mode": 0
+   },
+   "source": {
+    "title": "Si(100) wafer: biaxial modulus E/(1 - nu) = 180.5 GPa (Brantley 1973), 525 µm thick",
+    "note": "from memory - verify"
+   }
+  },
+  {
+   "key": "si-stress",
+   "title": "Residual stress of a film on a silicon wafer (Stoney)",
+   "sample": "Coated silicon wafer, 525 µm",
+   "unknown": "the film stress",
+   "params": {
+    "Ms": 180500000000.0,
+    "hs": 0.000525,
+    "sig": 100000000.0,
+    "mode": 1
+   },
+   "source": {
+    "title": "Si(100) wafer: biaxial modulus E/(1 - nu) = 180.5 GPa (Brantley 1973), 525 µm thick",
+    "note": "from memory - verify"
+   }
+  }
+ ]
+}

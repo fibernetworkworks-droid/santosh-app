@@ -1,0 +1,129 @@
+{
+ "base": "pc9-dsc-polymer",
+ "rig": "pc9-workstation",
+ "chapter": "Materials synthesis and characterisation",
+ "variants": [
+  {
+   "key": "pet-tm",
+   "title": "PET by DSC: melting point",
+   "sample": "PET, quenched film",
+   "unknown": "melting point",
+   "params": {
+    "what": 1
+   },
+   "source": {
+    "title": "PET: dH100 = 140 J/g (Wunderlich, from memory - verify)",
+    "note": "Tg, Tm and the enthalpies are illustrative SIMULATED values"
+   }
+  },
+  {
+   "key": "pet-xc",
+   "title": "PET by DSC: degree of crystallinity",
+   "sample": "PET, quenched film",
+   "unknown": "crystallinity",
+   "params": {
+    "what": 2
+   },
+   "source": {
+    "title": "PET: dH100 = 140 J/g (Wunderlich, from memory - verify)",
+    "note": "Tg, Tm and the enthalpies are illustrative SIMULATED values"
+   }
+  },
+  {
+   "key": "pe-tg",
+   "title": "Polyethylene by DSC: glass transition",
+   "sample": "high-density polyethylene",
+   "unknown": "glass transition",
+   "params": {
+    "Tg": -110.0,
+    "dcp": 0.1,
+    "wg": 3.0,
+    "Tm": 135.0,
+    "dHm": 190.0,
+    "wm": 3.0,
+    "Tcc": 0.0,
+    "dHcc": 0.0,
+    "H100": 293.0,
+    "cp0": 1.4,
+    "slope": 0.004,
+    "T0": -150.0,
+    "T1": 180.0,
+    "gl": -145.0,
+    "gh": -75.0,
+    "ml": 100.0,
+    "mh": 165.0,
+    "cl": 0.0,
+    "ch": 0.0,
+    "what": 0
+   },
+   "source": {
+    "title": "Polyethylene: dH100 = 293 J/g (Wunderlich, from memory - verify)",
+    "note": "Tg near -110 C (disputed in the literature), Tm 135 C and the crystallinity are illustrative SIMULATED values"
+   }
+  },
+  {
+   "key": "pe-tm",
+   "title": "Polyethylene by DSC: melting point",
+   "sample": "high-density polyethylene",
+   "unknown": "melting point",
+   "params": {
+    "Tg": -110.0,
+    "dcp": 0.1,
+    "wg": 3.0,
+    "Tm": 135.0,
+    "dHm": 190.0,
+    "wm": 3.0,
+    "Tcc": 0.0,
+    "dHcc": 0.0,
+    "H100": 293.0,
+    "cp0": 1.4,
+    "slope": 0.004,
+    "T0": -150.0,
+    "T1": 180.0,
+    "gl": -145.0,
+    "gh": -75.0,
+    "ml": 100.0,
+    "mh": 165.0,
+    "cl": 0.0,
+    "ch": 0.0,
+    "what": 1
+   },
+   "source": {
+    "title": "Polyethylene: dH100 = 293 J/g (Wunderlich, from memory - verify)",
+    "note": "Tg near -110 C (disputed in the literature), Tm 135 C and the crystallinity are illustrative SIMULATED values"
+   }
+  },
+  {
+   "key": "pe-xc",
+   "title": "Polyethylene by DSC: degree of crystallinity",
+   "sample": "high-density polyethylene",
+   "unknown": "crystallinity",
+   "params": {
+    "Tg": -110.0,
+    "dcp": 0.1,
+    "wg": 3.0,
+    "Tm": 135.0,
+    "dHm": 190.0,
+    "wm": 3.0,
+    "Tcc": 0.0,
+    "dHcc": 0.0,
+    "H100": 293.0,
+    "cp0": 1.4,
+    "slope": 0.004,
+    "T0": -150.0,
+    "T1": 180.0,
+    "gl": -145.0,
+    "gh": -75.0,
+    "ml": 100.0,
+    "mh": 165.0,
+    "cl": 0.0,
+    "ch": 0.0,
+    "what": 2
+   },
+   "source": {
+    "title": "Polyethylene: dH100 = 293 J/g (Wunderlich, from memory - verify)",
+    "note": "Tg near -110 C (disputed in the literature), Tm 135 C and the crystallinity are illustrative SIMULATED values"
+   }
+  }
+ ]
+}

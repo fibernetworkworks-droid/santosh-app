@@ -1,0 +1,112 @@
+{
+ "base": "pc9-xrd-milling",
+ "rig": "pc9-workstation",
+ "chapter": "Materials synthesis and characterisation",
+ "variants": [
+  {
+   "key": "fe-2h",
+   "title": "Ball-milled iron, 2 h: crystallite size by Williamson-Hall",
+   "sample": "alpha-iron powder, milled 2 h",
+   "unknown": "crystallite size",
+   "params": {
+    "lat": 1.0,
+    "a": 0.28665,
+    "L": 45.0,
+    "eps": 0.001,
+    "seed": 41
+   },
+   "source": {
+    "title": "Lattice parameter from the ICDD card (alpha-Fe 0.28665 nm, ZnO 0.32498 / 0.52066 nm, Ni 0.35238 nm)",
+    "note": "from memory - verify; the crystallite sizes and strains are illustrative SIMULATED values, not a model of milling"
+   }
+  },
+  {
+   "key": "fe-10h",
+   "title": "Ball-milled iron, 10 h: crystallite size by Williamson-Hall",
+   "sample": "alpha-iron powder, milled 10 h",
+   "unknown": "crystallite size",
+   "params": {
+    "lat": 1.0,
+    "a": 0.28665,
+    "L": 18.0,
+    "eps": 0.0025,
+    "seed": 43
+   },
+   "source": {
+    "title": "Lattice parameter from the ICDD card (alpha-Fe 0.28665 nm, ZnO 0.32498 / 0.52066 nm, Ni 0.35238 nm)",
+    "note": "from memory - verify; the crystallite sizes and strains are illustrative SIMULATED values, not a model of milling"
+   }
+  },
+  {
+   "key": "fe-20h",
+   "title": "Ball-milled iron, 20 h: crystallite size by Williamson-Hall",
+   "sample": "alpha-iron powder, milled 20 h",
+   "unknown": "crystallite size",
+   "params": {
+    "lat": 1.0,
+    "a": 0.28665,
+    "L": 15.0,
+    "eps": 0.003,
+    "seed": 47
+   },
+   "source": {
+    "title": "Lattice parameter from the ICDD card (alpha-Fe 0.28665 nm, ZnO 0.32498 / 0.52066 nm, Ni 0.35238 nm)",
+    "note": "from memory - verify; the crystallite sizes and strains are illustrative SIMULATED values, not a model of milling"
+   }
+  },
+  {
+   "key": "fe-strain",
+   "title": "Ball-milled iron, 5 h: lattice strain by Williamson-Hall",
+   "sample": "alpha-iron powder, milled 5 h",
+   "unknown": "microstrain",
+   "params": {
+    "what": 1
+   },
+   "source": {
+    "title": "Lattice parameter from the ICDD card (alpha-Fe 0.28665 nm, ZnO 0.32498 / 0.52066 nm, Ni 0.35238 nm)",
+    "note": "from memory - verify; the crystallite sizes and strains are illustrative SIMULATED values, not a model of milling"
+   }
+  },
+  {
+   "key": "zno",
+   "title": "Ball-milled ZnO: crystallite size by Williamson-Hall",
+   "sample": "ZnO powder (oxide), milled",
+   "unknown": "crystallite size",
+   "params": {
+    "lat": 2.0,
+    "a": 0.32498,
+    "c": 0.52066,
+    "tt0": 25.0,
+    "tt1": 60.0,
+    "L": 30.0,
+    "eps": 0.002,
+    "seed": 53
+   },
+   "source": {
+    "title": "Lattice parameter from the ICDD card (alpha-Fe 0.28665 nm, ZnO 0.32498 / 0.52066 nm, Ni 0.35238 nm)",
+    "note": "from memory - verify; the crystallite sizes and strains are illustrative SIMULATED values, not a model of milling"
+   }
+  },
+  {
+   "key": "zno-strain",
+   "title": "Ball-milled ZnO: lattice strain by Williamson-Hall",
+   "sample": "ZnO powder (oxide), milled",
+   "unknown": "microstrain",
+   "params": {
+    "lat": 2.0,
+    "a": 0.32498,
+    "c": 0.52066,
+    "tt0": 25.0,
+    "tt1": 60.0,
+    "L": 30.0,
+    "eps": 0.002,
+    "seed": 53,
+    "what": 1
+   },
+   "source": {
+    "title": "Lattice parameter from the ICDD card (alpha-Fe 0.28665 nm, ZnO 0.32498 / 0.52066 nm, Ni 0.35238 nm)",
+    "note": "from memory - verify; the crystallite sizes and strains are illustrative SIMULATED values, not a model of milling"
+   }
+  }
+ ]
+}

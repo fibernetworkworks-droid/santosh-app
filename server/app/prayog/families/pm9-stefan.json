@@ -1,0 +1,22 @@
+{
+ "base": "pm9-stefan",
+ "rig": "pm9-msc-bench",
+ "chapter": "Modern physics",
+ "variants": [
+  {
+   "key": "filament",
+   "title": "Stefan's constant from a tungsten filament",
+   "sample": "Tungsten filament lamp, 12 V",
+   "method": "filament power against temperature",
+   "unknown": "Stefan's constant",
+   "params": {
+    "m": 1.0
+   },
+   "note": "At each voltage the electrical power V I is radiated; the temperature comes from the resistance through R / R0 = (T / T0)^1.2 and the emissivity of tungsten is taken as 0.35. Both are approximations (the emissivity rises with temperature) - from memory - verify; the filament area is illustrative.",
+   "source": {
+    "title": "Tungsten emissivity and resistance-temperature law",
+    "note": "from memory - verify"
+   }
+  }
+ ]
+}

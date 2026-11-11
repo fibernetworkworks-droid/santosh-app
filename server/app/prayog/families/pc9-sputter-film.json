@@ -1,0 +1,90 @@
+{
+ "base": "pc9-sputter-film",
+ "rig": "pc9-workstation",
+ "chapter": "Materials synthesis and characterisation",
+ "variants": [
+  {
+   "key": "cu-4min",
+   "title": "Sputtered copper film, 4 min: thickness by X-ray reflectivity",
+   "sample": "copper film, sputtered 4 min",
+   "unknown": "film thickness",
+   "params": {
+    "d": 10.0,
+    "seed": 91
+   },
+   "source": {
+    "title": "Decrement of copper about 2.2e-5 and of silicon 7.6e-6 at Cu K-alpha; Cu 0.36149 nm",
+    "note": "from memory - verify (CXRO / Henke tables, ICDD 04-0836); the thicknesses and grain sizes are illustrative SIMULATED values"
+   }
+  },
+  {
+   "key": "cu-16min",
+   "title": "Sputtered copper film, 16 min: thickness by X-ray reflectivity",
+   "sample": "copper film, sputtered 16 min",
+   "unknown": "film thickness",
+   "params": {
+    "d": 40.0,
+    "seed": 93
+   },
+   "source": {
+    "title": "Decrement of copper about 2.2e-5 and of silicon 7.6e-6 at Cu K-alpha; Cu 0.36149 nm",
+    "note": "from memory - verify (CXRO / Henke tables, ICDD 04-0836); the thicknesses and grain sizes are illustrative SIMULATED values"
+   }
+  },
+  {
+   "key": "cu-grain",
+   "title": "Sputtered copper film: grain size by Scherrer",
+   "sample": "copper film (metal target)",
+   "unknown": "grain size",
+   "params": {
+    "what": 1
+   },
+   "source": {
+    "title": "Decrement of copper about 2.2e-5 and of silicon 7.6e-6 at Cu K-alpha; Cu 0.36149 nm",
+    "note": "from memory - verify (CXRO / Henke tables, ICDD 04-0836); the thicknesses and grain sizes are illustrative SIMULATED values"
+   }
+  },
+  {
+   "key": "zno-film",
+   "title": "Sputtered ZnO film (oxide target): thickness by X-ray reflectivity",
+   "sample": "ZnO film, sputtered 10 min",
+   "unknown": "film thickness",
+   "params": {
+    "dl1": 1.4e-05,
+    "lat": 2.0,
+    "a": 0.32498,
+    "c": 0.52066,
+    "tt0": 25.0,
+    "tt1": 60.0,
+    "L": 20.0,
+    "seed": 97,
+    "d": 25.0
+   },
+   "source": {
+    "title": "Decrement of ZnO about 1.4e-5 at Cu K-alpha; ZnO a 0.32498 / c 0.52066 nm",
+    "note": "from memory - verify (CXRO / Henke tables, ICDD 36-1451); the thickness and grain size are illustrative SIMULATED values"
+   }
+  },
+  {
+   "key": "zno-grain",
+   "title": "Sputtered ZnO film (oxide target): grain size by Scherrer",
+   "sample": "ZnO film (oxide target)",
+   "unknown": "grain size",
+   "params": {
+    "dl1": 1.4e-05,
+    "lat": 2.0,
+    "a": 0.32498,
+    "c": 0.52066,
+    "tt0": 25.0,
+    "tt1": 60.0,
+    "L": 20.0,
+    "seed": 97,
+    "what": 1
+   },
+   "source": {
+    "title": "Decrement of ZnO about 1.4e-5 at Cu K-alpha; ZnO a 0.32498 / c 0.52066 nm",
+    "note": "from memory - verify (CXRO / Henke tables, ICDD 36-1451); the thickness and grain size are illustrative SIMULATED values"
+   }
+  }
+ ]
+}

@@ -1,0 +1,62 @@
+{
+ "base": "po9-ellipse",
+ "rig": "po9-optics-bench",
+ "chapter": "Polarisation",
+ "source": {
+  "title": "Muscovite mica sheet (retardation hidden); quarter-wave plate nominal retardation pi/2"
+ },
+ "variants": [
+  {
+   "key": "mica-azimuth",
+   "title": "Elliptically polarised light: azimuth of the ellipse from a mica plate",
+   "sample": "Mica plate (retardation hidden)",
+   "unknown": "the azimuth of the major axis",
+   "params": {
+    "mode": 1
+   },
+   "method": "analyser at four settings"
+  },
+  {
+   "key": "mica-babinet",
+   "title": "Elliptical light: retardation of a mica plate (Babinet compensator)",
+   "sample": "Mica plate (retardation hidden)",
+   "unknown": "the retardation",
+   "params": {
+    "mode": 2
+   },
+   "method": "Babinet compensator"
+  },
+  {
+   "key": "mica-babinet-ellipticity",
+   "title": "Elliptical light: ellipticity with a Babinet compensator (mica)",
+   "sample": "Mica plate (retardation hidden)",
+   "unknown": "the ellipticity",
+   "params": {
+    "mode": 3
+   },
+   "method": "Babinet compensator"
+  },
+  {
+   "key": "qwp",
+   "title": "Elliptically polarised light from a quarter-wave plate: ellipticity",
+   "sample": "Quarter-wave plate at 30 degrees",
+   "unknown": "the ellipticity",
+   "params": {
+    "del": 1.5707963267948966,
+    "mode": 0
+   },
+   "method": "quarter-wave plate and analyser"
+  },
+  {
+   "key": "qwp-babinet",
+   "title": "Elliptical light from a quarter-wave plate: Babinet compensator",
+   "sample": "Quarter-wave plate at 30 degrees",
+   "unknown": "the ellipticity",
+   "params": {
+    "del": 1.5707963267948966,
+    "mode": 3
+   },
+   "method": "Babinet compensator"
+  }
+ ]
+}

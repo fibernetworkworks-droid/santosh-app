@@ -2542,7 +2542,23 @@ NOT VERIFIED: no real model has been the observer (scripted only); its cost (one
 NOT built from claude-mem: Chroma vector search (FTS5 only), the live web viewer / My Work, TeamBrain, cloud sync,
 `/learn-codebase` front-loading, and a bridge into the chat's v0.485 vault.
 
-## v0.829.0 API SETU RELAY + GST LOGIN HINT (built as 0.828; their HOOLA CODE MEMORY took 0.828.0 - REBASE PROTOCOL, both kept)
+
+## v0.829.0 PRAYOGSHALA WAVE 9
+
+85 M.Sc physics set-ups built and walked within tolerance (the agents' walks, 300+ labs and variants, and the lead's final walk,
+85 / 85): pg_elec_w9 (21: regulators, converters, passive filters incl. band pass, resonance, op-amp linear / integrator /
+comparators / parameters, generators, tuned / power / CE amplifiers, counters, AM / FM, analogue computing, crystal oscillator,
+multivibrators; reused sn-ce-amplifier, u8-sample-hold, u8-pll), pg_optics_w9 (25: hyperfine and Zeeman by etalon, ellipsometry,
+birefringence, photoelasticity, Kerr, Pockels, EO and magneto-optic links, Faraday, 2-D / slit diffraction, constant deviation,
+Rowland, AlO bands, absorption bands, uranyl, solar (SIMULATED), film thickness and strain, photometry, acousto-optic, aerosol
+(SIMULATED); reused fibre-bending-loss), pg_matter_w9 (26: GM dead time and efficiency, Feather, K-40 vs UX2, spark counter,
+proportional counter, Kurie plots, angular correlation, Hall vs T, two-probe, diode ideality, photoconductivity, AC susceptibility,
+Stefan by cooling, Cu X-rays with Ni filter, LC lattice, pulse echo, CRO sound, Lecher wire, Fourier, transducers, microwave Bragg,
+horn pattern, normal modes, gas photocell; reused w8-em-focusing), pg_comp_w9 (13: NIST XCOM mixture rule from fetched tables,
+quantum-dot Brus / Tauc, BET, DSC, TGA, Williamson-Hall, Scherrer + fcc indexing, TEM / SEM grain size, gas sensor, XRR film
+thickness - SIMULATED characterisation data, stated). passive-filters un-revoked. Coverage 525 -> 610 of 807.
+Not built and constants from memory: docs/PRAYOG_PHYSICS_LAKH_PLAN.md, "Wave 9".
+## v0.830.0 API SETU RELAY + GST LOGIN HINT (built as 0.828; their HOOLA CODE MEMORY took 0.828.0 and PRAYOGSHALA WAVE 9 0.829.0 - REBASE PROTOCOL, all kept)
 
 Owner: "CHECK" after deploying v0.827 and running wb_check + apisetu_check (11 Nov 2026, 10:31 UTC).
 

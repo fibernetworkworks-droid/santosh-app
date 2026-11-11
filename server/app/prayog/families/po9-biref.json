@@ -1,0 +1,78 @@
+{
+ "base": "po9-biref",
+ "rig": "po9-optics-bench",
+ "chapter": "Polarisation",
+ "source": {
+  "title": "Quartz at 589 nm: n_o 1.5443, n_e 1.5534 (from memory - verify)"
+ },
+ "variants": [
+  {
+   "key": "quartz-analyser",
+   "title": "Birefringence of a quartz plate by the rotating analyser",
+   "sample": "Quartz plate, 30 µm",
+   "unknown": "the birefringence",
+   "params": {
+    "mode": 1
+   },
+   "method": "rotating analyser"
+  },
+  {
+   "key": "quartz-retardation",
+   "title": "Retardation of a quartz plate by the rotating analyser",
+   "sample": "Quartz plate, 30 µm",
+   "unknown": "the retardation",
+   "params": {
+    "mode": 3
+   },
+   "method": "rotating analyser"
+  },
+  {
+   "key": "mica-babinet",
+   "title": "Birefringence of a mica sheet with a Babinet compensator",
+   "sample": "Mica sheet, 50 µm",
+   "unknown": "the birefringence",
+   "params": {
+    "dn": 0.0042,
+    "t": 5e-05,
+    "mode": 0
+   },
+   "method": "Babinet compensator",
+   "source": {
+    "title": "Muscovite mica cleavage sheet: birefringence about 0.0042 at 589 nm",
+    "note": "from memory - verify"
+   }
+  },
+  {
+   "key": "mica-analyser",
+   "title": "Birefringence of a mica sheet by the rotating analyser",
+   "sample": "Mica sheet, 50 µm",
+   "unknown": "the birefringence",
+   "params": {
+    "dn": 0.0042,
+    "t": 5e-05,
+    "mode": 1
+   },
+   "method": "rotating analyser",
+   "source": {
+    "title": "Muscovite mica cleavage sheet: birefringence about 0.0042 at 589 nm",
+    "note": "from memory - verify"
+   }
+  },
+  {
+   "key": "mica-retardation",
+   "title": "Retardation of a mica sheet with a Babinet compensator",
+   "sample": "Mica sheet, 50 µm",
+   "unknown": "the retardation",
+   "params": {
+    "dn": 0.0042,
+    "t": 5e-05,
+    "mode": 2
+   },
+   "method": "Babinet compensator",
+   "source": {
+    "title": "Muscovite mica cleavage sheet: birefringence about 0.0042 at 589 nm",
+    "note": "from memory - verify"
+   }
+  }
+ ]
+}

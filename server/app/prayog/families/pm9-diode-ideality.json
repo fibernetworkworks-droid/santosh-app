@@ -1,0 +1,25 @@
+{
+ "base": "pm9-diode-ideality",
+ "rig": "pm9-msc-bench",
+ "chapter": "Solid state and materials",
+ "variants": [
+  {
+   "key": "germanium",
+   "title": "Band gap and ideality factor of a germanium diode",
+   "sample": "Germanium junction diode",
+   "unknown": "the band gap, the ideality factor and the saturation current",
+   "params": {
+    "Eg0": 0.782,
+    "nid": 1.1,
+    "I300": 2e-09,
+    "I1": 0.001,
+    "I2": 0.01
+   },
+   "note": "A germanium junction is closer to ideal (n about 1.1) and its saturation current is far larger than silicon's, so it is driven at 1 and 10 mA. Eg0 = 0.782 eV is the linear extrapolation of the germanium gap to 0 K (Sze, from memory - verify); n and I0 are illustrative values of this diode.",
+   "source": {
+    "title": "S. M. Sze, Physics of Semiconductor Devices",
+    "note": "from memory - verify"
+   }
+  }
+ ]
+}

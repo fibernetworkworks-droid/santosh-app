@@ -1,0 +1,141 @@
+{
+ "base": "pc9-gas-sensor",
+ "rig": "pc9-workstation",
+ "chapter": "Materials synthesis and characterisation",
+ "variants": [
+  {
+   "key": "zno300-res",
+   "title": "ZnO film sensor at 300 C: response time",
+   "sample": "ZnO film sensor at 300 C",
+   "unknown": "response time",
+   "params": {
+    "what": 1
+   },
+   "source": {
+    "title": "SIMULATED DATA",
+    "note": "illustrative sensor values; the change with operating temperature is illustrative, not a model of the surface chemistry"
+   }
+  },
+  {
+   "key": "zno300-rec",
+   "title": "ZnO film sensor at 300 C: recovery time",
+   "sample": "ZnO film sensor at 300 C",
+   "unknown": "recovery time",
+   "params": {
+    "what": 2
+   },
+   "source": {
+    "title": "SIMULATED DATA",
+    "note": "illustrative sensor values; the change with operating temperature is illustrative, not a model of the surface chemistry"
+   }
+  },
+  {
+   "key": "zno250",
+   "title": "ZnO film sensor at 250 C: sensitivity",
+   "sample": "ZnO film sensor at 250 C",
+   "unknown": "sensitivity",
+   "params": {
+    "Ra": 1200000.0,
+    "Rg": 100000.0,
+    "tr": 15.0,
+    "td": 70.0,
+    "seed": 73,
+    "what": 0
+   },
+   "source": {
+    "title": "SIMULATED DATA",
+    "note": "illustrative sensor values; the change with operating temperature is illustrative, not a model of the surface chemistry"
+   }
+  },
+  {
+   "key": "zno250-res",
+   "title": "ZnO film sensor at 250 C: response time",
+   "sample": "ZnO film sensor at 250 C",
+   "unknown": "response time",
+   "params": {
+    "Ra": 1200000.0,
+    "Rg": 100000.0,
+    "tr": 15.0,
+    "td": 70.0,
+    "seed": 73,
+    "what": 1
+   },
+   "source": {
+    "title": "SIMULATED DATA",
+    "note": "illustrative sensor values; the change with operating temperature is illustrative, not a model of the surface chemistry"
+   }
+  },
+  {
+   "key": "zno350",
+   "title": "ZnO film sensor at 350 C: sensitivity",
+   "sample": "ZnO film sensor at 350 C",
+   "unknown": "sensitivity",
+   "params": {
+    "Ra": 1500000.0,
+    "Rg": 100000.0,
+    "tr": 5.0,
+    "td": 30.0,
+    "seed": 79,
+    "what": 0
+   },
+   "source": {
+    "title": "SIMULATED DATA",
+    "note": "illustrative sensor values; the change with operating temperature is illustrative, not a model of the surface chemistry"
+   }
+  },
+  {
+   "key": "sno2",
+   "title": "SnO2 film sensor at 350 C: sensitivity",
+   "sample": "SnO2 film sensor at 350 C",
+   "unknown": "sensitivity",
+   "params": {
+    "Ra": 3500000.0,
+    "Rg": 100000.0,
+    "tr": 5.0,
+    "td": 25.0,
+    "seed": 89,
+    "what": 0
+   },
+   "source": {
+    "title": "SIMULATED DATA",
+    "note": "illustrative sensor values; the change with operating temperature is illustrative, not a model of the surface chemistry"
+   }
+  },
+  {
+   "key": "sno2-res",
+   "title": "SnO2 film sensor at 350 C: response time",
+   "sample": "SnO2 film sensor at 350 C",
+   "unknown": "response time",
+   "params": {
+    "Ra": 3500000.0,
+    "Rg": 100000.0,
+    "tr": 5.0,
+    "td": 25.0,
+    "seed": 89,
+    "what": 1
+   },
+   "source": {
+    "title": "SIMULATED DATA",
+    "note": "illustrative sensor values; the change with operating temperature is illustrative, not a model of the surface chemistry"
+   }
+  },
+  {
+   "key": "sno2-rec",
+   "title": "SnO2 film sensor at 350 C: recovery time",
+   "sample": "SnO2 film sensor at 350 C",
+   "unknown": "recovery time",
+   "params": {
+    "Ra": 3500000.0,
+    "Rg": 100000.0,
+    "tr": 5.0,
+    "td": 25.0,
+    "seed": 89,
+    "what": 2
+   },
+   "source": {
+    "title": "SIMULATED DATA",
+    "note": "illustrative sensor values; the change with operating temperature is illustrative, not a model of the surface chemistry"
+   }
+  }
+ ]
+}

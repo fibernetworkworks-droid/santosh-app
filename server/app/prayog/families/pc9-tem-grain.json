@@ -1,0 +1,52 @@
+{
+ "base": "pc9-tem-grain",
+ "rig": "pc9-workstation",
+ "chapter": "Materials synthesis and characterisation",
+ "variants": [
+  {
+   "key": "saed-111",
+   "title": "Gold nanopowder by SAED: d-spacing of the 111 ring",
+   "sample": "gold nanopowder",
+   "unknown": "d-spacing (111)",
+   "method": "selected area electron diffraction",
+   "params": {
+    "what": 1,
+    "k": 1
+   },
+   "source": {
+    "title": "Gold, fcc, a = 0.40782 nm",
+    "note": "from memory - verify against ICDD card 04-0784; the grain sizes are illustrative SIMULATED values"
+   }
+  },
+  {
+   "key": "saed-200",
+   "title": "Gold nanopowder by SAED: d-spacing of the 200 ring",
+   "sample": "gold nanopowder",
+   "unknown": "d-spacing (200)",
+   "method": "selected area electron diffraction",
+   "params": {
+    "what": 1,
+    "k": 2
+   },
+   "source": {
+    "title": "Gold, fcc, a = 0.40782 nm",
+    "note": "from memory - verify against ICDD card 04-0784; the grain sizes are illustrative SIMULATED values"
+   }
+  },
+  {
+   "key": "saed-220",
+   "title": "Gold nanopowder by SAED: d-spacing of the 220 ring",
+   "sample": "gold nanopowder",
+   "unknown": "d-spacing (220)",
+   "method": "selected area electron diffraction",
+   "params": {
+    "what": 1,
+    "k": 3
+   },
+   "source": {
+    "title": "Gold, fcc, a = 0.40782 nm",
+    "note": "from memory - verify against ICDD card 04-0784; the grain sizes are illustrative SIMULATED values"
+   }
+  }
+ ]
+}
