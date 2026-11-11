@@ -1,0 +1,53 @@
+{
+ "base": "cq-schrodinger-screened",
+ "rig": "comp2-workstation",
+ "chapter": "Computational physics",
+ "variants": [
+  {
+   "key": "a10",
+   "title": "Screened Coulomb potential: screening length 10 bohr",
+   "sample": "Hulthen potential, a = 10 bohr (model parameter)",
+   "unknown": "the lowest s energy",
+   "params": {
+    "aa": 10,
+    "g": 20,
+    "xd1": 1.0
+   },
+   "source": {
+    "title": "S. Fluegge, Practical Quantum Mechanics (Springer): the Hulthen potential",
+    "note": "exact s-wave bound states"
+   }
+  },
+  {
+   "key": "a2-5",
+   "title": "Screened Coulomb potential: screening length 2.5 bohr",
+   "sample": "Hulthen potential, a = 2.5 bohr (model parameter)",
+   "unknown": "the lowest s energy",
+   "params": {
+    "aa": 2.5,
+    "g": 5,
+    "xd1": 4.0
+   },
+   "source": {
+    "title": "S. Fluegge, Practical Quantum Mechanics (Springer): the Hulthen potential",
+    "note": "exact s-wave bound states"
+   }
+  },
+  {
+   "key": "a20-2s",
+   "title": "Screened Coulomb potential: the 2s level, screening length 20 bohr",
+   "sample": "Hulthen potential, a = 20 bohr (model parameter)",
+   "unknown": "the 2s energy",
+   "params": {
+    "aa": 20,
+    "g": 40,
+    "kst": 1,
+    "xd1": 2.0
+   },
+   "source": {
+    "title": "S. Fluegge, Practical Quantum Mechanics (Springer): the Hulthen potential",
+    "note": "exact s-wave bound states"
+   }
+  }
+ ]
+}

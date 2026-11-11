@@ -1,0 +1,33 @@
+{
+ "base": "sn-opamp-differentiator",
+ "rig": "sn-scope-bench",
+ "chapter": "Analog electronics and devices",
+ "variants": [
+  {
+   "key": "c-4n7",
+   "title": "Op-amp differentiator with a 4.7 nF input capacitor",
+   "sample": "Unknown capacitor from the E6 series (4.7 nF)",
+   "unknown": "the input capacitor from the output amplitude",
+   "params": {
+    "C": 4.7e-09
+   },
+   "note": "A smaller capacitor gives a smaller output for the same triangle.",
+   "source": {
+    "title": "IEC 60063 preferred values (E6 series): 4.7 nF"
+   }
+  },
+  {
+   "key": "c-22n",
+   "title": "Op-amp differentiator with a 22 nF input capacitor",
+   "sample": "Unknown capacitor from the E6 series (22 nF)",
+   "unknown": "the input capacitor from the output amplitude",
+   "params": {
+    "C": 2.2e-08
+   },
+   "note": "A larger capacitor gives a larger output; at the highest settings it approaches the supply rails.",
+   "source": {
+    "title": "IEC 60063 preferred values (E6 series): 22 nF"
+   }
+  }
+ ]
+}

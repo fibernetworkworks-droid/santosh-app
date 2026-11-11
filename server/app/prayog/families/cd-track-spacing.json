@@ -1,0 +1,32 @@
+{
+  "base": "cd-track-spacing",
+  "rig": "laser-bench",
+  "chapter": "Diffraction",
+  "variants": [
+    {
+      "key": "cd",
+      "title": "Laser diffraction: track spacing of a compact disc",
+      "sample": "An ordinary compact disc",
+      "unknown": "the track pitch of the disc",
+      "params": {
+        "d": 1.6e-06
+      },
+      "source": {
+        "title": "ECMA-130 (Compact Disc Read Only Memory): track pitch 1.6 micron"
+      }
+    },
+    {
+      "key": "dvd",
+      "title": "Laser diffraction: track spacing of a DVD",
+      "sample": "An ordinary DVD",
+      "unknown": "the track pitch of the disc",
+      "params": {
+        "d": 7.4e-07
+      },
+      "note": "A DVD packs its tracks more than twice as close as a CD, so it throws its orders out much wider and the screen has to come much nearer.",
+      "source": {
+        "title": "ECMA-267 (120 mm DVD Read-Only Disk): track pitch 0.74 micron"
+      }
+    }
+  ]
+}

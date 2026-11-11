@@ -1,0 +1,77 @@
+{
+ "base": "cr-random-walk",
+ "rig": "comp3-workstation",
+ "chapter": "Computational physics",
+ "variants": [
+  {
+   "key": "walk-1d",
+   "title": "Random walk in one dimension",
+   "sample": "unit steps on a line",
+   "unknown": "mean square displacement",
+   "params": {
+    "dim": 1
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   },
+   "check": {
+    "params": {
+     "n": 60000
+    }
+   }
+  },
+  {
+   "key": "walk-2d",
+   "title": "Random walk in two dimensions",
+   "sample": "unit steps on a square lattice",
+   "unknown": "mean square displacement",
+   "params": {
+    "dim": 2
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   },
+   "check": {
+    "params": {
+     "n": 60000
+    }
+   }
+  },
+  {
+   "key": "walk-4d",
+   "title": "Random walk in four dimensions",
+   "sample": "unit steps on a hypercubic lattice",
+   "unknown": "mean square displacement",
+   "params": {
+    "dim": 4
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   }
+  },
+  {
+   "key": "return-1d",
+   "title": "Return to the origin after 6 steps in one dimension",
+   "sample": "unit steps on a line, 6 steps",
+   "unknown": "return probability",
+   "params": {
+    "cas": 1,
+    "dim": 1,
+    "steps": 6.0
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   },
+   "note": "The exact value is a lattice sum: C(6,3)/2^6 = 0.3125.",
+   "check": {
+    "params": {
+     "n": 100000
+    }
+   }
+  }
+ ]
+}

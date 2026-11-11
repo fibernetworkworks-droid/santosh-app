@@ -1,0 +1,84 @@
+{
+ "base": "rectifier-filter-supply",
+ "rig": "rectifier-bench",
+ "chapter": "Analog electronics and devices",
+ "grid": {
+  "title": "{rect} rectifier {filt}",
+  "unknown": "the ripple factor and the DC output of a {rect} rectifier {filt}",
+  "axes": {
+   "rect": [
+    {
+     "key": "half",
+     "label": "Half-wave",
+     "method": "half-wave, one diode",
+     "params": {
+      "kind": 1.0
+     },
+     "note": "One diode passes one half of every cycle, so the average is V_p/pi and the ripple comes at the mains frequency."
+    },
+    {
+     "key": "full",
+     "label": "Full-wave centre-tap",
+     "method": "full-wave with a centre-tapped transformer",
+     "params": {
+      "kind": 2.0
+     },
+     "note": "Two diodes and the transformer's centre tap pass both halves, so the average doubles and the ripple comes at twice the mains frequency."
+    },
+    {
+     "key": "bridge",
+     "label": "Bridge",
+     "method": "bridge, four diodes",
+     "params": {
+      "kind": 3.0
+     },
+     "note": "Four diodes pass both halves without needing a centre tap, at the cost of two diode drops in the path at any instant."
+    }
+   ],
+   "filt": [
+    {
+     "key": "nofilter",
+     "label": "with no filter",
+     "params": {
+      "C": 0.0
+     },
+     "source": {
+      "title": "J. Millman and C. C. Halkias, Integrated Electronics, chapter on rectifiers and filters; silicon diode forward drop taken as 0.7 V (1N4007)"
+     }
+    },
+    {
+     "key": "c470",
+     "label": "with a 470 microfarad filter",
+     "params": {
+      "C": 0.00047
+     },
+     "note": "470 microfarad is an E6 preferred value; the time constant R_L C decides how far the capacitor discharges between peaks.",
+     "source": {
+      "title": "IEC 60063 preferred values (E6 series) for the capacitor; J. Millman and C. C. Halkias, Integrated Electronics, capacitor-filter analysis"
+     },
+     "check": {
+      "params": {
+       "C": 0.0
+      }
+     }
+    },
+    {
+     "key": "c1000",
+     "label": "with a 1000 microfarad filter",
+     "params": {
+      "C": 0.001
+     },
+     "note": "Doubling the capacitance roughly halves the ripple, at the price of a larger surge when the supply is first switched on.",
+     "source": {
+      "title": "IEC 60063 preferred values (E6 series) for the capacitor; J. Millman and C. C. Halkias, Integrated Electronics, capacitor-filter analysis"
+     },
+     "check": {
+      "params": {
+       "C": 0.0
+      }
+     }
+    }
+   ]
+  }
+ }
+}

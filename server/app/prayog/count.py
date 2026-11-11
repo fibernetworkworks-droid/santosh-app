@@ -6,6 +6,7 @@ samples x unknowns x conditions, each list only what real manuals use). Nothing 
 
     python -m app.prayog.count            # totals per level and chapter
     python -m app.prayog.count --json     # the same as JSON
+    python -m app.prayog.count --cover    # how much of the syllabus REALLY opens in Prayogshala (the 100 % meter)
 """
 from __future__ import annotations
 
@@ -92,7 +93,60 @@ def totals(docs: list[dict] | None = None) -> dict[str, Any]:
             "variants": sum(l["variants"] for l in levels.values())}
 
 
+def coverage() -> dict[str, Any]:
+    """The 100 % meter: a set-up counts as BUILT only when its `built` lab id really opens in Prayogshala."""
+    from . import service as S
+    docs = load()
+    out: dict[str, Any] = {"levels": {}, "setups": 0, "built": 0, "claimed": 0, "broken": []}
+    for d in docs:
+        lv = out["levels"].setdefault(d["level"], {"setups": 0, "built": 0, "chapters": {}})
+        for ch in d.get("chapters") or []:
+            c = lv["chapters"].setdefault(ch["name"], {"setups": 0, "built": 0, "todo": []})
+            for st in ch.get("setups") or []:
+                c["setups"] += 1
+                lv["setups"] += 1
+                out["setups"] += 1
+                lab_id = st.get("built") or ""
+                if not lab_id:
+                    c["todo"].append(st["id"])
+                    continue
+                out["claimed"] += 1
+                if S.get(lab_id):
+                    c["built"] += 1
+                    lv["built"] += 1
+                    out["built"] += 1
+                else:                                   # a claim that does not open is NOT coverage
+                    out["broken"].append((st["id"], lab_id))
+                    c["todo"].append(st["id"])
+    out["percent"] = round(100.0 * out["built"] / max(1, out["setups"]), 1)
+    for lv in out["levels"].values():
+        lv["percent"] = round(100.0 * lv["built"] / max(1, lv["setups"]), 1)
+    return out
+
+
+def _cover_report(argv: list[str]) -> int:
+    c = coverage()
+    for name in LEVELS:
+        lv = c["levels"].get(name)
+        if not lv:
+            print(f"{name:14s}  (no file yet)")
+            continue
+        print(f"{name:14s}  {lv['built']:4d} / {lv['setups']:4d} set-ups built  {lv['percent']:5.1f} %")
+        if "-v" in argv:
+            for cn, ch in lv["chapters"].items():
+                mark = "OK " if ch["built"] == ch["setups"] else "   "
+                print(f"   {mark}{ch['built']:4d} / {ch['setups']:4d}  {cn}")
+    print(f"TOTAL           {c['built']:4d} / {c['setups']:4d} set-ups built  {c['percent']:5.1f} %")
+    if c["broken"]:
+        print(f"\nBROKEN CLAIMS ({len(c['broken'])}): a syllabus row names a lab that does not open")
+        for sid, lab in c["broken"][:20]:
+            print(f"   {sid} -> {lab}")
+    return 0
+
+
 def main(argv: list[str]) -> int:
+    if "--cover" in argv:
+        return _cover_report(argv)
     t = totals()
     if "--json" in argv:
         print(json.dumps(t, indent=1))

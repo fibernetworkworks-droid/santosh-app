@@ -1,0 +1,35 @@
+{
+ "base": "msc-hartley",
+ "rig": "msc-signal-bench",
+ "chapter": "Electronics",
+ "variants": [
+  {
+   "key": "l1m-l2m2-c4n7",
+   "title": "Hartley oscillator: L₁ = 1 mH, L₂ = 2.2 mH, C = 4.7 nF",
+   "sample": "L₁ = 1 mH, L₂ = 2.2 mH, C = 4.7 nF",
+   "unknown": "the frequency of oscillation",
+   "params": {
+    "L": 0.001,
+    "L2": 0.0022,
+    "C": 4.7e-09
+   },
+   "source": {
+    "title": "IEC 60063 preferred values (E12 series) for the resistors and capacitors"
+   }
+  },
+  {
+   "key": "l2m2-l10m-c10n",
+   "title": "Hartley oscillator: L₁ = 2.2 mH, L₂ = 10 mH, C = 10 nF",
+   "sample": "L₁ = 2.2 mH, L₂ = 10 mH, C = 10 nF",
+   "unknown": "the frequency of oscillation",
+   "params": {
+    "L": 0.0022,
+    "L2": 0.01,
+    "C": 1e-08
+   },
+   "source": {
+    "title": "IEC 60063 preferred values (E12 series) for the resistors and capacitors"
+   }
+  }
+ ]
+}

@@ -1,0 +1,37 @@
+{
+ "base": "cr-mc-decay-chain",
+ "rig": "comp3-workstation",
+ "chapter": "Computational physics",
+ "variants": [
+  {
+   "key": "daughter-population",
+   "title": "Parent-daughter chain: the daughter population",
+   "sample": "two nuclides, lambda2 = 3 lambda1 (model)",
+   "unknown": "N_B / N0",
+   "params": {
+    "cas": 1
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   }
+  },
+  {
+   "key": "transient-equilibrium",
+   "title": "Transient equilibrium of a decay chain",
+   "sample": "lambda1 = 0.3, lambda2 = 1.2 (model)",
+   "unknown": "N_B / N_A",
+   "params": {
+    "cas": 2,
+    "l1": 0.3,
+    "l2": 1.2,
+    "tend": 5.0
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   },
+   "note": "N_B/N_A tends to lambda1/(lambda2 - lambda1)."
+  }
+ ]
+}

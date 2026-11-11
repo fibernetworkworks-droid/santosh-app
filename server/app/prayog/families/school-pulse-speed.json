@@ -1,0 +1,23 @@
+{"base": "school-pulse-speed", "rig": "school-slinky-bench", "chapter": "Sound",
+ "variants": [
+   {"key": "short-span", "title": "Pulse speed on a slinky stretched to 1.2 m",
+    "sample": "The laboratory's own steel slinky (215 g on the balance), stretched to 1.2 m",
+    "method": "sideways flick, timed over several lengths",
+    "unknown": "the speed of the pulse at this stretch",
+    "params": {"Lspan": 1.2, "mu": 0.179, "Tn": 1.2},
+    "note": "The mass per metre is not a property of the material: it is the slinky's own mass divided by the span it is stretched to, so a shorter stretch of the same slinky gives a larger mu.",
+    "source": {"title": "Laboratory Manual Science, Class IX, NCERT - velocity of a pulse propagated through a stretched string / slinky", "note": "mu = measured mass of this slinky divided by its span"}},
+   {"key": "long-span", "title": "Pulse speed on a slinky stretched to 2.0 m",
+    "sample": "The same steel slinky (215 g on the balance), stretched to 2.0 m",
+    "method": "sideways flick, timed over several lengths",
+    "unknown": "the speed of the pulse at this stretch",
+    "params": {"Lspan": 2.0, "mu": 0.1075, "Tn": 1.2},
+    "source": {"title": "Laboratory Manual Science, Class IX, NCERT - velocity of a pulse propagated through a stretched string / slinky", "note": "mu = measured mass of this slinky divided by its span"}},
+   {"key": "tight", "title": "Pulse speed on a tightly stretched slinky",
+    "sample": "The same steel slinky, stretched to 1.8 m and pulled tight",
+    "method": "sideways flick at a higher tension, timed over several lengths",
+    "unknown": "how much faster the pulse runs when the tension is doubled",
+    "params": {"Tn": 2.4},
+    "note": "Twice the tension gives the square root of two times the speed, about 1.41 times.",
+    "source": {"title": "Laboratory Manual Science, Class IX, NCERT - velocity of a pulse propagated through a stretched string / slinky"}}
+ ]}

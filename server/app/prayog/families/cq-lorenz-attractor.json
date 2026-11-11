@@ -1,0 +1,20 @@
+{
+ "base": "cq-lorenz-attractor",
+ "rig": "comp2-workstation",
+ "chapter": "Computational physics",
+ "variants": [
+  {
+   "key": "fixed-point",
+   "title": "Lorenz equations at rho = 14: the orbit spirals into a fixed point",
+   "sample": "Lorenz system, sigma = 10, beta = 8/3, rho = 14",
+   "unknown": "the volume factor det Phi(T)",
+   "params": {
+    "rho": 14
+   },
+   "source": {
+    "title": "E. N. Lorenz, J. Atmos. Sci. 20, 130 (1963)",
+    "note": "sigma = 10 and beta = 8/3 are Lorenz's own values"
+   }
+  }
+ ]
+}

@@ -1,0 +1,49 @@
+{
+ "base": "phd-dc-squid",
+ "chapter": "Low temperature and superconductivity",
+ "rig": "phd-transport-bench",
+ "variants": [
+  {
+   "key": "coil-3e-10",
+   "title": "DC SQUID V-flux with a 0.30 nH/mA input coil (simulated instrument)",
+   "sample": "DC SQUID (simulated), coil mutual inductance 3.0e-10 Wb/A",
+   "method": "flux-coil sweep at constant bias",
+   "unknown": "flux quantum from the period",
+   "params": {
+    "Mi": 3e-10
+   },
+   "note": "A tighter coupling gives a shorter period in coil current (about 6.9 uA).",
+   "source": {
+    "title": "Clarke and Braginski, The SQUID Handbook vol. I, chapter 2 (the symmetric DC SQUID, beta_L << 1)"
+   }
+  },
+  {
+   "key": "coil-1e-10",
+   "title": "DC SQUID V-flux with a 0.10 nH/mA input coil (simulated instrument)",
+   "sample": "DC SQUID (simulated), coil mutual inductance 1.0e-10 Wb/A",
+   "method": "flux-coil sweep at constant bias",
+   "unknown": "flux quantum from the period",
+   "params": {
+    "Mi": 1e-10
+   },
+   "note": "A looser coupling needs a longer sweep: the period is about 20.7 uA.",
+   "source": {
+    "title": "Clarke and Braginski, The SQUID Handbook vol. I, chapter 2 (the symmetric DC SQUID, beta_L << 1)"
+   }
+  },
+  {
+   "key": "noisy-readout",
+   "title": "DC SQUID V-flux with a noisier amplifier (simulated instrument)",
+   "sample": "DC SQUID (simulated), voltage noise 0.6 uV per reading",
+   "method": "flux-coil sweep at constant bias",
+   "unknown": "flux quantum and the flux noise",
+   "params": {
+    "vn": 6e-07
+   },
+   "note": "Three times the voltage noise: the flux quantum is still found from the crossings, and the flux noise is three times larger.",
+   "source": {
+    "title": "Clarke and Braginski, The SQUID Handbook vol. I, chapter 2 (the symmetric DC SQUID, beta_L << 1)"
+   }
+  }
+ ]
+}

@@ -1291,6 +1291,25 @@ TOOL_LABELS.update(ZOO_LABELS)
 HANDLERS.update(ZOO_HANDLERS)
 del _seen
 
+# IMAGE EDIT: ONE image_edit tool (app/imgedit): local Pillow edits with no key + AI jobs (remove background, upscale,
+# object removal, background swap, restore...) routed to the engines the server really has. Additive: photo_banao (a NEW
+# picture), photo_clean and id_photo keep their exact specs.
+from .imgedit_tools import IMAGE_EDIT_HANDLERS, IMAGE_EDIT_LABELS, IMAGE_EDIT_TOOLS  # noqa: E402
+_seen = {t["name"] for t in TOOLS}
+TOOLS.extend(t for t in IMAGE_EDIT_TOOLS if t["name"] not in _seen)
+TOOL_LABELS.update(IMAGE_EDIT_LABELS)
+HANDLERS.update(IMAGE_EDIT_HANDLERS)
+del _seen
+
+# AUDIO EDIT: ONE audio_edit tool (app/audedit): ffmpeg edits on the server - trim / cut / fade / loudness / speed / pitch /
+# denoise / voice clean-up / silence / EQ / join / voice + music ducking / split / convert / waveform. No key, no model.
+from .audedit_tools import AUDIO_EDIT_HANDLERS, AUDIO_EDIT_LABELS, AUDIO_EDIT_TOOLS  # noqa: E402
+_seen = {t["name"] for t in TOOLS}
+TOOLS.extend(t for t in AUDIO_EDIT_TOOLS if t["name"] not in _seen)
+TOOL_LABELS.update(AUDIO_EDIT_LABELS)
+HANDLERS.update(AUDIO_EDIT_HANDLERS)
+del _seen
+
 # v0.477 HOOLA SELF-TEACH: ONE skill_manage tool (the coder/skills_tool surface) - Santosh can
 # author and improve reusable skills mid-conversation; the coder nudge resets its counter on use.
 from ..coder.skills_tool import SKILL_HANDLERS, SKILL_LABELS, SKILL_TOOLS  # noqa: E402

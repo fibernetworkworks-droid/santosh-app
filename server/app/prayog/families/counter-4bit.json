@@ -1,0 +1,21 @@
+{
+ "base": "counter-4bit",
+ "rig": "flip-flops-nand",
+ "chapter": "Digital electronics, microprocessors and microcontrollers",
+ "variants": [
+  {
+   "key": "down",
+   "title": "4-bit ripple down counter from JK flip-flops",
+   "method": "Q-bar of each stage clocks the next",
+   "unknown": "the down-count sequence",
+   "sample": "SN7476 dual JK flip-flops, two packages",
+   "params": {
+    "down": 1.0
+   },
+   "note": "The first pulse takes the cleared counter to 1111.",
+   "source": {
+    "title": "Texas Instruments SN5400/SN7400 datasheet (SDLS025); M. Morris Mano, Digital Design, flip-flops from NAND gates"
+   }
+  }
+ ]
+}

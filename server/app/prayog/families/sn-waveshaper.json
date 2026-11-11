@@ -1,0 +1,35 @@
+{
+ "base": "sn-waveshaper",
+ "rig": "sn-scope-bench",
+ "chapter": "Electronic instrumentation and sensors",
+ "variants": [
+  {
+   "key": "germanium",
+   "title": "Clippers and clampers with a germanium diode",
+   "sample": "Germanium point-contact diode, forward drop about 0.3 V",
+   "unknown": "the forward drop of a germanium diode",
+   "params": {
+    "Vf": 0.3
+   },
+   "note": "A germanium diode starts to conduct at about 0.3 V, less than silicon. The 0.30 V is a typical textbook value (unsourced / illustrative).",
+   "source": {
+    "title": "Germanium diode forward drop about 0.3 V: typical textbook figure, not looked up",
+    "note": "Unsourced / illustrative lab setting"
+   }
+  },
+  {
+   "key": "schottky",
+   "title": "Clippers and clampers with a Schottky diode",
+   "sample": "Schottky small-signal diode, forward drop about 0.25 V",
+   "unknown": "the forward drop of a Schottky diode",
+   "params": {
+    "Vf": 0.25
+   },
+   "note": "A Schottky diode has a metal-semiconductor junction and conducts at a lower voltage than a p-n junction. The 0.25 V is illustrative (unsourced).",
+   "source": {
+    "title": "Schottky diode forward drop about 0.25 V at a few milliamps: illustrative, not looked up",
+    "note": "Unsourced / illustrative lab setting"
+   }
+  }
+ ]
+}

@@ -1,0 +1,37 @@
+{
+ "base": "phd-tunnel-nis",
+ "chapter": "Quantum transport",
+ "rig": "phd-transport-bench",
+ "variants": [
+  {
+   "key": "tin-like",
+   "title": "NIS tunnelling into a Tc = 3.7 K film (simulated, illustrative)",
+   "sample": "Tin-type film, Tc about 3.7 K (unsourced / illustrative)",
+   "method": "NIS I-V, BCS fit at several temperatures",
+   "unknown": "gap and gap against temperature",
+   "params": {
+    "Tc": 3.7,
+    "T": 0.3
+   },
+   "note": "A larger gap (0.56 meV at zero temperature) than the aluminium-type film. Tc is illustrative.",
+   "source": {
+    "title": "BCS theory, Phys. Rev. 108, 1175 (1957); Giaever, Phys. Rev. Lett. 5, 147 (1960)"
+   }
+  },
+  {
+   "key": "lead-like",
+   "title": "NIS tunnelling into a Tc = 7.2 K film (simulated, illustrative)",
+   "sample": "Lead-type film, Tc about 7 K (unsourced / illustrative)",
+   "method": "NIS I-V, BCS fit at several temperatures",
+   "unknown": "gap and gap against temperature",
+   "params": {
+    "Tc": 7.2,
+    "T": 0.5
+   },
+   "note": "Gap about 1.1 meV; the weak-coupling BCS model used here is not exact for lead. Tc is illustrative.",
+   "source": {
+    "title": "BCS theory, Phys. Rev. 108, 1175 (1957); Giaever, Phys. Rev. Lett. 5, 147 (1960)"
+   }
+  }
+ ]
+}

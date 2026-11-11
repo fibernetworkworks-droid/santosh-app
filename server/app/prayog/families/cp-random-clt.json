@@ -1,0 +1,65 @@
+{
+ "base": "cp-random-clt",
+ "chapter": "Computational physics",
+ "grid": {
+  "title": "Central limit theorem: the mean of {m} uniform numbers",
+  "unknown": "the standard deviation of the sample means",
+  "axes": {
+   "m": [
+    {
+     "key": "m2",
+     "label": "2",
+     "sample": "m = 2 uniform numbers per mean",
+     "source": {
+      "title": "Undergraduate Programme in Physics under UGCF-2022 (NEP), B.Sc. (Hons.) Physics, University of Delhi",
+      "note": "the practical list names these methods and these functions"
+     },
+     "params": {
+      "cas": 4,
+      "mtoss": 2
+     }
+    },
+    {
+     "key": "m5",
+     "label": "5",
+     "sample": "m = 5 uniform numbers per mean",
+     "source": {
+      "title": "Undergraduate Programme in Physics under UGCF-2022 (NEP), B.Sc. (Hons.) Physics, University of Delhi",
+      "note": "the practical list names these methods and these functions"
+     },
+     "params": {
+      "cas": 4,
+      "mtoss": 5
+     }
+    },
+    {
+     "key": "m10",
+     "label": "10",
+     "sample": "m = 10 uniform numbers per mean",
+     "source": {
+      "title": "Undergraduate Programme in Physics under UGCF-2022 (NEP), B.Sc. (Hons.) Physics, University of Delhi",
+      "note": "the practical list names these methods and these functions"
+     },
+     "params": {
+      "cas": 4,
+      "mtoss": 10
+     }
+    },
+    {
+     "key": "m30",
+     "label": "30",
+     "sample": "m = 30 uniform numbers per mean",
+     "source": {
+      "title": "Undergraduate Programme in Physics under UGCF-2022 (NEP), B.Sc. (Hons.) Physics, University of Delhi",
+      "note": "the practical list names these methods and these functions"
+     },
+     "params": {
+      "cas": 4,
+      "mtoss": 30
+     }
+    }
+   ]
+  }
+ },
+ "rig": "comp-workstation"
+}

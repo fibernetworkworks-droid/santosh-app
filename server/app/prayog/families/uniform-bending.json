@@ -1,0 +1,26 @@
+{
+  "base": "uniform-bending",
+  "chapter": "Properties of matter: elasticity, viscosity, surface tension",
+  "variants": [
+    {"key": "steel", "title": "Uniform bending: Young's modulus of a steel beam",
+     "sample": "Steel bar, 25 mm x 5 mm", "method": "Uniform bending, equal loads beyond both knife edges",
+     "unknown": "Young's modulus of steel", "params": {"Y": 2.0e11},
+     "note": "Steel is the stiffest of these bars: the same load raises the middle least.",
+     "source": {"title": "CRC Handbook of Chemistry and Physics, elastic constants of metals (Young's modulus of steel about 200 GPa)"}},
+    {"key": "brass", "title": "Uniform bending: Young's modulus of a brass beam",
+     "sample": "Brass bar, 25 mm x 5 mm", "method": "Uniform bending, equal loads beyond both knife edges",
+     "unknown": "Young's modulus of brass", "params": {"Y": 1.0e11},
+     "note": "Brass is about half as stiff as steel, so the same load gives about twice the rise.",
+     "source": {"title": "CRC Handbook of Chemistry and Physics, elastic constants of metals (Young's modulus of brass about 100 GPa)"}},
+    {"key": "copper", "title": "Uniform bending: Young's modulus of a copper beam",
+     "sample": "Copper bar, 25 mm x 5 mm", "method": "Uniform bending, equal loads beyond both knife edges",
+     "unknown": "Young's modulus of copper", "params": {"Y": 1.1e11},
+     "note": "Copper is a little stiffer than brass; keep the load small so it stays elastic.",
+     "source": {"title": "CRC Handbook of Chemistry and Physics, elastic constants of metals (Young's modulus of copper about 110 GPa)"}},
+    {"key": "aluminium", "title": "Uniform bending: Young's modulus of an aluminium beam",
+     "sample": "Aluminium bar, 25 mm x 5 mm", "method": "Uniform bending, equal loads beyond both knife edges",
+     "unknown": "Young's modulus of aluminium", "params": {"Y": 6.9e10},
+     "note": "The most flexible bar of the set: the rise of the middle is large and easy to read.",
+     "source": {"title": "CRC Handbook of Chemistry and Physics, elastic constants of metals (Young's modulus of aluminium about 69 GPa)"}}
+  ]
+}

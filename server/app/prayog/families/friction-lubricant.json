@@ -1,0 +1,9 @@
+{"base": "friction-lubricant", "rig": "friction-pull", "chapter": "Friction",
+ "variants": [
+   {"key": "oiled", "title": "Oil reduces friction: metal on metal, lubricated",
+    "sample": "Metal on metal, lubricated with oil", "method": "the same two metal surfaces, with oil between them",
+    "unknown": "the coefficient of friction with a lubricant between the surfaces",
+    "params": {"mu": 0.15},
+    "note": "Compare this with the same pair of surfaces dry, where the coefficient is 0.74.",
+    "source": {"title": "Serway & Jewett, Physics for Scientists and Engineers - table of coefficients of friction",
+               "note": "metal on metal (lubricated), coefficient of static friction 0.15; steel on steel dry, 0.74"}}]}

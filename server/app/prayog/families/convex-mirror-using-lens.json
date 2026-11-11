@@ -1,0 +1,79 @@
+{
+ "base": "convex-mirror-using-lens",
+ "rig": "convex-mirror-using-lens",
+ "chapter": "Ray Optics and Optical Instruments",
+ "variants": [
+  {
+   "key": "crown-f12-r16",
+   "title": "Convex mirror using a crown glass lens of f = 12 cm",
+   "sample": "A crown glass lens of f = 12 cm; convex mirror of unknown radius X (about 16 cm)",
+   "unknown": "the focal length f of the convex mirror",
+   "params": {
+    "R": 0.124032,
+    "n": 1.5168,
+    "u": 0.252,
+    "scr": 0.2291,
+    "Rm": 0.16,
+    "a": 0.08
+   },
+   "source": {
+    "title": "SCHOTT optical glass data sheet N-BK7: nd = 1.5168 (587.6 nm); refractiveindex.info"
+   },
+   "note": "A different lens makes a different image of the pin, so the mirror has to be put at a different place."
+  },
+  {
+   "key": "crown-f20-r24",
+   "title": "Convex mirror using a crown glass lens of f = 20 cm",
+   "sample": "A crown glass lens of f = 20 cm; convex mirror of unknown radius X (about 24 cm)",
+   "unknown": "the focal length f of the convex mirror",
+   "params": {
+    "R": 0.20672,
+    "n": 1.5168,
+    "u": 0.42,
+    "scr": 0.3818,
+    "Rm": 0.24,
+    "a": 0.08
+   },
+   "source": {
+    "title": "SCHOTT optical glass data sheet N-BK7: nd = 1.5168 (587.6 nm); refractiveindex.info"
+   },
+   "note": "A different lens makes a different image of the pin, so the mirror has to be put at a different place."
+  },
+  {
+   "key": "flint-f15-r16",
+   "title": "Convex mirror using a flint glass lens of f = 15 cm",
+   "sample": "A flint glass lens of f = 15 cm; convex mirror of unknown radius X (about 16 cm)",
+   "unknown": "the focal length f of the convex mirror",
+   "params": {
+    "R": 0.186012,
+    "n": 1.62004,
+    "u": 0.315,
+    "scr": 0.2864,
+    "Rm": 0.16,
+    "a": 0.08
+   },
+   "source": {
+    "title": "SCHOTT optical glass data sheet F2: nd = 1.62004 (587.6 nm); refractiveindex.info"
+   },
+   "note": "A different lens makes a different image of the pin, so the mirror has to be put at a different place."
+  },
+  {
+   "key": "flint-f15-r20",
+   "title": "Convex mirror using a flint glass lens of f = 15 cm",
+   "sample": "A flint glass lens of f = 15 cm; convex mirror of unknown radius X (about 20 cm)",
+   "unknown": "the focal length f of the convex mirror",
+   "params": {
+    "R": 0.186012,
+    "n": 1.62004,
+    "u": 0.315,
+    "scr": 0.2864,
+    "Rm": 0.2,
+    "a": 0.08
+   },
+   "source": {
+    "title": "SCHOTT optical glass data sheet F2: nd = 1.62004 (587.6 nm); refractiveindex.info"
+   },
+   "note": "A different lens makes a different image of the pin, so the mirror has to be put at a different place."
+  }
+ ]
+}

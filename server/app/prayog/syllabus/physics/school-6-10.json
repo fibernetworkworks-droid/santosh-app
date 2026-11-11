@@ -83,7 +83,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "length-measure"
+     "kernel": "length-measure",
+     "built": "school-length-nonstandard"
     },
     {
      "id": "ruler-correct-reading",
@@ -98,7 +99,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "length-measure"
+     "kernel": "length-measure",
+     "built": "school-length-ruler"
     },
     {
      "id": "curved-line-thread",
@@ -110,7 +112,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "length-measure"
+     "kernel": "length-measure",
+     "built": "school-length-curve"
     },
     {
      "id": "thermometer-reading",
@@ -125,7 +128,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "thermometer"
+     "kernel": "thermometer",
+     "built": "school-thermometer-read"
     },
     {
      "id": "pendulum-time-period-basic",
@@ -139,7 +143,8 @@
      "conditions": [
       "different lengths of thread"
      ],
-     "kernel": "pendulum"
+     "kernel": "pendulum",
+     "built": "simple-pendulum"
     }
    ]
   },
@@ -159,7 +164,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "kinematics-1d"
+     "kernel": "kinematics-1d",
+     "built": "motion-track"
     },
     {
      "id": "distance-time-graph",
@@ -171,7 +177,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "kinematics-1d"
+     "kernel": "kinematics-1d",
+     "built": "distance-time-graph"
     },
     {
      "id": "stone-circular-release",
@@ -231,7 +238,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "spring-balance"
+     "kernel": "spring-balance",
+     "built": "third-law-balances"
     },
     {
      "id": "balloon-rocket",
@@ -265,7 +273,8 @@
      ],
      "unknowns": [],
      "conditions": [],
-     "kernel": "friction-block"
+     "kernel": "friction-block",
+     "built": "friction-pull"
     },
     {
      "id": "rolling-down-incline-surfaces",
@@ -310,7 +319,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "friction-block"
+     "kernel": "friction-block",
+     "built": "friction-lubricant"
     }
    ]
   },
@@ -354,7 +364,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "atmospheric-pressure"
+     "kernel": "atmospheric-pressure",
+     "built": "sucker-pressure"
     },
     {
      "id": "pressure-cuboid-sand",
@@ -432,7 +443,8 @@
      ],
      "unknowns": [],
      "conditions": [],
-     "kernel": "buoyancy"
+     "kernel": "buoyancy",
+     "built": "archimedes-balance"
     },
     {
      "id": "density-spring-balance-cylinder",
@@ -448,7 +460,8 @@
       "density"
      ],
      "conditions": [],
-     "kernel": "density"
+     "kernel": "density",
+     "built": "solid-density"
     }
    ]
   },
@@ -579,7 +592,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "wave-string"
+     "kernel": "wave-string",
+     "built": "school-slinky-waves"
     },
     {
      "id": "reflection-of-sound-tubes",
@@ -606,7 +620,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "wave-string"
+     "kernel": "wave-string",
+     "built": "school-pulse-speed"
     }
    ]
   },
@@ -623,7 +638,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "conduction-1d"
+     "kernel": "conduction-1d",
+     "built": "school-conduction-rod"
     },
     {
      "id": "spoons-conductors-insulators",
@@ -639,7 +655,8 @@
      ],
      "unknowns": [],
      "conditions": [],
-     "kernel": "conduction-1d"
+     "kernel": "conduction-1d",
+     "built": "school-spoons-conduction"
     },
     {
      "id": "convection-water-crystal",
@@ -693,7 +710,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "phase-change"
+     "kernel": "phase-change",
+     "built": "school-melting-boiling"
     }
    ]
   },
@@ -713,7 +731,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "ray-straight"
+     "kernel": "ray-straight",
+     "built": "school-shadow-bench"
     },
     {
      "id": "transparent-opaque",
@@ -745,7 +764,8 @@
       "object near the source",
       "object near the screen"
      ],
-     "kernel": "shadow"
+     "kernel": "shadow",
+     "built": "school-shadow-bench"
     },
     {
      "id": "pinhole-camera",
@@ -757,7 +777,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "pinhole"
+     "kernel": "pinhole",
+     "built": "school-pinhole-camera"
     },
     {
      "id": "plane-mirror-image",
@@ -772,7 +793,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "plane-mirror"
+     "kernel": "plane-mirror",
+     "built": "school-plane-mirror"
     },
     {
      "id": "reflection-comb-torch",
@@ -784,7 +806,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "plane-mirror"
+     "kernel": "plane-mirror",
+     "built": "school-plane-mirror"
     },
     {
      "id": "inclined-mirrors-kaleidoscope",
@@ -799,7 +822,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "plane-mirror"
+     "kernel": "plane-mirror",
+     "built": "school-plane-mirror"
     },
     {
      "id": "periscope",
@@ -826,7 +850,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "mirror"
+     "kernel": "mirror",
+     "built": "school-concave-mirror-images"
     },
     {
      "id": "newtons-colour-disc",
@@ -870,7 +895,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "mirror"
+     "kernel": "mirror",
+     "built": "school-concave-mirror-images"
     },
     {
      "id": "focal-length-convex-distant",
@@ -882,7 +908,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "lens"
+     "kernel": "lens",
+     "built": "school-convex-lens-images"
     },
     {
      "id": "glass-slab-ray-tracing",
@@ -898,7 +925,8 @@
       "lateral displacement"
      ],
      "conditions": [],
-     "kernel": "slab-ray"
+     "kernel": "slab-ray",
+     "built": "school-glass-slab-ray"
     },
     {
      "id": "prism-ray-tracing",
@@ -912,7 +940,8 @@
       "angle of deviation"
      ],
      "conditions": [],
-     "kernel": "prism"
+     "kernel": "prism",
+     "built": "prism-minimum-deviation"
     },
     {
      "id": "convex-lens-image-positions",
@@ -930,7 +959,8 @@
       "at F",
       "between F and the lens"
      ],
-     "kernel": "lens"
+     "kernel": "lens",
+     "built": "school-convex-lens-images"
     },
     {
      "id": "concave-mirror-image-positions",
@@ -948,7 +978,8 @@
       "at F",
       "between F and the pole"
      ],
-     "kernel": "mirror"
+     "kernel": "mirror",
+     "built": "school-concave-mirror-images"
     },
     {
      "id": "coin-pencil-refraction",
@@ -963,7 +994,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "slab"
+     "kernel": "slab",
+     "built": "school-water-refraction"
     },
     {
      "id": "prism-dispersion",
@@ -1004,7 +1036,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "circuit-builder"
+     "kernel": "circuit-builder",
+     "built": "torch-bulb-circuit"
     },
     {
      "id": "conductors-insulators-tester",
@@ -1025,7 +1058,8 @@
      ],
      "unknowns": [],
      "conditions": [],
-     "kernel": "circuit-builder"
+     "kernel": "circuit-builder",
+     "built": "conductors-insulators-tester"
     },
     {
      "id": "make-a-switch",
@@ -1037,7 +1071,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "circuit-builder"
+     "kernel": "circuit-builder",
+     "built": "make-a-switch"
     },
     {
      "id": "cells-in-series",
@@ -1052,7 +1087,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "circuit-builder"
+     "kernel": "circuit-builder",
+     "built": "cells-in-series"
     },
     {
      "id": "heating-effect-wire",
@@ -1064,7 +1100,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "joule-heating"
+     "kernel": "joule-heating",
+     "built": "heating-effect-wire"
     },
     {
      "id": "liquid-conductivity-tester",
@@ -1125,7 +1162,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "ohm"
+     "kernel": "ohm",
+     "built": "resistance-factors"
     },
     {
      "id": "series-resistors",
@@ -1137,7 +1175,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "ohm"
+     "kernel": "ohm",
+     "built": "series-resistors"
     },
     {
      "id": "parallel-resistors",
@@ -1149,7 +1188,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "ohm"
+     "kernel": "ohm",
+     "built": "parallel-resistors"
     }
    ]
   },
@@ -1200,7 +1240,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "magnet"
+     "kernel": "magnet",
+     "built": "suspended-magnet-direction"
     },
     {
      "id": "like-unlike-poles",
@@ -1212,7 +1253,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "magnet"
+     "kernel": "magnet",
+     "built": "like-unlike-poles"
     },
     {
      "id": "make-a-magnet-stroking",
@@ -1224,7 +1266,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "magnet"
+     "kernel": "magnet",
+     "built": "make-a-magnet-stroking"
     },
     {
      "id": "field-lines-bar-magnet",
@@ -1239,7 +1282,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "magnet-field"
+     "kernel": "magnet-field",
+     "built": "field-lines-bar-magnet"
     }
    ]
   },
@@ -1256,7 +1300,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "magnet-field"
+     "kernel": "magnet-field",
+     "built": "compass-near-wire"
     },
     {
      "id": "electromagnet-nail",
@@ -1268,7 +1313,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "electromagnet"
+     "kernel": "electromagnet",
+     "built": "electromagnet-nail"
     },
     {
      "id": "field-straight-conductor",
@@ -1285,7 +1331,8 @@
      "conditions": [
       "current reversed"
      ],
-     "kernel": "magnet-field"
+     "kernel": "magnet-field",
+     "built": "field-straight-conductor"
     },
     {
      "id": "field-circular-loop",
@@ -1297,7 +1344,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "magnet-field"
+     "kernel": "magnet-field",
+     "built": "field-circular-loop"
     },
     {
      "id": "field-solenoid",
@@ -1309,7 +1357,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "magnet-field"
+     "kernel": "magnet-field",
+     "built": "field-solenoid"
     },
     {
      "id": "force-on-conductor",
@@ -1362,7 +1411,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "electrostatics"
+     "kernel": "electrostatics",
+     "built": "charging-by-rubbing-6-10"
     },
     {
      "id": "jar-electroscope",
@@ -1374,7 +1424,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "electrostatics"
+     "kernel": "electrostatics",
+     "built": "jar-electroscope"
     }
    ]
   }

@@ -1,0 +1,53 @@
+{
+ "base": "msc-gm-poisson",
+ "rig": "gm-statistics-bench",
+ "chapter": "Nuclear physics",
+ "variants": [
+  {
+   "key": "low-rate",
+   "title": "GM counting statistics at a low count rate",
+   "sample": "Weak Cs-137 source, a few counts per second",
+   "method": "fifty 10 s counts",
+   "unknown": "whether the scatter is Poisson at a low count rate",
+   "params": {
+    "N0": 1.2,
+    "seed": 62
+   },
+   "note": "With a mean of only about 15 counts the Poisson distribution is visibly skewed; the standard deviation is still the square root of the mean.",
+   "source": {
+    "title": "G. F. Knoll, Radiation Detection and Measurement, ch. 3: Poisson statistics for a mean of a few counts"
+   }
+  },
+  {
+   "key": "high-rate",
+   "title": "GM counting statistics at a high count rate",
+   "sample": "Cs-137 source, a few hundred counts per second",
+   "method": "fifty 10 s counts",
+   "unknown": "whether the scatter is Gaussian at a high count rate",
+   "params": {
+    "N0": 70,
+    "seed": 64
+   },
+   "note": "With a mean of several hundred counts the Poisson distribution is almost exactly a Gaussian of the same standard deviation; dead-time losses are small but not zero.",
+   "source": {
+    "title": "G. F. Knoll, Radiation Detection and Measurement, ch. 3: Gaussian limit of the Poisson distribution"
+   }
+  },
+  {
+   "key": "background",
+   "title": "GM counting statistics of the background alone",
+   "sample": "No source: natural background (cosmic rays and room radioactivity)",
+   "method": "fifty 10 s counts",
+   "unknown": "the scatter of the background counts",
+   "params": {
+    "N0": 0.0,
+    "bg": 1.5,
+    "seed": 66
+   },
+   "note": "Background is a count of independent events too, so it scatters as the square root of its mean.",
+   "source": {
+    "title": "G. F. Knoll, Radiation Detection and Measurement, ch. 3 and ch. 18: background as a Poisson process"
+   }
+  }
+ ]
+}

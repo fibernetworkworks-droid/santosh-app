@@ -1,0 +1,43 @@
+{
+ "base": "magnetoresistance",
+ "chapter": "Solid state and materials",
+ "variants": [
+  {
+   "key": "inas",
+   "title": "Magnetoresistance of n-type InAs",
+   "sample": "n-type InAs bar",
+   "unknown": "electron mobility of n-type InAs",
+   "params": {
+    "mu": 3.3
+   },
+   "source": {
+    "title": "S. M. Sze and K. K. Ng, Physics of Semiconductor Devices, 3rd ed.: electron mobility at 300 K (Ge 3900, GaAs 8500, InAs 33000, InSb 77000 cm2/V s)"
+   }
+  },
+  {
+   "key": "gaas",
+   "title": "Magnetoresistance of n-type GaAs",
+   "sample": "n-type GaAs bar",
+   "unknown": "electron mobility of n-type GaAs",
+   "params": {
+    "mu": 0.85
+   },
+   "source": {
+    "title": "S. M. Sze and K. K. Ng, Physics of Semiconductor Devices, 3rd ed.: electron mobility at 300 K (Ge 3900, GaAs 8500, InAs 33000, InSb 77000 cm2/V s)"
+   }
+  },
+  {
+   "key": "ge",
+   "title": "Magnetoresistance of n-type germanium",
+   "sample": "n-type germanium bar",
+   "unknown": "electron mobility of n-type germanium",
+   "params": {
+    "mu": 0.39
+   },
+   "source": {
+    "title": "S. M. Sze and K. K. Ng, Physics of Semiconductor Devices, 3rd ed.: electron mobility at 300 K (Ge 3900, GaAs 8500, InAs 33000, InSb 77000 cm2/V s)"
+   }
+  }
+ ],
+ "rig": "msc-sweep-bench"
+}

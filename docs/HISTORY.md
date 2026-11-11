@@ -483,16 +483,101 @@ Phase G1 of `docs/LANGGRAPH_TURN_PLAN.md` (bug classes 1 and 9), only when `chat
 - NOT VERIFIED / STILL OPEN: the crash is simulated (CancelledError + cleared memory), not a real process kill; a crash inside the model node after the model answered re-runs that call (a second model call, maybe a second assistant row); a crash in prepare uses the old RESUME_NOTE path; tool_search results and narration state are rebuilt, not restored; a reused done tool skips event-log / coder-memory capture; timed-out turns keep checkpoints until the daily housekeeping. Next: G2 (one run per chat + Stop as state).
 
 
+## v0.768.0 IMAGE EDIT (built as 0.759.0, re-versioned twice as main moved; owner: "Image editing --- perfect work on it end to end deeply and perfectly for hoola", after the aixploria.com read mapped 4,863 AI tools to Hoola - 210 of them image editing)
 
-## v0.768.0 HOOLA CODE PHASE 1 - its own page, laid out like Claude Code on the web (11 Nov 2026; owner: "GO PHASE 1" on docs/HOOLA_CODE_WEB_PLAN.md, then mid-build "CREATE A SEPERATE PAGE WITH ITS OWN SIDE BAR FOR HOOLA CODE")
+ONE new tool `image_edit` (registry 621 -> 622) in `server/app/imgedit/`; photo_banao / photo_clean / id_photo keep their specs.
+- LOCAL (`ops.py`, Pillow + numpy, no key, deterministic): resize (17 presets: Insta post / square / Story, YouTube thumb /
+  banner, FB cover, LinkedIn, WhatsApp DP, marketplace / Amazon, A4 150 / 300 dpi, visiting card; fit contain / cover / inside /
+  stretch), crop (box or aspect + gravity), rotate, flip, adjust, auto_enhance, filters (grayscale, sepia, invert, blur, sharpen,
+  denoise, pixelate, posterize, vignette, sketch, SCAN = photo of a paper -> flat white page), redact (blur / pixelate / black
+  regions), border, pad, round_corners, bg_color, text + watermark (each character drawn from a font that has it: Devanagari,
+  Latin, the rupee sign, dots), upscale_local (plain enlargement, said so), convert + compress to a target KB, collage,
+  before/after. Every output re-encoded: camera EXIF / GPS never travels. 50 MP input cap, 8192 px side, 12 steps.
+- AI (`ai.py`): remove_bg, upscale, remove_object, replace_bg, restyle, restore, colorize, edit. First engine REALLY set up runs and
+  is named: rembg (local) / Gemini via photogen / the zoo gateways (`ai.ROUTES`, every id pinned against zoo_catalog.json). No
+  engine = says which key to set; upscale alone falls back to a plain enlargement and says "no new detail". A failing engine
+  moves to the next, failures reported. Generative edits labelled "AI se bana".
+- SAFETY before any engine: photogen.problem + watermark / copyright / photographer's mark removal refused; an AI edit of a file
+  named like an Aadhaar / PAN / marksheet / cheque refused (resize / crop / compress of her own ID is fine); body edits on a
+  child's picture refused.
+- PIPELINE (`run.py`): local steps + at most ONE AI step per photo, validated before anything is paid for; up to 10 photos, 5 for an
+  AI step; one bad file never sinks the batch; routine / staff actors usage-gated for AI steps; collage action.
+- TESTS `test_imgedit.py` 38. NOT VERIFIED: no AI engine has answered a live call (no key in the sandbox, rembg not installed);
+  kie / muapi request shapes read from zoo_catalog.json only. The first real "background hata do" with ZOO_KIE_KEY set is the proof.
 
-Phase 1 of the plan (the shell and the session) plus her mid-build ask. Nothing about HOW Hoola codes changed - same loop, same routes, same taps.
-- OWN PAGE: `/console/code` (`static/console/hoolacode.html` + `hoolacode.js`, route `main.hoola_code_page`, same CSP and sign-in token as the console; switch `hoola_code_page` off = 307 to /console/). Only ONE sidebar - the sessions. Every screen has an address (`#/s/<id>`, `#/reviews`, `#/settings`, `#/all`), so Back works and a link opens one session. The console's "Hoola Code" row now opens this page (`v2.js go('code')`); `code.js` is no longer loaded inside the console and the `#v-code` section is gone. Why: inside the console the page had two sidebars and the chat was squeezed to ~450 px on a 1280 laptop.
-- LAYOUT (`code.js` rewritten, `.hcd-` rules in v2.css replaced): sessions sidebar 272 px (collapses to a 52 px strip that keeps running / needs-you sessions one click away) / chat column 760 px / right rail 300 px of cards - Changes (files, the PR, proof, CI, own review, security, the next action), Progress (read / change / tests / own check / PR / CI, each read from the real steps - never a made-up bar), Session. The rail hides itself when the page is narrower than 780 px and comes back as an overlay on her click; the same action buttons are on the recap card in the chat, so they are reachable with the rail hidden.
-- SESSION: title bar (click the title to rename; menu: Rename, Transcript view Normal / Verbose, Open the PR, Archive, Delete), steps folded into summaries ("Read the repo's rules, read 2 files, searched 1 time"), an edit's diff folded under its row, a failed test run never folded, a finished session folded to "Worked for N - M steps", a recap card in words, the plan / open-PR / merge question as ONE bar above the message box, her queued notes shown with a take-back button, Stop in the message box. Enter sends, Shift + Enter = new line.
-- SIDEBAR: New session, Review a pull request, search, groups by repo (default) / status / none and a Show filter (Group and sort menu, remembered in this browser), a "..." menu per row, View all -> All sessions page (Active / Archived tabs, server search, Archive / Unarchive / Delete).
-- SERVER (small): `devsahayak_tasks.title` (her own name; never the PR title on GitHub) + `archived_at` (both nullable, added by the column self-heal); `service.rename / archive / delete_task / drop_note`, `tasks(archived=, q_text=)`; routes PATCH `/tasks/{id}` {title | archived}, DELETE `/tasks/{id}` (the row + its steps; an open PR and its branch stay; a waiting merge card goes stale; refused while it works), DELETE `/tasks/{id}/note/{i}` (a queued note comes back as text; refused once Hoola has read it), GET `/tasks?archived=1&q=`. Task views carry `archived` and `notes` (her queued words).
-- TWO BUGS FIXED: (1) every 2 s refresh rebuilt the whole page with innerHTML, so a half-typed note was wiped and the box lost focus - the session is now mounted ONCE and `paint()` repaints only the regions whose HTML changed; the message box is never repainted; clicks go through ONE listener on the root. (2) the working mark was a rotating ring (banned by CRISP TEXT, v0.256) - now a still dot with a soft pulse of shadow.
-- HOME: one box + Send, and under it repo / kind of work / issue number. The mode, model and branch pickers of the design are Phase 3.
-- PROOF: `tests/test_v0768_hoola_code_shell.py` 8 - rename / archive / search (with % and _ as plain characters) / delete / another tenant refused; a running session not archived or deleted, a queued note taken back; the routes; and FOUR walks in a real browser against an API whose answers change between polls: typing survives a new step arriving (text, focus and the fold she opened all kept - this fails on the v0.748 page), steps fold, no rotating ring, a note comes back into the box; the layout at 1280 px (rail 300, chat >= 600, nothing off-screen), rail hide / show / overlay, sidebar collapse, Verbose, rename; the page on its own address with one sidebar, hash routes, Back, a deep link; the switch. `test_v0748` browser walk updated to the new page. Screenshots were looked at before shipping.
-- NOT DONE / NOT VERIFIED: no live GitHub repo has run through the new page yet; the Changes pane with line comments, Create PR on the card, the question dialog = Phase 2; mode / model / branch pickers, attachments = Phase 3; Terminal / Files / a continuing conversation = Phase 4; steps still arrive by a 2 s poll; the phone screen is unchanged; "Merge when ready" stays her tap (decision 1 of the plan, not yet answered).
+## v0.769.0 AUDIO EDIT (owner: "NOW START AUDIO EDITING" - the second wave of the aixploria coverage map, 60 audio-editing tools)
+
+ONE new tool `audio_edit` (registry 622 -> 623) in `server/app/audedit/`. Every edit is LOCAL on the server's own ffmpeg:
+no key, no model, no cost, nothing leaves the server, so - unlike image_edit's AI half - all of it is testable and was
+tested on real audio.
+- `ops.py`: steps -> one ffmpeg filter chain: trim / cut a middle part / fade in-out / volume (dB or %) / normalize to a named
+  loudness (podcast -16, social / music -14, audiobook -19, broadcast -23 LUFS, or a number; loudnorm, the file's own sample
+  rate given back after loudnorm's internal 192 kHz) / speed 0.25-4 with pitch kept (chained atempo) / pitch +-12 semitones
+  (rubberband, else asetrate + atempo) / denoise light-medium-strong (highpass + afftdn) / enhance_voice (highpass, lowpass,
+  afftdn, compressor, presence EQ, loudnorm -16) / remove_silence / eq bass-treble / mono / stereo / sample_rate / reverse
+  (<= 10 min). Plus convert (6 formats, a video's sound pulled out), join (2-20, crossfade or gap), mix (voice + music looped
+  to the voice, quieter, ducked under speech by sidechaincompress, faded out), split (every N s or at times, <= 20 parts),
+  loudness report (LUFS, true peak, range, a plain verdict, clipping risk), waveform PNG. Times read as 90 / 1:30 / 1m30s.
+  Every output re-encoded with -map_metadata -1 (no artist / comment / phone tags travel). Limits: 200 MB, 2 h, 12 steps,
+  ffmpeg time limit scaled to length; a silent video / non-audio file is refused in plain words.
+- Tool `agent/audedit_tools.py`: guide | info | run | convert | join | mix | split | waveform; steps checked before any file is
+  touched; one bad file never sinks a batch; mix answers with the "only music you have the right to use" line.
+- NOT built, said plainly in the guide and prompt: AI vocal / instrument separation, cloning or impersonating a voice,
+  transcription (= kaan), new music or speech (= Create studio).
+- TESTS `test_audedit.py` 19, all on real ffmpeg with generated audio and video: lengths after trim / cut / speed / join /
+  mix / split MEASURED, normalize lands within 1.5 LU of -16 and keeps the sample rate, silence removal shortens the file,
+  metadata gone, a video's sound extracted, a silent video refused, every op and all 6 formats run, the tool reached from
+  real Hinglish / English asks. Registry pins 622 -> 623.
+- NOT VERIFIED live: the VPS's ffmpeg build is assumed to carry the same filters (afftdn, loudnorm, silenceremove,
+  sidechaincompress); rubberband falls back to asetrate when missing. The first real voice note cleaned on the VPS is the proof.
+
+## v0.770.0 LANGGRAPH G2 — one run per chat + Stop as state (11 Nov 2026; owner: "GO G2")
+
+Phase G2 of `docs/LANGGRAPH_TURN_PLAN.md` (bug classes 6 and 8), only when `chat_graph` is on (default OFF; with it off no ticket is made and the old path is unchanged).
+- NEW `agent/turnrun.py`: per-chat tickets in arrival order (taken when `run_turn` is entered, before any pre-lock work), the live-run registry, the stop flag + event, the inbox-owner check. A turn takes the old `_locks` chat lock only as the oldest ticket and gives the ticket back in a finally - so a later message can no longer overtake an earlier one (proved with the switch off: A with slow pre-lock work ran after B) and the short gap between two runs can no longer let the sweep start a queued row a second time.
+- A message during a live run: her own words during her own job still reach it via the steer queue (today's design); wakes / routines / goal rounds / anything else run right after, in order. `turn_inbox.run_owned` drops a second start of a row already owned here; the sweep skips chats with a live or queued ticket. The inbox id is trusted only from that row's own task (background tasks inherit context vars; the G1 leak closed).
+- Stop: `santosh.stop` (button, kaamstop, stop words) also sets the run's flag and an event so `_watched` cancels the in-flight model / tool call at once; every graph node checks the flag at its boundary (model node says the usual stopped line via new `_turn_halted`, mid-tool = the usual "Stopped by the owner..." result, ledger row failed/stopped); the inbox row stays 'stopped'; `stopped` rides every checkpoint and `_resumable_snap` refuses it. Messages queued behind a stopped run keep today's behaviour.
+- TESTS: NEW `test_g2_turngraph.py` 14; g1 9, g0 11, harness2 15, harness3 17, routines 3, v0657 14, v0664 10, v0649 11 same off and on.
+- NOT COVERED: order is by entry into run_turn, not inbox created_at; tickets are one process's memory (inbox + sweep stay the cross-restart net); Stop does not cut other awaits inside a node (finishes, then the boundary ends it); a slow head ticket makes later messages wait; old-path flaws left alone; nothing verified live. Next: G3 done-truth from the ledger.
+
+
+## v0.771.0 PROOF APPS — the App plan's five proof apps, the whole road on the server (11 Nov 2026; owner: "CONTINUE THE WORK"; built as 0.770, their LANGGRAPH G2 took 0.770.0 - REBASE PROTOCOL, both kept)
+
+The App plan (`docs/COMPLEX_APPS_PLAN.md`) had twelve pillars built (A-L) and its own gate unmet: "a proof app" -
+none existed. `server/app/appmaker/proofapps.py` builds the plan's five: **School ERP** (leave workflow Pending ->
+Approved by a teacher only, fee register with due = amount - paid and two rules, notices readable by members only),
+**Clinic** (a doctor's slot unique, Booked -> Checked in -> Done by the desk only, patient privacy, rating after Done),
+**Food delivery** (the phone never prices - amount = qty x rate_of(item) on the server, 1-20 per order, a four-state
+kitchen workflow, rating only after Delivered, menu public but kitchen-only), **Multi-vendor marketplace** (vendors
+own their listings - another vendor's edit refused, a free listing refused, sales split into 10% commission + payout,
+vendors cannot read the register), **Field-service CRM** (private phone, the office assigns, a technician cannot take
+another's job, Done requires visit notes, 24 h SLA stored, rating after Done).
+
+Each one: a hand-written naksha (no model, the same every run) -> Pillar K's checker -> every module approved by its
+hash and built through the real engines (lists, logic draft, push) with its own generated proof -> the brain applied
+through the real logic engine (on her app that stays HER tap; this is the harness's own hidden app) -> hand-written
+Pillar J scenarios checked against the app as it now is and played on a twin. Tenant `__proofapps__`, last run's
+projects / twins / rows / accounts cleared first. Card: per app modules built, scenarios pass, refusals checked, her
+next steps, what is NOT proved; saved to data/proofapps/last.json. `python -m app.appmaker.proofapps [--only <key>]
+[--json]`, vps-ops `proof_apps`.
+
+**Found by its first run, all three in the pillars, all fixed:**
+- Pillar J (`quality._Run._role`): making a test person staff / admin ends their logins (`webapp.set_role`: "a new
+  role = log in again"), and the runner never logged them in again. Since v0.540 every staff / admin step ran SIGNED
+  OUT: an allowed step failed, and a "must be refused" step by staff passed for the wrong reason. They log in again now.
+- Pillar J: the per-IP signup limit (5 an hour per site) answered the sixth scenario sign-up with 429, so every later
+  story failed on nothing to do with her app. The limits are lifted for the twin only (`_unthrottle`) - hidden, test
+  rows only, reachable by nobody but the runner. Her real apps keep every limit.
+- Pillar K (`architect._steps_for`): a module whose list only staff may write (fees, sales) had its proof walked by a
+  plain member, so the module read as failed. The walk signs up as staff for such a list.
+
+**Named by the proof, NOT built:** a customer seeing a row written FOR her by staff (her child's fee row, her
+prescription, a vendor's own sales - rows belong to whoever wrote them; needs a gate / pass list), prescriptions and
+report cards as PDFs, the family's rider / vendor apps (design + native build), offline-first on a technician's phone.
+
+**NOT VERIFIED:** nothing here ran on a real phone, which is what the plan's gate asks. Payment keys, Firebase,
+connector accounts and live tracking stay her next steps and are never counted as passes.
+
+Tests `test_v0771_proof_apps.py` 5 (all five proved, >= 2 real refusals per app + what is not proved named, her
+credentials stay next steps, only the hidden tenant touched, a second run starts fresh); test_v0542_naksha 13/13,
+test_v0540_jaanch + test_routines 19/19 green with the fixes.

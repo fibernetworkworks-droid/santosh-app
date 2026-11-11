@@ -1,0 +1,63 @@
+{
+ "base": "cr-xy-heisenberg-mc",
+ "rig": "comp3-workstation",
+ "chapter": "Computational physics",
+ "variants": [
+  {
+   "key": "xy-helicity",
+   "title": "2-D XY model: the helicity modulus at T = 0.1",
+   "sample": "8 x 8 rotors, T = 0.1",
+   "unknown": "helicity modulus",
+   "params": {
+    "what": 1
+   },
+   "source": {
+    "title": "Spin-wave theory of the 2-D XY helicity modulus, Y = 1 - T/4 (harmonic approximation)",
+    "note": "cited from the standard literature, not re-fetched"
+   }
+  },
+  {
+   "key": "xy-energy-warm",
+   "title": "2-D XY model: the energy at T = 0.2",
+   "sample": "8 x 8 rotors, T = 0.2",
+   "unknown": "energy per spin",
+   "params": {
+    "T": 0.2
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   },
+   "note": "The T^2 anharmonic correction is already visible."
+  },
+  {
+   "key": "heisenberg-3d",
+   "title": "3-D Heisenberg model: the energy at T = 0.1",
+   "sample": "4 x 4 x 4 unit vectors, T = 0.1",
+   "unknown": "energy per spin",
+   "params": {
+    "cas": 1,
+    "L": 4.0
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   }
+  },
+  {
+   "key": "heisenberg-3d-warm",
+   "title": "3-D Heisenberg model: the energy at T = 0.2",
+   "sample": "4 x 4 x 4 unit vectors, T = 0.2",
+   "unknown": "energy per spin",
+   "params": {
+    "cas": 1,
+    "L": 4.0,
+    "T": 0.2
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   }
+  }
+ ]
+}

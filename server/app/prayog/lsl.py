@@ -42,6 +42,9 @@ Q_KEYS = {"q", "options", "answer", "why"}
 CHECK_KEYS = {"params", "reading", "textbook", "tol", "measure", "rows", "calc"}
 ROW_KEYS = {"set", "measure", "take", "add"}
 STAGE = 50.0
+# A physical parameter is not a stage coordinate: real physics carries 6.022e23 per mole, 1.6e-19 C, a carrier
+# concentration of 1e21 per m3. The checker's job is to catch nonsense (infinities, typos), not to refuse physics.
+PHYS = 1e30
 MAX_TRIS = 80000
 
 
@@ -96,7 +99,7 @@ def _bind_spec(spec: Any, where: str, kvars, params, knobs) -> None:
         name = spec.get("var")
         for k in ("k", "c", "min", "max"):
             if k in spec:
-                _num(spec[k], f"{where}.{k}", -1e9, 1e9)
+                _num(spec[k], f"{where}.{k}", -PHYS, PHYS)
     if not isinstance(name, str) or not _ref_ok(name, kvars, params, knobs):
         raise LabError(f"{where}: '{name}' is not a kernel var / param / knob")
 
@@ -169,7 +172,7 @@ def check(lab: dict) -> dict:
     for k, v in over.items():
         if not IDENT.match(k):
             raise LabError(f"lab.params.{k}: bad name")
-        _num(v, f"lab.params.{k}", -1e12, 1e12)
+        _num(v, f"lab.params.{k}", -PHYS, PHYS)
     params |= set(over)
     if name != "circuit" and set(over) - set(KN.KERNELS[name].PARAMS):
         raise LabError(f"lab.params: {sorted(set(over) - set(KN.KERNELS[name].PARAMS))} not in kernel '{name}'")
@@ -233,12 +236,12 @@ def check(lab: dict) -> dict:
             raise LabError(f"{w}.x: '{m.get('x')}' is not in the kernel")
         for t in ("k", "lc", "xk"):
             if t in m:
-                _num(m[t], f"{w}.{t}", -1e12, 1e12)
+                _num(m[t], f"{w}.{t}", -PHYS, PHYS)
         if "range" in m:
             if not isinstance(m["range"], list) or len(m["range"]) != 2:
                 raise LabError(f"{w}.range: [lo, hi]")
             for j, x in enumerate(m["range"]):
-                _num(x, f"{w}.range[{j}]", -1e12, 1e12)
+                _num(x, f"{w}.range[{j}]", -PHYS, PHYS)
 
     bodies = lab.get("bodies") or []
     if not isinstance(bodies, list) or not 1 <= len(bodies) <= 150:
@@ -349,7 +352,7 @@ def check(lab: dict) -> dict:
                 raise LabError(f"{w}.from: 'manual', 'knob:<id>' or 'inst:<id>'")
             for t in ("k", "div"):
                 if t in c:
-                    _num(c[t], f"{w}.{t}", -1e12, 1e12)
+                    _num(c[t], f"{w}.{t}", -PHYS, PHYS)
             if c.get("div") == 0:
                 raise LabError(f"{w}.div: cannot be 0")
         calc = table.get("calc")

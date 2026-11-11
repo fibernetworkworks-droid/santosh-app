@@ -1,0 +1,61 @@
+{
+ "base": "cp-difference-tables",
+ "chapter": "Computational physics",
+ "grid": {
+  "title": "Difference table of {fn}: derivative {method}",
+  "unknown": "the derivative at the end of the table",
+  "axes": {
+   "fn": [
+    {
+     "key": "cubic",
+     "label": "x³",
+     "sample": "Tabulated f(x) = x^3 at x = 2",
+     "source": {
+      "title": "S. S. Sastry, Introductory Methods of Numerical Analysis, PHI"
+     },
+     "params": {
+      "cas": 2,
+      "A": 1.0,
+      "kk": 3.0,
+      "x": 2.0,
+      "h0": 0.8
+     }
+    },
+    {
+     "key": "quartic",
+     "label": "x⁴",
+     "sample": "Tabulated f(x) = x^4 at x = 1.5",
+     "source": {
+      "title": "S. S. Sastry, Introductory Methods of Numerical Analysis, PHI"
+     },
+     "params": {
+      "cas": 2,
+      "A": 1.0,
+      "kk": 4.0,
+      "x": 1.5,
+      "h0": 0.6
+     }
+    }
+   ],
+   "method": [
+    {
+     "key": "fwd",
+     "label": "by forward differences",
+     "method": "Forward difference, first order",
+     "params": {
+      "method": 0
+     }
+    },
+    {
+     "key": "bwd",
+     "label": "by backward differences",
+     "method": "Backward difference, first order",
+     "params": {
+      "method": 1
+     }
+    }
+   ]
+  }
+ },
+ "rig": "comp-workstation"
+}

@@ -1,0 +1,66 @@
+{
+ "base": "ph2-xrr-film",
+ "rig": "ph2-xrd-bench",
+ "chapter": "X-ray and electron methods",
+ "variants": [
+  {
+   "key": "nickel",
+   "title": "X-ray reflectivity: thickness of a nickel film on silicon",
+   "sample": "Nickel film on a silicon wafer (single layer)",
+   "method": "Kiessig fringes",
+   "unknown": "the film thickness and density",
+   "note": "Nickel density 8908 kg/m³ (unsourced / illustrative: handbook value entered from memory).",
+   "params": {
+    "d1": 3e-08,
+    "rho_f": 8908.0,
+    "ze_f": 0.47703
+   },
+   "source": {
+    "title": "Nickel density 8908 kg/m³ and Z/A = 28/58.693",
+    "note": "unsourced / illustrative: handbook value entered from memory, not re-checked in this build"
+   }
+  },
+  {
+   "key": "ml-6nm",
+   "title": "X-ray reflectivity: W/Si multilayer, 6 nm period",
+   "sample": "Ten bilayers of tungsten (40 %) and silicon (60 %) on a silicon wafer",
+   "method": "Bragg peaks of the multilayer",
+   "unknown": "the bilayer period",
+   "note": "Tungsten density 19250 kg/m³ (unsourced / illustrative). The orders are numbered consecutively from the first Bragg peak.",
+   "params": {
+    "kind": 2,
+    "d1": 6e-09,
+    "rho_f": 19250.0,
+    "ze_f": 0.40251,
+    "fa": 0.4,
+    "nrep": 10,
+    "tmax": 6.0
+   },
+   "source": {
+    "title": "Tungsten density 19250 kg/m³ and Z/A = 74/183.84",
+    "note": "unsourced / illustrative: handbook value entered from memory, not re-checked in this build"
+   }
+  },
+  {
+   "key": "ml-45nm",
+   "title": "X-ray reflectivity: W/Si multilayer, 4.5 nm period",
+   "sample": "Twelve bilayers of tungsten (40 %) and silicon (60 %) on a silicon wafer",
+   "method": "Bragg peaks of the multilayer",
+   "unknown": "the bilayer period",
+   "note": "Tungsten density 19250 kg/m³ (unsourced / illustrative).",
+   "params": {
+    "kind": 2,
+    "d1": 4.5e-09,
+    "rho_f": 19250.0,
+    "ze_f": 0.40251,
+    "fa": 0.4,
+    "nrep": 12,
+    "tmax": 6.0
+   },
+   "source": {
+    "title": "Tungsten density 19250 kg/m³ and Z/A = 74/183.84",
+    "note": "unsourced / illustrative: handbook value entered from memory, not re-checked in this build"
+   }
+  }
+ ]
+}

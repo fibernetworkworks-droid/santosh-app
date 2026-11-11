@@ -121,3 +121,73 @@ Mössbauer, dilution fridge and BEC. Their numbers still come from published mod
 
 **P0 + P1.** The real count comes first, so the owner sees where 1 lakh comes from. Then the rig engine, because
 every later phase rides on it and the 22 existing labs prove it changes nothing that already works.
+
+## Build-out log and hand-off notes (live)
+
+The meter is `cd server && python3 -m app.prayog.count --cover`. A set-up counts only when its `built` lab really
+opens; a claim that does not open is reported as BROKEN, never counted.
+
+**Engine work that made the build-out possible**
+- Kernel packs (`prayog/packs/<area>.py` + the JS twin in `static/prayog/packs/`) and lab packs
+  (`prayog/labs/<area>.py`): new physics and new set-ups go in their OWN files, so many people build at once.
+- `/api/prayog/kernels.js` serves kernels.js plus every pack as one script.
+- `tools/prayog_claim.py` applies build agents' claims centrally.
+- The twin test now covers PACK kernels numerically (it did not: a drifting JS twin passed silently).
+- The LSL checker no longer refuses real physics: a parameter may carry 6e23 or 1.6e-19 (`PHYS = 1e30`). Ten
+  modern / nuclear labs were being silently dropped by the old 1e12 cap.
+- The catalogue route pages at 100 by design; its test asks for the full page.
+
+**Cheap next wins named by the build agents**
+- `specific-heat-liquid-mixtures` (XI-XII): reuses the shipped `mixtures` kernel; `mix_Tf` is already its check and
+  `mix_c_liquid` is already a CALC in packs/mech11.py. Only a calorimeter rig is missing.
+- `pendulum-energy-dissipation` (XI-XII): rides the shipped `pendulum` kernel, which already has damping `b`.
+- `sound-through-solids` (VI-X): v = sqrt(Y / rho) with two sensors on a rod; Y and rho are CRC constants.
+- `reflection-of-sound-tubes` (VI-X): measures the peak angle against i = r.
+- `radiation-black-white-tins` (VI-X): steady dT = alpha G / h, solar absorptance from published tables.
+- The 7 Class XII ray-optics set-ups (convex mirror by lens, concave lens by convex, liquid lens, liquid mirror,
+  lateral deviation, image nature, lens combination) need ONE new two-element ray-trace kernel; the shipped
+  Lens / Mirror kernels trace a single element only.
+- The 2 Alternating Current set-ups need an AC source and an inductor element in the circuit kernel.
+
+**Known honest gaps (not to be faked)**
+- Qualitative school activities with no measurable unknown (push-pull effects, transparent vs opaque, inertia of a
+  coin, balloon rocket, convection): a `check` within 1 % of a textbook formula cannot be written for them without
+  turning the activity into a different experiment.
+- Assembly / diagnosis activities (identify the components, find the open circuit, household wiring): there is no
+  measured quantity for the walk to check. These need a build-a-circuit interaction the studio does not have.
+- Dispersion and colour set-ups need n(lambda) (Cauchy / Sellmeier) and a colour-matching kernel.
+- Jaltarang: a struck glass is a shell mode and a blown one is a Helmholtz resonator; the quarter-wave pipe formula
+  would be invented physics. An agent built that kernel and then deleted it rather than ship it.
+
+**Load note**: each walk drives a real headless browser. Six build agents saturate a 4-core box (load 35, one
+OOM kill). Run at most 4 - 6 agents at a time, and never edit a rig's .js while its walk is loading it.
+
+**Constants a build agent flagged as NOT looked up in a table (to verify against the source before they are trusted)**
+- Lee's disc / ebonite thermal conductivity 0.16 W/(m K): recalled, cited to Engineering ToolBox "rubber, hard", unchecked.
+- Brass density 8500 (Lee's disc) and 8470 (Kundt rod) kg/m3, and brass Young's modulus 100 GPa (handbooks range 100-125): typical-handbook choices.
+- Copper-iron neutral temperature of about 270 C: from standard B.Sc. textbooks, not a CRC table.
+- Type T / type J thermocouple quadratic coefficients: fitted to two NIST ITS-90 points, not the full NIST polynomial.
+
+**More constants flagged by build agents as written from memory, to be checked against the table named before they are trusted**
+- M.Sc solid state (`msc_solid`): temperature coefficients of resistance (Ag, Au, W, Fe, Pt, nichrome); NIST thermocouple EMFs at 100 C
+  (K 4.096, J 5.269, T 4.279, E 6.319 mV); Quincke molar susceptibilities (MnSO4, FeCl3, water); superconductor Tc (YBCO 92, Bi-2212 85,
+  Bi-2223 110 K); liquid-crystal clearing points (5CB, 6CB, 7CB); dielectric constants (PTFE, polystyrene, fused silica, Pyrex);
+  ferrite Curie points; Sze mobilities (InSb, InAs, GaAs, Ge); TGS Tc and Curie constant, BaTiO3 Ps.
+- M.Sc electronics / microwaves / nuclear (`msc_elec`): Eu-152 and soil gamma line intensities; permittivities (Perspex 2.6, PTFE 2.08,
+  fused silica 3.78); Knoll scintillator resolutions (NaI 7 %, CsI 8 %, BGO 10 %); half-lives Ag-108, Al-28, Ba-137m; HPGe FWHM specs.
+- Engine labs (`engine_ug`): refractive indices of water 1.3330, ethanol 1.3614, glycerol 1.4746 (CRC n_D at 20 C), quoted from memory.
+- Gamma attenuation, lead at 662 keV: CORRECTED in this build-out from 0.1248 (the 600 keV value) to 0.1111 cm2/g, log-log interpolated
+  between remembered XCOM points at 600 and 800 keV. The copper (0.0730) and aluminium (0.07465) values were not re-derived and need a real
+  XCOM look-up.
+- A syllabus row counts as built only when the lab covers every method / sample the row lists. Partial matches are not counted (dropped:
+  logic-gates, passive-filters, sonometer-frequency, neutron-activation).
+
+**Sources attributed from memory, not fetched (B.Sc sensors / analog / communication, `sn_elec`) - verify before shipping**
+- The labs cite the IEC 60063 E-series, AD590, LM35, LM75B, IEC 60751 (Pt100 A and B), NE555 thresholds, LM741 slew rate / gain / swing, BC547 hFE
+  groups, the 2N2646 eta range, CRC water permittivity 80.2, E = 200 GPa (steel) / 68.9 GPa (6061-T6), gauge factor 2.0 and 376.73 ohm. The agent that
+  wrote them looked none of these up. Design values (LVDT drive, strain amplifier offset, ultrasonic delay, photodiode area, pump speed, UJT eta...)
+  are labelled "unsourced / illustrative" inside each lab and variant note.
+- Rows NOT counted though a lab exists: phase-shift-oscillator (row says "with a BJT", the lab draws an op-amp); langmuir-probe (row lists an RF
+  discharge the lab does not model).
+- Computational labs: the lab-wide caveat is that a model parameter (Hulthen screening length, tight-binding t = 1, Ising J = 1) is a model unit, not
+  a measured constant. schrodinger-screened-coulomb uses the exactly solvable Hulthen potential, not Yukawa, and says so.

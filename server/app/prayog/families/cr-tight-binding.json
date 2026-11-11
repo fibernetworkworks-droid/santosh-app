@@ -1,0 +1,66 @@
+{
+ "base": "cr-tight-binding",
+ "rig": "comp3-workstation",
+ "chapter": "Computational physics",
+ "variants": [
+  {
+   "key": "chain-width",
+   "title": "Tight binding: the band width of a chain",
+   "sample": "periodic chain",
+   "unknown": "band width",
+   "params": {
+    "what": 0,
+    "n": 16.0
+   },
+   "source": {
+    "title": "E(k) = -2t cos ka (tight-binding chain)",
+    "note": "model hopping t = 1, no material value"
+   },
+   "check": {
+    "params": {
+     "n": 16
+    }
+   }
+  },
+  {
+   "key": "square-width",
+   "title": "Tight binding: the band width of a square lattice",
+   "sample": "periodic 6 x 6 square cluster",
+   "unknown": "band width",
+   "params": {
+    "cas": 1,
+    "what": 0,
+    "n": 6.0
+   },
+   "source": {
+    "title": "E(k) = -2t (cos kx + cos ky)",
+    "note": "model hopping t = 1, no material value"
+   },
+   "check": {
+    "params": {
+     "n": 6
+    }
+   }
+  },
+  {
+   "key": "graphene-width",
+   "title": "Tight binding: the band width of graphene",
+   "sample": "honeycomb, Bloch Hamiltonian on a 12 x 12 k mesh",
+   "unknown": "band width",
+   "params": {
+    "cas": 2,
+    "what": 0,
+    "n": 12.0
+   },
+   "source": {
+    "title": "E(k) = +-t|1 + e^(ik.a1) + e^(ik.a2)|",
+    "note": "model hopping t = 1, no material value is used"
+   },
+   "check": {
+    "params": {
+     "n": 12
+    }
+   }
+  }
+ ]
+}

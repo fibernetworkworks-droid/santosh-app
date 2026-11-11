@@ -1,0 +1,24 @@
+{
+ "base": "ph2-vdp-sheet",
+ "rig": "ph2-semi-bench",
+ "chapter": "Solid state and materials",
+ "variants": [
+  {
+   "key": "film",
+   "title": "Van der Pauw: sheet resistance and resistivity of a thin film",
+   "sample": "Indium tin oxide-type film on glass, 150 nm (illustrative resistivity 2.0×10⁻⁶ Ω m)",
+   "method": "van der Pauw",
+   "unknown": "sheet resistance and resistivity",
+   "note": "Film resistivity and thickness are lab values (unsourced / illustrative); the contacts are less symmetric (ratio 1.35).",
+   "params": {
+    "Rs": 13.3,
+    "t": 1.5e-07,
+    "r": 1.35
+   },
+   "source": {
+    "title": "Thin-film resistivity 2.0×10⁻⁶ Ω m, thickness 150 nm (lab values)",
+    "note": "unsourced / illustrative: chosen for the lab"
+   }
+  }
+ ]
+}

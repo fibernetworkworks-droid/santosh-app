@@ -1,0 +1,35 @@
+{
+ "base": "phd-sdh",
+ "chapter": "Quantum transport",
+ "rig": "phd-transport-bench",
+ "variants": [
+  {
+   "key": "n-2e15",
+   "title": "Shubnikov-de Haas, 2DEG of 2.0e15 per m^2 (simulated)",
+   "sample": "GaAs-type 2DEG, n = 2.0e15 m^-2 (simulated, illustrative)",
+   "method": "R_xx against 1/B, maxima spacing",
+   "unknown": "carrier density",
+   "params": {
+    "n": 2000000000000000.0
+   },
+   "note": "Lower density: a longer period in 1/B (0.24 per tesla) and fewer oscillations in the range.",
+   "source": {
+    "title": "Lifshitz-Kosevich theory; density chosen for the lab (unsourced / illustrative)"
+   }
+  },
+  {
+   "key": "n-4p5e15",
+   "title": "Shubnikov-de Haas, 2DEG of 4.5e15 per m^2 (simulated)",
+   "sample": "GaAs-type 2DEG, n = 4.5e15 m^-2 (simulated, illustrative)",
+   "method": "R_xx against 1/B, maxima spacing",
+   "unknown": "carrier density",
+   "params": {
+    "n": 4500000000000000.0
+   },
+   "note": "Higher density: a shorter period (0.11 per tesla), so more oscillations fit in the sweep.",
+   "source": {
+    "title": "Lifshitz-Kosevich theory; density chosen for the lab (unsourced / illustrative)"
+   }
+  }
+ ]
+}

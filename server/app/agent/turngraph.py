@@ -37,6 +37,14 @@ last checkpoint. Tools on the graph path go through the tool ledger (`agent/tool
 failed after; on resume a done tool is reused, an interrupted read is re-run, an interrupted send / order / delete /
 payment is NOT re-run (the model is told the outcome is unknown). A turn that reaches END (or ends in an error reply)
 has its checkpoints and ledger rows deleted.
+
+G2 (one run per chat + Stop as state, `agent/turnrun.py`): the turn runs under its chat's ticket (taken in run_turn,
+arrival order; the inbox row comes from the ticket, task-checked, so a background task that inherited the inbox
+context can never pass itself off as that row's turn). A Stop sets the live run's flag: the model node does not make
+its call when the flag is already set (it says the same line a Stop during the call says, `santosh._turn_halted`),
+the tools node runs none of the step's tools (`_turn_tools`' own Stop result), every node's update carries
+`stopped` into the checkpoint (never resumable), a tool cut by her Stop is `failed` / `stopped` in the ledger, and a
+stopped run keeps its ledger rows (its checkpoints still go).
 """
 from __future__ import annotations
 
@@ -64,7 +72,7 @@ except Exception:   # noqa: BLE001
     class _NodeCancelled(Exception):   # an older langgraph re-raises CancelledError itself
         pass
 
-STATS = {"turns": 0, "fallback": 0, "no_checkpoint": 0, "resumed": 0, "cleaned": 0}
+STATS = {"turns": 0, "fallback": 0, "no_checkpoint": 0, "resumed": 0, "cleaned": 0, "stopped_at_boundary": 0}
 _RESUMABLE = ("model", "tools", "check", "finish")
 
 
@@ -82,6 +90,7 @@ class TurnState(TypedDict, total=False):
     prepared: bool          # G1: prepare finished (a checkpoint before it has nothing worth resuming)
     stop: str               # G1: the last model step's stop reason (the check node needs it on resume)
     data: dict              # G1: the turn's plain-data state (see _data) - what resume rebuilds the live objects from
+    stopped: bool           # G2: she stopped this run (Stop / stop words) - never resumable, checked at every node
 
 
 class _Live:
@@ -97,6 +106,21 @@ class _Live:
 
 
 _RUNS: dict[str, _Live] = {}
+
+
+def _stop_now(live: _Live) -> bool:
+    """G2 STOP AS STATE: the chat's live run was stopped (the Stop button / kaamstop both end in santosh.stop)."""
+    from . import santosh as S
+    from . import turnrun
+    c = live.conversation_id
+    return c in S._stopped or turnrun.stopped(c)
+
+
+def _flag(live: _Live, out: dict) -> dict:
+    """Every node's update carries the stop flag once it is set (the checkpoint then says 'stopped')."""
+    if _stop_now(live):
+        out["stopped"] = True
+    return out
 
 
 def _snapshot(history: list) -> list:
@@ -167,45 +191,55 @@ async def _prepare(live: _Live, state: TurnState) -> dict:
                                    live.tenant_id, live.state)
     if live.thread:
         live.t.tool_runner = _ledger_runner(live.thread)
-    return {"messages": _snapshot(live.history), "ran_steps": 0, "route": "model", "prepared": True,
-            "data": _data(live)}
+    # a Stop that landed while preparing is seen at the model node's boundary (no model call is made)
+    return _flag(live, {"messages": _snapshot(live.history), "ran_steps": 0, "route": "model", "prepared": True,
+                        "data": _data(live)})
 
 
 async def _model(live: _Live, state: TurnState) -> dict:
     from . import santosh as S
     t = live.t
     if not t.ran_steps < t.cap():          # the old `while ran_steps < cap` fell through to its else
-        return {"route": "finish", "capped": True}
+        return _flag(live, {"route": "finish", "capped": True})
+    if _stop_now(live):                    # G2 boundary: stopped before this step - the same line a Stop during the
+        STATS["stopped_at_boundary"] += 1  # model call gives, without making the call
+        got = S._turn_halted(t, "stop")
+        return {"route": "finish", "done": True, "final_text": got, "ran_steps": t.ran_steps, "stopped": True,
+                "messages": _snapshot(live.history), "data": _data(live)}
     t.ran_steps += 1
     got = await S._turn_model(t)
     if isinstance(got, str):               # Rokiye / Pause landed during the model call
-        return {"route": "finish", "done": True, "final_text": got, "ran_steps": t.ran_steps,
-                "messages": _snapshot(live.history), "data": _data(live)}
+        return _flag(live, {"route": "finish", "done": True, "final_text": got, "ran_steps": t.ran_steps,
+                            "messages": _snapshot(live.history), "data": _data(live)})
     blocks, stop = got
     t.blocks, t.stop = blocks, stop
     route = "check"
     if stop == "tool_use":                 # the step is recorded (saved + shown) before its tools run, as before
         route = await S._turn_after_model(t, blocks, stop)
-    return {"route": route, "ran_steps": t.ran_steps, "messages": _snapshot(live.history), "stop": stop or "",
-            "data": _data(live)}
+    return _flag(live, {"route": route, "ran_steps": t.ran_steps, "messages": _snapshot(live.history),
+                        "stop": stop or "", "data": _data(live)})
 
 
 async def _check(live: _Live, state: TurnState) -> dict:
     from . import santosh as S
     t = live.t
+    # G2: a stopped run still keeps the answer the model already gave (as the old loop does); a nudge that sends it
+    # back to work ends at the model node's boundary instead
     route = await S._turn_after_model(t, t.blocks, t.stop)
-    return {"route": route, "final_text": t.final_text or "", "messages": _snapshot(live.history),
-            "data": _data(live)}
+    return _flag(live, {"route": route, "final_text": t.final_text or "", "messages": _snapshot(live.history),
+                        "data": _data(live)})
 
 
 async def _tools(live: _Live, state: TurnState) -> dict:
     from . import santosh as S
     t = live.t
+    # G2 boundary: a Stop already set = _turn_tools runs none of the step's tools (each gets the "tapped Stop" result,
+    # the same rows as the old loop) and ends the turn with the stop line
     done = await S._turn_tools(t, t.blocks)
     if done is not None:                   # stuck (breaker) / stopped: the turn ends with this line
-        return {"route": "finish", "done": True, "final_text": done, "messages": _snapshot(live.history),
-                "data": _data(live)}
-    return {"route": "model", "messages": _snapshot(live.history), "data": _data(live)}
+        return _flag(live, {"route": "finish", "done": True, "final_text": done, "messages": _snapshot(live.history),
+                            "data": _data(live)})
+    return _flag(live, {"route": "model", "messages": _snapshot(live.history), "data": _data(live)})
 
 
 async def _finish(live: _Live, state: TurnState) -> dict:
@@ -345,7 +379,13 @@ def _ledger_runner(thread: str):
             await _ledger(L.failed, thread, tid, "timeout", "")
             raise
         except asyncio.CancelledError:
-            raise                            # cut off mid-call: stays `intent` (outcome unknown)
+            from . import turnrun
+            c = getattr(ctx, "conversation_id", "") or ""
+            if c and (c in S._stopped or turnrun.stopped(c)):
+                # G2: SHE stopped it mid-call - the ledger says so (the run is never resumed; may have partly happened)
+                await _ledger(L.failed, thread, tid, "stopped", "stopped by the owner while running")
+                L.STATS["stopped"] = L.STATS.get("stopped", 0) + 1
+            raise                            # cut off mid-call (a restart): stays `intent` (outcome unknown)
         except Exception as e:   # noqa: BLE001
             await _ledger(L.failed, thread, tid, "crash", f"{type(e).__name__}: {e}")
             raise
@@ -354,8 +394,10 @@ def _ledger_runner(thread: str):
     return run
 
 
-async def _cleanup(saver, thread: str, settings, force: bool = False) -> None:
-    """The turn is over: its checkpoints and ledger rows go (the file must not grow without limit)."""
+async def _cleanup(saver, thread: str, settings, force: bool = False, keep_ledger: bool = False) -> None:
+    """The turn is over: its checkpoints and ledger rows go (the file must not grow without limit).
+    G2 `keep_ledger`: a STOPPED run keeps its ledger rows (what ran, what was cut by her Stop) until the normal
+    window ages them out; its checkpoints still go, so nothing can resume it."""
     from . import toolledger as L
     if saver is not None and (force or not getattr(settings, "chat_graph_keep_finished", False)):
         try:
@@ -364,7 +406,8 @@ async def _cleanup(saver, thread: str, settings, force: bool = False) -> None:
             STATS["cleaned"] += 1
         except Exception:   # noqa: BLE001
             log.exception("turn graph checkpoint cleanup failed")
-    await _ledger(L.forget, thread, float(getattr(settings, "chat_graph_ledger_keep_h", 24) or 0))
+    await _ledger(L.forget, "" if keep_ledger else thread,
+                  float(getattr(settings, "chat_graph_ledger_keep_h", 24) or 0))
 
 
 async def forget_threads(settings, threads: list[str]) -> None:
@@ -386,6 +429,8 @@ async def forget_threads(settings, threads: list[str]) -> None:
 def _resumable_snap(snap) -> bool:
     nxt = tuple(getattr(snap, "next", ()) or ())
     vals = getattr(snap, "values", None) or {}
+    if vals.get("stopped"):                # G2: she stopped it - a restart never continues a stopped run
+        return False
     return bool(nxt) and nxt[0] in _RESUMABLE and bool(vals.get("prepared")) and bool(vals.get("messages"))
 
 
@@ -500,7 +545,7 @@ async def resume(conversation_id: str, inbox_id: str, ctx, gender: str, history:
             raise
         finally:
             _RUNS.pop(th, None)
-        await _cleanup(saver, th, settings)
+        await _cleanup(saver, th, settings, keep_ledger=bool(out.get("stopped")))
         return out.get("final_text") or ""
     finally:
         try:
@@ -522,7 +567,11 @@ async def run_steps(conversation_id: str, ctx, gender: str, history: list, setti
         text = await S._steps_inner(conversation_id, ctx, gender, history, settings, tenant_id, state)
         return await S._steps_end(conversation_id, ctx, history, settings, tenant_id, user_text, state, text)
     from .. import turn_inbox
+    from . import turnrun
     inbox_id, want_resume = turn_inbox.take_graph_turn(conversation_id)
+    _tk = turnrun.take_graph(conversation_id)    # G2: the chat's ticket knows its inbox row (task-checked) - it wins
+    if _tk is not None:
+        inbox_id, want_resume = _tk
     if want_resume and inbox_id:
         got = await resume(conversation_id, inbox_id, ctx, gender, history, settings, tenant_id, user_text)
         if got is not None:
@@ -559,7 +608,7 @@ async def run_steps(conversation_id: str, ctx, gender: str, history: list, setti
             except Exception:
                 await _cleanup(saver, run_key, settings)   # an error reply ends the turn: nothing to resume
                 raise
-            await _cleanup(saver, run_key, settings)
+            await _cleanup(saver, run_key, settings, keep_ledger=bool(out.get("stopped")))
         finally:
             if saver_cm is not None:
                 try:

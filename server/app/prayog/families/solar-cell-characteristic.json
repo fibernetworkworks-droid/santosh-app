@@ -1,0 +1,19 @@
+{"base": "solar-cell-characteristic", "rig": "elec-ug-bench",
+ "chapter": "Analog electronics and devices",
+ "variants": [
+   {"key": "bright", "title": "Solar cell: I-V curve and fill factor under the lamp at full brightness",
+    "sample": "Crystalline silicon cell, lamp close", "method": "lamp at its closest setting",
+    "unknown": "the fill factor at the highest irradiance", "params": {"Iph": 0.12},
+    "note": "The light-generated current is proportional to the irradiance on the cell, so moving the lamp is the way the illumination is changed in this experiment.",
+    "source": {"title": "M. A. Green, Solar Cells: Operating Principles, Technology and System Applications (photocurrent proportional to irradiance; single-diode model; fill factor)"}},
+   {"key": "mid", "title": "Solar cell: I-V curve and fill factor at half the irradiance",
+    "sample": "Crystalline silicon cell, lamp at middle distance", "method": "lamp at twice the distance",
+    "unknown": "the fill factor at half the irradiance", "params": {"Iph": 0.06},
+    "note": "Halving the photocurrent barely moves the open-circuit voltage, because V_oc grows only as the logarithm of the current.",
+    "source": {"title": "M. A. Green, Solar Cells: Operating Principles, Technology and System Applications (V_oc logarithmic in photocurrent)"}},
+   {"key": "dim", "title": "Solar cell: I-V curve and fill factor at low irradiance",
+    "sample": "Crystalline silicon cell, lamp far away", "method": "lamp at its farthest setting",
+    "unknown": "the fill factor at low irradiance", "params": {"Iph": 0.03},
+    "note": "At low light the shunt resistance at the cell's edges takes a larger share of the photocurrent, so the fill factor falls.",
+    "source": {"title": "M. A. Green, Solar Cells: Operating Principles, Technology and System Applications (shunt resistance dominates at low irradiance)"}}
+ ]}

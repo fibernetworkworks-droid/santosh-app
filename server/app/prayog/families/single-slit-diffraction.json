@@ -1,0 +1,33 @@
+{
+ "base": "single-slit-diffraction",
+ "rig": "laser-diffraction",
+ "chapter": "Wave Optics",
+ "variants": [
+  {
+   "key": "hene",
+   "title": "Single slit with a helium-neon laser (632.8 nm)",
+   "sample": "Helium-neon laser, 632.8 nm",
+   "unknown": "the width of the slit, measured with red He-Ne light",
+   "params": {
+    "lam": 6.328e-07
+   },
+   "note": "632.8 nm is the red line of the helium-neon laser, the standard laboratory source: its wavelength is known to a far better accuracy than this experiment needs, which is why the slit width can be worked out from it.",
+   "source": {
+    "title": "Helium-neon laser, principal red line at 632.8 nm (vacuum wavelength 632.991 nm)"
+   }
+  },
+  {
+   "key": "green532",
+   "title": "Single slit with a green laser (532 nm)",
+   "sample": "Diode-pumped solid-state green laser, 532 nm",
+   "unknown": "the width of the slit, measured with green light",
+   "params": {
+    "lam": 5.32e-07
+   },
+   "note": "532 nm is the frequency-doubled line of a neodymium DPSS laser. Shorter waves bend less, so the same slit gives a narrower pattern than red light does.",
+   "source": {
+    "title": "Nd:YVO4 / Nd:YAG diode-pumped laser, frequency-doubled 1064 nm line at 532 nm"
+   }
+  }
+ ]
+}

@@ -1,0 +1,104 @@
+{
+ "base": "cq-schrodinger-hydrogen",
+ "rig": "comp2-workstation",
+ "chapter": "Computational physics",
+ "variants": [
+  {
+   "key": "2s",
+   "title": "Hydrogen atom: the 2s level",
+   "sample": "Hydrogen atom, infinite nuclear mass",
+   "unknown": "the energy of the level",
+   "params": {
+    "cas": 0,
+    "kst": 1,
+    "rmax": 80,
+    "xd1": 40
+   },
+   "source": {
+    "title": "B.Sc. (Honours) Physics LOCF syllabus 2019-20, Department of Physics and Astrophysics, University of Delhi",
+    "note": "the practical list names these functions and methods"
+   }
+  },
+  {
+   "key": "2p",
+   "title": "Hydrogen atom: the 2p level",
+   "sample": "Hydrogen atom, infinite nuclear mass",
+   "unknown": "the energy of the level",
+   "params": {
+    "cas": 0,
+    "kst": 0,
+    "ll": 1,
+    "rmax": 80,
+    "xd1": 40
+   },
+   "source": {
+    "title": "B.Sc. (Honours) Physics LOCF syllabus 2019-20, Department of Physics and Astrophysics, University of Delhi",
+    "note": "the practical list names these functions and methods"
+   }
+  },
+  {
+   "key": "hydrogen-proton",
+   "title": "Hydrogen with a proton of finite mass",
+   "sample": "Hydrogen 1H: electron and proton (m_p/m_e = 1836.152673426)",
+   "unknown": "the energy of the level",
+   "params": {
+    "cas": 0,
+    "mu": 0.999455679
+   },
+   "source": {
+    "title": "CODATA 2022 recommended values (NIST)",
+    "note": "physics.nist.gov/cuu/Constants/Table/allascii.txt: mass ratios and the Hartree energy"
+   },
+   "note": "Non-relativistic: the energy scales with the reduced mass."
+  },
+  {
+   "key": "deuterium",
+   "title": "Deuterium atom: the 1s level",
+   "sample": "Deuterium: electron and deuteron (m_d/m_e = 3670.482967655)",
+   "unknown": "the energy of the level",
+   "params": {
+    "cas": 0,
+    "mu": 0.99972763
+   },
+   "source": {
+    "title": "CODATA 2022 recommended values (NIST)",
+    "note": "physics.nist.gov/cuu/Constants/Table/allascii.txt: mass ratios and the Hartree energy"
+   },
+   "note": "Non-relativistic: the energy scales with the reduced mass."
+  },
+  {
+   "key": "positronium",
+   "title": "Positronium: the 1s level",
+   "sample": "Positronium: electron and positron, reduced mass exactly m_e/2",
+   "unknown": "the energy of the level",
+   "params": {
+    "cas": 0,
+    "mu": 0.5,
+    "rmax": 80,
+    "xd1": 28
+   },
+   "source": {
+    "title": "B.Sc. (Honours) Physics LOCF syllabus 2019-20, Department of Physics and Astrophysics, University of Delhi",
+    "note": "the practical list names these functions and methods"
+   },
+   "note": "Non-relativistic: the energy scales with the reduced mass."
+  },
+  {
+   "key": "muonic",
+   "title": "Muonic hydrogen: the 1s level",
+   "sample": "Muonic hydrogen: muon and proton (m_mu/m_e = 206.7682827)",
+   "unknown": "the energy of the level",
+   "params": {
+    "cas": 0,
+    "mu": 185.840834,
+    "rmax": 0.215238,
+    "xd1": 0.075333
+   },
+   "source": {
+    "title": "CODATA 2022 recommended values (NIST)",
+    "note": "physics.nist.gov/cuu/Constants/Table/allascii.txt: mass ratios and the Hartree energy"
+   },
+   "note": "Non-relativistic: the energy scales with the reduced mass."
+  }
+ ]
+}

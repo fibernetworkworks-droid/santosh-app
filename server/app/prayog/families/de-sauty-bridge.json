@@ -1,0 +1,55 @@
+{
+ "base": "de-sauty-bridge",
+ "rig": "ac-bridge",
+ "chapter": "AC circuits and bridges",
+ "variants": [
+  {
+   "key": "c0047",
+   "title": "De Sauty's bridge: an unmarked 0.047 µF capacitor",
+   "sample": "An unmarked capacitor, nominally 0.047 µF",
+   "unknown": "its capacitance, against a 0.1 µF standard",
+   "params": {
+    "C3": 4.7e-08
+   },
+   "source": {
+    "title": "IEC 60063: preferred number series (E12) for capacitors and decade-box steps"
+   }
+  },
+  {
+   "key": "c01",
+   "title": "De Sauty's bridge: an unmarked 0.1 µF capacitor",
+   "sample": "An unmarked capacitor, nominally 0.1 µF",
+   "unknown": "its capacitance, against a 0.1 µF standard",
+   "params": {
+    "C3": 1e-07
+   },
+   "source": {
+    "title": "IEC 60063: preferred number series (E12) for capacitors and decade-box steps"
+   }
+  },
+  {
+   "key": "c022",
+   "title": "De Sauty's bridge: an unmarked 0.22 µF capacitor",
+   "sample": "An unmarked capacitor, nominally 0.22 µF",
+   "unknown": "its capacitance, against a 0.1 µF standard",
+   "params": {
+    "C3": 2.2e-07
+   },
+   "source": {
+    "title": "IEC 60063: preferred number series (E12) for capacitors and decade-box steps"
+   }
+  },
+  {
+   "key": "c047",
+   "title": "De Sauty's bridge: an unmarked 0.47 µF capacitor",
+   "sample": "An unmarked capacitor, nominally 0.47 µF",
+   "unknown": "its capacitance, against a 0.1 µF standard",
+   "params": {
+    "C3": 4.7e-07
+   },
+   "source": {
+    "title": "IEC 60063: preferred number series (E12) for capacitors and decade-box steps"
+   }
+  }
+ ]
+}

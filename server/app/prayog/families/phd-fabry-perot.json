@@ -1,0 +1,35 @@
+{
+ "base": "phd-fabry-perot",
+ "rig": "phd-laser-bench",
+ "chapter": "Laser spectroscopy and atomic physics",
+ "variants": [
+  {
+   "key": "mirrors-90",
+   "title": "Fabry-Perot cavity with 90 % mirrors",
+   "sample": "Cavity with 90 % reflectivity mirrors",
+   "unknown": "free spectral range and finesse",
+   "note": "Lower reflectivity mirrors give wider peaks: the finesse falls to about 30. Everything else is as in the base experiment.",
+   "source": {
+    "title": "Illustrative design values",
+    "note": "set by the lab for this condition; not taken from a named instrument's datasheet"
+   },
+   "params": {
+    "R": 0.9
+   }
+  },
+  {
+   "key": "mirrors-99",
+   "title": "Fabry-Perot cavity with 99 % mirrors",
+   "sample": "Cavity with 99 % reflectivity mirrors",
+   "unknown": "free spectral range and finesse",
+   "note": "High reflectivity mirrors give very narrow peaks: the finesse is about 313 and the peak is a tenth of a volt wide on the scan.",
+   "source": {
+    "title": "Illustrative design values",
+    "note": "set by the lab for this condition; not taken from a named instrument's datasheet"
+   },
+   "params": {
+    "R": 0.99
+   }
+  }
+ ]
+}

@@ -1,0 +1,32 @@
+{
+  "base": "polarimeter-sugar",
+  "rig": "polar-bench",
+  "chapter": "Polarisation",
+  "variants": [
+    {
+      "key": "sucrose",
+      "title": "Polarimeter: specific rotation of cane sugar",
+      "sample": "Cane sugar (sucrose) dissolved in distilled water",
+      "unknown": "the specific rotation of sucrose",
+      "params": {
+        "alpha": 66.5
+      },
+      "source": {
+        "title": "CRC Handbook of Chemistry and Physics and IUPAC: sucrose [alpha] at the sodium D line, 20 C = +66.5 degrees per dm per g/mL"
+      }
+    },
+    {
+      "key": "glucose",
+      "title": "Polarimeter: specific rotation of dextrose",
+      "sample": "Dextrose (D-glucose) dissolved in distilled water",
+      "unknown": "the specific rotation of D-glucose",
+      "params": {
+        "alpha": 52.7
+      },
+      "note": "Dextrose turns the plane the same way as cane sugar but only about four fifths as far, which is how the two are told apart.",
+      "source": {
+        "title": "CRC Handbook of Chemistry and Physics: D-glucose [alpha] at the sodium D line, 20 C = +52.7 degrees per dm per g/mL (equilibrium value)"
+      }
+    }
+  ]
+}

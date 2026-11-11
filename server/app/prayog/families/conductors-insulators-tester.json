@@ -1,0 +1,23 @@
+{"base": "conductors-insulators-tester", "rig": "school-bulb-circuit", "chapter": "Electricity",
+ "variants": [
+  {"key": "iron-nail", "title": "Circuit tester: an iron nail",
+   "sample": "Iron nail, 6 cm long and 2 mm across", "unknown": "whether iron conducts",
+   "params": {"Rsam": 0.001854},
+   "note": "Resistance worked out as rho L / A for the piece between the probes: 9.71e-8 ohm m x 0.06 m / 3.142e-6 m2 = 0.0019 ohm, far less than the bulb's own resistance, so the bulb is as bright as with the probes touching.",
+   "source": {"title": "Kaye & Laby, Tables of Physical and Chemical Constants: electrical resistivity of iron at 20 C, 9.71e-8 ohm m"}},
+  {"key": "aluminium-strip", "title": "Circuit tester: an aluminium strip",
+   "sample": "Aluminium strip, 6 cm long and 2 mm across", "unknown": "whether aluminium conducts",
+   "params": {"Rsam": 0.000506},
+   "note": "2.65e-8 ohm m x 0.06 m / 3.142e-6 m2 = 0.00051 ohm.",
+   "source": {"title": "Kaye & Laby, Tables of Physical and Chemical Constants: electrical resistivity of aluminium at 20 C, 2.65e-8 ohm m"}},
+  {"key": "nichrome-wire", "title": "Circuit tester: a nichrome wire",
+   "sample": "Nichrome wire, 30 cm of SWG 30", "unknown": "how much a resistance wire dims the bulb",
+   "params": {"Rsam": 4.197},
+   "note": "1.09e-6 ohm m x 0.30 m / 7.79e-8 m2 = 4.20 ohm. This is as large as the bulb's own resistance, so the current is halved and the bulb is clearly dimmer: a conductor, but a poor one.",
+   "source": {"title": "Published resistivity of Ni80Cr20 nichrome at 20 C, 1.09e-6 ohm m; SWG 30 diameter 0.3150 mm (BS 3737 standard wire gauge)"}},
+  {"key": "dry-wood", "title": "Circuit tester: a piece of dry wood",
+   "sample": "Dry wood (its resistance is measured here, not looked up)", "unknown": "whether dry wood conducts",
+   "params": {"Rsam": 300.0},
+   "note": "Wood's resistivity runs over many decades with how dry it is, so no table value is used: this piece simply showed about 300 ohm on the tester. That is enough to keep the bulb completely dark while the meter still shows a few milliamperes.",
+   "source": {"title": "Measured on this sample in the simulation; no published constant is claimed for wood"}}
+ ]}

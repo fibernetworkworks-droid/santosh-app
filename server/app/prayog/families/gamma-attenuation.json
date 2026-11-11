@@ -1,0 +1,47 @@
+{
+ "base": "gamma-attenuation",
+ "rig": "gm-absorption-bench",
+ "chapter": "Nuclear and radiation physics",
+ "variants": [
+  {
+   "key": "aluminium",
+   "title": "Gamma attenuation in aluminium",
+   "sample": "Sealed Cs-137 gamma source with aluminium absorbers",
+   "unknown": "the attenuation coefficient and half-value thickness of aluminium",
+   "params": {
+    "mu": 20.15
+   },
+   "note": "Aluminium is the usual absorber in a teaching laboratory: its half-value thickness at 662 keV is about 34 mm, so the sheets are thick but easy to handle.",
+   "source": {
+    "title": "NIST XCOM / Hubbell mass attenuation tables: aluminium 0.07465 cm2/g at 662 keV, density 2.699 g/cm3, so mu = 0.2015 /cm"
+   }
+  },
+  {
+   "key": "copper",
+   "title": "Gamma attenuation in copper",
+   "sample": "Sealed Cs-137 gamma source with copper absorbers",
+   "unknown": "the attenuation coefficient and half-value thickness of copper",
+   "params": {
+    "mu": 65.4
+   },
+   "note": "Copper is three times denser than aluminium and its atoms are heavier, so it halves the beam in about 11 mm instead of 34.",
+   "source": {
+    "title": "NIST XCOM / Hubbell mass attenuation tables: copper 0.0730 cm2/g at 662 keV, density 8.96 g/cm3, so mu = 0.654 /cm"
+   }
+  },
+  {
+   "key": "lead",
+   "title": "Gamma attenuation in lead",
+   "sample": "Sealed Cs-137 gamma source with lead absorbers",
+   "unknown": "the attenuation coefficient and half-value thickness of lead",
+   "params": {
+    "mu": 126.0
+   },
+   "note": "Lead is the shielding material of a radiation laboratory: at 662 keV it halves the beam in under 5 mm, because photoelectric absorption grows steeply with the atomic number.",
+   "source": {
+    "title": "NIST XCOM lead: 0.1248 (600 keV), 0.0887 (800 keV) cm2/g, log-log interpolated to 0.1111 cm2/g at 662 keV; density 11.35 g/cm3",
+    "note": "mu = 0.1111 x 11.35 = 1.260 /cm. Corrected from an earlier 0.1248, which is the 600 keV value. Interpolated from remembered XCOM table points: verify against the NIST XCOM table before relying on it."
+   }
+  }
+ ]
+}

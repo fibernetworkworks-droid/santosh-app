@@ -1,0 +1,81 @@
+{
+ "base": "thevenin-norton",
+ "rig": "network-board",
+ "chapter": "Network theorems and electrical skills",
+ "grid": {
+  "title": "Thevenin and Norton on panel network {net}",
+  "unknown": "the equivalent source of network {net}",
+  "axes": {
+   "net": [
+    {
+     "key": "a",
+     "label": "network A",
+     "sample": "Panel network A (unknown E24 resistors)",
+     "params": {
+      "E1": 6.0,
+      "E2": 4.0,
+      "R1": 20.0,
+      "R2": 20.0,
+      "R3": 10.0,
+      "R4": 10.0
+     },
+     "source": {
+      "title": "IEC 60063: preferred number series (E24) for resistors",
+      "note": "every resistor on the panel is a standard E24 value"
+     }
+    },
+    {
+     "key": "b",
+     "label": "network B",
+     "sample": "Panel network B (unknown E24 resistors)",
+     "params": {
+      "E1": 9.0,
+      "E2": 3.0,
+      "R1": 30.0,
+      "R2": 30.0,
+      "R3": 30.0,
+      "R4": 20.0
+     },
+     "source": {
+      "title": "IEC 60063: preferred number series (E24) for resistors",
+      "note": "every resistor on the panel is a standard E24 value"
+     }
+    },
+    {
+     "key": "c",
+     "label": "network C",
+     "sample": "Panel network C (unknown E24 resistors)",
+     "params": {
+      "E1": 5.0,
+      "E2": 5.0,
+      "R1": 12.0,
+      "R2": 12.0,
+      "R3": 12.0,
+      "R4": 16.0
+     },
+     "source": {
+      "title": "IEC 60063: preferred number series (E24) for resistors",
+      "note": "every resistor on the panel is a standard E24 value"
+     }
+    },
+    {
+     "key": "d",
+     "label": "network D",
+     "sample": "Panel network D (unknown E24 resistors)",
+     "params": {
+      "E1": 12.0,
+      "E2": 6.0,
+      "R1": 51.0,
+      "R2": 51.0,
+      "R3": 51.0,
+      "R4": 22.0
+     },
+     "source": {
+      "title": "IEC 60063: preferred number series (E24) for resistors",
+      "note": "every resistor on the panel is a standard E24 value"
+     }
+    }
+   ]
+  }
+ }
+}

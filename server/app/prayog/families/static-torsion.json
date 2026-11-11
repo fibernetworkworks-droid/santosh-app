@@ -1,0 +1,26 @@
+{
+  "base": "static-torsion",
+  "chapter": "Properties of matter: elasticity, viscosity, surface tension",
+  "variants": [
+    {"key": "steel", "title": "Statical torsion: rigidity modulus of a steel rod",
+     "sample": "Steel rod, 4 mm diameter", "method": "Statical (Barton's) torsion with a couple from two cords",
+     "unknown": "the modulus of rigidity of steel", "params": {"eta": 7.93e10},
+     "note": "Steel is the stiffest of these rods: the same couple twists it least.",
+     "source": {"title": "CRC Handbook of Chemistry and Physics, elastic constants of metals (shear modulus of steel 79.3 GPa)"}},
+    {"key": "brass", "title": "Statical torsion: rigidity modulus of a brass rod",
+     "sample": "Brass rod, 4 mm diameter", "method": "Statical (Barton's) torsion with a couple from two cords",
+     "unknown": "the modulus of rigidity of brass", "params": {"eta": 3.65e10},
+     "note": "Brass has less than half the rigidity of steel, so the pointer swings about twice as far.",
+     "source": {"title": "CRC Handbook of Chemistry and Physics, elastic constants of metals (shear modulus of brass 36.5 GPa)"}},
+    {"key": "copper", "title": "Statical torsion: rigidity modulus of a copper rod",
+     "sample": "Copper rod, 4 mm diameter", "method": "Statical (Barton's) torsion with a couple from two cords",
+     "unknown": "the modulus of rigidity of copper", "params": {"eta": 4.47e10},
+     "note": "Copper sits between brass and steel; it is soft, so unload it and check the pointer returns to zero.",
+     "source": {"title": "CRC Handbook of Chemistry and Physics, elastic constants of metals (shear modulus of copper 44.7 GPa)"}},
+    {"key": "aluminium", "title": "Statical torsion: rigidity modulus of an aluminium rod",
+     "sample": "Aluminium rod, 4 mm diameter", "method": "Statical (Barton's) torsion with a couple from two cords",
+     "unknown": "the modulus of rigidity of aluminium", "params": {"eta": 2.6e10},
+     "note": "The softest rod of the set: the twist is large and easy to read, but the elastic limit is close.",
+     "source": {"title": "CRC Handbook of Chemistry and Physics, elastic constants of metals (shear modulus of aluminium 26.0 GPa)"}}
+  ]
+}

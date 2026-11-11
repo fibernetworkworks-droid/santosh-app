@@ -1,0 +1,51 @@
+{
+ "base": "cp-monte-carlo-pi",
+ "chapter": "Computational physics",
+ "variants": [
+  {
+   "key": "circle",
+   "title": "Monte Carlo: pi from points in a square",
+   "sample": "Acceptance-rejection, seed 12345",
+   "unknown": "the value of pi",
+   "source": {
+    "title": "Undergraduate Programme in Physics under UGCF-2022 (NEP), B.Sc. (Hons.) Physics, University of Delhi",
+    "note": "the practical list names these methods and these functions"
+   },
+   "params": {
+    "cas": 0,
+    "seed": 12345
+   }
+  },
+  {
+   "key": "circle2",
+   "title": "Monte Carlo: pi again with another seed",
+   "sample": "Acceptance-rejection, seed 987654321",
+   "unknown": "the value of pi",
+   "source": {
+    "title": "Undergraduate Programme in Physics under UGCF-2022 (NEP), B.Sc. (Hons.) Physics, University of Delhi",
+    "note": "the practical list names these methods and these functions"
+   },
+   "params": {
+    "cas": 0,
+    "seed": 987654321
+   },
+   "note": "The same method with a different seed: the estimates differ by about the error 1/sqrt(N) predicts, which is the point."
+  },
+  {
+   "key": "integral",
+   "title": "Monte Carlo: a definite integral by the sample mean",
+   "sample": "Integral of e^x from 0 to 1, seed 12345",
+   "unknown": "the value of the definite integral",
+   "source": {
+    "title": "Undergraduate Programme in Physics under UGCF-2022 (NEP), B.Sc. (Hons.) Physics, University of Delhi",
+    "note": "the practical list names these methods and these functions"
+   },
+   "method": "Sample mean of the integrand",
+   "params": {
+    "cas": 1,
+    "seed": 12345
+   }
+  }
+ ],
+ "rig": "comp-workstation"
+}

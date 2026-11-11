@@ -1,0 +1,77 @@
+{
+ "base": "cp-projectile",
+ "chapter": "Computational physics",
+ "grid": {
+  "title": "Projectile at {ang}: {what}",
+  "axes": {
+   "ang": [
+    {
+     "key": "a30",
+     "label": "30 degrees",
+     "sample": "u = 30 m/s at 30 degrees, g = 9.8 m/s2",
+     "source": {
+      "title": "Undergraduate Programme in Physics under UGCF-2022 (NEP), B.Sc. (Hons.) Physics, University of Delhi",
+      "note": "the practical list names these methods and these functions"
+     },
+     "params": {
+      "u": 30.0,
+      "th": 0.52359878
+     }
+    },
+    {
+     "key": "a45",
+     "label": "45 degrees",
+     "sample": "u = 30 m/s at 45 degrees, g = 9.8 m/s2",
+     "source": {
+      "title": "Undergraduate Programme in Physics under UGCF-2022 (NEP), B.Sc. (Hons.) Physics, University of Delhi",
+      "note": "the practical list names these methods and these functions"
+     },
+     "params": {
+      "u": 30.0,
+      "th": 0.78539816
+     }
+    },
+    {
+     "key": "a60",
+     "label": "60 degrees",
+     "sample": "u = 30 m/s at 60 degrees, g = 9.8 m/s2",
+     "source": {
+      "title": "Undergraduate Programme in Physics under UGCF-2022 (NEP), B.Sc. (Hons.) Physics, University of Delhi",
+      "note": "the practical list names these methods and these functions"
+     },
+     "params": {
+      "u": 30.0,
+      "th": 1.04719755
+     }
+    }
+   ],
+   "what": [
+    {
+     "key": "range",
+     "label": "the range",
+     "unknown": "the range R",
+     "params": {
+      "cas": 0
+     }
+    },
+    {
+     "key": "height",
+     "label": "the greatest height",
+     "unknown": "the greatest height H",
+     "params": {
+      "cas": 1
+     }
+    },
+    {
+     "key": "time",
+     "label": "the time of flight",
+     "unknown": "the time of flight T",
+     "params": {
+      "cas": 2
+     }
+    }
+   ]
+  }
+ },
+ "rig": "comp-workstation"
+}

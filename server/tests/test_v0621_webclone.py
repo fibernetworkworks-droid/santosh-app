@@ -188,7 +188,7 @@ def test_tool_description_carries_the_laws():
 
 def test_registration_616():
     from app.agent.tools import FAMILY_OF, HANDLERS, TOOLS, TOOL_LABELS
-    assert len(TOOLS) == 621, "617 + 1 shilp (v0.730 SHILP MANCH: the ArtCraft generation lane, their Omni API api.storyteller.ai, BYOK - owner 'MAKE A PLAN FOR HOOLA AI THUS HOOLA USER CAN USE THIS' -> the plan's W0). 616 + 1 seekh_video (v0.713 SEEKH MANCH: the learn-from-video bridge tool, owner 'GO' on the SEEKH MANCH plan). 615 (their v0.693.0 base keeps 615) + 1 web_clone (v0.694.0 WEB CLONE)"
+    assert len(TOOLS) == 623, "617 + 1 shilp (v0.730 SHILP MANCH: the ArtCraft generation lane, their Omni API api.storyteller.ai, BYOK - owner 'MAKE A PLAN FOR HOOLA AI THUS HOOLA USER CAN USE THIS' -> the plan's W0). 616 + 1 seekh_video (v0.713 SEEKH MANCH: the learn-from-video bridge tool, owner 'GO' on the SEEKH MANCH plan). 615 (their v0.693.0 base keeps 615) + 1 web_clone (v0.694.0 WEB CLONE)"
     assert TOOL_LABELS.get("web_clone") and HANDLERS.get("web_clone")
     assert FAMILY_OF["web_clone"] == "webclone"
 

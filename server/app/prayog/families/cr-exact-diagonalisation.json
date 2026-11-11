@@ -1,0 +1,52 @@
+{
+ "base": "cr-exact-diagonalisation",
+ "rig": "comp3-workstation",
+ "chapter": "Computational physics",
+ "variants": [
+  {
+   "key": "tfim-ordered",
+   "title": "Transverse-field Ising ring in the ordered phase, h = 0.5",
+   "sample": "8 spins, h = 0.5",
+   "unknown": "ground-state energy per site",
+   "params": {
+    "h": 0.5
+   },
+   "source": {
+    "title": "Free-fermion solution of the transverse-field Ising chain (Pfeuty 1970)",
+    "note": "exact for the finite ring; cited, not re-fetched"
+   }
+  },
+  {
+   "key": "tfim-paramagnet",
+   "title": "Transverse-field Ising ring in the paramagnetic phase, h = 2",
+   "sample": "8 spins, h = 2",
+   "unknown": "ground-state energy per site",
+   "params": {
+    "h": 2.0
+   },
+   "source": {
+    "title": "Free-fermion solution of the transverse-field Ising chain (Pfeuty 1970)",
+    "note": "exact for the finite ring; cited, not re-fetched"
+   }
+  },
+  {
+   "key": "heisenberg-chain",
+   "title": "Heisenberg ring: extrapolation to the Bethe-ansatz energy",
+   "sample": "10 and 8 spins",
+   "unknown": "E0 / N as N goes to infinity",
+   "params": {
+    "cas": 1,
+    "n": 10.0
+   },
+   "source": {
+    "title": "Bethe ansatz: E0/N = 1/4 - ln 2 for the Heisenberg chain (Hulthen 1938)",
+    "note": "cited, not re-fetched"
+   },
+   "check": {
+    "params": {
+     "n": 10
+    }
+   }
+  }
+ ]
+}

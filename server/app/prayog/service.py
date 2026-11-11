@@ -12,11 +12,28 @@ NOTE = ("Every reading comes from Hoola's simulation code (never a guess) and is
         "This is practice for a real lab; it does not replace the real practical exam.")
 
 
+def _all_builders() -> list:
+    """catalog.BUILDERS plus every `app/prayog/labs/<area>.py` pack, so set-ups can be added in parallel."""
+    import importlib
+    import pkgutil
+
+    from . import labs as _labs
+
+    out = list(catalog.BUILDERS)
+    for mod in sorted(m.name for m in pkgutil.iter_modules(_labs.__path__)):
+        try:
+            m = importlib.import_module(f"{_labs.__name__}.{mod}")
+            out.extend(getattr(m, "BUILDERS", ()) or ())
+        except Exception as e:                      # noqa: BLE001 - one bad pack never takes the catalogue down
+            log.warning("prayog lab pack %s left out: %s", mod, e)
+    return out
+
+
 @functools.lru_cache(maxsize=1)
 def labs() -> dict[str, dict]:
     """Every catalogue lab that passes the checker AND its own NCERT check. A failing lab is left out and logged."""
     out: dict[str, dict] = {}
-    for build in catalog.BUILDERS:
+    for build in _all_builders():
         try:
             lab = lsl.check(build())
             res = lsl.run_check(lab)

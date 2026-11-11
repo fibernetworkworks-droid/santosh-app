@@ -1,0 +1,63 @@
+{
+ "base": "cr-mc-photon-slab",
+ "rig": "comp3-workstation",
+ "chapter": "Computational physics",
+ "variants": [
+  {
+   "key": "scattered-share",
+   "title": "First collisions in a slab: the scattered share",
+   "sample": "mu_s = 0.6, mu_a = 0.15 (illustrative)",
+   "unknown": "scattered / interacting",
+   "params": {
+    "cas": 1
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   }
+  },
+  {
+   "key": "mean-first-depth",
+   "title": "Mean depth of the first interaction in a slab",
+   "sample": "d = 2, mu_t = 0.75 (illustrative)",
+   "unknown": "mean depth",
+   "params": {
+    "cas": 2
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   }
+  },
+  {
+   "key": "pure-absorber",
+   "title": "Beer-Lambert in a purely absorbing slab",
+   "sample": "mu_s = 0, mu_a = 0.5 (illustrative)",
+   "unknown": "transmitted fraction",
+   "params": {
+    "mus": 0.0,
+    "mua": 0.5
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   }
+  },
+  {
+   "key": "turbid-slab",
+   "title": "A strongly scattering slab: the scattered share",
+   "sample": "mu_s = 3, mu_a = 0.05, d = 1 (illustrative)",
+   "unknown": "scattered / interacting",
+   "params": {
+    "cas": 1,
+    "mus": 3.0,
+    "mua": 0.05,
+    "d": 1.0
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   }
+  }
+ ]
+}

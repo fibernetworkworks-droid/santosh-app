@@ -1,0 +1,29 @@
+{
+ "base": "photoelectric-planck",
+ "rig": "photoelectric-bench",
+ "chapter": "Modern and atomic physics",
+ "grid": {
+  "title": "Photoelectric effect: Planck's constant with {metal}",
+  "unknown": "Planck's constant, and the work function of {metal}",
+  "sample": "Photocell with {metal} on the cathode",
+  "axes": {
+   "metal": [
+    {"key": "caesium", "label": "a caesium cathode", "params": {"phi": 2.14},
+     "note": "Caesium has the smallest work function of all the metals, so even the green 546 nm mercury line still frees electrons from it.",
+     "source": {"title": "CRC Handbook of Chemistry and Physics, 'Electron work function of the elements': caesium 2.14 eV (polycrystalline)"}},
+    {"key": "rubidium", "label": "a rubidium cathode", "params": {"phi": 2.26},
+     "note": "Rubidium sits just above caesium in the same group and in the same table: a slightly larger work function, so the whole line of stopping potentials drops a little.",
+     "source": {"title": "CRC Handbook of Chemistry and Physics, 'Electron work function of the elements': rubidium 2.26 eV (polycrystalline)"}},
+    {"key": "potassium", "label": "a potassium cathode", "params": {"phi": 2.30},
+     "note": "With potassium the green 546 nm line is already below the threshold and gives no current at all, which is a result in itself.",
+     "source": {"title": "CRC Handbook of Chemistry and Physics, 'Electron work function of the elements': potassium 2.30 eV (polycrystalline)"}},
+    {"key": "sodium", "label": "a sodium cathode", "params": {"phi": 2.36},
+     "note": "Sodium's threshold wavelength is about 525 nm, so only the three shorter mercury lines work here.",
+     "source": {"title": "CRC Handbook of Chemistry and Physics, 'Electron work function of the elements': sodium 2.36 eV (polycrystalline)"}},
+    {"key": "barium", "label": "a barium cathode", "params": {"phi": 2.52},
+     "note": "Barium needs more energy again: the stopping potentials are small, so the 0.01 V least count matters much more here.",
+     "source": {"title": "CRC Handbook of Chemistry and Physics, 'Electron work function of the elements': barium 2.52 eV (polycrystalline)"}}
+   ]
+  }
+ }
+}

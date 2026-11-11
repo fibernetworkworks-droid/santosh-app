@@ -1,0 +1,40 @@
+{
+ "base": "phd-optical-tweezers",
+ "rig": "phd-tweezers-bench",
+ "chapter": "Laser spectroscopy and atomic physics",
+ "variants": [
+  {
+   "key": "bead-2um",
+   "title": "Optical tweezers with a 2 micrometre bead",
+   "sample": "2 micrometre polystyrene bead in water",
+   "method": "equipartition, power spectrum and Stokes drag",
+   "unknown": "trap stiffness",
+   "note": "A bead of twice the diameter has four times the Stokes drag at the same viscosity, so its corner frequency is lower and its stiffness per milliwatt is the lab's own 3 micronewtons per metre.",
+   "source": {
+    "title": "Illustrative design values",
+    "note": "set by the lab for this condition; not taken from a named product's datasheet"
+   },
+   "params": {
+    "a": 1e-06,
+    "kp": 3e-06,
+    "seed": 73.0
+   }
+  },
+  {
+   "key": "viscous-medium",
+   "title": "Optical tweezers in a viscous liquid",
+   "sample": "1 micrometre silica bead in a viscous water-glycerol mixture (3 mPa s, the lab's own value)",
+   "method": "equipartition, power spectrum and Stokes drag",
+   "unknown": "viscosity and trap stiffness",
+   "note": "A viscosity of 3 mPa s is the lab's own illustrative value, unsourced: three times water. The corner frequency is three times lower, and the viscosity can be read from it.",
+   "source": {
+    "title": "Unsourced / illustrative",
+    "note": "the 3 mPa s viscosity is not a looked-up value for a named mixture"
+   },
+   "params": {
+    "eta": 0.003,
+    "seed": 79.0
+   }
+  }
+ ]
+}

@@ -1,0 +1,23 @@
+{
+ "base": "ph3-alpha",
+ "rig": "ph3-alpha",
+ "chapter": "Nuclear, particle and cosmic-ray physics",
+ "variants": [
+  {
+   "key": "pu239",
+   "title": "Alpha spectrometry of Pu-239: energy loss in air and in a foil",
+   "sample": "Pu-239 sealed alpha source",
+   "method": "energy of the main peak against air pressure",
+   "unknown": "the range in air, the energy resolution and the stopping power of gold",
+   "params": {
+    "src": 1,
+    "seed": 42
+   },
+   "note": "Pu-239 emits three lines within 50 keV (5156.6, 5144.3 and 5105.5 keV), unresolved by a detector 18 keV wide, so the peak is their blend, centred near 5150 keV. The same chamber, calibration and procedure apply.",
+   "source": {
+    "title": "NNDC / ENSDF evaluated nuclear data"
+   },
+   "aim": "With a Pu-239 source, a silicon surface-barrier detector and a vacuum chamber, calibrate on two sources, let air in step by step and follow the alpha energy down; find the range in air, the energy resolution and the stopping power of gold."
+  }
+ ]
+}

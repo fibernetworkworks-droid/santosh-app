@@ -1,0 +1,53 @@
+{
+ "base": "cr-least-squares-fit",
+ "rig": "comp3-workstation",
+ "chapter": "Computational physics",
+ "variants": [
+  {
+   "key": "line-unequal-unweighted",
+   "title": "Straight line, unequal errors, unweighted fit",
+   "sample": "y = 2x + 1, sigma growing along x",
+   "unknown": "slope",
+   "params": {
+    "cas": 1,
+    "method": 0
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   },
+   "note": "Every point counts equally, although they are not equally precise."
+  },
+  {
+   "key": "line-unequal-weighted",
+   "title": "Straight line, unequal errors, weighted fit (1/sigma^2)",
+   "sample": "y = 2x + 1, sigma growing along x",
+   "unknown": "slope",
+   "params": {
+    "cas": 1,
+    "method": 1
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   },
+   "note": "Precise points count more; the scatter of the slope is smaller."
+  },
+  {
+   "key": "parabola",
+   "title": "General linear least squares: a parabola",
+   "sample": "y = 1 + 2x - 0.3x^2 on [0, 5]",
+   "unknown": "curvature c",
+   "params": {
+    "cas": 2,
+    "sig": 0.1,
+    "xmax": 5.0
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   },
+   "note": "A parabola is linear in its coefficients."
+  }
+ ]
+}

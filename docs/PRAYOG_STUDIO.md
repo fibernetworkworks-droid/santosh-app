@@ -142,3 +142,35 @@ generic spring, an unknown resistor), say so in `sample`, e.g. "Unknown resistor
 Verify a family: `BASE=<id> node tools/prayog_walk.js http://localhost:<port>` must print PASS for every member.
 Serve the pages with `cd server && python -m uvicorn tools.prayog_serve:app --port <port>`. `lsl.run_check` must
 also pass for every variant; the server test suite checks it.
+
+## Building a NEW set-up (the physics build-out to 100 %)
+
+The meter is `cd server && python3 -m app.prayog.count --cover`: a syllabus set-up counts as BUILT only when its
+`built` lab id really opens. Claiming a lab that does not open is counted as BROKEN, never as coverage.
+
+To build one set-up end to end:
+
+1. **Find it** in `server/app/prayog/syllabus/physics/<level>.json`. Its `kernel` field suggests the physics.
+2. **Physics in a PACK, never in kernels.py.** Add `server/app/prayog/packs/<area>.py` with
+   `KERNELS` / `FAMILY` / `TEXTBOOK` / `CALCS` (see `packs/__init__.py`), and its exact JavaScript twin
+   `server/app/static/prayog/packs/<area>.js` calling `HoolaKernels.register({K: {...}, CALCS: {...}})`.
+   The twin test runs both and demands the same numbers, so write the same formulas, not a rewrite.
+   A kernel class needs `PARAMS` (defaults, SI) and the static methods `init(p, cfg)`, `step(s, p, dt, cfg)`,
+   `view(s, p)` and `measure(p, cfg)`. Keep it deterministic: no randomness, no wall clock.
+3. **A lab in a LAB PACK, never in catalog.py.** Add `server/app/prayog/labs/<area>.py` exporting
+   `BUILDERS = (fn, ...)`; import the helpers (`from ..catalog import B, knob, inst, col, lab, board, ...`).
+   Each lab needs its `check` (the reading vs its textbook formula, within 1 %) and must pass the LSL checker.
+4. **A rig** `server/app/static/prayog/exp/<lab-id>.js` (the contract above). Reuse an existing rig when the
+   apparatus is the same: a variant needs no new rig at all.
+5. **A family** `server/app/prayog/families/<lab-id>.json` when the set-up has real variants (another sample,
+   method, unknown or condition), each with a real constant and its source.
+6. **Claim it**: set `"built": "<lab-id>"` on that syllabus row.
+7. **Prove it**: `BASE=<lab-id> node tools/prayog_walk.js http://localhost:<port>` must PASS for every member,
+   and `python3 -m app.prayog.count --cover` must show the set-up counted.
+
+**Add a CALCS entry freely.** The twin test's fixtures now find a kernel for any pack calc by trying the kernels
+whose params feed it, so a new calc name no longer breaks the suite (all 76 are covered). Three build agents
+deliberately shipped no calc because of the old hand-written lookup; that is fixed, and a lab whose observation
+table computes a result should carry its own calc.
+
+Never invent a physical constant. Never pad a family with near-duplicates. English only.

@@ -1,0 +1,25 @@
+{
+ "base": "ph3-compton",
+ "rig": "ph3-compton",
+ "chapter": "Nuclear, particle and cosmic-ray physics",
+ "variants": [
+  {
+   "key": "plastic",
+   "title": "Compton scattering from a plastic scintillator, gated by coincidence",
+   "sample": "Plastic scintillator scatterer (polystyrene rod, 3 cm by 5 cm), gated by its own pulse",
+   "method": "coincidence between scatterer and detector",
+   "unknown": "the electron rest energy and d sigma / d Omega against angle",
+   "params": {
+    "ne25": 1.21,
+    "coin": 1,
+    "seed": 21,
+    "t": 600
+   },
+   "note": "The scatterer is itself a scintillator: the recoil electron makes a pulse that opens a gate on the MCA, so only photons that really scattered in it are recorded. The gate removes 98 % of the room background; the gate threshold of 30 keV is passed at every angle above 20 degrees. 1.21e25 electrons: polystyrene 1.06 g/cm3, Z/A 0.53768.",
+   "source": {
+    "title": "NIST composition table: polystyrene density 1.06 g/cm3, Z/A = 0.53768"
+   },
+   "aim": "Scatter the 662 keV gamma rays of Cs-137 from a plastic scintillator rod whose own pulse gates the NaI(Tl) spectrometer (coincidence), measure the scattered energy at seven angles and find the electron rest energy from E'(theta)."
+  }
+ ]
+}

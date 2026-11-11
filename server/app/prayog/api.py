@@ -5,9 +5,20 @@ from __future__ import annotations
 from pathlib import Path
 
 from fastapi import APIRouter, Body, Depends, HTTPException
-from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.responses import FileResponse, RedirectResponse, Response
 
 THREE = Path(__file__).resolve().parent.parent / "appmaker" / "assets" / "three.min.js"
+PRAYOG_STATIC = Path(__file__).resolve().parent.parent / "static" / "prayog"
+
+
+def _kernels_js() -> str:
+    """kernels.js plus every pack, as ONE script: new physics is a new file, never an edit to the shared one."""
+    parts = [(PRAYOG_STATIC / "kernels.js").read_text(encoding="utf-8")]
+    pack_dir = PRAYOG_STATIC / "packs"
+    if pack_dir.is_dir():
+        for f in sorted(pack_dir.glob("*.js")):
+            parts.append(f"\n/* ---- pack: {f.name} ---- */\n" + f.read_text(encoding="utf-8"))
+    return "\n".join(parts)
 
 
 def make_router(require_key=None, current_tenant=None) -> APIRouter:
@@ -38,6 +49,11 @@ def make_router(require_key=None, current_tenant=None) -> APIRouter:
         if not lab:
             raise HTTPException(404, "Yeh lab nahi mila")
         return {"lab": lab, "note": S.NOTE}
+
+    @r.get("/api/prayog/kernels.js")
+    def kernels_js():
+        return Response(_kernels_js(), media_type="application/javascript",
+                        headers={"Cache-Control": "public, max-age=300"})
 
     @r.get("/api/prayog/three.js")
     def three():

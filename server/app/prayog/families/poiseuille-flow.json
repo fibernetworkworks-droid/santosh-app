@@ -1,0 +1,24 @@
+{
+  "base": "poiseuille-flow",
+  "chapter": "Properties of matter: elasticity, viscosity, surface tension",
+  "variants": [
+    {"key": "water20", "title": "Poiseuille's method: viscosity of water at 20 °C",
+     "sample": "Water at 20 °C", "method": "Capillary flow under a constant head",
+     "unknown": "the coefficient of viscosity of water at 20 °C",
+     "params": {"eta": 0.0010016, "rho": 998.2},
+     "note": "Water at 20 °C: viscosity 1.0016 mPa·s, density 998.2 kg/m3.",
+     "source": {"title": "CRC Handbook of Chemistry and Physics, Viscosity of water 0-100 °C and Density of water"}},
+    {"key": "water30", "title": "Poiseuille's method: viscosity of water at 30 °C",
+     "sample": "Water at 30 °C", "method": "Capillary flow under a constant head",
+     "unknown": "the coefficient of viscosity of water at 30 °C",
+     "params": {"eta": 0.0007972, "rho": 995.65},
+     "note": "Ten degrees warmer and the water is already a fifth less viscous: it runs out noticeably faster.",
+     "source": {"title": "CRC Handbook of Chemistry and Physics, Viscosity of water 0-100 °C and Density of water"}},
+    {"key": "water40", "title": "Poiseuille's method: viscosity of water at 40 °C",
+     "sample": "Water at 40 °C", "method": "Capillary flow under a constant head",
+     "unknown": "the coefficient of viscosity of water at 40 °C",
+     "params": {"eta": 0.0006527, "rho": 992.2},
+     "note": "At 40 °C the viscosity is about two thirds of its value at 20 °C, which is why the temperature must be part of the answer.",
+     "source": {"title": "CRC Handbook of Chemistry and Physics, Viscosity of water 0-100 °C and Density of water"}}
+  ]
+}

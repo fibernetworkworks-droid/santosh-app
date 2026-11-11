@@ -1,0 +1,20 @@
+{
+ "base": "pl-lifetime",
+ "rig": "msc-spectrograph",
+ "chapter": "Luminescence",
+ "variants": [
+  {
+   "key": "nd-yag",
+   "title": "Fluorescence lifetime of Nd:YAG",
+   "sample": "Nd:YAG crystal",
+   "unknown": "the fluorescence lifetime of Nd3+ in YAG",
+   "params": {
+    "tau": 0.00023
+   },
+   "note": "Much shorter than ruby, so the oscilloscope time base is in tenths of a millisecond.",
+   "source": {
+    "title": "Nd:YAG upper-level lifetime 230 us (Koechner, Solid-State Laser Engineering)"
+   }
+  }
+ ]
+}

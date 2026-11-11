@@ -1,0 +1,41 @@
+{
+ "base": "phd-paschen-curve",
+ "rig": "phd-plasma-bench",
+ "chapter": "Plasma diagnostics",
+ "variants": [
+  {
+   "key": "nitrogen",
+   "title": "Paschen curve of nitrogen",
+   "sample": "Nitrogen",
+   "unknown": "minimum breakdown voltage and pd at the minimum",
+   "note": "A = 12 per (cm torr), B = 342 V per (cm torr), gamma = 0.01 are remembered textbook-table values, unsourced and illustrative; they were not looked up for this lab.",
+   "source": {
+    "title": "Unsourced / illustrative constants",
+    "note": "remembered table values for nitrogen: A = 12, B = 342, gamma = 0.01"
+   },
+   "params": {
+    "A": 12.0,
+    "B": 342.0,
+    "gam": 0.01,
+    "seed": 59.0
+   }
+  },
+  {
+   "key": "argon",
+   "title": "Paschen curve of argon",
+   "sample": "Argon",
+   "unknown": "minimum breakdown voltage and pd at the minimum",
+   "note": "A = 12 per (cm torr), B = 180 V per (cm torr), gamma = 0.01 are remembered textbook-table values, unsourced and illustrative; they were not looked up for this lab.",
+   "source": {
+    "title": "Unsourced / illustrative constants",
+    "note": "remembered table values for argon: A = 12, B = 180, gamma = 0.01"
+   },
+   "params": {
+    "A": 12.0,
+    "B": 180.0,
+    "gam": 0.01,
+    "seed": 61.0
+   }
+  }
+ ]
+}

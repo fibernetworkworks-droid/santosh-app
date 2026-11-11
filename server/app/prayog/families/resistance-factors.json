@@ -1,0 +1,23 @@
+{"base": "resistance-factors", "chapter": "Electricity",
+ "variants": [
+  {"key": "nichrome-swg26", "title": "Resistance of a wire: nichrome, SWG 26",
+   "sample": "Nichrome wire, SWG 26 (0.457 mm)", "unknown": "the resistivity of nichrome",
+   "params": {"rho": 1.09e-6, "dia": 0.000457},
+   "note": "A thinner wire of the same material: the area falls to two thirds, so the resistance of the same length rises by half.",
+   "source": {"title": "Published resistivity of Ni80Cr20 nichrome at 20 C, 1.09e-6 ohm m; SWG 26 diameter 0.4572 mm (BS 3737 standard wire gauge)"}},
+  {"key": "constantan-swg24", "title": "Resistance of a wire: constantan, SWG 24",
+   "sample": "Constantan (Cu55Ni45) wire, SWG 24 (0.559 mm)", "unknown": "the resistivity of constantan",
+   "params": {"rho": 4.9e-7, "dia": 0.000559},
+   "note": "The same length and the same thickness as the nichrome wire, but a different material: the resistance is less than half.",
+   "source": {"title": "Kaye & Laby, Tables of Physical and Chemical Constants: resistivity of constantan (Cu55Ni45) at 20 C, 4.9e-7 ohm m; SWG 24 diameter 0.5588 mm (BS 3737)"}},
+  {"key": "manganin-swg24", "title": "Resistance of a wire: manganin, SWG 24",
+   "sample": "Manganin (Cu86Mn12Ni2) wire, SWG 24 (0.559 mm)", "unknown": "the resistivity of manganin",
+   "params": {"rho": 4.82e-7, "dia": 0.000559},
+   "note": "Manganin is used for standard resistance coils because its resistance hardly changes with temperature.",
+   "source": {"title": "Kaye & Laby, Tables of Physical and Chemical Constants: resistivity of manganin at 20 C, 4.82e-7 ohm m; SWG 24 diameter 0.5588 mm (BS 3737)"}},
+  {"key": "iron-swg22", "title": "Resistance of a wire: iron, SWG 22",
+   "sample": "Iron wire, SWG 22 (0.711 mm)", "unknown": "the resistivity of iron",
+   "params": {"rho": 9.71e-8, "dia": 0.000711},
+   "note": "A thicker wire of a far better conductor: the same length has about a fortieth of the nichrome wire's resistance.",
+   "source": {"title": "Kaye & Laby, Tables of Physical and Chemical Constants: electrical resistivity of iron at 20 C, 9.71e-8 ohm m; SWG 22 diameter 0.7112 mm (BS 3737)"}}
+ ]}

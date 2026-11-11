@@ -1,0 +1,64 @@
+{
+ "base": "phd-cryo-thermometry",
+ "chapter": "Low temperature and superconductivity",
+ "rig": "phd-cryostat-insert",
+ "variants": [
+  {
+   "key": "platinum-rtd",
+   "title": "Cryogenic thermometry: a Pt100 platinum resistance thermometer",
+   "sample": "Pt100 platinum RTD (IEC 60751)",
+   "method": "calibration against the cryostat set-point; excitation 100 uA",
+   "unknown": "sensitivity dR/dT and the self-heating error",
+   "params": {
+    "T": 77.0,
+    "sensor": 2.0,
+    "I": 0.0001,
+    "G": 0.001,
+    "R0": 100.0
+   },
+   "note": "R = R0 (1 + A t + B t^2 + C (t - 100) t^3) for t below 0 C, with the IEC 60751 constants; R0 = 100 ohm. About 0.2 ohm per kelvin at 77 K, so the readout needs micro-ohm resolution.",
+   "source": {
+    "title": "IEC 60751: A = 3.9083e-3 /C, B = -5.775e-7 /C^2, C = -4.183e-12 /C^4 (industrial platinum resistance thermometers)"
+   }
+  },
+  {
+   "key": "ruo2-resistor",
+   "title": "Cryogenic thermometry: a RuO2 thick-film resistor near 20 K (illustrative)",
+   "sample": "RuO2 thick-film resistor, R = 1 kohm x exp(sqrt(20 K / T)) (unsourced / illustrative)",
+   "method": "calibration against the cryostat set-point; excitation 1 uA",
+   "unknown": "sensitivity dR/dT and the self-heating error",
+   "params": {
+    "T": 20.0,
+    "sensor": 3.0,
+    "I": 1e-06,
+    "G": 0.001,
+    "Rinf": 1000.0,
+    "T0": 20.0
+   },
+   "note": "Variable-range-hopping form: the resistance climbs steeply as the sensor cools, so it is most sensitive below about 30 K. The prefactor and T0 are illustrative.",
+   "source": {
+    "title": "Unsourced / illustrative sample constants",
+    "note": "the form ln R ~ sqrt(T0/T) is textbook hopping; Rinf and T0 are chosen for the lab, not looked up."
+   }
+  },
+  {
+   "key": "thermocouple",
+   "title": "Cryogenic thermometry: a thermocouple against a 300 K junction",
+   "sample": "Thermocouple pair with Seebeck S = 40 uV/K x T/(T + 60 K) (unsourced / illustrative)",
+   "method": "calibration against the cryostat set-point; reference junction at 300 K",
+   "unknown": "sensitivity dV/dT",
+   "params": {
+    "T": 77.0,
+    "sensor": 4.0,
+    "s0": 4e-05,
+    "Tk": 60.0,
+    "Tref": 300.0
+   },
+   "note": "Its sensitivity falls towards zero as T tends to zero, so a thermocouple is a poor thermometer in the helium range. The law is illustrative, not a standard table.",
+   "source": {
+    "title": "Unsourced / illustrative sample constants",
+    "note": "the Seebeck law is a smooth illustrative one; no standard thermocouple table was used."
+   }
+  }
+ ]
+}

@@ -1,0 +1,91 @@
+{
+ "base": "cp-root-finding",
+ "chapter": "Computational physics",
+ "grid": {
+  "title": "Roots of equations: {eq} {method}",
+  "unknown": "the root of the equation",
+  "axes": {
+   "eq": [
+    {
+     "key": "sqrt2",
+     "label": "x² = 2",
+     "sample": "Algebraic equation x² − 2 = 0",
+     "source": {
+      "title": "Undergraduate Programme in Physics under UGCF-2022 (NEP), B.Sc. (Hons.) Physics, University of Delhi",
+      "note": "the practical list names these methods and these functions"
+     },
+     "params": {
+      "cas": 0,
+      "a": 2,
+      "m": 2,
+      "xa": 0.5,
+      "xb": 3.0,
+      "x0": 1.0,
+      "x1": 2.0
+     }
+    },
+    {
+     "key": "cubic7",
+     "label": "x³ = 7",
+     "sample": "Algebraic equation x³ − 7 = 0",
+     "source": {
+      "title": "Undergraduate Programme in Physics under UGCF-2022 (NEP), B.Sc. (Hons.) Physics, University of Delhi",
+      "note": "the practical list names these methods and these functions"
+     },
+     "params": {
+      "cas": 0,
+      "a": 7,
+      "m": 3,
+      "xa": 1.0,
+      "xb": 3.0,
+      "x0": 2.0,
+      "x1": 3.0
+     }
+    },
+    {
+     "key": "tanroot",
+     "label": "tan α = α",
+     "sample": "Transcendental equation tan α − α = 0",
+     "source": {
+      "title": "Undergraduate Programme in Physics under UGCF-2022 (NEP), B.Sc. (Hons.) Physics, University of Delhi",
+      "note": "the practical list names these methods and these functions"
+     },
+     "params": {
+      "cas": 2,
+      "xa": 3.3,
+      "xb": 4.6,
+      "x0": 4.3,
+      "x1": 4.6
+     }
+    }
+   ],
+   "method": [
+    {
+     "key": "bisect",
+     "label": "by bisection",
+     "method": "Bisection on a sign-changing bracket",
+     "params": {
+      "method": 0
+     }
+    },
+    {
+     "key": "newton",
+     "label": "by Newton-Raphson",
+     "method": "Newton-Raphson from a starting guess",
+     "params": {
+      "method": 1
+     }
+    },
+    {
+     "key": "secant",
+     "label": "by the secant method",
+     "method": "Secant method through two guesses",
+     "params": {
+      "method": 2
+     }
+    }
+   ]
+  }
+ },
+ "rig": "comp-workstation"
+}

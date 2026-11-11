@@ -1,0 +1,43 @@
+{
+ "base": "liquid-concave-mirror",
+ "rig": "liquid-lens-plane-mirror",
+ "chapter": "Ray Optics and Optical Instruments",
+ "variants": [
+  {
+   "key": "water",
+   "title": "Refractive index of water using a concave mirror",
+   "sample": "Water, n_D = 1.333 at 20 degrees C",
+   "unknown": "the refractive index of water",
+   "params": {
+    "nl": 1.333
+   },
+   "source": {
+    "title": "CRC Handbook of Chemistry and Physics, Index of Refraction of Liquids (n_D at 20 degrees C)"
+   }
+  },
+  {
+   "key": "ethanol",
+   "title": "Refractive index of ethanol using a concave mirror",
+   "sample": "Ethanol, n_D = 1.3614 at 20 degrees C",
+   "unknown": "the refractive index of ethanol",
+   "params": {
+    "nl": 1.3614
+   },
+   "source": {
+    "title": "CRC Handbook of Chemistry and Physics, Index of Refraction of Liquids (n_D at 20 degrees C)"
+   }
+  },
+  {
+   "key": "glycerol",
+   "title": "Refractive index of glycerol using a concave mirror",
+   "sample": "Glycerol, n_D = 1.4746 at 20 degrees C",
+   "unknown": "the refractive index of glycerol",
+   "params": {
+    "nl": 1.4746
+   },
+   "source": {
+    "title": "CRC Handbook of Chemistry and Physics, Index of Refraction of Liquids (n_D at 20 degrees C)"
+   }
+  }
+ ]
+}

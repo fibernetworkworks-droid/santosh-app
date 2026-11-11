@@ -1,0 +1,74 @@
+{
+ "base": "cr-fdtd-em",
+ "rig": "comp3-workstation",
+ "chapter": "Computational physics",
+ "variants": [
+  {
+   "key": "slab-high-index",
+   "title": "FDTD: a quarter-wave slab of index 3.0",
+   "sample": "n = 3.0, quarter wave at the design frequency",
+   "unknown": "transmittance at 0.9 of the design frequency",
+   "params": {
+    "n1": 3.0,
+    "wr": 0.9
+   },
+   "source": {
+    "title": "Characteristic-matrix (transfer-matrix) method for a layered medium, e.g. M. Born and E. Wolf, Principles of Optics, ch. 1.6",
+    "note": "cited, not re-fetched; layer indices are model values, unsourced / illustrative"
+   },
+   "note": "A higher index needs more cells per wavelength.",
+   "check": {
+    "params": {
+     "n": 100
+    }
+   }
+  },
+  {
+   "key": "slab-low-index",
+   "title": "FDTD: a quarter-wave slab of index 1.5",
+   "sample": "n = 1.5, quarter wave at the design frequency",
+   "unknown": "transmittance at 0.8 of the design frequency",
+   "params": {
+    "n1": 1.5
+   },
+   "source": {
+    "title": "Characteristic-matrix (transfer-matrix) method for a layered medium, e.g. M. Born and E. Wolf, Principles of Optics, ch. 1.6",
+    "note": "cited, not re-fetched; layer indices are model values, unsourced / illustrative"
+   }
+  },
+  {
+   "key": "bragg-3-pairs",
+   "title": "FDTD: a Bragg mirror of three pairs (indices 2.0 and 1.5)",
+   "sample": "3 x (2.0 / 1.5)",
+   "unknown": "transmittance at 0.8 of the design frequency",
+   "params": {
+    "cas": 1
+   },
+   "source": {
+    "title": "Characteristic-matrix (transfer-matrix) method for a layered medium, e.g. M. Born and E. Wolf, Principles of Optics, ch. 1.6",
+    "note": "cited, not re-fetched; layer indices are model values, unsourced / illustrative"
+   }
+  },
+  {
+   "key": "bragg-4-pairs",
+   "title": "FDTD: a Bragg mirror of four pairs (indices 2.5 and 1.5)",
+   "sample": "4 x (2.5 / 1.5)",
+   "unknown": "transmittance at 0.8 of the design frequency",
+   "params": {
+    "cas": 1,
+    "n1": 2.5,
+    "np": 4.0
+   },
+   "source": {
+    "title": "Characteristic-matrix (transfer-matrix) method for a layered medium, e.g. M. Born and E. Wolf, Principles of Optics, ch. 1.6",
+    "note": "cited, not re-fetched; layer indices are model values, unsourced / illustrative"
+   },
+   "note": "High contrast needs more cells per wavelength.",
+   "check": {
+    "params": {
+     "n": 160
+    }
+   }
+  }
+ ]
+}

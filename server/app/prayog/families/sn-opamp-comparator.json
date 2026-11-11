@@ -1,0 +1,21 @@
+{
+ "base": "sn-opamp-comparator",
+ "rig": "sn-scope-bench",
+ "chapter": "Analog electronics and devices",
+ "variants": [
+  {
+   "key": "lm358",
+   "title": "Comparator with an LM358: a slower op-amp",
+   "sample": "LM358 dual op-amp, slew rate about 0.3 V/us",
+   "unknown": "the slew rate of an LM358 output",
+   "params": {
+    "SR": 300000.0
+   },
+   "note": "The LM358 is a general-purpose op-amp with a lower slew rate than the LM741. The 0.3 V/us figure is recalled, not looked up (unsourced / illustrative).",
+   "source": {
+    "title": "LM358 slew rate about 0.3 V/us: recalled typical value, verify against the datasheet",
+    "note": "Unsourced / illustrative"
+   }
+  }
+ ]
+}

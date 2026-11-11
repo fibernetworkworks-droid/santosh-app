@@ -1,0 +1,21 @@
+{
+ "base": "msc-rf-oscillator",
+ "rig": "msc-signal-bench",
+ "chapter": "Electronics",
+ "variants": [
+  {
+   "key": "l2u2-c68p-c330p",
+   "title": "RF oscillator: L = 2.2 µH, C₁ = 68 pF, C₂ = 330 pF",
+   "sample": "L = 2.2 µH, C₁ = 68 pF, C₂ = 330 pF",
+   "unknown": "the frequency and amplitude of the RF output",
+   "params": {
+    "L": 2.2e-06,
+    "C": 6.8e-11,
+    "C2": 3.3e-10
+   },
+   "source": {
+    "title": "IEC 60063 preferred values (E12 series) for the resistors and capacitors"
+   }
+  }
+ ]
+}

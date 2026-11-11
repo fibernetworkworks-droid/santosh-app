@@ -1,0 +1,21 @@
+{
+ "base": "sn-meter-bandwidth",
+ "rig": "sn-sensor-bench",
+ "chapter": "Electronic instrumentation and sensors",
+ "variants": [
+  {
+   "key": "ac-current",
+   "title": "Limits of a multimeter at high frequency: AC current",
+   "sample": "AC current range of a digital multimeter",
+   "unknown": "the frequency at which the AC current reading is 3 dB low",
+   "params": {
+    "fc": 5000.0
+   },
+   "note": "The current ranges of a multimeter run through a shunt and are usually less wideband than the voltage ranges. The 5 kHz figure is illustrative: the meter's own manual gives the real one.",
+   "source": {
+    "title": "AC current bandwidth of 5 kHz is illustrative; every meter's manual states its own",
+    "note": "Unsourced / illustrative lab setting"
+   }
+  }
+ ]
+}

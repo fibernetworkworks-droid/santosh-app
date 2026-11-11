@@ -1,0 +1,55 @@
+{
+  "base": "newtons-rings",
+  "rig": "interference-bench",
+  "chapter": "Interference",
+  "grid": {
+    "title": "Newton's rings {film} in {light}",
+    "unknown": "the radius of curvature of the plano-convex lens",
+    "axes": {
+      "light": [
+        {
+          "key": "na",
+          "label": "sodium light",
+          "params": {
+            "lam": 5.893e-07
+          },
+          "source": {
+            "title": "NIST Atomic Spectra Database: sodium D lines 588.995 and 589.592 nm, mean 589.3 nm"
+          }
+        },
+        {
+          "key": "hg",
+          "label": "the green mercury line",
+          "params": {
+            "lam": 5.46074e-07
+          },
+          "source": {
+            "title": "NIST Atomic Spectra Database: mercury green line 546.074 nm"
+          }
+        }
+      ],
+      "film": [
+        {
+          "key": "air",
+          "label": "in air",
+          "sample": "Plano-convex lens on a plane plate, with air between them",
+          "params": {
+            "mu": 1.0
+          }
+        },
+        {
+          "key": "water",
+          "label": "with water between the glasses",
+          "sample": "Plano-convex lens on a plane plate, with distilled water between them",
+          "params": {
+            "mu": 1.333
+          },
+          "note": "Every ring comes in by the square root of the index of the liquid, so the rings of a water film are smaller than those in air.",
+          "source": {
+            "title": "CRC Handbook of Chemistry and Physics: water, nD = 1.3330 at 20 C"
+          }
+        }
+      ]
+    }
+  }
+}

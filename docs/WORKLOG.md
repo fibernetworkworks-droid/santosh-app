@@ -2802,7 +2802,22 @@ Built: turngraph resume, agent/toolledger.py, turn_inbox graph_resume sweep; cha
 Deploy: vps-ops deploy (langgraph pip install from v0.761 still needed if not done).
 
 
-Task ID: v0.768.0 HOOLA CODE PHASE 1
-Ask: GO PHASE 1 (docs/HOOLA_CODE_WEB_PLAN.md) + mid-build "create a separate page with its own side bar for Hoola Code".
-Built: /console/code (hoolacode.html / hoolacode.js), code.js rewritten (three zones, folded steps, rail cards, queue take-back, menus, All sessions), devsahayak rename / archive / delete / drop_note + routes; typing-wiped-by-refresh bug and the rotating ring fixed; 8 tests incl. 4 browser walks.
-Deploy: vps-ops deploy (server-only; no new pip, two nullable columns self-heal).
+Task ID: HI-PLAN — Hoola Interactive product plan (11 Nov 2026)
+Owner: "first check how HeyGen looks in design and all its features in all backend 100% every page and tools... deep
+research and make a same plan for Hoola Interactive end to end". Three research agents read HeyGen's public files
+(app string catalogue + design tokens, help centre, release posts, v3 OpenAPI, LiveAvatar docs); reports kept in
+docs/research/heygen/ (4 files). Plan written: docs/HOOLA_INTERACTIVE_CONSOLE_PLAN.md (12 pages, feature matrix,
+tables, routes, API, meter, safety rules, phases I0-I11, her decisions, not-verified list). Docs only: no code, no
+version bump. No credentials in this entry.
+
+Task ID: v0.770.0 LANGGRAPH G2
+Ask: GO G2 (one run per chat + Stop as state).
+Built: agent/turnrun.py tickets + stop flag/event, turngraph stop checks, turn_inbox no double start; chat_graph still off; 14 tests.
+Deploy: vps-ops deploy (langgraph pip install from v0.761 if not done).
+
+
+---
+Task ID: LOVABLE STUDIO PLAN (11 Nov 2026)
+Task: owner - deep research on Lovable (design, logic, steps, strategy, chat motion) + an end-to-end plan for Hoola Web Studio.
+Work Log: 4 parallel research passes (engine/tools, UI/motion, strategy, Hoola Studio map); captured in docs/research/lovable/00_INDEX.md; plan in docs/LOVABLE_STUDIO_PLAN.md.
+Stage Summary: docs only, no version bump; waiting for her GO on L0 and her 4 decisions before L8.

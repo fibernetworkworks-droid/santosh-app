@@ -1,0 +1,15 @@
+{"base": "sucker-pressure", "chapter": "Pressure",
+ "grid": {"title": "Atmospheric pressure {place}", "unknown": "the pressure of the air {place}",
+   "axes": {"place": [
+     {"key": "h1000", "label": "at a height of 1000 m", "sample": "A hill station 1000 m above the sea",
+      "params": {"Patm": 89876.0},
+      "source": {"title": "ISO 2533:1975 Standard Atmosphere (the ICAO Standard Atmosphere)",
+                 "note": "air pressure at a geopotential altitude of 1000 m is 89.876 kPa"}},
+     {"key": "h2000", "label": "at a height of 2000 m", "sample": "A hill station 2000 m above the sea",
+      "params": {"Patm": 79501.0},
+      "source": {"title": "ISO 2533:1975 Standard Atmosphere (the ICAO Standard Atmosphere)",
+                 "note": "air pressure at a geopotential altitude of 2000 m is 79.501 kPa"}},
+     {"key": "h3000", "label": "at a height of 3000 m", "sample": "A hill station 3000 m above the sea",
+      "params": {"Patm": 70121.0},
+      "source": {"title": "ISO 2533:1975 Standard Atmosphere (the ICAO Standard Atmosphere)",
+                 "note": "air pressure at a geopotential altitude of 3000 m is 70.121 kPa"}}]}}}

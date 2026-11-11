@@ -1,0 +1,76 @@
+{
+ "base": "cr-mc-ising",
+ "rig": "comp3-workstation",
+ "chapter": "Computational physics",
+ "variants": [
+  {
+   "key": "wolff-2d-ordered",
+   "title": "2-D Ising below Tc by the Wolff cluster algorithm",
+   "sample": "16 x 16, T = 1.8",
+   "unknown": "|m|",
+   "params": {
+    "method": 1
+   },
+   "source": {
+    "title": "L. Onsager, Phys. Rev. 65, 117 (1944); C. N. Yang, Phys. Rev. 85, 808 (1952)",
+    "note": "exact 2-D Ising energy and magnetisation; cited, not re-fetched"
+   }
+  },
+  {
+   "key": "energy-2d-hot",
+   "title": "2-D Ising above Tc: the energy by Metropolis",
+   "sample": "16 x 16, T = 3.2",
+   "unknown": "energy per spin",
+   "params": {
+    "what": 1,
+    "T": 3.2
+   },
+   "source": {
+    "title": "L. Onsager, Phys. Rev. 65, 117 (1944); C. N. Yang, Phys. Rev. 85, 808 (1952)",
+    "note": "exact 2-D Ising energy and magnetisation; cited, not re-fetched"
+   },
+   "note": "Above Tc the magnetisation averages to a small finite-size value; the energy is the clean observable.",
+   "check": {
+    "params": {
+     "n": 3000
+    }
+   }
+  },
+  {
+   "key": "energy-2d-hot-wolff",
+   "title": "2-D Ising above Tc: the energy by the Wolff algorithm",
+   "sample": "16 x 16, T = 3.2",
+   "unknown": "energy per spin",
+   "params": {
+    "what": 1,
+    "T": 3.2,
+    "method": 1
+   },
+   "source": {
+    "title": "L. Onsager, Phys. Rev. 65, 117 (1944); C. N. Yang, Phys. Rev. 85, 808 (1952)",
+    "note": "exact 2-D Ising energy and magnetisation; cited, not re-fetched"
+   }
+  },
+  {
+   "key": "chain-energy",
+   "title": "1-D Ising chain: the energy by Metropolis",
+   "sample": "32 spins, T = 1.5",
+   "unknown": "energy per spin",
+   "params": {
+    "dim": 1,
+    "L": 32.0,
+    "T": 1.5,
+    "what": 1
+   },
+   "source": {
+    "title": "Transfer matrix of the 1-D Ising ring (E. Ising, 1925; standard text)",
+    "note": "exact for this length; cited, not re-fetched"
+   },
+   "check": {
+    "params": {
+     "n": 6000
+    }
+   }
+  }
+ ]
+}

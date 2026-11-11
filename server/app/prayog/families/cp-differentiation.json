@@ -1,0 +1,95 @@
+{
+ "base": "cp-differentiation",
+ "chapter": "Computational physics",
+ "grid": {
+  "title": "Numerical differentiation of {fn} {method}",
+  "unknown": "the derivative at the given point",
+  "axes": {
+   "fn": [
+    {
+     "key": "sin",
+     "label": "A sin(wx)",
+     "sample": "f(x) = sin(2x) at x = 1",
+     "source": {
+      "title": "Undergraduate Programme in Physics under UGCF-2022 (NEP), B.Sc. (Hons.) Physics, University of Delhi",
+      "note": "the practical list names these methods and these functions"
+     },
+     "params": {
+      "cas": 0,
+      "A": 1.0,
+      "w": 2.0,
+      "x": 1.0,
+      "h0": 0.4
+     }
+    },
+    {
+     "key": "exp",
+     "label": "A exp(wx)",
+     "sample": "f(x) = e^x at x = 1",
+     "source": {
+      "title": "Undergraduate Programme in Physics under UGCF-2022 (NEP), B.Sc. (Hons.) Physics, University of Delhi",
+      "note": "the practical list names these methods and these functions"
+     },
+     "params": {
+      "cas": 1,
+      "A": 1.0,
+      "w": 1.0,
+      "x": 1.0,
+      "h0": 0.4
+     }
+    },
+    {
+     "key": "power",
+     "label": "A x^k",
+     "sample": "f(x) = x^3 at x = 2",
+     "source": {
+      "title": "Undergraduate Programme in Physics under UGCF-2022 (NEP), B.Sc. (Hons.) Physics, University of Delhi",
+      "note": "the practical list names these methods and these functions"
+     },
+     "params": {
+      "cas": 2,
+      "A": 1.0,
+      "kk": 3.0,
+      "x": 2.0,
+      "h0": 0.8
+     }
+    }
+   ],
+   "method": [
+    {
+     "key": "fwd",
+     "label": "by forward differences",
+     "method": "Forward difference, first order",
+     "params": {
+      "method": 0
+     }
+    },
+    {
+     "key": "bwd",
+     "label": "by backward differences",
+     "method": "Backward difference, first order",
+     "params": {
+      "method": 1
+     }
+    },
+    {
+     "key": "ctr",
+     "label": "by the central difference",
+     "method": "Central difference, second order",
+     "params": {
+      "method": 2
+     }
+    },
+    {
+     "key": "five",
+     "label": "by the five-point formula",
+     "method": "Five-point formula, fourth order",
+     "params": {
+      "method": 3
+     }
+    }
+   ]
+  }
+ },
+ "rig": "comp-workstation"
+}

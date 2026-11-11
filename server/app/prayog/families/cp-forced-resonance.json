@@ -1,0 +1,71 @@
+{
+ "base": "cp-forced-resonance",
+ "chapter": "Computational physics",
+ "grid": {
+  "title": "Forced oscillator: drive at {w}, {damp}",
+  "unknown": "the steady-state amplitude",
+  "axes": {
+   "damp": [
+    {
+     "key": "light",
+     "label": "c = 0.4",
+     "sample": "m = 1, k = 4, c = 0.4, F = 1 N",
+     "source": {
+      "title": "S. S. Sastry, Introductory Methods of Numerical Analysis, PHI"
+     },
+     "params": {
+      "cas": 1,
+      "mm": 1.0,
+      "cc": 0.4,
+      "kk": 4.0,
+      "FF": 1.0,
+      "x0": 0.0,
+      "tmax": 120.0
+     }
+    },
+    {
+     "key": "heavy",
+     "label": "c = 1.0",
+     "sample": "m = 1, k = 4, c = 1.0, F = 1 N",
+     "source": {
+      "title": "S. S. Sastry, Introductory Methods of Numerical Analysis, PHI"
+     },
+     "params": {
+      "cas": 1,
+      "mm": 1.0,
+      "cc": 1.0,
+      "kk": 4.0,
+      "FF": 1.0,
+      "x0": 0.0,
+      "tmax": 120.0
+     }
+    }
+   ],
+   "w": [
+    {
+     "key": "below",
+     "label": "1.2 rad/s",
+     "params": {
+      "wf": 1.2
+     }
+    },
+    {
+     "key": "resonance",
+     "label": "2.0 rad/s (= omega0)",
+     "params": {
+      "wf": 2.0
+     },
+     "note": "The drive is exactly at the natural frequency: this is resonance."
+    },
+    {
+     "key": "above",
+     "label": "3.0 rad/s",
+     "params": {
+      "wf": 3.0
+     }
+    }
+   ]
+  }
+ },
+ "rig": "comp-workstation"
+}

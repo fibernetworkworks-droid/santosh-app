@@ -1,0 +1,29 @@
+{
+ "base": "ph3-pulse-coincidence",
+ "rig": "ph3-coincidence",
+ "chapter": "Nuclear, particle and cosmic-ray physics",
+ "variants": [
+  {
+   "key": "co60",
+   "title": "Pulse width, singles and true coincidences of Co-60",
+   "sample": "Co-60 sealed source, 1173 and 1332 keV in cascade",
+   "method": "coincidence of the two cascade gamma rays",
+   "unknown": "the true coincidence rate",
+   "params": {
+    "A1": 15000.0,
+    "A2": 15000.0,
+    "b1": 60,
+    "b2": 50,
+    "Rt": 290,
+    "tau": 1e-07,
+    "seed": 38,
+    "t": 200
+   },
+   "note": "The 1173 and 1332 keV gamma rays of Co-60 follow one another within a few picoseconds, so a detector on each side counts both. The true rate 290 per second, the singles rates and the pulse width are illustrative lab settings.",
+   "source": {
+    "title": "NNDC / ENSDF: Co-60 gamma rays 1173.228 keV (99.85 %) and 1332.492 keV (99.98 %) in cascade"
+   },
+   "aim": "With a Co-60 source, whose two cascade gamma rays reach the two detectors together, count singles and coincidences at four gate widths and separate the true rate from the accidental ones by the line of rate against gate width."
+  }
+ ]
+}

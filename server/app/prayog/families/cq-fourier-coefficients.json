@@ -1,0 +1,105 @@
+{
+ "base": "cq-fourier-coefficients",
+ "rig": "comp2-workstation",
+ "chapter": "Computational physics",
+ "variants": [
+  {
+   "key": "square-b5",
+   "title": "Fourier coefficients of a square wave: b5",
+   "sample": "Ideal square wave, amplitude 1",
+   "unknown": "the coefficient b5",
+   "params": {
+    "cas": 0,
+    "cidx": 2
+   },
+   "source": {
+    "title": "Undergraduate Programme in Physics under UGCF-2022 (NEP), B.Sc. (Hons.) Physics, University of Delhi",
+    "note": "the practical list names these functions and methods"
+   }
+  },
+  {
+   "key": "triangle-a1",
+   "title": "Fourier coefficients of a triangle wave: a1",
+   "sample": "Ideal triangle wave, amplitude 1",
+   "unknown": "the coefficient a1",
+   "params": {
+    "cas": 1,
+    "cidx": 0
+   },
+   "source": {
+    "title": "Undergraduate Programme in Physics under UGCF-2022 (NEP), B.Sc. (Hons.) Physics, University of Delhi",
+    "note": "the practical list names these functions and methods"
+   }
+  },
+  {
+   "key": "triangle-a5",
+   "title": "Fourier coefficients of a triangle wave: a5",
+   "sample": "Ideal triangle wave, amplitude 1",
+   "unknown": "the coefficient a5",
+   "params": {
+    "cas": 1,
+    "cidx": 2
+   },
+   "source": {
+    "title": "Undergraduate Programme in Physics under UGCF-2022 (NEP), B.Sc. (Hons.) Physics, University of Delhi",
+    "note": "the practical list names these functions and methods"
+   }
+  },
+  {
+   "key": "halfwave-mean",
+   "title": "Fourier coefficients of a half-wave rectified sine: mean",
+   "sample": "Ideal half-wave rectified sine, amplitude 1",
+   "unknown": "the coefficient mean",
+   "params": {
+    "cas": 2,
+    "cidx": 0
+   },
+   "source": {
+    "title": "Undergraduate Programme in Physics under UGCF-2022 (NEP), B.Sc. (Hons.) Physics, University of Delhi",
+    "note": "the practical list names these functions and methods"
+   }
+  },
+  {
+   "key": "halfwave-a2",
+   "title": "Fourier coefficients of a half-wave rectified sine: a2",
+   "sample": "Ideal half-wave rectified sine, amplitude 1",
+   "unknown": "the coefficient a2",
+   "params": {
+    "cas": 2,
+    "cidx": 2
+   },
+   "source": {
+    "title": "Undergraduate Programme in Physics under UGCF-2022 (NEP), B.Sc. (Hons.) Physics, University of Delhi",
+    "note": "the practical list names these functions and methods"
+   }
+  },
+  {
+   "key": "fullwave-mean",
+   "title": "Fourier coefficients of a full-wave rectified sine: mean",
+   "sample": "Ideal full-wave rectified sine, amplitude 1",
+   "unknown": "the coefficient mean",
+   "params": {
+    "cas": 3,
+    "cidx": 0
+   },
+   "source": {
+    "title": "Undergraduate Programme in Physics under UGCF-2022 (NEP), B.Sc. (Hons.) Physics, University of Delhi",
+    "note": "the practical list names these functions and methods"
+   }
+  },
+  {
+   "key": "fullwave-a4",
+   "title": "Fourier coefficients of a full-wave rectified sine: a4",
+   "sample": "Ideal full-wave rectified sine, amplitude 1",
+   "unknown": "the coefficient a4",
+   "params": {
+    "cas": 3,
+    "cidx": 2
+   },
+   "source": {
+    "title": "Undergraduate Programme in Physics under UGCF-2022 (NEP), B.Sc. (Hons.) Physics, University of Delhi",
+    "note": "the practical list names these functions and methods"
+   }
+  }
+ ]
+}

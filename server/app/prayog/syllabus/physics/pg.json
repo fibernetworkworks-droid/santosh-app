@@ -81,7 +81,8 @@
       "D1-D2 separation"
      ],
      "conditions": [],
-     "kernel": "michelson"
+     "kernel": "michelson",
+     "built": "michelson-wavelength"
     },
     {
      "id": "michelson-thin-plate-index",
@@ -102,7 +103,8 @@
       "thickness"
      ],
      "conditions": [],
-     "kernel": "michelson"
+     "kernel": "michelson",
+     "built": "michelson-plate-index"
     },
     {
      "id": "mach-zehnder",
@@ -119,7 +121,8 @@
       "refractive index of air vs pressure"
      ],
      "conditions": [],
-     "kernel": "michelson"
+     "kernel": "michelson",
+     "built": "mach-zehnder"
     },
     {
      "id": "jamin-air-index",
@@ -138,7 +141,8 @@
       "n-1 vs pressure slope"
      ],
      "conditions": [],
-     "kernel": "michelson"
+     "kernel": "michelson",
+     "built": "jamin-air-index"
     },
     {
      "id": "fabry-perot-hyperfine",
@@ -234,7 +238,8 @@
       "acceptance angle"
      ],
      "conditions": [],
-     "kernel": "fibre_na"
+     "kernel": "fibre_na",
+     "built": "fibre-numerical-aperture"
     },
     {
      "id": "fibre-bending-loss",
@@ -273,7 +278,8 @@
       "divergence"
      ],
      "conditions": [],
-     "kernel": "gaussian_beam"
+     "kernel": "gaussian_beam",
+     "built": "laser-beam-profile"
     },
     {
      "id": "malus-law",
@@ -291,7 +297,8 @@
       "extinction ratio"
      ],
      "conditions": [],
-     "kernel": "malus"
+     "kernel": "malus",
+     "built": "polaroid-polarisation"
     },
     {
      "id": "brewster-angle",
@@ -310,7 +317,8 @@
       "refractive index"
      ],
      "conditions": [],
-     "kernel": "brewster"
+     "kernel": "brewster",
+     "built": "brewster-angle"
     },
     {
      "id": "elliptical-polarisation",
@@ -650,7 +658,8 @@
       "room temperature",
       "heated cell"
      ],
-     "kernel": "morse_bands"
+     "kernel": "morse_bands",
+     "built": "iodine-absorption"
     },
     {
      "id": "alo-band-spectrum",
@@ -687,7 +696,8 @@
       "molar absorptivity (Beer-Lambert)"
      ],
      "conditions": [],
-     "kernel": "beer_lambert"
+     "kernel": "beer_lambert",
+     "built": "uv-vis-electronic"
     },
     {
      "id": "ir-vibrational",
@@ -708,7 +718,8 @@
       "force constant"
      ],
      "conditions": [],
-     "kernel": "ir_vib"
+     "kernel": "ir_vib",
+     "built": "ir-vibrational"
     },
     {
      "id": "hcl-rovibrational",
@@ -728,7 +739,8 @@
       "isotope shift H35Cl / H37Cl"
      ],
      "conditions": [],
-     "kernel": "rovib"
+     "kernel": "rovib",
+     "built": "hcl-rovibrational"
     },
     {
      "id": "band-spectrum-liquid",
@@ -766,7 +778,8 @@
       "temperature from Stokes / anti-Stokes ratio"
      ],
      "conditions": [],
-     "kernel": "raman"
+     "kernel": "raman",
+     "built": "laser-raman"
     },
     {
      "id": "fluorescence-spectra",
@@ -785,7 +798,8 @@
       "Stokes shift"
      ],
      "conditions": [],
-     "kernel": "fluorescence"
+     "kernel": "fluorescence",
+     "built": "fluorescence-spectra"
     },
     {
      "id": "uranyl-fluorescence",
@@ -824,7 +838,8 @@
       "room temperature",
       "cooled sample"
      ],
-     "kernel": "exp_decay"
+     "kernel": "exp_decay",
+     "built": "pl-lifetime"
     },
     {
      "id": "thermoluminescence",
@@ -847,7 +862,8 @@
       "frequency factor"
      ],
      "conditions": [],
-     "kernel": "glow_curve"
+     "kernel": "glow_curve",
+     "built": "thermoluminescence"
     },
     {
      "id": "solids-absorption-reflection",
@@ -869,7 +885,8 @@
       "absorption coefficient"
      ],
      "conditions": [],
-     "kernel": "tauc"
+     "kernel": "tauc",
+     "built": "solids-absorption-reflection"
     },
     {
      "id": "low-t-optical-spectra",
@@ -890,7 +907,8 @@
       "300 K",
       "77 K"
      ],
-     "kernel": "varshni"
+     "kernel": "varshni",
+     "built": "low-t-optical-spectra"
     },
     {
      "id": "thin-film-ellipsometry",
@@ -971,7 +989,8 @@
      "conditions": [
       "several oven temperatures (Hg)"
      ],
-     "kernel": "franck_hertz"
+     "kernel": "franck_hertz",
+     "built": "franck-hertz"
     }
    ]
   },
@@ -1031,7 +1050,8 @@
       "work function"
      ],
      "conditions": [],
-     "kernel": "photoelectric"
+     "kernel": "photoelectric",
+     "built": "photoelectric-planck"
     },
     {
      "id": "planck-solar-cell",
@@ -1130,7 +1150,8 @@
      "conditions": [
       "several RF frequencies"
      ],
-     "kernel": "esr"
+     "kernel": "esr",
+     "built": "phd-esr"
     },
     {
      "id": "nmr-cw",
@@ -1151,7 +1172,8 @@
      "conditions": [
       "several frequencies in 12-20 MHz"
      ],
-     "kernel": "nmr_cw"
+     "kernel": "nmr_cw",
+     "built": "phd-nmr-cw"
     }
    ]
   },
@@ -1176,7 +1198,8 @@
       "carrier type"
      ],
      "conditions": [],
-     "kernel": "hall"
+     "kernel": "hall",
+     "built": "hall-effect"
     },
     {
      "id": "hall-temperature",
@@ -1215,7 +1238,8 @@
       "mobility"
      ],
      "conditions": [],
-     "kernel": "magnetoresistance"
+     "kernel": "magnetoresistance",
+     "built": "magnetoresistance"
     },
     {
      "id": "four-probe-bandgap",
@@ -1236,7 +1260,8 @@
       "room temperature",
       "heated to about 420 K"
      ],
-     "kernel": "four_probe"
+     "kernel": "four_probe",
+     "built": "four-probe-band-gap"
     },
     {
      "id": "van-der-pauw",
@@ -1254,7 +1279,8 @@
       "resistivity"
      ],
      "conditions": [],
-     "kernel": "van_der_pauw"
+     "kernel": "van_der_pauw",
+     "built": "ph2-vdp-sheet"
     },
     {
      "id": "two-probe-conductivity",
@@ -1293,7 +1319,8 @@
       "temperature coefficient of resistance"
      ],
      "conditions": [],
-     "kernel": "metal_rt"
+     "kernel": "metal_rt",
+     "built": "metal-conductivity-t"
     },
     {
      "id": "ionic-conductivity",
@@ -1311,7 +1338,8 @@
       "intrinsic and extrinsic regions"
      ],
      "conditions": [],
-     "kernel": "arrhenius"
+     "kernel": "arrhenius",
+     "built": "ionic-conductivity"
     },
     {
      "id": "thermoelectric-power",
@@ -1330,7 +1358,8 @@
       "carrier type"
      ],
      "conditions": [],
-     "kernel": "seebeck"
+     "kernel": "seebeck",
+     "built": "thermoelectric-power"
     },
     {
      "id": "haynes-shockley",
@@ -1348,7 +1377,8 @@
       "minority carrier lifetime"
      ],
      "conditions": [],
-     "kernel": "haynes_shockley"
+     "kernel": "haynes_shockley",
+     "built": "ph2-haynes-shockley"
     },
     {
      "id": "pn-ideality-bandgap",
@@ -1408,7 +1438,8 @@
       "transition width"
      ],
      "conditions": [],
-     "kernel": "sc_rt"
+     "kernel": "sc_rt",
+     "built": "superconductor-rt"
     },
     {
      "id": "superconductor-ac-susceptibility",
@@ -1447,7 +1478,8 @@
      "conditions": [
       "several frequencies"
      ],
-     "kernel": "curie_weiss"
+     "kernel": "curie_weiss",
+     "built": "ferroelectric-curie"
     },
     {
      "id": "pe-hysteresis",
@@ -1470,7 +1502,8 @@
       "room temperature",
       "heated sample"
      ],
-     "kernel": "pe_loop"
+     "kernel": "pe_loop",
+     "built": "pe-hysteresis"
     },
     {
      "id": "bh-hysteresis",
@@ -1493,7 +1526,8 @@
       "hysteresis loss"
      ],
      "conditions": [],
-     "kernel": "bh_loop"
+     "kernel": "bh_loop",
+     "built": "bh-hysteresis"
     },
     {
      "id": "ferrite-curie",
@@ -1512,7 +1546,8 @@
       "Curie temperature"
      ],
      "conditions": [],
-     "kernel": "curie_weiss"
+     "kernel": "curie_weiss",
+     "built": "ferrite-curie"
     },
     {
      "id": "liquid-crystal-transition",
@@ -1532,7 +1567,8 @@
       "nematic-isotropic transition temperature"
      ],
      "conditions": [],
-     "kernel": "lc_transition"
+     "kernel": "lc_transition",
+     "built": "liquid-crystal-transition"
     },
     {
      "id": "quincke-susceptibility",
@@ -1553,7 +1589,8 @@
      "conditions": [
       "several concentrations"
      ],
-     "kernel": "quincke"
+     "kernel": "quincke",
+     "built": "quincke-susceptibility"
     },
     {
      "id": "dielectric-lcr",
@@ -1576,7 +1613,8 @@
       "frequency sweep",
       "temperature sweep"
      ],
-     "kernel": "dielectric"
+     "kernel": "dielectric",
+     "built": "dielectric-lcr"
     },
     {
      "id": "xrd-powder-photograph",
@@ -1597,7 +1635,8 @@
       "lattice parameter"
      ],
      "conditions": [],
-     "kernel": "bragg_powder"
+     "kernel": "bragg_powder",
+     "built": "xrd-powder-photograph"
     },
     {
      "id": "xrd-size-strain",
@@ -1620,7 +1659,8 @@
       "lattice parameter"
      ],
      "conditions": [],
-     "kernel": "bragg_powder"
+     "kernel": "bragg_powder",
+     "built": "xrd-size-strain"
     },
     {
      "id": "lattice-dynamics-kit",
@@ -1661,7 +1701,8 @@
      "conditions": [
       "several temperatures"
      ],
-     "kernel": "ultrasonic"
+     "kernel": "ultrasonic",
+     "built": "ultrasonic-interferometer"
     },
     {
      "id": "pulse-echo-solids",
@@ -1797,7 +1838,8 @@
       "ultimate pressure"
      ],
      "conditions": [],
-     "kernel": "pumpdown"
+     "kernel": "pumpdown",
+     "built": "gaede-vacuum-pump"
     },
     {
      "id": "vacuum-gauges",
@@ -1818,7 +1860,8 @@
       "leak rate"
      ],
      "conditions": [],
-     "kernel": "pumpdown"
+     "kernel": "pumpdown",
+     "built": "vacuum-gauges"
     },
     {
      "id": "high-pressure",
@@ -1878,7 +1921,8 @@
      "conditions": [
       "several pressures"
      ],
-     "kernel": "langmuir"
+     "kernel": "langmuir",
+     "built": "plasma-glow-discharge"
     }
    ]
   },
@@ -2226,7 +2270,8 @@
       "coercivity"
      ],
      "conditions": [],
-     "kernel": "mh_loop"
+     "kernel": "mh_loop",
+     "built": "vsm-magnetisation"
     },
     {
      "id": "xps-edax-stoichiometry",
@@ -2264,7 +2309,8 @@
       "coercive field"
      ],
      "conditions": [],
-     "kernel": "pe_loop"
+     "kernel": "pe_loop",
+     "built": "nano-ferroelectric"
     },
     {
      "id": "gas-sensor",
@@ -2340,7 +2386,8 @@
       "resistivity"
      ],
      "conditions": [],
-     "kernel": "four_probe"
+     "kernel": "four_probe",
+     "built": "ph2-fpp-film"
     },
     {
      "id": "solar-simulator",
@@ -2362,7 +2409,8 @@
      "conditions": [
       "several intensities"
      ],
-     "kernel": "solar_cell"
+     "kernel": "solar_cell",
+     "built": "ph2-solar-cell"
     },
     {
      "id": "compton-profile",
@@ -2602,7 +2650,8 @@
       "minimum gain"
      ],
      "conditions": [],
-     "kernel": "oscillator"
+     "kernel": "oscillator",
+     "built": "msc-rc-phase-shift"
     },
     {
      "id": "wien-bridge-osc",
@@ -2619,7 +2668,8 @@
       "amplitude stability"
      ],
      "conditions": [],
-     "kernel": "oscillator"
+     "kernel": "oscillator",
+     "built": "msc-wien-bridge"
     },
     {
      "id": "crystal-osc",
@@ -2652,7 +2702,8 @@
       "frequency vs tank values"
      ],
      "conditions": [],
-     "kernel": "oscillator"
+     "kernel": "oscillator",
+     "built": "msc-colpitts"
     },
     {
      "id": "hartley-osc",
@@ -2668,7 +2719,8 @@
       "frequency vs tank values"
      ],
      "conditions": [],
-     "kernel": "oscillator"
+     "kernel": "oscillator",
+     "built": "msc-hartley"
     },
     {
      "id": "rf-oscillator",
@@ -2683,7 +2735,8 @@
       "output amplitude"
      ],
      "conditions": [],
-     "kernel": "oscillator"
+     "kernel": "oscillator",
+     "built": "msc-rf-oscillator"
     },
     {
      "id": "opamp-parameters",
@@ -2786,7 +2839,8 @@
       "phase response"
      ],
      "conditions": [],
-     "kernel": "filter"
+     "kernel": "filter",
+     "built": "msc-active-filters"
     },
     {
      "id": "passive-filters",
@@ -3269,7 +3323,8 @@
       "frequency"
      ],
      "conditions": [],
-     "kernel": "klystron"
+     "kernel": "klystron",
+     "built": "msc-reflex-klystron"
     },
     {
      "id": "gunn-oscillator",
@@ -3285,7 +3340,8 @@
       "output power vs bias"
      ],
      "conditions": [],
-     "kernel": "gunn"
+     "kernel": "gunn",
+     "built": "msc-gunn-oscillator"
     },
     {
      "id": "microwave-bragg",
@@ -3325,7 +3381,8 @@
       "load impedance"
      ],
      "conditions": [],
-     "kernel": "waveguide"
+     "kernel": "waveguide",
+     "built": "msc-microwave-vswr"
     },
     {
      "id": "microwave-dielectric",
@@ -3343,7 +3400,8 @@
       "dielectric constant"
      ],
      "conditions": [],
-     "kernel": "waveguide"
+     "kernel": "waveguide",
+     "built": "msc-microwave-dielectric"
     },
     {
      "id": "horn-antenna-pattern",
@@ -3409,7 +3467,8 @@
       "low count rate",
       "high count rate"
      ],
-     "kernel": "poisson"
+     "kernel": "poisson",
+     "built": "msc-gm-poisson"
     },
     {
      "id": "gm-efficiency",
@@ -3470,7 +3529,8 @@
       "Cs-137 (662 keV)",
       "Co-60 (1.17 / 1.33 MeV)"
      ],
-     "kernel": "attenuation"
+     "kernel": "attenuation",
+     "built": "gamma-attenuation"
     },
     {
      "id": "nai-calibration-resolution",
@@ -3491,7 +3551,8 @@
       "unknown gamma energy"
      ],
      "conditions": [],
-     "kernel": "gamma_spectrum"
+     "kernel": "gamma_spectrum",
+     "built": "msc-nai-calibration"
     },
     {
      "id": "nai-efficiency",
@@ -3511,7 +3572,8 @@
      "conditions": [
       "several source distances"
      ],
-     "kernel": "gamma_spectrum"
+     "kernel": "gamma_spectrum",
+     "built": "msc-nai-efficiency"
     },
     {
      "id": "scintillator-comparison",
@@ -3531,7 +3593,8 @@
       "efficiency"
      ],
      "conditions": [],
-     "kernel": "gamma_spectrum"
+     "kernel": "gamma_spectrum",
+     "built": "msc-scintillator-comparison"
     },
     {
      "id": "beta-spectroscopy-kurie",
@@ -3572,7 +3635,8 @@
       "total cross-section"
      ],
      "conditions": [],
-     "kernel": "compton"
+     "kernel": "compton",
+     "built": "ph3-compton-angular"
     },
     {
      "id": "alpha-surface-barrier",
@@ -3593,7 +3657,8 @@
      "conditions": [
       "several chamber pressures"
      ],
-     "kernel": "alpha_stopping"
+     "kernel": "alpha_stopping",
+     "built": "ph3-alpha"
     },
     {
      "id": "proportional-counter-xray",
@@ -3682,7 +3747,8 @@
       "half-life"
      ],
      "conditions": [],
-     "kernel": "decay"
+     "kernel": "decay",
+     "built": "msc-short-lived-lifetime"
     },
     {
      "id": "pulse-processing-coincidence",
@@ -3700,7 +3766,8 @@
       "coincidence rate"
      ],
      "conditions": [],
-     "kernel": "coincidence"
+     "kernel": "coincidence",
+     "built": "ph3-pulse-coincidence"
     },
     {
      "id": "fast-scintillator-timing",
@@ -3738,7 +3805,8 @@
       "resolving time"
      ],
      "conditions": [],
-     "kernel": "coincidence"
+     "kernel": "coincidence",
+     "built": "ph3-coincidence"
     },
     {
      "id": "gamma-angular-correlation",
@@ -3825,7 +3893,8 @@
       "isotope identification"
      ],
      "conditions": [],
-     "kernel": "gamma_spectrum"
+     "kernel": "gamma_spectrum",
+     "built": "msc-hpge-spectra"
     }
    ]
   },
@@ -3848,7 +3917,8 @@
       "error estimate"
      ],
      "conditions": [],
-     "kernel": "numerics"
+     "kernel": "numerics",
+     "built": "cr-interpolation"
     },
     {
      "id": "finite-difference-pde",
@@ -3869,7 +3939,8 @@
       "stability limit"
      ],
      "conditions": [],
-     "kernel": "fd_pde"
+     "kernel": "fd_pde",
+     "built": "cr-finite-difference-pde"
     },
     {
      "id": "finite-element-intro",
@@ -3885,7 +3956,8 @@
       "solution vs mesh size"
      ],
      "conditions": [],
-     "kernel": "fem1d"
+     "kernel": "fem1d",
+     "built": "cr-finite-element-intro"
     },
     {
      "id": "least-squares-fit",
@@ -3905,7 +3977,8 @@
       "chi-square"
      ],
      "conditions": [],
-     "kernel": "fit"
+     "kernel": "fit",
+     "built": "cr-least-squares-fit"
     },
     {
      "id": "maximum-likelihood",
@@ -3923,7 +3996,8 @@
       "goodness of fit"
      ],
      "conditions": [],
-     "kernel": "fit"
+     "kernel": "fit",
+     "built": "cr-maximum-likelihood"
     },
     {
      "id": "random-deviates",
@@ -3944,7 +4018,8 @@
       "histogram vs target"
      ],
      "conditions": [],
-     "kernel": "mc"
+     "kernel": "mc",
+     "built": "cr-random-deviates"
     },
     {
      "id": "random-walk",
@@ -3963,7 +4038,8 @@
       "2D",
       "3D"
      ],
-     "kernel": "random_walk"
+     "kernel": "random_walk",
+     "built": "cr-random-walk"
     },
     {
      "id": "mc-decay-chain",
@@ -3981,7 +4057,8 @@
       "secular equilibrium"
      ],
      "conditions": [],
-     "kernel": "decay"
+     "kernel": "decay",
+     "built": "cr-mc-decay-chain"
     },
     {
      "id": "mc-two-level-spin",
@@ -3996,7 +4073,8 @@
       "specific heat"
      ],
      "conditions": [],
-     "kernel": "ising"
+     "kernel": "ising",
+     "built": "cr-mc-two-level-spin"
     },
     {
      "id": "mc-ising-msc",
@@ -4016,7 +4094,8 @@
       "1D lattice",
       "2D lattice"
      ],
-     "kernel": "ising"
+     "kernel": "ising",
+     "built": "cr-mc-ising"
     },
     {
      "id": "mc-integration",
@@ -4035,7 +4114,8 @@
       "error vs N"
      ],
      "conditions": [],
-     "kernel": "mc"
+     "kernel": "mc",
+     "built": "cr-mc-integration"
     },
     {
      "id": "mc-scattering-toy",
@@ -4049,7 +4129,8 @@
       "angular distribution"
      ],
      "conditions": [],
-     "kernel": "mc"
+     "kernel": "mc",
+     "built": "cr-mc-scattering"
     },
     {
      "id": "polynomial-roots",
@@ -4068,7 +4149,8 @@
       "convergence"
      ],
      "conditions": [],
-     "kernel": "numerics"
+     "kernel": "numerics",
+     "built": "cr-polynomial-roots"
     },
     {
      "id": "dft-band-structure",

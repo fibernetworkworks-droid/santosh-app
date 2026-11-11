@@ -1,0 +1,47 @@
+{
+ "base": "phd-sc-tc",
+ "chapter": "Low temperature and superconductivity",
+ "rig": "phd-cryostat-insert",
+ "variants": [
+  {
+   "key": "niobium-film",
+   "title": "Superconductor Tc by four-probe: a niobium-type film (illustrative)",
+   "sample": "Niobium-type film, Tc about 9 K (unsourced / illustrative)",
+   "method": "four-probe R against T, zero field and applied field",
+   "unknown": "Tc and the residual resistance ratio",
+   "params": {
+    "Tc0": 9.2,
+    "Bc2": 0.4,
+    "w": 0.04,
+    "Rres": 0.004,
+    "a": 5e-05,
+    "I": 0.001
+   },
+   "note": "A low-Tc metal film: the transition is sharp (0.04 K) and a field of 0.1 T already moves Tc by a fraction of a kelvin. Tc, Bc2 and the shape are illustrative.",
+   "source": {
+    "title": "Unsourced / illustrative sample constants",
+    "note": "Tc about 9 K is the order of magnitude for niobium; the exact numbers here are chosen for the lab, not looked up."
+   }
+  },
+  {
+   "key": "lead-sample",
+   "title": "Superconductor Tc by four-probe: a lead-type sample (illustrative)",
+   "sample": "Lead-type sample, Tc about 7 K (unsourced / illustrative)",
+   "method": "four-probe R against T, zero field and applied field",
+   "unknown": "Tc and the residual resistance ratio",
+   "params": {
+    "Tc0": 7.2,
+    "Bc2": 0.08,
+    "w": 0.02,
+    "Rres": 0.002,
+    "a": 3e-05,
+    "I": 0.001
+   },
+   "note": "A soft type-I metal: a very sharp transition (0.02 K) that a field of tens of millitesla suppresses. Values are illustrative.",
+   "source": {
+    "title": "Unsourced / illustrative sample constants",
+    "note": "Tc about 7 K is the order of magnitude for lead; the numbers here are chosen for the lab, not looked up."
+   }
+  }
+ ]
+}

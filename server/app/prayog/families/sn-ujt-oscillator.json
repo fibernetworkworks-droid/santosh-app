@@ -1,0 +1,35 @@
+{
+ "base": "sn-ujt-oscillator",
+ "rig": "sn-scope-bench",
+ "chapter": "Analog electronics and devices",
+ "variants": [
+  {
+   "key": "eta-056",
+   "title": "UJT relaxation oscillator with a low stand-off ratio (0.56)",
+   "sample": "UJT with eta = 0.56, the low end of the 2N2646 range",
+   "unknown": "the intrinsic stand-off ratio from the peak voltage",
+   "params": {
+    "eta": 0.56
+   },
+   "note": "A lower stand-off ratio fires earlier on the capacitor's rise, so the peak is lower and the period shorter. The 0.56 to 0.75 range is recalled for the 2N2646, not looked up (unsourced).",
+   "source": {
+    "title": "2N2646 intrinsic stand-off ratio range 0.56 to 0.75: recalled, verify against the datasheet",
+    "note": "Unsourced / illustrative lab setting"
+   }
+  },
+  {
+   "key": "eta-075",
+   "title": "UJT relaxation oscillator with a high stand-off ratio (0.75)",
+   "sample": "UJT with eta = 0.75, the high end of the 2N2646 range",
+   "unknown": "the intrinsic stand-off ratio from the peak voltage",
+   "params": {
+    "eta": 0.75
+   },
+   "note": "A higher stand-off ratio makes the capacitor climb further before firing, so the peak is higher and the period longer (unsourced range, as above).",
+   "source": {
+    "title": "2N2646 intrinsic stand-off ratio range 0.56 to 0.75: recalled, verify against the datasheet",
+    "note": "Unsourced / illustrative lab setting"
+   }
+  }
+ ]
+}

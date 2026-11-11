@@ -1,0 +1,36 @@
+{
+ "base": "phd-nmr-cw",
+ "chapter": "Magnetic resonance and hyperfine methods",
+ "rig": "phd-resonance-bench",
+ "variants": [
+  {
+   "key": "ptfe-19f",
+   "title": "Continuous-wave NMR of fluorine-19 in PTFE (illustrative line width)",
+   "sample": "PTFE (19F), gamma = 0.941 x proton (Xi from memory; unsourced / illustrative)",
+   "method": "fixed RF frequency, field sweep, lock-in derivative",
+   "unknown": "gyromagnetic ratio and nuclear g-factor",
+   "params": {
+    "gamma": 251720000.0,
+    "dB": 0.0004
+   },
+   "note": "Fluorine-19 resonates at 94 % of the proton field-frequency ratio and a solid sample has a broader line than a liquid.",
+   "source": {
+    "title": "IUPAC NMR frequency ratios (Xi); the 19F value is quoted from memory (unsourced / illustrative)"
+   }
+  },
+  {
+   "key": "water-cu",
+   "title": "CW NMR of protons in water with a paramagnetic salt",
+   "sample": "Water with a paramagnetic salt (1H), broad line (unsourced / illustrative)",
+   "method": "fixed RF frequency, field sweep, lock-in derivative",
+   "unknown": "gyromagnetic ratio and nuclear g-factor",
+   "params": {
+    "dB": 0.0003
+   },
+   "note": "The salt shortens relaxation and broadens the line; the resonance field is unchanged.",
+   "source": {
+    "title": "Slichter, Principles of Magnetic Resonance; CODATA proton gamma"
+   }
+  }
+ ]
+}

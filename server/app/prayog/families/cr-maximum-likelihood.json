@@ -1,0 +1,48 @@
+{
+ "base": "cr-maximum-likelihood",
+ "rig": "comp3-workstation",
+ "chapter": "Computational physics",
+ "variants": [
+  {
+   "key": "gaussian-width",
+   "title": "Maximum likelihood: the width of a Gaussian",
+   "sample": "Gaussian, mean 10, sigma 2",
+   "unknown": "sigma",
+   "params": {
+    "cas": 1
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   },
+   "note": "The ML variance divides by N, not N - 1."
+  },
+  {
+   "key": "exponential-lifetime",
+   "title": "Maximum likelihood: an exponential lifetime",
+   "sample": "exponential waiting times, mean 2.2 (arbitrary units)",
+   "unknown": "mean lifetime tau",
+   "params": {
+    "cas": 2
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   }
+  },
+  {
+   "key": "poisson-large-mean",
+   "title": "Maximum likelihood: a Poisson mean of 25",
+   "sample": "Poisson counts, mean 25",
+   "unknown": "lambda",
+   "params": {
+    "lam": 25.0
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   },
+   "note": "At large mean the Poisson law is nearly Gaussian."
+  }
+ ]
+}

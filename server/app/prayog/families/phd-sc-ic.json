@@ -1,0 +1,31 @@
+{
+ "base": "phd-sc-ic",
+ "chapter": "Low temperature and superconductivity",
+ "rig": "phd-cryostat-insert",
+ "variants": [
+  {
+   "key": "nbti-wire",
+   "title": "Critical current of a wire: an NbTi-type wire in a field (illustrative)",
+   "sample": "NbTi-type wire, Tc about 9.5 K (unsourced / illustrative)",
+   "method": "transport I-V with the 1 uV/cm criterion",
+   "unknown": "critical current Ic, Jc against temperature and field",
+   "params": {
+    "I": 60.0,
+    "T": 4.2,
+    "B": 0.0,
+    "Tc": 9.5,
+    "Ic0": 260.0,
+    "B0": 3.0,
+    "n": 40.0,
+    "Lv": 0.002,
+    "Ec": 0.0001,
+    "area": 3e-07
+   },
+   "note": "A magnet-wire style sample: tens of amperes, a much sharper transition (n = 40) and a field scale of a few tesla. The constants are illustrative.",
+   "source": {
+    "title": "Unsourced / illustrative sample constants",
+    "note": "the wire's Tc, Ic0, field scale and cross-section are chosen for the lab, not looked up."
+   }
+  }
+ ]
+}

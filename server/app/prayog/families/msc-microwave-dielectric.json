@@ -1,0 +1,33 @@
+{
+ "base": "msc-microwave-dielectric",
+ "rig": "msc-microwave-bench",
+ "chapter": "Microwaves",
+ "variants": [
+  {
+   "key": "ptfe",
+   "title": "Dielectric constant of PTFE by the slab-shift method",
+   "sample": "PTFE (Teflon) slab, 4 mm",
+   "unknown": "the dielectric constant of PTFE at 9.5 GHz",
+   "params": {
+    "er": 2.08
+   },
+   "note": "PTFE has one of the lowest permittivities of any solid and almost no loss.",
+   "source": {
+    "title": "A. R. von Hippel, Dielectric Materials and Applications: Teflon, relative permittivity 2.08 at 10 GHz"
+   }
+  },
+  {
+   "key": "silica",
+   "title": "Dielectric constant of fused silica glass by the slab-shift method",
+   "sample": "Fused silica (quartz glass) slab, 4 mm",
+   "unknown": "the dielectric constant of fused silica at 9.5 GHz",
+   "params": {
+    "er": 3.78
+   },
+   "note": "A 4 mm slab keeps beta_d l below pi/2 so the equation has one root.",
+   "source": {
+    "title": "A. R. von Hippel, Dielectric Materials and Applications: fused quartz, relative permittivity 3.78 at 10 GHz"
+   }
+  }
+ ]
+}

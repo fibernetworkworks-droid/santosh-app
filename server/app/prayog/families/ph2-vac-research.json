@@ -1,0 +1,59 @@
+{
+ "base": "ph2-vac-research",
+ "rig": "ph2-film-chamber",
+ "chapter": "Thin films and vacuum",
+ "grid": {
+  "title": "High-vacuum system: {pump}, {line}",
+  "sample": "Stainless-steel chamber, 50 litres",
+  "method": "{pump}",
+  "unknown": "the pumping speed, the conductance of {line}, the leak rate and the outgassing rate",
+  "axes": {
+   "pump": [
+    {
+     "key": "turbo",
+     "label": "rotary + turbomolecular pump",
+     "params": {
+      "Sp": 0.2
+     },
+     "note": "Pump speed 200 L/s is an illustrative nameplate value (unsourced).",
+     "source": {
+      "title": "Turbomolecular pump speed 200 L/s (illustrative nameplate value)",
+      "note": "unsourced / illustrative: handbook value entered from memory, not re-checked in this build"
+     }
+    },
+    {
+     "key": "diffusion",
+     "label": "rotary + diffusion pump",
+     "params": {
+      "Sp": 0.4
+     },
+     "note": "Pump speed 400 L/s is an illustrative nameplate value (unsourced).",
+     "source": {
+      "title": "Diffusion pump speed 400 L/s (illustrative nameplate value)",
+      "note": "unsourced / illustrative: handbook value entered from memory, not re-checked in this build"
+     }
+    }
+   ],
+   "line": [
+    {
+     "key": "b40",
+     "label": "a 40 mm bore pipe",
+     "params": {
+      "dt": 0.04,
+      "Lt": 0.3
+     },
+     "note": "Pipe 40 mm bore, 0.30 m long (illustrative dimensions)."
+    },
+    {
+     "key": "b32",
+     "label": "a 32 mm bore pipe",
+     "params": {
+      "dt": 0.032,
+      "Lt": 0.3
+     },
+     "note": "Pipe 32 mm bore, 0.30 m long (illustrative dimensions)."
+    }
+   ]
+  }
+ }
+}

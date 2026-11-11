@@ -1,0 +1,112 @@
+{
+ "base": "zener-shunt-regulator",
+ "rig": "elec-ug-bench",
+ "chapter": "Analog electronics and devices",
+ "variants": [
+  {
+   "key": "1n4733a-1k",
+   "title": "Zener regulator: 1N4733A (5.1 V) with a 1 kilohm load",
+   "sample": "1N4733A, 5.1 V 1 W Zener diode",
+   "unknown": "the line regulation of the 5.1 V regulator",
+   "params": {
+    "Vz": 5.1,
+    "Rz": 7.0,
+    "Rs": 220.0,
+    "RL": 1000.0
+   },
+   "note": "The nominal Zener voltage and the dynamic impedance Z_ZT are both printed in the 1N47xxA table.",
+   "source": {
+    "title": "ON Semiconductor 1N4728A-1N4764A Zener diode datasheet: 1N4733A V_Z = 5.1 V nominal, Z_ZT = 7 ohm at I_ZT = 49 mA"
+   },
+   "check": {
+    "params": {
+     "Vin": 11.1
+    }
+   }
+  },
+  {
+   "key": "1n4733a-470",
+   "title": "Zener regulator: 1N4733A (5.1 V) with a heavier 470 ohm load",
+   "sample": "1N4733A, 5.1 V 1 W Zener diode",
+   "unknown": "the line regulation under a heavier load",
+   "params": {
+    "Vz": 5.1,
+    "Rz": 7.0,
+    "Rs": 120.0,
+    "RL": 470.0
+   },
+   "note": "A heavier load takes more of what the series resistor passes, so R_S has to be smaller to leave the diode in breakdown. That is load regulation seen from the design side.",
+   "source": {
+    "title": "ON Semiconductor 1N4728A-1N4764A Zener diode datasheet: 1N4733A V_Z = 5.1 V nominal, Z_ZT = 7 ohm at I_ZT = 49 mA"
+   },
+   "check": {
+    "params": {
+     "Vin": 11.1
+    }
+   }
+  },
+  {
+   "key": "1n4735a-1k",
+   "title": "Zener regulator: 1N4735A (6.2 V) with a 1 kilohm load",
+   "sample": "1N4735A, 6.2 V 1 W Zener diode",
+   "unknown": "the line regulation of the 6.2 V regulator",
+   "params": {
+    "Vz": 6.2,
+    "Rz": 2.0,
+    "Rs": 220.0,
+    "RL": 1000.0
+   },
+   "note": "Near 6 V a Zener diode has its lowest dynamic impedance, where avalanche and Zener breakdown overlap; the datasheet's 2 ohm is the smallest in the whole series.",
+   "source": {
+    "title": "ON Semiconductor 1N4728A-1N4764A Zener diode datasheet: 1N4735A V_Z = 6.2 V nominal, Z_ZT = 2 ohm at I_ZT = 41 mA"
+   },
+   "check": {
+    "params": {
+     "Vin": 12.2
+    }
+   }
+  },
+  {
+   "key": "1n4740a-1k",
+   "title": "Zener regulator: 1N4740A (10 V) with a 1 kilohm load",
+   "sample": "1N4740A, 10 V 1 W Zener diode",
+   "unknown": "the line regulation of the 10 V regulator",
+   "params": {
+    "Vz": 10.0,
+    "Rz": 7.0,
+    "Rs": 180.0,
+    "RL": 1000.0
+   },
+   "note": "A higher Zener voltage needs a higher input before the diode breaks down at all.",
+   "source": {
+    "title": "ON Semiconductor 1N4728A-1N4764A Zener diode datasheet: 1N4740A V_Z = 10 V nominal, Z_ZT = 7 ohm at I_ZT = 25 mA"
+   },
+   "check": {
+    "params": {
+     "Vin": 16.0
+    }
+   }
+  },
+  {
+   "key": "1n4742a-2k2",
+   "title": "Zener regulator: 1N4742A (12 V) with a 2.2 kilohm load",
+   "sample": "1N4742A, 12 V 1 W Zener diode",
+   "unknown": "the line regulation of the 12 V regulator",
+   "params": {
+    "Vz": 12.0,
+    "Rz": 9.0,
+    "Rs": 330.0,
+    "RL": 2200.0
+   },
+   "note": "A light load leaves plenty of current for the diode, so this is the best-behaved of the set.",
+   "source": {
+    "title": "ON Semiconductor 1N4728A-1N4764A Zener diode datasheet: 1N4742A V_Z = 12 V nominal, Z_ZT = 9 ohm at I_ZT = 21 mA"
+   },
+   "check": {
+    "params": {
+     "Vin": 18.0
+    }
+   }
+  }
+ ]
+}

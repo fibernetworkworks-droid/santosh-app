@@ -1,0 +1,57 @@
+{
+ "base": "msc-scintillator-comparison",
+ "rig": "msc-gamma-spectrometer",
+ "chapter": "Nuclear physics",
+ "variants": [
+  {
+   "key": "csi",
+   "title": "Cs-137 with a CsI(Tl) scintillator",
+   "sample": "CsI(Tl) scintillator, 3 in x 3 in",
+   "unknown": "the energy resolution of CsI(Tl) at 662 keV",
+   "params": {
+    "R662": 0.08,
+    "pf662": 0.38,
+    "et662": 0.6,
+    "seed": 54
+   },
+   "note": "CsI(Tl) is denser than NaI(Tl) and brighter, but its light is red and matches a photomultiplier less well.",
+   "source": {
+    "title": "G. F. Knoll, Radiation Detection and Measurement, 4th ed.: typical energy resolution at 662 keV of scintillation detectors"
+   }
+  },
+  {
+   "key": "bgo",
+   "title": "Cs-137 with a BGO scintillator",
+   "sample": "BGO (Bi4Ge3O12) scintillator, 3 in x 3 in",
+   "unknown": "the energy resolution of BGO at 662 keV",
+   "params": {
+    "R662": 0.1,
+    "pf662": 0.55,
+    "et662": 0.8,
+    "seed": 55
+   },
+   "note": "BGO stops gamma rays best of the three (high Z, density 7.13 g/cm3) but yields a third as much light as NaI(Tl).",
+   "source": {
+    "title": "G. F. Knoll, Radiation Detection and Measurement, 4th ed.: typical energy resolution at 662 keV of scintillation detectors"
+   }
+  },
+  {
+   "key": "plastic",
+   "title": "Cs-137 with a plastic scintillator: the Compton edge",
+   "sample": "Plastic scintillator, 5 cm x 5 cm",
+   "method": "Compton edge",
+   "unknown": "the Compton edge energy of the 662 keV line",
+   "params": {
+    "task": 3,
+    "R662": 0.11,
+    "pf662": 0.0,
+    "et662": 0.3,
+    "seed": 56
+   },
+   "note": "Plastic is hydrogen and carbon: no photopeak, only the Compton continuum, which ends at the Compton edge.",
+   "source": {
+    "title": "G. F. Knoll, Radiation Detection and Measurement, 4th ed., ch. 2: Compton edge T_max = E 2a/(1+2a), a = E / 511 keV"
+   }
+  }
+ ]
+}

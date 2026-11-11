@@ -1,0 +1,67 @@
+{
+ "base": "dielectric-lcr",
+ "chapter": "Solid state and materials",
+ "variants": [
+  {
+   "key": "ptfe",
+   "title": "Dielectric constant of PTFE (Teflon)",
+   "sample": "PTFE (Teflon) disc",
+   "unknown": "dielectric constant of PTFE (Teflon)",
+   "note": "A non-polar solid: no relaxation inside the meter's range, so the dielectric constant is flat from 100 Hz to 1 MHz.",
+   "params": {
+    "es": 2.1,
+    "einf": 2.1,
+    "fr": 100000000000.0
+   },
+   "source": {
+    "title": "CRC Handbook of Chemistry and Physics, 'Permittivity (dielectric constant) of materials': PTFE 2.1, polystyrene 2.55, fused silica 3.78, Pyrex glass 4.6"
+   }
+  },
+  {
+   "key": "polystyrene",
+   "title": "Dielectric constant of polystyrene",
+   "sample": "polystyrene disc",
+   "unknown": "dielectric constant of polystyrene",
+   "note": "A non-polar solid: no relaxation inside the meter's range, so the dielectric constant is flat from 100 Hz to 1 MHz.",
+   "params": {
+    "es": 2.55,
+    "einf": 2.55,
+    "fr": 100000000000.0
+   },
+   "source": {
+    "title": "CRC Handbook of Chemistry and Physics, 'Permittivity (dielectric constant) of materials': PTFE 2.1, polystyrene 2.55, fused silica 3.78, Pyrex glass 4.6"
+   }
+  },
+  {
+   "key": "silica",
+   "title": "Dielectric constant of fused silica",
+   "sample": "fused silica disc",
+   "unknown": "dielectric constant of fused silica",
+   "note": "A non-polar solid: no relaxation inside the meter's range, so the dielectric constant is flat from 100 Hz to 1 MHz.",
+   "params": {
+    "es": 3.78,
+    "einf": 3.78,
+    "fr": 100000000000.0
+   },
+   "source": {
+    "title": "CRC Handbook of Chemistry and Physics, 'Permittivity (dielectric constant) of materials': PTFE 2.1, polystyrene 2.55, fused silica 3.78, Pyrex glass 4.6"
+   }
+  },
+  {
+   "key": "pyrex",
+   "title": "Dielectric constant of Pyrex glass",
+   "sample": "Pyrex glass disc",
+   "unknown": "dielectric constant of Pyrex glass",
+   "note": "A non-polar solid: no relaxation inside the meter's range, so the dielectric constant is flat from 100 Hz to 1 MHz.",
+   "params": {
+    "es": 4.6,
+    "einf": 4.6,
+    "fr": 100000000000.0
+   },
+   "source": {
+    "title": "CRC Handbook of Chemistry and Physics, 'Permittivity (dielectric constant) of materials': PTFE 2.1, polystyrene 2.55, fused silica 3.78, Pyrex glass 4.6"
+   }
+  }
+ ],
+ "rig": "msc-sweep-bench"
+}

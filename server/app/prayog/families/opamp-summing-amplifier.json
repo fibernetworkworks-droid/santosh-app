@@ -1,0 +1,25 @@
+{"base": "opamp-summing-amplifier", "rig": "elec-ug-bench",
+ "chapter": "Analog electronics and devices",
+ "grid": {
+   "title": "Summing amplifier: {amp}, {gain}",
+   "unknown": "the gain of the sum",
+   "axes": {
+     "amp": [
+       {"key": "ua741", "label": "uA741", "sample": "uA741 operational amplifier, 8-pin DIL, supplies +-15 V",
+        "params": {"A0": 200000.0, "Vsat": 13.0},
+        "source": {"title": "Texas Instruments uA741 datasheet: large-signal voltage gain 200 V/mV typical, output voltage swing +-13 V typical at R_L = 2 kohm"}},
+       {"key": "lm358", "label": "LM358", "sample": "LM358 dual operational amplifier, 8-pin DIL",
+        "params": {"A0": 100000.0, "Vsat": 13.0},
+        "source": {"title": "Texas Instruments LM358 datasheet: large-signal voltage gain 100 V/mV typical"}}
+     ],
+     "gain": [
+       {"key": "unity", "label": "plain sum (R_f = R = 10 kilohm)",
+        "params": {"R1": 10000.0, "R2": 10000.0, "R3": 10000.0, "Rf": 10000.0},
+        "source": {"title": "IEC 60063 preferred values (E24 series) for all four resistors"}},
+       {"key": "x2", "label": "sum multiplied by 2.2 (R_f = 22 kilohm)",
+        "params": {"R1": 10000.0, "R2": 10000.0, "R3": 10000.0, "Rf": 22000.0},
+        "note": "The same summing node, scaled: the output is 2.2 times the sum of the inputs, inverted.",
+        "source": {"title": "IEC 60063 preferred values (E24 series) for all four resistors"}}
+     ]
+   }
+ }}
