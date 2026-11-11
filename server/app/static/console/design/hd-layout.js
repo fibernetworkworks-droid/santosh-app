@@ -144,8 +144,8 @@
     if (tc === 'title') return t.replace(/(^|[\s\-(\[{"'])(\S)/g, (m, a, b, i) => (i === 0 && !a && !wordStart ? m : a + b.toUpperCase()));
     return t;
   }
-  const CJK = /[⺀-鿿豈-﫿＀-￯]/;
-  function isSpace(ch) { return ch === ' ' || ch === '\t' || ch === '　'; }
+  const CJK = /[\u2E80-\u9FFF\uF900-\uFAFF\uFF00-\uFFEF]/;
+  function isSpace(ch) { return ch === ' ' || ch === '\t' || ch === '\u3000'; }
 
   /* style segments of [0, len): [{s, e, st}] sorted, covering everything */
   function segments(n, len, base) {
@@ -179,14 +179,20 @@
   /* textLayout(node) -> {w, h, cw, ch, lines:[{x, y, w, h, base, text, segs:[{x, w, text, st}]}], lineHeight}
      w / h = the size the node should have under its autoResize; cw / ch = the size of the words themselves.
      Positions are relative to the node's own box. opts.sizeH / sizeV = 'fixed' forces that axis to the box. */
-  function textLayout(n, opts) {
+  /* does a text size itself on this axis? (a text told to fill its auto layout parent wraps at the width it is given) */
+  function textAuto(n, axisH) {
+    const ar = G(n, 'autoResize') || 'wh';
+    if (G(n, axisH ? 'sizeH' : 'sizeV') === 'fill') return false;
+    return axisH ? ar === 'wh' : ar !== 'none';
+  }
+  function textLayout(n) {
     const chars = String(G(n, 'chars') === undefined || G(n, 'chars') === null ? '' : G(n, 'chars'));
     const base = baseStyle(n);
-    let mode = G(n, 'autoResize') || 'wh';
-    if (opts && opts.mode) mode = opts.mode;
+    const mode = G(n, 'autoResize') || 'wh';
+    const wAuto = textAuto(n, true), hAuto = textAuto(n, false);
     const boxW = W(n), boxH = num(n.h, 100);
-    const wrapW = mode === 'wh' ? Infinity : Math.max(0, boxW);
-    const key = layoutKey(n, chars, base, wrapW + ':' + mode + ':' + (mode === 'wh' ? 0 : boxW), mode === 'none' ? boxH : -1);
+    const wrapW = wAuto ? Infinity : Math.max(0, boxW);
+    const key = layoutKey(n, chars, base, wAuto ? 'auto' : boxW, hAuto ? -1 : boxH);
     const hit = layouts.get(key);
     if (hit) return hit;
     const segs = segments(n, chars.length, base);
@@ -225,7 +231,7 @@
         }
         let b = a + 1, ww = p.w;
         while (b < pieces.length && pieces[b].glue && !pieces[b].sp) { ww += pieces[b].w; b++; }
-        if (inkW > 0 && curW + ww > wrapW + EPS) { trimTail(cur); flush(false); continue; }
+        if (inkW > 0 && curW + ww > wrapW + EPS) { flush(false); continue; }
         if (ww > wrapW + EPS && wrapW > 0 && wrapW !== Infinity) {
           /* a word wider than the box: break it by characters */
           for (let q = a; q < b; q++) {
@@ -247,7 +253,6 @@
         curW += ww; inkW = curW;
         a = b;
       }
-      trimTail(cur, true);
       flush(true);
     }
     /* merge same-style neighbours, measure, place */
@@ -275,8 +280,8 @@
       out.push({x: 0, y: ch, w: lw, h: lh, base: ch + (lh - (asc + desc)) / 2 + asc, segs: merged, justify, text: merged.map(m => m.text).join('')});
       cw = Math.max(cw, lw); ch += lh;
     }
-    const wAuto = Math.ceil(cw - 0.001), hAuto = Math.round(ch * 100) / 100;
-    const w = mode === 'wh' ? wAuto : boxW, h = mode === 'none' ? boxH : hAuto;
+    const cwR = Math.ceil(cw - 0.001), chR = Math.round(ch * 100) / 100;
+    const w = wAuto ? cwR : boxW, h = hAuto ? chR : boxH;
     const dy = alignV === 'middle' ? (h - ch) / 2 : alignV === 'bottom' ? h - ch : 0;
     for (const L of out) {
       L.y += dy; L.base += dy;
@@ -295,16 +300,12 @@
       L.x = lx;
       if (lx) for (const m of L.segs) m.x += lx;
     }
-    const res = {w, h, cw: wAuto, ch: hAuto, lines: out, lineHeight: out.length ? out[0].h : lineHeightOf(base), mode};
+    const res = {w, h, cw: cwR, ch: chR, lines: out, lineHeight: out.length ? out[0].h : lineHeightOf(base), mode, wAuto, hAuto};
     if (layouts.size > 6000) { let c = 0; for (const kk of layouts.keys()) { layouts.delete(kk); if (++c > 1500) break; } }
     layouts.set(key, res);
     return res;
   }
   function segStyleAt(segs, i, base) { for (const s of segs) if (i >= s.s && i < s.e) return s.st; return segs.length && i >= segs[segs.length - 1].e ? segs[segs.length - 1].st : base; }
-  function trimTail(cur, keep) {
-    /* wrapped lines drop the spaces that would start the next line; the last line of a paragraph keeps its own */
-    if (keep) return;
-  }
 
   function measureText(n) {
     if (!n) return {w: 0, h: 0, lines: [], lineHeight: 0};
@@ -362,11 +363,7 @@
 
   /* which axes does a node size by itself (hug)? */
   function hugs(n, axisH) {
-    if (n.type === 'TEXT') {
-      const ar = G(n, 'autoResize') || 'wh', sz = G(n, axisH ? 'sizeH' : 'sizeV');
-      if (sz === 'fill') return false;
-      return axisH ? ar === 'wh' : ar !== 'none';
-    }
+    if (n.type === 'TEXT') return textAuto(n, axisH);
     return hasLayout(n) && G(n, axisH ? 'sizeH' : 'sizeV') === 'hug';
   }
   function clampSize(c, v, axisH) {
@@ -380,26 +377,58 @@
   function layoutText(id, ctx) {
     const s = ST(), n = s.get(id);
     if (!n) return;
-    let mode = G(n, 'autoResize') || 'wh';
-    if (mode === 'none') return;
-    /* a text stretched by its auto layout parent keeps the given width and only grows down */
-    if (mode === 'wh' && ctx && ctx.widthGiven && ctx.widthGiven.has(id)) mode = 'h';
-    const t = textLayout(n, mode === (G(n, 'autoResize') || 'wh') ? null : {mode});
-    put(id, mode === 'wh' ? {w: t.w, h: t.h} : {h: t.h});
+    const wA = textAuto(n, true), hA = textAuto(n, false);
+    if (!wA && !hA) return;
+    const t = textLayout(n), vals = {};
+    noteFonts(id, t);
+    if (wA) vals.w = t.w;
+    if (hA) vals.h = t.h;
+    put(id, vals);
+  }
+
+  /* a text measured before its font arrived is measured again when it does (only those: see reflow) */
+  const fontWait = new Map();     /* family -> Set of text ids sized with a stand-in font */
+  function noteFonts(id, t) {
+    const hk = HD.layout.fontHook;
+    if (!hk) return;
+    for (let i = 0; i < t.lines.length; i++) {
+      const sg = t.lines[i].segs;
+      for (let j = 0; j < sg.length; j++) {
+        const st = sg[j].st;
+        if (hk.ready(st)) continue;
+        let set = fontWait.get(st.font);
+        if (!set) { set = new Set(); fontWait.set(st.font, set); }
+        set.add(id);
+        hk.need(st);
+      }
+    }
+  }
+  function reflow(family) {
+    const s = ST(), ids = [];
+    const take = (set) => { for (const id of set) { const n = s.get(id); if (n && n.type === 'TEXT') ids.push(id); } };
+    if (family === undefined) { for (const set of fontWait.values()) take(set); fontWait.clear(); }
+    else { const set = fontWait.get(family); if (set) { take(set); fontWait.delete(family); } }
+    if (!ids.length || !s || s.readOnly || typeof s.tx !== 'function') return 0;
+    let n = 0;
+    const work = () => { const before = ids.map(id => W(s.get(id)) + ':' + H(s.get(id))); run(new Set(ids), null); ids.forEach((id, i) => { const m = s.get(id); if (m && W(m) + ':' + H(m) !== before[i]) n++; }); };
+    try { if (typeof s.inTx === 'function' && s.inTx()) work(); else s.tx('Text fits its font', work, {merge: 'hd-font-reflow'}); } catch (e) { /* a view-only file */ }
+    return n;
   }
 
   /* CONSTRAINTS: a plain frame changed size -> move / stretch its children by their `cons` */
-  function applyConstraints(id, ctx) {
+  function applyConstraints(id, ctx, onlyAbs, ow, oh) {
     const s = ST(), n = s.get(id), r = rec.get(id);
     if (!n) return;
     const w1 = W(n), h1 = H(n);
-    if (!r || (near(r.w, w1) && near(r.h, h1))) { remember(id); return; }
-    const w0 = r.w, h0 = r.h;
-    remember(id);
+    const w0 = onlyAbs ? ow : r ? r.w : w1, h0 = onlyAbs ? oh : r ? r.h : h1;
+    if (!onlyAbs) remember(id);
+    if (near(w0, w1) && near(h0, h1)) return;
+    if (n.type === 'SECTION' || n.type === 'COMPONENT_SET') return;      /* these never push their children around */
     const kids = s.children(id) || [];
     for (let i = 0; i < kids.length; i++) {
       const cid = kids[i], c = s.get(cid);
-      if (!c || ctx.changed.has(cid)) continue;          /* a child set in this same tx is already where it should be */
+      if (!c || geomSet(ctx, cid)) continue;             /* a child placed in this same tx (an undo, a tool) is already right */
+      if (onlyAbs && G(c, 'layoutPos') !== 'absolute') continue;
       const cons = c.cons || {};
       let x = num(c.x, 0), y = num(c.y, 0), w = W(c), h = H(c);
       const dw = w1 - w0, dh = h1 - h0;
@@ -427,6 +456,13 @@
       if (c.type === 'TEXT' && sized && (G(c, 'autoResize') || 'wh') === 'wh') { delete vals.w; delete vals.h; }
       if (put(cid, vals) && sized) resized(cid, ctx, true);
     }
+  }
+  /* did this tx itself set the box of that node? (the store hands run() the changed property names) */
+  function geomSet(ctx, id) {
+    if (!ctx.changed.has(id)) return false;
+    const ps = ctx.props && typeof ctx.props.get === 'function' ? ctx.props.get(id) : null;
+    if (!ps || typeof ps.has !== 'function') return true;
+    return ps.has('x') || ps.has('y') || ps.has('w') || ps.has('h');
   }
   /* a group has no size of its own: scaling it scales what is inside */
   function scaleGroupKids(id, w0, h0, w1, h1, ctx) {
@@ -470,7 +506,7 @@
     const r = rec.get(id);
     if (r && ctx.changed.has(id) && (!near(r.w, W(n)) || !near(r.h, H(n)))) {
       let kidTouched = false;
-      for (let i = 0; i < kids.length; i++) if (ctx.changed.has(kids[i])) { kidTouched = true; break; }
+      for (let i = 0; i < kids.length; i++) if (geomSet(ctx, kids[i])) { kidTouched = true; break; }
       if (!kidTouched) scaleGroupKids(id, r.w, r.h, W(n), H(n), ctx);
     }
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
@@ -504,6 +540,7 @@
     const s = ST(), n = s.get(id);
     if (!n) return;
     const L = n.layout, horiz = L.mode === 'h';
+    const r0 = rec.get(id), ow = r0 ? r0.w : W(n), oh = r0 ? r0.h : H(n);
     const gap = num(L.gap, 0), pad = Array.isArray(L.pad) ? L.pad : [num(L.pad, 0), num(L.pad, 0), num(L.pad, 0), num(L.pad, 0)];
     const pt = num(pad[0], 0), pr = num(pad[1], 0), pb = num(pad[2], 0), pl = num(pad[3], 0);
     const padMain0 = horiz ? pl : pt, padMain1 = horiz ? pr : pb, padCross0 = horiz ? pt : pl, padCross1 = horiz ? pb : pr;
@@ -525,16 +562,13 @@
     };
     const innerMain = Math.max(0, mainOf(n) - padMain0 - padMain1);
     let innerCross = Math.max(0, crossOf(n) - padCross0 - padCross1);
-    const given = (cid, axisH) => { if (axisH && ctx.widthGiven) ctx.widthGiven.add(cid); };
 
     /* 1. cross sizes that are already known (the container is not hugging that way, one line) */
     if (!hugCross && !wrap) {
       for (const cid of kids) {
         const c = s.get(cid);
         if (!fillsCross(c)) continue;
-        if (!horiz) given(cid, true);
-        if (setCross(cid, clampSize(c, innerCross, !horiz))) resized(cid, ctx, false);
-        else if (!horiz && c.type === 'TEXT') resized(cid, ctx, false);
+        if (setCross(cid, clampSize(c, innerCross, !horiz)) || c.type === 'TEXT') resized(cid, ctx, false);
       }
     }
     /* 2. lines */
@@ -568,10 +602,8 @@
           if (!frozen) { for (const cid of open) size.set(cid, share); open = []; }
         }
         for (const cid of flex) {
-          if (horiz) given(cid, true);
           const c = s.get(cid);
-          if (setMain(cid, size.get(cid) || 0)) resized(cid, ctx, false);
-          else if (horiz && c.type === 'TEXT') resized(cid, ctx, false);
+          if (setMain(cid, size.get(cid) || 0) || c.type === 'TEXT') resized(cid, ctx, false);
         }
       }
     }
@@ -588,8 +620,7 @@
         for (const cid of lines[li]) {
           const c = s.get(cid);
           if (!fillsCross(c)) continue;
-          if (!horiz) given(cid, true);
-          if (setCross(cid, clampSize(c, lineCross[li], !horiz))) resized(cid, ctx, false);
+          if (setCross(cid, clampSize(c, lineCross[li], !horiz)) || c.type === 'TEXT') resized(cid, ctx, false);
         }
       }
       /* a stretched child may have grown the other way (text that wrapped): read the lines again */
@@ -635,6 +666,8 @@
       }
       crossAt += lineCross[li] + gapCross;
     }
+    /* children taken out of the flow follow their constraints, like in a plain frame */
+    if (kids.length !== kidsAll.length) applyConstraints(id, ctx, true, ow, oh);
     remember(id);
   }
 
@@ -662,7 +695,7 @@
     else if (CONTAINER[n.type]) applyConstraints(id, ctx);
   }
 
-  function run(changedIds) {
+  function run(changedIds, changedProps) {
     const s = ST();
     if (!s || !changedIds) return;
     const changed = changedIds instanceof Set ? changedIds : new Set(changedIds);
@@ -670,7 +703,7 @@
     if (running) return;                 /* our own writes never start a second walk */
     running = true;
     try {
-      const ctx = {changed, depth: 0, widthGiven: new Set()};
+      const ctx = {changed, depth: 0, props: changedProps || null};
       const buckets = [], queued = new Set();
       const add = (id) => {
         if (!id || queued.has(id) || !s.has(id)) return;
@@ -723,7 +756,7 @@
     if (running) return;
     if (!pendingSync) {
       pendingSync = new Set();
-      Promise.resolve().then(() => { const p = pendingSync; pendingSync = null; if (p) for (const id of p) if (!rec.has(id)) remember(id); });
+      Promise.resolve().then(() => { const p = pendingSync; pendingSync = null; if (p) for (const id of p) remember(id); });
     }
     for (const id of ev.ids) pendingSync.add(id);
   }
@@ -738,12 +771,12 @@
   }
 
   HD.layout = {
-    run(changedIds) { hook(); return run(changedIds); },
+    run(changedIds, changedProps) { hook(); return run(changedIds, changedProps); },
     measureText,
     /* helpers beyond the contract (the renderer is built on them) */
     textLayout, fontsChanged, prop: G, paints, effects, defaultsOf: def, varValue: varVal, styleValue: styleVal,
     fontCss(n) { return baseStyle(n).css; }, baseStyle, setFont, hasLetterSpacing: HAS_LS, hasLayout,
-    remember, rememberAll, hook, varMode: null,
+    remember, rememberAll, hook, varMode: null, reflow, fontHook: null,
     get fontEpoch() { return fontEpoch; }
   };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', hook); else setTimeout(hook, 0);

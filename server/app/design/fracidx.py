@@ -1,91 +1,211 @@
 """Fractional index strings: the order of siblings (contract section 1.3).
 
-A key is a string over 0-9 A-Z a-z read as the digits of a base-62 fraction (an implied "0." in front), so plain
-string comparison IS numeric order - the same in Python and in the browser. A key never ends in "0": that keeps
-room below every key, so there is always a key strictly between any two different keys.
+A key is a string over 0-9 A-Z a-z (which is also ASCII order) compared as a PLAIN STRING - the same in Python
+and in the browser - and a key made here never ends in "0", so there is always room below it. This module follows
+the scheme of `HD.frac` in hd-core.js, so a layer the server adds (a template, the AI) sits in the list as if a
+browser had added it:
 
-`between(a, b)` works on ANY two keys of that alphabet, whoever made them (the browser makes most of them). When
-one side is open it steps by one digit instead of halving: appending 1,000 layers costs ~17 characters, not ~170.
+    a short counting head ("a1", "a2" ... "az", "b01" ...; below "a1": "Zz", "Zy" ...) so that adding at the top or
+    the bottom 50,000 times still gives 4-character keys, plus a fraction tail for inserts in between ("a1V").
+
+Only the ORDER is a contract between the two sides, not the exact keys: a neighbour of any other shape is
+accepted (the plain string midpoint, or a one-digit step at an open end). `between` never raises - an order that
+looks wrong (a >= b) still gets a usable key, exactly as in the browser.
 """
 from __future__ import annotations
 
 DIGITS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 BASE = len(DIGITS)
 _VAL = {c: i for i, c in enumerate(DIGITS)}
-_FIRST, _LAST = DIGITS[1], DIGITS[-1]
+_SMALLEST = "A" + "0" * 26
+_FIRST = "a1"
 
 
-def valid(key: object) -> bool:
-    """A key this module can order: non-empty, only the 62 digits, no trailing zero."""
-    return isinstance(key, str) and bool(key) and key[-1] != "0" and all(c in _VAL for c in key)
+def _digit(ch: str) -> int:
+    value = _VAL.get(ch)
+    if value is not None:
+        return value
+    return next((i for i in range(BASE - 1, -1, -1) if DIGITS[i] <= ch), 0)      # a foreign character
 
 
 def _mid(a: str, b: str | None) -> str:
-    """The shortest key strictly between a ("" = zero) and b (None = one); a < b is given."""
-    if b is not None:
-        n = 0
-        while n < len(b) and (a[n] if n < len(a) else "0") == b[n]:
-            n += 1
-        if n:
-            return b[:n] + _mid(a[n:], b[n:])
-    da = _VAL[a[0]] if a else 0
-    db = _VAL[b[0]] if b is not None else BASE
-    if db - da > 1:
-        return DIGITS[(da + db + 1) // 2]
-    if b is not None and len(b) > 1:
-        return b[0]
-    return DIGITS[da] + _mid(a[1:], None)
+    """A string strictly between a ("" = lowest) and b (None = highest) in plain string order; never ends in "0"."""
+    out, i = "", 0
+    while True:
+        ca = _digit(a[i]) if i < len(a) else 0
+        if b is None:
+            cb = BASE
+        elif i < len(b):
+            cb = _digit(b[i])
+        else:
+            return out + "V"                         # b is a + zeros: there is no room, stay next to it
+        if ca == cb:
+            out += DIGITS[ca]
+            i += 1
+            continue
+        if cb < ca:
+            return out + DIGITS[ca] + "V"            # not a < b: keep going, never raise
+        if cb - ca > 1:
+            return out + DIGITS[(ca + cb + 1) >> 1]
+        if b is not None and len(b) > i + 1:
+            return out + DIGITS[cb]
+        out += DIGITS[ca]
+        i += 1
+        b = None
 
 
-def _after(a: str) -> str:
-    """A key above a, one digit step away (cheap repeated appends)."""
+def _step_after(a: str) -> str:
+    """One digit step above a key that is not in the counting shape (cheap repeated adds)."""
     head = 0
-    while head < len(a) and a[head] == _LAST:
+    while head < len(a) and _digit(a[head]) == BASE - 1:
         head += 1
-    if head == len(a):
-        return a + _FIRST
-    return a[:head] + DIGITS[_VAL[a[head]] + 1]
+    return a + "1" if head == len(a) else a[:head] + DIGITS[_digit(a[head]) + 1]
 
 
-def _before(b: str) -> str:
-    """A key below b, one digit step away (cheap repeated prepends)."""
+def _step_before(b: str) -> str:
+    """One digit step below a key that is not in the counting shape."""
     head = 0
-    while b[head] == "0":                    # a key never ends in "0", so this stops inside it
+    while head < len(b) and _digit(b[head]) == 0:
         head += 1
-    d = _VAL[b[head]]
-    if d > 1:
-        return b[:head] + DIGITS[d - 1]
-    return b[:head] + "0" + _LAST
+    if head == len(b):
+        return _mid("", b)
+    d = _digit(b[head])
+    return b[:head] + DIGITS[d - 1] if d > 1 else b[:head] + "0z"
+
+
+def _head_len(key: str) -> int:
+    """Length of the integer head: its first letter says how many digits follow ("a" 1, "b" 2 ...; "Z" 1, "Y" 2 ...)."""
+    c = ord(key[0])
+    if 97 <= c <= 122:
+        return c - 97 + 2
+    if 65 <= c <= 90:
+        return 90 - c + 2
+    return 0
+
+
+def valid(key: object) -> bool:
+    """A key in this module's own shape (integer head + optional fraction that does not end in "0")."""
+    if not isinstance(key, str) or not key or key == _SMALLEST:
+        return False
+    head = _head_len(key)
+    if not head or len(key) < head or any(c not in _VAL for c in key[1:]):
+        return False
+    return not (len(key) > head and key[-1] == "0")
+
+
+def _inc1(head: str) -> str | None:
+    first, digits = head[0], list(head[1:])
+    for i in range(len(digits) - 1, -1, -1):
+        value = _VAL[digits[i]] + 1
+        if value < BASE:
+            digits[i] = DIGITS[value]
+            return first + "".join(digits)
+        digits[i] = "0"
+    if first == "Z":
+        return "a0"
+    if first == "z":
+        return None
+    nxt = chr(ord(first) + 1)
+    if nxt > "a":
+        digits.append("0")
+    else:
+        digits.pop()
+    return nxt + "".join(digits)
+
+
+def _dec1(head: str) -> str | None:
+    first, digits = head[0], list(head[1:])
+    for i in range(len(digits) - 1, -1, -1):
+        value = _VAL[digits[i]] - 1
+        if value >= 0:
+            digits[i] = DIGITS[value]
+            return first + "".join(digits)
+        digits[i] = "z"
+    if first == "a":
+        return "Zz"
+    if first == "A":
+        return None
+    prev = chr(ord(first) - 1)
+    if prev < "Z":
+        digits.append("z")
+    else:
+        digits.pop()
+    return prev + "".join(digits)
+
+
+def _inc(head: str) -> str | None:
+    """The next counting head that does not end in "0"; None above the largest one."""
+    nxt = _inc1(head)
+    return _inc1(nxt) if nxt is not None and nxt[-1] == "0" else nxt
+
+
+def _dec(head: str) -> str | None:
+    """The counting head before this one that does not end in "0"; None below the smallest one."""
+    prev = _dec1(head)
+    return _dec1(prev) if prev is not None and prev[-1] == "0" else prev
+
+
+def _key_between(a: str | None, b: str | None) -> str:
+    if a is None:
+        if b is None:
+            return _FIRST
+        ib = b[:_head_len(b)]
+        if ib == _SMALLEST:
+            return ib + _mid("", b[len(ib):])
+        if ib < b:
+            return ib
+        prev = _dec(ib)
+        return _mid("", b) if prev is None else prev
+    ia = a[:_head_len(a)]
+    fa = a[len(ia):]
+    if b is None:
+        nxt = _inc(ia)
+        return ia + _mid(fa, None) if nxt is None else nxt
+    ib = b[:_head_len(b)]
+    if ia == ib:
+        return ia + _mid(fa, b[len(ib):])
+    nxt = _inc(ia)
+    if nxt is not None and nxt < b:
+        return nxt
+    return ia + _mid(fa, None)
 
 
 def between(a: str | None, b: str | None) -> str:
-    """A key k with a < k < b. None = no neighbour on that side."""
-    if a is not None and not valid(a):
-        raise ValueError(f"not a fractional index: {a!r}")
-    if b is not None and not valid(b):
-        raise ValueError(f"not a fractional index: {b!r}")
-    if a is None and b is None:
-        return DIGITS[BASE // 2]
-    if b is None:
-        return _after(a)
-    if a is None:
-        return _before(b)
-    if a >= b:
-        raise ValueError(f"no key between {a!r} and {b!r}")
-    return _mid(a, b)
+    """A key k with a < k < b. None (or "") = no neighbour on that side."""
+    a, b = a or None, b or None
+    if a is not None and b is not None:
+        if a == b:
+            return a + "V"                           # two equal keys: nothing fits, go right after them
+        if a > b:
+            a, b = b, a
+    if (a is None or valid(a)) and (b is None or valid(b)):
+        key = _key_between(a, b)
+        if key[-1] != "0":
+            return key
+    elif b is None:
+        return _FIRST if a < _FIRST else _step_after(a)          # on top of a key of another shape
+    elif a is None:
+        return _FIRST if b > _FIRST else _step_before(b)         # under a key of another shape
+    return _mid(a or "", b)
 
 
 def n_between(a: str | None, b: str | None, n: int) -> list[str]:
-    """n keys in rising order, all strictly between a and b."""
+    """n keys in rising order, all between a and b."""
     if n <= 0:
         return []
-    if b is None:                            # an open top: n cheap steps
-        out: list[str] = []
-        cur = a
-        for _ in range(n):
-            cur = between(cur, None)
-            out.append(cur)
+    if n == 1:
+        return [between(a, b)]
+    a, b = a or None, b or None
+    if b is None:
+        out = [between(a, None)]
+        while len(out) < n:
+            out.append(between(out[-1], None))
         return out
+    if a is None:
+        out = [between(None, b)]
+        while len(out) < n:
+            out.append(between(None, out[-1]))
+        return out[::-1]
+    half = n >> 1
     mid = between(a, b)
-    left = (n - 1) // 2
-    return n_between(a, mid, left) + [mid] + n_between(mid, b, n - 1 - left)
+    return n_between(a, mid, half) + [mid] + n_between(mid, b, n - half - 1)

@@ -19,7 +19,7 @@ TYPES = frozenset("DOCUMENT PAGE FRAME GROUP SECTION RECT ELLIPSE LINE POLYGON S
 MAX_NODES = 200_000
 MAX_OP_BYTES = 256 * 1024
 ID_MAX = 64
-IDX_MAX = 256
+IDX_MAX = 4096                    # generous: a browser that halves towards the top grows a key ~1 char per 6 appends
 
 APPLIED, DROPPED, REJECTED = 1, 0, -1     # DROPPED = accepted but a no-op (its node is already gone): not fanned out
 

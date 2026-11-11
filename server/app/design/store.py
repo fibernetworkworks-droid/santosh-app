@@ -69,7 +69,7 @@ def list_files(tenant: str, q: str = "", trash: bool = False) -> list[dict]:
         if needle:
             needle = needle.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
             stmt = stmt.where(func.lower(DesignFile.name).like(f"%{needle}%", escape="\\"))
-        rows = s.scalars(stmt.order_by(DesignFile.star.desc(), DesignFile.updated_at.desc()).limit(500)).all()
+        rows = s.scalars(stmt.order_by(DesignFile.updated_at.desc(), DesignFile.id).limit(500)).all()
         return [_file(r) for r in rows]
 
 
@@ -77,6 +77,21 @@ def create_file(tenant: str, name: str, doc_json: str, node_count: int) -> dict:
     ensure_tables()
     with session() as s:
         row = DesignFile(tenant_id=tenant, name=clean_name(name), snapshot=pack(doc_json), node_count=node_count)
+        s.add(row)
+        s.flush()
+        return _file(row)
+
+
+def duplicate_file(tenant: str, file_id: str, doc_json: str, node_count: int) -> dict | None:
+    """A new file holding a copy of the document. It carries the source's client-number counter on: the copied
+    nodes keep their ids, and a new editor must never mint one of them again."""
+    ensure_tables()
+    with session() as s:
+        src = _own(s, tenant, file_id)
+        if src is None:
+            return None
+        row = DesignFile(tenant_id=tenant, name=clean_name(f"{src.name} copy"), snapshot=pack(doc_json),
+                         node_count=node_count, next_cid=src.next_cid)
         s.add(row)
         s.flush()
         return _file(row)
@@ -101,8 +116,8 @@ def patch_file(tenant: str, file_id: str, name: str | None, star: bool | None) -
         row = _own(s, tenant, file_id)
         if row is None:
             return None
-        if name is not None:
-            row.name = clean_name(name, row.name)
+        if name is not None and clean_name(name, row.name) != row.name:
+            row.name, row.updated_at = clean_name(name, row.name), now()
         if star is not None:
             row.star = bool(star)
         return _file(row)

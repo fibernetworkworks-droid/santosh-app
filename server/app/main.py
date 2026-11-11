@@ -154,6 +154,11 @@ async def lifespan(app: FastAPI):
     stop.set()
     await task
     _usage.flush()               # v0.98 counted calls are not lost on a restart
+    try:                         # v0.777 open design rooms write their last ops before the process ends
+        from .design.room import HUB as _design_hub
+        await _design_hub.shutdown()
+    except Exception:
+        log.exception("design rooms shutdown")
     try:
         await operator_service.shutdown()
     except Exception:
@@ -1734,6 +1739,19 @@ def hoola_code_page():
         "X-Content-Type-Options": "nosniff", "Permissions-Policy": "microphone=(), camera=(), geolocation=()"})
 
 
+@app.get("/console/design")
+@app.get("/console/design/")
+def hoola_design_page():
+    """v0.777 HOOLA DESIGN as its own full-screen app: the file browser and the multiplayer editor (app/design, the
+    contract is docs/HOOLA_DESIGN_PLAN.md). Same sign-in as the console (its token in this browser), the
+    /api/design routes, same strict CSP. Switched off = back to the console."""
+    if not getattr(get_settings(), "design_page", False):
+        return RedirectResponse("/console/", status_code=307)
+    return FileResponse(STATIC / "console" / "design" / "design.html", headers={
+        **_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP, "X-Frame-Options": "DENY",
+        "X-Content-Type-Options": "nosniff", "Permissions-Policy": "microphone=(), camera=(), geolocation=()"})
+
+
 @app.get("/api/console/config")
 def console_config():
     from . import accounts
@@ -1745,6 +1763,7 @@ def console_config():
             "human": bool(getattr(st, "console_human", False)),
             "interactive": bool(getattr(st, "interactive_page", False)),
             "hoola_code": bool(getattr(st, "hoola_code_page", False)),
+            "design": bool(getattr(st, "design_page", False)),
             "flow": bool(getattr(st, "flow_page", False)),
             "flow_mic": bool(getattr(st, "flow_page", False) and getattr(st, "flow_composer_mic", False)),
             "artcraft": bool(getattr(st, "shilp_page", False) and getattr(st, "shilp_enabled", False))}
@@ -5506,6 +5525,11 @@ app.include_router(_gyaan_router(require_key, current_tenant))
 from .coder.service import make_router as _coder_router  # noqa: E402
 
 app.include_router(_coder_router(require_key, current_tenant))
+
+# v0.777 HOOLA DESIGN (the multiplayer design editor): /api/design/* and the WebSocket /api/design/ws
+from .design.api import make_router as _design_router  # noqa: E402
+
+app.include_router(_design_router(require_key, current_tenant))
 
 
 # v0.716 SEEKH MANCH ON THE CONSOLE (the HOOLA AI Video Learner panel): /api/seekh/console/* - the watch

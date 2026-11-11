@@ -94,7 +94,8 @@ def _check_svg(data: bytes) -> tuple[int, int]:
         for key, value in el.attrib.items():
             name, flat = _local(key), "".join(value.split()).lower()
             # an animation may also WRITE a handler or a link: <set attributeName="onload" ...>
-            if name.startswith("on") or "javascript:" in flat or (name == "attributename" and flat.startswith(("on", "href", "xlink:href"))):
+            writes_code = name == "attributename" and flat.startswith(("on", "href", "xlink:href"))
+            if name.startswith("on") or "javascript:" in flat or writes_code:
                 raise BadImage("This SVG carries an event handler, so it is not kept.")
 
     def px(value: str | None) -> int:

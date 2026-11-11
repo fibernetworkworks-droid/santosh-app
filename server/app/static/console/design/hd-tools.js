@@ -67,19 +67,20 @@
   }
   function solid(color, opacity) { return {type: 'solid', color: color, opacity: opacity === undefined ? 1 : opacity, visible: true}; }
 
-  /* A drag is many pointer moves but ONE undo step. HD.store.tx is synchronous, so each new step first takes back the
-     previous step of the same drag and applies the whole change again from the start values (fn must be absolute).
-     When the store offers begin()/commit() (an open transaction) that is used instead. */
+  /* A drag is many pointer moves but ONE undo step: HD.store.gesture() ... gestureEnd() merges every transaction in
+     between into one step (ops still go out on each move, so other people see the drag live). Without that API the
+     previous step of the same drag is taken back and the whole change applied again (fn is always absolute). */
   let localChanges = 0;
-  function Gesture(label) { this.label = label; this.started = false; this.native = !!(HD.store.begin && HD.store.commit); }
+  function Gesture(label) { this.label = label; this.started = false; this.mark = 0; }
   Gesture.prototype.apply = function (fn) {
     const st = HD.store;
-    if (this.native) { if (!this.started) { st.begin(this.label); this.started = true; } fn(); if (st.flush) st.flush(); return; }
+    if (st.gesture) { if (!this.started) { st.gesture(); this.started = true; this.mark = localChanges; } st.tx(this.label, fn); return; }
     if (this.started) { st.undo(); this.started = false; }
     const before = localChanges; st.tx(this.label, fn); this.started = localChanges !== before;
   };
-  Gesture.prototype.end = function () { if (this.native && this.started) HD.store.commit(); this.started = false; };
-  Gesture.prototype.cancel = function () { if (this.started) { if (this.native) HD.store.commit(); HD.store.undo(); } this.started = false; };
+  Gesture.prototype.end = function () { if (this.started && HD.store.gestureEnd) HD.store.gestureEnd(); this.started = false; };
+  Gesture.prototype.cancel = function () { const st = HD.store; if (!this.started) return; this.started = false;
+    if (st.gesture) { st.gestureEnd(); if (localChanges !== this.mark) st.undo(); } else st.undo(); };
 
   /* ---------------------------------------------------------------- view */
   const View = {
@@ -392,8 +393,9 @@
       for (const it of d.items) {
         if (!HD.store.has(it.id)) continue;
         const flow = auto && prop(it.id, 'layoutPos') !== 'absolute';
-        if (flow) { HD.store.move([it.id], target, flowBefore(target, lay, e, d.set)); continue; }
-        if (it.parent !== target) HD.store.move([it.id], target, null);
+        if (flow) { const before = flowBefore(target, lay, e, d.set), sib = HD.store.children(target); let k = sib.indexOf(it.id) + 1; while (k > 0 && k < sib.length && d.set.has(sib[k])) k++;
+          if (HD.store.parent(it.id) !== target || (sib[k] || null) !== before) HD.store.move([it.id], target, before); continue; }
+        if (HD.store.parent(it.id) !== target) HD.store.move([it.id], target, null);
         const c = HD.math.apply(tinv, it.cw[0] + dx, it.cw[1] + dy), keepInt = !it.rot;
         const nx = c[0] - it.w / 2, ny = c[1] - it.h / 2;
         HD.store.set(it.id, {x: keepInt ? Math.round(nx) : r2(nx), y: keepInt ? Math.round(ny) : r2(ny)});
@@ -412,13 +414,16 @@
   }
   function doResize(d, e) {
     let px = e.x + d.off[0], py = e.y + d.off[1]; const hx = d.h[0], hy = d.h[1]; state.guides = [];
-    const flat = d.single ? !(Math.abs(d.items[0].rot % 90) > 0.01) && !Math.abs(worldAng(d.items[0].id) % 90 > 0.01) : true;
-    if (snapping(e) && flat && !(d.single && Math.abs(d.items[0].rot % 180) > 0.01)) { const s = snapPoint(px, py, d.cands, !!hx, !!hy); px = s[0]; py = s[1]; }
-    if (d.single) {
-      const it = d.items[0], th = it.rot * DEG, cos = Math.cos(th), sin = Math.sin(th);
+    const wa = d.single ? Math.abs(worldAng(d.items[0].id)) % 180 : 0, flat = wa < 0.01 || Math.abs(wa - 180) < 0.01, quarter = Math.abs(wa - 90) < 0.01;
+    if (snapping(e) && (flat || quarter)) { const s = snapPoint(px, py, d.cands, quarter ? !!hy : !!hx, quarter ? !!hx : !!hy); px = s[0]; py = s[1]; }
+    if (d.single) { resizeOne(d, e, px, py); return; }
+    resizeMany(d, e, px, py);
+  }
+  function resizeOne(d, e, px, py) {
+    {
+      const it = d.items[0], th = it.rot * DEG, cos = Math.cos(th), sin = Math.sin(th), hx = d.h[0] * (it.flipH ? -1 : 1), hy = d.h[1] * (it.flipV ? -1 : 1);
       const pp = HD.math.apply(it.pinv, px, py), cx = it.x + it.w / 2, cy = it.y + it.h / 2;
       const ux = (pp[0] - cx) * cos + (pp[1] - cy) * sin, uy = -(pp[0] - cx) * sin + (pp[1] - cy) * cos;   /* pointer in the node's own axes */
-      const fxs = it.flipH ? -1 : 1, fys = it.flipV ? -1 : 1; void fxs; void fys;
       let x0 = -it.w / 2, x1 = it.w / 2, y0 = -it.h / 2, y1 = it.h / 2;
       if (hx > 0) x1 = ux; else if (hx < 0) x0 = ux; if (hy > 0) y1 = uy; else if (hy < 0) y0 = uy;
       if (e.alt) { if (hx > 0) x0 = -ux; else if (hx < 0) x1 = -ux; if (hy > 0) y0 = -uy; else if (hy < 0) y1 = -uy; }
@@ -443,10 +448,11 @@
         if (it.type === 'TEXT') { if (hy) p.autoResize = 'none'; else if ((it.auto || 'wh') === 'wh') p.autoResize = 'h'; }
         HD.store.set(it.id, p); if (it.kids) scaleKids(it.kids, fx, fy);
       });
-      return;
     }
-    /* several layers: scale their world boxes about the opposite side */
-    const b = d.box; let ax = hx > 0 ? b.x : hx < 0 ? b.x + b.w : b.x + b.w / 2, ay = hy > 0 ? b.y : hy < 0 ? b.y + b.h : b.y + b.h / 2;
+  }
+  /* several layers: scale their world boxes about the opposite side */
+  function resizeMany(d, e, px, py) {
+    const hx = d.h[0], hy = d.h[1], b = d.box; let ax = hx > 0 ? b.x : hx < 0 ? b.x + b.w : b.x + b.w / 2, ay = hy > 0 ? b.y : hy < 0 ? b.y + b.h : b.y + b.h / 2;
     if (e.alt) { ax = b.x + b.w / 2; ay = b.y + b.h / 2; }
     const sx0 = hx ? (hx > 0 ? b.x + b.w : b.x) : 0, sy0 = hy ? (hy > 0 ? b.y + b.h : b.y) : 0;
     let fx = hx && Math.abs(sx0 - ax) > 1e-6 ? (px - ax) / (sx0 - ax) : 1, fy = hy && Math.abs(sy0 - ay) > 1e-6 ? (py - ay) / (sy0 - ay) : 1;
@@ -664,7 +670,7 @@
       this.gesture = new Gesture('Edit text'); this.hide = !!(HD.render.setEditing); if (this.hide) HD.render.setEditing(id);
       this.style(); this.place(); this.el.focus(); this.el.select();
     },
-    openNew(wx, wy, fixedW) { if (!canEdit()) return; this.commit(); this.id = null; this.fresh = {x: wx, y: wy, w: fixedW || 0, parent: containerAt(wx, wy)}; this.make(''); this.hide = true; this.style(); this.place(); this.el.focus(); },
+    openNew(wx, wy, fixedW) { if (!canEdit()) return; this.commit(); HD.sel.clear(); this.id = null; this.fresh = {x: wx, y: wy, w: fixedW || 0, parent: containerAt(wx, wy)}; this.make(''); this.hide = true; this.style(); this.place(); this.el.focus(); },
     make(text) {
       const ta = document.createElement('textarea'); ta.className = 'hd-textedit'; ta.value = text; ta.spellcheck = false; ta.setAttribute('aria-label', 'Text'); ta.setAttribute('autocapitalize', 'off'); ta.wrap = 'off';
       ta.addEventListener('input', () => this.input());
@@ -827,8 +833,8 @@
         badge(ctx, fmt(Math.round(g.e - g.s)), (a[0] + b[0]) / 2 + (g.axis === 'y' ? 22 : 0), (a[1] + b[1]) / 2 + (g.axis === 'x' ? 6 : -10), gc); } }
     /* other people's cursors */
     if (users && users.forEach) users.forEach((u, cid) => { if (!u || cid === me || u.cid === me || u.page !== HD.sel.page || typeof u.x !== 'number') return; const s = w2s(u.x, u.y), col = u.color || '#EE8F35';
-      ctx.save(); ctx.translate(s[0], s[1]); ctx.fillStyle = col; ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, 15); ctx.lineTo(4.2, 11.2); ctx.lineTo(10.6, 11.2); ctx.closePath(); ctx.fill(); ctx.stroke();
-      const name = String(u.name || 'Guest').slice(0, 24); ctx.font = '500 12px "Schibsted Grotesk", system-ui, sans-serif'; const w = Math.ceil(ctx.measureText(name).width) + 14; rrect(ctx, 10, 15, w, 22, 6); ctx.fillStyle = col; ctx.fill(); ctx.fillStyle = '#fff'; ctx.textBaseline = 'middle'; ctx.fillText(name, 17, 26.5); ctx.restore(); });
+      ctx.save(); ctx.translate(s[0], s[1]); ctx.fillStyle = col; ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.lineJoin = 'round'; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, 17); ctx.lineTo(4.8, 12.6); ctx.lineTo(12, 12.6); ctx.closePath(); ctx.stroke(); ctx.fill();
+      const name = String(u.name || 'Guest').slice(0, 24); ctx.font = '500 12px "Schibsted Grotesk", system-ui, sans-serif'; const w = Math.ceil(ctx.measureText(name).width) + 14; rrect(ctx, 11, 17, w, 22, 6); ctx.fillStyle = col; ctx.fill(); ctx.fillStyle = '#fff'; ctx.textBaseline = 'middle'; ctx.fillText(name, 18, 28.5); ctx.restore(); });
     ctx.restore();
     if (TextEdit.el) TextEdit.place();
   }
@@ -949,6 +955,23 @@
       if (kids.length) { const u = union(kids); x = Math.round(u.x + u.w + 100); y = Math.round(u.y); }
       let id = null; HD.store.tx('Add frame', () => { id = HD.store.create('FRAME', HD.sel.page, {name: name || nextName('FRAME'), x: x, y: y, w: w, h: h, fills: [solid('#FFFFFF')], clip: true}); });
       if (id) { HD.sel.set([id]); View.fit(kids.length ? [id] : undefined); HD.tools.set('move'); } return id;
+    },
+    /* set a layer's size from the panel: vectors rescale their path, groups rescale their children, text boxes stop hugging */
+    resizeTo(id, w, h) {
+      const it = snapshot(id), p = {}; if (w !== undefined && w !== null) p.w = Math.max(it.type === 'LINE' ? 0.01 : 0.01, r2(w)); if (h !== undefined && h !== null && it.type !== 'LINE') p.h = Math.max(0.01, r2(h));
+      const fx = p.w !== undefined && it.w ? p.w / it.w : 1, fy = p.h !== undefined && it.h ? p.h / it.h : 1;
+      if (it.type === 'VECTOR' && it.path) p.path = scalePath(it.path, fx, fy);
+      if (it.type === 'TEXT') { if (p.h !== undefined) p.autoResize = 'none'; else if ((it.auto || 'wh') === 'wh') p.autoResize = 'h'; }
+      HD.store.set(id, p); if (it.kids) scaleKids(it.kids, fx, fy);
+    },
+    /* move layers to another parent / place in the stack and keep them where they are on the canvas */
+    reparent(ids, parent, before) {
+      if (!guard()) return false; ids = topLevel(alive(ids)); if (!ids.length || !HD.store.has(parent)) return false;
+      for (const id of ids) if (id === parent || isInside(parent, id) || id === before) return false;
+      const lay = prop(parent, 'layout'), auto = !!(lay && lay.mode && lay.mode !== 'none'), info = ids.map(id => ({id: id, from: HD.store.parent(id), c: centreW(id), s: size(id)}));
+      HD.store.tx('Reorder layers', () => { HD.store.move(ids, parent, before || null); if (auto) return; const inv = HD.math.inv(wm(parent));
+        for (const it of info) { if (it.from === parent) continue; const c = HD.math.apply(inv, it.c[0], it.c[1]); HD.store.set(it.id, {x: r2(c[0] - it.s[0] / 2), y: r2(c[1] - it.s[1] / 2)}); } });
+      return true;
     },
     rename(id, name) { if (!guard() || !HD.store.has(id)) return; name = String(name).slice(0, 200); if (name && name !== (HD.store.get(id) || {}).name) HD.store.tx('Rename', () => HD.store.set(id, {name: name})); },
     zoomSelection() { const ids = selIds(); if (ids.length) View.fit(ids); },

@@ -115,12 +115,11 @@ def _load(file_id: str, tenant: str | None, max_nodes: int, allow_trashed: bool 
         return None
     doc = Doc.from_json(raw["doc"], max_nodes)
     seq, tail, replayed = raw["seq"], [], 0
-    for at, by, ops_json in raw["journal"]:
+    for seq, by, ops_json in raw["journal"]:
         for op in loads(ops_json):
             doc.apply(op)
             replayed += 1
-        tail.append((at, f'{{"t":"ops","seq":{at},"by":{by},"ops":{ops_json}}}'))
-        seq = at
+        tail.append((seq, f'{{"t":"ops","seq":{seq},"by":{by},"ops":{ops_json}}}'))
     return {"tenant": raw["tenant"], "name": raw["name"], "doc": doc, "seq": seq, "base_json": raw["doc"],
             "base_seq": raw["seq"], "tail": tail, "replayed": replayed}
 
@@ -130,6 +129,11 @@ def _snapshot(file_id: str, nodes: dict, seq: int, version_every_s: float, keep:
     doc_json = dumps_nodes(nodes)
     store.save_snapshot(file_id, store.pack(doc_json), seq, len(nodes), version_every_s, keep)
     return doc_json
+
+
+def _store_json(file_id: str, doc_json: str, seq: int, node_count: int, keep: int) -> None:
+    """Worker thread: a document that is already JSON (a restored version) becomes the file's snapshot."""
+    store.save_snapshot(file_id, store.pack(doc_json), seq, node_count, 0, keep)
 
 
 class Room:
@@ -142,6 +146,7 @@ class Room:
         self.seq: int = built["seq"]
         self.conns: dict[int, Conn] = {}
         self.pins = 0                        # connections + other holders; the HUB unloads the room at 0
+        self.closed = False                  # the file went to the trash: nobody new is let in
         self._base_json: str = built["base_json"]
         self._base_seq: int = built["base_seq"]
         self._tail: list[tuple[int, str]] = built["tail"]
@@ -149,7 +154,8 @@ class Room:
         self._since: int = built["replayed"]            # ops accepted since the last checkpoint
         self._last_op = time.monotonic()
         self._journal: list[tuple] = []
-        self._writer: asyncio.Task | None = None
+        self._writer: asyncio.Task | None = None        # the journal write in flight
+        self._saver: asyncio.Task | None = None         # the every-N-ops checkpoint in flight
         self._cp = asyncio.Lock()
         self._cp_ops = max(1, int(st.design_checkpoint_ops))
         self._idle_s = max(0.05, float(st.design_checkpoint_idle_s))
@@ -175,6 +181,8 @@ class Room:
         cid = await bg(store.next_cid, self.file_id)
         if len(self._tail) > TAIL_JOIN_MAX:
             await self.checkpoint()
+        if self.closed:                                  # the file went to the trash while this one was at the door
+            raise LookupError(self.file_id)
         # No await below: the joiner's init, the frames after it and its place in the fan-out are one step.
         if len(self._tail) > TAIL_JOIN_MAX:             # the checkpoint could not be written: rebase in memory
             self._base_json, self._base_seq, self._tail = dumps_nodes(self.doc.nodes), self.seq, []
@@ -292,8 +300,8 @@ class Room:
             self._since += len(accepted)
             self._last_op = time.monotonic()
             self._fan(frame, skip=skip)
-            if self._since >= self._cp_ops and not self._cp.locked():
-                _spawn(self.checkpoint())
+            if self._since >= self._cp_ops and (self._saver is None or self._saver.done()):
+                self._saver = _spawn(self.checkpoint())
         return rejected
 
     def apply_external(self, ops: list) -> dict:
@@ -309,7 +317,8 @@ class Room:
                 await bg(store.append_ops, self.file_id, rows)
             except Exception:                            # noqa: BLE001
                 # The rows are lost to the journal, but the document in memory has them: checkpoint now.
-                log.exception("design journal write failed for %s (%d batches); checkpointing instead", self.file_id, len(rows))
+                log.exception("design journal write failed for %s (%d batches); checkpointing instead",
+                              self.file_id, len(rows))
                 self._since = max(self._since, self._cp_ops)
                 self._last_op = 0.0
 
@@ -342,15 +351,13 @@ class Room:
         while True:
             await asyncio.sleep(pause)
             if self.seq != self._saved_seq and time.monotonic() - self._last_op >= self._idle_s:
-                await self.checkpoint()
+                await asyncio.shield(_spawn(self.checkpoint()))      # close() may cancel this loop, never a save
 
     async def current(self) -> tuple[int, str]:
         """(seq, document JSON) of a consistent moment, without serialising on the event loop."""
-        if self._tail:
-            await self.checkpoint()
-        if self._tail and self.seq == self._saved_seq:   # only journal frames replayed at load are left: fold them in
-            self._base_seq, self._tail = self.seq, []
-            self._base_json = await bg(dumps_nodes, self.doc.copy_nodes())
+        if self._tail and not await self.checkpoint():   # the database is refusing writes: answer from memory
+            seq, nodes = self.seq, self.doc.copy_nodes()
+            return seq, await bg(dumps_nodes, nodes)
         return self._base_seq, self._base_json
 
     async def replace(self, doc_json: str) -> int:
@@ -361,10 +368,10 @@ class Room:
             self.doc = doc
             self.seq += 1
             self._base_json, self._base_seq, self._tail, self._since = doc_json, self.seq, [], 0
+            self._fan(RELOAD)                            # before any op that lands on the new document
             seq = self.seq
-            await bg(store.save_snapshot, self.file_id, store.pack(doc_json), seq, len(doc), 0, self._keep)
+            await bg(_store_json, self.file_id, doc_json, seq, len(doc), self._keep)
             self._saved_seq = max(self._saved_seq, seq)
-        self._fan(RELOAD)
         return seq
 
     async def close(self) -> None:
@@ -393,7 +400,7 @@ class Hub:
             finally:
                 del self._gates[file_id]
                 gate.set()
-        elif room.tenant != tenant:
+        elif room.tenant != tenant or room.closed:
             raise LookupError(file_id)
         room.pins += 1
         return room
@@ -432,10 +439,17 @@ class Hub:
             room.tell(dumps({"t": "file", "name": name}))
 
     def evict(self, file_id: str, code: int) -> None:
-        """The file went to the trash: everyone in it is shown out."""
+        """The file went to the trash: everyone in it is shown out, and nobody new is let in."""
         room = self.rooms.get(file_id)
         if room is not None:
+            room.closed = True
             room.kick(code)
+
+    def restored(self, file_id: str) -> None:
+        """The file came back from the trash while its room was still unloading: it may be joined again."""
+        room = self.rooms.get(file_id)
+        if room is not None:
+            room.closed = False
 
     async def read(self, file_id: str, tenant: str | None, allow_trashed: bool = False) -> tuple[int, str] | None:
         """(seq, document JSON) as of now: from the open room, else from the database. None = no such file."""

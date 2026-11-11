@@ -484,6 +484,15 @@ class Settings(BaseSettings):
     seekh_live_notes: bool = True          # v0.745 notes stream onto the Video Learner page as Gemini writes them
     interactive_page: bool = True          # v0.747 HOOLA INTERACTIVE: the console's video studio (one line -> scenes -> HyperFrames MP4)
     hoola_code_page: bool = True          # v0.748 HOOLA CODE: Developer Sahayak as a console page (sessions, live steps, plan, PR, reviews)
+    design_page: bool = True              # v0.777 HOOLA DESIGN: the multiplayer design editor (/console/design, /api/design/*, app/design)
+    design_dir: str = ""                  # uploaded images + thumbnails ('' = data/design/<tenant>/)
+    design_max_nodes: int = 200000        # layers in one file; creates beyond it are refused
+    design_room_max: int = 64             # people (open tabs) in one file at a time
+    design_checkpoint_ops: int = 200      # a room stores its snapshot every this many ops ...
+    design_checkpoint_idle_s: float = 20.0   # ... and after this many quiet seconds (and when the last person leaves)
+    design_autoversion_min: int = 30      # an automatic version every this many minutes of editing (0 = none)
+    design_autoversion_keep: int = 50     # automatic versions kept per file (named ones are never pruned)
+    design_socket_idle_s: float = 60.0    # an editor that sends nothing for this long (it pings every 15 s) is let go
     flow_page: bool = True                # v0.751 HOOLA FLOW: the Kaan pack as a console page (dictate, files, live captions, words, settings)
     flow_composer_mic: bool = True        # v0.751 the chat box mic dictates through Kaan when its engine is ready (else the browser's own)
     shilp_page: bool = True               # v0.752 ARTCRAFT IN CREATE: the Create studio's ArtCraft tool over the shilp lane (/api/shilp)
