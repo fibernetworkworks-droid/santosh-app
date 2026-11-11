@@ -444,6 +444,12 @@ def uses_photos(spec: dict[str, Any]) -> bool:
                for f in (c.get("fields") or []) if isinstance(f, dict))
 
 
+def uses_camera(spec: dict[str, Any]) -> bool:
+    """v0.802 MEDIA: a photo / photos field shows Take photo (CameraButton) beside the library picker."""
+    return any(f.get("type") in ("photo", "photos") for c in ((spec.get("seed") or {}).get("backend") or {}).get("collections") or []
+               for f in (c.get("fields") or []) if isinstance(f, dict))
+
+
 def project_yml(spec: dict[str, Any]) -> str:
     app = spec.get("app") or {}
     ios = spec.get("ios") or {}
@@ -599,9 +605,13 @@ def info_plist(spec: dict[str, Any]) -> str:
            for f in c.get("fields") or []):              # v0.425 RANG: a voice note, only on the user's Record tap
         extra += ("    <key>NSMicrophoneUsageDescription</key>\n"
                   "    <string>The microphone records a voice note only while you hold Record. Nothing is recorded otherwise.</string>\n")
-    if uses_scan(spec):                                  # v0.340 the scanner's camera
+    if uses_scan(spec) or uses_camera(spec):             # v0.340 the scanner's camera; v0.802 Take photo on a photo field
+        what = ("reads a barcode or QR code only when you tap Scan, and takes a photo only when you tap Take photo"
+                if uses_scan(spec) and uses_camera(spec) else
+                "takes a photo only when you tap Take photo. Only the photo you take is sent" if uses_camera(spec) else
+                "reads a barcode or QR code only when you tap Scan. Nothing is recorded")
         extra += ("    <key>NSCameraUsageDescription</key>\n"
-                  "    <string>The camera reads a barcode or QR code only when you tap Scan. Nothing is recorded.</string>\n")
+                  f"    <string>The camera {what}.</string>\n")
     if uses_photos(spec):
         extra += ("    <key>NSPhotoLibraryUsageDescription</key>\n"
                   "    <string>Pick a photo to send with your request. Only the photo you choose is used.</string>\n")
