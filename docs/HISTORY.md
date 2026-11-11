@@ -540,3 +540,44 @@ Phase G2 of `docs/LANGGRAPH_TURN_PLAN.md` (bug classes 6 and 8), only when `chat
 - TESTS: NEW `test_g2_turngraph.py` 14; g1 9, g0 11, harness2 15, harness3 17, routines 3, v0657 14, v0664 10, v0649 11 same off and on.
 - NOT COVERED: order is by entry into run_turn, not inbox created_at; tickets are one process's memory (inbox + sweep stay the cross-restart net); Stop does not cut other awaits inside a node (finishes, then the boundary ends it); a slow head ticket makes later messages wait; old-path flaws left alone; nothing verified live. Next: G3 done-truth from the ledger.
 
+
+## v0.771.0 PROOF APPS — the App plan's five proof apps, the whole road on the server (11 Nov 2026; owner: "CONTINUE THE WORK"; built as 0.770, their LANGGRAPH G2 took 0.770.0 - REBASE PROTOCOL, both kept)
+
+The App plan (`docs/COMPLEX_APPS_PLAN.md`) had twelve pillars built (A-L) and its own gate unmet: "a proof app" -
+none existed. `server/app/appmaker/proofapps.py` builds the plan's five: **School ERP** (leave workflow Pending ->
+Approved by a teacher only, fee register with due = amount - paid and two rules, notices readable by members only),
+**Clinic** (a doctor's slot unique, Booked -> Checked in -> Done by the desk only, patient privacy, rating after Done),
+**Food delivery** (the phone never prices - amount = qty x rate_of(item) on the server, 1-20 per order, a four-state
+kitchen workflow, rating only after Delivered, menu public but kitchen-only), **Multi-vendor marketplace** (vendors
+own their listings - another vendor's edit refused, a free listing refused, sales split into 10% commission + payout,
+vendors cannot read the register), **Field-service CRM** (private phone, the office assigns, a technician cannot take
+another's job, Done requires visit notes, 24 h SLA stored, rating after Done).
+
+Each one: a hand-written naksha (no model, the same every run) -> Pillar K's checker -> every module approved by its
+hash and built through the real engines (lists, logic draft, push) with its own generated proof -> the brain applied
+through the real logic engine (on her app that stays HER tap; this is the harness's own hidden app) -> hand-written
+Pillar J scenarios checked against the app as it now is and played on a twin. Tenant `__proofapps__`, last run's
+projects / twins / rows / accounts cleared first. Card: per app modules built, scenarios pass, refusals checked, her
+next steps, what is NOT proved; saved to data/proofapps/last.json. `python -m app.appmaker.proofapps [--only <key>]
+[--json]`, vps-ops `proof_apps`.
+
+**Found by its first run, all three in the pillars, all fixed:**
+- Pillar J (`quality._Run._role`): making a test person staff / admin ends their logins (`webapp.set_role`: "a new
+  role = log in again"), and the runner never logged them in again. Since v0.540 every staff / admin step ran SIGNED
+  OUT: an allowed step failed, and a "must be refused" step by staff passed for the wrong reason. They log in again now.
+- Pillar J: the per-IP signup limit (5 an hour per site) answered the sixth scenario sign-up with 429, so every later
+  story failed on nothing to do with her app. The limits are lifted for the twin only (`_unthrottle`) - hidden, test
+  rows only, reachable by nobody but the runner. Her real apps keep every limit.
+- Pillar K (`architect._steps_for`): a module whose list only staff may write (fees, sales) had its proof walked by a
+  plain member, so the module read as failed. The walk signs up as staff for such a list.
+
+**Named by the proof, NOT built:** a customer seeing a row written FOR her by staff (her child's fee row, her
+prescription, a vendor's own sales - rows belong to whoever wrote them; needs a gate / pass list), prescriptions and
+report cards as PDFs, the family's rider / vendor apps (design + native build), offline-first on a technician's phone.
+
+**NOT VERIFIED:** nothing here ran on a real phone, which is what the plan's gate asks. Payment keys, Firebase,
+connector accounts and live tracking stay her next steps and are never counted as passes.
+
+Tests `test_v0771_proof_apps.py` 5 (all five proved, >= 2 real refusals per app + what is not proved named, her
+credentials stay next steps, only the hidden tenant touched, a second run starts fresh); test_v0542_naksha 13/13,
+test_v0540_jaanch + test_routines 19/19 green with the fixes.
