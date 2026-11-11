@@ -16,7 +16,7 @@ def _f(v: Any) -> float:
 
 def rto_risk(orders: list[dict]) -> dict[str, Any]:
     if not orders:
-        raise ValueError("orders rows do: id, address, pincode, phone, cod (true/false), amount, prior_rto.")
+        raise ValueError("Give orders rows: id, address, pincode, phone, cod (true/false), amount, prior_rto.")
     out = []
     for o in orders[:5000]:
         pts, why = 0, []
@@ -38,7 +38,7 @@ def rto_risk(orders: list[dict]) -> dict[str, Any]:
             why.append("COD order")
             if _f(o.get("amount")) >= 3000:
                 pts += 1
-                why.append("COD par bada amount")
+                why.append("large COD amount")
         if _f(o.get("prior_rto")) > 0:
             pts += 3
             why.append("this customer had an RTO before")
@@ -84,7 +84,7 @@ _CLAIMS = [(r"\b100\s*%\s*(genuine|original|authentic|pure|natural|safe)\b", "ab
 def claims(text: str, spec: dict | None = None) -> dict[str, Any]:
     t = str(text or "")
     if not t.strip():
-        raise ValueError("text do (product title / description).")
+        raise ValueError("Give text (product title / description).")
     flags = []
     for pat, kind in _CLAIMS:
         for m in re.finditer(pat, t, re.I):
@@ -97,7 +97,7 @@ def claims(text: str, spec: dict | None = None) -> dict[str, Any]:
 
 def landed(offers: list[dict]) -> dict[str, Any]:
     if not offers:
-        raise ValueError("offers rows do: seller, price, shipping, cod_fee, coupon_off, return_days.")
+        raise ValueError("Give offers rows: seller, price, shipping, cod_fee, coupon_off, return_days.")
     rows = []
     for o in offers[:200]:
         total = _f(o.get("price")) + _f(o.get("shipping")) + _f(o.get("cod_fee")) - _f(o.get("coupon_off"))
@@ -110,7 +110,7 @@ def landed(offers: list[dict]) -> dict[str, Any]:
 
 def shop_scam(url: str = "", price: Any = None, market_price: Any = None, text: str = "") -> dict[str, Any]:
     if not (url or text):
-        raise ValueError("url ya text do.")
+        raise ValueError("Give url or text.")
     sig = []
     res: dict[str, Any] = {}
     if url:

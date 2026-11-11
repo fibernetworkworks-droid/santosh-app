@@ -85,7 +85,7 @@ def _kalam(tenant: str) -> list[dict[str, Any]]:
         pieces = (s.query(KalamPiece).filter(KalamPiece.tenant_id == tenant, KalamPiece.status == "published")
                   .order_by(KalamPiece.updated_at.desc()).limit(30).all())
         for p in pieces:
-            title = (p.title or _j(p.meta, {}).get("meta_title") or p.keyword or (p.brief or "")[:60] or "Lekh")
+            title = (p.title or _j(p.meta, {}).get("meta_title") or p.keyword or (p.brief or "")[:60] or "Article")
             if (p.body or "").strip():
                 out.append({"ref": f"record:kalam:{p.id}", "what": "kalam", "title": f"Published: {title}"[:160],
                             "text": p.body, "at": str(getattr(p, "updated_at", "") or "")[:10]})

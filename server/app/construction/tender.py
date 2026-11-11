@@ -71,7 +71,7 @@ def pack(tenant: str, tender_id: str, kind: str, rows: list, note: str = "") -> 
             clean.append({"item": str(r.get("item"))[:160], "value": str(r.get("value", ""))[:200],
                           "source": str(r.get("source"))[:160]})
     if not clean:
-        raise CstError("Rows bhejo [{item, value, source}].")
+        raise CstError("Send rows [{item, value, source}].")
     with _LOCK, session() as s:
         t = s.get(CTender, tender_id)
         if not t or t.tenant_id != tenant:

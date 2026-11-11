@@ -14,7 +14,7 @@ _OPS = {">": operator.gt, ">=": operator.ge, "<": operator.lt, "<=": operator.le
 
 def underwrite(applicant: dict, rules: list[dict]) -> dict[str, Any]:
     if not isinstance(applicant, dict) or not applicant:
-        raise ValueError("applicant details do.")
+        raise ValueError("Give applicant details.")
     if not rules:
         raise ValueError("Give rules: [{field, op, value, code, severity}]. They are your policy's rules; we have no built-in rules.")
     a = dict(applicant)
@@ -74,7 +74,7 @@ def kfs(lender: str, borrower: str, product: str, amount: Any, rate: Any, months
 
 def dpd(accounts: list[dict], as_of: Any = None, npa_days: Any = 90) -> dict[str, Any]:
     if not accounts:
-        raise ValueError("accounts rows do: id, outstanding, oldest_due_date.")
+        raise ValueError("Give accounts rows: id, outstanding, oldest_due_date.")
     today = dt.date.fromisoformat(str(as_of)[:10]) if as_of else dt.date.today()
     npa = int(_n(npa_days))
     buckets = {"standard(0)": 0.0, "SMA-0(1-30)": 0.0, "SMA-1(31-60)": 0.0, "SMA-2(61-90)": 0.0, "NPA-suggested": 0.0}
@@ -96,7 +96,7 @@ def dpd(accounts: list[dict], as_of: Any = None, npa_days: Any = 90) -> dict[str
 
 def ecl(exposures: list[dict], stage2_dpd: Any = 30, stage3_dpd: Any = 90) -> dict[str, Any]:
     if not exposures:
-        raise ValueError("exposures rows do: ead, pd (0-1), lgd (0-1), dpd (ya stage).")
+        raise ValueError("Give exposures rows: ead, pd (0-1), lgd (0-1), dpd (or stage).")
     by = {1: 0.0, 2: 0.0, 3: 0.0}
     rows, flags = [], []
     for e in exposures[:20000]:

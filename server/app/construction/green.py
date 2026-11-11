@@ -51,7 +51,7 @@ def meter_add(tenant: str, site: str, meter: str, kwh: float, day: str = "", not
         s.flush()
         mid = x.id
     return {"meter_id": mid,
-            "say": f"Reading: {meter.strip()} = {_num(kwh):g} kWh ({x.day}). Benchmark isi data se."}
+            "say": f"Reading: {meter.strip()} = {_num(kwh):g} kWh ({x.day}). The benchmark is made from this data."}
 
 
 def tariff_add(tenant: str, name: str, rows: list, source: str) -> dict:
@@ -73,7 +73,7 @@ def tariff_add(tenant: str, name: str, rows: list, source: str) -> dict:
         s.flush()
         tid = x.id
     return {"tariff_id": tid, "slabs": len(clean),
-            "say": f"Tariff '{name.strip()}': {len(clean)} slabs ({source.strip()[:50]}). Bill isi se."}
+            "say": f"Tariff '{name.strip()}': {len(clean)} slabs ({source.strip()[:50]}). The bill is calculated from this."}
 
 
 def bill(tenant: str, name: str, kwh_month: float) -> dict:
@@ -238,7 +238,7 @@ def model_inputs(tenant: str, project: str, rows: list) -> dict:
         clean.append({"param": str(r.get("param"))[:80], "value": str(r.get("value"))[:60],
                       "unit": str(r.get("unit", ""))[:20], "source": str(r.get("source"))[:160]})
     if not clean:
-        raise CstError("Input rows bhejo [{param, value, unit, source}].")
+        raise CstError("Send input rows [{param, value, unit, source}].")
     return {"rows": clean,
             "say": f"Model input register: {len(clean)} parameters, all with a source. EnergyPlus "
                    "does NOT run here - this input set is for the modeller, who also explains the "
@@ -266,7 +266,7 @@ def carbon_add(tenant: str, project: str, material: str, qty: float, unit: str, 
     return {"row_id": cid, "kgco2e": kg,
             "say": f"Carbon row: {material.strip()} {_num(qty):g} {unit} x {_num(factor_kgco2e):g} "
                    f"kgCO2e = {kg:,.0f} kgCO2e (factor: {factor_source.strip()[:40]}). "
-                   "Hot-spot list isi se."}
+                   "The hot-spot list is made from this."}
 
 
 def carbon_hotspots(tenant: str, project: str) -> dict:

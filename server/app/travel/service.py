@@ -430,7 +430,7 @@ def new_trip(tenant: str, text: str = "", title: str = "", origin: str = "", des
                        destination=destination, start_date=sd, end_date=ed or sd, travellers=_dump(trav),
                        budget_paise=_paise(budget), prefs=prefs_c, kind=_s(kind)[:40],
                        conv=conv, country=(_s(country).lower() or R.country_of(f"{destination} {text}")))
-        t.title = _s(title)[:200] or (f"{t.origin + ' se ' if t.origin else ''}{destination or text[:60]}"
+        t.title = _s(title)[:200] or (f"{t.origin + ' to ' if t.origin else ''}{destination or text[:60]}"
                                       + (f" ({t.client_name})" if t.client_name else ""))
         _log(t, "Trip created", actor)
         s.add(t)
@@ -504,7 +504,7 @@ def update_trip(tenant: str, ref: str, actor: str = "owner", **kw) -> dict[str, 
             if kw["status"] not in STATUS_LABEL:
                 raise TravelError("status = " + " | ".join(STATUS_LABEL))
             t.status = kw["status"]
-        _log(t, "Trip badli", actor)
+        _log(t, "Trip updated", actor)
         return {"trip": _trip_view(s, t), "say": "Trip update."}
 
 
@@ -900,7 +900,7 @@ def decide_booking(tenant: str, bid: str, yes: bool, hash: str = "", note: str =
         if b is None or b.tenant_id != tenant:
             raise TravelError("Card not found.")
         if b.status != "waiting":
-            return {"booking": _booking_view(b), "say": f"Is card par faisla ho chuka ({BOOKING_LABEL.get(b.status, b.status)})."}
+            return {"booking": _booking_view(b), "say": f"This card has already been decided ({BOOKING_LABEL.get(b.status, b.status)})."}
         now_card = _booking_card(s, b)
         if not hash or hash != b.hash or _hash(now_card) != b.hash:
             raise TravelError("The card has changed: look at the new card and decide.")
@@ -1067,7 +1067,7 @@ def decide_quote(tenant: str, qid: str, yes: bool, hash: str = "", by_tap: bool 
         if q.status == "stale":
             raise TravelError("This is an old quote card: look at the new card.")
         if q.status != "waiting":
-            return {"quote": _quote_view(q), "say": f"Is card par faisla ho chuka ({q.status})."}
+            return {"quote": _quote_view(q), "say": f"This card has already been decided ({q.status})."}
         t = s.get(TravelTrip, q.trip_id)
         try:
             fresh = _quote_card(s, tenant, t)
@@ -1205,7 +1205,7 @@ def day(tenant: str, ln: datetime | None = None) -> dict[str, Any]:
         nwait = len(waiting)
     bits = []
     for u in sorted(upcoming, key=lambda x: x["in_days"]):
-        when = "today" if u["in_days"] == 0 else ("tomorrow" if u["in_days"] == 1 else f"in {u['in_days']} days")
+        when = "today" if u["in_days"] == 0 else ("tomorrow" if u["in_days"] == 1 else f"{u['in_days']} days away")
         bits.append(f"{u['number']} {u['title']} {when}" + (f" (documents pending: {', '.join(u['docs_missing'][:3])})" if u["docs_missing"] else ""))
     if nwait:
         bits.append(f"{nwait} booking cards are waiting for your approval")

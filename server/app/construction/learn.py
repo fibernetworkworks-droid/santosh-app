@@ -52,12 +52,12 @@ def assess_add(tenant: str, project: str, rows: list) -> dict:
                 continue
             m, mx = _num(r[2]), _num(r[3])
             if mx <= 0:
-                raise CstError(f"Row '{r[0]}': max marks 0 se bade do.")
+                raise CstError(f"Row '{r[0]}': give max marks greater than 0.")
             s.add(M.ClearnItem(tenant_id=tenant, project=project, kind="assess", name=str(r[0])[:120],
                                data=_dump({"module": str(r[1])[:120], "marks": m, "max": mx,
                                            "pct": round(m / mx * 100, 1)})))
             made += 1
-    return {"ok": True, "rows": made, "said": f"{made} assessment row(s) likhi."}
+    return {"ok": True, "rows": made, "said": f"{made} assessment row(s) written."}
 
 
 def assess_sum(tenant: str, project: str, pass_pct: float) -> dict:

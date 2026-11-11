@@ -108,9 +108,9 @@ def chart_time(depart: datetime) -> datetime:
     return datetime.combine(prev, time(20, 0))
 
 
-TRAIN_ID = ["Aadhaar (mAadhaar / DigiLocker copy bhi)", "Voter ID", "Passport", "PAN card", "Driving licence",
-            "Sarkari photo ID card", "School / college photo ID (students)", "Bank passbook with photo"]
-FLIGHT_ID = ["Aadhaar", "Passport", "Voter ID", "Driving licence", "PAN card", "Sarkari / PSU employee photo ID"]
+TRAIN_ID = ["Aadhaar (an mAadhaar / DigiLocker copy also works)", "Voter ID", "Passport", "PAN card", "Driving licence",
+            "Government photo ID card", "School / college photo ID (students)", "Bank passbook with photo"]
+FLIGHT_ID = ["Aadhaar", "Passport", "Voter ID", "Driving licence", "PAN card", "Government / PSU employee photo ID"]
 
 
 # ----------------------------------------------------------------------------- flights

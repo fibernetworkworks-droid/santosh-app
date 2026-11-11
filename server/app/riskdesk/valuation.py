@@ -40,7 +40,7 @@ def dcf(cashflows: list, discount_pct: Any, terminal_growth_pct: Any, net_debt: 
             row["equity_value"].append({"growth_pct": round(gg * 100, 2), "value": round(_value(cfs, rr, gg)[0] - nd, 2) if rr > gg else None})
         grid.append(row)
     out["sensitivity"] = grid
-    out["flags"] = ([f"{out['terminal_share_pct']}% of the total value comes from the terminal value: it depends heavily on assumptions."] if out["terminal_share_pct"] and out["terminal_share_pct"] > 75 else [])
+    out["flags"] = ([f"The terminal value is {out['terminal_share_pct']}% of the total value: it depends heavily on assumptions."] if out["terminal_share_pct"] and out["terminal_share_pct"] > 75 else [])
     out["not_checked"] = "Whether the cash flow estimates are right, comparables, the share's liquidity / control discount, tax."
     out["decider"] = "A registered valuer gives the opinion and signs; this is an arithmetic worksheet of your assumptions, not an opinion on value."
     return out

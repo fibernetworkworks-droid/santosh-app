@@ -27,7 +27,7 @@ def _d(v: Any) -> dt.date:
 
 def day_summary(sales: list[dict]) -> dict[str, Any]:
     if not sales:
-        raise ValueError("sales rows do: time (ya date), amount, mode (cash/upi/credit), item.")
+        raise ValueError("Give sales rows: time (or date), amount, mode (cash/upi/credit), item.")
     mode, hour, item = defaultdict(float), defaultdict(float), defaultdict(float)
     for s in sales[:20000]:
         a = _f(s.get("amount"))
@@ -69,7 +69,7 @@ def forecast(weekly_sales: list[Any], weeks: int = 4, festival_boost: dict | Non
 
 def reorder(items: list[dict], today: Any = None, cover_days: Any = 7, expiry_days: Any = 30, dead_days: Any = 45) -> dict[str, Any]:
     if not items:
-        raise ValueError("items rows do: name, stock, daily_sales, lead_days, cost, last_sold, expiry.")
+        raise ValueError("Give items rows: name, stock, daily_sales, lead_days, cost, last_sold, expiry.")
     t = _d(today) if today else dt.date.today()
     cd, ed, dd = _f(cover_days), _f(expiry_days), _f(dead_days)
     rows, expiring, dead, tied = [], [], [], 0.0
@@ -99,7 +99,7 @@ def reorder(items: list[dict], today: Any = None, cover_days: Any = 7, expiry_da
 
 def margin(items: list[dict]) -> dict[str, Any]:
     if not items:
-        raise ValueError("items rows do: name, cost, selling, mrp.")
+        raise ValueError("Give items rows: name, cost, selling, mrp.")
     out, flags = [], []
     for it in items[:5000]:
         c, s, m = _f(it.get("cost")), _f(it.get("selling")), _f(it.get("mrp"))
@@ -136,7 +136,7 @@ def licences(items: list[dict], today: Any = None, warn_days: Any = 45) -> dict[
 
 def oversell(channels: list[dict], safety_stock: Any = 0) -> dict[str, Any]:
     if not channels:
-        raise ValueError("channels rows do: channel, stock, open_orders.")
+        raise ValueError("Give channels rows: channel, stock, open_orders.")
     ss = _f(safety_stock)
     total = sum(_f(c.get("stock")) for c in channels)
     committed = sum(_f(c.get("open_orders")) for c in channels)

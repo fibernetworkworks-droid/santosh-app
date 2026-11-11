@@ -22,7 +22,7 @@ def _f(v: Any) -> float:
 
 def velocity(txns: list[dict], window_minutes: Any = 10, max_count: Any = 5, max_amount: Any = None, shared_device_accounts: Any = 3) -> dict[str, Any]:
     if not txns:
-        raise ValueError("txns rows do: account, ts, amount, device.")
+        raise ValueError("Give txns rows: account, ts, amount, device.")
     w = dt.timedelta(minutes=_f(window_minutes))
     by = defaultdict(list)
     dev = defaultdict(set)
@@ -54,7 +54,7 @@ def velocity(txns: list[dict], window_minutes: Any = 10, max_count: Any = 5, max
 
 def wash(trades: list[dict], qty_tolerance_pct: Any = 5, window_minutes: Any = 60) -> dict[str, Any]:
     if not trades:
-        raise ValueError("trades rows do: client, symbol, side, qty, price, ts.")
+        raise ValueError("Give trades rows: client, symbol, side, qty, price, ts.")
     tol, w = _f(qty_tolerance_pct) / 100.0, dt.timedelta(minutes=_f(window_minutes))
     by = defaultdict(list)
     for x in trades[:50000]:

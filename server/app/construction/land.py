@@ -90,7 +90,7 @@ def item_add(tenant: str, project: str, kind: str, rows: list, by: str = "", sou
             made.append(it.id)
     publish(tenant, "const_land", {"kind": kind, "project": project, "rows": len(made)}, conv)
     return {"ok": True, "ids": made, "kind": kind, "rows": len(made), "by": by, "source": source,
-            "said": f"{len(made)} {kind} row(s) likhi ({project})."}
+            "said": f"{len(made)} {kind} row(s) written ({project})."}
 
 
 # ---------------------------------------------------------------- arithmetic

@@ -206,7 +206,7 @@ def deviations(tenant: str, project: str, name: str, rows: list, tolerance_mm: f
     E57/LAS binaries parse NAHI hote, said on the tin). Per-point 3D deviation, RMS, and the
     out-of-tolerance list - the scan technician's QA, arithmetically."""
     if not rows:
-        raise CstError("Deviation rows bhejo [x, y, z_asbuilt, x, y, z_design].")
+        raise CstError("Send deviation rows [x, y, z_asbuilt, x, y, z_design].")
     if _num(tolerance_mm) <= 0:
         raise CstError("Give the tolerance (> 0, mm).")
     devs, out_of = [], []

@@ -126,7 +126,7 @@ def camp_add(tenant: str, project: str, rows: list) -> dict:
                              data=_dump({"capacity": cap, "occupancy": occ,
                                          "util_pct": round(occ / cap * 100, 1) if cap else None})))
             made += 1
-    return {"ok": True, "rows": made, "said": f"{made} camp block(s) likhi."}
+    return {"ok": True, "rows": made, "said": f"{made} camp block(s) written."}
 
 
 def camp_check(tenant: str, project: str, rows: list, by: str = "") -> dict:

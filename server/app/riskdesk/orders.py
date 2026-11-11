@@ -8,7 +8,7 @@ from typing import Any
 def _f(v: Any, name: str = "value", required: bool = False) -> float:
     if v is None or v == "":
         if required:
-            raise ValueError(f"{name} do.")
+            raise ValueError(f"{name} is required.")
         return 0.0
     try:
         return float(str(v).replace(",", ""))
@@ -21,7 +21,7 @@ def ticket(symbol: str, side: str, qty: Any, order_type: str = "limit", price: A
            max_price_deviation_pct: Any = 5) -> dict[str, Any]:
     sym, sd, ot, pr = str(symbol or "").strip().upper(), str(side or "").lower(), str(order_type or "").lower(), str(product or "").lower()
     if not sym:
-        raise ValueError("symbol do.")
+        raise ValueError("symbol is required.")
     if sd not in ("buy", "sell"):
         raise ValueError("Give side as buy or sell.")
     if ot not in ("market", "limit", "stoploss"):

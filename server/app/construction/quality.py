@@ -439,7 +439,7 @@ def mtest_add(tenant: str, project: str, rows: list, conv: str = "") -> dict:
             result, limit = _num(r[3]), _num(r[4])
             op = str(r[5])[:4].lower()
             if op not in ("min", "max"):
-                raise CstError(f"Row '{r[0]}': op 'min' (result >= limit pass) ya 'max' (result <= limit pass) do.")
+                raise CstError(f"Row '{r[0]}': give op 'min' (result >= limit pass) or 'max' (result <= limit pass).")
             if not str(r[6] or "").strip():
                 raise CstError(f"Row '{r[0]}': give the source of the limit (IS code / spec).")
             ok = result >= limit if op == "min" else result <= limit

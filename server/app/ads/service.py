@@ -813,7 +813,7 @@ def make_plan(tenant: str, days: int = 14, conv: str = "", extra: float = 0) -> 
             changes.append({"kind": "budget", "platform": lk["platform"], "target": lk["name"], "campaign": lk["campaign"],
                             "ext_id": lk.get("ext_id", ""), "before": b, "after": nb, "reason": lk["text"] +
                             f" Budget {st['max_step_pct']}% lower (a bigger change at once restarts Meta's learning).",
-                            "expect": f"{_rs(b - nb)} less a day; spend stays limited until the ad is changed",
+                            "expect": f"Spend {_rs(b - nb)} less a day; it stays limited until the ad is changed",
                             "base": {k: lk.get(k) for k in ("spend", "results", "cpl", "ctr")}})
         elif lk["action"] == "negative" and lk.get("terms"):
             changes.append({"kind": "negative", "platform": "google", "target": ", ".join(x["term"] for x in lk["terms"][:20]),
@@ -1079,7 +1079,7 @@ def write_copies(tenant: str, brief: str = "", platform: str = "meta", campaign:
         lows = [l["text"] for l in rep["leaks"] if l["kind"] in ("low_ctr", "fatigue")][:3]
         weak = ("Problems seen in her ads now: " + " | ".join(lows)) if lows else ""
     prompt = "\n".join(x for x in [
-        f"PLATFORM: {platform}. Variants: {n}.", f"LANGUAGE: {lang or 'hinglish'}.", f"BUSINESS: {st['business']}",
+        f"PLATFORM: {platform}. Variants: {n}.", f"LANGUAGE: {lang or 'english'}.", f"BUSINESS: {st['business']}",
         f"OFFER / PRODUCT (her words): {brief or st['offer']}", f"CAMPAIGN: {campaign}" if campaign else "",
         f"LANDING PAGE: {landing}" if landing else "", f"HER FACTS:\n{facts}" if facts else "",
         f"HER VOICE: {voice}" if voice else "", f"WHAT WORKED BEFORE: {lessons}" if lessons else "", weak,

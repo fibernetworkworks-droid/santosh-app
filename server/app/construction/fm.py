@@ -57,7 +57,7 @@ def ppm_add(tenant: str, project: str, rows: list, conv: str = "") -> dict:
                 continue
             freq = _num(r[2])
             if freq <= 0:
-                raise CstError(f"Row '{r[0]}': freq_days 0 se bada do.")
+                raise CstError(f"Row '{r[0]}': give freq_days greater than 0.")
             s.add(M.CfmItem(tenant_id=tenant, project=project, kind="ppm", name=str(r[0])[:120],
                             data=_dump({"task": str(r[1])[:160], "freq_days": freq,
                                         "last_done": str(r[3])[:10] if len(r) > 3 else ""})))
@@ -152,7 +152,7 @@ def roster_add(tenant: str, project: str, rows: list) -> dict:
                             data=_dump({"weekday": str(r[1])[:12], "shift": str(r[2])[:24],
                                         "person": str(r[3])[:80] if len(r) > 3 else ""})))
             made += 1
-    return {"ok": True, "rows": made, "said": f"{made} roster row(s) likhi."}
+    return {"ok": True, "rows": made, "said": f"{made} roster row(s) written."}
 
 
 def roster_gap(tenant: str, project: str) -> dict:
@@ -224,7 +224,7 @@ def asset_add(tenant: str, project: str, rows: list) -> dict:
                             data=_dump({"space": str(r[1])[:80], "dept": str(r[2])[:80] if len(r) > 2 else "",
                                         "warranty_till": str(r[3])[:10] if len(r) > 3 else ""})))
             made += 1
-    return {"ok": True, "rows": made, "said": f"{made} asset/space row(s) likhi."}
+    return {"ok": True, "rows": made, "said": f"{made} asset/space row(s) written."}
 
 
 def dekho(tenant: str, what: str, project: str = "") -> dict:

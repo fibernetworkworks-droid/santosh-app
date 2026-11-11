@@ -52,11 +52,11 @@ def activity_update(tenant: str, project: str, code: str, act_start: str = "", a
             raise CstError(f"Activity '{code}' not found ({project}).")
         if act_start:
             if not _date(act_start):
-                raise CstError("act_start yyyy-mm-dd do.")
+                raise CstError("Give act_start as yyyy-mm-dd.")
             a.act_start = act_start
         if act_finish:
             if not _date(act_finish):
-                raise CstError("act_finish yyyy-mm-dd do.")
+                raise CstError("Give act_finish as yyyy-mm-dd.")
             a.act_finish = act_finish
         if pct is not None:
             a.pct = max(0.0, min(100.0, float(pct)))
@@ -110,7 +110,7 @@ def resource_add(tenant: str, project: str, rows: list, note: str = "") -> dict:
                                           "output_planned": _num(r[3]) if len(r) > 3 else 0.0}),
                               note=note))
             made += 1
-    return {"ok": True, "rows": made, "said": f"{made} resource row(s) likhi."}
+    return {"ok": True, "rows": made, "said": f"{made} resource row(s) written."}
 
 
 def productivity(tenant: str, project: str, activity: str, output_actual: float) -> dict:
@@ -181,7 +181,7 @@ def si_add(tenant: str, project: str, rows: list, note: str = "") -> dict:
 
 def pmc_log(tenant: str, project: str, date_s: str, what: str, note: str = "") -> dict:
     if not _date(date_s):
-        raise CstError("Visit date yyyy-mm-dd do.")
+        raise CstError("Give the visit date as yyyy-mm-dd.")
     with session() as s:
         s.add(M.CplanItem(tenant_id=tenant, project=project, kind="pmclog", name=what[:160],
                           data=_dump({"date": date_s, "note": note})))
@@ -302,7 +302,7 @@ def plant_add(tenant: str, project: str, rows: list, note: str = "") -> dict:
 def plant_book(tenant: str, project: str, plant: str, frm: str, to: str, site: str) -> dict:
     """One booking - overlapping bookings on the SAME plant are named, not resolved."""
     if not _date(frm) or not _date(to):
-        raise CstError("Booking dates yyyy-mm-dd do.")
+        raise CstError("Give the booking dates as yyyy-mm-dd.")
     if _date(to) < _date(frm):
         raise CstError("The booking's end date cannot be before its start.")
     with session() as s:
@@ -330,7 +330,7 @@ def plant_book(tenant: str, project: str, plant: str, frm: str, to: str, site: s
 def plant_util(tenant: str, project: str, plant: str, working_days: int) -> dict:
     """Utilisation = booked days / working days, arithmetic on HER bookings."""
     if working_days <= 0:
-        raise CstError("working_days 0 se bada do.")
+        raise CstError("Give working_days greater than 0.")
     with session() as s:
         books = s.scalars(select(M.CplanItem).where(M.CplanItem.tenant_id == tenant,
                                                     M.CplanItem.project == project,
