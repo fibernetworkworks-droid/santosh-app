@@ -45,12 +45,12 @@ def _day(v: Any) -> date | None:
 
 def _rows(rows: Any, what: str) -> list[dict[str, Any]]:
     if not isinstance(rows, list) or not rows:
-        raise CalcError(f"{what} ke liye rows chahiye.")
+        raise CalcError(f"Rows are needed for {what}.")
     if len(rows) > MAX_ROWS:
-        raise CalcError(f"{MAX_ROWS} se zyada rows nahi.")
+        raise CalcError(f"No more than {MAX_ROWS} rows.")
     out = [r for r in rows if isinstance(r, dict)]
     if not out:
-        raise CalcError("Har row ek object honi chahiye.")
+        raise CalcError("Every row must be an object.")
     return out
 
 
@@ -73,14 +73,14 @@ def reorder(rows: list[dict[str, Any]], service_level: int = 95, days_of_history
     items = _rows(rows, "reorder")
     hist = int(days_of_history or 0)
     if hist and hist < MIN_HISTORY_DAYS:
-        raise CalcError(f"{hist} din ka itihaas kaafi nahi ({MIN_HISTORY_DAYS} din chahiye) - "
-                        "is se nikla reorder point bharosa laayak nahi hoga.")
+        raise CalcError(f"{hist} days of history is not enough ({MIN_HISTORY_DAYS} days needed) - "
+                        "a reorder point from this would not be reliable.")
     z = Z.get(int(service_level), 1.65)
     out, warn = [], []
     for r in items:
         sku = _s(r.get("sku") or r.get("id"))
         if not sku:
-            raise CalcError("Har row mein sku chahiye.")
+            raise CalcError("Every row needs an sku.")
         window = max(1.0, _n(r.get("days") or hist, 30))
         sold = max(0.0, _n(r.get("sold")))
         per_day = sold / window
@@ -91,10 +91,10 @@ def reorder(rows: list[dict[str, Any]], service_level: int = 95, days_of_history
             var = sum((d - mean) ** 2 for d in daily) / (len(daily) - 1)
             sigma = math.sqrt(var)
             safety = z * sigma * math.sqrt(lead)
-            how = "roz ke numbers se"
+            how = "from daily numbers"
         else:
             safety = 0.5 * per_day * lead          # a flat half-lead cushion, stated as such
-            how = "roz ke numbers nahi the - lead ka aadha rakha"
+            how = "no daily numbers - half the lead time used"
             warn.append(sku)
         rop = per_day * lead + safety
         on_hand = _n(r.get("on_hand"))
@@ -109,8 +109,8 @@ def reorder(rows: list[dict[str, Any]], service_level: int = 95, days_of_history
     need = [x for x in out if x["mangwana_hai"]]
     return {"saman": sorted(out, key=lambda x: (x["kitne_din_chalega"] is None, x["kitne_din_chalega"])),
             "abhi_mangwaiye": need, "service_level": service_level,
-            "note": (f"{len(need)} cheezein reorder point par ya neeche hain."
-                     + (f" {len(warn)} ke liye roz ke numbers nahi the." if warn else ""))}
+            "note": (f"{len(need)} items are at or below the reorder point."
+                     + (f" {len(warn)} had no daily numbers." if warn else ""))}
 
 
 def dead_stock(rows: list[dict[str, Any]], days: int = 90) -> dict[str, Any]:
@@ -134,7 +134,7 @@ def dead_stock(rows: list[dict[str, Any]], days: int = 90) -> dict[str, Any]:
     return {"mara_hua": dead, "dheema": slow,
             "mare_hue_mein_paisa": round(sum(x["paisa_phansa"] for x in dead), 2),
             "kul_stock_ka_paisa": round(total, 2),
-            "note": (f"{len(dead)} cheezein {days} din se nahi bikin." if dead else "Sab kuch hil raha hai.")}
+            "note": (f"{len(dead)} items have not sold in {days} days." if dead else "Everything is moving.")}
 
 
 # ================================================================ plm
@@ -149,7 +149,7 @@ def bom_explode(rows: list[dict[str, Any]], top: str, qty: float = 1.0, max_dept
     for r in items:
         p, c = _s(r.get("parent")), _s(r.get("child"))
         if not p or not c:
-            raise CalcError("Har row mein parent aur child chahiye.")
+            raise CalcError("Every row needs a parent and a child.")
         kids.setdefault(p, []).append((c, _n(r.get("qty"), 1)))
         if r.get("unit_cost") not in (None, ""):
             cost[c] = _n(r.get("unit_cost"))
@@ -157,16 +157,16 @@ def bom_explode(rows: list[dict[str, Any]], top: str, qty: float = 1.0, max_dept
             cost[p] = _n(r.get("parent_cost"))
     top = _s(top)
     if top not in kids and top not in cost:
-        raise CalcError(f"'{top}' BOM mein nahi mila.")
+        raise CalcError(f"'{top}' not found in the BOM.")
     flat: dict[str, float] = {}
     lines: list[dict[str, Any]] = []
 
     def walk(node: str, mult: float, depth: int, stack: tuple[str, ...]) -> float:
         if node in stack:
-            raise CalcError("BOM mein chakkar hai (" + " -> ".join(stack[stack.index(node):] + (node,)) +
-                            ") - ise theek kiye bina koi laagat sach nahi hogi.")
+            raise CalcError("The BOM has a loop (" + " -> ".join(stack[stack.index(node):] + (node,)) +
+                            ") - no cost will be true until this is fixed.")
         if depth > max_depth:
-            raise CalcError(f"BOM {max_depth} level se gehra hai - kuch galat lag raha hai.")
+            raise CalcError(f"The BOM is deeper than {max_depth} levels - something looks wrong.")
         own = 0.0
         for child, q in kids.get(node, []):
             total_q = q * mult
@@ -184,8 +184,8 @@ def bom_explode(rows: list[dict[str, Any]], top: str, qty: float = 1.0, max_dept
                           sorted(flat.items(), key=lambda kv: -kv[1])],
             "laagat": round(total_cost, 2),
             "daam_nahi_mila": missing,
-            "note": ("Jin parts ka daam nahi tha unhe 0 mana gaya - laagat utni hi kam dikh rahi hai."
-                     if missing else "Har part ka daam mojood tha.")}
+            "note": ("Parts with no price were taken as 0 - the cost shows that much lower."
+                     if missing else "Every part had a price.")}
 
 
 def where_used(rows: list[dict[str, Any]], part: str) -> dict[str, Any]:
@@ -207,8 +207,8 @@ def where_used(rows: list[dict[str, Any]], part: str) -> dict[str, Any]:
     tops = [x["assembly"] for x in order if x["assembly"] not in parents]
     return {"part": part, "kahan_lagta_hai": order, "sabse_upar": sorted(set(tops)),
             "kitne": len(order),
-            "note": (f"{len(order)} jagah lagta hai - badlav in sab par asar karega." if order
-                     else "Yeh part kisi assembly mein nahi mila.")}
+            "note": (f"Used in {len(order)} places - a change affects all of them." if order
+                     else "This part was not found in any assembly.")}
 
 
 # ================================================================ bank_int
@@ -265,9 +265,9 @@ def reconcile(statement: list[dict[str, Any]], ledger: list[dict[str, Any]],
             "bank_ka_jod": round(sum(s["amount"] for s in S), 2),
             "kitaab_ka_jod": round(sum(l["amount"] for l in L), 2),
             "antar": round(sum(s["amount"] for s in S) - sum(l["amount"] for l in L), 2),
-            "note": ("Sab mil gaya." if not only_bank and not only_books else
-                     f"{len(only_bank)} bank lines aur {len(only_books)} kitaab lines nahi mileen - "
-                     "yahi dekhne wali cheez hai.")}
+            "note": ("Everything matched." if not only_bank and not only_books else
+                     f"{len(only_bank)} bank lines and {len(only_books)} book lines did not match - "
+                     "these are what to look at.")}
 
 
 # ================================================================ regtech
@@ -310,6 +310,6 @@ def due_calendar(rows: list[dict[str, Any]], today: str = "", ahead: int = 30) -
     return {"late": late, "aane_wale": soon, "ho_gaye": done, "tareekh_nahi": no_date,
             "jurmana_jod": round(exposure, 2),
             "jurmana_pata_nahi": no_fig,
-            "note": (f"{len(late)} cheezein late hain." if late else "Kuch late nahi hai.")
-            + (f" {len(no_fig)} ka jurmana number nahi diya gaya - woh jod mein nahi hai."
+            "note": (f"{len(late)} items are late." if late else "Nothing is late.")
+            + (f" {len(no_fig)} had no penalty figure given - not included in the total."
                if no_fig else "")}

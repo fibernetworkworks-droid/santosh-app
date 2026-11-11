@@ -66,19 +66,19 @@ def test_reorder_point_is_demand_times_lead_plus_safety():
     a = r["saman"][0]
     assert a["roz_bikta"] == 2.0 and a["safety"] == 10.0 and a["reorder_point"] == 30.0
     assert a["mangwana_hai"] is True and a["kitne_din_chalega"] == 7.5
-    assert "roz ke numbers nahi the" in a["safety_kaise"]
+    assert "no daily numbers" in a["safety_kaise"]
 
 
 def test_daily_numbers_give_a_real_safety_stock():
     daily = [2, 1, 3, 2, 2, 4, 1, 2, 3, 2, 2, 1, 3, 2]
     r = C.reorder([{"sku": "A", "sold": 30, "days": 14, "lead_days": 9, "on_hand": 5,
                     "sold_daily": daily}], service_level=95)
-    assert "roz ke numbers se" in r["saman"][0]["safety_kaise"]
+    assert "from daily numbers" in r["saman"][0]["safety_kaise"]
     assert r["saman"][0]["safety"] > 0
 
 
 def test_too_little_history_is_refused_not_guessed():
-    with pytest.raises(C.CalcError, match="kaafi nahi"):
+    with pytest.raises(C.CalcError, match="not enough"):
         C.reorder([{"sku": "A", "sold": 5}], days_of_history=3)
 
 
@@ -108,11 +108,11 @@ def test_a_nested_bom_multiplies_through_every_level():
 
 def test_a_part_with_no_price_is_named_not_counted_as_free():
     b = C.bom_explode([{"parent": "A", "child": "B", "qty": 1}], "A")
-    assert b["daam_nahi_mila"] == ["B"] and "0 mana gaya" in b["note"]
+    assert b["daam_nahi_mila"] == ["B"] and "taken as 0" in b["note"]
 
 
 def test_a_bom_loop_is_refused():
-    with pytest.raises(C.CalcError, match="chakkar"):
+    with pytest.raises(C.CalcError, match="loop"):
         C.bom_explode([{"parent": "A", "child": "B", "qty": 1},
                        {"parent": "B", "child": "A", "qty": 1}], "A")
 

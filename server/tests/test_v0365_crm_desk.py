@@ -133,7 +133,7 @@ def test_the_surface_is_declared_never_guessed(sf):
 
 
 def test_every_v0363_guard_still_holds_on_the_crm_desk(sf):
-    with pytest.raises(RUN.RunError, match="Mitane"):
+    with pytest.raises(RUN.RunError, match="does not delete"):
         RUN.plan_write("t1", "crm_arch", "salesforce", "DELETE_LEAD", "create", [{"a": 1}])
     with pytest.raises(RUN.RunError):
         RUN.plan_write("t1", "crm_arch", "salesforce", "Lead", "create",

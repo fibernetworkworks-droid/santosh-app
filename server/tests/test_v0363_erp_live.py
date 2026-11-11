@@ -53,7 +53,7 @@ def _rows(n=14):
 
 # ---------------------------------------------------------------- the refusals
 def test_delete_is_refused_at_any_size(erp):
-    with pytest.raises(RUN.RunError, match="Mitane"):
+    with pytest.raises(RUN.RunError, match="does not delete"):
         RUN.plan_write("t1", "erp", "sap", "DELETE_VENDORS", "create", [{"a": 1}])
     with pytest.raises(RUN.RunError):
         RUN.plan_write("t1", "erp", "sap", "Vendors", "delete", [{"a": 1}])
@@ -92,7 +92,7 @@ def test_the_approval_is_tied_to_those_exact_rows(erp):
     with session() as s:
         row = s.scalars(__import__("sqlalchemy").select(EntRunRow).where(EntRunRow.run_id == r["run"])).first()
         row.idem = "tampered"
-    with pytest.raises(RUN.RunError, match="badal"):
+    with pytest.raises(RUN.RunError, match="changed"):
         RUN.approve("t1", r["run"])
 
 

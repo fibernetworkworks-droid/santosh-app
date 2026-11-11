@@ -173,8 +173,8 @@ class Call:
                 self._token = ("X-CSRF-Token", tok)
                 return self._token
             raise DialectError(
-                f"SAP ne CSRF token nahi diya (HTTP {code}). Iske bina koi write nahi bhejenge - "
-                "SAP use 403 kar deta hai. Address aur credential jaanch lijiye.")
+                f"SAP gave no CSRF token (HTTP {code}). No write is sent without it - "
+                "SAP turns it into a 403. Check the address and credential.")
         if kind == "ptc":
             # GET <base>/PTC/GetCSRFToken() -> {"NonceKey": "CSRF_NONCE", "NonceValue": "..."}
             code, data, _res = self.raw("GET", "PTC/GetCSRFToken()")
@@ -185,8 +185,8 @@ class Call:
                     self._token = (name, val)
                     return self._token
             raise DialectError(
-                f"Windchill ne CSRF nonce nahi diya (HTTP {code}). Iske bina Windchill har write mana kar "
-                "deta hai, to hum bhejenge hi nahi.")
+                f"Windchill gave no CSRF nonce (HTTP {code}). Without it Windchill refuses every write, "
+                "so we do not send any.")
         return None
 
     def _write_headers(self, root: str = "") -> dict[str, str]:
@@ -232,7 +232,7 @@ class Call:
         elif note.get("idempotent_bheja"):
             # SAP returns 412 when the idempotency job is not scheduled on that system
             self._idem_support = "unsupported" if code == 412 else self._idem_support
-            note["repeatability"] = "jawab nahi mila"
+            note["repeatability"] = "no answer"
         return code, data, note
 
     def update(self, item_path: str, body: dict[str, Any], root: str = "") -> tuple[int, Any, dict[str, Any]]:
@@ -251,17 +251,17 @@ class Call:
                 note["if_match"] = True
             elif want == "required":
                 raise DialectError(
-                    f"{self.system} ko If-Match (ETag) chahiye aur row padhe bina woh nahi milta. "
-                    "Bina ETag SAP 428 deta hai, to yeh row chhod rahe hain - galat likhne se behtar hai.")
+                    f"{self.system} needs If-Match (ETag) and it cannot be had without reading the row. "
+                    "Without an ETag SAP returns 428, so this row is skipped - better than writing wrong.")
         code, data, res = self.raw("PATCH", item_path, body=body, headers=h)
         if code == 403 and self.d["csrf"]:
             self.retoken()
             h.update(self._write_headers(root))
             code, data, res = self.raw("PATCH", item_path, body=body, headers=h)
         if code == 428:
-            note["kyon"] = "If-Match bheja nahi gaya (428)."
+            note["kyon"] = "If-Match was not sent (428)."
         elif code == 412:
-            note["kyon"] = "Beech mein kisi ne yeh record badal diya (412). Dobara padhkar nayi jhalak chahiye."
+            note["kyon"] = "Someone changed this record in between (412). Read it again and take a new preview."
             note["dobara_na_bhejo"] = True
         return code, data, note
 
@@ -274,9 +274,9 @@ class Call:
                                  headers=self._write_headers(root))
         if code >= 300:
             raise DialectError(
-                f"{self.system} mein yeh object reserve (check out) nahi hua (HTTP {code}): "
+                f"{self.system} did not reserve (check out) this object (HTTP {code}): "
                 + json.dumps(data, default=str)[:200]
-                + " - reserve ke bina Windchill badlav leta hi nahi, to bhej nahi rahe.")
+                + " - Windchill takes no change without a reserve, so it is not being sent.")
         return True
 
     def unreserve(self, item_path: str, root: str = "") -> None:
@@ -300,7 +300,7 @@ class Call:
 
     def support(self) -> dict[str, Any]:
         """What this endpoint turned out to actually support - recorded, not assumed."""
-        return {"system": self.system, "csrf": self.d["csrf"] or "nahi chahiye",
+        return {"system": self.system, "csrf": self.d["csrf"] or "not needed",
                 "etag": self.d["etag"], "reserve": bool(self.d["reserve"]),
                 "idempotent_create": self._idem_support}
 
