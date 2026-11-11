@@ -1910,3 +1910,33 @@ What is new:
 NOT VERIFIED: no real model has driven an agent (scripted Claude only - the sandbox has no key); cost per round with
 agents is not measured (each agent is its own model conversation, so a reviewed round costs more); no browser walk of
 the new step kinds.
+
+
+## v0.813.0 GAME ARENA RUNNABLE (owner: "GO ARENA" - the third of three, "ALL ONE BY ONE")
+
+The Game Arena (v0.454) was built to answer "is a Hoola game any good?" with numbers. It had never run on a real game.
+
+- **Found by reading it before running it:** `arena._one_card` - the function that takes a built game, lets the QA
+  bots play it and writes the score card - looked for the web build in `<version>/web`. No build has ever had that
+  folder: the exporter writes `<version>/build`. Every Arena test replaced `_one_card` with a stand-in, so nothing
+  ever executed the line. The first real run would have reported EVERY game as "no playable build" - 0 % started -
+  and that would have read as "Hoola's games do not work". `duel` had the same line. Both now go through
+  `arena._web`, and `test_v0813_game_arena_real.py` runs the REAL `_one_card` on a real game row.
+- **A free self-check** (`arena.selfcheck`, `python -m app.gamedesk arena check`, vps-ops `game_arena_check`): the
+  500 briefs are checked (500 unique, 20 genres), then Hoola's own proof game (v0.809, no model wrote it) is built
+  for real as the hidden Arena tenant and scored through the same path a run uses - the build is found, the QA bots
+  (idle / monkey / keys) play it, the card is written - with the judge left out (the only part that needs a model).
+  The game is deleted afterwards. A scorer that cannot measure a known-good game says NOT READY and why, before a
+  rupee is spent.
+- **Running it:** `python -m app.gamedesk arena run --n 3 --budget 150` (REAL: the model writes each game, so it
+  spends money and stops at the rupee ceiling), `arena status`; vps-ops `game_arena_try` (3 briefs, Rs 150 ceiling,
+  23-minute limit - starting it is her decision) and `game_arena_status`. `_one_card(..., judge_it=False)` exists
+  for the check.
+- Measured here (Godot 4.7.2 + Chromium, software graphics): the proof game started, loaded in 3.2 s, the bots'
+  inputs changed its state, 0 errors, 3 state keys reported, playable = true; `reached_end` false in 12 s of random
+  play (the game needs 5 coins and a climb, so a random bot not finishing it is expected); fun = NOT ASSESSED.
+
+Tests: `test_v0813_game_arena_real.py` 6 (one in the real engine + browser, run green here) beside the 12 older
+Arena tests. NOT VERIFIED: no real Arena run has happened yet - it needs her server, the model and her go-ahead on
+the spend - so there are still NO quality numbers for any Hoola version, and the 2D / 3D briefs' real pass rate is
+unknown. The brief set (SET_V 1) has no 3D briefs yet.

@@ -199,12 +199,12 @@ jobs:
                 # it by touch, the kit's own rules - then it is saved as a finished game in her list to open and play
                 echo 'cd $CORE && timeout 900 .venv/bin/python -m app.gamedesk proof3d --save 2>&1 | tail -90' ;;
               game_arena_check)
-                # v0.812 GAME ARENA, free (no model): the 500 briefs are checked, Hoola's own proof game is built for real
+                # v0.813 GAME ARENA, free (no model): the 500 briefs are checked, Hoola's own proof game is built for real
                 # and scored through the SAME path a run uses (find the build, the QA bots play it, the card); exit 1
                 # when the Arena cannot measure a known-good game on this server
                 echo 'cd $CORE && timeout 900 .venv/bin/python -m app.gamedesk arena check 2>&1 | tail -60' ;;
               game_arena_try)
-                # v0.812 a SMALL REAL Arena run: 3 fixed briefs built end to end by the model as the hidden tenant
+                # v0.813 a SMALL REAL Arena run: 3 fixed briefs built end to end by the model as the hidden tenant
                 # __gamearena__ (never her games), played by the bots, judged; it SPENDS model money and stops at its
                 # Rs 150 ceiling. Starting this job is her decision.
                 echo 'cd $CORE && timeout 1380 .venv/bin/python -m app.gamedesk arena run --n 3 --budget 150 2>&1 | tail -120' ;;

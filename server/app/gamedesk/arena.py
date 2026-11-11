@@ -402,7 +402,7 @@ def build_one(b: dict[str, Any]) -> tuple[str, float, float]:
 
 
 def _web(g, n: int) -> Path:
-    """Where version n's web build really is. v0.812: this read `<version>/web`, a folder no build ever had (the
+    """Where version n's web build really is. v0.813: this read `<version>/web`, a folder no build ever had (the
     exporter writes `<version>/build`), so the first real run would have scored EVERY game "no playable build"."""
     return G._vdir(g, n) / "build"
 

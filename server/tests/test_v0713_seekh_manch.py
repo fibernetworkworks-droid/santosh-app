@@ -495,4 +495,4 @@ def test_no_network_at_import():
 def test_version_pins():
     """The house pins: pubspec and the console's version story must name SEEKH MANCH."""
     pub = (ROOT / "pubspec.yaml").read_text(encoding="utf-8")
-    assert "version: 0.812.0+811" in pub
+    assert "version: 0.813.0+812" in pub

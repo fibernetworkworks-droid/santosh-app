@@ -26,7 +26,7 @@ if __name__ == "__main__":
         print("3D PROOF:", "PASSED" if r.get("ok") else "NOT PASSED", ("- saved for " + tenant) if r.get("game") else "")
         sys.exit(0 if r.get("ok") else 1)
     if sys.argv[1:2] == ["arena"]:
-        # v0.812: arena check (free, no model) | arena run [--n 3] [--budget 150] (REAL builds: spends model money,
+        # v0.813: arena check (free, no model) | arena run [--n 3] [--budget 150] (REAL builds: spends model money,
         # stops at the rupee ceiling) | arena status (the last runs' numbers)
         import time
         from ..db import init_db

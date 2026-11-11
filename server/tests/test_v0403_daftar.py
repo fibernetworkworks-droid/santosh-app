@@ -207,4 +207,4 @@ def test_tools_api_and_wiring(office):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.812.0"
+    assert APP_VERSION == "0.813.0"

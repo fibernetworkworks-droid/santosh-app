@@ -1,4 +1,4 @@
-"""v0.812 GAME ARENA made runnable (owner: "GO ARENA"): the Arena had never scored a real game. Its tests replaced
+"""v0.813 GAME ARENA made runnable (owner: "GO ARENA"): the Arena had never scored a real game. Its tests replaced
 `_one_card` with a stand-in, and the real one read `<version>/web` - a folder no build ever had - so the first real
 run would have reported every game as "no playable build". Here the REAL `_one_card` runs on a real game row, and a
 free self-check proves the Arena can measure a known-good game before any rupee is spent."""
