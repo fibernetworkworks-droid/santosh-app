@@ -1940,3 +1940,26 @@ Tests: `test_v0813_game_arena_real.py` 6 (one in the real engine + browser, run 
 Arena tests. NOT VERIFIED: no real Arena run has happened yet - it needs her server, the model and her go-ahead on
 the spend - so there are still NO quality numbers for any Hoola version, and the 2D / 3D briefs' real pass rate is
 unknown. The brief set (SET_V 1) has no 3D briefs yet.
+
+
+## v0.814.0 WHITEBOOKS PASTE CHECK (owner ran vps-ops wb_check after putting the sandbox keys in the VPS .env)
+
+Her first live run, sandbox: every WHITEBOOKS_* name set except WHITEBOOKS_SANDBOX_GST_USERNAME (not in WhiteBooks' shared sandbox PDF,
+which covers e-Invoice + e-Way Bill only); ping PASS; public_search, rettrack, einv_auth FAIL WB_ERR_9001; ewb_auth FAIL "Invalid
+credentials provided or your account is not active" (the same refusal without its code); otp_request SKIP. Hoola's requests were read
+again against the specs (client_id / client_secret headers, email query) and match, and a refusal on all three products with their own
+keys leaves two causes: a bad paste, or an account WhiteBooks has not activated (her Developer Hub dashboard showed GST / e-Invoice /
+e-Way Bill all "not subscribed").
+
+- `wb.clean()` / `wb.email()`: every WhiteBooks value (email, client ids / secrets, sandbox identities) loses stray spaces, tabs,
+  Windows line ends and wrapping quotes before it is sent.
+- `wbcheck.paste_check()`: printed first by wb_check - per value how it LOOKS, never the value: client ids by leading letters + length
+  (the Hub shows them, e.g. GSTS...), secrets / passwords by length only, flags for non-keyboard characters (the Hub shows a secret as dots
+  until the eye / copy button is used), a space inside, not an email, not a 15-character GSTIN, and an e-invoice / e-way bill id with the
+  same start as the GST one ("is the GST key pasted here?"). The vps-ops redaction sed leaves these lines alone (a length is 2 characters).
+- When every value looks right and WhiteBooks still answers 9001, wb_check says so: ask WhiteBooks support to activate sandbox API access
+  for GST, e-Invoice and e-Way Bill on the developer account.
+- `wb._code_of`: a status_desc saying "invalid credentials" / "account is not active" without a code is WB_ERR_9001.
+
+Tests: 2 in test_v0807_bahi_a0.py (values cleaned; the paste check never carries a value and catches dots, a moved GST key; the EWB
+refusal named). NOT VERIFIED: still no accepted WhiteBooks call - the next wb_check after her re-paste or WhiteBooks' activation is the test.

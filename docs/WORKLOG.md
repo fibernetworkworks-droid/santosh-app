@@ -2972,3 +2972,10 @@ Task ID: v0.808.0 WAPAS (L7)
 Task: owner "GO L7" - E5 restore any version, bookmarks, undo per reply, diffs, revert and resend; E7 durable live slots.
 Work Log: site/wapas.py (snapshots, restore, bookmark, diff); _make_version snapshot; site_versions.bookmark; 3 routes + website action=restore_version; stream.py on-disk slots; Studio History / reply footer / Edit + Revert and resend; 8 tests incl. a browser walk.
 Stage Summary: pushed; server deploy only. Next: L8 needs her 4 decisions (build server, model per job, free allowances, brand) before the React App Engine.
+
+
+---
+Task ID: v0.814.0 WHITEBOOKS PASTE CHECK
+Task: owner ran vps-ops wb_check (run 42986671553): all keys set, every product refused WB_ERR_9001.
+Work Log: requests re-read against the specs (match); values cleaned before use; wb_check prints a paste check (no values) + an activation hint; EWB refusal named; 2 tests.
+Stage Summary: on branch claude/exciting-hawking-113x8i. Next: she re-checks the paste lines / asks WhiteBooks to activate sandbox access, then wb_check again.
