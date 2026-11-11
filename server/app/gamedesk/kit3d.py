@@ -1,4 +1,4 @@
-"""v0.806 HOOLA 3D KIT (owner: "GO 3D GAMEPLAY"): the 3D gameplay pieces every small 3D game needs, written ONCE by
+"""v0.809 HOOLA 3D KIT (owner: "GO 3D GAMEPLAY"): the 3D gameplay pieces every small 3D game needs, written ONCE by
 Hoola and proved in the real engine - a world with sky and sun, ground / blocks / moving platforms, a player who walks
 and jumps by keyboard AND touch, a follow or first-person camera, coins, enemies that patrol or chase (and can be
 stomped), a goal, and a HUD with on-screen controls. Before this the model wrote all of that from scratch in every 3D

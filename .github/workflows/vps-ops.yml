@@ -191,7 +191,7 @@ jobs:
                 # v0.414 HOOLA ARCHITECT live: one REAL Opus spec + the App Sahayak checker on this server; builds nothing, removes the spec
                 echo 'cd $CORE && timeout 900 .venv/bin/python -m app.site.architect check 2>&1 | tail -120' ;;
               game_3d_proof)
-                # v0.806 HOOLA 3D KIT: Hoola's own 3D game (Diya Run 3D, no model) the whole road on THIS server - guard,
+                # v0.809 HOOLA 3D KIT: Hoola's own 3D game (Diya Run 3D, no model) the whole road on THIS server - guard,
                 # headless play, web export, browser playtest, the test player wins it by keyboard, a real browser plays
                 # it by touch, the kit's own rules - then it is saved as a finished game in her list to open and play
                 echo 'cd $CORE && timeout 900 .venv/bin/python -m app.gamedesk proof3d --save 2>&1 | tail -90' ;;

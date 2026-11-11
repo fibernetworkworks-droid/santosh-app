@@ -1776,3 +1776,34 @@ Tests: test_v0808_wapas.py (8: any version back as a new version + undo the rest
 bookmarks + diff routes, the agent action, the live view after a simulated restart, source wiring, a Playwright walk:
 a change -> Version + Undo this change -> undone; Edit -> Revert and resend; History: Changes, Bookmark, Restore).
 NOT VERIFIED live: a real restart of her server during a build (the restart is simulated by clearing the memory).
+
+
+## v0.809.0 HOOLA 3D KIT (owner: "GO 3D GAMEPLAY" - the first of three, "ALL ONE BY ONE")
+
+Before this, a 3D game meant the model writing a player controller, a camera, touch controls, enemies and a HUD from
+scratch in every game - the place 3D builds break. Now those pieces exist once, written by Hoola and proved.
+
+- **The kit** `server/app/gamedesk/kit/hoola_3d.gd` = the `Hoola3D` autoload (pack `kit3d`, `template.HOOLA_OWN`):
+  `world` (sky, ambient, sun with shadows), `ground`, `block`, `moving_block`, `tree`, `mat`, `model` (her approved 3D
+  model or null), `spawn_player` (walk + jump, keyboard arrows / WASD / Space AND a touch stick + jump button,
+  knock-back, respawn after a fall), `follow_camera` (third person, distance 0 = first person, drag / Q E to look),
+  `coin`, `enemy` (patrol / chase; touch = -1 life, landing on it removes it), `goal`, `hurt`, `make_hud` (coins,
+  lives, messages, the on-screen controls). Signals: coin_taken, player_hit, player_fell, goal_reached, enemy_stomped.
+- **Only in a 3D game.** `kit3d.wants(brief, design)` (3D / 3-D / third-person / first-person / low-poly ...; "2D",
+  "match-3", "30 days" never match). A 2D game's project and prompt are unchanged. For a 3D design `ai._ctx` adds the
+  kit's API to the code / fix / change prompts, and the design prompt shapes a 3D game for the kit.
+- **Proof without a model** (`kit3d.proof`, `python -m app.gamedesk proof3d [--save]`, vps-ops `game_3d_proof`):
+  Hoola's own game Diya Run 3D (`kit/proof_main.gd`, built only from the kit) goes through the real pipeline - guard,
+  headless play, web export, browser playtest - then (1) `play_through`: a test player (`kit/proof_bot.gd`, only in a
+  throwaway copy) starts it, walks a route, jumps the steps and WINS with the same keys a person uses; (2)
+  `browser_touch`: in a real Chromium a tap starts it and the on-screen stick is held until the engine reports a coin;
+  (3) `self_test`: the kit's rules in the engine - a guard's touch costs one life, a stomp removes it, a fall respawns,
+  stick + jump button, coin, lift. `--save` keeps it as a finished game in her list with a private play link.
+- Measured here (Godot 4.7.2 + Chromium): test player won in 6.6 s of game time, 24.4 m walked, 6 of 8 coins, top
+  y 2.8 m, 3 lives left; touch collected 2 coins in a real browser; self-test 6 / 6; web download ~9.7 MB.
+- Found while building: a headless engine has no window, so injected touch events arrive with broken positions -
+  the self-test hands touch events to the kit directly and the real-browser check covers the true path.
+
+Tests: `test_v0809_kit3d.py` 28 (3 need Godot, 1 of those a browser; all ran green here). NOT VERIFIED: no
+MODEL-written 3D game has been built from the kit yet (that needs her server and model credit); the proof game has
+not been played on a real phone.

@@ -1,4 +1,4 @@
-"""v0.806 HOOLA 3D KIT (owner: "GO 3D GAMEPLAY"): the 3D gameplay pieces every small 3D game needs, written once by
+"""v0.809 HOOLA 3D KIT (owner: "GO 3D GAMEPLAY"): the 3D gameplay pieces every small 3D game needs, written once by
 Hoola - player, camera, coins, enemies, goal, HUD with touch controls - riding ONLY in a game whose design is 3D.
 
 Two halves: the wiring (no engine needed), and the REAL ENGINE (skipped where Godot is not installed): the kit's own

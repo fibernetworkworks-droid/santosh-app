@@ -1,5 +1,5 @@
 """python -m app.gamedesk check   : Godot + Web templates + no-network box + a sample game that builds, exports and plays.
-python -m app.gamedesk proof3d [--save] [--tenant ID] : v0.806 Hoola's own 3D game from the Hoola3D kit the whole road on
+python -m app.gamedesk proof3d [--save] [--tenant ID] : v0.809 Hoola's own 3D game from the Hoola3D kit the whole road on
 THIS server (no model): guard, headless play, web export, browser playtest, the test player wins it by keyboard, a real
 browser plays it by touch, and the kit's own rules. --save keeps it as a finished game she can open and play."""
 import json

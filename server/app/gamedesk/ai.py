@@ -233,7 +233,7 @@ def design(brief: str, orientation: str, feedback: str = "", old: str = "") -> s
 
 def _ctx(orientation: str, size: tuple[int, int], design_doc: str = "") -> str:
     out = f"Viewport: {size[0]} x {size[1]} ({orientation})."
-    try:                                                # v0.806: a 3D design gets Hoola's 3D kit and its API
+    try:                                                # v0.809: a 3D design gets Hoola's 3D kit and its API
         from . import kit3d
         if kit3d.wants(design_doc):
             out += "\n\n" + kit3d.API
