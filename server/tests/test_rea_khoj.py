@@ -174,7 +174,7 @@ def test_handler_missing_src(env):
     ctx = conv_ctx()
     with pytest.raises(ToolError) as ei:
         run("rea_khoj", {"action": "overview"}, ctx)
-    assert "Kaunsi file" in str(ei.value)
+    assert "Which file" in str(ei.value)
 
 
 def test_handler_bad_action(env):
@@ -196,7 +196,7 @@ def test_compact_bounds():
 def test_longest_text_finds_nested():
     src = khoj._longest_text({"a": "short", "b": {"c": "x" * 9000}}, n=6000)
     assert len(src) <= 6100 and src.startswith("x")
-    assert "aur chars" in src   # the clip note
+    assert "more chars" in src   # the clip note
 
 
 # ---------------------------------------------------------------- end-to-end routing on the fake rea

@@ -464,7 +464,7 @@ def test_dsl_import_runs_the_same_hard_validator():
            "steps": [{"id": "a", "type": "magic"}]}
     with pytest.raises(Exception) as e:
         _run(D.dhara_dsl(CTX, action="import", dsl=env))
-    assert "anjaan type" in str(e.value)
+    assert "unknown type" in str(e.value)
     with pytest.raises(Exception):
         _run(D.dhara_dsl(CTX, action="import", dsl={"nope": 1}))
     with pytest.raises(Exception):

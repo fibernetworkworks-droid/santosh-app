@@ -85,7 +85,7 @@ def test_rules_extract_and_review():
     assert by["non_compete"]["level"] == "high" and "s.27" in by["non_compete"]["why"] and by["non_compete"]["source"].startswith("https://")
     assert "MSMED" in by["payment"]["why"] and by["payment"]["fix"]["replace"] == "forty five (45) days"
     assert by["arbitration"]["fix"] == {"op": "replace", "find": "Singapore", "replace": "Pune"}
-    assert by["termination"]["title"].startswith("Bina wajah nikalne")
+    assert by["termination"]["title"].startswith("Only they can exit")
     assert by["stamp"]["level"] == "medium" and "s.35" in by["stamp"]["why"]
     assert risks[0]["level"] == "high" and all(r["draft"] == R.DRAFT_LINE for r in risks)
     # her playbook wins: notice up to 120 days is fine for her, non-compete check off
