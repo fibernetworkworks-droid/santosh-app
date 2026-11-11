@@ -51,7 +51,7 @@ def test_hoola_asks_for_the_otp_in_the_call_and_the_chat(env, monkeypatch):
     row = SimpleNamespace(conversation_id="c1", tenant_id="default")
     ops._ask_otp(row, SimpleNamespace(digits=6), "uidai.gov.in")
     assert said and "uidai.gov.in" in said[0][1] and "Never say the digits" in said[0][1]
-    assert "6 ankon ka OTP" in notes[0] and "likh dijiye" in notes[0] and "call par bol dijiye" in notes[0]
+    assert "6-digit OTP" in notes[0] and "type the OTP here" in notes[0] and "say it on the call" in notes[0]
 
 
 def test_saying_the_otp_on_a_call_fills_the_box_and_hides_it(env, monkeypatch):

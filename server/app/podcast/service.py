@@ -529,7 +529,7 @@ def release_got(tenant: str, guest: str, how: str, file_id: str = "", text: str 
 
 def release_revoke(tenant: str, guest: str, note: str = "", actor: str = "owner") -> dict:
     if not is_owner(actor):
-        raise PodcastError("Owner only.")
+        raise PodcastError("Only the owner can do this.")
     with _LOCK, session() as s:
         g = _guest(s, tenant, guest)
         rel = _j(g.release, {})
@@ -547,7 +547,7 @@ def release_revoke(tenant: str, guest: str, note: str = "", actor: str = "owner"
 def forget_guest(tenant: str, guest: str, actor: str = "owner") -> dict:
     """DPDP: phone, email, bio and notes go; the name and the release proof stay (they are the record of what she published)."""
     if not is_owner(actor):
-        raise PodcastError("Owner only.")
+        raise PodcastError("Only the owner can do this.")
     with _LOCK, session() as s:
         g = _guest(s, tenant, guest)
         g.phone, g.email, g.bio, g.notes, g.links = "", "", "", "", "[]"
@@ -1761,7 +1761,7 @@ def _do_publish(tenant: str, eid: str, inp: dict, conv: str) -> dict:
 def posted(tenant: str, episode: str, platform: str, url: str, actor: str = "owner") -> dict:
     """Her word: the episode is up on a platform at this link (she posted it)."""
     if not is_owner(actor):
-        raise PodcastError("Owner only.")
+        raise PodcastError("Only the owner can do this.")
     u = R.clean(url, 400)
     if not u.startswith("https://"):
         raise PodcastError("An https:// link is needed.")
@@ -1780,7 +1780,7 @@ def posted(tenant: str, episode: str, platform: str, url: str, actor: str = "own
 def unpublish(tenant: str, episode: str, reason: str = "", actor: str = "owner") -> dict:
     """Out of Hoola's feed at once (owner). Platforms she posted on: she removes it there."""
     if not is_owner(actor):
-        raise PodcastError("Owner only.")
+        raise PodcastError("Only the owner can do this.")
     with _LOCK, session() as s:
         e = _ep(s, tenant, episode)
         e.status = "ready"
@@ -1816,7 +1816,7 @@ def feed_info(tenant: str) -> dict:
 def feed_set(tenant: str, on: bool, new_token: bool = False, actor: str = "owner") -> dict:
     """Her feed on / off. A new token = the old link stops working (if it leaked)."""
     if not is_owner(actor):
-        raise PodcastError("Owner only.")
+        raise PodcastError("Only the owner can do this.")
     with _LOCK, session() as s:
         st = _st(s, tenant)
         if on and not st.show:
@@ -1925,7 +1925,7 @@ def transcript_file(tenant: str, episode: str, fmt: str = "vtt") -> tuple[bytes,
 def paid(tenant: str, sponsor: str, amount, ref: str = "", tds=None, actor: str = "owner") -> dict:
     """Her word that the brand paid (Hoola never takes money). TDS deducted by the brand recorded for her Form 26AS check."""
     if not is_owner(actor):
-        raise PodcastError("Owner only.")
+        raise PodcastError("Only the owner can do this.")
     a = _num(amount)
     if a is None or a <= 0:
         raise PodcastError("Give the amount.")

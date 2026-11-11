@@ -53,7 +53,7 @@ def test_no_telemetry_for_a_childrens_game(st):  # noqa: F811
     R.set_runtime("default", st["sid"], telemetry=True)
     with session() as s:
         s.get(G.GameProject, st["gid"]).design = "# A counting game for kids aged 5"
-    with pytest.raises(R.RuntimeError_, match="bachchon"):
+    with pytest.raises(R.RuntimeError_, match="children"):
         R.set_runtime("default", st["sid"], telemetry=True)
     assert '"telemetry": false' in packs.for_game("default", st["gid"])["hoola_runtime.gd"][0]
     assert R.settings("default", st["sid"])["kids"] is True

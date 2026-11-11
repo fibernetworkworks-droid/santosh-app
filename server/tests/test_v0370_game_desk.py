@@ -172,7 +172,7 @@ def test_refusals_limits_and_busy(gd):
         svc.start("default", "", "missile weapon targeting simulator banao", "portrait")
     assert svc.problem("an endless runner like Subway Surfers but original") == ""   # a genre is fine
     svc.start("default", "", "ek puzzle game rangon wala", "portrait")
-    with pytest.raises(svc.GameError, match="pehle se"):
+    with pytest.raises(svc.GameError, match="already"):
         svc.start("default", "", "ek aur game racing wala", "portrait")
 
 

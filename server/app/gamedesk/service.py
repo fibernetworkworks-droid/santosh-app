@@ -248,7 +248,7 @@ def problem(brief: str) -> str:
         return "Hoola does not build weapon-aiming / military targeting simulators. I can build a flying, driving or safety training sim."
     m = FAMOUS.search(b)
     if m and CLONE.search(b):
-        return (f"'{m.group(0)}' will not be copied (the name, characters and levels are theirs). I can build a new, original "
+        return (f"'{m.group(0)}': I will not make a copy of it (the name, characters and levels are theirs). I can build a new, original "
                 "game of the same type: just say 'make an original'.")
     return ""
 

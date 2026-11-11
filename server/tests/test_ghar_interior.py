@@ -250,7 +250,7 @@ def test_change_order_payment_request_and_paid(it):
     with pytest.raises(S.InteriorError):
         S.stage_paid(T, s1["id"], actor="staff:t1")
     paid = S.stage_paid(T, s1["id"], s1["amount"] - 1000, "UTR 1234")
-    assert paid["stage"]["status"] == "paid" and "kam aaya" in paid["say"]
+    assert paid["stage"]["status"] == "paid" and "short" in paid["say"]
 
 
 def _jpeg_with_gps() -> bytes:
@@ -307,7 +307,7 @@ def test_concept_schedule_snags_handover_forget_and_tick(it, monkeypatch):
     assert o1["alerts"] >= 2 and o2["alerts"] == 0 and o1["morning"] == 1 and o2["morning"] == 0
     f = S.forget(T, p["id"])
     v = S.project_view(T, p["id"])
-    assert v["phone"] == "" and v["client"] == "Client (hataya)" and "hata di" in f["say"]
+    assert v["phone"] == "" and v["client"] == "Client (removed)" and "were removed" in f["say"]
     assert not path.exists()
 
 

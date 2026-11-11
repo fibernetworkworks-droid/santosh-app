@@ -235,7 +235,7 @@ def test_physics_flow_lab_evidence_approval_and_the_autoload(st, monkeypatch):  
     monkeypatch.setattr(P, "_run_lab", lambda job, cfg: labs.append(cfg) or _raw(through_off=6 if cfg["ticks"] == 60 else 0))
     v = P.setup("default", inputs={"speed": 3000, "wall": 8}, studio=st["sid"], run_now=False)
     assert v["status"] == "testing" and v["settings"]["ccd"]
-    with pytest.raises(P.PhysicsError, match="Lab abhi"):
+    with pytest.raises(P.PhysicsError, match="still running"):
         P.approve("default", v["id"])
     out = P.run_lab(v["id"])
     assert out["status"] == "draft" and out["lab"]["verdict"] == "PASS"

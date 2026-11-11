@@ -111,7 +111,7 @@ def test_checks_refuse_a_bad_picture_and_strict_snaps(ast, monkeypatch):
     A.spend("default", ast["sid"], [v["id"]])
     v = A.make("default", v["id"])
     assert v["status"] == "failed" and "transparent background" in v["error"]             # no magenta -> not keyed
-    with pytest.raises(A.AssetError, match="jaanch fail"):
+    with pytest.raises(A.AssetError, match="failed its check"):
         A.approve("default", ast["sid"], "ghost")
     monkeypatch.setattr("app.photogen.generate", lambda *a, **k: (_magenta_ball(color=(30, 90, 250)), "fake"))
     v = A.request("default", ast["sid"], "sprite", "blue_ball", "a ball", palette_lock="check")
@@ -185,7 +185,7 @@ def test_upload_is_checked_by_its_bytes(ast):
     A = ast["A"]
     v = A.upload("default", ast["sid"], "sprite", "hero", base64.b64encode(_magenta_ball(color=(16, 24, 32))).decode(), "her hero")
     assert v["status"] == "draft" and v["source"] == "her upload" and v["meta"]["w"] == 128
-    with pytest.raises(A.AssetError, match="PNG ya JPEG"):
+    with pytest.raises(A.AssetError, match="PNG or JPEG"):
         A.upload("default", ast["sid"], "sprite", "bad", base64.b64encode(b"MZ\x90\x00not a picture").decode())
     with pytest.raises(A.AssetError, match="WAV, OGG"):
         A.upload("default", ast["sid"], "sfx", "bad2", base64.b64encode(b"<html>").decode())

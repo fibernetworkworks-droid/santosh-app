@@ -63,7 +63,7 @@ def test_live_values_only_change_bible_numbers_within_range(st):  # noqa: F811
         L.add_experiment("default", st["sid"], "x2", variants=[TWO[0], {"name": "b", "set": {"player.hp": 1000}}])
     with pytest.raises(L.LiveOpsError, match="flag"):
         L.add_experiment("default", st["sid"], "x3", variants=[TWO[0], {"name": "b", "set": {"flag.x": 3}}])
-    with pytest.raises(L.LiveOpsError, match="alag"):
+    with pytest.raises(L.LiveOpsError, match="different from control"):
         L.add_experiment("default", st["sid"], "x4", variants=[TWO[0], {"name": "b", "set": {}}])
     with pytest.raises(L.LiveOpsError, match="100%"):
         L.add_experiment("default", st["sid"], "x5", variants=[{**TWO[0], "weight": 30}, {**TWO[1], "weight": 30}])
@@ -85,7 +85,7 @@ def test_experiment_needs_telemetry_then_no_early_winner_then_a_measured_one(st)
     assert cfg["experiments"][0]["key"] == "hp_test" and cfg["experiments"][0]["variants"][1]["set"] == {"player.hp": 150}
     # the same value cannot be tested twice at once
     L.add_experiment("default", st["sid"], "hp_two", "", "win", [TWO[0], {"name": "b", "set": {"player.hp": 120}}])
-    with pytest.raises(L.LiveOpsError, match="pehle se"):
+    with pytest.raises(L.LiveOpsError, match="already"):
         L.start_experiment("default", st["sid"], "hp_two")
 
     vs = cfg["experiments"][0]["variants"]
@@ -135,11 +135,11 @@ def test_a_broken_split_is_named(st):  # noqa: F811
 def test_events_calendar_her_tap_and_no_clashes(st):  # noqa: F811
     from app.gamedesk import liveops as L
     t = time.time()
-    with pytest.raises(L.LiveOpsError, match="End"):
+    with pytest.raises(L.LiveOpsError, match="end must be after"):
         L.add_event("default", st["sid"], "bad", "Bad", t + 100, t + 50, {"flag.x": True})
     with pytest.raises(L.LiveOpsError, match="31"):
         L.add_event("default", st["sid"], "long", "Long", t, t + 40 * 86400, {"flag.x": True})
-    with pytest.raises(L.LiveOpsError, match="badalta"):
+    with pytest.raises(L.LiveOpsError, match="What does the event change"):
         L.add_event("default", st["sid"], "empty", "Empty", t, t + 3600, {})
     ev = L.add_event("default", st["sid"], "diwali_2026", "Diwali", _day(60, "18:00"), _day(62, "18:00"),
                      {"flag.double_coins": True, "player.speed": 450})
@@ -151,7 +151,7 @@ def test_events_calendar_her_tap_and_no_clashes(st):  # noqa: F811
     cfg = L.live_config(_game(st).token)
     assert cfg["events"][0]["set"] == {"flag.double_coins": True, "player.speed": 450}
     L.add_event("default", st["sid"], "speedy", "Speed week", _day(61, "10:00"), _day(64, "10:00"), {"player.speed": 500})
-    with pytest.raises(L.LiveOpsError, match="ek samay"):
+    with pytest.raises(L.LiveOpsError, match="one at a time"):
         L.approve_event("default", st["sid"], "speedy")
     now_ev = L.add_event("default", st["sid"], "now_ev", "Now", t - 60, t + 3600, {"flag.party": True})
     L.approve_event("default", st["sid"], now_ev["key"])
@@ -187,7 +187,7 @@ def test_crashes_grouped_scrubbed_only_with_consent_and_hotfix(st):  # noqa: F81
     h = L.hotfix("default", st["sid"], c0["sig"])
     t = next(x for x in st["S"].get("default", st["sid"])["tasks"] if x["number"] == h["task"])
     assert t["kind"] == "fix" and t["priority"] == 1 and "res://main.gd:42" in t["title"]
-    with pytest.raises(L.LiveOpsError, match="pehle se"):
+    with pytest.raises(L.LiveOpsError, match="already"):
         L.hotfix("default", st["sid"], c0["sig"])
     assert L.crashes("default", st["sid"])["groups"][0]["state"] == "fixing"
 
@@ -225,7 +225,7 @@ def test_money_only_from_her_csv(st):  # noqa: F811
     from app.gamedesk import runtime as R
     m = L.money("default", st["sid"])
     assert m["revenue_30d_inr"] == 0 and m["arpdau_inr"] is None and any("does not see your store" in n for n in m["notes"])
-    with pytest.raises(L.LiveOpsError, match="Date"):
+    with pytest.raises(L.LiveOpsError, match="understand the date"):
         L.import_revenue("default", st["sid"], "kal, 100")
     R.ensure_table()
     d1 = date.today() - timedelta(days=1)

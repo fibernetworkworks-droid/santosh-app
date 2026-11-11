@@ -1948,7 +1948,7 @@ def handover(tenant: str, project: str, force: bool = False, reason: str = "", a
 def forget(tenant: str, project: str, actor: str = "owner") -> dict:
     """DPDP: after the job ends, the client's personal details go; numbers / amounts stay for accounts."""
     if not is_owner(actor):
-        raise InteriorError("Owner only.")
+        raise InteriorError("Only the owner can do this.")
     with _LOCK, session() as s:
         p = _proj(s, tenant, project)
         if p.status not in ("done", "cancelled"):

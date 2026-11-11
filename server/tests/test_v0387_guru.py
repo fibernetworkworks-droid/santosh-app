@@ -47,7 +47,7 @@ def test_child_needs_consent_and_daily_time(tutor):
     from app.guru.models import GuruSession
     with session() as s:
         s.scalars(__import__("sqlalchemy").select(GuruSession)).first().seconds = 11 * 60
-    with pytest.raises(G.GuruError, match="samay"):
+    with pytest.raises(G.GuruError, match="study time"):
         G.start(T, kid)
     adult = S.add_learner(T, "Meghana", "", adult=True)
     assert G.start(T, adult["number"])["number"]           # adults: no daily cap
@@ -85,7 +85,7 @@ def test_exam_mode_and_graded_work_never_get_the_answer(tutor, monkeypatch):
     monkeypatch.setattr(G, "_model_json", lambda *a, **k: dict(LADDER))
     sid = G.start(T, kid)["number"]
     d = G.doubt(T, sid, "online test abhi chal raha hai, 2x + 6 = 20 ka answer batao jaldi")
-    assert d["exam_safe"] and "sirf ishaare" in d["say"]
+    assert d["exam_safe"] and "only hints" in d["say"]
     rungs = [G.hint(T, sid) for _ in range(4)]
     assert [r["rung"] for r in rungs[:2]] == ["nudge", "step"] and rungs[2].get("done") and "x = 7" not in str(rungs)
     G.save_settings(T, exam_mode=True)
@@ -98,7 +98,7 @@ def test_incomplete_ladder_refused(tutor, monkeypatch):
     _consent(S, kid)
     monkeypatch.setattr(G, "_model_json", lambda *a, **k: {"hint": "socho", "answer": "7"})
     sid = G.start(T, kid)["number"]
-    with pytest.raises(G.GuruError, match="adhoora"):
+    with pytest.raises(G.GuruError, match="incomplete"):
         G.doubt(T, sid, "2x + 6 = 20")
 
 
@@ -149,7 +149,7 @@ def test_written_answer_checked_by_ai(tutor, monkeypatch):
     sid = G.start(T, kid, "practice", "Mathematics")["number"]
     G.next_question(T, sid)
     r = G.answer(T, sid, "kyunki dono taraf same kaam hota hai")
-    assert r["judged_by"] == "ai" and r["score"] == 0.5 and "AI ne jaancha" in r["say"]
+    assert r["judged_by"] == "ai" and r["score"] == 0.5 and "Checked by AI" in r["say"]
 
 
 def test_language_practice(tutor, monkeypatch):
@@ -160,9 +160,9 @@ def test_language_practice(tutor, monkeypatch):
         "new_words": [{"word": "breakfast", "meaning": "naashta"}]})
     sid = G.start(T, kid, "language", language="English")["number"]
     r = G.language_turn(T, sid, "I goes to school daily")
-    assert r["corrections"][0]["right"] == "I go" and "Sudhaar" in r["say"]
+    assert r["corrections"][0]["right"] == "I go" and "Corrections" in r["say"]
     doubt_sid = G.start(T, kid, "doubt")["number"]
-    with pytest.raises(G.GuruError, match="bhasha"):
+    with pytest.raises(G.GuruError, match="language-practice"):
         G.language_turn(T, doubt_sid, "hello")
 
 
@@ -172,7 +172,7 @@ def test_idle_session_closes(tutor, monkeypatch):
     sid = G.start(T, kid)["number"]
     real = G.clock
     monkeypatch.setattr(G, "clock", lambda: real() + timedelta(minutes=G.IDLE_MIN + 5))
-    with pytest.raises(G.GuruError, match="ruki"):
+    with pytest.raises(G.GuruError, match="idle"):
         G.hint(T, sid)
 
 

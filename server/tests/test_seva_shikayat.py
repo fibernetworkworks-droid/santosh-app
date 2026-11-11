@@ -96,7 +96,7 @@ def test_log_with_proof_metadata_stripped(sk):
                           customer="Ramesh Patil", phone="+91 98900 11111", channel="whatsapp", product="Bajaj Mixer 750W", amount=3200)
     v = out["case"]
     assert v["number"] == "SH-0001" and v["phone"] == "9890011111" and "4111" not in v["text"]
-    assert "product_defect" in v["causes"] and v["stage"] == "new" and "Pavti" in out["say"]
+    assert "product_defect" in v["causes"] and v["stage"] == "new" and "Acknowledge by" in out["say"]
     assert S.events[-1][0] == "shikayat_case"
     # photo with GPS: re-encoded, no EXIF left
     p = S.add_proof(T, "SH-0001", _jpeg_with_gps(), "IMG_2026.jpg")
@@ -144,13 +144,13 @@ def test_patterns_and_tracking_and_reminders(sk, monkeypatch):
     # time travel: 47 h later -> "ack soon" for the three without pavti, once only
     t0 = datetime.now(timezone.utc)
     sent = S.tick(t0 + timedelta(hours=44))
-    assert sent >= 1 and any("pavti" in n for n in S.notes)
+    assert sent >= 1 and any("acknowledge" in n for n in S.notes)
     n0 = len(S.notes)
     S.tick(t0 + timedelta(hours=45))
-    assert all("pavti" not in x for x in S.notes[n0:] if x.startswith("Shikayat yaad dilana"))   # same reminder not twice
+    assert all("acknowledge" not in x for x in S.notes[n0:] if x.startswith("Complaint reminders"))   # same reminder not twice
     # (the once-a-day morning note may fall inside this hour on the real clock; it lists pavti counts, not a reminder)
     S.tick(t0 + timedelta(days=31))
-    assert any("tareekh nikal gayi" in x for x in S.notes)
+    assert any("resolution date has passed" in x for x in S.notes)
     assert S.day(T)["open"] == 4
 
 
@@ -166,7 +166,7 @@ def test_close_flow_checklist_messages_reopen(sk, monkeypatch):
     S.mark_told(T, v["number"], "whatsapp", "ack")
     assert S.case(T, v["number"])["stage"] == "acknowledged"
     res = S.resolve(T, v["number"], "Doosri EMI ka paisa khaate mein wapas daal diya gaya hai")
-    assert res["case"]["stage"] == "resolved" and "Band karne se pehle" in res["say"]
+    assert res["case"]["stage"] == "resolved" and "Before closing" in res["say"]
     with pytest.raises(S.ShikayatError):
         S.close(T, v["number"])                                # proof / told / confirmed missing
     # the model's polish that adds money is refused -> template kept
@@ -200,7 +200,7 @@ def test_close_flow_checklist_messages_reopen(sk, monkeypatch):
     real = S._now
     monkeypatch.setattr(S, "_now", lambda: real() + timedelta(days=45))
     nw = S.reopen(T, v["number"], "teesri baar")
-    assert nw["case"]["number"] != v["number"] and "nayi shikayat" in nw["say"]
+    assert nw["case"]["number"] != v["number"] and "a new complaint" in nw["say"]
     # reject needs a reason and its letter names the routes
     S.update(T, nw["case"]["number"], stage="rejected", note="Statement mein koi doosri katauti nahi dikhi.")
     rj = S.message(T, nw["case"]["number"], "reject")
@@ -239,7 +239,7 @@ def test_compensation_only_on_her_tap(sk, monkeypatch):
         S.comp_request(T, v["number"], "refund")                   # money without an amount
     r = S.comp_request(T, v["number"], "refund", 1200, reason="galat model, wapsi")
     cid, h = r["comp"]["id"], r["comp"]["hash"]
-    assert r["needs_tap"] and any("seema" in x for x in r["comp"]["checks"]) and S.events[-1][0] == "shikayat_comp"
+    assert r["needs_tap"] and any("limit" in x for x in r["comp"]["checks"]) and S.events[-1][0] == "shikayat_comp"
     with pytest.raises(S.ShikayatError):
         S.decide_comp(T, cid, True, h)                              # not from the app tap
     with pytest.raises(S.ShikayatError):
@@ -259,13 +259,13 @@ def test_compensation_only_on_her_tap(sk, monkeypatch):
     ch = c.post(f"/api/shikayat/comp/{cid}/challenge").json()
     ok = c.post(f"/api/shikayat/comp/{cid}/decide", json={"yes": True, "hash": h, "proof": ph.sign(ch)})
     assert ok.status_code == 200, ok.text
-    assert ok.json()["comp"]["status"] == "approved" and "Aap khud dijiye" in ok.json()["say"]
+    assert ok.json()["comp"]["status"] == "approved" and "Give it yourself" in ok.json()["say"]
     S.resolve(T, v["number"], "Sahi model badal diya", fix_proof="delivery photo")
     m = S.message(T, v["number"], "close")
     assert "₹1,200" in m["text"]                                    # only what she approved
     # rejection never needs a fingerprint
     r2 = S.comp_request(T, v["number"], "goodwill", 400, reason="pareshani")
-    assert any("mahine" in x for x in r2["comp"]["checks"])
+    assert any("This month" in x for x in r2["comp"]["checks"])
     assert c.post(f"/api/shikayat/comp/{r2['comp']['id']}/decide", json={"yes": False, "hash": r2["comp"]["hash"]}).json()["comp"]["status"] == "rejected"
     with pytest.raises(S.ShikayatError):
         S.close(T, v["number"])                                      # approved but not given yet
@@ -321,7 +321,7 @@ def test_tools_actor_rules_tickets_customer_tools(sk):
         bid = b.id
     cctx = Ctx(T, ctx.conversation_id, actor=f"customer:{bid}")
     got = asyncio.run(SHIKAYAT_BIZ_HANDLERS["biz_shikayat"](cctx, text="Bill mein zyada paise lage", product="Plan 499"))
-    assert got["number"].startswith("SH-") and "vaada" in got["note"]
+    assert got["number"].startswith("SH-") and "promise" in got["note"]
     st = asyncio.run(SHIKAYAT_BIZ_HANDLERS["biz_shikayat_status"](cctx))["complaints"]
     assert len(st) == 2 and all("Patil" not in str(x) for x in st)
     with pytest.raises(ToolError):
@@ -406,4 +406,4 @@ def test_video_metadata_and_business_send(sk, monkeypatch, tmp_path):
         return {"ok": True}
     monkeypatch.setattr("app.employee.inbox.send", fake_send)
     r = asyncio.run(S.send_business(T, v["number"], m["text"]))
-    assert sent == [(bid, m["text"], "owner")] and S.case(T, v["number"])["told_at"] and "bataya" in r["say"]
+    assert sent == [(bid, m["text"], "owner")] and S.case(T, v["number"])["told_at"] and "informed" in r["say"]
