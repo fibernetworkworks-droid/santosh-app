@@ -209,7 +209,11 @@ async function main() {
   try { ({chromium} = require(process.env.PLAYWRIGHT_MODULE || 'playwright')); } catch (e) { console.log('SKIP: playwright is not installed'); process.exit(77); }
   const exe = process.env.HOOLA_CHROMIUM || process.env.CHROMIUM_EXECUTABLE || undefined;
   let browser;
-  try { browser = await chromium.launch({executablePath: exe, headless: true, args: ['--no-sandbox', '--disable-dev-shm-usage', '--use-angle=swiftshader', '--enable-unsafe-swiftshader']}); }
+  /* Chrome moves a 2D canvas between its GPU and CPU rasterisers on its own (a canvas that is read back often goes to the
+     CPU), and the two anti-alias curves differently. So the pixel comparison runs with every 2D canvas on the CPU
+     rasteriser (one rasteriser, so a difference is OURS); GL_ACCEL2D=1 runs it with Chrome's default instead. */
+  const args = ['--no-sandbox', '--disable-dev-shm-usage', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'].concat(process.env.GL_ACCEL2D ? [] : ['--disable-accelerated-2d-canvas']);
+  try { browser = await chromium.launch({executablePath: exe, headless: true, args}); }
   catch (e) { console.log('SKIP: Chromium can not start here: ' + String(e.message).split('\n')[0]); process.exit(77); }
   const report = {checks: 0, pixels: {}, perf: {}};
   const ok = (name) => { report.checks++; if (process.env.DESIGN_VERBOSE) console.log('ok  ' + name); };
