@@ -15,7 +15,9 @@ const http = require('http'), fs = require('fs'), path = require('path'), assert
 const DESIGN = path.resolve(__dirname, '../../app/static/console/design');
 const SHOTS = process.env.DESIGN_SHOTS || '';
 const ACCEL2D = !!process.env.GL_ACCEL2D;
-const FILES = ['hd-math.js', 'hd-core.js', 'hd-layout.js', 'hd-render.js', 'hd-render-gl.js'].concat(fs.existsSync(path.join(DESIGN, 'hd-index.js')) ? [] : []);
+/* hd-index.js (D9b's spatial index) when it is there: hit tests and the marquee ask it for candidates */
+const HAS_INDEX = fs.existsSync(path.join(DESIGN, 'hd-index.js'));
+const FILES = ['hd-math.js', 'hd-core.js'].concat(HAS_INDEX ? ['hd-index.js'] : []).concat(['hd-layout.js', 'hd-render.js', 'hd-render-gl.js']);
 
 const IN_PAGE = `
 window.T = {};
@@ -170,14 +172,14 @@ T.flat = function (n) {
 };
 /* frame times: move the view, run one frame, wait for the GPU (or the 2D raster) to finish */
 T.frames = function (frames, step) {
-  const R = HD.render, out = [], made = [], comp = [];
+  const R = HD.render, out = [], cpu = [], made = [], comp = [];
   for (let i = 0; i < frames; i++) {
     const v = R.view, nv = step(v, i), t = performance.now();
-    R.setView(nv); R.flush(); R.finish();
-    out.push(performance.now() - t);
+    R.setView(nv); R.flush(); const t1 = performance.now(); R.finish();
+    out.push(performance.now() - t); cpu.push(t1 - t);
     if (R.stats.gl) { made.push(R.stats.gl.rendered); comp.push(R.stats.gl.composeMs); }
   }
-  return {ms: T.stat(out), tiles: made.length ? T.stat(made) : null, composeMs: comp.length ? T.stat(comp) : null};
+  return {ms: T.stat(out), cpuMs: T.stat(cpu), tiles: made.length ? T.stat(made) : null, composeMs: comp.length ? T.stat(comp) : null};
 };
 `;
 
@@ -262,8 +264,9 @@ async function main() {
       return {n8, n24, n100, max, mean: Math.round(sum / (a.d.length / 4) * 1000) / 1000, px: a.d.length / 4, bad};
     };
 
+    const ONLY_PERF = process.env.GL_ONLY_PERF === '1';
     /* ================================================================ 1. the switch */
-    {
+    if (!ONLY_PERF) {
       const A = await open('gl'), B = await open('2d'), C = await open(null);
       const st = async (P) => P.page.evaluate(() => ({r: HD.render.renderer, why: HD.render.rendererWhy, glCanvas: document.querySelectorAll('canvas.hd-canvas-gl').length}));
       const a = await st(A), b = await st(B), c = await st(C);
@@ -271,6 +274,15 @@ async function main() {
       assert.equal(b.r, '2d'); assert.equal(b.glCanvas, 0); assert.match(b.why, /2d/);
       /* auto: WebGL2 on a real GPU; this browser's WebGL2 is SwiftShader (the CPU), where Canvas2D is the faster one */
       report.auto = c;
+      /* a new canvas (a new file in the editor): the tiles move with it, the old GL canvas and context go */
+      const re = await A.page.evaluate(() => {
+        const c2 = document.createElement('canvas'); c2.style.cssText = 'position:absolute;inset:0;width:100%;height:100%';
+        document.getElementById('stage').appendChild(c2); document.getElementById('c').remove();
+        HD.render.init(c2); T.gallery(); HD.render.settle();
+        const g = document.querySelectorAll('canvas.hd-canvas-gl');
+        return {r: HD.render.renderer, n: g.length, before: g.length ? g[0].nextSibling === c2 : false, done: HD.render.stats.gl.done};
+      });
+      assert.deepEqual(re, {r: 'gl', n: 1, before: true, done: true}, 'init on a new canvas');
       assert.ok(c.r === '2d' ? /software/i.test(c.why) : c.r === 'gl', 'auto: ' + JSON.stringify(c));
       for (const P of [A, B, C]) { assert.deepEqual(P.errors, []); await P.page.close(); }
       ok('switch');
@@ -302,22 +314,25 @@ async function main() {
       for (const P of [G, D]) { assert.deepEqual(P.errors, [], tag + ' page errors'); await P.page.close(); }
       return out;
     };
-    if (process.env.GL_SKIP_GALLERY !== '1') {
+    if (!ONLY_PERF && process.env.GL_SKIP_GALLERY !== '1') {
       report.pixels.gallery = await compare('gallery', 1, 'gallery', {n100: 0, n24: 0.0005});
       report.pixels.gallery_dpr2 = await compare('gallery', 2, 'gallery2', {n100: 0, n24: 0.0005});
       ok('pixels: gallery');
     }
-    /* upright boxes on the GPU: area coverage on both sides, so the same pixels */
+    /* upright boxes on the GPU: area coverage on both sides, so the same pixels (a few edge pixels of CPU-painted curves
+       that cross a tile edge come out of Skia a little differently, as in the Canvas2D renderer's own partial repaints) */
+    if (!ONLY_PERF) {
     report.pixels.shapes = await compare('shapes', 1, 'shapes', {n100: 0, n24: 0.0002});
     const gpuUsed = Object.values(report.pixels.shapes).reduce((s, d) => s + d.gpuTiles, 0);
     assert.ok(gpuUsed > 0, 'the plain-shape page takes the GPU fast path');
     /* curves and turned edges on the GPU too (HD.render.gpuCurves, off by default): the shader takes the true area under
        the tangent edge, Skia's scan converter does not - edge pixels only, measured and bounded here */
     report.pixels.shapes_curves = await compare('shapes', 1, 'shapesc', {n100: 0, n24: 0.004}, true);
+    }
     ok('pixels: GPU fast path');
 
     /* ================================================================ 3. edits and pans: the tiles follow every edit */
-    {
+    if (!ONLY_PERF) {
       const G = await open('gl');
       const r = await G.page.evaluate(async () => {
         const R = HD.render, S = HD.store;
@@ -372,7 +387,7 @@ async function main() {
     }
 
     /* ================================================================ 4. export + hit tests: the same code in both modes */
-    {
+    if (!ONLY_PERF) {
       const G = await open('gl'), D = await open('2d');
       const probe = async (P) => P.page.evaluate(async () => {
         const R = HD.render, ids = T.gallery(); R.setView({x: 0, y: 0, zoom: 1}); R.settle(); await R.ready(HD.sel.page); R.settle();
@@ -405,6 +420,20 @@ async function main() {
       assert.ok(d2.n100 === 0 && d2.n24 < 50, 'after the fallback the picture is the Canvas2D one: ' + JSON.stringify(d2));
       assert.deepEqual(G.errors.filter(e => !/WebGL/.test(e)), [], 'no page error after a lost context');
       report.contextLoss = {why: lost.why, diff: {n24: d2.n24, n100: d2.n100}};
+      /* hit tests + marquee through the spatial index = the same answers as asking every layer (2,000 layers, turned,
+         stroked, nested, hidden, locked) */
+      const ix = await D.page.evaluate(() => {
+        const R = HD.render, S = HD.store, pg = T.reset(), rnd = T.rng(9);
+        S.tx('g', () => { for (let i = 0; i < 2000; i++) { const x = rnd() * 3000, y = rnd() * 2000;
+          if (i % 7 === 0) { const f = S.create('FRAME', pg, {x, y, w: 120, h: 90, clip: i % 2 === 0, fills: [{type: 'solid', color: '#FFFFFF'}]}); S.create('RECT', f, {x: 60, y: 50, w: 100, h: 60, fills: [{type: 'solid', color: '#3B82F6'}]}); }
+          else S.create(i % 3 ? 'RECT' : 'ELLIPSE', pg, {x, y, w: 10 + rnd() * 80, h: 10 + rnd() * 60, rot: i % 5 ? 0 : rnd() * 90, strokes: i % 4 ? undefined : [{type: 'solid', color: '#000000'}], strokeWeight: 1 + rnd() * 9, strokeAlign: 'outside', fills: i % 6 ? [{type: 'solid', color: '#F87171'}] : [], visible: i % 50 !== 0, locked: i % 61 === 0}); } });
+        R.setView({x: 0, y: 0, zoom: 0.5}); R.flush();
+        const run = () => { const out = []; for (let k = 0; k < 600; k++) { const x = (k * 37) % 3000, y = (k * 53) % 2000; out.push(R.hitTest(x, y), R.hitTest(x, y, {deep: true})); } for (let k = 0; k < 30; k++) out.push(R.nodesInRect({x: k * 90, y: k * 60, w: 300, h: 200}).join(',')); return out.join('|'); };
+        const withIdx = run(); R.debug.noIndex = true; const without = run(); R.debug.noIndex = false;
+        return {same: withIdx === without, index: !!HD.index, hits: withIdx.split('|').filter(v => v && v !== 'null').length};
+      });
+      assert.ok(ix.same, 'hit tests through the index differ from the full walk');
+      report.hitIndex = ix;
       for (const P of [G, D]) await P.page.close();
       ok('export + hit tests + lost context');
     }
@@ -435,7 +464,9 @@ async function main() {
             o.composite = T.frames(40, (v, i) => ({x: v.x + (i % 20 < 10 ? 5 : -5), y: v.y, zoom: 1}));
             o.zoom = T.frames(40, (v, i) => { const z = v.zoom * (i < 20 ? 1.04 : 1 / 1.04); return {zoom: z, x: 640 - (640 - v.x) * z / v.zoom, y: 400 - (400 - v.y) * z / v.zoom}; });
             t = performance.now(); R.settle(); R.finish(); o.zoomSettle = Math.round(performance.now() - t);
-            R.zoomToFit(null, false); t = performance.now(); R.settle(); R.finish(); o.fitPaint = Math.round(performance.now() - t); o.fitZoom = Math.round(R.view.zoom * 1000) / 1000;
+            R.zoomToFit(null, false); t = performance.now();
+            if (R.stats.gl !== undefined && R.renderer === 'gl') { o.fitFrames = []; let g = 0; do { const t1 = performance.now(); R.flush(); const st = R.stats.gl; o.fitFrames.push([Math.round(performance.now() - t1), st.rendered, st.level, st.renderMs, st.missing]); } while (!R.stats.gl.done && g++ < 400); o.fitFrameCount = o.fitFrames.length; o.fitFrames = o.fitFrames.slice(0, 16); }
+            R.settle(); R.finish(); o.fitPaint = Math.round(performance.now() - t); o.fitZoom = Math.round(R.view.zoom * 1000) / 1000;
             await new Promise(r => setTimeout(r, 350)); R.settle(); for (let i = 0; i < 20; i++) R.flush();
             o.panFit = T.frames(40, (v) => ({x: v.x - 7, y: v.y - 3, zoom: v.zoom}));
             o.gl = R.stats.gl ? {texMB: R.stats.gl.texMB, usedMB: R.stats.gl.usedMB, tiles: R.stats.gl.tiles, levels: R.stats.gl.levels} : null;

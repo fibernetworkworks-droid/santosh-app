@@ -2075,7 +2075,10 @@
       const ks = s.children(page), z = view.zoom, vx = tx / dpr, vy = ty / dpr;
       c.font = '11px Inter, system-ui, -apple-system, "Segoe UI", sans-serif';
       c.textBaseline = 'alphabetic'; c.textAlign = 'left';
-      for (let i = 0; i < ks.length; i++) {
+      /* with the tiles the page's grid is there already: only the layers near the screen are looked at */
+      const m = 40 / z, near = gl !== null && PX.ok && PX.page === page && PX.kids === ks && PX.cell > 0 ? pxQuery(page, -vx / z - m, -vy / z - m, (cssW - vx) / z + m, (cssH - vy) / z + m) : null;
+      for (let q = 0, lim = near !== null ? near.length : ks.length; q < lim; q++) {
+        const i = near !== null ? near[q] : q;
         const n = s.get(ks[i]);
         if (n === undefined || LABELED[n.type] !== 1 || n.visible === false) continue;
         const sw = W(n) * z;
@@ -2770,9 +2773,14 @@
     if (PX.cell === 0) return null;
     const c = PX.cell, cx0 = Math.floor(wx0 / c), cy0 = Math.floor(wy0 / c), cx1 = Math.floor(wx1 / c), cy1 = Math.floor(wy1 / c);
     const span = (cx1 - cx0 + 1) * (cy1 - cy0 + 1);
-    if (span > PX.cells.size || span > 4096) return null;  /* the rect holds most of the page: walking it all is cheaper */
+    const e = PX.ext, out = [];
+    if (span > PX.cells.size || span > 4096) {
+      /* the rect holds most of the page: one pass over the extents (a few numbers each) instead of the cells */
+      for (let i = 0, k = 0; k < e.length; i++, k += 4) if (e[k + 2] >= wx0 && e[k] <= wx1 && e[k + 3] >= wy0 && e[k + 1] <= wy1) out.push(i);
+      return Int32Array.from(out);
+    }
     if (++PX.gen >= 4294967295) { PX.gen = 1; PX.mark.fill(0); }
-    const gen = PX.gen, e = PX.ext, mark = PX.mark, out = [];
+    const gen = PX.gen, mark = PX.mark;
     const take = (i) => {
       if (mark[i] === gen) return;
       mark[i] = gen;
@@ -2805,7 +2813,8 @@
     ctx.fillRect(0, 0, tw, th);
     if (!pn) return;
     const cl = [0, 0, tw, th];
-    const T = {ctx, clips: cl, bounds: cl, lod: !debug.noLod, cache: !debug.noCache, canBuild: true, record: true, exact: true, bs, btx: -ox, bty: -oy,
+    /* no per-node bitmaps here: the tile IS the bitmap (made once, kept until something in it changes) */
+    const T = {ctx, clips: cl, bounds: cl, lod: !debug.noLod, cache: debug.tileCache === true, canBuild: true, record: true, exact: true, bs, btx: -ox, bty: -oy,
       serial: ++serial, budgetEnd: t0 + (budget || 12), now: t0, root: null, inexact: false, backdrop: true};
     try {
       const list = debug.noIndex ? null : pxQuery(page, (ox - 1) / bs, (oy - 1) / bs, (ox + tw + 1) / bs, (oy + th + 1) / bs);

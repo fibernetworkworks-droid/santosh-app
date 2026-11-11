@@ -359,7 +359,10 @@
       const exactL = levelOf(bs, false);
       /* the level made this frame: the exact one when the zoom rests, else a power-of-two bucket (or the exact one, if it
          is already there) */
-      const target = a.zooming ? (exactL !== undefined ? bs : bucket(bs)) : bs;
+      /* a zoom that keeps moving (two frames in a row at new scales) makes the bucket; a single jump makes the exact level */
+      zoomRun = bs !== lastBs ? zoomRun + 1 : 0;
+      lastBs = bs;
+      const target = a.zooming && zoomRun >= 2 ? (exactL !== undefined ? bs : bucket(bs)) : bs;
       const TL = levelOf(target, true);
       lastTarget = TL;
       const rg = rangeOf(target, bs, tx, ty, W, H, 0);
@@ -449,7 +452,7 @@
         composeMs: Math.round(S.composeMs * 100) / 100, tiles: count(), levels: levels.size, texMB: Math.round(depth * TILE_BYTES / 1048576), usedMB: Math.round((depth - free.length) * TILE_BYTES / 1048576 * 10) / 10,
         evicted: S.evicted};
     }
-    let lastView = '', lastInst = -1;
+    let lastView = '', lastInst = -1, zoomRun = 0, lastBs = 0;
     function coveredElsewhere(TL, i, j, s) {
       const cx = (i + 0.5) * TS / s, cy = (j + 0.5) * TS / s;       /* the tile's middle, in world units */
       for (const L of levels.values()) {
