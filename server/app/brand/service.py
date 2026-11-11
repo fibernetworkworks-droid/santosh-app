@@ -857,7 +857,7 @@ def request_approval(tenant: str, ref: str, force: bool = False, conv: str = "")
         blocks = [c["text"] for c in _j(d.checks, []) if c["level"] == "block"]
         if blocks and not force:
             raise BrandError("Fix these first: " + " | ".join(blocks))
-        if any("To be filled in" in b or "Emblems" in b or "Drugs" in b for b in blocks):
+        if any("To be filled in" in b or "Bharna baaki" in b or "Emblems" in b or "Drugs" in b for b in blocks):
             raise BrandError("It cannot be made final while this is in it: " + " | ".join(blocks))
         d.status = "waiting"
         d.approve_hash = _hash(tenant, d)
