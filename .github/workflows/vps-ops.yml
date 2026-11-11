@@ -73,6 +73,7 @@ on:
           - lab_check
           - lab_try
           - lab_setup
+          - lab_net_check
           - lab_images
           - lab_prune
           - zoo_key
@@ -593,6 +594,13 @@ jobs:
                 # same path a coding job takes, minus the model. First run installs deps (a few minutes); later runs reuse
                 # the snapshot. "PASS" here means the box can really run her code.
                 echo 'cd $CORE && timeout 2400 .venv/bin/python -m app.devlab run --repo fibernetworkworks-droid/santosh-app --ref main --cmd "cd server && python3 -m pytest -q -p no:randomly tests/test_v0456_devlab.py tests/test_v0531_lab_loop.py" --timeout 900 2>&1 | tail -30' ;;
+              lab_net_check)
+                # Hoola Code Phase 6: network levels + outside secrets for the coding box, proved on THIS server -
+                # the inside-only Docker network, the allow-list proxy container, a package registry reachable, a
+                # host off the list refused, no way around the proxy, no private address, "none" still sealed, and a
+                # secret that reaches the host without ever being in the box. Run lab_check first (it needs the base
+                # image). Network levels stay OFF (DEV_NET) until every line here says ok.
+                echo 'cd $CORE && timeout 900 .venv/bin/python -m app.devlab net 2>&1 | tail -30' ;;
               lab_setup)
                 # ... build (or rebuild) the base image on its own: python + node + jdk + git + ripgrep, ~2-4 minutes.
                 echo 'docker --version || echo "DOCKER NAHI HAI"'

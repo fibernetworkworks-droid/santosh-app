@@ -37,11 +37,11 @@ def box(on, monkeypatch):  # noqa: F811
     runs = []
     monkeypatch.setattr(BX, "available", lambda: {"ok": True, "docker": "local", "base_built": True})
 
-    def run_in(image, files_dir, command, timeout=600, network=False, commit_to="", env=None):
+    def run_in(image, files_dir, command, timeout=600, network=False, commit_to="", env=None, net=None):
         cmd = command.replace(f"cd {BX.WORK}; ", "", 1)
         r = subprocess.run(["bash", "-c", cmd], cwd=files_dir, capture_output=True, text=True, timeout=timeout,
                            env={**os.environ, **(env or {})})
-        runs.append({"image": image, "cmd": cmd, "env": env, "network": network})
+        runs.append({"image": image, "cmd": cmd, "env": env, "network": network, "net": net})
         return {"rc": r.returncode, "out": (r.stdout or "") + (r.stderr or ""), "secs": 0.1, "timed_out": False}
     monkeypatch.setattr(BX, "run_in", run_in)
     on.RUNS = runs
@@ -361,8 +361,10 @@ def test_choices_and_repo_box_settings_in_a_browser(arena_server):  # noqa: F811
         if calls:
             break
         pg.wait_for_timeout(50)
-    assert ("repo", {"setup_cmd": "pip install -r requirements.txt", "test_cmd": "python3 -m pytest -q",
-                     "env_vars": {"APP_ENV": "test", "CITY": "akola"}}) in calls
+    sent = next(b for w, b in calls if w == "repo")
+    assert {k: sent[k] for k in ("setup_cmd", "test_cmd", "env_vars")} == {"setup_cmd": "pip install -r requirements.txt", "test_cmd": "python3 -m pytest -q",
+                                                                          "env_vars": {"APP_ENV": "test", "CITY": "akola"}}
+    assert sent["net_level"] == "none" and sent["net_hosts"] == []      # Phase 6 rides the same Save: untouched = no network
     assert errs == []
     ctx.close()
 
