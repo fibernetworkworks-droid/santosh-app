@@ -505,7 +505,7 @@ def update_trip(tenant: str, ref: str, actor: str = "owner", **kw) -> dict[str, 
                 raise TravelError("status = " + " | ".join(STATUS_LABEL))
             t.status = kw["status"]
         _log(t, "Trip updated", actor)
-        return {"trip": _trip_view(s, t), "say": "Trip update."}
+        return {"trip": _trip_view(s, t), "say": "Trip updated."}
 
 
 def traveller(tenant: str, ref: str, op: str = "add", actor: str = "owner", **kw) -> dict[str, Any]:

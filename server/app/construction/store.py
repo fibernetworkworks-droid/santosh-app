@@ -48,7 +48,7 @@ def grn(tenant: str, item: str, qty, rate=None, vendor: str = "", invoice_no: st
                         invoice_no=str(invoice_no)[:60], vehicle=str(vehicle)[:40], site=site[:160],
                         day=d.isoformat(), ok=bool(ok), note=note[:300], by=by[:80]))
         lot_id, bal, minq, unit = lot.id, balance(s, tenant, lot.item), lot.min_qty, lot.unit
-    alert = f" Below the reorder level {minq:g} {unit}!" if (minq and bal <= minq) else ""
+    alert = f" Below the reorder level {minq:g} {unit}." if (minq and bal <= minq) else ""
     say = f"GRN: {lot.item} {q:g} {unit} received ({vendor or 'vendor? '}, challan {invoice_no or '-'}). Stock now {bal:g} {unit}.{alert}"
     publish(tenant, "const_store", {"kind": "grn", "item": lot.item, "qty": q}, conv)
     return {"item": lot.item, "balance": bal, "say": say}
@@ -69,7 +69,7 @@ def issue(tenant: str, item: str, qty, site: str = "", gang: str = "", purpose: 
                           purpose=purpose[:200], day=d.isoformat(), waste=bool(waste), by=by[:80], note=note[:300]))
         bal2 = balance(s, tenant, lot.item)
         lot_id, minq, unit, lot_name = lot.id, lot.min_qty, lot.unit, lot.item
-    alert = f" Below the reorder level {minq:g} {unit}!" if (minq and bal2 <= minq) else ""
+    alert = f" Below the reorder level {minq:g} {unit}." if (minq and bal2 <= minq) else ""
     say = f"Issue: {lot_name} {q:g} {unit} {'(recorded as wastage)' if waste else ''} -> {site or '-'}{' / ' + gang if gang else ''}. Stock now {bal2:g} {unit}.{alert}"
     publish(tenant, "const_store", {"kind": "issue", "item": lot_name, "qty": q}, conv)
     return {"item": lot_name, "balance": bal2, "say": say}
