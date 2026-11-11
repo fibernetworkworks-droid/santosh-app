@@ -2910,3 +2910,32 @@ Task ID: v0.789.0 CHHOTA BADLAAV (built as 0.785; their HOOLA AI APPS took 0.785
 Task: owner "GO L4" - E1 line-edit tools + E2 tiered checks in the Web Studio.
 Work Log: site/lineedit.py; website_dekho what=search, website action=edit_lines / write_file; checks.run quick; save_version quick + _quick_merge; blockers + Go live starts the full check; Studio version card; 8 tests; real Chromium quick check 6.2 s.
 Stage Summary: pushed; server deploy only. Next: L5 YEH WALA (preview toolbar, element pills, style panel) on her GO.
+
+Task ID: v0.791.0 KHUD PE NA RUKE
+Ask: found during G5 - a long job paused itself ~1 h (kaamwatch on).
+Built: goal._waiting_on_job skips the job's own kind=goal row; 1 test.
+Deploy: vps-ops deploy.
+
+Task ID: v0.792.0 VIDEO LEARNER PREMIUM (built as 0.785)
+Ask: read the AI Employees Video Learner code + design -> "FIX ALL 7 PROPERLY ... MAKE ENTIRE SECTION PROPER AND PREMIUM ... VISUAL GRAPHICAL ANIMATION".
+Built: 7 fixes (pill class, Re-learn replaces, run kept + Proven by real work, file picker steps, stage durations, uploads kept, restart pick-up) + the page redrawn (seekh.js, skv- CSS, hub card); 20 tests incl. a browser walk.
+Deploy: vps-ops deploy (server-only; no new pip, no new tables; data/seekh/media + data/seekh/jobs are created by themselves).
+
+Task ID: v0.793.0 HOOLA CODE SAFETY + RESUME (built as 0.789; re-versioned on merge: CHHOTA BADLAAV took 0.789.0, HOOLA GAME DEV 0.790.0, KHUD PE NA RUKE 0.791.0, VIDEO LEARNER PREMIUM 0.792.0)
+Ask: GO PHASE 4 WITH 2 LIVE SESSIONS -> MERGE.
+What happened: another session shipped Phase 4 first (v0.787 HOOLA CODE ENGINE, proved on real Docker). This session's parallel engine (wsp.py) was withdrawn, not merged; its missing pieces were re-landed on the shipped engine.
+Built: link wall (the server never follows a link a box command planted), keys hidden after the clone + in output, restart pickup (job heartbeat + resume), per-repo setup / test / variables, question choices, the lost round-count save; 9 tests incl. a browser walk.
+Deploy: vps-ops deploy (server-only; no new pip; four nullable columns self-heal). Not verified on real Docker here.
+
+---
+Task ID: v0.794.0 PROMPT NAAP (P0 of HOOLA PROMPTING; built as 0.785, re-versioned on merge: main had moved to 0.793.0)
+Ask: the owner pasted the P0 step of docs/HOOLA_PROMPTING_PLAN.md (measure before building).
+Built: quality/prompt_asks.py (60 asks: raw + hand-filled brief), quality/promptcard.py (scorer, free card, live card with a rupee ceiling, rule verdict, her picks), CLI `prompt`, GET /api/quality/prompt, vps-ops prompt_card_check / prompt_card_try; 11 tests, no model.
+Found: the architect plan echoed her words (the brief scored its own text) - fixed; a flag picture the picture engine refuses - replaced.
+Deploy: vps-ops deploy (server-only; no new pip, no tables). Then prompt_card_check (free), then prompt_card_try (Rs 250 cap). Next: read the numbers, then P1 on her GO.
+
+---
+Task ID: v0.795.0 YEH WALA (L5)
+Task: owner "GO L5" - preview toolbar (S / T / D / C), selected elements to the model, marked-up screenshots, free style panel on tokens.
+Work Log: site/yehwala.py (selection, comments table, markup screenshot); edit.style + hs-u-* utilities; hoola-edit.js modes; Studio toolbar / pills / style panel / draw / comments; 6 tests incl. a browser walk.
+Stage Summary: pushed; server deploy only. Next: L6 GALTI PAKDO (preview error collector + Try to fix) on her GO.

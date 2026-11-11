@@ -209,6 +209,7 @@ function go(v, arg) {
   if (v === 'systems') ENT?.open($('#systems'), arg || 'erp');   // v0.453 an Enterprise employee's Open desk lands on its own role   // v0.396 CONNECT: her own ERP / CRM address + key
   if (v === 'hire') EMP?.hub($('#hire'));
   if (v !== 'interactive') HIV?.leave();
+  if (v !== 'seekh') SKH?.leave();   // v0.785 the Video Learner stops polling when its page is left
   if (v !== 'flow') FLW?.leave();
   if (v !== 'connectors') CX?.leave();
   if (v !== 'aiapps') AIA?.leave();
@@ -376,11 +377,12 @@ async function enter() {
   }
   if (window.HoolaSeekh && !SKH) {               // v0.718 the Video Learner: stays on its page while Hoola works
     SKH = HoolaSeekh({api, esc, toast, open: (v, arg) => go(v, arg), live: () => $('#app').classList.add('open'),
-                      send: async text => {        // one honest chat turn without leaving the panel
+                      chat: async id => { if (id && id !== CONV) { try { await openConv(id); } catch { /* the chat view still opens */ } } go('chat'); },   // v0.785 Answer opens the run's own chat
+                      send: async (text, files) => {        // one honest chat turn without leaving the panel (v0.785: + the files a step uploads)
                         let id = CONV;
                         if (!id) { const c = await api('POST', '/api/conversations?reuse=1'); id = c.id; }
                         const r = await api('POST', `/api/conversations/${encodeURIComponent(id)}/messages`,
-                                   {text: String(text || ''), client_id: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random())), files: [], hints: []});
+                                   {text: String(text || ''), client_id: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random())), files: (files || []).filter(Boolean), hints: []});
                         return {...(r || {}), conversation_id: id};   // v0.745 the learner follows this run on its own page
                       },
                       upload: async file => {      // the panel's video picker rides the chat file lane (25 MB)

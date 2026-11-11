@@ -27,7 +27,7 @@ KINDS = ["Namkeen", "Sweets", "Biscuits", "Spices", "Tea", "Ghee"]
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.790.0"
+    assert APP_VERSION == "0.795.0"
 
 
 def _csv(n: int, dup_every: int = 0, thin_every: int = 0, bad_rows: bool = True) -> bytes:

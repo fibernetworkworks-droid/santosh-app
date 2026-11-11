@@ -58,11 +58,8 @@ def _setup(monkeypatch, graph, script, extra=None, **tool_kw):
 
 
 def _watched(monkeypatch):
-    """kaamwatch on (it queues the job's report). Found on the way, NOT part of G5 and on both paths: with the watch on,
-    a long job's own 'goal:' kaam_jobs row (state working) makes goal._waiting_on_job hold the job for up to an hour
-    after its first segment - here the job is let through so its end can be checked."""
-    from app.agent import goal
-    monkeypatch.setattr(goal, "_waiting_on_job", lambda conv: False)
+    """kaamwatch on (it queues the job's report). v0.791 fixed goal._waiting_on_job counting the long job's own
+    'goal:' row, so no patch is needed any more."""
     return {"KAAM_WATCH": "true"}
 
 
