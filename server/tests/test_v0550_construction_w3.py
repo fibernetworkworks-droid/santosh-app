@@ -148,7 +148,7 @@ def test_india_pack_rows():
     assert SP.rule_value("maharashtra", "cpheeo_lpcd") == 135.0
     with pytest.raises(SP.PackError) as ex:
         SP.rule_cited("maharashtra", "no_such_rule_anywhere")
-    assert "bina clause" in str(ex.value)
+    assert "without a clause" in str(ex.value)
     m = SP.load("maharashtra")
     assert len(m["rows"]) == 7 and SP.row(m, "rera_carpet_tolerance_pct")["value"] == 3.0
 
@@ -163,7 +163,7 @@ def test_bim_ifc_read_and_health(cst):
     assert h["spaces"] == 1 and h["elements"] == 2 and h["without_placement"] == 0
     with pytest.raises(Exception) as ex:
         B.ifc_add(T, "Tower A", "pdf nonsense", "this is a pdf, not a model")
-    assert "IFC (STEP) text nahi" in str(ex.value)
+    assert "does not look like IFC (STEP) text" in str(ex.value)
     with pytest.raises(Exception):
         B.health(T, "no-such-model")
 
@@ -296,7 +296,7 @@ def test_predesign_mep_fire(cst):
     assert h["tr"] == 75.0
     with pytest.raises(Exception) as ex:
         P.rule_add(T, "fire", "travel_max", "travel distance", 30.0, "m", "max", "", "guess")
-    assert "Clause aur source" in str(ex.value)
+    assert "Both the clause and the source" in str(ex.value)
     P.rule_add(T, "fire", "travel_max", "max travel distance to exit", 30.0, "m", "max",
                "NBC 2016 Part 4 cl 4.4", "fire consultant row (re-check)")
     ok = P.fire_check(T, "Tower A", "travel_max", 28.0)

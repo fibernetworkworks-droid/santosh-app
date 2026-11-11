@@ -14,9 +14,9 @@ def test_ticket_places_nothing_and_flags_against_her_limits():
                       rates={"brokerage_pct": 0.1, "brokerage_cap": 20})
     assert t["placed"] is False and t["ticket"]["symbol"] == "REL" and t["ticket"]["est_value"] == 26000
     texts = " ".join(f["text"] for f in t["flags"])
-    assert "26.0%" in texts and "+4.0%" not in texts and "Udhaar" in texts            # concentration and leverage flagged; 4% is inside her 5%
-    assert t["ticket"]["est_charges"]["brokerage"] == 20.0 and "nahi bhare" in t["ticket"]["est_charges"]["basis"]
-    assert "tap" in t["decider"] and "salah" in t["decider"]
+    assert "26.0%" in texts and "+4.0%" not in texts and "Margin / intraday" in texts            # concentration and leverage flagged; 4% is inside her 5%
+    assert t["ticket"]["est_charges"]["brokerage"] == 20.0 and "did not fill in" in t["ticket"]["est_charges"]["basis"]
+    assert "tap" in t["decider"] and "advice" in t["decider"]
     assert t["confirm_text"].startswith("BUY 10 x REL LIMIT @ 2600")
     far = orders.ticket("x", "buy", 1, "limit", 120, 100)
     assert any("+20.0%" in f["text"] for f in far["flags"])
@@ -32,8 +32,8 @@ def test_portfolio_uses_her_limits_and_only_proposes():
     d = orders.drift([{"symbol": "a", "qty": 10, "price": 100, "group": "it"}, {"symbol": "b", "qty": 10, "price": 300, "group": "bank"}],
                      {"A": 50}, 5, max_single_pct=60, margin={"used": 85, "available": 15})
     assert d["weights"][0]["symbol"] == "B" and d["weights"][0]["weight_pct"] == 75.0
-    assert any("mandate ki seema 60" in x for x in d["alerts"]) and d["margin"]["alert"]
-    assert d["proposals"][0]["move_value"] == 1000.0 and "order nahi" in d["proposals"][0]["note"]
+    assert any("the mandate limit is 60" in x for x in d["alerts"]) and d["margin"]["alert"]
+    assert d["proposals"][0]["move_value"] == 1000.0 and "not an order" in d["proposals"][0]["note"]
     assert "portfolio manager" in d["decider"]
     assert orders.drift([{"symbol": "a", "qty": 1, "price": 1}])["alerts"] == []       # no limits given = none invented
     with pytest.raises(ValueError):
@@ -46,7 +46,7 @@ def test_underwrite_runs_only_her_rules_and_refuses_protected_fields():
                                {"field": "bureau_score", "op": ">=", "value": 700, "code": "BUREAU_LOW"},
                                {"field": "age", "op": ">=", "value": 21, "code": "AGE"}])
     assert u["foir_pct"] == 50.0 and u["reason_codes"] == ["FOIR_HIGH", "BUREAU_LOW"] and u["missing_inputs"][0]["field"] == "age"
-    assert "approve" in u["decider"] and "faisla" in u["decider"]
+    assert "approve" in u["decider"] and "decision" in u["decider"]
     for f in ("religion", "Caste", "gender", "pincode", "marital_status"):
         with pytest.raises(ValueError):
             credit.underwrite(ap, [{"field": f, "op": "==", "value": "x"}])
@@ -56,14 +56,14 @@ def test_underwrite_runs_only_her_rules_and_refuses_protected_fields():
 
 def test_kfs_dpd_ecl_dcf_are_exact_and_name_the_decider():
     k = credit.kfs("L", "B", "Personal", 100000, 12, 12)
-    assert "8884.88" in k["kfs_markdown"] and "[days: lender policy]" in k["kfs_markdown"] and "adhikrit" in k["decider"]
+    assert "8884.88" in k["kfs_markdown"] and "[days: lender policy]" in k["kfs_markdown"] and "authorised" in k["decider"]
     p = credit.dpd([{"id": 1, "outstanding": 100, "oldest_due_date": "2026-07-01"}, {"id": 2, "outstanding": 50, "oldest_due_date": "2026-10-20"},
                     {"id": 3, "outstanding": 10, "oldest_due_date": "2026-11-05"}], "2026-11-05")
     assert p["buckets"]["NPA-suggested"] == 100 and p["buckets"]["SMA-0(1-30)"] == 50 and p["buckets"]["standard(0)"] == 10 and p["verify"]
     assert "recovery" in p["decider"]
     e = credit.ecl([{"id": 1, "ead": 1000, "pd": 0.02, "lgd": 0.45, "dpd": 0}, {"id": 2, "ead": 1000, "pd": 0.1, "lgd": 0.5, "dpd": 45},
                     {"id": 3, "ead": 1000, "pd": 0.5, "lgd": 0.6, "dpd": 120}])
-    assert e["by_stage"] == {"stage1": 9.0, "stage2": 50.0, "stage3": 600.0} and "lifetime PD nahi" in e["flags"][0]
+    assert e["by_stage"] == {"stage1": 9.0, "stage2": 50.0, "stage3": 600.0} and "no lifetime PD" in e["flags"][0]
     with pytest.raises(ValueError):
         credit.ecl([{"ead": 1, "pd": 2, "lgd": 0.5}])
     v = valuation.dcf([100, 110, 120], 12, 4, 50, 10)

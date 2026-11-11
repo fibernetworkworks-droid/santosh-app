@@ -126,7 +126,7 @@ def test_gis_flow(cst):
     assert deg["units"] == "deg"
     with pytest.raises(S.CstError) as ex:      # THE refusal: degrees have no square metres
         S.gis_area(T, deg["layer_id"])
-    assert "shoelace" in str(ex.value) and "GALAT" in str(ex.value)
+    assert "shoelace" in str(ex.value) and "WRONG" in str(ex.value)
     with pytest.raises(S.CstError):
         S.gis_overlay(T, "Palm Heights", lid, "flood", "zone III", source="")
     ov = S.gis_overlay(T, "Palm Heights", lid, "flood", "Zone III per map sheet", source="NDMA atlas, read by planner")

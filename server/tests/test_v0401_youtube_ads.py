@@ -173,7 +173,7 @@ def test_draft_checks_then_paused_create_then_start_only_with_confirm(ga):
     _video_row(D)
     d = G.new_draft(T, "AbCdEfGhIjK", daily=300, days=3)
     assert d["headlines"][0] == "Smile makeover in 30 sec" and d["business"] == "Sharma Dental"
-    assert d["final_url"] == "https://sharmadental.example" and "Logo chahiye" in " ".join(d["problems"])
+    assert d["final_url"] == "https://sharmadental.example" and "A logo is needed" in " ".join(d["problems"])
     with pytest.raises(G.GAdsError):
         G.check(T, d["id"])                                          # problems first, Google is not even asked
     from app.social import publish as SP
@@ -226,7 +226,7 @@ def test_caps_and_banned_words(ga, monkeypatch):
     D, G = ga
     _connect(D, G)
     d = G.new_draft(T, "AbCdEfGhIjK", daily=5000)
-    assert any("Roz ka budget" in p for p in d["problems"])
+    assert any("daily budget" in p for p in d["problems"])
     d = G.set_draft(T, d["id"], daily=200, headlines=["Satta matka khelo", "Paisa double"])
     assert any("satta" in p.lower() or "jua" in p.lower() for p in d["problems"])
     d = G.set_draft(T, d["id"], headlines=["Best SIP mutual fund tips"])

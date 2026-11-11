@@ -102,7 +102,7 @@ def test_annotation_exact_match_ignores_case_and_punct():
     A.save(T1, "Courier Charge kya hai?", "Rs 50 per booking.")
     m = A.match(T1, "courier charge kya hai")
     assert m["hit"] and m["how"] == "exact" and m["score"] == 1.0
-    assert m["hit_card"]["title"] == "Aapka approved jawab"
+    assert m["hit_card"]["title"] == "Your approved answer"
     assert m["hit_card"]["text"] == "Rs 50 per booking."
 
 
@@ -202,7 +202,7 @@ def test_gyaan_khojo_annotation_short_circuits_retrieval(monkeypatch):
     out = _run(_khojo(CTX, "COURIER charge kya hai"))
     assert calls == []                                            # retrieval NEVER ran
     assert out["status"] == "found" and out["annotation"]["how"] == "exact"
-    assert out["hits"][0]["title"] == "Aapka approved jawab"
+    assert out["hits"][0]["title"] == "Your approved answer"
     assert "[1]" and out["hits"][0]["n"] == 1                     # rides the normal citation numbering
     # and a miss falls through to retrieval exactly as before
     out2 = _run(_khojo(CTX, "bilkul alag sawaal jo saved nahi hai"))
