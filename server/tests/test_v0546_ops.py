@@ -115,7 +115,7 @@ def test_an_unpriced_thing_is_counted_and_said_never_silently_zero(droid_env):
     cs = OPS.cost(_app(aid))
     assert cs["inr"] == 0.0
     assert set(cs["not_priced"]) == {OPS.KINDS["sms"], OPS.KINDS["push"]}
-    assert "daam abhi set nahi hai" in cs["says"], cs["says"]
+    assert "has no price set yet" in cs["says"], cs["says"]
     kinds = {b["kind"]: b for b in cs["by_kind"]}
     assert kinds["sms"]["count"] == 40 and kinds["sms"]["priced"] is False
 
@@ -129,7 +129,7 @@ def test_the_estimate_is_her_own_history_or_an_honest_blank(droid_env, monkeypat
 
     blank = OPS.estimate(r, "build")
     assert blank["measured"] is False and blank["inr"] is None
-    assert "naapa nahi gaya" in blank["says"], blank["says"]
+    assert "has not been measured" in blank["says"], blank["says"]
 
     for usd in (0.10, 0.20, 0.30):
         with OPS.meter(_app(aid), note="build") as acc:
@@ -200,7 +200,7 @@ def test_an_app_that_got_slower_than_itself_is_named(droid_env):
     OPS.flush()
     hit = [a for a in OPS.rules(_app(aid)) if a["key"] == "slow"]
     assert hit, OPS.rules(_app(aid))
-    assert "dhimi ho gayi hai" in hit[0]["say"] and "900ms" in hit[0]["say"]
+    assert "has become slower" in hit[0]["say"] and "900ms" in hit[0]["say"]
 
 
 # ---------------------------------------------------------------- the card, and what it does not know
@@ -209,7 +209,7 @@ def test_the_card_says_what_is_not_measured(droid_env):
     aid, _c, _k, _b = _built(droid_env)
     card = OPS.dashboard(_app(aid))
     assert card["traffic"]["calls"] == 0
-    assert any("koi call nahi" in g for g in card["not_measured"])
+    assert any("no call" in g for g in card["not_measured"])
     assert any("kharche ka koi hisaab" in g for g in card["not_measured"])
     assert "people" in card and "cost" in card and "field" in card
 
@@ -252,7 +252,7 @@ def test_the_tool_reads_it_and_the_estimate_is_askable(droid_env):
     card = asyncio.run(dispatch("app_dekho", {"what": "chaal", "app": aid}, ctx))
     assert "traffic" in card and "not_measured" in card
     est = asyncio.run(dispatch("app_banao", {"action": "kharcha", "app": aid, "job": "build"}, ctx))
-    assert est["measured"] is False and "naapa nahi gaya" in est["says"]
+    assert est["measured"] is False and "has not been measured" in est["says"]
 
 
 def test_the_middleware_never_breaks_a_request(droid_env, monkeypatch):

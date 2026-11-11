@@ -102,8 +102,8 @@ def test_list_has_a_reason_each_and_compliance(env, fake_ai):
     _rewind(_at(11))
     cl = S.call_list(T, at=_at(11))
     names = [r["name"] for r in cl["now"]]
-    assert names[0] == "Ramesh" and "pehle ghante" in cl["now"][0]["why"]        # fresh enquiry first (speed-to-lead)
-    assert "Seema" in names and "₹12,000 baaki" in next(r for r in cl["now"] if r["name"] == "Seema")["why"]
+    assert names[0] == "Ramesh" and "first hour" in cl["now"][0]["why"]        # fresh enquiry first (speed-to-lead)
+    assert "Seema" in names and "₹12,000 due" in next(r for r in cl["now"] if r["name"] == "Seema")["why"]
     assert "Galat" not in names and [b["name"] for b in cl["blocked"]] == ["Cold Wala"]
     assert "TRAI" in cl["blocked"][0]["risk"]
     S.save_settings(T, registered=True)                                       # registered 140 line: may call
@@ -154,7 +154,7 @@ def test_a_person_calls_hoola_logs_and_learns(env, fake_ai):
     S.add_lead(T, "Mohan", "9876500010", "enquiry")
     S.log_call(T, "Mohan", outcome="no_answer")
     r2 = S.log_call(T, "Mohan", outcome="no_answer")
-    assert "2 baar phone nahi uthaya" in r2["say"] and r2["whatsapp"]["text"]
+    assert "No answer twice" in r2["say"] and r2["whatsapp"]["text"]
     m = S.get_lead(T, "Mohan")
     assert m["attempts"] == 2 and m["next_at"]
     # 'call mat karna' -> never listed again

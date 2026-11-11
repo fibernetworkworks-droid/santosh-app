@@ -179,7 +179,7 @@ def test_crash_reports_grouped_noted_and_fixed(droid_env):
     assert cr[0]["exception"].startswith("java.lang.IndexOutOfBoundsException")
     with session() as s:
         notes = [m.content for m in s.query(Message).filter(Message.conversation_id == conv).all() if "band ho gayi" in str(m.content)]
-    assert len(notes) == 1 and "crash theek karo" in notes[0]
+    assert len(notes) == 1 and "fix the crash" in notes[0]
     # tools: she reads them and says "crash theek karo": the cart screen is rewritten with the crash in the ask
     owner = Ctx(tenant_id=T, conversation_id=conv)
     seen = asyncio.run(dispatch("app_dekho", {"what": "crashes", "app": aid}, owner))

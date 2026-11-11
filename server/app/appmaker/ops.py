@@ -319,7 +319,7 @@ def rules(r: AppProject, days: int = 14) -> list[dict[str, Any]]:
     # 1. failures. 5% of a real number of calls is a real problem; below 20 calls it is noise.
     if n24 >= 20 and e24 / n24 >= 0.05:
         out.append({"key": "errors", "level": "bad",
-                    "say": f"{round(100 * e24 / n24)}% of your app's calls are failing (last 24 hours, "
+                    "say": f"About {round(100 * e24 / n24)}% of your app's calls are failing (last 24 hours, "
                            f"{e24}/{n24}). Something is wrong with the server or the app - say 'run the app check'."})
     # 2. slower than it was. Twice her own average, not a number from a book.
     if n24 >= 20 and nb >= 50 and avgb > 0 and avg24 >= 2 * avgb and avg24 >= 400:

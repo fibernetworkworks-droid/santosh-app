@@ -69,7 +69,7 @@ def test_catalogue_blueprint_rules():
     bp = BP.make("isp_ops", TX.GOALS["isp_ops"]["screens"], "sms padhna bhi chahiye")
     v = BP.view(bp)
     assert v["data"]["tables"] > 50 and "subscriber" in v["tables"]["isp"] and "ont" in v["tables"]["isp"]
-    assert any(p["id"] == "sms_read" for p in v["cap_problems"]) and "Store nahi dete" in BP.say(bp)
+    assert any(p["id"] == "sms_read" for p in v["cap_problems"]) and "stores do not allow" in BP.say(bp)
     assert BP.make("shop", TX.GOALS["shop"]["screens"])["data"]["tables"] > 20
 
 
@@ -205,7 +205,7 @@ def test_complex_app_end_to_end(pro_env):
     bpv = v["plan"]["blueprint"]
     assert bpv["archetype"] == "Delivery driver app" and bpv["data"]["tables"] > 20 and "trip" in bpv["tables"]["logistics"]
     assert any(p["id"] == "sms_read" for p in bpv["cap_problems"]) and "sms_retriever" not in [c["id"] for c in bpv["cap_problems"]]
-    assert [r["id"] for r in bpv["roles"]][:1] == ["super_admin"] and "Store nahi dete" in v["say"]
+    assert [r["id"] for r in bpv["roles"]][:1] == ["super_admin"] and "stores do not allow" in v["say"]
     assert "seller_info" not in [x["id"] for x in v["plan"]["code_screens"]]          # staff app: no e-commerce seller page
     S.approve_plan(T, v["id"], ctx.conversation_id, drop=["fuel_log"])
     v = S.choose_look(T, v["id"], 0, None, ctx.conversation_id)

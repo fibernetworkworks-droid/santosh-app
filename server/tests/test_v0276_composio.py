@@ -196,7 +196,7 @@ def test_monthly_cap_per_user(cz, monkeypatch):
     _link(cz)
     cz["svc"].run("default", cz["conv"]["default"], "cmp-slack", "SLACK_LIST_ALL_CHANNELS", {})
     from app.bazar.connectors.base import ToolError
-    with pytest.raises(ToolError, match="poore ho gaye"):
+    with pytest.raises(ToolError, match="are used up"):
         cz["svc"].run("default", cz["conv"]["default"], "cmp-slack", "SLACK_LIST_ALL_CHANNELS", {})
     assert cz["svc"].composio_apps("default")["calls_this_month"] == 1
 
@@ -256,7 +256,7 @@ def test_callback_trusts_only_its_signed_state(cz):
     assert name == "Slack" and ok
     from app.bazar.connectors.base import ToolError
     forged = base64.urlsafe_b64encode(b"other|slack|9999999999|deadbeef").decode()
-    with pytest.raises(ToolError, match="purana ya galat"):
+    with pytest.raises(ToolError, match="old or wrong"):
         cz["svc"].composio_callback(forged)
 
 
@@ -358,10 +358,10 @@ def test_v0296_wrong_or_missing_key_is_refused_plainly(cz):
     from app.bazar.connectors.base import ToolError
     with pytest.raises(ToolError, match="Subdomain"):
         cz["svc"].composio_key("default", "zendesk", {"generic_api_key": "x"})
-    with pytest.raises(ToolError, match="nahi maani"):
+    with pytest.raises(ToolError, match="did not accept this key"):
         cz["svc"].composio_key("default", "zendesk", {"generic_api_key": "wrong", "subdomain": "a"})
     assert _st(cz)["zendesk"] == "needs_key"
-    with pytest.raises(ToolError, match="sign-in hota hai"):
+    with pytest.raises(ToolError, match="uses sign-in"):
         cz["svc"].composio_key("default", "slack", {"api_key": "x"})
 
 

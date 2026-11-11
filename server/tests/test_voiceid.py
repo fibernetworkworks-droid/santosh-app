@@ -62,7 +62,7 @@ def vid(env, monkeypatch):
     def fake_listen(data, script):
         code = heard["digits"]
         if code is None:
-            words = script.split("Mera code hai:")[1].split(".")[0]
+            words = script.split("My code is:")[1].split(".")[0]
             back = {v: k for k, v in service.DIGITS.items()}
             code = "".join(back[w.strip()] for w in words.split(","))
         return {"transcript": "Main ... hoon", "code_digits": code, "gave_permission": heard["permission"],
@@ -84,7 +84,7 @@ def test_enrol_needs_the_persons_own_consent(vid):
         o = c.get("/api/voiceid").json()
         assert o["available"] and o["mode"] == "on" and not o["owner_enrolled"]
         s = c.post("/api/voiceid/enrol", json={"name": "Asha", "relation": "maa"}).json()
-        assert "Main Asha hoon" in s["script"] and "ijaazat deti hoon" in s["script"]    # her own words, her gender
+        assert "I am Asha" in s["script"] and "I give Hoola permission" in s["script"]    # her own words, her gender
         heard["digits"] = "0000"
         r = c.post(f"/api/voiceid/enrol/{s['enrol_id']}", files={"file": ("a.wav", wav(speech(MAA_HZ, 20)), "audio/wav")})
         assert r.status_code == 400 and "code" in r.json()["detail"]
@@ -225,7 +225,7 @@ def test_strict_mode_unknown_voice_gets_only_everyday_help(vid, monkeypatch):
             assert wait_until(lambda: len(fake.tool_responses) >= 2)
             ws.send_text(json.dumps({"type": "end"}))
     blocked = next(r for r in fake.tool_responses if r.id == "s1")
-    assert "pakki nahi hui" in blocked.response["error"] and ran == ["get_weather"]
+    assert "was not confirmed" in blocked.response["error"] and ran == ["get_weather"]
 
 
 def test_mode_off_and_delete(vid, monkeypatch):
