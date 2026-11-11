@@ -248,13 +248,17 @@ def update(tenant: str, pid: str, active: bool | None = None, title: str | None 
         return view(p)
 
 
-def record_run(tenant: str, pid: str, ok: bool) -> dict[str, Any]:
-    """v0.745 her own verdict after a real run from the Video Learner: worked = a win, wrong = a fail."""
+def record_run(tenant: str, pid: str, ok: bool, undo_win: bool = False) -> dict[str, Any]:
+    """v0.745 her own verdict after a real run from the Video Learner: worked = a win, wrong = a fail.
+    v0.785 undo_win: the run was already counted as a win by the operator's own finish and she says it was wrong."""
     with session() as s:
         p = s.get(Procedure, pid)
         if p is None or p.tenant_id != tenant:
             raise ProcedureError("Yeh seekha hua kaam nahi mila.")
-        p.uses += 1
+        if undo_win:
+            p.wins = max(0, int(p.wins or 0) - 1)
+        else:
+            p.uses += 1
         if ok:
             p.wins += 1
         else:

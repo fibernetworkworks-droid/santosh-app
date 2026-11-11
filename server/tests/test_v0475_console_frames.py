@@ -125,11 +125,11 @@ def test_app_version_story():
     assert f'APP_VERSION = "{APP_VERSION}"' in main    # v0.537: was a typed 0.535.0, two releases behind
     # story pin moved to the v0.555 story (the v0.476 precedent: the newest release's story carries the
     # marker; the older stories live in git history)
-    assert 'HOOLA CODE SAFETY' in main and '_resume_cut_runs' in main  # the newest-story precedent (v0.791.0 carries the marker; older stories live in git history)
+    assert 'HOOLA CODE SAFETY' in main and '_resume_cut_runs' in main  # the newest-story precedent (v0.793.0 carries the marker; older stories live in git history)
 
 
 def test_pubspec_pin():
     pub = (ROOT.parents[0] / 'pubspec.yaml').read_text(encoding='utf-8') if (ROOT.parents[0] / 'pubspec.yaml').exists() else None
     if pub is None:  # tests dir is server/tests; pubspec is at repo root
         pub = (ROOT / 'pubspec.yaml').read_text(encoding='utf-8')
-    assert 'version: 0.791.0+790' in pub
+    assert 'version: 0.793.0+792' in pub

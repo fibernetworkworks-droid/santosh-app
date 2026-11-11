@@ -1127,7 +1127,62 @@ English-tools commit `d84057023` had left the v0.545 scenes test asserting the o
 key in tests); the 8 embedded tabs are the console's own pages restyled toward the approved design with scoped CSS, not
 redrawn to it pixel for pixel. The phone app gets nothing new — on the phone, games stay in chat.
 
-## v0.791.0 HOOLA CODE SAFETY + RESUME (built as 0.789; their CHHOTA BADLAAV took 0.789.0 and HOOLA GAME DEV 0.790.0) — the working-copy engine made safe against planted links, and a round a restart cut is continued (owner: "GO PHASE 4 WITH 2 LIVE SESSIONS" -> "MERGE")
+## v0.791.0 KHUD PE NA RUKE — a long job no longer waits on itself (11 Nov 2026; found while building G5)
+
+With kaamwatch on (the production default), `goal._waiting_on_job` counted the long job's OWN kaam_jobs row (kind `goal`, state working) as another running job of the chat, so `maybe_continue` paused the job for up to `JOB_WAIT_S` (an hour) after its first round instead of scheduling the next one. The query now skips `kind == "goal"`; a real job of the chat (cloud PC, website, video...) still holds the goal as v0.238 intended. Both paths (old goal rounds and the G4 graph job). Test: `test_v0238_data_desk.py::test_the_long_jobs_own_row_does_not_hold_it`; the G5 test's patch-around removed. Long-job suites (v0186, v0226, v0228, v0222, v0443, g4, g5) green. NOT VERIFIED live.
+
+
+## v0.792.0 VIDEO LEARNER PREMIUM (built as 0.785.0 - their HOOLA AI APPS took 0.785.0 and 0.786-0.791 went to INTERACTIVE PREMIUM / CODE ENGINE / G5 / CHHOTA BADLAAV / GAME DEV / KHUD PE NA RUKE, REBASE PROTOCOL, all kept; 11 Nov 2026; owner: "CHECK A AI EMPLOYEE SECTION ... HOOLA AI LEARNER FROM VIDEO READ THIS CODE AND DESIGN FIRST" -> seven problems reported -> "FIX ALL 7 PROPERLY. ALSO MAKE ENTIRE SECTION PROPER AND PREMIUM WITH PERFECT ALIGNMENT OF TEXT, BUTTON, TEXTURE ... WITH SOME VISUAL GRAPHICAL ANIMATION IN IT")
+
+Read first, by rendering the four screens with the page's own files: seven real problems. All seven fixed, then the page redrawn.
+1. THE LEARNING PILL: it wore the class `live`, which is the chat's side panel (`.live,.studio,.panel{width:var(--right);flex-direction:column}`, and a
+   fixed bottom sheet under 640 px) - so it stretched into a bar on desktop and was pinned to the bottom of a phone. It is `.skv-pill.lrn` now.
+2. RE-LEARN REPLACES: the confirm said "replace", the code added a second row. `seekh.watch(..., replace=<row id>)` retires the old row, its learned
+   procedure, its never-run recipe draft and its kept video (`_retire`); `relearned` counts it; a failed Re-learn keeps what was learned. Try again on a
+   failed row replaces that failure row (success or a second failure), never a learned task. Console `POST /watch {replace}`.
+3. PROVEN: the run lived only in the page's memory. Now `POST /api/seekh/console/run {id, conversation_id, after}` keeps it on the task row
+   (`run: {cid, after, ts, scored}`); the list and the task show "Hoola is doing it" / "Did it work?"; `GET /run?id=` gives the cards of THAT chat that
+   really wait (`events.waiting_cards`) and `busy` (the chat turn or an active OperatorTask of that chat) - so "Did it work?" no longer appears between
+   two tool calls. `seekh.operator_done(tenant, task, recipes, conversation_id)` is called from operator `_wrap` on status done: the open run of that
+   chat, else the recipe that ran / was saved (`job.ran_recipe`), else the task's title inside the job's words (>= 60 % of its words) -> one win,
+   `proven_by: run`. Her Yes afterwards does not count twice; "Something was wrong" takes that win back (`procedures.record_run(undo_win=)`);
+   `{skip: true}` closes a run unscored.
+4. FILE STEPS: an `upload` step gets a file picker (25 MB, the chat lane); the files ride the same chat turn (`send(text, files)` in v2.js) and are
+   named in the message.
+5. STAGE TIMES: the page showed when a stage began. It shows how long each took (the job snapshot carries `first_note`, the moment the first streamed
+   words arrived), the running stage counts up, and the rail fills.
+6. UPLOADS KEPT: the chat file lane is swept after 24 h. The learner keeps its own copy (`data/seekh/media/<tenant>/<row id>.<ext>`, `media` on the
+   row, `GET /api/seekh/console/media?id=`), also for a failed watch (Try again) and for direct video links (they now play on the page). Ref
+   `kept:<row id>` re-learns from it. Removed with its row; cap `seekh_media_max_mb` (1024) drops the oldest copies, the learned steps stay;
+   `seekh_keep_media`.
+7. RESTART: every job keeps a record beside the sidecar (`data/seekh/jobs/<id>.json`: stage, notes so far, heartbeat every 5 s, pid + boot mark). A
+   record quiet for 30 s that no live process owns is picked up again ONCE with the same id (claimed by an O_EXCL file, so one worker only) - at
+   startup (`recover_later` in lifespan) and when the page asks; a second loss becomes a failure row with Try again. The record also lets any worker
+   answer the poll and pass Stop (a flag file). Switch `seekh_resume` (conftest: off). The page says "started this video again".
+Also: `_save` writes the sidecar atomically under a lock; a runtime sidecar (`server/data/seekh/default.json`) had been committed and made
+`test_offline_status_action` fail on a clean checkout - removed and git-ignored.
+
+THE PAGE (`static/console/seekh.js` rewritten, `skv-` block in v2.css replaced; console tokens only, Light / Dark / phone checked by eye):
+- Home: hero card with a drawn loop (a video is scanned, three moments light up, they become three ticked steps, a pointer does them), her numbers
+  (tasks learned / proven / steps known / today's meter, counted up once), a bar for a run that is open now, the teach card (link, name, upload, drop
+  veil), learned tasks as cards with a confidence ring, a segmented filter, an illustrated empty state.
+- Watching: the video on the brand-gradient live edge, a "Hoola is watching / writing notes" tag with moving bars, notes that arrive one by one (only
+  new notes animate; the list is patched, not redrawn), the stages on a filling rail with durations, notes / time so far.
+- Learned task: steps as a numbered timeline with an icon per kind of step and the time chips, three boxes with icons, a sticky card with the big
+  confidence ring, how it went so far, the form (text boxes + file pickers), Do it now.
+- Doing it: a browser drawing whose fields fill while Hoola works (green when done), the live step, Waiting for you -> Answer opens THAT chat
+  (`chat(id)`), steps patched by key, Hoola's reply, Did it work? (Yes / Something was wrong / Not sure yet), a short Proven celebration.
+- AI Employees hub card: dotted violet edge, a light scanning the camera icon, a solid Open pill.
+- One scale: text 12.5 / 13 / 14 / 15 / 16 / 21 / 30, weights <= 600, corners 11 / 16 / 20, controls 32 / 38 / 46 px. CRISP TEXT kept: only drawings,
+  dots, bars and rings move; entrances fill backwards; texture only behind drawings; reduced motion / calm switch it all off.
+Pins moved on purpose: test_v0718 `test_router_mounted_with_three_doors` reads the lane's own router (FastAPI 0.162 in the sandbox keeps included
+routers nested in `app.routes`), the v2.js wiring window 1400 -> 2400 chars, the stale `?v=0.748.0` stamp pin -> the current stamp.
+Tests: tests/test_v0785_video_learner_premium.py (20, incl. a browser walk at 1280 and 390 px that measures the pill, the stage durations, the
+row buttons' shared right edge and no sideways overflow); v0713 / v0718 / v0745 green.
+NOT VERIFIED: a real Gemini watch, a real operator run reaching `operator_done`, a real pm2 restart mid-watch (tested with a planted record), the
+multi-worker path (records + flag file) on a live server. NOT built: a live picture of Hoola's browser on the run screen; an OTP typed on this page.
+
+## v0.793.0 HOOLA CODE SAFETY + RESUME (built as 0.789; their CHHOTA BADLAAV took 0.789.0, HOOLA GAME DEV 0.790.0, KHUD PE NA RUKE 0.791.0 and VIDEO LEARNER PREMIUM 0.792.0) — the working-copy engine made safe against planted links, and a round a restart cut is continued (owner: "GO PHASE 4 WITH 2 LIVE SESSIONS" -> "MERGE")
 
 **What happened.** Two sessions built Phase 4 of `docs/HOOLA_CODE_WEB_PLAN.md` at the same time. The other one reached
 main first as v0.787.0 HOOLA CODE ENGINE (`devsahayak/engine.py`) and is proved on real Docker; this session's own
