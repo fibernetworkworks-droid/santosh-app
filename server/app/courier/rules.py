@@ -20,10 +20,10 @@ import re
 from typing import Any
 
 STATES = ("booked", "picked", "in_transit", "out_for_delivery", "delivered", "rto", "exception", "cancelled")
-STATE_LABEL = {"draft": "Kaccha (book nahi)", "waiting": "Aapki haan baaki", "booked": "Book (pickup baaki)", "manual": "Aap book karein",
-               "picked": "Courier ne utha liya", "in_transit": "Raste mein", "out_for_delivery": "Aaj delivery ke liye nikla",
-               "delivered": "Pahunch gaya", "rto": "Wapas aa raha (RTO)", "exception": "Delivery nahi hui (NDR)",
-               "cancelled": "Cancel", "failed": "Booking nahi hui"}
+STATE_LABEL = {"draft": "Draft (not booked)", "waiting": "Waiting for your approval", "booked": "Booked (pickup pending)", "manual": "You book it",
+               "picked": "Picked up by the courier", "in_transit": "In transit", "out_for_delivery": "Out for delivery today",
+               "delivered": "Delivered", "rto": "Returning (RTO)", "exception": "Not delivered (NDR)",
+               "cancelled": "Cancelled", "failed": "Booking failed"}
 ACTIVE = ("booked", "manual", "picked", "in_transit", "out_for_delivery", "exception", "rto")
 
 # Carriers. `api` = what Hoola can do with HER keys through the carrier's own documented API; everything else = manual
@@ -42,15 +42,15 @@ CARRIERS: dict[str, dict[str, Any]] = {
                  "note": "Blue Dart APIs (DHL developer portal) are for contract customers: tracking with her keys; booking in her "
                          "Blue Dart account."},
     "dtdc": {"label": "DTDC", "api": [], "keys": (), "site": "https://www.dtdc.com", "track": "https://www.dtdc.com",
-             "note": "Contract customers get DTDC's API from their DTDC account manager; until then AWB likhiye."},
+             "note": "Contract customers get DTDC's API from their DTDC account manager; until then enter the AWB."},
     "ekart": {"label": "Ekart", "api": [], "keys": (), "site": "https://ekartlogistics.com", "track": "https://ekartlogistics.com",
-              "note": "Ekart ka API Flipkart / contract ke through; abhi AWB likhiye ya Shiprocket se book kijiye."},
+              "note": "Ekart's API is through Flipkart / a contract; for now enter the AWB or book through Shiprocket."},
     "xpressbees": {"label": "Xpressbees", "api": [], "keys": (), "site": "https://www.xpressbees.com", "track": "https://www.xpressbees.com",
-                   "note": "Business API contract par; abhi AWB likhiye ya Shiprocket se book kijiye."},
+                   "note": "Business API is by contract; for now enter the AWB or book through Shiprocket."},
     "indiapost": {"label": "India Post (Speed Post)", "api": [], "keys": (), "site": "https://www.indiapost.gov.in",
                   "track": "https://www.indiapost.gov.in",
-                  "note": "Aam vyapari ke liye India Post ka khula tracking API nahi; counter / app se book kijiye, article number likhiye."},
-    "other": {"label": "Doosra courier", "api": [], "keys": (), "site": "", "track": "", "note": "AWB likhiye; tracking unke page par."},
+                  "note": "India Post has no open tracking API for ordinary merchants; book at the counter / app and enter the article number."},
+    "other": {"label": "Another courier", "api": [], "keys": (), "site": "", "track": "", "note": "Enter the AWB; tracking is on their page."},
 }
 
 # Carrier words -> our states. Order matters (first match wins); "undelivered" must not read as "delivered".
@@ -87,19 +87,19 @@ def state_of(raw: str) -> str | None:
 
 NDR_REASONS: dict[str, dict[str, Any]] = {
     "not_available": {"words": ("not available", "not reachable", "door locked", "premises closed", "no one", "nobody", "consignee unavailable"),
-                      "label": "Graahak ghar par nahi tha", "ask": "Kab ghar par rahenge? Ek din / samay bataiye."},
+                      "label": "Customer was not at home", "ask": "When will you be at home? Tell us a day / time."},
     "phone": {"words": ("phone", "not contactable", "unreachable", "switched off", "no response", "not responding", "call not"),
-              "label": "Graahak ka phone nahi laga", "ask": "Chaalu phone number bataiye jis par delivery boy call kare."},
+              "label": "Customer's phone was not reachable", "ask": "Tell us a working phone number the delivery person can call."},
     "address": {"words": ("address", "incomplete", "wrong", "incorrect", "landmark", "out of delivery area", "oda", "not found"),
-                "label": "Pata adhoora / galat", "ask": "Poora pata, landmark aur PIN code bhejiye."},
+                "label": "Address incomplete / wrong", "ask": "Send the full address, landmark and PIN code."},
     "refused": {"words": ("refused", "rejected", "denied", "not accepted", "cancelled by customer", "did not order", "not interested"),
-                "label": "Graahak ne lene se mana kiya", "ask": "Kya aap order lena chahte hain? Haan ho to din bataiye."},
+                "label": "Customer refused to accept", "ask": "Do you want to receive the order? If yes, tell us the day."},
     "cod": {"words": ("cod", "cash not ready", "amount not ready", "payment not ready"),
-            "label": "COD ka paisa tayyar nahi tha", "ask": "Kab paisa tayyar hoga? Us din dobara bhejte hain."},
+            "label": "COD money was not ready", "ask": "When will the money be ready? We will send it again that day."},
     "future": {"words": ("future delivery", "reschedule", "later date", "asked for delivery on", "requested delivery"),
-               "label": "Graahak ne baad mein maanga", "ask": "Kis din delivery chahiye?"},
+               "label": "Customer asked for a later date", "ask": "Which day do you want the delivery?"},
 }
-MAX_ATTEMPTS_NOTE = "Courier aam taur par 3 koshish ke baad parcel RTO (wapas) kar dete hain; jaldi jawab dein."
+MAX_ATTEMPTS_NOTE = "Couriers usually send a parcel back (RTO) after 3 attempts; respond quickly."
 
 
 def ndr_reason(raw: str) -> str:
@@ -140,11 +140,11 @@ def weights(dead_kg: float, dims: dict | None, divisor: float = 5000.0) -> dict[
     out = {"dead_kg": dead, "volumetric_kg": vol, "chargeable_kg": slab(high), "divisor": divisor, "by": "volumetric" if vol > dead else "dead"}
     notes = []
     if not dead:
-        notes.append("Asli wazan (kg) likhiye: bina wazan ke rate pakka nahi.")
+        notes.append("Enter the actual weight (kg): without it the rate is not final.")
     if not vol:
-        notes.append("Dabbe ka naap (L x B x H cm) likhiye: courier volumetric wazan se bhi charge karta hai.")
+        notes.append("Enter the box size (L x B x H cm): the courier also charges by volumetric weight.")
     elif vol > dead * 1.5 and dead:
-        notes.append(f"Dabba bada hai: volumetric {vol} kg vs asli {dead} kg. Chhota dabba = kam kharcha.")
+        notes.append(f"The box is big: volumetric {vol} kg vs actual {dead} kg. A smaller box = lower cost.")
     out["notes"] = notes
     return out
 
@@ -176,16 +176,16 @@ def awb_ok(awb: str) -> bool:
 # ---------------------------------------------------------------- prohibited / restricted goods (never booked by Hoola)
 PROHIBITED = {
     "cash / currency": ("cash", "currency", "notes bundle", "nakad"),
-    "aag pakadne wali cheez": ("petrol", "diesel", "kerosene", "lpg", "cylinder", "fireworks", "patakhe", "patake", "gunpowder", "flammable",
+    "flammable items": ("petrol", "diesel", "kerosene", "lpg", "cylinder", "fireworks", "patakhe", "patake", "gunpowder", "flammable",
                                "thinner", "matchbox", "lighter fluid"),
-    "hathiyaar": ("gun", "pistol", "ammunition", "cartridge", "explosive"),
-    "nasha / drugs": ("ganja", "narcotic", "charas", "drugs"),
+    "weapons": ("gun", "pistol", "ammunition", "cartridge", "explosive"),
+    "narcotics / drugs": ("ganja", "narcotic", "charas", "drugs"),
 }
 RESTRICTED = {
     "loose lithium battery / power bank": ("power bank", "lithium battery", "li-ion battery", "loose battery"),
     "liquid / aerosol / perfume": ("perfume", "aerosol", "spray", "deo"),
-    "dawai (medicine)": ("medicine", "tablet", "syrup", "dawai", "injection"),
-    "sona-chandi / jewellery": ("gold", "silver", "jewellery", "jewelry", "sona", "chandi"),
+    "medicine": ("medicine", "tablet", "syrup", "dawai", "injection"),
+    "gold / silver / jewellery": ("gold", "silver", "jewellery", "jewelry", "sona", "chandi"),
 }
 
 
@@ -219,17 +219,17 @@ def parse_rules(text: str) -> tuple[dict[str, Any], list[str]]:
     got = []
     if any(w in t for w in ("sabse tez", "fastest", "jaldi wala", "jaldi pahunche")):
         r["prefer"] = "fastest"
-        got.append("Sabse jaldi pahunchane wala courier pehle")
+        got.append("Fastest courier first")
     elif any(w in t for w in ("sabse sasta", "cheapest", "kam rate", "sasta")):
         r["prefer"] = "cheapest"
-        got.append("Sabse sasta courier pehle")
+        got.append("Cheapest courier first")
     for sent in re.split(r"[.;\n]| aur ", t):
         names = [k for w, k in _NAMES.items() if w in sent]
         if not names:
             continue
         if any(w in sent for w in ("mat ", "nahi lena", "mat lena", "avoid", "never", "kabhi nahi", "band karo")):
             r["avoid"] = sorted(set(r["avoid"]) | set(names))
-            got.append("Kabhi nahi: " + ", ".join(names))
+            got.append("Never: " + ", ".join(names))
         elif "cod" in sent:
             r["cod_carrier"] = names[0]
             got.append(f"COD parcel: {names[0]}")
@@ -237,16 +237,16 @@ def parse_rules(text: str) -> tuple[dict[str, Any], list[str]]:
             m = re.search(r"(\d+(?:\.\d+)?)\s*(?:kg|kilo)", sent)
             if m and any(w in sent for w in ("upar", "se zyada", "above", "over", "bhari", "heavy")):
                 r["heavy_kg"], r["heavy_carrier"] = float(m.group(1)), names[0]
-                got.append(f"{m.group(1)} kg se bhari: {names[0]}")
+                got.append(f"{m.group(1)} kg and heavier: {names[0]}")
     m = re.search(r"(?:rate|kharcha)[^0-9]{0,20}(\d{2,5})\s*(?:se zyada nahi|max|tak|se upar nahi)", t) or \
         re.search(r"(?:max|zyada se zyada)\s*₹?\s*(\d{2,5})", t)
     if m:
         r["max_rate"] = float(m.group(1))
-        got.append(f"Rate ₹{m.group(1)} se zyada ho to poochho")
+        got.append(f"Rate above ₹{m.group(1)}: ask first")
     m = re.search(r"(\d)\s*din\s*(?:se zyada nahi|ke andar|tak)", t)
     if m:
         r["max_days"] = int(m.group(1))
-        got.append(f"{m.group(1)} din ke andar pahunchne wala")
+        got.append(f"Delivers within {m.group(1)} days")
     return r, got
 
 
@@ -266,17 +266,17 @@ def clean_rules(r: dict | None) -> dict[str, Any]:
 
 def rule_lines(r: dict) -> list[str]:
     r = clean_rules(r)
-    out = ["Pehle: " + ("sabse jaldi" if r["prefer"] == "fastest" else "sabse sasta")]
+    out = ["First: " + ("fastest" if r["prefer"] == "fastest" else "cheapest")]
     if r["cod_carrier"]:
         out.append(f"COD parcel: {r['cod_carrier']}")
     if r["heavy_kg"] and r["heavy_carrier"]:
-        out.append(f"{r['heavy_kg']:g} kg se bhari: {r['heavy_carrier']}")
+        out.append(f"{r['heavy_kg']:g} kg and heavier: {r['heavy_carrier']}")
     if r["avoid"]:
-        out.append("Kabhi nahi: " + ", ".join(r["avoid"]))
+        out.append("Never: " + ", ".join(r["avoid"]))
     if r["max_rate"]:
-        out.append(f"₹{r['max_rate']:g} se mehenga ho to card par chetavni")
+        out.append(f"₹{r['max_rate']:g}: a warning on the card when the rate is higher")
     if r["max_days"]:
-        out.append(f"{r['max_days']} din se zyada lagne wale neeche")
+        out.append(f"Those taking more than {r['max_days']} days go to the bottom")
     return out
 
 
@@ -292,7 +292,7 @@ def choose(options: list[dict], rules: dict, cod: bool, kg: float) -> dict[str, 
             continue
         opts.append({**o, "key": k})
     if not opts:
-        return {"best": None, "ranked": [], "why": "Aapke niyam ke hisaab se koi courier nahi bacha (ya koi rate nahi aaya)."}
+        return {"best": None, "ranked": [], "why": "No courier is left under your rules (or no rate came)."}
     want = ""
     if cod and r["cod_carrier"]:
         want = r["cod_carrier"]
@@ -313,11 +313,11 @@ def choose(options: list[dict], rules: dict, cod: bool, kg: float) -> dict[str, 
     best = ranked[0]
     why = []
     if want and best["key"] == want:
-        why.append("aapka niyam: " + ("COD" if cod and r["cod_carrier"] == want else "bhari parcel") + f" = {want}")
+        why.append("your rule: " + ("COD" if cod and r["cod_carrier"] == want else "heavy parcel") + f" = {want}")
     else:
-        why.append("sabse jaldi" if r["prefer"] == "fastest" else "sabse sasta")
+        why.append("fastest" if r["prefer"] == "fastest" else "cheapest")
     if r["max_rate"] and isinstance(best.get("rate"), (int, float)) and best["rate"] > r["max_rate"]:
-        why.append(f"dhyaan: rate ₹{best['rate']:g} aapki seema ₹{r['max_rate']:g} se zyada")
+        why.append(f"note: rate ₹{best['rate']:g} is above your limit ₹{r['max_rate']:g}")
     return {"best": best, "ranked": ranked[:6], "why": "; ".join(why)}
 
 
@@ -353,14 +353,14 @@ def card_hash(payload: dict) -> str:
 
 
 LAW = [
-    {"what": "E-way bill (CGST Rule 138)", "text": "Saamaan ki keemat ₹50,000 se zyada (doosre rajya ko; kuch rajyon mein rajya ke andar ₹1 lakh) "
-     "ho to bhejne se pehle e-way bill. Courier ko number dena hota hai. Hoola e-way bill nahi banata.",
+    {"what": "E-way bill (CGST Rule 138)", "text": "When the goods are worth more than ₹50,000 (to another state; within the state ₹1 lakh in some states), "
+     "an e-way bill is needed before sending. The courier needs its number. Hoola does not make the e-way bill.",
      "source": "CGST Rules 2017, Rule 138 (thok.rules limits)"},
-    {"what": "Graahak ka data (DPDP Act 2023)", "text": "Pata / phone sirf parcel bhejne ke liye; graahak maange to mitao (`forget`). Dusre graahak ko "
-     "kabhi kisi aur ka parcel nahi dikhta.", "source": "DPDP Act 2023 + Rules 2025 (notified 13-14 Nov 2025; phased to May 2027)"},
-    {"what": "Mana saamaan", "text": "Nakad, patakhe / petrol / gas, hathiyaar, nasha courier se nahi jaata; battery / perfume / dawai par courier ke "
-     "niyam dekhiye.", "source": "Courier terms (Shiprocket / Delhivery prohibited lists)"},
+    {"what": "Customer data (DPDP Act 2023)", "text": "Address / phone are only for sending the parcel; delete them when the customer asks (`forget`). One customer "
+     "never sees another customer's parcel.", "source": "DPDP Act 2023 + Rules 2025 (notified 13-14 Nov 2025; phased to May 2027)"},
+    {"what": "Prohibited goods", "text": "Cash, fireworks / petrol / gas, weapons and narcotics cannot go by courier; for battery / perfume / medicine check the courier's "
+     "rules.", "source": "Courier terms (Shiprocket / Delhivery prohibited lists)"},
     {"what": "NDR", "text": MAX_ATTEMPTS_NOTE, "source": "support.shiprocket.in 'How to process an NDR' (checked 23 Oct 2026)"},
 ]
-NEVER = ("Booking / wallet charge bina aapki tap ke", "Graahak ka OTP / PIN maangna", "Courier ka status khud se banana",
-         "Ek graahak ko doosre ka parcel dikhana", "COD ka paisa khud lena / bhejna", "E-way bill khud banana")
+NEVER = ("Booking / wallet charge without your tap", "Asking the customer for an OTP / PIN", "Making up a courier status",
+         "Showing one customer another customer's parcel", "Taking / sending COD money itself", "Making the e-way bill itself")

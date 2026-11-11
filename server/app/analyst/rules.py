@@ -224,7 +224,7 @@ def advance_tax_plan(year_tax: float, fy_start: int, paid: float = 0.0, on: date
     """15 / 45 / 75 / 100% by 15 Jun / 15 Sep / 15 Dec / 15 Mar. Under Rs 10,000 a year: none needed."""
     sched = [(date(fy_start, 6, 15), 0.15), (date(fy_start, 9, 15), 0.45), (date(fy_start, 12, 15), 0.75), (date(fy_start + 1, 3, 15), 1.0)]
     if year_tax < 10000:
-        return {"needed": False, "installments": [], "note": "Saal ka tax Rs 10,000 se kam: advance tax nahi."}
+        return {"needed": False, "installments": [], "note": "Tax for the year is under Rs 10,000: no advance tax."}
     rows = []
     for d, pct in sched:
         due = round(year_tax * pct)
@@ -233,7 +233,7 @@ def advance_tax_plan(year_tax: float, fy_start: int, paid: float = 0.0, on: date
     nxt = next((r for r in rows if on is None or date.fromisoformat(r["due"]) >= on), None)
     pay_now = max(0, nxt["cumulative"] - round(paid)) if nxt else 0
     return {"needed": True, "installments": rows, "next": nxt, "pay_by_next": pay_now,
-            "note": "Kam bharne par 1% mahina byaaj (purane 234B / 234C jaisa)."}
+            "note": "Paying short attracts 1% interest a month (like the old 234B / 234C)."}
 
 
 def fy_start_of(d: date) -> int:

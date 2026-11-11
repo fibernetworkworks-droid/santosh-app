@@ -150,7 +150,7 @@ def _find(s, tenant: str, ref: str) -> CustomsShipment:
                          .order_by(CustomsShipment.created_at.desc()).limit(2)).all()
         if len(rows) == 1:
             return rows[0]
-        raise CustomsError("Kaunsa shipment? Number batayiye (jaise I-0001).")
+        raise CustomsError("Which shipment? Give the number (like I-0001).")
     sh = s.get(CustomsShipment, ref)
     if sh is None or sh.tenant_id != tenant:
         num = ref.upper()
@@ -158,7 +158,7 @@ def _find(s, tenant: str, ref: str) -> CustomsShipment:
             num = f"I-{int(num):04d}"
         sh = s.scalars(select(CustomsShipment).where(CustomsShipment.tenant_id == tenant, CustomsShipment.number == num)).first()
     if sh is None:
-        raise CustomsError(f"Shipment '{ref}' nahi mila.")
+        raise CustomsError(f"Shipment '{ref}' not found.")
     return sh
 
 
@@ -184,17 +184,17 @@ def save_settings(tenant: str, **kw) -> dict:
             if k == "iec":
                 v = v.upper().replace(" ", "")
                 if v and not R.NR.iec_ok(v):
-                    raise CustomsError("IEC 10 akshar / ank ka hota hai (DGFT).")
+                    raise CustomsError("An IEC has 10 letters / digits (DGFT).")
             if k == "gstin":
                 v = v.upper().replace(" ", "")
                 if v and not re.fullmatch(r"\d{2}[A-Z0-9]{13}", v):
-                    raise CustomsError("GSTIN 15 akshar ka hota hai.")
+                    raise CustomsError("A GSTIN has 15 characters.")
             if k == "cha_phone":
                 v = re.sub(r"\D", "", v)[-10:]
             if k == "morning_time" and v and not re.fullmatch(r"([01]\d|2[0-3]):[0-5]\d", v):
-                raise CustomsError("Samay HH:MM mein (jaise 09:15).")
+                raise CustomsError("Write the time as HH:MM (like 09:15).")
             setattr(r, k, v)
-    return {**settings(tenant), "say": "Settings save."}
+    return {**settings(tenant), "say": "Settings saved."}
 
 
 # ---------------------------------------------------------------- shipments
@@ -213,7 +213,7 @@ def _apply(sh: CustomsShipment, kw: dict) -> list[str]:
         if k in ("supplier_country", "origin"):
             c = R.country(v)
             if v and not c:
-                raise CustomsError(f"Desh '{v}' samjha nahi: naam ya 2 akshar ka code (CN, AE, US...) dijiye.")
+                raise CustomsError(f"Could not understand the country '{v}': give its name or 2-letter code (CN, AE, US...).")
             v = c
         elif k == "incoterm":
             v = _s(v, 3).upper()
@@ -234,7 +234,7 @@ def _apply(sh: CustomsShipment, kw: dict) -> list[str]:
         elif k in ("fx", "invoice_value", "freight", "insurance"):
             v = _num(v) or 0.0
             if v < 0:
-                raise CustomsError(f"{k} minus nahi ho sakta.")
+                raise CustomsError(f"{k} cannot be negative.")
         elif k in ("demurrage_per_day", "detention_per_day"):
             v = _num(v)
         elif k in ("free_days", "detention_free_days"):
@@ -246,7 +246,7 @@ def _apply(sh: CustomsShipment, kw: dict) -> list[str]:
             v = _d(v)
         elif k == "charges":
             if not isinstance(v, dict):
-                raise CustomsError("charges = {naam: rupees} (CHA fee, CFS, transport...).")
+                raise CustomsError("charges = {name: rupees} (CHA fee, CFS, transport...).")
             v = _dump({_s(a, 40): float(_num(b) or 0) for a, b in list(v.items())[:15] if _num(b) is not None})
         else:
             v = _mask(_s(v, 600 if k == "notes" else 160))
@@ -268,7 +268,7 @@ def new_shipment(tenant: str, conv: str = "", actor: str = "owner", **kw) -> dic
         s.flush()
         if kw.get("lines"):
             _set_lines(sh, kw["lines"], replace=True)
-        _log(sh, "Shipment bana", "Owner" if actor == "owner" else actor)
+        _log(sh, "Shipment created", "Owner" if actor == "owner" else actor)
         sid = sh.id
     v = shipment_view(tenant, sid)
     _card(tenant, v, conv)
@@ -279,28 +279,28 @@ def update_shipment(tenant: str, ref: str, actor: str = "owner", conv: str = "",
     with _LOCK, session() as s:
         sh = _find(s, tenant, ref)
         if sh.status in ("done", "cancelled"):
-            raise CustomsError(f"{sh.number} band ho chuka ({sh.status}).")
+            raise CustomsError(f"{sh.number} is already closed ({sh.status}).")
         ch = _apply(sh, kw)
         if kw.get("lines"):
             _set_lines(sh, kw["lines"], replace=bool(kw.get("replace")))
             ch.append("lines")
         if ch:
-            _log(sh, "Badla: " + ", ".join(ch), "Owner" if actor == "owner" else actor)
+            _log(sh, "Changed: " + ", ".join(ch), "Owner" if actor == "owner" else actor)
             _stale_filings(s, sh)
         sid = sh.id
     v = shipment_view(tenant, sid)
     _card(tenant, v, conv)
-    return {"shipment": v, "changed": ch, "say": (f"{v['number']}: " + (", ".join(ch) + " badla. " if ch else "kuch nahi badla. ")) + v["next"]}
+    return {"shipment": v, "changed": ch, "say": (f"{v['number']}: " + (", ".join(ch) + " changed. " if ch else "nothing changed. ")) + v["next"]}
 
 
 def cancel(tenant: str, ref: str, reason: str = "") -> dict:
     with _LOCK, session() as s:
         sh = _find(s, tenant, ref)
         sh.status = "cancelled"
-        _log(sh, "Band kiya" + (f": {_s(reason, 200)}" if reason else ""), "Owner")
+        _log(sh, "Closed" + (f": {_s(reason, 200)}" if reason else ""), "Owner")
         _stale_filings(s, sh)
         num = sh.number
-    return {"say": f"{num} band kar diya."}
+    return {"say": f"{num} closed."}
 
 
 def _line_in(x: dict, n: int, old: dict | None = None) -> dict:
@@ -334,7 +334,7 @@ def _line_in(x: dict, n: int, old: dict | None = None) -> dict:
 
 def _set_lines(sh: CustomsShipment, lines, replace: bool = False) -> None:
     if not isinstance(lines, list):
-        raise CustomsError("lines = [{desc, qty, unit, value, hs}] chahiye.")
+        raise CustomsError("lines = [{desc, qty, unit, value, hs}] is needed.")
     cur = [] if replace else _j(sh.lines, [])
     by_no = {int(x.get("no") or 0): x for x in cur}
     for x in lines[:100]:
@@ -379,12 +379,12 @@ def hs_suggest(tenant: str, desc: str, retail: bool = False) -> dict:
     """Candidate codes: her own confirmed code for this description first, then the model, then a heading table. Never final."""
     desc = _mask(_s(desc, 300))
     if not desc:
-        raise CustomsError("Maal ka saaf naam / kaam / material batayiye (jaise 'Bluetooth speaker, plastic body, 10W').")
+        raise CustomsError("Give the goods' clear name / use / material (like 'Bluetooth speaker, plastic body, 10W').")
     out: list[dict] = []
     with session() as s:
         m = s.get(CustomsHsMemory, _key(tenant, desc)[:200])
         if m and m.hs:
-            out.append({"hs": m.hs, "title": f"Aapne pehle yahi pakka kiya tha ({m.used} baar)", "why": "aapki pichhli shipment", "source": "aapka"})
+            out.append({"hs": m.hs, "title": f"You confirmed this one before ({m.used} times)", "why": "your earlier shipment", "source": "yours"})
     raw = _model(HS_SYSTEM, f"Goods description (data): {desc}")
     if raw:
         try:
@@ -401,9 +401,9 @@ def hs_suggest(tenant: str, desc: str, retail: bool = False) -> dict:
     for o in out:
         o["check"] = R.hs_check(o.get("hs") or o.get("heading", ""), desc, retail)
         o["formatted"] = R.hs_fmt(o.get("hs", "")) if o.get("hs") else o.get("heading", "")
-    say = ("Sujhaav (andaaza, final nahi): " + "; ".join(f"{o['formatted']} {o.get('title', '')[:50]}" for o in out[:3]) +
-           ". Tariff / CHA se 8 ank pakka karke batayiye ('hs_confirm').") if out else \
-        "Is naam se code ka andaaza nahi laga: material, kaam aur kis cheez ka hissa hai batayiye, ya CHA se poochhiye."
+    say = ("Suggestions (an estimate, not final): " + "; ".join(f"{o['formatted']} {o.get('title', '')[:50]}" for o in out[:3]) +
+           ". Confirm the 8 digits with the Tariff / your CHA and tell me ('hs_confirm').") if out else \
+        "Could not estimate a code from this name: tell me the material, the use and what it is a part of, or ask your CHA."
     return {"desc": desc, "candidates": out, "gir": R.GIR, "say": say}
 
 
@@ -411,13 +411,13 @@ def hs_confirm(tenant: str, ref: str, line_no: int, hs: str, actor: str = "owner
     """She (or her CHA through her) confirms the 8-digit code for one line. Learned for next time."""
     h = R.hs_clean(hs)
     if len(h) != 8:
-        raise CustomsError("Pakka code 8 ank ka chahiye (jaise 8518 22 00).")
+        raise CustomsError("A confirmed code must have 8 digits (like 8518 22 00).")
     with _LOCK, session() as s:
         sh = _find(s, tenant, ref)
         lines = _j(sh.lines, [])
         ln = next((x for x in lines if int(x.get("no") or 0) == int(line_no)), None)
         if ln is None:
-            raise CustomsError(f"Line {line_no} nahi mili.")
+            raise CustomsError(f"Line {line_no} not found.")
         ln["hs"], ln["hs_confirmed"] = h, True
         ln["hs_by"] = "owner" if actor == "owner" else actor
         sh.lines = _dump(lines)
@@ -433,8 +433,8 @@ def hs_confirm(tenant: str, ref: str, line_no: int, hs: str, actor: str = "owner
     chk = R.hs_check(h, ln.get("desc", ""), bool(ln.get("retail")))
     v = shipment_view(tenant, sid)
     _card(tenant, v, conv)
-    extra = (" Is code ke liye: " + ", ".join(r["label"] for r in chk["regulators"]) + ".") if chk["regulators"] else ""
-    return {"shipment": v, "check": chk, "say": f"Line {line_no}: HS {R.hs_fmt(h)} pakka aur yaad rakha.{extra} {chk['policy']}"}
+    extra = (" For this code: " + ", ".join(r["label"] for r in chk["regulators"]) + ".") if chk["regulators"] else ""
+    return {"shipment": v, "check": chk, "say": f"Line {line_no}: HS {R.hs_fmt(h)} confirmed and remembered.{extra} {chk['policy']}"}
 
 
 # ---------------------------------------------------------------- documents
@@ -471,19 +471,19 @@ def mark_doc(tenant: str, ref: str, key: str, status: str = "have", note: str = 
         if k not in keys:
             m = [kk for kk, d in keys.items() if k.lower() in d["label"].lower()]
             if len(m) != 1:
-                raise CustomsError("Kaunsa kaagaz? In mein se: " + ", ".join(keys))
+                raise CustomsError("Which document? One of: " + ", ".join(keys))
             k = m[0]
         if status == "na" and keys[k]["required"] and actor != "owner":
-            raise CustomsError("Zaroori kaagaz ko 'zaroorat nahi' sirf owner kar sakti hain.")
+            raise CustomsError("Only the owner can mark a required document 'not needed'.")
         docs = _j(sh.docs, {})
         docs[k] = {"status": status, "note": _mask(_s(note, 200)), "file_id": _s(file_id, 60), "at": now().isoformat(timespec="seconds")}
         sh.docs = _dump(docs)
-        _log(sh, f"Kaagaz '{keys[k]['label'][:40]}': {status}", "Owner" if actor == "owner" else actor)
+        _log(sh, f"Document '{keys[k]['label'][:40]}': {status}", "Owner" if actor == "owner" else actor)
         _stale_filings(s, sh)
         sid = sh.id
     v = shipment_view(tenant, sid)
-    return {"shipment": v, "say": f"{keys[k]['label'][:60]}: {'mil gaya' if status == 'have' else 'zaroorat nahi' if status == 'na' else 'baaki'}. "
-            f"{v['docs_missing']} zaroori kaagaz baaki."}
+    return {"shipment": v, "say": f"{keys[k]['label'][:60]}: {'received' if status == 'have' else 'not needed' if status == 'na' else 'pending'}. "
+            f"{v['docs_missing']} required documents pending."}
 
 
 # ---------------------------------------------------------------- value, duty, landed cost
@@ -513,14 +513,14 @@ def cost(tenant: str, ref: str) -> dict:
     totals = {k: round(v, 2) for k, v in totals.items()}
     landed = round(totals["av"] + totals["cost_duty"] + other, 2) if complete else None
     if not lines:
-        say = "Pehle maal ki lines (naam, quantity, value) daaliye."
+        say = "First enter the goods lines (name, quantity, value)."
     elif av["av_inr"] is None:
-        say = "Exchange rate (CBIC notified, us din ki) daaliye, tab rupees mein hisaab."
+        say = "Enter the exchange rate (CBIC notified, for that day); then the calculation is in rupees."
     elif missing:
-        say = "Duty adhoori: in lines ki rate chahiye (Customs Tariff / CHA se) - " + "; ".join(missing) + ". Hoola rate khud nahi lagata."
+        say = "Duty incomplete: these lines need a rate (from the Customs Tariff / your CHA) - " + "; ".join(missing) + ". Hoola does not apply a rate by itself."
     else:
-        say = (f"{num}: assessable value {_rs(totals['av'])}, duty {_rs(totals['duty'])} (IGST {_rs(totals['igst'])} ka credit GST mein mil sakta hai), "
-               f"landed cost (credit ke baad) ~{_rs(landed)}. Yeh aapki di hui rates par andaaza hai; asli duty customs assessment se.")
+        say = (f"{num}: assessable value {_rs(totals['av'])}, duty {_rs(totals['duty'])} (IGST {_rs(totals['igst'])} may be available as GST credit), "
+               f"landed cost (after the credit) ~{_rs(landed)}. This is an estimate on the rates you gave; the real duty comes from the customs assessment.")
     return {"shipment": num, "currency": cur, "value": av, "lines": out_lines, "totals": totals, "other_charges": charges,
             "other_total": other, "landed_cost": landed, "landed_with_igst": round(landed + totals["creditable"], 2) if landed is not None else None,
             "complete": complete, "missing": missing, "say": say}
@@ -536,7 +536,7 @@ def update_stage(tenant: str, ref: str, stage: str, at: str = "", note: str = ""
     with _LOCK, session() as s:
         sh = _find(s, tenant, ref)
         if sh.status == "cancelled":
-            raise CustomsError(f"{sh.number} band hai.")
+            raise CustomsError(f"{sh.number} is closed.")
         when = _d(at) or today(tenant).isoformat()
         tl = _j(sh.timeline, [])
         tl = [x for x in tl if x.get("stage") != stage]
@@ -582,14 +582,14 @@ def _clock(sh: CustomsShipment, on: date) -> dict:
             left = (b["due"] - on).days
             out["be_days_left"] = left
             if left < 0:
-                out["alerts"].append({"level": "bad", "key": "be_late", "say": f"Bill of Entry ki aakhri tareekh {_show(out['be_due'])} nikal gayi: CHA se turant file karwaiye (late charges / waiver)."})
+                out["alerts"].append({"level": "bad", "key": "be_late", "say": f"The last date for the Bill of Entry, {_show(out['be_due'])}, has passed: have your CHA file it at once (late charges / waiver)."})
             elif left <= 1:
-                out["alerts"].append({"level": "warn", "key": "be_due", "say": f"Bill of Entry {_show(out['be_due'])} tak file hona chahiye."})
+                out["alerts"].append({"level": "warn", "key": "be_due", "say": f"The Bill of Entry should be filed by {_show(out['be_due'])}."})
     if sh.stage == "assessed":
-        out["alerts"].append({"level": "warn", "key": "duty", "say": "Assessment ho gaya: duty usi din bhariye (self-assessed) / return ke agle din tak (Section 47(2)), "
-                              "warna byaaj. Duty aap / CHA ICEGATE par bharte hain."})
+        out["alerts"].append({"level": "warn", "key": "duty", "say": "Assessment is done: pay the duty the same day (self-assessed) / by the day after the return (Section 47(2)), "
+                              "or interest applies. You / your CHA pay the duty on ICEGATE."})
     if sh.stage == "query":
-        out["alerts"].append({"level": "warn", "key": "query", "say": "Customs ka sawaal / examination: CHA se jawab aur kaagaz jaldi bhijwaiye."})
+        out["alerts"].append({"level": "warn", "key": "query", "say": "Customs query / examination: have your CHA send the reply and documents quickly."})
     if arrived and sh.status != "cancelled":
         dlv = R.parse_day(tl.get("delivered", {}).get("at")) if "delivered" in tl else None
         dem = R.free_clock(arrived, sh.free_days, dlv or on, sh.demurrage_per_day, "demurrage")
@@ -607,7 +607,7 @@ def _clock(sh: CustomsShipment, on: date) -> dict:
                 if not ret and det["level"] != "ok":
                     out["alerts"].append({"level": det["level"], "key": "det_" + ("on" if det["over_days"] else "soon"), "say": det["say"]})
         if sh.free_days is None:
-            out["alerts"].append({"level": "info", "key": "free_days", "say": "Port / CFS ke free din batayiye (CFS / shipping line ki DO se) to demurrage ka hisaab rakhunga."})
+            out["alerts"].append({"level": "info", "key": "free_days", "say": "Tell me the free days at the port / CFS (from the CFS / shipping line's DO) and I will keep track of demurrage."})
     return out
 
 
@@ -617,39 +617,39 @@ def _problems(sh: CustomsShipment, st: CustomsSettings | None) -> tuple[list[str
     block, warn = [], []
     lines = _j(sh.lines, [])
     if not lines:
-        block.append("Maal ki lines nahi hain.")
+        block.append("There are no goods lines.")
     for ln in lines:
         if not R.hs_ok(ln.get("hs")):
-            block.append(f"Line {ln['no']} ({ln.get('desc', '')[:30]}): 8 ank ka HS code nahi.")
+            block.append(f"Line {ln['no']} ({ln.get('desc', '')[:30]}): no 8-digit HS code.")
         elif not ln.get("hs_confirmed"):
-            block.append(f"Line {ln['no']}: HS {R.hs_fmt(ln['hs'])} abhi andaaza hai, aap / CHA pakka kariye.")
+            block.append(f"Line {ln['no']}: HS {R.hs_fmt(ln['hs'])} is still an estimate; you / your CHA must confirm it.")
         if not ln.get("qty"):
-            warn.append(f"Line {ln['no']}: quantity nahi.")
+            warn.append(f"Line {ln['no']}: no quantity.")
     if not sh.invoice_value:
-        block.append("Invoice value nahi di.")
+        block.append("No invoice value given.")
     elif lines and abs(sum(float(x.get("value") or 0) for x in lines) - sh.invoice_value) > max(1.0, sh.invoice_value * 0.01) and \
             any(x.get("value") for x in lines):
-        warn.append("Lines ka jod invoice value se mel nahi khaata (freight / insurance alag ho to theek).")
+        warn.append("The lines' total does not match the invoice value (fine if freight / insurance is separate).")
     if not sh.supplier:
-        block.append("Supplier ka naam nahi.")
+        block.append("No supplier name.")
     if not sh.origin:
-        block.append("Country of origin nahi.")
+        block.append("No country of origin.")
     if not (st and R.NR.iec_ok(st.iec)):
-        block.append("Aapka IEC settings mein nahi (DGFT).")
+        block.append("Your IEC is not in settings (DGFT).")
     if not sh.bl_no:
-        warn.append(("AWB" if sh.mode == "air" else "BL / waybill") + " number nahi.")
+        warn.append(("AWB" if sh.mode == "air" else "BL / waybill") + " number missing.")
     if not sh.fx:
-        warn.append("Exchange rate nahi (CHA CBIC ki notified rate lagayega).")
+        warn.append("No exchange rate (the CHA will apply CBIC's notified rate).")
     for d in _doc_list(sh):
         if d["required"] and d["status"] == "missing":
-            block.append(f"Kaagaz baaki: {d['label'][:70]}")
+            block.append(f"Document pending: {d['label'][:70]}")
     for r in _regs(lines):
         if r["id"] in ("dgca", "prohibited", "tobacco"):
-            warn.append(f"{r['label']}: import policy mein rok ho sakti hai - DGFT policy / CHA se pakka kariye.")
+            warn.append(f"{r['label']}: the import policy may restrict it - confirm with the DGFT policy / your CHA.")
     if sh.fta and sh.origin and sh.origin not in R.FTA:
-        warn.append(f"FTA claim: {sh.origin} ke saath India ka FTA list mein nahi mila - agreement dekhiye.")
+        warn.append(f"FTA claim: {sh.origin}: no India FTA with it was found in the list - check the agreement.")
     if sh.licence == 0 and any(r["id"] == "dgft_used" for r in _regs(lines)):
-        warn.append("Purana / used maal: DGFT licence / niyam pakka kariye.")
+        warn.append("Old / used goods: confirm the DGFT licence / rules.")
     return block, warn
 
 
@@ -661,7 +661,7 @@ def _view(s, sh: CustomsShipment, on: date) -> dict:
     clk = _clock(sh, on)
     filing = s.scalars(select(CustomsFiling).where(CustomsFiling.shipment_id == sh.id).order_by(CustomsFiling.created_at.desc())).first()
     regs = _regs(lines)
-    v = {"id": sh.id, "number": sh.number, "status": sh.status, "stage": sh.stage, "stage_label": R.STAGE_LABEL.get(sh.stage, "Shuru nahi"),
+    v = {"id": sh.id, "number": sh.number, "status": sh.status, "stage": sh.stage, "stage_label": R.STAGE_LABEL.get(sh.stage, "Not started"),
          "supplier": sh.supplier, "supplier_country": sh.supplier_country, "origin": sh.origin, "incoterm": sh.incoterm,
          "incoterm_means": R.INCOTERMS.get(sh.incoterm, ""), "place": sh.place, "currency": sh.currency, "fx": sh.fx,
          "invoice_no": sh.invoice_no, "invoice_date": sh.invoice_date, "invoice_value": sh.invoice_value, "freight": sh.freight,
@@ -678,18 +678,18 @@ def _view(s, sh: CustomsShipment, on: date) -> dict:
          "clock": clk, "blockers": block, "warnings": warn,
          "filing": _filing_view(filing) if filing else None, "log": _j(sh.log, [])[-12:]}
     if sh.status == "cancelled":
-        nxt = "Band hai."
+        nxt = "Closed."
     elif not lines:
-        nxt = "Ab maal ki lines bataiye (naam, quantity, value): HS code ka sujhaav dunga."
+        nxt = "Now give the goods lines (name, quantity, value): I will suggest HS codes."
     elif any(not ln.get("hs_confirmed") for ln in lines):
-        nxt = "HS code pakka kariye (sujhaav 'hs' action se)."
+        nxt = "Confirm the HS code (suggestions come from the 'hs' action)."
     elif v["docs_missing"]:
-        nxt = f"{v['docs_missing']} zaroori kaagaz baaki (checklist dekhiye)."
+        nxt = f"{v['docs_missing']} required documents pending (see the checklist)."
     elif R.STAGE_ORDER.get(sh.stage, -1) < R.STAGE_ORDER["be_filed"]:
-        nxt = ("Filing card aapki haan ka intezaar kar raha hai." if filing and filing.status == "waiting"
-               else "Sab taiyaar: filing card banaun? (aapki haan ke baad hi CHA ko data jaayega)")
+        nxt = ("The filing card is waiting for your approval." if filing and filing.status == "waiting"
+               else "All ready: shall I make the filing card? (data goes to the CHA only after your approval)")
     else:
-        nxt = "CHA / aap jaise update dein, timeline mein daalta rahunga."
+        nxt = "As you / the CHA give updates, I will keep adding them to the timeline."
     if clk["alerts"]:
         nxt = clk["alerts"][0]["say"] + " " + nxt
     v["next"] = nxt
@@ -754,13 +754,13 @@ def request_filing(tenant: str, ref: str, conv: str = "", actor: str = "owner") 
     with _LOCK, session() as s:
         sh = _find(s, tenant, ref)
         if sh.status == "cancelled":
-            raise CustomsError(f"{sh.number} band hai.")
+            raise CustomsError(f"{sh.number} is closed.")
         if R.STAGE_ORDER.get(sh.stage, -1) >= R.STAGE_ORDER["be_filed"]:
-            raise CustomsError(f"{sh.number} ka Bill of Entry pehle hi file ho chuka ({sh.be_no or 'number nahi diya'}).")
+            raise CustomsError(f"{sh.number}: the Bill of Entry is already filed ({sh.be_no or 'number not given'}).")
         block, warn = _problems(sh, s.get(CustomsSettings, tenant))
         if block:
             return {"status": "not_ready", "blockers": block, "warnings": warn,
-                    "say": "Filing card abhi nahi: " + " ".join(block[:4]) + (" ..." if len(block) > 4 else "")}
+                    "say": "No filing card yet: " + " ".join(block[:4]) + (" ..." if len(block) > 4 else "")}
         summ = _summary(s, sh)
         h = _hash(summ)
         old = s.scalars(select(CustomsFiling).where(CustomsFiling.shipment_id == sh.id, CustomsFiling.status == "waiting")).first()
@@ -775,62 +775,62 @@ def request_filing(tenant: str, ref: str, conv: str = "", actor: str = "owner") 
                               warnings=_dump(warn), conv=conv or sh.conv)
             s.add(f)
             s.flush()
-            _log(sh, f"Filing card {f.number} bheja (aapki haan ka intezaar)", "Owner" if actor == "owner" else actor)
+            _log(sh, f"Filing card {f.number} sent (waiting for your approval)", "Owner" if actor == "owner" else actor)
             fv = _filing_view(f)
-    say = (f"{summ['shipment']}: Bill of Entry ka data taiyaar ({len(summ['lines'])} line). Aapki haan ka card bheja hai: haan ke baad hi CHA ko "
-           "data / message jaayega. Hoola khud file nahi karta, duty nahi bharta.")
+    say = (f"{summ['shipment']}: the Bill of Entry data is ready ({len(summ['lines'])} lines). A card has been sent for your approval: only after you approve does the "
+           "data / message go to the CHA. Hoola does not file it or pay the duty.")
     _publish(tenant, "customs_filing", {"filing": fv, "say": say}, conv)
     return {"status": "card_sent", "filing": fv, "warnings": warn, "say": say}
 
 
 def icegate_steps(self_file: bool = True) -> list[str]:
-    return ["ICEGATE (icegate.gov.in) par apne registered login se jaiye (DSC / OTP aap khud).",
-            "Bill of Entry: 'Integrated Declaration' / BE online filing chuniye; IGM / BL number, port, BE type daaliye.",
-            "Supplier, invoice, Incoterm, currency, freight / insurance aur har line ka 8 ank ka HS code, quantity, value hubahu data sheet se daaliye.",
-            "FTA claim ho to CoO number, issue date, origin criteria (CAROTAR) daaliye; licence / BIS / FSSAI ke number jahan maange.",
-            "e-Sanchit par kaagaz (invoice, packing list, BL, CoO, certificates) upload kijiye.",
-            "Submit aur duty payment AAP karti hain (ICEGATE e-payment): Hoola yahan kuch nahi dabata.",
-            "BE number milte hi Hoola ko batayiye: timeline aur demurrage ka hisaab main rakhunga."]
+    return ["Go to ICEGATE (icegate.gov.in) with your registered login (you handle the DSC / OTP yourself).",
+            "Bill of Entry: 'Integrated Declaration' / BE online filing: choose it, then enter the IGM / BL number, port and BE type.",
+            "Enter the supplier, invoice, Incoterm, currency, freight / insurance and each line's 8-digit HS code, quantity and value exactly as in the data sheet.",
+            "For an FTA claim enter the CoO number, issue date and origin criteria (CAROTAR); licence / BIS / FSSAI numbers where asked.",
+            "Upload the documents (invoice, packing list, BL, CoO, certificates) on e-Sanchit.",
+            "YOU submit and pay the duty (ICEGATE e-payment): Hoola presses nothing here.",
+            "Tell Hoola the BE number as soon as you get it: I will keep the timeline and track demurrage."]
 
 
 def decide_filing(tenant: str, filing: str, yes: bool, hash: str = "", reason: str = "", by_tap: bool = False, conv: str = "") -> dict:
     """ONLY from her tap in the app (the API passes by_tap=True). Approve = data sheet for her CHA + message draft she sends."""
     if not by_tap:
-        raise CustomsError("Filing ki haan sirf owner app mein card par tap karke deti hain.")
+        raise CustomsError("Filing is approved only by tapping the card in the owner app.")
     with _LOCK, session() as s:
         f = s.get(CustomsFiling, filing)
         if f is None or f.tenant_id != tenant:
-            raise CustomsError("Card nahi mila.")
+            raise CustomsError("Card not found.")
         if f.status != "waiting":
-            return {"filing": _filing_view(f), "say": f"Is card par faisla ho chuka / purana ho gaya ({f.status})."}
+            return {"filing": _filing_view(f), "say": f"This card is already decided / out of date ({f.status})."}
         sh = s.get(CustomsShipment, f.shipment_id)
         if sh is None:
-            raise CustomsError("Shipment nahi mila.")
+            raise CustomsError("Shipment not found.")
         if hash != f.hash:
-            raise CustomsError("Card badal gaya hai (ya purana hai): naya card dekhkar faisla kijiye.")
+            raise CustomsError("The card has changed (or is out of date): look at the new card and decide.")
         if _hash(_summary(s, sh)) != f.hash:
             f.status = "stale"
-            return {"filing": _filing_view(f), "say": "Card ke baad shipment badla: naya card banwaiye ('filing' dobara)."}
+            return {"filing": _filing_view(f), "say": "The shipment changed after the card was made: get a new card (run 'filing' again)."}
         f.status, f.decided_at, f.reason = ("approved" if yes else "rejected"), now(), _mask(_s(reason, 300))
-        _log(sh, f"{f.number} par owner: {'Haan' if yes else 'Mana'}" + (f" ({f.reason})" if f.reason else ""), "Owner")
+        _log(sh, f"{f.number}: owner said {'Yes' if yes else 'No'}" + (f" ({f.reason})" if f.reason else ""), "Owner")
         fv = _filing_view(f)
         st = _st(s, tenant)
         cha = {"name": sh.cha or st.cha_name, "phone": st.cha_phone, "email": st.cha_email}
         sid, num, cv = sh.id, sh.number, conv or f.conv or sh.conv
     if not yes:
-        return {"filing": fv, "say": "Theek hai, filing roki. Kuch badalna ho to batayiye."}
+        return {"filing": fv, "say": "All right, filing is stopped. Tell me if anything needs changing."}
     sheet = datasheet(tenant, sid, conv=cv)
     v = shipment_view(tenant, sid)
-    text = (f"Namaste {cha['name'] or 'ji'}, {v['supplier']} se import {num} ka Bill of Entry file karna hai. "
-            f"BL/AWB: {v['bl_no'] or '—'}, port: {v['port'] or '—'}, BE type: {v['be_type']}. Data sheet (HS code, value, kaagaz) saath mein hai; "
-            "filing se pehle draft BE / checklist mujhe dikha dijiye. Dhanyavaad.")
+    text = (f"Hello{(' ' + cha['name']) if cha['name'] else ''}, the Bill of Entry for import {num} from {v['supplier']} has to be filed. "
+            f"BL/AWB: {v['bl_no'] or '—'}, port: {v['port'] or '—'}, BE type: {v['be_type']}. The data sheet (HS codes, values, documents) is attached; "
+            "please show me the draft BE / checklist before filing. Thank you.")
     drafts = {"text": text}
     if cha["phone"]:
         drafts["whatsapp"] = f"https://wa.me/91{cha['phone']}?text={quote(text)}"
     if cha["email"]:
         drafts["email"] = f"mailto:{cha['email']}?subject={quote('Bill of Entry ' + num)}&body={quote(text)}"
-    say = (f"Haan mili ({fv['number']}). Data sheet taiyaar; CHA ko message aap bhejiye (draft taiyaar). Khud file karna ho to ICEGATE steps "
-           "saath mein. Submit / duty payment aap ya CHA karenge.")
+    say = (f"Approved ({fv['number']}). The data sheet is ready; you send the message to the CHA (draft ready). If you file it yourself, the ICEGATE steps "
+           "are included. You or the CHA submit / pay the duty.")
     out = {"filing": fv, "file": sheet.get("file"), "drafts": drafts, "icegate_steps": icegate_steps(), "say": say}
     _publish(tenant, "customs_filing", {"filing": fv, "drafts": drafts, "file": sheet.get("file"), "say": say}, cv)
     return out
@@ -845,29 +845,29 @@ def datasheet(tenant: str, ref: str, conv: str = "") -> dict:
     st = settings(tenant)
     head = [["Field", "Value"], ["Shipment", v["number"]], ["Importer", st["firm"]], ["IEC", st["iec"]], ["GSTIN", st["gstin"]],
             ["Supplier", v["supplier"]], ["Supplier country", v["supplier_country"]], ["Country of origin", v["origin"]],
-            ["Incoterm", f"{v['incoterm']} {v['place']}".strip()], ["Currency", v["currency"]], ["Exchange rate (her)", v["fx"] or ""],
+            ["Incoterm", f"{v['incoterm']} {v['place']}".strip()], ["Currency", v["currency"]], ["Exchange rate (yours)", v["fx"] or ""],
             ["Invoice no / date", f"{v['invoice_no']} {_show(v['invoice_date'])}".strip()], ["Invoice value", v["invoice_value"]],
             ["Freight (known)", v["freight"] or ""], ["Insurance (known)", v["insurance"] or ""], ["Mode", v["mode_label"]], ["Port", v["port"]],
             ["BE type", R.BE_TYPES.get(v["be_type"], v["be_type"])], ["IGM", v["igm_no"]], ["BL / AWB", v["bl_no"]], ["Containers", v["containers"]],
-            ["FTA claim", v["fta_name"] or ("Haan" if v["fta"] else "Nahi")], ["CHA", v["cha"]]]
-    lines = [["No", "Description", "Qty", "Unit", "Value", "HS (8)", "HS pakka", "BCD %", "SWS %", "IGST %", "Cess %", "AIDC %",
-              "AV ₹ (andaaza)", "Duty ₹ (andaaza)"]]
+            ["FTA claim", v["fta_name"] or ("Yes" if v["fta"] else "No")], ["CHA", v["cha"]]]
+    lines = [["No", "Description", "Qty", "Unit", "Value", "HS (8)", "HS confirmed", "BCD %", "SWS %", "IGST %", "Cess %", "AIDC %",
+              "AV ₹ (estimate)", "Duty ₹ (estimate)"]]
     by = {x["no"]: x for x in c["lines"]}
     for ln in v["lines"]:
         d = by.get(ln["no"], {})
         lines.append([ln["no"], ln.get("desc", ""), ln.get("qty", ""), ln.get("unit", ""), ln.get("value", ""), ln.get("hs_fmt", ""),
-                      "Haan" if ln.get("hs_confirmed") else "Nahi", ln.get("bcd", ""), ln.get("sws", ""), ln.get("igst", ""), ln.get("cess", ""),
+                      "Yes" if ln.get("hs_confirmed") else "No", ln.get("bcd", ""), ln.get("sws", ""), ln.get("igst", ""), ln.get("cess", ""),
                       ln.get("aidc", ""), d.get("av", ""), d.get("duty", "")])
-    docs = [["Document", "Zaroori", "Status", "Note", "Kyun / portal"]]
+    docs = [["Document", "Required", "Status", "Note", "Why / portal"]]
     for d in v["docs"]:
-        docs.append([d["label"], "Haan" if d["required"] else "Nahi", d["status"], d["note"], " · ".join(x for x in (d.get("why", ""), d.get("portal", "")) if x)])
+        docs.append([d["label"], "Yes" if d["required"] else "No", d["status"], d["note"], " · ".join(x for x in (d.get("why", ""), d.get("portal", "")) if x)])
     tl = [["Stage", "Date", "Note", "By"]] + [[x["label"], x["shown"], x.get("note", ""), x.get("by", "")] for x in v["timeline"]]
     data = make_xlsx(f"Bill of Entry data {v['number']}", {"Shipment": head, "Lines": lines, "Documents": docs, "Timeline": tl,
-                                                            "Note": [["Note"], ["Duty / value Hoola ka andaaza hai (aapki di hui rates par); asli customs assessment se."],
-                                                                     ["HS code aur filing aap / CHA ki zimmedari; Hoola ICEGATE par file nahi karta."]]})
+                                                            "Note": [["Note"], ["Duty / value are Hoola's estimate (on the rates you gave); the real figures come from the customs assessment."],
+                                                                     ["The HS code and the filing are your / the CHA's responsibility; Hoola does not file on ICEGATE."]]})
     f = chatfiles.store(tenant, f"BE_data_{v['number']}.xlsx", data, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
     _publish(tenant, "pc_file", {**f, "source": "customs", "title": f"BE data {v['number']}"}, conv)
-    return {"file": f, "say": f"{v['number']} ki BE data sheet Excel mein."}
+    return {"file": f, "say": f"The BE data sheet for {v['number']} is in Excel."}
 
 
 def filings(tenant: str, status: str = "") -> list[dict]:
@@ -888,13 +888,13 @@ def day(tenant: str) -> dict:
                 alerts.append({"shipment": v["number"], **a})
                 parts.append(f"{v['number']} ({v['supplier'][:24]}): {a['say']}")
         if v["filing"] and v["filing"]["status"] == "waiting":
-            parts.append(f"{v['number']}: filing card aapki haan ka intezaar.")
+            parts.append(f"{v['number']}: filing card waiting for your approval.")
         elif v["docs_missing"] and v["clock"].get("be_days_left") is not None and v["clock"]["be_days_left"] <= 5:
-            parts.append(f"{v['number']}: {v['docs_missing']} zaroori kaagaz baaki, BE {_show(v['clock']['be_due'])} tak.")
+            parts.append(f"{v['number']}: {v['docs_missing']} required documents pending, BE due by {_show(v['clock']['be_due'])}.")
         unconf = [ln for ln in v["lines"] if not ln.get("hs_confirmed")]
         if unconf:
-            parts.append(f"{v['number']}: {len(unconf)} line ka HS code pakka nahi.")
-    say = ("Import desk: " + " · ".join(parts[:8])) if parts else ("Import desk: sab theek." if sh else "Koi khula import shipment nahi.")
+            parts.append(f"{v['number']}: {len(unconf)} lines without a confirmed HS code.")
+    say = ("Import desk: " + " · ".join(parts[:8])) if parts else ("Import desk: all fine." if sh else "No open import shipment.")
     return {"open": sh, "alerts": alerts, "lines": parts, "waiting": filings(tenant, "waiting"), "say": say}
 
 

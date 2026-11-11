@@ -47,11 +47,11 @@ REALISE_MONTHS = 9
 REALISE_MONTHS_INR = 12
 RODTEP_UNTIL = date(2026, 12, 31)
 
-NEVER = ("Paisa Hoola nahi leta / bhejta; buyer seedha aapke AD bank mein bhejta hai.",
-         "Shipping bill (ICEGATE), certificate of origin (DGFT eCoO), e-BRC aur forward contract aap / CHA / bank karte hain.",
-         "Buyer ko PI / invoice / reminder sirf aapki haan se.",
-         "Sanctioned desh / party ke saath sauda nahi: pehle jaanch.",
-         "Galat HS code ya kam / zyada value nahi: customs mein jurmana.")
+NEVER = ("Hoola does not take / send money; the buyer pays straight into your AD bank.",
+         "The shipping bill (ICEGATE), certificate of origin (DGFT eCoO), e-BRC and forward contracts are done by you / your CHA / the bank.",
+         "A PI / invoice / reminder goes to the buyer only with your approval.",
+         "No deal with a sanctioned country / party: check first.",
+         "No wrong HS code or under / over-valuation: customs penalises it.")
 
 
 def iec_ok(iec: str) -> bool:
@@ -89,30 +89,30 @@ def fob_value(total: float, incoterm: str, freight: float = 0.0, insurance: floa
 
 def rodtep(fob_inr: float, rate_pct: float, cap_per_unit: float = 0.0, qty: float = 0.0, on: date | None = None) -> dict:
     if on and on > RODTEP_UNTIL:
-        return {"amount": 0.0, "note": "RoDTEP abhi 31 Dec 2026 tak notified hai; uske baad ki shipment ke liye DGFT notification dekhiye."}
+        return {"amount": 0.0, "note": "RoDTEP is notified until 31 Dec 2026 for now; for later shipments check the DGFT notification."}
     amt = fob_inr * rate_pct / 100
     if cap_per_unit and qty:
         amt = min(amt, cap_per_unit * qty)
-    return {"amount": round(amt, 2), "note": "Shipping bill mein RoDTEP claim declare karna zaroori (baad mein nahi milta); e-scrip ICEGATE par."}
+    return {"amount": round(amt, 2), "note": "The RoDTEP claim must be declared in the shipping bill (it cannot be claimed later); the e-scrip is on ICEGATE."}
 
 
 def checks(dest: str, hs_codes: list[str], incoterm: str, pay: str, currency: str) -> list[dict]:
     out = []
     if dest in SANCTION_CHECK:
-        out.append({"level": "stop", "text": f"{SANCTION_CHECK[dest]}: pabandi (sanctions) wala desh. Bank, buyer aur maal ki pehle poori jaanch; bank payment rok sakta hai."})
+        out.append({"level": "stop", "text": f"{SANCTION_CHECK[dest]}: a sanctioned country. Check the bank, the buyer and the goods fully first; the bank may hold the payment."})
     if dest in FTA:
-        out.append({"level": "info", "text": f"{FTA[dest]}: buyer ko kam duty mil sakti hai. Certificate of origin DGFT eCoO portal se (rules of origin poore hon)."})
+        out.append({"level": "info", "text": f"{FTA[dest]}: the buyer may get a lower duty. Certificate of origin from the DGFT eCoO portal (the rules of origin must be met)."})
     if dest in EU and any(h.startswith(c) for h in hs_codes for c in CBAM_CHAPTERS):
-        out.append({"level": "warn", "text": "EU CBAM (1 Jan 2026 se): steel / aluminium / cement / fertiliser par buyer ko embedded emissions ka data chahiye."})
+        out.append({"level": "warn", "text": "EU CBAM (from 1 Jan 2026): for steel / aluminium / cement / fertiliser the buyer needs embedded-emissions data."})
     if dest == "US":
-        out.append({"level": "warn", "text": "US duty 2025-26 mein kai baar badli: is HS code ki aaj ki duty check karke hi daam pakka kariye."})
+        out.append({"level": "warn", "text": "US duty changed several times in 2025-26: fix the price only after checking today's duty for this HS code."})
     bad = [h for h in hs_codes if len(re.sub(r"\D", "", h)) != 8]
     if bad:
-        out.append({"level": "warn", "text": "Export mein 8 ank ka ITC-HS code chahiye: " + ", ".join(bad or ["-"]) + "."})
+        out.append({"level": "warn", "text": "Export needs an 8-digit ITC-HS code: " + ", ".join(bad or ["-"]) + "."})
     if (incoterm or "").upper() == "DDP":
-        out.append({"level": "warn", "text": "DDP: buyer ke desh ki import duty aur VAT aapko deni hogi."})
+        out.append({"level": "warn", "text": "DDP: you will have to pay the import duty and VAT of the buyer's country."})
     if pay in ("da", "open"):
-        out.append({"level": "warn", "text": "Udhaar par export: ECGC policy / buyer limit lijiye."})
+        out.append({"level": "warn", "text": "Export on credit: take an ECGC policy / buyer limit."})
     return out
 
 
@@ -121,11 +121,11 @@ def doc_list(incoterm: str, pay: str, fta: bool, mode: str = "sea") -> list[str]
     if (incoterm or "").upper() in ("CIF", "CIP"):
         docs.append("Insurance certificate")
     if fta:
-        docs.append("Certificate of origin (DGFT eCoO, FTA wala)")
+        docs.append("Certificate of origin (DGFT eCoO, under the FTA)")
     else:
-        docs.append("Certificate of origin (non-preferential, agar buyer maange)")
+        docs.append("Certificate of origin (non-preferential, if the buyer asks)")
     if pay == "lc":
-        docs.append("LC ki har shart wale kaagaz (naam, maatra, tareekh hubahu)")
+        docs.append("The documents each LC condition asks for (names, quantities, dates exactly as in the LC)")
     if pay in ("dp", "da"):
-        docs.append("Bill of exchange + bank ko collection letter")
+        docs.append("Bill of exchange + collection letter to the bank")
     return docs

@@ -51,8 +51,8 @@ log = logging.getLogger("santosh.helpdesk")
 _LOCK = threading.RLock()
 RESULTS = ("fixed", "not_fixed", "skipped", "cant")
 OPEN = ("new", "working", "waiting_haan", "waiting_tech")
-STATUS_LABEL = {"new": "Naya", "working": "Chal raha", "waiting_haan": "Aapki haan ka intezaar", "waiting_tech": "Technician ke paas",
-                "resolved": "Theek ho gaya", "closed": "Band"}
+STATUS_LABEL = {"new": "New", "working": "In progress", "waiting_haan": "Waiting for your approval", "waiting_tech": "With the technician",
+                "resolved": "Fixed", "closed": "Closed"}
 KNOWN_WINDOW_H = 4
 SHARED = {"network", "email", "printer", "cctv", "ups_power", "tally", "vpn"}   # one cause can hit many people
 
@@ -116,7 +116,7 @@ def _date(v) -> date | None:
 
 
 def _hrs(h: float) -> str:
-    return f"{int(h * 60)} minute" if h < 1 else (f"{h:g} ghante" if h < 48 else f"{h / 24:g} din")
+    return f"{int(h * 60)} minutes" if h < 1 else (f"{h:g} hours" if h < 48 else f"{h / 24:g} days")
 
 
 _SECRET = re.compile(r"\b(password|passcode|pass ?word|pwd|pin|mpin|otp|cvv)\b\s*(?:is|hai|:|=|-)?\s*(\S{3,})", re.I)
@@ -200,7 +200,7 @@ def save_settings(tenant: str, **kw: Any) -> dict:
         if kw.get("morning_time"):
             m = re.fullmatch(r"(\d{1,2}):(\d{2})", str(kw["morning_time"]).strip())
             if not m or int(m.group(1)) > 23 or int(m.group(2)) > 59:
-                raise HelpdeskError("Samay HH:MM mein (jaise 09:30).")
+                raise HelpdeskError("Write the time as HH:MM (like 09:30).")
             r.morning_time = f"{int(m.group(1)):02d}:{m.group(2)}"
         if isinstance(kw.get("sla"), dict):
             cur = _j(r.sla, {})
@@ -234,7 +234,7 @@ def save_vendor(tenant: str, name: str = "", vendor: str = "", **kw: Any) -> dic
         v = _vendor(s, tenant, vendor) if vendor else None
         if v is None:
             if not str(name).strip():
-                raise HelpdeskError("Vendor ka naam chahiye.")
+                raise HelpdeskError("The vendor's name is needed.")
             v = s.scalars(select(HelpdeskVendor).where(HelpdeskVendor.tenant_id == tenant, HelpdeskVendor.name == str(name).strip())).first()
         if v is None:
             v = HelpdeskVendor(tenant_id=tenant, name=str(name).strip()[:120])
@@ -247,12 +247,12 @@ def save_vendor(tenant: str, name: str = "", vendor: str = "", **kw: Any) -> dic
         if kw.get("phone"):
             p = _phone(kw["phone"])
             if len(p) != 10:
-                raise HelpdeskError("Phone 10 ankon ka chahiye.")
+                raise HelpdeskError("The phone number must have 10 digits.")
             v.phone = p
         if kw.get("email"):
             e = str(kw["email"]).strip()
             if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[A-Za-z]{2,}", e):
-                raise HelpdeskError("Email sahi nahi lagta.")
+                raise HelpdeskError("This email does not look right.")
             v.email = e[:120]
         if kw.get("covers"):
             cv = kw["covers"] if isinstance(kw["covers"], list) else re.split(r"[,\s]+", str(kw["covers"]))
@@ -260,7 +260,7 @@ def save_vendor(tenant: str, name: str = "", vendor: str = "", **kw: Any) -> dic
         if kw.get("amc_until"):
             d = _date(kw["amc_until"])
             if not d:
-                raise HelpdeskError("AMC ki tareekh samajh nahi aayi.")
+                raise HelpdeskError("Could not understand the AMC date.")
             v.amc_until = d.isoformat()
         if kw.get("sla_hours") not in (None, ""):
             v.sla_hours = max(0.0, float(kw["sla_hours"]))
@@ -293,12 +293,12 @@ def remove_vendor(tenant: str, vendor: str) -> dict:
     with session() as s:
         v = _vendor(s, tenant, vendor)
         if not v:
-            raise HelpdeskError("Vendor nahi mila.")
+            raise HelpdeskError("Vendor not found.")
         name = v.name
         for a in s.scalars(select(HelpdeskAsset).where(HelpdeskAsset.tenant_id == tenant, HelpdeskAsset.vendor_id == v.id)).all():
             a.vendor_id = ""
         s.delete(v)
-    return {"removed": name, "say": f"{name} hata diya."}
+    return {"removed": name, "say": f"{name} removed."}
 
 
 # ---------------------------------------------------------------- assets
@@ -322,14 +322,14 @@ def _advice(a: HelpdeskAsset, rep: dict | None, on: date) -> list[str]:
     out = []
     w, amc, bought = _date(a.warranty_until), _date(a.amc_until), _date(a.bought)
     if rep:
-        out.append(f"{rep['count_90d']} baar 90 din mein dikkat ({rep['top_label']} {rep['top_count']} baar).")
+        out.append(f"{rep['count_90d']} problems in 90 days ({rep['top_label']} {rep['top_count']} times).")
         if w and w >= on:
-            out.append("Warranty mein hai: brand service centre se claim kijiye (bill saath).")
+            out.append("Under warranty: claim at the brand's service centre (take the bill).")
         elif not (amc and amc >= on):
-            out.append("Na warranty na AMC: AMC lena ya badalna sasta pad sakta hai (aapka faisla).")
+            out.append("No warranty and no AMC: taking an AMC or replacing it may be cheaper (your decision).")
     years = R.REPLACE_YEARS.get(a.kind)
     if bought and years and (on - bought).days >= years * 365:
-        out.append(f"{(on - bought).days // 365} saal purana ({a.kind} aam taur par ~{years} saal): badalne ka budget sochiye.")
+        out.append(f"{(on - bought).days // 365} years old ({a.kind} usually lasts ~{years} years): plan a budget to replace it.")
     note = R.os_note(a.os, on)
     if note:
         out.append(note)
@@ -386,11 +386,11 @@ def save_asset(tenant: str, asset: str = "", **kw: Any) -> dict:
     with _LOCK, session() as s:
         a = _asset(s, tenant, asset) if asset else None
         if asset and a is None:
-            raise HelpdeskError("Yeh device register mein nahi mila.")
+            raise HelpdeskError("This device was not found in the register.")
         new = a is None
         if new:
             if not str(kw.get("name") or "").strip():
-                raise HelpdeskError("Device ka naam chahiye (jaise 'Accounts PC', 'Reception printer').")
+                raise HelpdeskError("The device's name is needed (like 'Accounts PC', 'Reception printer').")
             st = _st(s, tenant)
             st.asset_seq = (st.asset_seq or 0) + 1
             a = HelpdeskAsset(tenant_id=tenant, tag=f"A-{st.asset_seq:03d}")
@@ -407,18 +407,18 @@ def save_asset(tenant: str, asset: str = "", **kw: Any) -> dict:
             if kw.get(k):
                 d = _date(kw[k])
                 if not d:
-                    raise HelpdeskError(f"{k}: tareekh samajh nahi aayi.")
+                    raise HelpdeskError(f"{k}: could not understand the date.")
                 setattr(a, k, d.isoformat())
         if kw.get("vendor"):
             v = _vendor(s, tenant, str(kw["vendor"]))
             if not v:
-                raise HelpdeskError("Yeh vendor list mein nahi: pehle vendor jodiye.")
+                raise HelpdeskError("This vendor is not in the list: add the vendor first.")
             a.vendor_id = v.id
             if not a.amc_until and v.amc_until and v.kind == "amc":
                 a.amc_until = v.amc_until
         s.flush()
         out = _asset_view(s, a, on)
-    say = f"{'Naya device' if new else 'Update'} {out['tag']}: {out['name']}" + (f" ({out['user']})" if out["user"] else "") + "."
+    say = f"{'New device' if new else 'Update'} {out['tag']}: {out['name']}" + (f" ({out['user']})" if out["user"] else "") + "."
     if out["advice"]:
         say += " " + " ".join(out["advice"][:2])
     return {"asset": out, "say": say}
@@ -437,7 +437,7 @@ def asset_view(tenant: str, ref: str) -> dict:
     with session() as s:
         a = _asset(s, tenant, ref)
         if not a:
-            raise HelpdeskError("Device nahi mila.")
+            raise HelpdeskError("Device not found.")
         return _asset_view(s, a, today(tenant), with_history=True)
 
 
@@ -445,9 +445,9 @@ def remove_asset(tenant: str, ref: str) -> dict:
     with session() as s:
         a = _asset(s, tenant, ref)
         if not a:
-            raise HelpdeskError("Device nahi mila.")
+            raise HelpdeskError("Device not found.")
         a.active = False
-        return {"removed": a.tag, "say": f"{a.tag} {a.name} register se hata diya (purane ticket rahenge)."}
+        return {"removed": a.tag, "say": f"{a.tag} {a.name} removed from the register (old tickets stay)."}
 
 
 def sync_pcs(tenant: str) -> dict:
@@ -469,7 +469,7 @@ def sync_pcs(tenant: str) -> dict:
             if d.get("os"):
                 a.os = str(d["os"])[:60]
     return {"added": added, "updated": updated,
-            "say": (f"{len(added)} naye PC register mein jode" if added else "Koi naya PC nahi") + (f", {len(updated)} update." if updated else ".")}
+            "say": (f"{len(added)} new PCs added to the register" if added else "No new PC") + (f", {len(updated)} updated." if updated else ".")}
 
 
 # ---------------------------------------------------------------- tickets: the step runner
@@ -499,7 +499,7 @@ def _plan(s, tenant: str, cat: str) -> list[dict]:
         tried, fixed = stats.get(st["id"], (0, 0))
         rate = (fixed + 1) / (tried + 2) if fixed else None      # only steps that really fixed it here move up
         if rate is not None:
-            st["learned"] = f"Is office mein {fixed}/{tried} baar isi se theek hua."
+            st["learned"] = f"In this office this fixed it {fixed}/{tried} times."
         # safety / security playbooks keep their order; elsewhere what worked here comes first; careful steps always last
         if st["careful"]:
             key = (2, 0.0, i)
@@ -540,9 +540,9 @@ def _new_change(s, t: HelpdeskTicket, step_id: str, kind: str, what: str, how: s
     c = HelpdeskChange(tenant_id=t.tenant_id, number=f"HC-{st.change_seq:04d}", ticket_id=t.id, step_id=step_id,
                        kind=kind if kind in P.CHANGE_LABEL else "other", what=what[:200], where=_where(s, t)[:160], how=how[:2000],
                        careful=careful, admin=admin, asked_by=asked_by[:80])
-    c.risk = risk or ("Isme data / settings mit sakti hain: pehle backup." if careful else
-                      "Yeh system ki setting badalta hai; theek na lage to wapas kiya ja sakta hai." if kind in ("setting", "network") else
-                      "Program / driver badalta hai: sirf company ki apni site se.")
+    c.risk = risk or ("This can erase data / settings: back up first." if careful else
+                      "This changes a system setting; it can be undone if it does not look right." if kind in ("setting", "network") else
+                      "This changes a program / driver: only from the maker's own site.")
     c.undo = undo
     s.add(c)
     s.flush()
@@ -560,7 +560,7 @@ def _ticket(s, tenant: str, ref: str) -> HelpdeskTicket:
         t = s.scalars(select(HelpdeskTicket).where(HelpdeskTicket.tenant_id == tenant, HelpdeskTicket.status.in_(OPEN))
                       .order_by(HelpdeskTicket.updated_at.desc()).limit(1)).first()
     if not t:
-        raise HelpdeskError("Yeh ticket nahi mila.")
+        raise HelpdeskError("This ticket was not found.")
     return t
 
 
@@ -599,18 +599,18 @@ def _step_say(st: dict | None, n: int, total: int, change: dict | None = None) -
     if not st:
         return ""
     if change and change["status"] == "waiting":
-        return (f"Step {n}/{total}: {st['title']}. Isme {P.CHANGE_LABEL.get(st['change'], 'badlaav').lower()} hai, isliye aapki haan ka "
-                f"card ({change['number']}) bheja hai. Haan ke baad hi karenge.")
+        return (f"Step {n}/{total}: {st['title']}. It involves {P.CHANGE_LABEL.get(st['change'], 'a change').lower()}, so a card for your approval "
+                f"({change['number']}) has been sent. It is done only after you approve.")
     s = f"Step {n}/{total}: {st['title']}. {st['how']}"
     if st.get("check"):
-        s += f" Dekhiye: {st['check']}"
+        s += f" Check: {st['check']}"
     if change and change["status"] == "approved":
-        s = "Aapki haan mil gayi. " + s
+        s = "You approved. " + s
     if st.get("admin"):
-        s += " (Admin wale account se.)"
+        s += " (From an admin account.)"
     if st.get("learned"):
         s += f" ({st['learned']})"
-    return s + " Ho gaya to bataiye: theek hua ya nahi?"
+    return s + " Tell me when it is done: did it fix the problem or not?"
 
 
 def _gate(s, t: HelpdeskTicket, steps: list[dict], conv: str) -> HelpdeskChange | None:
@@ -626,10 +626,10 @@ def _gate(s, t: HelpdeskTicket, steps: list[dict], conv: str) -> HelpdeskChange 
                         careful=cur.get("careful", False), admin=cur.get("admin", False))
         cur["change_id"] = c.id
         t.steps = _dump(steps)
-        _log(t, f"Haan ka card {c.number}: {cur['title']}")
+        _log(t, f"Approval card {c.number}: {cur['title']}")
         s.flush()
         _publish(t.tenant_id, "helpdesk_change", {"change": _change_view(c), "ticket": t.id, "number": t.number,
-                                                  "say": f"{t.number}: '{cur['title']}' karne ke liye aapki haan chahiye."}, conv or t.conv)
+                                                  "say": f"{t.number}: your approval is needed to do '{cur['title']}'."}, conv or t.conv)
     if c.status == "waiting":
         t.status = "waiting_haan"
     elif c.status == "approved" and t.status == "waiting_haan":
@@ -649,9 +649,9 @@ def new_ticket(tenant: str, text: str, person: str = "", asset: str = "", catego
     clean, secret = scrub(text)
     clean = clean.strip()
     if not clean and not category:
-        raise HelpdeskError("Kya dikkat hai? Apne shabdon mein bataiye (kaun sa device, kya error).")
+        raise HelpdeskError("What is the problem? Tell me in your own words (which device, what error).")
     if str(actor or "").startswith("customer:"):
-        raise HelpdeskError("Yeh office ka andar ka helpdesk hai.")
+        raise HelpdeskError("This is the office's internal helpdesk.")
     guesses = P.detect(clean + " " + str(error or ""))
     cat = category if category in P.PLAYBOOKS or category == "other" else (guesses[0] if guesses else "other")
     spec = P.playbook(cat)
@@ -691,9 +691,9 @@ def new_ticket(tenant: str, text: str, person: str = "", asset: str = "", catego
         t.steps = _dump(steps)
         s.add(t)
         s.flush()
-        _log(t, f"Darj kiya ({R.PRIORITY_LABEL[pr]}): {t.title[:120]}", by)
+        _log(t, f"Logged ({R.PRIORITY_LABEL[pr]}): {t.title[:120]}", by)
         if parent is not None:
-            _log(parent, f"Wahi dikkat {t.number} ({t.person or by}) ko bhi", "Hoola")
+            _log(parent, f"Same problem also for {t.number} ({t.person or by})", "Hoola")
             parent.impact = "several" if parent.impact == "one" else parent.impact
         rep = _repeat(s, tenant, t.asset_id, exclude=t.id)
         ch = _gate(s, t, steps, conv)
@@ -702,21 +702,21 @@ def new_ticket(tenant: str, text: str, person: str = "", asset: str = "", catego
         card = _card(s, t)
         sla_now = R.sla_for(pr, sla)
         parent_no = parent.number if parent else ""
-    say = f"{v['number']} darj: {spec['label']} ({R.PRIORITY_LABEL[pr]}, jawab {_hrs(sla_now['respond_h'])} / theek {_hrs(sla_now['resolve_h'])} mein)."
+    say = f"{v['number']} logged: {spec['label']} ({R.PRIORITY_LABEL[pr]}, response in {_hrs(sla_now['respond_h'])} / fix in {_hrs(sla_now['resolve_h'])})."
     if secret:
-        say += f" {secret.capitalize()} chat mein likha tha: hata diya, kahin save nahi kiya. Woh password ab badal dijiye."
+        say += f" {secret.capitalize()} was written in the chat: removed, not saved anywhere. Change that password now."
     if danger:
-        say = "Pehle suraksha: jalne ki gandh / chingari ho to main switch band, kuch mat chhuiye, electrician ko bulaiye. " + say
+        say = "Safety first: if there is a burning smell / sparks, turn off the main switch, touch nothing and call an electrician. " + say
     if parent_no:
-        say += f" Yahi dikkat abhi aur logon ko bhi hai ({parent_no} se joda): ek saath dekh rahe hain."
+        say += f" Other people have this same problem right now (linked to {parent_no}): they are being handled together."
     if rep:
-        say += f" Is device par 90 din mein {rep['count_90d']} baar pehle bhi dikkat hui ({', '.join(rep['numbers'][-3:])})."
+        say += f" This device already had {rep['count_90d']} problems in the last 90 days ({', '.join(rep['numbers'][-3:])})."
     if cat == "account":
-        say += " Password / OTP Hoola ko kabhi mat bataiye."
+        say += " Never tell Hoola a password / OTP."
     say += " " + _step_say(v["current"], v["step_no"], v["total"], v["change"])
     others = [g for g in guesses[1:3] if g != cat]
     if others:
-        say += " (Agar dikkat " + " / ".join(P.playbook(g)["label"] for g in others) + " hai to bataiye.)"
+        say += " (If it is rather " + " / ".join(P.playbook(g)["label"] for g in others) + ", tell me.)"
     _publish(tenant, "helpdesk_ticket", {**card, "say": say}, conv)
     return {"ticket": v, "say": say, "change": _change_view_dict(ch)}
 
@@ -737,21 +737,21 @@ def step(tenant: str, ticket: str = "", result: str = "not_fixed", note: str = "
     with _LOCK, session() as s:
         t = _ticket(s, tenant, ticket)
         if t.status not in OPEN:
-            return {"ticket": _view(s, t), "say": f"{t.number} pehle se '{STATUS_LABEL.get(t.status)}' hai."}
+            return {"ticket": _view(s, t), "say": f"{t.number} is already '{STATUS_LABEL.get(t.status)}'."}
         steps = _j(t.steps, [])
         st = next((x for x in steps if x["id"] == step_id and x.get("result") is None), None) if step_id else None
         st = st or _current(steps)
         if not st:
-            raise HelpdeskError("Saare steps ho chuke; technician ko bhejiye (escalate).")
+            raise HelpdeskError("All steps are done; send it to the technician (escalate).")
         if st.get("change") and result in ("fixed", "not_fixed"):
             c = s.get(HelpdeskChange, st.get("change_id") or "")
             approved = c is not None and c.status in ("approved", "done", "failed")
             if not approved and not is_owner(actor):
-                raise HelpdeskError(f"'{st['title']}' system badalta hai: pehle owner ki haan (card {c.number if c else ''}). Tab tak mat kijiye.")
+                raise HelpdeskError(f"'{st['title']}' changes the system: the owner's approval comes first (card {c.number if c else ''}). Do not do it until then.")
             if not approved:
-                note = (note + " " if note else "") + "(Owner ne khud kiya)"
+                note = (note + " " if note else "") + "(Done by the owner)"
                 if c and c.status == "waiting":
-                    c.status, c.reason, c.decided_at = "approved", "Owner ne khud kiya", now()
+                    c.status, c.reason, c.decided_at = "approved", "Done by the owner", now()
             if c and c.status == "approved":
                 c.status, c.done_note = ("done" if result == "fixed" else "failed"), note[:300]
         st["result"], st["at"], st["note"] = result, now().isoformat(timespec="seconds"), note
@@ -759,7 +759,7 @@ def step(tenant: str, ticket: str = "", result: str = "not_fixed", note: str = "
             _learn(s, tenant, t.category, st["id"], result == "fixed")
         if not t.responded_at:
             t.responded_at = now()
-        _log(t, f"{st['title']}: {dict(fixed='theek hua', not_fixed='nahi hua', skipped='chhoda', cant='nahi ho paya')[result]}"
+        _log(t, f"{st['title']}: {dict(fixed='fixed', not_fixed='not fixed', skipped='skipped', cant='could not be done')[result]}"
                 + (f" ({note[:80]})" if note else ""), by)
         if result == "fixed":
             t.status, t.fixed_by, t.resolved_at = "resolved", st["id"], now()
@@ -767,8 +767,8 @@ def step(tenant: str, ticket: str = "", result: str = "not_fixed", note: str = "
             t.steps = _dump(steps)
             kids = _resolve_children(s, t)
             v, card = _view(s, t), _card(s, t)
-            say = f"Badhiya! {t.number} '{st['title']}' se theek ho gaya. Agli baar yahi pehle aayega." + (
-                f" Saath jude {', '.join(kids)} bhi theek maan liye (galat ho to 'reopen')." if kids else "")
+            say = f"Good. {t.number} was fixed by '{st['title']}'. Next time this step comes first." + (
+                f" The linked {', '.join(kids)} are marked fixed too (use 'reopen' if that is wrong)." if kids else "")
             _publish(tenant, "helpdesk_ticket", {**card, "say": say}, conv or t.conv)
             return {"ticket": v, "resolved": True, "say": say}
         if t.status == "new":
@@ -782,7 +782,7 @@ def step(tenant: str, ticket: str = "", result: str = "not_fixed", note: str = "
         _publish(tenant, "helpdesk_ticket", {**card, "say": say}, conv)
         return {"ticket": v, "say": say, "change": _change_view_dict(ch)}
     out = escalate(tenant, tid, actor=actor, conv=conv)
-    out["say"] = "Office mein karne wale saare upay ho gaye. " + out["say"]
+    out["say"] = "Everything that can be tried in the office has been tried. " + out["say"]
     return out
 
 
@@ -790,7 +790,7 @@ def _resolve_children(s, t: HelpdeskTicket) -> list[str]:
     out = []
     for c in s.scalars(select(HelpdeskTicket).where(HelpdeskTicket.parent_id == t.id, HelpdeskTicket.status.in_(OPEN))).all():
         c.status, c.resolved_at, c.fixed_by = "resolved", now(), t.fixed_by
-        c.resolution = f"{t.number} ke saath theek hua"
+        c.resolution = f"Fixed along with {t.number}"
         _log(c, c.resolution)
         out.append(c.number)
     return out
@@ -802,7 +802,7 @@ def request_change(tenant: str, ticket: str, what: str, how: str = "", kind: str
     what, _ = scrub(what)
     how, _ = scrub(how)
     if not what.strip():
-        raise HelpdeskError("Kya badalna hai, ek line mein.")
+        raise HelpdeskError("Say what is to be changed, in one line.")
     with _LOCK, session() as s:
         t = _ticket(s, tenant, ticket)
         dup = s.scalars(select(HelpdeskChange).where(HelpdeskChange.ticket_id == t.id, HelpdeskChange.status == "waiting",
@@ -810,48 +810,48 @@ def request_change(tenant: str, ticket: str, what: str, how: str = "", kind: str
         c = dup or _new_change(s, t, "", kind, what.strip(), how.strip() or what.strip(), risk=scrub(risk)[0], undo=scrub(undo)[0],
                                careful=bool(careful), asked_by=actor_name(tenant, actor))
         if not dup:
-            _log(t, f"Haan ka card {c.number}: {c.what}", actor_name(tenant, actor))
+            _log(t, f"Approval card {c.number}: {c.what}", actor_name(tenant, actor))
         t.status = "waiting_haan"
         cv = _change_view(c)
         number = t.number
     if not dup:
         _publish(tenant, "helpdesk_change", {"change": cv, "ticket": cv["ticket_id"], "number": number,
-                                             "say": f"{number}: '{cv['what']}' ke liye aapki haan chahiye."}, conv)
+                                             "say": f"{number}: your approval is needed for '{cv['what']}'."}, conv)
     return {"change": cv, "needs_tap": True,
-            "say": f"Card {cv['number']} bheja: '{cv['what']}'. Hoola khud kuch nahi badalta; aapki haan ke baad hi."}
+            "say": f"Card {cv['number']} sent: '{cv['what']}'. Hoola changes nothing by itself; only after your approval."}
 
 
 def decide_change(tenant: str, change: str, yes: bool, hash: str = "", reason: str = "", by_tap: bool = False, conv: str = "") -> dict:
     """ONLY from her tap in the app (the API passes by_tap=True). The tool can never call this."""
     if not by_tap:
-        raise HelpdeskError("Yeh faisla sirf owner app mein card par tap karke karti hain.")
+        raise HelpdeskError("This decision is made only by tapping the card in the owner app.")
     with _LOCK, session() as s:
         c = s.get(HelpdeskChange, change)
         if not c or c.tenant_id != tenant:
-            raise HelpdeskError("Card nahi mila.")
+            raise HelpdeskError("Card not found.")
         if c.status != "waiting":
-            return {"change": _change_view(c), "say": f"Is card par faisla ho chuka ({c.status})."}
+            return {"change": _change_view(c), "say": f"This card has already been decided ({c.status})."}
         if hash and hash != c.hash:
-            raise HelpdeskError("Card badal gaya hai: naya card dekhkar faisla kijiye.")
+            raise HelpdeskError("The card has changed: look at the new card and decide.")
         c.status, c.decided_at, c.reason = ("approved" if yes else "rejected"), now(), scrub(reason)[0][:300]
         t = s.get(HelpdeskTicket, c.ticket_id)
         say = ""
         if t is not None:
             steps = _j(t.steps, [])
             st = next((x for x in steps if x.get("change_id") == c.id), None)
-            _log(t, f"{c.number} par owner: {'Haan' if yes else 'Mana'}" + (f" ({c.reason})" if c.reason else ""), "Owner")
+            _log(t, f"{c.number}: owner said {'Yes' if yes else 'No'}" + (f" ({c.reason})" if c.reason else ""), "Owner")
             if yes:
                 t.status = "working"
-                say = f"Haan mili ({c.number}). Ab: {c.how}" + (f" Dekhiye: {st['check']}" if st and st.get("check") else "") + \
-                      " Ho jaye to batana: theek hua ya nahi."
+                say = f"Approved ({c.number}). Now: {c.how}" + (f" Check: {st['check']}" if st and st.get("check") else "") + \
+                      " Tell me when it is done: fixed or not."
             else:
                 if st and st.get("result") is None:
-                    st["result"], st["at"], st["note"] = "skipped", now().isoformat(timespec="seconds"), "Owner ne mana kiya"
+                    st["result"], st["at"], st["note"] = "skipped", now().isoformat(timespec="seconds"), "The owner declined"
                 t.status = "working"
                 t.steps = _dump(steps)
                 _gate(s, t, steps, conv)
                 v = _view(s, t, full=False)
-                say = f"Theek hai, '{c.what}' nahi karenge. " + (_step_say(v["current"], v["step_no"], v["total"], v["change"]) if v["current"]
+                say = f"All right, '{c.what}' will not be done. " + (_step_say(v["current"], v["step_no"], v["total"], v["change"]) if v["current"]
                                                                   else "")
                 out_of_steps = st is not None and not v["current"]
             card = _card(s, t)
@@ -859,27 +859,27 @@ def decide_change(tenant: str, change: str, yes: bool, hash: str = "", reason: s
     if t is not None and not yes and locals().get("out_of_steps"):
         out = escalate(tenant, t.id, conv=conv)
         return {"change": cv, "ticket": out["ticket"], "escalation": out["escalation"],
-                "say": f"Theek hai, '{cv['what']}' nahi karenge. Office ke upay khatam: " + out["say"]}
+                "say": f"All right, '{cv['what']}' will not be done. Nothing more can be tried in the office: " + out["say"]}
     if t is not None:
         _publish(tenant, "helpdesk_ticket", {**card, "say": say}, conv or (t.conv if t else ""))
-    return {"change": cv, "say": say or "Faisla save."}
+    return {"change": cv, "say": say or "Decision saved."}
 
 
 def change_done(tenant: str, change: str, ok: bool, note: str = "", actor: str = "owner", conv: str = "") -> dict:
     with session() as s:
         c = s.get(HelpdeskChange, change)
         if not c or c.tenant_id != tenant:
-            raise HelpdeskError("Card nahi mila.")
+            raise HelpdeskError("Card not found.")
         if c.status not in ("approved",):
-            raise HelpdeskError("Pehle owner ki haan chahiye." if c.status == "waiting" else f"Card '{c.status}' hai.")
+            raise HelpdeskError("The owner's approval is needed first." if c.status == "waiting" else f"The card is '{c.status}'.")
         ticket, step_id = c.ticket_id, c.step_id
         if not step_id:
             c.status, c.done_note = ("done" if ok else "failed"), scrub(note)[0][:300]
     if step_id:
         return step(tenant, ticket, "fixed" if ok else "not_fixed", note, step_id, actor=actor, conv=conv)
     if ok:
-        return resolve(tenant, ticket, note or "Badlaav ke baad theek", actor=actor, conv=conv)
-    return {"say": "Badlaav se bhi nahi hua: technician ko bhejiye (escalate)."}
+        return resolve(tenant, ticket, note or "Fixed after the change", actor=actor, conv=conv)
+    return {"say": "The change did not fix it either: send it to the technician (escalate)."}
 
 
 def changes(tenant: str, status: str = "") -> list[dict]:
@@ -903,7 +903,7 @@ def _pick_vendor(s, tenant: str, t: HelpdeskTicket, a: HelpdeskAsset | None, ref
     if ref:
         v = _vendor(s, tenant, ref)
         if not v:
-            raise HelpdeskError("Yeh vendor list mein nahi.")
+            raise HelpdeskError("This vendor is not in the list.")
         return v
     rows = s.scalars(select(HelpdeskVendor).where(HelpdeskVendor.tenant_id == tenant)).all()
     want = P.playbook(t.category).get("escalate", "it")
@@ -937,14 +937,14 @@ def escalate(tenant: str, ticket: str = "", vendor: str = "", actor: str = "owne
                 dev += f", serial {a.serial}"
             w, amc = _date(a.warranty_until), _date(a.amc_until)
             if w and w >= on:
-                dev += f", warranty {w.strftime('%d-%m-%Y')} tak"
+                dev += f", warranty until {w.strftime('%d-%m-%Y')}"
             if amc and amc >= on:
-                dev += f", AMC {amc.strftime('%d-%m-%Y')} tak"
-        lines = [f"Namaste{(' ' + v.name) if v else ''}, {st.office_name or '[office ka naam]'} se.",
+                dev += f", AMC until {amc.strftime('%d-%m-%Y')}"
+        lines = [f"Hello{(' ' + v.name) if v else ''}, this is {st.office_name or '[office name]'}.",
                  f"Ticket {t.number}: {spec['label']}." + (f" Device: {dev}." if dev else ""),
-                 f"Dikkat: {t.title}" + (f" (error: {det['error']})" if det.get("error") else "") + (f", {det['since']} se" if det.get("since") else "") + ".",
-                 (f"Humne try kiya: {', '.join(tried)}." if tried else ""),
-                 f"Kab aa sakte hain? Address: {det.get('location') or '[office ka pata]'}."]
+                 f"Problem: {t.title}" + (f" (error: {det['error']})" if det.get("error") else "") + (f", since {det['since']}" if det.get("since") else "") + ".",
+                 (f"We tried: {', '.join(tried)}." if tried else ""),
+                 f"When can you come? Address: {det.get('location') or '[office address]'}."]
         text = "\n".join(x for x in lines if x)
         w_ok = bool(a and _date(a.warranty_until) and _date(a.warranty_until) >= on)
         esc: dict[str, Any] = {"vendor": _vendor_view(v, on) if v else None, "text": text, "tell": spec.get("tell", []),
@@ -955,28 +955,28 @@ def escalate(tenant: str, ticket: str = "", vendor: str = "", actor: str = "owne
         if v and v.email:
             esc["mailto"] = f"mailto:{v.email}?subject={quote(t.number + ' ' + spec['label'])}&body={quote(text)}"
         if not v:
-            esc["notes"].append(f"{P.VENDOR_LABEL.get(spec.get('escalate', 'it'))} list mein nahi: 'vendor' se jodiye.")
-            esc["links"].append({"label": "Paas ke computer / printer repair", "url": _maps(tenant, "computer repair service")})
+            esc["notes"].append(f"{P.VENDOR_LABEL.get(spec.get('escalate', 'it'))}: none in the list; add one with 'vendor'.")
+            esc["links"].append({"label": "Computer / printer repair nearby", "url": _maps(tenant, "computer repair service")})
         if w_ok and a and a.brand:
-            esc["notes"].append(f"Warranty mein hai: {a.brand} service centre muft dekhega (bill / serial saath).")
+            esc["notes"].append(f"Under warranty: the {a.brand} service centre will look at it free (take the bill / serial).")
             esc["links"].append({"label": f"{a.brand} service centre", "url": _maps(tenant, f"{a.brand} service centre")})
         if spec.get("escalate") == "isp":
-            esc["notes"].append("ISP ki shikayat par complaint / docket number zaroor likh lijiye; 'ticket' mein daal dijiye.")
-        esc["notes"].append("Technician ko PC ka password / Wi-Fi password khud saamne type kijiye; likhkar mat dijiye. Remote (AnyDesk) "
-                            "sirf apne jaane-pehchane vendor ko, aur kaam ke baad app band.")
+            esc["notes"].append("For an ISP complaint, always note the complaint / docket number; add it with 'ticket'.")
+        esc["notes"].append("Type the PC password / Wi-Fi password yourself in front of the technician; do not write it down for them. Remote access (AnyDesk) "
+                            "only for a vendor you know, and close the app after the work.")
         if v and v.sla_hours:
-            esc["notes"].append(f"Contract mein {_hrs(v.sla_hours)} mein aane ka vaada hai.")
+            esc["notes"].append(f"The contract promises a visit within {_hrs(v.sla_hours)}.")
         t.escalation = _dump(esc)
         t.status = "waiting_tech"
         if not t.responded_at:
             t.responded_at = now()
-        _log(t, f"Technician ke liye taiyaar: {v.name if v else 'vendor chuna nahi'}", actor_name(tenant, actor))
+        _log(t, f"Ready for the technician: {v.name if v else 'no vendor chosen'}", actor_name(tenant, actor))
         cv = _view(s, t)
         card = _card(s, t)
         conv0 = t.conv
-    say = (f"{cv['number']} ab technician ka kaam hai. " + (f"{esc['vendor']['name']} ko bhejne ka message taiyaar (aap bhejengi)."
-                                                           if esc["vendor"] else "Vendor list mein nahi: paas ki dukaan ka link card par.")
-           + " Unhe yeh batana: " + text.replace("\n", " "))
+    say = (f"{cv['number']} is now a technician's job. " + (f"The message for {esc['vendor']['name']} is ready (you send it)."
+                                                           if esc["vendor"] else "No vendor in the list: a link to nearby shops is on the card.")
+           + " Tell them this: " + text.replace("\n", " "))
     _publish(tenant, "helpdesk_escalate", {**card, "escalation": esc, "say": say}, conv or conv0)
     return {"ticket": cv, "escalation": esc, "say": say}
 
@@ -988,11 +988,11 @@ def tech_update(tenant: str, ticket: str, note: str = "", fixed: bool = True, co
         note = scrub(note)[0][:400]
         if cost not in (None, ""):
             t.cost = max(0.0, float(cost))
-        _log(t, "Technician: " + (note or ("theek kiya" if fixed else "abhi nahi hua")) + (f" (kharcha ₹{t.cost:g})" if t.cost else ""),
+        _log(t, "Technician: " + (note or ("fixed" if fixed else "not fixed yet")) + (f" (cost ₹{t.cost:g})" if t.cost else ""),
              actor_name(tenant, actor))
         if fixed:
             t.status, t.resolved_at, t.fixed_by = "resolved", now(), "technician"
-            t.resolution = "Technician: " + (note or "theek kiya")
+            t.resolution = "Technician: " + (note or "fixed")
             kids = _resolve_children(s, t)
         else:
             t.status, kids = "waiting_tech", []
@@ -1000,8 +1000,8 @@ def tech_update(tenant: str, ticket: str, note: str = "", fixed: bool = True, co
         a = s.get(HelpdeskAsset, t.asset_id) if t.asset_id else None
         adv = _advice(a, rep, today(tenant)) if a else []
         v, card = _view(s, t), _card(s, t)
-    say = (f"{v['number']} technician ne theek kiya." if fixed else f"{v['number']} abhi technician ke paas.") + (
-        f" Saath jude {', '.join(kids)} bhi theek." if kids else "") + (" " + " ".join(adv[:2]) if fixed and adv else "")
+    say = (f"{v['number']} was fixed by the technician." if fixed else f"{v['number']} is still with the technician.") + (
+        f" The linked {', '.join(kids)} are fixed too." if kids else "") + (" " + " ".join(adv[:2]) if fixed and adv else "")
     _publish(tenant, "helpdesk_ticket", {**card, "say": say}, conv)
     return {"ticket": v, "say": say, "advice": adv}
 
@@ -1010,14 +1010,14 @@ def resolve(tenant: str, ticket: str, note: str = "", actor: str = "owner", conv
     with _LOCK, session() as s:
         t = _ticket(s, tenant, ticket)
         if t.status not in OPEN:
-            return {"ticket": _view(s, t), "say": f"{t.number} pehle se {STATUS_LABEL.get(t.status)}."}
+            return {"ticket": _view(s, t), "say": f"{t.number} is already {STATUS_LABEL.get(t.status)}."}
         t.status, t.resolved_at = "resolved", now()
-        t.resolution = scrub(note)[0][:400] or "Theek ho gaya"
+        t.resolution = scrub(note)[0][:400] or "Fixed"
         t.fixed_by = t.fixed_by or "other"
-        _log(t, "Theek: " + t.resolution, actor_name(tenant, actor))
+        _log(t, "Fixed: " + t.resolution, actor_name(tenant, actor))
         kids = _resolve_children(s, t)
         v, card = _view(s, t), _card(s, t)
-    say = f"{v['number']} theek ho gaya." + (f" {', '.join(kids)} bhi." if kids else "")
+    say = f"{v['number']} is fixed." + (f" So are {', '.join(kids)}." if kids else "")
     _publish(tenant, "helpdesk_ticket", {**card, "say": say}, conv)
     return {"ticket": v, "say": say}
 
@@ -1031,10 +1031,10 @@ def set_status(tenant: str, ticket: str, status: str, actor: str = "owner") -> d
             t.status = "closed"
             for c in s.scalars(select(HelpdeskChange).where(HelpdeskChange.ticket_id == t.id, HelpdeskChange.status == "waiting")).all():
                 c.status = "stale"
-            _log(t, "Band kiya", actor_name(tenant, actor))
+            _log(t, "Closed", actor_name(tenant, actor))
         else:
             t.status, t.resolved_at = "working", None
-            _log(t, "Dobara khola", actor_name(tenant, actor))
+            _log(t, "Reopened", actor_name(tenant, actor))
         return {"ticket": _view(s, t), "say": f"{t.number}: {STATUS_LABEL[t.status]}."}
 
 
@@ -1051,7 +1051,7 @@ def update_ticket(tenant: str, ticket: str, actor: str = "owner", **kw: Any) -> 
         if kw.get("asset"):
             a = _asset(s, tenant, str(kw["asset"]))
             if not a:
-                raise HelpdeskError("Device register mein nahi.")
+                raise HelpdeskError("The device is not in the register.")
             t.asset_id = a.id
         changed = False
         for k, allowed in (("impact", R.IMPACTS), ("urgency", R.URGENCIES)):
@@ -1065,7 +1065,7 @@ def update_ticket(tenant: str, ticket: str, actor: str = "owner", **kw: Any) -> 
             if pr != t.priority:
                 t.priority = pr
                 t.respond_due, t.resolve_due = R.due_times(_aware(t.created_at) or now(), pr, _j(_st(s, tenant).sla, {}))
-        _log(t, "Detail joda", actor_name(tenant, actor))
+        _log(t, "Detail added", actor_name(tenant, actor))
         v = _view(s, t)
     return {"ticket": v, "say": f"{v['number']} update ({v['priority_label']})."}
 
@@ -1122,7 +1122,7 @@ def report_phish(tenant: str, text: str, sender: str = "", links: list | None = 
     body, _ = scrub(text)
     sender = scrub(sender)[0][:200]
     if not body.strip() and not sender and kind == "phishing":
-        raise HelpdeskError("Mail / message ka text (ya bhejne wale ka pata) daaliye; link mat kholiye.")
+        raise HelpdeskError("Paste the text of the mail / message (or the sender's address); do not open the link.")
     kind = kind if kind in R.PHISH_KIND else "other"
     did = {k: bool(did_kw.get(k)) for k in _DID}
     an = R.phish_check(body, sender, [str(x) for x in (links or [])][:20], [str(x) for x in (attachments or [])][:10]) if kind == "phishing" else \
@@ -1132,7 +1132,7 @@ def report_phish(tenant: str, text: str, sender: str = "", links: list | None = 
     ci = R.cert_in(st["entity"], kind, did)
     dp = R.dpdp(bool(personal_data), today(tenant))
     detected = now()
-    words = f"{R.PHISH_KIND[kind]}: {sender or ''} " + ("(click / password / paisa)" if harmed else "(sirf mila)")
+    words = f"{R.PHISH_KIND[kind]}: {sender or ''} " + ("(click / password / money)" if harmed else "(only received)")
     out_t = new_ticket(tenant, words.strip(), person=person, asset=asset, category="security",
                        impact="one", urgency="high" if harmed else "normal", actor=actor, conv=conv)
     tid = out_t["ticket"]["id"]
@@ -1151,7 +1151,7 @@ def report_phish(tenant: str, text: str, sender: str = "", links: list | None = 
         s.add(i)
         s.flush()
         inc = _inc_view(tenant, i)
-        _log(t, f"Security: {an['verdict']} ({len(an['flags'])} nishaan)" + (", CERT-In 6 ghante" if i.report_due else ""))
+        _log(t, f"Security: {an['verdict']} ({len(an['flags'])} signs)" + (", CERT-In 6 hours" if i.report_due else ""))
     actions = R.phish_actions(did)
     draft = R.cert_in_text(st, {"kind": kind, "kind_label": R.PHISH_KIND[kind], "detected": _local(tenant, detected),
                                 "summary": (an.get("say") or "") + " " + ", ".join(f["text"] for f in an["flags"][:3]),
@@ -1159,11 +1159,11 @@ def report_phish(tenant: str, text: str, sender: str = "", links: list | None = 
                                 "actions": "; ".join(actions[:3]), "personal_data": personal_data,
                                 "systems": out_t["ticket"]["asset"]["name"] if out_t["ticket"].get("asset") else person})
     say = an.get("say", "") + (" " + " ".join(f["text"] for f in an["flags"][:3]) if an["flags"] else "")
-    say += " Abhi: " + actions[0]
+    say += " Now: " + actions[0]
     if inc["report_due"]:
-        say += (f" CERT-In: {ci['why']} Aakhri samay {inc['report_due_local']}. Report ka draft card par ({R.CERT_IN['email']}, "
-                f"{R.CERT_IN['phone']}); aap apne email se bhejiye.") if ci.get("applies") else \
-               f" CERT-In: {ci['why']} Draft card par hai."
+        say += (f" CERT-In: {ci['why']} Deadline {inc['report_due_local']}. The report draft is on the card ({R.CERT_IN['email']}, "
+                f"{R.CERT_IN['phone']}); you send it from your own email.") if ci.get("applies") else \
+               f" CERT-In: {ci['why']} The draft is on the card."
     elif ci.get("applies") is None:
         say += " " + ci["why"]
     if dp:
@@ -1179,15 +1179,15 @@ def cert_in_reported(tenant: str, incident: str, ref: str = "") -> dict:
     with session() as s:
         i = s.get(HelpdeskIncident, incident)
         if not i or i.tenant_id != tenant:
-            raise HelpdeskError("Incident nahi mila.")
+            raise HelpdeskError("Incident not found.")
         i.reported_at, i.reported_ref, i.status = clock(), scrub(ref)[0][:120], "reported"
         t = s.get(HelpdeskTicket, i.ticket_id) if i.ticket_id else None
         if t:
-            _log(t, "CERT-In ko report kiya" + (f" ({i.reported_ref})" if i.reported_ref else ""), "Owner")
+            _log(t, "Reported to CERT-In" + (f" ({i.reported_ref})" if i.reported_ref else ""), "Owner")
         due = _aware(i.report_due)
         late = bool(due and _aware(i.reported_at) > due)
         v = _inc_view(tenant, i)
-    return {"incident": v, "say": "CERT-In report darj." + (" (6 ghante ke baad gaya: wajah mail mein likh dijiye.)" if late else "")}
+    return {"incident": v, "say": "CERT-In report recorded." + (" (It went after the 6 hours: give the reason in the mail.)" if late else "")}
 
 
 def incidents(tenant: str, open_only: bool = False) -> list[dict]:
@@ -1231,21 +1231,21 @@ def day(tenant: str) -> dict:
     cert = [i for i in incs if i["report_due"] and not i["reported_at"]]
     bits = []
     if open_v:
-        bits.append(f"{len(open_v)} ticket khule" + (f" ({len(late)} der se)" if late else ""))
+        bits.append(f"{len(open_v)} tickets open" + (f" ({len(late)} late)" if late else ""))
     if waiting:
-        bits.append(f"{len(waiting)} badlaav aapki haan ke intezaar mein")
+        bits.append(f"{len(waiting)} changes waiting for your approval")
     if cert:
-        bits.append("CERT-In report baaki: " + ", ".join(f"{i['kind_label']} ({i['report_due_local']} tak)" for i in cert[:2]))
+        bits.append("CERT-In report pending: " + ", ".join(f"{i['kind_label']} (by {i['report_due_local']})" for i in cert[:2]))
     tech = [v for v in open_v if v["status"] == "waiting_tech"]
     if tech:
-        bits.append(f"{len(tech)} technician ke paas")
+        bits.append(f"{len(tech)} with the technician")
     if expiring:
-        bits.append("Khatam ho raha: " + ", ".join(f"{e['name']} {e['what']} {e['days']} din" for e in expiring[:3]))
+        bits.append("Expiring: " + ", ".join(f"{e['name']} {e['what']} {e['days']} days" for e in expiring[:3]))
     if repeat:
-        bits.append("Baar baar kharab: " + ", ".join(f"{r['name']} ({r['count_90d']} baar)" for r in repeat[:3]))
+        bits.append("Failing again and again: " + ", ".join(f"{r['name']} ({r['count_90d']} times)" for r in repeat[:3]))
     if win10:
-        bits.append(f"{len(win10)} PC purane Windows par")
-    say = ("IT: " + "; ".join(bits) + ".") if bits else "IT: sab theek, koi khula ticket nahi."
+        bits.append(f"{len(win10)} PCs on old Windows")
+    say = ("IT: " + "; ".join(bits) + ".") if bits else "IT: all fine, no open ticket."
     order = {"P1": 0, "P2": 1, "P3": 2, "P4": 3}
     return {"say": say, "open": sorted(open_v, key=lambda v: (order.get(v["priority"], 9), v["created_at"])), "late": late,
             "waiting_haan": waiting, "incidents": incs, "expiring": expiring, "repeat": repeat, "old_windows": win10,
@@ -1290,12 +1290,12 @@ def tick(when: datetime | None = None) -> dict:
                     if t.status in ("new",) and not t.responded_at and t.respond_due and _aware(t.respond_due) < n and "respond" not in told:
                         told["respond"] = n.isoformat()
                         alerts.append({"kind": "sla", "ticket": t.id, "number": t.number,
-                                       "say": f"{t.number} ({t.priority}) par abhi tak kisi ne jawab nahi diya: {t.title[:80]}."})
+                                       "say": f"{t.number} ({t.priority}) has had no response yet: {t.title[:80]}."})
                     if t.resolve_due and _aware(t.resolve_due) < n and "resolve" not in told and t.status != "waiting_haan":
                         told["resolve"] = n.isoformat()
                         alerts.append({"kind": "sla", "ticket": t.id, "number": t.number,
-                                       "say": f"{t.number} ({t.priority}) theek hone ka samay nikal gaya: {t.title[:80]}."
-                                              + (" Technician ko yaad dilaiye." if t.status == "waiting_tech" else " Technician ko bhejein?")})
+                                       "say": f"{t.number} ({t.priority}) is past its fix time: {t.title[:80]}."
+                                              + (" Remind the technician." if t.status == "waiting_tech" else " Send it to the technician?")})
                     t.told = _dump(told)
                 for i in s.scalars(select(HelpdeskIncident).where(HelpdeskIncident.tenant_id == tenant, HelpdeskIncident.status == "open",
                                                                   HelpdeskIncident.report_due.is_not(None))).all():
@@ -1303,12 +1303,12 @@ def tick(when: datetime | None = None) -> dict:
                     left = (due - n).total_seconds() / 3600
                     if left <= 0 and i.reminded != "late":
                         i.reminded = "late"
-                        alerts.append({"kind": "cert_in", "incident": i.id, "say": "CERT-In ke 6 ghante poore: report abhi bhi bhej dijiye "
-                                                                                 f"({R.CERT_IN['email']}), der ki wajah likhkar."})
+                        alerts.append({"kind": "cert_in", "incident": i.id, "say": "CERT-In's 6 hours are over: send the report even now "
+                                                                                 f"({R.CERT_IN['email']}), and give the reason for the delay."})
                     elif 0 < left <= 2 and i.reminded == "":
                         i.reminded = "4h"
                         alerts.append({"kind": "cert_in", "incident": i.id,
-                                       "say": f"CERT-In report ke {left:.1f} ghante bache ({R.PHISH_KIND.get(i.kind, i.kind)})."})
+                                       "say": f"{left:.1f} hours left for the CERT-In report ({R.PHISH_KIND.get(i.kind, i.kind)})."})
             for a in alerts:
                 out["sla" if a["kind"] == "sla" else "cert_in"] += 1
                 _publish(tenant, "helpdesk_alert", a)
@@ -1378,4 +1378,4 @@ def register_file(tenant: str, conv: str = "") -> dict:
     name = f"IT_register_{today(tenant).isoformat()}.xlsx"
     f = chatfiles.store(tenant, name, bio.getvalue(), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
     _publish(tenant, "pc_file", {**f, "source": "helpdesk", "title": "IT register"}, conv)
-    return {"file": f, "say": "Devices, tickets aur vendors ka IT register Excel mein."}
+    return {"file": f, "say": "The IT register of devices, tickets and vendors is in Excel."}
