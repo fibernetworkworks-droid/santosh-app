@@ -190,7 +190,7 @@ def report(tenant: str, ref: str = "", days: int = 30) -> dict[str, Any]:
         tips.append("Many people are opening pages that do not exist (old links?); you can ask 'make pages for the old links'.")
     for host, d in ssl.items():
         if d < 15:
-            tips.append(f"The SSL of {host} expires in {d} days; Cloudflare renews it by itself, and Hoola will tell you if it does not.")
+            tips.append(f"{host}: the SSL expires in {d} days; Cloudflare renews it by itself, and Hoola will tell you if it does not.")
     for d in doms:
         try:
             left = (datetime.fromisoformat(d["expires_at"]) - datetime.now(timezone.utc)).days

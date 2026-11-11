@@ -3441,7 +3441,7 @@ def blog_publish(tenant: str, site_id: str, piece: dict[str, Any], when: str = "
     from . import hosting as H
     lv = H.live_version(r)
     if post["status"] == "scheduled":
-        return {"post": post, "url": url, "say": f"'{post['title']}' will go on the website on {post['date']}" +
+        return {"post": post, "url": url, "say": f"'{post['title']}' is scheduled for {post['date']} on the website" +
                 (" (on the live site too)." if lv else ".")}
     _blog_rebuild(r, f"blog: {post['title'][:60]}", live=True)
     return {"post": post, "url": url, "say": f"'{post['title']}' is going on the website's blog; after the checks the new version "
@@ -3659,4 +3659,4 @@ def _code_change(r: Site, instruction: str, keys: list[str]) -> dict[str, Any]:
     summary = _tidy(str((raw or {}).get("summary") or ""), 200)
     return {"status": "done", "files": [CD.path_of(k, "html") for k in changed], "diff": "\n".join(diffs)[:60000],
             "summary": summary, "removed": problems[:8],
-            "say": (summary or f"Code changed in {len(changed)} section(s)") + ". A new version after the checks; use Undo if it looks wrong."}
+            "say": (summary or f"{len(changed)} section(s) of code changed") + ". A new version after the checks; use Undo if it looks wrong."}

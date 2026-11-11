@@ -208,7 +208,7 @@ def invite(site_id: str, email: str, name: str, role: str, base: str = "") -> di
     STATS["invites"] += 1
     link = f"{base.rstrip('/')}/cms/{site_id}/?invite={tok}"
     return {"member": mid, "link": link, "expires_days": INVITE_DAYS,
-            "say": f"Send this link to {email} (works for {INVITE_DAYS} days, once): {link}"}
+            "say": f"{email}: send them this link (works for {INVITE_DAYS} days, once): {link}"}
 
 
 def accept(site_id: str, tok: str, password: str, name: str = "") -> dict[str, Any]:

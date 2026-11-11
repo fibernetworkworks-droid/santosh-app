@@ -639,7 +639,7 @@ def connect_domain(tenant: str, ref: str, domain: str, conv: str = "", primary: 
             try:
                 ch = cf.custom_hostname_find(c["cf_zone"], n) or cf.custom_hostname_create(c["cf_zone"], n)
             except CfError as e:
-                raise HostError(f"{n} could not be connected in Hoola Hosting: {e}")
+                raise HostError(f"Hoola Hosting could not connect {n}: {e}")
             ov = ch.get("ownership_verification") or {}
             if ov.get("name") and ov.get("value"):
                 verify.append({"type": ov.get("type", "txt").upper(), "name": ov["name"], "value": ov["value"],
@@ -678,7 +678,7 @@ def connect_domain(tenant: str, ref: str, domain: str, conv: str = "", primary: 
         raise HostError(str(e))
     card = {"kind": "dns", "site": S.view(r, False), "domain": d, "plan": pl, "mode": mode,
             "say": (f"{pl['todo']} DNS changes for {d}: Hoola applies them only with your approval." if D.can_apply(pl["provider"])
-                    else f"Add these {pl['todo']} records for {d} on your domain company's site (the steps are on the card).")}
+                    else f"{d}: add these {pl['todo']} records on your domain company's site (the steps are on the card).")}
     if mode == "direct":
         main_name = next(x.hostname for x in rows if x.role == "main")
         card["primary"] = main_name
@@ -795,7 +795,7 @@ def direct_records_seen(h: SiteHost) -> tuple[bool, str]:
     got = sorted({x for v in asked.values() for x in v})
     if not all(ip in v for v in asked.values()):
         if not got:
-            return False, f"The A record of {h.hostname} is not visible yet (needed: A -> {ip})"
+            return False, f"{h.hostname}: the A record is not visible yet (needed: A -> {ip})"
         hint = (" In Cloudflare turn the orange cloud off and set 'DNS only'." if not any(ip == x for x in got) and
                 any(x.startswith(("104.", "172.6", "188.114.")) for x in got) else "")
         return False, f"{h.hostname} points to {', '.join(got[:3])} right now; it must be only {ip}.{hint}"

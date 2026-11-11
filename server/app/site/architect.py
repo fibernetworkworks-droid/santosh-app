@@ -550,7 +550,7 @@ def card(tenant: str, ref: str) -> dict[str, Any]:
          "lines": [f"For everyone: {', '.join(by['public'][:24])}" + (" ..." if len(by["public"]) > 24 else "")]
                   + ([f"After sign-in: {', '.join(by['member'][:16])}"] if by["member"] else [])
                   + ([f"Staff (/admin/): {', '.join(by['staff'][:16])}"] if by["staff"] else [])
-                  + ([f"{spec['page_count']} public pages in all (large website: the site map comes first)"] if spec.get("page_count", 0) >= 10 else []),
+                  + ([f"In all {spec['page_count']} public pages (large website: the site map comes first)"] if spec.get("page_count", 0) >= 10 else []),
          "items": [{"title": pg["title"], "for": pg["for"], "sub": pg.get("purpose") or "",
                     "main": pg["slug"] == spec.get("main_screen"),
                     "tags": [x.get("label") or x["type"] for x in pg.get("sections") or []],

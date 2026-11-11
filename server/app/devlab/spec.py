@@ -195,7 +195,7 @@ def discover(paths: list[str], files: dict[str, str], hers: dict[str, str] | Non
         test, why = "", f"The command that was found ({source}) cannot be run: {bad}"
     if refused:                      # her repo declared something we will not run: she is TOLD, never silently swapped
         r0 = refused[0]
-        why = (f"The command written in {r0['source']}, `{r0['cmd']}`, cannot be run ({r0['why']}). "
+        why = (f"{r0['source']} has the command `{r0['cmd']}`, which cannot be run ({r0['why']}). "
                + (f"Instead `{test}` ({source}) can be run - say yes to approve." if test else "")).strip()
     return {"setup": setup, "test": test, "source": source, "confirm": bool(test) and confirm, "lang": lang,
             "candidates": cand[:8], "refused": refused[:3], "why": why, "timeout": hoola_file.get("timeout", 0)}

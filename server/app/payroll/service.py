@@ -305,7 +305,7 @@ def _emp(s, tenant: str, ref: str) -> PayEmployee:
     if len(hits) == 1:
         return hits[0]
     if len(hits) > 1:
-        raise PayError(f"{len(hits)} people are named '{ref}': " + ", ".join(f"{h.name} ({h.code})" for h in hits[:6]) + ". Give the code.")
+        raise PayError(f"'{ref}' matches {len(hits)} people: " + ", ".join(f"{h.name} ({h.code})" for h in hits[:6]) + ". Give the code.")
     raise PayError(f"Employee '{ref}' was not found.")
 
 
@@ -502,7 +502,7 @@ def add_advance(tenant: str, employee: str, amount, emi=None, given_on: str = ""
                        note=str(note)[:200])
         s.add(a)
         name = e.name
-    return {"say": f"Advance of {_rs(amt)} to {name} noted: {_rs(_f(emi) or amt)} will be deducted every month."}
+    return {"say": f"{name}: advance of {_rs(amt)} noted; {_rs(_f(emi) or amt)} will be deducted every month."}
 
 
 # ---------------------------------------------------------------- the monthly run
@@ -957,7 +957,7 @@ def full_and_final(tenant: str, employee: str, last_day: str, leave_days=0, noti
         s.flush()
         v = _run_view(r)
         name = e.name
-    say = (f"Full & final for {name}: salary up to {ld.isoformat()} {_rs(ln['net'])}, leave encashment {_rs(enc)}, gratuity "
+    say = (f"{name}: full & final. Salary up to {ld.isoformat()}: {_rs(ln['net'])}, leave encashment {_rs(enc)}, gratuity "
            + (_rs(gr["amount"]) + f" ({gr['years']} years)" if gr.get("eligible") else f"none ({gr.get('why', '')})")
            + (f", recovery {_rs(recover)}" if recover else "") + f". Total {_rs(total)}, to be paid by {due.strftime('%d %b')} (2 working days). Do you approve?")
     _publish(tenant, "payroll_run", {"run_id": v["id"], "status": v["status"]}, conv)
