@@ -31,7 +31,12 @@ DESIGN_TOOLS = [
         "Design > Import from Figma, never in chat) | to_site (file, node = ONE frame id or name, site? = a "
         "Web Studio site id / number to add it to - left out = a NEW website, page? = that site's page slug, default home) -> "
         "the frame becomes clean responsive HTML + CSS in Web Studio through Web Studio's own checks and a checked version; "
-        "never publishes - going live stays her tap in Web Studio. Presets: phone 390x844, "
+        "never publishes - going live stays her tap in Web Studio | templates (q?, category?) -> the template gallery "
+        "(posters, festival greetings, social posts, cards, invitations, menus, app screens, slides...) and her own saved "
+        "templates | use_template (template = its id or name, name?) -> a NEW file in her files from that template + its link | "
+        "make_plugin (prompt = what the plugin should do) -> a Hoola Design plugin DRAFT (manifest + code, statically checked, "
+        "smallest permissions) for her to review; it is NEVER installed here - installing is her Install in the editor's review "
+        "dialog. Presets: phone 390x844, "
         "android 360x800, web 1440, instagram 1080x1080, story / whatsapp 1080x1920, poster (A4), card (business "
         "card), slide 1920x1080, logo; leave it out and the words decide. Facts nobody gave (a price, a phone number, "
         "an address) come out as marked [blanks] - never invent them in the prompt either. The answer is a LINK to "
@@ -39,7 +44,8 @@ DESIGN_TOOLS = [
         "or photo from words (photo_banao), editing her photo (image_edit), a branded poster PNG from her Brand kit "
         "(brand), a real website she can publish (website), a PDF / Word / PPT document (doc_studio), a video."),
      "input_schema": {"type": "object", "properties": {
-         "action": {"type": "string", "enum": ["create", "list", "add", "share", "to_app", "import_figma", "to_site"]},
+         "action": {"type": "string", "enum": ["create", "list", "add", "share", "to_app", "import_figma", "to_site",
+                                                    "templates", "use_template", "make_plugin"]},
          "prompt": {"type": "string", "description": "What to design, in her words (create / add). Up to 2000 characters."},
          "name": {"type": "string", "description": "Name of the new file (create). Left out = taken from the prompt."},
          "file": {"type": "string", "description": "File id (df_...) or its name (add / share)."},
@@ -55,6 +61,8 @@ DESIGN_TOOLS = [
          "site": {"type": "string", "description": "to_site: an existing Web Studio site (id or number like S-0001); "
                                                    "left out = a new website."},
          "page": {"type": "string", "description": "to_site with a site: the page slug to add the section to (default home)."},
+         "template": {"type": "string", "description": "use_template: the template's id (from action=templates) or its name."},
+         "category": {"type": "string", "description": "templates: one category, e.g. Festivals, Social media, App screens."},
      }, "required": ["action"]}},
 ]
 DESIGN_LABELS = {"hoola_design": "Designing in Hoola Design"}
@@ -212,8 +220,11 @@ async def hoola_design(ctx: Ctx, action: str = "list", **a: Any):
         return {"status": "sent", "site": out["site"], "number": out["number"], "page": out["page"], "url": base + out["url"],
                 "warnings": out["warnings"], "say": out["say"],
                 "note": "Give her the Web Studio link. Nothing is published: going live stays her tap in Web Studio."}
+    if action in ("templates", "use_template", "make_plugin"):           # D8b (design/gallery.py, design/plugin_ai.py)
+        return await _d8b(ctx, action, a)
     if action not in ("create", "add"):
-        raise ToolError(f"hoola_design has no action '{action}': create | list | add | share | to_app | import_figma | to_site.")
+        raise ToolError(f"hoola_design has no action '{action}': create | list | add | share | to_app | import_figma | to_site | "
+                        "templates | use_template | make_plugin.")
     prompt = re.sub(r"[ \t]+", " ", str(a.get("prompt") or "")).strip()
     if not prompt:
         raise ToolError("prompt is missing: say in her words what to design (e.g. 'a home screen for a food delivery app').")
@@ -237,6 +248,49 @@ async def hoola_design(ctx: Ctx, action: str = "list", **a: Any):
             await asyncio.to_thread(store.set_trashed, tenant, made["id"], True)
         raise ToolError(f"{e} (Nothing was made" + (", and the empty file was not kept" if made is not None else "") + ".)")
     return _result(file, out)
+
+
+async def _d8b(ctx: Ctx, action: str, a: dict) -> dict[str, Any]:
+    """templates | use_template | make_plugin: the gallery, a new file from a template, a plugin draft (never installed)."""
+    from ..design import ai, gallery, plugin_ai
+    tenant = ctx.tenant_id
+    if action == "templates":
+        got = await asyncio.to_thread(gallery.listing, tenant, str(a.get("q") or ""), str(a.get("category") or ""))
+        row = lambda t: {"template": t["id"], "name": t["name"], "category": t["category"],                 # noqa: E731
+                         "size": f"{int(t.get('w') or 0)} x {int(t.get('h') or 0)}"}
+        return {"templates": [row(t) for t in got["templates"]], "mine": [row(t) for t in got["mine"]],
+                "categories": got["categories"], "open_gallery": link_of("").rsplit("#", 1)[0] + "#/",
+                "note": "Offer her the ones that fit; action=use_template makes a NEW file from one (her files are never "
+                        "changed). Every [blank] in a template is a fact only she knows."}
+    if action == "use_template":
+        ref = str(a.get("template") or "").strip()
+        if not ref:
+            raise ToolError("Which template? Give its id or name; action=templates lists them.")
+        got = await asyncio.to_thread(gallery.listing, tenant, "", "")
+        rows = got["templates"] + got["mine"]
+        hit = next((t for t in rows if t["id"] == ref), None) or next((t for t in rows if t["name"].lower() == ref.lower()), None)
+        if hit is None:
+            close = [t for t in rows if ref.lower() in t["name"].lower()]
+            if len(close) != 1:
+                raise ToolError(f"No single template matches '{ref[:60]}'. action=templates lists them"
+                                + (": " + "; ".join(f"{t['name']} ({t['id']})" for t in close[:6]) if close else "."))
+            hit = close[0]
+        _gate_actor(ctx)
+        f = await asyncio.to_thread(gallery.use, tenant, hit["id"], str(a.get("name") or "")[:120])
+        return {"status": "done", "file_id": f["id"], "name": f["name"], "template": hit["name"], "link": link_of(f["id"]),
+                "preview": None, "note": "A NEW file in her files, made from the template; give her the link. Every [blank] "
+                                         "(phone number, price, date, address ...) is hers to fill - never fill them in yourself."}
+    _gate_actor(ctx)
+    try:
+        d = await plugin_ai.draft(a.get("prompt"), tenant)
+    except ai.AiError as e:
+        raise ToolError(str(e)) from None
+    m = d["manifest"]
+    return {"status": "draft", "installed": False, "name": m["name"], "description": m["description"],
+            "permissions": d["permissions"], "manifest": m, "code": d["code"], "notes": d["notes"],
+            "note": "This is a DRAFT for her review; it is NOT installed and you can not install it. Tell her in plain words "
+                    "what it does and what it asks for. To use it she opens Hoola Design > Ask Hoola to make a plugin (main menu) "
+                    "and asks there - the editor shows the code and every permission and only her Install installs it."}
 
 
 DESIGN_HANDLERS = {"hoola_design": hoola_design}
