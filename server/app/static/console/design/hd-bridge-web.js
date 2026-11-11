@@ -1,5 +1,5 @@
 /* HOOLA DESIGN - D7 bridge B: a frame -> Web Studio (docs/HOOLA_DESIGN_PLAN.md section 7 B).
-   One selected frame: "Send to Web Studio…" (right-click menu, the Design panel, the command palette) opens a dialog -
+   One selected frame: "Send to Web Studio..." (right-click menu, the Design panel, the command palette) opens a dialog -
      - a NEW website whose first page is this frame (name prefilled, an optional line on what it is for), or
      - add it as a section to a page of one of her built websites (her sites from /api/sites, the pages of the one she picks);
      - "Preview HTML" shows the code Web Studio would get, read only, before anything is sent;
@@ -78,15 +78,15 @@
       if (st.result) {
         const r = st.result;
         body.appendChild(h('p', {class: 'hdw-lead', text: String(r.say || 'Sent to Web Studio.')}));
-        body.appendChild(h('p', {class: 'hd-note', text: 'Website ' + (r.number || '') + ' · ' + (r.name || '') + ' · page ' + (r.page || 'home') + (r.images ? ' · ' + r.images + ' picture' + (r.images === 1 ? '' : 's') + ' copied' : '')}));
+        body.appendChild(h('p', {class: 'hd-note', text: 'Website ' + (r.number || '') + ' \u00b7 ' + (r.name || '') + ' \u00b7 page ' + (r.page || 'home') + (r.images ? ' \u00b7 ' + r.images + ' picture' + (r.images === 1 ? '' : 's') + ' copied' : '')}));
         const w = warnList(r.warnings); if (w) body.appendChild(w);
-        if (r.removed && r.removed.length) body.appendChild(h('p', {class: 'hd-note', text: 'Web Studio’s safety check removed: ' + r.removed.join('; ') + '.'}));
+        if (r.removed && r.removed.length) body.appendChild(h('p', {class: 'hd-note', text: 'Web Studio\u2019s safety check removed: ' + r.removed.join('; ') + '.'}));
         body.appendChild(h('div', {class: 'hdw-foot'}, h('button', {class: 'hd-btn', type: 'button', text: 'Close', on: {click: () => ui.closeModal()}}),
           h('a', {class: 'hd-btn pri', href: String(r.url || '/console/web'), target: '_blank', rel: 'noopener', text: 'Open in Web Studio', on: {click: () => ui.closeModal()}})));
         return;
       }
       const n = HD.store.get(st.id) || {};
-      body.appendChild(h('p', {class: 'hdw-lead'}, 'Frame ', h('b', {text: String(n.name || 'Frame')}), ' · ' + Math.round(+n.w || 0) + ' × ' + Math.round(+n.h || 0)));
+      body.appendChild(h('p', {class: 'hdw-lead'}, 'Frame ', h('b', {text: String(n.name || 'Frame')}), ' \u00b7 ' + Math.round(+n.w || 0) + ' \u00d7 ' + Math.round(+n.h || 0)));
       const seg = h('div', {class: 'hd-seg hdw-seg', role: 'radiogroup', 'aria-label': 'Where it goes'});
       for (const m of [['new', 'A new website'], ['section', 'Add to a website']]) {
         seg.appendChild(h('button', {class: 'hd-segb' + (st.mode === m[0] ? ' on' : ''), type: 'button', role: 'radio', 'aria-checked': String(st.mode === m[0]), text: m[1],
@@ -97,12 +97,12 @@
         body.appendChild(h('label', {class: 'hdw-field'}, h('span', {text: 'Website name'}), name));
         body.appendChild(h('label', {class: 'hdw-field'}, h('span', {text: 'What is it for? (optional)'}), brief));
         body.appendChild(h('p', {class: 'hd-note', text: 'The frame becomes the home page of a new website in Web Studio. Its legal pages are added by Web Studio.'}));
-      } else if (st.sites === null) body.appendChild(h('p', {class: 'hd-note', text: 'Loading your websites…'}));
+      } else if (st.sites === null) body.appendChild(h('p', {class: 'hd-note', text: 'Loading your websites\u2026'}));
       else {
         const built = st.sites.filter(BUILT);
         if (!built.length) body.appendChild(h('p', {class: 'hd-note', text: 'None of your websites is built yet. Send it as a new website, or finish one in Web Studio first.'}));
         else {
-          const sel = h('select', {class: 'hd-in', 'aria-label': 'Website'}, built.map(s => h('option', {value: String(s.id), text: (s.number ? s.number + ' · ' : '') + (s.name || 'Untitled'), selected: String(s.id) === st.site})));
+          const sel = h('select', {class: 'hd-in', 'aria-label': 'Website'}, built.map(s => h('option', {value: String(s.id), text: (s.number ? s.number + ' \u00b7 ' : '') + (s.name || 'Untitled'), selected: String(s.id) === st.site})));
           sel.addEventListener('change', async () => { st.site = sel.value; st.pages = []; paint(); await loadPages(); paint(); });
           body.appendChild(h('label', {class: 'hdw-field'}, h('span', {text: 'Website'}), sel));
           const pg = h('select', {class: 'hd-in', 'aria-label': 'Page'}, st.pages.map(p => h('option', {value: p.slug, text: (p.title || p.slug) + ' (' + p.slug + ')', selected: p.slug === st.page})));
@@ -116,7 +116,7 @@
       body.appendChild(tog);
       if (st.showCode && st.preview) {
         const p = st.preview;
-        if (p.loading) body.appendChild(h('p', {class: 'hd-note', text: 'Making the code…'}));
+        if (p.loading) body.appendChild(h('p', {class: 'hd-note', text: 'Making the code\u2026'}));
         else if (p.error) body.appendChild(h('p', {class: 'hdw-err', text: String(p.error)}));
         else {
           body.appendChild(h('div', {class: 'hdw-code'}, h('p', {class: 'hdw-ctitle', text: 'HTML'}), h('pre', {class: 'hdw-pre', tabIndex: 0, text: String(p.html || '')}),
@@ -129,19 +129,19 @@
       const canSend = !st.busy && (st.mode === 'new' ? !!name.value.trim() : !!(st.site && st.page && st.sites && st.sites.some(s => String(s.id) === st.site && BUILT(s))));
       body.appendChild(h('div', {class: 'hdw-foot'}, h('span', {class: 'hd-note hdw-safe', text: 'Nothing is published. Going live stays your tap in Web Studio.'}),
         h('button', {class: 'hd-btn', type: 'button', text: 'Cancel', on: {click: () => ui.closeModal()}}),
-        h('button', {class: 'hd-btn pri hdw-send', type: 'button', disabled: !canSend, text: st.busy ? 'Sending…' : 'Send', on: {click: send}})));
+        h('button', {class: 'hd-btn pri hdw-send', type: 'button', disabled: !canSend, text: st.busy ? 'Sending\u2026' : 'Send', on: {click: send}})));
     }
     paint();
     setTimeout(() => { if (document.contains(name)) name.focus(); }, 0);
     return box;
   }
 
-  ui.registerMenu('context', ids => (frameOf(ids) && canEdit() ? {label: 'Send to Web Studio…', icon: 'share', run: () => open(frameOf(ids))} : null));
-  ui.command({id: 'sendToWeb', label: 'Send to Web Studio…', group: 'File', when: () => !!frameOf() && canEdit(), run: () => open()});
+  ui.registerMenu('context', ids => (frameOf(ids) && canEdit() ? {label: 'Send to Web Studio\u2026', icon: 'share', run: () => open(frameOf(ids))} : null));
+  ui.command({id: 'sendToWeb', label: 'Send to Web Studio\u2026', group: 'File', when: () => !!frameOf() && canEdit(), run: () => open()});
   if (ui.designSection) ui.designSection((el, ids) => {
     const id = frameOf(ids); if (!id || !canEdit()) return;
     const s = ui.section(el, 'Website', [], {cls: 'hdw-sec'});
-    s.body.appendChild(h('button', {class: 'hd-btn hdw-wide', type: 'button', text: 'Send to Web Studio…', on: {click: () => open(id)}}));
+    s.body.appendChild(h('button', {class: 'hd-btn hdw-wide', type: 'button', text: 'Send to Web Studio\u2026', on: {click: () => open(id)}}));
   });
 
   HD.bridgeWeb = {open: open};

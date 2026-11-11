@@ -627,3 +627,45 @@ def test_agent_tool_starts_an_import_and_never_takes_a_token(fig_env):
     out, j = asyncio.run(run_and_wait())
     assert out["status"] == "started" and out["watch"].endswith("/console/design#/import/" + out["job"])
     assert j["state"] == "done" and TOKEN not in json.dumps(out)
+
+
+# ==================================================================================== the page
+import os  # noqa: E402
+import re  # noqa: E402
+import shutil  # noqa: E402
+import subprocess  # noqa: E402
+from pathlib import Path  # noqa: E402
+
+HERE = Path(__file__).resolve().parent
+DESIGN = HERE.parent / "app" / "static" / "console" / "design"
+NODE = shutil.which("node")
+SANDBOX_CHROME = "/opt/pw-browsers/chromium-1243/chrome-linux64/chrome"
+
+
+def test_the_client_file_is_a_plain_strict_script_loaded_in_order():
+    text = (DESIGN / "hd-bridge-figma.js").read_text(encoding="utf-8")
+    assert "'use strict';" in text and text.rstrip().endswith("})();") and text.isascii()
+    assert "eval(" not in text and "new Function" not in text and "innerHTML" not in text and "insertAdjacentHTML" not in text
+    assert "type: 'password', autocomplete: 'off'" in text                     # the token field
+    assert "ui.registerMenu('main'" in text and "#\\/import\\/" in text
+    html = (DESIGN / "design.html").read_text(encoding="utf-8")
+    assert html.index("hd-ai.js") < html.index("hd-bridge-figma.js") < html.index("hd-app.js")
+    stamp = re.search(r"hd-ai\.js\?v=([0-9.]+)", html).group(1)
+    assert f"hd-bridge-figma.js?v={stamp}" in html and f"design-bridge-figma.css?v={stamp}" in html
+    css = (DESIGN / "design-bridge-figma.css").read_text(encoding="utf-8")
+    assert "text-transform" not in css and not re.search(r"font-size:\s*(?:[0-9]|1[01])(?:\.\d+)?px", css)
+
+
+@pytest.mark.skipif(not NODE, reason="node is not installed")
+def test_the_dialog_in_a_real_browser():
+    js = HERE / "web" / "design_figma_test.js"
+    env = os.environ.copy()
+    if env.get("HOOLA_CHROMIUM"):
+        env["CHROMIUM_EXECUTABLE"] = env["HOOLA_CHROMIUM"]
+    elif Path(SANDBOX_CHROME).exists():
+        env.setdefault("CHROMIUM_EXECUTABLE", SANDBOX_CHROME)
+    run = subprocess.run([NODE, str(js)], capture_output=True, text=True, timeout=600, env=env)
+    if run.returncode == 77 or "Cannot find module 'playwright'" in run.stderr:
+        pytest.skip("no browser here")
+    assert run.returncode == 0, (run.stdout[-1500:] + "\n" + run.stderr[-4000:])
+    assert "design_figma_test: ok" in run.stdout

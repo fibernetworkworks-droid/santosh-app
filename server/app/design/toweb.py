@@ -1115,7 +1115,7 @@ class _Gen:
     def css(self) -> str:
         root = f"#{self.scope}" if self.scope else "." + slug_root(self.root)
         base = [(f"{root}, {root} *", ["box-sizing:border-box"]),
-                (f"{root} :where(h1, h2, h3, p)", ["margin:0"]),
+                (", ".join(f"{root} :where({t})" for t in ("h1", "h2", "h3", "p")), ["margin:0"]),
                 (f"{root} :where(.btn)", ["display:flex", "align-items:center", "justify-content:center", "min-height:0", "padding:0",
                                   "gap:0", "border:0", "border-radius:0", "background:none", "box-shadow:none",
                                   "font:inherit", "color:inherit", "text-decoration:none", "cursor:pointer"]),
