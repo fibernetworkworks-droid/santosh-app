@@ -64,7 +64,7 @@ def find(tenant: str, query: str = "", limit: int = 15) -> dict[str, Any]:
 def resolve(tenant: str, spreadsheet: str, account: str | None = None) -> tuple[SheetsClient, dict[str, Any]]:
     text = str(spreadsheet or "").strip()
     if not text:
-        raise SheetError("Kaunsi sheet? Naam, link ya id dijiye.")
+        raise SheetError("Which sheet? Give its name, link or id.")
     cs = [get_client(tenant, account)] if account else (clients(tenant) or [get_client(tenant)])
     sid = id_from(text)
     if not sid:     # by name: recent first, then Drive search
@@ -84,10 +84,10 @@ def resolve(tenant: str, spreadsheet: str, account: str | None = None) -> tuple[
             exact = [x for x in found if x[1]["title"].lower() == text.lower()]
             pick = exact or found
             if not pick:
-                raise SheetError(f"'{text}' naam ki sheet nahi mili. sheets_find se list dekhiye, ya sheet ka link dijiye.")
+                raise SheetError(f"'{text}': no sheet with this name was found. See the list with sheets_find, or give the sheet's link.")
             if len({f["id"] for _, f in pick}) > 1:
                 opts = "; ".join(f"{f['title']} (id {f['id']}, {f['modified']})" for _, f in pick[:6])
-                raise SheetError(f"Is naam ki kai sheets hain: {opts}. User se poochiye kaunsi, phir id se boliye.")
+                raise SheetError(f"Several sheets have this name: {opts}. Ask the user which one, then use its id.")
             cs = [pick[0][0]] + [c for c in cs if c is not pick[0][0]]
             sid = pick[0][1]["id"]
     last: Exception | None = None
@@ -98,13 +98,13 @@ def resolve(tenant: str, spreadsheet: str, account: str | None = None) -> tuple[
             return c, meta
         except SheetError as e:
             last = e
-    raise last or SheetError("Sheet nahi khuli")
+    raise last or SheetError("The sheet could not be opened")
 
 
 def tab_of(meta: dict, tab: str | None) -> dict:
     tabs = meta["tabs"]
     if not tabs:
-        raise SheetError("Is sheet mein koi tab nahi hai.")
+        raise SheetError("This sheet has no tab.")
     if not tab:
         return tabs[0]
     t = tab.strip().lower()
@@ -114,7 +114,7 @@ def tab_of(meta: dict, tab: str | None) -> dict:
     for x in tabs:
         if t in x["title"].lower():
             return x
-    raise SheetError(f"'{tab}' tab nahi mila. Tabs: {', '.join(x['title'] for x in tabs)}")
+    raise SheetError(f"'{tab}': tab not found. Tabs: {', '.join(x['title'] for x in tabs)}")
 
 
 # ---------------- tables ----------------
@@ -139,7 +139,7 @@ class Table:
         for i, h in enumerate(self.header):
             if n and n in _norm(h):
                 return i
-        raise SheetError(f"'{name}' column nahi mila. Columns: {', '.join(str(h) for h in self.header if str(h).strip())}")
+        raise SheetError(f"'{name}': column not found. Columns: {', '.join(str(h) for h in self.header if str(h).strip())}")
 
     def cell(self, row: list, i: int) -> Any:
         return row[i] if i < len(row) else ""
@@ -226,7 +226,7 @@ def select_rows(t: Table, where: list[dict] | None = None, rows: list[int] | Non
         idx = [r - t.first_row for r in rows]
         bad = [r for r, i in zip(rows, idx) if i < 0 or i >= len(t.rows)]
         if bad:
-            raise SheetError(f"Row {bad} data mein nahi hai (data rows {t.first_row}-{t.first_row + len(t.rows) - 1}).")
+            raise SheetError(f"Row {bad} is not in the data (data rows {t.first_row}-{t.first_row + len(t.rows) - 1}).")
         return idx
     conds = [(t.col(w["column"]), str(w.get("op") or "="), w.get("value", "")) for w in (where or [])]
     for _, op, _v in conds:
@@ -294,7 +294,7 @@ def query(tenant: str, spreadsheet: str, tab: str | None = None, where: list[dic
         gi = t.col(group_by)
         groups: dict[str, dict[str, Any]] = {}
         for i in idx:
-            g = str(t.cell(t.rows[i], gi)).strip() or "(khaali)"
+            g = str(t.cell(t.rows[i], gi)).strip() or "(empty)"
             e = groups.setdefault(g, {"count": 0})
             e["count"] += 1
             for name, ci in tcols:
@@ -314,7 +314,7 @@ def _row_values(t: Table, row: Any, add_columns: bool) -> tuple[list[Any], list[
     if isinstance(row, list):
         return list(row), []
     if not isinstance(row, dict):
-        raise SheetError("Har row ek object {column: value} ya list honi chahiye.")
+        raise SheetError("Every row must be an object {column: value} or a list.")
     vals = [""] * len(t.header)
     new_cols = []
     for k, v in row.items():
@@ -336,9 +336,9 @@ def _row_values(t: Table, row: Any, add_columns: bool) -> tuple[list[Any], list[
 def append(tenant: str, spreadsheet: str, rows: list, tab: str | None = None, add_columns: bool = False,
            header_row: int = 1) -> dict[str, Any]:
     if not rows:
-        raise SheetError("Kya daalna hai? rows do.")
+        raise SheetError("What should be added? Give rows.")
     if len(rows) > 2000:
-        raise SheetError("Ek baar mein 2000 rows tak.")
+        raise SheetError("Up to 2000 rows at a time.")
     c, meta = resolve(tenant, spreadsheet)
     t = load(c, meta, tab, header_row)
     out_rows, added = [], []
@@ -359,14 +359,14 @@ def append(tenant: str, spreadsheet: str, rows: list, tab: str | None = None, ad
 def plan_update(tenant: str, spreadsheet: str, set_values: dict, where: list[dict] | None = None,
                 rows: list[int] | None = None, tab: str | None = None, header_row: int = 1) -> dict[str, Any]:
     if not set_values:
-        raise SheetError("Kya badalna hai? set do, jaise {Status: Paid}.")
+        raise SheetError("What should change? Give set, such as {Status: Paid}.")
     if not where and not rows:
         raise SheetError("Kaunsi rows? where (condition) ya rows (row numbers) do.")
     c, meta = resolve(tenant, spreadsheet)
     t = load(c, meta, tab, header_row)
     idx = select_rows(t, where, rows)
     if not idx:
-        raise SheetError("Koi row match nahi hui. Pehle sheet_query se dekhiye.")
+        raise SheetError("No row matched. Look with sheet_query first.")
     cols = [(t.col(k), v) for k, v in set_values.items()]
     data, before = [], []
     for i in idx:
@@ -386,9 +386,9 @@ def do_update(c: SheetsClient, sid: str, data: list[dict]) -> int:
 def write_range(tenant: str, spreadsheet: str, cell_range: str, values: list[list[Any]], tab: str | None = None) -> dict:
     cells = sum(len(r) for r in values or [])
     if not cells:
-        raise SheetError("values khaali hai")
+        raise SheetError("values is empty")
     if cells > 2000:
-        raise SheetError("Ek baar mein 2000 cells tak.")
+        raise SheetError("Up to 2000 cells at a time.")
     c, meta = resolve(tenant, spreadsheet)
     rng = cell_range if "!" in cell_range else f"{q_tab(tab_of(meta, tab)['title'])}!{cell_range}"
     n = do_update(c, meta["id"], [{"range": rng, "values": values}])
@@ -398,14 +398,14 @@ def write_range(tenant: str, spreadsheet: str, cell_range: str, values: list[lis
 def plan_delete(tenant: str, spreadsheet: str, where: list[dict] | None = None, rows: list[int] | None = None,
                 tab: str | None = None, header_row: int = 1) -> dict[str, Any]:
     if not where and not rows:
-        raise SheetError("Kaunsi rows hatani hain? where ya rows do.")
+        raise SheetError("Which rows should be removed? Give where or rows.")
     c, meta = resolve(tenant, spreadsheet)
     t = load(c, meta, tab, header_row)
     idx = select_rows(t, where, rows)
     if not idx:
-        raise SheetError("Koi row match nahi hui.")
+        raise SheetError("No row matched.")
     if len(idx) > 500:
-        raise SheetError("Ek baar mein 500 rows tak hata sakte hain.")
+        raise SheetError("Up to 500 rows can be removed at a time.")
     tab_id = tab_of(meta, t.tab)["id"]
     return {"client": c, "meta": meta, "tab": t.tab, "tab_id": tab_id, "rows": sorted(t.first_row + i for i in idx),
             "before": [t.as_dict(i) for i in idx]}
@@ -422,8 +422,8 @@ def create(tenant: str, title: str, tabs: list[dict] | None = None, account: str
     """tabs: [{name, header: [...], rows: [[...]] or [{...}]}]"""
     c = get_client(tenant, account)
     if c.kind == "service":
-        raise SheetError("Service account se nayi sheet aapke Drive mein nahi banti. Profile > Google Sheets se apna "
-                         "Google account jodiye.")
+        raise SheetError("A service account cannot create a new sheet in your Drive. Link your Google account in "
+                         "Profile > Google Sheets.")
     tabs = tabs or [{"name": "Sheet1"}]
     names = [str(t.get("name") or f"Sheet{i + 1}")[:90] for i, t in enumerate(tabs)]
     meta = c.create(str(title)[:200] or "Santosh sheet", names)
@@ -459,7 +459,7 @@ def create(tenant: str, title: str, tabs: list[dict] | None = None, account: str
 def add_tab(tenant: str, spreadsheet: str, name: str, header: list[str] | None = None) -> dict[str, Any]:
     c, meta = resolve(tenant, spreadsheet)
     if any(t["title"].lower() == name.strip().lower() for t in meta["tabs"]):
-        raise SheetError(f"'{name}' tab pehle se hai.")
+        raise SheetError(f"'{name}': this tab already exists.")
     c.batch(meta["id"], [{"addSheet": {"properties": {"title": name.strip()[:90], "gridProperties": {"frozenRowCount": 1}}}}])
     if header:
         c.update(meta["id"], [{"range": f"{q_tab(name.strip()[:90])}!A1", "values": [header]}])
@@ -496,7 +496,7 @@ def _rgb(color: Any) -> dict[str, float] | None:
     if m:
         h = m.group(1)
         return {"red": int(h[0:2], 16) / 255, "green": int(h[2:4], 16) / 255, "blue": int(h[4:6], 16) / 255}
-    raise SheetError(f"Color nahi samajh aaya: {color}")
+    raise SheetError(f"Could not understand the colour: {color}")
 
 
 def _text_format(spec: dict) -> dict:
@@ -547,7 +547,7 @@ def _a1_to_grid_range(rng_str: str, sheet_id: int) -> dict:
     rng_str = rng_str.strip()
     m = re.fullmatch(r"([A-Z]*)(\d*)(?::([A-Z]*)(\d*))?", rng_str)
     if not m:
-        raise SheetError(f"A1 range samajh nahi aaya: {rng_str}")
+        raise SheetError(f"Could not understand the A1 range: {rng_str}")
     sc, sr, ec, er = m.group(1), m.group(2), m.group(3), m.group(4)
     start_col = col_index(sc) - 1 if sc else 0
     start_row = int(sr) - 1 if sr else 0
@@ -577,18 +577,18 @@ def _split_tab_range(meta: dict, rng: str, tab: str | None) -> tuple[dict, str]:
 def plan_clear(tenant: str, spreadsheet: str, ranges: list[str], tab: str | None = None) -> dict[str, Any]:
     """Clear one or more A1 ranges of their VALUES (formatting stays). Always behind a confirm card."""
     if not ranges:
-        raise SheetError("Kya saaf karna hai? ranges do (jaise ['A1:C10', 'Summary!B1:F5']).")
+        raise SheetError("What should be cleared? Give ranges (such as ['A1:C10', 'Summary!B1:F5']).")
     if len(ranges) > 50:
-        raise SheetError("Ek baar mein 50 ranges tak.")
+        raise SheetError("Up to 50 ranges at a time.")
     c, meta = resolve(tenant, spreadsheet)
     norm = []
     for r in ranges:
         t, a1 = _split_tab_range(meta, str(r), tab)
         norm.append(f"{q_tab(t['title'])}!{a1}")
     return {"client": c, "meta": meta, "ranges": norm,
-            "summary": {"title": meta["title"], "lines": [f"{len(norm)} range ki values clear hongi"] + norm[:6],
+            "summary": {"title": meta["title"], "lines": [f"{len(norm)} range(s) will have their values cleared"] + norm[:6],
                         "more": max(0, len(norm) - 6),
-                        "note": "Format bold/rang nahi utrte; sirf values. Undo: Google Sheets version history."}}
+                        "note": "Formatting (bold / colour) is not removed; only values. Undo: Google Sheets version history."}}
 
 
 def do_clear(c: SheetsClient, sid: str, ranges: list[str]) -> int:
@@ -601,7 +601,7 @@ def do_clear(c: SheetsClient, sid: str, ranges: list[str]) -> int:
 def copy_tab(tenant: str, spreadsheet: str, tab: str, dest_spreadsheet: str, new_title: str | None = None) -> dict[str, Any]:
     """Copy a tab to another spreadsheet (or the same one). Not destructive — runs at once."""
     if not dest_spreadsheet:
-        raise SheetError("Kis sheet mein copy karna hai? dest_spreadsheet do (naam/link/id).")
+        raise SheetError("Which sheet should it be copied into? Give dest_spreadsheet (name / link / id).")
     c, meta = resolve(tenant, spreadsheet)
     src_tab = tab_of(meta, tab)
     dest_sid = id_from(str(dest_spreadsheet))
@@ -610,7 +610,7 @@ def copy_tab(tenant: str, spreadsheet: str, tab: str, dest_spreadsheet: str, new
             dc, dmeta = resolve(tenant, str(dest_spreadsheet))
             dest_sid = dmeta["id"]
         except SheetError:
-            raise SheetError(f"Destination sheet '{dest_spreadsheet}' nahi mili.")
+            raise SheetError(f"Destination sheet '{dest_spreadsheet}' not found.")
     out = c.copy_tab(meta["id"], src_tab["id"], dest_sid, new_title)
     return {"src_tab": src_tab["title"], "new_tab": out.get("title") or new_title or src_tab["title"],
             "dest_spreadsheet_id": dest_sid, "new_sheet_id": out.get("sheet_id"), "link": meta["link"]}
@@ -636,10 +636,10 @@ def plan_delete_tab(tenant: str, spreadsheet: str, tab: str) -> dict[str, Any]:
     c, meta = resolve(tenant, spreadsheet)
     t = tab_of(meta, tab)
     if len(meta["tabs"]) == 1:
-        raise SheetError("Yeh akhaari tab hai; sheet khali nahi ho sakti. Pehle naya tab banaiye.")
+        raise SheetError("This is the last tab; a sheet cannot be empty. Make a new tab first.")
     return {"client": c, "meta": meta, "tab_id": t["id"], "tab": t["title"],
-            "summary": {"title": meta["title"], "lines": [f"Tab '{t['title']}' hata di jayegi"],
-                        "note": "Undo: Google Sheets version history se wapas la sakte hain."}}
+            "summary": {"title": meta["title"], "lines": [f"Tab '{t['title']}' will be deleted"],
+                        "note": "Undo: you can bring it back from Google Sheets version history."}}
 
 
 def do_delete_tab(c: SheetsClient, sid: str, tab_id: int) -> int:
@@ -652,13 +652,13 @@ def do_delete_tab(c: SheetsClient, sid: str, tab_id: int) -> int:
 def format_cells(tenant: str, spreadsheet: str, rng: str, format: dict, tab: str | None = None) -> dict[str, Any]:
     """Apply a cell/text format to an A1 range. Bold / italic / color / number format / align / wrap / freeze."""
     if not format or not isinstance(format, dict):
-        raise SheetError("Kya format lagana hai? format do (bold, italic, font_size, font_color, bg_color, "
+        raise SheetError("What format should be applied? Give format (bold, italic, font_size, font_color, bg_color, "
                          "number_format, horizontal_alignment, vertical_alignment, wrap_strategy, freeze_rows, freeze_cols).")
     c, meta = resolve(tenant, spreadsheet)
     t, a1 = _split_tab_range(meta, str(rng), tab)
     user_fmt = _user_format(format)
     if not user_fmt and "freeze_rows" not in format and "freeze_cols" not in format:
-        raise SheetError("format khaali hai. Kam se kam ek property do.")
+        raise SheetError("format is empty. Give at least one property.")
     requests: list[dict] = []
     if user_fmt:
         fmt_fields = list(user_fmt.keys())
@@ -693,9 +693,9 @@ def plan_protect(tenant: str, spreadsheet: str, rng: str, tab: str | None = None
     return {"client": c, "meta": meta, "tab_id": t["id"], "tab": t["title"], "range": a1,
             "description": desc, "editors": ed,
             "summary": {"title": meta["title"], "tab": t["title"],
-                        "lines": [f"Lock kar dein: {a1}" + (f" - {desc[:60]}" if desc else "")]
+                        "lines": [f"Lock: {a1}" + (f" - {desc[:60]}" if desc else "")]
                                  + ([f"Editors: {', '.join(ed[:6])}"] if ed else []),
-                        "note": "Locked cell sirf editors edit kar sakte hain."}}
+                        "note": "Only editors can edit a locked cell."}}
 
 
 def do_protect(c: SheetsClient, sid: str, tab_id: int, rng: str, description: str, editors: list[str]) -> int:
@@ -720,7 +720,7 @@ def named_range(tenant: str, spreadsheet: str, action: str, name: str | None = N
         res = c._req("GET", f"{SHEETS}/{meta['id']}", params={"fields": "namedRanges"})
         return {"title": meta["title"], "named_ranges": res.get("namedRanges", [])}
     if action == "add" and not name:
-        raise SheetError("Naam do (named range ka naam).")
+        raise SheetError("Give a name (the named range's name).")
     if action == "add":
         if not rng:
             raise SheetError("Range do (jaise 'A1:C10' ya 'Summary!B2:F20').")
@@ -730,12 +730,12 @@ def named_range(tenant: str, spreadsheet: str, action: str, name: str | None = N
         return {"title": meta["title"], "name": name, "range": f"{t['title']}!{a1}", "action": "added"}
     if action == "delete":
         if named_id is None:
-            raise SheetError("named_id do (delete karne ke liye).")
+            raise SheetError("Give named_id (to delete).")
         c.batch(meta["id"], [{"deleteNamedRange": {"namedRangeId": str(int(named_id))}}])
         return {"title": meta["title"], "named_id": int(named_id), "action": "deleted"}
     if action == "update":
         if named_id is None:
-            raise SheetError("named_id do (update karne ke liye).")
+            raise SheetError("Give named_id (to update).")
         props: dict[str, Any] = {"namedRangeId": str(int(named_id))}
         if name:
             props["name"] = str(name)[:250]
@@ -811,12 +811,12 @@ def conditional_format(tenant: str, spreadsheet: str, rng: str, rule: dict,
         return {"title": meta["title"], "tab": t["title"], "range": a1, "action": "added", "rule_type": rule.get("type")}
     if action == "delete":
         if rule_index is None:
-            raise SheetError("rule_index do (delete karne ke liye).")
+            raise SheetError("Give rule_index (to delete).")
         c.batch(meta["id"], [{"deleteConditionalFormatRule": {"sheetId": t["id"], "index": int(rule_index)}}])
         return {"title": meta["title"], "tab": t["title"], "action": "deleted", "rule_index": int(rule_index)}
     if action == "update":
         if rule_index is None or not rule:
-            raise SheetError("rule_index aur rule dono do (update ke liye).")
+            raise SheetError("Give both rule_index and rule (to update).")
         c.batch(meta["id"], [{"updateConditionalFormatRule": {
             "rule": _cf_rule(rule, t["id"]), "rule_index": int(rule_index), "sheetId": t["id"]}}])
         return {"title": meta["title"], "tab": t["title"], "action": "updated", "rule_index": int(rule_index)}
@@ -837,14 +837,14 @@ def _dv_condition(spec: dict) -> dict:
     if t == "list":
         vals = spec.get("values") or []
         if not vals:
-            raise SheetError("list ke liye values do (jaise ['Paid', 'Pending', 'Cancelled']).")
+            raise SheetError("For a list, give values (such as ['Paid', 'Pending', 'Cancelled']).")
         # Sheets API uses ONE_CONDITION_VALUE for lists, joined by comma
         joined = ",".join(str(v) for v in vals[:200])
         return {"type": "ONE_OF_LIST", "values": [{"userEnteredValue": joined}]}
     if t == "custom_formula":
         f = str(spec.get("formula") or "")
         if not f:
-            raise SheetError("custom_formula ke liye formula do.")
+            raise SheetError("For custom_formula, give formula.")
         return {"type": "CUSTOM_IS_VALID", "values": [{"userEnteredValue": f.lstrip("=")}]}
     op_map = {
         "between": "NUMBER_BETWEEN", "not_between": "NUMBER_NOT_BETWEEN",
@@ -943,18 +943,18 @@ def cell_notes(tenant: str, spreadsheet: str, notes: list[dict] | None = None,
         return {"title": meta["title"], "tab": t["title"], "notes": out}
     # set notes: build updateCells request
     if len(notes) > 100:
-        raise SheetError("Ek baar mein 100 notes tak.")
+        raise SheetError("Up to 100 notes at a time.")
     from .. import pii
     for n in notes:
         text = str(n.get("note") or "")
         if pii.find(text):
-            raise SheetError("Note mein personal / OTP / password jaankari nahi likhi ja sakti.")
+            raise SheetError("Personal / OTP / password details cannot be written in a note.")
     # group by row, sort
     by_row: dict[int, list[dict]] = {}
     for n in notes:
         r = int(n.get("row", 0))
         if r < 1:
-            raise SheetError(f"row number 1 ya usse bada chahiye (mile: {r}).")
+            raise SheetError(f"row number must be 1 or more (got: {r}).")
         by_row.setdefault(r, []).append(n)
     requests: list[dict] = []
     for r, items in sorted(by_row.items()):
@@ -963,7 +963,7 @@ def cell_notes(tenant: str, spreadsheet: str, notes: list[dict] | None = None,
         for n in items:
             col = int(n.get("col", 0))
             if col < 1:
-                raise SheetError(f"col number 1 ya usse bada chahiye (mile: {col}).")
+                raise SheetError(f"col number must be 1 or more (got: {col}).")
             row_vals[col - 1] = {"note": str(n["note"])[:500]}
         requests.append({"updateCells": {
             "start": {"sheetId": t["id"], "rowIndex": r - 1, "columnIndex": 0},
@@ -980,10 +980,10 @@ def find_replace(tenant: str, spreadsheet: str, find: str, replace: str, tab: st
                  search_by_formulas: bool = False, include_formulas: bool = True) -> dict[str, Any]:
     """Find and replace within a sheet (or one tab). Replacement text is PII-guarded."""
     if not find:
-        raise SheetError("Kya dhoondhna hai? find do.")
+        raise SheetError("What should be found? Give find.")
     from .. import pii
     if pii.find(str(replace)):
-        raise SheetError("Replace mein personal / OTP / password jaankari nahi daal sakte.")
+        raise SheetError("Personal / OTP / password details cannot be put in a replace.")
     c, meta = resolve(tenant, spreadsheet)
     body: dict[str, Any] = {"find": str(find), "replacement": str(replace),
                             "matchCase": bool(match_case), "matchEntireCell": bool(match_entire_cell),
@@ -1012,7 +1012,7 @@ def import_rows(tenant: str, source: dict[str, Any]) -> tuple[list[list[Any]], s
         f = ms._file_row(tenant, source["file_id"])
         p = Path(f.stored_path or "")
         if not p.exists():
-            raise SheetError(f"{f.name} ab server par nahi hai (files 24 ghante baad hat jaati hain). Dobara bhejiye.")
+            raise SheetError(f"{f.name} is no longer on the server (files are removed after 24 hours). Send it again.")
         name, data = f.name, p.read_bytes()
     elif source.get("drive_file") or source.get("drive_file_id"):
         # v0.701: an Excel / CSV (or a Google Sheet, exported as xlsx) already in her Drive - no upload first
@@ -1024,7 +1024,7 @@ def import_rows(tenant: str, source: dict[str, Any]) -> tuple[list[list[Any]], s
         raise SheetError("source: {email_id, attachment_id}, {file_id} ya {drive_file} (Excel / CSV)")
     rows = mime.table_rows(name, data)
     if not rows:
-        raise SheetError(f"{name} mein koi data nahi mila.")
+        raise SheetError(f"{name}: no data found.")
     return rows, name
 
 
@@ -1076,13 +1076,13 @@ def pending(tenant: str, pid: str) -> dict | None:
 def run_pending(tenant: str, pid: str) -> dict[str, Any]:
     p = pending(tenant, pid)
     if p is None or p["status"] != "pending":
-        raise SheetError("Yeh sheet badlav ab baaki nahi hai.")
+        raise SheetError("This sheet change is no longer pending.")
     pl = p["payload"]
     c = get_client(tenant, pl["account"])
     try:
         if p["action"] == "update":
             n = do_update(c, pl["sid"], pl["data"])
-            msg = f"{p['summary']['title']}: {len(pl['rows'])} rows badal di ({n} cells)."
+            msg = f"{p['summary']['title']}: {len(pl['rows'])} rows changed ({n} cells)."
         elif p["action"] == "delete":
             meta = c.meta(pl["sid"])
             # the sheet may have changed since the card was made: check the rows still hold what the user saw
@@ -1090,22 +1090,22 @@ def run_pending(tenant: str, pid: str) -> dict[str, Any]:
             for b in pl["before"]:
                 i = b["_row"] - t.first_row
                 if i < 0 or i >= len(t.rows) or t.as_dict(i) != b:
-                    raise SheetError("Card banne ke baad sheet badal gayi; rows dobara chun kar boliye.")
+                    raise SheetError("The sheet changed after the card was made; choose the rows again and ask again.")
             n = do_delete(c, pl["sid"], pl["tab_id"], pl["rows"])
-            msg = f"{p['summary']['title']}: {n} rows hata di. (Google Sheets mein File > Version history se wapas la sakte hain.)"
+            msg = f"{p['summary']['title']}: {n} rows removed. (You can bring them back in Google Sheets from File > Version history.)"
         elif p["action"] == "share":
             for e in pl["emails"]:
                 c.share(pl["sid"], e, pl["role"])
-            msg = f"{p['summary']['title']} share kar di: {', '.join(pl['emails'])} ({'edit' if pl['role'] == 'writer' else 'dekh'} sakte hain)."
+            msg = f"{p['summary']['title']} shared with: {', '.join(pl['emails'])} (can {'edit' if pl['role'] == 'writer' else 'view'})."
         elif p["action"] == "clear":
             c.clear(pl["sid"], pl["ranges"])
-            msg = f"{p['summary']['title']}: {len(pl['ranges'])} range clear kar di. (Undo: version history.)"
+            msg = f"{p['summary']['title']}: {len(pl['ranges'])} range(s) cleared. (Undo: version history.)"
         elif p["action"] == "delete_tab":
             do_delete_tab(c, pl["sid"], pl["tab_id"])
             msg = f"{p['summary']['title']}: tab '{pl.get('tab', '')}' hata di. (Undo: version history.)"
         elif p["action"] == "protect":
             do_protect(c, pl["sid"], pl["tab_id"], pl["range"], pl.get("description", ""), pl.get("editors", []))
-            msg = f"{p['summary']['title']}: range '{pl['range']}' lock kar di."
+            msg = f"{p['summary']['title']}: range '{pl['range']}' locked."
         else:
             raise SheetError("unknown sheet action")
     except SheetError:
