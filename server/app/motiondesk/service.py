@@ -546,7 +546,7 @@ def use_asset(tenant: str, job: str, asset: str) -> dict:
         _log(j, f"Asset linked: {a.name}")
         blocks, warns = R.asset_problems({**_asset_view(a), "jobs": _j(a.jobs, [])}, j.id, today(tenant).isoformat())
         num = j.number
-    return {"say": f"{num} mein {a.name} juda." + (" Dhyaan: " + " ".join(blocks + warns) if blocks or warns else ""),
+    return {"say": f"{a.name} linked to {num}." + (" Note: " + " ".join(blocks + warns) if blocks or warns else ""),
             "blocks": blocks, "warnings": warns}
 
 

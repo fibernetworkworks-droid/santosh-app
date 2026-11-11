@@ -599,7 +599,7 @@ def make(process, material=None, tool_d=None, pull="Z", limits=None):
 def cam(**kw):
     """2.5D CNC G-code after the build: tool_d, stepdown, stepover, feed, plunge, rpm, ops=['face','pocket','drill','profile']."""
     if CAM:
-        raise ValueError("ek hi H.cam")
+        raise ValueError("only one H.cam")
     CAM.append(kw)
 
 

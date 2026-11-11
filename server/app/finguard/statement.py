@@ -190,7 +190,7 @@ def charges(rows: list[dict[str, Any]]) -> dict[str, Any]:
     if rows:
         d0, d1 = date.fromisoformat(rows[0]["date"]), date.fromisoformat(rows[-1]["date"])
         days = max((d1 - d0).days, 1)
-        span = f"{rows[0]['date']} se {rows[-1]['date']} ({days} din)"
+        span = f"{rows[0]['date']} to {rows[-1]['date']} ({days} days)"
         year = round((fee_total + gst_total) * 365.0 / days, 2) if days >= 25 else None
     else:
         year = None

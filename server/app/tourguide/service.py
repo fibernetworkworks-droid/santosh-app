@@ -597,7 +597,7 @@ def hold(tenant: str, booking: str, actor: str = "owner", conv: str = "") -> dic
     with _LOCK, session() as s:
         b = _booking(s, tenant, booking)
         if b.status not in ("enquiry", "held"):
-            raise TourError(f"{b.number} {STATUS_LABEL.get(b.status)} hai.")
+            raise TourError(f"{b.number} is {(STATUS_LABEL.get(b.status) or b.status).lower()}.")
         _slot_check(s, tenant, b, s.get(TgTour, b.tour_id) if b.tour_id else None)
         b.status = "held"
         _blog(b, "slot held (not confirmed yet)", actor_name(tenant, actor))
@@ -619,7 +619,7 @@ def set_status(tenant: str, booking: str, status: str, actor: str = "owner", con
         if status in ("done", "no_show") and b.day and b.day > today(tenant).isoformat():
             raise TourError("The tour date has not come yet.")
         if b.status in ("done", "cancelled", "no_show"):
-            raise TourError(f"{b.number} is already {STATUS_LABEL.get(b.status)}.")
+            raise TourError(f"{b.number} is already {(STATUS_LABEL.get(b.status) or b.status).lower()}.")
         b.status = status
         for c in s.scalars(select(TgCard).where(TgCard.tenant_id == tenant, TgCard.target == b.id, TgCard.status == "waiting",
                                                 TgCard.kind.in_(("confirm", "discount")))).all():
@@ -775,7 +775,7 @@ def confirm_request(tenant: str, booking: str, advance=None, actor: str = "owner
     with _LOCK, session() as s:
         b = _booking(s, tenant, booking)
         if b.status not in ("enquiry", "held"):
-            raise TourError(f"{b.number} {STATUS_LABEL.get(b.status)} hai.")
+            raise TourError(f"{b.number} is {(STATUS_LABEL.get(b.status) or b.status).lower()}.")
         t = s.get(TgTour, b.tour_id) if b.tour_id else None
         probs = _slot_problems(s, tenant, b, t)
         if probs:
@@ -800,7 +800,7 @@ def confirm_request(tenant: str, booking: str, advance=None, actor: str = "owner
         if t.kind == "trek":
             checks.append("Trek: permit / fitness declaration / first aid in advance.")
         pay = _pay_link(st, adv or total, b.number)
-        show = {"title": f"{b.number} {t.title} · {b.day} {b.start_time} · {b.guests} log", "to": b.lead_name, "phone": b.phone,
+        show = {"title": f"{b.number} {t.title} · {b.day} {b.start_time} · {b.guests} people", "to": b.lead_name, "phone": b.phone,
                 "text": text, "amount": total, "amount_text": _rs(total), "advance": adv, "how": how, "pay_link": pay,
                 "checks": checks, "gst_note": R.gst_note(st.gst_mode), **_links(b.phone, text)}
         view, existing = _make_card(s, tenant, "confirm", b.id, show, actor, conv)
@@ -837,7 +837,7 @@ def message_request(tenant: str, booking: str, kind: str = "custom", text: str =
             raise TourError("The message has something like an OTP / PIN / card number; that is never sent.")
         if "[" in body and "?]" in body:
             raise TourError("The message has blanks (" + ", ".join(re.findall(r"\[[^\]]*\?\]", body)) + ").")
-        show = {"title": f"{b.number} {b.lead_name} ko {kind}", "to": b.lead_name, "phone": b.phone, "text": body, "kind": kind,
+        show = {"title": f"{b.number} {kind} to {b.lead_name}", "to": b.lead_name, "phone": b.phone, "text": body, "kind": kind,
                 **_links(b.phone, body)}
         view, existing = _make_card(s, tenant, "message", b.id, show, actor, conv)
     if not publish and not existing:
@@ -867,7 +867,7 @@ def discount_request(tenant: str, booking: str, amount=None, pct=None, reason: s
     with _LOCK, session() as s:
         b = _booking(s, tenant, booking)
         if b.status not in ("enquiry", "held", "confirmed"):
-            raise TourError(f"{b.number} {STATUS_LABEL.get(b.status)} hai.")
+            raise TourError(f"{b.number} is {(STATUS_LABEL.get(b.status) or b.status).lower()}.")
         t = s.get(TgTour, b.tour_id) if b.tour_id else None
         b0 = TgBooking(price_total=b.price_total, guests=b.guests, discount=0)
         base, _ = _price(b0, t)
@@ -1000,7 +1000,7 @@ async def decide(tenant: str, cid: str, yes: bool, card_hash: str = "", via: str
         if kind == "confirm":
             if b.status not in ("enquiry", "held"):
                 c.status = "stale"
-                raise TourError(f"{b.number} ab {STATUS_LABEL.get(b.status)} hai.")
+                raise TourError(f"{b.number} is now {(STATUS_LABEL.get(b.status) or b.status).lower()}.")
             b.status = "confirmed"
             c.status, c.via = "sent", via
             _blog(b, "confirmed + confirmation " + ("sent from the business number" if via == "business" else "from your phone"), "Owner")
@@ -1272,7 +1272,7 @@ def roll_call(tenant: str, booking: str, checkpoint: str = "", present: list | N
         elif count is not None:
             c = int(count)
             if c < b.guests:
-                missing = [f"{b.guests - c} log"]
+                missing = [f"{b.guests - c} people"]
         else:
             raise TourError("Who has come (names) or how many people (count)?")
         r = _j(b.roll, [])
@@ -1383,7 +1383,7 @@ def travel_link(tenant: str, booking: str, origin: str = "", actor: str = "owner
         title = f"{b.number} group: {t.title if t else 'tour'}"
         day, lead, phone = b.day, b.lead_name, b.phone
     try:
-        out = T.new_trip(tenant, text=f"{len(travellers) or ''} log, {title}", title=title, origin=origin, destination=dest,
+        out = T.new_trip(tenant, text=f"{len(travellers) or ''} people, {title}", title=title, origin=origin, destination=dest,
                          start_date=day, travellers=travellers or None, for_client=True, client_name=lead, client_phone=phone,
                          actor=actor, conv=conv)
     except Exception as e:

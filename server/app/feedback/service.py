@@ -1363,7 +1363,7 @@ def report_file(tenant: str, days: int | None = None, conv: str = "") -> dict:
                 "Example 1", "Example 2", "Fixed on", "Before / after"])
     for t in th["negative"] + th["positive"]:
         ex = [e["text"] for e in t["examples"]] + ["", ""]
-        ws2.append([t["label"], "shikayat" if t["pol"] == "neg" else "tareef", t["count"], t["prev"], t["trend"]["say"], t["people"],
+        ws2.append([t["label"], "complaint" if t["pol"] == "neg" else "praise", t["count"], t["prev"], t["trend"]["say"], t["people"],
                     t["public"], t["avg_stars"], t["impact"], t["rupees"], ex[0], ex[1], (t["fixed"] or {}).get("on", ""),
                     (t["fixed"] or {}).get("say", "")])
     ws3 = wb.create_sheet("Scores")
