@@ -73,6 +73,24 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   `server/tests/test_routines.py`, commit `vX.Y.Z: <summary>`, push to `main`, wait for CI, give APK link + VPS commands.
 
 ## KNOWN GOOD CHECKPOINT (go back here if something breaks)
+- SAVE THE STATE (11 Nov 2026, owner: "SAVE THE STATE" after the CONNECTORS PAGE went live): branch
+  `stable-2026-11-11-connectors-v782` = commit 48c3eda0c = v0.782.0, pubspec 0.782.0+781 - cut at the LIVE commit (healthz 0.782.0;
+  the live files in ~/apps/santosh-core hash-checked against this commit: main.py, connectors.js, donepage.py, oneline.py, v2.html, v2.js
+  all match). It carries v0.781 CONNECTORS PAGE (the phone-only Connect tab as a console page: Composio apps / Connected / MCP servers /
+  Built in / Public APIs / Limits & safety, a one-liner under every connector from `bazar/oneline.py`, and `bazar/donepage.py` so a
+  console sign-in tells the console tab and closes while the phone keeps its santosh:// link) plus the other sessions' v0.773-v0.782
+  (HOOLA CODE PHASE 1-3, HOOLA INTERACTIVE, LANGGRAPH G3, CHAT JAISA L1, HOOLA FLOW + REDRAWN, TEEN MODE L2).
+  **RE-VERIFIED IN THIS EXACT COMMIT** (git archive, run there): markers present (APP_VERSION 0.782.0, HoolaConnectors, hoola-connect
+  BroadcastChannel, oneline( x6 in bazar/service.py, connectors.js stamp in v2.html, donepage.render in both callbacks) and **101 tests
+  green, 0 failed** (v0781 connectors incl. a browser walk, v0782 teen mode, v0475 stamps, routines, v0276 composio, test_bazar,
+  test_custom_mcp, v0751 hoola flow). Live checks: healthz ok / 0.782.0, /static/console/connectors.js 200, /console/ serves the stamp,
+  /bazar/link/callback answers the new done page, anonymous /api/composio/apps -> 401.
+  **NOT VERIFIED / CAVEATS:** no real Composio or MCP sign-in has been started from the console yet (the done-page hand-off assumes
+  PUBLIC_BASE_URL is the console's host); five test_bazar / test_custom_mcp tests fail only when run right after test_v0777_chat_jaisa
+  (order interference, same on the pre-connectors main, pass alone); ~/santosh_app on the VPS is the deploy copy (reset --hard on every
+  deploy) - work in a git worktree. APK release `v0.782.0-b2227`:
+  https://github.com/fibernetworkworks-droid/santosh-app/releases/download/v0.782.0-b2227/app-release.apk
+  Roll back exactly like the ones below, with `stable-2026-11-11-connectors-v782` as the branch.
 - SAVE THE STATE (8 Nov 2026, owner: "PERFECT. IT IS NOW LIVE ON HOOLA AI --- SAVE THE STATE" after P9 HOOLA ADOPT went
   live): branch `stable-2026-11-08-aep-v680` = commit 00aa1dac9 = v0.680.0, pubspec 0.680.0+679 - cut at the LIVE commit
   (healthz 0.680.0; deployed this session by vps-ops > deploy run 42394254940, success in ~50 s, the job took the DB backup).

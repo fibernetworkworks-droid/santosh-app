@@ -2867,3 +2867,7 @@ Task ID: v0.782.0 TEEN MODE (L2)
 Task: owner "GO L2" - Build / Plan / Chat in the Web Studio, server-enforced; plans as versions; Start building card; site instructions.
 Work Log: agent/turnmode.py + _run_tool guard; site/plans.py + routes; Studio composer / plan card / Plan view / instructions; 7 new tests + 131 older green; re-versioned 0.778 -> 0.782.
 Stage Summary: pushed; server deploy only. Next: L3 SAWAAL CARD (design question cards) on her GO.
+
+Task ID: SAVE THE STATE 11 Nov 2026 (connectors)
+Ask: "SAVE THE STATE" after v0.781 CONNECTORS PAGE went live.
+Done: branch stable-2026-11-11-connectors-v782 = 48c3eda0c (the live commit, v0.782.0; live files hash-matched); re-verified in a git-archive copy: markers present + 101 tests green, 0 failed; APK v0.782.0-b2227; checkpoint written in CLAUDE.md. No credentials in this entry.
