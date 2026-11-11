@@ -2955,3 +2955,8 @@ Task ID: v0.805.0 LANGGRAPH G6
 Ask: GO G6 (voice as a channel).
 Built: agent/turnchannel.py, call ticket in turndeliver, voice _delegate / _late_result / _check_spoken_claim on the record + facts, stop-words fix on calls; chat_graph still off; 11 tests.
 Deploy: vps-ops deploy (langgraph pip install from v0.761 if not done).
+
+Task ID: v0.806.0 BAHI (HOOLA PROMPTING P4)
+Ask: "GO" after P1-P3 went live.
+Built: prompting/ledger.py (prompt_runs, prompt_prefs; shape only), 7 ledger routes, hooks in sites / Create image / Script writer / chat, Results tab, recipe order by kept rate; 14 tests incl. a browser walk.
+Deploy: vps-ops deploy (server-only; no new pip; two new tables self-heal). Not verified live. Next: P5 on her GO.

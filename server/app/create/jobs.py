@@ -170,8 +170,9 @@ async def _run(j: dict[str, Any], p: dict[str, Any]) -> None:
     from .. import usage
     from . import service as cs
     t = j["tenant"]
+    _meter: dict[str, Any] = {}
     try:
-        with usage.scope(t, "create"):
+        with usage.scope(t, "create"), usage.run_meter(_meter):
             made: list[tuple[str, str, bytes, dict[str, Any]]] = []     # (title, ext, bytes, meta)
             if j["kind"] in ("image", "cast"):
                 from .. import photogen
@@ -230,6 +231,14 @@ async def _run(j: dict[str, Any], p: dict[str, Any]) -> None:
                 j["items"].append({k: it[k] for k in ("id", "kind", "title", "mime", "size", "created")} | {"meta": meta})
                 _card(j, title, ext, data, {k: v for k, v in meta.items() if k not in ("lines", "speakers", "voices")})
         j["status"] = "done"
+        if j["kind"] == "image":                 # BAHI: the result is ready; its pictures answer for the run from here on
+            try:
+                from ..prompting import ledger as _L
+                _L.ready(j["id"], [i["id"] for i in j["items"]],
+                         model=str((j["items"][0].get("meta") or {}).get("model") or "") if j["items"] else "",
+                         usd=float(_meter.get("usd") or 0))
+            except Exception:
+                pass
     except cs.CreateError as e:
         j["status"], j["error"] = "failed", str(e)
     except JobError as e:
@@ -240,6 +249,12 @@ async def _run(j: dict[str, Any], p: dict[str, Any]) -> None:
     finally:
         j["done"] = int(time.time())
         j["step"] = ""
+        if j["status"] == "failed" and j["kind"] == "image":
+            try:
+                from ..prompting import ledger as _L
+                _L.failed(j["id"])
+            except Exception:
+                pass
 
 
 def _owner_named(tenant: str, fid: str) -> tuple[str, bytes]:
