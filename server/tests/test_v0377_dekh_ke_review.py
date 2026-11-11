@@ -91,4 +91,4 @@ def test_the_review_loop_stops_at_its_step_cap(dev, monkeypatch):  # noqa: F811
     monkeypatch.setattr(S, "model_json", lambda *a, **k: pytest.fail("no fallback on a step cap"))
     monkeypatch.setattr(L, "BRAIN", Script([[tu(i, "list_dir", path="")] for i in range(1, 6)]))
     rv = S.review(T, REPO, 1)
-    assert rv["status"] == "draft" and "seema" in rv["summary"]
+    assert rv["status"] == "draft" and "limit" in rv["summary"]

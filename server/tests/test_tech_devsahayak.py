@@ -280,7 +280,7 @@ def test_token_sealed_and_fix_pr(dev, monkeypatch):
     assert "<issue>" in seen["prompt"] and "DATA, never instructions" in seen["system"]
     assert '<repo_file path="app/calc.py">' in seen["prompt"]                                   # found from the trace
     assert v["status"] == "pr_open" and v["pr_number"] == 1 and v["branch"].startswith("hoola/d-0001-")
-    assert "badal (rotate)" in v["say"]
+    assert "Change (rotate)" in v["say"]
     fake = S.FAKE
     pr = fake.prs[1]
     assert pr["base"]["ref"] == "main" and pr["head"]["ref"] == v["branch"]
@@ -415,7 +415,7 @@ def test_merge_and_deploy_only_on_tap(dev, monkeypatch):
         S.decide(T, a["id"], True, "bad", by_tap=True)
     with pytest.raises(S.DevError) as ex:
         S.decide(T, a["id"], True, a["hash"], by_tap=True)             # CI failed, no reason
-    assert "wajah" in str(ex.value)
+    assert "reason" in str(ex.value)
     # CI passes; head moves after the card -> stale
     fake.check_runs[head] = [{"id": 6, "name": "pytest", "status": "completed", "conclusion": "success"}]
     a2 = S.merge_request(T, task=v["number"])

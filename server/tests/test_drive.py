@@ -397,7 +397,7 @@ def test_trash_list_find_and_delete_forever(d):
     assert out["needs_approval"] and out["card"]["title"] == "Delete forever?"
     assert "img1" in d.fake.files                                              # nothing deleted yet
     msg = _approve(d)["message"]
-    assert "img1" not in d.fake.files and "hamesha" in msg.lower()
+    assert "img1" not in d.fake.files and "permanently" in msg.lower()
     with pytest.raises(ToolError, match="Which files"):
         run("drive_delete", {})
 

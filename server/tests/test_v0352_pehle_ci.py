@@ -56,7 +56,7 @@ def test_red_then_fix_then_green_then_ready(cidev, monkeypatch):
     fake = S.FAKE
     v = S.start(T, "fix", "Checkout crash ho raha hai", conv="c1")
     assert v["status"] == "ci_running" and fake.prs[1]["draft"] is True               # a DRAFT first
-    assert "PASS hone par hi" in v["say"]
+    assert "only when it PASSES" in v["say"]
     head1 = fake.prs[1]["head"]["sha"]
     _run(fake, head1, "failure")
     fixed = {"explain": "test galat tha", "files": [{"path": "tests/test_calc.py", "why": "fix", "edits": [
@@ -71,7 +71,7 @@ def test_red_then_fix_then_green_then_ready(cidev, monkeypatch):
     S._ci_step(T, v["id"])                                                           # green -> ready for review
     t = S.get_task(T, v["number"])
     assert t["status"] == "pr_open" and fake.prs[1]["draft"] is False and fake.ready == [1]
-    assert any("CI PASS (1 fix round ke baad)" in s for s in _says(S))
+    assert any("CI PASSED (after 1 fix round(s))" in s for s in _says(S))
     assert not fake.merges                                                           # never merged by itself
 
 

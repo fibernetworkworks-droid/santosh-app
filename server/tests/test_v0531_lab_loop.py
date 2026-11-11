@@ -157,7 +157,7 @@ def test_the_check_cap_and_grep_before_any_check(monkeypatch):
     lab.LS = LS
     assert lab.run({})["stage"] == "cap"
     lab.ws["last_log"] = ""
-    assert "Pehle run_check chalaiye" in lab.grep("x")
+    assert "Run run_check first" in lab.grep("x")
 
 
 # ---------------------------------------------------------------- the local proof replaces a CI round

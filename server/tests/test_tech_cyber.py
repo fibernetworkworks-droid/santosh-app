@@ -400,7 +400,7 @@ def test_containment_only_on_her_tap(cy):
     assert not S.FAKE.cf_rules and any(x["status"] == "undone" for x in S.actions(T))
     # wipe: card + fingerprint once a phone key is active
     w = S.request_action(T, "wipe_device", "Ramesh ka Android (kho gaya)")["action"]
-    assert w["wipe"] and "HAMESHA" in w["risk"]
+    assert w["wipe"] and "PERMANENT" in w["risk"]
     from app import approvekey as ak
     from cryptography.hazmat.primitives import hashes, serialization
     from cryptography.hazmat.primitives.asymmetric import ec

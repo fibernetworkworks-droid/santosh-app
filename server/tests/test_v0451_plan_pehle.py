@@ -95,9 +95,9 @@ def test_her_haan_is_hers_alone(pl):
     S = pl
     v = S.start(T, "write", "poora admin panel refactor karo")
     assert v["status"] == "plan_wait"
-    with pytest.raises(S.DevError, match="card se"):
+    with pytest.raises(S.DevError, match="from the card"):
         S.plan_ok(T, v["number"], v["hash"])                              # not by tap
-    with pytest.raises(S.DevError, match="Card badal"):
+    with pytest.raises(S.DevError, match="card has changed"):
         S.plan_ok(T, v["number"], "wrong-hash", by_tap=True)
     out = S.plan_ok(T, v["number"], v["hash"], by_tap=True, note="Razorpay hi rakhna, Stripe nahi")
     assert "Razorpay hi rakhna" in S.SEEN["run"][0]                       # her words ride with the plan
