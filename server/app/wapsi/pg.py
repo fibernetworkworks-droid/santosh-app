@@ -75,7 +75,7 @@ def prepare(gateway: str, payment_id: str, order_id: str, amount: float, number:
         url, steps = DASHBOARD[gw]
         out["dashboard"] = url.format(payment_id=payment_id or "")
         out["steps"] = [steps, f"Amount: ₹{amount:,.2f} (not the full amount, only this much)", f"Write in the note / receipt: {number}",
-                        "Tell Hoola the refund reference (ARN / RRN / UTR) or tap 'Check status'"]
+                        "Tell Hoola the refund reference (ARN / RRN / UTR) or tap 'Check'"]
         if gw == "razorpay":
             out["api_request"] = {"POST": f"/v1/payments/{payment_id}/refund", "amount": int(round(amount * 100)), "speed": "normal", "receipt": number}
         if gw == "cashfree":

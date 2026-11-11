@@ -1172,7 +1172,7 @@ def pg_send(tenant: str, refund_id: str) -> dict[str, Any]:
         f.pg = _dump(d)
     if res.get("state") == "done":
         return refund_done(tenant, refund_id, res.get("ref") or res.get("gateway_id", ""), "sent through the gateway (on your tap)", by=gw)
-    return {"gateway": res, "say": f"{gw}: refund {number} sent: now {res.get('state')}. Check it with 'Check status'."}
+    return {"gateway": res, "say": f"{gw}: refund {number} sent: now {res.get('state')}. Check it with 'Check'."}
 
 
 def exchange_done(tenant: str, ref: str, awb: str = "") -> dict[str, Any]:

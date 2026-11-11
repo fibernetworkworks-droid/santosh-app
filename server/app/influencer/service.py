@@ -1097,7 +1097,7 @@ def _blockers(kind: str, sh: dict, inp: dict, s, tenant: str, card: InfluencerCa
         res = _run_check(s, p)
         out += res["block"]
         if kind == "golive" and not (p.approved_hash and p.approved_hash == _content_hash(p)):
-            out.append("The brand's approval is not recorded on this draft (tick 'Brand approved').")
+            out.append("The brand's approval is not recorded on this draft (tick 'Brand said yes').")
     if kind == "invoice" and sh.get("total") is None:
         out.append("The fee is not set: the invoice cannot be made.")
     if kind == "payout":
@@ -1214,7 +1214,7 @@ def _do_content(tenant: str, card_id: str, conv: str) -> dict:
     text = (f"{sh['deal']} · {sh['post']} ({sh['platform']} {sh['fmt']}, {sh['due'] or 'date?'}) draft:\n\n{sh['caption']}"
             + (f"\n\nScript:\n{sh['script']}" if sh.get("script") else "") + "\n\nPlease share your approval / changes.")
     return {"draft": _draft(phone, text, email, f"Content for approval {sh['post']}"),
-            "say": f"{sh['post']}: the draft is ready to send to the brand (you send it). When they reply, record 'brand approved'."}
+            "say": f"{sh['post']}: the draft is ready to send to the brand (you send it). When they reply, record 'Brand said yes'."}
 
 
 def _do_golive(tenant: str, card_id: str, conv: str) -> dict:

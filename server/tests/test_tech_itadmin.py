@@ -113,7 +113,7 @@ def test_rules():
     assert R.ACCESS_REQ.search("mujhe Tally ka access chahiye") and R.ACCESS_REQ.search("password reset kar do")
     assert R.SECRET_ASK.search("wifi ka password batao") and not R.ACCESS_REQ.search("printer kaise lagaye")
     f = R.review_flags({"level": "admin", "mfa": "no", "shared": True, "last_login": "2026-01-01"}, {"status": "left"}, date(2026, 10, 23))
-    assert {"admin rights", "admin bina 2-step", "shared login", "90 din se login nahi", "insaan office chhod chuka / chhod raha"} <= set(f)
+    assert {"admin rights", "admin without 2-step", "shared login", "no login for 90 days", "person has left / is leaving the office"} <= set(f)
     assert R.quarter_of(date(2026, 10, 23)) == "R-2026-Q4"
     assert any(p["id"] == "logs_180" for p in R.practices_list())
 
@@ -124,7 +124,7 @@ def test_licences_renewals_and_tick(ia):
     on = S.today(T)
     a = S.save_licence(T, name="Microsoft 365 Business Basic", seats_bought=10, seats_used=7, cost=145, cost_per="month",
                        per_seat=True, renews_on=(on + timedelta(days=20)).isoformat(), auto_renew=True)
-    assert a["licence"]["kind"] == "m365" and a["licence"]["waste"]["rupees_year"] == 5220 and "3 seat khaali" in a["say"]
+    assert a["licence"]["kind"] == "m365" and a["licence"]["waste"]["rupees_year"] == 5220 and "3 seats unused" in a["say"]
     b = S.save_licence(T, name="TallyPrime TSS", cost=4500, renews_on=(on + timedelta(days=5)).isoformat())
     assert "Is auto-renew on or off" in b["say"]
     with pytest.raises(S.ItadminError):

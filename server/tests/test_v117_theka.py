@@ -48,7 +48,7 @@ def test_tender(tk):
     r = S.save_tender(T, "Construction of CC road ward 12", dept="Nagar Parishad Akot", portal="mahatenders", ref="2026_NPA_1234",
                       value=4500000, emd=45000, last_date="24-10-2026 17:00")
     v = r["tender"]
-    assert v["last_date"] == "2026-10-24 17:00" and v["days_left"] == 2 and "2 din" in v["alert"] and len(v["missing"]) == len(v["docs"])
+    assert v["last_date"] == "2026-10-24 17:00" and v["days_left"] == 2 and "2 days" in v["alert"] and len(v["missing"]) == len(v["docs"])
     v = S.save_tender(T, tender="2026_NPA_1234", have=["udyam", "gst", "pan"], status="preparing")["tender"]
     assert len(v["missing"]) == len(v["docs"]) - 3
     assert "Tender" in S.day(T)["say"]
