@@ -255,9 +255,9 @@ Load these resources as needed during development:
 <!-- HOOLA NOTE: everything below this line was added by Newtika for Hoola. The text above is Anthropic's original (Apache License 2.0, see LICENSE.txt); only the frontmatter line when_to_use was added. -->
 
 ## Hoola note (Modified by Newtika for Hoola, 4 Nov 2026)
-- Check first whether a ready-made connector already exists: look in Hoola's Bazar connector shelf (`bazar_find`, `bazar_mcp`) before building a new server. Building is for services that have no connector yet or need custom tools.
+- Check first whether a ready-made connector already exists: look in Hoola's Connectors shelf (`bazar_find`, `bazar_mcp`) before building a new server. Building is for services that have no connector yet or need custom tools.
 - Where the text above says to use WebFetch, use `scrape_page` (markdown, no browser) or `web_sources`. Read the long guides in `reference/` with `skill_manage read_file` one at a time, only the one for the language chosen (Python or TypeScript); they are long.
-- Hoola can WRITE the server code, and for a user who has connected GitHub, Developer Sahayak can put it in a branch of her repository and let her CI run. Hoola cannot run `npm`, `npx`, the MCP Inspector or the evaluation scripts from a chat, and the files in `scripts/` are stored for reading only. So say "code likha hai, abhi chalaya nahi" (written, not run) and never claim it was tested unless her CI really ran it.
+- Hoola can WRITE the server code, and for a user who has connected GitHub, Developer Assistant can put it in a branch of her repository and let her CI run. Hoola cannot run `npm`, `npx`, the MCP Inspector or the evaluation scripts from a chat, and the files in `scripts/` are stored for reading only. So say "the code is written, not run yet" and never claim it was tested unless her CI really ran it.
 - API keys and tokens go in environment variables on her own host, never in the chat and never in the repository. If she pastes a key, tell her to rotate it.
 - A finished server needs somewhere to run (her own server or a hosting service). Say that plainly before she expects it to be live.
 - Hoola's own house rules win over this skill if they ever disagree.

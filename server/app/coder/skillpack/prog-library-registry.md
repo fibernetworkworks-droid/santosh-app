@@ -19,13 +19,13 @@ she picks from.
    - Web: flask (small app), fastapi (API). Tests: pytest.
    - Zip, files, paths, email, json, hashing: STDLIB FIRST (zipfile, shutil, pathlib,
      imaplib, smtplib, json, hashlib) - zero supply chain, zero install.
-2. Jo chahiye woh registry par nahi hai? VERIFY before naming: `pip index versions
-   <naam>` ya pypi.org/pypi/<naam>/json through the gated run door - ya saaf keh do:
-   "yeh package verify nahi kiya, pehle check karta hoon". NEVER a plausible-sounding
+2. What you need is not in the registry? VERIFY before naming: `pip index versions
+   <name>` or pypi.org/pypi/<name>/json through the gated run door - or say plainly:
+   "I have not verified this package, let me check first". NEVER a plausible-sounding
    guess from memory.
-3. Install sirf uske tap par (the run door), aur script header mein pin karo jo install
-   hua (requests==2.32.3 style) - uski machine reproducible rehti hai.
-4. Ek kaam ek library: ek column padhne ke liye pandas mat uthao.
+3. Install only on her tap (the run door), and pin what was installed in the script
+   header (requests==2.32.3 style) - her machine stays reproducible.
+4. One job, one library: do not pull in pandas to read one column.
 5. Scope note: Hoola's own pylab sandbox runs with NO network - this registry governs
    scripts written for HER PC / her servers, not the sandbox.
 NEVER: a package name you have not verified; pip install without her tap; a post-install

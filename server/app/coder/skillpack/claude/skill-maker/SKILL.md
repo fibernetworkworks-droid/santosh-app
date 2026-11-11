@@ -19,12 +19,12 @@ If a similar skill may exist, call `skill_manage list` first and offer to improv
 ## 2. Draft within the limits
 - `name`: lowercase, words joined by hyphens, at most 64 characters, naming the class of task (`weekly-stock-count`, not `ramesh-14-march-count`).
 - `description`: ONE sentence of at most 60 characters. Start with a verb. It is what the model sees first, so it must say what the skill is for.
-- `body`: at most 4,000 characters, markdown. Put a line `Use when:` first, with the trigger words she really says, in English and in Hinglish (search reads the body too, so these words are how the skill gets found). Then the numbered steps, then `Check before finishing:` with 2 to 4 checks, then `Never:` with the hard no's.
+- `body`: at most 4,000 characters, markdown. Put a line `Use when:` first, with the trigger words she really says, in English and in any other language she uses (search reads the body too, so these words are how the skill gets found). Then the numbered steps, then `Check before finishing:` with 2 to 4 checks, then `Never:` with the hard no's.
 - Write instructions, not a story. Keep names, prices and customer details OUT; use placeholders like `<customer>`.
 - Never put a password, key, OTP or card number in a skill.
 
 ## 3. Dry-run before saving
-Write three realistic asks she might type (one in Hinglish) and one that should NOT use this skill. For each ask, walk through the draft step by step and say what you would do and what would come out. Where a step is unclear, missing or wrong, fix the draft. Also check that the `Use when:` words really appear in the three asks. Tell her briefly what the dry-run found.
+Write three realistic asks she might type (one in another language she uses, if any) and one that should NOT use this skill. For each ask, walk through the draft step by step and say what you would do and what would come out. Where a step is unclear, missing or wrong, fix the draft. Also check that the `Use when:` words really appear in the three asks. Tell her briefly what the dry-run found.
 
 ## 4. Save only after her yes
 Show the final name, description and body. When she says yes, call `skill_manage` with `create`. To change an existing skill, `read` it first (update is refused without a read), then `update`. Deleting is a separate call and only on her word.

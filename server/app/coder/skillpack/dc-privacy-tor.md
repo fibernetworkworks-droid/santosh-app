@@ -3,52 +3,60 @@ name: dc-privacy-tor
 description: Privacy lane - outsider checks, no blockchain detours
 when_to_use: privacy, tor, anonymous browsing, vpn, is my data safe, tracking, blockchain, crypto, decentralized
 ---
-GOAL: awesome-tor jaise Tor/privacy catalogs syllabus hain - curated
-lists me onion routing, anonymity tooling, privacy guides milte hain.
-Par STANCE sabse pehle: decentralized/blockchain hissa se Hoola kuch
-nahi leta - koi token, koi chain, koi web3 infra nahi; wo angle poora
-skip, sane aur final. Hoola sirf Tor/privacy angle uthati hai: tenant
-ko bahar se dekhna, guardrails default-ON rakhna, evidence printed
-me. Laal-miti ke doors: tool lane me prayog, browser_check, api_call,
-dpo, consent_jaanch, cyber; module lanes app/pii.py, app/fence.py,
-app/idvault.py.
+GOAL: Tor / privacy catalogs like awesome-tor are the syllabus - the
+curated lists hold onion routing, anonymity tooling and privacy
+guides. But the STANCE comes first: Hoola takes nothing from the
+decentralized / blockchain part - no token, no chain, no web3 infra;
+that angle is skipped entirely, and that is final. Hoola takes only
+the Tor / privacy angle: looking at the tenant from outside, keeping
+guardrails default-ON, evidence in print. The doors of this lane: in
+the tool lane prayog, browser_check, api_call, dpo, consent_jaanch,
+cyber; the module lanes app/pii.py, app/fence.py, app/idvault.py.
 
-STANCE (dusra kaam iske baad):
-decentralized/blockchain lists me privacy tools bhi milte hain - sirf
-wahi uthate hain. "Is catalog se blockchain bana dein?" ka jawab
-hamesha nahi hai. Tor yahan ek checking instrument hai, product nahi;
-lane ka outcome tenant ki privacy hai, koi network naya nahi.
+STANCE (everything else comes after this):
+decentralized / blockchain lists hold privacy tools too - only those
+are taken. The answer to "shall we build a blockchain from this
+catalog?" is always no. Tor here is a checking instrument, not a
+product; the outcome of the lane is the tenant's privacy, not a new
+network.
 
-1. OUTSIDE VIEW (jo bahar dikhta hai wahi sach hai):
-apne public endpoints Tor exit ke through dekho. prayog lab me route
-karo (proxy tenant ke andar hi rahe), phir browser_check se page aur
-api_call se status/headers padho. Baseline bina-Tor + Tor-route -
-dono ka fark printed me. Exit relay har run badal sakta hai: do-teen
-runs karo; har exit pe dikhe wahi leak = asli leak. Andar ka log ya
-"lagta hai safe" koi evidence nahi.
+1. OUTSIDE VIEW (what shows from outside is the truth):
+look at our own public endpoints through a Tor exit. Route it in the
+prayog lab (the proxy stays inside the tenant), then read the page
+with browser_check and the status / headers with api_call. Baseline
+without Tor + the Tor route - the difference of the two in print.
+The exit relay can change on every run: do two or three runs; a leak
+that shows on every exit = a real leak. An inside log or "it seems
+safe" is not evidence.
 
 2. GUARDRAILS DEFAULT-ON:
-app/pii.py ka scrub har printed line pe chalta rahe; dpo door se har
-data-use ka purpose poochho; consent_jaanch ke bina koi naya
-collection nahi; identifiers app/idvault.py ke id_locker me - raw
-ids output me kabhi nahi. Debugging ke naam pe ye lanes kam nahi
-hote; app/fence.py ki limits bhi on hi rehti hain - fence neeche
-kiya to test invalid, dobara zero se shuru.
+the app/pii.py scrub keeps running on every printed line; ask the
+purpose of every data use through the dpo door; no new collection
+without consent_jaanch; identifiers go in the id_locker of
+app/idvault.py - raw ids never in output. These lanes are not
+reduced in the name of debugging; the limits of app/fence.py stay on
+too - if the fence was lowered the test is invalid, start again from
+zero.
 
-3. FINDINGS LEDGER (printed hi evidence):
-har check ka result ledger me - kaunsa endpoint, kaunsa route, kya
-dikha, leak hua ya nahi. Printed output ke alawa koi evidence nahi.
-Ledger me bhi scrubbed text: tenant ka naam, raw PII, token kabhi
-nahi. Kuch shak-daar mile to cyber door - khud andar ghusna nahi.
+3. FINDINGS LEDGER (only print is evidence):
+the result of every check goes in the ledger - which endpoint, which
+route, what showed, leak or no leak. There is no evidence other than
+printed output. Scrubbed text in the ledger too: never the tenant's
+name, raw PII or a token. If something looks suspicious, use the
+cyber door - do not break in yourself.
 
-THE LAWS: network-unusual har cheez (naya relay, custom proxy, exit
-chunna, tenant se bahar request) se pehle ask_approval - reason ke
-saath; printed output = sirf evidence; private data tenant se bahar
-kabhi nahi jata, kisi unknown route pe bhi nahi.
+THE LAWS: ask_approval before anything unusual on the network (a new
+relay, a custom proxy, choosing an exit, a request outside the
+tenant) - with the reason; printed output = the only evidence;
+private data never leaves the tenant, not on any unknown route
+either.
 
-NEVER: tenant data unknown relay/route pe bhejna; Tor sirf apne
-checks ke liye - user traffic route karna ya Tor kisi aur kaam pe
-lagana (baki asks = ask_approval + reason); PII logging 'debug' ke
-naam pe; app/fence.py ya pii scrub off karke test chalana; bina
-printed outside-view ke "public endpoint safe hai" bolna;
-dpo/consent_jaanch skip karke data purpose maan lena.
+NEVER: send tenant data over an unknown relay / route; Tor is only
+for our own checks - never route user traffic through it or use Tor
+for anything else (other asks = ask_approval + reason); PII logging
+in the name of "debug"; run a test with app/fence.py or the pii
+scrub off; say "the public endpoint is safe" without a printed
+outside view; skip dpo / consent_jaanch and assume the data purpose.
+
+ALSO ASKED AS (Hinglish asks this skill answers): mera data safe hai kya,
+privacy check karo, bahar se kya dikhta hai, tracking band karo

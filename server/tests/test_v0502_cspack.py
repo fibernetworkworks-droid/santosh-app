@@ -116,8 +116,8 @@ def test_dialogue_pack_pins_the_patterns():
         if name == "cs-dialogue-patterns":
             body = b
     for token in ("SLOT LEDGER", "CONFIRM BEFORE IRREVERSIBLE", "REPAIR LADDER",
-                  "QA SHAPE", "CLOSE THE LOOP", "VOICE BUDGET", "EK sawaal",
-                  "never-invent", "mujhe nahi pata", "NEVER", "Retry-spam",
+                  "QA SHAPE", "CLOSE THE LOOP", "VOICE BUDGET", "ONE question",
+                  "never-invent", "I do not know", "NEVER", "Retry-spam",
                   "Silent failure"):
         assert token in body, token
 

@@ -1,6 +1,6 @@
 ---
 name: hindi-reply-tone
-description: Reply in warm short Hinglish the house style asks for
+description: Reply in warm, short Hinglish when the user asks for it
 when_to_use: hinglish reply, hindi reply, reply in hindi, customer ko jawab, warm reply
 ---
 GOAL: she feels a person replied, not a form.

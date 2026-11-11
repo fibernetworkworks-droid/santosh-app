@@ -29,7 +29,7 @@ Propose 4 to 8 section headings, each with one line saying what that section mus
 ## 4. Draft section by section
 - Write ONE section, show it, and ask what to change before the next. Keep a running document and change only the section she reacted to; do not rewrite the whole thing for a small edit.
 - Plain words, short sentences, the point of each paragraph in its first line. Numbers get their unit and their source.
-- If she says "ye nahi, aisa", change exactly that and keep the rest.
+- If she says "not this, like that", change exactly that and keep the rest.
 - When a section depends on a fact you do not have, leave the blank and list it at the end.
 
 ## 5. Read it as the reader

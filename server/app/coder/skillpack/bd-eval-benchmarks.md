@@ -3,43 +3,47 @@ name: bd-eval-benchmarks
 description: Quality regression evals - public golden sets, scored runs
 when_to_use: benchmark models, compare two models fairly, evaluate answer quality, regression test the AI, golden set, score runs, is Hoola better now
 ---
-GOAL: "Hoola ab pehle se accha jawab deta hai?" - feel se nahi, SCORE se.
-Public datasets se golden set banao, har bade change ke baad wahi suite
-phir chalao. Score gira = regression, chhota sa bhi. Yeh skill quality
-regression ka meter hai; awesome-public-datasets (79k+ stars, topic-wise
-vetted open data) uski eent hain.
+GOAL: "Does Hoola answer better now than before?" - not by feel, by SCORE.
+Build a golden set from public datasets and run the same suite again after
+every big change. A lower score = a regression, however small. This skill
+is the meter for quality regression; awesome-public-datasets (79k+ stars,
+vetted open data by topic) is its building material.
 
-THE GOLDEN SET (jawab dataset se copy hote hain, khud se kabhi nahi):
-- SQuAD - Wikipedia reading-comprehension QA, 100k+ questions, context
-  + sawaal + sahi jawab dataset mein hi likha - QA suite ka material.
-- 20 Newsgroups - ~18,000 posts, 20 topics - classification suite.
-- IMDb - 50k labelled movie reviews - sentiment suite.
-- data.gov.in open APIs (crop prices, rainfall, sarkari stats) -
-  Hinglish numeric QA ka material; numbers sarkari, guessed nahi.
-- DataChallenges / Economics / Climate rows - jab suite ka topic wahan
-  milta hai. Har golden row ke saath source sheet mein hi rehta hai.
+THE GOLDEN SET (answers are copied from the dataset, never made up):
+- SQuAD - Wikipedia reading-comprehension QA, 100k+ questions; context +
+  question + right answer are written in the dataset itself - material
+  for the QA suite.
+- 20 Newsgroups - ~18,000 posts, 20 topics - the classification suite.
+- IMDb - 50k labelled movie reviews - the sentiment suite.
+- data.gov.in open APIs (crop prices, rainfall, government statistics) -
+  material for numeric QA; the numbers are official, not guessed.
+- DataChallenges / Economics / Climate rows - when the suite's topic is
+  found there. The source stays in the sheet beside every golden row.
 
-THE PIPELINE (sab existing doors):
-1. data_fetch(url=open-data API, fields=...) -> ds_id; page-table ho to
-   scrape_page; uska apna sheet ho to sheet_read.
+THE PIPELINE (all existing doors):
+1. data_fetch(url=open-data API, fields=...) -> ds_id; for a table on a
+   page use scrape_page; for the user's own sheet use sheet_read.
 2. sheet_create + sheet_append: columns input / expected / kind /
-   source. Source = dataset ka naam - traceable golden set.
-3. RUN: delegate_task (har worker 5-10 items, capped turns) se answers;
-   pure-computation suite seedha pylab se.
-4. SCORE: pylab (pandas/numpy, locked sandbox) - exact match, keyword
-   hit, numeric tolerance; result table PRINT karo. Score printed
-   output se quote hota hai, mental maths se kabhi nahi.
-5. THE LEDGER: sheet_append ek row = date / suite / n / score / app
-   version. Regression = same suite, score neeche vs pichhli row.
+   source. Source = the dataset's name - a traceable golden set.
+3. RUN: answers through delegate_task (5-10 items per worker, capped
+   turns); a pure-computation suite directly in pylab.
+4. SCORE: pylab (pandas / numpy, locked sandbox) - exact match, keyword
+   hit, numeric tolerance; PRINT the result table. A score is quoted from
+   printed output, never from mental maths.
+5. THE LEDGER: one sheet_append row = date / suite / n / score / app
+   version. Regression = same suite, score lower than the previous row.
 
-THE LAWS: chhota aur baar-baar (20-50 items) bada aur kabhi-kabhi se
-behtar; har bade change ke baad SAME suite; naya capability = naya
-suite, purana suite delete nahi (trend hi regression ka proof hai);
-suite ki source sheet hi suite ki truth hai.
+THE LAWS: small and often (20-50 items) beats big and rarely; the SAME
+suite after every big change; a new capability = a new suite, the old
+suite is not deleted (the trend is the proof of a regression); the
+suite's source sheet is the suite's truth.
 
-NEVER: invented golden answers (dataset hi truth hai); pass karne ke
-liye answers tune karna (teaching to the test - suite bekaar ho jata
-hai); printed output ke bina score bolna; uske private customer rows
-ko eval data banana (privacy - eval ka maidan public data hai); ek
-suite banakar "quality theek hai" kehna - suite tab tak zinda hai jab
-tak har change ke baad chal raha hai.
+NEVER: invented golden answers (the dataset is the truth); tune answers
+in order to pass (teaching to the test - the suite becomes useless);
+state a score without printed output; turn the user's
+private customer rows into eval data (privacy - evals run on public data);
+build one suite and say "quality is fine" - a suite is alive only while it runs after
+every change.
+
+ALSO ASKED AS (Hinglish asks this skill answers): quality regression ka eval
+suite banao, do model compare karo, Hoola pehle se behtar hai kya

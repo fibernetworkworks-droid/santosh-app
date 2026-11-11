@@ -3,34 +3,41 @@ name: ed-neovim-cockpit
 description: Neovim cockpit - modal grammar, buffers, key lane
 when_to_use: neovim, vim, terminal editor, vim commands, buffers, edit in vim
 ---
-GOAL: wo terminal me Neovim chala rahi hai - Hoola ke liye editor
-modal grammar ki bhasha seekhni hai, mouse ka rasta nahi hai.
-Awesome-neovim (rockerBOO; plugins, LSP, colorschemes ka curated
-catalog) syllabus hai - par driving hamesha operator ke key/type
-lanes se, ek action per turn.
+GOAL: the user is running Neovim in a terminal - Hoola has to speak
+the editor's modal grammar; there is no mouse route. Awesome-neovim
+(rockerBOO; a curated catalog of plugins, LSP and colorschemes) is the
+syllabus - but the driving always goes through the operator's key /
+type lanes, one action per turn.
 
-THE GRAMMAR (jo turn me Hoola bolegi, wo karegi):
-1. MODE pehle bolo: normal (navigate), insert (likhna), command (:)
-   - galat mode me type karna = editor me kachra; mode check karne
-   ka bharosa nahi, :h mode ya fresh output se confirm.
-2. BUFFERS/WINDOWS/TABS: :ls se buffers, :b<name> se jump, :w me save,
-   :q se band - ek window ek kaam. :q!/:w! jaise force wale sirf
-   ask_approval ke baad.
-3. TERMINAL LANE: :term / :make se test-build; output padho, phir
-   agla kadam. Lamba kaam terminal me, jawab printed output se.
-4. DIAGNOSTICS: LSP/spell ki galtiyan editor ke apne UI se - Hoola
-   unhe padhta hai, andaze se nahi batata.
-5. MACROS/SUBSTITUTE: repeat kaam :%s/old/new/gc (confirm ke saath)
-   ya macro record - bade badlav pehle chhote sample pe dikhao.
+THE GRAMMAR (what Hoola says in a turn, it does):
+1. Say the MODE first: normal (navigate), insert (write), command (:)
+   - typing in the wrong mode = garbage in the editor; do not trust
+   an assumed mode, confirm with :h mode or fresh output.
+2. BUFFERS / WINDOWS / TABS: buffers with :ls, jump with :b<name>,
+   save with :w, close with :q - one window, one job. Forced
+   commands such as :q! / :w! only after ask_approval.
+3. TERMINAL LANE: test / build with :term / :make; read the output,
+   then the next step. Long work goes in the terminal, the answer
+   comes from printed output.
+4. DIAGNOSTICS: LSP / spell errors come from the editor's own UI -
+   Hoola reads them, it does not report them from a guess.
+5. MACROS / SUBSTITUTE: repeated work with :%s/old/new/gc (with
+   confirm) or a recorded macro - show a big change on a small
+   sample first.
 
-THE LAWS: ek turn ek key-sequence; modal editor me "kahan ho" har
-turn ka pehla sawaal hai; file save ka faisla uska hai (Hoola kabhi
-akhead :w nahi dabaata jab tak usne na kaha ho); config files
-(init.lua/init.vim) padhna theek, likhna sirf ask_approval ke baad;
-terminal output ka printed hissa hi evidence hai.
+THE LAWS: one turn, one key-sequence; in a modal editor "where am I"
+is the first question of every turn; saving the file is the user's
+decision (Hoola never presses :w on its own unless the user said so);
+reading config files (init.lua / init.vim) is fine, writing them only
+after ask_approval; only the printed part of terminal output is
+evidence.
 
-NEVER: bina poochhe :q!/:w!/:e! (uska edited buffer uska kaam hai -
-discard irreversible hai); insert mode me akhead chhod ke jaana;
-mapping/plugin install bina ask_approval; macros bade file pe bina
-sample dikhae chalana; "ho gaya" bolna jab tak terminal/editor ka
-printed output na ho; vim ke bahar terminal ko editor samajhna.
+NEVER: :q! / :w! / :e! without asking (the user's edited buffer is
+their work - a discard is irreversible); walk away
+leaving it in insert mode; install a mapping / plugin without ask_approval; run a
+macro on a big file without showing a sample; say "done" until there
+is printed output from the terminal / editor; treat a terminal
+outside vim as the editor.
+
+ALSO ASKED AS (Hinglish asks this skill answers): vim mein file edit karo,
+neovim terminal se save karo, buffer band karo
