@@ -185,7 +185,9 @@ CAPS: dict[str, dict[str, Any]] = {
                          "Play health apps declaration; only health / fitness apps.", words=("health connect", "healthkit")),
     "ar": _c("AR (place things in the room)", "AR", "ok", "ok", ["CAMERA"], ["NSCameraUsageDescription"], "ARCore (SceneView)",
              "ARKit / RealityKit", "Needs an ARCore-supported phone.", words=("ar", "augmented")),
-    "three_d": _c("3D models", "3D", "ok", "ok", [], [], "SceneView / Filament", "SceneKit / RealityKit", "glTF models.",
+    "three_d": _c("3D models", "3D", "ok", "ok", [], [],
+                  "No 3D engine: a still picture of the 3D scene, rendered on Hoola's server, that floats and turns a little (Scene3D)",
+                  "- (nothing yet)", "Not a live 3D model you can spin freely; the design's 3D scene is shown as a moving picture.",
                   words=("3d model",)),
     # ---------------------------------------------------------------- money, sharing, store
     "upi_intent": _c("Pay by UPI app", "UPI se payment", "ok", "ok", [], ["LSApplicationQueriesSchemes: upi, phonepe, paytmmp, tez"],
@@ -215,6 +217,88 @@ CAPS: dict[str, dict[str, Any]] = {
     "crash_reports": _c("Crash reports", "crash report", "disclosure", "ok", [], [], "Firebase Crashlytics (no personal data)",
                         "Crashlytics", "Listed in the Data safety form.", words=()),
 }
+
+# v0.802 HONEST CAPS: what the app KIT really builds today, per platform, read from the kit code
+# (android/template/.../hoola/kit/*.kt, ios/template/Sources/Kit/*.swift, gen.py, prompts.py). "yes" = kit code exists that a
+# generated screen can use; "partial" = part of it (the note says which part); "no" = the built app does not have it. The store
+# columns above say what a store ALLOWS; this says what Hoola has BUILT - a plan never promises a "no".
+BUILT_VALUES = ("yes", "partial", "no")
+_Y, _P, _N = "yes", "partial", "no"
+_STORE_NO = "The store does not allow it; Hoola uses the allowed way instead."
+BUILT: dict[str, tuple[str, str, str]] = {      # id -> (android, ios, note when not yes)
+    "camera": (_Y, _Y, ""),
+    "photo_picker": (_Y, _Y, ""),
+    "media_full": (_N, _N, "Not built: the app uses the photo picker instead."),
+    "files_saf": (_P, _P, "Picking a document works; saving a file to the phone is not built yet."),
+    "all_files": (_N, _N, _STORE_NO),
+    "doc_scanner": (_N, _N, "Not built yet: a photo of the page can be attached instead."),
+    "barcode": (_Y, _Y, ""),
+    "ocr": (_N, _N, "Not built yet."),
+    "signature": (_Y, _Y, ""),
+    "screen_secure": (_N, _N, "Not built yet: screenshots are not blocked."),
+    "location_foreground": (_Y, _Y, ""),
+    "location_background": (_P, _P, "Only staff trip tracking during a shift they start (with a visible notice), "
+                                    "not all-day background location."),
+    "fgs_location": (_Y, _Y, ""),
+    "geofence": (_N, _N, "Not built yet: the location is saved, but nothing checks it against an area."),
+    "maps": (_Y, _Y, "Android shows the map in a web view (MapLibre); turn-by-turn opens Google / Apple Maps."),
+    "offline_maps": (_N, _N, "Not built yet: maps need the internet."),
+    "activity": (_N, _N, "Not built yet."),
+    "push_fcm": (_Y, _Y, "Android: instant push when she turns instant notifications on; otherwise a background check every so often."),
+    "local_reminders": (_N, _N, "Not built yet: notifications come only for updates from her server, not at a set time."),
+    "exact_alarm": (_N, _N, "Not built: Hoola never uses exact alarms."),
+    "background_sync": (_P, _P, "Updates are checked in the background; changes made offline are sent when the app is open again."),
+    "battery_exempt": (_N, _N, _STORE_NO),
+    "offline_db": (_P, _P, "The last data is kept and new entries wait in a queue until the internet is back; no full local database."),
+    "biometrics": (_Y, _Y, ""),
+    "passkeys": (_N, _N, "Not built yet: login is by phone OTP, email, Google or Apple."),
+    "keystore": (_Y, _Y, ""),
+    "app_integrity": (_N, _N, "Not built yet."),
+    "sms_retriever": (_N, _Y, "Android: the OTP is typed by hand (automatic OTP reading is not built yet); "
+                              "iPhone offers it from the message."),
+    "sms_read": (_N, _N, _STORE_NO),
+    "call_dialer": (_Y, _Y, ""),
+    "call_log": (_N, _N, _STORE_NO),
+    "call_record": (_N, _N, _STORE_NO),
+    "contacts_pick": (_Y, _Y, ""),
+    "contacts_read": (_N, _N, "Not built: the app lets her pick one contact instead."),
+    "phone_state": (_N, _N, "Not built yet."),
+    "accessibility": (_N, _N, _STORE_NO),
+    "overlay": (_N, _N, _STORE_NO),
+    "all_apps": (_N, _N, _STORE_NO),
+    "install_apps": (_N, _N, _STORE_NO),
+    "vpn": (_N, _N, "Not built."),
+    "device_admin": (_N, _N, "Not built: done by a device-management service, not by this app."),
+    "nfc": (_N, _N, "Not built yet."),
+    "bluetooth": (_N, _N, "Not built yet."),
+    "bluetooth_printer": (_N, _N, "Not built yet: receipts are a PDF she can share or print from another app."),
+    "usb": (_N, _N, "Not built yet."),
+    "wifi_info": (_N, _N, "Not built yet."),
+    "microphone": (_Y, _Y, ""),
+    "voice_notes": (_P, _P, "Voice notes are recorded and played; the note is not turned into text."),
+    "speech_to_text": (_P, _P, "Only the phone keyboard's own mic button; no voice input inside the app."),
+    "health_connect": (_N, _N, "Not built."),
+    "ar": (_N, _N, "Not built yet."),
+    "three_d": (_P, _N, "Android shows a still picture of the 3D scene that floats and turns a little; iPhone has nothing yet."),
+    "upi_intent": (_Y, _Y, ""),
+    "payment_gateway": (_P, _P, "Payment opens the gateway's own secure page in the browser, not the gateway's in-app SDK."),
+    "play_billing": (_N, _N, "Not built: Play Billing / StoreKit are not in the app (plans are paid through her gateway)."),
+    "share_sheet": (_Y, _Y, ""),
+    "deep_links": (_N, _N, "Not built yet: links open the website, not the app."),
+    "widgets": (_N, _N, "Not built yet."),
+    "in_app_update": (_P, _N, "Android: an update prompt from her Hoola server for preview builds (not Play In-App Updates); "
+                              "iPhone: not built, the App Store updates it."),
+    "in_app_review": (_Y, _Y, ""),
+    "calendar": (_Y, _Y, ""),
+    "printing": (_N, _N, "Not built yet: receipts and invoices are PDFs she can open and print elsewhere."),
+    "translation": (_N, _N, "Not built: the app's own words are translated when it is built; nothing is translated on the phone."),
+    "crash_reports": (_Y, _Y, "Hoola's own crash reports (CrashGuard), not Firebase Crashlytics."),
+}
+for _cid, _cap in CAPS.items():
+    _a, _i, _note = BUILT[_cid]
+    _cap["built"] = {"android": _a, "ios": _i}
+    _cap["built_note"] = _note
+BUILT_LABEL = {"yes": "Built", "partial": "Partly", "no": "Not yet"}
 
 PLAY_ORDER = {"ok": 0, "disclosure": 1, "declaration": 2, "restricted": 3, "hoola_never": 4}
 PLAY_LABEL = {"ok": "Theek", "disclosure": "Pehle batana + haan", "declaration": "Play form + review", "restricted": "Play nahi deta",
@@ -281,7 +365,8 @@ def check(ids: list[str]) -> dict[str, Any]:
         c = CAPS[cid]
         row = {"id": cid, "label": c["label"], "hi": c["hi"], "play": c["play"], "play_label": PLAY_LABEL[c["play"]],
                "ios": c["ios"], "ios_label": IOS_LABEL[c["ios"]], "android": c["android"], "plist": c["plist"], "lib": c["lib"],
-               "ios_lib": c["ios_lib"], "note": c["note"], "alt": c["alt"]}
+               "ios_lib": c["ios_lib"], "note": c["note"], "alt": c["alt"], "built": dict(c["built"]),
+               "built_note": c["built_note"]}
         rows.append(row)
         if c["play"] in ("restricted", "hoola_never"):
             alt = CAPS.get(c["alt"]) if c["alt"] else None
@@ -306,6 +391,48 @@ def usable(ids: list[str]) -> list[str]:
         if pick and pick in CAPS and pick not in out:
             out.append(pick)
     return out
+
+
+def _store_allows(c: dict[str, Any], plat: str) -> bool:
+    return c["play"] not in ("restricted", "hoola_never") if plat == "android" else c["ios"] != "not_possible"
+
+
+def gaps(ids: list[str]) -> list[dict[str, Any]]:
+    """v0.802 The wanted features the built app does NOT fully have on a platform the store allows (a store-refused one is
+    already said by check()['problems'] / ['notes']). Per row android / ios = yes | partial | no | n/a (store does not allow)."""
+    out: list[dict[str, Any]] = []
+    for cid in resolve(ids):
+        c = CAPS[cid]
+        row: dict[str, Any] = {"id": cid, "label": c["label"], "note": c["built_note"]}
+        short = False
+        for plat in ("android", "ios"):
+            if not _store_allows(c, plat):
+                row[plat] = "n/a"
+                continue
+            row[plat] = c["built"][plat]
+            short = short or row[plat] != "yes"
+        if short:
+            out.append(row)
+    return out
+
+
+def gaps_line(missing: list[dict[str, Any]]) -> str:
+    """One honest sentence for the chat: what the plan wants that this version of the app will not have."""
+    if not missing:
+        return ""
+    name = {"android": "Android", "ios": "iPhone"}
+    bits = []
+    for m in missing[:8]:
+        no = [p for p in ("android", "ios") if m.get(p) == "no"]
+        part = [p for p in ("android", "ios") if m.get(p) == "partial"]
+        if no and not part:
+            bits.append(m["label"] + (f" on {name[no[0]]}" if len(no) == 1 else ""))
+        elif part and not no:
+            bits.append(m["label"] + " (only partly" + (f" on {name[part[0]]}" if len(part) == 1 else "") + ")")
+        else:
+            bits.append(f"{m['label']} (partly on {name[part[0]]}, not on {name[no[0]]})")
+    more = f" and {len(missing) - 8} more" if len(missing) > 8 else ""
+    return "Not in this version yet: " + "; ".join(bits) + more + "."
 
 
 def counts() -> dict[str, int]:
