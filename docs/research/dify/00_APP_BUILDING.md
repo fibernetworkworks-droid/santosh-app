@@ -94,60 +94,40 @@ Plus workflow **triggers**: webhook, schedule, plugin events.
 - **Tracing** to outside tools (Langfuse / LangSmith / Opik / others) per app.
 - **Human input** forms that pause a run and wait for a person (in the web app or through a chat-app webhook).
 
-## 5. Hoola against all of this
+## 5. Hoola against all of this (CORRECTED 11 Nov: the first draft missed what is already built)
 
-Hoola is already most of Dify's ENGINE (model gateway, cost meter, knowledge base, MCP, approvals, workflows, crews,
-memory - established in the v0.521 read). The gap is the PRODUCT around it: **Hoola's AI works for HER; Dify lets
-her build an AI that works for HER CUSTOMERS.**
+The owner's correction was right: Dify's "AI app for her customers" is **already in Hoola**, under a different name -
+the **business AI Employee** (since v0.59) and the desks built on it. Checked in the code:
 
-| Dify | Hoola today | Gap |
+| Dify | Hoola (already built) | Where |
 |---|---|---|
-| Chat / agent app: her prompt + knowledge + tools, answering other people | The avatar answers only her (and her own Bahar channels). The App Sahayak architect **refuses** "AI chatbot" on purpose (`appmaker/architect.py:14`) because no engine builds one | **The main gap** |
-| Completion app (input form -> one answer) | Nothing she can publish | Gap |
-| Workflow / chatflow app | DHARA runs her workflows; not published for other people | Partial |
-| Agent Soul: draft, versions, restore, roster | AI Employees exist (hire / pause / leave) but their config is not a versioned, restorable object | Gap |
-| Generator: one sentence -> checked graph, invented tools refused before Apply | Architect (naksha) does this for **data apps** (checked spec, her tap per module); nothing for an AI app or a DHARA flow | Pattern exists, apply it |
-| Templates + trial before copying | Web templates (1 lakh) + App Studio idea library; no AI-app templates | Gap |
-| DSL import + dependency check | `dhara_dsl` import exists (v0.521); no dependency check | Small gap |
-| Web app with access modes + end users | Website visitor chat exists (v0.459) but **her reply is her tap**; no AI answering visitors | Gap |
-| Embed bubble on any website | Hoola sites have their own widgets; no embed for an outside site | Gap |
-| Per-app API keys + per-minute / hour / concurrent limits | App Sahayak has per-app keys for **data** APIs, none for AI | Gap |
-| App published as an MCP server | MCP doors only for Hoola's own tools (`/mcp/gamedesk`, the Kaan and Shilp doors), never for an app she builds | Gap |
-| Logs + feedback + annotate from the logs + hit history | Annotations served (v0.521); no per-app logs of other people's chats to correct from | Gap |
-| Monitoring (8 daily numbers) | Pillar L (`appmaker/ops.py`) measures data apps the same way; nothing for AI apps | Pattern exists |
-| Human input that pauses a run | Approval cards + DHARA approval pauses | **Have it** |
-| Rate limits per app | v0.546 ops alerts; no per-app AI quota | Gap |
+| Chat / agent app answering other people | Hoola answers customers **as the business's employee** on her own WhatsApp Business number (official Cloud API): only customer tools, always about that one customer, trust per duty, daily caps, her takeover, 24 h window, STOP respected, bookings, UPI link without moving money | `employee/inbox.py`, `employee/service.py` |
+| The app's config (prompt, role, rules) | Employee profile: role (290 roles), preset (clinic / shop / ISP...), about, hours, after-hours, job sheet, her rules, duties, trust | `employee/models.py`, `employee/roles.py` |
+| Knowledge-grounded answers + sources | Seva: answers ONLY from her Gyaan with source + confidence, clarify band, "unknown" never guessed -> handover; macros in 4 languages | `seva/service.py` (`answer`, `macros`) |
+| Logs -> "correct this answer" | Every customer question logged masked; unanswered ones grouped as **gaps** with "Jawab do" | `seva/service.py` `gaps` |
+| Annotation reply | Her approved answers served before retrieval (v0.521) | `gyaan/annotations.py` |
+| Monitoring | Seva numbers: first response / resolution, % within SLA, deflection, CSAT, top questions, morning note | `seva/service.py` `report` |
+| Human input that pauses | Refund / exception cards decided only by her tap (fingerprint for money) | `seva` exceptions, approval cards |
+| Voice app | Call Centre: her phone line answered from her APPROVED, VERSIONED script (her tap makes a version live), AI disclosure first, hand-over, call notes | `callcentre/` |
+| Agent-to-agent | Hoola Network: avatars talk to other businesses' avatars | `net/` |
+| Workflow app | DHARA workflows + DSL (v0.502 / v0.521) | `dhara` |
+| Data apps with AI around them | App Sahayak native apps + web apps, Pillars A-L, proof apps (v0.771) | `appmaker/` |
 
-### Things Hoola must do STRICTER than Dify (house rules)
-- An AI answering HER customers is a public change: publishing needs her tap, and no app may promise or move money,
-  take PIN / OTP / card numbers, or send WhatsApp outside the official API.
-- Every answer to a customer is checked by the same honesty rules as Hoola's own (`draftcheck`): no "booked / paid /
-  sent" unless a tool really did it.
-- What a visitor types is **data, not instructions** (the existing rule), so a published app cannot be talked into
-  her tools; the tools an app may use are a list she approves, read-only by default.
-- Each app's rupee cost is metered and capped before the call (the `usage.run_meter` / `mapsbill` pattern), so an
-  embed on a busy site cannot empty her credit.
-- Visitors' chats follow DPDP (consent line, delete on request, no training on them).
+So Hoola is not missing the product. What Dify has that Hoola does NOT (checked, small list):
 
-## 6. Proposed plan: HOOLA AI APPS (nothing built yet - needs her GO)
+1. **Website visitors answered by AI.** The website live chat is owner-reply-only ON PURPOSE (`site/livesite.py`: "the
+   agent never answers a customer on its own"); the WhatsApp employee does answer. A visitor-chat channel for the same
+   employee + Seva would be a decision for her, not a missing engine.
+2. **An embed bubble for a website Hoola did not build.**
+3. **API keys / an MCP server for her employee**, so her own software can ask it (with per-minute / per-hour /
+   concurrent limits).
+4. **More than one AI app per business.** `EmployeeProfile` is keyed on the tenant - one employee per business
+   (her internal AI Employees desks are separate). Dify lets one workspace run many apps.
+5. **Versions + restore for the employee's config.** The call-centre script is versioned; the employee profile is not.
+6. **One sentence -> a checked DHARA flow** (Dify's `workflow-generate`: plan -> parallel node builders -> tools she
+   lacks refused before Apply). The naksha does this for data apps only.
 
-Built on what exists (gyaan, the agent loop, `usage.run_meter`, Pillar J / K / L, the site and app keys), no Dify code.
+## 6. Plan
 
-- **D0 the app object**: an `ai_apps` table: kind (chat / agent / form / flow), a versioned **soul** (prompt, model,
-  knowledge sets, tool allow-list, opening line, suggested questions, input form, features), draft vs published
-  snapshots, restore. One test app ("ask my shop") end to end in the console.
-- **D1 the builder**: her one line -> a checked app spec (the naksha pattern: plan, then parts, tools she does not
-  have refused before Apply), preview chat inside the builder, her tap to publish.
-- **D2 publish**: a hosted chat page per app (link + QR, public or sign-in), an embed bubble for any website, a
-  WhatsApp Business number through the official Cloud API, per-app API keys with per-minute / hour / concurrent
-  limits, and an MCP server per app.
-- **D3 run and improve**: logs of every visitor chat, thumbs up / down, "correct this answer" straight from a log into
-  the annotation store (v0.521), the eight daily numbers, cost per app with a monthly cap, alerts into her chat.
-- **D4 proof**: three proof apps through the whole road, like v0.771 - a shop answering stock / price from her
-  catalogue, a clinic front desk that books through the clinic app's real slot rules, a school office answering
-  parents from its notices - each with trap questions it must refuse (another customer's order, a payment, a
-  made-up price).
-- **D5 templates**: AI-app templates by trade with a trial before copying, and import / export with a dependency check.
-
-Decisions only she can make before D2: whether customers' chats may use Claude / GLM (cost per chat), the default
-monthly cap per app, and whether an AI app may answer on her business WhatsApp number at all.
+No new product. If she wants any of the six above, each is a small addition to the existing employee / Seva / DHARA
+code, and items 1 and 2 need her decision first (an AI answering her website visitors is a public change).
