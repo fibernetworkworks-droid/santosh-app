@@ -3011,6 +3011,12 @@ async def run_turn(conversation_id: str, user_text: str, tenant_id: str | None =
         if _gr is None:
             return ""                  # this inbox row is already running / queued in this process: never twice
         _gtok = turnrun.CURRENT.set(_gr)
+    _tc_on = bool(getattr(get_settings(), "chat_turn_cost", True))
+    _tc_acc, _tc_tok, _tc_t0 = {"usd": 0.0, "calls": 0}, None, None
+    if _tc_on:                         # v0.775 CHAT JAISA: this turn's own rupees (turncost), shown in the Studio
+        from .. import usage as _usage
+        from ..db import now as _now
+        _tc_tok, _tc_t0 = _usage._TURN.set(_tc_acc), _now()
     try:
         return await _run_turn(conversation_id, user_text, tenant_id, voice, context, actor, place, client_id,
                                save_user)
@@ -3029,6 +3035,13 @@ async def run_turn(conversation_id: str, user_text: str, tenant_id: str | None =
             log.exception("even the crash reply failed")
             return ""
     finally:
+        if _tc_tok is not None:
+            from .. import turncost as _tcost, usage as _usage
+            try:
+                _usage._TURN.reset(_tc_tok)
+            except ValueError:
+                _usage._TURN.set(None)
+            _tcost.record(tenant_id, conversation_id, _tc_t0, _tc_acc)
         if _gr is not None:
             from . import turnrun
             turnrun.leave(_gr)

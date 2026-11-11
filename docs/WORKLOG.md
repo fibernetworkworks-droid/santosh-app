@@ -2834,3 +2834,9 @@ templates, batch, personalise, translate with code checks, trash/restore, duplic
 overview, status.connected). studio.spec_for draws the brand colour. Tests: test_v0772_interactive_hub.py (10) +
 rewritten browser walk in test_v0747 (real Chromium via HOOLA_CHROMIUM). Not built and said on the page: tables,
 rupee meter, share links, AI mark, GPU-backed apps, public API. No credentials in this entry.
+
+---
+Task ID: v0.775.0 CHAT JAISA (L1)
+Task: owner "GO L1" - Lovable-grade Studio chat (live stream, soft words, thinking, past-tense steps, Details, rupees, queue, attachments).
+Work Log: webstudio.js thread rewritten on HoolaStream; turncost + usage.turn_meter + /costs; 5 new tests + older Studio suites green; re-versioned 0.771 -> 0.775 (other sessions took 0.771-0.774).
+Stage Summary: pushed; server deploy only (no APK needed). Next: L2 TEEN MODE on her GO.

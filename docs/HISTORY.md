@@ -690,3 +690,26 @@ live model; the phone-width layout was checked in the design prototype, not in t
 REBASE PROTOCOL: built as 0.772.0; main took 0.772 and 0.773 meanwhile — merged, both kept, shipped as 0.774.0
 (pubspec 0.774.0+773, console stamps 0.774.0, pins swept). Mera PC freeze respected: nothing in `server/app/pc/`,
 `desktop/`, `lib/` touched. Server + console only; old APKs keep working.
+
+## v0.775.0 CHAT JAISA (built as 0.771; L1 of docs/LOVABLE_STUDIO_PLAN.md, owner: "GO L1")
+The Web Studio site chat now works like Lovable's:
+- LIVE: `webstudio.html` loads `stream.js`; the per-site thread opens `/api/conversations/{id}/events?live=1` (HoolaStream) - reply_start /
+  delta / reply_end go through HoolaStream.Pacer into HoolaMD.Live({soft:true}) so each new word fades in out of a soft focus; step / think /
+  typing / message events drive the work card. Polling stays as the fallback (1.5 s when the stream is down, 4 s safety read while a turn runs).
+- THINKING: a think event shows a shimmering "Thinking..." (1.8 s sweep); the finished turn says "Thought for Ns".
+- VERBS: a running step reads present tense, a finished one past tense (`PAST` map in webstudio.js; a test proves every first -ing word of
+  agent/labels_en.py is covered). Applies to the site build activity steps too (test_v0649 pin moved to "Planned three designs").
+- COST: `usage.turn_meter` (a TURN contextvar beside the run meter) counts every model call of a chat turn; `santosh.run_turn` writes one
+  `turn_costs` row (app/turncost.py, registered in init_db + ensure_table, newest 400 per chat kept; switch `chat_turn_cost`);
+  GET /api/conversations/{id}/costs gives start / end / calls / usd / inr. The turn head reads "Thought for 3s · Worked for 42s · 5 steps · Rs 3.10".
+- DETAILS: a button per answer opens VIEW 'details' in the right pane - Timeline (each step, its clock time and duration) and Changes (versions
+  made by that answer, each with Before / after through the existing compare view).
+- QUEUE + STOP: Stop on the work card (POST /stop); a message sent while Hoola works waits greyed at the bottom ("Runs after this step",
+  Interrupt) and moves into the thread when its turn starts.
+- ATTACH: paperclip, drag-drop and pasted pictures upload through /api/conversations/{id}/files; a paste over 1,500 chars becomes a chip
+  ("Pasted text · 121 lines") sent as a .txt file; files ride the message (`files`).
+- SCROLL: her new message scrolls to the top of the view; the stream never yanks her down; "Latest" appears only after she scrolls up.
+- Found while testing: `.jump / .tray / .livebox` had display rules that beat the `hidden` attribute (the Latest button covered a chip) - fixed.
+Tests: test_v0775_chat_jaisa.py (5, incl. a Playwright walk: thinking shimmer, queued bubble, paste chip, soft-fade spans, past tense,
+Rs line, Details timeline) + the older Studio suites green (v0649 / v0655 / v0663 / v0664 / v0667 / v0669 / v0671 / v0707, routines, v0657).
+NOT VERIFIED live: the first real Studio turn on her server (the browser walk uses a scripted turn).
