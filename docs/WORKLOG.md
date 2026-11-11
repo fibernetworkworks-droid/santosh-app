@@ -2826,3 +2826,8 @@ Task ID: v0.773.0 HOOLA CODE PHASE 1 (built as 0.768, re-versioned twice on merg
 Ask: GO PHASE 1 (docs/HOOLA_CODE_WEB_PLAN.md) + mid-build "create a separate page with its own side bar for Hoola Code".
 Built: /console/code (hoolacode.html / hoolacode.js), code.js rewritten (three zones, folded steps, rail cards, queue take-back, menus, All sessions), devsahayak rename / archive / delete / drop_note + routes; typing-wiped-by-refresh bug and the rotating ring fixed; 8 tests incl. 4 browser walks.
 Deploy: vps-ops deploy (server-only; no new pip, two nullable columns self-heal).
+
+Task ID: v0.774.0 HOOLA CODE PHASE 2
+Ask: GO PHASE 2 (review and the pull request).
+Built: Changes pane + Compare against, line comments riding the next message, answer continues the session, own review card, per-PR auto-fix, archive after merge; 10 tests incl. 3 browser walks.
+Deploy: vps-ops deploy (server-only; no new pip; two nullable columns self-heal).
