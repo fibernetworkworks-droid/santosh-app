@@ -72,7 +72,18 @@
     reload: '<path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5"/>', globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/>',
     idea: '<path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9V16h7v-2.1A6 6 0 0 0 12 3z"/>', sel: '<path d="M4 4l7 17 2-7 7-2z"/>',
     tpl: '<rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="3" width="8" height="8" rx="2"/><rect x="3" y="13" width="8" height="8" rx="2"/><rect x="13" y="13" width="8" height="8" rx="2"/>',
-    spark: '<path d="M12 3l2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5z"/>', stop: '<rect x="6" y="6" width="12" height="12" rx="2"/>'};
+    spark: '<path d="M12 3l2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5z"/>', stop: '<rect x="6" y="6" width="12" height="12" rx="2"/>',
+    card: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M7 15h3"/>', doc: '<path d="M7 3h7l5 5v13H7z"/><path d="M14 3v5h5M10 13h6M10 17h6"/>',
+    book: '<path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z"/><path d="M5 17a3 3 0 0 1 3-3h11"/>', box: '<path d="M3 7l9-4 9 4v10l-9 4-9-4z"/><path d="M3 7l9 4 9-4M12 11v10"/>',
+    tag: '<path d="M3 12V4h8l10 10-8 8z"/><circle cx="7.5" cy="8.5" r="1.3"/>', truck: '<path d="M3 6h11v10H3zM14 9h4l3 3v4h-7"/><circle cx="7" cy="18" r="1.8"/><circle cx="17" cy="18" r="1.8"/>',
+    rule: '<path d="M4 6h16M4 12h10M4 18h7"/><path d="M16 16l2 2 4-4"/>', chart: '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
+    plan: '<path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/>',
+    looks: '<circle cx="12" cy="12" r="9"/><path d="M12 3v18M3 12h9"/>', screens: '<rect x="3" y="4" width="8" height="16" rx="2"/><rect x="13" y="4" width="8" height="16" rx="2"/>',
+    play: '<path d="M7 4l12 8-12 8z"/>', android: '<rect x="5" y="9" width="14" height="10" rx="2"/><path d="M8 9a4 4 0 0 1 8 0M8 5l1.5 2M16 5l-1.5 2"/>',
+    apple: '<path d="M16 3c-1.5.2-3 1.4-3 3 1.6.1 3-1.2 3-3zM12 7c-2-1-6-.5-6 4.5 0 4 2.5 9 4.5 8 .8-.4 1.2-.4 2 0 2 1 4.5-4 4.5-6.5-2-1-2.5-4 0-5.5-1.5-2-3.5-1.5-5-.5z"/>',
+    store: '<path d="M4 9l1-5h14l1 5M4 9v11h16V9M4 9h16M9 20v-6h6v6"/>', data: '<ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/>',
+    biz: '<path d="M3 8h18v12H3zM8 8V5h8v3M3 13h18"/>', heart: '<path d="M3 12h4l2-5 4 10 2-5h6"/>', gear: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/>'};
+  const LANG = {hinglish: 'Hinglish', en: 'English', hi: 'Hindi', mr: 'Marathi', gu: 'Gujarati', ta: 'Tamil', te: 'Telugu', kn: 'Kannada', ml: 'Malayalam', bn: 'Bengali', pa: 'Punjabi', or: 'Odia', ur: 'Urdu'};
   const ico = (k, n = 18) => `<svg width="${n}" height="${n}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[k] || ''}</svg>`;
   const tick = `<span class="tick" aria-hidden="true">${ico('check', 11)}</span>`;
   const pill = (t, c) => `<span class="pill ${c || ''}">${esc(t)}</span>`;
@@ -131,6 +142,7 @@
   /* ---------- state ---------- */
   const MODE_KEY = 'hoola.as.mode', STAR_KEY = 'hoola.as.star';
   const convKey = id => 'hoola.as.conv.' + id;
+  const VIEW_IC = {plan: 'plan', looks: 'looks', screens: 'screens', prototype: 'play', android: 'android', iphone: 'apple', store: 'store', data: 'data', business: 'biz', health: 'heart', settings: 'gear'};
   const VIEWS = [['plan', 'Plan'], ['looks', 'Looks'], ['screens', 'Screens'], ['prototype', 'Prototype'], '|',
     ['android', 'Android'], ['iphone', 'iPhone'], ['store', 'Store'], '|', ['data', 'Data'], ['business', 'Business'],
     ['health', 'Health'], ['settings', 'Settings']];
@@ -443,25 +455,34 @@
   }
   function viewsBar() {
     return `<div class="ptop"><nav class="views" aria-label="Views">${VIEWS.map(x => x === '|' ? '<span class="vsep" aria-hidden="true"></span>'
-      : `<button type="button" data-view="${x[0]}" ${VIEW === x[0] ? 'aria-current="page"' : ''}>${esc(x[0] === 'looks' && S(CUR.status) === 'looks' && L(CUR.looks).length ? 'Looks · pick one' : x[1])}</button>`).join('')}</nav></div>`;
+      : `<button type="button" data-view="${x[0]}" ${VIEW === x[0] ? 'aria-current="page"' : ''}>${ico(VIEW_IC[x[0]] || 'grid', 15)}<span>${esc(x[0] === 'looks' && S(CUR.status) === 'looks' && L(CUR.looks).length ? 'Looks · pick one' : x[1])}</span>${x[0] === 'looks' && S(CUR.status) === 'looks' && L(CUR.looks).length ? '<i class="vdot" aria-hidden="true"></i>' : ''}</button>`).join('')}</nav></div>`;
   }
   async function drawPane() {
     const pane = $('#asPane'); if (!pane || !CUR) return;
     const my = ++PANE_TOKEN;
+    if (pane.dataset.view !== VIEW) { pane.dataset.view = VIEW; pane.dataset.fresh = '1'; }   // motion once per page, never on a redraw
     const keep = pane.querySelector('.pbody')?.scrollTop || 0;
     let inner;
     try { inner = await (PANES[VIEW] || PANES.plan)(CUR); }
     catch (e) { inner = `<div class="pbody"><div class="callout bad">${esc(e.message)}</div></div>`; }
     if (my !== PANE_TOKEN || !$('#asPane')) return;
+    const fresh = pane.dataset.fresh === '1'; delete pane.dataset.fresh;
     pane.innerHTML = viewsBar() + inner;
-    const pb = pane.querySelector('.pbody'); if (pb && keep) pb.scrollTop = keep;
+    const pb = pane.querySelector('.pbody'); if (pb && keep && !fresh) pb.scrollTop = keep;
+    if (pb && fresh) pb.classList.add('pin');
     paintImgs(pane);
     pane.querySelectorAll('[data-qr]').forEach(el => { el.innerHTML = qrSvg(el.dataset.qr); el.removeAttribute('data-qr'); });
   }
   const B = (k, label, cls = '', extra = '') => `<button class="b ${cls}" type="button" data-act="${k}"${extra}>${label}</button>`;
   const P = (inner, cls = '') => `<div class="pbody ${cls}">${inner}</div>`;
-  const head = (title, right = '') => `<div class="as-row"><h3 style="flex:1">${title}</h3>${right}</div>`;
+  // one header for every pane: title, a plain line under it, controls on the right (all aligned on one line)
+  const head = (title, right = '', sub = '') => `<header class="phd"><div class="pht"><h2>${title}</h2>${sub ? `<p>${sub}</p>` : ''}</div>${right ? `<div class="pha">${right}</div>` : ''}</header>`;
+  const ph = (title, right = '') => `<div class="pnh"><b>${title}</b>${right}</div>`;
   const emptyNote = t => `<div class="callout">${t}</div>`;
+  const plural = (n, one, many) => `${N(n).toLocaleString('en-IN')} ${N(n) === 1 ? one : many || one + 's'}`;
+  // the build runner's reason, readable: no setting names or file names in brackets, said once, ends with a full stop
+  const iosWhy = w => { let t = S(w).replace(/\s*\([^()]*\)/g, '').replace(/\s+([.:,])/g, '$1').replace(/[.:]+$/, '').trim();
+    return t ? (/mac/i.test(t) ? '' : 'iPhone apps compile on a Mac. ') + t + '.' : 'iPhone apps compile on a Mac, and your GitHub builds repo with the iPhone workflow is not set up yet.'; };
   const kv = o => `<dl class="kv">${Object.entries(o).filter(([, x]) => S(x)).map(([k, x]) => `<dt>${esc(k)}</dt><dd>${esc(x)}</dd>`).join('')}</dl>`;
   const phone = (src, alt, cls = '', on = false) => `<div class="as-ph ${cls}${on ? ' on' : ''}">${src ? imgTag(src, alt) : `<span class="wait">${esc(alt)}</span>`}</div>`;
 
@@ -474,32 +495,32 @@
       const tables = L(bp.tables || bp.data).map(t => typeof t === 'string' ? {name: t} : M(t));
       const roles = L(bp.roles).map(r => typeof r === 'string' ? r : S(M(r).label || M(r).name || M(r).key));
       const feats = L(bp.features || bp.phone).map(f => M(f));
-      return P(`${head('The plan', open ? pill('Waiting for your Haan', 'v') : pill('Plan agreed', 'ok'))}
+      return P(`${head('The plan', open ? pill('Waiting for your OK', 'v') : pill('Plan agreed', 'ok'), 'Every screen, the main flow and the rules the app keeps')}
         ${S(M(p.scope).request) || S(v.brief) ? `<div class="callout">${esc(S(M(p.scope).request) || S(v.brief))}</div>` : ''}
-        <div class="col2"><div class="panel"><b>Screens · ${scr.length - DROP.size}</b>
+        <div class="col2"><div class="panel">${ph(`Screens <span class="cnt">${scr.length - DROP.size}</span>`)}
           <div class="chipset">${scr.map(s => open ? `<button type="button" data-drop="${esc(S(s.id))}" aria-pressed="${DROP.has(S(s.id))}" title="${esc(S(s.design))}">${esc(S(s.label))}${s.tab ? ' ·' : ''}</button>` : `<span title="${esc(S(s.design))}">${esc(S(s.label))}</span>`).join('')}</div>
           <span class="mut sm">${open ? 'Tap a screen to drop it (main tabs and login always stay). ' : ''}Privacy, delete-account and other legal screens are added by code${L(p.code_screens).length ? `: ${esc(L(p.code_screens).map(c => S(c.label)).join(', '))}` : ''}.</span></div>
-          <div class="panel">${L(p.flow).length ? `<b>Main flow</b><span class="sm">${esc(L(p.flow).map(x => lab[S(x)] || S(x)).join(' → '))}</span>` : ''}
-            ${L(p.tabs).length ? `<b>Tabs</b><span class="sm">${esc(L(p.tabs).map(x => lab[S(x)] || S(x)).join(' · '))}</span>` : ''}
-            ${L(p.rules).length ? `<b>Rules</b><ul class="sm" style="margin:0;padding-left:18px">${L(p.rules).map(r => `<li>${esc(r)}</li>`).join('')}</ul>` : ''}
-            ${v.field_label || v.goal_label ? `<b>App type</b><span class="sm">${esc([S(v.field_label), S(v.goal_label), S(v.style_label)].filter(Boolean).join(' · '))}</span>` : ''}</div></div>
-        ${tables.length || roles.length || feats.length ? `<div class="col2">${tables.length ? `<div class="panel"><b>Data</b><div class="chipset">${tables.map(t => `<span>${esc(S(t.label || t.name || t.key))}</span>`).join('')}</div></div>` : ''}
-          ${roles.length || feats.length ? `<div class="panel">${roles.length ? `<b>Who uses it</b><div class="chipset">${roles.map(r => `<span>${esc(r)}</span>`).join('')}</div>` : ''}
-            ${feats.length ? `<b>Phone features</b><div class="chipset">${feats.map(f => `<span>${esc(S(f.label || f.name || f.key))}</span>`).join('')}</div>` : ''}</div>` : ''}</div>` : ''}
-        ${qs.length ? `<form class="panel as-form" data-form="answers"><b>${qs.length === 1 ? 'One question' : `${qs.length} questions`}</b>
+          <div class="panel">${L(p.flow).length ? `<h4 class="psub">Main flow</h4><span class="sm">${esc(L(p.flow).map(x => lab[S(x)] || S(x)).join(' → '))}</span>` : ''}
+            ${L(p.tabs).length ? `<h4 class="psub">Tabs</h4><span class="sm">${esc(L(p.tabs).map(x => lab[S(x)] || S(x)).join(' · '))}</span>` : ''}
+            ${L(p.rules).length ? `<h4 class="psub">Rules</h4><ul class="sm" style="margin:0;padding-left:18px">${L(p.rules).map(r => `<li>${esc(r)}</li>`).join('')}</ul>` : ''}
+            ${v.field_label || v.goal_label ? `<h4 class="psub">App type</h4><span class="sm">${esc([S(v.field_label), S(v.goal_label), S(v.style_label)].filter(Boolean).join(' · '))}</span>` : ''}</div></div>
+        ${tables.length || roles.length || feats.length ? `<div class="col2">${tables.length ? `<div class="panel">${ph('Data')}<div class="chipset">${tables.map(t => `<span>${esc(S(t.label || t.name || t.key))}</span>`).join('')}</div></div>` : ''}
+          ${roles.length || feats.length ? `<div class="panel">${roles.length ? `<h4 class="psub">Who uses it</h4><div class="chipset">${roles.map(r => `<span>${esc(r)}</span>`).join('')}</div>` : ''}
+            ${feats.length ? `<h4 class="psub">Phone features</h4><div class="chipset">${feats.map(f => `<span>${esc(S(f.label || f.name || f.key))}</span>`).join('')}</div>` : ''}</div>` : ''}</div>` : ''}
+        ${qs.length ? `<form class="panel as-form" data-form="answers">${ph(qs.length === 1 ? 'One question' : `${qs.length} questions`)}
           ${qs.map((q, i) => `<label>${esc(q)}<input name="${i}" maxlength="300"></label>`).join('')}
           <div class="as-row"><button class="b" type="submit">Save answers</button></div></form>` : ''}
-        ${open ? `<div class="as-row">${B('plan', `${ico('check', 15)}Haan, make 3 looks`, 'pri')}<span class="mut sm">Want changes? Write them in the chat on the left.</span></div>` : ''}`);
+        ${open ? `<div class="as-row">${B('plan', `${ico('check', 15)}Approve plan · make 3 looks`, 'pri')}<span class="mut sm">Want changes? Write them in the chat on the left.</span></div>` : ''}`);
     },
     async looks(v) {
       const looks = L(v.looks), st = S(v.status);
       if (!looks.length) return P(head('Three looks of your Home screen') + (st === 'looks' || st === 'planned'
-        ? `${st === 'looks' ? '' : emptyNote('Say Haan on the plan first; then three looks are drawn.')}<div class="looks">${[1, 2, 3].map(i => `<div class="lk">${phone('', st === 'looks' ? 'Drawing look ' + i + '…' : 'Look ' + i, 'md')}</div>`).join('')}</div>`
+        ? `${st === 'looks' ? '' : emptyNote('Approve the plan first; then three looks are drawn.')}<div class="looks">${[1, 2, 3].map(i => `<div class="lk">${phone('', st === 'looks' ? 'Drawing look ' + i + '…' : 'Look ' + i, 'md')}</div>`).join('')}</div>`
         : emptyNote('The looks were made earlier. Your chosen look is now in Screens.')));
       const can = st === 'looks';
-      return P(`${head(`Pick a look for ${esc(name(v))}`, '<span class="mut sm">Each one is a real Android screenshot</span>')}
+      return P(`${head(`Pick a look for ${esc(name(v))}`, '', 'Each one is a real Android screenshot of your Home screen')}
         <div class="looks">${looks.map(l => { const on = v.chosen_look != null && N(v.chosen_look) === N(l.i);
-          return `<div class="lk${on ? ' on' : ''}"><div class="as-row" style="width:100%"><b style="flex:1">Look ${N(l.i) + 1} · ${esc(S(l.label) || S(l.style))}</b>${on ? pill('Chosen', 'v') : ''}</div>
+          return `<div class="lk${on ? ' on' : ''}"><div class="lkh"><b>Look ${N(l.i) + 1} · ${esc(S(l.label) || S(l.style))}</b>${on ? pill('Chosen', 'ok') : ''}</div>
           ${phone(M(l.shots).android ? shot(v.id, M(l.shots).android) : '', 'Look ' + (N(l.i) + 1), 'md')}
           ${M(l.art).concept ? `<span class="mut sm" style="text-align:center">${esc(S(M(l.art).concept))}</span>` : ''}
           <div class="sw">${L(l.colors).map(HEX).filter(Boolean).map(c => `<i style="background:${c}"></i>`).join('')}</div>
@@ -512,14 +533,14 @@
       const total = N(b.total), done = N(b.done), suf = PLAT === 'ios' ? '-ios.jpg' : PLAT === 'dark' ? '-android-alt.jpg' : '-android.jpg';
       const canOk = st === 'ready' && !L(ch.blocking).length && S(v.hash);
       const img = s => S(s.state) === 'done' ? (PLAT === 'android' && S(s.thumb) ? shot(v.id, S(s.thumb)) : shot(v.id, S(s.key) + suf)) : '';
-      return P(`${head(`Screens · ${done} of ${total} designed`, `<div class="seg" role="group" aria-label="Platform">${[['android', 'Android'], ['ios', 'iPhone'], ['dark', 'Dark']].map(([k, n]) => `<button type="button" data-plat="${k}" aria-pressed="${PLAT === k}">${n}</button>`).join('')}</div>
-          ${v.approved ? pill('Design approved', 'ok') : B('approve', `${ico('lock', 15)}Design pakka`, 'pri', canOk ? '' : ' disabled title="Ready when every screen is designed and no check is blocking"')}`)}
+      return P(`${head(`Screens`, `<div class="seg" role="group" aria-label="Platform">${[['android', 'Android'], ['ios', 'iPhone'], ['dark', 'Dark']].map(([k, n]) => `<button type="button" data-plat="${k}" aria-pressed="${PLAT === k}">${n}</button>`).join('')}</div>
+          ${v.approved ? pill('Design approved', 'ok') : B('approve', `${ico('lock', 15)}Approve design`, 'pri', canOk ? '' : ' disabled title="Ready when every screen is designed and no check is blocking"')}`, `${done} of ${total} designed · tap a screen to see it large`)}
         ${pages.map(pg => `<div class="as-page">${esc(S(pg.title))}</div><div class="sgrid">${L(pg.sections).map(s => {
           const state = S(s.state), lbl = state === 'building' ? 'Designing now…' : state === 'fixing' ? 'Fixing…' : state === 'done' ? S(s.label) : 'Waiting';
           return `<div class="scrn" data-zoom="${state === 'done' ? esc(img(s).replace('thumb/', '')) : ''}">${phone(img(s), lbl, '', state === 'building' || state === 'fixing')}
             <span class="cap">${state === 'done' ? tick : state === 'building' || state === 'fixing' ? '<span class="spin" aria-hidden="true"></span>' : ''}${esc(S(s.label))}</span></div>`; }).join('')}</div>`).join('')}
-        ${M(b.overview)[PLAT === 'dark' ? 'android-alt' : PLAT] ? `<div class="panel"><b>All screens on one sheet</b><img data-src="${esc(shot(v.id, M(b.overview)[PLAT === 'dark' ? 'android-alt' : PLAT]))}" alt="Overview of every screen" style="width:100%;border-radius:12px"></div>` : ''}
-        ${ch.passed != null || L(ch.blocking).length || L(ch.warnings).length ? `<div class="panel"><div class="as-row"><b style="flex:1">Checks</b>${pill(`${L(ch.blocking).length} blocking`, L(ch.blocking).length ? 'bad' : 'ok')}${L(ch.warnings).length ? pill(`${L(ch.warnings).length} notes`, 'warn') : ''}${N(ch.blanks) ? pill(`${N(ch.blanks)} blanks to fill`, 'warn') : ''}</div>
+        ${M(b.overview)[PLAT === 'dark' ? 'android-alt' : PLAT] ? `<div class="panel">${ph('All screens on one sheet')}<img data-src="${esc(shot(v.id, M(b.overview)[PLAT === 'dark' ? 'android-alt' : PLAT]))}" alt="Overview of every screen" style="width:100%;border-radius:12px"></div>` : ''}
+        ${ch.passed != null || L(ch.blocking).length || L(ch.warnings).length ? `<div class="panel">${ph('Checks', `<span class="pills">${pill(`${L(ch.blocking).length} blocking`, L(ch.blocking).length ? 'bad' : 'ok')}${L(ch.warnings).length ? pill(`${L(ch.warnings).length} notes`, 'warn') : ''}${N(ch.blanks) ? pill(`${N(ch.blanks)} blanks to fill`, 'warn') : ''}</span>`)}
           ${L(ch.blocking).concat(L(ch.warnings)).slice(0, 10).map(x => `<span class="sm">${esc([S(M(x).screen), S(M(x).text)].filter(Boolean).join(': '))}</span>`).join('')}</div>` : ''}`);
     },
     async prototype(v) {
@@ -527,60 +548,59 @@
       if (!url || !N(v.version)) return P(head('Prototype') + emptyNote('The tap-through prototype appears once the first version of the design is ready.'));
       const frame = DEV === 'tablet' ? `<div class="as-tab"><iframe title="Prototype of ${esc(name(v))}" sandbox="allow-scripts allow-forms" referrerpolicy="no-referrer" src="${esc(url)}"></iframe></div>`
         : `<div class="as-ph lg"><iframe title="Prototype of ${esc(name(v))}" sandbox="allow-scripts allow-forms" referrerpolicy="no-referrer" src="${esc(url)}"></iframe></div>`;
-      return `<div class="ptop" style="border-top:0"><span class="mut sm">Tap through the app like a customer. Nothing here is saved.</span><span class="sp"></span>
-          <div class="seg" role="group" aria-label="Device"><button type="button" data-dev="phone" aria-pressed="${DEV === 'phone'}" aria-label="Phone">${ico('phone', 16)}</button><button type="button" data-dev="tablet" aria-pressed="${DEV === 'tablet'}" aria-label="Tablet">${ico('tab', 16)}</button></div>
-          <a class="b sm" href="${esc(url)}" target="_blank" rel="noopener noreferrer">${ico('ext', 14)}Open in a new tab</a></div>
-        <div class="stage" style="gap:40px;align-items:flex-start;flex-wrap:wrap">${frame}
-          <div style="display:flex;flex-direction:column;gap:12px;max-width:260px"><b>Try it on your own phone</b><span class="mut sm">Scan with your phone camera: the same prototype opens in your phone's browser. Every screen links like the real app.</span>
-          <div class="qr" data-qr="${esc(url)}"></div><span class="mut sm">Version ${N(v.version)}</span></div></div>`;
+      return P(`${head('Prototype', `<div class="seg" role="group" aria-label="Device"><button type="button" data-dev="phone" aria-pressed="${DEV === 'phone'}" aria-label="Phone">${ico('phone', 16)}</button><button type="button" data-dev="tablet" aria-pressed="${DEV === 'tablet'}" aria-label="Tablet">${ico('tab', 16)}</button></div>
+          <a class="b" href="${esc(url)}" target="_blank" rel="noopener noreferrer">${ico('ext', 14)}Open in a new tab</a>`, 'Tap through the app like a customer. Nothing here is saved.')}
+        <div class="stage as-stage">${frame}
+          <div class="panel as-qrp">${ph('Try it on your own phone')}<span class="mut sm">Scan with your phone camera: the same prototype opens in your phone's browser. Every screen links like the real app.</span>
+          <div class="qr" data-qr="${esc(url)}"></div>${pill(`Version ${N(v.version)}`, 'v')}</div></div>`);
     },
     async android(v) {
       const a = await api('GET', `/api/apps/${enc(v.id)}/android`);
       const st = S(a.status), qa = M(a.qa), apk = M(a.apk), act = M(v.activity);
-      if (!v.approved && !st) return P(head('Android app') + emptyNote(`The real Android app is built from the approved design. Finish the screens and tap <b>Design pakka</b> first.`) + `<div>${B('to-screens', 'Go to Screens')}</div>`);
+      if (!v.approved && !st) return P(head('Android app', '', 'Built in Kotlin from the approved design') + emptyNote(`The real Android app is built from the approved design. Finish the screens and tap <b>Approve design</b> first.`) + `<div>${B('to-screens', 'Go to Screens')}</div>`);
       const steps = [['Write screens', ['writing'].includes(st), ['building', 'fixing', 'ready', 'zip'].includes(st)],
         ['Compile', st === 'building' || (st === 'fixing' && !qa.ran), ['ready', 'zip'].includes(st)],
         ['Phone check', st === 'fixing' && qa.ran, st === 'ready' && qa.ran],
         ['APK ready', false, st === 'ready' && !!apk.file]];
       const andSteps = S(act.job) === 'android' ? L(act.steps) : [];
-      return P(`${head(`Android app${N(a.build) ? ` · build ${N(a.build)}` : ''}`, BUILDING.includes(st) ? pill(S(a.now) ? 'Building' : 'Working', 'v') : st === 'ready' ? pill('Ready', 'ok') : st === 'failed' ? pill('Needs attention', 'bad') : st === 'zip' ? pill('Project ready', 'ok') : '')}
-        ${st ? `<div class="pipe">${steps.map(([n, run, ok]) => `<div class="pp ${ok ? 'ok' : run ? 'run' : st === 'failed' ? '' : ''}"><b>${ok ? tick : run ? '<span class="spin" aria-hidden="true"></span>' : ''}${n}</b><span>${ok ? 'done' : run ? 'now' : '—'}</span></div>`).join('')}</div>` : ''}
+      return P(`${head(`Android app${N(a.build) ? ` · build ${N(a.build)}` : ''}`, BUILDING.includes(st) ? pill(S(a.now) ? 'Building' : 'Working', 'v') : st === 'ready' ? pill('Ready', 'ok') : st === 'failed' ? pill('Needs attention', 'bad') : st === 'zip' ? pill('Project ready', 'ok') : '', 'Built in Kotlin from the approved design, then opened on a phone before you get it')}
+        ${st ? `<div class="pipe">${steps.map(([n, run, ok]) => `<div class="pp ${ok ? 'ok' : run ? 'run' : ''}"><i class="ppn" aria-hidden="true">${ok ? tick : run ? '<span class="spin"></span>' : ''}</i><b>${n}</b><span>${ok ? 'Done' : run ? 'Working now' : 'Waiting'}</span></div>`).join('')}</div>` : ''}
         ${S(a.error) ? `<div class="callout bad">${esc(S(a.error))}</div>` : ''}
         ${st === 'zip' ? `<div class="callout">No build machine is set up, so Hoola made the Android Studio project instead of an APK. ${esc(S(a.note))}</div>` : ''}
-        ${andSteps.length ? `<div class="panel"><b>Steps</b>${stepList({steps: andSteps})}</div>` : ''}
-        <div class="col2">${apk.file ? `<div class="panel"><b>Install on a phone</b><div class="as-row top"><div class="qr" data-qr="${esc(S(a.apk_url))}"></div>
+        ${andSteps.length ? `<div class="panel">${ph('Steps')}${stepList({steps: andSteps})}</div>` : ''}
+        <div class="col2">${apk.file ? `<div class="panel">${ph('Install on a phone')}<div class="as-row top"><div class="qr" data-qr="${esc(S(a.apk_url))}"></div>
           <div style="display:flex;flex-direction:column;gap:6px;min-width:0"><span class="sm">${esc(S(apk.file))} · ${esc(mb(apk.size))}</span><span class="mut sm">${esc(S(apk.package))} · version ${esc(S(apk.version_name))}</span>
           ${a.apk_url ? `<a class="b" href="${esc(S(a.apk_url))}" target="_blank" rel="noopener noreferrer">${ico('dl', 15)}Download APK</a>` : ''}
           ${a.zip_url ? `<a class="b" href="${esc(S(a.zip_url))}" target="_blank" rel="noopener noreferrer">${ico('code', 15)}Android Studio project</a>` : ''}
           <span class="mut sm">Scan with your Android phone; Android asks you to allow the install. The links work for 7 days.</span></div></div></div>`
-          : a.zip_url ? `<div class="panel"><b>Project</b><a class="b" href="${esc(S(a.zip_url))}" target="_blank" rel="noopener noreferrer">${ico('code', 15)}Android Studio project${a.zip_size ? ` · ${mb(a.zip_size)}` : ''}</a></div>` : ''}
-          ${qa.ran ? `<div class="panel"><b>Phone check · build ${N(qa.build)}</b><div class="as-row">${pill(`${N(qa.opened)}/${N(qa.total)} screens opened`, N(qa.opened) === N(qa.total) ? 'ok' : 'warn')}${pill(`${L(qa.crashed).length} crashes`, L(qa.crashed).length ? 'bad' : 'ok')}
+          : a.zip_url ? `<div class="panel">${ph('Project')}<a class="b" href="${esc(S(a.zip_url))}" target="_blank" rel="noopener noreferrer">${ico('code', 15)}Android Studio project${a.zip_size ? ` · ${mb(a.zip_size)}` : ''}</a></div>` : ''}
+          ${qa.ran ? `<div class="panel">${ph(`Phone check · build ${N(qa.build)}`)}<div class="as-row">${pill(`${N(qa.opened)}/${N(qa.total)} screens opened`, N(qa.opened) === N(qa.total) ? 'ok' : 'warn')}${pill(`${L(qa.crashed).length} crashes`, L(qa.crashed).length ? 'bad' : 'ok')}
             ${M(qa.perf).cold_ms ? pill(`cold start ${(N(M(qa.perf).cold_ms) / 1000).toFixed(1)} s`, M(qa.budget).cold_ms === 'over' ? 'warn' : '') : ''}${M(qa.perf).apk_mb ? pill(`APK ${N(M(qa.perf).apk_mb).toFixed(1)} MB`) : ''}${N(qa.a11y_count) ? pill(`${N(qa.a11y_count)} accessibility notes`, 'warn') : ''}
             ${L(M(qa.flows).dead).length ? pill(`${L(M(qa.flows).dead).length} buttons do nothing`, 'warn') : ''}</div>
             <div class="as-row" style="gap:10px">${L(qa.shots).slice(0, 4).map(sid => phone(`/api/apps/${enc(v.id)}/android/qa/${enc(sid)}`, sid, 'sm')).join('')}</div></div>`
-            : st === 'ready' ? `<div class="panel"><b>Phone check</b><span class="mut sm">${esc(S(qa.why) || 'No phone emulator was available for this build, so the screens were not opened on a phone.')}</span></div>` : ''}</div>
+            : st === 'ready' ? `<div class="panel">${ph('Phone check')}<span class="mut sm">${esc(S(qa.why) || 'No phone emulator was available for this build, so the screens were not opened on a phone.')}</span></div>` : ''}</div>
         <div class="as-row">${['ready', 'zip', 'failed', ''].includes(st) && v.approved ? B('android', `${ico('reload', 15)}${N(a.build) ? 'Build again' : 'Build the Android app'}`, N(a.build) ? '' : 'pri') : ''}
           ${S(a.say) && !BUILDING.includes(st) ? `<span class="mut sm">${esc(S(a.say))}</span>` : ''}</div>
-        ${L(a.history).length ? `<div class="panel"><b>Builds</b><div class="tscroll"><table class="t"><tr><th>Build</th><th>Version</th><th>When</th><th>What changed</th><th></th></tr>
+        ${L(a.history).length ? `<div class="panel">${ph('Builds')}<div class="tscroll"><table class="t"><tr><th>Build</th><th>Version</th><th>When</th><th>What changed</th><th></th></tr>
           ${L(a.history).map(h => `<tr><td>${N(h.build)}</td><td>${esc(S(h.version_name))}</td><td>${esc(ago(h.at))}</td><td>${esc(S(h.design_note) || L(h.changed).slice(0, 4).join(', '))}${h.rollback_of ? ` · brought back build ${N(h.rollback_of)}` : ''}</td>
             <td>${N(h.build) !== N(a.build) && L(a.kept_builds).map(Number).includes(N(h.build)) && !BUILDING.includes(st) ? B('rollback', 'Roll back to this', 'sm', ` data-build="${N(h.build)}"`) : N(h.build) === N(a.build) ? pill('current', 'v') : ''}</td></tr>`).join('')}</table></div></div>` : ''}`);
     },
     async iphone(v) {
       const a = await api('GET', `/api/apps/${enc(v.id)}/ios`);
       const st = S(a.status), qa = M(a.qa), run = M(a.runner), tf = M(a.testflight), act = M(v.activity);
-      if (!v.approved && !st) return P(head('iPhone app') + emptyNote('The iPhone app is built from the approved design, like Android. Tap <b>Design pakka</b> on Screens first.') + `<div>${B('to-screens', 'Go to Screens')}</div>`);
+      if (!v.approved && !st) return P(head('iPhone app', '', 'Built in SwiftUI from the approved design') + emptyNote('The iPhone app is built from the approved design, like Android. Tap <b>Approve design</b> on Screens first.') + `<div>${B('to-screens', 'Go to Screens')}</div>`);
       const iosSteps = S(act.job) === 'ios' ? L(act.steps) : [];
-      return P(`${head(`iPhone app${N(a.build) ? ` · build ${N(a.build)}` : ''}`, BUILDING.includes(st) ? pill('Building', 'v') : st === 'ready' ? pill(qa.ran && qa.passed ? 'Simulator check passed' : 'Ready', 'ok') : st === 'failed' ? pill('Needs attention', 'bad') : '')}
-        ${run.ready === false ? `<div class="callout">iPhone apps compile on a Mac. ${esc(S(run.why) || 'Your GitHub builds repo with the iPhone workflow is not set up yet')}: until then Hoola makes the Xcode project for you to open on a Mac.</div>` : ''}
+      return P(`${head(`iPhone app${N(a.build) ? ` · build ${N(a.build)}` : ''}`, BUILDING.includes(st) ? pill('Building', 'v') : st === 'ready' ? pill(qa.ran && qa.passed ? 'Simulator check passed' : 'Ready', 'ok') : st === 'failed' ? pill('Needs attention', 'bad') : '', 'Built in SwiftUI from the same design, with the same accounts and orders as Android')}
+        ${run.ready === false ? `<div class="callout">${esc(iosWhy(run.why))} Until then Hoola makes the Xcode project for you to open on a Mac.</div>` : ''}
         ${S(a.error) ? `<div class="callout bad">${esc(S(a.error))}</div>` : ''}
-        ${iosSteps.length ? `<div class="panel"><b>Steps</b>${stepList({steps: iosSteps})}</div>` : ''}
-        <div class="col2"><div class="panel"><b>Same design, same accounts and orders as Android</b><span class="sm">Built in SwiftUI; every screen is opened in an iPhone simulator.</span>
+        ${iosSteps.length ? `<div class="panel">${ph('Steps')}${stepList({steps: iosSteps})}</div>` : ''}
+        <div class="col2"><div class="panel">${ph('Build and check')}<span class="sm">Every screen is opened in an iPhone simulator before you get it.</span>
           ${qa.ran ? `<div class="as-row">${pill(`${N(qa.opened)}/${N(qa.total)} screens`, N(qa.opened) === N(qa.total) ? 'ok' : 'warn')}${pill(`${L(qa.crashed).length} crashes`, L(qa.crashed).length ? 'bad' : 'ok')}</div>` : ''}
           ${tf.version ? `<span class="sm">TestFlight: version ${esc(S(tf.version))} (${esc(S(tf.build))}) · ${esc(ago(tf.at))}</span>` : ''}
           <div class="as-row">${a.zip_url ? `<a class="b" href="${esc(S(a.zip_url))}" target="_blank" rel="noopener noreferrer">${ico('code', 15)}Xcode project</a>` : ''}
-            ${!BUILDING.includes(st) && v.approved ? B('ios', N(a.build) ? 'Build again' : 'Build the iPhone app', N(a.build) ? '' : 'pri') : ''}
+            ${!BUILDING.includes(st) && v.approved ? B('ios', `${ico(N(a.build) ? 'reload' : 'phone', 15)}${N(a.build) ? 'Build again' : 'Build the iPhone app'}`, N(a.build) ? '' : 'pri') : ''}
             ${!BUILDING.includes(st) && v.approved && run.ready !== false ? B('testflight', 'Send to TestFlight…') : ''}</div>
-          <div class="callout">TestFlight uses your App Store Connect key, kept as a secret in your own GitHub builds repo. Never type it in chat.</div></div>
+          <div class="callout mt">TestFlight uses your App Store Connect key, kept as a secret in your own GitHub builds repo. Never type it in chat.</div></div>
           ${L(qa.shots).length ? `<div class="panel" style="align-items:center"><div class="as-row" style="gap:12px">${L(qa.shots).slice(0, 3).map(sid => phone(`/api/apps/${enc(v.id)}/ios/qa/${enc(sid)}`, sid)).join('')}</div><span class="mut sm">iPhone simulator · build ${N(qa.build)}</span></div>` : ''}</div>`);
     },
     async store(v) {
@@ -588,39 +608,41 @@
       const g = p.status === 'fulfilled' ? p.value : {}, s = a.status === 'fulfilled' ? a.value : {};
       const gs = L(g.steps), done = gs.filter(x => x.done).length, ls = M(g.listing);
       const step = (x, i) => `<div><span class="n ${x.done ? 'ok' : ''}">${x.done ? '✓' : i + 1}</span><span style="flex:1">${esc(S(x.label))}${x.value ? ` <span class="mut">· ${esc(S(x.value))}</span>` : ''}</span></div>`;
-      return P(`<div class="col2"><div class="panel"><div class="as-row"><b style="flex:1">Google Play</b>${gs.length ? pill(`${done} of ${gs.length} done`, done === gs.length ? 'ok' : 'v') : ''}</div>
+      return P(`${head('Publish to the stores', '', 'Every step is listed. Production and review go out only when you tap and confirm.')}
+        <div class="col2"><div class="panel">${ph(`<span class="sto g" aria-hidden="true">▶</span>Google Play`, gs.length ? pill(`${done} of ${gs.length} done`, done === gs.length ? 'ok' : 'v') : '')}
           ${p.status === 'rejected' ? `<div class="callout bad">${esc(p.reason.message)}</div>` : `<div class="steps8">${gs.map(step).join('')}</div>`}
           ${S(g.error) ? `<div class="callout bad">${esc(S(g.error))}</div>` : ''}${S(g.now) ? `<span class="mut sm"><span class="spin" aria-hidden="true" style="display:inline-block;vertical-align:middle"></span> ${esc(S(g.now))}</span>` : ''}
-          <div class="as-row">${B('store-listing', ls.title ? 'Rewrite the listing' : 'Write the listing')}${B('store-build', 'Make the Play bundle (.aab)')}${B('store-internal', 'Internal testing')}</div>
+          <div class="acts2">${B('store-listing', ls.title ? 'Rewrite the listing' : 'Write the listing')}${B('store-build', 'Make the Play bundle (.aab)')}${B('store-internal', 'Internal testing')}</div>
           <div class="as-row">${B('store-production', `${ico('lock', 14)}Release to production…`, 'pri')}</div>
-          ${gs.length && !(gs.find(x => S(x.id) === 'account') || {}).done ? `<form class="as-form callout" data-form="playkey"><b style="color:var(--ink)">Link your Play developer account</b>
-            <span>In Google Play Console make a service account with release rights and download its key (a JSON file). Choose it here: it is sealed on the server and shown to no one, Hoola included. Never paste it in chat.</span>
-            <label>Service account key (JSON file)<input type="file" name="key" accept="application/json,.json" required></label><div><button class="b sm" type="submit">Link account</button></div></form>` : ''}
-          <span class="mut sm">Production goes out only when you tap and confirm. Security checks must pass first.</span></div>
-        <div class="panel"><div class="as-row"><b style="flex:1">App Store</b>${S(s.status) ? pill(S(s.status).replace('_', ' '), S(s.status) === 'in_review' ? 'v' : '') : ''}</div>
+          ${gs.length && !(gs.find(x => S(x.id) === 'account') || {}).done ? `<form class="as-form linkbox" data-form="playkey"><b>Link your Play developer account</b>
+            <span class="mut sm">In Google Play Console make a service account with release rights and download its key (a JSON file). Choose it here: it is sealed on the server and shown to no one, Hoola included. Never paste it in chat.</span>
+            <div class="fpick"><label class="b">${ico('dl', 14)}Choose the key file<input type="file" name="key" accept="application/json,.json" required class="sr" data-fpick></label><span class="fname mut sm">No file chosen</span>
+            <button class="b dark" type="submit">Link account</button></div></form>` : ''}
+          <span class="mut sm">Security checks must pass before production.</span></div>
+        <div class="panel">${ph(`<span class="sto a" aria-hidden="true"></span>App Store`, S(s.status) ? pill(S(s.status).replace(/_/g, ' '), S(s.status) === 'in_review' ? 'v' : '') : '')}
           ${a.status === 'rejected' ? `<div class="callout bad">${esc(a.reason.message)}</div>` : `<div class="steps8">${L(s.steps).map(step).join('')}</div>`}
           ${S(s.error) ? `<div class="callout bad">${esc(S(s.error))}</div>` : ''}
-          <div class="as-row">${B('as-listing', 'Write the listing')}${B('as-push', 'Push listing + screenshots')}${B('as-submit', `${ico('lock', 14)}Submit for review…`, 'pri')}</div></div></div>
-        ${ls.title ? `<div class="panel"><b>Play listing</b><div class="as-row top" style="gap:18px"><div style="width:64px;height:64px;border-radius:16px;background:${tint(v.id)};flex:none"></div>
+          <div class="acts2">${B('as-listing', 'Write the listing')}${B('as-push', 'Push listing + screenshots')}</div><div class="as-row">${B('as-submit', `${ico('lock', 14)}Submit for review…`, 'pri')}</div></div></div>
+        ${ls.title ? `<div class="panel">${ph('Play listing')}<div class="as-row top" style="gap:18px"><div style="width:64px;height:64px;border-radius:16px;background:${tint(v.id)};flex:none"></div>
           <div style="flex:1;display:flex;flex-direction:column;gap:4px;min-width:0"><b style="font-size:16px">${esc(S(ls.title))}</b><span class="mut sm">${esc(S(ls.short))}</span><span class="sm" style="white-space:pre-wrap">${esc(S(ls.full).slice(0, 600))}${S(ls.full).length > 600 ? '…' : ''}</span></div></div></div>` : ''}
-        ${L(g.releases).length ? `<div class="panel"><b>Releases</b><table class="t"><tr><th>Track</th><th>Version</th><th>Status</th><th>When</th></tr>${L(g.releases).map(r => `<tr><td>${esc(S(r.track))}</td><td>${esc(S(r.version_name))} (${esc(S(r.version_code))})</td><td>${esc(S(r.status))}</td><td>${esc(ago(r.at))}</td></tr>`).join('')}</table></div>` : ''}`);
+        ${L(g.releases).length ? `<div class="panel">${ph('Releases')}<div class="tscroll"><table class="t"><tr><th>Track</th><th>Version</th><th>Status</th><th>When</th></tr>${L(g.releases).map(r => `<tr><td>${esc(S(r.track))}</td><td>${esc(S(r.version_name))} (${esc(S(r.version_code))})</td><td>${esc(S(r.status))}</td><td>${esc(ago(r.at))}</td></tr>`).join('')}</table></div></div>` : ''}`);
     },
     async data(v) {
       const d = await api('GET', `/api/apps/${enc(v.id)}/data`);
       const cols = L(d.collections);
-      if (!cols.length) return P(head('Data') + emptyNote('This app keeps no lists yet. They appear here when the app is built.'));
+      if (!cols.length) return P(head('Data', '', 'The lists your app keeps') + emptyNote('This app keeps no lists yet. They appear here when the app is built.'));
       const key = cols.some(c => S(c.key) === DATA.coll) ? DATA.coll : S(cols[0].key);
       DATA.coll = key;
       const col = cols.find(c => S(c.key) === key) || {}, fields = L(col.fields).filter(f => !f.hidden).slice(0, 7);
       const [rows, mem] = await Promise.allSettled([api('GET', `/api/apps/${enc(v.id)}/data/${enc(key)}`), api('GET', `/api/apps/${enc(v.id)}/members`)]);
       const rs = rows.status === 'fulfilled' ? L(rows.value.rows) : [], ms = mem.status === 'fulfilled' ? L(mem.value.members) : [];
-      return P(`${head('Data', `<div class="seg" role="group" aria-label="List">${cols.slice(0, 8).map(c => `<button type="button" data-coll="${esc(S(c.key))}" aria-pressed="${S(c.key) === key}">${esc(S(c.label))} · ${N(M(d.counts)[c.key])}</button>`).join('')}</div>`)}
-        ${d.live ? `<div class="as-row"><span class="pill" style="background:var(--live-soft);color:var(--live)">● Live</span><span class="mut sm">What customers add in the app shows here.</span></div>` : '<span class="mut sm">The app is not live yet: these lists fill once people use a built app.</span>'}
-        <div class="panel"><div class="tscroll"><table class="t"><tr>${fields.map(f => `<th>${esc(S(f.label))}</th>`).join('')}<th>Added</th></tr>
-          ${rs.length ? rs.slice(0, 100).map(r => `<tr>${fields.map(f => `<td>${esc(S(r[f.key]).slice(0, 120))}</td>`).join('')}<td>${esc(ago(r.created))}</td></tr>`).join('') : `<tr><td colspan="${fields.length + 1}" class="mut">Nothing in ${esc(S(col.label))} yet.</td></tr>`}</table></div></div>
-        <div class="col2"><div class="panel"><b>Members and roles · ${ms.length}</b>${ms.length ? `<div class="tscroll"><table class="t"><tr><th>Name</th><th>Since</th><th>Role</th></tr>${ms.slice(0, 50).map(m => `<tr><td>${esc(S(m.name) || S(m.email) || S(m.phone))}</td><td>${esc(ago(m.since))}</td>
+      return P(`${head('Data', `<div class="seg" role="group" aria-label="List">${cols.slice(0, 8).map(c => `<button type="button" data-coll="${esc(S(c.key))}" aria-pressed="${S(c.key) === key}">${esc(S(c.label))}<span class="cnt">${N(M(d.counts)[c.key])}</span></button>`).join('')}</div>`,
+          d.live ? '<span class="livedot" aria-hidden="true"></span>Live · what customers add in the app shows here' : 'The app is not live yet: these lists fill once people use a built app')}
+        <div class="panel flush"><div class="tscroll"><table class="t"><tr>${fields.map(f => `<th>${esc(S(f.label))}</th>`).join('')}<th>Added</th></tr>
+          ${rs.length ? rs.slice(0, 100).map(r => `<tr>${fields.map(f => `<td>${esc(S(r[f.key]).slice(0, 120))}</td>`).join('')}<td>${esc(ago(r.created))}</td></tr>`).join('') : `<tr><td colspan="${fields.length + 1}" class="tempty">Nothing in ${esc(S(col.label))} yet.</td></tr>`}</table></div></div>
+        <div class="col2"><div class="panel">${ph(`Members and roles <span class="cnt">${ms.length}</span>`)}${ms.length ? `<div class="tscroll"><table class="t"><tr><th>Name</th><th>Since</th><th>Role</th></tr>${ms.slice(0, 50).map(m => `<tr><td>${esc(S(m.name) || S(m.email) || S(m.phone))}</td><td>${esc(ago(m.since))}</td>
             <td><select data-role="${esc(S(m.id))}" aria-label="Role of ${esc(S(m.name))}">${['member', 'staff', 'admin'].map(r => `<option value="${r}"${S(m.role) === r ? ' selected' : ''}>${r === 'member' ? 'Customer' : r === 'staff' ? 'Staff' : 'Admin'}</option>`).join('')}</select></td></tr>`).join('')}</table></div>` : '<span class="mut sm">No one has an account yet.</span>'}</div>
-          <div class="panel"><b>Change what a list keeps</b><span class="mut sm">Say it in the chat, e.g. "orders mein gift wrap field". Only safe changes (add, hide, rename); old rows keep working.</span>${d.api ? `<span class="mut sm">App backend: ${esc(S(d.api))}</span>` : ''}</div></div>`);
+          <div class="panel">${ph('Change what a list keeps')}<span class="mut sm">Say it in the chat, e.g. "add a gift wrap field to orders". Only safe changes (add, hide, rename); old rows keep working.</span>${d.api ? `<span class="kvline"><span class="mut sm">App backend</span><code>${esc(S(d.api))}</code></span>` : ''}</div></div>`);
     },
     async business(v) {
       const base = `/api/apps/${enc(v.id)}`;
@@ -630,22 +652,22 @@
       const h = M(M(R.hisaab).summary), st = M(R.stock), cp = M(R.coupons), kh = M(R['khata-yaad']), dl = M(R.delivery), gst = M(R.gst), pay = M(R.pay), lg = M(R.logic), us = M(R.usage);
       const due = L(kh.customers).reduce((a, c) => a + N(c.balance), 0);
       const lows = st.tracked ? L(st.products).filter(p => p.qty != null && (p.low || p.sold_out)) : [], low = lows.length;
-      const mod = (title, on, line, note, ask) => `<div class="mod"><div class="as-row"><b>${esc(title)}</b>${pill(on ? 'On' : 'Off', on ? 'ok' : '')}</div><span class="sm">${esc(line)}</span><span class="mut sm">${esc(note)}</span>${ask ? `<button class="b sm" type="button" data-ask="${esc(ask)}">${on ? 'Change' : 'Turn on'}</button>` : ''}</div>`;
-      return P(`${head('Business', '<span class="mut sm">Everything your app runs on. Changes go through Hoola in the chat.</span>')}
-        <div class="col3"><div class="stat"><span class="k">Sales this month</span><span class="v2">${inr(h.sales)}</span><span class="mut sm">${N(h.orders)} orders</span></div>
-          <div class="stat"><span class="k">Udhaar due</span><span class="v2">${inr(due)}</span><span class="mut sm">${L(kh.customers).length} customers</span></div>
+      const mod = (title, ic, on, line, note, ask) => `<div class="mod${on ? ' on' : ''}"><div class="modh"><span class="mi" aria-hidden="true">${ico(ic, 16)}</span><b>${esc(title)}</b>${pill(on ? 'On' : 'Off', on ? 'ok' : '')}</div><span class="ml">${esc(line)}</span><span class="mut sm">${esc(note)}</span>${ask ? `<button class="b sm" type="button" data-ask="${esc(ask)}">${on ? 'Change' : 'Turn on'}</button>` : ''}</div>`;
+      return P(`${head('Business', '', 'Everything your app runs on. Changes go through Hoola in the chat.')}
+        <div class="col3"><div class="stat"><span class="k">Sales this month</span><span class="v2">${inr(h.sales)}</span><span class="mut sm">${plural(h.orders, 'order')}</span></div>
+          <div class="stat"><span class="k">Credit (udhaar) due</span><span class="v2">${inr(due)}</span><span class="mut sm">${plural(L(kh.customers).length, 'customer')}</span></div>
           <div class="stat"><span class="k">Month file for your CA</span><span class="as-row">${B('hisaab-zip', `${ico('dl', 14)}Sales, GST + khata ZIP`, 'sm')}</span><span class="mut sm">${esc(S(M(R.hisaab).month))}</span></div></div>
         <div class="mods">
-          ${mod('Payments', !!pay.on, pay.on ? `${S(pay.gateway) || 'Gateway'} · ${L(pay.payments).length} payments` : 'UPI to your own UPI ID', 'Paid only from the gateway\'s signed message; refunds are your tap.', pay.on ? 'Change the payment settings of this app' : 'Add online payments to this app with my own Razorpay')}
-          ${mod('GST bills', !!gst.on, gst.on ? `GSTIN ${S(gst.gstin)} · ${N(gst.issued)} invoices` : 'Not set up', 'Tax invoices for finished orders, on your own series.', gst.on ? '' : 'Turn on GST bills for this app')}
-          ${mod('Khata (udhaar)', L(kh.customers).length > 0, `${inr(due)} due from ${L(kh.customers).length}`, 'Reminders go only when you send them.', '')}
-          ${mod('Stock', !!st.tracked, st.tracked ? `${N(st.tracked)} items tracked · ${low} low or sold out` : 'Not tracked: every item can always be ordered', 'Orders never oversell.', st.tracked ? '' : 'Track stock for the products in this app')}
-          ${mod('Coupons', L(cp.coupons).length > 0, L(cp.coupons).filter(c => c.live).map(c => S(c.code)).join(', ') || 'No coupon live', 'Checked and applied by the server.', 'Add a coupon to this app')}
-          ${mod('Delivery', !!dl.on, dl.on ? `Fee ${inr(dl.fee)}${dl.free_above ? ` · free above ${inr(dl.free_above)}` : ''} · ${L(dl.slots).length} slots` : 'Not set up', 'Holidays and slot limits honoured.', dl.on ? 'Change delivery settings of this app' : 'Add delivery fee and time slots to this app')}
-          ${mod('Business rules', !!lg.has_logic, lg.has_logic ? `${L(lg.summary).length} rules · ${L(lg.approvals).length} approvals waiting` : 'No rules yet', 'Every rule is tested both ways before it runs.', 'Add a business rule to this app')}
-          ${mod('Usage', true, `${N(us.rows)} rows · ${N(us.accounts)} accounts`, `${N(us.percent)}% of the plan's limit`, '')}
+          ${mod('Payments', 'card', !!pay.on, pay.on ? `${S(pay.gateway) || 'Gateway'} · ${L(pay.payments).length} payments` : 'UPI to your own UPI ID', 'Paid only from the gateway\'s signed message; refunds are your tap.', pay.on ? 'Change the payment settings of this app' : 'Add online payments to this app with my own Razorpay')}
+          ${mod('GST bills', 'doc', !!gst.on, gst.on ? `GSTIN ${S(gst.gstin)} · ${N(gst.issued)} invoices` : 'Not set up', 'Tax invoices for finished orders, on your own series.', gst.on ? '' : 'Turn on GST bills for this app')}
+          ${mod('Khata (udhaar)', 'book', L(kh.customers).length > 0, `${inr(due)} due from ${plural(L(kh.customers).length, 'customer')}`, 'Reminders go only when you send them.', '')}
+          ${mod('Stock', 'box', !!st.tracked, st.tracked ? `${N(st.tracked)} items tracked · ${low} low or sold out` : 'Not tracked: every item can always be ordered', 'Orders never oversell.', st.tracked ? '' : 'Track stock for the products in this app')}
+          ${mod('Coupons', 'tag', L(cp.coupons).length > 0, L(cp.coupons).filter(c => c.live).map(c => S(c.code)).join(', ') || 'No coupon live', 'Checked and applied by the server.', 'Add a coupon to this app')}
+          ${mod('Delivery', 'truck', !!dl.on, dl.on ? `Fee ${inr(dl.fee)}${dl.free_above ? ` · free above ${inr(dl.free_above)}` : ''} · ${L(dl.slots).length} slots` : 'Not set up', 'Holidays and slot limits honoured.', dl.on ? 'Change delivery settings of this app' : 'Add delivery fee and time slots to this app')}
+          ${mod('Business rules', 'rule', !!lg.has_logic, lg.has_logic ? `${L(lg.summary).length} rules · ${L(lg.approvals).length} approvals waiting` : 'No rules yet', 'Every rule is tested both ways before it runs.', 'Add a business rule to this app')}
+          ${mod('Usage', 'chart', true, `${plural(us.rows, 'row')} · ${plural(us.accounts, 'account')}`, `${N(us.percent)}% of the plan's limit`, '')}
         </div>
-        ${lows.length ? `<div class="panel"><b>Low stock</b><div class="chipset">${lows.slice(0, 20).map(p => `<span>${esc(S(p.name))} · ${p.sold_out ? 'sold out' : N(p.qty)}</span>`).join('')}</div></div>` : ''}`);
+        ${lows.length ? `<div class="panel">${ph('Low stock')}<div class="chipset">${lows.slice(0, 20).map(p => `<span>${esc(S(p.name))} · ${p.sold_out ? 'sold out' : N(p.qty)}</span>`).join('')}</div></div>` : ''}`);
     },
     async health(v) {
       const base = `/api/apps/${enc(v.id)}`;
@@ -653,21 +675,22 @@
       const ops = o.status === 'fulfilled' ? o.value : {}, cr = c.status === 'fulfilled' ? L(c.value.crashes) : [], ro = r.status === 'fulfilled' ? r.value : {}, ja = j.status === 'fulfilled' ? j.value : {};
       const tr = M(ops.traffic), cost = M(ops.cost), roll = M(ro.rollout), stages = L(ro.stages).length ? L(ro.stages) : [0.05, 0.2, 0.5, 1];
       const frac = N(roll.fraction), pct = x => Math.round(N(x) * 100) + '%';
-      return P(`<div class="col3"><div class="stat"><span class="k">Answers in (p95)</span><span class="v2">${esc(S(tr.p95) || '—')}</span><span class="mut sm">a band, last 7 days</span></div>
-          <div class="stat"><span class="k">Failing calls</span><span class="v2">${tr.calls ? N(tr.error_percent).toFixed(1) + '%' : '—'}</span><span class="mut sm">${N(tr.calls).toLocaleString('en-IN')} calls</span></div>
+      return P(`${head('Health', '', 'How the live app is doing for your customers')}
+        <div class="col3"><div class="stat"><span class="k">Answers in (p95)</span><span class="v2">${esc(S(tr.p95) || '—')}</span><span class="mut sm">a band, last 7 days</span></div>
+          <div class="stat"><span class="k">Failing calls</span><span class="v2">${tr.calls ? N(tr.error_percent).toFixed(1) + '%' : '—'}</span><span class="mut sm">${plural(tr.calls, 'call')}</span></div>
           <div class="stat"><span class="k">AI cost (30 days)</span><span class="v2">${inr(cost.inr)}</span><span class="mut sm">${L(cost.not_priced).length ? esc(L(cost.not_priced).join(', ')) + ' not priced' : 'all priced'}</span></div></div>
         ${L(ops.alerts).length ? L(ops.alerts).map(a => `<div class="callout${S(a.level) === 'bad' ? ' bad' : ''}">${esc(S(a.say))}</div>`).join('') : ''}
-        <div class="col2"><div class="panel"><div class="as-row"><b style="flex:1">Crashes from customers' phones</b>${cr.filter(x => S(x.status) === 'new' || S(x.status) === 'back').length ? pill(`${cr.filter(x => S(x.status) === 'new' || S(x.status) === 'back').length} new`, 'bad') : pill('none open', 'ok')}</div>
+        <div class="col2"><div class="panel">${ph("Crashes from customers' phones", cr.filter(x => S(x.status) === 'new' || S(x.status) === 'back').length ? pill(`${cr.filter(x => S(x.status) === 'new' || S(x.status) === 'back').length} new`, 'bad') : pill('None open', 'ok'))}
           ${cr.length ? `<div class="tscroll"><table class="t"><tr><th>What</th><th>Times</th><th>Last</th><th></th></tr>${cr.slice(0, 12).map(x => `<tr><td><b>${S(x.kind) === 'anr' ? 'Froze' : S(x.kind) === 'native' ? 'Native crash' : 'Crash'}</b> · ${esc(L(x.screens).join(', ') || '')} ${esc(S(x.exception).slice(0, 80))}</td><td>${N(x.count)}</td><td>${esc(ago(x.last))}</td>
             <td>${S(x.status) === 'fixing' ? pill('fixing') : B('fix-crash', 'Fix it', 'sm pri', ` data-crash="${esc(S(x.id))}"`)}</td></tr>`).join('')}</table></div>` : '<span class="mut sm">No crash reported from any phone.</span>'}</div>
-          <div class="panel"><b>Release to customers (Play)</b>
+          <div class="panel">${ph('Release to customers (Play)')}
             ${roll.version_name ? `<span class="sm">Version ${esc(S(roll.version_name))} · ${esc(S(roll.status))}</span><div class="roll">${stages.map(s => `<span class="${N(s) < frac || (N(s) === frac && S(roll.status) === 'completed') ? 'done' : N(s) === frac ? 'on' : ''}">${pct(s)}</span>`).join('')}</div>
               <div class="as-row">${frac < 1 && S(roll.status) !== 'halted' ? B('roll-advance', `Go to ${pct(stages.find(s => N(s) > frac) || 1)}…`, 'pri') : ''}${S(roll.status) === 'inProgress' ? B('roll-halt', 'Halt', 'bad') : ''}${ro.can_rollback ? B('roll-back', 'Roll back…') : ''}</div>`
               : `<span class="mut sm">Nothing is rolling out. Start a staged release once a version is on Play.</span><div class="as-row">${B('roll-start', 'Start at 5%…')}</div>`}
             <span class="mut sm">Each step is your tap. Halt needs no tap. Play cannot take a version back from phones that already have it.</span></div></div>
-        <div class="col2"><div class="panel"><b>Feature switches</b>${L(ro.flags).length ? `<table class="t">${L(ro.flags).map(f => `<tr><td>${esc(S(f.label) || S(f.key))}</td><td>${pill(f.on ? (N(f.percent) && N(f.percent) < 100 ? `On for ${N(f.percent)}%` : 'On') : 'Off', f.on ? 'ok' : '')}</td><td>${B('flag', f.on ? 'Turn off' : 'Turn on', 'sm', ` data-key="${esc(S(f.key))}" data-on="${f.on ? 0 : 1}"`)}</td></tr>`).join('')}</table>` : '<span class="mut sm">No switch yet. Ask in the chat: "naya checkout sirf 10% logon ke liye".</span>'}
+        <div class="col2"><div class="panel">${ph('Feature switches')}${L(ro.flags).length ? `<table class="t">${L(ro.flags).map(f => `<tr><td>${esc(S(f.label) || S(f.key))}</td><td>${pill(f.on ? (N(f.percent) && N(f.percent) < 100 ? `On for ${N(f.percent)}%` : 'On') : 'Off', f.on ? 'ok' : '')}</td><td>${B('flag', f.on ? 'Turn off' : 'Turn on', 'sm', ` data-key="${esc(S(f.key))}" data-on="${f.on ? 0 : 1}"`)}</td></tr>`).join('')}</table>` : '<span class="mut sm">No switch yet. Ask in the chat: "show the new checkout to 10% of people".</span>'}
             <span class="mut sm">Switched on the server: works in minutes, no new app needed.</span></div>
-          <div class="panel"><div class="as-row"><b style="flex:1">Tested on a hidden copy of your app</b>${M(ja.last_run).says ? pill(N(ja.scenarios) + ' stories', 'v') : ''}</div>
+          <div class="panel">${ph('Tested on a hidden copy of your app', M(ja.last_run).says ? pill(plural(ja.scenarios, 'story', 'stories'), 'v') : '')}
             <span class="sm">${esc(S(M(ja.last_run).says) || S(ja.says) || 'No test run yet.')}</span><div>${B('jaanch-run', 'Run every test', 'sm')}</div></div></div>`);
     },
     async settings(v) {
@@ -676,19 +699,20 @@
       const s = sg.status === 'fulfilled' ? sg.value : {}, b = bh.status === 'fulfilled' ? bh.value : {}, g = gh.status === 'fulfilled' ? gh.value : {};
       const f = M(v.facts);
       const WAYS = {email_password: 'Email + password', phone_otp: 'Mobile OTP', google: 'Google', apple: 'Apple'};
-      return P(`<div class="col2"><form class="panel as-form" data-form="facts"><b>App details</b><span class="mut sm">Used inside the app (contact, payments). Prices and numbers are never invented: a blank stays blank until you fill it.</span>
-          ${[['name', 'Name'], ['tagline', 'Tagline'], ['phone', 'Phone'], ['whatsapp', 'WhatsApp'], ['email', 'Email'], ['address', 'Address'], ['hours', 'Opening hours'], ['upi_id', 'UPI ID']].map(([k, n]) => `<label>${n}<input name="${k}" maxlength="200" value="${esc(S(f[k]))}"></label>`).join('')}
-          <div class="as-row"><button class="b pri" type="submit">Save details</button></div></form>
-        <div style="display:flex;flex-direction:column;gap:16px"><div class="panel"><b>Login</b><div class="chipset">${L(s.ways).map(w => `<span>${esc(WAYS[S(w)] || S(w))}</span>`).join('') || '<span>Not set yet</span>'}${s.staff_2fa ? '<span>Staff 2-step code</span>' : ''}</div>
+      return P(`${head('Settings', '', 'The details inside your app, its login, languages and code')}
+        <div class="col2"><form class="panel as-form" data-form="facts">${ph('App details')}<span class="mut sm">Used inside the app (contact, payments). Prices and numbers are never invented: a blank stays blank until you fill it.</span>
+          ${[['name', 'Name'], ['tagline', 'Tagline'], ['phone', 'Phone'], ['whatsapp', 'WhatsApp'], ['email', 'Email'], ['address', 'Address'], ['hours', 'Opening hours'], ['upi_id', 'UPI ID']].map(([k, n]) => `<label>${n}<input name="${k}" maxlength="200" value="${esc(S(f[k]))}" placeholder="${k === 'tagline' || k === 'hours' ? 'Blank until you fill it' : ''}"></label>`).join('')}
+          <div class="as-row"><button class="b pri" type="submit">${ico('check', 15)}Save details</button></div></form>
+        <div class="stack"><div class="panel">${ph('Login')}<div class="chipset">${L(s.ways).map(w => `<span>${esc(WAYS[S(w)] || S(w))}</span>`).join('') || '<span>Not set yet</span>'}${s.staff_2fa ? '<span>Staff 2-step code</span>' : ''}</div>
             ${Object.values(M(s.problems)).map(t => `<span class="mut sm">${esc(S(t))}</span>`).join('')}<span class="mut sm">Google and Apple sign-in are checked on the server.</span></div>
-          <div class="panel"><b>Languages</b><div class="chipset">${L(b.langs).map(l => `<span>${esc(S(l))}</span>`).join('') || '<span>English</span>'}</div><span class="mut sm">Add one in the chat: "Hindi aur Marathi bhi".</span></div>
-          <div class="panel"><b>Your code</b><span class="sm">${g.linked ? `Linked to ${esc(S(g.repo))} · ${N(g.exports)} exports` : 'Send the whole Android + iPhone code to your own GitHub. One commit per build.'}</span><div>${B('github', `${ico('code', 15)}Send to my GitHub…`)}</div></div>
-          <div class="panel"><b>Danger zone</b><div>${B('delete', 'Delete this app…', 'bad')}</div></div></div></div>`);
+          <div class="panel">${ph('Languages')}<div class="chipset">${L(b.langs).map(l => `<span>${esc(LANG[S(l).toLowerCase()] || S(l))}</span>`).join('') || '<span>English</span>'}</div><span class="mut sm">Add one in the chat: "add Hindi and Marathi".</span></div>
+          <div class="panel">${ph('Your code')}<span class="sm">${g.linked ? `Linked to ${esc(S(g.repo))} · ${N(g.exports)} exports` : 'Send the whole Android + iPhone code to your own GitHub. One commit per build.'}</span><div>${B('github', `${ico('code', 15)}Send to my GitHub…`)}</div></div>
+          <div class="panel danger">${ph('Danger zone')}<span class="mut sm">Deleting removes the app, its design and its data on Hoola. Apps already on phones keep working until their backend is gone.</span><div>${B('delete', 'Delete this app…', 'bad')}</div></div></div></div>`);
     },
     async history(v) {
       const vs = L(v.versions);
-      return P(`${head('History', '<span class="mut sm">Every design change is kept as a version</span>')}
-        ${vs.length ? `<div class="panel"><table class="t"><tr><th>Version</th><th>When</th><th>What changed</th><th>Checks</th></tr>${vs.map(x => `<tr><td>v${N(x.version)}</td><td>${esc(ago(x.at))}</td><td>${esc(S(x.note))}</td><td>${x.passed ? pill('passed', 'ok') : x.passed === false ? pill('notes', 'warn') : ''}</td></tr>`).join('')}</table></div>` : emptyNote('No version yet. The first one is saved when every screen is designed.')}
+      return P(`${head('History', '', 'Every design change is kept as a version')}
+        ${vs.length ? `<div class="panel flush"><table class="t"><tr><th>Version</th><th>When</th><th>What changed</th><th>Checks</th></tr>${vs.map(x => `<tr><td>v${N(x.version)}</td><td>${esc(ago(x.at))}</td><td>${esc(S(x.note))}</td><td>${x.passed ? pill('passed', 'ok') : x.passed === false ? pill('notes', 'warn') : ''}</td></tr>`).join('')}</table></div>` : emptyNote('No version yet. The first one is saved when every screen is designed.')}
         ${v.approved_at ? `<span class="mut sm">Design approved ${esc(ago(v.approved_at))}.</span>` : ''}`);
     },
   };
@@ -703,7 +727,7 @@
     const run = x.state === 'run', bad = x.state === 'error';
     const ic = run ? '<span class="spin" aria-hidden="true"></span>' : bad ? '<span class="xmark" aria-hidden="true">!</span>' : tick;
     const cnt = N(x.total) ? `<span class="cnt">${N(x.done)}/${N(x.total)}</span>` : '';
-    const t = run ? `<span class="tm" data-t0="${N(x.at)}"></span>` : `<span class="tm">${dur((N(x.end) || N(x.at)) - N(x.at))}</span>`;
+    const t = run ? `<span class="tm" data-t0="${N(x.at)}"></span>` : N(x.at) && N(x.end) - N(x.at) >= 1 ? `<span class="tm">${dur(N(x.end) - N(x.at))}</span>` : '<span class="tm"></span>';
     return `<li class="${run ? 'run' : bad ? 'bad' : 'ok'}">${ic}<div class="sl"><span class="ell">${esc(S(x.label))}</span>${x.note ? `<span class="sn ell">${esc(S(x.note))}</span>` : ''}</div>${cnt}${t}</li>`;
   }
   function stepList(a, last) {
@@ -726,7 +750,8 @@
       const cur = [...st].reverse().find(x => x.state === 'run');
       const stepPct = cur && N(cur.total) ? Math.round(100 * N(cur.done) / N(cur.total)) : null;
       const pct = DESIGNING(v) && N(M(v.board).pct) ? Math.max(3, Math.min(100, N(M(v.board).pct))) : stepPct;
-      const sub = cur ? `Step ${st.indexOf(cur) + 1}${stepPct !== null ? ` · ${stepPct}% of this step` : ''} · ${S(cur.label)}` : 'Starting…';
+      const last = st.filter(x => !x.final).slice(-1)[0];
+      const sub = cur ? `Step ${st.indexOf(cur) + 1}${stepPct !== null ? ` · ${stepPct}% of this step` : ''} · ${S(cur.label)}` : last ? `After: ${S(last.label)}` : 'Starting…';
       box.innerHTML = `<div class="chatact wcard"><div class="step whead"><span class="spin" aria-hidden="true"></span><span class="wt"><b>${esc(jobTitle(v))}</b><span>${esc(sub)}</span></span>
           ${a.started ? `<span class="tm" data-t0="${N(a.started)}"></span>` : ''}</div>
         <div class="prog${pct === null ? ' ind' : ''}" role="progressbar" aria-label="Progress"${pct === null ? '' : ` aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(pct)}"`}><i style="width:${pct === null ? 30 : pct}%"></i></div>
@@ -1019,6 +1044,7 @@
   APP.addEventListener('change', async e => {
     const t = e.target;
     if (t.id === 'asIdeaAud') { IDEAS.aud = t.value; return loadIdeas(true); }
+    if (t.matches('[data-fpick]')) { const n = t.closest('.fpick')?.querySelector('.fname'); if (n) n.textContent = t.files && t.files[0] ? t.files[0].name : 'No file chosen'; return; }
     if (t.dataset.role) {
       try { await api('POST', `${base()}/members/${enc(t.dataset.role)}/role`, {role: t.value}); toast('Role changed. They sign in again to see it.'); }
       catch (er) { toast(er.message, true); drawPane(); }

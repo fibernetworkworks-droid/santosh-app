@@ -80,3 +80,173 @@ table.t tr:last-child td{border-bottom:0}
 .as-err{color:var(--bad);font-size:13px}
 .zoomimg{max-width:min(92vw,520px);max-height:80vh;border-radius:18px;display:block}
 @media (max-width:900px){.pbody{padding:16px}.as-ph.lg{width:240px}}
+
+/* ===== v0.794 APP STUDIO PREMIUM PASS (owner: "LOOKS STALE AND OLD ... ALIGN THE TEXT, TAB, BUTTONS ... MORE ADVANCED
+   AND PREMIUM"). One pane header everywhere (.phd), one panel header (.pnh), one control scale (buttons 34 / 30, fields 40),
+   cards that line their buttons up, an underlined tab bar with icons, ink primary buttons (violet = working, never a
+   button colour), quiet motion once per pane, off under reduced motion. Tokens only. ===== */
+.ws-app .pane{background:var(--stage)}
+.ws-app .ptop{position:sticky;top:0;z-index:3;min-height:52px;padding:0 20px;background:color-mix(in srgb,var(--stage) 88%,transparent);
+  backdrop-filter:none;border-bottom:1px solid var(--line);align-items:stretch}
+.ws-app .views{gap:4px;align-items:stretch}
+.ws-app .views button{position:relative;height:auto;min-height:52px;padding:0 10px;border-radius:0;gap:7px;color:var(--mut);background:transparent}
+.ws-app .views button svg{opacity:.7;flex:none}
+.ws-app .views button:hover{background:transparent;color:var(--ink)}
+.ws-app .views button[aria-current=page]{background:transparent;color:var(--ink);font-weight:600}
+.ws-app .views button[aria-current=page] svg{opacity:1;color:var(--pri-ink)}
+.ws-app .views button::after{content:"";position:absolute;left:8px;right:8px;bottom:-1px;height:2px;border-radius:2px;background:var(--ink);transform:scaleX(0);transition:transform .18s ease}
+.ws-app .views button[aria-current=page]::after{transform:scaleX(1)}
+.ws-app .views button:focus-visible{outline:2px solid var(--pri-ring);outline-offset:-6px;border-radius:8px}
+.ws-app .views .vdot{width:7px;height:7px;border-radius:50%;background:var(--pri);display:inline-block}
+.ws-app .vsep{height:20px;margin:0 6px;align-self:center}
+
+.ws-app .pbody{padding:26px max(32px,calc((100% - 1180px) / 2)) 56px;gap:20px}
+.ws-app .pbody.pin{animation:as-pane .22s ease-out}
+@keyframes as-pane{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.ws-app .phd{display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap;padding-bottom:2px;min-height:44px}
+.ws-app .pht{flex:1 1 260px;min-width:0;display:flex;flex-direction:column;gap:4px}
+.ws-app .pht h2{font-size:22px;line-height:1.2;font-weight:600;letter-spacing:-.015em;color:var(--ink);margin:0}
+.ws-app .pht p{margin:0;font-size:13.5px;line-height:1.45;color:var(--mut);display:flex;align-items:center;gap:7px}
+.ws-app .pha{display:flex;align-items:center;gap:8px;flex-wrap:wrap;flex:none}
+.ws-app .livedot{width:8px;height:8px;border-radius:50%;background:var(--live);box-shadow:0 0 0 3px var(--live-soft);flex:none}
+
+/* panels: one surface, one header row */
+.ws-app .panel{border:1px solid var(--line);border-radius:16px;padding:18px 20px;gap:12px;background:var(--bg);box-shadow:0 1px 2px rgba(23,22,28,.04);min-width:0}
+.ws-app .panel.flush{padding:6px 8px}
+.ws-app .panel.danger{border-color:var(--bad-soft)}
+.ws-app .pnh{display:flex;align-items:center;gap:10px;min-height:26px}
+.ws-app .pnh>b{flex:1;min-width:0;font-size:14.5px;font-weight:600;display:flex;align-items:center;gap:8px;color:var(--ink)}
+.ws-app .pnh .pills{display:flex;gap:6px;flex-wrap:wrap;padding:0}
+.ws-app .cnt{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:var(--sunk);color:var(--mut);font-size:12px;font-weight:500;font-family:'JetBrains Mono',ui-monospace,monospace}
+.ws-app .col2{gap:18px;align-items:start}
+.ws-app .col3{gap:16px}
+.ws-app .stack{display:flex;flex-direction:column;gap:18px;min-width:0}
+.ws-app .callout{border-radius:12px;padding:12px 14px;line-height:1.5;background:var(--raise);border:1px dashed var(--hair2)}
+.ws-app .callout.mt{margin-top:2px}
+.ws-app .as-row{gap:10px}
+.ws-app .acts2{display:flex;flex-wrap:wrap;gap:8px}
+.ws-app .kvline{display:flex;flex-direction:column;gap:4px}
+.ws-app .kvline code{font:12.5px/1.4 'JetBrains Mono',ui-monospace,monospace;background:var(--sunk);border-radius:8px;padding:6px 9px;overflow-wrap:anywhere;color:var(--lit)}
+
+/* buttons: one scale; primary = ink, like Publish */
+.ws-app .pbody .b{height:34px;border-radius:10px;border-color:var(--line);box-shadow:0 1px 1px rgba(23,22,28,.03)}
+.ws-app .pbody .b:hover{border-color:var(--hair2);background:var(--raise)}
+.ws-app .pbody .b.sm{height:30px;border-radius:9px;font-size:13px}
+.ws-app .pbody .b.pri,.ws-app .pbody .b.dark{background:var(--solid);border-color:var(--solid);color:var(--on-solid);font-weight:500}
+.ws-app .pbody .b.pri:hover,.ws-app .pbody .b.dark:hover{background:var(--solid);opacity:.88;color:var(--on-solid)}
+.ws-app .pbody .b.bad{color:var(--bad);border-color:var(--bad-soft)}.ws-app .pbody .b.bad:hover{background:var(--bad-soft)}
+.ws-app .pbody .b:disabled{opacity:.45}
+.ws-app .seg{height:34px;box-sizing:border-box;align-items:center}
+.ws-app .seg button .cnt{margin-left:6px;height:18px;min-width:18px;font-size:11px;background:transparent}
+.ws-app .seg button[aria-pressed=true] .cnt{background:var(--sunk);color:var(--ink)}
+
+/* stats */
+.ws-app .stat{border:1px solid var(--line);border-radius:16px;padding:16px 18px;gap:6px;background:linear-gradient(180deg,var(--bg),var(--raise));box-shadow:0 1px 2px rgba(23,22,28,.04);min-height:96px}
+.ws-app .stat .k{font-size:12.5px;font-weight:500;color:var(--mut)}
+.ws-app .stat .v2{font-size:26px;line-height:1.1;letter-spacing:-.02em}
+
+/* plan */
+.ws-app .chipset{gap:7px}
+.ws-app .chipset>span,.ws-app .chipset>button{padding:0 11px;height:28px;display:inline-flex;align-items:center;border-radius:8px;border:1px solid var(--line);background:var(--raise);font-size:13px}
+.ws-app .panel ul.sm li{margin:3px 0;line-height:1.5}
+
+/* looks: one header height so the phones line up, the chosen one lifted */
+.ws-app .looks{gap:22px}
+.ws-app .lk{border-color:var(--line);border-radius:20px;padding:18px 18px 20px;gap:14px;transition:border-color .15s,box-shadow .15s,transform .15s}
+.ws-app .lk:hover{border-color:var(--hair2);box-shadow:var(--sh)}
+.ws-app .lk.on{border-color:var(--ok);box-shadow:0 0 0 4px var(--ok-soft),var(--sh)}
+.ws-app .lkh{width:100%;display:flex;align-items:center;gap:8px;min-height:26px}
+.ws-app .lkh b{flex:1;min-width:0;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ws-app .lk .sw i{width:20px;height:20px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.06)}
+
+/* phones + screens grid */
+.ws-app .as-ph{box-shadow:0 1px 0 rgba(255,255,255,.06) inset,0 18px 40px -12px rgba(20,20,30,.28),0 4px 10px -4px rgba(20,20,30,.12)}
+.ws-app .sgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:28px 20px;justify-items:center}
+.ws-app .scrn{cursor:zoom-in;transition:transform .16s ease}
+.ws-app .scrn:hover{transform:translateY(-3px)}
+.ws-app .scrn[data-zoom=""]{cursor:default;transform:none}
+.ws-app .scrn .cap{font-size:13px;color:var(--lit)}
+.ws-app .as-page{font-size:12px;font-weight:600;letter-spacing:.02em;color:var(--mut);padding-top:4px;border-top:1px solid var(--line);padding-top:14px}
+.ws-app .as-page:first-of-type{border-top:0;padding-top:0}
+
+/* prototype */
+.ws-app .as-stage{flex:none;overflow:visible;min-height:auto;display:flex;gap:40px;align-items:flex-start;justify-content:center;flex-wrap:wrap;padding:12px 0 8px;background:transparent}
+.ws-app .as-qrp{max-width:300px;align-items:flex-start}
+.ws-app .qr{width:156px;height:156px;border-radius:14px;padding:8px;border-color:var(--line);box-shadow:var(--sh)}
+
+/* android build pipeline */
+.ws-app .pipe{grid-template-columns:repeat(4,minmax(0,1fr));gap:0;border:1px solid var(--line);border-radius:16px;background:var(--bg);overflow:hidden}
+.ws-app .pp{border:0;border-radius:0;border-right:1px solid var(--line);padding:16px 18px;gap:6px;background:transparent;position:relative}
+.ws-app .pp:last-child{border-right:0}
+.ws-app .pp.ok,.ws-app .pp.run,.ws-app .pp.bad{border-color:var(--line)}
+.ws-app .pp.ok{background:transparent}.ws-app .pp.run{background:var(--pri-soft2)}
+.ws-app .pp::after{content:"";position:absolute;left:0;right:0;bottom:0;height:3px;background:transparent}
+.ws-app .pp.ok::after{background:var(--ok)}.ws-app .pp.run::after{background:var(--pri)}
+.ws-app .ppn{width:24px;height:24px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:var(--sunk);font-style:normal;color:var(--mut)}
+.ws-app .pp.ok .ppn{background:var(--ok-soft);color:var(--ok)}.ws-app .pp.run .ppn{background:var(--pri-soft)}
+.ws-app .ppn svg{width:14px;height:14px}
+.ws-app .pp b{font-size:14px}.ws-app .pp span{font-family:inherit;font-size:12.5px}
+@media (max-width:760px){.ws-app .pipe{grid-template-columns:repeat(2,minmax(0,1fr))}.ws-app .pp:nth-child(2){border-right:0}.ws-app .pp:nth-child(-n+2){border-bottom:1px solid var(--line)}}
+
+/* store */
+.ws-app .steps8>div{padding:10px 2px;font-size:14px}
+.ws-app .steps8 .n{width:24px;height:24px;font-family:'JetBrains Mono',ui-monospace,monospace}
+.ws-app .sto{width:24px;height:24px;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;flex:none;color:var(--on-solid);background:var(--solid)}
+.ws-app .sto.a::before{content:"";width:9px;height:9px;border-radius:50%;border:2px solid currentColor}
+.ws-app .linkbox{border:1px solid var(--line);border-radius:14px;padding:16px;background:var(--raise);gap:10px}
+.ws-app .fpick{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.ws-app .fpick label.b{position:relative;cursor:pointer;color:var(--ink);font-size:13.5px;flex-direction:row}
+.ws-app .fpick label.b:focus-within{outline:2px solid var(--pri-ring);outline-offset:2px}
+.ws-app .fpick .fname{flex:1;min-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* data table */
+.ws-app table.t th{font-size:12px;font-weight:500;padding:11px 12px;background:transparent}
+.ws-app table.t td{padding:11px 12px;font-size:13.5px}
+.ws-app table.t tr:hover td{background:var(--raise)}
+.ws-app table.t td.tempty{text-align:center;color:var(--mut);padding:28px 12px}
+.ws-app table.t select{height:30px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);padding:0 8px;font-size:13px}
+
+/* business modules: icon, status, text, and the button always on the bottom line */
+.ws-app .mods{grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:16px}
+.ws-app .mod{border-color:var(--line);border-radius:16px;padding:16px 18px;gap:6px;min-height:150px;box-shadow:0 1px 2px rgba(23,22,28,.04);transition:border-color .15s,box-shadow .15s}
+.ws-app .mod:hover{border-color:var(--hair2);box-shadow:var(--sh)}
+.ws-app .modh{display:flex;align-items:center;gap:10px;margin-bottom:4px}
+.ws-app .modh b{flex:1;font-size:14.5px}
+.ws-app .mi{width:30px;height:30px;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;background:var(--sunk);color:var(--lit);flex:none}
+.ws-app .mod.on .mi{background:var(--ok-soft);color:var(--ok)}
+.ws-app .mod .ml{font-size:14px;color:var(--ink)}
+.ws-app .mod>.b{margin-top:auto;align-self:flex-start}
+.ws-app .mod>.mut:last-child{margin-bottom:0}
+
+/* forms */
+.ws-app .as-form label{font-size:12.5px;font-weight:500;color:var(--lit);gap:6px;min-width:0}
+.ws-app .as-form input:not([type=file]),.ws-app .as-form select{width:100%;box-sizing:border-box;min-width:0}
+.ws-app .as-form input:not([type=file]),.ws-app .as-form textarea,.ws-app .as-form select{height:40px;border-color:var(--line);border-radius:10px;padding:0 12px;transition:border-color .15s,box-shadow .15s}
+.ws-app .as-form input::placeholder{color:var(--dim)}
+.ws-app .as-form input:focus,.ws-app .as-form textarea:focus{outline:0;border-color:var(--pri);box-shadow:0 0 0 3px var(--pri-soft)}
+.ws-app form[data-form=facts]{display:grid;grid-template-columns:1fr 1fr;gap:12px 14px}
+.ws-app form[data-form=facts]>.pnh,.ws-app form[data-form=facts]>span,.ws-app form[data-form=facts]>.as-row{grid-column:1/-1}
+@media (max-width:1180px){.ws-app form[data-form=facts]{grid-template-columns:1fr}}
+
+/* the work card: steps without a recorded time show no clock */
+.ws-app .acts .tm:empty{display:none}
+
+@media (max-width:900px){.ws-app .pbody{padding:18px 16px 40px}.ws-app .ptop{padding:0 10px}.ws-app .pht h2{font-size:19px}}
+@media (prefers-reduced-motion:reduce){.ws-app .pbody.pin{animation:none}.ws-app .scrn:hover{transform:none}.ws-app .views button::after{transition:none}}
+/* the tab bar fits the pane: icons only where there is room for them, labels always */
+.ws-app .pane{container-type:inline-size;container-name:aspane}
+@container aspane (max-width:1120px){.ws-app .views button svg{display:none}.ws-app .views button{padding:0 9px}.ws-app .vsep{margin:0 2px}}
+@container aspane (max-width:900px){.ws-app .views button{padding:0 7px;font-size:13px}}
+/* phone width: the chat takes the full width (a later Web Studio rule pinned it at 440 px and pushed the page sideways),
+   the top bar keeps Publish whole and the other buttons as icons */
+@media (max-width:760px){
+  .ws-app .chat{width:auto}
+  .ws-app .top{gap:6px;padding:0 10px}
+  .ws-app .top .tsave{display:none}
+  .ws-app .top .pname{min-width:0;flex:1 1 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .ws-app .top .b{flex:none;padding:0 10px}
+  .ws-app .top .b:not(.dark) span{display:none}
+  .ws-app .top #asPill{display:none}
+}
+.ws-app .psub{margin:4px 0 -4px;font-size:12px;font-weight:600;letter-spacing:.02em;color:var(--mut)}
+.ws-app .psub:first-child{margin-top:0}
