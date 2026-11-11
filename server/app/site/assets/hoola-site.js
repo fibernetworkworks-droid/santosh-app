@@ -556,3 +556,43 @@
   d.addEventListener('visibilitychange', function () { if (d.visibilityState === 'hidden') timing(); });
   W.addEventListener('pagehide', timing);
 })();
+
+/* v0.802 GALTI PAKDO: ONLY inside the Studio's preview frame - this page's JavaScript errors, unhandled promise
+   rejections and failed data calls (5xx / network) go to the Studio window that holds the frame (postMessage); the
+   Studio relays them with her login. Nothing is sent anywhere on her live website or when the preview is opened alone. */
+(function () {
+  'use strict';
+  var W = window;
+  if (W.parent === W || !/\/api\/site-preview\//.test(location.pathname) || !W.JSON) return;
+  var path = location.pathname.replace(/^.*?\/api\/site-preview\/[^/]+\//, '/').replace(/__edit\//, ''), n = 0;
+  function post(kind, m, f, l, st) {
+    if (n++ >= 20) return;
+    try { W.parent.postMessage({ hoola: 'perr', kind: kind, m: String(m || '').slice(0, 300),
+      f: /^pages\/[\w-]+\/[\w-]+\.(js|css|html)$/.test(String(f || '')) ? String(f) : String(f || '').split(/[?#]/)[0].split('/').pop().slice(0, 60),
+      l: +l || 0, s: String(st || '').slice(0, 800), p: path }, '*'); } catch (e) { /* never break her page */ }
+  }
+  W.addEventListener('error', function (ev) {
+    if (ev && ev.message) post('page', ev.message, ev.filename, ev.lineno, ev.error && ev.error.stack);
+  });
+  W.addEventListener('unhandledrejection', function (ev) {
+    var r = ev && ev.reason;
+    if (r && r.name === 'AbortError') return;
+    post('page', r && r.message ? r.message : String(r), r && r.fileName, 0, r && r.stack);
+  });
+  W.__hoolaErr = function (e, file) {          // a section script's own error (its try / catch calls this, preview only)
+    post('page', e && e.message ? e.message : String(e), file, 0, e && e.stack);
+  };
+  if (W.fetch) {
+    var f0 = W.fetch;
+    W.fetch = function (input, init) {
+      var u = typeof input === 'string' ? input : (input && input.url) || '';
+      return f0.apply(this, arguments).then(function (res) {
+        if (res && res.status >= 500) post('data', 'Data call failed: ' + res.status + ' ' + String(u).split(/[?#]/)[0].slice(-80), '', 0, '');
+        return res;
+      }, function (er) {
+        post('data', 'Data call did not reach the server: ' + String(u).split(/[?#]/)[0].slice(-80) + ' (' + (er && er.message || 'network') + ')', '', 0, '');
+        throw er;
+      });
+    };
+  }
+})();

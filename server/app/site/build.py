@@ -1077,7 +1077,12 @@ def assemble(site: dict[str, Any], plan: dict[str, Any], sections: dict[str, dic
     for key, sec in sections.items():
         css_all.append(sec.get("css") or "")
         if sec.get("js"):
-            js_all.append(sec["js"])
+            js = sec["js"]
+            if js.endswith("\n}catch(e){}})();"):       # v0.802 a section's own error reaches the Studio preview's catcher
+                slug, _, typ = key.partition("__")       # (window.__hoolaErr exists only inside the preview frame)
+                js = js[:-len("}catch(e){}})();")] + ("}catch(e){window.__hoolaErr&&window.__hoolaErr(e,"
+                                                       + json.dumps(f"pages/{slug}/{typ}.js") + ")}})();")
+            js_all.append(js)
     files = 0
     from . import sitemap as SM
     big = bool(plan.get("big"))

@@ -126,7 +126,7 @@ def test_app_version_story():
     assert f'APP_VERSION = "{APP_VERSION}"' in main    # v0.537: was a typed 0.535.0, two releases behind
     # story pin moved to the v0.555 story (the v0.476 precedent: the newest release's story carries the
     # marker; the older stories live in git history)
-    assert 'HOOLA CODE PHASE 5' in main and 'devsahayak_schedules' in main  # the newest-story precedent (v0.798.0 carries the marker; older stories live in git history)
+    assert 'GALTI PAKDO' in main and 'galti' in main  # the newest-story precedent (v0.802.0 carries the marker; older stories live in git history)
 
 
 def test_pubspec_pin():

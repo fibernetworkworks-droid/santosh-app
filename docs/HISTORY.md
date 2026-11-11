@@ -1466,34 +1466,34 @@ no Hinglish, no "0s", the tab bar fits; motion once per page); `test_v0693_app_s
 NOT VERIFIED: on her own server with a real build in progress; the thread's older Hinglish job lines from other server
 messages (design ready / failed / stopped) are unchanged.
 
-
-## v0.802.0 GAME DEV ENGINE LOOK (owner: "NOW MAKE IT MORE STUNING ADVANCE AND A REAL GAME ENGINE FEEL DESIGN WITH ANIMATIONS AND GRAPHICAL VISUALIZATION IN IT" -> five engine boards on the design canvas (v2 · Engine look) -> "GO BUILD - WHOLE APP, REAL GAME IN VIEWPORT")
-
-The whole Hoola Game Dev app (`/console/games`) redrawn as a game engine, behaviour unchanged.
-
-- **Always dark.** `gamedev.js` sets `data-theme="dark"` + `html.gdv-engine` on load; `gamedev.css` puts one engine palette on
-  `:root.gdv-engine[data-theme]` (specificity above v2.css's dark block). The embedded console game pages (board, bible,
-  scenes, QA, release, crew roles...) read the same tokens, so they wear the engine look without their own CSS changing.
-- **Home.** Engine bar (`#gdvEbar`, `drawEbar`) with only real numbers: Godot ready / not installed, games being made, games
-  that play. Hero with a living pipeline loop (`loopHtml`: Hoola's six steps, work flowing round; the middle names her newest
-  game that plays). Game cards get a living drawn thumbnail when there is no screenshot (`sceneArt`: runner / night skyline /
-  tile board - decoration) and a status badge. Studio charts (`statsHtml`, `#gdvStatsBox`, redrawn by the home poll) from her
-  own games only: the state split, versions built per game, frame rate measured on the server - a card with nothing real
-  to show is left out. The six steps became a connected strip.
-- **Workspace = editor.** Engine top bar (web build version + server fps chips when measured), the Hoola chat as a dock,
-  tabs. The Play tab (key `play`, label "Editor") is the REAL game in the viewport - the same web build the private link
-  opens - with its own toolbar (`viewportAct`): play from the start, stop (the frame goes blank, an overlay offers Play),
-  phone / tablet / computer size, full screen (falls back to a toast), open in a new tab. Inspector: version, screen,
-  measured performance as bars, Hoola's checks, the private link + QR, the change box / progress. Output dock: the real
-  checks, warnings and version notes as a log; a versions timeline with the restore buttons.
-- **The viewport is never rebuilt by a poll.** `.gdv-stage[data-key]` = play link + live version: the same key keeps the
-  stage node (only the inspector and the dock are swapped), a NEW version reloads it (before, the same link kept showing
-  the old build until a reload).
-- **Build pipeline** (`pipeHtml`) on the progress card: design, code, build, bots play, your link - the real stage glows,
-  work flows along the line into it; the pct / say / stage hooks still update in place.
-- design.md shown as an editor file tab. Every loop is off under the computer's reduce-motion setting and Hoola's Calm.
-  Type rules kept: weights <= 600, nothing under 12px, no all-caps (mono labels are lower case).
-- Board embed fix: a two-word role chip on a task card wraps instead of overlapping the line under it.
-
-Tests: `test_v0783_gamedev.py` 20 + the release suites; screenshots checked by eye at 1440 and 390 (home, editor, design,
-building, board, crew). NOT VERIFIED: on her server with a real Godot build (the walk uses a stand-in web page as the game).
+## v0.802.0 GALTI PAKDO - the preview tells Hoola when it breaks; Try to fix follows a ladder (L6 of docs/LOVABLE_STUDIO_PLAN.md, owner: "GO L6")
+Before: an error in the preview was invisible to Hoola (and a section script's error was swallowed by its own try/catch);
+she had to notice it and describe it. Lovable's error collector + Try to fix, in Hoola's shape:
+- COLLECTOR (`hoola-site.js`, last block): runs ONLY in a frame whose page is /api/site-preview/... - `error`,
+  `unhandledrejection` (AbortError skipped), failed `fetch` (5xx = Data error, network = Data error) and `window.__hoolaErr`
+  (called by the build's per-section catch with `pages/<page>/<section>.js`; on her live site nothing defines it, so the catch
+  stays silent as before). Max 20 per page load, posted to the parent window only.
+- RELAY (Studio): only messages from its own preview frame; batched 1.2 s; POST /api/sites/{id}/preview-errors with her login
+  (64 KB cap -> 413, 20 items, masked by `ops.clean_message`: emails, long numbers, query strings; the preview's private link
+  is cut from messages and stacks).
+- STORE (`site/galti.py`, table `site_errors`, registered in db.init_db + self-heal): one row per fingerprint (kind +
+  message with numbers folded + file + line): count, page, version, stack (6 lines), first / last seen, status
+  (open / ignored / fixed - it reopens if it comes back), the LEDGER of attempts. A site that stopped on a build problem
+  shows a Build problem card (GET /api/sites/{id}/errors).
+- CARDS: above the chat box (up to 3 + "N more") and a "This page hit a problem" bar over the preview: title (Page error /
+  Data error / Build problem), page, times seen, version, Show details (file:line, stack, attempts), Ignore, Try to fix
+  (Ctrl+Enter when the chat box is empty).
+- THE LADDER (plan section 8): Try to fix -> POST /api/sites/{id}/errors/{eid}/fix -> the Build message + `<error_to_fix>`
+  (the error, its file, every earlier attempt and its result) read ONCE by that turn via `turnmode.site_block`; the model is
+  told to find the cause first, change as little as possible (edit_lines) and NOT claim it fixed. An attempt is marked
+  'did not fix' when the same error is seen on a version newer than the one it started from. After two that did not hold,
+  the button and the server switch to "Plan for root cause" (Plan mode, "what have we already tried") - never a third blind
+  patch. Not seen on a newer version after an attempt = "Not seen since vN" (proven by the preview, never claimed).
+- AGENT: `website_dekho what=errors` (+ all) - the open errors with the ledger; the description says read before fixing.
+NOT BUILT: the plan's "5 free fixes a day" (Hoola has no per-turn charge to waive, so nothing says free); ladder steps 3-6
+stay manual (History > restore a version already exists; rebuild one section = action=change; remix not built).
+Tests: test_v0802_galti_pakdo.py (9: one card per fingerprint + masking + caps + her sites only, the ladder two fixes then a
+plan with the ledger in the turn, not-seen-since / ignore / reopen, build problem + routes + the agent read + 413, section
+errors only in the preview, the preview link never kept, source wiring, and the PLANTED-ERROR walk: a section that throws ->
+the card names pages/home/hero.js -> Try to fix -> one exact edit -> the next preview is clean - fixed on try 1).
+NOT VERIFIED live: a real model fixing a real error from <error_to_fix> on her server.
