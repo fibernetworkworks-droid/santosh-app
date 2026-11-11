@@ -346,7 +346,7 @@ def _act(ctx: Ctx, role: str, action: str, a: dict[str, Any]) -> dict[str, Any]:
                                  if k in a})
     except S.EnterpriseError as ex:
         raise ToolError(str(ex))
-    raise ToolError("action galat")
+    raise ToolError("unknown action")
 
 
 def _read(ctx: Ctx, role: str, what: str, a: dict[str, Any]) -> dict[str, Any]:
@@ -388,7 +388,7 @@ def _read(ctx: Ctx, role: str, what: str, a: dict[str, Any]) -> dict[str, Any]:
                     "kaagaz": spec["artifacts"]}
     except S.EnterpriseError as ex:
         raise ToolError(str(ex))
-    raise ToolError("what galat")
+    raise ToolError("unknown what")
 
 
 def _make(role: str):

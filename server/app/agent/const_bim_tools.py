@@ -138,7 +138,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return B.cobie_check(t, _s(a.get("project")), _s(a.get("csv_text")))
     except (B.CstError, ValueError) as ex:
         raise ToolError(str(ex)) from None
-    raise ToolError("action galat")
+    raise ToolError("unknown action")
 
 
 def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
@@ -229,7 +229,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
                                   "unit": r.unit, "out_band": r.out_band} for r in rows]}
     except (B.CstError, ValueError) as ex:
         raise ToolError(str(ex)) from None
-    raise ToolError("what galat")
+    raise ToolError("unknown what")
 
 
 async def const_bim(ctx: Ctx, action, **a: Any):

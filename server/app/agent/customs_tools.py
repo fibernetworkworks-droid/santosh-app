@@ -122,7 +122,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return S.save_settings(t, **{k: a[k] for k in S._SET_KEYS if k in a})
     except (S.CustomsError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("action galat")
+    raise ToolError("unknown action")
 
 
 def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
@@ -153,7 +153,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
             return {"never": list(R.NEVER), "stages": R.STAGES, "modes": R.MODES, "be_types": R.BE_TYPES, "incoterms": R.INCOTERMS, "gir": R.GIR}
     except (S.CustomsError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("what galat")
+    raise ToolError("unknown what")
 
 
 async def customs(ctx: Ctx, action, **a: Any):

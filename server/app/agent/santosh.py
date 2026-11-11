@@ -3169,7 +3169,7 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
             bus.publish(conversation_id, "message", {"role": "assistant", "text": text, "source": "budget"})
         return text
     _gender = persona(tenant_id)[1]
-    # v0.75 ID numbers the OWNER writes go into her Pehchaan Locker; the model and the saved chat get references.
+    # v0.75 ID numbers the OWNER writes go into her ID Locker; the model and the saved chat get references.
     # Customers' / other avatars' messages are never captured into her locker.
     if (actor or "owner") == "owner" and not user_text.lstrip().startswith("[Hoola Network]"):
         # v0.76 a website job is waiting for an OTP / CAPTCHA and she just said it: straight into the page box, never

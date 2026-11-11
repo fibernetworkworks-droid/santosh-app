@@ -18,7 +18,7 @@ FRONTOFFICE_TOOLS = [
         "rate only if she said one, source walk_in|phone|whatsapp|direct|agent, hold, room, discount / complimentary = CARD) | ota "
         "(text = her pasted OTA mail; room_type if asked) | ota_file (file_id = OTA / channel-manager sheet or mail) | amend (booking, "
         "arrive, depart, room_type, adults, rate) | confirm (booking on hold) | checkin (booking, room, id_kind aadhaar|dl|voter|passport, "
-        "id_number -> Pehchaan Locker, nationality; foreigner: passport, visa_number, visa_type, visa_expiry, arrived_india_on, "
+        "id_number -> ID Locker, nationality; foreigner: passport, visa_number, visa_type, visa_expiry, arrived_india_on, "
         "coming_from, going_to, purpose; force* + reason) | move (booking, room) | checkout (booking) | charge (booking, kind food|"
         "restaurant|room_service|laundry|extra_bed|minibar|transport|late_checkout|other, amount, qty, text) | received* (booking, amount, "
         "mode upi|cash|card|bank|ota, ref) | pay_link (booking, amount, what advance|balance) | discount (booking, amount or pct, "
@@ -160,7 +160,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return S.register_file(t, _s(a.get("start")), _s(a.get("end")), conv)
     except (S.FoError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("action galat")
+    raise ToolError("unknown action")
 
 
 def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
@@ -200,7 +200,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
             return {"never": list(R.NEVER), "sources": [{"what": w, "url": u, "date": d} for w, u, d in R.SOURCES]}
     except (S.FoError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("what galat")
+    raise ToolError("unknown what")
 
 
 async def front_office(ctx: Ctx, action, **a: Any):

@@ -144,7 +144,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return S.claim_update(t, _s(a.get("claim")), _s(a.get("status")), _s(a.get("brand_ref")), a.get("settled"), _s(a.get("note")))
     except (S.AsError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("action galat")
+    raise ToolError("unknown action")
 
 
 def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
@@ -186,7 +186,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
                     "templates": {k: v["category"] for k, v in R.TEMPLATES.items()}}
     except (S.AsError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("what galat")
+    raise ToolError("unknown what")
 
 
 async def service_desk(ctx: Ctx, action, **a: Any):

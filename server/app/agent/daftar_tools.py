@@ -88,7 +88,7 @@ async def daftar(ctx: Ctx, action, **a: Any):
                                            int(a.get("max_same") or 2), actor)
     except (D.DaftarError, ValueError) as e:
         raise ToolError(str(e))
-    raise ToolError("action galat")
+    raise ToolError("unknown action")
 
 
 async def daftar_dekho(ctx: Ctx, what, **a: Any):
@@ -112,7 +112,7 @@ async def daftar_dekho(ctx: Ctx, what, **a: Any):
             return {"timetables": D.timetables(t)}
         if what == "rules":
             return {"never": R.NEVER, "grade_scale": R.GRADE_SCALE}
-        raise ToolError("what galat")
+        raise ToolError("unknown what")
     try:
         return await asyncio.to_thread(go)
     except (D.DaftarError, ValueError) as e:

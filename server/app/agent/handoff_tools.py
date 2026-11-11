@@ -73,7 +73,7 @@ HANDOFF_TOOLS = [
         "Her own DigiLocker documents (official DigiLocker requester sign-in). status; connect (doctype optional, e.g. "
         "DRVLC, PANCR) gives the DigiLocker page for her to sign in herself in the app (OTP on DigiLocker's page, never to "
         "you); list (issued documents); fetch (uri) makes the document her file (file_id) for her forms / Computer Operator "
-        "uploads / an email she taps to send. Aadhaar is never pulled (its number can go in the Pehchaan Locker). ID "
+        "uploads / an email she taps to send. Aadhaar is never pulled (its number can go in the ID Locker). ID "
         "documents (PAN, DL, RC, voter, passport, ration) never go to another person's avatar. disconnect. When the server "
         "is not set up as a requester, tell her the manual way: DigiLocker app -> document -> Share -> Hoola."),
      "input_schema": {"type": "object", "properties": {

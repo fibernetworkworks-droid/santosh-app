@@ -5,7 +5,7 @@
   2. Availability calendar per room type per night = rooms - out of order - held nights. A booking (walk-in, phone, WhatsApp,
      agent, or HER pasted OTA mail / exported sheet: MakeMyTrip, Goibibo, Booking.com, Agoda, Airbnb...) that would sell a night
      twice is REFUSED in code; a pasted OTA booking that doesn't fit becomes an "overbook" alert (stop-sell / move the guest).
-  3. Check-in: guest register (IDs straight into the Pehchaan Locker; only {id:...} + masked kept), room assignment (free,
+  3. Check-in: guest register (IDs straight into the ID Locker; only {id:...} + masked kept), room assignment (free,
      not out of order, clean first; dirty only when she says), foreign guest -> passport + visa refs + Form III (C-Form) arrival
      entry due in 24 h (she submits on indianfrro.gov.in), departure entry 24 h after check-out.
   4. Folio: room nights at HER rates, extras (restaurant / room service 5% or 18% by 'specified premises', laundry, extra bed ...),
@@ -564,7 +564,7 @@ _ID_KIND = {"aadhaar": "aadhaar", "aadhar": "aadhaar", "passport": "passport", "
 
 def save_guest(tenant: str, guest: str = "", name: str = "", phone: str = "", id_kind: str = "", id_number: str = "",
                visa_number: str = "", **kw: Any) -> dict:
-    """A guest. ID numbers go straight into the Pehchaan Locker; only {id:...} + masked are kept here."""
+    """A guest. ID numbers go straight into the ID Locker; only {id:...} + masked are kept here."""
     with _LOCK, session() as s:
         g = None
         if guest:
@@ -919,7 +919,7 @@ def check_in(tenant: str, booking: str, room: str = "", id_kind: str = "", id_nu
              passport: str = "", visa_number: str = "", visa_type: str = "", visa_expiry: str = "", arrived_india_on: str = "",
              address: str = "", coming_from: str = "", going_to: str = "", purpose: str = "", companions: Any = None,
              force: bool = False, reason: str = "", actor: str = "owner", conv: str = "") -> dict:
-    """Guest register + room. IDs into the Pehchaan Locker. Foreign guest -> Form C (Form III) arrival entry due in 24 h."""
+    """Guest register + room. IDs into the ID Locker. Foreign guest -> Form C (Form III) arrival entry due in 24 h."""
     with session() as s:
         b = _booking(s, tenant, booking)
         if b.status not in ("hold", "confirmed"):

@@ -57,7 +57,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return S.reconcile(t, _s(a.get("item")))
     except (S.CstError, ValueError) as ex:
         raise _TE(str(ex))
-    raise _TE("action galat")
+    raise _TE("unknown action")
 
 
 def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
@@ -71,7 +71,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
             return S.reconcile(t, _s(a.get("item")))
     except (S.CstError, ValueError) as ex:
         raise _TE(str(ex))
-    raise _TE("what galat")
+    raise _TE("unknown what")
 
 
 async def const_store(ctx: Ctx, action, **a: Any):

@@ -29,7 +29,7 @@ PROPAGENT_TOOLS = [
         "price|think}, status done|cancelled|no_show, notes. action=deal: listing, lead, price, deposit, market_value (ready reckoner, "
         "her number), token, token_mode, rate_area, women, buyer_nri, seller_nri, tenant_business, loan, society, agreement_by, "
         "registration_by, buyer_commission {pct|months|amount}, seller_commission {...}, ids_text (Aadhaar / PAN she gave -> "
-        "Pehchaan Locker), ids_side buyer|seller, ids_person. action=deal_update: deal + same fields. action=deal_status: deal, status "
+        "ID Locker), ids_side buyer|seller, ids_person. action=deal_update: deal + same fields. action=deal_status: deal, status "
         "draft|token|agreement|registered|done|fell. action=check: deal, key, done. action=document: deal, doc token_receipt|offer_letter|"
         "agreement_checklist|commission_bill -> card. action=commission_got (owner): deal, side buyer|seller, amount, mode, ref. "
         "action=forget (owner): lead or listing (after the deal ends, DPDP). action=sheet (portal Excel), register (Excel)."),

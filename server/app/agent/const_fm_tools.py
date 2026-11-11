@@ -76,7 +76,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return F.asset_add(t, _s(a.get("project")), a.get("rows") or [])
     except (F.CstError, ValueError) as ex:
         raise ToolError(str(ex)) from None
-    raise ToolError("action galat")
+    raise ToolError("unknown action")
 
 
 async def const_fm(ctx: Ctx, action, **a: Any):
@@ -95,7 +95,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
         return F.dekho(ctx.tenant_id, what, _s(a.get("project")))
     except (F.CstError, ValueError) as ex:
         raise ToolError(str(ex)) from None
-    raise ToolError("what galat")
+    raise ToolError("unknown what")
 
 
 FM_HANDLERS = {"const_fm": const_fm, "const_fm_dekho": const_fm_dekho}

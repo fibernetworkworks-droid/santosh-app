@@ -105,7 +105,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
     except (S.CcError, ValueError) as ex:
         raise ToolError(str(ex))
     _ = R
-    raise ToolError("action galat")
+    raise ToolError("unknown action")
 
 
 def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
@@ -140,7 +140,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
             return {"never": R.NEVER, "sources": R.SOURCES, "providers": R.PROVIDERS, "not_used": R.NOT_PRIMARY}
     except (S.CcError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("what galat")
+    raise ToolError("unknown what")
 
 
 async def call_centre(ctx: Ctx, action, **a: Any):

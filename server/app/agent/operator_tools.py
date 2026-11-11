@@ -15,7 +15,7 @@ OPERATOR_TOOLS = [
         "or order status, book slots, update details, read results into a table. It researches the official help pages, "
         "works step by step, and LEARNS each finished job as a recipe so the next time is fast. "
         "Aadhaar / PAN / voter ID / DL / passport / ration / ABHA / UAN / GSTIN: it fills them like a Seva Kendra, from "
-        "her Pehchaan Locker (numbers she gave are saved there automatically; you pass the {id:...} reference), on any "
+        "her ID Locker (numbers she gave are saved there automatically; you pass the {id:...} reference), on any "
         "site with no extra tap; every other number too. "
         "It does the whole job itself like a Setu operator (every field, login / next buttons). It asks her on her "
         "phone only for: the OTP the site sends her, the CAPTCHA (it reads it itself, she just confirms), a login password, the "

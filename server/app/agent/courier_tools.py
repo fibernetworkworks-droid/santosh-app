@@ -125,7 +125,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return S.forget(t, ref)
     except (S.CourierError, K.CarrierError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("action galat")
+    raise ToolError("unknown action")
 
 
 def _file(tenant: str, file_id: str) -> tuple[bytes, str]:
@@ -167,7 +167,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
             return {"carriers": st["carriers"], "joined": st["joined"]}
     except (S.CourierError, K.CarrierError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("what galat")
+    raise ToolError("unknown what")
 
 
 async def courier(ctx: Ctx, action, **a: Any):
