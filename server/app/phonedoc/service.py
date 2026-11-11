@@ -33,15 +33,15 @@ from .playbooks import ISSUES, SETTING_LABEL, detect, findings
 log = logging.getLogger("santosh.phonedoc")
 _LOCK = threading.Lock()
 RESULTS = ("fixed", "not_fixed", "skipped", "cant")
-STATUS_LABEL = {"open": "Chal raha", "resolved": "Theek ho gaya", "escalated": "Dukaan / madad tak", "closed": "Band"}
+STATUS_LABEL = {"open": "In progress", "resolved": "Fixed", "escalated": "Sent to a shop / for help", "closed": "Closed"}
 
-GENERIC = {"label": "Kuch aur dikkat", "fault": "other", "escalate": "repair", "steps": [
-    {"id": "restart", "title": "Phone restart", "how": "Power button dabake rakhiye > Restart. Bahut si dikkatein yahin theek hoti hain."},
-    {"id": "storage", "title": "Storage", "setting": "storage", "check": "storage_used_pct", "how": "Storage 90% se upar ho to jagah khaali kijiye."},
-    {"id": "update_apps", "title": "Apps update", "url": "https://play.google.com/store/apps",
+GENERIC = {"label": "Some other problem", "fault": "other", "escalate": "repair", "steps": [
+    {"id": "restart", "title": "Phone restart", "how": "Hold the power button > Restart. Many problems are fixed right here."},
+    {"id": "storage", "title": "Storage", "setting": "storage", "check": "storage_used_pct", "how": "If storage is above 90%, free up space."},
+    {"id": "update_apps", "title": "Update apps", "url": "https://play.google.com/store/apps",
      "how": "Play Store > Profile > 'Manage apps & device' > 'Update all'."},
     {"id": "system_update", "title": "Software update", "setting": "system_update", "how": "Settings > Software update > Check."},
-    {"id": "safe_mode", "title": "Safe mode", "how": "Power off ko lamba dabaiye > Safe mode: wahan theek ho to koi app wajah hai."},
+    {"id": "safe_mode", "title": "Safe mode", "how": "Press and hold Power off > Safe mode: if it is fine there, an app is the cause."},
 ]}
 # urgent playbooks keep their order (money / data first), the phone check doesn't reshuffle them
 FIXED_ORDER = {"lost_stolen", "hacked_fraud", "water", "screen_broken", "forgot_lock", "wont_turn_on"}
@@ -57,7 +57,7 @@ SNAP_KEYS = {"brand", "model", "sdk", "android", "security_patch", "uptime_hours
              "hoola_battery_unrestricted", "airplane", "sim_state", "operator", "signal_level", "online", "on", "vpn", "data_saver",
              "wifi_on", "bluetooth_on", "ringer", "ring_volume_pct", "media_volume_pct", "call_volume_pct", "dnd", "auto_time",
              "usb_debugging", "developer_options", "brightness_auto", "brightness_pct", "location_on", "screen_timeout_s", "top_apps"}
-OPERATOR_HELP = {"jio": "Jio: 199 (Jio number se) / MyJio app", "airtel": "Airtel: 121 / Airtel Thanks app",
+OPERATOR_HELP = {"jio": "Jio: 199 (from a Jio number) / MyJio app", "airtel": "Airtel: 121 / Airtel Thanks app",
                  "vi": "Vi: 199 / Vi app", "bsnl": "BSNL: 1503 / BSNL Selfcare app"}
 LOCK_BYPASS = re.compile(r"(frp|google\s*lock|icloud|pattern|password|pin|lock).{0,25}(tod|bypass|hata|khol|remove|crack|todna|unlock)"
                          r"|(bypass|crack|tod).{0,15}(frp|lock|pattern|icloud)", re.IGNORECASE)
@@ -166,7 +166,7 @@ def _clean(data: dict) -> dict:
 def save_snapshot(tenant: str, data: dict) -> dict[str, Any]:
     snap = _clean(data)
     if not snap:
-        raise PhoneDocError("Phone check khaali aaya.")
+        raise PhoneDocError("The phone check came back empty.")
     with _LOCK, session() as s:
         s.add(PhoneSnapshot(tenant_id=tenant, data=json.dumps(snap, ensure_ascii=False)))
         s.flush()
@@ -200,11 +200,11 @@ def summary(snap: dict) -> str:
     if g("battery_pct") is not None:
         bits.append(f"battery {g('battery_pct')}%" + (f", {g('battery_temp_c'):.0f}°C" if isinstance(g("battery_temp_c"), (int, float)) else ""))
     if isinstance(g("storage_used_pct"), (int, float)):
-        bits.append(f"storage {g('storage_used_pct'):.0f}% bhari")
+        bits.append(f"storage {g('storage_used_pct'):.0f}% full")
     if g("operator"):
         bits.append(f"{g('operator')}" + (f" signal {g('signal_level')}/4" if g("signal_level") is not None else ""))
     if g("on"):
-        bits.append(f"net: {g('on')}" + ("" if g("online") in (None, True) else " (internet nahi chal raha)"))
+        bits.append(f"net: {g('on')}" + ("" if g("online") in (None, True) else " (internet is not working)"))
     return ", ".join(bits)
 
 
@@ -238,7 +238,7 @@ def _plan(issue: str, snap: dict, found: list[dict], stats: dict[str, tuple[int,
         st.update(matched=matched, ok_now=ok_now, result=None, at=None, note="",
                   setting_label=SETTING_LABEL.get(st.get("setting") or "", ""))
         if ok_now:
-            st["note"] = "Phone check mein yeh theek dikh raha hai."
+            st["note"] = "The phone check shows this is fine."
         r = _rate(issue, st["id"], stats)
         # careful steps always last; fixed-order playbooks keep their order
         if st.get("careful"):
@@ -287,10 +287,10 @@ def _step_say(st: dict | None, n: int, total: int) -> str:
         return ""
     s = f"Step {n}/{total}: {st['title']}. {st['how']}"
     if st.get("setting_label"):
-        s += f" ('{st['setting_label']}' screen ek tap mein khulegi.)"
+        s += f" (The '{st['setting_label']}' screen opens with one tap.)"
     if st.get("careful"):
-        s += " Isme data / settings mit sakti hain: aap kahengi tabhi."
-    return s + " Ho gaya to bataiye: theek hua ya nahi?"
+        s += " This can erase data / settings: only when you say so."
+    return s + " Tell me when it is done: did it fix the problem or not?"
 
 
 def _get(s, tenant: str, case: str) -> PhoneCase:
@@ -299,7 +299,7 @@ def _get(s, tenant: str, case: str) -> PhoneCase:
         c = s.scalars(select(PhoneCase).where(PhoneCase.tenant_id == tenant, PhoneCase.status == "open")
                       .order_by(PhoneCase.updated_at.desc()).limit(1)).first()
     if not c or c.tenant_id != tenant:
-        raise PhoneDocError("Yeh phone case nahi mila.")
+        raise PhoneDocError("This phone case was not found.")
     return c
 
 
@@ -307,8 +307,8 @@ def _get(s, tenant: str, case: str) -> PhoneCase:
 def refuse(text: str) -> str:
     """Things Hoola never does, in her words."""
     if IMEI_CHANGE.search(text or ""):
-        return ("IMEI badalna / likhna kanoonan apraadh hai (Telecommunications Act 2023, dhara 42(3)(c): 3 saal tak jail, "
-                "50 lakh tak jurmana). Hoola isme madad nahi karta.")
+        return ("Changing / writing an IMEI is a crime under the law (Telecommunications Act 2023, section 42(3)(c): up to 3 years in jail, "
+                "a fine of up to 50 lakh). Hoola does not help with this.")
     if LOCK_BYPASS.search(text or ""):
         return ""   # handled by the forgot_lock playbook (own reset / service centre with bill), never a bypass
     return ""
@@ -321,7 +321,7 @@ def start(tenant: str, text: str, issue: str = "", for_whom: str = "", device: s
     if no:
         return {"started": False, "say": no}
     if not text and not issue:
-        raise PhoneDocError("Phone mein kya dikkat hai? Apne shabdon mein bataiye.")
+        raise PhoneDocError("What is wrong with the phone? Tell me in your own words.")
     guesses = detect(text) if text else []
     issue = issue if issue in ISSUES or issue == "other" else (guesses[0] if guesses else "other")
     own = not for_whom.strip()
@@ -337,19 +337,19 @@ def start(tenant: str, text: str, issue: str = "", for_whom: str = "", device: s
                       findings=json.dumps(rel, ensure_ascii=False), steps=json.dumps(steps, ensure_ascii=False))
         s.add(c)
         s.flush()
-        _log(c, f"Dikkat: {playbook(issue)['label']} ({text[:120]})" + (f"; phone check: {summary(snap)}" if snap else ""), by)
+        _log(c, f"Problem: {playbook(issue)['label']} ({text[:120]})" + (f"; phone check: {summary(snap)}" if snap else ""), by)
         v = _view(c)
-    say = f"Samajh gaya: {v['label']}."
+    say = f"Understood: {v['label']}."
     if rel:
         say += " Phone check: " + " ".join(f["text"] for f in rel[:4])
     elif own and not snap:
-        say += " (Phone ki jaanch abhi nahi mili; Hoola app khulte hi phone khud check ho jayega.)"
+        say += " (No phone check yet; the phone checks itself as soon as the Hoola app opens.)"
     if issue in ("lost_stolen", "hacked_fraud"):
-        say += " Pehle wahi jo sabse zaroori hai:"
+        say += " First, what matters most:"
     say += " " + _step_say(v["current"], v["step_no"], v["total"])
     others = [g for g in guesses[1:3] if g != issue]
     if others:
-        say += " (Agar dikkat " + " / ".join(ISSUES[g]["label"] for g in others) + " hai to bataiye, raasta badal dunga.)"
+        say += " (If the problem is " + " / ".join(ISSUES[g]["label"] for g in others) + ", tell me and I will change the route.)"
     _publish(tenant, "phonedoc_case", {"case": v["id"], "status": v["status"]}, conv)
     return {"started": True, "case": v, "say": say}
 
@@ -361,18 +361,18 @@ def recheck(tenant: str, case: str = "", snapshot: dict | None = None) -> dict[s
         c = _get(s, tenant, case)
         before = {f["id"]: f for f in _j(c.findings, [])}
         if not snap:
-            return {"case": _view(c), "say": "Taaza phone check nahi mila: Hoola app khol ke rakhiye."}
+            return {"case": _view(c), "say": "No fresh phone check found: keep the Hoola app open."}
         now_f = [f for f in findings(snap) if c.issue in f["issues"] or c.issue == "other" or f["level"] == "bad"]
         after = {f["id"] for f in now_f}
         gone = [before[k]["text"] for k in before if k not in after]
         new = [f["text"] for f in now_f if f["id"] not in before]
         c.findings = json.dumps(now_f, ensure_ascii=False)
         if gone:
-            _log(c, "Phone check: theek hua: " + "; ".join(g[:60] for g in gone))
+            _log(c, "Phone check: fixed: " + "; ".join(g[:60] for g in gone))
         v = _view(c)
-    say = ("Phone check: ab theek: " + " ".join(gone) if gone else "Phone check mein abhi badlaav nahi.")
+    say = ("Phone check: now fine: " + " ".join(gone) if gone else "No change in the phone check yet.")
     if new:
-        say += " Naya: " + " ".join(new)
+        say += " New: " + " ".join(new)
     return {"case": v, "fixed_now": gone, "new": new, "say": say}
 
 
@@ -385,19 +385,19 @@ def step(tenant: str, case: str, step_id: str = "", result: str = "not_fixed", n
     with _LOCK, session() as s:
         c = _get(s, tenant, case)
         if c.status != "open":
-            return {"case": _view(c), "say": f"Yeh case pehle se '{STATUS_LABEL.get(c.status)}' hai."}
+            return {"case": _view(c), "say": f"This case is already '{STATUS_LABEL.get(c.status)}'."}
         steps = _j(c.steps, [])
         st = next((x for x in steps if x["id"] == step_id and x.get("result") is None), None) if step_id else _current(steps)
         if not st:
             st = _current(steps)
         if not st:
-            raise PhoneDocError("Saare steps ho chuke.")
+            raise PhoneDocError("All the steps are done.")
         if result == "fixed" and st.get("careful") and by not in ("owner", "hoola"):
-            raise PhoneDocError("Yeh step sirf owner ki haan se.")
+            raise PhoneDocError("This step needs the owner's approval.")
         st["result"], st["at"], st["note"] = result, now().isoformat(timespec="seconds"), (note or st.get("note", ""))[:200]
         if result in ("fixed", "not_fixed"):
             _learn(s, c.issue, st["id"], result == "fixed")
-        _log(c, f"{st['title']}: {dict(fixed='theek hua', not_fixed='nahi hua', skipped='chhoda', cant='nahi ho paya')[result]}"
+        _log(c, f"{st['title']}: {dict(fixed='fixed', not_fixed='not fixed', skipped='skipped', cant='could not be done')[result]}"
                 + (f" ({note[:80]})" if note else ""), by)
         if result == "fixed":
             c.status, c.fixed_by = "resolved", st["id"]
@@ -405,13 +405,13 @@ def step(tenant: str, case: str, step_id: str = "", result: str = "not_fixed", n
         cid, status = c.id, c.status
         v = _view(c)
     if status == "resolved":
-        say = f"Badhiya! '{st['title']}' se theek ho gaya. Case band; agli baar yahi step pehle aayega."
+        say = f"Good. '{st['title']}' fixed it. Case closed; next time this step comes first."
         _publish(tenant, "phonedoc_case", {"case": cid, "status": status}, conv)
         return {"case": v, "resolved": True, "say": say}
     if v["current"]:
         return {"case": v, "say": _step_say(v["current"], v["step_no"], v["total"])}
     out = escalate(tenant, cid, by=by, conv=conv)
-    out["say"] = "Ghar ke saare upay ho gaye. " + out["say"]
+    out["say"] = "All the home fixes are done. " + out["say"]
     return out
 
 
@@ -437,7 +437,7 @@ def _mshop_on(tenant: str) -> bool:
 def _tell_shop(c: PhoneCase) -> str:
     tried = [st["title"] for st in _j(c.steps, []) if st.get("result") in ("not_fixed", "cant")]
     f = [x["text"] for x in _j(c.findings, [])][:3]
-    return (f"{c.device or 'Phone'}: {playbook(c.issue)['label']}." + (f" Ghar par try kiya: {', '.join(tried)}." if tried else "")
+    return (f"{c.device or 'Phone'}: {playbook(c.issue)['label']}." + (f" Tried at home: {', '.join(tried)}." if tried else "")
             + (f" Phone check: {' '.join(f)}" if f else ""))
 
 
@@ -450,41 +450,41 @@ def escalate(tenant: str, case: str = "", kind: str = "", make_job: bool = False
         brand = (c.device.split(" ")[0] if c.device else "").strip()
         esc: dict[str, Any] = {"kind": kind, "tell": _tell_shop(c), "links": [], "notes": []}
         if kind == "repair" or c.issue == "forgot_lock":
-            esc["links"].append({"label": "Paas ki mobile repair dukaan", "url": _maps(tenant, "mobile repair shop")})
+            esc["links"].append({"label": "Mobile repair shops nearby", "url": _maps(tenant, "mobile repair shop")})
             if brand:
                 esc["links"].append({"label": f"{brand} service centre", "url": _maps(tenant, f"{brand} service centre")})
-            esc["notes"].append("Phone ka bill / dabba saath le jaiye (warranty mein ho to service centre muft karega).")
-            esc["notes"].append("Dene se pehle backup le lijiye; screen lock ka password dukaan ko dena zaroori nahi, "
-                                "zaroorat ho to apne saamne kholiye.")
+            esc["notes"].append("Take the phone's bill / box with you (if it is under warranty the service centre repairs it free).")
+            esc["notes"].append("Take a backup before handing it over; you do not have to give the shop your screen lock password, "
+                                "unlock it in front of them if needed.")
             if c.issue == "forgot_lock":
-                esc["notes"].append("Lock hatane ke liye service centre bill aur ID maangega: yahi sahi tareeka hai.")
+                esc["notes"].append("To remove the lock the service centre will ask for the bill and ID: that is the right way.")
             if c.issue == "water":
-                esc["notes"].append("Aaj hi jaiye: paani wala phone jitni der rukta hai, utna nuksaan.")
+                esc["notes"].append("Go today: the longer a wet phone waits, the more the damage.")
         if kind == "operator":
             snap = latest_snapshot(tenant)[0] if not c.for_whom else {}
             opname = str(snap.get("operator") or "").lower()
             for k, line in OPERATOR_HELP.items():
                 if k in opname:
                     esc["notes"].append(line)
-            esc["notes"].append("198: kisi bhi operator ka shikayat number (network / service).")
-            esc["notes"].append("SIM kharab ho to operator store se same number ki nayi SIM (ID ke saath).")
-            esc["links"].append({"label": "Operator store paas mein", "url": _maps(tenant, (opname.split()[0] if opname else "mobile") + " store")})
+            esc["notes"].append("198: the complaint number for any operator (network / service).")
+            esc["notes"].append("If the SIM is faulty, get a new SIM with the same number from the operator store (with ID).")
+            esc["links"].append({"label": "Operator store nearby", "url": _maps(tenant, (opname.split()[0] if opname else "mobile") + " store")})
         if kind == "official":
             if c.issue == "lost_stolen":
                 esc["links"] += [{"label": "Find My Device (Google)", "url": "https://www.google.com/android/find"},
-                                 {"label": "CEIR: phone block (Sanchar Saathi)", "url": "https://ceir.sancharsaathi.gov.in"}]
-                esc["notes"] += ["Kram: SIM block > police complaint > nayi SIM > CEIR par IMEI block (bill + complaint copy + ID).",
-                                 "IMEI phone ke dabbe ya bill par likha hota hai.",
-                                 "CEIR form Hoola browser mein bhar sakta hai: OTP aap dengi, submit se pehle aapki haan."]
+                                 {"label": "CEIR: block the phone (Sanchar Saathi)", "url": "https://ceir.sancharsaathi.gov.in"}]
+                esc["notes"] += ["Order: block the SIM > police complaint > new SIM > block the IMEI on CEIR (bill + complaint copy + ID).",
+                                 "The IMEI is written on the phone's box or bill.",
+                                 "Hoola can fill the CEIR form in the browser: you give the OTP, and it is submitted only with your approval."]
             else:
-                esc["links"] += [{"label": "Cyber crime shikayat", "url": "https://cybercrime.gov.in"},
-                                 {"label": "Chakshu: fraud call / SMS report", "url": "https://sancharsaathi.gov.in"}]
-                esc["notes"] += ["Paise gaye hon to turant 1930 par call (jitni jaldi, utna paisa rukne ka mauka).",
-                                 "Bank helpline par card / UPI block karwaiye.",
-                                 "Kisi ko OTP, PIN ya screen share kabhi nahi."]
+                esc["links"] += [{"label": "Cyber crime complaint", "url": "https://cybercrime.gov.in"},
+                                 {"label": "Chakshu: report a fraud call / SMS", "url": "https://sancharsaathi.gov.in"}]
+                esc["notes"] += ["If money has gone, call 1930 at once (the sooner, the better the chance of stopping the money).",
+                                 "Have the bank helpline block the card / UPI.",
+                                 "Never give anyone an OTP or PIN, and never share your screen."]
         c.status = "escalated"
         c.escalation = json.dumps(esc, ensure_ascii=False)
-        _log(c, f"Aage bheja: {kind}", by)
+        _log(c, f"Escalated: {kind}", by)
         cid, device, text, for_whom = c.id, c.device, c.text, c.for_whom
         v = _view(c)
     if make_job and kind == "repair" and _mshop_on(tenant):
@@ -494,11 +494,11 @@ def escalate(tenant: str, case: str = "", kind: str = "", make_job: bool = False
             r = M.new_job(tenant, name=for_whom or "Graahak", phone=phone, brand=brand, model=" ".join(device.split(" ")[1:]),
                           problem=f"{spec['label']}: {text}"[:500], faults=[spec.get("fault", "other")], by=by, conv=conv)
             if r.get("saved"):
-                job_id, note = r["job"]["id"], f"Aapki dukaan mein job {r['job']['number']} ban gaya."
+                job_id, note = r["job"]["id"], f"Created job {r['job']['number']} in your shop."
             else:
-                note = "Dukaan ka job nahi bana: " + r.get("say", "")
+                note = "The shop job was not created: " + r.get("say", "")
         except Exception as e:  # mshop rule problems etc.
-            note = f"Dukaan ka job nahi bana: {e}"
+            note = f"The shop job was not created: {e}"
         esc["notes"].append(note)
         with _LOCK, session() as s:
             c = s.get(PhoneCase, cid)
@@ -506,9 +506,9 @@ def escalate(tenant: str, case: str = "", kind: str = "", make_job: bool = False
             c.escalation = json.dumps(esc, ensure_ascii=False)
             _log(c, note, by)
             v = _view(c)
-    say = {"repair": "Ab yeh dukaan / service centre ka kaam hai. Paas ki dukaan aur service centre card par hai; "
-                     "unhe yeh batana: " + esc["tell"],
-           "operator": "Ab operator se baat karni padegi: " + " ".join(esc["notes"][:2]),
+    say = {"repair": "This is now work for a shop / service centre. Nearby shops and the service centre are on the card; "
+                     "tell them this: " + esc["tell"],
+           "operator": "You now have to talk to the operator: " + " ".join(esc["notes"][:2]),
            "official": " ".join(esc["notes"][:2])}[kind]
     _publish(tenant, "phonedoc_case", {"case": v["id"], "status": v["status"]}, conv)
     return {"case": v, "escalation": esc, "say": say}
@@ -518,8 +518,8 @@ def close(tenant: str, case: str, by: str = "owner") -> dict[str, Any]:
     with _LOCK, session() as s:
         c = _get(s, tenant, case)
         c.status = "closed"
-        _log(c, "Band kiya", by)
-        return {"case": _view(c), "say": "Case band."}
+        _log(c, "Closed", by)
+        return {"case": _view(c), "say": "Case closed."}
 
 
 def get_case(tenant: str, case: str = "") -> dict[str, Any]:
