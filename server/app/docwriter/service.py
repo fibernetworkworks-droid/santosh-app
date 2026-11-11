@@ -1139,7 +1139,7 @@ def translate(tenant: str, doc: str, to: str, conv: str = "") -> dict[str, Any]:
             c.setdefault("blocking", []).append({"kind": "lost", "text": "These items were lost in translation, add them: " + ", ".join(lost_all[:6])})
             d.checks, d.status = _jd(c), "draft"
     v = get(tenant, nid)
-    say = f"{v['number']}: ready in {R.LANGS[dst].split(' ')[0]}" + (f"; {len(lost_all)} items lost (see the card)" if lost_all else "") + "."
+    say = f"{v['number']}: {R.LANGS[dst].split(' ')[0]} version ready" + (f"; {len(lost_all)} items lost (see the card)" if lost_all else "") + "."
     _publish(tenant, "docwriter_doc", _card(v, say), conv)
     return {"doc": v, "say": say, "checks": res}
 
@@ -1514,7 +1514,7 @@ def publish_request(tenant: str, doc: str, dest: str = "page", repo: str = "", c
         raise DocError("WordPress is not connected (connect it in Content writer > Rules).")
     if dest == "github" and not _gh_token(tenant):
         raise DocError("No GitHub token connected (Technical writer > Sources).")
-    say = f"Publish {v['number']} '{v['title']}' to: {where}? Your approval is needed."
+    say = f"{v['number']} '{v['title']}': publish to {where}? Your approval is needed."
     card = {"kind": "publish", "doc": _card(v)["doc"], "dest": dest, "where": where, "repo": repo, "hash": h,
             "warnings": [x["text"] for x in res["warnings"][:6]],
             "preview": "\n\n".join(f"## {x['title']}\n{x['body'][:300]}" for x in v["section_list"][:3]), "say": say}
