@@ -990,3 +990,27 @@ small{font-size:12.5px}
 #shell.collapsed .rz-side{display:none}
 @media (max-width:900px){.rz{display:none}.gen{grid-template-columns:1fr}#shell:not(.collapsed){grid-template-columns:1fr}}
 @media (prefers-reduced-motion:reduce){.rz::after,.rz::before{transition:none}}
+
+/* v0.807 HOOLA CINEMA (cinema.js) - the few parts the studio did not already have */
+.cn-head{display:flex;align-items:center;gap:10px;min-height:32px}
+.cn-head b{font-size:16px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cn-slot{display:flex;align-items:center;gap:6px}
+.cn-slot .refs{flex:1;min-width:0}
+.cn-slot .refs b,.cn-slot .refs small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+.cn-slot .ib{flex:none;width:32px;height:32px}
+.cn-th{width:38px;height:38px;flex:none;border-radius:8px;background:var(--sunk);display:grid;place-items:center;color:var(--mut);overflow:hidden}
+.cn-th img{width:100%;height:100%;object-fit:cover;display:block}
+.cn-tick{display:flex;gap:10px;align-items:flex-start;font-size:14px;line-height:1.45;color:var(--ink);padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:var(--surface);cursor:pointer}
+.cn-tick input{width:18px;height:18px;flex:none;margin-top:1px;accent-color:var(--pri)}
+.cn-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.cn-stats div{padding:12px 14px;border-radius:16px;border:1px solid var(--line);background:var(--surface);min-width:0}
+.cn-stats small{display:block;color:var(--dim);font-size:12.5px}
+.cn-stats b{display:block;font-size:18px;font-weight:600;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cn-cams{max-height:116px;overflow:auto;scrollbar-width:thin;padding:1px}
+.cn-flat{padding:0;overflow:visible}
+.cn-scene h3 .lnk{font-weight:400;font-size:12.5px}
+.cn-scene textarea{min-height:64px}
+.cn-send{flex-wrap:wrap;gap:10px}
+.res .thumb>img{width:100%;height:100%;object-fit:cover;display:block}
+@media (max-width:720px){.cn-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.chips.cams{max-height:116px;overflow:auto;scrollbar-width:thin;padding:1px}

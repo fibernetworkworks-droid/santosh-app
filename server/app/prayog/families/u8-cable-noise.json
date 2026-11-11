@@ -1,0 +1,49 @@
+{
+ "base": "u8-cable-noise",
+ "rig": "ug8-analog-bench",
+ "chapter": "Electronic instrumentation and sensors",
+ "variants": [
+  {
+   "key": "coaxial",
+   "title": "Noise pick-up in a co-axial cable, shield grounded and floating",
+   "sample": "Co-axial cable (single braid)",
+   "unknown": "the noise picked up by a co-axial cable",
+   "params": {
+    "k": 0.02
+   },
+   "note": "A grounded braid leaves about 2 % of the coupling (illustrative uncovered fraction, not measured cable data).",
+   "source": {
+    "title": "H. W. Ott, Electromagnetic Compatibility Engineering: capacitive coupling and shielding",
+    "note": "Cited from memory - verify; the uncovered fraction is illustrative"
+   }
+  },
+  {
+   "key": "single-shield",
+   "title": "Noise pick-up in a single-shielded cable, grounded and floating",
+   "sample": "Single-shielded (foil) pair",
+   "unknown": "the noise picked up by a single-shielded cable",
+   "params": {
+    "k": 0.05
+   },
+   "note": "A single foil shield with a drain wire leaves about 5 % of the coupling (illustrative uncovered fraction).",
+   "source": {
+    "title": "H. W. Ott, Electromagnetic Compatibility Engineering: capacitive coupling and shielding",
+    "note": "Cited from memory - verify; the uncovered fraction is illustrative"
+   }
+  },
+  {
+   "key": "double-shield",
+   "title": "Noise pick-up in a double-shielded cable, grounded and floating",
+   "sample": "Double-shielded (foil and braid) cable",
+   "unknown": "the noise picked up by a double-shielded cable",
+   "params": {
+    "k": 0.005
+   },
+   "note": "Foil plus braid leaves about 0.5 % of the coupling (illustrative uncovered fraction).",
+   "source": {
+    "title": "H. W. Ott, Electromagnetic Compatibility Engineering: capacitive coupling and shielding",
+    "note": "Cited from memory - verify; the uncovered fraction is illustrative"
+   }
+  }
+ ]
+}

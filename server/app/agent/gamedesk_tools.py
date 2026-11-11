@@ -90,12 +90,17 @@ GAMEDESK_TOOLS.append(
         "Bible still needs) / make (kind, key, words; sprite size, quality fast|best, palette_lock check|strict; sfx preset, "
         "seed; voice text) - PAID kinds (pictures, music, voice) only get a PRICE CARD: tell her the rupees and that her "
         "tap on the card starts it, you can never start a paid one / approve (key, v optional) / reject (key) / apply: "
-        "approved assets into the live game with no new code. Keys follow the Bible ids (enemy red_bat -> sprite red_bat, "
-        "level l1 -> bg_l1, sounds sfx_jump). id = S-0001 (optional with one project). Only while the Game Developer is hired."),
+        "approved assets into the live game with no new code / library (words, kind model|texture, source optional): "
+        "search the FREE library - Kenney low-poly models on Hoola's disk, Poly Haven models + textures, ambientCG "
+        "textures, all CC0, not AI / library_add (source, item, kind, key): one item as a draft (free; her OK still needed). "
+        "For a 3D game look in the library BEFORE making or generating a model. Keys follow the Bible ids (enemy red_bat -> "
+        "sprite red_bat, level l1 -> bg_l1, sounds sfx_jump). id = S-0001 (optional with one project). Only while the Game "
+        "Developer is hired."),
      "input_schema": {"type": "object", "properties": {
-         "action": {"type": "string", "enum": ["list", "suggest", "make", "approve", "reject", "apply"]},
+         "action": {"type": "string", "enum": ["list", "suggest", "make", "approve", "reject", "apply", "library", "library_add"]},
          "id": {"type": "string"}, "kind": {"type": "string", "enum": ["sprite", "icon", "ui", "background", "sfx", "music",
-                                                                        "voice", "model"]},
+                                                                        "voice", "model", "texture"]},
+         "source": {"type": "string", "enum": ["kenney", "polyhaven", "ambientcg"]}, "item": {"type": "string"},
          "key": {"type": "string"}, "words": {"type": "string"}, "size": {"type": "integer"},
          "quality": {"type": "string", "enum": ["fast", "best"]}, "palette_lock": {"type": "string", "enum": ["off", "check", "strict"]},
          "preset": {"type": "string"}, "seed": {"type": "integer"}, "text": {"type": "string"}, "v": {"type": "integer"}},
@@ -655,7 +660,7 @@ def _asset_short(v: dict) -> dict:
 
 
 async def game_assets(ctx: Ctx, action="", id="", kind="", key="", words="", size=0, quality="fast", palette_lock="check",
-                      preset="", seed=0, text="", v=0, **_):
+                      preset="", seed=0, text="", v=0, source="", item="", **_):
     from ..employee import hire
     from ..gamedesk import assets as A
     from ..gamedesk import service as G
@@ -663,7 +668,7 @@ async def game_assets(ctx: Ctx, action="", id="", kind="", key="", words="", siz
     t = ctx.tenant_id
     if not await asyncio.to_thread(hire.is_hired, t, KEY):
         raise ToolError("Game Developer is not hired: hire it in Employees with one tap.")
-    if action not in ("list", "suggest") and str(getattr(ctx, "actor", "owner")).startswith(("customer:", "staff:")):
+    if action not in ("list", "suggest", "library") and str(getattr(ctx, "actor", "owner")).startswith(("customer:", "staff:")):
         raise ToolError("Changing game assets is the owner's job only.")
     run = asyncio.to_thread
     try:
@@ -675,6 +680,20 @@ async def game_assets(ctx: Ctx, action="", id="", kind="", key="", words="", siz
         if action == "list":
             await run(A.collect_models, t, id)
             return _asset_short(await run(A.assets, t, id))
+        if action == "library":                            # v0.811 the free CC0 library: search only
+            from ..gamedesk import library as L
+            try:
+                got = await run(L.search, words, kind if kind in ("model", "texture") else "model", source, 12)
+            except L.LibraryError as e:
+                raise ToolError(str(e)) from None
+            return {"items": [{k: i.get(k) for k in ("source", "id", "name", "kind", "tags", "licence", "kb", "triangles") if i.get(k) is not None}
+                              for i in got["items"]], "found": got["found"], "down": got["down"],
+                    "note": "Free, CC0, made by people (not AI). Add one with action=library_add (source, item, kind, key); it is a draft until she approves it."}
+        if action == "library_add":
+            from ..gamedesk import library as L
+            a = await run(L.add, t, id, source, item, kind if kind in ("model", "texture") else "model", key)
+            return {"asset": a["key"], "kind": a["kind"], "status": a["status"], "error": a.get("error") or "",
+                    "note": "From the free library (CC0). It is a DRAFT: only her OK on the Assets page puts it in the game. Never say it is in the game."}
         if action == "suggest":
             sug = await run(A.suggest, t, id)
             return {"suggest": sug, "total_inr_if_all": sum(x["cost_inr"] for x in sug),

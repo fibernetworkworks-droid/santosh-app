@@ -1,0 +1,28 @@
+{
+  "name": "limits",
+  "about": "Thresholds and time limits the employee watches. Numbers marked unverified are shown as warnings only - never used to compute a tax.",
+  "rows": [
+    {"id": "einvoice_aato", "value": 50000000, "unit": "rupees", "what": "e-invoice is required for B2B / export invoices once turnover (AATO) crossed Rs 5 crore in any year since 2017-18",
+     "basis": "secondary-confirmed", "source": "Notification 10/2023-Central Tax (via docs/research/accounts/03_rules_and_calendar.md s2.5)", "checked_on": "2026-11-11", "review_by": "2027-03-31"},
+    {"id": "einvoice_30day_aato", "value": 100000000, "unit": "rupees", "what": "turnover (AATO) from which an invoice must reach the IRP within 30 days of its date (from 1 Apr 2025)",
+     "basis": "secondary-confirmed", "source": "GSTN advisory 5 Nov 2024 (via docs/research/accounts/03_rules_and_calendar.md s2.5)", "checked_on": "2026-11-11", "review_by": "2027-03-31"},
+    {"id": "einvoice_report_days", "value": 30, "unit": "days", "what": "days after the invoice date the IRP still accepts it (AATO >= Rs 10 crore)",
+     "basis": "secondary-confirmed", "source": "GSTN advisory 5 Nov 2024", "checked_on": "2026-11-11", "review_by": "2027-03-31"},
+    {"id": "irn_cancel_hours", "value": 24, "unit": "hours", "what": "an IRN can be cancelled only within this many hours of generation",
+     "basis": "provider-spec", "source": "WhiteBooks e-invoice OpenAPI spec (docs/research/accounts/04_whitebooks_api.md s4)", "checked_on": "2026-11-11", "review_by": "2027-03-31"},
+    {"id": "ewb_doc_age_days", "value": 180, "unit": "days", "what": "no e-way bill on a base document older than this (from 1 Jan 2025)",
+     "basis": "secondary-confirmed", "source": "docs/research/accounts/03_rules_and_calendar.md s2.6", "checked_on": "2026-11-11", "review_by": "2027-03-31"},
+    {"id": "ewb_threshold", "value": 50000, "unit": "rupees", "what": "consignment value needing an e-way bill (some states differ for intra-state)",
+     "basis": "unverified", "source": "docs/research/accounts/03_rules_and_calendar.md s2.6", "checked_on": "2026-11-11", "review_by": "2027-03-31"},
+    {"id": "rule37_days", "value": 180, "unit": "days", "what": "supplier unpaid this long after the invoice date: reverse the credit (Rule 37), re-claim when paid",
+     "basis": "unverified", "source": "CGST Rule 37 (long-standing; docs/research/accounts/03_rules_and_calendar.md s2.3)", "checked_on": "2026-11-11", "review_by": "2027-03-31"},
+    {"id": "itc_last_date", "value": "11-30", "unit": "MM-DD of the next financial year", "what": "last day to claim a year's input credit (s.16(4)) - or the annual return, if earlier",
+     "basis": "unverified", "source": "CGST s.16(4) (docs/research/accounts/03_rules_and_calendar.md s2.3)", "checked_on": "2026-11-11", "review_by": "2027-03-31"},
+    {"id": "msme_days", "value": [15, 45], "unit": "days", "what": "micro / small supplier must be paid within 15 days (no written agreement) / 45 days (agreed) or the expense waits until paid - s.37(2)(g) of the Income-tax Act 2025 (old 43B(h))",
+     "basis": "secondary-confirmed", "source": "MoF Rajya Sabha reply 21 Jul 2026 (via docs/research/accounts/03_rules_and_calendar.md s3.5)", "checked_on": "2026-11-11", "review_by": "2027-03-31"},
+    {"id": "gstr3b_lock", "value": "2025-07", "unit": "tax period", "what": "from this period GSTR-3B sales (auto-filled from GSTR-1 / 1A / IFF) cannot be edited - fix in GSTR-1A before 3B",
+     "basis": "secondary-confirmed", "source": "GSTN advisory June 2025 (via docs/research/accounts/03_rules_and_calendar.md s2.1)", "checked_on": "2026-11-11", "review_by": "2027-03-31"},
+    {"id": "filing_bar_years", "value": 3, "unit": "years", "what": "a GST return more than this many years past its due date can no longer be filed (rolling, in force from 1 Dec 2025)",
+     "basis": "secondary-confirmed", "source": "Notification 28/2023-Central Tax + GSTN advisories (via docs/research/accounts/03_rules_and_calendar.md s2.8)", "checked_on": "2026-11-11", "review_by": "2027-03-31"}
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "name": "gst_rates",
+  "about": "GST rate slabs by period. An invoice uses the slabs in force on ITS date; a credit note uses its original invoice's rate. Special rates (precious metals / stones) stay as they are.",
+  "rows": [
+    {"id": "slabs_2017", "from": "2017-07-01", "to": "2025-09-21", "slabs": [0, 0.25, 3, 5, 12, 18, 28],
+     "note": "Before GST 2.0. Compensation cess applied on top for some goods.",
+     "basis": "secondary-confirmed", "source": "https://www.business-standard.com/economy/news/gst-council-adopts-two-rate-structure-with-exemptions-125090301624_1.html",
+     "checked_on": "2026-11-11", "review_by": "2027-05-31"},
+    {"id": "slabs_gst2", "from": "2025-09-22", "to": "", "slabs": [0, 0.25, 3, 5, 18, 40],
+     "note": "GST 2.0 (56th GST Council, 3 Sep 2025): 12% and 28% slabs removed; 0.25% and 3% special rates continue. Rate notification numbers not read on the primary text.",
+     "basis": "secondary-confirmed", "source": "https://www.scconline.com/blog/?p=358985",
+     "checked_on": "2026-11-11", "review_by": "2027-05-31"},
+    {"id": "hsns_cess", "from": "2026-02-01", "to": "", "slabs": [],
+     "note": "Health Security se National Security Cess (HSNS Act No. 35 of 2025) on pan masala and similar goods - administered by CBIC (HSNS Cess Notifications 01-03/2026). Start date of the switch from compensation cess is from secondary sources.",
+     "basis": "primary-listing", "source": "https://cbic-gst.gov.in/",
+     "checked_on": "2026-11-11", "review_by": "2027-02-28"}
+  ]
+}

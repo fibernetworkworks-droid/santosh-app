@@ -115,6 +115,8 @@ POST   /api/gamestudio/{id}/assets/spend        {ids}  HER TAP: the priced asset
 POST   /api/gamestudio/{id}/assets/upload       {kind, key, data (base64), words?}  her own file, checked by its bytes
 POST   /api/gamestudio/{id}/assets/{key}/approve|reject|remove   {v?}
 POST   /api/gamestudio/{id}/assets-apply        approved assets into the live game (no model call)
+GET    /api/gamestudio/{id}/library?q=&kind=model|texture&source=   v0.811 free CC0 library search (Kenney / Poly Haven / ambientCG)
+POST   /api/gamestudio/{id}/library             {source, id, kind, key?}  one item as a draft asset (her OK still needed)
 GET    /api/gamestudio/asset/{aid}/{v}?exp&sig  a signed preview link
 
 v0.406 Hoola Game Crew:
@@ -417,6 +419,25 @@ def make_router(require_key, current_tenant) -> APIRouter:
         b = _b(body)
         await acall(A.upload, tenant, sid, str(b.get("kind") or ""), str(b.get("key") or ""), str(b.get("data") or ""),
                     str(b.get("words") or ""))
+        return await acall(A.assets, tenant, sid)
+
+    @r.get("/api/gamestudio/{sid}/library", dependencies=[Depends(require_key)])
+    async def lib_search(sid: str, q: str = "", kind: str = "model", source: str = "", tenant: str = Depends(current_tenant)):
+        """v0.811 the free library (Kenney on disk, Poly Haven, ambientCG - all CC0): search only, nothing is added."""
+        from . import library as L
+        await acall(A._studio, tenant, sid)                 # her project, or 404 like every other route here
+        try:
+            return await acall(L.search, q[:120], kind, source)
+        except L.LibraryError as e:
+            raise HTTPException(400, str(e)) from None
+
+    @r.post("/api/gamestudio/{sid}/library", dependencies=[Depends(require_key)])
+    async def lib_add(sid: str, body: Any = Body(default=None), tenant: str = Depends(current_tenant)):
+        """One free library item as a DRAFT asset (checked by its bytes); it enters the game only after her OK."""
+        from . import library as L
+        b = _b(body)
+        await acall(L.add, tenant, sid, str(b.get("source") or ""), str(b.get("id") or ""), str(b.get("kind") or "model"),
+                    str(b.get("key") or ""))
         return await acall(A.assets, tenant, sid)
 
     @r.post("/api/gamestudio/{sid}/assets/{key}/{what}", dependencies=[Depends(require_key)])

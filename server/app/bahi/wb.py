@@ -1,0 +1,330 @@
+"""The WhiteBooks GSP client (docs/research/accounts/04_whitebooks_api.md - built to the OpenAPI specs in their Developer Hub, NOT
+their prose guides, which describe an OAuth / bearer API the live server does not have).
+
+The contract this module keeps:
+- every call carries the `client_id` / `client_secret` HEADERS of its product (gst | einv | ewb) and the `email` QUERY parameter;
+- the base is the sandbox or production host from WHITEBOOKS_ENV;
+- **success is `status_cd == "1"` - the HTTP status is 200 even on failure**, so we never branch on it;
+- a refusal comes back as WbError with a stable `code` (WB_ERR_xxxx / the GSTN / NIC code / ours) and a plain-English message;
+- passwords / OTPs never reach a log line (the e-way bill password rides a QUERY string - `safe_url` scrubs it);
+- every call is metered (they bill per call): a per-tenant daily cap and a per-minute guard REFUSE before the call, never queue;
+- `shape()` records a reply's structure with NO values, so the sandbox check can pin the real response shapes the spec omits.
+Keys live only in the VPS .env (config.py `whitebooks_*`); nothing here returns them.
+"""
+from __future__ import annotations
+
+import logging
+import re
+import threading
+import time
+from collections import deque
+from datetime import datetime, timedelta, timezone
+from typing import Any
+from urllib.parse import urlencode
+
+import httpx
+
+from ..config import get_settings
+
+log = logging.getLogger("bahi.wb")
+
+HOSTS = {"sandbox": "https://apisandbox.whitebooks.in", "production": "https://api.whitebooks.in"}
+PRODUCTS = ("gst", "einv", "ewb")
+SECRET_PARAMS = ("password", "otp", "evcotp", "client_secret")
+SANDBOX_OTP = "575757"          # the spec's own sandbox OTP - never used against production
+TRANSPORT: httpx.BaseTransport | None = None   # tests inject httpx.MockTransport here
+
+PLAIN = {
+    "WB_ERR_9001": "WhiteBooks did not accept the keys, or the account is not active. Check the WHITEBOOKS_* lines in the server's .env.",
+    "WB_ERR_9000": "WhiteBooks had an unexpected error. Try again in a few minutes; if it repeats, their support has to look.",
+    "not_configured": "WhiteBooks is not set up on the server yet.",
+    "cap": "Today's WhiteBooks call limit for this account is used up (they charge per call). It resets at midnight.",
+    "rate": "Too many WhiteBooks calls this minute - try again in a minute.",
+    "bad_reply": "WhiteBooks sent a reply Hoola could not read.",
+    "network": "Could not reach WhiteBooks just now.",
+    "2150": "This invoice already has an IRN (duplicate). Hoola fetches the existing one instead of making another.",
+    "2174": "This IRN has an active e-way bill - cancel the e-way bill first.",
+}
+
+
+class WbError(Exception):
+    def __init__(self, code: str, message: str = "", *, product: str = "", op: str = "", detail: str = ""):
+        self.code = str(code or "error")
+        self.message = message or PLAIN.get(self.code, "WhiteBooks refused the request.")
+        self.product, self.op, self.detail = product, op, detail
+        super().__init__(f"{self.code}: {self.message}")
+
+    def view(self) -> dict[str, Any]:
+        return {"ok": False, "code": self.code, "message": self.message, "detail": self.detail[:300], "op": self.op}
+
+
+# ------------------------------------------------------------------ configuration
+def env() -> str:
+    e = str(get_settings().whitebooks_env or "sandbox").strip().lower()
+    return e if e in HOSTS else "sandbox"
+
+
+def base() -> str:
+    return HOSTS[env()]
+
+
+def keys(product: str) -> tuple[str, str]:
+    st = get_settings()
+    cid = getattr(st, f"whitebooks_{product}_client_id", "") or ""
+    sec = getattr(st, f"whitebooks_{product}_client_secret", "") or ""
+    if not (cid and sec):                     # one pair for all three products is allowed
+        cid, sec = st.whitebooks_gst_client_id, st.whitebooks_gst_client_secret
+    return str(cid or ""), str(sec or "")
+
+
+def configured(product: str = "gst") -> bool:
+    cid, sec = keys(product)
+    return bool(get_settings().whitebooks_email and cid and sec)
+
+
+def status() -> dict[str, Any]:
+    """What the desk may show: which products are set up - never a key, never the email."""
+    st = get_settings()
+    return {"env": env(), "base": base(), "email_set": bool(st.whitebooks_email),
+            "products": {p: configured(p) for p in PRODUCTS},
+            "own_pair": {p: bool(getattr(st, f"whitebooks_{p}_client_id", "")) for p in PRODUCTS},
+            "daily_cap": int(st.whitebooks_daily_calls or 0), "per_minute": int(st.whitebooks_per_minute or 0)}
+
+
+def env_lines() -> list[str]:
+    """The .env line NAMES the owner sets (values never)."""
+    return ["WHITEBOOKS_ENV=sandbox", "WHITEBOOKS_EMAIL=...", "WHITEBOOKS_GST_CLIENT_ID=...", "WHITEBOOKS_GST_CLIENT_SECRET=...",
+            "WHITEBOOKS_EINV_CLIENT_ID=... (optional)", "WHITEBOOKS_EINV_CLIENT_SECRET=... (optional)",
+            "WHITEBOOKS_EWB_CLIENT_ID=... (optional)", "WHITEBOOKS_EWB_CLIENT_SECRET=... (optional)"]
+
+
+# ------------------------------------------------------------------ guards + meter
+_MINUTE: dict[str, deque] = {}
+_LOCK = threading.Lock()
+
+
+def _today_start() -> datetime:
+    ist = timezone(timedelta(hours=5, minutes=30))
+    n = datetime.now(ist)
+    return n.replace(hour=0, minute=0, second=0, microsecond=0).astimezone(timezone.utc)
+
+
+def calls_today(tenant: str) -> int:
+    from sqlalchemy import func, select
+
+    from ..db import session
+    from .models import AccWbCall, ensure_tables
+    ensure_tables()
+    with session() as s:
+        return int(s.scalar(select(func.count()).select_from(AccWbCall).where(
+            AccWbCall.tenant_id == tenant, AccWbCall.at >= _today_start())) or 0)
+
+
+def _guard(tenant: str, product: str, op: str) -> None:
+    st = get_settings()
+    cap = int(st.whitebooks_daily_calls or 0)
+    if cap and calls_today(tenant) >= cap:
+        raise WbError("cap", product=product, op=op)
+    per = int(st.whitebooks_per_minute or 0)
+    if per:
+        with _LOCK:
+            q = _MINUTE.setdefault(tenant, deque())
+            t = time.monotonic()
+            while q and t - q[0] > 60:
+                q.popleft()
+            if len(q) >= per:
+                raise WbError("rate", product=product, op=op)
+            q.append(t)
+
+
+def _meter(tenant: str, product: str, op: str, ok: bool, code: str, ms: int) -> None:
+    try:
+        from ..db import session
+        from .models import AccWbCall, ensure_tables
+        ensure_tables()
+        with session() as s:
+            s.add(AccWbCall(tenant_id=tenant, product=product, op=op[:60], ok=ok, code=code[:40], ms=ms))
+            s.commit()
+    except Exception:   # noqa: BLE001 - the meter never breaks a call
+        log.exception("wb meter failed")
+
+
+def safe_url(url: str, query: dict[str, Any] | None = None) -> str:
+    q = {k: ("***" if k.lower() in SECRET_PARAMS else v) for k, v in (query or {}).items()}
+    return url + ("?" + urlencode(q) if q else "")
+
+
+# ------------------------------------------------------------------ the call
+_CODE = re.compile(r"\b(WB_ERR_\d+)\b")
+
+
+def _code_of(env_: dict[str, Any]) -> str:
+    err = env_.get("error") if isinstance(env_.get("error"), dict) else {}
+    for c in (err.get("error_cd"), err.get("code"), env_.get("errorCode"), env_.get("error_cd")):
+        if c:
+            return str(c)
+    m = _CODE.search(str(env_.get("status_desc") or ""))
+    return m.group(1) if m else "refused"
+
+
+def _message_of(env_: dict[str, Any], code: str) -> str:
+    if code in PLAIN:
+        return PLAIN[code]
+    err = env_.get("error") if isinstance(env_.get("error"), dict) else {}
+    for m in (err.get("message"), err.get("desc"), env_.get("message"), env_.get("status_desc")):
+        if m:
+            return re.sub(r"^\s*WB_ERR_\d+\s*:\s*", "", str(m))[:300]
+    return "WhiteBooks refused the request."
+
+
+def call(tenant: str, product: str, method: str, path: str, *, query: dict[str, Any] | None = None,
+         headers: dict[str, Any] | None = None, body: Any = None, op: str = "", auth: bool = True) -> dict[str, Any]:
+    """One WhiteBooks call. Returns the reply envelope (`status_cd == "1"`) or raises WbError. `auth=False` only for the root ping."""
+    if product not in PRODUCTS:
+        raise WbError("bad_product", f"Unknown WhiteBooks product '{product}'.")
+    op = op or f"{method} {path}"
+    st = get_settings()
+    if auth and not configured(product):
+        raise WbError("not_configured", product=product, op=op)
+    if auth:
+        _guard(tenant, product, op)
+    cid, sec = keys(product)
+    q = dict(query or {})
+    h: dict[str, str] = {"Accept": "application/json"}
+    if auth:
+        q = {"email": st.whitebooks_email, **q}
+        h.update({"client_id": cid, "client_secret": sec})
+    for k, v in (headers or {}).items():
+        if v is not None and v != "":
+            h[k] = str(v)
+    url = base() + path
+    t0 = time.monotonic()
+    code, ok = "", False
+    try:
+        with httpx.Client(transport=TRANSPORT, timeout=float(st.whitebooks_timeout_s or 30)) as c:
+            r = c.request(method.upper(), url, params=q, headers=h, json=body if body is not None else None)
+        try:
+            env_ = r.json()
+        except ValueError:
+            code = "bad_reply"
+            raise WbError("bad_reply", product=product, op=op, detail=f"HTTP {r.status_code}: {r.text[:200]}")
+        if not isinstance(env_, dict):
+            code = "bad_reply"
+            raise WbError("bad_reply", product=product, op=op)
+        if not auth:
+            ok = r.status_code < 400
+            return env_
+        if str(env_.get("status_cd")) == "1":
+            ok = True
+            return env_
+        code = _code_of(env_)
+        raise WbError(code, _message_of(env_, code), product=product, op=op, detail=str(env_.get("status_desc") or "")[:300])
+    except httpx.HTTPError as e:
+        code = "network"
+        raise WbError("network", product=product, op=op, detail=type(e).__name__)
+    finally:
+        ms = int((time.monotonic() - t0) * 1000)
+        log.info("wb %s %s -> %s (%d ms)", product, safe_url(url, q), "ok" if ok else (code or "error"), ms)
+        if auth:
+            _meter(tenant, product, op, ok, code or ("ok" if ok else "error"), ms)
+
+
+def data_of(env_: dict[str, Any]) -> Any:
+    """The useful part of a reply. WhiteBooks returns `data` either as an object or as a JSON string."""
+    d = env_.get("data")
+    if isinstance(d, str):
+        import json
+        try:
+            return json.loads(d)
+        except ValueError:
+            return d
+    return d
+
+
+def shape(v: Any, depth: int = 0) -> Any:
+    """The structure of a reply with NO values: dict -> {key: shape}, list -> [shape of first], scalars -> their type name."""
+    if depth > 6:
+        return "..."
+    if isinstance(v, dict):
+        return {str(k): shape(x, depth + 1) for k, x in list(v.items())[:60]}
+    if isinstance(v, list):
+        return [shape(v[0], depth + 1)] if v else []
+    if v is None:
+        return "null"
+    return type(v).__name__
+
+
+def _ip() -> str:
+    return str(get_settings().whitebooks_ip_address or "127.0.0.1")
+
+
+# ------------------------------------------------------------------ primitives A0 / A1 use
+def ping() -> dict[str, Any]:
+    """The gateway root ('I-HUB is up and running!') - no keys, no meter."""
+    return call("__wbping__", "gst", "GET", "/", auth=False, op="ping")
+
+
+def public_search(tenant: str, gstin: str) -> dict[str, Any]:
+    """A GSTIN's public record - no taxpayer OTP needed."""
+    return call(tenant, "gst", "GET", "/public/search", query={"gstin": gstin.strip().upper()}, op="public/search")
+
+
+def rettrack(tenant: str, gstin: str, fy: str, typ: str = "") -> dict[str, Any]:
+    """Which returns a GSTIN has filed in a financial year (YYYY-YY) - no OTP. Drives the 'supplier has not filed' watch."""
+    q = {"gstin": gstin.strip().upper(), "fy": fy}
+    if typ:
+        q["type"] = typ
+    return call(tenant, "gst", "GET", "/public/rettrack", query=q, op="public/rettrack")
+
+
+def _gst_headers(gst_username: str, state_cd: str, txn: str = "", ip: str = "") -> dict[str, str]:
+    h = {"gst_username": gst_username, "state_cd": state_cd, "ip_address": ip or _ip()}
+    if txn:
+        h["txn"] = txn
+    return h
+
+
+def find_txn(env_: dict[str, Any]) -> str:
+    """The OTP request's transaction id - the spec gives no response example, so look where GSTN puts it."""
+    for holder in (env_, env_.get("header") if isinstance(env_.get("header"), dict) else {}, data_of(env_)):
+        if isinstance(holder, dict):
+            for k in ("txn", "Txn", "TXN", "transaction_id"):
+                if holder.get(k):
+                    return str(holder[k])
+    return ""
+
+
+def otp_request(tenant: str, gst_username: str, state_cd: str, ip: str = "") -> dict[str, Any]:
+    """Ask the GST system to send the login OTP to HER registered mobile / email (her tap starts this - A1)."""
+    return call(tenant, "gst", "GET", "/authentication/otprequest", headers=_gst_headers(gst_username, state_cd, ip=ip),
+                op="auth/otprequest")
+
+
+def auth_token(tenant: str, gst_username: str, state_cd: str, txn: str, otp: str, ip: str = "") -> dict[str, Any]:
+    """Exchange her OTP for the session WhiteBooks holds. The OTP is passed straight through - never stored, never logged."""
+    return call(tenant, "gst", "GET", "/authentication/authtoken", query={"otp": otp},
+                headers=_gst_headers(gst_username, state_cd, txn, ip), op="auth/authtoken")
+
+
+def refresh(tenant: str, gst_username: str, state_cd: str, txn: str, ip: str = "") -> dict[str, Any]:
+    return call(tenant, "gst", "GET", "/authentication/refreshtoken", headers=_gst_headers(gst_username, state_cd, txn, ip),
+                op="auth/refreshtoken")
+
+
+def ledger_balance(tenant: str, gstin: str, retperiod: str, gst_username: str, state_cd: str, txn: str, ip: str = "") -> dict[str, Any]:
+    """Cash + credit ledger balance for a period (MMYYYY) - a harmless read used to prove the session works."""
+    return call(tenant, "gst", "GET", "/ledgers/bal", query={"gstin": gstin, "retperiod": retperiod},
+                headers=_gst_headers(gst_username, state_cd, txn, ip), op="ledgers/bal")
+
+
+def einv_auth(tenant: str, gstin: str, username: str, password: str, ip: str = "") -> dict[str, Any]:
+    return call(tenant, "einv", "GET", "/einvoice/authenticate",
+                headers={"username": username, "password": password, "ip_address": ip or _ip(), "gstin": gstin}, op="einv/authenticate")
+
+
+def ewb_auth(tenant: str, gstin: str, username: str, password: str, ip: str = "", irp: str = "") -> dict[str, Any]:
+    q = {"username": username, "password": password}
+    if irp:
+        q["irp"] = irp
+    return call(tenant, "ewb", "GET", "/ewaybillapi/v1.03/authenticate", query=q,
+                headers={"ip_address": ip or _ip(), "gstin": gstin}, op="ewb/authenticate")

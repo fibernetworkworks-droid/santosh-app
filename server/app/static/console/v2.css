@@ -5096,3 +5096,72 @@ html.human #app .landing .halo{display:none}
 #app .hcd-srow>span{min-width:0;display:flex;flex-direction:column;gap:2px}
 #app .hcd-srow code{font:12.5px var(--fm,'JetBrains Mono',monospace);word-break:break-all}
 #app .hcd-srow small{font-size:12px}
+
+/* v0.807 BAHI (bahi.js, `acd-` on top of the Desk Room `ddk-` scale): the GST & Accounts desk. Tokens only; entrances once;
+   nothing loops under text. */
+#app .acd-banner{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:0 0 16px;padding:10px 12px 10px 16px;border:1px solid var(--hair2);border-radius:14px;background:var(--pri-soft);color:var(--pri-ink);font-size:14px}
+#app .acd-tabs{margin:0 0 18px;overflow-x:auto;scrollbar-width:none}
+#app .acd-tabs::-webkit-scrollbar{display:none}
+#app .acd-tabs button{flex:none}
+#app .acd-grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr);gap:16px;align-items:start}
+#app .acd .ddk-card{background:var(--surface)}
+#app .acd-cardhd{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+#app .acd-cardhd.sp{margin-top:18px}
+#app .acd-cardhd small{font-size:13px;font-weight:400;color:var(--mut)}
+#app .acd-dues{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+#app .acd-dues li{display:grid;grid-template-columns:62px minmax(0,1fr) auto;gap:12px;align-items:start;padding:11px 0;border-top:1px solid var(--line)}
+#app .acd-dues li:first-child{border-top:0}
+#app .acd-dues time{font-size:13px;font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums;padding-top:1px}
+#app .acd-dues b{display:block;font-size:14px;font-weight:500;line-height:1.4}
+#app .acd-dues small{display:block;margin-top:3px;font-size:12.5px;line-height:1.45;color:var(--mut)}
+#app .acd-dues small.acd-unv{color:var(--warn)}
+#app .acd-tiles{grid-template-columns:repeat(3,minmax(0,1fr))}
+#app .acd-tiles .ddk-tile em{display:block;margin-top:3px;font-style:normal;font-size:12.5px;color:var(--mut);font-variant-numeric:tabular-nums}
+#app .acd-tiles .ddk-tile.acd-warn,#app .ddk-tile.acd-warn{border-color:rgb(var(--acc-rgb) / .35)}
+#app .acd-trail{margin-top:16px}
+#app .acd-ev{list-style:none;margin:10px 0 0;padding:0}
+#app .acd-ev li{display:grid;grid-template-columns:180px minmax(0,1fr) auto;gap:12px;align-items:center;padding:7px 0;border-top:1px solid var(--line);font-size:13px}
+#app .acd-ev li:first-child{border-top:0}
+#app .acd-ev code,#app .acd code{font:12px/1.4 var(--fm,'JetBrains Mono',monospace);color:var(--lit);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#app .acd-evl{color:var(--lit);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#app .acd-ev time{font-size:12.5px;color:var(--mut);font-variant-numeric:tabular-nums}
+#app .acd-filters{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+#app .acd-filters label{display:flex;flex-direction:column;gap:5px;font-size:12.5px;font-weight:500;color:var(--lit)}
+#app .acd-filters select{height:38px;padding:0 10px;border:1px solid var(--hair2);border-radius:10px;background:var(--surface);color:var(--ink);font:inherit;font-size:14px;min-width:150px}
+#app .acd-sp{flex:1}
+#app .acd-dir{display:block;font-size:12px;color:var(--mut)}
+#app .acd-flag{display:inline-block;font-size:12px;font-weight:600;color:var(--warn);background:var(--warn-soft);border-radius:6px;padding:2px 7px;white-space:nowrap}
+#app .acd-probs td{background:var(--warn-soft);color:var(--warn);font-size:12.5px;border-bottom:1px solid var(--line)}
+#app .acd-probs span{display:block}
+#app tr.acd-gone td{color:var(--mut);text-decoration:line-through;text-decoration-color:rgb(var(--fg-rgb) / .25)}
+#app .acd-sec{margin-top:16px}
+#app .acd-rl{list-style:none;margin:10px 0 0;padding:0}
+#app .acd-rl li{padding:8px 0;border-top:1px solid var(--line)}
+#app .acd-rl li:first-child{border-top:0}
+#app .acd-rl b{display:block;font-size:14px;font-weight:500;line-height:1.4}
+#app .acd-rl small{display:block;margin-top:2px;font-size:12.5px;color:var(--mut);overflow-wrap:anywhere}
+#app .acd-kv{list-style:none;margin:0;padding:0}
+#app .acd-kv li{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 0;border-top:1px solid var(--line);font-size:14px}
+#app .acd-kv li:first-child{border-top:0}
+#app .acd-steps{list-style:none;margin:0;padding:0}
+#app .acd-steps li{display:grid;grid-template-columns:52px 130px minmax(0,1fr);gap:10px;align-items:baseline;padding:6px 0;border-top:1px solid var(--line);font-size:13px}
+#app .acd-steps li:first-child{border-top:0}
+#app .acd-steps b{font-size:12px;font-weight:600}
+#app .acd-steps .pass b{color:var(--ok)}
+#app .acd-steps .fail b{color:var(--bad)}
+#app .acd-steps .skip b{color:var(--mut)}
+#app .acd-steps small{color:var(--mut);overflow-wrap:anywhere}
+#app .acd-plan{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+#app .acd-plan li{display:grid;grid-template-columns:46px minmax(0,1fr) auto;gap:12px;align-items:center;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+#app .acd-plan li.built{border-color:rgb(var(--ok-rgb) / .35)}
+#app .acd-ph{display:grid;place-items:center;height:30px;border-radius:9px;background:var(--sunk);font-size:12.5px;font-weight:600;color:var(--lit)}
+#app .acd-plan li.built .acd-ph{background:var(--ok-soft);color:var(--ok)}
+#app .acd-plan b{display:block;font-size:14px;font-weight:600}
+#app .acd-plan small{display:block;font-size:12.5px;color:var(--mut);margin-top:2px}
+@media (max-width:980px){#app .acd-grid{grid-template-columns:1fr}}
+@media (max-width:720px){
+  #app .acd-tiles{grid-template-columns:1fr 1fr}
+  #app .acd-ev li{grid-template-columns:1fr;gap:2px}
+  #app .acd-steps li{grid-template-columns:52px minmax(0,1fr)}
+  #app .acd-steps small{grid-column:1/-1}
+}

@@ -8,7 +8,8 @@ from .gen import TEMPLATE, kotlin_name
 
 
 SKIP = {"t", "digits", "spec", "typeOf", "arrList", "AppBar", "TopTabs", "FloatingPill", "Fab", "AppShell",
-        "HoolaTheme", "onCreate", "Screens", "BottomBar", "load", "apply", "init", "refresh", "openDrawer", "get", "put", "DemoNote"}
+        "HoolaTheme", "onCreate", "Screens", "BottomBar", "load", "apply", "init", "refresh", "openDrawer", "get", "put", "DemoNote",
+        "pickedContact", "onAuthenticationSucceeded", "onAuthenticationError"}
 
 
 DB_SHOWN = {"rows", "create", "update", "fields", "label", "collections"}
@@ -71,7 +72,7 @@ def signatures(src: str) -> list[str]:
         i = j
         if private or name in SKIP or name.split(".")[-1] in SKIP or owner in ("Strings",):
             continue
-        if owner and owner not in ("AppData", "AppState", "Act", "Nav", "Item", "Db"):
+        if owner and owner not in ("AppData", "AppState", "Act", "Nav", "Item", "Db", "Device"):
             continue
         if owner == "Db" and name not in DB_SHOWN:     # v0.314 screens read / write through these only
             continue
@@ -89,7 +90,8 @@ def kit_sheet() -> str:
     """Every public kit function / object member, one line each, straight from the Kotlin source."""
     kit = TEMPLATE / "app/src/main/java/hoola/kit"
     lines: list[str] = []
-    for name in ("Kit.kt", "Scene3D.kt", "Data.kt", "Actions.kt", "Nav.kt", "Theme.kt", "Backend.kt", "Accounts.kt", "Features.kt", "Pro.kt"):
+    for name in ("Kit.kt", "Scene3D.kt", "Data.kt", "Actions.kt", "Nav.kt", "Theme.kt", "Backend.kt", "Accounts.kt", "Features.kt", "Pro.kt",
+                 "Device.kt"):
         for ln in signatures((kit / name).read_text()):
             if ln not in lines:
                 lines.append(ln)
@@ -164,6 +166,16 @@ FILE CONTRACT
   explanation + Android's dialog). A UPI order's "I have paid" is on the account screen (PaidBox) - never ask for a PIN.
 - Actions: val c = ctx(); Act.call(c), Act.whatsapp(c, text), Act.share(c, text), Act.maps(c), Act.payUpi(c, amount, note)
   (opens the customer's own UPI app to the business's UPI ID), Act.toast(c, text), Act.copy(c, text, said).
+- PHONE FEATURES (v0.802, the kit does the system call; never write your own Intent / prompt / permission):
+  * a private screen (reports, money, health, a staff-only page): var open by remember { mutableStateOf(false) }, then
+    if (!open) block { BiometricLock(T("Unlock to see your reports")) { open = true } } else the real blocks. Fingerprint /
+    face / the phone's PIN; the app never sees them. Use it only where the design marks a screen private, not on every screen.
+  * block { RateAppButton() } = "Rate this app" (opens the app's Play Store page) - on a profile / about / thank-you screen.
+  * a booking / appointment / event row: AddToCalendarButton(title, startMillis, endMillis, location, notes) (epoch ms,
+    Long; location / notes optional) - the phone's calendar opens filled in, the user taps Save there.
+  * a form that needs someone's number (refer a friend, gift to, emergency contact): PickContactButton { name, phone ->
+    AppState.form["name"] = name; AppState.form["phone"] = phone } next to the Field()s - one contact the user picks,
+    no contacts permission.
 - Look: colours H.c.primary / accent / ink / muted / surface / bg / tint / line / primaryText / accentText; type
   H.t.display / h1 / h2 / title / body / small / label / price. Never hard-code colours or font sizes; never use dark /
   light checks (the theme does both).

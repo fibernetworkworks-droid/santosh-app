@@ -1,0 +1,39 @@
+{
+ "base": "cw8-game-theory",
+ "rig": "comp4-workstation",
+ "chapter": "Computational physics",
+ "variants": [
+  {
+   "key": "zero-sum",
+   "title": "A zero-sum game solved by fictitious play",
+   "sample": "payoffs [[2, -1], [-1, 1]]",
+   "unknown": "p = 2/5",
+   "params": {
+    "cas": 1
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   },
+   "check": {
+    "params": {
+     "n": 100000
+    }
+   }
+  },
+  {
+   "key": "hawk-dove-costly",
+   "title": "Hawk-Dove with a high cost of fighting",
+   "sample": "V = 1, C = 4",
+   "unknown": "p* = 1/4",
+   "params": {
+    "V": 1.0,
+    "C": 4.0
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   }
+  }
+ ]
+}

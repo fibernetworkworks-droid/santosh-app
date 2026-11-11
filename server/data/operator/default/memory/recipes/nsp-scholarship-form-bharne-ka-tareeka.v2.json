@@ -1,0 +1,50 @@
+{
+ "name": "NSP scholarship form bharne ka tareeka",
+ "task": "NSP scholarship form bharne ka tareeka",
+ "site": "scholarships.gov.in",
+ "start_url": "https://scholarships.gov.in/",
+ "created": "2026-11-11T05:39:32",
+ "steps": [
+  {
+   "action": "open",
+   "target": {},
+   "evidence": [
+    "0:12"
+   ],
+   "url": "https://scholarships.gov.in/"
+  },
+  {
+   "action": "fill",
+   "target": {
+    "role": "textbox",
+    "name": "Applicant Name"
+   },
+   "evidence": [
+    "1:04"
+   ],
+   "value": "{full_name}"
+  },
+  {
+   "action": "click",
+   "target": {
+    "role": "button",
+    "name": "Submit"
+   },
+   "evidence": [
+    "2:41"
+   ]
+  }
+ ],
+ "variables": {
+  "full_name": {
+   "field": "Applicant Name",
+   "action": "fill"
+  }
+ },
+ "human_steps": 0,
+ "notes": "DRAFT learned from a video (youtube:dQw4w9WgXcQ); never run yet - every step is checked against the live page, the first good run replaces this with reality",
+ "runs": 0,
+ "draft": true,
+ "version": 2,
+ "updated": "2026-11-11T06:57:45"
+}

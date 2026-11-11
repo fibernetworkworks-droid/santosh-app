@@ -2985,3 +2985,26 @@ Task ID: v0.807.0 HOOLA DOCUMENT KIT D4 (D0-D3 ride along)
 Ask: "GO D4".
 Built: dockit/ocrlayer.py + fromdoc.py + archive.py, 6 actions, redacted pages OCR'd back, proof card 53/53, test_v0807_dockit_d4.py 11; merged main v0.806.0 (their base kept whole), pins re-applied (registry 626, 0.807.0+806).
 Deploy: vps-ops deploy, then docs_setup (apt line incl. tesseract + JRE), setup_ocr.sh for the Indian models, docs_check, pdf_card.
+Task ID: v0.807.0 BAHI A0 (built as 0.806)
+Task: owner "GO A0" on docs/ACCOUNTS_EMPLOYEE_PLAN.md - the GST & Accounts employee's foundation.
+Work Log: server/app/bahi/ (register + adapters + locks + trail, rules as data, WhiteBooks client + sandbox contract check, overview, /api/bahi/*); Hub row live as GST & Accounts; console desk bahi.js; vps-ops wb_check; 14 tests incl. a browser walk; main moved to 0.806 meanwhile - merged, re-versioned 0.807.
+Stage Summary: on branch claude/exciting-hawking-113x8i (main on her word). Next: she puts the WhiteBooks SANDBOX keys in the VPS .env + runs vps-ops wb_check (pins the real reply shapes); then GO A1 (connect her GSTIN).
+
+---
+Task ID: v0.808.0 WAPAS (L7)
+Task: owner "GO L7" - E5 restore any version, bookmarks, undo per reply, diffs, revert and resend; E7 durable live slots.
+Work Log: site/wapas.py (snapshots, restore, bookmark, diff); _make_version snapshot; site_versions.bookmark; 3 routes + website action=restore_version; stream.py on-disk slots; Studio History / reply footer / Edit + Revert and resend; 8 tests incl. a browser walk.
+Stage Summary: pushed; server deploy only. Next: L8 needs her 4 decisions (build server, model per job, free allowances, brand) before the React App Engine.
+
+---
+Task ID: HOOLA-CINEMA (v0.814.0, built as 0.807)
+Task: owner "read this repo first" (Autom8AI/Open-Higgsfield-AI) -> "GO BUILD THE WHOLE SET AS HOOLA CINEMA END TO END".
+Work Log: read the fork end to end (no LICENSE file; ideas only); read 19 engine doc pages from docs.kie.ai for the real request shapes; server/app/cinema (specs, kie, service, api); static/console/cinema.js mounted in studio.js as view cinema; styles at the end of studio.css; 26 camera moves on the Video page; settings cinema_page / kie_api_key / cinema_daily_jobs; test_v0807_hoola_cinema.py 14 incl. a browser walk; docs/HOOLA_CINEMA_PLAN.md.
+Stage Summary: pushed; server deploy only. She adds KIE_API_KEY to the VPS .env before any tool can run. NOT VERIFIED live. Three decisions wait for her (character swap rule, who pays, upload limit) - see the plan doc.
+
+
+---
+Task ID: v0.816.0 HOOLA DOCUMENT KIT D5 (D0-D4 ride along)
+Ask: "GO D5".
+Built: dockit/forms.py + sign.py + /sign/ pages in api.py, 9 actions, proof card 60/60, test_v0814_dockit_d5.py 13; fixed pyHanko asyncio.run on the server loop; merged main v0.815.0 (their base kept whole), pins re-applied (registry 626, 0.816.0+815).
+Deploy: vps-ops deploy (PUBLIC_BASE_URL + SECRET_KEY needed for the links / sealed keys), then docs_setup / docs_check / pdf_card.

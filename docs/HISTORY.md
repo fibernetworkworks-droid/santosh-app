@@ -1876,3 +1876,378 @@ Deploy: vps-ops deploy (server-only; no new pip; columns make themselves), then 
 NOT VERIFIED (honest): not on the VPS; veraPDF is not installed anywhere yet, so no PDF/A has been validated; OCR
 accuracy was seen with the sandbox's basic models, not her tessdata_best ones; PDF -> Word on complex multi-column
 layouts reads in pdfplumber's order and may need tidying.
+## v0.807.0 BAHI A0 - the GST & Accounts employee, foundation (built as 0.806; their HOOLA CODE PHASE 6 took 0.806.0 - REBASE PROTOCOL, both kept; owner: "LET WE DEVELOP A FULL GST AND ACCOUNT EMPLOYEE --- I HAVE WHITEBOOK APIS OF GST" -> "GO A0")
+
+Plan: `docs/ACCOUNTS_EMPLOYEE_PLAN.md` (A0-A12); research `docs/research/accounts/01-04` (what Hoola has, the market, the rules +
+calendar, the WhiteBooks API). Hoola already had the accountant in seven engines that never talk; A0 is the floor they all stand on.
+
+NEW `server/app/bahi/`:
+- `models.py` - `acc_docs` (the register: one row per (source, source_ref); gstin, period, direction, kind, number, date, party + GSTIN,
+  pos, taxable / CGST / SGST / IGST / cess / tax / total, irn, status confirmed | draft | gone, confidence, reason, problems),
+  `acc_periods` (open | locked per GSTIN + month), `acc_events` (append-only trail with before / after), `acc_gst_conn` (her GSTIN's GSP
+  connection - created now, filled by A1; IRP / EWB passwords sealed, no portal password ever), `acc_wb_calls` (the call meter). Registered
+  in `db.init_db` + `ensure_tables()` self-heal.
+- `rules.py` + `rules/*.json` - rules as DATA: `gst_rates` (slabs to 21 Sep 2025 and GST 2.0 from 22 Sep 2025, HSNS cess listing),
+  `due_dates` (TDS 7th, GSTR-1 11th, IFF 13th, 2B 14th, PF / ESI 15th, GSTR-3B 20th with the LOCK said, PMT-06 25th), `limits` (e-invoice
+  Rs 5 cr / Rs 10 cr + 30 days, IRN cancel 24 h, EWB 180 days / Rs 50,000, Rule 37 180 days, s.16(4) 30 Nov, MSME 15 / 45 days, the
+  July 2025 3B lock, the 3-year bar), `forms_map` (24Q -> 138, 26Q -> 140, 27Q -> 144, 27EQ -> 143, Form 16 -> 130, 16A -> 131, 12BB -> 124,
+  13 -> 128, 15G/H -> 121, 3CA/CB/CD -> Form 26). Every row: `basis` (primary | primary-listing | provider-spec | secondary-confirmed |
+  unverified), `source`, `checked_on`, `review_by`; the loader refuses a row without them; `usable()` = not unverified; `freshness()`
+  (by basis, stale, unverified) for the desk; `slabs_on(date)`; `dues_for(period, scheme, employer, tds)` with days left.
+- `wb.py` - the WhiteBooks client built to their OpenAPI specs (NOT their prose docs): `client_id` / `client_secret` headers per product
+  (gst | einv | ewb, one pair may serve all) + `email` query on every call; sandbox / production host from WHITEBOOKS_ENV; success ONLY on
+  `status_cd == "1"` (HTTP is 200 on failure); `WbError(code, plain message)` - WB_ERR_9001 / 9000, NIC 2150 / 2174, not_configured, cap,
+  rate, bad_reply, network; `safe_url` scrubs password / otp / evcotp from every log line (the EWB password rides a query string); a
+  per-tenant daily cap (`whitebooks_daily_calls` 300) and per-minute guard (`whitebooks_per_minute` 50, under the sandbox's 60) refuse
+  BEFORE the call; every call metered; `shape()` keeps structure, never values; primitives ping, public_search, rettrack, otp_request,
+  auth_token, refresh, ledger_balance, einv_auth, ewb_auth; `find_txn` looks for the OTP transaction id where GSTN puts it.
+- `wbcheck.py` - `python -m app.bahi.wbcheck` / vps-ops `wb_check`: sandbox = ping -> GSTIN search -> filing track -> OTP request -> auth
+  token with the spec's sandbox OTP 575757 -> refresh -> ledger balance -> e-invoice login -> e-way bill login, each PASS / FAIL / SKIP,
+  the reply SHAPES saved to data/bahi/wb_shapes.json (no values); production = the ping only (no taxpayer call, no OTP, ever).
+- `register.py` - adapters (read-only): GST Sahayak `gst_docs`, Thok billed orders + purchases (tax split by intra / inter), office
+  bills, her app + website invoices / credit notes via `appmaker/hisaab.build` (the same numbers her CA gets). `sync(months)` is
+  idempotent (fingerprint), flags the same document from two sources on both rows (purchase "inv" vs "bill" normalised), HOLDS a change
+  to a locked month (row kept, `changed_after_lock` note, trail), marks a row its source dropped `gone` (never deletes), writes the trail;
+  `listing`, `summary` (sales / purchases taxable + GST, credit notes netted, problems), `events` (labelled "GST Sahayak · INV-7 · Kumar
+  Stores", never an internal id), `set_lock`.
+- `service.py` overview (employee status, last + this month, last month's dues falling due now, WhiteBooks status - never a key / the
+  email -, connections without secrets, rules freshness, the trail, the phases list with honest states); `api.py` GET /api/bahi/overview,
+  POST /api/bahi/sync, GET /api/bahi/register, GET /api/bahi/rules, POST /api/bahi/periods/{period}/lock.
+- Settings (config.py): `bahi_enabled`, `bahi_filing` (False - prepare only), `whitebooks_env`, `whitebooks_email`,
+  `whitebooks_{gst,einv,ewb}_client_{id,secret}`, `whitebooks_ip_address`, `whitebooks_daily_calls`, `whitebooks_per_minute`,
+  `whitebooks_timeout_s`, `whitebooks_sandbox_*` (only the check reads them).
+
+Hub: the "Accounts Assistant" row goes live as **GST & Accounts** (does / needs / never), hiring gates no existing tool. Console: its own desk
+`static/console/bahi.js` (view `accountsdesk`; employees.js DESKS accounts -> accountsdesk): hero, tabs Overview (dues with days left and
+"date not yet checked on a government site" where unverified, last / this month tiles, Sync, the trail), Register (month / type / source
+filters, notes on flagged rows, Lock / Unlock a month), Rules (by basis, the unverified list, re-check due), Connection (keys set per
+product, calls today / cap, the last contract check steps, the .env line NAMES when unset), Plan (A0 built, A1 next...). Styles `acd-` on the
+Desk Room `ddk-` scale; the tab row scrolls on a phone.
+
+Tests: `test_v0807_bahi_a0.py` (14) - spec headers + email + sandbox host + meter; failures on HTTP 200 -> plain English; not-configured /
+daily cap / minute guard refuse BEFORE the call; no password / OTP / secret in logs; shapes without values + find_txn; the contract check
+on a mock sandbox + production pings only; rule rows carry source / basis / dates, GST 2.0 slabs, freshness; the month calendar; the register
+(5 documents from 3 engines, idempotent, the double-entered bill flagged on both, a draft order not a document); a locked month holds a
+change, unlock applies it, a dropped row is marked gone, the trail; routes + no secret in any reply; the Hub entry; console wiring + CSS; a
+real-browser walk (hire from the Hub -> Open desk -> Register shows the two flags -> Connection says "Not set" -> Plan), light 1280 + dark 390.
+Pins moved: test_v0317 / test_v0687 used "accounts" as the not-yet-live example (now "telecaller"); test_v0475 stamps 33 -> 34 (bahi.js).
+
+NOT VERIFIED: nothing has talked to the real WhiteBooks sandbox (the keys are not on the VPS yet) - the client is built to the published
+specs and the check exists to pin the real reply shapes the first time it runs. Not built (later phases): the GSTIN connect walk (A1), any
+filing, chat / voice tools, the phone screen.
+
+## v0.808.0 WAPAS - every version can come back, before launch too (built as 0.803; their GAME DEV ENGINE LOOK, HOOLA PROMPTING P1, LANGGRAPH G6, HOOLA CODE PHASE 6 and BAHI A0 took 0.803.0-0.807.0 - REBASE PROTOCOL, all kept; L7 of docs/LOVABLE_STUDIO_PLAN.md, owner: "GO L7")
+Before: a version kept only its BUILT pages, so "go back" existed only for her live address (hosting.rollback, after
+launch); nothing undid one answer's change, and an edited message could not take the site back first.
+- SOURCE PER VERSION (`site/wapas.py`): `service._make_version` now snapshots the section files and the row's plan, look
+  (tokens + design kit), facts, styles, style, languages into `<site>/snaps/v<N>/` (JSON only; photos / media stay in place).
+- RESTORE ANY VERSION: POST /api/sites/{id}/versions/{v}/restore (and `website action=restore_version`): sections + fields
+  back, the hand-edit Undo stack cleared (it belonged to the other version), then a NEW version "Restored vN" through the
+  normal save (checked) - so History stays a straight line and the restore is undone the same way. Enquiries, orders,
+  app rows are DATA and never touched (said every time). Refused while a build runs; a version made before snapshots
+  says so plainly (it can still be Put live if it was published).
+- BOOKMARKS: `site_versions.bookmark` (nullable column, added by the schema self-heal); POST .../versions/{v}/bookmark
+  {name} (empty removes); a bookmarked version is always in the list, however old.
+- WHAT CHANGED: GET .../versions/{v}/diff?against= (default: the version before it): every changed code file (readable
+  code, unified diff, + / - counts, new / removed) + which design tokens changed; 60k cap.
+- STUDIO: History = Bookmarks, then All versions (current, Live, bookmark name), Changes (inline diff), star, Restore,
+  Put live... (the old live rollback, renamed so the two are not confused). Each reply that made a version: "Version N",
+  Bookmark, Undo this change (back to the version before that answer; restores are never counted as an answer's change).
+  Her message: Edit -> Revert and resend (the site goes back to the version before that message, then the edited words
+  go). The chat redraws when a new version lands so every reply gets its own footer.
+- E7 LIVE VIEW SURVIVES A RESTART (`site/stream.py`): slots are also written to `<SITE_DIR>/_live/<site>.json` (at most
+  once a second while words stream, at once on finish / looks / clear); a restart or a second worker reads them back
+  (sequence number continues, a section that was mid-write is marked stale until the build picks it up again).
+Tests: test_v0808_wapas.py (7: any version back as a new version + undo the restore + refusals, data untouched,
+bookmarks + diff routes, the agent action, the live view after a simulated restart, source wiring, a Playwright walk:
+a change -> Version + Undo this change -> undone; Edit -> Revert and resend; History: Changes, Bookmark, Restore).
+NOT VERIFIED live: a real restart of her server during a build (the restart is simulated by clearing the memory).
+
+
+## v0.809.0 HOOLA 3D KIT (owner: "GO 3D GAMEPLAY" - the first of three, "ALL ONE BY ONE")
+
+Before this, a 3D game meant the model writing a player controller, a camera, touch controls, enemies and a HUD from
+scratch in every game - the place 3D builds break. Now those pieces exist once, written by Hoola and proved.
+
+- **The kit** `server/app/gamedesk/kit/hoola_3d.gd` = the `Hoola3D` autoload (pack `kit3d`, `template.HOOLA_OWN`):
+  `world` (sky, ambient, sun with shadows), `ground`, `block`, `moving_block`, `tree`, `mat`, `model` (her approved 3D
+  model or null), `spawn_player` (walk + jump, keyboard arrows / WASD / Space AND a touch stick + jump button,
+  knock-back, respawn after a fall), `follow_camera` (third person, distance 0 = first person, drag / Q E to look),
+  `coin`, `enemy` (patrol / chase; touch = -1 life, landing on it removes it), `goal`, `hurt`, `make_hud` (coins,
+  lives, messages, the on-screen controls). Signals: coin_taken, player_hit, player_fell, goal_reached, enemy_stomped.
+- **Only in a 3D game.** `kit3d.wants(brief, design)` (3D / 3-D / third-person / first-person / low-poly ...; "2D",
+  "match-3", "30 days" never match). A 2D game's project and prompt are unchanged. For a 3D design `ai._ctx` adds the
+  kit's API to the code / fix / change prompts, and the design prompt shapes a 3D game for the kit.
+- **Proof without a model** (`kit3d.proof`, `python -m app.gamedesk proof3d [--save]`, vps-ops `game_3d_proof`):
+  Hoola's own game Diya Run 3D (`kit/proof_main.gd`, built only from the kit) goes through the real pipeline - guard,
+  headless play, web export, browser playtest - then (1) `play_through`: a test player (`kit/proof_bot.gd`, only in a
+  throwaway copy) starts it, walks a route, jumps the steps and WINS with the same keys a person uses; (2)
+  `browser_touch`: in a real Chromium a tap starts it and the on-screen stick is held until the engine reports a coin;
+  (3) `self_test`: the kit's rules in the engine - a guard's touch costs one life, a stomp removes it, a fall respawns,
+  stick + jump button, coin, lift. `--save` keeps it as a finished game in her list with a private play link.
+- Measured here (Godot 4.7.2 + Chromium): test player won in 6.6 s of game time, 24.4 m walked, 6 of 8 coins, top
+  y 2.8 m, 3 lives left; touch collected 2 coins in a real browser; self-test 6 / 6; web download ~9.7 MB.
+- Found while building: a headless engine has no window, so injected touch events arrive with broken positions -
+  the self-test hands touch events to the kit directly and the real-browser check covers the true path.
+
+Tests: `test_v0809_kit3d.py` 28 (3 need Godot, 1 of those a browser; all ran green here). NOT VERIFIED: no
+MODEL-written 3D game has been built from the kit yet (that needs her server and model credit); the proof game has
+not been played on a real phone.
+
+
+## v0.810.0 PRAYOGSHALA WAVE 8
+
+69 physics set-ups built and walked within tolerance (agents' walks + the lead's final walk, 68 / 68 labs): ug_analog_w8 (21:
+diodes, LED, tunnel diode, BJT h-parameters and switch, push-pull, op-amp response / difference / analog computer, active
+filters, JFET, DAC, ADC, sample-and-hold, 7805, PLL, counter, distortion meter, thermostat, cable noise - one shared analog
+bench), ug_modern_w8 (13: work function, Hg ionisation, e/m Thomson / magnetron / focusing, Millikan both methods, Zeeman,
+Planck, microwaves x2, plus existing Franck-Hertz, iodine, ESR), ug_matter_w8 (15: beta range, K-40, four Bethe-Bloch
+stopping-power labs, XRD, nano XRD, band gap, piezo, Gouy, plus existing Quincke, magnetoresistance, P-E loop, dielectric),
+ug_comp_w8 (19 computational labs on comp4-workstation, every one checked against an exact or independent answer), plus
+pg:millikan-oil-drop. Coverage 456 -> 525 of 807 (school 78.4 / 91.5 %, B.Sc 86.8 %, M.Sc 38.1 %, PhD 28.6 %).
+Not built and constants from memory: docs/PRAYOG_PHYSICS_LAKH_PLAN.md, "Wave 8".
+
+
+## v0.811.0 GAME FREE LIBRARY - Tool Hub wave 1 (owner: "GO TOOL HUB WAVE 1" - the second of three, "ALL ONE BY ONE")
+
+3D games needed real models and surfaces; until now Hoola could only place a model she uploaded herself. Now three
+free libraries are connected, each through its official route (docs/GAME_TOOL_HUB_PLAN.md rows 47-49).
+
+- **Kenney** - 53 low-poly models (platformer pieces, city blocks and roads, shooter props, racing track + trucks),
+  2.7 MB, kept on Hoola's disk in `server/app/gamedesk/library/kenney/` with `index.json` and `LICENSE-KENNEY.md`.
+  They come from Kenney's own GitHub starter kits (KenneyNL/Starter-Kit-3D-Platformer, -City-Builder, -FPS, -Racing),
+  whose READMEs state the models are CC0. kenney.nl has no API and its download sits behind a donate dialog, so
+  nothing there is automated. Each GLB pointed at a shared `Textures/colormap.png`; Hoola embedded it so every file
+  stands alone. All 53 were loaded in real Godot.
+- **Poly Haven** - public API (api.polyhaven.com, no key, unique User-Agent as its terms ask): models (the 1k glTF +
+  .bin + textures packed into one GLB; over 12 MB is refused as too big for a web game) and textures (1k colour map).
+- **ambientCG** - public API v2: materials; the colour map is taken out of the 1K-JPG zip.
+- `gamedesk/glbpack.py`: `embed` / `pack` put every outside buffer and picture inside the GLB; a uri the caller did
+  not hand in is an error, never a fetch. `facts` reads meshes / triangles / animations from the file itself.
+- `gamedesk/library.py`: `search(q, kind, source)` (a library that is down is named and the others still answer),
+  `get`, `add(tenant, project, source, id, kind, key)`. One network door `_fetch`: https only, a fixed host allowlist
+  checked on every redirect hop, a byte ceiling per download.
+- An added item is a DRAFT asset exactly like her own upload (`source library:<name>`, licence + credit + origin in
+  its history) and enters a game only after her OK. It is never called AI: the game's AI credit line is not triggered,
+  and the provenance page lists it as a library asset with its licence (class `library`). Fixed on the way: her own
+  uploads were classified `unknown` there (the stored source is "her upload", the table said "upload").
+- New asset kind `texture` (512 x 512, palette check off by default, free, only from the library or her upload - a
+  request to generate one is refused). `Hoola3D.paint(node, key, tile_m, fallback)` puts it on a block or the ground
+  (triplanar, so it tiles in metres); `Hoola3D.model(...)` already places an approved model.
+- Where she uses it: Assets page > Free library (search, 3D models / Textures, Add); routes GET / POST
+  `/api/gamestudio/{id}/library`; Hoola's tool `game_assets` action `library` / `library_add`, told to look in the
+  library before making or generating a model.
+
+Tests: `test_v0811_game_library.py` 13 (packer, Kenney files, search with one library down, host allowlist, draft ->
+OK -> in the game and not AI, Poly Haven pack + size refusal, textures, routes, tool, real Godot loading a library
+model + texture through the kit, and the real libraries when HOOLA_LIVE_LIBRARY=1 - run green here). NOT built: Meshy
+(her key and her decision on vendor accounts first), HDRI skies, picture previews in the panel, Kenney 2D / audio packs.
+
+## v0.812.0 ECC AGENTS IN HOOLA CODE (built as 0.794; other sessions took 0.794-0.811 meanwhile (their HOOLA CODE PHASE 5 took 0.798.0, PHASE 6 0.806.0) - REBASE PROTOCOL, all kept)
+Owner (11 Nov 2026), after reading github.com/affaan-m/ECC: "ADD ALL MISSING ECC AGENTS TO HOOLA CODE --- MAKE HOOLA CODE
+MORE POWERFULL AND SMOOTH THUS CAN PERFROM ANY HARD CODING TASK SMOOTLY AND PERFECTLY LIKE CLAUDE CODE".
+
+Before: v0.402-v0.451 had adapted ~20 of ECC's agents as text inside `devsahayak/specialists.py`, used only AROUND a
+round (PR review, CI fix rounds, self-review, plan pass); the v0.787 working-copy engine itself never saw them.
+ECC checked at commit d2ef268 (v2.2.3): only 6 commits after the b38be6a snapshot, all its own CI - nothing to re-sync.
+
+What is new:
+- `server/app/devsahayak/ecc/` - the catalogue. 63 of ECC's 71 agent files condensed and rewritten as text (four
+  parallel agents, one per part file; each prompt 1.5-2.6k chars, credited in its own first line, Claude Code-only parts
+  and anything needing the internet dropped): `reviewers_lang.py` (17: python / typescript / react / vue / flutter /
+  kotlin / java / go / rust / swift / cpp / csharp / fsharp / php / ruby / django / fastapi), `reviewers_more.py` (19:
+  code / security / silent-failure / pr-test / database / commit reviewers, type-design, comment, performance, a11y,
+  agent-evaluator, mle, rag, healthcare, bengali, seo, network-config, opensource-sanitizer, harmonyos), `fixers.py` (16:
+  build-error-resolver + 10 language resolvers, tdd-guide, e2e-runner, refactor-cleaner, code-simplifier, doc-updater),
+  `planners.py` (11: planner, architect, code-architect, spec-miner, network / homelab architects, code-explorer,
+  docs-lookup rewritten for OFFLINE lookup in the box, network-troubleshooter, opensource forker / packager).
+  `ecc.NOT_ADDED` = the 8 left out with reasons (marketing-agent, chief-of-staff, conversation-analyzer,
+  harness-optimizer, loop-operator, gan-planner / generator / evaluator). `rules_text.py` = ECC's rules/ condensed
+  (common + 21 languages). Each agent has a tool level: read (look only) / run (+ bash in the box) / edit (+ edit /
+  write, with the coder's guards).
+- `server/app/devsahayak/subagent.py` - the engine's `agent` tool, Claude Code's subagent shape: a fresh conversation
+  with only the task the coder wrote, the agent's text + its level's tools, the SAME working copy through a copy of
+  `engine.Tools` (secrets hidden, links never followed, workflows refused, read before edit; an agent's reads are not
+  the coder's), ends with `report`. Several read / run agents asked in ONE reply run side by side (threads with the
+  session's model / effort and the copied context); edit agents one by one. Limits `dev_agent_steps` 30,
+  `dev_agent_minutes` 12, `dev_agent_max` 10 a round, `dev_agent_parallel` 4. An agent cannot start agents, push or end
+  the round.
+- `engine.py`: the coder's system prompt gets `AGENTS_HOWTO` (when to explore / plan / fix / review with an agent) +
+  `ecc.roster()` (all 63 in one line each, best fits for this repo first) + `ecc.rules_for()` (the repo's languages,
+  9k chars cap); tool list + `agent`; ECC's pre-commit hook as `ecc.gate` on the round's diff before `done` is accepted
+  (console.log / debugger / breakpoint / pdb / pry / var_dump outside tests and docs, `.only` focused tests, conflict
+  markers, key-looking lines) - ONE clean-up chance, then done is accepted.
+- `specialists.py`: the PR review prompt adds the ECC reviewer for a language / framework the old notes did not cover
+  (React, Vue, C++, C#, PHP, Ruby, F#, Django ...); a CI fix round on C++ / C# logs gets the ECC resolver (new log signs).
+- `GET /api/devsahayak/agents` (roster + left-out list); the page draws `agent` (asked / reported, the report folds
+  open) and `gate` steps, and an agent's edits / commands say "by <agent>".
+- Switches: `dev_ecc_agents`, `dev_ecc_rules`, `dev_ecc_rules_chars`, `dev_ecc_gate` (all on).
+- Tests `server/tests/test_v0812_ecc_agents.py` (11): every ECC agent in or left out with a reason, every prompt
+  adapted (no Claude Code-only words), rules per language, suggestions / roster, the gate, the old review / fix paths
+  on new languages, a REAL round through `engine.run` where the coder asks two agents in one reply (they run in two
+  threads with read / run tools only, their reports come back) and the gate stops a `breakpoint()` before done; an edit
+  agent must read first and cannot touch workflows; the round cap and the switch.
+  Older Hoola Code suites re-run green with it (v0402 x2, v0787 engine incl. real Docker, v0789 safety, tech
+  devsahayak, v0748 / v0768 / v0774 / v0777). test_v0473 `test_coder_routes_mounted` fails as before (an old red).
+  FOUND + FIXED while testing: the gate first judged EVERY file in the diff, so a key file a box command planted (hidden,
+  never shippable, the coder may not change it) refused `done` - the v0789 link / key test went 'explained' in long
+  runs. The gate now judges only files that would ship (not hidden / key files / binaries / links); a test holds it.
+  The roster's path matching was also made 0.08 s for a 4,000-file repo (compiled once, one pass).
+NOT VERIFIED: no real model has driven an agent (scripted Claude only - the sandbox has no key); cost per round with
+agents is not measured (each agent is its own model conversation, so a reviewed round costs more); no browser walk of
+the new step kinds.
+
+
+## v0.813.0 GAME ARENA RUNNABLE (owner: "GO ARENA" - the third of three, "ALL ONE BY ONE")
+
+The Game Arena (v0.454) was built to answer "is a Hoola game any good?" with numbers. It had never run on a real game.
+
+- **Found by reading it before running it:** `arena._one_card` - the function that takes a built game, lets the QA
+  bots play it and writes the score card - looked for the web build in `<version>/web`. No build has ever had that
+  folder: the exporter writes `<version>/build`. Every Arena test replaced `_one_card` with a stand-in, so nothing
+  ever executed the line. The first real run would have reported EVERY game as "no playable build" - 0 % started -
+  and that would have read as "Hoola's games do not work". `duel` had the same line. Both now go through
+  `arena._web`, and `test_v0813_game_arena_real.py` runs the REAL `_one_card` on a real game row.
+- **A free self-check** (`arena.selfcheck`, `python -m app.gamedesk arena check`, vps-ops `game_arena_check`): the
+  500 briefs are checked (500 unique, 20 genres), then Hoola's own proof game (v0.809, no model wrote it) is built
+  for real as the hidden Arena tenant and scored through the same path a run uses - the build is found, the QA bots
+  (idle / monkey / keys) play it, the card is written - with the judge left out (the only part that needs a model).
+  The game is deleted afterwards. A scorer that cannot measure a known-good game says NOT READY and why, before a
+  rupee is spent.
+- **Running it:** `python -m app.gamedesk arena run --n 3 --budget 150` (REAL: the model writes each game, so it
+  spends money and stops at the rupee ceiling), `arena status`; vps-ops `game_arena_try` (3 briefs, Rs 150 ceiling,
+  23-minute limit - starting it is her decision) and `game_arena_status`. `_one_card(..., judge_it=False)` exists
+  for the check.
+- Measured here (Godot 4.7.2 + Chromium, software graphics): the proof game started, loaded in 3.2 s, the bots'
+  inputs changed its state, 0 errors, 3 state keys reported, playable = true; `reached_end` false in 12 s of random
+  play (the game needs 5 coins and a climb, so a random bot not finishing it is expected); fun = NOT ASSESSED.
+
+Tests: `test_v0813_game_arena_real.py` 6 (one in the real engine + browser, run green here) beside the 12 older
+Arena tests. NOT VERIFIED: no real Arena run has happened yet - it needs her server, the model and her go-ahead on
+the spend - so there are still NO quality numbers for any Hoola version, and the 2D / 3D briefs' real pass rate is
+unknown. The brief set (SET_V 1) has no 3D briefs yet.
+
+## v0.814.0 HOOLA CINEMA - the Create studio's Cinema section (built as 0.807; their BAHI A0, WAPAS, HOOLA 3D KIT and PRAYOGSHALA WAVE 8 took 0.807.0-0.813.0 (also ECC AGENTS and GAME ARENA RUNNABLE) - REBASE PROTOCOL, all kept; owner: "https://github.com/Autom8AI/Open-Higgsfield-AI.git -- read this repo first" -> "GO BUILD THE WHOLE SET AS HOOLA CINEMA END TO END")
+
+**The read.** `Autom8AI/open-higgsfield-ai` is a fork (MATAI) of Anil-matcha's Open Higgsfield AI: a vanilla-JS page on Netlify
+functions with no models of its own - every generation is a paid call to kie.ai or fal.ai. No LICENSE file (README says MIT).
+Ideas only: zero code copied. Its real lesson was the product gap: Hoola had no video-to-video tools.
+
+**What shipped.** One view `cinema` in the Create studio (`static/console/cinema.js`, which the studio hands its own helpers:
+api, go, menu, upload, itemTile...; it lives in the studio's shadow root and uses its styles) with a hub and ten pages:
+Cinema still, Motion transfer, Character swap, Item swap / edit, Restyle, Talking photo, Lip sync, Picture to video, Content
+factory, Characters. Backend `server/app/cinema/`:
+- `specs.py`: 16 models, each request shape read from the engine's own OpenAPI pages (docs.kie.ai) on 2026-11-11 - which field
+  is a list and which a string, which durations are strings, which resolutions exist, size and length limits. `build()` is the
+  only place a request is shaped and refuses anything the spec does not have. Presets as plain prompt text in Hoola's own words:
+  27 camera rows (Auto + 26), 16 restyle looks, 8 looks, the Cinema still's camera / lens / focal / aperture / light.
+- `kie.py`: createTask, recordInfo, credits, file-stream-upload behind ONE seam `_http`; 401 / 402 final; a createTask is never
+  retried; the key scrubbed from every message.
+- `service.py`: characters (a real person only with a recorded yes), `start()` (every refusal before a file leaves: tool / model
+  match, word screen, rights tick, consent tick, confirm, daily cap, shape pre-check, then bytes-sniffed files, photos re-saved
+  as clean JPEGs, uploads, createTask), talking photo with typed words spoken by Hoola's own voice (`create.service.voice`),
+  the factory (scenes by the model, by rule when none answers; one confirmed batch that stops at the first refusal and keeps
+  what started), `check()` / `refresh()` (finished video fetched once through the shilp link wall, sniffed, kept on the Create
+  shelf with `ai_made`), `connected()` = what is not there, said on the hub.
+- `api.py`: `/api/cinema` (overview), `/start`, `/still/prompt`, `/factory/scenes`, `/factory/start`, `/jobs/{id}/check`,
+  `DELETE /jobs/{id}`, `/characters` (+ DELETE, photo). Behind `cinema_page`.
+Also: 26 camera moves on the Video page (were 8), "Use in Hoola Cinema" on My creations tiles (`CIN.send`).
+
+**Found while building.** (1) `HoolaCreate(...)` runs before `/api/console/config` answers, so `ctx.cinema()` is false at build
+time and the view was never mounted - a studio tool behind a switch is mounted always and gated in `go()`. (2) A missing restyle
+look raised ValueError past the route (a 500) - caught by its test. (3) Playwright's `document.querySelector` does not pierce the
+studio's shadow root, so two overflow checks were passing on nothing; they read `shadowRoot` now.
+
+**Safety note.** `image_edit` and `video_kit` refuse face swap. Cinema's character swap is behind two recorded ticks (her right
+to the video; the person is her or agreed) or a saved character that carries a recorded yes. Listed as an owner decision in
+`docs/HOOLA_CINEMA_PLAN.md`.
+
+**Tests.** `test_v0807_hoola_cinema.py` 14: every request shape, presets, bytes sniffing + clean photos, motion transfer end to
+end with the engine faked at `_http` (upload types, exact createTask body, tenant isolation, finish -> My creations once, no key
+or task id in any answer), result link must be a public https video, characters + consent, talking photo with a Hoola voice,
+restyle / edit refusals, the factory, the daily cap / 402 / no key, the key never in an error, routes + no foreign code, and a
+real-browser walk (hub, ten pages with no overflow and no script error, her text never run as HTML, rights tick blocks the send,
+typed words kept, exact bodies sent, factory scenes edited, 26 camera chips). Stamp count 34 -> 35.
+
+**NOT VERIFIED.** No live engine call; rupee cost per job unknown until one runs; all users share the one server key.
+
+## v0.815.0 APP KE PURZE (built as 0.802; other sessions took 0.802.0-0.814.0 meanwhile - REBASE PROTOCOL, all kept; owner: "GO DEEP IS ALL ANDROID AND IOS APP COMPONENT IS THERE" -> "GO 1 2 3 - DEPLOY PARALLEL AGENTS")
+
+The audit (both native kits read file by file, a capability grep across Kotlin and Swift) found the kits strong on accounts,
+data, money, maps, push and store work, and three kinds of gap. Four agents fixed them in parallel worktrees; merged here.
+
+1. HONEST PLAN (`appmaker/capabilities.py`, `blueprint.py`, `service.py`, `agent/app_tools.py`, App Studio Plan page).
+   The plan card listed 64 phone features by STORE POLICY only - nothing told it what the kit really builds, so a plan
+   could promise Face ID or a home-screen widget and the app came without it, and `three_d` claimed SceneView / RealityKit
+   while Android draws a server-rendered still and iPhone nothing. Every CAPS entry now carries `built` {android, ios} =
+   yes / partial / no + `built_note`, decided by reading the kit code; `CP.gaps(ids)` and `caps_missing` on every blueprint
+   (re-worked from the current table on view, so old plans are told too); the chat line says "Not in this version yet: ..."
+   and the app_banao tool text forbids promising those; the Plan page has a "Phone features" panel with an Android and an
+   iPhone pill per feature (Built / Partly / Not yet) - it replaced a chip line that never showed anything.
+2. IPHONE PARITY (`ios/template/Sources/Kit/Media.swift`): `CameraButton` (UIImagePickerController .camera, shown only on
+   a phone with a camera, photo sent through the same `local:` upload path) beside the photo picker in PhotoRow /
+   PhotosRow; `ShareButton(text:url:)` + `shareText(_:url:)` (twin of Android's Act.share); one `ImageCache` (NSCache,
+   150 images / 48 MB) for every kit photo download. NSCameraUsageDescription written for photo fields too.
+3. DEVICE FEATURES on both phones, same public names (`kit/Device.kt`, `Sources/Kit/Device.swift`): `BiometricLock` (an
+   Unlock card - Android's framework BiometricPrompt, no new library, screen-lock fallback on Android 8; iPhone
+   LAContext deviceOwnerAuthentication), `RateAppButton` (Play listing link / StoreKit requestReview), `AddToCalendarButton`
+   (calendar insert intent, no permission / EKEventEditViewController, iOS 16 asks first), `PickContactButton` (phone-number
+   picker, one row, no READ_CONTACTS / CNContactPickerViewController, no key); screen-reader labels on the kit's unlabelled
+   tap targets on both. Android USE_BIOMETRIC only when a screen uses it; iPhone Face ID + calendar purpose strings ALWAYS
+   (Device.swift is in every binary and Apple's upload scan flags a protected API with no string, ITMS-90683). The Android
+   CI fixture's dashboard uses all four parts so appgen-check compiles and taps them.
+
+Tests: NEW test_v0802_honest_caps.py (9), test_v0802_ios_media.py (7), test_v0802_ios_device.py, test_v0802_android_device.py (7).
+NOT VERIFIED: none of the new Kotlin / Swift had been compiled when this was written - no SDK in the sandbox; the
+appgen-check (Android) and ios-check (macOS) runs on this push are the first compile. No real phone has tapped any of it;
+the iPhone camera button is hidden on the simulator, so only a real iPhone proves it. Still not built: home-screen widgets,
+real 3D, deep links / app links, right-to-left, in-app tests in generated apps. Older red, not this work:
+test_v0338_app_store.py::test_push_and_submit_through_the_mac (KeyError 'status', red before this change).
+
+
+## v0.816.0 HOOLA DOCUMENT KIT D5 - forms + signing (owner: "GO D5"; built as 0.814, shipped as 0.816 - other sessions took 0.808-0.815, REBASE PROTOCOL, their base kept whole; D0-D4 ride along, never on main before)
+
+- `app/dockit/forms.py`: `detect` (every field: name, kind text / checkbox / radio / choice / signature, current value,
+  choices or on-states, required, read-only, page, max length, tooltip); `fill` (her values by field name; a wrong
+  name is refused with "Did you mean ..." and the real names, a choice / radio outside its options is refused with
+  them, a signature box is sent to action=sign, read-only and over-long values refused; checkbox yes / haan / tick;
+  a Pehchaan Locker reference {id:..} is opened by `idvault.fill_value` for this file only and the tool result shows it
+  masked; pypdf writes values + NeedAppearances; optional flatten; every value READ BACK from the file, or the
+  flattened text found on the page, before delivery); `fill_rows` (one copy per row of her CSV / Excel sheet, columns
+  = field names, max 500, bad rows named not dropped, ZIP); `create` (real AcroForm fields drawn by ReportLab's
+  acroForm and grafted onto her pages with pikepdf, placed in what she sees like D2, empty /Sig widgets for signature
+  boxes, SigFlags set, names checked unique, every field read back).
+- `app/dockit/sign.py`: `clean_signature` (a phone photo or a drawn PNG -> the ink on transparent, trimmed; a picture
+  with no ink refused); `save_signature` (signature / initials / stamp, sealed with SECRET_KEY, process-only without
+  it - said); `place` (her saved picture on the pages she names + her name + date under it = an ELECTRONIC
+  signature); `digital` (pyHanko PdfSigner + SimpleSigner with HER Hoola document certificate: RSA-3072, 5 years,
+  self-signed, made on first use with the cryptography lib, sealed; visible text stamp or invisible; an existing
+  empty signature box by name, an already-signed box refused; incremental save so a second signature keeps the first
+  valid; the new signature is validated before delivery); `verify` (intact / valid / covers the whole file, and
+  `her_hoola_certificate` = it chains to HER certificate - another account's is False); `request` (up to 10 named
+  signers in order, 1-60 days, a private link each /sign/<request id>.<token>, the document copied out of the 24 h
+  chat files) -> `complete_one` (only the next in line; typed name + consent required; her placement of the drawn
+  signature + an audit row: IST time, IP, device, SHA-256 after) -> `_finish` (a "Signing record" page: document,
+  fingerprint before, every signer's row, and "identity = whoever held the link, no OTP / ID check" said in print;
+  then the whole file sealed with her certificate); `status`, `cancel`. WHAT_IT_IS rides every result.
+- `app/dockit/api.py`: GET / POST /sign/<key> - the document pages as pictures (data: images only), a canvas to draw
+  on (script only under a per-page nonce CSP, no inline-unsafe scripts), typed name, a consent tick; "Waiting for X"
+  out of turn, expired / cancelled = 410, unknown = 404; on the last signature the sealed copy is delivered to HER
+  chat, otherwise a short "X signed, next Y" note. FOUND AND FIXED by the page test: pyHanko's sync signing calls
+  asyncio.run() inside, which crashes on the server's own loop - the page now runs it via asyncio.to_thread (the tool
+  already did).
+- Tool: actions form_fields / form_fill / form_create / signature_save / sign (mode place | digital | both) /
+  sign_verify / sign_request / sign_status / sign_cancel (50 in all); NOT_YET = compare, translate, a legally valid
+  identity signature (DSC / Aadhaar eSign = owner decision D4), OTP for outside signers. Prompt PDF line updated.
+- Proof card +7 (60 total, 60/60): fields found + filled + read back, refusals that name the fix, flatten + batch with
+  a bad row, signature ink placed + digital signature valid with her certificate, one flipped byte after signing
+  caught, a form's own box signed then a second signature (both valid), two people in order -> record page -> sealed
+  (the card deletes its own request files).
+- Tests `test_v0814_dockit_d5.py` 13 incl. the real /sign/ page walk end to end (nonce CSP, out-of-turn wait, the
+  consent tick, record page names both, sealed copy delivered to her chat, status), private / cancellable links,
+  locker values never in the result, another tenant's request refused, drawn-PNG cleaning.
+
+NOT VERIFIED (honest): not on the VPS; no real phone has drawn on the signing page; signing links need
+PUBLIC_BASE_URL to be absolute and SECRET_KEY for her signature / certificate to survive a restart; the Hoola
+certificate is self-signed, so Adobe shows "validity unknown" until she trusts it - by design it is not an identity
+certificate; outside signers are not OTP-checked (said on the record page).

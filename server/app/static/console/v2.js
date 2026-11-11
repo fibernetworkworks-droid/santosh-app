@@ -154,6 +154,7 @@ let SK = null;         // v0.481 the Skill Desk (account menu > Skills)
 let CX = null;         // v0.774 the Connectors page (connectors.js): Composio apps, MCP servers, plugins, public APIs, limits
 IC.connectors = '<path d="M9 7V3M15 7V3M7 7h10v4a5 5 0 0 1-10 0zM12 16v5"/>';   // v0.774 a plug
 let FD = null;         // v0.565 the Film Desk (filmdesk.js)
+let BAHI = null;       // v0.807 BAHI: the GST & Accounts desk (bahi.js)
 let DDK = null;        // v0.799 DESK ROOM (built as 0.796): the department desks (deptdesk.js) - Finance, Retail, Health Insurance, Construction
 let AIA = null;        // v0.772 HOOLA AI APPS (aiapps.js): AIs that answer her customers
 IC.aiapps = '<rect x="3" y="4" width="18" height="13" rx="3"/><path d="M8 21l2.5-4M7.5 9.5h.01M12 9.5h.01M16.5 9.5h.01M8 13c1.2 1 2.5 1.4 4 1.4s2.8-.4 4-1.4"/>';   // a chat bubble with a face
@@ -204,7 +205,7 @@ function go(v, arg) {
   if (v === 'code') { location.assign('/console/code' + (arg ? '#/s/' + encodeURIComponent(arg) : '')); return; }   // v0.768 Hoola Code = its own page with its own sidebar
   if (v === 'webdev') { location.assign('/console/web' + (arg ? '#/site/' + encodeURIComponent(arg) : '')); return; }   // v0.649 Web Studio = its own app
   VIEW = v; $$('.view').forEach(x => x.hidden = x.id !== 'v-' + v);
-  $('#ttl').textContent = {chat: chatFolder(), aaj:'· Today', kaam:'· All tools', baat:'· Baat', main:'· Main', bana:'· Creations', project:'· Folder', arena:'· Design Arena', lab:'· Prayogshala', hire:'· AI Employees', seekh:'· Video Learner', interactive:'· Hoola Interactive', code:'· Hoola Code', seodesk:'· SEO Desk', socialdesk:'· Social Desk', caddesk:'· CAD Desk', gamedesk:'· Game Desk', archdesk:'· Architecture Desk', edudesk:'· Education Desk', skills:'· Skills', connectors:'· Connectors', aiapps:'· AI Apps', filmdesk:'· Film Desk', leadsdesk:'· Leads Desk', deptdesk:'· Department desk'}[v] || '';
+  $('#ttl').textContent = {chat: chatFolder(), aaj:'· Today', kaam:'· All tools', baat:'· Baat', main:'· Main', bana:'· Creations', project:'· Folder', arena:'· Design Arena', lab:'· Prayogshala', hire:'· AI Employees', seekh:'· Video Learner', interactive:'· Hoola Interactive', code:'· Hoola Code', seodesk:'· SEO Desk', socialdesk:'· Social Desk', caddesk:'· CAD Desk', gamedesk:'· Game Desk', archdesk:'· Architecture Desk', edudesk:'· Education Desk', skills:'· Skills', connectors:'· Connectors', aiapps:'· AI Apps', filmdesk:'· Film Desk', leadsdesk:'· Leads Desk', deptdesk:'· Department desk', accountsdesk:'· GST & Accounts'}[v] || '';
   if (v !== 'project') PJ?.draw();
   drawNav(); $('#app').classList.remove('drawer');
   if (v === 'aaj') drawToday(); if (v === 'main') drawMain(); if (v === 'baat') drawBaat();
@@ -234,7 +235,8 @@ function go(v, arg) {
   if (v === 'edudesk') EMP?.edu($('#edudesk'));   // v0.453 Education, Research & Lab
   if (v === 'filmdesk') FD?.open($('#filmdesk'));   // v0.565 Film Desk
   if (v === 'leadsdesk') EMP?.leads($('#leadsdesk'));   // v0.686.0 Leads Desk (the Lead Generation employee)
-  if (v === 'deptdesk') DDK?.open($('#deptdesk'), arg);   // v0.799 DESK ROOM (built as 0.796): a department desk, opened on one employee
+  if (v === 'deptdesk') DDK?.open($('#deptdesk'), arg);
+  if (v === 'accountsdesk') BAHI?.open($('#accountsdesk'));   // v0.807 BAHI: the GST & Accounts employee's desk   // v0.799 DESK ROOM (built as 0.796): a department desk, opened on one employee
   if (v === 'skills') SK?.draw($('#skills'));   // v0.481 the Skill Desk
   if (v === 'creative') WORKSPACE?.open();
   if (v === 'creative') $('#ttl').textContent = '· Creative workspace';
@@ -432,6 +434,7 @@ async function enter() {
     ENT = HoolaEnterprise({api, esc, toast});
   }
   if (window.HoolaFilmDesk && !FD) FD = HoolaFilmDesk({api, esc, toast});   // v0.565
+  if (window.HoolaBahi && !BAHI) BAHI = HoolaBahi({api, esc, toast, open: (v, arg) => go(v, arg), title: t => { if (VIEW === 'accountsdesk') $('#ttl').textContent = t; }});   // v0.806
   if (window.HoolaDeptDesk && !DDK) DDK = HoolaDeptDesk({api, esc, toast, open: (v, arg) => go(v, arg),   // v0.799 DESK ROOM (built as 0.796)
     ask: text => { go('chat'); msg.value = text; msg.dispatchEvent(new Event('input')); msg.focus(); },   // lands in the chat box, never sent by itself
     title: t => { if (VIEW === 'deptdesk') $('#ttl').textContent = t; }});
@@ -1029,6 +1032,7 @@ function showWorkspace() {
 CREATE = window.HoolaCreate ? HoolaCreate({api, esc, toast, conv: () => CONV,
   newConv: async () => { const c = await api('POST', '/api/conversations'); await openConv(c.id, false, {noPush: true}); return c.id; },
   avatar: () => ME?.avatar?.gender === 'f' ? '/static/santosh-happy.png' : '/static/santosh-head.png',
+  cinema: () => !!CONFIG?.cinema,   // v0.807 Hoola Cinema inside Create
   artcraft: () => !!CONFIG?.artcraft,   // v0.752 ArtCraft in Create (the shilp lane's page door)
   owner: () => !!ME?.arena,   // v0.327 Create > Engines shows the services + server steps only to the owner
   version: (document.querySelector('script[src*="/studio.js"]')?.getAttribute('src') || '').split('v=')[1] || '',

@@ -116,7 +116,8 @@ def test_console_stamps_0_4_8_5():
     # v0.772 AI APPS: 28 -> 29. aiapps.js joined the console page (its stylesheet is loaded by the script, not v2.html).
     # v0.799 DESK ROOM: 29 -> 30. deptdesk.js joined the console page (the department desks).
     # v0.804: + improve.css + improve.js (HOOLA PROMPTING: the Improve button) = 33.
-    assert s.count(f'v={APP_VERSION}') == 33, f"expected 33 stamps at {APP_VERSION}, got {s.count(f'v={APP_VERSION}')}"
+    # v0.807 BAHI: 33 -> 34. bahi.js joined the console page (the GST & Accounts desk).
+    assert s.count(f'v={APP_VERSION}') == 35, f"expected 35 stamps at {APP_VERSION}, got {s.count(f'v={APP_VERSION}')}"
     assert 'v=0.482.0' not in s and 'v=0.473.0' not in s
     assert f'console/skills.js?v={APP_VERSION}' in s and 'id="v-skills"' in s
 
@@ -127,11 +128,11 @@ def test_app_version_story():
     assert f'APP_VERSION = "{APP_VERSION}"' in main    # v0.537: was a typed 0.535.0, two releases behind
     # story pin moved to the v0.555 story (the v0.476 precedent: the newest release's story carries the
     # marker; the older stories live in git history)
-    assert 'HOOLA CODE PHASE 6' in main and 'netproxy' in main  # the newest-story precedent (v0.806.0 carries the marker; older stories live in git history)
+    assert 'WAPAS' in main and 'wapas' in main  # the newest-story precedent (v0.808.0 carries the marker; older stories live in git history)
 
 
 def test_pubspec_pin():
     pub = (ROOT.parents[0] / 'pubspec.yaml').read_text(encoding='utf-8') if (ROOT.parents[0] / 'pubspec.yaml').exists() else None
     if pub is None:  # tests dir is server/tests; pubspec is at repo root
         pub = (ROOT / 'pubspec.yaml').read_text(encoding='utf-8')
-    assert 'version: 0.807.0+806' in pub
+    assert 'version: 0.816.0+815' in pub

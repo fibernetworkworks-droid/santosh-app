@@ -1,0 +1,60 @@
+{
+ "base": "cw8-constrained-lagrangian",
+ "rig": "comp4-workstation",
+ "chapter": "Computational physics",
+ "variants": [
+  {
+   "key": "pendulum-60",
+   "title": "Pendulum released at 60 degrees",
+   "sample": "L = 1 m, theta0 = 60 deg",
+   "unknown": "T = 4 sqrt(L/g) K",
+   "params": {
+    "th0": 60.0
+   },
+   "source": {
+    "title": "CGPM 1901: standard gravity 9.80665 m/s^2",
+    "note": "exact by definition; the masses and lengths are exercise values"
+   }
+  },
+  {
+   "key": "atwood",
+   "title": "Atwood machine: acceleration",
+   "sample": "m1 = 0.3 kg, m2 = 0.2 kg",
+   "unknown": "a = (m1 - m2) g/(m1 + m2)",
+   "params": {
+    "cas": 1
+   },
+   "source": {
+    "title": "CGPM 1901: standard gravity 9.80665 m/s^2",
+    "note": "exact by definition; the masses and lengths are exercise values"
+   }
+  },
+  {
+   "key": "atwood-tension",
+   "title": "Atwood machine: the tension = the Lagrange multiplier",
+   "sample": "m1 = 0.3 kg, m2 = 0.2 kg",
+   "unknown": "T = 2 m1 m2 g/(m1 + m2)",
+   "params": {
+    "cas": 1,
+    "what": 1
+   },
+   "source": {
+    "title": "CGPM 1901: standard gravity 9.80665 m/s^2",
+    "note": "exact by definition; the masses and lengths are exercise values"
+   }
+  },
+  {
+   "key": "hoop",
+   "title": "Bead on a rotating hoop: oscillation about the off-axis rest",
+   "sample": "R = 0.2 m, w = 10 rad/s",
+   "unknown": "period 2 pi/(w sin th0)",
+   "params": {
+    "cas": 2
+   },
+   "source": {
+    "title": "CGPM 1901: standard gravity 9.80665 m/s^2",
+    "note": "exact by definition; the masses and lengths are exercise values"
+   }
+  }
+ ]
+}

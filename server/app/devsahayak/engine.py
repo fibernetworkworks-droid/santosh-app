@@ -414,6 +414,44 @@ OTHER_REPO_TOOL: dict[str, Any] = {
         "required": ["repo", "action"]}}
 
 
+AGENTS_HOWTO = """WORKING WITH SPECIALIST AGENTS (the `agent` tool), the way Claude Code uses subagents:
+- Explore a large or unfamiliar codebase with code-explorer (several at once for separate areas) instead of reading
+  dozens of files yourself; plan big or risky work with planner / architect before editing.
+- A build or test fails and the cause is not obvious after one look: hand the error to the fixer for that language.
+- BEFORE done on any change bigger than a few lines: ask, in ONE reply, the reviewer for the language you changed and
+  (when the change touches auth, money, user input, files, SQL, shell or secrets) security-reviewer. Fix every finding
+  you can confirm in the code; a finding you can show is wrong, you leave and say why in risk.
+- Write each task so it stands alone (the agent cannot see this conversation): the files / functions, what changed
+  and why, what to check, what to report. Verify what an agent reports before you act on it.
+- Do small things yourself: never hand a one-line change or a single file read to an agent."""
+
+
+def ecc_system(paths: list[str], request: str = "") -> str:
+    """v0.794 the ECC parts of the coder's system prompt for this repo: the agent roster + how to use it, and the
+    coding rules for the repo's languages. Fixed for the session (the prompt cache keeps it)."""
+    parts = []
+    try:
+        from . import ecc
+        from . import subagent as SA
+        if SA.on():
+            parts.append(AGENTS_HOWTO + "\n\n" + ecc.roster(paths, request))
+        if bool(_set("dev_ecc_rules", True)):
+            parts.append(ecc.rules_for(paths, int(_set("dev_ecc_rules_chars", 9000) or 9000)))
+    except Exception as e:                                # the catalogue must never stop a session
+        log.warning("ecc parts left out: %s", e)
+    return "\n\n".join(p for p in parts if p)
+
+
+def tools_for_round() -> list[dict[str, Any]]:
+    try:
+        from . import subagent as SA
+        if SA.on():
+            return TOOLS + [SA.AGENT_TOOL]
+    except Exception:
+        pass
+    return TOOLS
+
+
 def scrub(text: str) -> str:
     """A command's output goes to the model and onto her page: a line that looks like a key or a password is hidden."""
     try:
@@ -1013,7 +1051,10 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
         first = _first_message(t, rules, issue_txt, plan_txt, att_txt, ses,
                                "" if sp.get("confirm") else str(sp.get("test") or ""), "\n".join(x for x in (follow_up, ref_note) if x))
         msgs = [{"role": "user", "content": ([{"type": "text", "text": first}] + list(pics)) if pics else first}]
-    system = SYSTEM + ("\n\n" + system_extra if system_extra else "")
+    extra_ecc = ecc_system(ses.walk(), str(getattr(t, "text", "") or ""))
+    system = SYSTEM + ("\n\n" + extra_ecc if extra_ecc else "") + ("\n\n" + system_extra if system_extra else "")
+    round_tools = toolset + [t_ for t_ in tools_for_round() if t_ not in TOOLS]   # + the ECC agent tool
+    gate_on, gated = bool(_set("dev_ecc_gate", True)), False
     max_steps = int(_set("dev_ws_steps", 150) or 150)
     minutes = float(_set("dev_ws_minutes", 60) or 60)
     clear_at = int(_set("dev_ws_clear_chars", 180000) or 180000)
@@ -1029,7 +1070,7 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
         if B.size(msgs) > compact_at:
             msgs = compact(msgs)
             emit({"k": "compact", "text": "Older part of the session summarised to keep going"})
-        blocks, stop = B.call(system, msgs, toolset)
+        blocks, stop = B.call(system, msgs, round_tools)
         msgs.append({"role": "assistant", "content": blocks})
         for b in blocks:
             if b.get("type") == "thinking" and str(b.get("thinking") or "").strip():
@@ -1047,11 +1088,37 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
             msgs.append({"role": "user", "content": "[Use the tools to continue, or call done if this round is finished.]"})
             continue
         results = []
+        agent_calls = [b for b in uses if b["name"] == "agent"]
+        agent_out: dict[str, str] = {}
+        if agent_calls:                                     # v0.794 ECC agents: read / run ones side by side
+            from . import subagent as SA
+            if SA.on():
+                agent_out = SA.run_many(tools, agent_calls, emit=emit, stopped=stopped)
         for b in uses:
             inp = b.get("input") or {}
             if b["name"] == "done":
+                problems = []
+                if gate_on and not gated and getattr(t, "kind", "") != "explain":
+                    try:
+                        from . import ecc
+                        hid = set(ses.meta.get("hidden") or []) | set(tools.hidden)
+                        problems = [p for p in ecc.gate(ses.diff(limit=400000))     # only files that would ship
+                                    if p["path"] not in hid and not R.SECRET_FILES.search(p["path"])
+                                    and not R.BINARY_EXT.search(p["path"]) and ses.real(p["path"]) is not None]
+                    except Exception as e:
+                        log.warning("quality gate skipped: %s", e)
+                if problems:                                # v0.794 ECC's pre-commit check: one chance to clean up
+                    gated = True
+                    from . import ecc
+                    emit({"k": "gate", "n": len(problems), "items": [f"{p['path']}:{p['line']} {p['what']}" for p in problems[:8]]})
+                    results.append({"type": "tool_result", "tool_use_id": b["id"], "content": ecc.gate_text(problems)})
+                    continue
                 finish = dict(inp)
                 results.append({"type": "tool_result", "tool_use_id": b["id"], "content": "Finished."})
+                continue
+            if b["name"] == "agent":
+                out = agent_out.get(b["id"], "Agents are switched off on this server - do the work yourself.")
+                results.append({"type": "tool_result", "tool_use_id": b["id"], "content": out[:60000]})
                 continue
             out = tools.run(b["name"], inp)
             for ev in event(tools, b["name"], inp, out):
