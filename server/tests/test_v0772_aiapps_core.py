@@ -33,3 +33,29 @@ def test_a_secret_is_never_stored(env):
     with session() as s:
         q = s.get(AiAppMessage, out["message_id"]).question
     assert "482913" not in q and "******" in q
+
+
+def test_unfilled_blanks_block_publishing(env):
+    """A template copied with '[Shop name]' still in it must never reach a customer (found in the browser walk)."""
+    import pytest
+    from app.aiapps import store as ST
+    a = ST.create("t1", "Kirana", soul={"name": "Kirana", "about": "[Shop name] in [area, city]",
+                                        "opening": "Namaste from [business name]"})
+    got = ST.get("t1", a["id"])
+    assert any("[Shop name]" in e for e in got["check"]["errors"])
+    with pytest.raises(ST.AppError) as e:
+        ST.publish("t1", a["id"], a["draft_hash"])
+    assert e.value.code == 422 and "blanks" in str(e.value)
+    b = ST.save_draft("t1", a["id"], {"name": "Kirana", "about": "Sharma Kirana in Pune", "opening": "Namaste"})
+    assert ST.publish("t1", a["id"], b["draft_hash"])["version"] == 1
+
+
+def test_a_model_that_fails_is_an_honest_handover(env):
+    from app.aiapps import store as ST, runtime as RT
+    a = ST.create("t1", "X", soul={"name": "X", "about": "Shop", "facts": ["Open 9 to 9"]})
+
+    def boom(s, p, n):
+        raise RuntimeError("No AI model is configured")
+    RT.ASK[0] = boom
+    out = RT.answer(ST.row("t1", a["id"]), "Do you deliver?", channel="preview")
+    assert out["outcome"] == "unknown" and "passed your question to the team" in out["reply"]

@@ -866,7 +866,7 @@ def init_db(url: str | None = None):
     from .wapsi import models as _wapsi  # noqa: F401
     from .samudaay import models as _samudaay  # noqa: F401
     from .callcentre import models as _callcentre  # noqa: F401
-    from .aiapps import models as _aiapps  # noqa: F401  (v0.772 HOOLA AI APPS)
+    from .aiapps import models as _aiapps  # noqa: F401  (v0.785 HOOLA AI APPS)
     # v0.137 Tech suite
     from .devsahayak import models as _devsahayak  # noqa: F401
     from .qa import models as _qa  # noqa: F401

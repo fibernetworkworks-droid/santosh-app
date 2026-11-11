@@ -198,9 +198,9 @@ window.HoolaAiApps = function ({api, toast}) {
       h('input', {type: 'checkbox', value: k, checked: always || (s.actions || []).includes(k), disabled: always}), h('span', {}, h('b', {text: k}), ' - ' + t)));
     const ch = APP.check || {};
     const status = h('div', {class: 'aia-status'});
-    const showCheck = c => status.replaceChildren(
+    const showCheck = c => status.replaceChildren(...[
       (c.errors || []).length ? h('div', {class: 'aia-box bad'}, h('b', {text: 'Must be fixed before publishing'}), h('ul', {}, ...c.errors.map(x => h('li', {text: x})))) : h('p', {class: 'aia-ok', text: 'The checker found nothing that blocks publishing.'}),
-      (c.warnings || []).length ? h('div', {class: 'aia-box warn'}, h('b', {text: 'Worth a look'}), h('ul', {}, ...c.warnings.map(x => h('li', {text: x})))) : null);
+      (c.warnings || []).length ? h('div', {class: 'aia-box warn'}, h('b', {text: 'Worth a look'}), h('ul', {}, ...c.warnings.map(x => h('li', {text: x})))) : null].filter(Boolean));   // a null child would print the word 'null'
     showCheck(ch);
     const save = btn('Save draft', async () => {
       const soul = {...s, name: f.name.value.trim(), kind: f.kind.value, about: f.about.value, persona: f.persona.value,
@@ -375,8 +375,11 @@ window.HoolaAiApps = function ({api, toast}) {
       tiles.replaceChildren(h('p', {class: 'faint', text: 'Counting…'}));
       try {
         const st = await api('GET', `${B}/${q(APP.id)}/stats?days=${q(days.value)}`) || {};
-        const flat = Object.entries(st).filter(([, v]) => typeof v === 'number' || typeof v === 'string').filter(([k]) => !/^(app|id|name)$/.test(k));
-        tiles.replaceChildren(...(flat.length ? flat.map(([k, v]) => h('div', {class: 'aia-tile'}, h('span', {class: 'faint', text: WORD[k] || k.replace(/_/g, ' ')}), h('b', {text: fmt(k, v)})))
+        const tot = st.totals && typeof st.totals === 'object' ? st.totals : st;   // the stats route answers {totals, per_day, says}
+        const flat = Object.entries(tot).filter(([k, v]) => (typeof v === 'number' || (k === 'satisfaction' && v === null)) && k in WORD)
+          .map(([k, v]) => [k, v === null ? 'No ratings yet' : v]);
+        if (st.says) flat.unshift(['__says', st.says]);
+        tiles.replaceChildren(...(flat.length ? flat.map(([k, v]) => k === '__says' ? h('p', {class: 'aia-says', text: v}) : h('div', {class: 'aia-tile'}, h('span', {class: 'faint', text: WORD[k] || k.replace(/_/g, ' ')}), h('b', {text: fmt(k, v)})))
           : [h('p', {class: 'faint', text: 'No numbers yet.'})]));
       } catch (e) { tiles.replaceChildren(h('p', {class: 'aia-err', text: e.message || 'Could not count'})); }
       try {

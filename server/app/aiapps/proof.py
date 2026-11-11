@@ -1,4 +1,4 @@
-"""v0.772 HOOLA AI APPS - D4 PROOF: three AI apps the whole road, on the server, no real model.
+"""v0.785 HOOLA AI APPS - D4 PROOF: three AI apps the whole road, on the server, no real model.
 
 The contract (`docs/AIAPPS_PLAN.md`) says an AI app answers HER customers safely. Pieces were tested one by one; this
 module is the road in one run, for three businesses that look like hers:

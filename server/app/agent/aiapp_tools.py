@@ -1,4 +1,4 @@
-"""v0.772 HOOLA AI APPS - the `ai_app` agent tool: the owner's Hoola builds and checks the AIs that answer HER customers.
+"""v0.785 HOOLA AI APPS - the `ai_app` agent tool: the owner's Hoola builds and checks the AIs that answer HER customers.
 
 One tool, eight actions: list | show | plan | create | preview | publish_card | logs | stats.
 

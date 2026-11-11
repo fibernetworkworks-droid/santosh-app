@@ -71,3 +71,4 @@ textarea.aia-in{resize:vertical;line-height:1.45}
 .aia-dlg{background:var(--surface);color:var(--ink);border:1px solid var(--hair);border-radius:var(--r2);box-shadow:var(--sh);padding:20px;width:min(460px,100%);display:flex;flex-direction:column;gap:12px;overflow-wrap:anywhere}
 @media (max-width:700px){.aia-two{grid-template-columns:1fr}.aia-msg{max-width:92%}.aia-head{align-items:flex-start}}
 @media (prefers-reduced-motion:reduce){.aia-card{transition:none}}
+.aia-says{margin:0 0 12px;flex-basis:100%;color:var(--mut);font-size:14px}

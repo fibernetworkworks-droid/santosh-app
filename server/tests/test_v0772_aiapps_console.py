@@ -122,3 +122,10 @@ def test_tool_refuses_customers_and_bad_actions(env):
         _run(h(_ctx(), "show", app="aia_nope"))
     with pytest.raises(ToolError):
         _run(h(_ctx(), "plan", words=""))
+
+
+def test_numbers_read_the_totals_and_no_null_child():
+    from pathlib import Path
+    js = (Path(__file__).resolve().parents[1] / "app" / "static" / "console" / "aiapps.js").read_text()
+    assert "st.totals" in js and "No ratings yet" in js           # the stats route answers {totals, per_day, says}
+    assert "].filter(Boolean))" in js                             # replaceChildren(null) printed the word 'null'

@@ -1,4 +1,4 @@
-"""v0.772 HOOLA AI APPS - D5: ready AI apps by Indian trade, with a TRIAL before she copies one.
+"""v0.785 HOOLA AI APPS - D5: ready AI apps by Indian trade, with a TRIAL before she copies one.
 
 Each template is a full soul. Her details are [blanks] in `about` (she fills them); `facts` stay empty or generic and
 carry NO numbers (a template never states a price or a timing for her). Risky topics sit in `refuse` - the pharmacy

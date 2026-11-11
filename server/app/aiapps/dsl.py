@@ -1,4 +1,4 @@
-"""v0.772 HOOLA AI APPS - export / import of an AI app as one portable JSON file (Dify's DSL idea, ideas only).
+"""v0.785 HOOLA AI APPS - export / import of an AI app as one portable JSON file (Dify's DSL idea, ideas only).
 
 The file carries the SOUL and a little meta - never keys, logs, sessions, visitor data, the public code or the
 WhatsApp number. Import is two steps, like Dify's dependency check: import_check says what the file relies on that

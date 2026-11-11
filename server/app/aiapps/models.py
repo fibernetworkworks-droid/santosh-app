@@ -1,4 +1,4 @@
-"""v0.772 HOOLA AI APPS - tables (all prefixed ai_app_).
+"""v0.785 HOOLA AI APPS - tables (all prefixed ai_app_).
 
 An AI app is an AI that answers HER CUSTOMERS (not her): a chat page, an embed bubble on a website, her business
 WhatsApp number, an API key or an MCP tool. Its settings are a SOUL (see soul.py) kept like code: one editable draft,
