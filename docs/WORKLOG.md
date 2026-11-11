@@ -2933,3 +2933,9 @@ Ask: the owner pasted the P0 step of docs/HOOLA_PROMPTING_PLAN.md (measure befor
 Built: quality/prompt_asks.py (60 asks: raw + hand-filled brief), quality/promptcard.py (scorer, free card, live card with a rupee ceiling, rule verdict, her picks), CLI `prompt`, GET /api/quality/prompt, vps-ops prompt_card_check / prompt_card_try; 11 tests, no model.
 Found: the architect plan echoed her words (the brief scored its own text) - fixed; a flag picture the picture engine refuses - replaced.
 Deploy: vps-ops deploy (server-only; no new pip, no tables). Then prompt_card_check (free), then prompt_card_try (Rs 250 cap). Next: read the numbers, then P1 on her GO.
+
+---
+Task ID: v0.795.0 YEH WALA (L5)
+Task: owner "GO L5" - preview toolbar (S / T / D / C), selected elements to the model, marked-up screenshots, free style panel on tokens.
+Work Log: site/yehwala.py (selection, comments table, markup screenshot); edit.style + hs-u-* utilities; hoola-edit.js modes; Studio toolbar / pills / style panel / draw / comments; 6 tests incl. a browser walk.
+Stage Summary: pushed; server deploy only. Next: L6 GALTI PAKDO (preview error collector + Try to fix) on her GO.

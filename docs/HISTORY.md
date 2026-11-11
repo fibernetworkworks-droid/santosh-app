@@ -1235,7 +1235,7 @@ pausing an idle working copy to free disk before the 14-day sweep. Deploy: vps-o
 four nullable columns create themselves.
 
 
-## v0.795.0 PRAYOGSHALA WAVE 7 (built as 0.794.0; their PROMPT NAAP took 0.794.0, both kept) (owner: "Coverage 44.9% ... NOW LETS WORK ON PENDING LAB WORK END TO END")
+## v0.796.0 PRAYOGSHALA WAVE 7 (built as 0.794.0; re-versioned past 0.795.0, all kept) (owner: "Coverage 44.9% ... NOW LETS WORK ON PENDING LAB WORK END TO END")
 
 94 physics set-ups built and walked in a real browser within tolerance, by four build agents in their own pack trios
 (kernels + JS twin + labs + rigs): school_w7 (32: Class 6-12 motion, measuring, pressure / floatation, heat, sound,
@@ -1304,3 +1304,33 @@ not metered). Three dead pairs in a row stop the card.
 - The engines run on whatever model the server routes to (GLM door / one-model rules apply as in production).
 - Older reds proven on the commit before this one, untouched: test_v0240_calm_brand::test_version (28 == 25),
   test_v0649_web_studio three-looks walk, test_v0693_app_studio design-run, test_v0784_sawaal_card look-one.
+
+## v0.795.0 YEH WALA - point at the page instead of describing it (L5 of docs/LOVABLE_STUDIO_PLAN.md, owner: "GO L5")
+Before: Edit mode only typed words / swapped a picture; to change anything else she had to describe where it was, and
+"AI se badlo" pasted quoted text into the box (plan gap D3). Now the Studio preview has Lovable's pointing tools, in Hoola's look.
+- PREVIEW TOOLBAR (`webstudio.js` YW block, `#wsYW`): Select / Text / Draw / Comment (keys S T D C), Comments count, Undo, Done,
+  hide; drag the grip and it snaps to left / centre / right (remembered in this browser). The composer's Select button opens it
+  in Select. `hoola-edit.js` gained the modes (select / comment / view) through `edit-cmd` messages from its parent only;
+  Text mode is the v0.295 behaviour unchanged (the phone app's edit mode too).
+- SELECT -> MODEL (E3): click a part (Ctrl / Shift adds, up to 8): a violet outline + name tooltip in the page, a pill in the
+  composer ("Home · Hero · heading 'Sharma Sweets'"). On send, PUT /api/sites/{id}/selection (each part checked against the
+  section store: `yehwala._element`) and the hint "selected elements: N"; `turnmode.site_block` adds `<selected_elements>`
+  (label, page, the code FILE for edit_lines, the element's HTML without edit numbers, its style picks) ONCE to that turn,
+  then it is gone (30 min limit). Her bubble shows only her words.
+- STYLE PANEL (one part selected; free, no model): text colour / background from the site's own tokens (brand, accent, text,
+  soft, page, panel, dark), size steps, weight, align, padding 0-4, corners; "As designed" removes a pick. Stored as
+  `hs-u-<prop>-<value>` classes (`edit.style`, list `edit.STYLE`; utilities in `hoola-site.css` use the token variables, so a
+  raw colour can never be written - refused). Each pick = `edit_element op=style` -> one Undo step, a quick-checked version
+  (v0.789 tier). Measured in the test: 0 model calls, Rs 0.
+- COMMENTS for her team (`site_comments`, registered in db.init_db + self-heal): on a part of the page, numbered pins in the
+  preview, list with Resolve / Reopen / Delete; never sent to Hoola. GET/POST /api/sites/{id}/comments,
+  POST /api/sites/{id}/comments/{cid}/{resolved|open|deleted}.
+- DRAW: pen strokes + numbered notes over the preview frame; Send to Hoola = POST /api/sites/{id}/markup -> the server's
+  Chromium screenshots THAT page (the site's own files only) at her width / height / scroll, draws her strokes + note numbers,
+  adds the notes as a list under the picture, stores it as her chat file and attaches it to her message. Side panels step
+  aside while drawing.
+- GET /api/sites/{id}/element = one part as the style panel needs it.
+Tests: test_v0795_yeh_wala.py (6: tokens-only free style + Undo + it reaches the built page, selection once + her sites only,
+comments CRUD, the marked-up screenshot (real Chromium), source wiring, a Playwright walk: Select -> pill + style panel ->
+brand colour -> new version -> her message carries <selected_elements> -> Comment pin + list -> Draw + Send -> hide / Done).
+NOT VERIFIED live: a real model acting on <selected_elements> and on a marked-up screenshot on her server.
