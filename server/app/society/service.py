@@ -1523,7 +1523,7 @@ def _notice_blockers(s, tenant: str, n: SocietyNotice) -> list[str]:
         out.append("The notice still has [blank] spaces.")
     if n.meeting_id and n.kind in ("agm", "sgm", "committee"):
         m = s.get(SocietyMeeting, n.meeting_id)
-        out += [p for p in R.notice_check(n.kind, today(tenant), _date(m.day), st.state) if "kam se kam" in p]
+        out += [p for p in R.notice_check(n.kind, today(tenant), _date(m.day), st.state) if "needs at least" in p]
     return out
 
 

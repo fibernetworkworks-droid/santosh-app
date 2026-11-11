@@ -81,7 +81,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
     async def import_flats(file: UploadFile = File(...), tenant: str = Depends(current_tenant)):
         data = await file.read()
         if len(data) > 10 * 1024 * 1024:
-            raise HTTPException(413, "File 10 MB se badi.")
+            raise HTTPException(413, "File is larger than 10 MB.")
         return await run(S.import_flats, tenant, data, file.filename or "flats.csv")
 
     @r.post("/flats/{fid}/nominate")
@@ -155,7 +155,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
     async def decide(cid: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
         b = _b(body)
         if "yes" not in b:
-            raise HTTPException(400, "yes chahiye (Haan / Mana).")
+            raise HTTPException(400, "yes is needed (Yes / No).")
         return await run(S.decide_card, tenant, cid, bool(b.get("yes")), _s(b.get("hash")), _s(b.get("reason")), b.get("proof"),
                          _s(b.get("via")), by_tap=True)
 
