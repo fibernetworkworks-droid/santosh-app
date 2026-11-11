@@ -687,7 +687,7 @@ _EXPLAIN = {
     "splitter_branch": "{n} customers under splitter {target} are down, the rest of the PON is working: the fibre coming to that splitter, or the splitter itself.",
     "pon_degrade": ("Light dropped together on {n} ONTs of PON {pon}: a bend / pressure somewhere on the feeder, a dirty connector on the OLT port, or an old OLT "
                     "SFP. It is working now but may drop in rain / heat."),
-    "drop_fibre": "Only {cust}'s ONT is down (lost light): the drop fibre / patch cord / connector up to their home. Send the field team.",
+    "drop_fibre": "{cust}'s ONT alone is down (lost light): the drop fibre / patch cord / connector up to their home. Send the field team.",
     "customer_power": "{cust}'s ONT sent a dying gasp: power went at their home, or the ONT adapter. The fibre is fine; ask the customer.",
     "ont_offline": "{cust}'s ONT is offline (the alarm does not make the cause clear). Ask the customer about the light / power, then send the team.",
     "flap": "{cust}'s ONT keeps going on and off: loose connector, bent fibre or a bad adapter. The customer's internet will keep breaking.",
