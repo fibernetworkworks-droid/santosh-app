@@ -240,3 +240,42 @@ exact API; this is the short list of what differs from sections 2-3.
 Measured (headless Chromium, software raster, 1280x800): pan 5 ms / frame with 5,000 layers, under 10 ms with 20,000;
 server about 20,000 op batches / s, ack p50 0.23 ms; a killed server lost nothing. 10,000 layers scroll in the layers
 panel with 39 DOM rows.
+
+## 7. D7 BRIDGES - contract (owner, 11 Nov: "D7 Bridges - import your existing Figma files through your own Figma token; send a design to Web Studio or App Studio")
+
+Three bridges, each a server module + a client file + routes under `/api/design`, built in parallel. No new agent tool:
+`hoola_design` grows actions (`import_figma`, `to_site`, `to_app`). Registry count unchanged.
+
+A. FIGMA IMPORT (`server/app/design/figma.py`, client `hd-bridge-figma.js`)
+- ONE Figma token per account, SHARED with the website builder's existing sealed store (`site/inspire.py` SiteFigmaKey,
+  `set_figma_token` / `figma_status` / `forget_figma` / `_figma_token` / `figma_key`). Typed into the page, never chat; no route
+  returns it. Routes: `GET/PUT/DELETE /api/design/figma` (status / save / forget - thin wrappers over inspire's functions).
+- `POST /api/design/import/figma {url, name?}` -> `{job}`; `GET /api/design/import/{job}` -> `{state: queued|reading|images|writing|done|failed, step, done, total, file?, warnings[], error?}`.
+  Read through Figma's official REST API only (`GET /v1/files/:key?geometry=paths`, `GET /v1/files/:key/images` for image fills,
+  `GET /v1/images/:key` only as a fallback render for nodes that cannot be converted). Honour 429 Retry-After, a request budget, a
+  node cap (the document cap), a total image-bytes cap. Writes a NEW Hoola Design file through the document rules / room
+  (`design.room.HUB.apply_ops`) in chunks; images stored as Hoola assets by content hash.
+- Conversion (Figma node JSON -> section 2 props): FRAME / GROUP / SECTION / COMPONENT / COMPONENT_SET / INSTANCE (instance
+  -> INSTANCE when its component is in the file, else detached), RECTANGLE (+ per-corner radius), ELLIPSE (arcData -> VECTOR
+  when partial), LINE, REGULAR_POLYGON, STAR, VECTOR / BOOLEAN_OPERATION (fillGeometry paths -> VECTOR; boolean keeps `bool`
+  when its children convert), TEXT (characters, style, characterStyleOverrides + styleOverrideTable -> `runs`, autoResize),
+  paints (solid / gradients via gradientHandlePositions / image fills with scaleMode), strokes (weight, align, dashes, caps,
+  joins), effects, opacity, blendMode, isMask, clipsContent, layoutMode + itemSpacing + padding + primary/counterAxisAlign +
+  layoutWrap + layoutSizingHorizontal/Vertical + layoutPositioning, constraints, relativeTransform -> x / y / rot / flips,
+  prototype reactions where they map. Anything not mapped is listed in `warnings` by name and count - nothing silently lost.
+- Only files her token can open; an illegible / forbidden file gets Figma's own reason in plain words.
+
+B. DESIGN -> WEB STUDIO (`server/app/design/toweb.py`, client `hd-bridge-web.js`)
+- `POST /api/design/files/{id}/to-site {node, site?, page?, mode: "new"|"section"}` turns ONE frame into responsive semantic
+  HTML + CSS (auto layout -> flex, fixed children -> absolute inside a relative box, text -> real headings / paragraphs /
+  buttons by role, images -> site assets, fonts -> the site's font links) and either starts a new site in Web Studio or adds the
+  section to a page of an existing site - THROUGH Web Studio's own section path (`site/code.py` clean + the site service), so
+  every guard of the website builder applies. Returns the Web Studio address. Nothing is published: going live stays her tap
+  in Web Studio.
+
+C. DESIGN -> APP STUDIO (`server/app/design/toapp.py`, client `hd-bridge-app.js`)
+- `POST /api/design/files/{id}/to-app {nodes:[frame ids], app?}` hands phone-size frames to App Studio as the APPROVED LOOK of
+  screens (structure + a picture of each frame), through App Studio's own design / screens input in `appmaker/`, so the native
+  build follows them. Returns the App Studio address. Nothing is built or published without her tap there.
+
+All three: tenant-checked, view-only refused, one undo-free server action each (the editor shows what happened and links to it).
