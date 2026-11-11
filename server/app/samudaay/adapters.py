@@ -27,28 +27,28 @@ class Adapter:
     caps: set[str] = set()
 
     def send(self, comm, text: str, reply_to: str = "") -> str:            # returns platform message id
-        raise AdapterError("Yeh platform message nahi bhej sakta.")
+        raise AdapterError("This platform cannot send messages.")
 
     def delete(self, comm, msg_ref: str) -> None:
-        raise AdapterError("Is platform par post hatana nahi hota.")
+        raise AdapterError("Posts cannot be deleted on this platform.")
 
     def mute(self, comm, user_ref: str, until: datetime) -> None:
-        raise AdapterError("Is platform par mute nahi hota.")
+        raise AdapterError("Muting is not possible on this platform.")
 
     def unmute(self, comm, user_ref: str) -> None:
-        raise AdapterError("Is platform par mute nahi hota.")
+        raise AdapterError("Muting is not possible on this platform.")
 
     def remove(self, comm, user_ref: str) -> None:
-        raise AdapterError("Is platform par nikalna nahi hota.")
+        raise AdapterError("Removing a member is not possible on this platform.")
 
     def ban(self, comm, user_ref: str) -> None:
-        raise AdapterError("Is platform par ban nahi hota.")
+        raise AdapterError("Banning is not possible on this platform.")
 
     def unban(self, comm, user_ref: str) -> None:
-        raise AdapterError("Is platform par ban hatana nahi hota.")
+        raise AdapterError("Unbanning is not possible on this platform.")
 
     def join_answer(self, comm, user_ref: str, yes: bool) -> None:
-        raise AdapterError("Is platform par join request nahi hoti.")
+        raise AdapterError("This platform has no join requests.")
 
 
 # ---------------------------------------------------------------- Telegram
@@ -71,7 +71,7 @@ def tg_call(token: str, method: str, params: dict | None = None) -> Any:
         r = httpx.post(f"{API}/bot{token}/{method}", json=params, timeout=15)
         data = r.json()
     except Exception as e:      # network / JSON
-        raise AdapterError(f"Telegram tak nahi pahuncha ({type(e).__name__}).") from None
+        raise AdapterError(f"Could not reach Telegram ({type(e).__name__}).") from None
     if not data.get("ok"):
         raise AdapterError(f"Telegram: {str(data.get('description') or 'error')[:200]}")
     return data.get("result")
@@ -133,7 +133,7 @@ ALLOWED_UPDATES = ["message", "edited_message", "chat_member", "my_chat_member",
 def tg_me(token: str) -> dict[str, Any]:
     r = tg_call(token, "getMe")
     if not isinstance(r, dict) or not r.get("is_bot"):
-        raise AdapterError("Yeh bot token sahi nahi laga.")
+        raise AdapterError("This bot token does not look right.")
     return r
 
 
@@ -323,7 +323,7 @@ def for_community(comm) -> Adapter:
         with session() as s:
             b = s.get(SamBot, comm.bot_id) if comm.bot_id else None
             if b is None or not b.token_enc or b.status == "removed":
-                raise AdapterError("Telegram bot juda nahi hai (app mein bot token daaliye).")
+                raise AdapterError("The Telegram bot is not connected (add the bot token in the app).")
             token = vault().open(b.token_enc)
         return TelegramAdapter(token)
-    raise AdapterError(f"Platform {comm.platform} abhi nahi juda.")
+    raise AdapterError(f"Platform {comm.platform} is not connected yet.")

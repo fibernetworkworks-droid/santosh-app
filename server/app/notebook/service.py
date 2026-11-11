@@ -44,7 +44,7 @@ EMOJIS = "📒📘📗📕📙🧠🔬📊💼🎓⚖️🏥🌾🏗️📡💡"
 # Output languages (NotebookLM offers 80+; these are the ones Indian users ask for most, plus world languages).
 LANGS: dict[str, str] = {
     "hinglish": "Hinglish (Hindi in Roman script mixed with English, as Indians talk)",
-    "hi": "Hindi (Devanagari)", "en": "English (simple Indian English)", "mr": "Marathi (Devanagari)",
+    "hi": "Hindi (Devanagari)", "en": "English (clear, simple English)", "mr": "Marathi (Devanagari)",
     "bn": "Bengali", "ta": "Tamil", "te": "Telugu", "kn": "Kannada", "ml": "Malayalam", "gu": "Gujarati",
     "pa": "Punjabi (Gurmukhi)", "or": "Odia", "ur": "Urdu", "as": "Assamese", "ne": "Nepali", "sa": "Sanskrit",
     "kok": "Konkani", "en-us": "English (US)", "en-gb": "English (UK)", "es": "Spanish", "fr": "French",
@@ -124,7 +124,7 @@ def parse_json(text: str) -> Any:
                 return json.loads(t[a:b + 1])
             except ValueError:
                 continue
-    raise NotebookError("AI ka jawab samajh nahi aaya (JSON nahi bana). Dobara koshish kijiye.")
+    raise NotebookError("The AI's answer could not be read (no valid JSON). Try again.")
 
 
 # ---------------- notebooks ----------------
@@ -136,10 +136,10 @@ def _nb(tenant: str, ref: str) -> Notebook:
             rows = s.scalars(select(Notebook).where(Notebook.tenant_id == tenant).order_by(Notebook.updated_at.desc())).all()
             hits = [n for n in rows if n.title.lower() == ref.lower()] or [n for n in rows if ref.lower() in n.title.lower()]
             if not hits:
-                raise NotebookError(f"'{ref}' naam ki notebook nahi mili." + (
-                    f" Notebooks: {', '.join(n.title for n in rows[:10])}" if rows else " notebook_create se banaiye."))
+                raise NotebookError(f"No notebook named '{ref}' was found." + (
+                    f" Notebooks: {', '.join(n.title for n in rows[:10])}" if rows else " Create one with notebook_create."))
             if len(hits) > 1:
-                raise NotebookError("Is naam ki kai notebooks hain: " + "; ".join(f"{n.title} ({n.id})" for n in hits[:6]))
+                raise NotebookError("Several notebooks have this name: " + "; ".join(f"{n.title} ({n.id})" for n in hits[:6]))
             nb = hits[0]
         s.expunge(nb)
         return nb
@@ -205,10 +205,10 @@ def detail(tenant: str, ref: str) -> dict[str, Any]:
         stale = now() - timedelta(minutes=45)
         for o in outs:
             if o.status in ("queued", "working") and as_utc(o.updated_at) < stale and o.id not in studio.RUNNING:
-                o.status, o.error = "failed", "Bich mein ruk gaya (server restart?). Dobara banaiye."
+                o.status, o.error = "failed", "Stopped midway (server restart?). Make it again."
         for a in old_audio:
             if a.status in ("writing", "speaking") and as_utc(a.created_at) < stale:
-                a.status, a.error = "failed", "Bich mein ruk gaya (server restart?). Dobara banaiye."
+                a.status, a.error = "failed", "Stopped midway (server restart?). Make it again."
         out_views = [studio.view(o) for o in outs]
         audio = [o for o in out_views if o["kind"] == "audio"]
         audio += [{"id": a.id, "kind": "audio", "status": a.status, "language": a.language, "style": a.style,
@@ -261,7 +261,7 @@ def add_source(tenant: str, ref: str, src: dict[str, Any]) -> dict[str, Any]:
     with session() as s:
         have = s.scalars(select(NotebookSource).where(NotebookSource.notebook_id == nb.id)).all()
         if len(have) >= MAX_SOURCES:
-            raise NotebookError(f"Ek notebook mein {MAX_SOURCES} sources tak.")
+            raise NotebookError(f"Up to {MAX_SOURCES} sources in one notebook.")
         used = sum(x.chars for x in have)
     try:
         got = ingest.from_source(tenant, src)
@@ -272,7 +272,7 @@ def add_source(tenant: str, ref: str, src: dict[str, Any]) -> dict[str, Any]:
     except Exception as e:      # Drive / Sheets / mail errors carry their own friendly text
         raise NotebookError(str(e))
     if used + len(got["text"]) > MAX_NOTEBOOK_CHARS:
-        raise NotebookError("Notebook bhar gayi (bahut zyada text). Nayi notebook banaiye.")
+        raise NotebookError("The notebook is full (too much text). Create a new notebook.")
     with session() as s:
         row = NotebookSource(notebook_id=nb.id, tenant_id=tenant, kind=got["kind"],
                              title=(str(src.get("title") or "").strip() or got["title"])[:300],
@@ -292,7 +292,7 @@ def _pick_source(rows: list[NotebookSource], source: str) -> NotebookSource:
            ([rows[int(source) - 1]] if source.isdigit() and 0 < int(source) <= len(rows) else []) or \
            [r for r in rows if source.lower() and source.lower() in r.title.lower()]
     if len(pick) != 1:
-        raise NotebookError("Kaunsa source? Number, id ya naam do (notebook_open se list).")
+        raise NotebookError("Which source? Give the number, id or name (list from notebook_open).")
     return pick[0]
 
 
@@ -326,7 +326,7 @@ def set_enabled(tenant: str, ref: str, ids: list[str] | None, enabled: bool, onl
 def rename_source(tenant: str, ref: str, source: str, title: str) -> dict[str, Any]:
     nb = _nb(tenant, ref)
     if not title.strip():
-        raise NotebookError("Naya naam chahiye.")
+        raise NotebookError("A new name is needed.")
     with session() as s:
         rows = s.scalars(select(NotebookSource).where(NotebookSource.notebook_id == nb.id).order_by(NotebookSource.created_at)).all()
         _pick_source(rows, source).title = title.strip()[:300]
@@ -341,7 +341,7 @@ def refresh_source(tenant: str, ref: str, source: str) -> dict[str, Any]:
         row = _pick_source(rows, source)
         sid, src = row.id, dict(row.src_ref or {})
     if not src:
-        raise NotebookError("Yeh source dobara padha nahi ja sakta (file / text sources ek baar jude hote hain).")
+        raise NotebookError("This source cannot be read again (file / text sources are added once).")
     try:
         got = ingest.from_source(tenant, src)
     except Exception as e:
@@ -373,8 +373,8 @@ def _usable(nid: str, ids: list[str] | None = None) -> list[NotebookSource]:
     srcs = _sources(nid, only_enabled=True, ids=ids)
     if not srcs:
         if _sources(nid):
-            raise NotebookError("Koi source chuna nahi hai. Sources mein kam se kam ek par tick lagaiye.")
-        raise NotebookError("Is notebook mein abhi koi source nahi. Pehle file / link / text jodiye.")
+            raise NotebookError("No source is selected. Tick at least one in Sources.")
+        raise NotebookError("This notebook has no source yet. First add a file / link / text.")
     return srcs
 
 
@@ -447,7 +447,7 @@ async def notebook_guide(tenant: str, ref: str, refresh: bool = False) -> dict[s
             row = s.get(Notebook, nb.id)
             if row:
                 row.guide = g
-                if row.title in ("Notebook", "Untitled notebook", "Nayi notebook") and g.get("title"):
+                if row.title in ("Notebook", "Untitled notebook", "New notebook", "Nayi notebook") and g.get("title"):
                     row.title = g["title"]
     await asyncio.to_thread(save)
     return g
@@ -516,9 +516,9 @@ FULL_CONTEXT = 120_000     # the default of full_context(), kept as a name for o
 
 async def retrieve(srcs: list[NotebookSource], question: str) -> tuple[list[tuple[int, int, str]], list[str]]:
     total = sum(s.chars for s in srcs)
-    steps = [f"{len(srcs)} source{'s' if len(srcs) != 1 else ''} padhe"]
+    steps = [f"{len(srcs)} source{'s' if len(srcs) != 1 else ''} read"]
     if total <= full_context():
-        return [(si, ci, c) for si, s in enumerate(srcs) for ci, c in enumerate(chunks(s))], steps + ["poori notebook saath mein di"]
+        return [(si, ci, c) for si, s in enumerate(srcs) for ci, c in enumerate(chunks(s))], steps + ["the whole notebook was given together"]
     words = _tok(question)
     try:     # questions in Hindi / Hinglish over English sources: search words in both
         extra = await _llm("Return only search keywords, space separated, no sentences.",
@@ -599,7 +599,7 @@ def set_config(tenant: str, ref: str, goal: str = "", custom: str = "", length: 
     if custom or goal == "custom":
         cur["custom"] = (custom or cur["custom"]).strip()[:2000]
         if cur["goal"] == "custom" and not cur["custom"]:
-            raise NotebookError("Custom goal ke liye batayiye Hoola kaun bane / kya kare (jaise 'GST exam ka teacher').")
+            raise NotebookError("For a custom goal, say who Hoola should be / what it should do (like 'a teacher for the GST exam').")
     if length:
         if length not in LENGTHS:
             raise NotebookError("length: default, shorter ya longer.")
@@ -658,7 +658,7 @@ async def ask(tenant: str, ref: str, question: str, save: bool = False, source_i
     srcs = await asyncio.to_thread(_usable, nb.id, source_ids)
     question = str(question or "").strip()
     if not question:
-        raise NotebookError("Sawaal kya hai?")
+        raise NotebookError("What is the question?")
     cfg = config_of(nb)
     picked, steps = await retrieve(srcs, question)
     context, cites = _passages(srcs, picked)
@@ -706,7 +706,7 @@ def _save_note(nb: Notebook, kind: str, title: str, content: str, citations: lis
 def note_create(tenant: str, ref: str, title: str, content: str) -> dict[str, Any]:
     nb = _nb(tenant, ref)
     if not (content or "").strip():
-        raise NotebookError("Note khaali hai.")
+        raise NotebookError("The note is empty.")
     nid = _save_note(nb, "user", (title or content.strip().split("\n")[0][:60] or "Note").strip(), content.strip())
     _touch(nb.id)
     return get_note(tenant, nb.id, nid)
@@ -718,7 +718,7 @@ def save_message(tenant: str, ref: str, message_id: str) -> dict[str, Any]:
     with session() as s:
         m = s.get(NotebookChat, message_id)
         if m is None or m.notebook_id != nb.id or m.role != "assistant":
-            raise NotebookError("Yeh jawab nahi mila.")
+            raise NotebookError("This answer was not found.")
         q = s.scalars(select(NotebookChat).where(NotebookChat.notebook_id == nb.id, NotebookChat.role == "user",
                                                  NotebookChat.created_at <= m.created_at)
                       .order_by(NotebookChat.created_at.desc()).limit(1)).first()
@@ -730,7 +730,7 @@ def save_message(tenant: str, ref: str, message_id: str) -> dict[str, Any]:
 def _note_row(s, nb: Notebook, note: str) -> NotebookNote:
     n = s.get(NotebookNote, note)
     if n is None or n.notebook_id != nb.id:
-        raise NotebookError("Yeh note nahi mila.")
+        raise NotebookError("This note was not found.")
     return n
 
 
@@ -814,12 +814,12 @@ async def discover(tenant: str, ref: str, query: str) -> dict[str, Any]:
     nb = await asyncio.to_thread(_nb, tenant, ref)
     query = (query or "").strip()
     if not query:
-        raise NotebookError("Kis vishay par sources dhoondhun?")
+        raise NotebookError("Which topic should I find sources on?")
     from .. import web
     try:
         r = await web.search_any(query)
     except Exception as e:
-        raise NotebookError(f"Web search abhi nahi chala: {e}")
+        raise NotebookError(f"The web search did not run just now: {e}")
     have = {s.origin for s in await asyncio.to_thread(_sources, nb.id)}
     cands = []
     for s in r.get("sources") or []:
@@ -867,7 +867,7 @@ async def make(tenant: str, ref: str, kind: str, language: str = "", focus: str 
     await studio.run(v["id"])
     o = await asyncio.to_thread(studio.get, tenant, ref, v["id"])
     if o["status"] != "ready":
-        raise NotebookError(o["error"] or "Nahi ban paya.")
+        raise NotebookError(o["error"] or "Could not be made.")
     d = o["data"]
     if sk == "mind_map":
         content = _outline(d["root"])

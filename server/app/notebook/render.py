@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Any
 
 FONT_DIR = Path(__file__).resolve().parent.parent / "site" / "assets" / "fonts"
-AI_LABEL = "AI se bana · Hoola"
+AI_LABEL = "Made with AI · Hoola"
 
 STYLES: dict[str, dict[str, str]] = {
     "classic": {"label": "Classic", "head": "poppins", "body": "inter", "bg": "#F5F7FC", "ink": "#121A33", "muted": "#566079",
@@ -578,7 +578,7 @@ def _launch(p):
 def shoot(pages: list[tuple[str, int, int]], scale: float = 1.0, jpeg: bool = False) -> list[dict[str, Any]]:
     """[(html, w, h)] -> [{data, overflow}] screenshots (PNG, or JPEG for video frames)."""
     if not available():
-        raise RenderError("Iske liye server par Playwright + Chromium chahiye (deploy/setup_motion.sh).")
+        raise RenderError("This needs Playwright + Chromium on the server (deploy/setup_motion.sh).")
     from playwright.sync_api import sync_playwright
     out = []
     with sync_playwright() as p:
@@ -604,7 +604,7 @@ def shoot(pages: list[tuple[str, int, int]], scale: float = 1.0, jpeg: bool = Fa
 
 def pdf(doc_: str, width: str = "", height: str = "") -> bytes:
     if not available():
-        raise RenderError("PDF ke liye server par Playwright + Chromium chahiye.")
+        raise RenderError("A PDF needs Playwright + Chromium on the server.")
     from playwright.sync_api import sync_playwright
     with sync_playwright() as p:
         b = _launch(p)

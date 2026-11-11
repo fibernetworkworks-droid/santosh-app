@@ -66,24 +66,24 @@ class DriveClient:
                     continue
                 break
         except httpx.HTTPError as e:
-            raise DriveError(f"Google Drive se baat nahi ho payi ({type(e).__name__})")
+            raise DriveError(f"Could not talk to Google Drive ({type(e).__name__})")
         finally:
             if self._client is None:
                 c.close()
         if r.status_code == 403:
             text = r.text
             if "has not been used" in text or "SERVICE_DISABLED" in text:
-                raise DriveError("Google Cloud project mein Drive API enable nahi hai.")
+                raise DriveError("The Drive API is not enabled in the Google Cloud project.")
             if "exportSizeLimitExceeded" in text:
-                raise DriveError("Yeh file itni badi hai ki Google ise convert nahi karta; link se kholiye.")
+                raise DriveError("This file is too big for Google to convert; open it from the link.")
             if "storageQuotaExceeded" in text:
-                raise DriveError("Google Drive bhar gaya hai (storage poori). Kuch jagah khaali kijiye.")
+                raise DriveError("Google Drive is full (no storage left). Free up some space.")
             if self.kind == "service":
-                raise DriveError("Santosh ke paas is file ki permission nahi hai. File/folder service account ki email ke "
-                                 "saath share kijiye, ya Profile > Google Drive se apna Google account jodiye.")
-            raise DriveError("Is file ki permission nahi hai (shayad kisi aur ki file hai jo aapke saath share nahi).")
+                raise DriveError("Hoola does not have permission for this file. Share the file / folder with the service account's email, "
+                                 "or connect your own Google account in Profile > Google Drive.")
+            raise DriveError("No permission for this file (it may be someone else's file that is not shared with you).")
         if r.status_code == 404:
-            raise DriveError("Yeh file ya folder nahi mila. Link / naam sahi hai?")
+            raise DriveError("This file or folder was not found. Are the link / name right?")
         if r.status_code >= 400:
             msg = r.text[:300]
             try:

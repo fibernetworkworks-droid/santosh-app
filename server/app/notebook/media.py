@@ -30,7 +30,7 @@ def tts_chunk(text: str, voices: dict[str, str] | None = None, voice: str = "") 
     from google.genai import Client, types
     st = get_settings()
     if not st.gemini_api_key:
-        raise MediaError("Awaaz ke liye server par GEMINI_API_KEY chahiye (Google ki awaaz).")
+        raise MediaError("The voice needs GEMINI_API_KEY on the server (Google's voice).")
     client = Client(api_key=st.gemini_api_key)
     if voices:
         speech = types.SpeechConfig(multi_speaker_voice_config=types.MultiSpeakerVoiceConfig(
@@ -45,7 +45,7 @@ def tts_chunk(text: str, voices: dict[str, str] | None = None, voice: str = "") 
     for part in resp.candidates[0].content.parts:
         if getattr(part, "inline_data", None) and part.inline_data.data:
             return part.inline_data.data
-    raise MediaError("Google ki awaaz (TTS) ne audio nahi diya.")
+    raise MediaError("Google's voice (TTS) gave no audio.")
 
 
 def tts_turns(turns: list[dict], voices: dict[str, str] | None = None, voice: str = "", style: str = "") -> bytes:
@@ -56,7 +56,7 @@ def tts_turns(turns: list[dict], voices: dict[str, str] | None = None, voice: st
     from google import genai
     st = get_settings()
     if not st.gemini_api_key:
-        raise MediaError("Awaaz ke liye server par GEMINI_API_KEY chahiye (Google ki awaaz).")
+        raise MediaError("The voice needs GEMINI_API_KEY on the server (Google's voice).")
     client = genai.Client(api_key=st.gemini_api_key)
     content = []
     for t in turns:
@@ -78,7 +78,7 @@ def tts_turns(turns: list[dict], voices: dict[str, str] | None = None, voice: st
         with wave.open(io.BytesIO(data)) as w:
             data = w.readframes(w.getnframes())
     if not data:
-        raise MediaError("Google ki awaaz (TTS) ne audio nahi diya.")
+        raise MediaError("Google's voice (TTS) gave no audio.")
     return data
 
 
@@ -243,7 +243,7 @@ def assemble_video(scenes: list[dict], out_path: Path, work: Path, fps: int = 25
     """scenes: [{png: Path, pcm: bytes, narration: str}] -> one MP4 (H.264 + AAC, faststart) + SRT captions.
     Each scene: the frame with a slow Ken Burns zoom for the narration's length + 0.6 s, short fades in / out."""
     if not shutil.which("ffmpeg"):
-        raise MediaError("Video ke liye server par ffmpeg chahiye (deploy/setup_video.sh).")
+        raise MediaError("Video needs ffmpeg on the server (deploy/setup_video.sh).")
     work, out_path = work.resolve(), out_path.resolve()
     work.mkdir(parents=True, exist_ok=True)
     clips, captions, t = [], [], 0.0
