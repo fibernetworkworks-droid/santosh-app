@@ -84,7 +84,7 @@ def test_refused_refresh_is_a_clear_reconnect_and_a_card(g, monkeypatch):
     with session() as s:
         assert "invalid_grant" in s.query(OAuthConnection).one().last_error
     cards = [p for k, p in g if k == "google_reconnect"]
-    assert len(cards) == 1 and "Google Drive jodiye" in cards[0]["text"]
+    assert len(cards) == 1 and "Connect Google Drive" in cards[0]["text"]
     with pytest.raises(ToolError):               # a second failure does not spam another card
         _run("drive_find", query="bill")
     assert len([1 for k, _ in g if k == "google_reconnect"]) == 1
@@ -100,7 +100,7 @@ def test_refused_refresh_is_a_clear_reconnect_and_a_card(g, monkeypatch):
         self.token = "fresh"
     monkeypatch.setattr(Credentials, "refresh", ok)
     st = _run("google_status")
-    assert st["ok"] and st["drive"][0]["seen_as"] == "meghana@gmail.com" and st["say"] == "Google Drive theek chal raha hai."
+    assert st["ok"] and st["drive"][0]["seen_as"] == "meghana@gmail.com" and st["say"] == "Google Drive is working fine."
     with session() as s:
         assert s.query(OAuthConnection).one().last_error is None
 

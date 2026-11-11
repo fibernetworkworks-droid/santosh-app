@@ -247,7 +247,7 @@ def test_fridge_geyser_readonly(fakeha):
         with pytest.raises(Exception) as e:
             _run(HOME_HANDLERS["home_off"](_ctx(), entity=eid))
         msg = str(e.value)
-        assert "haath nahi lagata" in msg, eid
+        assert "do not touch" in msg, eid
         out = home.recent_audit(T, 10)
         assert any(r["entity"] == eid and r["action"] == "refused" for r in out["entries"]), eid
 
@@ -256,7 +256,7 @@ def test_uncontrollable_domains_refused(fakeha):
     for eid in ("sensor.hall_temp", "camera.gate"):
         with pytest.raises(Exception) as e:
             _run(HOME_HANDLERS["home_on"](_ctx(), entity=eid))
-        assert "switch main nahi chalata" in str(e.value)
+        assert "do not control a device of this type" in str(e.value)
 
 
 def test_ac_temperature_clamped(fakeha):
@@ -303,7 +303,7 @@ def test_light_on_off_and_settle(fakeha):
     on = _run(HOME_HANDLERS["home_on"](_ctx(), entity="light.bedi"))
     assert on["ok"] is True and on["state"] == "on" and "Bedroom Light" in on["say"]
     off = _run(HOME_HANDLERS["home_off"](_ctx(), entity="light.bedi"))
-    assert off["ok"] is True and off["state"] == "off" and "band kar di" in off["say"]
+    assert off["ok"] is True and off["state"] == "off" and "is off" in off["say"]
     assert any("light/turn_on" in c for c in fakeha.calls) and any("light/turn_off" in c for c in fakeha.calls)
 
 
@@ -329,7 +329,7 @@ def test_by_name_resolution(fakeha):
 def test_unknown_device_honest(fakeha):
     with pytest.raises(Exception) as e:
         _run(HOME_HANDLERS["home_on"](_ctx(), entity="light.nahi_hai_ye"))
-    assert "nahi mila" in str(e.value)
+    assert "was not found" in str(e.value)
 
 
 def test_ha_down_honest(hm, monkeypatch):
@@ -339,7 +339,7 @@ def test_ha_down_honest(hm, monkeypatch):
     monkeypatch.setattr(home.httpx, "AsyncClient", lambda **k: real_client(transport=httpx.MockTransport(boom), **k))
     with pytest.raises(Exception) as e:
         _run(HOME_HANDLERS["home_devices"](_ctx()))
-    assert "pahunch" in str(e.value)
+    assert "reach" in str(e.value)
 
 
 # ---------------------------------------------------------------- (7) audit trail

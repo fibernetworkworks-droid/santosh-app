@@ -168,7 +168,7 @@ def test_indiamart_error_aborts_the_run_with_the_reason(env, monkeypatch):
         raise indiamart.IndiaMartError("IndiaMART ne mana kiya (HTTP 503).")
     monkeypatch.setattr(indiamart, "search", dead)
     out = asyncio.run(S.run_indiamart("t1", "ask", "cement", city="Pune", place="Pune"))
-    assert out["ok"] is False and out["run"]["status"] == "ABORTED" and "mana kiya" in out["run"]["error"]
+    assert out["ok"] is False and out["run"]["status"] == "ABORTED" and "refused" in out["run"]["error"]
 
 
 def test_indiamart_cities_cap_at_five(env, monkeypatch):

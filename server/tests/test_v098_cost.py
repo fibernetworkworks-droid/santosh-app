@@ -166,7 +166,7 @@ def test_call_rating_reaches_the_voice_numbers(env):
     with TestClient(main.app) as c:
         assert c.post("/api/voice/calls/call1/rating", json={"good": True}).json()["ok"]
         r = c.post("/api/voice/calls/call2/rating", json={"good": False, "reasons": ["cut_off", "slow", "made_up"]}).json()
-        assert r["reasons"] == ["Beech mein kaat diya", "Jawab der se aaya"]
+        assert r["reasons"] == ["Cut me off midway", "The reply came late"]
         c.post("/api/voice/calls/call2/rating", json={"good": False, "reasons": ["cut_off"]})      # changing her mind
         st = c.get("/api/voice/stats").json()["ratings"]
     assert st["rated_calls"] == 2 and st["good_pct"] == 50.0 and st["top_reasons"][0]["reason"] == "cut_off"

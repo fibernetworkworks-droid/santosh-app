@@ -190,7 +190,7 @@ def test_salvage_clamps_and_defaults():
     sk["confidence"] = "nonsense"
     assert K._salvage(sk)["confidence"] == 0.5
     sk["title"] = ""
-    assert K._salvage(sk)["title"] == "Video se seekha kaam"
+    assert K._salvage(sk)["title"] == "Task learned from a video"
     sk["kind"] = "weird"
     assert K._salvage(sk)["kind"] == "other_work"
 

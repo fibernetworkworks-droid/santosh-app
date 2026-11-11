@@ -200,7 +200,7 @@ def test_voice_call_gets_the_same_memory(env):
 def test_jaanch_reports_memory_and_voice_settings(env, monkeypatch):
     from app import jaanch, voice
     r = asyncio.run(jaanch._memory("default"))
-    assert r["id"] == "memory" and "yaadein" in r["detail"]
+    assert r["id"] == "memory" and "memories" in r["detail"]
     monkeypatch.setattr(voice, "UNSUPPORTED", {"session_resumption"})
     v = asyncio.run(jaanch._voice_settings())
     assert v["ok"] is False and "session_resumption" in v["detail"]

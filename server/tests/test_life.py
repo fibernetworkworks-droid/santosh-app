@@ -95,7 +95,7 @@ def test_phone_actions_and_results(env, monkeypatch):
     worker.expire_device_actions()
     with session() as s:
         assert s.get(DeviceAction, c["action_id"]).status == "expired"
-    assert any("phone par nahi pahuncha" in x for x in notes(ctx.conversation_id))
+    assert any("did not reach the phone" in x for x in notes(ctx.conversation_id))
 
 
 def test_memory_lists_profile_and_prompt(env):

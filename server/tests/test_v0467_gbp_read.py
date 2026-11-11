@@ -71,8 +71,8 @@ def test_numbers_request_shape_and_totals(g):
     assert "dailyRange.startDate.day=5" in s and "dailyRange.endDate.day=3" in s and "dailyRange.endDate.month=11" in s
     assert s.count("dailyMetrics=") == len(gbp.METRICS)
     assert r["from"] == "2026-10-05" and r["to"] == "2026-11-03"
-    assert r["times_shown"] == 65 and r["shown_where"]["Search mein dikha (phone)"] == 60
-    assert r["actions"]["Call dabaya"] == 3 and r["actions"]["Website kholi"] == 0 and r["has_data"] is True
+    assert r["times_shown"] == 65 and r["shown_where"]["Shown in Search (phone)"] == 60
+    assert r["actions"]["Tapped Call"] == 3 and r["actions"]["Opened the website"] == 0 and r["has_data"] is True
 
 
 def test_no_data_reads_as_none_not_invented(g, monkeypatch):

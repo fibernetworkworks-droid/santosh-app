@@ -25,7 +25,7 @@ def test_tag_exists_for_every_state_and_is_compact():
 
 def test_flip_note_only_on_a_real_flip():
     f = voiceaffect.flip_note("low", "glad")
-    assert f and "badli hai" in f and "chhod do" in f
+    assert f and "just changed" in f and "drop the earlier energy" in f
     assert voiceaffect.flip_note("glad", "low")
     assert voiceaffect.flip_note("tense", "glad")
     assert voiceaffect.flip_note("low", "low") is None     # same state again: the note already said it
@@ -244,7 +244,7 @@ def test_flip_names_the_move_and_reanchors_the_tone(monkeypatch):
     c = _AffectCall(GLAD, last="low")
     _run_affect(c, monkeypatch)
     assert len(c.notes) == 1
-    assert "garmi" in c.notes[0] and "badli hai" in c.notes[0]   # the glad note + the move-with-her clause
+    assert "warmth" in c.notes[0] and "just changed" in c.notes[0]   # the glad note + the move-with-her clause
     assert c.stats["affect_transitions"] == 1
     assert c._tone == "glad" and c._tone_at > 0
 
@@ -252,14 +252,14 @@ def test_flip_names_the_move_and_reanchors_the_tone(monkeypatch):
 def test_first_note_is_not_a_transition(monkeypatch):
     c = _AffectCall(GLAD)
     _run_affect(c, monkeypatch)
-    assert len(c.notes) == 1 and "badli hai" not in c.notes[0]
+    assert len(c.notes) == 1 and "just changed" not in c.notes[0]
     assert "affect_transitions" not in c.stats and c._tone == "glad"
 
 
 def test_kill_switch_leaves_the_v219_engine(monkeypatch):
     c = _AffectCall(GLAD, last="low")
     _run_affect(c, monkeypatch, voice_soorat=False)
-    assert len(c.notes) == 1 and "badli hai" not in c.notes[0]
+    assert len(c.notes) == 1 and "just changed" not in c.notes[0]
     assert "affect_transitions" not in c.stats
     assert c.__dict__.get("_tone") is None            # never anchored: the scripted moments stay untinted
 
@@ -270,10 +270,10 @@ def test_note_result_rides_the_tone(monkeypatch):
     c = _TonedCall("low")
     monkeypatch.setattr(voice, "get_settings", lambda: _settings())
     voice.Call._note_result(c, "search_web", {"result": "mil gaya"})
-    assert "has finished" in c.notes[0] and "naram" in c.notes[0]
+    assert "has finished" in c.notes[0] and "soft" in c.notes[0]
     c2 = _TonedCall("low", age=voiceaffect.TONE_S + 5)
     voice.Call._note_result(c2, "search_web", {"result": "mil gaya"})
-    assert "naram" not in c2.notes[0]
+    assert "soft" not in c2.notes[0]
 
 
 def test_reseed_tells_the_fresh_session_her_tone(monkeypatch):
@@ -281,10 +281,10 @@ def test_reseed_tells_the_fresh_session_her_tone(monkeypatch):
     c.recent = [("usne kaha", "maine kaha")]
     monkeypatch.setattr(voice, "get_settings", lambda: _settings())
     seed = voice.Call._reseed(c, False)
-    assert "HOOLA KI YAAD" in seed and "shaant" in seed
+    assert "HOOLA KI YAAD" in seed and "calm" in seed
     c2 = _TonedCall("tense", age=voiceaffect.TONE_S + 5)
     c2.recent = [("usne kaha", "maine kaha")]
-    assert "shaant" not in voice.Call._reseed(c2, False)
+    assert "calm" not in voice.Call._reseed(c2, False)
 
 
 def test_stall_nudge_rides_the_tone(monkeypatch):
@@ -316,7 +316,7 @@ def test_stall_nudge_rides_the_tone(monkeypatch):
 
     asyncio.get_event_loop_policy().new_event_loop().run_until_complete(go())
     assert c.stats.get("stall_nudges") == 1
-    assert "right now" in c.notes[0] and "naram" in c.notes[0]
+    assert "right now" in c.notes[0] and "soft" in c.notes[0]
 
 
 def test_late_result_rides_the_tone(monkeypatch):
@@ -331,7 +331,7 @@ def test_late_result_rides_the_tone(monkeypatch):
         voice.Call._late_result(c, job)
 
     asyncio.get_event_loop_policy().new_event_loop().run_until_complete(go())
-    assert "is done" in c.notes[0] and "naram" in c.notes[0]
+    assert "is done" in c.notes[0] and "soft" in c.notes[0]
 
 
 # ---------------- the scorecard counts the energy ----------------

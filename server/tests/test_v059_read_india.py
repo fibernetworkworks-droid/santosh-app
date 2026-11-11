@@ -212,7 +212,7 @@ def test_locked_pdf_is_never_opened(env):
     src.save(buf, encryption=pikepdf.Encryption(owner="o", user="u"))
     with pytest.raises(pdftools.PdfError) as e:
         pdftools.info(buf.getvalue())
-    assert "password chat mein mat" in str(e.value)
+    assert "do not type the password in the chat" in str(e.value)
 
 
 def test_pdf_signature_check(env, tmp_path):
@@ -239,12 +239,12 @@ def test_pdf_signature_check(env, tmp_path):
                      signers.PdfSignatureMetadata(field_name="Sig1"), signer=signer, output=out)
     v = pdftools.verify(out.getvalue())
     s = v["signatures"][0]
-    assert s["intact"] and "Hoola Test Signer" in s["signer"] and not s["trusted"] and "nahi badli" in v["say"]
+    assert s["intact"] and "Hoola Test Signer" in s["signer"] and not s["trusted"] and "was not changed" in v["say"]
     tampered = bytearray(out.getvalue())
     i = tampered.find(b"Line of text")
     tampered[i:i + 4] = b"LINE"
     v2 = pdftools.verify(bytes(tampered))
-    assert "badli gayi" in v2["say"]
+    assert "was changed after" in v2["say"]
     assert pdftools.verify(_pdf("plain"))["signatures"] == []
 
 

@@ -129,7 +129,7 @@ def test_a_dead_google_sign_in_backs_off_and_tells_her_once(env, monkeypatch):
     with pytest.raises(google_auth.GoogleReconnect):
         google_auth.refresh(Creds(), T, "me@x.in")       # her own chat ask always tries again
     assert calls == [1, 1]
-    assert len(told) == 1 and "Google" in told[0] and "naye mail" in told[0]
+    assert len(told) == 1 and "Google" in told[0] and "new mail" in told[0]
 
     class NewCreds(Creds):
         refresh_token = "rt-2"                             # she signed in again: a new token is tried at once

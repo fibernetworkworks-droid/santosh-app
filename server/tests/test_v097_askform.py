@@ -37,7 +37,7 @@ def test_tool_sends_a_card_and_refuses_secret_fields(env):
     card = _events(conv, "ask_form")[-1]
     assert card["status"] == "pending" and card["fields"][0]["value"] == "Meghana" and card["fields"][2]["options"] == ["SL", "3A", "2A"]
     for bad in ("OTP", "Login password", "Card number", "UPI PIN", "CVV"):
-        with pytest.raises(ToolError, match="form mein nahi"):
+        with pytest.raises(ToolError, match="cannot be asked for in a form"):
             asyncio.run(dispatch("ask_form", {"title": "x", "fields": [{"label": bad}]}, ctx))
     # a postal PIN code is fine
     asyncio.run(dispatch("ask_form", {"title": "Pata", "fields": [{"label": "PIN code", "kind": "number"},

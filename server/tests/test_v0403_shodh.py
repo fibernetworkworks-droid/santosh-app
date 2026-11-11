@@ -79,12 +79,12 @@ def test_search_dedupes_across_sources_and_reports_failures(sh):
 
 def test_doi_checked_against_crossref(sh):
     SH, p = sh
-    with pytest.raises(SH.ShodhError, match="asli DOI nahi"):
+    with pytest.raises(SH.ShodhError, match="real DOI"):
         SH.add_doi(T, p, "10.9999/fake.123")
     ok = SH.add_doi(T, p, "https://doi.org/10.3000/peer.5")
     assert ok["paper"]["doi"] == "10.3000/peer.5" and ok["paper"]["oa_url"] == "https://free.example/peer.pdf"
     again = SH.add_doi(T, p, "10.3000/PEER.5")
-    assert "Pehle se" in again["say"]
+    assert "Already in the project" in again["say"]
 
 
 def _include_all(SH, p):
@@ -136,7 +136,7 @@ def test_analysis_runs_model_code_in_the_sandbox_and_fixes_once(sh, monkeypatch,
     r = SH.analyse(T, p, "Is group b higher?", datasets=[doc["id"]])
     assert r["ok"] and "mean_b = 72.5" in r["output"] and len(r["attempts"]) == 2 and not r["attempts"][0]["ok"]
     assert "read_csv" in r["code"]
-    with pytest.raises(SH.ShodhError, match="Data chahiye"):
+    with pytest.raises(SH.ShodhError, match="Data is needed"):
         SH.analyse(T, p, "x")
 
 

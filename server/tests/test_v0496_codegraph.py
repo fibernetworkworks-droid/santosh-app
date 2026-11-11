@@ -156,7 +156,7 @@ def test_timeout_kills_the_child_and_frees_the_lock(lane):
     mp.setenv("GRAPHIFY_BUILD_TIMEOUT_S", "1")
     from app.config import get_settings
     get_settings.cache_clear()
-    with pytest.raises(cg.GraphError, match="rok diya"):
+    with pytest.raises(cg.GraphError, match="stopped"):
         cg.build("t1", "foo/bar")
     assert cg._BUILD_LOCK.acquire(blocking=False)               # lock released after the failure
     cg._BUILD_LOCK.release()
@@ -167,7 +167,7 @@ def test_one_build_at_a_time(lane):
     cg, _, _ = lane
     assert cg._BUILD_LOCK.acquire(blocking=False)
     try:
-        with pytest.raises(cg.GraphError, match="ban raha"):
+        with pytest.raises(cg.GraphError, match="being built"):
             cg.build("t1", "foo/bar")
     finally:
         cg._BUILD_LOCK.release()
