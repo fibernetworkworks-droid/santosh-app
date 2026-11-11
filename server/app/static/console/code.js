@@ -48,7 +48,7 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
   const kb = n => n >= 1e6 ? (n / 1e6).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1000)) + ' KB';
   const $ = s => EL && EL.querySelector(s);
   const P = (() => { let p = {}; try { p = JSON.parse(localStorage.getItem('hoola.code.ui') || '{}') || {}; } catch (e) { /* private window */ }
-    return {side: p.side === 'min' ? 'min' : 'open', rail: ['on', 'off'].includes(p.rail) ? p.rail : 'auto',
+    return {side: p.side === 'min' ? 'min' : p.side === 'open' ? 'open' : (window.innerWidth < 760 ? 'min' : 'open'),   // a narrow window starts with the slim bar rail: ['on', 'off'].includes(p.rail) ? p.rail : 'auto',
       group: ['status', 'none'].includes(p.group) ? p.group : 'repo', show: ['run', 'need'].includes(p.show) ? p.show : 'all',
       view: ['verbose', 'thinking'].includes(p.view) ? p.view : 'normal'}; })();
   const keep = () => { try { localStorage.setItem('hoola.code.ui', JSON.stringify(P)); } catch (e) { /* fine without it */ } };
@@ -77,7 +77,14 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
     sort: '<path d="M7 5v14M7 19l-3-3M7 19l3-3M17 19V5M17 5l-3 3M17 5l3 3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
     x: '<path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
     up: '<path d="M12 19V5M5 12l7-7 7 7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>',
-    stop: '<rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor"/>'};
+    stop: '<rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor"/>',
+    pr: '<circle cx="6" cy="6" r="2.4" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="6" cy="18" r="2.4" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="18" cy="18" r="2.4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M6 8.4v7.2M18 15.6V10a4 4 0 0 0-4-4h-2.5M13.5 3.5L11 6l2.5 2.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
+    clock: '<circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 7.5V12l3 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
+    gear: '<circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M5.5 18.5l1.7-1.7M16.8 7.2l1.7-1.7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
+    stack: '<path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
+    back: '<path d="M10 6l-6 6 6 6M4 12h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
+    bug: '<rect x="8" y="7" width="8" height="12" rx="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M9.5 7a2.5 2.5 0 0 1 5 0M4 13h4M16 13h4M5 8l3 2M19 8l-3 2M5 19l3-2M19 19l-3-2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
+    spark: '<path d="M12 3l1.9 5.6L19.5 10l-5.6 1.9L12 17.5l-1.9-5.6L4.5 10l5.6-1.4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>'};
   const svg = (k, cls = '') => `<svg class="hcd-ic ${cls}" viewBox="0 0 24 24" aria-hidden="true">${ICON[k] || ICON.dot}</svg>`;
   const ago = iso => { const t = Date.parse(iso || ''); if (!t) return ''; const m = Math.round((Date.now() - t) / 60000);
     return m < 1 ? 'just now' : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} days ago`; };
@@ -116,6 +123,7 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
     if (standalone && location.hash !== toHash(VIEW, TID) && !(VIEW === 'home' && !location.hash)) location.hash = toHash(VIEW, TID);
     if (standalone) document.title = VIEW === 'session' ? 'Hoola Code' : ({reviews: 'Review a PR', settings: 'Settings', all: 'All sessions', scheduled: 'Scheduled tasks'}[VIEW] || 'Hoola Code') + (VIEW === 'home' ? '' : ' · Hoola Code');
     drawSide();
+    const bd = $('#hcdBody'); if (bd) { bd.classList.add('hcd-enter'); clearTimeout(show._t); show._t = setTimeout(() => bd.classList.remove('hcd-enter'), 320); }   // a page comes in once; a later repaint does not move
     if (view === 'session' && TID) return session(TID);
     if (view === 'reviews') return reviews();
     if (view === 'settings') return settings();
@@ -164,14 +172,14 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
     }
     side.innerHTML = `<div class="hcd-sh">${standalone ? '<img class="hcd-mark" src="/static/hoola-mark.png" alt="" width="24" height="24">' : ''}<b>Hoola Code</b><span class="hcd-flex"></span><button type="button" class="hcd-icb" data-act="side" aria-label="Collapse the sessions sidebar" title="Collapse sidebar">${svg('side')}</button></div>
       <button type="button" class="hcd-new" data-go="home">${svg('new')}New session</button>
-      <button type="button" class="hcd-nav${VIEW === 'reviews' ? ' on' : ''}" data-go="reviews">Review a pull request</button>
-      <button type="button" class="hcd-nav${VIEW === 'scheduled' ? ' on' : ''}" data-go="scheduled">Scheduled${(OV?.schedules || []).filter(x => x.enabled && x.days !== 'off').length ? `<span class="hcd-count">${(OV.schedules || []).filter(x => x.enabled && x.days !== 'off').length}</span>` : ''}</button>
+      <button type="button" class="hcd-nav${VIEW === 'reviews' ? ' on' : ''}" data-go="reviews">${svg('pr')}<span>Review a pull request</span></button>
+      <button type="button" class="hcd-nav${VIEW === 'scheduled' ? ' on' : ''}" data-go="scheduled">${svg('clock')}<span>Scheduled</span>${(OV?.schedules || []).filter(x => x.enabled && x.days !== 'off').length ? `<span class="hcd-count">${(OV.schedules || []).filter(x => x.enabled && x.days !== 'off').length}</span>` : ''}</button>
       <label class="hcd-sr" for="hcdSearch">Search sessions</label><input id="hcdSearch" class="hcd-search" type="search" placeholder="Search sessions" value="${esc(Q)}" autocomplete="off">
       <div class="hcd-list" id="hcdList"></div>
-      <button type="button" class="hcd-nav${VIEW === 'all' ? ' on' : ''}" data-go="all">View all</button>
+      <button type="button" class="hcd-nav${VIEW === 'all' ? ' on' : ''}" data-go="all">${svg('stack')}<span>View all</span></button>
       <span class="hcd-flex"></span>
-      <button type="button" class="hcd-nav${VIEW === 'settings' ? ' on' : ''}" data-go="settings">Settings</button>
-      ${standalone ? '<a class="hcd-nav" href="/console/">Back to Hoola</a>' : ''}`;
+      <button type="button" class="hcd-nav${VIEW === 'settings' ? ' on' : ''}" data-go="settings">${svg('gear')}<span>Settings</span></button>
+      ${standalone ? `<a class="hcd-nav" href="/console/">${svg('back')}<span>Back to Hoola</span></a>` : ''}`;
     drawList();
   }
   const row = t => `<div class="hcd-sess${t.id === TID && VIEW === 'session' ? ' on' : ''}"><button type="button" class="hcd-sessb" data-tid="${esc(t.id)}">
@@ -400,11 +408,14 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
             <label class="hcd-chip"><span class="hcd-sr">Effort</span><select id="hcdEffort" aria-label="Effort" title="How hard the model thinks: higher is slower and costs more">${(ms.efforts || []).map(e => `<option value="${e}"${e === (HOME.effort || ms.default_effort) ? ' selected' : ''}>${e[0].toUpperCase() + e.slice(1)}</option>`).join('')}</select></label>` : ''}
         ${ring}
       </div>
+      ${HOME.text || setup ? '' : `<div class="hcd-starts" id="hcdStarts">${STARTS.map(([ic, label], i) => `<button type="button" class="hcd-start" data-act="starter" data-i="${i}">${svg(ic)}${esc(label)}</button>`).join('')}</div>`}
       <p class="hcd-lede">Hoola works on its own branch, runs your tests, and opens a pull request. Nothing is merged without you.</p>
     </main>`);
     drawTray(); loadBranches(REPO);
     $('#hcdLine')?.focus();
   }
+  // A starting point she can tap: it only fills the box (she finishes the sentence and sends it herself).
+  const STARTS = [['bug', 'Fix a bug', 'Fix this bug: '], ['spark', 'Build a feature', 'Build this: '], ['ok', 'Write tests', 'Write tests for '], ['read', 'Explain the code', '/explain How does ']];
   async function startSession() {
     const line = $('#hcdLine'), btn = $('#hcdStart'); let text = line.value.trim();
     const m = /^\/([a-z]+)\b[ \t]*/i.exec(text);
@@ -451,7 +462,7 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
       case 'check_off': return `<div class="hcd-step">${svg('bad')}<span>Your tests could not run here - this change is not measured</span>${at}</div>`;
       case 'grep': return `<div class="hcd-step">${svg('search')}<span>Searched the test log for ${p(s.q)}</span>${at}</div>`;
       case 'refused': return `<div class="hcd-step dim">${svg('bad')}<span>A step was refused: ${esc(s.why)}</span>${at}</div>`;
-      case 'bash': { const ok = s.rc === 0, lab = `<span class="hcd-sh">$ ${esc(s.cmd || '')}</span> · <span class="${ok ? 'add' : 'del'}">${s.timed_out ? 'timed out' : 'exit ' + esc(String(s.rc))}</span>${s.seconds ? ` · ${esc(String(s.seconds))} s` : ''}${s.by ? ` · by ${esc(s.by)}` : ''}`;
+      case 'bash': { const ok = s.rc === 0, lab = `<span class="hcd-cmd">$ ${esc(s.cmd || '')}</span> · <span class="${ok ? 'add' : 'del'}">${s.timed_out ? 'timed out' : 'exit ' + esc(String(s.rc))}</span>${s.seconds ? ` · ${esc(String(s.seconds))} s` : ''}${s.by ? ` · by ${esc(s.by)}` : ''}`;
         return s.tail && s.tail.length ? fold('b' + i, lab, `<pre class="hcd-term">${s.tail.map(x => esc(x)).join('\n')}</pre>`, 'row', verbose || !ok) : `<div class="hcd-step">${svg('list')}<span>${lab}</span>${at}</div>`; }
       case 'todo': return `<div class="hcd-todo">${(s.items || []).map(x => `<div class="hcd-td ${esc(x.status)}"><i aria-hidden="true">${x.status === 'completed' ? '✓' : x.status === 'in_progress' ? '●' : '○'}</i><span>${esc(x.content)}</span></div>`).join('')}</div>`;
       case 'compact': case 'ws': return `<div class="hcd-step dim">${svg('list')}<span>${esc(s.text || '')}</span>${at}</div>`;
@@ -689,7 +700,7 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
         const u = URL.createObjectURL(b); PICS.set(k, u); const now = EL.querySelector(`#hcdCol img[data-att="${img.dataset.att}"]`); if (now && TASK?.id === t.id) now.src = u; }).catch(() => PICS.delete(k)); });
   }
   const put = (id, key, html) => { if (SIG[key] === html) return false; const el = $(id); if (!el) return false; el.innerHTML = html; SIG[key] = html; return true; };
-  function tick() { const c = $('#hcdClock'); if (c && TASK?.running && !TASK.stopping) c.textContent = `Working · ${dur((Date.now() - Date.parse(TASK.at)) / 1000)}`; }
+  function tick() { const c = $('#hcdClock'); if (c && TASK?.running && !TASK.stopping) c.textContent = `Working · ${dur(Math.max(0, (Date.now() - Date.parse(TASK.at)) / 1000))}`; }
   function paint() {
     const t = TASK; if (!t || !$('#hcdTop')) return;
     const files = editedFiles(t), railOn = railShown();
@@ -860,6 +871,7 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
       const r = await dialog(`<h2>Go back to checkpoint ${n}?</h2><p class="hcd-mut">The working copy and the conversation return to how they were then. Work after it is dropped here. Your pull request on GitHub is not changed until the next push.</p>
         <div class="hcd-dlgb"><button class="hcd-btn" value="no" formnovalidate>Cancel</button><button class="hcd-btn pri" value="ok">Go back</button></div>`);
       if (r !== 'ok') return; await busy(b, async () => { await api('POST', `/api/devsahayak/tasks/${tid()}/rewind`, {n}); await again(); toast(`Back at checkpoint ${n}.`); }); },
+    starter: b => { const l = $('#hcdLine'), st = STARTS[+b.dataset.i]; if (!l || !st) return; l.value = st[2]; l.focus(); l.setSelectionRange(l.value.length, l.value.length); },
     unkind: () => { HOME.kind = 'auto'; drawTray(); },
     unissue: () => { HOME.issue = 0; drawTray(); },
     unfile: b => { const f = HOME.files.splice(+b.dataset.i, 1)[0]; if (f?.url) URL.revokeObjectURL(f.url); drawTray(); },
@@ -1038,7 +1050,7 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
       <section class="hcd-card"><h2>GitHub access</h2><p class="hcd-mut">A fine-grained token, typed only here. It is locked away on the server and never shown to the AI or the chat.</p>
         <p>${st.github ? `<span class="hcd-c ok">Connected</span>${st.login ? ' as <b>' + esc(st.login) + '</b>' : ''}${st.token_label ? ' · ' + esc(st.token_label) : ''}` : '<span class="hcd-c warn">Not connected</span>'}</p>
         <form class="hcd-inline" id="hcdTok"><label for="hcdTokIn" class="hcd-sr">GitHub token</label><input id="hcdTokIn" type="password" autocomplete="off" placeholder="github_pat_…"><button class="hcd-btn" type="submit">Save</button>${st.github ? '<button class="hcd-btn" type="button" id="hcdTokDel">Forget</button>' : ''}</form>
-        <p class="hcd-mut">Needs: ${esc((st.permissions || []).join(', '))}.</p></section>
+        ${(st.permissions || []).length ? `<p class="hcd-mut">Needs: ${esc(st.permissions.join(', '))}.</p>` : ''}</section>
       <section class="hcd-card"><h2>Repos Hoola may work in</h2>
         ${repos.map(r => `<div class="hcd-repo"><code>${esc(r.repo)}</code><span class="hcd-mut">${r.private ? 'private' : 'public · asks before a PR'}${r.language ? ' · ' + esc(r.language) : ''}</span><button type="button" class="hcd-btn sm" data-rmrepo="${esc(r.repo)}">Remove</button></div>
           <details class="hcd-rbox"${r.setup_cmd || r.test_cmd || Object.keys(r.env_vars || {}).length || (r.net || {}).level !== 'none' || ((r.net || {}).secrets || []).length || (r.events || {}).on ? ' open' : ''}><summary>How this repo runs in the box</summary>

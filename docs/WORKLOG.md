@@ -2973,6 +2973,10 @@ Task: owner "GO L7" - E5 restore any version, bookmarks, undo per reply, diffs, 
 Work Log: site/wapas.py (snapshots, restore, bookmark, diff); _make_version snapshot; site_versions.bookmark; 3 routes + website action=restore_version; stream.py on-disk slots; Studio History / reply footer / Edit + Revert and resend; 8 tests incl. a browser walk.
 Stage Summary: pushed; server deploy only. Next: L8 needs her 4 decisions (build server, model per job, free allowances, brand) before the React App Engine.
 
+Task ID: v0.817.0 HOOLA CODE DESIGN PASS (built as 0.807; re-versioned on merge four times: their v0.807-v0.816 took the numbers meanwhile)
+Ask: design still looks old - make it perfectly aligned, premium, smooth, like Claude Code web; show all pages.
+Built: one design-system block in v2.css replacing every earlier hcd rule; nav icons, home starting points, switches, drawn chevrons, page-in motion; test_v0807 measures 17 views and saves pictures.
+Deploy: vps-ops deploy (static files only; no server logic changed).
 ---
 Task ID: HOOLA-CINEMA (v0.814.0, built as 0.807)
 Task: owner "read this repo first" (Autom8AI/Open-Higgsfield-AI) -> "GO BUILD THE WHOLE SET AS HOOLA CINEMA END TO END".

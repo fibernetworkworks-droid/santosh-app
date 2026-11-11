@@ -2060,7 +2060,53 @@ the architect's plan-only path. Rupees for a website are the site's running AI c
 alone. A chat run is marked ready when the message is sent (the reply's time and cost are not read). Decisions 2-5
 of plan part 7 (which questions to stop asking, slot defaults per business type, dialect health alerts, her
 personal defaults) need real rows first and are not built.
-## v0.817.0 HOOLA DESIGN (built as 0.777; their CHAT JAISA took 0.777.0 and the 0.778-0.816 chain landed meanwhile - REBASE PROTOCOL, both kept) — Hoola's own design editor on Figma's published architecture (11 Nov 2026; owner: "A HOOLA DESIGN --- DO EXTREEM DEEP RESEARCH HOW FIGMA WORKS IN BACKEND ... MAKE CLONE OF FIGMA FOR HOOLA END TO END" + "DEPOY SEVERAL AGENT")
+
+## v0.817.0 HOOLA CODE DESIGN PASS (built as 0.807; their v0.807-v0.816 took the numbers meanwhile) — one design system for every page of Hoola Code (owner: "DESIGN STILL LOOK OLD AND STALE --- MAKE IT PERFECTLY ALLINED WITH TEXT, BUTTONS, TEXTURE ... MORE PREMIUM AND ADVANCE SMOOTH --- LIKE CLAUDE CODE WEB PORTAL ... SHOW ME ALL PAGES")
+
+Same pages, same routes, same behaviour - the LOOK rebuilt. Seven phases had each added their own rules (311 lines, five
+button heights, corners from 5 to 18px, a class used for two different things). All of them are gone; ONE block in
+`server/app/static/console/v2.css` ("HOOLA CODE (code.js) - THE DESIGN SYSTEM") replaces them.
+
+**The scale (nothing on the page is outside it)**
+- Controls 34px (small 28px, the two composer buttons 36px); a button, a chip, a field and a tab are the same height, so
+  any row of them sits on one line.
+- Corners 8 (control) / 12 (card) / 18 (composer, dialog); type 12 / 13 / 13.5 / 14 / 16 serif for reading / 28 serif for
+  a page title; weights 400 / 500 / 600; space 4 / 8 / 12 / 16 / 24.
+- One hairline inside a card (`--line`), one around it (`--hair2`), one soft shadow (`--lift`); the composer is the one
+  raised thing on a page (a deeper shadow with a faint violet glow under it).
+- Console tokens only, so dark mode follows by itself; primary / green / red buttons take `--on-acc` for their words
+  (white words on the bright dark-mode green were unreadable).
+
+**What changed on the page**
+- Sidebar: sans brand line (it was monospace by accident: `.hcd-sh` was both "section header" and "shell command" - the
+  command is `.hcd-cmd` now), icons on the nav rows, the open session as a raised row, a count badge on Scheduled.
+- Home: four starting points under the box (Fix a bug / Build a feature / Write tests / Explain the code) that only fill
+  the box; the settings row as quiet inline pickers with one drawn chevron (native select arrows are gone everywhere).
+- Session: every step is one grid (16px mark, words, time) so marks and words line up down the page; thinking as a quiet
+  italic quote; the recap as one calm card with a coloured edge instead of a tinted slab; the question / plan bar, the
+  queue and the message box are the same width; a Working pill with the clock in the top bar.
+- Rail: quiet cards on the sidebar colour; buttons share a row and never overflow (a long label wraps to its own row).
+- Changes pane: file list on the sidebar colour with the open file raised, 22px code rows, a 36px sticky file header.
+- Settings: cards flow in two balanced columns (a long repo card no longer leaves a hole), real switches instead of
+  checkboxes, a drawn disclosure arrow on "How this repo runs in the box".
+- All sessions: Active / Archived as one segmented control. Dialogs: 18px corners, deeper shadow.
+- Narrow windows start with the slim sidebar.
+
+**Motion (CRISP TEXT rules kept):** 140 ms hover / press / focus transitions; a page comes in once (`hcd-enter`, removed
+after 320 ms so a later repaint never moves); a dialog pops once; a fold fades in. No blur, nothing spins, text always on
+a solid colour. All of it is off under "reduce motion".
+
+**Test** `server/tests/test_v0807_hoola_code_design.py`: walks 17 views in a real browser with full data (home, finished
+session, steps + thinking, Changes pane with a comment, working, plan, question, dialog, Scheduled, Reviews, Settings,
+All sessions, three in dark, two at 390px) and MEASURES: every control on the scale, every row on one centre line, step
+marks on one vertical line, page title and cards on one left edge, nothing under 12px / over weight 600 / all-caps,
+nothing wider than the window, no button outside its card, motion once and off under reduce-motion. With HOOLA_SHOTS it
+saves a picture of each view. Found by it while building: headings losing their centring to a reset, hint text at 10.4px,
+a rail button whose words left the button, bars narrower than the message box.
+Kept on purpose (older tests pin them): rail 300px, slim sidebar 52px, reading column 760px.
+**NOT VERIFIED:** seen only in headless Chromium here, not on her own screen / Windows ClearType. The phone screen and the
+read-only shared page use the same styles but the phone app's Flutter screen is unchanged.
+## v0.818.0 HOOLA DESIGN (built as 0.777; their CHAT JAISA took 0.777.0 and the 0.778-0.817 chain landed meanwhile - REBASE PROTOCOL, both kept) — Hoola's own design editor on Figma's published architecture (11 Nov 2026; owner: "A HOOLA DESIGN --- DO EXTREEM DEEP RESEARCH HOW FIGMA WORKS IN BACKEND ... MAKE CLONE OF FIGMA FOR HOOLA END TO END" + "DEPOY SEVERAL AGENT")
 - RESEARCH (`docs/research/figma/`, every claim cited to Figma's own engineering blog / help / Evan Wallace): 01 backend + multiplayer (a file = a tree of objects, server-authoritative last-writer-wins PER PROPERTY - not OT, not a full CRDT; client id + counter node ids; fractional index child order; parent+position one property, the server refuses a cycle; one in-memory process per file, checkpoints + a write-ahead log; LiveGraph; dynamic page loading), 02 editor + rendering (C++ -> WebAssembly, own tile-based WebGL / WebGPU renderer, no DOM per layer; plugins in QuickJS), 03 feature inventory (~120 features in tiers) + open-source licences (tldraw: production licence + watermark -> not usable; Plasmic Studio AGPL -> not usable; Penpot MPL = reference only). Original product, original look: no Figma name / assets / code.
 - CONTRACT: `docs/HOOLA_DESIGN_PLAN.md` - data model (node props table), ops, WebSocket frames, REST routes, client module API, phases D1-D9, section 6 = as built. Ten builders worked in parallel against it (4 first wave, 6 second wave), each owning its own files.
 - SERVER `server/app/design/` (+ main.py page route `/console/design` behind `design_page`, router mount, shutdown flush; db.init_db; config `design_*`): `doc.py` the document rules (LWW per prop, null removes, create = set with type/parent/idx, delete = subtree, cycle refused, root protected, size caps), `fracidx.py`, `room.py` (one room per open file: snapshot + journal replay, cid per connection persisted and never reused, bounded per-connection send queue, ONE serialisation per broadcast, checkpoint every 200 ops / 20 s idle / last leave, journal trim, auto version every 30 min keep 50, `HUB.apply_ops` for server-made edits), `store.py` (all DB access, off the event loop), `api.py` (files CRUD + trash / restore / duplicate, doc, thumb, versions + restore + duplicate-as-file, comments, assets by content sniffing - SVG with script refused, view-only share token + public read routes + `?share=` socket, the WebSocket with the console's subprotocol auth), `assets.py` + a daily unused-image sweep (worker slot `design_asset_jobs`, 7 days), `limits.py` (comment 30/min, share reads 120/min, AI 20/hour), `ai.py` + `ailayout.py` + `icons.py` + `templates.py`.
