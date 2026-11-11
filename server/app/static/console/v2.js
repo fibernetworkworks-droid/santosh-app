@@ -150,6 +150,8 @@ let SK = null;         // v0.481 the Skill Desk (account menu > Skills)
 let CX = null;         // v0.774 the Connectors page (connectors.js): Composio apps, MCP servers, plugins, public APIs, limits
 IC.connectors = '<path d="M9 7V3M15 7V3M7 7h10v4a5 5 0 0 1-10 0zM12 16v5"/>';   // v0.774 a plug
 let FD = null;         // v0.565 the Film Desk (filmdesk.js)
+let AIA = null;        // v0.772 HOOLA AI APPS (aiapps.js): AIs that answer her customers
+IC.aiapps = '<rect x="3" y="4" width="18" height="13" rx="3"/><path d="M8 21l2.5-4M7.5 9.5h.01M12 9.5h.01M16.5 9.5h.01M8 13c1.2 1 2.5 1.4 4 1.4s2.8-.4 4-1.4"/>';   // a chat bubble with a face
 IC.appdev = '<rect x="6" y="2.5" width="12" height="19" rx="3"/><path d="M10.5 18.5h3M9.5 9l-2 2 2 2M14.5 9l2 2-2 2"/>';   // v0.693 App Development (phone + code)
 IC.gamedev = '<rect x="2.5" y="7" width="19" height="11" rx="5"/><path d="M7.5 10.5v4M5.5 12.5h4"/><circle cx="16" cy="11.5" r="1"/><circle cx="18" cy="13.8" r="1"/>';   // v0.783 Hoola Game Dev (a game controller)
 IC.webdev = '<rect x="3" y="4" width="18" height="16" rx="3"/><path d="M3 9h18M9 14l-2 2 2 2M15 14l2 2-2 2"/>';   // v0.635 Web Development
@@ -196,7 +198,7 @@ function go(v, arg) {
   if (v === 'code') { location.assign('/console/code' + (arg ? '#/s/' + encodeURIComponent(arg) : '')); return; }   // v0.768 Hoola Code = its own page with its own sidebar
   if (v === 'webdev') { location.assign('/console/web' + (arg ? '#/site/' + encodeURIComponent(arg) : '')); return; }   // v0.649 Web Studio = its own app
   VIEW = v; $$('.view').forEach(x => x.hidden = x.id !== 'v-' + v);
-  $('#ttl').textContent = {chat: chatFolder(), aaj:'· Today', kaam:'· All tools', baat:'· Baat', main:'· Main', bana:'· Creations', project:'· Folder', arena:'· Design Arena', lab:'· Prayogshala', hire:'· AI Employees', seekh:'· Video Learner', interactive:'· Hoola Interactive', code:'· Hoola Code', seodesk:'· SEO Desk', socialdesk:'· Social Desk', caddesk:'· CAD Desk', gamedesk:'· Game Desk', archdesk:'· Architecture Desk', edudesk:'· Education Desk', skills:'· Skills', connectors:'· Connectors', filmdesk:'· Film Desk', leadsdesk:'· Leads Desk'}[v] || '';
+  $('#ttl').textContent = {chat: chatFolder(), aaj:'· Today', kaam:'· All tools', baat:'· Baat', main:'· Main', bana:'· Creations', project:'· Folder', arena:'· Design Arena', lab:'· Prayogshala', hire:'· AI Employees', seekh:'· Video Learner', interactive:'· Hoola Interactive', code:'· Hoola Code', seodesk:'· SEO Desk', socialdesk:'· Social Desk', caddesk:'· CAD Desk', gamedesk:'· Game Desk', archdesk:'· Architecture Desk', edudesk:'· Education Desk', skills:'· Skills', connectors:'· Connectors', aiapps:'· AI Apps', filmdesk:'· Film Desk', leadsdesk:'· Leads Desk'}[v] || '';
   if (v !== 'project') PJ?.draw();
   drawNav(); $('#app').classList.remove('drawer');
   if (v === 'aaj') drawToday(); if (v === 'main') drawMain(); if (v === 'baat') drawBaat();
@@ -209,6 +211,8 @@ function go(v, arg) {
   if (v !== 'interactive') HIV?.leave();
   if (v !== 'flow') FLW?.leave();
   if (v !== 'connectors') CX?.leave();
+  if (v !== 'aiapps') AIA?.leave();
+  if (v === 'aiapps') AIA?.open($('#aiapps'), arg);   // v0.772 HOOLA AI APPS
   if (v === 'connectors') CX?.open($('#connectors'), arg);   // v0.774 the Connectors page
   if (v === 'flow') FLW?.open($('#flow'));   // v0.751 HOOLA FLOW
   if (v === 'seekh') SKH?.open($('#seekh'));   // v0.718 the HOOLA AI Video Learner (from the AI Employees hub)
@@ -393,6 +397,10 @@ async function enter() {
   if (window.HoolaFilmDesk && !FD) FD = HoolaFilmDesk({api, esc, toast});   // v0.565
   if (window.HoolaConnectors && !CX) {         // v0.774 Connectors: "Ask Hoola" lines go into the composer, never sent by themselves
     CX = HoolaConnectors({api, esc, toast, say: text => { go('chat'); msg.value = text; msg.dispatchEvent(new Event('input')); msg.focus(); }});
+  }
+  if (window.HoolaAiApps && !AIA) {           // v0.772 HOOLA AI APPS: a row right under App Development
+    AIA = HoolaAiApps({api, esc, toast});
+    if (!NAV.some(([k]) => k === 'aiapps')) NAV.splice(NAV.findIndex(([k]) => k === 'appdev') + 1, 0, ['aiapps', 'AI Apps']);
   }
   if (window.HoolaSkills && !SK) {             // v0.481 the Skill Desk
     SK = HoolaSkills({api, esc, toast});

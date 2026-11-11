@@ -892,6 +892,44 @@ def _can_answer(tenant: str, c: BizContact) -> str:
     return ""
 
 
+async def _ai_app_answer(tenant: str, c: BizContact) -> str | None:
+    """v0.785 HOOLA AI APPS: None = no live AI app is bound to this number (the inbox goes on exactly as before).
+    Bound: the app answers; human mode, STOP and the 24 h window are checked FIRST, and the reply goes through send()."""
+    from ..aiapps import wa as AW
+    app = await asyncio.to_thread(AW.app_for_number, tenant, c.channel)
+    if app is None:
+        return None
+    with session() as s:
+        row = s.get(BizContact, c.id)
+        row.needs_reply = False
+        n = s.scalar(select(func.count()).select_from(BizMessage).where(
+            BizMessage.contact_id == c.id, BizMessage.by == "ai_app", BizMessage.at > now() - timedelta(hours=1))) or 0
+        last_out = s.scalar(select(func.max(BizMessage.at)).where(BizMessage.contact_id == c.id,
+                                                                   BizMessage.direction == "out"))
+        q = select(BizMessage).where(BizMessage.contact_id == c.id, BizMessage.direction == "in")
+        if last_out is not None:
+            q = q.where(BizMessage.at > last_out)
+        texts = [m.text for m in s.scalars(q.order_by(BizMessage.at)).all() if m.text]
+    if c.human or c.opted_out or not _window_open(c):
+        return ""
+    if n >= MAX_BOT_PER_HOUR:
+        emp._note(tenant, "", f"Your AI app '{app.name}' stopped replying to a WhatsApp customer for now "
+                              "(too many messages in one hour); see Employee > Inbox.")
+        return ""
+    text = "\n".join(texts[-5:]).strip()
+    if not text:
+        return ""
+    reply = await asyncio.to_thread(AW.answer_whatsapp, tenant, c.channel, c.wa_id, text, c.name or "")
+    if not reply:
+        return ""
+    try:
+        await send(tenant, c.id, reply, by="ai_app")
+    except InboxError as e:
+        emp._note(tenant, "", f"The AI app's WhatsApp reply was not sent ({e}).")
+        return ""
+    return reply
+
+
 async def answer(tenant: str, contact_id: str, extra: str = "") -> str:
     """Hoola reads the chat and replies to the customer (through the tools and the gate). Returns what was sent."""
     from ..agent.tools import Ctx, dispatch, ToolError
@@ -902,6 +940,10 @@ async def answer(tenant: str, contact_id: str, extra: str = "") -> str:
         s.expunge(c)
         recent = s.scalar(select(func.count()).select_from(BizMessage).where(
             BizMessage.contact_id == contact_id, BizMessage.by == "hoola", BizMessage.at > now() - timedelta(hours=1))) or 0
+    if not extra:
+        took = await _ai_app_answer(tenant, c)      # v0.772: her live AI app bound to this number answers instead
+        if took is not None:
+            return took
     why = _can_answer(tenant, c)
     with session() as s:
         row = s.get(BizContact, contact_id)

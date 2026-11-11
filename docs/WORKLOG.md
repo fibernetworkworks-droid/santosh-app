@@ -2867,3 +2867,29 @@ Task ID: v0.782.0 TEEN MODE (L2)
 Task: owner "GO L2" - Build / Plan / Chat in the Web Studio, server-enforced; plans as versions; Start building card; site instructions.
 Work Log: agent/turnmode.py + _run_tool guard; site/plans.py + routes; Studio composer / plan card / Plan view / instructions; 7 new tests + 131 older green; re-versioned 0.778 -> 0.782.
 Stage Summary: pushed; server deploy only. Next: L3 SAWAAL CARD (design question cards) on her GO.
+
+Task ID: SAVE THE STATE 11 Nov 2026 (connectors)
+Ask: "SAVE THE STATE" after v0.781 CONNECTORS PAGE went live.
+Done: branch stable-2026-11-11-connectors-v782 = 48c3eda0c (the live commit, v0.782.0; live files hash-matched); re-verified in a git-archive copy: markers present + 101 tests green, 0 failed; APK v0.782.0-b2227; checkpoint written in CLAUDE.md. No credentials in this entry.
+
+Task ID: v0.783.0 LANGGRAPH G4
+Ask: GO G4 (long jobs continue on one thread).
+Built: turngraph job thread + carry node + park / park_cut, goal round resumes it, toolledger.move; chat_graph still off; 9 tests.
+Deploy: vps-ops deploy (langgraph pip install from v0.761 if not done).
+
+
+---
+Task ID: v0.784.0 SAWAAL CARD (built as 0.783; their LANGGRAPH G4 took 0.783.0; L3)
+Task: owner "GO L3" - design question cards with visual options before a Studio Build, skipped when her words name the design.
+Work Log: site/designq.py + 2 routes; S.new reads designq.PENDING; look 1 'Your choices' + her hero; Studio question card (webstudio.js/css); switch studio_design_questions; 6 new tests + older Studio suites.
+Stage Summary: pushed; server deploy only. Next: L4 CHHOTA BADLAAV (line edits + tiered checks) on her GO.
+
+---
+Task ID: HI-PREMIUM
+Date: 2026-11-11
+Task: Hoola Interactive premium redesign (owner: "it look stale and old design ... more premium ... with some animation")
+Done: v0.786.0 (built as 0.785) - screenshotted every page first; rebuilt the look in static/console/interactive.js + the #hiRoot block in v2.css
+(folding sidebar, one heading per page, drawn dropdowns, one control scale, editor rows that do not wrap, thumbnails with
+content, brand-tinted stage, once-only motion); fixed Create Studio's resize error (studio.js); tests extended + a rule test.
+Not verified: not seen on the VPS. Pre-existing reds on main left alone (v0221 english, v0255 weights, v0256 crisp).
+Next: she deploys (VPS ops > deploy) and looks; her notes on any page come back here.

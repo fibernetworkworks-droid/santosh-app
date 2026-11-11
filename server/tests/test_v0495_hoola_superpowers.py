@@ -136,4 +136,4 @@ def test_seeds_carry_upstream_words_not_the_scripts():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.782.0"
+    assert APP_VERSION == "0.786.0"

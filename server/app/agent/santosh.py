@@ -3451,7 +3451,15 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
             _mark_failed(conversation_id)
             # v0.657 PAKKA KAAM: the deadline cancels the turn MID-TOOL, so a step may be half done (some mails gone,
             # some not). Never invite a blind resend; a background goal round says the next round carries on.
-            final_text = TIMEOUT_GOAL if (goal_on and who == "goal") else gendered(TIMEOUT_TEXT, _gender)
+            _parked = False
+            if getattr(settings, "chat_graph", False):
+                try:   # G4: a long job's budget never kills it - the cut segment is parked on the job's thread and
+                    # the next round continues from the cut step (the tool ledger decides the step that was cut)
+                    from . import turngraph as _tg
+                    _parked = await _tg.park_cut(conversation_id, settings, who)
+                except Exception:
+                    log.exception("parking the cut long job failed")
+            final_text = TIMEOUT_GOAL if (_parked or (goal_on and who == "goal")) else gendered(TIMEOUT_TEXT, _gender)
             await asyncio.to_thread(_record_cut, tenant_id, conversation_id, user_text, "time limit par roka gaya", _t_turn0)
             _evlog.log_event(tenant_id, conversation_id, "turn_failed", {"line": f"turn timeout ({settings.agent_turn_timeout_s}s)"},
                              turn_id=_turn_id, actor=who)

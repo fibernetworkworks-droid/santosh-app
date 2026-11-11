@@ -527,7 +527,7 @@ async def tick() -> None:
         run_routines, expire_device_actions, expire_stale_asks, bazar_reminders, offline_digests, pc_cleanup,
         home_device_alerts, mail_jobs, employee_jobs, kaam_jobs, followup_jobs, goal_resume_jobs, inbox_jobs,
         team_jobs, research_jobs, scrape_crawl_jobs, dhara_jobs, eventlog_jobs, kaan_jobs, aboutme_jobs, applogic_jobs,
-        game_studio_jobs, coder_jobs, bahar_jobs, app_ops_jobs, api_box_jobs,
+        game_studio_jobs, coder_jobs, bahar_jobs, app_ops_jobs, api_box_jobs, aiapp_ops_jobs,
     ):
         await _slot(fn)
     BEAT["slot"] = ""
@@ -731,6 +731,22 @@ _rs_last = 0.0
 
 
 _box_last = 0.0
+
+
+_aiapp_last = 0.0
+
+
+def aiapp_ops_jobs() -> None:
+    """v0.785 HOOLA AI APPS: at 80% / 100% of an AI app's monthly cost cap, one note into her chat (once a month each)."""
+    global _aiapp_last
+    if time.time() - _aiapp_last < 600:
+        return
+    _aiapp_last = time.time()
+    try:
+        from .aiapps import ops as AOPS
+        AOPS.tick()
+    except Exception:                                      # noqa: BLE001
+        log.debug("ai app ops", exc_info=True)
 
 
 async def api_box_jobs() -> None:
