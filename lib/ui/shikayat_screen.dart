@@ -107,7 +107,7 @@ class _ShikayatScreenState extends State<ShikayatScreen> {
       ('customer', 'Customer name'),
       ('phone', 'Mobile'),
       ('product', 'Goods / service'),
-      ('order_ref', 'Order / bill no (ho to)'),
+      ('order_ref', 'Order / bill no (if any)'),
       ('amount', 'How much it cost (Rs)'),
       ('channel', 'Where it came from: call / walk_in / whatsapp / email / social'),
     ]);
@@ -151,7 +151,7 @@ class _ShikayatScreenState extends State<ShikayatScreen> {
                   'repeat_customer' => 'again',
                   'product_pattern' => 'same goods',
                   'legal_threat' => 'court / helpline',
-                  'safety' => 'suraksha',
+                  'safety' => 'safety',
                   'escalated' => 'gone outside',
                   'angry' => 'angry',
                   _ => '$f',
@@ -689,7 +689,7 @@ class _ShikayatCasePageState extends State<ShikayatCasePage> {
                           onTap: _busy
                               ? null
                               : () async {
-                                  final f = await _form(context, 'What the customer said', const [('satisfaction', 'Rating 1-5 (ho to)'), ('feedback', 'Their words')]);
+                                  final f = await _form(context, 'What the customer said', const [('satisfaction', 'Rating 1-5 (if any)'), ('feedback', 'Their words')]);
                                   if (f != null) await _act('confirm', {'fixed': true, 'satisfaction': int.tryParse(f['satisfaction'] ?? ''), 'feedback': f['feedback'] ?? ''});
                                 }),
                       GlassButton(
@@ -970,7 +970,7 @@ class _ShikayatCompCardState extends State<ShikayatCompCard> {
   }
 
   Future<void> _given() async {
-    final f = await _form(context, 'How it was given', const [('how', 'UPI / cash / new goods / bill discount'), ('ref', 'UTR / bill no (ho to)')]);
+    final f = await _form(context, 'How it was given', const [('how', 'UPI / cash / new goods / bill discount'), ('ref', 'UTR / bill no (if any)')]);
     if (f == null) return;
     setState(() => _busy = true);
     try {

@@ -626,7 +626,7 @@ class _AppIdeasState extends State<_AppIdeas> {
           contentPadding: EdgeInsets.zero,
           title: Text(_s(f['en']), style: const TextStyle(fontWeight: FontWeight.w700)),
           subtitle: Text('${f['hi']} · ${f['goal_label']}', style: const TextStyle(color: C.muted)),
-          trailing: TextButton(onPressed: () => widget.onPick('${f['en']} ki app'), child: const Text('Start')),
+          trailing: TextButton(onPressed: () => widget.onPick('${f['en']} app'), child: const Text('Start')),
         ),
     ]);
   }

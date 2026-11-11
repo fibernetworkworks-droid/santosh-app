@@ -181,7 +181,7 @@ class _ReportTab extends StatelessWidget {
           const SizedBox(width: 8),
           Expanded(
             child: GlassButton(
-              label: meta['ready'] == true ? 'Meta se lao' : 'Connect Meta (Rules)',
+              label: meta['ready'] == true ? 'Fetch from Meta' : 'Connect Meta (Rules)',
               icon: Icons.sync_rounded,
               height: 44,
               onTap: busy || meta['ready'] != true ? null : () => run(() => app.api!.adsMetaFetch(14)),

@@ -829,7 +829,7 @@ class _MenuTabState extends State<_MenuTab> {
                       decoration: const InputDecoration(labelText: 'WhatsApp number', isDense: true))),
                   const SizedBox(width: 8),
                   Expanded(child: TextField(controller: _sups[i].site,
-                      decoration: const InputDecoration(labelText: 'Ya site (blinkit, jiomart)', isDense: true))),
+                      decoration: const InputDecoration(labelText: 'Or site (blinkit, jiomart)', isDense: true))),
                 ]),
                 Wrap(spacing: 6, children: [
                   for (final it in const {'milk': 'Milk', 'sugar': 'Sugar', 'tea': 'Strip'}.entries)

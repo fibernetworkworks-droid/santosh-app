@@ -252,7 +252,7 @@ class _OfficeScreenState extends State<OfficeScreen> {
           ]),
           const SizedBox(height: 4),
           Text([
-            if (per > 0) 'daily ~$per · ${it['days_left'] ?? '-'} din ka',
+            if (per > 0) 'daily ~$per · ${it['days_left'] ?? '-'} days left',
             'reorder ${it['reorder_point']}',
             if ((it['on_order'] as num? ?? 0) > 0) 'on order ${it['on_order']}',
             if (_s(it['price']).isNotEmpty) '${it['price']}/${it['unit']}',
@@ -530,7 +530,7 @@ class _OfficeScreenState extends State<OfficeScreen> {
       for (final d in done)
         Padding(
           padding: const EdgeInsets.only(bottom: 6, left: 4),
-          child: Text('✓ ${d['title']} (${_s(d['owner'])}) · ${d['done_on']}${_s(d['done_on']).compareTo(_s(d['due_on'])) > 0 ? ' · der se' : ''}',
+          child: Text('✓ ${d['title']} (${_s(d['owner'])}) · ${d['done_on']}${_s(d['done_on']).compareTo(_s(d['due_on'])) > 0 ? ' · late' : ''}',
               style: const TextStyle(color: C.muted)),
         ),
     ];

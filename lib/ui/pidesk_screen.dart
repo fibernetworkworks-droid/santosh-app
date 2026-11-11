@@ -36,7 +36,7 @@ const _kinds = <String, String>{
   'due_diligence': 'Business due diligence',
   'doc_check': 'Document check',
   'fraud_file': 'Fraud evidence file',
-  'employee_verify': 'Employee verification (consent se)',
+  'employee_verify': 'Employee verification (with consent)',
 };
 
 Future<Map<String, String>?> _form(BuildContext context, String title, List<(String, String)> fields,
@@ -175,7 +175,7 @@ class _PideskScreenState extends State<PideskScreen> {
       ('title', 'Case name'),
       if (kind != 'fraud_file') ('subject_name', kind == 'employee_verify' ? 'Candidate name' : 'Business name'),
       if (kind == 'due_diligence' || kind == 'doc_check') ('subject_kind', 'Who: company / firm / llp / vendor / supplier / customer / dealer'),
-      if (kind == 'due_diligence') ('identifiers', 'GSTIN / CIN / Udyam / FSSAI (comma se)'),
+      if (kind == 'due_diligence') ('identifiers', 'GSTIN / CIN / Udyam / FSSAI (comma separated)'),
       if (kind == 'employee_verify') ('role', 'For which job'),
       ('purpose', 'Purpose (why check?)'),
     ];
@@ -371,7 +371,7 @@ class _PideskCasePageState extends State<PideskCasePage> {
   }
 
   Future<void> _ids() async {
-    final f = await _form(context, 'GSTIN / CIN / LLPIN / Udyam / FSSAI', const [('ids', 'Number (comma se)')], ok: 'Check');
+    final f = await _form(context, 'GSTIN / CIN / LLPIN / Udyam / FSSAI', const [('ids', 'Number (comma separated)')], ok: 'Check');
     if (f == null || (f['ids'] ?? '').isEmpty) return;
     await _run('POST', '$_base/ids', {'identifiers': f['ids']!.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList()});
   }
@@ -397,7 +397,7 @@ class _PideskCasePageState extends State<PideskCasePage> {
   }
 
   Future<void> _note() async {
-    final f = await _form(context, 'Add fact', const [('fact', 'What was found'), ('source_url', 'Source link (ho to)')], ok: 'Add');
+    final f = await _form(context, 'Add fact', const [('fact', 'What was found'), ('source_url', 'Source link (if any)')], ok: 'Add');
     if (f == null || (f['fact'] ?? '').isEmpty) return;
     await _run('POST', '$_base/note', f);
   }
@@ -473,7 +473,7 @@ class _PideskCasePageState extends State<PideskCasePage> {
     final f = await _form(context, 'Loss', const [
       ('lost', 'How much money was lost'),
       ('mode', 'How (UPI / card / netbanking / cash)'),
-      ('refs', 'UTR / ref (comma se)'),
+      ('refs', 'UTR / ref (comma separated)'),
       ('suspect', 'The other party\'s identity as seen (name / UPI ID / number / website)'),
     ], ok: 'Save', note: 'Hoola does not trace the other party; this is for a police complaint.');
     if (f == null) return;
@@ -689,7 +689,7 @@ class _PideskCasePageState extends State<PideskCasePage> {
                         '${_list(e['signals']).isEmpty ? '' : ' · ${_list(e['signals']).length} signals'}'),
                     onTap: _list(e['signals']).isEmpty
                         ? null
-                        : () => _showSignals({'say': '${_s(e['n'])} ke signals (not verdicts)', 'signals': e['signals']}),
+                        : () => _showSignals({'say': 'Signals for ${_s(e['n'])} (not verdicts)', 'signals': e['signals']}),
                   ),
                 if (_list(c['timeline']).isNotEmpty) const Caption('TIMELINE'),
                 for (final t in _list(c['timeline']).where((t) => t['important'] == true).take(60))

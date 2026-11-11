@@ -168,7 +168,7 @@ class _TodayTabState extends State<_TodayTab> with _GstLive {
                   Text(
                       [
                         if (_s(x['period_nice']).isNotEmpty) _s(x['period_nice']),
-                        late ? '${-(x['days'] as num? ?? 0)} din late' : 'Due ${_s(x['due_nice'])}',
+                        late ? '${-(x['days'] as num? ?? 0)} days late' : 'Due ${_s(x['due_nice'])}',
                         if (late && x['late_fee'] != null) 'late fee ${rs(x['late_fee'])}',
                         if (_s(x['status']).isNotEmpty) _s(x['status']),
                       ].join(' · '),
@@ -406,7 +406,7 @@ class _GstClientPageState extends State<GstClientPage> with _GstLive {
       await showDialog(
         context: context,
         builder: (d) => AlertDialog(
-          title: const Text('Client ko message'),
+          title: const Text('Message to client'),
           content: SelectableText(_s(r['draft'])),
           actions: [
             TextButton(
@@ -459,7 +459,7 @@ class _GstClientPageState extends State<GstClientPage> with _GstLive {
           Wrap(spacing: 8, runSpacing: 8, children: [
             GlassButton(label: 'Sale register', icon: Icons.upload_file_rounded, onTap: _busy ? null : () => _upload('out')),
             GlassButton(label: 'Purchase register', icon: Icons.upload_file_rounded, onTap: _busy ? null : () => _upload('in')),
-            GlassButton(label: 'Client se bill mango', icon: Icons.chat_rounded, onTap: _draft),
+            GlassButton(label: 'Ask the client for bills', icon: Icons.chat_rounded, onTap: _draft),
           ]),
           const Padding(
             padding: EdgeInsets.only(top: 6),

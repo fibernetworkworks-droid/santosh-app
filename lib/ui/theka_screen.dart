@@ -97,8 +97,8 @@ class _ThekaScreenState extends State<ThekaScreen> {
       ('value', 'Agreement value'),
       ('start', 'Start'),
       ('end', 'Completion date'),
-      ('retention_pct', 'Retention % (agreement se)'),
-      ('mob_advance', 'Mobilisation advance (ho to)'),
+      ('retention_pct', 'Retention % (from the agreement)'),
+      ('mob_advance', 'Mobilisation advance (if any)'),
     ]);
     if (f == null) return;
     await _run(() => widget.app.api!.thekaProject({
@@ -115,7 +115,7 @@ class _ThekaScreenState extends State<ThekaScreen> {
       const SizedBox(height: 8),
       Text(_s(rc['say']), style: const TextStyle(fontSize: 13)),
       for (final b in _list(rc['bills']))
-        Text('• ${_s(b['project'])} RA ${b['bill']}: ${rs(b['amount'])} (${b['days']} din, ${_s(b['status'])})', style: const TextStyle(fontSize: 12.5)),
+        Text('• ${_s(b['project'])} RA ${b['bill']}: ${rs(b['amount'])} (${b['days']} days, ${_s(b['status'])})', style: const TextStyle(fontSize: 12.5)),
       for (final r in _list(rc['retention']))
         Text('• ${_s(r['project'])}: retention ${rs(r['retention'])}${_s(r['release']).isNotEmpty ? ' - ${r['release']} ko' : ''}',
             style: const TextStyle(fontSize: 12.5, color: C.muted)),

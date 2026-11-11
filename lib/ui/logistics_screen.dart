@@ -383,7 +383,7 @@ class _LogisticsShipmentPageState extends State<LogisticsShipmentPage> {
   Future<void> _update() async {
     final f = await _form(context, 'What is the news?', const [
       ('text', 'What the driver / transporter said (for example: crossed Nagpur)'),
-      ('status', 'Ya status: dispatched / in_transit / delayed / out_for_delivery / delivered'),
+      ('status', 'Or status: dispatched / in_transit / delayed / out_for_delivery / delivered'),
       ('eta', 'New ETA (if any)'),
       ('reason', 'Reason for delay (if delayed)'),
     ]);

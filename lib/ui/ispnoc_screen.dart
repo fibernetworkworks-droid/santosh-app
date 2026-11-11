@@ -114,10 +114,10 @@ Future<Map<String, dynamic>?> _ticketSheet(BuildContext context, Santosh app, Ma
               for (final (k, l) in teams) ChoiceChip(label: Text(l), selected: team == k, onSelected: (_) => set(() => team = k)),
             ]),
             TextField(controller: who, decoration: const InputDecoration(labelText: 'To whom (blank = the first person in the team)')),
-            TextField(controller: phone, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'Mobile (ho to)')),
+            TextField(controller: phone, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'Mobile (if any)')),
             TextField(controller: eta, decoration: const InputDecoration(labelText: 'ETA: "2 hours", "6 pm" (if known)')),
             if (team == 'bsnl' || team == 'upstream')
-              TextField(controller: extRef, decoration: const InputDecoration(labelText: 'Docket / complaint number (ho to)')),
+              TextField(controller: extRef, decoration: const InputDecoration(labelText: 'Docket / complaint number (if any)')),
             TextField(controller: note, decoration: const InputDecoration(labelText: 'Note')),
             const SizedBox(height: 12),
             GradientButton(label: 'Make ticket', icon: Icons.assignment_rounded, height: 48, onTap: () => Navigator.pop(ctx, true)),
@@ -345,7 +345,7 @@ class _IspnocScreenState extends State<IspnocScreen> {
       for (final t in all) Padding(padding: const EdgeInsets.only(bottom: 8), child: IspnocTicketCard(app: widget.app, data: {'ticket': t}, onDone: _load)),
       const SizedBox(height: 8),
       GlassButton(
-          label: 'Report (30 din)',
+          label: 'Report (30 days)',
           icon: Icons.insights_rounded,
           onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => _IspnocReportPage(app: widget.app)))),
     ]);
@@ -372,7 +372,7 @@ class _IspnocScreenState extends State<IspnocScreen> {
       ('ip', 'Management IP'),
       ('site', 'Site / POP'),
       ('pon_ports', 'PON ports'),
-      ('uplinks', 'Uplink ports (comma se: ge0/9, xe0/1)'),
+      ('uplinks', 'Uplink ports (comma separated: ge0/9, xe0/1)'),
       ('upstream', 'Where the uplink goes (BSNL / ISP)'),
     ], initial: o == null
         ? null
@@ -655,7 +655,7 @@ class _IspnocScreenState extends State<IspnocScreen> {
       Wrap(spacing: 8, runSpacing: 8, children: [
         GlassButton(label: 'New collector', icon: Icons.add_link_rounded, onTap: _busy ? null : _newCollector),
         GlassButton(
-            label: 'Script ka link copy',
+            label: 'Copy script link',
             icon: Icons.code_rounded,
             onTap: () {
               Clipboard.setData(const ClipboardData(text: '/api/ispnoc/collector-script'));
@@ -749,7 +749,7 @@ class _IspnocFaultPageState extends State<IspnocFaultPage> {
                 child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
                   IspnocFaultCard(app: widget.app, data: {'fault': f}, onDone: _load, full: true),
                   const SizedBox(height: 10),
-                  Text('Alarm ki timeline', style: display(14)),
+                  Text('Alarm timeline', style: display(14)),
                   for (final e in _list(f['evidence']))
                     Text('${_s(e['at']).replaceFirst('T', ' ')}  ${_s(e['line'])}', style: const TextStyle(fontFamily: 'monospace', fontSize: 11)),
                   const SizedBox(height: 10),

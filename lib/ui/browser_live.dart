@@ -153,7 +153,7 @@ class BrowserLiveCard extends StatelessWidget {
                     color: l['source'] == 'pc' ? const Color(0xFFC026D3) : C.accent, size: 20),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: Text(l['source'] == 'pc' ? 'Your PC · Chrome / apps' : (site.isEmpty ? '${app.aName} ka browser' : '${app.aName} ka browser · $site'),
+                  child: Text(l['source'] == 'pc' ? 'Your PC · Chrome / apps' : (site.isEmpty ? '${app.aName}\'s browser' : '${app.aName}\'s browser · $site'),
                       maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
                 ),
                 Pill(run ? '● ${BrowserLive.label(l)}' : BrowserLive.label(l), fg: Colors.white, bg: BrowserLive.color(l).withOpacity(.85)),
@@ -300,7 +300,7 @@ class BrowserLiveScreen extends StatelessWidget {
           backgroundColor: const Color(0xFF070912),
           appBar: AppBar(
             backgroundColor: const Color(0xFF0E1220),
-            title: Text(sid.startsWith('pcop_') ? 'Your PC · live' : '${app.aName} ka browser · live'),
+            title: Text(sid.startsWith('pcop_') ? 'Your PC · live' : '${app.aName}\'s browser · live'),
           ),
           body: _LiveFeed(
             app: app,

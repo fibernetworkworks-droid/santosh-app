@@ -362,7 +362,7 @@ class _ContractsScreenState extends State<ContractsScreen> {
     final f = await _form(context, 'Stamp rate (from your state\'s schedule / your CA)', const [
       ('kind', 'Contract type (service / nda / lease ... or any)'),
       ('state', 'State'),
-      ('mode', 'fixed (Rs) ya pct (%)'),
+      ('mode', 'fixed (Rs) or pct (%)'),
       ('rate', 'Rate'),
       ('min', 'Minimum (Rs, if any)'),
       ('max', 'Maximum (Rs, if any)'),

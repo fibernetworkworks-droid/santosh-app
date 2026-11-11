@@ -79,7 +79,7 @@ class _ArtifactsScreenState extends State<ArtifactsScreen> {
     final meta = [
       if (version > 0) 'v$version',
       if (artifactAgo(a['updated_at'] as String?).isNotEmpty) artifactAgo(a['updated_at'] as String?),
-      if (a['shared'] == true) 'link se share',
+      if (a['shared'] == true) 'share by link',
     ].join(' · ');
     return Press(
       onTap: id.isEmpty

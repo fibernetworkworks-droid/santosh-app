@@ -406,7 +406,7 @@ class _ReelScreenState extends State<ReelScreen> {
             Row(children: [
               const Icon(Icons.auto_awesome_rounded, size: 13, color: C.faint),
               const SizedBox(width: 5),
-              Expanded(child: Text('${r['ai_label'] ?? 'AI se bana'}', style: const TextStyle(color: C.faint, fontSize: 11))),
+              Expanded(child: Text('${r['ai_label'] ?? 'Made with AI'}', style: const TextStyle(color: C.faint, fontSize: 11))),
             ]),
             if (r['needs_video'] == true) ...[
               const SizedBox(height: 12),
@@ -452,7 +452,7 @@ class _ReelScreenState extends State<ReelScreen> {
                 _action('save', Icons.bookmark_add_rounded, r['saved'] == true ? 'Saved' : 'Save', C.accent, _save, on: r['saved'] == true),
                 _action('remind', Icons.alarm_add_rounded, 'Remind me', C.teal, _remind),
                 _action('shop', Icons.shopping_bag_rounded, 'Buy', C.accentSoft, _shop),
-                _action('family', Icons.family_restroom_rounded, 'Family ko', C.violet, _family),
+                _action('family', Icons.family_restroom_rounded, 'To family', C.violet, _family),
                 _action('check', Icons.fact_check_rounded, 'Is this true?', C.ok, _sach),
               ],
             ),

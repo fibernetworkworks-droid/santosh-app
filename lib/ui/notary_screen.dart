@@ -171,7 +171,7 @@ class _NotaryScreenState extends State<NotaryScreen> {
   }
 
   Future<void> _fromRentdesk() async {
-    final f = await _form(context, 'Rentdesk se rent summary', const [('tenancy', 'Tenancy no. (e.g. T-0001)'), ('lang', 'en / hi / mr')]);
+    final f = await _form(context, 'Rent summary from Rentdesk', const [('tenancy', 'Tenancy no. (e.g. T-0001)'), ('lang', 'en / hi / mr')]);
     if (f == null || (f['tenancy'] ?? '').isEmpty) return;
     final r = await _run('POST', '/api/notary/docs/from_rentdesk', f);
     final id = _s(_m(r?['doc'])['id']);
@@ -188,7 +188,7 @@ class _NotaryScreenState extends State<NotaryScreen> {
       Row(children: [
         Expanded(child: GlassButton(label: 'Spoken / written', icon: Icons.record_voice_over_rounded, height: 42, onTap: _busy ? null : _fromWords)),
         const SizedBox(width: 8),
-        Expanded(child: GlassButton(label: 'Rentdesk se', icon: Icons.home_work_rounded, height: 42, onTap: _busy ? null : _fromRentdesk)),
+        Expanded(child: GlassButton(label: 'From Rentdesk', icon: Icons.home_work_rounded, height: 42, onTap: _busy ? null : _fromRentdesk)),
       ]),
       const SizedBox(height: 12),
       for (final (key, title) in const [
@@ -409,7 +409,7 @@ class _NotaryScreenState extends State<NotaryScreen> {
 
   Future<void> _stampRate() async {
     final st = _m(_d?['settings']);
-    final key = await _pick(context, 'Kis document ka stamp?', {for (final k in _strs(st['stamp_keys'])) k: k});
+    final key = await _pick(context, 'Stamp for which document?', {for (final k in _strs(st['stamp_keys'])) k: k});
     if (key == null || !mounted) return;
     final f = await _form(context, 'Stamp rate: $key', const [
       ('state', 'State (MH / DL / ...)'),
@@ -423,7 +423,7 @@ class _NotaryScreenState extends State<NotaryScreen> {
   Future<void> _fee() async {
     final st = _m(_d?['settings']);
     final acts = _m(st['acts']);
-    final act = await _pick(context, 'Kis act ki fee?', {for (final e in acts.entries) e.key: '${_s(_m(e.value)['label'])}${_m(e.value)['cap'] == null ? '' : ' (max ₹${_s(_m(e.value)['cap'])})'}'});
+    final act = await _pick(context, 'Fee for which act?', {for (final e in acts.entries) e.key: '${_s(_m(e.value)['label'])}${_m(e.value)['cap'] == null ? '' : ' (max ₹${_s(_m(e.value)['cap'])})'}'});
     if (act == null || !mounted) return;
     final f = await _form(context, 'Your fee', const [('amount', 'Fee ₹')], ok: 'Save');
     if (f == null) return;
@@ -612,7 +612,7 @@ class _NotaryDocPageState extends State<NotaryDocPage> {
       ('typing', 'Typing / drafting ₹'),
       ('xerox', 'Xerox / print ₹'),
       ('mode', 'cash / upi'),
-      ('ref', 'UPI ref (ho to)'),
+      ('ref', 'UPI ref (if any)'),
     ], ok: 'Write in register');
     if (f == null) return;
     await _run('POST', '/api/notary/register', {
@@ -668,7 +668,7 @@ class _NotaryDocPageState extends State<NotaryDocPage> {
                   GlassButton(label: 'Stamp no.', icon: Icons.approval_rounded, height: 40, onTap: _busy ? null : _stamp),
                 ]),
                 const SizedBox(height: 10),
-                GradientButton(label: 'Final print ka card', icon: Icons.print_rounded, height: 46, onTap: _busy ? null : _print),
+                GradientButton(label: 'Final print card', icon: Icons.print_rounded, height: 46, onTap: _busy ? null : _print),
               ],
               if (_card != null || st == 'waiting') ...[
                 const SizedBox(height: 10),
@@ -684,7 +684,7 @@ class _NotaryDocPageState extends State<NotaryDocPage> {
                     onTap: _busy
                         ? null
                         : () async {
-                            final f = await _form(context, 'Kis notary ne?', const [('notary', 'Notary name'), ('on', 'Date')]);
+                            final f = await _form(context, 'Which notary?', const [('notary', 'Notary name'), ('on', 'Date')]);
                             if (f != null) await _run('POST', '/api/notary/docs/$_id/executed', f);
                           }),
               ],

@@ -116,7 +116,7 @@ class _CompareCardState extends State<CompareCard> {
           Expanded(
               child: Text('Comparison · ${_s(v['title']).isEmpty ? '${_l(v['items']).length} item' : _s(v['title'])}',
                   style: const TextStyle(fontWeight: FontWeight.w800), maxLines: 1, overflow: TextOverflow.ellipsis)),
-          Pill({'open': 'waiting', 'ready': 'choose', 'chosen': 'chosen', 'closed': 'band'}[st] ?? st,
+          Pill({'open': 'waiting', 'ready': 'choose', 'chosen': 'chosen', 'closed': 'closed'}[st] ?? st,
               fg: st == 'ready' ? C.accent : C.muted),
         ]),
         if (_s(v['say']).isNotEmpty) ...[
@@ -341,7 +341,7 @@ class _MandateCardState extends State<MandateCard> {
           Expanded(
               child: Text('Standing order ${_s(v['number'])} · ${_s(v['with'])}',
                   style: const TextStyle(fontWeight: FontWeight.w800), maxLines: 1, overflow: TextOverflow.ellipsis)),
-          Pill({'draft': 'your approval pending', 'active': 'active', 'paused': 'paused', 'ended': 'band'}[st] ?? st,
+          Pill({'draft': 'your approval pending', 'active': 'active', 'paused': 'paused', 'ended': 'ended'}[st] ?? st,
               fg: st == 'active' ? C.ok : (st == 'draft' ? C.warn : C.muted)),
         ]),
         if (_s(v['say']).isNotEmpty) ...[

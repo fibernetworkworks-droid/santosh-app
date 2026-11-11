@@ -66,7 +66,7 @@ class HoolaKeepAlive {
               Row(children: [
                 const Icon(Icons.battery_alert_rounded, color: Color(0xFFFFB15C)),
                 const SizedBox(width: 8),
-                Expanded(child: Text(newKills ? 'Phone ne ${app.aName} stopped' : '$brand phone: once, 1 minute', style: display(20))),
+                Expanded(child: Text(newKills ? 'The phone stopped ${app.aName}' : '$brand phone: once, 1 minute', style: display(20))),
               ]),
               const SizedBox(height: 8),
               Text(

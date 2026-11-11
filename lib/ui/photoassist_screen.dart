@@ -150,7 +150,7 @@ class _PhotoassistScreenState extends State<PhotoassistScreen> {
   Future<void> _newShoot() async {
     final f = await _form(context, 'New shoot', const [
       ('kind', 'What for (wedding / pre-wedding / product / portrait ...)'),
-      ('client', 'Client name'), ('phone', 'Client ka phone'), ('day', 'Date (2026-12-12)'),
+      ('client', 'Client name'), ('phone', 'Client\'s phone'), ('day', 'Date (2026-12-12)'),
       ('end_day', 'Last day (if it runs several days)'), ('start', 'Start (4 pm)'), ('end', 'End'),
       ('location', 'Location'), ('package', 'Package name'), ('shooters', 'Who will go (names, comma separated; blank = you)'),
       ('drone', 'Drone? (yes / no)'),
@@ -450,7 +450,7 @@ class _PhotoassistShootPageState extends State<PhotoassistShootPage> {
               if (f != null) await _do('paid', {...f, 'amount': _n(f['amount'])});
             }),
             GlassButton(label: 'Message (card)', height: 40, onTap: () async {
-              final f = await _form(context, 'Client ko message', const [('text', 'Message')]);
+              final f = await _form(context, 'Message to client', const [('text', 'Message')]);
               if (f != null) await _do('message', f);
             }),
             if (st != 'cancelled' && st != 'done')
@@ -526,7 +526,7 @@ class _PhotoassistShootPageState extends State<PhotoassistShootPage> {
                   : TextButton(onPressed: () => _do('edit', {'index': i + 1, 'status': 'done'}), child: const Text('Done')),
             ),
           TextButton(onPressed: () async {
-            final f = await _form(context, 'Client ka edit', const [('photo', 'Photo name'), ('ask', 'What should change')]);
+            final f = await _form(context, 'Client\'s edit', const [('photo', 'Photo name'), ('ask', 'What should change')]);
             if (f != null) await _do('edit', f);
           }, child: const Text('+ add edit')),
           const Caption('CARDS'),

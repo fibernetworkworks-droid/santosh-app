@@ -289,7 +289,7 @@ class _ShotEditorScreenState extends State<ShotEditorScreen> {
             SoundButton(app: app, url: '${s['line_url'] ?? ''}', size: 34,
                 load: () async => '${(await app.api!.studioLine(widget.name, _id))['url']}'),
         ]),
-        _box(_line, 'e.g. मन शांत ठेवा, तेच खरे सुख.', lines: 2),
+        _box(_line, 'e.g. A calm mind is true happiness.', lines: 2),
         Padding(padding: const EdgeInsets.only(top: 6),
             child: Text('In ${langShown('${v['language']}')}, in your chosen voice · Sync 3 matches the lips', style: body(11, color: C.faint))),
       ],

@@ -200,7 +200,7 @@ class _PodcastScreenState extends State<PodcastScreen> {
         GradientButton(label: 'New episode', icon: Icons.add_rounded, height: 46, onTap: _busy ? null : () async {
           final f = await _form(context, 'New episode', const [
             ('title', 'Title / subject'),
-            ('topics', 'Topics (comma se)'),
+            ('topics', 'Topics (comma separated)'),
             ('guests', 'Guest (G-001 or name)'),
             ('record_at', 'Recording (YYYY-MM-DD HH:MM)'),
             ('publish_on', 'Publish date (YYYY-MM-DD)'),
@@ -358,7 +358,7 @@ class _PodcastScreenState extends State<PodcastScreen> {
             await _load();
           }),
           GlassButton(label: 'Paste', icon: Icons.content_paste_rounded, height: 42, onTap: () async {
-            final f = await _form(context, 'Export ka text', const [('text', 'CSV text'), ('platform', 'spotify / apple / youtube')]);
+            final f = await _form(context, 'Export text', const [('text', 'CSV text'), ('platform', 'spotify / apple / youtube')]);
             if (f == null) return;
             await _run('POST', '/api/podcast/stats', f);
           }),
@@ -509,7 +509,7 @@ class _PodcastEpisodePageState extends State<PodcastEpisodePage> {
       Wrap(spacing: 8, runSpacing: 6, children: [
         GlassButton(label: 'Make run sheet', height: 38, onTap: _busy || live ? null : () => _run('POST', '$_base/run_sheet', {})),
         GlassButton(label: 'Topics / time', height: 38, onTap: _busy || live ? null : () async {
-          final f = await _form(context, 'Episode', const [('topics', 'Topics (comma se)'), ('record_at', 'Recording (YYYY-MM-DD HH:MM)'),
+          final f = await _form(context, 'Episode', const [('topics', 'Topics (comma separated)'), ('record_at', 'Recording (YYYY-MM-DD HH:MM)'),
             ('publish_on', 'Publish (YYYY-MM-DD)')]);
           if (f == null) return;
           await _run('POST', '/api/podcast/episodes', {'episode': widget.ref, ...f,

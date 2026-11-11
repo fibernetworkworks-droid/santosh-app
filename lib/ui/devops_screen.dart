@@ -399,7 +399,7 @@ class _DevopsScreenState extends State<DevopsScreen> {
           subtitle: Text([
             _s(e['url']),
             if (e['uptime_pct'] != null) 'uptime ${_s(e['uptime_pct'])}%',
-            if (e['ssl_days'] != null) 'SSL ${_s(e['ssl_days'])} din',
+            if (e['ssl_days'] != null) 'SSL ${_s(e['ssl_days'])} days',
             if (_s(e['problem']).isNotEmpty) _s(e['problem']),
           ].join(' · ')),
           trailing: IconButton(icon: const Icon(Icons.delete_outline_rounded), onPressed: () => _run('DELETE', '/api/devops/endpoints/${_s(e['id'])}')),

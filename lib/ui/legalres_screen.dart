@@ -416,7 +416,7 @@ class _LegalresMatterPageState extends State<LegalresMatterPage> {
   Future<void> _share() async {
     final f = await _form(context, 'Send memo (a card for your yes)', const [
       ('to_name', 'To whom (name)'),
-      ('to_contact', 'Mobile ya email'),
+      ('to_contact', 'Mobile or email'),
       ('via', 'whatsapp / email / file'),
     ]);
     if (f == null || _s(f['to_name']).isEmpty) return;

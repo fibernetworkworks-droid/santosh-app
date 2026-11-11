@@ -581,7 +581,7 @@ class _FilmdeskProjectPageState extends State<FilmdeskProjectPage> {
           final f = await _form(context, 'Message (a card will be made, you send it)', const [
             ('msg_kind', 'consent_request / rights_request / festival / distributor / custom'),
             ('person', 'Register number (P-001) or blank'),
-            ('phone', 'Ya mobile'),
+            ('phone', 'Or mobile'),
             ('text', 'Text (for custom)'),
             ('terms', 'Terms / fees when asking for permission'),
           ], ok: 'Make card');

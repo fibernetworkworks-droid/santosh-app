@@ -271,7 +271,7 @@ class _HomestayScreenState extends State<HomestayScreen> {
       ('pin', 'PIN code'),
       ('map_link', 'Google Maps link (https://...)'),
       ('upi_id', 'UPI ID (advance / balance go to your UPI)'),
-      ('gstin', 'GSTIN (ho to)'),
+      ('gstin', 'GSTIN (if any)'),
       ('checkin_time', 'Check-in time (12:00)'),
       ('checkout_time', 'Check-out time (11:00)'),
       ('advance_pct', 'Advance % (e.g. 30)'),
@@ -559,7 +559,7 @@ class _HomestayScreenState extends State<HomestayScreen> {
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text(_s(info['scheme']).isEmpty ? _s(info['note']) : _s(info['scheme']), style: const TextStyle(fontWeight: FontWeight.w700)),
           _line('Number', _s(reg['number'])),
-          _line('Valid', _s(reg['valid_to']).isEmpty ? '' : '${_s(reg['valid_to'])} (${_s(reg['days_left'])} din)'),
+          _line('Valid', _s(reg['valid_to']).isEmpty ? '' : '${_s(reg['valid_to'])} (${_s(reg['days_left'])} days)'),
           for (final n in _strs(info['notes'])) Text('• $n', style: const TextStyle(fontSize: 12, color: C.muted)),
           const SizedBox(height: 6),
           for (final it in _list(reg['items']))
@@ -943,7 +943,7 @@ class _HomestayCardCardState extends State<HomestayCardCard> {
             'sent' => 'sent',
             'approved' => 'approved',
             'rejected' => 'no',
-            'stale' => 'purana',
+            'stale' => 'outdated',
             'paid' => 'given',
             _ => st,
           }, fg: st == 'waiting' ? C.accent : (st == 'rejected' || st == 'stale' ? C.bad : C.ok)),
@@ -961,7 +961,7 @@ class _HomestayCardCardState extends State<HomestayCardCard> {
         if (st == 'waiting' && isMsg)
           Wrap(spacing: 8, runSpacing: 6, children: [
             GradientButton(label: 'From my WhatsApp', icon: Icons.send_rounded, height: 40, onTap: _busy ? null : () => _send('self')),
-            GlassButton(label: 'Business number se', height: 40, onTap: _busy ? null : () => _send('business')),
+            GlassButton(label: 'From the business number', height: 40, onTap: _busy ? null : () => _send('business')),
             GlassButton(label: 'Change', height: 40, onTap: _busy ? null : _edit),
             GlassButton(
                 label: 'Remove',

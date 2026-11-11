@@ -553,7 +553,7 @@ class _SiteIdeasState extends State<SiteIdeas> {
           contentPadding: EdgeInsets.zero,
           title: Text(_s(f['en']), style: const TextStyle(fontWeight: FontWeight.w700)),
           subtitle: Text('${f['hi']}', style: const TextStyle(color: C.muted)),
-          trailing: TextButton(onPressed: () => widget.onPick('${f['en']} ki website'), child: const Text('Start')),
+          trailing: TextButton(onPressed: () => widget.onPick('${f['en']} website'), child: const Text('Start')),
         ),
     ]);
   }

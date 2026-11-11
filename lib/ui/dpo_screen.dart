@@ -240,7 +240,7 @@ class _DpoScreenState extends State<DpoScreen> {
       ('text', 'Their words (e.g. "delete my data")'),
       ('name', 'Name'),
       ('phone', 'Registered mobile'),
-      ('email', 'Email (ho to)'),
+      ('email', 'Email (if any)'),
       ('via', 'How it came (WhatsApp / email / shop)'),
       ('received', 'When received (YYYY-MM-DD, blank = today)'),
     ], ok: 'Save');
@@ -385,7 +385,7 @@ class _DpoScreenState extends State<DpoScreen> {
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(children: [
                 Expanded(child: Text('${_s(a['number'])} · ${_s(a['name'])}', style: const TextStyle(fontWeight: FontWeight.w800))),
-                if (a['children'] == true) const Pill('bachche', fg: C.bad),
+                if (a['children'] == true) const Pill('children', fg: C.bad),
                 if ((a['records'] ?? 0) > 0) Pill('${_s(a['records'])} record'),
               ]),
               Text('${_s(a['people'])} · ${_strs(a['items']).join(', ')}', style: const TextStyle(fontSize: 12.5, color: C.muted)),
@@ -554,7 +554,7 @@ class _DpoScreenState extends State<DpoScreen> {
           Text('Contact: ${[st['contact_name'], st['contact_email'], st['contact_phone']].where((x) => _s(x).isNotEmpty).join(', ')}',
               style: const TextStyle(fontSize: 12.5, color: C.muted)),
           Text('Link: ${_s(st['link'])}', style: const TextStyle(fontSize: 12.5, color: C.muted)),
-          Text('Reply: ${_s(st['reply_days'])} din (kanoon max 90)', style: const TextStyle(fontSize: 12.5, color: C.muted)),
+          Text('Reply: ${_s(st['reply_days'])} days (legal max 90)', style: const TextStyle(fontSize: 12.5, color: C.muted)),
           Text(_s(st['sdf_note']), style: const TextStyle(fontSize: 11.5, color: C.faint)),
           for (final m in _strs(st['missing'])) Text('⚠ pending: $m', style: const TextStyle(fontSize: 12, color: C.warn)),
           const SizedBox(height: 8),
@@ -931,7 +931,7 @@ class _DpoCardCardState extends State<DpoCardCard> {
           if (_s(d['hours_left']).isNotEmpty) Text('72 hours: ${_s(d['report_due'])} (${_s(d['hours_left'])} hours)', style: const TextStyle(fontSize: 12.5, color: C.warn)),
           box(_s(d['text'])),
           Text(_s(d['where']), style: const TextStyle(fontSize: 11.5, color: C.muted)),
-          if ((d['affected'] ?? 0) is num && (d['affected'] ?? 0) > 0) Text('${_s(d['affected'])} log', style: const TextStyle(fontSize: 12)),
+          if ((d['affected'] ?? 0) is num && (d['affected'] ?? 0) > 0) Text('${_s(d['affected'])} people', style: const TextStyle(fontSize: 12)),
         ];
     }
   }
@@ -1067,7 +1067,7 @@ class DpoBreachCard extends StatelessWidget {
               [
                 'Board first notice: ${_s(b['initial_at']).isEmpty ? 'baaki' : _s(b['initial_at'])}',
                 'report: ${_s(b['report_at']).isEmpty ? 'baaki' : _s(b['report_at'])}',
-                'log: ${_s(b['people_at']).isEmpty ? 'baaki' : _s(b['people_at'])}',
+                'people: ${_s(b['people_at']).isEmpty ? 'baaki' : _s(b['people_at'])}',
               ].join(' · '),
               style: const TextStyle(fontSize: 12, color: C.muted)),
           if (_s(ci['incident']).isNotEmpty) Text('CERT-In: IT Helpdesk incident (${_s(ci['due'])})', style: const TextStyle(fontSize: 12, color: C.teal)),

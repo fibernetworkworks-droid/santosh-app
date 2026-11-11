@@ -25,7 +25,7 @@ class _BaharScreenState extends State<BaharScreen> {
     'whatsapp': <List<String>>[],
     'telegram': [['token', 'Bot token (from @BotFather)']],
     'slack': [['bot_token', 'Bot token (xoxb-...)'], ['signing_secret', 'Signing secret']],
-    'teams': [['app_id', 'Microsoft App ID'], ['app_password', 'Client secret'], ['app_tenant', 'Tenant ID (single-tenant bot ho to)']],
+    'teams': [['app_id', 'Microsoft App ID'], ['app_password', 'Client secret'], ['app_tenant', 'Tenant ID (if a single-tenant bot)']],
   };
   static const _icons = {
     'whatsapp': Icons.chat_rounded,

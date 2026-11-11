@@ -306,7 +306,7 @@ class _FleetScreenState extends State<FleetScreen> {
       if (_list(day['idle']).isNotEmpty) ...[
         const Caption('IDLE VEHICLES'),
         Wrap(spacing: 6, runSpacing: 6, children: [
-          for (final x in _list(day['idle'])) Pill('${_s(x['vehicle'])}${x['days'] != null ? ' · ${x['days']} din' : ''}', fg: C.warn),
+          for (final x in _list(day['idle'])) Pill('${_s(x['vehicle'])}${x['days'] != null ? ' · ${x['days']} days' : ''}', fg: C.warn),
         ]),
       ],
     ]);
@@ -330,7 +330,7 @@ class _FleetScreenState extends State<FleetScreen> {
         for (final x in _list(_d?['spends'])) ...[FleetSpendCard(app: widget.app, data: {'spend': x}, onDone: _load), const SizedBox(height: 8)],
         if (_list(_d?['spends']).isEmpty) const Text('No expense cards.', style: TextStyle(color: C.muted)),
         const SizedBox(height: 12),
-        const Caption('COST PER KM (30 DIN)'),
+        const Caption('COST PER KM (30 DAYS)'),
         for (final r in _list(_cost?['vehicles']))
           ListTile(
             dense: true,
@@ -595,7 +595,7 @@ class _FleetVehiclePageState extends State<FleetVehiclePage> {
                       'expired' => 'Expires ${_s(d['expires'])}',
                       'not_needed' => 'Not needed',
                       'note' => _s(d['notes']).isEmpty ? 'Balance note' : _s(d['notes']),
-                      _ => '${_s(d['expires'])}${d['guess'] == true ? ' (estimate)' : ''} · ${_s(d['days_left'])} din',
+                      _ => '${_s(d['expires'])}${d['guess'] == true ? ' (estimate)' : ''} · ${_s(d['days_left'])} days',
                     }),
                     trailing: _s(d['state']) == 'expired' || _s(d['state']) == 'due'
                         ? IconButton(

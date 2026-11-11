@@ -125,7 +125,7 @@ class _HoolaPcScreenState extends State<HoolaPcScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Hoola ka PC'), backgroundColor: Colors.transparent),
+      appBar: AppBar(title: const Text('Hoola\'s PC'), backgroundColor: Colors.transparent),
       body: Aurora(
         child: RefreshIndicator(
           onRefresh: _load,

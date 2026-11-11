@@ -746,7 +746,7 @@ class _WapsiRefundCardState extends State<WapsiRefundCard> {
               onTap: _busy
                   ? null
                   : () async {
-                      final r = await _form(context, 'Refund ka reference', const [('utr', 'UTR / ARN / coupon code')]);
+                      final r = await _form(context, 'Refund reference', const [('utr', 'UTR / ARN / coupon code')]);
                       if (r?['utr'] != null) await _do(() async => _m(await _call(widget.app, 'POST', '/api/wapsi/refunds/$id/done', body: {'utr': r!['utr']})));
                     },
             ),

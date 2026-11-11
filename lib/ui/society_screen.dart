@@ -415,7 +415,7 @@ class _SocietyScreenState extends State<SocietyScreen> {
           dense: true,
           leading: Icon(Icons.circle, size: 12, color: r['defaulter'] == true ? C.bad : C.warn),
           title: Text('${_s(r['unit'])} · ${_s(r['owner'])}'),
-          subtitle: Text('${_s(r['days'])} din · ${_s(r['bucket'])}${r['no_messages'] == true ? ' · do not want messages' : ''}'),
+          subtitle: Text('${_s(r['days'])} days · ${_s(r['bucket'])}${r['no_messages'] == true ? ' · do not want messages' : ''}'),
           trailing: Text(_s(r['due_text']), style: const TextStyle(fontWeight: FontWeight.w800)),
           onTap: () {
             final f = _list(_d?['flats']).where((x) => x['unit'] == r['unit']).toList();

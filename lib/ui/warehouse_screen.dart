@@ -268,7 +268,7 @@ class _WarehouseScreenState extends State<WarehouseScreen> {
               onTap: _busy
                   ? null
                   : () async {
-                      final f = await _form(context, 'Which bins to count', const [('bins', 'Bin (comma se: A-1-1, A-1-2)')], ok: 'Make');
+                      final f = await _form(context, 'Which bins to count', const [('bins', 'Bins (comma separated: A-1-1, A-1-2)')], ok: 'Make');
                       if (f == null) return;
                       await _run('POST', '/api/warehouse/counts',
                           {'bins': (f['bins'] ?? '').split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList()});

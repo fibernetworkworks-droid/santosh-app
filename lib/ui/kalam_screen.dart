@@ -309,7 +309,7 @@ class _PiecesTabState extends State<_PiecesTab> {
                   Expanded(
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Text(_s(p['title']), style: display(14.5), maxLines: 2, overflow: TextOverflow.ellipsis),
-                      Text('${p['number']} · ${p['kind_label']} · ${p['words']} shabd', style: const TextStyle(color: C.muted, fontSize: 12)),
+                      Text('${p['number']} · ${p['kind_label']} · ${p['words']} words', style: const TextStyle(color: C.muted, fontSize: 12)),
                     ]),
                   ),
                   Pill(_statusLabel[_s(p['status'])] ?? _s(p['status']), fg: _statusCol(_s(p['status']))),
@@ -1013,7 +1013,7 @@ class _KalamPiecePageState extends State<KalamPiecePage> {
           Pill(_statusLabel[_s(p['status'])] ?? _s(p['status']), fg: _statusCol(_s(p['status']))),
         ]),
         const SizedBox(height: 4),
-        Text('${p['words']} shabd${(p['target_words'] ?? 0) != 0 ? ' (target ${p['target_words']})' : ''}${_s(p['keyword']).isNotEmpty ? ' · keyword: ${p['keyword']}' : ''}',
+        Text('${p['words']} words${(p['target_words'] ?? 0) != 0 ? ' (target ${p['target_words']})' : ''}${_s(p['keyword']).isNotEmpty ? ' · keyword: ${p['keyword']}' : ''}',
             style: const TextStyle(color: C.muted, fontSize: 12.5)),
         for (final k in const ['subject', 'preheader', 'meta_title', 'meta_description', 'slug', 'button'])
           if (_s(m[k]).isNotEmpty) Padding(padding: const EdgeInsets.only(top: 3), child: Text('$k: ${m[k]}', style: const TextStyle(color: C.chip, fontSize: 12.5))),

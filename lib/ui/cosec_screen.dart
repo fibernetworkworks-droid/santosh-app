@@ -366,7 +366,7 @@ class _CosecEntityPageState extends State<CosecEntityPage> {
   Future<void> _addPerson(String role) async {
     final f = await _form(context, switch (role) { 'member' => 'Member', 'kmp' => 'KMP', 'partner' => 'Designated partner', _ => 'Director' }, [
       ('name', 'Name'),
-      if (role != 'member') ('din', role == 'partner' ? 'DPIN / DIN (8 ank)' : 'DIN (8 ank)'),
+      if (role != 'member') ('din', role == 'partner' ? 'DPIN / DIN (8 digits)' : 'DIN (8 digits)'),
       ('designation', 'Position (designation)'),
       ('appointed_on', 'From (YYYY-MM-DD)'),
       if (role == 'director') ('kyc_on', 'Last DIR-3 KYC date (YYYY-MM-DD)'),
@@ -383,7 +383,7 @@ class _CosecEntityPageState extends State<CosecEntityPage> {
       ('words', 'For example: new director, resignation, share allotment, office shift, bank loan'),
       ('on', 'When (YYYY-MM-DD)'),
       ('name', 'Who (name)'),
-      ('din', 'DIN (director ho to)'),
+      ('din', 'DIN (if a director)'),
       ('shares', 'Shares (allotment / transfer)'),
       ('to', 'To whom (transfer)'),
       ('address', 'New address (office shift)'),
@@ -656,7 +656,7 @@ class _CosecFilingCardState extends State<CosecFilingCard> {
         Text(_s(f['label']), style: const TextStyle(fontSize: 12.5)),
         Text(
             'Due date ${_s(f['due']).isEmpty ? '—' : _s(f['due'])}${f['est'] == true ? ' (estimate)' : ''}'
-            '${left is num && st != 'filed' && st != 'not_needed' ? (left < 0 ? ' · ${-left} din der' : ' · $left din') : ''}',
+            '${left is num && st != 'filed' && st != 'not_needed' ? (left < 0 ? ' · ${-left} days late' : ' · $left days') : ''}',
             style: TextStyle(fontSize: 12.5, color: f['late'] == true ? C.bad : C.muted)),
         Text(_s(f['basis']), style: const TextStyle(fontSize: 11.5, color: C.faint)),
         if (fee.isNotEmpty) Text(_s(fee['text']), style: const TextStyle(fontSize: 12, color: C.warn)),

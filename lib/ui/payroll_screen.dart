@@ -404,7 +404,7 @@ class _RunsTabState extends State<_RunsTab> with _PayLive {
                   Expanded(
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Text('${_s(r['period_nice'])}${r['kind'] == 'fnf' ? ' · full & final' : ''}', style: const TextStyle(fontWeight: FontWeight.w800)),
-                      Text('${(r['totals'] as Map?)?['employees'] ?? 0} log · net ${rs((r['totals'] as Map?)?['net'] ?? 0)}',
+                      Text('${(r['totals'] as Map?)?['employees'] ?? 0} people · net ${rs((r['totals'] as Map?)?['net'] ?? 0)}',
                           style: const TextStyle(color: C.muted, fontSize: 12.5)),
                     ]),
                   ),
@@ -561,7 +561,7 @@ class _PayRunViewState extends State<PayRunView> with _PayLive {
                   Text(rs(ln['net'] ?? 0), style: const TextStyle(fontWeight: FontWeight.w800, color: C.accent)),
                 ]),
                 Text(
-                    'Din ${ln['paid_days']}/${ln['days']}${(ln['ot'] ?? 0) > 0 ? ' · OT ${rs(ln['ot'])}' : ''} · gross ${rs(ln['gross'] ?? 0)} · '
+                    'Days ${ln['paid_days']}/${ln['days']}${(ln['ot'] ?? 0) > 0 ? ' · OT ${rs(ln['ot'])}' : ''} · gross ${rs(ln['gross'] ?? 0)} · '
                     'PF ${rs((ln['pf'] as Map?)?['ee'] ?? 0)} · ESIC ${rs((ln['esi'] as Map?)?['ee'] ?? 0)} · PT ${rs(ln['pt'] ?? 0)} · '
                     'TDS ${rs(ln['tds'] ?? 0)}${(ln['advance'] ?? 0) > 0 ? ' · advance ${rs(ln['advance'])}' : ''}',
                     style: const TextStyle(color: C.muted, fontSize: 12)),

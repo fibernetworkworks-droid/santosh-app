@@ -379,7 +379,7 @@ class _PatrakarScreenState extends State<PatrakarScreen> {
           await _run('PUT', '/api/patrakar/settings', {'style': rows});
         }),
         GlassButton(label: 'Banned words', icon: Icons.block_rounded, height: 40, onTap: () async {
-          final f = await _form(context, 'Never write (comma separated)', const [('text', 'shabd')],
+          final f = await _form(context, 'Never write (comma separated)', const [('text', 'words')],
               initial: {'text': _strs(st['avoid']).join(', ')});
           if (f == null) return;
           await _run('PUT', '/api/patrakar/settings', {'avoid': f['text'] ?? ''});
@@ -606,7 +606,7 @@ class _PatrakarStoryPageState extends State<PatrakarStoryPage> {
           for (final q in _strs(i['quotes'])) Text('“$q”', style: const TextStyle(fontSize: 12.5, color: C.accentSoft)),
           TextButton(
               onPressed: () async {
-                final f = await _form(context, 'Quote (hu-ba-hu shabd)', const [('text', 'Quote')]);
+                final f = await _form(context, 'Quote (exact words)', const [('text', 'Quote')]);
                 if (f == null) return;
                 await _run('POST', '/api/patrakar/interviews/${_s(i['id'])}/quote', f);
               },
@@ -707,7 +707,7 @@ class _PatrakarStoryPageState extends State<PatrakarStoryPage> {
             await _run('POST', '$_p/reply', {...f, 'allegations': _lines(f['allegations']), 'questions': _lines(f['questions'])});
           }),
           GlassButton(label: 'Send pitch', icon: Icons.send_rounded, height: 40, onTap: () async {
-            final f = await _form(context, 'Editor ko pitch',
+            final f = await _form(context, 'Pitch to editor',
                 const [('to', 'Editor'), ('phone', 'WhatsApp'), ('email', 'Email'), ('text', 'Pitch (blank = Hoola writes it)')]);
             if (f == null) return;
             await _run('POST', '$_p/pitch', f);
@@ -812,7 +812,7 @@ class _PatrakarCardCardState extends State<PatrakarCardCard> {
               fg: st == 'waiting' ? C.accent : C.chip),
         ]),
         if (kind == 'publish')
-          Text('${_s(sh['dest'])} · ${_s(sh['mode'])} · ${_s(sh['words'])} shabd · ${_s(sh['byline'])}',
+          Text('${_s(sh['dest'])} · ${_s(sh['mode'])} · ${_s(sh['words'])} words · ${_s(sh['byline'])}',
               style: const TextStyle(fontSize: 12, color: C.muted)),
         if (kind == 'reply') Text('${_s(sh['party'])} · reply by ${_s(sh['deadline'])}', style: const TextStyle(fontSize: 12, color: C.muted)),
         const SizedBox(height: 6),

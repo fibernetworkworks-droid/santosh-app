@@ -312,7 +312,7 @@ class _CourierScreenState extends State<CourierScreen> {
           child: Row(children: [
             Expanded(
               child: Text('${_s(x['number'])} · ${_s(x['carrier'])} · ${_s(x['awb'])}'
-                  '${x['days_since_delivery'] != null ? ' · ${_s(x['days_since_delivery'])} din' : ''}',
+                  '${x['days_since_delivery'] != null ? ' · ${_s(x['days_since_delivery'])} days' : ''}',
                   style: TextStyle(fontSize: 12.5, color: x['late'] == true ? C.bad : C.ink)),
             ),
             Text(diff ? '${_rs(x['remitted'])} / ${_rs(x['cod_amount'])}' : _rs(x['cod_amount']), style: const TextStyle(fontSize: 12.5)),
@@ -618,7 +618,7 @@ class _CourierParcelPageState extends State<CourierParcelPage> {
                     style: TextStyle(fontWeight: FontWeight.w700, color: sv['ok'] == true ? C.ok : C.bad)),
                 for (final q in _list(p['quotes']).take(6))
                   Row(children: [
-                    Expanded(child: Text('${_s(q['courier'])}${q['days'] != null ? ' · ~${_s(q['days'])} din' : ''}', style: const TextStyle(fontSize: 12.5))),
+                    Expanded(child: Text('${_s(q['courier'])}${q['days'] != null ? ' · ~${_s(q['days'])} days' : ''}', style: const TextStyle(fontSize: 12.5))),
                     Text(q['rate'] == null ? 'rate ?' : _rs(q['rate']), style: const TextStyle(fontSize: 12.5)),
                   ]),
                 if (_s(_m(p['pick'])['why']).isNotEmpty) Text('Chuna: ${_s(pick['courier'])} (${_s(_m(p['pick'])['why'])})', style: const TextStyle(fontSize: 12, color: C.muted)),
@@ -667,7 +667,7 @@ class _CourierParcelPageState extends State<CourierParcelPage> {
               ),
             if (_s(p['awb']).isNotEmpty && !['delivered', 'cancelled'].contains(st))
               GlassButton(label: 'Tracking', icon: Icons.route_rounded, onTap: _busy ? null : () => _run(() => _call(widget.app, 'POST', '$_base/track'))),
-            if (_s(p['track_link']).isNotEmpty) GlassButton(label: 'Courier ka page', icon: Icons.open_in_new_rounded, onTap: () => _openLink(context, _s(p['track_link']))),
+            if (_s(p['track_link']).isNotEmpty) GlassButton(label: 'Courier\'s page', icon: Icons.open_in_new_rounded, onTap: () => _openLink(context, _s(p['track_link']))),
             if (_s(_m(p['label'])['path']).isNotEmpty || _s(_m(p['label'])['file_id']).isNotEmpty)
               GlassButton(label: 'Label in your files', icon: Icons.picture_as_pdf_rounded, onTap: () => _snack(context, 'The label PDF is in the chat files (Label-${_s(p['number'])}.pdf).')),
             if (_s(p['awb']).isNotEmpty) GlassButton(label: 'Message to the customer', icon: Icons.sms_rounded, onTap: () => _message(st == 'delivered' ? 'delivered' : 'shipped')),
@@ -679,7 +679,7 @@ class _CourierParcelPageState extends State<CourierParcelPage> {
                 height: 44,
                 onTap: () async {
                   final f = await _form(context, 'Deliver again', const [
-                    ('when', 'Din (YYYY-MM-DD)'), ('phone', 'New phone (if any)'), ('address', 'Correct address / landmark (if any)'), ('note', 'Note'),
+                    ('when', 'Day (YYYY-MM-DD)'), ('phone', 'New phone (if any)'), ('address', 'Correct address / landmark (if any)'), ('note', 'Note'),
                   ]);
                   if (f == null) return;
                   await _run(() => _call(widget.app, 'POST', '$_base/ndr', body: {'action': 'reattempt', ...f}));
@@ -773,7 +773,7 @@ class _CourierActionCardState extends State<CourierActionCard> {
         const SizedBox(height: 6),
         if (_s(b['courier']).isNotEmpty || b['rate'] != null)
           Row(children: [
-            Expanded(child: Text('${_s(b['courier'])}${b['days'] != null ? ' · ~${_s(b['days'])} din' : ''}')),
+            Expanded(child: Text('${_s(b['courier'])}${b['days'] != null ? ' · ~${_s(b['days'])} days' : ''}')),
             Text(b['rate'] == null ? 'the courier will tell the rate' : _rs(b['rate']), style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
           ]),
         if (_s(b['to']).isNotEmpty) Text('Where: ${_s(b['to'])}', style: const TextStyle(fontSize: 12.5)),
@@ -783,7 +783,7 @@ class _CourierActionCardState extends State<CourierActionCard> {
         if (_s(b['reason']).isNotEmpty) Text('Reason: ${_s(b['reason'])}', style: const TextStyle(fontSize: 12.5)),
         if (_m(b['fix']).isNotEmpty)
           Text([
-            if (_s(_m(b['fix'])['date']).isNotEmpty) 'din ${_s(_m(b['fix'])['date'])}',
+            if (_s(_m(b['fix'])['date']).isNotEmpty) 'day ${_s(_m(b['fix'])['date'])}',
             if (_s(_m(b['fix'])['address']).isNotEmpty) 'address: ${_s(_m(b['fix'])['address'])}',
             if (_s(_m(b['fix'])['note']).isNotEmpty) _s(_m(b['fix'])['note']),
           ].join(' · '), style: const TextStyle(fontSize: 12.5, color: C.muted)),

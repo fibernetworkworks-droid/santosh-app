@@ -126,7 +126,7 @@ class _CallQualityScreenState extends State<CallQualityScreen> {
         _row('Calls that broke midway', '${o['broken_calls'] ?? 0}'),
         _row('Connection changed', o['goaway'] == 0 || o['goaway'] == null
             ? 'not changed'
-            : '${o['goaway']} baar, ${_n(o['goaway_graceful_pct'], unit: '%')} turns uninterrupted'),
+            : '${o['goaway']} times, ${_n(o['goaway_graceful_pct'], unit: '%')} turns uninterrupted'),
         _row('Went silent (nudge / reconnect)', '${o['stall_nudges'] ?? 0} / ${o['stall_reconnects'] ?? 0}'),
         _row('Took another route by itself', '${o['auto_rescues'] ?? 0}'),
         _row('Work news (merged / not repeated)', '${o['news_merged'] ?? 0} / ${o['news_deduped'] ?? 0}'),
@@ -182,7 +182,7 @@ class _CallQualityScreenState extends State<CallQualityScreen> {
                   [
                     if ((c['problems'] as List?)?.isNotEmpty == true) ...(c['problems'] as List).map((e) => '$e'),
                     if ((c['problems'] as List?)?.isEmpty != false) 'All good',
-                    if ('${c['end_say']}'.isNotEmpty) 'Ant: ${c['end_say']}',
+                    if ('${c['end_say']}'.isNotEmpty) 'End: ${c['end_say']}',
                   ].join(' · '),
                   style: const TextStyle(fontSize: 12.5)),
             ),

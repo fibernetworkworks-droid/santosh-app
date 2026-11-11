@@ -248,7 +248,7 @@ class _EnterpriseScreenState extends State<EnterpriseScreen> {
           TextField(
             controller: _addr,
             autocorrect: false,
-            decoration: const InputDecoration(labelText: 'API ka address', hintText: 'https://…'),
+            decoration: const InputDecoration(labelText: 'API address', hintText: 'https://…'),
           ),
           Padding(
             padding: const EdgeInsets.only(top: 4),

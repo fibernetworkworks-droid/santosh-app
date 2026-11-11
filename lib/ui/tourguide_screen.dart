@@ -130,7 +130,7 @@ class _TourguideScreenState extends State<TourguideScreen> {
   Future<void> _enquiry() async {
     final f = await _form(context, 'Paste the enquiry', const [
       ('text', 'WhatsApp / call message (as received)'),
-      ('tour', 'Tour (TP-01, ho to)'),
+      ('tour', 'Tour (TP-01, if any)'),
       ('lead_name', 'Guest name'),
     ], ok: 'Save');
     if (f == null || (f['text'] ?? '').isEmpty) return;
@@ -171,7 +171,7 @@ class _TourguideScreenState extends State<TourguideScreen> {
       ('duration_min', 'How many minutes'),
       ('price_pp', 'Price per person (yours)'),
       ('price_group', 'Or the price for the whole group'),
-      ('group_max', 'Max log'),
+      ('group_max', 'Max people'),
       ('meeting_point', 'Where to meet'),
       ('includes', 'Included'),
       ('excludes', 'Not included'),
@@ -236,7 +236,7 @@ class _TourguideScreenState extends State<TourguideScreen> {
       ('kind', 'tip / commission_in / commission_out'),
       ('amount', 'How much'),
       ('party', 'From / to whom'),
-      ('booking', 'Booking (B-0001, ho to)'),
+      ('booking', 'Booking (B-0001, if any)'),
       ('note', 'Note'),
     ], ok: 'Save');
     if (f == null) return;
@@ -250,7 +250,7 @@ class _TourguideScreenState extends State<TourguideScreen> {
       ('what', 'What for'),
       ('amount', 'How much (bill / quote)'),
       ('party', 'To whom'),
-      ('booking', 'Booking (ho to)'),
+      ('booking', 'Booking (if any)'),
     ], ok: 'Make card');
     if (f == null) return;
     final body = <String, dynamic>{...f};
@@ -268,7 +268,7 @@ class _TourguideScreenState extends State<TourguideScreen> {
               Expanded(child: Text('${_s(b['number'])} · ${_s(b['lead_name'])}', style: const TextStyle(fontWeight: FontWeight.w800))),
               Pill(_s(b['status_label']), fg: _s(b['status']) == 'confirmed' ? C.ok : (_s(b['status']) == 'enquiry' ? C.warn : C.chip)),
             ]),
-            Text('${_s(b['tour'])} · ${_s(b['day'])} ${_s(b['start_time'])} · ${_s(b['guests'])} log · ${_s(b['total_text'])}',
+            Text('${_s(b['tour'])} · ${_s(b['day'])} ${_s(b['start_time'])} · ${_s(b['guests'])} people · ${_s(b['total_text'])}',
                 style: const TextStyle(fontSize: 12.5, color: C.muted)),
           ]),
         ),
@@ -559,7 +559,7 @@ class _TourguideBookingPageState extends State<TourguideBookingPage> {
                 Glass(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Row(children: [
-                      Expanded(child: Text('${_s(b['lead_name'])} · ${_s(b['guests'])} log', style: const TextStyle(fontWeight: FontWeight.w800))),
+                      Expanded(child: Text('${_s(b['lead_name'])} · ${_s(b['guests'])} people', style: const TextStyle(fontWeight: FontWeight.w800))),
                       Pill(_s(b['status_label'])),
                     ]),
                     _line('Tour', _s(b['tour'])),
@@ -584,7 +584,7 @@ class _TourguideBookingPageState extends State<TourguideBookingPage> {
                   GlassButton(label: 'Hold the slot', height: 38, onTap: _busy ? null : () => _post('hold')),
                   GradientButton(label: 'Confirm (card)', icon: Icons.verified_rounded, height: 38, onTap: _busy ? null : () => _post('confirm')),
                   GlassButton(
-                      label: 'Din ka plan',
+                      label: 'Day plan',
                       height: 38,
                       onTap: _busy
                           ? null
@@ -751,7 +751,7 @@ class _TourguideCardCardState extends State<TourguideCardCard> {
                 icon: talks ? Icons.send_rounded : Icons.check_rounded,
                 height: 40,
                 onTap: _busy ? null : () => _decide(true)),
-            if (talks) GlassButton(label: 'Business number se', height: 40, onTap: _busy ? null : () => _decide(true, via: 'business')),
+            if (talks) GlassButton(label: 'From the business number', height: 40, onTap: _busy ? null : () => _decide(true, via: 'business')),
             GlassButton(label: 'No', height: 40, onTap: _busy ? null : () => _decide(false)),
           ]),
         if (st == 'approved' && c['money'] == true)
@@ -781,7 +781,7 @@ class TourguideBookingCard extends StatelessWidget {
             Expanded(child: Text('${_s(b['number'])} · ${_s(b['lead_name'])}', style: const TextStyle(fontWeight: FontWeight.w800))),
             Pill(_s(b['status_label'])),
           ]),
-          Text('${_s(b['tour'])} · ${_s(b['day'])} ${_s(b['start_time'])} · ${_s(b['guests'])} log · ${_s(b['total_text'])}',
+          Text('${_s(b['tour'])} · ${_s(b['day'])} ${_s(b['start_time'])} · ${_s(b['guests'])} people · ${_s(b['total_text'])}',
               style: const TextStyle(fontSize: 12.5, color: C.muted)),
           if (_s(data['say']).isNotEmpty) Text(_s(data['say']), style: const TextStyle(fontSize: 12.5)),
         ]),
@@ -803,7 +803,7 @@ class TourguidePlanCard extends StatelessWidget {
     if (p.isNotEmpty) {
       return Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('Din ka plan', style: TextStyle(fontWeight: FontWeight.w800)),
+          const Text('Day plan', style: TextStyle(fontWeight: FontWeight.w800)),
           _line('Meeting point', _s(p['meeting_point'])),
           for (final x in _list(p['stops']))
             Text('${_s(x['arrive'])}-${_s(x['leave'])}  ${_s(x['name'])}  (open ${_s(x['open'])}-${_s(x['close'])}, ticket ${_s(x['ticket'])})',

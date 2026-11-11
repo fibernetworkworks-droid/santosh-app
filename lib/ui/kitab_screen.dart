@@ -132,7 +132,7 @@ class _KitabScreenState extends State<KitabScreen> {
               const SizedBox(width: 10),
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text('${_s(b['number'])} · ${_s(b['title'])}', style: const TextStyle(fontWeight: FontWeight.w800)),
-                Text('${_s(b['chapters'])} chapter · ${_s(b['words'])} shabd · ${_statusLabel[_s(b['status'])] ?? _s(b['status'])}'
+                Text('${_s(b['chapters'])} chapters · ${_s(b['words'])} words · ${_statusLabel[_s(b['status'])] ?? _s(b['status'])}'
                     '${b['mine'] == false ? ' · client' : ''}', style: const TextStyle(fontSize: 12.5, color: C.muted)),
                 if ((b['open_suggestions'] ?? 0) != 0)
                   Text('${_s(b['open_suggestions'])} suggestions waiting for your review', style: const TextStyle(fontSize: 12, color: C.accent)),
@@ -179,7 +179,7 @@ class _KitabScreenState extends State<KitabScreen> {
       GlassButton(label: 'Change', icon: Icons.edit_rounded, onTap: () async {
         final f = await _form(context, 'Rules', const [
           ('name', 'Your name / pen name'), ('role', 'author | editor | publisher'), ('lang', 'Language: hi | mr | en'),
-          ('rate_per', 'Rate per: word | page | hour | flat'), ('rate_amount', 'Rate (Rs)'), ('gstin', 'GSTIN (ho to)'),
+          ('rate_per', 'Rate per: word | page | hour | flat'), ('rate_amount', 'Rate (Rs)'), ('gstin', 'GSTIN (if any)'),
           ('sac', 'SAC (from your CA)'), ('upi_id', 'UPI ID'), ('email', 'Email'), ('phone', 'Phone'), ('follow_days', 'Follow up after how many days'),
           ('morning_time', 'Morning note (HH:MM)'), ('rules', 'Your rules'),
         ], initial: {
@@ -312,7 +312,7 @@ class _KitabBookPageState extends State<KitabBookPage> {
               child: ListView(padding: const EdgeInsets.all(16), children: [
                 if (_card != null) Padding(padding: const EdgeInsets.only(bottom: 12),
                     child: KitabCardCard(app: widget.app, data: {'card': _card}, onDone: _load)),
-                Text('${_s(b['words'])} shabd · ${_s(b['lang'])} · ${_statusLabel[_s(b['status'])] ?? _s(b['status'])}'
+                Text('${_s(b['words'])} words · ${_s(b['lang'])} · ${_statusLabel[_s(b['status'])] ?? _s(b['status'])}'
                     '${_s(b['deadline']).isEmpty ? '' : ' · deadline ${_s(b['deadline'])}'}', style: const TextStyle(color: C.muted)),
                 const SizedBox(height: 10),
                 _section('CHAPTER', [
@@ -320,7 +320,7 @@ class _KitabBookPageState extends State<KitabBookPage> {
                     ListTile(
                       contentPadding: EdgeInsets.zero,
                       title: Text('${_s(c['n'])}. ${_s(c['title'])}'),
-                      subtitle: Text('${_s(c['words'])} shabd · ${_s(c['status'])}'),
+                      subtitle: Text('${_s(c['words'])} words · ${_s(c['status'])}'),
                       trailing: const Icon(Icons.chevron_right_rounded),
                       onTap: () => Navigator.of(context)
                           .push(MaterialPageRoute(builder: (_) => KitabChapterPage(app: widget.app, id: _s(c['id']))))
@@ -399,7 +399,7 @@ class _KitabBookPageState extends State<KitabBookPage> {
                     ),
                   Wrap(spacing: 8, runSpacing: 6, children: [
                     GlassButton(label: 'Add ISBN', height: 40, onTap: () async {
-                      final f = await _form(context, 'ISBN (isbn.gov.in se)', const [('format', 'paperback | hardback | ebook | audiobook'), ('isbn', 'ISBN')]);
+                      final f = await _form(context, 'ISBN (from isbn.gov.in)', const [('format', 'paperback | hardback | ebook | audiobook'), ('isbn', 'ISBN')]);
                       if (f != null) await _run('POST', '$_base/isbn', f);
                     }),
                     GlassButton(label: 'Verso page', height: 40, onTap: () async {
@@ -610,7 +610,7 @@ class _KitabChapterPageState extends State<KitabChapterPage> {
                 Glass(child: SelectableText(_s(c['text']), style: const TextStyle(fontSize: 14, height: 1.5))),
                 const SizedBox(height: 10),
                 for (final (i, v) in _list(c['versions']).indexed)
-                  Text('Version ${i + 1}: ${_s(v['why'])} (${_s(v['words'])} shabd)', style: const TextStyle(fontSize: 11.5, color: C.faint)),
+                  Text('Version ${i + 1}: ${_s(v['why'])} (${_s(v['words'])} words)', style: const TextStyle(fontSize: 11.5, color: C.faint)),
               ]),
             ),
     );

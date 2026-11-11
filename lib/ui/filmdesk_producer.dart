@@ -242,7 +242,7 @@ class _FilmdeskProducerPageState extends State<FilmdeskProducerPage> {
             ], const {}));
     if (s.isEmpty) return [_box('Schedule', [_line('No plan yet. Hours are estimates until you give your own numbers.', muted: true), plan])];
     return [
-      _box('Shoot din', [
+      _box('Shoot days', [
         plan,
         const SizedBox(height: 6),
         ..._flags(s['flags']),
@@ -283,7 +283,7 @@ class _FilmdeskProducerPageState extends State<FilmdeskProducerPage> {
       _box('Royalty (your contract terms)', [
         Wrap(spacing: 8, runSpacing: 6, children: [
           GlassButton(label: 'Add term', icon: Icons.gavel_rounded, height: 38, onTap: _busy ? null : () => _add(termsPath, 'Contract term', const [
-                ('party', 'Kis ko'),
+                ('party', 'To whom'),
                 ('role', 'Role (writer / director / actor / composer ...)'),
                 ('basis', 'flat_inr / percent_of_gross / percent_of_net / per_unit'),
                 ('rate', 'Dar'),
@@ -331,7 +331,7 @@ class _FilmdeskProducerPageState extends State<FilmdeskProducerPage> {
         ..._flags(f['flags']),
         for (final x in _list(f['festivals']))
           _row('${_s(x['name'])} · deadline ${_s(x['deadline']).isEmpty ? '–' : _s(x['deadline'])}'
-              '${x['days_left'] == null ? '' : ' (${_s(x['days_left'])} din)'} · ${_s(x['status'])} · packet ${_s(_m(x['packet'])['done'])}/${_s(_m(x['packet'])['total'])}',
+              '${x['days_left'] == null ? '' : ' (${_s(x['days_left'])} days)'} · ${_s(x['status'])} · packet ${_s(_m(x['packet'])['done'])}/${_s(_m(x['packet'])['total'])}',
               trailing: _remove('festivals', 'remove', _s(x['id']))),
         _line(_s(f['note']), muted: true),
       ]),

@@ -377,7 +377,7 @@ class _ProductScreenState extends State<ProductScreen> {
             ('now', 'Current capacity (person-months)'),
             ('next', 'Next capacity'),
             ('later', 'Later capacity'),
-            ('scoring', 'rice ya ice'),
+            ('scoring', 'rice or ice'),
             ('ns', 'North star number (for example: people who order every week)'),
             ('ns_target', 'North star goal'),
           ], initial: {
@@ -404,7 +404,7 @@ class _ProductScreenState extends State<ProductScreen> {
         label: 'Add KPI',
         icon: Icons.insights_rounded,
         onTap: () async {
-          final f = await _form(context, 'KPI', const [('name', 'Name'), ('unit', 'Unit (%, people, ₹)'), ('target', 'Goal'), ('better', 'up ya down')]);
+          final f = await _form(context, 'KPI', const [('name', 'Name'), ('unit', 'Unit (%, people, ₹)'), ('target', 'Goal'), ('better', 'up or down')]);
           if (f == null || f['name'] == null) return;
           await _run('POST', '/api/product/kpis', {...f, if (f['target'] != null) 'target': double.tryParse(f['target']!)});
         },

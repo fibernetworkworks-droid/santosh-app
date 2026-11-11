@@ -342,18 +342,18 @@ class _BrandTabState extends State<BrandTab> {
                     ),
                     child: Column(mainAxisAlignment: MainAxisAlignment.end, children: [
                       if (e.key == 'bold')
-                        Text('मन शांत', style: body(14, w: FontWeight.w800, color: Colors.white)
+                        Text('Stay calm', style: body(14, w: FontWeight.w800, color: Colors.white)
                             .copyWith(shadows: const [Shadow(blurRadius: 3, color: Colors.black)]))
                       else if (e.key == 'words')
                         RichText(text: TextSpan(style: body(14, w: FontWeight.w800, color: Colors.white), children: const [
-                          TextSpan(text: 'मन '),
-                          TextSpan(text: 'शांत', style: TextStyle(color: Color(0xFFFFD27A))),
+                          TextSpan(text: 'Stay '),
+                          TextSpan(text: 'calm', style: TextStyle(color: Color(0xFFFFD27A))),
                         ]))
                       else
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(4)),
-                          child: Text('मन शांत', style: body(11.5, color: Colors.white)),
+                          child: Text('Stay calm', style: body(11.5, color: Colors.white)),
                         ),
                       const SizedBox(height: 6),
                       Text(e.value, style: body(11, w: FontWeight.w700, color: style == e.key ? C.accentSoft : C.chip)),

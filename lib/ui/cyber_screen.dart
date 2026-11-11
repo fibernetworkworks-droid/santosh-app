@@ -527,7 +527,7 @@ class CyberDomainTile extends StatelessWidget {
             const SizedBox(width: 6),
             Pill(d['verified'] == true ? 'Yours (verified)' : 'Not verified'),
           ]),
-          if (tls['days_left'] != null) Text('SSL: ${tls['days_left']} din bache (${_s(tls['not_after'])})', style: const TextStyle(fontSize: 12, color: C.muted)),
+          if (tls['days_left'] != null) Text('SSL: ${tls['days_left']} days left (${_s(tls['not_after'])})', style: const TextStyle(fontSize: 12, color: C.muted)),
           _flags(_list(d['flags'])),
           if (d['verified'] != true) ...[
             const SizedBox(height: 6),
@@ -608,7 +608,7 @@ class _CyberIncidentPageState extends State<CyberIncidentPage> {
                   Glass(
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Text(_s(i['title']), style: display(16)),
-                      Text('${_s(i['kind'])} · found out ${_s(i['detected_local'])} · ${open ? 'khula' : 'band'}', style: const TextStyle(color: C.muted, fontSize: 12)),
+                      Text('${_s(i['kind'])} · found out ${_s(i['detected_local'])} · ${open ? 'open' : 'closed'}', style: const TextStyle(color: C.muted, fontSize: 12)),
                       if (_s(i['systems']).isNotEmpty) Text('Systems: ${_s(i['systems'])}', style: const TextStyle(fontSize: 12.5)),
                       const SizedBox(height: 6),
                       for (final (k, label) in const [('what', 'What happened'), ('impact', 'Impact'), ('done', 'What was done'), ('lessons', 'Lessons')])
@@ -779,7 +779,7 @@ class _CyberActionCardState extends State<CyberActionCard> {
           Icon(wipe ? Icons.phonelink_erase_rounded : Icons.gpp_maybe_rounded, color: wipe ? C.bad : C.accent),
           const SizedBox(width: 8),
           Expanded(child: Text('Needs your yes · ${_s(_a['number'])}', style: const TextStyle(fontWeight: FontWeight.w800))),
-          Pill(_s(_a['via']) == 'cloudflare' ? 'Cloudflare se' : 'Console steps'),
+          Pill(_s(_a['via']) == 'cloudflare' ? 'From Cloudflare' : 'Console steps'),
         ]),
         const SizedBox(height: 6),
         Text('${_s(_a['label'])}: ${_s(_a['target'])}', style: const TextStyle(fontWeight: FontWeight.w700)),

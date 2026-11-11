@@ -332,7 +332,7 @@ class _StudioApprovalCardState extends State<StudioApprovalCard> {
       case 'music':
         return [PriceRow(Icons.music_note_rounded, SC.violet, 'Music', 'Google Lyria · ${moodLabel['${v['mood']}'] ?? v['mood'] ?? ''}', sInt(v['inr']))];
       case 'character':
-        return [PriceRow(Icons.person_rounded, SC.violet, 'Character ki photo', '${v['name'] ?? ''}', sInt(v['inr']))];
+        return [PriceRow(Icons.person_rounded, SC.violet, 'Character photo', '${v['name'] ?? ''}', sInt(v['inr']))];
     }
     if (v['video_inr'] == null) {
       return [PriceRow(Icons.videocam_rounded, SC.teal, '${v['shots'] ?? 0} shot · ${qualityShort['${v['quality']}'] ?? ''}',

@@ -48,7 +48,7 @@ Widget _say(String t, {Color color = C.muted}) =>
     t.isEmpty ? const SizedBox.shrink() : Padding(padding: const EdgeInsets.only(top: 6), child: Text(t, style: TextStyle(fontSize: 13, height: 1.35, color: color)));
 
 const _verdictColor = {'ok': C.ok, 'check': C.warn, 'avoid': C.bad};
-const _verdictWord = {'ok': 'theek', 'check': 'check carefully', 'avoid': 'khatra'};
+const _verdictWord = {'ok': 'fine', 'check': 'check carefully', 'avoid': 'risky'};
 
 // ------------------------------------------------------------------------------------------------ A2A: outside agent at her counter
 class A2ATaskCard extends StatefulWidget {
@@ -608,7 +608,7 @@ class _HandoffScreenState extends State<HandoffScreen> {
               TextField(controller: exp, decoration: const InputDecoration(labelText: 'Can view until (YYYY-MM-DD)')),
               Wrap(spacing: 6, children: [
                 for (final w in const ['self', 'mother', 'father', 'husband', 'patni', 'beta', 'beti'])
-                  ChoiceChip(label: Text(w == 'self' ? 'Main' : w), selected: who == w, onSelected: (_) => set(() => who = w)),
+                  ChoiceChip(label: Text(w == 'self' ? 'Me' : w), selected: who == w, onSelected: (_) => set(() => who = w)),
               ]),
             ]),
           ),

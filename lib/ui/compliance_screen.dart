@@ -330,11 +330,11 @@ class _ComplianceScreenState extends State<ComplianceScreen> {
     final lic = _m(fx['licences']);
     final f = await _form(context, 'Business details', const [
       ('entity', 'Type: proprietor / partnership / llp / pvt_ltd / public_ltd / opc / trust'),
-      ('state', 'State (Maharashtra ya 27)'),
+      ('state', 'State (Maharashtra or 27)'),
       ('employees', 'How many people work here'),
       ('contract_workers', 'Contract workers'),
       ('turnover', 'Last year\'s turnover (Rs)'),
-      ('gstin', 'GSTIN (ho to)'),
+      ('gstin', 'GSTIN (if any)'),
       ('gst_scheme', 'GST: monthly / qrmp / composition'),
       ('tan', 'Do you deduct TDS? (yes / no)'),
       ('tcs', 'Do you collect TCS? (yes / no)'),
@@ -547,7 +547,7 @@ class _ComplianceItemPageState extends State<ComplianceItemPage> {
   }
 
   Future<void> _done({required bool word}) async {
-    final f = await _form(context, word ? 'I did it (without a file)' : 'Done', const [('ack', 'ARN / SRN / challan no. (ho to)'), ('note', 'Note')],
+    final f = await _form(context, word ? 'I did it (without a file)' : 'Done', const [('ack', 'ARN / SRN / challan no. (if any)'), ('note', 'Note')],
         ok: 'Done');
     if (f == null) return;
     String? fid;

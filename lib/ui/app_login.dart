@@ -20,8 +20,8 @@ String _s(dynamic v) => v == null ? '' : '$v';
 const _ways = [
   ['email_password', 'Email + password'],
   ['phone_otp', 'Mobile number + OTP'],
-  ['google', 'Google se login'],
-  ['apple', 'Apple se login'],
+  ['google', 'Sign in with Google'],
+  ['apple', 'Sign in with Apple'],
 ];
 
 class _AppLoginPanelState extends State<AppLoginPanel> {

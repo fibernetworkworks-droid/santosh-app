@@ -351,7 +351,7 @@ class _InfluencerScreenState extends State<InfluencerScreen> {
       GradientButton(label: 'Edit rules', icon: Icons.tune_rounded, height: 46, onTap: _busy ? null : () async {
         final f = await _form(context, 'Rules', const [
           ('agency', 'Agency / your name'), ('gstin', 'GSTIN'), ('upi_id', 'Your UPI ID'), ('commission_pct', 'Commission %'),
-          ('pay_days', 'Brand payment din'), ('phone', 'Phone'), ('email', 'Email'), ('address', 'Address'), ('terms', 'Contract terms'),
+          ('pay_days', 'Brand payment days'), ('phone', 'Phone'), ('email', 'Email'), ('address', 'Address'), ('terms', 'Contract terms'),
           ('morning_time', 'Morning note (HH:MM)'),
         ], ok: 'Save', initial: {for (final k in ['agency', 'gstin', 'upi_id', 'phone', 'email', 'address', 'terms', 'morning_time']) k: _s(st[k]),
           'commission_pct': _s(st['commission_pct']), 'pay_days': _s(st['pay_days'])});
@@ -479,7 +479,7 @@ class _InfluencerDealPageState extends State<InfluencerDealPage> {
             }),
           if (p['status'] == 'live')
             GlassButton(label: 'Numbers', icon: Icons.insights_rounded, height: 38, onTap: _busy ? null : () async {
-              final f = await _form(context, 'Platform analytics se', const [('views', 'Views'), ('reach', 'Reach'), ('likes', 'Likes'),
+              final f = await _form(context, 'From platform analytics', const [('views', 'Views'), ('reach', 'Reach'), ('likes', 'Likes'),
                 ('comments', 'Comments'), ('shares', 'Shares'), ('saves', 'Saves'), ('clicks', 'Link clicks')], ok: 'Save');
               if (f == null) return;
               await _run('POST', '/api/influencer/posts/$n/metrics', f);

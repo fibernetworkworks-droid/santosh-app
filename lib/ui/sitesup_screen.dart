@@ -156,7 +156,7 @@ class _SitesupScreenState extends State<SitesupScreen> {
       if (_list(d['cubes_due']).isNotEmpty) ...[
         const Caption('CUBE TEST'),
         for (final c in _list(d['cubes_due']))
-          Text('${_s(c['pour'])} ${_s(c['element'])} · ${_s(c['age'])} din · ${_s(c['due'])}${(c['late_days'] ?? 0) > 0 ? ' (late)' : ''}',
+          Text('${_s(c['pour'])} ${_s(c['element'])} · ${_s(c['age'])} days · ${_s(c['due'])}${(c['late_days'] ?? 0) > 0 ? ' (late)' : ''}',
               style: const TextStyle(fontSize: 13)),
       ],
       const SizedBox(height: 12),
@@ -221,9 +221,9 @@ class _SitesupScreenState extends State<SitesupScreen> {
               ('morning_time', 'Morning note (HH:MM)'),
               ('dpr_time', 'DPR reminder (HH:MM)'),
               ('day_hours', 'Hours in a day'),
-              ('lookahead_days', 'Look-ahead din'),
+              ('lookahead_days', 'Look-ahead days'),
               ('mason', 'Mason rate / day (₹)'),
-              ('helper', 'Beldar rate / din (₹)'),
+              ('helper', 'Labourer rate / day (₹)'),
               ('individual_minus', 'Cube: how much below fck one cube may fall'),
               ('mean_plus', 'Cube: how far the mean of 4 must be above fck'),
             ]);
@@ -458,7 +458,7 @@ class _SitesupSitePageState extends State<SitesupSitePage> {
 
   Future<void> _cube(Map<String, dynamic> p) async {
     final f = await _form(context, '${_s(p['number'])} cube result', const [
-      ('age', 'Din (7 / 28 / 56)'),
+      ('age', 'Days (7 / 28 / 56)'),
       ('sample', 'Sample no (1, 2...)'),
       ('results', 'N/mm2, comma separated (18.2, 17.9, 18.6)'),
       ('lab', 'Lab'),
@@ -568,7 +568,7 @@ class _SitesupSitePageState extends State<SitesupSitePage> {
                 ], actions: [
                   GlassButton(label: 'Today\'s work', height: 38, onTap: () => _progress()),
                   GlassButton(label: 'Add activity', height: 38, onTap: _plan),
-                  if (_s(v['theka_project_id']).isNotEmpty) GlassButton(label: 'BOQ se', height: 38, onTap: () => _do('POST', '$_p/plan', {'from_boq': true})),
+                  if (_s(v['theka_project_id']).isNotEmpty) GlassButton(label: 'From BOQ', height: 38, onTap: () => _do('POST', '$_p/plan', {'from_boq': true})),
                 ]),
                 _sec('Attendance (${_s(_m(v['labour_today'])['total'])} people today)', [
                   for (final c in _list(_m(v['labour_today'])['contractors']))
@@ -593,7 +593,7 @@ class _SitesupSitePageState extends State<SitesupSitePage> {
                         switch (_s(x['type'])) {
                           'incident' => '⚠ ${_s(x['number'])} ${_s(x['label'])}${_s(x['reported']).isEmpty && _s(x['due_at']).isNotEmpty ? ' · notice pending' : ''}',
                           'check' => '☑ ${_s(x['label'])} ${_s(x['score'])}%',
-                          _ => '🗣 ${_s(x['topic'])} · ${_s(x['people'])} log',
+                          _ => '🗣 ${_s(x['topic'])} · ${_s(x['people'])} people',
                         },
                         style: const TextStyle(fontSize: 13)),
                 ], actions: [
@@ -885,7 +885,7 @@ class _SitesupReportCardState extends State<SitesupReportCard> {
           Wrap(spacing: 8, runSpacing: 8, children: [
             GradientButton(label: 'Yes, let it go', height: 42, onTap: _busy ? null : () => _post('/api/sitesup/reports/$id/decide', {'yes': true, 'hash': _s(x['hash'])})),
             GlassButton(
-                label: 'Business WhatsApp se',
+                label: 'From business WhatsApp',
                 height: 42,
                 onTap: _busy ? null : () => _post('/api/sitesup/reports/$id/decide', {'yes': true, 'hash': _s(x['hash']), 'via': 'business'})),
             GlassButton(label: 'No', height: 42, onTap: _busy ? null : () => _post('/api/sitesup/reports/$id/decide', {'yes': false, 'hash': _s(x['hash'])})),

@@ -164,7 +164,7 @@ class _DocwriterScreenState extends State<DocwriterScreen> {
     final name = await _ask(context, 'Task name', hint: 'For example: How to place a new order');
     if (name == null || !mounted) return;
     final steps = await _ask(context, 'Steps (one per line)',
-        hint: 'goto /login\nfill "Email" = demo@shop.in\nclick "Orders"\nscreenshot "Orders ki list"', lines: true);
+        hint: 'goto /login\nfill "Email" = demo@shop.in\nclick "Orders"\nscreenshot "Orders list"', lines: true);
     if (steps == null) return;
     await _run(() => widget.app.api!.call('POST', '/api/docwriter/products/${p['id']}/flows',
         body: {'name': name, 'steps': steps.split('\n').where((l) => l.trim().isNotEmpty).toList()}, timeout: const Duration(minutes: 4)));

@@ -430,7 +430,7 @@ class _CallCentreScreenState extends State<CallCentreScreen> {
       const SizedBox(height: 6),
       Wrap(spacing: 6, children: [
         const Text('When closed:', style: TextStyle(fontSize: 13)),
-        ChoiceChip(label: const Text('AI message le'), selected: st['after_hours'] == 'message', onSelected: (_) => _settings({'after_hours': 'message'})),
+        ChoiceChip(label: const Text('AI takes a message'), selected: st['after_hours'] == 'message', onSelected: (_) => _settings({'after_hours': 'message'})),
         ChoiceChip(label: const Text('Only "we are closed"'), selected: st['after_hours'] == 'closed', onSelected: (_) => _settings({'after_hours': 'closed'})),
       ]),
       const SizedBox(height: 12),
@@ -496,7 +496,7 @@ class _CallCentreScreenState extends State<CallCentreScreen> {
             onPressed: _busy
                 ? null
                 : () async {
-                    final f = await _form(context, 'Cost', const [('rate', '₹ per minute (bill se)'), ('max', 'Max minutes per call')],
+                    final f = await _form(context, 'Cost', const [('rate', '₹ per minute (from the bill)'), ('max', 'Max minutes per call')],
                         initial: {'rate': _s(st['rate_inr_per_min']), 'max': _s(st['max_minutes'])});
                     if (f != null) {
                       await _settings({

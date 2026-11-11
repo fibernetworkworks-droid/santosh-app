@@ -167,7 +167,7 @@ class _MotiondeskScreenState extends State<MotiondeskScreen> {
       ('brief', 'Brief (client\'s words: what, for whom, where it will run)'),
       ('engine', 'Engine: motion / blender3d / brand / photo'),
       ('kind', 'Motion type: explainer / logo / offer / recipe / custom'),
-      ('deliverables', 'Platforms (comma se): insta_reel, youtube, square ...'),
+      ('deliverables', 'Platforms (comma separated): insta_reel, youtube, square ...'),
       ('deadline', 'Deadline (DD-MM-YYYY)'),
       ('rate', 'Your price (₹, blank = later)'),
     ], ok: 'Make');
@@ -276,7 +276,7 @@ class _MotiondeskScreenState extends State<MotiondeskScreen> {
                       ('kind', 'What: font / music / sfx / stock_video / stock_image / template / 3d_model'),
                       ('source', 'From where: google_fonts / adobe_fonts / envato / artlist / epidemic / pixabay / own / client'),
                       ('licence_ref', 'Licence ID / invoice no.'),
-                      ('credit', 'Credit line (CC BY ho to)'),
+                      ('credit', 'Credit line (if CC BY)'),
                       ('valid_until', 'Licence valid until (DD-MM-YYYY)'),
                     ], ok: 'Save');
                     if (f == null) return;
@@ -504,7 +504,7 @@ class _MotiondeskJobPageState extends State<MotiondeskJobPage> {
             _btn('Advance bill card', Icons.request_quote_rounded, 'invoice', {'bill': 'advance'}),
             _btn('Final bill card', Icons.receipt_long_rounded, 'invoice', {'bill': 'final'}),
             GlassButton(
-                label: 'Client ko message',
+                label: 'Message to client',
                 icon: Icons.chat_rounded,
                 height: 40,
                 onTap: _busy

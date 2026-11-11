@@ -393,7 +393,7 @@ class _ShaadiWeddingPageState extends State<ShaadiWeddingPage> {
           padding: const EdgeInsets.all(10),
           child: Row(children: [
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('${_s(g['name'])} · ${_s(g['side'])} · ${_s(g['heads'])} log', style: const TextStyle(fontWeight: FontWeight.w700)),
+              Text('${_s(g['name'])} · ${_s(g['side'])} · ${_s(g['heads'])} people', style: const TextStyle(fontWeight: FontWeight.w700)),
               Text(_m(g['rsvp']).entries.map((e) => '${e.key}: ${e.value}').join(', '), style: const TextStyle(fontSize: 12, color: C.muted)),
             ])),
             PopupMenuButton<String>(
@@ -445,7 +445,7 @@ class _ShaadiWeddingPageState extends State<ShaadiWeddingPage> {
       Text(_s(r['say']), style: const TextStyle(fontSize: 12.5)),
       for (final x in _list(r['waiting']))
         Glass(margin: const EdgeInsets.only(top: 6), padding: const EdgeInsets.all(10), child: Row(children: [
-          Expanded(child: Text('${_s(x['name'])} · ${_s(x['heads'])} log · ${_s(x['arrive'])} → ${_s(x['depart'])}')),
+          Expanded(child: Text('${_s(x['name'])} · ${_s(x['heads'])} people · ${_s(x['arrive'])} → ${_s(x['depart'])}')),
           GlassButton(label: 'Assign room', height: 36, onTap: _busy ? null : () async {
             final f = await _form(context, 'Which room?', const [('room', 'Room label (e.g. D-1)')]);
             if (f != null) await _run('POST', '$_base/rooms/assign', {'guest': _s(x['id']), 'room': f['room']});
@@ -717,7 +717,7 @@ class _ShaadiCardCardState extends State<ShaadiCardCard> {
       'vendor_pay' => 'Payment: ${_s(sh['vendor'])} · ${_s(sh['item'])} ${_rs(sh['amount'])}',
       'spend' => 'Expense: ${_s(sh['what'])} · ${_rs(sh['amount'])}',
       'client_quote' => 'Client quote: ${_s(sh['client'])} · ${_rs(sh['total'])}',
-      'client_pay' => 'Client se: ${_s(sh['stage'])} ${_rs(sh['amount'])}',
+      'client_pay' => 'From client: ${_s(sh['stage'])} ${_rs(sh['amount'])}',
       _ => 'Message: to ${_s(sh['count'])} people',
     };
   }

@@ -358,7 +358,7 @@ Future<void> showTeleScript(BuildContext context, Santosh app, Map<String, dynam
               const SizedBox(height: 12),
             ],
             part('5. Next step', _s(s['next_step'])),
-            part('6. Ant', _s(s['close'])),
+            part('6. Close', _s(s['close'])),
             for (final n in ((s['notes'] as List?) ?? const [])) Text('• $n', style: const TextStyle(color: C.faint, fontSize: 12.5)),
           ]);
         },

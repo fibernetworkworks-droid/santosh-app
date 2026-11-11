@@ -287,9 +287,9 @@ class _EmailScreenState extends State<EmailScreen> {
       if (a['archive'] == true) 'archive',
       if (a['star'] == true) 'star',
       if (a['mark_read'] == true) 'marked as read',
-      if (a['mute'] == true) 'shant',
+      if (a['mute'] == true) 'quiet',
       if (a['notify'] == true) 'news',
-      if (a['forward_to'] != null) '${a['forward_to']} ko draft',
+      if (a['forward_to'] != null) 'draft to ${a['forward_to']}',
     ];
     return '${parts.join(' + ')} → ${acts.join(', ')}';
   }

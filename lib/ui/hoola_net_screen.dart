@@ -830,7 +830,7 @@ class _HoolaThreadScreenState extends State<HoolaThreadScreen> {
                 if (_t['verified'] == true) const Padding(padding: EdgeInsets.only(left: 4), child: Icon(Icons.verified_rounded, size: 16, color: C.ok)),
               ]),
               Text(
-                [if (owner.isNotEmpty) '$owner ka avatar', if ((_t['handle'] ?? '') != '') '@${_t['handle']}'].join(' · '),
+                [if (owner.isNotEmpty) '$owner\'s avatar', if ((_t['handle'] ?? '') != '') '@${_t['handle']}'].join(' · '),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(color: C.muted, fontSize: 11.5),

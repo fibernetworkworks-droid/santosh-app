@@ -191,7 +191,7 @@ class _RentdeskScreenState extends State<RentdeskScreen> {
       ('city', 'City'),
       ('upi_id', 'UPI ID (blank = the Employee\'s)'),
       ('pan', 'PAN (goes to the ID Locker)'),
-      ('gstin', 'GSTIN (ho to)'),
+      ('gstin', 'GSTIN (if any)'),
       ('remind_before', 'Reminder draft how many days before due'),
       ('grace_days', 'Late draft how many days after due'),
       ('minor_repair_limit', 'Small repairs paid by the tenant (up to Rs)'),
@@ -225,14 +225,14 @@ class _RentdeskScreenState extends State<RentdeskScreen> {
         Glass(
           margin: const EdgeInsets.only(bottom: 6),
           padding: const EdgeInsets.all(10),
-          child: Text('${_s(o['tenancy'])} ${_s(o['who'])} · ${_s(o['what'])} · ₹${_s(o['left'])} · ${_s(o['days'])} din',
+          child: Text('${_s(o['tenancy'])} ${_s(o['who'])} · ${_s(o['what'])} · ₹${_s(o['left'])} · ${_s(o['days'])} days',
               style: const TextStyle(fontSize: 13, color: C.warn)),
         ),
       if (msgs.isNotEmpty) const Caption('MESSAGE DRAFTS (SENT ONLY ON YOUR TAP)'),
       for (final m in msgs.take(10))
         Padding(padding: const EdgeInsets.only(bottom: 8), child: RentdeskMessageCard(app: widget.app, data: {'message': m}, onDone: _load)),
       for (final r in _list(d['renewals']))
-        Text('Renewal: ${_s(r['tenancy'])} ${_s(r['who'])} · ${_s(r['end'])} (${_s(r['days_left'])} din)',
+        Text('Renewal: ${_s(r['tenancy'])} ${_s(r['who'])} · ${_s(r['end'])} (${_s(r['days_left'])} days)',
             style: const TextStyle(fontSize: 12.5, color: C.muted)),
       for (final p in _list(d['pending']))
         Text('Missing: ${_s(p['tenancy'])} ${_s(p['who'])} · ${_strs(p['missing']).join(', ')}', style: const TextStyle(fontSize: 12.5, color: C.warn)),
@@ -278,7 +278,7 @@ class _RentdeskScreenState extends State<RentdeskScreen> {
                       child: Text('${_s(t['number'])} · ${_s(t['tenant_name'])}', style: const TextStyle(fontWeight: FontWeight.w800))),
                   Pill(_s(t['status_label'])),
                 ]),
-                Text('${_s(t['unit_label'])} · ${_s(t['rent_text'])}/month · ${_s(t['start'])} se ${_s(t['end'])}',
+                Text('${_s(t['unit_label'])} · ${_s(t['rent_text'])}/month · ${_s(t['start'])} to ${_s(t['end'])}',
                     style: const TextStyle(fontSize: 12.5, color: C.muted)),
                 if (_s(t['due_now_text']).isNotEmpty && t['due_now'] != 0)
                   Text('Due ${_s(t['due_now_text'])}', style: const TextStyle(fontSize: 12.5, color: C.warn)),
@@ -414,7 +414,7 @@ class _RepairTile extends StatelessWidget {
         Wrap(spacing: 8, runSpacing: 6, children: [
           if (st == 'open' || st == 'assigned') GlassButton(label: 'Vendor / quote', height: 38, onTap: () => _assign(context)),
           if (_s(r['vendor_wa']).isNotEmpty)
-            GlassButton(label: 'Vendor ko WhatsApp', height: 38, icon: Icons.chat_rounded, onTap: () => Native.openExternal(url: _s(r['vendor_wa']))),
+            GlassButton(label: 'WhatsApp the vendor', height: 38, icon: Icons.chat_rounded, onTap: () => Native.openExternal(url: _s(r['vendor_wa']))),
           if (st == 'approved' || ((r['quote'] == null) && st != 'done'))
             GlassButton(label: 'Job done', height: 38, icon: Icons.check_rounded, onTap: () async {
               await _call(context, app, 'POST', '/api/rentdesk/requests/${_s(r['id'])}/done', {});
@@ -650,7 +650,7 @@ class _RentdeskTenancyPageState extends State<RentdeskTenancyPage> {
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Text('${_s(t['unit_label'])} · ${_s(t['kind_label'])}', style: const TextStyle(fontWeight: FontWeight.w800)),
                     _line('Status', _s(t['status_label'])),
-                    _line('Time', '${_s(t['start'])} se ${_s(t['end'])} (${_s(t['months'])} months)'),
+                    _line('Time', '${_s(t['start'])} to ${_s(t['end'])} (${_s(t['months'])} months)'),
                     _line('Rent', '${_s(t['rent_text'])}/month'),
                     _line('Deposit', '${_s(t['deposit_text'])} (held: ₹${_s(t['deposit_held'])})'),
                     _line('Still pending', _s(t['due_now_text']), color: C.warn),
@@ -876,7 +876,7 @@ class _RentdeskMessageCardState extends State<RentdeskMessageCard> {
         if (st == 'draft')
           Wrap(spacing: 8, runSpacing: 6, children: [
             GradientButton(label: 'From my WhatsApp', icon: Icons.send_rounded, height: 40, onTap: _busy ? null : () => _send('self')),
-            GlassButton(label: 'Business number se', height: 40, onTap: _busy ? null : () => _send('business')),
+            GlassButton(label: 'From the business number', height: 40, onTap: _busy ? null : () => _send('business')),
             GlassButton(label: 'Change', height: 40, onTap: _busy ? null : _edit),
             GlassButton(
                 label: 'Remove',

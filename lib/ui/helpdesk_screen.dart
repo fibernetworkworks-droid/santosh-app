@@ -192,7 +192,7 @@ class _HelpdeskScreenState extends State<HelpdeskScreen> {
       ('model', 'Model'),
       ('serial', 'Serial no'),
       ('user', 'Who runs it'),
-      ('os', 'Windows version (PC ho to)'),
+      ('os', 'Windows version (if a PC)'),
       ('bought', 'When bought (dd-mm-yyyy)'),
       ('warranty_until', 'Warranty valid until'),
       ('amc_until', 'AMC valid until'),
@@ -284,7 +284,7 @@ class _HelpdeskScreenState extends State<HelpdeskScreen> {
             child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
               const Text('Copy the text and paste it here. Do not open the link; Hoola does not open it either.', style: TextStyle(fontSize: 12, color: C.muted)),
               TextField(controller: sender, decoration: const InputDecoration(labelText: 'Sender (email / number)')),
-              TextField(controller: text, maxLines: 5, decoration: const InputDecoration(labelText: 'Mail / message ka text')),
+              TextField(controller: text, maxLines: 5, decoration: const InputDecoration(labelText: 'Mail / message text')),
               const SizedBox(height: 6),
               for (final e in labels.entries)
                 CheckboxListTile(
@@ -549,7 +549,7 @@ class _HelpdeskTicketPageState extends State<HelpdeskTicketPage> {
                           onTap: _busy
                               ? null
                               : () async {
-                                  final f = await _form(context, 'Detail', const [('error', 'Error ka text'), ('since', 'Since when'), ('location', 'Where'), ('tried', 'What was tried')]);
+                                  final f = await _form(context, 'Detail', const [('error', 'Error text'), ('since', 'Since when'), ('location', 'Where'), ('tried', 'What was tried')]);
                                   if (f == null || f.isEmpty) return;
                                   setState(() => _busy = true);
                                   await _call(context, widget.app, 'PATCH', '/api/helpdesk/tickets/${widget.id}', f);

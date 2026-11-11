@@ -119,7 +119,7 @@ class _CustomsScreenState extends State<CustomsScreen> {
       ('invoice_value', 'Invoice value (in that currency)'),
       ('mode', 'Mode: sea / air / courier / land'),
       ('port', 'Port / air cargo / ICD'),
-      ('bl_no', 'BL / AWB number (ho to)'),
+      ('bl_no', 'BL / AWB number (if any)'),
       ('eta', 'ETA (dd-mm-yyyy)'),
     ], ok: 'Make');
     if (f == null || (f['supplier'] ?? '').isEmpty) return;
@@ -378,8 +378,8 @@ class _CustomsShipmentPageState extends State<CustomsShipmentPage> {
       ('bcd', 'BCD %'),
       ('sws', 'SWS % (blank = 10% of BCD)'),
       ('igst', 'IGST %'),
-      ('cess', 'Compensation cess % (ho to)'),
-      ('aidc', 'AIDC % (ho to)'),
+      ('cess', 'Compensation cess % (if any)'),
+      ('aidc', 'AIDC % (if any)'),
     ], ok: 'Save');
     if (f == null || f.isEmpty) return;
     await _run('POST', '$_p/lines', {'no': ln['no'], for (final e in f.entries) e.key: _n(e.value)});

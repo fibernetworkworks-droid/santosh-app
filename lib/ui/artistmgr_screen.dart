@@ -459,7 +459,7 @@ class _ArtistmgrGigPageState extends State<ArtistmgrGigPage> {
             if (st == 'hold' || st == 'confirmed') GlassButton(label: 'Contract (card)', height: 40, onTap: () => _act('contract')),
             if (st == 'confirmed' || st == 'done') ...[
               GlassButton(label: 'Invoice (card)', height: 40, onTap: () => _act('invoice')),
-              GlassButton(label: 'Ask for money (card)', height: 40, onTap: () => _ask('pay', 'Which payment?', const [('stage', 'advance / balance'), ('amount', 'Ya amount (₹)')], nums: {'amount'})),
+              GlassButton(label: 'Ask for money (card)', height: 40, onTap: () => _ask('pay', 'Which payment?', const [('stage', 'advance / balance'), ('amount', 'Or amount (₹)')], nums: {'amount'})),
               GlassButton(label: 'Money received', height: 40, onTap: () => _ask('paid', 'Money received', const [('amount', 'How much (₹)'), ('mode', 'upi / cash / bank / cheque'), ('ref', 'UTR / ref')], nums: {'amount'})),
               GlassButton(label: 'TDS deducted', height: 40, onTap: () => _ask('tds', 'Promoter deducted TDS', const [('amount', 'How much (₹)')], nums: {'amount'})),
               GlassButton(label: 'Expense', height: 40, onTap: () => _ask('expense', 'Expense', const [('what', 'What'), ('amount', 'How much (₹)'), ('paid_by', 'manager / artist / promoter')], nums: {'amount'})),
@@ -565,7 +565,7 @@ class _ArtistmgrArtistPageState extends State<ArtistmgrArtistPage> {
                 await _load();
               }),
             GlassButton(label: 'Close the day', icon: Icons.event_busy_rounded, height: 40, onTap: () async {
-              final f = await _form(context, 'When is the artist not free?', const [('from', 'Se (YYYY-MM-DD)'), ('to', 'Until (YYYY-MM-DD)'), ('note', 'Why')]);
+              final f = await _form(context, 'When is the artist not free?', const [('from', 'From (YYYY-MM-DD)'), ('to', 'Until (YYYY-MM-DD)'), ('note', 'Why')]);
               if (f != null) await _post('/api/artistmgr/artists/${widget.id}/block', f);
             }),
             GlassButton(label: 'Payout statement (card)', icon: Icons.payments_rounded, height: 40,

@@ -233,7 +233,7 @@ class TravelSettingsPanel extends StatelessWidget {
     final f = await _form(context, 'Amadeus partner key (only to see prices)', const [
       ('key', 'API key'),
       ('secret', 'API secret'),
-      ('env', 'test ya prod'),
+      ('env', 'test or prod'),
     ], ok: 'Add', secret: const {'key', 'secret'});
     if (f == null || !context.mounted) return;
     await _call(context, app, 'PUT', '/api/travel/partner', {'provider': 'amadeus', ...f});
@@ -384,7 +384,7 @@ class _TravelTripPageState extends State<TravelTripPage> {
               child: ListView(padding: const EdgeInsets.fromLTRB(12, 8, 12, 40), children: [
                 _section('TRIP', [
                   Text(_s(t['title']), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
-                  _line('Dates', '${_s(t['start_date'])} se ${_s(t['end_date'])} (${_s(t['days'])} din)'),
+                  _line('Dates', '${_s(t['start_date'])} to ${_s(t['end_date'])} (${_s(t['days'])} days)'),
                   _line('Budget', _s(t['budget'])),
                   _line('Preferences', _s(t['prefs'])),
                   _line('Status', _s(t['status_label'])),
@@ -399,9 +399,9 @@ class _TravelTripPageState extends State<TravelTripPage> {
                   const SizedBox(height: 6),
                   GlassButton(label: 'Add traveller', icon: Icons.person_add_alt_rounded, onTap: _addTraveller),
                 ]),
-                _section('PLAN (DIN-BA-DIN)', [
+                _section('PLAN (DAY BY DAY)', [
                   for (final d in _list(_m(t['itinerary'])['days'])) ...[
-                    Text('Din ${_s(d['day'])} ${_s(d['date'])}: ${_s(d['title'])}', style: const TextStyle(fontWeight: FontWeight.w700)),
+                    Text('Day ${_s(d['day'])} ${_s(d['date'])}: ${_s(d['title'])}', style: const TextStyle(fontWeight: FontWeight.w700)),
                     for (final it in _list(d['items']))
                       Row(children: [
                         Expanded(

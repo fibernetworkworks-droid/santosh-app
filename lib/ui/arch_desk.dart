@@ -453,7 +453,7 @@ class _ArchDesignScreenState extends State<ArchDesignScreen> {
     if (scRows.isNotEmpty || scBreaks.isNotEmpty) {
       out.add(_section('Growth scenarios (calculated by code)', [
         for (final r in scRows)
-          _line('${_s(r['x'])}x: ${_s(r['dau'])} log/din · peak ${_s(r['peak_rps'])} req/s · writes ${_s(r['write_rps'])}/s · '
+          _line('${_s(r['x'])}x: ${_s(r['dau'])} users/day · peak ${_s(r['peak_rps'])} req/s · writes ${_s(r['write_rps'])}/s · '
               '${_s(r['servers'])} servers · storage ${_bytes(r['storage_bytes'])} · egress ${_bytes(r['egress_bps'])}/s', body),
         for (final b in scBreaks)
           _line('Breaks first at ${_s(b['at'])}: ${_s(b['what'])}${_s(b['why']).isNotEmpty ? ' - ${_s(b['why'])}' : ''}',

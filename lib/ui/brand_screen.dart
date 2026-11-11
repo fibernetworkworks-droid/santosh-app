@@ -789,7 +789,7 @@ class _FestTab extends StatelessWidget {
                 Expanded(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Text(_s(f['name']), style: const TextStyle(fontWeight: FontWeight.w700)),
-                    Text('${f['date']} · ${f['days_left']} din', style: const TextStyle(color: C.muted, fontSize: 12.5)),
+                    Text('${f['date']} · ${f['days_left']} days', style: const TextStyle(color: C.muted, fontSize: 12.5)),
                   ]),
                 ),
                 f['made'] == true
@@ -806,7 +806,7 @@ Future<void> brandFestival(BuildContext context, Santosh app, Map<String, dynami
   final ok = await showDialog<bool>(
     context: context,
     builder: (d) => AlertDialog(
-      title: Text('${f['name']} ka poster'),
+      title: Text('${f['name']} poster'),
       content: TextField(controller: c, minLines: 2, maxLines: 4, decoration: const InputDecoration(hintText: 'Any offer or message? (leave blank for greetings only)')),
       actions: [FilledButton(onPressed: () => Navigator.pop(d, true), child: const Text('Make proof'))],
     ),
