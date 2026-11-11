@@ -1253,7 +1253,17 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
   let GS_OPEN = '';            // v0.386 the Studio Project board open in the Game Desk ('' = the desk home)
   let GS_ROLE = '';            // v0.420 a role page open: 'world' | 'physics' ('' = none)
   let GS_ROLE_SID = '';        // ... for this Studio project ('' = her own, no project)
+  // v0.785 inside Hoola Game Dev (gameEmbed) a page's own error path must NOT draw the whole Game Desk home into a tab
+  // (its New game form, other projects' boards, every game's actions): it draws a calm panel with Try again instead.
+  let EMBED_ON = false, EMBED_LAST = null;
+  function embedFallback(el) {
+    clearTimeout(GTIMER);
+    el.innerHTML = '<div class="tile gl gdv-embedfail"><p>This page could not load just now. The reason is in the message at the bottom of the screen.</p>'
+      + '<div class="acts"><button class="btn soft" type="button" data-embed-retry>Try again</button></div></div>';
+    el.querySelector('[data-embed-retry]').addEventListener('click', () => { if (EMBED_LAST) gameEmbed(el, EMBED_LAST[0], EMBED_LAST[1]); });
+  }
   async function game(el) {
+    if (EMBED_ON) return embedFallback(el);
     clearTimeout(GTIMER);
     if (GS_ROLE) return ({runtime: gsRuntime, liveops: gsLiveops, big: gsBig, arena: gsArena, prov: gsProv, world: gsWorld, physics: gsPhysics, audio: gsAudio, haptics: gsHaptics, net: gsNet, xr: gsXr, sim: gsSim, twin: gsTwin, vfx: gsVfx}[GS_ROLE] || gsWorld)(el);
     if (GS_OPEN) return gsBoard(el, GS_OPEN);
@@ -1707,7 +1717,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
   // ---------------------------------------------------------------- v0.420 Game Desk roles: Worlds + Physics
   const WST = {draft: ['warn', 'Waiting for your OK'], approved: ['ok', 'In the game'], rejected: ['', 'Not used'], failed: ['bad', 'Failed its checks'],
                testing: ['v', 'Lab running']};
-  function roleBack(el) { GS_ROLE = ''; if (GS_ROLE_SID) { GS_OPEN = GS_ROLE_SID; gsBoard(el, GS_ROLE_SID); } else game(el); }
+  function roleBack(el) { if (EMBED_ON) return embedFallback(el); GS_ROLE = ''; if (GS_ROLE_SID) { GS_OPEN = GS_ROLE_SID; gsBoard(el, GS_ROLE_SID); } else game(el); }
   function checkList(ch) {
     return `${(ch.errors || []).map(e => `<div class="badc em-small">✕ ${esc(e)}</div>`).join('')}${(ch.warnings || []).map(w => `<div class="muted em-small">! ${esc(w)}</div>`).join('')}
       ${(ch.passed || []).map(x => `<div class="em-small">✓ ${esc(x)}</div>`).join('')}`;
@@ -2937,6 +2947,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
     haptics: gsHaptics, net: gsNet, xr: gsXr, sim: gsSim, twin: gsTwin, vfx: gsVfx, arena: gsArena, big: gsBig};
   function gameEmbed(el, page, sid) {
     clearTimeout(GTIMER);
+    EMBED_ON = true; EMBED_LAST = [page, sid];
     GS_BIBLE = false; GS_ASSETS = false; GS_REL = false; GS_QA = false; GS_SCN = false; GS_ROLE = '';
     GS_OPEN = String(sid || ''); GS_ROLE_SID = String(sid || '');
     if (EMBED_PROJECT[page]) {
