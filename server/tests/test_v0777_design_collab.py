@@ -314,7 +314,7 @@ def test_the_sweep_is_a_guarded_worker_slot(design_env):
     from app import worker
     from app.design import assets
     src = Path(worker.__file__).read_text(encoding="utf-8")
-    assert "api_box_jobs, design_asset_jobs," in src                                                # it runs through _slot like the rest
+    assert re.search(r"api_box_jobs,[^\n]*\bdesign_asset_jobs,", src)                                # it runs through _slot like the rest (other slots may sit beside it)
     calls = []
     design_env.setattr(assets, "sweep", lambda days: calls.append(days) or {"checked": 0, "deleted": 0, "bytes": 0})
     design_env.setattr(worker, "_design_gc_last", 0.0)
