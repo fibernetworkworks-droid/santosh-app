@@ -11,7 +11,7 @@ from typing import Any, Callable
 
 import pikepdf
 
-from ..dockit import convert, core, optimize, organize
+from ..dockit import convert, core, edit, optimize, organize, stamp
 from ..dockit.core import DocError
 
 
@@ -84,6 +84,51 @@ def word_file() -> bytes:
     b = io.BytesIO()
     doc.save(b)
     return b.getvalue()
+
+
+def form_pdf() -> bytes:
+    """A fillable form (one text box, one tick box), filled in."""
+    from reportlab.pdfgen import canvas
+    b = io.BytesIO()
+    c = canvas.Canvas(b)
+    c.drawString(72, 760, "Name:")
+    c.acroForm.textfield(name="name", x=120, y=745, width=200, height=20, value="Ramesh Kumar")
+    c.acroForm.checkbox(name="agree", x=120, y=700, checked=True)
+    c.showPage()
+    c.save()
+    return b.getvalue()
+
+
+def risky_pdf() -> bytes:
+    """JavaScript that runs on opening + a file attached inside."""
+    with pikepdf.open(io.BytesIO(text_pdf(2))) as p:
+        js = pikepdf.Dictionary(S=pikepdf.Name.JavaScript, JS=pikepdf.String("app.alert('hi')"))
+        p.Root.OpenAction = p.make_indirect(js)
+        p.attachments["notes.txt"] = pikepdf.AttachedFileSpec(p, b"secret attached notes", mime_type="text/plain")
+        return core.save(p)
+
+
+def logo_png() -> bytes:
+    from PIL import Image
+    b = io.BytesIO()
+    Image.new("RGBA", (300, 120), (0, 160, 0, 255)).save(b, "PNG")
+    return b.getvalue()
+
+
+def ink(data: bytes, page: int, test, scale: float = 0.5) -> tuple[int, int, int, int, int] | None:
+    """Pixels matching test(r, g, b) on a drawn page -> (count, x0, y0, x1, y1) in the picture (top-left origin)."""
+    import pypdfium2 as pdfium
+    doc = pdfium.PdfDocument(data)
+    try:
+        im = doc[page - 1].render(scale=scale).to_pil().convert("RGB")
+    finally:
+        doc.close()
+    px, W, H = im.load(), im.width, im.height
+    pts = [(x, y) for y in range(0, H, 1) for x in range(0, W, 1) if test(*px[x, y])]
+    if not pts:
+        return None
+    xs, ys = [a for a, _ in pts], [b for _, b in pts]
+    return len(pts), min(xs) / W, min(ys) / H, max(xs) / W, max(ys) / H
 
 
 # ---------------------------------------------------------------------------------------------------- scoring
@@ -230,6 +275,111 @@ def cases() -> list[dict[str, Any]]:
         r = convert.office_to_pdf("quote.docx", word_file())
         return n_pages(r) >= 1 and "quotation" in convert.page_texts(r)[0].lower(), "Word -> PDF, text inside"
 
+
+    RED = (lambda r, g, b: r > 170 and g < 90 and b < 90)
+
+    def numbers_rotated():
+        r = organize.rotate(organize.rotate(text_pdf(4), 90, "2"), 270, "3")
+        r = organize.rotate(r, 180, "4")
+        out = stamp.page_numbers(r, text="Page {n} of {p}", position="bottom-right", size=20, color_="red")
+        spots = [ink(out, i, RED) for i in (1, 2, 3, 4)]
+        ok = all(s and s[1] > 0.6 and s[2] > 0.85 for s in spots)        # right side, bottom, on every rotation
+        return ok and "Page 4 of 4" in convert.page_texts(out, "4")[0], "bottom-right on screen at 0 / 90 / 270 / 180"
+
+    def numbers_hindi_bates_skip():
+        h = stamp.page_numbers(text_pdf(5), text="hindi_of", digits="devanagari", skip_first=1)
+        b = stamp.page_numbers(text_pdf(3), bates_prefix="ABC-", start=101)
+        t1, t2 = convert.page_texts(h, "1")[0], convert.page_texts(h, "2")[0]
+        ok = "पृष्ठ" not in t1 and "पृष्ठ १ / ५" in t2 and "ABC-000103" in convert.page_texts(b, "3")[0]
+        return ok, "cover skipped, Hindi digits, Bates ABC-000101.."
+
+    def watermark_text_logo():
+        w = stamp.watermark(text_pdf(2), text="गोपनीय CONFIDENTIAL", opacity=0.3)
+        g = stamp.watermark(text_pdf(2), image=logo_png(), position="bottom-right", rotation=0, opacity=1)
+        spot = ink(g, 1, lambda r, gg, b: gg > 120 and r < 60 and b < 60)
+        ok = "CONFIDENTIAL" in convert.page_texts(w, "1")[0] and spot and spot[1] > 0.5 and spot[2] > 0.5
+        return bool(ok), f"text in Hindi + English; logo at bottom-right {spot[1:3] if spot else None}"
+
+    def watermark_under():
+        w = stamp.watermark(text_pdf(1), text="DRAFT", layer_="under", color_="red", opacity=1)
+        with pikepdf.open(io.BytesIO(w)) as p:
+            c = p.pages[0].obj.Contents
+            body = b"".join(x.read_bytes() for x in c) if isinstance(c, pikepdf.Array) else c.read_bytes()
+        under = 0 <= body.find(b" Do") < body.find(b"BT")          # the watermark is drawn before the page's own text
+        return under and "DRAFT" in convert.page_texts(w)[0], "drawn before the page's own text (under it)"
+
+    def header_footer():
+        h = stamp.header_footer(text_pdf(3), header={"left": "Hoola Traders"}, footer={"center": "Page {n} of {p}"})
+        t = convert.page_texts(h, "2")[0]
+        return "Hoola Traders" in t and "Page 2 of 3" in t, "header + footer with {n} of {p}"
+
+    def crop_margins_auto():
+        c, _ = edit.crop(text_pdf(2), top=20, bottom=20, left=10, right=10)
+        a, _ = edit.crop(text_pdf(2), auto=True)
+        with pikepdf.open(io.BytesIO(c)) as p, pikepdf.open(io.BytesIO(a)) as q:
+            cb = [float(x) for x in p.pages[0].obj.CropBox]
+            ab = [float(x) for x in q.pages[0].obj.CropBox]
+        w_mm = round((cb[2] - cb[0]) / edit.MM)
+        return w_mm == 190 and (ab[2] - ab[0]) < 400, f"margins -> {w_mm} mm wide; auto-trim -> {round((ab[2]-ab[0])/edit.MM)} mm"
+
+    def add_things():
+        out, notes = edit.add(text_pdf(2), [
+            {"type": "text", "page": 1, "x": 20, "y": 20, "text": "Approved ₹1,200 स्वीकृत", "size": 14},
+            {"type": "image", "page": 2, "x": 100, "y": 200, "w": 50, "file_id": "logo"},
+            {"type": "whiteout", "page": 1, "x": 10, "y": 60, "w": 60, "h": 8},
+            {"type": "note", "page": 1, "text": "check the total"}], {"logo": logo_png()})
+        with pikepdf.open(io.BytesIO(out)) as p:
+            notes_in = len(p.pages[0].obj.get("/Annots", []))
+        spot = ink(out, 2, lambda r, g, b: g > 120 and r < 60 and b < 60)
+        ok = "Approved" in convert.page_texts(out, "1")[0] and spot and notes_in == 1 and notes and "HIDES" in notes[0]
+        return bool(ok), "text + her picture + note added; white box said to be NOT redaction"
+
+    def highlight():
+        out, n = edit.highlight_text(text_pdf(3), "invoice total")
+        spot = ink(out, 1, lambda r, g, b: r > 200 and g > 200 and b < 150)
+        return n == 90 and bool(spot), f"{n} places highlighted"
+
+    def metadata_set_clean():
+        a, m = edit.metadata(text_pdf(1), title="Quote 12", author="Hoola Traders")
+        b, m2 = edit.metadata(a, clean=True)
+        return m["after"].get("title") == "Quote 12" and not m2["after"], "set, then cleaned to nothing"
+
+    def bookmarks():
+        b, n = edit.bookmarks(text_pdf(5), [{"title": "Start", "page": 1}, {"title": "Totals", "page": 5}])
+        parts = organize.split(b, "bookmarks")
+        return n == 2 and [len(p["pages"]) for p in parts] == [4, 1], "2 bookmarks; split by them = 4 + 1"
+
+    def flatten():
+        f, inf = edit.flatten(form_pdf())
+        with pikepdf.open(io.BytesIO(f)) as p:
+            still = "/AcroForm" in p.Root
+        return inf["form_fields"] == 2 and not still and "Ramesh" in convert.page_texts(f)[0], "2 fields -> page"
+
+    def nup_booklet_fit():
+        n4 = n_pages(edit.nup(text_pdf(9), 4))
+        bk, pad = edit.booklet(text_pdf(6))
+        ft = edit.fit(text_pdf(2), "letter")
+        with pikepdf.open(io.BytesIO(ft)) as p:
+            box = [round(float(x)) for x in p.pages[0].mediabox]
+        t = convert.page_texts(bk, "1")[0]
+        ok = n4 == 3 and n_pages(bk) == 4 and pad == 2 and "page 1" in t and box == [0, 0, 612, 792]
+        return ok, f"9 pages 4-up = {n4} sheets; booklet 6+{pad} blanks = 4 sides; Letter"
+
+    def grayscale():
+        col = convert.images_to_pdf([("c.png", logo_png())])
+        g, _ = edit.grayscale(col)
+        spot = ink(g, 1, lambda r, gg, b: abs(r - gg) > 25 or abs(gg - b) > 25)
+        return spot is None, "no colour left on the page"
+
+    def sanitize_and_attachments():
+        risky = risky_pdf()
+        files = edit.attachments(risky)
+        clean, removed = edit.sanitize(risky)
+        with pikepdf.open(io.BytesIO(clean)) as p:
+            gone = "/OpenAction" not in p.Root and len(p.attachments) == 0
+        ok = files and files[0]["bytes"] == b"secret attached notes" and gone and any("JavaScript" in r or "opening" in r for r in removed)
+        return bool(ok), f"attachment taken out; removed: {', '.join(removed)[:90]}"
+
     return [
         _case("merge", "merge 2 PDFs + a photo, bookmarks", merge),
         _case("split_every", "split every 5 pages", split_every),
@@ -255,6 +405,21 @@ def cases() -> list[dict[str, Any]]:
         _case("to_text", "PDF -> text, scans named", to_text),
         _case("info", "info: text vs scanned", info),
         _case("office_to_pdf", "Word -> PDF (LibreOffice)", office, convert.office_ready, "LibreOffice not installed"),
+        # D2
+        _case("numbers_rotated", "page numbers on rotated pages", numbers_rotated),
+        _case("numbers_hindi", "Hindi digits, cover skipped, Bates", numbers_hindi_bates_skip),
+        _case("watermark", "watermark text (Hindi) + her logo", watermark_text_logo),
+        _case("watermark_under", "watermark under the page", watermark_under),
+        _case("header_footer", "header + footer", header_footer),
+        _case("crop", "crop margins + auto-trim", crop_margins_auto),
+        _case("add", "add text / picture / note / white box", add_things),
+        _case("highlight", "highlight a phrase everywhere", highlight),
+        _case("metadata", "metadata set + clean", metadata_set_clean),
+        _case("bookmarks", "bookmarks added", bookmarks),
+        _case("flatten", "flatten a filled form", flatten),
+        _case("nup_booklet_fit", "4-up, booklet, fit to Letter", nup_booklet_fit),
+        _case("grayscale", "grayscale", grayscale),
+        _case("sanitize", "sanitize + attachments out", sanitize_and_attachments),
     ]
 
 

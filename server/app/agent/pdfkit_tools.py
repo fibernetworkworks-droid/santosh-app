@@ -14,16 +14,19 @@ import zipfile
 from pathlib import Path
 from typing import Any
 
-from ..dockit import check, convert, core, health, optimize, organize
+from ..dockit import check, convert, core, edit, health, optimize, organize, stamp
 from ..dockit.core import DocError
 from .tools import Ctx, ToolError
 
 ACTIONS = ("guide", "info", "merge", "split", "remove", "extract", "organize", "rotate", "reverse", "interleave",
-           "compress", "repair", "to_pdf", "to_images", "extract_images", "to_text")
+           "compress", "repair", "to_pdf", "to_images", "extract_images", "to_text",
+           # D2 (v0.795): stamps + edit
+           "page_numbers", "watermark", "header_footer", "crop", "add", "highlight", "metadata", "bookmarks",
+           "flatten", "nup", "booklet", "fit", "grayscale", "sanitize", "attachments")
 ZIP_OVER = 10            # more output files than this arrive as one ZIP (plus the ZIP only)
-NOT_YET = ("page numbers, watermark, header / footer, crop, edit / add text (D2); protect with a password, unlock, true "
-           "redaction (D3); searchable PDF / OCR layer, HTML -> PDF, PDF -> Word / Excel / PowerPoint, PDF/A (D4); fill "
-           "forms, sign (D5); compare two PDFs, translate keeping the layout (D6)")
+NOT_YET = ("protect with a password, unlock, true redaction (D3); searchable PDF / OCR layer, HTML -> PDF, PDF -> Word / "
+           "Excel / PowerPoint, PDF/A (D4); fill forms, sign (D5); compare two PDFs, translate keeping the layout (D6); "
+           "changing the PDF's OWN existing words in place (a white box + new text on top is offered, said as such)")
 
 GUIDE = (
     "PDF_KIT GUIDE. Her own PDFs (and pictures / Office files) -> NEW files back in chat. Runs on the server: free, no "
@@ -48,6 +51,25 @@ GUIDE = (
     "/ TXT / CSV -> PDF each).\n"
     "  to_images (pages, format jpg|png|webp, dpi 150 screen / 300 print) | extract_images (the pictures inside, as "
     "they are) | to_text (format txt|md; scanned pages are named - file_read reads those with OCR).\n"
+    "D2 stamps + edit (places are mm or '%' from the TOP-LEFT of what she sees, any page rotation):\n"
+    "  page_numbers (text '{n}' | 'Page {n} of {p}' | 'पृष्ठ {n}' | custom with {n} {p} {r} {rf} {date} {title}; "
+    "position top- / middle- / bottom- left|center|right; start = first number; pages; skip_first / skip_last = cover "
+    "pages without a number; facing=true mirrors left / right for books; digits latin|devanagari; margin "
+    "small|recommended|big; size, color, opacity, bold; bates_prefix='ABC-' = legal Bates numbers ABC-000001).\n"
+    "  watermark (text in Hindi / English, or image_file_id = HER logo; position or mosaic=true; opacity 0.05-1 (0.25 "
+    "default); rotation degrees (45 default); layer over|under; size 0 = fits the page; scale = logo width share; pages).\n"
+    "  header_footer (header {left, center, right}, footer {left, center, right}; placeholders {n} {p} {date} {title}; "
+    "line=true draws a rule; size, color, margin, pages).\n"
+    "  crop (top / right / bottom / left in mm or %; or auto=true = trim the white edges, pad_mm; pages).\n"
+    "  add (items=[{type text|image|rect|ellipse|line|highlight|whiteout|note, page 1 or 'all', x, y, w, h, text, size, "
+    "color, bold, align, fill, stroke, width, opacity, file_id for image}]: her signature / stamp picture, a date, a "
+    "tick, a box, a comment). A whiteout only HIDES (the text stays inside): say so; real removal = redaction (D3).\n"
+    "  highlight (term = a word / phrase, highlighted everywhere it appears; color; match_case).\n"
+    "  metadata (title, author, subject, keywords; clean=true removes all of it) | bookmarks (marks=[{title, page}], "
+    "clear) | flatten (filled forms + comments become part of the page) | nup (per_sheet 2|4|6|8|9|16, sheet "
+    "a4|letter|a3) | booklet (fold-and-staple order; print double-sided, flip on the SHORT edge) | fit (every page onto "
+    "sheet a4|letter|legal, margin_mm) | grayscale (black-and-white printing) | sanitize (scripts, auto-actions, attached "
+    "files, hidden data out; keep_links) | attachments (files embedded inside the PDF, out as her files).\n"
     "Recipes: 'WhatsApp pe nahi ja rahi' = compress (or target_kb 15000 for email). 'Portal 200 KB maangta hai' = "
     "compress target_kb=200. 'Page 3 hata do' = remove pages=3. 'Sirf pehla aur aakhri page' = extract pages='first,last'. "
     "'Har page alag' = split mode=each. 'Ye photos ek PDF mein' = to_pdf page_size=a4 margin=small. 'Word ko PDF' = "
@@ -66,8 +88,11 @@ PDF_KIT_TOOLS = [
         "JPG / PNG, take out the pictures inside, PDF -> text / markdown, info (pages, scanned or text, forms, "
         "signatures). Every result is checked and arrives as her file. Actions: guide (read once) | info | merge | split "
         "| remove | extract | organize | rotate | reverse | interleave | compress | repair | to_pdf | to_images | "
-        "extract_images | to_text. Not yet (say so): page numbers, watermark, password lock / unlock, redaction, OCR "
-        "layer, PDF -> Word / Excel, sign, compare. Never asks for a password."),
+        "extract_images | to_text | page_numbers (Hindi digits, Bates too) | watermark (text or her logo) | "
+        "header_footer | crop (or auto-trim) | add (text / her signature picture / box / note) | highlight (a word "
+        "everywhere) | metadata | bookmarks | flatten | nup | booklet | fit (A4) | grayscale | sanitize | attachments. "
+        "Not yet (say so): password lock / unlock, redaction, OCR layer, PDF -> Word / Excel, sign, compare. Never "
+        "asks for a password."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": list(ACTIONS)},
          "file_id": {"type": "string"},
@@ -83,13 +108,40 @@ PDF_KIT_TOOLS = [
          "target_kb": {"type": "integer", "description": "compress until the file is at most this many KB"},
          "page_size": {"type": "string", "enum": ["fit", *convert.PAGE_SIZES]},
          "orientation": {"type": "string", "enum": ["auto", "portrait", "landscape"]},
-         "margin": {"type": "string", "enum": list(convert.MARGINS)},
+         "margin": {"type": "string", "enum": ["none", "small", "recommended", "big"]},
          "separate": {"type": "boolean", "description": "to_pdf: one PDF per picture instead of one PDF"},
          "format": {"type": "string", "enum": ["jpg", "png", "webp", "txt", "md"]},
          "dpi": {"type": "integer"},
          "bookmarks": {"type": "boolean"}, "back_reversed": {"type": "boolean"},
          "zip": {"type": "boolean", "description": "deliver many results as one ZIP"},
          "filename": {"type": "string", "description": "name for the new file"},
+         "text": {"type": "string", "description": "page_numbers / watermark text"},
+         "position": {"type": "string", "enum": list(stamp.POSITIONS)},
+         "start": {"type": "integer"}, "size": {"type": "number"}, "color": {"type": "string"},
+         "opacity": {"type": "number"}, "bold": {"type": "boolean"},
+         "digits": {"type": "string", "enum": ["latin", "devanagari"]}, "facing": {"type": "boolean"},
+         "skip_first": {"type": "integer"}, "skip_last": {"type": "integer"}, "bates_prefix": {"type": "string"},
+         "image_file_id": {"type": "string", "description": "watermark: her logo picture"},
+         "mosaic": {"type": "boolean"}, "rotation": {"type": "number"},
+         "layer": {"type": "string", "enum": ["over", "under"]}, "scale": {"type": "number"},
+         "header": {"type": "object", "properties": {"left": {"type": "string"}, "center": {"type": "string"},
+                                                     "right": {"type": "string"}}},
+         "footer": {"type": "object", "properties": {"left": {"type": "string"}, "center": {"type": "string"},
+                                                     "right": {"type": "string"}}},
+         "line": {"type": "boolean"},
+         "top": {"type": "string"}, "right": {"type": "string"}, "bottom": {"type": "string"},
+         "left": {"type": "string"}, "auto": {"type": "boolean"}, "pad_mm": {"type": "number"},
+         "items": {"type": "array", "items": {"type": "object", "properties": {
+             "type": {"type": "string", "enum": list(edit.KINDS)}}, "required": ["type"]}},
+         "term": {"type": "string"}, "match_case": {"type": "boolean"},
+         "title": {"type": "string"}, "author": {"type": "string"}, "subject": {"type": "string"},
+         "keywords": {"type": "string"}, "clean": {"type": "boolean"},
+         "marks": {"type": "array", "items": {"type": "object", "properties": {
+             "title": {"type": "string"}, "page": {"type": "integer"}}}},
+         "clear": {"type": "boolean"},
+         "per_sheet": {"type": "integer", "enum": sorted(edit.GRIDS)},
+         "sheet": {"type": "string", "enum": list(edit.SHEETS)},
+         "margin_mm": {"type": "number"}, "keep_links": {"type": "boolean"},
      }, "required": ["action"]}},
 ]
 PDF_KIT_LABELS = {"pdf_kit": "PDF par kaam kar raha hoon"}
@@ -318,7 +370,103 @@ def _run(ctx: Ctx, action: str, a: dict) -> dict[str, Any]:
             out |= {"file_id": view.get("file_id"), "name": view.get("name"), "preview": r["text"][:600]}
         return out
 
+    if action in D2:
+        return _d2(ctx, action, a, data, name, st, n_in, custom)
     raise ToolError(f"action must be one of: {', '.join(ACTIONS)}.")
+
+
+D2 = ("page_numbers", "watermark", "header_footer", "crop", "add", "highlight", "metadata", "bookmarks", "flatten",
+      "nup", "booklet", "fit", "grayscale", "sanitize", "attachments")
+
+
+def _image(ctx: Ctx, fid: str) -> bytes:
+    nm, raw = _get(ctx, fid)
+    if not convert.is_image(raw):
+        raise ToolError(f"{nm} is not a picture (her logo / signature / stamp must be a PNG or JPG).")
+    return raw
+
+
+def _num(a: dict, key: str, default: float) -> float:
+    v = a.get(key)
+    return float(v) if v not in (None, "") else float(default)
+
+
+def _d2(ctx: Ctx, action: str, a: dict, data: bytes, name: str, st: str, n_in: int, custom: str) -> dict[str, Any]:
+    def out_name(tag: str) -> str:
+        return _fname(f"{st} ({tag})", ".pdf", custom)
+    margin = a.get("margin") if a.get("margin") in stamp.MARGIN_PT else None
+    if action == "page_numbers":
+        res = stamp.page_numbers(data, text=a.get("text") or "{n}", position=a.get("position") or "bottom-center",
+                                 start=int(a.get("start") or 1), pages=a.get("pages") or "all",
+                                 margin=margin or "recommended", size=_num(a, "size", 11),
+                                 color_=a.get("color") or "#333333", opacity=_num(a, "opacity", 1),
+                                 bold=bool(a.get("bold")), digits=a.get("digits") or "latin",
+                                 facing=bool(a.get("facing")), skip_first=int(a.get("skip_first") or 0),
+                                 skip_last=int(a.get("skip_last") or 0), bates_prefix=str(a.get("bates_prefix") or ""))
+        return _deliver_pdf(ctx, res, out_name("numbered"), n_in)
+    if action == "watermark":
+        img = _image(ctx, str(a["image_file_id"])) if a.get("image_file_id") else None
+        res = stamp.watermark(data, text=str(a.get("text") or ""), image=img, position=a.get("position") or "center",
+                              mosaic=bool(a.get("mosaic")), size=_num(a, "size", 0),
+                              color_=a.get("color") or "#9e9e9e", opacity=_num(a, "opacity", 0.25),
+                              rotation=_num(a, "rotation", 45), layer_=a.get("layer") or "over",
+                              pages=a.get("pages") or "all", bold=a.get("bold") is not False,
+                              scale=_num(a, "scale", 0.35))
+        return _deliver_pdf(ctx, res, out_name("watermark"), n_in)
+    if action == "header_footer":
+        res = stamp.header_footer(data, header=a.get("header"), footer=a.get("footer"), pages=a.get("pages") or "all",
+                                  size=_num(a, "size", 9), color_=a.get("color") or "#555555",
+                                  margin=margin or "small", line=bool(a.get("line")))
+        return _deliver_pdf(ctx, res, out_name("header footer"), n_in)
+    if action == "crop":
+        res, done = edit.crop(data, top=a.get("top") or 0, right=a.get("right") or 0, bottom=a.get("bottom") or 0,
+                              left=a.get("left") or 0, pages=a.get("pages") or "all", auto=bool(a.get("auto")),
+                              pad_mm=_num(a, "pad_mm", 4))
+        return _deliver_pdf(ctx, res, out_name("cropped"), n_in) | {"pages_cropped": len(done),
+                                                                    "size": done[0]["mm"] + " mm"}
+    if action == "add":
+        items = [it for it in (a.get("items") or []) if isinstance(it, dict)]
+        imgs = {str(it["file_id"]): _image(ctx, str(it["file_id"])) for it in items
+                if str(it.get("type")) == "image" and it.get("file_id")}
+        res, notes = edit.add(data, items, imgs)
+        out = _deliver_pdf(ctx, res, out_name("edited"), n_in) | {"added": len(items)}
+        return out | ({"note": " ".join(notes)} if notes else {})
+    if action == "highlight":
+        res, count = edit.highlight_text(data, str(a.get("term") or a.get("text") or ""), a.get("pages") or "all",
+                                         a.get("color") or "yellow", bool(a.get("match_case")))
+        return _deliver_pdf(ctx, res, out_name("highlighted"), n_in) | {"found": count}
+    if action == "metadata":
+        res, m = edit.metadata(data, title=a.get("title"), author=a.get("author"), subject=a.get("subject"),
+                               keywords=a.get("keywords"), clean=bool(a.get("clean")))
+        return _deliver_pdf(ctx, res, _fname(st, ".pdf", custom), n_in) | m
+    if action == "bookmarks":
+        res, count = edit.bookmarks(data, a.get("marks") or [], bool(a.get("clear")))
+        return _deliver_pdf(ctx, res, out_name("bookmarks"), n_in) | {"bookmarks": count}
+    if action == "flatten":
+        res, inf = edit.flatten(data)
+        return _deliver_pdf(ctx, res, out_name("flattened"), n_in) | inf
+    if action == "nup":
+        k = int(a.get("per_sheet") or 2)
+        res = edit.nup(data, k, a.get("sheet") or "a4", _num(a, "margin_mm", 6))
+        return _deliver_pdf(ctx, res, out_name(f"{k} per sheet"), -(-n_in // k))
+    if action == "booklet":
+        res, pad = edit.booklet(data, a.get("sheet") or "a4")
+        out = _deliver_pdf(ctx, res, out_name("booklet"), (n_in + pad) // 2)
+        return out | {"blank_pages_added": pad, "print": "double-sided, flip on the SHORT edge, then fold and staple"}
+    if action == "fit":
+        res = edit.fit(data, a.get("sheet") or "a4", _num(a, "margin_mm", 0))
+        return _deliver_pdf(ctx, res, out_name(str(a.get("sheet") or "a4").upper()), n_in)
+    if action == "grayscale":
+        res, g = edit.grayscale(data)
+        return _deliver_pdf(ctx, res, out_name("black and white"), n_in) | g
+    if action == "sanitize":
+        res, removed = edit.sanitize(data, a.get("keep_links") is not False)
+        return _deliver_pdf(ctx, res, out_name("clean"), n_in) | {"removed": removed or ["nothing risky was found"]}
+    files = edit.attachments(data)                 # attachments
+    if not files:
+        return {"name": name, "count": 0, "say": "No files are attached inside this PDF."}
+    return _deliver_many(ctx, [(f["name"], f["bytes"]) for f in files], f"{st} attachments", bool(a.get("zip")))
+
 
 
 async def pdf_kit(ctx: Ctx, action: str = "guide", **a: Any):
