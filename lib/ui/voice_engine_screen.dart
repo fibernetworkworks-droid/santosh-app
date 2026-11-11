@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../state.dart';
 import 'glass.dart';
 
+/// v0.816 TEEN AWAAZEIN: plus Grok Voice 3.0, GPT-Live-1 and Phonic 1 (from the server's `engines` list).
 /// v0.274 "Call ki awaaz": which engine speaks her calls - Gemini (the default voice) or Real voice (OpenAI: more
 /// human, breaths and "hmm", costs more). The choice works from the next call; the server falls back to Gemini on
 /// its own (and says why here) when there is no key, the month's budget or her minutes are used up.
@@ -78,6 +79,23 @@ class _VoiceEngineScreenState extends State<VoiceEngineScreen> {
 
   String _num(dynamic x) => (x as num?)?.toStringAsFixed(0) ?? '0';
 
+  List<Map<String, dynamic>> _engines(Map<String, dynamic> v) => [
+        for (final e in (v['engines'] as List? ?? const []))
+          if (e is Map) Map<String, dynamic>.from(e)
+      ];
+
+  static const Map<String, IconData> _icons = {
+    'grok': Icons.bolt_rounded,
+    'gptlive': Icons.hearing_rounded,
+    'phonic': Icons.record_voice_over_rounded,
+  };
+
+  static const Map<String, String> _blurb = {
+    'grok': 'xAI. Ranked near the top for voice quality and answers quickly.',
+    'gptlive': 'OpenAI. Listens while it talks, like a real phone call. Has a Hindi voice.',
+    'phonic': 'Ranked first for voice quality. Voices with an Indian accent.',
+  };
+
   @override
   Widget build(BuildContext context) {
     final v = _v;
@@ -97,6 +115,34 @@ class _VoiceEngineScreenState extends State<VoiceEngineScreen> {
                         ? 'More human-like: "hmm..." while thinking, a light breath after a long sentence, a soft voice. Slightly costlier.'
                         : 'In trial for now - soon for everyone.',
                     enabled: allowed),
+                // v0.816 TEEN AWAAZEIN: three more voices she can pick, each with its price and its own reason
+                for (final e in _engines(v))
+                  _option(
+                      '${e['engine']}',
+                      _icons[e['engine']] ?? Icons.record_voice_over_rounded,
+                      '${e['name']}',
+                      (e['allowed'] == true)
+                          ? '${_blurb[e['engine']] ?? ''} About ₹${(e['inr_per_min'] as num?)?.toStringAsFixed(1) ?? '?'} a minute.'
+                              '${(e['ready'] == true || '${e['why'] ?? ''}'.isEmpty) ? '' : '\n${e['why']}'}'
+                          : 'Not open for your account yet.',
+                      enabled: e['allowed'] == true),
+                for (final e in _engines(v).where((e) => e['engine'] == v['chosen']))
+                  Glass(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.all(14),
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text('${e['name']} - this month', style: const TextStyle(fontWeight: FontWeight.w700)),
+                      const SizedBox(height: 8),
+                      Text('Cost: ₹${(e['month_inr'] as num?)?.toStringAsFixed(2) ?? '0'} / ₹${_num(e['month_budget_inr'])}',
+                          style: const TextStyle(fontSize: 13.5)),
+                      const SizedBox(height: 4),
+                      Text('Your minutes: ${e['my_minutes'] ?? 0} / ${e['my_minutes_cap'] ?? 0}',
+                          style: const TextStyle(fontSize: 13.5)),
+                      const SizedBox(height: 8),
+                      const Text('When the budget or minutes run out, the call automatically uses the Gemini voice.',
+                          style: TextStyle(color: C.muted, fontSize: 12.5)),
+                    ]),
+                  ),
                 if (why.isNotEmpty)
                   Glass(
                     margin: const EdgeInsets.only(bottom: 12),

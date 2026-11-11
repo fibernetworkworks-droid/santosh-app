@@ -110,7 +110,7 @@ def css(t: dict[str, Any]) -> str:
     lines = ["/* Hoola App Engine - the design system. Written by Hoola from the app's look; do not edit by hand.",
              "   Use the names: bg surface ink muted line primary primary-ink accent ok warn bad,",
              "   rounded-card rounded-control shadow-card font-head font-body. */",
-             "@theme {",
+             "@theme static {",              # static: every token exists as a CSS variable even before a class uses it
              "  --color-*: initial;",
              "  --color-transparent: transparent;",
              "  --color-current: currentColor;"]

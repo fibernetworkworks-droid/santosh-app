@@ -2361,3 +2361,99 @@ project, the code written through ONE tool and built in a locked Docker box.
   reload (each change is a fresh ~6 s build, not Vite's dev server), the preview error collector + click-to-source +
   style panel (L9), tests / browser check before done + scans (L11), prerendered HTML for SEO, a custom domain for
   an app, GitHub sync (L14), drafts (L13), growing the vetted list by her tap.
+
+## v0.825.0 TEEN AWAAZEIN (built as 0.816; their 0.816-0.824 took the numbers - REBASE PROTOCOL, all kept) — three more call voices she can pick (owner: "LETS DEPLOY ALL --- USER WILL CHOOSE THE VOICE THEY WANT")
+
+After the deep research (`reports/Human voice in every language.md`) and the price check (Phonic 1 $0.07/min, Grok Voice
+3.0 $0.08/min, GPT-Live-1 $0.05/min voice layer + the brain), the three top-ranked live voices are now choices on the
+phone's Profile > Call voice screen beside Gemini. **Gemini stays the default and is not touched**: main.py reaches the
+new engines only through `voiceengine.pick()`, exactly like the v0.264 OpenAI engine.
+
+- `server/app/voice_more.py` (NEW): `GrokCall`, `GptLiveCall`, `PhonicCall`, each a `voice_openai.OpenAICall`, so
+  everything that is not the wire is inherited (phone protocol = same APK, memory + context, the Haiku brain behind
+  santosh_kaam, hold on her words, OTP / approvals by voice, job news, stall watchdog, turn saver, captions in time,
+  scorecard, resume). Wires written from each vendor's docs, read 11 Nov 2026:
+  - Grok: `wss://api.x.ai/v1/realtime?model=grok-voice-3.0`, OpenAI Realtime event names, xAI session body (voice
+    rex / eve, server_vad, audio/pcm 24 kHz, reasoning none, function tools). No usage numbers on the stream: cost =
+    minutes x $0.08.
+  - GPT-Live-1: `wss://api.openai.com/v1/live/sessions`, session.start (model gpt-live-1, voice stone / nira, pcm 24 kHz,
+    delegation client). GPT-Live opens a delegation when work is needed; Hoola's brain answers it through the same
+    santosh_kaam path; the answer goes back as session.commentary.append for that delegation id. News = commentary
+    for the session, quiet notes = session.thinking.append. Live has no turn-done or "she started talking" event, so
+    his turn ends when his audio stopped 1 s and her phone played it, and her words while he is audible = she cut in
+    (UNVERIFIED heuristics). Cost = the session's own usage.seconds x $0.05 (+ the brain, counted as usual).
+  - Phonic 1: `wss://api.phonic.ai/v1/sts/ws`, config (phonic-1, voice sandeep / divya, pcm_16000 in so no resampling,
+    pcm_24000 out, language from the call + English, multilingual auto, santosh_kaam as a strict custom_websocket tool,
+    no_input_end_conversation_sec 3600 so it never hangs up on a quiet call), audio_chunk <= 40 ms, tool_call ->
+    tool_call_output, user_started_speaking = barge-in, assistant_finished_speaking = turn end. Cost = minutes x $0.07.
+- `voice_openai.OpenAICall.run()` now calls `_open()` / `_configure()` / `_session_min()` and sends `engine: self.engine`
+  in `ready` — behaviour for the OpenAI engine byte-for-byte the same (its tests unchanged and green).
+- `voiceengine.py`: ENGINES += grok / gptlive / phonic (`MORE`), per-engine key, on/off, who may pick it (default
+  everyone), monthly budget (default $25 each, whole app) and per-user minutes (default 60); spend in its own box in
+  `usage-YYYY-MM.json` under `engines`; `view()` grows `engines` (name, ready, why, ₹ per minute, month ₹, minutes).
+- Settings: `XAI_API_KEY`, `PHONIC_API_KEY` (GPT-Live uses the existing `OPENAI_API_KEY`) + `VOICE_{GROK,GPTLIVE,PHONIC}_*`.
+- Phone: `lib/ui/voice_engine_screen.dart` lists the three with a line, ₹ a minute, the reason when it cannot run,
+  and this month's numbers for the one she picked.
+- Tests: `test_v0816_teen_awaazein.py` (7) - pick + fallbacks + minutes, and one end-to-end call per engine against a
+  scripted fake of its wire.
+
+NOT VERIFIED: no live call has run on any of the three (no keys on the server when this was built). Parking does not
+apply to them (CAN_PARK stays Gemini-only), so a quiet call keeps billing per minute until she hangs up. Hindi /
+Hinglish quality on each engine is unmeasured - her ear test is the judge.
+
+## v0.826.0 APP ENGINE 2 (L9 of docs/LOVABLE_STUDIO_PLAN.md, owner: "GO L9")
+
+Point at a Web Studio React app (the v0.824 App Engine) and change it - like Lovable's click-to-source + visual edits,
+built on Hoola's own pieces.
+
+- **Click -> source** (`appengine/template/hoola.plugin.mjs`, locked; Vite `enforce: pre`, `@babel/parser` +
+  `magic-string` already in the image): in a PREVIEW build only (`HOOLA_SOURCE=1`) every JSX element in
+  `src/**/*.tsx` gets `data-hs="<file>:<line>:<col>"` and `data-hc="<Component>"`. Component uses are tagged too: the
+  kit spreads its props AFTER its own tag, so `<CardTitle>` on a page points at the PAGE's line - the line a free edit
+  should change. Preview builds also keep hidden source maps (`sourcemap: "hidden"`; `.map` is never served).
+- **Live = clean**: publish now runs a second, clean build of that version's source (`runner.build(source=False)`) and
+  refuses (500) if a tag or a map reached the output. Visitors never get the tags, the maps or the helper.
+- **Preview helper** (`appengine/preview.js`, served only at `/api/app-preview/<token>/__hoola/preview.js`, injected
+  into the preview's index.html, never into a live one): (1) error collector - page errors, unhandled rejections,
+  console.error -> postMessage to the Studio; (2) Select - hover outline + `<tag> Component · file:line` label, a click
+  sends the tag instead of running the app's own click, Esc stops; (3) live style / words drawn at once on every element
+  from that line (nothing saved) until the real change is built.
+- **Free edits** (`appengine/pick.py`, Rs 0, no model): one family at a time on the app's own tokens / scale - text
+  colour, background, size, weight, padding, corners, alignment - swapped inside the element's own
+  `className="..."` at that exact line (none = one is added); plain words replaced when the source text is plain (no
+  `{...}`, no `< > { }`); a computed `className={...}` is refused and named ("ask Hoola in the chat"); every edit goes
+  through rules.py like any write; Undo keeps the last 30 files. Routes: GET `/api/appengine/{id}/pick?hs=`, POST
+  `/edit` `{hs, style, text}`, POST `/undo`.
+- **Error collector**: POST `/api/appengine/{id}/preview-errors` (64 KB, masked with `pii.mask_sensitive`) - each
+  stack's first frame of the app's own code is mapped through that version's hidden source map (`map_position`, a
+  small VLQ reader) to `src/...:line`; one card per fingerprint (count, version); a version that loaded without it
+  marks it "gone" (not seen since vN); dismiss; `app_engine action=logs` and the turn's `<app_engine_project>` block
+  list open errors. Studio: "This app hit a problem" bar with file:line, Try to fix (sends it to Hoola with the line),
+  Dismiss.
+- **Theme file**: `.hoola/theme.json` (colours, radius, fonts, contrast + the class families) written on create /
+  tokens / build; tokens.css is now `@theme static` so every token exists as a CSS variable for the live preview.
+- **Template refresh**: before every build Hoola's locked tooling (vite.config, tsconfig, the plugin, main.tsx,
+  index.css, utils, hoola.ts) is copied fresh into the app and tokens.css / theme.json written again from its look - an
+  app made by an older version builds with today's tooling.
+- **HMR gate** (the plan's "half-write never shown"): the tool marks its writes with the turn's chat (`TURN_CONV`);
+  such a change is NOT built while that turn runs (`santosh.turn_running`), polled every 1.5 s, at most 30 min; the
+  model's own `action=build` means "this change set is complete"; the app row says `held` and the Studio shows "Hoola is
+  changing the app - the preview updates when the change is complete". Her own Studio edits build after the 2 s pause.
+- Studio (`appengine.js` / `.css`): Select button + S key, the style panel (swatches in the app's own colours,
+  Default, Words, Apply · free, Cancel, Undo last change, Open in code = the Code tab scrolled to that line and lit,
+  Ask Hoola about this = a pill on the composer sent as a `selected part: <tag> in <file> line N` hint), the error bar.
+
+### Measured here (real box + real Chromium)
+- Proof card again 5/5 (preview pages carry source tags and the helper, live pages carry neither) + 8/8 traps.
+- Tests `test_v0825_app_engine2.py` (6): free edits + Undo + refusals, theme file + refresh, routes (401 / 400 / 413 /
+  masked), preview tagged / live clean / a real built position mapped back to the page's line, **a half-written change
+  never shown** (a page importing a file not written yet: no build while the turn runs, ONE build with both files when
+  it ends, no half version in History), and a browser walk (S -> click the heading -> file:line -> accent drawn at once
+  -> Apply -> version 2 -> Open in code lights the line -> a planted error is collected, mapped to its line, Try to fix
+  sends it to Hoola). `test_v0814_app_engine.py` 9/9 still green.
+
+### NOT built / NOT verified
+- NOT VERIFIED on her VPS (run vps-ops `appengine_setup` then `appengine_check` after the deploy) or with a real model.
+- Still a fresh ~6 s build per change, not hot reload; the style panel edits one element's line (a list rendered by
+  `.map` changes every item it draws - said by the "same line" behaviour, not yet counted on the panel); no colour
+  picker outside the tokens (on purpose); errors are collected only while the Studio has the preview open.

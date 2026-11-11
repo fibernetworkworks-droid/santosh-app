@@ -284,4 +284,4 @@ def test_laziness_laws_hold_for_the_new_modules():
 
 def test_version_pin_v0607():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.824.0"
+    assert APP_VERSION == "0.826.0"

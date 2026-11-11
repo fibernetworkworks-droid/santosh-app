@@ -45,6 +45,16 @@ _LOCKS: dict[str, threading.Lock] = {}
 _TIMERS: dict[str, threading.Timer] = {}
 _BUILD_DONE: dict[str, threading.Event] = {}
 _MAP_LOCK = threading.Lock()
+# v0.825 L9 the HMR-gate idea: a change made inside a Hoola turn is NOT built (shown) until that turn has finished,
+# so the preview never shows a half-written change set; the model's own action=build means "this set is complete".
+import contextvars as _cv
+TURN_CONV: _cv.ContextVar[str] = _cv.ContextVar("hoola_ae_turn_conv", default="")
+_GATE_CONV: dict[str, tuple[str, float]] = {}
+GATE_POLL = 1.5
+GATE_MAX = 1800.0
+# the template files Hoola owns: refreshed into every app before each build (an older app gets today's tooling)
+TOOLING = ("vite.config.ts", "tsconfig.json", "hoola.plugin.mjs", "src/main.tsx", "src/index.css", "src/lib/utils.ts",
+           "src/lib/hoola.ts")
 
 
 class AppEngineError(Exception):
@@ -144,6 +154,7 @@ def view(r: AppProject, full: bool = True) -> dict[str, Any]:
            "live_url": f"/apps/{r.slug}/" if r.live_version else "", "conversation_id": r.conversation_id or "",
            "created_at": r.created_at.isoformat() if r.created_at else "", "updated_at": r.updated_at.isoformat() if r.updated_at else "",
            "published_at": r.published_at.isoformat() if r.published_at else "",
+           "held": held(r.id),
            "last_build": {k: lb.get(k) for k in ("ok", "seconds", "version", "types_ok", "types", "build_problems", "at", "why", "queued", "runner")}}
     if full:
         try:
@@ -193,6 +204,7 @@ def create(tenant: str, name: str = "", brief: str = "", palette: str = "", valu
     html = (d / "index.html").read_text().replace("<title>My app</title>", f"<title>{_esc(name)}</title>")
     (d / "index.html").write_text(html, "utf-8")
     (d / ".hoola" / "plan").mkdir(parents=True, exist_ok=True)
+    _write_theme_json(r, t)
     if brief:
         (d / ".hoola" / "plan" / "brief.md").write_text(f"# What she asked for\n\n{brief.strip()}\n", "utf-8")
     schedule_build(tenant, r.id)
@@ -511,6 +523,7 @@ def set_tokens(tenant: str, ref: str, values: dict | None = None, palette: str =
         raise AppEngineError(str(e))
     with _lock(r.id):
         (src_dir(r) / "src" / "styles" / "tokens.css").write_text(TK.css(t), "utf-8")
+        _write_theme_json(r, t)
         _save(r.id, look=json.dumps({"palette": pal, "values": vals}), dirty=True)
         schedule_build(r.tenant_id, r.id)
     th = TK.theme_json(t)
@@ -538,9 +551,28 @@ def check_all(r: AppProject) -> dict[str, Any]:
 
 # ------------------------------------------------------------------ builds + versions
 
-def schedule_build(tenant: str, pid: str, delay: float = DEBOUNCE) -> None:
-    """The preview rebuilds itself ~2 s after the last change (many quick edits = one build)."""
+def _turn_running(conv: str) -> bool:
+    try:
+        from ..agent import santosh
+        return bool(conv) and santosh.turn_running(conv)
+    except Exception:                                # noqa: BLE001 - no way to tell = never hold a build
+        return False
+
+
+def held(pid: str) -> bool:
+    """Is a change of this app waiting for Hoola's turn to finish before it is built?"""
+    g = _GATE_CONV.get(pid)
+    return bool(g) and _turn_running(g[0])
+
+
+def schedule_build(tenant: str, pid: str, delay: float | None = None) -> None:
+    """The preview rebuilds itself ~2 s after the last change (many quick edits = one build) - and, for a change made
+    inside a Hoola turn, only once that turn has finished (never a half-written change set on screen)."""
+    conv = TURN_CONV.get()
+    delay = DEBOUNCE if delay is None else delay
     with _MAP_LOCK:
+        if conv:
+            _GATE_CONV[pid] = (conv, _GATE_CONV.get(pid, (conv, time.time()))[1])
         t = _TIMERS.pop(pid, None)
         if t:
             t.cancel()
@@ -558,6 +590,14 @@ def schedule_build(tenant: str, pid: str, delay: float = DEBOUNCE) -> None:
 def _bg_build(tenant: str, pid: str) -> None:
     with _MAP_LOCK:
         _TIMERS.pop(pid, None)
+        g = _GATE_CONV.get(pid)
+        if g and _turn_running(g[0]) and time.time() - g[1] < GATE_MAX:     # the turn is still writing: wait for it
+            tm = threading.Timer(GATE_POLL, _bg_build, args=(tenant, pid))
+            tm.daemon = True
+            _TIMERS[pid] = tm
+            tm.start()
+            return
+        _GATE_CONV.pop(pid, None)
     try:
         build(tenant, pid)
     except Exception:                                # noqa: BLE001 - the result is stored on the row either way
@@ -580,6 +620,8 @@ def build(tenant: str, ref: str) -> dict[str, Any]:
             _save(r.id, last_build=json.dumps(lb), status="failed" if not r.version else r.status)
             ev.set()
             raise AppEngineError("The app could not be built: " + av["why"], 503)
+        _GATE_CONV.pop(r.id, None)
+        _refresh_template(r)
         _save(r.id, status="building")
         snap = Path(pdir(r.tenant_id, r.id) / "_snap")
         shutil.rmtree(snap, ignore_errors=True)
@@ -627,6 +669,39 @@ def build(tenant: str, ref: str) -> dict[str, Any]:
     return {**view(r, False), "built": bool(res.get("ok")), "say": say}
 
 
+def _refresh_template(r: AppProject) -> None:
+    """Hoola's own tooling files (locked) are copied fresh from the template, tokens.css and theme.json are written
+    again from the app's look: an app made by an older version builds with today's plugin + settings."""
+    d = src_dir(r)
+    for rel in TOOLING:
+        f = TEMPLATE / rel
+        if f.exists():
+            (d / rel).parent.mkdir(parents=True, exist_ok=True)
+            if not (d / rel).exists() or (d / rel).read_bytes() != f.read_bytes():
+                shutil.copy2(f, d / rel)
+    t = _theme(r)
+    css = TK.css(t)
+    tf = d / "src" / "styles" / "tokens.css"
+    if not tf.exists() or tf.read_text() != css:
+        tf.write_text(css, "utf-8")
+    _write_theme_json(r, t)
+
+
+def _theme(r: AppProject) -> dict[str, Any]:
+    try:
+        look = json.loads(r.look or "{}")
+    except ValueError:
+        look = {}
+    return TK.resolve(look.get("values") or {}, look.get("palette") or "")
+
+
+def _write_theme_json(r: AppProject, t: dict[str, Any]) -> None:
+    from . import pick as PK
+    f = src_dir(r) / ".hoola" / "theme.json"
+    f.parent.mkdir(parents=True, exist_ok=True)
+    f.write_text(json.dumps({**TK.theme_json(t), "classes": PK.FAMILIES_VIEW}, indent=2) + "\n", "utf-8")
+
+
 def wait_build(tenant: str, ref: str, timeout: float = 90.0) -> dict[str, Any]:
     """The tool's action=build: run any pending build now and return its result."""
     r = _load(tenant, ref)
@@ -647,10 +722,15 @@ def logs(tenant: str, ref: str) -> dict[str, Any]:
     except ValueError:
         lb = {}
     chk = check_all(r)
-    return {"version": r.version, "dirty": bool(r.dirty), "last_build": lb, "check": chk,
+    from . import pick as PK
+    runtime = [x for x in PK._read_errors(r) if x["state"] == "open"][:10]
+    return {"version": r.version, "dirty": bool(r.dirty), "last_build": lb, "check": chk, "preview_errors": runtime,
             "say": ("Last build: " + ("ok" if lb.get("ok") else "failed") + (f" ({lb.get('seconds')} s)" if lb.get("seconds") else "")
                     + ("; TypeScript ok" if lb.get("types_ok") else f"; TypeScript problems: {len(lb.get('types') or [])}")
-                    + (f"; rule problems: {chk['count']}" if chk["count"] else "; rules ok")) if lb else "Not built yet."}
+                    + (f"; rule problems: {chk['count']}" if chk["count"] else "; rules ok")
+                    + (f"; the preview reported {len(runtime)} error(s): " + "; ".join(
+                        x["message"][:120] + (f" at {x['file']}:{x['line']}" if x.get("file") else "") for x in runtime[:3])
+                       if runtime else "")) if lb else "Not built yet."}
 
 
 def versions(r: AppProject) -> list[dict[str, Any]]:
@@ -719,10 +799,30 @@ def publish(tenant: str, ref: str, version: int, confirm: bool = False) -> dict[
     bl = publish_check(r, v)
     if bl:
         raise AppEngineError("Not published: " + " | ".join(bl), 409)
+    # v0.825 the preview build carries source tags + source maps; what goes live is a CLEAN build of the same source
+    snap = pdir(r.tenant_id, r.id) / "_pub"
+    shutil.rmtree(snap, ignore_errors=True)
+    shutil.copytree(ver_dir(r, v) / "src", snap)
+    try:
+        res = RN.build(snap, source=False)
+    except RuntimeError as e:
+        raise AppEngineError("The app could not be built for going live: " + str(e), 503)
+    finally:
+        shutil.rmtree(snap, ignore_errors=True)
+    if res.get("queued"):
+        raise AppEngineError(res["why"], 409)
+    if not res.get("ok"):
+        shutil.rmtree(res.get("out_dir") or "/nonexistent", ignore_errors=True)
+        raise AppEngineError("The clean build for going live failed: " + (res.get("why") or ""), 409)
+    leak = [p.name for p in Path(res["dist"]).rglob("*") if p.is_file() and (p.suffix == ".map" or b"data-hs" in p.read_bytes())]
+    if leak:
+        shutil.rmtree(res.get("out_dir") or "/nonexistent", ignore_errors=True)
+        raise AppEngineError("The live build still carried preview tags (" + ", ".join(leak[:3]) + "); not published.", 500)
     with _lock(r.id):
         tmp = live_dir(r).with_name("live.new")
         shutil.rmtree(tmp, ignore_errors=True)
-        shutil.copytree(ver_dir(r, v) / "dist", tmp)
+        shutil.copytree(res["dist"], tmp)
+        shutil.rmtree(res.get("out_dir") or "/nonexistent", ignore_errors=True)
         old = live_dir(r).with_name("live.old")
         shutil.rmtree(old, ignore_errors=True)
         if live_dir(r).exists():
@@ -772,6 +872,8 @@ def _serve(root_: Path, path: str, prefix: str, preview: bool) -> tuple[bytes, s
     if ext == ".html":
         txt = data.decode("utf-8", "replace")
         txt = re.sub(r"<head>", f'<head>\n    <base href="{prefix}">', txt, count=1)
+        if preview:                                   # v0.825 the preview helper: errors, select, live style (never live)
+            txt = txt.replace("</head>", '    <script src="__hoola/preview.js"></script>\n  </head>', 1)
         data = txt.encode("utf-8")
         hdr["Cache-Control"] = "no-store"
     else:
@@ -798,6 +900,12 @@ def preview_file(token: str, path: str) -> tuple[bytes, str, dict[str, str]]:
     if not v or not (ver_dir(r, v) / "dist").exists():
         raise AppEngineError("not built yet", 404)
     prefix = f"/api/app-preview/{token}/" + (f"__v/{v}/" if m else "")
+    if rel == "__hoola/preview.js":
+        return (Path(__file__).resolve().parent / "preview.js").read_bytes(), "application/javascript", {
+            "Content-Security-Policy": CSP, "Cache-Control": "no-store", "Access-Control-Allow-Origin": "*",
+            "X-Content-Type-Options": "nosniff", "X-Robots-Tag": "noindex, nofollow"}
+    if rel.endswith(".map"):                         # hidden maps stay on the server (the error collector reads them)
+        raise AppEngineError("not found", 404)
     return _serve(ver_dir(r, v) / "dist", rel, prefix, True)
 
 
@@ -836,6 +944,11 @@ def prompt_block(tenant: str) -> str:
     state = ("not built yet" if not r.version else f"version {r.version}" + (" (newer changes not built yet)" if r.dirty else ""))
     if lb and not lb.get("ok"):
         state += "; the LAST BUILD FAILED - fix it first (app_engine action=logs)"
+    try:
+        from . import pick as PK
+        state += PK.open_block(r)
+    except Exception:                                # noqa: BLE001
+        pass
     return (f"<app_engine_project>\nYou are working on App Engine app {r.number} \"{r.name}\" (app id {r.id}), a real "
             f"React 18 + TypeScript + Vite + Tailwind v4 app; {state}. Change it ONLY with the app_engine tool "
             "(view / search before you edit; edit_lines for small changes; write for a new file). Rules the tool "

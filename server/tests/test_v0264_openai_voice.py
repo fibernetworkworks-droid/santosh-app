@@ -191,7 +191,7 @@ def test_pick_falls_back_to_gemini(env, monkeypatch, tmp_path):
 def test_engine_api_refuses_others_and_bad_names(oa):
     from app import main
     with TestClient(main.app) as c:
-        assert c.put("/api/voice/engine", json={"engine": "grok"}).status_code == 400
+        assert c.put("/api/voice/engine", json={"engine": "elevenlabs"}).status_code == 400
         assert c.put("/api/voice/engine", json={"engine": "gemini"}).json()["will_use"] == "gemini"
 
 
@@ -396,5 +396,5 @@ def test_gemini_file_has_only_the_routing_seam():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.824.0"
-    assert "0.824.0+823" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.826.0"
+    assert "0.826.0+825" in (ROOT / "pubspec.yaml").read_text()
