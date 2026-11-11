@@ -8,6 +8,7 @@ from typing import Callable
 from fastapi import APIRouter, Body, Depends, HTTPException
 from fastapi.responses import FileResponse
 
+from . import hub as H
 from . import studio as S
 
 
@@ -40,6 +41,8 @@ def make_router(require_key: Callable, current_tenant: Callable) -> APIRouter:
         """Her one line -> the film as scenes (one brain call). Runs in the thread pool: it can take a little while."""
         on()
         b = dict(body or {})
+        if not b.get("brand"):                              # v0.772: her Brand page is the default for every new video
+            b["brand"] = (S._load(tenant).get("brand") or {}).get("name", "")
         return wrap(S.draft, tenant, str(b.get("ask") or ""), shape=str(b.get("shape") or "talking_head"),
                     lang=str(b.get("lang") or "hi"), aspect=str(b.get("aspect") or ""),
                     seconds=int(b.get("seconds") or 30), avatar_id=str(b.get("avatar_id") or ""),
@@ -115,5 +118,127 @@ def make_router(require_key: Callable, current_tenant: Callable) -> APIRouter:
     async def del_avatar(id: str = "", tenant: str = Depends(current_tenant)):
         on()
         return {"ok": wrap(S.remove_avatar, tenant, id)}
+
+    return r
+
+
+def make_hub_router(require_key: Callable, current_tenant: Callable) -> APIRouter:
+    """v0.772 the twelve pages' doors (/api/interactive/hub/*). Thin: the work and the rules are hub.py."""
+    r = APIRouter(prefix="/api/interactive/hub", dependencies=[Depends(require_key)])
+
+    def on() -> None:
+        from ..config import get_settings
+        if not get_settings().interactive_page:
+            raise HTTPException(403, "Hoola Interactive is switched off on this server.")
+
+    def wrap(fn, *a, code: int = 422, **kw):
+        try:
+            return fn(*a, **kw)
+        except S.StudioError as e:
+            raise HTTPException(404 if "not found" in str(e) else code, str(e))
+
+    def view(p: dict) -> dict:
+        return {**p, "problems": S.problems(p)}
+
+    @r.get("/overview")
+    async def overview(tenant: str = Depends(current_tenant)):
+        on()
+        return H.overview(tenant)
+
+    @r.put("/brand")
+    async def brand(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        on()
+        return wrap(H.brand_set, tenant, dict(body or {}))
+
+    @r.post("/glossary")
+    async def glossary_add(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        on()
+        b = dict(body or {})
+        return wrap(H.glossary_add, tenant, str(b.get("term") or ""), mode=str(b.get("mode") or "keep"),
+                    to=str(b.get("to") or ""), lang=str(b.get("lang") or ""))
+
+    @r.delete("/glossary")
+    async def glossary_del(id: str = "", tenant: str = Depends(current_tenant)):
+        on()
+        return H.glossary_remove(tenant, id)
+
+    @r.post("/template")
+    async def template_save(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        on()
+        b = dict(body or {})
+        return wrap(H.template_save, tenant, str(b.get("project") or ""), str(b.get("name") or ""))
+
+    @r.delete("/template")
+    async def template_del(id: str = "", tenant: str = Depends(current_tenant)):
+        on()
+        return {"ok": wrap(H.template_remove, tenant, id)}
+
+    @r.post("/template/use")
+    async def template_use(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        on()
+        b = dict(body or {})
+        return view(wrap(H.template_use, tenant, str(b.get("id") or ""), dict(b.get("values") or {}),
+                         lang=str(b.get("lang") or "hi"), avatar_id=str(b.get("avatar_id") or ""), title=str(b.get("title") or "")))
+
+    @r.post("/batch")
+    async def batch(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        on()
+        b = dict(body or {})
+        return {"made": wrap(H.batch, tenant, list(b.get("scripts") or []), shape=str(b.get("shape") or "talking_head"),
+                             lang=str(b.get("lang") or "hi"), avatar_id=str(b.get("avatar_id") or ""))}
+
+    @r.post("/personalise")
+    async def personalise(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        on()
+        b = dict(body or {})
+        return {"made": wrap(H.personalise, tenant, str(b.get("project") or ""), list(b.get("names") or []))}
+
+    @r.post("/duplicate")
+    async def duplicate(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        on()
+        return view(wrap(H.duplicate, tenant, str((body or {}).get("id") or "")))
+
+    @r.post("/trash")
+    async def trash(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        on()
+        return {"ok": wrap(H.trash, tenant, str((body or {}).get("id") or ""), code=409)}
+
+    @r.post("/restore")
+    async def restore(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        on()
+        return view(wrap(H.restore, tenant, str((body or {}).get("id") or "")))
+
+    @r.post("/trash/empty")
+    async def empty(tenant: str = Depends(current_tenant)):
+        on()
+        return {"removed": H.empty_trash(tenant)}
+
+    @r.post("/translate")
+    def translate(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        """One model call for the words, then the number + glossary checks. Thread pool: it can take a little while."""
+        on()
+        b = dict(body or {})
+        return view(wrap(H.translate, tenant, str(b.get("id") or ""), str(b.get("lang") or ""), code=502))
+
+    @r.post("/brain")
+    async def brain(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        on()
+        return wrap(H.brain_save, tenant, dict(body or {}))
+
+    @r.delete("/brain")
+    async def brain_del(id: str = "", tenant: str = Depends(current_tenant)):
+        on()
+        return {"ok": H.brain_remove(tenant, id)}
+
+    @r.get("/voice")
+    def voice(lang: str = "hi", tenant: str = Depends(current_tenant)):
+        """A short line in the Hoola voice. Says plainly when the voice engine is not connected."""
+        on()
+        from fastapi.responses import Response
+        from . import lab
+        try:
+            return Response(H.voice_sample(lang), media_type="audio/wav")
+        except lab.LabError as e:
+            raise HTTPException(503, str(e))
 
     return r

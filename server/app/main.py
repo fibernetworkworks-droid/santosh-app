@@ -5335,6 +5335,8 @@ from .interactive.api import router as _interactive_router
 app.include_router(_interactive_router(require_key, current_tenant))   # live-talk ticket (the engine key never reaches a browser)
 from .interactive.console import make_router as _interactive_studio_router  # noqa: E402
 app.include_router(_interactive_studio_router(require_key, current_tenant))   # v0.747 HOOLA INTERACTIVE: the console video studio
+from .interactive.console import make_hub_router as _interactive_hub_router  # noqa: E402
+app.include_router(_interactive_hub_router(require_key, current_tenant))   # v0.772 HOOLA INTERACTIVE: the twelve pages (brand, templates, translate, trash...)
 
 from .drive.api import make_router as _drive_router  # noqa: E402
 from .forms.api import make_router as _forms_router  # noqa: E402

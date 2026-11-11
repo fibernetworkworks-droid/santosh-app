@@ -350,7 +350,7 @@ async function enter() {
     if (!NAV.some(([k]) => k === 'code')) NAV.splice(NAV.findIndex(([k]) => k === 'creative') + 1, 0, ['code', 'Hoola Code']);
   }
   if (CONFIG.interactive && window.HoolaInteractive && !HIV) {   // v0.747 HOOLA INTERACTIVE: a row right under Create
-    HIV = HoolaInteractive({api, esc, toast, upload: async file => {
+    HIV = HoolaInteractive({api, esc, toast, back: () => go('chat'), upload: async file => {   // v0.772 its own full page; Console = back to chat
       let id = CONV;
       if (!id) { const c = await api('POST', '/api/conversations?reuse=1'); id = c.id; }
       const fd = new FormData(); fd.append('file', file, file.name);
