@@ -993,3 +993,49 @@ motion can be switched off, no clashing class names). Needs `HOOLA_CHROMIUM=/opt
 and `animation:hmWord ... both`).
 
 **NOT VERIFIED:** she has not seen it on her server. Checked here in light, dark, 1366 x 660 and 400 px wide.
+
+## v0.787.0 HOOLA GAME DEV — game making as its own full-screen app (built as 0.783; owner: "CAN WE DEVLOPE A SEPERATE CONSOLE SECTION / FEATURE -- NAME IT A HOOLA GAME DEV" → "FIEST SHOW ME ALL DESIGN AND PAGES" → "GO BUILD -- DEPLOYE SEVERAL AGENTS TO DEPOLY IF PERFECTLY")
+
+**What it is.** `/console/games`, the twin of Web Studio (`/console/web`) and App Studio (`/console/apps`): a full-screen
+app with its own sidebar, opened from a new **Game Dev** row in the console sidebar (`v2.js` NAV, right after App
+Development). Before a line was built, the owner was shown a 14-page clickable design canvas (Home, Design doc, Play,
+Board, Bible, Scenes, Assets, QA, Release, Live ops, Where it came from, Crew, Game Arena, Big studio) and approved it.
+
+**Pages.** Home (ask box + kinds of game + the six steps every game goes through + "Waiting for your OK" + your games +
+"Or start from"); a game workspace = top bar, **the game's own Hoola thread** on the left (a conversation per game, like App
+Studio's per app), and tabs: **Design** (the design doc rendered by HoolaMD, "Theek hai, bana do", change it in words;
+progress card while it builds) · **Play** (the game in a phone frame from its private `/play/` link in an iframe sandboxed
+WITHOUT same-origin, QR + copy, what Hoola's bots proved, fun said plainly as not assessed, versions with "Go back to this"
+when there is a long project) · Board · Bible · Scenes · Assets · QA · Release · Live ops · Where it came from · Crew; plus
+studio-wide Crew (role cards, hired / not hired), Game Arena and Big studio. A tab that needs a long project offers "Make it a
+long project" for a game that already plays.
+
+**How it reuses the tested pages.** `employees.js` gains ONE export, `gameEmbed(el, page, studio)`, that renders the
+console's existing Game Desk pages (board, bible, scenes, assets, qa, release, liveops, prov, runtime and every role page,
+arena, big) into a pane with the desk's own flags reset for it; `gameEmbed.stop()` ends any poll when a pane is left. While a
+page is embedded, its own error path (`game(el)` / `roleBack`) can never draw the whole Game Desk home into a tab — a calm
+"Try again" panel instead. The console's own Game Desk is unchanged. Server: `gamedesk/service.view()` now carries the game's
+`conversation_id` (so its thread is the same on any browser) and the full `brief` on GET (so "Try again" after a failed first
+build loses nothing). Route `game_dev_page` in `main.py` with the console's strict CSP, `X-Frame-Options: DENY`, nosniff.
+
+**How it was built — several agents, as asked.** The lead laid the foundation (route, sidebar row, `gameEmbed`, the page
+shell) and a fixed DOM contract; a **builder** wrote `gamedev.js` / `gamedev.css` (every class `gdv-*`, every colour a v2.css
+token so dark mode works) and walked it in real Chromium; a **tester** wrote `tests/test_v0783_gamedev.py` against the
+contract in parallel (route + headers, load order, the sidebar row, `gameEmbed` run in node, escaping scan, no keys / eval, a
+hire gate, and a full real-browser walk of every page at 1440 and 390 px with page + console errors failing every step); then
+an **independent reviewer** read the code against the design and the real server. It found 14 problems, most reproduced:
+the game being played restarted every ~3 s while the next version built; the home poll wiped what she was typing every 5 s;
+a single server hiccup threw a game's thread away; an embedded page's error path drew the whole Game Desk home (with its
+own "New game" form) into a tab; stale replies from a game she had left could paint into the one she opened; hint lines
+leaked into her bubble when a title held a `]`; embedded pages showed weight 700 and Sora headings. All 14 were fixed, and
+each has a regression test that fails on the old behaviour — including one the lead caught itself: re-inserting an iframe
+RELOADS it, so "keep the same node" would have passed a node-identity test while the game still restarted; the fix never
+touches the stage that holds the frame. **20 tests, 20 pass.**
+
+**Also found while building:** the earlier dependency reinstall had pulled a newer pip Playwright (1.64.1) that cannot find
+this machine's pre-installed Chromium (revision 1243); it was pinned back to 1.63.0, the version that matches. And main's
+English-tools commit `d84057023` had left the v0.545 scenes test asserting the old Hinglish refusal; its pin was healed.
+
+**NOT VERIFIED, said plainly:** a real Godot build inside the play frame; a live agent reply in a game's thread (no model
+key in tests); the 8 embedded tabs are the console's own pages restyled toward the approved design with scoped CSS, not
+redrawn to it pixel for pixel. The phone app gets nothing new — on the phone, games stay in chat.
