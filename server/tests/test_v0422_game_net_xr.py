@@ -132,7 +132,7 @@ def test_tools_api_hire_and_ui(st, monkeypatch):  # noqa: F811
     soon = sorted(k for k, e in hire.CATALOG.items() if e.get("group") == hire.GAME_GROUP and not e["live"])
     assert "netcode_dev" not in soon and "xr_dev" not in soon                    # (v0.423: the last three went live too)
     ctx = Ctx(tenant_id="default", conversation_id="c1")
-    with pytest.raises(tools.ToolError, match="hired nahi"):
+    with pytest.raises(tools.ToolError, match="is not hired"):   # English since d84057023 (tools wave 3)
         asyncio.run(tools.HANDLERS["game_net"](ctx, action="setup"))
     c = TestClient(app)
     assert c.post("/api/gamedesk/xr", json={}).status_code == 400
