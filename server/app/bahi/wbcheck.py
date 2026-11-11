@@ -100,7 +100,8 @@ def run(today: date | None = None) -> dict[str, Any]:
         try:
             env_ = fn()
         except wb.WbError as e:
-            steps.append({"step": name, "result": "FAIL", "line": f"{e.code}: {e.message}"})
+            extra = e.detail if e.detail and e.detail[:60] not in e.message else ""        # WhiteBooks' own words when ours are generic
+            steps.append({"step": name, "result": "FAIL", "line": f"{e.code}: {e.message}" + (f" [WhiteBooks said: {extra[:200]}]" if extra else "")})
             return None
         shapes[name] = {"envelope": wb.shape({k: v for k, v in env_.items() if k != "data"}), "data": wb.shape(wb.data_of(env_))}
         steps.append({"step": name, "result": "PASS", "line": "reply shape recorded"})

@@ -397,3 +397,19 @@ def test_v0814_the_ewb_refusal_without_a_code_is_named(env):
     from app.bahi import wb
     assert wb._code_of({"status_cd": "0", "status_desc": "Invalid credentials provided or your account is not active"}) == "WB_ERR_9001"
     assert wb._code_of({"status_cd": "0", "status_desc": "something else"}) == "refused"
+
+
+# ---------------------------------------------------------------- v0.825 WhiteBooks' published error lists as data
+def test_v0825_error_codes_are_said_in_the_systems_own_words(env):
+    import json
+    from app.bahi import wb
+    data = json.loads((Path(wb.__file__).resolve().parent / "wb_errors.json").read_text(encoding="utf-8"))
+    assert data["basis"] == "provider-spec" and data["checked_on"] and data["review_by"] and data["source"]["gst"]
+    assert len(data["gst"]) >= 100 and len(data["einv"]) >= 100
+    assert wb.known_error("RET11410") == "GST system: Invalid GSTIN."
+    assert "OTP is either expired or incorrect" in wb.known_error("RET13509")
+    assert wb.known_error("2148").startswith("e-invoice system: Requested IRN data is not available.")
+    assert wb.known_error("nope") == ""
+    # a reply carrying a GSTN code now reads in words, our own plain lines still win
+    assert wb._message_of({"status_cd": "0", "error": {"error_cd": "RET11409"}}, "RET11409") == "GST system: Username is not Valid."
+    assert "already has an IRN" in wb._message_of({}, "2150")

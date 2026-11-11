@@ -2361,3 +2361,19 @@ project, the code written through ONE tool and built in a locked Docker box.
   reload (each change is a fresh ~6 s build, not Vite's dev server), the preview error collector + click-to-source +
   style panel (L9), tests / browser check before done + scans (L11), prerendered HTML for SEO, a custom domain for
   an app, GitHub sync (L14), drafts (L13), growing the vetted list by her tap.
+
+
+## v0.825.0 WHITEBOOKS ERROR WORDS (owner shared WhiteBooks' own files after wb_check)
+
+Live wb_check (11 Nov, 09:44 UTC) after her email fix: keys accepted, e-invoice + e-way bill sandbox logins PASS; GST public search
+"Public API Search Taxpayer Fail", filing track a bare refusal, OTP login SKIP (no GST username). She then shared ten WhiteBooks files
+(GST API doc, GST / e-invoice / e-way bill Postman collections, return-filing guide, released-API list, GSTN + e-invoice error lists,
+e-invoice + e-way bill preparation sheets). Read end to end (not committed - their documents; summary in
+`docs/research/accounts/05_whitebooks_files.md`):
+- Hoola's calls match the specs (public search / rettrack query + headers, e-invoice and e-way bill authenticate).
+- The GST doc's sign-up step 3: after creating credentials, "call customer support ask to enable the sandbox Account" - the GST sandbox
+  is a separate switch-on, and the shared sandbox PDF has no GST (returns) test GSTIN / username. That is the GST failure.
+- NEW `server/app/bahi/wb_errors.json`: 123 GSTN codes + 128 NIC IRP codes (message + fix), basis provider-spec, source + checked_on +
+  review_by; `wb.known_error(code)` -> "GST system: Invalid GSTIN." / "e-invoice system: <message>. <fix>"; `_message_of` uses it after
+  Hoola's own PLAIN lines. `wb_check` FAIL lines add WhiteBooks' own reply when ours is generic.
+Test: test_v0807_bahi_a0.py +1. NOT VERIFIED: the GST sandbox is still off until WhiteBooks enables it.

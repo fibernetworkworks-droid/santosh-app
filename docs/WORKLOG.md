@@ -2999,3 +2999,10 @@ Task ID: v0.824.0 APP ENGINE 1 (L8; built as 0.814, main had moved to 0.823.0)
 Task: owner "GO L8" on docs/LOVABLE_STUDIO_PLAN.md (her 4 L8 decisions unanswered - the plan's defaults taken, all switchable).
 Work Log: server/app/appengine/ (template, tokens, rules, image + lock, runner, service, proof), agent/appengine_tools.py (app_engine, registry 627), turnmode APP + prompt block + sticky family, 13 routes, Studio Apps page + workspace (appengine.js/.css), vps-ops appengine_setup / appengine_check; 9 tests incl. the five asks in the real box + a browser walk.
 Stage Summary: pushed. Server deploy + vps-ops appengine_setup, then appengine_check. Not verified on her VPS or with a real model. Next: L9 on her GO.
+
+
+---
+Task ID: v0.825.0 WHITEBOOKS ERROR WORDS
+Task: owner shared WhiteBooks files after wb_check (e-invoice + e-way bill PASS, GST search fails).
+Work Log: files read in the scratchpad (not committed); calls match specs; GST sandbox needs WhiteBooks support switch-on; error codes as data + known_error; research note 05.
+Stage Summary: on branch claude/exciting-hawking-113x8i. Next: she asks WhiteBooks to enable the GST sandbox + share its test GSTIN / gst_username.
