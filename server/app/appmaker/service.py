@@ -432,6 +432,8 @@ def _say(v: dict[str, Any]) -> str:
     if st == "planned":
         n = len(v.get("plan", {}).get("screens", [])) + len(v.get("plan", {}).get("code_screens", []))
         bp_line = BP.say_view(v.get("plan", {}).get("blueprint") or {}) if v.get("plan", {}).get("complex") else ""
+        if not bp_line:                    # v0.802 a simple app is told what this version of the app will not have too
+            bp_line = BP.missing_line(v.get("plan", {}).get("blueprint") or {})
         idea_line = (v.get("plan", {}).get("idea") or {}).get("name") or ""
         sc = v.get("plan", {}).get("scope") or {}
         kind = (f"Yeh ek {sc['product_label']} hai" + (f" ({sc['like']} jaisa kaam, par apna naam aur apna design)" if sc.get("like") else "")

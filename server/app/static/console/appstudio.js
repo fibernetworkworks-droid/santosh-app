@@ -494,7 +494,16 @@
       const lab = Object.fromEntries(scr.map(s => [S(s.id), S(s.label)]));
       const tables = L(bp.tables || bp.data).map(t => typeof t === 'string' ? {name: t} : M(t));
       const roles = L(bp.roles).map(r => typeof r === 'string' ? r : S(M(r).label || M(r).name || M(r).key));
-      const feats = L(bp.features || bp.phone).map(f => M(f));
+      /* v0.802 HONEST CAPS: each phone feature the plan wants, with what THIS version of the app really builds per platform */
+      const feats = L(bp.caps).map(f => M(f));
+      const missing = L(bp.caps_missing).map(f => M(f));
+      const BUILT = {yes: ['Built', 'ok'], partial: ['Partly', 'warn'], no: ['Not yet', ''], 'n/a': ['Store does not allow', '']};
+      const bpill = (plat, val) => { const b = BUILT[S(val)] || BUILT.no; return pill(`${plat}: ${b[0]}`, b[1]); };
+      const featPanel = feats.length ? `<div class="panel as-caps">${ph(`Phone features <span class="cnt">${feats.length}</span>`, missing.length ? pill(`${missing.length} not fully built yet`, 'warn') : pill('All built', 'ok'))}
+          <ul class="as-caplist">${feats.map(f => { const b = M(f.built), m = missing.find(x => S(x.id) === S(f.id));
+            const andr = m ? S(m.android) : S(b.android || 'no'), ios = m ? S(m.ios) : S(b.ios || 'no');
+            return `<li><span class="as-capname">${esc(S(f.label || f.id))}</span><span class="as-cappills">${bpill('Android', andr)}${bpill('iPhone', ios)}</span>${m && S(m.note) ? `<span class="mut sm as-capnote">${esc(S(m.note))}</span>` : ''}</li>`; }).join('')}</ul>
+          ${missing.length ? `<span class="mut sm">Not in this version yet: ${esc(missing.map(x => S(x.label)).join(', '))}. Hoola will not promise these until they are built.</span>` : ''}</div>` : '';
       return P(`${head('The plan', open ? pill('Waiting for your OK', 'v') : pill('Plan agreed', 'ok'), 'Every screen, the main flow and the rules the app keeps')}
         ${S(M(p.scope).request) || S(v.brief) ? `<div class="callout">${esc(S(M(p.scope).request) || S(v.brief))}</div>` : ''}
         <div class="col2"><div class="panel">${ph(`Screens <span class="cnt">${scr.length - DROP.size}</span>`)}
@@ -504,9 +513,9 @@
             ${L(p.tabs).length ? `<h4 class="psub">Tabs</h4><span class="sm">${esc(L(p.tabs).map(x => lab[S(x)] || S(x)).join(' · '))}</span>` : ''}
             ${L(p.rules).length ? `<h4 class="psub">Rules</h4><ul class="sm" style="margin:0;padding-left:18px">${L(p.rules).map(r => `<li>${esc(r)}</li>`).join('')}</ul>` : ''}
             ${v.field_label || v.goal_label ? `<h4 class="psub">App type</h4><span class="sm">${esc([S(v.field_label), S(v.goal_label), S(v.style_label)].filter(Boolean).join(' · '))}</span>` : ''}</div></div>
-        ${tables.length || roles.length || feats.length ? `<div class="col2">${tables.length ? `<div class="panel">${ph('Data')}<div class="chipset">${tables.map(t => `<span>${esc(S(t.label || t.name || t.key))}</span>`).join('')}</div></div>` : ''}
-          ${roles.length || feats.length ? `<div class="panel">${roles.length ? `<h4 class="psub">Who uses it</h4><div class="chipset">${roles.map(r => `<span>${esc(r)}</span>`).join('')}</div>` : ''}
-            ${feats.length ? `<h4 class="psub">Phone features</h4><div class="chipset">${feats.map(f => `<span>${esc(S(f.label || f.name || f.key))}</span>`).join('')}</div>` : ''}</div>` : ''}</div>` : ''}
+        ${tables.length || roles.length ? `<div class="col2">${tables.length ? `<div class="panel">${ph('Data')}<div class="chipset">${tables.map(t => `<span>${esc(S(t.label || t.name || t.key))}</span>`).join('')}</div></div>` : ''}
+          ${roles.length ? `<div class="panel"><h4 class="psub">Who uses it</h4><div class="chipset">${roles.map(r => `<span>${esc(r)}</span>`).join('')}</div></div>` : ''}</div>` : ''}
+        ${featPanel}
         ${qs.length ? `<form class="panel as-form" data-form="answers">${ph(qs.length === 1 ? 'One question' : `${qs.length} questions`)}
           ${qs.map((q, i) => `<label>${esc(q)}<input name="${i}" maxlength="300"></label>`).join('')}
           <div class="as-row"><button class="b" type="submit">Save answers</button></div></form>` : ''}
