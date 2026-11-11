@@ -185,6 +185,13 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
                    "edit photo", "edit this photo", "edit image", "object hata", "remove object", "remove the", "scan",
                    "brightness", "contrast", "before after", "before-after", "passport size", "pdf size photo", "photo ko"),
     "graphic": ("graphic", "banner", "poster", "logo", "thumbnail", "design", "creativ"),
+    # v0.777 HOOLA DESIGN (hoola_design, her own design editor): TIGHT phrases only - an editable design FILE, a UI screen /
+    # mockup / wireframe, the editor by name. The bare word "design" stays with the families that had it (graphic above,
+    # uiux below: it was uiux's auto-key until a second tool carried the word); a picture = photo, a site = site.
+    "design": ("hoola design", "design file", "design files", "design editor", "editable design", "figma", "mockup", "mock-up",
+               "mock up", "wireframe", "ui screen", "ui design", "ui mockup", "app mockup", "screen design", "app screen design",
+               "screen ka design", "app ka design", "design ki file", "मॉकअप", "वायरफ्रेम", "डिज़ाइन फ़ाइल", "डिजाइन फाइल"),
+    "uiux": ("design",),
     "video": ("video", "clip", "trim", "subtitle", "edit", "reel"),
     "reel": ("reel", "shorts", "youtube short", "short video", "instagram", "status video"),   # wave 12: not "short" ("short mein batao")
     # v0.713 SEEKH MANCH: learn-from-video words. Deliberately NOT a bare "seekh" ('kya seekha' = the
@@ -584,6 +591,8 @@ _GENERIC = frozenset({
                  # its family opens only on the Google Cloud words in EXTRA_KEYS["kala"]
     "clone",     # v0.694.0 WEB CLONE: bare 'clone' is everyday ("git clone this repo" = git, not the web family);
                  # only her clone WORDS (web clone / site ko clone ...) open the webclone family
+    "design",    # v0.777 HOOLA DESIGN: the bare word names no ONE family ("website design", "poster design", "design doc");
+                 # the editor's family opens on its phrases in EXTRA_KEYS["design"], graphic / uiux keep the word there
 })
 
 

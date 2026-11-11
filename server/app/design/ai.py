@@ -540,8 +540,10 @@ def _two_fonts(frames: list[dict]) -> None:
         fix(f)
 
 
-def clean_spec(raw: Any, facts: Facts | None = None, assets: dict[str, dict] | None = None, preset: str = "") -> dict:
-    """The model's (or a template's) answer as a spec this module trusts. SpecError = there is nothing to draw."""
+def clean_spec(raw: Any, facts: Facts | None = None, assets: dict[str, dict] | None = None, preset: str = "",
+               force: bool = False) -> dict:
+    """The model's (or a template's) answer as a spec this module trusts. SpecError = there is nothing to draw.
+    `preset` sizes a frame that names none; `force` = she chose the size herself, so it wins over the frame's own."""
     if isinstance(raw, list):
         raw = {"frames": raw}
     if not isinstance(raw, dict):
@@ -562,7 +564,9 @@ def clean_spec(raw: Any, facts: Facts | None = None, assets: dict[str, dict] | N
         if node is None or node["type"] != "frame" or not node.get("children"):
             continue
         key = str(f.get("preset") or "").strip().lower()
-        node["preset"] = key if key in PRESETS else (preset if preset in PRESETS else "")
+        node["preset"] = preset if (force and preset in PRESETS) or key not in PRESETS else key
+        if node["preset"] not in PRESETS:
+            node["preset"] = ""
         out.append(node)
     if not out:
         raise SpecError('No usable frame: every top-level item must be {"type": "frame", "children": [ ... ]} '
@@ -1221,18 +1225,19 @@ async def generate(prompt: str, context: dict | None = None) -> dict:
     prompt = _text(prompt, PROMPT_MAX).strip()
     if not prompt:
         raise AiError("Say in a line what Hoola should design.", 400)
+    force = str(context.get("preset") or "").strip().lower() in PRESETS           # her own choice of size
     preset = context["preset"] = preset_for(prompt, context.get("preset") or "")
     brand = context.get("brand") or {}
     facts = Facts(prompt, json.dumps(brand, ensure_ascii=False) if brand else "")
     assets = context.get("assets") or {}
     if not model_ready():
         from . import templates
-        spec = clean_spec(templates.make(prompt, preset, brand, int(context.get("variant") or 0), assets), None, assets, preset)
+        spec = clean_spec(templates.make(prompt, preset, brand, int(context.get("variant") or 0), assets), None, assets, preset, force)
         spec["engine"] = "template"
         STATS["template"] += 1
         return spec
     spec = await _asked(system_prompt(), user_message(prompt, context), 9000, context.get("tenant") or "",
-                        lambda raw: clean_spec(raw, facts, assets, preset))
+                        lambda raw: clean_spec(raw, facts, assets, preset, force))
     spec["engine"] = "model"
     STATS["model"] += 1
     return spec

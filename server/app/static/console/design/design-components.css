@@ -77,7 +77,7 @@ body:has(.hdc-vars) .hd-pop{z-index:90}
 .hdc-vars{width:min(860px,100%)}
 .hdc-vacts{display:flex;align-items:center;gap:8px}
 .hdc-vscroll{overflow:auto;padding:4px 20px 6px;min-height:150px}
-.hdc-vgrid{display:grid;align-items:center;column-gap:8px;row-gap:6px;min-width:max-content}
+.hdc-vgrid{display:grid;align-items:center;column-gap:8px;row-gap:6px}
 .hdc-vh{font-size:12.5px;font-weight:600;color:var(--mut);height:36px;display:flex;align-items:center;gap:2px;position:sticky;top:0;background:var(--surface);z-index:1;border-bottom:1px solid var(--line)}
 .hdc-vmode .hd-in{background:transparent}
 .hdc-vmode .hd-in:hover:not(:disabled),.hdc-vmode .hd-in:focus{background:var(--sunk)}

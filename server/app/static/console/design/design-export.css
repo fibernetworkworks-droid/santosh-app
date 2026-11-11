@@ -17,7 +17,7 @@
   background-color:var(--surface);background-image:linear-gradient(45deg,var(--check) 25%,transparent 25%,transparent 75%,var(--check) 75%),linear-gradient(45deg,var(--check) 25%,transparent 25%,transparent 75%,var(--check) 75%);
   background-size:12px 12px;background-position:0 0,6px 6px}
 .hdx-prevcv{display:block;max-width:100%;height:auto;box-shadow:0 0 0 1px rgb(var(--fg-rgb) / .08)}
-.hdx-cap{font-size:12px;color:var(--mut);padding:5px 1px 0;font-variant-numeric:tabular-nums;line-height:1.35}
+.hdx-cap{font-size:12px;color:var(--mut);padding:5px 1px 0;line-height:1.35}
 .hdx-cap.bad{color:var(--bad)}
 .hdx-go,.hdx-wide{width:100%;justify-content:center;min-width:0}
 .hdx-golab{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
@@ -34,6 +34,7 @@
 .hdx-lab.grow{flex:1 1 0}
 .hdx-lab .hdx-size{flex:none;width:100%}
 .hdx-lab .hdx-fmt{flex:none;width:100%}
+.hdx-lab .hdx-suffix{flex:none;height:28px}
 .hdx-opts{display:flex;flex-direction:column;gap:2px}
 .hdx-opts:empty{display:none}
 .hdx-opts input[type=checkbox]{accent-color:var(--pri);width:15px;height:15px;margin:0;flex:none}
@@ -42,7 +43,7 @@
 .hdx-item{display:flex;align-items:center;gap:10px;min-height:32px;padding:4px 12px;border-bottom:1px solid var(--line);font-size:13px;min-width:0}
 .hdx-item:last-child{border-bottom:0}
 .hdx-iname{flex:1 1 0;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink)}
-.hdx-isize{flex:none;color:var(--mut);font-size:12.5px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.hdx-isize{flex:none;color:var(--mut);font-size:12.5px;white-space:nowrap}
 .hdx-item.bad .hdx-isize{color:var(--bad)}
 .hdx-item .hd-linkbtn{flex:none;padding:2px}
 .hdx-dnote{padding:0}

@@ -665,7 +665,7 @@
     secLayout(el, ids); if (all(['FRAME', 'COMPONENT'])) secAuto(el, ids); else if (edit) { const s = section(el, 'Auto layout', [{icon: 'plus', title: 'Wrap in an auto layout frame  (' + keysLabel('shift+a') + ')', run: addAutoLayout}], {cls: 'bare'}); void s; }
     secLayer(el, ids, all(['FRAME', 'COMPONENT', 'INSTANCE', 'SECTION']));
     if (all(['TEXT'])) secText(el, ids);
-    if (!all(['GROUP']) || ids.length > 1) { secPaints(el, ids, 'fills', 'Fill'); secPaints(el, ids, 'strokes', 'Stroke'); }
+    if (!all(['GROUP']) || ids.length > 1 || ids.some(id => !!P(id, 'bool'))) { secPaints(el, ids, 'fills', 'Fill'); secPaints(el, ids, 'strokes', 'Stroke'); }   /* a boolean group is one shape: its own fill and stroke */
     secEffects(el, ids); secExport(el, ids);
     for (const f of designSecs) { try { f(el, ids); } catch (e) { if (window.console) console.error(e); } }
   }

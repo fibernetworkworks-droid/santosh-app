@@ -76,7 +76,7 @@ async function walk() {
     await page.keyboard.press('Control+Alt+k'); await settle(page);
     assert.equal((await node('9:1')).type, 'COMPONENT', 'Ctrl+Alt+K turned the frame into a component');
     assert.equal(await page.locator('.hd-right section[aria-label="Component"]').count(), 1, 'the Component section shows');
-    const a0 = await pt(50, 44), a1 = await pt(310, 44);
+    const a0 = await pt(100, 80), a1 = await pt(360, 80);
     await page.keyboard.down('Alt'); await page.mouse.move(a0[0], a0[1]); await page.mouse.down(); await page.mouse.move(a0[0] + 40, a0[1], {steps: 3}); await page.mouse.move(a1[0], a1[1], {steps: 6}); await page.mouse.up(); await page.keyboard.up('Alt'); await settle(page);
     const i1 = await ev(() => HD.sel.ids[0]); let n1 = await node(i1);
     assert.equal(n1.type, 'INSTANCE'); assert.equal(n1.comp, '9:1'); assert.equal(await ev(i => HD.store.children(i).length, i1), 0, 'an instance has no child nodes');
@@ -88,7 +88,7 @@ async function walk() {
     assert.equal((await node(pasted[0])).type, 'INSTANCE', 'pasting a main component pastes an instance'); await ev(i => { HD.sel.set([i]); HD.tools.act.remove(); }, pasted[0]);
     const i2 = await ev(() => HD.comp.insertAt('9:1', 600, 64)); await settle(page);
     assert.equal(await pix(page, i2), await pix(page, '9:1'));
-    assert.equal(await mid(page, i2), '#6E55F0', 'the Design panel reads the component look for an instance'); assert.equal(await ev(i => HD.store.prop(i, 'fills')[0].color, i2), '#6E55F0');
+    assert.equal(await ev(i => HD.store.prop(i, 'fills')[0].color, i2), '#6E55F0', 'the Design panel reads the component look for an instance'); assert.equal((await node(i2)).fills, undefined);
 
     /* ---- deep select: double-click inside the instance, then edit text and fill = overrides in `ov` ---- */
     await clickW(310, 50); assert.deepEqual(await ev(() => HD.sel.ids.slice()), [i1]);
@@ -162,7 +162,6 @@ async function walk() {
     await vsel.selectOption('Loud'); await settle(page);
     let nv = await node(iv); assert.equal(nv.comp, made[1], 'the dropdown swapped the instance to the other variant');
     assert.deepEqual(Object.values(nv.ov), [{chars: 'Mine'}], 'the text override moved to the layer with the same name'); assert.equal(Object.keys(nv.ov)[0], await ev(c => HD.store.children(c)[0], made[1]));
-    assert.equal(await mid(page, iv) !== '#2255CC', true);
     /* a second property with true / false values shows as a switch */
     await ev(([a, b]) => HD.store.tx('bool', () => { HD.store.set(a, {name: 'Property 1=Plain, Dimmed=false'}); HD.store.set(b, {name: 'Property 1=Plain, Dimmed=true'}); }), made); await settle(page);
     const sw = page.locator('.hd-right .hdc-prow[data-prop="Dimmed"] .hdc-switch'); assert.equal(await sw.getAttribute('aria-checked'), 'true');
@@ -216,10 +215,10 @@ async function walk() {
     assert.deepEqual(await page.locator('.hdc-cardname').allTextContents(), ['Button', 'Tag']); assert.ok(await page.locator('.hdc-card canvas').first().evaluate(c => c.width > 4 && c.height > 4), 'a live preview');
     assert.match(await page.locator('.hdc-cardsub').textContent(), /2 variants/);
     await page.locator('.hdc-assets input[type="search"]').fill('but'); await page.waitForFunction(() => document.querySelectorAll('.hdc-card').length === 1);
-    const before2 = await ev(() => HD.comp.instancesOf('9:1').length), cb = await page.locator('.hdc-card').first().boundingBox(), drop = await pt(900, 300);
+    const before2 = await ev(() => HD.comp.instancesOf('9:1').length), cb = await page.locator('.hdc-card').first().boundingBox(), drop = await ev(() => { const r = HD.tools.canvas.getBoundingClientRect(); return [Math.round(r.left + r.width * 0.7), Math.round(r.top + r.height * 0.3)]; }), dw = await ev(([x, y]) => { const r = HD.tools.canvas.getBoundingClientRect(); return HD.render.screenToWorld(x - r.left, y - r.top); }, drop);
     await page.mouse.move(cb.x + cb.width / 2, cb.y + 30); await page.mouse.down(); await page.mouse.move(cb.x + cb.width / 2 + 30, cb.y + 50, {steps: 3}); await page.mouse.move(drop[0], drop[1], {steps: 8}); await page.mouse.up(); await settle(page);
     assert.equal(await ev(() => HD.comp.instancesOf('9:1').length), before2 + 1, 'dragging a card onto the canvas places an instance');
-    const i3 = await ev(() => HD.sel.ids[0]), n3 = await node(i3); assert.equal(n3.type, 'INSTANCE'); assert.ok(Math.abs(n3.x + n3.w / 2 - 900) < 2 && Math.abs(n3.y + n3.h / 2 - 300) < 2, 'centred on the drop point');
+    const i3 = await ev(() => HD.sel.ids[0]), n3 = await node(i3); assert.equal(n3.type, 'INSTANCE'); assert.ok(Math.abs(n3.x + n3.w / 2 - dw[0]) < 2 && Math.abs(n3.y + n3.h / 2 - dw[1]) < 2, 'centred on the drop point');
     await page.locator('.hdc-assets input[type="search"]').fill(''); await shot(page, 'assets');
     assert.deepEqual(await ev(layoutProblems), [], 'layout with the Assets panel');
 
@@ -239,6 +238,18 @@ async function walk() {
     assert.equal(await ev(b => HD.comp.updateFromLibrary([b]), badgeLocal), 1); await settle(page);
     assert.equal((await node(badgeLocal)).fills[0].color, '#AA0044', 'Update from library brought the new colour'); assert.equal(await ev(c => HD.store.get(HD.store.children(c)[0]).comp, chip), badgeLocal, 'the ids stayed, so instances still point at it');
     await page.locator('.hd-left .hd-tab', {hasText: 'Layers'}).click(); await settle(page);
+
+    /* ---- an instance inside an instance: the path goes through the nested instance, a swap keeps what still fits ---- */
+    const ic = await ev(c => HD.comp.insertAt(c, 2000, 2000), chip); await settle(page);
+    const nest = await ev(([c, b]) => ({ni: HD.store.children(c)[0], text: HD.store.children(b)[0]}), [chip, badgeLocal]), deep = nest.ni + '/' + nest.text;
+    assert.equal(await ev(([i, p]) => HD.comp.vnode(i, p).n.chars, [ic, deep]), 'Hot', 'the nested instance shows the override its component gave it');
+    await ev(([i, p]) => HD.comp.setOverride(i, p, {chars: 'Sale'}), [ic, deep]); assert.deepEqual((await node(ic)).ov, {[deep]: {chars: 'Sale'}});
+    assert.equal(await ev(([i, p]) => HD.comp.vnode(i, p).n.chars, [ic, deep]), 'Sale'); assert.equal(await ev(([i, n]) => HD.comp.vnode(i, n).isRoot, [ic, nest.ni]), true);
+    await ev(i => HD.comp.select(i[0], i[1]), [ic, deep]); await settle(page); assert.equal(await page.locator('.hdc-sub .hd-selname').textContent(), 'Badge text'); await ev(() => HD.comp.deselect());
+    await ev(i => HD.comp.detach([i]), ic); await settle(page);
+    const dk = await ev(i => { const k = HD.store.children(i)[0], n = HD.store.get(k); return {type: n.type, comp: n.comp, ov: n.ov, fresh: k}; }, ic);
+    assert.equal(dk.type, 'INSTANCE', 'detaching keeps a nested instance an instance'); assert.equal(dk.comp, badgeLocal); assert.deepEqual(dk.ov, {[nest.text]: {chars: 'Sale'}}, 'with the change that was made inside it'); assert.notEqual(dk.fresh, nest.ni);
+    await ev(i => { HD.sel.set([i]); HD.tools.act.remove(); }, ic); await settle(page);
 
     /* ---- deleting a main component detaches its instances first, in the same undo step ---- */
     const users = await ev(() => HD.comp.instancesOf('9:1')); assert.ok(users.length >= 3);

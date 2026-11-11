@@ -1254,7 +1254,11 @@
     const kids = childSpecs(root, {m: vp.m, style: rootStyle, vw: vp.w, vh: vp.h, depth: 0, uses: []}, vp.m, rootStyle);
     let title = '';
     for (const c of root.children) if (c.localName === 'title' && c.namespaceURI === SVG_NS) { title = (c.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 80); break; }
-    const spec = {type: 'FRAME', kids: kids, props: {clip: true, fills: []}, opacity: clamp(num(parseFloat(rootStyle.opacity), 1), 0, 1), name: String(opts.name || title || root.getAttribute('id') || 'SVG').slice(0, 120), x: 0, y: 0, w: vw, h: vh, rot: 0, fixed: true};
+    const rootName = String(opts.name || title || root.getAttribute('id') || '').slice(0, 120);
+    let spec = {type: 'FRAME', kids: kids, props: {clip: true, fills: []}, opacity: clamp(num(parseFloat(rootStyle.opacity), 1), 0, 1), name: rootName || 'SVG', x: 0, y: 0, w: vw, h: vh, rot: 0, fixed: true};
+    /* the picture is one frame that fills it (a frame exported from a design tool): that frame is the result, not a frame inside a frame */
+    const only = kids.length === 1 ? kids[0] : null;
+    if (only && only.type === 'FRAME' && spec.opacity === 1 && Math.abs(only.x) < 0.011 && Math.abs(only.y) < 0.011 && Math.abs(only.w - vw) < 0.011 && Math.abs(only.h - vh) < 0.011) { spec = only; spec.name = rootName || only.name || 'SVG'; st.count--; }
     return {spec: spec, w: vw, h: vh, count: st.count + 1, capped: st.capped, left: st.left, uploads: st.uploads};
   }
   const ROOT_STYLE = {fs: 16, color: '#000000'};
@@ -1294,7 +1298,8 @@
     p.name = spec.name || SPEC_NAME[spec.type] || 'Layer';
     p.x = rnd(spec.x - ox, 3); p.y = rnd(spec.y - oy, 3); p.w = rnd(Math.max(0, spec.w), 3);
     if (spec.type !== 'LINE') p.h = rnd(Math.max(0, spec.h), 3);
-    if (spec.rot) p.rot = rnd(spec.rot, 3);
+    if (spec.rot && Math.abs(spec.rot) >= 0.005) p.rot = rnd(spec.rot, 2);
+    if (typeof p.strokeWeight === 'number') p.strokeWeight = rnd(p.strokeWeight, 2);
     if (spec.flipH) p.flipH = true;
     if (spec.flipV) p.flipV = true;
     if (spec.opacity !== undefined && spec.opacity < 1) p.opacity = rnd(Math.max(0, spec.opacity), 4);
@@ -1312,11 +1317,14 @@
   function freeDims(d) { if (!d) return; if (d.bitmap && d.bitmap.close) d.bitmap.close(); if (d.url) URL.revokeObjectURL(d.url); }
   function viewCentre() { const sz = R().size || {w: 800, h: 600}; return R().screenToWorld(sz.w / 2, sz.h / 2); }
   /* where a new thing of this size goes: {parent, x, y} with its centre on the world point */
-  function dropSpot(at, page) {
+  function dropSpot(at, page, w, hh) {
     const c = at && isFinite(at.x) && isFinite(at.y) ? [at.x, at.y] : viewCentre();
     const cur = HD.sel.page, pg = page && node(page) && typeOf(page) === 'PAGE' ? page : cur;
     let parent = pg;
     if (pg === cur) { try { parent = U().containerAt(c[0], c[1]) || pg; } catch (e) { parent = pg; } }
+    /* into the frame under the point only when the new thing fits in it (a big picture is not cut off by a small frame) */
+    for (let g = 0; g < 100 && parent !== pg && node(parent); g++) { const pn = node(parent); if (Wn(pn) >= (w || 0) && Hn(pn) >= (hh || 0)) break; parent = pn.parent || pg; }
+    if (!node(parent) || typeOf(parent) === 'DOCUMENT') parent = pg;
     const pt = typeOf(parent), loc = pt === 'PAGE' || !pt ? c : M.apply(M.inv(S().worldMatrix(parent)), c[0], c[1]);
     return {parent: parent, x: loc[0], y: loc[1]};
   }
@@ -1349,7 +1357,7 @@
       if (hash) u.fill.hash = hash; else { lost++; u.fill.type = 'solid'; u.fill.color = '#E3E3E8'; delete u.fill.hash; delete u.fill.mode; }
     }
     if (!canEdit() || !HD.app || !HD.app.file) return null;
-    const spot = dropSpot(at || (isFinite(opts.x) ? {x: opts.x, y: opts.y} : null), opts.page), spec = res.spec, state = {n: 0, capped: res.capped};
+    const spot = dropSpot(at || (isFinite(opts.x) ? {x: opts.x, y: opts.y} : null), opts.page, res.spec.w, res.spec.h), spec = res.spec, state = {n: 0, capped: res.capped};
     spec.x = Math.round(spot.x - spec.w / 2); spec.y = Math.round(spot.y - spec.h / 2); spec.origin = [0, 0];
     let id = null;
     S().tx('Import SVG', () => { id = buildSpec(spec, spot.parent, 0, 0, state); });
@@ -1393,7 +1401,7 @@
     }
     if (!made.length) { toast(bad.length ? 'Not placed. ' + bad[0] + '.' : 'There was no picture to place.', true); return []; }
     if (!canEdit() || !HD.app || !HD.app.file) return [];
-    const total = made.reduce((s, p) => s + p.w, 0) + IMG_ROW_GAP * (made.length - 1), spot = dropSpot(at), ids = [];
+    const total = made.reduce((s, p) => s + p.w, 0) + IMG_ROW_GAP * (made.length - 1), spot = dropSpot(at, null, total, Math.max.apply(null, made.map(p => p.h))), ids = [];
     let x = spot.x - total / 2;
     S().tx(made.length === 1 ? 'Place image' : 'Place images', () => {
       for (const p of made) {
@@ -1807,7 +1815,7 @@
     const lines = widget(id, 0, budget, null);
     return lines.join('\n') + '\n';
     function ind(lines2, by) { const pad = '  '.repeat(by); return lines2.map(l => pad + l); }
-    function wrap(name, args, inner) { const out = [name + '(']; for (const a of args) out.push('  ' + a + ','); if (inner) { const c = inner.slice(); c[0] = 'child: ' + c[0]; c[c.length - 1] += ','; for (const l of c) out.push('  ' + l); } out.push(')'); return out; }
+    function wrap(name, args, inner) { const out = [name + '(']; for (const a of args) { if (Array.isArray(a)) { a.forEach((l, i) => out.push('  ' + l + (i === a.length - 1 ? ',' : ''))); } else out.push('  ' + a + ','); } if (inner) { const c = inner.slice(); c[0] = 'child: ' + c[0]; c[c.length - 1] += ','; for (const l of c) out.push('  ' + l); } out.push(')'); return out; }
     function widget(nid, depth, bud, parentLay) {
       const m = look(nid);
       if (!m) return ['const SizedBox()'];
@@ -1842,7 +1850,8 @@
         const hugW = !!m.lay && m.sizeH === 'hug', hugH = !!m.lay && m.sizeV === 'hug';
         if (!hugW && !(mainFill && horiz)) args.push('width: ' + (fillW && !horiz && crossFill ? 'double.infinity' : dn(m.w)));
         if (!hugH && !(mainFill && !horiz)) args.push('height: ' + (fillH && horiz && crossFill ? 'double.infinity' : dn(m.h)));
-        if (m.lay) { const p = padCss(Array.isArray(m.lay.pad) ? m.lay.pad : [0, 0, 0, 0], 0); if (p.some(v => v > 0)) args.push('padding: ' + (p[0] === p[1] && p[1] === p[2] && p[2] === p[3] ? 'EdgeInsets.all(' + dn(p[0]) + ')' : p[0] === p[2] && p[1] === p[3] ? 'EdgeInsets.symmetric(horizontal: ' + dn(p[1]) + ', vertical: ' + dn(p[0]) + ')' : 'EdgeInsets.fromLTRB(' + dn(p[3]) + ', ' + dn(p[0]) + ', ' + dn(p[1]) + ', ' + dn(p[2]) + ')')); }
+        const inset = m.type !== 'GROUP' && m.strokes.length && m.sw > 0 ? (m.align === 'inside' ? m.sw : m.align === 'outside' ? 0 : m.sw / 2) : 0;   /* Flutter insets a Container's child by its border */
+        if (m.lay) { const p = padCss(Array.isArray(m.lay.pad) ? m.lay.pad : [0, 0, 0, 0], inset); if (p.some(v => v > 0)) args.push('padding: ' + (p[0] === p[1] && p[1] === p[2] && p[2] === p[3] ? 'EdgeInsets.all(' + dn(p[0]) + ')' : p[0] === p[2] && p[1] === p[3] ? 'EdgeInsets.symmetric(horizontal: ' + dn(p[1]) + ', vertical: ' + dn(p[0]) + ')' : 'EdgeInsets.fromLTRB(' + dn(p[3]) + ', ' + dn(p[0]) + ', ' + dn(p[1]) + ', ' + dn(p[2]) + ')')); }
         if (m.type !== 'GROUP') {
           const solids = m.fills.filter(p => p.type === 'solid' || p.type === undefined), grads = m.fills.filter(p => p.type === 'linear' || p.type === 'radial' || p.type === 'angular'), imgs = m.fills.filter(p => p.type === 'image');
           if (solids.length) deco.push('color: ' + dartColor(col(solids[0].color, solids[0].opacity)));
@@ -1856,7 +1865,7 @@
           if (drops.length) deco.push('boxShadow: [' + drops.map(e => 'BoxShadow(color: ' + dartColor(col(e.color || '#000000', e.opacity === undefined ? 0.25 : e.opacity)) + ', offset: Offset(' + dn(num(+e.x, 0)) + ', ' + dn(num(+e.y, 0)) + '), blurRadius: ' + dn(Math.max(0, num(+e.blur, 0))) + ', spreadRadius: ' + dn(num(+e.spread, 0)) + ')').join(', ') + ']');
         }
         if (deco.length && m.clip && m.kids.length) args.push('clipBehavior: Clip.antiAlias');
-        if (deco.length) { args.push('decoration: BoxDecoration('); for (const d of deco) args.push('  ' + d + ','); args.push(')'); }
+        if (deco.length) args.push(['decoration: BoxDecoration('].concat(deco.map(d => '  ' + d + ','), [')']));
         let child = null;
         if (m.kids.length) {
           if (m.lay) {
@@ -1882,7 +1891,7 @@
             child = ['Stack('];
             if (!m.clip) child.push('  clipBehavior: Clip.none,');
             child.push('  children: [');
-            for (const k of m.kids) { const km = look(k); if (!km) continue; const pos = wrap('Positioned', ['left: ' + dn(km.x), 'top: ' + dn(km.y)], widget(k, depth + 1, bud, null)), c = ind(pos, 2); c[c.length - 1] += ','; for (const l of c) child.push(l); }
+            for (const k of m.kids) { const km = look(k); if (!km) continue; const pos = wrap('Positioned', ['left: ' + dn(km.x - inset), 'top: ' + dn(km.y - inset)], widget(k, depth + 1, bud, null)), c = ind(pos, 2); c[c.length - 1] += ','; for (const l of c) child.push(l); }
             child.push('  ],'); child.push(')');
           }
         }

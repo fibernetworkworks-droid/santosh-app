@@ -35,7 +35,7 @@
 .hd-co-text{font-size:13px;line-height:1.5;color:var(--ink);white-space:pre-wrap;overflow-wrap:anywhere;user-select:text}
 .hd-co-more{opacity:0}
 .hd-co-msg:hover .hd-co-more,.hd-co-more:focus-visible,.hd-co-more[aria-expanded="true"]{opacity:1}
-.hd-co-thread > .hd-co-writer{padding:8px 10px 10px;border-top:1px solid var(--line);flex:none}
+.hd-co-thread:not(.new) > .hd-co-writer{padding:8px 10px 10px;border-top:1px solid var(--line);flex:none}
 .hd-co-ro{padding:10px 12px 12px;border-top:1px solid var(--line);font-size:12.5px;color:var(--mut);line-height:1.45}
 .hd-co-ro a{color:var(--pri-ink);font-weight:500}
 
@@ -80,7 +80,7 @@
 
 /* the bar over the canvas while an old version is on screen (the "view only" banner steps aside) */
 .hd-co-previewing .hd-banner{display:none !important}
-.hd-co-previewing .hd-stage{box-shadow:inset 0 0 0 3px var(--saf)}
+.hd-co-previewing .hd-canvas{outline:3px solid var(--saf);outline-offset:-3px}
 .hd-co-vbar{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:4;display:flex;align-items:center;gap:8px;padding:6px 6px 6px 12px;border-radius:12px;background:var(--surface);border:1px solid var(--hair);box-shadow:var(--sh);max-width:calc(100% - 24px);color:var(--mut)}
 .hd-co-vtext{font-size:13px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:60px;margin-right:4px}
 .hd-co-vtext b{font-weight:600}
@@ -130,9 +130,10 @@ a.hd-btn{text-decoration:none}
 .hd-co-chat.sent{pointer-events:none}
 
 /* ---------- the signed-out viewer ---------- */
-.hd-co-view{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 10px 0 8px;border-radius:999px;background:var(--pri-soft);color:var(--pri-ink);font-size:12.5px;font-weight:500;white-space:nowrap;flex:none;margin-right:4px}
 .hd-co-signin{margin-left:4px}
-.hd-co-guest .hd-top .hd-undo,.hd-co-guest .hd-top .hd-redo{display:none}
+.hd-co-nogo{display:none !important}
+.hd-co-guest .hd-top .hd-btn:not(.hd-co-signin) .hd-btn-t{display:none}
+.hd-co-guest .hd-top .hd-btn:not(.hd-co-signin){padding:0 8px}
 .hd-co-gone-acts{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:6px}
-@media (max-width:1240px){ .hd-co-view span{display:none} .hd-co-view{padding:0 7px} .hd-co-vbar .hd-co-vwhen{display:none} }
+@media (max-width:1240px){ .hd-co-vbar .hd-co-vwhen{display:none} }
 @media (max-width:1100px){ .hd-co-hint{display:none} }

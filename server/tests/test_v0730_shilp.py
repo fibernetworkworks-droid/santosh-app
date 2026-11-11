@@ -381,7 +381,7 @@ def test_jobs_cap_and_shape(monkeypatch):
 
 def test_registry_pin_618():
     from app.agent.tools import TOOL_LABELS
-    assert len(TOOLS) == 624, ("617 + 1 shilp (v0.730 SHILP MANCH: the ArtCraft generation lane, "
+    assert len(TOOLS) == 625, ("624 + 1 hoola_design (v0.777 HOOLA DESIGN: the design editor's one tool). 617 + 1 shilp (v0.730 SHILP MANCH: the ArtCraft generation lane, "
                                "their Omni API, BYOK - owner 'MAKE A PLAN FOR HOOLA AI THUS HOOLA "
                                "USER CAN USE THIS' -> the plan's W0)")
     assert "shilp" in TOOL_LABELS and "credits" in TOOL_LABELS["shilp"]

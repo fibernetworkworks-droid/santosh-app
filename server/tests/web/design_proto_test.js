@@ -88,7 +88,7 @@ async function walk() {
 
     await page.goto(base + '#/f/f1'); await mounted(page); await settle(page);
     await page.locator('.hd-right .hd-tab', {hasText: 'Prototype'}).click(); await frames(page, 3);
-    eq(await page.locator('.hd-right .hd-tab').allTextContents(), ['Design', 'Prototype'], 'one Prototype tab beside Design');
+    eq((await page.locator('.hd-right .hd-tab').allTextContents()).filter(t => t === 'Prototype' || t === 'Design'), ['Design', 'Prototype'], 'one Prototype tab beside Design');
     yes(await page.locator('.hdp-panel').isVisible(), 'the Prototype tab shows');
     eq(await page.locator('.hdp-flowrow').count(), 2, 'both flows are listed');
     eq(await page.evaluate(layoutProblems), [], 'layout, Prototype tab with nothing selected'); await shot(page, 'proto-tab-page-light');
@@ -247,7 +247,7 @@ async function walk() {
     const pr = await at('9:44'); await page.mouse.move(pr[0], pr[1]); await page.mouse.down(); eq((await st()).overlays.map(o => o.id), ['9:50'], 'while pressing'); await page.mouse.up(); eq((await st()).overlays, [], 'released');
     const dg = await at('9:45'); await page.mouse.move(dg[0], dg[1]); await page.mouse.down(); eq((await st()).frame, '9:40'); await page.mouse.move(dg[0] + 40, dg[1], {steps: 3}); eq((await st()).frame, '9:1', 'a drag'); await page.mouse.up(); eq((await st()).frame, '9:1');
     await page.evaluate(() => HD.proto.open('9:40'));
-    await click('9:42'); yes(await page.locator('.hdp-ask').isVisible(), 'a link asks first'); eq(await page.locator('.hdp-url').textContent(), 'https://example.com/shop'); eq((await st()).ask, true); await shot(page, 'proto-link-ask');
+    await click('9:42'); yes(await page.locator('.hdp-ask').isVisible(), 'a link asks first'); eq(await page.locator('.hdp-url').textContent(), 'https://example.com/shop'); eq((await st()).ask, true); await stepClock(0); isColor(await px(195, 60), [20, 18, 43], 'the tip of the hover is gone from the picture too'); await shot(page, 'proto-link-ask');
     const pagesBefore = page.context().pages().length; await page.locator('.hdp-ask button', {hasText: 'Stay here'}).click(); eq(await page.locator('.hdp-ask').count(), 0); eq(page.context().pages().length, pagesBefore, 'nothing opened');
     await click('9:43'); eq(await page.locator('.hdp-ask').count(), 0, 'a link that is not https is never offered'); yes(/not a secure https/.test(await page.locator('.hd-toast').textContent()), 'and she is told');
     await page.keyboard.press('g'); eq((await st()).frame, '9:1', 'the key of the frame');

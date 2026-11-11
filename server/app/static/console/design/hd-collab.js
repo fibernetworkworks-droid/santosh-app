@@ -35,7 +35,7 @@
   const isGuest = () => { const f = file(); return !!(f && f.share); };
   const canWrite = () => { const f = file(); return !!f && !f.share && f.role !== 'view' && N().role !== 'view'; };
   const myName = () => (N().me && N().me.name) || '';
-  const MOD = /Mac|iPhone|iPad/.test(navigator.platform || '') ? '⌘' : 'Ctrl';
+  const MOD = /Mac|iPhone|iPad/.test(navigator.platform || '') ? '\u2318' : 'Ctrl';
   const PALETTE = ['#5B45E0', '#0FA958', '#E0457B', '#F2994A', '#2D9CDB', '#B347E6', '#00B5AD', '#C94343'];
 
   /* ---------------------------------------------------------------- small helpers */
@@ -197,7 +197,7 @@
     const send = h('button', {class: 'hd-btn pri hd-co-send', type: 'button', title: o.sendTitle || ('Send  (' + MOD + '+Enter)'), text: o.sendText || 'Send'});
     const cancel = o.cancel ? h('button', {class: 'hd-btn', type: 'button', text: 'Cancel', on: {click: o.cancel}}) : null;
     const ats = h('div', {class: 'hd-co-ats', role: 'listbox', 'aria-label': 'People in this file', hidden: true});
-    const hint = h('span', {class: 'hd-co-hint', text: '@ to mention · ' + MOD + '+Enter to send'});
+    const hint = h('span', {class: 'hd-co-hint', text: (o.cancel ? '' : '@ to mention \u00b7 ') + MOD + '+Enter to send'});
     let at = null, cur = 0, busy = false;
     function sync() { send.disabled = busy || !ta.value.trim(); ta.style.height = 'auto'; ta.style.height = Math.min(160, Math.max(o.rows === 1 ? 34 : 56, ta.scrollHeight + 2)) + 'px'; if (o.onText) o.onText(ta.value); }
     function mention() {
@@ -288,6 +288,7 @@
     box.appendChild(w.el); st.ta = w.ta;
     st.handle = ui.pop(anchor, box, {cls: 'hd-co-pop', label: 'New comment', onClose: () => { if (C.pop === st) { C.pop = null; C.draft = null; redraw(); } }});
     C.pop = st; C.draft = a; C.openId = null; redraw(); w.focus();
+    C.fresh = true; setTimeout(() => { C.fresh = false; }, 0);     /* onStageMouse keeps this click from handing the focus back to the canvas */
     setTimeout(() => { if (C.pop === st && document.contains(w.ta)) w.focus(); }, 0);     /* the click that dropped the pin gives the focus to the canvas after us */
   }
   function jump(id) {
@@ -319,7 +320,7 @@
     }
     for (const t of list) {
       const c = t.head, pl = pinPlace(c), other = pl[2] && pl[2] !== HD.sel.page && S().has(pl[2]) ? S().get(pl[2]).name : '', layer = c.node && S().has(c.node) ? S().get(c.node).name : '';
-      const meta = [t.replies.length ? t.replies.length + (t.replies.length === 1 ? ' reply' : ' replies') : '', layer ? 'on ' + layer : '', other].filter(Boolean).join(' · ');
+      const meta = [t.replies.length ? t.replies.length + (t.replies.length === 1 ? ' reply' : ' replies') : '', layer ? 'on ' + layer : '', other].filter(Boolean).join(' \u00b7 ');
       box.appendChild(h('button', {class: 'hd-co-row' + (C.openId === t.id ? ' on' : '') + (unread(t) ? ' unread' : ''), type: 'button', role: 'listitem', 'data-id': t.id, on: {click: () => jump(t.id)}},
         avatar(c.author), h('span', {class: 'hd-co-rbody'}, h('span', {class: 'hd-co-rhead'}, h('span', {class: 'hd-co-who', text: c.author || 'Someone'}), h('span', {class: 'hd-co-when', text: ago(t.last)}), unread(t) ? h('i', {class: 'hd-co-dot', title: 'New'}) : null),
           h('span', {class: 'hd-co-rtext'}, textNodes(c.text || '')), meta ? h('span', {class: 'hd-co-rmeta', text: meta}) : null)));
@@ -341,9 +342,10 @@
   function openVersions() {
     const f = file(); if (!f) return;
     if (f.share) { ui.toast('Sign in to see the version history of a file.'); return; }
+    if (!V.open) V.back = ui.state && ui.state.leftTab === 'comments' ? 'comments' : 'layers';
     V.open = true; leftTab('versions'); loadVersions();
   }
-  function closeVersions() { if (V.cur) exitPreview(); V.open = false; V.saving = false; leftTab('layers'); }
+  function closeVersions() { if (V.cur) exitPreview(); const was = V.back || 'layers'; V.open = false; V.saving = false; leftTab(was); }
   function settle(msLimit) {              /* every edit of ours is with the server (or the time is up) */
     return new Promise(resolve => { const t0 = Date.now(); (function wait() { if (!N().pending || N().pending() === 0) return resolve(true); if (Date.now() - t0 > msLimit) return resolve(false); setTimeout(wait, 60); })(); });
   }
@@ -371,7 +373,7 @@
     hideBar(); const st = ui.state, v = V.cur; if (!st || !st.stage || !v) return;
     if (st.root) st.root.classList.add('hd-co-previewing');
     V.bar = h('div', {class: 'hd-co-vbar', role: 'status'}, icon('history'),
-      h('span', {class: 'hd-co-vtext'}, 'Viewing ', h('b', {text: vName(v)}), h('span', {class: 'hd-co-vwhen', text: ' · ' + whenText(v.created_at)})),
+      h('span', {class: 'hd-co-vtext'}, 'Viewing ', h('b', {text: vName(v)}), h('span', {class: 'hd-co-vwhen', text: ' \u00b7 ' + whenText(v.created_at)})),
       h('button', {class: 'hd-btn pri', type: 'button', text: 'Restore', on: {click: () => restore(v)}}),
       h('button', {class: 'hd-btn', type: 'button', text: 'Duplicate as new file', on: {click: () => duplicate(v)}}),
       h('button', {class: 'hd-btn', type: 'button', text: 'Back to current', on: {click: exitPreview}}));
@@ -380,11 +382,11 @@
   function hideBar() { if (V.bar && V.bar.parentNode) V.bar.parentNode.removeChild(V.bar); V.bar = null; const st = ui.state; if (st && st.root) st.root.classList.remove('hd-co-previewing'); }
   function restore(v) {
     const box = ui.modal('hd-co-dialog', 'Restore this version', [
-      h('div', {class: 'hd-co-dhead'}, h('h2', {text: 'Restore “' + vName(v) + '”?'})),
-      h('div', {class: 'hd-co-dbody'}, h('p', {text: 'The file goes back to how it was on ' + whenText(v.created_at) + ' for everyone who has it open.'}), h('p', {class: 'hd-note', text: 'What the file is now is saved as a version first (“Before restore”), so this can be undone from the same list.'})),
+      h('div', {class: 'hd-co-dhead'}, h('h2', {text: 'Restore \u201c' + vName(v) + '\u201d?'})),
+      h('div', {class: 'hd-co-dbody'}, h('p', {text: 'The file goes back to how it was on ' + whenText(v.created_at) + ' for everyone who has it open.'}), h('p', {class: 'hd-note', text: 'What the file is now is saved as a version first (\u201cBefore restore\u201d), so this can be undone from the same list.'})),
       h('div', {class: 'hd-co-dfoot'}, h('button', {class: 'hd-btn', type: 'button', text: 'Cancel', on: {click: () => ui.closeModal()}}), h('button', {class: 'hd-btn pri', type: 'button', autofocus: true, text: 'Restore', on: {click: async ev => {
         ev.currentTarget.disabled = true;
-        try { await api('POST', '/versions/' + enc(v.id) + '/restore'); ui.closeModal(); if (N().held || V.cur) exitPreview(); ui.toast('Restored. The file as it was before is in the list as “Before restore”.'); loadVersions(); }
+        try { await api('POST', '/versions/' + enc(v.id) + '/restore'); ui.closeModal(); if (N().held || V.cur) exitPreview(); ui.toast('Restored. The file as it was before is in the list as \u201cBefore restore\u201d.'); loadVersions(); }
         catch (e) { ui.closeModal(); ui.toast(e.message || 'The version could not be restored.', true); } }}}))]);
     const b = box.querySelector('.hd-btn.pri'); if (b) b.focus();
   }
@@ -403,7 +405,7 @@
     el.appendChild(h('div', {class: 'hd-co-phead'}, h('span', {class: 'hd-co-ptitle', text: 'Version history'}), h('span', {class: 'hd-grow1'}), h('button', {class: 'hd-ib', type: 'button', title: 'Close the history', 'aria-label': 'Close the history', on: {click: closeVersions}}, icon('close'))));
     if (canWrite() || N().held) {
       if (V.saving) {
-        const name = h('input', {class: 'hd-in', type: 'text', placeholder: 'Name, for example “Before the client call”', 'aria-label': 'Version name', maxlength: '120', autofocus: true});
+        const name = h('input', {class: 'hd-in', type: 'text', placeholder: 'Name, for example \u201cBefore the client call\u201d', 'aria-label': 'Version name', maxlength: '120', autofocus: true});
         const note = h('textarea', {class: 'hd-co-ta', rows: 2, placeholder: 'What changed (optional)', 'aria-label': 'What changed', maxlength: '1000'});
         const save = h('button', {class: 'hd-btn pri', type: 'button', text: 'Save'});
         const go = async () => { save.disabled = true; try { await settle(3000); await api('POST', '/files/' + enc(file().id) + '/versions', {label: name.value.trim(), note: note.value.trim()}); V.saving = false; ui.toast('Version saved.'); await loadVersions(); } catch (e) { save.disabled = false; ui.toast(e.message || 'The version could not be saved.', true); } };
@@ -420,22 +422,22 @@
       const d = dayLabel(v.created_at); if (d !== day) { day = d; list.appendChild(h('div', {class: 'hd-co-vday', text: d})); }
       const more = h('span', {class: 'hd-ib sm hd-co-vmore', role: 'button', tabIndex: 0, title: 'Restore or duplicate', 'aria-label': 'More for ' + vName(v), 'aria-haspopup': 'menu'}, icon('dots'));
       const row = h('button', {class: 'hd-co-vrow' + (V.cur && V.cur.id === v.id ? ' on' : '') + (v.auto ? ' auto' : ''), type: 'button', role: 'listitem', 'data-id': v.id, disabled: V.busy, on: {click: ev => { if (more.contains(ev.target)) return; preview(v); }}},
-        h('span', {class: 'hd-co-vdot'}), h('span', {class: 'hd-co-vbody'}, h('span', {class: 'hd-co-vname', text: vName(v)}), h('span', {class: 'hd-co-vmeta', text: clock(v.created_at) + (v.by ? ' · ' + v.by : '')}), v.note ? h('span', {class: 'hd-co-vnote', text: v.note}) : null), more);
-      const menu = ev => { ev.preventDefault(); ev.stopPropagation(); ui.menu(more, [{label: 'Show this version', icon: 'eye', run: () => preview(v)}, {label: 'Restore…', icon: 'undo', disabled: !canWrite() && !N().held, run: () => restore(v)}, {label: 'Duplicate as new file', icon: 'copy', run: () => duplicate(v)}], {label: 'Version'}); };
+        h('span', {class: 'hd-co-vdot'}), h('span', {class: 'hd-co-vbody'}, h('span', {class: 'hd-co-vname', text: vName(v)}), h('span', {class: 'hd-co-vmeta', text: clock(v.created_at) + (v.by ? ' \u00b7 ' + v.by : '')}), v.note ? h('span', {class: 'hd-co-vnote', text: v.note}) : null), more);
+      const menu = ev => { ev.preventDefault(); ev.stopPropagation(); ui.menu(more, [{label: 'Show this version', icon: 'eye', run: () => preview(v)}, {label: 'Restore\u2026', icon: 'undo', disabled: !canWrite() && !N().held, run: () => restore(v)}, {label: 'Duplicate as new file', icon: 'copy', run: () => duplicate(v)}], {label: 'Version'}); };
       more.addEventListener('click', menu); more.addEventListener('keydown', ev => { if (ev.key === 'Enter' || ev.key === ' ') menu(ev); });
       list.appendChild(row);
     }
-    if (!V.list.length) list.appendChild(h('p', {class: 'hd-note pad', text: V.err || (V.loadedFor === (file() && file().id) ? 'No saved versions yet. Hoola saves one by itself every 30 minutes of editing; you can also save one by name.' : 'Loading…')}));
+    if (!V.list.length) list.appendChild(h('p', {class: 'hd-note pad', text: V.err || (V.loadedFor === (file() && file().id) ? 'No saved versions yet. Hoola saves one by itself every 30 minutes of editing; you can also save one by name.' : 'Loading\u2026')}));
     el.appendChild(list);
   }
 
   /* ================================================================ share */
   function selectedNode() { const ids = HD.sel.ids || []; return ids.length === 1 && S().has(ids[0]) ? ids[0] : null; }
-  function copyNodeLink(id, token) { const n = S().get(id); copyText(HD.app.link(id, token), 'Link to “' + ((n && n.name) || 'this layer') + '” copied.'); }
+  function copyNodeLink(id, token) { const n = S().get(id); copyText(HD.app.link(id, token), 'Link to \u201c' + ((n && n.name) || 'this layer') + '\u201d copied.'); }
   function shareDialog() {
     const f = file(); if (!f) return;
     const body = h('div', {class: 'hd-co-dbody'}), box = ui.modal('hd-co-dialog hd-co-share', 'Share this file', [
-      h('div', {class: 'hd-co-dhead'}, h('h2', {text: 'Share “' + (f.name || 'Untitled') + '”'}), h('button', {class: 'hd-ib', type: 'button', title: 'Close', 'aria-label': 'Close', on: {click: () => ui.closeModal()}}, icon('close'))), body]);
+      h('div', {class: 'hd-co-dhead'}, h('h2', {text: 'Share \u201c' + (f.name || 'Untitled') + '\u201d'}), h('button', {class: 'hd-ib', type: 'button', title: 'Close', 'aria-label': 'Close', on: {click: () => ui.closeModal()}}, icon('close'))), body]);
     const node = selectedNode(), nodeName = node ? (S().get(node).name || 'this layer') : '';
     function linkRow(label, url, copyMsg, id) { const inp = h('input', {class: 'hd-in hd-co-url', type: 'text', readonly: true, value: url, 'aria-label': label, id: id || null}); inp.addEventListener('focus', () => inp.select());
       return h('div', {class: 'hd-co-linkrow'}, inp, h('button', {class: 'hd-btn', type: 'button', on: {click: () => copyText(url, copyMsg)}}, icon('copy'), h('span', {text: 'Copy'}))); }
@@ -444,23 +446,23 @@
       if (f.share) {                       /* a guest: the link they came in by */
         body.appendChild(h('p', {class: 'hd-co-lead', text: 'You are looking at this file through a view-only link.'}));
         body.appendChild(linkRow('View-only link', HD.app.link(null), 'Link copied.'));
-        if (node) { body.appendChild(h('p', {class: 'hd-co-sub', text: 'Link to “' + nodeName + '”'})); body.appendChild(linkRow('Link to the selected layer', HD.app.link(node), 'Link copied.')); }
+        if (node) { body.appendChild(h('p', {class: 'hd-co-sub', text: 'Link to \u201c' + nodeName + '\u201d'})); body.appendChild(linkRow('Link to the selected layer', HD.app.link(node), 'Link copied.')); }
         body.appendChild(h('div', {class: 'hd-co-dfoot flat'}, h('a', {class: 'hd-btn pri', href: '/console/', text: 'Sign in to edit'})));
         return;
       }
-      if (state.loading) { body.appendChild(h('p', {class: 'hd-note', text: 'Loading…'})); return; }
+      if (state.loading) { body.appendChild(h('p', {class: 'hd-note', text: 'Loading\u2026'})); return; }
       const on = !!state.token;
       body.appendChild(h('div', {class: 'hd-co-sharehead'}, h('span', {class: 'hd-co-shareic' + (on ? ' on' : '')}, icon('link', 18)),
         h('div', {class: 'hd-co-sharetext'}, h('b', {text: on ? 'Anyone with the link can view' : 'Only you can open this file'}), h('span', {text: on ? 'No sign-in needed. They see changes and cursors live, and can inspect and export, but can not change anything.' : 'Make a view-only link to show it to someone who has no Hoola account.'}))));
       if (on) {
         body.appendChild(linkRow('View-only link', HD.app.link(null, state.token), 'View-only link copied.', 'hd-co-sharelink'));
-        if (node) { body.appendChild(h('p', {class: 'hd-co-sub', text: 'View-only link straight to “' + nodeName + '”'})); body.appendChild(linkRow('View-only link to the selected layer', HD.app.link(node, state.token), 'Link copied.')); }
+        if (node) { body.appendChild(h('p', {class: 'hd-co-sub', text: 'View-only link straight to \u201c' + nodeName + '\u201d'})); body.appendChild(linkRow('View-only link to the selected layer', HD.app.link(node, state.token), 'Link copied.')); }
       }
       body.appendChild(h('div', {class: 'hd-co-dfoot flat'},
         on ? h('button', {class: 'hd-btn danger', type: 'button', text: 'Turn off the link', title: 'People using the link lose access right away', on: {click: () => set('none')}}) : h('button', {class: 'hd-btn pri', type: 'button', autofocus: true, on: {click: () => set('view')}}, icon('link'), h('span', {text: 'Create a view-only link'})),
         state.err ? h('span', {class: 'hd-co-err', role: 'alert', text: state.err}) : null));
       body.appendChild(h('div', {class: 'hd-co-sep'}));
-      body.appendChild(h('p', {class: 'hd-co-sub', text: node ? 'Your own link to “' + nodeName + '” (needs your sign-in)' : 'Your own link to this file (needs your sign-in)'}));
+      body.appendChild(h('p', {class: 'hd-co-sub', text: node ? 'Your own link to \u201c' + nodeName + '\u201d (needs your sign-in)' : 'Your own link to this file (needs your sign-in)'}));
       body.appendChild(linkRow('Your link', HD.app.link(node, null), 'Link copied.'));
       if (!node) body.appendChild(h('p', {class: 'hd-note', text: 'Select one frame or layer first to copy a link that opens on it.'}));
       const first = body.querySelector('[autofocus]') || body.querySelector('.hd-btn'); if (first) first.focus();
@@ -485,7 +487,7 @@
     const box = P.box; if (!box || !document.contains(box)) return; const list = others();
     box.querySelectorAll('button.hd-person').forEach((b, i) => { const u = list[i]; if (!u) return; const on = P.follow === u.cid, away = idle(u.cid), name = String(u.name || 'Guest');
       b.dataset.cid = String(u.cid); b.classList.toggle('hd-co-idle', away); b.classList.toggle('hd-co-on', on); b.setAttribute('aria-pressed', String(on));
-      b.title = name + (away ? ' (away)' : '') + (on ? ' – you are following; click to stop' : ' – click to follow'); b.style.setProperty('--co', u.color || '#888888'); });
+      b.title = name + (away ? ' (away)' : '') + (on ? ' \u2013 you are following; click to stop' : ' \u2013 click to follow'); b.style.setProperty('--co', u.color || '#888888'); });
     const more = box.querySelector('.hd-person.more'); if (more) { more.setAttribute('role', 'button'); more.tabIndex = 0; more.title = 'Everyone in this file'; more.setAttribute('aria-label', 'Everyone in this file'); }
   }
   function peopleMenu(anchor) { ui.menu(anchor, others().map(u => ({label: String(u.name || 'Guest') + (idle(u.cid) ? ' (away)' : ''), checked: P.follow === u.cid ? true : undefined, icon: 'eye', run: () => toggleFollow(u.cid)})).concat(P.follow !== null ? ['-', {label: 'Stop following', run: () => stopFollow()}] : []), {label: 'People'}); }
@@ -561,7 +563,7 @@
   function startChat() {
     if (!file() || !ui.mounted) return; if (P.chat) { P.chat.inp.readOnly = false; P.chat.el.classList.remove('sent'); clearTimeout(P.chat.t); P.chat.inp.focus(); P.chat.inp.select(); return; }
     if (!P.ptr) { const b = canvasBox(); P.ptr = [b.left + b.width / 2, b.top + b.height / 2]; }
-    const inp = h('input', {class: 'hd-co-chatin', type: 'text', maxlength: '80', placeholder: 'Say something…', 'aria-label': 'Cursor chat: shown by your cursor for 5 seconds', autocomplete: 'off', spellcheck: 'false'});
+    const inp = h('input', {class: 'hd-co-chatin', type: 'text', maxlength: '80', placeholder: 'Say something\u2026', 'aria-label': 'Cursor chat: shown by your cursor for 5 seconds', autocomplete: 'off', spellcheck: 'false'});
     const el = h('div', {class: 'hd-co-chat'}, inp), c = {el: el, inp: inp, t: 0}; P.chat = c;
     el.style.setProperty('--co', (N().me && N().me.color) || css('--pri') || '#5B45E0');
     document.body.appendChild(el); placeChat();
@@ -582,9 +584,9 @@
 
   /* ================================================================ the signed-out viewer's badge */
   function guestBadge() {
-    const f = file(), top = ui.state && ui.state.root && ui.state.root.querySelector('.hd-top-r'); if (!f || !f.share || !top || top.querySelector('.hd-co-view')) return;
+    const f = file(), top = ui.state && ui.state.root && ui.state.root.querySelector('.hd-top-r'); if (!f || !f.share || !top || top.querySelector('.hd-co-signin')) return;
     const link = h('a', {class: 'hd-btn pri hd-co-signin', href: '/console/', text: ui.token ? 'Open Hoola' : 'Sign in to edit'});
-    top.insertBefore(h('span', {class: 'hd-co-view', title: 'You opened a view-only link: you can look around, inspect and export, but not change the file.'}, icon('eye'), h('span', {text: 'View only'})), top.firstChild);
+    for (const b of top.querySelectorAll('button.hd-ib')) { const t = b.getAttribute('aria-label') || ''; if (/^(Undo|Redo)\b/.test(t)) { b.classList.add('hd-co-nogo'); const sep = b.previousElementSibling; if (sep && sep.classList.contains('hd-vsep')) sep.classList.add('hd-co-nogo'); } }
     top.appendChild(link); ui.state.root.classList.add('hd-co-guest');
     if (ui.token) HD.app.rawFetch('/api/design/files/' + enc(f.id), {headers: {Authorization: 'Bearer ' + ui.token}, credentials: 'omit', cache: 'no-store'}).then(r => { if (r.ok && document.contains(link) && file() === f) { link.textContent = 'Open to edit'; link.href = location.pathname + '#/f/' + enc(f.id); link.title = 'This is your own file'; } }, () => {});
   }
@@ -601,6 +603,7 @@
     const nz = Math.min(64, Math.max(z * 2, Math.min(cv.clientWidth / Math.max(1, x1 - x0), cv.clientHeight / Math.max(1, y1 - y0)) * 0.45));
     R().setView(T().view.at(nz, (x0 + x1) / 2, (y0 + y1) / 2, cv.clientWidth / 2, cv.clientHeight / 2), true);
   }
+  function onStageMouse(ev) { if (C.fresh && ev.target === T().canvas) ev.preventDefault(); }
   function onStageMove(ev) {
     P.ptr = [ev.clientX, ev.clientY]; if (P.chat) placeChat();
     if (ev.buttons !== 0 || ev.target !== T().canvas || !C.hits.length) { if (C.hover) { C.hover = false; } return; }
@@ -614,7 +617,7 @@
     P.follow = null; P.frame = null; P.wait = null; P.spots = new Map(); P.spotEl = null; P.vs = ''; P.chat = null;
     seenLoad(f.id);
     const st = ui.state;
-    if (st && st.stage) { st.stage.addEventListener('pointerdown', onStageDown, true); st.stage.addEventListener('pointermove', onStageMove, true); }
+    if (st && st.stage) { st.stage.addEventListener('pointerdown', onStageDown, true); st.stage.addEventListener('pointermove', onStageMove, true); st.stage.addEventListener('mousedown', onStageMouse, true); }
     P.box = st && st.root ? st.root.querySelector('.hd-people') : null;
     if (P.mo) { P.mo.disconnect(); P.mo = null; }
     if (P.box) { P.box.addEventListener('click', ev => { const b = ev.target.closest ? ev.target.closest('.hd-person') : null; if (!b || !P.box.contains(b)) return; ev.preventDefault(); ev.stopPropagation(); if (b.classList.contains('more')) peopleMenu(b); else toggleFollow(+b.dataset.cid); }, true);
@@ -650,7 +653,7 @@
     /* Ctrl/Cmd+Alt+H was "distribute horizontally" before D5; with three or more layers selected it still is */
     ui.registerShortcut('mod+alt+h', () => { if ((HD.sel.ids || []).length >= 3 && canWrite() && !N().held && act().distribute) act().distribute('h'); else if (V.open) closeVersions(); else openVersions(); }, 'Version history');
     ui.command({id: 'versions', label: 'Version history', group: 'Other', run: openVersions});
-    ui.command({id: 'versions.save', label: 'Save a version…', group: 'Other', when: () => canWrite() && !N().held, run: () => { openVersions(); V.saving = true; vDirty(); }});
+    ui.command({id: 'versions.save', label: 'Save a version\u2026', group: 'Other', when: () => canWrite() && !N().held, run: () => { openVersions(); V.saving = true; vDirty(); }});
     ui.command({id: 'comments.show', label: 'Show the comments', group: 'Other', run: () => leftTab('comments')});
     ui.command({id: 'comments.pins', label: 'Show or hide the comment pins', group: 'View', run: togglePins});
     ui.command({id: 'collab.spotlight', label: 'Spotlight me (ask everyone to follow)', group: 'Other', run: spotlight});
@@ -666,7 +669,7 @@
   ui.hook('comment', startDraft);
   ui.hook('versions', openVersions);
   ui.hook('share', shareDialog);
-  ui.registerPanel('left', 'comments', {title: 'Comments', render: renderPanel});
+  ui.registerPanel('left', 'comments', {title: 'Comments', render: renderPanel, when: () => !V.open});     /* the History tab takes its place: four tabs do not fit */
   ui.registerPanel('left', 'versions', {title: 'History', render: renderVersions, when: () => V.open});
   ui.registerMenu('main', {label: 'Spotlight me', icon: 'eye', run: () => spotlight()});
   ui.registerMenu('main', {label: 'Cursor chat', icon: 'comment', keys: '/', run: () => startChat()});

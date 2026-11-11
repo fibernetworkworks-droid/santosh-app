@@ -489,7 +489,7 @@
   const shareInfo = {file: null, token: null, at: 0, busy: false};
   function refreshShare(force) {
     const f = HD.app && HD.app.file; if (!f || f.share || !ui.token || shareInfo.busy) return;
-    if (!force && shareInfo.file === f.id && Date.now() - shareInfo.at < 8000) return;
+    if (!force && shareInfo.file === f.id && Date.now() - shareInfo.at < 3000) return;
     shareInfo.busy = true;
     ui.api('GET', '/files/' + enc(f.id)).then(meta => { shareInfo.file = f.id; shareInfo.token = meta && meta.share && meta.share.role === 'view' && meta.share.token ? String(meta.share.token) : null; }, () => { /* the plain link then */ })
       .then(() => { shareInfo.busy = false; shareInfo.at = Date.now(); });
@@ -760,7 +760,7 @@
     if (!fid) { const fl = flows(page); fid = fl.length ? fl[0].id : (screens(page)[0] || null); if (frameId && !N(frameId) && fid) ui.toast('That frame is no longer in this file. The prototype starts at the first one.'); }
     if (!fid) { ui.toast('Draw a frame first: a prototype plays frames.'); try { if (/\/p\//.test(location.hash)) history.replaceState(history.state, '', address(null)); } catch (e) { /* fine */ } return false; }
     if (Pl.open) { if (!Pl.base || Pl.base.id !== fid) go(fid, {type: 'instant'}, {push: true}); return true; }
-    ui.closePops(0); edClose(); W.sel = null; refreshShare();
+    ui.closePops(0); edClose(); W.sel = null; refreshShare(true);
     Pl.canvas = h('canvas', {class: 'hdp-canvas', 'aria-label': 'Prototype. Click the screen to use it.'});
     Pl.stage = h('div', {class: 'hdp-stage'}, Pl.canvas);
     Pl.el = h('div', {class: 'hdp', role: 'dialog', 'aria-label': 'Prototype player', tabIndex: -1}, buildBar(), Pl.stage);

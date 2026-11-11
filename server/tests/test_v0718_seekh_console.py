@@ -303,7 +303,7 @@ def test_styles_exist():
 
 
 def test_no_new_tool_road_the_registry_stays():
-    assert len(T.TOOLS) == 624, "the console page adds NO tool - it drives the v0.713 seekh_video organs"
+    assert len(T.TOOLS) == 625, "624 + 1 hoola_design (v0.777 HOOLA DESIGN: the design editor's one tool). the console page adds NO tool - it drives the v0.713 seekh_video organs"
 
 
 def test_version_pins():

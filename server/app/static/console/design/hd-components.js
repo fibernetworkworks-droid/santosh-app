@@ -91,7 +91,7 @@
   function ovOf(n) { return n && n.ov && typeof n.ov === 'object' ? n.ov : {}; }
   function vRoot(inst, ovs, depth, seen, at) {
     const comp = inst.comp ? S.get(inst.comp) : null;
-    const v = {id: at.id, path: at.path, n: inst, instN: inst, kids: [], sx: 1, sy: 1, world: at.world, parent: at.parent, isRoot: true, comp: inst.comp || '', missing: !comp};
+    const v = {id: at.id, key: at.key, path: at.path, n: inst, instN: inst, kids: [], sx: 1, sy: 1, cw: 0, ch: 0, world: null, parent: at.parent, isRoot: true, inst: true, comp: inst.comp || '', missing: !comp};
     if (!comp || depth > 6 || seen.has(inst.comp)) return v;
     const rootN = Object.assign({}, comp, inst);
     rootN.type = 'INSTANCE';
@@ -100,8 +100,8 @@
     const all = [{ov: ovOf(inst), path: ''}].concat(ovs);
     for (const e of all) { const o = e.path === '' ? e.ov[''] : undefined; if (o && typeof o === 'object') Object.assign(rootN, o); }
     v.n = rootN;
-    const cw = W(comp), ch = H(comp);
-    v.sx = cw > EPS ? W(rootN) / cw : 1; v.sy = ch > EPS ? H(rootN) / ch : 1;
+    v.cw = W(comp); v.ch = H(comp);
+    v.sx = v.cw > EPS ? W(rootN) / v.cw : 1; v.sy = v.ch > EPS ? H(rootN) / v.ch : 1;
     const seen2 = new Set(seen); seen2.add(inst.comp);
     const ks = S.children(inst.comp);
     for (let i = 0; i < ks.length; i++) { const k = vKid(ks[i], all, depth, seen2, v); if (k) v.kids.push(k); }
@@ -116,16 +116,35 @@
       ovs2.push({ov: e.ov, path: p});
       if (o && typeof o === 'object') { if (n === c) n = Object.assign({}, c); Object.assign(n, o); }
     }
-    const path = par.path ? par.path + '/' + cid : cid;
-    const lm = M.nodeMatrix(num(n.x, 0), num(n.y, 0), W(n), H(n), num(n.rot, 0), n.flipH === true, n.flipV === true), sx = par.sx, sy = par.sy;
-    const world = M.mul(par.world, sx === 1 && sy === 1 ? lm : [lm[0] * sx, lm[1] * sy, lm[2] * sx, lm[3] * sy, lm[4] * sx, lm[5] * sy]);
-    if (n.type === 'INSTANCE') return vRoot(n, ovs2, depth + 1, seen, {id: cid, path: path, world: world, parent: par});
-    const v = {id: cid, path: path, n: n, kids: [], sx: 1, sy: 1, world: world, parent: par, isRoot: false, comp: '', missing: false};
+    const path = par.path ? par.path + '/' + cid : cid, key = par.key + '/' + cid;
+    if (n.type === 'INSTANCE') return vRoot(n, ovs2, depth + 1, seen, {id: cid, key: key, path: path, parent: par});
+    const v = {id: cid, key: key, path: path, n: n, kids: [], sx: 1, sy: 1, world: null, parent: par, isRoot: false, comp: '', missing: false};
     if (CONT[n.type] === 1) { const ks = S.children(cid); for (let i = 0; i < ks.length; i++) { const k = vKid(ks[i], ovs2, depth, seen, v); if (k) v.kids.push(k); } }
     return v;
   }
+  /* an instance at another size than its component: laid out again when the component has auto layout or its children
+     carry constraints (HD.layout.virtual, as the renderer does), else simply scaled */
+  function vFit(v, depth) {
+    if (v.inst === true && depth < 8) {
+      v.sx = v.cw > EPS ? W(v.n) / v.cw : 1; v.sy = v.ch > EPS ? H(v.n) / v.ch : 1;
+      if ((Math.abs(v.sx - 1) > 1e-6 || Math.abs(v.sy - 1) > 1e-6) && v.kids.length && HD.layout && typeof HD.layout.virtual === 'function') {
+        const l = v.n.layout; let wants = !!(l && (l.mode === 'h' || l.mode === 'v'));
+        for (let i = 0; i < v.kids.length && !wants; i++) { const c = v.kids[i].n.cons; if (c !== undefined && c !== null) wants = true; }
+        let ok = false; if (wants) { try { ok = HD.layout.virtual(v, v.cw, v.ch); } catch (e) { ok = false; } }
+        if (ok) { v.sx = 1; v.sy = 1; }
+      }
+    }
+    for (let i = 0; i < v.kids.length; i++) vFit(v.kids[i], v.kids[i].inst === true ? depth + 1 : depth);
+  }
+  function vPlace(v) {
+    for (let i = 0; i < v.kids.length; i++) {
+      const k = v.kids[i], n = k.n, lm = M.nodeMatrix(num(n.x, 0), num(n.y, 0), W(n), H(n), num(n.rot, 0), n.flipH === true, n.flipV === true), sx = v.sx, sy = v.sy;
+      k.world = M.mul(v.world, sx === 1 && sy === 1 ? lm : [lm[0] * sx, lm[1] * sy, lm[2] * sx, lm[3] * sy, lm[4] * sx, lm[5] * sy]);
+      vPlace(k);
+    }
+  }
   const treeCache = new Map();
-  function buildTree(instId, node) { return vRoot(node, [], 0, new Set(), {id: instId, path: '', world: S.worldMatrix(instId), parent: null}); }
+  function buildTree(instId, node) { const t = vRoot(node, [], 0, new Set(), {id: instId, key: instId, path: '', parent: null}); vFit(t, 0); t.world = S.worldMatrix(instId); vPlace(t); return t; }
   /* the resolved tree of an instance, or null when the id is not an instance */
   function vtree(instId) {
     const inst = S.get(instId);
@@ -358,12 +377,12 @@
   }
   function detachOne(instId) {
     const inst = S.get(instId); if (!inst || inst.type !== 'INSTANCE') return false;
-    const tree = buildTree(instId, inst), p = {type: 'FRAME', comp: null, ov: null}, skip = {type: 1, parent: 1, idx: 1, name: 1, x: 1, y: 1, comp: 1, ov: 1, cprops: 1, desc: 1, libSrc: 1, libHash: 1, libId: 1, protoStart: 1};
+    const tree = buildTree(instId, inst), topOv = ovOf(inst), p = {type: 'FRAME', comp: null, ov: null}, skip = {type: 1, parent: 1, idx: 1, name: 1, x: 1, y: 1, comp: 1, ov: 1, cprops: 1, desc: 1, libSrc: 1, libHash: 1, libId: 1, protoStart: 1};
     for (const k in tree.n) if (!skip[k] && tree.n[k] !== undefined && !same(tree.n[k], inst[k])) p[k] = tree.n[k];
     if (p.layout && (Math.abs(tree.sx - 1) > 1e-6 || Math.abs(tree.sy - 1) > 1e-6)) p.layout = scaled({layout: p.layout}, tree.sx, tree.sy).layout;
     S.set(instId, p);
     const map = {};
-    for (let i = 0; i < tree.kids.length; i++) materialise(tree.kids[i], instId, ovOf(inst), tree.sx, tree.sy, map);
+    for (let i = 0; i < tree.kids.length; i++) materialise(tree.kids[i], instId, topOv, tree.sx, tree.sy, map);
     rekeyAfterDetach(instId, map);
     return true;
   }
@@ -1285,7 +1304,7 @@
   function drawVars() {
     if (!dlg.el || !document.contains(dlg.el)) { dlg.el = null; return; }
     const grid = dlg.grid, list = modes(), all = varList(), edit = canEdit();
-    clear(grid); grid.style.gridTemplateColumns = 'minmax(180px,1.3fr) repeat(' + list.length + ', minmax(132px,1fr)) 30px';
+    clear(grid); grid.style.gridTemplateColumns = 'minmax(170px,1.3fr) repeat(' + list.length + ', minmax(120px,1fr)) 30px'; grid.style.minWidth = (220 + list.length * 128) + 'px';
     grid.appendChild(h('div', {class: 'hdc-vh', role: 'columnheader', text: 'Name'}));
     for (const m of list) { const rm = list.length > 1 ? ibtn('minus', 'Delete the mode ' + m, () => { deleteMode(m); drawVars(); }, 'sm') : null; if (rm) rm.disabled = !edit;
       grid.appendChild(h('div', {class: 'hdc-vh hdc-vmode', role: 'columnheader'}, textIn({label: 'Mode name', sync: false, cls: 'hdc-strong', get: () => m, set: x => { renameMode(m, x); drawVars(); }, max: 60}), rm)); }

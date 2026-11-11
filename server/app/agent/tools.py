@@ -1320,6 +1320,16 @@ TOOL_LABELS.update(VIDEO_KIT_LABELS)
 HANDLERS.update(VIDEO_KIT_HANDLERS)
 del _seen
 
+# v0.777 HOOLA DESIGN: ONE hoola_design tool (app/design, her own design editor at /console/design): create an EDITABLE
+# design file from one line / list her files / add frames / how she shares it. The model writes a validated spec only
+# (design/ai.py makes the ops); a share link is never made by the tool. Family "design" (tight phrases in admit.py).
+from .design_tools import DESIGN_HANDLERS, DESIGN_LABELS, DESIGN_TOOLS  # noqa: E402
+_seen = {t["name"] for t in TOOLS}
+TOOLS.extend(t for t in DESIGN_TOOLS if t["name"] not in _seen)
+TOOL_LABELS.update(DESIGN_LABELS)
+HANDLERS.update(DESIGN_HANDLERS)
+del _seen
+
 # v0.477 HOOLA SELF-TEACH: ONE skill_manage tool (the coder/skills_tool surface) - Santosh can
 # author and improve reusable skills mid-conversation; the coder nudge resets its counter on use.
 from ..coder.skills_tool import SKILL_HANDLERS, SKILL_LABELS, SKILL_TOOLS  # noqa: E402
