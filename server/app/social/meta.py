@@ -81,7 +81,7 @@ def _req(method: str, url: str, **kw: Any) -> dict[str, Any]:
     try:
         r = c.request(method, url, timeout=30, **kw)
     except httpx.HTTPError as e:
-        raise MetaError(f"Meta se baat nahi hui ({type(e).__name__}).")
+        raise MetaError(f"Could not reach Meta ({type(e).__name__}).")
     finally:
         if own:
             c.close()
@@ -118,7 +118,7 @@ def ig_exchange(code: str) -> dict[str, Any]:
         short = short["data"][0]
     tok = short.get("access_token")
     if not tok:
-        raise MetaError("Instagram ne token nahi diya.")
+        raise MetaError("Instagram did not return a token.")
     long = _req("GET", f"{IG_GRAPH}/access_token", params={"grant_type": "ig_exchange_token",
                                                            "client_secret": st.instagram_app_secret, "access_token": tok})
     perms = short.get("permissions")
@@ -195,7 +195,7 @@ def fb_exchange(code: str) -> dict[str, Any]:
         "fb_exchange_token": short.get("access_token", "")})
     tok = long.get("access_token") or short.get("access_token")
     if not tok:
-        raise MetaError("Facebook ne token nahi diya.")
+        raise MetaError("Facebook did not return a token.")
     me = _req("GET", f"{FB_GRAPH}/{_v()}/me", params={"fields": "id,name", "access_token": tok})
     return {"access_token": tok, "expires_in": int(long.get("expires_in") or 60 * 86400), "user_id": str(me.get("id") or ""),
             "name": me.get("name") or ""}
@@ -245,18 +245,18 @@ def parse_signed_request(signed: str) -> dict[str, Any]:
     try:
         sig_b64, payload_b64 = (signed or "").split(".", 1)
     except ValueError:
-        raise MetaError("signed_request galat.")
+        raise MetaError("signed_request is wrong.")
     pad = lambda x: x + "=" * (-len(x) % 4)                             # noqa: E731
     try:
         sig = base64.urlsafe_b64decode(pad(sig_b64))
         payload = json.loads(base64.urlsafe_b64decode(pad(payload_b64)))
     except (ValueError, json.JSONDecodeError):
-        raise MetaError("signed_request padha nahi gaya.")
+        raise MetaError("signed_request could not be read.")
     st = get_settings()
     for secret in (st.meta_app_secret, st.instagram_app_secret):
         if secret and hmac.compare_digest(sig, hmac.new(secret.encode(), payload_b64.encode(), hashlib.sha256).digest()):
             return payload
-    raise MetaError("signed_request ka signature mel nahi khaata.")
+    raise MetaError("The signed_request signature does not match.")
 
 
 # ---------------------------------------------------------------- v0.355 publishing (Phase 2) - only ever called for a post she approved
@@ -272,7 +272,7 @@ def ig_container(ig_user: str, token: str, **params: Any) -> str:
     js = _req("POST", f"{IG_GRAPH}/{_v()}/{ig_user}/media", data={**{k: v for k, v in params.items() if v not in (None, "")},
                                                                  "access_token": token})
     if not js.get("id"):
-        raise MetaError("Instagram ne post ka dabba (container) nahi banaya.")
+        raise MetaError("Instagram did not create the post container.")
     return str(js["id"])
 
 
@@ -284,15 +284,15 @@ def ig_wait(container: str, token: str, tries: int = 40, every: float = 5.0) -> 
         if code in ("FINISHED", "PUBLISHED"):
             return
         if code in ("ERROR", "EXPIRED"):
-            raise MetaError(f"Instagram ne video nahi li: {str(js.get('status') or code)[:160]}")
+            raise MetaError(f"Instagram did not accept the video: {str(js.get('status') or code)[:160]}")
         _sleep(every)
-    raise MetaError("Instagram video ko taiyaar karne mein bahut der laga raha hai; thodi der baad dobara.")
+    raise MetaError("Instagram is taking too long to process the video; try again in a little while.")
 
 
 def ig_publish(ig_user: str, token: str, container: str) -> str:
     js = _req("POST", f"{IG_GRAPH}/{_v()}/{ig_user}/media_publish", data={"creation_id": container, "access_token": token})
     if not js.get("id"):
-        raise MetaError("Instagram ne post publish nahi kiya.")
+        raise MetaError("Instagram did not publish the post.")
     return str(js["id"])
 
 

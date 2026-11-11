@@ -68,7 +68,7 @@ class SevaSettings(Base):
     officer: Mapped[str] = mapped_column(String(120), default="")               # grievance officer name
     officer_contact: Mapped[str] = mapped_column(String(160), default="")
     policy: Mapped[str] = mapped_column(Text, default="{}")                    # refund_days, refund_max, replace_days, goodwill_max, cancel_hours, refund_mode
-    lang: Mapped[str] = mapped_column(String(10), default="hinglish")
+    lang: Mapped[str] = mapped_column(String(10), default="english")
     csat_on: Mapped[bool] = mapped_column(Boolean, default=True)
     auto_ack: Mapped[bool] = mapped_column(Boolean, default=True)
     morning_time: Mapped[str] = mapped_column(String(5), default="09:00")
@@ -85,7 +85,7 @@ class SevaEntry(Base):
     answer: Mapped[str] = mapped_column(Text, default="")
     aliases: Mapped[str] = mapped_column(Text, default="[]")                   # other ways customers ask it
     lang: Mapped[str] = mapped_column(String(10), default="")
-    source: Mapped[str] = mapped_column(String(300), default="aapke shabd")
+    source: Mapped[str] = mapped_column(String(300), default="your words")
     status: Mapped[str] = mapped_column(String(8), default="live")            # draft | live
     hits: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
@@ -112,7 +112,7 @@ class SevaTicket(Base):
     channel: Mapped[str] = mapped_column(String(12), default="phone")         # whatsapp | hoola | phone | walkin | email | other
     customer: Mapped[str] = mapped_column(String(200), default="")             # wa:<digits> | phone:<digits> | Hoola address | name:<x>
     customer_label: Mapped[str] = mapped_column(String(160), default="")
-    lang: Mapped[str] = mapped_column(String(10), default="hinglish")
+    lang: Mapped[str] = mapped_column(String(10), default="english")
     text: Mapped[str] = mapped_column(Text, default="")
     category: Mapped[str] = mapped_column(String(20), default="other")
     priority: Mapped[str] = mapped_column(String(8), default="normal")
@@ -357,9 +357,9 @@ def save_settings(tenant: str, **kw: Any) -> dict:
                 try:
                     fr, rs = float(v[0]), float(v[1])
                 except (TypeError, ValueError, IndexError, KeyError):
-                    raise SevaError("SLA = [pehla jawab ghante, suljhane ke ghante]")
+                    raise SevaError("SLA = [first-reply hours, resolution hours]")
                 if not (0 < fr <= rs <= 24 * 90):
-                    raise SevaError("SLA: pehla jawab > 0 aur suljhane se kam ya barabar, 90 din tak.")
+                    raise SevaError("SLA: first reply must be > 0 and no more than the resolution time, up to 90 days.")
                 own[p] = [fr, rs]
             r.sla = _dump(own)
         for k in ("ecommerce", "csat_on", "auto_ack"):
@@ -374,7 +374,7 @@ def save_settings(tenant: str, **kw: Any) -> dict:
             r.lang = kw["lang"]
         if kw.get("morning_time"):
             if not re.match(r"^([01]\d|2[0-3]):[0-5]\d$", str(kw["morning_time"])):
-                raise SevaError("Samay HH:MM mein.")
+                raise SevaError("Give the time as HH:MM.")
             r.morning_time = kw["morning_time"]
         pol = _j(r.policy, {})
         src = kw.get("policy") if isinstance(kw.get("policy"), dict) else {}
@@ -389,15 +389,15 @@ def save_settings(tenant: str, **kw: Any) -> dict:
             else:
                 n = _num(v)
                 if n < 0:
-                    raise SevaError(f"{k} 0 se kam nahi.")
+                    raise SevaError(f"{k} cannot be below 0.")
                 pol[k] = n
         r.policy = _dump(pol)
         out = _settings_view(r)
     warn = []
     if out["ecommerce"] and not out["officer"]:
-        warn.append("Online bechti hain to E-Commerce Rules 2020: grievance officer ka naam + contact dikhana zaroori hai.")
+        warn.append("If you sell online, E-Commerce Rules 2020 require you to show the grievance officer's name + contact.")
     out["warnings"] = warn
-    out["say"] = "Seva ke niyam save." + (" " + " ".join(warn) if warn else "")
+    out["say"] = "Service rules saved." + (" " + " ".join(warn) if warn else "")
     return out
 
 
@@ -408,26 +408,26 @@ def _entry_view(e: SevaEntry) -> dict:
 
 
 def kb_add(tenant: str, question: str, answer: str, kind: str = "faq", aliases: list | None = None, lang: str = "",
-           source: str = "aapke shabd", status: str = "live") -> dict:
+           source: str = "your words", status: str = "live") -> dict:
     q, a = _clean(question, 500), _clean(answer, 3000)
     if not q or not a:
-        raise SevaError("Sawaal aur jawab dono chahiye.")
+        raise SevaError("Both a question and an answer are needed.")
     if kind not in ("faq", "policy"):
         raise SevaError("kind: faq | policy")
     if _secret(a):
-        raise SevaError("Jawab mein OTP / PIN / password / card jaisi jaankari nahi rakh sakte.")
+        raise SevaError("An answer cannot hold details like an OTP / PIN / password / card.")
     al = [_clean(x, 200) for x in (aliases or []) if _clean(x, 200)][:12]
     with session() as s:
         for e in s.scalars(select(SevaEntry).where(SevaEntry.tenant_id == tenant)).all():
             if R.norm(e.question) == R.norm(q) and e.status == status:
                 e.answer, e.aliases, e.updated_at = a, _dump(sorted(set(_j(e.aliases, []) + al))), now()
                 e.source = source or e.source
-                return _entry_view(e) | {"updated": True, "say": "Pehle wala jawab badal diya."}
+                return _entry_view(e) | {"updated": True, "say": "The earlier answer was updated."}
         e = SevaEntry(tenant_id=tenant, kind=kind, question=q, answer=a, aliases=_dump(al), lang=lang or R.lang_of(q + " " + a),
-                      source=_clean(source, 300) or "aapke shabd", status=status)
+                      source=_clean(source, 300) or "your words", status=status)
         s.add(e)
         s.flush()
-        return _entry_view(e) | {"say": ("Gyaan mein joda." if status == "live" else "Draft bana; aapki haan ke baad graahakon ko jayega.")}
+        return _entry_view(e) | {"say": ("Added to Knowledge." if status == "live" else "Draft made; it goes to customers only after your approval.")}
 
 
 def kb_list(tenant: str, status: str = "", q: str = "", kind: str = "") -> list[dict]:
@@ -447,19 +447,19 @@ def kb_edit(tenant: str, entry_id: str, **kw: Any) -> dict:
     with session() as s:
         e = s.get(SevaEntry, entry_id)
         if e is None or e.tenant_id != tenant:
-            raise SevaError("Yeh jawab nahi mila.")
+            raise SevaError("This answer was not found.")
         if kw.get("question"):
             e.question = _clean(kw["question"], 500)
         if kw.get("answer"):
             if _secret(kw["answer"]):
-                raise SevaError("Jawab mein mana ki gayi jaankari hai.")
+                raise SevaError("The answer holds details that are not allowed.")
             e.answer = _clean(kw["answer"], 3000)
         if kw.get("aliases") is not None:
             e.aliases = _dump([_clean(x, 200) for x in kw["aliases"] if _clean(x, 200)][:12])
         if kw.get("kind") in ("faq", "policy"):
             e.kind = kw["kind"]
         e.updated_at = now()
-        return _entry_view(e) | {"say": "Badal diya."}
+        return _entry_view(e) | {"say": "Updated."}
 
 
 def kb_approve(tenant: str, entry_ids: list[str] | str) -> dict:
@@ -471,16 +471,16 @@ def kb_approve(tenant: str, entry_ids: list[str] | str) -> dict:
             if e is not None and e.tenant_id == tenant and e.status == "draft":
                 e.status, e.updated_at = "live", now()
                 n += 1
-    return {"approved": n, "say": f"{n} jawab ab graahakon ke liye taiyaar."}
+    return {"approved": n, "say": f"{n} answers are now ready for customers."}
 
 
 def kb_remove(tenant: str, entry_id: str) -> dict:
     with session() as s:
         e = s.get(SevaEntry, entry_id)
         if e is None or e.tenant_id != tenant:
-            raise SevaError("Yeh jawab nahi mila.")
+            raise SevaError("This answer was not found.")
         s.delete(e)
-    return {"removed": entry_id, "say": "Hata diya."}
+    return {"removed": entry_id, "say": "Removed."}
 
 
 EXTRACT_SYSTEM = (
@@ -516,29 +516,29 @@ def _fallback_extract(text: str) -> list[dict]:
 
 def _source_text(tenant: str, file_id: str = "", data: bytes | None = None, name: str = "", url: str = "", text: str = "") -> tuple[str, str]:
     if text:
-        return _clean(text, 60000), "aapke shabd"
+        return _clean(text, 60000), "your words"
     if url:
         from .. import web
         try:
             page = _run_async(web.open_website(url))
         except Exception as e:
-            raise SevaError(f"Page nahi khula: {e}")
+            raise SevaError(f"The page did not open: {e}")
         return _clean(page.get("text", ""), 60000), f"website: {url[:200]}"
     if file_id:
         from ..mailbox import service as ms
         try:
             name, _m, data = ms.load_files(tenant, [{"type": "file", "file_id": file_id}])[0]
         except Exception as e:
-            raise SevaError(f"File nahi mili: {e}")
+            raise SevaError(f"File not found: {e}")
     if data is None:
-        raise SevaError("File, link ya likha hua text dijiye.")
+        raise SevaError("Give a file, a link or written text.")
     if name.lower().endswith((".txt", ".md", ".csv")):
         body = data.decode("utf-8", "ignore")
     else:
         from ..docread import read_text
         body = (read_text(name, "", data, limit=60000) or {}).get("text", "")
     if not body.strip():
-        raise SevaError("Is file mein padhne layak likha nahi mila (photo ho to chat mein bhejiye, Hoola padh lega).")
+        raise SevaError("No readable text was found in this file (if it is a photo, send it in the chat and Hoola will read it).")
     return body, f"file: {name[:200]}"
 
 
@@ -560,8 +560,8 @@ def kb_import(tenant: str, file_id: str = "", data: bytes | None = None, name: s
         al = it.get("aliases") if isinstance(it.get("aliases"), list) else []
         made.append(kb_add(tenant, q, a, kind, al, source=source, status="draft"))
     return {"drafts": made, "count": len(made), "source": source,
-            "say": f"{len(made)} jawab ka draft bana ({source}). Dekh kar 'haan' kijiye, tabhi graahakon ko jayenge."
-            if made else "Is text se koi saaf sawaal-jawab nahi nikla; apne shabdon mein bata dijiye."}
+            "say": f"{len(made)} draft answers made ({source}). Review and approve them; only then do they go to customers."
+            if made else "No clear question and answer came out of this text; tell me in your own words."}
 
 
 def _rank(tenant: str, question: str, limit: int = 3) -> list[tuple[dict, float]]:
@@ -598,10 +598,10 @@ def answer(tenant: str, question: str, channel: str = "", customer: str = "", la
     """Instant answer from her knowledge base ONLY. Unknown = handover, never a guess."""
     q = _clean(question, 1000)
     if not q:
-        raise SevaError("Sawaal khaali hai.")
+        raise SevaError("The question is empty.")
     lang = lang if lang in R.LANGS else R.lang_of(q)
     if _secret(q):
-        out = {"status": "refuse", "reply": "", "say": "Graahak OTP / PIN / card jaisi jaankari bhej rahe hain: unhe mana kijiye, yeh kabhi nahi maangte."}
+        out = {"status": "refuse", "reply": "", "say": "The customer is sending details like an OTP / PIN / card: tell them not to, we never ask for these."}
         _log_q(tenant, channel, customer, q, "", 0.0, "unknown")
         return out
     ranked = _rank(tenant, q)
@@ -618,20 +618,20 @@ def answer(tenant: str, question: str, channel: str = "", customer: str = "", la
             e = s.get(SevaEntry, best["id"])
             if e is not None:
                 e.hits += 1
-        res.update(status="answered", reply=reply, entry_id=best["id"], source=f"{'Niyam' if best['kind'] == 'policy' else 'FAQ'}: "
+        res.update(status="answered", reply=reply, entry_id=best["id"], source=f"{'Policy' if best['kind'] == 'policy' else 'FAQ'}: "
                    f"{best['question'][:80]} ({best['source'][:60]})", kind=best["kind"])
         _log_q(tenant, channel, customer, q, best["id"], conf, "answered")
     elif best is not None and conf >= MEDIUM:
         res.update(status="clarify", reply="", candidates=[{"id": r["id"], "question": r["question"]} for r, c in ranked if c >= MEDIUM],
-                   say="Pakka match nahi: graahak se ek chhota sawaal poochho ki inme se kaunsa matlab hai, ya owner ko do.")
+                   say="No sure match: ask the customer one short question about which of these they mean, or hand it to the owner.")
         _log_q(tenant, channel, customer, q, best["id"], conf, "clarify")
     else:
-        res.update(status="unknown", reply="", say="Gyaan mein iska jawab nahi hai. Andaza mat lagao: owner / team ko do (biz_handover) "
-                   "ya shikayat ho to ticket banao.")
+        res.update(status="unknown", reply="", say="Knowledge has no answer for this. Do not guess: hand it to the owner / team (biz_handover) "
+                   "or, if it is a complaint, open a ticket.")
         _log_q(tenant, channel, customer, q, "", conf, "unknown")
     if money:
-        res["exception"] = ("Refund / chhoot / maafi sirf owner ki haan se: biz_seva_request se arzi bhejo, graahak ko kaho owner "
-                            "dekh kar batayengi. Koi waada mat karo.")
+        res["exception"] = ("A refund / discount / waiver needs the owner's approval: send a request with biz_seva_request and tell the customer the owner "
+                            "will look at it and reply. Promise nothing.")
     return res
 
 
@@ -676,12 +676,12 @@ def _macro_view(m: SevaMacro) -> dict:
 def macro_add(tenant: str, name: str, text: str, lang: str = "") -> dict:
     name, text = _clean(name, 80), _clean(text, 1500)
     if not name or not text:
-        raise SevaError("Naam aur jawab ka text chahiye.")
+        raise SevaError("A name and the reply text are needed.")
     if _secret(text):
-        raise SevaError("Isme mana ki gayi jaankari hai.")
+        raise SevaError("This holds details that are not allowed.")
     bad = [p for p in re.findall(r"\{(\w+)\}", text) if p not in PLACEHOLDERS]
     if bad:
-        raise SevaError("Sirf yeh khaali jagah chalti hain: " + ", ".join("{" + p + "}" for p in PLACEHOLDERS))
+        raise SevaError("Only these placeholders are allowed: " + ", ".join("{" + p + "}" for p in PLACEHOLDERS))
     lang = lang if lang in R.LANGS else R.lang_of(text)
     texts = {lang: text}
     got = _ai_json(TRANSLATE_SYSTEM.format(langs=", ".join(R.LANGS)), text, 1200)
@@ -697,14 +697,14 @@ def macro_add(tenant: str, name: str, text: str, lang: str = "") -> dict:
             s.add(m)
         m.texts, m.status = _dump(texts), "draft"
         s.flush()
-        return _macro_view(m) | {"say": f"Jawab '{name}' {len(texts)} bhasha mein taiyaar; aapki haan ke baad hi istemaal hoga."}
+        return _macro_view(m) | {"say": f"Reply '{name}' is ready in {len(texts)} languages; it is used only after your approval."}
 
 
 def macro_approve(tenant: str, macro_id: str, texts: dict | None = None) -> dict:
     with session() as s:
         m = s.get(SevaMacro, macro_id)
         if m is None or m.tenant_id != tenant:
-            raise SevaError("Yeh jawab nahi mila.")
+            raise SevaError("This answer was not found.")
         if texts:
             cur = _j(m.texts, {})
             for k, v in texts.items():
@@ -712,7 +712,7 @@ def macro_approve(tenant: str, macro_id: str, texts: dict | None = None) -> dict
                     cur[k] = _clean(v, 1500)
             m.texts = _dump(cur)
         m.status = "approved"
-        return _macro_view(m) | {"say": f"'{m.name}' manzoor."}
+        return _macro_view(m) | {"say": f"'{m.name}' approved."}
 
 
 def macros(tenant: str) -> list[dict]:
@@ -724,7 +724,7 @@ def macro_remove(tenant: str, macro_id: str) -> dict:
     with session() as s:
         m = s.get(SevaMacro, macro_id)
         if m is None or m.tenant_id != tenant:
-            raise SevaError("Yeh jawab nahi mila.")
+            raise SevaError("This answer was not found.")
         s.delete(m)
     return {"removed": macro_id}
 
@@ -733,15 +733,15 @@ def macro_text(tenant: str, name: str, lang: str, values: dict) -> str:
     with session() as s:
         m = s.scalars(select(SevaMacro).where(SevaMacro.tenant_id == tenant, (SevaMacro.name == name) | (SevaMacro.id == name))).first()
         if m is None:
-            raise SevaError(f"'{name}' naam ka jawab nahi mila.")
+            raise SevaError(f"No reply named '{name}' was found.")
         if m.status != "approved":
-            raise SevaError(f"'{m.name}' abhi manzoor nahi hua (draft).")
+            raise SevaError(f"'{m.name}' is not approved yet (draft).")
         texts = _j(m.texts, {})
-        text = texts.get(lang) or texts.get("hinglish") or next(iter(texts.values()), "")
+        text = texts.get(lang) or texts.get("english") or texts.get("hinglish") or next(iter(texts.values()), "")
         m.uses += 1
     missing = [p for p in re.findall(r"\{(\w+)\}", text) if not values.get(p)]
     if missing:
-        raise SevaError("Yeh khaali hai, bhar nahi sakte: " + ", ".join(missing))
+        raise SevaError("These are empty and cannot be filled: " + ", ".join(missing))
     return re.sub(r"\{(\w+)\}", lambda mm: str(values.get(mm.group(1), "")), text)
 
 
@@ -821,7 +821,7 @@ def _find_ticket(s, tenant: str, ref: str) -> SevaTicket:
     t = s.scalars(select(SevaTicket).where(SevaTicket.tenant_id == tenant, (SevaTicket.id == ref) | (SevaTicket.number == ref)
                                            | (SevaTicket.number == ref.upper()))).first()
     if t is None:
-        raise SevaError(f"Ticket {ref} nahi mila.")
+        raise SevaError(f"Ticket {ref} not found.")
     return t
 
 
@@ -860,9 +860,9 @@ def new_ticket(tenant: str, text: str, channel: str = "phone", customer: str = "
                category: str = "", priority: str = "", by: str = "owner", conv: str = "", lang: str = "", hoola_ticket_id: str = "") -> dict:
     text = _clean(text, 3000)
     if not text:
-        raise SevaError("Shikayat kya hai, woh likhiye.")
+        raise SevaError("Write what the complaint is.")
     if _secret(text):
-        raise SevaError("Isme OTP / PIN / password / card jaisi jaankari hai: hataiye.")
+        raise SevaError("This holds details like an OTP / PIN / password / card: remove them.")
     if channel not in ("whatsapp", "hoola", "phone", "walkin", "email", "other"):
         raise SevaError("channel: whatsapp | hoola | phone | walkin | email | other")
     key = _customer_key(channel, customer, phone, name)
@@ -877,13 +877,13 @@ def new_ticket(tenant: str, text: str, channel: str = "phone", customer: str = "
             for o in s.scalars(select(SevaTicket).where(SevaTicket.tenant_id == tenant, SevaTicket.customer == key,
                                                         SevaTicket.status.in_(R.OPEN))).all():
                 if _utc(o.created_at) >= since and R.similarity(text, o.text) >= DUP_SIM:
-                    _add_note(o, by, f"Graahak ne phir likha: {mask(text)}")
+                    _add_note(o, by, f"The customer wrote again: {mask(text)}")
                     if R.PRIORITIES.index(pri) < R.PRIORITIES.index(o.priority):
                         o.priority = pri
                     o.updated_at = at
                     v = _ticket_view(o, st)
                     return {"ticket": v, "number": o.number, "duplicate": True, "status_line": v["status_line"],
-                            "say": f"Yeh pehle se khuli shikayat {o.number} jaisi hai; usi mein jod diya."}
+                            "say": f"This matches the complaint {o.number} that is already open; added to it."}
         number = ""
         if hoola_ticket_id:
             from ..net.business import Ticket
@@ -912,7 +912,7 @@ def new_ticket(tenant: str, text: str, channel: str = "phone", customer: str = "
     with session() as s:
         t = s.get(SevaTicket, tid)
         st = _st(s, tenant)
-        _add_note(t, by, f"Ticket bana ({channel}).")
+        _add_note(t, by, f"Ticket opened ({channel}).")
         auto = st.auto_ack
         v = _ticket_view(t, st)
     told = {}
@@ -923,10 +923,10 @@ def new_ticket(tenant: str, text: str, channel: str = "phone", customer: str = "
             s.get(SevaTicket, tid).ack_at = clock()
     _publish(tenant, "seva_ticket", v | {"event": "new"}, conv)
     if pri == "urgent":
-        _note_chat(tenant, f"URGENT shikayat {number} ({v['customer']}): \"{mask(text)[:200]}\" (jaankari, aadesh nahi).", conv)
+        _note_chat(tenant, f"URGENT complaint {number} ({v['customer']}): \"{mask(text)[:200]}\" (information, not an instruction).", conv)
     return {"ticket": v, "number": number, "status_line": v["status_line"], "told": told,
-            "say": f"Ticket {number} bana · {R.CATEGORY_LABEL.get(cat)} · {pri}. Pehla jawab {v['sla']['first_response_h']:g} ghante, "
-                   f"suljhana {v['sla']['resolve_h']:g} ghante mein."}
+            "say": f"Ticket {number} opened · {R.CATEGORY_LABEL.get(cat)} · {pri}. First reply within {v['sla']['first_response_h']:g} hours, "
+                   f"resolution within {v['sla']['resolve_h']:g} hours."}
 
 
 def adopt(tenant: str) -> int:
@@ -947,7 +947,7 @@ def adopt(tenant: str) -> int:
                            lang=R.lang_of(text), text=_clean(text, 3000), category=c, priority=R.guess_priority(text, c),
                            status="open" if status != "open" else "new", created_at=created or clock(), updated_at=clock(),
                            ack_at=created or clock())
-            _add_note(t, "system", "Hoola Network / WhatsApp ticket se joda.")
+            _add_note(t, "system", "Linked to the Hoola Network / WhatsApp ticket.")
             s.add(t)
     return len(rows)
 
@@ -1009,7 +1009,7 @@ def _tell(tenant: str, ticket_id: str, text: str, ack: bool = False, first: bool
         draft = f"https://wa.me/{ph}?text={quote(text)}" if ph else ""
     with session() as s:
         t = s.get(SevaTicket, ticket_id)
-        _add_note(t, "hoola", f"Graahak ko: {text}" + ("" if sent else " (draft: aap bhejiye)"), public=True)
+        _add_note(t, "hoola", f"To the customer: {text}" + ("" if sent else " (draft: you send it)"), public=True)
         if sent:
             if ack and not t.ack_at:
                 t.ack_at = clock()
@@ -1028,12 +1028,12 @@ def update(tenant: str, ref: str, status: str = "", priority: str = "", public: 
         raise SevaError("priority: urgent / high / normal / low")
     for x in (public, note):
         if x and _secret(x):
-            raise SevaError("Isme mana ki gayi jaankari hai.")
+            raise SevaError("This holds details that are not allowed.")
     at = clock()
     with session() as s:
         t = _find_ticket(s, tenant, ref)
         if t.status == "merged":
-            raise SevaError(f"Yeh ticket {t.merged_into} mein jud chuka hai; wahi badliye.")
+            raise SevaError(f"This ticket was merged into {t.merged_into}; change that one.")
         old = t.status
         if status and status != old:
             if old in R.PAUSED and t.paused_since:
@@ -1047,7 +1047,7 @@ def update(tenant: str, ref: str, status: str = "", priority: str = "", public: 
                 t.closed_at = at
             if status in R.OPEN and old in ("resolved", "closed"):
                 t.resolved_at, t.closed_at = None, None
-                _add_note(t, by, "Phir khola.")
+                _add_note(t, by, "Reopened.")
             t.status = status
             _add_note(t, by, f"Status: {old} -> {status}")
         if priority:
@@ -1077,13 +1077,13 @@ def update(tenant: str, ref: str, status: str = "", priority: str = "", public: 
         line = R.status_line(new_status, number, lang) + (f" {_clean(public, 600)}" if public else "")
         told = _tell(tenant, tid, line, ack=True, first=by != "system")
         if new_status in ("resolved", "closed") and csat_on and told.get("sent"):
-            _tell(tenant, tid, R.CSAT_ASK.get(lang, R.CSAT_ASK["hinglish"]).format(n=number))
+            _tell(tenant, tid, R.CSAT_ASK.get(lang, R.CSAT_ASK["english"]).format(n=number))
             with session() as s:
                 s.get(SevaTicket, tid).csat_asked_at = clock()
     out = ticket(tenant, tid)
     _publish(tenant, "seva_ticket", out | {"event": "update"})
-    return {"ticket": out, "told": told, "say": f"{number}: {out['status']}" + (" · graahak ko bataya" if told.get("sent") else
-                                                                            " · graahak ke liye draft taiyaar" if told.get("draft") else "")}
+    return {"ticket": out, "told": told, "say": f"{number}: {out['status']}" + (" · customer told" if told.get("sent") else
+                                                                            " · draft ready for the customer" if told.get("draft") else "")}
 
 
 def reply(tenant: str, ref: str, text: str = "", macro: str = "", by: str = "owner") -> dict:
@@ -1096,9 +1096,9 @@ def reply(tenant: str, ref: str, text: str = "", macro: str = "", by: str = "own
                                                 "status": R.status_line(status, number, lang)})
     text = _clean(text, 1500)
     if not text:
-        raise SevaError("Kya bhejna hai?")
+        raise SevaError("What should be sent?")
     if _secret(text):
-        raise SevaError("Isme mana ki gayi jaankari hai.")
+        raise SevaError("This holds details that are not allowed.")
     told = _tell(tenant, tid, text, ack=True, first=True)
     with session() as s:
         t = s.get(SevaTicket, tid)
@@ -1107,29 +1107,29 @@ def reply(tenant: str, ref: str, text: str = "", macro: str = "", by: str = "own
         t.updated_at = clock()
         if not told.get("sent") and by == "owner":
             _mark_first(t)                       # she sends the draft herself
-    return {"told": told, "say": "Graahak ko bheja." if told.get("sent") else "Draft taiyaar: WhatsApp kholkar bhejiye."}
+    return {"told": told, "say": "Sent to the customer." if told.get("sent") else "Draft ready: open WhatsApp and send it."}
 
 
 def note(tenant: str, ref: str, text: str, by: str = "owner") -> dict:
     if _secret(text):
-        raise SevaError("Isme mana ki gayi jaankari hai.")
+        raise SevaError("This holds details that are not allowed.")
     with session() as s:
         t = _find_ticket(s, tenant, ref)
         _add_note(t, by, text, public=False)
         t.updated_at = clock()
-        return {"number": t.number, "say": "Andar ka note likha (graahak ko nahi dikhta)."}
+        return {"number": t.number, "say": "Internal note written (the customer does not see it)."}
 
 
 def merge(tenant: str, ref: str, into: str, by: str = "owner") -> dict:
     with session() as s:
         a, b = _find_ticket(s, tenant, ref), _find_ticket(s, tenant, into)
         if a.id == b.id:
-            raise SevaError("Dono ek hi ticket hain.")
+            raise SevaError("Both are the same ticket.")
         if a.customer != b.customer or not a.customer:
-            raise SevaError("Alag graahakon ke ticket nahi jodte (ek ki baat doosre ko dikh jaati).")
+            raise SevaError("Tickets of different customers are not merged (one would see the other's messages).")
         if b.status == "merged":
-            raise SevaError(f"{b.number} khud {b.merged_into} mein jud chuka hai.")
-        _add_note(b, by, f"{a.number} isme joda: {mask(a.text)[:500]}")
+            raise SevaError(f"{b.number} is itself merged into {b.merged_into}.")
+        _add_note(b, by, f"{a.number} merged into this: {mask(a.text)[:500]}")
         for n in _j(a.notes, []):
             if not n.get("public"):
                 _add_note(b, n.get("by", ""), f"({a.number}) {n.get('text', '')}")
@@ -1145,7 +1145,7 @@ def merge(tenant: str, ref: str, into: str, by: str = "owner") -> dict:
             e.ticket_id = b.id
         aid, an, bn, lang = a.id, a.number, b.number, a.lang
     told = _tell(tenant, aid, R.status_line("merged", an, lang, bn))
-    return {"merged": an, "into": bn, "told": told, "say": f"{an} ko {bn} mein joda."}
+    return {"merged": an, "into": bn, "told": told, "say": f"{an} merged into {bn}."}
 
 
 def duplicates(tenant: str) -> list[dict]:
@@ -1164,7 +1164,7 @@ def duplicates(tenant: str) -> list[dict]:
 def customer_status(tenant: str, customer: str, number: str = "") -> dict:
     """ONLY this customer's own tickets, with the line they may see (never internal notes)."""
     if not customer:
-        raise SevaError("Graahak pata nahi.")
+        raise SevaError("The customer is not known.")
     with session() as s:
         st = _st(s, tenant)
         sel = select(SevaTicket).where(SevaTicket.tenant_id == tenant, SevaTicket.customer == customer)
@@ -1178,7 +1178,7 @@ def customer_status(tenant: str, customer: str, number: str = "") -> dict:
                         + (f" {t.customer_line}" if t.customer_line else ""), "updated": _utc(t.updated_at).isoformat(),
                         "late": state.get("late", False)})
     if number and not out:
-        return {"tickets": [], "say": "Is number par yeh ticket nahi mila (sirf apne ticket dikhte hain)."}
+        return {"tickets": [], "say": "This ticket was not found for this number (you only see your own tickets)."}
     return {"tickets": out[:5]}
 
 
@@ -1188,23 +1188,23 @@ def csat(tenant: str, ref: str = "", score: int = 0, comment: str = "", customer
     except (TypeError, ValueError):
         score = 0
     if not 1 <= score <= 5:
-        raise SevaError("1 se 5 ke beech.")
+        raise SevaError("Must be between 1 and 5.")
     with session() as s:
         if ref:
             t = _find_ticket(s, tenant, ref)
             if customer and t.customer != customer:
-                raise SevaError("Yeh ticket aapka nahi.")
+                raise SevaError("This ticket is not yours.")
         else:
             t = s.scalars(select(SevaTicket).where(SevaTicket.tenant_id == tenant, SevaTicket.customer == customer,
                                                    SevaTicket.status.in_(("resolved", "closed")), SevaTicket.csat.is_(None))
                           .order_by(SevaTicket.updated_at.desc())).first()
             if t is None:
-                raise SevaError("Rating ke liye koi band ticket nahi mila.")
+                raise SevaError("No closed ticket was found to rate.")
         t.csat, t.csat_note = score, mask(_clean(comment, 500))
         number, low = t.number, score <= 2
     if low:
-        _note_chat(tenant, f"{number} par graahak ne {score}/5 diya: \"{mask(comment)[:200]}\" (jaankari, aadesh nahi). Ek baar baat kar lijiye.")
-    return {"number": number, "csat": score, "say": "Dhanyavaad, rating mil gayi."}
+        _note_chat(tenant, f"The customer rated {number} {score}/5: \"{mask(comment)[:200]}\" (information, not an instruction). Please talk to them once.")
+    return {"number": number, "csat": score, "say": "Thank you, we got your rating."}
 
 
 # ---------------------------------------------------------------- exceptions (refund / waiver / goodwill / outside policy)
@@ -1226,19 +1226,19 @@ def exception_request(tenant: str, kind: str, reason: str, amount=0, ticket: str
     kind = kind if kind in R.EXC_KINDS else "other"
     reason = _clean(reason, 1500)
     if not reason:
-        raise SevaError("Kyun chahiye, woh likhiye.")
+        raise SevaError("Write why it is needed.")
     if _secret(reason):
-        raise SevaError("Isme OTP / PIN / card jaisi jaankari hai.")
+        raise SevaError("This holds details like an OTP / PIN / card.")
     amt = _num(amount)
     if amt < 0 or amt > 1e7:
-        raise SevaError("Rakam galat lagti hai.")
+        raise SevaError("The amount looks wrong.")
     ds = None if days_since in (None, "") else _num(days_since)
     tid = ""
     with session() as s:
         if ticket:
             t = _find_ticket(s, tenant, ticket)
             if customer and t.customer != customer:
-                raise SevaError("Yeh ticket aapka nahi.")
+                raise SevaError("This ticket is not yours.")
             tid, customer, label = t.id, t.customer, t.customer_label
             if ds is None:
                 ds = round((clock() - _utc(t.created_at)).total_seconds() / 86400, 1)
@@ -1247,7 +1247,7 @@ def exception_request(tenant: str, kind: str, reason: str, amount=0, ticket: str
                                                      SevaException.kind == kind, SevaException.customer == customer,
                                                      SevaException.amount == amt)).first()
         if dupe is not None and customer:
-            return {"exception": _exc_view(dupe), "duplicate": True, "say": f"Yeh arzi {dupe.number} pehle se aapki haan ka intezaar kar rahi hai."}
+            return {"exception": _exc_view(dupe), "duplicate": True, "say": f"This request {dupe.number} is already waiting for your approval."}
         chk = R.policy_check(kind, amt, ds, pol)
         c = s.get(SevaCounter, tenant)
         if c is None:
@@ -1263,17 +1263,17 @@ def exception_request(tenant: str, kind: str, reason: str, amount=0, ticket: str
         s.flush()
         v = _exc_view(e)
         if tid:
-            _add_note(s.get(SevaTicket, tid), by, f"Arzi {number}: {R.EXC_KINDS[kind]} {_rs(amt) if amt else ''} - aapki haan baaki.")
+            _add_note(s.get(SevaTicket, tid), by, f"Request {number}: {R.EXC_KINDS[kind]} {_rs(amt) if amt else ''} - waiting for your approval.")
     _publish(tenant, "seva_exception", v | {"say": _exc_say(v)}, conv)
-    return {"exception": v, "say": f"Arzi {number} owner ki haan ke liye bheji. " + ("Niyam ke andar hai, phir bhi faisla owner ka."
-                                                                                    if chk["within"] else "Niyam ke bahar: " + " ".join(chk["reasons"])),
-            "customer_say": "Aapki arzi owner tak pahunch gayi hai; woh dekh kar batayengi. Abhi koi waada nahi kar sakte."}
+    return {"exception": v, "say": f"Request {number} sent for the owner's approval. " + ("It is within the rules, but the decision is still the owner's."
+                                                                                    if chk["within"] else "Outside the rules: " + " ".join(chk["reasons"])),
+            "customer_say": "Your request has reached the owner; they will look at it and reply. We cannot promise anything yet."}
 
 
 def _exc_say(v: dict) -> str:
     chk = v.get("check") or {}
     return (f"{v['kind_label']}{' ' + v['amount_text'] if v['amount_text'] else ''} · {v['customer']}: "
-            + ("aapke niyam ke andar" if chk.get("within") else "niyam ke bahar") + " · aapki haan chahiye")
+            + ("within your rules" if chk.get("within") else "outside the rules") + " · needs your approval")
 
 
 def exceptions(tenant: str, status: str = "") -> list[dict]:
@@ -1302,7 +1302,7 @@ def money_card(tenant: str, exc_id: str) -> bool:
 def _card_digest(tenant: str, exc_id: str) -> tuple[str, dict]:
     card = approval_card(tenant, exc_id)
     if card is None:
-        raise SevaError("Yeh arzi ab baaki nahi hai.")
+        raise SevaError("This request is no longer pending.")
     return hashlib.sha256(json.dumps(card, sort_keys=True, ensure_ascii=False).encode()).hexdigest(), card
 
 
@@ -1343,40 +1343,40 @@ def decide(tenant: str, exc_id: str, yes: bool, digest: str = "", proof: dict | 
            by_tap: bool = False) -> dict:
     """ONLY from her tap in the app (the API passes by_tap=True). A money card needs her phone's fingerprint once set up."""
     if not by_tap:
-        raise SevaError("Refund / exception ka faisla sirf aapki tap se, app mein.")
+        raise SevaError("A refund / exception is decided only by your tap, in the app.")
     with session() as s:
         e = s.get(SevaException, exc_id)
         if e is None or e.tenant_id != tenant:
-            raise SevaError("Yeh arzi nahi mili.")
+            raise SevaError("This request was not found.")
         if e.status != "pending":
-            raise SevaError(f"Is arzi par faisla ho chuka hai ({e.status}).")
+            raise SevaError(f"This request has already been decided ({e.status}).")
         if digest and digest != _exc_hash(e):
-            raise SevaError("Card badal gaya hai; naya card dekh kar faisla kijiye.")
+            raise SevaError("The card has changed; decide on the new card.")
         amt = e.amount
     if yes and fingerprint_needed(tenant, exc_id):
         _fp_verify(tenant, exc_id, proof)
     if note and _secret(note):
-        raise SevaError("Note mein mana ki gayi jaankari hai.")
+        raise SevaError("The note holds details that are not allowed.")
     with session() as s:
         e = s.get(SevaException, exc_id)
         e.status, e.decided_at, e.note = ("approved" if yes else "rejected"), clock(), mask(_clean(note, 600))
         if yes:
             a = _num(amount) if amount not in (None, "") else amt
             if a < 0 or (amt and a > amt):
-                raise SevaError("Manzoor rakam maangi gayi rakam se zyada nahi.")
+                raise SevaError("The approved amount cannot be more than the amount asked.")
             e.approved_amount = a
         v = _exc_view(e)
         tid, kind, pol = e.ticket_id, e.kind, _j(_st(s, tenant).policy, {})
-        lang = "hinglish"
+        lang = "english"
         if tid:
             t = s.get(SevaTicket, tid)
             lang = t.lang
-            _add_note(t, "owner", f"Arzi {e.number}: {'HAAN' if yes else 'MANA'}" + (f" ({note[:200]})" if note else ""))
+            _add_note(t, "owner", f"Request {e.number}: {'YES' if yes else 'NO'}" + (f" ({note[:200]})" if note else ""))
     words = _decision_words(kind, yes, v["approved_amount"], pol.get("refund_mode", ""), note, lang)
     told = _tell(tenant, tid, words, first=True) if tid else {}
-    _publish(tenant, "seva_exception", v | {"say": f"{v['number']}: {'manzoor' if yes else 'mana'}"}, v.get("conv", ""))
-    out = {"exception": v, "told": told, "say": f"{v['number']} {'manzoor' if yes else 'mana'}." + (
-        " Hoola paise nahi bhejta: apne app se bhejiye, phir 'bhej diya' dabaiye." if yes and kind in R.MONEY_KINDS and v["approved_amount"] else "")}
+    _publish(tenant, "seva_exception", v | {"say": f"{v['number']}: {'approved' if yes else 'declined'}"}, v.get("conv", ""))
+    out = {"exception": v, "told": told, "say": f"{v['number']} {'approved' if yes else 'declined'}." + (
+        " Hoola does not send money: send it from your own app, then tap 'sent'." if yes and kind in R.MONEY_KINDS and v["approved_amount"] else "")}
     return out
 
 
@@ -1398,24 +1398,24 @@ def mark_sent(tenant: str, exc_id: str, ref: str = "") -> dict:
     with session() as s:
         e = s.get(SevaException, exc_id)
         if e is None or e.tenant_id != tenant:
-            raise SevaError("Yeh arzi nahi mili.")
+            raise SevaError("This request was not found.")
         if e.status != "approved":
-            raise SevaError("Pehle aapki haan chahiye.")
+            raise SevaError("Your approval is needed first.")
         e.status, e.sent_ref = "sent", _digits(ref)[-4:] or _clean(ref, 4)
         tid, amt, number, sref = e.ticket_id, e.approved_amount, e.number, e.sent_ref
-        lang = s.get(SevaTicket, tid).lang if tid else "hinglish"
+        lang = s.get(SevaTicket, tid).lang if tid else "english"
     words = (f"{_rs(amt)} bhej diye gaye hain" if lang != "english" else f"{_rs(amt)} has been sent") + (f" (ref …{sref})" if sref else "") + "."
     told = _tell(tenant, tid, words) if tid else {}
-    return {"number": number, "told": told, "say": f"{number}: graahak ko bataya ki paise gaye."}
+    return {"number": number, "told": told, "say": f"{number}: the customer was told the money has been sent."}
 
 
 def cancel_exception(tenant: str, exc_id: str) -> dict:
     with session() as s:
         e = s.get(SevaException, exc_id)
         if e is None or e.tenant_id != tenant or e.status != "pending":
-            raise SevaError("Yeh arzi baaki nahi.")
+            raise SevaError("This request is not pending.")
         e.status = "cancelled"
-        return {"number": e.number, "say": "Arzi wapas li."}
+        return {"number": e.number, "say": "Request withdrawn."}
 
 
 # ---------------------------------------------------------------- numbers
@@ -1479,17 +1479,17 @@ def report(tenant: str, days: int = 30) -> dict:
            "exceptions": {"asked": len(exc), "approved": sum(1 for e in exc if e.status in ("approved", "sent")),
                           "rejected": sum(1 for e in exc if e.status == "rejected"), "pending": sum(1 for e in exc if e.status == "pending"),
                           "approved_amount": round(sum(e.approved_amount or 0 for e in exc if e.status in ("approved", "sent")), 2)}}
-    bits = [f"{days} din: {len(ts)} ticket"]
+    bits = [f"{days} days: {len(ts)} tickets"]
     if out["first_response_median_h"] is not None:
-        bits.append(f"pehla jawab ~{out['first_response_median_h']:g} ghante")
+        bits.append(f"first reply ~{out['first_response_median_h']:g} hours")
     if out["resolution_median_h"] is not None:
-        bits.append(f"suljhaane mein ~{out['resolution_median_h']:g} ghante")
+        bits.append(f"resolution ~{out['resolution_median_h']:g} hours")
     if out["deflection_pct"] is not None:
-        bits.append(f"{out['deflection_pct']}% sawaal Gyaan se seedhe suljhe")
+        bits.append(f"{out['deflection_pct']}% of questions answered straight from Knowledge")
     if out["csat_pct"] is not None:
-        bits.append(f"CSAT {out['csat_pct']}% khush")
+        bits.append(f"CSAT {out['csat_pct']}% happy")
     if out["gaps"]:
-        bits.append(f"{len(out['gaps'])} sawaalon ka jawab Gyaan mein nahi")
+        bits.append(f"{len(out['gaps'])} questions have no answer in Knowledge")
     out["say"] = ", ".join(bits) + "."
     return out
 
@@ -1510,29 +1510,29 @@ def day(tenant: str) -> dict:
     urgent = [t for t, _ in states if t.priority == "urgent"]
     soon = [t for t, x in states if not x.get("late") and 0 <= x.get("resolve_left_h", 99) <= 8]
     if open_t:
-        parts.append(f"{len(open_t)} shikayat khuli" + (f" ({len(urgent)} urgent)" if urgent else ""))
+        parts.append(f"{len(open_t)} complaints open" + (f" ({len(urgent)} urgent)" if urgent else ""))
     if late:
-        parts.append(f"{len(late)} SLA se late: " + ", ".join(t.number for t in late[:5]))
+        parts.append(f"{len(late)} past the SLA: " + ", ".join(t.number for t in late[:5]))
     if soon:
-        parts.append(f"{len(soon)} aaj suljhaani hain: " + ", ".join(t.number for t in soon[:5]))
+        parts.append(f"{len(soon)} to resolve today: " + ", ".join(t.number for t in soon[:5]))
     waiting = [p for p in pend_v if p[1] == "pending"]
     if waiting:
-        parts.append(f"{len(waiting)} refund / exception aapki haan ke intezaar mein")
+        parts.append(f"{len(waiting)} refunds / exceptions waiting for your approval")
     to_send = [p for p in pend_v if p[1] == "approved" and p[2] in R.MONEY_KINDS and p[3]]
     if to_send:
-        parts.append(f"{len(to_send)} manzoor refund bhejne baaki ({', '.join(p[0] for p in to_send[:4])})")
+        parts.append(f"{len(to_send)} approved refunds still to send ({', '.join(p[0] for p in to_send[:4])})")
     g = gaps(tenant, 7, 3)
     if g:
-        parts.append("Gyaan mein nahi: " + "; ".join(f"\"{x['question'][:50]}\" ({x['times']}x)" for x in g))
+        parts.append("Not in Knowledge: " + "; ".join(f"\"{x['question'][:50]}\" ({x['times']}x)" for x in g))
     if n_draft:
-        parts.append(f"{n_draft} jawab ke draft aapki haan ke liye")
+        parts.append(f"{n_draft} draft answers waiting for your approval")
     if mac_draft:
-        parts.append(f"{mac_draft} taiyaar jawab (macro) manzoori ke liye")
+        parts.append(f"{mac_draft} saved replies (macros) waiting for approval")
     if st.ecommerce:
         noack = [t for t, x in states if x.get("ack_left_h") is not None and x["ack_left_h"] < 12]
         if noack:
-            parts.append(f"{len(noack)} shikayat ki 48 ghante wali pavti baaki (E-Commerce Rules)")
-    return {"parts": parts, "open": len(open_t), "late": [t.number for t in late], "say": ("; ".join(parts) + ".") if parts else "Seva: sab theek."}
+            parts.append(f"{len(noack)} complaints still need the 48-hour acknowledgement (E-Commerce Rules)")
+    return {"parts": parts, "open": len(open_t), "late": [t.number for t in late], "say": ("; ".join(parts) + ".") if parts else "Service desk: all fine."}
 
 
 def due_mornings(at: datetime | None = None) -> list[str]:
@@ -1561,7 +1561,7 @@ def send_morning(tenant: str) -> dict:
     if not d["parts"]:
         return {"text": ""}
     rep = report(tenant, 1)
-    text = "Seva: " + d["say"] + (f" Kal: {rep['tickets']} naye ticket" + (f", CSAT {rep['csat_pct']}%" if rep["csat_pct"] is not None else "") + "."
+    text = "Service desk: " + d["say"] + (f" Yesterday: {rep['tickets']} new tickets" + (f", CSAT {rep['csat_pct']}%" if rep["csat_pct"] is not None else "") + "."
                                   if rep["tickets"] else "")
     _note_chat(tenant, text)
     _publish(tenant, "seva_day", {"text": text, "parts": d["parts"], "late": d["late"]})
@@ -1579,16 +1579,16 @@ def sla_sweep(tenant: str, at: datetime | None = None) -> list[dict]:
             new = []
             if "first_response_left_h" in x:
                 if x["first_response_left_h"] < 0 and "fr_breach" not in flags:
-                    new.append(("fr_breach", f"{t.number}: pehla jawab ka samay ({x['first_response_h']:g} ghante) nikal gaya"))
+                    new.append(("fr_breach", f"{t.number}: the first-reply time ({x['first_response_h']:g} hours) has passed"))
                 elif 0 <= x["first_response_left_h"] <= 0.2 * x["first_response_h"] and "fr_warn" not in flags and "fr_breach" not in flags:
-                    new.append(("fr_warn", f"{t.number}: pehla jawab {max(x['first_response_left_h'], 0):.1f} ghante mein dena hai"))
+                    new.append(("fr_warn", f"{t.number}: the first reply is due in {max(x['first_response_left_h'], 0):.1f} hours"))
             if "resolve_left_h" in x and not x.get("paused"):
                 if x["resolve_left_h"] < 0 and "rs_breach" not in flags:
-                    new.append(("rs_breach", f"{t.number}: suljhaane ka samay ({x['resolve_h']:g} ghante) nikal gaya"))
+                    new.append(("rs_breach", f"{t.number}: the resolution time ({x['resolve_h']:g} hours) has passed"))
                 elif 0 <= x["resolve_left_h"] <= 0.2 * x["resolve_h"] and "rs_warn" not in flags and "rs_breach" not in flags:
-                    new.append(("rs_warn", f"{t.number}: {max(x['resolve_left_h'], 0):.1f} ghante mein suljhaana hai"))
+                    new.append(("rs_warn", f"{t.number}: must be resolved in {max(x['resolve_left_h'], 0):.1f} hours"))
             if x.get("ack_left_h") is not None and x["ack_left_h"] < 6 and "ack_warn" not in flags:
-                new.append(("ack_warn", f"{t.number}: E-Commerce Rules ki 48 ghante wali pavti {max(x['ack_left_h'], 0):.0f} ghante mein"))
+                new.append(("ack_warn", f"{t.number}: the 48-hour acknowledgement under the E-Commerce Rules is due in {max(x['ack_left_h'], 0):.0f} hours"))
             if new:
                 flags |= {k for k, _ in new}
                 t.sla_flags = _dump(sorted(flags))

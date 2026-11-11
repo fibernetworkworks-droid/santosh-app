@@ -35,13 +35,13 @@ AR_OPTIONS = ["Both Assertion (A) and Reason (R) are true and Reason (R) is the 
               "Both Assertion (A) and Reason (R) are true, but Reason (R) is not the correct explanation of Assertion (A).",
               "Assertion (A) is true, but Reason (R) is false.",
               "Assertion (A) is false, but Reason (R) is true."]
-DISCLAIMER = ("AI se bana draft: chhapne / baantne se pehle teacher ek baar padh kar approve karein. Chapter aur pattern "
-              "board ke official source se; source ke bina kuch 'pakka' nahi likha jaata.")
-NEVER = ["Board ka copyrighted syllabus / textbook text copy nahi (sirf chapter ke naam, codes, official links)",
-         "Bina source ke 'CBSE pattern' / 'marks' pakka nahi bataya jaata - 'andaaza' likha jaata hai",
-         "Bachche (18 se kam) ki jaankari sirf guardian ki consent ke saath; marks sirf guardian ko",
-         "Paper / quiz / plan bahar (parents, class, Google Form) sirf teacher / owner ke tap se",
-         "Exam ke asli paper ka leak ya 'leak hua paper' kabhi nahi"]
+DISCLAIMER = ("AI-made draft: before printing / sharing, a teacher must read and approve it once. Chapters and the pattern come "
+              "from the board's official source; nothing is written as 'confirmed' without a source.")
+NEVER = ["The board's copyrighted syllabus / textbook text is not copied (only chapter names, codes, official links)",
+         "Without a source, a 'CBSE pattern' / 'marks' is never stated as confirmed - it is written as an 'estimate'",
+         "A child's (under 18) details only with the guardian's consent; marks go only to the guardian",
+         "A paper / quiz / plan goes outside (parents, class, Google Form) only on the teacher's / owner's tap",
+         "Never a leak of a real exam paper or a 'leaked paper'"]
 
 
 class RuleError(ValueError):
@@ -90,31 +90,31 @@ def check_question(q: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
         qtype = "short"
     text = _s(q.get("text") or q.get("question"), 6000)
     if len(text) < 8:
-        p.append("! sawaal ka text bahut chhota / khaali")
+        p.append("! the question text is too short / empty")
     opts = [_s(o, 600) for o in (q.get("options") or []) if _s(o, 600)]
     answer = _s(q.get("answer"), 3000)
     if qtype == "mcq":
         opts = [re.sub(r"^\(?[a-dA-D1-4][\).:]\s+", "", o) for o in opts]
         if len(opts) != 4:
-            p.append(f"! MCQ ke 4 options chahiye ({len(opts)} mile)")
+            p.append(f"! an MCQ needs 4 options ({len(opts)} given)")
         if len({norm_text(o) for o in opts}) != len(opts):
-            p.append("! MCQ ke do options ek jaise")
+            p.append("! two MCQ options are the same")
         letter = re.fullmatch(r"\(?([a-dA-D])\)?", answer)
         if letter and len(opts) == 4:
             answer = opts["abcd".index(letter.group(1).lower())]
         if opts and norm_text(answer) not in {norm_text(o) for o in opts}:
-            p.append("! MCQ ka sahi jawab options mein nahi")
+            p.append("! the correct MCQ answer is not among the options")
         if any(re.search(r"\b(all|none) of the (above|these)\b", o, re.I) for o in opts):
-            p.append("option 'all / none of the above' (achha MCQ isse bachta hai)")
+            p.append("option 'all / none of the above' (a good MCQ avoids it)")
     elif qtype == "assertion_reason":
         if not re.search(r"assertion", text, re.I) or not re.search(r"reason", text, re.I):
-            p.append("! Assertion aur Reason dono likhe hone chahiye")
+            p.append("! both the Assertion and the Reason must be written")
         opts = list(AR_OPTIONS)
         letter = re.fullmatch(r"\(?([a-dA-D])\)?", answer)
         if letter:
             answer = AR_OPTIONS["abcd".index(letter.group(1).lower())]
         if answer not in AR_OPTIONS:
-            p.append("! Assertion-Reason ka jawab 4 standard options mein se hona chahiye")
+            p.append("! the Assertion-Reason answer must be one of the 4 standard options")
     elif qtype == "true_false":
         a = norm_text(answer)
         if a in ("true", "t", "sahi", "satya"):
@@ -122,22 +122,22 @@ def check_question(q: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
         elif a in ("false", "f", "galat", "asatya"):
             answer = "False"
         else:
-            p.append("! True / False ka jawab True ya False hona chahiye")
+            p.append("! a True / False answer must be True or False")
         opts = ["True", "False"]
     elif qtype == "numeric":
         if not re.search(r"-?\d", answer):
-            p.append("! numerical sawaal ka jawab number mein chahiye")
+            p.append("! a numerical question needs a number as the answer")
     elif qtype == "fill_blank":
         if "_" not in text and "…" not in text and "..." not in text:
-            p.append("blank (____) sawaal mein dikhna chahiye")
+            p.append("the blank (____) should show in the question")
     if not answer and qtype not in ("long", "case_based", "code"):
-        p.append("! jawab khaali")
+        p.append("! the answer is empty")
     marks = _marks(q.get("marks"))
     if marks <= 0:
-        p.append("! marks chahiye")
+        p.append("! marks are needed")
         marks = 1.0
     if qtype in ("mcq", "assertion_reason", "true_false", "fill_blank") and marks > 2:
-        p.append("objective sawaal par 2 se zyada marks (pattern se milaiye)")
+        p.append("more than 2 marks on an objective question (check against the pattern)")
     steps = [_s(x, 1200) for x in (q.get("steps") or []) if _s(x, 1200)]
     scheme = []
     for x in q.get("scheme") or []:
@@ -146,9 +146,9 @@ def check_question(q: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
         elif isinstance(x, str) and x.strip():
             scheme.append({"point": _s(x, 400), "marks": 0.0})
     if scheme and all(s["marks"] > 0 for s in scheme) and abs(sum(s["marks"] for s in scheme) - marks) > 0.01:
-        p.append(f"marking scheme ke marks ({sum(s['marks'] for s in scheme)}) sawaal ke marks ({marks}) se nahi milte")
+        p.append(f"the marking scheme's marks ({sum(s['marks'] for s in scheme)}) do not match the question's marks ({marks})")
     if qtype in ("short", "long", "case_based") and not scheme and not answer:
-        p.append("! subjective sawaal ke liye model answer ya marking points chahiye")
+        p.append("! a subjective question needs a model answer or marking points")
     bloom = _s(q.get("bloom"), 12).lower().replace("analyze", "analyse")
     if bloom not in BLOOM:
         bloom = "understand"
@@ -179,10 +179,10 @@ def is_child(birth_year: int, adult_flag: bool = False, grade: str = "", today: 
     return not g.startswith(("UG", "PG", "PHD", "COLLEGE", "ADULT"))
 
 
-CONSENT_METHODS = {"signed_form": "Guardian ne signed consent form diya", "in_person": "Guardian ne office mein khud haan kahi",
-                   "digilocker": "Guardian ki pehchaan DigiLocker / virtual token se jaanchi",
-                   "school_record": "School admission record (guardian ki pehchaan pehle se jaanchi hui)",
-                   "email_confirmed": "Guardian ki registered email se likhit haan"}
+CONSENT_METHODS = {"signed_form": "The guardian gave a signed consent form", "in_person": "The guardian said yes in person at the office",
+                   "digilocker": "The guardian's identity was checked by DigiLocker / virtual token",
+                   "school_record": "School admission record (the guardian's identity was already checked)",
+                   "email_confirmed": "Written yes from the guardian's registered email"}
 
 
 # ---------------------------------------------------------------- frameworks (official facts only)
@@ -255,13 +255,13 @@ def blueprint_total(sections: list[dict]) -> float:
 def check_blueprint(sections: list[dict], max_marks: float | None = None) -> list[str]:
     p = []
     if not sections:
-        return ["! blueprint mein koi section nahi"]
+        return ["! the blueprint has no section"]
     for s in sections:
         if int(s.get("count") or 0) <= 0 or float(s.get("marks_each") or 0) <= 0:
-            p.append(f"! section {s.get('name', '?')}: count aur marks_each dono chahiye")
+            p.append(f"! section {s.get('name', '?')}: both count and marks_each are needed")
         if str(s.get("qtype") or "") not in QTYPES:
-            p.append(f"! section {s.get('name', '?')}: qtype '{s.get('qtype')}' galat")
+            p.append(f"! section {s.get('name', '?')}: qtype '{s.get('qtype')}' is wrong")
     tot = blueprint_total(sections)
     if max_marks and abs(tot - float(max_marks)) > 0.01:
-        p.append(f"! sections ka jod {tot} hai, paper {max_marks} ka hona chahiye")
+        p.append(f"! the sections add up to {tot}, the paper must be for {max_marks}")
     return p

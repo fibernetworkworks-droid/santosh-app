@@ -71,7 +71,7 @@ def progress_text(p: dict, hi: bool) -> str:
 
 
 # ---------------------------------------------------------------- start / stop / status
-def start(tenant: str, conv: str, question: str, goals: list[str], over: dict | None = None, hi: bool = True,
+def start(tenant: str, conv: str, question: str, goals: list[str], over: dict | None = None, hi: bool = False,
           asked: list[str] | None = None, engine: str = "hoola", watch: str = "") -> str:
     rid = store.create(tenant, conv, question, goals, {"over": over or {}, "hi": hi, "asked": asked or [], "engine": engine or "hoola", **({"watch": watch} if watch else {})})
     STATS["started"] += 1
@@ -86,10 +86,10 @@ def stop(tenant: str, run_id: str) -> str:
         return "missing"
     if v["status"] in ("done", "failed", "stopped"):
         return v["status"]
-    store.set_status(run_id, "stopped", "owner ne roka")
+    store.set_status(run_id, "stopped", "stopped by the owner")
     _RUNNING.discard(run_id)
     STATS["stopped"] += 1
-    _publish(v["conv"], run_id, v["question"], "stopped", "owner ne rok diya")
+    _publish(v["conv"], run_id, v["question"], "stopped", "stopped by the owner")
     return "stopped"
 
 
@@ -202,7 +202,7 @@ async def run_background(run_id: str) -> None:
     if v is None or v["status"] not in ("queued", "running"):
         return
     tenant, conv, question = v["tenant"], v["conv"], v["question"]
-    hi = bool(v["policy"].get("hi", True))
+    hi = bool(v["policy"].get("hi", False))
     engine = str(v["policy"].get("engine") or "hoola")
     watch_id = str(v["policy"].get("watch") or "")
     _RUNNING.add(run_id)
@@ -304,7 +304,7 @@ def status(tenant: str, conv: str = "", run_id: str = "") -> list[dict[str, Any]
     for v in store.recent(tenant, conv, 8):
         if run_id and v["id"] != run_id:
             continue
-        hi = bool(v["policy"].get("hi", True))
+        hi = bool(v["policy"].get("hi", False))
         out.append({"id": v["id"], "status": v["status"], "question": v["question"][:160], "tries": v["tries"],
                     "progress": progress_text(v["progress"], hi) if v["progress"] else "", "now": v["progress"].get("now", ""),
                     "error": v["error"], "has_report": v["dossier"] is not None, "cost_inr": round(v.get("cost_inr", 0.0), 2),

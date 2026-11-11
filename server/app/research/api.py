@@ -50,7 +50,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
     async def stop(run_id: str, tenant: str = Depends(current_tenant)):
         got = await asyncio.to_thread(runner.stop, tenant, run_id)
         if got == "missing":
-            raise HTTPException(404, "Yeh research run nahi mila.")
+            raise HTTPException(404, "This research run was not found.")
         return {"status": got}
 
     return r

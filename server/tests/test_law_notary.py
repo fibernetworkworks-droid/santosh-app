@@ -60,8 +60,8 @@ def test_rules_templates_fees_stamp_apostille():
     male = R.build("aff_address", "mr", {**PARTY, "gender": "m"}, {"since": "2015", "purpose": "gas"})
     assert "देतो" in male["text"] and "पूर्वीचा" not in male["text"]          # optional previous address left out, not guessed
     missing = R.build("aff_lost_document", "en", PARTY, {"document": "10th marksheet"})
-    assert {"Kisne diya tha", "Kab khoya", "Kahan khoya", "Police / lost report no."} <= set(missing["blanks"])
-    assert "[____ Kab khoya]" in missing["text"]
+    assert {"Issued by", "Lost on", "Lost at", "Police / lost report no."} <= set(missing["blanks"])
+    assert "[____ Lost on]" in missing["text"]
     inc = R.build("aff_income", "en", PARTY, {"annual_income": "1.2 lakh", "source": "tailoring", "year": "2025-26", "purpose": "scholarship"})
     assert "₹1,20,000 (Rupees one lakh twenty thousand only)" in inc["text"]
     poa = R.build("poa_general", "en", PARTY, {"attorney_name": "Ramesh Patil", "attorney_address": "Akot",
@@ -98,7 +98,7 @@ def test_draft_ids_in_locker_stamp_blank_and_print_only_on_tap(nt):
         assert aad not in row.parties and aad not in row.text
     from app import idvault
     assert idvault.resolve(T, p["id_ref"])[0] == aad                     # the real number lives only in the locker
-    assert "Kis kaam ke liye" in v["blanks"] and v["stamp"]["amount"] is None and v["files"].get("draft_pdf")
+    assert "Purpose" in v["blanks"] and v["stamp"]["amount"] is None and v["files"].get("draft_pdf")
     blocked = S.print_request(T, "ND-0001")
     assert blocked.get("blocked") and "notary_print" not in kinds(S)
     S.update(T, "ND-0001", facts={"purpose": "gas connection"})
@@ -199,7 +199,7 @@ def test_words_understanding_keeps_only_her_facts(nt, monkeypatch):
     assert v["kind"] == "aff_income"
     p = v["parties"][0]
     assert p["name"] == "Sunil Gawai" and "address" not in [k for k, x in p.items() if x] and p["id_kind"] == "aadhaar"
-    assert "Pura pata" in v["blanks"]
+    assert "Full address" in v["blanks"]
     full = S.get_doc(T, v["number"])
     assert "₹1,80,000" in full["text"] and _aadhaar() not in full["text"]
 
@@ -220,7 +220,7 @@ def test_rentdesk_link_translate_apostille_forget(nt, monkeypatch):
     monkeypatch.setattr(L, "translate", lambda tenant, text="", to="", register="formal", conv="", **k: {"doc": {"number": "L-0001"},
                                                                                                     "say": "Gujarati mein taiyaar."})
     tr = S.translate(T, r["number"], "gujarati")
-    assert tr["translation"]["number"] == "L-0001" and "certified nahi" in tr["say"]
+    assert tr["translation"]["number"] == "L-0001" and "not certified" in tr["say"]
     assert S.translate(T, r["number"], "marathi")["doc"]["lang"] == "mr"
     ap = S.apostille(T, "", "affidavit", "Germany", None, "Kiran Joshi", doc=r["number"])["apostille"]
     assert ap["number"] == "A-001" and ap["doc_type"] == "affidavit"
@@ -235,7 +235,7 @@ def test_rentdesk_link_translate_apostille_forget(nt, monkeypatch):
     from app import idvault
     assert idvault.resolve(T, d["parties"][0]["id_ref"])
     f = S.forget(T, d["number"])
-    assert "mita di" in f["say"] and S.get_doc(T, d["number"])["forgotten"]
+    assert "erased" in f["say"] and S.get_doc(T, d["number"])["forgotten"]
     assert idvault.resolve(T, d["parties"][0]["id_ref"]) is None          # the locker ID went too (no other use)
 
 

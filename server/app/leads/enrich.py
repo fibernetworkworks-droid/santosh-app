@@ -225,12 +225,12 @@ async def best_email(emails: list[str], business: str) -> dict[str, Any]:
     if not cands:
         return {"email": "", "reason": "", "pick": "none"}
     if len(cands) == 1:
-        return {"email": cands[0], "reason": "ek hi candidate mila", "pick": "single"}
+        return {"email": cands[0], "reason": "only one candidate was found", "pick": "single"}
     rule_top = cands[0]
-    system = ("Tum ek B2B leads engine ke email picker ho. Diye gaye business ke liye sabse sambhavit "
-              "contact email chuno - SIRF candidates mein se. Role inbox (info@/sales@/contact@) jab tak "
-              "koi named-person email business se match nahi karta, upar rehta hai. Sirf JSON do: "
-              '{"email": "...", "reason": "ek line, Hindi ya English, max 200 chars"}')
+    system = ("You are the email picker of a B2B leads engine. For the given business, choose the most likely "
+              "contact email - ONLY from the candidates. A role inbox (info@/sales@/contact@) ranks first unless "
+              "a named-person email matches the business. Return JSON only: "
+              '{"email": "...", "reason": "one line in English, max 200 chars"}')
     text = (f"Business: {business}\nCandidates:\n" +
             "\n".join(f"- {e}" for e in cands[:12]))
     try:
@@ -249,7 +249,7 @@ async def best_email(emails: list[str], business: str) -> dict[str, Any]:
                     return {"email": pick, "reason": str(js.get("reason") or "")[:300], "pick": "ai"}
     except Exception:                                    # noqa: BLE001 - a model out never kills the enrich pass
         pass
-    return {"email": rule_top, "reason": "model nahi tha - rule rank ne chuna (role inbox > named > generic)",
+    return {"email": rule_top, "reason": "no model was available - the rule rank chose it (role inbox > named > generic)",
             "pick": "rule"}
 
 

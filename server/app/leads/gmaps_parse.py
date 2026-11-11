@@ -82,11 +82,11 @@ def _extract_init_state(html: str) -> list:
     s = str(html or "")
     i = s.find(_INIT_MARKER)
     if i < 0:
-        raise GmapsParseError("APP_INITIALIZATION_STATE nahi mila - page search-result page nahi hai "
-                              "(block page ya layout badla).")
+        raise GmapsParseError("APP_INITIALIZATION_STATE not found - the page is not a search-result page "
+                              "(a block page, or the layout changed).")
     j = s.find("[", i + len(_INIT_MARKER))
     if j < 0:
-        raise GmapsParseError("APP_INITIALIZATION_STATE khulta nahi (layout badla).")
+        raise GmapsParseError("APP_INITIALIZATION_STATE does not open (the layout changed).")
     depth, in_str, esc = 0, False, False
     for k in range(j, min(len(s), j + 20_000_000)):
         c = s[k]
@@ -108,11 +108,11 @@ def _extract_init_state(html: str) -> list:
                 try:
                     out = json.loads(s[j:k + 1])
                 except Exception as e:                        # noqa: BLE001 - loud, with the reason
-                    raise GmapsParseError(f"APP_INITIALIZATION_STATE parse nahi hua ({e}) - layout badla.") from None
+                    raise GmapsParseError(f"APP_INITIALIZATION_STATE could not be parsed ({e}) - the layout changed.") from None
                 if not isinstance(out, list):
-                    raise GmapsParseError("APP_INITIALIZATION_STATE array nahi hai - layout badla.")
+                    raise GmapsParseError("APP_INITIALIZATION_STATE is not an array - the layout changed.")
                 return out
-    raise GmapsParseError("APP_INITIALIZATION_STATE kabhi band nahi hua (page kat gaya / layout badla).")
+    raise GmapsParseError("APP_INITIALIZATION_STATE never closed (the page was cut off / the layout changed).")
 
 
 def _walk(node: Any, out: list, depth: int) -> None:

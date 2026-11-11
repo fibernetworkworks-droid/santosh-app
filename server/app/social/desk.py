@@ -159,7 +159,7 @@ def _j(s: str | None, default):
 def _hired(tenant: str) -> None:
     from ..employee import hire
     if not hire.is_hired(tenant, KEY):
-        raise SocialError("Social Media Manager abhi hired nahi hai. Employees mein jaakar hire kijiye.")
+        raise SocialError("The Social Media Manager is not hired yet. Go to Employees and hire it.")
 
 
 def _event(tenant: str, kind: str, level: str, text: str) -> None:
@@ -210,8 +210,8 @@ def onboard(tenant: str, business: str = "", city: str = "", sells: str = "", cu
     _hired(tenant)
     ensure_tables()
     if not str(business or "").strip():
-        raise SocialError("Business ka naam bataiye.")
-    langs = [str(x).strip()[:20] for x in (languages or ["Hinglish"]) if str(x).strip()][:4] or ["Hinglish"]
+        raise SocialError("Give the business name.")
+    langs = [str(x).strip()[:20] for x in (languages or ["English"]) if str(x).strip()][:4] or ["English"]
     prof = {"business": str(business).strip()[:120], "city": str(city).strip()[:80], "sells": str(sells).strip()[:300],
             "customers": str(customers).strip()[:300], "goal": str(goal).strip()[:200], "languages": langs,
             "website": str(website).strip()[:200], "facts": str(facts or "").strip()[:2000]}   # v0.368 reply facts
@@ -244,7 +244,7 @@ def connect_url(tenant: str, platform: str) -> str:
     if platform not in PLATFORMS:
         raise SocialError("platform: instagram | facebook | linkedin | whatsapp")
     if not M.configured(platform):
-        raise SocialError("Server par Meta app ki keys abhi nahi lagi (.env: " +
+        raise SocialError("The Meta app keys are not set on the server yet (.env: " +
                           ("INSTAGRAM_APP_ID / INSTAGRAM_APP_SECRET" if platform == "instagram" else "META_APP_ID / META_APP_SECRET")
                           + ", PUBLIC_BASE_URL).")
     state = f"soc_{platform[:2]}_" + secrets.token_urlsafe(24)
@@ -258,7 +258,7 @@ def _take_state(state: str, platform: str) -> str:
     with session() as s:
         row = s.get(MailLinkState, state)
         if row is None or row.provider != f"social_{platform[:2]}" or as_utc(row.created_at) < now() - timedelta(minutes=30):
-            raise SocialError("Yeh link purana ho gaya. Social Desk se dobara Connect dabaiye.")
+            raise SocialError("This link has expired. Press Connect again on the Social Desk.")
         tenant = row.tenant_id
         s.delete(row)
     return tenant
@@ -275,8 +275,8 @@ def finish_link(platform: str, code: str, state: str, background: bool = True) -
             tok = M.ig_exchange(code)
             prof = M.ig_profile(tok["access_token"])
             if str(prof.get("account_type") or "").upper() not in ("", "BUSINESS", "MEDIA_CREATOR", "CREATOR"):
-                raise SocialError("Yeh Instagram account professional nahi hai. Instagram Settings > Account type > "
-                                  "Switch to professional account (free), phir dobara connect kijiye.")
+                raise SocialError("This Instagram account is not a professional account. Instagram Settings > Account type > "
+                                  "Switch to professional account (free), then connect again.")
             with session() as s:
                 row = _upsert_account(s, tenant, "instagram", str(prof.get("user_id") or prof.get("id") or tok["user_id"]))
                 row.meta_user_id = tok.get("user_id") or row.account_id
@@ -298,7 +298,7 @@ def finish_link(platform: str, code: str, state: str, background: bool = True) -
             except M.MetaError:
                 granted = ""
             if not pages:
-                raise SocialError("Koi Facebook Page nahi mila. Login mein Page chuniye (aap us Page ki admin hon).")
+                raise SocialError("No Facebook Page was found. Choose the Page at login (you must be an admin of that Page).")
             with session() as s:
                 for p in pages[:10]:
                     row = _upsert_account(s, tenant, "facebook", str(p["id"]))
@@ -364,7 +364,7 @@ def disconnect(tenant: str, account: str) -> dict[str, Any]:
     with session() as s:
         row = s.get(SocialAccount, account)
         if row is None or row.tenant_id != tenant:
-            raise SocialError("Yeh account nahi mila.")
+            raise SocialError("This account was not found.")
         name = row.handle or row.name
         for m in s.scalars(select(SocialMedia).where(SocialMedia.account == row.id)).all():
             s.delete(m)
@@ -420,7 +420,7 @@ def sync_account(account: str, limit: int = 50, insights: bool = True) -> dict[s
     with session() as s:
         a = s.get(SocialAccount, account)
         if a is None:
-            raise SocialError("Account nahi mila.")
+            raise SocialError("Account not found.")
         tenant, platform, pid, tok = a.tenant_id, a.platform, a.account_id, acc.decrypt(a.token_enc) or ""
     if platform == "youtube":                                   # v0.392 subscribers + latest videos
         from .ytpost import sync_youtube
@@ -632,8 +632,8 @@ def _rules_plan(inp: dict[str, Any]) -> dict[str, Any]:
     """The month without a model: 4 posts a week at her best hours, pillars rotated, festivals on their day."""
     from datetime import date
     prof, base = inp["business"], inp["baseline"]
-    biz, city = prof.get("business") or "Hum", prof.get("city") or ""
-    lang = (prof.get("languages") or ["Hinglish"])[0]
+    biz, city = prof.get("business") or "We", prof.get("city") or ""
+    lang = (prof.get("languages") or ["English"])[0]
     hours = base.get("best_hours") or [12, 19]
     fmts = [f["fmt"] for f in base.get("formats") or [] if f.get("fmt") in FORMATS][:2] or ["reel", "carousel"]
     tag = lambda s: "#" + "".join(ch for ch in s.title() if ch.isalnum())                           # noqa: E731
@@ -649,9 +649,9 @@ def _rules_plan(inp: dict[str, Any]) -> dict[str, Any]:
         name, why = PILLARS_DEFAULT[4] if occ else PILLARS_DEFAULT[k % 4]
         k += 0 if occ else 1
         fmt = "image" if occ else fmts[k % len(fmts)] if k % 3 else "carousel"
-        hook = (f"{occ} ki dher saari shubhkaamnayein!" if occ else
-                {"Our work": f"{biz} mein aaj kya bana? 👀", "Tips & how-to": "Yeh 3 baatein zaroor jaan lijiye",
-                 "Happy customers": "Hamare graahak kya kehte hain", "Behind the scenes": f"{biz} ke peeche ki kahani"}[name])
+        hook = (f"Warm wishes for {occ}!" if occ else
+                {"Our work": f"What did we make at {biz} today? 👀", "Tips & how-to": "3 things you should know",
+                 "Happy customers": "What our customers say", "Behind the scenes": f"The story behind {biz}"}[name])
         bt = inp.get("best_times") or {}
         h = (bt.get("by_day") or {}).get(["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][dt.weekday()]) \
             if bt.get("sure") in ("medium", "high") else None
@@ -665,8 +665,8 @@ def _rules_plan(inp: dict[str, Any]) -> dict[str, Any]:
                       "date": dt.isoformat(), "time": f"{h if h is not None else hours[k % len(hours)]:02d}:00",
                       "platforms": plats,
                       "format": fmt, "pillar": name, "hook": hook,
-                      "caption": f"{hook}\n\n{why}\n\n{biz}{', ' + city if city else ''}. Details ke liye DM ya WhatsApp kijiye.",
-                      "hashtags": tags[:5], "visual": f"{name}: {why}", "cta": "DM / WhatsApp kijiye", "occasion": occ, "language": lang})
+                      "caption": f"{hook}\n\n{why}\n\n{biz}{', ' + city if city else ''}. DM or WhatsApp us for details.",
+                      "hashtags": tags[:5], "visual": f"{name}: {why}", "cta": "DM / WhatsApp us", "occasion": occ, "language": lang})
     return {"pillars": [{"name": n, "why": w} for n, w in PILLARS_DEFAULT], "rhythm": {"feed_per_week": 4, "stories_per_week": 3,
             "reels_share": 0.5}, "goal_metric": "Profile visits and WhatsApp / DM enquiries", "hashtags": tags, "best_hours": hours,
             "posts": posts}
@@ -676,7 +676,7 @@ def _clean_plan(raw: Any, inp: dict[str, Any]) -> dict[str, Any] | None:
     if not isinstance(raw, dict) or not isinstance(raw.get("posts"), list):
         return None
     start, end = inp["start"], (datetime.fromisoformat(inp["start"]) + timedelta(days=inp["days"] + 1)).date().isoformat()
-    lang = ((inp["business"].get("languages") or ["Hinglish"])[0])
+    lang = ((inp["business"].get("languages") or ["English"])[0])
     posts = []
     for p in raw["posts"][:45]:
         if not isinstance(p, dict) or not str(p.get("caption") or p.get("hook") or "").strip():
@@ -798,7 +798,7 @@ def set_post(tenant: str, post_id: str, status: str = "", caption: str | None = 
     with session() as s:
         p = s.get(SocialPost, post_id)
         if p is None or p.tenant_id != tenant:
-            raise SocialError("Yeh post nahi mila.")
+            raise SocialError("This post was not found.")
         edited = False
         if caption is not None:
             p.caption, edited = str(caption)[:2200], True
@@ -807,7 +807,7 @@ def set_post(tenant: str, post_id: str, status: str = "", caption: str | None = 
         if platforms is not None:                           # v0.384 tick / untick LinkedIn etc.
             pl = [x for x in POST_PLATFORMS if x in platforms]
             if not pl:
-                raise SocialError("Kam se kam ek jagah chuniye: instagram | facebook | linkedin")
+                raise SocialError("Choose at least one place: instagram | facebook | linkedin")
             p.platforms, edited = ",".join(pl), True
         if hashtags is not None:
             p.hashtags, edited = json.dumps([("#" + str(h).lstrip("#")).replace(" ", "")[:40] for h in hashtags][:15]), True
@@ -818,7 +818,7 @@ def set_post(tenant: str, post_id: str, status: str = "", caption: str | None = 
                 raise SocialError("slot: YYYY-MM-DDTHH:MM")
             p.slot, edited = slot[:16], True
         if p.status in ("published", "publishing"):
-            raise SocialError("Yeh post ja chuka hai; ise badla nahi ja sakta.")
+            raise SocialError("This post has already gone out; it cannot be changed.")
         if status:
             if status not in POST_STATUS:
                 raise SocialError("status: draft | approved | skipped")

@@ -46,7 +46,7 @@ class ResearchWatch(Base):
     goals: Mapped[str] = mapped_column(Text, default="[]")
     over: Mapped[str] = mapped_column(Text, default="{}")
     engine: Mapped[str] = mapped_column(String(16), default="hoola")
-    hi: Mapped[int] = mapped_column(Integer, default=1)
+    hi: Mapped[int] = mapped_column(Integer, default=0)
     every_days: Mapped[int] = mapped_column(Integer, default=7)
     status: Mapped[str] = mapped_column(String(10), default="active", index=True)          # active | paused | deleted
     next_run_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
@@ -209,7 +209,7 @@ def estimate_run_inr(tenant: str, n_goals: int) -> tuple[float | None, str]:
     return None, "no measured cost yet - unknown until a run has finished"
 
 
-def add(tenant: str, conv: str, question: str, goals: list[str], every_days: int, engine: str = "hoola", over: dict | None = None, hi: bool = True,
+def add(tenant: str, conv: str, question: str, goals: list[str], every_days: int, engine: str = "hoola", over: dict | None = None, hi: bool = False,
         baseline: dict | None = None) -> dict[str, Any]:
     ensure_table()
     every = max(MIN_DAYS, int(every_days))

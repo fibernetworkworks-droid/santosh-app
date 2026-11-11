@@ -100,24 +100,24 @@ def check(tenant: str, planned_rows: int, st: Any = None) -> tuple[bool, str, st
     base = str(st.leads_vendor_base_url or "").strip()
     key = str(st.leads_vendor_api_key or "").strip()
     if not name or not base or not key:
-        return False, ("Vendor lane abhi khali hai - koi licensed vendor naam hua hi nahi (plan 12.4: yeh naam "
-                       "aap leti hain). Isliye lane plan card par bhi nahi (no stub, no pretending). Jab vendor "
-                       "taiyaar ho: LEADS_VENDOR_NAME + LEADS_VENDOR_BASE_URL + LEADS_VENDOR_API_KEY set kijiye."), "config"
+        return False, ("The vendor lane is empty for now - no licensed vendor has been named (plan 12.4: you choose "
+                       "that name). So the lane is not on the plan card either (no stub, no pretending). When a vendor "
+                       "is ready: set LEADS_VENDOR_NAME + LEADS_VENDOR_BASE_URL + LEADS_VENDOR_API_KEY."), "config"
     price = float(st.leads_vendor_price_per_row_inr or 0.0)
     if price <= 0:
-        return False, (f"{name}: per-row price set nahi hai, to koi ceiling nahi ban sakti. Vendor ka plan padh kar "
-                       "LEADS_VENDOR_PRICE_PER_ROW_INR set kijiye (rupees per row; 0 = refuse)."), "config"
+        return False, (f"{name}: no per-row price is set, so no ceiling can be worked out. Read the vendor's plan and "
+                       "set LEADS_VENDOR_PRICE_PER_ROW_INR (rupees per row; 0 = refuse)."), "config"
     if name.lower() not in _csv(st.leads_vendor_terms_ack):
-        return False, (f"{name}: uske terms (data store / show karne par) aapne padhe hi nahi mark kiye. Vendor ki "
-                       f"current terms khud padhiye, phir LEADS_VENDOR_TERMS_ACK mein '{name}' likhiye - yeh act "
-                       "aapka hai, hum assume nahi karte."), "config"
+        return False, (f"{name}: you have not marked its terms (on storing / showing the data) as read. Read the vendor's "
+                       f"current terms yourself, then write '{name}' in LEADS_VENDOR_TERMS_ACK - this act "
+                       "is yours, we do not assume it."), "config"
     est = estimate_inr(planned_rows, st)
     cap = float(st.leads_vendor_run_cap_inr or 0.0)
     if est > cap:
-        return False, (f"Yeh vendor run {max(0, int(planned_rows or 0)):,} rows x Rs {price:g}/row = Rs {est:,.0f} "
-                       f"ka estimate hai - ek run ka ceiling Rs {cap:,.0f} hai (LEADS_VENDOR_RUN_CAP_INR). Rows "
-                       "ghataiye ya ceiling badalwaiye (aapki haan se). (Plan time par refuse - run shuru nahi "
-                       "hua, ek bhi vendor call nahi hua.)"), "cap"
+        return False, (f"This vendor run is estimated at {max(0, int(planned_rows or 0)):,} rows x Rs {price:g}/row = Rs {est:,.0f} "
+                       f"- the ceiling for one run is Rs {cap:,.0f} (LEADS_VENDOR_RUN_CAP_INR). Reduce the "
+                       "rows or have the ceiling changed (only with your approval). (Refused at plan time - the run did not "
+                       "start, not a single vendor call was made.)"), "cap"
     return True, "", "ok"
 
 
@@ -139,20 +139,20 @@ async def search(query: str, city: str, max_rows: int, tenant_id: str) -> tuple[
             r = await c.request("POST", SEARCH_PATH, json=body,
                                 headers={"Authorization": f"Bearer {key}", "content-type": "application/json"})
     except httpx.HTTPError as e:
-        raise VendorError(f"{name}: vendor tak nahi pahunch paye ({type(e).__name__})") from None
+        raise VendorError(f"{name}: could not reach the vendor ({type(e).__name__})") from None
     if r.status_code in (401, 403):
-        raise VendorError(f"{name}: key refuse ho gayi ({r.status_code}) - LEADS_VENDOR_API_KEY check kijiye")
+        raise VendorError(f"{name}: the key was refused ({r.status_code}) - check LEADS_VENDOR_API_KEY")
     if r.status_code in (402, 429):
-        raise VendorError(f"{name}: credit khatam ya rate limit ({r.status_code})")
+        raise VendorError(f"{name}: out of credit or rate limited ({r.status_code})")
     if r.status_code >= 400:
         safe = (r.text[:200].replace(key, "***") if key else r.text[:200])
-        raise VendorError(f"{name}: vendor ne {r.status_code} diya: {safe}")
+        raise VendorError(f"{name}: the vendor returned {r.status_code}: {safe}")
     try:
         js = r.json()
     except ValueError:
-        raise VendorError(f"{name}: vendor ne JSON nahi diya") from None
+        raise VendorError(f"{name}: the vendor did not return JSON") from None
     if not isinstance(js, dict):
-        raise VendorError(f"{name}: vendor ka jawab object nahi hai")
+        raise VendorError(f"{name}: the vendor's reply is not an object")
     rows = [x for x in (js.get("results") or []) if isinstance(x, dict)]
     cost = js.get("cost_inr")
     reported = isinstance(cost, (int, float)) and not isinstance(cost, bool)

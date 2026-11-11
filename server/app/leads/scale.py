@@ -42,11 +42,11 @@ def store_backend() -> dict[str, Any]:
     name = eng.dialect.name if eng is not None else "sqlite"
     pg = name == "postgresql"
     return {"engine": name, "country_scale": pg,
-            "note": ("Postgres (DATABASE_URL) - country-scale runs ka backend."
+            "note": ("Postgres (DATABASE_URL) - the backend for country-scale runs."
                      if pg else
-                     "SQLite - chalne ke liye theek; country-scale (20,000 rows/day) ke liye DATABASE_URL ko "
-                     "postgresql+psycopg:// par set kijiye (python -m app.dbmove --to ...). Leads tables "
-                     "naye engine par bhi self-heal ho jaati hain (models.ensure_tables).")}
+                     "SQLite - fine for running; for country-scale (20,000 rows/day) set DATABASE_URL to "
+                     "postgresql+psycopg:// (python -m app.dbmove --to ...). The leads tables "
+                     "self-heal on the new engine too (models.ensure_tables).")}
 
 
 async def enrich_fanout(rows: list, compute: Callable[[Any], Awaitable[dict | None]],

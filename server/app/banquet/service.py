@@ -47,10 +47,10 @@ log = logging.getLogger("santosh.banquet")
 _LOCK = threading.RLock()
 MONEY_CARDS = ("discount", "refund")
 CARD_KINDS = ("quote", "contract", "confirm", "discount", "refund", "pay", "bill", "message")
-CARD_TITLE = {"quote": "Quotation client ko", "contract": "Booking terms client ko", "confirm": "Hold ko pakki booking",
-              "discount": "Discount", "refund": "Refund", "pay": "Paise maangna", "bill": "Event ke baad ka bill",
-              "message": "Client ko message"}
-STATUS = {"draft": "Draft", "hold": "Hold (kachchi)", "confirmed": "Pakki", "done": "Ho gaya", "cancelled": "Radd"}
+CARD_TITLE = {"quote": "Quotation to the client", "contract": "Booking terms to the client", "confirm": "Confirm the hold as a booking",
+              "discount": "Discount", "refund": "Refund", "pay": "Payment request", "bill": "Post-event bill",
+              "message": "Message to the client"}
+STATUS = {"draft": "Draft", "hold": "Hold (tentative)", "confirmed": "Confirmed", "done": "Done", "cancelled": "Cancelled"}
 
 
 class BanquetError(Exception):
@@ -124,7 +124,7 @@ def _int(v) -> int | None:
 
 def _rs(v: float | None) -> str:
     if v is None:
-        return "[daam?]"
+        return "[price?]"
     try:
         from ..india.money import inr
         return inr(v)
@@ -253,8 +253,8 @@ def _settings_view(st: BanquetSettings) -> dict:
             "cancel": _policy_of(st), "cancel_starter": not _j(st.cancel, []), "cancel_lines": R.policy_lines(_policy_of(st)),
             "cancel_notes": notes, "terms": st.terms, "music_end": st.music_end, "validity_days": st.validity_days,
             "morning_time": st.morning_time, "rules": st.rules,
-            "gst_note": ("GST aapke CA se pakka karein: khana / banquet 'specified premises' (pichhle saal koi room Rs 7,500 se upar, "
-                         "ya opt-in) par 18% ITC ke saath, warna 5% bina ITC; sirf hall ka kiraya 18%; rooms Rs 7,500 tak 5%, upar 18%.")}
+            "gst_note": ("Confirm GST with your CA: food / banquet at 'specified premises' (any room above Rs 7,500 last year, "
+                         "or opt-in) is 18% with ITC, otherwise 5% without ITC; hall rent alone is 18%; rooms up to Rs 7,500 are 5%, above that 18%.")}
 
 
 def settings(tenant: str) -> dict:
@@ -271,19 +271,19 @@ def save_settings(tenant: str, **kw: Any) -> dict:
         if "phone" in kw:
             p = R.phone(kw["phone"])
             if kw["phone"] and not p:
-                raise BanquetError("Phone 10 ankon ka mobile number chahiye.")
+                raise BanquetError("The phone must be a 10-digit mobile number.")
             st.phone = p
         if "gstin" in kw:
             g = str(kw["gstin"] or "").strip().upper()
             if g:
                 from ..india.money import gstin_ok
                 if not gstin_ok(g):
-                    raise BanquetError("GSTIN sahi nahi lagta (check digit nahi mila).")
+                    raise BanquetError("The GSTIN does not look right (the check digit does not match).")
             st.gstin = g
         if "upi_id" in kw:
             u = str(kw["upi_id"] or "").strip()
             if u and not re.fullmatch(r"[\w.\-]{2,64}@[A-Za-z]{2,32}", u):
-                raise BanquetError("UPI ID jaisa 'naam@bank' chahiye.")
+                raise BanquetError("The UPI ID must look like 'name@bank'.")
             st.upi_id = u
         if "specified" in kw:
             st.specified = bool(kw["specified"])
@@ -294,7 +294,7 @@ def save_settings(tenant: str, **kw: Any) -> dict:
             if k in kw and _num(kw[k]) is not None:
                 v = _num(kw[k])
                 if not 0 <= v <= 40:
-                    raise BanquetError("GST % 0-40 ke beech.")
+                    raise BanquetError("GST % must be between 0 and 40.")
                 setattr(st, k, v)
         if "slots" in kw and isinstance(kw["slots"], dict):
             cur = _slots(st)
@@ -325,13 +325,13 @@ def save_settings(tenant: str, **kw: Any) -> dict:
             if k in kw:
                 setattr(st, k, R.hhmm(kw[k], d))
         view = _settings_view(st)
-    return {"settings": view, "say": "Venue ke niyam save." + (" " + " ".join(view["cancel_notes"]) if view["cancel_notes"] else "")}
+    return {"settings": view, "say": "Venue rules saved." + (" " + " ".join(view["cancel_notes"]) if view["cancel_notes"] else "")}
 
 
 # ---------------------------------------------------------------- halls / packages / extras (HER numbers)
 def _hall_view(h: BanquetHall) -> dict:
     return {"id": h.id, "name": h.name, "kind": h.kind, "seated": h.seated, "floating": h.floating, "rent": h.rent,
-            "rent_full": h.rent_full, "rent_text": _rs(h.rent) if h.rent is not None else "khane ke saath / bataya nahi",
+            "rent_full": h.rent_full, "rent_text": _rs(h.rent) if h.rent is not None else "included with food / not given",
             "notes": h.notes, "active": h.active, "open_air": h.kind in R.OPEN_AIR}
 
 
@@ -346,7 +346,7 @@ def hall_save(tenant: str, name: str, kind: str = "", seated=None, floating=None
             h = s.scalars(select(BanquetHall).where(BanquetHall.tenant_id == tenant, BanquetHall.name == name)).first()
         if h is None:
             if not name:
-                raise BanquetError("Hall / lawn ka naam chahiye.")
+                raise BanquetError("The hall / lawn needs a name.")
             h = BanquetHall(tenant_id=tenant, name=name)
             s.add(h)
         if name:
@@ -360,23 +360,23 @@ def hall_save(tenant: str, name: str, kind: str = "", seated=None, floating=None
             if v is not None and v != "":
                 n = _int(v)
                 if n is None:
-                    raise BanquetError(f"{k} number chahiye.")
+                    raise BanquetError(f"{k} must be a number.")
                 setattr(h, k, n)
         for k, v in (("rent", rent), ("rent_full", rent_full)):
             if v is not None and v != "":
                 n = _num(v)
                 if n is None or n < 0:
-                    raise BanquetError("Kiraya number chahiye.")
+                    raise BanquetError("The rent must be a number.")
                 setattr(h, k, n)
         if notes:
             h.notes = R.clean(notes, 500)
         if active is not None:
             h.active = bool(active)
         if not (h.seated or h.floating):
-            raise BanquetError("Kam se kam ek capacity (seated ya floating) chahiye.")
+            raise BanquetError("At least one capacity (seated or floating) is needed.")
         s.flush()
         v = _hall_view(h)
-    return {"hall": v, "say": f"{v['name']}: {v['seated']} baithe / {v['floating']} khade."}
+    return {"hall": v, "say": f"{v['name']}: {v['seated']} seated / {v['floating']} standing."}
 
 
 def _hall(s, tenant: str, ref: str) -> BanquetHall:
@@ -387,7 +387,7 @@ def _hall(s, tenant: str, ref: str) -> BanquetHall:
         h = next((x for x in rows if x.name.lower() == ref.lower()), None) or \
             next((x for x in rows if ref and ref.lower() in x.name.lower()), None)
     if h is None:
-        raise BanquetError(f"Hall '{ref}' nahi mila.")
+        raise BanquetError(f"Hall '{ref}' not found.")
     return h
 
 
@@ -413,15 +413,15 @@ def package_save(tenant: str, name: str, price=None, diet: str = "", items: Any 
         fresh = p is None
         if fresh:
             if not name:
-                raise BanquetError("Package ka naam chahiye.")
+                raise BanquetError("The package needs a name.")
             p = BanquetPackage(tenant_id=tenant, name=name)
         pr = _num(price)
         if pr is not None:
             if pr <= 0:
-                raise BanquetError("Plate ka daam 0 se zyada.")
+                raise BanquetError("The plate price must be above 0.")
             p.price = pr
         elif fresh:
-            raise BanquetError("Plate ka daam aapka batana zaroori hai (Hoola daam nahi gadhta).")
+            raise BanquetError("You must give the plate price (Hoola does not make up prices).")
         if fresh:
             s.add(p)
         if name:
@@ -452,7 +452,7 @@ def _pkg(s, tenant: str, ref: str) -> BanquetPackage:
         p = next((x for x in rows if x.name.lower() == ref.lower()), None) or \
             next((x for x in rows if ref and ref.lower() in x.name.lower()), None)
     if p is None:
-        raise BanquetError(f"Package '{ref}' nahi mila.")
+        raise BanquetError(f"Package '{ref}' not found.")
     return p
 
 
@@ -478,12 +478,12 @@ def extra_save(tenant: str, name: str, price=None, kind: str = "", unit: str = "
         pr = _num(price)
         if fresh:
             if not name or pr is None:
-                raise BanquetError("Extra ka naam aur aapka daam dono chahiye.")
+                raise BanquetError("An extra needs both a name and your price.")
             x = BanquetExtra(tenant_id=tenant, name=name)
             s.add(x)
         if pr is not None:
             if pr < 0:
-                raise BanquetError("Daam 0 ya zyada.")
+                raise BanquetError("The price must be 0 or more.")
             x.price = pr
         k = (kind or "").lower().strip()
         if not k and fresh:
@@ -520,7 +520,7 @@ def _expire_holds(s, tenant: str) -> list[BanquetBlock]:
             if bk is not None and bk.status == "hold":
                 bk.status = "draft"
                 bk.hold_until = None
-                _log(bk, "Hold ka samay khatam: hall chhoot gaya")
+                _log(bk, "Hold time over: the hall was released")
     return gone
 
 
@@ -535,8 +535,8 @@ def _clash_say(s, blocks: list[BanquetBlock]) -> str:
     parts = []
     for b in blocks:
         bk = s.get(BanquetBooking, b.booking_id) if b.booking_id else None
-        who = f"{bk.number} {bk.client}" if bk else (b.note or "aapne band kiya")
-        parts.append(f"{R.SLOT_LABEL.get(b.slot, b.slot)}: {'pakki booking' if b.kind == 'confirmed' else 'hold' if b.kind == 'hold' else 'band'} ({who})")
+        who = f"{bk.number} {bk.client}" if bk else (b.note or "closed by you")
+        parts.append(f"{R.SLOT_LABEL.get(b.slot, b.slot)}: {'confirmed booking' if b.kind == 'confirmed' else 'hold' if b.kind == 'hold' else 'closed'} ({who})")
     return "; ".join(parts)
 
 
@@ -544,7 +544,7 @@ def free(tenant: str, day: str, slot: str = "", guests=None, style: str = "") ->
     """Free halls for a day + slot (+ guests). style seated | floating decides the capacity column (default: either fits)."""
     d = _date(day)
     if d is None:
-        raise BanquetError("Tareekh samajh nahi aayi (jaise 2026-12-12).")
+        raise BanquetError("Could not read the date (for example 2026-12-12).")
     sl = R.slot_of(slot) or "evening"
     g = _int(guests)
     out = []
@@ -557,9 +557,9 @@ def free(tenant: str, day: str, slot: str = "", guests=None, style: str = "") ->
                         "capacity": cap})
     good = [x for x in out if x["free"] and x["fits"]]
     if good:
-        say = f"{d.isoformat()} {R.SLOT_LABEL[sl]}: khaali " + ", ".join(f"{x['hall']['name']} ({x['capacity']})" for x in good) + "."
+        say = f"{d.isoformat()} {R.SLOT_LABEL[sl]}: free " + ", ".join(f"{x['hall']['name']} ({x['capacity']})" for x in good) + "."
     else:
-        say = f"{d.isoformat()} {R.SLOT_LABEL[sl]}: koi hall khaali nahi" + (f" jo {g} logon ke liye ho" if g else "") + "."
+        say = f"{d.isoformat()} {R.SLOT_LABEL[sl]}: no hall is free" + (f" for {g} guests" if g else "") + "."
     return {"day": d.isoformat(), "slot": sl, "guests": g, "halls": out, "say": say}
 
 
@@ -586,23 +586,23 @@ def calendar(tenant: str, month: str = "") -> dict:
 def close_slot(tenant: str, hall: str, day: str, slot: str, note: str = "", actor: str = "owner") -> dict:
     """Her own block (maintenance, family use ...). Same clash rule."""
     if not is_owner(actor):
-        raise BanquetError("Hall band karna sirf owner.")
+        raise BanquetError("Only the owner can close a hall.")
     d = _date(day)
     sl = R.slot_of(slot)
     if d is None or not sl:
-        raise BanquetError("Tareekh aur slot (subah / shaam / pura din) chahiye.")
+        raise BanquetError("A date and a slot (morning / evening / full day) are needed.")
     with _LOCK, session() as s:
         h = _hall(s, tenant, hall)
         cl = _clashes(s, tenant, h.id, d.isoformat(), sl)
         if cl:
-            raise BanquetError(f"{h.name} {d.isoformat()} pehle se: {_clash_say(s, cl)}.")
-        s.add(BanquetBlock(tenant_id=tenant, hall_id=h.id, day=d.isoformat(), slot=sl, kind="closed", note=R.clean(note, 200) or "band"))
-    return {"say": f"{h.name} {d.isoformat()} {R.SLOT_LABEL[sl]} band kiya."}
+            raise BanquetError(f"{h.name} {d.isoformat()} is already taken: {_clash_say(s, cl)}.")
+        s.add(BanquetBlock(tenant_id=tenant, hall_id=h.id, day=d.isoformat(), slot=sl, kind="closed", note=R.clean(note, 200) or "closed"))
+    return {"say": f"{h.name} {d.isoformat()} {R.SLOT_LABEL[sl]} closed."}
 
 
 def open_slot(tenant: str, hall: str, day: str, slot: str, actor: str = "owner") -> dict:
     if not is_owner(actor):
-        raise BanquetError("Sirf owner.")
+        raise BanquetError("Owner only.")
     sl = R.slot_of(slot)
     with _LOCK, session() as s:
         h = _hall(s, tenant, hall)
@@ -613,7 +613,7 @@ def open_slot(tenant: str, hall: str, day: str, slot: str, actor: str = "owner")
             if not sl or b.slot == sl:
                 b.active = False
                 n += 1
-    return {"say": f"{n} band slot khole."}
+    return {"say": f"{n} closed slots reopened."}
 
 
 # ---------------------------------------------------------------- enquiries (leads)
@@ -634,7 +634,7 @@ def _lead(s, tenant: str, ref: str) -> BanquetLead:
         x = s.scalars(select(BanquetLead).where(BanquetLead.tenant_id == tenant, BanquetLead.phone == R.phone(ref))
                       .order_by(BanquetLead.created_at.desc())).first()
     if x is None:
-        raise BanquetError(f"Enquiry '{ref}' nahi mili.")
+        raise BanquetError(f"Enquiry '{ref}' not found.")
     return x
 
 
@@ -649,11 +649,11 @@ def enquiry(tenant: str, text: str = "", name: str = "", phone: str = "", source
          "slot": R.slot_of(slot) or got.get("slot", ""), "guests": _int(guests) if guests not in (None, "") else got.get("guests"),
          "diet": R.diet_of(diet) or got.get("diet", ""), "budget": _num(budget) if budget not in (None, "") else got.get("budget")}
     if phone and not f["phone"]:
-        raise BanquetError(f"'{phone}' sahi mobile number nahi lagta.")
+        raise BanquetError(f"'{phone}' does not look like a valid mobile number.")
     if not (f["phone"] or f["name"]):
-        raise BanquetError("Graahak ka naam ya phone chahiye.")
+        raise BanquetError("The customer's name or phone is needed.")
     if f["day"] and f["day"] < t0:
-        raise BanquetError(f"{f['day'].isoformat()} beet chuki tareekh hai.")
+        raise BanquetError(f"{f['day'].isoformat()} is a past date.")
     src = (source or ("paste" if text else "call")).lower()
     src = src if src in ("call", "whatsapp", "walk_in", "paste", "website", "referral", "instagram") else "call"
     with _LOCK, session() as s:
@@ -689,7 +689,7 @@ def enquiry(tenant: str, text: str = "", name: str = "", phone: str = "", source
             from ..telecall import service as tc
             r = tc.add_lead(tenant, name=f["name"], phone=f["phone"], source="enquiry", purpose="sales",
                             need=f"{R.EVENT_LABEL.get(f['event_type'], 'Function')} {f['day'].isoformat() if f['day'] else ''} "
-                                 f"{f['guests'] or ''} log".strip(), amount=f["budget"], consent=True, by=actor)
+                                 f"{f['guests'] or ''} guests".strip(), amount=f["budget"], consent=True, by=actor)
             tele = str((r.get("lead") or {}).get("id") or "")
         except Exception:
             log.info("telecall link skipped", exc_info=True)
@@ -704,13 +704,13 @@ def enquiry(tenant: str, text: str = "", name: str = "", phone: str = "", source
             av = free(tenant, v["day"], v["slot"] or "evening", v["guests"])
         except BanquetError:
             av = None
-    missing = [k for k, lab in (("day", "tareekh"), ("slot", "subah / shaam"), ("guests", "kitne log"), ("diet", "veg / non-veg / Jain"))
+    missing = [k for k, lab in (("day", "date"), ("slot", "morning / evening"), ("guests", "number of guests"), ("diet", "veg / non-veg / Jain"))
                if not v[k]]
-    say = f"{v['number']} {v['name'] or v['phone']}: enquiry darj" + (" (Telecaller list mein bhi)" if tele else "") + "."
+    say = f"{v['number']} {v['name'] or v['phone']}: enquiry recorded" + (" (also on the Telecaller list)" if tele else "") + "."
     if av:
         say += " " + av["say"]
     if missing:
-        say += " Poochhna baaki: " + ", ".join(lab for k, lab in (("day", "tareekh"), ("slot", "subah / shaam"), ("guests", "kitne log"),
+        say += " Still to ask: " + ", ".join(lab for k, lab in (("day", "date"), ("slot", "morning / evening"), ("guests", "number of guests"),
                                                                     ("diet", "veg / non-veg / Jain")) if k in missing) + "."
     return {"lead": v, "fresh": fresh, "availability": av, "missing": missing, "say": say}
 
@@ -723,14 +723,14 @@ def lead_update(tenant: str, ref: str, status: str = "", follow_up: str = "", lo
             if status not in ("new", "contacted", "visit", "quoted", "hold", "booked", "lost"):
                 raise BanquetError("status: new / contacted / visit / quoted / hold / booked / lost")
             if status == "lost" and not (lost_reason or x.lost_reason):
-                raise BanquetError("Kyun nahi hua (daam / tareekh / jagah ...) likhiye: agli baar kaam aayega.")
+                raise BanquetError("Write why it did not happen (price / date / place ...): it helps next time.")
             x.status = status
         if lost_reason:
             x.lost_reason = R.clean(lost_reason, 300)
         if follow_up:
             d = _date(follow_up) or R.date_of(follow_up, today(tenant))
             if d is None:
-                raise BanquetError("Follow-up tareekh samajh nahi aayi.")
+                raise BanquetError("Could not read the follow-up date.")
             x.follow_up = d.isoformat()
         if notes:
             x.notes = (x.notes + "\n" if x.notes else "") + R.clean(notes, 800)
@@ -753,7 +753,7 @@ def _bk(s, tenant: str, ref: str) -> BanquetBooking:
     if b is None or b.tenant_id != tenant:
         b = s.scalars(select(BanquetBooking).where(BanquetBooking.tenant_id == tenant, BanquetBooking.number == ref.upper())).first()
     if b is None:
-        raise BanquetError(f"Booking '{ref}' nahi mili.")
+        raise BanquetError(f"Booking '{ref}' not found.")
     return b
 
 
@@ -790,7 +790,7 @@ def _clean_extras(s, tenant: str, items: Any, actor: str) -> list[dict]:
             next((e for e in rows if ref and ref.lower() in e.name.lower()), None)
         price = _num(m.get("price"))
         if price is not None and not is_owner(actor):
-            raise BanquetError("Naya daam sirf owner bata sakti hain.")
+            raise BanquetError("Only the owner can set a new price.")
         out.append({"extra_id": x.id if x else "", "name": x.name if x else R.clean(ref, 120), "qty": _num(m.get("qty")) or 1,
                     "price": price, "nights": _int(m.get("nights"))})
     return out
@@ -843,7 +843,7 @@ def booking_save(tenant: str, booking: str = "", lead: str = "", actor: str = "o
         if booking:
             b = _bk(s, tenant, booking)
             if b.status in ("done", "cancelled"):
-                raise BanquetError(f"{b.number} '{STATUS[b.status]}' hai: badlaav nahi.")
+                raise BanquetError(f"{b.number} is '{STATUS[b.status]}': it cannot be changed.")
         else:
             st.bk_seq += 1
             b = BanquetBooking(tenant_id=tenant, number=f"B-{st.bk_seq:04d}", conv=conv)
@@ -862,7 +862,7 @@ def booking_save(tenant: str, booking: str = "", lead: str = "", actor: str = "o
         if "phone" in kw and kw["phone"]:
             p = R.phone(kw["phone"])
             if not p:
-                raise BanquetError("Phone 10 ankon ka mobile number chahiye.")
+                raise BanquetError("The phone must be a 10-digit mobile number.")
             b.phone = p
         if "email" in kw and kw["email"] is not None:
             b.email = R.clean(kw["email"], 120)
@@ -870,7 +870,7 @@ def booking_save(tenant: str, booking: str = "", lead: str = "", actor: str = "o
             from ..india.money import gstin_ok
             g = str(kw["client_gstin"]).strip().upper()
             if not gstin_ok(g):
-                raise BanquetError("Client ka GSTIN sahi nahi lagta.")
+                raise BanquetError("The client's GSTIN does not look right.")
             b.client_gstin = g
         if "event_type" in kw and kw["event_type"]:
             et = kw["event_type"] if kw["event_type"] in R.EVENT_LABEL else (R.event_of(kw["event_type"]) or "other")
@@ -882,22 +882,22 @@ def booking_save(tenant: str, booking: str = "", lead: str = "", actor: str = "o
         if kw.get("day"):
             d = _date(kw["day"]) or R.date_of(kw["day"], t0)
             if d is None:
-                raise BanquetError("Tareekh samajh nahi aayi.")
+                raise BanquetError("Could not read the date.")
             if d < t0:
-                raise BanquetError("Beeti tareekh par booking nahi.")
+                raise BanquetError("A booking cannot be on a past date.")
             nd = d.isoformat()
         if kw.get("slot"):
             ns = R.slot_of(kw["slot"]) or ""
             if not ns:
-                raise BanquetError("Slot: subah / shaam / pura din.")
+                raise BanquetError("Slot: morning / evening / full day.")
         if (nh, nd, ns) != (b.hall_id, b.day, b.slot):
             moving = b.status in ("hold", "confirmed")
             if moving:
                 cl = _clashes(s, tenant, nh, nd, ns, b.id)
                 if cl:
-                    raise BanquetError(f"Wahan pehle se: {_clash_say(s, cl)}. Double booking nahi hogi.")
+                    raise BanquetError(f"Already taken there: {_clash_say(s, cl)}. No double booking.")
                 if b.status == "confirmed" and not is_owner(actor):
-                    raise BanquetError("Pakki booking ki tareekh / hall sirf owner badal sakti hain.")
+                    raise BanquetError("Only the owner can change the date / hall of a confirmed booking.")
                 for blk in s.scalars(select(BanquetBlock).where(BanquetBlock.booking_id == b.id, BanquetBlock.active.is_(True))).all():
                     blk.hall_id, blk.day, blk.slot = nh, nd, ns
             b.hall_id, b.day, b.slot = nh, nd, ns
@@ -905,7 +905,7 @@ def booking_save(tenant: str, booking: str = "", lead: str = "", actor: str = "o
             if k in kw and kw[k] not in (None, ""):
                 n = _int(kw[k])
                 if n is None:
-                    raise BanquetError(f"{k} number chahiye.")
+                    raise BanquetError(f"{k} must be a number.")
                 setattr(b, k, n)
         if "menu" in kw and kw["menu"] is not None:
             b.menu = _dump(_clean_menu(s, tenant, kw["menu"]))
@@ -923,13 +923,13 @@ def booking_save(tenant: str, booking: str = "", lead: str = "", actor: str = "o
         warn = []
         g = b.final_count or b.guests
         if h and g and g > max(h.seated, h.floating):
-            warn.append(f"{g} log {h.name} ki capacity ({h.seated} baithe / {h.floating} khade) se zyada: fire NOC ki seema dekhiye.")
-        _log(b, "Booking badli" if booking else "Booking bani", actor_name(tenant, actor))
+            warn.append(f"{g} guests is above the capacity of {h.name} ({h.seated} seated / {h.floating} standing): check the fire NOC limit.")
+        _log(b, "Booking changed" if booking else "Booking created", actor_name(tenant, actor))
         s.flush()
         v = _booking_view(s, b, full=True)
-    say = f"{v['number']} {v['client'] or ''}: {v['hall'] or 'hall?'} {v['day'] or 'tareekh?'} {v['slot_label']}."
+    say = f"{v['number']} {v['client'] or ''}: {v['hall'] or 'hall?'} {v['day'] or 'date?'} {v['slot_label']}."
     if moving:
-        say += " Hall / tareekh badli (clash nahi)."
+        say += " Hall / date changed (no clash)."
     if warn:
         say += " " + " ".join(warn)
     return {"booking": v, "warnings": warn, "say": say}
@@ -941,18 +941,18 @@ def hold(tenant: str, booking: str, hours=None, actor: str = "owner", conv: str 
         st = _st(s, tenant)
         b = _bk(s, tenant, booking)
         if b.status not in ("draft", "hold"):
-            raise BanquetError(f"{b.number} '{STATUS[b.status]}' hai.")
+            raise BanquetError(f"{b.number} is '{STATUS[b.status]}'.")
         if not (b.hall_id and b.day and b.slot):
-            raise BanquetError("Hold ke liye hall, tareekh aur slot chahiye.")
+            raise BanquetError("A hold needs a hall, a date and a slot.")
         if _date(b.day) < today(tenant):
-            raise BanquetError("Beeti tareekh.")
+            raise BanquetError("That date is in the past.")
         hrs = _int(hours) or st.hold_hours
         if not is_owner(actor):
             hrs = min(hrs, st.hold_hours)
         hrs = max(1, min(hrs, 24 * 14))
         cl = _clashes(s, tenant, b.hall_id, b.day, b.slot, b.id)
         if cl:
-            raise BanquetError(f"Yeh slot pehle se: {_clash_say(s, cl)}. Double booking nahi hogi; doosra hall / slot dekhiye.")
+            raise BanquetError(f"This slot is already taken: {_clash_say(s, cl)}. No double booking; try another hall / slot.")
         until = clock() + timedelta(hours=hrs)
         blk = s.scalars(select(BanquetBlock).where(BanquetBlock.booking_id == b.id, BanquetBlock.active.is_(True))).first()
         if blk is None:
@@ -964,27 +964,27 @@ def hold(tenant: str, booking: str, hours=None, actor: str = "owner", conv: str 
             x = s.get(BanquetLead, b.lead_id)
             if x and x.status not in ("booked", "lost"):
                 x.status = "hold"
-        _log(b, f"Hold {hrs} ghante", actor_name(tenant, actor))
+        _log(b, f"Hold {hrs} hours", actor_name(tenant, actor))
         v = _booking_view(s, b)
     loc = _aware(until).astimezone(_tz(tenant))
-    return {"booking": v, "say": f"{v['number']} {v['hall']} {v['day']} {v['slot_label']}: hold {loc.strftime('%d-%m %H:%M')} tak. "
-                                 "Pakki booking aapki haan se hogi."}
+    return {"booking": v, "say": f"{v['number']} {v['hall']} {v['day']} {v['slot_label']}: on hold until {loc.strftime('%d-%m %H:%M')}. "
+                                 "It becomes a confirmed booking only with your approval."}
 
 
 def release(tenant: str, booking: str, actor: str = "owner") -> dict:
     with _LOCK, session() as s:
         b = _bk(s, tenant, booking)
         if b.status == "confirmed" and not is_owner(actor):
-            raise BanquetError("Pakki booking chhodna = cancel: sirf owner.")
+            raise BanquetError("Releasing a confirmed booking = cancel: owner only.")
         if b.status == "confirmed":
-            raise BanquetError("Pakki booking ke liye 'cancel' kijiye (refund policy ke saath).")
+            raise BanquetError("For a confirmed booking, use 'cancel' (with the refund policy).")
         for blk in s.scalars(select(BanquetBlock).where(BanquetBlock.booking_id == b.id, BanquetBlock.active.is_(True))).all():
             blk.active = False
         if b.status == "hold":
             b.status, b.hold_until = "draft", None
-        _log(b, "Hold chhoda", actor_name(tenant, actor))
+        _log(b, "Hold released", actor_name(tenant, actor))
         v = _booking_view(s, b)
-    return {"booking": v, "say": f"{v['number']}: hold chhoda, slot khaali."}
+    return {"booking": v, "say": f"{v['number']}: hold released, the slot is free."}
 
 
 # ---------------------------------------------------------------- quotation maths (by code, HER numbers only)
@@ -1001,10 +1001,10 @@ def _quote(s, tenant: str, b: BanquetBooking, actual: bool = False) -> dict:
             continue
         plates = m.get("plates") if len(menu) > 1 else (m.get("plates") or count)
         if len(menu) == 1 and plates and p.min_plates and plates < p.min_plates:
-            notes.append(f"{p.name}: kam se kam {p.min_plates} plate (aapka niyam) lagaya.")
+            notes.append(f"{p.name}: billed the minimum of {p.min_plates} plates (your rule).")
             plates = p.min_plates
         if not plates:
-            blanks.append(f"{p.name}: kitni plate?")
+            blanks.append(f"{p.name}: how many plates?")
         amt = round(plates * p.price, 2) if plates else None
         lines.append({"kind": "food", "name": f"{p.name} ({R.DIET_LABEL.get(p.diet, p.diet)})", "qty": plates, "unit": "plate",
                       "rate": p.price, "amount": amt, "gst_pct": food_pct, "sac": "9963"})
@@ -1012,11 +1012,11 @@ def _quote(s, tenant: str, b: BanquetBooking, actual: bool = False) -> dict:
     if b.hall_rent and h is not None:
         rent = h.rent_full if b.slot == "full" and h.rent_full is not None else (h.rent if b.slot != "full" else None)
         if rent is None and b.slot == "full" and h.rent is not None:
-            blanks.append(f"{h.name}: pure din ka kiraya?")
+            blanks.append(f"{h.name}: full-day rent?")
         elif rent is None and not with_food:
-            blanks.append(f"{h.name}: kiraya?")
+            blanks.append(f"{h.name}: rent?")
         if rent is not None:
-            lines.append({"kind": "hall", "name": f"{h.name} kiraya ({R.SLOT_LABEL.get(b.slot, b.slot)})", "qty": 1, "unit": "slot",
+            lines.append({"kind": "hall", "name": f"{h.name} rent ({R.SLOT_LABEL.get(b.slot, b.slot)})", "qty": 1, "unit": "slot",
                           "rate": rent, "amount": rent, "gst_pct": food_pct if with_food else st.gst_hall,
                           "sac": "9963" if with_food else "997212"})
     elif not h:
@@ -1032,12 +1032,12 @@ def _quote(s, tenant: str, b: BanquetBooking, actual: bool = False) -> dict:
             qty = count or 0
         pct = x.gst_pct if x and x.gst_pct is not None else (R.room_gst(price or 0) if (x and x.kind == "rooms") else st.gst_extra)
         if price is None:
-            blanks.append(f"{e.get('name')}: daam?")
+            blanks.append(f"{e.get('name')}: price?")
         lines.append({"kind": "extra", "name": e.get("name") or (x.name if x else "Extra"), "qty": qty, "unit": unit, "rate": price,
                       "amount": round(qty * price, 2) if price is not None else None, "gst_pct": pct,
                       "sac": "9963" if x and x.kind == "rooms" else "9985"})
     if not lines:
-        blanks.append("Menu package ya hall kiraya: kuch to chahiye.")
+        blanks.append("A menu package or hall rent: at least one is needed.")
     sub = round(sum(ln["amount"] or 0 for ln in lines), 2)
     disc = min(round(b.discount or 0, 2), sub)
     groups: dict[float, float] = {}
@@ -1063,11 +1063,11 @@ def _quote(s, tenant: str, b: BanquetBooking, actual: bool = False) -> dict:
     except Exception:
         pass
     if b.guarantee and count and b.guarantee > (b.final_count or b.guests or 0):
-        notes.append(f"Minimum guarantee {b.guarantee} plate ka bill banega, chahe log kam aayen.")
+        notes.append(f"The bill will be for the minimum guarantee of {b.guarantee} plates, even if fewer guests come.")
     return {"lines": lines, "subtotal": sub, "discount": disc, "gst": gst, "tax": tax, "total": total,
-            "total_text": _rs(total) if not blanks else "[khaali jagah]", "words": words, "plates": count, "blanks": blanks,
+            "total_text": _rs(total) if not blanks else "[blanks]", "words": words, "plates": count, "blanks": blanks,
             "notes": notes, "intra": True, "specified": bool(st.specified),
-            "gst_note": "Function aapke venue par: place of supply = venue (IGST Act s.12(3)(c)), isliye CGST + SGST."}
+            "gst_note": "The function is at your venue: place of supply = venue (IGST Act s.12(3)(c)), so CGST + SGST."}
 
 
 def quote(tenant: str, booking: str) -> dict:
@@ -1144,7 +1144,7 @@ def _show(s, tenant: str, kind: str, b: BanquetBooking | None, inp: dict) -> dic
                 "balance": round(q["total"] - paid, 2), "balance_text": _rs(round(q["total"] - paid, 2)), "_in": inp}
     if kind == "message":
         return {**base, "text": inp.get("text", ""), "_in": inp}
-    raise BanquetError(f"card '{kind}' nahi pehchana.")
+    raise BanquetError(f"Unknown card kind '{kind}'.")
 
 
 def _make_card(tenant: str, kind: str, booking_ref: str, inp: dict, actor: str = "owner", conv: str = "") -> dict:
@@ -1158,7 +1158,7 @@ def _make_card(tenant: str, kind: str, booking_ref: str, inp: dict, actor: str =
         for o in old:
             if o.hash == h:
                 return {"card": _card_view(o), "status": "needs_tap", "existing": True,
-                        "say": "Yahi card pehle se aapki haan ka intezaar kar raha hai."}
+                        "say": "This same card is already waiting for your approval."}
             o.status = "stale"
         c = BanquetCard(tenant_id=tenant, booking_id=b.id if b else "", kind=kind, show=_dump(show), hash=h,
                         asked_by=actor_name(tenant, actor), conv=conv or (b.conv if b else ""))
@@ -1166,7 +1166,7 @@ def _make_card(tenant: str, kind: str, booking_ref: str, inp: dict, actor: str =
         s.flush()
         v = _card_view(c)
         cv = c.conv
-    say = f"{CARD_TITLE[kind]}: {v['show'].get('booking', '')} aapki haan ka card bheja hai."
+    say = f"{CARD_TITLE[kind]}: {v['show'].get('booking', '')} - a card has been sent for your approval."
     _publish(tenant, "banquet_card", {"card": v, "say": say}, cv)
     return {"card": v, "status": "needs_tap", "say": say}
 
@@ -1175,7 +1175,7 @@ def card_view(tenant: str, card_id: str) -> dict:
     with session() as s:
         c = s.get(BanquetCard, card_id)
         if c is None or c.tenant_id != tenant:
-            raise BanquetError("Card nahi mila.")
+            raise BanquetError("Card not found.")
         return _card_view(c)
 
 
@@ -1192,7 +1192,7 @@ def card_challenge(tenant: str, card_id: str) -> dict:
     from .. import approvekey as ak
     c = card_view(tenant, card_id)
     if c["status"] != "waiting" or c["kind"] not in MONEY_CARDS:
-        raise BanquetError("Yeh card ab baaki nahi hai.")
+        raise BanquetError("This card is no longer pending.")
     nonce = secrets.token_urlsafe(18)
     exp = datetime.now(timezone.utc) + ak.CHALLENGE_TTL
     msg = f"hoola-approve|v1|{tenant}|banquet|{card_id}|{c['hash']}|{nonce}|{int(exp.timestamp())}"
@@ -1223,13 +1223,13 @@ def decide(tenant: str, card_id: str, yes: bool, card_hash: str = "", reason: st
     """ONLY from the app's API (her tap). The card's hash must still match the state NOW; money cards need her fingerprint once
     a phone key is active."""
     if not by_tap:
-        raise BanquetError("Yeh sirf aapke tap se (app ka card).")
+        raise BanquetError("This happens only on your tap (the card in the app).")
     with session() as s:
         c = s.get(BanquetCard, card_id)
         if c is None or c.tenant_id != tenant:
-            raise BanquetError("Card nahi mila.")
+            raise BanquetError("Card not found.")
         if c.status != "waiting":
-            return {"card": _card_view(c), "say": f"Yeh card pehle hi '{c.status}' hai."}
+            return {"card": _card_view(c), "say": f"This card is already '{c.status}'."}
         b = s.get(BanquetBooking, c.booking_id) if c.booking_id else None
         inp = _j(c.show, {}).get("_in", {})
         try:
@@ -1243,7 +1243,7 @@ def decide(tenant: str, card_id: str, yes: bool, card_hash: str = "", reason: st
         if now_hash != ch:
             with _LOCK, session() as s:
                 s.get(BanquetCard, card_id).status = "stale"
-        raise BanquetError("Card ke baad kuch badal gaya; naya card dekhiye.")
+        raise BanquetError("Something changed after this card was made; see the new card.")
     if yes and kind in MONEY_CARDS:
         from .. import approvekey as ak
         if ak.active_on(tenant):
@@ -1253,7 +1253,7 @@ def decide(tenant: str, card_id: str, yes: bool, card_hash: str = "", reason: st
             c = s.get(BanquetCard, card_id)
             c.status, c.reason, c.decided_at = "rejected", R.clean(reason, 300), now()
             v = _card_view(c)
-        return {"card": v, "say": f"{CARD_TITLE[kind]}: nahi."}
+        return {"card": v, "say": f"{CARD_TITLE[kind]}: declined."}
     fn = {"quote": _do_quote, "contract": _do_contract, "confirm": _do_confirm, "discount": _do_discount, "refund": _do_refund,
           "pay": _do_pay, "bill": _do_bill, "message": _do_message}[kind]
     out = fn(tenant, card_id, conv)
@@ -1292,19 +1292,19 @@ def _do_quote(tenant: str, card_id: str, conv: str) -> dict:
         st = _st(s, tenant)
         b.quote_no += 1
         b.quote_sent = R.digest(sh)
-        _log(b, "Quotation aapki haan se final", "Owner")
+        _log(b, "Quotation made final with your approval", "Owner")
         if b.lead_id:
             x = s.get(BanquetLead, b.lead_id)
             if x and x.status in ("new", "contacted", "visit"):
                 x.status = "quoted"
         num, phone, client, venue = b.number, b.phone, b.client, st.venue
     f = _store(tenant, f"{num}_quotation.pdf", pdf, "application/pdf", conv, f"{num} quotation")
-    text = (f"Namaste {client} ji, {venue or 'hamare venue'} ki taraf se {sh.get('event') or 'function'} ({sh.get('day')}, "
-            f"{sh.get('slot')}, {sh.get('hall')}) ka quotation {num}: kul {sh.get('total_text')} (GST samet)"
-            + (f", {sh['valid_until']} tak valid" if sh.get("valid_until") else "") + ". Cancellation / refund ki shartein PDF mein hain. "
-            "Hall abhi pakka nahi: advance aur booking ke baad hi pakka hoga.")
+    text = (f"Hello {client}, here is quotation {num} from {venue or 'our venue'} for your {sh.get('event') or 'function'} ({sh.get('day')}, "
+            f"{sh.get('slot')}, {sh.get('hall')}): total {sh.get('total_text')} (including GST)"
+            + (f", valid until {sh['valid_until']}" if sh.get("valid_until") else "") + ". The cancellation / refund terms are in the PDF. "
+            "The hall is not confirmed yet: it is confirmed only after the advance and the booking.")
     return {"draft": _draft(phone, text, file_id=f.get("file_id", "")), "file_id": f.get("file_id", ""),
-            "say": f"{num} quotation final PDF bana; message draft taiyaar: aap khud bhejiye (PDF saath lagaiye)."}
+            "say": f"{num}: the final quotation PDF is made and the message draft is ready: you send it yourself (attach the PDF)."}
 
 
 def _do_contract(tenant: str, card_id: str, conv: str) -> dict:
@@ -1316,13 +1316,13 @@ def _do_contract(tenant: str, card_id: str, conv: str) -> dict:
         cx = _j(b.cancel, {})
         cx["policy"] = sh.get("policy") or []
         b.cancel = _dump(cx)
-        _log(b, "Booking terms aapki haan se final", "Owner")
+        _log(b, "Booking terms made final with your approval", "Owner")
         num, phone, client = b.number, b.phone, b.client
     f = _store(tenant, f"{num}_booking_terms.pdf", pdf, "application/pdf", conv, f"{num} booking terms")
-    text = (f"Namaste {client} ji, booking {num} ki shartein (payment schedule, cancellation / refund, final guest count ki "
-            f"tareekh {sh.get('lock_date')}) PDF mein bhej rahe hain. Padh kar haan likh dijiye.")
+    text = (f"Hello {client}, we are sending the terms of booking {num} (payment schedule, cancellation / refund, final guest count "
+            f"date {sh.get('lock_date')}) as a PDF. Please read them and reply yes to confirm.")
     return {"draft": _draft(phone, text, file_id=f.get("file_id", "")), "file_id": f.get("file_id", ""),
-            "say": f"{num} booking terms final; draft taiyaar, aap bhejiye."}
+            "say": f"{num}: booking terms are final; the draft is ready, you send it."}
 
 
 def _do_confirm(tenant: str, card_id: str, conv: str) -> dict:
@@ -1335,9 +1335,9 @@ def _confirm_now(tenant: str, card_id: str) -> dict:
         c = s.get(BanquetCard, card_id)
         b = s.get(BanquetBooking, c.booking_id)
         if b.status not in ("draft", "hold"):
-            raise BanquetError(f"{b.number} '{STATUS[b.status]}' hai.")
+            raise BanquetError(f"{b.number} is '{STATUS[b.status]}'.")
         cl = _clashes(s, tenant, b.hall_id, b.day, b.slot, b.id)
-        why = f"Ab yeh slot khaali nahi: {_clash_say(s, cl)}. Double booking nahi hogi." if cl else ""
+        why = f"This slot is no longer free: {_clash_say(s, cl)}. No double booking." if cl else ""
     if why:
         with _LOCK, session() as s:
             s.get(BanquetCard, card_id).status = "stale"
@@ -1358,13 +1358,13 @@ def _confirm_now(tenant: str, card_id: str) -> dict:
             x = s.get(BanquetLead, b.lead_id)
             if x:
                 x.status = "booked"
-        _log(b, "Pakki booking (aapki haan)", "Owner")
+        _log(b, "Booking confirmed (your approval)", "Owner")
         v = _booking_view(s, b)
         paid = _paid(b)
-    note = "" if paid else " Abhi koi advance darj nahi: paise maangne ka card bana sakte hain."
-    text = (f"Namaste {v['client']} ji, aapki booking {v['number']} pakki: {v['hall']}, {v['day']} {v['slot_label']} ({v['time']}). "
-            f"Final mehmaan sankhya {v['lock_date']} tak bata dijiye. Dhanyavaad.")
-    return {"booking": v, "draft": _draft(v["phone"], text), "say": f"{v['number']} pakki ho gayi (slot block).{note} Client ko draft taiyaar."}
+    note = "" if paid else " No advance is recorded yet: you can make a payment request card."
+    text = (f"Hello {v['client']}, your booking {v['number']} is confirmed: {v['hall']}, {v['day']} {v['slot_label']} ({v['time']}). "
+            f"Please tell us the final guest count by {v['lock_date']}. Thank you.")
+    return {"booking": v, "draft": _draft(v["phone"], text), "say": f"{v['number']} is confirmed (slot blocked).{note} The draft for the client is ready."}
 
 
 def _do_discount(tenant: str, card_id: str, conv: str) -> dict:
@@ -1381,9 +1381,9 @@ def _do_discount(tenant: str, card_id: str, conv: str) -> dict:
             for r in rows:
                 r["requested"] = bool(old_rows.get(r["label"], {}).get("requested"))
             b.stages = _dump(rows)
-        _log(b, f"Discount {_rs(b.discount)} (aapki haan)", "Owner")
+        _log(b, f"Discount {_rs(b.discount)} (your approval)", "Owner")
         v = _booking_view(s, b)
-    return {"booking": v, "say": f"{v['number']}: discount {_rs(v['discount'])} laga. Naya quotation card bana sakte hain."}
+    return {"booking": v, "say": f"{v['number']}: discount {_rs(v['discount'])} applied. You can make a new quotation card."}
 
 
 def _do_refund(tenant: str, card_id: str, conv: str) -> dict:
@@ -1393,12 +1393,12 @@ def _do_refund(tenant: str, card_id: str, conv: str) -> dict:
         cx = _j(b.cancel, {})
         cx["refund_ok"] = {"amount": sh.get("amount"), "card": card_id, "at": now().isoformat(), "sent": False}
         b.cancel = _dump(cx)
-        _log(b, f"Refund {_rs(sh.get('amount'))} manzoor (aapki haan); aap khud bhejengi", "Owner")
+        _log(b, f"Refund {_rs(sh.get('amount'))} approved (your approval); you send it yourself", "Owner")
         num, phone, client = b.number, b.phone, b.client
-    text = (f"Namaste {client} ji, booking {num} ka refund {sh.get('amount_text')} manzoor hua hai; hum jaldi aapke khate / UPI mein "
-            "bhej denge. Hum kabhi OTP / PIN nahi maangte.")
-    return {"draft": _draft(phone, text), "say": f"{num}: refund {sh.get('amount_text')} manzoor. Paise aap apne bank / UPI app se "
-                                                 "bhejiye, phir 'refund bhej diya' darj kijiye (Hoola paise nahi bhejta)."}
+    text = (f"Hello {client}, the refund of {sh.get('amount_text')} for booking {num} has been approved; we will send it to your account / UPI "
+            "soon. We never ask for an OTP / PIN.")
+    return {"draft": _draft(phone, text), "say": f"{num}: refund {sh.get('amount_text')} approved. Send the money from your own bank / UPI app, "
+                                                 "then record 'refund sent' (Hoola does not send money)."}
 
 
 def _do_pay(tenant: str, card_id: str, conv: str) -> dict:
@@ -1411,15 +1411,15 @@ def _do_pay(tenant: str, card_id: str, conv: str) -> dict:
                 r["requested"] = True
         if rows:
             b.stages = _dump(rows)
-        _log(b, f"Paise maange: {sh.get('label')} {sh.get('amount_text')}", "Owner")
+        _log(b, f"Payment requested: {sh.get('label')} {sh.get('amount_text')}", "Owner")
         num, phone, client = b.number, b.phone, b.client
     with session() as s:
         venue = _st(s, tenant).venue
     link = _upi(tenant, float(sh.get("amount") or 0), f"{num} {sh.get('label')}")
-    text = (f"Namaste {client} ji, booking {num} ({sh.get('day')}) ki '{sh.get('label')}': {sh.get('amount_text')}."
-            + (f" UPI se bhejiye: {link}" if link else "") + f" Dhanyavaad, {venue or ''}".rstrip(", ") + ". Hum kabhi OTP / PIN nahi maangte.")
-    return {"draft": _draft(phone, text, upi=link), "say": "Message draft (UPI link aapke UPI ID ka) taiyaar: aap bhejiye. Paise mile to "
-                                                          "'paise mile' darj kijiye; receipt wahin banegi."}
+    text = (f"Hello {client}, '{sh.get('label')}' for booking {num} ({sh.get('day')}): {sh.get('amount_text')}."
+            + (f" Pay by UPI: {link}" if link else "") + f" Thank you, {venue or ''}".rstrip(", ") + ". We never ask for an OTP / PIN.")
+    return {"draft": _draft(phone, text, upi=link), "say": "The message draft (the UPI link is to your UPI ID) is ready: you send it. When the money arrives, "
+                                                          "record 'payment received'; the receipt is made there."}
 
 
 def _do_bill(tenant: str, card_id: str, conv: str) -> dict:
@@ -1428,21 +1428,21 @@ def _do_bill(tenant: str, card_id: str, conv: str) -> dict:
         b = s.get(BanquetBooking, bid)
         b.bill = _dump({k: sh.get(k) for k in ("lines", "discount", "gst", "total", "plates", "paid", "balance")} |
                        {"card": card_id, "at": now().isoformat()})
-        _log(b, f"Event ke baad ka bill {sh.get('total_text')} (aapki haan)", "Owner")
+        _log(b, f"Post-event bill {sh.get('total_text')} (your approval)", "Owner")
         num, phone, client = b.number, b.phone, b.client
     pdf = bill_pdf(tenant, bid)
     f = _store(tenant, f"{num}_bill.pdf", pdf, "application/pdf", conv, f"{num} bill")
     bal = float(sh.get("balance") or 0)
     link = _upi(tenant, bal, f"{num} final bill") if bal > 0 else ""
-    text = (f"Namaste {client} ji, {num} ka final bill: kul {sh.get('total_text')}, jama {_rs(sh.get('paid'))}, "
-            + (f"baaki {sh.get('balance_text')}." if bal > 0 else "kuch baaki nahi.") + (f" UPI: {link}" if link else ""))
+    text = (f"Hello {client}, the final bill for {num}: total {sh.get('total_text')}, paid {_rs(sh.get('paid'))}, "
+            + (f"balance {sh.get('balance_text')}." if bal > 0 else "nothing pending.") + (f" UPI: {link}" if link else ""))
     return {"draft": _draft(phone, text, file_id=f.get("file_id", ""), upi=link), "file_id": f.get("file_id", ""),
-            "say": f"{num} bill PDF bana; draft taiyaar, aap bhejiye."}
+            "say": f"{num}: the bill PDF is made; the draft is ready, you send it."}
 
 
 def _do_message(tenant: str, card_id: str, conv: str) -> dict:
     sh, _bid = _card_ctx(card_id)
-    return {"draft": _draft(sh.get("phone", ""), sh.get("text", "")), "say": "Message draft taiyaar: aap khud bhejiye."}
+    return {"draft": _draft(sh.get("phone", ""), sh.get("text", "")), "say": "The message draft is ready: you send it yourself."}
 
 
 # ---------------------------------------------------------------- card requests (tools / app make these; never decide)
@@ -1451,12 +1451,12 @@ def quote_request(tenant: str, booking: str, actor: str = "owner", conv: str = "
         b = _bk(s, tenant, booking)
         st = _st(s, tenant)
         if b.status in ("done", "cancelled"):
-            raise BanquetError(f"{b.number} '{STATUS[b.status]}' hai.")
+            raise BanquetError(f"{b.number} is '{STATUS[b.status]}'.")
         q = _quote(s, tenant, b)
         if q["blanks"]:
-            raise BanquetError("Pehle khaali jagah bhariye: " + "; ".join(q["blanks"][:6]))
+            raise BanquetError("Fill the blanks first: " + "; ".join(q["blanks"][:6]))
         if not (b.client and R.phone(b.phone)):
-            raise BanquetError("Client ka naam aur mobile chahiye.")
+            raise BanquetError("The client's name and mobile are needed.")
         valid = (today(tenant) + timedelta(days=st.validity_days)).isoformat()
     return _make_card(tenant, "quote", booking, {"valid_until": valid}, actor, conv)
 
@@ -1466,9 +1466,9 @@ def contract_request(tenant: str, booking: str, actor: str = "owner", conv: str 
         b = _bk(s, tenant, booking)
         q = _quote(s, tenant, b)
         if q["blanks"]:
-            raise BanquetError("Pehle khaali jagah bhariye: " + "; ".join(q["blanks"][:6]))
+            raise BanquetError("Fill the blanks first: " + "; ".join(q["blanks"][:6]))
         if b.status in ("done", "cancelled") or not (b.client and R.phone(b.phone)):
-            raise BanquetError("Booking chalu ho aur client ka naam + mobile ho.")
+            raise BanquetError("The booking must be active and have the client's name + mobile.")
     return _make_card(tenant, "contract", booking, {}, actor, conv)
 
 
@@ -1476,12 +1476,12 @@ def confirm_request(tenant: str, booking: str, actor: str = "owner", conv: str =
     with _LOCK, session() as s:
         b = _bk(s, tenant, booking)
         if b.status not in ("draft", "hold"):
-            raise BanquetError(f"{b.number} '{STATUS[b.status]}' hai.")
+            raise BanquetError(f"{b.number} is '{STATUS[b.status]}'.")
         if not (b.hall_id and b.day and b.slot and b.client and R.phone(b.phone)):
-            raise BanquetError("Hall, tareekh, slot, client ka naam aur mobile chahiye.")
+            raise BanquetError("The hall, date, slot, client's name and mobile are needed.")
         cl = _clashes(s, tenant, b.hall_id, b.day, b.slot, b.id)
         if cl:
-            raise BanquetError(f"Yeh slot pehle se: {_clash_say(s, cl)}. Double booking nahi hogi.")
+            raise BanquetError(f"This slot is already taken: {_clash_say(s, cl)}. No double booking.")
     return _make_card(tenant, "confirm", booking, {}, actor, conv)
 
 
@@ -1493,11 +1493,11 @@ def discount_request(tenant: str, booking: str, amount=None, pct=None, reason: s
         if a is None and _num(pct) is not None:
             a = round(q["subtotal"] * _num(pct) / 100.0, 2)
         if a is None or a <= 0:
-            raise BanquetError("Discount kitna (rupaye ya %)?")
+            raise BanquetError("How much discount (rupees or %)?")
         if a > q["subtotal"]:
-            raise BanquetError("Discount bill se zyada nahi.")
+            raise BanquetError("The discount cannot be more than the bill.")
         if not str(reason or "").strip():
-            raise BanquetError("Discount ki wajah likhiye.")
+            raise BanquetError("Write the reason for the discount.")
     return _make_card(tenant, "discount", booking, {"amount": a, "reason": R.clean(reason, 200)}, actor, conv)
 
 
@@ -1505,7 +1505,7 @@ def pay_request(tenant: str, booking: str, stage: str = "", amount=None, actor: 
     with session() as s:
         b = _bk(s, tenant, booking)
         if b.status in ("cancelled", "done"):
-            raise BanquetError(f"{b.number} '{STATUS[b.status]}' hai.")
+            raise BanquetError(f"{b.number} is '{STATUS[b.status]}'.")
         rows = _stage_rows(s, b)
         label, amt = "", _num(amount)
         if stage:
@@ -1513,27 +1513,27 @@ def pay_request(tenant: str, booking: str, stage: str = "", amount=None, actor: 
             if r is None and stage.isdigit() and 0 < int(stage) <= len(rows):
                 r = rows[int(stage) - 1]
             if r is None:
-                raise BanquetError("Kisht nahi mili: " + " / ".join(x["label"] for x in rows))
+                raise BanquetError("Installment not found: " + " / ".join(x["label"] for x in rows))
             label, amt = r["label"], amt if amt is not None else r["amount"]
         else:
-            label = "Bhugtaan"
+            label = "Payment"
         if amt is None or amt <= 0:
-            raise BanquetError("Rakam chahiye (quotation mein khaali jagah to nahi?).")
+            raise BanquetError("An amount is needed (does the quotation still have blanks?).")
         if not R.phone(b.phone):
-            raise BanquetError("Client ka mobile chahiye.")
+            raise BanquetError("The client's mobile is needed.")
     return _make_card(tenant, "pay", booking, {"label": label, "amount": round(amt, 2)}, actor, conv)
 
 
 def message_request(tenant: str, booking: str, text: str, actor: str = "owner", conv: str = "") -> dict:
     t = R.clean(text, 1500)
     if not t:
-        raise BanquetError("Message ka text chahiye.")
-    if re.search(r"\b(otp|pin|cvv|password)\b", t, re.I) and "nahi maangte" not in t.lower():
-        raise BanquetError("OTP / PIN / password wala message nahi.")
+        raise BanquetError("The message text is needed.")
+    if re.search(r"\b(otp|pin|cvv|password)\b", t, re.I) and "nahi maangte" not in t.lower() and "never ask" not in t.lower():
+        raise BanquetError("A message that asks for an OTP / PIN / password is not allowed.")
     with session() as s:
         b = _bk(s, tenant, booking)
         if not R.phone(b.phone):
-            raise BanquetError("Client ka mobile chahiye.")
+            raise BanquetError("The client's mobile is needed.")
     return _make_card(tenant, "message", booking, {"text": t}, actor, conv)
 
 
@@ -1541,17 +1541,17 @@ def bill_request(tenant: str, booking: str, actual=None, actor: str = "owner", c
     with _LOCK, session() as s:
         b = _bk(s, tenant, booking)
         if b.status != "confirmed":
-            raise BanquetError("Bill pakki booking ka hi.")
+            raise BanquetError("A bill is only for a confirmed booking.")
         if _date(b.day) and _date(b.day) > today(tenant):
-            raise BanquetError("Event ke baad ka bill event ke din / baad.")
+            raise BanquetError("The post-event bill is made on or after the event day.")
         if actual not in (None, ""):
             n = _int(actual)
             if n is None:
-                raise BanquetError("Asal plate ginti number chahiye.")
+                raise BanquetError("The actual plate count must be a number.")
             b.actual_count = n
         q = _quote(s, tenant, b, actual=True)
         if q["blanks"]:
-            raise BanquetError("Khaali jagah: " + "; ".join(q["blanks"][:6]))
+            raise BanquetError("Blanks: " + "; ".join(q["blanks"][:6]))
     return _make_card(tenant, "bill", booking, {"actual": actual}, actor, conv)
 
 
@@ -1560,10 +1560,10 @@ def paid(tenant: str, booking: str, amount, mode: str = "upi", ref: str = "", da
     """She says money came (her UPI app / cash / bank). A receipt number is made; GST on an advance for services is due when it is
     received (CGST s.13) - a receipt voucher (Rule 50) is her accountant's step."""
     if not is_owner(actor):
-        raise BanquetError("Paise mile, yeh sirf owner darj karti hain.")
+        raise BanquetError("Only the owner records money received.")
     a = _num(amount)
     if a is None or a <= 0:
-        raise BanquetError("Kitne paise mile?")
+        raise BanquetError("How much money was received?")
     md = (mode or "upi").lower()
     if md not in ("upi", "cash", "bank", "cheque", "card"):
         md = "other"
@@ -1572,7 +1572,7 @@ def paid(tenant: str, booking: str, amount, mode: str = "upi", ref: str = "", da
         st = _st(s, tenant)
         b = _bk(s, tenant, booking)
         if b.status == "cancelled":
-            raise BanquetError("Radd booking par paise nahi.")
+            raise BanquetError("Money cannot be recorded on a cancelled booking.")
         st.rc_seq += 1
         rc = f"R/{_fy(d)}/{st.rc_seq:04d}"
         pays = _j(b.payments, [])
@@ -1585,11 +1585,11 @@ def paid(tenant: str, booking: str, amount, mode: str = "upi", ref: str = "", da
             b.stages = _dump(rows)
         warn = []
         if md == "cash" and a >= 200000:
-            warn.append("Ek din mein ek vyakti se Rs 2 lakh+ cash lena mana hai (Income-tax Act 2025 s.221, purana 269ST).")
-        _log(b, f"Paise mile {_rs(a)} ({md}) receipt {rc}", "Owner")
+            warn.append("Taking Rs 2 lakh or more in cash from one person in a day is prohibited (Income-tax Act 2025 s.221, the old 269ST).")
+        _log(b, f"Payment received {_rs(a)} ({md}) receipt {rc}", "Owner")
         v = _booking_view(s, b)
     return {"booking": v, "receipt": rc, "warnings": warn,
-            "say": f"{v['number']}: {_rs(a)} mile, receipt {rc}. Kul jama {v['paid_text']}." + (" " + " ".join(warn) if warn else "")}
+            "say": f"{v['number']}: {_rs(a)} received, receipt {rc}. Total paid {v['paid_text']}." + (" " + " ".join(warn) if warn else "")}
 
 
 def receipt_pdf(tenant: str, booking: str, receipt: str) -> bytes:
@@ -1598,7 +1598,7 @@ def receipt_pdf(tenant: str, booking: str, receipt: str) -> bytes:
         st = _st(s, tenant)
         p = next((x for x in _j(b.payments, []) if x.get("receipt") == receipt), None)
         if p is None:
-            raise BanquetError("Receipt nahi mili.")
+            raise BanquetError("Receipt not found.")
         blocks = _head(st, f"Receipt {receipt}") + [
             ("p", f"Received from {b.client} for booking {b.number} ({b.day}, {R.SLOT_LABEL.get(b.slot, b.slot)})."),
             ("table", [["Date", "Mode", "Ref", "Amount"], [p["day"], p["mode"], p.get("ref", ""), _pdf_rs(p["amount"])]], [90, 70, 120, 120]),
@@ -1610,12 +1610,12 @@ def set_count(tenant: str, booking: str, final, actor: str = "owner") -> dict:
     """Final guest count: free until the lock date; after it only an increase (owner) - the kitchen has already bought for it."""
     n = _int(final)
     if n is None or n <= 0:
-        raise BanquetError("Final mehmaan sankhya number chahiye.")
+        raise BanquetError("The final guest count must be a number.")
     with _LOCK, session() as s:
         b = _bk(s, tenant, booking)
         st = _st(s, tenant)
         if b.status not in ("hold", "confirmed", "draft"):
-            raise BanquetError(f"{b.number} '{STATUS[b.status]}' hai.")
+            raise BanquetError(f"{b.number} is '{STATUS[b.status]}'.")
         ev = _date(b.day)
         lk = R.lock_date(ev, st.lock_days) if ev else None
         past_lock = b.locked or (lk is not None and today(tenant) >= lk)
@@ -1623,15 +1623,15 @@ def set_count(tenant: str, booking: str, final, actor: str = "owner") -> dict:
         if past_lock:
             cur = b.final_count or b.guests or 0
             if n < cur:
-                raise BanquetError(f"Final count {lk.isoformat() if lk else ''} ko lock ho chuka ({cur}); ab kam nahi hoga, bill "
-                                   f"{max(cur, b.guarantee or 0)} plate ka banega.")
+                raise BanquetError(f"The final count was locked on {lk.isoformat() if lk else ''} ({cur}); it cannot go down now, the bill "
+                                   f"will be for {max(cur, b.guarantee or 0)} plates.")
             if not is_owner(actor):
-                raise BanquetError("Lock ke baad badhana sirf owner (kitchen se pooch kar).")
-            note = " Lock ke baad badhaya: kitchen ko bata dijiye (BEO dobara banaiye)."
+                raise BanquetError("Only the owner can increase it after the lock (after asking the kitchen).")
+            note = " Increased after the lock: tell the kitchen (make the BEO again)."
         b.final_count = n
         h = s.get(BanquetHall, b.hall_id) if b.hall_id else None
         if h and n > max(h.seated, h.floating):
-            note += f" {n} log {h.name} ki capacity se zyada!"
+            note += f" {n} guests is above the capacity of {h.name}."
         _log(b, f"Final count {n}", actor_name(tenant, actor))
         v = _booking_view(s, b)
     return {"booking": v, "say": f"{v['number']}: final count {n}.{note}"}
@@ -1651,13 +1651,13 @@ def lock_count(tenant: str, booking: str, actor: str = "owner") -> dict:
 def cancel(tenant: str, booking: str, reason: str = "", by: str = "client", actor: str = "owner", conv: str = "") -> dict:
     """Owner only. The hall is freed at once; a refund (her policy, shown upfront) becomes a card for HER fingerprint tap."""
     if not is_owner(actor):
-        raise BanquetError("Booking radd sirf owner.")
+        raise BanquetError("Only the owner can cancel a booking.")
     if not str(reason or "").strip():
-        raise BanquetError("Radd karne ki wajah likhiye.")
+        raise BanquetError("Write the reason for cancelling.")
     with _LOCK, session() as s:
         b = _bk(s, tenant, booking)
         if b.status in ("cancelled", "done"):
-            raise BanquetError(f"{b.number} pehle hi '{STATUS[b.status]}' hai.")
+            raise BanquetError(f"{b.number} is already '{STATUS[b.status]}'.")
         ev = _date(b.day)
         days = (ev - today(tenant)).days if ev else 0
         cx = _j(b.cancel, {})
@@ -1679,28 +1679,28 @@ def cancel(tenant: str, booking: str, reason: str = "", by: str = "client", acto
             x = s.get(BanquetLead, b.lead_id)
             if x:
                 x.status, x.lost_reason = "lost", "cancel: " + R.clean(reason, 200)
-        _log(b, f"Radd ({by}): {R.clean(reason, 200)}", "Owner")
+        _log(b, f"Cancelled ({by}): {R.clean(reason, 200)}", "Owner")
         num = b.number
-    out = {"say": f"{num} radd; hall khaali. Jama {_rs(got)}, policy se {pct:g}% = {_rs(amt)} wapas."}
+    out = {"say": f"{num} cancelled; the hall is free. Paid {_rs(got)}, refund by policy {pct:g}% = {_rs(amt)}."}
     if amt > 0:
         card = _make_card(tenant, "refund", num, {"amount": amt, "pct": pct, "days_before": days,
-                                                  "why": "venue ne radd kiya" if by == "venue" else f"{days} din pehle radd"}, actor, conv)
+                                                  "why": "cancelled by the venue" if by == "venue" else f"cancelled {days} days before"}, actor, conv)
         out["card"] = card["card"]
-        out["say"] += " Refund aapki haan (fingerprint) ke card par."
+        out["say"] += " The refund waits on a card for your approval (fingerprint)."
     return out
 
 
 def refund_sent(tenant: str, booking: str, ref: str = "", actor: str = "owner") -> dict:
     if not is_owner(actor):
-        raise BanquetError("Sirf owner.")
+        raise BanquetError("Owner only.")
     with _LOCK, session() as s:
         b = _bk(s, tenant, booking)
         cx = _j(b.cancel, {})
         ok = cx.get("refund_ok")
         if not ok:
-            raise BanquetError("Pehle refund card par aapki haan chahiye.")
+            raise BanquetError("Your approval on the refund card is needed first.")
         if ok.get("sent"):
-            raise BanquetError("Refund pehle hi darj hai.")
+            raise BanquetError("The refund is already recorded.")
         ok["sent"], ok["ref"] = True, R.clean(ref, 40)[-12:]
         cx["refund_ok"] = ok
         b.cancel = _dump(cx)
@@ -1708,52 +1708,52 @@ def refund_sent(tenant: str, booking: str, ref: str = "", actor: str = "owner") 
         pays.append({"id": new_id("bpm"), "receipt": "", "amount": float(ok.get("amount") or 0), "mode": "refund", "ref": ok["ref"],
                      "day": today(tenant).isoformat(), "kind": "refund"})
         b.payments = _dump(pays)
-        _log(b, f"Refund bheja {_rs(ok.get('amount'))}", "Owner")
+        _log(b, f"Refund sent {_rs(ok.get('amount'))}", "Owner")
         v = _booking_view(s, b)
-    return {"booking": v, "say": f"{v['number']}: refund {_rs(ok.get('amount'))} bheja darj."}
+    return {"booking": v, "say": f"{v['number']}: refund {_rs(ok.get('amount'))} recorded as sent."}
 
 
 def done(tenant: str, booking: str, actor: str = "owner") -> dict:
     if not is_owner(actor):
-        raise BanquetError("Sirf owner.")
+        raise BanquetError("Owner only.")
     with _LOCK, session() as s:
         b = _bk(s, tenant, booking)
         if b.status != "confirmed":
-            raise BanquetError("Sirf pakki booking poori hoti hai.")
+            raise BanquetError("Only a confirmed booking can be completed.")
         if not _j(b.bill, {}):
-            raise BanquetError("Pehle event ke baad ka bill (aapki haan se) banaiye.")
+            raise BanquetError("Make the post-event bill first (with your approval).")
         b.status = "done"
-        _log(b, "Event poora", "Owner")
+        _log(b, "Event completed", "Owner")
         v = _booking_view(s, b)
-    return {"booking": v, "say": f"{v['number']} poora. Feedback maangna ho to message card banaiye."}
+    return {"booking": v, "say": f"{v['number']} completed. To ask for feedback, make a message card."}
 
 
 def forget(tenant: str, booking: str, actor: str = "owner") -> dict:
     """DPDP Act 2023 / Rules 2025: after the event (done / cancelled + refund settled) the client's personal details are removed;
     numbers stay for her accounts."""
     if not is_owner(actor):
-        raise BanquetError("Sirf owner.")
+        raise BanquetError("Owner only.")
     with _LOCK, session() as s:
         b = _bk(s, tenant, booking)
         cx = _j(b.cancel, {})
         if b.status not in ("done", "cancelled"):
-            raise BanquetError("Event poora / radd hone ke baad hi.")
+            raise BanquetError("Only after the event is completed / cancelled.")
         pending = s.scalars(select(BanquetCard).where(BanquetCard.booking_id == b.id, BanquetCard.kind == "refund",
                                                       BanquetCard.status == "waiting")).first()
         if pending is not None or (cx.get("refund_ok") and not cx["refund_ok"].get("sent")):
-            raise BanquetError("Pehle refund ka faisla / bhejna poora kijiye.")
-        b.client, b.phone, b.email, b.client_gstin = "Client (hataya)", "", "", ""
+            raise BanquetError("Finish deciding / sending the refund first.")
+        b.client, b.phone, b.email, b.client_gstin = "Client (removed)", "", "", ""
         b.notes, b.beo_notes = "", ""
         b.forgotten = True
         if b.lead_id:
             x = s.get(BanquetLead, b.lead_id)
             if x:
-                x.name, x.phone, x.notes = "Client (hataya)", "", ""
+                x.name, x.phone, x.notes = "Client (removed)", "", ""
         for c in s.scalars(select(BanquetCard).where(BanquetCard.booking_id == b.id)).all():
             c.show = _dump({"booking": b.number, "hataya": True})
             c.result = "{}"
-        _log(b, "Client ki details hata di (DPDP)", "Owner")
-    return {"say": f"{b.number}: client ki personal details hata di; hisaab ke number rahe."}
+        _log(b, "Client's details removed (DPDP)", "Owner")
+    return {"say": f"{b.number}: the client's personal details were removed; the accounting figures are kept."}
 
 
 # ---------------------------------------------------------------- PDFs
@@ -1929,7 +1929,7 @@ def beo(tenant: str, booking: str, conv: str = "", actor: str = "owner") -> dict
     with session() as s:
         b = _bk(s, tenant, booking)
         if b.status not in ("hold", "confirmed"):
-            raise BanquetError("BEO hold / pakki booking ka.")
+            raise BanquetError("A BEO is only for a hold / confirmed booking.")
         st = _st(s, tenant)
         h = s.get(BanquetHall, b.hall_id) if b.hall_id else None
         sl = _slots(st).get(b.slot, {})
@@ -1942,7 +1942,7 @@ def beo(tenant: str, booking: str, conv: str = "", actor: str = "owner") -> dict
             food.append({"package": m["name"], "diet": m["diet_label"], "plates": n, "items": m["items"]})
         missing = []
         if not plates:
-            missing.append("plate ginti")
+            missing.append("plate count")
         if not menu:
             missing.append("menu")
         ex = [{"name": e.get("name"), "qty": e.get("qty"), "nights": e.get("nights")} for e in _j(b.extras, [])]
@@ -1977,7 +1977,7 @@ def beo(tenant: str, booking: str, conv: str = "", actor: str = "owner") -> dict
     pdf = _pdf(f"BEO {num}", blocks)
     f = _store(tenant, f"{num}_BEO.pdf", pdf, "application/pdf", conv, f"{num} function sheet")
     return {"beo": sheet, "file_id": f.get("file_id", ""),
-            "say": f"{num} BEO / function sheet taiyaar (kitchen + staff ke liye)." + (f" Baaki: {', '.join(missing)}." if missing else "")}
+            "say": f"{num}: BEO / function sheet ready (for the kitchen + staff)." + (f" Missing: {', '.join(missing)}." if missing else "")}
 
 
 # ---------------------------------------------------------------- views, day, worker
@@ -2025,23 +2025,23 @@ def day(tenant: str) -> dict:
         waiting = s.scalars(select(BanquetCard).where(BanquetCard.tenant_id == tenant, BanquetCard.status == "waiting")).all()
     parts = []
     if today_ev:
-        parts.append("Aaj: " + "; ".join(f"{v['number']} {v['hall']} {v['slot_label']} ({v['final_count'] or v['guests'] or '?'} log)" for v in today_ev))
+        parts.append("Today: " + "; ".join(f"{v['number']} {v['hall']} {v['slot_label']} ({v['final_count'] or v['guests'] or '?'} guests)" for v in today_ev))
     if tom_ev:
-        parts.append("Kal: " + "; ".join(f"{v['number']} {v['hall']} {v['slot_label']}" for v in tom_ev) + " (BEO taiyaar?)")
+        parts.append("Tomorrow: " + "; ".join(f"{v['number']} {v['hall']} {v['slot_label']}" for v in tom_ev) + " (BEO ready?)")
     if holds:
-        parts.append("Hold khatam hone wale: " + ", ".join(f"{v['number']} {v['client']}" for v in holds))
+        parts.append("Holds about to expire: " + ", ".join(f"{v['number']} {v['client']}" for v in holds))
     if locks:
         parts.append("Final count lock paas: " + ", ".join(f"{v['number']} ({v['lock_date']})" for v in locks))
     if due:
-        parts.append("Kisht ka samay: " + "; ".join(due[:6]))
+        parts.append("Installments due: " + "; ".join(due[:6]))
     if follow:
         parts.append("Follow-up: " + ", ".join(f"{x['number']} {x['name'] or x['phone']}" for x in follow[:8]))
     if unbilled:
-        parts.append("Event ho gaye, bill baaki: " + ", ".join(unbilled))
+        parts.append("Events done, bill pending: " + ", ".join(unbilled))
     if waiting:
-        parts.append(f"{len(waiting)} card aapki haan ka intezaar kar rahe")
+        parts.append(f"{len(waiting)} cards waiting for your approval")
     return {"today": today_ev, "tomorrow": tom_ev, "holds_expiring": holds, "locks": locks, "stages_due": due, "follow_ups": follow,
-            "unbilled": unbilled, "waiting": len(waiting), "say": (". ".join(parts) + ".") if parts else "Banquet ka aaj sab theek."}
+            "unbilled": unbilled, "waiting": len(waiting), "say": (". ".join(parts) + ".") if parts else "All is fine at the banquet desk today."}
 
 
 def overview(tenant: str) -> dict:
@@ -2084,13 +2084,13 @@ def tick(when: datetime | None = None) -> dict:
                         blk.active = False
                         if bk is not None and bk.status == "hold":
                             bk.status, bk.hold_until = "draft", None
-                            _log(bk, "Hold ka samay khatam: hall chhoot gaya")
+                            _log(bk, "Hold time over: the hall was released")
                         out["expired"] += 1
-                        alerts.append({"kind": "hold_expired", "booking": num, "say": f"{num} ka hold khatam; {blk.day} ka slot ab khaali."})
+                        alerts.append({"kind": "hold_expired", "booking": num, "say": f"The hold on {num} is over; the {blk.day} slot is now free."})
                     elif exp and exp <= n + timedelta(hours=6) and _once(s, tenant, f"hold6:{blk.id}:{exp.isoformat()}"):
                         alerts.append({"kind": "hold_soon", "booking": num,
-                                       "say": f"{num} ka hold {exp.astimezone(_tz(tenant)).strftime('%d-%m %H:%M')} par khatam: advance aaya? "
-                                              "Pakka karna ho to card banau?"})
+                                       "say": f"The hold on {num} ends at {exp.astimezone(_tz(tenant)).strftime('%d-%m %H:%M')}: has the advance come? "
+                                              "Shall I make a card to confirm it?"})
                 for b in s.scalars(select(BanquetBooking).where(BanquetBooking.tenant_id == tenant, BanquetBooking.status == "confirmed")).all():
                     ev = _date(b.day)
                     if ev is None:
@@ -2099,22 +2099,22 @@ def tick(when: datetime | None = None) -> dict:
                     if not b.locked and on >= lk:
                         b.locked = True
                         b.final_count = b.final_count or b.guests
-                        _log(b, f"Final count apne aap lock: {b.final_count}")
+                        _log(b, f"Final count locked automatically: {b.final_count}")
                         out["locked"] += 1
-                        alerts.append({"kind": "locked", "booking": b.number, "say": f"{b.number}: final count {b.final_count or '?'} lock ho gaya "
-                                                                                      "(ab sirf badh sakta hai). BEO bana dijiye."})
+                        alerts.append({"kind": "locked", "booking": b.number, "say": f"{b.number}: the final count {b.final_count or '?'} is locked "
+                                                                                      "(it can only go up now). Make the BEO."})
                     elif not b.locked and on >= lk - timedelta(days=2) and _once(s, tenant, f"lock2:{b.id}:{lk.isoformat()}"):
                         alerts.append({"kind": "lock_soon", "booking": b.number,
-                                       "say": f"{b.number}: final mehmaan sankhya {lk.isoformat()} tak chahiye; client se poochne ka message card banau?"})
+                                       "say": f"{b.number}: the final guest count is needed by {lk.isoformat()}; shall I make a message card to ask the client?"})
                     for r in _j(b.stages, []):
                         if r.get("due") and r["due"] <= on.isoformat() and not r.get("paid") and not r.get("requested") \
                                 and _once(s, tenant, f"stage:{b.id}:{r['label']}:{r['due']}"):
                             alerts.append({"kind": "stage", "booking": b.number,
-                                           "say": f"{b.number} '{r['label']}' {_rs(r.get('amount'))} ka samay aa gaya; maangne ka card banau?"})
+                                           "say": f"{b.number}: '{r['label']}' {_rs(r.get('amount'))} is due; shall I make a payment request card?"})
                     if ev == on + timedelta(days=1) and _once(s, tenant, f"eve:{b.id}"):
-                        alerts.append({"kind": "tomorrow", "booking": b.number, "say": f"Kal {b.number} ka function: BEO / function sheet taiyaar?"})
+                        alerts.append({"kind": "tomorrow", "booking": b.number, "say": f"The function for {b.number} is tomorrow: is the BEO / function sheet ready?"})
                     if ev < on and not _j(b.bill, {}) and _once(s, tenant, f"bill:{b.id}"):
-                        alerts.append({"kind": "bill", "booking": b.number, "say": f"{b.number} ka function ho gaya: asal plate ginti batayiye, bill card banau."})
+                        alerts.append({"kind": "bill", "booking": b.number, "say": f"The function for {b.number} is over: tell me the actual plate count and I will make the bill card."})
             for a in alerts:
                 _publish(tenant, "banquet_alert", a)
                 out["alerts"] += 1
@@ -2131,7 +2131,7 @@ def tick(when: datetime | None = None) -> dict:
                         r.last_morning = on.isoformat()
             if due_m:
                 d = day(tenant)
-                if d["say"] != "Banquet ka aaj sab theek.":
+                if d["say"] != "All is fine at the banquet desk today.":
                     _publish(tenant, "banquet_day", {"say": d["say"], "today": len(d["today"]), "tomorrow": len(d["tomorrow"]),
                                                      "waiting": d["waiting"]})
                     out["morning"] += 1

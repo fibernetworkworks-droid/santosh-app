@@ -79,19 +79,19 @@ def test_rules():
     assert e["phone"] == "9822012345" and e["date"] == "2026-12-12" and e["guests"] == 300 and e["diet"] == "veg"
     assert e["event_type"] == "wedding" and e["budget"] == 500000 and e["name"] == "Rahul Sharma"
     assert R.date_of("5/1", t0) == date(2027, 1, 5) and R.date_of("2026-11-30", t0) == date(2026, 11, 30)
-    assert R.clean("otp 123456 card 4111 1111 1111 1111") == "otp [hataya] card [hataya]"
+    assert R.clean("otp 123456 card 4111 1111 1111 1111") == "otp [removed] card [removed]"
     pol = R.DEFAULT_CANCEL
     assert R.refund_for(pol, 100, 100000) == (90.0, 90000.0) and R.refund_for(pol, 40, 100000)[0] == 50
     assert R.refund_for(pol, 3, 100000) == (0.0, 0.0)
     probs, notes = R.check_cancel([{"days_before": 60, "refund_pct": 0}])
     assert not probs and any("unfair" in n for n in notes)
     assert R.check_cancel([{"days_before": 10, "refund_pct": 150}])[0]
-    assert R.policy_lines(pol)[0].startswith("90+ din pehle")
+    assert R.policy_lines(pol)[0].startswith("90+ days before")
     assert R.room_gst(4500) == 5 and R.room_gst(9000) == 18 and R.food_gst(False) == 5 and R.food_gst(True) == 18
     assert R.gst_split(1000, 5) == {"cgst": 25.0, "sgst": 25.0, "tax": 50.0}
     assert sum(R.split_amount(100001, R.DEFAULT_STAGES)) == 100001
-    assert "10 tak" in R.noise_note("lawn", "23:30", "22:00") or "22:00 tak" in R.noise_note("lawn", "23:30", "22:00")
-    assert "Band hall" in R.noise_note("hall", "23:30")
+    assert "until 10" in R.noise_note("lawn", "23:30", "22:00") or "until 22:00" in R.noise_note("lawn", "23:30", "22:00")
+    assert "Closed hall" in R.noise_note("hall", "23:30")
     assert R.plates_billed(250, 200, None) == 250 and R.plates_billed(150, 200) == 200 and R.plates_billed(250, 200, 220) == 220 and R.plates_billed(250, None) == 250
 
 
@@ -134,7 +134,7 @@ def test_holds_expire_and_double_booking_refused(bq):
     S.hold(T, b1["number"])
     with pytest.raises(S.BanquetError) as e:
         S.hold(T, b2["number"])                                               # full day clashes with the evening hold
-    assert "Double booking" in str(e.value)
+    assert "double booking" in str(e.value)
     with pytest.raises(S.BanquetError):
         S.close_slot(T, "Kamal Hall", "2026-12-12", "evening")                # even her own block can't sit on a hold
     assert S.free(T, "2026-12-12", "morning")["halls"][0]["free"]             # morning of the same hall is free
@@ -187,7 +187,7 @@ def test_quote_gst_and_her_tap(bq):
                            extras=[{"name": "Fireworks"}])["booking"]
     with pytest.raises(S.BanquetError) as e:
         S.quote_request(T, blank["number"])
-    assert "daam?" in str(e.value)
+    assert "price?" in str(e.value)
     c = S.quote_request(T, b["number"])
     assert c["card"]["show"]["cancel_lines"]                                   # refund policy shown upfront
     again = S.quote_request(T, b["number"])
@@ -245,12 +245,12 @@ def test_money_cards_fingerprint_cancel_refund(bq, monkeypatch):
         S.forget(T, b["number"])                                              # refund not settled yet
     ch = S.card_challenge(T, out["card"]["id"])
     r = S.decide(T, out["card"]["id"], True, out["card"]["hash"], proof=phone.sign(ch), by_tap=True)
-    assert "wa.me" in r["draft"]["wa"] and "Hoola paise nahi bhejta" in r["say"]
+    assert "wa.me" in r["draft"]["wa"] and "Hoola does not send money" in r["say"]
     S.refund_sent(T, b["number"], "UTR1122")
     assert S.booking_view(T, b["number"])["refunded"] == 35000
     S.forget(T, b["number"])
     v = S.booking_view(T, b["number"])
-    assert v["phone"] == "" and v["client"] == "Client (hataya)" and v["paid"] == 70000
+    assert v["phone"] == "" and v["client"] == "Client (removed)" and v["paid"] == 70000
 
 
 def test_count_lock_beo_bill_and_tick(bq):
@@ -277,7 +277,7 @@ def test_count_lock_beo_bill_and_tick(bq):
         S.set_count(T, b["number"], 260, actor="staff:s1")
     S.set_count(T, b["number"], 260)
     beo = S.beo(T, b["number"])
-    assert beo["beo"]["food"][1]["diet"] == "Jain" and "Khuli jagah" in beo["beo"]["noise"]
+    assert beo["beo"]["food"][1]["diet"] == "Jain" and "Open-air venue" in beo["beo"]["noise"]
     assert S.STORED[-1][0].endswith("_BEO.pdf")
     with pytest.raises(S.BanquetError):
         S.bill_request(T, b["number"], actual=255)                            # before the event

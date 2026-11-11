@@ -45,7 +45,7 @@ def is_owner(actor: str) -> bool:
 
 def _need_team(actor: str) -> None:
     if (actor or "").startswith("customer:"):
-        raise ShikshaError("Yeh school / teacher ka kaam hai; graahak ya bahar wale ke liye nahi.")
+        raise ShikshaError("This is school / teacher work; it is not for a customer or an outsider.")
 
 
 def _st(s, tenant: str) -> ShikshaSettings:
@@ -70,14 +70,14 @@ def _phone(v) -> str:
     if len(d) == 12 and d.startswith("91"):
         d = d[2:]
     if d and len(d) != 10:
-        raise ShikshaError("Guardian ka phone 10 digit ka chahiye.")
+        raise ShikshaError("The guardian's phone must have 10 digits.")
     return d
 
 
 def _email(v) -> str:
     e = _s(v, 160).lower()
     if e and not re.fullmatch(r"[^@\s]+@[^@\s]+\.[a-z]{2,}", e):
-        raise ShikshaError("Guardian ki email sahi nahi lagti.")
+        raise ShikshaError("The guardian's email does not look right.")
     return e
 
 
@@ -93,7 +93,7 @@ def settings(tenant: str) -> dict:
 
 def save_settings(tenant: str, actor: str = "owner", **k) -> dict:
     if not is_owner(actor):
-        raise ShikshaError("Settings sirf owner badal sakti hain.")
+        raise ShikshaError("Only the owner can change the settings.")
     with _LOCK, session() as s:
         st = _st(s, tenant)
         for key in SET_KEYS:
@@ -123,7 +123,7 @@ def _class_row(s, tenant: str, ref: str) -> ShikshaClass:
     for c in s.scalars(select(ShikshaClass).where(ShikshaClass.tenant_id == tenant)).all():
         if ref in (c.id, c.number) or ref.lower() == c.name.lower():
             return c
-    raise ShikshaError(f"Class '{ref}' nahi mili.")
+    raise ShikshaError(f"Class '{ref}' not found.")
 
 
 def add_class(tenant: str, name: str, grade: str = "", board: str = "", subjects: list[str] | None = None, section: str = "",
@@ -131,7 +131,7 @@ def add_class(tenant: str, name: str, grade: str = "", board: str = "", subjects
     _need_team(actor)
     name = _s(name, 80)
     if not name:
-        raise ShikshaError("Class ka naam chahiye (jaise '10-A').")
+        raise ShikshaError("The class needs a name (for example '10-A').")
     with _LOCK, session() as s:
         st = _st(s, tenant)
         board = (_s(board, 20) or st.board or "CBSE").upper()
@@ -139,7 +139,7 @@ def add_class(tenant: str, name: str, grade: str = "", board: str = "", subjects
             raise ShikshaError(f"board: {', '.join(R.BOARDS)}")
         if s.scalars(select(ShikshaClass).where(ShikshaClass.tenant_id == tenant, ShikshaClass.name == name,
                                                 ShikshaClass.status == "active")).first():
-            raise ShikshaError(f"'{name}' class pehle se hai.")
+            raise ShikshaError(f"Class '{name}' already exists.")
         g = R._grade_key(grade) or R._grade_key(re.match(r"\s*(\d{1,2})", name).group(1) if re.match(r"\s*\d{1,2}", name) else "")
         c = ShikshaClass(tenant_id=tenant, number=f"C-{next_no(s, tenant, 'class'):02d}", name=name, grade=g, board=board,
                          section=_s(section, 20), subjects=_d([_s(x, 80) for x in (subjects or []) if _s(x, 80)][:20]),
@@ -174,7 +174,7 @@ def update_class(tenant: str, ref: str, actor: str = "owner", **k) -> dict:
             c.subjects = _d([_s(x, 80) for x in k["subjects"] if _s(x, 80)][:20])
         if k.get("status") in ("active", "archived"):
             if not is_owner(actor):
-                raise ShikshaError("Class archive sirf owner.")
+                raise ShikshaError("Only the owner can archive a class.")
             c.status = k["status"]
         return _class_view(c)
 
@@ -201,8 +201,8 @@ def _learner_row(s, tenant: str, ref: str) -> ShikshaLearner:
     if len(hits) == 1:
         return hits[0]
     if len(hits) > 1:
-        raise ShikshaError(f"'{ref}' naam ke {len(hits)} bachche hain; number (S-xxxx) bataiye.")
-    raise ShikshaError(f"Learner '{ref}' nahi mila.")
+        raise ShikshaError(f"There are {len(hits)} learners named '{ref}'; give the number (S-xxxx).")
+    raise ShikshaError(f"Learner '{ref}' not found.")
 
 
 def add_learner(tenant: str, name: str, class_ref: str = "", roll: str = "", birth_year: int | None = None,
@@ -211,16 +211,16 @@ def add_learner(tenant: str, name: str, class_ref: str = "", roll: str = "", bir
     _need_team(actor)
     name = _s(name, 120)
     if not name:
-        raise ShikshaError("Bachche / learner ka naam chahiye.")
+        raise ShikshaError("The child's / learner's name is needed.")
     by = int(birth_year or 0)
     if by and not (1930 <= by <= now().year):
-        raise ShikshaError("Janam ka saal sahi nahi.")
+        raise ShikshaError("The year of birth is not right.")
     with _LOCK, session() as s:
         cls = _class_row(s, tenant, class_ref) if class_ref else None
         child = R.is_child(by, adult, cls.grade if cls else "")
         if child and not (guardian_name and (guardian_phone or guardian_email)):
-            raise ShikshaError("18 se kam umar: guardian ka naam aur phone / email chahiye (DPDP Act: bachche ki jaankari "
-                               "guardian ki consent se hi).")
+            raise ShikshaError("Under 18: the guardian's name and phone / email are needed (DPDP Act: a child's details "
+                               "only with the guardian's consent).")
         x = ShikshaLearner(tenant_id=tenant, number=f"S-{next_no(s, tenant, 'learner'):04d}", name=name,
                            class_id=cls.id if cls else "", roll=_s(roll, 20), birth_year=by, adult=bool(adult),
                            guardian_name=_s(guardian_name, 120), guardian_relation=_s(guardian_relation, 30),
@@ -228,8 +228,8 @@ def add_learner(tenant: str, name: str, class_ref: str = "", roll: str = "", bir
         s.add(x)
         s.flush()
         v = _learner_view(x, cls, True)
-    v["say"] = (f"{v['number']} {v['name']} jud gaye. Bachche hain: guardian ki consent darj hone tak unki padhai / marks ka koi "
-                "kaam nahi hoga." if v["child"] else f"{v['number']} {v['name']} jud gaye.")
+    v["say"] = (f"{v['number']} {v['name']} added. This is a child: until the guardian's consent is recorded, no study / marks "
+                "work will be done for them." if v["child"] else f"{v['number']} {v['name']} added.")
     return v
 
 
@@ -252,10 +252,10 @@ def record_consent(tenant: str, ref: str, given: bool, method: str = "", note: s
     """Her record that the GUARDIAN gave (or withdrew) consent, and how she verified it. Hoola never marks consent by
     itself: only the owner / an approved team member records it, with the verification method."""
     if not is_owner(actor) and not (actor or "").startswith("staff:"):
-        raise ShikshaError("Consent sirf owner / school team darj kar sakti hai.")
+        raise ShikshaError("Only the owner / school team can record consent.")
     method = _s(method, 30)
     if given and method not in R.CONSENT_METHODS:
-        raise ShikshaError("Consent kaise jaanchi? method: " + ", ".join(R.CONSENT_METHODS))
+        raise ShikshaError("How was the consent checked? method: " + ", ".join(R.CONSENT_METHODS))
     with _LOCK, session() as s:
         x = _learner_row(s, tenant, ref)
         logs = _j(x.consent_log, [])
@@ -263,8 +263,8 @@ def record_consent(tenant: str, ref: str, given: bool, method: str = "", note: s
                      "method": method, "note": _s(note, 300)})
         x.consent, x.consent_log = ("given" if given else "withdrawn"), _d(logs[-50:])
         v = _learner_view(x, s.get(ShikshaClass, x.class_id) if x.class_id else None, True)
-    v["say"] = (f"{v['number']}: guardian ki consent darj ({R.CONSENT_METHODS.get(method, method)})." if given else
-                f"{v['number']}: consent wapas li gayi; ab unka padhai / marks ka koi kaam nahi hoga.")
+    v["say"] = (f"{v['number']}: guardian's consent recorded ({R.CONSENT_METHODS.get(method, method)})." if given else
+                f"{v['number']}: consent withdrawn; no study / marks work will be done for them now.")
     return v
 
 
@@ -272,7 +272,7 @@ def need_usable(tenant: str, ref: str) -> dict:
     """Guard for every employee that works with ONE child's data (tutor, grading, reports): refuses until consent."""
     v = learner(tenant, ref)
     if not v["usable"]:
-        raise ShikshaError(f"{v['number']} {v['name']} 18 se kam hain aur guardian ki consent darj nahi; pehle consent "
+        raise ShikshaError(f"{v['number']} {v['name']} is under 18 and the guardian's consent is not recorded; record consent first "
                            "(shiksha action=consent).")
     return v
 
@@ -280,7 +280,7 @@ def need_usable(tenant: str, ref: str) -> dict:
 def forget_learner(tenant: str, ref: str, actor: str = "owner") -> dict:
     """Erasure (DPDP s.12 / a guardian's request): personal details and marks removed; the number stays as a stub."""
     if not is_owner(actor):
-        raise ShikshaError("Learner ka data mitana sirf owner.")
+        raise ShikshaError("Only the owner can erase a learner's data.")
     with _LOCK, session() as s:
         x = _learner_row(s, tenant, ref)
         n = 0
@@ -292,7 +292,7 @@ def forget_learner(tenant: str, ref: str, actor: str = "owner") -> dict:
         x.birth_year, x.status, x.consent, x.consent_log = 0, "forgotten", "withdrawn", _d([{"at": now().isoformat(
             timespec="seconds"), "status": "forgotten", "by": actor or "owner"}])
         num = x.number
-    return {"number": num, "marks_removed": n, "say": f"{num} ka sara personal data aur {n} marks mita diye."}
+    return {"number": num, "marks_removed": n, "say": f"All personal data of {num} and {n} marks were erased."}
 
 
 # ---------------------------------------------------------------- question bank (shared)
@@ -312,7 +312,7 @@ def _q_row(s, tenant: str, ref: str) -> ShikshaQuestion:
     x = s.scalars(select(ShikshaQuestion).where(ShikshaQuestion.tenant_id == tenant,
                                                 (ShikshaQuestion.id == ref) | (ShikshaQuestion.number == ref))).first()
     if x is None:
-        raise ShikshaError(f"Sawaal '{ref}' nahi mila.")
+        raise ShikshaError(f"Question '{ref}' not found.")
     return x
 
 
@@ -333,7 +333,7 @@ def save_questions(tenant: str, items: list[dict], *, board: str, grade: str, su
                 continue
             fp = R.fingerprint(clean["text"], clean["options"])
             if fp in fps or any(R.similar(clean["text"], t) >= 0.85 for t in texts):
-                skipped.append({"text": clean["text"][:160], "why": ["bank mein pehle se aisa sawaal hai"]})
+                skipped.append({"text": clean["text"][:160], "why": ["the bank already has a question like this"]})
                 continue
             x = ShikshaQuestion(tenant_id=tenant, number=f"Q-{next_no(s, tenant, 'question'):05d}", board=board, grade=grade,
                                 subject=subject, chapter=clean["chapter"], topic=clean["topic"], standards=_d(clean["standards"]),
@@ -386,7 +386,7 @@ def edit_question(tenant: str, ref: str, changes: dict, actor: str = "owner") ->
         merged = {**cur, **{k: v for k, v in (changes or {}).items() if v is not None}}
         clean, probs = R.check_question(merged)
         if R.fatal(probs):
-            raise ShikshaError("Badlav ke baad sawaal sahi nahi: " + "; ".join(p.lstrip("! ") for p in probs if p.startswith("!")))
+            raise ShikshaError("The question is not valid after the change: " + "; ".join(p.lstrip("! ") for p in probs if p.startswith("!")))
         for k in ("qtype", "text", "answer", "marks", "bloom", "difficulty", "competency", "chapter", "topic"):
             setattr(x, k, clean[k])
         x.options, x.steps, x.scheme, x.standards = _d(clean["options"]), _d(clean["steps"]), _d(clean["scheme"]), _d(clean["standards"])
@@ -411,7 +411,7 @@ def set_status(tenant: str, refs: list[str], status: str, actor: str = "owner") 
                 refused.append({"ref": ref, "why": str(e)})
                 continue
             if status == "approved" and _j(x.checks, []):
-                refused.append({"ref": x.number, "why": "pehle yeh theek kijiye: " + "; ".join(_j(x.checks, []))[:300]})
+                refused.append({"ref": x.number, "why": "fix this first: " + "; ".join(_j(x.checks, []))[:300]})
                 continue
             x.status, x.updated_at = status, now()
             x.approved_by = (actor or "owner") if status == "approved" else ""
@@ -435,7 +435,7 @@ def add_mark(tenant: str, learner_ref: str, assessment: str, subject: str, marks
     _need_team(actor)
     v = need_usable(tenant, learner_ref)
     if not (0 <= float(marks) <= float(max_marks)) or float(max_marks) <= 0:
-        raise ShikshaError("Marks 0 aur max ke beech hone chahiye.")
+        raise ShikshaError("Marks must be between 0 and the maximum.")
     with _LOCK, session() as s:
         m = ShikshaMark(tenant_id=tenant, learner_id=v["id"], assessment=_s(assessment, 80), subject=_s(subject, 80),
                         marks=float(marks), max_marks=float(max_marks), by=actor or "owner", note=_s(note, 300))
@@ -457,7 +457,7 @@ def marks(tenant: str, learner_ref: str) -> dict:
 def sign_off(tenant: str, mark_ids: list[str], actor: str = "owner") -> dict:
     """Final marks are a teacher's word: only the owner or a team member signs them off, never Hoola by itself."""
     if not is_owner(actor) and not (actor or "").startswith("staff:"):
-        raise ShikshaError("Marks pakke sirf teacher / owner karte hain.")
+        raise ShikshaError("Only the teacher / owner makes marks final.")
     n = 0
     with _LOCK, session() as s:
         for i in mark_ids[:500]:
@@ -478,8 +478,8 @@ def day(tenant: str) -> dict:
                                                                 ShikshaQuestion.status == "draft")).all())
     lines = []
     if drafts:
-        lines.append(f"{drafts} sawaal teacher ke review ke intezaar mein.")
+        lines.append(f"{drafts} questions are waiting for the teacher's review.")
     if no_consent:
-        lines.append(f"{no_consent} bachchon ki guardian consent baaki.")
+        lines.append(f"Guardian consent is pending for {no_consent} children.")
     return {"classes": cl, "learners": len(ls), "consent_pending": no_consent, "drafts": drafts, "settings": settings(tenant),
-            "say": " ".join(lines) or (f"{len(cl)} class, {len(ls)} learners." if cl else "Abhi koi class nahi juda.")}
+            "say": " ".join(lines) or (f"{len(cl)} classes, {len(ls)} learners." if cl else "No class has been added yet.")}
