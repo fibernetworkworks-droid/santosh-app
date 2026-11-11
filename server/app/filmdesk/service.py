@@ -45,7 +45,7 @@ from .models import FilmAlert, FilmCard, FilmPerson, FilmProject, FilmRight, Fil
 log = logging.getLogger("santosh.filmdesk")
 _LOCK = threading.RLock()
 CARD_KINDS = ("message", "release")
-CARD_TITLE = {"message": "Bahar message", "release": "Film release ke liye pakki"}
+CARD_TITLE = {"message": "Outside message", "release": "Confirmed for film release"}
 MSG_KINDS = ("consent_request", "rights_request", "festival", "distributor", "custom")
 
 
@@ -94,7 +94,7 @@ def _date(v) -> str:
             return datetime.strptime(s, f).date().isoformat()
         except ValueError:
             pass
-    raise FilmError(f"Tareekh '{v}' samajh nahi aayi (DD-MM-YYYY).")
+    raise FilmError(f"Could not understand the date '{v}' (DD-MM-YYYY).")
 
 
 def _num(v) -> float | None:
@@ -103,7 +103,7 @@ def _num(v) -> float | None:
     try:
         return float(str(v).replace(",", "").replace("₹", "").strip())
     except ValueError:
-        raise FilmError(f"'{v}' number nahi hai.") from None
+        raise FilmError(f"'{v}' is not a number.") from None
 
 
 def _publish(tenant: str, kind: str, payload: dict, conv: str = "") -> None:
@@ -131,9 +131,9 @@ def is_owner(actor: str) -> bool:
 
 def _need_owner(actor: str) -> None:
     if not is_owner(actor):
-        raise FilmError("Yeh sirf owner kar sakti hain.")
+        raise FilmError("Only the owner can do this.")
     if (actor or "").startswith("customer:"):
-        raise FilmError("Yeh graahak ke liye nahi.")
+        raise FilmError("This is not available to customers.")
 
 
 def actor_name(tenant: str, actor: str) -> str:
@@ -203,22 +203,22 @@ def save_settings(tenant: str, actor: str = "owner", **kw: Any) -> dict:
         if "phone" in kw:
             p = R.phone(kw["phone"])
             if kw["phone"] and not p:
-                raise FilmError("Mobile number 10 ankon ka chahiye.")
+                raise FilmError("The mobile number must have 10 digits.")
             st.phone = p
         if "month_budget_inr" in kw:
             v = _num(kw["month_budget_inr"])
             if v is not None and v < 0:
-                raise FilmError("Budget minus nahi ho sakta.")
+                raise FilmError("The budget cannot be negative.")
             st.month_budget_inr = v
         if "morning_time" in kw and kw["morning_time"]:
             t = str(kw["morning_time"]).strip()
             try:
                 datetime.strptime(t, "%H:%M")
             except ValueError:
-                raise FilmError("Samay HH:MM mein (jaise 09:00).") from None
+                raise FilmError("Give the time as HH:MM (for example 09:00).") from None
             st.morning_time = t
         v = _settings_view(st)
-    return {"settings": v, "say": "Film desk ke niyam save."}
+    return {"settings": v, "say": "Film desk rules saved."}
 
 
 # ---------------------------------------------------------------- projects
@@ -228,7 +228,7 @@ def _proj(s, tenant: str, ref: str) -> FilmProject:
         rows = s.scalars(select(FilmProject).where(FilmProject.tenant_id == tenant).order_by(FilmProject.updated_at.desc())).all()
         if len(rows) == 1:
             return rows[0]
-        raise FilmError("Kaunsi film? (F-0001 jaisa number ya naam)")
+        raise FilmError("Which film? (a number like F-0001, or the name)")
     p = s.get(FilmProject, ref)
     if p is not None and p.tenant_id == tenant:
         return p
@@ -239,7 +239,7 @@ def _proj(s, tenant: str, ref: str) -> FilmProject:
     for x in s.scalars(q).all():
         if ref.lower() in x.title.lower():
             return x
-    raise FilmError(f"Film '{ref}' nahi mili.")
+    raise FilmError(f"Film '{ref}' not found.")
 
 
 def _cast_view(p: FilmProject) -> dict:
@@ -270,16 +270,16 @@ def project_new(tenant: str, title: str = "", logline: str = "", fmt: str = "", 
                 aspect: str = "", runtime_s=None, budget_inr=None, genre: str = "", style: str = "", actor: str = "owner",
                 conv: str = "") -> dict:
     if (actor or "").startswith("customer:"):
-        raise FilmError("Yeh graahak ke liye nahi.")
+        raise FilmError("This is not available to customers.")
     title, logline = R.clean(title, 160), R.clean(logline, 1500)
     if not title and not logline:
-        raise FilmError("Film ka naam ya ek line ki kahani (logline) chahiye.")
+        raise FilmError("The film needs a name or a one-line story (logline).")
     why = R.story_problem(f"{title}. {logline}")
     if why:
         raise FilmError(why)
     f = R.fmt(fmt)
     if budget_inr is not None and not is_owner(actor):
-        raise FilmError("Budget sirf owner rakh sakti hain.")
+        raise FilmError("Only the owner can set the budget.")
     from ..studio import catalog
     asp = aspect if aspect in catalog.ASPECTS_SEEDANCE else R.FORMATS[f]["aspect"]
     sty = style if style in catalog.STYLES else ("reel" if f == "reel" else "ad" if f == "ad" else
@@ -288,14 +288,14 @@ def project_new(tenant: str, title: str = "", logline: str = "", fmt: str = "", 
         st = _st(s, tenant)
         st.proj_seq += 1
         p = FilmProject(tenant_id=tenant, number=f"F-{st.proj_seq:04d}", title=title or logline[:60], logline=logline,
-                        genre=R.clean(genre, 60), fmt=f, language=R.clean(language, 20) or st.language or "Hindi",
+                        genre=R.clean(genre, 60), fmt=f, language=R.clean(language, 20) or st.language or "English",
                         aspect=asp, style=sty, runtime_s=int(_num(runtime_s)) if _num(runtime_s) else None,
                         targets=_dump(R.targets_of(targets) or ["youtube"]), budget_inr=_num(budget_inr), conv=conv)
         s.add(p)
         s.flush()
-        _log(p, "Film shuru", actor_name(tenant, actor))
+        _log(p, "Film started", actor_name(tenant, actor))
         v = _view(s, tenant, p)
-    return {"project": v, "say": f"{v['number']} '{v['title']}' ({v['format_label']}) bana. Ab script likhwaiye ya apni script dijiye."}
+    return {"project": v, "say": f"{v['number']} '{v['title']}' ({v['format_label']}) created. Now have the script written, or give your own script."}
 
 
 def project_update(tenant: str, ref: str, actor: str = "owner", **kw: Any) -> dict:
@@ -314,15 +314,15 @@ def project_update(tenant: str, ref: str, actor: str = "owner", **kw: Any) -> di
             p.language = R.clean(kw["language"], 20)
         if kw.get("aspect"):
             if kw["aspect"] not in catalog.ASPECTS_SEEDANCE:
-                raise FilmError(f"Aspect {catalog.ASPECTS_SEEDANCE} mein se.")
+                raise FilmError(f"Aspect must be one of {catalog.ASPECTS_SEEDANCE}.")
             if p.studio_project and kw["aspect"] != p.aspect:
-                raise FilmError("Studio project ban chuka hai; aspect ab nahi badlega (naya film project banaiye).")
+                raise FilmError("The studio project already exists; the aspect cannot change now (create a new film project).")
             p.aspect = kw["aspect"]
         if kw.get("targets") is not None:
             p.targets = _dump(R.targets_of(kw["targets"]))
         if kw.get("runtime_s") is not None:
             p.runtime_s = int(_num(kw["runtime_s"]) or 0) or None
-        _log(p, "Film ki jaankari badli", actor_name(tenant, actor))
+        _log(p, "Film details changed", actor_name(tenant, actor))
         v = _view(s, tenant, p)
     return {"project": v, "say": f"{v['number']} update."}
 
@@ -361,8 +361,8 @@ def _frame_script(p: FilmProject, notes: str) -> str:
         lines = [x.strip() for x in lines[0].split(".") if x.strip()]
     out = []
     for i, ln in enumerate(lines[:12] or ["[kahani]"], 1):
-        out.append(f"SCENE {i} - [jagah] - [din / raat]\n{ln}\n")
-    return "\n".join(out) + "\n[Dialogue aap likhiye: NAAM: line]"
+        out.append(f"SCENE {i} - [place] - [day / night]\n{ln}\n")
+    return "\n".join(out) + "\n[You write the dialogue: NAME: line]"
 
 
 def script_write(tenant: str, ref: str, notes: str = "", actor: str = "owner") -> dict:
@@ -382,15 +382,15 @@ def script_write(tenant: str, ref: str, notes: str = "", actor: str = "owner") -
             text = _frame_script(_proj(s, tenant, ref), notes)
     r = script_set(tenant, ref, text, actor, source="model" if model else "frame")
     r["notes"] = [str(x)[:200] for x in (out.get("notes") or [])][:6]
-    r["say"] = ("Script likh di (" if model else "Model nahi mila: aapke shabdon se script ka dhaancha bana (") + \
-        f"{r['breakdown']['scenes']} scenes, ~{r['breakdown']['seconds']} s). Padhkar badlav bataiye."
+    r["say"] = ("Script written (" if model else "No model available: a script outline was made from your words (") + \
+        f"{r['breakdown']['scenes']} scenes, ~{r['breakdown']['seconds']} s). Read it and tell me the changes."
     return r
 
 
 def script_set(tenant: str, ref: str, text: str, actor: str = "owner", source: str = "her") -> dict:
     text = R.clean(text, 60000)
     if len(text.split()) < 3:
-        raise FilmError("Script khaali hai.")
+        raise FilmError("The script is empty.")
     why = R.story_problem(text)
     if why:
         raise FilmError(why)
@@ -420,7 +420,7 @@ def script_restore(tenant: str, ref: str, n: int, actor: str = "owner") -> dict:
         p = _proj(s, tenant, ref)
         old = next((x for x in _j(p.script_versions, []) if int(x.get("n") or 0) == int(n)), None)
     if not old:
-        raise FilmError(f"Version {n} nahi mila.")
+        raise FilmError(f"Version {n} not found.")
     return script_set(tenant, ref, old["text"], actor, source=f"version {n}")
 
 
@@ -428,7 +428,7 @@ def script_restore(tenant: str, ref: str, n: int, actor: str = "owner") -> dict:
 def cast_set(tenant: str, ref: str, character: str, person: str = "", description: str = "", actor: str = "owner") -> dict:
     character = R.clean(character, 60).strip()
     if not character:
-        raise FilmError("Character ka naam chahiye.")
+        raise FilmError("The character needs a name.")
     with _LOCK, session() as s:
         p = _proj(s, tenant, ref)
         cast = _cast_view(p)
@@ -483,10 +483,10 @@ def shots_make(tenant: str, ref: str, scene: str = "", use_model: bool = True, a
         style = catalog.STYLES.get(p.style, "")
         old = _j(p.shots, [])
     if not scenes:
-        raise FilmError("Pehle script (scenes) chahiye.")
+        raise FilmError("A script (scenes) is needed first.")
     pick = [sc for sc in scenes if not scene or sc["id"] == scene or str(sc["n"]) == str(scene)]
     if not pick:
-        raise FilmError(f"Scene '{scene}' nahi mila.")
+        raise FilmError(f"Scene '{scene}' not found.")
     made, dropped, by_model = [], [], 0
     for sc in pick:
         raws = []
@@ -526,7 +526,7 @@ def shot_update(tenant: str, ref: str, shot: str, actor: str = "owner", **change
         shots = _j(p.shots, [])
         sh = next((x for x in shots if x["id"] == shot), None)
         if sh is None:
-            raise FilmError(f"Shot '{shot}' nahi mila.")
+            raise FilmError(f"Shot '{shot}' not found.")
         if changes.get("delete"):
             shots = [x for x in shots if x["id"] != shot]
         else:
@@ -536,11 +536,11 @@ def shot_update(tenant: str, ref: str, shot: str, actor: str = "owner", **change
                                                                            "speaker", "caption") and v is not None}}
             new, why = _clean_shot(merged, sc, catalog.CAMERA, shot)
             if not new:
-                raise FilmError(why or "Shot ka prompt khaali.")
+                raise FilmError(why or "The shot prompt is empty.")
             shots = [new if x["id"] == shot else x for x in shots]
         p.shots = _dump(shots)
-        _log(p, f"Shot {shot} {'hataya' if changes.get('delete') else 'badla'}", actor_name(tenant, actor))
-    return {"shots": shots, "say": f"Shot {shot} {'hata diya' if changes.get('delete') else 'update'}."}
+        _log(p, f"Shot {shot} {'removed' if changes.get('delete') else 'changed'}", actor_name(tenant, actor))
+    return {"shots": shots, "say": f"Shot {shot} {'removed' if changes.get('delete') else 'updated'}."}
 
 
 # ---------------------------------------------------------------- consent register
@@ -552,7 +552,7 @@ def _person(s, tenant: str, ref: str) -> FilmPerson:
     for x in s.scalars(select(FilmPerson).where(FilmPerson.tenant_id == tenant)).all():
         if x.number.lower() == ref.lower() or (x.name.lower() == ref.lower() and not x.forgotten):
             return x
-    raise FilmError(f"Vyakti '{ref}' register mein nahi.")
+    raise FilmError(f"Person '{ref}' is not in the register.")
 
 
 def _person_view(x: FilmPerson, full: bool = False) -> dict:
@@ -572,13 +572,13 @@ def person_add(tenant: str, name: str, role: str = "actor", phone: str = "", ema
                public_figure: bool = False, minor: bool = False, photo_files: list | None = None, notes: str = "",
                actor: str = "owner") -> dict:
     if (actor or "").startswith("customer:"):
-        raise FilmError("Yeh graahak ke liye nahi.")
+        raise FilmError("This is not available to customers.")
     name = R.clean(name, 120)
     if not name:
-        raise FilmError("Naam chahiye.")
+        raise FilmError("A name is needed.")
     p = R.phone(phone)
     if phone and not p:
-        raise FilmError("Mobile number 10 ankon ka chahiye.")
+        raise FilmError("The mobile number must have 10 digits.")
     from ..photogen import problem
     famous = bool(public_figure) or bool(problem(f"photo of {name}").startswith("Asli, jaane-maane"))
     with _LOCK, session() as s:
@@ -591,11 +591,11 @@ def person_add(tenant: str, name: str, role: str = "actor", phone: str = "", ema
         s.add(x)
         s.flush()
         v = _person_view(x)
-    say = f"{v['number']} {name} register mein."
+    say = f"{v['number']} {name} is in the register."
     if famous:
-        say += " Yeh jaane-maane vyakti lagte hain: inka chehra / awaaz AI se nahi banega (personality rights)."
+        say += " This looks like a well-known person: their face / voice will not be made with AI (personality rights)."
     elif real:
-        say += " Inka chehra / awaaz tabhi lagega jab ijazat (consent) record ho."
+        say += " Their face / voice will be used only once consent is recorded."
     return {"person": v, "say": say}
 
 
@@ -608,10 +608,10 @@ def _keep_proof(tenant: str, number: str, file_id: str) -> dict:
         raise FilmError(str(e)) from None
     src = Path(f.stored_path or "")
     if not src.is_file():
-        raise FilmError("Saboot ki file ab server par nahi; dobara bhejiye.")
+        raise FilmError("The proof file is no longer on the server; send it again.")
     data = src.read_bytes()
     if len(data) > 60 * 1024 * 1024:
-        raise FilmError("Saboot ki file 60 MB se badi hai.")
+        raise FilmError("The proof file is larger than 60 MB.")
     ext = Path(f.name or "").suffix.lower()
     if ext in (".jpg", ".jpeg", ".png", ".webp", ".heic"):
         try:
@@ -622,9 +622,9 @@ def _keep_proof(tenant: str, number: str, file_id: str) -> dict:
             im.save(bio, "JPEG", quality=88)
             data, ext = bio.getvalue(), ".jpg"
         except Exception:
-            raise FilmError("Photo khul nahi payi.") from None
+            raise FilmError("The photo could not be opened.") from None
     elif ext in (".exe", ".apk", ".bat", ".sh", ".js", ".py", ".dll", ".msi"):
-        raise FilmError("Yeh file saboot nahi ho sakti.")
+        raise FilmError("This file cannot be used as proof.")
     d = _home(tenant) / "consent" / number
     d.mkdir(parents=True, exist_ok=True)
     sha = hashlib.sha256(data).hexdigest()
@@ -639,23 +639,23 @@ def consent_record(tenant: str, person: str, how: str, file_id: str, uses: Any, 
     _need_owner(actor)
     how = (how or "").strip().lower()
     if how not in R.CONSENT_HOW:
-        raise FilmError(f"Ijazat kaise li: {', '.join(R.CONSENT_HOW)}.")
+        raise FilmError(f"How the consent was taken: {', '.join(R.CONSENT_HOW)}.")
     if not file_id:
-        raise FilmError("Saboot chahiye: sign kiya form / unka video ya audio jismein woh haan kehte hain (file_id).")
+        raise FilmError("Proof is needed: a signed form / their video or audio in which they say yes (file_id).")
     ul = uses if isinstance(uses, list) else [u.strip() for u in str(uses or "").split(",") if u.strip()]
     ul = [u for u in ul if u in R.USES]
     if not ul:
-        raise FilmError(f"Kis kaam ki ijazat: {', '.join(R.USES)}.")
+        raise FilmError(f"Consent for which use: {', '.join(R.USES)}.")
     until_d = _date(until) if until else ""
     with session() as s:
         x = _person(s, tenant, person)
         if x.forgotten:
-            raise FilmError("Is vyakti ki details hata di gayi hain.")
+            raise FilmError("This person's details have been removed.")
         if x.public_figure and any(u in ("ai_likeness", "ai_voice") for u in ul):
-            raise FilmError("Jaane-maane vyakti ka AI chehra / awaaz yahan darj nahi hota: unki likhit licence aur vakil ki salah "
-                            "alag se (personality rights).")
+            raise FilmError("An AI face / voice of a well-known person is not recorded here: their written licence and a lawyer's advice are needed "
+                            "separately (personality rights).")
         if x.minor and not R.clean(guardian, 120):
-            raise FilmError("Nabalig ke liye mata-pita / guardian ka naam (unki ijazat) chahiye.")
+            raise FilmError("For a minor, the name of the parent / guardian (their consent) is needed.")
         number = x.number
     proof = _keep_proof(tenant, number, file_id)
     with _LOCK, session() as s:
@@ -670,8 +670,8 @@ def consent_record(tenant: str, person: str, how: str, file_id: str, uses: Any, 
                  proof=proof, at=now().isoformat(timespec="seconds"), history=hist[-50:], withdrawn_at="")
         x.consent = _dump(c)
         v = _person_view(x)
-    return {"person": v, "say": f"{v['name']} ki ijazat darj ({', '.join(R.USE_LABEL[u] for u in ul)}"
-                               + (f", {until_d} tak" if until_d else "") + "). Saboot surakshit rakha."}
+    return {"person": v, "say": f"{v['name']}: consent recorded ({', '.join(R.USE_LABEL[u] for u in ul)}"
+                               + (f", until {until_d}" if until_d else "") + "). The proof is kept safely."}
 
 
 def consent_withdraw(tenant: str, person: str, note: str = "", actor: str = "owner") -> dict:
@@ -685,8 +685,8 @@ def consent_withdraw(tenant: str, person: str, note: str = "", actor: str = "own
         num, name = x.number, x.name
         hit = [p.number for p in s.scalars(select(FilmProject).where(FilmProject.tenant_id == tenant)).all()
                if any((e or {}).get("person") == num for e in _cast_view(p).values())]
-    return {"projects": hit, "say": f"{name} ki ijazat wapas: ab unka chehra / awaaz kisi naye shot mein nahi lagega."
-                                    + (f" In filmon mein unke shots dobara banane / hatane honge: {', '.join(hit)}." if hit else "")}
+    return {"projects": hit, "say": f"{name}: consent withdrawn. Their face / voice will not be used in any new shot."
+                                    + (f" Their shots in these films must be remade / removed: {', '.join(hit)}." if hit else "")}
 
 
 def people(tenant: str) -> list[dict]:
@@ -710,7 +710,7 @@ def forget_person(tenant: str, ref: str, actor: str = "owner") -> dict:
         live = [p.number for p in s.scalars(select(FilmProject).where(FilmProject.tenant_id == tenant)).all()
                 if p.status != "released" and any((e or {}).get("person") == x.number for e in _cast_view(p).values())]
         if c.get("status") != "withdrawn" and live:
-            raise FilmError(f"Yeh abhi in filmon mein hain: {', '.join(live)}. Pehle cast badliye ya ijazat wapas darj kijiye.")
+            raise FilmError(f"They are in these films right now: {', '.join(live)}. Change the cast first, or record the consent as withdrawn.")
         pr = (c.get("proof") or {}).get("path")
         if pr:
             try:
@@ -719,11 +719,11 @@ def forget_person(tenant: str, ref: str, actor: str = "owner") -> dict:
                     shutil.rmtree(d, ignore_errors=True)
             except Exception:
                 pass
-        x.name, x.phone, x.email, x.notes, x.photo_files, x.forgotten = f"Vyakti {x.number} (hataya)", "", "", "", "[]", True
+        x.name, x.phone, x.email, x.notes, x.photo_files, x.forgotten = f"Person {x.number} (removed)", "", "", "", "[]", True
         c["proof"] = {"sha256": (c.get("proof") or {}).get("sha256", ""), "removed": True}
         x.consent = _dump(c)
         num = x.number
-    return {"say": f"{num}: personal details aur saboot ki file hata di (sirf tareekh / hash ka record)."}
+    return {"say": f"{num}: personal details and the proof file removed (only a record of the date / hash is kept)."}
 
 
 # ---------------------------------------------------------------- rights register
@@ -737,18 +737,18 @@ def right_add(tenant: str, ref: str, kind: str, title: str, owner: str = "", lic
               platforms: Any = None, territory: str = "", until: str = "", fee_inr=None, isrc: str = "", file_id: str = "",
               notes: str = "", actor: str = "owner") -> dict:
     if (actor or "").startswith("customer:"):
-        raise FilmError("Yeh graahak ke liye nahi.")
+        raise FilmError("This is not available to customers.")
     kind = (kind or "").lower()
     if kind not in R.RIGHT_KINDS:
-        raise FilmError(f"Kis cheez ka haq: {', '.join(R.RIGHT_KINDS)}.")
+        raise FilmError(f"Rights for what: {', '.join(R.RIGHT_KINDS)}.")
     if (licence or "") not in R.LICENCES:
         raise FilmError(f"Licence: {', '.join(R.LICENCES)}.")
     title = R.clean(title, 160)
     if not title:
-        raise FilmError("Naam / title chahiye (gaana, font, stock clip...).")
+        raise FilmError("A name / title is needed (song, font, stock clip...).")
     isrc = (isrc or "").replace("-", "").upper().strip()
     if isrc and not __import__("re").fullmatch(r"[A-Z]{2}[A-Z0-9]{3}\d{7}", isrc):
-        raise FilmError("ISRC 12 akshar ka hota hai (jaise INABC2600001).")
+        raise FilmError("An ISRC has 12 characters (for example INABC2600001).")
     plats = ["all"] if str(platforms).lower() in ("all", "['all']") else R.targets_of(platforms)
     proof = {}
     with session() as s:
@@ -804,7 +804,7 @@ def _consent_issues(s, tenant: str, p: FilmProject, shots: list[dict]) -> list[s
         try:
             pe = _person_view(_person(s, tenant, e.get("person", "")))
         except FilmError:
-            probs.append(f"{ch}: register mein vyakti nahi mila.")
+            probs.append(f"{ch}: person not found in the register.")
             continue
         for use in (["ai_likeness"] + (["ai_voice"] if ch in speaking else [])):
             why = R.consent_problem(pe, use, day)
@@ -823,15 +823,15 @@ async def storyboard_push(tenant: str, ref: str, actor: str = "owner", conv: str
     characters are described inside the prompt (their reference photo, if wanted, is the studio's own paid card)."""
     from ..studio import service as SS
     if (actor or "").startswith("customer:"):
-        raise FilmError("Yeh graahak ke liye nahi.")
+        raise FilmError("This is not available to customers.")
     with session() as s:
         p = _proj(s, tenant, ref)
         shots, cast = _j(p.shots, []), _cast_view(p)
         if not shots:
-            raise FilmError("Pehle shot list banaiye.")
+            raise FilmError("Make the shot list first.")
         probs = _consent_issues(s, tenant, p, shots)
         if probs:
-            raise FilmError("Ruk gaya (ijazat): " + " ".join(probs[:4]))
+            raise FilmError("Stopped (consent): " + " ".join(probs[:4]))
         real = {}
         for ch, e in cast.items():
             if e.get("kind") == "real":
@@ -878,19 +878,19 @@ async def storyboard_push(tenant: str, ref: str, actor: str = "owner", conv: str
         p.studio_shots = _dump({"hash": _shots_hash(shots), "ids": [x["id"] for x in shots]})
         if p.status in ("idea", "script", "breakdown", "shots"):
             p.status = "storyboard"
-        _log(p, f"Storyboard studio mein: {len(out)} shots", actor_name(tenant, actor))
+        _log(p, f"Storyboard sent to the studio: {len(out)} shots", actor_name(tenant, actor))
     est = r.get("estimate") or {}
     return {"studio_project": name, "shots": len(out), "characters_added": added, "estimate": est,
-            "say": f"Storyboard studio mein gaya ({len(out)} shots). Final quality ka andaaza ~₹{est.get('inr', '?')}. "
-                   "Pehle free preview dekh lijiye."}
+            "say": f"Storyboard sent to the studio ({len(out)} shots). Estimate for final quality ~₹{est.get('inr', '?')}. "
+                   "See the free preview first."}
 
 
 def _pushed_ok(p: FilmProject) -> str:
     if not p.studio_project:
-        return "Pehle storyboard studio mein bhejiye (storyboard)."
+        return "Send the storyboard to the studio first (storyboard)."
     pushed = _j(p.studio_shots, {})
     if pushed.get("hash") != _shots_hash(_j(p.shots, [])):
-        return "Shot list storyboard ke baad badli hai: pehle dobara 'storyboard' bhejiye."
+        return "The shot list changed after the storyboard: send 'storyboard' again first."
     return ""
 
 
@@ -905,7 +905,7 @@ async def preview(tenant: str, ref: str, actor: str = "owner", conv: str = "") -
         r = await SS.generate(tenant, name, "preview", conversation_id=c)
     except SS.StudioJobError as e:
         raise FilmError(f"Studio: {e}") from None
-    return {"studio": r, "say": r.get("say") or "Free preview ban raha hai."}
+    return {"studio": r, "say": r.get("say") or "The free preview is being made."}
 
 
 def budget(tenant: str, ref: str) -> dict:
@@ -940,8 +940,8 @@ def budget(tenant: str, ref: str) -> dict:
     return {"studio_project": name, "shots": list(rows.values()), "total": tot, "spent_inr": spent, "film_budget_inr": cap,
             "film_left_inr": None if cap is None else round(cap - spent, 2), "month_spent_inr": month_spent,
             "month_limit_inr": SS._inr(s_usd), "her_month_cap_inr": mcap, "stale": why,
-            "note": "Daam studio ka andaaza hai (asli kharcha provider batata hai). Kharcha sirf studio ke card par aapki haan se.",
-            "say": f"Draft ~₹{tot['draft']['inr']}, final ~₹{tot['final']['inr']} (sab shots). Ab tak ₹{spent:.0f} laga."}
+            "note": "The price is the studio's estimate (the provider states the real cost). Money is spent only with your approval on the studio's card.",
+            "say": f"Draft ~₹{tot['draft']['inr']}, final ~₹{tot['final']['inr']} (all shots). Spent so far ₹{spent:.0f}."}
 
 
 # ---------------------------------------------------------------- production layer (v0.559): schedule / day-out-of-days / call sheet / rate budget
@@ -961,18 +961,18 @@ def plan_schedule(tenant: str, ref: str, actor: str = "owner", **opts: Any) -> d
         pl.update({"schedule": sch, "dood": dd, "inputs": kw})
         pl.pop("budget", None)                    # a new schedule makes an old budget stale: ask again
         p.plan = _dump(pl)
-        _log(p, f"Schedule: {sch['shoot_days']} shoot din", actor_name(tenant, actor))
+        _log(p, f"Schedule: {sch['shoot_days']} shoot days", actor_name(tenant, actor))
         head = {"number": p.number, "title": p.title}
     return {"project": head, "shoot_days": sch["shoot_days"], "night_days": sch["night_days"], "company_moves": sch["company_moves"],
             "days": sch["days"], "dood": dd, "flags": sch["flags"], "assumptions": sch["assumptions"],
-            "say": f"{sch['shoot_days']} shoot din ({sch['night_days']} raat), {sch['company_moves']} jagah badalna. "
-                   "Ghante andaaze hain: apne asli number batayiye."}
+            "say": f"{sch['shoot_days']} shoot days ({sch['night_days']} nights), {sch['company_moves']} location moves. "
+                   "The hours are estimates: give your real numbers."}
 
 
 def _saved_plan(p: FilmProject) -> dict:
     pl = _j(p.plan, {})
     if not pl.get("schedule"):
-        raise FilmError("Pehle schedule banao (action=schedule).")
+        raise FilmError("Make the schedule first (action=schedule).")
     return pl
 
 
@@ -985,7 +985,7 @@ def plan_view(tenant: str, ref: str, what: str = "schedule", day: Any = None) ->
         return {"project": head, **pl["dood"]}
     if what == "plan_budget":
         if not pl.get("budget"):
-            raise FilmError("Budget abhi nahi bana (action=budget_plan, sirf owner).")
+            raise FilmError("The budget is not made yet (action=budget_plan, owner only).")
         return {"project": head, **pl["budget"]}
     if what == "callsheet":
         d = _pick_day(pl["schedule"], day)
@@ -998,11 +998,11 @@ def _pick_day(sch: dict, day: Any) -> dict:
     try:
         n = int(day)
     except (TypeError, ValueError):
-        raise FilmError("Kaunsa shoot din? (day=1, 2, ...)") from None
+        raise FilmError("Which shoot day? (day=1, 2, ...)") from None
     for d in sch["days"]:
         if d["order"] == n:
             return d
-    raise FilmError(f"Shoot din {n} nahi hai (1 se {len(sch['days'])}).")
+    raise FilmError(f"There is no shoot day {n} (1 to {len(sch['days'])}).")
 
 
 def plan_callsheet(tenant: str, ref: str, day: Any, actor: str = "owner", conv: str = "", **opts: Any) -> dict:
@@ -1017,17 +1017,17 @@ def plan_callsheet(tenant: str, ref: str, day: Any, actor: str = "owner", conv: 
     cs = P.call_sheet(head, d, **kw)
     if "call_time" not in kw:
         cs = P.call_sheet(head, d, **{**kw, "call_time": pl["schedule"]["assumptions"].get("call_time", "")})
-    blocks: list[tuple] = [("h1", f"Call sheet · {head['title']} · Din {d['order']}"),
-                           ("p", " · ".join(x for x in (banner, cs["date"] or "[tareekh bharo]", "Unit call " + cs["unit_call"]) if x)),
-                           ("h", "Jagah"), ("table", [["Jagah", "Pata"]] + [[x["place"], x["address"]] for x in cs["places"]]),
+    blocks: list[tuple] = [("h1", f"Call sheet · {head['title']} · Day {d['order']}"),
+                           ("p", " · ".join(x for x in (banner, cs["date"] or "[fill in the date]", "Unit call " + cs["unit_call"]) if x)),
+                           ("h", "Places"), ("table", [["Place", "Address"]] + [[x["place"], x["address"]] for x in cs["places"]]),
                            ("h", "Scenes"),
-                           ("table", [["#", "Scene", "Ghante", "Cast"]] + [[str(x["n"]), x["heading"], str(x["hours"]), ", ".join(x["cast"])]
+                           ("table", [["#", "Scene", "Hours", "Cast"]] + [[str(x["n"]), x["heading"], str(x["hours"]), ", ".join(x["cast"])]
                                                                            for x in cs["scenes"]]),
                            ("h", "Cast call"),
-                           ("table", [["Kaun", "Call", "Scenes"]] + [[x["who"], x["call"], ", ".join(str(n) for n in x["scenes"])]
+                           ("table", [["Who", "Call", "Scenes"]] + [[x["who"], x["call"], ", ".join(str(n) for n in x["scenes"])]
                                                                       for x in cs["cast"]] or [["-", "-", "-"]]),
-                           ("h", "Sampark"), ("p", "; ".join(f"{r['role']}: {r['phone']}" for r in cs["contacts"]) or " ".join(cs["blanks"])),
-                           ("p", "Mausam, sunrise/sunset aur surakshit raasta yahan nahi bharte: asli source se dekhiye.")]
+                           ("h", "Contacts"), ("p", "; ".join(f"{r['role']}: {r['phone']}" for r in cs["contacts"]) or " ".join(cs["blanks"])),
+                           ("p", "Weather, sunrise/sunset and the safe route are not filled in here: check them from the real source.")]
     file = None
     try:
         pdf = _blocks_pdf(f"{head['title']} call sheet day {d['order']}", blocks, "Call sheet")
@@ -1038,10 +1038,10 @@ def plan_callsheet(tenant: str, ref: str, day: Any, actor: str = "owner", conv: 
         file = _store(tenant, f"CallSheet_{head['number']}_Day{d['order']}.pdf", pdf, "application/pdf", conv, "Call sheet")
         with _LOCK, session() as s:
             q = _proj(s, tenant, ref)
-            _log(q, f"Call sheet din {d['order']}", actor_name(tenant, actor))
+            _log(q, f"Call sheet day {d['order']}", actor_name(tenant, actor))
     return {"project": head, **cs, "file": file,
-            "say": f"Din {d['order']} ka call sheet taiyaar" + (" (PDF chat me)." if file else ".")
-                   + " Cast ko bhejna 'message' card se, aapki haan par."}
+            "say": f"Call sheet for day {d['order']} is ready" + (" (PDF in the chat)." if file else ".")
+                   + " Send it to the cast with a 'message' card, on your approval."}
 
 
 def plan_budget(tenant: str, ref: str, rates: Any = None, contingency_pct: Any = None, actor: str = "owner") -> dict:
@@ -1058,7 +1058,7 @@ def plan_budget(tenant: str, ref: str, rates: Any = None, contingency_pct: Any =
         if contingency_pct is not None:
             pl["contingency_pct"] = contingency_pct
         p.plan = _dump(pl)
-        _log(p, f"Budget plan: ₹{out['total_inr']:,.0f} (kam se kam)", actor_name(tenant, actor))
+        _log(p, f"Budget plan: ₹{out['total_inr']:,.0f} (at least)", actor_name(tenant, actor))
         head = {"number": p.number, "title": p.title}
     return {"project": head, **out}
 
@@ -1082,20 +1082,20 @@ def festival_op(tenant: str, ref: str, op: str, actor: str = "owner", **f: Any) 
         try:
             if op == "add":
                 if len(fest) >= SL.FEST_MAX:
-                    raise FilmError(f"{SL.FEST_MAX} se zyada festival nahi.")
+                    raise FilmError(f"{SL.FEST_MAX} festivals at most.")
                 e = SL.norm_festival(f, _next_id(fest, "fs"))
                 fest.append(e)
                 what = f"Festival add: {e['name']}"
             else:
                 if cur is None:
-                    raise FilmError("Kaunsa festival? (entry=fs1 jaisa id)")
+                    raise FilmError("Which festival? (an id like entry=fs1)")
                 if op == "remove":
                     fest.remove(cur)
                     what = f"Festival hata: {cur['name']}"
                 elif op == "tick":
                     key = _s_str(f.get("key"))
                     if key not in {r["key"] for r in SL.festival_packet({}, cur)}:
-                        raise FilmError("Yeh packet line nahi pehchani.")
+                        raise FilmError("This packet line is not recognised.")
                     cur["ticks"][key] = f.get("done", True) is not False
                     what = f"Festival packet: {cur['name']} - {key}"
                 elif op == "update":
@@ -1105,7 +1105,7 @@ def festival_op(tenant: str, ref: str, op: str, actor: str = "owner", **f: Any) 
                     e = SL.norm_festival(merged, 0)
                     e["id"], e["ticks"] = cur["id"], cur.get("ticks") or {}
                     fest[fest.index(cur)] = e
-                    what = f"Festival badla: {e['name']}"
+                    what = f"Festival changed: {e['name']}"
                 else:
                     raise FilmError("op: add | update | remove | tick")
         except ValueError as ex:
@@ -1140,19 +1140,19 @@ def window_op(tenant: str, ref: str, op: str, actor: str = "owner", **f: Any) ->
         try:
             if op == "add":
                 if len(wins) >= SL.WINDOW_MAX:
-                    raise FilmError(f"{SL.WINDOW_MAX} se zyada window nahi.")
+                    raise FilmError(f"{SL.WINDOW_MAX} windows at most.")
                 w = SL.norm_window(f, _next_id(wins, "w"))
                 wins.append(w)
                 what = f"Window add: {w['medium']} {w['start']}"
             elif op == "remove":
                 cur = next((x for x in wins if x["id"] == _s_str(f.get("entry"))), None)
                 if cur is None:
-                    raise FilmError("Kaunsi window? (entry=w1 jaisa id)")
+                    raise FilmError("Which window? (an id like entry=w1)")
                 wins.remove(cur)
                 what = f"Window hata: {cur['id']}"
             elif op == "holdbacks":
                 pl["holdbacks"] = [h for h in (f.get("holdbacks") or []) if isinstance(h, dict)][:20]
-                what = "Holdback niyam save"
+                what = "Holdback rules saved"
             else:
                 raise FilmError("op: add | remove | holdbacks")
         except ValueError as ex:
@@ -1191,9 +1191,9 @@ def waterfall_run(tenant: str, ref: str, gross_inr: Any, deductions: Any = None,
         _log(p, f"Waterfall: gross ₹{out['gross_inr']:,.0f}", actor_name(tenant, actor))
         head = {"number": p.number, "title": p.title}
     return {"project": head, **out,
-            "say": f"₹{out['gross_inr']:,.0f} me se " + ("investor poora wapas" if out["investors_fully_recouped"] else
-                   "investor ka poora paisa nahi nikla" if out["investors_fully_recouped"] is False else "hisaab") +
-                   f"; baanta ja sakne wala ₹{out['net_after_recoup_inr']:,.0f}."}
+            "say": f"Out of ₹{out['gross_inr']:,.0f}: " + ("investors fully recouped" if out["investors_fully_recouped"] else
+                   "investors have not got all their money back" if out["investors_fully_recouped"] is False else "calculation") +
+                   f"; distributable ₹{out['net_after_recoup_inr']:,.0f}."}
 
 
 async def spend(tenant: str, ref: str, quality: str = "draft", shot_ids: list | None = None, variants: int = 1,
@@ -1202,9 +1202,9 @@ async def spend(tenant: str, ref: str, quality: str = "draft", shot_ids: list | 
     card and only her tap there spends."""
     from ..studio import service as SS
     if (actor or "").startswith("customer:"):
-        raise FilmError("Yeh graahak ke liye nahi.")
+        raise FilmError("This is not available to customers.")
     if quality not in ("draft", "final"):
-        raise FilmError("quality = draft (sasta, 480p) ya final (1080p). Preview free hai: preview.")
+        raise FilmError("quality = draft (cheap, 480p) or final (1080p). The preview is free: preview.")
     with session() as s:
         p = _proj(s, tenant, ref)
         why = _pushed_ok(p)
@@ -1212,7 +1212,7 @@ async def spend(tenant: str, ref: str, quality: str = "draft", shot_ids: list | 
             raise FilmError(why)
         probs = _consent_issues(s, tenant, p, [x for x in _j(p.shots, []) if not shot_ids or x["id"] in shot_ids])
         if probs:
-            raise FilmError("Ruk gaya (ijazat): " + " ".join(probs[:4]))
+            raise FilmError("Stopped (consent): " + " ".join(probs[:4]))
         name, cap, c = p.studio_project, p.budget_inr, conv or p.conv
         mcap = _st(s, tenant).month_budget_inr
     st = SS.studio_sync(tenant)
@@ -1223,10 +1223,10 @@ async def spend(tenant: str, ref: str, quality: str = "draft", shot_ids: list | 
     inr = SS._inr(e["usd"])
     spent = float((studio_state(tenant, name) or {}).get("spent_inr") or 0)
     if cap is not None and spent + inr > cap + 0.5:
-        raise FilmError(f"Is film ka aapka budget ₹{cap:.0f}; ab tak ₹{spent:.0f} laga, yeh ~₹{inr} ka hai. Budget badhaiye "
-                        "(sirf aap) ya kam shots / draft chuniye.")
+        raise FilmError(f"Your budget for this film is ₹{cap:.0f}; spent so far ₹{spent:.0f}, and this costs ~₹{inr}. Raise the budget "
+                        "(only you can) or choose fewer shots / draft.")
     if mcap is not None and SS._inr(SS.month_spent(tenant)) + inr > mcap + 0.5:
-        raise FilmError(f"Aapki mahine ki film seema ₹{mcap:.0f} paar ho jayegi (yeh ~₹{inr}).")
+        raise FilmError(f"Your monthly film limit of ₹{mcap:.0f} would be crossed (this is ~₹{inr}).")
     try:
         r = await SS.generate(tenant, name, quality, list(shot_ids) if shot_ids else None, variants, None, c)
     except SS.StudioJobError as ex:
@@ -1235,11 +1235,11 @@ async def spend(tenant: str, ref: str, quality: str = "draft", shot_ids: list | 
         p = _proj(s, tenant, ref)
         if p.status in ("storyboard",):
             p.status = "production"
-        _log(p, f"{quality} shots ka studio card (~₹{inr})", actor_name(tenant, actor))
+        _log(p, f"{quality} shots: studio card (~₹{inr})", actor_name(tenant, actor))
     say = r.get("say") or ""
     return {"studio": r, "estimate_inr": inr,
-            "say": (say + " (Studio ka card: wahi aapki haan lega.)").strip(),
-            "note_for_you": "Nothing is spent until she taps Haan on the studio's own card. Don't call spend again for this."}
+            "say": (say + " (The studio's own card will take your approval.)").strip(),
+            "note_for_you": "Nothing is spent until the user taps Yes on the studio's own card. Don't call spend again for this."}
 
 
 async def assemble(tenant: str, ref: str, captions: bool = True, actor: str = "owner") -> dict:
@@ -1248,7 +1248,7 @@ async def assemble(tenant: str, ref: str, captions: bool = True, actor: str = "o
         p = _proj(s, tenant, ref)
         name = p.studio_project
     if not name:
-        raise FilmError("Pehle storyboard / shots.")
+        raise FilmError("Storyboard / shots first.")
     try:
         r = await SS.assemble(tenant, name, captions)
     except SS.StudioJobError as e:
@@ -1257,7 +1257,7 @@ async def assemble(tenant: str, ref: str, captions: bool = True, actor: str = "o
         p = _proj(s, tenant, ref)
         if p.status in ("storyboard", "production"):
             p.status = "post"
-    return {"studio": r, "say": r.get("say") or "Video jud raha hai."}
+    return {"studio": r, "say": r.get("say") or "The video is being joined."}
 
 
 # ---------------------------------------------------------------- CBFC / OTT rating / checklist
@@ -1265,12 +1265,12 @@ def set_rating(tenant: str, ref: str, rating: str, descriptors: str = "", actor:
     _need_owner(actor)
     rt = R.rating(rating)
     if not rt or rt == "S":
-        raise FilmError("OTT rating: U, UA7, UA13, UA16 ya A (IT Rules 2021 Part III self-classification).")
+        raise FilmError("OTT rating: U, UA7, UA13, UA16 or A (IT Rules 2021 Part III self-classification).")
     with _LOCK, session() as s:
         p = _proj(s, tenant, ref)
         p.rating, p.descriptors = rt, R.clean(descriptors, 300)
         _log(p, f"OTT rating {rt}", "Owner")
-    lock = " U/A 13+ aur upar ke liye platform par parental lock zaroori." if rt in ("UA13", "UA16", "A") else ""
+    lock = " For U/A 13+ and above, a parental lock on the platform is required." if rt in ("UA13", "UA16", "A") else ""
     return {"rating": rt, "say": f"OTT rating {R.RATING_LABEL[rt]} darj.{lock}"}
 
 
@@ -1293,7 +1293,7 @@ def set_cbfc(tenant: str, ref: str, category: str = "", number: str = "", day: s
             c["applied"] = bool(applied)
         p.cbfc = _dump(c)
         _log(p, f"CBFC: {c}", "Owner")
-    return {"cbfc": c, "note": R.CBFC_NOTE, "say": "CBFC jaankari darj." + ("" if c.get("number") else " Certificate number aane par darj kijiye.")}
+    return {"cbfc": c, "note": R.CBFC_NOTE, "say": "CBFC details recorded." + ("" if c.get("number") else " Record the certificate number when it comes.")}
 
 
 def tick_item(tenant: str, ref: str, key: str, done: bool = True, actor: str = "owner") -> dict:
@@ -1301,11 +1301,11 @@ def tick_item(tenant: str, ref: str, key: str, done: bool = True, actor: str = "
         p = _proj(s, tenant, ref)
         manual = {i["key"] for i in R.checklist(_j(p.targets, []), p.fmt, True) if not i["auto"]}
         if key not in manual:
-            raise FilmError(f"'{key}' haath se tick hone wali line nahi (yeh code khud jaanchta hai).")
+            raise FilmError(f"'{key}' is not a line you tick by hand (the code checks it itself).")
         t = _j(p.ticks, {})
         t[key] = {"done": bool(done), "by": actor_name(tenant, actor), "at": now().isoformat(timespec="seconds")}
         p.ticks = _dump(t)
-    return {"say": f"'{key}' {'ho gaya' if done else 'baaki'}."}
+    return {"say": f"'{key}' {'done' if done else 'pending'}."}
 
 
 def _final_output(view: dict) -> dict:
@@ -1328,11 +1328,11 @@ def release_view(tenant: str, ref: str) -> dict:
     sv = studio_state(tenant, name)
     final = _final_output(sv)
     auto = {"consents": (not consent, "; ".join(consent[:3])), "rights": (not rights_probs, "; ".join(rights_probs[:3])),
-            "final_video": (bool(final), "" if final else "Studio se final (non-preview) video abhi nahi juda."),
-            "disclosure": (True, "Studio ka 'AI-generated' label hamesha on; description line neeche."),
-            "ott_rating": (bool(rating_), "" if rating_ else "OTT rating chuniye."),
-            "cbfc": (bool(cb.get("category") and cb.get("number")), "" if cb.get("number") else "CBFC certificate number darj nahi."),
-            "tv_u": (cb.get("category") == "U", "" if cb.get("category") == "U" else "TV par sirf U certificate.")}
+            "final_video": (bool(final), "" if final else "The final (non-preview) video from the studio is not joined yet."),
+            "disclosure": (True, "The studio's 'AI-generated' label is always on; description line below."),
+            "ott_rating": (bool(rating_), "" if rating_ else "Choose an OTT rating."),
+            "cbfc": (bool(cb.get("category") and cb.get("number")), "" if cb.get("number") else "CBFC certificate number not recorded."),
+            "tv_u": (cb.get("category") == "U", "" if cb.get("category") == "U" else "Only a U certificate on TV.")}
     out, blockers = [], []
     for it in items:
         if it["auto"]:
@@ -1344,7 +1344,7 @@ def release_view(tenant: str, ref: str) -> dict:
             blockers.append(it["key"])
     return {"items": out, "blockers": blockers, "ready": not blockers, "disclosure": R.disclosure(lang, targets),
             "final": final, "cbfc_note": R.CBFC_NOTE if "theatrical" in targets or "tv" in targets else "",
-            "say": "Release ke liye sab taiyaar." if not blockers else f"Release se pehle baaki: {len(blockers)} cheezein."}
+            "say": "Everything is ready for release." if not blockers else f"Pending before release: {len(blockers)} items."}
 
 
 # ---------------------------------------------------------------- cards (her tap)
@@ -1360,12 +1360,12 @@ def _msg_text(kind: str, p: dict, person: dict | None, inp: dict) -> str:
     banner = p.get("banner") or "hamari production"
     if kind == "consent_request" and person:
         uses = ", ".join(R.USE_LABEL.get(u, u) for u in inp.get("uses") or ["ai_likeness"])
-        return (f"Namaste {person['name']} ji, {banner} ki film '{p['title']}' ke liye hum aapka {uses} istemaal karna chahte hain. "
-                "Kya aap iski ijazat denge? Agar haan, to kripya likhit form par sign karke / ek chhota video bhejkar 'haan' "
-                "boliye; aap kabhi bhi ijazat wapas le sakte hain. Kaam ki poori jaankari aur fees: " + (inp.get("terms") or "[shartein]"))
+        return (f"Hello {person['name']}, {banner}: for the film '{p['title']}' we would like to use your {uses}. "
+                "Do you give your consent for this? If yes, please sign the written form / send a short video saying 'yes'; "
+                "you can withdraw your consent at any time. Full details of the work and fees: " + (inp.get("terms") or "[terms]"))
     if kind == "rights_request":
-        return (f"Namaste, {banner} ki film '{p['title']}' mein '{inp.get('item') or '[gaana / clip]'}' istemaal karna hai "
-                f"({', '.join(p.get('targets') or [])}). Kripya sync / istemaal ki licence ki shartein aur fees batayein.")
+        return (f"Hello, {banner}: for the film '{p['title']}' we want to use '{inp.get('item') or '[song / clip]'}' "
+                f"({', '.join(p.get('targets') or [])}). Please tell us the terms and fees for a sync / usage licence.")
     return R.clean(inp.get("text"), 1500)
 
 
@@ -1384,7 +1384,7 @@ def _show(s, tenant: str, kind: str, p: FilmProject, inp: dict) -> dict:
         text = _msg_text(inp.get("msg_kind") or "custom",
                          {"title": p.title, "banner": st.banner, "targets": base["targets"]}, person, inp)
         if not text:
-            raise FilmError("Message ka text chahiye.")
+            raise FilmError("The message text is needed.")
         return {**base, "msg_kind": inp.get("msg_kind") or "custom", "to": person["name"] if person else (inp.get("to_name") or ""),
                 "phone": to, "email": email, "text": text, "blanks": "[" in text and "]" in text, "_in": inp}
     if kind == "release":
@@ -1409,7 +1409,7 @@ def _show(s, tenant: str, kind: str, p: FilmProject, inp: dict) -> dict:
                 "disclosure": rv["disclosure"]["description_line"], "rating": p.rating, "cbfc": _j(p.cbfc, {}),
                 "cast": crew, "rights": [{"title": r["title"], "kind": r["kind"], "licence": r["licence"], "owner": r["owner"]}
                                          for r in rights_rows], "banner": st.banner, "_in": inp}
-    raise FilmError(f"card '{kind}' nahi pehchana.")
+    raise FilmError(f"'{kind}' is not a known card kind.")
 
 
 def _make_card(tenant: str, kind: str, ref: str, inp: dict, actor: str = "owner", conv: str = "") -> dict:
@@ -1421,7 +1421,7 @@ def _make_card(tenant: str, kind: str, ref: str, inp: dict, actor: str = "owner"
                                                   FilmCard.project_id == p.id, FilmCard.status == "waiting")).all():
             if o.hash == h:
                 return {"card": _card_view(o), "status": "needs_tap", "existing": True,
-                        "say": "Yahi card pehle se aapki haan ka intezaar kar raha hai."}
+                        "say": "This same card is already waiting for your approval."}
             if kind == "release":
                 o.status = "stale"
         c = FilmCard(tenant_id=tenant, project_id=p.id, kind=kind, show=_dump(show), hash=h, asked_by=actor_name(tenant, actor),
@@ -1429,7 +1429,7 @@ def _make_card(tenant: str, kind: str, ref: str, inp: dict, actor: str = "owner"
         s.add(c)
         s.flush()
         v, cv = _card_view(c), c.conv
-    say = f"{CARD_TITLE[kind]}: {v['show'].get('project')} aapki haan ka card bheja hai."
+    say = f"{CARD_TITLE[kind]}: {v['show'].get('project')} - a card has been sent for your approval."
     _publish(tenant, "filmdesk_card", {"card": v, "say": say}, cv)
     return {"card": v, "status": "needs_tap", "say": say}
 
@@ -1438,7 +1438,7 @@ def message_request(tenant: str, ref: str, msg_kind: str = "custom", person: str
                     email: str = "", uses: Any = None, terms: str = "", item: str = "", to_name: str = "",
                     actor: str = "owner", conv: str = "") -> dict:
     if (actor or "").startswith("customer:"):
-        raise FilmError("Yeh graahak ke liye nahi.")
+        raise FilmError("This is not available to customers.")
     if msg_kind not in MSG_KINDS:
         raise FilmError(f"Message: {', '.join(MSG_KINDS)}.")
     ul = uses if isinstance(uses, list) else [u.strip() for u in str(uses or "").split(",") if u.strip()]
@@ -1446,7 +1446,7 @@ def message_request(tenant: str, ref: str, msg_kind: str = "custom", person: str
            "uses": [u for u in ul if u in R.USES], "terms": R.clean(terms, 600), "item": R.clean(item, 160),
            "to_name": R.clean(to_name, 80)}
     if msg_kind == "consent_request" and not person:
-        raise FilmError("Kis vyakti se ijazat maangni hai (person)?")
+        raise FilmError("Which person should be asked for consent (person)?")
     return _make_card(tenant, "message", ref, inp, actor, conv)
 
 
@@ -1459,15 +1459,15 @@ def release_request(tenant: str, ref: str, force: list | None = None, reason: st
     hard = [k for k in rv["blockers"] if k in autos]
     if hard:
         why = [i["why_not"] or i["label"] for i in rv["items"] if i["key"] in hard]
-        raise FilmError("Release abhi nahi: " + " | ".join(why[:4]))
+        raise FilmError("Cannot release yet: " + " | ".join(why[:4]))
     soft = [k for k in rv["blockers"] if k not in autos]
     forced = []
     if soft:
         if not force or not is_owner(actor) or len(R.clean(reason, 300)) < 5:
-            raise FilmError("Yeh lines tick nahi hain: " + ", ".join(soft) + ". Tick kijiye, ya owner wajah likhkar 'force' kare.")
+            raise FilmError("These lines are not ticked: " + ", ".join(soft) + ". Tick them, or the owner can 'force' with a written reason.")
         forced = [k for k in soft if k in force]
         if set(soft) - set(forced):
-            raise FilmError("Baaki lines: " + ", ".join(sorted(set(soft) - set(forced))))
+            raise FilmError("Lines still pending: " + ", ".join(sorted(set(soft) - set(forced))))
     return _make_card(tenant, "release", ref, {"forced": forced, "reason": R.clean(reason, 300)}, actor, conv)
 
 
@@ -1475,7 +1475,7 @@ def card_view(tenant: str, card_id: str) -> dict:
     with session() as s:
         c = s.get(FilmCard, card_id)
         if c is None or c.tenant_id != tenant:
-            raise FilmError("Card nahi mila.")
+            raise FilmError("Card not found.")
         return _card_view(c)
 
 
@@ -1495,13 +1495,13 @@ def decide(tenant: str, card_id: str, yes: bool, card_hash: str = "", reason: st
            conv: str = "") -> dict:
     """ONLY from the app's API (her tap). The card's hash must still match the state NOW."""
     if not by_tap:
-        raise FilmError("Yeh sirf aapke tap se (app ka card).")
+        raise FilmError("Only by your tap (the card in the app).")
     with session() as s:
         c = s.get(FilmCard, card_id)
         if c is None or c.tenant_id != tenant:
-            raise FilmError("Card nahi mila.")
+            raise FilmError("Card not found.")
         if c.status != "waiting":
-            return {"card": _card_view(c), "say": f"Yeh card pehle hi '{c.status}' hai."}
+            return {"card": _card_view(c), "say": f"This card is already '{c.status}'."}
         p = s.get(FilmProject, c.project_id)
         inp = _j(c.show, {}).get("_in", {})
         try:
@@ -1513,22 +1513,22 @@ def decide(tenant: str, card_id: str, yes: bool, card_hash: str = "", reason: st
         if now_hash != ch:
             with _LOCK, session() as s:
                 s.get(FilmCard, card_id).status = "stale"
-        raise FilmError("Card ke baad kuch badal gaya; naya card dekhiye.")
+        raise FilmError("Something changed after the card was made; see the new card.")
     if not yes:
         with _LOCK, session() as s:
             c = s.get(FilmCard, card_id)
             c.status, c.reason, c.decided_at = "rejected", R.clean(reason, 300), now()
             v = _card_view(c)
-        return {"card": v, "say": f"{CARD_TITLE[kind]}: nahi."}
+        return {"card": v, "say": f"{CARD_TITLE[kind]}: declined."}
     out: dict[str, Any]
     if kind == "message":
         if sh.get("blanks"):
-            raise FilmError("Message mein [khaali jagah] baaki hai: pehle bhariye.")
+            raise FilmError("The message still has a [blank]: fill it in first.")
         text = sh["text"]
         draft = {"text": text, "wa": _wa(sh.get("phone", ""), text),
                  "sms": f"sms:+91{sh['phone']}?body={urlq(text)}" if sh.get("phone") else "",
                  "mail": f"mailto:{sh['email']}?subject={urlq(sh['title'])}&body={urlq(text)}" if sh.get("email") else ""}
-        out = {"draft": draft, "say": "Message taiyaar: WhatsApp / SMS / mail aap khud bhejiye (Hoola khud nahi bhejta)."}
+        out = {"draft": draft, "say": "Message ready: you send it yourself on WhatsApp / SMS / mail (Hoola does not send it)."}
     else:
         pdf = release_pdf(tenant, number, sh)
         f = _store(tenant, f"{number}_release_pack.pdf", pdf, "application/pdf", conv, "Release pack")
@@ -1537,10 +1537,10 @@ def decide(tenant: str, card_id: str, yes: bool, card_hash: str = "", reason: st
             p.status = "released"
             p.released = _dump({"at": now().isoformat(timespec="seconds"), "targets": sh.get("targets"), "pack": f.get("file_id"),
                                 "forced": sh.get("forced"), "final": sh.get("final")})
-            _log(p, "Release pakka (owner ka tap)", "Owner")
+            _log(p, "Release confirmed (owner's tap)", "Owner")
         out = {"file_id": f.get("file_id"), "upload_text": sh.get("disclosure"),
-               "say": "Release pack bana (credits, AI disclosure, haq aur ijazat ki suchi). Upload / submission aap khud kijiye: "
-                      "Hoola kahin post nahi karta."}
+               "say": "Release pack made (credits, AI disclosure, list of rights and consents). You do the upload / submission yourself: "
+                      "Hoola does not post anywhere."}
     with _LOCK, session() as s:
         c = s.get(FilmCard, card_id)
         c.status, c.decided_at = "approved", now()
@@ -1554,7 +1554,7 @@ def release_pdf(tenant: str, ref: str, sh: dict) -> bytes:
     blocks: list[tuple] = [("h1", f"{sh.get('title')} · Release pack"),
                            ("p", " · ".join(x for x in (sh.get("banner"), sh.get("project"), ", ".join(sh.get("targets") or [])) if x)),
                            ("h", "AI disclosure"), ("p", sh.get("disclosure") or ""),
-                           ("p", "On-screen label: AI-generated · Hoola. Upload karte waqt platform par AI / synthetic content Haan chuniye "
+                           ("p", "On-screen label: AI-generated · Hoola. When uploading, choose Yes for AI / synthetic content on the platform "
                                  "(IT Rules 2026; YouTube altered or synthetic content).")]
     if sh.get("rating"):
         blocks.append(("p", f"OTT rating: {R.RATING_LABEL.get(sh['rating'], sh['rating'])}"))
@@ -1562,17 +1562,17 @@ def release_pdf(tenant: str, ref: str, sh: dict) -> bytes:
     if cb.get("number"):
         blocks.append(("p", f"CBFC: {R.RATING_LABEL.get(cb.get('category'), cb.get('category'))} · {cb['number']} · {cb.get('date', '')}"))
     blocks += [("h", "Cast / credits"),
-               ("table", [["Character", "Kaun", "Ijazat"]] + [[c.get("character", ""), c.get("person", ""),
+               ("table", [["Character", "Who", "Consent"]] + [[c.get("character", ""), c.get("person", ""),
                                                               (c.get("consent") or "") + (" · " + ", ".join(c.get("uses") or [])
                                                                                           if c.get("uses") else "")]
                                                              for c in sh.get("cast") or []] or [["-", "-", "-"]]),
-               ("h", "Music / haq"),
-               ("table", [["Cheez", "Prakaar", "Licence", "Owner"]] + [[r["title"], r["kind"], r["licence"], r["owner"]]
+               ("h", "Music / rights"),
+               ("table", [["Item", "Kind", "Licence", "Owner"]] + [[r["title"], r["kind"], r["licence"], r["owner"]]
                                                                         for r in sh.get("rights") or []]),
                ("h", "Checklist"),
-               ("table", [["Line", "Haal"]] + [[i["label"], "Haan" if i["ok"] else ("Owner ne chhoda" if i["key"] in (sh.get("forced") or [])
-                                                                                  else "Nahi")] for i in sh.get("items") or []]),
-               ("p", "Yeh producer ke record ke liye hai, kanooni salah nahi.")]
+               ("table", [["Line", "Status"]] + [[i["label"], "Yes" if i["ok"] else ("Skipped by the owner" if i["key"] in (sh.get("forced") or [])
+                                                                                  else "No")] for i in sh.get("items") or []]),
+               ("p", "This is for the producer's records, not legal advice.")]
     return _blocks_pdf(f"{sh.get('title')} release", blocks, "Release pack")
 
 
@@ -1617,22 +1617,22 @@ def day(tenant: str) -> dict:
     soon = (d0 + timedelta(days=15)).isoformat()
     with session() as s:
         ppl = [x for x in s.scalars(select(FilmPerson).where(FilmPerson.tenant_id == tenant, FilmPerson.forgotten.is_(False))).all()]
-        ending = [f"{x.name}: ijazat {(_j(x.consent, {}).get('until'))} ko khatam" for x in ppl
+        ending = [f"{x.name}: consent ends on {(_j(x.consent, {}).get('until'))}" for x in ppl
                   if _j(x.consent, {}).get("status") == "recorded" and _j(x.consent, {}).get("until")
                   and d0.isoformat() <= _j(x.consent, {}).get("until") <= soon]
         rts = s.scalars(select(FilmRight).where(FilmRight.tenant_id == tenant, FilmRight.until != "")).all()
-        r_end = [f"{r.title}: licence {r.until} tak" for r in rts if d0.isoformat() <= r.until <= (d0 + timedelta(days=30)).isoformat()]
+        r_end = [f"{r.title}: licence until {r.until}" for r in rts if d0.isoformat() <= r.until <= (d0 + timedelta(days=30)).isoformat()]
         active = [p.number for p in s.scalars(select(FilmProject).where(FilmProject.tenant_id == tenant,
                                                                          FilmProject.status != "released")).all()]
         waiting = len(s.scalars(select(FilmCard).where(FilmCard.tenant_id == tenant, FilmCard.status == "waiting")).all())
     parts = []
     if active:
-        parts.append(f"{len(active)} film chal rahi: {', '.join(active[:5])}.")
+        parts.append(f"{len(active)} films in progress: {', '.join(active[:5])}.")
     if waiting:
-        parts.append(f"{waiting} card aapki haan ka intezaar.")
+        parts.append(f"{waiting} cards waiting for your approval.")
     parts += ending[:3] + r_end[:3]
     return {"active": active, "consent_ending": ending, "rights_ending": r_end, "waiting": waiting,
-            "say": " ".join(parts) if parts else "Film desk par aaj sab theek."}
+            "say": " ".join(parts) if parts else "All is fine at the film desk today."}
 
 
 def overview(tenant: str) -> dict:
@@ -1668,13 +1668,13 @@ def tick(when: datetime | None = None) -> dict:
                     u = c.get("until") or ""
                     if c.get("status") == "recorded" and u:
                         if u < on and _once(s, tenant, f"cexp:{x.id}:{u}"):
-                            alerts.append({"kind": "consent_expired", "say": f"{x.name} ki ijazat {u} ko khatam: naye shots mein nahi lagenge."})
+                            alerts.append({"kind": "consent_expired", "say": f"{x.name}: consent ended on {u}: they will not be used in new shots."})
                         elif on <= u <= (loc.date() + timedelta(days=15)).isoformat() and _once(s, tenant, f"csoon:{x.id}:{u}"):
-                            alerts.append({"kind": "consent_soon", "say": f"{x.name} ki ijazat {u} ko khatam hogi: aage chahiye to "
-                                                                          "nayi ijazat ka message card banau?"})
+                            alerts.append({"kind": "consent_soon", "say": f"{x.name}: consent ends on {u}: if you need it longer, shall I create "
+                                                                          "a message card for new consent?"})
                 for r in s.scalars(select(FilmRight).where(FilmRight.tenant_id == tenant, FilmRight.until != "")).all():
                     if r.until < on and _once(s, tenant, f"rexp:{r.id}:{r.until}"):
-                        alerts.append({"kind": "rights_expired", "say": f"'{r.title}' ka licence {r.until} ko khatam."})
+                        alerts.append({"kind": "rights_expired", "say": f"'{r.title}': licence ended on {r.until}."})
             for a in alerts:
                 _publish(tenant, "filmdesk_alert", a)
                 out["alerts"] += 1
@@ -1691,7 +1691,7 @@ def tick(when: datetime | None = None) -> dict:
                         st.last_morning = on
             if due:
                 d = day(tenant)
-                if d["say"] != "Film desk par aaj sab theek.":
+                if d["say"] != "All is fine at the film desk today.":
                     _publish(tenant, "filmdesk_day", {"say": d["say"], "waiting": d["waiting"]})
                     out["morning"] += 1
         except Exception:
@@ -1705,7 +1705,7 @@ def waterfall_view(tenant: str, ref: str) -> dict:
         w = _j(p.plan, {}).get("waterfall")
         head = {"number": p.number, "title": p.title}
     if not w:
-        raise FilmError("Waterfall abhi nahi bana (action=waterfall, sirf owner).")
+        raise FilmError("The waterfall is not made yet (action=waterfall, owner only).")
     return {"project": head, **w["result"]}
 
 
@@ -1723,12 +1723,12 @@ def _simple_list_op(tenant: str, ref: str, key: str, prefix: str, norm, maxn: in
         try:
             if op == "add":
                 if len(items) >= maxn:
-                    raise FilmError(f"{maxn} se zyada nahi.")
+                    raise FilmError(f"{maxn} at most.")
                 e = norm(f, _next_id(items, prefix))
                 items.append(e)
                 what = f"{key}: add {label_of(e)}"
             elif cur is None:
-                raise FilmError("Kaun sa? (entry=" + prefix + "1 jaisa id)")
+                raise FilmError("Which one? (an id like entry=" + prefix + "1)")
             elif op == "remove":
                 items.remove(cur)
                 what = f"{key}: hata {label_of(cur)}"
@@ -1736,7 +1736,7 @@ def _simple_list_op(tenant: str, ref: str, key: str, prefix: str, norm, maxn: in
                 e = norm({**cur, **{k: v for k, v in f.items() if k in fields}}, 0)
                 e["id"] = cur["id"]
                 items[items.index(cur)] = e
-                what = f"{key}: badla {label_of(e)}"
+                what = f"{key}: changed {label_of(e)}"
             else:
                 raise FilmError("op: add | update | remove")
         except ValueError as ex:
@@ -1767,8 +1767,8 @@ def deliverable_op(tenant: str, ref: str, op: str, actor: str = "owner", **f: An
                 added += 1
             pl["deliverables"] = items
             p.plan = _dump(pl)
-            _log(p, f"Deliverables starter ({_s_str(f.get('kind'))}): {added} naye", actor_name(tenant, actor))
-        what = f"{added} item jude (shuruaati list: buyer ki apni spec final)."
+            _log(p, f"Deliverables starter ({_s_str(f.get('kind'))}): {added} new", actor_name(tenant, actor))
+        what = f"{added} items added (starter list: the buyer's own spec is final)."
     else:
         what = _simple_list_op(tenant, ref, "deliverables", "d", DL.norm_deliverable, DL.ITEM_MAX, op, actor, f,
                                ("label", "buyer", "due", "status", "notes"), lambda e: e["label"])
@@ -1804,7 +1804,7 @@ def localisation_view(tenant: str, ref: str) -> dict:
                 try:
                     pe = _person_view(_person(s, tenant, person_ref))
                 except FilmError:
-                    seen[person_ref] = f"{person_ref}: register me vyakti nahi mila."
+                    seen[person_ref] = f"{person_ref}: person not found in the register."
                 else:
                     seen[person_ref] = R.consent_problem(pe, "ai_voice", day.isoformat())
             return seen[person_ref]
@@ -1845,14 +1845,14 @@ def royalty_op(tenant: str, ref: str, op: str, actor: str = "owner", **f: Any) -
         try:
             if op == "add":
                 if len(terms) >= GD.TERM_MAX:
-                    raise FilmError(f"{GD.TERM_MAX} se zyada shartein nahi.")
+                    raise FilmError(f"{GD.TERM_MAX} terms at most.")
                 e = GD.norm_term(f, _next_id(terms, "gt"))
                 terms.append(e)
                 what = f"Royalty shart: {e['party']} ({e['basis']})"
             elif op in ("update", "remove"):
                 cur = next((x for x in terms if x["id"] == eid), None)
                 if cur is None:
-                    raise FilmError("Kaun si shart? (entry=gt1 jaisa id)")
+                    raise FilmError("Which term? (an id like entry=gt1)")
                 if op == "remove":
                     terms.remove(cur)
                     what = f"Royalty shart hata: {cur['party']}"
@@ -1862,17 +1862,17 @@ def royalty_op(tenant: str, ref: str, op: str, actor: str = "owner", **f: Any) -
                     e = GD.norm_term({**cur, **{k: v for k, v in f.items() if k in keys}}, 0)
                     e["id"] = cur["id"]
                     terms[terms.index(cur)] = e
-                    what = f"Royalty shart badli: {e['party']}"
+                    what = f"Royalty term changed: {e['party']}"
             elif op == "receipt":
                 if len(recs) >= GD.RECEIPT_MAX:
-                    raise FilmError(f"{GD.RECEIPT_MAX} se zyada aay-lines nahi.")
+                    raise FilmError(f"{GD.RECEIPT_MAX} income lines at most.")
                 e = GD.norm_receipt(f, _next_id(recs, "rc"))
                 recs.append(e)
                 what = f"Aay jodi: {e['medium']} Rs {e['amount_inr']:,.2f}"
             elif op == "unreceipt":
                 cur = next((x for x in recs if x["id"] == eid), None)
                 if cur is None:
-                    raise FilmError("Kaun si aay-line? (entry=rc1 jaisa id)")
+                    raise FilmError("Which income line? (an id like entry=rc1)")
                 recs.remove(cur)
                 what = "Aay-line hatayi"
             else:

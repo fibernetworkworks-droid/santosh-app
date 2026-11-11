@@ -57,18 +57,18 @@ def _media(v: Any) -> list[str]:
 def norm_term(raw: dict[str, Any], seq: int) -> dict[str, Any]:
     party = _clean(raw.get("party"), 80)
     if not party:
-        raise ValueError("Kis ko milega (party) batao.")
+        raise ValueError("Say who gets it (party).")
     basis = _clean(raw.get("basis"), 20).lower()
     if basis not in BASES:
-        raise ValueError(f"basis inme se: {', '.join(BASES)}")
+        raise ValueError(f"basis must be one of: {', '.join(BASES)}")
     rate = _dec(raw.get("rate"))
     if rate is None:
-        raise ValueError("rate (sankhya) batao: contract se.")
+        raise ValueError("Give the rate (a number): from the contract.")
     if basis.startswith("percent") and rate > 100:
-        raise ValueError("percent 100 se zyada nahi ho sakta.")
+        raise ValueError("percent cannot be more than 100.")
     source = _clean(raw.get("source"), 160)
     if not source:
-        raise ValueError("source (contract ka clause / document) likhiye: bina source ke koi dar nahi ginta.")
+        raise ValueError("Write the source (the contract clause / document): no rate is counted without a source.")
     role = _clean(raw.get("role"), 20).lower()
     return {"id": f"gt{seq}", "party": party, "role": role if role in ROLES else "other", "guild": _clean(raw.get("guild"), 60),
             "basis": basis, "rate": float(rate), "threshold_inr": float(_dec(raw.get("threshold_inr")) or 0),
@@ -80,10 +80,10 @@ def norm_term(raw: dict[str, Any], seq: int) -> dict[str, Any]:
 def norm_receipt(raw: dict[str, Any], seq: int) -> dict[str, Any]:
     medium = _clean(raw.get("medium"), 20).lower()
     if medium not in MEDIA:
-        raise ValueError(f"medium inme se: {', '.join(MEDIA)}")
+        raise ValueError(f"medium must be one of: {', '.join(MEDIA)}")
     amt = _dec(raw.get("amount_inr"))
     if amt is None:
-        raise ValueError("amount_inr (kul aay, rupaye) batao.")
+        raise ValueError("Give amount_inr (total income, rupees).")
     net = _dec(raw.get("net_inr"))
     units = _dec(raw.get("units"))
     return {"id": f"rc{seq}", "medium": medium, "amount_inr": float(amt), "net_inr": float(net) if net is not None else None,
@@ -106,7 +106,7 @@ def statement(terms: list[dict[str, Any]], receipts: list[dict[str, Any]]) -> di
         base_g = sum((Decimal(str(r["amount_inr"])) for r in mine), Decimal("0"))
         why, amt = "", Decimal("0")
         if not mine:
-            why = "is dar par lagne wali koi aay nahi (medium / tareekh se)."
+            why = "no income falls under this rate (by medium / date)."
         elif t["basis"] == "flat_inr":
             amt = Decimal(str(t["rate"]))
         elif t["basis"] == "percent_of_gross":
@@ -114,14 +114,14 @@ def statement(terms: list[dict[str, Any]], receipts: list[dict[str, Any]]) -> di
             amt = over * Decimal(str(t["rate"])) / Decimal(100)
         elif t["basis"] == "percent_of_net":
             if any(r["net_inr"] is None for r in mine):
-                why = "net_inr kuch aay-lines mein nahi diya: net par dar tab ginti nahi hogi."
+                why = "net_inr is missing in some income lines: a rate on net cannot be counted then."
             else:
                 base_n = sum((Decimal(str(r["net_inr"])) for r in mine), Decimal("0"))
                 over = max(base_n - Decimal(str(t["threshold_inr"])), Decimal("0"))
                 amt = over * Decimal(str(t["rate"])) / Decimal(100)
         elif t["basis"] == "per_unit":
             if any(r["units"] is None for r in mine):
-                why = "units (ginti) kuch aay-lines mein nahi diya."
+                why = "units (count) is missing in some income lines."
             else:
                 units = sum((Decimal(str(r["units"])) for r in mine), Decimal("0"))
                 amt = units * Decimal(str(t["rate"]))
@@ -143,5 +143,5 @@ def statement(terms: list[dict[str, Any]], receipts: list[dict[str, Any]]) -> di
     return {"lines": lines, "by_party": [{"party": k, "amount_inr": _r(v)} for k, v in sorted(parties.items(), key=lambda x: -x[1])],
             "total_inr": _r(total), "gross_receipts_inr": _r(sum((Decimal(str(r["amount_inr"])) for r in receipts), Decimal("0"))),
             "problems": notes,
-            "note": "Yeh aapke likhe contract-dar se hisaab hai, kisi guild ya society ki dar-suchi nahi. Contract aur accountant se milaiye; "
-                    "Hoola kuch bhejta, bharta ya chukata nahi. Waterfall mein deduction ke roop mein is jod ko daal sakte hain."}
+            "note": "This is a calculation from the contract rates you wrote, not any guild's or society's rate list. Check it with the contract and your accountant; "
+                    "Hoola sends, files or pays nothing. You can put this total into the waterfall as a deduction."}

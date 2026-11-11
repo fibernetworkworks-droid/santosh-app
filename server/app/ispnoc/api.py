@@ -96,7 +96,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
         try:
             data = base64.b64decode(str(b.get("data_b64") or ""), validate=False)
         except (ValueError, TypeError):
-            raise HTTPException(400, "File padh nahi paaye.")
+            raise HTTPException(400, "Could not read the file.")
         return await run(S.import_inventory, tenant, data, str(b.get("name") or "network.csv"), str(b.get("kind") or "auto"))
 
     # ---- alarms + faults
@@ -108,7 +108,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
             try:
                 text = base64.b64decode(str(b["data_b64"])).decode("utf-8", errors="replace")
             except (ValueError, TypeError):
-                raise HTTPException(400, "File padh nahi paaye.")
+                raise HTTPException(400, "Could not read the file.")
         return await run(S.ingest, tenant, text, str(b.get("olt") or ""), str(b.get("source") or "paste"))
 
     @r.post("/analyse")
@@ -179,7 +179,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
     async def decide(cid: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
         b = _b(body)
         if "yes" not in b or not b.get("hash"):
-            raise HTTPException(400, "yes + hash chahiye (card se)")
+            raise HTTPException(400, "yes + hash are needed (from the card)")
         return await run(S.decide_change, tenant, cid, bool(b["yes"]), str(b["hash"]), str(b.get("reason") or ""), by_tap=True)
 
     @r.post("/changes/{cid}/done")

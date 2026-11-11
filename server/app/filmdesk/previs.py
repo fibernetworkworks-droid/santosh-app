@@ -23,7 +23,7 @@ TOL = 0.15                  # total vs target runtime
 
 def previs(shots: list[dict[str, Any]], scenes: list[dict[str, Any]], runtime_target_s: int | None = None) -> dict[str, Any]:
     if not shots:
-        return {"shots": 0, "note": "Pehle shot list banaiye (action=shots).", "flags": []}
+        return {"shots": 0, "note": "Make the shot list first (action=shots).", "flags": []}
     by_scene = {sc["id"]: sc for sc in scenes}
     order = {sc["id"]: sc["n"] for sc in scenes}
     ordered = sorted(shots, key=lambda x: (order.get(x.get("scene"), 999), str(x.get("id"))))
@@ -42,18 +42,18 @@ def previs(shots: list[dict[str, Any]], scenes: list[dict[str, Any]], runtime_ta
         timeline.append(row)
         sc = by_scene.get(sh.get("scene"))
         if not sh.get("camera"):
-            flag("measured", f"{sh.get('id')}: camera tay nahi hai (kaise film hoga?).")
+            flag("measured", f"{sh.get('id')}: the camera is not decided (how will it be filmed?).")
         if sh.get("dialogue"):
             need = len(str(sh["dialogue"]).split()) / SPEECH_WPS
             if dur + 0.5 < need:
-                flag("measured", f"{sh.get('id')}: dialogue ko ~{need:.1f} s chahiye par shot {dur} s ka hai: shot lamba kijiye ya line chhoti.")
+                flag("measured", f"{sh.get('id')}: the dialogue needs ~{need:.1f} s but the shot is {dur} s: make the shot longer or the line shorter.")
             if not sh.get("speaker"):
-                flag("measured", f"{sh.get('id')}: dialogue hai par bolne wala tay nahi.")
+                flag("measured", f"{sh.get('id')}: there is dialogue but the speaker is not decided.")
         if sc is not None:
             allowed = {c.lower() for c in sc.get("characters") or []}
             odd = [c for c in sh.get("characters") or [] if str(c).lower() not in allowed]
             if odd:
-                flag("measured", f"{sh.get('id')}: {', '.join(odd)} is scene ke kirdaar nahi hain.")
+                flag("measured", f"{sh.get('id')}: {', '.join(odd)} are not characters of this scene.")
     # scene by scene
     per_scene = []
     for sc in scenes:
@@ -63,35 +63,35 @@ def previs(shots: list[dict[str, Any]], scenes: list[dict[str, Any]], runtime_ta
         per_scene.append({"scene": sc["id"], "n": sc["n"], "heading": sc.get("heading", ""), "shots": len(mine), "shot_seconds": secs,
                           "script_seconds": int(sc.get("seconds") or 0), "cameras": cams})
         if not mine:
-            flag("measured", f"Scene {sc['n']} ({sc.get('heading', '')[:40]}): koi shot nahi hai.")
+            flag("measured", f"Scene {sc['n']} ({sc.get('heading', '')[:40]}): has no shot.")
             continue
         if len(mine) >= 2 and secs and sc.get("seconds") and abs(secs - int(sc["seconds"])) > max(6, 0.5 * int(sc["seconds"])):
-            flag("measured", f"Scene {sc['n']}: shot {secs} s ke hain par script ka andaaza {sc['seconds']} s: dono mein se ek badliye.")
+            flag("measured", f"Scene {sc['n']}: the shots add up to {secs} s but the script estimate is {sc['seconds']} s: change one of the two.")
         first = ordered_first(mine)
         if len(mine) >= 3 and first and first["camera"] and first["camera"] not in WIDE_CAMS:
-            flag("heuristic", f"Scene {sc['n']}: pehla shot wide/establishing nahi lagta: darshak ko jagah pata chalegi?")
+            flag("heuristic", f"Scene {sc['n']}: the first shot does not look wide/establishing: will the viewer know the place?")
         if len(mine) == 1 and sc.get("dialogue") and len(sc.get("dialogue") or []) >= 3:
-            flag("heuristic", f"Scene {sc['n']}: {len(sc['dialogue'])} dialogue par sirf ek shot: ek hi angle se poora scene?")
+            flag("heuristic", f"Scene {sc['n']}: {len(sc['dialogue'])} dialogue lines on only one shot: the whole scene from one angle?")
     run, prev = 0, None
     for r in timeline:
         run = run + 1 if r["camera"] and r["camera"] == prev else 1
         prev = r["camera"]
         if run == RUN_LIMIT:
-            flag("heuristic", f"{r['id']} tak {RUN_LIMIT} shot lagataar '{r['camera']}': thoda badal kar dekhiye.")
+            flag("heuristic", f"{r['id']}: {RUN_LIMIT} shots in a row are '{r['camera']}' up to here: try varying it.")
     if runtime_target_s and t:
         if abs(t - int(runtime_target_s)) > TOL * int(runtime_target_s):
-            flag("measured", f"Shots ka jod {t} s hai, aapka target {runtime_target_s} s ({t - int(runtime_target_s):+d} s).")
+            flag("measured", f"The shots add up to {t} s, your target {runtime_target_s} s ({t - int(runtime_target_s):+d} s).")
     mix: dict[str, int] = {}
     for r in timeline:
         if r["camera"]:
             mix[r["camera"]] = mix.get(r["camera"], 0) + 1
     gear = sorted({r["gear"] for r in timeline if r["gear"]})
     if "drone (flying permission and licensed pilot needed)" in gear:
-        flag("measured", "Drone shot hai: udaan ki ijazat aur licensed pilot chahiye (yeh aapka intezaam hai).")
+        flag("measured", "There is a drone shot: flying permission and a licensed pilot are needed (you arrange this).")
     return {"shots": len(timeline), "total_seconds": t, "runtime_target_s": runtime_target_s or None, "timeline": timeline,
             "per_scene": per_scene, "camera_mix": mix, "gear": gear, "flags": flags,
-            "note": "Yeh shot list ki jaanch hai. 180 degree rule, lens aur blocking ke liye floor plan aur insaani nazar chahiye; yahan nahi jaanche. "
-                    "Animatic dekhna ho to action=preview (free)."}
+            "note": "This is a check of the shot list. The 180 degree rule, lenses and blocking need a floor plan and a human eye; they are not checked here. "
+                    "To see an animatic, use action=preview (free)."}
 
 
 def ordered_first(rows: list[dict[str, Any]]) -> dict[str, Any] | None:
