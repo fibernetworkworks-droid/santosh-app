@@ -4,7 +4,7 @@ Owner, 11 Nov 2026: "NOW LETS WORK ON DOCUMENT HANDLING CAPABILITIES TOOLS :: ht
 site read all tools. also compare that what hoola existing has ... make a perfect plan that in backend hoola can use
 these tools to perform user asked operations ... make a ultimate plan".
 
-**Status:** D0-D6 built, shipped as v0.819.0 (built as 0.794 / 0.795 / 0.805 / 0.806 / 0.814 / 0.817) (owner: 'GO D0 WITH YOUR RECOMMENDATIONS'; decisions D1-D5 taken as recommended in §6). Next: D7.
+**Status:** D0-D7 built, shipped as v0.821.0 (built as 0.794 / 0.795 / 0.805 / 0.806 / 0.814 / 0.817 / 0.819) (owner: 'GO D0 WITH YOUR RECOMMENDATIONS' ... 'GO D7'; decisions D1-D5 taken as recommended in §6). D8 (iLoveAPI fallback) is not built: D1 = no. Next: the live run on her VPS (docs_setup, docs_check, pdf_card).
 
 This plan covers four things:
 
@@ -340,6 +340,8 @@ Fidelity for PDF → Word is graded on the card as "editable copy, layout approx
 - **smart_split:** the model names the boundaries ("invoice 1 ends p.3"), code splits there, and she sees the split list before the files are made.
 
 ### D7 — Workflows + batch + surfaces
+
+**As built (v0.821):** `dockit/flows.py` (rules, ready-made chains, her saved ones per tenant), `pdf_kit` actions flow / flow_save / flow_list / flow_delete, in-between files kept in memory (only the last step reaches her chat), batch with per-file failures named, Drive files as inputs (`drive:<ref>`), `kept_for` on every card, `dockit/desk.py` + `/console/documents`, phone `lib/ui/documents_screen.dart` (Scan to PDF = camera / gallery -> to_pdf -> ocr -> compress). NOT built: sending results to Drive / email from the page itself (she asks Hoola in chat; the existing email / drive tools take the file_id).
 
 - **Workflows:** `flow` chains, saved workflows ("CA ke liye: merge → numbers → compress 5 MB → protect"), batch on many files → ZIP.
 - **Console page** `/console/documents` and the **phone Documents screen** + Scan to PDF.

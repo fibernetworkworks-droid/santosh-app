@@ -2426,3 +2426,42 @@ reads the top resumed activity, force-stops it when it is not our app / the laun
 before each screen, before and after each tap, before the scroll check. Any of her real apps with a button that opens
 another app (calendar, contacts, Play, a browser, a share sheet) would have failed the same way. Tests:
 test_v0820_device_check_front.py (3, a fake adb on PATH). NOT VERIFIED until this push's appgen-check.
+
+## v0.821.0 HOOLA DOCUMENT KIT D7 — workflows, batch, the Documents page, the phone Documents screen (owner: "GO D7"; built as 0.819 → shipped as 0.821 after main took 0.820 PEECHHE KA APP, REBASE PROTOCOL, their base kept whole)
+
+D7 of `docs/DOCUMENT_KIT_PLAN.md`. Same `pdf_kit` tool (registry stays 627: main's 626 + pdf_kit), four new actions → 59.
+
+- **Workflows** (`server/app/dockit/flows.py`): a chain of pdf_kit steps run as ONE job. `pdf_kit action=flow steps=[...]` or
+  `workflow='<her saved name>'`, `save_as` saves it, `flow_save` / `flow_list` / `flow_delete`. Ready-made: ca (merge → page
+  numbers → under 5 MB → lock), portal (photos → PDF under 200 KB), scan (photos → searchable PDF → smaller), whatsapp, office.
+  Rules checked BEFORE anything runs: merge / to_pdf / interleave only as step 1; protect / split / to_images / to_word /
+  to_excel / to_powerpoint / to_text only last; never inside a chain: redact (needs her yes on a preview), unlock (password
+  page), AI steps, compare, sign_request, web_to_pdf; protect inside a chain = Hoola's password only; sign = place only; max 12
+  steps, 50 saved, 50 files a batch; a step never names its own input. Saved per tenant in `data/dockit_flows/<tenant>.json`.
+- **How a chain runs** (`agent/pdfkit_tools.py` `_d7` / `_chain`): every read / write in the tool now goes through `_src` /
+  `_dst`; during a chain a thread-local keeps each in-between file in memory, so only the final file(s) reach her chat (named
+  `<first file> (<workflow>)`). batch=true (or many files with a chain that does not start by joining them) = each file on its
+  own; one failing file is named in `failed` and never stops the others; more than 3 results = one ZIP. Password links from a
+  protect step come back as `password_links` (the password itself never in the result - tested).
+- **Drive inputs**: `file_id='drive:<ref from drive_find>'` reads her Drive file through `drive.service.fetch` (past the 25 MB
+  chat cap, up to the 200 MB engine cap).
+- **File life on every card**: `kept_for` = "24 hours - to keep it, email it or save it to her Drive (her tap)" on every result
+  that made a file (info reads do not get it).
+- **The Documents page** `/console/documents` (`docsapp.html`, `documents.js`, `documents.css`; switch `documents_page`; console
+  sidebar row "Documents", `/api/console/config` `documents`): every tool as a card in groups (Organize, Make smaller / fix, To
+  PDF, From PDF, Edit, Security, Sign & forms, With AI), search, a tool page with drag-drop upload (her order, move up / down),
+  its few options, "Run on each file (batch)", the result with Download (the signed `/api/pc/files` link), "Use next" (the
+  result becomes the next tool's input), redaction preview → "Remove for good", smart split → "Split this way"; Workflows page:
+  hers + ready-made, build (steps + key=value options), save, delete, run. Server: `dockit/desk.py` - GET /api/dockit/tools
+  (the grid), POST /api/dockit/upload (the chat's own file store and checks), POST /api/dockit/run (the SAME pdf_kit as the
+  owner, results land in her 'Hoola updates' chat too, every made file gets its signed download URL), GET/POST/DELETE
+  /api/dockit/flows. A password is never typed on the page.
+- **Phone** `lib/ui/documents_screen.dart` (Profile > Documents): the tool list read from /api/dockit/tools, a tool page (pick
+  files, options, batch, result with Open), Workflows (run, long-press to delete), **Scan to PDF** (camera / gallery shots in
+  order → to_pdf A4 → ocr (switch) → compress, as one flow).
+- **Proof card** 69/69 here (+ flow_chain, flow_batch, flow_rules). **Tests** `test_v0821_dockit_d7.py` (15 incl. a real-browser
+  walk: grid → compress → merge in her order → save a workflow → run the CA chain → the password link; phone width).
+- FOUND while building: a visually hidden file input positioned absolute without a positioned parent made the whole page taller
+  than the window (fixed); files carried silently from one tool to the next (now only "Use next" carries one).
+- NOT VERIFIED: nothing ran on her VPS; the phone screen compiles first on CI; sending a result to Drive / email from the page
+  itself is not built (she asks Hoola; the email / drive tools take the file_id).

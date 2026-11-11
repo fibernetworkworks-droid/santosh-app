@@ -3026,3 +3026,12 @@ Task ID: v0.819.0 WHITEBOOKS PASTE CHECK (built as 0.814)
 Task: owner ran vps-ops wb_check (run 42986671553): all keys set, every product refused WB_ERR_9001.
 Work Log: requests re-read against the specs (match); values cleaned before use; wb_check prints a paste check (no values) + an activation hint; EWB refusal named; 2 tests.
 Stage Summary: on branch claude/exciting-hawking-113x8i. Next: she re-checks the paste lines / asks WhiteBooks to activate sandbox access, then wb_check again.
+
+---
+Task ID: DOCKIT-D7
+Agent: Claude Code (session claude/vigilant-heisenberg-4m7742)
+Task: HOOLA DOCUMENT KIT D7 (owner: "GO D7") - workflows + batch, Drive inputs, the 24 h file life on every card, the Documents page /console/documents + /api/dockit/*, the phone Documents screen with Scan to PDF.
+Work Log:
+- dockit/flows.py (rules, ready-made, saved per tenant), pdfkit_tools flow actions with in-memory in-between files, dockit/desk.py, docsapp.html / documents.js / .css, sidebar row, lib/ui/documents_screen.dart + Profile entry.
+- Proof card 69/69; test_v0821_dockit_d7.py 15 incl. a browser walk; merged main v0.820.0 (their base kept whole), re-versioned to 0.821.0.
+Stage Summary: shipped as v0.821.0 on the branch; not run on the VPS; phone compiles first on CI.
