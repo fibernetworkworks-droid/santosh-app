@@ -100,4 +100,9 @@ def site_block(tenant: str) -> str:
         out += YW.selection_block(tenant, site)
     except Exception:
         pass
+    try:                                     # v0.802 GALTI PAKDO: the error she pressed Try to fix on, read once
+        from ..site import galti as G
+        out += G.pending_block(tenant, site)
+    except Exception:
+        pass
     return out

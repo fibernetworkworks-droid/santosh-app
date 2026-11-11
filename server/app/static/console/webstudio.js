@@ -111,6 +111,11 @@
 
   let SITES = [], SPECS = [], CUR = null, CARD = null, VIEW = 'preview', DEVICE = 'pc', LOOK = 0, EDIT = false;
   let POLL = null, SIG = '', PREFILL = '', BUSY = false, RO = null;
+  let IMPUI = null, IMP_BACK = null, IMP_DONE = '';     // HOOLA PROMPTING: the Improve sheet + her original words for Undo
+  try {                                                  // "Open in Web Studio" from the Prompting page: lands in the box, never sent
+    const d = localStorage.getItem('hoola.prompt.toWeb');
+    if (d) { localStorage.removeItem('hoola.prompt.toWeb'); PREFILL = String(d).slice(0, 2000); if (location.hash && location.hash !== '#/') location.hash = '#/'; }
+  } catch (e) { /* private window */ }
   /* v0.683 the 1,00,000-prompt template library: her filters, the rows shown, the template she picked */
   const TPL = {q: '', sector: '', kind: '', style: '', rows: [], total: 0, all: 100000, meta: null, t: null};
   let TPLSEL = null;
@@ -266,6 +271,7 @@
           <div class="bar">
             <button class="b ghost" type="button" data-src="old">${ico('globe', 15)}Use my old site</button>
             <button class="b ghost" type="button" data-src="shot">${ico('pic', 15)}From a screenshot</button>
+            ${window.HoolaImprove ? `<button class="b ghost" type="button" data-improve title="See what Hoola understood and turn this into a complete website prompt">Improve</button>` : ''}
             <span class="sp"></span>
             <span class="mut sm mnote" id="wsModeNote">${mode === 'plan' ? 'Plan: a plan for you to check first' : 'Build: 3 full looks first'}</span>
             <div class="seg" role="group" aria-label="Mode"><button type="button" data-mode="build" aria-pressed="${mode === 'build'}">Build</button><button type="button" data-mode="plan" aria-pressed="${mode === 'plan'}">Plan</button></div>
@@ -606,6 +612,8 @@
     startLive(S(v.id));
     drawShell();
     openThread();
+    if (!same) { GALTI.site = S(v.id); GALTI.errors = []; GALTI.q = []; }
+    loadErrors();                                        // v0.802 GALTI PAKDO
   }
 
   const VIEWS = [['preview', 'Preview'], ['code', 'Code'], ['cloud', 'Cloud'], ['integrations', 'Integrations'], ['health', 'Health'], ['settings', 'Settings']];
@@ -621,6 +629,7 @@
         <section class="chat" aria-label="Chat with Hoola about this website">
           <div class="msgs" id="wsMsgs" aria-live="polite"></div>
           <div id="wsState" style="padding:0 18px"></div>
+          <div id="wsErr" style="padding:0 18px" aria-live="polite"></div>
           <form class="comp" data-form="thread"><label for="wsTh" class="sr">Message Hoola about this website</label>
             <div class="pills" id="wsPills" hidden></div>
             <div class="tray" id="wsTray" hidden></div>
@@ -777,9 +786,11 @@
 
       + (st === 'failed' || st === 'stopped' ? `<div class="edbar"><b>${st === 'failed' ? 'The last build stopped on a problem' : 'Building is paused'}</b><span class="ell">${esc(S(v.error))}</span><span class="sp"></span><button class="b sm pri" type="button" data-act="resume">${st === 'failed' ? 'Try again' : 'Continue'}</button></div>` : '')
       + (WORKING(v) ? `<div class="edbar"><span class="spin" aria-hidden="true"></span><span class="ell">${esc(S(b.now) || 'Updating your website…')}</span></div>` : '')
+      + '<div class="perrbar" id="wsPerr" role="alert" hidden></div>'
       + `<div class="stage">${v.preview ? frame(src, 'Website preview') : '<div class="empty">No preview yet.</div>'}</div>`
       + (EDIT ? '<div id="wsYW"></div>' : '');
     fit();
+    drawErrors();
     if (EDIT) ywDraw();                                  // v0.795 YEH WALA: the preview toolbar, style panel, draw layer
   }
 
@@ -1385,7 +1396,69 @@
     }, 2000);
   }
   function stopPoll() { if (POLL) { clearTimeout(POLL); POLL = null; } }
-  async function reload() { if (!CUR) return; try { CUR = await api('GET', `/api/sites/${enc(CUR.id)}`); drawState(); drawPane(); } catch (e) { toast(e.message, true); } }
+  async function reload() { if (!CUR) return; try { CUR = await api('GET', `/api/sites/${enc(CUR.id)}`); drawState(); drawPane(); loadErrors(); } catch (e) { toast(e.message, true); } }
+
+  /* ---------- v0.802 GALTI PAKDO (L6): the preview tells Hoola when it breaks; Try to fix follows a ladder ----------
+     The preview frame posts its errors (hoola-site.js, preview only); they are relayed with her login, one card per
+     fingerprint: Page error / Data error / Build problem, Show details, Try to fix (Ctrl+Enter), Ignore. After two
+     fixes that did not hold, the button becomes Plan for root cause (the server decides; the ledger rides the turn). */
+  const GALTI = {site: '', errors: [], q: [], t: null, open: {}};
+  addEventListener('message', ev => {
+    const d = ev.data;
+    if (!d || d.hoola !== 'perr' || !CUR) return;
+    const fr = APP.querySelector('.frame iframe'); if (!fr || ev.source !== fr.contentWindow) return;   // only her preview
+    if (GALTI.q.length < 20) GALTI.q.push({kind: S(d.kind), m: S(d.m), f: S(d.f), l: Number(d.l) || 0, s: S(d.s), p: S(d.p)});
+    clearTimeout(GALTI.t); GALTI.t = setTimeout(sendErrors, 1200);
+  });
+  async function sendErrors() {
+    const q = GALTI.q.splice(0); if (!q.length || !CUR) return;
+    try { const r = await api('POST', `/api/sites/${enc(CUR.id)}/preview-errors`, {items: q}); GALTI.errors = L(r.errors); drawErrors(); }
+    catch { /* the next load tries again */ }
+  }
+  async function loadErrors() {
+    if (!CUR) return;
+    try { GALTI.errors = L((await api('GET', `/api/sites/${enc(CUR.id)}/errors`)).errors); } catch { GALTI.errors = []; }
+    drawErrors();
+  }
+  function drawErrors() {
+    const box = $('#wsErr'); if (!box) return;
+    const es = L(GALTI.errors).filter(e => S(e.state) === 'open');
+    const seen = L(GALTI.errors).filter(e => S(e.state) === 'not_seen');
+    box.innerHTML = es.slice(0, 3).map((e, i) => `<div class="errcard" data-eid="${esc(S(e.id))}"${i === 0 ? ' data-first="1"' : ''}>
+        <div class="eh"><span class="ek ${esc(S(e.kind))}">${esc(S(e.title))}</span><span class="mut sm ell">${esc(S(e.page))} · seen ${esc(S(e.count))}×${e.version ? ' · v' + esc(S(e.version)) : ''}</span></div>
+        <p class="em">${esc(S(e.message))}</p>${e.note ? `<p class="mut sm">${esc(S(e.note))}</p>` : ''}
+        ${GALTI.open[e.id] ? `<div class="ed"><div class="kv"><span>Where</span><code class="ell">${esc(e.file ? `${S(e.file)}${e.line ? ':' + S(e.line) : ''}` : S(e.page))}</code></div>
+          ${e.stack ? `<pre class="est">${esc(S(e.stack))}</pre>` : ''}
+          ${L(e.attempts).length ? `<ol class="tries">${L(e.attempts).map(a => `<li>${esc(a.mode === 'plan' ? 'Plan' : 'Fix')} from v${esc(S(a.from_version))} · ${esc(S(a.result) || 'waiting for the next preview')}</li>`).join('')}</ol>` : ''}</div>` : ''}
+        <div class="inl"><button type="button" class="b sm pri" data-act="err-fix" data-id="${esc(S(e.id))}" title="Ctrl+Enter">${S(e.next) === 'plan' ? 'Plan for root cause' : 'Try to fix'}</button>
+          <button type="button" class="b sm" data-act="err-more" data-id="${esc(S(e.id))}" aria-expanded="${!!GALTI.open[e.id]}">${GALTI.open[e.id] ? 'Hide details' : 'Show details'}</button><span class="sp"></span>
+          <button type="button" class="b sm ghost" data-act="err-ign" data-id="${esc(S(e.id))}">Ignore</button></div></div>`).join('')
+      + (es.length > 3 ? `<p class="mut sm">${es.length - 3} more problem(s) · website_dekho can list them all</p>` : '')
+      + (seen.length && !es.length ? `<p class="errok">${ico('check', 12)} ${seen.length === 1 ? 'The last problem' : seen.length + ' problems'} not seen since v${esc(S(CUR?.version))}</p>` : '');
+    const bar = $('#wsPerr');
+    if (bar) {
+      const top = es[0];
+      bar.hidden = !top;
+      if (top) bar.innerHTML = `<span class="ek ${esc(S(top.kind))}">${esc(S(top.title))}</span><span class="ell"><b>This page hit a problem.</b> ${esc(S(top.message))}</span><span class="sp"></span>
+        <button type="button" class="b sm pri" data-act="err-fix" data-id="${esc(S(top.id))}">${S(top.next) === 'plan' ? 'Plan for root cause' : 'Try to fix'}</button>
+        <button type="button" class="b sm" data-act="err-more" data-id="${esc(S(top.id))}">Show details</button>`;
+    }
+  }
+  async function fixError(id) {
+    if (!CUR || THREAD.waiting) { if (THREAD.waiting) toast('Hoola is working; press Try to fix when this step ends.', true); return; }
+    try {
+      const r = await api('POST', `/api/sites/${enc(CUR.id)}/errors/${enc(id)}/fix`, {});
+      toast(S(r.say));
+      await ask(S(r.text), {mode: S(r.mode) === 'plan' ? 'plan' : 'build', hints: [`fixing a preview error (try ${S(r.attempt)}), details in your rules as error_to_fix`]});
+      loadErrors();
+    } catch (er) { toast(er.message, true); }
+  }
+  addEventListener('keydown', e => {                       // Ctrl+Enter = Try to fix the first problem (when the box is empty)
+    if (!(e.ctrlKey || e.metaKey) || e.key !== 'Enter') return;
+    const first = APP.querySelector('#wsErr .errcard[data-first]'); if (!first) return;
+    const t = $('#wsTh'); if (t && S(t.value).trim()) return;
+    e.preventDefault(); fixError(first.dataset.eid);
+  });
 
   /* ---------- the site's own Hoola thread (never the home chat) ----------
      v0.777 CHAT JAISA (built as 0.771) (L1 of docs/LOVABLE_STUDIO_PLAN.md): the thread rides the conversation's LIVE event stream
@@ -1915,6 +1988,14 @@
     const d = b.dataset;
     if (d.menu) { e.preventDefault(); openMenu(b, d.menu); return; }
     if (d.tpl) { openTpl(d.tpl); return; }
+    if ('improve' in d) {                       // HOOLA PROMPTING: what Hoola understood, as chips she can change; never a silent rewrite
+      const ta = $('#wsAsk'); if (!ta) return;
+      if (IMP_BACK !== null && ta.value === IMP_DONE) { ta.value = IMP_BACK; IMP_BACK = null; IMP_DONE = ''; b.textContent = 'Improve'; ta.focus(); return; }
+      const mine = ta.value;
+      if (!mine.trim()) { ta.focus(); toast('Write one line about the website first.'); return; }
+      IMPUI = IMPUI || window.HoolaImprove({api, esc, toast});
+      IMPUI.open(mine, {section: 'web', onUse: t => { ta.value = S(t).slice(0, 2000); IMP_BACK = mine; IMP_DONE = ta.value; b.textContent = 'Undo'; ta.focus(); }});
+      return; }
     if (d.act === 'tpl-more') { loadTpl(false); return; }
     if (d.mode) { store.set(MODE_KEY, d.mode); APP.querySelectorAll('[data-mode]').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.mode === d.mode)));
       const n = $('#wsModeNote'); if (n) n.textContent = d.mode === 'plan' ? 'Plan: a plan for you to check first' : 'Build: 3 full looks first'; return; }
@@ -1976,6 +2057,9 @@
       return;
     }
     if (act === 'edit-done') { EDIT = false; YW.strokes = []; YW.notes = []; await reload(); return; }
+    if (act === 'err-fix') return fixError(d.id);           // v0.802 GALTI PAKDO
+    if (act === 'err-more') { GALTI.open[d.id] = !GALTI.open[d.id]; return drawErrors(); }
+    if (act === 'err-ign') { try { await api('POST', `/api/sites/${enc(CUR.id)}/errors/${enc(d.id)}/ignored`, {}); } catch (er) { return toast(er.message, true); } return loadErrors(); }
     if (act && act.startsWith('pt-') || act === 'pill-x' || act === 'sty' || act.startsWith('cm-') || act.startsWith('dr-')) return ywAct(act, b);
     if (BUSY) return;
     const id = CUR ? enc(CUR.id) : '';

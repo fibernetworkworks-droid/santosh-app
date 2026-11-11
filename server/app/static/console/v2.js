@@ -137,19 +137,24 @@ IC.gamedesk = '<path d="M6 12h4M8 10v4M15 13h.01M18 11h.01M17.3 5H6.7A4.7 4.7 0 
 IC.socialdesk = '<path d="M18 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM6 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM18 22a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/>';   // v0.353 Social Desk
 let EMP = null;
 let SKH = null;         // v0.718 the HOOLA AI Video Learner (seekh.js) - opens from the AI Employees hub
+let HVO = null;         // v0.787 HOOLA VOCAL (vocal.js) - the voice studio, its own full page
 let HIV = null;         // v0.747 HOOLA INTERACTIVE (interactive.js) - the video studio, its own sidebar row
 let HCD = null;         // v0.748 HOOLA CODE (code.js) - Developer Sahayak as a console page
+let IMP = null, IMP_BACK = null, IMP_DONE = '';   // HOOLA PROMPTING: the Improve sheet (improve.js); her original text for Undo
+IC.prompting = '<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/>';
 let FLW = null;         // v0.751 HOOLA FLOW (flow.js) - the Kaan pack as a console page
 let FLOW_TEXT = '';   // v0.777 text from the Hoola Flow page waiting for the chat box
 let FMIC = null;        // v0.751 the chat box mic through Kaan (flow.js HoolaFlowMic)
 IC.code = '<path d="M8 7l-5 5 5 5M16 7l5 5-5 5M13.5 5l-3 14"/>';
 IC.flow = '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M8 21h8"/>';   // v0.751 HOOLA FLOW
+IC.vocal = '<path d="M4 10v4M8 6v12M12 3v18M16 7v10M20 10v4"/>';   // v0.787 HOOLA VOCAL: a sound wave
 IC.interactive = '<rect x="3" y="4" width="18" height="13" rx="2.5"/><circle cx="9" cy="10" r="2.2"/><path d="M5.8 15.2c.7-1.6 1.9-2.4 3.2-2.4s2.5.8 3.2 2.4"/><path d="M15 8.5l3 1.8-3 1.8z" fill="currentColor" stroke="none"/><path d="M8 20h8"/>';
 IC.seekh = '<path d="M2 5.5a2 2 0 0 1 2-2h9l2.5 2.5H20a2 2 0 0 1 2 2V16a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2z"/><path d="M10 9.5l4 2.5-4 2.5z" fill="currentColor" stroke="none"/>';   // v0.718 a video folder with a play
 let SK = null;         // v0.481 the Skill Desk (account menu > Skills)
 let CX = null;         // v0.774 the Connectors page (connectors.js): Composio apps, MCP servers, plugins, public APIs, limits
 IC.connectors = '<path d="M9 7V3M15 7V3M7 7h10v4a5 5 0 0 1-10 0zM12 16v5"/>';   // v0.774 a plug
 let FD = null;         // v0.565 the Film Desk (filmdesk.js)
+let DDK = null;        // v0.799 DESK ROOM (built as 0.796): the department desks (deptdesk.js) - Finance, Retail, Health Insurance, Construction
 let AIA = null;        // v0.772 HOOLA AI APPS (aiapps.js): AIs that answer her customers
 IC.aiapps = '<rect x="3" y="4" width="18" height="13" rx="3"/><path d="M8 21l2.5-4M7.5 9.5h.01M12 9.5h.01M16.5 9.5h.01M8 13c1.2 1 2.5 1.4 4 1.4s2.8-.4 4-1.4"/>';   // a chat bubble with a face
 IC.appdev = '<rect x="6" y="2.5" width="12" height="19" rx="3"/><path d="M10.5 18.5h3M9.5 9l-2 2 2 2M14.5 9l2 2-2 2"/>';   // v0.693 App Development (phone + code)
@@ -194,11 +199,12 @@ function go(v, arg) {
   if (v === 'creative' && CREATE) { CREATE.open(); return; }    // v0.259 Create = the full-screen Create Studio
   if (v === 'gamedev') { location.assign('/console/games' + (arg ? '#/game/' + encodeURIComponent(arg) : '')); return; }   // v0.783 Hoola Game Dev = its own app
   if (v === 'appdev') { location.assign('/console/apps' + (arg ? '#/app/' + encodeURIComponent(arg) : '')); return; }   // v0.693 App Studio = its own app
+  if (v === 'prompting') { location.assign('/console/prompting'); return; }   // HOOLA PROMPTING = its own page
   if (v === 'flow') { location.assign('/console/flow' + (arg ? '#/t/' + encodeURIComponent(arg) : '')); return; }   // v0.777 Hoola Flow = its own page, like Wispr Flow
   if (v === 'code') { location.assign('/console/code' + (arg ? '#/s/' + encodeURIComponent(arg) : '')); return; }   // v0.768 Hoola Code = its own page with its own sidebar
   if (v === 'webdev') { location.assign('/console/web' + (arg ? '#/site/' + encodeURIComponent(arg) : '')); return; }   // v0.649 Web Studio = its own app
   VIEW = v; $$('.view').forEach(x => x.hidden = x.id !== 'v-' + v);
-  $('#ttl').textContent = {chat: chatFolder(), aaj:'· Today', kaam:'· All tools', baat:'· Baat', main:'· Main', bana:'· Creations', project:'· Folder', arena:'· Design Arena', lab:'· Prayogshala', hire:'· AI Employees', seekh:'· Video Learner', interactive:'· Hoola Interactive', code:'· Hoola Code', seodesk:'· SEO Desk', socialdesk:'· Social Desk', caddesk:'· CAD Desk', gamedesk:'· Game Desk', archdesk:'· Architecture Desk', edudesk:'· Education Desk', skills:'· Skills', connectors:'· Connectors', aiapps:'· AI Apps', filmdesk:'· Film Desk', leadsdesk:'· Leads Desk'}[v] || '';
+  $('#ttl').textContent = {chat: chatFolder(), aaj:'· Today', kaam:'· All tools', baat:'· Baat', main:'· Main', bana:'· Creations', project:'· Folder', arena:'· Design Arena', lab:'· Prayogshala', hire:'· AI Employees', seekh:'· Video Learner', interactive:'· Hoola Interactive', code:'· Hoola Code', seodesk:'· SEO Desk', socialdesk:'· Social Desk', caddesk:'· CAD Desk', gamedesk:'· Game Desk', archdesk:'· Architecture Desk', edudesk:'· Education Desk', skills:'· Skills', connectors:'· Connectors', aiapps:'· AI Apps', filmdesk:'· Film Desk', leadsdesk:'· Leads Desk', deptdesk:'· Department desk'}[v] || '';
   if (v !== 'project') PJ?.draw();
   drawNav(); $('#app').classList.remove('drawer');
   if (v === 'aaj') drawToday(); if (v === 'main') drawMain(); if (v === 'baat') drawBaat();
@@ -209,6 +215,7 @@ function go(v, arg) {
   if (v === 'systems') ENT?.open($('#systems'), arg || 'erp');   // v0.453 an Enterprise employee's Open desk lands on its own role   // v0.396 CONNECT: her own ERP / CRM address + key
   if (v === 'hire') EMP?.hub($('#hire'));
   if (v !== 'interactive') HIV?.leave();
+  if (v !== 'vocal') HVO?.leave();
   if (v !== 'seekh') SKH?.leave();   // v0.785 the Video Learner stops polling when its page is left
   if (v !== 'flow') FLW?.leave();
   if (v !== 'connectors') CX?.leave();
@@ -217,6 +224,7 @@ function go(v, arg) {
   if (v === 'connectors') CX?.open($('#connectors'), arg);   // v0.774 the Connectors page
   if (v === 'flow') FLW?.open($('#flow'));   // v0.751 HOOLA FLOW
   if (v === 'seekh') SKH?.open($('#seekh'));   // v0.718 the HOOLA AI Video Learner (from the AI Employees hub)
+  if (v === 'vocal') HVO?.open();                          // v0.787 HOOLA VOCAL
   if (v === 'interactive') HIV?.open($('#interactive'));   // v0.747 HOOLA INTERACTIVE
   if (v === 'seodesk') EMP?.desk($('#seodesk'));
   if (v === 'socialdesk') EMP?.social($('#socialdesk'));
@@ -226,6 +234,7 @@ function go(v, arg) {
   if (v === 'edudesk') EMP?.edu($('#edudesk'));   // v0.453 Education, Research & Lab
   if (v === 'filmdesk') FD?.open($('#filmdesk'));   // v0.565 Film Desk
   if (v === 'leadsdesk') EMP?.leads($('#leadsdesk'));   // v0.686.0 Leads Desk (the Lead Generation employee)
+  if (v === 'deptdesk') DDK?.open($('#deptdesk'), arg);   // v0.799 DESK ROOM (built as 0.796): a department desk, opened on one employee
   if (v === 'skills') SK?.draw($('#skills'));   // v0.481 the Skill Desk
   if (v === 'creative') WORKSPACE?.open();
   if (v === 'creative') $('#ttl').textContent = '· Creative workspace';
@@ -348,6 +357,23 @@ async function enter() {
                           say: text => { go('chat'); msg.value = text; msg.dispatchEvent(new Event('input')); composer.requestSubmit(); }});
     if (!NAV.some(([k]) => k === 'hire')) NAV.unshift(['hire', 'AI Employees']);   // v0.443 her AI staff is the FIRST section
   }
+  if (CONFIG.prompting && window.HoolaImprove && !IMP) {   // HOOLA PROMPTING: a sidebar row + the Improve button in the chat box
+    IMP = HoolaImprove({api, esc, toast});
+    if (!NAV.some(([k]) => k === 'prompting')) NAV.splice(NAV.findIndex(([k]) => k === 'creative') + 1, 0, ['prompting', 'Hoola Prompting']);
+    const ib = $('#impBtn'), it = $('#impTxt');
+    ib.hidden = false;
+    const reset = () => { IMP_BACK = null; IMP_DONE = ''; it.textContent = 'Improve'; ib.title = 'See what Hoola understood and turn this into a complete prompt'; };
+    msg.addEventListener('input', () => { if (IMP_BACK !== null && msg.value !== IMP_DONE) reset(); });
+    ib.addEventListener('click', () => {
+      if (IMP_BACK !== null && msg.value === IMP_DONE) {          // Undo: her own words back, exactly as she typed them
+        const back = IMP_BACK; reset(); msg.value = back; msg.dispatchEvent(new Event('input')); msg.focus(); return; }
+      const mine = msg.value;
+      if (!mine.trim()) { msg.focus(); toast('Write a few words first.'); return; }
+      IMP.open(mine, {useText: p => (p.out.run.to === 'chat' ? p.out.run.text : p.out.prompt), onUse: t => {
+        msg.value = t; msg.dispatchEvent(new Event('input')); IMP_BACK = mine; IMP_DONE = msg.value;
+        it.textContent = 'Undo'; ib.title = 'Put my own words back'; msg.focus(); }});
+    });
+  }
   if (CONFIG.flow && window.HoolaFlow && !FLW) {   // v0.751 HOOLA FLOW: a row right under Create (with Interactive / Code)
     FLW = HoolaFlow({api, esc, toast, say: (text, send) => { go('chat'); msg.value = text; msg.dispatchEvent(new Event('input')); msg.focus(); if (send) composer.requestSubmit(); }});
     if (!NAV.some(([k]) => k === 'flow')) NAV.splice(NAV.findIndex(([k]) => k === 'creative') + 1, 0, ['flow', 'Hoola Flow']);
@@ -375,6 +401,15 @@ async function enter() {
     }});
     if (!NAV.some(([k]) => k === 'interactive')) NAV.splice(NAV.findIndex(([k]) => k === 'creative') + 1, 0, ['interactive', 'Hoola Interactive']);
   }
+  if (CONFIG.vocal && window.HoolaVocal && !HVO) {               // v0.787 HOOLA VOCAL: the voice studio, a row under Hoola Interactive
+    HVO = HoolaVocal({api, esc, toast, back: () => go('chat'), go: v => go(NAV.some(([k]) => k === v) ? v : 'chat'), upload: async file => {
+      let id = CONV;
+      if (!id) { const c = await api('POST', '/api/conversations?reuse=1'); id = c.id; }
+      const fd = new FormData(); fd.append('file', file, file.name);
+      return api('POST', `/api/conversations/${encodeURIComponent(id)}/files`, undefined, {form: fd});
+    }});
+    if (!NAV.some(([k]) => k === 'vocal')) { const at = NAV.findIndex(([k]) => k === 'interactive'); NAV.splice((at < 0 ? NAV.findIndex(([k]) => k === 'creative') : at) + 1, 0, ['vocal', 'Hoola Vocal']); }
+  }
   if (window.HoolaSeekh && !SKH) {               // v0.718 the Video Learner: stays on its page while Hoola works
     SKH = HoolaSeekh({api, esc, toast, open: (v, arg) => go(v, arg), live: () => $('#app').classList.add('open'),
                       chat: async id => { if (id && id !== CONV) { try { await openConv(id); } catch { /* the chat view still opens */ } } go('chat'); },   // v0.785 Answer opens the run's own chat
@@ -397,6 +432,9 @@ async function enter() {
     ENT = HoolaEnterprise({api, esc, toast});
   }
   if (window.HoolaFilmDesk && !FD) FD = HoolaFilmDesk({api, esc, toast});   // v0.565
+  if (window.HoolaDeptDesk && !DDK) DDK = HoolaDeptDesk({api, esc, toast, open: (v, arg) => go(v, arg),   // v0.799 DESK ROOM (built as 0.796)
+    ask: text => { go('chat'); msg.value = text; msg.dispatchEvent(new Event('input')); msg.focus(); },   // lands in the chat box, never sent by itself
+    title: t => { if (VIEW === 'deptdesk') $('#ttl').textContent = t; }});
   if (window.HoolaConnectors && !CX) {         // v0.774 Connectors: "Ask Hoola" lines go into the composer, never sent by themselves
     CX = HoolaConnectors({api, esc, toast, say: text => { go('chat'); msg.value = text; msg.dispatchEvent(new Event('input')); msg.focus(); }});
   }

@@ -26,6 +26,15 @@ a re-run of the node (a restart between its send and its checkpoint) finds the s
 the node writes the row and its stamp in one transaction). The record is a database row, not the checkpoint, so it
 survives the checkpoint being cleaned or never written.
 
+G6 (voice as a channel, agent/turnchannel.py). A call's brain ask runs through the same graph; voice.Call._delegate sets
+`CALL` (a ticket: the call, the record it runs on, the inbox row) around the job's task. The deliver node of that run
+fills the ticket (the record key, the result word, the run's G3 facts) and stamps the `call` channel `due`; the CALL
+then tells it - the tool answer when the run finished inside the call's first wait, else Call._late_result - through
+`once(key, "call", ...)`, so a result is told on the call exactly once and never from a stale outcome. While a live
+call holds the run's conversation the reply's push is recorded `held` (push.on_event's live-call gate kept it off the
+phone: she hears it). A call that ended before the result: the reply row + its push are the delivery, and the call's
+`call` channel is stamped `skipped` (told in the chat) so the next call does not tell it again.
+
 Nothing here runs when `chat_graph` is off (kaam_followup / turn_inbox ask `graph_on()` first)."""
 from __future__ import annotations
 
@@ -49,6 +58,10 @@ RESULTS = ("done", "partial", "stuck", "stopped", "failed")
 # kaam_followup._wake_turn: the finished job this wake turn reports (its record key, the job key + state, the title).
 # Read by the graph's deliver node (only for the same conversation - a nested turn elsewhere never takes it).
 NEWS: contextvars.ContextVar = contextvars.ContextVar("turndeliver_news", default=None)
+# G6: the live call that asked this run (voice.Call._delegate): {call, conv, origin, inbox, request} - the deliver
+# node adds {key, result, facts, did, cards, live, left}. A nested turn in another conversation never takes it.
+CALL: contextvars.ContextVar = contextvars.ContextVar("turndeliver_call", default=None)
+DUE, HELD, SKIPPED = "due", "held", "skipped"
 
 _ready_engine = None
 
@@ -312,6 +325,35 @@ def news_channels(key: str, tenant: str, conversation_id: str, text: str, job_ke
     if str(text or "").strip():
         once(key, "call", call)
     once(key, "ring", ring)
+
+
+def call_live(conversation_id: str, attached: bool = True) -> bool:
+    """G6: is a live call on this conversation (a call record / side record / the chat an old phone called on)?
+    `attached` = only one whose phone is attached; False = registered at all (what push._heard_on_call's gate reads)."""
+    try:
+        import sys as _sys
+        v = _sys.modules.get(__package__.rsplit(".", 1)[0] + ".voice")
+        if v is None:
+            return False
+        for _loop, c in list((getattr(v, "ACTIVE", {}) or {}).get(conversation_id, []) or []):
+            closed = getattr(c, "closed", None)
+            if closed is not None and closed.is_set():
+                continue
+            if not attached or getattr(c, "ws", True) is not None:
+                return True
+    except Exception:   # noqa: BLE001
+        log.debug("live call check failed", exc_info=True)
+    return False
+
+
+def fact_digest(facts: list | None) -> list[dict]:
+    """G6: the run's G3 facts as the call needs them (what the spoken-claim check judges by)."""
+    out = []
+    for f in facts or []:
+        if isinstance(f, dict) and f.get("tool"):
+            out.append({"tool": str(f.get("tool")), "effect": str(f.get("effect") or ""),
+                        "object": str(f.get("object") or "")[:120]})
+    return out[-60:]
 
 
 def target_chat(conversation_id: str, tenant: str) -> str:

@@ -77,6 +77,16 @@ gets the quiet note into her live call and the voice ring, each at most once (in
 jobs this reply told (the goal that ended during the run; a watched job that started and ended in it) are written as
 `job:<key>:<state>` aliases: kaam_followup asks THAT record instead of its timing guess (`_answered_since`), so a long
 job's final report is told exactly once, by this node, in the job's own chat.
+
+G6 (voice as a channel, `agent/turnchannel.py`). A call's brain ask (voice.Call._delegate -> turn_inbox.run_owned ->
+santosh.run_turn) is a run of THIS graph like any chat turn - its tools through the G1 ledger, its ticket + Stop (G2: a
+spoken "band karo" stops it like the Stop button), its G3 facts, its delivery record (G5). The call is its CHANNEL:
+prepare writes `channel` + `profile` (the call brain's speed choices) into the checkpoint, so a call ask resumed after
+a restart stays a call-brain run; `deliver` fills the call's ticket (`turndeliver.CALL`: the record key, the result
+word, the run's facts) and stamps the record's `call` channel `due` - the call itself then tells it once (the tool
+answer, or Call._late_result from the record, never from a stale LAST_OUTCOME), and while the call is live the
+reply's push is `held`; a call that ended leaves the result to the chat row + push and the next call does not repeat
+it. A call ask that acted on the chat's running long job reaches that job's thread (`_call_job_note`, G4).
 """
 from __future__ import annotations
 
@@ -107,7 +117,8 @@ except Exception:   # noqa: BLE001
 
 STATS = {"turns": 0, "fallback": 0, "no_checkpoint": 0, "resumed": 0, "cleaned": 0, "stopped_at_boundary": 0,
          "parked": 0, "copied": 0, "segments": 0, "job_resumed": 0, "job_fresh": 0, "job_gone": 0, "cut_parked": 0,
-         "jobs_forgotten": 0}
+         "jobs_forgotten": 0, "call_runs": 0, "call_resumed": 0, "call_held_push": 0, "call_job_notes": 0,
+         "call_jobs_told": 0, "call_gone": 0}
 _RESUMABLE = ("model", "tools", "check", "finish", "deliver", "carry")
 
 # G4: the goal a round of a long job continues (set by goal._continuation around its run_turn; taken once by run_steps)
@@ -141,6 +152,8 @@ class TurnState(TypedDict, total=False):
     result: str             # G5: the outcome as one word: done | partial | stuck | stopped | failed
     delivery: dict          # G5: {key, kind turn | news | job, target chat, jobs told}
     notified: dict          # G5: what she was told on which channel (chat / push / call / ring: state, time, row)
+    channel: str            # G6: "call" (a live call asked it / the call brain) or "chat" - agent/turnchannel.py
+    profile: dict           # G6: the channel's settings (the call brain's speed choices), checkpointed with the run
 
 
 class _Live:
@@ -157,6 +170,8 @@ class _Live:
         self.decisions: list = []
         self.used: dict = {}
         self.job: dict = {}                            # G4: the long job's counters (goal, segments, steps, seconds, mark)
+        self.channel = "chat"                          # G6: the run's channel + profile (set by prepare / resume)
+        self.profile: dict = {}
 
 
 _RUNS: dict[str, _Live] = {}
@@ -282,8 +297,17 @@ def _node(fn):
     return node
 
 
+def _channel(live: _Live) -> dict:
+    """G6: the run's channel and its profile (agent/turnchannel.py) - set once by prepare, restored by resume."""
+    from . import turnchannel
+    ch, brain = turnchannel.current(live.conversation_id)
+    live.channel, live.profile = ch, turnchannel.profile(live.settings, ch, brain)
+    return {"channel": live.channel, "profile": dict(live.profile)}
+
+
 async def _prepare(live: _Live, state: TurnState) -> dict:
     from . import santosh as S
+    chan = _channel(live)
     live.state = await S._steps_begin(live.conversation_id, live.ctx, live.history, live.settings, live.tenant_id,
                                       live.user_text)
     live.t = await S._turn_prepare(live.conversation_id, live.ctx, live.gender, live.history, live.settings,
@@ -293,7 +317,8 @@ async def _prepare(live: _Live, state: TurnState) -> dict:
     _judge(live)
     # a Stop that landed while preparing is seen at the model node's boundary (no model call is made)
     return _flag(live, {"messages": _snapshot(live.history), "ran_steps": 0, "route": "model", "prepared": True,
-                        "data": _data(live), **_g3(live), **_dnew(state.get("run_key", ""), live.conversation_id)})
+                        "data": _data(live), **_g3(live), **_dnew(state.get("run_key", ""), live.conversation_id),
+                        **chan})
 
 
 async def _model(live: _Live, state: TurnState) -> dict:
@@ -464,13 +489,21 @@ async def _deliver(live: _Live, state: TurnState) -> dict:
         row = row or chat.get("row")
         # 2. push: the reply's own `message` event already went through push.on_event and its gates (quiet hours,
         # a live call on the chat, the night hold) - recorded, never pushed a second time
+        # G6: a run a live call asked - while that call holds the conversation the push gate kept it off her phone
+        # (she hears it on the call): recorded `held`, so the record says where she was really told
+        cr = _call_ticket(live)
+        held = bool(cr) and D.call_live(c, attached=False)
         if chat.get("state") == D.SENT and not D.done(key, "push"):
-            D.stamp(key, "push", D.SENT, via="the reply's message event (push.on_event gates)")
-            D.STATS["push"] += 1
+            if held:
+                D.stamp(key, "push", D.HELD, via="heard on the live call (push.on_event's live-call gate)")
+                STATS["call_held_push"] += 1
+            else:
+                D.stamp(key, "push", D.SENT, via="the reply's message event (push.on_event gates)")
+                D.STATS["push"] += 1
         # 3. news (a wake report; a long job that ended in a background run): the live-call note + the ring, once each
         hers = actor == "owner" or actor.startswith("approved:")
         src = news or ({"job_key": mine["key"], "state": mine["state"], "title": mine.get("title", "")} if mine else {})
-        if (bool(news) or bool(mine and not hers)) and not S.VOICE_BRAIN_NOW.get():
+        if (bool(news) or bool(mine and not hers)) and not S.VOICE_BRAIN_NOW.get() and not cr:
             text = D.reply_text(row) or str(state.get("final_text") or "")
             D.news_channels(key, tenant, target, text, src.get("job_key", ""), src.get("state", ""),
                             src.get("title", ""), settings)
@@ -480,12 +513,121 @@ async def _deliver(live: _Live, state: TurnState) -> dict:
                 D.job_told(news["job_key"], news.get("state", ""), key, tenant, target, since=0.0)
             for j in jobs:                      # the jobs that ended during this run (their reports queue in it)
                 D.job_told(j["key"], j["state"], key, tenant, target, since=t0)
+        # 5. G6 voice as a channel: the call that asked tells it (voice.Call - the tool answer / _late_result), once,
+        # from this record; a call ask whose call is gone (resumed after a restart) is told by the chat row + push
+        if cr:
+            _call_deliver(live, state, cr, key, result, held, t0)
+        elif live.channel == "call" and not D.done(key, "call"):
+            D.stamp(key, "call", D.SKIPPED, why="the call that asked is gone - the chat row + push are the delivery")
+            STATS["call_gone"] += 1
         rec = D.get(key) or {}
         return {"result": result, "notified": rec.get("channels") or {},
                 "delivery": {"key": key, "kind": kind, "target": target, "jobs": [j["key"] for j in jobs]}}
     except Exception:   # noqa: BLE001
         log.exception("turn graph: the delivery record could not be written")
         return {"result": "", "delivery": {"key": key, "error": True}}
+
+
+def _call_ticket(live: _Live) -> dict | None:
+    """G6: the live call that asked THIS run (voice.Call._delegate's ticket), never one of another conversation."""
+    from . import turndeliver as D
+    t = D.CALL.get()
+    return t if isinstance(t, dict) and t.get("conv") == live.conversation_id else None
+
+
+def _call_deliver(live: _Live, state: TurnState, cr: dict, key: str, result: str, held: bool, t0: float) -> None:
+    """G6: the call channel of one run. The ticket gets the record key, the result word and the run's G3 facts (the
+    call tells it from these, once - voice.Call._late_result / the tool answer - and its spoken-claim check judges by
+    them); the record's `call` channel is `due` until the call says it. A call ask that acted on the chat's running
+    long job (kaam_plan via goal_tools._goal_for) reaches that job's thread (G4)."""
+    from . import santosh as S
+    from . import turndeliver as D
+    c = live.conversation_id
+    facts = D.fact_digest(live.facts)
+    did = sum(1 for f in facts if f["effect"] == "did")
+    cards = sum(1 for f in facts if f["effect"] == "card")
+    lo = S.LAST_OUTCOME.get(c) or {}
+    left = str((live.state or {}).get("left") or lo.get("left") or "")[:220]
+    cr.update(key=key, result=result, facts=facts, did=did, cards=cards, live=held, left=left,
+              text=str(state.get("final_text") or "")[:3000])
+    if not D.done(key, "call"):
+        D.stamp(key, "call", D.DUE, result=result, did=did, cards=cards, live=held, call=str(cr.get("call") or ""))
+    STATS["call_runs"] += 1
+    try:
+        _call_job_note(live, cr, key, t0)
+    except Exception:   # noqa: BLE001 - the job note never breaks the call's delivery
+        log.exception("call -> long job note failed")
+
+
+def _call_job_note(live: _Live, cr: dict, key: str, t0: float) -> None:
+    """G6 + G4 (v0.692 CALL PAR TEAM on the graph): a call ask that added to / moved / finished the chat's running long
+    job told that job's THREAD what it did - a history-only line in the chat (display None: never shown, never
+    pushed) that the job's next segment reads (turngraph._job_messages: the chat's rows since the segment ended), and,
+    when a segment of the job is running right now, the same line through the steer queue (taken at its next step).
+    A job the call FINISHED is aliased as told by this run, so the chat's wake report does not tell it again."""
+    from .. import callconv
+    from . import goal as _goal
+    from . import santosh as S
+    from . import steer as _steer
+    from . import turndeliver as D
+    from . import turnrun
+    c, tenant = live.conversation_id, live.tenant_id
+    chat = callconv.chat_of(c)
+    if not chat or chat == c:
+        return                              # the call ran on the chat itself: its own rows are already the chat's
+    plan = [x for x in (live.state or {}).get("calls") or [] if x.get("tool") == "kaam_plan" and x.get("ok")]
+    if not plan:
+        return
+    g = _goal.active_for(chat)
+    ended = [j for j in D.ended_jobs(chat, t0) if j["key"].startswith("goal:")]
+    if g is None and not ended:
+        return
+    acts = []
+    for x in plan[:6]:
+        a = x.get("args") or {}
+        bit = str(a.get("action") or "?")
+        if a.get("text"):
+            bit += f" '{str(a['text'])[:160]}'"
+        if a.get("n"):
+            bit += f" step {a['n']}"
+        if a.get("state") or a.get("outcome"):
+            bit += f" -> {a.get('state') or a.get('outcome')}"
+        acts.append(bit)
+    her = " ".join(str(cr.get("request") or live.user_text or "").split())[:300]
+    did = "; ".join(acts)
+    note = (f"[From her voice call, about the running job: she said '{her}'; the call did kaam_plan {did}. "
+            f"Take it into the job from your next step.]")
+    if turnrun.busy(chat) or S._locks[chat].locked():
+        # a segment running now takes it at its next step boundary; a row written now could land between its
+        # tool_use and tool_result (the v0.666 rule), so the row waits for the chat and is written only when the
+        # running segment did not take the line (a taken line already reached the job - never twice)
+        e = _steer.offer(chat, note)
+        t = asyncio.ensure_future(_job_note_later(chat, note, e))
+        _NOTE_TASKS.add(t)
+        t.add_done_callback(_NOTE_TASKS.discard)
+    else:
+        S._save(chat, "user", note, display=None)
+    STATS["call_job_notes"] += 1
+    for j in ended:                         # she heard it on the call (or got its push): no second report in the chat
+        D.job_told(j["key"], j["state"], key, tenant, chat, since=t0)
+        STATS["call_jobs_told"] += 1
+
+
+_NOTE_TASKS: set = set()
+
+
+async def _job_note_later(chat: str, note: str, e: dict) -> None:
+    """G6: the call's job line, once the chat's running segment has let go of the chat (see _call_job_note)."""
+    from . import santosh as S
+    from . import steer as _steer
+    try:
+        async with S._locks[chat]:
+            if e.get("taken"):
+                return
+            _steer.withdraw(chat, e)
+            S._save(chat, "user", note, display=None)
+    except Exception:   # noqa: BLE001
+        log.exception("call -> long job note (later) failed")
 
 
 def _job_ok(live: _Live) -> bool:
@@ -499,7 +641,8 @@ def _job_ok(live: _Live) -> bool:
     actor = getattr(live.ctx, "actor", "owner") or "owner"
     if actor == "wake" or not (_goal.hers(actor) or actor == "routine"):
         return False
-    return not S.VOICE_BRAIN_NOW.get()
+    # G6: the call brain channel never becomes a job segment (its profile says so - also after a resume)
+    return not (S.VOICE_BRAIN_NOW.get() or (live.profile or {}).get("brain"))
 
 
 def _job_goal(live: _Live) -> dict | None:
@@ -1028,6 +1171,11 @@ async def resume(conversation_id: str, inbox_id: str | None, ctx, gender: str, h
             history[:] = json.loads(json.dumps(saved))
         live = _Live(conversation_id, ctx, gender, history, settings, tenant_id, user_text)   # cv taken after ASK_NOW
         live.thread = th
+        live.channel = str(vals.get("channel") or "chat")       # G6: a call ask resumed after a restart stays a call
+        live.profile = dict(vals.get("profile") or {})          # ask - the same engine with the call brain's profile
+        if live.profile.get("brain") and not S.VOICE_BRAIN_NOW.get():
+            live.cv.run(S.VOICE_BRAIN_NOW.set, True)
+            STATS["call_resumed"] = STATS.get("call_resumed", 0) + 1
         live.state = state
         live.job = dict(data.get("__job") or {})
         t = await asyncio.create_task(S._turn_prepare(conversation_id, ctx, gender, history, settings, tenant_id,

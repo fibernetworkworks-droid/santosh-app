@@ -1,27 +1,10 @@
-# HOOLA — Multi-Session Worklog
-Task ID: v0.730.0 SHILP MANCH (the ArtCraft generation lane, W0)
-Agent: main (shilp lane)
-Task: owner "MAKE A PLAN FOR HOOLA AI THUS HOOLA USER CAN USE THIS" after the READ of github.com/storytold/artcraft; the plan's W0 (the lane, six actions, two doors, BYOK, ~43 tests; W1 SEVAK worker + W2 BHANDAR store wait on a real key).
-Work Log: REBASE PROTOCOL (planned v0.686, rebuilt on their v0.729 tip 53ab8a366, their base kept whole); agent/shilp_tools.py NEW (envelope, _http seam, _call status table, _ref_url wall, _no_tokens media-token refusal, _gen_body, _generate, _act_job/_act_jobs, _map_state, _act_status/_act_models, _error_of, _sync, SHILP_TOOLS spec); agent/tools.py registry 617 -> 618; config.py shilp_enabled + artcraft_api_key + artcraft_base_url; app/shilp/mcp_server.py NEW (the kaan wire, serverInfo hoola-shilp); test_v0730_shilp.py NEW (43, offline, the seam fake records calls); ritual_v0730.py swept (parser-stamp guard), pubspec 0.730.0+729, console stamps, APP_VERSION story, CLAUDE.md + HISTORY.md + WORKLOG mirrors.
-Stage Summary: pushed to main as v0.730.0 + tag; vps-ops deploy fired; live test = action=status zero-network + her first real generation once ARTCRAFT_API_KEY is in the VPS .env.
-Task ID: v0.694.0 WEB CLONE (rebuilt-from-spec lane)
-Agent: lane (webclone rebuild)
-Task: owner "DOES ALL WORK DONE -- DOES NOW HOOLA AI WILL CLONE ANY WEBSITE PERFECTLY" -> the deploy ask "PERFECT IS IT DEPLOYED".
-Work Log: the first rebuild sat built through their v0.686-v0.693 and was eaten by the sandbox recycle mid-flight (the 0.682.0 precedent); this lane rebuilt it from the spec onto their 8c11c130d HOOLA APP STUDIO tip: capture.py + endpoints_adapter.py + assemble.py + webclone_tools.py, the three admit.py seams, 30 tool-count pins healed, 224 version pins re-swept, the offline suite 21 cases green + the live example.com check.
-Stage Summary: pushed to main; the box still runs 0.685.0 - the paste-in runtime patch carries the same seams against it
 
-Task ID: v0.688.0 KAAM MANCH (the OWL work-discipline port)
-Agent: main (kaam laws lane)
-Task: owner "GO" on the OWL deploy plan (download/HOOLA_OWL_DEPLOY_PLAN.md, 6 decisions locked: laws+tips shape, KAAM MANCH name, all lanes, default ON + caps, no new tool, ~30 tests).
-Work Log: REBASE PROTOCOL (planned v0.686, shipped on their v0.687 tip c78c2164c, their base kept whole); server/app/agent/kaam_laws.py NEW (~150 LOC, stdlib-re only); prompts.py _kaam_tips() appended post-cut in system_text (both paths); santosh.py the ledger note at natural turn end + the done backstop in _pakka_check; config.py kaam_enabled + kaam_ledger_enabled (default on); test_v0688_kaam_manch.py NEW (32, offline); the v0.221 full-guide contract test re-pinned to SYSTEM+tips (off = old identity); ritual_v0688.py swept (parser-stamp guard), pubspec 0.688.0+687, console stamps, APP_VERSION story, CLAUDE.md + HISTORY.md + WORKLOG mirrors; battery green, jharokha 22 reds proven pre-existing (missing Chromium, stash run).
-Stage Summary: pushed to main as v0.688.0 + tag; vps-ops deploy fired; live test = her first (Kaam:) receipt line under a worked answer.
-Task ID: v0.680.0 SAVE THE STATE (P9 HOOLA ADOPT live)
-Agent: main (aep adoption lane)
-Task: owner "PERFECT. IT IS NOW LIVE ON HOOLA AI --- SAVE THE STATE" after the P9 AEP adoption deploy.
-Work Log: branch stable-2026-11-08-aep-v680 cut at 00aa1dac9 (v0.680.0, pubspec 0.680.0+679) and pushed; the deploy was fired this session through vps-ops > deploy (run 42394254940, success in ~50 s, the job took the DB backup before the restart); CLAUDE.md checkpoint entry added. Live proof at the save: healthz ok true / version 0.680.0; anonymous POST /api/aep/turn -> 401; anonymous GET /api/aep/runs -> 401; P9 suite re-run 15/15 green at this exact commit.
-Stage Summary: pushed to main; the AEP turn lane is LIVE behind user auth; first real signed-in turn + aep_trace flip + phone rendering of the 'aep'-sourced reply still to be seen on her device.
 
 ---
+Task ID: v0.799.0 DESK ROOM (built as 0.796)
+Task: owner "employees built but not in the web console - check first, then build category-wise in the console".
+Work Log: audit (31 live employees with a dead Open desk); employee/deskroom.py (forms from each tool's own schema, run via chat dispatch); deptdesk.js + ddk- styles; Kaan -> Hoola Flow; 8 tests incl. a browser walk; screenshots checked light / dark / phone.
+Stage Summary: merged to main as v0.799.0 on her "MERGE TO MAIN AND DEPLOY"; server + console only. Next: phone desks for the same 31 (they open the SEO desk on the phone) on her GO.
 
 # HOOLA — Multi-Session Worklog
 
@@ -2940,7 +2923,40 @@ Task: owner "GO L5" - preview toolbar (S / T / D / C), selected elements to the 
 Work Log: site/yehwala.py (selection, comments table, markup screenshot); edit.style + hs-u-* utilities; hoola-edit.js modes; Studio toolbar / pills / style panel / draw / comments; 6 tests incl. a browser walk.
 Stage Summary: pushed; server deploy only. Next: L6 GALTI PAKDO (preview error collector + Try to fix) on her GO.
 
+
+---
+Task ID: HOOLA-VOCAL
+Date: 2026-11-11
+Task: Hoola Vocal - an ElevenLabs-style voice studio (owner named github.com/debpalash/VoiceStudio to clone)
+Done: v0.800.0 (built as 0.787). VoiceStudio read: AGPL-3.0 + CC-BY-NC weights -> feature map only, no code copied.
+Built server/app/vocal/ (service + 20 routes) on Hoola's own engines and static/console/vocal.js (twelve pages, shared design block).
+Fixed a live bug in Hoola Interactive too: tabs used data-v, which the console's global click handler sends to go().
+Not verified: engines faked in tests; no real voice heard; clone / design need the GPU lab. Plan: docs/HOOLA_VOCAL_PLAN.md.
+Next: she deploys, opens Hoola Vocal, makes one line of speech; her decision on the GPU lab and on the three missing models.
+
+---
+Task ID: v0.802.0 GALTI PAKDO (L6)
+Task: owner "GO L6" - E4 preview error collector + error cards + Try to fix + the debugging ladder with the attempts ledger.
+Work Log: hoola-site.js preview-only collector + build's section catch -> __hoolaErr; site/galti.py (site_errors, ledger, try_fix, pending block); 4 routes; website_dekho what=errors; Studio cards + preview bar + Ctrl+Enter; 9 tests incl. the planted-error walk (fixed on try 1).
+Stage Summary: pushed; server deploy only. Next: L7 WAPAS (versions before launch: restore any, bookmark, undo per reply, per-version diff) on her GO.
+
 Task ID: v0.798.0 HOOLA CODE PHASE 5 (built as 0.794; re-versioned on merge: PROMPT NAAP took 0.794.0, YEH WALA 0.795.0, PRAYOGSHALA WAVE 7 0.796.0 and 3D SCENES + GAME TOOL HUB 0.797.0)
 Ask: GO PHASE 5.
 Built: devsahayak/around.py (schedules + trigger, share link, suggestion, reviewers' comments, end-of-run push), think + pass steps, public routes /hooks/{id} + /shared/{token}, page: Thinking view, Passes card, reviewers' card, ghost text, Scheduled page, share dialog, read-only page; 12 tests incl. 2 browser walks.
 Deploy: vps-ops deploy (server-only; no new pip; table devsahayak_schedules + five nullable columns self-heal). Not verified with a real model, GitHub comment feed or FCM.
+
+---
+Task ID: v0.804.0 HOOLA PROMPTING P1-P3 (built as 0.796; main had moved to 0.797.0, then 0.798.0)
+Ask: "GO P1 TO P3" (owner: test everything together later, after all the build work).
+Built: server/app/prompting/ (anatomy, brief, dialect, context, recipes, store, api), static/console/improve.js + improve.css (the Improve sheet: chat box, Web Studio, Create Image), /console/prompting (promptapp.html, prompting.js, prompting.css), sidebar row; 17 tests incl. 2 browser walks.
+Deploy: vps-ops deploy (server-only; no new pip; one new table prompt_saved self-heals). Next: P4 the outcome ledger on her GO.
+
+Task ID: v0.805.0 LANGGRAPH G6
+Ask: GO G6 (voice as a channel).
+Built: agent/turnchannel.py, call ticket in turndeliver, voice _delegate / _late_result / _check_spoken_claim on the record + facts, stop-words fix on calls; chat_graph still off; 11 tests.
+Deploy: vps-ops deploy (langgraph pip install from v0.761 if not done).
+
+Task ID: v0.806.0 HOOLA CODE PHASE 6 (built as 0.799; re-versioned on merge: their v0.799-v0.805 took the numbers meanwhile)
+Ask: GO PHASE 6.
+Built: devlab/net.py + netproxy.py (network levels, allow-list proxy, outside secrets, `python -m app.devlab net`, vps-ops lab_net_check), devsahayak/events.py (signed GitHub webhook events start scheduled tasks), multi-repo (other_repo tool + linked sessions), settings / composer / scheduled page parts, phone screen redrawn by a parallel agent; closed dialogs emptied; 10 tests incl. a real proxy and a browser walk.
+Deploy: vps-ops deploy, then lab_check, lab_net_check, then DEV_NET=true if all ok. Not verified on real Docker, with a real GitHub delivery, or on a phone.
