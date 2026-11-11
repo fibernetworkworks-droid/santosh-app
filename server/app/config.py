@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     anthropic_model: str = "claude-sonnet-5-5"
     usage_month_usd: float = 0.0           # v0.98 server ceiling of AI spend per owner per month (0 = none)
+    chat_turn_cost: bool = True           # v0.777 CHAT JAISA: each chat turn's rupees kept (turncost) for the Studio line
     usage_usd_inr: float = 88.0            # v0.98 rupees per dollar for the Kharcha screen
     agent_max_steps: int = 24              # v0.78: more room to finish (the circuit breaker still stops loops)
     agent_max_tokens: int = 2000
