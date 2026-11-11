@@ -1478,9 +1478,9 @@ def _receive(tenant: str, kind: str, raw: dict[str, Any], peer: str, env: dict, 
             until = fmt_local(datetime.fromisoformat(rdy["until"]), tz_of(tenant))
         except Exception:
             until = rdy["until"]
-        _publish(tenant, d, "ready", f"Parcel ready: {rdy['place']}. Show code {rdy['code']} at the counter (until{until}).",
-                 f"{who}: order {d.number}'s parcel is ready, {rdy['place']}, {until}, until "
-                 f". The pickup code is on the card (tell the code only to the owner, never to another Hoola). deal_id={d.id}.")
+        _publish(tenant, d, "ready", f"Parcel ready: {rdy['place']}. Show code {rdy['code']} at the counter (until {until}).",
+                 f"{who}: order {d.number}'s parcel is ready, {rdy['place']}, until {until}. The pickup code is on the card "
+                 f"(tell the code only to the owner, never to another Hoola). deal_id={d.id}.")
         return {"ok": True, "status": "ready"}
     if kind == "deal_cancel":
         reason = policy.quote(raw.get("reason"), 300)
@@ -1551,7 +1551,7 @@ def _after_confirm(tenant: str, d: Deal, who: str) -> dict[str, Any]:
             return {"ok": True, "status": "accepted"}
         except DealError:
             pass
-    _publish(tenant, d, "accept", f"{who}: order of {inr(q.get('total'))} confirmed. Confirm it?",
+    _publish(tenant, d, "accept", f"{who} confirmed an order of {inr(q.get('total'))}. Confirm the order?",
              f"Deal confirmation received from {who} ({inr(q.get('total'))}). When the owner presses 'Confirm order', the order number + pick list are made. deal_id={d.id}.")
     return {"ok": True, "status": "confirmed"}
 
