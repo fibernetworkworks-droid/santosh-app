@@ -30,11 +30,11 @@ UNITS = {"bori": "BAG", "bag": "BAG", "bags": "BAG", "katta": "BAG", "kg": "KGS"
          "nag": "PCS", "box": "BOX", "peti": "BOX", "carton": "BOX", "dabba": "BOX", "packet": "PAC", "pack": "PAC", "dozen": "DOZ",
          "darjan": "DOZ", "tin": "NOS", "nos": "NOS", "bundle": "BDL", "gaddi": "BDL"}
 
-NEVER = ("Paisa kabhi Hoola nahi leta / nahi bhejta; payment graahak aapko seedha deta hai.",
-         "Bill, reminder ya order sirf aapki haan se bahar jaata hai.",
-         "E-way bill / e-invoice (IRN) portal par aap ya aapka CA banata hai; Hoola sirf data taiyaar karta hai.",
-         "Rs 2 lakh ya zyada nakad ek party se ek din / ek sauda mein nahi (Sec 221).",
-         "Cheque bounce ka notice vakil se jaanch kar bhejiye; Hoola sirf tareekh yaad dilata hai.")
+NEVER = ("Hoola never takes / sends money; the customer pays you directly.",
+         "A bill, reminder or order goes out only with your approval.",
+         "You or your CA make the e-way bill / e-invoice (IRN) on the portal; Hoola only prepares the data.",
+         "No cash of Rs 2 lakh or more from one party in one day / one deal (Sec 221).",
+         "Have a lawyer check a cheque bounce notice before sending it; Hoola only reminds you of the date.")
 
 
 def money(v) -> float:
@@ -124,22 +124,22 @@ def credit_check(outstanding: float, overdue: float, limit: float, new_amount: f
     """ok | warn | stop with the reason (she decides; Hoola only says)."""
     after = outstanding + new_amount
     if limit and after > limit:
-        return {"level": "stop", "text": f"Credit limit Rs {limit:,.0f} paar ho jayegi (baaki ke baad Rs {after:,.0f})."}
+        return {"level": "stop", "text": f"The credit limit of Rs {limit:,.0f} will be crossed (Rs {after:,.0f} pending after this)."}
     if oldest_overdue_days > 60:
-        return {"level": "stop", "text": f"Purana bill {oldest_overdue_days} din se baaki (Rs {overdue:,.0f})."}
+        return {"level": "stop", "text": f"An old bill has been pending for {oldest_overdue_days} days (Rs {overdue:,.0f})."}
     if overdue > 0:
-        return {"level": "warn", "text": f"Rs {overdue:,.0f} due date paar; order ke saath vasooli ki baat kariye."}
+        return {"level": "warn", "text": f"Rs {overdue:,.0f} is past the due date; talk about collection along with the order."}
     if limit and after > 0.8 * limit:
-        return {"level": "warn", "text": f"Limit ka {after * 100 / limit:.0f}% bhar jayega."}
-    return {"level": "ok", "text": "Credit theek."}
+        return {"level": "warn", "text": f"{after * 100 / limit:.0f}% of the limit will be used."}
+    return {"level": "ok", "text": "Credit is fine."}
 
 
 def cheque_steps(return_memo: date) -> dict:
     notice_by = return_memo + timedelta(days=30)
     return {"notice_by": notice_by.isoformat(),
-            "pay_window": "notice milne ke 15 din",
-            "complaint_window": "15 din khatam hone ke agle 30 din mein (apne bank branch ke magistrate ke paas)",
-            "say": f"Cheque bounce: {notice_by.strftime('%d %b %Y')} tak likhit demand notice (registered post), vakil se jaanch kar."}
+            "pay_window": "15 days from receipt of the notice",
+            "complaint_window": "a complaint within 30 days after those 15 days end (before the magistrate for your bank branch)",
+            "say": f"Cheque bounced: a written demand notice (registered post) by {notice_by.strftime('%d %b %Y')}, checked by a lawyer."}
 
 
 def tds_on_purchase(fy_purchases: float, this_bill: float, my_turnover: float, pan: bool = True) -> dict:

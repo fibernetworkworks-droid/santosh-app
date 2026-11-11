@@ -226,7 +226,7 @@ def save_settings(tenant: str, **kw: Any) -> dict:
         if kw.get("gstin"):
             g = str(kw["gstin"]).strip().upper()
             if not valid_gstin(g):
-                raise ThokError(f"GSTIN galat lagta hai: {g}")
+                raise ThokError(f"The GSTIN looks wrong: {g}")
             r.gstin, r.state = g, g[:2]
         for k in ("firm", "address", "phone", "bank", "terms"):
             if kw.get(k) is not None:
@@ -251,7 +251,7 @@ def save_settings(tenant: str, **kw: Any) -> dict:
 def _party(s, tenant: str, ref: str, kind: str = "") -> ThokParty:
     ref = str(ref or "").strip()
     if not ref:
-        raise ThokError("Kaun si party? Naam ya phone bataiye.")
+        raise ThokError("Which party? Give the name or phone.")
     p = s.get(ThokParty, ref)
     if p and p.tenant_id == tenant:
         return p
@@ -274,8 +274,8 @@ def _party(s, tenant: str, ref: str, kind: str = "") -> ThokParty:
     if len(hits) == 1:
         return hits[0]
     if len(hits) > 1:
-        raise ThokError("Is naam ki kai party: " + ", ".join(h.name for h in hits[:6]) + ". Poora naam ya phone bataiye.")
-    raise ThokError(f"Party '{ref}' nahi mili. Pehle jodiye.")
+        raise ThokError("Several parties with this name: " + ", ".join(h.name for h in hits[:6]) + ". Give the full name or phone.")
+    raise ThokError(f"Party '{ref}' not found. Add it first.")
 
 
 def save_party(tenant: str, name: str = "", party: str = "", kind: str = "", phone: str = "", gstin: str = "", address: str = "",
@@ -287,7 +287,7 @@ def save_party(tenant: str, name: str = "", party: str = "", kind: str = "", pho
         new = p is None
         if new:
             if not str(name).strip():
-                raise ThokError("Party ka naam chahiye.")
+                raise ThokError("The party needs a name.")
             p = ThokParty(tenant_id=tenant)
             s.add(p)
         if name:
@@ -299,7 +299,7 @@ def save_party(tenant: str, name: str = "", party: str = "", kind: str = "", pho
         if gstin:
             g = str(gstin).strip().upper()
             if not valid_gstin(g):
-                raise ThokError(f"GSTIN galat lagta hai: {g} (15 akshar, aakhri check akshar milna chahiye).")
+                raise ThokError(f"The GSTIN looks wrong: {g} (15 characters, and the last check character must match).")
             p.gstin, p.state = g, g[:2]
         elif state:
             p.state = str(state).zfill(2)[:2]
@@ -324,7 +324,7 @@ def save_party(tenant: str, name: str = "", party: str = "", kind: str = "", pho
         s.flush()
         pid = p.id
     v = party_view(tenant, pid)
-    return {"party": v, "say": f"{'Nayi party' if new else 'Update'}: {v['name']}" + (f" (GSTIN {v['gstin']})" if v["gstin"] else "")
+    return {"party": v, "say": f"{'New party' if new else 'Update'}: {v['name']}" + (f" (GSTIN {v['gstin']})" if v["gstin"] else "")
             + (f", limit {_rs(v['credit_limit'])}" if v["credit_limit"] else "") + "."}
 
 
@@ -399,14 +399,14 @@ def save_item(tenant: str, name: str, price=None, gst_pct=None, unit: str = "", 
               supplier: str = "", lead_days=None, low_at=None, tiers: list | None = None) -> dict:
     from ..net import deal
     if not str(name).strip():
-        raise ThokError("Item ka naam chahiye.")
+        raise ThokError("The item needs a name.")
     raw: dict[str, Any] = {"name": str(name).strip()}
     if price not in (None, ""):
         raw["price"] = R.money(price)
     if gst_pct not in (None, ""):
         g = float(gst_pct)
         if g not in R.GST_SLABS:
-            raise ThokError("GST ab sirf 0 / 5 / 18 / 40% (22 Sep 2025 se).")
+            raise ThokError("GST is now only 0 / 5 / 18 / 40% (from 22 Sep 2025).")
         raw["gst_pct"] = g
     if unit:
         raw["unit"] = R.UNITS.get(str(unit).lower(), str(unit).upper()[:10])
@@ -428,7 +428,7 @@ def save_item(tenant: str, name: str, price=None, gst_pct=None, unit: str = "", 
         if hsn:
             h = re.sub(r"\D", "", str(hsn))
             if len(h) not in (4, 6, 8):
-                raise ThokError("HSN 4, 6 ya 8 ank ka hota hai.")
+                raise ThokError("An HSN has 4, 6 or 8 digits.")
             m.hsn = h
         if cost not in (None, ""):
             m.cost = R.money(cost)
@@ -437,7 +437,7 @@ def save_item(tenant: str, name: str, price=None, gst_pct=None, unit: str = "", 
         if lead_days not in (None, ""):
             m.lead_days = max(0, min(int(lead_days), 90))
         meta = {"hsn": m.hsn, "cost": m.cost, "supplier_id": m.supplier_id, "lead_days": m.lead_days}
-    return {"item": {**it, **meta}, "say": f"{it['name']}: daam {_rs(it['price'])}/{it['unit'] or 'unit'}, GST {it['gst_pct']:g}%"
+    return {"item": {**it, **meta}, "say": f"{it['name']}: price {_rs(it['price'])}/{it['unit'] or 'unit'}, GST {it['gst_pct']:g}%"
             + (f", stock {it['qty']:g}" if it["qty"] is not None else "") + (f", HSN {meta['hsn']}" if meta["hsn"] else "") + "."}
 
 
@@ -466,10 +466,10 @@ def take_order(tenant: str, party: str, text: str = "", lines: list | None = Non
     from ..net import deal
     asked = list(lines or []) or R.parse_order(text)
     if not asked:
-        raise ThokError("Order mein item samajh nahi aaye. Aise likhiye: 'atta 10 bori, cheeni 5 bag'.")
+        raise ThokError("The items in the order were not understood. Write it like: 'atta 10 bori, cheeni 5 bag'.")
     cat = deal._catalog_items(tenant)
     if not cat:
-        raise ThokError("Pehle apni stock / daam list jodiye (item, daam, GST).")
+        raise ThokError("Add your stock / price list first (item, price, GST).")
     on = today(tenant)
     with session() as s:
         st = _st(s, tenant)
@@ -493,11 +493,11 @@ def take_order(tenant: str, party: str, text: str = "", lines: list | None = Non
             line = {"item": it["name"], "key": it["key"], "qty": qty, "unit": it["unit"] or a.get("unit") or "", "rate": R.r2(rate),
                     "list_rate": it["price"], "gst_pct": it["gst_pct"], "hsn": m.hsn if m else "", "taxable": taxable, **tx}
             if it.get("free") is not None and it["free"] < qty:
-                short.append(f"{it['name']} (hai {it['free']:g}, chahiye {qty:g})")
+                short.append(f"{it['name']} (have {it['free']:g}, need {qty:g})")
                 line["short"] = True
             out.append(line)
         if not out:
-            raise ThokError("Koi item stock list mein nahi mila: " + ", ".join(missing))
+            raise ThokError("No item was found in the stock list: " + ", ".join(missing))
         taxable = R.r2(sum(x["taxable"] for x in out))
         tax = R.r2(sum(x["tax"] for x in out))
         total = float(round(taxable + tax))
@@ -514,18 +514,18 @@ def take_order(tenant: str, party: str, text: str = "", lines: list | None = Non
         s.add(o)
         s.flush()
         v = _order_view(o, p)
-    say = f"{v['party']} ka order: {len(out)} item, {_rs(taxable)} + GST {_rs(tax)} = {_rs(total)}."
+    say = f"Order for {v['party']}: {len(out)} items, {_rs(taxable)} + GST {_rs(tax)} = {_rs(total)}."
     if missing:
-        say += " List mein nahi: " + ", ".join(missing) + "."
+        say += " Not in the list: " + ", ".join(missing) + "."
     if short:
-        say += " Stock kam: " + ", ".join(short) + "."
+        say += " Short stock: " + ", ".join(short) + "."
     if credit["level"] != "ok":
         say += " Credit: " + credit["text"]
     if ewb:
-        say += f" E-way bill chahiye (maal {_rs(limit)} se upar)."
+        say += f" An e-way bill is needed (goods above {_rs(limit)})."
     if no_hsn:
-        say += f" HSN ({hsn_need} ank) nahi: " + ", ".join(no_hsn) + "."
-    say += " Bill banaun? (aapki haan)"
+        say += f" No HSN ({hsn_need} digits) for: " + ", ".join(no_hsn) + "."
+    say += " Shall I make the bill? (needs your approval)"
     _publish(tenant, "thok_order", {"order_id": v["id"], "party": v["party"], "total": total, "level": credit["level"]}, conv)
     return {"order": v, "say": say}
 
@@ -546,9 +546,9 @@ def bill(tenant: str, order_id: str, bill_date: str = "", lines: list | None = N
     with _LOCK, session() as s:
         o = s.get(ThokOrder, order_id)
         if not o or o.tenant_id != tenant:
-            raise ThokError("Order nahi mila.")
+            raise ThokError("Order not found.")
         if o.status != "draft":
-            raise ThokError(f"Yeh order pehle se {o.status} hai ({o.number}).")
+            raise ThokError(f"This order is already {o.status} ({o.number}).")
         st = _st(s, tenant)
         p = s.get(ThokParty, o.party_id)
         ls = _j(o.lines, [])
@@ -587,13 +587,13 @@ def bill(tenant: str, order_id: str, bill_date: str = "", lines: list | None = N
     f = invoice_file(tenant, oid, conv)
     v = get_order(tenant, oid)
     ck = v["checks"]
-    say = f"Bill {v['number']} bana: {v['party']} {_rs(v['total'])}, due {v['due_date']}."
+    say = f"Bill {v['number']} made: {v['party']} {_rs(v['total'])}, due {v['due_date']}."
     if ck.get("eway", {}).get("needed"):
-        say += " E-way bill portal par banaiye (Part B: gaadi number) maal nikalne se pehle."
+        say += " Make the e-way bill on the portal (Part B: vehicle number) before the goods leave."
     if ck.get("einvoice"):
-        say += " Aapka turnover Rs 5 crore se upar: is B2B bill ka IRN (e-invoice) apne GSP / portal se lijiye."
-    text = (f"Namaste {v['party']}, bill {v['number']} dinank {v['bill_date']}: {_rs(v['total'])}. Bhugtan {v['due_date']} tak. "
-            f"Dhanyavaad. - {settings(tenant)['firm'] or 'aapke supplier'}")
+        say += " Your turnover is above Rs 5 crore: get the IRN (e-invoice) for this B2B bill from your GSP / the portal."
+    text = (f"Hello {v['party']}, bill {v['number']} dated {v['bill_date']}: {_rs(v['total'])}. Payment due by {v['due_date']}. "
+            f"Thank you. - {settings(tenant)['firm'] or 'your supplier'}")
     return {"order": v, "file": f["file"], "draft": {"to": v["phone"], "text": text}, "say": say}
 
 
@@ -608,7 +608,7 @@ def get_order(tenant: str, order_id: str) -> dict:
         if not o or o.tenant_id != tenant:
             o = s.scalars(select(ThokOrder).where(ThokOrder.tenant_id == tenant, ThokOrder.number == order_id)).first()
         if not o:
-            raise ThokError("Order / bill nahi mila.")
+            raise ThokError("Order / bill not found.")
         return _order_view(o, s.get(ThokParty, o.party_id))
 
 
@@ -617,11 +617,11 @@ def cancel_order(tenant: str, order_id: str, reason: str = "") -> dict:
     with _LOCK, session() as s:
         o = s.get(ThokOrder, order_id)
         if not o or o.tenant_id != tenant:
-            raise ThokError("Order nahi mila.")
+            raise ThokError("Order not found.")
         if o.status == "cancelled":
-            raise ThokError("Pehle se cancel.")
+            raise ThokError("Already cancelled.")
         if o.paid > 0:
-            raise ThokError("Is bill par paisa aa chuka hai; pehle payment hataiye ya credit note banaiye.")
+            raise ThokError("Money has already come in on this bill; remove the payment first or make a credit note.")
         was = o.status
         o.status = "cancelled"
         o.note = (o.note + f" | Cancel: {reason}")[:500]
@@ -632,8 +632,8 @@ def cancel_order(tenant: str, order_id: str, reason: str = "") -> dict:
             deal.set_stock(tenant, [{"name": x["item"], "add": x["qty"]} for x in ls])
         except deal.DealError:
             log.exception("stock back failed")
-        return {"say": f"Bill {num} cancel, maal stock mein wapas. GSTR-1 se pehle ho to bill hata dijiye; baad mein ho to credit note banaiye."}
-    return {"say": "Order cancel."}
+        return {"say": f"Bill {num} cancelled, goods back in stock. If it is before GSTR-1, remove the bill; if after, make a credit note."}
+    return {"say": "Order cancelled."}
 
 
 def orders(tenant: str, status: str = "", party: str = "", limit: int = 100) -> list[dict]:
@@ -743,7 +743,7 @@ def invoice_file(tenant: str, order_id: str, conv: str = "") -> dict:
     from .. import chatfiles
     v = get_order(tenant, order_id)
     if v["status"] != "billed":
-        raise ThokError("Pehle bill banaiye (aapki haan).")
+        raise ThokError("Make the bill first (needs your approval).")
     f = chatfiles.store(tenant, f"Bill-{v['number'].replace('/', '-')}.pdf", invoice_pdf(tenant, order_id), "application/pdf")
     _publish(tenant, "pc_file", {**f, "source": "thok", "title": f"Bill {v['number']}"}, conv)
     return {"file": f, "say": f"Bill {v['number']} PDF."}
@@ -796,7 +796,7 @@ def receive(tenant: str, party: str, amount, mode: str = "cash", on: str = "", c
     """A customer paid HER (cash / UPI / NEFT / cheque). Hoola only writes it down and fills the oldest bills."""
     amt = R.money(amount)
     if amt <= 0:
-        raise ThokError("Rakam bataiye.")
+        raise ThokError("Give the amount.")
     mode = (mode or "cash").lower()
     mode = "upi" if mode in ("gpay", "phonepe", "paytm", "upi") else "neft" if mode in ("neft", "rtgs", "imps", "bank") else \
         "cheque" if mode.startswith("ch") else "cash"
@@ -808,14 +808,14 @@ def receive(tenant: str, party: str, amount, mode: str = "cash", on: str = "", c
             same_day = sum(x.amount for x in s.scalars(select(ThokPayment).where(ThokPayment.party_id == p.id, ThokPayment.mode == "cash",
                                                                                 ThokPayment.on == d.isoformat())).all())
             if same_day + amt >= R.CASH_LIMIT:
-                warn = (f"Dhyaan: {p.name} se aaj nakad {_rs(same_day + amt)} ho gaya. Rs 2 lakh ya zyada nakad ek din / ek sauda mein lena "
-                        "Sec 221 (purana 269ST) mein mana hai; utni hi penalty lag sakti hai. Aage bank / UPI se lijiye.")
+                warn = (f"Note: cash from {p.name} today has reached {_rs(same_day + amt)}. Taking Rs 2 lakh or more in cash in one day / one deal "
+                        "is prohibited under Sec 221 (old 269ST); a penalty of the same amount can apply. From now on take it by bank / UPI.")
         cd = _date(cheque_date, d) if mode == "cheque" else None
         status = "pending" if mode == "cheque" else "cleared"
         if mode == "cheque" and not cheque_no:
-            raise ThokError("Cheque number bataiye.")
+            raise ThokError("Give the cheque number.")
         if cd and cd < d - timedelta(days=90):
-            raise ThokError("Cheque ki tareekh 3 mahine se purani: bank nahi lega.")
+            raise ThokError("The cheque date is more than 3 months old: the bank will not take it.")
         pay = ThokPayment(tenant_id=tenant, party_id=p.id, direction="in", mode=mode, amount=R.r2(amt), on=d.isoformat(),
                           cheque_no=str(cheque_no)[:12], cheque_date=cd.isoformat() if cd else "", bank=str(bank)[:60], status=status,
                           note=(note + (" | " + warn if warn else ""))[:500])
@@ -825,10 +825,10 @@ def receive(tenant: str, party: str, amount, mode: str = "cash", on: str = "", c
     allocate(tenant, pid)
     led = party_view(tenant, pid)["ledger"]
     if mode == "cheque":
-        say = (f"{name} ka cheque {cheque_no} {_rs(amt)} ({cd.isoformat()}) note kiya. Clear hone par bills mein judega"
-               + (f"; {cd.strftime('%d %b')} se pehle bank mein mat daaliye" if cd > d else "") + ".")
+        say = (f"Noted cheque {cheque_no} from {name}, {_rs(amt)} ({cd.isoformat()}). It is counted against the bills once it clears"
+               + (f"; do not deposit it in the bank before {cd.strftime('%d %b')}" if cd > d else "") + ".")
     else:
-        say = f"{name} se {_rs(amt)} {mode} mila. Ab baaki {_rs(led['outstanding'])}."
+        say = f"Received {_rs(amt)} from {name} by {mode}. Now pending {_rs(led['outstanding'])}."
     if warn:
         say += " " + warn
     return {"payment_id": payid, "ledger": led, "warning": warn, "say": say}
@@ -840,7 +840,7 @@ def cheque(tenant: str, payment_id: str, status: str, memo_date: str = "", reaso
     with _LOCK, session() as s:
         pay = s.get(ThokPayment, payment_id)
         if not pay or pay.tenant_id != tenant or pay.mode != "cheque":
-            raise ThokError("Cheque nahi mila.")
+            raise ThokError("Cheque not found.")
         pay.status = status
         memo = _date(memo_date, today(tenant))
         if status == "bounced":
@@ -850,11 +850,11 @@ def cheque(tenant: str, payment_id: str, status: str, memo_date: str = "", reaso
         name = s.get(ThokParty, pid).name
     allocate(tenant, pid)
     if status == "cleared":
-        return {"say": f"Cheque {no} clear: {_rs(amt)} {name} ke bills mein juda."}
+        return {"say": f"Cheque {no} cleared: {_rs(amt)} counted against {name}'s bills."}
     steps = R.cheque_steps(memo)
-    _publish(tenant, "thok_alert", {"text": f"{name} ka cheque {no} ({_rs(amt)}) bounce. " + steps["say"]})
-    return {"steps": steps, "say": f"{name} ka cheque {no} ({_rs(amt)}) bounce: bill phir se baaki. {steps['say']} Paise ke baad "
-            f"{steps['pay_window']}; na mile to {steps['complaint_window']}."}
+    _publish(tenant, "thok_alert", {"text": f"Cheque {no} from {name} ({_rs(amt)}) bounced. " + steps["say"]})
+    return {"steps": steps, "say": f"Cheque {no} from {name} ({_rs(amt)}) bounced: the bill is pending again. {steps['say']} For the money: "
+            f"{steps['pay_window']}; if it does not come, {steps['complaint_window']}."}
 
 
 def payments(tenant: str, party: str = "", status: str = "") -> list[dict]:
@@ -888,23 +888,23 @@ def outstanding(tenant: str, route: str = "") -> dict:
     total = R.r2(sum(r["outstanding"] for r in rows))
     over = R.r2(sum(r["overdue"] for r in rows))
     return {"parties": rows, "total": total, "overdue": over, "aging": tot,
-            "say": f"Bazaar mein {_rs(total)} baaki, jismein {_rs(over)} due date paar; 90+ din: {_rs(tot['90+'])}."}
+            "say": f"{_rs(total)} is pending in the market, of which {_rs(over)} is past the due date; 90+ days: {_rs(tot['90+'])}."}
 
 
 def reminder_drafts(tenant: str, route: str = "") -> dict:
-    firm = settings(tenant)["firm"] or "aapke supplier"
+    firm = settings(tenant)["firm"] or "your supplier"
     out = []
     with session() as s:
         ok = {p.id: p.whatsapp_ok for p in s.scalars(select(ThokParty).where(ThokParty.tenant_id == tenant)).all()}
     for r in outstanding(tenant, route)["parties"]:
         if r["overdue"] <= 0 or not ok.get(r["party_id"], True):
             continue
-        tone = "kripya aaj-kal mein bhugtan kar dijiye" if r["oldest_overdue_days"] <= 30 else \
-            "kaafi din ho gaye hain, kripya jaldi bhugtan karein taaki agla maal samay par bhej sakein"
+        tone = "please make the payment in the next day or two" if r["oldest_overdue_days"] <= 30 else \
+            "it has been quite a while, please pay soon so that we can send the next goods on time"
         out.append({"party": r["party"], "to": r["phone"], "overdue": r["overdue"],
-                    "text": f"Namaste {r['party']}, aapke {_rs(r['overdue'])} ke bill due date paar ho gaye hain (kul baaki {_rs(r['outstanding'])}); "
-                            f"{tone}. UPI / NEFT / cheque. Dhanyavaad - {firm}"})
-    return {"drafts": out, "say": f"{len(out)} party ke liye vasooli message draft (aap bhejengi)."}
+                    "text": f"Hello {r['party']}, your bills of {_rs(r['overdue'])} are past the due date (total pending {_rs(r['outstanding'])}); "
+                            f"{tone}. UPI / NEFT / cheque. Thank you - {firm}"})
+    return {"drafts": out, "say": f"Collection message drafts for {len(out)} parties (you send them)."}
 
 
 def route_plan(tenant: str, route: str = "") -> dict:
@@ -914,7 +914,7 @@ def route_plan(tenant: str, route: str = "") -> dict:
     o = outstanding(tenant, r)
     names = [p["name"] for p in parties(tenant, "customer", r)]
     return {"route": r, "collect": o["parties"], "visit": names,
-            "say": f"Aaj ({r}): {len(names)} dukaan, vasooli {_rs(o['total'])}" + (f" (due paar {_rs(o['overdue'])})" if o["overdue"] else "") + "."}
+            "say": f"Today ({r}): {len(names)} shops, to collect {_rs(o['total'])}" + (f" (past due {_rs(o['overdue'])})" if o["overdue"] else "") + "."}
 
 
 def statement_file(tenant: str, party: str, conv: str = "") -> dict:
@@ -929,7 +929,7 @@ def statement_file(tenant: str, party: str, conv: str = "") -> dict:
             if x.status == "cleared":
                 rows.append((x.on, f"{x.mode.upper()} {x.cheque_no}".strip(), 0.0, x.amount))
             elif x.status == "bounced":
-                rows.append((x.memo_date or x.on, f"Cheque {x.cheque_no} bounce (no credit)", 0.0, 0.0))
+                rows.append((x.memo_date or x.on, f"Cheque {x.cheque_no} bounced (no credit)", 0.0, 0.0))
     rows.sort()
     wb = openpyxl.Workbook()
     ws = wb.active
@@ -947,7 +947,7 @@ def statement_file(tenant: str, party: str, conv: str = "") -> dict:
     f = chatfiles.store(tenant, f"Ledger-{re.sub(r'[^A-Za-z0-9]+', '_', v['name'])[:30]}.xlsx", bio.getvalue(),
                         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
     _publish(tenant, "pc_file", {**f, "source": "thok", "title": f"Ledger {v['name']}"}, conv)
-    return {"file": f, "balance": bal, "say": f"{v['name']} ka khaata: baaki {_rs(bal)}. Party ko bhejna aapki haan se."}
+    return {"file": f, "balance": bal, "say": f"Ledger of {v['name']}: pending {_rs(bal)}. It is sent to the party only with your approval."}
 
 
 # ---------------------------------------------------------------- purchases, suppliers
@@ -957,7 +957,7 @@ def purchase(tenant: str, supplier: str, text: str = "", lines: list | None = No
     from ..net import deal
     raw = list(lines or []) or R.parse_order(text)
     if not raw:
-        raise ThokError("Bill ke item samajh nahi aaye: 'atta 50 bori @ 1450'.")
+        raise ThokError("The bill's items were not understood: 'atta 50 bori @ 1450'.")
     on = today(tenant)
     bd = _date(bill_date, on)
     cat = deal._catalog_items(tenant)
@@ -970,7 +970,7 @@ def purchase(tenant: str, supplier: str, text: str = "", lines: list | None = No
             name = str(a.get("item") or a.get("name") or "").strip()
             qty, rate = float(a.get("qty") or 0), R.money(a.get("rate"))
             if not name or qty <= 0 or rate <= 0:
-                raise ThokError(f"'{name or a}': maatra aur rate (@) dono chahiye.")
+                raise ThokError(f"'{name or a}': both the quantity and the rate (@) are needed.")
             it = deal.match(cat, name) if cat else None
             gst = float(a.get("gst_pct")) if a.get("gst_pct") not in (None, "") else (it["gst_pct"] if it else 0.0)
             taxable = R.r2(qty * rate)
@@ -1008,12 +1008,12 @@ def purchase(tenant: str, supplier: str, text: str = "", lines: list | None = No
     if paid not in (None, "") and R.money(paid) > 0:
         pay_supplier(tenant, pid, paid, "neft", bd.isoformat(), note=f"bill {bill_no}")
     new_items = [x["item"] for x in out if not x["known"]]
-    say = f"{pname} ka bill {bill_no}: {_rs(taxable)} + GST {_rs(tax)} = {_rs(total)}. Stock badha."
+    say = f"Bill {bill_no} from {pname}: {_rs(taxable)} + GST {_rs(tax)} = {_rs(total)}. Stock increased."
     if new_items:
-        say += " Nayi cheez (daam list mein jodiye, tab stock judega): " + ", ".join(new_items) + "."
-    say += (f" MSME supplier: {due.strftime('%d %b')} tak bhugtan (warna kharcha is saal nahi ghatega)." if msme else f" Bhugtan {due.strftime('%d %b')} tak.")
+        say += " New items (add them to the price list, then the stock is counted): " + ", ".join(new_items) + "."
+    say += (f" MSME supplier: pay by {due.strftime('%d %b')} (otherwise the expense is not deducted this year)." if msme else f" Payment by {due.strftime('%d %b')}.")
     if tds["applies"]:
-        say += f" TDS Sec 393(1): {_rs(tds['tds'])} kaatiye ({tds['rate']}% on {_rs(tds['on'])}) aur 26Q mein dikhaiye."
+        say += f" TDS Sec 393(1): deduct {_rs(tds['tds'])} ({tds['rate']}% on {_rs(tds['on'])}) and show it in 26Q."
     return {"purchase_id": bid, "lines": out, "total": total, "due_date": due.isoformat(), "tds": tds, "say": say}
 
 
@@ -1021,7 +1021,7 @@ def pay_supplier(tenant: str, supplier: str, amount, mode: str = "neft", on: str
     """She paid a supplier (Hoola never pays): note it against the oldest bills."""
     amt = R.money(amount)
     if amt <= 0:
-        raise ThokError("Rakam bataiye.")
+        raise ThokError("Give the amount.")
     d = _date(on, today(tenant))
     with _LOCK, session() as s:
         p = _party(s, tenant, supplier, "supplier")
@@ -1036,7 +1036,7 @@ def pay_supplier(tenant: str, supplier: str, amount, mode: str = "neft", on: str
             b.paid = R.r2(b.paid + put)
             left -= put
         pid, name = p.id, p.name
-    return {"say": f"{name} ko {_rs(amt)} diya, note kiya. Ab dena {_rs(party_view(tenant, pid)['supplier']['payable'])}."}
+    return {"say": f"Noted: {_rs(amt)} paid to {name}. Now payable {_rs(party_view(tenant, pid)['supplier']['payable'])}."}
 
 
 def payables(tenant: str) -> dict:
@@ -1054,7 +1054,7 @@ def payables(tenant: str) -> dict:
                         "due_date": b.due_date, "days_left": (dd - on).days, "amount": left})
     soon = [x for x in out if x["msme"] and x["days_left"] <= 5]
     return {"bills": out, "total": R.r2(sum(x["amount"] for x in out)), "msme_soon": soon,
-            "say": f"Suppliers ko dena {_rs(sum(x['amount'] for x in out))}" + (f"; MSME {len(soon)} bill 5 din mein / paar." if soon else ".")}
+            "say": f"Payable to suppliers: {_rs(sum(x['amount'] for x in out))}" + (f"; {len(soon)} MSME bills due within 5 days / overdue." if soon else ".")}
 
 
 # ---------------------------------------------------------------- stock speed, reorder, margins
@@ -1096,10 +1096,10 @@ def reorder(tenant: str, cover_days: int = 15) -> dict:
         if not sup:
             continue
         lines = "\n".join(f"- {r['item']}: {r['order_qty']:g} {r['unit']}" for r in rows)
-        drafts.append({"supplier": sup, "to": rows[0]["phone"], "text": f"Namaste, kripya yeh maal bhej dijiye:\n{lines}\nRate pichhle bill jaisa. - {firm}"})
+        drafts.append({"supplier": sup, "to": rows[0]["phone"], "text": f"Hello, please send these goods:\n{lines}\nRate as in the last bill. - {firm}"})
     n = sum(len(v) for v in by_sup.values())
     return {"suppliers": by_sup, "drafts": drafts,
-            "say": f"{n} item mangwane laayak (pichhle 30 din ki bikri + {cover_days} din ka stock)." + (" Supplier ko order draft taiyaar (aap bhejengi)." if drafts else "")}
+            "say": f"{n} items worth reordering (sales of the last 30 days + {cover_days} days of stock)." + (" Order drafts for the suppliers are ready (you send them)." if drafts else "")}
 
 
 def margins(tenant: str, days: int = 30) -> dict:
@@ -1127,8 +1127,8 @@ def margins(tenant: str, days: int = 30) -> dict:
     thin = [r["item"] for r in known if r["margin_pct"] is not None and r["margin_pct"] < 2]
     return {"items": rows, "sales": R.r2(sum(r["sales"] for r in rows)), "profit": R.r2(tot_p),
             "margin_pct": round(tot_p * 100 / tot_s, 1) if tot_s else None,
-            "say": f"Pichhle {days} din: bikri {_rs(sum(r['sales'] for r in rows))}" + (f", munafa {_rs(tot_p)} ({tot_p * 100 / tot_s:.1f}%)" if tot_s else "")
-            + (". Bahut patla munafa: " + ", ".join(thin[:5]) if thin else "") + "."}
+            "say": f"Last {days} days: sales {_rs(sum(r['sales'] for r in rows))}" + (f", profit {_rs(tot_p)} ({tot_p * 100 / tot_s:.1f}%)" if tot_s else "")
+            + (". Very thin profit: " + ", ".join(thin[:5]) if thin else "") + "."}
 
 
 # ---------------------------------------------------------------- day
@@ -1151,19 +1151,19 @@ def day(tenant: str) -> dict:
     o = outstanding(tenant)
     pay = payables(tenant)
     low = deal.low_stock(tenant)
-    parts = [f"Aaj bikri {_rs(sales)}, vasooli {_rs(coll)}"]
+    parts = [f"Sales today {_rs(sales)}, collected {_rs(coll)}"]
     if drafts:
-        parts.append(f"{drafts} order bill ke liye aapki haan ke intezaar mein")
+        parts.append(f"{drafts} orders waiting for your approval to bill")
     if deposit:
-        parts.append(f"{len(deposit)} cheque aaj bank mein daalne hain ({_rs(sum(d['amount'] for d in deposit))})")
+        parts.append(f"{len(deposit)} cheques to deposit in the bank today ({_rs(sum(d['amount'] for d in deposit))})")
     if bounced:
-        parts.append(f"{len(bounced)} bounce cheque: notice ki aakhri tareekh {bounced[0]['notice_by']}")
+        parts.append(f"{len(bounced)} bounced cheques: last date for the notice {bounced[0]['notice_by']}")
     if o["overdue"]:
-        parts.append(f"due paar {_rs(o['overdue'])}")
+        parts.append(f"past due {_rs(o['overdue'])}")
     if pay["msme_soon"]:
-        parts.append(f"MSME supplier ke {len(pay['msme_soon'])} bill 5 din mein")
+        parts.append(f"{len(pay['msme_soon'])} MSME supplier bills due within 5 days")
     if low:
-        parts.append("stock kam: " + ", ".join(x["name"] for x in low[:5]))
+        parts.append("low stock: " + ", ".join(x["name"] for x in low[:5]))
     return {"sales": sales, "collected": coll, "drafts": drafts, "deposit": deposit, "bounced": bounced, "outstanding": o["total"],
             "overdue": o["overdue"], "payables": pay["total"], "msme_soon": pay["msme_soon"], "low_stock": low,
             "say": "; ".join(parts) + "."}
@@ -1194,7 +1194,7 @@ def send_morning(tenant: str) -> dict:
     from ..net.service import home_conv
     d = day(tenant)
     r = route_plan(tenant)
-    text = "Thok: " + r["say"] + " " + d["say"].split("; ", 1)[-1] if r["visit"] else "Thok: " + d["say"]
+    text = "Wholesale: " + r["say"] + " " + d["say"].split("; ", 1)[-1] if r["visit"] else "Wholesale: " + d["say"]
     conv = home_conv(tenant)
     try:
         notify(conv, text)
