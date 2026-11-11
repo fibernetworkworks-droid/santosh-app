@@ -44,11 +44,11 @@ log = logging.getLogger("santosh.graphic")
 _LOCK = threading.RLock()
 MONEY_CARDS = ("discount",)
 CARD_KINDS = ("quote", "proof", "extra", "handover", "vendor", "invoice", "discount", "message")
-CARD_TITLE = {"quote": "Quotation client ko", "proof": "Proof client ko", "extra": "Extra revision round",
-              "handover": "Final files client ko", "vendor": "Print order printer ko", "invoice": "Invoice / paise maangna",
-              "discount": "Discount", "message": "Client ko message"}
-STATUS = {"brief": "Brief", "quoted": "Quote gaya", "accepted": "Kaam shuru", "proof": "Proof", "approved": "Client ki haan",
-          "delivered": "Files de di", "done": "Poora", "cancelled": "Radd"}
+CARD_TITLE = {"quote": "Quotation to client", "proof": "Proof to client", "extra": "Extra revision round",
+              "handover": "Final files to client", "vendor": "Print order to printer", "invoice": "Invoice / payment request",
+              "discount": "Discount", "message": "Message to client"}
+STATUS = {"brief": "Brief", "quoted": "Quote sent", "accepted": "Work started", "proof": "Proof", "approved": "Client approved",
+          "delivered": "Files delivered", "done": "Done", "cancelled": "Cancelled"}
 
 
 class GraphicError(Exception):
@@ -168,7 +168,7 @@ def actor_name(tenant: str, actor: str) -> str:
 
 def _owner_only(actor: str) -> None:
     if not is_owner(actor):
-        raise GraphicError("Yeh sirf owner kar sakti hain.")
+        raise GraphicError("Only the owner can do this.")
 
 
 def _root() -> Path:
@@ -252,7 +252,7 @@ def _load_file(tenant: str, file_id: str) -> tuple[str, bytes]:
         name, _m, data = ms.load_files(tenant, [{"type": "file", "file_id": file_id}])[0]
         return name, data
     except Exception as e:
-        raise GraphicError(f"File {file_id} nahi mili: {e}")
+        raise GraphicError(f"File {file_id} not found: {e}")
 
 
 def _fy(d: date) -> str:
@@ -319,27 +319,27 @@ def save_settings(tenant: str, actor: str = "owner", **kw: Any) -> dict:
         if kw.get("gstin") is not None:
             g = str(kw["gstin"]).strip().upper()
             if g and not R.gstin_ok(g):
-                raise GraphicError(f"GSTIN {g} sahi nahi lagta (check digit galat).")
+                raise GraphicError(f"GSTIN {g} does not look right (check digit is wrong).")
             st.gstin = g
         if kw.get("state") is not None:
             st.state = R.clean(kw["state"], 20)
         if kw.get("phone") is not None:
             p = str(kw["phone"]).strip()
             if p and not R.phone(p):
-                raise GraphicError("Phone 10 ankon ka mobile number likhiye.")
+                raise GraphicError("Phone: write a 10-digit mobile number.")
             st.phone = R.phone(p)
         if kw.get("email") is not None:
             st.email = R.clean(kw["email"], 120)
         if kw.get("upi_id") is not None:
             u = str(kw["upi_id"]).strip()
             if u and not re.fullmatch(r"[\w.\-]{2,}@[a-zA-Z]{2,}", u):
-                raise GraphicError("UPI ID naam@bank jaisa likhiye.")
+                raise GraphicError("Write the UPI ID like name@bank.")
             st.upi_id = u
         for k, lo, hi in (("gst_rate", 0, 28), ("advance_pct", 0, 100)):
             if kw.get(k) is not None:
                 v = _num(kw[k])
                 if v is None or not lo <= v <= hi:
-                    raise GraphicError(f"{k} {lo}-{hi} ke beech.")
+                    raise GraphicError(f"{k} {lo}-{hi} is the range.")
                 setattr(st, k, v)
         if "extra_round" in kw:
             st.extra_round = None if kw["extra_round"] in (None, "") else _num(kw["extra_round"])
@@ -347,7 +347,7 @@ def save_settings(tenant: str, actor: str = "owner", **kw: Any) -> dict:
             if kw.get(k) is not None:
                 v = _int(kw[k])
                 if v is None or not lo <= v <= hi:
-                    raise GraphicError(f"{k} {lo}-{hi} ke beech.")
+                    raise GraphicError(f"{k} {lo}-{hi} is the range.")
                 setattr(st, k, v)
         for k in ("handover_after_pay", "assign_copyright"):
             if kw.get(k) is not None:
@@ -360,7 +360,7 @@ def save_settings(tenant: str, actor: str = "owner", **kw: Any) -> dict:
             rl = kw["rules"] if isinstance(kw["rules"], list) else [x for x in str(kw["rules"]).split("\n")]
             st.rules = _dump([R.clean(x, 200) for x in rl if R.clean(x, 200)][:30])
         v = _settings_view(st)
-    return {"settings": v, "say": "Studio ke niyam save."}
+    return {"settings": v, "say": "Studio rules saved."}
 
 
 # ---------------------------------------------------------------- clients + their brand kits
@@ -382,7 +382,7 @@ def _client_view(c: GraphicClient, full: bool = True) -> dict:
 def _client(s, tenant: str, ref: str) -> GraphicClient:
     ref = (ref or "").strip()
     if not ref:
-        raise GraphicError("Kaunsa client? Naam ya C-001 bataiye.")
+        raise GraphicError("Which client? Give the name or C-001.")
     q = select(GraphicClient).where(GraphicClient.tenant_id == tenant)
     c = s.scalars(q.where(GraphicClient.id == ref)).first() or s.scalars(q.where(GraphicClient.number == ref.upper())).first()
     if c is None:
@@ -391,10 +391,10 @@ def _client(s, tenant: str, ref: str) -> GraphicClient:
         if not rows:
             rows = [x for x in s.scalars(q).all() if not x.forgotten and (low in x.name.lower() or low in x.business.lower())]
         if len(rows) > 1:
-            raise GraphicError(f"'{ref}' naam ke {len(rows)} client: number (C-001) bataiye.")
+            raise GraphicError(f"'{ref}' matches {len(rows)} clients: give the number (C-001).")
         c = rows[0] if rows else None
     if c is None:
-        raise GraphicError(f"Client '{ref}' nahi mila.")
+        raise GraphicError(f"Client '{ref}' not found.")
     return c
 
 
@@ -406,7 +406,7 @@ def client_save(tenant: str, ref: str = "", actor: str = "owner", **kw: Any) -> 
         else:
             name = R.clean(kw.get("name") or kw.get("business"), 120)
             if not name:
-                raise GraphicError("Client ka naam bataiye.")
+                raise GraphicError("Give the client's name.")
             n = len(s.scalars(select(GraphicClient.id).where(GraphicClient.tenant_id == tenant)).all()) + 1
             c = GraphicClient(tenant_id=tenant, number=f"C-{n:03d}", name=name)
             s.add(c)
@@ -421,14 +421,14 @@ def client_save(tenant: str, ref: str = "", actor: str = "owner", **kw: Any) -> 
         if kw.get("phone") is not None:
             p = str(kw["phone"]).strip()
             if p and not R.phone(p):
-                raise GraphicError("Client ka phone 10 ankon ka mobile likhiye.")
+                raise GraphicError("Client phone: write a 10-digit mobile.")
             c.phone = R.phone(p)
         if kw.get("email") is not None:
             c.email = R.clean(kw["email"], 120)
         if kw.get("gstin") is not None:
             g = str(kw["gstin"]).strip().upper()
             if g and not R.gstin_ok(g):
-                raise GraphicError(f"GSTIN {g} sahi nahi lagta.")
+                raise GraphicError(f"GSTIN {g} does not look right.")
             c.gstin = g
         if "tds_pct" in kw:
             v = kw["tds_pct"]
@@ -453,7 +453,7 @@ def client_save(tenant: str, ref: str = "", actor: str = "owner", **kw: Any) -> 
                     continue
                 h = BR.parse_color(str(val))
                 if not h:
-                    raise GraphicError(f"'{val}' rang samajh nahi aaya (#1565C0 ya laal / neela).")
+                    raise GraphicError(f"'{val}' colour not understood (#1565C0 or red / blue).")
                 cols[role] = h
             c.colors, c.colors_set = _dump(cols), True
         if isinstance(kw.get("contact"), dict):
@@ -470,7 +470,7 @@ def client_save(tenant: str, ref: str = "", actor: str = "owner", **kw: Any) -> 
             c.no_messages = bool(kw["no_messages"])
         s.flush()
         v = _client_view(c)
-    return {"client": v, "say": f"Client {v['number']} {v['name']} save."}
+    return {"client": v, "say": f"Client {v['number']} {v['name']} saved."}
 
 
 def client_logo(tenant: str, ref: str, data: bytes | None = None, file_id: str = "", name: str = "logo.png",
@@ -482,13 +482,13 @@ def client_logo(tenant: str, ref: str, data: bytes | None = None, file_id: str =
     if file_id:
         name, data = _load_file(tenant, file_id)
     if not data:
-        raise GraphicError("Logo ki file bhejiye.")
+        raise GraphicError("Send the logo file.")
     if filecheck.real_type(name, data).get("danger"):
-        raise GraphicError("Yeh file photo nahi lagti; Hoola ne nahi li.")
+        raise GraphicError("This file does not look like a photo; Hoola did not take it.")
     try:
         img, mime, px = RN.safe_image(data, 1200, keep_alpha=True)
     except Exception:
-        raise GraphicError("Logo khul nahi raha (PNG / JPG bhejiye; SVG / AI ko PNG export karke).")
+        raise GraphicError("The logo does not open (send PNG / JPG; export SVG / AI to PNG).")
     pal = BR.palette_from_image(img)
     with _LOCK, session() as s:
         c = _client(s, tenant, ref)
@@ -502,9 +502,9 @@ def client_logo(tenant: str, ref: str, data: bytes | None = None, file_id: str =
         if not c.colors_set:
             c.colors = _dump(BR.kit_colors(pal))
         v = _client_view(c)
-    say = f"{v['name']} ka logo save; rang mile: {', '.join(pal)}."
+    say = f"{v['name']} logo saved; colours found: {', '.join(pal)}."
     if px[0] < 500 and px[1] < 500:
-        say += f" Logo chhota hai ({px[0]}x{px[1]}): print ke liye bada PNG / vector chahiye."
+        say += f" The logo is small ({px[0]}x{px[1]}): print needs a bigger PNG / vector."
     return {"client": v, "palette": pal, "say": say}
 
 
@@ -553,7 +553,7 @@ def _vendor(s, tenant: str, ref: str) -> GraphicVendor:
     if v is None and ref:
         v = next((x for x in s.scalars(q).all() if ref.lower() in x.name.lower()), None)
     if v is None:
-        raise GraphicError(f"Printer '{ref}' nahi mila.")
+        raise GraphicError(f"Printer '{ref}' not found.")
     return v
 
 
@@ -564,14 +564,14 @@ def vendor_save(tenant: str, name: str, phone: str = "", email: str = "", does: 
             v = _vendor(s, tenant, vendor_id)
         else:
             if not R.clean(name, 120):
-                raise GraphicError("Printer ka naam bataiye.")
+                raise GraphicError("Give the printer's name.")
             v = GraphicVendor(tenant_id=tenant, name=R.clean(name, 120))
             s.add(v)
         if name:
             v.name = R.clean(name, 120)
         if phone:
             if not R.phone(phone):
-                raise GraphicError("Printer ka phone 10 ankon ka mobile likhiye.")
+                raise GraphicError("Printer phone: write a 10-digit mobile.")
             v.phone = R.phone(phone)
         if email:
             v.email = R.clean(email, 120)
@@ -588,14 +588,14 @@ def vendor_save(tenant: str, name: str, phone: str = "", email: str = "", does: 
                 if spec.get(k) not in (None, ""):
                     n = _num(spec[k])
                     if n is None or n < 0:
-                        raise GraphicError(f"{k} sahi number likhiye.")
+                        raise GraphicError(f"{k}: write a valid number.")
                     sp[k] = n
             if spec.get("pdfx") is not None:
                 sp["pdfx"] = bool(spec["pdfx"])
             v.spec = _dump(sp)
         s.flush()
         out = _vendor_view(v)
-    return {"vendor": out, "say": f"Printer {out['name']} save."}
+    return {"vendor": out, "say": f"Printer {out['name']} saved."}
 
 
 def vendors(tenant: str) -> list[dict]:
@@ -607,13 +607,13 @@ def vendors(tenant: str) -> list[dict]:
 def _job(s, tenant: str, ref: str) -> GraphicJob:
     ref = (ref or "").strip()
     if not ref:
-        raise GraphicError("Kaunsa kaam? G-0001 jaisa number bataiye.")
+        raise GraphicError("Which job? Give a number like G-0001.")
     q = select(GraphicJob).where(GraphicJob.tenant_id == tenant)
     j = s.scalars(q.where(GraphicJob.id == ref)).first() or s.scalars(q.where(GraphicJob.number == ref.upper())).first()
     if j is None and re.fullmatch(r"\d{1,4}", ref):
         j = s.scalars(q.where(GraphicJob.number == f"G-{int(ref):04d}")).first()
     if j is None:
-        raise GraphicError(f"Kaam '{ref}' nahi mila.")
+        raise GraphicError(f"Job '{ref}' not found.")
     return j
 
 
@@ -708,14 +708,14 @@ def job_save(tenant: str, job: str = "", client: str = "", actor: str = "owner",
     text = " ".join(str(kw.get(k) or "") for k in ("title", "brief", "facts"))
     bad = BR.protected(text)
     if bad:
-        raise GraphicError(f"Vyapar ke design mein {', '.join(bad)} nahi laga sakte (Emblems Act 1950).")
+        raise GraphicError(f"A business design cannot use {', '.join(bad)} (Emblems Act 1950).")
     cl = R.clone_problem(text)
     if cl:
         raise GraphicError(cl)
     try:
         from ..ads.rules import banned
         for msg in banned(text):
-            raise GraphicError(msg + " Aisa design Hoola nahi banayega.")
+            raise GraphicError(msg + " Hoola will not make such a design.")
     except ImportError:
         pass
     warn: list[str] = []
@@ -724,11 +724,11 @@ def job_save(tenant: str, job: str = "", client: str = "", actor: str = "owner",
         if job:
             j = _job(s, tenant, job)
             if j.status in ("done", "cancelled"):
-                raise GraphicError(f"{j.number} {STATUS[j.status]}: badla nahi ja sakta.")
+                raise GraphicError(f"{j.number} {STATUS[j.status]}: cannot be changed.")
             if any(k in kw for k in _MONEY_KEYS) and not is_owner(actor):
-                raise GraphicError("Daam / rounds / advance sirf owner badal sakti hain.")
+                raise GraphicError("Only the owner can change the price / rounds / advance.")
             if any(k in kw for k in ("lines", "rounds", "extra_round_price", "advance_pct")) and j.quote_ok and not is_owner(actor):
-                raise GraphicError("Quote ja chuka: badlav owner hi karein.")
+                raise GraphicError("The quote has gone: only the owner can make changes.")
         else:
             c = _client(s, tenant, client)
             st.job_seq += 1
@@ -776,12 +776,12 @@ def job_save(tenant: str, job: str = "", client: str = "", actor: str = "owner",
             if kw["due"]:
                 d = _date(kw["due"])
                 if d is None:
-                    raise GraphicError("Due date YYYY-MM-DD / DD-MM-YYYY likhiye.")
+                    raise GraphicError("Write the due date as YYYY-MM-DD / DD-MM-YYYY.")
                 if d < today(tenant):
-                    raise GraphicError("Due date beet chuki hai.")
+                    raise GraphicError("The due date has passed.")
                 usual = R.KINDS.get(j.kind, {}).get("days", 5)
                 if (d - today(tenant)).days < usual:
-                    warn.append(f"{R.KINDS[j.kind]['label']} mein aam taur par ~{usual} din lagte hain; {d:%d %b} tak tight hai.")
+                    warn.append(f"{R.KINDS[j.kind]['label']} usually takes ~{usual} days; {d:%d %b} is tight.")
                 j.due = d.isoformat()
             else:
                 j.due = ""
@@ -800,15 +800,15 @@ def job_save(tenant: str, job: str = "", client: str = "", actor: str = "owner",
                 raise GraphicError("advance % 0-100.")
             j.advance_pct = a
         if j.print_fmt == "custom" and not (_j(j.print_custom, {}).get("w_mm") and _j(j.print_custom, {}).get("h_mm")):
-            warn.append("Custom print size: chaudai / oonchai mm mein bataiye (print_custom w_mm, h_mm).")
+            warn.append("Custom print size: give width / height in mm (print_custom w_mm, h_mm).")
         if j.kind == "logo" and not _j(j.tm, {}):
-            warn.append("Logo ke liye IP India trade-mark search (tm) zaroor karwaiye, client ko batana hoga.")
-        _log(j, "Kaam save", actor_name(tenant, actor))
+            warn.append("For a logo, run an IP India trade-mark search (tm); the client must be told.")
+        _log(j, "Job saved", actor_name(tenant, actor))
         s.flush()
         v = _job_view(s, j)
-    say = f"{v['number']} ({v['kind_label']}) {v['client']} ke liye save."
+    say = f"{v['number']} ({v['kind_label']}) {v['client']} saved."
     if v["quote"]["missing"]:
-        say += " Daam abhi nahi: quote se pehle aap daam bataiye."
+        say += " No price yet: give the price before the quote."
     if warn:
         say += " " + " ".join(warn)
     _publish(tenant, "graphic_job", {"job": {k: v[k] for k in ("id", "number", "title", "status", "client")}, "say": say}, conv)
@@ -874,7 +874,7 @@ def _quote(s, tenant: str, j: GraphicJob) -> dict:
     return {"lines": lines, "subtotal": round(sub, 2), "discount": disc, "taxable": taxable, "gst": g, "total": total,
             "total_text": _rs(total), "total_words": words, "advance": adv, "advance_text": _rs(adv), "missing": missing,
             "rounds": j.rounds_included, "extra_round_price": j.extra_round_price, "sac": st.sac if st.gstin else "",
-            "export": export, "gst_note": "" if st.gstin else "GSTIN nahi: GST nahi lagaya (Rs 20 lakh se upar registration zaroori).",
+            "export": export, "gst_note": "" if st.gstin else "No GSTIN: GST not charged (registration needed above Rs 20 lakh).",
             "tds_note": R.tds_note(c.kind if c else "individual", c.tds_pct if c else None, taxable)}
 
 
@@ -886,12 +886,12 @@ def _round_gate(s, j: GraphicJob) -> int:
         return j.rounds_used                       # still working before the client saw anything: no round used
     if not j.pending_feedback:
         if any(x.status == "client_ok" for x in vs):
-            raise GraphicError(f"{j.number}: client ne pehle hi haan kar di; naya badlav = naya round (pehle client ka feedback likhiye).")
+            raise GraphicError(f"{j.number}: the client has already approved; a new change = a new round (write the client's feedback first).")
         return j.rounds_used
     if _rounds_left(j) <= 0:
         price = _rs(j.extra_round_price) if j.extra_round_price else "[daam?]"
-        raise GraphicError(f"{j.number}: quote ke {j.rounds_included} revision round poore ho gaye. Agla round extra hai ({price}): "
-                           "extra round ka card banaiye (aapki haan) ya owner 'is baar free' (waive) kahein.")
+        raise GraphicError(f"{j.number}: the quote's {j.rounds_included} revision rounds are used up. The next round is extra ({price}): "
+                           "make an extra round card (your approval) or the owner says 'free this time' (waive).")
     j.rounds_used += 1
     j.pending_feedback = False
     return j.rounds_used
@@ -937,7 +937,7 @@ def proof_render(tenant: str, job: str, words: dict | None = None, layout: str =
     from ..brand import rules as BR
     from ..brand import service as BS
     if instruction and (BR.protected(instruction) or R.clone_problem(instruction)):
-        raise GraphicError(R.clone_problem(instruction) or "Emblems Act 1950: yeh chinh / naam design mein nahi lag sakta.")
+        raise GraphicError(R.clone_problem(instruction) or "Emblems Act 1950: this emblem / name cannot be used in a design.")
     with session() as s:
         j = _job(s, tenant, job)
         c = s.get(GraphicClient, j.client_id)
@@ -946,12 +946,12 @@ def proof_render(tenant: str, job: str, words: dict | None = None, layout: str =
         if j.print_fmt in BR.SIZES and j.print_fmt not in size_list:
             size_list.append(j.print_fmt)
         if not size_list:
-            raise GraphicError(f"{R.KINDS.get(j.kind, {}).get('label', j.kind)} ka size engine mein nahi (jaise visiting card): "
-                               "apni design file upload kijiye (proof_upload), Hoola print jaanch karega.")
+            raise GraphicError(f"{R.KINDS.get(j.kind, {}).get('label', j.kind)} size is not in the engine (like a visiting card): "
+                               "upload your design file (proof_upload), Hoola will run the print check.")
         vs = _versions(s, j)
         base = next((_j(x.content, {}) for x in reversed(vs) if x.source == "render"), {})
         base_layout = next((x.layout for x in reversed(vs) if x.source == "render"), "")
-        brief, facts, lang = j.brief, j.facts, c.language if c else "hinglish"
+        brief, facts, lang = j.brief, j.facts, c.language if c else "english"
         number = j.number
     if words:
         content = BS._clean_content(words)
@@ -1001,11 +1001,11 @@ def proof_render(tenant: str, job: str, words: dict | None = None, layout: str =
         x = s.get(GraphicVersion, x.id)
         x.checks = _dump(checks)
         j = _job(s, tenant, job)
-        _log(j, f"Proof v{x.n} bana (engine, round {x.round})", actor_name(tenant, actor))
+        _log(j, f"Proof v{x.n} made (engine, round {x.round})", actor_name(tenant, actor))
         v = _version_view(j, x)
         jn = j.number
-    say = f"{jn} proof v{v['n']} ({len(sizes_c)} size) taiyaar" + (f"; pehle theek karna: {v['blocks'][0]}" if v["blocks"] else "") + \
-        ". Dekh kar 'client ko bhejo' boliye: card aayega."
+    say = f"{jn} proof v{v['n']} ({len(sizes_c)} sizes) ready" + (f"; fix first: {v['blocks'][0]}" if v["blocks"] else "") + \
+        ". Check it, then say 'send to client': a card will come."
     _publish(tenant, "graphic_job", {"job": {"id": v["id"], "number": jn}, "version": v, "say": say}, conv)
     return {"version": v, "say": say}
 
@@ -1020,7 +1020,7 @@ def _job_checks(tenant: str, job: str) -> list[dict]:
             if vd["level"] in ("block", "warn"):
                 out.append({"level": vd["level"], "text": f"{a.get('name')}: {vd['say']}"})
         if j.kind == "logo" and not _j(j.tm, {}).get("result"):
-            out.append({"level": "warn", "text": "Trade-mark search abhi nahi hua: IP India public search karke likhiye (tm)."})
+            out.append({"level": "warn", "text": "Trade-mark search not done yet: run the IP India public search and record it (tm)."})
     return out
 
 
@@ -1063,12 +1063,12 @@ def proof_upload(tenant: str, job: str, data: bytes | None = None, name: str = "
     if file_id:
         name, data = _load_file(tenant, file_id)
     if not data:
-        raise GraphicError("Design ki file bhejiye (PDF / PNG / JPG).")
+        raise GraphicError("Send the design file (PDF / PNG / JPG).")
     if len(data) > 80 * 1024 * 1024:
-        raise GraphicError("File 80 MB se badi: printer ke liye compress / link bhejiye.")
+        raise GraphicError("File is larger than 80 MB: compress it / send a link for the printer.")
     rt = filecheck.real_type(name or "art", data)
     if rt.get("danger"):
-        raise GraphicError("Yeh file design / photo nahi lagti; Hoola ne nahi li.")
+        raise GraphicError("This file does not look like a design / photo; Hoola did not take it.")
     is_pdf = data[:5] == b"%PDF-"
     ext = "pdf" if is_pdf else (Path(name or "").suffix.lower().lstrip(".") or "png")
     if not is_pdf:
@@ -1076,7 +1076,7 @@ def proof_upload(tenant: str, job: str, data: bytes | None = None, name: str = "
             from PIL import Image
             Image.open(io.BytesIO(data)).verify()
         except Exception:
-            raise GraphicError("File khul nahi rahi: PDF / PNG / JPG / TIFF bhejiye (AI / CDR / PSD ko PDF export kijiye).")
+            raise GraphicError("The file does not open: send PDF / PNG / JPG / TIFF (export AI / CDR / PSD to PDF).")
     with session() as s:
         j = _job(s, tenant, job)
         spec = _spec_of(s, j)
@@ -1097,7 +1097,7 @@ def proof_upload(tenant: str, job: str, data: bytes | None = None, name: str = "
             x.proofs = _dump({"art": f"proof_v{x.n}.jpg"})
         checks = [dict(i, pre=True) for i in pf.get("issues", [])]     # print problems stop the print order, not the look
         if not spec and _j(j.sizes, []):
-            checks.append({"level": "info", "text": "Screen design: rang RGB theek hai."})
+            checks.append({"level": "info", "text": "Screen design: RGB colours are fine."})
         x.checks = _dump(checks)
         jn = j.number
         jid = j.id
@@ -1106,12 +1106,12 @@ def proof_upload(tenant: str, job: str, data: bytes | None = None, name: str = "
         x = s.get(GraphicVersion, x.id)
         x.checks = _dump(_j(x.checks, []) + extra)
         j = _job(s, tenant, jid)
-        _log(j, f"Design file v{x.n} aayi (round {x.round}); print jaanch: {'theek' if pf.get('ok') else 'dikkat'}",
+        _log(j, f"Design file v{x.n} received (round {x.round}); print check: {'ok' if pf.get('ok') else 'problem'}",
              actor_name(tenant, actor))
         v = _version_view(j, x)
-    say = f"{jn} v{v['n']} file mili."
+    say = f"{jn} v{v['n']} file received."
     if spec:
-        say += " Print jaanch theek." if pf.get("ok") else f" Print jaanch: {v['blocks'][0] if v['blocks'] else 'dekhiye'}."
+        say += " Print check ok." if pf.get("ok") else f" Print check: {v['blocks'][0] if v['blocks'] else 'see the checks'}."
     _publish(tenant, "graphic_job", {"job": {"id": jid, "number": jn}, "version": v, "say": say}, conv)
     return {"version": v, "preflight": pf, "say": say}
 
@@ -1120,13 +1120,13 @@ def feedback(tenant: str, job: str, text: str, version: int | None = None, actor
     """The client's notes on a proof (their words = data). Opens the next revision round; tells her when rounds are used up."""
     t = R.clean(text, 3000)
     if not t:
-        raise GraphicError("Client ne kya badlav bola? Likhiye.")
+        raise GraphicError("What change did the client ask for? Write it.")
     with _LOCK, session() as s:
         j = _job(s, tenant, job)
         vs = _versions(s, j)
         sent = [x for x in vs if x.status in ("sent", "client_ok")]
         if not sent:
-            raise GraphicError(f"{j.number}: abhi koi proof client ko gaya hi nahi (pehle proof card par haan).")
+            raise GraphicError(f"{j.number}: no proof has gone to the client yet (approve the proof card first).")
         n = version or sent[-1].n
         fb = _j(j.feedback, [])
         fb.append({"at": now().isoformat(), "version": n, "text": t, "by": actor_name(tenant, actor), "round": j.rounds_used + 1})
@@ -1143,10 +1143,10 @@ def feedback(tenant: str, job: str, text: str, version: int | None = None, actor
         jn, inc = j.number, j.rounds_included
         price = j.extra_round_price
     if left > 0:
-        say = f"{jn}: feedback likha. Agla version ek revision round lega ({left} baaki)."
+        say = f"{jn}: feedback recorded. The next version uses one revision round ({left} left)."
     else:
-        say = (f"{jn}: feedback likha, lekin quote ke {inc} round poore. Extra round {_rs(price) if price else '[daam?]'}: "
-               "extra round card banau? (aapki haan)")
+        say = (f"{jn}: feedback recorded, but the quote's {inc} rounds are used up. Extra round {_rs(price) if price else '[price?]'}: "
+               "shall I make an extra round card? (your approval)")
     return {"rounds_left": left, "say": say}
 
 
@@ -1155,22 +1155,22 @@ def waive_round(tenant: str, job: str, reason: str = "", actor: str = "owner") -
     with _LOCK, session() as s:
         j = _job(s, tenant, job)
         j.waived_rounds += 1
-        _log(j, f"Ek round free diya: {R.clean(reason, 200)}", "Owner")
+        _log(j, f"One round given free: {R.clean(reason, 200)}", "Owner")
         jn = j.number
-    return {"say": f"{jn}: ek extra round aapki marzi se free."}
+    return {"say": f"{jn}: one extra round free, by your choice."}
 
 
 def client_approved(tenant: str, job: str, version: int | None = None, evidence: str = "", actor: str = "owner") -> dict:
     """She records that the CLIENT said yes to a proof she sent (their words / screenshot note = evidence)."""
     ev = R.clean(evidence, 600)
     if not ev:
-        raise GraphicError("Client ki haan ka saboot likhiye (unka message / screenshot ki baat).")
+        raise GraphicError("Record the proof of the client's approval (their message / screenshot).")
     with _LOCK, session() as s:
         j = _job(s, tenant, job)
         vs = _versions(s, j)
         x = next((v for v in vs if v.n == version), None) if version else next((v for v in reversed(vs) if v.status == "sent"), None)
         if x is None or x.status not in ("sent", "client_ok"):
-            raise GraphicError("Yeh version client ko gaya hi nahi: pehle proof card par haan.")
+            raise GraphicError("This version never went to the client: approve the proof card first.")
         for v in vs:
             if v.status == "client_ok":
                 v.status = "sent"
@@ -1178,9 +1178,9 @@ def client_approved(tenant: str, job: str, version: int | None = None, evidence:
         j.client_ok = _dump({"version": x.n, "at": now().isoformat(), "evidence": ev})
         j.pending_feedback = False
         j.status = "approved"
-        _log(j, f"Client ne v{x.n} par haan ki", actor_name(tenant, actor))
+        _log(j, f"Client approved v{x.n}", actor_name(tenant, actor))
         jn, n = j.number, x.n
-    return {"say": f"{jn}: client ki haan v{n} par likhi. Ab files handover / print order ke card bana sakte hain."}
+    return {"say": f"{jn}: client approval on v{n} recorded. You can now make the file handover / print order cards."}
 
 
 # ---------------------------------------------------------------- assets + trademark
@@ -1188,7 +1188,7 @@ def asset_add(tenant: str, job: str, name: str, kind: str = "font", source: str 
               actor: str = "owner") -> dict:
     nm = R.clean(name, 120)
     if not nm:
-        raise GraphicError("Font / photo ka naam bataiye.")
+        raise GraphicError("Give the font / photo name.")
     kind = kind if kind in ("font", "image", "icon", "illustration", "mockup", "other") else "other"
     a = {"name": nm, "kind": kind, "source": R.clean(source, 200), "licence": (licence or "").lower(),
          "licence_ref": R.clean(licence_ref, 80)}
@@ -1213,10 +1213,10 @@ def asset_remove(tenant: str, job: str, name: str, actor: str = "owner") -> dict
         al = _j(j.assets, [])
         keep = [x for x in al if x.get("name", "").lower() != (name or "").lower()]
         if len(keep) == len(al):
-            raise GraphicError(f"'{name}' list mein nahi.")
+            raise GraphicError(f"'{name}' is not in the list.")
         j.assets = _dump(keep)
         jn = j.number
-    return {"say": f"{jn}: {name} hata diya."}
+    return {"say": f"{jn}: {name} removed."}
 
 
 def tm_help(tenant: str, job: str, classes: list[int] | None = None) -> dict:
@@ -1238,10 +1238,10 @@ def tm_record(tenant: str, job: str, result: str, classes: list[int] | None = No
                       "notes": R.clean(notes, 600), "at": now().isoformat(), "by": actor_name(tenant, actor)})
         _log(j, f"Trade-mark search: {res}", actor_name(tenant, actor))
         jn = j.number
-    say = {"nothing_similar": "kuch milta-julta nahi mila (yeh clearance nahi; vakil ki raay behtar).",
-           "similar_found": "milte-julte mark mile: client ko batana zaroori, naam / logo badalne ki salah.",
-           "registered_same": "wahi mark pehle se registered: is logo / naam par aage badhna jokhim hai, client ko bataiye.",
-           "not_done": "search nahi hua (likh liya)."}[res]
+    say = {"nothing_similar": "nothing similar found (this is not clearance; a lawyer's opinion is better).",
+           "similar_found": "similar marks found: the client must be told; advise changing the name / logo.",
+           "registered_same": "the same mark is already registered: going ahead with this logo / name is a risk, tell the client.",
+           "not_done": "search not done (recorded)."}[res]
     return {"say": f"{jn}: {say}"}
 
 
@@ -1257,11 +1257,11 @@ def _card_view(c: GraphicCard) -> dict:
 def _finals_plan(s, j: GraphicJob, x: GraphicVersion) -> list[dict]:
     from ..brand import rules as BR
     if x.source == "upload":
-        return [{"name": f"{j.number}-final-v{x.n}.{x.file_name.rsplit('.', 1)[-1]}", "what": "Aapki final design file"}]
+        return [{"name": f"{j.number}-final-v{x.n}.{x.file_name.rsplit('.', 1)[-1]}", "what": "Your final design file"}]
     out = []
     for sz in _j(x.sizes, []):
         if BR.SIZES.get(sz, {}).get("print"):
-            out.append({"name": f"{j.number}-{sz}.pdf", "what": f"{BR.SIZES[sz]['label']} print PDF (bleed ke saath)"})
+            out.append({"name": f"{j.number}-{sz}.pdf", "what": f"{BR.SIZES[sz]['label']} print PDF (with bleed)"})
         else:
             out.append({"name": f"{j.number}-{sz}.png", "what": BR.SIZES.get(sz, {}).get("label", sz)})
     return out
@@ -1284,12 +1284,12 @@ def _show(s, tenant: str, kind: str, j: GraphicJob | None, inp: dict) -> dict:
                 "total": q["total"], "total_text": q["total_text"], "advance_text": q["advance_text"], "due": j.due,
                 "rounds": j.rounds_included, "extra_round_text": _rs(j.extra_round_price) if j.extra_round_price else "",
                 "valid_until": valid, "deliverables": _j(j.sizes, []) + ([j.print_fmt] if j.print_fmt else []),
-                "rights": "Copyright poore bhugtaan ke baad likhit assignment se (Copyright Act s.19)." if st.assign_copyright
-                else "Copyright designer ke paas; client ko use ka licence.", "_in": inp}
+                "rights": "Copyright by written assignment after full payment (Copyright Act s.19)." if st.assign_copyright
+                else "Copyright stays with the designer; the client gets a licence to use.", "_in": inp}
     if kind == "proof":
         x = next((v for v in vs if v.n == inp.get("version")), None)
         if x is None:
-            raise GraphicError("Version nahi mila.")
+            raise GraphicError("Version not found.")
         return {**base, "version": x.n, "round": x.round, "rounds_left": _rounds_left(j), "rounds": j.rounds_included,
                 "file_hash": x.file_hash, "proofs": _version_view(j, x)["proofs"], "checks": _j(x.checks, []),
                 "blocks": [c["text"] for c in _j(x.checks, []) if c.get("level") == "block" and not c.get("pre")],
@@ -1304,16 +1304,16 @@ def _show(s, tenant: str, kind: str, j: GraphicJob | None, inp: dict) -> dict:
         assets = [{"name": a.get("name"), **R.asset_verdict(a)} for a in _j(j.assets, [])]
         blocks = []
         if x is None:
-            blocks.append("Client ki haan kisi version par nahi likhi.")
+            blocks.append("No client approval recorded on any version.")
         blocks += [f"{a['name']}: {a['say']}" for a in assets if a["level"] == "block"]
         if st.handover_after_pay and bal is not None and bal > 0.5 and not inp.get("force"):
-            blocks.append(f"Abhi {_rs(bal)} baaki: niyam ke hisaab se files poore paise ke baad (owner force kar sakti hain).")
+            blocks.append(f"{_rs(bal)} still due: by the rule, files go after full payment (the owner can force it).")
         if bal is None and st.handover_after_pay and not inp.get("force"):
-            blocks.append("Kaam ka daam hi nahi likha: pehle quote / bill.")
+            blocks.append("No price for the job: quote / bill first.")
         asg = _j(j.assignment, {})
         a_txt = R.assignment_text(st.designer or st.studio, (c.business or c.name) if c else "", f"{j.title} ({j.number})",
                                   asg.get("rights", ""), asg.get("years"), asg.get("territory", ""),
-                                  f"{_rs(q['total'])} (invoice ke anusaar)" if q["total"] is not None else "") if st.assign_copyright else {}
+                                  f"{_rs(q['total'])} (as per the invoice)" if q["total"] is not None else "") if st.assign_copyright else {}
         cols = _kit_of(c)[0]["colors"] if c else {}
         return {**base, "version": x.n if x else None, "file_hash": x.file_hash if x else "",
                 "files": _finals_plan(s, j, x) if x else [], "fonts": [a for a in assets if a.get("licence") in R.FONT_LICENCES],
@@ -1326,18 +1326,18 @@ def _show(s, tenant: str, kind: str, j: GraphicJob | None, inp: dict) -> dict:
         spec = _spec_of(s, j)
         blocks = []
         if not j.print_fmt:
-            blocks.append("Yeh print ka kaam nahi (print format nahi chuna).")
+            blocks.append("This is not a print job (no print format chosen).")
         if v is None:
-            blocks.append("Printer nahi chuna.")
+            blocks.append("No printer chosen.")
         elif not v.phone and not v.email:
-            blocks.append("Printer ka phone / email nahi.")
+            blocks.append("No printer phone / email.")
         if x is None:
-            blocks.append("Client ki final haan nahi.")
+            blocks.append("No final client approval.")
         elif x.source == "upload":
             blocks += [i["text"] for i in _j(x.preflight, {}).get("issues", []) if i.get("level") == "block"]
         pj = _j(j.print_job, {})
         if not pj.get("qty"):
-            blocks.append("Kitni copies? (print_job qty)")
+            blocks.append("How many copies? (print_job qty)")
         return {**base, "vendor": v.name if v else "", "vendor_phone": v.phone if v else "", "vendor_email": v.email if v else "",
                 "version": x.n if x else None, "file_hash": x.file_hash if x else "", "spec": spec, "print_job": pj,
                 "blocks": blocks, "_in": inp}
@@ -1362,7 +1362,7 @@ def _show(s, tenant: str, kind: str, j: GraphicJob | None, inp: dict) -> dict:
                 "subtotal": q["subtotal"], "current_discount": j.discount, "_in": inp}
     if kind == "message":
         return {**base, "text": inp.get("text", ""), "_in": inp}
-    raise GraphicError(f"card '{kind}' nahi pehchana.")
+    raise GraphicError(f"card '{kind}' not recognised.")
 
 
 def _make_card(tenant: str, kind: str, job_ref: str, inp: dict, actor: str = "owner", conv: str = "") -> dict:
@@ -1370,14 +1370,14 @@ def _make_card(tenant: str, kind: str, job_ref: str, inp: dict, actor: str = "ow
         j = _job(s, tenant, job_ref) if job_ref else None
         show = _show(s, tenant, kind, j, inp)
         if show.get("blocks"):
-            raise GraphicError(f"{CARD_TITLE[kind]} abhi nahi: " + "; ".join(show["blocks"][:3]))
+            raise GraphicError(f"{CARD_TITLE[kind]} not yet: " + "; ".join(show["blocks"][:3]))
         h = R.digest(show)
         old = s.scalars(select(GraphicCard).where(GraphicCard.tenant_id == tenant, GraphicCard.kind == kind,
                                                   GraphicCard.job_id == (j.id if j else ""), GraphicCard.status == "waiting")).all()
         for o in old:
             if o.hash == h:
                 return {"card": _card_view(o), "status": "needs_tap", "existing": True,
-                        "say": "Yahi card pehle se aapki haan ka intezaar kar raha hai."}
+                        "say": "This card is already waiting for your approval."}
             o.status = "stale"
         c = GraphicCard(tenant_id=tenant, job_id=j.id if j else "", kind=kind, show=_dump(show), hash=h,
                         asked_by=actor_name(tenant, actor), conv=conv or (j.conv if j else ""))
@@ -1385,7 +1385,7 @@ def _make_card(tenant: str, kind: str, job_ref: str, inp: dict, actor: str = "ow
         s.flush()
         v = _card_view(c)
         cv = c.conv
-    say = f"{CARD_TITLE[kind]}: {v['show'].get('job', '')} aapki haan ka card bheja hai."
+    say = f"{CARD_TITLE[kind]}: {v['show'].get('job', '')} approval card sent to you."
     _publish(tenant, "graphic_card", {"card": v, "say": say}, cv)
     return {"card": v, "status": "needs_tap", "say": say}
 
@@ -1394,7 +1394,7 @@ def card_view(tenant: str, card_id: str) -> dict:
     with session() as s:
         c = s.get(GraphicCard, card_id)
         if c is None or c.tenant_id != tenant:
-            raise GraphicError("Card nahi mila.")
+            raise GraphicError("Card not found.")
         return _card_view(c)
 
 
@@ -1411,7 +1411,7 @@ def card_challenge(tenant: str, card_id: str) -> dict:
     from .. import approvekey as ak
     c = card_view(tenant, card_id)
     if c["status"] != "waiting" or c["kind"] not in MONEY_CARDS:
-        raise GraphicError("Yeh card ab baaki nahi hai.")
+        raise GraphicError("This card is no longer pending.")
     nonce = secrets.token_urlsafe(18)
     exp = datetime.now(timezone.utc) + ak.CHALLENGE_TTL
     msg = f"hoola-approve|v1|{tenant}|graphic|{card_id}|{c['hash']}|{nonce}|{int(exp.timestamp())}"
@@ -1441,13 +1441,13 @@ def decide(tenant: str, card_id: str, yes: bool, card_hash: str = "", reason: st
            by_tap: bool = False, conv: str = "") -> dict:
     """ONLY from the app's API (her tap). The card's hash must still match the state NOW; money cards need her fingerprint."""
     if not by_tap:
-        raise GraphicError("Yeh sirf aapke tap se (app ka card).")
+        raise GraphicError("This is only by your tap (the app card).")
     with session() as s:
         c = s.get(GraphicCard, card_id)
         if c is None or c.tenant_id != tenant:
-            raise GraphicError("Card nahi mila.")
+            raise GraphicError("Card not found.")
         if c.status != "waiting":
-            return {"card": _card_view(c), "say": f"Yeh card pehle hi '{c.status}' hai."}
+            return {"card": _card_view(c), "say": f"This card is already '{c.status}'."}
         j = s.get(GraphicJob, c.job_id) if c.job_id else None
         inp = _j(c.show, {}).get("_in", {})
         try:
@@ -1461,7 +1461,7 @@ def decide(tenant: str, card_id: str, yes: bool, card_hash: str = "", reason: st
         if now_hash != ch:
             with _LOCK, session() as s:
                 s.get(GraphicCard, card_id).status = "stale"
-        raise GraphicError("Card ke baad kuch badal gaya; naya card dekhiye.")
+        raise GraphicError("Something changed after the card; see the new card.")
     if yes and kind in MONEY_CARDS:
         from .. import approvekey as ak
         if ak.active_on(tenant):
@@ -1471,7 +1471,7 @@ def decide(tenant: str, card_id: str, yes: bool, card_hash: str = "", reason: st
             c = s.get(GraphicCard, card_id)
             c.status, c.reason, c.decided_at = "rejected", R.clean(reason, 300), now()
             v = _card_view(c)
-        return {"card": v, "say": f"{CARD_TITLE[kind]}: nahi."}
+        return {"card": v, "say": f"{CARD_TITLE[kind]}: no."}
     fn = {"quote": _do_quote, "proof": _do_proof, "extra": _do_extra, "handover": _do_handover, "vendor": _do_vendor,
           "invoice": _do_invoice, "discount": _do_discount, "message": _do_message}[kind]
     out = fn(tenant, card_id, conv)
@@ -1499,14 +1499,14 @@ def _do_quote(tenant: str, card_id: str, conv: str) -> dict:
         j.quote_ok = R.digest({k: v for k, v in sh.items() if k != "_in"})
         if j.status == "brief":
             j.status = "quoted"
-        _log(j, "Quotation aapki haan se final", "Owner")
+        _log(j, "Quotation final with your approval", "Owner")
         num, studio = j.number, st.studio or st.designer
     f = _store(tenant, f"{num}_quotation.pdf", pdf, "application/pdf", conv, f"{num} quotation")
-    text = (f"Namaste {sh.get('client')} ji, {studio or 'hamari'} taraf se '{sh.get('title')}' ka quotation {num}: kul "
-            f"{sh.get('total_text')}, advance {sh.get('advance_text')}, {sh.get('rounds')} revision round shaamil"
-            + (f", {sh['valid_until']} tak valid" if sh.get("valid_until") else "") + ". PDF saath hai; haan ho to bataiye.")
+    text = (f"Hello {sh.get('client')}, here is the quotation {num} for '{sh.get('title')}' from {studio or 'us'}: total "
+            f"{sh.get('total_text')}, advance {sh.get('advance_text')}, {sh.get('rounds')} revision rounds included"
+            + (f", valid till {sh['valid_until']}" if sh.get("valid_until") else "") + ". The PDF is attached; let me know if you agree.")
     return {"draft": _draft(sh.get("phone", ""), text, sh.get("email", ""), f"Quotation {num}", file_id=f.get("file_id", "")),
-            "file_id": f.get("file_id", ""), "say": f"{num} quotation final; draft taiyaar, aap khud bhejiye (PDF saath)."}
+            "file_id": f.get("file_id", ""), "say": f"{num} quotation final; draft ready, send it yourself (PDF attached)."}
 
 
 def _do_proof(tenant: str, card_id: str, conv: str) -> dict:
@@ -1516,7 +1516,7 @@ def _do_proof(tenant: str, card_id: str, conv: str) -> dict:
         j = s.get(GraphicJob, jid)
         x = next(v for v in _versions(s, j) if v.n == sh["version"])
         x.status = "sent"
-        _log(j, f"Proof v{x.n} client ko bhejne ki haan", "Owner")
+        _log(j, f"Proof v{x.n} approved for sending to the client", "Owner")
         folder = _dir(tenant, j.id)
         names = list(_j(x.proofs, {}).values())
         num = j.number
@@ -1526,10 +1526,10 @@ def _do_proof(tenant: str, card_id: str, conv: str) -> dict:
             f = _store(tenant, f"{num}-proof-v{sh['version']}-{n}", p.read_bytes(), "image/jpeg", conv, f"{num} proof v{sh['version']}")
             files.append(f.get("file_id", ""))
     left = sh.get("rounds_left", 0)
-    text = (f"Namaste {sh.get('client')} ji, '{sh.get('title')}' ({num}) ka proof v{sh['version']} bhej rahi hoon. Badlav ho to "
-            f"ek saath likh dijiye ({left} revision round baaki), ya 'final' likhiye. PROOF mark final file mein nahi hoga.")
+    text = (f"Hello {sh.get('client')}, here is proof v{sh['version']} of '{sh.get('title')}' ({num}). If you want changes, "
+            f"please send them together ({left} revision rounds left), or reply 'final'. The PROOF mark will not be on the final file.")
     return {"draft": _draft(sh.get("phone", ""), text, sh.get("email", ""), f"Proof {num} v{sh['version']}", file_ids=files),
-            "files": files, "say": f"{num} proof v{sh['version']} taiyaar; draft + photo aapki files mein, aap bhejiye."}
+            "files": files, "say": f"{num} proof v{sh['version']} ready; draft + photo in your files, you send it."}
 
 
 def _do_extra(tenant: str, card_id: str, conv: str) -> dict:
@@ -1537,18 +1537,18 @@ def _do_extra(tenant: str, card_id: str, conv: str) -> dict:
     with _LOCK, session() as s:
         j = s.get(GraphicJob, jid)
         j.extra_rounds += 1
-        _log(j, f"Extra round {_rs(j.extra_round_price)} aapki haan se", "Owner")
+        _log(j, f"Extra round {_rs(j.extra_round_price)} with your approval", "Owner")
         num = j.number
-    text = (f"Namaste {sh.get('client')} ji, quote ke {sh.get('included')} revision round poore ho gaye hain. Agla round extra "
-            f"{sh.get('amount_text')} ka hoga (bill mein judega). Theek ho to badlav bhejiye.")
+    text = (f"Hello {sh.get('client')}, the quote's {sh.get('included')} revision rounds are used up. The next round costs an extra "
+            f"{sh.get('amount_text')} (added to the bill). If that is fine, send your changes.")
     return {"draft": _draft(sh.get("phone", ""), text, sh.get("email", ""), f"{num} extra revision"),
-            "say": f"{num}: ek extra round khula ({sh.get('amount_text')} bill mein); client ko batane ka draft taiyaar."}
+            "say": f"{num}: one extra round opened ({sh.get('amount_text')} on the bill); draft to tell the client is ready."}
 
 
 def _readme(sh: dict) -> str:
     lines = [f"{sh.get('job')} - {sh.get('title')}", f"Client: {sh.get('client')}", "", "FILES"]
     lines += [f"- {f['name']}: {f['what']}" for f in sh.get("files", [])]
-    lines += ["", "COLOURS (HEX / CMYK - CMYK sirf shuruaati andaaza; printer ka proof dekhiye)"]
+    lines += ["", "COLOURS (HEX / CMYK - CMYK is only a starting estimate; check the printer's proof)"]
     for k, v in (sh.get("colors") or {}).items():
         c, m, y, kk = v["cmyk"]
         lines.append(f"- {k}: {v['hex']}  C{c} M{m} Y{y} K{kk}")
@@ -1556,8 +1556,8 @@ def _readme(sh: dict) -> str:
     for a in sh.get("assets", []):
         lines.append(f"- {a.get('name')}: {a.get('label')} - {a.get('say')}")
     if not sh.get("assets"):
-        lines.append("- (koi list nahi)")
-    lines += ["", "Hoola se banaya handover. Font files sirf wahi jinka licence share karne deta hai (OFL / Apache)."]
+        lines.append("- (no list)")
+    lines += ["", "Handover made with Hoola. Font files only where the licence allows sharing (OFL / Apache)."]
     return "\n".join(lines)
 
 
@@ -1606,13 +1606,13 @@ def _do_handover(tenant: str, card_id: str, conv: str) -> dict:
         j.status = "delivered"
         j.handover = _dump({"at": now().isoformat(), "file_id": f.get("file_id", ""), "files": [n for n, _ in pack],
                             "forced": bool(sh.get("_in", {}).get("force"))})
-        _log(j, "Final files ka pack aapki haan se taiyaar", "Owner")
-    text = (f"Namaste {sh.get('client')} ji, '{sh.get('title')}' ({num}) ki final files ka pack bhej rahi hoon: design files, "
-            "rang ke code aur font ki jaankari" + (", aur copyright saunpne ka likhit draft (dono ke hastakshar ke liye)" if sh.get("assignment") else "")
-            + ". Shukriya!")
+        _log(j, "Final files pack ready with your approval", "Owner")
+    text = (f"Hello {sh.get('client')}, here is the final files pack for '{sh.get('title')}' ({num}): design files, "
+            "colour codes and font details" + (", and a written draft of the copyright assignment (for both of us to sign)" if sh.get("assignment") else "")
+            + ". Thank you.")
     return {"draft": _draft(sh.get("phone", ""), text, sh.get("email", ""), f"{num} final files", file_id=f.get("file_id", "")),
             "file_id": f.get("file_id", ""), "files": [n for n, _ in pack],
-            "say": f"{num}: final pack ({len(pack)} files) aapki files mein; draft taiyaar, aap bhejiye."}
+            "say": f"{num}: final pack ({len(pack)} files) in your files; draft ready, you send it."}
 
 
 def _do_vendor(tenant: str, card_id: str, conv: str) -> dict:
@@ -1635,16 +1635,16 @@ def _do_vendor(tenant: str, card_id: str, conv: str) -> dict:
     f = _store(tenant, name, data, mime or "application/octet-stream", conv, f"{num} print file")
     sp, pj = sh.get("spec") or {}, sh.get("print_job") or {}
     mm = sp.get("mm") or ["?", "?"]
-    text = (f"Namaste {sh.get('vendor')} ji, print order {num}: {pj.get('qty')} copies, size {mm[0]} x {mm[1]} mm "
-            f"(bleed {sp.get('bleed', '?')} mm)" + (f", kaagaz {pj['stock']}" if pj.get("stock") else "")
+    text = (f"Hello {sh.get('vendor')}, print order {num}: {pj.get('qty')} copies, size {mm[0]} x {mm[1]} mm "
+            f"(bleed {sp.get('bleed', '?')} mm)" + (f", paper {pj['stock']}" if pj.get("stock") else "")
             + (f", finish {pj['finish']}" if pj.get("finish") else "") + (f", {pj['sides']}" if pj.get("sides") else "")
-            + ". File saath hai. Chhapne se pehle ek proof / rate bata dijiye.")
+            + ". The file is attached. Please send a proof / rate before printing.")
     with _LOCK, session() as s:
         j = s.get(GraphicJob, jid)
-        _log(j, f"Print order {sh.get('vendor')} ko aapki haan se", "Owner")
+        _log(j, f"Print order {sh.get('vendor')} with your approval", "Owner")
     return {"draft": _draft(sh.get("vendor_phone", ""), text, sh.get("vendor_email", ""), f"Print order {num}",
                             file_id=f.get("file_id", "")),
-            "file_id": f.get("file_id", ""), "say": f"{num}: print file + printer ka draft taiyaar; aap bhejiye. Paise aap khud dengi."}
+            "file_id": f.get("file_id", ""), "say": f"{num}: print file + printer draft ready; you send it. You pay yourself."}
 
 
 def _do_invoice(tenant: str, card_id: str, conv: str) -> dict:
@@ -1658,14 +1658,14 @@ def _do_invoice(tenant: str, card_id: str, conv: str) -> dict:
         inv = _j(j.invoices, [])
         inv.append({"number": no, "what": sh["what"], "total": sh["amount"], "day": d.isoformat()})
         j.invoices = _dump(inv)
-        _log(j, f"Invoice {no} {_rs(sh['amount'])} aapki haan se", "Owner")
+        _log(j, f"Invoice {no} {_rs(sh['amount'])} with your approval", "Owner")
         num = j.number
     pdf = invoice_pdf(tenant, jid, no, sh)
     f = _store(tenant, f"{no.replace('/', '-')}.pdf", pdf, "application/pdf", conv, f"Invoice {no}")
     upi = _upi(tenant, float(sh["amount"] or 0), f"{no} {num}")
-    text = (f"Namaste {sh.get('client')} ji, '{sh.get('title')}' ({num}) ka {'advance ' if sh['what'] == 'advance' else ''}invoice "
-            f"{no}: {sh.get('amount_text')}. PDF saath hai." + (f" UPI se: {upi}" if upi else "") +
-            (f" {sh.get('pay_days')} din mein bhugtaan kripya." if sh.get("pay_days") else ""))
+    text = (f"Hello {sh.get('client')}, here is the {'advance ' if sh['what'] == 'advance' else ''}invoice for '{sh.get('title')}' ({num}) "
+            f"{no}: {sh.get('amount_text')}. The PDF is attached." + (f" Pay by UPI: {upi}" if upi else "") +
+            (f" Please pay within {sh.get('pay_days')} days." if sh.get("pay_days") else ""))
     with _LOCK, session() as s:
         j = s.get(GraphicJob, jid)
         inv = _j(j.invoices, [])
@@ -1673,7 +1673,7 @@ def _do_invoice(tenant: str, card_id: str, conv: str) -> dict:
         j.invoices = _dump(inv)
     return {"draft": _draft(sh.get("phone", ""), text, sh.get("email", ""), f"Invoice {no}", upi=upi, file_id=f.get("file_id", "")),
             "file_id": f.get("file_id", ""), "invoice": no,
-            "say": f"Invoice {no} bana; draft + UPI link (aapke UPI ID ka) taiyaar: aap bhejiye. Hoola paise nahi leta."}
+            "say": f"Invoice {no} made; draft + UPI link (to your UPI ID) ready: you send it. Hoola never takes money."}
 
 
 def _do_discount(tenant: str, card_id: str, conv: str) -> dict:
@@ -1683,13 +1683,13 @@ def _do_discount(tenant: str, card_id: str, conv: str) -> dict:
         j.discount = float(sh["amount"] or 0)
         _log(j, f"Discount {_rs(j.discount)}: {sh.get('reason')}", "Owner")
         num = j.number
-    return {"say": f"{num}: {sh.get('amount_text')} ka discount laga (fingerprint se aapki haan)."}
+    return {"say": f"{num}: {sh.get('amount_text')} discount applied (your approval by fingerprint)."}
 
 
 def _do_message(tenant: str, card_id: str, conv: str) -> dict:
     sh, jid = _card_ctx(card_id)
     return {"draft": _draft(sh.get("phone", ""), sh.get("text", ""), sh.get("email", ""), sh.get("title", "")),
-            "say": "Message draft taiyaar: aap khud bhejiye."}
+            "say": "Message draft ready: send it yourself."}
 
 
 # ---------------------------------------------------------------- card requests (never decide)
@@ -1699,9 +1699,9 @@ def quote_request(tenant: str, job: str, actor: str = "owner", conv: str = "") -
         q = _quote(s, tenant, j)
         c = s.get(GraphicClient, j.client_id)
         if q["missing"]:
-            raise GraphicError(f"{j.number}: daam nahi likha ({', '.join(q['missing'])}): aap batayiye, Hoola daam nahi lagata.")
+            raise GraphicError(f"{j.number}: no price written ({', '.join(q['missing'])}): you give it, Hoola does not set prices.")
         if c and c.no_messages:
-            raise GraphicError("Is client ne message mana kiya hai.")
+            raise GraphicError("This client has refused messages.")
     return _make_card(tenant, "quote", job, {}, actor, conv)
 
 
@@ -1710,12 +1710,12 @@ def proof_send(tenant: str, job: str, version: int | None = None, actor: str = "
         j = _job(s, tenant, job)
         vs = _versions(s, j)
         if not vs:
-            raise GraphicError(f"{j.number}: abhi koi proof nahi.")
+            raise GraphicError(f"{j.number}: no proof yet.")
         x = next((v for v in vs if v.n == version), None) if version else vs[-1]
         if x is None:
-            raise GraphicError("Woh version nahi mila.")
+            raise GraphicError("That version was not found.")
         if x.status in ("old",):
-            raise GraphicError(f"v{x.n} purana hai; naya version bhejiye.")
+            raise GraphicError(f"v{x.n} is old; send the new version.")
         n = x.n
     return _make_card(tenant, "proof", job, {"version": n}, actor, conv)
 
@@ -1724,7 +1724,7 @@ def extra_request(tenant: str, job: str, actor: str = "owner", conv: str = "") -
     with session() as s:
         j = _job(s, tenant, job)
         if not j.extra_round_price:
-            raise GraphicError(f"{j.number}: extra round ka daam nahi likha (aap batayiye: extra_round_price).")
+            raise GraphicError(f"{j.number}: no price for an extra round (you give it: extra_round_price).")
     return _make_card(tenant, "extra", job, {"n": "next"}, actor, conv)
 
 
@@ -1748,11 +1748,11 @@ def invoice_request(tenant: str, job: str, what: str = "final", actor: str = "ow
         j = _job(s, tenant, job)
         sh = _show(s, tenant, "invoice", j, {"what": what})
         if sh["amount"] is None:
-            raise GraphicError(f"{j.number}: daam nahi likha; pehle quote lines.")
+            raise GraphicError(f"{j.number}: no price written; quote lines first.")
         if sh["amount"] <= 0:
-            raise GraphicError(f"{j.number}: poora bill ho chuka.")
+            raise GraphicError(f"{j.number}: fully billed already.")
         if what == "advance" and any(i.get("what") == "advance" for i in _j(j.invoices, [])):
-            raise GraphicError("Advance invoice pehle hi ban chuka.")
+            raise GraphicError("The advance invoice is already made.")
     return _make_card(tenant, "invoice", job, {"what": what}, actor, conv)
 
 
@@ -1767,25 +1767,25 @@ def discount_request(tenant: str, job: str, amount=None, pct=None, reason: str =
             raise GraphicError("discount % 1-100.")
         a = round(q["subtotal"] * p / 100, 2)
     if not a or a <= 0:
-        raise GraphicError("Kitna discount? amount ya pct.")
+        raise GraphicError("How much discount? amount or pct.")
     if a > q["subtotal"]:
-        raise GraphicError("Discount kul daam se zyada nahi ho sakta.")
+        raise GraphicError("Discount cannot be more than the total price.")
     return _make_card(tenant, "discount", job, {"amount": round(a, 2), "reason": R.clean(reason, 200)}, actor, conv)
 
 
 def message_request(tenant: str, job: str, text: str, actor: str = "owner", conv: str = "") -> dict:
     t = R.clean(text, 1500)
     if not t:
-        raise GraphicError("Message kya likhna hai?")
+        raise GraphicError("What should the message say?")
     if _secret_text(text):
-        raise GraphicError("OTP / PIN / password jaisi baat message mein nahi.")
+        raise GraphicError("No OTP / PIN / password in a message.")
     if re.search(r"\[[^\]]{1,40}\]", t):
-        raise GraphicError("Message mein [khaali jagah] bachi hai: pehle bhariye.")
+        raise GraphicError("The message still has a [blank]: fill it first.")
     with session() as s:
         j = _job(s, tenant, job)
         c = s.get(GraphicClient, j.client_id)
         if c and c.no_messages:
-            raise GraphicError("Is client ne message mana kiya hai.")
+            raise GraphicError("This client has refused messages.")
     return _make_card(tenant, "message", job, {"text": t}, actor, conv)
 
 
@@ -1793,35 +1793,35 @@ def message_request(tenant: str, job: str, text: str, actor: str = "owner", conv
 def accepted(tenant: str, job: str, evidence: str = "", actor: str = "owner") -> dict:
     ev = R.clean(evidence, 600)
     if not ev:
-        raise GraphicError("Client ne quote maana: unka message / baat likhiye.")
+        raise GraphicError("Client accepted the quote: record their message / words.")
     with _LOCK, session() as s:
         j = _job(s, tenant, job)
         if not j.quote_ok:
-            raise GraphicError(f"{j.number}: quote abhi gaya hi nahi (quote card par haan).")
+            raise GraphicError(f"{j.number}: the quote has not gone yet (approve the quote card).")
         j.accepted = _dump({"at": now().isoformat(), "evidence": ev})
         if j.status in ("brief", "quoted"):
             j.status = "accepted"
-        _log(j, "Client ne quote maana", actor_name(tenant, actor))
+        _log(j, "Client accepted the quote", actor_name(tenant, actor))
         jn = j.number
-    return {"say": f"{jn}: client ne quote maana, kaam shuru."}
+    return {"say": f"{jn}: client accepted the quote, work started."}
 
 
 def paid(tenant: str, job: str, amount, mode: str = "upi", ref: str = "", day: str = "", actor: str = "owner") -> dict:
     _owner_only(actor)
     a = _num(amount)
     if not a or a <= 0:
-        raise GraphicError("Kitne paise mile?")
+        raise GraphicError("How much was received?")
     d = _date(day) or today(tenant)
     with _LOCK, session() as s:
         j = _job(s, tenant, job)
         pm = _j(j.payments, [])
         pm.append({"amount": round(a, 2), "mode": (mode or "upi")[:10], "ref": R.clean(ref, 40)[-6:], "day": d.isoformat()})
         j.payments = _dump(pm)
-        _log(j, f"{_rs(a)} mile ({mode})", "Owner")
+        _log(j, f"{_rs(a)} received ({mode})", "Owner")
         q = _quote(s, tenant, j)
         bal = None if q["total"] is None else round(q["total"] - _paid(j), 2)
         jn = j.number
-    return {"paid": round(a, 2), "balance": bal, "say": f"{jn}: {_rs(a)} likh liya. Baaki {_rs(bal)}."}
+    return {"paid": round(a, 2), "balance": bal, "say": f"{jn}: {_rs(a)} recorded. Due {_rs(bal)}."}
 
 
 def cancel(tenant: str, job: str, reason: str = "", actor: str = "owner") -> dict:
@@ -1831,9 +1831,9 @@ def cancel(tenant: str, job: str, reason: str = "", actor: str = "owner") -> dic
         j.status = "cancelled"
         for c in s.scalars(select(GraphicCard).where(GraphicCard.job_id == j.id, GraphicCard.status == "waiting")).all():
             c.status = "stale"
-        _log(j, f"Radd: {R.clean(reason, 200)}", "Owner")
+        _log(j, f"Cancelled: {R.clean(reason, 200)}", "Owner")
         jn = j.number
-    return {"say": f"{jn} radd. Advance lautana ho to aap khud bhejiye (Hoola paise nahi bhejta)."}
+    return {"say": f"{jn} cancelled. To return the advance, send it yourself (Hoola never sends money)."}
 
 
 def done(tenant: str, job: str, actor: str = "owner") -> dict:
@@ -1841,7 +1841,7 @@ def done(tenant: str, job: str, actor: str = "owner") -> dict:
     with _LOCK, session() as s:
         j = _job(s, tenant, job)
         j.status = "done"
-        _log(j, "Kaam poora", "Owner")
+        _log(j, "Job done", "Owner")
         jn = j.number
     return {"say": f"{jn} poora."}
 
@@ -1853,7 +1853,7 @@ def set_assignment(tenant: str, job: str, rights: str = "", years=None, territor
         j = _job(s, tenant, job)
         j.assignment = _dump({"rights": R.clean(rights, 300), "years": y, "territory": R.clean(territory, 80)})
         jn = j.number
-    return {"say": f"{jn}: copyright assignment ki shartein save."}
+    return {"say": f"{jn}: copyright assignment terms saved."}
 
 
 def forget_client(tenant: str, client: str, actor: str = "owner") -> dict:
@@ -1864,15 +1864,15 @@ def forget_client(tenant: str, client: str, actor: str = "owner") -> dict:
         open_ = s.scalars(select(GraphicJob).where(GraphicJob.client_id == c.id,
                                                    GraphicJob.status.not_in(("done", "cancelled", "delivered")))).all()
         if open_:
-            raise GraphicError(f"{len(open_)} kaam abhi khule hain ({', '.join(j.number for j in open_[:3])}): pehle poore / radd kijiye.")
-        c.name, c.phone, c.email, c.notes, c.contact = f"Purana client {c.number}", "", "", "", "{}"
+            raise GraphicError(f"{len(open_)} jobs still open ({', '.join(j.number for j in open_[:3])}): finish / cancel them first.")
+        c.name, c.phone, c.email, c.notes, c.contact = f"Former client {c.number}", "", "", "", "{}"
         c.forgotten = True
         for j in s.scalars(select(GraphicJob).where(GraphicJob.client_id == c.id)).all():
-            j.brief, j.feedback = "[hataya - DPDP]", "[]"
+            j.brief, j.feedback = "[removed - DPDP]", "[]"
             j.client_ok = _dump({k: v for k, v in _j(j.client_ok, {}).items() if k != "evidence"})
             j.accepted = "{}"
         num = c.number
-    return {"say": f"{num}: client ki personal details hata di; kaam ke number aur hisaab rahe."}
+    return {"say": f"{num}: client's personal details removed; job numbers and accounts remain."}
 
 
 # ---------------------------------------------------------------- PDFs
@@ -1959,14 +1959,14 @@ def quote_pdf(tenant: str, job: str, final: bool = False, valid_until: str = "")
         q = _quote(s, tenant, j)
         blocks = _head(st, f"Quotation {j.number}") + [
             ("p", f"Client: {c.business or c.name if c else ''}" + (f" · GSTIN {c.gstin}" if c and c.gstin else "")),
-            ("p", f"Kaam: {j.title} ({R.KINDS.get(j.kind, {}).get('label', j.kind)})" + (f" · Due {j.due}" if j.due else "")),
+            ("p", f"Job: {j.title} ({R.KINDS.get(j.kind, {}).get('label', j.kind)})" + (f" · Due {j.due}" if j.due else "")),
         ] + _money_rows(q) + [
             ("p", f"SAC {q['sac']}" if q["sac"] else q["gst_note"]),
-            ("p", f"Advance {j.advance_pct:g}%: {_pdf_rs(q['advance'])}. Revision rounds shaamil: {j.rounds_included}"
-                  + (f"; har extra round {_pdf_rs(j.extra_round_price)}." if j.extra_round_price else ".")),
-            ("p", "Copyright: poore bhugtaan ke baad likhit assignment (Copyright Act 1957 s.19) se client ko." if st.assign_copyright
-             else "Copyright designer ke paas rahega; client ko upyog ka licence."),
-            ("p", "Fonts / stock photos ke licence alag; final files ke saath jaankari di jayegi."),
+            ("p", f"Advance {j.advance_pct:g}%: {_pdf_rs(q['advance'])}. Revision rounds included: {j.rounds_included}"
+                  + (f"; each extra round {_pdf_rs(j.extra_round_price)}." if j.extra_round_price else ".")),
+            ("p", "Copyright: to the client by written assignment after full payment (Copyright Act 1957 s.19)." if st.assign_copyright
+             else "Copyright stays with the designer; the client gets a licence to use."),
+            ("p", "Fonts / stock photos have separate licences; details come with the final files."),
         ]
         if valid_until:
             blocks.append(("p", f"Valid till {valid_until}."))
@@ -1988,15 +1988,15 @@ def invoice_pdf(tenant: str, job: str, number: str, sh: dict) -> bytes:
              + (f" · {c.state}" if c and c.state else "")),
         ] + _money_rows(q)
         if sh.get("what") == "advance":
-            blocks.append(("p", f"Is invoice ki rakam (advance {j.advance_pct:g}%): {_pdf_rs(sh.get('amount'))}"))
+            blocks.append(("p", f"This invoice's amount (advance {j.advance_pct:g}%): {_pdf_rs(sh.get('amount'))}"))
         else:
-            blocks.append(("p", f"Pehle bill ho chuka: {_pdf_rs(sh.get('billed'))} · Is invoice ki rakam: {_pdf_rs(sh.get('amount'))}"))
+            blocks.append(("p", f"Already billed: {_pdf_rs(sh.get('billed'))} · This invoice's amount: {_pdf_rs(sh.get('amount'))}"))
         if q["total_words"]:
             blocks.append(("p", q["total_words"]))
         if q["sac"]:
             blocks.append(("p", f"SAC {q['sac']} (design services)"))
         if st.udyam:
-            blocks.append(("p", f"MSME (Udyam {st.udyam}): MSMED Act s.15 ke anusaar 45 din ke andar bhugtaan."))
+            blocks.append(("p", f"MSME (Udyam {st.udyam}): payment within 45 days as per MSMED Act s.15."))
         if sh.get("upi"):
             blocks.append(("p", f"UPI: {sh['upi']}"))
         blocks.append(("p", q["tds_note"]))
@@ -2006,12 +2006,12 @@ def invoice_pdf(tenant: str, job: str, number: str, sh: dict) -> bytes:
 # ---------------------------------------------------------------- files
 def file_path(tenant: str, job: str, name: str) -> tuple[Path, str]:
     if not re.fullmatch(r"[\w.\-]{1,120}", name or "") or ".." in name:
-        raise GraphicError("File nahi mili.")
+        raise GraphicError("File not found.")
     with session() as s:
         j = _job(s, tenant, job)
         p = _dir(tenant, j.id) / name
     if not p.exists():
-        raise GraphicError("File nahi mili.")
+        raise GraphicError("File not found.")
     ext = p.suffix.lower()
     mime = {".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".pdf": "application/pdf",
             ".zip": "application/zip", ".tif": "image/tiff", ".tiff": "image/tiff"}.get(ext, "application/octet-stream")
@@ -2046,18 +2046,18 @@ def day(tenant: str) -> dict:
         waiting = len(cards(tenant))
     bits = []
     if late:
-        bits.append(f"{len(late)} kaam due date se late ({', '.join(x['number'] for x in late[:3])})")
+        bits.append(f"{len(late)} jobs late past the due date ({', '.join(x['number'] for x in late[:3])})")
     if due_today:
-        bits.append(f"aaj due: {', '.join(x['number'] for x in due_today[:3])}")
+        bits.append(f"due today: {', '.join(x['number'] for x in due_today[:3])}")
     if feedback_wait:
-        bits.append(f"{len(feedback_wait)} par client ka feedback aaya, naya version baaki")
+        bits.append(f"{len(feedback_wait)} with client feedback, new version pending")
     if waiting_client:
-        bits.append(f"{len(waiting_client)} proof client ke jawab ka intezaar")
+        bits.append(f"{len(waiting_client)} proofs waiting for the client's reply")
     if unpaid:
-        bits.append(f"{len(unpaid)} kaam ki files de di, paise baaki")
+        bits.append(f"{len(unpaid)} jobs delivered, payment pending")
     if waiting:
-        bits.append(f"{waiting} card aapki haan ka intezaar")
-    say = ("Design desk: " + "; ".join(bits) + ".") if bits else "Design desk ka aaj sab theek."
+        bits.append(f"{waiting} cards waiting for your approval")
+    say = ("Design desk: " + "; ".join(bits) + ".") if bits else "All is well on the design desk today."
     return {"say": say, "late": late, "today": due_today, "soon": soon, "feedback": feedback_wait,
             "waiting_client": waiting_client, "unpaid": unpaid, "waiting": waiting}
 
@@ -2097,16 +2097,16 @@ def tick(when: datetime | None = None) -> dict:
                     d = _date(j.due)
                     if d and j.status != "delivered":
                         if d == on + timedelta(days=1) and _once(s, tenant, f"due1:{j.id}:{d}"):
-                            alerts.append({"kind": "due", "job": j.number, "say": f"Kal {j.number} '{j.title}' ki due date hai."})
+                            alerts.append({"kind": "due", "job": j.number, "say": f"Tomorrow {j.number} '{j.title}' is due."})
                         elif d < on and _once(s, tenant, f"late:{j.id}:{d}"):
                             alerts.append({"kind": "late", "job": j.number,
-                                           "say": f"{j.number} due date ({d:%d %b}) nikal gayi: client ko nayi tareekh ka message card banau?"})
+                                           "say": f"{j.number} due date ({d:%d %b}) has passed: shall I make a message card with a new date for the client?"})
                     vs = _versions(s, j)
                     if vs and vs[-1].status == "sent" and not j.pending_feedback:
                         sent_at = _aware(vs[-1].created_at)
                         if sent_at and n - sent_at > timedelta(days=3) and _once(s, tenant, f"nudge:{vs[-1].id}"):
                             alerts.append({"kind": "nudge", "job": j.number,
-                                           "say": f"{j.number} proof v{vs[-1].n} ko 3 din se jawab nahi: yaad dilane ka message card banau?"})
+                                           "say": f"{j.number} proof v{vs[-1].n} has had no reply for 3 days: shall I make a reminder message card?"})
                     for inv in _j(j.invoices, []):
                         d0 = _date(inv.get("day"))
                         if not d0:
@@ -2115,8 +2115,8 @@ def tick(when: datetime | None = None) -> dict:
                         if (on - d0).days >= lim and _paid(j) + 0.5 < sum(float(i.get("total") or 0) for i in _j(j.invoices, [])) \
                                 and _once(s, tenant, f"unpaid:{j.id}:{inv.get('number')}"):
                             alerts.append({"kind": "unpaid", "job": j.number,
-                                           "say": f"Invoice {inv.get('number')} ({j.number}) ko {lim} din ho gaye, paise poore nahi aaye."
-                                                  + (" MSME: 45 din ki seema." if st.udyam else "")})
+                                           "say": f"Invoice {inv.get('number')} ({j.number}) is {lim} days old and not fully paid."
+                                                  + (" MSME: 45-day limit." if st.udyam else "")})
             for a in alerts:
                 _publish(tenant, "graphic_alert", a)
                 out["alerts"] += 1
@@ -2133,7 +2133,7 @@ def tick(when: datetime | None = None) -> dict:
                         r.last_morning = on.isoformat()
             if due_m:
                 d = day(tenant)
-                if d["say"] != "Design desk ka aaj sab theek.":
+                if d["say"] != "All is well on the design desk today.":
                     _publish(tenant, "graphic_day", {"say": d["say"], "late": len(d["late"]), "today": len(d["today"]),
                                                      "waiting": d["waiting"]})
                     out["morning"] += 1
