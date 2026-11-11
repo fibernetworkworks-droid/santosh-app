@@ -375,6 +375,18 @@ def make_router(require_key: Callable, current_tenant: Callable) -> APIRouter:
                 room.remove(conn)
             await HUB.release(room)
 
+    # ------------------------------------------------------------------- D7 bridge C: design -> App Studio
+    from . import toapp
+    toapp.mount(r, current_tenant)
+
+    # ------------------------------------------------------------------- D7 bridge A: Figma import
+    from . import figma
+    figma.mount(r, current_tenant)
+
+    # ------------------------------------------------------------------- D7 bridge B: design -> Web Studio
+    from . import toweb
+    toweb.mount(r, current_tenant)
+
     root = APIRouter()
     root.include_router(r)
     root.include_router(pub)
