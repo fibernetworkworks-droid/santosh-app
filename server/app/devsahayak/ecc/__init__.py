@@ -21,7 +21,7 @@ import re
 from typing import Any
 
 CREDIT = "Adapted from ECC agents (MIT, github.com/affaan-m/ECC)."
-PARTS = ("reviewers_lang", "reviewers_more", "fixers", "planners")
+PARTS = ("reviewers_lang", "reviewers_more", "fixers", "planners", "agency_eng", "agency_qa")   # agency_* = v0.814 The Agency (msitarzewski/agency-agents, MIT)
 
 # ECC agents deliberately NOT in Hoola Code, each with the reason (shown by the catalogue route, kept honest in tests).
 NOT_ADDED = {
@@ -157,9 +157,8 @@ def suggest(paths: list[str], request: str = "", n: int = 6) -> list[str]:
         hit_f = bool(a["files"]) and a["group"] in ("review", "domain") and bool(_rx(a["files"], re.M).search(blob))
         if hit_w or hit_f:
             add(a["name"])
-    add("code-reviewer")
-    add("security-reviewer")
-    return out[:n]
+    tail = [x for x in ("code-reviewer", "security-reviewer") if x in cat]   # the two general reviewers always fit
+    return [x for x in out if x not in tail][:max(0, n - len(tail))] + tail
 
 
 def _rx(pattern: str, flags: int = 0) -> "re.Pattern[str]":
@@ -178,13 +177,13 @@ def roster(paths: list[str], request: str = "") -> str:
     """The agent list for the coder's system prompt: every agent in one line, grouped, the best fits first."""
     cat = catalog()
     best = suggest(paths, request)
-    names = {"review": "Reviewers", "fix": "Fixers (they edit)", "quality": "Quality", "plan": "Planners",
-             "explore": "Explorers", "domain": "Domain"}
+    names = {"review": "Reviewers", "fix": "Fixers (they edit)", "build": "Builders (they edit)", "quality": "Quality",
+             "plan": "Planners", "explore": "Explorers", "domain": "Domain"}
     lines = ["AGENTS YOU CAN HAND WORK TO (the `agent` tool; adapted from ECC). Each starts fresh with only the task "
-             "you write, works in this same working copy and returns one report. tools: read = looks only, run = may run "
+             "you write, works in this same working copy and returns one report (adapted from ECC and The Agency). tools: read = looks only, run = may run "
              "commands in the box, edit = may change files. Several read / run agents in ONE reply run at the same time.",
              "Best fits for this repo: " + ", ".join(best) + "."]
-    for g in ("review", "fix", "quality", "plan", "explore", "domain"):
+    for g in ("review", "fix", "build", "quality", "plan", "explore", "domain"):
         rows = [a for a in cat.values() if a["group"] == g]
         if not rows:
             continue

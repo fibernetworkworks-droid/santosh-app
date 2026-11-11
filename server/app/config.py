@@ -172,6 +172,10 @@ class Settings(BaseSettings):
     dev_agent_minutes: int = 12             # minutes for one agent
     dev_agent_max: int = 10                 # agents per round
     dev_agent_parallel: int = 4             # read / run agents asked in one reply that run at the same time
+    # v0.814 THE AGENCY (owner: "GO 1 2 3"): 35 more agents in devsahayak/ecc/agency_*.py + the reality check before done
+    dev_reality_check: bool = True          # an independent reality-checker agent looks once before a round may finish
+    dev_reality_min_lines: int = 30         # ... only for a change of at least this many added lines
+    game_agency_experts: bool = True        # the Game Developer's crew roles carry The Agency's expert notes (gamedesk/agency.py)
     agent_aage: bool = True                 # v0.311 AAGE BADHO: a text-only reply that only promises more work gets one 'do it now' nudge
     agent_progress_window_s: int = 300      # v0.311 a turn that finished a tool this recently gets the long-job deadline (0 = off)
     agent_ack_after_s: float = 5.0          # v0.187 a turn silent this long first says "ek second, dekh raha hoon…" (0 = off)

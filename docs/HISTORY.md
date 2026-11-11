@@ -2207,3 +2207,45 @@ foes do not path round walls; no ranged attacks; talking has no choices.
 
 Files: `gamedesk/kit/hoola_3d.gd` (709 -> 1519 lines), `kit/proof_main.gd`, `kit/selftest_main.gd`, `kit3d.py`,
 `tests/test_v0821_characters.py` (12).
+
+## v0.822.0 THE AGENCY IN HOOLA CODE + GAME DEV (built as 0.814; other sessions took 0.813-0.821 meanwhile - REBASE PROTOCOL, all kept)
+Owner (11 Nov 2026): "https://github.com/msitarzewski/agency-agents.git --- NOW READ THIS REPO" -> "GO 1 2 3 AND DEPLOY ON VPS".
+The Agency (MIT, AgentLand Contributors) read at 8ae6164: ~288 personality-style agent prompts in 18 divisions + the NEXUS
+multi-agent playbook. Three parts, all TEXT (condensed + rewritten by three parallel agents; persona / emoji / internet-only
+parts dropped; no upstream code; credit in THIRD_PARTY_NOTICES.md):
+1. HOOLA CODE: 35 agents ECC did not cover join the catalogue (`server/app/devsahayak/ecc/agency_eng.py` 24 +
+   `agency_qa.py` 11; 98 agents in all; new group 'build' = implementers): minimal-change-engineer,
+   codebase-onboarding-engineer, senior-developer (it is a Laravel / Livewire persona - titled so), frontend-developer,
+   backend-architect, api-platform-engineer, devops-automator (never edits .github/workflows), sre, database-optimizer,
+   payments-billing-engineer, i18n-engineer, privacy-engineer, identity-access-engineer, mobile-app-builder,
+   mobile-release-engineer, webassembly-engineer, realtime-collaboration-engineer, search-relevance-engineer,
+   data-engineer, ai-engineer, prompt-engineer, rapid-prototyper (local storage, no hosted services),
+   embedded-firmware-engineer, desktop-app-engineer, reality-checker, evidence-collector (evidence = output / file:line,
+   not screenshots), api-tester, performance-benchmarker (smoke only in the box, said so), test-automation-engineer,
+   test-results-analyzer, ai-generated-code-auditor, appsec-engineer, secrets-credential-engineer,
+   codebase-archaeologist, mcp-builder. `ecc.suggest` keeps code-reviewer + security-reviewer inside the top 6.
+2. THE REALITY CHECK (`engine.reality_check`): when the coder calls done (after ECC's gate) on a change of
+   `dev_reality_min_lines` (30) added lines or more, ONE fresh reality-checker agent (read + run tools, no edits) reads
+   HER request, the coder's claim and the real working copy, runs what it can and answers "VERDICT: READY" or
+   "VERDICT: NEEDS WORK" + numbered gaps with file:line and proof. NEEDS WORK goes back to the coder once (confirm each gap,
+   fix the real ones, then done); READY / unclear finishes. Once a round, never a loop; a check that cannot run never
+   blocks. Page step `reality`; `found.loop.reality` keeps the verdict. Switch `dev_reality_check` (pinned off in conftest
+   for the scripted suites).
+3. HOOLA GAME DEV (`server/app/gamedesk/agency.py`): `EXPERT` = deeper notes for 21 crew roles (game / level / economy /
+   narrative design, technical art, game audio, Godot GDScript / shaders / netcode, Unity, Unreal, Roblox, Blender) that
+   ride the model call beside `lens(role)` (`crew.expert`, both studio.py calls); `NEW_ROLES` = 8 writing engine roles
+   (unity_editor_tools, unity_multiplayer, roblox_experience, roblox_scripter, roblox_avatar, blender_addon, ue_world,
+   ue_tech_art) - the crew is 57 roles (test_v0406 pins healed 49 -> 57). The adapting agent FIXED wrong Godot 4 facts in the
+   source (hint_color -> source_color, no Node.remove_from_parent, Web exports cannot use ENet). Switch `game_agency_experts`.
+4. FIXED, found while testing (the long-standing 'explained' flake of the v0787 / v0789 / v0794 suites, and live): her
+   page polls `view()` (git add -A + diff) while a new round makes its working copy; the round's own `git add` + `commit`
+   of the starting point lost on .git/index.lock ("Unable to create index.lock: File exists" - caught with a probe),
+   `base` became '', every later diff ran against HEAD (already holding the checkpoint) and the round ended
+   'explained' with no pull request. Now `engine._git_lock` = one git command at a time per working copy (add + diff and
+   add + commit + rev-parse as one step), `meta.json` written atomically, and `ensure()` refuses to go on without its
+   starting commit. Proved both ways: without the lock 4 of 25 round starts under polling lost the commit; with it 0.
+Tests `server/tests/test_v0822_agency_agents.py` (8): the 35 in the catalogue and adapted, both sources in the roster, a
+NEEDS WORK verdict sends the coder back once and judges against HER request, READY finishes, a small change is not
+checked, the switch, the page step, the crew's 57 roles / experts / routing, the notes in the model call, round starts under her page's polling.
+NOT VERIFIED: no real model has run the reality check or a game role with the notes (scripted Claude only); the extra
+cost of one reality-check conversation per 30+ line round is not measured.
