@@ -173,7 +173,7 @@ def test_logic_end_to_end(droid_env, monkeypatch):
     # customers + unique phone
     gold = c.post(f"{api}/c/customers", json={"name": "Sharma Traders", "phone": "9876500001", "tier": "gold", "city": "Akola"}, headers=hr).json()
     r = c.post(f"{api}/c/customers", json={"name": "Copy", "phone": "9876500001"}, headers=hr)
-    assert r.status_code == 409 and "pehle se" in r.json()["error"]
+    assert r.status_code == 409 and "already exists" in r.json()["error"]
     # a ref must point to a real row of the right list
     assert c.post(f"{api}/c/invoices", json={"customer": "row_nope"}, headers=hr).status_code == 422
     i1 = c.post(f"{api}/c/invoices", json={"customer": gold["id"], "status": "Paid", "total": 1}, headers=hr).json()

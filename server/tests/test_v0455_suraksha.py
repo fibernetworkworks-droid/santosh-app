@@ -231,7 +231,7 @@ def test_security_gates_block_the_store(droid_env, monkeypatch):
         # because the store gets a .aab signed with her upload key - the preview APK's signature is not that gate.
         v0 = GT.scan(r, "android")
         sig = next(x for x in v0["rows"] if x["check"] == "The preview app is signed")
-        assert sig["state"] == "warn" and "install nahi hogi" in sig["say"]
+        assert sig["state"] == "warn" and "will not install" in sig["say"]
         assert v0["ok"] is True, v0["blocks"]
         proj, apk = GT._proj(r, "android")
         assert apk is not None
@@ -259,7 +259,7 @@ def test_security_gates_block_the_store(droid_env, monkeypatch):
             GT.must_pass(r, "android")
             raise AssertionError("a failing gate must block the upload")
         except GT.GateError as e:
-            assert "store par nahi bheja" in str(e) and "GHSA-x" in str(e)
+            assert "was not sent to the store" in str(e) and "GHSA-x" in str(e)
         # and the gate is really CALLED by both store uploads (v0.393's lesson: a check with no caller is dead code)
         store_src = (ROOT / "android/store.py").read_text()
         apple_src = (ROOT / "ios/appstore.py").read_text()

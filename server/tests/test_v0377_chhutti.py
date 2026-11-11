@@ -58,7 +58,7 @@ def test_holidays_and_change_time(droid_env, monkeypatch):
     # an order placed on a holiday: taken, with the holiday note
     clock["t"] = datetime(2026, 11, 3, 10, 0)
     oh = c.post(f"{api}/c/orders", json={"name": "A", "phone": "9876543210", "cart": [{"id": p1["id"], "qty": 1}]}, headers=ha).json()
-    assert "chhutti" in {x["id"]: x for x in c.get(f"{api}/c/orders", headers=ha).json()["rows"]}[oh["id"]]["delivery_note"]
+    assert "closed today" in {x["id"]: x for x in c.get(f"{api}/c/orders", headers=ha).json()["rows"]}[oh["id"]]["delivery_note"]
 
 
 def test_kit_markers():

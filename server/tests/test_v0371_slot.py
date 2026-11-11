@@ -44,7 +44,7 @@ def test_slots_end_to_end(droid_env, monkeypatch):
     assert "2026-11-03|09:00" not in [s["key"] for s in c.get(f"{api}/slots").json()["slots"]]   # full now
     o3 = order("2026-11-03|09:00")                               # full: still placed, with a note
     r3 = {x["id"]: x for x in c.get(f"{api}/c/orders", headers=ha).json()["rows"]}[o3["id"]]
-    assert "slot" not in r3 and "dukaan call" in r3["delivery_note"]
+    assert "slot" not in r3 and "the shop will call" in r3["delivery_note"]
     late = order("2026-11-02|09:00")["id"]                      # past its cut-off: placed, no slot
     assert "slot" not in {x["id"]: x for x in c.get(f"{api}/c/orders", headers=ha).json()["rows"]}[late]
     # a cancelled order frees its place
@@ -72,7 +72,7 @@ def test_race_for_the_last_place(droid_env, monkeypatch):
     b = c.post(f"{api}/c/orders", json={"name": "B", "phone": "9876543210", "slot": "2026-11-02|17:00", "cart": [{"id": p1["id"], "qty": 1}]}, headers=ha).json()
     monkeypatch.setattr(DL, "book", real)
     rows = {x["id"]: x for x in c.get(f"{api}/c/orders", headers=ha).json()["rows"]}
-    assert rows[a["id"]].get("slot") == "2026-11-02|17:00" and "slot" not in rows[b["id"]] and "usi waqt bhar gaya" in rows[b["id"]]["delivery_note"]
+    assert rows[a["id"]].get("slot") == "2026-11-02|17:00" and "slot" not in rows[b["id"]] and "filled up at that moment" in rows[b["id"]]["delivery_note"]
 
 
 def test_kits_console():

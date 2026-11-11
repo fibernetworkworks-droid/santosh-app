@@ -67,7 +67,7 @@ def test_measurements_kept_per_person_with_history_and_changes(env):
     assert m1["customer"]["phone"] == "9876543210" and not m1["missing"] and not m1["changed"]
     m2 = D.save_measure(T, customer="9876543210", garment="blouse", values={"chest": 36.5})
     assert m2["values"]["chest"] == 36.5 and m2["values"]["waist"] == 30           # partial update keeps the rest
-    assert m2["changed"] and "pehle 34" in m2["changed"][0] and "check" in m2["say"]
+    assert m2["changed"] and "was 34" in m2["changed"][0] and "check" in m2["say"]
     assert m2["note"] == "deep back, dori"                                         # style note carried over
     D.save_measure(T, customer="Sunita", garment="frock", person="beti", values="length 22 chest 24")
     got = D.measures(T, "Sunita")
@@ -85,23 +85,23 @@ def test_check_against_her_rules(env):
                     prices={"blouse": 500}, rules=["Bridal blouse 15 din se kam nahi"])
     D.save_measure(T, garment="blouse", values="L 15 chest 34 kamar 30 shoulder 14 bahi 11 bahi gola 11", name="Asha", phone="9000000001")
     ck = D.check(T, [{"garment": "blouse"}], "kal", customer="Asha")
-    assert not ck["ok"] and any("4 din chahiye" in p for p in ck["problems"]) and ck["rush"]
+    assert not ck["ok"] and any("need 4 days" in p for p in ck["problems"]) and ck["rush"]
     assert "20%" in " ".join(ck["problems"]) and ck["your_rules"] == ["Bridal blouse 15 din se kam nahi"]
     assert date.fromisoformat(ck["earliest"]) >= _today() + timedelta(days=4)
     assert date.fromisoformat(ck["earliest"]).weekday() != 6
     # a closed day
     sunday = next(_today() + timedelta(days=k) for k in range(5, 12) if (_today() + timedelta(days=k)).weekday() == 6)
-    assert any("band" in p for p in D.check(T, [{"garment": "blouse"}], sunday.isoformat(), customer="Asha")["problems"])
+    assert any("closed" in p for p in D.check(T, [{"garment": "blouse"}], sunday.isoformat(), customer="Asha")["problems"])
     # capacity: 2 pieces a day
     d = _open_day(6, closed)
     r = D.new_order(T, [{"garment": "blouse", "qty": 2}], customer="Asha", deliver_on=_iso(d))
     assert r["saved"], r
     ck = D.check(T, [{"garment": "blouse"}], _iso(d), customer="Asha")
-    assert any("roz 2 ka niyam" in p for p in ck["problems"])
+    assert any("your rule is 2 a day" in p for p in ck["problems"])
     # no measurement yet -> a problem; a new customer -> a note
     D.customer_upsert(T, "Neha", "9000000002")
-    assert any("naap nahi hai" in p for p in D.check(T, [{"garment": "blouse"}], _iso(_open_day(8, closed)), customer="Neha")["problems"])
-    assert any("Naya graahak" in n for n in D.check(T, [{"garment": "blouse"}], _iso(_open_day(8, closed)), name="Koi Naya")["notes"])
+    assert any("measurements for Neha" in p for p in D.check(T, [{"garment": "blouse"}], _iso(_open_day(8, closed)), customer="Neha")["problems"])
+    assert any("New customer" in n for n in D.check(T, [{"garment": "blouse"}], _iso(_open_day(8, closed)), name="Koi Naya")["notes"])
 
 
 def test_new_order_flow_quote_ready_deliver_and_learning(env):
@@ -121,7 +121,7 @@ def test_new_order_flow_quote_ready_deliver_and_learning(env):
     o = r["order"]
     assert o["number"] == "D-0001" and o["items"][0]["price_paise"] == 50000 and "price_paise" not in o["items"][1]
     assert o["total"] == "₹1,000" and o["paid"] == "₹1,000" and o["balance"] == "₹0"   # lehenga not priced yet
-    assert len(r["quotes"]) == 1 and r["quotes"][0]["price"] == "₹4,500" and "pehli baar" not in r["quotes"][0]["why"]
+    assert len(r["quotes"]) == 1 and r["quotes"][0]["price"] == "₹4,500" and "First price" not in r["quotes"][0]["why"]
     assert _events("darzi_quote")[-1]["status"] == "pending"
     # her Haan: price in, list updated (a garment new to her list)
     q = D.decide_quote(T, r["quotes"][0]["id"], True)
@@ -160,7 +160,7 @@ def test_learns_how_long_a_garment_really_takes(env):
             o.received_on = (_today() - timedelta(days=9)).isoformat()
         D.deliver(T, r["order"]["id"])
     ck = D.check(T, [{"garment": "kurti"}], "", name="Nayi")
-    assert ck["need_days"] >= 9 and any("asal mein ~9 din" in n for n in ck["notes"])
+    assert ck["need_days"] >= 9 and any("really took ~9 days" in n for n in ck["notes"])
     # the price she charged before is what Hoola proposes for a garment not in her list
     D.save_settings(T, prices={"kurti": None})
     r = D.new_order(T, [{"garment": "kurti"}], name="C1", phone="9000000101", deliver_on="20 din", force=True)
@@ -223,7 +223,7 @@ def test_employee_role_and_customer_whatsapp_status(env):
     from app.agent.tools import HANDLERS, Ctx, dispatch
     ctx = Ctx(T, conv_ctx().conversation_id, actor=f"customer:{cid}")
     got = asyncio.run(HANDLERS["biz_order_status"](ctx))
-    assert [o["status"] for o in got["orders"]] == ["Naya"] and len(got["orders"]) == 1      # only her own
+    assert [o["status"] for o in got["orders"]] == ["New"] and len(got["orders"]) == 1      # only her own
     del dispatch
 
 

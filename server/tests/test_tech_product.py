@@ -50,7 +50,7 @@ def test_rules():
     from app.product import rules as R
     assert R.rice(500, 2, 80, "2 mahine")["score"] == 400.0
     m = R.rice(500, None, 0.8, None)
-    assert m["score"] is None and m["missing"] == ["impact", "effort"] and "andaaza" in m["ask"]
+    assert m["score"] is None and m["missing"] == ["impact", "effort"] and "estimate" in m["ask"]
     assert R.effort_months("2 hafte") == pytest.approx(0.462, abs=0.01) and R.effort_months("10 din") == pytest.approx(0.461, abs=0.01)
     assert R.impact_of("bada") == 2.0 and R.impact_of(1.7) == 2.0 and R.confidence_of("50%") == 0.5
     assert "moonshot" in R.rice(10, 1, 30, 1)["notes"][0]
@@ -89,7 +89,7 @@ def test_harvest_feedback_seva_telecall(pm, monkeypatch):
     ev = next(e for e in full["evidence"] if e["source"] == "feedback")
     assert ev["count"] >= 3 and ev["key"] == "feedback:delivery:neg"
     assert all("9876543210" not in q for q in ev["quotes"])          # customer phone never kept
-    assert full["score"] is None and "andaaza" in full["ask"]         # no invented numbers
+    assert full["score"] is None and "estimate" in full["ask"]         # no invented numbers
     assert full["reach"] is None
     # again: refreshed, never doubled
     h2 = S.harvest(T, 30)
@@ -116,7 +116,7 @@ def test_ideas_dedupe_merge_score(pm):
     merged = m["opportunity"]
     assert len(merged["evidence"]) == 2 and S.opportunity(T, cv["number"])["status"] == "merged"
     s2 = S.score(T, merged["number"], use_seen=True, impact=1, confidence=50, effort=0.5)
-    assert s2["opportunity"]["reach"] == 12.0 and "kam se kam" in s2["say"]
+    assert s2["opportunity"]["reach"] == 12.0 and "at least" in s2["say"]
     k = S.kano_set(T, merged["number"], answers=[["pasand", "farak nahi"], ["pasand", "chalega"]])
     assert k["opportunity"]["kano"] == "attractive"
     sol = S.add_solution(T, a["number"], "Order status SMS")
@@ -154,7 +154,7 @@ def test_roadmap_capacity_dependencies_plan(pm, monkeypatch):
     assert S._cycles(T)
     assert any(p["id"] == "cycle" for p in S.roadmap(T)["problems"])
     pub = S.roadmap_text(T, public=True)
-    assert "score" not in pub.lower() and "Dark mode" in pub and "pakki nahi" in pub
+    assert "score" not in pub.lower() and "Dark mode" in pub and "not final" in pub
     assert k["id"]
     from app import chatfiles
     monkeypatch.setattr(chatfiles, "store", lambda tenant, name, data, mime="": {"file_id": "f_" + name, "name": name, "size": len(data)})
@@ -312,7 +312,7 @@ def test_before_after_and_metrics(pm):
     assert fbp["before"] >= 3 and fbp["after"] == 0 and ba["complete"]
     sv = [p for p in ba["signals"] if p["source"] == "seva"]
     assert not sv or sv[0]["after"] == 1
-    assert ba["kpi"]["before"] == 100 and ba["kpi"]["after"] == 130 and "behtar" in ba["say"] and "pakka nahi" in ba["say"]
+    assert ba["kpi"]["before"] == 100 and ba["kpi"]["after"] == 130 and "better" in ba["say"] and "does not prove" in ba["say"]
     assert S.opportunity(T, fb["number"])["result"]["complete"]
     m = S.metrics(T)
     assert m["kpis"][0]["latest"] == 130 and m["shipped"][0]["number"] == fb["number"]

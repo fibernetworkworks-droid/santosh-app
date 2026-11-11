@@ -67,7 +67,7 @@ def test_delivery_end_to_end(droid_env, monkeypatch):
     # closed: taken, with a note
     monkeypatch.setattr(DL, "is_open", lambda g, at=None: False)
     o4 = mk(1, "Pune 411001")
-    assert "band" in {x["id"]: x for x in c.get(f"{api}/c/orders", headers=ha).json()["rows"]}[o4["id"]]["delivery_note"]
+    assert "closed" in {x["id"]: x for x in c.get(f"{api}/c/orders", headers=ha).json()["rows"]}[o4["id"]]["delivery_note"]
     monkeypatch.undo()
     # a coupon discounts the goods only; the fee rule looks at the goods after the coupon
     c.put(f"/api/apps/{aid}/coupons", json={"code": "HALF50", "kind": "percent", "value": 50})
