@@ -74,22 +74,22 @@ def _private_ok() -> bool:
 def _public(host: str, port: int) -> str:
     """The host must resolve to the public internet (no Hoola-internal / LAN address). Returns the first checked IP."""
     if not host or "/" in host:
-        raise OwnDbConnError("Host sahi nahi.")
+        raise OwnDbConnError("The host is not valid.")
     h = host.lower()
     if (h in ("localhost", "metadata.google.internal") or h.endswith((".local", ".internal", ".localhost"))) and not _private_ok():
-        raise OwnDbConnError("Yeh address Hoola ke server ke andar ka hai; apne database ka public host dijiye.")
+        raise OwnDbConnError("This address is inside Hoola's own server; give your database's public host.")
     try:
         infos = socket.getaddrinfo(host, port, proto=socket.IPPROTO_TCP)
     except OSError:
-        raise OwnDbConnError(f"Host {host} nahi mila. Spelling dekhiye.")
+        raise OwnDbConnError(f"Host {host} was not found. Check the spelling.")
     ips = []
     for info in infos:
         ip = ipaddress.ip_address(info[4][0])
         if (not ip.is_global or ip.is_multicast) and not _private_ok():
-            raise OwnDbConnError("Yeh host private network ki taraf jaata hai; Hoola sirf public internet par database se judta hai.")
+            raise OwnDbConnError("This host points to a private network; Hoola connects to databases only over the public internet.")
         ips.append(str(ip))
     if not ips:
-        raise OwnDbConnError(f"Host {host} nahi mila.")
+        raise OwnDbConnError(f"Host {host} was not found.")
     return ips[0]
 
 
@@ -108,15 +108,15 @@ def mask(s: str, d: dict | None = None) -> str:
 def parse(kind: str, secret: str) -> dict[str, Any]:
     secret = (secret or "").strip()
     if not secret:
-        raise OwnDbConnError("Connection khaali hai.")
+        raise OwnDbConnError("The connection is empty.")
     if len(secret) > 6000:
-        raise OwnDbConnError("Bahut lamba hai.")
+        raise OwnDbConnError("It is too long.")
     if kind == "mysql":
         u = urlparse(secret)
         if u.scheme not in ("mysql", "mysql+pymysql", "mariadb"):
             raise OwnDbConnError("Roop: mysql://user:password@host:3306/dbname")
         if not u.hostname or not u.username or not (u.path or "/").strip("/"):
-            raise OwnDbConnError("Host, user aur database ka naam chahiye (mysql://user:password@host:3306/dbname).")
+            raise OwnDbConnError("Host, user and database name are needed (mysql://user:password@host:3306/dbname).")
         q = {k: v[-1] for k, v in parse_qs(u.query).items()}
         return {"kind": "mysql", "host": u.hostname, "port": int(u.port or 3306), "user": unquote(u.username),
                 "password": unquote(u.password or ""), "db": unquote(u.path.strip("/")),
@@ -126,7 +126,7 @@ def parse(kind: str, secret: str) -> dict[str, Any]:
         if u.scheme not in ("mongodb", "mongodb+srv"):
             raise OwnDbConnError("Roop: mongodb+srv://user:password@cluster.mongodb.net/dbname")
         if not u.hostname:
-            raise OwnDbConnError("Host chahiye.")
+            raise OwnDbConnError("A host is needed.")
         q = {k: v[-1] for k, v in parse_qs(u.query).items()}
         db = unquote((u.path or "/").strip("/")) or "hoola"
         tls = u.scheme == "mongodb+srv" or str(q.get("tls") or q.get("ssl") or "").lower() == "true"
@@ -137,13 +137,13 @@ def parse(kind: str, secret: str) -> dict[str, Any]:
         try:
             sa = json.loads(secret)
         except ValueError:
-            raise OwnDbConnError("Firebase ki service-account JSON file ka poora text chahiye (Project settings > Service accounts).")
+            raise OwnDbConnError("The full text of the Firebase service-account JSON file is needed (Project settings > Service accounts).")
         if sa.get("emulator") and _private_ok():            # tests / her own local emulator only
             return {"kind": "firestore", "project_id": str(sa.get("project_id") or "demo-hoola"), "emulator": str(sa["emulator"])}
         if sa.get("type") != "service_account" or not sa.get("project_id") or not sa.get("private_key") or not sa.get("client_email"):
-            raise OwnDbConnError("Yeh service-account JSON nahi lagti (type, project_id, client_email, private_key chahiye).")
+            raise OwnDbConnError("This does not look like a service-account JSON (type, project_id, client_email, private_key are needed).")
         return {"kind": "firestore", "project_id": sa["project_id"], "client_email": sa["client_email"], "sa": sa}
-    raise OwnDbConnError(f"Database ka prakaar: {', '.join(KINDS)}.")
+    raise OwnDbConnError(f"Database kind: {', '.join(KINDS)}.")
 
 
 def label_of(d: dict) -> str:
@@ -169,7 +169,7 @@ def mysql_connect(d: dict, timeout_s: int = 15):
         kw["ssl"] = ctx
         kw["host"] = d["host"]                               # TLS checks the name; the name was checked public above
     elif not _private_ok():
-        raise OwnDbConnError("Internet par bina TLS ke database nahi: ssl chalu rakhiye (PlanetScale / TiDB mein hamesha).")
+        raise OwnDbConnError("No database over the internet without TLS: keep ssl on (always on in PlanetScale / TiDB).")
     try:
         return pymysql.connect(**kw)
     except pymysql.MySQLError as e:
@@ -179,9 +179,9 @@ def mysql_connect(d: dict, timeout_s: int = 15):
 def _mysql_err(e: Exception, d: dict) -> str:
     s = mask(str(e), d)
     if "Access denied" in s:
-        return "Database ne user / password mana kar diya."
+        return "The database refused the user / password."
     if "timed out" in s.lower() or "Can't connect" in s:
-        return "Database se jud nahi paya: host / port / firewall dekhiye; Hoola ke server ka IP allow karna pad sakta hai."
+        return "Could not connect to the database: check host / port / firewall; you may need to allow the IP of Hoola's server."
     return s
 
 
@@ -197,7 +197,7 @@ def mongo_client(d: dict, timeout_s: int = 15):
         for r in dns.resolver.resolve("_mongodb._tcp." + d["host"], "SRV"):
             _public(str(r.target).rstrip("."), int(r.port))
     if not d.get("tls") and not _private_ok():
-        raise OwnDbConnError("Internet par bina TLS ke database nahi: tls=true rakhiye (Atlas mein hamesha hota hai).")
+        raise OwnDbConnError("No database over the internet without TLS: keep tls=true (always on in Atlas).")
     kw = {"serverSelectionTimeoutMS": 10000, "connectTimeoutMS": 10000, "socketTimeoutMS": timeout_s * 1000, "appname": "hoola"}
     if _private_ok() and not d.get("srv"):
         kw["directConnection"] = True
@@ -245,8 +245,8 @@ def probe(d: dict) -> str:
             list(cl.collection("hoola_apps").limit(1).stream())
             return "Firestore"
         except Exception as e:                              # noqa: BLE001
-            raise OwnDbConnError("Firebase se jud nahi paya: " + mask(str(e), d.get("sa") or {}), 503)
-    raise OwnDbConnError("Yeh prakaar nahi.")
+            raise OwnDbConnError("Could not connect to Firebase: " + mask(str(e), d.get("sa") or {}), 503)
+    raise OwnDbConnError("This kind is not supported.")
 
 
 # ---------------------------------------------------------------- store
@@ -266,7 +266,7 @@ def add(tenant: str, kind: str, name: str, secret: str) -> dict:
         rows = s.scalars(select(OwnConn).where(OwnConn.tenant_id == tenant)).all()
         same = next((x for x in rows if x.name.lower() == name.lower()), None)
         if not same and len(rows) >= MAX_CONNS:
-            raise OwnDbConnError(f"{MAX_CONNS} databases tak jod sakte hain; koi purana hataiye.")
+            raise OwnDbConnError(f"You can connect up to {MAX_CONNS} databases; remove an old one.")
         c = same or OwnConn(tenant_id=tenant)
         c.kind, c.name, c.label, c.version = kind, name, label_of(d), ver
         c.sealed = _vault().seal(json.dumps(d))
@@ -275,7 +275,7 @@ def add(tenant: str, kind: str, name: str, secret: str) -> dict:
             s.add(c)
         s.flush()
         out = view(c)
-    out["say"] = f"Database '{name}' jud gaya ({out['label']}, {ver})."
+    out["say"] = f"Database '{name}' connected ({out['label']}, {ver})."
     return out
 
 
@@ -289,10 +289,10 @@ def remove(tenant: str, cid: str) -> dict:
     with session() as s:
         c = s.get(OwnConn, cid)
         if c is None or c.tenant_id != tenant:
-            raise OwnDbConnError("Yeh database nahi mila.", 404)
+            raise OwnDbConnError("This database was not found.", 404)
         name = c.name
         s.delete(c)
-    return {"removed": name, "say": f"'{name}' hata diya; uska password Hoola ke paas ab nahi hai."}
+    return {"removed": name, "say": f"'{name}' removed; Hoola no longer has its password."}
 
 
 def secret_of(tenant: str, cid: str) -> tuple[dict, dict]:
@@ -308,12 +308,12 @@ def secret_of(tenant: str, cid: str) -> tuple[dict, dict]:
     with session() as s:
         c = s.get(OwnConn, cid)
         if c is None or c.tenant_id != tenant:
-            raise OwnDbConnError("Yeh database nahi mila; app mein dobara jodiye.", 404)
+            raise OwnDbConnError("This database was not found; connect it again in the app.", 404)
         s.expunge(c)
     try:
         d = json.loads(_vault().open(c.sealed))
     except Exception:                                       # noqa: BLE001
-        raise OwnDbConnError("Is database ka saved password khul nahi raha; app mein dobara jodiye.")
+        raise OwnDbConnError("The saved password of this database cannot be opened; connect it again in the app.")
     return view(c), d
 
 

@@ -38,7 +38,7 @@ def _site(r: AppProject) -> str:
 def _clean(text: str) -> str:
     t = re.sub(r"[\x00-\x08\x0b-\x1f\x7f]+", " ", str(text or "")).strip()
     if not t:
-        raise BaatError("Kuch likhiye.")
+        raise BaatError("Write something.")
     return t[:MAX_TEXT]
 
 
@@ -84,7 +84,7 @@ def _add(r: AppProject, member: str, by: str, staff: bool, name: str, text: str,
 
 def mine(r: AppProject, w: W.Who) -> dict[str, Any]:
     if w.m is None:
-        raise BaatError("Pehle login kijiye.", 401)
+        raise BaatError("Please log in first.", 401)
     _mark_read(r, w.m.id, "customer")
     return {"messages": [_view(x) for x in _rows(r, w.m.id)][-200:]}
 
@@ -92,7 +92,7 @@ def mine(r: AppProject, w: W.Who) -> dict[str, Any]:
 def write(r: AppProject, w: W.Who, text: str, order: str = "") -> dict[str, Any]:
     """A customer's message to the shop."""
     if w.m is None:
-        raise BaatError("Pehle login kijiye.", 401)
+        raise BaatError("Please log in first.", 401)
     W.rate(f"chat|{_site(r)}|{w.m.id}", 20, 600)
     text = _clean(text)
     msg = _add(r, w.m.id, w.m.id, False, w.m.name or w.m.email.split("@")[0], text, str(order or ""))
@@ -109,7 +109,7 @@ def write(r: AppProject, w: W.Who, text: str, order: str = "") -> dict[str, Any]
 def threads(r: AppProject, w: W.Who) -> dict[str, Any]:
     """Staff / her: every customer thread, newest first, with the last line and unread (customer messages not yet read)."""
     if not w.staff:
-        raise BaatError("Yeh sirf staff ke liye hai.", 403)
+        raise BaatError("This is for staff only.", 403)
     from . import backend as BE
     per: dict[str, list[W.SiteAppRow]] = {}
     for x in _rows(r):
@@ -127,7 +127,7 @@ def threads(r: AppProject, w: W.Who) -> dict[str, Any]:
 
 def thread(r: AppProject, w: W.Who, member: str) -> dict[str, Any]:
     if not w.staff:
-        raise BaatError("Yeh sirf staff ke liye hai.", 403)
+        raise BaatError("This is for staff only.", 403)
     _mark_read(r, member, "staff")
     return {"member": member, "messages": [_view(x) for x in _rows(r, member)][-200:]}
 
@@ -135,11 +135,11 @@ def thread(r: AppProject, w: W.Who, member: str) -> dict[str, Any]:
 def reply(r: AppProject, w: W.Who, member: str, text: str, her_tap: bool = True) -> dict[str, Any]:
     """Staff / her reply in a customer's thread (her: only from her own tap in the console / phone)."""
     if not w.staff:
-        raise BaatError("Yeh sirf staff ke liye hai.", 403)
+        raise BaatError("This is for staff only.", 403)
     if w.owner and not her_tap:
-        raise BaatError("Graahak ko jawab sirf aapke tap se jaata hai.", 403)
+        raise BaatError("A reply to a customer goes only by your tap.", 403)
     if not _rows(r, member):
-        raise BaatError("Is graahak ne abhi kuch likha nahi.", 404)
+        raise BaatError("This customer has not written anything yet.", 404)
     text = _clean(text)
     name = (r.name or "Shop") if w.owner else ((w.m.name or "Staff") if w.m else "Staff")
     msg = _add(r, member, "owner" if w.owner else w.id, True, name, text)
@@ -162,8 +162,8 @@ def _tell_shop(r: AppProject, name: str, text: str) -> None:
     _NOTES[r.id] = hits + [t]
     try:
         from .android.service import _note
-        _note(r, f"{r.name or 'Aapki app'} ({r.number}): {name} ne app mein likha (graahak ke shabd): \"{text[:160]}\". "
-                 "Jawab app ka data > Graahak ki baatein se dijiye.")
+        _note(r, f"{r.name or 'Your app'} ({r.number}): {name} wrote in the app (the customer's words): \"{text[:160]}\". "
+                 "Reply from the app's data > Customer chats.")
         STATS["notes"] += 1
     except Exception:                                         # noqa: BLE001
         pass

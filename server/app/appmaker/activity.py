@@ -45,11 +45,11 @@ EN = {
 _PAT = [
     (re.compile(r"^Kotlin: (.+) \((\d+)/(\d+)\)$"), lambda m: ("Writing Kotlin for every screen", m.group(1), "kotlin")),
     (re.compile(r"^Swift(?:UI)?: (.+) \((\d+)/(\d+)\)$"), lambda m: ("Writing SwiftUI for every screen", m.group(1), "swift")),
-    (re.compile(r"^Compile ki galtiyan theek: round (\d+)"), lambda m: ("Fixing compile errors", f"round {m.group(1)}", "")),
+    (re.compile(r"^(?:Compile ki galtiyan theek|Fixing compile errors): round (\d+)"), lambda m: ("Fixing compile errors", f"round {m.group(1)}", "")),
     (re.compile(r"^Device check: (.+?) crash"), lambda m: ("Fixing crashes found on the phone check", m.group(1), "")),
     (re.compile(r"^Simulator check: (.+?) crash"), lambda m: ("Fixing crashes found on the iPhone check", m.group(1), "")),
-    (re.compile(r"^Build (\d+) wapas la rahi hoon"), lambda m: (f"Bringing back build {m.group(1)}", "", "")),
-    (re.compile(r"^Theek kar raha hoon: (.+)$"), lambda m: ("Fixing a screen that did not compile", m.group(1), "")),
+    (re.compile(r"^Build (\d+) (?:wapas la rahi hoon|is coming back)"), lambda m: (f"Bringing back build {m.group(1)}", "", "")),
+    (re.compile(r"^(?:Theek kar raha hoon|Fixing a screen that did not compile): (.+)$"), lambda m: ("Fixing a screen that did not compile", m.group(1), "")),
     (re.compile(r"^Look (\d+): (.+)$"), lambda m: (f"Look {m.group(1)}: {m.group(2)}", "", f"look{m.group(1)}")),
 ]
 

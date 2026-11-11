@@ -100,12 +100,12 @@ def settings(r: AppProject) -> dict[str, Any]:
 def problems(st: dict[str, Any]) -> dict[str, str]:
     out: dict[str, str] = {}
     if "phone_otp" in st["ways"] and not st["otp_ready"]:
-        out["phone_otp"] = ("Mobile OTP ke liye DLT par registered SMS template + provider chahiye (server par "
-                            "SITE_SMS_PROVIDER + key); tab tak login box OTP nahi dikhayega.")
+        out["phone_otp"] = ("Mobile OTP needs a DLT-registered SMS template + a provider (on the server: "
+                            "SITE_SMS_PROVIDER + key); until then the login box will not show OTP.")
     if "google" in st["ways"] and not st["ids"].get("google_web_client_id"):
-        out["google"] = "Google login ke liye aapke Google Cloud project ka WEB client id chahiye (Android usi se chalta hai)."
+        out["google"] = "Google login needs the WEB client id of your Google Cloud project (Android runs on the same one)."
     if "apple" in st["ways"] and not st["ids"].get("apple_bundle_id"):
-        out["apple"] = "Apple login ke liye app ka bundle id chahiye (iPhone build ka, jaise in.hoola.yourapp)."
+        out["apple"] = "Apple login needs the app's bundle id (of the iPhone build, for example in.hoola.yourapp)."
     return out
 
 
@@ -116,20 +116,20 @@ def save_settings(r: AppProject, body: dict[str, Any]) -> dict[str, Any]:
     cur = settings(r)
     ways = body.get("ways", cur["ways"])
     if not isinstance(ways, list):
-        raise SignError("ways: list chahiye.")
+        raise SignError("ways: a list is needed.")
     bad = [w for w in ways if w not in WAYS]
     if bad:
-        raise SignError(f"Yeh login tareeka nahi hai: {', '.join(map(str, bad[:3]))}. Ho sakte hain: {', '.join(WAYS)}.")
+        raise SignError(f"This is not a login method: {', '.join(map(str, bad[:3]))}. Possible ones: {', '.join(WAYS)}.")
     ways = [w for w in WAYS if w in ways]
     if not ways:
-        raise SignError("Kam se kam ek login tareeka rakhna hoga.")
+        raise SignError("At least one login method must stay.")
     ids = dict(cur["ids"])
     for k, v in (body.get("ids") or {}).items():
         if k not in ids:
-            raise SignError(f"Yeh id nahi pehchani: {k}.")
+            raise SignError(f"This id is not recognized: {k}.")
         v = str(v or "").strip()[:200]
         if v and not re.fullmatch(r"[A-Za-z0-9._:\-]+", v):
-            raise SignError(f"{k}: sirf akshar, ank, bindu aur dash.")
+            raise SignError(f"{k}: only letters, digits, dots and dashes.")
         ids[k] = v
     keep = {"ways": ways, "ids": {k: v for k, v in ids.items() if v}, "staff_2fa": bool(body.get("staff_2fa", cur["staff_2fa"]))}
     BE.patch_backend(r, set_={"sign": keep})
@@ -151,7 +151,7 @@ def public(r: AppProject) -> dict[str, Any]:
 def otp_start(r: AppProject, phone: str, ip: str = "") -> dict[str, Any]:
     st = settings(r)
     if "phone_otp" not in st["ways"]:
-        raise SignError("Is app mein mobile OTP login chalu nahi hai.", 503)
+        raise SignError("Mobile OTP login is not switched on in this app.", 503)
     out = SEC.otp_start(_site(r), phone, ip)
     STATS["otp"] += 1
     return out
@@ -161,7 +161,7 @@ def otp_verify(r: AppProject, body: dict[str, Any], ua: str = "", ip: str = "") 
     from . import backend as BE
     st = settings(r)
     if "phone_otp" not in st["ways"]:
-        raise SignError("Is app mein mobile OTP login chalu nahi hai.", 503)
+        raise SignError("Mobile OTP login is not switched on in this app.", 503)
     h = _home(r)
     return SEC.otp_verify(_site(r), BE.schema(h), str(body.get("phone") or ""), str(body.get("code") or ""),
                           str(body.get("name") or ""), bool(body.get("consent")), ua, ip)
@@ -173,7 +173,7 @@ def password_signup(r: AppProject, body: dict[str, Any], ua: str = "", ip: str =
     h = _home(r)
     site = _site(r)
     if "consent" in (body or {}) and (body or {}).get("consent") is not True:
-        raise SignError("Account banane ke liye privacy notice par haan (tick) zaroori hai.", 400)
+        raise SignError("To create an account you must agree (tick) to the privacy notice.", 400)
     out = BE.signup(h, str((body or {}).get("email") or ""), str((body or {}).get("password") or ""),
                     str((body or {}).get("name") or ""), ip)
     m = W.member_of(site, out.get("token") or "")
@@ -246,14 +246,14 @@ def _jwks(url: str) -> dict[str, Any]:
     else:
         import httpx
         if (urlparse(url).hostname or "") not in ("www.googleapis.com", "appleid.apple.com"):
-            raise SignError("Yeh provider ka pata nahi hai.", 400)
+            raise SignError("This provider is not known.", 400)
         with httpx.Client(timeout=10.0) as c:
             resp = c.get(url)
         if resp.status_code != 200:
-            raise SignError("Login provider ki chaabiyan nahi mili; phir koshish kijiye.", 502)
+            raise SignError("Could not get the login provider's keys; please try again.", 502)
         data = resp.json()
     if not isinstance(data, dict) or not isinstance(data.get("keys"), list):
-        raise SignError("Login provider ka jawab samajh nahi aaya.", 502)
+        raise SignError("The login provider's reply was not understood.", 502)
     with _LOCK:
         _JWKS[url] = (time.time(), data)
     STATS["jwks"] += 1
@@ -285,47 +285,47 @@ def verify_token(r: AppProject, provider: str, token: str, nonce_asked: str = ""
     """The provider's ID token -> its checked claims, or a refusal. Nothing here trusts the phone."""
     p = PROVIDERS.get(provider)
     if p is None:
-        raise SignError("Login provider: google ya apple.", 400)
+        raise SignError("Login provider: google or apple.", 400)
     st = settings(r)
     auds = [st["ids"].get(k, "") for k in p["ids"]]
     auds = [a for a in auds if a]
     if not auds:
-        raise SignError(f"{p['label']} ke liye aapki client id abhi nahi daali gayi.", 503)
+        raise SignError(f"Your client id for {p['label']} has not been added yet.", 503)
     parts = str(token or "").split(".")
     if len(parts) != 3 or len(token) > 8000:
-        raise SignError("Login token theek nahi lagta.", 400)
+        raise SignError("The login token does not look right.", 400)
     try:
         head = json.loads(_b64(parts[0]))
         body = json.loads(_b64(parts[1]))
         sig = _b64(parts[2])
     except (ValueError, TypeError):
-        raise SignError("Login token padha nahi ja saka.", 400)
+        raise SignError("The login token could not be read.", 400)
     if not isinstance(head, dict) or not isinstance(body, dict):
-        raise SignError("Login token theek nahi lagta.", 400)
+        raise SignError("The login token does not look right.", 400)
     if not _verify_rs256(head, (parts[0] + "." + parts[1]).encode(), sig, _jwks(p["jwks"])):
         STATS["social_bad"] += 1
-        raise SignError("Login token ka signature galat hai.", 401)
+        raise SignError("The login token's signature is wrong.", 401)
     if str(body.get("iss") or "") not in p["iss"]:
-        raise SignError("Login token kisi aur jagah se hai.", 401)
+        raise SignError("The login token is from somewhere else.", 401)
     if str(body.get("aud") or "") not in auds:
         STATS["social_bad"] += 1
-        raise SignError("Yeh login token is app ke liye nahi bana.", 401)
+        raise SignError("This login token was not made for this app.", 401)
     try:
         exp = int(body.get("exp") or 0)
         iat = int(body.get("iat") or 0)
     except (TypeError, ValueError):
-        raise SignError("Login token ka samay theek nahi.", 401)
+        raise SignError("The login token's time is not right.", 401)
     t = time.time()
     if exp + SKEW < t or (iat and iat - SKEW > t):
-        raise SignError("Login token purana ho gaya; phir se login kijiye.", 401)
+        raise SignError("The login token has expired; please log in again.", 401)
     if need_nonce and not _nonce_ok(_site(r), nonce_asked, str(body.get("nonce") or "")):
-        raise SignError("Login dobara shuru kijiye (nonce galat ya do baar use hua).", 401)
+        raise SignError("Start the login again (the nonce is wrong or was used twice).", 401)
     sub = str(body.get("sub") or "")
     email = str(body.get("email") or "").strip().lower()[:160]
     if not sub:
-        raise SignError("Login token mein account id nahi hai.", 401)
+        raise SignError("The login token has no account id.", 401)
     if provider == "google" and email and body.get("email_verified") not in (True, "true"):
-        raise SignError("Is Google account ka e-mail verified nahi hai.", 401)
+        raise SignError("This Google account's e-mail is not verified.", 401)
     name = str(body.get("name") or "").strip()[:120]
     return {"sub": sub, "email": email, "name": name, "aud": str(body.get("aud") or "")}
 
@@ -337,7 +337,7 @@ def social_login(r: AppProject, provider: str, body: dict[str, Any], ua: str = "
     from sqlalchemy import select
     st = settings(r)
     if provider not in st["ways"]:
-        raise SignError("Is app mein yeh login tareeka chalu nahi hai.", 503)
+        raise SignError("This login method is not switched on in this app.", 503)
     h = _home(r)
     site = _site(r)
     asked = str((body or {}).get("nonce") or "")
@@ -356,9 +356,9 @@ def social_login(r: AppProject, provider: str, body: dict[str, Any], ua: str = "
         fresh = m is None
         if fresh:
             if not BE.schema(h).get("signup", True):
-                raise SignError("Is app par naye account band hain; dukaan se baat kijiye.", 403)
+                raise SignError("New accounts are closed on this app; please contact the shop.", 403)
             if not (body or {}).get("consent"):
-                raise SignError("Account banane ke liye privacy notice par haan (tick) zaroori hai.", 400)
+                raise SignError("To create an account you must agree (tick) to the privacy notice.", 400)
             m = W.SiteAppMember(site_id=site, email=email, name=name, pw="", role="member", ext=ext,
                                 consent=json.dumps(SEC.consent_record(provider)))
             s.add(m)
@@ -381,7 +381,7 @@ def social_login(r: AppProject, provider: str, body: dict[str, Any], ua: str = "
 # ---------------------------------------------------------------- the member's own security page (in the app)
 def _me(r: AppProject, w: W.Who) -> W.SiteAppMember:
     if w.m is None:
-        raise SignError("Pehle login kijiye.", 401)
+        raise SignError("Please log in first.", 401)
     return w.m
 
 
@@ -417,7 +417,7 @@ def two_fa_off(r: AppProject, w: W.Who, code: str) -> dict[str, Any]:
     st = settings(r)
     m = _me(r, w)
     if st["staff_2fa"] and (m.role or "") in ("staff", "admin"):
-        raise SignError("Is app mein staff ke liye 2FA zaroori hai; maalkin hi yeh niyam badal sakti hain.", 403)
+        raise SignError("This app requires 2FA for staff; only the owner can change this rule.", 403)
     return SEC.two_fa_off(_site(r), m, code)
 
 

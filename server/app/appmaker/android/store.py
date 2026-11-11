@@ -102,12 +102,12 @@ def setup(tenant: str, ref: str, package: str = "") -> dict[str, Any]:
     r = _load(tenant, ref)
     st = state(r)
     if not AN.state(r).get("apk"):
-        raise StoreError("Pehle Android app banaiye (preview build): store build usi se banti hai.")
+        raise StoreError("Build the Android app first (the preview build): the store build is made from it.")
     pkg = (package or st.get("package") or propose_package(r)).strip().lower()
     if not PKG_RE.match(pkg) or pkg.startswith(("com.example", "in.hoola.preview", "android.", "com.google", "com.android")):
-        raise StoreError("Package name sahi nahi (jaise com.sharmakirana.app: chhote akshar, ank, bindu).")
+        raise StoreError("The package name is not valid (for example com.sharmakirana.app: lowercase letters, digits, dots).")
     if st.get("locked") and pkg != st.get("package"):
-        raise StoreError(f"Package {st['package']} Play par ja chuka hai; Google ise badalne nahi deta.")
+        raise StoreError(f"Package {st['package']} has already gone to Play; Google does not allow changing it.")
     _put(r, package=pkg, confirmed=now().isoformat())
     _upload_key(r)
     return view(_load(tenant, ref))
@@ -158,9 +158,9 @@ def set_credentials(tenant: str, ref: str, raw: str) -> dict[str, Any]:
     try:
         d = json.loads(raw)
     except (TypeError, ValueError):
-        raise StoreError("Yeh JSON file nahi lagti (Play Console > API access > service account ki key).")
+        raise StoreError("This does not look like a JSON file (Play Console > API access > the service account's key).")
     if d.get("type") != "service_account" or not d.get("client_email") or "PRIVATE KEY" not in str(d.get("private_key") or ""):
-        raise StoreError("Service account key chahiye (type service_account, client_email, private_key).")
+        raise StoreError("A service account key is needed (type service_account, client_email, private_key).")
     keep = {k: d[k] for k in ("type", "project_id", "private_key_id", "private_key", "client_email", "client_id", "token_uri") if k in d}
     (_dir(r) / "play.sealed").write_text(vault().seal(json.dumps(keep)))
     (_dir(r) / "play.sealed").chmod(0o600)
@@ -228,7 +228,7 @@ def listing(tenant: str, ref: str, regen: bool = False, edit: dict[str, Any] | N
         for k in ("title", "short", "full"):
             if isinstance(edit.get(k), str) and edit[k].strip():
                 if len(edit[k].strip()) > LIMITS[k]:
-                    raise StoreError(f"{k}: Play {LIMITS[k]} akshar tak leta hai ({len(edit[k].strip())} hain).")
+                    raise StoreError(f"{k}: Play takes up to {LIMITS[k]} characters (this has {len(edit[k].strip())}).")
                 cur[k] = edit[k].strip()
         cur["edited"] = True
     elif regen or not cur.get("title"):
@@ -381,10 +381,10 @@ def build_bundle(tenant: str, ref: str) -> dict[str, Any]:
     r = _load(tenant, ref)
     st = state(r)
     if not st.get("package"):
-        raise StoreError("Pehle store ka package name pakka kijiye.")
+        raise StoreError("Confirm the store package name first.")
     if st.get("status") in ("building", "uploading"):
         return view(r)
-    _put(r, status="building", error="", now="Play Store bundle (.aab) ban raha hai")
+    _put(r, status="building", error="", now="Making the Play Store bundle (.aab)")
     _bg(r.id, _build_bundle)
     return view(_load(tenant, ref))
 
@@ -418,13 +418,13 @@ def _build_bundle(r: AppProject) -> None:
     st = state(r)
     hist = ast.get("history") or []
     if not hist:
-        raise StoreError("Pehle Android app ki ek build chahiye.")
+        raise StoreError("A build of the Android app is needed first.")
     b = hist[-1]["build"]
     z = AN._dir(r) / f"project-b{b}.zip"
     if not z.exists():
-        raise StoreError("Aakhri build ka project nahi mila; 'Android app banao' dobara kahiye.")
+        raise StoreError("The last build's project was not found; say 'build the Android app' again.")
     if not RN.describe()["ready"] and RN._override is None:
-        raise StoreError("Build machine set nahi hai: store bundle nahi ban sakta.")
+        raise StoreError("The build machine is not set up: the store bundle cannot be made.")
     src = _dir(r) / "project"
     shutil.rmtree(src, ignore_errors=True)
     with zipfile.ZipFile(z) as zf:
@@ -448,19 +448,19 @@ def _build_bundle(r: AppProject) -> None:
             gs.write_text('<?xml version="1.0" encoding="utf-8"?>\n<resources>\n' + "".join(
                 f'    <string name="{k}" translatable="false">{v}</string>\n' for k, v in vals.items()) + '</resources>\n')
         else:
-            raise StoreError("Turant notifications chalu hain par Play package Firebase mein register nahi: 'Turant notifications' dobara chalu kijiye.")
+            raise StoreError("Instant notifications are on but the Play package is not registered in Firebase: turn 'Instant notifications' on again.")
     (src / "gradlew").chmod(0o755)
     key = _upload_key(r)
     (src / "keys").mkdir(exist_ok=True)
     (src / "keys/preview.p12").write_bytes(base64.b64decode(key["p12_b64"]))
     gp = src / "app/build.gradle.kts"
     gp.write_text(re.sub(r'\?: "[A-Za-z0-9]*"', f'?: "{key["password"]}"', gp.read_text()))    # the export blanked it
-    _put(r, now="Bundle compile ho raha hai (build machine)")
+    _put(r, now="Compiling the bundle (build machine)")
     AN._emit(r.id)
     res = RN.build(src, ("store-" + r.id.replace("_", "-"))[:60].lower(), lambda stage: None, "aab")
     shutil.rmtree(src, ignore_errors=True)
     if not (res.get("ok") and res.get("apk")):
-        raise StoreError("Store bundle compile nahi hua: " + str(res.get("log") or "")[-300:])
+        raise StoreError("The store bundle did not compile: " + str(res.get("log") or "")[-300:])
     aab = res["apk"]
     name = f"{st['package']}-{vname}-{vc}.aab"
     for old in _dir(r).glob("*.aab"):
@@ -470,8 +470,8 @@ def _build_bundle(r: AppProject) -> None:
     AN._put(r.id, last_vc=vc)                    # preview builds keep going UP past the store build too
     _put(AS._load(r.id), status="built", now="", bundle={"file": name, "version_code": vc, "version_name": vname, "size": len(aab),
                                                          "sha256": hashlib.sha256(aab).hexdigest(), "from_build": b, "at": now().isoformat()})
-    AN._note(r, f"{r.name or 'App'} ka Play Store bundle taiyaar (v{vname}, code {vc}). Ab 'Internal testing par bhejo' - "
-                "pehle aap aur aapke testers dekhenge.")
+    AN._note(r, f"{r.name or 'App'}: the Play Store bundle is ready (v{vname}, code {vc}). Now 'send to Internal testing' - "
+                "you and your testers see it first.")
     AN._emit(r.id, push=True)
 
 
@@ -515,11 +515,11 @@ def publish(tenant: str, ref: str, track: str = "internal", her_tap: bool = Fals
     if track not in TRACKS:
         raise StoreError("Track: internal / alpha / beta / production.")
     if track == "production" and not her_tap:
-        raise StoreError("Production par (sab ke liye public) sirf aap app mein button daba kar bhejti hain.")
+        raise StoreError("Sending to Production (public for everyone) is done only by you, with the button in the app.")
     if not _creds(r):
-        raise StoreError("Pehle Play Console ki service account key app mein daaliye (Play Store > Developer account).")
+        raise StoreError("First add the Play Console service account key in the app (Play Store > Developer account).")
     if not st.get("bundle"):
-        raise StoreError("Pehle store bundle banaiye.")
+        raise StoreError("Make the store bundle first.")
     from .. import gates as GT                       # v0.455 SURAKSHA GATE: a failing security check blocks the upload
     try:
         GT.must_pass(r, "android")
@@ -529,7 +529,7 @@ def publish(tenant: str, ref: str, track: str = "internal", her_tap: bool = Fals
         listing(tenant, ref)
     if st.get("status") in ("building", "uploading"):
         return view(r)
-    _put(r, status="uploading", error="", now=f"Google Play par bhej rahi hoon ({track})", track_wanted=track)
+    _put(r, status="uploading", error="", now=f"Sending to Google Play ({track})", track_wanted=track)
     _bg(r.id, _publish)
     return view(_load(tenant, ref))
 
@@ -587,10 +587,10 @@ def _publish(r: AppProject) -> None:
            "at": now().isoformat(), "screenshots": len(shots)}
     _put(AS._load(r.id), status="done", now="", locked=True, last_vc=vc, releases=((st.get("releases") or []) + [rel])[-20:])
     where = {"internal": "Internal testing", "alpha": "Closed testing", "beta": "Open testing", "production": "Production"}[track]
-    AN._note(r, f"{r.name or 'App'} Google Play par chali gayi: {where}, v{rel['version_name']}"
-                + (" (draft - nayi app hai: Play Console mein ek baar 'Review release' karke bhejiye)" if draft else "")
-                + ". " + ("Google ka review hone ke baad sabko dikhegi." if track == "production" else
-                          "Testers ko Play Console > Internal testing se link bhejiye."))
+    AN._note(r, f"{r.name or 'App'} has gone to Google Play: {where}, v{rel['version_name']}"
+                + (" (draft - it is a new app: send it once from Play Console with 'Review release')" if draft else "")
+                + ". " + ("Everyone will see it after Google's review." if track == "production" else
+                          "Send testers the link from Play Console > Internal testing."))
     AN._emit(r.id, push=True)
 
 
@@ -607,7 +607,7 @@ def listing_lang(tenant: str, ref: str, lang: str, values: dict[str, Any] | None
     try:
         SL.edit(st, lang, values or {}, LIMITS)
     except ValueError as e:
-        raise StoreError(f"Bahut lamba: {e}")
+        raise StoreError(f"Too long: {e}")
     _put(r, listing_tr=st["listing_tr"])
     return view(AS._load(r.id))
 

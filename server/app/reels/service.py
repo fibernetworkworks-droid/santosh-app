@@ -28,17 +28,17 @@ from .models import ReelLook, SavedReel
 
 log = logging.getLogger("santosh.reels")
 
-AI_LABEL = "Hoola AI ne samjha · galti ho sakti hai"
+AI_LABEL = "Understood by Hoola AI · may be wrong"
 KINDS = ("recipe", "product", "place", "fitness", "finance", "health", "news", "education", "music", "comedy",
          "motivation", "travel", "fashion", "tech", "other")
 WARN = ("finance_tip", "health_claim", "scam_signs", "ai_generated_maybe", "sponsored", "kids_unsafe")
 WARN_SAY = {
-    "finance_tip": "Paise / share tip: SEBI-registered advisor se hi poochhiye, guaranteed return jaisa kuch nahi hota.",
-    "health_claim": "Sehat ka daava: dawai ya diet badalne se pehle doctor se baat kijiye.",
-    "scam_signs": "Scam jaisa lag raha hai: link, OTP, advance payment ya 'paise double' se door rahiye.",
-    "ai_generated_maybe": "Yeh video AI se bana ho sakta hai: aankh band karke yakeen mat kijiye.",
-    "sponsored": "Yeh paid promotion / ad lagta hai.",
-    "kids_unsafe": "Bachchon ke liye theek nahi lagta.",
+    "finance_tip": "Money / stock tip: ask only a SEBI-registered advisor; there is no such thing as a guaranteed return.",
+    "health_claim": "Health claim: talk to a doctor before changing medicine or diet.",
+    "scam_signs": "This looks like a scam: stay away from links, OTPs, advance payments or 'double your money'.",
+    "ai_generated_maybe": "This video may be AI-made: do not trust it blindly.",
+    "sponsored": "This looks like a paid promotion / ad.",
+    "kids_unsafe": "This does not look suitable for children.",
 }
 SCAM_WORDS = re.compile(r"(guarantee[d]? (return|profit)|double (your )?money|paise double|100% profit|crypto signal|"
                         r"daily earning|ghar baithe kamao|lottery|lucky draw|kyc update|loan app|whatsapp me on|dm for (link|tips))",
@@ -80,7 +80,7 @@ def _ask_gemini(parts: list[Any]) -> dict:
     """One Gemini call that returns the JSON object (tests replace this)."""
     st = get_settings()
     if not st.gemini_api_key:
-        raise ReelError("Reels samajhne ke liye server par GEMINI_API_KEY chahiye.")
+        raise ReelError("Understanding reels needs GEMINI_API_KEY on the server.")
     from google import genai
     from google.genai import types
     client = genai.Client(api_key=st.gemini_api_key)
@@ -169,7 +169,7 @@ def shop_links(q: str) -> list[dict]:
 def _scam_check(out: dict, *texts: str) -> None:
     blob = " ".join(texts)
     if SCAM_WORDS.search(blob) and not any(w["type"] == "scam_signs" for w in out["warnings"]):
-        out["warnings"].append({"type": "scam_signs", "why": "Caption mein paise / kamai ka bada daava hai.",
+        out["warnings"].append({"type": "scam_signs", "why": "The caption makes a big claim about money / earnings.",
                                 "say": WARN_SAY["scam_signs"]})
 
 
@@ -200,7 +200,7 @@ def get(tenant: str, reel_id: str) -> dict:
     with session() as s:
         row = s.get(ReelLook, reel_id)
         if row is None or (row.tenant_id and row.tenant_id != tenant):
-            raise ReelError("Yeh reel nahi mili.")
+            raise ReelError("This reel was not found.")
         return _view(row, _saved_row(s, tenant, row.id))
 
 
@@ -208,8 +208,8 @@ def look_link(tenant: str, text: str) -> dict:
     """A shared link (+ the caption text the app sent). YouTube: watched. Others: caption only, video needs a recording."""
     link = links.find(text)
     if link is None:
-        raise ReelError("Isme koi reel / shorts link nahi mila. Instagram, YouTube, Facebook, Snapchat, Moj, Josh ya "
-                        "ShareChat se 'Share' dabakar Hoola chuniye.")
+        raise ReelError("No reel / shorts link was found in this. From Instagram, YouTube, Facebook, Snapchat, Moj, Josh or "
+                        "ShareChat, tap 'Share' and choose Hoola.")
     caption = links.caption_text(text, link)
     if link["platform"] == "youtube":
         key = link["key"]
@@ -223,7 +223,7 @@ def look_link(tenant: str, text: str) -> dict:
             raise
         except Exception as e:
             log.info("youtube reel look failed: %s", e)
-            raise ReelError("Google yeh video nahi dekh paya (private, age-restricted ya bahut naya ho sakta hai).")
+            raise ReelError("Google could not watch this video (it may be private, age-restricted or very new).")
         out = _clean(raw)
         out["seen"] = "video"
         _scam_check(out, out["summary"], caption)
@@ -247,9 +247,9 @@ def look_link(tenant: str, text: str) -> dict:
         out = _clean({"title": f"{links.NAMES[link['platform']]} reel"})
     _scam_check(out, caption, out["summary"])
     out["needs_video"] = True
-    out["how_to_show"] = (f"{links.NAMES[link['platform']]} doosre apps ko video nahi deta. Poora samajhne ke liye: phone "
-                          "ka Screen Recorder chalaiye, reel chalaiye, phir woh recording (ya screenshot) Hoola ko share "
-                          "kijiye.")
+    out["how_to_show"] = (f"{links.NAMES[link['platform']]} does not give its videos to other apps. To understand it fully: start the phone's "
+                          "Screen Recorder, play the reel, then share that recording (or a screenshot) with "
+                          "Hoola.")
     rid = _store(key, tenant, link["platform"], link["url"], out)
     return get(tenant, rid)
 
@@ -257,19 +257,19 @@ def look_link(tenant: str, text: str) -> dict:
 def look_file(tenant: str, name: str, mime: str, data: bytes, text: str = "") -> dict:
     """The owner's own screen recording / video / screenshot of a reel."""
     if not data:
-        raise ReelError("File khaali hai.")
+        raise ReelError("The file is empty.")
     if len(data) > MAX_FILE:
-        raise ReelError("Video 25 MB se bada hai: chhota clip record karke bhejiye.")
+        raise ReelError("The video is larger than 25 MB: record a shorter clip and send it.")
     mime = (mime or "").lower()
     if not (mime.startswith("video/") or mime.startswith("image/")):
         guess = name.lower().rsplit(".", 1)[-1]
         mime = {"mp4": "video/mp4", "mov": "video/quicktime", "webm": "video/webm", "3gp": "video/3gpp", "mkv": "video/x-matroska",
                 "jpg": "image/jpeg", "jpeg": "image/jpeg", "png": "image/png", "webp": "image/webp"}.get(guess, "")
     if not mime:
-        raise ReelError("Reel ka video ya screenshot bhejiye.")
+        raise ReelError("Send the reel's video or a screenshot.")
     from .. import filecheck
     if filecheck.real_type(name, data)["danger"]:
-        raise ReelError("Yeh file khatarnak lag rahi hai; Hoola ne nahi li.")
+        raise ReelError("This file looks dangerous; Hoola did not take it.")
     link = links.find(text)
     caption = links.caption_text(text, link)
     key = f"file:{tenant}:{hashlib.sha256(data).hexdigest()[:40]}"
@@ -287,7 +287,7 @@ def look_file(tenant: str, name: str, mime: str, data: bytes, text: str = "") ->
         raise
     except Exception as e:
         log.info("file reel look failed: %s", e)
-        raise ReelError("Hoola yeh video abhi nahi dekh paya. Thodi der baad try kijiye.")
+        raise ReelError("Hoola could not watch this video right now. Try again in a little while.")
     out["seen"] = "video" if mime.startswith("video/") else "screenshot"
     _scam_check(out, out["summary"], caption)
     out["needs_video"] = False
@@ -305,7 +305,7 @@ def save(tenant: str, reel_id: str, note: str = "") -> dict:
             row = SavedReel(tenant_id=tenant, look_id=reel_id)
             s.add(row)
         row.note = _s(note, 500) or row.note
-    return get(tenant, reel_id) | {"say": "Reel save ho gayi. Baad mein bas poochhiye, Hoola dhoondh dega."}
+    return get(tenant, reel_id) | {"say": "Reel saved. Just ask later and Hoola will find it."}
 
 
 def unsave(tenant: str, reel_id: str) -> dict:
@@ -337,7 +337,7 @@ def saved(tenant: str, query: str = "", limit: int = 60) -> list[dict]:
 def share_text(tenant: str, reel_id: str) -> dict:
     """A message for family (the owner picks WhatsApp etc. in Android's share sheet and taps send themselves)."""
     v = get(tenant, reel_id)
-    lines = [v["title"] or "Yeh reel dekho"]
+    lines = [v["title"] or "Look at this reel"]
     if v["summary"]:
         lines.append(v["summary"])
     if v["recipe"] and v["recipe"]["ingredients"]:
@@ -346,7 +346,7 @@ def share_text(tenant: str, reel_id: str) -> dict:
         lines.append("⚠ " + w["say"])
     if v["url"]:
         lines.append(v["url"])
-    lines.append("— Hoola ne dekha (AI se, galti ho sakti hai)")
+    lines.append("— Seen by Hoola (with AI, may be wrong)")
     return {"text": "\n".join(lines)[:2000]}
 
 
@@ -370,7 +370,7 @@ async def fact_check(tenant: str, reel_id: str) -> dict:
     v = get(tenant, reel_id)
     claims = v["claims"][:3] or ([v["summary"]] if v["summary"] else [])
     if not claims:
-        return {"reel_id": reel_id, "checks": [], "note": "Is reel mein check karne layak koi daava nahi mila.",
+        return {"reel_id": reel_id, "checks": [], "note": "No claim worth checking was found in this reel.",
                 "ai_label": AI_LABEL}
 
     async def one(claim: str) -> dict:
@@ -380,7 +380,7 @@ async def fact_check(tenant: str, reel_id: str) -> dict:
         try:
             r = await web.google_search(q)
         except Exception as e:
-            return {"claim": claim, "verdict": "pata_nahi", "why": f"Abhi check nahi ho paya: {e}"[:200], "sources": []}
+            return {"claim": claim, "verdict": "pata_nahi", "why": f"Could not be checked right now: {e}"[:200], "sources": []}
         ans = r.get("answer", "")
         m = re.match(r"\W*(SACH|GALAT|ADHOORA|PATA[_ ]NAHI)\b", ans, re.I)
         verdict = (m.group(1).lower().replace(" ", "_") if m else "pata_nahi")
@@ -395,8 +395,8 @@ async def fact_check(tenant: str, reel_id: str) -> dict:
         d["checks"] = list(checks)
         d["overall"] = overall
         row.data = json.dumps(d, ensure_ascii=False)
-    say = {"galat": "Is reel ki baat galat lagti hai: forward mat kijiye.",
-           "adhoora": "Is reel mein aadhi sachchai hai: poori baat neeche padhiye.",
-           "pata_nahi": "Pakka nahi keh sakte: kisi bharosemand source se confirm kijiye.",
-           "sach": "Jo daave check hue, woh sahi lagte hain."}[overall]
+    say = {"galat": "What this reel says looks false: do not forward it.",
+           "adhoora": "This reel is half true: read the full picture below.",
+           "pata_nahi": "Cannot say for sure: confirm with a trusted source.",
+           "sach": "The claims that were checked look correct."}[overall]
     return {"reel_id": reel_id, "checks": list(checks), "overall": overall, "say": say, "ai_label": AI_LABEL}

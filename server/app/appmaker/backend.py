@@ -398,7 +398,7 @@ def _priced(r: AppProject, cart: Any) -> tuple[str, float]:
         total += price * q
         lines.append(f"{q} x {p.get('name')}" + (f" @ Rs {price:g}" if price else ""))
     if not lines:
-        raise W.AppError("Cart khaali hai ya items ab list mein nahi hain.")
+        raise W.AppError("The cart is empty or the items are no longer in the list.")
     return "\n".join(lines), round(total, 2)
 
 
@@ -450,7 +450,7 @@ def _create(r: AppProject, coll: str, body: dict[str, Any], w: W.Who, ip: str = 
     body = body if isinstance(body, dict) else {}
     cid = str(body.get("cid") or "")
     if cid and not CID.match(cid):
-        raise W.AppError("cid galat hai.")
+        raise W.AppError("The cid is not valid.")
     if cid:
         old = _find_cid(site, coll, w.id, cid)
         if old:
@@ -496,7 +496,7 @@ def _create(r: AppProject, coll: str, body: dict[str, Any], w: W.Who, ip: str = 
             if df.get("delivery_note"):
                 try:
                     from .android.service import _note
-                    _note(r, f"{r.name or 'Aapki app'} ({r.number}) naya order: {df['delivery_note']}")
+                    _note(r, f"{r.name or 'Your app'} ({r.number}) new order: {df['delivery_note']}")
                 except Exception:
                     log.debug("delivery note", exc_info=True)
     from . import meter as MT                        # v0.390 her app's row limit (warns her at 80 / 95%, refuses at 100%)
@@ -654,8 +654,8 @@ def status_moved(r: AppProject, row_id: str, status: str) -> None:
     if got:
         try:
             from .android.service import _note
-            _note(r, f"{r.name or 'Aapki app'} ({r.number}): cancelled order ka credit note {got[0]} ban gaya "
-                     "(invoice ke saamne). Paise lautane hon to woh aap khud karein; credit note sirf likhit record hai.")
+            _note(r, f"{r.name or 'Your app'} ({r.number}): credit note {got[0]} was made for the cancelled order "
+                     "(against the invoice). If money has to be returned, you do that yourself; the credit note is only a written record.")
         except Exception:
             log.debug("credit note note", exc_info=True)
 
@@ -693,7 +693,7 @@ def delete_me(r: AppProject, w: W.Who) -> dict[str, Any]:
 def _delete_me_inner(r: AppProject, w: W.Who) -> dict[str, Any]:
     """In-app account deletion: the account and every row it owns are gone (Play + App Store rule, DPDP right to erase)."""
     if w.m is None:
-        raise W.AppError("Pehle login kijiye.", 401)
+        raise W.AppError("Please log in first.", 401)
     site = bid(r)
     with session() as s:
         for row in s.scalars(select(W.SiteAppRow).where(W.SiteAppRow.site_id == site, W.SiteAppRow.owner == w.m.id)).all():
@@ -717,7 +717,7 @@ def _news(r: AppProject, coll: str, row: dict[str, Any]) -> None:
         _NOTES[r.id] = hits + [t]
     what = NEWS[coll]
     who_ = str(row.get("name") or row.get("student") or "").strip()
-    bits = [f"Nayi {what} aayi: {r.name or 'aapki app'} ({r.number})"]
+    bits = [f"New {what}: {r.name or 'your app'} ({r.number})"]
     if row.get("items"):
         n = len(str(row["items"]).splitlines())
         bits.append(f"{n} item" + ("s" if n != 1 else "") + (f", Rs {row['total']:g}" if isinstance(row.get("total"), (int, float)) else ""))
@@ -726,7 +726,7 @@ def _news(r: AppProject, coll: str, row: dict[str, Any]) -> None:
             bits.append(str(row[k])[:60])
     if who_:
         bits.append(who_[:40])
-    text = " · ".join(bits) + ". Status badalna ho to kahiye (jaise 'order accept karo')."
+    text = " · ".join(bits) + ". Tell me if you want to change the status (for example 'accept the order')."
     STATS["notes"] += 1
     try:
         from .android.service import _note
@@ -747,7 +747,7 @@ def by_key_or_ref(tenant: str, ref: str) -> AppProject:
         else:
             r = s.query(AppProject).filter(AppProject.tenant_id == tenant).order_by(AppProject.updated_at.desc()).first()
             if r is None:
-                raise W.AppError("Abhi koi app nahi hai.", 404)
+                raise W.AppError("There is no app yet.", 404)
         s.expunge(r)
     return r
 
@@ -872,7 +872,7 @@ def _check_extra(r: AppProject, c: dict[str, Any], data: dict[str, Any], w: W.Wh
         if t == "scan":                         # v0.340 whatever the label holds, as plain text (no control characters)
             v = re.sub(r"[\x00-\x1f\x7f]", "", v)[:200]
             if not v:
-                raise W.AppError(f"{f['label']}: code khaali hai.")
+                raise W.AppError(f"{f['label']}: the code is empty.")
             data[k] = v
             continue
         if t == "richtext":                     # v0.425 formatted text = markdown words only (no HTML ever reaches a screen)
@@ -881,28 +881,28 @@ def _check_extra(r: AppProject, c: dict[str, Any], data: dict[str, Any], w: W.Wh
         if t == "photos":                       # v0.425 up to MAX_PHOTOS picture ids, each checked like one photo
             ids = [x.strip() for x in v.split(",") if x.strip()]
             if len(ids) > MAX_PHOTOS:
-                raise W.AppError(f"{f['label']}: {MAX_PHOTOS} photos tak.")
+                raise W.AppError(f"{f['label']}: up to {MAX_PHOTOS} photos.")
             for x in ids:
                 meta = _file_meta(r, x)
                 if meta is None or meta.get("kind") not in (None, "image") or \
                         not (w.staff or (w.id and meta.get("owner") == w.id) or (not meta.get("owner") and not w.id)):
-                    raise W.AppError(f"{f['label']}: ek photo is account ki nahi.", 403)
+                    raise W.AppError(f"{f['label']}: one photo does not belong to this account.", 403)
             data[k] = ",".join(ids)
             continue
         if t == "location":
             m = LOC.match(v)
             if not m or abs(float(m.group(1))) > 90 or abs(float(m.group(2))) > 180:
-                raise W.AppError(f"{f['label']}: location sahi nahi (lat,lng).")
+                raise W.AppError(f"{f['label']}: the location is not valid (lat,lng).")
             data[k] = f"{float(m.group(1)):.6f},{float(m.group(2)):.6f}"
         else:
             meta = _file_meta(r, v)
             if meta is None or not (w.staff or (w.id and meta.get("owner") == w.id) or (not meta.get("owner") and not w.id)):
-                raise W.AppError(f"{f['label']}: yeh photo is account ki nahi.", 403)
+                raise W.AppError(f"{f['label']}: this photo does not belong to this account.", 403)
             if t == "photo" and meta.get("kind") == "pdf":         # v0.346
-                raise W.AppError(f"{f['label']}: yahan photo chahiye, PDF nahi.")
+                raise W.AppError(f"{f['label']}: a photo is needed here, not a PDF.")
             want = {"signature": (None, "image"), "video": ("video",), "audio": ("audio",)}.get(t)   # v0.425
             if want is not None and meta.get("kind") not in want:
-                raise W.AppError(f"{f['label']}: yeh file is field ke liye nahi.")
+                raise W.AppError(f"{f['label']}: this file is not for this field.")
             if (c.get("rules") or {}).get("read") == "public" and not meta.get("public"):
                 meta["public"] = True
                 _files(r).joinpath(v + ".json").write_text(json.dumps(meta))
@@ -934,13 +934,13 @@ def _upload_media(r: AppProject, w: W.Who, raw: bytes, want: str) -> dict[str, A
     cap = MAX_AUDIO if want == "audio" else MAX_VIDEO
     if not raw or len(raw) > cap:
         STATS["upload_refused"] += 1
-        raise W.AppError(("Voice note" if want == "audio" else "Video") + f" bahut bada hai ({cap // (1024 * 1024)} MB tak).", 413)
+        raise W.AppError(("Voice note" if want == "audio" else "Video") + f" is too large (up to{cap // (1024 * 1024)} MB).", 413)
     brand = raw[8:12] if raw[4:8] == b"ftyp" else b""
     video_brands = (b"isom", b"iso2", b"iso4", b"iso5", b"iso6", b"mp41", b"mp42", b"avc1", b"qt  ", b"3gp4", b"3gp5", b"dash", b"MSNV", b"M4V ")
     audio_brands = (b"M4A ", b"M4B ", b"isom", b"mp42", b"mp41", b"iso2", b"3gp4", b"3gp5")
     if (want == "audio" and brand not in audio_brands) or (want == "video" and brand not in video_brands):
         STATS["upload_refused"] += 1
-        raise W.AppError("Yeh file nahi khuli (MP4 / MOV video ya M4A voice note bhejiye).", 415)
+        raise W.AppError("Could not open this file (send an MP4 / MOV video or an M4A voice note).", 415)
     ext = ".m4a" if want == "audio" else (".mov" if brand == b"qt  " else ".mp4")
     fid = "f_" + _sec.token_hex(8)
     d = _files(r)
@@ -959,7 +959,7 @@ def upload(r: AppProject, w: W.Who, raw: bytes, ip: str = "", ctype: str = "") -
     from PIL import Image, ImageOps
     sch = schema(r)
     if w.m is None and not w.owner and not any((c.get("rules") or {}).get("create") == "public" for c in sch["collections"]):
-        raise W.AppError("Pehle login kijiye.", 401)
+        raise W.AppError("Please log in first.", 401)
     if not w.owner:
         W.rate(f"up|{bid(r)}|{w.id or ip}", 30, 600)
     if raw[:5] == b"%PDF-":                    # v0.346 a document
@@ -968,7 +968,7 @@ def upload(r: AppProject, w: W.Who, raw: bytes, ip: str = "", ctype: str = "") -
         return _upload_media(r, w, raw, "audio" if (ctype or "").lower().startswith("audio/") else "video")
     if not raw or len(raw) > MAX_UPLOAD:
         STATS["upload_refused"] += 1
-        raise W.AppError("Photo bahut badi hai (6 MB tak).", 413)
+        raise W.AppError("The photo is too large (up to 6 MB).", 413)
     try:
         Image.MAX_IMAGE_PIXELS = 40_000_000
         im = Image.open(io.BytesIO(raw))
@@ -981,7 +981,7 @@ def upload(r: AppProject, w: W.Who, raw: bytes, ip: str = "", ctype: str = "") -
         im.save(out, "JPEG", quality=82, optimize=True)
     except Exception:                                   # noqa: BLE001
         STATS["upload_refused"] += 1
-        raise W.AppError("Yeh photo nahi khuli (JPEG / PNG / WebP bhejiye).", 415)
+        raise W.AppError("Could not open this photo (send JPEG / PNG / WebP).", 415)
     fid = "f_" + _sec.token_hex(8)
     d = _files(r)
     (d / (fid + ".jpg")).write_bytes(out.getvalue())
@@ -999,10 +999,10 @@ def _upload_pdf(r: AppProject, w: W.Who, raw: bytes) -> dict[str, Any]:
     import secrets as _sec
     if len(raw) > MAX_DOC:
         STATS["upload_refused"] += 1
-        raise W.AppError("PDF bahut bada hai (10 MB tak).", 413)
+        raise W.AppError("The PDF is too large (up to 10 MB).", 413)
     if PDF_RISK.search(raw):
         STATS["upload_refused"] += 1
-        raise W.AppError("Is PDF mein script ya attachment hai; saada PDF bhejiye (print -> Save as PDF).", 415)
+        raise W.AppError("This PDF has a script or an attachment; send a plain PDF (print -> Save as PDF).", 415)
     try:
         from pypdf import PdfReader
         rd = PdfReader(io.BytesIO(raw))
@@ -1014,10 +1014,10 @@ def _upload_pdf(r: AppProject, w: W.Who, raw: bytes) -> dict[str, Any]:
         risky = _pdf_risky(rd)
     except Exception:                                   # noqa: BLE001
         STATS["upload_refused"] += 1
-        raise W.AppError("Yeh PDF nahi khula (password wala ya toota hua?).", 415)
+        raise W.AppError("Could not open this PDF (password-protected or damaged?).", 415)
     if risky:                                           # inside compressed parts too (the byte scan above can miss them)
         STATS["upload_refused"] += 1
-        raise W.AppError("Is PDF mein script ya attachment hai; saada PDF bhejiye (print -> Save as PDF).", 415)
+        raise W.AppError("This PDF has a script or an attachment; send a plain PDF (print -> Save as PDF).", 415)
     fid = "f_" + _sec.token_hex(8)
     d = _files(r)
     (d / (fid + ".pdf")).write_bytes(raw)
@@ -1124,7 +1124,7 @@ def updates(r: AppProject, w: W.Who, since: str = "") -> dict[str, Any]:
     HER rows moved (status / paid), a staff account hears about NEW rows in the order-like lists."""
     from datetime import datetime, timedelta
     if w.m is None:
-        raise W.AppError("Pehle login kijiye.", 401)
+        raise W.AppError("Please log in first.", 401)
     sch, site = schema(r), bid(r)
     try:
         t0 = datetime.fromisoformat(since[:32]) if since else now() - timedelta(hours=6)
@@ -1181,9 +1181,9 @@ def stats(r: AppProject, w: W.Who, days: int = 14) -> dict[str, Any]:
     total (orders' server-priced totals). Staff only (customers never see the business's numbers)."""
     from datetime import timedelta
     if w.m is None:
-        raise W.AppError("Pehle login kijiye.", 401)
+        raise W.AppError("Please log in first.", 401)
     if not w.staff:
-        raise W.AppError("Yeh sirf staff ke liye hai.", 403)
+        raise W.AppError("This is for staff only.", 403)
     days = max(7, min(int(days or 14), 60))
     sch, site = schema(r), bid(r)
     today = now().date()
@@ -1231,20 +1231,20 @@ def mark_paid(r: AppProject, coll: str, row_id: str, utr: str, w: W.Who) -> dict
     the row reads "Customer says paid" and the owner gets a note to check her own bank app; only she marks Verified."""
     sch = schema(r)
     if coll != sch.get("order"):
-        raise W.AppError("Yeh list payment ki nahi.", 400)
+        raise W.AppError("This list does not take payments.", 400)
     if w.m is None:
-        raise W.AppError("Pehle login kijiye.", 401)
+        raise W.AppError("Please log in first.", 401)
     ref = re.sub(r"\s", "", str(utr or ""))
     if not re.fullmatch(r"[A-Za-z0-9]{6,24}", ref):
-        raise W.AppError("UPI reference / UTR sahi nahi (6-24 akshar / ank).")
+        raise W.AppError("The UPI reference / UTR is not valid (6-24 letters / digits).")
     c = W.coll(sch, coll)
     with session() as s:
         row = s.get(W.SiteAppRow, row_id)
         if row is None or row.site_id != bid(r) or row.coll != coll or row.owner != w.m.id:
-            raise W.AppError("Yeh order nahi mila.", 404)
+            raise W.AppError("This order was not found.", 404)
         d = _j(row.data, {})
         if d.get("paid") == "Verified":
-            raise W.AppError("Is order ka payment pehle hi pakka hai.", 409)
+            raise W.AppError("The payment for this order is already confirmed.", 409)
         d.update({"paid": "Customer says paid", "utr": ref[:24]})
         row.data, row.updated_at = json.dumps(d, ensure_ascii=False), now()
         s.flush()
@@ -1254,9 +1254,9 @@ def mark_paid(r: AppProject, coll: str, row_id: str, utr: str, w: W.Who) -> dict
     total = out.get("total")
     try:
         from .android.service import _note
-        _note(r, f"{out.get('name') or 'Customer'} ne {r.name or 'aapki app'} ke order ka payment UPI se bheja bataya"
-                 + (f" (Rs {total:g})" if isinstance(total, (int, float)) else "") + f", UTR {ref[-12:]}. Apne bank / UPI app "
-                 "mein check karke kahiye 'payment verified' - tab tak order 'Customer says paid' hai.")
+        _note(r, f"{out.get('name') or 'Customer'} says they paid by UPI for an order in {r.name or 'your app'}"
+                 + (f" (Rs {total:g})" if isinstance(total, (int, float)) else "") + f", UTR {ref[-12:]}. Check in your bank / UPI app "
+                 "and say 'payment verified' - until then the order shows 'Customer says paid'.")
     except Exception:                                   # noqa: BLE001
         log.debug("paid note", exc_info=True)
     return out
@@ -1326,11 +1326,11 @@ def crash(r: AppProject, body: dict[str, Any], ip: str = "") -> dict[str, Any]:
         where = f" ({screen} screen)" if screen else ""
         try:
             from .android.service import _note
-            _note(r, f"{r.name or 'Aapki app'} ({r.number}) ek user ke phone pe "
-                     + ("JAM ho gayi (ANR - screen hil hi nahi rahi thi)" if kind == "anr" else "band ho gayi")
+            _note(r, f"{r.name or 'Your app'} ({r.number}) "
+                     + ("froze on a user's phone (ANR - the screen stopped responding)" if kind == "anr" else "crashed on a user's phone")
                      + f"{where}: {exc.split(':')[0][:80]}"
-                     + (" - fix wali build mein bhi" if came_back else "") + ". Kahiye 'crash theek karo' - Hoola us screen ko asli "
-                     "crash dekh kar dobara likhegi aur nayi build banayegi.")
+                     + (" - even in the build with the fix" if came_back else "") + ". Say 'fix the crash' - Hoola will rewrite that screen from the real "
+                     "crash and make a new build.")
         except Exception:                               # noqa: BLE001
             log.debug("crash note", exc_info=True)
     return {"ok": True, "id": sig, "new": first}
@@ -1347,7 +1347,7 @@ def crash_screens(r: AppProject, sig: str) -> tuple[dict[str, Any], list[str]]:
     from .android import gen as G
     x = next((c for c in crashes(r) if c["id"] == sig), None)
     if x is None:
-        raise W.AppError("Yeh crash nahi mila.", 404)
+        raise W.AppError("This crash was not found.", 404)
     ids = list(_j(r.plan, {}).get("screens") or [])
     by_cls = {G.kotlin_name(s): s for s in ids}
     sids: list[str] = []
@@ -1387,9 +1387,9 @@ def _apply_ops(sch: dict[str, Any], ops: dict[str, Any]) -> list[str]:
         if not k or k.startswith("_") or k in colls:
             if k in colls:
                 continue                         # replayed on an upgrade / already there: nothing to do
-            raise W.AppError("Nayi list ka naam chahiye.")
+            raise W.AppError("The new list needs a name.")
         if len(colls) >= W.MAX_COLLECTIONS + 8:
-            raise W.AppError("Is app mein aur list nahi aa sakti.")
+            raise W.AppError("This app cannot take more lists.")
         ru = nl.get("rules") if isinstance(nl.get("rules"), dict) else {}
         c = {"key": k, "label": str(nl.get("label") or k.replace("_", " ").title())[:60], "fields": [],
              "rules": {"create": ru.get("create") if ru.get("create") in W.CREATE else "admin",
@@ -1401,26 +1401,26 @@ def _apply_ops(sch: dict[str, Any], ops: dict[str, Any]) -> list[str]:
             if fd and not any(x["key"] == fd["key"] for x in c["fields"]):
                 c["fields"].append(fd)
         if not c["fields"]:
-            raise W.AppError(f"List '{k}' mein koi field nahi.")
+            raise W.AppError(f"List '{k}' has no fields.")
         sch.setdefault("collections", []).append(c)
         colls[k] = c
-        done.append(f"nayi list {k} ({len(c['fields'])} field)")
+        done.append(f"new list {k} ({len(c['fields'])} fields)")
     for a in (ops.get("add") or [])[:12]:
         c = colls.get(str(a.get("coll") or ""))
         if c is None:
-            raise W.AppError(f"List '{a.get('coll')}' is app mein nahi hai.")
+            raise W.AppError(f"List '{a.get('coll')}' is not in this app.")
         k = W._slug(a.get("key") or a.get("label"))
         if not k or k in ("id", "owner", "created", "updated", "cid", "cart"):
-            raise W.AppError("Naye field ka naam chahiye.")
+            raise W.AppError("The new field needs a name.")
         if any(f["key"] == k for f in c["fields"]):
             old = next(f for f in c["fields"] if f["key"] == k)
             if old.get("hidden"):              # bringing a hidden field back
                 old.pop("hidden", None)
-                done.append(f"{c['key']}.{k} wapas dikhega")
+                done.append(f"{c['key']}.{k} will show again")
                 continue
-            raise W.AppError(f"'{k}' pehle se hai.")
+            raise W.AppError(f"'{k}' already exists.")
         if len(c["fields"]) >= W.MAX_FIELDS:
-            raise W.AppError("Is list mein aur field nahi aa sakte.")
+            raise W.AppError("This list cannot take more fields.")
         fd = _new_field({**a, "key": k}, colls, fresh=False)
         c["fields"].append(fd)
         done.append(f"{c['key']}.{k} joda")
@@ -1428,18 +1428,18 @@ def _apply_ops(sch: dict[str, Any], ops: dict[str, Any]) -> list[str]:
         c = colls.get(str(h.get("coll") or ""))
         f = next((x for x in (c or {}).get("fields", []) if x["key"] == h.get("key")), None)
         if f is None:
-            raise W.AppError(f"Field '{h.get('key')}' nahi mila.")
+            raise W.AppError(f"Field '{h.get('key')}' not found.")
         if f["key"] in ("status", "name", "phone", "items", "total") and c and c["key"] == sch.get("order"):
-            raise W.AppError(f"'{f['key']}' order ke liye zaroori hai; chhupa nahi sakte.")
+            raise W.AppError(f"'{f['key']}' is required for an order; it cannot be hidden.")
         f["hidden"], f["required"] = True, False
-        done.append(f"{c['key']}.{f['key']} chhupa (data rakha hai)")
+        done.append(f"{c['key']}.{f['key']} hidden (data is kept)")
     for lb in (ops.get("label") or [])[:12]:
         c = colls.get(str(lb.get("coll") or ""))
         f = next((x for x in (c or {}).get("fields", []) if x["key"] == lb.get("key")), None)
         if f is None or not str(lb.get("label") or "").strip():
-            raise W.AppError("Kaunsa field, naya naam kya?")
+            raise W.AppError("Which field, and what is the new name?")
         f["label"] = str(lb["label"])[:60]
-        done.append(f"{c['key']}.{f['key']} ka naam '{f['label']}'")
+        done.append(f"{c['key']}.{f['key']} renamed to '{f['label']}'")
     return done
 
 
@@ -1450,7 +1450,7 @@ def _new_field(a: dict[str, Any], colls: dict[str, Any], fresh: bool) -> dict[st
     if not k or k in ("id", "owner", "created", "updated", "cid", "cart") or k.startswith("_"):
         if fresh:
             return None
-        raise W.AppError("Naye field ka naam chahiye.")
+        raise W.AppError("The new field needs a name.")
     typ = a.get("type") if a.get("type") in (*W.TYPES, *EXTRA_TYPES, "ref") else "text"
     fd: dict[str, Any] = {"key": k, "label": str(a.get("label") or k.replace("_", " ").title())[:60], "type": typ,
                           "required": bool(a.get("required")) and fresh and typ != "choice", "admin_only": bool(a.get("admin_only"))}
@@ -1459,12 +1459,12 @@ def _new_field(a: dict[str, Any], colls: dict[str, Any], fresh: bool) -> dict[st
     if typ == "choice":
         opts = [str(o)[:40] for o in (a.get("options") or []) if str(o).strip()][:20]
         if not opts:
-            raise W.AppError("Choice field ke options chahiye.")
+            raise W.AppError("A choice field needs options.")
         fd["options"], fd["default"] = opts, opts[0]          # an old app's row (it never sends it) gets the default
     if typ == "ref":
         to = W._slug(a.get("to"))
         if to not in colls:
-            raise W.AppError(f"'{k}' kis list se juda hai? ('{a.get('to')}' nahi mili)")
+            raise W.AppError(f"Which list is '{k}' linked to? ('{a.get('to')}' not found)")
         fd["to"] = to
     return fd
 
@@ -1480,7 +1480,7 @@ def change_schema(r: AppProject, ops: dict[str, Any], words: str = "") -> dict[s
         sch = copy.deepcopy(be["schema"])
         done = _apply_ops(sch, ops if isinstance(ops, dict) else {})
         if not done:
-            raise W.AppError("Kya badalna hai? (add / hide / label / add_list)")
+            raise W.AppError("What should change? (add / hide / label / add_list)")
         be["schema"], be["rev"] = sch, int(be.get("rev") or 0) + 1
         be["changes"] = (be.get("changes") or []) + [{"at": now().isoformat(), "ops": ops, "words": str(words)[:300], "done": done}]
         out["done"] = done
@@ -1496,7 +1496,7 @@ def change_schema(r: AppProject, ops: dict[str, Any], words: str = "") -> dict[s
         AN._CACHE.clear() if hasattr(AN, "_CACHE") else None
     except Exception:                                    # noqa: BLE001
         pass
-    return {"rev": be["rev"], "done": done, "say": "; ".join(done) + ". Rows mein abhi dikhega; form mein agli build se."}
+    return {"rev": be["rev"], "done": done, "say": "; ".join(done) + ". It shows in the rows now; in the form from the next build."}
 
 
 # ---------------------------------------------------------------- v0.352 KAAM BAANTO (App Sahayak Phase 16)
@@ -1533,9 +1533,9 @@ def team(r: AppProject, w: W.Who) -> dict[str, Any]:
     """The staff list the app shows on its assign buttons: names only (no e-mails), staff accounts only, + each one's open
     rows count. `admin` = this account may give rows to others."""
     if w.m is None and not w.owner:
-        raise W.AppError("Pehle login kijiye.", 401)
+        raise W.AppError("Please log in first.", 401)
     if not w.staff:
-        raise W.AppError("Yeh sirf staff ke liye hai.", 403)
+        raise W.AppError("This is for staff only.", 403)
     site = bid(r)
     load = _load(r)
     people = [{"id": m.id, "name": _first(m.name, m.email), "role": m.role, "open": load.get(m.id, 0)}
@@ -1611,7 +1611,7 @@ def _guard_assigned(r: AppProject, coll: str, row_id: str, w: W.Who) -> dict[str
     to = str(d.get("_to") or "")
     if to and w.staff and not _is_admin(w) and to != w.id:
         STATS["assign_refused"] += 1
-        raise W.AppError(f"Yeh kaam {d.get('_to_name') or 'kisi aur'} ke paas hai.", 403)
+        raise W.AppError(f"This job is with {d.get('_to_name') or 'someone else'}.", 403)
     return d
 
 
@@ -1620,26 +1620,26 @@ def assign(r: AppProject, coll: str, row_id: str, to: str, w: W.Who) -> dict[str
     sch, site = schema(r), bid(r)
     c = W.coll(sch, coll)
     if w.m is None and not w.owner:
-        raise W.AppError("Pehle login kijiye.", 401)
+        raise W.AppError("Please log in first.", 401)
     if not w.staff:
-        raise W.AppError("Iski ijaazat nahi.", 403)
+        raise W.AppError("You do not have permission for this.", 403)
     to = str(to or "").strip()
     if to == "me":
         if w.m is None:
-            raise W.AppError("Aap staff account nahi hain; kisi staff ko chuniye.")
+            raise W.AppError("You are not a staff account; choose a staff member.")
         to = w.m.id
     with session() as s:
         row = s.get(W.SiteAppRow, row_id)
         if row is None or row.site_id != site or row.coll != coll:
-            raise W.AppError("Yeh entry nahi mili.", 404)
+            raise W.AppError("This entry was not found.", 404)
         d = _j(row.data, {})
         cur = str(d.get("_to") or "")
         if not _is_admin(w):
             ok = (to == w.id and cur in ("", w.id)) or (to == "" and cur == w.id)
             if not ok:
                 STATS["assign_refused"] += 1
-                raise W.AppError(f"Yeh kaam {d.get('_to_name') or 'kisi aur'} ke paas hai; admin hi badal sakta hai." if cur
-                                 else "Staff sirf khud ke liye kaam le sakta hai.", 403)
+                raise W.AppError(f"This job is with {d.get('_to_name') or 'someone else'}; only an admin can change it." if cur
+                                 else "Staff can take a job only for themselves.", 403)
         if to:
             team_ = _staff_of(site)
             m = team_.get(to)
@@ -1648,7 +1648,7 @@ def assign(r: AppProject, coll: str, row_id: str, to: str, w: W.Who) -> dict[str
                                                                    (x.email or "").lower())]
                 m = hit[0] if len(hit) == 1 else None
             if m is None:
-                raise W.AppError("Yeh staff account nahi mila (pehle use staff banaiye).", 404)
+                raise W.AppError("This staff account was not found (make them staff first).", 404)
             d.update({"_to": m.id, "_to_name": _first(m.name, m.email), "_to_at": now().isoformat(), "_ev": now().isoformat()})
         else:
             for k in ("_to", "_to_name", "_to_at"):
@@ -1712,29 +1712,29 @@ def rate(r: AppProject, coll: str, row_id: str, stars: Any, note: str, w: W.Who)
     sch, site = schema(r), bid(r)
     c = W.coll(sch, coll)
     if w.m is None:
-        raise W.AppError("Pehle login kijiye.", 401)
+        raise W.AppError("Please log in first.", 401)
     try:
         f = float(str(stars).strip())
     except (TypeError, ValueError):
         f = 0.0
     n = int(f)
     if isinstance(stars, bool) or f != n or not 1 <= n <= 5:
-        raise W.AppError("Stars 1 se 5 tak.")
+        raise W.AppError("Stars must be 1 to 5.")
     note = re.sub(r"[\x00-\x1f\x7f]+", " ", str(note or "")).strip()[:300]
     with session() as s:
         row = s.get(W.SiteAppRow, row_id)
         if row is None or row.site_id != site or row.coll != coll:
-            raise W.AppError("Yeh entry nahi mili.", 404)
+            raise W.AppError("This entry was not found.", 404)
         d = _j(row.data, {})
         if row.owner != w.m.id:
             STATS["rating_refused"] += 1
-            raise W.AppError("Sirf jisne yeh entry bheji, wahi rating de sakta hai.", 403)
+            raise W.AppError("Only the person who sent this entry can rate it.", 403)
         if d.get("_rate"):
             STATS["rating_refused"] += 1
-            raise W.AppError("Rating pehle hi di ja chuki hai.", 409)
+            raise W.AppError("A rating has already been given.", 409)
         if not _rateable(str(d.get("status") or "")):
             STATS["rating_refused"] += 1
-            raise W.AppError("Kaam poora hone ke baad rating dijiye.", 409)
+            raise W.AppError("Please rate after the job is done.", 409)
         d.update({"_rate": n, "_rate_note": note, "_rate_at": now().isoformat(), "_rate_to": d.get("_to", "")})
         row.data, row.updated_at = json.dumps(d, ensure_ascii=False), now()
         s.flush()
@@ -1744,9 +1744,9 @@ def rate(r: AppProject, coll: str, row_id: str, stars: Any, note: str, w: W.Who)
         STATS["rating_low"] += 1
         what = NEWS.get(coll, c["label"].lower())
         who_ = str(d.get("name") or d.get("customer") or w.m.name or "").strip()[:40]
-        text = (f"{r.name or 'Aapki app'} ({r.number}): {who_ or 'ek customer'} ne apni {what} ko {n}/5 diya"
-                + (f" - \"{note[:120]}\"" if note else "") + (f" (kaam {d.get('_to_name')} ke paas tha)" if d.get("_to_name") else "")
-                + ". Unse baat kar lijiye.")
+        text = (f"{r.name or 'Your app'} ({r.number}): {who_ or 'a customer'} rated their {what} {n}/5"
+                + (f" - \"{note[:120]}\"" if note else "") + (f" (the job was with {d.get('_to_name')})" if d.get("_to_name") else "")
+                + ". Please talk to them.")
         try:
             from .android.service import _note
             _note(r, text)

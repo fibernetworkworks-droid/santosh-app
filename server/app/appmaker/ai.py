@@ -126,7 +126,7 @@ Rules:
   <em class="blank">[what is missing]</em>. Never invent prices, ratings, reviews, counts, degrees or offers.
 - PRODUCT apps have no shop behind them: fill songs / shows / posts / rides / listings with clearly SAMPLE content (invented,
   obviously fictional titles and names, a small <span class="pill">Demo</span> chip where sample content starts) - never real
-  songs, artists, films, shows, brands, celebrities or people. The app's name / contact from FACTS, else [App ka naam].
+  songs, artists, films, shows, brands, celebrities or people. The app's name / contact from FACTS, else [App name].
 - A brand she names ("jaisa Spotify", "like Netflix") is ONLY a reference for the kind of app: never its name, logo,
   wordmark, signature colours, icons or a recognisable copy of its layout. Original design from the given style and tokens.
 - Payments: UPI to the business's own UPI ID (or pay at counter / cash on delivery if the facts say so). NEVER a card number,
@@ -146,7 +146,7 @@ Return the same JSON shape: {"html": "...", "css": "...", "spec": {...}, "notes"
 
 CHANGE_SYSTEM = """The owner asked for a change to her app design, in her own words (Hinglish / Hindi / Marathi / English). Decide
 exactly what must change. Return JSON:
-{"say": "one short line in her language saying what you will do",
+{"say": "one short line in clear, simple English saying what you will do",
  "screens": [{"id": "screen id", "instruction": "precise instruction for the designer"}],
  "add": [{"id": "screen type from ADDABLE", "instruction": "..."}],
  "remove": ["screen id"],

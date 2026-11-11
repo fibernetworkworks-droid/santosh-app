@@ -252,7 +252,7 @@ SCREENS: dict[str, dict[str, Any]] = {
                              "bottom sheet over the order summary with UPI ID copy and pay buttons",
                              "step list: open UPI app > pay > come back; status chip waiting / paid",
                              "cash on delivery / pay at counter option next to UPI (if she allows)",
-                             "minimal: amount, payee, one button, 'payment hua? Ho gaya / Nahi hua' follow-up"]},
+                             "minimal: amount, payee, one button, 'Did the payment go through? Yes / No' follow-up"]},
     "order_success": {"label": "Order placed", "hi": "order ho gaya", "why": "confirmation and what happens next", "data": [],
                       "variants": ["big animated check, order number, ETA, track button",
                                    "confetti burst, summary card, share on WhatsApp button",

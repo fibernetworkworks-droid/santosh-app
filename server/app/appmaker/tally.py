@@ -89,7 +89,7 @@ def build(r: AppProject, month: str) -> tuple[str, int]:
     from . import hisaab as HS
     month = month or HS.default_month()
     if not HS.MONTH.match(month):
-        raise HS.HisaabError("Mahina YYYY-MM (jaise 2026-10).")
+        raise HS.HisaabError("Month as YYYY-MM (for example 2026-10).")
     ln = names(r)
     sch = BE.schema(r)
     colls = {c["key"]: c for c in sch["collections"]}
