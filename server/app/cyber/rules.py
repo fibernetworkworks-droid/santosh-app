@@ -34,7 +34,7 @@ KINDS: dict[str, tuple[int, str]] = {
     "login_after_fail": (90, "Logged in after many wrong attempts"),
     "gov_attack": (90, "Warning of a government-sponsored attack (Google)"),
     "device_compromised": (85, "The device may be taken over"),
-    "malware_spread": (85, "Ek hi virus kai PC par"),
+    "malware_spread": (85, "The same virus on several PCs"),
     "malware_active": (80, "Virus found, NOT cleaned"),
     "leaked_password": (80, "Password leaked"),
     "suspicious_sending": (80, "Strange mails are being sent from the mailbox"),
@@ -65,7 +65,7 @@ ACTIONS = {
     "block_ip": "Block an IP (Cloudflare)",
     "unblock_ip": "Remove an IP block (Cloudflare)",
     "disable_user": "Disable a user / account",
-    "reset_sessions": "Sab devices se sign-out + password reset",
+    "reset_sessions": "Sign out of all devices + password reset",
     "quarantine": "File / PC quarantine (antivirus / EDR)",
     "isolate_pc": "Take a PC off the network",
     "wipe_device": "Erase a lost device's data (MDM)",
@@ -384,7 +384,7 @@ def correlate(events: list[dict[str, Any]], own_ips: list[str], seen_ok: set[tup
         hosts = sorted({m["host"] for m in ml if m["host"]})
         active = any(m["kind"] == "malware_active" for m in ml)
         if len(hosts) >= 3:
-            out.append({**ml[0], "kind": "malware_spread", "title": f"{ml[0]['title']} {len(hosts)} PC par ({', '.join(hosts[:4])})",
+            out.append({**ml[0], "kind": "malware_spread", "title": f"{ml[0]['title']} on {len(hosts)} PCs ({', '.join(hosts[:4])})",
                         "count": len(ml), "hosts": hosts})
         else:
             out.append({**ml[0], "kind": "malware_active" if active else "malware_blocked", "count": len(ml), "hosts": hosts})

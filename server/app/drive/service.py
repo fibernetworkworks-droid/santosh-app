@@ -296,7 +296,7 @@ def send(tenant: str, conv: str, ref: str, to: str = "phone", fmt: str | None = 
         row = ms.store_bytes(tenant, name, data, "mail")
         return {"file_id": row.id, "name": name, "size": _size(len(data)),
                 "note": "Attach this file_id in email_draft's attachments as {file_id}."}
-    raise DriveError("to: phone, pc ya email")
+    raise DriveError("to: phone, pc or email")
 
 
 # ---------------- writing ----------------
@@ -340,7 +340,7 @@ def upload(tenant: str, source: dict[str, Any], folder: str | None = None, name:
         _guard_text(str(source["text"]))
         fname, mt, data = (name or "note.txt"), "text/plain", str(source["text"]).encode("utf-8")
     else:
-        raise DriveError("source: {email_id, attachment_id}, {file_id}, {artifact_id} ya {text}")
+        raise DriveError("source: {email_id, attachment_id}, {file_id}, {artifact_id} or {text}")
     if len(data) > MAX_BYTES * 4:
         raise DriveError("The file is larger than 100 MB.")
     c, parent = _folder_id(tenant, folder)
@@ -615,7 +615,7 @@ def plan_access(tenant: str, conv: str, ref: str, action: str, person: str | Non
             raise DriveError("This file is not shared with anyone — only you have it.")
         return pend(tenant, conv, "unshare", {"account": c.key, "fid": f["id"],
                                               "perm_ids": [p["id"] for p in targets]},
-                    {"name": f.get("name", ""), "stop": "sab",
+                    {"name": f.get("name", ""), "stop": "all",
                      "people": [p.get("emailAddress") or p.get("displayName") or p.get("type", "?")
                                 for p in targets]})
     if action == "role":
@@ -763,7 +763,7 @@ def run_pending(tenant: str, pid: str) -> dict[str, Any]:
             c = get_client(tenant, pl["account"])
             for pr in pl["perm_ids"]:
                 c.permission_delete(pl["fid"], pr)
-            if sm.get("stop") == "sab":
+            if sm.get("stop") in ("all", "sab"):
                 msg = f"\"{sm['name']}\" is now only with you — everyone's permission was removed."
             else:
                 msg = f"Permission of {', '.join(sm['people'])} on \"{sm['name']}\" was removed."

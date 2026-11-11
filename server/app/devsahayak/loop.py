@@ -322,7 +322,7 @@ class Workspace:
         for p in self.paths:
             if any(x in p.lower() for x in low) and p not in hits:
                 hits.append(p)
-        self.trail.append(f"dhoondha: {' '.join(w)} ({len(hits)} files)")
+        self.trail.append(f"searched: {' '.join(w)} ({len(hits)} files)")
         failed = str(getattr(self.g, "search_failed", "") or "")
         note = (f"[GitHub code search FAILED ({failed}) - only file NAMES were matched below; read files to be sure.]\n"
                 if failed else "")

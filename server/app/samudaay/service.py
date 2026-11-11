@@ -215,11 +215,11 @@ def save_community(tenant: str, ref: str, **f: Any) -> dict[str, Any]:
                 if v not in R.LANGS:
                     raise SamError("Language: hinglish, hindi, marathi or english.")
             if k == "join_mode" and v not in ("ask", "auto", "off"):
-                raise SamError("join_mode: ask, auto ya off.")
+                raise SamError("join_mode: ask, auto or off.")
             if k == "links_policy" and v not in ("allow", "new_no", "none"):
-                raise SamError("links_policy: allow, new_no ya none.")
+                raise SamError("links_policy: allow, new_no or none.")
             if k == "status" and v not in ("active", "paused"):
-                raise SamError("status: active ya paused.")
+                raise SamError("status: active or paused.")
             if k in ("links_allowed", "ignore_words"):
                 items = v if isinstance(v, list) else re.split(r"[,\n]", str(v))
                 v = _d(sorted({R.host_of(str(x)) or str(x).strip().lower() for x in items if str(x).strip()} if k == "links_allowed"
@@ -795,7 +795,7 @@ def draft_template(tenant: str, text: str = "", comm: str = "", language: str = 
                    from_words: str = "") -> dict[str, Any]:
     """A welcome / rules message for her to approve. From her exact text, her words (polished, facts kept) or the default."""
     if kind not in ("welcome", "rules"):
-        raise SamError("kind: welcome ya rules.")
+        raise SamError("kind: welcome or rules.")
     with session() as s:
         c = _community(s, tenant, comm) if comm else None
         lang = (language or (c.language if c else "english")).lower()

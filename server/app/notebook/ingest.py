@@ -264,4 +264,4 @@ def from_source(tenant: str, src: dict[str, Any]) -> dict[str, Any]:
         text, _ = _clip("\n".join(lines))
         return {"kind": "sheet", "title": f"{out['title']} · {out['tab']}", "origin": out.get("link", ""), "text": text,
                 "note": "" if out["total_rows"] <= 300 else f"(first 300 rows; total {out['total_rows']})"}
-    raise SourceError("source: {text}, {url}, {file_id}, {email_id[, attachment_id]}, {drive} ya {sheet} do.")
+    raise SourceError("source: {text}, {url}, {file_id}, {email_id[, attachment_id]}, {drive} or {sheet}.")

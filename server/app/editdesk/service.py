@@ -1301,7 +1301,7 @@ def review_request(tenant: str, ref: str, text: str = "", actor: str = "owner", 
 def message_request(tenant: str, ref: str, text: str, actor: str = "owner", conv: str = "") -> dict:
     t = R.clean(text, 1500)
     if not t:
-        raise EditError("Message ka text?")
+        raise EditError("What should the message say?")
     with session() as s:
         pid = _project(s, tenant, ref).id
     return _make_card(tenant, "message", pid, {"text": t}, actor, conv)

@@ -525,11 +525,11 @@ async def retrieve(srcs: list[NotebookSource], question: str) -> tuple[list[tupl
                            f"Give 12 search keywords (English and the question's language, include synonyms and "
                            f"spelling variants) to find passages answering:\n{question}", 120)
         words += _tok(extra)
-        steps.append("dhoondha: " + " ".join(dict.fromkeys(_tok(extra)))[:120])
+        steps.append("searched: " + " ".join(dict.fromkeys(_tok(extra)))[:120])
     except Exception:
         pass
     picked = search(srcs, words)
-    steps.append(f"{len(picked)} passages mile")
+    steps.append(f"{len(picked)} passages found")
     return picked, steps
 
 
@@ -594,7 +594,7 @@ def set_config(tenant: str, ref: str, goal: str = "", custom: str = "", length: 
     cur = config_of(nb)
     if goal:
         if goal not in GOALS:
-            raise NotebookError("goal: default, learning ya custom.")
+            raise NotebookError("goal: default, learning or custom.")
         cur["goal"] = goal
     if custom or goal == "custom":
         cur["custom"] = (custom or cur["custom"]).strip()[:2000]
@@ -602,7 +602,7 @@ def set_config(tenant: str, ref: str, goal: str = "", custom: str = "", length: 
             raise NotebookError("For a custom goal, say who Hoola should be / what it should do (like 'a teacher for the GST exam').")
     if length:
         if length not in LENGTHS:
-            raise NotebookError("length: default, shorter ya longer.")
+            raise NotebookError("length: default, shorter or longer.")
         cur["length"] = length
     if language is not None and language != "":
         cur["language"] = "" if language == "auto" else (language if language in LANGS else cur["language"])
