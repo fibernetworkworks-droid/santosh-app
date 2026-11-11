@@ -2018,6 +2018,11 @@ def _make_version(r: Site, plan: dict[str, Any], report: dict[str, Any], shots: 
                           bytes=sum(p.stat().st_size for p in vdir.rglob("*") if p.is_file()),
                           scores=_jd(scores), passed=bool(report.get("passed"))))
     r = _save(r.id, status="ready", stage="preview", checks=report, scores=scores, board=board, error="")
+    try:                                         # NATIJA KHATA: the first finished build of a site started from a Hoola Prompting prompt
+        from ..prompting import ledger as _L
+        _L.ready(str(r.id), usd=float(getattr(r, "cost_usd", 0) or 0))
+    except Exception:
+        pass
     _work(r, "done", "Website taiyaar", f"v{ver} · speed {scores.get('performance', '-')} · access {scores.get('accessibility', '-')}")
     _emit(r, push=push)
     _keep_versions(r, 20)

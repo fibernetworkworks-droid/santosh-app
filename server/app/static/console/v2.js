@@ -371,7 +371,7 @@ async function enter() {
         const back = IMP_BACK; reset(); msg.value = back; msg.dispatchEvent(new Event('input')); msg.focus(); return; }
       const mine = msg.value;
       if (!mine.trim()) { msg.focus(); toast('Write a few words first.'); return; }
-      IMP.open(mine, {useText: p => (p.out.run.to === 'chat' ? p.out.run.text : p.out.prompt), onUse: t => {
+      IMP.open(mine, {conversationId: () => CONV, useText: p => (p.out.run.to === 'chat' ? p.out.run.text : p.out.prompt), onUse: t => {
         msg.value = t; msg.dispatchEvent(new Event('input')); IMP_BACK = mine; IMP_DONE = msg.value;
         it.textContent = 'Undo'; ib.title = 'Put my own words back'; msg.focus(); }});
     });

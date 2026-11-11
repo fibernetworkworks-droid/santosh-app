@@ -2017,8 +2017,51 @@ appgen-check (Android) and ios-check (macOS) runs on this push are the first com
 the iPhone camera button is hidden on the simulator, so only a real iPhone proves it. Still not built: home-screen widgets,
 real 3D, deep links / app links, right-to-left, in-app tests in generated apps. Older red, not this work:
 test_v0338_app_store.py::test_push_and_submit_through_the_mac (KeyError 'status', red before this change).
+## v0.816.0 NATIJA KHATA (built as 0.806; their 0.806-0.815 took the numbers) - the outcome ledger of HOOLA PROMPTING (P4 of docs/HOOLA_PROMPTING_PLAN.md, owner: "GO")
 
-## v0.816.0 HOOLA CODE DESIGN PASS (built as 0.807; their v0.807-v0.815 took the numbers meanwhile) — one design system for every page of Hoola Code (owner: "DESIGN STILL LOOK OLD AND STALE --- MAKE IT PERFECTLY ALLINED WITH TEXT, BUTTONS, TEXTURE ... MORE PREMIUM AND ADVANCE SMOOTH --- LIKE CLAUDE CODE WEB PORTAL ... SHOW ME ALL PAGES")
+What it is: one row per prompt she takes OUT of Hoola Prompting, and what happened to the result afterwards. This is
+the measure the whole feature is judged by, and the data the later phases (recipe order, defaults, self-improvement)
+need.
+
+- `server/app/prompting/ledger.py`, tables `prompt_runs` + `prompt_prefs` (registered in db.init_db, self-heal).
+- A row holds SHAPE only: section, recipe id, slot names with their source, score, dialect, engine, model, rupees
+  (AI list price), seconds, status, grade. The prompt is stored as a SHA-256 of its normalised text plus up to 160
+  word hashes salted with the tenant id. No word, price, phone or name of hers is in the table (test).
+- Life of a run: `hand()` (POST /api/prompting/runs from the Improve sheet's Use button and the page's Open / Copy)
+  -> `claim(tenant, section, text, ref)` when an engine starts with that text: exact hash, or >= 60 % word overlap
+  inside 2 hours (= she edited the prompt first, `edited_before`). The same prompt started again inside 6 hours grades
+  the earlier run `redone` and opens a new run (origin `again`). -> `ready(ref, more_refs, model, usd, seconds)` ->
+  `event(tenant, ref, ev)`: published / downloaded / copied / sent / thumb_up = kept (kept_after_edit when the result
+  was edited), edited, deleted / thumb_down = dropped, redo = redone. Her own keep stands against a later redo; only
+  her delete undoes it. `failed(ref)` closes a run without a grade (an engine failure is not her verdict).
+- Hooks (all through `main._pled`, `_pled_site`, `_pled_sid`, `_pled_chat`; each swallows its own errors):
+  POST /api/sites (both the architect path and the plain path), site first build ready (`site/service.py`, with the
+  site's cost_usd), /change + /edit, /launch, DELETE; Create image jobs (`create/jobs.py`: run_meter cost, items as
+  extra refs, failure), item delete; the Script writer (/api/create/write, item text edit, delete); a chat message of
+  40+ characters (never in an incognito chat), reply thumbs, Ask again. Studio downloads call
+  POST /api/prompting/runs/event (only `downloaded` / `copied` are accepted from a page).
+- Silence, by rule (`settle`, run lazily when numbers are read): handed and never run in 24 hours = `unused`; copied
+  out of Hoola = closed with no grade (unknown); a result still there 3 days later, not redone and not deleted =
+  kept, marked quiet and counted apart from her own keeps.
+- The four numbers (`numbers`): kept rate, redos per kept result, rupees per kept result, minutes to a kept result -
+  overall and per section, shown only after 5 judged results. Score check per section: kept rate of runs at or above
+  the median score against those below, said only with 16 judged runs: predicts / no link / backwards.
+- Recipes: `recipe_rates()` (users who share, 5+ judged runs) orders the image / script recipes and shows
+  "kept 5 of 6 times".
+- Her controls: keep my record (off = nothing written), share shape for recipe order, Delete my record
+  (DELETE /api/prompting/ledger?confirm=DELETE). GET /api/prompting/ledger = her numbers + recent runs;
+  `everyone=1` only for the owner tenant (all users who share, no recent list). POST /api/prompting/runs/{id}/thumb.
+- Page: Results tab on /console/prompting (`prompting.js` results(), styles at the end of `prompting.css`).
+- Switch `prompting_ledger` (default on).
+- Tests: `server/tests/test_v0816_prompt_ledger.py`, 14 incl. a browser walk at 1360 and 390 px.
+
+NOT built / NOT verified: no real run has been recorded on the live server. Not hooked: Kalam, video, app builds,
+the architect's plan-only path. Rupees for a website are the site's running AI cost at first build, not the build
+alone. A chat run is marked ready when the message is sent (the reply's time and cost are not read). Decisions 2-5
+of plan part 7 (which questions to stop asking, slot defaults per business type, dialect health alerts, her
+personal defaults) need real rows first and are not built.
+
+## v0.817.0 HOOLA CODE DESIGN PASS (built as 0.807; their v0.807-v0.816 took the numbers meanwhile) — one design system for every page of Hoola Code (owner: "DESIGN STILL LOOK OLD AND STALE --- MAKE IT PERFECTLY ALLINED WITH TEXT, BUTTONS, TEXTURE ... MORE PREMIUM AND ADVANCE SMOOTH --- LIKE CLAUDE CODE WEB PORTAL ... SHOW ME ALL PAGES")
 
 Same pages, same routes, same behaviour - the LOOK rebuilt. Seven phases had each added their own rules (311 lines, five
 button heights, corners from 5 to 18px, a class used for two different things). All of them are gone; ONE block in
