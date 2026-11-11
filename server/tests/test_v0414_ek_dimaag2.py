@@ -319,7 +319,7 @@ def test_revise_before_and_after_the_build(school, monkeypatch):
     monkeypatch.setattr(AI, "ask_json", lambda s, p, m=6000, k="build": json.loads(json.dumps(school_more))
                         if "her_change" in p else old_ask(s, p, m, k))
     out = c.post(f"/api/site-architect/{card['id']}/revise", json={"words": "gallery page bhi"}).json()
-    assert out["added_pages"] == ["Gallery"] and out["removed_pages"] == [] and changes == ["Naye pages jodo: Gallery"]
+    assert out["added_pages"] == ["Gallery"] and out["removed_pages"] == [] and changes == ["Add new pages: Gallery"]
     assert "logic_draft" not in out and got["number"] == out["site"]
 
 

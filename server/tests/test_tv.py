@@ -181,7 +181,7 @@ def test_avatar_plays_on_phone_and_tv(tv_app):
         cid = conv.id
     ctx = Ctx("default", cid)
     found = asyncio.run(dispatch("tv_channel", {"action": "find", "query": "bhajan"}, ctx))
-    assert found["channels"] and all(ch["category_label"] == "Bhakti" for ch in found["channels"])
+    assert found["channels"] and all(ch["category_label"] == "Devotional" for ch in found["channels"])
     us = asyncio.run(dispatch("tv_channel", {"action": "find", "query": "news", "country": "United States"}, ctx))
     assert us["channels"] and all(ch["country"] == "US" for ch in us["channels"])
     phone = asyncio.run(dispatch("tv_channel", {"action": "play", "query": "DD Sahyadri", "on": "phone"}, ctx))

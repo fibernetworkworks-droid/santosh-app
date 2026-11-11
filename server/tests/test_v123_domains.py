@@ -272,7 +272,7 @@ def test_newtika_account_names_the_customer_or_says_newtika(dom_env, monkeypatch
     card = DM.buy_request(T, v["id"], "sharmasweetsakot.com",
                           registrant={"email": "ramesh@sharmasweets.in", "owner": "Ramesh Sharma", "pin": "444101"})
     line = " ".join(card["lines"])
-    assert "Registry mein malik: Sharma Sweets" in line
+    assert "Owner in the registry: Sharma Sweets" in line
     DM.buy(T, card["id"], card["hash"])
     reg = dom_env.registered[0]["contacts"]["registrant"]
     assert reg["email"] == "ramesh@sharmasweets.in" and reg["phone"] == "+91.9876543210"

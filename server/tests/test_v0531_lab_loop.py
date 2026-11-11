@@ -79,7 +79,7 @@ def test_the_switch_and_the_box_are_two_separate_doors(monkeypatch):
     from app.devlab import box
     monkeypatch.setattr(box, "docker", lambda: "")
     on = LAB.ready(T)
-    assert on["ok"] is False and "docker nahi hai" in on["why"]      # the honest reason, not the switch
+    assert on["ok"] is False and "docker is not installed" in on["why"]      # the honest reason, not the switch
 
 
 def test_a_shut_lab_gives_the_loop_no_tools_and_changes_nothing(dev, monkeypatch):  # noqa: F811
@@ -144,7 +144,7 @@ def test_a_failing_check_comes_back_with_its_end_and_the_log_hint(dev, monkeypat
 def test_a_setup_failure_tells_it_to_stop_not_to_retry(dev, monkeypatch):  # noqa: F811
     S = dev
     _join(S)
-    lab = FakeLab(results=[{"stage": "setup", "why": "setup command poori nahi hui", "out": "pip: no such package"}])
+    lab = FakeLab(results=[{"stage": "setup", "why": "the setup command did not finish", "out": "pip: no such package"}])
     script, _ = _loop(monkeypatch, S, lab, [[tu(1, "run_check")], [tu(2, "done", explain="x", risk="lab nahi chala")]])
     said = [str(b.get("content")) for c in script.seen if isinstance(c, list) for b in c if isinstance(b, dict)]
     msg = next(x for x in said if "dependencies" in x)

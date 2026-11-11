@@ -252,7 +252,7 @@ def test_preview_then_her_tap_makes_look_one_hers(site_env, public_dns, monkeypa
     assert out["remade_looks"]
     r = S._load(v["id"])
     looks = json.loads(r.looks)
-    assert looks[0]["mine"] and looks[0]["label"] == "Aapke design se" and looks[0]["style"] == "luxury_dark"
+    assert looks[0]["mine"] and looks[0]["label"] == "From your design" and looks[0]["style"] == "luxury_dark"
     tk = looks[0]["tokens"]
     assert _near(tk["bg"], "#0B0B0E") and tk["radius"] == 2 and _near(tk["primary"], "#C9A227")
     assert tk["head"] in [__import__("app.site.taxonomy", fromlist=["T"]).FONTS[k]["head"] for k in IN.HEAD_KIND["serif"]]

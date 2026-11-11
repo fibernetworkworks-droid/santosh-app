@@ -99,7 +99,7 @@ def test_scheduled_posts_pages_and_her_taps(site_env, kalam):
     later = (datetime.now(timezone.utc) + timedelta(days=2)).isoformat()
     sch = S.blog_publish(T, sid, {"title": "Holi special", "body": "Holi ki mithai ki list.\n\nGujiya aur malpua.",
                                   "meta": {"category": "Tyohar"}}, later)
-    assert sch["post"]["status"] == "scheduled" and "ko website par aayega" in sch["say"]
+    assert sch["post"]["status"] == "scheduled" and "is scheduled for" in sch["say"]
     v0 = S.get(T, sid)["version"]
     assert not (B.out_dir(T, sid, v0) / "blog").exists()                            # not before its time
     for i in range(11):                                                           # 11 more -> two blog pages
