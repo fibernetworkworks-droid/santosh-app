@@ -1730,6 +1730,18 @@ def app_studio_page():
         "X-Content-Type-Options": "nosniff", "Permissions-Policy": "microphone=(), camera=(), geolocation=()"})
 
 
+@app.get("/console/games")
+@app.get("/console/games/")
+def game_dev_page():
+    """v0.783 HOOLA GAME DEV: game making as its own full-screen app (owner: "CAN WE DEVLOPE A SEPERATE CONSOLE SECTION /
+    FEATURE -- NAME IT A HOOLA GAME DEV", then "GO BUILD" on the 14-page design): own sidebar, a Hoola thread per game,
+    Design / Play / Board / Bible / Scenes / Assets / QA / Release / Live ops / Where it came from, plus Crew, Game Arena
+    and Big studio. Same sign-in as the console (its token in this browser), same /api/game* routes, same strict CSP."""
+    return FileResponse(STATIC / "console" / "gamedev.html", headers={
+        **_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP, "X-Frame-Options": "DENY",
+        "X-Content-Type-Options": "nosniff", "Permissions-Policy": "microphone=(), camera=(), geolocation=()"})
+
+
 @app.get("/console/code")
 @app.get("/console/code/")
 def hoola_code_page():

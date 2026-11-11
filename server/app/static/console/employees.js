@@ -2925,5 +2925,37 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
     loadRows();
   }
 
-  return {hub, desk, social, cad, game, arch, edu, leads};
+  // ---------------------------------------------------------------- v0.783 HOOLA GAME DEV (/console/games)
+  // The Game Dev app shows these same, tested game pages inside its own tabs. ONE entry point, so the app never reaches
+  // into the desk's state: it names a page and a Studio project, and the desk's own flags are reset for it. The Game
+  // Desk inside the console is untouched and keeps working exactly as before.
+  //   project pages (need a Studio project id): board | bible | scenes | assets | qa | release
+  //   role pages (studio id optional, '' = no project): liveops | prov | runtime | world | physics | audio | haptics |
+  //                                                       net | xr | sim | twin | vfx | arena | big
+  const EMBED_PROJECT = {board: gsBoard, bible: gsBible, scenes: gsScenes, assets: gsAssets, qa: gsQa, release: gsRelease};
+  const EMBED_ROLE = {liveops: gsLiveops, prov: gsProv, runtime: gsRuntime, world: gsWorld, physics: gsPhysics, audio: gsAudio,
+    haptics: gsHaptics, net: gsNet, xr: gsXr, sim: gsSim, twin: gsTwin, vfx: gsVfx, arena: gsArena, big: gsBig};
+  function gameEmbed(el, page, sid) {
+    clearTimeout(GTIMER);
+    GS_BIBLE = false; GS_ASSETS = false; GS_REL = false; GS_QA = false; GS_SCN = false; GS_ROLE = '';
+    GS_OPEN = String(sid || ''); GS_ROLE_SID = String(sid || '');
+    if (EMBED_PROJECT[page]) {
+      if (!sid) throw new Error('This page belongs to a long project. Turn the game into a long project first.');
+      if (page === 'bible') GS_BIBLE = true;
+      if (page === 'assets') GS_ASSETS = true;
+      if (page === 'release') GS_REL = true;
+      if (page === 'qa') GS_QA = true;
+      if (page === 'scenes') GS_SCN = true;
+      return EMBED_PROJECT[page](el, String(sid));
+    }
+    const fn = EMBED_ROLE[page];
+    if (!fn) throw new Error('Unknown game page: ' + page);
+    GS_ROLE = page;
+    return fn(el);
+  }
+  gameEmbed.stop = () => { clearTimeout(GTIMER); };   // the app calls this when it leaves a pane, so no poll outlives it
+  gameEmbed.pages = Object.keys(EMBED_PROJECT).concat(Object.keys(EMBED_ROLE));
+  gameEmbed.projectPages = Object.keys(EMBED_PROJECT);
+
+  return {hub, desk, social, cad, game, arch, edu, leads, gameEmbed};
 };
