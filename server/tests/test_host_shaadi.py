@@ -61,7 +61,7 @@ def test_rules():
     assert R.hhmm("7 pm") == 19 * 60 and R.hhmm("7:30 shaam") == 19 * 60 + 30 and R.hhmm("10") == 600 and R.hhmm("abc") is None
     assert R.noise_problem(19 * 60, 23 * 60, True) and not R.noise_problem(19 * 60, 21 * 60 + 30, True)
     assert not R.noise_problem(19 * 60, 23 * 60, False)
-    assert "baal vivah" in R.age_problem(17, 25) and "baal vivah" in R.age_problem(20, 20) and R.age_problem(18, 21) == ""
+    assert "child marriage" in R.age_problem(17, 25) and "child marriage" in R.age_problem(20, 20) and R.age_problem(18, 21) == ""
     assert R.dowry_problem("dahej ki list") and not R.dowry_problem("shagun list")
     assert R.mask_name("Sunita Mehra") == "Sunita M." and R.clean("OTP 123456 card 4111 1111 1111 1111") == "OTP [removed] card [removed]"
     assert R.phone("+91 98220 12345") == "9822012345" and R.phone("12345") == ""
@@ -79,7 +79,7 @@ def test_wedding_functions_muhurat_panchang_checklist_timeline(sh):
     # muhurat: never computed; stored only as she says, with who gave it
     p = S.panchang(T, w["id"])
     lagna = [d for d in p["days"] if d["function"] == "Lagna"][0]
-    assert lagna["tithi"] and lagna["nakshatra"] and lagna["muhurat"] == "" and "panditji" in lagna["muhurat_note"].lower()
+    assert lagna["tithi"] and lagna["nakshatra"] and lagna["muhurat"] == "" and "pandit" in lagna["muhurat_note"].lower()
     assert all(d.get("muhurat") == "" for d in p["days"] if d.get("date"))
     out = S.fn_set(T, w["id"], "lagna", start="11 am", muhurat="12:35 pm (godhuli nahi)", muhurat_by="Joshi guruji")
     assert out["function"]["muhurat"].startswith("12:35") and out["function"]["muhurat_by"] == "Joshi guruji"
@@ -93,7 +93,7 @@ def test_wedding_functions_muhurat_panchang_checklist_timeline(sh):
     S.fn_set(T, w["id"], "mehendi", date_="2026-12-12", start="4 pm")
     # checklist counted back from the first function (10 Dec)
     cl = S.checklist(T, w["id"])["items"]
-    venue = [c for c in cl if "Venue" in c["what"]][0]
+    venue = [c for c in cl if "book the venue" in c["what"]][0]
     assert venue["due"] == (date(2026, 12, 10) - timedelta(days=210)).isoformat() and venue["state"] == "late"
     reg = [c for c in cl if "registration" in c["what"]][0]
     assert reg["due"] == (date(2026, 12, 14) + timedelta(days=30)).isoformat()      # after the LAST function
@@ -139,7 +139,7 @@ def test_guests_rsvp_headcount_import_rooms(sh):
     assert ok["room"]["heads"] == 4
     with pytest.raises(S.ShaadiError) as e:
         S.room_assign(T, w["id"], "Anil", "D-1")
-    assert "Overbooking" in str(e.value)
+    assert "overbooking" in str(e.value)
     S.guest_add(T, w["id"], "Ravi", phone="9000000001", arrive="2026-12-10", depart="2026-12-13")
     with pytest.raises(S.ShaadiError):
         S.room_assign(T, w["id"], "Ravi", "D-2")                                           # arrives before the block
@@ -199,7 +199,7 @@ def test_vendor_booking_fingerprint_stale_pay_budget(sh, monkeypatch):
                                                         {"id": vv["schedule"][1]["id"], "label": "Shaadi ke din", "amount": 190000}])
     with pytest.raises(S.ShaadiError) as e:
         S.decide(T, pc["id"], True, pc["hash"], by_tap=True)
-    assert "badal" in str(e.value)
+    assert "changed" in str(e.value)
     assert S.cards(T, w["id"], "stale")
     # spend card + budget
     sp = S.spend_request(T, w["id"], "Mandap ke phool", "18,000", "florist", "lagna")["card"]
@@ -301,7 +301,7 @@ def test_trip_forget_tick_tools_api(sh, monkeypatch):
     res = S.tick(when)
     kinds = [k for k, _ in S.EVENTS]
     assert res["alerts"] >= 2 and "shaadi_alert" in kinds and "shaadi_day" in kinds
-    assert any("Kal" in p["say"] for k, p in S.EVENTS if k == "shaadi_alert")
+    assert any("Tomorrow" in p["say"] for k, p in S.EVENTS if k == "shaadi_alert")
     S.EVENTS.clear()
     assert S.tick(when)["alerts"] == 0 and not S.EVENTS
     S.wedding_update(T, w["id"], status="done")

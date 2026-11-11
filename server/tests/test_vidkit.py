@@ -165,7 +165,7 @@ def test_watermark_and_blur_area(media, tmp_path):
 
 
 def test_audio_steps_on_a_silent_video_say_so(media):
-    with pytest.raises(ops.VideoError, match="awaaz nahi"):
+    with pytest.raises(ops.VideoError, match="no sound"):
         ops.edit(media.vert, [{"op": "normalize"}])
     with pytest.raises(ops.VideoError, match="0.25"):
         ops.edit(media.land, [{"op": "speed", "factor": 0.1}])
@@ -216,7 +216,7 @@ def test_music_with_ducking_and_on_a_silent_video(media):
     assert r["ducked"] and abs(r["out"]["duration"] - 6) < 0.15 and r["out"]["has_audio"]
     r = ops.add_music(media.vert, media.music)
     assert not r["original_sound"] and r["out"]["has_audio"]
-    with pytest.raises(ops.VideoError, match="awaaz nahi"):
+    with pytest.raises(ops.VideoError, match="no sound"):
         ops.add_music(media.land, media.a)
 
 
