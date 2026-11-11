@@ -10,7 +10,7 @@ PROCEDURE_TOOLS = [
     {"name": "seekhe_kaam", "description": (
         "Your learned ways of doing multi-step jobs (saved by themselves after a job worked). action=list (what you learned), "
         "off / on (stop or start using one, by id), forget (delete one by id), forget_all (only when the owner clearly says "
-        "'sab bhool jao'). The owner can also see and edit them in Profile > Seekhe hue kaam."),
+        "'sab bhool jao'). The owner can also see and edit them in Profile > Learned tasks."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["list", "off", "on", "forget", "forget_all"]},
          "id": {"type": "string"}}, "required": ["action"]}},

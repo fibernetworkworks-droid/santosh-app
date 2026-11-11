@@ -216,7 +216,7 @@ async def youtube_playlist(ctx: Ctx, action, title="", privacy="private", playli
         return {"playlists": await _t(ys.playlists, ctx.tenant_id)}
     if action == "create":
         if not title:
-            raise ToolError("Playlist ka naam do.")
+            raise ToolError("Give the playlist a name.")
         return await _t(ys.playlist_create, ctx.tenant_id, str(title), privacy or "private")
     if action == "add":
         return await _t(ys.playlist_add, ctx.tenant_id, str(playlist), [str(v) for v in videos or []])

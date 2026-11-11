@@ -11,7 +11,7 @@ from .tools import Ctx, ToolError
 MEET_TOOLS = [
     {"name": "const_meet", "description": (
         "Meeting secretary (OAC / site / coordination). action=meet: title, kind oac|site|coord|client|weekly, day, "
-        "site, project, attendees, minutes [{text, by}], actions [{what, who, due}] -> baithak record + chase. "
+        "site, project, attendees, minutes [{text, by}], actions [{what, who, due}] -> meeting record + chase. "
         "action=minute: meet (id), text, by. action=action: meet (id), what, who, due. action=action_done: action (id) "
         "- OWNER ONLY, approval to close. action=minutes_pdf: meet (id) -> the minutes PDF (file)."),
      "input_schema": {"type": "object", "properties": {
@@ -59,7 +59,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return {"file": f, "say": "The minutes PDF is ready - please circulate it."}
     except (M.CstError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("action galat")
+    raise ToolError("Unknown action")
 
 
 def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
@@ -86,7 +86,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
             return {"meets": [{"id": r.id, "title": r.title, "kind": r.kind, "day": r.day, "status": r.status} for r in rows[:15]]}
     except (M.CstError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("what galat")
+    raise ToolError("Unknown what")
 
 
 async def const_meet(ctx: Ctx, action, **a: Any):

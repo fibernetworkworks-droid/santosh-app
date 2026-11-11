@@ -123,7 +123,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return S.glossary_add(t, _s(a.get("term")), _s(a.get("avoid")), _s(a.get("note")))
     except (S.DocError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("action galat")
+    raise ToolError("Unknown action")
 
 
 def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
@@ -149,7 +149,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
             return {"never": list(R.NEVER), "steps": list(R.STEP_DO), "sources": R.SOURCES}
     except (S.DocError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("what galat")
+    raise ToolError("Unknown what")
 
 
 async def docs_writer(ctx: Ctx, action, **a: Any):

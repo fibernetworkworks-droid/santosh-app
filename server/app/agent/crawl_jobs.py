@@ -234,7 +234,7 @@ def claim(tenant_id: str, job_id: str, tries_max: int) -> bool:
             return True
         cur2 = con.execute("UPDATE crawl_jobs SET status = 'failed', error = ?, updated_at = ? "
                            "WHERE id = ? AND status IN ('queued','running')",
-                           ("tries bhar gaye — site baar baar crawl nahi ho payi", time.time(), job_id))
+                           ("out of tries — the site could not be crawled after repeated attempts", time.time(), job_id))
         con.commit()
         if cur2.rowcount > 0:
             # wave 10: a crawl that used up its tries went "failed" in silence - she learned it only by asking crawl_status
@@ -243,8 +243,8 @@ def claim(tenant_id: str, job_id: str, tries_max: int) -> bool:
                 from .. import convs, events
                 conv = convs.notice_chat(tenant_id)   # v0.714
                 if conv:
-                    events.notify(conv, f"Crawl ({(row[0] if row else '')[:80]}) kai baar ki koshish ke baad bhi nahi "
-                                        f"ho paya, isliye band kar diya (job {job_id}).")
+                    events.notify(conv, f"The crawl ({(row[0] if row else '')[:80]}) did not work after several "
+                                        f"tries, so it has been stopped (job {job_id}).")
             except Exception:   # noqa: BLE001
                 pass
         return False
@@ -396,7 +396,7 @@ async def run_job(tenant_id: str, job_id: str) -> None:
             url = _pick_next(queue, cp, question, mode, row["seed"], include)
             if url is None:
                 _save(tenant_id, job_id, status="done", updated_at=time.time(),
-                      note="frontier mein koi padhne layak url nahi bacha")
+                      note="no readable url left in the frontier")
                 return
             seq = int(row["fetched"]) + 1
             # guards first: a queued url that fails the guard is recorded, the crawl moves on
@@ -462,7 +462,7 @@ async def run_job(tenant_id: str, job_id: str) -> None:
     except asyncio.CancelledError:
         try:                      # honest + resumable: the next tick picks the checkpoint up again
             _save(tenant_id, job_id, status="queued", updated_at=time.time(),
-                  error="worker band hua — agle tick se checkpoint se aage")
+                  error="worker stopped — continues from the checkpoint on the next tick")
         except Exception:
             pass
         raise
@@ -548,10 +548,10 @@ async def crawl_start(ctx: Ctx, url, max_pages=20, include=None, question=None, 
     from ..config import get_settings
     s = get_settings()
     if not getattr(s, "scrape_crawl_enabled", True):
-        raise ToolError("Background crawl is VPS par band hai (scrape_crawl_enabled=false) — scrape_site / scrape_map abhi ke liye use karein")
+        raise ToolError("Background crawl is off on this server (scrape_crawl_enabled=false) — use scrape_site / scrape_map for now")
     seed = await asyncio.to_thread(st._guard_url, url)
     if not await st._robots_ok(seed):
-        raise ToolError("Is site ke robots.txt ne bots ko mana kiya hai (respect_robots on)")
+        raise ToolError("This site's robots.txt disallows bots (respect_robots on)")
     try:
         want = max(1, min(int(max_pages or 20), _CRAWL_PAGES_CAP))
     except Exception:
@@ -568,10 +568,10 @@ async def crawl_start(ctx: Ctx, url, max_pages=20, include=None, question=None, 
                        "max_pages": int(row["max_pages"]),
                        "already_running": not fresh,
                        **({"question": q, "mode": cp["mode"]} if q and fresh else {}),
-                       "note": ("Crawl queue ho gaya — worker ise ~20 s mein uthayega, phir crawl_status se progress aur "
-                                "crawl_results se pages dekhein" if fresh
-                                else "Yeh seed pehle se queued/running hai — wahi job aage badhega (naya job nahi bana)")
-                       + (" Question diya hai, to sabse kaam ka link pehle padhega aur jawab milte hi ruk jayega."
+                       "note": ("Crawl queued — the worker picks it up in ~20 s; then see progress with crawl_status and "
+                                "the pages with crawl_results" if fresh
+                                else "This seed is already queued/running — the same job continues (no new job was made)")
+                       + (" A question was given, so it reads the most useful link first and stops as soon as it has the answer."
                           if q and fresh else "")})
 
 
@@ -583,7 +583,7 @@ async def crawl_status(ctx: Ctx, job_id="", action="check", **_):
         act = "check"
     row = get_job(ctx.tenant_id, str(job_id)) if job_id else latest_job(ctx.tenant_id)
     if row is None:
-        raise ToolError("Koi crawl job nahi mila — pehle crawl_start chalayein, ya job_id sahi dein")
+        raise ToolError("No crawl job found — run crawl_start first, or give the right job_id")
     stopped = False
     if act == "stop":
         stopped = stop_job(ctx.tenant_id, row["id"])
@@ -591,8 +591,8 @@ async def crawl_status(ctx: Ctx, job_id="", action="check", **_):
     out = _fmt_job(row)
     out["action"] = act
     if act == "stop":
-        out["note"] = ("Job ruk gaya (ya pehle se ruka hua tha) — jitne pages nikal chuke hain woh crawl_results mein hai"
-                       if stopped else "Yeh job pehle se chal nahi raha — crawl_results se jo mila woh dekhein")
+        out["note"] = ("Job stopped (or it was already stopped) — the pages fetched so far are in crawl_results"
+                       if stopped else "This job is not running any more — see what it found with crawl_results")
     return st._masked(out)
 
 
@@ -601,7 +601,7 @@ async def crawl_results(ctx: Ctx, job_id="", offset=0, limit=5, url="", **_):
     chahiye to url=<that page> dein."""
     row = get_job(ctx.tenant_id, str(job_id)) if job_id else latest_job(ctx.tenant_id)
     if row is None:
-        raise ToolError("Koi crawl job nahi mila — pehle crawl_start chalayein")
+        raise ToolError("No crawl job found — run crawl_start first")
     try:
         off = max(0, int(offset or 0))
     except Exception:
@@ -617,7 +617,7 @@ async def crawl_results(ctx: Ctx, job_id="", offset=0, limit=5, url="", **_):
                   "note": r["note"] or ""} for r in rows]
     return st._masked({"job_id": row["id"], "status": row["status"], "seed": row["seed"],
                        "total_pages": total, "offset": off, "count": len(out_pages), "pages": out_pages,
-                       "note": ("Aur pages chahiye to offset aage badhayein" if off + len(out_pages) < total else "")})
+                       "note": ("For more pages, raise the offset" if off + len(out_pages) < total else "")})
 
 
 CRAWL_TOOLS = [
@@ -649,7 +649,7 @@ CRAWL_TOOLS = [
     {"name": "crawl_results", "description": (
         "Pages a background crawl has STORED (v0.486): title + markdown per page, paginated (offset/limit, max "
         "10 per call). Works while the crawl is still running (partial results) and after it finished. One "
-        "specific page poora chahiye to url=<page url> dein. Use with crawl_start / crawl_status."),
+        "specific page in full: pass url=<page url>. Use with crawl_start / crawl_status."),
      "input_schema": {"type": "object", "properties": {
          "job_id": {"type": "string", "description": "From crawl_start; empty = latest job of this tenant"},
          "offset": {"type": "integer", "description": "Skip this many stored pages (default 0)"},

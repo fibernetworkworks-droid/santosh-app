@@ -15,8 +15,8 @@ APP_TOOLS = [
         "marketplace, tickets, jobs, courses, doctor consults, payments...: 33 product kinds) - and show her EVERY "
         "screen as a tap-through prototype BEFORE anything is built. Built apps: action=data|role|fix_crash|rollback|data_change|store (paid=Verified only when she saw the money; Play production only by her tap); read: app_dekho data / members / crashes / store. brief = HER EXACT WORDS, never your summary and never her "
         "own business added in (her business details go in by themselves only when the app is for her business). Don't pass "
-        "goal unless she named the kind of app; a goal that doesn't fit her words is ignored. If it answers 'Pakka karne ke "
-        "liye ek sawaal', ask her exactly that and call again with her answer in brief (or answers {sure: true} if she says "
+        "goal unless she named the kind of app; a goal that doesn't fit her words is ignored. If it answers with one question to "
+        "confirm, ask her exactly that and call again with her answer in brief (or answers {sure: true} if she says "
         "'just the first one'). A brand she names is only a reference: the app gets its own name and design. A few words are enough: the 1 lakh app brief library knows 1,000 kinds of "
         "business x 10 app goals x 10 premium styles, and the 1 CRORE APP IDEA library (app_dekho what=ideas) adds WHO the "
         "app is for (customers / owner / staff / delivery partner / dealers / members / managers), the ONE special thing "
@@ -612,14 +612,14 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             mem = hit[0]["id"] if len(hit) == 1 else mem
         if mem and a.get("amount") not in (None, ""):
             v = KH.payment(r, mem, a.get("amount"), str(a.get("mode") or "cash"), str(a.get("note") or ""), W.Who(owner=True))
-            v["say"] = f"{v['name']} ka payment likh liya. Ab baaki: Rs {v['balance']:g}."
+            v["say"] = f"Payment recorded for {v['name']}. Balance now: Rs {v['balance']:g}."
             return v
         if mem:
             v = KH.summary(r, mem)
-            v["say"] = f"{v['name']} par baaki: Rs {v['balance']:g}."
+            v["say"] = f"{v['name']} owes: Rs {v['balance']:g}."
             return v
         v = KH.dues(r, W.Who(owner=True))
-        v["say"] = (f"Total udhaar pending: Rs {v['total_due']:g} ({sum(1 for p in v['customers'] if p['balance'] > 0)} customers). "
+        v["say"] = (f"Total credit pending: Rs {v['total_due']:g} ({sum(1 for p in v['customers'] if p['balance'] > 0)} customers). "
                     "To remind, use 'Open in WhatsApp' for each customer in the app's Data > Khata reminders (you send it yourself) "
                     "or an approved template on your tap.")            # v0.375 reminders go only by her own tap
         return v
@@ -665,7 +665,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         r = BE.data_app(t, ref)
         g = a.get("gst") if isinstance(a.get("gst"), dict) else {}
         v = G.set_settings(r, g) if g else G.view(r)
-        v["say"] = (f"GST invoice chalu: {v['gstin']} ({v['state']}), default {v['rate']}%." if v["on"]
+        v["say"] = (f"GST invoice is on: {v['gstin']} ({v['state']}), default {v['rate']}%." if v["on"]
                     else "GST invoice is off; a plain receipt is made for the finished job.")
         return v
     if action in ("data", "role"):            # v0.314 her own app's backend: she runs it from Hoola

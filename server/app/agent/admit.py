@@ -990,7 +990,7 @@ async def tool_search(ctx, need: str = "", **_):
     adm = getattr(ctx, "admit", None) if isinstance(ctx, Ctx) else None
     need = (need or "").strip()
     if not need:
-        return {"admitted": [], "note": "Batao kya kaam karna hai - 'send an email', 'sheet update' jaisa."}
+        return {"admitted": [], "note": "Say what job is needed - like 'send an email', 'sheet update'."}
     hits = _match(need.lower())
     # v0.550 EK JAISA: a tool asked for by its EXACT name always opens its own family. The keyword match used to win
     # and the name lookup ran only when it found nothing, so tool_search("sheet_read") opened sheets but not
@@ -1034,13 +1034,13 @@ async def tool_search(ctx, need: str = "", **_):
         if refs:
             return {"tool_references": refs, "found": names}
         if names:
-            return {"admitted": [], "note": "Yeh tools pehle se dikh rahe hain: " + ", ".join(names[:20])}
+            return {"admitted": [], "note": "These tools are already in view: " + ", ".join(names[:20])}
     if not hits:
-        return {"admitted": [], "note": ("Is naam se koi parivar nahi mila. Kaam ka verb batao (mail, calendar, "
-                                         "sheet, video, photo, pc, gst...) ya seedha tool ka naam.")}
+        return {"admitted": [], "note": ("No tool family matches that. Give the verb of the job (mail, calendar, "
+                                         "sheet, video, photo, pc, gst...) or the exact tool name.")}
     if adm is None:   # no turn state (admission off / direct call): names only, nothing changes
         names = sorted(n for n, f in FAMILY_OF.items() if f in hits)
-        return {"admitted": names[:40], "note": "Yeh tools is turn mein loaded NAHI hain (admission off)."}
+        return {"admitted": names[:40], "note": "These tools are NOT loaded in this turn (admission off)."}
     had = set(adm.families)
     fresh = adm.admit_families(hits)
     STATS["tool_search"] += 1
@@ -1057,7 +1057,7 @@ async def tool_search(ctx, need: str = "", **_):
         except Exception:
             log.debug("guide lookup failed", exc_info=True)
     log.info("tool_search admitted %s (%s)", ",".join(hits), ",".join(fresh[:8]))
-    return {"admitted": fresh, "note": "Yeh tools ab is poori turn ke liye khul gaye - agle call se upyog karo."}
+    return {"admitted": fresh, "note": "These tools are now open for the rest of this turn - use them from the next call."}
 
 
 HANDLERS["tool_search"] = tool_search

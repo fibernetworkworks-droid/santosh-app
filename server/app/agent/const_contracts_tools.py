@@ -13,16 +13,16 @@ CONTRACTS_TOOLS = [
     {"name": "const_contracts", "description": (
         "Contracts desk: register, obligations with the chase, variation papers (DRAFT), claims working papers. "
         "action=contract: name, party, role employer|contractor|sub-contractor, value, signed_on, start_on, end_on, "
-        "notice_days, ref. action=oblig: contract, obligation, due_on, owner_side (true=hamara). action=oblig_done: "
-        "oblig (id), on. action=oblig_due: days (late pehle). action=variation: contract, desc, basis (SOR/quoted/"
+        "notice_days, ref. action=oblig: contract, obligation, due_on, owner_side (true=ours). action=oblig_done: "
+        "oblig (id), on. action=oblig_due: days (late first). action=variation: contract, desc, basis (SOR/quoted/"
         "daywork), qty, rate -> DRAFT (the CLIENT approves; it is recorded in their name). action=variation_mark: "
-        "variation (id), status draft|submitted|approved|rejected, approved_by (client ka naam). action=claim: contract, "
-        "cause, event_on, noticed_on, matrix [{event, clause, effect, evidence}] -> notice-compliance ka hisaab; "
+        "variation (id), status draft|submitted|approved|rejected, approved_by (client's name). action=claim: contract, "
+        "cause, event_on, noticed_on, matrix [{event, clause, effect, evidence}] -> notice-compliance maths; "
         "the entitlement decision is the advocate's. action=insured: contract, note (bonds/insurance are recorded here). "
         "Wave 4 #48: action=ld_calc: project, contract_ref, delay_days, ld_pct_per_week, contract_value, "
-        "cap_pct, sources (clause no) -> arithmetic + cap check; LD kaatna tier C. #50: action=arb_bundle_add: "
-        "project, claim, rows [date, evidence, exhibit], by -> bundle index (case counsel ka); "
-        "action=arb_bundle: project, claim -> index padho."),
+        "cap_pct, sources (clause no) -> arithmetic + cap check; deducting LD is tier C. #50: action=arb_bundle_add: "
+        "project, claim, rows [date, evidence, exhibit], by -> bundle index (the case is counsel's); "
+        "action=arb_bundle: project, claim -> read the index."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["contract", "oblig", "oblig_done", "oblig_due", "variation",
                                                "variation_mark", "claim", "insured", "ld_calc",
@@ -98,7 +98,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return K.arb_bundle(t, _s(a.get("project")), _s(a.get("claim")))
     except (K.CstError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("action galat")
+    raise ToolError("Unknown action")
 
 
 def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
@@ -141,7 +141,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
                                 "noticed_on": r.noticed_on, "status": r.status} for r in rows]}
     except (K.CstError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("what galat")
+    raise ToolError("Unknown what")
 
 
 async def const_contracts(ctx: Ctx, action, **a: Any):

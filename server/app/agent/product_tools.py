@@ -17,7 +17,7 @@ PRODUCT_TOOLS = [
         "title / problem / who / theme / goal (KPI) / note / status. action=score: ref + HER numbers only: reach (people in 3 "
         "months), impact 3|2|1|0.5|0.25, confidence 100|80|50, effort ('2 hafte', '1 mahina', person-months); ICE: ice_impact, "
         "ice_confidence, ease 1-10; use_seen=true ONLY when she says use the people seen in the evidence as reach. NEVER invent a "
-        "number: ask her. action=kano: ref + answers [[functional, dysfunctional]] (pasand / zaroori / farak nahi / chalega / bura) "
+        "number: ask her. action=kano: ref + answers [[functional, dysfunctional]] (like / expect / neutral / live with / dislike) "
         "or category. action=solution: ref, text, assumption, chosen. action=merge: ref, into. action=drop: ref, reason. "
         "action=depends: ref, on [refs], remove. action=place: ref, bucket now|next|later|none, theme. action=plan (apply=true to "
         "put the suggestion on the roadmap). action=roadmap_files. action=ship: ref, day. action=result: ref (before / after). "

@@ -19,7 +19,7 @@ _OWNER_ONLY = {"settings", "package", "gear", "paid", "cancel", "refund_sent", "
 PHOTO_ASSIST_TOOLS = [
     {"name": "photo_assist", "description": (
         "Photographer's assistant (wedding / event / product / portrait). NEVER invent a price, date, permission or availability. "
-        "Cards = only her tap decides: say 'aapki haan ka card bheja hai', never 'sent / confirmed'. "
+        "Cards = only her tap decides: say 'the card is sent for your approval', never 'sent / confirmed'. "
         "settings*: studio, gstin, upi_id, buffer_minutes, hold_hours, delivery_days, retention_days, copyright keep|client, stages, "
         "cancel, terms, rpc_number, rpc_until, morning_time. package*: name, price, unit, includes, edits. gear*: name, kind, serial, "
         "uin, weight_g, insured_until. shoot: shoot (to update) or new: kind, client, phone, client_kind personal|business, day, "

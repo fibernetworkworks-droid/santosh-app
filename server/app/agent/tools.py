@@ -30,7 +30,7 @@ TEMPLATE_PROPS = {
     "category": {"type": "string", "enum": ["MARKETING", "UTILITY"], "description": "Offers/promotions = MARKETING. Order or account updates = UTILITY."},
     "body": {"type": "string", "description": "Message text, max 1024 chars. Variables as {{1}}, {{2}}. *bold* allowed."},
     "example_values": {"type": "array", "items": {"type": "string"}, "description": "One realistic example per variable, in order"},
-    "footer": {"type": "string", "description": "Optional, max 60 chars, no variables. Good place for 'STOP likhkar band karein'."},
+    "footer": {"type": "string", "description": "Optional, max 60 chars, no variables. Good place for 'Reply STOP to opt out'."},
 }
 
 TOOLS = [
@@ -56,7 +56,7 @@ TOOLS = [
                  "source": {"type": "string", "enum": ["lead_name", "lead_column", "static"],
                             "description": "lead_name = contact's first name; lead_column = another column from their file; static = same text for everyone"},
                  "value": {"type": "string", "description": "Column name for lead_column, or the fixed text for static"},
-                 "fallback": {"type": "string", "description": "Used when the contact has no value, e.g. 'ji' for a missing name"}},
+                 "fallback": {"type": "string", "description": "Used when the contact has no value, e.g. 'there' for a missing name"}},
              "required": ["source"]}},
          "consent_confirmed": {"type": "boolean", "description": "True only if the user has told you these contacts agreed to get WhatsApp messages from the business."},
          "auto_send": {"type": "boolean", "description": "True if the user already asked to send right away once approved. False to wait for their yes."}},
@@ -191,8 +191,8 @@ def _she_said_send(ctx: Ctx) -> bool:
 
 
 WAIT_FOR_HER = ("The campaign is READY but NOT sent: her own words in this turn did not say send. Show her the message "
-                "text and how many people it goes to, and ask 'Bhej doon?'. It sends only when she says haan / bhej do "
-                "herself, or taps 'Haan, bhej do' on the campaign card. Never say it was sent.")
+                "text and how many people it goes to, and ask 'Shall I send it?'. It sends only when she says yes / send it "
+                "herself, or taps 'Yes, send' on the campaign card. Never say it was sent.")
 
 
 async def create_campaign(ctx: Ctx, title, lead_list_id, template_id, param_mapping, consent_confirmed, auto_send, **_):
@@ -315,7 +315,7 @@ async def dispatch(name: str, args: dict, ctx: Ctx):
             from ..pc import operator as _pcop
             live = _pcop.running(ctx.tenant_id)
             if live is not None:
-                return {"status": "pc_busy", "session_id": live.id, "where": "Aapka PC (HER computer)",
+                return {"status": "pc_busy", "session_id": live.id, "where": "Your PC (HER computer)",
                         "say": ("This website work is already running on HER PC (session " + live.id + "). Don't start "
                                 "another one and don't open your own browser: its result comes as a note, or check it with "
                                 "pc_task_result. If she wants something else now, ask her first.")}

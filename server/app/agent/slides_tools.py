@@ -130,7 +130,7 @@ async def slides_edit(ctx: Ctx, presentation, slide=None, title=None, body=None,
     if find:
         return await _t(sv.replace_text, ctx.tenant_id, str(presentation), str(find), str(replace or ""), bool(match_case))
     if not slide:
-        raise ToolError("Kaunsi slide? slide number do (ya find + replace).")
+        raise ToolError("Which slide? Give the slide number (or find + replace).")
     return await _t(sv.edit_slide, ctx.tenant_id, str(presentation), int(slide), title, body, notes)
 
 

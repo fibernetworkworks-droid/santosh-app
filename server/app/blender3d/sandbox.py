@@ -86,7 +86,7 @@ def run(job_dir: Path, job: dict[str, Any], timeout: int | None = None, holder: 
     result['errors']); raises SandboxError when Blender itself can't run."""
     who = find()
     if not who:
-        raise SandboxError("Blender is server par install nahi hai (deploy/setup_blender.sh chalaiye)")
+        raise SandboxError("Blender is not installed on this server (run deploy/setup_blender.sh)")
     job_dir.mkdir(parents=True, exist_ok=True)
     (job_dir / "tmp").mkdir(exist_ok=True)
     job = {**job, "out_dir": str(job_dir)}
@@ -117,13 +117,13 @@ def run(job_dir: Path, job: dict[str, Any], timeout: int | None = None, holder: 
             except OSError:
                 p.kill()
             p.wait()
-            return {"ok": False, "errors": [f"{timeout} second mein poora nahi hua: model halka karo / loop chhota karo"],
+            return {"ok": False, "errors": [f"did not finish in {timeout} seconds: make the model lighter / the loop shorter"],
                     "timeout": True, "seconds": round(time.time() - t0, 1)}
     if holder is not None and holder.get("cancelled"):
-        return {"ok": False, "errors": ["rok diya gaya"], "cancelled": True}
+        return {"ok": False, "errors": ["stopped"], "cancelled": True}
     if not res_p.exists():
         tail = (job_dir / "blender.log").read_text(errors="replace")[-1500:]
-        raise SandboxError(f"Blender ne jawab nahi diya (exit {p.returncode}): {tail[-400:]}")
+        raise SandboxError(f"Blender did not respond (exit {p.returncode}): {tail[-400:]}")
     out = json.loads(res_p.read_text(encoding="utf-8"))
     out["wall_s"] = round(time.time() - t0, 1)
     out["isolated"] = net_isolation()

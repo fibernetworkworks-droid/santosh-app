@@ -104,7 +104,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return {"settings": F.save_settings(t, **{k: a[k] for k in keys if k in a}), "say": "Save."}
     except (F.FinError, ValueError) as e:
         raise ToolError(str(e))
-    raise ToolError("action galat")
+    raise ToolError("Unknown action")
 
 
 def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
@@ -132,7 +132,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
             return {"emi": R.emi(float(a.get("amount") or 0), float(a.get("rate") or 0), int(float(a.get("years") or 0) * 12))}
     except (F.FinError, ValueError) as e:
         raise ToolError(str(e))
-    raise ToolError("what galat")
+    raise ToolError("Unknown what")
 
 
 async def paisa(ctx: Ctx, action, **a: Any):

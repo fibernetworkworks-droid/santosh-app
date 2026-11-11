@@ -69,7 +69,7 @@ def _rows_of(ctx: Ctx, a: dict[str, Any]) -> list[dict[str, Any]]:
         buf = io.StringIO()
         csv.writer(buf).writerows(grid)
         return ST.parse_csv(buf.getvalue())
-    raise ValueError("Statement do: text (CSV), rows, ya file_id.")
+    raise ValueError("Give the statement: text (CSV), rows, or file_id.")
 
 
 def _sync(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:

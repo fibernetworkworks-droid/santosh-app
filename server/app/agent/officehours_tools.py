@@ -361,7 +361,7 @@ async def officehours(ctx: Ctx, action="start", topic="", her_words="", pain="",
         out = stop_doc(ctx.tenant_id, did)
         if out is None:
             raise ToolError("This session is already decided/stopped")
-        return {"officehours_id": out["id"], "status": out["status"], "note": "Baithak band"}
+        return {"officehours_id": out["id"], "status": out["status"], "note": "Session closed"}
     raise ToolError("action is needed: start | doc | review | decide | stop")
 
 
@@ -439,7 +439,7 @@ OFFICEHOURS_TOOLS = [
         "Read office hours (nothing changes): what=list shows the latest baithaks (topic, status, wedge), "
         "what=doc returns ONE full design doc (reframe, capabilities, premises, options, recommendation, "
         "wedge, decision, next_step, review count), what=reviews returns every review lens row of a doc. "
-        "No officehours_id = the latest one. Use it to recall a past baithak before she repeats herself."),
+        "No officehours_id = the latest one. Use it to recall a past session before she repeats herself."),
      "input_schema": {"type": "object", "properties": {
          "what": {"type": "string", "enum": ["list", "doc", "reviews"]},
          "officehours_id": {"type": "string", "description": "from officehours; empty = the latest"}},

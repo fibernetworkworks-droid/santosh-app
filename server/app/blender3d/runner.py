@@ -57,7 +57,7 @@ def _save_result():
 
 def _gate(name, globals_=None, locals_=None, fromlist=(), level=0):
     if level or name not in ALLOWED:
-        raise ImportError(f"import {name} allowed nahi")
+        raise ImportError(f"import {name} is not allowed")
     return __import__(name, globals_, locals_, fromlist, level)
 
 
@@ -206,7 +206,7 @@ class _H:
         """Her photo (one of the names given) as a Blender image, for textures."""
         path = (JOB.get("inputs") or {}).get(str(name))
         if not path or not os.path.isfile(path):
-            raise ValueError(f"photo '{name}' nahi mili; naam ye hain: {', '.join(JOB.get('inputs') or {}) or 'koi nahi'}")
+            raise ValueError(f"photo '{name}' not found; the names are: {', '.join(JOB.get('inputs') or {}) or 'none'}")
         return bpy.data.images.load(path, check_existing=True)
 
     def image_mat(self, name, image_name, rough=0.5):
@@ -418,7 +418,7 @@ def _setup_render(rj):
         sc.render.threads_mode = "FIXED"
         sc.render.threads = max(1, int(rj.get("threads", 2)))
     except Exception as e:
-        RESULT["warnings"].append(f"Cycles nahi mila, Workbench: {e}")
+        RESULT["warnings"].append(f"Cycles not available, using Workbench: {e}")
         sc.render.engine = "BLENDER_WORKBENCH"
     sc.render.resolution_x = int(rj.get("width", 1024))
     sc.render.resolution_y = int(rj.get("height", 1024))
@@ -488,7 +488,7 @@ def main():
     lo, hi = _bbox()
     RESULT["stats"] = _stats(bool(JOB.get("print")))
     if RESULT["stats"]["tris"] > int(JOB.get("max_tris", 3_000_000)):
-        RESULT["errors"].append(f"model bahut bhaari hai ({RESULT['stats']['tris']} triangles): kam detail karo")
+        RESULT["errors"].append(f"the model is too heavy ({RESULT['stats']['tris']} triangles): use less detail")
         _save_result()
         return
     RESULT["auto_lights"] = _ensure_light(lo, hi)
@@ -520,7 +520,7 @@ def main():
         try:
             RESULT["exports"][fmt] = os.path.basename(_export(fmt, JOB.get("base", "hoola_3d")))
         except Exception as e:
-            RESULT["warnings"].append(f"{fmt} export nahi hua: {e}")
+            RESULT["warnings"].append(f"{fmt} export failed: {e}")
     RESULT["ok"] = True
     RESULT["seconds"] = round(time.time() - t0, 1)
     _save_result()

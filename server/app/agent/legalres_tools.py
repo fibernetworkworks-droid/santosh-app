@@ -12,8 +12,8 @@ LEGALRES_TOOLS = [
     {"name": "legalres", "description": (
         "Legal researcher (India): finds statutes / rules / judgments from sources it actually READS (official public pages like "
         "India Code, Supreme Court / High Courts / eCourts, gazette, regulators; Indian Kanoon's official API with her key; her own "
-        "files via Gyaan; links she gives) and writes a memo where every point has [n] + an exact quote; anything not found = 'nahi "
-        "mila', never an invented section or case. Not legal advice. action=research: question (her exact words), matter (LR-0001 to "
+        "files via Gyaan; links she gives) and writes a memo where every point has [n] + an exact quote; anything not found = 'not "
+        "found', never an invented section or case. Not legal advice. action=research: question (her exact words), matter (LR-0001 to "
         "add to an existing matter), client (her label), urls [official links to read too], use_ik, use_web, use_files. "
         "action=matter: title, client, court (new matter) or matter + status open|closed. action=link: matter, url (read one page "
         "as a source). action=note: matter, text (research log). action=save: matter, n, note, saved (saved authorities). "

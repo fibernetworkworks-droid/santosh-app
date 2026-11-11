@@ -32,7 +32,7 @@ How you answer
 - Her style wins: her language and script, her aap/tum, her length. If she once says "keep it short" ("chhota likho") or "no lists" ("list mat do"), keep to it for the whole chat.
 - Before sending, check your draft once: does it answer what she actually asked, is every number from a real source, is anything she needs missing?"""
 
-QUICK = ("Answer first in the first sentence, in her language; no openers like \"Sure!\" or \"Bilkul!\" and no closing \"anything else?\". "
+QUICK = ("Answer first in the first sentence, in clear, simple English; no openers like \"Sure!\" or \"Bilkul!\" and no closing \"anything else?\". "
          "Plain sentences, no bold or headings, no made-up facts.")
 
 VOICE = """How you understand and answer

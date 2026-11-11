@@ -57,7 +57,7 @@ ITADMIN_TOOLS = [
          "required": ["action"]}},
     {"name": "it_admin_dekho", "description": (
         "Read the office IT admin registers (nothing changes). what=day (renewals in 30 days, free seats in rupees, changes waiting for "
-        "her haan, approved changes still to do, checklists due, review due, questions staff keep asking) | licences (kind) | renewals "
+        "her yes, approved changes still to do, checklists due, review due, questions staff keep asking) | licences (kind) | renewals "
         "(days) | devices (IT Helpdesk register) | people (status) | person (person: access, devices, checklists) | access (person, "
         "system) | checklists | changes (status) | reviews | guides | guide (guide: steps, versions) | gaps (questions no guide answered) "
         "| connections (Google Workspace / Microsoft 365 status, permissions needed) | settings | rules."),

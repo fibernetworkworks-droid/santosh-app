@@ -14,7 +14,7 @@ TRAVEL_TOOLS = [
         "origin, start_date, end_date (DD-MM-YYYY), travellers [{name, age, gender, berth, id_kind, id_ref}], budget, prefs, kind "
         "(family|pilgrimage|beach|hill|business|honeymoon|school), for_client, client_name, client_phone, client_email, country -> "
         "trip T-0001 + visa / holiday notes. action=update: trip + fields. action=traveller: trip, name, age, gender, berth, id_kind "
-        "(aadhaar|passport|voter|dl|pan), id_ref ({id:...} from the Pehchaan Locker; a plain number she said goes into the locker by "
+        "(aadhaar|passport|voter|dl|pan), id_ref ({id:...} from the ID Locker; a plain number she said goes into the locker by "
         "itself), passport_expiry, op add|remove. action=itinerary: trip, ask -> day by day plan (only real places; never invent "
         "times, fares or opening hours). action=options: trip, text (the quotes / search results SHE pasted: one per line) or "
         "options [{mode train|flight|bus|hotel|cab, name, code, day, depart, arrive, duration, price, per_night, rating, cls, "

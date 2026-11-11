@@ -21,7 +21,7 @@ LIFE_TOOLS = [
         "ALWAYS in_minutes=X (the server counts from the exact current time - never work out the clock yourself). "
         "A clock time or a date ('kal 9 baje', '5 tareekh') -> when, in the user's LOCAL time."),
      "input_schema": {"type": "object", "properties": {
-         "text": {"type": "string", "description": "What to remind, short, in the user's language, e.g. 'Dawai lena (BP)'"},
+         "text": {"type": "string", "description": "What to remind, short, in clear simple English, e.g. 'Take BP medicine'"},
          "in_minutes": {"type": "number", "description": "Minutes from NOW, e.g. 2 for 'do minute baad', 90 for 'dedh ghante baad'"},
          "when": {"type": "string", "description": "Only for a clock time / date: local date-time ISO, e.g. 2026-10-18T09:00"},
          "repeat": {"type": "string", "enum": list(life.REPEATS), "description": "none, daily, weekdays, weekly or monthly"}},
@@ -82,7 +82,7 @@ LIFE_TOOLS = [
         "The instruction is what you will be told to do each time, so write it as a complete task for yourself. "
         "For a simple fixed-text nudge use create_reminder instead."),
      "input_schema": {"type": "object", "properties": {
-         "title": {"type": "string", "description": "Short name the user sees, e.g. 'Subah ka mausam'"},
+         "title": {"type": "string", "description": "Short name the user sees, e.g. 'Morning weather'"},
          "instruction": {"type": "string", "description": "Full task for yourself, e.g. 'Check Pune weather for today and tell the user in 2 lines whether to carry an umbrella.'"},
          "first_run": {"type": "string", "description": "Local date-time ISO of the first run, e.g. 2026-10-19T07:00"},
          "repeat": {"type": "string", "enum": ["none", "hourly", "daily", "weekdays", "weekly", "monthly"]}},

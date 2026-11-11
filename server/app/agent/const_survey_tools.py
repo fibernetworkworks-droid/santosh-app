@@ -13,12 +13,12 @@ from .tools import Ctx, ToolError
 SURVEY_TOOLS = [
     {"name": "const_survey", "description": (
         "Survey & measurement desk - traverse/area/volume/deviation arithmetic + RERA carpet statement. "
-        "action=pts_add: project, name, source_kind coords|landxml, text ('id,x,y,z' lines ya LandXML "
+        "action=pts_add: project, name, source_kind coords|landxml, text ('id,x,y,z' lines or LandXML "
         "CgPoints) -> survey job (surfaces/observations are NOT parsed - said on the tin). action=traverse: "
         "project, job (id), order [point ids] -> loop closure + precision. action=area: project, job, order, "
         "record_m2 (optional), record_source (7/12 etc), tolerance_pct -> shoelace area + boundary-vs-record. "
-        "action=volume: project, name, elevations [z...], design_level, cell_area_m2 -> cut/fill alag-alag "
-        "(readings survey lead ki). action=deviations: project, name, rows [x,y,z_asbuilt,x,y,z_design], "
+        "action=volume: project, name, elevations [z...], design_level, cell_area_m2 -> cut/fill separately "
+        "(readings are the survey lead's). action=deviations: project, name, rows [x,y,z_asbuilt,x,y,z_design], "
         "tolerance_mm -> RMS + out-of-tolerance (E57/LAS is not parsed - CSV in). action=carpet_new: project, "
         "unit_no, wall_policy (YOUR word, recorded), declared_m2, declared_source -> a statement is opened. "
         "action=carpet_room: carpet (id), room, length_m, breadth_m. action=carpet_calc: carpet (id), "
@@ -27,7 +27,7 @@ SURVEY_TOOLS = [
         "Wave 3.5: action=gis_add: project, name, geojson (GeoJSON text, Polygon/MultiPolygon), crs, units "
         "m|deg (default deg - RFC 7946; area only on a projected metre CRS) -> layer (#27, maps are NOT fetched/interpreted). action=gis_area: layer (id), record_m2, record_source, tolerance_pct -> shoelace outer "
         "rings (deg layers REFUSE). action=gis_overlay: project, layer (id), hazard flood|seismic|zoning|other, "
-        "zone_value (AAPNE map se padhi), source -> reading record. action=setout_add: project, name, "
+        "zone_value (read off the map by YOU), source -> reading record. action=setout_add: project, name, "
         "design_rows [id, x, y(, z)] -> setting-out sheet (#77). action=setout_check: project, job (id), "
         "aslaid_rows [id, x, y(, z)], tolerance_mm -> plan deviation, RMS, out-of-tolerance. action=level_check: "
         "project, job (id), obs_rows [id, z_obs], tolerance_mm -> dz with its sign (design z on the sheet points)."),
@@ -124,7 +124,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
                                  _s(a.get("note")))
     except (S.CstError, ValueError) as ex:
         raise ToolError(str(ex)) from None
-    raise ToolError("action galat")
+    raise ToolError("Unknown action")
 
 
 def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
@@ -194,7 +194,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
                                "area": round(r.length_m * r.breadth_m, 3)} for r in rooms]}
     except (S.CstError, ValueError) as ex:
         raise ToolError(str(ex)) from None
-    raise ToolError("what galat")
+    raise ToolError("Unknown what")
 
 
 async def const_survey(ctx: Ctx, action, **a: Any):

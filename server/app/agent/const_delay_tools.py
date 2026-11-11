@@ -18,8 +18,8 @@ DELAY_TOOLS = [
         "project, label, start, finish -> analysis window. action=impact: project -> per-activity slip "
         "days + windows touched + HER criticality beside it. action=notice_check: project, event, "
         "event_date, notice_date, notice_days, contract_ref -> in-window/late (arithmetic, cited). "
-        "action=pack: project, prepared_for (forensic planner ka naam) -> working paper PDF, sign lines "
-        "khaali."),
+        "action=pack: project, prepared_for (forensic planner's name) -> working paper PDF, sign lines "
+        "empty."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["prog_add", "window_add", "impact", "notice_check", "pack"]},
          "project": {"type": "string"}, "kind": {"type": "string"}, "note": {"type": "string"},
@@ -66,7 +66,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return D.pack(t, _s(a.get("project")), _s(a.get("prepared_for")))
     except (D.CstError, ValueError) as ex:
         raise ToolError(str(ex)) from None
-    raise ToolError("action galat")
+    raise ToolError("Unknown action")
 
 
 def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
@@ -109,7 +109,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
             return D.impact(t, p)
     except (D.CstError, ValueError) as ex:
         raise ToolError(str(ex)) from None
-    raise ToolError("what galat")
+    raise ToolError("Unknown what")
 
 
 async def const_delay(ctx: Ctx, action, **a: Any):

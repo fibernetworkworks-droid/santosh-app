@@ -11,7 +11,7 @@ from .tools import Ctx, ToolError
 RENTDESK_TOOLS = [
     {"name": "rentdesk", "description": (
         "Property manager's coworker (rented flats / houses / rooms / PG beds / shops / offices). action=settings (owner): business, "
-        "landlord_name, landlord_address, landlord_phone, pan (goes to her Pehchaan Locker), receipt_full_pan, state (MH...), city, "
+        "landlord_name, landlord_address, landlord_phone, pan (goes to her ID Locker), receipt_full_pan, state (MH...), city, "
         "upi_id, upi_name, gstin, agency, remind_before, grace_days, renewal_windows, minor_repair_limit, mirror_dues, morning_time, rules. "
         "action=unit: unit (existing) or label (new: 'Flat 302'), building, kind flat|house|room|pg_bed|shop|office|godown, use, address, "
         "city, pin, area_sqft (HER number), furnished, inventory ['2 fan', ...], owner_name/owner_phone (agency), rent_ask, deposit_ask, "

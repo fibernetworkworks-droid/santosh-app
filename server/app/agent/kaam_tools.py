@@ -11,7 +11,7 @@ KAAM_TOOLS = [
         "video edit, Video Studio, motion reel, website jobs in your own browser (Computer Operator). Each job: working "
         "(with what it is doing now and %), waiting (HER tap / answer needed and for what), done, failed (with the error) "
         "or stopped, and how many minutes since it last moved. Use it whenever she asks 'kya hua / kitna hua / ho gaya? / "
-        "kahan tak pahuncha' or before you say anything about a running job. NEVER say 'dekh raha hoon / check kar raha "
+        "kahan tak pahuncha' or before you say anything about a running job. NEVER say 'I am checking' / 'dekh raha "
         "hoon' without calling this (or the KAAM KI HAALAT list) and telling her the real state. q = optional words to "
         "pick one job (app, website, video, number). action=stop REALLY cancels it (her 'roko / cancel karo / band karo / "
         "rehne do' about running work): q = her words naming the job ('website wala'), empty = the newest, 'sab' = all. "

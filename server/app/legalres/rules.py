@@ -12,19 +12,19 @@ import unicodedata
 from typing import Any
 from urllib.parse import urlparse
 
-DISCLAIMER = ("Yeh legal research ka draft / jaankari hai, legal advice nahi. Har citation us source se hai jo Hoola ne padha (link + "
-              "asli hissa); vakil se pakka karwaiye.")
-NAHI_MILA = "Padhe gaye sources mein iska pakka jawab nahi mila."
-NEED_CITE = "[citation chahiye]"
+DISCLAIMER = ("This is a legal research draft / information, not legal advice. Every citation is from a source Hoola read (link + "
+              "the actual passage); have a lawyer confirm it.")
+NAHI_MILA = "The sources read do not give a clear answer to this."
+NEED_CITE = "[citation needed]"
 IK_ATTRIBUTION = "Judgments / search: powered by IKanoon (api.indiankanoon.org)"
 
 NEVER = [
-    "Legal advice ya case ka nateeja: kabhi nahi (sirf research draft, vakil decide karein).",
-    "Koi section / judgment / citation jo kisi padhe gaye source mein nahi: kabhi nahi -> '[citation chahiye]'.",
-    "Court / sarkari site ki bulk scraping ya CAPTCHA todna: kabhi nahi; sirf official public pages, Indian Kanoon ki official API (aapki key).",
-    "Memo bahar bhejna (client / vakil / kisi ko): sirf aapke app ke tap se.",
-    "Ek client / matter ki baat doosre matter mein: kabhi nahi.",
-    "API key chat mein: kabhi nahi (sirf app mein, sealed).",
+    "Legal advice or the outcome of a case: never (research draft only, the lawyer decides).",
+    "A section / judgment / citation that is not in a source that was read: never -> '[citation needed]'.",
+    "Bulk scraping of a court / government site or breaking a CAPTCHA: never; only official public pages and Indian Kanoon's official API (your key).",
+    "Sending a memo outside (to a client / lawyer / anyone): only by your tap in the app.",
+    "One client's / matter's information in another matter: never.",
+    "An API key in chat: never (only in the app, sealed).",
 ]
 
 # Official public hosts whose pages count as "official" (read with web.open_website). Everything under gov.in / nic.in is government.
@@ -193,9 +193,9 @@ MAPPING: list[tuple[str, str, str, str, str, bool]] = [
     ("IEA", "154", "BSA", "157", "Question by party to his own witness (hostile)", False),
     ("IEA", "165", "BSA", "168", "Judge's power to put questions", False),
 ]
-REMOVED = {("IPC", "309"): "Attempt to suicide: BNS mein nahi (removed).", ("IPC", "377"): "Unnatural offences: BNS mein nahi.",
-           ("IPC", "497"): "Adultery: Supreme Court ne 2018 mein khatam kiya; BNS mein nahi.",
-           ("IPC", "124A"): "Sedition: BNS mein nahi; s.152 alag offence hai."}
+REMOVED = {("IPC", "309"): "Attempt to suicide: not in the BNS (removed).", ("IPC", "377"): "Unnatural offences: not in the BNS.",
+           ("IPC", "497"): "Adultery: struck down by the Supreme Court in 2018; not in the BNS.",
+           ("IPC", "124A"): "Sedition: not in the BNS; s.152 is a different offence."}
 MAP_SOURCES = [
     {"title": "IPC to BNS Conversion Table 2026 (lawsikho.com)", "url": "https://lawsikho.com/blog/ipc-to-bns-conversion"},
     {"title": "IPC vis-a-vis BNS (UP Police)", "url": "https://uppolice.gov.in/site/writereaddata/siteContent/Three%20New%20Major%20Acts/202402161435066605IPC%20vis-a-vis%20BNS.pdf"},
@@ -214,7 +214,7 @@ _ACT_WORDS = {
 def _row(r) -> dict[str, Any]:
     old_act, old, new_act, new, subject, sure = r
     return {"old_act": old_act, "old": old, "new_act": new_act, "new": new, "subject": subject, "sure": sure,
-            "label": "pakka (published table se mila)" if sure else "andaaza (India Code se pakka karein)",
+            "label": "confirmed (matches the published table)" if sure else "unverified (confirm on India Code)",
             "new_url": ACTS[new_act].get("url", "")}
 
 
@@ -232,7 +232,7 @@ def map_old(act: str, sec: str) -> dict[str, Any] | None:
     b = _norm_sec(sec)
     if (act, b) in REMOVED and act == "IPC" and b != "124A":
         return {"old_act": act, "old": b, "new_act": ACTS[act]["new"], "new": "", "subject": REMOVED[(act, b)], "sure": True,
-                "label": "hata diya gaya", "new_url": ""}
+                "label": "removed", "new_url": ""}
     for r in MAPPING:
         if r[0] == act and _norm_sec(r[1]) == b:
             return _row(r)
@@ -293,7 +293,7 @@ def mapping_for(text: str) -> list[dict[str, Any]]:
         if r["act"] in ("IPC", "CRPC", "IEA"):
             m = map_old(r["act"], r["sec"])
             rows.append(m or {"old_act": r["act"], "old": r["sec"], "new_act": ACTS[r["act"]]["new"], "new": "", "sure": False,
-                              "subject": "", "label": "table mein nahi: India Code mein dekhiye", "new_url": ACTS[ACTS[r["act"]]["new"]].get("url", "")})
+                              "subject": "", "label": "not in the table: check India Code", "new_url": ACTS[ACTS[r["act"]]["new"]].get("url", "")})
         else:
             for m in map_new(r["act"], r["sec"]):
                 rows.append(m)
@@ -366,13 +366,13 @@ def ground(text: str, srcs: list[str], allowed: set[str] | None = None) -> tuple
     out = text or ""
     for c in cites_in(out):
         if not any(cite_in_source(c, s) for s in srcs):
-            removed.append({"what": c, "why": "yeh judgment / citation kisi padhe gaye source mein nahi"})
+            removed.append({"what": c, "why": "this judgment / citation is not in any source that was read"})
             out = out.replace(c, NEED_CITE)
     for written, base in secs_in(out):
         if not base or base.lower() in allowed:
             continue
         if not any(sec_in_source(base, s) for s in srcs):
-            removed.append({"what": written, "why": "yeh section padhe gaye source mein nahi mila"})
+            removed.append({"what": written, "why": "this section was not found in a source that was read"})
             out = out.replace(written, NEED_CITE, 1)
     return out, removed
 

@@ -323,7 +323,7 @@ def _say_when(start: str) -> str:
     except ValueError:
         return start
     h = t.strftime("%I:%M").lstrip("0")
-    return f"{t.day} {t.strftime('%b')}, {h} {'baje subah' if t.hour < 12 else 'baje'}"
+    return f"{t.day} {t.strftime('%b')}, {h} {'am' if t.hour < 12 else 'pm'}"
 
 
 def _hm(s: str, default: str) -> tuple[int, int]:
@@ -374,7 +374,7 @@ def _business(tenant: str, st: AsSettings | None = None) -> str:
 
 def _first(name: str) -> str:
     n = str(name or "").strip().split(" ")
-    return n[0] if n and n[0] else "Graahak"
+    return n[0] if n and n[0] else "Customer"
 
 
 def _wa(phone: str, text: str) -> str:
@@ -410,11 +410,11 @@ def save_settings(tenant: str, **kw: Any) -> dict:
             from ..gstp.rules import valid_gstin
             g = str(kw["gstin"]).strip().upper()
             if not valid_gstin(g):
-                raise AsError(f"GSTIN galat lagta hai: {g}")
+                raise AsError(f"The GSTIN does not look right: {g}")
             r.gstin = g
         if kw.get("gst_on") is not None:
             if kw["gst_on"] and not (r.gstin or kw.get("gstin")):
-                raise AsError("GST lagane ke liye pehle GSTIN chahiye.")
+                raise AsError("A GSTIN is needed before GST can be charged.")
             r.gst_on = bool(kw["gst_on"])
         for k in ("gst_pct",):
             if _num(kw.get(k)) is not None:
@@ -426,12 +426,12 @@ def save_settings(tenant: str, **kw: Any) -> dict:
             if kw.get(k):
                 m = re.match(r"^(\d{1,2}):(\d{2})$", str(kw[k]).strip())
                 if not m:
-                    raise AsError(f"{k}: samay HH:MM mein likhiye")
+                    raise AsError(f"{k}: write the time as HH:MM")
                 setattr(r, k, f"{int(m.group(1)):02d}:{m.group(2)}")
         if kw.get("work_days") is not None:
             days = sorted({int(x) for x in kw["work_days"] if str(x).isdigit() and 0 <= int(x) <= 6})
             if not days:
-                raise AsError("Kam se kam ek kaam ka din chahiye (0 = Somvar ... 6 = Ravivar).")
+                raise AsError("At least one working day is needed (0 = Monday ... 6 = Sunday).")
             r.work_days = _dump(days)
         if isinstance(kw.get("prices"), dict):
             p = _j(r.prices, {})
@@ -461,7 +461,7 @@ def set_schedule(tenant: str, ptype: str, months=None, usage=None) -> dict:
         cur = sch.get(pt) or {}
         if _num(months) is not None:
             if not 1 <= _num(months) <= 60:
-                raise AsError("Mahine 1 se 60 ke beech.")
+                raise AsError("Months must be between 1 and 60.")
             cur["months"] = int(_num(months))
         if _num(usage) is not None:
             cur["usage"] = float(_num(usage))
@@ -475,8 +475,8 @@ def set_schedule(tenant: str, ptype: str, months=None, usage=None) -> dict:
             _recompute(u, sch)
     lab = R.PRODUCTS[pt]["label"]
     return {"ptype": pt, "schedule": cur, "updated": len(units),
-            "say": f"{lab}: har {R.interval_months(pt, sch)} mahine" + (f" ya {cur['usage']:g} {R.PRODUCTS[pt].get('usage_unit', '')}" if cur.get("usage") else "")
-                   + f". {len(units)} machine ki agli tareekh nayi."}
+            "say": f"{lab}: every {R.interval_months(pt, sch)} months" + (f" or {cur['usage']:g} {R.PRODUCTS[pt].get('usage_unit', '')}" if cur.get("usage") else "")
+                   + f". Next due date updated for {len(units)} machines."}
 
 
 def schedules(tenant: str) -> list[dict]:
@@ -496,7 +496,7 @@ def _customer(s, tenant: str, name: str = "", phone: str = "", area: str = "", p
     if cid:
         c = s.get(AsCustomer, cid)
         if c is None or c.tenant_id != tenant:
-            raise AsError("Graahak nahi mila.")
+            raise AsError("Customer not found.")
     if c is None and len(ph) == 10:
         c = s.scalars(select(AsCustomer).where(AsCustomer.tenant_id == tenant, AsCustomer.phone == ph)).first()
     if c is None and name and not ph:
@@ -506,9 +506,9 @@ def _customer(s, tenant: str, name: str = "", phone: str = "", area: str = "", p
             c = hits[0]
     if c is None:
         if not str(name).strip() and len(ph) != 10:
-            raise AsError("Graahak ka naam ya 10 ank ka mobile chahiye.")
+            raise AsError("The customer's name or a 10-digit mobile number is needed.")
         if ph and len(ph) != 10:
-            raise AsError(f"Mobile number 10 ank ka chahiye: {phone}")
+            raise AsError(f"The mobile number must be 10 digits: {phone}")
         c = AsCustomer(tenant_id=tenant, phone=ph)
         s.add(c)
     if name:
@@ -518,7 +518,7 @@ def _customer(s, tenant: str, name: str = "", phone: str = "", area: str = "", p
     pin = re.sub(r"\D", "", str(pincode or ""))
     if pin:
         if not re.fullmatch(r"[1-9]\d{5}", pin):
-            raise AsError(f"Pincode 6 ank ka chahiye: {pincode}")
+            raise AsError(f"The pincode must be 6 digits: {pincode}")
         c.pincode = pin
     if address:
         c.address = str(address).strip()[:500]
@@ -574,7 +574,7 @@ def save_unit(tenant: str, unit: str = "", ptype: str = "", brand: str = "", mod
             if serial:
                 dup = s.scalars(select(AsUnit).where(AsUnit.tenant_id == tenant, AsUnit.serial == str(serial).strip(), AsUnit.status == "active")).first()
                 if dup:
-                    raise AsError(f"Serial {serial} pehle se register hai ({dup.brand} {dup.model}).")
+                    raise AsError(f"Serial {serial} is already registered ({dup.brand} {dup.model}).")
             u = AsUnit(tenant_id=tenant, customer_id=c.id)
             s.add(u)
         else:
@@ -591,16 +591,16 @@ def save_unit(tenant: str, unit: str = "", ptype: str = "", brand: str = "", mod
             if v:
                 d = _date(v)
                 if not d:
-                    raise AsError(f"Tareekh samajh nahi aayi: {v}")
+                    raise AsError(f"Could not understand the date: {v}")
                 if d > today(tenant):
-                    raise AsError(f"Yeh tareekh aage ki hai: {v}")
+                    raise AsError(f"This date is in the future: {v}")
                 setattr(u, k, d.isoformat())
         if not u.installed_on and u.purchased_on:
             u.installed_on = u.purchased_on
         if warranty_until:
             d = _date(warranty_until)
             if not d:
-                raise AsError(f"Warranty ki tareekh samajh nahi aayi: {warranty_until}")
+                raise AsError(f"Could not understand the warranty date: {warranty_until}")
             u.warranty_until = d.isoformat()
         elif warranty_months is not None or (new and u.installed_on):
             months = int(_num(warranty_months) or R.PRODUCTS[u.ptype]["warranty"])
@@ -615,14 +615,14 @@ def save_unit(tenant: str, unit: str = "", ptype: str = "", brand: str = "", mod
         _recompute(u, sch)
         s.flush()
         v = _unit_view(s, u)
-    say = (f"{'Naya' if new else 'Update'}: {v['customer']['name'] or v['customer']['phone']} ka {v['label']}"
+    say = (f"{'New' if new else 'Updated'}: {v['customer']['name'] or v['customer']['phone']}'s {v['label']}"
            + (f" {v['brand']} {v['model']}".rstrip() if v["brand"] or v["model"] else "") + ".")
     if v["warranty_until"]:
-        say += f" Warranty {v['warranty_until']} tak (install se)."
+        say += f" Warranty until {v['warranty_until']} (from the install date)."
     if v["warranty_note"]:
         say += " " + v["warranty_note"]
     if v["next_due"]:
-        say += f" Agli service {v['next_due']} ({v['due_why']})."
+        say += f" Next service {v['next_due']} ({v['due_why']})."
     return {"unit": v, "say": say}
 
 
@@ -637,7 +637,7 @@ def _set_reading(u: AsUnit, val: float, on: date) -> None:
 def _unit(s, tenant: str, ref: str) -> AsUnit:
     ref = str(ref or "").strip()
     if not ref:
-        raise AsError("Kaun si machine? (serial / graahak ka naam / mobile)")
+        raise AsError("Which machine? (serial / customer name / mobile)")
     u = s.get(AsUnit, ref)
     if u and u.tenant_id == tenant:
         return u
@@ -657,8 +657,8 @@ def _unit(s, tenant: str, ref: str) -> AsUnit:
     if len(hits) == 1:
         return hits[0]
     if not hits:
-        raise AsError(f"Machine '{ref}' nahi mili.")
-    raise AsError("Kai machine mili: " + "; ".join(f"{(cust.get(h.customer_id).name if cust.get(h.customer_id) else '')} {h.brand} {h.model} "
+        raise AsError(f"Machine '{ref}' not found.")
+    raise AsError("Several machines found: " + "; ".join(f"{(cust.get(h.customer_id).name if cust.get(h.customer_id) else '')} {h.brand} {h.model} "
                                                    f"({h.serial or h.id})" for h in hits[:6]))
 
 
@@ -722,7 +722,7 @@ def import_units(tenant: str, data: bytes | None = None, name: str = "units.csv"
         from ..analyst.service import _load_file
         name, data = _load_file(tenant, file_id)
     if not data:
-        raise AsError("File khaali hai.")
+        raise AsError("The file is empty.")
     rows = _rows(name, data)
     hi, cols = None, {}
     for i, r in enumerate(rows[:15]):
@@ -736,7 +736,7 @@ def import_units(tenant: str, data: bytes | None = None, name: str = "units.csv"
             hi, cols = i, f
             break
     if hi is None:
-        raise AsError("Sheet mein graahak (naam / mobile) aur product / model / serial ke column chahiye.")
+        raise AsError("The sheet needs columns for the customer (name / mobile) and the product / model / serial.")
     added, skipped, problems = 0, 0, []
     for n, r in enumerate(rows[hi + 1:], start=hi + 2):
         g = lambda k: (str(r[cols[k]]).strip() if k in cols and cols[k] < len(r) and r[cols[k]] is not None else "")  # noqa: E731
@@ -765,7 +765,7 @@ def import_units(tenant: str, data: bytes | None = None, name: str = "units.csv"
             if len(problems) < 10:
                 problems.append(f"line {n}: {e}")
     return {"added": added, "skipped": skipped, "problems": problems,
-            "say": f"{added} machine register mein jodi" + (f", {skipped} chhodi ({'; '.join(problems[:3])})" if skipped else "") + "."}
+            "say": f"{added} machines added to the register" + (f", {skipped} skipped ({'; '.join(problems[:3])})" if skipped else "") + "."}
 
 
 # ---------------------------------------------------------------- AMC
@@ -797,15 +797,15 @@ def set_amc(tenant: str, unit: str, plan: str = "non_comprehensive", start: str 
         plan = "non_comprehensive"
     st = _date(start) if start else None
     if start and not st:
-        raise AsError(f"AMC shuru ki tareekh samajh nahi aayi: {start}")
+        raise AsError(f"Could not understand the AMC start date: {start}")
     m = int(_num(months) or 12)
     if not 1 <= m <= 60:
-        raise AsError("AMC 1 se 60 mahine.")
+        raise AsError("AMC must be 1 to 60 months.")
     _amc_row(tenant, uid, plan, st, None, m, int(_num(visits)) if _num(visits) is not None else None, _num(price))
     v = get_unit(tenant, uid)
     a = v["amc"]
-    return {"unit": v, "say": f"AMC ({'comprehensive: part + labour' if a['plan'] == 'comprehensive' else 'labour / visit'}) {a['start']} se {a['until']} tak, "
-                              f"{a['visits']} visit" + (f", {_rs(a['price'])}" if a["price"] else "") + f". Agli service {v['next_due']}."}
+    return {"unit": v, "say": f"AMC ({'comprehensive: parts + labour' if a['plan'] == 'comprehensive' else 'labour / visit'}) {a['start']} to {a['until']}, "
+                              f"{a['visits']} visits" + (f", {_rs(a['price'])}" if a["price"] else "") + f". Next service {v['next_due']}."}
 
 
 def amc_view(tenant: str) -> dict:
@@ -852,8 +852,8 @@ def amc_view(tenant: str) -> dict:
             unpaid.append({"visit_id": v.id, "number": v.number, "due": round(ch["total"] - ch.get("paid", 0), 2), "on": v.done_on[:10]})
     rate = round(renewed * 100 / (renewed + len(lapsed))) if (renewed + len(lapsed)) else None
     at_risk = sum(r["price"] for r in expiring[30] + expiring[60] + expiring[90])
-    say = (f"AMC chal rahe: {len(active)} (saal ka ~{_rs(yearly)}). 90 din mein khatam: {sum(len(x) for x in expiring.values())} ({_rs(at_risk)})."
-           + (f" Renewal {rate}%." if rate is not None else "") + f" Is mahine visit charge {_rs(ch_month)}, mila {_rs(ch_paid)}.")
+    say = (f"Active AMCs: {len(active)} (about {_rs(yearly)} a year). Ending within 90 days: {sum(len(x) for x in expiring.values())} ({_rs(at_risk)})."
+           + (f" Renewal {rate}%." if rate is not None else "") + f" Visit charges this month {_rs(ch_month)}, received {_rs(ch_paid)}.")
     return {"active": sorted(active, key=lambda r: r["days_left"]), "count": len(active), "yearly_value": round(yearly, 2),
             "by_type": by_type, "expiring": expiring, "at_risk": round(at_risk, 2), "renewed": renewed, "lapsed": lapsed[:50],
             "renewal_rate": rate, "charges_month": round(ch_month, 2), "paid_month": round(ch_paid, 2),
@@ -872,7 +872,7 @@ def save_tech(tenant: str, name: str = "", tech: str = "", phone: str = "", skil
         t = _tech(s, tenant, tech) if tech else None
         if t is None:
             if not str(name).strip():
-                raise AsError("Technician ka naam chahiye.")
+                raise AsError("The technician's name is needed.")
             t = s.scalars(select(AsTech).where(AsTech.tenant_id == tenant, AsTech.name == str(name).strip())).first()
         if t is None:
             t = AsTech(tenant_id=tenant, name=str(name).strip()[:80])
@@ -882,7 +882,7 @@ def save_tech(tenant: str, name: str = "", tech: str = "", phone: str = "", skil
         if phone:
             ph = _digits(phone)
             if len(ph) != 10:
-                raise AsError("Technician ka mobile 10 ank ka.")
+                raise AsError("The technician's mobile number must be 10 digits.")
             t.phone = ph
         if skills is not None:
             t.skills = _dump(sorted({R.ptype_of(x, x) for x in skills if str(x).strip()}))
@@ -906,7 +906,7 @@ def _tech(s, tenant: str, ref: str) -> AsTech:
     hits = [r for r in rows if r.name.lower() == str(ref).strip().lower()] or [r for r in rows if str(ref).strip().lower() in r.name.lower()]
     if len(hits) == 1:
         return hits[0]
-    raise AsError(f"Technician '{ref}' nahi mila." if not hits else "Kai technician: " + ", ".join(h.name for h in hits))
+    raise AsError(f"Technician '{ref}' not found." if not hits else "Several technicians: " + ", ".join(h.name for h in hits))
 
 
 def techs(tenant: str) -> list[dict]:
@@ -958,7 +958,7 @@ def slots(tenant: str, unit: str, days: int = 5, tech: str = "", day: str = "", 
         mins = int(_num(minutes) or R.PRODUCTS[u.ptype]["minutes"])
         tl = [_tech(s, tenant, tech)] if tech else [t for t in s.scalars(select(AsTech).where(AsTech.tenant_id == tenant, AsTech.active.is_(True))).all()]
         if not tl:
-            raise AsError("Pehle technician jodiye (naam, skill, area).")
+            raise AsError("Add a technician first (name, skill, area).")
         skilled = [t for t in tl if not _j(t.skills, []) or u.ptype in _j(t.skills, [])]
         pool = skilled or tl
         local = [t for t in pool if R.covers_area(_j(t.areas, []), place)]
@@ -995,13 +995,13 @@ def slots(tenant: str, unit: str, days: int = 5, tech: str = "", day: str = "", 
                             score = near * 10 + (6 if adj else 0) + (3 if t in local else 0) + (2 if t in skilled and _j(t.skills, []) else 0) - k
                             why = []
                             if near:
-                                why.append(f"usi din {t.name} ke {near} visit isi area mein")
+                                why.append(f"{t.name} has {near} visits in this area that day")
                             if t in local and _j(t.areas, []):
-                                why.append("unka area")
+                                why.append("their area")
                             if _j(t.skills, []) and u.ptype in _j(t.skills, []):
-                                why.append("is machine ka kaam aata hai")
+                                why.append("knows this machine")
                             cands.append({"tech_id": t.id, "tech": t.name, "start": _fmt(cur), "minutes": mins, "score": score,
-                                          "why": ", ".join(why) or "khaali samay"})
+                                          "why": ", ".join(why) or "free slot"})
                             per += 1
                             if adj or near:
                                 cur += timedelta(minutes=mins)
@@ -1011,10 +1011,10 @@ def slots(tenant: str, unit: str, days: int = 5, tech: str = "", day: str = "", 
         out = cands[:max(1, min(int(n), 20))]
         label = R.PRODUCTS[u.ptype]["label"]
         cname = c.name if c else ""
-    note = "" if skilled else f"Kisi technician ki skill mein {label} nahi likha: sab dikhaye."
+    note = "" if skilled else f"No technician lists {label} as a skill: showing all."
     return {"unit_id": u.id, "customer": cname, "label": label, "area": place, "slots": out, "note": note,
-            "say": (f"{cname} ({place['area'] or place['pincode'] or 'area nahi likha'}) ke {label} ke liye: "
-                    + "; ".join(f"{_say_when(x['start'])} {x['tech']}" for x in out[:4]) + ".") if out else "Agle dino mein koi khaali samay nahi mila."}
+            "say": (f"For {cname}'s {label} ({place['area'] or place['pincode'] or 'no area on record'}): "
+                    + "; ".join(f"{_say_when(x['start'])} {x['tech']}" for x in out[:4]) + ".") if out else "No free slot found in the coming days."}
 
 
 def _next_number(st: AsSettings, kind: str) -> str:
@@ -1030,11 +1030,11 @@ def book(tenant: str, unit: str, start: str = "", tech: str = "", kind: str = "s
     kind = kind if kind in R.KINDS else "service"
     sug = None
     if start and _when(tenant, start) is None:
-        raise AsError("Samay aise likhiye: 2026-10-25 11:00 (ya 'kal 11 baje').")
+        raise AsError("Write the time like this: 2026-10-25 11:00 (or 'tomorrow 11 am').")
     if not start:
         sl = slots(tenant, unit, days=14, tech=tech, minutes=minutes)
         if not sl["slots"]:
-            raise AsError("Koi khaali samay nahi mila; din / technician badal kar dekhiye.")
+            raise AsError("No free slot found; try another day or technician.")
         sug = sl["slots"][0]
         start, tech = sug["start"], sug["tech_id"]
     elif not tech:
@@ -1044,13 +1044,13 @@ def book(tenant: str, unit: str, start: str = "", tech: str = "", kind: str = "s
         free = _free_at(tenant, uid, t0, minutes)
         if not free:
             sl = slots(tenant, uid, days=7, minutes=minutes, day=t0[:10])
-            raise AsError(f"{_say_when(t0)} par koi technician khaali nahi. Khaali samay: "
-                          + ("; ".join(f"{_say_when(x['start'])} {x['tech']}" for x in sl["slots"][:4]) or "is hafte nahi"))
+            raise AsError(f"No technician is free at {_say_when(t0)}. Free slots: "
+                          + ("; ".join(f"{_say_when(x['start'])} {x['tech']}" for x in sl["slots"][:4]) or "none this week"))
         sug = free[0]
         start, tech = sug["start"], sug["tech_id"]
     t = _when(tenant, start)
     if t is None:
-        raise AsError("Samay aise likhiye: 2026-10-25 11:00 (ya 'kal 11 baje').")
+        raise AsError("Write the time like this: 2026-10-25 11:00 (or 'tomorrow 11 am').")
     warns = []
     with _LOCK, session() as s:
         st = _st(s, tenant)
@@ -1059,44 +1059,44 @@ def book(tenant: str, unit: str, start: str = "", tech: str = "", kind: str = "s
         tk = _tech(s, tenant, tech)
         mins = int(_num(minutes) or R.PRODUCTS[u.ptype]["minutes"])
         if t < now_local(tenant):
-            raise AsError("Yeh samay nikal chuka hai.")
+            raise AsError("This time has already passed.")
         if t > now_local(tenant) + timedelta(days=90):
-            raise AsError("90 din ke andar ka samay chuniye.")
+            raise AsError("Choose a time within 90 days.")
         if not tk.active:
-            raise AsError(f"{tk.name} abhi kaam par nahi (inactive).")
+            raise AsError(f"{tk.name} is not working right now (inactive).")
         visits = _day_visits(s, tenant, t.date())
         mine = [v for v in visits if v.tech_id == tk.id]
         others = [(*_span(v), _place(s.get(AsCustomer, v.customer_id))) for v in mine]
         ok, why = _fits(t, mins, _place(c), others, st.travel_minutes)
         if not ok and why == "clash":
-            raise AsError(f"{tk.name} us samay doosre visit par hain: ek technician ke do visit ek saath nahi.")
+            raise AsError(f"{tk.name} is on another visit at that time: one technician cannot have two visits at once.")
         sh, sm = _hm(st.day_start, "09:30")
         eh, em = _hm(st.day_end, "18:30")
         rule = []
         if not ok:
-            rule.append(f"Pichhle / agle visit se area alag hai: {st.travel_minutes} min aane-jaane ka samay nahi bachta.")
+            rule.append(f"The area differs from the previous / next visit: {st.travel_minutes} min of travel time does not fit.")
         if t.weekday() not in _j(st.work_days, []) or not (t.hour * 60 + t.minute >= sh * 60 + sm and (t + timedelta(minutes=mins)).hour * 60
                                                             + (t + timedelta(minutes=mins)).minute <= eh * 60 + em):
-            rule.append(f"Kaam ke samay ({st.day_start}-{st.day_end}) / din ke bahar.")
+            rule.append(f"Outside working hours ({st.day_start}-{st.day_end}) / working days.")
         if t.weekday() in _j(tk.off_days, []):
-            rule.append(f"{tk.name} ki chhutti ka din.")
+            rule.append(f"It is {tk.name}'s day off.")
         if len(mine) >= tk.per_day:
-            rule.append(f"{tk.name} ke aaj {len(mine)} visit pehle se (had {tk.per_day}).")
+            rule.append(f"{tk.name} already has {len(mine)} visits that day (limit {tk.per_day}).")
         if rule and not force:
-            raise AsError(" ".join(rule) + " Phir bhi rakhna ho to force=true.")
+            raise AsError(" ".join(rule) + " To book it anyway, pass force=true.")
         warns += rule
         if _j(tk.skills, []) and u.ptype not in _j(tk.skills, []):
-            warns.append(f"{tk.name} ki skill list mein {R.PRODUCTS[u.ptype]['label']} nahi.")
+            warns.append(f"{tk.name}'s skill list does not include {R.PRODUCTS[u.ptype]['label']}.")
         if not R.covers_area(_j(tk.areas, []), _place(c)):
-            warns.append(f"{c.area or c.pincode or 'Yeh area'} {tk.name} ke area mein nahi.")
+            warns.append(f"{c.area or c.pincode or 'This area'} is not in {tk.name}'s areas.")
         dup = s.scalars(select(AsVisit).where(AsVisit.unit_id == u.id, AsVisit.status.in_(OPEN))).first()
         if dup:
-            warns.append(f"Is machine ka visit {dup.number} ({_say_when(dup.start)}) pehle se khula hai.")
+            warns.append(f"This machine already has an open visit {dup.number} ({_say_when(dup.start)}).")
         last = s.scalars(select(AsVisit).where(AsVisit.unit_id == u.id, AsVisit.status == "done").order_by(AsVisit.done_on.desc())).first()
         comeback = ""
         if last and last.done_on and (t.date() - _date(last.done_on[:10])).days <= 30 and kind in ("repair", "service", "warranty"):
             comeback = last.id
-            warns.append(f"30 din ke andar dobara ({last.number}): comeback - pichhla kaam dekhiye, charge soch-samajh kar.")
+            warns.append(f"Back within 30 days ({last.number}): comeback - look at the last job and think before charging.")
         number = _next_number(st, "visit")
         v = AsVisit(tenant_id=tenant, number=number, unit_id=u.id, customer_id=c.id, tech_id=tk.id, kind=kind, start=_fmt(t), minutes=mins,
                     problem=_scrub(problem)[:1000], comeback_of=comeback)
@@ -1111,8 +1111,8 @@ def book(tenant: str, unit: str, start: str = "", tech: str = "", kind: str = "s
             "message": msg, "warnings": warns}
     _publish(tenant, "aftersales_visit", card, conv)
     return {"visit": out, "message": msg, "warnings": warns, "suggested": sug,
-            "say": f"{out['number']}: {out['customer']['name']} ka {out['unit']['label']}, {_say_when(out['start'])}, {out['tech']['name']}."
-                   + (" Dhyaan: " + " ".join(warns) if warns else "") + " Graahak ko pakka karne ka message draft taiyaar (aap bhejiye)."}
+            "say": f"{out['number']}: {out['customer']['name']}'s {out['unit']['label']}, {_say_when(out['start'])}, {out['tech']['name']}."
+                   + (" Note: " + " ".join(warns) if warns else "") + " A confirmation message draft for the customer is ready (you send it)."}
 
 
 def _free_at(tenant: str, unit_id: str, start: str, minutes=None) -> list[dict]:
@@ -1140,7 +1140,7 @@ def _free_at(tenant: str, unit_id: str, start: str, minutes=None) -> list[dict]:
 
 def _scrub(text: str) -> str:
     """Never keep a PIN / OTP / password a customer said about their device or account."""
-    return re.sub(r"(?i)\b(pin|otp|password|passcode|pattern|lock code)\b\s*[:=-]?\s*\S+", r"\1 [hataya]", str(text or ""))
+    return re.sub(r"(?i)\b(pin|otp|password|passcode|pattern|lock code)\b\s*[:=-]?\s*\S+", r"\1 [removed]", str(text or ""))
 
 
 def _get_visit(s, tenant: str, ref: str) -> AsVisit:
@@ -1148,7 +1148,7 @@ def _get_visit(s, tenant: str, ref: str) -> AsVisit:
     if v is None and ref:
         v = s.scalars(select(AsVisit).where(AsVisit.tenant_id == tenant, AsVisit.number == str(ref).strip().upper())).first()
     if v is None or v.tenant_id != tenant:
-        raise AsError("Visit nahi mila.")
+        raise AsError("Visit not found.")
     return v
 
 
@@ -1195,11 +1195,11 @@ def reschedule(tenant: str, visit: str, start: str, tech: str = "", force: bool 
     with session() as s:
         v = _get_visit(s, tenant, visit)
         if v.status not in OPEN:
-            raise AsError(f"Visit {v.number} {v.status} hai.")
+            raise AsError(f"Visit {v.number} is {v.status}.")
         vid, tid, mins = v.id, v.tech_id, v.minutes
     t = _when(tenant, start)
     if t is None:
-        raise AsError("Naya samay samajh nahi aaya.")
+        raise AsError("Could not understand the new time.")
     tech_id = tid
     if tech:
         with session() as s:
@@ -1211,36 +1211,36 @@ def reschedule(tenant: str, visit: str, start: str, tech: str = "", force: bool 
         tk = s.get(AsTech, tech_id)
         c = s.get(AsCustomer, v.customer_id)
         if t < now_local(tenant):
-            raise AsError("Yeh samay nikal chuka hai.")
+            raise AsError("This time has already passed.")
         mine = [x for x in _day_visits(s, tenant, t.date()) if x.tech_id == tk.id and x.id != vid]
         ok, why = _fits(t, mins, _place(c), [(*_span(x), _place(s.get(AsCustomer, x.customer_id))) for x in mine], st.travel_minutes)
         if not ok and why == "clash":
-            raise AsError(f"{tk.name} us samay doosre visit par hain.")
+            raise AsError(f"{tk.name} is on another visit at that time.")
         if not ok and not force:
-            raise AsError(f"Aane-jaane ka {st.travel_minutes} min nahi bachta; phir bhi ho to force=true.")
+            raise AsError(f"The {st.travel_minutes} min of travel time does not fit; to book anyway, pass force=true.")
         if len(mine) >= tk.per_day and not force:
-            raise AsError(f"{tk.name} ke us din {len(mine)} visit pehle se.")
+            raise AsError(f"{tk.name} already has {len(mine)} visits that day.")
         old = v.start
         v.start, v.tech_id = _fmt(t), tk.id
-        _log(v, f"Samay badla: {_say_when(old)} -> {_say_when(v.start)} ({tk.name})")
+        _log(v, f"Time changed: {_say_when(old)} -> {_say_when(v.start)} ({tk.name})")
         out = _visit_view(s, v)
     msg = _draft_visit_confirm(tenant, vid)
     _publish(tenant, "aftersales_visit", {"visit_id": vid, "number": out["number"], "start": out["start"], "when": out["when"], "tech": out["tech"]["name"],
                                           "customer": out["customer"]["name"], "label": out["unit"]["label"], "status": "booked", "message": msg}, conv)
-    return {"visit": out, "message": msg, "say": f"{out['number']} ab {out['when']}, {out['tech']['name']}. Graahak ko naya samay batane ka draft taiyaar."}
+    return {"visit": out, "message": msg, "say": f"{out['number']} is now {out['when']}, {out['tech']['name']}. A draft telling the customer the new time is ready."}
 
 
 def set_status(tenant: str, visit: str, status: str, note: str = "", by: str = "owner") -> dict:
     if status not in ("on_way", "cancelled", "no_show", "booked"):
-        raise AsError("status: on_way | cancelled | no_show | booked (kaam poora = done action)")
+        raise AsError("status: on_way | cancelled | no_show | booked (job finished = the done action)")
     with session() as s:
         v = _get_visit(s, tenant, visit)
         if v.status == "done":
-            raise AsError("Yeh visit poora ho chuka.")
+            raise AsError("This visit is already complete.")
         v.status = status
         _log(v, f"{status}" + (f": {note}" if note else ""), by)
         out = _visit_view(s, v)
-    words = {"on_way": "raste mein", "cancelled": "radd", "no_show": "graahak nahi mile", "booked": "phir se book"}
+    words = {"on_way": "on the way", "cancelled": "cancelled", "no_show": "customer not available", "booked": "booked again"}
     return {"visit": out, "say": f"{out['number']} {words[status]}."}
 
 
@@ -1258,25 +1258,25 @@ def job_card(tenant: str, visit: str) -> dict:
     p = R.PRODUCTS.get(u.get("ptype", "other"), R.PRODUCTS["other"])
     c = x["customer"]
     lines = [f"Job card {x['number']} ({x['kind']}) - {x['when']}",
-             f"Graahak: {c.get('name', '')} {c.get('phone', '')}", f"Pata: {c.get('address') or c.get('area', '')} {c.get('pincode', '')}".strip(),
+             f"Customer: {c.get('name', '')} {c.get('phone', '')}", f"Address: {c.get('address') or c.get('area', '')} {c.get('pincode', '')}".strip(),
              f"Machine: {u.get('label')} {u.get('brand', '')} {u.get('model', '')} Sr {u.get('serial') or '-'}",
-             f"Kharcha kiska: {cov['say']}"]
+             f"Who pays: {cov['say']}"]
     if x["problem"]:
-        lines.append(f"Shikayat: {x['problem']}")
+        lines.append(f"Problem: {x['problem']}")
     if x["comeback_of"]:
-        lines.append("Dhyaan: 30 din mein dobara aaya (comeback).")
+        lines.append("Note: back within 30 days (comeback).")
     if u.get("reading") is not None:
-        lines.append(f"Pichhli reading: {u['reading']:g} ({u.get('reading_on')})")
+        lines.append(f"Last reading: {u['reading']:g} ({u.get('reading_on')})")
     lines.append("Checklist: " + "; ".join(p["checklist"]))
     if p["readings"]:
-        lines.append("Readings likhein: " + ", ".join(p["readings"]))
+        lines.append("Note the readings: " + ", ".join(p["readings"]))
     if past_lines:
-        lines.append("Pichhle visit: " + " | ".join(past_lines))
-    lines.append("Graahak ka sign (photo) lein. Graahak se PIN / OTP / password kabhi na maangein.")
+        lines.append("Past visits: " + " | ".join(past_lines))
+    lines.append("Take the customer's signature (photo). Never ask the customer for a PIN / OTP / password.")
     text = "\n".join(lines)
     tp = x["tech"].get("phone", "")
     return {"visit_id": x["id"], "number": x["number"], "text": text, "checklist": p["checklist"], "readings": p["readings"], "cover": cov,
-            "tech": x["tech"].get("name", ""), "wa_link": _wa(tp, text), "say": f"{x['number']} ka job card {x['tech'].get('name', '')} ke liye taiyaar (WhatsApp draft)."}
+            "tech": x["tech"].get("name", ""), "wa_link": _wa(tp, text), "say": f"Job card {x['number']} is ready for {x['tech'].get('name', '')} (WhatsApp draft)."}
 
 
 # ---------------------------------------------------------------- visit done, photos, charge (her tap), report
@@ -1291,18 +1291,18 @@ def add_photo(tenant: str, visit: str, data: bytes, kind: str = "work") -> dict:
     """A work / before / after photo or the customer's signature picture. Re-encoded (EXIF / GPS dropped)."""
     from PIL import Image, ImageOps
     if not data or len(data) > 15 * 1024 * 1024:
-        raise AsError("Photo khaali hai ya 15 MB se badi.")
+        raise AsError("The photo is empty or larger than 15 MB.")
     kind = kind if kind in ("before", "after", "work", "part", "signature") else "work"
     try:
         im = Image.open(io.BytesIO(data))
         im.load()
     except Exception:
-        raise AsError("Yeh photo nahi khuli (JPG / PNG / WEBP).")
+        raise AsError("Could not open this photo (JPG / PNG / WEBP).")
     with _LOCK, session() as s:
         v = _get_visit(s, tenant, visit)
         photos = _j(v.photos, [])
         if kind != "signature" and len(photos) >= MAX_PHOTOS:
-            raise AsError(f"Ek visit mein {MAX_PHOTOS} photo tak.")
+            raise AsError(f"Up to {MAX_PHOTOS} photos per visit.")
         im = ImageOps.exif_transpose(im)
         im.thumbnail((1600, 1600))
         pid = new_id("asp")
@@ -1316,7 +1316,7 @@ def add_photo(tenant: str, visit: str, data: bytes, kind: str = "work") -> dict:
                 bg.paste(im.convert("RGB"))
             bg.save(path, "PNG", optimize=True)
             v.signature = str(path)
-            _log(v, "Graahak ka sign liya")
+            _log(v, "Customer signature taken")
         else:
             path = d / f"{pid}.jpg"
             im.convert("RGB").save(path, "JPEG", quality=82, optimize=True)
@@ -1331,7 +1331,7 @@ def attach_file(tenant: str, visit: str, file_id: str, kind: str = "work") -> di
     try:
         _name, data = _load_file(tenant, file_id)
     except Exception as e:
-        raise AsError(f"File {file_id} nahi mili: {e}")
+        raise AsError(f"File {file_id} not found: {e}")
     return add_photo(tenant, visit, data, kind)
 
 
@@ -1343,7 +1343,7 @@ def photo_file(tenant: str, visit: str, pid: str) -> tuple[Path, str]:
         for p in _j(v.photos, []):
             if p["id"] == pid and Path(p["path"]).exists():
                 return Path(p["path"]), "image/jpeg"
-    raise AsError("Photo nahi mili.")
+    raise AsError("Photo not found.")
 
 
 def _price_of(prices: dict, part: str) -> float | None:
@@ -1364,9 +1364,9 @@ def _build_charge(st: AsSettings, u: AsUnit, parts: list[dict], labour: float | 
     elif labour is not None:
         lines.append({"what": "Labour", "amount": round(labour, 2), "note": ""})
     elif visit_fee is not None:
-        lines.append({"what": "Visit charge", "amount": round(float(visit_fee), 2), "note": "aapki list se"})
+        lines.append({"what": "Visit charge", "amount": round(float(visit_fee), 2), "note": "from your price list"})
     elif kind != "install":
-        lines.append({"what": "Visit charge", "amount": None, "note": "daam aapki list mein nahi"})
+        lines.append({"what": "Visit charge", "amount": None, "note": "price not in your list"})
         needs = True
     for p in parts:
         qty = max(1.0, float(_num(p.get("qty")) or 1))
@@ -1378,7 +1378,7 @@ def _build_charge(st: AsSettings, u: AsUnit, parts: list[dict], labour: float | 
             price = _price_of(prices, p["name"])
         if price is None:
             needs = True
-            lines.append({"what": f"{p['name']} x{qty:g}", "amount": None, "note": "daam nahi pata"})
+            lines.append({"what": f"{p['name']} x{qty:g}", "amount": None, "note": "price not known"})
         else:
             lines.append({"what": f"{p['name']} x{qty:g}", "amount": round(price * qty, 2), "note": ""})
     sub = round(sum(x["amount"] or 0 for x in lines), 2)
@@ -1397,9 +1397,9 @@ def complete(tenant: str, visit: str, checklist: dict | list | None = None, read
         st = _st(s, tenant)
         v = _get_visit(s, tenant, visit)
         if v.status == "done":
-            raise AsError(f"{v.number} pehle hi poora ho chuka.")
+            raise AsError(f"{v.number} is already complete.")
         if v.status in ("cancelled", "no_show"):
-            raise AsError(f"{v.number} {v.status} hai.")
+            raise AsError(f"{v.number} is {v.status}.")
         u = s.get(AsUnit, v.unit_id)
         p = R.PRODUCTS.get(u.ptype, R.PRODUCTS["other"])
         cl = {}
@@ -1424,20 +1424,20 @@ def complete(tenant: str, visit: str, checklist: dict | list | None = None, read
                         "warranty_days": int(_num(x.get("warranty_days")) or 0)})
         when = _when(tenant, done_at) if done_at else now_local(tenant)
         if when is None:
-            raise AsError("Kaam ki tareekh samajh nahi aayi.")
+            raise AsError("Could not understand the job date.")
         d = when.date()
         cov = R.coverage(d, _date(u.warranty_until), _date(u.amc_until), u.amc_plan)
         flags = []
         usage_key = next((k for k in p["readings"] if k in ("odometer_km", "run_hours")), "")
         if usage_key and isinstance(rd.get(usage_key), float):
             if u.reading is not None and rd[usage_key] < u.reading:
-                flags.append(f"{usage_key} {rd[usage_key]:g} pichhli reading {u.reading:g} se kam: dobara dekhiye.")
+                flags.append(f"{usage_key} {rd[usage_key]:g} is lower than the last reading {u.reading:g}: check again.")
             else:
                 _set_reading(u, rd[usage_key], d)
         if u.ptype == "ro" and isinstance(rd.get("tds_out"), float) and rd["tds_out"] > 150:
-            flags.append(f"Output TDS {rd['tds_out']:g}: membrane / filter dekhiye.")
+            flags.append(f"Output TDS {rd['tds_out']:g}: check the membrane / filter.")
         if u.ptype == "inverter" and isinstance(rd.get("backup_minutes"), float) and rd["backup_minutes"] < 30:
-            flags.append("Backup 30 min se kam: battery badalne ki baat graahak se (daam aapki haan se).")
+            flags.append("Backup under 30 min: talk to the customer about replacing the battery (price only with your approval).")
         v.checklist, v.readings, v.parts = _dump(cl), _dump(rd), _dump(pts)
         v.labour = _num(labour)
         v.notes = _scrub(notes)[:1500]
@@ -1447,7 +1447,7 @@ def complete(tenant: str, visit: str, checklist: dict | list | None = None, read
         v.cover = _dump(cov)
         charge = _build_charge(st, u, pts, v.labour, cov, v.kind)
         v.charge = _dump(charge)
-        _log(v, "Kaam poora" + (f", {len(pts)} part" if pts else ""), by)
+        _log(v, "Job done" + (f", {len(pts)} parts" if pts else ""), by)
         if v.kind in ("service", "amc", "inspection", "install", "repair", "warranty"):
             u.last_service = d.isoformat()
             u.reminded_for = ""
@@ -1455,19 +1455,19 @@ def complete(tenant: str, visit: str, checklist: dict | list | None = None, read
         claim_hint = [x["name"] for x in pts] if cov["by"] == "warranty" and pts else []
         out = _visit_view(s, v)
         vid, number = v.id, v.number
-    say = f"{number} poora. Agli service {out['unit']['next_due']} ({out['unit']['due_why']})."
+    say = f"{number} done. Next service {out['unit']['next_due']} ({out['unit']['due_why']})."
     if missing:
-        say += f" Checklist mein baaki: {', '.join(missing[:4])}."
+        say += f" Checklist items left: {', '.join(missing[:4])}."
     if flags:
         say += " Dhyaan: " + " ".join(flags)
     if claim_hint:
-        say += f" Warranty mein part badla ({', '.join(claim_hint[:3])}): brand se claim daaliye (action=claim)."
+        say += f" Part replaced under warranty ({', '.join(claim_hint[:3])}): file the claim with the brand (action=claim)."
     if charge["status"] in ("pending", "needs_price"):
         _charge_card(tenant, vid, conv)
-        say += (f" Graahak se {_rs(charge['total'])} lena hai: card par aapki haan ke baad hi report mein jaayega." if charge["status"] == "pending"
-                else " Kuch daam aapki list mein nahi: card par total likh kar haan kijiye.")
+        say += (f" {_rs(charge['total'])} is to be collected from the customer: it goes into the report only after your approval on the card." if charge["status"] == "pending"
+                else " Some prices are not in your list: write the total on the card and approve.")
     else:
-        say += f" Charge nahi ({cov['say']})."
+        say += f" No charge ({cov['say']})."
     return {"visit": out, "missing": missing, "flags": flags, "claim_parts": claim_hint, "charge": charge, "say": say}
 
 
@@ -1491,34 +1491,34 @@ def decide_charge(tenant: str, visit: str, yes: bool, total=None, by_tap: bool =
     """ONLY her tap in the app (API). Haan = this amount may be asked from the customer; a changed total replaces the lines'
     sum; Mana = no charge (free / goodwill)."""
     if not by_tap:
-        raise AsError("Graahak se paisa maangne ki haan sirf aapke tap se (app mein card).")
+        raise AsError("Asking the customer for money is approved only by your tap (the card in the app).")
     with session() as s:
         v = _get_visit(s, tenant, visit)
         ch = _j(v.charge, {})
         if ch.get("status") not in ("pending", "needs_price"):
-            raise AsError("Is visit par haan ka koi charge baaki nahi.")
+            raise AsError("No charge is waiting for approval on this visit.")
         if hash_ and hash_ != _charge_hash(ch):
-            raise AsError("Card ke baad charge badal gaya: naya card dekhiye.")
+            raise AsError("The charge changed after the card: see the new card.")
         if not yes:
             ch["status"] = "rejected"
             ch["total"] = 0.0
-            _log(v, "Charge: mana (free)")
+            _log(v, "Charge: declined (free)")
         else:
             t = _num(total)
             if ch["status"] == "needs_price" and t is None:
-                raise AsError("Kuch daam pata nahi: total likh kar haan kijiye.")
+                raise AsError("Some prices are not known: write the total and approve.")
             if t is not None:
                 if t < 0 or t > 500000:
-                    raise AsError("Total sahi nahi lagta.")
+                    raise AsError("The total does not look right.")
                 ch["total_changed_from"] = ch.get("total")
                 ch["total"] = round(t, 2)
             ch["status"] = "approved"
             ch["approved_at"] = now().isoformat(timespec="seconds")
-            _log(v, f"Charge haan: {_rs(ch['total'])}")
+            _log(v, f"Charge approved: {_rs(ch['total'])}")
         v.charge = _dump(ch)
         number = v.number
-    return {"charge": ch, "say": f"{number}: " + (f"{_rs(ch['total'])} graahak se lena tay (aapki haan). Report mein UPI link ke saath jaayega."
-                                                 if yes else "Is visit ka charge nahi liya jaayega.")}
+    return {"charge": ch, "say": f"{number}: " + (f"{_rs(ch['total'])} to be collected from the customer (your approval). It goes into the report with the UPI link."
+                                                 if yes else "No charge will be taken for this visit.")}
 
 
 def mark_paid(tenant: str, visit: str, amount=None, how: str = "") -> dict:
@@ -1527,16 +1527,16 @@ def mark_paid(tenant: str, visit: str, amount=None, how: str = "") -> dict:
         v = _get_visit(s, tenant, visit)
         ch = _j(v.charge, {})
         if ch.get("status") != "approved":
-            raise AsError("Pehle charge par aapki haan chahiye.")
+            raise AsError("Your approval on the charge is needed first.")
         a = _num(amount)
         a = ch["total"] - ch.get("paid", 0) if a is None else a
         if a <= 0:
-            raise AsError("Raqam sahi nahi.")
+            raise AsError("The amount is not valid.")
         ch["paid"] = round(ch.get("paid", 0) + a, 2)
         v.charge = _dump(ch)
-        _log(v, f"Paisa mila {_rs(a)} {how}".strip())
+        _log(v, f"Payment received {_rs(a)} {how}".strip())
         left = round(ch["total"] - ch["paid"], 2)
-        return {"charge": ch, "say": f"{v.number}: {_rs(a)} mila" + (f", baaki {_rs(left)}." if left > 0 else ", poora mil gaya.")}
+        return {"charge": ch, "say": f"{v.number}: {_rs(a)} received" + (f", {_rs(left)} remaining." if left > 0 else ", paid in full.")}
 
 
 def _upi(tenant: str, amount: float, note: str) -> str:
@@ -1562,7 +1562,7 @@ def report_pdf(tenant: str, visit: str) -> bytes:
     st = settings(tenant)
     x = get_visit(tenant, visit)
     if x["status"] != "done":
-        raise AsError("Report kaam poora hone ke baad.")
+        raise AsError("The report comes after the job is done.")
     with session() as s:
         v = s.get(AsVisit, x["id"])
         photos = [p for p in _j(v.photos, []) if Path(p["path"]).exists()][:4]
@@ -1723,15 +1723,15 @@ def report(tenant: str, visit: str, conv: str = "") -> dict:
     with session() as s:
         v = s.get(AsVisit, x["id"])
         v.report_file = str(f.get("file_id") or "")[:60]
-        _log(v, "Report PDF bana")
+        _log(v, "Report PDF made")
     _publish(tenant, "pc_file", {**f, "source": "aftersales", "title": f"Service report {x['number']}"}, conv)
     msg = _draft_report(tenant, x["id"])
     _publish(tenant, "aftersales_report", {"visit_id": x["id"], "number": x["number"], "customer": x["customer"].get("name", ""),
                                            "file": {k: f.get(k) for k in ("file_id", "name", "url")}, "message": msg}, conv)
     ch = x["charge"]
-    say = f"{x['number']} ki report PDF taiyaar + graahak ke liye message draft."
+    say = f"Report PDF for {x['number']} is ready, with a message draft for the customer."
     if ch.get("status") in ("pending", "needs_price"):
-        say += " Charge par aapki haan abhi baaki: message mein raqam nahi daali."
+        say += " Your approval on the charge is still pending: the amount is not in the message."
     return {"file": f, "message": msg, "say": say}
 
 
@@ -1749,7 +1749,7 @@ def _draft(tenant: str, customer_id: str, kind: str, key: str, text: str, templa
         if c is None:
             return None
         if c.no_messages:
-            return {"skipped": True, "reason": f"{c.name} ne message mana kiya hai", "customer": c.name}
+            return {"skipped": True, "reason": f"{c.name} has opted out of messages", "customer": c.name}
         cat = R.TEMPLATES.get(template, {}).get("category") or R.classify(text)
         if R.classify(text) == "MARKETING":
             cat = "MARKETING"
@@ -1769,8 +1769,8 @@ def _draft_visit_confirm(tenant: str, visit_id: str) -> dict | None:
     x = get_visit(tenant, visit_id)
     tech, when = x["tech"].get("name", "technician"), _say_when(x["start"])
     first, label = _first(x["customer"].get("name")), x["unit"].get("label", "machine")
-    text = (f"Namaste {first} ji, aapke {label} ke liye technician {tech} aayenge, samay: {when}. Visit number {x['number']}. "
-            f"Samay badalna ho to reply karein.")
+    text = (f"Hello {first}, your {label} service visit: technician {tech} will come at {when}. Visit number {x['number']}. "
+            f"Reply if you need to change the time.")
     return _draft(tenant, x["customer"]["id"], "visit", f"visit:{x['id']}:{x['start']}", text, "service_visit_confirmed",
                   [first, label, tech, when, x["number"]], x["unit"].get("id", ""), x["id"])
 
@@ -1779,7 +1779,7 @@ def _work_line(x: dict) -> str:
     bits = [pp["name"] for pp in x["parts"][:3]]
     done = [k for k, val in x["checklist"].items() if val == "ok"][:2]
     rd = [f"{k.replace('_', ' ')} {val:g}" if isinstance(val, float) else f"{k} {val}" for k, val in list(x["readings"].items())[:2]]
-    return ", ".join(bits + done + rd)[:180] or "service poori"
+    return ", ".join(bits + done + rd)[:180] or "service completed"
 
 
 def _draft_report(tenant: str, visit_id: str) -> dict | None:
@@ -1788,15 +1788,15 @@ def _draft_report(tenant: str, visit_id: str) -> dict | None:
     nd = _date(x["unit"].get("next_due"))
     nxt = nd.strftime("%b %Y") if nd else "-"
     work = _work_line(x)
-    text = f"Namaste {first} ji, aapke {label} ki service (visit {x['number']}) poori hui. Kaam: {work}. Agli service: {nxt}."
+    text = f"Hello {first}, the service of your {label} (visit {x['number']}) is complete. Work done: {work}. Next service: {nxt}."
     ch = x["charge"]
     if ch.get("status") == "approved" and ch.get("total", 0) > ch.get("paid", 0):
         due = round(ch["total"] - ch.get("paid", 0), 2)
         upi = _upi(tenant, due, f"{x['number']} service")
         text += f" Charge {_rs(due)}." + (f" UPI: {upi}" if upi else "")
     elif ch.get("status") in ("none",):
-        text += f" Is visit ka koi charge nahi ({x['cover'].get('by', '')})."
-    text += " Sawaal ho to reply karein."
+        text += f" There is no charge for this visit ({x['cover'].get('by', '')})."
+    text += " Reply if you have any questions."
     return _draft(tenant, x["customer"]["id"], "report", f"report:{x['id']}", text, "service_visit_report",
                   [first, label, x["number"], work, nxt], x["unit"].get("id", ""), x["id"])
 
@@ -1827,18 +1827,18 @@ def due(tenant: str, within: int = 15) -> dict:
     for x in items:
         k = x["customer"]["area"] or x["customer"]["pincode"] or "-"
         by_area[k] = by_area.get(k, 0) + 1
-    say = (f"{len(items)} machine ki service {within} din mein due ({over} late)." if items else "Agle din mein koi service due nahi.")
+    say = (f"{len(items)} machines are due for service within {within} days ({over} overdue)." if items else "No service is due in the coming days.")
     if amc:
-        say += f" {len(amc)} AMC 30 din mein khatam."
+        say += f" {len(amc)} AMCs end within 30 days."
     if warranty:
-        say += f" {len(warranty)} ki warranty 30 din mein khatam (AMC ki baat aap karein)."
+        say += f" {len(warranty)} warranties end within 30 days (you bring up the AMC)."
     return {"due": items, "overdue": over, "by_area": by_area, "amc_ending": amc, "warranty_ending": warranty, "say": say}
 
 
 def remind(tenant: str, within: int | None = None, kind: str = "due", unit: str = "", conv: str = "", publish: bool = True) -> dict:
     """Reminder DRAFTS (service due / AMC ending). She sends them: wa.me from her phone, or a template on her tap."""
     st = settings(tenant)
-    biz = st["business"] or _business(tenant) or "[aapki dukaan]"
+    biz = st["business"] or _business(tenant) or "[your shop]"
     within = st["remind_days"] if within is None else within
     made, skipped = [], []
     if kind == "amc":
@@ -1856,16 +1856,16 @@ def remind(tenant: str, within: int | None = None, kind: str = "due", unit: str 
             until = x["amc"]["until"]
             dd = _date(until)
             nice = f"{dd.day} {dd.strftime('%b')}" if dd else until
-            text = f"Namaste {first} ji, {biz} se: aapke {label} ka AMC {nice} ko khatam ho raha hai. Aage jaari rakhna ho to reply karein."
+            text = f"Hello {first}, from {biz}: the AMC for your {label} ends on {nice}. Reply if you would like to continue it."
             m = _draft(tenant, x["customer"]["id"], "amc", f"amc:{x['id']}:{until}", text, "amc_expiry_notice", [first, biz, label, nice], x["id"])
         else:
             dd = _date(x["next_due"])
             nice = f"{dd.day} {dd.strftime('%b')}" if dd else x["next_due"]
             prod = label + (f" ({x['model']})" if x["model"] else "")
-            text = (f"Namaste {first} ji, {biz} se: aapke {prod} ki service {nice} tak due hai. "
-                    f"Technician kab bhejein? Suvidha ka din aur samay reply karein.")
+            text = (f"Hello {first}, from {biz}: your {prod} is due for service by {nice}. "
+                    f"When should we send the technician? Reply with a day and time that suits you.")
             if x["amc"] and x["amc"]["active"]:
-                text += " (Yeh visit aapke AMC mein shaamil hai.)"
+                text += " (This visit is covered by your AMC.)"
             m = _draft(tenant, x["customer"]["id"], "due", f"due:{x['id']}:{x['next_due']}", text, "service_due_reminder",
                        [first, biz, prod, nice], x["id"])
             if m and not m.get("skipped"):
@@ -1882,11 +1882,11 @@ def remind(tenant: str, within: int | None = None, kind: str = "due", unit: str 
     if publish and drafts:
         _publish(tenant, "aftersales_reminders", {"kind": kind, "count": len(drafts), "messages": drafts[:30],
                                                   "say": f"{len(drafts)} reminder draft ({'AMC' if kind == 'amc' else 'service due'})"}, conv)
-    say = f"{len(drafts)} naye reminder draft." if drafts else "Koi naya reminder nahi (pehle se bane / bheje)."
+    say = f"{len(drafts)} new reminder drafts." if drafts else "No new reminders (already drafted / sent)."
     if skipped:
-        say += f" {len(skipped)} graahak ne message mana kiya hai: unhe nahi."
+        say += f" {len(skipped)} customers have opted out of messages: none for them."
     if kind == "amc" and drafts:
-        say += " AMC renewal wala message Meta ke hisaab se 'marketing' hai: template sirf unhe jo offers ke liye haan keh chuke."
+        say += " Meta counts the AMC renewal message as 'marketing': the template goes only to customers who have agreed to offers."
     return {"messages": drafts, "skipped": skipped, "say": say}
 
 
@@ -1911,7 +1911,7 @@ def message_mark(tenant: str, msg_id: str, status: str) -> dict:
     with session() as s:
         m = s.get(AsMessage, msg_id)
         if m is None or m.tenant_id != tenant:
-            raise AsError("Message nahi mila.")
+            raise AsError("Message not found.")
         m.status = status
         if status == "sent":
             m.via, m.sent_at = m.via or "her_phone", now()
@@ -1923,43 +1923,43 @@ async def send_message(tenant: str, msg_id: str, via: str = "template", by_tap: 
     offers). via=business: free text from her business number, only inside 24 h of the customer's last message."""
     from ..whatsapp import WhatsAppError, get_whatsapp
     if not by_tap:
-        raise AsError("Graahak ko business WhatsApp sirf aapke tap se jaata hai.")
+        raise AsError("A business WhatsApp message goes to a customer only by your tap.")
     with session() as s:
         m = s.get(AsMessage, msg_id)
         if m is None or m.tenant_id != tenant:
-            raise AsError("Message nahi mila.")
+            raise AsError("Message not found.")
         if m.status != "draft":
-            raise AsError(f"Yeh message {m.status} hai.")
+            raise AsError(f"This message is {m.status}.")
         c = s.get(AsCustomer, m.customer_id)
         if c is None or len(c.phone) != 10:
-            raise AsError("Graahak ka 10 ank ka mobile nahi.")
+            raise AsError("The customer has no 10-digit mobile number.")
         if c.no_messages:
-            raise AsError(f"{c.name} ne message mana kiya hai.")
+            raise AsError(f"{c.name} has opted out of messages.")
         from ..employee.models import BizContact
         bc = s.scalars(select(BizContact).where(BizContact.tenant_id == tenant, BizContact.wa_id == "91" + c.phone)).first()
         if bc is not None and bc.opted_out:
-            raise AsError(f"{c.name} ne WhatsApp par STOP likha hai.")
+            raise AsError(f"{c.name} has replied STOP on WhatsApp.")
         if m.category == "MARKETING" and via == "template" and not c.marketing_ok:
-            raise AsError(f"Yeh 'marketing' message hai aur {c.name} ne offers / renewal messages ki haan nahi di. Apne phone se baat kijiye.")
+            raise AsError(f"This is a 'marketing' message and {c.name} has not agreed to offers / renewal messages. Talk to them from your own phone.")
         text, tpl, params, cat, phone = m.text, m.template, _j(m.params, []), m.category, c.phone
         bc_id = bc.id if bc else ""
         if via == "template":
             from ..db import Template
             row = s.scalars(select(Template).where(Template.tenant_id == tenant, Template.name == tpl)).first()
             if row is None or row.status != "APPROVED":
-                raise AsError(f"Template '{tpl}' Meta se approved nahi (status: {row.status if row else 'nahi bana'}). "
-                              "Pehle 'Templates' mein bhejiye, ya draft apne phone se bhejiye.")
+                raise AsError(f"Template '{tpl}' is not approved by Meta (status: {row.status if row else 'not created'}). "
+                              "Submit it under 'Templates' first, or send the draft from your own phone.")
             lang = row.language
     if R.classify(text) == "MARKETING" and cat == "UTILITY":
-        raise AsError("Message mein offer / renewal ki baat hai: yeh utility template se nahi jaa sakta.")
+        raise AsError("The message talks about an offer / renewal: it cannot go through a utility template.")
     if via == "template":
         try:
             wamid = await get_whatsapp().send_template("91" + phone, tpl, lang, params)
         except WhatsAppError as e:
-            raise AsError(f"WhatsApp ne nahi liya: {e}")
+            raise AsError(f"WhatsApp did not accept it: {e}")
     elif via == "business":
         if not bc_id:
-            raise AsError("Is graahak ne business number par kabhi message nahi kiya: template ya apna phone.")
+            raise AsError("This customer has never messaged the business number: use a template or your own phone.")
         from ..employee import inbox
         try:
             mv = await inbox.send(tenant, bc_id, text, by="owner")
@@ -1971,7 +1971,7 @@ async def send_message(tenant: str, msg_id: str, via: str = "template", by_tap: 
     with session() as s:
         m = s.get(AsMessage, msg_id)
         m.status, m.via, m.wa_msg_id, m.sent_at = "sent", via, str(wamid or "")[:80], now()
-        return _msg_view(m) | {"say": "Bhej diya (aapke tap se)."}
+        return _msg_view(m) | {"say": "Sent (by your tap)."}
 
 
 def templates(tenant: str) -> list[dict]:
@@ -1995,21 +1995,21 @@ async def submit_template(tenant: str, name: str, by_tap: bool = False) -> dict:
     from ..whatsapp import WhatsAppError, get_whatsapp
     from ..whatsapp.templates import check_template
     if not by_tap:
-        raise AsError("Template Meta ko aapke tap se jaata hai.")
+        raise AsError("A template goes to Meta only by your tap.")
     t = R.TEMPLATES.get(name)
     if not t:
-        raise AsError("Yeh template nahi: " + ", ".join(R.TEMPLATES))
+        raise AsError("Not a template: " + ", ".join(R.TEMPLATES))
     chk = check_template(name, t["language"], t["category"], t["body"], t["example"], t.get("footer"))
     if not chk["ok"]:
         raise AsError("; ".join(chk["errors"]))
     with session() as s:
         r = s.scalars(select(Template).where(Template.tenant_id == tenant, Template.name == name)).first()
         if r is not None and r.status in ("PENDING", "APPROVED"):
-            return {"name": name, "status": r.status, "say": f"'{name}' pehle se {r.status}."}
+            return {"name": name, "status": r.status, "say": f"'{name}' is already {r.status}."}
     try:
         res = await get_whatsapp().create_template(name, t["language"], t["category"], t["body"], t["example"], t.get("footer"))
     except WhatsAppError as e:
-        raise AsError(f"Meta ne nahi liya: {e}")
+        raise AsError(f"Meta did not accept it: {e}")
     with session() as s:
         r = s.scalars(select(Template).where(Template.tenant_id == tenant, Template.name == name)).first()
         if r is None:
@@ -2018,7 +2018,7 @@ async def submit_template(tenant: str, name: str, by_tap: bool = False) -> dict:
             s.add(r)
         r.meta_id, r.status, r.updated_at = res.get("meta_id"), res.get("status", "PENDING"), now()
         st = r.status
-    return {"name": name, "status": st, "say": f"'{name}' Meta ko bheja ({st}). Approve hone par graahak ko template se bhej sakti hain."}
+    return {"name": name, "status": st, "say": f"'{name}' sent to Meta ({st}). Once it is approved you can send it to customers as a template."}
 
 
 # ---------------------------------------------------------------- warranty claims with the brand
@@ -2037,24 +2037,24 @@ def claim(tenant: str, unit: str = "", visit: str = "", part: str = "", fault: s
         wu = _date(u.warranty_until)
         warn = ""
         if not wu or (v and v.done_on and _date(v.done_on[:10]) > wu) or (not v and on > wu):
-            warn = f"Warranty {u.warranty_until or 'likhi nahi'}: brand mana kar sakta hai."
+            warn = f"Warranty {u.warranty_until or 'not on record'}: the brand may refuse."
         if not part and v:
             part = ", ".join(p["name"] for p in _j(v.parts, []))
         if not str(part).strip():
-            raise AsError("Kaunsa part / kya kharab hua?")
+            raise AsError("Which part / what failed?")
         c = AsClaim(tenant_id=tenant, number=_next_number(st, "claim"), unit_id=u.id, visit_id=v.id if v else "", brand=u.brand,
                     part=str(part)[:120], fault=_scrub(fault)[:500], brand_ref=str(brand_ref)[:60], raised_on=on.isoformat(),
                     updated_on=on.isoformat(), amount=float(_num(amount) or 0))
-        _log(c, "Claim daala" + (f" (brand no. {brand_ref})" if brand_ref else ""))
+        _log(c, "Claim recorded" + (f" (brand no. {brand_ref})" if brand_ref else ""))
         s.add(c)
         s.flush()
         out = _claim_view(c)
         ser, mdl = u.serial, u.model
-    sheet = (f"Warranty claim {out['number']}: {out['brand']} {mdl} Sr {ser or '-'}; part: {out['part']}; kharabi: {out['fault'] or '-'}; "
+    sheet = (f"Warranty claim {out['number']}: {out['brand']} {mdl} Sr {ser or '-'}; part: {out['part']}; fault: {out['fault'] or '-'}; "
              f"install {get_unit(tenant, out['unit_id'])['installed_on'] or '-'}.")
     return {"claim": out, "text": sheet, "warning": warn,
-            "say": f"Claim {out['number']} ({out['brand'] or 'brand'}: {out['part']}) likha." + (f" {warn}" if warn else "")
-                   + " Brand ke portal / service centre par aap daaliye; complaint number milte hi bataiye."}
+            "say": f"Claim {out['number']} ({out['brand'] or 'brand'}: {out['part']}) recorded." + (f" {warn}" if warn else "")
+                   + " You file it on the brand's portal / at the service centre; tell me the complaint number once you have it."}
 
 
 def claim_update(tenant: str, claim_id: str, status: str = "", brand_ref: str = "", settled=None, note: str = "") -> dict:
@@ -2063,7 +2063,7 @@ def claim_update(tenant: str, claim_id: str, status: str = "", brand_ref: str = 
         if c is None:
             c = s.scalars(select(AsClaim).where(AsClaim.tenant_id == tenant, AsClaim.number == str(claim_id).upper())).first()
         if c is None or c.tenant_id != tenant:
-            raise AsError("Claim nahi mila.")
+            raise AsError("Claim not found.")
         if status:
             if status not in CLAIM_STATES:
                 raise AsError("status: " + " | ".join(CLAIM_STATES))
@@ -2076,7 +2076,7 @@ def claim_update(tenant: str, claim_id: str, status: str = "", brand_ref: str = 
         _log(c, f"{status or 'update'}" + (f": {note}" if note else ""))
         days = (today(tenant) - _date(c.raised_on)).days if _date(c.raised_on) else 0
         out = _claim_view(c)
-    return {"claim": out, "say": f"Claim {out['number']}: {out['status']}" + (f" ({days} din mein)" if status in ("settled", "rejected", "part_received") else "") + "."}
+    return {"claim": out, "say": f"Claim {out['number']}: {out['status']}" + (f" (in {days} days)" if status in ("settled", "rejected", "part_received") else "") + "."}
 
 
 def claims(tenant: str, status: str = "") -> dict:
@@ -2093,7 +2093,7 @@ def claims(tenant: str, status: str = "") -> dict:
             brands.setdefault(c["brand"] or "-", []).append((_date(c["updated_on"]) - _date(c["raised_on"])).days)
     avg = {b: round(sum(x) / len(x)) for b, x in brands.items()}
     return {"claims": rows, "stuck": stuck, "brand_days": avg,
-            "say": f"{sum(1 for c in rows if c['status'] in ('raised', 'approved'))} claim khule" + (f", {len(stuck)} 15 din se ruke" if stuck else "") + "."}
+            "say": f"{sum(1 for c in rows if c['status'] in ('raised', 'approved'))} claims open" + (f", {len(stuck)} stuck for 15 days" if stuck else "") + "."}
 
 
 # ---------------------------------------------------------------- the day + worker
@@ -2106,14 +2106,14 @@ def day(tenant: str) -> dict:
         per: dict[str, int] = {}
         for v in open_v:
             per[v["tech"].get("name", "-")] = per.get(v["tech"].get("name", "-"), 0) + 1
-        parts.append("Aaj ke visit: " + ", ".join(f"{k} {n}" for k, n in per.items()))
+        parts.append("Today's visits: " + ", ".join(f"{k} {n}" for k, n in per.items()))
     d = due(tenant, 7)
     if d["due"]:
         unbooked = [x for x in d["due"] if not x["booked"]]
         if unbooked:
-            parts.append(f"{len(unbooked)} machine ki service hafte mein due, visit book nahi ({d['overdue']} late)")
+            parts.append(f"{len(unbooked)} machines due for service this week with no visit booked ({d['overdue']} overdue)")
     if d["amc_ending"]:
-        parts.append(f"{len(d['amc_ending'])} AMC 30 din mein khatam")
+        parts.append(f"{len(d['amc_ending'])} AMCs end within 30 days")
     with session() as s:
         pend = s.scalars(select(AsVisit).where(AsVisit.tenant_id == tenant, AsVisit.status == "done")).all()
         waiting = [v.number for v in pend if _j(v.charge, {}).get("status") in ("pending", "needs_price")]
@@ -2121,18 +2121,18 @@ def day(tenant: str) -> dict:
         late = [v.number for v in s.scalars(select(AsVisit).where(AsVisit.tenant_id == tenant, AsVisit.status.in_(OPEN),
                                                                     AsVisit.start < on.isoformat())).all()]
     if waiting:
-        parts.append(f"{len(waiting)} visit ke charge par aapki haan baaki ({', '.join(waiting[:3])})")
+        parts.append(f"{len(waiting)} visit charges await your approval ({', '.join(waiting[:3])})")
     if no_report:
-        parts.append(f"{len(no_report)} poore visit ki report graahak ko nahi gayi")
+        parts.append(f"{len(no_report)} completed visits have no report sent to the customer")
     if late:
-        parts.append(f"{len(late)} pichhle visit ab tak poore nahi likhe ({', '.join(late[:3])})")
+        parts.append(f"{len(late)} past visits are not marked complete yet ({', '.join(late[:3])})")
     cl = claims(tenant)
     if cl["stuck"]:
-        parts.append(f"{len(cl['stuck'])} warranty claim 15 din se ruke - brand se poochhiye")
+        parts.append(f"{len(cl['stuck'])} warranty claims stuck for 15 days - ask the brand")
     drafts = len(messages(tenant, "draft"))
     if drafts:
-        parts.append(f"{drafts} message draft bhejne baaki")
-    return {"parts": parts, "visits": vs, "due": d["due"][:50], "charges_waiting": waiting, "say": ("; ".join(parts) + ".") if parts else "After-sales: sab theek."}
+        parts.append(f"{drafts} message drafts waiting to be sent")
+    return {"parts": parts, "visits": vs, "due": d["due"][:50], "charges_waiting": waiting, "say": ("; ".join(parts) + ".") if parts else "After-sales: all clear."}
 
 
 def due_mornings() -> list[str]:
@@ -2160,7 +2160,7 @@ def send_morning(tenant: str) -> dict:
         return {"text": ""}
     text = "After-sales: " + d["say"]
     if r["messages"]:
-        text += f" Aaj {len(r['messages'])} naye reminder draft bane."
+        text += f" {len(r['messages'])} new reminder drafts made today."
     conv = home_conv(tenant)
     try:
         notify(conv, text)
@@ -2194,7 +2194,7 @@ def decode_b64(data: str) -> bytes:
     try:
         return base64.b64decode(s, validate=False)
     except Exception:
-        raise AsError("File ka data sahi nahi (base64).")
+        raise AsError("The file data is not valid (base64).")
 
 
 def prompt_block(tenant: str) -> str:

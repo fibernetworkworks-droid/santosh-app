@@ -26,7 +26,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
         try:
             return await asyncio.to_thread(fn, *a, **kw)
         except guard.GuardError as e:
-            raise HTTPException(400, "Script mein dikkat: " + "; ".join(e.problems[:6]))
+            raise HTTPException(400, "Problem in the script: " + "; ".join(e.problems[:6]))
         except service.B3Error as e:
             raise HTTPException(400, str(e))
 
@@ -47,7 +47,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
     def files(pid: str, v: str, name: str, exp: int = 0, sig: str = ""):
         p = service.file_path(pid, f"{v}/{name}", exp, sig)
         if p is None:
-            raise HTTPException(404, "link purana / galat hai")
+            raise HTTPException(404, "The link is old or wrong")
         media = {"png": "image/png", "mp4": "video/mp4", "glb": "model/gltf-binary", "stl": "model/stl",
                  "obj": "text/plain", "fbx": "application/octet-stream", "usdz": "model/vnd.usdz+zip",
                  "blend": "application/octet-stream"}.get(p.suffix.lstrip(".").lower(), "application/octet-stream")

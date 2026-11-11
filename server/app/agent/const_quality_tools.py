@@ -21,19 +21,19 @@ QUALITY_TOOLS = [
         "hold}] (hold = no going further without inspection), note -> ITP DRAFT. action=itp_approve: itp (id), approved_by "
         "(who - the name is recorded). action=ncr: site, activity, defect, spec (the clause / spec that failed), severity "
         "minor|major|critical, action, itp (id) -> an NCR is opened. action=ncr_close: ncr (id), action, note. action=lot: "
-        "kind (cement OPC 53 lot...), lot_no, vendor, test, lab, result (Jaisa lab ne bola WAISA), verdict "
+        "kind (cement OPC 53 lot...), lot_no, vendor, test, lab, result (EXACTLY as the lab said), verdict "
         "pending|pass|fail, tested_on, retest_due, report_ref. action=lot_verdict: lot (id), verdict pass|fail, by. "
-        "action=cube_draft: grade (M20+), results [N/mm2] -> IS 456 Table 11 DRAFT (acceptance QA engineer ka sign). "
+        "action=cube_draft: grade (M20+), results [N/mm2] -> IS 456 Table 11 DRAFT (acceptance = the QA engineer's sign). "
         "action=punch: site (optional) -> open snag punch list by trade (sitesup snags). "
         "EHS (#81): action=permit_draft: site, kind height|confined space|hot work|excavation|electrical, hazard, "
         "controls [{control, done}], valid_till -> permit DRAFT (the SAFETY OFFICER issues it). action=permit_issue: "
         "permit (id), issued_by (safety officer's name - no issue without a name). action=permit_close: permit (id), note. "
-        "action=toolbox: site, topic, day, attendees, gang - talk ka record. "
+        "action=toolbox: site, topic, day, attendees, gang - record of the talk. "
         "Incident investigation (#82, Wave 3): action=incident_open: site, kind near_miss|injury|property|"
         "environmental, severity minor|major|critical, description, day, reported_by -> an investigation is opened. "
-        "action=incident_row: incident (id), kind timeline|witness|why|action, text, at, answer (why ka), owner, "
-        "due, status (action: open|done). action=incident_questions -> witness sawaal list. action=incident_close: "
-        "incident (id), root_cause (SAFETY HEAD ka shabd), findings_by (NAAM zaroori) -> band (open actions "
+        "action=incident_row: incident (id), kind timeline|witness|why|action, text, at, answer (to a why), owner, "
+        "due, status (action: open|done). action=incident_questions -> witness question list. action=incident_close: "
+        "incident (id), root_cause (the SAFETY HEAD's words), findings_by (NAME needed) -> closed (open actions "
         "stop work). action=incident_pack: incident (id) -> investigation PDF, findings line empty or with a name."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["itp", "itp_approve", "ncr", "ncr_close", "lot", "lot_verdict",
@@ -131,7 +131,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
                                 _s(a.get("verdict")) == "FAIL")
     except (Q.CstError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("action galat")
+    raise ToolError("Unknown action")
 
 
 def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
@@ -205,7 +205,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
                               "owner": r.owner, "due": r.due, "status": r.status} for r in rows]}
     except (Q.CstError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("what galat")
+    raise ToolError("Unknown what")
 
 
 async def const_quality(ctx: Ctx, action, **a: Any):

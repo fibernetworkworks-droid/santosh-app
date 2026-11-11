@@ -580,7 +580,7 @@ async def scrape_extract(ctx: Ctx, url, selector, fields=None, attr=None, adapti
     except Exception as e:
         raise ToolError(f"Fetch failed: {str(e)[:300]}")
     if page.status >= 400:
-        raise ToolError(f"Site ne {page.status} bheja ({page.reason})")
+        raise ToolError(f"The site returned {page.status} ({page.reason})")
     hits = await asyncio.to_thread(_pick, page, selector, bool(adaptive), str(identifier or "items"), bool(adaptive))
     if len(hits) == 1 and similar:
         try:
@@ -756,7 +756,7 @@ async def scrape_stealth(ctx: Ctx, url, format="markdown", css=None, wait_select
         except Exception:
             pass
     if page.status >= 400:
-        raise ToolError(f"Site ne {page.status} bheja ({page.reason})")
+        raise ToolError(f"The site returned {page.status} ({page.reason})")
     fmt = str(format or "markdown").lower()
     if css:
         hits = _pick(page, css)
@@ -980,7 +980,7 @@ async def scrape_extract_json(ctx: Ctx, url, schema=None, prompt=None, limit=50,
     except Exception as e:
         raise ToolError(f"Fetch failed: {str(e)[:300]}")
     if page.status >= 400:
-        raise ToolError(f"Site ne {page.status} bheja ({getattr(page, 'reason', '')})")
+        raise ToolError(f"The site returned {page.status} ({getattr(page, 'reason', '')})")
     try:
         text = page.markdown()
     except Exception:

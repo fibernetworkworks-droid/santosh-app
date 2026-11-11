@@ -24,7 +24,7 @@ DARZI_TOOLS = [
         "(28/10, 2026-10-28, '5 din', kal), trial_on, advance (rupees received), notes, photos (file_ids of fabric / "
         "design / the order-book photo). The system checks it against HER rules and earlier work first: if it returns "
         "saved=false with problems, tell her the problems and the earliest date, and only call again with force=true "
-        "after she agrees. Prices not in her list become a price card for her Haan (never promise those prices to the "
+        "after she agrees. Prices not in her list become a price card for her Yes (never promise those prices to the "
         "customer before she approves). "
         "action=measure: customer / name / phone, garment, values ({chest: 34, waist: 30} or her words 'L 15 chest 34 "
         "kamar 30 bahi 11 1/2'), person, note (fitting / style), unit. Old measurements are kept; big changes come back "

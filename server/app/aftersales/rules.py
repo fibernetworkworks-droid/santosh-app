@@ -26,22 +26,22 @@ from datetime import date, timedelta
 PRODUCTS: dict[str, dict] = {
     "ro": {"label": "RO water purifier", "words": ("ro", "purifier", "water purifier", "aquaguard", "kent", "pureit", "livpure", "filter", "paani"),
            "months": 4, "minutes": 45, "warranty": 12, "amc_visits": 3,
-           "checklist": ["Sediment filter badla / saaf", "Carbon filter dekha", "Membrane flow theek", "TDS jaancha (input / output)",
-                         "Leakage nahi", "Tank saaf kiya", "UV lamp chal raha"],
+           "checklist": ["Sediment filter replaced / cleaned", "Carbon filter checked", "Membrane flow OK", "TDS checked (input / output)",
+                         "No leakage", "Tank cleaned", "UV lamp working"],
            "readings": ["tds_in", "tds_out"]},
     "ac": {"label": "AC", "words": ("ac", "air conditioner", "split", "window ac", "inverter ac", "voltas", "daikin", "lloyd", "blue star"),
            "months": 6, "seasons": (3, 9), "minutes": 60, "warranty": 12, "amc_visits": 2,
-           "checklist": ["Filter saaf", "Indoor coil jet wash", "Outdoor coil saaf", "Drain pipe saaf", "Gas pressure check",
-                         "Cooling (vent temp) check", "Earthing / wiring check", "Remote / display theek"],
+           "checklist": ["Filter cleaned", "Indoor coil jet wash", "Outdoor coil cleaned", "Drain pipe cleaned", "Gas pressure check",
+                         "Cooling (vent temp) check", "Earthing / wiring check", "Remote / display OK"],
            "readings": ["gas_psi", "vent_temp_c", "amps"]},
     "inverter": {"label": "Inverter / battery", "words": ("inverter", "battery", "ups", "luminous", "exide", "microtek", "amaron", "tubular"),
                  "months": 3, "minutes": 30, "warranty": 24, "amc_visits": 4,
-                 "checklist": ["Distilled water top-up", "Terminal saaf + grease", "Specific gravity / voltage check", "Backup test",
+                 "checklist": ["Distilled water top-up", "Terminals cleaned + greased", "Specific gravity / voltage check", "Backup test",
                                "Charging check", "Wiring tight"],
                  "readings": ["battery_volts", "specific_gravity", "backup_minutes"]},
     "cctv": {"label": "CCTV", "words": ("cctv", "camera", "dvr", "nvr", "hikvision", "cp plus", "dahua"),
              "months": 3, "minutes": 45, "warranty": 12, "amc_visits": 4,
-             "checklist": ["Har camera ki picture saaf", "Lens saaf", "DVR / NVR recording chal rahi", "Hard disk health", "Date / time sahi",
+             "checklist": ["Every camera's picture clear", "Lens cleaned", "DVR / NVR recording running", "Hard disk health", "Date / time correct",
                            "Mobile app view check", "Power supply / adaptor check"],
              "readings": ["cameras_ok", "recording_days"]},
     "two_wheeler": {"label": "Two-wheeler", "words": ("bike", "scooter", "scooty", "activa", "splendor", "two wheeler", "motorcycle", "gaadi"),
@@ -54,71 +54,71 @@ PRODUCTS: dict[str, dict] = {
             "readings": ["odometer_km"]},
     "solar": {"label": "Solar system", "words": ("solar", "panel", "rooftop", "ongrid", "on-grid", "solar inverter"),
               "months": 3, "minutes": 60, "warranty": 60, "amc_visits": 4,
-              "checklist": ["Panel saaf", "Inverter display / error", "Earthing / lightning arrester", "DC / AC wiring", "Generation (kWh) dekha",
+              "checklist": ["Panels cleaned", "Inverter display / error", "Earthing / lightning arrester", "DC / AC wiring", "Generation (kWh) checked",
                             "Structure tight"],
               "readings": ["kwh_total", "kwh_today"]},
     "genset": {"label": "Generator (DG set)", "words": ("genset", "generator", "dg", "dg set", "kirloskar", "cummins"),
                "months": 6, "usage": 250, "usage_unit": "hours", "minutes": 120, "warranty": 12, "amc_visits": 4,
-               "checklist": ["Engine oil", "Oil / fuel / air filter", "Coolant", "Battery", "Fan belt", "Load test", "Leakage nahi"],
+               "checklist": ["Engine oil", "Oil / fuel / air filter", "Coolant", "Battery", "Fan belt", "Load test", "No leakage"],
                "readings": ["run_hours", "battery_volts"]},
     "lift": {"label": "Lift / elevator", "words": ("lift", "elevator", "otis", "kone", "johnson lift"),
              "months": 1, "minutes": 90, "warranty": 12, "amc_visits": 12,
              "checklist": ["Brake check", "Door / interlock", "Ropes / pulleys", "Emergency alarm + light", "ARD / rescue device",
-                           "Levelling", "Machine room saaf", "Lubrication"],
+                           "Levelling", "Machine room clean", "Lubrication"],
              "readings": ["trips", "levelling_mm"]},
     "appliance": {"label": "Appliance (fridge / washing machine)", "words": ("fridge", "refrigerator", "washing machine", "washer", "microwave",
                                                                              "oven", "dishwasher", "samsung", "lg", "whirlpool", "godrej"),
                   "months": 12, "minutes": 60, "warranty": 12, "amc_visits": 1,
-                  "checklist": ["Cooling / drum chal raha", "Gasket / door seal", "Drain / filter saaf", "Wiring / earthing", "Noise / vibration"],
+                  "checklist": ["Cooling / drum working", "Gasket / door seal", "Drain / filter cleaned", "Wiring / earthing", "Noise / vibration"],
                   "readings": []},
     "water_heater": {"label": "Water heater / geyser", "words": ("geyser", "water heater", "heater", "racold", "bajaj geyser"),
                      "months": 12, "minutes": 45, "warranty": 24, "amc_visits": 1,
                      "checklist": ["Descaling", "Anode rod", "Thermostat", "Safety valve", "Earthing"], "readings": []},
     "chimney": {"label": "Kitchen chimney", "words": ("chimney", "hood", "elica", "faber"),
                 "months": 4, "minutes": 45, "warranty": 12, "amc_visits": 3,
-                "checklist": ["Filter saaf", "Oil collector", "Motor / suction", "Duct check"], "readings": []},
+                "checklist": ["Filter cleaned", "Oil collector", "Motor / suction", "Duct check"], "readings": []},
     "broadband": {"label": "Broadband / FTTH", "words": ("broadband", "ftth", "wifi", "router", "ont", "fiber", "fibre", "internet"),
                   "months": 6, "minutes": 30, "warranty": 12, "amc_visits": 2,
-                  "checklist": ["Optical power (dBm) dekha", "Router / ONT firmware", "Wi-Fi speed test", "Patch cord / connector saaf",
+                  "checklist": ["Optical power (dBm) checked", "Router / ONT firmware", "Wi-Fi speed test", "Patch cord / connector cleaned",
                                 "Power adaptor"],
                   "readings": ["rx_power_dbm", "speed_mbps"]},
     "other": {"label": "Machine", "words": (), "months": 6, "minutes": 60, "warranty": 12, "amc_visits": 2,
-              "checklist": ["Chal raha hai", "Saaf-safai", "Wiring / safety"], "readings": []},
+              "checklist": ["Working", "Cleaning", "Wiring / safety"], "readings": []},
 }
 
 KINDS = ("service", "repair", "install", "amc", "warranty", "inspection")
 AMC_PLANS = ("comprehensive", "non_comprehensive")   # comprehensive = parts + labour covered; non = labour / visits only
 
-NEVER = ("Graahak ko message Hoola khud nahi bhejta: draft aap bhejti hain, ya business WhatsApp template aapke tap par.",
-         "Graahak se paisa (visit / part charge) aapki haan ke bina nahi maanga jaata; Hoola paisa leta / bhejta nahi.",
-         "Ek technician ke do visit ek samay par book nahi hote.",
-         "Warranty install ki tareekh se ginte hain; brand claim ka faisla brand ka.",
-         "Renewal / offer wala message 'marketing' hai: sirf jinhone haan kahi unhe template se.")
+NEVER = ("Hoola never messages a customer by itself: you send the draft, or a business WhatsApp template goes on your tap.",
+         "A customer is never asked for money (visit / part charge) without your approval; Hoola does not take or send money.",
+         "One technician is never booked for two visits at the same time.",
+         "Warranty is counted from the install date; the brand decides a brand claim.",
+         "A renewal / offer message is 'marketing': by template, only to customers who agreed.")
 
 PROMO_WORDS = re.compile(r"(offer|discount|% ?off|chhoot|chhut|sale\b|free gift|renew (now|today|karein|karo)|abhi renew|save ₹|"
                          r"limited time|jaldi karein|upgrade|naya model|exchange offer|cashback|deal)", re.I)
 
 # recommended Meta templates (language hi = Hinglish in Roman script is fine); her WABA must approve them first
 TEMPLATES = {
-    "service_due_reminder": {"category": "UTILITY", "language": "hi",
-                             "body": "Namaste {{1}} ji, {{2}} se: aapke {{3}} ki service {{4}} tak due hai. Technician kab bhejein? Suvidha "
-                                     "ka din aur samay reply karein.",
+    "service_due_reminder": {"category": "UTILITY", "language": "en",
+                             "body": "Hello {{1}}, from {{2}}: your {{3}} is due for service by {{4}}. When should we send the technician? Reply "
+                                     "with a day and time that suits you.",
                              "example": ["Ramesh", "Shree Sales & Service", "RO water purifier", "28 Oct"],
                              "params": ["first_name", "business", "product", "due"]},
-    "service_visit_confirmed": {"category": "UTILITY", "language": "hi",
-                                "body": "Namaste {{1}} ji, aapke {{2}} ke liye technician {{3}} aayenge, samay: {{4}}. Visit number {{5}}. "
-                                        "Samay badalna ho to reply karein.",
-                                "example": ["Ramesh", "AC", "Sunil", "25 Oct, 11:00 baje", "V-0012"],
+    "service_visit_confirmed": {"category": "UTILITY", "language": "en",
+                                "body": "Hello {{1}}, your {{2}} service visit: technician {{3}} will come at {{4}}. Visit number {{5}}. "
+                                        "Reply if you need to change the time.",
+                                "example": ["Ramesh", "AC", "Sunil", "25 Oct, 11:00 am", "V-0012"],
                                 "params": ["first_name", "product", "tech", "when", "number"]},
-    "service_visit_report": {"category": "UTILITY", "language": "hi",
-                             "body": "Namaste {{1}} ji, aapke {{2}} ki service (visit {{3}}) poori hui. Kaam: {{4}}. Agli service: {{5}}. "
-                                     "Report ke liye dhanyavaad, sawaal ho to reply karein.",
-                             "example": ["Ramesh", "RO water purifier", "V-0012", "filter badla, TDS 60", "Feb 2027"],
+    "service_visit_report": {"category": "UTILITY", "language": "en",
+                             "body": "Hello {{1}}, the service of your {{2}} (visit {{3}}) is complete. Work done: {{4}}. Next service: {{5}}. "
+                                     "Thank you; reply if you have any questions.",
+                             "example": ["Ramesh", "RO water purifier", "V-0012", "filter replaced, TDS 60", "Feb 2027"],
                              "params": ["first_name", "product", "number", "work", "next_due"]},
-    "amc_expiry_notice": {"category": "MARKETING", "language": "hi",
-                          "body": "Namaste {{1}} ji, {{2}} se: aapke {{3}} ka AMC {{4}} ko khatam ho raha hai. Aage jaari rakhna ho to reply karein.",
+    "amc_expiry_notice": {"category": "MARKETING", "language": "en",
+                          "body": "Hello {{1}}, from {{2}}: the AMC for your {{3}} ends on {{4}}. Reply if you would like to continue it.",
                           "example": ["Ramesh", "Shree Sales & Service", "AC", "30 Nov"],
-                          "params": ["first_name", "business", "product", "until"], "footer": "Band karne ke liye STOP likhein"},
+                          "params": ["first_name", "business", "product", "until"], "footer": "Reply STOP to opt out"},
 }
 
 
@@ -179,22 +179,22 @@ def next_due(ptype: str, last: date | None, installed: date | None, schedule: di
     and the daily use are known, AC snapped to its season."""
     base = last or installed
     if base is None:
-        return {"due": None, "why": "Install / pichhli service ki tareekh nahi"}
+        return {"due": None, "why": "No install / last service date"}
     m = interval_months(ptype, schedule, amc_visits)
     due = add_months(base, m)
-    why = f"har {m} mahine"
+    why = f"every {m} months"
     seasons = PRODUCTS.get(ptype, {}).get("seasons")
     if seasons and not (schedule or {}).get(ptype, {}).get("months") and not amc_visits:
         snapped = _season_snap(due, seasons)
         if snapped != due:
-            due, why = snapped, why + " (garmi se pehle / baarish ke baad)"
+            due, why = snapped, why + " (before summer / after the monsoon)"
     step = usage_step(ptype, schedule)
     if step and reading is not None and per_day and per_day > 0:
         unit = PRODUCTS.get(ptype, {}).get("usage_unit", "")
         days = int(step / per_day)
         u = (last_reading_on or base) + timedelta(days=max(1, days))
         if u < due:
-            due, why = u, f"har {step:g} {unit} (roz ~{per_day:.0f} {unit})"
+            due, why = u, f"every {step:g} {unit} (about {per_day:.0f} {unit} a day)"
     return {"due": due, "why": why}
 
 
@@ -204,8 +204,8 @@ def warranty_until(installed: date | None, months: int | None, purchase: date | 
     start = installed or purchase
     note = ""
     if installed and purchase and purchase < installed:
-        note = ("Warranty install ki tareekh se gini (DoCA, Nov 2023): card par kharid ki tareekh likhi ho to brand se "
-                "install date se ginwaiye.")
+        note = ("Warranty counted from the install date (DoCA, Nov 2023): if the card shows the purchase date, ask the brand to "
+                "count it from the install date.")
     return {"until": add_months(start, int(months or 12)), "note": note}
 
 
@@ -213,12 +213,12 @@ def coverage(on: date, warranty_end: date | None, amc_until: date | None, amc_pl
     """Who pays for this visit: brand warranty (parts + labour), comprehensive AMC (parts + labour), non-comprehensive AMC
     (visit / labour only), or the customer (her Haan before asking)."""
     if warranty_end and on <= warranty_end:
-        return {"by": "warranty", "parts": True, "labour": True, "say": f"Warranty mein ({warranty_end.isoformat()} tak)"}
+        return {"by": "warranty", "parts": True, "labour": True, "say": f"Under warranty (until {warranty_end.isoformat()})"}
     if amc_until and on <= amc_until:
         comp = amc_plan == "comprehensive"
         return {"by": "amc", "parts": comp, "labour": True,
-                "say": f"AMC ({'comprehensive' if comp else 'sirf labour / visit'}) {amc_until.isoformat()} tak"}
-    return {"by": "customer", "parts": False, "labour": False, "say": "Warranty / AMC nahi: charge graahak ka (aapki haan se)"}
+                "say": f"AMC ({'comprehensive' if comp else 'labour / visit only'}) until {amc_until.isoformat()}"}
+    return {"by": "customer", "parts": False, "labour": False, "say": "No warranty / AMC: the customer pays (only with your approval)"}
 
 
 def classify(text: str) -> str:

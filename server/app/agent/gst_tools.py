@@ -156,7 +156,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return {"settings": G.save_settings(t, **{k: a[k] for k in keys if k in a}), "say": "Save."}
     except (G.GstError, ValueError) as e:
         raise ToolError(str(e))
-    raise ToolError("action galat")
+    raise ToolError("Unknown action")
 
 
 def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
@@ -196,7 +196,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
             return G.settings(t)
     except (G.GstError, ValueError) as e:
         raise ToolError(str(e))
-    raise ToolError("what galat")
+    raise ToolError("Unknown what")
 
 
 async def gst(ctx: Ctx, action, **a: Any):

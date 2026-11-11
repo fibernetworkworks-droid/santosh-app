@@ -19,7 +19,7 @@ SHAADI_TOOLS = [
     {"name": "shaadi", "description": (
         "Wedding planner's coworker (Indian weddings, every community). NEVER invent a price, date or MUHURAT (the family's pandit "
         "decides it; store it only as she says, with muhurat_by). Booking / advance / payment / spend / client quote / any message "
-        "to guests or vendors = a CARD for her tap; say 'aapki haan ka card bheja hai'. action=new: title, community (hindu_north, "
+        "to guests or vendors = a CARD for her tap; say 'the card is sent for your approval'. action=new: title, community (hindu_north, "
         "marathi, gujarati, punjabi, sikh, marwari, bengali, tamil, telugu, malayali, kannada, jain, muslim, christian, parsi, "
         "interfaith, other), bride, groom, client, client_phone, city, state, venue, guests_estimate, budget, functions [names], "
         "dates {function: DD-MM-YYYY}. update: wedding + fields. function: wedding, fn, name, date, start, end, venue, side, muhurat, "

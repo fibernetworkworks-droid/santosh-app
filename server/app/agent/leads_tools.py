@@ -16,7 +16,7 @@ from .tools import Ctx, ToolError
 
 LEADS_TOOLS = [
     {"name": "leads_run", "description": (
-        "Run a leads job (Leads Sahayak). Six actions:\n"
+        "Run a leads job (Leads Assistant). Six actions:\n"
         "- action=her_data: her own rows (CSV/Excel/old campaign list) go into the store - each row with its source, "
         "dedupe, E.164 phone.\n"
         "- action=indiamart: IndiaMART SELLERS (official IndiaMART MCP server, free) - search_term (e.g. "
@@ -170,7 +170,7 @@ async def leads_run(ctx: Ctx, action, **a: Any):
                                            _s(a.get("place")), int(a.get("planned_rows") or 0))
     except (S.LeadsError, leadscap.LeadsCapped, ValueError) as e:
         raise ToolError(str(e))
-    raise ToolError("action galat (her_data | indiamart | places | scrape | vendor | scrape_optin | plan)")
+    raise ToolError("Unknown action (her_data | indiamart | places | scrape | vendor | scrape_optin | plan)")
 
 
 async def leads_status(ctx: Ctx, **a: Any):
@@ -228,7 +228,7 @@ async def leads_export(ctx: Ctx, action, **a: Any):
             return await asyncio.to_thread(S.outreach_log, t, _s(a.get("kind")), int(a.get("limit") or 200))
     except (S.LeadsError, ValueError) as e:
         raise ToolError(str(e))
-    raise ToolError("action galat (csv | campaign_list | outreach_log)")
+    raise ToolError("Unknown action (csv | campaign_list | outreach_log)")
 
 
 async def leads_forget(ctx: Ctx, **a: Any):

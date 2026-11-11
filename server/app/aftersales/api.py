@@ -165,7 +165,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
         if action == "claim":
             return await arun(S.claim, tenant, "", vid, str(body.get("part") or ""), str(body.get("fault") or ""), str(body.get("brand_ref") or ""),
                               body.get("amount"))
-        raise HTTPException(404, "action nahi")
+        raise HTTPException(404, "No such action")
 
     @r.post("/api/aftersales/remind")
     async def post_remind(body: dict, tenant: str = Depends(current_tenant)):
@@ -186,7 +186,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
     @r.post("/api/aftersales/messages/{mid}/{status}")
     def post_mark(mid: str, status: str, tenant: str = Depends(current_tenant)):
         if status not in ("sent", "skipped", "draft"):
-            raise HTTPException(404, "status nahi")
+            raise HTTPException(404, "No such status")
         return run(S.message_mark, tenant, mid, status)
 
     @r.get("/api/aftersales/templates")

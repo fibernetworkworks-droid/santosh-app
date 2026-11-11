@@ -15,10 +15,10 @@ LAND_TOOLS = [
         "project, survey_no, village, area, area_unit, area_source (7/12/mutation/agreement - "
         "no area without a source). action=item_add: project, kind title|record|criterion|worksheet|"
         "finance|funding|jv, rows, by (a name is required with title marks), source (worksheet/"
-        "finance/jv ka source zaroori). title rows [doc, status]; record rows [doc_no, area, date]; "
+        "finance/jv need a source). title rows [doc, status]; record rows [doc_no, area, date]; "
         "criterion rows [criterion, weight, score] (weights/scores are YOURS); worksheet rows [use, "
         "builtup]; finance rows [head, amount]; funding rows [source, amount]; jv rows [party, "
-        "share_pct] (deed se). action=recon: project, parcel -> records total vs claimed. "
+        "share_pct] (from the deed). action=recon: project, parcel -> records total vs claimed. "
         "action=feasibility: project, plot_area, fsi, fsi_source -> permissible vs programme. "
         "action=jv_calc: project, developable_area -> party-wise share (on the deed's %). "
         "action=finance_sum: project, interest_rate_pct, rate_source, years -> totals + equity:debt "
@@ -76,7 +76,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
                                  _s(a.get("rate_source")), float(a.get("years") or 0))
     except (L.CstError, ValueError) as ex:
         raise ToolError(str(ex)) from None
-    raise ToolError("action galat")
+    raise ToolError("Unknown action")
 
 
 async def const_land(ctx: Ctx, action, **a: Any):
@@ -95,7 +95,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
         return L.dekho(ctx.tenant_id, what, _s(a.get("project")), _s(a.get("kind")), _s(a.get("parcel")))
     except (L.CstError, ValueError) as ex:
         raise ToolError(str(ex)) from None
-    raise ToolError("what galat")
+    raise ToolError("Unknown what")
 
 
 LAND_HANDLERS = {"const_land": const_land, "const_land_dekho": const_land_dekho}
