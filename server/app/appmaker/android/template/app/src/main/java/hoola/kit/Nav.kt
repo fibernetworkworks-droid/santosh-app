@@ -66,6 +66,7 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 
@@ -219,7 +220,7 @@ private fun FloatingPill(nav: Nav, modifier: Modifier) {
         nav.tabs.forEach { t ->
             val on = nav.current == t.id
             Box(
-                Modifier.size(52.dp).background(if (on) c.primary else c.surface, CircleShape).clickable { nav.go(t.id) },
+                Modifier.size(52.dp).background(if (on) c.primary else c.surface, CircleShape).clickable(role = Role.Tab) { nav.go(t.id) },
                 contentAlignment = Alignment.Center,
             ) { HIcon(t.icon, tint = if (on) c.onPrimary else c.muted, description = T(t.label)) }
         }
