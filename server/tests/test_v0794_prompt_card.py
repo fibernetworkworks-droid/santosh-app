@@ -1,4 +1,4 @@
-"""v0.785 PROMPT NAAP (P0 of docs/HOOLA_PROMPTING_PLAN.md): the prompt card - her raw line vs a hand-filled brief,
+"""v0.794 PROMPT NAAP (built as 0.785) (P0 of docs/HOOLA_PROMPTING_PLAN.md): the prompt card - her raw line vs a hand-filled brief,
 through the real engines, scored the same way. These tests use NO model: the engines are replaced by fakes."""
 import asyncio
 import json
@@ -187,5 +187,5 @@ def test_cli_and_route(pc, capsys):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.785.0"
-    assert "0.785.0+784" in (REPO / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.794.0"
+    assert "0.794.0+793" in (REPO / "pubspec.yaml").read_text()
