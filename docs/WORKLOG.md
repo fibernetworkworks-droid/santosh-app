@@ -2851,3 +2851,19 @@ Task ID: v0.777.0 CHAT JAISA (L1)
 Task: owner "GO L1" - Lovable-grade Studio chat (live stream, soft words, thinking, past-tense steps, Details, rupees, queue, attachments).
 Work Log: webstudio.js thread rewritten on HoolaStream; turncost + usage.turn_meter + /costs; 5 new tests + older Studio suites green; re-versioned 0.771 -> 0.777 (other sessions took 0.771-0.776).
 Stage Summary: pushed; server deploy only (no APK needed). Next: L2 TEEN MODE on her GO.
+
+Task ID: v0.779.0 HOOLA CODE PHASE 3 (built as 0.777; re-versioned twice on merge: CHAT JAISA took 0.777.0, HOOLA FLOW 0.778.0)
+Ask: GO PHASE 3 (the composer).
+Built: one box + one row (branch, mode, model + effort, usage ring), kind from her words, slash commands, pictures + text files on the first message, per-session cost, link pre-fill; 8 tests incl. 2 browser walks.
+Deploy: vps-ops deploy (server-only; no new pip; five nullable columns self-heal; pictures under data/devsahayak/).
+
+Task ID: v0.781.0 CONNECTORS PAGE (built as 0.776; rebased twice, on their v0.780.0)
+Ask: check connectors on the web console (phone-only) -> "GO BUILD FULL CONNECTORS PAGE ... A SHORT 1 LINER BELOW EVERY CONNECTOR -- AS WE USE COMPOSIO".
+Built: static/console/connectors.js (6 tabs), bazar/oneline.py (line on every list), bazar/donepage.py (sign-in done page for web + phone); 12 tests incl. a browser walk.
+Deploy: vps-ops deploy (server-only; no new pip, no new tables). Note: ~/santosh_app is the deploy copy (reset --hard on deploy) - work in a worktree.
+
+---
+Task ID: v0.782.0 TEEN MODE (L2)
+Task: owner "GO L2" - Build / Plan / Chat in the Web Studio, server-enforced; plans as versions; Start building card; site instructions.
+Work Log: agent/turnmode.py + _run_tool guard; site/plans.py + routes; Studio composer / plan card / Plan view / instructions; 7 new tests + 131 older green; re-versioned 0.778 -> 0.782.
+Stage Summary: pushed; server deploy only. Next: L3 SAWAAL CARD (design question cards) on her GO.

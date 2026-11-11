@@ -70,8 +70,8 @@ def test_studio_source_wiring():
         assert needle in JS, needle
     for needle in ("@keyframes ws-word", "@keyframes ws-think", ".me.queued", ".fchip", ".tline"):
         assert needle in css, needle
-    rm = css[css.rindex("@media (prefers-reduced-motion:reduce)"):]
-    assert ".ho .w" in rm and ".thinking" in rm                # every new motion stops under reduced motion
+    rm = " ".join(b.split("}}")[0] for b in css.split("@media (prefers-reduced-motion:reduce)")[1:])
+    assert ".ho .w" in rm and ".thinking" in rm                # every new motion stops under reduced motion (any such block)
 
 
 from tests.test_v0312_arena_screen import arena_server  # noqa: E402,F401  (fixture: uvicorn + Chromium)

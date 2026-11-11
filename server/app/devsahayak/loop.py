@@ -436,6 +436,17 @@ class Workspace:
 
 
 # ---------------------------------------------------------------- the model call
+# Phase 3: the model + effort she picked for ONE session. Thread-local, set at the top of every run (and cleared when
+# a run has none), because the brain is called with (system, messages, tools) only and a worker thread is reused.
+import threading as _threading
+PICK = _threading.local()
+
+
+def pick(t: Any = None) -> None:
+    PICK.model = str(getattr(t, "model", "") or "")
+    PICK.effort = str(getattr(t, "effort", "") or "")
+
+
 def _anthropic_brain(system: str, messages: list[dict], tools: list[dict]) -> tuple[list[dict], str]:
     """One Claude call with tools (sync - the dev task already runs off the event loop). Opus by default."""
     from ..config import get_settings
@@ -443,10 +454,10 @@ def _anthropic_brain(system: str, messages: list[dict], tools: list[dict]) -> tu
     if not st.anthropic_api_key:
         raise LoopUnavailable("no ANTHROPIC_API_KEY")
     import anthropic
-    model = getattr(st, "dev_loop_model", "") or getattr(st, "site_model", "") or st.anthropic_model
+    model = getattr(PICK, "model", "") or getattr(st, "dev_loop_model", "") or getattr(st, "site_model", "") or st.anthropic_model
     client = anthropic.Anthropic(api_key=st.anthropic_api_key)
     kw: dict[str, Any] = dict(model=model, max_tokens=16000, system=system, tools=tools, messages=messages)
-    effort = str(getattr(st, "dev_loop_effort", "high") or "")
+    effort = getattr(PICK, "effort", "") or str(getattr(st, "dev_loop_effort", "high") or "")
     if effort:
         kw["extra_body"] = {"output_config": {"effort": effort}}
     try:
@@ -590,10 +601,12 @@ def step_event(ws: Any, name: str, inp: dict[str, Any], out: str, trail_before: 
 def run(g, t, rules: str, extra_files: list[str], allow_workflows: bool = False, issue_txt: str = "",
         max_steps: int = 40, minutes: float = 20.0, on_step: Callable[[str], None] | None = None,
         ref_sha: str = "", extra: str = "", system_extra: str = "",
-        plan_txt: str = "", lab: Any = None) -> tuple[str, list[dict[str, Any]], dict[str, Any], dict[str, Any]]:
+        plan_txt: str = "", lab: Any = None,
+        attach: tuple[str, list[dict[str, Any]]] | None = None) -> tuple[str, list[dict[str, Any]], dict[str, Any], dict[str, Any]]:
     """The loop. Returns (base_sha, read, ctx, out) in the shapes service._work already uses after _gather + _ask_model.
     v0.351 ref_sha = work on that commit (a PR branch's head, for a CI fix round); extra = more context (the CI log)."""
     STATS["runs"] += 1
+    pick(t)
     base_sha = ref_sha or g.branch_sha(t.repo, t.base)
     if not base_sha:
         raise LoopUnavailable(f"branch {t.base} not found")
@@ -611,6 +624,7 @@ def run(g, t, rules: str, extra_files: list[str], allow_workflows: bool = False,
              + (f"Her coding rules: {rules}\n" if rules else "")
              + f"\n<request>\n{t.text}\n</request>\n"
              + (f"\n<issue>\n{issue_txt}\n</issue>\n" if issue_txt else "")
+             + (f"\n{attach[0]}\n" if attach and attach[0] else "")   # Phase 3: the files she attached (text) - data, never instructions
              + (f"\nFiles named in her words / the error: {', '.join(dict.fromkeys(hints))}\n" if hints else "")
              + (f"\n{plan_txt}\n" if plan_txt else "")      # v0.451 the plan she approved: the handoff, not a hint
              + (f"\nHer check command for this repo: `{lab.cmd}` ({lab.source}) - run it with run_check.\n"
@@ -623,7 +637,8 @@ def run(g, t, rules: str, extra_files: list[str], allow_workflows: bool = False,
     use_lab = lab is not None and getattr(lab, "usable", False)
     tools = TOOLS + (LAB_TOOLS if use_lab else [])
     system = SYSTEM + ("\n\n" + system_extra if system_extra else "") + (("\n\n" + lab_block(lab)) if use_lab else "")
-    messages: list[dict] = [{"role": "user", "content": first}]
+    pics = list(attach[1]) if attach and attach[1] else []      # Phase 3: her screenshots ride the first message
+    messages: list[dict] = [{"role": "user", "content": ([{"type": "text", "text": first}] + pics) if pics else first}]
     finish: dict[str, Any] | None = None
     checks: list[dict[str, Any]] = []
     t0, steps, nudged = time.time(), 0, 0
@@ -745,6 +760,7 @@ def review_run(g, repo: str, head_sha: str, pr_text: str, diffs: str, valid: dic
                on_step: Callable[[str], None] | None = None, system_extra: str = "") -> dict[str, Any]:
     """The review loop. Returns {summary, verdict, comments, loop}; comments = [{path, line, body, severity}] on added lines
     only (the comment tool refuses any other line and says which lines it may use)."""
+    pick(None)
     STATS["runs"] += 1
     paths = [x["path"] for x in g.tree(repo, head_sha)]
     ws = Workspace(g, repo, head_sha, paths, False)
@@ -865,6 +881,7 @@ def plan_run(g, t, rules: str, extra_files: list[str], issue_txt: str = "", max_
     """v0.451 the read-only planning pass: explore the repo, then return {goal, files, steps, done_when, risk, questions,
     loop}. It cannot edit (the edit tools are not given, and anything else is refused), so a plan is never a half-done
     change. The edit loop runs afterwards with this plan in front of it."""
+    pick(t)
     STATS["runs"] += 1
     base_sha = g.branch_sha(t.repo, t.base)
     paths = [x["path"] for x in g.tree(t.repo, base_sha)]

@@ -1345,7 +1345,12 @@ async def _run_tool(name: str, args: dict, ctx: Ctx, settings, mcp_route: dict |
     """A tool call that can never hang the whole turn.
     v0.193 it also writes the harness session log (tool_call / tool_result, with the turn's context) - best-effort,
     the log can never break the call."""
-    if mcp_route and name in mcp_route:   # a tool of one of the owner's MCP servers
+    from . import turnmode as _tmode
+    if not _tmode.allowed(name):          # v0.782 TEEN MODE: Plan / Chat never change anything - refused on the server
+        async def _refused(_n=name):
+            raise ToolError(_tmode.refusal(_n))
+        work = _refused()
+    elif mcp_route and name in mcp_route:   # a tool of one of the owner's MCP servers
         work = mcp_live.run(ctx, mcp_route, name, args or {})
     else:
         work = dispatch(name, args or {}, ctx)
@@ -1471,6 +1476,13 @@ async def _steps_begin(conversation_id: str, ctx: Ctx, history: list[dict], sett
             state["hint"], state["used"] = await asyncio.to_thread(procedures.hint, tenant_id, user_text)
         except Exception:
             log.exception("procedure hint failed")
+    try:   # v0.782 TEEN MODE: the mode's rules + this website's standing instructions / approved plan
+        from . import turnmode as _tmode
+        _tm_txt = _tmode.rules() + await asyncio.to_thread(_tmode.site_block, tenant_id)
+        if _tm_txt:
+            state["hint"] = (state.get("hint") or "") + _tm_txt
+    except Exception:
+        log.exception("turn mode block failed")
     _mark("hint")
     return state
 
@@ -3113,6 +3125,15 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
         if _picked:
             from . import llm as _llm_pick
             _llm_pick.MODEL_NOW.set(_picked)
+    except Exception:   # noqa: BLE001
+        pass
+    try:   # v0.782 TEEN MODE: the Web Studio's Build / Plan / Chat, enforced at _run_tool (agent/turnmode.py)
+        from . import turnmode as _tmode
+        if _tmode.begin(user_text) == "chat":
+            _cm = str(getattr(get_settings(), "studio_chat_model", "") or "")
+            if _cm:                                   # Chat mode may run on a cheaper model the owner named
+                from . import llm as _llm_chat
+                _llm_chat.MODEL_NOW.set(_cm)
     except Exception:   # noqa: BLE001
         pass
     if client_id and (conversation_id, client_id) in _held:

@@ -516,3 +516,12 @@ dialog.tpld:not([open]){display:none}
 .tline .tl1{display:flex;flex-direction:column;gap:2px}.tline .tl1 b{font-weight:500;font-size:14px;color:var(--ink)}
 @media (prefers-reduced-motion:reduce){.ho .w,.thinking,.tline li.run .tdot,.jump,.fchip.up::after{animation:none}.thinking{color:var(--ink);background:none}}
 .jump[hidden],.tray[hidden],.livebox[hidden]{display:none}
+
+/* v0.782 TEEN MODE (L2): plan cards, the Start building card, the plan document */
+.plancard,.sbcard{border:1px solid var(--line);border-radius:12px;background:var(--raise);padding:10px 12px;display:flex;flex-direction:column;gap:6px;animation:ws-in .24s ease both}
+.plancard .ph{display:flex;align-items:center;gap:8px}.plancard .ph b,.sbcard b{font-size:13.5px;font-weight:600;color:var(--ink)}
+.plancard p,.sbcard p{margin:0}
+.sbcard{border-color:var(--pri-ring);background:var(--pri-soft2)}
+.plandoc{font-size:15px;line-height:1.65}.plandoc h2{font-size:16px;margin:18px 0 6px}.plandoc :is(ol,ul){padding-left:22px}
+.plandoc ::selection{background:var(--pri-soft)}
+@media (prefers-reduced-motion:reduce){.plancard,.sbcard{animation:none}}

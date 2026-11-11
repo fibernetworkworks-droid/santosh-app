@@ -752,7 +752,9 @@ def apps(s, user_id: str, q: str = "", category: str = "", offset: int = 0, limi
             counts[c] = counts.get(c, 0) + 1
     offset, limit = max(0, int(offset or 0)), max(1, min(int(limit or 40), 200))
     from .logos import composio_logo
+    from .oneline import oneline
     page = [{"toolkit": slug, "pack_id": PREFIX + slug, "name": name, "does": (what or "")[:160],
+             "line": oneline(what or "", name, category=(a["cats"] or [""])[0]),
              "logo": composio_logo(slug) if slug in cat else None,
              "category": (a["cats"] or [""])[0], "tools": a["tools"], "status": status(s, user_id, slug)}
             for slug, name, what, a in rows[offset:offset + limit]]

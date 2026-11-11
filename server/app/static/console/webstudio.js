@@ -540,7 +540,7 @@
 
   const VIEWS = [['preview', 'Preview'], ['code', 'Code'], ['cloud', 'Cloud'], ['integrations', 'Integrations'], ['health', 'Health'], ['settings', 'Settings']];
   function drawShell() {
-    const v = CUR, mode = store.get(MODE_KEY + '.chat') === 'plan' ? 'plan' : 'build';
+    const v = CUR, mode = chatMode();
     APP.innerHTML = `<div class="wsp">
       <header class="top"><a href="#/" aria-label="Web Studio home" style="display:flex"><div class="mark" aria-hidden="true"><span></span></div></a><span class="tsep" aria-hidden="true">/</span>
         <span class="pname">${esc(name(v))}</span><button class="ib" type="button" data-menu="${esc(S(v.id))}" aria-label="Project options" title="Rename, star, delete">${ico('chev', 16)}</button>${v.name_by === 'hoola' ? `<button class="namedby" type="button" data-menu="${esc(S(v.id))}" title="Hoola picked this brand name. Tap to rename it.">✦ Named by Hoola</button>` : ''}<span id="wsPill">${statusPill(v)}</span><span class="sp"></span>
@@ -553,12 +553,12 @@
           <div id="wsState" style="padding:0 18px"></div>
           <form class="comp" data-form="thread"><label for="wsTh" class="sr">Message Hoola about this website</label>
             <div class="tray" id="wsTray" hidden></div>
-            <textarea id="wsTh" rows="2" maxlength="4000" placeholder="Ask Hoola to change anything…"></textarea>
+            <textarea id="wsTh" rows="2" maxlength="4000" placeholder="${esc(MODE_PH[mode])}"></textarea>
             <div class="cbar">
               <button class="ib" type="button" data-act="attach" aria-label="Attach files or photos" title="Attach files or photos">${ico('clip', 16)}</button>
               <input type="file" id="wsFile" multiple hidden>
               <button class="ib" type="button" data-act="select" aria-label="Select on the page" title="Select on the page">${ico('sel', 16)}</button>
-              <div class="seg" role="group" aria-label="Mode"><button type="button" data-cmode="build" aria-pressed="${mode === 'build'}">Build</button><button type="button" data-cmode="plan" aria-pressed="${mode === 'plan'}">Plan</button></div>
+              <div class="seg" role="group" aria-label="Mode (Alt+P)" title="Build changes the site · Plan writes a plan first · Chat only talks (Alt+P)">${MODES.map(m => `<button type="button" data-cmode="${m}" aria-pressed="${mode === m}">${MODE_NAME[m]}</button>`).join('')}</div>
               <span class="sp"></span><button class="send" type="submit" aria-label="Send">${ico('up', 16)}</button></div></form>
         </section>
         <section class="pane" id="wsPane" aria-label="Website"></section>
@@ -648,7 +648,7 @@
   function drawPane() {
     const pane = $('#wsPane'); if (!pane || !CUR) return;
     stopPoll();
-    const fn = {preview, code, cloud, integrations, health, settings, history: historyView, publish, details: detailsView}[VIEW] || preview;
+    const fn = {preview, code, cloud, integrations, health, settings, history: historyView, publish, details: detailsView, plans: planView}[VIEW] || preview;
     if (fn !== preview) delete pane.dataset.live;
     fn(pane, CUR);
     if (WORKING(CUR)) startPoll();
@@ -1025,9 +1025,13 @@
       <form class="cardp" data-form="facts"><h3>Business details</h3><p class="mut sm">Used on every page. A change here is used in the next version; ask in the chat to rebuild now.</p>
         <div class="g2">${fields.map(([k, l]) => `<label class="fld">${esc(l)}<input class="in" name="${k}" value="${esc(S(f[k]))}" autocomplete="off"></label>`).join('')}</div>
         <div class="inl" style="justify-content:flex-end"><button class="b pri" type="submit">Save details</button></div></form>
+      <form class="cardp" data-form="instr"><h3>Instructions for Hoola</h3><p class="mut sm">Your standing brief for this website: who it is for, tone, colours, words to use or avoid, what must never change. Hoola reads it on every message about this site, in every mode.</p>
+        <textarea id="wsInstr" class="in" rows="7" maxlength="10000" placeholder="Example: For families in Nagpur. Warm and simple English. Never change the phone number or the Book now button."></textarea>
+        <div class="inl"><span class="mut sm" id="wsInstrN">0 / 10,000</span><span class="sp"></span><button class="b pri" type="submit">Save instructions</button></div></form>
       <section class="cardp"><h3>SEO and Google</h3><p class="mut">Page titles, descriptions, sitemap and Search Console are set by Hoola on every build.</p><div class="inl">${studioBtn('Check SEO now', 'Is website ka SEO check karo', false)}</div></section>
       <section class="cardp"><h3>Team</h3><p class="mut">Writers draft, editors review, publishers put live.</p><div class="inl">${studioBtn('Invite a team member', 'Is website ke CMS mein ek team member jodo: ', false)}</div></section>
       <section class="cardp danger"><h3>Take the site down</h3><p class="mut">The site stops answering; your pages, data and versions are kept.</p><div class="inl"><button class="b bad" type="button" data-act="takedown">Take down…</button></div></section></div>`;
+    loadInstr();
   }
 
   async function historyView(pane, v) {
@@ -1171,6 +1175,7 @@
       since: 0, steps: [], stepMap: new Map(), stepsRead: false, startedS: 0, turn: '', costs: [], think: null,
       queue: [], files: [], pinned: true, thoughts: new Map()});
     drawMsgs(); drawTray();
+    await loadPlans(); THREAD.sig = ''; drawMsgs();
     if (THREAD.conv) { startStream(THREAD.conv); await readThread(); }
   }
   /* ----- the live stream ----- */
@@ -1198,7 +1203,7 @@
     THREAD.live = text;
     const b = liveBox(); if (!b) return;
     b.hidden = !S(text).trim();
-    THREAD.liveR.update(S(text), streaming);
+    THREAD.liveR.update(S(text).replace(/\n?\s*\[\[start-building:[^\]\n]*\]?\]?\s*$/, ''), streaming);   // the marker never shows while it streams
     keepPinned();
   }
   function endLive() {
@@ -1313,6 +1318,93 @@
     }
     return out;
   }
+  /* ---------- v0.782 TEEN MODE (L2): Build / Plan / Chat, plans as versions, her instructions ----------
+     Build changes the website. Plan writes a plan (a numbered version kept on the site, /api/sites/{id}/plans) that
+     she opens, edits, comments on, then APPROVES - one Build message carries the approved text - or skips. Chat only
+     talks; a reply that ends with [[start-building: ...]] gets a Start building card (Build / Skip). The server refuses
+     every changing tool in Plan / Chat (agent/turnmode.py) - the switch is not just a polite hint. Alt+P cycles; a
+     message starting /plan, /chat or /build runs in that mode once. */
+  const MODES = ['build', 'plan', 'chat'];
+  const MODE_NAME = {build: 'Build', plan: 'Plan', chat: 'Chat'};
+  const MODE_PH = {build: 'Ask Hoola to change anything…', plan: 'Describe the change - Hoola writes a plan first, nothing changes yet…',
+    chat: 'Ask anything about this website - nothing changes…'};
+  function chatMode() { const m = store.get(MODE_KEY + '.chat'); return MODES.includes(m) ? m : 'build'; }
+  function setChatMode(m) {
+    if (!MODES.includes(m)) return;
+    store.set(MODE_KEY + '.chat', m);
+    APP.querySelectorAll('[data-cmode]').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.cmode === m)));
+    const t = $('#wsTh'); if (t) t.placeholder = MODE_PH[m];
+  }
+  const modeOfRow = r => { if (!r) return ''; if (r.mode) return r.mode; const m = /\[Web console mode: (build|plan|chat)\]/.exec(S(r.text)); return m ? m[1] : ''; };
+  const SB_RE = /\n?\s*\[\[start-building:\s*([^\]\n]{1,400})\]\]\s*$/;
+  function startBuild(text) { const m = SB_RE.exec(S(text)); return m ? {text: S(text).replace(SB_RE, '').trimEnd(), ask: m[1].trim()} : null; }
+  function buildCard(a) {
+    const k = tkey(a);
+    if (THREAD.sbDone?.has(k)) return '';
+    return `<div class="sbcard"><div><b>Start building</b><span class="mut sm"> · uses money</span></div><p class="sm">${esc(a)}</p>
+      <div class="inl"><button class="b pri sm" type="button" data-act="sb-build" data-sb="${esc(a)}">Build</button><button class="b sm" type="button" data-act="sb-skip" data-sb="${esc(a)}">Skip</button></div></div>`;
+  }
+  const planKey = t => S(t).trim();
+  const planMd = t => md(S(t).replace(/^(#{1,6} [^\n]*)\n(?!\n)/gm, '$1\n\n'));   // a plan's list right under its heading still renders as a list
+  function planCard(text) {
+    const p = L(THREAD.plans).find(x => planKey(x.text) === planKey(text));
+    if (!p) { savePlan(text); return `<div class="plancard"><div class="ph"><b>Plan</b><span class="mut sm">Saving as a version…</span></div></div>`; }
+    const st = S(p.status), first = S(p.text).split('\n').map(x => x.replace(/^#+\s*/, '').trim()).find(x => x && !/^goal$/i.test(x)) || 'Plan';
+    return `<div class="plancard" data-ver="${p.version}"><div class="ph"><b>Plan</b>${pill('v' + p.version, '')}${st !== 'draft' ? pill(st === 'approved' ? 'Approved' : st === 'skipped' ? 'Skipped' : 'Replaced', st === 'approved' ? 'ok' : '') : ''}</div>
+      <p class="mut sm ell">${esc(first)}</p>
+      <div class="inl"><button class="b sm" type="button" data-act="plan-open" data-ver="${p.version}">Open plan</button>${st === 'draft' ? `<button class="b pri sm" type="button" data-act="plan-approve" data-ver="${p.version}">Approve</button><button class="b sm" type="button" data-act="plan-skip" data-ver="${p.version}">Skip</button>` : ''}</div></div>`;
+  }
+  async function loadPlans() {
+    if (!CUR) return;
+    try { const r = await api('GET', `/api/sites/${enc(CUR.id)}/plans`); THREAD.plans = L(r.plans); } catch { THREAD.plans = THREAD.plans || []; }
+  }
+  async function savePlan(text) {
+    const k = planKey(text); THREAD.planSaving = THREAD.planSaving || new Set();
+    if (!CUR || THREAD.planSaving.has(k)) return;
+    THREAD.planSaving.add(k);
+    try { await api('POST', `/api/sites/${enc(CUR.id)}/plans`, {text, source: 'hoola'}); await loadPlans(); }
+    catch (e) { toast(e.message, true); }
+    THREAD.sig = ''; drawMsgs(); if (VIEW === 'plans') drawPane();
+  }
+  async function planStatus(ver, what) {
+    const r = await api('POST', `/api/sites/${enc(CUR.id)}/plans/${Number(ver)}/${what}`, {});
+    await loadPlans(); THREAD.sig = ''; drawMsgs(); if (VIEW === 'plans') drawPane();
+    return r;
+  }
+  async function approvePlan(ver) {
+    const p = L(THREAD.plans).find(x => Number(x.version) === Number(ver)); if (!p) return;
+    await planStatus(ver, 'approve');
+    setChatMode('build');
+    if (VIEW === 'plans') { VIEW = 'preview'; drawPane(); }                 // she watches the build happen
+    // the approved text rides this ONE Build message (one line, so the chat shows only her words)
+    const flat = S(p.text).replace(/\]/g, ')').replace(/\s*\n\s*/g, ' / ').slice(0, 12000);
+    await ask(`Build the approved plan (v${p.version}).`, {mode: 'build', hints: [`approved plan v${p.version} - build exactly this, step by step: ${flat}`]});
+  }
+  function planView(pane, v) {
+    const ps = L(THREAD.plans);
+    if (!ps.length) { pane.innerHTML = `<div class="dtop"><button class="b sm" type="button" data-view="preview">${ico('back', 14)}<span>Back to preview</span></button></div><div class="main"><p class="mut">No plan yet. Switch the chat to Plan and describe the change.</p></div>`; return; }
+    const cur = ps.find(x => Number(x.version) === Number(THREAD.planVer)) || ps[0];
+    THREAD.planVer = cur.version;
+    const i = ps.indexOf(cur), st = S(cur.status);
+    pane.innerHTML = `<div class="dtop"><button class="b sm" type="button" data-view="preview">${ico('back', 14)}<span>Back to preview</span></button>
+        <button class="ib sm" type="button" data-pver="${i + 1 < ps.length ? ps[i + 1].version : ''}" ${i + 1 < ps.length ? '' : 'disabled'} aria-label="Older version">‹</button>
+        <span class="sm"><b>Plan v${cur.version}</b> <span class="mut">of ${ps.length}</span></span>
+        <button class="ib sm" type="button" data-pver="${i > 0 ? ps[i - 1].version : ''}" ${i > 0 ? '' : 'disabled'} aria-label="Newer version">›</button>
+        ${pill(st === 'approved' ? 'Approved' : st === 'skipped' ? 'Skipped' : st === 'superseded' ? 'Replaced' : 'Draft', st === 'approved' ? 'ok' : '')}
+        <span class="mut sm">${esc(S(cur.source) === 'her' ? 'Edited by you' : 'Written by Hoola')} · ${esc(clockOf(tsec(cur.at)))}</span><span class="sp"></span>
+        ${THREAD.planEdit ? '' : `<button class="b sm" type="button" data-act="plan-comment" title="Select a part of the plan first">Comment on selection</button><button class="b sm" type="button" data-act="plan-edit">Edit</button>
+        ${st === 'draft' ? `<button class="b sm" type="button" data-act="plan-skip" data-ver="${cur.version}">Skip</button><button class="b pri sm" type="button" data-act="plan-approve" data-ver="${cur.version}">Approve</button>` : ''}`}</div>
+      <div class="main" style="max-width:820px">${THREAD.planEdit
+        ? `<form data-form="plan-edit"><textarea id="wsPlanEd" class="in" rows="24" maxlength="30000" style="width:100%;font-family:'JetBrains Mono',monospace;font-size:13px">${esc(cur.text)}</textarea>
+           <div class="inl" style="justify-content:flex-end"><button class="b" type="button" data-act="plan-edit-x">Cancel</button><button class="b pri" type="submit">Save as a new version</button></div></form>`
+        : `<article class="plandoc ho">${planMd(cur.text)}</article>`}</div>`;
+  }
+  async function loadInstr() {
+    const box = $('#wsInstr'); if (!box || !CUR) return;
+    try { const r = await api('GET', `/api/sites/${enc(CUR.id)}/instructions`); if (box.isConnected && !box.dataset.touched) { box.value = S(r.text); countInstr(); } } catch {}
+  }
+  function countInstr() { const b = $('#wsInstr'), c = $('#wsInstrN'); if (b && c) c.textContent = `${b.value.length.toLocaleString('en-IN')} / 10,000`; }
+
   function drawMsgs() {
     const box = $('#wsMsgs'); if (!box) return;
     if (!box.querySelector('#wsHist')) {
@@ -1343,7 +1435,8 @@
         const bits = [th >= 1 ? `Thought for ${dur(th)}` : '', took >= 1 ? `Worked for ${dur(took)}` : '', steps.length ? `${steps.length} step${steps.length > 1 ? 's' : ''}` : '', rs(inr)].filter(Boolean);
         const head = bits.length ? `<div class="turnhead"><details class="actd turnw" data-k="${k}"${OPEN_T.has(k) ? ' open' : ''}><summary>${esc(bits.join(' · '))}</summary>${steps.length ? stepList({steps}) : ''}</details>
           <button class="ib sm" type="button" data-act="details" data-ta="${t.start}" data-tb="${t.end}" title="Timeline and changes" aria-label="Details of this answer">${ico('list', 14)}</button></div>` : '';
-        return h + head + who(t.end) + `<div class="ho">${md(S(t.reply.text))}</div>`;
+        const um = modeOfRow(t.user), sb = startBuild(t.reply.text), body = sb ? sb.text : S(t.reply.text);
+        return h + head + who(t.end) + `<div class="ho">${um === 'plan' ? planMd(body) : md(body)}</div>` + (um === 'plan' ? planCard(body) : '') + (sb ? buildCard(sb.ask) : '');
       }).join('') : `${S(CUR?.brief).trim() ? `<div class="me">${esc(clean(S(CUR.brief)))}</div>` : ''}${who(0)}<div class="ho"><p>${esc(S(CUR?.say) || 'Ask for anything on this website.')}</p>${CUR?.name_by === 'hoola' ? `<p class="mut sm">I named it <b>${esc(name(CUR))}</b>. Prefer your own name? Use the menu next to the name and pick Rename.</p>` : ''}</div>
          <div class="mut sm">This chat is only about ${esc(name(CUR || {}))}. It stays here, not in your home chat.</div>
          <div style="display:flex;flex-wrap:wrap;gap:6px">${['Add a shop with cart', 'Add online payments', 'Add a Hindi version', 'Add booking slots'].map(t => `<button class="chip" type="button" data-ask="${esc(t)}">${esc(t)}</button>`).join('')}</div>`;
@@ -1437,21 +1530,26 @@
     const lines = t.split('\n').length;
     addFile(new File([t], `pasted-${kind.toLowerCase()}.txt`, {type: 'text/plain'}), `Pasted ${kind.toLowerCase()} · ${lines} lines`, 'paste');
   }
-  async function ask(text) {
+  async function ask(text, opts = {}) {
     text = S(text).trim(); if (!text || !CUR) return;
     if (L(THREAD.files).some(f => f.state === 'up')) return toast('Wait a moment: a file is still attaching.', true);
-    const v = CUR, plan = store.get(MODE_KEY + '.chat') === 'plan';
+    let mode = opts.mode || chatMode();
+    const cmd = /^\/(plan|chat|build)\b\s*/i.exec(text);          // v0.782 "/plan ..." = this one message in that mode
+    if (cmd) { mode = cmd[1].toLowerCase(); text = text.slice(cmd[0].length).trim(); if (!text) { setChatMode(mode); return; } }
+    const v = CUR;
     const files = L(THREAD.files).filter(f => f.state === 'ok' && f.id);
     try {
       const c = await ensureConv();
       THREAD.since = Math.max(0, ...THREAD.rows.map(m => Number(m.id) || 0));
-      const id = 'local-' + Date.now(), busy = THREAD.waiting, row = {id, role: 'user', text, files: files.map(f => ({name: f.label}))};
+      const id = 'local-' + Date.now(), busy = THREAD.waiting, row = {id, role: 'user', text, mode, files: files.map(f => ({name: f.label}))};
       if (busy) THREAD.queue.push(row);                       // she sent while Hoola works: it waits its turn, greyed, at the bottom
       else { THREAD.rows.push(row); THREAD.waiting = true; THREAD.started = Date.now(); THREAD.startedS = nowS(); THREAD.think = null; THREAD.lastThink = null; endLive(); }
       THREAD.files = []; drawTray();
       if (busy) { THREAD.pinned = true; drawQueue(); keepPinned(); } else { THREAD.scrollTo = id; THREAD.pinned = false; THREAD.sig = ''; drawMsgs(); }
-      const hints = [`Web Studio: this chat is only about website ${S(v.number)} "${name(v)}" (site id ${S(v.id)}). Work on THIS website with the website tool; never start a new website unless I ask for one.`];
-      if (plan) hints.push('Plan mode: reply with a short plan for this change (what changes, what stays the same, anything you need from me) and change NOTHING until I say Haan.');
+      const hints = [`Web Studio: this chat is only about website ${S(v.number)} "${name(v)}" (site id ${S(v.id)}). Work on THIS website with the website tool; never start a new website unless I ask for one.`, `mode: ${mode}`];
+      if (mode === 'plan') hints.push('Plan mode: reply with the PLAN only (## Goal, ## What changes, ## What stays the same, ## Steps, ## Questions if any). Change nothing.');
+      if (mode === 'chat') hints.push('Chat mode: talk only, change nothing (the start-building line is in your rules).');   // no square brackets: a hint must stay one strippable [..] line
+      for (const h of L(opts.hints)) hints.push(h);
       await api('POST', `/api/conversations/${enc(c)}/messages`, {text, client_id: 'ws-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8), hints,
         ...(files.length ? {files: files.map(f => f.id).slice(0, 6)} : {})});
       clearTimeout(THREAD.timer); THREAD.timer = setTimeout(readThread, THREAD.connected ? 4000 : 900);
@@ -1545,7 +1643,7 @@
     if (d.act === 'tpl-more') { loadTpl(false); return; }
     if (d.mode) { store.set(MODE_KEY, d.mode); APP.querySelectorAll('[data-mode]').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.mode === d.mode)));
       const n = $('#wsModeNote'); if (n) n.textContent = d.mode === 'plan' ? 'Plan: a plan for you to check first' : 'Build: 3 full looks first'; return; }
-    if (d.cmode) { store.set(MODE_KEY + '.chat', d.cmode); APP.querySelectorAll('[data-cmode]').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.cmode === d.cmode))); return; }
+    if (d.cmode) { setChatMode(d.cmode); return; }
     if (d.type) { if (location.hash && location.hash !== '#/') { PREFILL = `${d.type} ki website banao: `; go('#/'); return; }
       const t = $('#wsAsk'); if (t) { t.value = `${d.type} ki website banao: `; t.focus(); t.setSelectionRange(t.value.length, t.value.length); } return; }
     if (d.src) { if (d.src === 'focus') { drawSource(''); $('#wsAsk')?.focus(); } else { drawSource(d.src); $('#wsSrc input')?.focus(); } return; }
@@ -1560,6 +1658,25 @@
     if (d.dtab) { if (THREAD.detail) THREAD.detail.tab = d.dtab; drawPane(); return; }
     if (d.act === 'detail-compare') { LIVE.justDone = {site: S(CUR.id), from: Number(d.from), to: Number(d.to)}; LIVE.compare = true; VIEW = 'preview'; drawPane(); return; }
     if (d.act === 'stop-turn') { stopTurn(); return; }
+    if (d.act === 'plan-open') { THREAD.planVer = Number(d.ver); THREAD.planEdit = false; VIEW = 'plans'; drawPane(); return; }
+    if (d.act === 'plan-approve') { approvePlan(d.ver).catch(er => toast(er.message, true)); return; }
+    if (d.act === 'plan-skip') { planStatus(d.ver, 'skip').then(() => toast('Plan skipped. Nothing was changed.')).catch(er => toast(er.message, true)); return; }
+    if (d.act === 'plan-edit') { THREAD.planEdit = true; drawPane(); return; }
+    if (d.act === 'plan-edit-x') { THREAD.planEdit = false; drawPane(); return; }
+    if (d.pver) { THREAD.planVer = Number(d.pver); THREAD.planEdit = false; drawPane(); return; }
+    if (d.act === 'plan-comment') {
+      const sel = S(window.getSelection()?.toString()).trim(), doc = APP.querySelector('.plandoc');
+      if (!sel || !doc || !doc.contains(window.getSelection().anchorNode)) return toast('Select a part of the plan first, then press Comment.', true);
+      const fd = await dialog('What should change in this part?', `<blockquote class="mut sm" style="margin:8px 0;border-left:3px solid var(--line);padding-left:8px">${esc(sel.slice(0, 400))}</blockquote><textarea name="c" class="in" rows="3" required style="width:100%"></textarea>`);
+      const c = S(fd?.get('c')).trim(); if (!c) return;
+      ask(`In plan v${THREAD.planVer}, change this part: "${sel.slice(0, 600)}" - ${c}. Write the whole updated plan.`, {mode: 'plan'});
+      return;
+    }
+    if (d.act === 'sb-build' || d.act === 'sb-skip') {
+      (THREAD.sbDone = THREAD.sbDone || new Set()).add(tkey(d.sb)); THREAD.sig = ''; drawMsgs();
+      if (d.act === 'sb-build') { setChatMode('build'); ask(S(d.sb), {mode: 'build'}); }
+      return;
+    }
     if (d.act === 'attach') { $('#wsFile')?.click(); return; }
     if (d.act === 'att-x') { THREAD.files.splice(Number(d.i), 1); drawTray(); return; }
     if (d.act === 'jump-latest') { const bx = $('#wsMsgs'); if (bx) { THREAD.pinned = true; bx.scrollTop = bx.scrollHeight; } b.hidden = true; return; }
@@ -1696,6 +1813,18 @@
     e.preventDefault();
     const kind = f.dataset.form;
     if (kind === 'thread') { const t = f.querySelector('textarea'); const x = S(t.value).trim(); if (!x) return; t.value = ''; return ask(x); }
+    if (kind === 'instr') {
+      try { await api('PUT', `/api/sites/${enc(CUR.id)}/instructions`, {text: S($('#wsInstr')?.value)}); toast('Instructions saved. Hoola reads them on every message about this site.'); }
+      catch (er) { toast(er.message, true); }
+      return;
+    }
+    if (kind === 'plan-edit') {
+      try {
+        const r = await api('POST', `/api/sites/${enc(CUR.id)}/plans`, {text: S($('#wsPlanEd')?.value), source: 'her', note: 'Edited by you'});
+        THREAD.planEdit = false; THREAD.planVer = Number(r.version); await loadPlans(); THREAD.sig = ''; drawMsgs(); drawPane(); toast(`Saved as plan v${r.version}.`);
+      } catch (er) { toast(er.message, true); }
+      return;
+    }
     if (BUSY) return;
     const btn = f.querySelector('[type=submit]');
     BUSY = true; if (btn) btn.disabled = true;
@@ -1753,6 +1882,12 @@
     finally { BUSY = false; if (btn?.isConnected) btn.disabled = false; }
   });
 
+  addEventListener('keydown', e => {                       // v0.782 Alt+P cycles Build / Plan / Chat in a site chat
+    if (e.altKey && !e.ctrlKey && !e.metaKey && (e.key === 'p' || e.key === 'P' || e.code === 'KeyP') && $('#wsTh')) {
+      e.preventDefault(); const m = chatMode(); setChatMode(MODES[(MODES.indexOf(m) + 1) % MODES.length]);
+    }
+  });
+  APP.addEventListener('input', e => { if (e.target.id === 'wsInstr') { e.target.dataset.touched = '1'; countInstr(); } });
   APP.addEventListener('paste', e => { if (e.target.id === 'wsTh') pasted(e); });          // v0.777 attachments
   APP.addEventListener('change', e => { if (e.target.id === 'wsFile') { [...e.target.files].slice(0, 6).forEach(f => addFile(f)); e.target.value = ''; } });
   APP.addEventListener('dragover', e => { if (e.target.closest?.('.chat') && e.dataTransfer?.types?.includes('Files')) { e.preventDefault(); e.target.closest('.chat').classList.add('drop'); } });

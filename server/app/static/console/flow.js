@@ -89,144 +89,281 @@
   };
 })();
 
+/* v0.777 HOOLA FLOW like Wispr Flow (owner: "CHECK DESIGN AND MAKE IT SAME AS WISPERFLOW"). Its own page /console/flow
+   (flowapp.html), styled by flow.css:
+     sidebar    Home / Dictionary / Snippets / Style, then Transcribe a file / Live captions, then Settings + back to Hoola
+     home       "Welcome back, <name>", a streak / words / WPM pill (counted from her own transcripts on this server),
+                the dictate card, and history grouped Today / Yesterday / date - time in its own column, Copy / Open on hover
+     Flow bar   a dark pill at the bottom: click, or hold Space (release = done; a tap keeps listening, Space again = done),
+                Esc = cancel (nothing kept). While she speaks it shows a waveform, a clock and her words so far; when she
+                stops, the text comes back in her Style, is copied for her and lands at the top of the history.
+     dictionary words Hoola should spell her way (a hint, or "always write it as")
+     snippets   say a short cue, Hoola writes the whole text (stored in the same word list, marked as a snippet)
+     style      how a dictation reads (As said / Clean / Notes / Social), kept in this browser
+   Everything else (files, live captions, one transcript, settings) keeps the v0.751 routes. Audio and text stay on her
+   server. Nothing here invents words: Clean only tidies, Notes / Social only pick what was said. */
 window.HoolaFlow = function ({api, esc, toast, say}) {
-  let EL = null, VIEW = 'home', TID = '', OV = null, T = null, STYLE = 'clean', Q = '', MIN = null;
-  let SESS = null, LIVE = null, TICK = 0, T0 = 0, LEVEL = 0, BUSY = false, DONE = null, PAUSED = false;
+  let EL = null, VIEW = 'home', TID = '', OV = null, ME = null, T = null, MIN = null, Q = '', VOC = null, VTAB = 'all';
+  let SESS = null, LIVE = null, TICK = 0, T0 = 0, LEVEL = 0, BUSY = false, PAUSED = false, FRESH = '', BAR = 'idle';
+  let HOLD = null, PEND_STOP = false, KEYS = false;
+  let STYLE = 'clean'; try { STYLE = localStorage.getItem('hoola.flow.style') || 'clean'; } catch (e) { /* private window */ }
   const $ = s => EL && EL.querySelector(s);
-  const KIND = {dictated: ['Dictated', 'ok'], live: ['Live', 'live'], file: ['File', 'file']};
   const STY = [['verbatim', 'As said'], ['clean', 'Clean'], ['minutes', 'Notes'], ['social', 'Social'], ['subtitles', 'Subtitles']];
   const clock = s => { s = Math.max(0, Math.round(+s || 0)); const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60;
     return h ? `${h}:${String(m).padStart(2, '0')}:${String(x).padStart(2, '0')}` : `${m}:${String(x).padStart(2, '0')}`; };
-  const ago = iso => { const t = Date.parse(iso || ''); if (!t) return ''; const m = Math.round((Date.now() - t) / 60000);
-    return m < 1 ? 'just now' : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} days ago`; };
-  const MIC = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>';
-  const UP = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M5 20h14"/></svg>';
-  const LV = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M6.3 6.3a8 8 0 0 0 0 11.4M17.7 6.3a8 8 0 0 1 0 11.4"/></svg>';
+  const hhmm = iso => { const d = new Date(iso || ''); return isNaN(d) ? '' : d.toLocaleTimeString([], {hour: 'numeric', minute: '2-digit'}); };
+  const dayKey = d => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+  const dayName = iso => { const d = new Date(iso || ''); if (isNaN(d)) return 'Earlier';
+    const t = new Date(), y = new Date(Date.now() - 864e5);
+    if (dayKey(d) === dayKey(t)) return 'Today'; if (dayKey(d) === dayKey(y)) return 'Yesterday';
+    return d.toLocaleDateString([], {weekday: 'long', day: 'numeric', month: 'long'}); };
+  const nwords = s => (String(s || '').match(/\S+/g) || []).length;
+  const kfmt = n => n >= 1000 ? `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}K` : String(n);
+  const I = {
+    home: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg>',
+    dict: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M4 21V5M9 7h6"/></svg>',
+    snip: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 3L5 14h6l-1 7 8-11h-6z"/></svg>',
+    style: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13 7l4 4"/></svg>',
+    file: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M5 20h14"/></svg>',
+    live: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M6.3 6.3a8 8 0 0 0 0 11.4M17.7 6.3a8 8 0 0 1 0 11.4"/></svg>',
+    gear: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>',
+    back: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>',
+    copy: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>',
+    open: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17L17 7M8 7h9v9"/></svg>',
+    trash: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>',
+    search: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>',
+    x: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+    ok: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg>',
+    mic: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>',
+    flame: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3c1 3 4 5 4 9a4 4 0 0 1-8 0c0-1 .3-2 1-3 0 2 1 3 2 3 0-3-1-5 1-9z"/></svg>',
+    right: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>',
+  };
 
   async function load() {
-    try { OV = await api('GET', '/api/flow/overview'); } catch (e) { OV = {error: e.message, items: [], engine: {}, recording: {}, usage: {}, retention: {}}; }
+    try { OV = await api('GET', '/api/flow/overview?limit=100'); } catch (e) { OV = {error: e.message, items: [], engine: {}, recording: {}, usage: {}, retention: {}}; }
   }
-  async function open(root, view, arg) { EL = root || EL; if (!EL) return; await load(); show(view || VIEW, arg || TID); }
-  function leave() { if (SESS || LIVE) return; clearInterval(TICK); }
-  function busyNow() { return !!(SESS || LIVE); }
+  async function loadMe() { if (ME) return; try { ME = await api('GET', '/api/me'); } catch (e) { ME = {}; } }
+  async function loadVoc() { try { VOC = await api('GET', '/api/kaan/vocab'); } catch (e) { VOC = {items: [], error: e.message}; } }
+  const canHear = () => !!OV?.ready;
+  const firstName = () => { const n = String(ME?.name || '').trim() || String(ME?.email || '').split('@')[0]; return n ? n.split(/\s+/)[0] : ''; };
 
+  /* ---------------------------------------------------------------- routing: #/ #/dictionary #/snippets #/style #/files #/live #/settings #/t/<id> */
+  const HASH = {home: '#/', words: '#/dictionary', snippets: '#/snippets', style: '#/style', files: '#/files', live: '#/live', settings: '#/settings'};
+  function parse() {
+    const h = location.hash || '#/', m = /^#\/t\/(.+)$/.exec(h);
+    if (m) return ['t', decodeURIComponent(m[1])];
+    const v = Object.keys(HASH).find(k => HASH[k] === h);
+    return [v || 'home', ''];
+  }
+  async function open(root, view, arg) {
+    EL = root || EL; if (!EL) return;
+    shell();
+    await Promise.all([load(), loadMe()]);
+    const [v, a] = view ? [view, arg || ''] : parse();
+    show(v, a);
+    if (!KEYS) { KEYS = true; keys(); window.addEventListener('hashchange', () => { const [v2, a2] = parse(); if (v2 !== VIEW || a2 !== TID) show(v2, a2); }); }
+  }
+  function leave() { if (!SESS && !LIVE) clearInterval(TICK); }
+  function busyNow() { return !!(SESS || LIVE); }
   function show(view, arg) {
-    if (busyNow() && view !== VIEW) { toast('Stop the recording first.', true); return; }
-    VIEW = view; TID = arg || ''; clearInterval(TICK);
-    const page = {dictate, files, live, words, settings, t: () => transcript(TID)}[view] || home;
+    if (LIVE && view !== 'live') { toast('Stop the live captions first.', true); if (location.hash !== HASH.live) location.hash = HASH.live; return; }
+    VIEW = view; TID = arg || '';
+    const h = view === 't' ? `#/t/${encodeURIComponent(TID)}` : HASH[view] || '#/';
+    if (location.hash !== h) history.replaceState(null, '', h);
+    side();
+    const page = {words, snippets, style, files, live, settings, t: () => transcript(TID)}[view] || home;
     page();
+    bar();
+    const m = $('#wfmain'); if (m) m.scrollTop = 0;
   }
-  function frame(body) {
-    const nav = [['home', 'Home'], ['dictate', 'Dictate'], ['files', 'Files'], ['live', 'Live captions'], ['words', 'My words'], ['settings', 'Settings']];
-    const cur = VIEW === 't' ? 'files' : VIEW;
-    EL.innerHTML = `<div class="hfl"><nav class="hfl-side" aria-label="Hoola Flow"><b class="hfl-brand">Hoola Flow</b>
-      ${nav.map(([k, n]) => `<button type="button" class="hfl-nv${k === cur ? ' on' : ''}" data-go="${k}"${k === cur ? ' aria-current="page"' : ''}>${n}</button>`).join('')}
-      <p class="hfl-fine">Audio and text stay on your server. Nothing goes to an outside service.</p></nav>
-      <main class="hfl-main">${notReady()}${body}</main></div>`;
-    EL.querySelectorAll('[data-go]').forEach(b => b.onclick = () => show(b.dataset.go));
+
+  /* ---------------------------------------------------------------- the shell (built once; the Flow bar survives page changes) */
+  function shell() {
+    if ($('.wf')) return;
+    EL.innerHTML = `<div class="wf"><aside class="wf-side" aria-label="Main navigation">
+        <a class="wf-logo" href="#/"><img src="/static/hoola-mark.png" alt=""><b>Hoola Flow</b></a>
+        <nav class="wf-nav" id="wfnav"></nav>
+        <div class="wf-grow"></div>
+        <div class="wf-tip"><b>Shortcuts</b><p>Dictate<span><kbd>Space</kbd></span></p><p>Cancel<span><kbd>Esc</kbd></span></p><p>In Hoola chat<span><kbd>Ctrl</kbd><kbd>Space</kbd></span></p></div>
+        <nav class="wf-nav" aria-label="Secondary navigation">
+          <button type="button" class="wf-nv" data-go="settings">${I.gear}Settings</button>
+          <a class="wf-nv" href="/console/">${I.back}Back to Hoola</a></nav>
+        <div class="wf-user" id="wfuser" hidden></div>
+      </aside>
+      <main class="wf-main" id="wfmain" aria-label="Main content"></main>
+      <div class="wf-flowbar" id="wfbar" aria-live="polite"></div></div>`;
+    EL.querySelector('.wf').addEventListener('click', e => { const b = e.target.closest('[data-go]'); if (b) show(b.dataset.go); });
   }
+  function side() {
+    const cur = VIEW === 't' ? 'home' : VIEW;
+    const item = (k, n, ic) => `<button type="button" class="wf-nv${k === cur ? ' on' : ''}" data-go="${k}"${k === cur ? ' aria-current="page"' : ''}>${ic}${n}</button>`;
+    $('#wfnav').innerHTML = item('home', 'Home', I.home) + item('words', 'Dictionary', I.dict) + item('snippets', 'Snippets', I.snip) +
+      item('style', 'Style', I.style) + '<p class="wf-sec">Transcribe</p>' + item('files', 'A file to text', I.file) + item('live', 'Live captions', I.live);
+    EL.querySelectorAll('.wf-side [data-go="settings"]').forEach(b => { b.classList.toggle('on', cur === 'settings'); });
+    const u = $('#wfuser'), nm = String(ME?.name || '').trim() || String(ME?.email || '').split('@')[0];
+    if (u && nm) { u.hidden = false; u.innerHTML = `<span class="wf-ava" aria-hidden="true">${esc(nm[0].toUpperCase())}</span><div><b>${esc(nm)}</b><small>${esc(ME?.email || 'Your own server')}</small></div>`; }
+  }
+  function main(html) { $('#wfmain').innerHTML = html; }
   function notReady() {
-    if (!OV || OV.error) return `<div class="hfl-warn" role="status">Hoola Flow could not read the server: ${esc(OV?.error || '')}</div>`;
-    if (!OV.engine?.ok) return `<div class="hfl-warn" role="status"><b>The speech engine is not ready on this server.</b> ${esc(OV.engine?.why || '')} Your saved transcripts still open.</div>`;
-    if (!OV.recording?.on) return `<div class="hfl-warn" role="status"><b>Recording is off.</b> ${esc(OV.recording?.how || '')} Your saved transcripts still open.</div>`;
+    if (!OV || OV.error) return `<div class="wf-warn" role="status">Hoola Flow could not read the server: ${esc(OV?.error || '')}</div>`;
+    if (!OV.engine?.ok) return `<div class="wf-warn" role="status"><b>The speech engine is not ready on this server.</b> ${esc(OV.engine?.why || '')} Your saved transcripts still open.</div>`;
+    if (!OV.recording?.on) return `<div class="wf-warn" role="status"><b>Recording is off.</b> ${esc(OV.recording?.how || '')} Your saved transcripts still open.</div>`;
     return '';
   }
-  const canHear = () => !!OV?.ready;
 
   /* ---------------------------------------------------------------- home */
-  function home() {
-    const items = (OV?.items || []).filter(it => !Q || (it.title + ' ' + it.text).toLowerCase().includes(Q.toLowerCase()));
-    const u = OV?.usage || {};
-    frame(`<div class="hfl-wrap">
-      <h1 class="hfl-h1">Speak. Hoola writes it.</h1>
-      <p class="hfl-sub">Dictate a message, turn a recording into text, or caption a meeting as it happens.</p>
-      <div class="hfl-starts">
-        <button type="button" class="hfl-start main" data-go="dictate"><i class="hfl-ico pri">${MIC}</i><b>Dictate</b><span>Talk in Hindi, Marathi, English or a mix. The text appears, ready to copy or put in the chat.</span><small class="mono">Ctrl + Space in the chat box</small></button>
-        <button type="button" class="hfl-start" data-go="files"><i class="hfl-ico">${UP}</i><b>A file to text</b><span>A meeting, voice note or video. Words with their exact time, up to 5 GB.</span><small>mp3 · wav · m4a · mp4 · ogg</small></button>
-        <button type="button" class="hfl-start" data-go="live"><i class="hfl-ico red">${LV}</i><b>Live captions</b><span>From your mic. When you stop, it becomes a transcript with minutes.</span><small>Chrome tabs: the Hoola extension</small></button>
-      </div>
-      <div class="hfl-two">
-        <section class="hfl-card grow" aria-labelledby="hflrc">
-          <div class="hfl-ch"><h2 id="hflrc">Recent</h2><label class="hfl-sr" for="hflq">Search what was said</label>
-            <input id="hflq" class="hfl-in" placeholder="Search what was said" value="${esc(Q)}"></div>
-          ${items.length ? items.map(it => { const [kn, kc] = KIND[it.kind] || KIND.file;
-            return `<button type="button" class="hfl-row" data-tid="${esc(it.id)}"><span><b>${esc(it.title)}</b><small>${esc(rowMeta(it))}</small></span>
-              <span class="hfl-chip ${kc}">${kn}</span><span class="mono hfl-dim">${clock(it.duration_s)}</span></button>`; }).join('')
-            : `<p class="hfl-empty">${Q ? 'Nothing said matches that.' : 'Nothing yet. Dictate something or add a recording.'}</p>`}
-        </section>
-        <aside class="hfl-col">
-          <section class="hfl-card"><h2>This month</h2><p class="hfl-big">${esc(String(u.minutes ?? 0))} min</p>
-            <p class="hfl-dim">${u.cap ? `of ${esc(String(u.cap))} min allowed` : 'No monthly limit set'}</p></section>
-          <section class="hfl-card"><h2>Engine</h2><p class="hfl-st"><i class="hfl-dot ${OV?.ready ? 'ok' : 'bad'}"></i>${OV?.ready ? 'Ready' : 'Not ready'}${OV?.engine?.default_model ? ` · model <span class="mono">${esc(OV.engine.default_model)}</span>` : ''}</p>
-            <p class="hfl-dim">${OV?.retention?.days ? `Transcripts are deleted after ${esc(String(OV.retention.days))} days unless kept for ever.` : 'Transcripts are kept until you delete them.'}</p></section>
-        </aside></div></div>`);
-    EL.querySelectorAll('[data-tid]').forEach(b => b.onclick = () => show('t', b.dataset.tid));
-    const q = $('#hflq'); q.oninput = () => { Q = q.value; const p = q.selectionStart; home(); const n = $('#hflq'); n.focus(); n.setSelectionRange(p, p); };
+  function stats() {
+    const items = OV?.items || [];
+    const words = items.reduce((n, it) => n + nwords(it.text), 0);
+    const dict = items.filter(it => it.kind === 'dictated' && it.duration_s > 0);
+    const dw = dict.reduce((n, it) => n + nwords(it.text), 0), ds = dict.reduce((n, it) => n + (+it.duration_s || 0), 0);
+    const wpm = ds >= 20 ? Math.round(dw / (ds / 60)) : null;
+    const days = new Set(items.map(it => { const d = new Date(it.created_at || ''); return isNaN(d) ? '' : dayKey(d); }));
+    let streak = 0; const d = new Date();
+    if (!days.has(dayKey(d))) d.setDate(d.getDate() - 1);           // a streak still counts until today ends
+    while (days.has(dayKey(d))) { streak++; d.setDate(d.getDate() - 1); }
+    return {words, wpm, streak, n: items.length};
   }
-  function rowMeta(it) {
-    const bits = [];
-    if (it.language) bits.push(it.language);
-    if (it.n_turns) bits.push(`${it.n_turns} turns`);
-    if (it.task === 'translate') bits.push('translated to English');
-    if (it.pinned) bits.push('kept for ever');
-    if (it.status === 'empty') bits.push('nothing was heard');
-    bits.push(ago(it.created_at));
-    return bits.filter(Boolean).join(' · ');
+  function home() {
+    const st = stats(), nm = firstName();
+    const items = (OV?.items || []).filter(it => !Q || `${it.title} ${it.text}`.toLowerCase().includes(Q.toLowerCase()));
+    const groups = []; items.forEach(it => { const g = dayName(it.created_at); const last = groups[groups.length - 1];
+      if (last && last.name === g) last.items.push(it); else groups.push({name: g, items: [it]}); });
+    main(`<div class="wf-in">
+      <header class="wf-hd"><h1 class="wf-h1">Welcome back${nm ? ', ' + esc(nm) : ''}</h1>
+        <div class="wf-stats" title="Counted from your last ${st.n} transcripts on this server">
+          <span>${I.flame}<b>${st.streak}</b> day streak</span><span><b>${kfmt(st.words)}</b> words</span><span><b>${st.wpm ?? '-'}</b> WPM</span></div></header>
+      ${notReady()}
+      <section class="wf-hero" aria-labelledby="wfhero"><div>
+        <span class="wf-chip"><i class="wf-dot ${canHear() ? 'ok' : 'bad'}"></i>${canHear() ? 'Ready on your server' : 'Not ready'}</span>
+        <h2 id="wfhero">Just speak.<br><em>Hoola writes it.</em></h2>
+        <p class="wf-lead">Hindi, Marathi, English or a mix. When you stop, your words are tidied, copied and saved here - paste them anywhere.</p>
+        <p class="wf-keys"><span><kbd>Space</kbd> Hold to dictate</span><span><kbd>Esc</kbd> Cancel</span><span><kbd>Ctrl</kbd><kbd>V</kbd> Paste</span></p></div>
+        <button type="button" class="wf-mic" id="wfgo"${canHear() ? '' : ' disabled'}><i>${I.mic}</i><b>Start dictating</b></button></section>
+      <div class="wf-quick">
+        <button type="button" class="wf-q" data-go="files"><i class="wf-tile">${I.file}</i><span><b>A file to text</b><small>Meetings, voice notes, videos</small></span></button>
+        <button type="button" class="wf-q" data-go="live"><i class="wf-tile b">${I.live}</i><span><b>Live captions</b><small>Words as people speak</small></span></button>
+        <button type="button" class="wf-q" data-go="words"><i class="wf-tile c">${I.dict}</i><span><b>Dictionary</b><small>Names and words, your way</small></span></button></div>
+      <div class="wf-histbar"><h2 class="wf-h2">History</h2>
+        <label class="wf-search">${I.search}<span class="wf-sr">Search what was said</span><input id="wfq" placeholder="Search what was said" value="${esc(Q)}"></label></div>
+      ${groups.length ? groups.map(g => `<p class="wf-day">${esc(g.name)}</p><div class="wf-list">${g.items.map(row).join('')}</div>`).join('')
+        : `<div class="wf-list" style="margin-top:16px"><div class="wf-empty">${Q ? '<b>Nothing matches</b>Nothing said matches that search.' : '<b>Nothing here yet</b>Hold Space and say something - it shows up here.'}</div></div>`}
+    </div>`);
+    $('#wfgo').onclick = () => startDictation();
+    const q = $('#wfq'); q.oninput = () => { Q = q.value; const p = q.selectionStart; home(); const n = $('#wfq'); n.focus(); n.setSelectionRange(p, p); };
+    wireRows();
+  }
+  function row(it) {
+    const tag = it.kind === 'file' ? `<span class="wf-tag">File · ${clock(it.duration_s)}</span>` : it.kind === 'live' ? `<span class="wf-tag live">Live · ${clock(it.duration_s)}</span>` : '';
+    const body = it.kind === 'dictated'
+      ? (it.text ? esc(it.text) : '<span class="wf-dim">Nothing was heard.</span>')
+      : `<b>${esc(it.title)}</b>${tag}${it.text ? `<br><span class="wf-mut">${esc(String(it.text).slice(0, 260))}</span>` : ''}`;
+    return `<div class="wf-row${it.id === FRESH ? ' fresh' : ''}" data-tid="${esc(it.id)}" tabindex="0" role="button" aria-label="Open ${esc(it.title)}">
+      <time datetime="${esc(it.created_at || '')}">${esc(hhmm(it.created_at))}</time><p class="wf-txt">${body}</p>
+      <span class="wf-ra"><button type="button" class="wf-ic" data-copy="${esc(it.id)}" title="Copy" aria-label="Copy">${I.copy}</button>
+        <button type="button" class="wf-ic" data-open="${esc(it.id)}" title="Open" aria-label="Open">${I.open}</button></span></div>`;
+  }
+  function wireRows() {
+    EL.querySelectorAll('.wf-row[data-tid]').forEach(r => {
+      r.onclick = e => { if (e.target.closest('[data-copy]')) return; show('t', r.dataset.tid); };
+      r.onkeydown = e => { if (e.key === 'Enter') show('t', r.dataset.tid); };
+    });
+    EL.querySelectorAll('[data-copy]').forEach(b => b.onclick = async e => { e.stopPropagation();
+      const it = (OV?.items || []).find(x => x.id === b.dataset.copy); await copy(it?.text || '', true); });
+  }
+  async function copy(text, say_it) {
+    if (!text) { if (say_it) toast('There is no text to copy.', true); return false; }
+    try { await navigator.clipboard.writeText(text); if (say_it) toast('Copied.'); return true; }
+    catch (e) { if (say_it) toast('The browser did not allow copying.', true); return false; }
   }
 
-  /* ---------------------------------------------------------------- dictate */
-  function dictate() {
-    const busy = !!SESS;
-    frame(`<div class="hfl-wrap narrow">
-      <div class="hfl-top"><p class="hfl-state" role="status">${busy ? `<i class="hfl-dot rec"></i>${PAUSED ? 'Paused' : 'Listening'} · <span class="mono" id="hflclk">${clock((Date.now() - T0) / 1000)}</span>` : DONE ? '<i class="hfl-dot ok"></i>Done' : 'Press Start and speak'}</p>
-        ${DONE ? styleBar() : ''}</div>
-      <section class="hfl-words" aria-live="polite" aria-label="Your words"><div id="hflw">${DONE ? rendered(DONE.render) : busy ? `${esc(SESS.text())}<span class="hfl-caret" aria-hidden="true"></span>` : '<span class="hfl-dim">Your words will appear here a second or two after you say them.</span>'}</div></section>
-      <div class="hfl-meter" aria-hidden="true">${bars()}</div>
-      <div class="hfl-acts">${busy ? `<button type="button" class="hfl-btn stop" id="hflstop">Stop</button><button type="button" class="hfl-btn" id="hflpause">${PAUSED ? 'Resume' : 'Pause'}</button>`
-        : `<button type="button" class="hfl-btn pri" id="hflgo"${canHear() ? '' : ' disabled'}>${DONE ? 'Dictate again' : 'Start'}</button>`}
-        ${DONE ? `<button type="button" class="hfl-btn" id="hflcopy">Copy text</button><button type="button" class="hfl-btn" id="hflchat">Put in the chat box</button><button type="button" class="hfl-btn" id="hflgy">Save to Gyaan</button><button type="button" class="hfl-btn" data-open="${esc(DONE.tid)}">Open transcript</button>` : ''}</div>
-      <p class="hfl-fine c">"Clean" tidies spacing, repeats and sentence starts. It never adds or rewords anything you said. Green words came from My words.</p></div>`);
-    if (busy) { tick(); return wireBusy(SESS); }
-    $('#hflgo') && ($('#hflgo').onclick = startDictate);
-    wireDone();
+  /* ---------------------------------------------------------------- the Flow bar (dictation from any page) */
+  function bars(n) { const L = SESS ? Math.max(.12, LEVEL) : .08;
+    return Array.from({length: n}, (_, i) => `<i style="height:${Math.round(3 + Math.abs(Math.sin(i * 1.3 + Date.now() / 180)) * 18 * L)}px"></i>`).join(''); }
+  function bar() {
+    const w = $('#wfbar'); if (!w) return;
+    if (LIVE) { w.innerHTML = ''; return; }
+    if (BAR === 'writing') { w.innerHTML = '<div class="wf-pill writing" role="status"><i class="wf-spin" aria-hidden="true"></i>Writing it down…</div>'; return; }
+    if (BAR === 'rec' && SESS) {
+      w.innerHTML = `<div class="wf-live" id="wflive">${esc(SESS.text()) || '<span class="wf-dim">Listening…</span>'}<span class="wf-caret" aria-hidden="true"></span></div>
+        <div class="wf-pill" role="group" aria-label="Dictating"><button type="button" class="wf-pbtn" id="wfx" title="Cancel (Esc)" aria-label="Cancel, keep nothing">${I.x}</button>
+          <span class="wf-wave" id="wfwave" aria-hidden="true">${bars(14)}</span><span class="wf-clk" id="wfclk">${clock((Date.now() - T0) / 1000)}</span>
+          <button type="button" class="wf-pbtn ok" id="wfok" title="Done (Space)" aria-label="Done, write it down">${I.ok}</button></div>`;
+      $('#wfx').onclick = cancelDictation; $('#wfok').onclick = finishDictation; return;
+    }
+    if (BAR === 'starting') { w.innerHTML = '<div class="wf-pill writing" role="status"><i class="wf-spin" aria-hidden="true"></i>Starting the microphone…</div>'; return; }
+    w.innerHTML = `<button type="button" class="wf-pill idle" id="wfpill"${canHear() ? '' : ' disabled'} aria-label="Start dictating">
+      <span class="wf-pmic" aria-hidden="true">${I.mic}</span><span class="wf-hintt">Click or hold <kbd>Space</kbd> to dictate</span></button>`;
+    $('#wfpill').onclick = () => startDictation();
   }
-  function bars() { const L = LEVEL; return Array.from({length: 18}, (_, i) => `<span style="height:${Math.round(6 + Math.abs(Math.sin(i * 1.7 + Date.now() / 260)) * 40 * (SESS || LIVE ? Math.max(.15, L) : .1))}px"></span>`).join(''); }
   function tick() {
     clearInterval(TICK);
-    TICK = setInterval(() => { const c = $('#hflclk'); if (c) c.textContent = clock((Date.now() - T0) / 1000); const m = $('.hfl-meter'); if (m) m.innerHTML = bars(); }, 250);
+    TICK = setInterval(() => {
+      const c = $('#wfclk'); if (c) c.textContent = clock((Date.now() - T0) / 1000);
+      const v = $('#wfwave'); if (v) v.innerHTML = bars(14);
+      const lc = $('#wflclk'); if (lc) lc.textContent = clock((Date.now() - T0) / 1000);
+    }, 120);
   }
-  function wireBusy(s) {
-    $('#hflstop').onclick = () => finish(s);
-    $('#hflpause').onclick = () => { PAUSED = !PAUSED; s.pause(PAUSED); show(VIEW); };
-  }
-  async function startDictate() {
-    if (BUSY) return; BUSY = true; DONE = null; PAUSED = false;
+  async function startDictation() {
+    if (SESS || BUSY || LIVE) return;
+    if (!canHear()) { toast(OV?.engine?.ok === false ? 'The speech engine is not ready on this server.' : 'Recording is off on this server.', true); return; }
+    BUSY = true; BAR = 'starting'; bar();
     const s = window.HoolaFlowSession({api, onLevel: l => { LEVEL = l; },
-      onWords: t => { const w = $('#hflw'); if (w && VIEW === 'dictate') w.innerHTML = `${esc(t)}<span class="hfl-caret" aria-hidden="true"></span>`; },
+      onWords: t => { const w = $('#wflive'); if (w) w.innerHTML = `${esc(t)}<span class="wf-caret" aria-hidden="true"></span>`; },
       onError: e => toast(e.message || 'A piece of audio was not heard.', true)});
-    try { await s.start(); SESS = s; T0 = Date.now(); } catch (e) { toast(micWhy(e), true); }
-    BUSY = false; show('dictate');
+    try { await s.start(); SESS = s; T0 = Date.now(); BAR = 'rec'; tick(); }
+    catch (e) { BAR = 'idle'; toast(micWhy(e), true); }
+    BUSY = false; bar();
+    if (SESS && PEND_STOP) { PEND_STOP = false; finishDictation(); }
   }
-  async function finish(s) {
-    if (BUSY) return; BUSY = true;
-    const btn = $('#hflstop'); if (btn) { btn.disabled = true; btn.textContent = 'Writing the last words…'; }
+  async function finishDictation() {
+    if (!SESS || BUSY) return;
+    BUSY = true; const s = SESS; BAR = 'writing'; bar(); clearInterval(TICK);
+    let text = '', tid = '';
     try {
-      const out = await s.stop();
-      const tid = out.transcript_id;
+      const out = await s.stop(); tid = out.transcript_id || '';
+      text = s.text();
       if (tid) {
         await api('POST', `/api/flow/t/${encodeURIComponent(tid)}/rename`, {name: `Dictation ${new Date().toLocaleString([], {day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'})}`}).catch(() => {});
-        DONE = {tid, render: await styleOf(tid, STYLE)};
-      } else DONE = null;
+        const r = await styleOf(tid, STYLE); text = plain(r) || text;
+      }
     } catch (e) { toast(e.message, true); }
-    SESS = null; BUSY = false; clearInterval(TICK); await load(); show('dictate');
+    SESS = null; BAR = 'idle'; BUSY = false; FRESH = tid;
+    await load();
+    const copied = await copy(text.trim(), false);
+    if (!text.trim()) toast('Nothing was heard - only silence.', true);
+    else toast(copied ? 'Copied. Paste it anywhere with Ctrl + V.' : 'Written down. Press Copy on it in your history.');
+    if (VIEW === 'home') home(); bar();
+  }
+  async function cancelDictation() {
+    if (!SESS || BUSY) return;
+    BUSY = true; const s = SESS; SESS = null; BAR = 'idle'; clearInterval(TICK); bar();
+    try { const out = await s.stop(); if (out.transcript_id) await api('DELETE', `/api/flow/t/${encodeURIComponent(out.transcript_id)}`).catch(() => {}); }
+    catch (e) { /* the session may already be gone */ }
+    BUSY = false; toast('Cancelled. Nothing was kept.');
+  }
+  function keys() {
+    const typing = t => t && (/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) || t.isContentEditable);
+    document.addEventListener('keydown', e => {
+      if (!EL || !document.body.contains(EL) || document.querySelector('.wf-modal')) return;
+      if (e.key === 'Escape' && SESS) { e.preventDefault(); cancelDictation(); return; }
+      if (e.code !== 'Space' || typing(e.target) || VIEW === 'live' || LIVE || e.ctrlKey || e.metaKey || e.altKey) return;
+      e.preventDefault();
+      if (e.repeat) return;
+      if (SESS && !HOLD) { finishDictation(); return; }
+      if (!SESS && !BUSY) { HOLD = {t: Date.now()}; startDictation(); }
+    });
+    document.addEventListener('keyup', e => {
+      if (e.code !== 'Space' || !HOLD) return;
+      const held = Date.now() - HOLD.t; HOLD = null;
+      if (held < 450) return;                                  // a tap keeps listening; Space again or the tick finishes
+      if (SESS) finishDictation(); else PEND_STOP = true;       // the mic was still starting: finish as soon as it is up
+    });
   }
   function micWhy(e) {
     const m = String(e?.message || e || '');
     if (/denied|NotAllowed|Permission/i.test(m)) return 'Allow the microphone for this site in your browser address bar, then try again.';
     return m || 'The microphone could not start.';
-  }
-  function styleBar() {
-    return `<div class="hfl-seg" role="group" aria-label="How the text should read">${STY.filter(s => s[0] !== 'subtitles').map(([k, n]) => `<button type="button" data-style="${k}" aria-pressed="${k === STYLE}">${n}</button>`).join('')}</div>`;
   }
   async function styleOf(tid, style) {
     try { return await api('POST', `/api/kaan/${encodeURIComponent(tid)}/style`, {style}); } catch (e) { return {error: e.message}; }
@@ -242,114 +379,186 @@ window.HoolaFlow = function ({api, esc, toast, say}) {
   }
   function rendered(r) {
     if (!r) return '';
-    if (r.error) return `<span class="hfl-bad">${esc(r.error)}</span>`;
+    if (r.error) return `<span class="wf-bad">${esc(r.error)}</span>`;
     const t = plain(r);
-    return t ? esc(t).replace(/\n/g, '<br>') : '<span class="hfl-dim">Nothing was heard - only silence.</span>';
+    return t ? esc(t).replace(/\n/g, '<br>') : '<span class="wf-dim">Nothing was heard - only silence.</span>';
   }
-  function wireDone() {
-    EL.querySelectorAll('[data-style]').forEach(b => b.onclick = async () => {
-      STYLE = b.dataset.style;
-      if (VIEW === 'dictate' && DONE) { DONE.render = await styleOf(DONE.tid, STYLE); dictate(); }
-      if (VIEW === 't' && T) { T.render = await styleOf(T.id, STYLE); transcript(T.id, true); }
-    });
-    EL.querySelectorAll('[data-open]').forEach(b => b.onclick = () => show('t', b.dataset.open));
-    const txt = () => plain(VIEW === 't' ? T?.render : DONE?.render);
-    $('#hflcopy') && ($('#hflcopy').onclick = async () => { try { await navigator.clipboard.writeText(txt()); toast('Copied.'); } catch { toast('The browser did not allow copying.', true); } });
-    $('#hflchat') && ($('#hflchat').onclick = () => say(txt(), false));
-    $('#hflgy') && ($('#hflgy').onclick = async () => { const id = VIEW === 't' ? T?.id : DONE?.tid;
-      try { await api('POST', `/api/kaan/${encodeURIComponent(id)}/to_gyaan`); toast('Saved to Gyaan.'); } catch (e) { toast(e.message, true); } });
+
+  /* ---------------------------------------------------------------- dictionary + snippets (one word list on the server) */
+  function modal(title, sub, fields, okText, onOk) {
+    const m = document.createElement('div'); m.className = 'wf-modal';
+    m.innerHTML = `<form class="wf-dlg" role="dialog" aria-modal="true" aria-labelledby="wfdlgt"><h2 id="wfdlgt">${esc(title)}</h2><p class="wf-sub">${esc(sub)}</p>
+      ${fields.map(f => `<label class="wf-lb" for="${f.id}">${esc(f.label)}</label>${f.area
+        ? `<textarea id="${f.id}" class="wf-input" rows="3" maxlength="${f.max || 120}" placeholder="${esc(f.ph || '')}"${f.req ? ' required' : ''}></textarea>`
+        : `<input id="${f.id}" class="wf-input" maxlength="${f.max || 120}" placeholder="${esc(f.ph || '')}"${f.req ? ' required' : ''}>`}
+        ${f.count ? `<p class="wf-count" id="${f.id}n">0 / ${f.max || 120}</p>` : ''}`).join('')}
+      <div class="wf-acts"><button type="button" class="wf-btn ghost" data-x>Cancel</button><button type="submit" class="wf-btn dark">${esc(okText)}</button></div></form>`;
+    (EL.querySelector('.wf') || document.body).appendChild(m);
+    const close = () => m.remove();
+    m.querySelector('[data-x]').onclick = close;
+    m.onclick = e => { if (e.target === m) close(); };
+    m.onkeydown = e => { if (e.key === 'Escape') close(); };
+    fields.forEach(f => { if (f.count) { const i = m.querySelector('#' + f.id), n = m.querySelector(`#${f.id}n`); i.oninput = () => { n.textContent = `${i.value.length} / ${f.max || 120}`; }; } });
+    m.querySelector('form').onsubmit = async e => { e.preventDefault(); const vals = {}; fields.forEach(f => { vals[f.id] = m.querySelector('#' + f.id).value.trim(); });
+      try { await onOk(vals); close(); } catch (er) { toast(er.message, true); } };
+    m.querySelector('input,textarea').focus();
+  }
+  async function removeWord(term) {
+    try { await api('DELETE', `/api/kaan/vocab/${encodeURIComponent(term)}`); await loadVoc(); show(VIEW); toast('Removed.'); } catch (e) { toast(e.message, true); }
+  }
+  async function words() {
+    main('<div class="wf-in"><p class="wf-dim">Opening…</p></div>');
+    await loadVoc(); if (VIEW !== 'words') return;
+    const all = (VOC.items || []).filter(w => w.note !== 'snippet');
+    const list = VTAB === 'hints' ? all.filter(w => !w.fix_to) : VTAB === 'fixes' ? all.filter(w => w.fix_to) : all;
+    main(`<div class="wf-in">
+      <header class="wf-hd"><div><h1 class="wf-h1">Dictionary</h1></div><button type="button" class="wf-btn dark" id="wfadd">Add new</button></header>
+      <section class="wf-banner"><i class="wf-tile">${I.dict}</i><div><h2>Hoola spells it your way</h2><p>Names, brands, places and Hinglish words Hoola should spell your way. A word on its own is a listening hint. Add "always write it as" and it is corrected every time.</p></div></section>
+      <div class="wf-tabs" role="tablist" aria-label="Show">${[['all', 'All'], ['hints', 'Listening hints'], ['fixes', 'Spelling fixes']].map(([k, n]) =>
+        `<button type="button" class="wf-tab" role="tab" data-vt="${k}" aria-selected="${k === VTAB}">${n}</button>`).join('')}</div>
+      ${VOC.error ? `<p class="wf-bad">${esc(VOC.error)}</p>` : ''}
+      <div class="wf-list">${list.length ? list.map(w => `<div class="wf-wr"><span><span class="wf-word">${esc(w.term)}</span>${w.fix_to
+          ? `<span class="wf-arrow">→</span><span class="wf-word">${esc(w.fix_to)}</span>` : '<span class="wf-hint">listening hint</span>'}</span>
+          <span class="wf-ra"><button type="button" class="wf-ic" data-rm="${esc(w.term)}" title="Remove" aria-label="Remove ${esc(w.term)}">${I.trash}</button></span></div>`).join('')
+        : '<div class="wf-empty"><b>No words yet</b>Add the names and words you say often.</div>'}</div>
+      <p class="wf-fine">Used by dictation, files and live captions. Hints share an 800-character space; each word up to 120 characters.</p></div>`);
+    EL.querySelectorAll('[data-vt]').forEach(b => b.onclick = () => { VTAB = b.dataset.vt; words(); });
+    EL.querySelectorAll('[data-rm]').forEach(b => b.onclick = () => removeWord(b.dataset.rm));
+    $('#wfadd').onclick = () => modal('Add to dictionary', 'A word Hoola should hear and spell your way.', [
+      {id: 'wfw1', label: 'Word or name', ph: 'e.g. Newtika', req: true}, {id: 'wfw2', label: 'Always write it as (optional)', ph: 'e.g. Newtika Pvt Ltd'}],
+    'Add', async v => { await api('POST', '/api/kaan/vocab', {term: v.wfw1, fix_to: v.wfw2}); await loadVoc(); words(); toast('Added.'); });
+  }
+  async function snippets() {
+    main('<div class="wf-in"><p class="wf-dim">Opening…</p></div>');
+    await loadVoc(); if (VIEW !== 'snippets') return;
+    const list = (VOC.items || []).filter(w => w.note === 'snippet');
+    main(`<div class="wf-in">
+      <header class="wf-hd"><div><h1 class="wf-h1">Snippets</h1></div><button type="button" class="wf-btn dark" id="wfadd">Add new</button></header>
+      <section class="wf-banner"><i class="wf-tile">${I.snip}</i><div><h2>Say less, write more</h2><p>Say a short cue and Hoola writes the whole text - your UPI ID, address, timings, a link. Example: say "my upi" and it becomes your UPI ID.</p></div></section>
+      ${VOC.error ? `<p class="wf-bad">${esc(VOC.error)}</p>` : ''}
+      <div class="wf-list">${list.length ? list.map(w => `<div class="wf-sn"><span class="wf-cue">${esc(w.term)}</span><span>${esc(w.fix_to)}</span>
+          <span class="wf-ra"><button type="button" class="wf-ic" data-rm="${esc(w.term)}" title="Remove" aria-label="Remove ${esc(w.term)}">${I.trash}</button></span></div>`).join('')
+        : '<div class="wf-empty"><b>No snippets yet</b>Add one for the things you type again and again.</div>'}</div>
+      <p class="wf-fine">A snippet is replaced word for word wherever its cue is heard, so pick a cue you would not say by accident. Up to 120 characters each.</p></div>`);
+    EL.querySelectorAll('[data-rm]').forEach(b => b.onclick = () => removeWord(b.dataset.rm));
+    $('#wfadd').onclick = () => modal('Add a snippet', 'When you say the cue, Hoola writes the text instead.', [
+      {id: 'wfs1', label: 'When I say', ph: 'e.g. my upi', req: true, max: 60}, {id: 'wfs2', label: 'Write', ph: 'e.g. meghana@okaxis', req: true, area: true, count: true, max: 120}],
+    'Add snippet', async v => { await api('POST', '/api/kaan/vocab', {term: v.wfs1, fix_to: v.wfs2, note: 'snippet'}); await loadVoc(); snippets(); toast('Snippet added.'); });
+  }
+
+  /* ---------------------------------------------------------------- style */
+  const SAID = 'so the the meeting moved to friday. tell ravi to bring the samples and send the bill by monday';
+  const LOOK = {
+    verbatim: ['As said', 'Exactly the words you spoke, nothing touched.', SAID],
+    clean: ['Clean', 'Spacing, repeated words and sentence starts tidied. Nothing added or reworded.', 'So the meeting moved to friday. Tell ravi to bring the samples and send the bill by monday'],
+    minutes: ['Notes', 'Key words and the things someone has to do, picked from what you said.', 'Key words: meeting, friday, samples, bill\n• tell ravi to bring the samples and send the bill by monday'],
+    social: ['Social', 'A first line and short points, ready for a post or a status.', 'So the meeting moved to friday.\n• tell ravi to bring the samples and send the bill by monday'],
+  };
+  function style() {
+    main(`<div class="wf-in">
+      <header class="wf-hd"><div><h1 class="wf-h1">Style</h1><p class="wf-sub">How your words read when you stop dictating. Hoola never adds words you did not say - each style only tidies or picks.</p></div></header>
+      <div class="wf-styles" role="radiogroup" aria-label="Dictation style">${Object.entries(LOOK).map(([k, [n, d, ex]]) =>
+        `<button type="button" class="wf-sty" role="radio" data-sty="${k}" aria-checked="${k === STYLE}"><h3>${n}<i aria-hidden="true">${I.ok}</i></h3><p>${d}</p><div class="wf-bubble">${esc(ex)}</div></button>`).join('')}</div>
+      <p class="wf-fine">You said: "${esc(SAID)}". Your choice is kept in this browser. Every transcript can still be opened in any style.</p></div>`);
+    EL.querySelectorAll('[data-sty]').forEach(b => b.onclick = () => { STYLE = b.dataset.sty; try { localStorage.setItem('hoola.flow.style', STYLE); } catch (e) {} style(); toast(`Style: ${LOOK[STYLE][0]}.`); });
   }
 
   /* ---------------------------------------------------------------- files */
   function files() {
     const list = (OV?.items || []).filter(it => it.kind === 'file');
-    frame(`<div class="hfl-wrap"><div class="hfl-two">
-      <div class="grow">
-        <h1 class="hfl-h1 sm">A file to text</h1>
-        <label class="hfl-drop" for="hflfile" id="hfldrop">${UP}<b>Drop a recording here, or choose a file</b><span>Audio or video up to 5 GB</span>
-          <input id="hflfile" type="file" accept="audio/*,video/*,.m4a,.mp3,.wav,.ogg,.flac,.webm,.mp4,.mkv,.mov" class="hfl-sr"></label>
-        <p class="hfl-picked" id="hflpicked" role="status"></p>
-        <section class="hfl-card" id="hflwork" hidden></section>
-        ${list.length ? `<section class="hfl-card" aria-labelledby="hflfl"><h2 id="hflfl">Your files</h2>${list.map(it => `<button type="button" class="hfl-row" data-tid="${esc(it.id)}"><span><b>${esc(it.title)}</b><small>${esc(rowMeta(it))}</small></span><span></span><span class="mono hfl-dim">${clock(it.duration_s)}</span></button>`).join('')}</section>` : ''}
+    main(`<div class="wf-in wide">
+      <header class="wf-hd"><div><h1 class="wf-h1">A file to text</h1><p class="wf-sub">A meeting, a voice note or a video - every word with its time. Up to 5 GB, and the file never leaves your server.</p></div></header>
+      ${notReady()}
+      <div class="wf-two"><div class="wf-col">
+        <label class="wf-drop" for="wffile" id="wfdrop"><i class="wf-tile">${I.file}</i><b>Drop a recording here, or choose a file</b><span>mp3 · wav · m4a · mp4 · ogg · webm</span>
+          <input id="wffile" type="file" accept="audio/*,video/*,.m4a,.mp3,.wav,.ogg,.flac,.webm,.mp4,.mkv,.mov" class="wf-sr"></label>
+        <p class="wf-mut" id="wfpicked" role="status"></p>
+        <section class="wf-card" id="wfwork" hidden></section>
+        ${list.length ? `<div><p class="wf-day">Your files</p><div class="wf-list">${list.map(row).join('')}</div></div>` : ''}
       </div>
-      <aside class="hfl-card hfl-opts" aria-labelledby="hflop"><h2 id="hflop">Options</h2>
-        <label class="hfl-lb" for="hfllg">Spoken language</label><select id="hfllg" class="hfl-in"><option value="">Find it myself</option><option value="hi">Hindi</option><option value="mr">Marathi</option><option value="en">English</option><option value="gu">Gujarati</option><option value="ta">Tamil</option><option value="te">Telugu</option><option value="bn">Bengali</option><option value="kn">Kannada</option><option value="ml">Malayalam</option><option value="pa">Punjabi</option><option value="ur">Urdu</option></select>
-        <label class="hfl-lb" for="hflts">Result</label><select id="hflts" class="hfl-in"><option value="transcribe">Same language as spoken</option><option value="translate">Translate to English</option></select>
-        <label class="hfl-lb" for="hflmd">Quality</label><select id="hflmd" class="hfl-in"><option value="">Server default${OV?.engine?.default_model ? ` (${esc(OV.engine.default_model)})` : ''}</option>${(OV?.engine?.ladder || []).map(m => `<option value="${esc(m.name)}">${esc(m.name)}${m.note ? ' - ' + esc(String(m.note).slice(0, 48)) : ''}</option>`).join('')}</select>
-        <p class="hfl-fine">Bigger is slower on this server. "turbo" cannot translate.</p>
-        <label class="hfl-ck"><input type="checkbox" id="hflvb" checked>Use my word list</label>
-        <label class="hfl-ck"><input type="checkbox" id="hflsp" checked>Split into speakers</label>
-        <button type="button" class="hfl-btn pri" id="hflmake" disabled>Make the transcript</button>
-        <p class="hfl-fine">The file never leaves your server.</p></aside></div></div>`);
-    EL.querySelectorAll('[data-tid]').forEach(b => b.onclick = () => show('t', b.dataset.tid));
+      <aside class="wf-card" aria-labelledby="wfop"><h2 id="wfop">Options</h2>
+        <label class="wf-lb" for="wflg">Spoken language</label><select id="wflg" class="wf-input"><option value="">Find it myself</option><option value="hi">Hindi</option><option value="mr">Marathi</option><option value="en">English</option><option value="gu">Gujarati</option><option value="ta">Tamil</option><option value="te">Telugu</option><option value="bn">Bengali</option><option value="kn">Kannada</option><option value="ml">Malayalam</option><option value="pa">Punjabi</option><option value="ur">Urdu</option></select>
+        <label class="wf-lb" for="wfts">Result</label><select id="wfts" class="wf-input"><option value="transcribe">Same language as spoken</option><option value="translate">Translate to English</option></select>
+        <label class="wf-lb" for="wfmd">Quality</label><select id="wfmd" class="wf-input"><option value="">Server default${OV?.engine?.default_model ? ` (${esc(OV.engine.default_model)})` : ''}</option>${(OV?.engine?.ladder || []).map(m => `<option value="${esc(m.name)}">${esc(m.name)}${m.note ? ' - ' + esc(String(m.note).slice(0, 48)) : ''}</option>`).join('')}</select>
+        <p class="wf-fine">Bigger is slower on this server. "turbo" cannot translate.</p>
+        <label class="wf-ck"><input type="checkbox" id="wfvb" checked>Use my dictionary</label>
+        <label class="wf-ck"><input type="checkbox" id="wfsp" checked>Split into speakers</label>
+        <button type="button" class="wf-btn dark full" id="wfmake" style="margin-top:8px" disabled>Make the transcript</button></aside></div></div>`);
+    wireRows();
     let FILE = null;
-    const pick = f => { FILE = f || null; $('#hflpicked').textContent = FILE ? `${FILE.name} · ${(FILE.size / 1048576).toFixed(1)} MB` : '';
-      $('#hflmake').disabled = !FILE || !canHear(); };
-    $('#hflfile').onchange = e => pick(e.target.files[0]);
-    const d = $('#hfldrop');
+    const pick = f => { FILE = f || null; $('#wfpicked').textContent = FILE ? `${FILE.name} · ${(FILE.size / 1048576).toFixed(1)} MB` : '';
+      $('#wfmake').disabled = !FILE || !canHear(); };
+    $('#wffile').onchange = e => pick(e.target.files[0]);
+    const d = $('#wfdrop');
     d.ondragover = e => { e.preventDefault(); d.classList.add('over'); }; d.ondragleave = () => d.classList.remove('over');
     d.ondrop = e => { e.preventDefault(); d.classList.remove('over'); pick(e.dataTransfer.files[0]); };
-    $('#hflmake').onclick = () => FILE && makeFromFile(FILE);
+    $('#wfmake').onclick = () => FILE && makeFromFile(FILE);
   }
   async function makeFromFile(file) {
-    const w = $('#hflwork'); w.hidden = false; $('#hflmake').disabled = true;
+    const w = $('#wfwork'); w.hidden = false; $('#wfmake').disabled = true;
     const t0 = Date.now();
-    const draw = (step, bad) => { w.innerHTML = `<div class="hfl-ch"><b>${esc(file.name)}</b><span class="mono hfl-dim">${(file.size / 1048576).toFixed(1)} MB</span></div>
-      <p class="hfl-st">${bad ? '<i class="hfl-dot bad"></i>' : '<i class="hfl-spin" aria-hidden="true"></i>'}${esc(step)} <span class="mono hfl-dim">${clock((Date.now() - t0) / 1000)}</span></p>
-      ${bad ? '' : '<p class="hfl-fine">The server sends it back in one go when the whole recording is written. A long meeting can take several minutes.</p>'}`; };
+    const draw = (step, bad) => { if (!document.body.contains(w)) return; w.innerHTML = `<div class="wf-work"><b>${esc(file.name)}</b><span class="wf-mono wf-dim">${(file.size / 1048576).toFixed(1)} MB</span></div>
+      <p>${bad ? '<i class="wf-dot bad"></i>' : '<i class="wf-dot rec"></i>'}${esc(step)} <span class="wf-mono wf-dim">${clock((Date.now() - t0) / 1000)}</span></p>
+      ${bad ? '' : '<p class="wf-fine">The server sends it back in one go when the whole recording is written. A long meeting can take several minutes.</p>'}`; };
     draw('Sending the file and writing the words');
     const tk = setInterval(() => draw('Sending the file and writing the words'), 1000);
     const fd = new FormData();
-    fd.append('file', file, file.name); fd.append('model', $('#hflmd').value); fd.append('language', $('#hfllg').value);
-    fd.append('task', $('#hflts').value); fd.append('vocab', $('#hflvb').checked ? 'true' : 'false');
-    fd.append('diarize', $('#hflsp').checked ? 'pause_turns' : '');
+    fd.append('file', file, file.name); fd.append('model', $('#wfmd').value); fd.append('language', $('#wflg').value);
+    fd.append('task', $('#wfts').value); fd.append('vocab', $('#wfvb').checked ? 'true' : 'false');
+    fd.append('diarize', $('#wfsp').checked ? 'pause_turns' : '');
     try { const r = await api('POST', '/api/kaan/transcribe', undefined, {form: fd}); clearInterval(tk); await load(); show('t', r.id); }
-    catch (e) { clearInterval(tk); draw(e.message || 'The transcript could not be made.', true); $('#hflmake').disabled = false; }
+    catch (e) { clearInterval(tk); draw(e.message || 'The transcript could not be made.', true); const b = $('#wfmake'); if (b) b.disabled = false; }
   }
 
   /* ---------------------------------------------------------------- one transcript */
   async function transcript(tid, keep) {
     if (!keep || !T || T.id !== tid) {
-      frame('<div class="hfl-wrap"><p class="hfl-dim">Opening…</p></div>');
-      try { T = await api('GET', `/api/flow/t/${encodeURIComponent(tid)}`); } catch (e) { frame(`<div class="hfl-wrap"><p class="hfl-bad">${esc(e.message)}</p></div>`); return; }
-      T.view = 'turns'; T.render = null;
+      main('<div class="wf-in"><p class="wf-dim">Opening…</p></div>');
+      try { T = await api('GET', `/api/flow/t/${encodeURIComponent(tid)}`); } catch (e) { main(`<div class="wf-in"><p class="wf-bad">${esc(e.message)}</p></div>`); return; }
+      T.view = T.kind === 'dictated' ? STYLE : 'turns'; T.render = null;
+      if (T.view !== 'turns') T.render = await styleOf(T.id, T.view);
       MIN = null; api('GET', `/api/kaan/${encodeURIComponent(tid)}/minutes`).then(m => { MIN = m; if (VIEW === 't' && T?.id === tid) transcript(tid, true); }).catch(() => {});
     }
+    if (VIEW !== 't' || T.id !== tid) return;
     const sp = T.speakers && T.speakers.turns ? T.speakers.turns : null;
     const body = T.view === 'turns'
-      ? (sp ? sp.map(t => `<div class="hfl-turn"><div><b class="hfl-who s${(t.turn - 1) % 4}">${esc(t.speaker || `Speaker ${t.turn}`)}</b><span class="mono hfl-tm">${clock(t.start)}</span>
-            <button type="button" class="hfl-btn xs" data-name="${t.turn}">${t.speaker ? 'Rename' : 'Name'}</button></div><p>${esc(t.text || '')}</p></div>`).join('')
-          + '<p class="hfl-fine">Speakers are split where the talking pauses. Hoola does not guess who they are - you name them.</p>'
-        : (T.segments || []).map(s => `<div class="hfl-turn"><div><span class="mono hfl-tm">${clock(s.start)}</span></div><p>${esc(s.text || '')}</p></div>`).join('')
-          || `<p class="hfl-dim">${esc(T.note || 'Nothing was heard.')}</p>`)
-      : `<div class="hfl-rend">${rendered(T.render)}</div>${T.render?.note ? `<p class="hfl-fine">${esc(T.render.note)}</p>` : ''}`;
+      ? (sp ? sp.map(t => `<div class="wf-turn"><div><b class="wf-who s${(t.turn - 1) % 4}">${esc(t.speaker || `Speaker ${t.turn}`)}</b><span class="wf-mono wf-dim">${clock(t.start)}</span>
+            <button type="button" class="wf-btn xs ghost" data-name="${t.turn}">${t.speaker ? 'Rename' : 'Name'}</button></div><p>${esc(t.text || '')}</p></div>`).join('')
+          + '<p class="wf-fine">Speakers are split where the talking pauses. Hoola does not guess who they are - you name them.</p>'
+        : (T.segments || []).map(s => `<div class="wf-turn"><div><span class="wf-mono wf-dim">${clock(s.start)}</span></div><p>${esc(s.text || '')}</p></div>`).join('')
+          || `<p class="wf-dim">${esc(T.note || 'Nothing was heard.')}</p>`)
+      : `<div class="wf-rend">${rendered(T.render)}</div>${T.render?.note ? `<p class="wf-fine">${esc(T.render.note)}</p>` : ''}`;
     const acts = MIN?.action_candidates || [];
-    frame(`<div class="hfl-wrap wide">
-      <nav class="hfl-crumb" aria-label="Breadcrumb"><button type="button" data-go="home">Hoola Flow</button> / ${esc(T.title)}</nav>
-      <header class="hfl-head"><div><h1 class="hfl-h1 sm">${esc(T.title)}</h1>
-        <p class="hfl-dim">${clock(T.duration_s)}${T.language ? ' · ' + esc(T.language) : ''}${sp ? ` · ${sp.length} turns by pauses` : ''}${T.task === 'translate' ? ' · translated to English' : ''}${T.model ? ` · model ${esc(T.model)}` : ''}</p></div>
-        <div class="hfl-acts r"><button type="button" class="hfl-btn" id="hflcopy">Copy text</button><button type="button" class="hfl-btn" id="hflgy">Save to Gyaan</button><button type="button" class="hfl-btn" id="hflask">Ask Hoola about it</button></div></header>
-      <div class="hfl-tabs" role="tablist" aria-label="Show as"><button type="button" role="tab" data-tv="turns" aria-selected="${T.view === 'turns'}">${sp ? 'Speakers' : 'With times'}</button>
+    main(`<div class="wf-in wide">
+      <nav class="wf-crumb" aria-label="Breadcrumb"><button type="button" data-home>${I.back}Home</button><span>${esc(T.title)}</span></nav>
+      <header class="wf-hd"><div><h1 class="wf-h1">${esc(T.title)}</h1>
+        <p class="wf-meta"><span>${clock(T.duration_s)}</span>${T.language ? `<span>${esc(T.language)}</span>` : ''}${sp ? `<span>${sp.length} turns by pauses</span>` : ''}${T.task === 'translate' ? '<span>translated to English</span>' : ''}${T.model ? `<span>model ${esc(T.model)}</span>` : ''}</p></div>
+        <div class="wf-acts"><button type="button" class="wf-btn" id="wfcopy">${I.copy}Copy</button><button type="button" class="wf-btn" id="wfgy">Save to Gyaan</button><button type="button" class="wf-btn dark" id="wfchat">Put in the Hoola chat</button></div></header>
+      <div class="wf-seg" role="tablist" aria-label="Show as" style="margin-bottom:16px"><button type="button" role="tab" data-tv="turns" aria-selected="${T.view === 'turns'}">${sp ? 'Speakers' : 'With times'}</button>
         ${STY.map(([k, n]) => `<button type="button" role="tab" data-tv="${k}" aria-selected="${T.view === k}">${n}</button>`).join('')}</div>
-      <div class="hfl-two"><section class="grow hfl-body" aria-label="Transcript">${body}</section>
-        <aside class="hfl-col">
-          <section class="hfl-card"><h2>Action items found</h2>
-            ${MIN ? (acts.length ? acts.slice(0, 12).map(c => `<p class="hfl-ai"><span>${esc(c.text)}</span>${c.speaker ? `<small>${esc(c.speaker)}</small>` : ''}</p>`).join('') + '<p class="hfl-fine">Picked by the words used ("will", "by Friday", "karna hai"...), not decided. Check them.</p><button type="button" class="hfl-btn wide" id="hflrem">Make reminders from these</button>' : '<p class="hfl-dim">None found in what was said.</p>') : '<p class="hfl-dim">Reading…</p>'}
-            ${MIN?.keywords?.length ? `<p class="hfl-fine">Key words: ${esc(MIN.keywords.join(', '))}</p>` : ''}</section>
-          <section class="hfl-card"><h2>Download as</h2><div class="hfl-grid2">${['srt', 'vtt', 'txt', 'json'].map(f => `<button type="button" class="hfl-btn" data-ex="${f}">${{srt: 'SRT subtitles', vtt: 'VTT subtitles', txt: 'Text', json: 'JSON'}[f]}</button>`).join('')}</div></section>
-          <div class="hfl-acts"><button type="button" class="hfl-btn" id="hflren">Rename</button><button type="button" class="hfl-btn" id="hflpin">${T.pinned ? 'Kept for ever ✓' : 'Keep for ever'}</button><button type="button" class="hfl-btn danger" id="hfldel">Delete</button></div>
+      <div class="wf-two"><section class="wf-body" aria-label="Transcript">${body}</section>
+        <aside class="wf-col">
+          <section class="wf-card"><h2>Action items found</h2>
+            ${MIN ? (acts.length ? acts.slice(0, 12).map(c => `<p class="wf-ai"><span>${esc(c.text)}</span>${c.speaker ? `<small>${esc(c.speaker)}</small>` : ''}</p>`).join('') + '<p class="wf-fine">Picked by the words used ("will", "by Friday", "karna hai"...), not decided. Check them.</p><button type="button" class="wf-btn full" style="margin-top:12px" id="wfrem">Make reminders from these</button>' : '<p class="wf-dim">None found in what was said.</p>') : '<p class="wf-dim">Reading…</p>'}
+            ${MIN?.keywords?.length ? `<p class="wf-fine">Key words: ${esc(MIN.keywords.join(', '))}</p>` : ''}</section>
+          <section class="wf-card"><h2>Download as</h2><div class="wf-grid2">${['srt', 'vtt', 'txt', 'json'].map(f => `<button type="button" class="wf-btn" data-ex="${f}">${{srt: 'SRT subtitles', vtt: 'VTT subtitles', txt: 'Text', json: 'JSON'}[f]}</button>`).join('')}</div></section>
+          <section class="wf-card"><h2>This transcript</h2><div class="wf-grid2"><button type="button" class="wf-btn" id="wfask">Ask Hoola</button><button type="button" class="wf-btn" id="wfren">Rename</button>
+            <button type="button" class="wf-btn" id="wfpin">${T.pinned ? 'Kept for ever ✓' : 'Keep for ever'}</button><button type="button" class="wf-btn danger" id="wfdel">Delete</button></div></section>
         </aside></div></div>`);
-    wireDone();
+    $('[data-home]').onclick = () => show('home');
     EL.querySelectorAll('[data-tv]').forEach(b => b.onclick = async () => { T.view = b.dataset.tv; if (T.view !== 'turns') T.render = await styleOf(T.id, T.view); transcript(T.id, true); });
     EL.querySelectorAll('[data-name]').forEach(b => b.onclick = () => nameTurn(+b.dataset.name));
     EL.querySelectorAll('[data-ex]').forEach(b => b.onclick = () => download(b.dataset.ex));
-    $('#hflcopy').onclick = async () => { const t = T.view === 'turns' ? (T.text || '') : plain(T.render); try { await navigator.clipboard.writeText(t); toast('Copied.'); } catch { toast('The browser did not allow copying.', true); } };
-    $('#hflask').onclick = () => say(`About my transcript "${T.title}" (Kaan ${T.id}): `, false);
-    $('#hflrem') && ($('#hflrem').onclick = () => say(`Make reminders from these action items in my transcript "${T.title}" (Kaan ${T.id}). Ask me for any date that is not clear:\n${acts.slice(0, 12).map(c => '- ' + c.text).join('\n')}`, false));
-    $('#hflren').onclick = async () => { const n = prompt('Name this transcript', T.title); if (!n) return;
-      try { await api('POST', `/api/flow/t/${encodeURIComponent(T.id)}/rename`, {name: n}); T.title = n; T.file_name = n; await load(); transcript(T.id, true); } catch (e) { toast(e.message, true); } };
-    $('#hflpin').onclick = async () => { try { const r = await api('POST', `/api/flow/t/${encodeURIComponent(T.id)}/pin`, {pinned: !T.pinned}); T.pinned = r.pinned; transcript(T.id, true); } catch (e) { toast(e.message, true); } };
-    $('#hfldel').onclick = async () => { if (!confirm(`Delete "${T.title}"? This cannot be undone.`)) return;
+    const txt = () => T.view === 'turns' ? (T.text || '') : plain(T.render);
+    $('#wfcopy').onclick = () => copy(txt(), true);
+    $('#wfchat').onclick = () => say(txt(), false);
+    $('#wfgy').onclick = async () => { try { await api('POST', `/api/kaan/${encodeURIComponent(T.id)}/to_gyaan`); toast('Saved to Gyaan.'); } catch (e) { toast(e.message, true); } };
+    $('#wfask').onclick = () => say(`About my transcript "${T.title}" (Kaan ${T.id}): `, false);
+    $('#wfrem') && ($('#wfrem').onclick = () => say(`Make reminders from these action items in my transcript "${T.title}" (Kaan ${T.id}). Ask me for any date that is not clear:\n${acts.slice(0, 12).map(c => '- ' + c.text).join('\n')}`, false));
+    $('#wfren').onclick = () => modal('Rename', 'A name you will recognise later.', [{id: 'wfrn', label: 'Name', req: true, max: 120}], 'Save', async v => {
+      await api('POST', `/api/flow/t/${encodeURIComponent(T.id)}/rename`, {name: v.wfrn}); T.title = v.wfrn; await load(); transcript(T.id, true); });
+    $('#wfpin').onclick = async () => { try { const r = await api('POST', `/api/flow/t/${encodeURIComponent(T.id)}/pin`, {pinned: !T.pinned}); T.pinned = r.pinned; transcript(T.id, true); } catch (e) { toast(e.message, true); } };
+    $('#wfdel').onclick = async () => { if (!confirm(`Delete "${T.title}"? This cannot be undone.`)) return;
       try { await api('DELETE', `/api/flow/t/${encodeURIComponent(T.id)}`); T = null; toast('Deleted.'); await load(); show('home'); } catch (e) { toast(e.message, true); } };
   }
   async function nameTurn(turn) {
@@ -369,38 +578,37 @@ window.HoolaFlow = function ({api, esc, toast, say}) {
     } catch (e) { toast(e.message, true); }
   }
 
-  /* ---------------------------------------------------------------- live */
+  /* ---------------------------------------------------------------- live captions */
   function live() {
     const busy = !!LIVE;
-    frame(`<div class="hfl-wrap"><div class="hfl-two"><div class="grow">
-      <header class="hfl-head"><div>${busy ? `<p class="hfl-state live"><i class="hfl-dot rec"></i>LIVE · <span class="mono" id="hflclk">${clock((Date.now() - T0) / 1000)}</span></p>` : ''}
-        <label class="hfl-sr" for="hflttl">Name</label><input id="hflttl" class="hfl-title" placeholder="Name this, e.g. Monday stand-up" value="${esc(LIVE?.title || '')}"></div>
-        <div class="hfl-acts r">${busy ? `<button type="button" class="hfl-btn" id="hflpause">${PAUSED ? 'Resume' : 'Pause'}</button><button type="button" class="hfl-btn stop" id="hflstop">Stop and save</button>`
-          : `<button type="button" class="hfl-btn pri" id="hflgo"${canHear() ? '' : ' disabled'}>Start captions</button>`}</div></header>
-      <section class="hfl-caps" aria-live="polite" aria-label="Captions" id="hflcaps">${busy ? capsHtml() : '<p class="hfl-dim">Captions appear here a few seconds after people speak.</p>'}</section>
-      <p class="hfl-fine">When you stop, the transcript opens with its minutes and action items.</p></div>
-      <aside class="hfl-col">
-        <section class="hfl-card"><h2>Listening to</h2><p class="hfl-st"><i class="hfl-dot ok"></i>This computer's microphone</p>
-          <p class="hfl-fine">A Chrome tab (Meet, Zoom, YouTube): open the Hoola extension and press Live captions - it lands here too. Phone: coming.</p></section>
-        <section class="hfl-card"><h2>Before you start</h2><p class="hfl-dim">Tell everyone it is being written down. The red LIVE mark stays on the whole time; Hoola never records in secret.</p></section>
+    main(`<div class="wf-in wide">${notReady()}<div class="wf-two"><div class="wf-col">
+      <header class="wf-hd" style="margin:0"><div style="flex:1">${busy ? `<p class="wf-livebadge"><i class="wf-dot rec"></i>LIVE · <span class="wf-mono" id="wflclk">${clock((Date.now() - T0) / 1000)}</span></p>` : '<h1 class="wf-h1" style="margin-bottom:10px">Live captions</h1>'}
+        <label class="wf-sr" for="wfttl">Name</label><input id="wfttl" class="wf-title" placeholder="Name this, e.g. Monday stand-up" value="${esc(LIVE?.title || '')}"></div>
+        <div class="wf-acts">${busy ? `<button type="button" class="wf-btn" id="wfpause">${PAUSED ? 'Resume' : 'Pause'}</button><button type="button" class="wf-btn dark" id="wfstop">Stop and save</button>`
+          : `<button type="button" class="wf-btn dark" id="wfgo"${canHear() ? '' : ' disabled'}>Start captions</button>`}</div></header>
+      <section class="wf-caps" aria-live="polite" aria-label="Captions" id="wfcaps">${busy ? capsHtml() : '<p class="wf-dim">Captions appear here a few seconds after people speak.</p>'}</section>
+      <p class="wf-fine">When you stop, the transcript opens with its minutes and action items.</p></div>
+      <aside class="wf-col">
+        <section class="wf-card"><h2>Listening to</h2><p><i class="wf-dot ok"></i>This computer's microphone</p>
+          <p class="wf-fine">A Chrome tab (Meet, Zoom, YouTube): open the Hoola extension and press Live captions - it lands here too.</p></section>
+        <section class="wf-card"><h2>Before you start</h2><p class="wf-mut">Tell everyone it is being written down. The red LIVE mark stays on the whole time; Hoola never records in secret.</p></section>
       </aside></div></div>`);
-    if (busy) { tick(); $('#hflstop').onclick = stopLive; $('#hflpause').onclick = () => { PAUSED = !PAUSED; LIVE.s.pause(PAUSED); live(); }; }
-    else $('#hflgo') && ($('#hflgo').onclick = startLive);
-    $('#hflttl').oninput = e => { if (LIVE) LIVE.title = e.target.value; };
+    if (busy) { tick(); $('#wfstop').onclick = stopLive; $('#wfpause').onclick = () => { PAUSED = !PAUSED; LIVE.s.pause(PAUSED); live(); }; }
+    else $('#wfgo') && ($('#wfgo').onclick = startLive);
+    $('#wfttl').oninput = e => { if (LIVE) LIVE.title = e.target.value; };
   }
-  function capsHtml() { const c = LIVE?.caps || []; return c.length ? c.slice(-30).map((p, i, a) => `<p class="hfl-cap${i === a.length - 1 ? ' now' : ''}"><span class="mono">${clock(p.start)}</span>${esc(p.text)}</p>`).join('') : '<p class="hfl-dim">Listening…</p>'; }
+  function capsHtml() { const c = LIVE?.caps || []; return c.length ? c.slice(-30).map((p, i, a) => `<p class="wf-cap${i === a.length - 1 ? ' now' : ''}"><span>${clock(p.start)}</span>${esc(p.text)}</p>`).join('') : '<p class="wf-dim">Listening…</p>'; }
   async function startLive() {
-    if (BUSY) return; BUSY = true; PAUSED = false;
-    const title = ($('#hflttl')?.value || '').trim();
-    const st = {title, caps: [], s: null};
+    if (BUSY || SESS) return; BUSY = true; PAUSED = false;
+    const st = {title: ($('#wfttl')?.value || '').trim(), caps: [], s: null};
     st.s = window.HoolaFlowSession({api, onLevel: l => { LEVEL = l; }, onError: e => toast(e.message, true),
-      onWords: (_t, r) => { (r.new || []).forEach(p => st.caps.push(p)); const c = $('#hflcaps'); if (c && VIEW === 'live') { c.innerHTML = capsHtml(); c.scrollTop = c.scrollHeight; } }});
+      onWords: (_t, r) => { (r.new || []).forEach(p => st.caps.push(p)); const c = $('#wfcaps'); if (c && VIEW === 'live') { c.innerHTML = capsHtml(); c.scrollTop = c.scrollHeight; } }});
     try { await st.s.start(); LIVE = st; T0 = Date.now(); } catch (e) { toast(micWhy(e), true); }
     BUSY = false; live();
   }
   async function stopLive() {
     if (BUSY) return; BUSY = true;
-    const b = $('#hflstop'); if (b) { b.disabled = true; b.textContent = 'Saving…'; }
+    const b = $('#wfstop'); if (b) { b.disabled = true; b.textContent = 'Saving…'; }
     let tid = '';
     try { const out = await LIVE.s.stop(); tid = out.transcript_id || '';
       const name = (LIVE.title || '').trim();
@@ -411,50 +619,39 @@ window.HoolaFlow = function ({api, esc, toast, say}) {
     tid ? show('t', tid) : show('live');
   }
 
-  /* ---------------------------------------------------------------- words */
-  async function words() {
-    let V = {items: []}; try { V = await api('GET', '/api/kaan/vocab'); } catch (e) { V.error = e.message; }
-    frame(`<div class="hfl-wrap narrow"><h1 class="hfl-h1 sm">My words</h1>
-      <p class="hfl-sub">Names, brands and terms Hoola should spell your way. A word alone is a listening hint. With "always write as" it is replaced every time, and the transcript notes how many it fixed.</p>
-      <form class="hfl-card hfl-add" id="hfladd"><div><label class="hfl-lb" for="hflw1">Word or name</label><input id="hflw1" class="hfl-in" placeholder="e.g. Newtika" required></div>
-        <div><label class="hfl-lb" for="hflw2">Always write as (optional)</label><input id="hflw2" class="hfl-in" placeholder="e.g. Newtika Pvt Ltd"></div>
-        <button type="submit" class="hfl-btn pri">Add</button></form>
-      ${V.error ? `<p class="hfl-bad">${esc(V.error)}</p>` : ''}
-      <section class="hfl-card" aria-label="Your words">${(V.items || []).length ? `<div class="hfl-wr hd"><span>Word</span><span>Always written as</span><span></span></div>` + V.items.map(w => `<div class="hfl-wr"><span>${esc(w.term)}</span><span${w.fix_to ? '' : ' class="hfl-dim"'}>${esc(w.fix_to || 'hint only')}</span><button type="button" class="hfl-btn xs" data-rm="${esc(w.term)}">Remove</button></div>`).join('') : '<p class="hfl-empty">No words yet.</p>'}</section>
-      <p class="hfl-fine">Used by Dictate, files and live captions. Hints share an 800-character space.</p></div>`);
-    $('#hfladd').onsubmit = async e => { e.preventDefault();
-      try { await api('POST', '/api/kaan/vocab', {term: $('#hflw1').value.trim(), fix_to: $('#hflw2').value.trim()}); words(); } catch (er) { toast(er.message, true); } };
-    EL.querySelectorAll('[data-rm]').forEach(b => b.onclick = async () => { try { await api('DELETE', `/api/kaan/vocab/${encodeURIComponent(b.dataset.rm)}`); words(); } catch (e) { toast(e.message, true); } });
-  }
-
   /* ---------------------------------------------------------------- settings (read from the server) */
   function settings() {
     const o = OV || {}, e = o.engine || {}, u = o.usage || {};
-    const row = (k, v, sm) => `<div class="hfl-tg"><span>${k}${sm ? `<small>${sm}</small>` : ''}</span><span>${v}</span></div>`;
-    const on = b => b ? '<span class="hfl-on">On</span>' : '<span class="hfl-off">Off</span>';
-    frame(`<div class="hfl-wrap wide"><h1 class="hfl-h1 sm">Engine, limits and doors</h1>
-      <p class="hfl-sub">These are set on your server (its settings file), so everyone using it gets the same rules. This page shows them as they are now.</p>
-      <div class="hfl-grid2 big">
-        <section class="hfl-card"><h2>Engine</h2><p class="hfl-st"><i class="hfl-dot ${e.ok ? 'ok' : 'bad'}"></i>${e.ok ? 'Ready on this server · Whisper (MIT licence)' : esc(e.why || 'Not ready')}</p>
-          ${(e.ladder || []).map(m => `<div class="hfl-tg"><span class="mono">${esc(m.name)}</span><span class="hfl-dim">${m.name === e.default_model ? 'Default for files' : m.name === e.live_model ? 'Default for live' : esc(String(m.note || '').slice(0, 40))}</span></div>`).join('')}</section>
-        <section class="hfl-card"><h2>Recording and privacy</h2>
-          ${row('Recording on this server', on(o.recording?.on), o.recording?.on ? 'Off: nothing is heard or written.' : esc(o.recording?.how || ''))}
-          ${row('Split into speakers by pauses', on(o.speakers?.on), 'Turns stay unnamed until you name them')}
-          ${row('Know people by their voice', on(o.voiceprint?.on), esc(o.voiceprint?.why || 'Needs their enrolled voice, consent and a delete-after period'))}</section>
-        <section class="hfl-card"><h2>Limits</h2>
-          ${row('Monthly audio limit', u.cap ? `<span class="mono">${esc(String(u.cap))} min</span>` : 'None', 'KAAN_QUOTA_AUDIO_MIN')}
-          ${row('Used this month', `<span class="mono">${esc(String(u.minutes ?? 0))} min</span>`, esc(u.month || ''))}
-          ${row('Delete transcripts after', o.retention?.days ? `<span class="mono">${esc(String(o.retention.days))} days</span>` : 'Kept', 'KAAN_RETENTION_DAYS · kept-for-ever ones stay')}</section>
-        <section class="hfl-card"><h2>Other ways in</h2><p class="hfl-fine">The same engine, switches and limits behind every door.</p>
-          ${row('Chrome extension', '<span class="hfl-dim">Live captions from a tab</span>')}
-          ${row('Phone app', '<span class="hfl-dim">Coming</span>')}
-          ${row('API', `<span class="mono">${esc(o.doors?.api || '/api/kaan')}</span>`)}
-          ${row('MCP for coding tools', `<span class="mono">${esc(o.doors?.mcp || '')}</span>`)}</section>
+    const r = (k, v, sm) => `<div class="wf-tg"><span>${k}${sm ? `<small>${sm}</small>` : ''}</span><span>${v}</span></div>`;
+    const on = b => b ? '<span class="wf-on">On</span>' : '<span class="wf-off">Off</span>';
+    main(`<div class="wf-in wide"><header class="wf-hd"><div><h1 class="wf-h1">Settings</h1>
+      <p class="wf-sub">The engine, limits and doors are set on your server, so everyone using it gets the same rules. This page shows them as they are now.</p></div></header>
+      <div class="wf-sets">
+        <section class="wf-card"><h2>Engine</h2><p><i class="wf-dot ${e.ok ? 'ok' : 'bad'}"></i>${e.ok ? 'Ready on this server · Whisper (MIT licence)' : esc(e.why || 'Not ready')}</p>
+          ${(e.ladder || []).map(m => `<div class="wf-tg"><span class="wf-mono">${esc(m.name)}</span><span class="wf-dim">${m.name === e.default_model ? 'Default for files' : m.name === e.live_model ? 'Default for live' : esc(String(m.note || '').slice(0, 40))}</span></div>`).join('')}</section>
+        <section class="wf-card"><h2>Recording and privacy</h2>
+          ${r('Recording on this server', on(o.recording?.on), o.recording?.on ? 'Off: nothing is heard or written.' : esc(o.recording?.how || ''))}
+          ${r('Split into speakers by pauses', on(o.speakers?.on), 'Turns stay unnamed until you name them')}
+          ${r('Know people by their voice', on(o.voiceprint?.on), esc(o.voiceprint?.why || 'Needs their enrolled voice, consent and a delete-after period'))}</section>
+        <section class="wf-card"><h2>Limits</h2>
+          ${r('Monthly audio limit', u.cap ? `<span class="wf-mono">${esc(String(u.cap))} min</span>` : 'None', 'KAAN_QUOTA_AUDIO_MIN')}
+          ${r('Used this month', `<span class="wf-mono">${esc(String(u.minutes ?? 0))} min</span>`, esc(u.month || ''))}
+          ${r('Delete transcripts after', o.retention?.days ? `<span class="wf-mono">${esc(String(o.retention.days))} days</span>` : 'Kept', 'KAAN_RETENTION_DAYS · kept-for-ever ones stay')}</section>
+        <section class="wf-card"><h2>This browser</h2>
+          ${r('Dictation style', esc((LOOK[STYLE] || LOOK.clean)[0]), 'Change it on the Style page')}
+          ${r('Dictate on this page', '<kbd>Space</kbd>', 'Hold to talk, or tap and tap again. Esc cancels')}
+          ${r('Dictate in the Hoola chat box', '<kbd>Ctrl</kbd> + <kbd>Space</kbd>')}</section>
+        <section class="wf-card"><h2>Other ways in</h2><p class="wf-fine">The same engine, switches and limits behind every door.</p>
+          ${r('Chrome extension', '<span class="wf-dim">Live captions from a tab</span>')}
+          ${r('Phone app', '<span class="wf-dim">Coming</span>')}
+          ${r('API', `<span class="wf-mono">${esc(o.doors?.api || '/api/kaan')}</span>`)}
+          ${r('MCP for coding tools', `<span class="wf-mono">${esc(o.doors?.mcp || '')}</span>`)}</section>
       </div></div>`);
   }
 
   return {open, leave, busy: busyNow, show};
 };
+
 
 /* the chat box mic: dictation through Kaan (start / stop). Returns null when it cannot (the caller falls back). */
 window.HoolaFlowMic = function ({api, toast, onText, onState}) {

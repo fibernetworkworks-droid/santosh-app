@@ -30,6 +30,7 @@ from .connectors.upi import valid_vpa
 from .db import (Approval, Connection, Contact, GeneratedDoc, InstalledPack, Reminder, Shop, ShopDue, ShopItem, ShopOrder,
                  Task, Transaction, User)
 from . import custom_mcp, directory, featured, logos
+from .oneline import oneline
 from .db import CustomMcp
 from .packs.registry import Pack, Registry, registry
 
@@ -852,16 +853,17 @@ def connections(tenant_id: str) -> list[dict[str, Any]]:
                 continue
             out.append({"pack_id": p.id, "name": p.name, "provider": p.config["provider"], "status": st_p,
                         "configured": bool(getattr(st, p.config["endpoint_setting"], "")), "logo": logos.pack_logo(p.id),
-                        "does": (p.description or "")[:160]})
+                        "does": (p.description or "")[:160], "line": oneline(p.description or "", p.name, category=p.category)})
         im = registry().lookup("indiamart")     # v0.277 no login: shown as Connected for everyone
         if im is not None and im.executor == "indiamart":
             out.append({"pack_id": im.id, "name": im.name, "provider": "indiamart", "status": pack_status(s, user, im),
                         "configured": True, "no_login": True, "logo": logos.pack_logo(im.id),
-                        "does": (im.description or "")[:160]})
+                        "does": (im.description or "")[:160], "line": oneline(im.description or "", im.name)})
         for r in custom_mcp.user_rows(s, user.id):
             p = custom_mcp.to_pack(r)
             out.append({"pack_id": p.id, "name": p.name, "provider": p.config["provider"], "status": pack_status(s, user, p),
-                        "configured": True, "custom": True, "logo": logos.custom_logo(r)})
+                        "configured": True, "custom": True, "logo": logos.custom_logo(r),
+                        "line": oneline(r.description or "", r.name, category="MCP server")})
         return out
 
 
@@ -937,7 +939,10 @@ def mcp_directory(query: str = "", field: str = "", limit: int = 8) -> dict[str,
                                        "(her own account in ~1,600 apps); ek server ka https pata ho to bazar_mcp action=add."}
     if not query and not field:
         return directory.stats()
-    return {"servers": directory.search(query, limit=limit, field=field)}
+    found = directory.search(query, limit=limit, field=field)
+    for x in found:
+        x["line"] = oneline(x.get("does", ""), x.get("name", ""), category=x.get("field", ""))
+    return {"servers": found}
 
 
 def mcp_one_tap(tenant_id: str, ref: str, keys: dict[str, str] | None = None, accept_caution: bool = False,
@@ -1490,6 +1495,7 @@ def catalog(tenant_id: str) -> dict[str, Any]:
         user = ensure_user(s, tenant_id)
         packs = [{"pack_id": p.id, "name": p.name, "category": p.category, "kind": p.sub_category, "executor": p.executor,
                   "status": pack_status(s, user, p), "does": (p.description or "")[:220], "logo": logos.pack_logo(p.id),
+                  "line": oneline(p.description or "", p.name, category=p.category),
                   # v0.109 the phone checks which of these apps are really installed (green tick only then)
                   **({"android_package": p.config["android_package"]} if p.executor == "upi"
                      and p.config.get("android_package") else {}),
@@ -1499,6 +1505,7 @@ def catalog(tenant_id: str) -> dict[str, Any]:
         packs = [p for p in packs if shown(p["executor"], p["status"], p["pack_id"])]
         packs += [{"pack_id": r.id, "name": r.name, "category": "My MCP servers", "kind": "MCP server", "executor": "mcp",
                    "status": pack_status(s, user, custom_mcp.to_pack(r)), "does": (r.description or "")[:220],
+                   "line": oneline(r.description or "", r.name, category="MCP server"),
                    "logo": logos.custom_logo(r)} for r in custom_mcp.user_rows(s, user.id)]
         pincode = user.pincode or ""
         since = dt.datetime.now(dt.timezone.utc).replace(tzinfo=None) - dt.timedelta(days=60)

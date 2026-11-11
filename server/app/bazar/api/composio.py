@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import asyncio
 import json
-from html import escape
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse
@@ -44,16 +43,19 @@ def make_router(require_key, current_tenant) -> APIRouter:
 
     @r.get("/bazar/composio/callback")
     async def callback(st: str = ""):
+        # v0.774 one done page for the phone AND the web console (bazar/donepage.py)
         from ...config import get_settings
+        from .. import donepage
+        name = ""
         try:
             name, ok = await asyncio.to_thread(service.composio_callback, st)
-            msg = f"{escape(name)} jud gaya." if ok else f"{escape(name)} ka sign-in abhi poora nahi hua. Dobara try kijiye."
+            title = f"{name} is connected" if ok else f"{name} sign-in did not finish"
+            detail = (f"Hoola can now work in {name} for you. Reads run straight away; sending, deleting and payments "
+                      f"always wait for your tap." if ok else "Nothing was linked. Please try again from Connectors.")
         except ToolError as e:
-            msg, ok = escape(str(e)), False
+            ok, title, detail = False, "Not connected", str(e)
         link = f"{get_settings().app_redirect_scheme}://bazar?linked={'1' if ok else '0'}"
-        return HTMLResponse(f"""<!doctype html><meta name=viewport content="width=device-width,initial-scale=1">
-<body style="font-family:sans-serif;padding:32px;text-align:center"><h2>{'✅' if ok else '⚠️'} {msg}</h2>
-<p><a href="{link}" style="font-size:18px">Hoola par wapas jaiye</a></p><script>setTimeout(()=>location.href="{link}",800)</script>""")
+        return HTMLResponse(donepage.render(ok, title, detail, link, name))
 
     @r.post("/bazar/composio/webhook")
     async def webhook(request: Request):
