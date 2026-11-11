@@ -37,6 +37,18 @@
  * Lost connection: retry after 0.5, 1, 2, 4, 8, 8... seconds. The new init is loaded with
  * store.load(doc, cid, {keep:true}) (pending local edits are put back on top) and every un-acked op is
  * sent again, in the same order, under new frame numbers.
+ *
+ * D9b SPEED (both are asked for in the address, so an old server simply ignores them):
+ *   ?lazy=1[&pages=<ids>]  a big file may come PAGE BY PAGE: init then carries `lazy` (the page ids whose layers
+ *                     are not in it) and `pages` [{id, name, count}]; net asks for the missing pages one at a time -
+ *                     the one she opens at once, the rest when the page is idle - with {t:'page', id} and puts each
+ *                     answer in with store.loadPage. store 'need' (a layer of a missing page moved onto a page we
+ *                     hold) asks for that page again. On a reconnect it asks for the pages it already holds.
+ *   ?enc=c1           the compact op frames (keys as numbers, ops as arrays; see KEYS below and server
+ *                     app/design/wire.py). Used only when init.use === 'c1'; JSON frames are always understood.
+ *   on('page', fn({id, left}))   one page arrived (left = pages still missing)      pages  init.pages
+ *   loading() -> ids of the pages not here yet        options {lazy: true, c1: true}  (set before connect)
+ *   wire  {bytesIn, bytesOut, framesIn, framesOut}   what went over this socket (the perf harness reads it)
  */
 (function () {
   'use strict';
@@ -55,7 +67,50 @@
   var PRES_EXTRA = ['vs', 'chat', 'spot'];
 
   var em = new HD.Emitter();
-  var net = HD.net = {status: 'offline', users: new Map(), extra: new Map(), role: null, cid: null, file: null, seq: 0, share: null, held: false};
+  var net = HD.net = {status: 'offline', users: new Map(), extra: new Map(), role: null, cid: null, file: null, seq: 0, share: null, held: false,
+    options: {lazy: true, c1: true}, pages: null, wire: {bytesIn: 0, bytesOut: 0, framesIn: 0, framesOut: 0}};
+
+  /* ---------------------------------------------------------------- D9b: the compact op frames (c1)
+   * KEYS must be exactly app/design/wire.py KEYS (a test holds them equal). */
+  var KEYS = ['type', 'parent', 'idx', 'name', 'x', 'y', 'w', 'h', 'rot', 'flipH', 'flipV', 'visible', 'locked', 'opacity',
+    'blend', 'mask', 'fills', 'strokes', 'strokeWeight', 'strokeAlign', 'strokeCap', 'strokeJoin', 'dash', 'radius',
+    'effects', 'clip', 'layout', 'grids', 'bool', 'sizeH', 'sizeV', 'layoutPos', 'minW', 'maxW', 'minH', 'maxH',
+    'cons', 'sides', 'ratio', 'path', 'fillRule', 'chars', 'font', 'fontSize', 'fontWeight', 'italic', 'lineHeight',
+    'letterSpacing', 'align', 'alignV', 'autoResize', 'decoration', 'textCase', 'runs', 'comp', 'ov', 'desc', 'styles',
+    'vars', 'modes', 'fillStyle', 'textStyle', 'effectStyle', 'bind', 'reactions', 'protoStart', 'scroll', 'fixed',
+    'exports', 'bg', 'guides'];
+  var KEY_NO = Object.create(null);
+  (function () { for (var i = 0; i < KEYS.length; i++) KEY_NO[KEYS[i]] = i; })();
+  function encOp(op) {
+    if (op.del) return [op.id];
+    var out = [op.id], p = op.p, k, n;
+    for (k in p) { if (!hasOwn.call(p, k)) continue; n = KEY_NO[k]; out.push(n === undefined ? k : n, p[k]); }
+    if (out.length === 1) out.push(-1);
+    return out;
+  }
+  function decOp(a) {
+    if (!Array.isArray(a) || !a.length || typeof a[0] !== 'string') return null;
+    if (a.length === 1) return {id: a[0], del: 1};
+    var p = {}, op = {id: a[0], p: p}, k;
+    for (var i = 1; i + 1 < a.length; i += 2) {
+      k = a[i];
+      if (typeof k === 'number') { if (k === -2) { op.ex = 1; continue; } k = KEYS[k]; if (k === undefined) return null; }
+      else if (typeof k !== 'string') return null;
+      p[k] = a[i + 1];
+    }
+    return op;
+  }
+  function decFrame(a) {                    /* a c1 frame -> the JSON frame it stands for; null = not one we know */
+    var ops, i;
+    if (a[0] === 2 && Array.isArray(a[3])) {
+      ops = new Array(a[3].length);
+      for (i = 0; i < ops.length; i++) ops[i] = decOp(a[3][i]);
+      return {t: 'ops', seq: a[1], by: a[2], ops: ops.filter(function (o) { return o !== null; })};
+    }
+    if (a[0] === 3) return {t: 'ack', n: a[1], seq: a[2], rejected: Array.isArray(a[3]) ? a[3] : [], ex: Array.isArray(a[4]) ? a[4] : null};
+    return null;
+  }
+  net.codec = {KEYS: KEYS, encOp: encOp, decOp: decOp, decFrame: decFrame};
 
   var ws = null, gen = 0;                 /* gen: events of an old socket are ignored */
   var fileId = null, want = false;        /* want: keep this file connected */
@@ -72,6 +127,8 @@
   var shareToken = null;                  /* a share link's token: this visit is a view-only guest */
   var held = false;                       /* hold(): the store shows something else, nothing goes in or out */
   var presExtra = {}, presKept = null;    /* setPresence fields; the last cursor frame (sent again with new extras) */
+  var useC1 = false;                      /* D9b: this socket speaks the compact op frames */
+  var pageAsk = null, pageAskAt = 0, pageQ = [], pageT = null, offNeed = null, offSelPg = null;
 
   function now() { return Date.now(); }
   function setStatus(s, info) {
@@ -84,7 +141,12 @@
   }
   function send(obj) {
     if (!ws || ws.readyState !== 1) return false;
-    try { ws.send(typeof obj === 'string' ? obj : JSON.stringify(obj)); return true; } catch (e) { return false; }
+    try {
+      var text = typeof obj === 'string' ? obj : JSON.stringify(obj);
+      ws.send(text);
+      net.wire.bytesOut += text.length; net.wire.framesOut++;
+      return true;
+    } catch (e) { return false; }
   }
   function pendingCount() {
     var n = queue.length;
@@ -132,7 +194,7 @@
     if (ws.bufferedAmount > MAX_BUFFERED) { scheduleFlush(); return; }          /* still busy: wait, keep coalescing */
     var items = [], parts = [], chars = 0, s, big = null, q;
     while (queue.length && items.length < MAX_FRAME_OPS) {
-      s = JSON.stringify(queue[0].op);
+      s = JSON.stringify(useC1 ? encOp(queue[0].op) : queue[0].op);
       if (s.length > MAX_OP_CHARS) { (big || (big = [])).push(queue.shift()); continue; }
       if (items.length && chars + s.length > MAX_FRAME_CHARS) break;
       chars += s.length;
@@ -149,7 +211,7 @@
     if (!items.length) { if (queue.length) scheduleFlush(); return; }
     var n = nextN++;
     flying.push({n: n, items: items});
-    if (!send('{"t":"ops","n":' + n + ',"ops":[' + parts.join(',') + ']}')) {
+    if (!send(useC1 ? '[1,' + n + ',[' + parts.join(',') + ']]' : '{"t":"ops","n":' + n + ',"ops":[' + parts.join(',') + ']}')) {
       flying.pop();                         /* the socket died under us: the ops go back to the head of the queue */
       queue = items.concat(queue);
       return;
@@ -163,6 +225,7 @@
     if (!f) return;
     var rej = msg.rejected, no = null, good = [], bad = [];
     if (rej && rej.length) { no = new Set(); for (i = 0; i < rej.length; i++) no.add(rej[i]); }
+    if (msg.ex && msg.ex.length) for (i = 0; i < msg.ex.length; i++) { var it = f.items[msg.ex[i]]; if (it) it.op.ex = 1; }   /* D9b: merged into a node the server had */
     for (i = 0; i < f.items.length; i++) (no && no.has(i) ? bad : good).push(f.items[i].op);
     if (good.length) store.acked(good);         /* into the store's copy of the server, in the server's order */
     if (bad.length) { store.rollback(bad); em.emit('reject', {ops: bad}); }
@@ -177,7 +240,7 @@
     if (!tk && !shareToken) { want = false; store.readOnly = true; setStatus('auth', {code: 4401}); return; }
     if (!full && !(quiet && net.status === 'live')) setStatus('connecting');
     var url = (W.location.protocol === 'https:' ? 'wss' : 'ws') + '://' + W.location.host +
-      (shareToken ? '/api/design/ws?share=' + encodeURIComponent(shareToken) : '/api/design/ws?file=' + encodeURIComponent(fileId));
+      (shareToken ? '/api/design/ws?share=' + encodeURIComponent(shareToken) : '/api/design/ws?file=' + encodeURIComponent(fileId)) + caps();
     var g = ++gen, sock;
     try { sock = new W.WebSocket(url, shareToken ? ['hoola'] : ['hoola', 'hoola-key.' + tk]); }
     catch (e) { lost(); return; }
@@ -188,7 +251,10 @@
       if (g !== gen) return;
       lastHeard = now();
       var msg;
+      net.wire.framesIn++;
+      if (typeof ev.data === 'string') net.wire.bytesIn += ev.data.length;
       try { msg = JSON.parse(ev.data); } catch (e) { return; }
+      if (Array.isArray(msg)) msg = decFrame(msg);              /* D9b: a compact frame */
       if (msg && typeof msg === 'object') onFrame(msg);
     };
     sock.onerror = function () {};
@@ -292,6 +358,7 @@
         em.emit('file', net.file);
         break;
       case 'comment': em.emit('comment', msg); break;
+      case 'page': onPage(msg); break;
       case 'reload':
         if (held) break;                    /* release() fetches the live document anyway */
         em.emit('reload');
@@ -311,6 +378,10 @@
     if (Array.isArray(msg.users)) for (i = 0; i < msg.users.length; i++) putUser(msg.users[i]);
     if (!canEdit()) keep = false;
     quiet = false;
+    useC1 = msg.use === 'c1';
+    net.pages = Array.isArray(msg.pages) ? msg.pages : null;
+    pageAsk = null; pageQ = [];
+    var lazyOpts = Array.isArray(msg.lazy) && msg.lazy.length ? {unloaded: msg.lazy} : null;
     if (held) {                             /* a new socket while a preview is on screen: the store is left alone */
       queue = []; flying = [];
       loaded = true; full = false; backoff = BACKOFF_MIN;
@@ -325,10 +396,10 @@
       for (i = 0; i < flying.length; i++) back = back.concat(flying[i].items);
       queue = back.concat(queue);
       flying = [];
-      store.load(msg.doc, msg.cid, {keep: true});
+      store.load(msg.doc, msg.cid, lazyOpts ? {keep: true, unloaded: lazyOpts.unloaded} : {keep: true});
     } else {
       queue = []; flying = [];
-      store.load(msg.doc, msg.cid);
+      store.load(msg.doc, msg.cid, lazyOpts);
     }
     loaded = true; fresh = false; full = false;
     backoff = BACKOFF_MIN;
@@ -339,7 +410,60 @@
     notePending();
     scheduleFlush();
     resendPresence();
+    if (lazyOpts) pagesLater(0);
   }
+
+  /* ---------------------------------------------------------------- D9b: page by page */
+  function caps() {
+    var o = net.options || {}, out = '';
+    if (o.lazy !== false) {
+      if (!loaded || !store.partial || !store.partial()) out += loaded ? '' : '&lazy=1';
+      else {                                 /* a reconnect: the pages it holds, the one on screen first */
+        var have = [], cur = HD.sel && HD.sel.page, tops = store.children(store.ROOT), i;
+        if (cur && store.pageLoaded(cur)) have.push(cur);
+        for (i = 0; i < tops.length; i++) if (tops[i] !== cur && store.pageLoaded(tops[i])) have.push(tops[i]);
+        var list = have.map(encodeURIComponent).join(',');
+        if (list.length < 1500) out += '&lazy=1' + (list ? '&pages=' + list : '');
+      }
+    }
+    if (o.c1 !== false) out += '&enc=c1';
+    return out;
+  }
+  function pagesLater(ms) {
+    if (pageT !== null || pageAsk !== null) return;
+    var go = function () { pageT = null; askNext(); };
+    if (!ms && typeof W.requestIdleCallback === 'function') { pageT = -1; W.requestIdleCallback(go, {timeout: 400}); }
+    else pageT = W.setTimeout(go, ms || 30);
+  }
+  function askNext() {
+    if (pageAsk !== null && now() - pageAskAt > 20000) pageAsk = null;      /* never stuck behind one lost answer */
+    if (pageAsk !== null || held || !loaded || !ws || ws.readyState !== 1) return;
+    var cur = HD.sel && HD.sel.page, id = null;
+    while (pageQ.length && id === null) { var q = pageQ.shift(); if (!store.pageLoaded(q) && store.has(q)) id = q; }
+    if (id === null && cur && store.has(cur) && !store.pageLoaded(cur)) id = cur;
+    if (id === null) { var miss = store.unloadedPages ? store.unloadedPages() : []; if (miss.length) id = miss[0]; }
+    if (id === null) return;
+    pageAsk = id; pageAskAt = now();
+    send({t: 'page', id: id});
+  }
+  function ask(id, first) {                 /* first: she is looking at it (or it went stale): ahead of the idle ones */
+    if (!id) return;
+    var i = pageQ.indexOf(id);
+    if (i >= 0) pageQ.splice(i, 1);
+    if (first) pageQ.unshift(id); else pageQ.push(id);
+    if (pageAsk === null) { if (pageT !== null && pageT !== -1) { W.clearTimeout(pageT); pageT = null; } askNext(); }
+  }
+  function onPage(msg) {
+    if (held || !loaded || typeof msg.id !== 'string') return;      /* held: release() fetches everything again */
+    store.loadPage(msg.id, msg.nodes);
+    if (pageAsk === msg.id) pageAsk = null;
+    var left = store.unloadedPages ? store.unloadedPages() : [];
+    em.emit('page', {id: msg.id, left: left});
+    if (left.length || pageQ.length) { if (pageQ.length) askNext(); else pagesLater(0); }
+  }
+  net.loading = function () { return store.unloadedPages ? store.unloadedPages() : []; };
+  net.askPage = function (id) { ask(id, true); };
+
   function resendPresence() {              /* a new socket knows nothing of us yet: the extras (and the cursor) again */
     if (presKept) net.sendPresence(presKept);
     else if (hasExtra()) net.sendPresence({});
@@ -363,6 +487,11 @@
     store.tracking(true);
     offOps = store.onOps(onLocal);
     offDesync = store.on('desync', function () { net.resync(false); });
+    offNeed = store.on('need', function (pg) { ask(pg, true); });               /* D9b */
+    if (HD.sel && HD.sel.on) offSelPg = HD.sel.on('change', function () {       /* she opened a page that is not here yet */
+      var pg = HD.sel.page;
+      if (pg && store.pageLoaded && !store.pageLoaded(pg)) ask(pg, true);
+    });
     open();
   };
 
@@ -380,6 +509,10 @@
     }
     if (offOps) { offOps(); offOps = null; }
     if (offDesync) { offDesync(); offDesync = null; }
+    if (offNeed) { offNeed(); offNeed = null; }
+    if (offSelPg) { offSelPg(); offSelPg = null; }
+    if (pageT !== null && pageT !== -1) W.clearTimeout(pageT);
+    pageT = null; pageAsk = null; pageQ = []; useC1 = false; net.pages = null;
     fileId = null; loaded = false; fresh = false; full = false;
     shareToken = null; net.share = null; held = false; net.held = false; quiet = false;
     presExtra = {}; presKept = null;

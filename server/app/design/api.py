@@ -339,7 +339,7 @@ def make_router(require_key: Callable, current_tenant: Callable) -> APIRouter:
 
     # -------------------------------------------------------------------------------------- WebSocket
     @pub.websocket("/ws")
-    async def design_ws(ws: WebSocket, file: str = "", share: str = ""):
+    async def design_ws(ws: WebSocket, file: str = "", share: str = "", lazy: str = "", pages: str = "", enc: str = ""):
         """One editor in one file. Signed in = an editor of the caller's own file; `share=<token>` = a view-only
         guest of a shared file (may send presence, its ops are refused). The socket is accepted BEFORE a refusal
         so that a browser can read the close code: 4401 not signed in, 4404 no such file, 4403 view-only writer."""
@@ -358,6 +358,9 @@ def make_router(require_key: Callable, current_tenant: Callable) -> APIRouter:
             if tenant is None:
                 return await ws.close(code=4401)
             role, name = "edit", await bg(store.who, tenant)
+            from . import branches                           # D9c: a merged branch is read only - its editors view
+            if await bg(branches.frozen, file):
+                role = "view"
         try:
             room = await HUB.open(file, tenant)
         except LookupError:
@@ -366,7 +369,8 @@ def make_router(require_key: Callable, current_tenant: Callable) -> APIRouter:
         try:
             if len(room.conns) >= int(st.design_room_max):
                 return await ws.close(code=1013)             # the room is full: the browser tries again later
-            conn = await room.admit(ws, role, name)
+            want = [p for p in pages.split(",") if p][:500] if lazy else None     # D9b: page by page, compact ops
+            conn = await room.admit(ws, role, name, lazy=want, enc="c1" if enc == "c1" else "")
             await room.serve(conn)
         except LookupError:
             await ws.close(code=4404)
@@ -374,6 +378,10 @@ def make_router(require_key: Callable, current_tenant: Callable) -> APIRouter:
             if conn is not None:
                 room.remove(conn)
             await HUB.release(room)
+
+    # ------------------------------------------------------------------- D8b plugins by Hoola + starters + the template gallery
+    from . import gallery, plugin_ai                      # before D8a's /plugins/{id}: /plugins/starters must match first
+    plugin_ai.mount(r, current_tenant), gallery.mount(r, current_tenant)
 
     # ------------------------------------------------------------------- D7 bridge C: design -> App Studio
     from . import toapp
@@ -386,6 +394,14 @@ def make_router(require_key: Callable, current_tenant: Callable) -> APIRouter:
     # ------------------------------------------------------------------- D7 bridge B: design -> Web Studio
     from . import toweb
     toweb.mount(r, current_tenant)
+
+    # ------------------------------------------------------------------- D9c branches + merge
+    from . import branches
+    branches.mount(r, current_tenant)
+
+    # ------------------------------------------------------------------- D8a plugin runtime (+ the public runner page)
+    from . import plugins
+    plugins.mount(r, current_tenant, pub)
 
     root = APIRouter()
     root.include_router(r)

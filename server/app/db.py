@@ -768,6 +768,7 @@ def init_db(url: str | None = None):
     from .youtube import models as _youtube_models  # noqa: F401
     from .kaan import models as _kaan_models  # noqa: F401  v0.589 KAAN PACK (transcripts)
     from .design import models as _design_models  # noqa: F401  v0.777 HOOLA DESIGN (files, journal, versions, comments, shares)
+    from .design import plugins as _design_plugins  # noqa: F401  D8a HOOLA DESIGN plugins (design_plugins)
     from . import bahar as _bahar  # noqa: F401  v0.616 BAHAR SE BAAT (outside channels)
     from .appcheck import models as _appcheck_models  # noqa: F401
     from .avatar import models as _avatar_models  # noqa: F401

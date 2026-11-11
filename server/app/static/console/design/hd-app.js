@@ -207,7 +207,7 @@
     const open = h('button', {class: 'hd-open', type: 'button', 'aria-label': (trash ? 'Options for ' : 'Open ') + (f.name || 'Untitled')}, box, h('div', {class: 'hd-cmeta'}, name, h('span', {class: 'hd-ctime', text: trash ? 'Deleted ' + ago(f.trashed_at) : 'Edited ' + ago(f.updated_at)})));
     const more = h('button', {class: 'hd-ib hd-cmore', type: 'button', title: 'More', 'aria-label': 'More options for ' + (f.name || 'Untitled'), 'aria-haspopup': 'menu'}, icon('dots'));
     const star = trash ? null : h('button', {class: 'hd-ib hd-cstar' + (f.star ? ' on' : ''), type: 'button', title: f.star ? 'Remove the star' : 'Star this file', 'aria-label': f.star ? 'Remove the star' : 'Star this file', 'aria-pressed': String(!!f.star)}, icon('star2'));
-    const el = h('article', {class: 'hd-card'}, open, star, more);
+    const el = h('article', {class: 'hd-card', 'data-file': f.id}, open, star, more);   /* data-file: feature files badge a card (D9c branches) */
     const act = (p, okMsg) => p.then(() => { if (okMsg) ui.toast(okMsg); load(); }).catch(e => ui.toast(e.message || 'That did not work.', true));
     const rename = () => { const inp = h('input', {class: 'hd-in hd-inline', type: 'text', value: f.name || '', 'aria-label': 'File name', maxlength: '120'}); let done = false;
       const fin = save => { if (done) return; done = true; const v = inp.value.trim(); if (inp.parentNode) inp.parentNode.replaceChild(name, inp); if (save && v && v !== f.name) { name.textContent = v; act(ui.api('PATCH', '/files/' + enc(f.id), {name: v})); } };

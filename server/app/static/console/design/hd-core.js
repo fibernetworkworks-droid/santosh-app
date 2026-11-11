@@ -42,6 +42,10 @@
  *   store.readOnly = true           net sets it for a view-only file / a full offline queue: tx() and the
  *                                   editing calls then do nothing and return undefined.
  *   store.syncCheck() / pendingInfo() / serverDoc()   for tests and a debug panel.
+ *   D9b PAGE BY PAGE: load(doc, cid, {unloaded: [page ids]}) = a document whose listed pages have no layers yet;
+ *   loadPage(pageId, nodes) fills one in; on('need', fn(pageId)) = ask the server for that page (again);
+ *   on('page', fn({id})) = it arrived; unloadedPages() / pageLoaded(id) / partial(). create / move onto a page that
+ *   is not here yet are refused. The rules for that time are written above store.tracking.
  * server/tests/web/design_core_test.js runs three editors against a contract server with crossing messages,
  * rejects, undo and dropped connections, and checks after EVERY step that screen = shadow + waiting ops.
  */
@@ -930,6 +934,7 @@
     if (!hasOwn.call(DEF, type) || type === 'DOCUMENT') throw new Error('HD.store.create: unknown type ' + type);
     return inTx('Create', function () {
       if (!nodes.has(parentId)) throw new Error('HD.store.create: no such parent ' + parentId);
+      if (unl.has(parentId)) throw new Error('HD.store.create: page ' + parentId + ' is not loaded yet');
       var id = store.newId(), s = slot(parentId, beforeId, null);
       var node = {type: type, parent: parentId, idx: between(s[0], s[1]), name: ''}, k, v;
       if (props) {
@@ -977,7 +982,7 @@
   store.move = function (ids, parentId, beforeId) {
     ids = toArr(ids);
     return inTx('Move', function () {
-      if (!nodes.has(parentId)) return false;
+      if (!nodes.has(parentId) || unl.has(parentId)) return false;     /* D9b: never onto a page that is not here yet */
       var seen = new Set(), list = [], i, id;
       for (i = 0; i < ids.length; i++) {
         id = ids[i];
@@ -1145,6 +1150,75 @@
     return 1;
   }
 
+  /* ================================================================ D9b: a document loaded PAGE BY PAGE
+   * A big file may arrive with only some pages filled (store.load(doc, cid, {unloaded: [page ids]}): the root and
+   * EVERY page node are there, the layers of the unloaded pages are not). The other pages come later, each cut by the
+   * server from its live document AT ITS PLACE in this connection's stream (store.loadPage), so every op that came
+   * before it is already inside it - nothing has to be kept and replayed.
+   * THE RULE while some page is not here: the KNOWN nodes are exactly the server's (same props), and a known node's
+   * whole subtree is known. The server's rules then read, for one op:
+   *   - an op about a node we do not know is skipped (it lives on a page that is not here);
+   *   - a known node that moves under a parent we do not know LEAVES: it and its subtree are dropped;
+   *   - a node we do not know that moves under a known parent ENTERS: we can not know its props, so the page it
+   *     lands on is asked for again (event 'need', page id) and stays 'stale' until it comes - exact, no guessing;
+   *   - `ex: 1` on an op = the server merged a "create" into a node it already had (an undo of a delete racing
+   *     another one): for a node we do not know that is an ENTER too.
+   * With every page here the plain rules above apply, unchanged. */
+  var unl = new Set();        /* top-level ids (pages) whose layers are not here */
+  var stale = new Set();      /* top-level ids asked for again because a node of an unloaded page moved onto them */
+  var needQ = null;           /* pages to ask for, told as 'need' at the end of the call */
+  var entered = false;        /* an ENTER happened in this call */
+  function partialOn() { return unl.size > 0 || stale.size > 0; }
+  function topOf(N, id) {
+    var c = id, n, g = 0;
+    while (c !== undefined && ++g < 200000) {
+      n = N.get(c);
+      if (!n) return null;
+      if (n.parent === ROOT) return c;
+      c = n.parent;
+    }
+    return null;
+  }
+  function enter(N, pid, id) { markStale(pid === ROOT ? id : topOf(N, pid)); }
+  function markStale(top) {
+    if (top === null) return;
+    stale.add(top);
+    entered = true;
+    (needQ || (needQ = new Set())).add(top);
+  }
+  function flushNeed() {
+    if (!needQ) return;
+    var q = needQ;
+    needQ = null;
+    q.forEach(function (pg) { em.emit('need', pg); });
+  }
+  function ruleP(N, K, op, sh) {
+    var id = op.id, p = op.p, n;
+    if (op.del || !p || typeof p !== 'object') return rule(N, K, op);
+    n = N.get(id);
+    if (!n) {
+      if (p.type === undefined || p.type === null || op.ex) {
+        if (sh && typeof p.parent === 'string' && N.has(p.parent)) enter(N, p.parent, id);
+        return 0;
+      }
+      if (typeof p.parent === 'string' && p.parent !== '' && !N.has(p.parent)) return 0;     /* made on a page that is not here */
+      return rule(N, K, op);
+    }
+    if (id !== ROOT && typeof p.parent === 'string' && p.parent !== n.parent && !N.has(p.parent)) {
+      rule(N, K, {id: id, del: 1});                    /* it moves to a page that is not here: it leaves */
+      return 1;
+    }
+    if (sh && stale.size && typeof p.parent === 'string' && p.parent !== n.parent) {
+      /* it moves OFF a page that is waiting for itself again: what it carries may miss a layer that entered there,
+         so the page it lands on waits too */
+      var from = topOf(N, id), r = rule(N, K, op), to;
+      if (r === 1 && from !== null && stale.has(from) && (to = topOf(N, id)) !== from) markStale(to);
+      return r;
+    }
+    return rule(N, K, op);
+  }
+  function apply1(N, K, op, sh) { return partialOn() ? ruleP(N, K, op, sh) : rule(N, K, op); }
+
   store.tracking = function (on) {
     if (on === undefined) return tracking;
     on = !!on;
@@ -1184,7 +1258,7 @@
       for (j = 0; j < recs.length; j++) {
         rec = recs[j];
         if (rec.done) continue;
-        live = rule(N, K, rec.op) === 1;
+        live = apply1(N, K, rec.op, false) === 1;
         if (mark && live !== rec.live) { rec.live = live; countKeys(rec.op, live ? 1 : -1); }
       }
     }
@@ -1276,7 +1350,8 @@
      They move into the shadow; the screen already shows them. */
   store.acked = function (x) {
     if (!tracking) return false;
-    var list = [], i, rec, bad = false;
+    var list = [], i, rec, bad = false, wasP = partialOn();
+    entered = false;
     if (typeof x === 'number') {
       var batch = pendB.get(x);
       if (!batch) return false;
@@ -1289,9 +1364,12 @@
       rec = list[i];
       if (rec.done) continue;
       settle(rec);
-      if (rule(shadow, skid, rec.op) === -1) bad = true;      /* the server took what its own rules refuse: we lost track */
+      if (apply1(shadow, skid, rec.op, true) === -1) bad = true;      /* the server took what its own rules refuse: we lost track */
     }
+    /* the rules changed under what waits, or one of ours turned out to land a node we can not know (ex): work it out again */
+    if (entered || (partialOn() !== wasP && pendQ.length)) { var ch = newChange(); rebase(ch); finish(ch, false); }
     if (bad) em.emit('desync', {});
+    flushNeed();
     return true;
   };
 
@@ -1352,6 +1430,7 @@
       return true;
     }
     if (p.type === undefined || p.type === null) return true;        /* not on screen: one of our waiting ops deletes it */
+    if (op.ex && tracking && partialOn() && !shadow.has(id)) return true;   /* D9b: it lives on a page that is not here */
     if (typeof p.type !== 'string' || !hasOwn.call(DEF, p.type) || id === ROOT) return true;
     if (!nodes.has(p.parent)) return false;
     rawCreate(id, cleanCopy(p));
@@ -1363,7 +1442,7 @@
      never run through HD.layout. */
   store.applyRemote = function (ops) {
     if (!isArr(ops) || !ops.length) return;
-    var ch = newChange(), bad = false, need = false, i, op;
+    var ch = newChange(), bad = false, need = false, i, op, wasP = partialOn();
     if (!tracking) {
       for (i = 0; i < ops.length; i++) if (ops[i] && typeof ops[i].id === 'string') remoteLocal(ops[i], ch);
       finish(ch, false);
@@ -1373,11 +1452,12 @@
     for (i = 0; i < ops.length; i++) {
       op = ops[i];
       if (!op || typeof op.id !== 'string') continue;
-      if (rule(shadow, skid, op) === -1) bad = true;           /* the server sent what its rules refuse: we lost track */
+      if (apply1(shadow, skid, op, true) === -1) bad = true;           /* the server sent what its rules refuse: we lost track */
       if (!need && !remoteLocal(op, ch)) need = true;
     }
-    if (need) rebase(ch);
+    if (need || (partialOn() !== wasP && pendQ.length)) rebase(ch);
     finish(ch, bad);
+    flushNeed();
   };
 
   /* ================================================================ load */
@@ -1410,6 +1490,11 @@
       }
     }
     if (!nodes.has(ROOT)) nodes.set(ROOT, {type: 'DOCUMENT', name: 'Document'});
+    unl = new Set(); stale = new Set(); needQ = null;            /* D9b: the pages whose layers did not come with it */
+    if (opts && isArr(opts.unloaded)) for (var u = 0; u < opts.unloaded.length; u++) {
+      var un = nodes.get(opts.unloaded[u]);
+      if (un && un.parent === ROOT) unl.add(opts.unloaded[u]);
+    }
     if (!keep) { undoS = []; redoS = []; gKey = null; }
     if (!keep || !tracking) clearPending();
     if (tracking) {
@@ -1419,6 +1504,67 @@
     sel._load();
     em.emit('load', {keep: keep});
   };
+
+  /* ================================================================ D9b: one page arrives
+   * loadPage(pageId, nodes)  `nodes` = {id: node} of that page's whole subtree, the page node included, as the
+   * server has it at this point of the stream (null = the page is not on the server any more). It replaces what was
+   * known under that page, in the server's copy and on screen (the waiting ops are put back on top). */
+  function dropUnder(N, K, pid) {                  /* every known node below pid (not pid itself) */
+    var ks = K.get(pid), stack, c, cks;
+    if (!ks || !ks.size) return;
+    stack = Array.from(ks);
+    K.delete(pid);
+    while (stack.length) {
+      c = stack.pop();
+      N.delete(c);
+      cks = K.get(c);
+      if (cks) { cks.forEach(function (x) { stack.push(x); }); K.delete(c); }
+    }
+  }
+  function putPage(N, K, pid, src, copy) {
+    var id, n, old, ks;
+    for (id in src) {
+      n = src[id];
+      if (!n || typeof n !== 'object' || typeof n.type !== 'string' || id === ROOT) continue;
+      n = copy ? Object.assign({}, n) : n;
+      old = N.get(id);
+      if (old && old.parent !== undefined) { ks = K.get(old.parent); if (ks) ks.delete(id); }
+      N.set(id, n);
+      if (n.parent !== undefined) kadd(K, n.parent, id);
+    }
+  }
+  store.loadPage = function (pid, src) {
+    if (typeof pid !== 'string' || pid === ROOT) return false;
+    var wasP = partialOn(), ch = newChange(), id;
+    unl.delete(pid); stale.delete(pid);
+    if (src && typeof src === 'object' && src[pid] && src[pid].parent === ROOT) {
+      if (tracking) { dropUnder(shadow, skid, pid); putPage(shadow, skid, pid, src, true); }
+      var screenKids = kidSet.get(pid), simple = !pendQ.length && !(screenKids && screenKids.size) && nodes.has(pid) && !nodeDiff(nodes.get(pid), src[pid]);
+      if (tracking && !simple) rebase(ch);
+      else if (!tracking) {
+        dropUnder(nodes, kidSet, pid);
+        sorted = new Map(); tail = new Map(); lm = new Map(); wm = new Map(); wb = new Map(); sb = new Map();
+        putPage(nodes, kidSet, pid, src, false);
+        for (id in src) if (id !== ROOT) ch.ids.add(id);
+        ch.structural = true;
+      } else {                                       /* nothing waits and nothing was here: straight in */
+        for (id in src) {
+          if (id === pid || id === ROOT || !src[id] || typeof src[id].type !== 'string') continue;
+          rawCreate(id, src[id]);
+          ch.ids.add(id);
+        }
+        ch.structural = true;
+      }
+    } else if (tracking && (pendQ.length || wasP !== partialOn())) rebase(ch);
+    finish(ch, false);
+    em.emit('page', {id: pid, loaded: true});
+    flushNeed();
+    return true;
+  };
+  /* the pages whose layers are not here yet (not loaded, or asked for again) */
+  store.unloadedPages = function () { var out = []; unl.forEach(function (x) { out.push(x); }); stale.forEach(function (x) { if (!unl.has(x)) out.push(x); }); return out; };
+  store.pageLoaded = function (pid) { return !unl.has(pid) && !stale.has(pid); };
+  store.partial = function () { return partialOn(); };
 
   /* ================================================================ HD.sel */
   var sem = new Emitter(), selSet = new Set();

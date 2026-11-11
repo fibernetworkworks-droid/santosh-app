@@ -52,7 +52,7 @@ async function main() {
       if (on) localStorage.setItem('hoola.console.token', key);
       /* every op frame this page ever puts on a socket */
       window.__ops = 0; const send = WebSocket.prototype.send;
-      WebSocket.prototype.send = function (d) { if (typeof d === 'string' && d.indexOf('"t":"ops"') >= 0) window.__ops++; return send.apply(this, arguments); };
+      WebSocket.prototype.send = function (d) { if (typeof d === 'string' && (d.indexOf('"t":"ops"') >= 0 || d.slice(0, 3) === '[1,')) window.__ops++; return send.apply(this, arguments); };
     }, [KEY, !!signedIn]);
     return page;
   }

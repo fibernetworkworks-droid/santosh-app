@@ -46,7 +46,7 @@
   const view = {x: 0, y: 0, zoom: 1};
   const overlays = [];
   const listeners = {view: [], frame: []};
-  const debug = {noCache: false, noBlit: false, noDirty: false, noLod: false, showDamage: false};
+  const debug = {noCache: false, noBlit: false, noDirty: false, noLod: false, showDamage: false, noIndex: false, noGpu: false};
   let raf = 0, anim = null, sceneFull = true, overlayDirty = true, wantExact = false, settleTimer = 0;
   let last = {s: 0, tx: 0, ty: 0, page: null, w: 0, h: 0, valid: false};
   let serial = 1, clock = 1, compEpoch = 1, resEpoch = 1, imgEpoch = 1, instSeen = false, lastZoomAt = 0, lastChangeAt = 0;
@@ -57,8 +57,9 @@
   let damage = [];                         /* world rects [x0,y0,x1,y1] that were painted on and are now stale */
   const stats = {ms: 0, nodes: 0, culled: 0, flat: 0, blits: 0, built: 0, layers: 0, mode: '', frames: 0, cacheMB: 0, cacheN: 0, regions: 0};
   let labelRects = [];
-
-  /* ------------------------------------------------------------------ colours, paints */
+  /* D9a: the WebGL2 tile engine (hd-render-gl.js) while it draws the scene; null = this file's Canvas2D scene. The tiles
+     are painted by THIS file's own painting code (tilePaint), so the two renderers draw the same pixels. */
+  let gl = null, glDead = false, glWhy = '', lastPanAt = 0;
   const colCache = new Map();
   function rgba(color, a) {
     if (a === undefined || a === null) a = 1;
@@ -1817,10 +1818,13 @@
     const w = Math.max(1, Math.round(canvas.clientWidth || cssW || 1)), h = Math.max(1, Math.round(canvas.clientHeight || cssH || 1));
     const pw = Math.max(1, Math.round(w * ndpr)), ph = Math.max(1, Math.round(h * ndpr));
     if (pw === canvas.width && ph === canvas.height && ndpr === dpr && scene.width === pw && scene.height === ph) { cssW = w; cssH = h; return false; }
+    const dprChanged = ndpr !== dpr;
     dpr = ndpr; cssW = w; cssH = h;
     canvas.width = pw; canvas.height = ph;
     scene.width = pw; scene.height = ph;
-    sceneFull = true; last.valid = false;
+    /* a tile does not depend on the window size, only on the pixel ratio: a plain resize keeps every tile */
+    if (gl === null || dprChanged) sceneFull = true;
+    last.valid = false;
     return true;
   }
   function stepAnim(t) {
@@ -1893,6 +1897,7 @@
     const viewChanged = !last.valid || bs !== last.s || tx !== last.tx || ty !== last.ty;
     let did = '';
     stats.nodes = 0; stats.culled = 0; stats.flat = 0; stats.blits = 0; stats.built = 0; stats.layers = 0; stats.regions = 0;
+    if (gl !== null) { glFrame(t0, page, pn, bs, tx, ty); return; }
     /* a heavy page being zoomed: show the last picture scaled now, paint the real one when the zoom rests (or every ~1/3 s) */
     if (last.valid && bs !== last.s && !resized && !sceneFull && !forceReal && !animEnded && !wantExact && pending.size === 0 && damage.length === 0 &&
         page === last.page && lastFullMs > 8 && api.zoomPreview !== false) {
@@ -2042,7 +2047,9 @@
     const c = vctx, s = S();
     c.setTransform(1, 0, 0, 1, 0, 0);
     c.globalAlpha = 1;
-    if (pv === null) { c.globalCompositeOperation = 'copy'; c.drawImage(scene, 0, 0); c.globalCompositeOperation = 'source-over'; }
+    /* with the WebGL2 tiles the picture is on the GL canvas UNDER this one: this canvas only carries what is drawn over it */
+    if (gl !== null) { c.globalCompositeOperation = 'source-over'; c.clearRect(0, 0, canvas.width, canvas.height); }
+    else if (pv === null) { c.globalCompositeOperation = 'copy'; c.drawImage(scene, 0, 0); c.globalCompositeOperation = 'source-over'; }
     else {
       c.globalCompositeOperation = 'source-over';
       c.fillStyle = pn ? rgba(G(pn, 'bg') || '#F5F5F5', 1) : '#F5F5F5';
@@ -2653,6 +2660,339 @@
       (defs.length ? '<defs>' + defs.join('') + '</defs>' : '') + bgEl + '<g transform="translate(' + fnum(-b.x) + ' ' + fnum(-b.y) + ')">' + body + '</g></svg>';
   }
 
+  /* ------------------------------------------------------------------ D9a: what the WebGL2 tile engine borrows from here */
+  /* The page's own spatial grid: the world extent (paint extent, shadows and strokes included) of every layer that sits
+     straight on the page, bucketed in cells, so a tile paints only the layers that reach it - in their own order.
+     Kept up to date from the change events (a changed node re-measures the top-level layer it lives in); rebuilt when
+     the page's child list changes or the whole scene is invalid. A page with a mask at its top level is painted whole. */
+  const PX = {page: null, kids: null, ext: null, cell: 0, cells: new Map(), big: [], mark: null, gen: 0, stale: 0, ok: false, pos: null};
+  function pxMeasure(i) {
+    const s = S(), id = PX.kids[i], n = s.get(id), e = PX.ext, k = i * 4;
+    if (n === undefined || n.visible === false) { e[k] = 1; e[k + 1] = 1; e[k + 2] = 0; e[k + 3] = 0; return; }
+    const r = derive(id, n);
+    localMat(n, LM);
+    boxUnder(LM[0], LM[1], LM[2], LM[3], LM[4], LM[5], r.x0, r.y0, r.x1, r.y1);
+    e[k] = BX[0]; e[k + 1] = BX[1]; e[k + 2] = BX[2]; e[k + 3] = BX[3];
+  }
+  function pxInsert(i) {
+    const e = PX.ext, k = i * 4, c = PX.cell;
+    if (!(e[k + 2] >= e[k]) || !(e[k + 3] >= e[k + 1])) return;
+    const cx0 = Math.floor(e[k] / c), cy0 = Math.floor(e[k + 1] / c), cx1 = Math.floor(e[k + 2] / c), cy1 = Math.floor(e[k + 3] / c);
+    if ((cx1 - cx0 + 1) * (cy1 - cy0 + 1) > 64 || cx0 < -30000 || cy0 < -30000 || cx1 > 30000 || cy1 > 30000) { PX.big.push(i); return; }
+    for (let cx = cx0; cx <= cx1; cx++) for (let cy = cy0; cy <= cy1; cy++) {
+      const key = (cx + 32768) * 65536 + (cy + 32768);
+      let a = PX.cells.get(key);
+      if (a === undefined) { a = []; PX.cells.set(key, a); }
+      a.push(i);
+    }
+  }
+  function pxBuild(page) {
+    const s = S(), ks = s.children(page), N = ks.length;
+    PX.page = page; PX.kids = ks; PX.cells.clear(); PX.big = []; PX.ok = true; PX.stale = 0; PX.pos = null; PX.gen = 0;
+    PX.ext = new Float64Array(N * 4); PX.mark = new Uint32Array(N); PX.cell = 0;
+    if (N < 48) return;                                   /* a small page: painting it whole is as fast */
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (let i = 0; i < N; i++) {
+      const n = s.get(ks[i]);
+      if (n !== undefined && n.mask === true && n.visible !== false) return;      /* a mask reaches every sibling above it */
+      pxMeasure(i);
+      const k = i * 4, e = PX.ext;
+      if (e[k + 2] >= e[k]) { if (e[k] < x0) x0 = e[k]; if (e[k + 1] < y0) y0 = e[k + 1]; if (e[k + 2] > x1) x1 = e[k + 2]; if (e[k + 3] > y1) y1 = e[k + 3]; }
+    }
+    if (x0 === Infinity) return;
+    PX.cell = Math.max(16, Math.sqrt(Math.max(1, (x1 - x0) * (y1 - y0)) / N) * 4);
+    for (let i = 0; i < N; i++) pxInsert(i);
+  }
+  /* after edits: the top-level layers the changed nodes live in are measured again (old cells keep a stale entry that the
+     query filters by the extent it has now) */
+  function pxTouch(ids) {
+    if (!PX.ok || PX.cell === 0 || !ids.size) return;
+    const s = S();
+    if (s.children(PX.page) !== PX.kids) { PX.ok = false; return; }
+    for (const id of ids) {
+      let c = id, n = s.get(c), g = 0;
+      while (n !== undefined && n.parent !== PX.page && g++ < 2000) { c = n.parent; n = c ? s.get(c) : undefined; }
+      if (n === undefined) continue;
+      if (n.mask === true) { PX.ok = false; return; }
+      if (PX.pos === null) { PX.pos = new Map(); for (let i = 0; i < PX.kids.length; i++) PX.pos.set(PX.kids[i], i); }
+      const i = PX.pos.get(c);
+      if (i === undefined) continue;
+      if (++PX.stale > Math.max(512, PX.kids.length)) { PX.ok = false; return; }
+      pxMeasure(i); pxInsert(i);
+    }
+  }
+  /* the top-level layers whose extent touches the world rect, in paint order; null = paint the page whole */
+  function pxQuery(page, wx0, wy0, wx1, wy1) {
+    const s = S();
+    if (!PX.ok || PX.page !== page || s.children(page) !== PX.kids) pxBuild(page);
+    if (PX.cell === 0) return null;
+    const c = PX.cell, cx0 = Math.floor(wx0 / c), cy0 = Math.floor(wy0 / c), cx1 = Math.floor(wx1 / c), cy1 = Math.floor(wy1 / c);
+    const span = (cx1 - cx0 + 1) * (cy1 - cy0 + 1);
+    if (span > PX.cells.size || span > 4096) return null;  /* the rect holds most of the page: walking it all is cheaper */
+    if (++PX.gen >= 4294967295) { PX.gen = 1; PX.mark.fill(0); }
+    const gen = PX.gen, e = PX.ext, mark = PX.mark, out = [];
+    const take = (i) => {
+      if (mark[i] === gen) return;
+      mark[i] = gen;
+      const k = i * 4;
+      if (e[k + 2] >= wx0 && e[k] <= wx1 && e[k + 3] >= wy0 && e[k + 1] <= wy1) out.push(i);
+    };
+    for (let cx = cx0; cx <= cx1; cx++) for (let cy = cy0; cy <= cy1; cy++) {
+      const a = PX.cells.get((cx + 32768) * 65536 + (cy + 32768));
+      if (a !== undefined) for (let j = 0; j < a.length; j++) take(a[j]);
+    }
+    for (let j = 0; j < PX.big.length; j++) take(PX.big[j]);
+    const arr = Int32Array.from(out);
+    arr.sort();
+    return arr;
+  }
+  function paintKidsList(T, pid, list, a, b, c, d, e, f) {
+    const s = S(), ks = s.children(pid);
+    for (let i = 0; i < list.length; i++) { const id = ks[list[i]], cn = s.get(id); if (cn !== undefined) paintNode(T, cn, id, null, a, b, c, d, e, f); }
+  }
+  /* One tile (or a part of one) painted by the SAME code as the scene: the page background, then the page's layers at
+     scale bs with the tile's top-left device pixel (ox, oy) at the context's (0, 0). Exact (no scaled bitmaps), with the
+     level of detail and the bitmap cache the scene uses, and recording where every node landed (for later damage). */
+  function tilePaint(ctx, page, bs, ox, oy, tw, th, t0, budget) {
+    const s = S(), pn = s.get(page);
+    LD = 0;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+    if (HAS_FILTER) ctx.filter = 'none';
+    ctx.fillStyle = pn ? rgba(G(pn, 'bg') || '#F5F5F5', 1) : '#F5F5F5';
+    ctx.fillRect(0, 0, tw, th);
+    if (!pn) return;
+    const cl = [0, 0, tw, th];
+    const T = {ctx, clips: cl, bounds: cl, lod: !debug.noLod, cache: !debug.noCache, canBuild: true, record: true, exact: true, bs, btx: -ox, bty: -oy,
+      serial: ++serial, budgetEnd: t0 + (budget || 12), now: t0, root: null, inexact: false, backdrop: true};
+    try {
+      const list = debug.noIndex ? null : pxQuery(page, (ox - 1) / bs, (oy - 1) / bs, (ox + tw + 1) / bs, (oy + th + 1) / bs);
+      if (list !== null) paintKidsList(T, page, list, bs, 0, 0, bs, -ox, -oy);
+      else paintKidsFrom(T, page, null, 0, bs, 0, 0, bs, -ox, -oy);
+    } finally { ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over'; }
+    trimPool();
+  }
+  /* --- the GPU fast path: a tile whose every visible layer is a plain shape (solid-filled rect / rounded rect / ellipse,
+     no stroke, no effect, normal blend, an opacity only where one paint is drawn) is drawn by the GPU straight into the
+     tile, as instanced quads with analytic coverage. The rules below are paintNode's own, case by case (level of detail
+     included); anything else returns false and the whole tile is painted by Canvas2D instead. */
+  const GSW = 28;                                         /* floats per instance */
+  const GS = {buf: new Float32Array(GSW * 256), n: 0};
+  const colNums = new Map();
+  function colNum(str) {
+    let v = colNums.get(str);
+    if (v !== undefined) return v;
+    v = null;
+    if (typeof str === 'string') {
+      if (str.length === 7 && str.charCodeAt(0) === 35) { const r = parseInt(str.slice(1, 3), 16), g = parseInt(str.slice(3, 5), 16), b = parseInt(str.slice(5, 7), 16); if (r === r && g === g && b === b) v = [r / 255, g / 255, b / 255, 1]; }
+      else { const m = /^rgba\((\d+),(\d+),(\d+),([0-9.]+)\)$/.exec(str); if (m) v = [+m[1] / 255, +m[2] / 255, +m[3] / 255, +m[4]]; }
+    }
+    if (colNums.size > 5000) colNums.clear();
+    colNums.set(str, v);
+    return v;
+  }
+  /* kind 0 = an upright rect given in device pixels (x0, y0, x1, y1 in w, h, r0, r1); 1 = a rounded box under a matrix;
+     2 = an ellipse under a matrix. clip = [x0, y0, x1, y1] in device pixels. */
+  function gsPush(kind, ma, mb, mc, md, me, mf, w, h, r, col, alpha, clip) {
+    const a = col[3] * alpha;
+    if (!(a > 0)) return true;
+    if (GS.buf.length < (GS.n + 1) * GSW) { const nb = new Float32Array(GS.buf.length * 2); nb.set(GS.buf); GS.buf = nb; }
+    const o = GS.n * GSW, B = GS.buf;
+    let x0, y0, x1, y1;
+    if (kind === 0) {
+      x0 = Math.min(me, me + w); x1 = Math.max(me, me + w); y0 = Math.min(mf, mf + h); y1 = Math.max(mf, mf + h);
+      B[o] = 1; B[o + 1] = 0; B[o + 2] = 0; B[o + 3] = 1; B[o + 4] = 0; B[o + 5] = 0;
+      B[o + 6] = x0; B[o + 7] = y0; B[o + 8] = x1; B[o + 9] = y1; B[o + 10] = 0; B[o + 11] = 0; B[o + 25] = 1;
+    } else {
+      const det = ma * md - mb * mc;
+      if (Math.abs(det) < 1e-12) return true;
+      const ia = md / det, ib = -mb / det, ic = -mc / det, id = ma / det;
+      B[o] = ia; B[o + 1] = ib; B[o + 2] = ic; B[o + 3] = id; B[o + 4] = -(ia * me + ic * mf); B[o + 5] = -(ib * me + id * mf);
+      B[o + 6] = w; B[o + 7] = h;
+      if (r !== null) { B[o + 8] = r[0]; B[o + 9] = r[1]; B[o + 10] = r[2]; B[o + 11] = r[3]; } else { B[o + 8] = 0; B[o + 9] = 0; B[o + 10] = 0; B[o + 11] = 0; }
+      B[o + 25] = Math.sqrt(Math.abs(det));
+      boxUnder(ma, mb, mc, md, me, mf, 0, 0, w, h);
+      x0 = BX[0]; y0 = BX[1]; x1 = BX[2]; y1 = BX[3];
+    }
+    B[o + 12] = col[0] * a; B[o + 13] = col[1] * a; B[o + 14] = col[2] * a; B[o + 15] = a;
+    B[o + 16] = clip[0]; B[o + 17] = clip[1]; B[o + 18] = clip[2]; B[o + 19] = clip[3];
+    const qx0 = Math.max(Math.floor(x0) - 1, clip[0] - 1), qy0 = Math.max(Math.floor(y0) - 1, clip[1] - 1), qx1 = Math.min(Math.ceil(x1) + 1, clip[2] + 1), qy1 = Math.min(Math.ceil(y1) + 1, clip[3] + 1);
+    if (qx1 <= qx0 || qy1 <= qy0) return true;
+    B[o + 20] = qx0; B[o + 21] = qy0; B[o + 22] = qx1; B[o + 23] = qy1; B[o + 24] = kind; B[o + 26] = 0; B[o + 27] = 0;
+    GS.n++;
+    return true;
+  }
+  const GS_TYPES = {RECT: 1, ELLIPSE: 1, FRAME: 1, COMPONENT: 1, COMPONENT_SET: 1, SECTION: 1, GROUP: 1};
+  function gsKids(T, pid, list, a, b, c, d, e, f, clip) {
+    const s = S(), ks = s.children(pid);
+    if (list !== null) { for (let i = 0; i < list.length; i++) { const id = ks[list[i]]; if (!gsNode(T, s.get(id), id, a, b, c, d, e, f, clip)) return false; } return true; }
+    for (let i = 0; i < ks.length; i++) { const cn = s.get(ks[i]); if (cn !== undefined && cn.mask === true && cn.visible !== false) return false; if (!gsNode(T, cn, ks[i], a, b, c, d, e, f, clip)) return false; }
+    return true;
+  }
+  function gsNode(T, n, id, a, b, c, d, e, f, clip) {
+    if (n === undefined || n === null || n.visible === false) return true;
+    if (n.bind !== undefined) return false;
+    const type = n.type === 'GROUP' ? dtype(n) : n.type;
+    if (type === 'TEXT' && id === editingId) return true;
+    const w = W(n), h = type === 'LINE' ? 0 : num(n.h, 100);
+    let ma, mb, mc, md, me, mf;
+    if (!n.rot && n.flipH !== true && n.flipV !== true) { const x = num(n.x, 0), y = num(n.y, 0); ma = a; mb = b; mc = c; md = d; me = a * x + c * y + e; mf = b * x + d * y + f; }
+    else { localMat(n, LM); ma = a * LM[0] + c * LM[1]; mb = b * LM[0] + d * LM[1]; mc = a * LM[2] + c * LM[3]; md = b * LM[2] + d * LM[3]; me = a * LM[4] + c * LM[5] + e; mf = b * LM[4] + d * LM[5] + f; }
+    const rec = derive(id, n);
+    boxUnder(ma, mb, mc, md, me, mf, rec.x0, rec.y0, rec.x1, rec.y1);
+    const dx0 = BX[0], dy0 = BX[1], dx1 = BX[2], dy1 = BX[3], cl = T.clips;
+    if (!(dx1 > cl[0] && dx0 < cl[2] && dy1 > cl[1] && dy0 < cl[3])) return true;
+    if (T.record) { const bs = T.bs; rec.wx0 = (dx0 - T.btx) / bs; rec.wy0 = (dy0 - T.bty) / bs; rec.wx1 = (dx1 - T.btx) / bs; rec.wy1 = (dy1 - T.bty) / bs; rec.serial = T.serial; }
+    let op = n.opacity;
+    if (op === undefined) op = 1; else { op = num(+op, 1); if (op > 1) op = 1; }
+    if (op <= 0.003) return true;
+    if (T.lod) {
+      const dw = dx1 - dx0, dh = dy1 - dy0;
+      if (dw < 0.35 && dh < 0.35) return true;
+      if (dw < 2.6 && dh < 2.6) {
+        const col = flatColor(n, 0);
+        if (col === null) return true;
+        const cn = colNum(col);
+        return cn !== null && gsPush(0, 1, 0, 0, 1, dx0, dy0, dw < 1 ? 1 : dw, dh < 1 ? 1 : dh, null, cn, op * Math.min(1, Math.max(0.25, Math.max(dw, dh) / 2.6)), clip);
+      }
+    }
+    const bl = n.blend;
+    if (bl !== undefined && bl !== 'normal' && (BLEND[bl] || 'source-over') !== 'source-over') return false;
+    if (T.lod && dx1 - dx0 < 5.5 && dy1 - dy0 < 5.5 && n.effects === undefined && (type === 'RECT' || type === 'ELLIPSE' || ((type === 'POLYGON' || type === 'STAR' || type === 'VECTOR') && dx1 - dx0 < 4 && dy1 - dy0 < 4))) {
+      const fl = L.paints(n, 'fills');
+      let col = null;
+      for (let i = fl.length - 1; i >= 0; i--) { const p = fl[i]; if (!vis(p)) continue; col = p.type === 'solid' || p.type === undefined ? rgba(p.color, p.opacity) : p.type === 'image' ? '#C9C9CF' : (p.stops && p.stops[0] ? rgba(p.stops[0].color, p.opacity) : null); break; }
+      if (col !== null) {
+        const cn = colNum(col);
+        if (cn === null) return false;
+        if (mb === 0 && mc === 0 && type !== 'ELLIPSE') return gsPush(0, 1, 0, 0, 1, me, mf, ma * w, md * h, null, cn, op, clip);
+        return gsPush(type === 'ELLIPSE' ? 2 : 1, ma, mb, mc, md, me, mf, w, h, null, cn, op, clip);
+      }
+    }
+    if (GS_TYPES[type] !== 1) return false;
+    if ((rec.flags & (F_MASKKID | F_BG | F_BLENDKID | F_INST)) !== 0 || fxList(n) !== null) return false;
+    const strokes = L.paints(n, 'strokes');
+    if (anyVis(strokes) && num(+G(n, 'strokeWeight'), 1) > 0) return false;
+    const fills = type === 'GROUP' ? EMPTY : L.paints(n, 'fills');
+    const hasKids = CONT[type] === 1 && S().children(id).length > 0;
+    if (op < 1 && (hasKids || countVis(fills) > 1)) return false;          /* painted through a layer: not a plain shape */
+    if (type === 'GROUP') return gsKids(T, id, null, ma, mb, mc, md, me, mf, clip);
+    const g = geomOf(n, type, w, h, id, null, rec);
+    if (g.k !== R_RECT && g.k !== R_RR && g.k !== R_ELL) return false;
+    const kind = g.k === R_ELL ? 2 : 1;
+    for (let i = 0; i < fills.length; i++) {
+      const p = fills[i];
+      if (!vis(p)) continue;
+      if (p.type !== 'solid' && p.type !== undefined) return false;
+      const cn = colNum(rgba(p.color, p.opacity));
+      if (cn === null) return false;
+      if (kind === 1 && g.k === R_RECT && mb === 0 && mc === 0) gsPush(0, 1, 0, 0, 1, me, mf, ma * w, md * h, null, cn, op, clip);
+      else gsPush(kind, ma, mb, mc, md, me, mf, w, h, g.k === R_RR ? g.r : null, cn, op, clip);
+    }
+    if (hasKids) {
+      let kclip = clip;
+      if (clips(n)) {
+        /* an upright plain box clips by its own edges (coverage times coverage, as the canvas clip does); any other shape
+           only when nothing inside reaches past it */
+        if (g.k === R_RECT && mb === 0 && mc === 0) {
+          kclip = [Math.max(clip[0], Math.min(me, me + ma * w)), Math.max(clip[1], Math.min(mf, mf + md * h)), Math.min(clip[2], Math.max(me, me + ma * w)), Math.min(clip[3], Math.max(mf, mf + md * h))];
+          if (kclip[2] <= kclip[0] || kclip[3] <= kclip[1]) return true;
+        } else {
+          const ks = S().children(id);
+          for (let i = 0; i < ks.length; i++) {
+            const cn = S().get(ks[i]);
+            if (!cn || cn.visible === false) continue;
+            const cr = derive(ks[i], cn);
+            localMat(cn, LM);
+            boxUnder(LM[0], LM[1], LM[2], LM[3], LM[4], LM[5], cr.x0, cr.y0, cr.x1, cr.y1);
+            if (BX[0] < 0 || BX[1] < 0 || BX[2] > w || BX[3] > h) return false;
+          }
+        }
+      }
+      if (!gsKids(T, id, null, ma, mb, mc, md, me, mf, kclip)) return false;
+    }
+    return true;
+  }
+  /* the GPU instances for the part (sx, sy, sw, sh) of the tile whose top-left device pixel is (ox, oy), in that tile's
+     own pixels: {buf, n} or null when the part holds anything that is not a plain shape */
+  function tileShapes(page, bs, ox, oy, sx, sy, sw, sh) {
+    const s = S(), pn = s.get(page);
+    if (!pn || debug.noGpu) return null;
+    if ((derive(page, pn).flags & F_BG) !== 0) return null;    /* a background blur reads what is under it: Canvas2D */
+    GS.n = 0;
+    const cl = [sx, sy, sx + sw, sy + sh];
+    const T = {ctx: null, clips: cl, bounds: cl, lod: !debug.noLod, cache: false, canBuild: false, record: true, exact: true, bs, btx: -ox, bty: -oy,
+      serial: ++serial, budgetEnd: 0, now: now(), root: null, inexact: false, backdrop: false};
+    const list = debug.noIndex ? null : pxQuery(page, (ox + sx - 1) / bs, (oy + sy - 1) / bs, (ox + sx + sw + 1) / bs, (oy + sy + sh + 1) / bs);
+    const big = [-1e9, -1e9, 1e9, 1e9];
+    if (!gsKids(T, page, list, bs, 0, 0, bs, -ox, -oy, big)) return null;
+    return {buf: GS.buf, n: GS.n};
+  }
+  function bgColor(page) { const pn = S().get(page); return colNum(pn ? rgba(G(pn, 'bg') || '#F5F5F5', 1) : '#F5F5F5') || [0.96, 0.96, 0.96, 1]; }
+  /* the GL engine lost its context (or failed): Canvas2D takes over at once, for the rest of this session */
+  function glLost(why) {
+    if (gl === null) return;
+    const g = gl;
+    gl = null; glDead = true; glWhy = String(why || 'lost');
+    try { sessionStorage.setItem('hd.renderer.lost', glWhy); } catch (e) { /* no storage */ }
+    try { g.destroy(true); } catch (e) { /* already gone */ }
+    sceneFull = true; last.valid = false; PX.ok = false;
+    if (window.console) console.warn('[HD.render] WebGL2 renderer off, Canvas2D from now on: ' + glWhy);
+    schedule();
+  }
+  /* a page with a background blur: each tile is painted with this many device pixels round it, so the blur reads what lies
+     beyond the tile's edge too */
+  function tileMargin(page, bs) { const pn = S().get(page); return pn && (derive(page, pn).flags & F_BG) !== 0 ? Math.min(256, Math.ceil(48 * bs) + 4) : 0; }
+  const glHost = {tilePaint, tileShapes, bgColor, margin: tileMargin, lost: glLost, now, get debug() { return debug; }};
+  function glFrame(t0, page, pn, bs, tx, ty) {
+    const viewChanged = !last.valid || bs !== last.s || tx !== last.tx || ty !== last.ty;
+    if (last.valid && bs !== last.s) lastZoomAt = t0;
+    if (viewChanged) lastPanAt = t0;
+    const flushAll = sceneFull || last.page !== page;
+    const rects = [];
+    if (!flushAll) {
+      for (let i = 0; i < damage.length; i++) rects.push(damage[i][0], damage[i][1], damage[i][2], damage[i][3]);
+      for (const id of pending) { const r = worldExtOf(id); if (r !== null) rects.push(r[0], r[1], r[2], r[3]); }
+      pxTouch(pending);
+    } else PX.ok = false;
+    pending.clear(); damage = []; sceneFull = false;
+    let res = null;
+    try {
+      res = gl.frame({page, bs, tx, ty, W: canvas.width, H: canvas.height, flushAll, rects, t0,
+        zooming: t0 - lastZoomAt < 140, moving: t0 - lastPanAt < 160 || t0 - lastChangeAt < 250});
+    } catch (e) { if (window.console) console.error('[HD.render] WebGL2 frame', e); glLost('frame failed: ' + (e && e.message)); return; }
+    if (gl === null) return;
+    last.s = bs; last.tx = tx; last.ty = ty; last.page = page; last.w = canvas.width; last.h = canvas.height; last.valid = true; last.dbg = null;
+    present(pn, page, bs, tx, ty, null);
+    overlayDirty = false;
+    stats.ms = now() - t0; stats.mode = res && res.drawn ? 'gl' : 'gl-overlay'; stats.frames++; stats.gl = res;
+    stats.cacheMB = Math.round(cacheBytes / 1048576 * 10) / 10; stats.cacheN = C.size;
+    if (res && res.more) schedule();
+    if (viewChanged) emit('view', view);
+    emit('frame', stats);
+  }
+  /* which renderer this page asked for: localStorage 'hd.renderer' = 'gl' | '2d' | 'auto' (default auto) */
+  function glPref() {
+    let p = 'auto';
+    try { p = String(localStorage.getItem('hd.renderer') || 'auto'); } catch (e) { p = 'auto'; }
+    return p === 'gl' || p === '2d' ? p : 'auto';
+  }
+  function glStart(cv) {
+    if (gl !== null) { try { gl.destroy(false); } catch (e) { /* gone */ } gl = null; }
+    const pref = glPref();
+    if (pref === '2d') { glWhy = 'setting: 2d'; return false; }
+    let lost = '';
+    try { lost = sessionStorage.getItem('hd.renderer.lost') || ''; } catch (e) { lost = ''; }
+    if (glDead || lost) { glWhy = 'WebGL2 was lost in this session (' + (glWhy || lost) + ')'; return false; }
+    const E = HD.renderGL;
+    if (!E || typeof E.create !== 'function') { glWhy = 'hd-render-gl.js not loaded'; return false; }
+    let eng = null;
+    try { eng = E.create(cv, glHost, {force: pref === 'gl'}); } catch (e) { eng = null; glWhy = 'WebGL2 failed: ' + (e && e.message); }
+    if (!eng || !eng.ok) { if (eng && eng.why) glWhy = eng.why; else if (!glWhy) glWhy = 'no WebGL2'; return false; }
+    gl = eng; glWhy = '';
+    return true;
+  }
+
   /* ------------------------------------------------------------------ public */
   let hookedStore = null, hookedSel = null;
   function hook() {
@@ -2666,7 +3006,10 @@
     if (canvas === cv) { resize(); return api; }
     if (ro) { try { ro.disconnect(); } catch (e) { /* gone */ } ro = null; }
     canvas = cv;
-    vctx = cv.getContext('2d', {alpha: false}) || cv.getContext('2d');
+    /* the WebGL2 tiles draw the scene on their own canvas under this one when they can (hd-render-gl.js); this canvas then
+       keeps only what is drawn over the picture, so it must be see-through */
+    const useGL = glStart(cv);
+    vctx = useGL ? cv.getContext('2d') : (cv.getContext('2d', {alpha: false}) || cv.getContext('2d'));
     scene = document.createElement('canvas');
     sctx = scene.getContext('2d', {alpha: false}) || scene.getContext('2d');
     /* a canvas sized only by its width / height attributes would grow with every backing-store change: pin it to its box */
@@ -2706,13 +3049,36 @@
     editingId = id || null;
     schedule();
   }
-  function clearCaches() { clearCache(); D.clear(); pathCache.clear(); resEpoch++; sceneFull = true; schedule(); }
+  function clearCaches() { clearCache(); D.clear(); pathCache.clear(); resEpoch++; sceneFull = true; PX.ok = false; schedule(); }
+  /* flush until the picture is complete: with the WebGL2 tiles a frame renders only as many tiles as its time budget
+     allows (and waits for a zoom to rest before it renders the exact tiles); Canvas2D is complete after one frame */
+  function settle(ms) {
+    const t0 = now(), lim = ms || 30000;
+    let g = 0;
+    do { flush(); } while (gl !== null && stats.gl && !stats.gl.done && now() - t0 < lim && g++ < 100000);
+    return now() - t0;
+  }
+  /* the picture as it is on screen right now (scene + everything drawn over it), as a new canvas of device pixels */
+  function snapshot() {
+    const out = document.createElement('canvas');
+    if (!canvas) { out.width = out.height = 1; return out; }
+    out.width = canvas.width; out.height = canvas.height;
+    const c = out.getContext('2d');
+    if (gl !== null) { const g = gl.snapshot(); if (g) c.drawImage(g, 0, 0); }
+    c.drawImage(canvas, 0, 0);
+    return out;
+  }
+  /* wait for the GPU to finish what was sent (a one pixel read-back): for honest frame times */
+  function finish() { if (gl !== null) gl.finish(); else if (vctx) vctx.getImageData(0, 0, 1, 1); }
 
   const api = HD.render = {
     init, view, setView, zoomToFit, invalidate, screenToWorld, worldToScreen, hitTest, nodesInRect, addOverlay,
     drawNode, toCanvas, toSVG, image,
     /* helpers beyond the contract */
     resize, flush, on, stats, debug, hitChain, setEditing, loadFont, fontLoaded, ready, exportBounds, clearCaches,
+    /* D9a: settle() = flush until complete, snapshot() = the on-screen picture, finish() = wait for the GPU */
+    settle, snapshot, finish, paintTile: tilePaint, tileShapes,
+    get renderer() { return gl !== null ? 'gl' : '2d'; }, get rendererWhy() { return glWhy; }, get glEngine() { return gl; },
     bounds: boundsOf, worldMatrix: worldMat, assetURL: null, webFonts: true, pixelGrid: true, frameLabels: true, zoomPreview: true, showGrids: true,
     /* path + boolean geometry, shared with hd-vector.js (vector edit, flatten): all pure */
     geom: {parsePath, segsToD, pathBBox, vectorSegs, outlineSegs, gridSpans, isBool(n) { return !!n && dtype(n) === 'BOOL'; },

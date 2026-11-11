@@ -973,6 +973,194 @@ test('sync: three editors with crossing messages, rejects, undo and dropped conn
   assert.equal(total.repairs, 0, 'the store never loses track of the server');
 });
 
+/* ============================================================== D9b: the same, loaded PAGE BY PAGE
+ * Three pages. Every editor starts with ONE page's layers (the others are only page nodes) and asks for the rest
+ * now and then, the way HD.net does at idle; a page arrives cut from the server's document at its place in that
+ * editor's stream. Edits move layers across the pages an editor holds, so other editors see nodes leave and enter
+ * pages they do not hold. After EVERY step: screen = server copy + waiting ops; whenever an editor has heard
+ * everything: every node it knows is exactly the server's, and every page it holds is complete. At the end every
+ * page is asked for and every editor must hold EXACTLY the server's document. */
+function pagedServer(doc) {
+  const s = makeServer(doc), apply = s.apply;
+  s.apply = ops => {                                               /* the real server marks a "create" of a node it had: ex */
+    const had = ops.map(op => !op.del && op.p && op.p.type !== undefined && op.p.type !== null && s.nodes.has(op.id));
+    const res = apply(ops), ok = [], ex = [];
+    let j = 0;
+    ops.forEach((op, i) => {
+      if (res.rejected.includes(i)) return;
+      if (j < res.ok.length && res.ok[j] === op) { if (had[i]) ex.push(i); ok.push(had[i] ? Object.assign({}, op, {ex: 1}) : op); j++; }
+    });
+    return {ok, rejected: res.rejected, ex};
+  };
+  s.top = () => Array.from(s.nodes).filter(([, n]) => n.parent === '0:0').map(([id]) => id);
+  s.page = pid => {                                                /* {id: node} of the subtree, or null */
+    const n = s.nodes.get(pid);
+    if (!n || n.parent !== '0:0') return null;
+    const out = {}, stack = [pid];
+    while (stack.length) {
+      const c = stack.pop();
+      out[c] = JSON.parse(JSON.stringify(s.nodes.get(c)));
+      for (const [k, m] of s.nodes) if (m.parent === c) stack.push(k);
+    }
+    return out;
+  };
+  s.partial = want => {                                            /* the init of a lazy client: root + every page node + the wanted pages */
+    const out = {'0:0': JSON.parse(JSON.stringify(s.nodes.get('0:0')))}, unloaded = [];
+    for (const pid of s.top()) {
+      if (want.includes(pid)) Object.assign(out, s.page(pid));
+      else { out[pid] = JSON.parse(JSON.stringify(s.nodes.get(pid))); unloaded.push(pid); }
+    }
+    return {doc: {nodes: out}, unloaded};
+  };
+  return s;
+}
+function convergePaged(seed, steps, drops) {
+  const rnd = rng(seed), pick = a => a[Math.floor(rnd() * a.length)];
+  const start = {};
+  ['0:1', '0:2', '0:3'].forEach((pg, i) => {
+    start[pg] = {type: 'PAGE', parent: '0:0', idx: 'a' + i, name: 'Page ' + (i + 1)};
+    start['0:' + (10 + i)] = {type: 'FRAME', parent: pg, idx: 'a0', name: 'F' + i, x: 0, y: 0, w: 500, h: 500};
+    start['0:' + (20 + i)] = {type: 'RECT', parent: '0:' + (10 + i), idx: 'a0', name: 'R' + i, x: 5, y: 5};
+    start['0:' + (30 + i)] = {type: 'GROUP', parent: pg, idx: 'a1', name: 'G' + i};
+  });
+  const server = pagedServer({nodes: Object.assign({'0:0': {type: 'DOCUMENT', name: 'Document'}}, start)});
+  const stats = {edits: 0, rejected: 0, reloads: 0, repairs: 0, pages: 0, needs: 0, nodes: 0, strong: 0};
+  const clients = [11, 12, 13].map(cid => {
+    const env = makeEnv(), S = env.HD.store;
+    const c = {cid, S, HD: env.HD, up: [], down: [], unacked: [], desync: false, asked: new Set()};
+    S.tracking(true);
+    S.onOps((ops, b) => { const m = {ops: JSON.parse(JSON.stringify(ops)), real: ops, b}; c.unacked.push(m); c.up.push(m); if (process.env.HD_PTRACE && JSON.stringify(m.ops).includes(process.env.HD_PTRACE)) console.log('    ' + cid + ' local b' + b + ' ' + JSON.stringify(m.ops)); });
+    S.on('desync', () => { c.desync = true; });
+    S.on('need', pg => { stats.needs++; if (process.env.HD_PTRACE) console.log('    ' + cid + ' NEED ' + pg); ask(c, pg, true); });
+    const first = server.partial([pick(server.top())]);
+    S.load(first.doc, cid, {unloaded: first.unloaded});
+    return c;
+  });
+  function ask(c, pg, force) { if (!force && c.asked.has(pg)) return; c.asked.add(pg); c.up.push({t: 'page', id: pg}); }
+  const held = S => { const tops = S.children('0:0'); return tops.filter(p => S.pageLoaded(p)); };
+  const containers = S => { const out = []; for (const p of held(S)) S.walk(p, (id, n) => { if (n.type === 'PAGE' || n.type === 'FRAME' || n.type === 'GROUP') out.push(id); }); return out; };
+  const layers = S => { const out = []; for (const p of held(S)) S.walk(p, (id, n) => { if (n.type !== 'PAGE') out.push(id); }); return out; };
+
+  function edit(c) {
+    const S = c.S, r = rnd(), ls = layers(S), cs = containers(S);
+    stats.edits++;
+    if (!cs.length) { S.undo(); return; }
+    if (r < 0.2 || !ls.length) S.create(pick(['RECT', 'FRAME', 'GROUP', 'TEXT']), pick(cs), {x: Math.floor(rnd() * 400), y: Math.floor(rnd() * 400)});
+    else if (r < 0.5) S.set(pick(ls), pick([{x: Math.floor(rnd() * 900)}, {name: 'n' + Math.floor(rnd() * 50)}, {fills: [{type: 'solid', color: '#' + Math.floor(rnd() * 9) + '00000'}]}, {rot: Math.floor(rnd() * 360), y: 3}, {fills: null}, {opacity: rnd()}]));
+    else if (r < 0.75) { const to = pick(cs), kids = S.children(to); S.move([pick(ls)], to, rnd() < 0.5 && kids.length ? pick(kids) : null); }   /* often across pages */
+    else if (r < 0.84) S.remove([pick(ls)]);
+    else if (r < 0.91) S.undo();
+    else if (r < 0.95) S.redo();
+    else if (r < 0.975) S.tx('multi', () => { const a = S.create('FRAME', pick(cs), {}); S.create('RECT', a, {x: 1}); const l = pick(ls); if (S.has(l)) S.set(l, {x: 7, name: 'multi'}); });
+    else if (r < 0.99) S.create('PAGE', '0:0', {});
+    else { const tops = S.children('0:0'); if (tops.length > 2) S.remove([pick(tops)]); }
+  }
+  function toServer(c) {
+    const m = c.up.shift();
+    if (m.t === 'page') { c.down.push({t: 'page', id: m.id, nodes: server.page(m.id)}); return; }
+    const res = server.apply(m.ops);
+    stats.rejected += res.rejected.length;
+    c.down.push({t: 'ack', b: m.b, rejected: res.rejected, ex: res.ex});
+    if (res.ok.length) for (const o of clients) if (o !== c) o.down.push({t: 'ops', ops: JSON.parse(JSON.stringify(res.ok))});
+  }
+  const PT = process.env.HD_PTRACE || '';
+  const ptr = (c, what, x) => { if (PT && (PT === '*' || JSON.stringify(x).includes('"' + PT + '"'))) console.log('    ' + c.cid + ' ' + what + ' ' + JSON.stringify(x) + ' | unl=' + JSON.stringify(c.S.unloadedPages()) + ' knows=' + !!c.S.serverDoc().nodes[PT]); };
+  function toClient(c) {
+    const m = c.down.shift();
+    ptr(c, 'recv ' + m.t, m);
+    if (m.t === 'ops') c.S.applyRemote(m.ops);
+    else if (m.t === 'page') { stats.pages++; c.asked.delete(m.id); c.S.loadPage(m.id, m.nodes); }
+    else {
+      const i = c.unacked.findIndex(u => u.b === m.b);
+      if (i < 0) return;
+      const u = c.unacked.splice(i, 1)[0];
+      for (const k of m.ex || []) u.real[k].ex = 1;                 /* what HD.net does with ack.ex */
+      if (m.rejected.length) c.S.rollback(m.rejected.map(k => u.real[k]));
+      c.S.acked(u.b);
+    }
+  }
+  function reload(c) {                                              /* HD.net: a new socket asks for the pages it holds */
+    c.desync = false; stats.reloads++;
+    if (process.env.HD_PTRACE) console.log('    ' + c.cid + ' RELOAD');
+    const want = held(c.S);
+    c.up = []; c.down = []; c.asked = new Set();
+    const init = server.partial(want.length ? want : [server.top()[0]]);
+    c.S.load(init.doc, c.cid, {keep: true, unloaded: init.unloaded});
+    for (const u of c.unacked) c.up.push(u);
+  }
+  const strong = c => {                                             /* everything heard: what it knows is the server's, its pages are whole */
+    const S = c.S, sd = S.serverDoc().nodes, stale = new Set(S.unloadedPages());
+    for (const id in sd) {
+      const want = server.nodes.get(id);
+      assert.ok(want, 'seed ' + seed + ': client ' + c.cid + ' knows ' + id + ' that the server does not have');
+      assert.deepStrictEqual(canon(JSON.parse(JSON.stringify(sd[id]))), canon(want), 'seed ' + seed + ': client ' + c.cid + ' has a wrong ' + id);
+    }
+    for (const pid of server.top()) {
+      if (stale.has(pid)) continue;
+      const whole = server.page(pid);
+      for (const id in whole) assert.ok(sd[id], 'seed ' + seed + ': client ' + c.cid + ' holds page ' + pid + ' without ' + id);
+    }
+    stats.strong++;
+  };
+  const watch = () => {
+    for (const c of clients) {
+      const off = c.S.syncCheck();
+      if (off.length) assert.fail('seed ' + seed + ': client ' + c.cid + ' screen is not server copy + waiting ops at ' + JSON.stringify(c.S.syncCheck(true).slice(0, 3)));
+      if (!c.down.length && !c.up.some(m => m.t === 'page')) strong(c);
+    }
+  };
+  for (let i = 0; i < steps; i++) {
+    watch();
+    const c = pick(clients), r = rnd();
+    if (r < 0.36) edit(c);
+    else if (r < 0.4) { const un = c.S.unloadedPages().filter(p => !c.asked.has(p)); if (un.length) ask(c, pick(un)); }   /* at idle */
+    else if (r < 0.7) { if (c.up.length) toServer(c); }
+    else if (r < 1 - drops) { if (c.down.length) toClient(c); }
+    else reload(c);
+    if (c.desync) { stats.repairs++; reload(c); }
+  }
+  for (let round = 0; round < 50; round++) {
+    for (let guard = 0; guard < 100000; guard++) {
+      watch();
+      const busy = clients.filter(c => c.up.length || c.down.length);
+      if (!busy.length) break;
+      const c = pick(busy);
+      if (c.up.length && (rnd() < 0.5 || !c.down.length)) toServer(c); else toClient(c);
+      if (c.desync) { stats.repairs++; reload(c); }
+    }
+    let more = false;
+    for (const c of clients) for (const pg of c.S.unloadedPages()) { ask(c, pg); more = true; }
+    if (!more) break;
+  }
+  const want = canon(server.doc());
+  for (const c of clients) {
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(c.S.unloadedPages())), [], 'seed ' + seed + ': client ' + c.cid + ' still misses pages');
+    assert.equal(c.S.pendingCount(), 0, 'seed ' + seed + ': client ' + c.cid + ' still has pending batches');
+    assert.deepStrictEqual(canon(JSON.parse(JSON.stringify(c.S.serverDoc()))), want, 'seed ' + seed + ': client ' + c.cid + ' has a wrong copy of the server');
+    assert.deepStrictEqual(canon(JSON.parse(JSON.stringify(c.S.toDoc()))), want, 'seed ' + seed + ': client ' + c.cid + ' differs from the server');
+    let seen = 0;
+    c.S.walk('0:0', () => { seen++; });
+    assert.equal(seen, c.S.count(), 'seed ' + seed + ': client ' + c.cid + ' has unreachable nodes');
+  }
+  stats.nodes = server.nodes.size;
+  return stats;
+}
+
+test('sync D9b: three editors loading the file PAGE BY PAGE, layers moving across pages, always converge', () => {
+  const total = {edits: 0, rejected: 0, reloads: 0, repairs: 0, pages: 0, needs: 0, nodes: 0, strong: 0};
+  const only = +process.env.HD_PSEED || 0, runs = +process.env.HD_PSEEDS || 40;
+  for (let seed = only || 1; seed <= (only || runs); seed++) {
+    const s = convergePaged(seed, 1500, seed % 2 ? 0.015 : 0);
+    for (const k in total) total[k] += s[k];
+  }
+  console.log('  sync D9b: ' + (only ? 1 : runs) + ' runs x 1,500 steps, ' + total.edits + ' edits, ' + total.pages + ' pages delivered (' +
+    total.needs + ' asked again because a layer moved onto them), ' + total.rejected + ' ops rejected, ' + total.reloads + ' dropped connections, ' +
+    total.strong + ' full checks, the store lost track ' + total.repairs + ' times, all editors equal to the server');
+  assert.ok(total.needs > 0, 'the run should include layers entering a page from one that was not loaded');
+  assert.ok(total.rejected > 0, 'the run should include rejected ops');
+  assert.equal(total.repairs, 0, 'the store never loses track of the server');
+});
+
 /* ============================================================== HD.net */
 function initFrame(extra, cid) {
   return {
@@ -998,7 +1186,7 @@ test('net: connects with the token as a subprotocol (never in the URL), init loa
   N.on('init', i => inits.push(i));
   N.connect('F 1/x');
   const ws = env.last();
-  assert.equal(ws.url, 'wss://hoola.test:8077/api/design/ws?file=F%201%2Fx');
+  assert.equal(ws.url, 'wss://hoola.test:8077/api/design/ws?file=F%201%2Fx&lazy=1&enc=c1');   /* D9b: it can take pages + compact ops */
   deq(Array.from(ws.protocols), ['hoola', 'hoola-key.tok_ABC123']);
   assert.ok(!ws.url.includes('tok_'));
   assert.equal(N.status, 'connecting');
@@ -1450,6 +1638,86 @@ test('perf: 50,000 nodes load < 1 s; 1,000 sets in one tx < 50 ms', () => {
     ' ms | 5,000 creates in one tx ' + createMs.toFixed(1) + ' ms');
   assert.ok(loadMs < 1000, 'load took ' + loadMs + ' ms');
   assert.ok(setMs < 50, '1,000 sets took ' + setMs + ' ms');
+});
+
+test('net D9b: a lazy init, pages asked for one at a time, compact (c1) frames both ways, ack.ex, a page asked again', () => {
+  const env = makeEnv(), N = env.HD.net, S = env.HD.store, clock = env.clock;
+  const pages = [];
+  N.on('page', p => pages.push(p.id));
+  N.connect('F1');
+  const ws = env.last();
+  ws.open();
+  ws.recv({t: 'init', cid: 3, seq: 10, file: {id: 'F1', name: 'Big', role: 'edit'}, users: [], enc: ['json', 'c1'], use: 'c1',
+    lazy: ['0:2', '0:3'], pages: [{id: '0:1', name: 'A', count: 2}, {id: '0:2', name: 'B', count: 2}, {id: '0:3', name: 'C', count: 1}],
+    doc: {nodes: {'0:0': {type: 'DOCUMENT', name: 'Document'}, '0:1': {type: 'PAGE', parent: '0:0', idx: 'a0', name: 'A'},
+      '5:1': {type: 'RECT', parent: '0:1', idx: 'a0', name: 'R', x: 0},
+      '0:2': {type: 'PAGE', parent: '0:0', idx: 'a1', name: 'B'}, '0:3': {type: 'PAGE', parent: '0:0', idx: 'a2', name: 'C'}}}});
+  assert.equal(N.status, 'live');
+  deq(N.loading(), ['0:2', '0:3']);
+  assert.equal(N.pages.length, 3);
+  assert.throws(() => S.create('RECT', '0:2', {}), /not loaded yet/);       /* never an edit onto a page that is not here */
+  clock.advance(40);
+  deq(ws.sent.filter(m => m.t === 'page'), [{t: 'page', id: '0:2'}]);       /* one at a time, at idle */
+  ws.recv({t: 'page', id: '0:2', nodes: {'0:2': {type: 'PAGE', parent: '0:0', idx: 'a1', name: 'B'}, '7:1': {type: 'RECT', parent: '0:2', idx: 'a0', name: 'S', x: 3}}});
+  assert.ok(S.has('7:1') && S.pageLoaded('0:2'));
+  deq(S.syncCheck(), []);
+  clock.advance(40);
+  deq(ws.sent.filter(m => m.t === 'page').map(m => m.id), ['0:2', '0:3']);
+  ws.recv({t: 'page', id: '0:3', nodes: {'0:3': {type: 'PAGE', parent: '0:0', idx: 'a2', name: 'C'}}});
+  deq(pages, ['0:2', '0:3']);
+  deq(N.loading(), []);
+  /* c1 out: keys as numbers, ops as arrays */
+  S.set('5:1', {x: 5, name: 'R2'});
+  clock.advance(16);
+  const out = ws.sent.filter(m => Array.isArray(m));
+  assert.equal(out.length, 1);
+  deq(out[0], [1, 1, [['5:1', 4, 5, 3, 'R2']]]);
+  assert.equal(S.pendingCount(), 1);
+  ws.recv([3, 1, 11, []]);                                                  /* c1 ack */
+  assert.equal(S.pendingCount(), 0);
+  assert.equal(N.seq, 11);
+  ws.recv([2, 12, 8, [['7:1', 4, 99, 'myProp', {a: 1}], ['5:1']]]);          /* c1 ops: a set (one unknown key) and a delete */
+  assert.equal(S.get('7:1').x, 99);
+  deq(S.get('7:1').myProp, {a: 1});
+  assert.ok(!S.has('5:1'));
+  deq(S.syncCheck(), []);
+  /* JSON frames are still understood on a c1 socket */
+  ws.recv({t: 'ops', seq: 13, by: 8, ops: [{id: '7:1', p: {y: 4}}]});
+  assert.equal(S.get('7:1').y, 4);
+  /* codec round trip */
+  const C = N.codec;
+  for (const op of [{id: '1:2', del: 1}, {id: '1:2', p: {}}, {id: '1:2', p: {x: 1.25, fills: [{type: 'solid', color: '#FF0000'}], zz: null}}]) {
+    deq(C.decOp(JSON.parse(JSON.stringify(C.encOp(op)))), op);
+  }
+  assert.equal(C.decOp(['1:2', 999, 1]), null);                             /* an index this client does not know */
+  let handed = null;
+  const offH = S.onOps(ops => { handed = ops; });
+  S.set('7:1', {name: 'again'});
+  offH();
+  clock.advance(16);
+  const n2 = ws.sent.filter(m => Array.isArray(m)).pop()[1];
+  ws.recv([3, n2, 14, [], [0]]);                                            /* ack.ex: the server merged it into a node it had */
+  assert.equal(handed[0].ex, 1);
+  assert.equal(S.pendingCount(), 0);
+
+  /* a reconnect asks for the pages it holds; while a page is missing a layer that ENTERS from it asks for its page again */
+  ws.drop(1006);
+  clock.advance(600);
+  const ws2 = env.last();
+  assert.ok(ws2 !== ws && !/lazy/.test(ws2.url), 'every page was here: a reconnect takes the whole file');
+  ws2.open();
+  ws2.recv({t: 'init', cid: 4, seq: 20, file: {id: 'F1', name: 'Big', role: 'edit'}, users: [], use: 'json', lazy: ['0:3'],
+    doc: {nodes: {'0:0': {type: 'DOCUMENT', name: 'Document'}, '0:2': {type: 'PAGE', parent: '0:0', idx: 'a1', name: 'B'},
+      '7:1': {type: 'RECT', parent: '0:2', idx: 'a0', name: 'S', x: 99}, '0:3': {type: 'PAGE', parent: '0:0', idx: 'a2', name: 'C'}}}});
+  ws2.recv({t: 'ops', seq: 21, by: 8, ops: [{id: '9:9', p: {parent: '0:2', idx: 'b0'}}]});   /* a layer of page C moved onto B */
+  assert.ok(!S.has('9:9'));
+  assert.ok(!S.pageLoaded('0:2'), 'B waits for itself again');
+  const asked = ws2.sent.filter(m => m.t === 'page').map(m => m.id);
+  assert.equal(asked[0], '0:2');                                            /* asked at once, ahead of the idle one */
+  ws2.recv({t: 'page', id: '0:2', nodes: {'0:2': {type: 'PAGE', parent: '0:0', idx: 'a1', name: 'B'}, '7:1': {type: 'RECT', parent: '0:2', idx: 'a0', name: 'S', x: 99},
+    '9:9': {type: 'FRAME', parent: '0:2', idx: 'b0', name: 'Came over'}, '9:10': {type: 'RECT', parent: '9:9', idx: 'a0', name: 'Kid'}}});
+  assert.ok(S.has('9:9') && S.has('9:10') && S.pageLoaded('0:2'));
+  deq(S.syncCheck(), []);
 });
 
 test('no eval / no new Function / no inline tricks in the three files (strict CSP)', () => {

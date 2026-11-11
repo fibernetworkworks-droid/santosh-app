@@ -49,9 +49,11 @@
   function pointIn(id, wx, wy) { const p = HD.math.apply(HD.math.inv(wm(id)), wx, wy), s = size(id); return p[0] >= 0 && p[1] >= 0 && p[0] <= s[0] && p[1] <= s[1]; }
   function containerAt(wx, wy, exclude) {
     let cur = HD.sel.page, guard = 0;
+    /* D9b: on a big page only the layers under the point are looked at (HD.index; pointIn below still decides) */
+    const cand = HD.index && HD.store.count() > 2000 ? new Set(HD.index.at(wx, wy, HD.sel.page, {tol: 0.001})) : null;
     while (guard++ < 200) {
       const kids = HD.store.children(cur); let found = null;
-      for (let i = kids.length - 1; i >= 0; i--) { const k = kids[i]; if (exclude && exclude.has(k)) continue; const n = HD.store.get(k);
+      for (let i = kids.length - 1; i >= 0; i--) { const k = kids[i]; if (exclude && exclude.has(k)) continue; if (cand && !cand.has(k)) continue; const n = HD.store.get(k);
         if (!n || !DROP[n.type] || prop(k, 'visible') === false || prop(k, 'locked')) continue;
         if (pointIn(k, wx, wy)) { found = k; break; } }
       if (!found) return cur; cur = found;
@@ -247,7 +249,11 @@
   /* ---------------------------------------------------------------- snapping */
   function snapCands(excludeIds, parentId) {
     const ex = new Set(excludeIds), out = []; const par = parentId || HD.sel.page;
-    const kids = HD.store.children(par); let n = 0;
+    let kids = HD.store.children(par); let n = 0;
+    if (kids.length > 400 && HD.index && HD.tools.canvas) {   /* D9b: many siblings - the ones in view, not the first 400 */
+      const cv = HD.tools.canvas, a = HD.render.screenToWorld(0, 0), b = HD.render.screenToWorld(cv.clientWidth, cv.clientHeight);
+      kids = HD.index.query({x: a[0], y: a[1], w: b[0] - a[0], h: b[1] - a[1]}, HD.sel.page).filter(k => HD.store.parent(k) === par);
+    }
     for (const k of kids) { if (ex.has(k) || prop(k, 'visible') === false) continue; if (++n > 400) break; out.push(aabb(k)); }
     if (!pageLike(par)) out.push(Object.assign({parent: true}, aabb(par)));
     if (HD.tools.snapExtra) { try { for (const c of HD.tools.snapExtra(par) || []) out.push(c); } catch (e) { /* guides are optional */ } }   /* ruler guides (hd-vector.js) */

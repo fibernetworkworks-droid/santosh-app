@@ -14,6 +14,12 @@ JSON as its `init` and the frames after it - the document is never serialised pe
 
 One slow browser never stalls the room: each connection has its own bounded send queue and writer task.
 Cursor frames are dropped for a connection that is falling behind; a connection whose queue overflows is closed.
+
+D9b speed (wire.py): a browser that asks (`?lazy=1&pages=<ids>`) gets a file over `design_lazy_nodes` PAGE BY PAGE:
+its init is the root, every page node and the pages it wants, cut from the live document at this moment, and
+`{"t":"page","id"}` asks for one more page, answered at that place of its stream (frames before it are inside it).
+`?enc=c1` = it reads and writes the compact op frames; the JSON frames stay exactly as they were for everyone else.
+An accepted "create" of a node the server already had is marked `ex: 1` (fan-out) / `ex: [i]` (ack).
 """
 from __future__ import annotations
 
@@ -25,8 +31,8 @@ from typing import Any, Callable
 
 from ..config import get_settings
 from ..db import now
-from . import store
-from .doc import APPLIED, MAX_OP_BYTES, REJECTED, Doc, dumps, dumps_nodes, loads
+from . import store, wire
+from .doc import APPLIED, ID_MAX, MAX_OP_BYTES, REJECTED, ROOT, Doc, dumps, dumps_nodes, loads
 
 log = logging.getLogger("hoola.design")
 
@@ -60,7 +66,8 @@ def _spawn(coro) -> asyncio.Task:
 class Conn:
     """One browser in a room. Only its own writer task ever writes to the socket."""
 
-    __slots__ = ("room", "ws", "cid", "name", "color", "role", "queue", "pres", "dead", "strikes", "_code", "_pump")
+    __slots__ = ("room", "ws", "cid", "name", "color", "role", "queue", "pres", "dead", "strikes", "_code", "_pump",
+                 "enc", "pages")
 
     def __init__(self, room: "Room", ws: Any, cid: int, name: str, color: str, role: str):
         self.room, self.ws, self.cid, self.name, self.color, self.role = room, ws, cid, name, color, role
@@ -69,13 +76,17 @@ class Conn:
         self.dead = False
         self.strikes = 0
         self._code = 1000
+        self.enc = "json"                    # D9b: 'c1' = this browser reads and writes the compact op frames
+        self.pages: set | None = None        # D9b: the top-level ids this browser was sent whole (None = all of them)
         self._pump = _spawn(self._write())
 
     def user(self) -> dict:
         return {"cid": self.cid, "name": self.name, "color": self.color}
 
-    def send(self, frame: str, lossy: bool = False) -> None:
-        """Queue a frame; never waits. `lossy` frames (cursors) are skipped while the connection is behind."""
+    def send(self, frame: Any, lossy: bool = False) -> None:
+        """Queue a frame; never waits. `lossy` frames (cursors) are skipped while the connection is behind.
+        D9b: a frame may also be a Future of one (a page cut being serialised in a worker thread): it keeps its
+        place in the stream and the writer waits for it."""
         if self.dead:
             return
         queue = self.queue
@@ -96,7 +107,10 @@ class Conn:
         ws, queue = self.ws, self.queue
         try:
             while True:
-                await ws.send_text(await queue.get())
+                frame = await queue.get()
+                if not isinstance(frame, str):
+                    frame = await frame          # D9b: a page / init cut, serialised off the loop, in its place
+                await ws.send_text(frame)
         except asyncio.CancelledError:
             pass                             # close() asked for it: say goodbye below
         except Exception:                    # noqa: BLE001 - the browser is gone; the reader ends the visit
@@ -120,8 +134,10 @@ def _load(file_id: str, tenant: str | None, max_nodes: int, allow_trashed: bool 
             doc.apply(op)
             replayed += 1
         tail.append((seq, f'{{"t":"ops","seq":{seq},"by":{by},"ops":{ops_json}}}'))
+    big = len(doc) > int(getattr(get_settings(), "design_lazy_nodes", 20000))
     return {"tenant": raw["tenant"], "name": raw["name"], "doc": doc, "seq": seq, "base_json": raw["doc"],
-            "base_seq": raw["seq"], "tail": tail, "replayed": replayed}
+            "base_seq": raw["seq"], "tail": tail, "replayed": replayed,
+            "pcounts": wire.page_counts(doc.nodes) if big else None}
 
 
 def _snapshot(file_id: str, nodes: dict, seq: int, version_every_s: float, keep: int, by: str = "") -> str:
@@ -163,6 +179,9 @@ class Room:
         self._version_s = max(0, int(st.design_autoversion_min)) * 60.0
         self._keep = int(st.design_autoversion_keep)
         self._quiet_s = max(5.0, float(st.design_socket_idle_s))
+        self._lazy_nodes = max(0, int(getattr(st, "design_lazy_nodes", 20000)))   # D9b: page by page above this
+        self._pcounts: dict | None = built.get("pcounts")                           # D9b: nodes per page, about
+        self._last_ex: list[int] = []
         self._ticker = _spawn(self._tick())
 
     @classmethod
@@ -177,8 +196,11 @@ class Room:
         used = {c.color for c in self.conns.values()}
         return next((c for c in COLORS if c not in used), COLORS[len(self.conns) % len(COLORS)])
 
-    async def admit(self, ws: Any, role: str, name: str) -> Conn:
-        """Give the socket its client number and its `init`; from the next line on it is in the room."""
+    async def admit(self, ws: Any, role: str, name: str, lazy: list[str] | None = None, enc: str = "json") -> Conn:
+        """Give the socket its client number and its `init`; from the next line on it is in the room.
+        D9b: `lazy` (the pages the browser wants first, [] = the first page) = it can take the file page by page:
+        a document over `design_lazy_nodes` then comes as the root, every page node and those pages only, cut
+        from the LIVE document (init seq = now, no op tail); `enc='c1'` = it speaks the compact op frames."""
         cid = await bg(store.next_cid, self.file_id)
         if len(self._tail) > TAIL_JOIN_MAX:
             await self.checkpoint()
@@ -188,12 +210,26 @@ class Room:
         if len(self._tail) > TAIL_JOIN_MAX:             # the checkpoint could not be written: rebase in memory
             self._base_json, self._base_seq, self._tail = dumps_nodes(self.doc.nodes), self.seq, []
         conn = Conn(self, ws, cid, name, self._color(), role)
-        head = dumps({"t": "init", "cid": cid, "seq": self._base_seq,
-                      "file": {"id": self.file_id, "name": self.name, "role": role},
-                      "users": [c.user() for c in self.conns.values()], "you": conn.user()})
-        conn.send(f'{head[:-1]},"doc":{self._base_json}}}')
-        for _, frame in self._tail:
-            conn.send(frame)
+        conn.enc = "c1" if enc == "c1" else "json"
+        info = {"t": "init", "cid": cid, "seq": self._base_seq,
+                "file": {"id": self.file_id, "name": self.name, "role": role},
+                "users": [c.user() for c in self.conns.values()], "you": conn.user()}
+        if enc or lazy is not None:                      # D9b: only a browser that asked hears of the new ways
+            info["enc"], info["use"] = list(wire.ENCODINGS), conn.enc
+        if lazy is not None and len(self.doc) > self._lazy_nodes:
+            nodes, sent, rest = wire.cut(self.doc, lazy)
+            counts = self._pcounts or {}
+            info["seq"] = self.seq
+            info["lazy"] = rest
+            info["pages"] = [{"id": p, "name": self.doc.nodes[p].get("name", ""), "count": counts.get(p)}
+                             for p in self.doc.children(ROOT)]       # counts: as of the last checkpoint (about)
+            conn.pages = set(sent)
+            conn.send(asyncio.get_running_loop().run_in_executor(_POOL, wire.init_text, dumps(info), nodes))
+        else:
+            head = dumps(info)
+            conn.send(f'{head[:-1]},"doc":{self._base_json}}}')
+            for _, frame in self._tail:
+                conn.send(frame)
         for other in self.conns.values():
             if other.pres:
                 conn.send(other.pres)
@@ -253,6 +289,8 @@ class Room:
                 return self.drop(conn, 1009)
             try:
                 frame = loads(text)
+                if type(frame) is list:                  # D9b: a compact (c1) frame
+                    frame = wire.from_c1(frame)
                 kind = frame["t"]
             except Exception:                            # noqa: BLE001 - not JSON, not an object, no "t"
                 return self.drop(conn, 1003)
@@ -263,6 +301,8 @@ class Room:
                     return self.drop(conn, 1003)
             elif kind == "ping":
                 conn.send(PONG)
+            elif kind == "page":
+                self._on_page(conn, frame)
 
     def _on_pres(self, conn: Conn, frame: dict) -> None:
         frame["t"], frame["cid"] = "pres", conn.cid
@@ -276,7 +316,10 @@ class Room:
         if not isinstance(ops, list) or type(n) is not int:
             return False
         if conn.role != "edit":
-            conn.send(f'{{"t":"ack","n":{n},"seq":{self.seq},"rejected":{dumps(list(range(len(ops))))}}}')
+            if conn.enc == "c1":
+                conn.send(wire.ack_frame(n, self.seq, list(range(len(ops))), []))
+            else:
+                conn.send(f'{{"t":"ack","n":{n},"seq":{self.seq},"rejected":{dumps(list(range(len(ops))))}}}')
             conn.strikes += 1
             if conn.strikes >= VIEW_STRIKES:
                 self.drop(conn, 4403)
@@ -285,20 +328,52 @@ class Room:
         rejected = self._commit(ops, conn.cid, size > MAX_OP_BYTES, conn)
         if self.seq != before:
             self._last_by = conn.name
-        conn.send(f'{{"t":"ack","n":{n},"seq":{self.seq},"rejected":{dumps(rejected)}}}')
+        ex = self._last_ex
+        if conn.enc == "c1":
+            conn.send(wire.ack_frame(n, self.seq, rejected, ex))
+        elif ex:                                         # D9b: which of hers the server merged into a node it had
+            conn.send(f'{{"t":"ack","n":{n},"seq":{self.seq},"rejected":{dumps(rejected)},"ex":{dumps(ex)}}}')
+        else:
+            conn.send(f'{{"t":"ack","n":{n},"seq":{self.seq},"rejected":{dumps(rejected)}}}')
         return True
+
+    def _on_page(self, conn: Conn, frame: dict) -> None:
+        """D9b: one page (a top-level node) of the live document, cut NOW so it sits exactly at this place of the
+        connection's stream (every frame before it is inside it), plus the pages its instances' components are on
+        that this connection was not sent yet. Serialised in a worker thread; the writer keeps the order."""
+        pid = frame.get("id")
+        if not isinstance(pid, str) or not 0 < len(pid) <= ID_MAX:
+            return
+        loop = asyncio.get_running_loop()
+        node = self.doc.nodes.get(pid)
+        if node is None or node.get("parent") != ROOT:
+            conn.send(wire.page_text(pid, None))
+            return
+        have = conn.pages if conn.pages is not None else set(self.doc.children(ROOT))
+        order, cuts = wire.closure(self.doc, [pid], have - {pid})
+        for p in order:
+            conn.send(loop.run_in_executor(_POOL, wire.page_text, p, cuts[p]))
+            if conn.pages is not None:
+                conn.pages.add(p)
 
     # ------------------------------------------------------------------ ops
     def _commit(self, ops: list, by: int, measure: bool, skip: Conn | None) -> list[int]:
         """Apply a batch in order; number, journal and fan out the accepted ops as ONE frame, serialised once.
         Returns the indexes of the refused ops. `measure` = the frame was big enough for one op to be over the limit."""
-        doc, accepted, rejected = self.doc, [], []
+        doc, accepted, rejected, ex, nodes = self.doc, [], [], [], self.doc.nodes
         for i, op in enumerate(ops):
+            # D9b: a "create" of a node the server already has merges into it - marked `ex` for browsers that hold
+            # only some pages (they can not know that node's other props). Rare: an undo of a delete racing another.
+            had = type(op) is dict and type(op.get("p")) is dict and op["p"].get("type") is not None and op.get("id") in nodes
             result = REJECTED if measure and len(dumps(op)) > MAX_OP_BYTES else doc.apply(op)
             if result == APPLIED:
+                if had:
+                    op = dict(op, ex=1)
+                    ex.append(i)
                 accepted.append(op)
             elif result == REJECTED:
                 rejected.append(i)
+        self._last_ex = ex
         if accepted:
             self.seq += 1
             body = dumps(accepted)
@@ -309,7 +384,15 @@ class Room:
                 self._writer = _spawn(self._write_journal())
             self._since += len(accepted)
             self._last_op = time.monotonic()
-            self._fan(frame, skip=skip)
+            c1 = None
+            for conn in self.conns.values():             # the JSON frame, or the compact one built once (D9b)
+                if conn is not skip:
+                    if conn.enc == "c1":
+                        if c1 is None:
+                            c1 = wire.ops_frame(self.seq, by, accepted)
+                        conn.send(c1)
+                    else:
+                        conn.send(frame)
             if self._since >= self._cp_ops and (self._saver is None or self._saver.done()):
                 self._saver = _spawn(self.checkpoint())
         return rejected
@@ -350,6 +433,11 @@ class Room:
                 return False
             self._saved_seq = seq
             self._since = max(0, self._since - counted)
+            if len(nodes) > self._lazy_nodes:          # D9b: the page list's layer counts, off the loop
+                try:
+                    self._pcounts = await bg(wire.page_counts, nodes)
+                except Exception:                        # noqa: BLE001 - only a hint for the page list
+                    pass
             if seq > self._base_seq:
                 self._base_json, self._base_seq = doc_json, seq
                 self._tail = [entry for entry in self._tail if entry[0] > seq]

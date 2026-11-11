@@ -1,0 +1,61 @@
+/* HOOLA DESIGN - styles for hd-plugins.js (D8a plugin runtime: the Plugins dialog, the review dialog, the code editor,
+   a plugin's own floating panel, the "running" chip). Tokens come from design.css; solid backgrounds under every text. */
+.hdp-dialog{width:min(720px,100%)}
+.hdp-editor{width:min(900px,100%)}
+.hdp-body{display:flex;flex-direction:column;gap:12px;padding:14px 20px;overflow:auto;min-height:0}
+.hdp-foot{display:flex;align-items:center;gap:8px;padding:12px 20px 16px;border-top:1px solid var(--line)}
+.hdp-status{flex:1;min-width:0;margin:0;font-size:12px;color:var(--mut)}
+.hdp-note{margin:0;font-size:12px;color:var(--mut)}
+.hdp-warn{margin:0;font-size:12px;color:var(--warn)}
+.hdp-none{margin:0;font-size:13px;color:var(--dim);list-style:none}
+.hdp-h3{margin:0;font-size:12px;font-weight:600;color:var(--mut)}
+.hdp-who{display:flex;flex-direction:column;gap:2px;min-width:0}
+.hdp-who strong{font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hdp-ver{font-size:12px;color:var(--dim)}
+.hdp-desc{margin:0;font-size:13px;color:var(--lit)}
+.hdp-perms{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px}
+.hdp-perms li{display:flex;gap:8px;align-items:flex-start;font-size:13px}
+.hdp-perms label{display:flex;gap:8px;align-items:flex-start;cursor:pointer}
+.hdp-perms li.hdp-strong span{font-weight:500}
+.hdp-tick{flex:none;font-size:11px;padding:1px 7px;border-radius:999px}
+.hdp-tick.yes{background:var(--ok-soft);color:var(--ok)}
+.hdp-tick.no{background:var(--sunk);color:var(--mut)}
+.hdp-list{gap:10px}
+.hdp-item{display:flex;flex-direction:column;gap:8px;padding:12px;border:1px solid var(--hair);border-radius:12px;background:var(--surface)}
+.hdp-row{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.hdp-state{flex:none;font-size:11px;padding:2px 8px;border-radius:999px;background:var(--sunk);color:var(--mut)}
+.hdp-state.ok{background:var(--ok-soft);color:var(--ok)}
+.hdp-state.warn{background:var(--warn-soft);color:var(--warn)}
+.hdp-chips{display:flex;flex-wrap:wrap;gap:4px}
+.hdp-chip{font-size:11px;padding:2px 7px;border-radius:6px;background:var(--sunk);color:var(--mut);font-family:var(--mono)}
+.hdp-acts{display:flex;flex-wrap:wrap;gap:6px}
+.hdp-more{display:flex;flex-direction:column;gap:8px;padding-top:8px;border-top:1px solid var(--line)}
+.hdp-danger{color:var(--bad)}
+.hdp-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.hdp-lab{display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--mut);min-width:0}
+.hdp-in{min-height:32px;padding:6px 10px;border-radius:8px;border:1px solid var(--hair2);background:var(--sunk);color:var(--ink);font:400 13px/1.4 var(--fb);width:100%;box-sizing:border-box}
+.hdp-in:focus{background:var(--surface);border-color:var(--pri);outline:none}
+.hdp-ta{resize:vertical}
+.hdp-in.mono{font-family:var(--mono);font-size:12px}
+.hdp-fs{border:1px solid var(--hair);border-radius:10px;padding:10px 12px;margin:0;display:flex;flex-direction:column;gap:8px}
+.hdp-fs legend{font-size:12px;font-weight:600;color:var(--mut);padding:0 4px}
+.hdp-check{display:flex;gap:8px;align-items:center;font-size:13px;cursor:pointer}
+.hdp-code{display:flex;border:1px solid var(--hair2);border-radius:10px;background:var(--sunk);overflow:hidden;min-height:220px;max-height:46vh}
+.hdp-code.ro{min-height:0;max-height:34vh}
+.hdp-gut{margin:0;padding:10px 8px 10px 10px;min-width:40px;text-align:right;color:var(--dim);font:12px/1.6 var(--mono);background:var(--raise);border-right:1px solid var(--line);overflow:hidden;user-select:none;white-space:pre}
+.hdp-src{margin:0;padding:10px 12px;flex:1;min-width:0;font:12px/1.6 var(--mono);color:var(--ink);background:transparent;overflow:auto;white-space:pre;tab-size:2}
+textarea.hdp-src{border:0;outline:none;resize:none;min-height:220px}
+.hdp-code:focus-within{border-color:var(--pri)}
+/* a plugin's own panel: its sandboxed iframe */
+.hdp-panel{position:fixed;z-index:70;top:64px;right:292px;width:320px;background:var(--surface);border:1px solid var(--hair);border-radius:12px;box-shadow:var(--sh);display:flex;flex-direction:column;overflow:hidden}
+.hdp-phead{display:flex;align-items:center;gap:8px;padding:8px 8px 8px 12px;border-bottom:1px solid var(--line);cursor:grab;user-select:none;touch-action:none}
+.hdp-ptitle{flex:1;min-width:0;font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hdp-pbody{height:420px;background:var(--surface)}
+.hdp-pbody .hdp-frame{display:block;width:100%;height:100%;border:0;background:var(--surface)}
+.hdp-hidden{position:fixed;left:-10000px;top:0;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none}
+.hdp-hidden .hdp-frame{width:1px;height:1px;border:0}
+.hdp-running{position:fixed;z-index:70;left:50%;bottom:20px;transform:translateX(-50%);display:flex;align-items:center;gap:10px;padding:6px 6px 6px 12px;border-radius:999px;background:var(--surface);border:1px solid var(--hair);box-shadow:var(--sh2);font-size:13px}
+.hdp-dot{width:8px;height:8px;border-radius:50%;background:var(--pri)}
+@media (prefers-reduced-motion: no-preference){ .hdp-dot{animation:hdp-blink 1.2s ease-in-out infinite} }
+@keyframes hdp-blink{50%{opacity:.35}}
+@media (max-width:640px){ .hdp-grid{grid-template-columns:1fr} .hdp-panel{right:8px;left:8px;width:auto !important} }

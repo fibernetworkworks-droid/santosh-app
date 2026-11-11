@@ -34,6 +34,10 @@ class DesignFile(Base):
     node_count: Mapped[int] = mapped_column(Integer, default=2)
     thumb_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     version_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)   # last auto version
+    # D9c branches (design/branches.py): a branch is a normal file linked to its main file. NULL on every other file.
+    branch_of: Mapped[str | None] = mapped_column(String(40), nullable=True, index=True)
+    branch_base_seq: Mapped[int | None] = mapped_column(Integer, nullable=True)         # main's seq at branch / update time
+    branch_state: Mapped[str | None] = mapped_column(String(12), nullable=True)         # "open" | "merged"
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
@@ -94,6 +98,20 @@ class DesignShare(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 
+class DesignBranch(Base):
+    """D9c: the BASE of a branch (main's document when the branch was made or last updated from main) - the third
+    document of a three-way merge. One row per branch file, kept after the merge (it numbers the branches of a main)."""
+    __tablename__ = "design_branches"
+    file_id: Mapped[str] = mapped_column(String(40), primary_key=True)          # the branch file
+    main_id: Mapped[str] = mapped_column(String(40), index=True)
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    no: Mapped[int] = mapped_column(Integer, default=1)                         # 1, 2, ... per main: its own id range
+    base: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True, deferred=True)
+    merged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    merged_by: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
 _ready_for: int | None = None
 
 
@@ -108,7 +126,7 @@ def ensure_tables() -> None:
         eng = _db._engine
     if _ready_for == id(eng):
         return
-    tables = [m.__table__ for m in (DesignFile, DesignOp, DesignVersion, DesignComment, DesignShare)]
+    tables = [m.__table__ for m in (DesignFile, DesignOp, DesignVersion, DesignComment, DesignShare, DesignBranch)]
     for table in tables:
         table.create(eng, checkfirst=True)
     _db.add_missing_columns_for(eng, *tables)        # a column added after the table was born (design_versions.note)

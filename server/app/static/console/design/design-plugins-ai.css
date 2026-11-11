@@ -1,0 +1,73 @@
+/* HOOLA DESIGN - styles for hd-plugins-ai.js (D8b: Ask Hoola to make a plugin, the starter plugins inside the Plugins
+   dialog, the Templates tab of the file browser, Save as a template). Tokens come from design.css; solid backgrounds
+   under every text, no held transforms, no blur over text. */
+.hdpa-dialog{width:min(600px,100%)}
+.hdpa-body{display:flex;flex-direction:column;gap:12px;padding:14px 20px 16px;overflow:auto;min-height:0;font-size:13px;color:var(--ink)}
+.hdpa-lead{margin:0;color:var(--mut);line-height:1.5}
+.hdpa-ta{min-height:84px;resize:vertical;font-size:14px;line-height:1.45;padding:10px 12px}
+.hdpa-ideas{display:flex;flex-wrap:wrap;gap:6px}
+.hdpa-idea{font-size:12.5px;padding:5px 10px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--mut);cursor:pointer;text-align:left}
+.hdpa-idea:hover{border-color:var(--pri);color:var(--pri-ink);background:var(--pri-soft)}
+.hdpa-status{margin:0;font-size:12.5px;color:var(--mut);min-height:18px}
+.hdpa-status.busy{color:var(--pri-ink)}
+.hdpa-status.busy::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--pri);margin-right:8px;vertical-align:1px;animation:hdpa-pulse 1.1s ease-in-out infinite}
+.hdpa-status.bad{color:var(--bad);padding:8px 10px;border-radius:9px;background:rgb(var(--bad-rgb) / .08)}
+@keyframes hdpa-pulse{0%,100%{opacity:.35}50%{opacity:1}}
+@media (prefers-reduced-motion:reduce){.hdpa-status.busy::before{animation:none}}
+.hdpa-warn{margin:0;padding:8px 10px;border-radius:9px;background:var(--warn-soft);color:var(--warn);font-size:12.5px}
+.hdpa-foot{display:flex;align-items:center;gap:10px;padding:12px 20px 16px;border-top:1px solid var(--line)}
+.hdpa-foot .hd-btn.pri{margin-left:auto}
+.hdpa-hint{margin:0;font-size:12px;color:var(--dim);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hdpa-lab{display:flex;flex-direction:column;gap:5px;font-weight:500;font-size:12.5px;color:var(--mut)}
+.hdpa-lab .hd-in{height:34px;font-size:14px}
+.hdpa-draft{display:flex;flex-direction:column;gap:8px;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--sunk)}
+.hdpa-drow{display:flex;align-items:flex-start;gap:12px}
+.hdpa-dwho{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
+.hdpa-dwho strong{font-size:14px;font-weight:600}
+.hdpa-dwho span{color:var(--mut);font-size:12.5px}
+.hdpa-notes{margin:0;padding-left:18px;color:var(--mut);font-size:12.5px}
+.hdpa-chips{display:flex;flex-wrap:wrap;gap:6px}
+.hdpa-chip{font-size:12px;padding:2px 8px;border-radius:999px;background:var(--surface);border:1px solid var(--line);color:var(--mut)}
+.hdpa-chip.strong{color:var(--ink);border-color:var(--hair2)}
+.hdpa-code{margin:0;max-height:300px;overflow:auto;padding:10px 12px;border-radius:10px;background:var(--sunk);border:1px solid var(--line);font:12px/1.55 var(--mono);color:var(--ink);white-space:pre}
+.hdpa-man summary{cursor:pointer;color:var(--mut);font-size:12.5px;margin-bottom:6px}
+
+/* inside D8a's Plugins dialog */
+.hdpa-from{display:flex;flex-direction:column;gap:10px;margin-top:6px;padding-top:12px;border-top:1px solid var(--line)}
+.hdpa-askcard{display:flex;align-items:center;gap:12px;width:100%;padding:12px 14px;border-radius:12px;border:1px solid var(--pri);background:var(--pri-soft);color:var(--ink);text-align:left;cursor:pointer}
+.hdpa-askcard:hover{box-shadow:var(--sh2)}
+.hdpa-askcard>.hd-ic{color:var(--pri-ink);flex:none}
+.hdpa-mark{width:34px;height:34px;border-radius:10px;background:var(--pri);color:var(--on-acc);display:grid;place-items:center;flex:none}
+.hdpa-asktext{display:flex;flex-direction:column;gap:2px;flex:1;min-width:0}
+.hdpa-asktext strong{font-size:14px;font-weight:600}
+.hdpa-asktext span{font-size:12.5px;color:var(--mut)}
+.hdpa-h3{margin:4px 0 0;font-size:12px;font-weight:600;color:var(--mut)}
+.hdpa-starters{display:flex;flex-direction:column;gap:8px}
+.hdpa-starter{display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid var(--hair);border-radius:12px;background:var(--surface)}
+.hdpa-sicon{width:32px;height:32px;border-radius:9px;background:var(--sunk);color:var(--mut);display:grid;place-items:center;flex:none}
+.hdpa-swho{display:flex;flex-direction:column;gap:4px;flex:1;min-width:0}
+.hdpa-swho strong{font-size:13.5px;font-weight:600}
+.hdpa-swho>span{font-size:12.5px;color:var(--mut);line-height:1.4}
+.hdpa-starter .hd-btn{flex:none;min-width:72px}
+
+/* the Templates tab of the file browser */
+.hdg-gallery{display:flex;flex-direction:column;gap:16px}
+.hdg-cats{display:flex;flex-wrap:wrap;gap:8px}
+.hdg-cat{height:32px;padding:0 14px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--mut);font-size:13px;font-weight:500;cursor:pointer}
+.hdg-cat:hover{color:var(--ink);border-color:var(--hair2)}
+.hdg-cat.on{background:var(--ink);border-color:var(--ink);color:var(--surface)}
+.hdg-h2{margin:8px 0 0;font-size:15px;font-weight:600;color:var(--ink)}
+.hdg-sub{margin:-10px 0 0;font-size:12.5px;color:var(--mut)}
+.hdg-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(232px,1fr));gap:20px}
+.hdg-grid .hd-skel{min-height:248px}
+.hdg-card{position:relative;display:flex;flex-direction:column;border-radius:14px;border:1px solid var(--line);background:var(--surface);overflow:hidden;transition:box-shadow .16s var(--ease),border-color .16s var(--ease)}
+.hdg-card:hover,.hdg-card:focus-within{border-color:var(--hair2);box-shadow:var(--sh2)}
+.hdg-open{display:flex;flex-direction:column;width:100%;text-align:left;background:none;border:0;padding:0;cursor:pointer;color:inherit}
+.hdg-thumb{aspect-ratio:4/3;background:var(--sunk);display:grid;place-items:center;padding:16px;border-bottom:1px solid var(--line);color:var(--hair2);overflow:hidden}
+.hdg-thumb img{max-width:100%;max-height:100%;width:auto;height:auto;display:block;border-radius:4px;box-shadow:0 1px 2px rgb(0 0 0 / .08),0 6px 18px -6px rgb(0 0 0 / .22)}
+.hdg-meta{display:flex;flex-direction:column;gap:2px;padding:10px 13px 4px;min-width:0}
+.hdg-name{font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hdg-info{font-size:12px;color:var(--dim)}
+.hdg-acts{display:flex;align-items:center;gap:6px;padding:8px 13px 12px}
+.hdg-acts .hdg-use{flex:1;justify-content:center}
+@media (max-width:640px){.hdg-grid{grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px}}
