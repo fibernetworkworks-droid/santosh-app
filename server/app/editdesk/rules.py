@@ -25,25 +25,25 @@ PLATFORM_LABEL = {"reel": "Instagram Reel (9:16)", "short": "YouTube Short (9:16
 
 KINDS = {
     "reel": {"label": "Reel / short", "platforms": ["reel"],
-             "footage": ["Raw clips", "Brand logo (PNG)", "Music (licence ke saath)", "Caption / text lines", "Reference reel"]},
+             "footage": ["Raw clips", "Brand logo (PNG)", "Music (with its licence)", "Caption / text lines", "Reference reel"]},
     "youtube": {"label": "YouTube video", "platforms": ["youtube", "short"],
-                "footage": ["A-roll (camera)", "B-roll", "Audio (mic) file", "Thumbnail photo", "Intro / outro", "Music (licence ke saath)",
+                "footage": ["A-roll (camera)", "B-roll", "Audio (mic) file", "Thumbnail photo", "Intro / outro", "Music (with its licence)",
                             "Script / chapters"]},
     "wedding": {"label": "Wedding film / teaser", "platforms": ["youtube", "reel"],
                 "footage": ["Haldi", "Mehendi", "Sangeet", "Pheras / main ceremony", "Reception", "Drone shots", "Couple shoot",
-                            "Audio of vows / speeches", "Song choice (licence ke saath)"]},
+                            "Audio of vows / speeches", "Song choice (with its licence)"]},
     "corporate": {"label": "Corporate / brand film", "platforms": ["youtube", "square"],
-                  "footage": ["Interview A-roll", "B-roll", "Logo + brand kit", "Script / approved claims", "Music (licence ke saath)",
+                  "footage": ["Interview A-roll", "B-roll", "Logo + brand kit", "Script / approved claims", "Music (with its licence)",
                               "Lower-third names + titles"]},
     "ad": {"label": "Ad / product video", "platforms": ["reel", "portrait", "square"],
-           "footage": ["Product shots", "Logo + brand kit", "Offer text (approved)", "Music (licence ke saath)", "Voice-over"]},
+           "footage": ["Product shots", "Logo + brand kit", "Offer text (approved)", "Music (with its licence)", "Voice-over"]},
     "podcast": {"label": "Podcast / interview", "platforms": ["youtube", "short"],
                 "footage": ["Camera 1", "Camera 2", "Audio (each mic)", "Guest names", "Chapter points"]},
     "event": {"label": "Event highlight", "platforms": ["youtube", "reel"],
-              "footage": ["Stage shots", "Crowd / B-roll", "Speeches audio", "Logo", "Music (licence ke saath)"]},
+              "footage": ["Stage shots", "Crowd / B-roll", "Speeches audio", "Logo", "Music (with its licence)"]},
     "music_video": {"label": "Music video", "platforms": ["youtube", "reel"],
                     "footage": ["Performance takes", "Story shots", "Final mixed song (owner's rights)", "Lyrics"]},
-    "other": {"label": "Other", "platforms": ["reel"], "footage": ["Raw clips", "Music (licence ke saath)"]},
+    "other": {"label": "Other", "platforms": ["reel"], "footage": ["Raw clips", "Music (with its licence)"]},
 }
 KIND_WORDS = [("wedding", ("wedding", "shaadi", "shadi", "vivah", "lagna", "reception", "haldi", "sangeet", "pre wedding", "prewedding")),
               ("podcast", ("podcast", "interview")),
@@ -54,25 +54,25 @@ KIND_WORDS = [("wedding", ("wedding", "shaadi", "shadi", "vivah", "lagna", "rece
               ("youtube", ("youtube video", "vlog", "yt video")),
               ("reel", ("reel", "short", "insta"))]
 
-STATUS = {"brief": "Brief", "footage": "Footage aa raha", "editing": "Edit chal raha", "review": "Client review",
-          "revising": "Badlav chal raha", "approved": "Client ne OK kiya", "delivered": "Final de diya",
-          "closed": "Band (paise poore)", "cancelled": "Radd"}
+STATUS = {"brief": "Brief", "footage": "Footage coming in", "editing": "Editing", "review": "Client review",
+          "revising": "Changes in progress", "approved": "Client approved", "delivered": "Final delivered",
+          "closed": "Closed (paid in full)", "cancelled": "Cancelled"}
 
 LIC_KINDS = ("music", "stock_video", "stock_photo", "sfx", "font", "footage", "other")
-LIC_TYPES = {"royalty_free": "Royalty-free (proof chahiye)", "subscription": "Subscription licence (Artlist / Epidemic jaisa)",
-             "sync": "Sync licence (label / publisher se)", "cc": "Creative Commons (attribution dekhiye)",
-             "client_owned": "Client ki apni (client ki zimmedari likhit)", "own": "Apni recording / banayi hui",
-             "public_domain": "Public domain", "platform_only": "Sirf app ki library (Instagram / YouTube in-app)",
-             "unknown": "Pata nahi"}
+LIC_TYPES = {"royalty_free": "Royalty-free (proof needed)", "subscription": "Subscription licence (like Artlist / Epidemic)",
+             "sync": "Sync licence (from the label / publisher)", "cc": "Creative Commons (check the attribution)",
+             "client_owned": "Client's own (client's responsibility, in writing)", "own": "Own recording / own creation",
+             "public_domain": "Public domain", "platform_only": "App library only (Instagram / YouTube in-app)",
+             "unknown": "Not known"}
 # Sources that never cover a brand / client's commercial video by themselves.
 RISKY_SOURCES = [
     (re.compile(r"\b(insta(gram)?|reels?)\b.*\b(library|music|audio|gaana|song)\b|\b(insta|instagram) (ka|se) (gaana|song|audio)", re.I),
-     "Instagram ki in-app music library sirf non-commercial use ke liye hai; brand / client video ke liye sync licence chahiye "
-     "(Zee v Nykaa, Delhi HC, May 2026 me isi par case)."),
+     "Instagram's in-app music library is for non-commercial use only; a brand / client video needs a sync licence "
+     "(Zee v Nykaa, Delhi HC, May 2026: a case on exactly this)."),
     (re.compile(r"\b(youtube|yt)\b.*\b(download|se liya|se uthaya|rip)\b|\bmp3 download|\bpagalworld|\bsong download", re.I),
-     "YouTube / download site se uthaya gaana licence nahi hota; Content ID claim / takedown aur copyright notice ka risk."),
+     "A song taken from YouTube / a download site is not licensed; risk of a Content ID claim / takedown and a copyright notice."),
     (re.compile(r"\b(bollywood|film|filmi|t-series|zee music|saregama|sony music|tips)\b", re.I),
-     "Film / label ka gaana: label ya publisher se sync licence (aur public performance ke liye IPRS / PPL / Novex) chahiye."),
+     "Film / label song: a sync licence from the label or publisher is needed (and IPRS / PPL / Novex for public performance)."),
 ]
 
 OUT_OF_SCOPE = re.compile(r"\b(naya video|nayi video|ek aur (video|reel)|aur ek (video|reel)|extra (video|reel)|new video|another (video|reel)|"
@@ -90,8 +90,8 @@ def digest(obj: Any) -> str:
 def clean(text: Any, n: int = 600) -> str:
     """Client / her words: secrets never kept (OTP / PIN / password values, card- and Aadhaar-like numbers)."""
     t = str(text or "")
-    t = SECRET.sub(lambda m: f"{m.group(1)} [hataya]", t)
-    t = re.sub(r"\b(?:\d[ -]?){12,19}\b", "[hataya]", t)
+    t = SECRET.sub(lambda m: f"{m.group(1)} [removed]", t)
+    t = re.sub(r"\b(?:\d[ -]?){12,19}\b", "[removed]", t)
     return t.strip()[:n]
 
 
@@ -234,19 +234,19 @@ def parse_brief(text: Any, today: date) -> dict[str, Any]:
 def brief_questions(facts: dict, has_music_licence: bool, has_footage: bool) -> list[str]:
     q = []
     if not facts.get("platforms"):
-        q.append("Kis platform ke liye? (Insta reel / YouTube / Short / Status / feed post)")
+        q.append("Which platform is it for? (Insta reel / YouTube / Short / Status / feed post)")
     if not facts.get("length_s"):
-        q.append("Video kitni lambi chahiye? (seconds / minutes)")
+        q.append("How long should the video be? (seconds / minutes)")
     if not facts.get("due"):
-        q.append("Final kab tak chahiye (tareekh)?")
+        q.append("By when is the final needed (date)?")
     if "captions" not in facts:
-        q.append("Captions / subtitles chahiye? Kis bhasha mein?")
+        q.append("Are captions / subtitles needed? In which language?")
     if facts.get("music_said") and not has_music_licence:
-        q.append("Music kahan se hai, aur licence kiske naam hai? (Insta / YouTube se uthaya gaana brand video mein nahi chalega)")
+        q.append("Where is the music from, and in whose name is the licence? (A song taken from Insta / YouTube cannot be used in a brand video)")
     if not facts.get("references"):
-        q.append("Koi reference video link hai jaisa style chahiye?")
+        q.append("Is there a reference video link for the style you want?")
     if not has_footage:
-        q.append("Footage kaise bhejenge? (Drive link / chat mein files)")
+        q.append("How will the footage be sent? (Drive link / files in chat)")
     return q
 
 
@@ -300,32 +300,32 @@ def licence_problems(lic: dict, commercial: bool, today: date) -> tuple[list[str
     typ = lic.get("licence_type") or "unknown"
     src = f"{lic.get('source', '')} {lic.get('title', '')} {lic.get('notes', '')}"
     if typ in ("unknown", ""):
-        block.append("Licence ka type pata nahi: proof ke bina final delivery nahi.")
+        block.append("Licence type not known: no final delivery without proof.")
     if typ == "platform_only" and commercial:
-        block.append("In-app library ka gaana (Instagram / YouTube) brand / client video mein licence nahi deta.")
+        block.append("A song from an in-app library (Instagram / YouTube) gives no licence for a brand / client video.")
     for rx, why in RISKY_SOURCES:
         if rx.search(src) and typ not in ("sync", "client_owned", "own"):
             (block if commercial else warn).append(why)
             break
     if typ in ("royalty_free", "subscription", "sync", "cc") and not (lic.get("proof_file_id") or lic.get("licence_ref")):
-        block.append("Licence ka proof (licence PDF / download certificate / order number) nahi juda.")
+        block.append("Licence proof (licence PDF / download certificate / order number) is not attached.")
     if typ == "subscription":
-        warn.append("Subscription licence: is project ke liye download / register uski terms ke andar karein (kai sites mein "
-                    "video ko project ke naam se clear karna padta hai).")
+        warn.append("Subscription licence: download / register it for this project within its terms (on many sites "
+                    "the video has to be cleared under the project's name).")
     if typ == "cc":
-        warn.append("Creative Commons: licence (BY / NC / ND) dekhiye; NC wala commercial video mein nahi; credit dena hoga.")
+        warn.append("Creative Commons: check the licence (BY / NC / ND); NC cannot be used in a commercial video; credit must be given.")
     if typ == "client_owned":
-        warn.append("Client ne diya: likhit mein lijiye ki rights client ke paas hain (zimmedari unki).")
+        warn.append("Given by the client: get it in writing that the client holds the rights (their responsibility).")
     if lic.get("commercial") is False and commercial:
-        block.append("Is licence mein commercial use allowed nahi likha hai.")
+        block.append("This licence does not say commercial use is allowed.")
     exp = lic.get("expires")
     if exp:
         try:
             ed = date.fromisoformat(str(exp)[:10])
             if ed < today:
-                block.append(f"Licence {ed.isoformat()} ko khatam ho gaya.")
+                block.append(f"The licence expired on {ed.isoformat()}.")
             elif ed <= today + timedelta(days=15):
-                warn.append(f"Licence {ed.isoformat()} ko khatam hoga.")
+                warn.append(f"The licence expires on {ed.isoformat()}.")
         except ValueError:
             pass
     return block, warn
@@ -341,15 +341,15 @@ def gst_split(state_code_her: str, state_code_client: str, gst_pct: float, base:
     return {"pct": gst_pct, "cgst": 0.0, "sgst": 0.0, "igst": tax, "tax": tax, "kind": "inter"}
 
 
-TDS_NOTE = ("TDS: business client Income-tax Act 2025 s.393(1) mein kaat sakta hai: professional fees 10% (Rs 50,000 saal se upar) "
-            "ya contract work 1% / 2%; kaun si entry lagi yeh client tay karta hai. Jo kaata ho woh 'paise mile' mein likhiye; "
-            "Form 26AS / AIS se milaiye. Individual client (personal use) TDS nahi kaatte.")
-GST_NOTE = ("GST: video editing / post-production SAC 998386, 18% (GST 2.0 ke baad bhi). Registration saal ke Rs 20 lakh "
-            "(special category states Rs 10 lakh) turnover se upar zaroori; videsh client = export of services, LUT ke saath "
-            "zero-rated. Aapka CA pakka kare.")
-COPYRIGHT_NOTE = ("Copyright: commissioned video (cinematograph film) ka pehla maalik paise dene wala client hota hai jab tak "
-                  "likhit mein kuch aur na ho (Copyright Act 1957 s.17(b)); raw footage / project files / music ke rights "
-                  "quote ke terms mein saaf likhiye.")
+TDS_NOTE = ("TDS: a business client may deduct it under Income-tax Act 2025 s.393(1): professional fees 10% (above Rs 50,000 a year) "
+            "or contract work 1% / 2%; the client decides which entry applies. Record what was deducted when you record the payment; "
+            "match it with Form 26AS / AIS. Individual clients (personal use) do not deduct TDS.")
+GST_NOTE = ("GST: video editing / post-production SAC 998386, 18% (also after GST 2.0). Registration is required above a turnover of Rs 20 lakh a year "
+            "(special category states Rs 10 lakh); a foreign client = export of services, with a LUT it is "
+            "zero-rated. Have your CA confirm.")
+COPYRIGHT_NOTE = ("Copyright: for a commissioned video (cinematograph film) the first owner is the client who pays, unless "
+                  "something else is agreed in writing (Copyright Act 1957 s.17(b)); state the rights to raw footage / project files / music "
+                  "clearly in the quote's terms.")
 
 
 def money(v: Any) -> float | None:

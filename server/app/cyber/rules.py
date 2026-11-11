@@ -26,54 +26,54 @@ from urllib.parse import urlparse
 
 SOURCES = {"antivirus": "Antivirus / EDR (Defender, Quick Heal, Seqrite)", "firewall": "Firewall / router",
            "server": "Server login (sshd / fail2ban)", "workspace": "Google Workspace", "m365": "Microsoft 365",
-           "waf": "Cloudflare / WAF", "hoola": "Hoola ka apna (phone / login)", "other": "Doosra"}
+           "waf": "Cloudflare / WAF", "hoola": "Hoola's own (phone / login)", "other": "Other"}
 
 # kind -> (base score, plain label)
 KINDS: dict[str, tuple[int, str]] = {
-    "ransomware": (95, "Ransomware ke nishaan"),
-    "login_after_fail": (90, "Kai galat koshishon ke baad login ho gaya"),
-    "gov_attack": (90, "Sarkari-sponsored hamle ki chetavni (Google)"),
-    "device_compromised": (85, "Device par kabza ho sakta hai"),
+    "ransomware": (95, "Signs of ransomware"),
+    "login_after_fail": (90, "Logged in after many wrong attempts"),
+    "gov_attack": (90, "Warning of a government-sponsored attack (Google)"),
+    "device_compromised": (85, "The device may be taken over"),
     "malware_spread": (85, "Ek hi virus kai PC par"),
-    "malware_active": (80, "Virus mila, saaf NAHI hua"),
-    "leaked_password": (80, "Password leak hua"),
-    "suspicious_sending": (80, "Mailbox se ajeeb mail bheje ja rahe"),
-    "forwarding_rule": (75, "Mail aage bhejne ka naya rule (fraud ka aam tareeka)"),
-    "suspicious_login": (75, "Shak wala login (ho gaya)"),
-    "admin_granted": (70, "Kisi ko admin power di gayi"),
-    "impossible_travel": (70, "Ek hi account do door jagah se"),
-    "new_device": (70, "Hoola mein naya phone jud raha hai"),
-    "brute_force": (50, "Password guess karne ki lagataar koshish"),
-    "malware_campaign": (50, "Virus wale mail aaye (rok diye)"),
-    "waf_bypass": (45, "Hamla dikha par sirf log hua, roka nahi"),
-    "new_ip_login": (45, "Naye pate se login"),
-    "login_blocked": (35, "Shak wala login roka gaya"),
-    "malware_blocked": (30, "Virus mila aur saaf / quarantine ho gaya"),
-    "av_problem": (25, "Antivirus band / update fail"),
-    "port_scan": (20, "Internet se port scan (firewall ne roka)"),
-    "login_fail": (15, "Galat password"),
-    "waf_block": (10, "WAF ne request roki"),
-    "fw_block": (5, "Firewall ne roka"),
+    "malware_active": (80, "Virus found, NOT cleaned"),
+    "leaked_password": (80, "Password leaked"),
+    "suspicious_sending": (80, "Strange mails are being sent from the mailbox"),
+    "forwarding_rule": (75, "New mail forwarding rule (a common fraud method)"),
+    "suspicious_login": (75, "Suspicious login (succeeded)"),
+    "admin_granted": (70, "Someone was given admin power"),
+    "impossible_travel": (70, "One account from two far-apart places"),
+    "new_device": (70, "A new phone is connecting to Hoola"),
+    "brute_force": (50, "Repeated attempts to guess the password"),
+    "malware_campaign": (50, "Mails with a virus came in (stopped)"),
+    "waf_bypass": (45, "An attack was seen but only logged, not stopped"),
+    "new_ip_login": (45, "Login from a new address"),
+    "login_blocked": (35, "Suspicious login was blocked"),
+    "malware_blocked": (30, "Virus found and cleaned / quarantined"),
+    "av_problem": (25, "Antivirus off / update failed"),
+    "port_scan": (20, "Port scan from the internet (blocked by the firewall)"),
+    "login_fail": (15, "Wrong password"),
+    "waf_block": (10, "The WAF blocked a request"),
+    "fw_block": (5, "Blocked by the firewall"),
     "login_ok": (5, "Normal login"),
-    "other": (20, "Doosra alert"),
+    "other": (20, "Other alert"),
 }
 NEVER_MUTE = {"ransomware", "login_after_fail", "gov_attack", "device_compromised", "malware_spread", "leaked_password",
               "suspicious_sending", "forwarding_rule", "new_device"}
 MATTERS, WATCH = 50, 25
 
 ACTIONS = {
-    "block_ip": "IP block karna (Cloudflare)",
-    "unblock_ip": "IP block hatana (Cloudflare)",
-    "disable_user": "User / account band karna",
+    "block_ip": "Block an IP (Cloudflare)",
+    "unblock_ip": "Remove an IP block (Cloudflare)",
+    "disable_user": "Disable a user / account",
     "reset_sessions": "Sab devices se sign-out + password reset",
     "quarantine": "File / PC quarantine (antivirus / EDR)",
-    "isolate_pc": "PC ko network se alag karna",
-    "wipe_device": "Kho gaye device ka data mitana (MDM)",
+    "isolate_pc": "Take a PC off the network",
+    "wipe_device": "Erase a lost device's data (MDM)",
 }
 WIPE_KINDS = {"wipe_device"}
 
-_MASK = [(re.compile(r"\b(password|passwd|pwd|otp|pin|token|secret|api[_-]?key)\b\s*[:=]\s*\S+", re.I), r"\1=[hataya]"),
-         (re.compile(r"\b(?:\d[ -]?){13,19}\b"), "[hataya]")]
+_MASK = [(re.compile(r"\b(password|passwd|pwd|otp|pin|token|secret|api[_-]?key)\b\s*[:=]\s*\S+", re.I), r"\1=[removed]"),
+         (re.compile(r"\b(?:\d[ -]?){13,19}\b"), "[removed]")]
 
 
 def mask(text: str, n: int = 500) -> str:
@@ -233,11 +233,11 @@ def parse_line(line: str, hint: str = "") -> dict[str, Any] | None:
         return _ev("server", "login_ok", f"Login: {m.group(1)}", host=host, user=m.group(1), ip=m.group(2), detail=ln, at=at, ok=True)
     m = _SSH_FAIL.search(ln)
     if m:
-        return _ev("server", "login_fail", f"Galat login: {m.group(1)}", host=host, user=m.group(1), ip=m.group(2), detail=ln, at=at)
+        return _ev("server", "login_fail", f"Failed login: {m.group(1)}", host=host, user=m.group(1), ip=m.group(2), detail=ln, at=at)
     m = _F2B.search(ln)
     if m:
         if m.group(2).lower() == "ban":
-            return _ev("server", "brute_force", f"fail2ban ne IP band kiya ({m.group(1)})", host=host, ip=m.group(3), detail=ln, at=at,
+            return _ev("server", "brute_force", f"fail2ban blocked the IP ({m.group(1)})", host=host, ip=m.group(3), detail=ln, at=at,
                        banned=True)
         return None
     m = _MK_OK.search(ln)
@@ -246,14 +246,14 @@ def parse_line(line: str, hint: str = "") -> dict[str, Any] | None:
                    ip=m.group(2), detail=ln, at=at, ok=True)
     m = _MK_FAIL.search(ln)
     if m:
-        return _ev("firewall", "login_fail", f"Router galat login: {m.group(1)}", host=host or "router", user=m.group(1),
+        return _ev("firewall", "login_fail", f"Router failed login: {m.group(1)}", host=host or "router", user=m.group(1),
                    ip=m.group(2), detail=ln, at=at)
     m = _UFW.search(ln)
     if m:
-        return _ev("firewall", "fw_block", "Firewall ne roka", host=host, ip=m.group(1), detail=ln, at=at, dport=m.group(3) or "")
+        return _ev("firewall", "fw_block", "Blocked by the firewall", host=host, ip=m.group(1), detail=ln, at=at, dport=m.group(3) or "")
     m = _MK_DROP.search(ln)
     if m:
-        return _ev("firewall", "fw_block", "Router ne roka", host=host or "router", ip=m.group(2), detail=ln, at=at, dport=m.group(5))
+        return _ev("firewall", "fw_block", "Blocked by the router", host=host or "router", ip=m.group(2), detail=ln, at=at, dport=m.group(5))
     for rx, s, k in _SAAS:
         if rx.search(ln):
             src = s
@@ -270,7 +270,7 @@ def parse_line(line: str, hint: str = "") -> dict[str, Any] | None:
             return _ev("antivirus", k, (th.group(1) if th else ln)[:200], host=host, detail=ln, at=at)
     if re.search(r"(failed login|login failed|authentication failure|logon failure|invalid password)", ln, re.I):
         ipm = re.search(_IP, ln)
-        return _ev(hint if hint in SOURCES else "other", "login_fail", "Galat login", host=host, ip=ipm.group(1) if ipm else "", detail=ln, at=at)
+        return _ev(hint if hint in SOURCES else "other", "login_fail", "Failed login", host=host, ip=ipm.group(1) if ipm else "", detail=ln, at=at)
     return None
 
 
@@ -347,7 +347,7 @@ def correlate(events: list[dict[str, Any]], own_ips: list[str], seen_ok: set[tup
         if e["kind"] == "login_ok" and e["ip"]:
             nf = len(fails.get(e["ip"], []))
             if nf >= 5 and e["ip"] not in own:
-                out.append({**e, "kind": "login_after_fail", "title": f"{nf} galat koshish ke baad '{e['user']}' login ho gaya ({e['ip']})",
+                out.append({**e, "kind": "login_after_fail", "title": f"{nf} failed attempts, then '{e['user']}' logged in ({e['ip']})",
                             "count": 1, "fails": nf})
                 used.add(i)
             elif e["ip"] not in own and (e["user"], e["ip"]) not in seen_ok and public_ip(e["ip"]):
@@ -359,10 +359,10 @@ def correlate(events: list[dict[str, Any]], own_ips: list[str], seen_ok: set[tup
     for ip, fl in fails.items():
         users = sorted({f["user"] for f in fl if f["user"]})
         if len(fl) >= 10:
-            out.append({**fl[0], "kind": "brute_force", "title": f"{ip} se {len(fl)} baar password guess ({', '.join(users[:4])})",
+            out.append({**fl[0], "kind": "brute_force", "title": f"{len(fl)} password guesses from {ip} ({', '.join(users[:4])})",
                         "count": len(fl), "users": users[:10]})
         else:
-            out.append({**fl[0], "kind": "login_fail", "title": f"{ip} se {len(fl)} galat login", "count": len(fl), "users": users[:10]})
+            out.append({**fl[0], "kind": "login_fail", "title": f"{len(fl)} failed logins from {ip}", "count": len(fl), "users": users[:10]})
     used |= {i for i, e in enumerate(events) if e["kind"] == "login_fail" and e["ip"]}
     blocks: dict[str, list[dict]] = {}
     for i, e in enumerate(events):
@@ -372,9 +372,9 @@ def correlate(events: list[dict[str, Any]], own_ips: list[str], seen_ok: set[tup
     for ip, bl in blocks.items():
         ports = {b.get("dport") for b in bl if b.get("dport")}
         if len(ports) >= 10:
-            out.append({**bl[0], "kind": "port_scan", "title": f"{ip} ne {len(ports)} port try kiye (roka gaya)", "count": len(bl)})
+            out.append({**bl[0], "kind": "port_scan", "title": f"{ip} tried {len(ports)} ports (blocked)", "count": len(bl)})
         else:
-            out.append({**bl[0], "count": len(bl), "title": f"{ip}: {len(bl)} baar roka gaya"})
+            out.append({**bl[0], "count": len(bl), "title": f"{ip}: blocked {len(bl)} time(s)"})
     mal: dict[str, list[dict]] = {}
     for i, e in enumerate(events):
         if e["kind"] in ("malware_active", "malware_blocked") and i not in used:
@@ -397,7 +397,7 @@ def correlate(events: list[dict[str, Any]], own_ips: list[str], seen_ok: set[tup
         paths = {w.get("path") for w in wl if w.get("path")}
         login_hits = sum(1 for w in wl if re.search(r"(wp-login|xmlrpc|/login|/admin)", w.get("path") or "", re.I))
         if k == "waf_block" and login_hits >= 20:
-            out.append({**wl[0], "kind": "brute_force", "title": f"{ip}: login page par {login_hits} hamle (WAF ne roke)", "count": len(wl)})
+            out.append({**wl[0], "kind": "brute_force", "title": f"{ip}: {login_hits} attacks on the login page (blocked by the WAF)", "count": len(wl)})
         else:
             out.append({**wl[0], "count": len(wl), "title": f"{wl[0]['title']} x{len(wl)}" + (f" ({len(paths)} pages)" if len(paths) > 1 else "")})
     for i, e in enumerate(events):
@@ -437,14 +437,14 @@ def score(e: dict[str, Any], own_ips: list[str], crown: list[str], rule: dict[st
         n = 1                                          # internet background noise: many of them is still noise
     if n >= 100:
         s += 10
-        why.append(f"{n} baar")
+        why.append(f"{n} times")
     elif n >= 10:
         s += 5
-        why.append(f"{n} baar")
+        why.append(f"{n} times")
     host = str(e.get("host") or "").lower()
     if host and any(c.lower() in host for c in crown if c):
         s += 10
-        why.append(f"'{e['host']}' aapka zaroori system hai")
+        why.append(f"'{e['host']}' is one of your important systems")
     u = str(e.get("user") or "").lower()
     if u in ("root", "admin", "administrator") and e["kind"] in ("brute_force", "login_fail", "login_after_fail", "new_ip_login", "suspicious_login"):
         s += 10
@@ -452,18 +452,18 @@ def score(e: dict[str, Any], own_ips: list[str], crown: list[str], rule: dict[st
     own = {valid_ip(x) for x in own_ips if valid_ip(x)}
     if e.get("ip") and e["ip"] in own and e["kind"] in ("login_fail", "brute_force", "new_ip_login"):
         s -= 25
-        why.append("aapke apne office ka IP")
+        why.append("your own office IP")
     if e.get("banned"):
         s -= 15
-        why.append("fail2ban ne pehle hi band kar diya")
+        why.append("fail2ban has already blocked it")
     if e["kind"] in ("port_scan", "fw_block", "waf_block"):
-        why.append("internet par aam shor; firewall ne apna kaam kiya")
+        why.append("common internet noise; the firewall did its job")
     if rule:
         if e["kind"] in NEVER_MUTE:
-            why.append(f"Aapne ise pehle 'theek' kaha tha ({rule.get('reason') or 'bina wajah'}), par yeh qism kabhi chhupaya nahi jaata")
+            why.append(f"You earlier said this was 'OK' ({rule.get('reason') or 'no reason given'}), but this kind is never hidden")
         else:
             s = min(s, 10)
-            why.append(f"Aapne sikhaya: {rule.get('reason') or 'yeh normal hai'}")
+            why.append(f"You taught: {rule.get('reason') or 'this is normal'}")
     s = max(0, min(100, s))
     level = "matters" if s >= MATTERS else ("watch" if s >= WATCH else "noise")
     return s, level, why
@@ -471,24 +471,24 @@ def score(e: dict[str, Any], own_ips: list[str], crown: list[str], rule: dict[st
 
 def advice(kind: str) -> list[str]:
     a = {
-        "login_after_fail": ["Us account ka password turant badaliye (saaf device se), 2-step on.", "Server par us user ke sessions dekhiye; "
-                             "IP block card ke liye 'block karo' kahiye.", "CERT-In 6 ghante: Hoola incident note bana sakta hai."],
-        "brute_force": ["Password lamba ho aur SSH / admin page par 2-step ya key-login.", "Lagataar ho to IP block card (aapki haan se)."],
-        "ransomware": ["Us PC ka net TURANT hataiye (cable / Wi-Fi), band mat kijiye.", "Backup alag rakhiye, jodiye mat.", "Firauti (ransom) mat dijiye; 1930 / "
-                       "cybercrime.gov.in; CERT-In ko 6 ghante mein."],
-        "malware_active": ["PC ko network se alag kijiye, full scan; saaf na ho to technician.", "Quarantine card (aapki haan se)."],
-        "malware_spread": ["Saare prabhavit PC network se alag; ek ek karke scan.", "Kaun sa mail / pendrive aaya tha dekhiye."],
-        "forwarding_rule": ["Mailbox ki settings mein forwarding / inbox rule dekhiye: aapne nahi banaya to hataiye, password badaliye.",
-                            "Payment wale mails (bank detail badlo) par phone se pakka kijiye (BEC fraud)."],
-        "suspicious_sending": ["Account ka password badaliye, sab devices se sign-out; bheje gaye mails dekhiye."],
-        "leaked_password": ["Us user ka password turant badalwaiye, 2-step on; wahi password kahin aur ho to wahan bhi."],
-        "suspicious_login": ["Kya yeh aap / aapka staff tha? Nahi to password badaliye + sign-out sab devices."],
-        "admin_granted": ["Kisne kisko admin banaya pakka kijiye; aapne nahi kiya to wapas lijiye."],
-        "new_device": ["Hoola > Fingerprint se haan: naya phone aapka nahi to 'Rok do' dabaiye."],
-        "device_compromised": ["Device ko account se hataiye, password badaliye; kho gaya ho to MDM wipe card."],
-        "new_ip_login": ["Yeh pata naya hai: aapka / staff ka ho to 'normal' sikhaiye, warna password badaliye."],
-        "waf_bypass": ["WAF rule 'log' mode mein hai: is hamle ke liye rule ko block par rakhne ka socho (Cloudflare dashboard)."],
-        "av_problem": ["Antivirus on kijiye / update kijiye; licence khatam ho to renew."],
+        "login_after_fail": ["Change that account's password right away (from a clean device), turn on 2-step.", "Check that user's sessions on the server; "
+                             "say 'block it' for an IP block card.", "CERT-In 6 hours: Hoola can make the incident note."],
+        "brute_force": ["Use a long password and 2-step or key login on SSH / the admin page.", "If it keeps happening, an IP block card (only with your approval)."],
+        "ransomware": ["Cut that PC's network RIGHT NOW (cable / Wi-Fi), do not switch it off.", "Keep the backup separate, do not connect it.", "Do not pay the ransom; 1930 / "
+                       "cybercrime.gov.in; report to CERT-In within 6 hours."],
+        "malware_active": ["Take the PC off the network, run a full scan; if it is not clean, call a technician.", "Quarantine card (only with your approval)."],
+        "malware_spread": ["Take all affected PCs off the network; scan them one by one.", "Check which mail / pen drive came in."],
+        "forwarding_rule": ["Check forwarding / inbox rules in the mailbox settings: if you did not make it, remove it and change the password.",
+                            "For payment mails (change of bank details), confirm by phone (BEC fraud)."],
+        "suspicious_sending": ["Change the account's password, sign out of all devices; check the sent mails."],
+        "leaked_password": ["Have that user change the password right away, turn on 2-step; if the same password is used elsewhere, change it there too."],
+        "suspicious_login": ["Was this you / your staff? If not, change the password + sign out of all devices."],
+        "admin_granted": ["Confirm who made whom an admin; if you did not do it, take it back."],
+        "new_device": ["Hoola > approve with fingerprint: if the new phone is not yours, press 'Stop'."],
+        "device_compromised": ["Remove the device from the account, change the password; if it is lost, use an MDM wipe card."],
+        "new_ip_login": ["This address is new: if it is yours / your staff's, teach it as 'normal'; otherwise change the password."],
+        "waf_bypass": ["The WAF rule is in 'log' mode: consider setting the rule to block for this attack (Cloudflare dashboard)."],
+        "av_problem": ["Turn the antivirus on / update it; renew the licence if it has expired."],
     }
     return a.get(kind, [])
 
@@ -574,39 +574,39 @@ def headers(text: str, own_domains: list[str], vip_names: list[str]) -> dict[str
         if m:
             auth["spf"] = m.group(1).lower()
     if auth.get("dmarc") == "fail":
-        add("dmarc_fail", "bad", f"DMARC FAIL: mail sach mein '{fdom}' se nahi aaya (naqli bhejne wala).")
+        add("dmarc_fail", "bad", f"DMARC FAIL: the mail did not really come from '{fdom}' (fake sender).")
     if auth.get("spf") in ("fail",):
-        add("spf_fail", "bad", "SPF fail: bhejne wala server is domain ka nahi.")
+        add("spf_fail", "bad", "SPF fail: the sending server does not belong to this domain.")
     elif auth.get("spf") in ("softfail", "neutral"):
-        add("spf_soft", "warn", f"SPF {auth['spf']}: bhejne wale server par shak.")
+        add("spf_soft", "warn", f"SPF {auth['spf']}: the sending server is doubtful.")
     if auth.get("dkim") == "fail":
-        add("dkim_fail", "warn", "DKIM fail: mail raste mein badla gaya ya naqli signature.")
+        add("dkim_fail", "warn", "DKIM fail: the mail was changed on the way or the signature is fake.")
     if not auth and fdom:
-        add("no_auth", "info", "Mail mein SPF / DKIM / DMARC ka nateeja nahi (poore headers 'Show original' se chipkaiye).")
+        add("no_auth", "info", "The mail has no SPF / DKIM / DMARC result (paste the full headers from 'Show original').")
     free = re.compile(r"(gmail|yahoo|outlook|hotmail|rediffmail|proton|icloud|aol|yandex|zoho)\.\w+$")
     if rdom and fdom and rdom != fdom and not rdom.endswith("." + fdom):
         add("reply_to", "bad" if free.search(rdom) or lookalike(rdom, own_domains) else "warn",
-            f"Jawab '{rto}' par jayega, bhejne wala '{addr}' hai: aapka jawab kisi aur ke paas jayega.")
+            f"A reply will go to '{rto}', but the sender is '{addr}': your reply will reach someone else.")
     if pdom and fdom and pdom != fdom and not pdom.endswith("." + fdom) and not fdom.endswith("." + pdom):
-        add("return_path", "info", f"Return-Path '{pdom}' alag hai (mailing service ho sakti hai, par dhyaan).")
+        add("return_path", "info", f"Return-Path '{pdom}' is a different Return-Path (it may be a mailing service, but be careful).")
     la = lookalike(fdom, own_domains)
     if la:
-        add("lookalike_own", "bad", f"'{fdom}' aapke apne domain '{la}' jaisa dikhta hai, par woh nahi hai.")
+        add("lookalike_own", "bad", f"'{fdom}' looks like your own domain '{la}', but it is not.")
     if fdom.startswith("xn--") or ".xn--" in fdom:
-        add("punycode_sender", "bad", f"Bhejne wale domain ke akshar nakli ({fdom}).")
+        add("punycode_sender", "bad", f"The sender's domain uses look-alike letters ({fdom}).")
     dn = (name or "").lower()
     if dn:
         em = _EMAILADDR.search(dn)
         if em and em.group(0).split("@")[-1] != fdom:
-            add("name_has_email", "bad", f"Naam mein '{em.group(0)}' likha hai par mail '{addr}' se aaya: dhokha.")
+            add("name_has_email", "bad", f"The name shows '{em.group(0)}' but the mail came from '{addr}': a trick.")
         for v in vip_names:
             v2 = (v or "").lower().strip()
             if len(v2) >= 3 and v2 in dn and not any(fdom == d or fdom.endswith("." + d) for d in own_domains if d):
-                add("vip_spoof", "bad", f"Naam '{name}' hai par mail aapke office ke domain se nahi ({fdom}): CEO / boss fraud ka tareeka.")
+                add("vip_spoof", "bad", f"The name is '{name}' but the mail is not from your office's domain ({fdom}): the CEO / boss fraud method.")
                 break
         for d in own_domains:
             if d and _label(d) in re.sub(r"\W", "", dn) and fdom and not (fdom == d or fdom.endswith("." + d)):
-                add("brand_spoof_own", "bad", f"Naam mein aapki company ka naam par domain '{fdom}'.")
+                add("brand_spoof_own", "bad", f"The name has your company's name but the domain is '{fdom}'.")
                 break
     body = ""
     if msg.is_multipart():
@@ -646,9 +646,9 @@ def verdict(flags: list[dict[str, str]]) -> str:
     return "likely_phish" if bad >= 1 or warn >= 2 else ("suspicious" if warn == 1 else "unclear")
 
 
-VERDICT_SAY = {"likely_phish": "Yeh fraud / phishing lagta hai.", "suspicious": "Shak wala hai: savdhaan.",
-               "unclear": "Saaf nishaan nahi mile, par anjaan link / attachment phir bhi mat kholiye.",
-               "clean": "Koi nishaan nahi mila (phir bhi anjaan cheez se savdhaan).", "malicious": "KHATARNAK: reputation list mein bura mila."}
+VERDICT_SAY = {"likely_phish": "This looks like fraud / phishing.", "suspicious": "Suspicious: be careful.",
+               "unclear": "No clear signs found, but still do not open an unknown link / attachment.",
+               "clean": "No signs found (still be careful with anything unknown).", "malicious": "DANGEROUS: found bad on a reputation list."}
 
 
 # ------------------------------------------------------------------ her domains: DNS / TLS / headers (passive)
@@ -656,39 +656,39 @@ def spf_eval(txts: list[str]) -> list[dict[str, str]]:
     spf = [t for t in txts if t.lower().startswith("v=spf1")]
     out = []
     if not spf:
-        out.append({"id": "spf_missing", "level": "bad", "text": "SPF record nahi: koi bhi aapke naam se mail bhej sakta hai."})
+        out.append({"id": "spf_missing", "level": "bad", "text": "No SPF record: anyone can send mail in your name."})
     elif len(spf) > 1:
-        out.append({"id": "spf_many", "level": "bad", "text": f"{len(spf)} SPF record: sirf EK hona chahiye (dono bekaar ho jaate hain)."})
+        out.append({"id": "spf_many", "level": "bad", "text": f"{len(spf)} SPF records: there must be only ONE (both stop working)."})
     else:
         s = spf[0].lower()
         if re.search(r"[+?]all\b", s) or s.rstrip().endswith(" all"):
-            out.append({"id": "spf_open", "level": "bad", "text": "SPF '+all / ?all': sabko allow karta hai. '~all' ya '-all' rakhiye."})
+            out.append({"id": "spf_open", "level": "bad", "text": "SPF '+all / ?all': allows everyone. Use '~all' or '-all'."})
         n = len(re.findall(r"\b(include|a|mx|ptr|exists|redirect)[:=]?", s))
         if n > 10:
-            out.append({"id": "spf_lookups", "level": "warn", "text": f"SPF mein ~{n} lookups: 10 se zyada par SPF fail ho jaata hai."})
+            out.append({"id": "spf_lookups", "level": "warn", "text": f"SPF has ~{n} lookups: above 10, SPF fails."})
     return out
 
 
 def dmarc_eval(txts: list[str]) -> list[dict[str, str]]:
     d = [t for t in txts if t.lower().startswith("v=dmarc1")]
     if not d:
-        return [{"id": "dmarc_missing", "level": "bad", "text": "DMARC record nahi (_dmarc): naqli mail rokne ki niti nahi. Gmail / Yahoo bulk "
-                                                                 "senders ke liye zaroori hai."}]
+        return [{"id": "dmarc_missing", "level": "bad", "text": "No DMARC record (_dmarc): no policy to stop fake mail. It is required for Gmail / Yahoo bulk "
+                                                                 "senders."}]
     p = re.search(r"\bp=(\w+)", d[0].lower())
     pol = p.group(1) if p else ""
     out = []
     if pol == "none":
-        out.append({"id": "dmarc_none", "level": "warn", "text": "DMARC p=none: sirf report, naqli mail nahi rukte. Reports dekhkar "
-                                                                  "p=quarantine, phir p=reject."})
+        out.append({"id": "dmarc_none", "level": "warn", "text": "DMARC p=none: reports only, fake mail is not stopped. Look at the reports, then "
+                                                                  "p=quarantine, then p=reject."})
     if "rua=" not in d[0].lower():
-        out.append({"id": "dmarc_no_rua", "level": "info", "text": "DMARC mein rua= (report ka pata) nahi: kaun aapke naam se bhej raha, pata nahi chalega."})
+        out.append({"id": "dmarc_no_rua", "level": "info", "text": "DMARC has no rua= (report address): you will not know who is sending in your name."})
     return out
 
 
-HEADERS_WANT = {"strict-transport-security": ("hsts", "warn", "HSTS nahi: browser ko 'sirf https' nahi bataya."),
-                "content-security-policy": ("csp", "info", "Content-Security-Policy nahi: script injection se kam bachav."),
-                "x-content-type-options": ("xcto", "info", "X-Content-Type-Options: nosniff nahi."),
-                "referrer-policy": ("referrer", "info", "Referrer-Policy nahi.")}
+HEADERS_WANT = {"strict-transport-security": ("hsts", "warn", "No HSTS: the browser is not told 'https only'."),
+                "content-security-policy": ("csp", "info", "No Content-Security-Policy: less protection from script injection."),
+                "x-content-type-options": ("xcto", "info", "X-Content-Type-Options: nosniff is missing."),
+                "referrer-policy": ("referrer", "info", "No Referrer-Policy.")}
 
 
 def headers_eval(h: dict[str, str]) -> list[dict[str, str]]:
@@ -698,36 +698,36 @@ def headers_eval(h: dict[str, str]) -> list[dict[str, str]]:
         if k not in hl:
             out.append({"id": fid, "level": lvl, "text": say})
     if "x-frame-options" not in hl and "frame-ancestors" not in hl.get("content-security-policy", ""):
-        out.append({"id": "frame", "level": "info", "text": "Clickjacking se bachav (X-Frame-Options / frame-ancestors) nahi."})
+        out.append({"id": "frame", "level": "info", "text": "No protection from clickjacking (X-Frame-Options / frame-ancestors)."})
     for k in ("server", "x-powered-by"):
         v = hl.get(k, "")
         if re.search(r"\d+\.\d+", v):
-            out.append({"id": "version_" + k, "level": "warn", "text": f"'{k}: {v[:60]}' version bata raha hai: hamlawar ko madad. Chhupaiye."})
+            out.append({"id": "version_" + k, "level": "warn", "text": f"'{k}: {v[:60]}' reveals the version: that helps an attacker. Hide it."})
     return out
 
 
-EXPOSED_PATHS = [("/.git/HEAD", lambda c, b: c == 200 and b.lstrip().startswith(b"ref:"), "bad", "Website par .git folder khula hai: poora code "
-                  "(passwords bhi) download ho sakta hai."),
-                 ("/.env", lambda c, b: c == 200 and re.search(rb"^[A-Z_]{3,}=", b, re.M) is not None, "bad", ".env file khuli hai: keys / "
-                  "passwords sabko dikh rahe. Turant hataiye aur saari keys badaliye."),
-                 ("/phpmyadmin/", lambda c, b: c == 200 and b"phpmyadmin" in b.lower(), "bad", "phpMyAdmin internet par khula hai."),
-                 ("/server-status", lambda c, b: c == 200 and b"apache server status" in b.lower(), "warn", "Apache server-status khula hai."),
-                 ("/wp-login.php", lambda c, b: c == 200 and b"wp-submit" in b.lower(), "info", "WordPress login page khula hai: 2-step + login "
-                  "limit lagaiye."),
-                 ("/xmlrpc.php", lambda c, b: c in (200, 405) and b"xml-rpc" in b.lower(), "warn", "WordPress xmlrpc.php khula hai (password "
-                  "guess hamlon ka raasta). Zaroorat na ho to band.")]
+EXPOSED_PATHS = [("/.git/HEAD", lambda c, b: c == 200 and b.lstrip().startswith(b"ref:"), "bad", "The .git folder is open on the website: the whole code "
+                  "(passwords too) can be downloaded."),
+                 ("/.env", lambda c, b: c == 200 and re.search(rb"^[A-Z_]{3,}=", b, re.M) is not None, "bad", ".env file is open: keys / "
+                  "passwords are visible to everyone. Remove it right away and change all the keys."),
+                 ("/phpmyadmin/", lambda c, b: c == 200 and b"phpmyadmin" in b.lower(), "bad", "phpMyAdmin is open to the internet."),
+                 ("/server-status", lambda c, b: c == 200 and b"apache server status" in b.lower(), "warn", "Apache server-status is open."),
+                 ("/wp-login.php", lambda c, b: c == 200 and b"wp-submit" in b.lower(), "info", "The WordPress login page is open: add 2-step + a login "
+                  "limit."),
+                 ("/xmlrpc.php", lambda c, b: c in (200, 405) and b"xml-rpc" in b.lower(), "warn", "WordPress xmlrpc.php is open (a route for password "
+                  "guessing attacks). Turn it off if not needed.")]
 
 
 def tls_eval(days_left: int | None, host_ok: bool | None, issuer: str = "") -> list[dict[str, str]]:
     out = []
     if days_left is None:
-        return [{"id": "tls_none", "level": "warn", "text": "HTTPS certificate nahi mila / site nahi khuli."}]
+        return [{"id": "tls_none", "level": "warn", "text": "No HTTPS certificate found / the site did not open."}]
     if days_left < 0:
-        out.append({"id": "tls_expired", "level": "bad", "text": "SSL certificate KHATAM ho chuka: site par 'unsafe' aa raha hoga."})
+        out.append({"id": "tls_expired", "level": "bad", "text": "The SSL certificate has EXPIRED: the site must be showing 'unsafe'."})
     elif days_left <= 14:
-        out.append({"id": "tls_soon", "level": "warn", "text": f"SSL certificate {days_left} din mein khatam (auto-renew pakka kijiye)."})
+        out.append({"id": "tls_soon", "level": "warn", "text": f"The SSL certificate expires in {days_left} day(s) (make sure auto-renew is on)."})
     if host_ok is False:
-        out.append({"id": "tls_name", "level": "bad", "text": "Certificate is naam ke liye nahi hai."})
+        out.append({"id": "tls_name", "level": "bad", "text": "The certificate is not for this name."})
     return out
 
 

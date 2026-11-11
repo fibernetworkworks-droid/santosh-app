@@ -54,9 +54,9 @@ from .models import (
 
 log = logging.getLogger("santosh.cyber")
 _LOCK = threading.RLock()
-PROVIDERS = {"webrisk": "Google Web Risk (link jaanch, business ke liye)", "safebrowsing": "Google Safe Browsing (sirf non-commercial)",
-             "virustotal": "VirusTotal (sirf hash / link lookup)", "hibp": "Have I Been Pwned (breach jaanch)",
-             "nvd": "NVD API key (CVE, optional)", "cloudflare": "Cloudflare token + Zone ID (IP block, aapki haan se)"}
+PROVIDERS = {"webrisk": "Google Web Risk (link check, for business use)", "safebrowsing": "Google Safe Browsing (non-commercial use only)",
+             "virustotal": "VirusTotal (hash / link lookup only)", "hibp": "Have I Been Pwned (breach check)",
+             "nvd": "NVD API key (CVE, optional)", "cloudflare": "Cloudflare token + Zone ID (IP block, only with your approval)"}
 ACTION_WAIT_H = 24
 SLEEP_BETWEEN_S = 0.0          # politeness gap between per-item API calls (set by the worker, 0 in tests)
 
@@ -174,7 +174,7 @@ def save_settings(tenant: str, **kw: Any) -> dict:
                 if k == "own_ips":
                     bad = [v for v in vals if not R.valid_ip(v.split("/")[0])]
                     if bad:
-                        raise CyberError(f"Yeh IP sahi nahi: {', '.join(bad[:3])}")
+                        raise CyberError(f"This IP is not valid: {', '.join(bad[:3])}")
                 if k == "work_emails":
                     vals = [v.lower() for v in vals if re.fullmatch(r"[\w.+-]+@[\w-]+(\.[\w-]+)+", v)]
                 setattr(r, k, _dump(vals))
@@ -182,11 +182,11 @@ def save_settings(tenant: str, **kw: Any) -> dict:
             r.link_provider = kw["link_provider"]
         if kw.get("morning_time"):
             if not re.fullmatch(r"([01]\d|2[0-3]):[0-5]\d", str(kw["morning_time"])):
-                raise CyberError("Samay HH:MM mein (jaise 09:15).")
+                raise CyberError("Time must be HH:MM (like 09:15).")
             r.morning_time = str(kw["morning_time"])
         if "rules" in kw:
             r.rules = str(kw["rules"] or "")[:2000]
-    return {**settings(tenant), "say": "Suraksha ke niyam save."}
+    return {**settings(tenant), "say": "Security rules saved."}
 
 
 def set_key(tenant: str, provider: str, token: str, extra: str = "") -> dict:
@@ -196,30 +196,30 @@ def set_key(tenant: str, provider: str, token: str, extra: str = "") -> dict:
         raise CyberError("Provider: " + ", ".join(PROVIDERS))
     token = (token or "").strip()
     if len(token) < 16:
-        raise CyberError("Yeh key adhoori lagti hai.")
+        raise CyberError("This key looks incomplete.")
     extra = (extra or "").strip()
     label = f"…{token[-4:]}"
     if provider == "cloudflare":
         if not re.fullmatch(r"[0-9a-f]{32}", extra):
-            raise CyberError("Cloudflare ke liye token + Zone ID (32 akshar, domain ke Overview page par) chahiye.")
+            raise CyberError("Cloudflare needs a token + Zone ID (32 characters, on the domain's Overview page).")
         try:
             v = I.cf_verify(token)
         except I.IntelError as e:
             raise CyberError(str(e))
         if (v or {}).get("status") != "active":
-            raise CyberError("Cloudflare token active nahi hai.")
+            raise CyberError("The Cloudflare token is not active.")
     with session() as s:
         for old in s.scalars(select(CyberKey).where(CyberKey.tenant_id == tenant, CyberKey.provider == provider)).all():
             s.delete(old)
         s.add(CyberKey(tenant_id=tenant, provider=provider, sealed=vault().seal(token), extra=extra[:120], label=label))
-    return {"ok": True, "provider": provider, "label": label, "say": f"{PROVIDERS[provider]}: key jud gayi (sirf server par, band tale mein)."}
+    return {"ok": True, "provider": provider, "label": label, "say": f"{PROVIDERS[provider]}: key connected (kept only on the server, sealed)."}
 
 
 def del_key(tenant: str, provider: str) -> dict:
     with session() as s:
         for old in s.scalars(select(CyberKey).where(CyberKey.tenant_id == tenant, CyberKey.provider == provider)).all():
             s.delete(old)
-    return {"ok": True, "say": "Key hata di."}
+    return {"ok": True, "say": "Key removed."}
 
 
 def key_status(tenant: str) -> dict:
@@ -231,7 +231,7 @@ def key_status(tenant: str) -> dict:
         try:
             from ..site.dns import key as site_key
             if site_key(tenant, "cloudflare")[0]:
-                out["cloudflare"]["note"] = "Website wala Cloudflare token hai, par IP block ke liye yahan Zone ID ke saath jodiye."
+                out["cloudflare"]["note"] = "The website's Cloudflare token is there, but for IP blocks connect it here with the Zone ID."
         except Exception:
             pass
     return out
@@ -276,7 +276,7 @@ def _hoola_events(tenant: str) -> list[dict]:
             for d in s.scalars(select(ApproveDevice).where(ApproveDevice.tenant_id == tenant)).all():
                 if d.status == "pending" or (_aware(d.created_at) or since) >= since:
                     out.append(R._ev("hoola", "new_device" if d.status == "pending" else "login_ok",
-                                     f"Hoola: naya phone '{d.label or d.device_id[:8]}' ({d.status})", host="Hoola", user=d.label or "",
+                                     f"Hoola: new phone '{d.label or d.device_id[:8]}' ({d.status})", host="Hoola", user=d.label or "",
                                      detail=f"device={d.device_id[:12]} status={d.status}", at=_iso(d.created_at)))
     except Exception:
         log.debug("hoola events failed", exc_info=True)
@@ -293,13 +293,13 @@ def intake(tenant: str, text: str = "", file_id: str = "", data: bytes | None = 
         except Exception as e:
             raise CyberError(str(e))
     if not (text or "").strip() and not data and not include_hoola:
-        raise CyberError("Alert ka text chipkaiye ya file (CSV / JSON / log) dijiye.")
+        raise CyberError("Paste the alert text or give a file (CSV / JSON / log).")
     hint = source if source in R.SOURCES else ""
     parsed = R.parse(text=text or "", data=data, name=name or "", hint=hint) if (text or data) else {"events": [], "skipped": 0, "format": "-"}
     events = parsed["events"] + (_hoola_events(tenant) if include_hoola else [])
     if not events:
         return {"new": 0, "matters": [], "watch": 0, "noise": 0, "skipped": parsed["skipped"], "format": parsed["format"],
-                "say": f"Koi alert samajh nahi aaya ({parsed['skipped']} line chhodi). Format batayiye ya poora export chipkaiye."}
+                "say": f"No alert could be read ({parsed['skipped']} line(s) skipped). Tell me the format or paste the full export."}
     batch = secrets.token_hex(6)
     n = clock()
     with _LOCK, session() as s:
@@ -344,12 +344,12 @@ def intake(tenant: str, text: str = "", file_id: str = "", data: bytes | None = 
     watch = [v for v in views if v["level"] == "watch"]
     noise = [v for v in views if v["level"] == "noise"]
     raw = len(events)
-    say = (f"{raw} alert padhe -> {len(views)} kahaniyaan. Zaroori: {len(matters)}, nazar rakhein: {len(watch)}, shor: {len(noise)}"
-           + (f" ({bumped} purane alerts phir aaye, gine gaye)" if bumped else "") + ".")
+    say = (f"{raw} alert(s) read -> {len(views)} stories. Important: {len(matters)}, watch: {len(watch)}, noise: {len(noise)}"
+           + (f" ({bumped} old alert(s) came again and were counted)" if bumped else "") + ".")
     if matters:
-        say += " Sabse pehle: " + "; ".join(f"{m['number']} {m['label']} ({m['score']})" for m in matters[:3]) + "."
+        say += " First: " + "; ".join(f"{m['number']} {m['label']} ({m['score']})" for m in matters[:3]) + "."
     else:
-        say += " Abhi koi zaroori cheez nahi."
+        say += " Nothing important right now."
     out = {"new": made, "bumped": bumped, "raw": raw, "matters": matters[:15], "watch": watch[:15], "noise": len(noise),
            "noise_sample": [f"{x['label']}: {x['title']}" for x in noise[:5]], "skipped": parsed["skipped"], "format": parsed["format"],
            "say": say}
@@ -378,7 +378,7 @@ def _alert(s, tenant: str, ref: str) -> CyberAlert:
     if a is None or a.tenant_id != tenant:
         a = s.scalars(select(CyberAlert).where(CyberAlert.tenant_id == tenant, CyberAlert.number == ref.upper())).first()
     if a is None:
-        raise CyberError("Alert nahi mila.")
+        raise CyberError("Alert not found.")
     return a
 
 
@@ -394,16 +394,16 @@ def set_alert(tenant: str, ref: str, status: str) -> dict:
         a = _alert(s, tenant, ref)
         a.status = status
         v = _alert_view(tenant, a)
-    return {"alert": v, "say": {"ack": "Dekh liya.", "dismissed": "Hata diya.", "open": "Phir khola."}[status]}
+    return {"alert": v, "say": {"ack": "Marked as seen.", "dismissed": "Dismissed.", "open": "Reopened."}[status]}
 
 
 def teach(tenant: str, ref: str, reason: str, scope: str = "", actor: str = "owner") -> dict:
     """Her 'yeh normal hai' (known benign): matching alerts become noise next time (never for NEVER_MUTE kinds)."""
     if not is_owner(actor):
-        raise CyberError("Yeh sirf owner sikha sakti hain.")
+        raise CyberError("Only the owner can teach this.")
     reason = R.mask(reason, 300).strip()
     if not reason:
-        raise CyberError("Wajah likhiye (jaise 'yeh hamara backup server hai').")
+        raise CyberError("Write a reason (like 'this is our backup server').")
     with _LOCK, session() as s:
         a = _alert(s, tenant, ref)
         sc = scope if scope in ("ip", "user", "host", "kind") else ("ip" if a.ip else "user" if a.user else "host" if a.host else "kind")
@@ -418,9 +418,9 @@ def teach(tenant: str, ref: str, reason: str, scope: str = "", actor: str = "own
             a.status, a.level, a.score = "dismissed", "noise", min(a.score, 10)
         a.rule_id = r.id
         rid = r.id
-    say = ("Seekh liya: aage aise alerts shor mein jayenge." if not never else
-           "Note kar liya, par yeh qism (jaise ransomware / login-after-failures / forwarding rule) kabhi chhupaya nahi jaata; "
-           "aage yeh note saath dikhega.")
+    say = ("Learned: alerts like this will go to noise from now on." if not never else
+           "Noted, but this kind (like ransomware / login-after-failures / forwarding rule) is never hidden; "
+           "from now on this note will show with it.")
     return {"rule": rid, "scope": sc, "say": say}
 
 
@@ -435,13 +435,13 @@ def rules_list(tenant: str) -> list[dict]:
 
 def rule_remove(tenant: str, rid: str, actor: str = "owner") -> dict:
     if not is_owner(actor):
-        raise CyberError("Yeh sirf owner kar sakti hain.")
+        raise CyberError("Only the owner can do this.")
     with session() as s:
         r = s.get(CyberRule, rid)
         if not r or r.tenant_id != tenant:
-            raise CyberError("Niyam nahi mila.")
+            raise CyberError("Rule not found.")
         r.active = False
-    return {"ok": True, "say": "Niyam hata diya: aise alerts phir dikhenge."}
+    return {"ok": True, "say": "Rule removed: alerts like this will show again."}
 
 
 # ---------------------------------------------------------------- 2. email / link / file checks
@@ -491,7 +491,7 @@ def reputation(tenant: str, urls: list[str]) -> dict[str, Any]:
     except I.IntelError as e:
         out["notes"].append(str(e))
     if not out["checked"]:
-        out["notes"].append("Link reputation ki key nahi (Niyam > Keys): sirf nishaanon se jaanch hui.")
+        out["notes"].append("No link reputation key (Rules > Keys): checked by signs only.")
     return out
 
 
@@ -510,7 +510,7 @@ def check_email(tenant: str, text: str, sender: str = "", links: list | None = N
     from ..helpdesk.service import scrub
     raw = str(text or "")
     if not raw.strip() and not sender:
-        raise CyberError("Mail ka text (behtar: Gmail 'Show original' / Outlook 'View source' poora) chipkaiye. Link mat kholiye.")
+        raise CyberError("Paste the mail's text (better: the full Gmail 'Show original' / Outlook 'View source'). Do not open the link.")
     own, vips = _own_domains(tenant), _vips(tenant)
     flags: list[dict[str, str]] = []
     hdr: dict[str, Any] = {}
@@ -525,7 +525,7 @@ def check_email(tenant: str, text: str, sender: str = "", links: list | None = N
         sdom = sender.split("@")[-1].lower() if "@" in sender else ""
         la = R.lookalike(sdom, own)
         if la:
-            flags.append({"id": "lookalike_own", "level": "bad", "text": f"'{sdom}' aapke apne domain '{la}' jaisa dikhta hai, par woh nahi hai."})
+            flags.append({"id": "lookalike_own", "level": "bad", "text": f"'{sdom}' looks like your own domain '{la}', but it is not."})
     body, found_secret = scrub(body)
     ph = HR.phish_check(body, sender, [str(x) for x in (links or [])][:20], atts)
     for f in ph["flags"]:
@@ -535,17 +535,17 @@ def check_email(tenant: str, text: str, sender: str = "", links: list | None = N
     for h in R.url_hosts(urls):
         la = R.lookalike(h, own)
         if la:
-            flags.append({"id": "lookalike_link_" + h[:30], "level": "bad", "text": f"Link '{h}' aapke domain '{la}' ki nakal hai."})
+            flags.append({"id": "lookalike_link_" + h[:30], "level": "bad", "text": f"Link '{h}' imitates your domain '{la}'."})
     rep = reputation(tenant, urls)
     for u, th in rep["bad"].items():
-        flags.append({"id": "reputation_" + u[:30], "level": "bad", "text": f"Google / VirusTotal list mein KHATARNAK: {u[:80]} ({', '.join(th)[:60]})"})
+        flags.append({"id": "reputation_" + u[:30], "level": "bad", "text": f"On the Google / VirusTotal list as DANGEROUS: {u[:80]} ({', '.join(th)[:60]})"})
     v = R.verdict(flags)
     did_flags = {k: bool(did.get(k)) for k in ("clicked", "entered_password", "opened_attachment", "money", "gave_otp", "remote_access")}
     result = {"verdict": v, "flags": flags, "auth": hdr.get("auth", {}), "from": hdr.get("from") or sender, "reply_to": hdr.get("reply_to", ""),
               "subject": hdr.get("subject", ""), "links": urls[:10], "reputation": rep, "attachments": atts, "actions": HR.phish_actions(did_flags),
               "say": R.VERDICT_SAY[v]}
     if found_secret:
-        result["say"] += " (Mail mein password / OTP jaisa kuch tha: hata diya; agar kisi ne bhara ho to badaliye.)"
+        result["say"] += " (The mail had something like a password / OTP: removed; if anyone entered it, change it.)"
     hd = ""
     if report or any(did_flags.values()):
         from ..helpdesk import service as HS
@@ -554,7 +554,7 @@ def check_email(tenant: str, text: str, sender: str = "", links: list | None = N
         result["helpdesk"] = {"incident": r["incident"], "cert_in": r["cert_in"], "dpdp": r["dpdp"], "cert_in_draft": r["cert_in_draft"],
                               "ticket": r["ticket"].get("number")}
         result["say"] += " " + r["say"]
-    cid = _store_check(tenant, "email", result["from"] or "(sender nahi)", v, result, hd)
+    cid = _store_check(tenant, "email", result["from"] or "(no sender)", v, result, hd)
     result["id"] = cid
     result["say"] = (result["say"] + (" " + "; ".join(f["text"] for f in flags if f["level"] == "bad")[:400] if v == "likely_phish" else "")).strip()
     _publish(tenant, "cyber_check", {"check": cid, "kind": "email", "verdict": v, "flags": flags[:8], "say": result["say"],
@@ -569,23 +569,23 @@ def check_link(tenant: str, urls: list | str, conv: str = "") -> dict:
         urls = re.split(r"[\s,]+", urls)
     urls = [str(u).strip() for u in urls if str(u).strip()][:20]
     if not urls:
-        raise CyberError("Link dijiye (kholna nahi hai).")
+        raise CyberError("Give the link (do not open it).")
     own = _own_domains(tenant)
     ph = HR.phish_check(" ".join(urls), "", urls, [])
     flags = [f for f in ph["flags"] if f["id"] not in ("urgency", "bait", "asks_secret", "asks_money")]
     for h in R.url_hosts(urls):
         la = R.lookalike(h, own)
         if la:
-            flags.append({"id": "lookalike_link_" + h[:30], "level": "bad", "text": f"'{h}' aapke domain '{la}' ki nakal hai."})
+            flags.append({"id": "lookalike_link_" + h[:30], "level": "bad", "text": f"'{h}' imitates your domain '{la}'."})
     rep = reputation(tenant, urls)
     for u, th in rep["bad"].items():
-        flags.append({"id": "reputation_" + u[:30], "level": "bad", "text": f"KHATARNAK list mein: {u[:80]} ({', '.join(th)[:60]})"})
+        flags.append({"id": "reputation_" + u[:30], "level": "bad", "text": f"On the DANGEROUS list: {u[:80]} ({', '.join(th)[:60]})"})
     v = R.verdict(flags)
     if v == "unclear" and rep["checked"] and not rep["bad"]:
         v = "clean"
     if rep["bad"]:
         v = "malicious"
-    say = R.VERDICT_SAY[v] + ("" if rep["checked"] else " (Reputation key nahi: sirf nishaan dekhe.)")
+    say = R.VERDICT_SAY[v] + ("" if rep["checked"] else " (No reputation key: only signs were checked.)")
     result = {"verdict": v, "flags": flags, "urls": urls, "reputation": rep, "say": say}
     result["id"] = _store_check(tenant, "link", urls[0], v, result)
     _publish(tenant, "cyber_check", {"check": result["id"], "kind": "link", "verdict": v, "flags": flags[:8], "say": say, "subject": urls[0][:120]}, conv)
@@ -613,12 +613,12 @@ def check_file(tenant: str, file_id: str = "", data: bytes | None = None, name: 
         data = None                                   # the bytes are dropped right here; never stored, never sent
     sha256 = (sha256 or "").strip().lower()
     if not re.fullmatch(r"[0-9a-f]{64}|[0-9a-f]{40}|[0-9a-f]{32}", sha256):
-        raise CyberError("File ya uska SHA-256 hash dijiye.")
+        raise CyberError("Give the file or its SHA-256 hash.")
     flags: list[dict[str, str]] = []
     if info.get("danger"):
-        flags.append({"id": "type_mismatch", "level": "bad", "text": f"Naam kuch aur kehta hai, andar program / script hai: {info.get('type_note')}"})
+        flags.append({"id": "type_mismatch", "level": "bad", "text": f"The name says one thing, but inside it is a program / script: {info.get('type_note')}"})
     if re.search(R"\.(exe|scr|js|vbs|bat|cmd|ps1|hta|jar|msi|iso|lnk|apk|docm|xlsm)$", name or "", re.I):
-        flags.append({"id": "risky_ext", "level": "warn", "text": f"'{name}' chalne wali / macro file hai: anjaan ho to mat kholiye."})
+        flags.append({"id": "risky_ext", "level": "warn", "text": f"'{name}' is an executable / macro file: do not open it if you do not know it."})
     vt: dict[str, Any] = {}
     key, _ = _key(tenant, "virustotal")
     if key:
@@ -627,19 +627,19 @@ def check_file(tenant: str, file_id: str = "", data: bytes | None = None, name: 
         except I.IntelError as e:
             vt = {"error": str(e)}
         if vt.get("known") and vt.get("malicious", 0) >= 3:
-            flags.append({"id": "vt_malicious", "level": "bad", "text": f"VirusTotal: {vt['malicious']} antivirus ise virus kehte hain"
+            flags.append({"id": "vt_malicious", "level": "bad", "text": f"VirusTotal: {vt['malicious']} antivirus engines call it a virus"
                           + (f" ({vt.get('label')})" if vt.get("label") else "") + "."})
         elif vt.get("known") and vt.get("malicious", 0) >= 1:
-            flags.append({"id": "vt_some", "level": "warn", "text": f"VirusTotal: {vt['malicious']} antivirus shak karte hain."})
+            flags.append({"id": "vt_some", "level": "warn", "text": f"VirusTotal: {vt['malicious']} antivirus engines suspect it."})
     v = "malicious" if any(f["id"] == "vt_malicious" for f in flags) else R.verdict(flags)
     if v == "unclear" and vt.get("known") and not flags:
         v = "clean"
     say = R.VERDICT_SAY[v]
     if not key:
-        say += " (VirusTotal key nahi: sirf file ki qism dekhi.)"
+        say += " (No VirusTotal key: only the file type was checked.)"
     elif vt.get("known") is False:
-        say += " VirusTotal ne yeh file pehle nahi dekhi (naya / nishaana banaya hua ho sakta hai): anjaan ho to mat kholiye."
-    say += " File kahin upload nahi hui, sirf uska hash dekha."
+        say += " VirusTotal has not seen this file before (it may be new / targeted): do not open it if you do not know it."
+    say += " The file was not uploaded anywhere; only its hash was checked."
     result = {"verdict": v, "sha256": sha256, "name": (name or "")[:120], "flags": flags, "virustotal": vt, **info, "say": say}
     result["id"] = _store_check(tenant, "file", f"{name or 'file'} {sha256[:16]}", v, result)
     _publish(tenant, "cyber_check", {"check": result["id"], "kind": "file", "verdict": v, "flags": flags, "say": say, "subject": name or sha256[:16]}, conv)
@@ -722,7 +722,7 @@ def _fetch(url: str, max_bytes: int = 65536) -> tuple[int, dict[str, str], bytes
                         break
                 return r.status_code, dict(r.headers), body[:max_bytes]
     except httpx.HTTPError as e:
-        raise CyberError(f"{url} nahi khula ({e.__class__.__name__}).")
+        raise CyberError(f"{url} did not open ({e.__class__.__name__}).")
 
 
 def _dom_view(d: CyberDomain) -> dict:
@@ -739,7 +739,7 @@ def _dom(s, tenant: str, ref: str) -> CyberDomain:
         dn = (ref or "").strip().lower()
         d = s.scalars(select(CyberDomain).where(CyberDomain.tenant_id == tenant, CyberDomain.domain == dn)).first()
     if d is None:
-        raise CyberError("Yeh domain list mein nahi; pehle 'domain jodo'.")
+        raise CyberError("This domain is not in the list; add the domain first.")
     return d
 
 
@@ -760,16 +760,16 @@ def add_domain(tenant: str, domain: str, actor: str = "owner") -> dict:
         d = s.scalars(select(CyberDomain).where(CyberDomain.tenant_id == tenant, CyberDomain.domain == dn)).first()
         if d is None:
             if len(s.scalars(select(CyberDomain.id).where(CyberDomain.tenant_id == tenant)).all()) >= 20:
-                raise CyberError("20 domain tak.")
+                raise CyberError("Up to 20 domains.")
             d = CyberDomain(tenant_id=tenant, domain=dn, token=secrets.token_hex(12))
             s.add(d)
             s.flush()
         if not d.verified and _hosted_by_hoola(tenant, dn):
             d.verified, d.verified_by = True, "hoola_site"
         v = _dom_view(d)
-    say = (f"{dn} jod diya. Bahar se dikhne wali jaanch (DNS, SSL, headers) abhi ho sakti hai."
-           + ("" if v["verified"] else f" Gehri jaanch (khuli .git / .env / admin page) ke liye saabit kijiye ki domain aapka hai: DNS mein TXT "
-                                       f"'_hoola-cyber.{dn}' = 'hoola-cyber-verify={v['token']}' daaliye, phir 'verify' kahiye."))
+    say = (f"{dn} added. The outside-view check (DNS, SSL, headers) can run now."
+           + ("" if v["verified"] else f" For the deep check (open .git / .env / admin page), prove the domain is yours: in DNS, add TXT "
+                                       f"'_hoola-cyber.{dn}' = 'hoola-cyber-verify={v['token']}', then say 'verify'."))
     return {"domain": v, "say": say}
 
 
@@ -789,7 +789,7 @@ def verify_domain(tenant: str, ref: str) -> dict:
         if ok_by:
             d.verified, d.verified_by = True, ok_by
         v = _dom_view(d)
-    return {"domain": v, "say": "Pakka: domain aapka hai." if ok_by else "TXT record abhi nahi dikha (DNS mein 5-30 minute lag sakte hain)."}
+    return {"domain": v, "say": "Confirmed: the domain is yours." if ok_by else "The TXT record is not visible yet (DNS can take 5-30 minutes)."}
 
 
 DKIM_SELECTORS = ("google", "selector1", "selector2", "default", "k1", "zoho", "zmail", "mail", "dkim", "s1", "s2")
@@ -811,14 +811,14 @@ def posture(tenant: str, ref: str, conv: str = "", quiet: bool = False) -> dict:
         flags += R.spf_eval(txt)
         flags += R.dmarc_eval(dmarc)
         if not dkim_found:
-            flags.append({"id": "dkim_unknown", "level": "info", "text": "Aam selectors par DKIM nahi mila (Google 'google', Microsoft 'selector1/2'). "
-                                                                          "Mail provider mein DKIM on hai, pakka kijiye."})
+            flags.append({"id": "dkim_unknown", "level": "info", "text": "No DKIM found on the common selectors (Google 'google', Microsoft 'selector1/2'). "
+                                                                          "Make sure DKIM is on at your mail provider."})
     else:
         if not any(t.lower().startswith("v=spf1 -all") for t in txt):
-            flags.append({"id": "no_mail_spf", "level": "warn", "text": "Is domain se mail nahi jaata: 'v=spf1 -all' + DMARC p=reject daal dijiye "
-                                                                         "taaki koi aapke naam se naqli mail na bheje."})
+            flags.append({"id": "no_mail_spf", "level": "warn", "text": "No mail goes out from this domain: add 'v=spf1 -all' + DMARC p=reject "
+                                                                         "so that nobody can send fake mail in your name."})
     if not caa:
-        flags.append({"id": "caa_missing", "level": "info", "text": "CAA record nahi: koi bhi certificate company aapke domain ka SSL bana sakti hai."})
+        flags.append({"id": "caa_missing", "level": "info", "text": "No CAA record: any certificate company can issue SSL for your domain."})
     tls = _tls(dn)
     flags += R.tls_eval(tls.get("days_left"), tls.get("host_ok"), tls.get("issuer", ""))
     hdrs: dict[str, str] = {}
@@ -829,7 +829,7 @@ def posture(tenant: str, ref: str, conv: str = "", quiet: bool = False) -> dict:
             code, hdrs, _ = _fetch(f"https://www.{dn}/", 4096)
         flags += R.headers_eval(hdrs)
     except CyberError as e:
-        flags.append({"id": "site_down", "level": "info", "text": f"Website nahi khuli: {e}"})
+        flags.append({"id": "site_down", "level": "info", "text": f"The website did not open: {e}"})
     if verified and hdrs:
         for path, test, lvl, say in R.EXPOSED_PATHS:
             try:
@@ -840,7 +840,7 @@ def posture(tenant: str, ref: str, conv: str = "", quiet: bool = False) -> dict:
                 flags.append({"id": "exposed" + path.replace("/", "_"), "level": lvl, "text": say})
                 exposed.append(path)
     elif not verified:
-        flags.append({"id": "not_verified", "level": "info", "text": "Gehri jaanch (.git / .env / admin page) tab hogi jab domain aapka saabit ho."})
+        flags.append({"id": "not_verified", "level": "info", "text": "The deep check (.git / .env / admin page) runs once the domain is proven to be yours."})
     sc = R.posture_score(flags)
     p = {"score": sc, "flags": flags, "tls": tls, "dns": {"mx": mx[:5], "spf": [t for t in txt if t.lower().startswith("v=spf1")][:2],
                                                          "dmarc": dmarc[:1], "caa": caa[:4], "dkim": dkim_found}, "exposed": exposed}
@@ -850,7 +850,7 @@ def posture(tenant: str, ref: str, conv: str = "", quiet: bool = False) -> dict:
         d.checked_at = clock()
         v = _dom_view(d)
     bad = [f for f in flags if f["level"] == "bad"]
-    say = f"{dn}: suraksha score {sc}/100." + (" Sabse pehle: " + " ".join(f["text"] for f in bad[:2]) if bad else " Koi badi kami nahi mili.")
+    say = f"{dn}: security score {sc}/100." + (" First: " + " ".join(f["text"] for f in bad[:2]) if bad else " No major gap found.")
     if not quiet:
         _publish(tenant, "cyber_posture", {"domain": dn, "score": sc, "flags": flags[:10], "say": say}, conv)
     return {"domain": v, "say": say}
@@ -863,10 +863,10 @@ def domains(tenant: str) -> list[dict]:
 
 def remove_domain(tenant: str, ref: str, actor: str = "owner") -> dict:
     if not is_owner(actor):
-        raise CyberError("Yeh sirf owner kar sakti hain.")
+        raise CyberError("Only the owner can do this.")
     with session() as s:
         s.delete(_dom(s, tenant, ref))
-    return {"ok": True, "say": "Domain hata diya."}
+    return {"ok": True, "say": "Domain removed."}
 
 
 def _mask_mail(e: str) -> str:
@@ -878,7 +878,7 @@ def breach(tenant: str, ref: str = "", conv: str = "") -> dict:
     """Her work emails / her verified domain on Have I Been Pwned (her key). Only breach names and what leaked."""
     key, _ = _key(tenant, "hibp")
     if not key:
-        raise CyberError("Have I Been Pwned key nahi (haveibeenpwned.com/API/Key, paid). Niyam > Keys mein jodiye.")
+        raise CyberError("No Have I Been Pwned key (haveibeenpwned.com/API/Key, paid). Add it in Rules > Keys.")
     found: dict[str, list[str]] = {}
     notes: list[str] = []
     if ref:
@@ -892,7 +892,7 @@ def breach(tenant: str, ref: str = "", conv: str = "") -> dict:
         with session() as s:
             emails = _j(_st(s, tenant).work_emails, [])
         if not emails:
-            raise CyberError("Niyam mein office ke email likhiye (ya domain dijiye).")
+            raise CyberError("Write the office emails in Rules (or give a domain).")
         import time
         for e in emails[:25]:
             try:
@@ -909,8 +909,8 @@ def breach(tenant: str, ref: str = "", conv: str = "") -> dict:
     rows = [{"email": _mask_mail(e), "breaches": [{"name": b, "title": info.get(b, {}).get("Title", b), "date": info.get(b, {}).get("BreachDate", ""),
                                                    "leaked": (info.get(b, {}).get("DataClasses") or [])[:6]} for b in bl]} for e, bl in found.items()]
     pw = sum(1 for r in rows for b in r["breaches"] if any("password" in x.lower() for x in b["leaked"]))
-    say = (f"{len(rows)} email purane data leak mein mile ({len(names)} leak)." + (f" {pw} jagah password bhi leak hua tha: un logon ka password "
-           "badalwaiye + 2-step on." if pw else "") if rows else "Kisi bhi email ka naam kisi jaane-maane leak mein nahi mila.")
+    say = (f"{len(rows)} email(s) found in old data leaks ({len(names)} leak(s))." + (f" {pw} of them also had the password leaked: have those people change their password "
+           "+ turn on 2-step." if pw else "") if rows else "No email was found in any well-known leak.")
     say += (" " + " ".join(notes)) if notes else ""
     if ref:
         with session() as s:
@@ -932,30 +932,30 @@ def _sw_view(w: CyberSoftware) -> dict:
 def add_software(tenant: str, product: str, vendor: str = "", version: str = "", cpe: str = "", where: str = "", from_asset: str = "") -> dict:
     product = R.mask(product, 120).strip()
     if not product:
-        raise CyberError("Software / device ka naam dijiye (jaise 'Tally Prime', 'Windows 10', 'TP-Link Archer C6').")
+        raise CyberError("Give the software / device name (like 'Tally Prime', 'Windows 10', 'TP-Link Archer C6').")
     if cpe and not cpe.startswith("cpe:2.3:"):
-        raise CyberError("CPE 'cpe:2.3:...' jaisa hona chahiye (ya khaali chhodiye).")
+        raise CyberError("The CPE must look like 'cpe:2.3:...' (or leave it empty).")
     with session() as s:
         old = s.scalars(select(CyberSoftware).where(CyberSoftware.tenant_id == tenant, CyberSoftware.product == product,
                                                     CyberSoftware.vendor == vendor.lower(), CyberSoftware.active.is_(True))).first()
         if old:
             if version:
                 old.version = version[:40]
-            return {"software": _sw_view(old), "say": "Pehle se list mein."}
+            return {"software": _sw_view(old), "say": "Already in the list."}
         w = CyberSoftware(tenant_id=tenant, product=product, vendor=vendor.lower()[:80], version=version[:40], cpe=cpe[:200], where=where[:120],
                           from_asset=from_asset[:40])
         s.add(w)
         s.flush()
-        return {"software": _sw_view(w), "say": f"{product} jod diya: iske naye khatre (CVE / CERT-In) dekhta rahunga."}
+        return {"software": _sw_view(w), "say": f"{product} added: I will keep watching for its new threats (CVE / CERT-In)."}
 
 
 def remove_software(tenant: str, ref: str) -> dict:
     with session() as s:
         w = s.get(CyberSoftware, ref)
         if not w or w.tenant_id != tenant:
-            raise CyberError("Nahi mila.")
+            raise CyberError("Not found.")
         w.active = False
-    return {"ok": True, "say": "Hata diya."}
+    return {"ok": True, "say": "Removed."}
 
 
 def software(tenant: str) -> list[dict]:
@@ -970,15 +970,15 @@ def sync_assets(tenant: str) -> dict:
     for a in assets(tenant):
         for row in R.from_asset(a):
             r = add_software(tenant, row["product"], row["vendor"], row["version"], "", row["where"], a["id"])
-            if r["say"] != "Pehle se list mein.":
+            if r["say"] != "Already in the list.":
                 added += 1
-    return {"added": added, "software": software(tenant), "say": f"IT Helpdesk ke devices se {added} cheezein judi."}
+    return {"added": added, "software": software(tenant), "say": f"{added} item(s) added from IT Helpdesk devices."}
 
 
 def refresh_advisories(tenant: str, days: int = 30, conv: str = "") -> dict:
     sw = software(tenant)
     if not sw:
-        return {"new": 0, "say": "Software list khaali: pehle software / devices jodiye (ya 'helpdesk se lo')."}
+        return {"new": 0, "say": "The software list is empty: first add software / devices (or say 'take from helpdesk')."}
     key, _ = _key(tenant, "nvd")
     notes: list[str] = []
     found: list[dict[str, Any]] = []
@@ -996,7 +996,7 @@ def refresh_advisories(tenant: str, days: int = 30, conv: str = "") -> dict:
         for k in kev:
             if R.kev_match(k, w["vendor"], w["product"]):
                 found.append({"ref": k.get("cveID"), "source": "kev", "title": f"{k.get('vendorProject')} {k.get('product')}: {k.get('vulnerabilityName')}",
-                              "summary": f"{k.get('shortDescription') or ''} Kya karna: {k.get('requiredAction') or ''}", "score": 0.0, "severity": "EXPLOITED",
+                              "summary": f"{k.get('shortDescription') or ''} What to do: {k.get('requiredAction') or ''}", "score": 0.0, "severity": "EXPLOITED",
                               "exploited": True, "sw": w["id"], "url": f"https://nvd.nist.gov/vuln/detail/{k.get('cveID')}", "published": k.get("dateAdded", "")})
         try:
             rows = I.nvd(keyword=("" if w["cpe"] else w["product"]), cpe=w["cpe"], days=days, key=key)
@@ -1030,8 +1030,8 @@ def refresh_advisories(tenant: str, days: int = 30, conv: str = "") -> dict:
             new.append(_adv_view(s, a))
         _st(s, tenant).last_intel = today(tenant).isoformat()
     urgent = [a for a in new if a["exploited"] or a["score"] >= 9 or a["source"] == "certin"]
-    say = (f"{len(new)} naye khatre aapke software se mile" + (f", {len(urgent)} zaroori (hamle ho rahe / critical)" if urgent else "") + "."
-           if new else "Aapke software ke liye koi naya khatra nahi mila.") + ((" " + notes[0]) if notes else "")
+    say = (f"{len(new)} new threat(s) found for your software" + (f", {len(urgent)} urgent (being attacked / critical)" if urgent else "") + "."
+           if new else "No new threat found for your software.") + ((" " + notes[0]) if notes else "")
     if urgent:
         _publish(tenant, "cyber_advisory", {"say": say, "advisories": urgent[:6]}, conv)
     return {"new": len(new), "urgent": urgent[:10], "notes": notes, "say": say}
@@ -1042,8 +1042,8 @@ def _adv_view(s, a: CyberAdvisory) -> dict:
     return {"id": a.id, "ref": a.ref, "source": a.source, "title": a.title, "summary": a.summary[:500], "score": a.score, "severity": a.severity,
             "exploited": a.exploited, "url": a.url, "published": a.published, "status": a.status,
             "software": f"{w.product} {w.version}".strip() if w else "", "where": w.where if w else "",
-            "say": ("Is par hamle ho rahe hain (CISA KEV): jaldi update / patch kijiye. " if a.exploited else "")
-            + (f"Aapka version {w.version} hai: maker ki site par dekhiye ki fix kis version mein hai." if w and w.version else "Apna version maker ki site par mila lijiye.")}
+            "say": ("This is being attacked (CISA KEV): update / patch soon. " if a.exploited else "")
+            + (f"Your version is {w.version}: check on the maker's site which version has the fix." if w and w.version else "Compare your version on the maker's site.")}
 
 
 def advisories(tenant: str, status: str = "new") -> list[dict]:
@@ -1061,10 +1061,10 @@ def mark_advisory(tenant: str, ref: str, status: str) -> dict:
     with session() as s:
         a = s.get(CyberAdvisory, ref)
         if not a or a.tenant_id != tenant:
-            raise CyberError("Nahi mila.")
+            raise CyberError("Not found.")
         a.status = status
-    return {"ok": True, "say": {"patched": "Theek: update ho gaya likha.", "not_ours": "Theek: yeh hamare version par lagoo nahi.",
-                                "ignored": "Hata diya.", "new": "Phir khola."}[status]}
+    return {"ok": True, "say": {"patched": "OK: marked as updated.", "not_ours": "OK: this does not apply to our version.",
+                                "ignored": "Dismissed.", "new": "Reopened."}[status]}
 
 
 # ---------------------------------------------------------------- 4. incident note
@@ -1106,7 +1106,7 @@ def _inc(s, tenant: str, ref: str) -> CyberIncident:
     if i is None or i.tenant_id != tenant:
         i = s.scalars(select(CyberIncident).where(CyberIncident.tenant_id == tenant, CyberIncident.number == (ref or "").upper())).first()
     if i is None:
-        raise CyberError("Incident nahi mila.")
+        raise CyberError("Incident not found.")
     return i
 
 
@@ -1153,8 +1153,8 @@ def new_incident(tenant: str, title: str = "", kind: str = "", alert_ids: list |
         for cid in ck:
             c = s.get(CyberCheck, cid)
             if c and c.tenant_id == tenant:
-                _tl(i, f"Jaanch ({c.kind}): {c.subject} -> {c.verdict}", "Hoola", _aware(c.created_at))
-        _tl(i, f"Incident note khola ({by})", by)
+                _tl(i, f"Check ({c.kind}): {c.subject} -> {c.verdict}", "Hoola", _aware(c.created_at))
+        _tl(i, f"Incident note opened ({by})", by)
         if not i.what and rows:
             i.what = "; ".join(f"{R.kind_label(a.kind)}: {a.title}" for a in rows[:5])
         iid = i.id
@@ -1164,9 +1164,9 @@ def new_incident(tenant: str, title: str = "", kind: str = "", alert_ids: list |
     if clock_start and not helpdesk_inc and k in ("phishing", "malware", "ransomware", "account", "data_leak", "intrusion", "payment", "website"):
         cert_in(tenant, iid, actor=actor, conv=conv, **did)
     v = get_incident(tenant, iid)
-    say = f"{v['number']} khola: {v['title']}."
+    say = f"{v['number']} opened: {v['title']}."
     if v.get("cert_in_due"):
-        say += f" CERT-In 6 ghante: aakhri samay {v['cert_in_due']} (draft IT Helpdesk ke card par)."
+        say += f" CERT-In 6 hours: deadline {v['cert_in_due']} (the draft is on the IT Helpdesk card)."
     elif v.get("cert_in", {}).get("why"):
         say += " CERT-In: " + v["cert_in"]["why"]
     if v.get("dpdp"):
@@ -1182,7 +1182,7 @@ def cert_in(tenant: str, ref: str, actor: str = "owner", conv: str = "", **did: 
     with session() as s:
         i = _inc(s, tenant, ref)
         if i.helpdesk_incident:
-            return {"incident": _inc_view(tenant, i), "say": "CERT-In clock pehle se chal raha hai."}
+            return {"incident": _inc_view(tenant, i), "say": "The CERT-In clock is already running."}
         kind, summ, sys_, pd = i.kind, i.what or i.title, i.systems, i.personal_data
     flags = {k: bool(did.get(k)) for k in ("clicked", "entered_password", "opened_attachment", "money", "gave_otp", "remote_access")}
     r = HS.report_phish(tenant, (f"[Cyber {i.number}] {summ}" + (f" | Systems: {sys_}" if sys_ else ""))[:3000], "", [], [], kind if kind in ("phishing", "malware", "ransomware", "account",
@@ -1190,7 +1190,7 @@ def cert_in(tenant: str, ref: str, actor: str = "owner", conv: str = "", **did: 
     with session() as s:
         i = _inc(s, tenant, ref)
         i.helpdesk_incident = r["incident"]["id"]
-        _tl(i, "CERT-In / DPDP jaanch shuru (IT Helpdesk incident " + (r["ticket"].get("number") or "") + ")")
+        _tl(i, "CERT-In / DPDP check started (IT Helpdesk incident " + (r["ticket"].get("number") or "") + ")")
         v = _inc_view(tenant, i)
     return {"incident": v, "cert_in": r["cert_in"], "cert_in_draft": r["cert_in_draft"], "say": r["say"]}
 
@@ -1203,12 +1203,12 @@ def incident_add(tenant: str, ref: str, what: str, at: str = "", actor: str = "o
             if when.tzinfo is None:
                 when = when.replace(tzinfo=_tz(tenant))
         except ValueError:
-            raise CyberError("Samay 2026-10-23T14:30 jaisa.")
+            raise CyberError("Time must look like 2026-10-23T14:30.")
     with session() as s:
         i = _inc(s, tenant, ref)
         _tl(i, what, actor_name(tenant, actor), when)
         v = _inc_view(tenant, i)
-    return {"incident": v, "say": "Timeline mein joda."}
+    return {"incident": v, "say": "Added to the timeline."}
 
 
 def incident_update(tenant: str, ref: str, actor: str = "owner", **kw: Any) -> dict:
@@ -1225,21 +1225,21 @@ def incident_update(tenant: str, ref: str, actor: str = "owner", **kw: Any) -> d
 
 def incident_close(tenant: str, ref: str, lessons: str = "", actor: str = "owner") -> dict:
     if not is_owner(actor):
-        raise CyberError("Incident sirf owner band kar sakti hain.")
+        raise CyberError("Only the owner can close an incident.")
     with session() as s:
         i = _inc(s, tenant, ref)
         if lessons:
             i.lessons = R.mask(lessons, 3000)
         if not i.lessons:
-            raise CyberError("Band karne se pehle 'seekh' likhiye (aage aisa na ho, iske liye kya badla).")
+            raise CyberError("Before closing, write the lessons (what changed so this does not happen again).")
         waiting = s.scalars(select(CyberAction).where(CyberAction.tenant_id == tenant, CyberAction.incident_id == i.id,
                                                       CyberAction.status == "waiting")).first()
         if waiting:
-            raise CyberError(f"{waiting.number} abhi aapki haan ka intezaar kar raha hai: pehle us par faisla.")
+            raise CyberError(f"{waiting.number} is still waiting for your approval: decide on it first.")
         i.status, i.closed_at = "closed", clock()
-        _tl(i, "Incident band", actor_name(tenant, actor))
+        _tl(i, "Incident closed", actor_name(tenant, actor))
         v = _inc_view(tenant, i)
-    return {"incident": v, "say": f"{v['number']} band."}
+    return {"incident": v, "say": f"{v['number']} closed."}
 
 
 def get_incident(tenant: str, ref: str) -> dict:
@@ -1258,20 +1258,20 @@ def incidents(tenant: str, status: str = "") -> list[dict]:
 def note_text(tenant: str, ref: str) -> tuple[str, str]:
     v = get_incident(tenant, ref)
     st = settings(tenant)
-    office = (st.get("office") or {}).get("office_name") or "[office ka naam]"
+    office = (st.get("office") or {}).get("office_name") or "[office name]"
     ci = v.get("cert_in") or {}
-    lines = [f"Office: {office}", f"Incident: {v['number']} ({v['kind']})", f"Pata chala: {v['detected_local']}", f"Systems: {v['systems'] or '[ ]'}", "",
-             "## Kya hua", v["what"] or "[ ]", "", "## Asar (impact)", v["impact"] or "[ ]", "", "## Timeline"]
+    lines = [f"Office: {office}", f"Incident: {v['number']} ({v['kind']})", f"Detected: {v['detected_local']}", f"Systems: {v['systems'] or '[ ]'}", "",
+             "## What happened", v["what"] or "[ ]", "", "## Impact", v["impact"] or "[ ]", "", "## Timeline"]
     for t in v["timeline"]:
         lines.append(f"- {t['at'].replace('T', ' ')} · {t['by']}: {t['what']}")
-    lines += ["", "## Kya kiya gaya", v["done"] or "[ ]"]
+    lines += ["", "## What was done", v["done"] or "[ ]"]
     for a in v.get("actions") or []:
         lines.append(f"- {a['number']} {a['label']} {a['target']}: {a['status_label']}")
-    lines += ["", "## CERT-In (6 ghante)", (ci.get("why") or "IT Helpdesk incident nahi khula.")]
+    lines += ["", "## CERT-In (6 hours)", (ci.get("why") or "No IT Helpdesk incident was opened.")]
     if v.get("cert_in_due"):
-        lines.append(f"- Aakhri samay: {v['cert_in_due']}" + (f"; report bheja: {v['cert_in_reported']}" if v.get("cert_in_reported") else "; abhi nahi bheja"))
-    lines += ["", "## DPDP", (v["dpdp"] or {}).get("say") or "Personal data shamil nahi (ya pata nahi).", "", "## Seekh (lessons)", v["lessons"] or "[ ]",
-              "", "Yeh note Hoola ne aapke diye tathyon se banaya; kanooni salah nahi."]
+        lines.append(f"- Deadline: {v['cert_in_due']}" + (f"; report sent: {v['cert_in_reported']}" if v.get("cert_in_reported") else "; not sent yet"))
+    lines += ["", "## DPDP", (v["dpdp"] or {}).get("say") or "No personal data involved (or not known).", "", "## Lessons", v["lessons"] or "[ ]",
+              "", "Hoola made this note from the facts you gave; it is not legal advice."]
     return f"Cyber incident note {v['number']}", "\n".join(lines)
 
 
@@ -1311,39 +1311,39 @@ def note_files(tenant: str, ref: str, conv: str = "") -> dict:
         _publish(tenant, "pc_file", {**f, "source": "cyber", "title": title}, conv)
     with session() as s:
         _tl(_inc(s, tenant, ref), "Incident note file (Word" + (" + PDF" if len(files) > 1 else "") + ")")
-    return {"files": files, "text": text, "say": f"{v['number']} ka incident note Word" + (" aur PDF" if len(files) > 1 else "") + " mein."}
+    return {"files": files, "text": text, "say": f"Incident note for {v['number']} as Word" + (" and PDF" if len(files) > 1 else "") + "."}
 
 
 # ---------------------------------------------------------------- 5. containment: cards, only her tap
 STEPS = {
-    "block_ip": ["Cloudflare dashboard > domain > Security > WAF > Tools > IP Access Rules: IP likhiye, 'Block', 'This website'.",
-                 "Router / firewall: us IP ke liye 'drop' rule (router ke admin page par).",
-                 "Linux server: `sudo ufw deny from <IP>` (aapke admin ke haath)."],
-    "unblock_ip": ["Cloudflare > Security > WAF > Tools > IP Access Rules: us IP ka rule delete."],
+    "block_ip": ["Cloudflare dashboard > domain > Security > WAF > Tools > IP Access Rules: enter the IP, 'Block', 'This website'.",
+                 "Router / firewall: a 'drop' rule for that IP (on the router's admin page).",
+                 "Linux server: `sudo ufw deny from <IP>` (done by your admin)."],
+    "unblock_ip": ["Cloudflare > Security > WAF > Tools > IP Access Rules: delete that IP's rule."],
     "disable_user": ["Google Workspace: admin.google.com > Directory > Users > user > 'Suspend user'.",
                      "Microsoft 365: admin.microsoft.com > Users > Active users > user > 'Block sign-in'.",
-                     "Hoola ka IT Admin Sahayak bhi yeh card ke saath kar sakta hai (jahan woh juda ho)."],
-    "reset_sessions": ["Google Workspace: user > Security > 'Sign-in cookies: Reset' + naya password, 'change at next sign-in'.",
+                     "Hoola's IT Admin can also do this with a card (where it is connected)."],
+    "reset_sessions": ["Google Workspace: user > Security > 'Sign-in cookies: Reset' + new password, 'change at next sign-in'.",
                        "Microsoft 365: user > 'Revoke sessions' + 'Reset password'.",
                        "Gmail personal: myaccount.google.com > Security > Your devices > Sign out."],
     "quarantine": ["Microsoft Defender: security.microsoft.com > Alert / file > 'Stop and quarantine file'.",
-                   "Quick Heal / Seqrite console: Reports / Quarantine > file chunkar 'Quarantine'.", "PC par: antivirus > Full scan > Quarantine."],
-    "isolate_pc": ["Microsoft Defender for Endpoint: device page > 'Isolate device'.", "Ya seedha: LAN cable nikaliye / Wi-Fi band (PC band mat kijiye)."],
-    "wipe_device": ["Google Workspace: admin.google.com > Devices > Mobile > device > 'Wipe device' (ya sirf 'Wipe account').",
+                   "Quick Heal / Seqrite console: Reports / Quarantine > select the file, 'Quarantine'.", "On the PC: antivirus > Full scan > Quarantine."],
+    "isolate_pc": ["Microsoft Defender for Endpoint: device page > 'Isolate device'.", "Or directly: pull out the LAN cable / turn off Wi-Fi (do not switch the PC off)."],
+    "wipe_device": ["Google Workspace: admin.google.com > Devices > Mobile > device > 'Wipe device' (or only 'Wipe account').",
                     "Microsoft Intune: intune.microsoft.com > Devices > device > 'Wipe'.",
-                    "Apna Android phone: android.com/find > 'Factory reset device'. iPhone: icloud.com/find > 'Erase'."],
+                    "Your own Android phone: android.com/find > 'Factory reset device'. iPhone: icloud.com/find > 'Erase'."],
 }
-RISK = {"block_ip": "Agar yeh IP aapke apne staff / customer ka nikla to unki site band ho jayegi (undo ho sakta hai).",
-        "disable_user": "Woh insaan kaam nahi kar payega jab tak wapas on na ho.",
-        "reset_sessions": "Us user ko har device par dobara login karna padega.",
-        "quarantine": "File kaam ki ho to program chalna band ho sakta hai (quarantine se wapas la sakte hain).",
-        "isolate_pc": "PC ka net band: us par chal raha kaam rukega.",
-        "wipe_device": "HAMESHA KE LIYE: device ka data mit jayega, wapas nahi aayega.", "unblock_ip": "IP phir se site khol payega."}
-UNDO = {"block_ip": "unblock_ip card (aapki haan se)", "disable_user": "Admin console mein 'Reactivate' / 'Unblock'",
-        "quarantine": "Antivirus quarantine se 'Restore'", "isolate_pc": "Defender 'Release from isolation' / cable lagaiye", "wipe_device": "Koi undo nahi",
+RISK = {"block_ip": "If this IP turns out to be your own staff's / customer's, the site will stop opening for them (can be undone).",
+        "disable_user": "That person cannot work until the account is turned on again.",
+        "reset_sessions": "That user will have to log in again on every device.",
+        "quarantine": "If the file is a useful one, the program may stop running (it can be restored from quarantine).",
+        "isolate_pc": "The PC's network is cut: work running on it will stop.",
+        "wipe_device": "PERMANENT: the device's data will be erased and cannot come back.", "unblock_ip": "The IP will be able to open the site again."}
+UNDO = {"block_ip": "unblock_ip card (only with your approval)", "disable_user": "'Reactivate' / 'Unblock' in the admin console",
+        "quarantine": "'Restore' from the antivirus quarantine", "isolate_pc": "Defender 'Release from isolation' / plug the cable back in", "wipe_device": "No undo",
         "reset_sessions": "-", "unblock_ip": "block_ip card"}
-STATUS_LABEL = {"waiting": "Aapki haan ka intezaar", "done": "Ho gaya", "approved": "Haan di: console mein kijiye", "rejected": "Mana kiya",
-                "failed": "Nahi hua", "stale": "Purana (24 ghante)", "undone": "Wapas"}
+STATUS_LABEL = {"waiting": "Waiting for your approval", "done": "Done", "approved": "Approved: do it in the console", "rejected": "Rejected",
+                "failed": "Failed", "stale": "Stale (24 hours)", "undone": "Undone"}
 
 
 def _act_view(a: CyberAction) -> dict:
@@ -1372,7 +1372,7 @@ def request_action(tenant: str, kind: str, target: str, reason: str = "", incide
             target = a.ip if kind == "block_ip" else (a.user or a.host)
             alert = a.id
     if not target:
-        raise CyberError("Kis par? (IP / user / device ka naam).")
+        raise CyberError("On what? (IP / user / device name).")
     via = "steps"
     if kind in ("block_ip", "unblock_ip"):
         if kind == "block_ip":
@@ -1380,15 +1380,15 @@ def request_action(tenant: str, kind: str, target: str, reason: str = "", incide
             try:
                 n = __import__("ipaddress").ip_network(net, strict=False)
             except ValueError:
-                raise CyberError(f"'{target}' sahi IP nahi.")
+                raise CyberError(f"'{target}' is not a valid IP.")
             if not n.is_global:
-                raise CyberError("Yeh local / private IP hai: internet wale IP hi Cloudflare par block hote hain.")
+                raise CyberError("This is a local / private IP: only internet IPs are blocked on Cloudflare.")
             if (n.version == 4 and n.prefixlen < 24) or (n.version == 6 and n.prefixlen < 48):
-                raise CyberError("Itna bada IP range block nahi karte (IPv4 /24 tak, IPv6 /48 tak).")
+                raise CyberError("An IP range this big is not blocked (up to IPv4 /24, IPv6 /48).")
             for o in own:
                 try:
                     if __import__("ipaddress").ip_network(o, strict=False).overlaps(n):
-                        raise CyberError("Yeh aapka apna office / server IP hai (Niyam): block nahi karenge.")
+                        raise CyberError("This is your own office / server IP (Rules): it will not be blocked.")
                 except ValueError:
                     continue
             target = str(n) if n.num_addresses > 1 else str(n.network_address)
@@ -1402,7 +1402,7 @@ def request_action(tenant: str, kind: str, target: str, reason: str = "", incide
                                                   CyberAction.status == "waiting")).first()
         if dup:
             v = _act_view(dup)
-            return {"action": v, "say": f"{v['number']} pehle se aapki haan ka intezaar kar raha hai."}
+            return {"action": v, "say": f"{v['number']} is already waiting for your approval."}
         st = _st(s, tenant)
         st.action_seq += 1
         a = CyberAction(tenant_id=tenant, number=f"CA-{st.action_seq:04d}", kind=kind, target=target, reason=R.mask(reason, 500), via=via,
@@ -1414,13 +1414,13 @@ def request_action(tenant: str, kind: str, target: str, reason: str = "", incide
         s.flush()
         if incident:
             try:
-                _tl(_inc(s, tenant, incident), f"{a.number} {R.ACTIONS[kind]} {target}: card bheja (aapki haan ka intezaar)")
+                _tl(_inc(s, tenant, incident), f"{a.number} {R.ACTIONS[kind]} {target}: card sent (waiting for your approval)")
             except CyberError:
                 pass
         v = _act_view(a)
-    say = (f"{v['number']}: {v['label']} '{target}' ka card bheja; aapke tap ke bina kuch nahi hoga."
-           + (" Haan par Hoola aapke Cloudflare mein khud karega." if via == "cloudflare" else " Haan ke baad console mein yeh steps kijiye.")
-           + (" Mitane ke liye fingerprint bhi lagega." if kind in R.WIPE_KINDS else ""))
+    say = (f"{v['number']}: {v['label']} '{target}': card sent; nothing happens without your tap."
+           + (" On your approval, Hoola does it in your Cloudflare itself." if via == "cloudflare" else " After your approval, do these steps in the console.")
+           + (" Erasing also needs your fingerprint." if kind in R.WIPE_KINDS else ""))
     _publish(tenant, "cyber_action", {"action": v, "say": say}, conv)
     return {"action": v, "say": say, "needs_tap": True}
 
@@ -1442,7 +1442,7 @@ def action_challenge(tenant: str, aid: str) -> dict:
     with session() as s:
         a = s.get(CyberAction, aid)
         if a is None or a.tenant_id != tenant or a.status != "waiting":
-            raise CyberError("Yeh card ab baaki nahi hai.")
+            raise CyberError("This card is no longer pending.")
         v = _act_view(a)
     digest = _action_digest(v)
     nonce = secrets.token_urlsafe(18)
@@ -1460,15 +1460,15 @@ def decide_action(tenant: str, aid: str, yes: bool, card_hash: str = "", proof: 
                   by_tap: bool = False) -> dict:
     """ONLY her tap in the app (API). The tool can never reach this."""
     if not by_tap:
-        raise CyberError("Block / wipe ki haan sirf aapke tap se (app ka card).")
+        raise CyberError("A block / wipe is approved only by your tap (the card in the app).")
     with session() as s:
         a = s.get(CyberAction, aid)
         if a is None or a.tenant_id != tenant:
-            raise CyberError("Card nahi mila.")
+            raise CyberError("Card not found.")
         if a.status != "waiting":
-            raise CyberError(f"Yeh card pehle hi '{STATUS_LABEL.get(a.status, a.status)}' hai.")
+            raise CyberError(f"This card is already '{STATUS_LABEL.get(a.status, a.status)}'.")
         if not card_hash or card_hash != a.hash:
-            raise CyberError("Card badal gaya hai; naya card dekhiye.")
+            raise CyberError("The card has changed; look at the new card.")
         v = _act_view(a)
     if yes and v["wipe"]:
         from .. import approvekey as ak
@@ -1488,7 +1488,7 @@ def decide_action(tenant: str, aid: str, yes: bool, card_hash: str = "", proof: 
             tok, zone = _key(tenant, "cloudflare")
             try:
                 if not tok:
-                    raise I.IntelError("Cloudflare key ab nahi hai.")
+                    raise I.IntelError("The Cloudflare key is no longer there.")
                 if v["kind"] == "block_ip":
                     r = I.cf_block_ip(tok, zone, v["target"], f"Hoola {v['number']}: {v['reason'][:120]}")
                     result.update(rule_id=r["rule_id"], zone=zone)
@@ -1510,13 +1510,13 @@ def decide_action(tenant: str, aid: str, yes: bool, card_hash: str = "", proof: 
         if a.incident_id:
             try:
                 _tl(_inc(s, tenant, a.incident_id), f"{a.number} {R.ACTIONS[a.kind]} {a.target}: "
-                    + {"done": "Hoola ne kar diya (aapki haan)", "approved": "aapne haan di", "rejected": "aapne mana kiya",
-                       "failed": "nahi hua: " + str(result.get("error", ""))}[status], "Owner")
+                    + {"done": "Hoola did it (your approval)", "approved": "you approved", "rejected": "you rejected",
+                       "failed": "failed: " + str(result.get("error", ""))}[status], "Owner")
             except CyberError:
                 pass
         v = _act_view(a)
-    say = {"done": f"{v['number']}: {v['label']} {v['target']} ho gaya.", "approved": f"{v['number']}: haan mil gayi. Ab console mein steps kijiye, phir 'ho gaya' dabaiye.",
-           "rejected": f"{v['number']}: mana kiya, kuch nahi badla.", "failed": f"{v['number']}: nahi hua ({result.get('error', '')}). Steps se khud kar sakti hain."}[status]
+    say = {"done": f"{v['number']}: {v['label']} {v['target']} done.", "approved": f"{v['number']}: approved. Now do the steps in the console, then press 'done'.",
+           "rejected": f"{v['number']}: rejected, nothing changed.", "failed": f"{v['number']}: failed ({result.get('error', '')}). You can do it yourself with the steps."}[status]
     _publish(tenant, "cyber_action", {"action": v, "say": say}, v.get("conv", ""))
     return {"action": v, "say": say}
 
@@ -1525,19 +1525,19 @@ def action_done(tenant: str, aid: str, ok: bool = True, note: str = "", actor: s
     with session() as s:
         a = s.get(CyberAction, aid)
         if a is None or a.tenant_id != tenant:
-            raise CyberError("Card nahi mila.")
+            raise CyberError("Card not found.")
         if a.status != "approved":
-            raise CyberError("Pehle card par aapki haan chahiye." if a.status == "waiting" else "Yeh card is haal mein nahi.")
+            raise CyberError("The card needs your approval first." if a.status == "waiting" else "This card is not in that state.")
         a.status = "done" if ok else "failed"
         a.result = _dump({**_j(a.result, {}), "note": R.mask(note, 300), "by": actor_name(tenant, actor)})
         if a.incident_id:
             try:
-                _tl(_inc(s, tenant, a.incident_id), f"{a.number} {R.ACTIONS[a.kind]} {a.target}: " + ("console mein kar diya" if ok else "nahi hua")
+                _tl(_inc(s, tenant, a.incident_id), f"{a.number} {R.ACTIONS[a.kind]} {a.target}: " + ("done in the console" if ok else "failed")
                     + (f" ({note[:100]})" if note else ""), actor_name(tenant, actor))
             except CyberError:
                 pass
         v = _act_view(a)
-    return {"action": v, "say": "Darj." if ok else "Darj: nahi hua."}
+    return {"action": v, "say": "Recorded." if ok else "Recorded: failed."}
 
 
 def actions(tenant: str, status: str = "") -> list[dict]:
@@ -1560,18 +1560,18 @@ def day(tenant: str) -> dict:
     tls_soon = [d for d in doms if (d["tls"] or {}).get("days_left") is not None and d["tls"]["days_left"] <= 14]
     bits = []
     if m:
-        bits.append(f"{len(m)} zaroori alert ({m[0]['number']} {m[0]['label']})")
+        bits.append(f"{len(m)} important alert(s) ({m[0]['number']} {m[0]['label']})")
     if waiting:
-        bits.append(f"{len(waiting)} block / wipe card aapki haan ke intezaar mein")
+        bits.append(f"{len(waiting)} block / wipe card(s) waiting for your approval")
     if incs:
-        bits.append(f"{len(incs)} incident khule")
+        bits.append(f"{len(incs)} incident(s) open")
     if adv:
-        bits.append(f"{len(adv)} zaroori software khatre ({adv[0]['ref']})")
+        bits.append(f"{len(adv)} important software threat(s) ({adv[0]['ref']})")
     if tls_soon:
-        bits.append("SSL jaldi khatam: " + ", ".join(d["domain"] for d in tls_soon[:2]))
+        bits.append("SSL expiring soon: " + ", ".join(d["domain"] for d in tls_soon[:2]))
     if weak:
-        bits.append("Kamzor domain setting: " + ", ".join(f"{d['domain']} {d['score']}/100" for d in weak[:2]))
-    say = ("Suraksha: " + "; ".join(bits) + ".") if bits else "Suraksha: sab shaant, koi zaroori alert nahi."
+        bits.append("Weak domain settings: " + ", ".join(f"{d['domain']} {d['score']}/100" for d in weak[:2]))
+    say = ("Security: " + "; ".join(bits) + ".") if bits else "Security: all quiet, no important alert."
     return {"say": say, "matters": m, "watch": w, "waiting": waiting, "incidents": incs, "advisories": adv[:10], "domains": doms,
             "checks": checks(tenant, limit=10), "settings": settings(tenant)}
 

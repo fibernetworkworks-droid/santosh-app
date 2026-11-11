@@ -49,8 +49,8 @@ log = logging.getLogger("santosh.editdesk")
 _LOCK = threading.RLock()
 MONEY_CARDS = ("refund",)
 CARD_KINDS = ("quote", "invoice", "review", "message", "extra", "delivery", "refund")
-CARD_TITLE = {"quote": "Quote client ko", "invoice": "Invoice / paise maangna", "review": "Review link client ko",
-              "message": "Client ko message", "extra": "Extra charge (round / kaam)", "delivery": "Final delivery client ko",
+CARD_TITLE = {"quote": "Quote to the client", "invoice": "Invoice / payment request", "review": "Review link to the client",
+              "message": "Message to the client", "extra": "Extra charge (round / work)", "delivery": "Final delivery to the client",
               "refund": "Refund"}
 
 
@@ -96,7 +96,7 @@ def _num(v) -> float | None:
 
 def _rs(v: float | None) -> str:
     if v is None:
-        return "[daam?]"
+        return "[price?]"
     try:
         from ..india.money import inr
         return inr(v)
@@ -216,7 +216,7 @@ def _file_ok(tenant: str, file_id: str) -> str:
     try:
         return ms._file_row(tenant, str(file_id)).name
     except Exception:
-        raise EditError(f"File {file_id} nahi mili (pehle chat mein attach kijiye; files 24 ghante rehti hain).")
+        raise EditError(f"File {file_id} was not found (attach it in chat first; files stay for 24 hours).")
 
 
 def _engine():
@@ -253,7 +253,7 @@ def settings(tenant: str) -> dict:
 
 def save_settings(tenant: str, actor: str = "owner", **kw) -> dict:
     if not is_owner(actor):
-        raise EditError("Sirf owner.")
+        raise EditError("Owner only.")
     with _LOCK, session() as s:
         st = _st(s, tenant)
         for k, v in kw.items():
@@ -264,14 +264,14 @@ def save_settings(tenant: str, actor: str = "owner", **kw) -> dict:
                 if g:
                     from ..india.money import gstin_ok
                     if not gstin_ok(g):
-                        raise EditError("GSTIN sahi nahi lag raha (check digit galat).")
+                        raise EditError("The GSTIN does not look right (wrong check digit).")
                 st.gstin = g
             elif k in ("gst_on", "hold_final_unpaid"):
                 setattr(st, k, bool(v))
             elif k in ("gst_pct", "advance_pct"):
                 n = _num(v)
                 if n is None or not 0 <= n <= 100:
-                    raise EditError(f"{k}: 0 se 100 ke beech.")
+                    raise EditError(f"{k}: between 0 and 100.")
                 setattr(st, k, n)
             elif k == "extra_round_fee":
                 st.extra_round_fee = _num(v)
@@ -292,7 +292,7 @@ def save_settings(tenant: str, actor: str = "owner", **kw) -> dict:
                 st.morning_time = v if re.fullmatch(r"\d{2}:\d{2}", str(v)) else st.morning_time
             else:
                 setattr(st, k, R.clean(v, 2000))
-        return {**_settings_view(st), "say": "Niyam save ho gaye."}
+        return {**_settings_view(st), "say": "Rules saved."}
 
 
 # ---------------------------------------------------------------- clients
@@ -305,12 +305,12 @@ def _client_view(c: EditdeskClient) -> dict:
 def _client(s, tenant: str, ref: str) -> EditdeskClient:
     ref = (ref or "").strip()
     if not ref:
-        raise EditError("Client batayiye (naam / C-number).")
+        raise EditError("Name the client (name / C-number).")
     q = select(EditdeskClient).where(EditdeskClient.tenant_id == tenant)
     for row in s.scalars(q).all():
         if ref in (row.id, row.number) or ref.lower() in (row.name.lower(), row.company.lower()) or (R.phone(ref) and R.phone(ref) == row.phone):
             return row
-    raise EditError(f"Client '{ref}' nahi mila.")
+    raise EditError(f"Client '{ref}' was not found.")
 
 
 def client_save(tenant: str, name: str = "", phone: str = "", email: str = "", company: str = "", gstin: str = "",
@@ -328,7 +328,7 @@ def client_save(tenant: str, name: str = "", phone: str = "", email: str = "", c
                 c = None
         if c is None:
             if not name.strip():
-                raise EditError("Client ka naam chahiye.")
+                raise EditError("The client's name is needed.")
             c = EditdeskClient(tenant_id=tenant, number=f"C-{_next(st, 'client'):03d}")
             s.add(c)
         if name:
@@ -336,7 +336,7 @@ def client_save(tenant: str, name: str = "", phone: str = "", email: str = "", c
         if phone:
             p = R.phone(phone)
             if not p:
-                raise EditError("Phone number 10 ankon ka nahi lag raha.")
+                raise EditError("The phone number does not look like 10 digits.")
             c.phone = p
         if email:
             c.email = R.clean(email, 160)
@@ -346,7 +346,7 @@ def client_save(tenant: str, name: str = "", phone: str = "", email: str = "", c
             from ..india.money import gstin_ok
             g = gstin.strip().upper()
             if not gstin_ok(g):
-                raise EditError("Client ka GSTIN sahi nahi lag raha.")
+                raise EditError("The client's GSTIN does not look right.")
             c.gstin, c.state = g, g[:2]
         if country:
             c.country = R.clean(country, 40)
@@ -370,7 +370,7 @@ def clients(tenant: str) -> list[dict]:
 def _project(s, tenant: str, ref: str) -> EditdeskProject:
     ref = (ref or "").strip()
     if not ref:
-        raise EditError("Project batayiye (P-0001).")
+        raise EditError("Name the project (P-0001).")
     p = s.get(EditdeskProject, ref)
     if p is not None and p.tenant_id == tenant:
         return p
@@ -378,7 +378,7 @@ def _project(s, tenant: str, ref: str) -> EditdeskProject:
     if p is None:
         p = s.scalars(select(EditdeskProject).where(EditdeskProject.tenant_id == tenant, EditdeskProject.title == ref)).first()
     if p is None:
-        raise EditError(f"Project '{ref}' nahi mila.")
+        raise EditError(f"Project '{ref}' was not found.")
     return p
 
 
@@ -400,9 +400,9 @@ def _deliv(p: EditdeskProject, ref: str = "") -> dict | None:
 def _new_deliverable(p: EditdeskProject, platform: str, length_s: int | None = None) -> dict:
     dl = _j(p.deliverables, [])
     if platform not in R.PLATFORM_LABEL:
-        raise EditError(f"Platform '{platform}' nahi pehchana (reel / short / status / youtube / square / portrait).")
+        raise EditError(f"Platform '{platform}' is not a known platform (reel / short / status / youtube / square / portrait).")
     if any(d["platform"] == platform for d in dl):
-        raise EditError(f"{R.PLATFORM_LABEL[platform]} pehle se hai.")
+        raise EditError(f"{R.PLATFORM_LABEL[platform]} is already there.")
     d = {"id": f"D{len(dl) + 1}", "platform": platform, "label": R.PLATFORM_LABEL[platform], "length_s": length_s,
          "job_id": "", "status": "todo", "told_n": 0}
     dl.append(d)
@@ -413,7 +413,7 @@ def _new_deliverable(p: EditdeskProject, platform: str, length_s: int | None = N
 def project_new(tenant: str, client: str = "", title: str = "", brief: str = "", kind: str = "", platforms: list | None = None,
                 due: str = "", file_ids: list | None = None, length_s: int | None = None, actor: str = "owner", conv: str = "") -> dict:
     if (actor or "").startswith("customer:"):
-        raise EditError("Yeh kaam graahak ke liye nahi.")
+        raise EditError("This action is not for a customer.")
     t0 = today(tenant)
     facts = R.parse_brief(brief, t0) if brief else {}
     with _LOCK, session() as s:
@@ -434,7 +434,7 @@ def project_new(tenant: str, client: str = "", title: str = "", brief: str = "",
                             created_by=actor_name(tenant, actor))
         d = R.date_of(due, t0) if due else None
         if due and d is None:
-            raise EditError("Delivery ki tareekh samajh nahi aayi.")
+            raise EditError("Could not understand the delivery date.")
         p.due = (d.isoformat() if d else facts.get("due", ""))
         if "captions" in facts:
             p.captions = bool(facts["captions"])
@@ -445,13 +445,13 @@ def project_new(tenant: str, client: str = "", title: str = "", brief: str = "",
         for pf in pfs:
             if pf in R.PLATFORM_LABEL and not any(x["platform"] == pf for x in _j(p.deliverables, [])):
                 _new_deliverable(p, pf, length_s or facts.get("length_s"))
-        _log(p, "Project bana", actor_name(tenant, actor))
+        _log(p, "Project created", actor_name(tenant, actor))
         pid = p.id
     if file_ids:
         footage_add(tenant, pid, file_ids, actor=actor)
     v = project_view(tenant, pid)
     q = v["questions"]
-    say = f"{v['number']} bana: {v['title']}. " + (f"Brief mein yeh baaki: {'; '.join(q[:3])}" if q else "Brief poora lag raha hai.")
+    say = f"{v['number']} created: {v['title']}. " + (f"Still missing in the brief: {'; '.join(q[:3])}" if q else "The brief looks complete.")
     return {"project": v, "say": say}
 
 
@@ -460,7 +460,7 @@ def project_update(tenant: str, ref: str, actor: str = "owner", **kw) -> dict:
     with _LOCK, session() as s:
         p = _project(s, tenant, ref)
         if p.status in ("cancelled", "closed"):
-            raise EditError("Project band hai.")
+            raise EditError("The project is closed.")
         if kw.get("brief"):
             add = R.parse_brief(kw["brief"], t0)
             facts = _j(p.facts, {})
@@ -474,7 +474,7 @@ def project_update(tenant: str, ref: str, actor: str = "owner", **kw) -> dict:
         if kw.get("due"):
             d = R.date_of(kw["due"], t0)
             if d is None:
-                raise EditError("Tareekh samajh nahi aayi.")
+                raise EditError("Could not understand the date.")
             p.due = d.isoformat()
         if kw.get("kind"):
             p.kind = R.kind_of(kw["kind"]) or p.kind
@@ -499,7 +499,7 @@ def project_update(tenant: str, ref: str, actor: str = "owner", **kw) -> dict:
                 if d is None or x["id"] == d["id"]:
                     x["length_s"] = int(kw["length_s"])
             p.deliverables = _dump(dl)
-        _log(p, "Project badla", actor_name(tenant, actor))
+        _log(p, "Project changed", actor_name(tenant, actor))
         pid = p.id
     return {"project": project_view(tenant, pid), "say": "Project update."}
 
@@ -533,10 +533,10 @@ def footage_add(tenant: str, ref: str, file_ids: list | None = None, item: str =
         if p.status == "brief" and files:
             p.status = "footage"
         if len(_j(p.files, [])) == 8 and len(files) > 8:
-            _log(p, "Engine ek job mein 8 files tak leta hai", "Hoola")
+            _log(p, "The engine takes up to 8 files in one job", "Hoola")
         _log(p, f"Footage: {', '.join(n for _, n in names) or item}", actor_name(tenant, actor))
         pid = p.id
-    return {"project": project_view(tenant, pid), "say": f"Footage juda ({len(names)} file)."}
+    return {"project": project_view(tenant, pid), "say": f"Footage added ({len(names)} file(s))."}
 
 
 # ---------------------------------------------------------------- licences
@@ -565,10 +565,10 @@ def licence_add(tenant: str, project: str = "", kind: str = "music", title: str 
             x = s.scalars(select(EditdeskLicence).where(EditdeskLicence.tenant_id == tenant,
                                                         (EditdeskLicence.id == ref) | (EditdeskLicence.number == ref.upper()))).first()
             if x is None:
-                raise EditError(f"Licence '{ref}' nahi mila.")
+                raise EditError(f"Licence '{ref}' was not found.")
         if x is None:
             if not title.strip():
-                raise EditError("Licence kis cheez ka hai (gaane / clip ka naam)?")
+                raise EditError("What is the licence for (name of the song / clip)?")
             x = EditdeskLicence(tenant_id=tenant, number=f"L-{_next(st, 'licence'):03d}")
             s.add(x)
         if p is not None:
@@ -591,7 +591,7 @@ def licence_add(tenant: str, project: str = "", kind: str = "music", title: str 
         s.flush()
         com = _commercial(s, p) if p else True
         v = _lic_view(x, com, today(tenant))
-    say = f"{v['number']} {v['title']}: " + ("theek." if v["ok"] else "rukawat: " + "; ".join(v["blockers"]))
+    say = f"{v['number']} {v['title']}: " + ("OK." if v["ok"] else "blocked: " + "; ".join(v["blockers"]))
     return {"licence": v, "say": say}
 
 
@@ -629,7 +629,7 @@ def _licence_state(s, tenant: str, p: EditdeskProject) -> tuple[list[str], list[
         block += [f"{x.number} {x.title}: {b}" for b in v["blockers"]]
         warn += [f"{x.number} {x.title}: {w}" for w in v["warnings"]]
     if p.music_file_id and not any(x.file_id == p.music_file_id for x in rows):
-        block.append("Project ke music file ka licence register mein nahi hai (licence_add file_id ke saath).")
+        block.append("The project's music file has no licence in the register (licence_add with file_id).")
     return block, warn
 
 
@@ -648,13 +648,13 @@ def _music_ok(s, tenant: str, p: EditdeskProject) -> None:
         return
     rows = s.scalars(select(EditdeskLicence).where(EditdeskLicence.tenant_id == tenant, EditdeskLicence.file_id == p.music_file_id)).all()
     if not rows:
-        raise EditError("Is music ka licence register mein nahi hai: pehle `licence_add` (source, licence type, proof) kijiye. "
-                        "Instagram / YouTube se uthaya gaana brand video mein nahi chalega.")
+        raise EditError("This music has no licence in the register: first run `licence_add` (source, licence type, proof). "
+                        "A song taken from Instagram / YouTube cannot be used in a brand video.")
     t0 = today(tenant)
     com = _commercial(s, p)
     bad = [b for x in rows for b in _lic_view(x, com, t0)["blockers"]]
     if bad:
-        raise EditError("Music licence mein rukawat: " + "; ".join(bad))
+        raise EditError("Music licence is blocked: " + "; ".join(bad))
 
 
 def _compose_brief(p: EditdeskProject, d: dict) -> str:
@@ -675,15 +675,15 @@ def edit_start(tenant: str, ref: str, deliverable: str = "", actor: str = "owner
     with _LOCK, session() as s:
         p = _project(s, tenant, ref)
         if p.status in ("cancelled", "closed", "delivered"):
-            raise EditError("Project band / de diya gaya hai.")
+            raise EditError("The project is closed / delivered.")
         d = _deliv(p, deliverable)
         if d is None:
-            raise EditError("Kaunsa deliverable? " + ", ".join(f"{x['id']} {x['label']}" for x in _j(p.deliverables, [])))
+            raise EditError("Which deliverable? " + ", ".join(f"{x['id']} {x['label']}" for x in _j(p.deliverables, [])))
         if d.get("job_id"):
-            raise EditError(f"{d['label']} ka edit pehle se hai; badlav ke liye client notes + `revise`.")
+            raise EditError(f"{d['label']} already has an edit; for changes use client notes + `revise`.")
         files = _j(p.files, [])
         if not files:
-            raise EditError("Footage nahi juda: pehle files attach karke `footage` kijiye.")
+            raise EditError("No footage added: first attach the files and run `footage`.")
         _music_ok(s, tenant, p)
         brief, opts = _compose_brief(p, d), {"platform": d["platform"], "length_s": d.get("length_s"), "captions": bool(p.captions),
                                               "logo": p.logo_file_id, "music": p.music_file_id, "title": p.title[:120]}
@@ -694,7 +694,7 @@ def edit_start(tenant: str, ref: str, deliverable: str = "", actor: str = "owner
                       logo_file_id=opts["logo"], music_file_id=opts["music"], title=opts["title"], conversation_id=cv,
                       created_by=actor_name(tenant, actor))
     except Exception as e:
-        raise EditError(f"Edit shuru nahi hua: {e}")
+        raise EditError(f"The edit did not start: {e}")
     with _LOCK, session() as s:
         p = s.get(EditdeskProject, pid)
         dl = _j(p.deliverables, [])
@@ -703,9 +703,9 @@ def edit_start(tenant: str, ref: str, deliverable: str = "", actor: str = "owner
                 x["job_id"], x["status"] = job["id"], "editing"
         p.deliverables = _dump(dl)
         p.status = "editing"
-        _log(p, f"{d['label']}: edit shuru (job {job['id']})", actor_name(tenant, actor))
+        _log(p, f"{d['label']}: edit started (job {job['id']})", actor_name(tenant, actor))
     return {"job": job, "project": project_view(tenant, pid),
-            "say": f"{d['label']} ka edit shuru; version taiyaar hote hi note aayega (baar baar poochhne ki zaroorat nahi)."}
+            "say": f"{d['label']}: edit started; a note will come as soon as the version is ready (no need to keep asking)."}
 
 
 def _versions(tenant: str, d: dict) -> tuple[list[dict], dict | None]:
@@ -755,7 +755,7 @@ def sync(tenant: str, ref: str) -> dict:
                 p.status = "review"
         number, cv = p.number, p.conv
     for lb in told:
-        _publish(tenant, "editdesk_note", {"project": number, "say": f"{number}: {lb} taiyaar. Dekh kar client ko review link ka card banau?"}, cv)
+        _publish(tenant, "editdesk_note", {"project": number, "say": f"{number}: {lb} is ready. Shall I make a card to send the client the review link after you look at it?"}, cv)
     return {"project": project_view(tenant, pid), "new": told}
 
 
@@ -769,7 +769,7 @@ def comments_add(tenant: str, ref: str, text: str, deliverable: str = "", versio
     """The client's review notes (pasted / forwarded / told on a call) -> timecoded comments. Their words are DATA."""
     items = R.parse_comments(text)
     if not items:
-        raise EditError("Notes mein kuch nahi mila.")
+        raise EditError("Nothing found in the notes.")
     with _LOCK, session() as s:
         p = _project(s, tenant, ref)
         d = _deliv(p, deliverable) if deliverable else _deliv(p, "")
@@ -783,14 +783,14 @@ def comments_add(tenant: str, ref: str, text: str, deliverable: str = "", versio
             out.append(_comment_view(c))
         if p.status == "review":
             p.review_sent_at = None
-        _log(p, f"{len(out)} review notes aaye", actor_name(tenant, actor))
+        _log(p, f"{len(out)} review notes came in", actor_name(tenant, actor))
         left = _rounds_left(p)
         pid = p.id
     extra = [c for c in out if c["scope"] == "extra"]
-    say = f"{len(out)} notes likhe ({sum(1 for c in out if c['at_s'] is not None)} timecode ke saath). "
-    say += f"Rounds baaki: {left}. " if left > 0 else "Quote ke saare revision rounds use ho chuke: agla round extra charge ka card hoga. "
+    say = f"{len(out)} notes recorded ({sum(1 for c in out if c['at_s'] is not None)} with a timecode). "
+    say += f"Rounds left: {left}. " if left > 0 else "All the quote's revision rounds are used: the next round will be an extra-charge card. "
     if extra:
-        say += f"{len(extra)} note quote se bahar ka kaam lagta hai (naya video / reshoot / dubbing): alag charge ka card."
+        say += f"{len(extra)} note(s) look like work outside the quote (new video / reshoot / dubbing): a separate charge card."
     return {"comments": out, "project": project_view(tenant, pid), "say": say}
 
 
@@ -800,7 +800,7 @@ def comment_status(tenant: str, comment_id: str, status: str) -> dict:
     with _LOCK, session() as s:
         c = s.get(EditdeskComment, comment_id)
         if c is None or c.tenant_id != tenant:
-            raise EditError("Note nahi mila.")
+            raise EditError("Note not found.")
         c.status = status
         return {"comment": _comment_view(c), "say": "Note update."}
 
@@ -826,33 +826,33 @@ def revise(tenant: str, ref: str, deliverable: str = "", free: bool = False, act
     with _LOCK, session() as s:
         p = _project(s, tenant, ref)
         if p.status in ("cancelled", "closed", "delivered"):
-            raise EditError("Project band / de diya gaya hai.")
+            raise EditError("The project is closed / delivered.")
         dl = _j(p.deliverables, [])
         targets = [x for x in dl if x.get("job_id") and (not deliverable or x["id"] == (_deliv(p, deliverable) or {}).get("id"))]
         if not targets:
-            raise EditError("Pehle edit ka version banna chahiye (`edit`).")
+            raise EditError("A version of the edit must exist first (`edit`).")
         notes = s.scalars(select(EditdeskComment).where(EditdeskComment.tenant_id == tenant, EditdeskComment.project_id == p.id,
                                                         EditdeskComment.status == "open")).all()
         fix = [c for c in notes if c.scope == "fix"]
         extra = [c for c in notes if c.scope == "extra"]
         if not fix:
-            raise EditError("Koi khula 'fix' note nahi." + (" Jo hain woh quote se bahar ka kaam lagte hain: `charge` card." if extra else ""))
+            raise EditError("No open 'fix' note." + (" The ones there look like work outside the quote: `charge` card." if extra else ""))
         need_card = None
         if _rounds_left(p) <= 0:
             if free:
                 if not is_owner(actor):
-                    raise EditError("Free round sirf owner de sakti hain.")
+                    raise EditError("Only the owner can give a free round.")
                 p.free_rounds = int(p.free_rounds or 0) + 1
-                _log(p, "Owner ne ek round free diya", "Owner")
+                _log(p, "The owner gave one round free", "Owner")
             else:
                 need_card = _round_fee(s, tenant, p)
                 if need_card is None:
-                    raise EditError("Quote ke revision rounds khatam. Extra round ka daam aapne nahi bataya: settings extra_round_fee "
-                                    "ya quote mein likhiye, ya 'free' round dijiye.")
+                    raise EditError("The quote's revision rounds are used up. You have not set a price for an extra round: write it in settings extra_round_fee "
+                                    "or in the quote, or give a 'free' round.")
         pid = p.id
     if need_card is not None:
         out = _make_card(tenant, "extra", pid, {"what": "round", "amount": need_card}, actor, conv)
-        out["say"] = (f"Quote ke saare revision rounds use ho chuke. Extra round {_rs(need_card)}: " + out["say"])
+        out["say"] = (f"All the quote's revision rounds are used. Extra round {_rs(need_card)}: " + out["say"])
         return out
     with _LOCK, session() as s:
         p = s.get(EditdeskProject, pid)
@@ -868,7 +868,7 @@ def revise(tenant: str, ref: str, deliverable: str = "", free: bool = False, act
             if mine:
                 jobs.append((x, _instruction(p, mine, rnd), [c.id for c in mine]))
         if not jobs:
-            raise EditError("In notes ka deliverable nahi mila.")
+            raise EditError("The deliverable for these notes was not found.")
         pid = p.id
     V = _engine()
     done, errs = [], []
@@ -879,7 +879,7 @@ def revise(tenant: str, ref: str, deliverable: str = "", free: bool = False, act
         except Exception as e:
             errs.append(f"{x['label']}: {e}")
     if not done:
-        raise EditError("Badlav shuru nahi hua: " + "; ".join(errs))
+        raise EditError("The changes did not start: " + "; ".join(errs))
     with _LOCK, session() as s:
         p = s.get(EditdeskProject, pid)
         p.rounds_used = rnd
@@ -893,11 +893,11 @@ def revise(tenant: str, ref: str, deliverable: str = "", free: bool = False, act
             if any(y["id"] == x["id"] for x, _ in done):
                 y["status"] = "editing"
         p.deliverables = _dump(dlv)
-        _log(p, f"Revision round {rnd} engine ko gaya", actor_name(tenant, actor))
+        _log(p, f"Revision round {rnd} sent to the engine", actor_name(tenant, actor))
         left = _rounds_left(p)
-    say = f"Round {rnd} shuru ({', '.join(x['label'] for x, _ in done)}). Rounds baaki: {max(left, 0)}."
+    say = f"Round {rnd} started ({', '.join(x['label'] for x, _ in done)}). Rounds left: {max(left, 0)}."
     if errs:
-        say += " Nahi hua: " + "; ".join(errs)
+        say += " Failed: " + "; ".join(errs)
     return {"project": project_view(tenant, pid), "round": rnd, "say": say}
 
 
@@ -914,21 +914,21 @@ def client_ok(tenant: str, ref: str, deliverable: str = "", version: int | None 
         p = _project(s, tenant, ref)
         d = _deliv(p, deliverable)
         if d is None:
-            raise EditError("Kaunsa deliverable?")
+            raise EditError("Which deliverable?")
         vs, _ = _versions(tenant, d)
         if not vs:
-            raise EditError("Abhi koi version nahi.")
+            raise EditError("No version yet.")
         n = int(version or vs[-1]["n"])
         if n not in [v["n"] for v in vs]:
-            raise EditError(f"v{n} nahi hai.")
+            raise EditError(f"v{n} does not exist.")
         ap = _j(p.approved, {})
         ap[d["id"]] = n
         p.approved = _dump(ap)
         if all(ap.get(x["id"]) for x in _j(p.deliverables, [])):
             p.status = "approved"
-        _log(p, f"Client ne {d['label']} v{n} OK kiya", actor_name(tenant, actor))
+        _log(p, f"{d['label']} v{n} approved by the client", actor_name(tenant, actor))
         pid = p.id
-    return {"project": project_view(tenant, pid), "say": f"{d['label']} v{n}: client ka OK likh liya."}
+    return {"project": project_view(tenant, pid), "say": f"{d['label']} v{n}: client's OK recorded."}
 
 
 # ---------------------------------------------------------------- money: quote / invoices
@@ -956,7 +956,7 @@ def _clean_lines(st: EditdeskSettings, lines: list | None) -> tuple[list[dict], 
             rate = rc.get("rate")
         amt = round(qty * rate, 2) if rate is not None else None
         if rate is None:
-            blanks.append(f"{what}: daam?")
+            blanks.append(f"{what}: price?")
         out.append({"what": what, "qty": qty, "unit": R.clean(r.get("unit") or (rc or {}).get("unit") or "nos", 20), "rate": rate, "amount": amt})
     return out, blanks
 
@@ -964,13 +964,13 @@ def _clean_lines(st: EditdeskSettings, lines: list | None) -> tuple[list[dict], 
 def _tax(st: EditdeskSettings, client: EditdeskClient | None, base: float) -> dict:
     if not (st.gst_on and st.gstin):
         return {"pct": 0, "cgst": 0, "sgst": 0, "igst": 0, "tax": 0.0, "kind": "none",
-                "note": "GST nahi (aap registered / GST on nahi). " + R.GST_NOTE}
+                "note": "No GST (you are not registered / GST is off). " + R.GST_NOTE}
     if client is not None and (client.country or "India").strip().lower() not in ("india", "in", "bharat", ""):
         return {"pct": 0, "cgst": 0, "sgst": 0, "igst": 0, "tax": 0.0, "kind": "export",
-                "note": "Videsh client: export of services, LUT ke saath zero-rated (LUT number invoice par; paisa foreign currency mein)."}
+                "note": "Foreign client: export of services, zero-rated with a LUT (LUT number on the invoice; payment in foreign currency)."}
     cs = (client.state if client else "") or ""
     g = R.gst_split(st.gstin[:2], cs, st.gst_pct, base)
-    g["note"] = f"SAC {st.sac} @ {st.gst_pct:g}%" + ("" if cs else " (client ka state nahi pata: CGST + SGST maana; GSTIN / state dijiye)")
+    g["note"] = f"SAC {st.sac} @ {st.gst_pct:g}%" + ("" if cs else " (client's state not known: CGST + SGST assumed; give the GSTIN / state)")
     return g
 
 
@@ -1010,10 +1010,10 @@ def quote_make(tenant: str, ref: str, lines: list | None = None, rounds: int | N
         st = _st(s, tenant)
         p = _project(s, tenant, ref)
         if not lines:
-            raise EditError("Quote ki lines dijiye (kaam, qty, rate) ya rate card ke code.")
+            raise EditError("Give the quote lines (work, qty, rate) or rate card codes.")
         ls, _blanks = _clean_lines(st, lines)
         if not ls:
-            raise EditError("Quote mein koi line nahi bani.")
+            raise EditError("No line could be made for the quote.")
         for old in s.scalars(select(EditdeskQuote).where(EditdeskQuote.project_id == p.id, EditdeskQuote.status == "draft")).all():
             old.status = "old"
         vd = today(tenant) + timedelta(days=int(valid_days or 15))
@@ -1026,27 +1026,27 @@ def quote_make(tenant: str, ref: str, lines: list | None = None, rounds: int | N
         s.flush()
         v = _quote_view(s, tenant, q)
         _log(p, "Quote draft", actor_name(tenant, actor))
-    say = f"Quote draft {_rs(v['total'])}" + (f"; daam baaki: {', '.join(v['blanks'])}" if v["blanks"] else "") + ". Bhejne ke liye `quote_send` (aapki haan ka card)."
+    say = f"Quote draft {_rs(v['total'])}" + (f"; price missing: {', '.join(v['blanks'])}" if v["blanks"] else "") + ". To send it, use `quote_send` (a card for your approval)."
     return {"quote": v, "say": say}
 
 
 def quote_accept(tenant: str, ref: str, actor: str = "owner") -> dict:
     """The client said yes to the quote that went (her word): rounds from it, advance invoice can follow."""
     if not is_owner(actor):
-        raise EditError("Sirf owner.")
+        raise EditError("Owner only.")
     with _LOCK, session() as s:
         p = _project(s, tenant, ref)
         q = s.scalars(select(EditdeskQuote).where(EditdeskQuote.project_id == p.id, EditdeskQuote.status == "sent")
                       .order_by(EditdeskQuote.created_at.desc())).first()
         if q is None:
-            raise EditError("Bheja hua quote nahi mila (pehle quote card par haan).")
+            raise EditError("No sent quote found (approve the quote card first).")
         for o in s.scalars(select(EditdeskQuote).where(EditdeskQuote.project_id == p.id, EditdeskQuote.status == "accepted")).all():
             o.status = "old"
         q.status = "accepted"
         p.rounds_quoted = q.rounds
-        _log(p, f"Client ne quote {q.number} maana", "Owner")
+        _log(p, f"Quote {q.number} accepted by the client", "Owner")
         v = _quote_view(s, tenant, q)
-    return {"quote": v, "say": f"Quote {v['number']} pakka; {v['rounds']} revision rounds. Advance {_rs(v['advance'])} maangne ka card banau?"}
+    return {"quote": v, "say": f"Quote {v['number']} confirmed; {v['rounds']} revision rounds. Advance {_rs(v['advance'])}: shall I make a card to request it?"}
 
 
 def _invoiced(s, p: EditdeskProject) -> list[EditdeskInvoice]:
@@ -1070,7 +1070,7 @@ def _money(s, tenant: str, p: EditdeskProject) -> dict:
     billed = round(sum(i.total for i in invs if i.status != "draft"), 2)
     got = round(sum(_received(i) for i in invs), 2)
     tds = round(sum(float(x.get("tds") or 0) for i in invs for x in _j(i.payments, [])), 2)
-    return {"agreed": agreed, "agreed_text": _rs(agreed) if agreed is not None else "quote pakka nahi", "billed": billed,
+    return {"agreed": agreed, "agreed_text": _rs(agreed) if agreed is not None else "quote not confirmed", "billed": billed,
             "received": got, "tds": tds, "balance": round((agreed or billed) - got, 2) if (agreed or billed) else 0.0,
             "extras": extras, "quote": q.number if q else ""}
 
@@ -1080,17 +1080,17 @@ def _invoice_lines(s, tenant: str, p: EditdeskProject, kind: str, amount: float 
     q = _accepted_quote(s, p)
     if kind == "advance":
         if q is None:
-            raise EditError("Advance ke liye pehle quote pakka (quote_accept).")
+            raise EditError("An advance needs a confirmed quote first (quote_accept).")
         base = round(_totals(st, None, _j(q.lines, []))["subtotal"] * q.advance_pct / 100, 2)
         return [{"what": f"Advance {q.advance_pct:g}% of quote {q.number} ({p.number})", "qty": 1, "unit": "nos", "rate": base, "amount": base}]
     if kind == "extra":
         if amount is None:
-            raise EditError("Extra invoice ka amount aapse chahiye.")
+            raise EditError("You have to give the amount for an extra invoice.")
         return [{"what": R.clean(what or "Extra work", 160), "qty": 1, "unit": "nos", "rate": amount, "amount": amount}]
     # final: quote lines + approved extras - advance bases already billed
     if q is None:
         if amount is None:
-            raise EditError("Quote pakka nahi: final invoice ka amount aap bataiye.")
+            raise EditError("The quote is not confirmed: you have to give the amount for the final invoice.")
         return [{"what": R.clean(what or f"Video editing {p.number}", 160), "qty": 1, "unit": "nos", "rate": amount, "amount": amount}]
     lines = [dict(x) for x in _j(q.lines, [])]
     for e in _j(p.extras, []):
@@ -1108,10 +1108,10 @@ def invoice_request(tenant: str, ref: str, kind: str = "final", amount: Any = No
     with _LOCK, session() as s:
         p = _project(s, tenant, ref)
         if kind == "advance" and any(i.kind == "advance" and i.status != "draft" for i in _invoiced(s, p)):
-            raise EditError("Advance invoice pehle hi gaya hai.")
+            raise EditError("The advance invoice has already been sent.")
         lines = _invoice_lines(s, tenant, p, kind, _num(amount), what)
         if any(ln.get("amount") is None for ln in lines):
-            raise EditError("Kuch lines ka daam nahi: quote / rate card mein bharye.")
+            raise EditError("Some lines have no price: fill them in the quote / rate card.")
         for old in s.scalars(select(EditdeskInvoice).where(EditdeskInvoice.project_id == p.id, EditdeskInvoice.status == "draft",
                                                            EditdeskInvoice.kind == kind)).all():
             old.status = "void"
@@ -1119,7 +1119,7 @@ def invoice_request(tenant: str, ref: str, kind: str = "final", amount: Any = No
         c = s.get(EditdeskClient, p.client_id) if p.client_id else None
         t = _totals(st, c, lines)
         if t["total"] <= 0:
-            raise EditError("Is invoice mein kuch baaki nahi (sab pehle bill ho gaya).")
+            raise EditError("Nothing is left for this invoice (everything is already billed).")
         inv = EditdeskInvoice(tenant_id=tenant, project_id=p.id, kind=kind, lines=_dump(lines), subtotal=t["subtotal"],
                               gst=_dump(t["gst"]), total=t["total"])
         s.add(inv)
@@ -1131,10 +1131,10 @@ def invoice_request(tenant: str, ref: str, kind: str = "final", amount: Any = No
 def paid(tenant: str, ref: str, amount: Any, tds: Any = None, mode: str = "upi", utr: str = "", invoice: str = "", actor: str = "owner") -> dict:
     """She records money that reached HER account (Hoola never takes it). TDS the client deducted counts against the invoice."""
     if not is_owner(actor):
-        raise EditError("Sirf owner.")
+        raise EditError("Owner only.")
     amt, td = _num(amount), _num(tds) or 0.0
     if amt is None or amt < 0:
-        raise EditError("Kitne paise aaye?")
+        raise EditError("How much money came in?")
     with _LOCK, session() as s:
         p = _project(s, tenant, ref)
         st = _st(s, tenant)
@@ -1142,7 +1142,7 @@ def paid(tenant: str, ref: str, amount: Any, tds: Any = None, mode: str = "upi",
         if invoice:
             invs = [i for i in invs if invoice.upper() in (i.number, i.id.upper())]
         if not invs:
-            raise EditError("Koi bheja hua, baaki invoice nahi.")
+            raise EditError("No sent invoice is pending.")
         inv = sorted(invs, key=lambda i: i.created_at)[0]
         pays = _j(inv.payments, [])
         rno = f"R/{_fy(today(tenant))}/{_next(st, 'receipt_' + _fy(today(tenant))):03d}"
@@ -1152,12 +1152,12 @@ def paid(tenant: str, ref: str, amount: Any, tds: Any = None, mode: str = "upi",
         inv.status = "paid" if got >= inv.total - 0.5 else "part"
         if inv.kind == "final" and inv.status == "paid" and p.status == "delivered":
             p.status = "closed"
-        _log(p, f"Paise mile {_rs(amt)} (TDS {_rs(td)}) {inv.number} · {rno}", "Owner")
+        _log(p, f"Payment received {_rs(amt)} (TDS {_rs(td)}) {inv.number} · {rno}", "Owner")
         m = _money(s, tenant, p)
         number, inum, ist, pid = p.number, inv.number, inv.status, p.id
-    say = f"{number}: {_rs(amt)} mile ({inum}, receipt {rno}). Invoice {('poora' if ist == 'paid' else 'aadha')}; baaki {_rs(m['balance'])}."
+    say = f"{number}: {_rs(amt)} received ({inum}, receipt {rno}). Invoice {('paid in full' if ist == 'paid' else 'partly paid')}; balance {_rs(m['balance'])}."
     if td:
-        say += " TDS client ne kaata: Form 26AS / AIS mein dekhiye."
+        say += " The client deducted TDS: check it in Form 26AS / AIS."
     return {"money": m, "receipt": rno, "project": project_view(tenant, pid), "say": say}
 
 
@@ -1165,7 +1165,7 @@ def charge_request(tenant: str, ref: str, what: str, amount: Any, actor: str = "
     """An extra charge outside the quote (extra deliverable, reshoot edit, dubbing ...): HER amount, HER tap."""
     amt = _num(amount)
     if amt is None or amt <= 0:
-        raise EditError("Extra kaam ka daam aap bataiye (Hoola daam nahi gadhta).")
+        raise EditError("You have to give the price for extra work (Hoola does not make up prices).")
     with session() as s:
         pid = _project(s, tenant, ref).id
     return _make_card(tenant, "extra", pid, {"what": R.clean(what or "Extra work", 160), "amount": amt}, actor, conv)
@@ -1195,14 +1195,14 @@ def _latest(tenant: str, p: EditdeskProject) -> list[dict]:
 def _show(s, tenant: str, kind: str, p: EditdeskProject | None, inp: dict) -> dict:
     """What the card shows, rebuilt from the state NOW (the hash covers it: any change after the card = stale)."""
     if p is None:
-        raise EditError("Project nahi mila.")
+        raise EditError("Project not found.")
     c = s.get(EditdeskClient, p.client_id) if p.client_id else None
     base = {"project": p.number, "title": p.title, "client": c.name if c else "", "phone": c.phone if c else "",
             "email": c.email if c else "", "no_messages": bool(c.no_messages) if c else False}
     if kind == "quote":
         q = s.get(EditdeskQuote, inp.get("quote", ""))
         if q is None or q.status != "draft":
-            raise EditError("Draft quote nahi mila.")
+            raise EditError("Draft quote not found.")
         v = _quote_view(s, tenant, q)
         return {**base, "lines": v["lines"], "subtotal": v["subtotal"], "gst": v["gst"], "total": v["total"], "total_text": v["total_text"],
                 "rounds": v["rounds"], "extra_round_fee": v["extra_round_fee"], "advance_pct": v["advance_pct"],
@@ -1210,14 +1210,14 @@ def _show(s, tenant: str, kind: str, p: EditdeskProject | None, inp: dict) -> di
     if kind == "invoice":
         inv = s.get(EditdeskInvoice, inp.get("invoice", ""))
         if inv is None or inv.status != "draft":
-            raise EditError("Draft invoice nahi mila.")
+            raise EditError("Draft invoice not found.")
         upi, _ = _upi_of(tenant)
         return {**base, "invoice_kind": inv.kind, "lines": _j(inv.lines, []), "subtotal": inv.subtotal, "gst": _j(inv.gst, {}),
                 "total": inv.total, "amount": inv.total, "amount_text": _rs(inv.total), "upi": upi, "_in": inp}
     if kind == "review":
         lat = [x for x in _latest(tenant, p) if x["n"]]
         if not lat:
-            raise EditError("Review ke liye koi version nahi.")
+            raise EditError("No version for review.")
         return {**base, "versions": [{"label": x["label"], "n": x["n"], "url": x["url"]} for x in lat],
                 "rounds_left": max(_rounds_left(p), 0), "text": inp.get("text", ""), "_in": inp}
     if kind == "message":
@@ -1231,26 +1231,26 @@ def _show(s, tenant: str, kind: str, p: EditdeskProject | None, inp: dict) -> di
         block, warn = _licence_state(s, tenant, p)
         for x in lat:
             if not x["n"]:
-                block.append(f"{x['label']}: koi version nahi.")
+                block.append(f"{x['label']}: no version.")
             elif x["active"]:
-                block.append(f"{x['label']}: abhi edit chal raha hai.")
+                block.append(f"{x['label']}: the edit is still running.")
             elif not x["approved"]:
-                warn.append(f"{x['label']} v{x['n']}: client ka OK nahi likha.")
+                warn.append(f"{x['label']} v{x['n']}: client's OK not recorded.")
         open_n = s.scalars(select(EditdeskComment).where(EditdeskComment.project_id == p.id, EditdeskComment.status == "open")).all()
         if open_n:
-            warn.append(f"{len(open_n)} client notes abhi khule hain.")
+            warn.append(f"{len(open_n)} client notes are still open.")
         m = _money(s, tenant, p)
         st = _st(s, tenant)
         if m["balance"] > 0.5:
-            (block if st.hold_final_unpaid else warn).append(f"Paise baaki {_rs(m['balance'])}.")
+            (block if st.hold_final_unpaid else warn).append(f"Payment pending {_rs(m['balance'])}.")
         return {**base, "files": [{"label": x["label"], "n": x["n"], "file_id": x["file_id"], "url": x["url"]} for x in lat if x["n"]],
                 "blockers": block, "warnings": warn, "balance": m["balance"], "balance_text": _rs(m["balance"]),
-                "note": "Final link 10 din chalta hai; client ko download karne ko kahiye. " + R.COPYRIGHT_NOTE, "_in": inp}
+                "note": "The final link works for 10 days; ask the client to download. " + R.COPYRIGHT_NOTE, "_in": inp}
     if kind == "refund":
         m = _money(s, tenant, p)
         return {**base, "amount": inp.get("amount"), "amount_text": _rs(inp.get("amount")), "received": m["received"],
                 "why": inp.get("why", ""), "status": p.status, "_in": inp}
-    raise EditError(f"card '{kind}' nahi pehchana.")
+    raise EditError(f"card '{kind}' is not a known card.")
 
 
 def _make_card(tenant: str, kind: str, project_id: str, inp: dict, actor: str = "owner", conv: str = "") -> dict:
@@ -1258,14 +1258,14 @@ def _make_card(tenant: str, kind: str, project_id: str, inp: dict, actor: str = 
         p = s.get(EditdeskProject, project_id)
         show = _show(s, tenant, kind, p, inp)
         if kind == "quote" and show.get("blanks"):
-            raise EditError("Quote mein daam baaki: " + ", ".join(show["blanks"]))
+            raise EditError("Price missing in the quote: " + ", ".join(show["blanks"]))
         h = R.digest(show)
         old = s.scalars(select(EditdeskCard).where(EditdeskCard.tenant_id == tenant, EditdeskCard.kind == kind,
                                                    EditdeskCard.project_id == project_id, EditdeskCard.status == "waiting")).all()
         for o in old:
             if o.hash == h:
                 return {"card": _card_view(o), "status": "needs_tap", "existing": True,
-                        "say": "Yahi card pehle se aapki haan ka intezaar kar raha hai."}
+                        "say": "This same card is already waiting for your approval."}
             o.status = "stale"
         c = EditdeskCard(tenant_id=tenant, project_id=project_id, kind=kind, show=_dump(show), hash=h,
                          asked_by=actor_name(tenant, actor), conv=conv or p.conv)
@@ -1273,9 +1273,9 @@ def _make_card(tenant: str, kind: str, project_id: str, inp: dict, actor: str = 
         s.flush()
         v = _card_view(c)
         cv = c.conv
-    say = f"{CARD_TITLE[kind]}: {v['show'].get('project', '')} aapki haan ka card bheja hai."
+    say = f"{CARD_TITLE[kind]}: {v['show'].get('project', '')} - card sent for your approval."
     if kind == "delivery" and v["show"].get("blockers"):
-        say += " Rukawat: " + "; ".join(v["show"]["blockers"][:3])
+        say += " Blocked: " + "; ".join(v["show"]["blockers"][:3])
     _publish(tenant, "editdesk_card", {"card": v, "say": say}, cv)
     return {"card": v, "status": "needs_tap", "say": say}
 
@@ -1286,7 +1286,7 @@ def quote_request(tenant: str, ref: str, actor: str = "owner", conv: str = "") -
         q = s.scalars(select(EditdeskQuote).where(EditdeskQuote.project_id == p.id, EditdeskQuote.status == "draft")
                       .order_by(EditdeskQuote.created_at.desc())).first()
         if q is None:
-            raise EditError("Pehle quote draft (`quote`).")
+            raise EditError("Draft the quote first (`quote`).")
         pid, qid = p.id, q.id
     return _make_card(tenant, "quote", pid, {"quote": qid}, actor, conv)
 
@@ -1316,17 +1316,17 @@ def deliver_request(tenant: str, ref: str, actor: str = "owner", conv: str = "")
 
 def cancel(tenant: str, ref: str, reason: str, refund: Any = None, actor: str = "owner", conv: str = "") -> dict:
     if not is_owner(actor):
-        raise EditError("Sirf owner.")
+        raise EditError("Owner only.")
     if not (reason or "").strip():
-        raise EditError("Radd karne ki wajah likhiye.")
+        raise EditError("Write the reason for cancelling.")
     amt = _num(refund)
     with _LOCK, session() as s:
         p = _project(s, tenant, ref)
         if p.status in ("closed", "cancelled"):
-            raise EditError("Project pehle hi band hai.")
+            raise EditError("The project is already closed.")
         m = _money(s, tenant, p)
         if amt and amt > m["received"] + 0.5:
-            raise EditError(f"Refund {_rs(amt)} mile hue {_rs(m['received'])} se zyada nahi ho sakta.")
+            raise EditError(f"Refund {_rs(amt)} cannot be more than the received {_rs(m['received'])}.")
         p.status = "cancelled"
         for c in s.scalars(select(EditdeskCard).where(EditdeskCard.project_id == p.id, EditdeskCard.status == "waiting")).all():
             c.status = "stale"
@@ -1357,10 +1357,10 @@ def card_challenge(tenant: str, card_id: str) -> dict:
     with session() as s:
         c = s.get(EditdeskCard, card_id)
         if c is None or c.tenant_id != tenant:
-            raise EditError("Card nahi mila.")
+            raise EditError("Card not found.")
         v = _card_view(c)
     if v["status"] != "waiting" or v["kind"] not in MONEY_CARDS:
-        raise EditError("Yeh card ab baaki nahi hai.")
+        raise EditError("This card is no longer pending.")
     nonce = secrets.token_urlsafe(18)
     exp = datetime.now(timezone.utc) + ak.CHALLENGE_TTL
     msg = f"hoola-approve|v1|{tenant}|editdesk|{card_id}|{v['hash']}|{nonce}|{int(exp.timestamp())}"
@@ -1390,13 +1390,13 @@ def decide(tenant: str, card_id: str, yes: bool, card_hash: str = "", reason: st
     """ONLY from the app's API (her tap). The card's hash must still match the state NOW; refunds need her fingerprint once a
     phone key is active."""
     if not by_tap:
-        raise EditError("Yeh sirf aapke tap se (app ka card).")
+        raise EditError("This happens only on your tap (the card in the app).")
     with session() as s:
         c = s.get(EditdeskCard, card_id)
         if c is None or c.tenant_id != tenant:
-            raise EditError("Card nahi mila.")
+            raise EditError("Card not found.")
         if c.status != "waiting":
-            return {"card": _card_view(c), "say": f"Yeh card pehle hi '{c.status}' hai."}
+            return {"card": _card_view(c), "say": f"This card is already '{c.status}'."}
         p = s.get(EditdeskProject, c.project_id)
         inp = _j(c.show, {}).get("_in", {})
         try:
@@ -1408,7 +1408,7 @@ def decide(tenant: str, card_id: str, yes: bool, card_hash: str = "", reason: st
         if now_hash != ch:
             with _LOCK, session() as s:
                 s.get(EditdeskCard, card_id).status = "stale"
-        raise EditError("Card ke baad kuch badal gaya; naya card dekhiye.")
+        raise EditError("Something changed after the card; look at the new card.")
     if not yes:
         with _LOCK, session() as s:
             c = s.get(EditdeskCard, card_id)
@@ -1419,9 +1419,9 @@ def decide(tenant: str, card_id: str, yes: bool, card_hash: str = "", reason: st
                 inv = s.get(EditdeskInvoice, inp.get("invoice", ""))
                 if inv is not None and inv.status == "draft":
                     inv.status = "void"
-        return {"card": v, "say": f"{CARD_TITLE[kind]}: nahi."}
+        return {"card": v, "say": f"{CARD_TITLE[kind]}: no."}
     if kind == "delivery" and show.get("blockers"):
-        raise EditError("Rukawat hai, final nahi ja sakta: " + "; ".join(show["blockers"]))
+        raise EditError("Blocked, the final cannot go out: " + "; ".join(show["blockers"]))
     if kind in MONEY_CARDS:
         from .. import approvekey as ak
         if ak.active_on(tenant):
@@ -1450,15 +1450,15 @@ def _do_quote(tenant: str, card_id: str, show: dict, conv: str) -> dict:
         q.number = f"Q/{_fy(today(tenant))}/{_next(st, 'quote_' + _fy(today(tenant))):03d}"
         q.status = "sent"
         p = s.get(EditdeskProject, q.project_id)
-        _log(p, f"Quote {q.number} aapki haan se final", "Owner")
+        _log(p, f"Quote {q.number} final with your approval", "Owner")
         number, studio = q.number, st.studio
     pdf = quote_pdf(tenant, qid)
     f = _store(tenant, f"Quote {number.replace('/', '-')}.pdf", pdf, "application/pdf", conv, f"Quote {number}")
-    text = (f"Namaste {show.get('client', '')}, {show.get('title', '')} ki quote {number}: {_rs(show['total'])}. "
-            f"{show.get('rounds', 0)} revision rounds shaamil; advance {show.get('advance_pct', 0):g}%. Valid {show.get('valid_until', '')} tak. "
-            f"PDF saath hai. - {studio}")
+    text = (f"Hello {show.get('client', '')}, here is quote {number} for {show.get('title', '')}: {_rs(show['total'])}. "
+            f"{show.get('rounds', 0)} revision rounds included; advance {show.get('advance_pct', 0):g}%. Valid until {show.get('valid_until', '')}. "
+            f"PDF attached. - {studio}")
     return {"draft": _draft(_cl(show), text, f"Quote {number}"), "file_id": f.get("file_id", ""),
-            "say": f"Quote {number} final; PDF + message draft taiyaar (aap bhejiye)."}
+            "say": f"Quote {number} final; PDF + message draft ready (you send it)."}
 
 
 def _do_invoice(tenant: str, card_id: str, show: dict, conv: str) -> dict:
@@ -1469,34 +1469,34 @@ def _do_invoice(tenant: str, card_id: str, show: dict, conv: str) -> dict:
         inv.number = f"INV/{_fy(today(tenant))}/{_next(st, 'invoice_' + _fy(today(tenant))):03d}"
         inv.status, inv.sent_at = "sent", now()
         p = s.get(EditdeskProject, inv.project_id)
-        _log(p, f"Invoice {inv.number} {_rs(inv.total)} aapki haan se", "Owner")
+        _log(p, f"Invoice {inv.number} {_rs(inv.total)} with your approval", "Owner")
         number, total, studio = inv.number, inv.total, st.studio
     pdf = invoice_pdf(tenant, iid)
     f = _store(tenant, f"Invoice {number.replace('/', '-')}.pdf", pdf, "application/pdf", conv, f"Invoice {number}")
     upi = _upi(tenant, total, number)
-    text = (f"Namaste {show.get('client', '')}, {show.get('title', '')} ka invoice {number}: {_rs(total)}. "
-            + (f"UPI se: {upi} " if upi else "") + f"Hum kabhi OTP / PIN nahi maangte. - {studio}")
+    text = (f"Hello {show.get('client', '')}, here is invoice {number} for {show.get('title', '')}: {_rs(total)}. "
+            + (f"Pay by UPI: {upi} " if upi else "") + f"We never ask for an OTP / PIN. - {studio}")
     return {"draft": _draft(_cl(show), text, f"Invoice {number}", upi=upi), "file_id": f.get("file_id", ""),
-            "say": f"Invoice {number} {_rs(total)} final; PDF + message draft (UPI aapke ID ka) taiyaar."}
+            "say": f"Invoice {number} {_rs(total)} final; PDF + message draft (UPI of your ID) ready."}
 
 
 def _do_review(tenant: str, card_id: str, show: dict, conv: str) -> dict:
     base = _base_url()
     links = "\n".join(f"{v['label']}: {base}{v['url']}" for v in show.get("versions", []) if v.get("url"))
-    text = (f"Namaste {show.get('client', '')}, {show.get('title', '')} ka review version:\n{links}\n"
-            "Badlav ho to time ke saath likhiye (jaise '0:15 par text chhota karo'). "
-            f"Is quote mein {show.get('rounds_left', 0)} revision round baaki." + (f"\n{show['text']}" if show.get("text") else ""))
+    text = (f"Hello {show.get('client', '')}, here is the review version of {show.get('title', '')}:\n{links}\n"
+            "If you want changes, write them with the time (like 'make the text smaller at 0:15'). "
+            f"This quote has {show.get('rounds_left', 0)} revision round(s) left." + (f"\n{show['text']}" if show.get("text") else ""))
     with _LOCK, session() as s:
         p = s.get(EditdeskProject, s.get(EditdeskCard, card_id).project_id)
         p.review_sent_at = now()
         if p.status in ("editing", "revising"):
             p.status = "review"
-        _log(p, "Review link client ko (aapki haan)", "Owner")
-    return {"draft": _draft(_cl(show), text, f"Review: {show.get('title', '')}"), "say": "Review message draft taiyaar; aap bhejiye."}
+        _log(p, "Review link to the client (your approval)", "Owner")
+    return {"draft": _draft(_cl(show), text, f"Review: {show.get('title', '')}"), "say": "Review message draft ready; you send it."}
 
 
 def _do_message(tenant: str, card_id: str, show: dict, conv: str) -> dict:
-    return {"draft": _draft(_cl(show), show.get("text", ""), show.get("title", "")), "say": "Message draft taiyaar; aap bhejiye."}
+    return {"draft": _draft(_cl(show), show.get("text", ""), show.get("title", "")), "say": "Message draft ready; you send it."}
 
 
 def _do_extra(tenant: str, card_id: str, show: dict, conv: str) -> dict:
@@ -1507,18 +1507,18 @@ def _do_extra(tenant: str, card_id: str, show: dict, conv: str) -> dict:
         ex.append({"kind": "round" if inp.get("what") == "round" else "work", "what": show.get("what", ""), "amount": inp.get("amount"),
                    "at": now().isoformat()})
         p.extras = _dump(ex)
-        _log(p, f"Extra charge {_rs(inp.get('amount'))}: {show.get('what', '')} (aapki haan)", "Owner")
+        _log(p, f"Extra charge {_rs(inp.get('amount'))}: {show.get('what', '')} (your approval)", "Owner")
         number, ref = p.number, p.id
-    text = (f"Namaste {show.get('client', '')}, {show.get('title', '')}: {show.get('what', '')} ka extra charge {_rs(inp.get('amount'))} "
-            "(quote ke bahar). Aapki haan ke baad hum shuru karenge.")
+    text = (f"Hello {show.get('client', '')}, {show.get('title', '')}: {show.get('what', '')} is an extra charge of {_rs(inp.get('amount'))} "
+            "(outside the quote). We will start after your approval.")
     out = {"draft": _draft(_cl(show), text, f"Extra: {show.get('title', '')}"),
-           "say": f"{number}: extra {_rs(inp.get('amount'))} jud gaya; client ko batane ka draft taiyaar."}
+           "say": f"{number}: extra {_rs(inp.get('amount'))} added; the draft to tell the client is ready."}
     if inp.get("what") == "round":
         try:
             r = revise(tenant, ref, actor="owner", conv=conv)
             out["say"] += " " + r["say"]
         except EditError as e:
-            out["say"] += f" Round abhi shuru nahi hua: {e}"
+            out["say"] += f" The round has not started yet: {e}"
     return out
 
 
@@ -1540,14 +1540,14 @@ def _do_delivery(tenant: str, card_id: str, show: dict, conv: str) -> dict:
             files.append({**f, "url": base + url})
         p.delivered = _dump({"at": now().isoformat(), "files": files})
         p.status = "delivered"
-        _log(p, "Final delivery (aapki haan)", "Owner")
+        _log(p, "Final delivery (your approval)", "Owner")
         number = p.number
         del dl
     links = "\n".join(f"{f['label']} (v{f['n']}): {f['url']}" for f in files)
-    text = (f"Namaste {show.get('client', '')}, {show.get('title', '')} ki final files:\n{links}\nLink 10 din chalega; download kar lijiye. "
-            "Shukriya!")
+    text = (f"Hello {show.get('client', '')}, here are the final files for {show.get('title', '')}:\n{links}\nThe link works for 10 days; please download them. "
+            "Thank you.")
     return {"draft": _draft(_cl(show), text, f"Final: {show.get('title', '')}"), "files": files,
-            "say": f"{number}: final delivery ka message + links taiyaar; aap bhejiye. Files aapke phone par bhi hain (file_id)."}
+            "say": f"{number}: final delivery message + links ready; you send it. The files are on your phone too (file_id)."}
 
 
 def _do_refund(tenant: str, card_id: str, show: dict, conv: str) -> dict:
@@ -1556,25 +1556,25 @@ def _do_refund(tenant: str, card_id: str, show: dict, conv: str) -> dict:
         ex = _j(p.delivered, {})
         ex["refund"] = {"amount": show["_in"].get("amount"), "approved_at": now().isoformat(), "sent": False}
         p.delivered = _dump(ex)
-        _log(p, f"Refund {_rs(show['_in'].get('amount'))} manzoor (fingerprint)", "Owner")
-    text = (f"Namaste {show.get('client', '')}, {show.get('title', '')} ka refund {_rs(show['_in'].get('amount'))} hum bhej rahe hain. "
-            "Hum kabhi OTP / PIN nahi maangte.")
-    return {"draft": _draft(_cl(show), text, "Refund"), "say": "Refund manzoor: aap apne bank / UPI se bhejiye, phir 'refund bhej diya'."}
+        _log(p, f"Refund {_rs(show['_in'].get('amount'))} approved (fingerprint)", "Owner")
+    text = (f"Hello {show.get('client', '')}, we are sending the refund of {_rs(show['_in'].get('amount'))} for {show.get('title', '')}. "
+            "We never ask for an OTP / PIN.")
+    return {"draft": _draft(_cl(show), text, "Refund"), "say": "Refund approved: send it from your bank / UPI, then say 'refund sent'."}
 
 
 def refund_sent(tenant: str, ref: str, utr: str = "", actor: str = "owner") -> dict:
     if not is_owner(actor):
-        raise EditError("Sirf owner.")
+        raise EditError("Owner only.")
     with _LOCK, session() as s:
         p = _project(s, tenant, ref)
         ex = _j(p.delivered, {})
         if not ex.get("refund"):
-            raise EditError("Koi manzoor refund nahi.")
+            raise EditError("No approved refund.")
         ex["refund"]["sent"] = True
         ex["refund"]["ref"] = R.clean(utr, 30)[-6:]
         p.delivered = _dump(ex)
-        _log(p, "Refund bhej diya", "Owner")
-    return {"say": "Refund bhej diya likh liya."}
+        _log(p, "Refund sent", "Owner")
+    return {"say": "Recorded: refund sent."}
 
 
 # ---------------------------------------------------------------- PDFs
@@ -1662,7 +1662,7 @@ def quote_pdf(tenant: str, quote_id: str) -> bytes:
     with session() as s:
         q = s.get(EditdeskQuote, quote_id)
         if q is None or q.tenant_id != tenant:
-            raise EditError("Quote nahi mila.")
+            raise EditError("Quote not found.")
         st = _st(s, tenant)
         p = s.get(EditdeskProject, q.project_id)
         c = s.get(EditdeskClient, p.client_id) if p.client_id else None
@@ -1695,7 +1695,7 @@ def invoice_pdf(tenant: str, invoice_id: str) -> bytes:
     with session() as s:
         inv = s.get(EditdeskInvoice, invoice_id)
         if inv is None or inv.tenant_id != tenant:
-            raise EditError("Invoice nahi mila.")
+            raise EditError("Invoice not found.")
         st = _st(s, tenant)
         p = s.get(EditdeskProject, inv.project_id)
         c = s.get(EditdeskClient, p.client_id) if p.client_id else None
@@ -1799,17 +1799,17 @@ def day(tenant: str) -> dict:
     if late:
         parts.append("Late: " + ", ".join(late))
     if due_soon:
-        parts.append("2 din mein delivery: " + ", ".join(due_soon))
+        parts.append("Delivery in 2 days: " + ", ".join(due_soon))
     if review:
-        parts.append("Client ka review jawab nahi aaya: " + ", ".join(review))
+        parts.append("No review reply from the client: " + ", ".join(review))
     if unpaid:
-        parts.append("Paise baaki: " + ", ".join(unpaid))
+        parts.append("Payment pending: " + ", ".join(unpaid))
     if lic_soon:
-        parts.append("Licence khatam hone wale: " + ", ".join(lic_soon))
+        parts.append("Licences expiring soon: " + ", ".join(lic_soon))
     if waiting:
-        parts.append(f"{waiting} card aapki haan ka intezaar kar rahe hain")
+        parts.append(f"{waiting} card(s) waiting for your approval")
     return {"late": late, "due_soon": due_soon, "review_silent": review, "unpaid": unpaid, "licences_soon": lic_soon, "waiting": waiting,
-            "active": len(rows), "say": ". ".join(parts) + "." if parts else "Edit desk par aaj sab theek."}
+            "active": len(rows), "say": ". ".join(parts) + "." if parts else "All good at the edit desk today."}
 
 
 def overview(tenant: str) -> dict:
@@ -1831,30 +1831,30 @@ def report(tenant: str, days: int = 30) -> dict:
                 over.append(f"{p.number}: {p.rounds_used}/{p.rounds_quoted} rounds")
         done = [p for p in rows if p.status in ("delivered", "closed")]
     return {"projects": len(rows), "delivered": len(done), "billed": round(billed, 2), "received": round(got, 2),
-            "rounds_over": over, "say": f"{days} din: {len(rows)} project, {len(done)} delivered, bill {_rs(billed)}, mile {_rs(got)}."}
+            "rounds_over": over, "say": f"{days} days: {len(rows)} project(s), {len(done)} delivered, billed {_rs(billed)}, received {_rs(got)}."}
 
 
 def forget(tenant: str, client: str, actor: str = "owner") -> dict:
     """DPDP Act 2023: a client's personal details removed once their projects are closed / cancelled; numbers stay for accounts."""
     if not is_owner(actor):
-        raise EditError("Sirf owner.")
+        raise EditError("Owner only.")
     with _LOCK, session() as s:
         c = _client(s, tenant, client)
         open_p = s.scalars(select(EditdeskProject).where(EditdeskProject.client_id == c.id,
                                                          EditdeskProject.status.notin_(("closed", "cancelled")))).all()
         if open_p:
-            raise EditError("Pehle is client ke project band kijiye: " + ", ".join(p.number for p in open_p))
-        c.name, c.phone, c.email, c.notes, c.company = f"Client {c.number} (hataya)", "", "", "", ""
+            raise EditError("First close this client's projects: " + ", ".join(p.number for p in open_p))
+        c.name, c.phone, c.email, c.notes, c.company = f"Client {c.number} (removed)", "", "", "", ""
         c.forgotten = True
         for p in s.scalars(select(EditdeskProject).where(EditdeskProject.client_id == c.id)).all():
             for k in s.scalars(select(EditdeskCard).where(EditdeskCard.project_id == p.id)).all():
                 k.show = _dump({"project": p.number, "hataya": True})
                 k.result = "{}"
             for n in s.scalars(select(EditdeskComment).where(EditdeskComment.project_id == p.id)).all():
-                n.text = "(hataya)"
+                n.text = "(removed)"
             p.brief, p.facts = "", "{}"
         number = c.number
-    return {"say": f"{number}: client ki personal details aur unke notes hata diye; hisaab ke number rahe."}
+    return {"say": f"{number}: the client's personal details and their notes were removed; the account numbers were kept."}
 
 
 # ---------------------------------------------------------------- worker
@@ -1899,23 +1899,23 @@ def tick(when: datetime | None = None) -> dict:
                         except ValueError:
                             dd = None
                         if dd and dd == on + timedelta(days=1) and _once(s, tenant, f"due1:{p.id}:{p.due}"):
-                            alerts.append({"project": p.number, "say": f"{p.number} {p.title}: kal delivery hai."})
+                            alerts.append({"project": p.number, "say": f"{p.number} {p.title}: delivery is tomorrow."})
                         if dd and dd < on and _once(s, tenant, f"late:{p.id}:{p.due}"):
-                            alerts.append({"project": p.number, "say": f"{p.number} {p.title}: delivery tareekh {p.due} nikal gayi; client ko batane ka card banau?"})
+                            alerts.append({"project": p.number, "say": f"{p.number} {p.title}: delivery date {p.due} has passed; shall I make a card to tell the client?"})
                     sent = _aware(p.review_sent_at)
                     if p.status == "review" and sent and sent < n - timedelta(days=st.review_days or 3) and _once(s, tenant, f"rev:{p.id}:{sent.date()}"):
-                        alerts.append({"project": p.number, "say": f"{p.number}: client ne {st.review_days} din se review nahi bheja; yaad dilane ka card banau?"})
+                        alerts.append({"project": p.number, "say": f"{p.number}: the client has not sent a review for {st.review_days} days; shall I make a reminder card?"})
                 for i in s.scalars(select(EditdeskInvoice).where(EditdeskInvoice.tenant_id == tenant, EditdeskInvoice.status.in_(("sent", "part")))).all():
                     sa = _aware(i.sent_at)
                     if sa and sa < n - timedelta(days=st.unpaid_days or 7) and _once(s, tenant, f"unpaid:{i.id}"):
-                        alerts.append({"project": "", "say": f"Invoice {i.number}: {_rs(i.total - _received(i))} {st.unpaid_days} din se baaki."})
+                        alerts.append({"project": "", "say": f"Invoice {i.number}: {_rs(i.total - _received(i))} pending for {st.unpaid_days} days."})
                 for x in s.scalars(select(EditdeskLicence).where(EditdeskLicence.tenant_id == tenant, EditdeskLicence.expires != "")).all():
                     try:
                         ed = date.fromisoformat(x.expires)
                     except ValueError:
                         continue
                     if ed <= on + timedelta(days=15) and _once(s, tenant, f"lic:{x.id}:{x.expires}"):
-                        alerts.append({"project": "", "say": f"Licence {x.number} {x.title} {x.expires} ko khatam: naye project mein mat lagaiye / renew."})
+                        alerts.append({"project": "", "say": f"Licence {x.number} {x.title} expires on {x.expires}: do not use it in new projects / renew it."})
             for a in alerts:
                 _publish(tenant, "editdesk_alert", a)
                 out["alerts"] += 1
@@ -1932,7 +1932,7 @@ def tick(when: datetime | None = None) -> dict:
                         r.last_morning = on.isoformat()
             if due_m:
                 d = day(tenant)
-                if d["say"] != "Edit desk par aaj sab theek.":
+                if d["say"] != "All good at the edit desk today.":
                     _publish(tenant, "editdesk_day", {"say": d["say"], "waiting": d["waiting"], "active": d["active"]})
                     out["morning"] += 1
         except Exception:

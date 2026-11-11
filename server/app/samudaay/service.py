@@ -179,7 +179,7 @@ def _community(s, tenant: str, ref: str) -> SamCommunity:
     if not ref:
         if len(rows) == 1:
             return rows[0]
-        raise SamError("Kaunsa group? " + (", ".join(r.name for r in rows) or "Abhi koi group juda nahi."))
+        raise SamError("Which group? " + (", ".join(r.name for r in rows) or "No group is connected yet."))
     for r in rows:
         if ref in (r.id, r.chat_id):
             return r
@@ -187,7 +187,7 @@ def _community(s, tenant: str, ref: str) -> SamCommunity:
     hits = [r for r in rows if low == r.name.lower()] or [r for r in rows if low in r.name.lower()]
     if len(hits) == 1:
         return hits[0]
-    raise SamError(f"Group '{ref}' nahi mila." if not hits else f"'{ref}' se kai group milte hain: " + ", ".join(h.name for h in hits))
+    raise SamError(f"Group '{ref}' was not found." if not hits else f"'{ref}' matches several groups: " + ", ".join(h.name for h in hits))
 
 
 def communities(tenant: str) -> list[dict[str, Any]]:
@@ -213,7 +213,7 @@ def save_community(tenant: str, ref: str, **f: Any) -> dict[str, Any]:
             if k == "language":
                 v = str(v).lower()
                 if v not in R.LANGS:
-                    raise SamError("Bhasha: hinglish, hindi, marathi ya english.")
+                    raise SamError("Language: hinglish, hindi, marathi or english.")
             if k == "join_mode" and v not in ("ask", "auto", "off"):
                 raise SamError("join_mode: ask, auto ya off.")
             if k == "links_policy" and v not in ("allow", "new_no", "none"):
@@ -227,7 +227,7 @@ def save_community(tenant: str, ref: str, **f: Any) -> dict[str, Any]:
             if k == "report_day":
                 v = max(0, min(6, int(v)))
             if k == "report_time" and not re.fullmatch(r"\d{2}:\d{2}", str(v)):
-                raise SamError("Samay HH:MM jaisa likhiye.")
+                raise SamError("Write the time like HH:MM.")
             if k in ("welcome_on", "faq_auto"):
                 v = bool(v)
             if k == "rules":
@@ -239,7 +239,7 @@ def save_community(tenant: str, ref: str, **f: Any) -> dict[str, Any]:
                 m.roles = _d(sorted(set(_roles(m)) | {"owner"}))
         s.flush()
         s.expunge(c)
-    return community_view(c) | {"say": f"{c.name}: niyam save."}
+    return community_view(c) | {"say": f"{c.name}: rules saved."}
 
 
 # ---------------------------------------------------------------- Telegram bot (her own)
@@ -261,10 +261,10 @@ def connect_telegram(tenant: str, token: str) -> dict[str, Any]:
     from ..bazar.security import vault
     token = (token or "").strip()
     if not TOKEN_RE.fullmatch(token):
-        raise SamError("Yeh BotFather token jaisa nahi hai (123456789:ABC... jaisa hota hai).")
+        raise SamError("This does not look like a BotFather token (it looks like 123456789:ABC...).")
     base = _base_url()
     if not base.startswith("https://"):
-        raise SamError("Server ka PUBLIC_BASE_URL (https) set nahi hai; webhook nahi lag sakta.")
+        raise SamError("The server's PUBLIC_BASE_URL (https) is not set; the webhook cannot be set up.")
     me = A.tg_me(token)
     secret = secrets.token_urlsafe(32).replace("-", "_")[:48]
     hook = secrets.token_hex(16)
@@ -285,11 +285,11 @@ def connect_telegram(tenant: str, token: str) -> dict[str, Any]:
         with session() as s:
             b = s.get(SamBot, bid)
             b.status, b.last_error = "error", str(e)
-        raise SamError(f"Webhook nahi laga: {e}") from None
+        raise SamError(f"The webhook was not set: {e}") from None
     v = bot_view(tenant) or {}
-    return v | {"say": f"@{me.get('username')} juda. Ab is bot ko apne Telegram group mein admin banaiye (delete, ban, invite ki "
-                       "permission); group Hoola mein khud aa jayega. Bot ki Privacy mode band karein (BotFather > /setprivacy) "
-                       "taaki woh saare messages dekh sake."}
+    return v | {"say": f"@{me.get('username')} connected. Now make this bot an admin in your Telegram group (permission to delete, ban, invite); "
+                       "the group will appear in Hoola by itself. Turn off the bot's Privacy mode (BotFather > /setprivacy) "
+                       "so that it can see all messages."}
 
 
 def disconnect_telegram(tenant: str) -> dict[str, Any]:
@@ -302,7 +302,7 @@ def disconnect_telegram(tenant: str) -> dict[str, Any]:
             except Exception:
                 pass
             b.status, b.token_enc = "removed", ""
-    return {"say": "Telegram bot hata diya; token mita diya."}
+    return {"say": "Telegram bot removed; token erased."}
 
 
 def telegram_hook(hook_id: str, secret_header: str, update: dict[str, Any]) -> dict[str, Any]:
@@ -356,8 +356,8 @@ def _telegram_community(tenant: str, bot_id: str, ev: dict[str, Any]) -> str:
             c.name = chat["title"]
         cid, name = c.id, c.name
     if fresh:
-        _publish(tenant, "samudaay_info", {"community_id": cid, "text": f"Telegram group '{name}' Hoola se juda. Welcome message aur "
-                                           "FAQ set kijiye; bot ko admin banaiye taaki woh moderation kar sake.",
+        _publish(tenant, "samudaay_info", {"community_id": cid, "text": f"Telegram group '{name}' is connected to Hoola. Set the welcome message and "
+                                           "FAQ; make the bot an admin so that it can moderate.",
                                            "admin": bool(ev.get("admin"))})
     return "" if ev["type"] == "bot_added" else cid
 
@@ -380,7 +380,7 @@ def link_hoola(tenant: str, group: str) -> dict[str, Any]:
         s.flush()
         s.expunge(c)
     poll_hoola(tenant, c.id)
-    return community_view(c) | {"say": f"Mandali '{g.name}' ab Community Sahayak dekhega."}
+    return community_view(c) | {"say": f"The Community Assistant will now look after the Hoola Group '{g.name}'."}
 
 
 def poll_hoola(tenant: str, comm_id: str) -> int:
@@ -464,7 +464,7 @@ def _find_member(s, tenant: str, ref: str, comm: SamCommunity | None = None) -> 
     hits = [m for m in rows if m.name.lower() == low] or [m for m in rows if low and low in m.name.lower()]
     if len(hits) == 1:
         return hits[0]
-    raise SamError(f"Member '{ref}' nahi mila." if not hits else f"'{ref}' naam ke kai member: " + ", ".join(h.name for h in hits[:5]))
+    raise SamError(f"Member '{ref}' was not found." if not hits else f"'{ref}' matches several members: " + ", ".join(h.name for h in hits[:5]))
 
 
 def set_roles(tenant: str, member: str, roles: list[str], comm: str = "", note: str | None = None) -> dict[str, Any]:
@@ -477,8 +477,8 @@ def set_roles(tenant: str, member: str, roles: list[str], comm: str = "", note: 
         m.roles = _d(sorted(set(roles) or {"member"}))
         if note is not None:
             m.note = _clip(note, 300)
-        return member_view(m) | {"say": f"{m.name}: {', '.join(sorted(set(roles)))} (sirf Hoola ke register mein; group ki "
-                                        "admin permission platform par aap khud dein)."}
+        return member_view(m) | {"say": f"{m.name}: {', '.join(sorted(set(roles)))} (only in Hoola's register; give the group's "
+                                        "admin permission yourself on the platform)."}
 
 
 def forget_member(tenant: str, member: str, comm: str = "") -> dict[str, Any]:
@@ -489,10 +489,10 @@ def forget_member(tenant: str, member: str, comm: str = "") -> dict[str, Any]:
         for p in s.scalars(select(SamPost).where(SamPost.member_id == m.id)).all():
             p.text = ""
         for q in s.scalars(select(SamQuestion).where(SamQuestion.member_id == m.id)).all():
-            q.text = "(mitaya gaya)"
-        m.name, m.username, m.note, m.status = "Purana sadasya", "", "", "forgotten"
+            q.text = "(erased)"
+        m.name, m.username, m.note, m.status = "Former member", "", "", "forgotten"
         m.user_ref = "forgotten:" + m.id
-    return {"say": "Is member ki saari jaankari Hoola ke register se mita di."}
+    return {"say": "All of this member's details were erased from Hoola's register."}
 
 
 # ---------------------------------------------------------------- the pipeline
@@ -534,7 +534,7 @@ def _on_join(c: SamCommunity, ev: dict[str, Any]) -> dict[str, Any]:
             return {"ok": True, "dup": True}       # Telegram sends both a service message and a chat_member update
         flags: list[str] = []
         if was == "banned":
-            flags.append("pehle ban kiya tha")
+            flags.append("was banned earlier")
         m.status, m.left_at = "active", None
         m.joined_at = ev.get("at") or now()
         if ev.get("source") and m.source in ("", "seen"):
@@ -546,7 +546,7 @@ def _on_join(c: SamCommunity, ev: dict[str, Any]) -> dict[str, Any]:
         mid, name = m.id, m.name
         scam = R.scam(u.get("name", "") + " " + u.get("username", ""))
     if flags or scam:
-        _alert(c, "spam" if scam else "rejoin", "medium", f"Naya member {name}: " + "; ".join(flags or scam["why"]),
+        _alert(c, "spam" if scam else "rejoin", "medium", f"New member {name}: " + "; ".join(flags or scam["why"]),
                member_id=mid, key=f"join:{mid}:{_day(c)}", evidence={"name": name}, suggest=["remove", "ban"])
     _welcome_now(c)
     return {"ok": True, "member_id": mid}
@@ -568,12 +568,12 @@ def _on_join_request(c: SamCommunity, ev: dict[str, Any]) -> dict[str, Any]:
     u = ev["user"]
     sc = R.scam(" ".join([u.get("name", ""), u.get("username", ""), ev.get("bio", "")]))
     ab = R.abuse(" ".join([u.get("name", ""), ev.get("bio", "")]))
-    flags = (sc["why"] if sc else []) + ([f"naam / bio mein {ab['kind']}"] if ab else [])
+    flags = (sc["why"] if sc else []) + ([f"in the name / bio: {ab['kind']}"] if ab else [])
     with session() as s:
         banned = s.scalar(select(SamMember).where(SamMember.community_id == c.id, SamMember.user_ref == u["ref"],
                                                   SamMember.status == "banned"))
         if banned:
-            flags.append("pehle ban kiya tha")
+            flags.append("was banned earlier")
         r = SamJoinRequest(tenant_id=c.tenant_id, community_id=c.id, user_ref=u["ref"], name=u["name"], username=u["username"],
                            bio=_clip(ev.get("bio"), 300), flags=_d(flags))
         s.add(r)
@@ -592,9 +592,9 @@ def join_decide(tenant: str, req_id: str, yes: bool, by: str = "owner") -> dict[
     with session() as s:
         r = s.get(SamJoinRequest, req_id)
         if r is None or r.tenant_id != tenant:
-            raise SamError("Request nahi mili.")
+            raise SamError("Request not found.")
         if r.status != "pending":
-            return {"status": r.status, "say": "Is request ka faisla ho chuka."}
+            return {"status": r.status, "say": "This request has already been decided."}
         c = s.get(SamCommunity, r.community_id)
         s.expunge(c)
         ref, name = r.user_ref, r.name
@@ -606,7 +606,7 @@ def join_decide(tenant: str, req_id: str, yes: bool, by: str = "owner") -> dict[
         r = s.get(SamJoinRequest, req_id)
         r.status = "approved" if yes else "declined"
         _logrow(s, c, "join_ok" if yes else "join_no", note=f"{name} ({by})")
-    return {"status": "approved" if yes else "declined", "say": f"{name}: {'andar liya' if yes else 'mana kiya'}."}
+    return {"status": "approved" if yes else "declined", "say": f"{name}: {'let in' if yes else 'declined'}."}
 
 
 def join_requests(tenant: str, comm: str = "") -> list[dict[str, Any]]:
@@ -667,7 +667,7 @@ def _check(c: SamCommunity, text: str, ent_links: list[str], is_new: bool, forwa
     pd = R.personal_data(text)
     if pd:
         out.append({"kind": "pii", "severity": "high" if set(pd) & {"otp_pin", "card", "cvv", "password"} else "medium",
-                    "title": "Group mein personal jaankari (" + ", ".join(pd) + ") - post hata dena behtar",
+                    "title": "Personal details in the group (" + ", ".join(pd) + ") - better to delete the post",
                     "evidence": {"text": excerpt, "found": pd}, "suggest": ["delete_post", "warn"]})
     if staff:
         return out
@@ -675,19 +675,19 @@ def _check(c: SamCommunity, text: str, ent_links: list[str], is_new: bool, forwa
     sc = R.scam(text, ent_links, allowed, is_new, c.links_policy)
     if sc:
         out.append({"kind": sc["kind"], "severity": sc["severity"],
-                    "title": ("Scam ka shak" if sc["kind"] == "scam" else "Spam / bahar ka link") + ": " + "; ".join(sc["why"][:2]),
+                    "title": ("Suspected scam" if sc["kind"] == "scam" else "Spam / outside link") + ": " + "; ".join(sc["why"][:2]),
                     "evidence": {"text": excerpt, "why": sc["why"], "links": sc["links"]}})
     ab = R.abuse(text, set(_j(c.ignore_words, [])))
     if ab:
-        titles = {"threat": "Dhamki", "hate": "Nafrat / jaati-dharm par hamla", "harassment": "Ashleel / chhed-chhaad",
+        titles = {"threat": "Threat", "hate": "Hate / attack on caste or religion", "harassment": "Ashleel / chhed-chhaad",
                   "abuse": "Gaali"}
         f = {"kind": ab["kind"], "severity": ab["severity"], "title": titles[ab["kind"]], "evidence": {"text": excerpt, "words": ab["words"]}}
         if ab["kind"] == "threat":
-            f["evidence"]["note"] = "Jaan ki dhamki ho to 112; post ka screenshot apne paas rakhiye."
+            f["evidence"]["note"] = "If it is a threat to life, call 112; keep a screenshot of the post with you."
         out.append(f)
     rm = R.rumour(text, forwarded)
     if rm:
-        out.append({"kind": "misinfo", "severity": rm["severity"], "title": "Afwah ho sakti hai - sach-jaanch note bhejein?",
+        out.append({"kind": "misinfo", "severity": rm["severity"], "title": "May be a rumour - send a fact-check note?",
                     "evidence": {"text": excerpt, "check": rm["check"]}, "suggest": ["fact_note", "delete_post"]})
     return out
 
@@ -704,10 +704,10 @@ def _flood(c: SamCommunity, mid: str, pid: str, text: str, at: datetime) -> None
                     same.append(p.member_id)
         name = (s.get(SamMember, mid) or SamMember(name="")).name
     if n >= FLOOD_N:
-        _alert(c, "flood", "medium", f"{name} ne {n} message ek minute mein bheje", member_id=mid, post_id=pid,
+        _alert(c, "flood", "medium", f"{name} sent {n} messages in one minute", member_id=mid, post_id=pid,
                key=f"flood:{mid}:{at.strftime('%Y%m%d%H')}", evidence={"count": n}, suggest=["mute"])
     if len(set(same)) >= RAID_N:
-        _alert(c, "raid", "high", f"{len(set(same))} logon ne ek hi message copy-paste kiya (spam hamla?)", post_id=pid,
+        _alert(c, "raid", "high", f"{len(set(same))} people copy-pasted the same message (spam attack?)", post_id=pid,
                key=f"raid:{hashlib.sha1(nt.encode()).hexdigest()[:12]}", evidence={"text": _clip(text, 200), "members": len(set(same))},
                suggest=["delete_post"])
 
@@ -769,7 +769,7 @@ def _welcome_now(c: SamCommunity, force: bool = False) -> int:
         if not due or _auto_used(s, c) >= AUTO_PER_HOUR:
             return 0
         names = [m.name for m in due][:8]
-        name = ", ".join(names) + (f" aur {len(due) - 8} aur" if len(due) > 8 else "")
+        name = ", ".join(names) + (f" and {len(due) - 8} more" if len(due) > 8 else "")
         rules = c.rules or R.DEFAULT_RULES.get(c.language, R.DEFAULT_RULES["hinglish"])
         text = R.render(t.text, name=name, community=c.name, rules=rules, username="")
         for m in due:
@@ -800,7 +800,7 @@ def draft_template(tenant: str, text: str = "", comm: str = "", language: str = 
         c = _community(s, tenant, comm) if comm else None
         lang = (language or (c.language if c else "hinglish")).lower()
         if lang not in R.LANGS:
-            raise SamError("Bhasha: hinglish, hindi, marathi ya english.")
+            raise SamError("Language: hinglish, hindi, marathi or english.")
         cid = c.id if c else ""
     body = (text or "").strip()
     if not body and from_words.strip():
@@ -824,13 +824,13 @@ def draft_template(tenant: str, text: str = "", comm: str = "", language: str = 
             t.text, t.status, t.approved_hash = body[:1000], "draft", ""
         s.flush()
         v = template_view(t)
-    preview = R.render(body, name="Asha", community=(c.name if c else "Aapka group"),
+    preview = R.render(body, name="Asha", community=(c.name if c else "Your group"),
                        rules=(c.rules if c and c.rules else R.DEFAULT_RULES[lang]))
     v |= {"preview": preview, "problems": problems}
     if v["status"] != "approved":
         _publish(tenant, "samudaay_template", v)
-    return v | {"say": "Message taiyaar - card par 'Haan, yahi bhejo' dabaiye, tabhi naye logon ko jayega." if v["status"] != "approved"
-                else "Yahi message pehle se manzoor hai."}
+    return v | {"say": "The message is ready - press 'Yes, send this' on the card; only then will it go to new people." if v["status"] != "approved"
+                else "This same message is already approved."}
 
 
 def template_view(t: SamTemplate) -> dict[str, Any]:
@@ -845,19 +845,19 @@ def templates(tenant: str) -> list[dict[str, Any]]:
 
 def approve_template(tenant: str, tid: str, hash_: str, by_tap: bool = False) -> dict[str, Any]:
     if not by_tap:
-        raise SamError("Welcome message sirf aapke tap se manzoor hota hai.")
+        raise SamError("A welcome message is approved only by your tap.")
     with session() as s:
         t = s.get(SamTemplate, tid)
         if t is None or t.tenant_id != tenant:
-            raise SamError("Template nahi mila.")
+            raise SamError("Template not found.")
         if hash_ != _thash(t.text):
-            raise SamError("Card ke baad message badla hai; naya card dekhiye.")
+            raise SamError("The message changed after the card; look at the new card.")
         probs = R.template_problems(t.text)
         if probs:
-            raise SamError("Pehle theek kijiye: " + " ".join(probs))
+            raise SamError("Fix this first: " + " ".join(probs))
         t.status, t.approved_hash, t.approved_at = "approved", _thash(t.text), now()
         v = template_view(t)
-    return v | {"say": "Manzoor. Ab naye member aate hi yahi message jayega."}
+    return v | {"say": "Approved. This message will now go out whenever a new member joins."}
 
 
 # ---------------------------------------------------------------- FAQ + questions
@@ -870,11 +870,11 @@ def add_faq(tenant: str, question: str, answer: str, comm: str = "", keywords: l
             faq_id: str = "") -> dict[str, Any]:
     question, answer = (question or "").strip(), (answer or "").strip()
     if not question or not answer:
-        raise SamError("Sawal aur jawab dono chahiye.")
+        raise SamError("Both a question and an answer are needed.")
     try:
         from ..net.policy import secret_found
         if secret_found(answer):
-            raise SamError("Jawab mein OTP / PIN / card jaisi cheez nahi daal sakte.")
+            raise SamError("An answer cannot contain something like an OTP / PIN / card.")
     except ImportError:
         pass
     with session() as s:
@@ -894,7 +894,7 @@ def add_faq(tenant: str, question: str, answer: str, comm: str = "", keywords: l
         f.keywords = _d([k.strip() for k in (keywords or []) if k.strip()][:12])
         s.flush()
         v = faq_view(f)
-    return v | {"say": "FAQ mein jod diya." + ("" if approved else " (Manzoori baaki)")}
+    return v | {"say": "Added to the FAQ." + ("" if approved else " (Approval pending)")}
 
 
 def faqs(tenant: str, comm: str = "") -> list[dict[str, Any]]:
@@ -909,9 +909,9 @@ def delete_faq(tenant: str, faq_id: str) -> dict[str, Any]:
     with session() as s:
         f = s.get(SamFaq, faq_id)
         if f is None or f.tenant_id != tenant:
-            raise SamError("FAQ nahi mila.")
+            raise SamError("FAQ not found.")
         s.delete(f)
-    return {"say": "FAQ hata diya."}
+    return {"say": "FAQ removed."}
 
 
 def match(tenant: str, text: str, comm_id: str = "") -> dict[str, Any]:
@@ -992,17 +992,17 @@ def answer_question(tenant: str, qid: str, answer: str = "", save_faq: bool = Tr
     with session() as s:
         q = s.get(SamQuestion, qid)
         if q is None or q.tenant_id != tenant:
-            raise SamError("Sawal nahi mila.")
+            raise SamError("Question not found.")
         if q.status != "open":
-            return {"status": q.status, "say": "Is sawal ka jawab ho chuka."}
+            return {"status": q.status, "say": "This question has already been answered."}
         if use_faq:
             f = s.get(SamFaq, use_faq)
             if f is None or f.tenant_id != tenant:
-                raise SamError("FAQ nahi mila.")
+                raise SamError("FAQ not found.")
             answer, save_faq = f.answer, False
         answer = (answer or "").strip()
         if not answer:
-            raise SamError("Jawab likhiye.")
+            raise SamError("Write the answer.")
         c = s.get(SamCommunity, q.community_id)
         s.expunge(c)
         text, msg_ref, mid = q.text, q.msg_ref, q.member_id
@@ -1014,7 +1014,7 @@ def answer_question(tenant: str, qid: str, answer: str = "", save_faq: bool = Tr
             A.for_community(c).send(c, answer, reply_to=msg_ref)
             sent = True
         except A.AdapterError as e:
-            raise SamError(f"Jawab nahi gaya: {e}") from None
+            raise SamError(f"The answer was not sent: {e}") from None
     with session() as s:
         q = s.get(SamQuestion, qid)
         q.status, q.answer, q.answered_at = "answered", answer[:2000], now()
@@ -1023,16 +1023,16 @@ def answer_question(tenant: str, qid: str, answer: str = "", save_faq: bool = Tr
             if p is not None:
                 p.answered_by = "owner"
         _logrow(s, c, "answer", mid, _clip(text, 120))
-    return {"status": "answered", "sent": sent, "say": "Jawab bhej diya" + (" aur FAQ mein jod diya." if save_faq else ".")}
+    return {"status": "answered", "sent": sent, "say": "Answer sent" + (" and added to the FAQ." if save_faq else ".")}
 
 
 def ignore_question(tenant: str, qid: str) -> dict[str, Any]:
     with session() as s:
         q = s.get(SamQuestion, qid)
         if q is None or q.tenant_id != tenant:
-            raise SamError("Sawal nahi mila.")
+            raise SamError("Question not found.")
         q.status = "ignored"
-    return {"say": "Chhod diya."}
+    return {"say": "Skipped."}
 
 
 # ---------------------------------------------------------------- moderation: requests (cards) and HER decision
@@ -1044,36 +1044,36 @@ def request_action(tenant: str, kind: str, comm: str = "", member: str = "", pos
                    hours: int = 24, alert_id: str = "", asked_by: str = "owner") -> dict[str, Any]:
     """Prepare a moderation step / announcement as a card. Nothing happens on the platform here."""
     if kind not in R.ACTIONS:
-        raise SamError("Kaam: " + ", ".join(R.ACTIONS))
+        raise SamError("Actions: " + ", ".join(R.ACTIONS))
     with session() as s:
         c = _community(s, tenant, comm)
         m = p = None
         if post:
             p = s.get(SamPost, post)
             if p is None or p.community_id != c.id:
-                raise SamError("Post nahi mili.")
+                raise SamError("Post not found.")
             m = s.get(SamMember, p.member_id)
         if member:
             m = _find_member(s, tenant, member, c)
         if kind in ("delete_post", "reply", "fact_note") and p is None:
-            raise SamError("Kaunsi post? (post id)")
+            raise SamError("Which post? (post id)")
         if kind in ("mute", "unmute", "remove", "ban", "unban", "warn") and m is None:
-            raise SamError("Kaunsa member?")
+            raise SamError("Which member?")
         if m is not None and kind in ("mute", "remove", "ban", "warn", "delete_post") and _is_staff(m):
-            raise SamError(f"{m.name} admin / moderator / owner hain; unpar yeh kaam Hoola se nahi.")
+            raise SamError(f"{m.name} is an admin / moderator / owner; Hoola does not do this to them.")
         if kind in ("announce", "warn", "reply", "fact_note"):
             if kind == "fact_note" and not text:
-                text = "🔎 Is message ki sachai pakki nahi hai. Aage bhejne se pehle PIB Fact Check (factcheck.pib.gov.in) ya asli source dekh lijiye."
+                text = "🔎 This message is not confirmed to be true. Before forwarding it, check PIB Fact Check (factcheck.pib.gov.in) or the original source."
             if kind == "warn" and not text:
                 rules = c.rules or R.DEFAULT_RULES.get(c.language, R.DEFAULT_RULES["hinglish"])
-                text = f"{m.name} ji, kripya group ke niyam maaniye: {rules}."
+                text = f"{m.name}, please follow the group rules: {rules}."
             if not (text or "").strip():
-                raise SamError("Kya likhna hai?")
+                raise SamError("What should it say?")
             from ..net.policy import secret_found
             if secret_found(text):
-                raise SamError("Message mein OTP / PIN / card jaisi cheez hai.")
+                raise SamError("The message has something like an OTP / PIN / card.")
             if R.personal_data(text):
-                raise SamError("Message mein personal number hai; group mein nahi bhejte.")
+                raise SamError("The message has a personal number; that is not sent to the group.")
         hours = max(1, min(int(hours or 24), 24 * 366)) if kind == "mute" else 0
         h = _ahash(kind, c.id, m.user_ref if m else "", p.msg_ref if p else "", text, hours)
         old = s.scalar(select(SamAction).where(SamAction.community_id == c.id, SamAction.hash == h, SamAction.status == "pending"))
@@ -1091,34 +1091,34 @@ def request_action(tenant: str, kind: str, comm: str = "", member: str = "", pos
     v = action_view(x)
     _publish(tenant, "samudaay_action", v)
     return v | {"status": "pending", "needs_tap": True,
-                "say": f"{v['label']} ka card bheja - aapke 'Haan' dabane par hi hoga."}
+                "say": f"{v['label']}: card sent - it happens only when you press 'Yes'."}
 
 
 def decide(tenant: str, action_id: str, yes: bool, hash_: str = "", reason: str = "", by_tap: bool = False) -> dict[str, Any]:
     """HER tap. Only the app API passes by_tap=True; nothing else can remove, ban, mute, delete or announce."""
     if not by_tap:
-        raise SamError("Yeh sirf aapke tap se hota hai.")
+        raise SamError("This happens only on your tap.")
     with session() as s:
         x = s.get(SamAction, action_id)
         if x is None or x.tenant_id != tenant:
-            raise SamError("Card nahi mila.")
+            raise SamError("Card not found.")
         if x.status != "pending":
-            return action_view(x) | {"say": "Is card ka faisla ho chuka."}
+            return action_view(x) | {"say": "This card has already been decided."}
         if hash_ and hash_ != x.hash:
-            raise SamError("Card purana hai; naya dekhiye.")
+            raise SamError("The card is old; look at the new one.")
         if not yes:
             x.status, x.decided_at, x.result = "rejected", now(), _clip(reason, 300)
             if x.alert_id:
                 a = s.get(SamAlert, x.alert_id)
                 if a is not None and a.status == "open":
-                    a.status, a.handled_at, a.note = "dismissed", now(), "kaam mana kiya"
+                    a.status, a.handled_at, a.note = "dismissed", now(), "action rejected"
             s.flush()
             s.expunge(x)
-            return action_view(x) | {"say": "Theek, kuch nahi kiya."}
+            return action_view(x) | {"say": "OK, nothing was done."}
         if reason.strip():
             x.reason = _clip(reason, 500)
         if x.kind in R.NEEDS_REASON and not x.reason.strip():
-            raise SamError("Wajah likhiye (log mein rahegi).")
+            raise SamError("Write a reason (it stays in the log).")
         c = s.get(SamCommunity, x.community_id)
         m = s.get(SamMember, x.member_id) if x.member_id else None
         p = s.get(SamPost, x.post_id) if x.post_id else None
@@ -1143,7 +1143,7 @@ def decide(tenant: str, action_id: str, yes: bool, hash_: str = "", reason: str 
             sent = ad.send(c, text, reply_to=msg_ref)
         elif kind == "announce":
             sent = ad.send(c, text)
-        ok, result = True, sent or "ho gaya"
+        ok, result = True, sent or "done"
     except A.AdapterError as e:
         ok, result = False, str(e)
     with session() as s:
@@ -1177,20 +1177,20 @@ def decide(tenant: str, action_id: str, yes: bool, hash_: str = "", reason: str 
         s.flush()
         s.expunge(x)
     v = action_view(x)
-    note = " (Telegram par bot sirf 48 ghante tak ki post hata sakta hai; purani post khud hataiye.)" \
+    note = " (On Telegram a bot can delete posts only up to 48 hours old; delete an older post yourself.)" \
         if not ok and kind == "delete_post" and c.platform == "telegram" else ""
-    return v | {"say": (f"{v['label']}: ho gaya." if ok else f"{v['label']} nahi hua: {result}{note}")}
+    return v | {"say": (f"{v['label']}: done." if ok else f"{v['label']} failed: {result}{note}")}
 
 
 def alert_act(tenant: str, alert_id: str, kind: str, reason: str = "", hours: int = 24, text: str = "",
               by_tap: bool = False) -> dict[str, Any]:
     """One tap on an alert card's button = prepare + decide that one step (still only from the app)."""
     if not by_tap:
-        raise SamError("Yeh sirf aapke tap se hota hai.")
+        raise SamError("This happens only on your tap.")
     with session() as s:
         a = s.get(SamAlert, alert_id)
         if a is None or a.tenant_id != tenant:
-            raise SamError("Alert nahi mila.")
+            raise SamError("Alert not found.")
         comm, member, post, title = a.community_id, a.member_id, a.post_id, a.title
     if kind == "announce":
         member = post = ""
@@ -1204,8 +1204,8 @@ def dismiss_alert(tenant: str, alert_id: str, note: str = "", allow_site: bool =
     with session() as s:
         a = s.get(SamAlert, alert_id)
         if a is None or a.tenant_id != tenant:
-            raise SamError("Alert nahi mila.")
-        a.status, a.handled_at, a.note = "dismissed", now(), _clip(note or "galat alarm", 300)
+            raise SamError("Alert not found.")
+        a.status, a.handled_at, a.note = "dismissed", now(), _clip(note or "false alarm", 300)
         ev = _j(a.evidence, {})
         c = s.get(SamCommunity, a.community_id)
         learned = []
@@ -1217,7 +1217,7 @@ def dismiss_alert(tenant: str, alert_id: str, note: str = "", allow_site: bool =
             words = [w for w in ev["words"] if not w.startswith("(")]
             c.ignore_words = _d(sorted(set(_j(c.ignore_words, [])) | set(words)))
             learned += words
-    return {"say": "Band kiya." + (f" Ab yeh theek maana jayega: {', '.join(learned)}." if learned else "")}
+    return {"say": "Closed." + (f" From now on this will be treated as OK: {', '.join(learned)}." if learned else "")}
 
 
 def alerts(tenant: str, comm: str = "", status: str = "open", limit: int = 100) -> list[dict[str, Any]]:
@@ -1287,20 +1287,20 @@ def scan_trends(tenant: str, comm_id: str, at: datetime | None = None) -> list[s
         sample = {k: [_clip(p.text, 100) for p in posts if p.topic == k and p.mood < 0][-3:] for k in topics}
     key_day = at.astimezone(_tz(tenant)).date().isoformat()
     if neg_now >= 5 and share_now >= max(0.3, 2 * share_old):
-        made.append(_alert(c, "negativity", "medium", f"Group mein naraazgi badhi: pichhle 24 ghante mein {round(share_now * 100)}% "
-                           f"baatein shikayat wali (pehle {round(share_old * 100)}%)", key=f"neg:{key_day}",
+        made.append(_alert(c, "negativity", "medium", f"Unhappiness in the group is up: in the last 24 hours {round(share_now * 100)}% "
+                           f"of the talk was complaints (earlier {round(share_old * 100)}%)", key=f"neg:{key_day}",
                            evidence={"share_now": round(share_now, 2), "share_before": round(share_old, 2), "messages": len(recent)},
                            suggest=["announce"]))
     avg = old_leaves / 14
     if leaves >= 3 and leaves >= 3 * max(avg, 0.34):
-        made.append(_alert(c, "leaving", "medium" if leaves < 10 else "high", f"Aaj {leaves} log group chhod gaye (aam taur par "
-                           f"{round(avg, 1)} roz)", key=f"leave:{key_day}", evidence={"leaves": leaves, "usual": round(avg, 1),
+        made.append(_alert(c, "leaving", "medium" if leaves < 10 else "high", f"{leaves} people left the group today (usually "
+                           f"{round(avg, 1)} a day)", key=f"leave:{key_day}", evidence={"leaves": leaves, "usual": round(avg, 1),
                                                                                        "members": size}, suggest=["announce"]))
-    names = {"delivery": "delivery", "payment": "paise / refund", "quality": "quality", "service": "service / jawab",
-             "internet": "internet / net", "price": "daam", "timing": "der / time"}
+    names = {"delivery": "delivery", "payment": "money / refund", "quality": "quality", "service": "service / replies",
+             "internet": "internet / net", "price": "price", "timing": "delay / time"}
     for k, who in topics.items():
         if len(who) >= 3:
-            made.append(_alert(c, "complaints", "medium", f"{len(who)} logon ki ek jaisi shikayat: {names.get(k, k)}",
+            made.append(_alert(c, "complaints", "medium", f"{len(who)} people have the same complaint: {names.get(k, k)}",
                                key=f"topic:{k}:{key_day}", evidence={"topic": k, "people": len(who), "samples": sample.get(k, [])},
                                suggest=["announce"]))
     return made
@@ -1352,24 +1352,24 @@ def report(tenant: str, comm: str = "", days: int = 7) -> dict[str, Any]:
     cur = _stats(c, end - timedelta(days=days), end)
     prev = _stats(c, end - timedelta(days=2 * days), end - timedelta(days=days))
     h = R.health(cur | {"prev_neg_share": prev["neg_share"]})
-    lines = [f"{c.name} ({days} din): {cur['members']} member, {cur['joins']} aaye, {cur['leaves']} gaye, {cur['active']} ne baat ki "
-             f"({cur['posts']} message, pichhli baar {prev['posts']}).",
-             f"Sehat: {h['score']}/100 ({h['label']})" + (" - " + "; ".join(h["why"]) if h["why"] else "") + "."]
+    lines = [f"{c.name} ({days} days): {cur['members']} members, {cur['joins']} joined, {cur['leaves']} left, {cur['active']} talked "
+             f"({cur['posts']} messages, last time {prev['posts']}).",
+             f"Health: {h['score']}/100 ({h['label']})" + (" - " + "; ".join(h["why"]) if h["why"] else "") + "."]
     if cur["faq_answers"] or cur["owner_answers"]:
-        lines.append(f"Jawab: FAQ se {cur['faq_answers']}, aapne {cur['owner_answers']}; {cur['unanswered']} baaki.")
+        lines.append(f"Answers: {cur['faq_answers']} from the FAQ, {cur['owner_answers']} by you; {cur['unanswered']} pending.")
     if cur["alerts"]:
         lines.append("Alert: " + ", ".join(f"{k} {v}" for k, v in cur["alerts"].items()) + f"; kaarwai {cur['actions']}.")
     if cur["top_questions"]:
-        lines.append("Sabse zyada poocha: " + "; ".join(f"{q['q']} ({q['times']})" for q in cur["top_questions"][:3]) + ".")
+        lines.append("Asked most: " + "; ".join(f"{q['q']} ({q['times']})" for q in cur["top_questions"][:3]) + ".")
     tips = []
     if cur["unanswered"]:
-        tips.append("Baaki sawalon ke jawab FAQ mein daal dijiye - agli baar Hoola khud bata dega.")
+        tips.append("Put the answers to the pending questions in the FAQ - next time Hoola will answer by itself.")
     if cur["leaves"] > cur["joins"] and cur["leaves"] >= 3:
-        tips.append("Log ja rahe hain: ek announcement mein poochhiye kya kami hai.")
+        tips.append("People are leaving: ask in an announcement what is missing.")
     if cur["neg_share"] > 0.2:
-        tips.append("Shikayatein zyada: sabse badi shikayat par ek saaf update group mein daaliye.")
+        tips.append("Many complaints: post one clear update in the group on the biggest complaint.")
     if not tips and cur["active"] < max(2, cur["members"] * 0.05):
-        tips.append("Group shaant hai: ek sawal / poll se baat shuru kijiye.")
+        tips.append("The group is quiet: start the talk with a question / poll.")
     return {"community": c.name, "community_id": c.id, "days": days, "now": cur, "before": prev, "health": h, "tips": tips,
             "say": " ".join(lines)}
 
@@ -1394,7 +1394,7 @@ def register_file(tenant: str, comm: str = "") -> dict[str, Any]:
     f = chatfiles.store(tenant, "Community_register.xlsx", bio.getvalue(),
                         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
     _publish(tenant, "pc_file", {**f, "source": "samudaay", "title": "Member register"})
-    return {"file": f, "say": "Member register aur kaarwai ka log Excel mein."}
+    return {"file": f, "say": "Member register and action log are in the Excel file."}
 
 
 def day(tenant: str) -> dict[str, Any]:
@@ -1406,17 +1406,17 @@ def day(tenant: str) -> dict[str, Any]:
     parts = []
     if al:
         hi = sum(1 for a in al if a["severity"] == "high")
-        parts.append(f"{len(al)} alert khule" + (f" ({hi} gambhir)" if hi else ""))
+        parts.append(f"{len(al)} alert(s) open" + (f" ({hi} serious)" if hi else ""))
     if acts:
-        parts.append(f"{len(acts)} kaam aapki haan ka intezaar")
+        parts.append(f"{len(acts)} action(s) waiting for your approval")
     if qs:
-        parts.append(f"{len(qs)} sawal aapke jawab ke liye")
+        parts.append(f"{len(qs)} question(s) waiting for your answer")
     if jr:
         parts.append(f"{len(jr)} join request")
     if not cs:
-        say = "Abhi koi group juda nahi. Telegram bot jodiye ya Hoola Mandali link kijiye."
+        say = "No group is connected yet. Connect a Telegram bot or link a Hoola Group."
     else:
-        say = (", ".join(parts) + ".") if parts else "Sab shaant hai."
+        say = (", ".join(parts) + ".") if parts else "All quiet."
     return {"communities": cs, "alerts": al[:30], "actions": acts, "questions": qs[:30], "join_requests": jr, "bot": bot_view(tenant),
             "say": say, "parts": parts}
 

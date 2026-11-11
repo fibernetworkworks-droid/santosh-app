@@ -36,18 +36,18 @@ def set_transport(t: httpx.BaseTransport | None) -> None:
 
 def _why(status: int, msg: str) -> str:
     if status == 401:
-        return "GitHub token galat ya expire ho gaya: Developer > Niyam mein naya token daaliye."
+        return "The GitHub token is wrong or expired: add a new token in Hoola Code > Rules."
     if status == 403 and "rate limit" in msg.lower():
-        return "GitHub ki rate limit: thodi der baad."
+        return "GitHub rate limit: try again in a little while."
     if status in (403, 404):
-        return (f"GitHub ne mana kiya ({status}: {msg[:120]}). Token ko is repo ki ijazat chahiye: " + ", ".join(PERMS) + ".")
+        return (f"GitHub refused ({status}: {msg[:120]}). The token needs these permissions on this repo: " + ", ".join(PERMS) + ".")
     return f"GitHub: {status} {msg[:200]}"
 
 
 class Gh:
     def __init__(self, token: str):
         if not token:
-            raise GhError("GitHub juda nahi: Developer Sahayak > Niyam mein apna fine-grained token daaliye (sirf app mein).")
+            raise GhError("GitHub is not connected: add your fine-grained token in Hoola Code > Rules (only in the app).")
         self.token = token
         self.calls = 0
 
@@ -55,7 +55,7 @@ class Gh:
             raw: bool = False) -> Any:
         url = path if path.startswith("http") else f"{API}{path}"
         if not url.startswith(API + "/"):
-            raise GhError("Sirf api.github.com")
+            raise GhError("Only api.github.com")
         headers = {"Authorization": f"Bearer {self.token}", "Accept": "application/vnd.github+json",
                    "X-GitHub-Api-Version": "2022-11-28", "User-Agent": "Hoola-Developer-Sahayak"}
         if raw:
@@ -63,7 +63,7 @@ class Gh:
         for attempt in range(3):
             self.calls += 1
             if self.calls > 400:
-                raise GhError("Ek kaam mein bahut zyada GitHub calls; rok diya.")
+                raise GhError("Too many GitHub calls in one task; stopped.")
             try:
                 with httpx.Client(timeout=60, transport=_TRANSPORT, follow_redirects=False) as c:
                     r = c.request(method, url, json=body, params=params, headers=headers)
@@ -71,7 +71,7 @@ class Gh:
                 if attempt < 2:
                     time.sleep(0.5 * (attempt + 1))
                     continue
-                raise GhError(f"GitHub tak nahi pahunch paya: {e.__class__.__name__}")
+                raise GhError(f"Could not reach GitHub: {e.__class__.__name__}")
             if r.status_code in (502, 503, 504) and attempt < 2:
                 time.sleep(0.5 * (attempt + 1))
                 continue
@@ -146,7 +146,7 @@ class Gh:
     # ---- write (only on hoola/* branches)
     def commit_files(self, full: str, branch: str, parent: str, files: list[tuple[str, str]], message: str) -> str:
         if not branch.startswith("hoola/"):
-            raise GhError("Hoola sirf hoola/* branch par commit karta hai.")
+            raise GhError("Hoola commits only to hoola/* branches.")
         tree = []
         for path, text in files:
             b = self.req("POST", f"/repos/{full}/git/blobs", {"content": text, "encoding": "utf-8"})
