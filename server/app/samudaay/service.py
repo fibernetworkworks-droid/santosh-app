@@ -679,8 +679,8 @@ def _check(c: SamCommunity, text: str, ent_links: list[str], is_new: bool, forwa
                     "evidence": {"text": excerpt, "why": sc["why"], "links": sc["links"]}})
     ab = R.abuse(text, set(_j(c.ignore_words, [])))
     if ab:
-        titles = {"threat": "Threat", "hate": "Hate / attack on caste or religion", "harassment": "Ashleel / chhed-chhaad",
-                  "abuse": "Gaali"}
+        titles = {"threat": "Threat", "hate": "Hate / attack on caste or religion", "harassment": "Obscene / harassment",
+                  "abuse": "Abusive language"}
         f = {"kind": ab["kind"], "severity": ab["severity"], "title": titles[ab["kind"]], "evidence": {"text": excerpt, "words": ab["words"]}}
         if ab["kind"] == "threat":
             f["evidence"]["note"] = "If it is a threat to life, call 112; keep a screenshot of the post with you."
@@ -1358,7 +1358,7 @@ def report(tenant: str, comm: str = "", days: int = 7) -> dict[str, Any]:
     if cur["faq_answers"] or cur["owner_answers"]:
         lines.append(f"Answers: {cur['faq_answers']} from the FAQ, {cur['owner_answers']} by you; {cur['unanswered']} pending.")
     if cur["alerts"]:
-        lines.append("Alert: " + ", ".join(f"{k} {v}" for k, v in cur["alerts"].items()) + f"; kaarwai {cur['actions']}.")
+        lines.append("Alerts: " + ", ".join(f"{k} {v}" for k, v in cur["alerts"].items()) + f"; actions {cur['actions']}.")
     if cur["top_questions"]:
         lines.append("Asked most: " + "; ".join(f"{q['q']} ({q['times']})" for q in cur["top_questions"][:3]) + ".")
     tips = []

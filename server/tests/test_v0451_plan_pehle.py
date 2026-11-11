@@ -82,7 +82,7 @@ def test_a_large_job_plans_first_waits_and_touches_nothing(pl):
     assert v["tier"] == "large" and v["status"] == "plan_wait" and len(S.SEEN["plan"]) == 1
     assert S.SEEN["run"] == [] and fake.refs == before and not fake.prs    # NOTHING was written
     assert v["plan"]["steps"] == PLAN["steps"] and v["plan"]["done_when"] == PLAN["done_when"]
-    assert any("aapki haan chahiye" in s for s in _says(S))
+    assert any("your approval is needed" in s for s in _says(S))
     assert any(k == "devsahayak_plan" for k, _ in S.EVENTS)
 
     out = S.plan_ok(T, v["number"], v["hash"], by_tap=True)               # her Haan -> the work runs
@@ -112,7 +112,7 @@ def test_a_standard_job_shows_the_plan_and_starts_at_once(pl):
     assert v["tier"] == "standard" and len(S.SEEN["plan"]) == 1
     assert v["status"] != "plan_wait" and len(S.SEEN["run"]) == 1         # no waiting
     assert "<approved_plan>" in S.SEEN["run"][0]
-    assert any("kaam shuru kar raha hoon" in s for s in _says(S))
+    assert any("Starting work on this plan" in s for s in _says(S))
 
 
 def test_the_plan_reaches_the_pr_and_the_own_review(pl):

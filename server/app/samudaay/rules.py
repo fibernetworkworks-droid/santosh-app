@@ -25,7 +25,7 @@ LEGAL = [
      "src": "https://www.freepressjournal.in/legal/whatsapp-group-admins-not-liable-for-objectionable-posts-by-members-says-kerala-high-court"},
     {"what": "DPDP Act 2023 + DPDP Rules 2025 (notified 13 Nov 2025, phased to ~May 2027)",
      "say": "Members' names, numbers and messages are personal data: keep only what the community needs, delete on request, "
-            "tell people what is kept. Hoola keeps message text 90 days, never sells or shares it, and 'bhool jao' erases a member.",
+            "tell people what is kept. Hoola keeps message text 90 days, never sells or shares it, and 'forget' erases a member.",
      "src": "https://visionias.in/blog/current-affairs/dpdp-rules-2025-framework-for-personal-data-protection"},
     {"what": "Child sexual abuse material / intimate images / threats",
      "say": "Never forward or keep such content as 'proof'. Remove + ban, report to the platform and at cybercrime.gov.in "

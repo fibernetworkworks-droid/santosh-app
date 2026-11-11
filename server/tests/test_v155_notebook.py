@@ -138,7 +138,7 @@ def test_sources_on_off_guide_view_rename(ai):
     assert ns.rename_source("default", nid, "2", "Hiring")["sources"][1]["title"] == "Hiring"
     gg = asyncio.run(ns.notebook_guide("default", nid))
     assert gg["questions"] and asyncio.run(ns.notebook_guide("default", nid)) == gg        # kept until sources change
-    with pytest.raises(ns.NotebookError, match="dobara padha"):
+    with pytest.raises(ns.NotebookError, match="cannot be read again"):
         ns.refresh_source("default", nid, "1")                                            # text sources can't be re-read
 
 

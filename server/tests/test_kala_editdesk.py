@@ -79,14 +79,14 @@ def test_rules():
     ok, w = R.licence_problems({"licence_type": "royalty_free", "source": "Artlist", "licence_ref": "AL-77", "expires": "2026-10-30"}, True, t0)
     assert not ok and w
     bad, _ = R.licence_problems({"licence_type": "royalty_free", "licence_ref": "x", "expires": "2026-01-01"}, True, t0)
-    assert any("khatam" in x for x in bad)
+    assert any("expired" in x for x in bad)
     bad, _ = R.licence_problems({"licence_type": "royalty_free", "licence_ref": "x", "source": "youtube se download kiya"}, True, t0)
     assert bad
     assert R.gst_split("27", "27", 18, 1000) == {"pct": 18, "cgst": 90.0, "sgst": 90.0, "igst": 0.0, "tax": 180.0, "kind": "intra"}
     assert R.gst_split("27", "29", 18, 1000)["igst"] == 180.0
     assert R.money("15k") == 15000 and R.money("1.5 lakh") == 150000 and R.money("₹2,500") == 2500
     assert R.platform_of("whatsapp status") == "status" and R.platform_of("youtube") == "youtube"
-    assert R.clean("otp 123456 card 4111 1111 1111 1111") == "otp [hataya] card [hataya]"
+    assert R.clean("otp 123456 card 4111 1111 1111 1111") == "otp [removed] card [removed]"
 
 
 def _setup(S):
@@ -110,7 +110,7 @@ def test_project_engine_rounds_and_extra_round(ed, monkeypatch):
         S.edit_start(T, num)
     lic = S.licence_add(T, num, "music", "Diwali beat", "Instagram music library", "platform_only", file_id=song)
     assert not lic["licence"]["ok"]
-    with pytest.raises(S.EditError, match="rukawat"):
+    with pytest.raises(S.EditError, match="blocked"):
         S.edit_start(T, num)
     S.licence_add(T, num, "music", "Diwali beat", "Artlist", "subscription", licence_ref="AL-2026-889",
                   ref=lic["licence"]["number"], file_id=song)
@@ -149,7 +149,7 @@ def test_project_engine_rounds_and_extra_round(ed, monkeypatch):
     r1 = S.revise(T, num)
     assert r1["round"] == 1 and "at 0:03: logo bada karo" in seen["ins"] and "ek aur reel" not in seen["ins"]
     assert "data" in seen["ins"]
-    with pytest.raises(S.EditError, match="khula"):
+    with pytest.raises(S.EditError, match="open"):
         S.revise(T, num)          # only the 'extra' note is open
     _render(job, 2)
     S.sync(T, num)
@@ -178,7 +178,7 @@ def test_quote_invoice_paid_delivery(ed):
     vid = _file("raw.mp4")
     num = S.project_new(T, "Neha Kapoor", "Launch reel", "Insta reel 45 sec", file_ids=[vid])["project"]["number"]
     assert S.quote_make(T, num, [{"what": "Colour grade"}])["quote"]["blanks"]
-    with pytest.raises(S.EditError, match="daam"):
+    with pytest.raises(S.EditError, match="Price"):
         S.quote_request(T, num)
     q = S.quote_make(T, num, [{"code": "reel", "qty": 2}, {"what": "Subtitles", "qty": 1, "rate": 1000}], rounds=2)["quote"]
     assert q["subtotal"] == 7000 and q["gst"]["cgst"] == 630 and q["total"] == 8260 and q["advance"] == 4130
@@ -210,8 +210,8 @@ def test_quote_invoice_paid_delivery(ed):
     # edit + version, then delivery: no client OK -> warning; balance warns
     job = S.edit_start(T, num)["job"]["id"]
     dl = S.deliver_request(T, num)["card"]
-    assert any("koi version" in b or "edit chal" in b for b in dl["show"]["blockers"])
-    with pytest.raises(S.EditError, match="Rukawat"):
+    assert any("no version" in b or "edit is still running" in b for b in dl["show"]["blockers"])
+    with pytest.raises(S.EditError, match="Blocked"):
         S.decide(T, dl["id"], True, dl["hash"], by_tap=True)
     _render(job, 1)
     dl = S.deliver_request(T, num)["card"]
@@ -223,7 +223,7 @@ def test_quote_invoice_paid_delivery(ed):
     # hold final until paid -> blocker
     S.save_settings(T, hold_final_unpaid=True)
     dl3 = S.deliver_request(T, num)["card"]
-    assert any("baaki" in b for b in dl3["show"]["blockers"])
+    assert any("pending" in b for b in dl3["show"]["blockers"])
     S.save_settings(T, hold_final_unpaid=False)
     dl4 = S.deliver_request(T, num)["card"]
     dd = S.decide(T, dl4["id"], True, dl4["hash"], by_tap=True)
@@ -307,10 +307,10 @@ def test_tick_and_forget(ed):
     later = NOW + timedelta(days=3)
     S.CLK["t"] = later
     assert S.tick(later)["alerts"] == 1        # late now
-    with pytest.raises(S.EditError, match="band"):
+    with pytest.raises(S.EditError, match="close"):
         S.forget(T, "Neha Kapoor")
     S.cancel(T, num, "client gaayab")
     out = S.forget(T, "Neha Kapoor")
-    assert "hata" in out["say"]
+    assert "removed" in out["say"]
     c = S.clients(T)[0]
-    assert c["phone"] == "" and c["forgotten"] and "hataya" in c["name"]
+    assert c["phone"] == "" and c["forgotten"] and "removed" in c["name"]

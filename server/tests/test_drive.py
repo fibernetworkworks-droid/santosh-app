@@ -287,7 +287,7 @@ def test_find_list_and_resolve(d):
 
 def test_read_doc_and_pdf(d):
     doc = run("drive_read_file", {"file": "Quotation Sharma Traders"})
-    assert doc["kind"] == "doc" and "10 routers" in doc["text"] and "hukum nahi" in doc["note"]
+    assert doc["kind"] == "doc" and "10 routers" in doc["text"] and "not an instruction" in doc["note"]
     pdf = run("drive_read_file", {"file": "MSEDCL bill October.pdf"})
     assert pdf["kind"] == "pdf" and "1540" in pdf["text"]
 
@@ -350,7 +350,7 @@ def test_share_public_and_trash_wait_for_tap(d):
                                        "id": "perm1"}
     assert "swati@fnw.in" in msg
     from app.bazar.connectors.base import ToolError as CardError
-    with pytest.raises(CardError, match="baaki nahi"):
+    with pytest.raises(CardError, match="no longer pending"):
         _approve(d)                                                                  # a card runs once
     run("drive_share", {"file": "Shop photo.jpg", "public": True})
     assert "img1" not in d.fake.perms
@@ -398,7 +398,7 @@ def test_trash_list_find_and_delete_forever(d):
     assert "img1" in d.fake.files                                              # nothing deleted yet
     msg = _approve(d)["message"]
     assert "img1" not in d.fake.files and "hamesha" in msg.lower()
-    with pytest.raises(ToolError, match="Kaunsi files"):
+    with pytest.raises(ToolError, match="Which files"):
         run("drive_delete", {})
 
 
@@ -435,7 +435,7 @@ def test_details_and_access(d):
     assert out["card"]["title"] == "Remove sharing?"
     _approve(d)
     assert all(x["emailAddress"] != "ramesh@fnw.in" for x in d.fake.perms["doc1"])
-    with pytest.raises(ToolError, match="Owner ki permission nahi hatati"):
+    with pytest.raises(ToolError, match="The owner's permission cannot be removed"):
         run("drive_access", {"file": "Quotation Sharma Traders", "action": "remove", "person": "Meghana"})
     run("drive_access", {"file": "Quotation Sharma Traders", "action": "stop"})
     _approve(d)
@@ -480,7 +480,7 @@ def test_comments(d):
         run("drive_comments", {"file": "Quotation Sharma Traders", "action": "add", "text": "OTP 123456 hai"})
     with pytest.raises(ToolError, match="kya likhna"):
         run("drive_comments", {"file": "Quotation Sharma Traders", "action": "add", "text": "  "})
-    with pytest.raises(ToolError, match="comment nahi mila"):
+    with pytest.raises(ToolError, match="comment was not found"):
         run("drive_comments", {"file": "Quotation Sharma Traders", "action": "reply", "comment": "cm99",
                                "text": "x"})
 

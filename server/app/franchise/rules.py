@@ -67,7 +67,7 @@ def flags(r: dict[str, float], targets: dict[str, float]) -> list[str]:
     out = []
     for k, t in targets.items():
         if k in r and r[k] > t + 0.5:
-            out.append(f"{COST_KINDS.get(k, k)} {r[k]}% (lakshya {t:g}%)")
+            out.append(f"{COST_KINDS.get(k, k)} {r[k]}% (target {t:g}%)")
     return out
 
 

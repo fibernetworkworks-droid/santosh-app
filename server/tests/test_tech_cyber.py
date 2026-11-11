@@ -170,7 +170,7 @@ def test_parse_correlate_score_dedupe_teach(cy):
     assert out["matters"][0]["kind"] == "login_after_fail"                       # worst first
     assert out["noise"] >= 2                                                     # port scan + her own login + fail2ban ban
     assert all(a["kind"] != "port_scan" for a in out["matters"])
-    assert "Zaroori" in out["say"] and kinds(S)[-1] == "cyber_alerts"
+    assert "Important" in out["say"] and kinds(S)[-1] == "cyber_alerts"
     noise = [a for a in S.alerts(T, "noise")]
     assert any(a["kind"] == "port_scan" for a in noise) and any(a["kind"] == "login_ok" and a["ip"] == "49.36.10.5" for a in noise)
     # the same log again = counted, not repeated
@@ -193,7 +193,7 @@ def test_parse_correlate_score_dedupe_teach(cy):
     with pytest.raises(S.CyberError):
         S.teach(T, bypass["number"], "pentest wala", actor="staff:x")
     t = S.teach(T, bypass["number"], "hamara apna security test")
-    assert t["scope"] == "ip" and "Seekh liya" in t["say"]
+    assert t["scope"] == "ip" and "Learned" in t["say"]
     S.set_alert(T, bypass["id"], "open")
     from app.cyber.models import CyberAlert
     from app.db import session
@@ -204,7 +204,7 @@ def test_parse_correlate_score_dedupe_teach(cy):
     assert nb["level"] == "noise" and nb["known_benign"] and "hamara apna security test" in " ".join(nb["why"])
     assert all(a["kind"] != "waf_bypass" for a in c2["matters"])
     rf = S.teach(T, w["matters"][0]["number"], "maine banaya tha")
-    assert "kabhi chhupaya nahi" in rf["say"]
+    assert "is never hidden" in rf["say"]
     assert S.get_alert(T, w["matters"][0]["id"])["level"] == "matters"
     # secrets in pasted logs are masked
     m = S.intake(T, "Oct 23 10:00:00 web app[1]: login failed for admin password=Hunter2xyz from 8.8.4.4")
@@ -245,7 +245,7 @@ def test_email_link_file_checks(cy):
     assert fr["verdict"] == "malicious" and fr["virustotal"]["label"] == "trojan.agenttesla" and fr["virustotal"]["malicious"] == 41
     data = b"MZ\x90\x00 pretend program bytes"
     fr2 = S.check_file(T, data=data, name="bill.pdf")
-    assert fr2["sha256"] and "upload nahi" in fr2["say"]
+    assert fr2["sha256"] and "not uploaded" in fr2["say"]
     assert not any(c.startswith("POST www.virustotal.com") for c in S.FAKE.calls)
     assert len(S.checks(T)) == 7 and len(S.checks(T, "file")) == 2
 
@@ -288,7 +288,7 @@ def test_domain_posture_breach(cy, monkeypatch):
         S.breach(T, "ainewtika.com")                                                 # no key yet
     S.set_key(T, "hibp", "0123456789abcdef0123456789abcdef")
     b = S.breach(T, "ainewtika.com")
-    assert len(b["rows"]) == 2 and b["rows"][0]["email"].startswith("ac***") and "password bhi leak" in b["say"]
+    assert len(b["rows"]) == 2 and b["rows"][0]["email"].startswith("ac***") and "password leaked" in b["say"]
     S.save_settings(T, work_emails=["accounts@ainewtika.com", "sandesh@ainewtika.com"])
     b2 = S.breach(T)
     assert [r["email"] for r in b2["rows"]] == ["ac***s@ainewtika.com"]
@@ -309,7 +309,7 @@ def test_advisories_from_helpdesk_assets(cy):
     assert "CVE-2026-33333" in refs and "CVE-2026-11111" in refs and "CVE-2026-22222" not in refs   # unrelated 'tallying' dropped
     assert any(a["source"] == "certin" for a in S.advisories(T))
     kev = next(a for a in S.advisories(T) if a["ref"] == "CVE-2026-33333")
-    assert kev["exploited"] and "hamle ho rahe" in kev["say"] and kev["where"] == "Office router"
+    assert kev["exploited"] and "being attacked" in kev["say"] and kev["where"] == "Office router"
     assert r["urgent"] and kinds(S)[-1] == "cyber_advisory"
     again = S.refresh_advisories(T)
     assert again["new"] == 0
@@ -327,9 +327,9 @@ def test_incident_note_and_cert_in(cy):
     inc = S.new_incident(T, alert_ids=[laf["number"]], systems="tally-srv")
     v = inc["incident"]
     assert v["number"] == "IN-0001" and v["kind"] == "account" and v["helpdesk_incident"]
-    assert v["cert_in"]["applies"] is True and v["cert_in_due"] and "6 ghante" in inc["say"]
+    assert v["cert_in"]["applies"] is True and v["cert_in_due"] and "6 hours" in inc["say"]
     assert S.get_alert(T, laf["id"])["status"] == "incident"
-    assert any("Kai galat koshishon" in t["what"] for t in v["timeline"])
+    assert any("Logged in after many wrong attempts" in t["what"] for t in v["timeline"])
     S.incident_add(T, v["number"], "Root ka password badla, SSH par key-login lagaya", "2026-10-23T03:10")
     S.incident_update(T, v["number"], impact="Tally server par 40 minute tak kisi aur ka login", done="Password badla", personal_data=True)
     v2 = S.get_incident(T, v["id"])
@@ -444,7 +444,7 @@ def test_tools_actors_and_keys(cy):
     with pytest.raises(ToolError, match="Keys"):
         asyncio.run(CT.cyber(ctx, "settings", vip_names=["api_key = AIzaSyA123456789012345678901234567"]))
     day = asyncio.run(CT.cyber_dekho(ctx, "day"))
-    assert day["waiting"] and "Suraksha" in day["say"]
+    assert day["waiting"] and "Security" in day["say"]
     keys = asyncio.run(CT.cyber_dekho(ctx, "keys"))
     assert set(keys["keys"]) >= {"webrisk", "virustotal", "hibp", "cloudflare"} and "token" not in json.dumps(keys).lower().replace("token +", "")
     assert asyncio.run(CT.cyber_dekho(ctx, "never"))["never"]

@@ -69,7 +69,7 @@ def test_sales_statement_pnl(fr):
     assert ak["net"] == 270000 and ak["royalty"] == 30000 and ak["min_topup"] == 30000 - 16200
     assert d["gst"]["how"] == "igst" and d["gst"]["gst"] == round(d["fees"] * 0.18, 2)
     assert d["tds"]["applies"] and d["payable"] == round(d["fees"] + d["gst"]["gst"] - d["tds"]["tds"], 2)
-    assert d["due"] == "2026-10-10" and st["file"]["name"].endswith(".xlsx") and "haan" in st["say"]
+    assert d["due"] == "2026-10-10" and st["file"]["name"].endswith(".xlsx") and "approval" in st["say"]
     ap = S.approve_statement(T, st["statement_id"])
     assert ap["to"] == "royalty@chaipoint.example" and "2026-09" in ap["text"]
     assert "26Q" in S.mark_paid(T, st["statement_id"])["say"]
@@ -83,7 +83,7 @@ def test_sales_statement_pnl(fr):
     assert p["costs"]["rent"] == 85000 and p["costs"]["aggregator"] == 60000 and p["ratios"]["food"] == round(330000 * 100 / 960000, 1)
     assert any("food" in f.lower() for f in p["flags"]) and p["break_even"] and p["profit"] == round(960000 - sum(p["costs"].values()), 2)
     cmp = S.compare(T, "2026-09")
-    assert len(cmp["outlets"]) == 2 and "Sabse" in cmp["say"]
+    assert len(cmp["outlets"]) == 2 and "Best" in cmp["say"]
     assert S.pnl_file(T, "2026-09")["file"]["name"].endswith(".xlsx")
 
 
@@ -101,7 +101,7 @@ def test_import_licence_audit_day(fr):
     lic = S.licences(T)
     assert lic["due"][0]["kind"] == "fssai" and any(x["kind"] == "fire_noc" and x["state"] == "ok" for x in lic["licences"])
     w = S.dates_watch(T)
-    assert {x["what"] for x in w} >= {"Koregaon Park: kiraya 5% badhega", "Koregaon Park: lease khatam"}
+    assert {x["what"] for x in w} >= {"Koregaon Park: rent goes up 5%", "Koregaon Park: lease ends"}
     for dd in ("2026-10-18", "2026-10-19", "2026-10-20"):
         S.audit(T, "Koregaon", ["fridge"], day=dd)
     a = S.audit(T, "Koregaon", ["uniform"])
