@@ -1,0 +1,22 @@
+/* HOOLA DESIGN - D7 bridge B: the "Send to Web Studio" dialog (hd-bridge-web.js). Uses the editor's own tokens. */
+.hdw-dialog { width: min(640px, calc(100vw - 32px)); max-height: calc(100vh - 48px); display: flex; flex-direction: column; }
+.hdw-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 20px 8px; }
+.hdw-head h2 { margin: 0; font-size: 16px; font-weight: 600; }
+.hdw-body { padding: 4px 20px 18px; overflow: auto; display: flex; flex-direction: column; gap: 12px; }
+.hdw-lead { margin: 0; font-size: 13.5px; }
+.hdw-seg { align-self: flex-start; }
+.hdw-field { display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; }
+.hdw-field > span { opacity: .8; }
+.hdw-field .hd-in { width: 100%; }
+.hdw-tog { align-self: flex-start; }
+.hdw-code { display: flex; flex-direction: column; gap: 6px; }
+.hdw-ctitle { margin: 4px 0 0; font-size: 12px; font-weight: 600; opacity: .8; }
+.hdw-pre { margin: 0; max-height: 220px; overflow: auto; padding: 10px 12px; border-radius: 8px; font: 12px/1.45 "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+  white-space: pre; background: var(--hd-panel2, rgba(127, 127, 127, .08)); border: 1px solid var(--hd-line, rgba(127, 127, 127, .25)); }
+.hdw-warn { padding: 10px 12px; border-radius: 8px; border: 1px solid var(--hd-line, rgba(127, 127, 127, .25)); font-size: 12.5px; }
+.hdw-wtitle { margin: 0 0 4px; font-weight: 600; }
+.hdw-warn ul { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 3px; }
+.hdw-err { margin: 0; color: var(--hd-bad, #d92d20); font-size: 13px; }
+.hdw-foot { display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex-wrap: wrap; padding-top: 4px; }
+.hdw-safe { margin-right: auto; font-size: 12px; }
+.hdw-wide { width: 100%; justify-content: center; }

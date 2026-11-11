@@ -2017,8 +2017,352 @@ appgen-check (Android) and ios-check (macOS) runs on this push are the first com
 the iPhone camera button is hidden on the simulator, so only a real iPhone proves it. Still not built: home-screen widgets,
 real 3D, deep links / app links, right-to-left, in-app tests in generated apps. Older red, not this work:
 test_v0338_app_store.py::test_push_and_submit_through_the_mac (KeyError 'status', red before this change).
+## v0.816.0 NATIJA KHATA (built as 0.806; their 0.806-0.815 took the numbers) - the outcome ledger of HOOLA PROMPTING (P4 of docs/HOOLA_PROMPTING_PLAN.md, owner: "GO")
 
-## v0.816.0 TEEN AWAAZEIN — three more call voices she can pick (owner: "LETS DEPLOY ALL --- USER WILL CHOOSE THE VOICE THEY WANT")
+What it is: one row per prompt she takes OUT of Hoola Prompting, and what happened to the result afterwards. This is
+the measure the whole feature is judged by, and the data the later phases (recipe order, defaults, self-improvement)
+need.
+
+- `server/app/prompting/ledger.py`, tables `prompt_runs` + `prompt_prefs` (registered in db.init_db, self-heal).
+- A row holds SHAPE only: section, recipe id, slot names with their source, score, dialect, engine, model, rupees
+  (AI list price), seconds, status, grade. The prompt is stored as a SHA-256 of its normalised text plus up to 160
+  word hashes salted with the tenant id. No word, price, phone or name of hers is in the table (test).
+- Life of a run: `hand()` (POST /api/prompting/runs from the Improve sheet's Use button and the page's Open / Copy)
+  -> `claim(tenant, section, text, ref)` when an engine starts with that text: exact hash, or >= 60 % word overlap
+  inside 2 hours (= she edited the prompt first, `edited_before`). The same prompt started again inside 6 hours grades
+  the earlier run `redone` and opens a new run (origin `again`). -> `ready(ref, more_refs, model, usd, seconds)` ->
+  `event(tenant, ref, ev)`: published / downloaded / copied / sent / thumb_up = kept (kept_after_edit when the result
+  was edited), edited, deleted / thumb_down = dropped, redo = redone. Her own keep stands against a later redo; only
+  her delete undoes it. `failed(ref)` closes a run without a grade (an engine failure is not her verdict).
+- Hooks (all through `main._pled`, `_pled_site`, `_pled_sid`, `_pled_chat`; each swallows its own errors):
+  POST /api/sites (both the architect path and the plain path), site first build ready (`site/service.py`, with the
+  site's cost_usd), /change + /edit, /launch, DELETE; Create image jobs (`create/jobs.py`: run_meter cost, items as
+  extra refs, failure), item delete; the Script writer (/api/create/write, item text edit, delete); a chat message of
+  40+ characters (never in an incognito chat), reply thumbs, Ask again. Studio downloads call
+  POST /api/prompting/runs/event (only `downloaded` / `copied` are accepted from a page).
+- Silence, by rule (`settle`, run lazily when numbers are read): handed and never run in 24 hours = `unused`; copied
+  out of Hoola = closed with no grade (unknown); a result still there 3 days later, not redone and not deleted =
+  kept, marked quiet and counted apart from her own keeps.
+- The four numbers (`numbers`): kept rate, redos per kept result, rupees per kept result, minutes to a kept result -
+  overall and per section, shown only after 5 judged results. Score check per section: kept rate of runs at or above
+  the median score against those below, said only with 16 judged runs: predicts / no link / backwards.
+- Recipes: `recipe_rates()` (users who share, 5+ judged runs) orders the image / script recipes and shows
+  "kept 5 of 6 times".
+- Her controls: keep my record (off = nothing written), share shape for recipe order, Delete my record
+  (DELETE /api/prompting/ledger?confirm=DELETE). GET /api/prompting/ledger = her numbers + recent runs;
+  `everyone=1` only for the owner tenant (all users who share, no recent list). POST /api/prompting/runs/{id}/thumb.
+- Page: Results tab on /console/prompting (`prompting.js` results(), styles at the end of `prompting.css`).
+- Switch `prompting_ledger` (default on).
+- Tests: `server/tests/test_v0816_prompt_ledger.py`, 14 incl. a browser walk at 1360 and 390 px.
+
+NOT built / NOT verified: no real run has been recorded on the live server. Not hooked: Kalam, video, app builds,
+the architect's plan-only path. Rupees for a website are the site's running AI cost at first build, not the build
+alone. A chat run is marked ready when the message is sent (the reply's time and cost are not read). Decisions 2-5
+of plan part 7 (which questions to stop asking, slot defaults per business type, dialect health alerts, her
+personal defaults) need real rows first and are not built.
+
+## v0.817.0 HOOLA CODE DESIGN PASS (built as 0.807; their v0.807-v0.816 took the numbers meanwhile) — one design system for every page of Hoola Code (owner: "DESIGN STILL LOOK OLD AND STALE --- MAKE IT PERFECTLY ALLINED WITH TEXT, BUTTONS, TEXTURE ... MORE PREMIUM AND ADVANCE SMOOTH --- LIKE CLAUDE CODE WEB PORTAL ... SHOW ME ALL PAGES")
+
+Same pages, same routes, same behaviour - the LOOK rebuilt. Seven phases had each added their own rules (311 lines, five
+button heights, corners from 5 to 18px, a class used for two different things). All of them are gone; ONE block in
+`server/app/static/console/v2.css` ("HOOLA CODE (code.js) - THE DESIGN SYSTEM") replaces them.
+
+**The scale (nothing on the page is outside it)**
+- Controls 34px (small 28px, the two composer buttons 36px); a button, a chip, a field and a tab are the same height, so
+  any row of them sits on one line.
+- Corners 8 (control) / 12 (card) / 18 (composer, dialog); type 12 / 13 / 13.5 / 14 / 16 serif for reading / 28 serif for
+  a page title; weights 400 / 500 / 600; space 4 / 8 / 12 / 16 / 24.
+- One hairline inside a card (`--line`), one around it (`--hair2`), one soft shadow (`--lift`); the composer is the one
+  raised thing on a page (a deeper shadow with a faint violet glow under it).
+- Console tokens only, so dark mode follows by itself; primary / green / red buttons take `--on-acc` for their words
+  (white words on the bright dark-mode green were unreadable).
+
+**What changed on the page**
+- Sidebar: sans brand line (it was monospace by accident: `.hcd-sh` was both "section header" and "shell command" - the
+  command is `.hcd-cmd` now), icons on the nav rows, the open session as a raised row, a count badge on Scheduled.
+- Home: four starting points under the box (Fix a bug / Build a feature / Write tests / Explain the code) that only fill
+  the box; the settings row as quiet inline pickers with one drawn chevron (native select arrows are gone everywhere).
+- Session: every step is one grid (16px mark, words, time) so marks and words line up down the page; thinking as a quiet
+  italic quote; the recap as one calm card with a coloured edge instead of a tinted slab; the question / plan bar, the
+  queue and the message box are the same width; a Working pill with the clock in the top bar.
+- Rail: quiet cards on the sidebar colour; buttons share a row and never overflow (a long label wraps to its own row).
+- Changes pane: file list on the sidebar colour with the open file raised, 22px code rows, a 36px sticky file header.
+- Settings: cards flow in two balanced columns (a long repo card no longer leaves a hole), real switches instead of
+  checkboxes, a drawn disclosure arrow on "How this repo runs in the box".
+- All sessions: Active / Archived as one segmented control. Dialogs: 18px corners, deeper shadow.
+- Narrow windows start with the slim sidebar.
+
+**Motion (CRISP TEXT rules kept):** 140 ms hover / press / focus transitions; a page comes in once (`hcd-enter`, removed
+after 320 ms so a later repaint never moves); a dialog pops once; a fold fades in. No blur, nothing spins, text always on
+a solid colour. All of it is off under "reduce motion".
+
+**Test** `server/tests/test_v0807_hoola_code_design.py`: walks 17 views in a real browser with full data (home, finished
+session, steps + thinking, Changes pane with a comment, working, plan, question, dialog, Scheduled, Reviews, Settings,
+All sessions, three in dark, two at 390px) and MEASURES: every control on the scale, every row on one centre line, step
+marks on one vertical line, page title and cards on one left edge, nothing under 12px / over weight 600 / all-caps,
+nothing wider than the window, no button outside its card, motion once and off under reduce-motion. With HOOLA_SHOTS it
+saves a picture of each view. Found by it while building: headings losing their centring to a reset, hint text at 10.4px,
+a rail button whose words left the button, bars narrower than the message box.
+Kept on purpose (older tests pin them): rail 300px, slim sidebar 52px, reading column 760px.
+**NOT VERIFIED:** seen only in headless Chromium here, not on her own screen / Windows ClearType. The phone screen and the
+read-only shared page use the same styles but the phone app's Flutter screen is unchanged.
+## v0.818.0 HOOLA DESIGN (built as 0.777; their CHAT JAISA took 0.777.0 and the 0.778-0.817 chain landed meanwhile - REBASE PROTOCOL, both kept) — Hoola's own design editor on Figma's published architecture (11 Nov 2026; owner: "A HOOLA DESIGN --- DO EXTREEM DEEP RESEARCH HOW FIGMA WORKS IN BACKEND ... MAKE CLONE OF FIGMA FOR HOOLA END TO END" + "DEPOY SEVERAL AGENT")
+- RESEARCH (`docs/research/figma/`, every claim cited to Figma's own engineering blog / help / Evan Wallace): 01 backend + multiplayer (a file = a tree of objects, server-authoritative last-writer-wins PER PROPERTY - not OT, not a full CRDT; client id + counter node ids; fractional index child order; parent+position one property, the server refuses a cycle; one in-memory process per file, checkpoints + a write-ahead log; LiveGraph; dynamic page loading), 02 editor + rendering (C++ -> WebAssembly, own tile-based WebGL / WebGPU renderer, no DOM per layer; plugins in QuickJS), 03 feature inventory (~120 features in tiers) + open-source licences (tldraw: production licence + watermark -> not usable; Plasmic Studio AGPL -> not usable; Penpot MPL = reference only). Original product, original look: no Figma name / assets / code.
+- CONTRACT: `docs/HOOLA_DESIGN_PLAN.md` - data model (node props table), ops, WebSocket frames, REST routes, client module API, phases D1-D9, section 6 = as built. Ten builders worked in parallel against it (4 first wave, 6 second wave), each owning its own files.
+- SERVER `server/app/design/` (+ main.py page route `/console/design` behind `design_page`, router mount, shutdown flush; db.init_db; config `design_*`): `doc.py` the document rules (LWW per prop, null removes, create = set with type/parent/idx, delete = subtree, cycle refused, root protected, size caps), `fracidx.py`, `room.py` (one room per open file: snapshot + journal replay, cid per connection persisted and never reused, bounded per-connection send queue, ONE serialisation per broadcast, checkpoint every 200 ops / 20 s idle / last leave, journal trim, auto version every 30 min keep 50, `HUB.apply_ops` for server-made edits), `store.py` (all DB access, off the event loop), `api.py` (files CRUD + trash / restore / duplicate, doc, thumb, versions + restore + duplicate-as-file, comments, assets by content sniffing - SVG with script refused, view-only share token + public read routes + `?share=` socket, the WebSocket with the console's subprotocol auth), `assets.py` + a daily unused-image sweep (worker slot `design_asset_jobs`, 7 days), `limits.py` (comment 30/min, share reads 120/min, AI 20/hour), `ai.py` + `ailayout.py` + `icons.py` + `templates.py`.
+- CLIENT `server/app/static/console/design/` (plain JS, no build step, strict CSP): `hd-math` `hd-core` (store with a SHADOW of the server's document: screen = shadow + un-acked local ops, replayed by the server's rules; per-client undo as inverse ops; `prop()` defaults never written) `hd-net` (reconnect with backoff, pending ops re-sent, offline queue 5,000, hold / release for version preview) `hd-layout` (text measure from real font metrics, auto layout flex-like with hug / fill / wrap / min-max, constraints, group bounds) `hd-render` (Canvas2D: dirty redraw, viewport culling, LOD, per-subtree bitmap cache, every paint / stroke / effect / blend / mask, booleans with real geometry, toCanvas / toSVG) `hd-tools` (select, deep select, marquee, move / resize / rotate, snapping + smart guides, frame + presets, shapes, pen, pencil, IME text) `hd-ui` (file browser, layers - virtualised, 10,000 rows = 39 DOM rows - pages, Design panel, colour picker + gradients, context menu, command palette, shortcuts) `hd-app`; second wave `hd-vector` (vector edit, booleans, masks, rulers, guides, layout grids, gradient handles, Alt distances) `hd-components` (components, instances + overrides, variants, component props, styles, variables + modes, Assets + library) `hd-export` (PNG / JPG / SVG / image PDF / ZIP, copy as PNG / SVG, SVG + picture import with hostile SVGs inert, Inspect tab with CSS / Flutter / Tailwind, .hoola.json) `hd-collab` (comments with pins that follow layers, version history with read-only preview + restore, share link that works signed out, follow / spotlight / cursor chat) `hd-proto` (interactions, on-canvas wiring, the player with transitions + smart animate, device outlines) `hd-ai` (Ask Hoola composer, Remove / Try again / 3 variations). Console sidebar row "Hoola Design" under Create.
+- AGENT: ONE tool `hoola_design` (create / list / add / share; family `design`, tight admission keys, VOICE_VIA_KAAM only; `share` never makes a public link - she taps Share herself). Registry 624 -> 625. The AI never writes ops or ids: it returns a spec that code validates (depth 8, 400 nodes, allowlisted keys and fonts, max 2 families, invented phone / price / email -> [blanks], contrast >= 4.5 checked in code with one fix pass), one retry on bad JSON, then a plain 502; no model key = 11 built-in layouts, said so.
+- MEASURED: pan 5 ms a frame with 5,000 layers, under 10 ms with 20,000 (headless Chromium, software raster, 1280x800); store loads 50,000 nodes in 20 ms, 1,000 sets in one step 2-6 ms; server ~20,000 op batches a second, ack p50 0.23 ms; a killed server lost nothing; smart animate 120 layers 2.3 ms a frame; three editors with crossing messages, rejects, undo and dropped connections - 3,000-run soak, zero divergence. Two real browsers on a real server: draw, move, recolour, undo / redo, cursors, Hindi text, reopen all matched.
+- PROOF: server 33 + collab 12 + AI + core 4 + render 3 + vector + components 3 + export 3 + proto 3 pytest files; node walks design_core (24), design_ui, design_render (12 sections), design_vector (11), design_components, design_export (273 checks; ZIP read by zipfile, PDF by strict pypdf, hostile SVG made no request), design_proto (169), design_collab (78 checks on a REAL server: two editors + a signed-out visitor).
+- NOT DONE / NOT VERIFIED: NOT Figma's raw speed - Canvas2D in plain JS, not a WASM + WebGL engine (phase D9); target is smooth up to a few thousand visible layers and 10-20 people in a file. Rooms are in memory = ONE server process per file (true on the VPS today). The AI was only ever answered by a FAKE model - real design quality unseen; only the templates were looked at. Not built: D7 bridges (import through her own Figma token, design -> Web / App Studio), D8 plugins, D9 WebGL engine + branches; boolean shapes skip text / lines; flatten keeps no outlined strokes; the PDF is page images; SVG import skips patterns / luminance masks / textPath; instances' own overrides are not in the Inspect code; unread comment dots are per browser; player hit-test by bounding box. Real Google Fonts and EyeDropper not exercised (sandbox).
+
+## v0.819.0 WHITEBOOKS PASTE CHECK (built as 0.814; their HOOLA CINEMA took 0.814.0 and 0.815-0.818 followed - REBASE PROTOCOL, all kept; owner ran vps-ops wb_check after putting the sandbox keys in the VPS .env)
+
+Her first live run, sandbox: every WHITEBOOKS_* name set except WHITEBOOKS_SANDBOX_GST_USERNAME (not in WhiteBooks' shared sandbox PDF,
+which covers e-Invoice + e-Way Bill only); ping PASS; public_search, rettrack, einv_auth FAIL WB_ERR_9001; ewb_auth FAIL "Invalid
+credentials provided or your account is not active" (the same refusal without its code); otp_request SKIP. Hoola's requests were read
+again against the specs (client_id / client_secret headers, email query) and match, and a refusal on all three products with their own
+keys leaves two causes: a bad paste, or an account WhiteBooks has not activated (her Developer Hub dashboard showed GST / e-Invoice /
+e-Way Bill all "not subscribed").
+
+- `wb.clean()` / `wb.email()`: every WhiteBooks value (email, client ids / secrets, sandbox identities) loses stray spaces, tabs,
+  Windows line ends and wrapping quotes before it is sent.
+- `wbcheck.paste_check()`: printed first by wb_check - per value how it LOOKS, never the value: client ids by leading letters + length
+  (the Hub shows them, e.g. GSTS...), secrets / passwords by length only, flags for non-keyboard characters (the Hub shows a secret as dots
+  until the eye / copy button is used), a space inside, not an email, not a 15-character GSTIN, and an e-invoice / e-way bill id with the
+  same start as the GST one ("is the GST key pasted here?"). The vps-ops redaction sed leaves these lines alone (a length is 2 characters).
+- When every value looks right and WhiteBooks still answers 9001, wb_check says so: ask WhiteBooks support to activate sandbox API access
+  for GST, e-Invoice and e-Way Bill on the developer account.
+- `wb._code_of`: a status_desc saying "invalid credentials" / "account is not active" without a code is WB_ERR_9001.
+
+Tests: 2 in test_v0807_bahi_a0.py (values cleaned; the paste check never carries a value and catches dots, a moved GST key; the EWB
+refusal named). NOT VERIFIED: still no accepted WhiteBooks call - the next wb_check after her re-paste or WhiteBooks' activation is the test.
+
+## v0.820.0 PEECHHE KA APP (CI fix for v0.815 APP KE PURZE)
+
+v0.815's first CI run: every new Kotlin / Swift file COMPILED on every job (Android compile / fcm / glogin / fixture2
+incl. the field-service emulator walk; iPhone simulator + unsigned device builds). The Android `smoke` job failed its
+QA report with 7 of 14 screens "not opened" (support, seller_info, privacy, delete_account, hoola_login, hoola_account,
+hoola_inbox) - every screen AFTER the dashboard. Not a crash: the tap walk pressed the dashboard's new "Pick from
+contacts" button, the system contacts picker (com.google.android.contacts) stayed in front, and every later screen
+was opened behind it (the support screenshot is the picker's "No contacts with phone numbers"). The device check
+only ever force-stopped OUR package. FIX: `clean_front` in `appmaker/android/device_check.sh` + `tablet_check.sh` -
+reads the top resumed activity, force-stops it when it is not our app / the launcher / system UI, then HOME; called
+before each screen, before and after each tap, before the scroll check. Any of her real apps with a button that opens
+another app (calendar, contacts, Play, a browser, a share sheet) would have failed the same way. Tests:
+test_v0820_device_check_front.py (3, a fake adb on PATH). NOT VERIFIED until this push's appgen-check.
+
+
+## v0.821.0 HOOLA 3D CHARACTERS - the 3D kit's characters (owner: "GO COMPLEX 3D CHARACTERS BUILD")
+
+Before this the kit's player was a capsule and an enemy a ball. A 3D game with people in it meant the model writing
+bodies and walk cycles from scratch, which is exactly where 3D builds broke. Now the kit carries the characters.
+
+**What it is** (all in `server/app/gamedesk/kit/hoola_3d.gd`, `const VERSION := 2`, Hoola's own file):
+- `class Figure extends Node3D` - a jointed character built from primitives: hips, torso, head, two arms (shoulder +
+  elbow + hand), two legs (hip + knee + foot), eyes, hair, hat, outfit, an item in the right hand. `kind: "animal"` =
+  a four-legged body with head, ears, tail and optional horns. `style: "robot"` = box parts, glowing eyes, antenna.
+- Animation is procedural, joint targets blended every frame: `set_motion(0..1, on_floor, up_speed)` picks idle / walk /
+  run / jump / fall; `play()` runs a one-off - attack (signal `strike` at 40 %), hurt, wave, talk, die (stays down,
+  further play() ignored). Signal `finished(anim)`.
+- 11 ready-made looks in `LOOKS` (hero, girl, boy, elder, farmer, guard, villain, king, robot, dog, cow);
+  `look(preset, changes)` changes skin / shirt / pants / shoes / hair / eyes / hat_color, height, build
+  (slim / normal / stocky), hair_style (short / long / bun / none), hat (cap / turban / crown / helmet / antenna),
+  outfit (kurta / dress), item (sword / staff / lamp).
+- Her approved ANIMATED model instead of the drawn body: `"model": "<key>"` in the look, or `figure_from(parent, pos,
+  node)`. The model is sized to the height asked for (bounds of its meshes), turned to face the kit's forward, and its
+  clips are matched by name (idle / walk / run / jump / fall / attack / hurt / die / wave / talk; idle-walk-run set to
+  loop). No model = the drawn character, so a game never breaks on a missing asset.
+- `spawn_hero(parent, pos, look, speed, jump_height, hp)` - the v1 Player with a Figure for a body. With a sword (or
+  `"attack": true`) the action key F / J / X or the new violet on-screen button (`act_button`, drawn only when
+  `act_on`) strikes: every foe within 2.2 m and in front loses `power` health.
+- `foe(parent, pos, look, patrol_to, speed, chase_range, hp)` - the v1 Enemy with a Figure and health: a blow staggers
+  it (0.45 s, pushed back 0.6 m), at 0 it falls and is freed after 1.2 s. Its touch still costs 1 hp (it swings),
+  landing on it still removes it. New signal `enemy_defeated(left)` for strike or stomp; `enemy_stomped` unchanged.
+- `npc(parent, pos, who, lines, look, talk_range)` - turns to the player, waves when the player comes near, shows
+  "..." above the head, and says the next line each time the action key is pressed beside it (the last line repeats).
+  `hud.say(who, text)` shows it for 3.5 s; signal `npc_talked(who, index)`; HoolaProbe event "talk".
+- `figure(parent, pos, look)` - a character that only stands there, for the game's own logic.
+- v1 is untouched: `spawn_player`, `enemy` and every signal keep their names and argument order (a test holds it).
+
+**The model is told** in `kit3d.API` (rides only in a 3D design): use the characters, never build people from your own
+meshes, never write a walk cycle, at most 12 characters a level. Tests hold every preset, option and animation name in
+the API text to something the kit really reads.
+
+**Proof game**: Diya Run 3D now has the hero with a sword, a guard and a tall villain (2 and 3 health), Dadi who says
+what to do, and a dog. The test player still wins it with the same keys (6.6 s, 24.4 m, 6 of 8 coins, 3 lives).
+
+**Measured here** (Godot 4.7.2 headless, `kit3d.self_test`, 10 checks, all pass): 11 looks built, fewest joints 8; a
+walking figure's leg swings 0.8 rad and the two legs are never on the same side; at rest 0.0; one strike signal, the
+attack ends and the figure is idle again; die tips the body 1.5 rad and it stays down; the dog's leg swings 0.6 rad.
+Hero with sword: first blow 2 -> 1 health, second fells the foe, the foe behind keeps 2, the hero keeps 3 lives. Dadi:
+lines 0, 1, 2, 2 and the HUD reads "Dadi: Then come to the temple"; the person 17 m away says nothing. Kenney's CC0
+`platformer_character.glb` wrapped as a figure: 1.6 m tall as asked, plays walk / jump / idle. Web export + browser:
+playtest ok, touch collected 2 coins, download 10.2 MB (was 9.7). I looked at the pictures: the eleven looks are
+distinct and read as people / robot / animals.
+
+**NOT VERIFIED / not built**: no MODEL-written game with characters yet (needs her server and credit); the looks are
+low-poly shapes, not sculpted characters; no faces beyond eyes; no skinned-mesh generation (Meshy waits for her key);
+foes do not path round walls; no ranged attacks; talking has no choices.
+
+Files: `gamedesk/kit/hoola_3d.gd` (709 -> 1519 lines), `kit/proof_main.gd`, `kit/selftest_main.gd`, `kit3d.py`,
+`tests/test_v0821_characters.py` (12).
+
+## v0.822.0 THE AGENCY IN HOOLA CODE + GAME DEV (built as 0.814; other sessions took 0.813-0.821 meanwhile - REBASE PROTOCOL, all kept)
+Owner (11 Nov 2026): "https://github.com/msitarzewski/agency-agents.git --- NOW READ THIS REPO" -> "GO 1 2 3 AND DEPLOY ON VPS".
+The Agency (MIT, AgentLand Contributors) read at 8ae6164: ~288 personality-style agent prompts in 18 divisions + the NEXUS
+multi-agent playbook. Three parts, all TEXT (condensed + rewritten by three parallel agents; persona / emoji / internet-only
+parts dropped; no upstream code; credit in THIRD_PARTY_NOTICES.md):
+1. HOOLA CODE: 35 agents ECC did not cover join the catalogue (`server/app/devsahayak/ecc/agency_eng.py` 24 +
+   `agency_qa.py` 11; 98 agents in all; new group 'build' = implementers): minimal-change-engineer,
+   codebase-onboarding-engineer, senior-developer (it is a Laravel / Livewire persona - titled so), frontend-developer,
+   backend-architect, api-platform-engineer, devops-automator (never edits .github/workflows), sre, database-optimizer,
+   payments-billing-engineer, i18n-engineer, privacy-engineer, identity-access-engineer, mobile-app-builder,
+   mobile-release-engineer, webassembly-engineer, realtime-collaboration-engineer, search-relevance-engineer,
+   data-engineer, ai-engineer, prompt-engineer, rapid-prototyper (local storage, no hosted services),
+   embedded-firmware-engineer, desktop-app-engineer, reality-checker, evidence-collector (evidence = output / file:line,
+   not screenshots), api-tester, performance-benchmarker (smoke only in the box, said so), test-automation-engineer,
+   test-results-analyzer, ai-generated-code-auditor, appsec-engineer, secrets-credential-engineer,
+   codebase-archaeologist, mcp-builder. `ecc.suggest` keeps code-reviewer + security-reviewer inside the top 6.
+2. THE REALITY CHECK (`engine.reality_check`): when the coder calls done (after ECC's gate) on a change of
+   `dev_reality_min_lines` (30) added lines or more, ONE fresh reality-checker agent (read + run tools, no edits) reads
+   HER request, the coder's claim and the real working copy, runs what it can and answers "VERDICT: READY" or
+   "VERDICT: NEEDS WORK" + numbered gaps with file:line and proof. NEEDS WORK goes back to the coder once (confirm each gap,
+   fix the real ones, then done); READY / unclear finishes. Once a round, never a loop; a check that cannot run never
+   blocks. Page step `reality`; `found.loop.reality` keeps the verdict. Switch `dev_reality_check` (pinned off in conftest
+   for the scripted suites).
+3. HOOLA GAME DEV (`server/app/gamedesk/agency.py`): `EXPERT` = deeper notes for 21 crew roles (game / level / economy /
+   narrative design, technical art, game audio, Godot GDScript / shaders / netcode, Unity, Unreal, Roblox, Blender) that
+   ride the model call beside `lens(role)` (`crew.expert`, both studio.py calls); `NEW_ROLES` = 8 writing engine roles
+   (unity_editor_tools, unity_multiplayer, roblox_experience, roblox_scripter, roblox_avatar, blender_addon, ue_world,
+   ue_tech_art) - the crew is 57 roles (test_v0406 pins healed 49 -> 57). The adapting agent FIXED wrong Godot 4 facts in the
+   source (hint_color -> source_color, no Node.remove_from_parent, Web exports cannot use ENet). Switch `game_agency_experts`.
+4. FIXED, found while testing (the long-standing 'explained' flake of the v0787 / v0789 / v0794 suites, and live): her
+   page polls `view()` (git add -A + diff) while a new round makes its working copy; the round's own `git add` + `commit`
+   of the starting point lost on .git/index.lock ("Unable to create index.lock: File exists" - caught with a probe),
+   `base` became '', every later diff ran against HEAD (already holding the checkpoint) and the round ended
+   'explained' with no pull request. Now `engine._git_lock` = one git command at a time per working copy (add + diff and
+   add + commit + rev-parse as one step), `meta.json` written atomically, and `ensure()` refuses to go on without its
+   starting commit. Proved both ways: without the lock 4 of 25 round starts under polling lost the commit; with it 0.
+Tests `server/tests/test_v0822_agency_agents.py` (8): the 35 in the catalogue and adapted, both sources in the roster, a
+NEEDS WORK verdict sends the coder back once and judges against HER request, READY finishes, a small change is not
+checked, the switch, the page step, the crew's 57 roles / experts / routing, the notes in the model call, round starts under her page's polling.
+NOT VERIFIED: no real model has run the reality check or a game role with the notes (scripted Claude only); the extra
+cost of one reality-check conversation per 30+ line round is not measured.
+
+## v0.823.0 HOOLA DESIGN D7 BRIDGES (11 Nov 2026; owner: "D7 Bridges - import your existing Figma files through your own Figma token; send a design to Web Studio or App Studio"; asked "why send to Figma" -> nothing is ever sent to Figma, import is one-way -> "Keep import")
+- CONTRACT: `docs/HOOLA_DESIGN_PLAN.md` section 7. Three builders in parallel; no new tool - `hoola_design` grows `import_figma` / `to_site` / `to_app` (registry 626 unchanged).
+- A. FIGMA IMPORT (`design/figma.py`, `design/figma_convert.py`, `hd-bridge-figma.js`): `GET/PUT/DELETE /api/design/figma` wrap the website builder's EXISTING sealed token store (`site/inspire.py` SiteFigmaKey) - one token per account for both, typed in the page, no route returns it, the agent action refuses a token. `POST /api/design/import/figma` + `GET /api/design/import/{job}`: Figma's official REST API only (`/v1/files/:key?geometry=paths`, `/v1/files/:key/images`, `/v1/images/:key` fallback), 429 Retry-After (3 tries, 60 s max), request budget, file + picture byte caps, pictures only from Figma's S3 hosts with no redirects and no token sent, sniffed and stored as assets by hash; written through the room in chunks as a NEW file ("<name> (importing...)" until done, trashed on failure). Converts pages, frames, groups, sections, components / sets / instances (overrides + component props when the component is in the file, else detached with a warning), rectangles with per-corner radius, ellipses (arcs -> vector), lines, polygons, stars, vectors, booleans, text with runs, solid / linear / radial / angular / image fills, strokes, shadows + blurs, opacity, blend, masks, clip, auto layout + sizing, constraints, grids, exports, styles, prototype links + scroll / fixed; rotation + mirroring checked against Hoola's own node matrix in a 200-case round trip. NOT converted, each named with a count in the job's warnings: smooth corners, diamond gradients (drawn radial), image crop / filters / rotation, per-side stroke weights, arrow caps, paragraph spacing, lists, links in text, small caps, variable bindings, grid auto layout, luminance masks, slices. Jobs live in memory (a restart loses a running import).
+- B. DESIGN -> WEB STUDIO (`design/toweb.py`, `hd-bridge-web.js`): `frame_to_html` = semantic responsive HTML + CSS, no inline style, no script (auto layout -> flex with phone rules, absolute frames scale and stack under 640 px, text -> h1/h2/h3/p by size order, buttons -> `<a class="btn">` with her own prototype URL or `#` + a TODO, pictures -> `<img alt>`, vectors / booleans -> inline SVG; gradient + stroke maths shared with hd-export). `POST /api/design/files/{id}/to-site` (+ `/preview`): a new site or a section on an existing page THROUGH Web Studio's own path (`site/service.py` new / _put_sec / _after_edit / _start("save"), `site/code.py:clean` -> `build.sanitize_section`), so every website guard + a checked version run; never published. Refused past Web Studio's 3 free-form sections a page. Not carried, named: blend, blur, masks, gradient strokes, tiled pictures, fonts Web Studio does not ship.
+- C. DESIGN -> APP STUDIO (`design/toapp.py`, `hd-bridge-app.js`): frames read as screens (headings / inputs / buttons / lists of N / bars / links between screens, size class with warnings), matched to App Studio screen kinds by name; `POST /api/design/files/{id}/to-app` (pictures PNG base64, 3 MB each / 16 MB total / 20 frames) -> App Studio's own design run (`appmaker/service.py` get / new / _load / _save(plan) / _start("design")), pictures in `<app>/from_design/`. NEVER approves (App Studio's approve() is her tap only): screens end "ready, waiting for her OK"; an already approved app loses its approval by App Studio's own run and she is warned. Never builds or submits.
+- PROOF: figma 21 tests (incl. a browser walk), toweb 13 + a browser walk at 1280 / 390 px with no sideways scroll, toapp 9 (one runs App Studio's real design step with her frame in the screen-writer prompt); with every earlier design suite: 167 pytest + 9 browser walks green on one tree.
+- NOT VERIFIED: no REAL Figma API call was ever made (no token in the sandbox) - shapes assumed from Figma's documentation (relativeTransform with geometry=paths, children of groups / booleans relative to the nearest frame, error bodies, UTF-16 style override positions, transition units); her first import is the live test. App Studio does not show the uploaded pictures yet (its screen writer reads the structure); a sent web section has no Undo in Web Studio (restore the previous version in History); toapp calls App Studio's private _load / _save / _start (the same path its own change() uses).
+## v0.824.0 APP ENGINE 1 (built as 0.814; other sessions took 0.814-0.823 while it was built - REBASE PROTOCOL, all kept)
+
+Owner: "GO L8" on `docs/LOVABLE_STUDIO_PLAN.md` (L8 = the first App Engine phase: template + tokens + drift check, the
+devlab-style box build, the preview, the tool set, build + static publish; proof = 5 card asks built in the box).
+
+**Her four L8 decisions were not answered, so the plan's own recommendations were taken (all switchable):**
+1. Where it runs: THIS server, in Docker, at most 2 builds at once (`app_engine_previews` 2; a third says "queued").
+2. Model per job: no new model call - whoever answers the Studio turn writes the code through the tool.
+3. Free allowances: none built, none promised (a build spends no model money).
+4. Brand: "Hoola App Engine" (working name; Hoola identity only, nothing of Lovable's).
+
+### What it is
+A second engine in the Web Studio beside the Site Engine: a real React 18 + TypeScript + Vite 7 + Tailwind v4 app per
+project, the code written through ONE tool and built in a locked Docker box.
+
+- `server/app/appengine/` (NEW):
+  - `template/` = the one template (`vite.config.ts`, `tsconfig.json`, `index.html`, `src/main.tsx` with
+    BrowserRouter basename from `<base href>`, `src/index.css`, `src/lib/utils.ts` (cn), `src/lib/hoola.ts` (Hoola
+    Cloud NOT connected - says so), `src/components/ui/` = Hoola's kit: button / card / input / textarea / label /
+    badge / tabs / dialog / table on `cva` variants, `AGENTS.md`, `public/favicon.svg`).
+  - `image.py` = the build image `hoola-appengine:base` (node:22-bookworm-slim + every vetted package from the
+    COMMITTED lock file `image/package-lock.json`, `npm ci`; Dockerfile text in Python - the v0.532 lesson);
+    `CORE` (template deps), `DEV` (vite / tailwind / typescript / types), `EXTRA` = 9 vetted extras added only by
+    `add_dependency` (radix select / popover / switch / checkbox / tooltip / accordion / dropdown-menu, embla
+    carousel, motion). Versions pinned exactly, each published before 28 Oct 2026. `build(prebuilt=)` = the same
+    lock installed on the host and copied in (for a server whose docker build cannot reach npm - this sandbox).
+  - `tokens.py` = the design system is ONE file, `src/styles/tokens.css` (Tailwind v4 `@theme`, default palette OFF
+    with `--color-*: initial`): bg surface ink muted line primary primary-ink accent ok warn bad, rounded-card /
+    rounded-control, shadow-card, font-head / font-body; 5 palettes (calm warm fresh bold night) or her #rrggbb
+    values; muted / line / primary-ink derived (contrast measured); a Web Studio look can seed it (`from_site_look`).
+  - `rules.py` = checked in CODE on every write: PATHS (src/ minus locked files, public/, index.html, AGENTS.md,
+    .hoola/plan/*.md; no `..`, hidden files, other types; 200 KB / 400 files), SAFETY (no eval / new Function /
+    document.write / innerHTML / dangerouslySetInnerHTML, no outside address in fetch / import / script / CSS,
+    index.html keeps only its module script, no script in SVG, an import must name a package THIS app lists - a
+    vetted-but-not-added one says to add it, anything else is refused with the vetted list), DRIFT (hex / rgb / hsl
+    colours, Tailwind palette colours incl. white / black, one-off `[value]` classes refused; `data-[..]` variants,
+    `bg-ink/40` opacity and `href="#faq"` allowed). A refusal names file:line and the token to use.
+  - `runner.py` = the build: `tsc --noEmit` + `vite build --configLoader runner` in the box with `--network none`,
+    `--read-only`, tmpfs /tmp, uid 1000, cap-drop ALL, no-new-privileges, 1.5 GB / 2 CPUs / 256 pids, 240 s; the
+    app's files mounted READ-ONLY, only the out folder writable; nothing installed (the image's node_modules).
+    Semaphore = `app_engine_previews`; `app_engine_runner=local` only for development.
+  - `service.py` = create (template + package.json + tokens + title + brief in .hoola/plan), list / get, view
+    (numbered lines, 400 at a time), search, write, edit_lines (the plan's 5.3: exact search -> replace, must
+    appear once, `first_line` / `last_line` range, a `...` line skips a long middle, several edits located in the
+    ORIGINAL file, overlaps refused, all or nothing, a refused edit changes nothing), rename, delete (App.tsx /
+    index.html refused), add_dependency (vetted only, nothing downloaded), set_tokens; a change schedules a build
+    ~2 s after the last write (debounced), `build` / `wait_build`; a good build = version N (source + dist kept,
+    30 kept, the live one never pruned); a failed build keeps the last good version on screen and its problems
+    (file + line) in `last_build`; `logs`; `check_all`; publish = her tap only (`confirm`), the exact version,
+    refused (409) while TypeScript or the code check finds a problem; unpublish; preview (`/api/app-preview/
+    <token>/`, `__v/<n>/` for older versions) and live (`/apps/<slug>/`) serving: `<base href>` injected, SPA
+    routes fall back to index.html, missing asset = 404, strict CSP (script-src 'self', connect-src 'self'),
+    noindex + no-store on the preview, immutable cache for live assets.
+  - `models.py` = table `ae_projects` (registered in db.init_db AND self-healing; `app_projects` was App Sahayak's).
+  - `proof_apps.py` + `proof.py` + `__main__.py` = the L8 card (`python -m app.appengine status | setup | proof`).
+- `server/app/agent/appengine_tools.py` (NEW): ONE tool `app_engine` (registry 626 -> 627, family `appengine`):
+  actions list / status / files / view / search / logs / check (reads) and create / write / edit_lines / rename /
+  delete / add_dependency / tokens / build (changes). Publish refused ("her tap in the Studio"); changes refused in
+  Plan / Chat mode by the tool itself (`turnmode._SPLIT` lets the tool through so its reads stay open); changes only
+  from the owner's own turns.
+- `agent/turnmode.py`: `(app id X)` in the Studio hint -> `APP` contextvar; `agent/prompts.py` adds
+  `<app_engine_project>` (app, state incl. a failed last build, packages, file list, AGENTS.md, the rules);
+  `agent/admit.py`: a turn with an app always has the tool (`sticky_families`) + words (react app, web app...).
+- Routes (`main.py`, `_ae`): GET / POST `/api/appengine`, GET (`?full=0` light) / PATCH / DELETE `/api/appengine/{id}`,
+  GET `/file`, POST `/build`, GET `/logs`, POST `/tokens`, POST `/publish` (version + confirm), POST `/unpublish`;
+  public GET `/api/app-preview/{token}/...` and `/apps/{slug}/...`.
+- Studio (`static/console/appengine.js` + `appengine.css`, hooks in webstudio.js: the `Apps` sidebar row, routes
+  `#/apps` and `#/app/<id>/<tab>`, `window.HoolaWSKit`): Apps page (Beta; New app = name + what it should do +
+  colour palette swatches; the box's state said plainly when it cannot build) and the workspace: the app's own Hoola
+  chat on the left (its own conversation; the first message = "Build this app: <her words>"; Hoola is working + a
+  clock), Preview (computer / phone, failed-build or TypeScript problems with file:line, open in a new tab), Code
+  (file list + read-only source), Design (palettes + every token with contrast), Versions (open any), Publish (her
+  tap + a confirm dialog, the reasons when it is refused, Take down). Polls the light row every 2 s while building.
+- Config: `app_engine` (on), `app_engine_previews` (2), `app_engine_runner` ("box").
+- vps-ops: `appengine_setup` (build the image) and `appengine_check` (status + the proof).
+
+### Measured here (sandbox, Docker 29.9, real box)
+- The bare template builds in 4.6 s; the five card asks in 5.8-8.0 s each (median 6.2 s), JS ~475 KB.
+- **Proof card: 5/5 apps PASS** (shop staff tasks, clinic appointment request with zod validation + a second route,
+  sales dashboard with recharts + tabs, mithai catalogue with a cart dialog, coaching timetable with date-fns) -
+  built, TypeScript clean, rules clean, opened in Chromium with 0 page errors, her words on screen, one click works,
+  no sideways scroll on a 390 px phone, published by the tap path, `/apps/<slug>/` serves it; **8/8 planted bad
+  writes refused** (one-off colour, palette colour, raw colour, outside fetch, unvetted package, raw HTML, a locked
+  file, a path outside the app).
+- Tests `test_v0814_app_engine.py` (9): rules, tokens, the tool's exact edits, Plan mode + her tap + who may change,
+  the turn block + family + registry, routes + her key, the box (TypeScript problem builds but cannot go live, a
+  failed build keeps the old version, fix -> publish -> live -> take down), the five asks, and a browser walk of the
+  Studio pages (create -> the chat builds it -> preview works -> code -> design -> rebuild -> publish -> live -> phone).
+
+- Found by its own browser walk (failed 1 run in 3, only after other tests): a tab redraw that waited on the server
+  (Design) could land after she had moved to Publish and paint over it; every redraw now carries a ticket and a stale
+  one is dropped. Re-run green 3 times after the fix.
+- Wider sweep: 982 passed; the 13 reds (crawl jobs x10, officehours / magic21 / crew story pins) fail identically on
+  untouched main 0.819.0 - not this release.
+
+### NOT built / NOT verified, said plainly
+- NOT VERIFIED on her VPS: the image is not built there yet (run vps-ops `appengine_setup`, then `appengine_check`);
+  her VPS's real build time and RAM per build are not measured (the plan's "estimate until L8 measures it" is
+  measured HERE only).
+- NOT VERIFIED with a real model: no model has written an app; the proof's files are fixed (it proves the engine).
+- Not built (later phases): Hoola Cloud data / sign-in (L10 - apps keep sample data on the page and say so), hot
+  reload (each change is a fresh ~6 s build, not Vite's dev server), the preview error collector + click-to-source +
+  style panel (L9), tests / browser check before done + scans (L11), prerendered HTML for SEO, a custom domain for
+  an app, GitHub sync (L14), drafts (L13), growing the vetted list by her tap.
+
+## v0.825.0 TEEN AWAAZEIN (built as 0.816; their 0.816-0.824 took the numbers - REBASE PROTOCOL, all kept) — three more call voices she can pick (owner: "LETS DEPLOY ALL --- USER WILL CHOOSE THE VOICE THEY WANT")
 
 After the deep research (`reports/Human voice in every language.md`) and the price check (Phonic 1 $0.07/min, Grok Voice
 3.0 $0.08/min, GPT-Live-1 $0.05/min voice layer + the brain), the three top-ranked live voices are now choices on the

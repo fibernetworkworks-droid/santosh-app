@@ -1,0 +1,130 @@
+"""v0.814 APP ENGINE 1 - ONE tool, `app_engine`, for the React apps of the Web Studio (L8 of LOVABLE_STUDIO_PLAN.md).
+
+The plan's tool set (5.3) as actions of one tool: view / search / edit_lines / write / rename / delete /
+add_dependency / logs / build, plus create / list / status / tokens / check. Every write goes through
+appengine/rules.py (paths, safety, design drift): a refused write changes nothing and names the line and the fix.
+Going live is NOT here - it is her tap in the Studio. In Plan / Chat mode only the reading actions run."""
+from __future__ import annotations
+
+import asyncio
+from typing import Any
+
+from .tools import Ctx, ToolError
+
+READS = {"list", "status", "view", "search", "logs", "files", "check"}
+CHANGES = {"create", "write", "edit_lines", "rename", "delete", "add_dependency", "tokens", "build"}
+
+APPENGINE_TOOLS = [
+    {"name": "app_engine", "description": (
+        "[APP ENGINE] Real React apps (React 18 + TypeScript + Vite + Tailwind v4) built in Hoola's locked box - for "
+        "web APPS with screens, forms, lists, dashboards (a brochure website stays with the `website` tool). Work "
+        "like a careful engineer: action=view or search BEFORE you change a file; action=edit_lines for small exact "
+        "changes (edits=[{search, replace, first_line?, last_line?}] - the search text must appear exactly once, in "
+        "the line range if given; a line that is just '...' inside search skips a long middle; line numbers are the "
+        "ORIGINAL file's, so several edits from one view are fine); action=write for a new file or a full rewrite; "
+        "rename / delete; add_dependency only from the vetted list; tokens to change colours / corners / fonts "
+        "(values {bg, surface, ink, primary, accent, radius, head, body} as #rrggbb / number / sans|serif|rounded|mono, "
+        "or palette calm|warm|fresh|bold|night). RULES the tool enforces: colours only as tokens (bg-bg bg-surface "
+        "bg-primary text-ink text-muted text-primary border-line ...), never a hex / rgb colour, a Tailwind palette "
+        "colour (bg-blue-500, text-white) or a one-off [value]; no outside address (no fetch to http...; data will come "
+        "through src/lib/hoola.ts, not connected yet - keep sample data on the page and say it is sample); pages in "
+        "src/pages, routes in src/App.tsx, shared parts in src/components (the ui kit: button card input textarea "
+        "label badge tabs dialog table). The preview rebuilds ~2 s after a change; call action=build before you say "
+        "it is done and read its answer - a failed build names file and line (action=logs for the whole log). "
+        "Going live is HER tap in the Studio - never claim it is live. `app` = the app's id or number (the Studio "
+        "turn already names it)."),
+     "input_schema": {"type": "object", "properties": {
+         "action": {"type": "string", "enum": sorted(READS | CHANGES)},
+         "app": {"type": "string", "description": "the app id or number (default: the app this Studio chat is about)"},
+         "name": {"type": "string", "description": "create: the app's name"},
+         "brief": {"type": "string", "description": "create: what she asked for, in her words"},
+         "palette": {"type": "string", "enum": ["calm", "warm", "fresh", "bold", "night"]},
+         "values": {"type": "object", "description": "tokens: {bg, surface, ink, primary, accent: #rrggbb, radius: number, head, body}"},
+         "path": {"type": "string", "description": "a file, e.g. src/pages/Home.tsx"},
+         "to": {"type": "string", "description": "rename: the new path"},
+         "code": {"type": "string", "description": "write: the whole file"},
+         "edits": {"type": "array", "items": {"type": "object", "properties": {
+             "search": {"type": "string"}, "replace": {"type": "string"},
+             "first_line": {"type": "integer"}, "last_line": {"type": "integer"}}, "required": ["search", "replace"]}},
+         "from_line": {"type": "integer"}, "to_line": {"type": "integer"},
+         "query": {"type": "string", "description": "search: text to find"},
+         "package": {"type": "string", "description": "add_dependency: a vetted package name"}},
+         "required": ["action"]}},
+]
+
+APPENGINE_LABELS = {"app_engine": "Working on the app"}
+
+
+def _default_app(app: str) -> str:
+    if app:
+        return str(app)
+    from . import turnmode as TM
+    a = TM.APP.get()
+    if not a:
+        raise ToolError("Which app? Give app=<id or number> (action=list shows them).")
+    return a
+
+
+def _call(ctx: Ctx, action: str, app: str, kw: dict[str, Any]) -> dict[str, Any]:
+    from ..appengine import service as AE
+    from ..config import get_settings
+    if not getattr(get_settings(), "app_engine", True):
+        raise ToolError("The App Engine is switched off on this server.")
+    t = ctx.tenant_id
+    if action == "list":
+        return {"apps": AE.list_(t)}
+    if action == "status":
+        return AE.status()
+    if action == "create":
+        from . import turnmode as TM
+        conv = ctx.conversation_id if TM.APP.get() == "" else ""
+        return AE.create(t, kw.get("name") or "", kw.get("brief") or "", kw.get("palette") or "",
+                         kw.get("values") or None, conversation_id=conv)
+    a = _default_app(app)
+    if action == "files":
+        r = AE._load(t, a)
+        return {"files": AE.files_list(r)}
+    if action == "view":
+        return AE.read_file(t, a, kw.get("path") or "", kw.get("from_line") or 0, kw.get("to_line") or 0)
+    if action == "search":
+        return AE.search(t, a, kw.get("query") or "")
+    if action == "logs":
+        return AE.logs(t, a)
+    if action == "check":
+        return AE.check_all(AE._load(t, a))
+    if action == "write":
+        return AE.write(t, a, kw.get("path") or "", kw.get("code") or "")
+    if action == "edit_lines":
+        return AE.edit_lines(t, a, kw.get("path") or "", kw.get("edits") or [])
+    if action == "rename":
+        return AE.rename(t, a, kw.get("path") or "", kw.get("to") or "")
+    if action == "delete":
+        return AE.delete(t, a, kw.get("path") or "")
+    if action == "add_dependency":
+        return AE.add_dependency(t, a, kw.get("package") or "")
+    if action == "tokens":
+        return AE.set_tokens(t, a, kw.get("values") or {}, kw.get("palette") or "")
+    if action == "build":
+        return AE.wait_build(t, a)
+    raise ToolError(f"Unknown action '{action}'.")
+
+
+async def app_engine(ctx: Ctx, action: str, app: str = "", **kw: Any) -> dict:
+    from ..appengine import service as AE
+    from . import turnmode as TM
+    action = str(action or "").strip().lower()
+    if action in ("publish", "go_live", "unpublish"):
+        raise ToolError("Going live is her tap in the Studio (App > Publish), never this tool. Tell her the version is "
+                        "ready and where the button is.")
+    if action in CHANGES and TM.MODE.get() in ("plan", "chat"):
+        TM.STATS["refused"] += 1
+        raise ToolError(TM.refusal(f"app_engine action={action}"))
+    if action in CHANGES and ctx.actor not in ("owner",) and not str(ctx.actor).startswith("approved:"):
+        raise ToolError("Only the owner's own turns change an app.")
+    try:
+        return await asyncio.to_thread(_call, ctx, action, app, kw)
+    except AE.AppEngineError as e:
+        raise ToolError(str(e))
+
+
+APPENGINE_HANDLERS = {"app_engine": app_engine}

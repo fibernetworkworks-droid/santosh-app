@@ -68,24 +68,40 @@ def base() -> str:
     return HOSTS[env()]
 
 
+def clean(v: Any) -> str:
+    """A pasted .env value as WhiteBooks expects it: no surrounding spaces / tabs / Windows line ends, no wrapping quotes that
+    survived the .env reader (v0.814: her first wb_check was refused on every product - a stray character is one cause)."""
+    s = str(v or "").strip().strip("\r\n\t ")
+    if len(s) >= 2 and s[0] == s[-1] and s[0] in "'\"":
+        s = s[1:-1].strip()
+    return s
+
+
+def email() -> str:
+    return clean(get_settings().whitebooks_email)
+
+
 def keys(product: str) -> tuple[str, str]:
     st = get_settings()
-    cid = getattr(st, f"whitebooks_{product}_client_id", "") or ""
-    sec = getattr(st, f"whitebooks_{product}_client_secret", "") or ""
+    cid = clean(getattr(st, f"whitebooks_{product}_client_id", ""))
+    sec = clean(getattr(st, f"whitebooks_{product}_client_secret", ""))
     if not (cid and sec):                     # one pair for all three products is allowed
-        cid, sec = st.whitebooks_gst_client_id, st.whitebooks_gst_client_secret
-    return str(cid or ""), str(sec or "")
+        cid, sec = clean(st.whitebooks_gst_client_id), clean(st.whitebooks_gst_client_secret)
+    return cid, sec
+
+
+_INVALID = re.compile(r"invalid credentials|account is not active", re.I)
 
 
 def configured(product: str = "gst") -> bool:
     cid, sec = keys(product)
-    return bool(get_settings().whitebooks_email and cid and sec)
+    return bool(email() and cid and sec)
 
 
 def status() -> dict[str, Any]:
     """What the desk may show: which products are set up - never a key, never the email."""
     st = get_settings()
-    return {"env": env(), "base": base(), "email_set": bool(st.whitebooks_email),
+    return {"env": env(), "base": base(), "email_set": bool(email()),
             "products": {p: configured(p) for p in PRODUCTS},
             "own_pair": {p: bool(getattr(st, f"whitebooks_{p}_client_id", "")) for p in PRODUCTS},
             "daily_cap": int(st.whitebooks_daily_calls or 0), "per_minute": int(st.whitebooks_per_minute or 0)}
@@ -163,8 +179,11 @@ def _code_of(env_: dict[str, Any]) -> str:
     for c in (err.get("error_cd"), err.get("code"), env_.get("errorCode"), env_.get("error_cd")):
         if c:
             return str(c)
-    m = _CODE.search(str(env_.get("status_desc") or ""))
-    return m.group(1) if m else "refused"
+    desc = str(env_.get("status_desc") or "")
+    m = _CODE.search(desc)
+    if m:
+        return m.group(1)
+    return "WB_ERR_9001" if _INVALID.search(desc) else "refused"     # the e-way bill login says it without the code
 
 
 def _message_of(env_: dict[str, Any], code: str) -> str:
@@ -192,7 +211,7 @@ def call(tenant: str, product: str, method: str, path: str, *, query: dict[str, 
     q = dict(query or {})
     h: dict[str, str] = {"Accept": "application/json"}
     if auth:
-        q = {"email": st.whitebooks_email, **q}
+        q = {"email": email(), **q}
         h.update({"client_id": cid, "client_secret": sec})
     for k, v in (headers or {}).items():
         if v is not None and v != "":

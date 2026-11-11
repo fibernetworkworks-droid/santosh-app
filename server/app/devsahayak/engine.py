@@ -105,7 +105,29 @@ def slots() -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------- git helpers (local only; never a remote, never a token)
+_GIT_LOCKS: dict[str, threading.RLock] = {}
+_GIT_LOCKS_GUARD = threading.Lock()
+
+
+def _git_lock(repo: Path) -> threading.RLock:
+    """v0.814 one git command at a time per working copy. Her page polls `view()` (git add -A + diff) every few seconds
+    while a round runs its own git add / diff / commit in the same copy; two at once collide on .git/index.lock, the
+    loser fails, and a failed `changed()` read as "nothing changed" - the round ended 'explained' with no pull request
+    (found as the long-standing "explained" flake in the v0787 / v0789 / v0794 suites)."""
+    key = str(Path(repo).resolve()) if repo else ""
+    with _GIT_LOCKS_GUARD:
+        lk = _GIT_LOCKS.get(key)
+        if lk is None:
+            lk = _GIT_LOCKS[key] = threading.RLock()
+        return lk
+
+
 def _git(repo: Path, *args: str, timeout: int = 120) -> tuple[int, str]:
+    with _git_lock(repo):
+        return _git_run(repo, *args, timeout=timeout)
+
+
+def _git_run(repo: Path, *args: str, timeout: int = 120) -> tuple[int, str]:
     env = {**os.environ, "GIT_TERMINAL_PROMPT": "0", "GIT_AUTHOR_NAME": "Hoola", "GIT_AUTHOR_EMAIL": "hoola@localhost",
            "GIT_COMMITTER_NAME": "Hoola", "GIT_COMMITTER_EMAIL": "hoola@localhost"}
     try:
@@ -117,9 +139,10 @@ def _git(repo: Path, *args: str, timeout: int = 120) -> tuple[int, str]:
 
 
 def _commit(repo: Path, msg: str) -> str:
-    _git(repo, "add", "-A")
-    _git(repo, "commit", "-q", "--allow-empty", "--no-verify", "-m", msg)
-    rc, out = _git(repo, "rev-parse", "HEAD")
+    with _git_lock(repo):                                 # v0.814 add + commit + read the sha as one step
+        _git(repo, "add", "-A")
+        _git(repo, "commit", "-q", "--allow-empty", "--no-verify", "-m", msg)
+        rc, out = _git(repo, "rev-parse", "HEAD")
     return out.strip() if rc == 0 else ""
 
 
@@ -143,7 +166,9 @@ class Session:
     # ------------------------------------------------------------ meta + messages
     def save_meta(self) -> None:
         self.dir.mkdir(parents=True, exist_ok=True)
-        self.meta_path.write_text(json.dumps(self.meta))
+        tmp = self.meta_path.with_name(f".meta.{threading.get_ident()}.tmp")   # v0.814 atomic: a reader never sees half a file
+        tmp.write_text(json.dumps(self.meta))
+        os.replace(tmp, self.meta_path)
 
     def messages(self) -> list[dict]:
         if self.msg_path.is_file():
@@ -183,6 +208,8 @@ class Session:
         (self.repo / ".git" / "info" / "exclude").write_text(
             "\n".join(sorted(d + "/" for d in SKIP_DIRS if d != ".git")) + "\n*.pyc\n.coverage\ncoverage/\n.tox/\n*.egg-info/\n")
         base = _commit(self.repo, f"base {sha[:12]}")
+        if not base:                                      # v0.814 without its starting point every diff of the round is wrong
+            raise Unavailable("the working copy's starting point could not be recorded (git commit failed)")
         refreshed = bool(self.meta.get("sha"))
         self.meta.pop("round_base", None)                 # a fresh copy: this round's diff starts at its own base
         self.meta.pop("image", None) if not refreshed else None
@@ -271,8 +298,9 @@ class Session:
     def changed(self, since: str = "") -> list[dict[str, str]]:
         """Files changed in the working tree against `since` (default: the base of this round)."""
         ref = since or self.meta.get("round_base") or self.meta.get("base") or "HEAD"
-        _git(self.repo, "add", "-A")
-        rc, out = _git(self.repo, "diff", "--cached", "--name-status", "--no-renames", ref)
+        with _git_lock(self.repo):                        # v0.814 add + diff as one step
+            _git(self.repo, "add", "-A")
+            rc, out = _git(self.repo, "diff", "--cached", "--name-status", "--no-renames", ref)
         rows = []
         for ln in out.splitlines() if rc == 0 else []:
             parts = ln.split("\t", 1)
@@ -282,8 +310,9 @@ class Session:
 
     def diff(self, since: str = "", limit: int = 40000) -> str:
         ref = since or self.meta.get("round_base") or self.meta.get("base") or "HEAD"
-        _git(self.repo, "add", "-A")
-        rc, out = _git(self.repo, "diff", "--cached", "--no-color", "--stat", "-p", ref)
+        with _git_lock(self.repo):                        # v0.814 add + diff as one step
+            _git(self.repo, "add", "-A")
+            rc, out = _git(self.repo, "diff", "--cached", "--no-color", "--stat", "-p", ref)
         return (out if rc == 0 else "") [:limit]
 
     def checkpoint(self, label: str, n_messages: int) -> dict[str, Any]:
@@ -440,6 +469,55 @@ def ecc_system(paths: list[str], request: str = "") -> str:
     except Exception as e:                                # the catalogue must never stop a session
         log.warning("ecc parts left out: %s", e)
     return "\n\n".join(p for p in parts if p)
+
+
+def _added_lines(diff: str) -> int:
+    return sum(1 for ln in (diff or "").splitlines() if ln.startswith("+") and not ln.startswith("+++"))
+
+
+def reality_check(tools: Any, ses: Any, t: Any, follow_up: str, finish: dict[str, Any], emit: Any,
+                  stopped: Any) -> tuple[str, str]:
+    """v0.814 THE AGENCY's reality checker as the last look before a round may finish: a fresh agent reads her request
+    and the change, runs what it can and answers READY or NEEDS WORK. Only for a change of `dev_reality_min_lines`
+    added lines or more (a one-liner is not worth a second model conversation). Returns (verdict, note for the coder):
+    verdict = '' (not run) | 'ready' | 'needs_work' | 'unclear'."""
+    if not bool(_set("dev_reality_check", True)):
+        return "", ""
+    try:
+        from . import ecc
+        from . import subagent as SA
+        if not SA.on() or ecc.get("reality-checker") is None:
+            return "", ""
+        diff = ses.diff(limit=60000)
+        added = _added_lines(diff)
+        if added < int(_set("dev_reality_min_lines", 30) or 30):
+            return "", ""
+        files = [r["path"] for r in ses.changed()][:40]
+        task = ("Her request for this round:\n" + str(follow_up or getattr(t, "text", "") or "")[:3000]
+                + ("\n\n(The session started with: " + str(getattr(t, "text", ""))[:1200] + ")" if follow_up else "")
+                + "\n\nThe coder says it is finished. Its words: " + str(finish.get("explain") or "")[:1500]
+                + "\nWhat it says it ran: " + str(finish.get("test_plan") or "(nothing named)")[:800]
+                + "\nFiles changed (" + str(added) + " added lines): " + ", ".join(files)
+                + "\n\nCheck the REAL working copy: does the change do everything she asked, with nothing faked, stubbed, "
+                  "hard-coded or left as TODO, and does it really work (run the tests / the command if one is known)? "
+                  "Start your report with the VERDICT line.")
+        pick = (getattr(B.PICK, "model", "") or "", getattr(B.PICK, "effort", "") or "")
+        rep = SA.run_one(tools, "reality-checker", task, files, emit=emit, stopped=stopped, pick=pick)
+    except Stopped:
+        raise
+    except Exception as e:                                # a check that cannot run never blocks her work
+        log.warning("reality check skipped: %s", e)
+        return "", ""
+    body = rep.split("]\n", 1)[1] if rep.startswith("[") and "]\n" in rep else rep
+    first = next((ln.strip().upper() for ln in body.splitlines() if ln.strip()), "")
+    if first.startswith("VERDICT: NEEDS WORK"):
+        emit({"k": "reality", "verdict": "needs_work", "text": body[:600]})
+        return "needs_work", ("REALITY CHECK (an independent agent read her request and your change) - NOT finished yet:\n"
+                              + body[:12000] + "\n\nConfirm each gap in the code yourself. Fix the real ones and prove it; "
+                              "a gap you can show is wrong, leave and say why in risk. Then call done.")
+    verdict = "ready" if first.startswith("VERDICT: READY") else "unclear"
+    emit({"k": "reality", "verdict": verdict, "text": body[:600]})
+    return verdict, ""
 
 
 def tools_for_round() -> list[dict[str, Any]]:
@@ -1055,6 +1133,7 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
     system = SYSTEM + ("\n\n" + extra_ecc if extra_ecc else "") + ("\n\n" + system_extra if system_extra else "")
     round_tools = toolset + [t_ for t_ in tools_for_round() if t_ not in TOOLS]   # + the ECC agent tool
     gate_on, gated = bool(_set("dev_ecc_gate", True)), False
+    reality = {"done": False, "verdict": ""}                # v0.814 The Agency's reality checker, once a round
     max_steps = int(_set("dev_ws_steps", 150) or 150)
     minutes = float(_set("dev_ws_minutes", 60) or 60)
     clear_at = int(_set("dev_ws_clear_chars", 180000) or 180000)
@@ -1113,6 +1192,13 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
                     emit({"k": "gate", "n": len(problems), "items": [f"{p['path']}:{p['line']} {p['what']}" for p in problems[:8]]})
                     results.append({"type": "tool_result", "tool_use_id": b["id"], "content": ecc.gate_text(problems)})
                     continue
+                if not reality["done"] and getattr(t, "kind", "") != "explain":
+                    note = reality_check(tools, ses, t, follow_up, inp, emit, stopped)
+                    reality["done"] = True
+                    reality["verdict"] = note[0]
+                    if note[0] == "needs_work":             # one honest look before she sees it: back to work once
+                        results.append({"type": "tool_result", "tool_use_id": b["id"], "content": note[1]})
+                        continue
                 finish = dict(inp)
                 results.append({"type": "tool_result", "tool_use_id": b["id"], "content": "Finished."})
                 continue
@@ -1192,7 +1278,8 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
              "hidden": sorted(hidden), "tree_size": len(ses.walk()), "issue": bool(issue_txt), "rules": [],
              "engine": "workspace",
              "loop": {"steps": steps, "searched": [], "trail": tools.trail[-60:], "finished": finished,
-                      "bash": tools.bash_runs, "continued": continuing, "checkpoint": cp["n"]}}
+                      "bash": tools.bash_runs, "continued": continuing, "checkpoint": cp["n"],
+                      "reality": reality["verdict"]}}
     return sha, [], {"found": found, "context": ""}, out
 
 

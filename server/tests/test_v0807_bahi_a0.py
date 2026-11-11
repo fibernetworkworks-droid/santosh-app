@@ -319,6 +319,8 @@ def test_console_wiring_and_css():
     assert "/api/bahi/overview" in js and "/api/bahi/sync" in js and "esc(" in js
     assert "client_secret" not in js and "type=\"password\"" not in js     # the desk never asks for a key or a password
     blk = css[css.index("/* v0.807 BAHI"):]
+    nxt = re.search(r"/\* (v0\.\d{3}|=+ )", blk[10:])   # only this block - later sessions append their own after it
+    blk = blk[:10 + nxt.start()] if nxt else blk
     assert "infinite" not in blk and "backdrop-filter" not in blk and not re.search(r"#[0-9a-fA-F]{6}", blk)
     wf = (ROOT / ".github" / "workflows" / "vps-ops.yml").read_text(encoding="utf-8")
     assert "          - wb_check\n" in wf and "python -m app.bahi.wbcheck" in wf
@@ -365,3 +367,33 @@ def test_the_desk_in_a_real_browser(arena_server):  # noqa: F811
         assert pg.evaluate("document.querySelector('.ddk').scrollWidth <= document.querySelector('.ddk').clientWidth + 1")
         assert not errs, errs
         ctx.close()
+
+
+# ---------------------------------------------------------------- v0.814 her first live wb_check: every product refused
+def test_v0814_pasted_values_are_cleaned_and_checked_without_showing_them(env, monkeypatch):
+    from app.bahi import wb, wbcheck
+    from app.config import get_settings
+    st = get_settings()
+    secret = "s3cretValueXYZ123"
+    monkeypatch.setattr(st, "whitebooks_email", ' "dev@example.com"\r')
+    monkeypatch.setattr(st, "whitebooks_gst_client_id", "GSTS1b7c2bb4-3b5a-4141-afe0-7ff3be1ffadc ")
+    monkeypatch.setattr(st, "whitebooks_gst_client_secret", "'" + secret + "'")
+    monkeypatch.setattr(st, "whitebooks_einv_client_id", "GSTS1b7c2bb4-3b5a-4141-afe0-7ff3be1ffadc")
+    monkeypatch.setattr(st, "whitebooks_einv_client_secret", "•" * 16)          # the hidden dots copied from the Hub
+    monkeypatch.setattr(st, "whitebooks_sandbox_gstin", "27AAGCB1286Q005")
+    assert wb.email() == "dev@example.com"
+    assert wb.keys("gst") == ("GSTS1b7c2bb4-3b5a-4141-afe0-7ff3be1ffadc", secret)
+    rows = {r["name"]: r for r in wbcheck.paste_check()}
+    text = repr(rows)
+    assert secret not in text and "1b7c2bb4" not in text and "dev@example.com" not in text      # never a value
+    assert rows["WHITEBOOKS_EMAIL"]["ok"] and "removes" in rows["WHITEBOOKS_EMAIL"]["line"]
+    assert rows["WHITEBOOKS_GST_CLIENT_ID"]["line"].startswith("starts 'GSTS', 40 characters")
+    assert not rows["WHITEBOOKS_EINV_CLIENT_SECRET"]["ok"] and "dots" in rows["WHITEBOOKS_EINV_CLIENT_SECRET"]["line"]
+    assert "GST key pasted here" in rows["WHITEBOOKS_EINV_CLIENT_ID"]["line"]
+    assert rows["WHITEBOOKS_SANDBOX_GSTIN"]["ok"]
+
+
+def test_v0814_the_ewb_refusal_without_a_code_is_named(env):
+    from app.bahi import wb
+    assert wb._code_of({"status_cd": "0", "status_desc": "Invalid credentials provided or your account is not active"}) == "WB_ERR_9001"
+    assert wb._code_of({"status_cd": "0", "status_desc": "something else"}) == "refused"

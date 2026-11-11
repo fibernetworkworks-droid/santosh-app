@@ -12,7 +12,7 @@ from typing import Any
 #   run  = read + bash in the locked box (tests, linters, builds - no internet), still no file changes
 #   edit = run + edit / multi_edit / write (the same guards as the main coder: no secrets, no links, no workflows)
 TOOL_LEVELS = ("read", "run", "edit")
-GROUPS = ("review", "fix", "plan", "explore", "quality", "domain")
+GROUPS = ("review", "fix", "build", "plan", "explore", "quality", "domain")   # build = v0.814 implementers (The Agency)
 
 
 def A(name: str, title: str, group: str, tools: str, when: str, prompt: str,

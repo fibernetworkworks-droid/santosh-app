@@ -339,7 +339,7 @@ ${SPRITE}`;
   // the hover actions on result tiles, shared by every page that lists her creations
   async function itemAction(b) {
     const id = b.dataset.dl || b.dataset.del || b.dataset.open || b.dataset.ref || b.dataset.cine; const it = (D.items || []).find(x => x.id === id); if (!it) return false;
-    if (b.dataset.dl) { download(itemPath(id), it.title + '.' + (it.mime.split('/')[1] || 'bin').replace('mpeg', 'mp3').replace('x-wav', 'wav')); return true; }
+    if (b.dataset.dl) { api('POST', '/api/prompting/runs/event', {ref: id, event: 'downloaded'}).catch(() => {}); download(itemPath(id), it.title + '.' + (it.mime.split('/')[1] || 'bin').replace('mpeg', 'mp3').replace('x-wav', 'wav')); return true; }
     if (b.dataset.del) { if (!confirm(`Delete "${it.title}"? This cannot be undone.`)) return true;
       try { await api('DELETE', itemPath(id)); D.items = D.items.filter(x => x.id !== id); b.closest('[data-item]')?.remove(); toast('Deleted'); } catch (e) { toast(e.message, true); } return true; }
     if (b.dataset.ref) { IMG.refs = [...IMG.refs.filter(r => r.file_id !== id), {file_id: id, name: it.title, type: it.mime}].slice(0, 3); go('image'); toast('Added as a reference'); return true; }
@@ -1191,7 +1191,7 @@ ${SPRITE}`;
         catch (er) { toast(er.message, true); }
         SC.busy = false; if (VIEW === 'script') go('script'); return; }
       if (b.dataset.scopen) { try { const r = await api('GET', itemPath(b.dataset.scopen), undefined, {raw: true}); SC.text = await r.text(); SC.id = b.dataset.scopen; go('script'); } catch (er) { toast(er.message, true); } return; }
-      if (b.hasAttribute('data-scdl')) { const u = URL.createObjectURL(new Blob([SC.text], {type: 'text/plain'})); const a = document.createElement('a'); a.href = u; a.download = 'hoola-script.txt'; R.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 4000); return; }
+      if (b.hasAttribute('data-scdl')) { if (SC.id) api('POST', '/api/prompting/runs/event', {ref: SC.id, event: 'downloaded'}).catch(() => {}); const u = URL.createObjectURL(new Blob([SC.text], {type: 'text/plain'})); const a = document.createElement('a'); a.href = u; a.download = 'hoola-script.txt'; R.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 4000); return; }
       if (b.hasAttribute('data-todir')) { DIR.brief = ('Film this screenplay exactly, scene by scene:\n' + SC.text).slice(0, 2000); DIR.project = ''; DIR.view = null;
         const m = /(\d+)\s*(second|minute)/i.exec(SC.len); if (m) DIR.seconds = Math.min(600, +m[1] * (/min/i.test(m[2]) ? 60 : 1)); go('director', {focus: true}); }
     });

@@ -306,13 +306,13 @@ def test_styles_exist():
 
 
 def test_no_new_tool_road_the_registry_stays():
-    assert len(T.TOOLS) == 625, "the console page adds NO tool - it drives the v0.713 seekh_video organs"
+    assert len(T.TOOLS) == 627, "626 + 1 app_engine (v0.824 APP ENGINE 1: the Web Studio React app lane - one new tool). 625 + 1 hoola_design (v0.817.0 HOOLA DESIGN: the design editor's one tool). the console page adds NO tool - it drives the v0.713 seekh_video organs"
 
 
 def test_version_pins():
     main = (SERVER / "app" / "main.py").read_text(encoding="utf-8")
-    assert 'APP_VERSION = "0.816.0"' in main and "SEEKH MANCH ON THE CONSOLE v0.718.0" in main
+    assert 'APP_VERSION = "0.825.0"' in main and "SEEKH MANCH ON THE CONSOLE v0.718.0" in main
     pub = ROOT / "pubspec.yaml"
-    assert "version: 0.816.0+815" in pub.read_text(encoding="utf-8")
+    assert "version: 0.825.0+824" in pub.read_text(encoding="utf-8")
     html = (CONSOLE / "v2.html").read_text(encoding="utf-8")
-    assert "console/seekh.js?v=0.816.0" in html and "console/v2.js?v=0.816.0" in html
+    assert "console/seekh.js?v=0.825.0" in html and "console/v2.js?v=0.825.0" in html

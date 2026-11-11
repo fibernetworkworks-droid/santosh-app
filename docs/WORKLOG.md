@@ -2973,9 +2973,29 @@ Task: owner "GO L7" - E5 restore any version, bookmarks, undo per reply, diffs, 
 Work Log: site/wapas.py (snapshots, restore, bookmark, diff); _make_version snapshot; site_versions.bookmark; 3 routes + website action=restore_version; stream.py on-disk slots; Studio History / reply footer / Edit + Revert and resend; 8 tests incl. a browser walk.
 Stage Summary: pushed; server deploy only. Next: L8 needs her 4 decisions (build server, model per job, free allowances, brand) before the React App Engine.
 
+Task ID: v0.817.0 HOOLA CODE DESIGN PASS (built as 0.807; re-versioned on merge four times: their v0.807-v0.816 took the numbers meanwhile)
+Ask: design still looks old - make it perfectly aligned, premium, smooth, like Claude Code web; show all pages.
+Built: one design-system block in v2.css replacing every earlier hcd rule; nav icons, home starting points, switches, drawn chevrons, page-in motion; test_v0807 measures 17 views and saves pictures.
+Deploy: vps-ops deploy (static files only; no server logic changed).
 ---
 Task ID: HOOLA-CINEMA (v0.814.0, built as 0.807)
 Task: owner "read this repo first" (Autom8AI/Open-Higgsfield-AI) -> "GO BUILD THE WHOLE SET AS HOOLA CINEMA END TO END".
 Work Log: read the fork end to end (no LICENSE file; ideas only); read 19 engine doc pages from docs.kie.ai for the real request shapes; server/app/cinema (specs, kie, service, api); static/console/cinema.js mounted in studio.js as view cinema; styles at the end of studio.css; 26 camera moves on the Video page; settings cinema_page / kie_api_key / cinema_daily_jobs; test_v0807_hoola_cinema.py 14 incl. a browser walk; docs/HOOLA_CINEMA_PLAN.md.
 Stage Summary: pushed; server deploy only. She adds KIE_API_KEY to the VPS .env before any tool can run. NOT VERIFIED live. Three decisions wait for her (character swap rule, who pays, upload limit) - see the plan doc.
 
+Task ID: v0.816.0 NATIJA KHATA (HOOLA PROMPTING P4; built as 0.806, main had moved to 0.815.0)
+Ask: "GO" after P1-P3 went live.
+Built: prompting/ledger.py (prompt_runs, prompt_prefs; shape only), 7 ledger routes, hooks in sites / Create image / Script writer / chat, Results tab, recipe order by kept rate; 14 tests incl. a browser walk.
+Deploy: vps-ops deploy (server-only; no new pip; two new tables self-heal). Not verified live. Next: P5 on her GO.
+
+---
+Task ID: v0.819.0 WHITEBOOKS PASTE CHECK (built as 0.814)
+Task: owner ran vps-ops wb_check (run 42986671553): all keys set, every product refused WB_ERR_9001.
+Work Log: requests re-read against the specs (match); values cleaned before use; wb_check prints a paste check (no values) + an activation hint; EWB refusal named; 2 tests.
+Stage Summary: on branch claude/exciting-hawking-113x8i. Next: she re-checks the paste lines / asks WhiteBooks to activate sandbox access, then wb_check again.
+
+---
+Task ID: v0.824.0 APP ENGINE 1 (L8; built as 0.814, main had moved to 0.823.0)
+Task: owner "GO L8" on docs/LOVABLE_STUDIO_PLAN.md (her 4 L8 decisions unanswered - the plan's defaults taken, all switchable).
+Work Log: server/app/appengine/ (template, tokens, rules, image + lock, runner, service, proof), agent/appengine_tools.py (app_engine, registry 627), turnmode APP + prompt block + sticky family, 13 routes, Studio Apps page + workspace (appengine.js/.css), vps-ops appengine_setup / appengine_check; 9 tests incl. the five asks in the real box + a browser walk.
+Stage Summary: pushed. Server deploy + vps-ops appengine_setup, then appengine_check. Not verified on her VPS or with a real model. Next: L9 on her GO.
