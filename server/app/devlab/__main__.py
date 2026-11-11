@@ -1,4 +1,4 @@
-"""`python -m app.devlab <check|setup|run|images|prune>` - the lab from the VPS command line, no model involved."""
+"""`python -m app.devlab <check|setup|run|images|prune|net>` - the lab from the VPS command line, no model involved."""
 from __future__ import annotations
 
 import argparse
@@ -10,7 +10,7 @@ from . import box, out, service
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="python -m app.devlab")
-    ap.add_argument("what", choices=["check", "setup", "run", "images", "prune", "grep"])
+    ap.add_argument("what", choices=["check", "setup", "run", "images", "prune", "grep", "net"])
     ap.add_argument("--repo", default="", help="owner/name (run)")
     ap.add_argument("--ref", default="", help="branch or 40-char sha (run)")
     ap.add_argument("--cmd", default="", help="the command to run (run); omitted = the repo's declared one")
@@ -28,6 +28,18 @@ def main(argv: list[str] | None = None) -> int:
         for line in service.selftest():
             print(line)
         return 0
+    if a.what == "net":                     # Phase 6: the network levels + outside secrets, proved wall by wall
+        from . import net
+        from ..config import get_settings
+        base = str(getattr(get_settings(), "public_base_url", "") or "").rstrip("/")
+        r = net.check(echo_url=f"{base}/api/devsahayak/labcheck" if base.startswith("https://") else "")
+        for s in r["stages"]:
+            print(f"{'ok  ' if s['ok'] else 'FAIL'} {s['stage']}" + (f"  [{s['note']}]" if s["note"] and not s["ok"] else ""))
+        if not base.startswith("https://"):
+            print("skip secret: PUBLIC_BASE_URL is not set, so the outside-secret wall was not tried")
+        print("ALL WALLS HOLD - set DEV_NET=true in .env and restart to switch network levels on" if r["ok"]
+              else "NOT SAFE TO SWITCH ON - leave DEV_NET off and show this to the developer")
+        return 0 if r["ok"] else 1
     if a.what == "setup":
         r = box.build_base(nocache=a.rebuild)
         print(f"{'ok' if r['ok'] else 'FAIL'} {r.get('image')} ({r.get('seconds')}s) {r.get('why', '')}")

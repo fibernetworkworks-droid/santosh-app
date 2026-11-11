@@ -1610,3 +1610,169 @@ Phase G6 of `docs/LANGGRAPH_TURN_PLAN.md` (bug class 10: call and chat are two e
 - TESTS: NEW `test_g6_turngraph.py` 11 (graph run with ledger / facts / channel / Haiku, told once + push held, late result from the record, hang-up -> chat push only, held then hung up -> next call once, spoken stop stops the ask, false spoken claim corrected from facts, call reaches the long job thread, registry walk every tool reachable + one undeclared tool end to end, restart keeps the channel, switch off unchanged); g0-g5, test_voice, v0550, v0630, v0634, v0660, v0657, v0649, v0691 call team, harness2, routines same off and on.
 - FOUND on the old path (left as is): with the switch off a result returned as the immediate tool answer is also queued as 'That big job is done' late news (the v0.657 hang-up callback runs before `_delegate` resumes).
 - NOT COVERED: declared tools / MCP tools / auto-rescue / hold-OTP flows on a call still run directly, not via the graph; the profile is recorded, not yet applied by the prepare node; after a hang-up the reply stays on the call record (no chat copy - the push opens the call record); spoken claims backed only by declared tools use the old check; nothing verified live (no real Gemini call / restart / phone). Next: G7 default ON + delete the old loop.
+
+## v0.806.0 HOOLA CODE PHASE 6 (built as 0.799; their v0.799-v0.805 took the numbers meanwhile) — network levels with an allow-list proxy, keys added outside the box, GitHub events, multi-repo sessions, the phone screen redrawn (owner: "GO PHASE 6")
+
+The last phase of `docs/HOOLA_CODE_WEB_PLAN.md`. Five parts. Nothing here changes who decides: opening a PR on a public
+repo, posting a review and merging are still her taps, and every new way to START work makes an ordinary session.
+
+**1. Network levels for the box** (`server/app/devlab/net.py`, `netproxy.py`; switch `dev_net`, default OFF).
+A command in the box had no network at all. Per repo (Settings > the repo > "Network for commands") she now picks:
+No network (default) / Package registries and her hosts / Any public website. At every level above none the box still
+has no route of its own: it is put on a Docker network made with `--internal`, and the one way out is a small allow-list
+proxy in its own container (`hoola-lab-proxy`: read-only, no capabilities, not root, 256 MB) which is also on the
+default bridge. Each command gets its own pass (`net.grant`: id + secret, a rule file the proxy reads, removed when the
+command ends, swept if a command died). The proxy serves only `CONNECT host:443` and `http://host:80`, refuses an IP
+address instead of a name, refuses a host off the list by name ("X is not on this repo's allowed list"), and after
+resolving refuses any private / loopback / link-local / CGNAT address - so a box can never reach her own server, the
+Docker host or a metadata address through it, even on "Any public website". "Limited" always allows 17 package
+registries (PyPI, npm, Maven, Gradle, pub.dev, crates, Go, RubyGems, NuGet, Packagist) and NOT GitHub. A proxy that is
+not running never turns into an open network: the command runs with none and says so. The one-time setup step is
+unchanged (it has the network, as before).
+
+**2. Keys added outside the box** ("network secrets"). Per repo, a key for ONE exact host (header name, optional word
+like Bearer). Typed only on the settings screen (`PUT /repos/{o}/{n}/secrets`), sealed with the vault, returned by no
+route. For that host the proxy answers the box's TLS itself with a certificate for that one host signed by this server's
+own lab CA (`data/devlab/net/ca.pem`; the box is told to trust a bundle, the CA key is never mounted into a box), adds
+the header - replacing whatever the box sent - and makes the real, verified TLS connection. Never on plain http. Other
+hosts are tunnelled untouched. If a host echoes the key back, the engine hides it before the model or the page see it.
+At most 5 a repo.
+
+**3. GitHub events** (`server/app/devsahayak/events.py`; switch `dev_events`, default on). Built as a signed REPOSITORY
+WEBHOOK, not a GitHub App: an App needs her to register one and keep its private key on the server; a webhook gives the
+same events with her existing token. Settings > the repo > "Connect GitHub events": Hoola adds the webhook with her
+token when the token may (Webhooks: write); when it may not, she is shown the address and the secret ONCE to add it
+herself. `POST /api/devsahayak/github/{id}` believes a delivery only when `X-Hub-Signature-256` matches (a wrong id and
+a wrong signature are the same 401), runs a redelivery once, ignores bots and Hoola's own `hoola/` branches. A scheduled
+task can now "start" on: an issue label, a new issue, a new pull request, a CI failure, a push (label / branch filter).
+By default only HER events count (the login the token belongs to); "Anyone in the repo" is honoured on a private repo
+only. The event's own words (an issue title) ride along inside `<trigger_payload>` as data. A new pull request from
+someone else gets a DRAFT review (the existing review flow; posting is her tap). 10 runs an hour per task.
+
+**4. Multi-repo sessions.** Composer "+" > "Add another repo…": "Read it" attaches up to 3 of her other repos to the
+session read-only (`DevTask.refs`; `engine.Session.ensure_ref` puts the default branch under the session's own folder
+with secrets hidden; the model gets ONE extra tool `other_repo` = ls / glob / grep / read; nothing there can be changed,
+committed, pushed or run). "Change it too" (up to 2) starts a LINKED session per repo (`DevTask.grp`), each with its own
+pull request and the same checks, each reading the others; the Session card shows "Same job in …".
+
+**5. The phone screen** (`lib/ui/devsahayak_screen.dart`, redrawn by a parallel agent): title Hoola Code; sessions
+grouped Working / Needs you / Earlier; New session box (text, repo, mode); the session page with folded steps, Thinking
+toggle, changed files + diff sheet, question choices, the suggestion chip, the message box (note / answer / revise),
+Stop, Open the PR, Fix CI, Fix reviewer comments; Scheduled tab with Run now + Pause. Merge keeps the old confirm card
+exactly. Compiled by CI only (no Flutter in the sandbox).
+
+**Also fixed (found by the browser test):** a closed dialog on the Hoola Code page kept its HTML, so a one-time trigger
+token or webhook secret stayed in the page after "Done". Every dialog is emptied when it closes.
+
+**Routes** (under `/api/devsahayak`): PATCH `/repos/{o}/{n}` takes `net_level`, `net_hosts`; PUT `/repos/{o}/{n}/secrets`,
+DELETE `/repos/{o}/{n}/secrets/{host}`; POST / DELETE `/repos/{o}/{n}/events`; GET `/net`; POST `/tasks/start` takes
+`refs`, `also`; schedules take `event`, `filter`; public: POST `/github/{id}`, GET `/labcheck`.
+**Columns** (nullable, self-heal): `DevRepo.net_level / net_hosts / net_secrets / hook_id / hook_secret / hook_gh /
+hook_seen`, `DevSchedule.event / event_filter`, `DevTask.refs / grp`.
+**On her server:** `python -m app.devlab net` (vps-ops job `lab_net_check`) proves the network walls for real: the
+inside-only network + proxy container, a registry reachable, a host off the list refused, no way around the proxy, no
+private address, "none" still sealed, "full" works, and a secret that reaches the host (her own server answers with a
+fingerprint at `/labcheck`) without being anywhere in the box. Only then set `DEV_NET=true`.
+
+**Tests** `server/tests/test_v0799_hoola_code_phase6.py` (10): host / header rules; the proxy run for real with sockets,
+TLS and curl (allow, refuse by name, IP refused, private address refused, no / wrong / expired pass, secret arrives,
+replaces the box's own header, never on http, other hosts untouched); the box argv with a pass (inside-only network,
+every other wall kept, setup never takes a pass); the proxy container's own walls; a pass per command, handed back,
+echoed key hidden, proxy down = no network, `dev_net` off = nothing changes; settings + sealed secret; GitHub events
+(signature, redelivery, hers only, anyone only on private, bots, Hoola's branches, CI failure, draft review, hourly
+limit, connect both ways, disconnect); another repo read and never changed + linked sessions; one browser walk.
+
+**NOT VERIFIED:** the inside-only Docker network and the proxy container have never run (no Docker in the sandbox) -
+that is exactly what `lab_net_check` is for, and why `dev_net` is off; no real GitHub delivery has arrived; the phone
+screen has not been seen on a phone. **Not built:** a GitHub App; one session that opens pull requests in two repos
+(linked sessions do that instead); reference repos are not mounted into the box (read through the tool only); secrets
+work for http(s) APIs only (not a database password); the phone has no settings for network / keys / events.
+Deploy: vps-ops deploy (server-only; no new pip; columns make themselves), then `lab_check`, then `lab_net_check`, then
+`DEV_NET=true` in .env if every line says ok. GitHub events need PUBLIC_BASE_URL (https) on the server.
+
+## v0.807.0 BAHI A0 - the GST & Accounts employee, foundation (built as 0.806; their HOOLA CODE PHASE 6 took 0.806.0 - REBASE PROTOCOL, both kept; owner: "LET WE DEVELOP A FULL GST AND ACCOUNT EMPLOYEE --- I HAVE WHITEBOOK APIS OF GST" -> "GO A0")
+
+Plan: `docs/ACCOUNTS_EMPLOYEE_PLAN.md` (A0-A12); research `docs/research/accounts/01-04` (what Hoola has, the market, the rules +
+calendar, the WhiteBooks API). Hoola already had the accountant in seven engines that never talk; A0 is the floor they all stand on.
+
+NEW `server/app/bahi/`:
+- `models.py` - `acc_docs` (the register: one row per (source, source_ref); gstin, period, direction, kind, number, date, party + GSTIN,
+  pos, taxable / CGST / SGST / IGST / cess / tax / total, irn, status confirmed | draft | gone, confidence, reason, problems),
+  `acc_periods` (open | locked per GSTIN + month), `acc_events` (append-only trail with before / after), `acc_gst_conn` (her GSTIN's GSP
+  connection - created now, filled by A1; IRP / EWB passwords sealed, no portal password ever), `acc_wb_calls` (the call meter). Registered
+  in `db.init_db` + `ensure_tables()` self-heal.
+- `rules.py` + `rules/*.json` - rules as DATA: `gst_rates` (slabs to 21 Sep 2025 and GST 2.0 from 22 Sep 2025, HSNS cess listing),
+  `due_dates` (TDS 7th, GSTR-1 11th, IFF 13th, 2B 14th, PF / ESI 15th, GSTR-3B 20th with the LOCK said, PMT-06 25th), `limits` (e-invoice
+  Rs 5 cr / Rs 10 cr + 30 days, IRN cancel 24 h, EWB 180 days / Rs 50,000, Rule 37 180 days, s.16(4) 30 Nov, MSME 15 / 45 days, the
+  July 2025 3B lock, the 3-year bar), `forms_map` (24Q -> 138, 26Q -> 140, 27Q -> 144, 27EQ -> 143, Form 16 -> 130, 16A -> 131, 12BB -> 124,
+  13 -> 128, 15G/H -> 121, 3CA/CB/CD -> Form 26). Every row: `basis` (primary | primary-listing | provider-spec | secondary-confirmed |
+  unverified), `source`, `checked_on`, `review_by`; the loader refuses a row without them; `usable()` = not unverified; `freshness()`
+  (by basis, stale, unverified) for the desk; `slabs_on(date)`; `dues_for(period, scheme, employer, tds)` with days left.
+- `wb.py` - the WhiteBooks client built to their OpenAPI specs (NOT their prose docs): `client_id` / `client_secret` headers per product
+  (gst | einv | ewb, one pair may serve all) + `email` query on every call; sandbox / production host from WHITEBOOKS_ENV; success ONLY on
+  `status_cd == "1"` (HTTP is 200 on failure); `WbError(code, plain message)` - WB_ERR_9001 / 9000, NIC 2150 / 2174, not_configured, cap,
+  rate, bad_reply, network; `safe_url` scrubs password / otp / evcotp from every log line (the EWB password rides a query string); a
+  per-tenant daily cap (`whitebooks_daily_calls` 300) and per-minute guard (`whitebooks_per_minute` 50, under the sandbox's 60) refuse
+  BEFORE the call; every call metered; `shape()` keeps structure, never values; primitives ping, public_search, rettrack, otp_request,
+  auth_token, refresh, ledger_balance, einv_auth, ewb_auth; `find_txn` looks for the OTP transaction id where GSTN puts it.
+- `wbcheck.py` - `python -m app.bahi.wbcheck` / vps-ops `wb_check`: sandbox = ping -> GSTIN search -> filing track -> OTP request -> auth
+  token with the spec's sandbox OTP 575757 -> refresh -> ledger balance -> e-invoice login -> e-way bill login, each PASS / FAIL / SKIP,
+  the reply SHAPES saved to data/bahi/wb_shapes.json (no values); production = the ping only (no taxpayer call, no OTP, ever).
+- `register.py` - adapters (read-only): GST Sahayak `gst_docs`, Thok billed orders + purchases (tax split by intra / inter), office
+  bills, her app + website invoices / credit notes via `appmaker/hisaab.build` (the same numbers her CA gets). `sync(months)` is
+  idempotent (fingerprint), flags the same document from two sources on both rows (purchase "inv" vs "bill" normalised), HOLDS a change
+  to a locked month (row kept, `changed_after_lock` note, trail), marks a row its source dropped `gone` (never deletes), writes the trail;
+  `listing`, `summary` (sales / purchases taxable + GST, credit notes netted, problems), `events` (labelled "GST Sahayak · INV-7 · Kumar
+  Stores", never an internal id), `set_lock`.
+- `service.py` overview (employee status, last + this month, last month's dues falling due now, WhiteBooks status - never a key / the
+  email -, connections without secrets, rules freshness, the trail, the phases list with honest states); `api.py` GET /api/bahi/overview,
+  POST /api/bahi/sync, GET /api/bahi/register, GET /api/bahi/rules, POST /api/bahi/periods/{period}/lock.
+- Settings (config.py): `bahi_enabled`, `bahi_filing` (False - prepare only), `whitebooks_env`, `whitebooks_email`,
+  `whitebooks_{gst,einv,ewb}_client_{id,secret}`, `whitebooks_ip_address`, `whitebooks_daily_calls`, `whitebooks_per_minute`,
+  `whitebooks_timeout_s`, `whitebooks_sandbox_*` (only the check reads them).
+
+Hub: the "Accounts Assistant" row goes live as **GST & Accounts** (does / needs / never), hiring gates no existing tool. Console: its own desk
+`static/console/bahi.js` (view `accountsdesk`; employees.js DESKS accounts -> accountsdesk): hero, tabs Overview (dues with days left and
+"date not yet checked on a government site" where unverified, last / this month tiles, Sync, the trail), Register (month / type / source
+filters, notes on flagged rows, Lock / Unlock a month), Rules (by basis, the unverified list, re-check due), Connection (keys set per
+product, calls today / cap, the last contract check steps, the .env line NAMES when unset), Plan (A0 built, A1 next...). Styles `acd-` on the
+Desk Room `ddk-` scale; the tab row scrolls on a phone.
+
+Tests: `test_v0807_bahi_a0.py` (14) - spec headers + email + sandbox host + meter; failures on HTTP 200 -> plain English; not-configured /
+daily cap / minute guard refuse BEFORE the call; no password / OTP / secret in logs; shapes without values + find_txn; the contract check
+on a mock sandbox + production pings only; rule rows carry source / basis / dates, GST 2.0 slabs, freshness; the month calendar; the register
+(5 documents from 3 engines, idempotent, the double-entered bill flagged on both, a draft order not a document); a locked month holds a
+change, unlock applies it, a dropped row is marked gone, the trail; routes + no secret in any reply; the Hub entry; console wiring + CSS; a
+real-browser walk (hire from the Hub -> Open desk -> Register shows the two flags -> Connection says "Not set" -> Plan), light 1280 + dark 390.
+Pins moved: test_v0317 / test_v0687 used "accounts" as the not-yet-live example (now "telecaller"); test_v0475 stamps 33 -> 34 (bahi.js).
+
+NOT VERIFIED: nothing has talked to the real WhiteBooks sandbox (the keys are not on the VPS yet) - the client is built to the published
+specs and the check exists to pin the real reply shapes the first time it runs. Not built (later phases): the GSTIN connect walk (A1), any
+filing, chat / voice tools, the phone screen.
+
+## v0.808.0 WAPAS - every version can come back, before launch too (built as 0.803; their GAME DEV ENGINE LOOK, HOOLA PROMPTING P1, LANGGRAPH G6, HOOLA CODE PHASE 6 and BAHI A0 took 0.803.0-0.807.0 - REBASE PROTOCOL, all kept; L7 of docs/LOVABLE_STUDIO_PLAN.md, owner: "GO L7")
+Before: a version kept only its BUILT pages, so "go back" existed only for her live address (hosting.rollback, after
+launch); nothing undid one answer's change, and an edited message could not take the site back first.
+- SOURCE PER VERSION (`site/wapas.py`): `service._make_version` now snapshots the section files and the row's plan, look
+  (tokens + design kit), facts, styles, style, languages into `<site>/snaps/v<N>/` (JSON only; photos / media stay in place).
+- RESTORE ANY VERSION: POST /api/sites/{id}/versions/{v}/restore (and `website action=restore_version`): sections + fields
+  back, the hand-edit Undo stack cleared (it belonged to the other version), then a NEW version "Restored vN" through the
+  normal save (checked) - so History stays a straight line and the restore is undone the same way. Enquiries, orders,
+  app rows are DATA and never touched (said every time). Refused while a build runs; a version made before snapshots
+  says so plainly (it can still be Put live if it was published).
+- BOOKMARKS: `site_versions.bookmark` (nullable column, added by the schema self-heal); POST .../versions/{v}/bookmark
+  {name} (empty removes); a bookmarked version is always in the list, however old.
+- WHAT CHANGED: GET .../versions/{v}/diff?against= (default: the version before it): every changed code file (readable
+  code, unified diff, + / - counts, new / removed) + which design tokens changed; 60k cap.
+- STUDIO: History = Bookmarks, then All versions (current, Live, bookmark name), Changes (inline diff), star, Restore,
+  Put live... (the old live rollback, renamed so the two are not confused). Each reply that made a version: "Version N",
+  Bookmark, Undo this change (back to the version before that answer; restores are never counted as an answer's change).
+  Her message: Edit -> Revert and resend (the site goes back to the version before that message, then the edited words
+  go). The chat redraws when a new version lands so every reply gets its own footer.
+- E7 LIVE VIEW SURVIVES A RESTART (`site/stream.py`): slots are also written to `<SITE_DIR>/_live/<site>.json` (at most
+  once a second while words stream, at once on finish / looks / clear); a restart or a second worker reads them back
+  (sequence number continues, a section that was mid-write is marked stale until the build picks it up again).
+Tests: test_v0808_wapas.py (8: any version back as a new version + undo the restore + refusals, data untouched,
+bookmarks + diff routes, the agent action, the live view after a simulated restart, source wiring, a Playwright walk:
+a change -> Version + Undo this change -> undone; Edit -> Revert and resend; History: Changes, Bookmark, Restore).
+NOT VERIFIED live: a real restart of her server during a build (the restart is simulated by clearing the memory).

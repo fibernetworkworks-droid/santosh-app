@@ -610,3 +610,23 @@ body:has(#wsYW .ptb) .ws-toast{bottom:84px}
 .perrbar[hidden]{display:none}
 .perrbar .ell{min-width:0}
 @media (prefers-reduced-motion:reduce){.errcard{animation:none}}
+/* v0.808 WAPAS (L7): versions back, bookmarks, changes, undo per reply, revert and resend */
+.vfoot{display:flex;align-items:center;gap:8px;margin:6px 0 2px;flex-wrap:wrap}
+.vfoot .b{display:inline-flex;align-items:center;gap:6px}
+.mewrap{display:flex;justify-content:flex-end;align-items:flex-start;gap:4px;align-self:flex-end;max-width:86%;min-width:0}
+.mewrap .me{margin-left:0;max-width:none;min-width:0}
+.meedit{opacity:0;transition:opacity .15s;flex:none;margin-top:6px}
+.mewrap:hover .meedit,.meedit:focus-visible{opacity:1}
+@media (hover:none){.meedit{opacity:.7}}
+.meed{display:flex;flex-direction:column;gap:8px;margin:6px 0 6px auto;width:min(100%,420px);background:var(--me);border:1px solid var(--pri-ring);border-radius:14px;padding:10px}
+.meed textarea{width:100%;resize:vertical;border:0;background:transparent;font:inherit;color:var(--ink);outline:none}
+.verw{border-bottom:1px solid var(--hair)}.verw .ver{border-bottom:0}
+.vbm{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;color:var(--pri-ink);background:var(--pri-soft);border-radius:999px;padding:2px 8px;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vh{font-size:13px;color:var(--mut);margin:18px 0 4px;font-weight:600}
+.vdiff{padding:4px 0 12px;display:flex;flex-direction:column;gap:6px}
+.vdiff[hidden]{display:none}
+.dfile summary{display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12.5px;padding:4px 0}
+.dadd{color:var(--ok);font-weight:600}.drem{color:var(--bad);font-weight:600}
+.dpre{margin:4px 0 0;max-height:320px;overflow:auto;font-size:12px;line-height:1.5;background:var(--raise);border:1px solid var(--hair);border-radius:8px;padding:8px;white-space:pre}
+.dpre .a{background:var(--ok-soft);display:inline-block;min-width:100%}.dpre .r{background:var(--bad-soft);display:inline-block;min-width:100%}
+@media (prefers-reduced-motion:reduce){.meedit{transition:none}}

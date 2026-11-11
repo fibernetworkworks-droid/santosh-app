@@ -1,0 +1,16 @@
+{
+  "name": "forms_map",
+  "about": "Income-tax form numbers: the Income-tax Rules, 2026 (in force 1 Apr 2026) renumbered every form. Use the new number for anything from 1 Apr 2026.",
+  "rows": [
+    {"id": "24Q", "old": "24Q", "new": "138", "what": "quarterly TDS statement - salary", "basis": "secondary-confirmed", "source": "https://blog.tdsman.com/2026/06/new-tds-tcs-forms-it-act-2025-mapping-with-old-forms/", "checked_on": "2026-11-11", "review_by": "2027-03-31"},
+    {"id": "26Q", "old": "26Q", "new": "140", "what": "quarterly TDS statement - non-salary", "basis": "secondary-confirmed", "source": "https://blog.tdsman.com/2026/06/new-tds-tcs-forms-it-act-2025-mapping-with-old-forms/", "checked_on": "2026-11-11", "review_by": "2027-03-31"},
+    {"id": "27Q", "old": "27Q", "new": "144", "what": "quarterly TDS statement - non-residents", "basis": "secondary-confirmed", "source": "https://blog.tdsman.com/2026/06/new-tds-tcs-forms-it-act-2025-mapping-with-old-forms/", "checked_on": "2026-11-11", "review_by": "2027-03-31"},
+    {"id": "27EQ", "old": "27EQ", "new": "143", "what": "quarterly TCS statement", "basis": "secondary-confirmed", "source": "https://blog.tdsman.com/2026/06/new-tds-tcs-forms-it-act-2025-mapping-with-old-forms/", "checked_on": "2026-11-11", "review_by": "2027-03-31"},
+    {"id": "16", "old": "Form 16", "new": "130", "what": "salary TDS certificate", "basis": "secondary-confirmed", "source": "https://blog.tdsman.com/2026/06/new-tds-tcs-forms-it-act-2025-mapping-with-old-forms/", "checked_on": "2026-11-11", "review_by": "2027-03-31"},
+    {"id": "16A", "old": "Form 16A", "new": "131", "what": "non-salary TDS certificate", "basis": "secondary-confirmed", "source": "https://blog.tdsman.com/2026/06/new-tds-tcs-forms-it-act-2025-mapping-with-old-forms/", "checked_on": "2026-11-11", "review_by": "2027-03-31"},
+    {"id": "12BB", "old": "Form 12BB", "new": "124", "what": "employee's claims for deductions", "basis": "secondary-confirmed", "source": "https://blog.tdsman.com/2026/06/new-tds-tcs-forms-it-act-2025-mapping-with-old-forms/", "checked_on": "2026-11-11", "review_by": "2027-03-31"},
+    {"id": "13", "old": "Form 13", "new": "128", "what": "lower / nil deduction certificate", "basis": "secondary-confirmed", "source": "https://blog.tdsman.com/2026/06/new-tds-tcs-forms-it-act-2025-mapping-with-old-forms/", "checked_on": "2026-11-11", "review_by": "2027-03-31"},
+    {"id": "15GH", "old": "Form 15G / 15H", "new": "121", "what": "declaration for income without TDS", "basis": "secondary-confirmed", "source": "https://blog.tdsman.com/2026/06/new-tds-tcs-forms-it-act-2025-mapping-with-old-forms/", "checked_on": "2026-11-11", "review_by": "2027-03-31"},
+    {"id": "3CD", "old": "Form 3CA / 3CB / 3CD", "new": "26", "what": "tax audit report (s.63 of the 2025 Act)", "basis": "secondary-confirmed", "source": "https://www.businesstoday.in/amp/personal-finance/tax/story/income-tax-rules-2026-govt-renumbers-key-forms-tax-audit-now-form-26-pan-tds-itr-forms-changed-519996-2026-03-11", "checked_on": "2026-11-11", "review_by": "2027-03-31"}
+  ]
+}

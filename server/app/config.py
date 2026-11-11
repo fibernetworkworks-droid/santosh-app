@@ -153,6 +153,8 @@ class Settings(BaseSettings):
     dev_think: bool = True                  # ... with adaptive thinking
     dev_hint: bool = True                   # Hoola Code Phase 5: one small model call when a round ends suggests her next message (ghost text)
     dev_hint_model: str = "claude-haiku-5-5"   # ... on this model
+    dev_net: bool = False                   # Hoola Code Phase 6: network levels + outside secrets for the box (allow-list proxy). OFF until `python -m app.devlab net` passes on the server
+    dev_events: bool = True                 # Hoola Code Phase 6: GitHub events (a signed repository webhook) may start a scheduled task
     dev_workspace: bool = True              # a real working copy per session + bash in the locked box + a conversation that continues
     dev_ws_live: int = 2                    # ... sessions that may RUN at once on the server (owner: 2); the rest wait their turn
     dev_ws_steps: int = 150                 # ... model steps in one round
@@ -962,6 +964,29 @@ class Settings(BaseSettings):
     hoola_signup_allow: str = ""            # invite mode: comma list of emails and/or @domain.com allowed to sign up
     gstinapi_api_key: str = ""              # v0.765 gstinapi.in (gak_...) - PAID per lookup (Rs 0.40-0.80), ONE server key, VPS .env only
     gstin_daily_calls: int = 50             # v0.765 most paid GSTIN lookups a day for ALL users together (0 = switched off)
+    # v0.807 BAHI (GST & Accounts employee, docs/ACCOUNTS_EMPLOYEE_PLAN.md): the WhiteBooks GSP. Keys ONLY in the VPS .env, never
+    # in chat / the repo / any reply. Build to the OpenAPI specs in their Developer Hub (docs/research/accounts/04_whitebooks_api.md).
+    bahi_enabled: bool = True               # the desk + register; off = the console page says it is switched off
+    bahi_filing: bool = False               # A1+: filing calls refused while False (prepare-only); A0 never files
+    whitebooks_env: str = "sandbox"         # sandbox | production
+    whitebooks_email: str = ""              # the WhiteBooks developer account email (sent as `email` on every call)
+    whitebooks_gst_client_id: str = ""
+    whitebooks_gst_client_secret: str = ""
+    whitebooks_einv_client_id: str = ""     # empty = the GST pair is used
+    whitebooks_einv_client_secret: str = ""
+    whitebooks_ewb_client_id: str = ""
+    whitebooks_ewb_client_secret: str = ""
+    whitebooks_ip_address: str = ""         # sent as the `ip_address` header (the server's public IP); blank = 127.0.0.1
+    whitebooks_daily_calls: int = 300       # most WhiteBooks calls a day PER TENANT (they bill per call); 0 = no cap
+    whitebooks_per_minute: int = 50         # under the sandbox's 60 / minute; a call over it is refused, never queued
+    whitebooks_timeout_s: float = 30.0
+    # sandbox test identities from the Hub's Credentials page (per developer account) - only `python -m app.bahi.wbcheck` reads them
+    whitebooks_sandbox_gstin: str = ""
+    whitebooks_sandbox_gst_username: str = ""
+    whitebooks_sandbox_einv_username: str = ""
+    whitebooks_sandbox_einv_password: str = ""
+    whitebooks_sandbox_ewb_username: str = ""
+    whitebooks_sandbox_ewb_password: str = ""
     ecourtsindia_api_key: str = ""          # v0.763 ecourtsindia.com (eci_live_...) - PAID per call, ONE server key, VPS .env only
     ecourts_daily_calls: int = 30           # v0.763 most paid eCourts calls a day for ALL users together (0 = switched off)
     twelvedata_api_key: str = ""            # v0.760 twelvedata.com (NSE / BSE quotes) - ONE server key, VPS .env only
