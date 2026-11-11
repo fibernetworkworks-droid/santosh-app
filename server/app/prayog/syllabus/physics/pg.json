@@ -1014,7 +1014,8 @@
       "electronic charge"
      ],
      "conditions": [],
-     "kernel": "millikan"
+     "kernel": "millikan",
+     "built": "w8-millikan"
     },
     {
      "id": "em-helical",

@@ -1,0 +1,39 @@
+{
+ "base": "um8-ion-projectile-z",
+ "rig": "um8-ion-workstation",
+ "chapter": "Nuclear and radiation physics",
+ "variants": [
+  {
+   "key": "carbon",
+   "title": "Stopping power against projectile charge in carbon",
+   "sample": "Graphite (carbon)",
+   "unknown": "the stopping power of ions z = 1 to 92 in carbon and the effective charge of uranium",
+   "params": {
+    "ZA": 0.49955,
+    "I": 78.0,
+    "rho": 2.21
+   },
+   "note": "The medium changes S for every ion by the same factor at a given speed, so the effective charge found from the ratio to the proton is the same as in Mylar: it is a property of the ion's speed.",
+   "source": {
+    "title": "PDG 'Atomic and nuclear properties of materials' / ICRU Reports 37 and 49: Z/A, mean excitation energy I, density",
+    "note": "from memory - verify"
+   }
+  },
+  {
+   "key": "water",
+   "title": "Stopping power against projectile charge in water",
+   "sample": "Liquid water",
+   "unknown": "the stopping power of ions z = 1 to 92 in water and the effective charge of uranium",
+   "params": {
+    "ZA": 0.55509,
+    "I": 75.0,
+    "rho": 1.0
+   },
+   "note": "Water is the reference medium of radiotherapy: heavy-ion beams of carbon are used there, and their stopping power in water sets the depth of the Bragg peak.",
+   "source": {
+    "title": "PDG 'Atomic and nuclear properties of materials' / ICRU Reports 37 and 49: Z/A, mean excitation energy I, density",
+    "note": "from memory - verify"
+   }
+  }
+ ]
+}

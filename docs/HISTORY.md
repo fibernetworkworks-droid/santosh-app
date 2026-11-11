@@ -1807,3 +1807,16 @@ scratch in every game - the place 3D builds break. Now those pieces exist once, 
 Tests: `test_v0809_kit3d.py` 28 (3 need Godot, 1 of those a browser; all ran green here). NOT VERIFIED: no
 MODEL-written 3D game has been built from the kit yet (that needs her server and model credit); the proof game has
 not been played on a real phone.
+
+
+## v0.810.0 PRAYOGSHALA WAVE 8
+
+69 physics set-ups built and walked within tolerance (agents' walks + the lead's final walk, 68 / 68 labs): ug_analog_w8 (21:
+diodes, LED, tunnel diode, BJT h-parameters and switch, push-pull, op-amp response / difference / analog computer, active
+filters, JFET, DAC, ADC, sample-and-hold, 7805, PLL, counter, distortion meter, thermostat, cable noise - one shared analog
+bench), ug_modern_w8 (13: work function, Hg ionisation, e/m Thomson / magnetron / focusing, Millikan both methods, Zeeman,
+Planck, microwaves x2, plus existing Franck-Hertz, iodine, ESR), ug_matter_w8 (15: beta range, K-40, four Bethe-Bloch
+stopping-power labs, XRD, nano XRD, band gap, piezo, Gouy, plus existing Quincke, magnetoresistance, P-E loop, dielectric),
+ug_comp_w8 (19 computational labs on comp4-workstation, every one checked against an exact or independent answer), plus
+pg:millikan-oil-drop. Coverage 456 -> 525 of 807 (school 78.4 / 91.5 %, B.Sc 86.8 %, M.Sc 38.1 %, PhD 28.6 %).
+Not built and constants from memory: docs/PRAYOG_PHYSICS_LAKH_PLAN.md, "Wave 8".

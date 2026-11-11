@@ -1,0 +1,51 @@
+{
+ "base": "cw8-frame-transformations",
+ "rig": "comp4-workstation",
+ "chapter": "Computational physics",
+ "variants": [
+  {
+   "key": "lorentz",
+   "title": "Lorentz boost of a velocity from small boosts",
+   "sample": "a particle at u = 0.6 c seen from a frame at 0.5 c",
+   "unknown": "u' = (u - v)/(1 - uv)",
+   "params": {
+    "cas": 1
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   },
+   "method": "Lorentz"
+  },
+  {
+   "key": "rotation",
+   "title": "Rotation of the axes acting on a position",
+   "sample": "the point (1, 0.5), axes turned by 0.8 rad",
+   "unknown": "x' = x cos t + y sin t",
+   "params": {
+    "cas": 2
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   },
+   "method": "rotation"
+  },
+  {
+   "key": "lorentz-fast",
+   "title": "Lorentz boost close to the speed of light",
+   "sample": "u = 0.9 c seen from a frame at 0.8 c",
+   "unknown": "u' = (u - v)/(1 - uv)",
+   "params": {
+    "cas": 1,
+    "u": 0.9,
+    "v": 0.8
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   },
+   "method": "Lorentz"
+  }
+ ]
+}
