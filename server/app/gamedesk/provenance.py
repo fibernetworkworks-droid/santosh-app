@@ -52,7 +52,11 @@ GENERATIVE = {"photogen": "a generative image model", "lyria": "a generative mus
               "tts": "a generative text-to-speech voice"}
 PROCEDURAL = {"synth": "built by code from a preset and a seed (no model: arithmetic)",
               "blender": "built by a Blender script (no model: geometry from code)"}
-HER_OWN = {"upload": "her own file, uploaded by her"}
+HER_OWN = {"upload": "her own file, uploaded by her", "her upload": "her own file, uploaded by her"}
+# v0.811 the free library: made by people, published CC0, never AI. Named with its library and licence.
+LIBRARY = {"library:kenney": "from the free library: Kenney, CC0 (made by a person, not by AI)",
+           "library:polyhaven": "from the free library: Poly Haven, CC0 (made by people, not by AI)",
+           "library:ambientcg": "from the free library: ambientCG, CC0 (made by a person, not by AI)"}
 
 
 def _studio(tenant: str, ref: str):
@@ -115,10 +119,12 @@ def assets_record(tenant: str, ref: str) -> dict[str, Any]:
         spec = dict(a.spec or {})
         shipped.append({"key": a.key, "kind": a.kind, "version": a.approved, "at": h.get("at"),
                         "source": src,
-                        "how": GENERATIVE.get(src) or PROCEDURAL.get(src) or HER_OWN.get(src) or f"source '{src}'",
+                        "how": GENERATIVE.get(src) or PROCEDURAL.get(src) or HER_OWN.get(src) or LIBRARY.get(src) or f"source '{src}'",
                         "kind_of_making": ("generative" if src in GENERATIVE else
                                            "procedural" if src in PROCEDURAL else
-                                           "hers" if src in HER_OWN else "unknown"),
+                                           "hers" if src in HER_OWN else
+                                           "library" if src in LIBRARY else "unknown"),
+                        "licence": (h.get("meta") or {}).get("licence"), "credit": (h.get("meta") or {}).get("credit"),
                         "model": (h.get("meta") or {}).get("model"),
                         "prompt": (a.words or "")[:300] or None,
                         "seed": spec.get("seed"), "preset": spec.get("preset"),
@@ -128,7 +134,8 @@ def assets_record(tenant: str, ref: str) -> dict[str, Any]:
     proc = [x for x in shipped if x["kind_of_making"] == "procedural"]
     hers = [x for x in shipped if x["kind_of_making"] == "hers"]
     unknown = [x for x in shipped if x["kind_of_making"] == "unknown"]
-    return {"shipped": shipped, "generative": gen, "procedural": proc, "hers": hers, "unknown": unknown,
+    lib = [x for x in shipped if x["kind_of_making"] == "library"]
+    return {"shipped": shipped, "generative": gen, "procedural": proc, "hers": hers, "unknown": unknown, "library": lib,
             "counts": {"in_the_game": len(shipped), "generative": len(gen), "procedural": len(proc),
                        "hers": len(hers), "unknown": len(unknown), "made_but_never_approved": made_not_shipped},
             "note": ("Only APPROVED assets are in the game, so only those are on a store survey. "
@@ -155,7 +162,7 @@ def human_record(tenant: str, ref: str) -> dict[str, Any]:
                   for r in rows if r.approved and (r.version or 0) > 1]
         rejected = [{"key": r.key, "kind": r.kind} for r in rows if r.status == "rejected"]
         uploaded = [{"key": r.key, "kind": r.kind} for r in rows
-                    if any(str(h.get("source") or "") == "upload" for h in (r.history or []))]
+                    if any(str(h.get("source") or "") in ("upload", "her upload") for h in (r.history or []))]
     her_tasks = [t for t in tasks if str(t.get("source") or "") == "her"]
     sent_back = [t for t in tasks if str(t.get("status") or "") in ("dropped",) or t.get("review")]
     acts = (len(decisions) + len(picked) + len(rejected) + len(uploaded) + len(her_tasks))
@@ -195,6 +202,9 @@ def steam_survey(tenant: str, ref: str) -> dict[str, Any]:
                    "generative AI.")
     if a["hers"]:
         pre.append(f"{len(a['hers'])} asset(s) are the developer's own files.")
+    if a.get("library"):
+        pre.append(f"{len(a['library'])} asset(s) come from free CC0 libraries (Kenney / Poly Haven / ambientCG): made by "
+                   "people and released to the public domain, so they are not AI content and need no credit.")
     return {"game": st.title, "studio": st.number,
             "pre_generated": {"answer": "Yes" if a["generative"] else "No",
                               "draft": " ".join(pre) or "No generated content ships with this game.",

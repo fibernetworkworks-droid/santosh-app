@@ -1821,7 +1821,127 @@ ug_comp_w8 (19 computational labs on comp4-workstation, every one checked agains
 pg:millikan-oil-drop. Coverage 456 -> 525 of 807 (school 78.4 / 91.5 %, B.Sc 86.8 %, M.Sc 38.1 %, PhD 28.6 %).
 Not built and constants from memory: docs/PRAYOG_PHYSICS_LAKH_PLAN.md, "Wave 8".
 
-## v0.811.0 HOOLA CODE DESIGN PASS (built as 0.807; their v0.807-v0.810 took the numbers meanwhile) — one design system for every page of Hoola Code (owner: "DESIGN STILL LOOK OLD AND STALE --- MAKE IT PERFECTLY ALLINED WITH TEXT, BUTTONS, TEXTURE ... MORE PREMIUM AND ADVANCE SMOOTH --- LIKE CLAUDE CODE WEB PORTAL ... SHOW ME ALL PAGES")
+
+## v0.811.0 GAME FREE LIBRARY - Tool Hub wave 1 (owner: "GO TOOL HUB WAVE 1" - the second of three, "ALL ONE BY ONE")
+
+3D games needed real models and surfaces; until now Hoola could only place a model she uploaded herself. Now three
+free libraries are connected, each through its official route (docs/GAME_TOOL_HUB_PLAN.md rows 47-49).
+
+- **Kenney** - 53 low-poly models (platformer pieces, city blocks and roads, shooter props, racing track + trucks),
+  2.7 MB, kept on Hoola's disk in `server/app/gamedesk/library/kenney/` with `index.json` and `LICENSE-KENNEY.md`.
+  They come from Kenney's own GitHub starter kits (KenneyNL/Starter-Kit-3D-Platformer, -City-Builder, -FPS, -Racing),
+  whose READMEs state the models are CC0. kenney.nl has no API and its download sits behind a donate dialog, so
+  nothing there is automated. Each GLB pointed at a shared `Textures/colormap.png`; Hoola embedded it so every file
+  stands alone. All 53 were loaded in real Godot.
+- **Poly Haven** - public API (api.polyhaven.com, no key, unique User-Agent as its terms ask): models (the 1k glTF +
+  .bin + textures packed into one GLB; over 12 MB is refused as too big for a web game) and textures (1k colour map).
+- **ambientCG** - public API v2: materials; the colour map is taken out of the 1K-JPG zip.
+- `gamedesk/glbpack.py`: `embed` / `pack` put every outside buffer and picture inside the GLB; a uri the caller did
+  not hand in is an error, never a fetch. `facts` reads meshes / triangles / animations from the file itself.
+- `gamedesk/library.py`: `search(q, kind, source)` (a library that is down is named and the others still answer),
+  `get`, `add(tenant, project, source, id, kind, key)`. One network door `_fetch`: https only, a fixed host allowlist
+  checked on every redirect hop, a byte ceiling per download.
+- An added item is a DRAFT asset exactly like her own upload (`source library:<name>`, licence + credit + origin in
+  its history) and enters a game only after her OK. It is never called AI: the game's AI credit line is not triggered,
+  and the provenance page lists it as a library asset with its licence (class `library`). Fixed on the way: her own
+  uploads were classified `unknown` there (the stored source is "her upload", the table said "upload").
+- New asset kind `texture` (512 x 512, palette check off by default, free, only from the library or her upload - a
+  request to generate one is refused). `Hoola3D.paint(node, key, tile_m, fallback)` puts it on a block or the ground
+  (triplanar, so it tiles in metres); `Hoola3D.model(...)` already places an approved model.
+- Where she uses it: Assets page > Free library (search, 3D models / Textures, Add); routes GET / POST
+  `/api/gamestudio/{id}/library`; Hoola's tool `game_assets` action `library` / `library_add`, told to look in the
+  library before making or generating a model.
+
+Tests: `test_v0811_game_library.py` 13 (packer, Kenney files, search with one library down, host allowlist, draft ->
+OK -> in the game and not AI, Poly Haven pack + size refusal, textures, routes, tool, real Godot loading a library
+model + texture through the kit, and the real libraries when HOOLA_LIVE_LIBRARY=1 - run green here). NOT built: Meshy
+(her key and her decision on vendor accounts first), HDRI skies, picture previews in the panel, Kenney 2D / audio packs.
+
+## v0.812.0 ECC AGENTS IN HOOLA CODE (built as 0.794; other sessions took 0.794-0.811 meanwhile (their HOOLA CODE PHASE 5 took 0.798.0, PHASE 6 0.806.0) - REBASE PROTOCOL, all kept)
+Owner (11 Nov 2026), after reading github.com/affaan-m/ECC: "ADD ALL MISSING ECC AGENTS TO HOOLA CODE --- MAKE HOOLA CODE
+MORE POWERFULL AND SMOOTH THUS CAN PERFROM ANY HARD CODING TASK SMOOTLY AND PERFECTLY LIKE CLAUDE CODE".
+
+Before: v0.402-v0.451 had adapted ~20 of ECC's agents as text inside `devsahayak/specialists.py`, used only AROUND a
+round (PR review, CI fix rounds, self-review, plan pass); the v0.787 working-copy engine itself never saw them.
+ECC checked at commit d2ef268 (v2.2.3): only 6 commits after the b38be6a snapshot, all its own CI - nothing to re-sync.
+
+What is new:
+- `server/app/devsahayak/ecc/` - the catalogue. 63 of ECC's 71 agent files condensed and rewritten as text (four
+  parallel agents, one per part file; each prompt 1.5-2.6k chars, credited in its own first line, Claude Code-only parts
+  and anything needing the internet dropped): `reviewers_lang.py` (17: python / typescript / react / vue / flutter /
+  kotlin / java / go / rust / swift / cpp / csharp / fsharp / php / ruby / django / fastapi), `reviewers_more.py` (19:
+  code / security / silent-failure / pr-test / database / commit reviewers, type-design, comment, performance, a11y,
+  agent-evaluator, mle, rag, healthcare, bengali, seo, network-config, opensource-sanitizer, harmonyos), `fixers.py` (16:
+  build-error-resolver + 10 language resolvers, tdd-guide, e2e-runner, refactor-cleaner, code-simplifier, doc-updater),
+  `planners.py` (11: planner, architect, code-architect, spec-miner, network / homelab architects, code-explorer,
+  docs-lookup rewritten for OFFLINE lookup in the box, network-troubleshooter, opensource forker / packager).
+  `ecc.NOT_ADDED` = the 8 left out with reasons (marketing-agent, chief-of-staff, conversation-analyzer,
+  harness-optimizer, loop-operator, gan-planner / generator / evaluator). `rules_text.py` = ECC's rules/ condensed
+  (common + 21 languages). Each agent has a tool level: read (look only) / run (+ bash in the box) / edit (+ edit /
+  write, with the coder's guards).
+- `server/app/devsahayak/subagent.py` - the engine's `agent` tool, Claude Code's subagent shape: a fresh conversation
+  with only the task the coder wrote, the agent's text + its level's tools, the SAME working copy through a copy of
+  `engine.Tools` (secrets hidden, links never followed, workflows refused, read before edit; an agent's reads are not
+  the coder's), ends with `report`. Several read / run agents asked in ONE reply run side by side (threads with the
+  session's model / effort and the copied context); edit agents one by one. Limits `dev_agent_steps` 30,
+  `dev_agent_minutes` 12, `dev_agent_max` 10 a round, `dev_agent_parallel` 4. An agent cannot start agents, push or end
+  the round.
+- `engine.py`: the coder's system prompt gets `AGENTS_HOWTO` (when to explore / plan / fix / review with an agent) +
+  `ecc.roster()` (all 63 in one line each, best fits for this repo first) + `ecc.rules_for()` (the repo's languages,
+  9k chars cap); tool list + `agent`; ECC's pre-commit hook as `ecc.gate` on the round's diff before `done` is accepted
+  (console.log / debugger / breakpoint / pdb / pry / var_dump outside tests and docs, `.only` focused tests, conflict
+  markers, key-looking lines) - ONE clean-up chance, then done is accepted.
+- `specialists.py`: the PR review prompt adds the ECC reviewer for a language / framework the old notes did not cover
+  (React, Vue, C++, C#, PHP, Ruby, F#, Django ...); a CI fix round on C++ / C# logs gets the ECC resolver (new log signs).
+- `GET /api/devsahayak/agents` (roster + left-out list); the page draws `agent` (asked / reported, the report folds
+  open) and `gate` steps, and an agent's edits / commands say "by <agent>".
+- Switches: `dev_ecc_agents`, `dev_ecc_rules`, `dev_ecc_rules_chars`, `dev_ecc_gate` (all on).
+- Tests `server/tests/test_v0812_ecc_agents.py` (11): every ECC agent in or left out with a reason, every prompt
+  adapted (no Claude Code-only words), rules per language, suggestions / roster, the gate, the old review / fix paths
+  on new languages, a REAL round through `engine.run` where the coder asks two agents in one reply (they run in two
+  threads with read / run tools only, their reports come back) and the gate stops a `breakpoint()` before done; an edit
+  agent must read first and cannot touch workflows; the round cap and the switch.
+  Older Hoola Code suites re-run green with it (v0402 x2, v0787 engine incl. real Docker, v0789 safety, tech
+  devsahayak, v0748 / v0768 / v0774 / v0777). test_v0473 `test_coder_routes_mounted` fails as before (an old red).
+  FOUND + FIXED while testing: the gate first judged EVERY file in the diff, so a key file a box command planted (hidden,
+  never shippable, the coder may not change it) refused `done` - the v0789 link / key test went 'explained' in long
+  runs. The gate now judges only files that would ship (not hidden / key files / binaries / links); a test holds it.
+  The roster's path matching was also made 0.08 s for a 4,000-file repo (compiled once, one pass).
+NOT VERIFIED: no real model has driven an agent (scripted Claude only - the sandbox has no key); cost per round with
+agents is not measured (each agent is its own model conversation, so a reviewed round costs more); no browser walk of
+the new step kinds.
+
+
+## v0.813.0 GAME ARENA RUNNABLE (owner: "GO ARENA" - the third of three, "ALL ONE BY ONE")
+
+The Game Arena (v0.454) was built to answer "is a Hoola game any good?" with numbers. It had never run on a real game.
+
+- **Found by reading it before running it:** `arena._one_card` - the function that takes a built game, lets the QA
+  bots play it and writes the score card - looked for the web build in `<version>/web`. No build has ever had that
+  folder: the exporter writes `<version>/build`. Every Arena test replaced `_one_card` with a stand-in, so nothing
+  ever executed the line. The first real run would have reported EVERY game as "no playable build" - 0 % started -
+  and that would have read as "Hoola's games do not work". `duel` had the same line. Both now go through
+  `arena._web`, and `test_v0813_game_arena_real.py` runs the REAL `_one_card` on a real game row.
+- **A free self-check** (`arena.selfcheck`, `python -m app.gamedesk arena check`, vps-ops `game_arena_check`): the
+  500 briefs are checked (500 unique, 20 genres), then Hoola's own proof game (v0.809, no model wrote it) is built
+  for real as the hidden Arena tenant and scored through the same path a run uses - the build is found, the QA bots
+  (idle / monkey / keys) play it, the card is written - with the judge left out (the only part that needs a model).
+  The game is deleted afterwards. A scorer that cannot measure a known-good game says NOT READY and why, before a
+  rupee is spent.
+- **Running it:** `python -m app.gamedesk arena run --n 3 --budget 150` (REAL: the model writes each game, so it
+  spends money and stops at the rupee ceiling), `arena status`; vps-ops `game_arena_try` (3 briefs, Rs 150 ceiling,
+  23-minute limit - starting it is her decision) and `game_arena_status`. `_one_card(..., judge_it=False)` exists
+  for the check.
+- Measured here (Godot 4.7.2 + Chromium, software graphics): the proof game started, loaded in 3.2 s, the bots'
+  inputs changed its state, 0 errors, 3 state keys reported, playable = true; `reached_end` false in 12 s of random
+  play (the game needs 5 coins and a climb, so a random bot not finishing it is expected); fun = NOT ASSESSED.
+
+Tests: `test_v0813_game_arena_real.py` 6 (one in the real engine + browser, run green here) beside the 12 older
+Arena tests. NOT VERIFIED: no real Arena run has happened yet - it needs her server, the model and her go-ahead on
+the spend - so there are still NO quality numbers for any Hoola version, and the 2D / 3D briefs' real pass rate is
+unknown. The brief set (SET_V 1) has no 3D briefs yet.
+
+## v0.814.0 HOOLA CODE DESIGN PASS (built as 0.807; their v0.807-v0.813 took the numbers meanwhile) — one design system for every page of Hoola Code (owner: "DESIGN STILL LOOK OLD AND STALE --- MAKE IT PERFECTLY ALLINED WITH TEXT, BUTTONS, TEXTURE ... MORE PREMIUM AND ADVANCE SMOOTH --- LIKE CLAUDE CODE WEB PORTAL ... SHOW ME ALL PAGES")
 
 Same pages, same routes, same behaviour - the LOOK rebuilt. Seven phases had each added their own rules (311 lines, five
 button heights, corners from 5 to 18px, a class used for two different things). All of them are gone; ONE block in
