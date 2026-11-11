@@ -35,7 +35,7 @@ from datetime import date
 LIC_KINDS = {
     "m365": "Microsoft 365", "workspace": "Google Workspace", "tally": "Tally (TSS)", "antivirus": "Antivirus",
     "domain": "Domain", "ssl": "SSL certificate", "cloud": "Cloud / hosting plan", "backup": "Backup plan",
-    "software": "Software licence", "saas": "Online subscription", "isp": "Internet plan", "other": "Aur",
+    "software": "Software licence", "saas": "Online subscription", "isp": "Internet plan", "other": "Other",
 }
 LIC_WORDS = {
     "m365": ("microsoft 365", "office 365", "m365", "o365", "outlook business", "exchange"),
@@ -51,11 +51,11 @@ LIC_WORDS = {
 WINDOWS_DEFAULT = [60, 30, 15, 7, 1, 0]
 LEVELS = ("user", "admin", "owner")
 CHANGE_KINDS = {
-    "user_create": "Naya account banana", "user_disable": "Account band (suspend / disable)", "user_enable": "Account dobara chalu",
-    "user_signout": "Sab devices se sign-out", "licence_assign": "Licence dena", "licence_remove": "Licence hatana",
-    "admin_grant": "Admin rights dena", "admin_remove": "Admin rights hatana", "password_reset": "Password reset (console mein khud)",
-    "password_rotate": "Shared password badalna", "access_add": "Access dena", "access_remove": "Access hatana",
-    "setting": "Setting badalna", "other": "Badlaav",
+    "user_create": "Create a new account", "user_disable": "Turn off account (suspend / disable)", "user_enable": "Turn account back on",
+    "user_signout": "Sign out of all devices", "licence_assign": "Assign licence", "licence_remove": "Remove licence",
+    "admin_grant": "Grant admin rights", "admin_remove": "Remove admin rights", "password_reset": "Password reset (yourself, in the console)",
+    "password_rotate": "Change shared password", "access_add": "Grant access", "access_remove": "Remove access",
+    "setting": "Change a setting", "other": "Change",
 }
 # kinds whose API needs a password, or that touch secrets: never run by Hoola, always her console steps
 NEVER_API = {"user_create", "password_reset", "password_rotate", "setting"}
@@ -132,46 +132,46 @@ def seat_waste(bought: int | None, used: int | None, cost: float | None, per: st
 def joiner_items(person: str, systems: list[str], has_google: bool, has_ms: bool) -> list[dict]:
     items = []
     if has_google:
-        items.append({"kind": "account_create", "text": f"{person} ka Google Workspace account (Admin console mein khud: pehla password aap set karein)", "system": "Google Workspace"})
+        items.append({"kind": "account_create", "text": f"{person}: Google Workspace account (yourself, in the Admin console: you set the first password)", "system": "Google Workspace"})
     if has_ms:
-        items.append({"kind": "account_create", "text": f"{person} ka Microsoft 365 account (admin centre mein khud)", "system": "Microsoft 365"})
+        items.append({"kind": "account_create", "text": f"{person}: Microsoft 365 account (yourself, in the admin centre)", "system": "Microsoft 365"})
     for s in systems:
         if (has_google and "google" in s.lower()) or (has_ms and "microsoft" in s.lower()):
             continue
-        items.append({"kind": "account_create", "text": f"{s}: {person} ka apna login (shared login nahi)", "system": s})
+        items.append({"kind": "account_create", "text": f"{s}: {person} - own login (not a shared login)", "system": s})
     items += [
-        {"kind": "licence", "text": "Zaroori licence assign (sirf jitna kaam ho)"},
-        {"kind": "mfa", "text": "2-step verification (MFA) chalu karwana"},
-        {"kind": "device_issue", "text": "Device dena: register mein user ka naam likhna (IT Helpdesk)"},
-        {"kind": "guides", "text": "Welcome guides bhejna (email, printer, Wi-Fi)"},
-        {"kind": "policy", "text": "IT niyam / acceptable use samjhana (password kabhi share nahi)"},
+        {"kind": "licence", "text": "Assign the licences needed (only as much as the work needs)"},
+        {"kind": "mfa", "text": "Get 2-step verification (MFA) turned on"},
+        {"kind": "device_issue", "text": "Issue a device: write the user's name in the register (IT Helpdesk)"},
+        {"kind": "guides", "text": "Send the welcome guides (email, printer, Wi-Fi)"},
+        {"kind": "policy", "text": "Explain the IT rules / acceptable use (never share a password)"},
     ]
     return items
 
 
 def mover_items(person: str, active: list[dict], new_role: str) -> list[dict]:
-    items = [{"kind": "access_review", "text": f"Puraane kaam ke access dekhiye ({len(active)}): jo naye role ({new_role or 'naya kaam'}) mein nahi chahiye woh hatao"}]
+    items = [{"kind": "access_review", "text": f"Review the accesses of the old role ({len(active)}): remove those not needed in the new role ({new_role or 'new role'})"}]
     for a in active:
         if a.get("level") in ("admin", "owner"):
-            items.append({"kind": "access_review", "text": f"{a['system']}: admin rights abhi bhi chahiye?", "access": a["id"]})
-    items.append({"kind": "access_add", "text": "Naye kaam ke access (sirf zaroori)"})
+            items.append({"kind": "access_review", "text": f"{a['system']}: are admin rights still needed?", "access": a["id"]})
+    items.append({"kind": "access_add", "text": "Accesses for the new role (only what is needed)"})
     return items
 
 
 def leaver_items(person: str, active: list[dict], devices: list[dict], shared: list[dict]) -> list[dict]:
     items = []
     for a in active:
-        items.append({"kind": "account_disable", "text": f"{a['system']}: {a.get('account') or person} band karna (aakhri din)",
+        items.append({"kind": "account_disable", "text": f"{a['system']}: {a.get('account') or person} - turn off (on the last day)",
                       "access": a["id"], "system": a["system"]})
-    items.append({"kind": "signout", "text": "Sab devices se sign-out / sessions khatam"})
-    items.append({"kind": "licence_free", "text": "Licence hatao (paise bachenge)"})
-    items.append({"kind": "data_handover", "text": "Mail / files ka owner badlo (manager ko), forward rule sirf kuch din"})
+    items.append({"kind": "signout", "text": "Sign out of all devices / end sessions"})
+    items.append({"kind": "licence_free", "text": "Remove the licence (saves money)"})
+    items.append({"kind": "data_handover", "text": "Change the owner of mail / files (to the manager); a forward rule only for a few days"})
     for d in devices:
-        items.append({"kind": "device_collect", "text": f"Device wapas lo: {d.get('tag', '')} {d.get('name', '')}".strip(), "asset": d.get("id", "")})
+        items.append({"kind": "device_collect", "text": f"Collect the device: {d.get('tag', '')} {d.get('name', '')}".strip(), "asset": d.get("id", "")})
     for s in shared:
-        items.append({"kind": "password_rotate", "text": f"{s['system']}: shared password badlo ({person} jaante the)", "access": s["id"],
+        items.append({"kind": "password_rotate", "text": f"{s['system']}: change the shared password ({person} knew it)", "access": s["id"],
                       "system": s["system"]})
-    items.append({"kind": "groups", "text": "Office WhatsApp / Telegram groups se hatana (khud)"})
+    items.append({"kind": "groups", "text": "Remove from office WhatsApp / Telegram groups (yourself)"})
     return items
 
 
@@ -179,20 +179,20 @@ def leaver_items(person: str, active: list[dict], devices: list[dict], shared: l
 def review_flags(a: dict, person: dict | None, on: date) -> list[str]:
     f = []
     if person is None:
-        f.append("kisi insaan se juda nahi")
+        f.append("not linked to any person")
     elif person.get("status") in ("left", "leaving", "forgotten"):
-        f.append("insaan office chhod chuka / chhod raha")
+        f.append("person has left / is leaving the office")
     if a.get("level") in ("admin", "owner"):
         f.append("admin rights")
         if a.get("mfa") != "yes":
-            f.append("admin bina 2-step")
+            f.append("admin without 2-step")
     if a.get("shared"):
         f.append("shared login")
     ll = a.get("last_login") or ""
     if ll[:10]:
         try:
             if (on - date.fromisoformat(ll[:10])).days > 90:
-                f.append("90 din se login nahi")
+                f.append("no login for 90 days")
         except ValueError:
             pass
     return f
@@ -224,16 +224,16 @@ def quarter_of(on: date) -> str:
 
 def practices_list() -> list[dict]:
     return [
-        {"id": "mfa_admins", "text": "Har admin account par 2-step verification", "why": "ISO 27001 A.8.5 / A.8.2"},
-        {"id": "no_shared", "text": "Shared login kam se kam; har insaan ka apna account", "why": "ISO 27001 A.5.16"},
-        {"id": "leaver_same_day", "text": "Chhodne wale ka access aakhri din hi band", "why": "ISO 27001 A.5.18 / A.6.5"},
-        {"id": "review_quarterly", "text": "Har 3 mahine access review", "why": "ISO 27001 A.5.18"},
-        {"id": "logs_180", "text": "Login / system logs 180 din, India ke andar (M365 / Workspace audit log setting dekhiye)",
+        {"id": "mfa_admins", "text": "2-step verification on every admin account", "why": "ISO 27001 A.8.5 / A.8.2"},
+        {"id": "no_shared", "text": "As few shared logins as possible; a separate account for each person", "why": "ISO 27001 A.5.16"},
+        {"id": "leaver_same_day", "text": "Close a leaver's access on the last day itself", "why": "ISO 27001 A.5.18 / A.6.5"},
+        {"id": "review_quarterly", "text": "Access review every 3 months", "why": "ISO 27001 A.5.18"},
+        {"id": "logs_180", "text": "Login / system logs for 180 days, inside India (check the M365 / Workspace audit log setting)",
          "why": "CERT-In Directions 28 Apr 2022 (body corporate)"},
-        {"id": "ntp", "text": "PC / server / router ki ghadi NIC ya NPL NTP se (time.nplindia.org / samay1.nic.in)",
+        {"id": "ntp", "text": "PC / server / router clocks from NIC or NPL NTP (time.nplindia.org / samay1.nic.in)",
          "why": "CERT-In Directions 28 Apr 2022"},
-        {"id": "poc", "text": "CERT-In ke liye ek Point of Contact tay (naam, email, phone)", "why": "CERT-In Directions 28 Apr 2022"},
-        {"id": "dpdp_staff", "text": "Staff ka data sirf naukri ke kaam ke liye; chhodne ke baad zaroorat khatam hone par mitao",
+        {"id": "poc", "text": "One Point of Contact named for CERT-In (name, email, phone)", "why": "CERT-In Directions 28 Apr 2022"},
+        {"id": "dpdp_staff", "text": "Staff data only for employment purposes; after they leave, erase it once it is no longer needed",
          "why": "DPDP Act 2023 s.7(i), s.8(7)"},
     ]
 
@@ -265,25 +265,25 @@ def change_api(kind: str, provider: str, target: str, sku: str = "", product: st
 
 
 def console_steps(kind: str, provider: str, target: str, system: str = "") -> list[str]:
-    who = target or "us insaan"
+    who = target or "that person"
     if provider == "google":
-        base = ["admin.google.com kholiye (apne admin account se)", "Directory > Users > " + who]
-        more = {"user_disable": ["'Suspend user' dabaiye"], "user_enable": ["'Reactivate' dabaiye"],
+        base = ["Open admin.google.com (with your admin account)", "Directory > Users > " + who]
+        more = {"user_disable": ["Tap 'Suspend user'"], "user_enable": ["Tap 'Reactivate'"],
                 "user_signout": ["Security > 'Sign-in cookies' > Reset"], "admin_grant": ["Admin roles > role assign"],
-                "admin_remove": ["Admin roles > role hatao"], "licence_assign": ["Licenses > Edit > assign"],
-                "licence_remove": ["Licenses > Edit > unassign"], "password_reset": ["'Reset password' > khud naya password; 'change at next sign-in' on"],
-                "user_create": ["Directory > Users > 'Add new user' > naam + email; password aap khud set karein"]}
-        return base + more.get(kind, ["Zaroori badlaav kijiye"])
+                "admin_remove": ["Admin roles > remove the role"], "licence_assign": ["Licenses > Edit > assign"],
+                "licence_remove": ["Licenses > Edit > unassign"], "password_reset": ["'Reset password' > set a new password yourself; 'change at next sign-in' on"],
+                "user_create": ["Directory > Users > 'Add new user' > name + email; set the password yourself"]}
+        return base + more.get(kind, ["Make the needed change"])
     if provider == "microsoft":
-        base = ["admin.microsoft.com kholiye (apne admin account se)", "Users > Active users > " + who]
+        base = ["Open admin.microsoft.com (with your admin account)", "Users > Active users > " + who]
         more = {"user_disable": ["'Block sign-in' on"], "user_enable": ["'Block sign-in' off"], "user_signout": ["'Sign out of all sessions'"],
                 "licence_assign": ["Licenses and apps > licence tick"], "licence_remove": ["Licenses and apps > licence untick"],
-                "admin_grant": ["Manage roles > role chuniye"], "admin_remove": ["Manage roles > 'User (no admin access)'"],
-                "password_reset": ["'Reset password' > khud naya password"], "user_create": ["'Add a user' > naam + email; password khud"]}
-        return base + more.get(kind, ["Zaroori badlaav kijiye"])
-    s = system or "us system"
-    more = {"password_rotate": [f"{s} mein admin se login", "Naya mazboot password (kam se kam 12 akshar) khud rakhiye",
-                                "Sirf zaroori logon ko seedha batayein (chat / WhatsApp mein likh kar nahi)"],
-            "user_disable": [f"{s} mein {who} ka login band / delete kijiye"],
-            "access_remove": [f"{s} mein {who} ka access hatayein"], "access_add": [f"{s} mein {who} ko sirf zaroori access dein"]}
-    return more.get(kind, [f"{s}: badlaav khud kijiye"])
+                "admin_grant": ["Manage roles > choose the role"], "admin_remove": ["Manage roles > 'User (no admin access)'"],
+                "password_reset": ["'Reset password' > set a new password yourself"], "user_create": ["'Add a user' > name + email; set the password yourself"]}
+        return base + more.get(kind, ["Make the needed change"])
+    s = system or "that system"
+    more = {"password_rotate": [f"{s}: log in as admin", "Set a new strong password (at least 12 characters) yourself",
+                                "Tell only the people who need it, directly (not written in chat / WhatsApp)"],
+            "user_disable": [f"{s}: turn off / delete the login of {who}"],
+            "access_remove": [f"{s}: remove the access of {who}"], "access_add": [f"{s}: give {who} only the access that is needed"]}
+    return more.get(kind, [f"{s}: make the change yourself"])

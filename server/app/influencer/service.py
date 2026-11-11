@@ -46,9 +46,9 @@ log = logging.getLogger("santosh.influencer")
 _LOCK = threading.RLock()
 CARD_KINDS = ("pitch", "contract", "content", "golive", "invoice", "payout", "report", "message")
 MONEY_CARDS = ("payout",)
-CARD_TITLE = {"pitch": "Brand ko pitch", "contract": "Contract draft brand ko", "content": "Content draft brand ko",
-              "golive": "Creator ko 'post kar do'", "invoice": "Invoice brand ko", "payout": "Creator ka hissa",
-              "report": "Campaign report brand ko", "message": "Message"}
+CARD_TITLE = {"pitch": "Pitch to the brand", "contract": "Contract draft to the brand", "content": "Content draft to the brand",
+              "golive": "Tell the creator to post", "invoice": "Invoice to the brand", "payout": "Creator's share",
+              "report": "Campaign report to the brand", "message": "Message"}
 OWNER_STAGES = {"contracted", "done"}
 
 
@@ -90,7 +90,7 @@ def today(tenant: str) -> date:
 
 def _rs(v: float | None) -> str:
     if v is None:
-        return "[daam?]"
+        return "[price?]"
     try:
         from ..india.money import inr
         return inr(v)
@@ -209,10 +209,10 @@ def _settings_view(st: InfluencerSettings) -> dict:
             "state": st.state, "address": st.address, "phone": st.phone, "email": st.email, "upi_id": st.upi_id,
             "commission_pct": st.commission_pct, "pay_days": st.pay_days, "morning_time": st.morning_time, "terms": st.terms,
             "rules": st.rules,
-            "notes": ["GST: influencer promotion = advertising service, 18% (SAC 998361). Saal mein Rs 20 lakh se upar (special "
-                      "states Rs 10 lakh) registration zaroori; barter bhi turnover mein ginta hai. CA se pakka karein.",
-                      "TDS: brand fee par 10% (Income-tax Act 2025 s.393(1), purana 194J) kaat sakta hai; free saamaan Rs 20,000 "
-                      "se upar par 10% (purana 194R) brand deta hai."]}
+            "notes": ["GST: influencer promotion = advertising service, 18% (SAC 998361). Registration is required above Rs 20 lakh a year (special "
+                      "states Rs 10 lakh); barter also counts in turnover. Confirm with your CA.",
+                      "TDS: the brand may deduct 10% on the fee (Income-tax Act 2025 s.393(1), old 194J); on free products above Rs 20,000 "
+                      "the brand pays 10% (old 194R)."]}
 
 
 def settings(tenant: str) -> dict:
@@ -227,18 +227,18 @@ def save_settings(tenant: str, **kw: Any) -> dict:
             if k in kw and kw[k] is not None:
                 v = R.clean(kw[k], 1500 if k in ("terms", "rules", "address") else 160)
                 if k == "phone" and v and not R.phone(v):
-                    raise InfluencerError("Phone 10 ank ka chahiye.")
+                    raise InfluencerError("The phone number must be 10 digits.")
                 if k == "upi_id" and v and not re.fullmatch(r"[\w.\-]{2,}@[a-zA-Z]{2,}", v):
-                    raise InfluencerError("UPI ID sahi nahi lagta (jaise naam@okicici).")
+                    raise InfluencerError("The UPI ID does not look right (it should look like name@okicici).")
                 if k == "morning_time" and v and not re.fullmatch(r"\d{2}:\d{2}", v):
-                    raise InfluencerError("Samay HH:MM mein.")
+                    raise InfluencerError("Time must be HH:MM.")
                 setattr(st, k, v)
         if "gstin" in kw and kw["gstin"] is not None:
             g = str(kw["gstin"]).strip().upper()
             if g:
                 from ..india.money import gstin_ok
                 if not gstin_ok(g):
-                    raise InfluencerError("GSTIN ka check digit galat hai.")
+                    raise InfluencerError("The GSTIN check digit is wrong.")
                 st.state = g[:2]
                 st.gst_registered = True
             st.gstin = g
@@ -250,14 +250,14 @@ def save_settings(tenant: str, **kw: Any) -> dict:
         if "commission_pct" in kw:
             p = _num(kw["commission_pct"])
             if p is not None and not 0 <= p <= 90:
-                raise InfluencerError("Commission 0-90% ke beech.")
+                raise InfluencerError("Commission must be between 0 and 90%.")
             st.commission_pct = p
         if "pay_days" in kw and kw["pay_days"] is not None:
             n = _num(kw["pay_days"])
             if n is None or not 0 <= n <= 180:
-                raise InfluencerError("Payment din 0-180.")
+                raise InfluencerError("Payment days must be 0-180.")
             st.pay_days = int(n)
-        return {**_settings_view(st), "say": "Niyam save ho gaye."}
+        return {**_settings_view(st), "say": "Rules saved."}
 
 
 # ---------------------------------------------------------------- creators
@@ -288,7 +288,7 @@ def _signals(c: InfluencerCreator) -> list[str]:
 def _creator(s, tenant: str, ref: str) -> InfluencerCreator:
     ref = str(ref or "").strip()
     if not ref:
-        raise InfluencerError("Kaunsa creator? (naam ya C-001)")
+        raise InfluencerError("Which creator? (name or C-001)")
     c = s.get(InfluencerCreator, ref)
     if c is not None and c.tenant_id == tenant:
         return c
@@ -303,7 +303,7 @@ def _creator(s, tenant: str, ref: str) -> InfluencerCreator:
     hits = [c for c in rows if low in c.name.lower()]
     if len(hits) == 1:
         return hits[0]
-    raise InfluencerError(f"Creator '{ref}' nahi mila.")
+    raise InfluencerError(f"Creator '{ref}' not found.")
 
 
 def creator_save(tenant: str, ref: str = "", actor: str = "owner", **kw: Any) -> dict:
@@ -320,12 +320,12 @@ def creator_save(tenant: str, ref: str = "", actor: str = "owner", **kw: Any) ->
         else:
             nm = R.clean(kw.get("name"), 120)
             if not nm:
-                raise InfluencerError("Creator ka naam chahiye.")
+                raise InfluencerError("The creator's name is needed.")
             st.cr_seq += 1
             c = InfluencerCreator(tenant_id=tenant, number=f"C-{st.cr_seq:03d}", name=nm)
             s.add(c)
         if c.status == "forgotten":
-            raise InfluencerError("Is creator ki details mita di gayi thi.")
+            raise InfluencerError("This creator's details were erased.")
         for k, n in (("name", 120), ("city", 80), ("language", 60), ("niche", 160), ("qualification", 200), ("notes", 2000),
                      ("email", 120)):
             if k in kw and kw[k] is not None:
@@ -333,17 +333,17 @@ def creator_save(tenant: str, ref: str = "", actor: str = "owner", **kw: Any) ->
         if "phone" in kw and kw["phone"] is not None:
             p = R.phone(kw["phone"])
             if kw["phone"] and not p:
-                raise InfluencerError("Phone 10 ank ka chahiye.")
+                raise InfluencerError("The phone number must be 10 digits.")
             c.phone = p
         if "sebi_reg" in kw and kw["sebi_reg"] is not None:
             v = re.sub(r"\s", "", str(kw["sebi_reg"]).upper())[:40]
             if v and not re.fullmatch(r"IN[AH]\d{9}", v):
-                raise InfluencerError("SEBI number aisa hota hai: INH000012345 (RA) ya INA000012345 (IA).")
+                raise InfluencerError("A SEBI number looks like this: INH000012345 (RA) or INA000012345 (IA).")
             c.sebi_reg = v
         if "upi_id" in kw and kw["upi_id"] is not None:
             v = str(kw["upi_id"]).strip()
             if v and not re.fullmatch(r"[\w.\-]{2,}@[a-zA-Z]{2,}", v):
-                raise InfluencerError("UPI ID sahi nahi lagta.")
+                raise InfluencerError("The UPI ID does not look right.")
             c.upi_id = v
         for k in ("virtual", "gst_registered", "no_messages"):
             if k in kw and kw[k] is not None:
@@ -368,7 +368,7 @@ def creator_save(tenant: str, ref: str = "", actor: str = "owner", **kw: Any) ->
                 continue
             pf = R.platform_of(h.get("platform"))
             if not pf:
-                raise InfluencerError("Platform batayiye (instagram / youtube ...).")
+                raise InfluencerError("Give the platform (instagram / youtube ...).")
             cur = next((x for x in hs if x.get("platform") == pf), None)
             if cur is None:
                 cur = {"platform": pf}
@@ -390,7 +390,7 @@ def creator_save(tenant: str, ref: str = "", actor: str = "owner", **kw: Any) ->
         from .. import idvault
         hit = next((r for r in idvault.list_(tenant) if r["ref"] == pan_ref_given and r["kind"] == "pan"), None)
         if hit is None:
-            raise InfluencerError("Yeh PAN locker mein nahi mila.")
+            raise InfluencerError("This PAN was not found in the locker.")
         with _LOCK, session() as s:
             c = s.get(InfluencerCreator, cid)
             c.pan_ref, c.pan_masked = hit["ref"], hit["masked"]
@@ -407,7 +407,7 @@ def creator_save(tenant: str, ref: str = "", actor: str = "owner", **kw: Any) ->
         c = s.get(InfluencerCreator, cid)
         v = _creator_view(c, True)
     sig = v["signals"]
-    say = f"{number} {cname} save." + (f" Dhyaan: {sig[0]}" if sig else "")
+    say = f"{number} {cname} saved." + (f" Note: {sig[0]}" if sig else "")
     return {"creator": v, "say": say}
 
 
@@ -440,10 +440,10 @@ def rate_save(tenant: str, creator: str, platform: str, fmt: str, price=None, us
               notes: str = "") -> dict:
     p = _num(price)
     if p is None or p <= 0:
-        raise InfluencerError("Daam aapka number chahiye (Hoola khud daam nahi lagata).")
+        raise InfluencerError("The price must be your number (Hoola does not set prices itself).")
     pf, ft = R.platform_of(platform), R.format_of(fmt)
     if not pf or not ft:
-        raise InfluencerError("Platform aur format dono batayiye (jaise instagram reel).")
+        raise InfluencerError("Give both the platform and the format (for example instagram reel).")
     with _LOCK, session() as s:
         c = _creator(s, tenant, creator)
         r = s.scalars(select(InfluencerRate).where(InfluencerRate.tenant_id == tenant, InfluencerRate.creator_id == c.id,
@@ -468,7 +468,7 @@ def rate_card(tenant: str, creator: str) -> dict:
         rows = s.scalars(select(InfluencerRate).where(InfluencerRate.tenant_id == tenant, InfluencerRate.creator_id == c.id)).all()
         hist = _history_prices(s, tenant, c.id)
         return {"creator": _creator_view(c), "rates": [_rate_view(r) for r in rows], "history": hist,
-                "note": "Daam sirf aapke. 'Pichhli deals' aapki apni poori hui deals ka median hai, sujhav nahi."}
+                "note": "The prices are only yours. 'Past deals' is the median of your own completed deals, not a suggestion."}
 
 
 def _history_prices(s, tenant: str, creator_id: str) -> list[dict]:
@@ -491,13 +491,13 @@ def _rate_for(s, tenant: str, creator_id: str, pf: str, ft: str) -> InfluencerRa
 def _deal(s, tenant: str, ref: str) -> InfluencerDeal:
     ref = str(ref or "").strip()
     if not ref:
-        raise InfluencerError("Kaunsi deal? (D-0001)")
+        raise InfluencerError("Which deal? (D-0001)")
     d = s.get(InfluencerDeal, ref)
     if d is not None and d.tenant_id == tenant:
         return d
     d = s.scalars(select(InfluencerDeal).where(InfluencerDeal.tenant_id == tenant, InfluencerDeal.number == ref.upper())).first()
     if d is None:
-        raise InfluencerError(f"Deal '{ref}' nahi mili.")
+        raise InfluencerError(f"Deal '{ref}' not found.")
     return d
 
 
@@ -518,10 +518,10 @@ def _clean_deliverables(s, tenant: str, creator_id: str, items: Any) -> list[dic
             continue
         pf, ft = R.platform_of(x.get("platform") or "instagram"), R.format_of(x.get("fmt") or x.get("format") or "")
         if not ft:
-            raise InfluencerError("Har deliverable ka format chahiye (reel / story / video ...).")
+            raise InfluencerError("Every deliverable needs a format (reel / story / video ...).")
         qty = int(R.count(x.get("qty")) or 1)
         price = _num(x.get("price"))
-        src = "aapka"
+        src = "yours"
         if price is None:
             r = _rate_for(s, tenant, creator_id, pf, ft)
             price, src = (r.price, "rate card") if r else (None, "")
@@ -542,9 +542,9 @@ def _gate(s, tenant: str, d: InfluencerDeal, c: InfluencerCreator) -> list[str]:
     if R.fake_engagement(" ".join([d.brief, d.product, d.barter_items])):
         out.append(R.FAKE_REFUSAL)
     if d.sebi_regulated and not c.sebi_reg:
-        out.append("SEBI-registered brand (broker / AMC / adviser) kisi aise creator ke saath kaam nahi kar sakta jo SEBI-registered "
-                   "nahi aur share / fund par salah ya returns ki baat karta ho (SEBI, Aug 2024 circular). Creator ka SEBI number "
-                   "nahi hai: yeh deal nahi chalegi (sirf investor education, bina salah ke, brand ke apne niyam se).")
+        out.append("A SEBI-registered brand (broker / AMC / adviser) cannot work with a creator who is not SEBI-registered "
+                   "and gives advice or talks about returns on shares / funds (SEBI, Aug 2024 circular). The creator has no SEBI "
+                   "number: this deal cannot go ahead (only investor education, without advice, under the brand's own rules).")
     return out
 
 
@@ -564,8 +564,8 @@ def _clash(s, tenant: str, d: InfluencerDeal) -> list[str]:
         cat = o.excl_category.strip().lower()
         if cat and R.overlap(R.as_date(o.excl_from), R.as_date(o.excl_to), m1, m2) and \
                 any(w in my_text for w in re.split(r"[\s,/]+", cat) if len(w) > 2):
-            out.append(f"{o.number} ({o.brand}) ki exclusivity '{o.excl_category}' {o.excl_from} se {o.excl_to} tak hai: "
-                       "isi category ki doosri brand ka kaam usi samay mana.")
+            out.append(f"{o.number} ({o.brand}) has exclusivity '{o.excl_category}' from {o.excl_from} to {o.excl_to}: "
+                       "work for another brand in the same category is not allowed in that period.")
         mycat = d.excl_category.strip().lower()
         if mycat and d.excl_from and o.stage in ("contracted", "live"):
             o_text = " ".join([o.brand, o.product, o.brief, o.excl_category]).lower()
@@ -573,7 +573,7 @@ def _clash(s, tenant: str, d: InfluencerDeal) -> list[str]:
             if any(w in o_text for w in re.split(r"[\s,/]+", mycat) if len(w) > 2) and \
                     R.overlap(R.as_date(d.excl_from), R.as_date(d.excl_to), min([x for x in od if x], default=None),
                               max([x for x in od if x], default=None)):
-                out.append(f"Is deal ki exclusivity '{d.excl_category}' {o.number} ({o.brand}) ke chalte kaam se takrati hai.")
+                out.append(f"This deal's exclusivity '{d.excl_category}' clashes with the ongoing work of {o.number} ({o.brand}).")
     return out
 
 
@@ -590,16 +590,16 @@ def deal_save(tenant: str, ref: str = "", actor: str = "owner", conv: str = "", 
         if ref:
             d = _deal(s, tenant, ref)
             if d.invoice_no and any(k in kw for k in ("fee", "deliverables", "kind", "barter_value")):
-                raise InfluencerError(f"{d.number} ka invoice ban chuka: paise / deliverables ab nahi badlenge (naya credit note CA se).")
+                raise InfluencerError(f"{d.number}: the invoice is already made: money / deliverables will not change now (a new credit note through your CA).")
         else:
             if not kw.get("creator") or not kw.get("brand"):
-                raise InfluencerError("Creator aur brand dono chahiye.")
+                raise InfluencerError("Both the creator and the brand are needed.")
             d = None
         c = None
         if kw.get("creator"):
             c = _creator(s, tenant, kw["creator"])
             if c.status != "active":
-                raise InfluencerError(f"{c.name} ab roster mein nahi.")
+                raise InfluencerError(f"{c.name} is no longer on the roster.")
         if d is None:
             st.deal_seq += 1
             d = InfluencerDeal(tenant_id=tenant, number=f"D-{st.deal_seq:04d}", conv=conv, creator_id=c.id)
@@ -615,13 +615,13 @@ def deal_save(tenant: str, ref: str = "", actor: str = "owner", conv: str = "", 
         if "brand_phone" in kw and kw["brand_phone"] is not None:
             p = R.phone(kw["brand_phone"])
             if kw["brand_phone"] and not p:
-                raise InfluencerError("Brand ka phone 10 ank ka chahiye.")
+                raise InfluencerError("The brand's phone number must be 10 digits.")
             d.brand_phone = p
         if "brand_gstin" in kw and kw["brand_gstin"]:
             g = str(kw["brand_gstin"]).strip().upper()
             from ..india.money import gstin_ok
             if not gstin_ok(g):
-                raise InfluencerError("Brand ka GSTIN check digit galat.")
+                raise InfluencerError("The brand's GSTIN check digit is wrong.")
             d.brand_gstin, d.brand_state = g, g[:2]
         for k in ("brand_foreign", "sebi_regulated"):
             if k in kw and kw[k] is not None:
@@ -657,19 +657,19 @@ def deal_save(tenant: str, ref: str = "", actor: str = "owner", conv: str = "", 
             raise InfluencerError(" ".join(bad))
         cl = _clash(s, tenant, d)
         if cl and not (force and is_owner(actor) and reason.strip()):
-            raise InfluencerError(" ".join(cl) + " (Sirf aap, wajah likh kar, 'phir bhi' kar sakti hain.)")
+            raise InfluencerError(" ".join(cl) + " (Only you can go ahead anyway, with a written reason.)")
         if cl:
-            _log(d, f"Exclusivity takrav phir bhi: {reason}", "Owner")
-        _log(d, "Deal save", actor_name(tenant, actor))
+            _log(d, f"Exclusivity clash overridden: {reason}", "Owner")
+        _log(d, "Deal saved", actor_name(tenant, actor))
         s.flush()
         did = d.id
         _sync_posts(s, tenant, d)
         v = _deal_view(s, d)
     notes = []
     if any(not x.get("price") for x in v["deliverables"]):
-        notes.append("Kuch deliverables ka daam nahi: rate card mein daam daaliye ya deal mein likhiye.")
+        notes.append("Some deliverables have no price: put the price in the rate card or write it in the deal.")
     if cl:
-        notes.append("Exclusivity takrav aapki wajah ke saath save hua.")
+        notes.append("The exclusivity clash was saved with your reason.")
     return {"deal": v, "say": f"{v['number']} {v['brand']} · {v['creator']} save." + (" " + " ".join(notes) if notes else ""),
             "id": did}
 
@@ -744,11 +744,11 @@ def stage(tenant: str, ref: str, to: str, reason: str = "", actor: str = "owner"
     if to not in R.STAGES:
         raise InfluencerError("Stage: " + " / ".join(R.STAGES))
     if to in OWNER_STAGES and not is_owner(actor):
-        raise InfluencerError("Deal pakki / poori sirf owner karti hain.")
+        raise InfluencerError("Only the owner can confirm / complete a deal.")
     with _LOCK, session() as s:
         d = _deal(s, tenant, ref)
         if to == "lost" and not reason.strip():
-            raise InfluencerError("Deal kyun nahi hui? Wajah likhiye (seekhne ke liye).")
+            raise InfluencerError("Why did the deal not happen? Write the reason (to learn from it).")
         if to == "contracted":
             c = s.get(InfluencerCreator, d.creator_id)
             bad = _gate(s, tenant, d, c) + _clash(s, tenant, d)
@@ -769,7 +769,7 @@ def _post(s, tenant: str, ref: str) -> InfluencerPost:
         return p
     p = s.scalars(select(InfluencerPost).where(InfluencerPost.tenant_id == tenant, InfluencerPost.number == ref.upper())).first()
     if p is None:
-        raise InfluencerError(f"Post '{ref}' nahi mila (P-0001).")
+        raise InfluencerError(f"Post '{ref}' not found (P-0001).")
     return p
 
 
@@ -799,7 +799,7 @@ def post_save(tenant: str, ref: str, actor: str = "owner", **kw: Any) -> dict:
     with _LOCK, session() as s:
         p = _post(s, tenant, ref)
         if p.status == "live" and any(k in kw for k in ("caption", "script")):
-            raise InfluencerError("Post live ho chuka: caption ab yahan nahi badlega (platform par khud badliye, phir yahan likhiye).")
+            raise InfluencerError("The post is already live: the caption cannot be changed here now (change it on the platform yourself, then write it here).")
         before = _content_hash(p)
         for k, n in (("caption", 2200), ("script", 6000), ("brand_notes", 2000)):
             if k in kw and kw[k] is not None:
@@ -811,7 +811,7 @@ def post_save(tenant: str, ref: str, actor: str = "owner", **kw: Any) -> dict:
         if "due" in kw and kw["due"]:
             dd = R.as_date(kw["due"])
             if not dd:
-                raise InfluencerError("Tareekh DD-MM-YYYY mein.")
+                raise InfluencerError("Date must be DD-MM-YYYY.")
             p.due = dd.isoformat()
         if isinstance(kw.get("ticks"), dict):
             t = _j(p.ticks, {})
@@ -824,7 +824,7 @@ def post_save(tenant: str, ref: str, actor: str = "owner", **kw: Any) -> dict:
         if kw.get("brand_ok") is not None:
             if _bool(kw["brand_ok"]):
                 if not p.caption:
-                    raise InfluencerError("Pehle caption / draft chahiye.")
+                    raise InfluencerError("A caption / draft is needed first.")
                 p.approved_hash = _content_hash(p)
                 p.status = "approved"
             else:
@@ -832,7 +832,7 @@ def post_save(tenant: str, ref: str, actor: str = "owner", **kw: Any) -> dict:
         if kw.get("live_url"):
             u = str(kw["live_url"]).strip()
             if not re.match(r"https://", u):
-                raise InfluencerError("Live post ka https link chahiye.")
+                raise InfluencerError("The https link of the live post is needed.")
             p.live_url, p.status = u[:400], "live"
             p.posted_on = R.as_date(kw.get("posted_on")).isoformat() if R.as_date(kw.get("posted_on")) else today(tenant).isoformat()
             d = s.get(InfluencerDeal, p.deal_id)
@@ -842,11 +842,11 @@ def post_save(tenant: str, ref: str, actor: str = "owner", **kw: Any) -> dict:
             p.status = kw["status"]
         res = _run_check(s, p)
         v = _post_view(p)
-    say = f"{v['number']}: " + ("disclosure theek." if res["ok"] else "rukawat: " + res["block"][0])
+    say = f"{v['number']}: " + ("disclosure is fine." if res["ok"] else "blocked: " + res["block"][0])
     if res["ok"] and res["warn"]:
-        say += f" ({len(res['warn'])} baatein dekhiye)"
+        say += f" ({len(res['warn'])} points to check)"
     if kw.get("live_url") and not res["ok"]:
-        say += " Post live hai par disclosure poora nahi: creator se turant theek karwaiye (ASCI notice aa sakta hai)."
+        say += " The post is live but the disclosure is not complete: get the creator to fix it right away (an ASCI notice can come)."
     return {"post": v, "say": say}
 
 
@@ -861,7 +861,7 @@ def check_text(tenant: str, caption: str, platform: str = "instagram", fmt: str 
     res = R.disclosure_check(caption, R.platform_of(platform) or "instagram", R.format_of(fmt) or "post", kind, virtual=virtual,
                              ai_media=ai_media, cats=R.categories(caption), health_qual=qual, sebi_reg=sebi,
                              duration_s=_num(duration_s))
-    res["say"] = "Disclosure theek." if res["ok"] else "Rukawat: " + res["block"][0]
+    res["say"] = "Disclosure is fine." if res["ok"] else "Blocked: " + res["block"][0]
     return res
 
 
@@ -891,7 +891,7 @@ def calendar(tenant: str, month: str = "") -> dict:
     by_day: dict[str, list] = {}
     for p in items:
         by_day.setdefault(p["due"], []).append(p)
-    crowd = [f"{k}: {len(v)} post ek hi creator ke" for k, v in by_day.items()
+    crowd = [f"{k}: {len(v)} posts by the same creator" for k, v in by_day.items()
              if max([sum(1 for x in v if x["creator"] == c) for c in {x["creator"] for x in v}] or [0]) >= 3]
     return {"month": m, "days": by_day, "undated": [p for p in posts(tenant) if not p["due"] and p["status"] != "live"],
             "notes": crowd}
@@ -936,7 +936,7 @@ def _money(s, d: InfluencerDeal) -> dict:
     got = round(sum(float(x.get("amount") or 0) for x in rec), 2)
     tds_got = round(sum(float(x.get("tds") or 0) for x in rec), 2)
     owed = round(total - got - tds_got, 2) if total is not None else None
-    return {"lines": lines, "taxable": taxable, "gst": gst, "total": total, "total_text": _rs(total) if total else "[daam?]",
+    return {"lines": lines, "taxable": taxable, "gst": gst, "total": total, "total_text": _rs(total) if total else "[price?]",
             "tds": tds, "commission_pct": pct, "commission": comm, "creator_due": creator_due, "received": got,
             "tds_deducted": tds_got, "outstanding": owed, "barter_value": d.barter_value}
 
@@ -961,15 +961,15 @@ def _pitch_text(s, d: InfluencerDeal, st: InfluencerSettings) -> str:
                    + (f" ({h['followers']:,} followers, {h.get('on', '')})" if h.get("followers") else "")
                    for h in _j(c.handles, [])) if c else ""
     dl = "\n".join(f"- {R.PLATFORMS.get(x['platform'], x['platform'])} {R.FORMATS.get(x['fmt'], x['fmt'])} x{x.get('qty', 1)}: "
-                   f"{_rs(x['price']) if x.get('price') else '[daam?]'}" for x in _j(d.deliverables, []))
-    lines = [f"Namaste {d.brand_contact or d.brand} ji,", "",
-             f"{c.name if c else ''} ({c.niche if c and c.niche else 'creator'}) ke saath {d.product or d.brand} ke liye prastaav:",
+                   f"{_rs(x['price']) if x.get('price') else '[price?]'}" for x in _j(d.deliverables, []))
+    lines = [f"Hello {d.brand_contact or d.brand},", "",
+             f"{c.name if c else ''} ({c.niche if c and c.niche else 'creator'}) - proposal for {d.product or d.brand}:",
              hs, "", dl or "- [deliverables?]", "",
-             f"Kul: {_rs(d.fee) if d.fee else '[daam?]'} + GST (agar lage)." if d.kind != "barter" else
-             f"Barter: {d.barter_items or '[saamaan?]'} (mool {_rs(d.barter_value) if d.barter_value else '[?]'}).",
-             (f"Usage rights: {d.usage_days} din." if d.usage_days else "Usage: sirf creator ke apne account par (organic)."),
-             (f"Exclusivity: {d.excl_category} {d.excl_from} se {d.excl_to}." if d.excl_category else ""),
-             "Har post par saaf '#ad' disclosure hoga (ASCI).", "", f"- {st.agency or 'Aapki team'}"]
+             f"Total: {_rs(d.fee) if d.fee else '[price?]'} + GST (if applicable)." if d.kind != "barter" else
+             f"Barter: {d.barter_items or '[products?]'} (value {_rs(d.barter_value) if d.barter_value else '[?]'}).",
+             (f"Usage rights: {d.usage_days} days." if d.usage_days else "Usage: only on the creator's own account (organic)."),
+             (f"Exclusivity: {d.excl_category} {d.excl_from} to {d.excl_to}." if d.excl_category else ""),
+             "Every post will carry a clear '#ad' disclosure (ASCI).", "", f"- {st.agency or 'Your team'}"]
     return "\n".join(x for x in lines if x is not None)
 
 
@@ -990,7 +990,7 @@ def _show(s, tenant: str, kind: str, d: InfluencerDeal | None, p: InfluencerPost
                 "terms": st.terms, "tds_lines": m["tds"]["lines"], "gst_note": (m["gst"] or {}).get("note", ""), "_in": inp}
     if kind in ("content", "golive"):
         if p is None:
-            raise InfluencerError("Post chahiye.")
+            raise InfluencerError("A post is needed.")
         chk = _j(p.check, {})
         return {**base, "post": p.number, "platform": R.PLATFORMS.get(p.platform, p.platform), "fmt": R.FORMATS.get(p.fmt, p.fmt),
                 "due": p.due, "caption": p.caption, "script": p.script[:1500], "content_hash": _content_hash(p),
@@ -1011,7 +1011,7 @@ def _show(s, tenant: str, kind: str, d: InfluencerDeal | None, p: InfluencerPost
         return {**base, "numbers": nums, "live": [x.live_url for x in posts_ if x.live_url], "note": inp.get("note", ""), "_in": inp}
     if kind == "message":
         return {**base, "to": inp.get("to", "brand"), "text": inp.get("text", ""), "_in": inp}
-    raise InfluencerError(f"card '{kind}' nahi pehchana.")
+    raise InfluencerError(f"Card kind '{kind}' is not recognised.")
 
 
 def _make_card(tenant: str, kind: str, deal_ref: str, post_ref: str, inp: dict, actor: str = "owner", conv: str = "") -> dict:
@@ -1027,7 +1027,7 @@ def _make_card(tenant: str, kind: str, deal_ref: str, post_ref: str, inp: dict, 
         for o in old:
             if o.hash == h:
                 return {"card": _card_view(o), "status": "needs_tap", "existing": True,
-                        "say": "Yahi card pehle se aapki haan ka intezaar kar raha hai."}
+                        "say": "This same card is already waiting for your approval."}
             o.status = "stale"
         c = InfluencerCard(tenant_id=tenant, kind=kind, deal_id=d.id if d else "", post_id=p.id if p else "", show=_dump(show),
                            hash=h, asked_by=actor_name(tenant, actor), conv=conv or (d.conv if d else ""))
@@ -1035,7 +1035,7 @@ def _make_card(tenant: str, kind: str, deal_ref: str, post_ref: str, inp: dict, 
         s.flush()
         v = _card_view(c)
         cv = c.conv
-    say = f"{CARD_TITLE[kind]}: {v['show'].get('deal', '')} {v['show'].get('post', '')} aapki haan ka card bheja hai.".replace("  ", " ")
+    say = f"{CARD_TITLE[kind]}: {v['show'].get('deal', '')} {v['show'].get('post', '')} - a card was sent for your approval.".replace("  ", " ")
     _publish(tenant, "influencer_card", {"card": v, "say": say}, cv)
     return {"card": v, "status": "needs_tap", "say": say}
 
@@ -1044,7 +1044,7 @@ def card_view(tenant: str, card_id: str) -> dict:
     with session() as s:
         c = s.get(InfluencerCard, card_id)
         if c is None or c.tenant_id != tenant:
-            raise InfluencerError("Card nahi mila.")
+            raise InfluencerError("Card not found.")
         return _card_view(c)
 
 
@@ -1061,7 +1061,7 @@ def card_challenge(tenant: str, card_id: str) -> dict:
     from .. import approvekey as ak
     c = card_view(tenant, card_id)
     if c["status"] != "waiting" or c["kind"] not in MONEY_CARDS:
-        raise InfluencerError("Yeh card ab baaki nahi hai.")
+        raise InfluencerError("This card is no longer pending.")
     nonce = secrets.token_urlsafe(18)
     exp = datetime.now(timezone.utc) + ak.CHALLENGE_TTL
     msg = f"hoola-approve|v1|{tenant}|influencer|{card_id}|{c['hash']}|{nonce}|{int(exp.timestamp())}"
@@ -1090,21 +1090,21 @@ def _verify_fingerprint(tenant: str, card_id: str, digest: str, proof: dict | No
 def _blockers(kind: str, sh: dict, inp: dict, s, tenant: str, card: InfluencerCard) -> list[str]:
     out = []
     txt = json.dumps({k: v for k, v in sh.items() if k != "_in"}, ensure_ascii=False)
-    if kind in ("pitch", "contract", "invoice", "payout") and "[daam?]" in txt:
-        out.append("Kuch daam khaali hain ([daam?]): pehle bhariye.")
+    if kind in ("pitch", "contract", "invoice", "payout") and ("[price?]" in txt or "[daam?]" in txt):
+        out.append("Some prices are blank ([price?]): fill them first.")
     if kind in ("content", "golive") and card.post_id:
         p = s.get(InfluencerPost, card.post_id)
         res = _run_check(s, p)
         out += res["block"]
         if kind == "golive" and not (p.approved_hash and p.approved_hash == _content_hash(p)):
-            out.append("Brand ki haan is draft par darj nahi ('Brand ne haan kaha' tick kariye).")
+            out.append("The brand's approval is not recorded on this draft (tick 'Brand approved').")
     if kind == "invoice" and sh.get("total") is None:
-        out.append("Fee tay nahi: invoice nahi ban sakta.")
+        out.append("The fee is not set: the invoice cannot be made.")
     if kind == "payout":
         if sh.get("amount") is None:
-            out.append("Commission % tay nahi (Niyam ya creator / deal mein likhiye).")
+            out.append("Commission % is not set (write it in Rules or in the creator / deal).")
         if not sh.get("received"):
-            out.append("Brand se abhi paise darj nahi: pehle 'paise mile' likhiye.")
+            out.append("No money from the brand is recorded yet: record 'money received' first.")
     if kind in ("pitch", "contract", "content", "golive", "invoice", "report", "message"):
         with_d = s.get(InfluencerDeal, card.deal_id) if card.deal_id else None
         if with_d is not None:
@@ -1118,13 +1118,13 @@ def decide(tenant: str, card_id: str, yes: bool, card_hash: str = "", reason: st
     """ONLY from the app's API (her tap). The card's hash must still match the state NOW; the payout card needs her fingerprint
     once a phone key is active; blockers (blank prices, disclosure rukawat, banned category) refuse a Haan."""
     if not by_tap:
-        raise InfluencerError("Yeh sirf aapke tap se (app ka card).")
+        raise InfluencerError("This is only by your tap (the card in the app).")
     with _LOCK, session() as s:
         c = s.get(InfluencerCard, card_id)
         if c is None or c.tenant_id != tenant:
-            raise InfluencerError("Card nahi mila.")
+            raise InfluencerError("Card not found.")
         if c.status != "waiting":
-            return {"card": _card_view(c), "say": f"Yeh card pehle hi '{c.status}' hai."}
+            return {"card": _card_view(c), "say": f"This card is already '{c.status}'."}
         d = s.get(InfluencerDeal, c.deal_id) if c.deal_id else None
         p = s.get(InfluencerPost, c.post_id) if c.post_id else None
         inp = _j(c.show, {}).get("_in", {})
@@ -1137,14 +1137,14 @@ def decide(tenant: str, card_id: str, yes: bool, card_hash: str = "", reason: st
         stale = now_hash != ch
         if not bad and not yes:
             c.status, c.reason, c.decided_at = "rejected", R.clean(reason, 300), now()
-            return {"card": _card_view(c), "say": f"{CARD_TITLE[kind]}: nahi."}
+            return {"card": _card_view(c), "say": f"{CARD_TITLE[kind]}: no."}
         bl = [] if bad else _blockers(kind, _j(c.show, {}), inp, s, tenant, c)
         if stale:
             c.status = "stale"
     if bad:
-        raise InfluencerError("Card ke baad kuch badal gaya; naya card dekhiye.")
+        raise InfluencerError("Something changed after the card was made; see the new card.")
     if bl:
-        raise InfluencerError("Haan nahi ho sakti: " + " ".join(bl))
+        raise InfluencerError("Cannot be approved: " + " ".join(bl))
     if kind in MONEY_CARDS:
         from .. import approvekey as ak
         if ak.active_on(tenant):
@@ -1172,7 +1172,7 @@ def _do_pitch(tenant: str, card_id: str, conv: str) -> dict:
         d = s.get(InfluencerDeal, did)
         if d.stage == "lead":
             d.stage = "pitched"
-        _log(d, "Pitch aapki haan se taiyaar", "Owner")
+        _log(d, "Pitch ready, with your approval", "Owner")
         phone, email, number = d.brand_phone, d.brand_email, d.number
         cid = d.creator_id
     f = None
@@ -1185,7 +1185,7 @@ def _do_pitch(tenant: str, card_id: str, conv: str) -> dict:
     except Exception:
         log.exception("rate card pdf failed")
     return {"draft": _draft(phone, sh["text"], email, f"Collaboration proposal {number}"), "file_id": (f or {}).get("file_id", ""),
-            "say": f"{number}: pitch ka draft taiyaar. Aap khud bhejiye (WhatsApp / email)."}
+            "say": f"{number}: the pitch draft is ready. Send it yourself (WhatsApp / email)."}
 
 
 def _do_contract(tenant: str, card_id: str, conv: str) -> dict:
@@ -1196,12 +1196,12 @@ def _do_contract(tenant: str, card_id: str, conv: str) -> dict:
         d.contract_hash = R.digest(sh)
         if d.stage in ("lead", "pitched"):
             d.stage = "negotiating"
-        _log(d, "Contract draft aapki haan se", "Owner")
+        _log(d, "Contract draft, with your approval", "Owner")
         phone, email, number = d.brand_phone, d.brand_email, d.number
     f = _store(tenant, f"contract_{number}.pdf", pdf, "application/pdf", conv or cv, f"Contract {number}")
-    text = f"Namaste, {number} ka collaboration agreement draft saath mein hai. Dekh kar bataiye; dono taraf sign ke baad kaam shuru."
+    text = f"Hello, the collaboration agreement draft for {number} is attached. Please review it; work starts after both sides sign."
     return {"draft": _draft(phone, text, email, f"Agreement draft {number}"), "file_id": f.get("file_id", ""),
-            "say": f"{number}: contract PDF taiyaar (vakil se ek baar dekhwa lijiye). Sign hone par 'deal pakki' kariye."}
+            "say": f"{number}: the contract PDF is ready (have a lawyer look at it once). When it is signed, confirm the deal."}
 
 
 def _do_content(tenant: str, card_id: str, conv: str) -> dict:
@@ -1211,10 +1211,10 @@ def _do_content(tenant: str, card_id: str, conv: str) -> dict:
         d = s.get(InfluencerDeal, did)
         p.status = "with_brand"
         phone, email = d.brand_phone, d.brand_email
-    text = (f"{sh['deal']} · {sh['post']} ({sh['platform']} {sh['fmt']}, {sh['due'] or 'tareekh?'}) ka draft:\n\n{sh['caption']}"
-            + (f"\n\nScript:\n{sh['script']}" if sh.get("script") else "") + "\n\nApproval / badlav bataiye.")
+    text = (f"{sh['deal']} · {sh['post']} ({sh['platform']} {sh['fmt']}, {sh['due'] or 'date?'}) draft:\n\n{sh['caption']}"
+            + (f"\n\nScript:\n{sh['script']}" if sh.get("script") else "") + "\n\nPlease share your approval / changes.")
     return {"draft": _draft(phone, text, email, f"Content for approval {sh['post']}"),
-            "say": f"{sh['post']}: draft brand ko bhejne ke liye taiyaar (aap bhejiye). Unka jawab aaye to 'brand ne haan kaha' likhiye."}
+            "say": f"{sh['post']}: the draft is ready to send to the brand (you send it). When they reply, record 'brand approved'."}
 
 
 def _do_golive(tenant: str, card_id: str, conv: str) -> dict:
@@ -1224,9 +1224,9 @@ def _do_golive(tenant: str, card_id: str, conv: str) -> dict:
         c = s.get(InfluencerCreator, d.creator_id)
         phone, no = c.phone, c.no_messages
     checklist = "\n".join(f"[ ] {x}" for x in sh.get("checklist", []))
-    text = (f"{sh['post']} ({sh['brand']}) approve ho gaya. {sh['due'] or ''} ko post kariye, caption bilkul yahi (pehli line "
-            f"mein #ad):\n\n{sh['caption']}\n\n{checklist}\nPost karne ke baad link bhejiye.")
-    return {"draft": _draft("" if no else phone, text), "say": f"{sh['post']}: creator ke liye note taiyaar (aap bhejiye)."}
+    text = (f"{sh['post']} ({sh['brand']}) is approved. Post date: {sh['due'] or ''}. Use exactly this caption (#ad in the first "
+            f"line):\n\n{sh['caption']}\n\n{checklist}\nSend the link after posting.")
+    return {"draft": _draft("" if no else phone, text), "say": f"{sh['post']}: a note for the creator is ready (you send it)."}
 
 
 def _do_invoice(tenant: str, card_id: str, conv: str) -> dict:
@@ -1240,16 +1240,16 @@ def _do_invoice(tenant: str, card_id: str, conv: str) -> dict:
         d.invoice = _dump({k: sh.get(k) for k in ("lines", "taxable", "gst", "total", "tds_lines", "expected_tds")} |
                           {"date": t.isoformat()})
         d.due_on = (t + timedelta(days=int(sh.get("pay_days") or 30))).isoformat()
-        _log(d, f"Invoice {d.invoice_no} aapki haan se", "Owner")
+        _log(d, f"Invoice {d.invoice_no} with your approval", "Owner")
         number, inv, phone, email, total = d.number, d.invoice_no, d.brand_phone, d.brand_email, sh.get("total")
     pdf = invoice_pdf(tenant, did)
     f = _store(tenant, f"invoice_{inv.replace('/', '-')}.pdf", pdf, "application/pdf", conv or cv, f"Invoice {inv}")
     upi, nm = _her_upi(tenant)
     link = _upi_link(upi, nm, float(total or 0), inv) if not sh.get("brand_gstin") else ""
-    text = (f"Namaste, {number} ka invoice {inv} ({_rs(total)}) saath mein hai. Bhugtan {sh.get('pay_days')} din mein. "
-            "TDS kaatein to Form 16A bhejiye." + (f"\nUPI: {upi}" if link else ""))
+    text = (f"Hello, the invoice for {number}, {inv} ({_rs(total)}), is attached. Payment within {sh.get('pay_days')} days. "
+            "If you deduct TDS, please send Form 16A." + (f"\nUPI: {upi}" if link else ""))
     return {"draft": _draft(phone, text, email, f"Invoice {inv}", upi=link), "file_id": f.get("file_id", ""), "invoice_no": inv,
-            "say": f"Invoice {inv} bana ({_rs(total)}). Aap brand ko bhejiye; paise aane par 'paise mile' likhiye."}
+            "say": f"Invoice {inv} created ({_rs(total)}). Send it to the brand; when the money comes in, record 'money received'."}
 
 
 def _do_payout(tenant: str, card_id: str, conv: str) -> dict:
@@ -1259,13 +1259,13 @@ def _do_payout(tenant: str, card_id: str, conv: str) -> dict:
         c = s.get(InfluencerCreator, d.creator_id)
         d.payout = _dump({"amount": sh.get("amount"), "commission": sh.get("commission"), "pct": sh.get("commission_pct"),
                           "approved_on": today(tenant).isoformat(), "sent": False})
-        _log(d, f"Creator ka hissa {_rs(sh.get('amount'))} aapki haan (fingerprint) se", "Owner")
+        _log(d, f"Creator's share {_rs(sh.get('amount'))} with your approval (fingerprint)", "Owner")
         upi, name, phone, number = c.upi_id, c.name, c.phone, d.number
     link = _upi_link(upi, name, float(sh.get("amount") or 0), f"{number} share")
-    text = (f"{name} ji, {number} ({sh['brand']}) ka hisaab: fee {_rs(sh.get('fee'))}, commission {sh.get('commission_pct')}% = "
-            f"{_rs(sh.get('commission'))}, aapka hissa {_rs(sh.get('amount'))}. Bhej rahi hoon.")
+    text = (f"{name}, accounts for {number} ({sh['brand']}): fee {_rs(sh.get('fee'))}, commission {sh.get('commission_pct')}% = "
+            f"{_rs(sh.get('commission'))}, your share {_rs(sh.get('amount'))}. I am sending it now.")
     return {"draft": _draft(phone, text, upi=link),
-            "say": f"{number}: {_rs(sh.get('amount'))} {name} ko dene ka UPI link taiyaar; aap apne UPI app se bhejiye, phir 'bhej diya'."}
+            "say": f"{number}: UPI link to pay {_rs(sh.get('amount'))} to {name} is ready; send it from your own UPI app, then mark 'sent'."}
 
 
 def _do_report(tenant: str, card_id: str, conv: str) -> dict:
@@ -1278,9 +1278,9 @@ def _do_report(tenant: str, card_id: str, conv: str) -> dict:
     f = _store(tenant, f"report_{number}.pdf", pdf, "application/pdf", conv or cv, f"Report {number}")
     n = sh.get("numbers") or {}
     text = (f"{number} campaign report: views {n.get('views', 0):,}, reach {n.get('reach', 0):,}, engagement "
-            f"{n.get('er_pct') if n.get('er_pct') is not None else '?'}%. PDF saath mein (numbers creator ke platform export se).")
+            f"{n.get('er_pct') if n.get('er_pct') is not None else '?'}%. PDF attached (numbers from the creator's platform export).")
     return {"draft": _draft(phone, text, email, f"Campaign report {number}"), "file_id": f.get("file_id", ""),
-            "say": f"{number}: report taiyaar (aap bhejiye)."}
+            "say": f"{number}: the report is ready (you send it)."}
 
 
 def _do_message(tenant: str, card_id: str, conv: str) -> dict:
@@ -1292,7 +1292,7 @@ def _do_message(tenant: str, card_id: str, conv: str) -> dict:
             phone, email = ("" if c.no_messages else c.phone), c.email
         else:
             phone, email = d.brand_phone, d.brand_email
-    return {"draft": _draft(phone, sh.get("text", ""), email, sh.get("deal", "")), "say": "Message ka draft taiyaar (aap bhejiye)."}
+    return {"draft": _draft(phone, sh.get("text", ""), email, sh.get("deal", "")), "say": "The message draft is ready (you send it)."}
 
 
 # ---- card requests (never decide)
@@ -1308,7 +1308,7 @@ def content_request(tenant: str, post: str, actor: str = "owner", conv: str = ""
     with session() as s:
         p = _post(s, tenant, post)
         if not p.caption:
-            raise InfluencerError("Pehle caption / draft likhiye.")
+            raise InfluencerError("Write the caption / draft first.")
     return _make_card(tenant, "content", "", post, {}, actor, conv)
 
 
@@ -1317,7 +1317,7 @@ def golive_request(tenant: str, post: str, actor: str = "owner", conv: str = "")
         p = _post(s, tenant, post)
         res = _run_check(s, p)
         if not res["ok"]:
-            raise InfluencerError("Disclosure mein rukawat: " + " ".join(res["block"]))
+            raise InfluencerError("Disclosure is blocked: " + " ".join(res["block"]))
     return _make_card(tenant, "golive", "", post, {}, actor, conv)
 
 
@@ -1325,9 +1325,9 @@ def invoice_request(tenant: str, deal: str, actor: str = "owner", conv: str = ""
     with session() as s:
         d = _deal(s, tenant, deal)
         if d.invoice_no:
-            raise InfluencerError(f"{d.number} ka invoice {d.invoice_no} pehle hi ban chuka.")
+            raise InfluencerError(f"{d.number}: invoice {d.invoice_no} was already made.")
         if d.stage not in ("contracted", "live", "done"):
-            raise InfluencerError("Invoice deal pakki hone ke baad.")
+            raise InfluencerError("An invoice comes after the deal is confirmed.")
     return _make_card(tenant, "invoice", deal, "", {}, actor, conv)
 
 
@@ -1342,7 +1342,7 @@ def report_request(tenant: str, deal: str, note: str = "", actor: str = "owner",
 def message_request(tenant: str, deal: str, text: str, to: str = "brand", actor: str = "owner", conv: str = "") -> dict:
     t = R.clean(text, 1500)
     if not t:
-        raise InfluencerError("Message khaali hai.")
+        raise InfluencerError("The message is empty.")
     if R.fake_engagement(t):
         raise InfluencerError(R.FAKE_REFUSAL)
     return _make_card(tenant, "message", deal, "", {"text": t, "to": "creator" if to == "creator" else "brand"}, actor, conv)
@@ -1351,10 +1351,10 @@ def message_request(tenant: str, deal: str, text: str, to: str = "brand", actor:
 # ---------------------------------------------------------------- money she records (owner only)
 def received(tenant: str, deal: str, amount, tds=None, ref: str = "", on: str = "", actor: str = "owner") -> dict:
     if not is_owner(actor):
-        raise InfluencerError("Paise ka hisaab sirf owner.")
+        raise InfluencerError("Only the owner handles the money.")
     a = _num(amount)
     if a is None or a <= 0:
-        raise InfluencerError("Kitne paise aaye?")
+        raise InfluencerError("How much money came in?")
     t = _num(tds) or 0.0
     with _LOCK, session() as s:
         d = _deal(s, tenant, deal)
@@ -1362,27 +1362,27 @@ def received(tenant: str, deal: str, amount, tds=None, ref: str = "", on: str = 
         dd = R.as_date(on) or today(tenant)
         rec.append({"amount": a, "tds": t, "ref": R.clean(ref, 60)[-4:] if ref else "", "on": dd.isoformat()})
         d.receipts = _dump(rec)
-        _log(d, f"Paise mile {_rs(a)}" + (f" + TDS {_rs(t)}" if t else ""), "Owner")
+        _log(d, f"Money received {_rs(a)}" + (f" + TDS {_rs(t)}" if t else ""), "Owner")
         m = _money(s, d)
         number = d.number
-    say = f"{number}: {_rs(a)} darj." + (f" TDS {_rs(t)}: Form 16A / 26AS mein milaiye." if t else "")
+    say = f"{number}: {_rs(a)} recorded." + (f" TDS {_rs(t)}: match it with Form 16A / 26AS." if t else "")
     if m["outstanding"] is not None:
-        say += f" Baaki {_rs(max(0, m['outstanding']))}."
+        say += f" Balance {_rs(max(0, m['outstanding']))}."
     return {"money": m, "say": say}
 
 
 def payout_sent(tenant: str, deal: str, ref: str = "", actor: str = "owner") -> dict:
     if not is_owner(actor):
-        raise InfluencerError("Sirf owner.")
+        raise InfluencerError("Owner only.")
     with _LOCK, session() as s:
         d = _deal(s, tenant, deal)
         po = _j(d.payout, {})
         if not po.get("approved_on"):
-            raise InfluencerError("Pehle creator ke hisse ka card (aapki fingerprint haan) chahiye.")
+            raise InfluencerError("The card for the creator's share (your fingerprint approval) is needed first.")
         po.update({"sent": True, "ref": R.clean(ref, 60)[-4:], "sent_on": today(tenant).isoformat()})
         d.payout = _dump(po)
-        _log(d, "Creator ko hissa bhej diya", "Owner")
-        return {"payout": po, "say": f"{d.number}: creator ka hissa bheja darj."}
+        _log(d, "Share sent to the creator", "Owner")
+        return {"payout": po, "say": f"{d.number}: creator's share recorded as sent."}
 
 
 # ---------------------------------------------------------------- performance (her pasted exports)
@@ -1394,9 +1394,9 @@ def metrics(tenant: str, post: str, actor: str = "owner", **nums: Any) -> dict:
             if k in nums and nums[k] is not None:
                 n = R.count(nums[k])
                 if n is None:
-                    raise InfluencerError(f"{k}: number samajh nahi aaya.")
+                    raise InfluencerError(f"{k}: could not understand the number.")
                 m[k] = n
-        m["source"] = "aapke diye number"
+        m["source"] = "numbers you gave"
         m["on"] = today(tenant).isoformat()
         p.metrics = _dump(m)
         v = _post_view(p)
@@ -1407,7 +1407,7 @@ def metrics(tenant: str, post: str, actor: str = "owner", **nums: Any) -> dict:
 def import_metrics(tenant: str, deal: str, raw: bytes | str, actor: str = "owner") -> dict:
     rows = R.parse_metrics(raw)
     if not rows:
-        raise InfluencerError("Sheet mein views / reach / likes ke column nahi mile (Instagram / YouTube Studio ka export daaliye).")
+        raise InfluencerError("The sheet has no views / reach / likes columns (use the Instagram / YouTube Studio export).")
     matched, unmatched = [], []
     with _LOCK, session() as s:
         d = _deal(s, tenant, deal)
@@ -1416,15 +1416,15 @@ def import_metrics(tenant: str, deal: str, raw: bytes | str, actor: str = "owner
             key = (r.get("url") or r.get("post_id") or "").strip()
             hit = next((p for p in ps if p.live_url and key and (key in p.live_url or p.live_url.rstrip("/") in key)), None)
             if hit is None:
-                unmatched.append(key or "(bina link)")
+                unmatched.append(key or "(no link)")
                 continue
             m = {k: r[k] for k in ("views", "reach", "likes", "comments", "shares", "saves", "clicks", "watch_min",
                                    "followers_gained") if r.get(k) is not None}
-            m.update({"source": "aapka export", "on": today(tenant).isoformat()})
+            m.update({"source": "your export", "on": today(tenant).isoformat()})
             hit.metrics = _dump(m)
             matched.append(hit.number)
     return {"matched": matched, "unmatched": unmatched[:20],
-            "say": f"{len(matched)} post ke number jude." + (f" {len(unmatched)} line kisi live post se nahi mili." if unmatched else "")}
+            "say": f"{len(matched)} posts updated with numbers." + (f" {len(unmatched)} lines did not match any live post." if unmatched else "")}
 
 
 def report(tenant: str, deal: str) -> dict:
@@ -1434,7 +1434,7 @@ def report(tenant: str, deal: str) -> dict:
         nums = R.campaign_numbers([{"metrics": _j(p.metrics, {})} for p in ps], d.fee)
         return {"deal": d.number, "brand": d.brand, "numbers": nums,
                 "posts": [{**_post_view(p)} for p in ps],
-                "note": "Sab number aapke / creator ke platform export se; Hoola khud kuch nahi nikalta."}
+                "note": "All numbers come from your / the creator's platform export; Hoola does not work out anything itself."}
 
 
 # ---------------------------------------------------------------- PDFs
@@ -1506,10 +1506,10 @@ def rate_card_pdf(tenant: str, creator: str) -> bytes:
     blocks.append(("table", [["Platform", "Handle", "Followers (date)"]] +
                    [[R.PLATFORMS.get(h["platform"], h["platform"]), h.get("handle", ""),
                      f"{h['followers']:,} ({h.get('on', '')})" if h.get("followers") else "-"] for h in c["handles"]]))
-    blocks.append(("table", [["Platform", "Format", "Daam (GST alag)", "Usage"]] +
+    blocks.append(("table", [["Platform", "Format", "Price (GST extra)", "Usage"]] +
                    [[r["platform_label"], r["fmt_label"], _pdf_rs(r["price"]),
-                     f"{r['usage_days']} din: {_pdf_rs(r['usage_price'])}" if r["usage_days"] else "organic"] for r in rc["rates"]]))
-    blocks.append(("p", "Har paid post par saaf '#ad' disclosure (ASCI). Follower numbers upar likhi tareekh ke."))
+                     f"{r['usage_days']} days: {_pdf_rs(r['usage_price'])}" if r["usage_days"] else "organic"] for r in rc["rates"]]))
+    blocks.append(("p", "A clear '#ad' disclosure on every paid post (ASCI). Follower numbers are as of the date written above."))
     return _pdf("Rate card", blocks)
 
 
@@ -1523,7 +1523,7 @@ def contract_pdf(tenant: str, deal: str, final: bool = False) -> bytes:
         blocks.append(("p", f"Brand: {d.brand}{(' · GSTIN ' + d.brand_gstin) if d.brand_gstin else ''} · Creator: {c.name if c else ''} "
                             f"(managed by {st.agency or '[agency?]'}) · Product: {d.product or '[?]'}"))
         blocks.append(("h", "1. Deliverables"))
-        blocks.append(("table", [["Platform", "Format", "Qty", "Due", "Daam"]] +
+        blocks.append(("table", [["Platform", "Format", "Qty", "Due", "Price"]] +
                        [[R.PLATFORMS.get(x["platform"], x["platform"]), R.FORMATS.get(x["fmt"], x["fmt"]), str(x.get("qty", 1)),
                          x.get("due") or "[ ? ]", _pdf_rs(x.get("price"))] for x in _j(d.deliverables, [])]))
         blocks.append(("h", "2. Fee and payment"))
@@ -1566,7 +1566,7 @@ def invoice_pdf(tenant: str, deal: str) -> bytes:
         st = _st(s, tenant)
         inv = _j(d.invoice, {})
         if not d.invoice_no:
-            raise InfluencerError("Invoice abhi bana nahi.")
+            raise InfluencerError("The invoice has not been made yet.")
         blocks = _head(st, ("Tax invoice " if st.gst_registered else "Invoice ") + d.invoice_no)
         blocks.append(("p", f"Date {inv.get('date', '')} · Bill to: {d.brand}{(' · GSTIN ' + d.brand_gstin) if d.brand_gstin else ''}"
                             f" · Deal {d.number} · Due {d.due_on}"))
@@ -1614,27 +1614,27 @@ def report_pdf(tenant: str, deal: str) -> bytes:
 # ---------------------------------------------------------------- DPDP
 def forget(tenant: str, creator: str = "", deal: str = "", actor: str = "owner") -> dict:
     if not is_owner(actor):
-        raise InfluencerError("Sirf owner.")
+        raise InfluencerError("Owner only.")
     with _LOCK, session() as s:
         if creator:
             c = _creator(s, tenant, creator)
             open_ = s.scalars(select(InfluencerDeal).where(InfluencerDeal.tenant_id == tenant, InfluencerDeal.creator_id == c.id,
                                                           InfluencerDeal.stage.in_(("negotiating", "contracted", "live")))).all()
             if open_:
-                raise InfluencerError("Is creator ki deals abhi chal rahi hain: pehle poori / band kariye.")
+                raise InfluencerError("This creator has deals in progress: complete / close them first.")
             ref = c.pan_ref
-            c.name, c.phone, c.email, c.city, c.notes, c.upi_id = f"Purana creator {c.number}", "", "", "", "", ""
+            c.name, c.phone, c.email, c.city, c.notes, c.upi_id = f"Former creator {c.number}", "", "", "", "", ""
             c.handles, c.follower_log, c.qualification, c.pan_ref, c.pan_masked = "[]", "[]", "", "", ""
             c.status = "forgotten"
             out = c.number
         elif deal:
             d = _deal(s, tenant, deal)
             if d.stage not in ("done", "lost"):
-                raise InfluencerError("Deal poori ya band hone ke baad hi.")
+                raise InfluencerError("Only after the deal is done or closed.")
             d.brand_contact, d.brand_phone, d.brand_email = "", "", ""
             ref, out = "", d.number
         else:
-            raise InfluencerError("Kise bhoolna hai? creator ya deal.")
+            raise InfluencerError("Who should be forgotten? A creator or a deal.")
     if ref:
         try:
             from .. import idvault
@@ -1643,7 +1643,7 @@ def forget(tenant: str, creator: str = "", deal: str = "", actor: str = "owner")
                     idvault.delete(tenant, r["id"])
         except Exception:
             log.exception("idvault delete failed")
-    return {"say": f"{out}: personal details mita di (DPDP); hisaab ke number rahe."}
+    return {"say": f"{out}: personal details erased (DPDP); the account numbers are kept."}
 
 
 # ---------------------------------------------------------------- day / overview / worker
@@ -1663,29 +1663,29 @@ def day(tenant: str) -> dict:
             if d.invoice_no and d.due_on and d.due_on < t.isoformat():
                 m = _money(s, d)
                 if (m["outstanding"] or 0) > 1:
-                    unpaid.append(f"{d.number} {d.brand} {_rs(m['outstanding'])} ({d.due_on} se)")
-        excl = [f"{d.number} {d.brand}: {d.excl_category} {d.excl_to} ko khatam" for d in ds
+                    unpaid.append(f"{d.number} {d.brand} {_rs(m['outstanding'])} (since {d.due_on})")
+        excl = [f"{d.number} {d.brand}: {d.excl_category} ends {d.excl_to}" for d in ds
                 if d.excl_to and t.isoformat() <= d.excl_to <= (t + timedelta(days=7)).isoformat()]
         waiting = len(s.scalars(select(InfluencerCard).where(InfluencerCard.tenant_id == tenant,
                                                              InfluencerCard.status == "waiting")).all())
         _ = dmap
     parts = []
     if due_today:
-        parts.append(f"Aaj post: {', '.join(due_today)}")
+        parts.append(f"Posts today: {', '.join(due_today)}")
     if due_tm:
-        parts.append(f"Kal: {', '.join(due_tm)}")
+        parts.append(f"Tomorrow: {', '.join(due_tm)}")
     if late:
-        parts.append(f"Der ho gayi: {', '.join(late)}")
+        parts.append(f"Late: {', '.join(late)}")
     if blocked:
-        parts.append(f"Disclosure rukawat: {', '.join(blocked)}")
+        parts.append(f"Disclosure blocked: {', '.join(blocked)}")
     if unpaid:
-        parts.append("Paise baaki: " + "; ".join(unpaid[:5]))
+        parts.append("Money due: " + "; ".join(unpaid[:5]))
     if excl:
         parts.append("Exclusivity: " + "; ".join(excl))
     if waiting:
-        parts.append(f"{waiting} card aapki haan ka intezaar")
+        parts.append(f"{waiting} cards waiting for your approval")
     return {"today": due_today, "tomorrow": due_tm, "late": late, "blocked": blocked, "unpaid": unpaid, "exclusivity": excl,
-            "waiting": waiting, "say": ". ".join(parts) + "." if parts else "Influencer kaam: aaj sab theek."}
+            "waiting": waiting, "say": ". ".join(parts) + "." if parts else "Influencer work: all good today."}
 
 
 def overview(tenant: str) -> dict:
@@ -1723,29 +1723,29 @@ def tick(when: datetime | None = None) -> dict:
                         continue
                     if p.status != "live" and p.due == (on + timedelta(days=1)).isoformat() and _once(s, tenant, f"tm:{p.id}:{p.due}"):
                         alerts.append({"kind": "due_tomorrow", "deal": d.number, "post": p.number,
-                                       "say": f"Kal {p.number} ({d.brand}) post hona hai" +
-                                              ("" if p.status == "approved" else f": abhi '{R.POST_STATUS.get(p.status, p.status)}'") + "."})
+                                       "say": f"Tomorrow {p.number} ({d.brand}) is due to be posted" +
+                                              ("" if p.status == "approved" else f": now '{R.POST_STATUS.get(p.status, p.status)}'") + "."})
                     if p.status not in ("live", "missed") and p.due and p.due < on.isoformat() and _once(s, tenant, f"late:{p.id}:{p.due}"):
                         alerts.append({"kind": "late", "deal": d.number, "post": p.number,
-                                       "say": f"{p.number} ({d.brand}) {p.due} ko hona tha, abhi live nahi. Creator / brand se baat?"})
+                                       "say": f"{p.number} ({d.brand}) was due on {p.due}, but is not live yet. Talk to the creator / brand?"})
                     if p.status == "live" and p.caption and not _j(p.check, {}).get("ok", True) and _once(s, tenant, f"livebad:{p.id}"):
                         alerts.append({"kind": "live_disclosure", "deal": d.number, "post": p.number,
-                                       "say": f"{p.number} live hai par disclosure poora nahi: creator se turant theek karwaiye."})
+                                       "say": f"{p.number} is live but the disclosure is not complete: get the creator to fix it right away."})
                     if p.status == "with_brand" and _once(s, tenant, f"brand3:{p.id}:{on.isoformat()}") and \
                             p.due and (R.as_date(p.due) or on) <= on + timedelta(days=2):
                         alerts.append({"kind": "brand_waiting", "deal": d.number, "post": p.number,
-                                       "say": f"{p.number} brand ki approval ka intezaar, aur tareekh {p.due} paas hai. Yaad dilane ka message card banau?"})
+                                       "say": f"{p.number} is waiting for the brand's approval, and the date {p.due} is close. Shall I make a reminder message card?"})
                 for d in s.scalars(select(InfluencerDeal).where(InfluencerDeal.tenant_id == tenant)).all():
                     if d.invoice_no and d.due_on and d.due_on < on.isoformat():
                         m = _money(s, d)
                         if (m["outstanding"] or 0) > 1 and _once(s, tenant, f"due:{d.id}:{d.due_on}"):
                             alerts.append({"kind": "overdue", "deal": d.number,
-                                           "say": f"{d.number} ({d.brand}) ka invoice {d.invoice_no} {d.due_on} se baaki: {_rs(m['outstanding'])}. "
-                                                  "Yaad dilane ka card banau?"})
+                                           "say": f"{d.number} ({d.brand}): invoice {d.invoice_no} unpaid since {d.due_on}: {_rs(m['outstanding'])}. "
+                                                  "Shall I make a reminder card?"})
                     if d.excl_to and on.isoformat() <= d.excl_to <= (on + timedelta(days=7)).isoformat() and \
                             _once(s, tenant, f"excl:{d.id}:{d.excl_to}"):
                         alerts.append({"kind": "exclusivity", "deal": d.number,
-                                       "say": f"{d.number} ki exclusivity '{d.excl_category}' {d.excl_to} ko khatam: nayi brands se baat ho sakti hai."})
+                                       "say": f"{d.number}: exclusivity '{d.excl_category}' ends {d.excl_to}: you can talk to new brands."})
             for a in alerts:
                 _publish(tenant, "influencer_alert", a)
                 out["alerts"] += 1
@@ -1762,7 +1762,7 @@ def tick(when: datetime | None = None) -> dict:
                         r.last_morning = on.isoformat()
             if due_m:
                 dd = day(tenant)
-                if dd["say"] != "Influencer kaam: aaj sab theek.":
+                if dd["say"] != "Influencer work: all good today.":
                     _publish(tenant, "influencer_day", {"say": dd["say"], "waiting": dd["waiting"]})
                     out["morning"] += 1
         except Exception:
