@@ -37,7 +37,7 @@ def test_two_new_departments_all_live_and_complete():
         assert c["live"] is True and c["name"] and c["pitch"], k
         for f in ("does", "needs", "never"):
             assert isinstance(c[f], list) and c[f] and all(isinstance(x, str) and x for x in c[f]), (k, f)
-    assert "Prayogshala" in hire.CATALOG["lab"]["name"]              # the lab sits under Education, Research & Lab
+    assert "Science Lab" in hire.CATALOG["lab"]["name"]              # the lab sits under Education, Research & Lab
 
 
 def test_hub_text_is_english():
