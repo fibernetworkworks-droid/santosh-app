@@ -8,13 +8,13 @@ import re
 from datetime import date, datetime, timedelta
 
 NEVER = (
-    "Guest ko koi message / booking confirmation khud nahi bhejna: har message draft ya card, sirf aapke tap se jaata hai.",
-    "Refund, discount ya koi bhi kharcha: sirf aapki haan (app ka card; paise wale card par fingerprint) se. Hoola paise nahi leta / deta.",
-    "Daam, monument ke khulne ka samay, band ka din, ticket ka rate: sirf aapke bataye (ya official site jo aap batayein); warna 'pata nahi'.",
-    "Ek tour slot mein group se zyada log, ya ek hi samay par aapke do tour: code mana kar deta hai (overbooking nahi).",
-    "Guest ke ID / emergency number sirf Pehchaan Locker mein (masked reference); OTP / PIN / card kabhi nahi.",
-    "Dukaan / emporium par guests ko zabardasti nahi le jaana; commission ho to guests ko saaf batana (aapka hisaab register mein).",
-    "OTA / booking site / ASI portal mein Hoola login ya scraping nahi karta: aap khud book karti hain, Hoola steps aur yaad dilata hai.",
+    "Never send a guest a message / booking confirmation by itself: every message is a draft or a card and goes only on your tap.",
+    "Refund, discount or any expense: only with your approval (the card in the app; fingerprint on money cards). Hoola does not take / pay money.",
+    "Price, monument opening hours, closed day, ticket rate: only what you tell (or the official site you name); otherwise 'not known'.",
+    "More people than the group size in one tour slot, or two of your tours at the same time: the code refuses (no overbooking).",
+    "A guest's ID / emergency number only in the ID Locker (masked reference); never OTP / PIN / card.",
+    "Never force guests into a shop / emporium; if there is a commission, tell guests clearly (your accounts stay in the register).",
+    "Hoola never logs in to or scrapes an OTA / booking site / ASI portal: you book yourself, Hoola gives the steps and reminds you.",
 )
 
 # (what, url, date published / checked)
@@ -49,9 +49,9 @@ SOURCES = (
 KINDS = {"city_walk": "City walk", "heritage": "Heritage / monument", "temple": "Temple / pilgrimage", "trek": "Trek / hike",
          "food": "Food walk", "nature": "Nature / wildlife", "boat": "Boat / water", "day_trip": "Day trip", "other": "Tour"}
 LICENCE_KINDS = {"iitf": "IITF (Incredible India Tourist Facilitator)", "iitg_heritage": "IITG Heritage (MoT)",
-                 "iitg_adventure": "IITG Adventure (MoT)", "rlg": "Regional Level Guide (purana MoT licence)",
+                 "iitg_adventure": "IITG Adventure (MoT)", "rlg": "Regional Level Guide (old MoT licence)",
                  "state": "State tourism guide licence", "asi_site": "Monument / site guide permit", "first_aid": "First aid certificate",
-                 "adventure": "Adventure / trek leader certificate", "other": "Doosra licence"}
+                 "adventure": "Adventure / trek leader certificate", "other": "Other licence"}
 MOT_KINDS = ("iitf", "iitg_heritage", "iitg_adventure")
 WINDOWS = (90, 60, 30, 7, 0)
 REFRESHER_DAYS = 120          # IITF / IITG: register for the refresher well before 4 months of expiry
@@ -66,19 +66,19 @@ DAYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
 DAY_WORDS = {"monday": "mon", "somvar": "mon", "tuesday": "tue", "mangalvar": "tue", "wednesday": "wed", "budhvar": "wed",
              "thursday": "thu", "guruvar": "thu", "friday": "fri", "shukravar": "fri", "jumma": "fri", "saturday": "sat",
              "shanivar": "sat", "sunday": "sun", "ravivar": "sun", "itvaar": "sun"}
-GST_MODES = {"none": "GST registration nahi (CA se pakka: services par Rs 20 lakh / special states Rs 10 lakh se kam turnover)",
-             "guide": "Tourist guide service: SAC 998556, 18% (ITC ke saath) - CA se pakka",
-             "tour5": "Tour operator package: SAC 998555, 5% bina ITC - CA se pakka",
-             "tour18": "Tour operator package: 18% ITC ke saath - CA se pakka"}
+GST_MODES = {"none": "No GST registration (confirm with your CA: turnover below Rs 20 lakh on services / Rs 10 lakh in special states)",
+             "guide": "Tourist guide service: SAC 998556, 18% (with ITC) - confirm with your CA",
+             "tour5": "Tour operator package: SAC 998555, 5% without ITC - confirm with your CA",
+             "tour18": "Tour operator package: 18% with ITC - confirm with your CA"}
 
 
 def scrub(text: str, n: int = 2000) -> str:
     """Free text: OTP / PIN / password values, card-like runs, Aadhaar-like 12 digits and PAN are never kept."""
     t = str(text or "")
-    t = re.sub(r"\b(otp|pin|cvv|password|upi pin|mpin)\b\s*(?:is|hai|:|=)?\s*\S+", lambda m: f"{m.group(1)} [hataya]", t, flags=re.I)
-    t = re.sub(r"\b(?:\d[ -]?){13,19}\b", "[hataya]", t)
-    t = re.sub(r"\b\d{4}\s?\d{4}\s?\d{4}\b", "[ID hataya]", t)
-    t = re.sub(r"\b[A-Z]{5}\d{4}[A-Z]\b", "[PAN hataya]", t)
+    t = re.sub(r"\b(otp|pin|cvv|password|upi pin|mpin)\b\s*(?:is|hai|:|=)?\s*\S+", lambda m: f"{m.group(1)} [removed]", t, flags=re.I)
+    t = re.sub(r"\b(?:\d[ -]?){13,19}\b", "[removed]", t)
+    t = re.sub(r"\b\d{4}\s?\d{4}\s?\d{4}\b", "[ID removed]", t)
+    t = re.sub(r"\b[A-Z]{5}\d{4}[A-Z]\b", "[PAN removed]", t)
     return t.strip()[:n]
 
 
@@ -232,12 +232,12 @@ def parse_enquiry(text: str, today: date) -> dict:
 def price_for(price_pp: float | None, price_group: float | None, group_max: int, guests: int) -> tuple[float | None, str]:
     """Her price only. Group price when she gave one (covers up to group_max), else per person x guests; None = blank."""
     if guests <= 0:
-        return None, "kitne log?"
+        return None, "how many people?"
     if price_group:
-        return round(price_group, 2), "group ka daam"
+        return round(price_group, 2), "group price"
     if price_pp:
         return round(price_pp * guests, 2), f"{guests} x per person"
-    return None, "daam aapne nahi bataya"
+    return None, "you have not given a price"
 
 
 def overlaps(a_start: int, a_len: int, b_start: int, b_len: int) -> bool:
@@ -245,31 +245,31 @@ def overlaps(a_start: int, a_len: int, b_start: int, b_len: int) -> bool:
 
 
 SAFETY = {
-    "common": ["Meeting point aur samay sabko saaf batayein; group ka WhatsApp / phone number sabke paas ho.",
-               "Paani saath rakhein; bheed mein jeb / bag aage rakhein; group se alag ho jaayein to pichhle stop par rukein, phone karein.",
-               "Emergency: 112. Guide ke paas first aid kit."],
-    "city_walk": ["Sadak paar sirf zebra / signal par; ek line mein chalein; aaraam wale joote."],
-    "heritage": ["Smarak par chadhna / likhna / chhoona mana; drone bina permission mana; photography ke niyam board par dekhein.",
-                 "Ticket sabke paas (online ya counter); ID saath rakhein."],
-    "temple": ["Joote bahar; kapde jagah ke niyam ke hisaab se; bheed mein bachchon ka haath pakdein; prasad / daan apni marzi se."],
-    "trek": ["Trek leader aur last-man (sweep) tay; koi aage / peeche akela nahi.",
-             "Medical fitness aur dawai guests khud batayein (declaration); first aid, torch, whistle, rain cover saath.",
-             "Baarish / toofan / andhera ho to waapas mudne ka niyam pehle se tay; nadi / jharne ke paas ruk kar nahi nahana.",
-             "Forest / ILP / trek permit (jagah ke hisaab se) pehle se; registered operator / insurance ki jaankari rakhein."],
-    "food": ["Allergy (moongphali, gluten, doodh), jain / vegetarian pehle se poochh lein; paani band bottle ka."],
-    "nature": ["Janwaron se doori, khana na daalein, shor nahi; forest ke niyam aur samay ka paalan."],
-    "boat": ["Life jacket sabke liye; boat ki kshamta se zyada log nahi; baccho ko andar ki taraf."],
-    "day_trip": ["Gaadi ka number aur driver ka phone sabke paas; har stop par ginti."],
+    "common": ["Tell everyone the meeting point and time clearly; everyone should have the group's WhatsApp / phone number.",
+               "Carry water; in crowds keep pockets / bags in front; if you get separated from the group, wait at the last stop and call.",
+               "Emergency: 112. The guide carries a first aid kit."],
+    "city_walk": ["Cross roads only at a zebra crossing / signal; walk in single file; wear comfortable shoes."],
+    "heritage": ["No climbing on / writing on / touching the monument; no drones without permission; check the photography rules on the board.",
+                 "Everyone carries a ticket (online or counter); carry your ID."],
+    "temple": ["Shoes outside; dress by the rules of the place; hold children's hands in crowds; prasad / donations are your own choice."],
+    "trek": ["A trek leader and a last-man (sweep) are fixed; no one walks alone ahead / behind.",
+             "Guests declare their own medical fitness and medicines (declaration); carry first aid, torch, whistle, rain cover.",
+             "The turn-back rule for rain / storm / darkness is fixed in advance; no stopping to bathe near rivers / waterfalls.",
+             "Forest / ILP / trek permit (as the place requires) in advance; keep the registered operator / insurance details."],
+    "food": ["Ask in advance about allergies (peanut, gluten, milk) and Jain / vegetarian food; sealed bottled water only."],
+    "nature": ["Keep your distance from animals, do not feed them, no noise; follow the forest's rules and timings."],
+    "boat": ["Life jackets for everyone; no more people than the boat's capacity; children sit on the inner side."],
+    "day_trip": ["Everyone has the vehicle number and the driver's phone; head count at every stop."],
 }
 NEED_NOTES = {
-    "wheelchair": "Wheelchair: ramp / lift waale raaste aur toilet pehle check karein; seedhiyon wale stop chhodein ya vikalp batayein.",
-    "senior": "Bade-buzurg: chhote stop, baithne ki jagah, dhoop / garmi se bachav.",
-    "child": "Bachche: ginti har stop par, haath pakad kar bheed mein.",
-    "pregnan": "Garbhvati guest: lambi chadhai / uneven raaste se bachein, doctor ki salah.",
-    "diabet": "Diabetes: khane ka samay na tale; meetha / snack saath.",
-    "asthma": "Asthma: inhaler saath; dhool / dhuan wale stop se bachein.",
-    "allerg": "Allergy: khane ke stop par pehle bata dein.",
-    "heart": "Dil ki bimari: chadhai / garmi se bachein; doctor ki salah.",
+    "wheelchair": "Wheelchair: check ramp / lift routes and toilets beforehand; skip stops with stairs or offer an alternative.",
+    "senior": "Seniors: short stops, places to sit, protection from sun / heat.",
+    "child": "Children: head count at every stop, hold hands in crowds.",
+    "pregnan": "Pregnant guest: avoid long climbs / uneven paths, follow the doctor's advice.",
+    "diabet": "Diabetes: do not delay meal times; carry sweets / snacks.",
+    "asthma": "Asthma: carry the inhaler; avoid dusty / smoky stops.",
+    "allerg": "Allergy: tell the food stop in advance.",
+    "heart": "Heart condition: avoid climbs / heat; follow the doctor's advice.",
 }
 
 
@@ -281,16 +281,16 @@ def safety_lines(kind: str, special_needs: str, guests: int, weather: dict | Non
             lines.append(note)
     warns: list[str] = []
     if guests and guests > 15:
-        lines.append(f"{guests} log: ek co-guide / helper rakhein, har stop par ginti.")
+        lines.append(f"{guests} people: keep a co-guide / helper, head count at every stop.")
     w = weather or {}
     rain = w.get("rain_chance_pct")
     tmax = w.get("max_c")
     if isinstance(rain, (int, float)) and rain >= 60:
-        warns.append(f"Baarish ki sambhavna {int(rain)}%: chhata / rain cover; " + ("trek ko taalna / chhota karna sochiye." if kind in ("trek", "nature", "boat") else "chhat wale stop pehle."))
+        warns.append(f"Chance of rain {int(rain)}%: umbrella / rain cover; " + ("consider postponing / shortening the trek." if kind in ("trek", "nature", "boat") else "covered stops first."))
     if isinstance(tmax, (int, float)) and tmax >= 38:
-        warns.append(f"Garmi {tmax:.0f}°C tak: subah jaldi shuru, paani / ORS, 12-3 baje chhaya mein.")
+        warns.append(f"Heat up to {tmax:.0f}°C: start early in the morning, water / ORS, stay in shade from 12 to 3.")
     if isinstance(tmax, (int, float)) and tmax <= 5:
-        warns.append(f"Thand {tmax:.0f}°C: garam kapde, trek par andhera hone se pehle waapas.")
+        warns.append(f"Cold {tmax:.0f}°C: warm clothes, be back from the trek before dark.")
     return lines, warns
 
 
@@ -313,14 +313,14 @@ def gst_note(mode: str) -> str:
 
 def trek_checklist() -> list[str]:
     return ["Trek leader trained (IITG Adventure / adventure course) + first aid certificate valid",
-            "Guests ka medical fitness declaration + emergency contact (Pehchaan Locker / masked)",
-            "Permit (forest / ILP / trek) - jagah ke hisaab se, aap khud official office / portal se",
-            "Insurance / registered operator ki jaankari", "Mausam check (ek din pehle aur subah)",
-            "Waapas mudne ka samay aur jagah tay", "First aid kit, torch, whistle, rassi, rain cover"]
+            "Guests' medical fitness declaration + emergency contact (ID Locker / masked)",
+            "Permit (forest / ILP / trek) - as the place requires, you get it yourself from the official office / portal",
+            "Insurance / registered operator details", "Weather check (a day before and in the morning)",
+            "Turn-back time and point fixed", "First aid kit, torch, whistle, rope, rain cover"]
 
 
 def asi_steps(place: str) -> list[str]:
-    return [f"{place}: ticket counter par ya online (ASI wale ONDC apps: Highway Delite, Pelocal WhatsApp 'Hi' +91 84228 89057, Abhee) - "
-            "aap khud book karein, Hoola login nahi karta.",
-            "Online ticket par chhoot (Rs 5 Indian / Rs 50 foreign) jaari hai (Jan 2026 khabar); asli rate official site / counter par.",
-            "Khulne ka samay, band ka din, ticket ka rate: sirf monument ke board / official site se pakka karein."]
+    return [f"{place}: at the ticket counter or online (ASI's ONDC apps: Highway Delite, Pelocal WhatsApp 'Hi' +91 84228 89057, Abhee) - "
+            "you book yourself, Hoola does not log in.",
+            "The online ticket discount (Rs 5 Indian / Rs 50 foreign) continues (news of Jan 2026); the real rate is on the official site / at the counter.",
+            "Opening hours, closed day, ticket rate: confirm only from the monument's board / official site."]

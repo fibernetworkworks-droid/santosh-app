@@ -63,8 +63,8 @@ def start_link(tenant: str) -> str:
     from ..db import MailLinkState
     from ..mailbox import accounts as mail_acc
     if not ready():
-        raise GbpError("Google Business Profile jodne ke liye server par Google sign-in (GOOGLE_OAUTH_CLIENT_ID / SECRET, "
-                       "PUBLIC_BASE_URL) chahiye.")
+        raise GbpError("Connecting Google Business Profile needs Google sign-in on the server (GOOGLE_OAUTH_CLIENT_ID / SECRET, "
+                       "PUBLIC_BASE_URL).")
     st = get_settings()
     state = "fbk_" + secrets.token_urlsafe(24)
     with session() as s:
@@ -84,7 +84,7 @@ def finish_link(code: str, state: str) -> dict:
     with session() as s:
         row = s.get(MailLinkState, state)
         if row is None or row.provider != "feedback" or as_utc(row.created_at) < now() - timedelta(minutes=30):
-            raise GbpError("Yeh link purana ho gaya. App se dobara 'Google reviews jodiye' dabaiye.")
+            raise GbpError("This link has expired. In the app, tap 'Connect Google reviews' again.")
         tenant = row.tenant_id
         s.delete(row)
     try:
@@ -92,12 +92,12 @@ def finish_link(code: str, state: str) -> dict:
                                                      "client_secret": st.google_oauth_client_secret,
                                                      "redirect_uri": acc._redirect_uri(), "grant_type": "authorization_code"})
         if SCOPE not in (tok.get("scope") or "").split():
-            raise GbpError("Business Profile dekhne ki permission nahi di gayi.")
+            raise GbpError("Permission to view the Business Profile was not given.")
         info = mail_acc._get("https://openidconnect.googleapis.com/v1/userinfo", tok["access_token"])
     except mail_acc.MailError as e:
         raise GbpError(str(e))
     if not tok.get("refresh_token"):
-        raise GbpError("Google se refresh token nahi mila; dobara jodiye.")
+        raise GbpError("Google did not return a refresh token; connect again.")
     with session() as s:
         g = s.get(FbGoogle, tenant) or FbGoogle(tenant_id=tenant)
         s.add(g)
@@ -122,7 +122,7 @@ def _token(tenant: str, force: bool = False) -> str:
     with session() as s:
         g = s.get(FbGoogle, tenant)
         if g is None:
-            raise GbpError("Google Business Profile abhi juda nahi. Feedback > Sources > 'Google reviews jodiye'.")
+            raise GbpError("Google Business Profile is not connected yet. Feedback > Sources > 'Connect Google reviews'.")
         exp = as_utc(g.expiry)
         if not force and g.access_token_enc and exp and exp > now() + timedelta(seconds=90):
             return acc.decrypt(g.access_token_enc) or ""
@@ -136,7 +136,7 @@ def _token(tenant: str, force: bool = False) -> str:
             g = s.get(FbGoogle, tenant)
             if g:
                 g.status, g.last_error = "error", str(e)[:400]
-        raise GbpError("Google Business Profile ka login expire ho gaya; dobara jodiye.")
+        raise GbpError("The Google Business Profile sign-in has expired; connect again.")
     with session() as s:
         g = s.get(FbGoogle, tenant)
         g.access_token_enc = acc.encrypt(tok["access_token"])
@@ -153,21 +153,21 @@ def _call(tenant: str, method: str, url: str, body: dict | None = None) -> dict:
             try:
                 r = c.request(method, url, headers=h, json=body, timeout=40)
             except httpx.HTTPError as e:
-                raise GbpError(f"Google se baat nahi hui ({type(e).__name__}).")
+                raise GbpError(f"Could not reach Google ({type(e).__name__}).")
             if r.status_code == 401 and not force:
                 continue
             if r.status_code == 403:
-                raise GbpError("Google ne mana kiya: is account ke paas yeh Business Profile nahi, ya Cloud project ko "
-                               "Business Profile API ki manzoori abhi nahi mili.")
+                raise GbpError("Google refused: this account does not have this Business Profile, or the Cloud project has "
+                               "not been approved for the Business Profile API yet.")
             if r.status_code == 429:
-                raise GbpError("Google ki limit poori; thodi der baad.")
+                raise GbpError("Google's limit is used up; try again in a while.")
             if r.status_code >= 400:
                 raise GbpError(f"Google: {r.text[:200]}")
             return r.json() if r.content else {}
     finally:
         if own:
             c.close()
-    raise GbpError("Google login nahi chala.")
+    raise GbpError("Google sign-in failed.")
 
 
 def status(tenant: str) -> dict:
@@ -201,10 +201,10 @@ def locations(tenant: str) -> list[dict]:
 def pick_location(tenant: str, location: str = "") -> dict:
     locs = locations(tenant)
     if not locs:
-        raise GbpError("Is Google account mein koi Business Profile location nahi mili.")
+        raise GbpError("No Business Profile location found in this Google account.")
     pick = next((x for x in locs if x["location"] == location), None) if location else locs[0]
     if pick is None:
-        raise GbpError("Woh location is account mein nahi.")
+        raise GbpError("That location is not in this account.")
     with session() as s:
         g = s.get(FbGoogle, tenant)
         g.location, g.location_title = pick["location"], pick["title"]
@@ -262,7 +262,7 @@ def review_view(r: dict) -> dict:
 
 def put_reply(tenant: str, review_name: str, text: str) -> dict:
     if not review_name or "/reviews/" not in review_name:
-        raise GbpError("Is review ka Google naam nahi mila.")
+        raise GbpError("The Google name of this review was not found.")
     return _call(tenant, "PUT", V4 + review_name + "/reply", {"comment": text})
 
 
@@ -271,4 +271,4 @@ def forget(tenant: str) -> dict:
         g = s.get(FbGoogle, tenant)
         if g:
             s.delete(g)
-    return {"say": "Google Business Profile ka judaav hata diya (Google account > Security > third-party access se bhi hata sakti hain)."}
+    return {"say": "Google Business Profile disconnected (you can also remove it under Google account > Security > third-party access)."}

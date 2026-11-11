@@ -94,7 +94,7 @@ _SECRET = re.compile(r"\b\d{12,19}\b|\b[A-Z]{5}\d{4}[A-Z]\b")
 def _clean(v, n: int = 300) -> str:
     """Her / staff words: long numbers (Aadhaar / card / account) and PANs never kept in the registers."""
     t = re.sub(r"\s+", " ", str(v or "")).strip()
-    t = _SECRET.sub("[number hataya]", t)
+    t = _SECRET.sub("[number removed]", t)
     return t[:n]
 
 
@@ -206,7 +206,7 @@ def settings(tenant: str) -> dict:
 def _hhmm(v: str) -> str:
     m = re.fullmatch(r"(\d{1,2})[:.](\d{2})", str(v).strip())
     if not m or int(m.group(1)) > 23 or int(m.group(2)) > 59:
-        raise SiteError(f"Samay HH:MM mein: {v}")
+        raise SiteError(f"Time in HH:MM: {v}")
     return f"{int(m.group(1)):02d}:{m.group(2)}"
 
 
@@ -222,12 +222,12 @@ def save_settings(tenant: str, **kw: Any) -> dict:
         if kw.get("day_hours") not in (None, ""):
             v = _num(kw["day_hours"])
             if not 4 <= v <= 9:
-                raise SiteError("Din ke ghante 4-9 ke beech (kanoon 8 ke baad overtime).")
+                raise SiteError("Daily hours must be between 4 and 9 (by law, overtime after 8).")
             r.day_hours = v
         if kw.get("week_hours") not in (None, ""):
             v = _num(kw["week_hours"])
             if not 24 <= v <= 48:
-                raise SiteError("Hafte ke ghante 48 se zyada nahi rakh sakte (OSH Code).")
+                raise SiteError("Weekly hours cannot be set above 48 (OSH Code).")
             r.week_hours = v
         if kw.get("lookahead_days") not in (None, ""):
             r.lookahead_days = max(3, min(60, int(_num(kw["lookahead_days"]))))
@@ -248,27 +248,27 @@ def save_settings(tenant: str, **kw: Any) -> dict:
         if kw.get("rules") is not None:
             rl = kw["rules"] if isinstance(kw["rules"], list) else [kw["rules"]]
             r.rules = _dump([_clean(x, 200) for x in rl if str(x).strip()][:30])
-    return {**settings(tenant), "say": "Site ke niyam save."}
+    return {**settings(tenant), "say": "Site rules saved."}
 
 
 # ---------------------------------------------------------------- sites
 def _site(s, tenant: str, ref: str = "") -> SsSite:
     rows = s.scalars(select(SsSite).where(SsSite.tenant_id == tenant)).all()
     if not rows:
-        raise SiteError("Pehle site jodiye (naam, client).")
+        raise SiteError("Add a site first (name, client).")
     ref = str(ref or "").strip()
     if not ref:
         run = [r for r in rows if r.status in ("running", "stopped")]
         if len(run) == 1:
             return run[0]
-        raise SiteError("Kaun si site? " + ", ".join(r.name for r in rows[:8]))
+        raise SiteError("Which site? " + ", ".join(r.name for r in rows[:8]))
     for r in rows:
         if r.id == ref or r.name.lower() == ref.lower() or (r.theka_project_id and r.theka_project_id == ref):
             return r
     hits = [r for r in rows if ref.lower() in r.name.lower()]
     if len(hits) == 1:
         return hits[0]
-    raise SiteError(f"Site '{ref}' nahi mili." if not hits else "Kai sites: " + ", ".join(h.name for h in hits))
+    raise SiteError(f"Site '{ref}' not found." if not hits else "Several sites: " + ", ".join(h.name for h in hits))
 
 
 def _theka_project(tenant: str, ref: str) -> dict | None:
@@ -287,7 +287,7 @@ def save_site(tenant: str, name: str = "", site: str = "", **kw: Any) -> dict:
         new = r is None
         if new:
             if not str(name).strip():
-                raise SiteError("Site ka naam chahiye.")
+                raise SiteError("The site name is needed.")
             r = SsSite(tenant_id=tenant)
             s.add(r)
         if name:
@@ -298,13 +298,13 @@ def save_site(tenant: str, name: str = "", site: str = "", **kw: Any) -> dict:
         if kw.get("client_phone") is not None:
             p = _phone(kw["client_phone"])
             if kw["client_phone"] and not p:
-                raise SiteError("Client ka phone 10 ankon ka mobile hona chahiye.")
+                raise SiteError("The client's phone must be a 10-digit mobile number.")
             r.client_phone = p
         for k in ("start", "finish"):
             if kw.get(k):
                 d = _date(kw[k])
                 if not d:
-                    raise SiteError(f"Tareekh samajh nahi aayi: {kw[k]}")
+                    raise SiteError(f"Could not understand the date: {kw[k]}")
                 setattr(r, k, d.isoformat())
         if kw.get("status") in ("running", "done", "closed"):
             r.status = kw["status"]
@@ -315,7 +315,7 @@ def save_site(tenant: str, name: str = "", site: str = "", **kw: Any) -> dict:
     if tp:
         linked = _theka_project(tenant, str(tp))
         if not linked:
-            raise SiteError(f"Theka mein kaam '{tp}' nahi mila.")
+            raise SiteError(f"Contract work '{tp}' not found.")
         with session() as s:
             r = s.get(SsSite, sid)
             r.theka_project_id = linked["id"]
@@ -324,9 +324,9 @@ def save_site(tenant: str, name: str = "", site: str = "", **kw: Any) -> dict:
             if not r.start and linked.get("start"):
                 r.start, r.finish = linked["start"], linked.get("end", "")
     v = site_view(tenant, sid)
-    say = f"{'Nayi site' if new else 'Site update'}: {v['name']}" + (f" ({v['client']})" if v["client"] else "") + "."
+    say = f"{'New site' if new else 'Site updated'}: {v['name']}" + (f" ({v['client']})" if v["client"] else "") + "."
     if linked:
-        say += f" Theka kaam '{linked['name']}' se judi: BOQ / naap / RA bill wahin rahenge, rukawat wahan ke hindrance register mein jayegi."
+        say += f" Linked to contract work '{linked['name']}': BOQ / measurements / RA bills stay there, and hindrances go to its hindrance register."
     return {"site": v, "say": say}
 
 
@@ -357,7 +357,7 @@ def _act(s, site: SsSite, ref: str) -> SsActivity:
     rows = s.scalars(select(SsActivity).where(SsActivity.site_id == site.id)).all()
     ref = str(ref or "").strip()
     if not ref:
-        raise SiteError("Kaun sa kaam (activity)?")
+        raise SiteError("Which work (activity)?")
     for a in rows:
         if a.id == ref or a.code == ref or a.name.lower() == ref.lower() or (a.boq_item and a.boq_item == ref):
             return a
@@ -367,8 +367,8 @@ def _act(s, site: SsSite, ref: str) -> SsActivity:
     if len(hits) == 1:
         return hits[0]
     if not hits:
-        raise SiteError(f"Activity '{ref}' plan mein nahi; pehle 'plan' se jodiye.")
-    raise SiteError("Kai activity: " + ", ".join(f"{h.code} {h.name}" for h in hits[:6]))
+        raise SiteError(f"Activity '{ref}' is not in the plan; add it with 'plan' first.")
+    raise SiteError("Several activities: " + ", ".join(f"{h.code} {h.name}" for h in hits[:6]))
 
 
 def plan(tenant: str, site: str = "", items: list | None = None, from_boq: bool = False) -> dict:
@@ -379,7 +379,7 @@ def plan(tenant: str, site: str = "", items: list | None = None, from_boq: bool 
         sid, tp = st.id, st.theka_project_id
     if from_boq:
         if not tp:
-            raise SiteError("Yeh site kisi Theka kaam se judi nahi: pehle `site theka_project=...`.")
+            raise SiteError("This site is not linked to any contract work: first `site theka_project=...`.")
         from ..theka import service as T
         for b in T.boq_items(tenant, tp):
             rows.append({"code": b["code"], "name": b["description"][:200], "unit": b["unit"], "qty": b["qty"], "boq_item": b["code"]})
@@ -387,7 +387,7 @@ def plan(tenant: str, site: str = "", items: list | None = None, from_boq: bool 
         if isinstance(it, dict) and str(it.get("name") or "").strip():
             rows.append(it)
     if not rows:
-        raise SiteError("Activity ke naam / maatra / tareekh dijiye (ya from_boq).")
+        raise SiteError("Give the activity names / quantities / dates (or from_boq).")
     added, updated, problems = 0, 0, []
     with _LOCK, session() as s:
         st = s.get(SsSite, sid)
@@ -417,9 +417,9 @@ def plan(tenant: str, site: str = "", items: list | None = None, from_boq: bool 
                     if d:
                         setattr(a, k, d.isoformat())
                     else:
-                        problems.append(f"{a.name}: tareekh '{it[k]}' samajh nahi aayi")
+                        problems.append(f"{a.name}: date '{it[k]}' not understood")
             if a.start and a.finish and a.finish < a.start:
-                problems.append(f"{a.name}: khatam hone ki tareekh shuru se pehle")
+                problems.append(f"{a.name}: end date is before the start")
                 a.finish = a.start
             if it.get("boq_item"):
                 a.boq_item = str(it["boq_item"])[:40]
@@ -429,7 +429,7 @@ def plan(tenant: str, site: str = "", items: list | None = None, from_boq: bool 
                 a.needs = _dump([{"item": R.low(x.get("item"))[:80], "qty": _num(x.get("qty")), "unit": R.unit_of(x.get("unit") or "")}
                                  for x in it["needs"] if isinstance(x, dict) and x.get("item") and _num(x.get("qty")) > 0])
         nm = st.name
-    say = f"{nm}: {added} nayi activity" + (f", {updated} update" if updated else "") + "."
+    say = f"{nm}: {added} new activities" + (f", {updated} updated" if updated else "") + "."
     if problems:
         say += " Dhyaan: " + "; ".join(problems[:5])
     return {"added": added, "updated": updated, "problems": problems, "activities": activities(tenant, sid), "say": say}
@@ -440,12 +440,12 @@ def progress(tenant: str, site: str = "", activity: str = "", qty=None, day: str
     """Work done today on one activity (as reported: never rounded up). A delay reason goes to the Theka hindrance diary too."""
     d = _date(day, today(tenant))
     if d > today(tenant):
-        raise SiteError("Aage ki tareekh ka kaam nahi likh sakte.")
+        raise SiteError("Work cannot be recorded for a future date.")
     q = _num(qty)
     if q < 0:
-        raise SiteError("Maatra ulti (minus) nahi ho sakti.")
+        raise SiteError("Quantity cannot be negative.")
     if not q and not delay and not note:
-        raise SiteError("Kitna kaam hua, ya kyun nahi hua (rukawat) bataiye.")
+        raise SiteError("Tell me how much work was done, or why not (hindrance).")
     dk, client_side = R.delay_kind(delay)
     if by_client is not None:
         client_side = bool(by_client)
@@ -468,9 +468,9 @@ def progress(tenant: str, site: str = "", activity: str = "", qty=None, day: str
             log.exception("theka diary mirror failed")
     say = f"{sname} {d.strftime('%d %b')}: {aname} {_g(q)} {aunit}" + (f" (kul {_g(cum)} / {_g(aqty)})" if aqty else "") + "."
     if aqty and cum > aqty:
-        say += f" Plan se {_g(cum - aqty)} {aunit} zyada: drawing / BOQ badla to plan update kariye" + (" (Theka mein deviation dekhiye)." if tp else ".")
+        say += f" Over plan by {_g(cum - aqty)} {aunit}: if the drawing / BOQ changed, update the plan" + (" (see deviation in Contract work)." if tp else ".")
     if delay:
-        say += f" Rukawat likhi ({'client / department ki taraf - EOT mein ginegi' if client_side else 'site ki taraf'})."
+        say += f" Hindrance recorded ({'client / department side - counts for EOT' if client_side else 'site side'})."
     return {"cumulative": round(cum, 3), "activity": next((x for x in activities(tenant, sid) if x["name"] == aname), None), "say": say}
 
 
@@ -502,7 +502,7 @@ def activities(tenant: str, site: str = "", on: date | None = None) -> list[dict
                 b = mb.get(r["boq_item"])
                 if b:
                     r["mb_done"] = b["done"]
-                    r["mb_note"] = "Measurement book (Theka) mein naapa gaya: " + _g(b["done"]) + f" {b['unit']}"
+                    r["mb_note"] = "Measured in the measurement book (Contract work): " + _g(b["done"]) + f" {b['unit']}"
         except Exception:
             pass
     return sorted(rows, key=lambda x: (x["start"] or "9999", x["code"]))
@@ -531,13 +531,13 @@ def lookahead(tenant: str, site: str = "", days: int | None = None) -> dict:
             coming.append({**a, "short": short})
     parts = []
     for a in behind[:6]:
-        parts.append(f"{a['name']}: plan {a['planned_pct']:g}%, hua {a['done_pct']:g}%" + (f" ({a['late_days']} din late)" if a["late_days"] else "")
-                     + (f" - wajah: {a['reasons'][0][:60]}" if a["reasons"] else " - wajah likhi nahi"))
+        parts.append(f"{a['name']}: plan {a['planned_pct']:g}%, done {a['done_pct']:g}%" + (f" ({a['late_days']} days late)" if a["late_days"] else "")
+                     + (f" - reason: {a['reasons'][0][:60]}" if a["reasons"] else " - no reason recorded"))
     for a in coming:
         for sh in a["short"]:
-            parts.append(f"{a['name']} ke liye {sh['item']} {_g(sh['need'])} {sh['unit']} chahiye, site par {_g(sh['have'])}: indent ka card banayein?")
+            parts.append(f"{a['name']} needs {sh['item']} {_g(sh['need'])} {sh['unit']}, site has {_g(sh['have'])}: make an indent card?")
     return {"from": on.isoformat(), "to": end.isoformat(), "coming": coming, "behind": behind,
-            "say": ("; ".join(parts) + ".") if parts else f"Agle {n} din: plan ke hisaab se, koi kami nahi dikhi."}
+            "say": ("; ".join(parts) + ".") if parts else f"Next {n} days: on plan, no shortage seen."}
 
 
 # ---------------------------------------------------------------- labour
@@ -546,12 +546,12 @@ def attendance(tenant: str, site: str = "", rows: list | None = None, day: str =
     Same day + contractor + trade (+ worker) = replaced, not doubled. Hours > her day limit = overtime (rounded per the rule)."""
     d = _date(day, today(tenant))
     if d > today(tenant):
-        raise SiteError("Aage ki hazri nahi lag sakti.")
+        raise SiteError("Attendance cannot be marked for a future date.")
     items = list(rows or [])
     if one.get("trade") or one.get("worker") or one.get("count"):
         items.append(one)
     if not items:
-        raise SiteError("Kis thekedar ke kitne log, kaun sa kaam, kitne ghante?")
+        raise SiteError("Which contractor, how many people, which trade, how many hours?")
     warn: list[str] = []
     with _LOCK, session() as s:
         st = _site(s, tenant, site)
@@ -563,12 +563,12 @@ def attendance(tenant: str, site: str = "", rows: list | None = None, day: str =
             worker = _clean(it.get("worker") or "", 120)
             count = 1 if worker else int(_num(it.get("count")) or 0)
             if count <= 0:
-                raise SiteError(f"{R.TRADE_LABEL[trade]}: kitne log?")
+                raise SiteError(f"{R.TRADE_LABEL[trade]}: how many people?")
             if count > 2000:
-                raise SiteError("Itne log? Dobara dekhiye.")
+                raise SiteError("That many people? Check again.")
             h = _num(it.get("hours")) if it.get("hours") not in (None, "") else limit
             if not 0 < h <= 16:
-                raise SiteError("Ghante 0-16 ke beech.")
+                raise SiteError("Hours must be between 0 and 16.")
             sp = R.split_hours(h, limit)
             old = s.scalars(select(SsLabour).where(SsLabour.site_id == st.id, SsLabour.day == d.isoformat(), SsLabour.contractor == contractor,
                                                    SsLabour.trade == trade, SsLabour.worker == worker)).first()
@@ -580,9 +580,9 @@ def attendance(tenant: str, site: str = "", rows: list | None = None, day: str =
             row.by = actor_name(tenant, actor)
             s.add(row)
             if sp["ot"]:
-                warn.append(f"{worker or R.TRADE_LABEL[trade]} ({contractor}): {sp['ot']:g} ghante overtime - dugni dar (OSH Code)")
+                warn.append(f"{worker or R.TRADE_LABEL[trade]} ({contractor}): {sp['ot']:g} hours overtime - double rate (OSH Code)")
             if h > 12:
-                warn.append(f"{worker or R.TRADE_LABEL[trade]}: {h:g} ghante - spread-over / aaram ke niyam aapke rajya ke dekhiye")
+                warn.append(f"{worker or R.TRADE_LABEL[trade]}: {h:g} hours - check your state's spread-over / rest rules")
         s.flush()
         ws = R.week_start(d)
         named = s.scalars(select(SsLabour).where(SsLabour.tenant_id == tenant, SsLabour.worker != "", SsLabour.day >= ws.isoformat(),
@@ -592,7 +592,7 @@ def attendance(tenant: str, site: str = "", rows: list | None = None, day: str =
             wk[r.worker] = wk.get(r.worker, 0.0) + r.hours
         for w, h in wk.items():
             if h > cfg.week_hours:
-                warn.append(f"{w}: is hafte {h:g} ghante (> {cfg.week_hours:g}) - OSH Code 48 ghante / hafta")
+                warn.append(f"{w}: this week {h:g} hours (> {cfg.week_hours:g}) - OSH Code 48 hours / week")
         day_rows = s.scalars(select(SsLabour).where(SsLabour.site_id == st.id, SsLabour.day == d.isoformat())).all()
         total = sum(r.count for r in day_rows)
         tp, sname = st.theka_project_id, st.name
@@ -602,7 +602,7 @@ def attendance(tenant: str, site: str = "", rows: list | None = None, day: str =
             T.diary(tenant, tp, total, "", "", None, False, d.isoformat())
         except Exception:
             log.exception("theka diary labour mirror failed")
-    say = f"{sname} {d.strftime('%d %b')}: aaj kul {total} log hazir." + (" " + "; ".join(warn[:5]) + "." if warn else "")
+    say = f"{sname} {d.strftime('%d %b')}: total {total} people present." + (" " + "; ".join(warn[:5]) + "." if warn else "")
     return {"total": total, "warnings": warn, "say": say}
 
 
@@ -657,8 +657,8 @@ def register(tenant: str, site: str = "", start: str = "", end: str = "") -> dic
                       "ot_hours": round(x["ot_hours"], 2), "rate": rate, "estimate": est})
     lines.sort(key=lambda x: (x["contractor"], x["trade"]))
     tot = {"man_days": sum(x["man_days"] for x in lines), "ot_hours": round(sum(x["ot_hours"] for x in lines), 2)}
-    say = (f"{sname} {a.strftime('%d %b')} - {b.strftime('%d %b')}: {tot['man_days']} man-days, {tot['ot_hours']:g} ghante overtime"
-           f" ({len({x['contractor'] for x in lines})} thekedar). Salary / mazdoori payroll mein; yeh numbers thekedar ke bill se milaiye.")
+    say = (f"{sname} {a.strftime('%d %b')} - {b.strftime('%d %b')}: {tot['man_days']} man-days, {tot['ot_hours']:g} hours overtime"
+           f" ({len({x['contractor'] for x in lines})} contractors). Salary / wages are in payroll; match these numbers with the contractor's bill.")
     return {"site": sname, "from": a.isoformat(), "to": b.isoformat(), "lines": lines, "workers": list(workers.values()), "total": tot, "say": say}
 
 
@@ -669,22 +669,22 @@ def material(tenant: str, site: str = "", item: str = "", qty=None, kind: str = 
     """Received (with challan) / used / returned / wasted at site. Received goods marked not-ok stay out of the balance note."""
     q = abs(_num(qty))
     if q <= 0:
-        raise SiteError("Maatra bataiye.")
+        raise SiteError("Tell me the quantity.")
     if kind not in ("in", "used", "return", "waste"):
         raise SiteError("kind: in | used | return | waste")
     it = R.low(item)[:80]
     if not it:
-        raise SiteError("Kaun sa maal?")
+        raise SiteError("Which material?")
     d = _date(day, today(tenant))
     with _LOCK, session() as s:
         st = _site(s, tenant, site)
         if kind == "in" and challan:
             dup = s.scalars(select(SsMaterial).where(SsMaterial.site_id == st.id, SsMaterial.challan == str(challan)[:60], SsMaterial.item == it)).first()
             if dup:
-                raise SiteError(f"Challan {challan} ka {item} pehle se darj ({dup.day}).")
+                raise SiteError(f"Challan {challan}: {item} is already recorded ({dup.day}).")
         bal = sum(m.qty for m in s.scalars(select(SsMaterial).where(SsMaterial.site_id == st.id, SsMaterial.item == it)).all())
         if kind != "in" and q > bal + 1e-9:
-            raise SiteError(f"Site par {item} sirf {_g(bal)} hai; {_g(q)} kharch kaise? Pehle aamad (receipt) likhiye.")
+            raise SiteError(f"Site stock of {item} is only {_g(bal)}; how can {_g(q)} be used? Record the receipt first.")
         un = R.unit_of(unit) if unit else (s.scalars(select(SsMaterial.unit).where(SsMaterial.site_id == st.id, SsMaterial.item == it)).first() or "")
         row = SsMaterial(tenant_id=tenant, site_id=st.id, day=d.isoformat(), item=it, unit=un, qty=q if kind == "in" else -q, kind=kind,
                          supplier=_clean(supplier, 160), challan=_clean(challan, 60), vehicle=_clean(vehicle, 20).upper(), ok=bool(ok),
@@ -703,12 +703,12 @@ def material(tenant: str, site: str = "", item: str = "", qty=None, kind: str = 
             T.material(tenant, tp, it, q, None, kind == "used", d.isoformat(), f"site: {challan}" if challan else "site")
         except Exception:
             log.exception("theka material mirror failed")
-    word = {"in": "aaya", "used": "lagaya", "return": "wapas gaya", "waste": "kharab / wastage"}[kind]
-    say = f"{sname}: {item} {_g(q)} {un} {word}" + (f" (challan {challan})" if challan else "") + f"; site par ab {_g(new_bal)} {un}."
+    word = {"in": "received", "used": "used", "return": "returned", "waste": "damaged / wastage"}[kind]
+    say = f"{sname}: {item} {_g(q)} {un} {word}" + (f" (challan {challan})" if challan else "") + f"; site now has {_g(new_bal)} {un}."
     if kind == "in" and not ok:
-        say += " Maal theek nahi (quality) likha: supplier ko wapas / replace ki baat kijiye, photo jodiye."
+        say += " Bad quality recorded: talk to the supplier about return / replacement, and add a photo."
     if new_bal <= 0:
-        say += " Khatam! Indent ka card banayein?"
+        say += " Finished. Make an indent card?"
     return {"balance": round(new_bal, 3), "say": say}
 
 
@@ -733,7 +733,7 @@ def _indent(s, tenant: str, ref: str) -> SsIndent:
     if x is None:
         x = s.scalars(select(SsIndent).where(SsIndent.tenant_id == tenant, SsIndent.number == str(ref).upper())).first()
     if x is None or x.tenant_id != tenant:
-        raise SiteError("Indent nahi mila.")
+        raise SiteError("Indent not found.")
     return x
 
 
@@ -745,7 +745,7 @@ def _indent_show(x: SsIndent, site_name: str) -> dict:
 def _indent_view(s, x: SsIndent) -> dict:
     st = s.get(SsSite, x.site_id)
     show = _indent_show(x, st.name if st else "")
-    v = {"id": x.id, **show, "amount_text": _rs(x.amount) if x.amount else "daam pata nahi", "checks": _j(x.checks, []), "status": x.status,
+    v = {"id": x.id, **show, "amount_text": _rs(x.amount) if x.amount else "price not known", "checks": _j(x.checks, []), "status": x.status,
          "hash": x.hash, "asked_by": x.asked_by, "reason_no": x.reason_no}
     if x.status in ("approved", "ordered") and x.supplier_phone:
         v["wa"] = f"https://wa.me/91{x.supplier_phone}?text={quote(indent_message(show))}"
@@ -754,8 +754,8 @@ def _indent_view(s, x: SsIndent) -> dict:
 
 def indent_message(show: dict) -> str:
     lines = "\n".join(f"- {i['item']}: {_g(i['qty'])} {i.get('unit', '')}".rstrip() for i in show["items"])
-    return (f"Namaste{(' ' + show['supplier']) if show['supplier'] else ''}, site '{show['site']}' ke liye order ({show['number']}):\n{lines}\n"
-            + (f"Chahiye: {show['need_by']} tak.\n" if show["need_by"] else "") + "Rate aur delivery confirm kijiye. Dhanyavaad.")
+    return (f"Hello{(' ' + show['supplier']) if show['supplier'] else ''}, order for site '{show['site']}' ({show['number']}):\n{lines}\n"
+            + (f"Needed by: {show['need_by']}.\n" if show["need_by"] else "") + "Please confirm the rate and delivery. Thank you.")
 
 
 def indent_request(tenant: str, site: str = "", items: list | None = None, need_by: str = "", reason: str = "", supplier: str = "",
@@ -766,24 +766,24 @@ def indent_request(tenant: str, site: str = "", items: list | None = None, need_
         if isinstance(i, dict) and str(i.get("item") or "").strip() and _num(i.get("qty")) > 0:
             its.append({"item": R.low(i["item"])[:80], "qty": _num(i["qty"]), "unit": R.unit_of(i.get("unit") or "")})
     if not its:
-        raise SiteError("Kya maal, kitna? (items [{item, qty, unit}])")
+        raise SiteError("What material, how much? (items [{item, qty, unit}])")
     a = _num(amount)
     if a < 0 or a > 50_000_000:
-        raise SiteError("Rakam galat lagti hai.")
+        raise SiteError("The amount looks wrong.")
     nb = _date(need_by) if need_by else None
     if need_by and not nb:
-        raise SiteError(f"Tareekh samajh nahi aayi: {need_by}")
+        raise SiteError(f"Could not understand the date: {need_by}")
     on = today(tenant)
     ph = _phone(supplier_phone)
     if supplier_phone and not ph:
-        raise SiteError("Supplier ka phone 10 ankon ka mobile.")
+        raise SiteError("The supplier's phone must be a 10-digit mobile number.")
     with _LOCK, session() as s:
         st = _site(s, tenant, site)
         key = _sha(sorted((i["item"], i["qty"]) for i in its))
         for x in s.scalars(select(SsIndent).where(SsIndent.site_id == st.id, SsIndent.status == "waiting")).all():
             if _sha(sorted((i["item"], i["qty"]) for i in _j(x.items, []))) == key:
                 return {"indent": _indent_view(s, x), "existing": True, "status": "needs_tap",
-                        "say": f"{x.number} ka card pehle se aapki haan ka intezaar kar raha hai."}
+                        "say": f"{x.number} card is already waiting for your approval."}
         bal: dict[str, float] = {}
         for m in s.scalars(select(SsMaterial).where(SsMaterial.site_id == st.id)).all():
             bal[m.item] = bal.get(m.item, 0.0) + m.qty
@@ -791,17 +791,17 @@ def indent_request(tenant: str, site: str = "", items: list | None = None, need_
         for i in its:
             have = bal.get(i["item"], 0.0)
             if have > 0:
-                checks.append(f"{i['item']}: site par abhi {_g(have)} {i['unit']} pada hai.")
+                checks.append(f"{i['item']}: the site still has {_g(have)} {i['unit']} in stock.")
             used = [-m.qty for m in s.scalars(select(SsMaterial).where(SsMaterial.site_id == st.id, SsMaterial.item == i["item"],
                                                                         SsMaterial.kind == "used", SsMaterial.day >= (on - timedelta(days=14)).isoformat())).all()]
             if used:
                 per_day = sum(used) / 14
                 if per_day > 0 and i["qty"] > per_day * 60:
-                    checks.append(f"{i['item']}: pichhle 14 din mein roz ~{per_day:.1f} laga; yeh {i['qty'] / per_day:.0f} din ka maal hai.")
+                    checks.append(f"{i['item']}: used ~{per_day:.1f} a day in the last 14 days; this is {i['qty'] / per_day:.0f} days of stock.")
         if nb and nb < on:
-            checks.append("Chahiye-tak ki tareekh nikal chuki hai.")
+            checks.append("The needed-by date has already passed.")
         if not a:
-            checks.append("Daam pata nahi: supplier ka quote aane par rakam ke saath naya card banaiye (Hoola daam nahi gadhta).")
+            checks.append("Price not known: when the supplier's quote comes, make a new card with the amount (Hoola does not make up prices).")
         x = SsIndent(tenant_id=tenant, site_id=st.id, number=_next(s, tenant, "indent", "IND"), items=_dump(its), need_by=nb.isoformat() if nb else "",
                      reason=_clean(reason, 300), supplier=_clean(supplier, 160), supplier_phone=ph, amount=a, checks=_dump(checks),
                      asked_by=actor_name(tenant, actor), conv=conv)
@@ -810,7 +810,7 @@ def indent_request(tenant: str, site: str = "", items: list | None = None, need_
         x.hash = _sha(_indent_show(x, st.name))
         view = _indent_view(s, x)
     say = (f"{view['number']}: " + ", ".join(f"{i['item']} {_g(i['qty'])} {i['unit']}" for i in its) + f" ({view['amount_text']})"
-           + " - indent ka card aapki haan ke liye bheja hai. Hoola khud order nahi karta, paise nahi deta.")
+           + " - indent card sent for your approval. Hoola does not order by itself and does not pay.")
     if checks:
         say += " Dhyaan: " + " ".join(checks)
     _publish(tenant, "sitesup_indent", {"indent": view, "say": say}, conv)
@@ -830,7 +830,7 @@ def indent_challenge(tenant: str, indent_id: str) -> dict:
     from .. import approvekey as ak
     c = indent_card(tenant, indent_id)
     if not c or c["status"] != "waiting":
-        raise SiteError("Yeh card ab baaki nahi hai.")
+        raise SiteError("This card is no longer pending.")
     nonce = secrets.token_urlsafe(18)
     exp = datetime.now(timezone.utc) + ak.CHALLENGE_TTL
     msg = f"hoola-approve|v1|{tenant}|sitesup|{indent_id}|{c['hash']}|{nonce}|{int(exp.timestamp())}"
@@ -858,14 +858,14 @@ def decide_indent(tenant: str, indent_id: str, yes: bool, card_hash: str = "", r
                   by_tap: bool = False) -> dict:
     """ONLY her tap in the app (API). The tool can never reach this with by_tap."""
     if not by_tap:
-        raise SiteError("Indent / kharid ki haan sirf aapke tap se (app ka card).")
+        raise SiteError("Indent / purchase approval comes only from your tap (the card in the app).")
     with session() as s:
         x = _indent(s, tenant, indent_id)
         if x.status != "waiting":
-            return {"indent": _indent_view(s, x), "say": f"{x.number} pehle hi '{x.status}' hai."}
+            return {"indent": _indent_view(s, x), "say": f"{x.number} is already '{x.status}'."}
         st = s.get(SsSite, x.site_id)
         if not card_hash or card_hash != x.hash or _sha(_indent_show(x, st.name if st else "")) != x.hash:
-            raise SiteError("Card badal gaya hai; naya card dekhiye.")
+            raise SiteError("The card has changed; see the new card.")
         amount, xid = x.amount, x.id
     if yes and amount > 0:
         from .. import approvekey as ak
@@ -878,10 +878,10 @@ def decide_indent(tenant: str, indent_id: str, yes: bool, card_hash: str = "", r
         x.decided_at = now()
         view = _indent_view(s, x)
     if yes:
-        say = f"{view['number']} maana. Supplier ko order aap bhejiye" + (" (WhatsApp draft taiyaar)" if view.get("wa") else "") + \
-            "; maal aaye to challan ke saath 'material' mein likhiye. Paise aap khud dengi."
+        say = f"{view['number']} approved. You send the order to the supplier" + (" (WhatsApp draft ready)" if view.get("wa") else "") + \
+            "; when the material arrives, record it under 'material' with the challan. You pay yourself."
     else:
-        say = f"{view['number']}: nahi mangwana" + (f" ({view['reason_no']})" if view["reason_no"] else "") + "."
+        say = f"{view['number']}: not ordering" + (f" ({view['reason_no']})" if view["reason_no"] else "") + "."
     return {"indent": view, "say": say}
 
 
@@ -889,9 +889,9 @@ def indent_ordered(tenant: str, indent_id: str) -> dict:
     with session() as s:
         x = _indent(s, tenant, indent_id)
         if x.status != "approved":
-            raise SiteError(f"{x.number} abhi '{x.status}' hai: pehle aapki haan (card par tap).")
+            raise SiteError(f"{x.number} is '{x.status}' now: your approval is needed first (tap on the card).")
         x.status = "ordered"
-        return {"indent": _indent_view(s, x), "say": f"{x.number}: order bhej diya likha. Maal aane par challan ke saath material mein."}
+        return {"indent": _indent_view(s, x), "say": f"{x.number}: marked as order sent. When the material arrives, record it under material with the challan."}
 
 
 def indents(tenant: str, status: str = "", site: str = "") -> list[dict]:
@@ -908,7 +908,7 @@ def indents(tenant: str, status: str = "", site: str = "") -> list[dict]:
 def toolbox(tenant: str, site: str = "", topic: str = "", people=None, by: str = "", note: str = "", day: str = "", actor: str = "owner") -> dict:
     n = int(_num(people))
     if n <= 0:
-        raise SiteError("Kitne log the talk mein?")
+        raise SiteError("How many people were in the talk?")
     t = _clean(topic, 160) or R.TOOLBOX_TOPICS[today(tenant).toordinal() % len(R.TOOLBOX_TOPICS)]
     d = _date(day, today(tenant))
     with _LOCK, session() as s:
@@ -917,9 +917,9 @@ def toolbox(tenant: str, site: str = "", topic: str = "", people=None, by: str =
                        data=_dump({"by": _clean(by, 80), "note": _clean(note, 300)}), by=actor_name(tenant, actor)))
         present = sum(r.count for r in s.scalars(select(SsLabour).where(SsLabour.site_id == st.id, SsLabour.day == d.isoformat())).all())
         sname = st.name
-    say = f"{sname}: toolbox talk '{t}' - {n} log."
+    say = f"{sname}: toolbox talk '{t}' - {n} people."
     if present and n < present:
-        say += f" Aaj {present} hazir the; baaki {present - n} ko bhi bataiye."
+        say += f" Today {present} were present; brief the remaining {present - n} too."
     return {"say": say, "topic": t}
 
 
@@ -943,12 +943,12 @@ def checklist(tenant: str, site: str = "", kind: str = "", answers: dict | None 
     if res["failed"]:
         say += " Kami: " + "; ".join(i["q"] for i in res["items"] if i["id"] in res["failed"])[:400]
     if res["unanswered"]:
-        say += f" {len(res['unanswered'])} sawaal ka jawab baaki."
+        say += f" {len(res['unanswered'])} question(s) still unanswered."
     if res["unsafe"]:
         reason = f"{res['label']}: " + "; ".join(i["q"] for i in res["items"] if i["id"] in res["unsafe"])
         stop = stop_request(tenant, sid, area or res["label"], reason, rid, actor=actor, conv=conv)
         out["stop"] = stop["stop"]
-        say += (" JAAN KA KHATRA ho to abhi logon ko us jagah se door hataiye. Kaam rokne (stop-work) ka card aapki haan ke liye bheja hai.")
+        say += (" If there is DANGER TO LIFE, move people away from that spot now. A stop-work card has been sent for your approval.")
     out["say"] = say
     return out
 
@@ -958,7 +958,7 @@ def incident(tenant: str, site: str = "", text: str = "", kind: str = "", at: st
     """Near-miss / first aid / injury / death / dangerous occurrence in the register. Form XI clock (OSH Central Rules 2026 r.7)."""
     t = _clean(text, 1000)
     if not t:
-        raise SiteError("Kya hua, kahan, kab?")
+        raise SiteError("What happened, where, when?")
     k = R.incident_kind(kind, t)
     tz = _tz(tenant)
     when = None
@@ -985,19 +985,19 @@ def incident(tenant: str, site: str = "", text: str = "", kind: str = "", at: st
         s.flush()
         v = _incident_view(row, st.name)
         sname, sid, tp = st.name, st.id, st.theka_project_id
-    first = {"death": "112 / ambulance, police - pehle jaan aur jagah. ", "injury": "Pehle ilaaj (first aid / hospital). ",
-             "dangerous": "Us jagah se sabko door kijiye, jagah ko waisa hi rehne dijiye (inquiry). "}.get(k, "")
-    say = f"{sname}: {v['number']} {R.INCIDENT_KINDS[k]} register mein. {first}{rule}"
+    first = {"death": "112 / ambulance, police - life and the area first. ", "injury": "Treatment first (first aid / hospital). ",
+             "dangerous": "Move everyone away from the spot and leave it as it is (inquiry). "}.get(k, "")
+    say = f"{sname}: {v['number']} {R.INCIDENT_KINDS[k]} entered in the register. {first}{rule}"
     if due:
-        say += f" Notice ki aakhri ghadi: {v['due_local']}. Form XI ka draft taiyaar; aap / aapka safety officer bhariye, phir 'reported' likhiye."
+        say += f" Notice deadline: {v['due_local']}. The Form XI draft is ready; you / your safety officer fill it, then mark it 'reported'."
     if k == "near_miss":
-        say += " Near-miss batana achha hai: aisi jagah theek kariye taaki chot na ho."
+        say += " Reporting a near-miss is good: fix that spot so no one gets hurt."
     out = {"incident": v, "say": say}
     if k in ("death", "dangerous", "injury"):
         out["form_xi"] = form_xi_text(tenant, v["id"])
         _publish(tenant, "sitesup_alert", {"kind": "incident", "site": sname, "say": say, "incident": v}, conv)
         if k in ("death", "dangerous"):
-            st_ = stop_request(tenant, sid, "Ghatna ki jagah", f"{v['number']}: {t[:200]}", v["id"], actor=actor, conv=conv)
+            st_ = stop_request(tenant, sid, "Incident area", f"{v['number']}: {t[:200]}", v["id"], actor=actor, conv=conv)
             out["stop"] = st_["stop"]
     if tp and k in ("death", "dangerous", "injury"):
         try:
@@ -1022,7 +1022,7 @@ def form_xi_text(tenant: str, incident_id: str) -> str:
     with session() as s:
         r = s.get(SsSafety, incident_id)
         if r is None or r.tenant_id != tenant or r.kind != "incident":
-            raise SiteError("Ghatna nahi mili.")
+            raise SiteError("Incident not found.")
         st = s.get(SsSite, r.site_id)
         cfg = _st(s, tenant)
         v = _incident_view(r, st.name if st else "")
@@ -1040,11 +1040,11 @@ def incident_reported(tenant: str, incident_id: str, ref: str) -> dict:
     with session() as s:
         r = s.get(SsSafety, incident_id)
         if r is None or r.tenant_id != tenant or r.kind != "incident":
-            raise SiteError("Ghatna nahi mili.")
+            raise SiteError("Incident not found.")
         if not str(ref).strip():
-            raise SiteError("Kisko / kaise bheja (portal ref / email / acknowledgement) likhiye.")
+            raise SiteError("Write who it was sent to / how (portal ref / email / acknowledgement).")
         r.reported = _clean(ref, 160)
-        return {"incident": _incident_view(r), "say": f"{r.number}: notice bheja likha ({r.reported})."}
+        return {"incident": _incident_view(r), "say": f"{r.number}: notice marked as sent ({r.reported})."}
 
 
 def safety_log(tenant: str, site: str = "", kind: str = "", days: int = 30) -> list[dict]:
@@ -1079,7 +1079,7 @@ def _stop_view(x: SsStop, site_name: str = "") -> dict:
 def stop_request(tenant: str, site: str, area: str, reason: str, source: str = "", contractor: str = "", actor: str = "owner", conv: str = "") -> dict:
     """Card only. The stop-work order is given only by her tap (decide_stop by_tap=True)."""
     if not str(reason).strip():
-        raise SiteError("Kaam kyon rokna hai?")
+        raise SiteError("Why should work stop?")
     with _LOCK, session() as s:
         st = _site(s, tenant, site)
         for x in s.scalars(select(SsStop).where(SsStop.site_id == st.id, SsStop.status == "waiting")).all():
@@ -1089,61 +1089,61 @@ def stop_request(tenant: str, site: str, area: str, reason: str, source: str = "
                 v = _stop_view(x, st.name)
                 break
         else:
-            x = SsStop(tenant_id=tenant, site_id=st.id, number=_next(s, tenant, "stop", "SW", 3), area=_clean(area, 200) or "Poori site",
+            x = SsStop(tenant_id=tenant, site_id=st.id, number=_next(s, tenant, "stop", "SW", 3), area=_clean(area, 200) or "Whole site",
                        reason=_clean(reason, 1000), source=str(source or "")[:40], contractor=_clean(contractor, 120),
                        asked_by=actor_name(tenant, actor), conv=conv)
             s.add(x)
             s.flush()
             x.hash = _sha(_stop_show(x, st.name))
             v = _stop_view(x, st.name)
-    say = f"{v['number']}: '{v['area']}' par kaam rokne ka card aapki haan ke liye. Wajah: {v['reason'][:200]}"
+    say = f"{v['number']}: '{v['area']}': stop-work card sent for your approval. Reason: {v['reason'][:200]}"
     _publish(tenant, "sitesup_stop", {"stop": v, "say": say}, conv)
     return {"stop": v, "status": "needs_tap", "say": say}
 
 
 def decide_stop(tenant: str, stop_id: str, yes: bool, card_hash: str = "", by_tap: bool = False) -> dict:
     if not by_tap:
-        raise SiteError("Kaam rokne ka order sirf aapke tap se.")
+        raise SiteError("A stop-work order comes only from your tap.")
     with _LOCK, session() as s:
         x = s.get(SsStop, stop_id)
         if x is None or x.tenant_id != tenant:
-            raise SiteError("Card nahi mila.")
+            raise SiteError("Card not found.")
         st = s.get(SsSite, x.site_id)
         if x.status != "waiting":
-            return {"stop": _stop_view(x, st.name), "say": f"{x.number} pehle hi '{x.status}' hai."}
+            return {"stop": _stop_view(x, st.name), "say": f"{x.number} is already '{x.status}'."}
         if not card_hash or card_hash != x.hash or _sha(_stop_show(x, st.name)) != x.hash:
-            raise SiteError("Card badal gaya hai; naya card dekhiye.")
+            raise SiteError("The card has changed; see the new card.")
         x.status = "active" if yes else "rejected"
-        if yes and x.area.lower() in ("poori site", "site", "puri site"):
+        if yes and x.area.lower() in ("whole site", "poori site", "site", "puri site"):
             st.status, st.stop_id = "stopped", x.id
         v = _stop_view(x, st.name)
         sname, tp, day_ = st.name, st.theka_project_id, today(tenant).isoformat()
     if yes:
-        notice = f"{sname}: {v['area']} par kaam abhi se BAND (stop-work {v['number']}). Wajah: {v['reason'][:300]}. Jab tak theek karke dobara jaancha na jaye, koi kaam nahi."
+        notice = f"{sname}: {v['area']} - work STOPPED from now (stop-work {v['number']}). Reason: {v['reason'][:300]}. No work until it is fixed and checked again."
         if tp:
             try:
                 from ..theka import service as T
                 T.diary(tenant, tp, 0, "", f"Stop-work {v['number']}: {v['area']}", None, False, day_)
             except Exception:
                 pass
-        return {"stop": v, "notice": notice, "say": f"{v['number']} laagu. Thekedar / foreman ko yeh notice bataiye (WhatsApp draft taiyaar)."}
-    return {"stop": v, "say": f"{v['number']}: kaam nahi roka (aapka faisla)."}
+        return {"stop": v, "notice": notice, "say": f"{v['number']} in force. Tell the contractor / foreman about this notice (WhatsApp draft ready)."}
+    return {"stop": v, "say": f"{v['number']}: work not stopped (your decision)."}
 
 
 def lift_stop(tenant: str, stop_id: str, note: str, by_tap: bool = False) -> dict:
     if not by_tap:
-        raise SiteError("Kaam dobara shuru karne ki haan bhi sirf aapke tap se.")
+        raise SiteError("Approval to restart work also comes only from your tap.")
     if not str(note).strip():
-        raise SiteError("Kya theek kiya gaya? (jaise: guard rail lag gayi, dobara checklist 100%)")
+        raise SiteError("What was fixed? (for example: guard rail fixed, checklist 100% on re-check)")
     with _LOCK, session() as s:
         x = s.get(SsStop, stop_id)
         if x is None or x.tenant_id != tenant or x.status != "active":
-            raise SiteError("Chalu stop-work nahi mila.")
+            raise SiteError("No active stop-work found.")
         x.status, x.lift_note = "lifted", _clean(note, 300)
         st = s.get(SsSite, x.site_id)
         if st.stop_id == x.id:
             st.status, st.stop_id = "running", ""
-        return {"stop": _stop_view(x, st.name), "say": f"{x.number} hataya: kaam shuru ({x.lift_note})."}
+        return {"stop": _stop_view(x, st.name), "say": f"{x.number} lifted: work resumed ({x.lift_note})."}
 
 
 def stops(tenant: str, status: str = "") -> list[dict]:
@@ -1163,11 +1163,11 @@ def pour(tenant: str, site: str = "", element: str = "", grade: str = "", volume
          slump: str = "", checks: dict | None = None, hot_dry: bool = False, ages: list | None = None, actor: str = "owner") -> dict:
     v = _num(volume)
     if v <= 0:
-        raise SiteError("Kitna concrete (cum)?")
+        raise SiteError("How much concrete (cum)?")
     if not str(element).strip():
-        raise SiteError("Kaun sa hissa (slab / column / beam ... kahan)?")
+        raise SiteError("Which element (slab / column / beam ... where)?")
     if R.grade_fck(grade) is None:
-        raise SiteError("Grade (M20 / M25 ...) bataiye.")
+        raise SiteError("Tell me the grade (M20 / M25 ...).")
     d = _date(day, today(tenant))
     n = R.samples_for(v)
     cure = R.curing_days(cement, hot_dry)
@@ -1184,11 +1184,11 @@ def pour(tenant: str, site: str = "", element: str = "", grade: str = "", volume
                 s.add(SsCube(tenant_id=tenant, pour_id=p.id, sample=smp, age=a, due=(d + timedelta(days=a)).isoformat()))
         pv = _pour_view(s, p)
         sname = st.name
-    say = (f"{sname}: {pv['number']} {pv['element']} {pv['grade']} {_g(v)} cum. IS 456 ke hisaab se kam se kam {n} sample (har sample 3 cube) = {n * 3} cube "
-           f"bhariye; test {', '.join(str(a) for a in ag)} din par (tareekh yaad dilaunga). Curing {cure} din, {pv['curing_until']} tak.")
+    say = (f"{sname}: {pv['number']} {pv['element']} {pv['grade']} {_g(v)} cum. As per IS 456, cast at least {n} samples (3 cubes each) = {n * 3} cubes"
+           f"; test at {', '.join(str(a) for a in ag)} days (I will remind you on the dates). Curing {cure} days, until {pv['curing_until']}.")
     open_chk = [k for k, ok in (checks or {}).items() if ok in (False, "no", "nahi")]
     if open_chk:
-        say += " Pour se pehle baaki: " + ", ".join(open_chk) + "."
+        say += " Pending before the pour: " + ", ".join(open_chk) + "."
     return {"pour": pv, "say": say}
 
 
@@ -1203,7 +1203,7 @@ def _pour_view(s, p: SsPour) -> dict:
 def _pour(s, tenant: str, ref: str) -> SsPour:
     p = s.get(SsPour, ref) or s.scalars(select(SsPour).where(SsPour.tenant_id == tenant, SsPour.number == str(ref).upper())).first()
     if p is None or p.tenant_id != tenant:
-        raise SiteError("Pour card nahi mila (PC-001 jaisa number).")
+        raise SiteError("Pour card not found (a number like PC-001).")
     return p
 
 
@@ -1211,9 +1211,9 @@ def cube_result(tenant: str, pour_ref: str, age=None, results: list | None = Non
                 conv: str = "") -> dict:
     vals = [_num(x) for x in (results or []) if _num(x) > 0]
     if not vals:
-        raise SiteError("Cube ke result N/mm2 mein (jaise 18.2, 17.9, 18.6).")
+        raise SiteError("Cube results in N/mm2 (for example 18.2, 17.9, 18.6).")
     if any(x > 150 for x in vals):
-        raise SiteError("N/mm2 mein dijiye (kN load nahi): 150 mm cube par load / 22.5 = N/mm2.")
+        raise SiteError("Give it in N/mm2 (not kN load): load on a 150 mm cube / 22.5 = N/mm2.")
     a = int(_num(age)) or 28
     with _LOCK, session() as s:
         p = _pour(s, tenant, pour_ref)
@@ -1269,7 +1269,7 @@ def snag(tenant: str, site: str = "", text: str = "", location: str = "", trade:
          actor: str = "owner") -> dict:
     t = _clean(text, 600)
     if not t:
-        raise SiteError("Kya kami hai, kahan?")
+        raise SiteError("What is the defect, and where?")
     with _LOCK, session() as s:
         st = _site(s, tenant, site)
         x = SsSnag(tenant_id=tenant, site_id=st.id, number=_next(s, tenant, "snag", "SN", 3), location=_clean(location, 160), text=t,
@@ -1278,7 +1278,7 @@ def snag(tenant: str, site: str = "", text: str = "", location: str = "", trade:
         s.add(x)
         s.flush()
         v = _snag_view(s, x)
-    return {"snag": v, "say": f"{v['number']}: {v['location'] or 'site'} - {t[:80]}. Photo jodiye; thekedar theek kare to 'fixed', aap / engineer dekh lein to 'verified'."}
+    return {"snag": v, "say": f"{v['number']}: {v['location'] or 'site'} - {t[:80]}. Add a photo; mark 'fixed' when the contractor fixes it, 'verified' once you / the engineer have checked."}
 
 
 def _snag_view(s, x: SsSnag) -> dict:
@@ -1293,9 +1293,9 @@ def snag_status(tenant: str, ref: str, status: str, actor: str = "owner") -> dic
     with session() as s:
         x = s.get(SsSnag, ref) or s.scalars(select(SsSnag).where(SsSnag.tenant_id == tenant, SsSnag.number == str(ref).upper())).first()
         if x is None or x.tenant_id != tenant:
-            raise SiteError("Snag nahi mila.")
+            raise SiteError("Snag not found.")
         if status == "verified" and x.status != "fixed":
-            raise SiteError("Pehle 'fixed' (theek kiya), phir dekh kar 'verified'.")
+            raise SiteError("First 'fixed', then 'verified' after checking.")
         x.status = status
         return {"snag": _snag_view(s, x), "say": f"{x.number}: {status}."}
 
@@ -1321,12 +1321,12 @@ def clean_image(data: bytes) -> bytes:
     """Re-encode from pixels (JPEG <= 1600 px): EXIF, GPS, camera details gone."""
     from PIL import Image, ImageOps
     if not data or len(data) > 20 * 1024 * 1024:
-        raise SiteError("Photo khaali ya 20 MB se badi.")
+        raise SiteError("The photo is empty or larger than 20 MB.")
     try:
         im = Image.open(io.BytesIO(data))
         im.load()
     except Exception:
-        raise SiteError("Yeh photo khul nahi rahi (JPG / PNG / WEBP).")
+        raise SiteError("This photo cannot be opened (JPG / PNG / WEBP).")
     im = ImageOps.exif_transpose(im).convert("RGB")
     im.thumbnail((1600, 1600))
     out = io.BytesIO()
@@ -1342,7 +1342,7 @@ def add_photo(tenant: str, data: bytes, site: str = "", ref: str = "", stage: st
         except Exception:
             data = b""
         if not data:
-            raise SiteError("File nahi mili (chat file 24 ghante tak rehti hai).")
+            raise SiteError("File not found (a chat file is kept for 24 hours).")
     if stage not in ("site", "snag", "fixed", "incident", "pour", "material", "progress"):
         raise SiteError("stage: site | snag | fixed | incident | pour | material | progress")
     clean = clean_image(data)
@@ -1353,7 +1353,7 @@ def add_photo(tenant: str, data: bytes, site: str = "", ref: str = "", stage: st
             if not ok:
                 sn = s.scalars(select(SsSnag).where(SsSnag.tenant_id == tenant, SsSnag.number == str(ref).upper())).first()
                 if sn is None:
-                    raise SiteError("Photo kis cheez ki? (snag / ghatna / pour ka number)")
+                    raise SiteError("What is the photo of? (snag / incident / pour number)")
                 ref = sn.id
             if stage == "fixed":
                 sn = s.get(SsSnag, ref)
@@ -1361,24 +1361,24 @@ def add_photo(tenant: str, data: bytes, site: str = "", ref: str = "", stage: st
                     sn.status = "fixed"
         n = len(s.scalars(select(SsPhoto.id).where(SsPhoto.site_id == st.id)).all())
         if n >= 2000:
-            raise SiteError("Is site par 2000 photo ho gayi.")
+            raise SiteError("This site already has 2000 photos.")
         pid = new_id("ph")
         path = _dir(tenant, st.id) / f"{pid}.jpg"
         path.write_bytes(clean)
         s.add(SsPhoto(id=pid, tenant_id=tenant, site_id=st.id, ref=ref, stage=stage, day=today(tenant).isoformat(), path=str(path), note=_clean(note, 200)))
-    return {"photo": pid, "bytes": len(clean), "say": "Photo jodi (location / camera ki jaankari hata di)."}
+    return {"photo": pid, "bytes": len(clean), "say": "Photo added (location / camera details removed)."}
 
 
 def photo_bytes(tenant: str, photo_id: str) -> bytes:
     with session() as s:
         p = s.get(SsPhoto, photo_id)
         if p is None or p.tenant_id != tenant:
-            raise SiteError("Photo nahi mili.")
+            raise SiteError("Photo not found.")
         path = p.path
     try:
         return Path(path).read_bytes()
     except OSError:
-        raise SiteError("Photo file nahi mili.")
+        raise SiteError("Photo file not found.")
 
 
 # ---------------------------------------------------------------- DPR + client messages (HER tap)
@@ -1427,32 +1427,32 @@ def dpr_data(tenant: str, site: str = "", day: str = "", weather: str = "", tomo
 
 def dpr_text(d: dict) -> str:
     dt = date.fromisoformat(d["day"]).strftime("%d %b %Y")
-    L = [f"*Daily Progress Report - {d['site']}*", f"{dt}" + (f" | Mausam: {d['weather']}" if d["weather"] else "")]
+    L = [f"*Daily Progress Report - {d['site']}*", f"{dt}" + (f" | Weather: {d['weather']}" if d["weather"] else "")]
     if d["stopped"]:
-        L.append("Site par stop-work laagu hai.")
+        L.append("Stop-work is in force at the site.")
     L.append(f"Manpower: {d['labour']['total']}" + (" (" + ", ".join(f"{c['contractor']} {c['people']}" for c in d["labour"]["contractors"]) + ")"
                                                     if d["labour"]["contractors"] else ""))
     if d["work"]:
-        L.append("Aaj ka kaam:")
+        L.append("Today's work:")
         L += [f"- {w['activity']}: {_g(w['qty'])} {w['unit']}".rstrip() + (f" ({w['note']})" if w["note"] else "") for w in d["work"]]
     else:
-        L.append("Aaj ka kaam: likha nahi gaya.")
+        L.append("Today's work: not recorded.")
     if d["pours"]:
-        L += [f"- Concrete {p['element']} {p['grade']} {_g(p['volume'])} cum, {p['cubes']} cube liye" for p in d["pours"]]
+        L += [f"- Concrete {p['element']} {p['grade']} {_g(p['volume'])} cum, {p['cubes']} cubes taken" for p in d["pours"]]
     if d["material_today"]:
         L.append("Material: " + "; ".join(f"{m['item']} {_g(m['qty'])} {m['unit']} {'aaya' if m['kind'] == 'in' else 'laga'}" for m in d["material_today"]))
     if d["hindrances"]:
         L.append("Rukawat: " + "; ".join(f"{h['activity']}: {h['reason']}" for h in d["hindrances"]))
     if d["behind"]:
-        L.append("Plan se peeche: " + "; ".join(f"{b['name']} ({b['done_pct']:g}% / plan {b['planned_pct']:g}%)" for b in d["behind"][:5]))
+        L.append("Behind plan: " + "; ".join(f"{b['name']} ({b['done_pct']:g}% / plan {b['planned_pct']:g}%)" for b in d["behind"][:5]))
     if d["talks"] or d["checks"] or d["incidents"]:
-        L.append("Safety: " + "; ".join([f"toolbox '{t['topic']}' {t['people']} log" for t in d["talks"]]
+        L.append("Safety: " + "; ".join([f"toolbox '{t['topic']}' {t['people']} people" for t in d["talks"]]
                                          + [f"{c['label']} {c['score']}%" for c in d["checks"]]
                                          + [f"{i['label']}" for i in d["incidents"]]))
     if d["cubes"]:
-        L.append("Cube test: " + "; ".join(f"{c['pour']} {c['age']} din {c['mean']} N/mm2 ({c['verdict']})" for c in d["cubes"]))
+        L.append("Cube test: " + "; ".join(f"{c['pour']} {c['age']} days {c['mean']} N/mm2 ({c['verdict']})" for c in d["cubes"]))
     if d["snags"]["new"] or d["snags"]["open"]:
-        L.append(f"Snag: {d['snags']['new']} naye, {d['snags']['open']} khule")
+        L.append(f"Snag: {d['snags']['new']} new, {d['snags']['open']} open")
     if d["tomorrow"]:
         L.append(f"Kal: {d['tomorrow']}")
     if d["remarks"]:
@@ -1504,7 +1504,7 @@ def dpr_pdf(d: dict) -> bytes:
         y -= 6
         line("Material balance at site", 11, True)
         for b in d["balance"][:30]:
-            line(f"  {b['item']}: {_g(b['balance'])} {b['unit']} (aaya {_g(b['received'])}, laga {_g(b['used'])})")
+            line(f"  {b['item']}: {_g(b['balance'])} {b['unit']} (received {_g(b['received'])}, used {_g(b['used'])})")
     x = 40
     for pth in d.get("photos", [])[:4]:
         try:
@@ -1538,7 +1538,7 @@ def dpr_request(tenant: str, site: str = "", day: str = "", weather: str = "", t
     from .. import chatfiles
     d = dpr_data(tenant, site, day, weather, tomorrow, remarks)
     if not d["work"] and not d["labour"]["total"] and not d["hindrances"] and not d["material_today"]:
-        raise SiteError("Aaj ki site entry (kaam / hazri / material / rukawat) kuch nahi: DPR khaali hogi.")
+        raise SiteError("No site entry today (work / attendance / material / hindrance): the DPR would be empty.")
     text = dpr_text(d)
     pdf = dpr_pdf(d)
     f = chatfiles.store(tenant, f"DPR_{re.sub(r'[^A-Za-z0-9]+', '_', d['site'])[:40]}_{d['day']}.pdf", pdf, "application/pdf")
@@ -1554,8 +1554,8 @@ def dpr_request(tenant: str, site: str = "", day: str = "", weather: str = "", t
         s.flush()
         r.hash = _sha(_report_show(r), hashlib.sha256(pdf).hexdigest())
         v = _report_view(r, st.name)
-    say = f"{v['number']} ({d['site']}, {d['day']}) taiyaar - client ko bhejne ke liye aapki haan ka card bheja hai." + \
-        ("" if v["to_phone"] else " Client ka phone nahi: site mein jodiye ya PDF khud bhejiye.")
+    say = f"{v['number']} ({d['site']}, {d['day']}) is ready - a card has been sent for your approval to send it to the client." + \
+        ("" if v["to_phone"] else " No client phone: add it to the site or send the PDF yourself.")
     _publish(tenant, "sitesup_report", {"report": v, "file": f, "say": say}, conv)
     return {"report": v, "file": f, "status": "needs_tap", "say": say}
 
@@ -1564,10 +1564,10 @@ def message_request(tenant: str, site: str = "", text: str = "", to_phone: str =
     """Any other message to the client (delay, drawing needed, visit): a draft card; only her tap lets it go."""
     t = str(text or "").strip()
     if not t:
-        raise SiteError("Client ko kya likhna hai?")
+        raise SiteError("What should the client be told?")
     from ..net import policy
     if policy.secret_found(t):
-        raise SiteError("Isme OTP / PIN / card jaisi baat hai.")
+        raise SiteError("This contains something like an OTP / PIN / card number.")
     with _LOCK, session() as s:
         st = _site(s, tenant, site)
         r = SsReport(tenant_id=tenant, site_id=st.id, kind="message", number=_next(s, tenant, "msg", "MSG"), day=today(tenant).isoformat(),
@@ -1576,7 +1576,7 @@ def message_request(tenant: str, site: str = "", text: str = "", to_phone: str =
         s.flush()
         r.hash = _sha(_report_show(r))
         v = _report_view(r, st.name)
-    say = f"{v['number']}: client ke liye message ka draft - aapki haan ke card par."
+    say = f"{v['number']}: draft message for the client - on the card for your approval."
     _publish(tenant, "sitesup_report", {"report": v, "say": say}, conv)
     return {"report": v, "status": "needs_tap", "say": say}
 
@@ -1585,34 +1585,34 @@ async def decide_report(tenant: str, report_id: str, yes: bool, card_hash: str =
     """ONLY her tap. yes + via=self -> approved: wa.me link she sends from her own WhatsApp (then 'Maine bhej diya').
     via=business -> the business WhatsApp (official Cloud API), only to a client who has written to that number (Meta 24 h window)."""
     if not by_tap:
-        raise SiteError("Client ko report / message sirf aapke tap se jaata hai.")
+        raise SiteError("A report / message goes to the client only on your tap.")
     with session() as s:
         r = s.get(SsReport, report_id)
         if r is None or r.tenant_id != tenant:
-            raise SiteError("Report nahi mili.")
+            raise SiteError("Report not found.")
         st = s.get(SsSite, r.site_id)
         if r.status != "waiting":
-            return {"report": _report_view(r, st.name), "say": f"{r.number} pehle hi '{r.status}' hai."}
+            return {"report": _report_view(r, st.name), "say": f"{r.number} is already '{r.status}'."}
         if not card_hash or card_hash != r.hash:
-            raise SiteError("Card badal gaya / purana hai; naya card dekhiye.")
+            raise SiteError("The card has changed / is old; see the new card.")
         text, phone, sname = r.text, r.to_phone, st.name
     if re.search(r"\[[^\]]*\]|__________", text):
-        raise SiteError("Report mein khaali jagah baaki hai: pehle bhariye.")
+        raise SiteError("The report still has blanks: fill them first.")
     if not yes:
         with session() as s:
             r = s.get(SsReport, report_id)
             r.status = "rejected"
-            return {"report": _report_view(r, sname), "say": f"{r.number}: nahi bheja (aapka faisla)."}
+            return {"report": _report_view(r, sname), "say": f"{r.number}: not sent (your decision)."}
     if via == "business":
         from ..employee import inbox
         from ..employee.models import BizContact
         if not phone:
-            raise SiteError("Client ka phone nahi.")
+            raise SiteError("No client phone.")
         with session() as s:
             c = s.scalars(select(BizContact).where(BizContact.tenant_id == tenant, BizContact.wa_id.in_((phone, "91" + phone)))).first()
             cid = c.id if c else ""
         if not cid:
-            raise SiteError("Client ne business WhatsApp par kabhi message nahi kiya: apne WhatsApp se (wa.me) bhejiye.")
+            raise SiteError("The client has never messaged the business WhatsApp: send it from your own WhatsApp (wa.me).")
         try:
             await inbox.send(tenant, cid, text, by="owner")
         except inbox.InboxError as e:
@@ -1620,24 +1620,24 @@ async def decide_report(tenant: str, report_id: str, yes: bool, card_hash: str =
         with session() as s:
             r = s.get(SsReport, report_id)
             r.status, r.via = "sent", "business"
-            return {"report": _report_view(r, sname), "say": f"{r.number} business WhatsApp se client ko bheja. PDF bhi chahiye to file share kijiye."}
+            return {"report": _report_view(r, sname), "say": f"{r.number} sent to the client from the business WhatsApp. Share the file if the PDF is needed too."}
     with session() as s:
         r = s.get(SsReport, report_id)
         r.status = "approved"
         v = _report_view(r, sname)
-    return {"report": v, "say": f"{v['number']} maana. 'WhatsApp kholo' se apne phone se bhejiye (PDF bhi share kar sakti hain), phir 'Maine bhej diya'."}
+    return {"report": v, "say": f"{v['number']} approved. Use 'Open WhatsApp' to send it from your phone (you can share the PDF too), then tap 'I have sent it'."}
 
 
 def report_sent(tenant: str, report_id: str) -> dict:
     with session() as s:
         r = s.get(SsReport, report_id)
         if r is None or r.tenant_id != tenant:
-            raise SiteError("Report nahi mili.")
+            raise SiteError("Report not found.")
         if r.status != "approved":
-            raise SiteError(f"{r.number} abhi '{r.status}' hai: pehle aapki haan.")
+            raise SiteError(f"{r.number} is '{r.status}' now: your approval is needed first.")
         r.status, r.via = "sent", "self"
         st = s.get(SsSite, r.site_id)
-        return {"report": _report_view(r, st.name if st else ""), "say": "Bheja likha."}
+        return {"report": _report_view(r, st.name if st else ""), "say": "Marked as sent."}
 
 
 def reports(tenant: str, site: str = "", status: str = "") -> list[dict]:
@@ -1670,25 +1670,25 @@ def day(tenant: str) -> dict:
         cure = s.scalars(select(SsPour).where(SsPour.tenant_id == tenant, SsPour.curing_until >= on.isoformat())).all()
         curing = [f"{p.number} {p.element}" for p in cure]
     for i in inc_v:
-        parts.append(f"{i['number']} ka notice abhi tak nahi bheja" + (" - DER HO GAYI" if i["overdue"] else f" (aakhri ghadi {i['due_local']})"))
+        parts.append(f"{i['number']}: notice not sent yet" + (" - OVERDUE" if i["overdue"] else f" (deadline {i['due_local']})"))
     for sid, nm, stt in site_ids:
         if stt == "stopped":
-            parts.append(f"{nm}: stop-work laagu")
+            parts.append(f"{nm}: stop-work in force")
         la = lookahead(tenant, sid, 7)
         if la["behind"] or any(a["short"] for a in la["coming"]):
             parts.append(f"{nm}: {la['say']}")
     cd = cubes_due(tenant, 0)
     if cd:
-        parts.append("Aaj cube test: " + ", ".join(f"{c['pour']} {c['age']} din" + (f" ({c['late_days']} din late)" if c["late_days"] else "") for c in cd[:6]))
+        parts.append("Cube tests today: " + ", ".join(f"{c['pour']} {c['age']} days" + (f" ({c['late_days']} days late)" if c["late_days"] else "") for c in cd[:6]))
     if curing:
-        parts.append("Curing chalu: " + ", ".join(curing[:6]))
+        parts.append("Curing in progress: " + ", ".join(curing[:6]))
     if waiting:
-        parts.append(f"{waiting} indent aapki haan ke intezaar mein")
+        parts.append(f"{waiting} indent(s) waiting for your approval")
     if stops_w:
-        parts.append(f"{stops_w} stop-work card aapki haan ke intezaar mein")
+        parts.append(f"{stops_w} stop-work card(s) waiting for your approval")
     if reps_w:
-        parts.append(f"{reps_w} report / message client ke liye aapki haan ke intezaar mein")
-    parts.append(f"Aaj ka toolbox talk vishay: {R.TOOLBOX_TOPICS[on.toordinal() % len(R.TOOLBOX_TOPICS)]}")
+        parts.append(f"{reps_w} report(s) / message(s) for the client waiting for your approval")
+    parts.append(f"Today's toolbox talk topic: {R.TOOLBOX_TOPICS[on.toordinal() % len(R.TOOLBOX_TOPICS)]}")
     return {"parts": parts, "say": "; ".join(parts) + "."}
 
 
@@ -1736,7 +1736,7 @@ def register_file(tenant: str, site: str = "", start: str = "", end: str = "", c
     f = chatfiles.store(tenant, f"Site_register_{reg['from']}_{reg['to']}.xlsx", bio.getvalue(),
                         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
     _publish(tenant, "pc_file", {**f, "source": "sitesup", "title": "Site register"}, conv)
-    return {"file": f, "say": f"{reg['site']}: hazri / overtime / material / safety register Excel mein."}
+    return {"file": f, "say": f"{reg['site']}: attendance / overtime / material / safety register in Excel."}
 
 
 def forget(tenant: str, site: str) -> dict:
@@ -1744,7 +1744,7 @@ def forget(tenant: str, site: str) -> dict:
     with _LOCK, session() as s:
         st = _site(s, tenant, site)
         if st.status not in ("done", "closed"):
-            raise SiteError("Site abhi chalu hai: kaam khatam (done) hone ke baad hi bhoolna.")
+            raise SiteError("The site is still active: it can be forgotten only after the work is done.")
         n = 0
         for r in s.scalars(select(SsLabour).where(SsLabour.site_id == st.id, SsLabour.worker != "")).all():
             r.worker, r.id_ref = f"worker-{r.id[-4:]}", ""
@@ -1755,7 +1755,7 @@ def forget(tenant: str, site: str) -> dict:
             r.data = _dump(d)
         st.client_phone, st.client_email = "", ""
         sname = st.name
-    return {"forgot": n, "say": f"{sname}: mazdooron ke naam / ID reference aur client ka contact hata diye; ginti aur register bache hain."}
+    return {"forgot": n, "say": f"{sname}: workers' names / ID references and the client's contact removed; counts and registers are kept."}
 
 
 def _tenants() -> list[str]:
@@ -1791,19 +1791,19 @@ def tick(now_: datetime | None = None) -> dict:
                     due = date.fromisoformat(c.due)
                     stage = "tomorrow" if due > on else ("today" if due == on else ("late" if (on - due).days >= 1 else ""))
                     if stage and c.sample == 1 and _once(s, tenant, f"cube:{p.id}:{c.age}:{stage}"):
-                        say = {"tomorrow": f"Kal {p.number} ({p.element}, {p.grade}) ke {c.age} din wale cube test hain: lab / CTM tayyar rakhiye.",
-                               "today": f"Aaj {p.number} ({p.element}) ke {c.age} din wale cube test: result aane par 'cube' mein likhiye.",
-                               "late": f"{p.number} ({p.element}) ke {c.age} din wale cube ka result abhi tak nahi aaya."}[stage]
+                        say = {"tomorrow": f"Tomorrow: {p.number} ({p.element}, {p.grade}) {c.age}-day cube tests are due: keep the lab / CTM ready.",
+                               "today": f"Today: {p.number} ({p.element}) {c.age}-day cube tests are due: write the result under 'cube' when it comes.",
+                               "late": f"{p.number} ({p.element}) {c.age}-day cube result has not come in yet."}[stage]
                         alerts.append({"kind": "cube", "site": st.name, "say": say})
                     if p.curing_until == on.isoformat() and _once(s, tenant, f"cure:{p.id}"):
-                        alerts.append({"kind": "curing", "site": st.name, "say": f"{p.number} ({p.element}) ki curing aaj poori: {p.cement or 'cement'} ke hisaab se."})
+                        alerts.append({"kind": "curing", "site": st.name, "say": f"{p.number} ({p.element}) curing completes today: as per {p.cement or 'cement'}."})
                 for r in s.scalars(select(SsSafety).where(SsSafety.tenant_id == tenant, SsSafety.kind == "incident", SsSafety.reported == "",
                                                           SsSafety.due_at.is_not(None))).all():
                     due = _aware(r.due_at)
                     if due - timedelta(hours=2) <= n < due and _once(s, tenant, f"inc:{r.id}:soon"):
-                        alerts.append({"kind": "incident", "say": f"{r.number}: Form XI notice ki aakhri ghadi 2 ghante se kam mein. Bhej diya to 'reported' likhiye."})
+                        alerts.append({"kind": "incident", "say": f"{r.number}: the Form XI notice deadline is less than 2 hours away. Once sent, mark it 'reported'."})
                     elif n >= due and _once(s, tenant, f"inc:{r.id}:late"):
-                        alerts.append({"kind": "incident", "say": f"{r.number}: notice ka samay nikal gaya - abhi bhejiye aur der ki wajah likhiye."})
+                        alerts.append({"kind": "incident", "say": f"{r.number}: the notice deadline has passed - send it now and write the reason for the delay."})
                 cfg = _st(s, tenant)
                 morning = cfg.last_morning != on.isoformat() and _due_time(loc, cfg.morning_time)
                 if morning:
@@ -1827,7 +1827,7 @@ def tick(now_: datetime | None = None) -> dict:
                 _publish(tenant, "sitesup_day", {"say": d["say"], "parts": d["parts"]})
                 out["morning"] += 1
             if todo_dpr:
-                _publish(tenant, "sitesup_alert", {"kind": "dpr", "say": "Aaj ki DPR baaki: " + ", ".join(todo_dpr) + ". 'DPR banao' boliye; client ko aapki haan se hi jayegi."})
+                _publish(tenant, "sitesup_alert", {"kind": "dpr", "say": "Today's DPR is pending: " + ", ".join(todo_dpr) + ". Say 'make the DPR'; it goes to the client only with your approval."})
                 out["dpr"] += 1
         except Exception:
             log.exception("sitesup tick failed for %s", tenant)
@@ -1845,14 +1845,14 @@ def voice_log(tenant: str, site: str = "", day: str = "", activities: list | Non
     material [{item, qty, kind, unit, supplier, challan}] -> material(); snags [{text, location, trade, due}] -> snag();
     toolbox {topic, people} -> toolbox(). Returns one combined summary + the five questions still missing."""
     if not str(site or "").strip():
-        raise SiteError("Site bataiye.")
+        raise SiteError("Tell me the site.")
     acts = [a for a in (activities or []) if isinstance(a, dict) and (str(a.get("activity", "")).strip() and a.get("qty") is not None)]
     atts = [r for r in (rows or []) if isinstance(r, dict) and (r.get("count") or r.get("worker"))]
     mats = [m for m in (mat_rows or []) if isinstance(m, dict) and str(m.get("item", "")).strip() and m.get("qty") is not None]
     sngs = [n for n in (snags or []) if isinstance(n, dict) and str(n.get("text", "")).strip()]
     tb = tb_row if isinstance(tb_row, dict) else None
     if not any((acts, atts, mats, sngs, tb, note)):
-        raise SiteError("Roznama khaali hai - kaam / hazari / maal / snag, kuch bhi boliye.")
+        raise SiteError("The daily log is empty - say anything: work / attendance / material / snags.")
     parts: list[str] = []
     warnings: list[str] = []
     for a in acts:
@@ -1862,7 +1862,7 @@ def voice_log(tenant: str, site: str = "", day: str = "", activities: list | Non
     for r_ in atts:
         one = {k: r_[k] for k in ("contractor", "trade", "count", "hours", "worker", "gender") if r_.get(k) is not None}
         r = attendance(tenant, site, None, day, actor, **one)
-        parts.append(r.get("say") or "hazari likhi")
+        parts.append(r.get("say") or "attendance recorded")
         if r.get("warnings"):
             warnings += list(r["warnings"])
     for m in mats:
@@ -1872,22 +1872,22 @@ def voice_log(tenant: str, site: str = "", day: str = "", activities: list | Non
     for n in sngs:
         r = snag(tenant, site, str(n.get("text")), str(n.get("location", "")), str(n.get("trade", "")),
                  str(n.get("contractor", "")), str(n.get("due", "")), actor)
-        parts.append(r.get("say") or "snag likhi")
+        parts.append(r.get("say") or "snag recorded")
     if tb and str(tb.get("topic", "")).strip():
         r = toolbox(tenant, site, str(tb.get("topic")), tb.get("people"), str(by or ""), "", day, actor)
-        parts.append(r.get("say") or "toolbox talk likhi")
+        parts.append(r.get("say") or "toolbox talk recorded")
     d = _date(day, today(tenant))
     missing: list[str] = []
     if not acts:
-        missing.append("aaj ka kaam (activity + maatra)")
+        missing.append("today's work (activity + quantity)")
     if not atts:
-        missing.append("hazari (kaun thekedar, kitne log)")
+        missing.append("attendance (which contractor, how many people)")
     if not mats and not sngs:
-        missing.append("maal / snag (koi aaya ya kami?)")
-    say = (f"Roznama {d.strftime('%d %b')} ({site}): " + " | ".join(parts[:6]) + ("..." if len(parts) > 6 else "")
-           + (" Dhyaan: " + " ".join(str(w) for w in warnings[:2]) if warnings else ""))
+        missing.append("material / snags (anything received or short?)")
+    say = (f"Daily log {d.strftime('%d %b')} ({site}): " + " | ".join(parts[:6]) + ("..." if len(parts) > 6 else "")
+           + (" Note: " + " ".join(str(w) for w in warnings[:2]) if warnings else ""))
     if missing:
-        say += f" Abhi baki: {', '.join(missing)}."
+        say += f" Still missing: {', '.join(missing)}."
     return {"day": d.isoformat(), "parts": parts, "missing": missing, "warnings": warnings, "say": say}
 
 
@@ -1909,9 +1909,9 @@ def progress_variance(tenant: str, site: str = "") -> dict:
         st_name = st.name
     out.sort(key=lambda x: -(x["pct"] if x["pct"] is not None else -1))
     behind = [x for x in out if x["behind"]]
-    say = (f"{st_name}: {len(out)} activity. "
-           + "; ".join(f"{x['activity'][:28]} {x['pct']:g}%" if x["pct"] is not None else f"{x['activity'][:28]} (plan khali)" for x in out[:5])
+    say = (f"{st_name}: {len(out)} activities. "
+           + "; ".join(f"{x['activity'][:28]} {x['pct']:g}%" if x["pct"] is not None else f"{x['activity'][:28]} (no plan qty)" for x in out[:5])
            + ("..." if len(out) > 5 else ""))
     if behind:
-        say += f" PEECHHE ({behind_pct:g}%+ se): " + ", ".join(x["activity"][:24] for x in behind[:4]) + "."
+        say += f" BEHIND (by {behind_pct:g}%+): " + ", ".join(x["activity"][:24] for x in behind[:4]) + "."
     return {"activities": out, "behind": len(behind), "say": say}

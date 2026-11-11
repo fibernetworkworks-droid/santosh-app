@@ -36,10 +36,10 @@ from .models import TgAlert, TgBooking, TgCard, TgLedger, TgLicence, TgSettings,
 log = logging.getLogger("santosh.tourguide")
 _LOCK = threading.RLock()
 MONEY_KINDS = ("refund", "spend")
-CARD_LABEL = {"confirm": "Booking pakki + message", "message": "Mehmaan ko message", "refund": "Refund",
-              "discount": "Discount", "spend": "Kharcha"}
-STATUS_LABEL = {"enquiry": "Enquiry", "held": "Rok rakha", "confirmed": "Pakka", "done": "Ho gaya", "cancelled": "Radd",
-                "no_show": "Nahi aaye"}
+CARD_LABEL = {"confirm": "Confirm booking + message", "message": "Message to guest", "refund": "Refund",
+              "discount": "Discount", "spend": "Expense"}
+STATUS_LABEL = {"enquiry": "Enquiry", "held": "On hold", "confirmed": "Confirmed", "done": "Done", "cancelled": "Cancelled",
+                "no_show": "No-show"}
 LIVE = ("held", "confirmed")
 
 
@@ -193,19 +193,19 @@ def save_settings(tenant: str, **kw: Any) -> dict:
         if "phone" in kw:
             p = R.phone10(kw["phone"])
             if kw["phone"] and not p:
-                raise TourError("Mobile number 10 ank ka chahiye.")
+                raise TourError("The mobile number must have 10 digits.")
             r.phone = p
         if "state" in kw:
             r.state = str(kw["state"] or "").strip().upper()[:4]
         if "upi_id" in kw:
             u = str(kw["upi_id"] or "").strip()
             if u and not re.fullmatch(r"[\w.\-]{2,}@[a-zA-Z]{2,}", u):
-                raise TourError("UPI ID sahi nahi lagta (jaise naam@okbank).")
+                raise TourError("The UPI ID does not look right (for example name@okbank).")
             r.upi_id = u
         if "gstin" in kw:
             g = str(kw["gstin"] or "").strip().upper()
             if g and not re.fullmatch(r"\d{2}[A-Z]{5}\d{4}[A-Z][1-9A-Z]Z[0-9A-Z]", g):
-                raise TourError("GSTIN 15 akshar ka hota hai.")
+                raise TourError("A GSTIN has 15 characters.")
             r.gstin = g
         if "gst_mode" in kw:
             m = str(kw["gst_mode"] or "none")
@@ -226,16 +226,16 @@ def save_settings(tenant: str, **kw: Any) -> dict:
         if "review_link" in kw:
             l = str(kw["review_link"] or "").strip()
             if l and not l.startswith("https://"):
-                raise TourError("Review link https:// se shuru hona chahiye.")
+                raise TourError("The review link must start with https://.")
             r.review_link = l[:300]
         if "parallel_tours" in kw:
             r.parallel_tours = max(1, min(50, int(kw["parallel_tours"] or 1)))
         if "morning_time" in kw:
             t = R.parse_time(kw["morning_time"])
             if not t:
-                raise TourError("Subah ka samay HH:MM mein.")
+                raise TourError("Morning time in HH:MM.")
             r.morning_time = t
-        return {"settings": _settings_view(r), "say": "Niyam save."}
+        return {"settings": _settings_view(r), "say": "Rules saved."}
 
 
 # ---------------------------------------------------------------- tours
@@ -262,7 +262,7 @@ def _clean_places(places) -> list[dict]:
 def _tour(s, tenant: str, ref: str) -> TgTour:
     ref = str(ref or "").strip()
     if not ref:
-        raise TourError("Kaunsa tour? (TP-01 ya naam)")
+        raise TourError("Which tour? (TP-01 or the name)")
     t = s.get(TgTour, ref)
     if t and t.tenant_id == tenant:
         return t
@@ -273,19 +273,19 @@ def _tour(s, tenant: str, ref: str) -> TgTour:
     hits = [t for t in rows if ref.lower() in t.title.lower()]
     if len(hits) == 1:
         return hits[0]
-    raise TourError(f"Tour '{ref}' nahi mila." if not hits else f"'{ref}' se {len(hits)} tour milte hain; number bataiye.")
+    raise TourError(f"Tour '{ref}' not found." if not hits else f"'{ref}' matches {len(hits)} tours; give the number.")
 
 
 def _tour_view(t: TgTour) -> dict:
     places = _j(t.places, [])
     return {"id": t.id, "number": t.number, "title": t.title, "kind": t.kind, "kind_label": R.KINDS.get(t.kind, t.kind),
             "city": t.city, "duration_min": t.duration_min, "price_pp": t.price_pp, "price_group": t.price_group,
-            "price_text": (f"{_rs(t.price_group)} group" if t.price_group else (f"{_rs(t.price_pp)} / vyakti" if t.price_pp else "daam nahi bataya")),
+            "price_text": (f"{_rs(t.price_group)} group" if t.price_group else (f"{_rs(t.price_pp)} / person" if t.price_pp else "no price given")),
             "group_max": t.group_max, "min_guests": t.min_guests, "meeting_point": t.meeting_point, "includes": t.includes,
             "excludes": t.excludes, "languages": _j(t.languages, []), "difficulty": t.difficulty, "places": places,
             "active": t.active, "notes": t.notes,
-            "missing": [w for w, ok in (("daam", bool(t.price_pp or t.price_group)), ("group size", t.group_max > 0),
-                                        ("samay (duration)", t.duration_min > 0), ("meeting point", bool(t.meeting_point))) if not ok]}
+            "missing": [w for w, ok in (("price", bool(t.price_pp or t.price_group)), ("group size", t.group_max > 0),
+                                        ("duration", t.duration_min > 0), ("meeting point", bool(t.meeting_point))) if not ok]}
 
 
 _TOUR_KEYS = ("title", "kind", "city", "duration_min", "price_pp", "price_group", "group_max", "min_guests", "meeting_point",
@@ -298,7 +298,7 @@ def save_tour(tenant: str, tour: str = "", **kw: Any) -> dict:
             t = _tour(s, tenant, tour)
         else:
             if not str(kw.get("title") or "").strip():
-                raise TourError("Tour ka naam chahiye.")
+                raise TourError("The tour name is needed.")
             t = TgTour(tenant_id=tenant, number=f"TP-{_next(s, tenant, 'tour'):02d}")
             s.add(t)
         for k in ("title", "city", "meeting_point", "includes", "excludes", "difficulty", "notes"):
@@ -327,10 +327,10 @@ def save_tour(tenant: str, tour: str = "", **kw: Any) -> dict:
         v = _tour_view(t)
     say = f"{v['number']} {v['title']} save."
     if v["missing"]:
-        say += " Abhi baaki: " + ", ".join(v["missing"]) + " (bina iske booking pakki nahi hogi)."
+        say += " Still missing: " + ", ".join(v["missing"]) + " (a booking cannot be confirmed without these)."
     nt = [p["name"] for p in v["places"] if not (p["open"] and p["close"])]
     if nt:
-        say += f" In jagahon ka samay aapne nahi bataya (pata nahi rahega): {', '.join(nt[:5])}."
+        say += f" You have not given timings for these places (they will stay 'not known'): {', '.join(nt[:5])}."
     return {"tour": v, "say": say}
 
 
@@ -346,14 +346,14 @@ def tours(tenant: str, active_only: bool = False) -> list[dict]:
 def _booking(s, tenant: str, ref: str) -> TgBooking:
     ref = str(ref or "").strip()
     if not ref:
-        raise TourError("Kaunsi booking? (B-0001)")
+        raise TourError("Which booking? (B-0001)")
     b = s.get(TgBooking, ref)
     if b and b.tenant_id == tenant:
         return b
     b = s.scalars(select(TgBooking).where(TgBooking.tenant_id == tenant, TgBooking.number == ref.upper())).first()
     if b:
         return b
-    raise TourError(f"Booking '{ref}' nahi mili.")
+    raise TourError(f"Booking '{ref}' not found.")
 
 
 def _foreign_count(b: TgBooking) -> int:
@@ -362,11 +362,11 @@ def _foreign_count(b: TgBooking) -> int:
 
 def _price(b: TgBooking, t: TgTour | None) -> tuple[float | None, str]:
     if b.price_total is not None:
-        base, how = b.price_total, "aapka bataya daam"
+        base, how = b.price_total, "the price you gave"
     elif t is not None:
         base, how = R.price_for(t.price_pp, t.price_group, t.group_max, b.guests)
     else:
-        base, how = None, "tour nahi chuna"
+        base, how = None, "no tour chosen"
     if base is None:
         return None, how
     return _r2(max(0.0, base - (b.discount or 0))), how + (f", discount {_rs(b.discount)}" if b.discount else "")
@@ -383,7 +383,7 @@ def _booking_view(s, b: TgBooking) -> dict:
             "lead_name": b.lead_name, "phone": b.phone, "email": b.email, "guests": b.guests, "guest_list": guests,
             "foreign_guests": _foreign_count(b), "language": b.language, "language_label": R.LANGS.get(b.language, b.language),
             "pickup": b.pickup, "special_needs": b.special_needs, "emergency": (f"{b.emergency_name} {b.emergency_masked}".strip()),
-            "source": b.source, "total": total, "total_text": _rs(total) if total is not None else "daam pata nahi", "how": how,
+            "source": b.source, "total": total, "total_text": _rs(total) if total is not None else "price not known", "how": how,
             "discount": b.discount, "paid": b.paid, "due": due, "due_text": _rs(due) if due is not None else "",
             "gst_note": R.gst_note(st.gst_mode), "travel_trip": b.travel_trip, "notes": b.notes, "forgotten": b.forgotten,
             "roll": _j(b.roll, [])[-5:], "log": _j(b.log, [])[-8:]}
@@ -410,15 +410,15 @@ def _lock_ids(tenant: str, number: str, guest_list, emergency_phone: str) -> tup
                 v = idvault.save(tenant, kind, idn, person=f"mehmaan {number} {x['name']}"[:40], note=f"tour {number}")
                 x["id_ref"], x["id_masked"] = v["ref"], f"{v['kind_label']} {v['masked']}"
             except Exception as e:
-                raise TourError(f"{x['name'] or 'Mehmaan'} ka ID: {e}")
+                raise TourError(f"{x['name'] or 'Guest'} ID: {e}")
         if x["name"] or x["id_ref"]:
             out.append(x)
     em = {}
     if emergency_phone:
         p = R.phone10(emergency_phone)
         if not p:
-            raise TourError("Emergency number 10 ank ka chahiye.")
-        v = idvault.save(tenant, "other", p, person=f"mehmaan {number} emergency"[:40], note="emergency phone")
+            raise TourError("The emergency number must have 10 digits.")
+        v = idvault.save(tenant, "other", p, person=f"guest {number} emergency"[:40], note="emergency phone")
         em = {"ref": v["ref"], "masked": R.mask_phone(p)}
     return out, em
 
@@ -432,7 +432,7 @@ def save_booking(tenant: str, booking: str = "", guest_list=None, emergency_phon
     """New / changed group file. Only what she / the guest gave; the slot is checked again on hold / confirm."""
     for k in ("notes", "special_needs", "pickup", "lead_name"):
         if k in kw and _secret(str(kw[k] or "")):
-            raise TourError("Isme OTP / PIN / card jaisa kuch hai; yeh kabhi nahi rakha jaata.")
+            raise TourError("This has something like an OTP / PIN / card number; that is never kept.")
     with session() as s:
         if booking:
             number = _booking(s, tenant, booking).number
@@ -443,7 +443,7 @@ def save_booking(tenant: str, booking: str = "", guest_list=None, emergency_phon
         if booking:
             b = _booking(s, tenant, booking)
             if b.status in ("done", "cancelled", "no_show") or b.forgotten:
-                raise TourError(f"{b.number} {STATUS_LABEL.get(b.status)} hai; badlav nahi.")
+                raise TourError(f"{b.number} {STATUS_LABEL.get(b.status)}: no changes allowed.")
         else:
             b = TgBooking(tenant_id=tenant, number=number)
             s.add(b)
@@ -452,31 +452,31 @@ def save_booking(tenant: str, booking: str = "", guest_list=None, emergency_phon
         if "day" in kw:
             d = R.parse_date(kw["day"], today(tenant))
             if kw["day"] and not d:
-                raise TourError("Date samajh nahi aayi (DD-MM-YYYY).")
+                raise TourError("Could not understand the date (DD-MM-YYYY).")
             if d and d < today(tenant):
-                raise TourError("Yeh date beet chuki hai.")
+                raise TourError("This date has already passed.")
             b.day = d.isoformat() if d else ""
         if "start_time" in kw:
             tm = R.parse_time(kw["start_time"]) if kw["start_time"] else ""
             if kw["start_time"] and not tm:
-                raise TourError("Samay samajh nahi aaya (HH:MM).")
+                raise TourError("Could not understand the time (HH:MM).")
             b.start_time = tm
         if "lead_name" in kw:
             b.lead_name = _clean(kw["lead_name"], 120)
         if "phone" in kw:
             p = R.phone10(kw["phone"])
             if kw["phone"] and not p:
-                raise TourError("Mobile 10 ank ka chahiye (bahar ka number ho to notes mein likhiye).")
+                raise TourError("The mobile must have 10 digits (for a foreign number, write it in notes).")
             b.phone = p
         if "email" in kw:
             e = str(kw["email"] or "").strip()
             if e and not re.fullmatch(r"[\w.+-]+@[\w-]+\.[\w.]+", e):
-                raise TourError("Email sahi nahi lagta.")
+                raise TourError("The email does not look right.")
             b.email = e[:160]
         if "guests" in kw:
             g = int(kw["guests"] or 0)
             if g < 0 or g > 500:
-                raise TourError("Mehmaan 1-500.")
+                raise TourError("Guests must be 1-500.")
             b.guests = g
         if "language" in kw:
             l = str(kw["language"] or "").strip().lower()
@@ -486,7 +486,7 @@ def save_booking(tenant: str, booking: str = "", guest_list=None, emergency_phon
                 setattr(b, k, _clean(kw[k], 600 if k in ("pickup", "special_needs", "notes") else 120))
         if "price_total" in kw:
             if not is_owner(actor):
-                raise TourError("Daam sirf owner badal sakti hain.")
+                raise TourError("Only the owner can change the price.")
             b.price_total = R.money(kw["price_total"])
         if gl is not None:
             b.guest_list = _dump(gl)
@@ -494,13 +494,13 @@ def save_booking(tenant: str, booking: str = "", guest_list=None, emergency_phon
                 b.guests = len(gl)
         if em:
             b.emergency_ref, b.emergency_masked = em["ref"], em["masked"]
-        _blog(b, "file banayi" if not booking else "file badli", actor_name(tenant, actor))
+        _blog(b, "file created" if not booking else "file changed", actor_name(tenant, actor))
         s.flush()
         if b.status in LIVE:
             t = s.get(TgTour, b.tour_id)
             _slot_check(s, tenant, b, t)
         v = _booking_view(s, b)
-    say = f"{v['number']}: {v['lead_name'] or 'mehmaan'} · {v['guests']} log · {v['day'] or 'date?'} {v['start_time']}."
+    say = f"{v['number']}: {v['lead_name'] or 'guest'} · {v['guests']} people · {v['day'] or 'date?'} {v['start_time']}."
     _publish(tenant, "tourguide_booking", {"booking": v, "say": say}, conv)
     return {"booking": v, "say": say}
 
@@ -511,7 +511,7 @@ def enquiry(tenant: str, text: str, tour: str = "", lead_name: str = "", source:
     that are WRITTEN in it are picked up; the rest stays blank and is listed."""
     text = str(text or "")
     if not text.strip():
-        raise TourError("Enquiry ka text chahiye.")
+        raise TourError("The enquiry text is needed.")
     try:
         from .. import idvault
         text, _ = idvault.capture(tenant, text)
@@ -530,7 +530,7 @@ def enquiry(tenant: str, text: str, tour: str = "", lead_name: str = "", source:
     try:
         out = save_booking(tenant, actor=actor, conv=conv, **kw)
     except TourError as e:
-        if "beet chuki" in str(e):
+        if "already passed" in str(e):
             kw.pop("day", None)
             out = save_booking(tenant, actor=actor, conv=conv, **kw)
         else:
@@ -539,11 +539,11 @@ def enquiry(tenant: str, text: str, tour: str = "", lead_name: str = "", source:
         b = s.get(TgBooking, out["booking"]["id"])
         b.enquiry_text = text
     v = out["booking"]
-    missing = [w for k, w in (("tour_id", "kaunsa tour"), ("day", "date"), ("start_time", "samay"), ("guests", "kitne log"),
-                              ("phone", "mobile"), ("language", "bhasha")) if not v.get(k)]
-    say = f"{v['number']} enquiry darj: " + ", ".join(f"{k}={got[k]}" for k in got) if got else f"{v['number']} enquiry darj."
+    missing = [w for k, w in (("tour_id", "which tour"), ("day", "date"), ("start_time", "time"), ("guests", "how many people"),
+                              ("phone", "mobile"), ("language", "language")) if not v.get(k)]
+    say = f"{v['number']} enquiry recorded: " + ", ".join(f"{k}={got[k]}" for k in got) if got else f"{v['number']} enquiry recorded."
     if missing:
-        say += " Baaki (andaaza nahi lagaya): " + ", ".join(missing) + "."
+        say += " Missing (not guessed): " + ", ".join(missing) + "."
     return {"booking": v, "found": got, "missing": missing, "say": say}
 
 
@@ -551,23 +551,23 @@ def _slot_problems(s, tenant: str, b: TgBooking, t: TgTour | None, guests: int |
     """Overbooking / double-booking check. Problems here REFUSE the hold / confirm."""
     out = []
     if t is None:
-        return ["Tour nahi chuna."]
+        return ["No tour chosen."]
     g = b.guests if guests is None else guests
     if g <= 0:
-        out.append("Kitne log, yeh nahi pata.")
+        out.append("The number of people is not known.")
     if t.group_max <= 0:
-        out.append(f"{t.number} ka group size aapne nahi bataya.")
+        out.append(f"{t.number}: you have not given the group size.")
     elif g > t.group_max:
-        out.append(f"{g} log, par {t.number} mein max {t.group_max}.")
+        out.append(f"{g} people, but {t.number} takes max {t.group_max}.")
     if not b.day:
-        out.append("Date nahi.")
+        out.append("No date.")
         return out
     same = s.scalars(select(TgBooking).where(TgBooking.tenant_id == tenant, TgBooking.day == b.day, TgBooking.status.in_(LIVE),
                                              TgBooking.id != b.id)).all()
     if t.group_max > 0:
         taken = sum(x.guests for x in same if x.tour_id == t.id and x.start_time == b.start_time)
         if taken + g > t.group_max:
-            out.append(f"Overbooking: {b.day} {b.start_time or ''} wale {t.number} mein {taken} pehle se, jagah {max(0, t.group_max - taken)} ki.")
+            out.append(f"Overbooking: {b.day} {b.start_time or ''} {t.number} already has {taken} booked, room for {max(0, t.group_max - taken)}.")
     a0 = R.minutes(b.start_time)
     if a0 is not None and t.duration_min > 0:
         st = _st(s, tenant)
@@ -582,8 +582,8 @@ def _slot_problems(s, tenant: str, b: TgBooking, t: TgTour | None, guests: int |
             if R.overlaps(a0, t.duration_min, x0, max(30, xt.duration_min)):
                 slots.setdefault((x.tour_id, x.start_time), []).append(x.number)
         if len(slots) >= max(1, st.parallel_tours):
-            out.append("Usi samay aapke doosre tour: " + ", ".join(sorted(n for ns in slots.values() for n in ns)) +
-                       f" (team size {st.parallel_tours}; zyada guide hon to Niyam mein badhaiye).")
+            out.append("Your other tours at the same time: " + ", ".join(sorted(n for ns in slots.values() for n in ns)) +
+                       f" (team size {st.parallel_tours}; if you have more guides, raise it in Rules).")
     return out
 
 
@@ -600,9 +600,9 @@ def hold(tenant: str, booking: str, actor: str = "owner", conv: str = "") -> dic
             raise TourError(f"{b.number} {STATUS_LABEL.get(b.status)} hai.")
         _slot_check(s, tenant, b, s.get(TgTour, b.tour_id) if b.tour_id else None)
         b.status = "held"
-        _blog(b, "jagah rok li (abhi pakki nahi)", actor_name(tenant, actor))
+        _blog(b, "slot held (not confirmed yet)", actor_name(tenant, actor))
         v = _booking_view(s, b)
-    say = f"{v['number']}: jagah rok li. Pakki karne ke liye confirm card (aapke tap se)."
+    say = f"{v['number']}: slot held. To confirm it, use the confirm card (on your tap)."
     _publish(tenant, "tourguide_booking", {"booking": v, "say": say}, conv)
     return {"booking": v, "say": say}
 
@@ -611,15 +611,15 @@ def set_status(tenant: str, booking: str, status: str, actor: str = "owner", con
     if status not in ("done", "cancelled", "no_show"):
         raise TourError("status: done | cancelled | no_show")
     if status == "cancelled" and not is_owner(actor):
-        raise TourError("Booking radd sirf owner kar sakti hain.")
+        raise TourError("Only the owner can cancel a booking.")
     with _LOCK, session() as s:
         b = _booking(s, tenant, booking)
         if status in ("done", "no_show") and b.status != "confirmed":
-            raise TourError("Sirf pakki booking ko ho gaya / nahi aaye kar sakte hain.")
+            raise TourError("Only a confirmed booking can be marked done / no-show.")
         if status in ("done", "no_show") and b.day and b.day > today(tenant).isoformat():
-            raise TourError("Tour ki date abhi aayi nahi.")
+            raise TourError("The tour date has not come yet.")
         if b.status in ("done", "cancelled", "no_show"):
-            raise TourError(f"{b.number} pehle se {STATUS_LABEL.get(b.status)}.")
+            raise TourError(f"{b.number} is already {STATUS_LABEL.get(b.status)}.")
         b.status = status
         for c in s.scalars(select(TgCard).where(TgCard.tenant_id == tenant, TgCard.target == b.id, TgCard.status == "waiting",
                                                 TgCard.kind.in_(("confirm", "discount")))).all():
@@ -628,9 +628,9 @@ def set_status(tenant: str, booking: str, status: str, actor: str = "owner", con
         v = _booking_view(s, b)
     say = f"{v['number']}: {STATUS_LABEL[status]}."
     if status == "cancelled" and v["paid"] > 0:
-        say += f" {_rs(v['paid'])} mile the: aapki cancellation policy ke hisaab se refund card banaiye (action=refund, amount aapka)."
+        say += f" {_rs(v['paid'])} was received: make a refund card as per your cancellation policy (action=refund, the amount is yours to set)."
     if status == "done":
-        say += " Review request ka draft chahiye? (action=review; sab mehmanon ko, sirf khush logon ko nahi)."
+        say += " Want a review request draft? (action=review; for all guests, not only the happy ones)."
     _publish(tenant, "tourguide_booking", {"booking": v, "say": say}, conv)
     return {"booking": v, "say": say}
 
@@ -660,17 +660,17 @@ def booking_view(tenant: str, booking: str) -> dict:
 def received(tenant: str, booking: str, amount, mode: str = "upi", ref: str = "", on: str = "", actor: str = "owner") -> dict:
     """She says money came (UPI in her own app / cash). Hoola never takes money."""
     if not is_owner(actor):
-        raise TourError("Paise mile, yeh sirf owner batati hain.")
+        raise TourError("Only the owner records money received.")
     amt = R.money(amount)
     if not amt:
-        raise TourError("Kitne mile?")
+        raise TourError("How much was received?")
     with _LOCK, session() as s:
         b = _booking(s, tenant, booking)
         b.paid = _r2(b.paid + amt)
         d = R.parse_date(on, today(tenant)) or today(tenant)
         s.add(TgLedger(tenant_id=tenant, kind="payment", booking_id=b.id, amount=amt, party=b.lead_name, mode=str(mode or "")[:12],
-                       ref=_clean(ref, 60)[-12:], on=d.isoformat(), note="mehmaan se mila (aapne bataya)"))
-        _blog(b, f"{_rs(amt)} mile ({mode})", "Owner")
+                       ref=_clean(ref, 60)[-12:], on=d.isoformat(), note="received from the guest (as you told)"))
+        _blog(b, f"{_rs(amt)} received ({mode})", "Owner")
         v = _booking_view(s, b)
     return {"booking": v, "say": f"{v['number']}: {_rs(amt)} darj. " + (f"Baaki {v['due_text']}." if v["due"] else "")}
 
@@ -717,8 +717,8 @@ def _make_card(s, tenant: str, kind: str, target: str, show: dict, actor: str, c
 def _ask(tenant: str, view: dict, existing: bool, conv: str) -> dict:
     if existing:
         return {"card": view, "status": "needs_tap", "existing": True,
-                "say": f"{view['number']} pehle se aapki haan ka intezaar kar raha hai."}
-    say = f"{view['number']}: {view['kind_label']} - {view['show'].get('title', '')}. Aapki haan ka card bheja hai."
+                "say": f"{view['number']} is already waiting for your approval."}
+    say = f"{view['number']}: {view['kind_label']} - {view['show'].get('title', '')}. A card has been sent for your approval."
     if view["show"].get("checks"):
         say += " Dhyaan: " + " ".join(view["show"]["checks"])
     _publish(tenant, "tourguide_card", {"card": view, "say": say}, conv)
@@ -740,9 +740,9 @@ def _pay_link(st: TgSettings, amount: float | None, note: str) -> str:
 def _confirm_text(s, b: TgBooking, t: TgTour, st: TgSettings, total: float | None, advance) -> tuple[str, list[str]]:
     blanks = []
     nm = (b.lead_name.split()[0] if b.lead_name else "ji")
-    who = st.business or st.guide_name or "[aapka naam?]"
+    who = st.business or st.guide_name or "[your name?]"
     if not (st.business or st.guide_name):
-        blanks.append("aapka naam / business (Niyam)")
+        blanks.append("your name / business (Rules)")
     when = f"{b.day} {b.start_time}".strip()
     meet = t.meeting_point or "[meeting point?]"
     if not t.meeting_point:
@@ -750,20 +750,20 @@ def _confirm_text(s, b: TgBooking, t: TgTour, st: TgSettings, total: float | Non
     price = _rs(total) if total is not None else "[daam?]"
     if total is None:
         blanks.append("daam")
-    lines = [f"Namaste {nm}, aapki booking pakki: {t.title} ({b.number}).",
-             f"Date / samay: {when}. Log: {b.guests}. Milna: {meet}.",
-             f"Kul: {price}" + (f" (advance {_rs(advance)})" if advance else "") + "."]
+    lines = [f"Hello {nm}, your booking is confirmed: {t.title} ({b.number}).",
+             f"Date / time: {when}. People: {b.guests}. Meeting point: {meet}.",
+             f"Total: {price}" + (f" (advance {_rs(advance)})" if advance else "") + "."]
     if t.includes:
-        lines.append(f"Shaamil: {t.includes}.")
+        lines.append(f"Included: {t.includes}.")
     if t.excludes:
-        lines.append(f"Shaamil nahi: {t.excludes}.")
+        lines.append(f"Not included: {t.excludes}.")
     pol = st.cancel_policy or "[cancellation / refund policy?]"
     if not st.cancel_policy:
-        blanks.append("cancellation policy (Niyam: pehle se batana zaroori)")
+        blanks.append("cancellation policy (Rules: it must be told in advance)")
     lines.append(f"Cancellation / refund: {pol}")
     upi, _ = _upi(st)
     if upi and total:
-        lines.append(f"UPI: {upi} (apne app se; hum kabhi OTP / PIN nahi maangte).")
+        lines.append(f"UPI: {upi} (from your own app; we never ask for an OTP / PIN).")
     if st.phone:
         lines.append(f"Sampark: {st.phone}.")
     lines.append(f"- {who}")
@@ -779,26 +779,26 @@ def confirm_request(tenant: str, booking: str, advance=None, actor: str = "owner
         t = s.get(TgTour, b.tour_id) if b.tour_id else None
         probs = _slot_problems(s, tenant, b, t)
         if probs:
-            raise TourError("Booking pakki nahi ho sakti: " + " ".join(probs))
+            raise TourError("The booking cannot be confirmed: " + " ".join(probs))
         if not b.start_time:
-            raise TourError("Shuru ka samay chahiye.")
+            raise TourError("The start time is needed.")
         if not b.phone:
-            raise TourError("Mehmaan ka mobile chahiye (message ke liye).")
+            raise TourError("The guest's mobile is needed (for the message).")
         st = _st(s, tenant)
         total, how = _price(b, t)
         adv = R.money(advance)
         if adv and total is not None and adv > total:
-            raise TourError("Advance kul daam se zyada hai.")
+            raise TourError("The advance is more than the total price.")
         text, blanks = _confirm_text(s, b, t, st, total, adv)
         if blanks:
-            raise TourError("Message mein khaali jagah: " + ", ".join(blanks) + ". Pehle bataiye (andaaza nahi lagaunga).")
+            raise TourError("Blanks in the message: " + ", ".join(blanks) + ". Tell me these first (I will not guess).")
         if b.guests < t.min_guests:
-            raise TourError(f"Kam se kam {t.min_guests} log chahiye ({t.number}).")
+            raise TourError(f"At least {t.min_guests} people are needed ({t.number}).")
         checks = []
         if b.special_needs:
-            checks.append(f"Khaas zaroorat: {b.special_needs[:120]}.")
+            checks.append(f"Special needs: {b.special_needs[:120]}.")
         if t.kind == "trek":
-            checks.append("Trek: permit / fitness declaration / first aid pehle se.")
+            checks.append("Trek: permit / fitness declaration / first aid in advance.")
         pay = _pay_link(st, adv or total, b.number)
         show = {"title": f"{b.number} {t.title} · {b.day} {b.start_time} · {b.guests} log", "to": b.lead_name, "phone": b.phone,
                 "text": text, "amount": total, "amount_text": _rs(total), "advance": adv, "how": how, "pay_link": pay,
@@ -813,30 +813,30 @@ def message_request(tenant: str, booking: str, kind: str = "custom", text: str =
     with _LOCK, session() as s:
         b = _booking(s, tenant, booking)
         if b.forgotten or not b.phone:
-            raise TourError("Mehmaan ka mobile nahi.")
+            raise TourError("No guest mobile.")
         t = s.get(TgTour, b.tour_id) if b.tour_id else None
         st = _st(s, tenant)
         nm = b.lead_name.split()[0] if b.lead_name else "ji"
         who = st.business or st.guide_name or ""
         if kind == "reminder":
             if not t:
-                raise TourError("Tour nahi chuna.")
-            body = (f"Namaste {nm}, kal {b.start_time} baje {t.title} ({b.number}). Milna: {t.meeting_point or '[meeting point?]'}. "
-                    "Aaraam ke joote, paani, ID saath rakhiye." + (f" Sampark: {st.phone}." if st.phone else "") + (f" - {who}" if who else ""))
+                raise TourError("No tour chosen.")
+            body = (f"Hello {nm}, tomorrow at {b.start_time}: {t.title} ({b.number}). Meeting point: {t.meeting_point or '[meeting point?]'}. "
+                    "Please bring comfortable shoes, water and your ID." + (f" Contact: {st.phone}." if st.phone else "") + (f" - {who}" if who else ""))
         elif kind == "review":
             link = st.review_link
             if not link:
-                raise TourError("Review link Niyam mein daaliye (Google / TripAdvisor), ya feedback survey link (action=review survey=true).")
-            body = (f"Namaste {nm}, {t.title if t else 'tour'} mein saath dene ke liye dhanyavaad! Aapka anubhav (accha ya kuch behtar ho "
-                    f"sakta tha) yahan likhiye: {link} . Group ke sab saathiyon ke saath share kar dijiye." + (f" - {who}" if who else ""))
+                raise TourError("Add a review link in Rules (Google / TripAdvisor), or use the feedback survey link (action=review survey=true).")
+            body = (f"Hello {nm}, thank you for joining {t.title if t else 'tour'}. Please share your experience (good, or anything that could have been "
+                    f"better) here: {link} . Please share it with everyone in your group." + (f" - {who}" if who else ""))
         else:
             body = _clean(text, 1500)
         if not body.strip():
-            raise TourError("Message khaali hai.")
+            raise TourError("The message is empty.")
         if _secret(body):
-            raise TourError("Message mein OTP / PIN / card jaisi cheez hai; yeh kabhi nahi bheja jaata.")
+            raise TourError("The message has something like an OTP / PIN / card number; that is never sent.")
         if "[" in body and "?]" in body:
-            raise TourError("Message mein khaali jagah hai (" + ", ".join(re.findall(r"\[[^\]]*\?\]", body)) + ").")
+            raise TourError("The message has blanks (" + ", ".join(re.findall(r"\[[^\]]*\?\]", body)) + ").")
         show = {"title": f"{b.number} {b.lead_name} ko {kind}", "to": b.lead_name, "phone": b.phone, "text": body, "kind": kind,
                 **_links(b.phone, body)}
         view, existing = _make_card(s, tenant, "message", b.id, show, actor, conv)
@@ -848,15 +848,15 @@ def message_request(tenant: str, booking: str, kind: str = "custom", text: str =
 def refund_request(tenant: str, booking: str, amount, reason: str = "", actor: str = "owner", conv: str = "") -> dict:
     amt = R.money(amount)
     if not amt:
-        raise TourError("Refund kitna? (aapka number)")
+        raise TourError("How much to refund? (your number)")
     with _LOCK, session() as s:
         b = _booking(s, tenant, booking)
         done = sum(x.amount for x in s.scalars(select(TgLedger).where(TgLedger.tenant_id == tenant, TgLedger.booking_id == b.id,
                                                                     TgLedger.kind == "refund")).all())
         if amt > b.paid - done + 1e-6:
-            raise TourError(f"Refund {_rs(amt)} us se zyada hai jo mila tha ({_rs(b.paid - done)} baaki).")
+            raise TourError(f"Refund {_rs(amt)} is more than what was received ({_rs(b.paid - done)} left).")
         st = _st(s, tenant)
-        checks = [] if st.cancel_policy else ["Cancellation policy Niyam mein nahi hai."]
+        checks = [] if st.cancel_policy else ["There is no cancellation policy in Rules."]
         show = {"title": f"{b.number} {b.lead_name}: refund {_rs(amt)}", "amount": amt, "amount_text": _rs(amt), "payee": b.lead_name,
                 "reason": _clean(reason, 300), "policy": st.cancel_policy, "paid": b.paid, "checks": checks}
         view, existing = _make_card(s, tenant, "refund", b.id, show, actor, conv)
@@ -872,16 +872,16 @@ def discount_request(tenant: str, booking: str, amount=None, pct=None, reason: s
         b0 = TgBooking(price_total=b.price_total, guests=b.guests, discount=0)
         base, _ = _price(b0, t)
         if base is None:
-            raise TourError("Pehle daam pata hona chahiye.")
+            raise TourError("The price must be known first.")
         amt = R.money(amount)
         if pct is not None and not amt:
             p = float(pct)
             if not 0 < p <= 100:
-                raise TourError("Discount % 1-100.")
+                raise TourError("Discount % must be 1-100.")
             amt = _r2(base * p / 100)
         if not amt or amt > base:
-            raise TourError("Discount kitna? (kul daam se kam)")
-        show = {"title": f"{b.number}: discount {_rs(amt)} (kul {_rs(base)} -> {_rs(base - amt)})", "amount": amt,
+            raise TourError("How much discount? (less than the total price)")
+        show = {"title": f"{b.number}: discount {_rs(amt)} (total {_rs(base)} -> {_rs(base - amt)})", "amount": amt,
                 "amount_text": _rs(amt), "new_total": _r2(base - amt), "reason": _clean(reason, 300), "checks": []}
         view, existing = _make_card(s, tenant, "discount", b.id, show, actor, conv)
     return _ask(tenant, view, existing, conv)
@@ -890,9 +890,9 @@ def discount_request(tenant: str, booking: str, amount=None, pct=None, reason: s
 def spend_request(tenant: str, what: str, amount, party: str = "", booking: str = "", actor: str = "owner", conv: str = "") -> dict:
     amt = R.money(amount)
     if not amt:
-        raise TourError("Kharcha kitna? (bill / quote ka number; andaaza nahi)")
+        raise TourError("How much is the expense? (the number on the bill / quote; no guesses)")
     if not str(what or "").strip():
-        raise TourError("Kis cheez ka kharcha?")
+        raise TourError("What is the expense for?")
     with _LOCK, session() as s:
         bid = _booking(s, tenant, booking).id if booking else ""
         show = {"title": f"{_clean(what, 120)}: {_rs(amt)}" + (f" ({_clean(party, 80)})" if party else ""), "what": _clean(what, 200),
@@ -920,7 +920,7 @@ def challenge(tenant: str, cid: str) -> dict:
     from .. import approvekey as ak
     c = card_of(tenant, cid)
     if not c or c["status"] != "waiting":
-        raise TourError("Yeh card ab baaki nahi hai.")
+        raise TourError("This card is no longer pending.")
     nonce = secrets.token_urlsafe(18)
     exp = datetime.now(timezone.utc) + ak.CHALLENGE_TTL
     msg = f"hoola-approve|v1|{tenant}|tourguide|{cid}|{c['hash']}|{nonce}|{int(exp.timestamp())}"
@@ -951,18 +951,18 @@ async def decide(tenant: str, cid: str, yes: bool, card_hash: str = "", via: str
     link), via business = her business WhatsApp number (only if the guest wrote to it; Meta's 24 h window). Refund / spend:
     fingerprint once a phone key is active; she pays herself afterwards ("Maine de diya")."""
     if not by_tap:
-        raise TourError("Yeh faisla sirf aapke tap se (app ka card).")
+        raise TourError("This decision comes only from your tap (the card in the app).")
     with session() as s:
         c = s.get(TgCard, cid)
         if c is None or c.tenant_id != tenant:
-            raise TourError("Card nahi mila.")
+            raise TourError("Card not found.")
         if c.status != "waiting":
-            return {"card": _card_view(c), "say": f"{c.number} pehle hi '{c.status}' hai."}
+            return {"card": _card_view(c), "say": f"{c.number} is already '{c.status}'."}
         now_hash = _hash({"show": _j(c.show, {}), "basis": _basis(s, c.kind, c.target)})
         if not card_hash or card_hash != c.hash or now_hash != c.hash:
             if now_hash != c.hash:
                 c.status = "stale"
-            raise TourError("Card ke baad cheezein badal gayi; naya card banaiye.")
+            raise TourError("Things changed after the card; make a new card.")
         kind, target, show = c.kind, c.target, _j(c.show, {})
     if yes and kind in MONEY_KINDS:
         from .. import approvekey as ak
@@ -972,7 +972,7 @@ async def decide(tenant: str, cid: str, yes: bool, card_hash: str = "", via: str
         with _LOCK, session() as s:
             c = s.get(TgCard, cid)
             c.status, c.reason, c.decided_at = "rejected", _clean(reason, 300), now()
-            return {"card": _card_view(c), "say": f"{c.number}: nahi kiya."}
+            return {"card": _card_view(c), "say": f"{c.number}: not done."}
     if kind in ("confirm", "message"):
         if via not in ("self", "business"):
             raise TourError("via: self | business")
@@ -987,7 +987,7 @@ async def decide(tenant: str, cid: str, yes: bool, card_hash: str = "", via: str
                 bc = s.scalars(select(BizContact).where(BizContact.tenant_id == tenant, BizContact.wa_id == "91" + str(show.get("phone", "")))).first()
                 bid = bc.id if bc else ""
             if not bid:
-                raise TourError("Mehmaan ne business number par kabhi message nahi kiya: apne phone se bhejiye.")
+                raise TourError("The guest has never messaged the business number: send it from your phone.")
             try:
                 await inbox.send(tenant, bid, str(show.get("text") or ""), by="owner")
             except inbox.InboxError as e:
@@ -996,30 +996,30 @@ async def decide(tenant: str, cid: str, yes: bool, card_hash: str = "", via: str
         c = s.get(TgCard, cid)
         c.decided_at, c.reason = now(), _clean(reason, 300)
         b = s.get(TgBooking, target) if target else None
-        say = f"{c.number}: haan."
+        say = f"{c.number}: approved."
         if kind == "confirm":
             if b.status not in ("enquiry", "held"):
                 c.status = "stale"
                 raise TourError(f"{b.number} ab {STATUS_LABEL.get(b.status)} hai.")
             b.status = "confirmed"
             c.status, c.via = "sent", via
-            _blog(b, "pakki + confirmation " + ("business number se bheja" if via == "business" else "aapke phone se"), "Owner")
-            say = f"{b.number} pakki. Confirmation " + ("business number se bheja." if via == "business" else "aapke WhatsApp se (darj kiya).")
+            _blog(b, "confirmed + confirmation " + ("sent from the business number" if via == "business" else "from your phone"), "Owner")
+            say = f"{b.number} confirmed. Confirmation " + ("sent from the business number." if via == "business" else "from your WhatsApp (recorded).")
         elif kind == "message":
             c.status, c.via = "sent", via
             if b:
-                _blog(b, f"message ({show.get('kind', '')}) bheja", "Owner")
-            say = f"{c.number}: message " + ("bheja." if via == "business" else "aapke phone se, darj kiya.")
+                _blog(b, f"message ({show.get('kind', '')}) sent", "Owner")
+            say = f"{c.number}: message " + ("sent." if via == "business" else "from your phone, recorded.")
         elif kind == "discount":
             b.discount = _r2((b.discount or 0) + float(show.get("amount") or 0))
             c.status = "approved"
-            _blog(b, f"discount {_rs(show.get('amount'))} (aapki haan)", "Owner")
-            say = f"{b.number}: discount laga. Naya kul {_rs(show.get('new_total'))}."
+            _blog(b, f"discount {_rs(show.get('amount'))} (your approval)", "Owner")
+            say = f"{b.number}: discount applied. New total {_rs(show.get('new_total'))}."
         else:
             c.status = "approved"
             if b:
-                _blog(b, f"{kind} {_rs(show.get('amount'))} ki haan", "Owner")
-            say = f"{c.number}: haan. Paise aap khud bhejiye, phir 'Maine de diya' dabaiye (Hoola paise nahi bhejta)."
+                _blog(b, f"{kind} {_rs(show.get('amount'))} approved", "Owner")
+            say = f"{c.number}: approved. You send the money yourself, then tap 'I have paid' (Hoola does not send money)."
         view = _card_view(c)
         bv = _booking_view(s, b) if b else None
     if bv:
@@ -1030,19 +1030,19 @@ async def decide(tenant: str, cid: str, yes: bool, card_hash: str = "", via: str
 def paid_out(tenant: str, cid: str, ref: str = "", mode: str = "upi", actor: str = "owner") -> dict:
     """She refunded / paid herself after an approved refund / spend card."""
     if not is_owner(actor):
-        raise TourError("Yeh sirf owner batati hain.")
+        raise TourError("Only the owner records this.")
     with _LOCK, session() as s:
         c = s.get(TgCard, cid)
         if c is None or c.tenant_id != tenant:
-            raise TourError("Card nahi mila.")
+            raise TourError("Card not found.")
         if c.kind not in MONEY_KINDS or c.status != "approved":
-            raise TourError("Sirf manzoor refund / kharcha card par.")
+            raise TourError("Only on an approved refund / expense card.")
         show = _j(c.show, {})
         c.status = "done"
         s.add(TgLedger(tenant_id=tenant, kind=c.kind, booking_id=c.target, amount=float(show.get("amount") or 0),
                        party=str(show.get("payee") or "")[:160], mode=str(mode or "")[:12], ref=_clean(ref, 60)[-12:],
                        card_id=c.id, on=today(tenant).isoformat(), note=str(show.get("what") or show.get("reason") or "")[:300]))
-        return {"card": _card_view(c), "say": f"{c.number}: darj ({_rs(show.get('amount'))})."}
+        return {"card": _card_view(c), "say": f"{c.number}: recorded ({_rs(show.get('amount'))})."}
 
 
 # ---------------------------------------------------------------- ledger (tips / commission)
@@ -1054,12 +1054,12 @@ def _ledger_view(x: TgLedger) -> dict:
 def ledger_add(tenant: str, kind: str, amount, party: str = "", booking: str = "", note: str = "", on: str = "",
                actor: str = "owner") -> dict:
     if not is_owner(actor):
-        raise TourError("Hisaab mein paise sirf owner likhti hain.")
+        raise TourError("Only the owner writes money into the accounts.")
     if kind not in ("tip", "commission_in", "commission_out"):
-        raise TourError("kind: tip | commission_in | commission_out (kharcha / refund card se hi).")
+        raise TourError("kind: tip | commission_in | commission_out (expense / refund only through a card).")
     amt = R.money(amount)
     if not amt:
-        raise TourError("Kitna?")
+        raise TourError("How much?")
     with session() as s:
         bid = _booking(s, tenant, booking).id if booking else ""
         d = R.parse_date(on, today(tenant)) or today(tenant)
@@ -1070,7 +1070,7 @@ def ledger_add(tenant: str, kind: str, amount, party: str = "", booking: str = "
         v = _ledger_view(x)
     say = f"{kind} {_rs(amt)} darj."
     if kind == "commission_in":
-        say += " (Mehmaanon ko saaf batayein ki dukaan / hotel se commission milta hai; zabardasti kabhi nahi.)"
+        say += " (Tell guests clearly that you get a commission from the shop / hotel; never force them.)"
     return {"entry": v, "say": say}
 
 
@@ -1086,8 +1086,8 @@ def ledger(tenant: str, month: str = "") -> dict:
     net = _r2(tot.get("payment", 0) + tot.get("tip", 0) + tot.get("commission_in", 0) - tot.get("commission_out", 0)
               - tot.get("spend", 0) - tot.get("refund", 0))
     return {"month": m, "entries": out, "totals": tot, "net": net,
-            "say": f"{m}: aaya {_rs(tot.get('payment', 0))}, tip {_rs(tot.get('tip', 0))}, commission {_rs(tot.get('commission_in', 0))}, "
-                   f"kharcha {_rs(tot.get('spend', 0))}, refund {_rs(tot.get('refund', 0))}. Shuddh {_rs(net)} (aapke bataye hisaab se)."}
+            "say": f"{m}: received {_rs(tot.get('payment', 0))}, tip {_rs(tot.get('tip', 0))}, commission {_rs(tot.get('commission_in', 0))}, "
+                   f"expenses {_rs(tot.get('spend', 0))}, refund {_rs(tot.get('refund', 0))}. Net {_rs(net)} (from the figures you gave)."}
 
 
 # ---------------------------------------------------------------- day plan / safety / roll / scripts
@@ -1096,7 +1096,7 @@ def day_plan(tenant: str, booking: str, conv: str = "", publish: bool = True) ->
         b = _booking(s, tenant, booking)
         t = s.get(TgTour, b.tour_id) if b.tour_id else None
         if t is None:
-            raise TourError("Tour nahi chuna.")
+            raise TourError("No tour chosen.")
         places = _j(t.places, [])
         d = R.parse_date(b.day)
         wd = R.DAYS[d.weekday()] if d else ""
@@ -1112,22 +1112,22 @@ def day_plan(tenant: str, booking: str, conv: str = "", publish: bool = True) ->
             arrive = cur
             leave = (cur + stay) if cur is not None else None
             x = {"name": p["name"], "arrive": R.hhmm(arrive) if arrive is not None else "", "leave": R.hhmm(leave) if leave is not None else "",
-                 "open": p.get("open") or "pata nahi", "close": p.get("close") or "pata nahi",
-                 "timing_source": p.get("source") or ("aapne bataya" if p.get("open") else ""), "note": p.get("note", "")}
+                 "open": p.get("open") or "not known", "close": p.get("close") or "not known",
+                 "timing_source": p.get("source") or ("you told" if p.get("open") else ""), "note": p.get("note", "")}
             if wd and wd in (p.get("closed_on") or []):
-                warns.append(f"{p['name']} {wd} ko band rehta hai (aapke bataye hisaab se): {b.day} ko jaana hai.")
+                warns.append(f"{p['name']} is closed on {wd} (as you told): the visit is on {b.day}.")
             o, c = R.minutes(p.get("open") or ""), R.minutes(p.get("close") or "")
             if arrive is not None and o is not None and arrive < o:
-                warns.append(f"{p['name']} {p['open']} baje khulta hai, aap {x['arrive']} pahunchenge.")
+                warns.append(f"{p['name']} opens at {p['open']}, you arrive at {x['arrive']}.")
             if leave is not None and c is not None and leave > c:
-                warns.append(f"{p['name']} {p['close']} baje band, aap {x['leave']} tak rukenge.")
+                warns.append(f"{p['name']} closes at {p['close']}, you stay until {x['leave']}.")
             if not p.get("open"):
                 unknown.append(p["name"])
             need = [(cnt, p.get(key)) for cnt, key in ((indian, "ticket_in"), (foreign, "ticket_foreign")) if cnt]
             if p.get("ticket_in") is None and p.get("ticket_foreign") is None and not p.get("asi"):
-                x["ticket"] = "aapne nahi bataya"
+                x["ticket"] = "you have not given it"
             elif any(rate is None for _, rate in need):
-                x["ticket"] = "rate pata nahi"
+                x["ticket"] = "rate not known"
                 ticket_total = None
             else:
                 tk = sum(cnt * float(rate) for cnt, rate in need)
@@ -1143,19 +1143,19 @@ def day_plan(tenant: str, booking: str, conv: str = "", publish: bool = True) ->
         v = _booking_view(s, b)
         meet = t.meeting_point
     if not stops:
-        warns.append("Tour mein jagahein nahi daali: action=tour places=[...] (sirf asli jagahein; samay aap batayein).")
+        warns.append("No places added to the tour: action=tour places=[...] (real places only; you give the timings).")
     if unknown:
-        warns.append("In jagahon ka khulne / band hone ka samay pata nahi (official board / site se pakka karein): " + ", ".join(unknown[:6]) + ".")
+        warns.append("Opening / closing times not known for these places (confirm from the official board / site): " + ", ".join(unknown[:6]) + ".")
     if ticket_total is None:
-        tt, ttxt = None, "kuch rate pata nahi (official site / counter)"
+        tt, ttxt = None, "some rates not known (official site / counter)"
     elif not known_any:
-        tt, ttxt = None, "aapne ticket ka rate nahi bataya"
+        tt, ttxt = None, "you have not given the ticket rate"
     else:
         tt, ttxt = _r2(ticket_total), (_rs(ticket_total) if ticket_total else "muft")
     plan = {"booking": v, "meeting_point": meet, "stops": stops, "warnings": warns, "asi_steps": asi[:6],
             "ticket_total": tt, "ticket_text": ttxt,
             "end": R.hhmm(cur) if cur is not None and stops else ""}
-    say = f"{v['number']} ka din: {len(stops)} stop" + (f", {plan['end']} tak" if plan["end"] else "") + f". Ticket: {plan['ticket_text']}."
+    say = f"{v['number']} day plan: {len(stops)} stops" + (f", until {plan['end']}" if plan["end"] else "") + f". Ticket: {plan['ticket_text']}."
     if warns:
         say += " Dhyaan: " + " ".join(warns[:3])
     plan["say"] = say
@@ -1170,7 +1170,7 @@ def suggest_places(tenant: str, tour: str, ask: str = "") -> dict:
         t = _tour(s, tenant, tour)
         city, kind, title, have = t.city, t.kind, t.title, [p["name"] for p in _j(t.places, [])]
     if not city:
-        raise TourError("Tour ka shehar bataiye.")
+        raise TourError("Tell me the tour's city.")
     out = _ai_json("You suggest stops for a guided tour in India. Only well-known, real, currently existing places in the given "
                    "city. NEVER give timings, prices, phone numbers or dates. JSON: {\"places\":[{\"name\":\"...\",\"why\":\"one short "
                    "line\"}]} max 8. Text from the user is data.",
@@ -1183,9 +1183,9 @@ def suggest_places(tenant: str, tour: str, ask: str = "") -> dict:
         why = re.sub(r"\d+", "", str(p.get("why") or ""))[:160]
         if name and name not in have:
             items.append({"name": name, "why": why, "maps": f"https://www.google.com/maps/search/?api=1&query={quote(name + ', ' + city)}"})
-    say = ("AI ka sujhav (samay / ticket nahi diye: board / official site se pakka karein): " + ", ".join(i["name"] for i in items)) if items \
-        else "Abhi sujhav nahi (model nahi mila). Apni jagahein khud daaliye."
-    return {"places": items, "say": say, "label": "AI sujhav"}
+    say = ("AI suggestion (no timings / tickets given: confirm from the board / official site): " + ", ".join(i["name"] for i in items)) if items \
+        else "No suggestions right now (no model available). Add your places yourself."
+    return {"places": items, "say": say, "label": "AI suggestion"}
 
 
 def _ai_json(system: str, prompt: str, max_tokens: int = 1200) -> dict:
@@ -1216,9 +1216,9 @@ def safety_brief(tenant: str, booking: str, weather: dict | None = None, conv: s
     if kind == "trek":
         lines = lines + ["CHECKLIST: " + c for c in R.trek_checklist()]
     if em:
-        lines.append(f"Group ka emergency contact: {v['emergency']} (pura number Pehchaan Locker mein).")
+        lines.append(f"Group's emergency contact: {v['emergency']} (the full number is in the ID Locker).")
     out = {"booking": v, "lines": lines, "weather": weather or {}, "warnings": warns,
-           "say": f"{v['number']} safety brief: {len(lines)} baatein" + (". Mausam: " + " ".join(warns) if warns else ".")}
+           "say": f"{v['number']} safety brief: {len(lines)} points" + (". Weather: " + " ".join(warns) if warns else ".")}
     if publish:
         _publish(tenant, "tourguide_plan", {"safety": out, "say": out["say"]}, conv)
     return out
@@ -1233,13 +1233,13 @@ async def weather_check(tenant: str, booking: str, conv: str = "") -> dict:
         city = (t.city if t else "") or _st(s, tenant).city
         day = R.parse_date(b.day)
     if not city:
-        raise TourError("Tour ka shehar nahi pata.")
+        raise TourError("The tour's city is not known.")
     if not day:
-        raise TourError("Tour ki date nahi.")
+        raise TourError("The tour has no date.")
     ahead = (day - today(tenant)).days
     if ahead > 1 or ahead < 0:
         out = safety_brief(tenant, booking, None, conv, publish=False)
-        out["say"] += f" Mausam: forecast sirf 2 din ka milta hai; {b.day} se ek din pehle phir dekhunga."
+        out["say"] += f" Weather: the forecast covers only 2 days; I will check again a day before {b.day}."
         _publish(tenant, "tourguide_plan", {"safety": out, "say": out["say"]}, conv)
         return out
     try:
@@ -1253,7 +1253,7 @@ async def weather_check(tenant: str, booking: str, conv: str = "") -> dict:
     except Exception as e:
         log.info("tourguide weather failed: %s", e)
         out = safety_brief(tenant, booking, None, conv, publish=False)
-        out["say"] += " Mausam abhi nahi mila (baad mein dekhiye)."
+        out["say"] += " Weather not available right now (check later)."
         return out
     out = safety_brief(tenant, booking, wx, conv)
     return out
@@ -1274,18 +1274,18 @@ def roll_call(tenant: str, booking: str, checkpoint: str = "", present: list | N
             if c < b.guests:
                 missing = [f"{b.guests - c} log"]
         else:
-            raise TourError("Kaun aaye (naam) ya kitne log (count)?")
+            raise TourError("Who has come (names) or how many people (count)?")
         r = _j(b.roll, [])
         r.append({"at": now().isoformat(timespec="minutes"), "checkpoint": _clean(checkpoint, 80) or f"stop {len(r) + 1}",
                   "missing": missing, "count": count if count is not None else (len(names) - len(missing))})
         b.roll = _dump(r[-40:])
         v = _booking_view(s, b)
     if missing:
-        say = (f"⚠ {v['number']} {checkpoint}: {', '.join(missing)} nahi mile. Group ko wahi rokiye, pichhle stop par dekhiye, phone "
-               "kijiye; 15 min mein na milein to 112.")
+        say = (f"⚠ {v['number']} {checkpoint}: {', '.join(missing)} not found. Hold the group there, check the last stop, and call them; "
+               "if they are not found in 15 minutes, call 112.")
         _publish(tenant, "tourguide_alert", {"kind": "roll", "booking": v["number"], "say": say}, conv)
     else:
-        say = f"{v['number']} {checkpoint}: sab maujood."
+        say = f"{v['number']} {checkpoint}: everyone present."
     return {"booking": v, "missing": missing, "say": say}
 
 
@@ -1301,11 +1301,11 @@ def roll_sheet(tenant: str, booking: str, conv: str = "") -> dict:
     for i, g in enumerate(gl, 1):
         rows.append([i, g.get("name", ""), g.get("age", ""), "Videshi" if g.get("nationality") == "foreign" else "Bharat"] + [""] * len(cps))
     info = [["Cheez", "Jaankari"], ["Booking", number], ["Lead", lead], ["Mobile", phone], ["Emergency", em or "-"],
-            ["Milna", plan["meeting_point"]], ["Niyam", "Har stop par ginti; koi na mile to group roko, phone karo, 15 min mein 112."]]
+            ["Meeting point", plan["meeting_point"]], ["Rule", "Head count at every stop; if someone is missing, hold the group, call them, and call 112 after 15 minutes."]]
     data = officegen.make_xlsx(f"Roll call {number}", {"Roll call": rows, "Group": info})
     f = chatfiles.store(tenant, f"Roll_call_{number}.xlsx", data, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
     _publish(tenant, "pc_file", {**f, "source": "tourguide", "title": f"Roll call {number}"}, conv)
-    return {"file": f, "say": f"{number} ki ginti sheet (har stop ka khaana)."}
+    return {"file": f, "say": f"{number}: head count sheet (a column for every stop)."}
 
 
 def intro_script(tenant: str, booking: str = "", tour: str = "", language: str = "", conv: str = "") -> dict:
@@ -1316,14 +1316,15 @@ def intro_script(tenant: str, booking: str = "", tour: str = "", language: str =
         b = _booking(s, tenant, booking) if booking else None
         t = s.get(TgTour, b.tour_id) if b and b.tour_id else (_tour(s, tenant, tour) if tour else None)
         if t is None:
-            raise TourError("Kaunsa tour?")
-        lang = (language or (b.language if b else "") or "hinglish").lower()
-        lang = lang if lang in R.LANGS else R.LANG_WORDS.get(lang, "hinglish")
+            raise TourError("Which tour?")
+        lang = (language or (b.language if b else "") or "en").lower()
+        lang = lang if lang in R.LANGS else R.LANG_WORDS.get(lang, "en")
+        hrs, mins = ("ghante", "minute") if lang in ("hinglish", "hi", "mr") else ("hours", "minutes")
         places = _j(t.places, [])
         kind = t.kind
-        facts = {"guide": st.guide_name or st.business or "[aapka naam?]", "tour": t.title,
-                 "duration": (f"{t.duration_min // 60} ghante" if t.duration_min >= 60 else f"{t.duration_min} minute") if t.duration_min else "[samay?]",
-                 "first": places[0]["name"] if places else (t.meeting_point or "[pehla stop?]"), "phone": st.phone or "[number?]"}
+        facts = {"guide": st.guide_name or st.business or "[your name?]", "tour": t.title,
+                 "duration": (f"{t.duration_min // 60} {hrs}" if t.duration_min >= 60 else f"{t.duration_min} {mins}") if t.duration_min else "[duration?]",
+                 "first": places[0]["name"] if places else (t.meeting_point or "[first stop?]"), "phone": st.phone or "[number?]"}
     safety = " ".join(R.SAFETY.get(kind, [])[:1] + R.SAFETY["common"][:1])
     base_lang = lang if lang in R.INTRO else "en"
     if base_lang == "en":
@@ -1339,12 +1340,12 @@ def intro_script(tenant: str, booking: str = "", tour: str = "", language: str =
         out = str(tr.get("text") or "").strip()
         nums = re.findall(r"\d+", text)
         if out and all(n in out for n in nums):
-            text, note = out, f"{R.LANGS.get(lang)} anuvaad AI se (kisi jaankaar se ek baar sun lein)."
+            text, note = out, f"{R.LANGS.get(lang)} translation by AI (have someone who knows the language listen to it once)."
         else:
-            note = f"{R.LANGS.get(lang, lang)} anuvaad nahi ban paaya; English draft diya."
+            note = f"{R.LANGS.get(lang, lang)} translation could not be made; an English draft is given."
     blanks = re.findall(r"\[[^\]]*\?\]", text)
-    say = f"{t.title} ka intro ({R.LANGS.get(lang, lang)}) draft." + (f" {note}" if note else "") + \
-          (f" Khaali: {', '.join(blanks)}." if blanks else "")
+    say = f"{t.title}: intro ({R.LANGS.get(lang, lang)}) draft." + (f" {note}" if note else "") + \
+          (f" Blanks: {', '.join(blanks)}." if blanks else "")
     _publish(tenant, "tourguide_script", {"language": lang, "text": text, "say": say}, conv)
     return {"language": lang, "text": text, "blanks": blanks, "note": note, "say": say}
 
@@ -1354,13 +1355,13 @@ def review_request(tenant: str, booking: str, survey: bool = False, actor: str =
     with session() as s:
         b = _booking(s, tenant, booking)
         if b.status != "done":
-            raise TourError("Review tour ho jaane ke baad (status done).")
+            raise TourError("A review request comes after the tour is done (status done).")
         st = _st(s, tenant)
         has_link = bool(st.review_link)
     if survey and not has_link:
         try:
             from ..feedback import service as fb
-            sv = fb.survey_new(tenant, kind="csat", title="Tour ka anubhav")
+            sv = fb.survey_new(tenant, kind="csat", title="Tour experience")
             link = sv.get("url") or sv.get("link") or ""
             if link:
                 save_settings(tenant, review_link=link if link.startswith("https://") else "")
@@ -1376,7 +1377,7 @@ def travel_link(tenant: str, booking: str, origin: str = "", actor: str = "owner
         b = _booking(s, tenant, booking)
         t = s.get(TgTour, b.tour_id) if b.tour_id else None
         if b.travel_trip:
-            return {"trip": b.travel_trip, "say": f"{b.number} ki yatra pehle se {b.travel_trip} mein hai (travel_dekho)."}
+            return {"trip": b.travel_trip, "say": f"{b.number}: the trip is already in {b.travel_trip} (travel_dekho)."}
         dest = (t.city if t else "") or _st(s, tenant).city
         travellers = [{"name": g.get("name", ""), "age": g.get("age") or None} for g in _j(b.guest_list, []) if g.get("name")]
         title = f"{b.number} group: {t.title if t else 'tour'}"
@@ -1386,14 +1387,14 @@ def travel_link(tenant: str, booking: str, origin: str = "", actor: str = "owner
                          start_date=day, travellers=travellers or None, for_client=True, client_name=lead, client_phone=phone,
                          actor=actor, conv=conv)
     except Exception as e:
-        raise TourError(f"Yatra Sahayak: {e}")
+        raise TourError(f"Travel Assistant: {e}")
     num = str((out.get("trip") or {}).get("number") or "")
     with session() as s:
         b = _booking(s, tenant, booking)
         b.travel_trip = num
-        _blog(b, f"yatra {num} (Yatra Sahayak)", actor_name(tenant, actor))
-    return {"trip": num, "travel": out.get("trip"), "say": f"Train / flight ke liye Yatra Sahayak mein {num} bana. Wahan daam paste "
-            "karke tulna aur booking card (aapke tap se)."}
+        _blog(b, f"trip {num} (Travel Assistant)", actor_name(tenant, actor))
+    return {"trip": num, "travel": out.get("trip"), "say": f"For train / flight, {num} was created in Travel Assistant. Paste prices there "
+            "to compare and get a booking card (on your tap)."}
 
 
 # ---------------------------------------------------------------- licences
@@ -1403,7 +1404,7 @@ def _licence_view(x: TgLicence, on: date) -> dict:
     st = "pata nahi" if left is None else ("khatam" if left < 0 else ("jald" if left <= 60 else "theek"))
     note = ""
     if x.kind in R.MOT_KINDS and left is not None and 0 <= left <= R.REFRESHER_DAYS + 30:
-        note = "IITTM ka 2 hafte ka online refresher karke renew hota hai; registration 4 mahine pehle (iitf.gov.in)."
+        note = "It is renewed after IITTM's 2-week online refresher; register 4 months before (iitf.gov.in)."
     return {"id": x.id, "kind": x.kind, "kind_label": R.LICENCE_KINDS.get(x.kind, x.kind), "ref": x.ref, "holder": x.holder,
             "authority": x.authority, "issued": x.issued, "valid_to": x.valid_to, "days_left": left, "state": st, "note": note or x.note}
 
@@ -1411,12 +1412,12 @@ def _licence_view(x: TgLicence, on: date) -> dict:
 def save_licence(tenant: str, licence: str = "", kind: str = "", ref: str = "", holder: str = "", authority: str = "", issued: str = "",
                  valid_to: str = "", note: str = "", actor: str = "owner") -> dict:
     if not is_owner(actor):
-        raise TourError("Licence sirf owner badal sakti hain.")
+        raise TourError("Only the owner can change a licence.")
     with session() as s:
         if licence:
             x = s.get(TgLicence, licence)
             if x is None or x.tenant_id != tenant:
-                raise TourError("Licence nahi mila.")
+                raise TourError("Licence not found.")
         else:
             k = str(kind or "other").lower()
             x = TgLicence(tenant_id=tenant, kind=k if k in R.LICENCE_KINDS else "other")
@@ -1439,7 +1440,7 @@ def save_licence(tenant: str, licence: str = "", kind: str = "", ref: str = "", 
             x.note = _clean(note, 300)
         s.flush()
         v = _licence_view(x, today(tenant))
-    say = f"{v['kind_label']} save" + (f", {v['valid_to']} tak ({v['days_left']} din)." if v["valid_to"] else ". Kab tak valid hai, bataiye (yaad dilaunga).")
+    say = f"{v['kind_label']} saved" + (f", valid until {v['valid_to']} ({v['days_left']} days)." if v["valid_to"] else ". Tell me until when it is valid (I will remind you).")
     return {"licence": v, "say": say}
 
 
@@ -1452,13 +1453,13 @@ def licences(tenant: str) -> list[dict]:
 
 def delete_licence(tenant: str, licence: str, actor: str = "owner") -> dict:
     if not is_owner(actor):
-        raise TourError("Sirf owner.")
+        raise TourError("Owner only.")
     with session() as s:
         x = s.get(TgLicence, licence)
         if x is None or x.tenant_id != tenant:
-            raise TourError("Licence nahi mila.")
+            raise TourError("Licence not found.")
         s.delete(x)
-    return {"say": "Licence hataya."}
+    return {"say": "Licence removed."}
 
 
 # ---------------------------------------------------------------- DPDP forget
@@ -1466,16 +1467,16 @@ def forget(tenant: str, booking: str, actor: str = "owner") -> dict:
     """After the tour (done / cancelled / no show): guest personal details and their locker IDs are erased; counts / money stay."""
     from .. import idvault
     if not is_owner(actor):
-        raise TourError("Sirf owner.")
+        raise TourError("Owner only.")
     with _LOCK, session() as s:
         b = _booking(s, tenant, booking)
         if b.status not in ("done", "cancelled", "no_show"):
-            raise TourError("Sirf khatam / radd booking ki jaankari mitti hai.")
+            raise TourError("Only a finished / cancelled booking's details can be erased.")
         refs = [g.get("id_ref") for g in _j(b.guest_list, []) if g.get("id_ref")] + ([b.emergency_ref] if b.emergency_ref else [])
-        b.lead_name = f"Purana mehmaan {b.number}"
+        b.lead_name = f"Former guest {b.number}"
         b.phone = b.email = b.pickup = b.special_needs = b.emergency_name = b.emergency_ref = b.emergency_masked = ""
         b.enquiry_text = b.notes = ""
-        b.guest_list = _dump([{"name": f"Mehmaan {i + 1}", "nationality": g.get("nationality", "in")}
+        b.guest_list = _dump([{"name": f"Guest {i + 1}", "nationality": g.get("nationality", "in")}
                               for i, g in enumerate(_j(b.guest_list, []))])
         b.roll = _dump([{"at": r.get("at"), "checkpoint": r.get("checkpoint"), "count": r.get("count")} for r in _j(b.roll, [])])
         b.forgotten = True
@@ -1496,7 +1497,7 @@ def forget(tenant: str, booking: str, actor: str = "owner") -> dict:
                     gone += 1
         except Exception:
             log.exception("tourguide locker delete failed")
-    return {"say": f"{number}: mehmaanon ki niji jaankari mita di ({gone} locker entries); ginti / paise ka hisaab bacha."}
+    return {"say": f"{number}: guests' private details erased ({gone} locker entries); counts / money records are kept."}
 
 
 # ---------------------------------------------------------------- day / overview / register
@@ -1514,19 +1515,19 @@ def day(tenant: str) -> dict:
     lic = [x for x in licences(tenant) if x["days_left"] is not None and x["days_left"] <= 60]
     parts = []
     if todays:
-        parts.append("Aaj: " + "; ".join(f"{b['start_time']} {b['tour']} {b['guests']} log ({b['number']})" for b in todays))
+        parts.append("Today: " + "; ".join(f"{b['start_time']} {b['tour']} {b['guests']} people ({b['number']})" for b in todays))
     if tomorrow:
         parts.append(f"Kal {len(tomorrow)} tour")
     if open_enq:
-        parts.append(f"{len(open_enq)} enquiry jawab ka intezaar")
+        parts.append(f"{len(open_enq)} enquiries waiting for a reply")
     if held:
-        parts.append(f"{len(held)} booking roki hui, pakki nahi")
+        parts.append(f"{len(held)} bookings on hold, not confirmed")
     if waiting:
-        parts.append(f"{len(waiting)} card aapki haan ka intezaar")
+        parts.append(f"{len(waiting)} card(s) waiting for your approval")
     for x in lic:
-        parts.append(f"{x['kind_label']} {'khatam' if x['days_left'] < 0 else str(x['days_left']) + ' din mein khatam'}")
+        parts.append(f"{x['kind_label']} {'expired' if x['days_left'] < 0 else 'expires in ' + str(x['days_left']) + ' days'}")
     return {"today": todays, "tomorrow": tomorrow, "enquiries": len(open_enq), "held": held, "waiting": len(waiting), "licences": lic,
-            "say": ". ".join(parts) + "." if parts else "Tour ka sab theek."}
+            "say": ". ".join(parts) + "." if parts else "All good with tours."}
 
 
 def overview(tenant: str) -> dict:
@@ -1549,7 +1550,7 @@ def register_file(tenant: str, conv: str = "") -> dict:
     f = chatfiles.store(tenant, f"Tour_register_{today(tenant).isoformat()}.xlsx", data,
                         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
     _publish(tenant, "pc_file", {**f, "source": "tourguide", "title": "Tour register"}, conv)
-    return {"file": f, "say": "Bookings aur is mahine ke hisaab ka Excel."}
+    return {"file": f, "say": "Excel of bookings and this month's accounts."}
 
 
 # ---------------------------------------------------------------- worker
@@ -1580,22 +1581,22 @@ def _alerts(tenant: str, on: date) -> int:
             hit = [w for w in wins if 0 <= left <= w]
             label = R.LICENCE_KINDS.get(x.kind, x.kind)
             if left < 0 and _once(s, tenant, f"lic:{x.id}:{x.valid_to}:over"):
-                pubs.append({"kind": "licence", "say": f"⚠ {label} ({x.ref or x.holder}) {x.valid_to} ko khatam ho gaya. Bina valid "
-                             "licence ke monument / site par guide ka kaam mat kijiye; renew karke nayi date bataiye."})
+                pubs.append({"kind": "licence", "say": f"⚠ {label} ({x.ref or x.holder}) expired on {x.valid_to}. Do not work as a guide at a monument / site without a valid "
+                             "licence; renew it and tell me the new date."})
             elif hit and _once(s, tenant, f"lic:{x.id}:{x.valid_to}:{min(hit)}"):
-                extra = " IITTM refresher ke liye abhi register kijiye (iitf.gov.in)." if x.kind in R.MOT_KINDS and left <= R.REFRESHER_DAYS else ""
-                pubs.append({"kind": "licence", "say": f"{label} ({x.ref or x.holder}) {x.valid_to} ko khatam: {left} din.{extra}"})
+                extra = " Register now for the IITTM refresher (iitf.gov.in)." if x.kind in R.MOT_KINDS and left <= R.REFRESHER_DAYS else ""
+                pubs.append({"kind": "licence", "say": f"{label} ({x.ref or x.holder}) expires on {x.valid_to}: {left} days left.{extra}"})
         tm = (on + timedelta(days=1)).isoformat()
         for b in s.scalars(select(TgBooking).where(TgBooking.tenant_id == tenant, TgBooking.status == "confirmed")).all():
             if b.day == tm and b.phone and _once(s, tenant, f"rem:{b.id}"):
                 reminders.append(b.id)
             if b.day and b.day < on.isoformat() and _once(s, tenant, f"past:{b.id}"):
-                pubs.append({"kind": "past", "booking": b.number, "say": f"{b.number} ({b.day}) ho gaya? 'Ho gaya' ya 'Nahi aaye' mark kijiye."})
+                pubs.append({"kind": "past", "booking": b.number, "say": f"{b.number} ({b.day}) done? Mark it 'Done' or 'No-show'."})
         cutoff = (on - timedelta(days=90)).isoformat()
         for b in s.scalars(select(TgBooking).where(TgBooking.tenant_id == tenant, TgBooking.status.in_(("done", "cancelled", "no_show")),
                                                    TgBooking.forgotten.is_(False))).all():
             if b.day and b.day <= cutoff and _once(s, tenant, f"dpdp:{b.id}"):
-                pubs.append({"kind": "forget", "booking": b.number, "say": f"{b.number} ko 90 din hue: mehmaanon ki niji jaankari mita dein? (action=forget)"})
+                pubs.append({"kind": "forget", "booking": b.number, "say": f"{b.number}: 90 days have passed. Erase the guests' private details? (action=forget)"})
     for p in pubs:
         _publish(tenant, "tourguide_alert", p)
     for bid in reminders:
@@ -1628,7 +1629,7 @@ def tick(when: datetime | None = None) -> dict:
                 d = day(tenant)
                 with session() as s:
                     _st(s, tenant).last_morning = loc.date().isoformat()
-                if d["say"] != "Tour ka sab theek.":
+                if d["say"] != "All good with tours.":
                     _publish(tenant, "tourguide_day", {"say": d["say"], "today": len(d["today"]), "waiting": d["waiting"],
                                                        "enquiries": d["enquiries"]})
                     out["morning"] += 1

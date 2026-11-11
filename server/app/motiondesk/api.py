@@ -68,7 +68,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
     async def client_logo(cid: str, file: UploadFile = File(...), tenant: str = Depends(current_tenant)):
         data = await file.read()
         if len(data) > 8 * 1024 * 1024:
-            raise HTTPException(413, "Logo 8 MB se chhota bhejiye.")
+            raise HTTPException(413, "The logo must be smaller than 8 MB.")
         return await run(S.client_logo, tenant, cid, data)
 
     @r.post("/clients/{cid}/forget")
@@ -154,7 +154,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
             return await run(S.template_save, tenant, jid, _s(b.get("name")))
         if what == "cancel":
             return await run(S.cancel, tenant, jid, _s(b.get("reason")))
-        raise HTTPException(404, "Nahi pehchana.")
+        raise HTTPException(404, "Not recognised.")
 
     # ---- cards (HER tap)
     @r.get("/cards")

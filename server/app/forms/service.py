@@ -30,7 +30,7 @@ MAX_QUESTIONS = 100
 # ---------------- questions <-> Forms items ----------------
 def item_for(q: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(q, dict) or not str(q.get("title", "")).strip():
-        raise FormError("Har sawaal ka title chahiye, jaise {title: 'Aapka naam', type: 'short'}.")
+        raise FormError("Every question needs a title, for example {title: 'Your name', type: 'short'}.")
     kind = str(q.get("type") or "short").lower().strip()
     kind = {"text": "short", "radio": "choice", "mcq": "choice", "multiple_choice": "choice", "checkboxes": "checkbox",
             "long": "paragraph", "linear_scale": "scale", "stars": "rating", "drop_down": "dropdown",
@@ -51,9 +51,9 @@ def item_for(q: dict[str, Any]) -> dict[str, Any]:
         rows = [str(r).strip()[:300] for r in (q.get("rows") or []) if str(r).strip()]
         cols = [str(cc).strip()[:300] for cc in (q.get("columns") or []) if str(cc).strip()]
         if not rows or not cols:
-            raise FormError(f"'{item['title']}': grid ke liye rows aur columns dono do.")
+            raise FormError(f"'{item['title']}': a grid needs both rows and columns.")
         if len(set(r.lower() for r in rows)) != len(rows) or len(set(cc.lower() for cc in cols)) != len(cols):
-            raise FormError(f"'{item['title']}': grid rows/columns dobara nahi ho sakte.")
+            raise FormError(f"'{item['title']}': grid rows/columns cannot repeat.")
         rq: dict[str, Any] = {"rows": [{"value": r} for r in rows],
                               "columns": [{"value": cc} for cc in cols]}
         if kind == "checkbox_grid":
@@ -89,9 +89,9 @@ def item_for(q: dict[str, Any]) -> dict[str, Any]:
     elif kind in CHOICE:
         opts = [str(o).strip() for o in (q.get("options") or []) if str(o).strip()]
         if len(opts) < 1:
-            raise FormError(f"'{item['title']}': options do (kam se kam ek).")
+            raise FormError(f"'{item['title']}': give options (at least one).")
         if len(set(o.lower() for o in opts)) != len(opts):
-            raise FormError(f"'{item['title']}': options dobara nahi ho sakte.")
+            raise FormError(f"'{item['title']}': options cannot repeat.")
         cq: dict[str, Any] = {"type": CHOICE[kind], "options": [{"value": o[:500]} for o in opts[:200]]}
         if q.get("allow_other") and kind != "dropdown":
             cq["options"].append({"isOther": True})
@@ -101,7 +101,7 @@ def item_for(q: dict[str, Any]) -> dict[str, Any]:
     elif kind == "scale":
         low, high = int(q.get("low", 1)), int(q.get("high", 5))
         if low not in (0, 1) or not 2 <= high <= 10 or high <= low:
-            raise FormError(f"'{item['title']}': scale low 0 ya 1, high 2 se 10 tak.")
+            raise FormError(f"'{item['title']}': scale low is 0 or 1, high is 2 to 10.")
         sq: dict[str, Any] = {"low": low, "high": high}
         if q.get("low_label"):
             sq["lowLabel"] = str(q["low_label"])[:100]
@@ -124,7 +124,7 @@ def item_for(q: dict[str, Any]) -> dict[str, Any]:
                 valid = {o["value"].lower() for o in question["choiceQuestion"]["options"] if "value" in o}
                 bad = [a for a in answers if str(a).strip().lower() not in valid]
                 if bad:
-                    raise FormError(f"'{item['title']}': sahi jawab {bad} options mein nahi hai.")
+                    raise FormError(f"'{item['title']}': the correct answer {bad} is not in the options.")
             grading["correctAnswers"] = {"answers": [{"value": str(a).strip()} for a in answers]}
         _add_feedback(grading, q, item["title"])         # v0.213: quiz feedback text
         question["grading"] = grading
@@ -262,10 +262,10 @@ def find(tenant: str, query: str = "", limit: int = 15) -> dict[str, Any]:
 def resolve(tenant: str, form: str, account: str | None = None) -> tuple[FormsClient, dict]:
     text = str(form or "").strip()
     if not text:
-        raise FormError("Kaunsa form? Naam, edit link ya id dijiye.")
+        raise FormError("Which form? Give the name, edit link or id.")
     if "/forms/d/e/" in text:
-        raise FormError("Yeh form bharne wala (responder) link hai; Santosh ko form ka EDIT link chahiye "
-                        "(docs.google.com/forms/d/.../edit), ya form ka naam boliye.")
+        raise FormError("This is the form's fill-in (responder) link; Hoola needs the form's EDIT link "
+                        "(docs.google.com/forms/d/.../edit), or say the form's name.")
     cs = [get_client(tenant, account)] if account else (clients(tenant) or [get_client(tenant)])
     fid = id_from(text)
     if not fid:
@@ -285,10 +285,10 @@ def resolve(tenant: str, form: str, account: str | None = None) -> tuple[FormsCl
             exact = [x for x in found if x[1]["title"].lower() == text.lower()]
             pick = exact or found
             if not pick:
-                raise FormError(f"'{text}' naam ka form nahi mila. form_find se list dekhiye, ya edit link dijiye.")
+                raise FormError(f"'{text}': no form with this name. See the list with form_find, or give the edit link.")
             if len({f["id"] for _, f in pick}) > 1:
                 opts = "; ".join(f"{f['title']} (id {f['id']}, {f['modified']})" for _, f in pick[:6])
-                raise FormError(f"Is naam ke kai forms hain: {opts}. User se poochiye kaunsa, phir id se boliye.")
+                raise FormError(f"Several forms have this name: {opts}. Ask the user which one, then use its id.")
             cs = [pick[0][0]] + [c for c in cs if c is not pick[0][0]]
             fid = pick[0][1]["id"]
     last: Exception | None = None
@@ -299,7 +299,7 @@ def resolve(tenant: str, form: str, account: str | None = None) -> tuple[FormsCl
             return c, f
         except FormError as e:
             last = e
-    raise last or FormError("Form nahi khula")
+    raise last or FormError("Could not open the form")
 
 
 # ---------------- creating and editing ----------------
@@ -307,10 +307,10 @@ def create(tenant: str, conv: str, title: str, questions: list[dict] | None = No
            quiz: bool = False, collect_emails: bool = False, account: str | None = None) -> dict[str, Any]:
     title = str(title or "").strip()[:300]
     if not title:
-        raise FormError("Form ka title chahiye.")
+        raise FormError("The form title is needed.")
     questions = questions or []
     if len(questions) > MAX_QUESTIONS:
-        raise FormError(f"Ek form mein {MAX_QUESTIONS} sawaal tak.")
+        raise FormError(f"Up to {MAX_QUESTIONS} questions in one form.")
     items = [item_for(q) for q in questions]           # validate everything before creating anything
     graded = any(("questionItem" in it and it["questionItem"]["question"].get("grading")) for it in items)
     c = get_client(tenant, account)
@@ -348,11 +348,11 @@ def _pick(qs: list[dict], ref: Any) -> dict:
         for q in qs:
             if q["n"] == n:
                 return q
-        raise FormError(f"Sawaal number {n} nahi hai (1-{len(qs)}).")
+        raise FormError(f"There is no question number {n} (1-{len(qs)}).")
     r = str(ref or "").strip().lower()
     hits = [q for q in qs if q["title"].lower() == r] or [q for q in qs if r and r in q["title"].lower()]
     if len(hits) != 1:
-        raise FormError(f"'{ref}' sawaal {'nahi mila' if not hits else 'kai baar mila'}. Sawaal: " +
+        raise FormError(f"'{ref}': question {'not found' if not hits else 'found more than once'}. Questions: " +
                         "; ".join(f"{q['n']}. {q['title']}" for q in qs))
     return hits[0]
 
@@ -386,15 +386,15 @@ def edit(tenant: str, conv: str, form: str, title: str | None = None, descriptio
                 m.append("questionItem.question.required")
             if u.get("options") is not None:
                 if "choiceQuestion" not in question:
-                    raise FormError(f"'{q['title']}' mein options nahi hote.")
+                    raise FormError(f"'{q['title']}' does not take options.")
                 opts = [str(o).strip() for o in u["options"] if str(o).strip()]
                 if not opts:
-                    raise FormError("options khaali nahi ho sakte")
+                    raise FormError("options cannot be empty")
                 question["choiceQuestion"] = {**question["choiceQuestion"], "options": [{"value": o} for o in opts]}
                 m.append("questionItem.question.choiceQuestion.options")
             new["questionItem"] = {"question": question}
         if not m:
-            raise FormError(f"'{q['title']}' mein kya badalna hai? title, required, options, description")
+            raise FormError(f"'{q['title']}': what should change? title, required, options, description")
         reqs.append({"updateItem": {"item": new, "location": {"index": q["index"]}, "updateMask": ",".join(m)}})
     new_items = [item_for(q) for q in add or []]
     if any("questionItem" in it and it["questionItem"]["question"].get("grading") for it in new_items) and not view(f)["is_quiz"]:
@@ -410,8 +410,8 @@ def edit(tenant: str, conv: str, form: str, title: str | None = None, descriptio
             names = [qs[i]["title"] for i in sorted(to_remove)]
             pending_id = pend(tenant, conv, "delete_questions",
                               {"account": c.key, "form": fid, "requests": dels, "titles": names},
-                              {"title": view(f)["title"], "what": f"{len(names)} sawaal hatenge: " + ", ".join(names)[:300],
-                               "note": "In sawaalon ke purane jawab form mein nahi dikhenge."})
+                              {"title": view(f)["title"], "what": f"{len(names)} questions will be removed: " + ", ".join(names)[:300],
+                               "note": "Old answers to these questions will no longer show in the form."})
         else:
             reqs += dels
     if reqs:
@@ -455,7 +455,7 @@ def settings(tenant: str, conv: str, form: str, accepting: bool | None = None, q
         c.publish(fid, bool(accepting))
         changed = True
     if not changed:
-        raise FormError("Kya badalna hai? accepting / published / quiz / emails.")
+        raise FormError("What should change? accepting / published / quiz / emails.")
     v = view(c.get(fid))
     _card(conv, v, "updated")
     return v
@@ -572,10 +572,10 @@ def export(tenant: str, conv: str, form: str, to: str = "auto") -> dict[str, Any
         if usable or to == "sheet":
             from ..sheets import service as sheets
             try:
-                sh = sheets.create(tenant, f"{v['title']} - jawab", tabs=[{"name": "Responses", "header": header, "rows": rows}])
+                sh = sheets.create(tenant, f"{v['title']} - responses", tabs=[{"name": "Responses", "header": header, "rows": rows}])
             except Exception as e:
                 if to == "sheet":
-                    raise FormError(f"Google Sheet nahi bani: {e}")
+                    raise FormError(f"Could not create the Google Sheet: {e}")
                 sh = None
             if sh:
                 if conv:
@@ -614,12 +614,12 @@ def plan_share(tenant: str, conv: str, form: str, people: list[str], role: str =
         raise FormError(" ".join(problems))
     emails = [a.strip() for a in addrs.split(",") if a.strip()]
     if not emails:
-        raise FormError("Kisko share karna hai? Email ya naam do.")
+        raise FormError("Share with whom? Give an email or name.")
     role = "reader" if str(role).lower() in ("reader", "view", "viewer") else "writer"
     v = view(f)
     return pend(tenant, conv, "share", {"account": c.key, "form": f["formId"], "emails": emails, "role": role},
-                {"title": v["title"], "what": ("Edit kar sakenge: " if role == "writer" else "Dekh sakenge: ") + ", ".join(emails),
-                 "people": emails, "note": "Inko Google se email jayega."})
+                {"title": v["title"], "what": ("Can edit: " if role == "writer" else "Can view: ") + ", ".join(emails),
+                 "people": emails, "note": "Google will send them an email."})
 
 
 # ---------------- v0.213: move / media / delete / copy ----------------
@@ -630,10 +630,10 @@ def move(tenant: str, conv: str, form: str, question: Any, new_index: int) -> di
     q = _pick(qs, question)
     ni = int(new_index)
     if ni < 1 or ni > len(qs):
-        raise FormError(f"new_index 1 se {len(qs)} tak (is form mein {len(qs)} items hain).")
+        raise FormError(f"new_index must be 1 to {len(qs)} (this form has {len(qs)} items).")
     ni0 = ni - 1 if ni - 1 < q["index"] else ni        # after removal the target shifts by one
     if ni0 == q["index"]:
-        raise FormError(f"'{q['title']}' pehle se hi position {ni} par hai.")
+        raise FormError(f"'{q['title']}' is already at position {ni}.")
     c.batch(f["formId"], [{"moveItem": {"location": {"index": q["index"]},
                                          "toLocation": {"index": ni - 1 if ni - 1 < q["index"] else ni}}}])
     f = c.get(f["formId"])
@@ -650,7 +650,7 @@ def media(tenant: str, conv: str, form: str, kind: str, uri: str, title: str = "
         raise FormError("kind: image / video")
     uri = str(uri or "").strip()
     if not uri:
-        raise FormError("uri do: image ka public link ya YouTube video ka link.")
+        raise FormError("Give uri: a public link to the image or a YouTube video link.")
     item: dict[str, Any] = {}
     if title:
         item["title"] = str(title)[:500]
@@ -676,8 +676,8 @@ def plan_delete(tenant: str, conv: str, form: str) -> str:
     c, f = resolve(tenant, form)
     v = view(f)
     return pend(tenant, conv, "delete_form", {"account": c.key, "form": f["formId"]},
-                {"title": v["title"], "what": f"Form '{v['title']}' Drive ke Trash mein jayegi",
-                 "note": "Wapas laane ke liye Drive > Trash se restore kijiye. Jawab bhi Trash mein hain."})
+                {"title": v["title"], "what": f"Form '{v['title']}' will go to Drive's Trash",
+                 "note": "To bring it back, restore it from Drive > Trash. The answers are in Trash too."})
 
 
 def do_delete(c: FormsClient, form_id: str) -> dict:
@@ -718,27 +718,27 @@ def pending(tenant: str, pid: str) -> dict | None:
 def run_pending(tenant: str, pid: str) -> dict[str, Any]:
     p = pending(tenant, pid)
     if p is None or p["status"] != "pending":
-        raise FormError("Yeh form badlav ab baaki nahi hai.")
+        raise FormError("This form change is no longer pending.")
     pl = p["payload"]
     c = get_client(tenant, pl["account"])
     try:
         if p["action"] == "share":
             for e in pl["emails"]:
                 c.share(pl["form"], e, pl["role"])
-            msg = f"Form '{p['summary']['title']}' share kar diya: {', '.join(pl['emails'])}."
+            msg = f"Form '{p['summary']['title']}' shared with: {', '.join(pl['emails'])}."
         elif p["action"] == "delete_questions":
             f = c.get(pl["form"])
             titles = [q["title"] for q in questions_of(f)]
             for r in pl["requests"]:   # the form may have changed since the card: check each index still holds that question
                 i = r["deleteItem"]["location"]["index"]
                 if i >= len(titles) or titles[i] not in pl["titles"]:
-                    raise FormError("Card banne ke baad form badal gaya; sawaal dobara chun kar boliye.")
+                    raise FormError("The form changed after the card was made; pick the questions again.")
             f = c.batch(pl["form"], pl["requests"]).get("form") or c.get(pl["form"])
             _card(p["conversation_id"], view(f), "updated")
-            msg = f"Form '{p['summary']['title']}' se {len(pl['requests'])} sawaal hata diye."
+            msg = f"Form '{p['summary']['title']}': {len(pl['requests'])} questions removed."
         elif p["action"] == "delete_form":
             c.trash(pl["form"])
-            msg = f"Form '{p['summary']['title']}' Drive ke Trash mein daal di. (Drive > Trash se wapas la sakte hain.)"
+            msg = f"Form '{p['summary']['title']}' moved to Drive's Trash. (You can restore it from Drive > Trash.)"
         else:
             raise FormError("unknown form action")
     except FormError:
@@ -799,10 +799,10 @@ def alerts_tick() -> int:
             total = w.seen_count
         if conv:
             names = [r.get("respondentEmail") for r in new if r.get("respondentEmail")]
-            text = f"Form '{title}' par {len(new)} naye jawab aaye (kul {total})."
+            text = f"Form '{title}': {len(new)} new responses (total {total})."
             if names:
-                text += " " + ", ".join(names[:3]) + (" aur…" if len(names) > 3 else "")
-            text += " Dekhne ke liye boliye: 'jawab dikhao'."
+                text += " " + ", ".join(names[:3]) + (" and…" if len(names) > 3 else "")
+            text += " To see them, say: 'show the responses'."
             notify(conv, text)
             told += 1
     return told
