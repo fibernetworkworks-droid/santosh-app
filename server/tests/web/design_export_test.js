@@ -128,18 +128,21 @@ async function main() {
   const save = async (dl, as) => { const p = path.join(outDir, as); await dl.saveAs(p); report.files[as] = {name: dl.suggestedFilename(), path: p, size: fs.statSync(p).size}; return p; };
   /* the shared layout check does not know about a scrolled panel: a control scrolled away above it is not "outside the window" */
   const layout = async page => { const scrolled = await page.evaluate(() => Array.from(document.querySelectorAll('.hd-pbody')).some(el => el.scrollTop > 0)); return (await layout(page)).filter(l => !(scrolled && /^outside the window: /.test(l))); };
+  const t00 = Date.now(), step = name => { if (process.env.DESIGN_TRACE) console.error('[' + ((Date.now() - t00) / 1000).toFixed(1) + 's] ' + name); };
   const toastOf = page => page.evaluate(() => { const t = document.querySelector('.hd-toast'); return t ? t.textContent : ''; });
   try {
     const page = await newPage();
     await page.goto(base + '#/f/f1'); await mounted(page); await page.waitForTimeout(300);
 
     /* ---- it plugged in, and the editor's own commands are still there ---- */
+    step("it plugged in, and the editor's own commands are still there");
     const wired = await page.evaluate(() => ({hooks: ['export', 'exportSection', 'importSvg'].every(k => typeof HD.ui.hooks[k] === 'function'), panel: HD.ui.state.panels.right.some(p => p.id === 'inspect'), api: typeof HD.handoff.renderOne,
       own: HD.ui.run('selectAll'), mine: ['copyPng', 'placeImage', 'saveCopy', 'importCopy', 'inspect'].map(id => HD.ui.run(id) !== undefined)}));
     ok(wired.hooks && wired.panel && wired.api === 'function', 'the hooks, the Inspect panel and HD.handoff are there'); ok(wired.own === true, 'the editor’s own commands were not lost');
     await page.keyboard.press('Escape'); await page.evaluate(() => { HD.ui.closeModal(); HD.ui.state.rightTab = 'design'; HD.ui.refresh(); HD.sel.set(['9:1']); }); await page.waitForTimeout(250);
 
     /* ---- the writers: CRC32, file names, sizes ---- */
+    step('the writers: CRC32, file names, sizes');
     const unit = await page.evaluate(() => { const H = HD.handoff;
       return {crc: H.crc32(new TextEncoder().encode('123456789')), names: ['icons/home', '../../etc/passwd', 'CON', '  a<b>:c?*.png  ', '', 'पोस्टर 1'].map(n => [H.safeName(n, false), H.safeName(n, true)]),
         sizes: ['2x', '0.5', '512w', '300 h', '3,5x', 'abc', '0x', '99x', '1080W'].map(s => H.parseSize(s)), colors: ['#abc', 'rgb(255 0 0 / 50%)', 'hsl(120, 100%, 25%)', 'rebeccapurple', 'none', 'url(http://x/y)', 'transparent'].map(c => H.parseColor(c)),
@@ -151,6 +154,7 @@ async function main() {
     eq(unit.tf, [0, 2, -2, 0, 10, 20], 'a transform list'); ok(unit.dec.flipH && !unit.dec.flipV && unit.dec.rot === 0 && unit.dec.ok, 'a mirror is a flip, not a half turn'); eq(unit.path, 'MLCZM', 'path data with packed arc flags');
 
     /* ---- PNG / JPG: exact sizes, real colours, the limit ---- */
+    step('PNG / JPG: exact sizes, real colours, the limit');
     const ex = await page.evaluate(async () => {
       const H = HD.handoff, o = {};
       const pixels = async (blob, pts) => { const bm = await createImageBitmap(blob), cv = document.createElement('canvas'); cv.width = bm.width; cv.height = bm.height; const c = cv.getContext('2d'); c.drawImage(bm, 0, 0); return pts.map(p => Array.from(c.getImageData(p[0], p[1], 1, 1).data)); };
@@ -177,6 +181,7 @@ async function main() {
     eq(ex.plan, [['Post 1080.png', 1080, 1080, 'px', false], ['icons/Green dot@2x.png', 408, 408, 'px', false], ['icons/Green dot@2x-2.png', 408, 408, 'px', false], ['Post 1080-2.png', 8640, 8640, 'px', false], ['A4 पेज.pdf', 595, 842, 'pt', false]], 'the plan: names, sizes, no two files alike');
 
     /* ---- the Export section of the Design panel ---- */
+    step('the Export section of the Design panel');
     const sec = page.locator('.hd-right section[aria-label="Export"]');
     await sec.scrollIntoViewIfNeeded(); ok(await sec.locator('.hdx-go').isVisible(), 'the Export button is in the Design panel');
     await sec.locator('.hdx-add').click(); await sec.locator('.hdx-add').click(); await page.waitForTimeout(150);
@@ -194,6 +199,7 @@ async function main() {
     await page.evaluate(() => { HD.store.tx('rows', () => HD.store.set('9:1', {exports: [{fmt: 'png', scale: 1, suffix: ''}, {fmt: 'jpg', scale: 1, suffix: '-small', w: 512}]})); }); await page.waitForTimeout(200);
 
     /* ---- the Export dialog: selection, all frames, the list of what will be made, one PDF ---- */
+    step('the Export dialog: selection, all frames, the list of what w');
     await page.locator('.hd-top button[title^="Export"]').click(); await page.waitForSelector('.hdx-dialog');
     eq(await page.locator('.hdx-dialog .hdx-item .hdx-iname').allTextContents(), ['Post 1080.png', 'Post 1080-small.jpg'], 'the dialog lists the selection’s own exports');
     await page.locator('.hdx-dialog .hdx-scope button').nth(1).click();
@@ -221,6 +227,7 @@ async function main() {
     fs.writeFileSync(path.join(outDir, 'unit.zip'), Buffer.from(zipB64, 'base64')); report.files['unit.zip'] = {path: path.join(outDir, 'unit.zip')};
 
     /* ---- Copy as PNG (Ctrl+Shift+C) and Copy as code in the right-click menu ---- */
+    step('Copy as PNG (Ctrl+Shift+C) and Copy as code in the right-cli');
     await page.evaluate(() => HD.sel.set(['9:3'])); await page.locator('canvas.hd-canvas').focus(); await page.keyboard.press('Control+Shift+C');
     await page.waitForFunction(() => /Copied as PNG/.test((document.querySelector('.hd-toast') || {}).textContent || ''), null, {timeout: 8000});
     const clip = await page.evaluate(async () => { try { const items = await navigator.clipboard.read(), bl = await items[0].getType('image/png'), bm = await createImageBitmap(bl); return [bm.width, bm.height]; } catch (e) { return String(e); } });
@@ -233,6 +240,7 @@ async function main() {
     eq((await page.evaluate(() => navigator.clipboard.readText())).trim(), '<div class="absolute left-[100px] top-[100px] w-[200px] h-[200px] bg-[#00FF00] outline outline-[4px] outline-black outline-offset-[-2px] rounded-full"></div>', 'Copy as code → Tailwind');
 
     /* ---- SVG: what Hoola writes comes back as the same layers ---- */
+    step('SVG: what Hoola writes comes back as the same layers');
     const rt = await page.evaluate(async () => {
       const S = HD.store, H = HD.handoff, pg = HD.sel.page, sol = (c, o) => ({type: 'solid', color: c, opacity: o === undefined ? 1 : o, visible: true}), o = {};
       S.tx('seed', () => {
@@ -266,6 +274,7 @@ async function main() {
     ok(rt.undoable && rt.afterUndo === false && rt.countBack, 'the whole import is ONE undo step');
 
     /* ---- a hostile SVG: nothing runs, nothing is fetched ---- */
+    step('a hostile SVG: nothing runs, nothing is fetched');
     const before = requests.length;
     const hs = await page.evaluate(async (svg) => { const got = await HD.handoff.importSvg(svg, {x: -2000, y: 300}); const S = HD.store, list = []; S.walk(got.id, (id, n) => { list.push([n.type, n.name, n.fills ? n.fills.map(f => f.type + (f.color || '')).join() : '', n.chars || '']); return true; }); await new Promise(r => setTimeout(r, 700));
       return {list, left: got.left, pwned: window.__pwned === undefined ? null : window.__pwned, live: document.querySelectorAll('script[src*="evil"], foreignObject, iframe, img[src*="evil"]').length}; }, HOSTILE_SVG);
@@ -280,6 +289,7 @@ async function main() {
     report.cap_ms = cap[2];
 
     /* ---- a real-world style SVG: the numbers, and the browser's own picture of it ---- */
+    step("a real-world style SVG: the numbers, and the browser's own p");
     const cx = await page.evaluate(async (svg) => {
       const H = HD.handoff, S = HD.store, got = await H.importSvg(svg, {x: 320, y: -2000}, {name: 'shop'});
       const rows = []; const go = (id, d) => { const n = S.get(id), b = S.worldBounds(id); rows.push({d, t: n.type, name: n.name, x: +b.x.toFixed(2), y: +(b.y + 2240).toFixed(2), w: +b.w.toFixed(2), h: +b.h.toFixed(2), rot: n.rot || 0, sw: n.strokeWeight, fill: n.fills && n.fills[0] ? (n.fills[0].color || n.fills[0].type) : '', fo: n.fills && n.fills[0] ? n.fills[0].opacity : null, op: n.opacity, r: n.radius, dash: n.dash, cap: n.strokeCap, runs: n.runs, chars: n.chars, clip: n.clip, from: n.fills && n.fills[0] && n.fills[0].from, to: n.fills && n.fills[0] && n.fills[0].to, stops: n.fills && n.fills[0] && n.fills[0].stops, fw: n.fontWeight, fs: n.fontSize}); for (const k of S.children(id)) go(k, d + 1); }; go(got.id, 0);
@@ -320,6 +330,7 @@ async function main() {
     await page.evaluate(() => HD.render.zoomToFit(HD.sel.ids)); await page.waitForTimeout(350); await shot(page, 'svg-import');
 
     /* ---- pictures: the picker (Ctrl+Shift+K), a drop, a paste ---- */
+    step('pictures: the picker (Ctrl+Shift+K), a drop, a paste');
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hd-pics-'));
     fs.writeFileSync(path.join(dir, 'red card.png'), pngBytes(300, 200, [200, 30, 30])); fs.writeFileSync(path.join(dir, 'blue.png'), pngBytes(120, 120, [30, 30, 200]));
     fs.writeFileSync(path.join(dir, 'very wide.png'), pngBytes(5000, 100, [30, 160, 60])); fs.writeFileSync(path.join(dir, 'fake.png'), '<html>not a picture</html>');
@@ -354,6 +365,7 @@ async function main() {
     eq(emb, [1, 'RECT', 10, 20, 64, 48, 'image', true, 1], 'an embedded PNG becomes an asset; a data: address that is not a picture is left out');
 
     /* ---- Inspect: the values, the colours, the code ---- */
+    step('Inspect: the values, the colours, the code');
     const card = await page.evaluate(async () => {
       const S = HD.store, pg = HD.sel.page, sol = (c, o) => ({type: 'solid', color: c, opacity: o === undefined ? 1 : o, visible: true}), o = {};
       S.tx('card', () => {
@@ -434,6 +446,7 @@ async function main() {
     eq(await layout(page), [], 'layout with the Inspect tab, light'); await shot(page, 'inspect-light');
 
     /* ---- Save a copy as .hoola.json, import it into a new file ---- */
+    step('Save a copy as .hoola.json, import it into a new file');
     await page.evaluate(() => HD.sel.clear());
     [dl] = await Promise.all([page.waitForEvent('download'), page.evaluate(() => { HD.ui.run('saveCopy'); })]);
     eq(dl.suggestedFilename(), 'Shop poster.hoola.json'); const copyPath = await save(dl, 'copy.hoola.json'), copy = JSON.parse(fs.readFileSync(copyPath, 'utf8'));
@@ -452,6 +465,7 @@ async function main() {
     await page.close();
 
     /* ---- dark, and a view-only file: Inspect and Export still work, nothing can be changed ---- */
+    step('dark, and a view-only file: Inspect and Export still work, n');
     const dark = await newPage({colorScheme: 'dark'}); await dark.goto(base + '#/f/f1'); await mounted(dark); await dark.waitForTimeout(300);
     await dark.evaluate(id => { HD.sel.set([id]); HD.render.zoomToFit([HD.store.parent(id)]); }, card.ids.card); await dark.waitForTimeout(300);
     await dark.locator('.hd-right section[aria-label="Export"]').scrollIntoViewIfNeeded(); await dark.waitForFunction(() => { const c = document.querySelector('.hdx-prevcv'); return c && c.width > 10; }, null, {timeout: 5000});
