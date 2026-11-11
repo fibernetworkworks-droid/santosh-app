@@ -901,6 +901,8 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
         blocks, stop = B.call(system, msgs, TOOLS)
         msgs.append({"role": "assistant", "content": blocks})
         for b in blocks:
+            if b.get("type") == "thinking" and str(b.get("thinking") or "").strip():
+                emit({"k": "think", "text": scrub(str(b["thinking"]).strip())[:1500]})    # Phase 5: shown in the Thinking view only
             if b.get("type") == "text" and str(b.get("text") or "").strip():
                 emit({"k": "say", "text": str(b["text"]).strip()[:800]})
         uses = [b for b in blocks if b.get("type") == "tool_use"]

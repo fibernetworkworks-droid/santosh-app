@@ -1,4 +1,4 @@
-"""v0.798 HOOLA PROMPTING P1-P3 (built as 0.796) (docs/HOOLA_PROMPTING_PLAN.md): the understanding engine (a prompt = a BRIEF: her
+"""v0.799 HOOLA PROMPTING P1-P3 (built as 0.796) (docs/HOOLA_PROMPTING_PLAN.md): the understanding engine (a prompt = a BRIEF: her
 facts locked, a guess labelled a guess, nothing silent, no magic phrase), the Improve button, and the Prompting page.
 No model runs here: the one small fill call is replaced by a fake."""
 import json
@@ -396,7 +396,30 @@ def test_improve_button_in_the_console_and_the_web_studio(arena_server, monkeypa
     ctx.close()
 
 
+def test_first_visit_race_on_the_connectors_user_row(env):
+    """Found while wiring the Improve button: the Connectors page loads its lists together, and on her FIRST visit two
+    requests both created her bazar user row - the loser answered 500. The loser now reads the row instead."""
+    from app.bazar import service as BS
+    from app.bazar.db import User
+    from app.db import session
+    with session() as s:
+        BS.ensure_user(s, "race_t")
+    with session() as s:
+        real_get, seen = s.get, []
+
+        def get(model, key, *a, **k):               # this request looked a moment before the other one committed
+            if model is User and not seen:
+                seen.append(1)
+                return None
+            return real_get(model, key, *a, **k)
+        s.get = get
+        u = BS.ensure_user(s, "race_t")
+        assert u is not None and u.id == "race_t"
+    with session() as s:
+        assert s.get(User, "race_t") is not None
+
+
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.798.0"
-    assert "0.798.0+797" in (REPO / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.799.0"
+    assert "0.799.0+798" in (REPO / "pubspec.yaml").read_text()

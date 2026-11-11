@@ -75,6 +75,7 @@ def _full_voice_menu(monkeypatch):
     monkeypatch.setenv("HOOLA_CODE_PAGE", "false")     # v0.748 older suites pin the console without the Hoola Code row
     monkeypatch.setenv("DEV_WORKSPACE", "false")       # v0.784 older Hoola Code suites run the GitHub-API loop; test_v0784 turns the engine on
     monkeypatch.setenv("DEV_CLAUDE", "false")          # v0.784 older suites pin the forced-model picker (SAB GLM); test_v0784 turns Claude-only on
+    monkeypatch.setenv("DEV_HINT", "false")            # Phase 5: the next-message suggestion is one more model call; its own test turns it on
     monkeypatch.setenv("FLOW_PAGE", "false")           # v0.751 older suites pin the console without the Hoola Flow row
     monkeypatch.setenv("SHILP_PAGE", "false")          # v0.752 older suites pin the Create studio without the ArtCraft tool
     monkeypatch.setenv("ARCHITECT_OPUS", "true")       # v0.735 older suites pin the architect on Opus; test_v0735_all_glm checks GLM

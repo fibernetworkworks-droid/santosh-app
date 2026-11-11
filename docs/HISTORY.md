@@ -1373,8 +1373,62 @@ vendor MCPs sign in with OAuth to HER vendor account — whether that fits her "
 
 Also healed: four game-role tests still asserted the old Hinglish "hired nahi" after main's English-tools commit d84057023.
 
+## v0.798.0 HOOLA CODE PHASE 5 (built as 0.794; their PROMPT NAAP took 0.794.0, YEH WALA 0.795.0, PRAYOGSHALA WAVE 7 0.796.0 and 3D SCENES + GAME TOOL HUB 0.797.0) — around the session: thinking, passes, reviewers' comments, the suggestion, scheduled tasks + trigger, phone push, read-only link (owner: "GO PHASE 5")
 
-## v0.798.0 HOOLA PROMPTING P1-P3 - the understanding engine, the Improve button, the Prompting page (built as 0.796; their 0.796.0-0.797.0 took the numbers - REBASE PROTOCOL, all kept; owner: "GO P1 TO P3")
+Phase 5 of `docs/HOOLA_CODE_WEB_PLAN.md`. Nothing here changes what a session may do: a scheduled or triggered run is an
+ordinary session, so the checks on a change, her PR tap and her merge tap are the same code. New module
+`server/app/devsahayak/around.py`; the page is `static/console/code.js` (+ `hoolacode.js` for the read-only page).
+
+**What she gets**
+- **Thinking view.** The model's own thinking is kept per step (`engine._round` emits `{"k": "think"}`, scrubbed for
+  keys, 3,000 chars a step). Session menu > Transcript view: Normal / Thinking / Verbose. It is shown, never sent
+  anywhere else.
+- **Passes card** (right rail). The plan pass, Hoola's own review, a CI fix round and a reviewers'-comments round each
+  write a start and an end step (`service._pass`), with how they ended ("3 steps planned", "clean", "2 point(s) to fix").
+- **Reviewers' comments.** People's comments on her pull request are read from GitHub (`gh.pr_comments`: line comments +
+  conversation; bots left out; text scrubbed) and shown on a card. "Fix N comments" = one round on the same PR with the
+  comments as DATA (`<pr_review_comments>`: Hoola decides which are right and says which it did not follow). The same
+  comment is never asked twice (`DevTask.pr_notes` seen list). By itself only when the PR's Auto-fix switch is on AND
+  the repo is private (on a public repo anyone can comment, so it always waits for her tap), at most 6 rounds a PR.
+- **A suggested next message** (ghost text in the message box; Tab takes it). One small call when a round ends
+  (`around.make_hint`, `dev_hint`, `dev_hint_model` = Haiku, no tools, 60 tokens). NONE / too long / a key = nothing shown.
+- **Scheduled tasks** (sidebar > Scheduled, `#/scheduled`). A task that starts by itself: every day / Monday to Friday /
+  one weekday, a time in India time, or only on demand; Run now; Pause; history of its sessions. At most 12; never more
+  often than daily; a missed slot (server down) runs once; a run still working is not started twice.
+  Table `devsahayak_schedules`, worker `around.tick_schedules` from `service.tick`.
+- **Trigger address** for her own program: `POST /api/devsahayak/hooks/<id>` with `Authorization: Bearer hct_...`.
+  The token is shown ONCE and only its sha256 is stored; a new token ends the old one; wrong id and wrong token give the
+  same 401; 10 runs an hour (429); a paused task answers 409. The caller's `text` is added to the task inside
+  `<trigger_payload>` as DATA, never instructions. The answer carries only `{ok, session}`.
+- **Phone push** when a background run ends: "Hoola Code: done" (PR ready) or "Hoola Code needs you" (failed, or Hoola
+  asked a question). One event per run (`around.tell_end`, flag `end` on `devsahayak_task`); states that already push
+  from their own card (ready / plan / explained / refused / CI failed) are not told twice.
+- **Read-only link** to one session (session menu > Share a read-only link, confirm first). Random 43-character token,
+  7 days, she can stop it at once; an ended link never comes back to life. The page `/console/code/shared/<token>` needs
+  no sign-in and can only ask `GET /api/devsahayak/shared/<token>`; the view is REDUCED: repo name without the owner, no
+  attachments, no cost, no PR link, no hidden-file list, no buttons that act (no composer, no merge, no comments on
+  lines, no Compare). Headers: noindex, no-referrer, frame DENY.
+
+**Routes** (all under `/api/devsahayak`): GET/POST `/schedules`, PATCH/DELETE `/schedules/{id}`, POST `/schedules/{id}/run`,
+POST/DELETE `/schedules/{id}/trigger`, POST `/tasks/{id}/share`, GET `/tasks/{id}/comments`, POST
+`/tasks/{id}/bg/fix_comments`; public: POST `/hooks/{id}`, GET `/shared/{token}`; page `/console/code/shared/{token}`.
+**Columns** (nullable, self-heal): `DevTask.share`, `share_until`, `hint`, `sched_id`, `pr_notes`.
+**Switches:** `dev_hint` (True), `dev_hint_model`. conftest pins `DEV_HINT=false` for the older suites.
+
+**Tests** `server/tests/test_v0794_hoola_code_around.py` (12): thinking kept + scrubbed; pass start / end; comments read
+as data, fixed once, never twice, "nothing to fix" is not a failed session; auto only private + Auto-fix; the suggestion
+(one call, small model, no tools, NONE / long / key dropped, renewed each round); when a schedule is due; schedule rules
++ one run for missed slots + pause + Run now + limit 12; trigger (hash only, 401 / 409 / 429, payload as data, new token
+ends the old); share (reduced view, expiry, stop, headers); end-of-run push told once; two browser walks (session page +
+Scheduled page + trigger + share; the read-only page makes only its one GET, with no Authorization header).
+
+**NOT VERIFIED:** no real Claude suggestion, no real GitHub comment feed, no real FCM push, no real program calling the
+trigger. The trigger's hourly limit is per task row (not per IP). The phone app has no Scheduled screen (console only).
+**Not built from the plan's Phase 5 line:** live "subagent" children as separate panes (the passes are a card, not
+panes). Deploy: vps-ops deploy (server-only; no new pip; one new table + five nullable columns make themselves).
+
+
+## v0.799.0 HOOLA PROMPTING P1-P3 - the understanding engine, the Improve button, the Prompting page (built as 0.796; their 0.796.0-0.798.0 took the numbers - REBASE PROTOCOL, all kept; owner: "GO P1 TO P3")
 
 Plan: `docs/HOOLA_PROMPTING_PLAN.md` parts 2-6 and 11. Research: `docs/research/prompting/00_INDEX.md`. The owner chose to
 test everything together at the end, so P0's live card has NOT run: these three sections are built without its numbers.
@@ -1419,10 +1473,16 @@ Hoola chat, Copy, Save), Recipes (search, kind, blanks form; a website template 
 Run only HANDS THE TEXT OVER (`hoola.prompt.toWeb` read once by webstudio.js into its box; `hoola.flow.toChat` for the
 chat box) - nothing is sent or built for her.
 
-**Tests** `server/tests/test_v0798_prompting.py` - 17, no model: section guess, locked facts, code slots, the model
+**Tests** `server/tests/test_v0799_prompting.py` - 17, no model: section guess, locked facts, code slots, the model
 checked by code, model outage, answers / removals / validate, score reasons, dialects, brand fill, recipes, routes end
 to end, tenant fence, switch off, wiring, and 2 real-browser walks (the page at 1360 + 390 px; the console chat box and
 the Web Studio with Use + Undo). Screens were looked at by eye (light). Stamp count in v2.html 29 -> 31.
+
+**Also fixed (found while wiring the button)** `bazar.service.ensure_user`: on her FIRST Connectors visit the page's
+lists load together, two requests both created her bazar user row and the loser answered 500 (UNIQUE constraint failed:
+bz_users.id). The loser now reads the row. Test `test_first_visit_race_on_the_connectors_user_row`.
+`test_v0781_connectors_page::test_connectors_page_in_a_real_browser` is unreliable here on main too (3 of 3 failed on an
+untouched main checkout: the sign-in window's toast is not seen within 30 s) - not from this change.
 
 **Not built / not verified**
 - The phone app's composer button (Flutter cannot be compiled here; a CI-only change was left out on purpose).

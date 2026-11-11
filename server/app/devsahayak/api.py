@@ -9,10 +9,47 @@ The GitHub token is accepted only here (PUT /token), never through the chat tool
 from __future__ import annotations
 
 import asyncio
+import json
 from typing import Any
 
-from fastapi import APIRouter, Body, Depends, HTTPException
+from fastapi import APIRouter, Body, Depends, HTTPException, Request
 from fastapi.responses import Response
+
+
+def make_public_router() -> APIRouter:
+    """Phase 5: the two doors that are NOT behind her sign-in, each with its own secret in the address or the header.
+    - GET  /api/devsahayak/shared/{token}: the read-only view of ONE session she shared (random token, 7 days).
+    - POST /api/devsahayak/hooks/{id}: her own program starts a run of ONE scheduled task (Bearer token, 10 an hour)."""
+    from . import around as AR
+    p = APIRouter(prefix="/api/devsahayak")
+
+    @p.get("/shared/{token}")
+    async def shared(token: str):
+        v = await asyncio.to_thread(AR.shared, token)
+        if v is None:
+            raise HTTPException(404, "This link is not active.")
+        return v
+
+    @p.post("/hooks/{sid}")
+    async def hook(sid: str, request: Request):
+        auth = request.headers.get("authorization") or ""
+        token = auth[7:].strip() if auth.lower().startswith("bearer ") else ""
+        payload = ""
+        try:
+            size = int(request.headers.get("content-length") or 0)
+        except ValueError:
+            size = 0
+        if 0 < size <= 16000:                   # a bigger body is not read at all (this door has no sign-in in front of it)
+            try:
+                body = json.loads(await request.body())
+                payload = str(body.get("text") or "") if isinstance(body, dict) else ""
+            except (ValueError, UnicodeDecodeError):
+                payload = ""
+        out = await asyncio.to_thread(AR.fire, sid, token, payload)
+        if out["status"] != 200:
+            raise HTTPException(out["status"], out.get("error") or "Refused.")
+        return {"ok": True, "session": out["session"]}
+    return p
 
 
 def make_router(require_key, current_tenant) -> APIRouter:
@@ -66,6 +103,54 @@ def make_router(require_key, current_tenant) -> APIRouter:
         b = _b(body)
         return await run(S.add_repo, tenant, str(b.get("repo") or ""), str(b.get("deploy_workflow") or ""), str(b.get("deploy_ref") or ""),
                          str(b.get("notes") or ""))
+
+    # ---- Phase 5: around the session (schedules + trigger, share link, reviewers' comments)
+    @r.get("/schedules")
+    async def list_schedules(tenant: str = Depends(current_tenant)):
+        from . import around as AR
+        return {"schedules": await run(AR.schedules, tenant)}
+
+    @r.post("/schedules")
+    async def new_schedule(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        from . import around as AR
+        b = _b(body)
+        return await run(AR.save_schedule, tenant, "", **{k: b[k] for k in ("title", "repo", "base", "kind", "text", "mode", "days", "at", "enabled") if k in b})
+
+    @r.patch("/schedules/{sid}")
+    async def patch_schedule(sid: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        from . import around as AR
+        b = _b(body)
+        return await run(AR.save_schedule, tenant, sid, **{k: b[k] for k in ("title", "repo", "base", "kind", "text", "mode", "days", "at", "enabled") if k in b})
+
+    @r.delete("/schedules/{sid}")
+    async def del_schedule(sid: str, tenant: str = Depends(current_tenant)):
+        from . import around as AR
+        return await run(AR.delete_schedule, tenant, sid)
+
+    @r.post("/schedules/{sid}/run")
+    async def run_schedule(sid: str, tenant: str = Depends(current_tenant)):
+        from . import around as AR
+        return await run(AR.run_schedule, tenant, sid, "now")
+
+    @r.post("/schedules/{sid}/trigger")
+    async def make_trigger(sid: str, tenant: str = Depends(current_tenant)):
+        from . import around as AR
+        return await run(AR.make_trigger, tenant, sid)         # the token is in THIS answer only
+
+    @r.delete("/schedules/{sid}/trigger")
+    async def drop_trigger(sid: str, tenant: str = Depends(current_tenant)):
+        from . import around as AR
+        return await run(AR.drop_trigger, tenant, sid)
+
+    @r.post("/tasks/{tid}/share")
+    async def share(tid: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        from . import around as AR
+        return await run(AR.share, tenant, tid, bool(_b(body).get("on", True)))
+
+    @r.get("/tasks/{tid}/comments")
+    async def pr_comments(tid: str, tenant: str = Depends(current_tenant)):
+        from . import around as AR
+        return await run(AR.read_comments, tenant, tid)
 
     @r.patch("/repos/{owner}/{name}")
     async def patch_repo(owner: str, name: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
@@ -125,10 +210,10 @@ def make_router(require_key, current_tenant) -> APIRouter:
             kw = {"words": str(b.get("text") or ""), "comments": b.get("comments")}
         elif what == "begin":
             kw = {"repo": str(b.get("repo") or "")}
-        elif what == "fix_ci":
+        elif what in ("fix_ci", "fix_comments"):
             kw = {}
         else:
-            raise HTTPException(404, "plan_ok | revise | fix_ci | begin")
+            raise HTTPException(404, "plan_ok | revise | fix_ci | fix_comments | begin")
         return await run(S.in_background, tenant, tid, what, **kw)
 
     # ---- v0.768 the session list: her own name for a session, archive / unarchive, delete, take a queued note back

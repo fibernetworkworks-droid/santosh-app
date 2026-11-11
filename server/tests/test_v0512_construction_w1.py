@@ -454,7 +454,7 @@ def test_version_pins():
     from pathlib import Path
     REPO = Path(__file__).resolve().parents[2]
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.798.0"
+    assert APP_VERSION == "0.799.0"
     # v0.535: see test_v0501 - a literal version here broke on every bump. The check that matters is agreement.
     _v = re.search(r'APP_VERSION = "([0-9.]+)"', (REPO / "server" / "app" / "main.py").read_text()).group(1)
     assert _v and f"version: {_v}+" in (REPO / "pubspec.yaml").read_text(), f"pubspec must carry {_v}"
