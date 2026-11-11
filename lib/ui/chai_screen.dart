@@ -52,7 +52,7 @@ class ChaiScreen extends StatelessWidget {
           appBar: AppBar(
             backgroundColor: Colors.transparent,
             title: const Text('Chai stall assistant'),
-            bottom: const TabBar(tabs: [Tab(text: 'Today'), Tab(text: 'Tomorrow'), Tab(text: 'Galla'), Tab(text: 'Menu')]),
+            bottom: const TabBar(tabs: [Tab(text: 'Today'), Tab(text: 'Tomorrow'), Tab(text: 'Till'), Tab(text: 'Menu')]),
           ),
           body: Aurora(
             child: TabBarView(children: [
@@ -523,7 +523,7 @@ class _GallaTabState extends State<_GallaTab> with _ChaiLive, WidgetsBindingObse
             'What never goes: OTP, PIN, password, SMS, chats, other apps\' notifications, money you sent, the full notification. '
             'All of this stays on the phone.\n\n'
             'Why: to work out daily sales, the best hour and tomorrow\'s milk and sugar by itself.\n\n'
-            'On the next screen, turn on "Hoola Galla" in Android "Notification access". You can turn it off from here anytime.',
+            'On the next screen, turn on "Hoola Till" in Android "Notification access". You can turn it off from here anytime.',
             style: const TextStyle(height: 1.4),
           ),
         ),
