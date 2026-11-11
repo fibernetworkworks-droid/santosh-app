@@ -447,7 +447,15 @@
     const sid = sidOf(g.id);
     if (W.tab === 'design') { pane.innerHTML = designHtml(g); W.sig = sigOf(g); return; }
     if (W.tab === 'play') {
-      pane.innerHTML = playHtml(g, sid); paintQr(pane); W.sig = sigOf(g);
+      // the game she is playing must never restart because the NEXT version moved on (building -> testing ...): keep the
+      // very same iframe node whenever the play link is unchanged, and redraw everything around it
+      // (moving an iframe in the DOM reloads it too, so the stage holding it is not touched at all - only the column beside it)
+      const oldSrc = pane.querySelector('.gdv-stage iframe')?.getAttribute('src'), oldSide = pane.querySelector('.gdv-play > .gdv-side2');
+      const tmp = document.createElement('div'); tmp.innerHTML = playHtml(g, sid);
+      const newSrc = tmp.querySelector('.gdv-stage iframe')?.getAttribute('src'), newSide = tmp.querySelector('.gdv-play > .gdv-side2');
+      if (oldSrc && oldSrc === newSrc && oldSide && newSide) oldSide.replaceWith(newSide);
+      else { pane.innerHTML = ''; while (tmp.firstChild) pane.appendChild(tmp.firstChild); }
+      paintQr(pane); W.sig = sigOf(g);
       pane.querySelectorAll('.gdv-shots img').forEach(img => img.addEventListener('error', () => { const p = img.closest('.gdv-panel'); img.remove(); if (p && !p.querySelector('.gdv-shots img')) p.remove(); }));
       return;
     }
