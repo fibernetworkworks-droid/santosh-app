@@ -92,7 +92,7 @@ def claims(text: str, spec: dict | None = None) -> dict[str, Any]:
     missing = [k for k in ("brand", "weight_or_size", "mrp", "hsn", "country_of_origin", "manufacturer") if not (spec or {}).get(k)]
     return {"flags": flags, "missing_listing_facts": missing,
             "note": "This works from a word list; which claim is true is known to you / the merchandiser. Packaged goods need details such as weights and measures, MRP and the manufacturer's address (verify).",
-            "decider": "Publishing the listing and keeping the claims is the merchandiser's / owner's decision."}
+            "decider": "Whether to publish the listing and keep the claims is the merchandiser's / owner's decision."}
 
 
 def landed(offers: list[dict]) -> dict[str, Any]:
