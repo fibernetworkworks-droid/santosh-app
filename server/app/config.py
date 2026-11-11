@@ -463,6 +463,13 @@ class Settings(BaseSettings):
     chat_every_message: bool = True        # parity gap 1 (v0.738): every message reaches the model - the research plan
                                            # gate never answers for it, stop words still stop the work at once but the
                                            # model writes the reply (the OTP / CAPTCHA hand-over stays before the model)
+    chat_graph: bool = False               # G0 (docs/LANGGRAPH_TURN_PLAN.md): the chat turn's think -> tools loop runs
+                                           # as an official LangGraph StateGraph (agent/turngraph.py) over the SAME step
+                                           # functions as the old loop, checkpointed per turn; off = the old loop only
+    chat_graph_dir: str = "./data/turngraph"   # the graph's SQLite checkpoints (checkpoints.db)
+    chat_graph_keep_finished: bool = False   # G1: keep a finished turn's checkpoints (tests / debugging); off =
+                                           # deleted at END so the checkpoint file does not grow without limit
+    chat_graph_ledger_keep_h: float = 24.0   # G1: tool-ledger rows of turns that never finished are dropped after this
     chat_plain_loop: bool = True           # parity Phase 5b (the loop): the model's answer ends the turn. Kept checks
                                            # run BEFORE the answer is shown and a corrected answer REPLACES the draft
                                            # in place (one reply): a false ACTION claim (sent / paid / booked /
@@ -929,6 +936,12 @@ class Settings(BaseSettings):
     app_redirect_scheme: str = "santosh"    # deep link back into the phone app after sign-in
     hoola_signup: str = "open"              # who can make a NEW Hoola with Google sign-in: open (anyone) | invite
     hoola_signup_allow: str = ""            # invite mode: comma list of emails and/or @domain.com allowed to sign up
+    gstinapi_api_key: str = ""              # v0.765 gstinapi.in (gak_...) - PAID per lookup (Rs 0.40-0.80), ONE server key, VPS .env only
+    gstin_daily_calls: int = 50             # v0.765 most paid GSTIN lookups a day for ALL users together (0 = switched off)
+    ecourtsindia_api_key: str = ""          # v0.763 ecourtsindia.com (eci_live_...) - PAID per call, ONE server key, VPS .env only
+    ecourts_daily_calls: int = 30           # v0.763 most paid eCourts calls a day for ALL users together (0 = switched off)
+    twelvedata_api_key: str = ""            # v0.760 twelvedata.com (NSE / BSE quotes) - ONE server key, VPS .env only
+    alphavantage_api_key: str = ""          # v0.760 alphavantage.co (BSE quotes, backup) - ONE server key, VPS .env only
     newsdata_api_key: str = ""              # v0.758 newsdata.io - ONE server key for every user, VPS .env only
     gnews_api_key: str = ""                 # v0.758 gnews.io - ONE server key for every user, VPS .env only
     data_gov_in_base: str = ""              # v0.755 optional relay for data.gov.in (NIC drops cloud servers): e.g. https://hoola-dg.<you>.workers.dev

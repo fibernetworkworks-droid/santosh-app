@@ -100,7 +100,7 @@ def test_a_bare_yes_is_never_learned_or_hinted(env):
     assert procedures.after_turn(T, "Haan bhej do", calls, [], True) is None
     assert procedures.hint(T, "haan theek hai") == ("", [])
     from app.agent import santosh
-    src = inspect.getsource(santosh._steps)
+    src = inspect.getsource(santosh._steps_end)
     assert 'good = ok and not state.get("fake_done")' in src
 
 

@@ -46,9 +46,9 @@ def test_brain_memory_leaves_out_a_slow_part(monkeypatch):
 
 
 def test_brain_turn_skips_hint_and_slow_mcp():
-    src = inspect.getsource(santosh._steps)
+    src = inspect.getsource(santosh._steps_begin)
     assert 'and not VOICE_BRAIN_NOW.get():' in src and "procedures.hint" in src
-    src2 = inspect.getsource(santosh._steps_inner)
+    src2 = santosh.turn_loop_source()
     assert "mcp_live.snapshot_fast(tenant_id)" in src2
     assert "_brain_memory(" in inspect.getsource(santosh._run_turn)
     from app.config import Settings

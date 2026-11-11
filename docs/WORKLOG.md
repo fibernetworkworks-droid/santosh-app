@@ -2744,3 +2744,60 @@ Agent: Claude (session 019P5N4a)
 Task: newsdata.io + gnews.io as server-keyed box recipes.
 Work Log: SERVER_KEYS + config keys; 3 recipes; api_box text; 3 tests; 22 passed.
 Stage Summary: server-only; owner adds NEWSDATA_API_KEY / GNEWS_API_KEY to the VPS .env. Not yet live-verified.
+
+---
+Task ID: v0.759.0 NEWS SAAF
+Agent: Claude (session 019P5N4a)
+Task: news answers too big for the box -> slim per recipe.
+Work Log: box._slim + recipe slim specs; 1 test; 18 passed.
+Stage Summary: server-only; redeploy + rerun her news test.
+
+---
+Task ID: v0.760.0 SHARE BHAV
+Agent: Claude (session 019P5N4a)
+Task: Indian share prices (Twelve Data + Alpha Vantage) as server-keyed box recipes + 200-refusal detection.
+Work Log: SERVER_KEYS + config; 4 recipes; box._soft_error; 2 tests; 20 passed.
+Stage Summary: server-only; owner adds TWELVEDATA_API_KEY / ALPHAVANTAGE_API_KEY. Not yet live-verified.
+
+Task ID: v0.761.0 LANGGRAPH G0
+Ask: deep research on Hoola's issues + fix with LangGraph.
+Built: docs/LANGGRAPH_TURN_PLAN.md; chat turn on official langgraph behind chat_graph (off); 11 tests.
+Deploy: vps-ops deploy + pip install langgraph langgraph-checkpoint-sqlite in the VPS venv (switch stays off).
+
+---
+Task ID: v0.762.0 SHARE BHAV 2
+Agent: Claude (session 019P5N4a)
+Task: Twelve Data free refuses Indian quotes -> Alpha Vantage first + BSE history + API error text.
+Work Log: recipe bonus; stock_history_bse + _slim dict mode; error text; 1 test; 21 passed.
+Stage Summary: server-only; redeploy + rerun her stock test.
+
+---
+Task ID: v0.763.0 ADALAT
+Agent: Claude (session 019P5N4a)
+Task: eCourtsIndia (paid per call) as server-keyed box recipes with a daily cap.
+Work Log: SERVER_KEYS prefix; config key + cap; PublicApiDaily; recipes court_case / court_search / cause_list; patterns, need_one_of, daily_cap, obj/root slim; 3 tests; 24 passed.
+Stage Summary: server-only; owner adds ECOURTSINDIA_API_KEY (+ optional ECOURTS_DAILY_CALLS). Not yet live-verified.
+
+---
+Task ID: v0.764.0 ADALAT 2
+Agent: Claude (session 019P5N4a)
+Task: cause list dropped live party / advocate fields -> keep every short field.
+Work Log: _slim list without fields -> _flat; cause_list spec; 1 test; 16 passed.
+Stage Summary: server-only.
+
+---
+Task ID: v0.765.0 GSTIN JAANCH
+Agent: Claude Code (santosh-app session)
+Task: owner "business-gstinapi" - GSTIN verify / compliance / returns + HSN in the API box on one server key.
+Work Log: 4 box recipes, gstin validator, @fy default, daily cap, server key header x-api-key; 3 tests; box suites green.
+Stage Summary: pushed; needs GSTINAPI_API_KEY on the VPS, then a live test.
+
+---
+Task ID: v0.766.0 GSTIN SACH
+Task: her live GSTIN test - fallback answer passed off as compliance. Work: instead_of + note; 1 test; box suites 29 green. Stage: pushed.
+
+Task ID: v0.767.0 LANGGRAPH G1
+Ask: GO G1 (resume after restart + tool ledger).
+Built: turngraph resume, agent/toolledger.py, turn_inbox graph_resume sweep; chat_graph still off; 9 tests.
+Deploy: vps-ops deploy (langgraph pip install from v0.761 still needed if not done).
+

@@ -237,7 +237,8 @@ def server_key(api_id: str) -> tuple[str, str, str] | None:
         return None
     from ..config import get_settings
     v = str(getattr(get_settings(), spec[0], "") or "").strip()
-    return (v, spec[1], spec[2]) if v else None
+    prefix = spec[3] if len(spec) > 3 else ""             # v0.763 e.g. "Bearer " for an Authorization header
+    return (prefix + v, spec[1], spec[2]) if v else None
 
 
 def _key_for(tenant: str, api_id: str) -> tuple[str, str, str] | None:
@@ -259,7 +260,13 @@ KEY_PLACE = {"government-open-government-india": ("query", "api-key")}
 # api_id -> (settings field = the .env name in lower case, place, field). One server key serves every user.
 SERVER_KEYS = {"government-open-government-india": ("data_gov_in_api_key", "query", "api-key"),
                "news-newsdata": ("newsdata_api_key", "query", "apikey"),      # newsdata.io: ?apikey= (its own 401 says so)
-               "news-gnews": ("gnews_api_key", "query", "apikey")}            # gnews.io: ?apikey= (its own 400 says so)
+               "news-gnews": ("gnews_api_key", "query", "apikey"),
+               "finance-twelve-data": ("twelvedata_api_key", "query", "apikey"),     # its own 401 names `apikey`
+               "finance-alpha-vantage": ("alphavantage_api_key", "query", "apikey"),
+               # its docs: Authorization: Bearer eci_live_... (no query key); PAID per call - box caps it a day
+               "government-ecourtsindia": ("ecourtsindia_api_key", "header", "Authorization", "Bearer "),
+               # its docs: header x-api-key: gak_...; PAID per successful lookup - box caps it a day
+               "business-gstinapi": ("gstinapi_api_key", "header", "x-api-key")}  # its own error names `apikey`            # gnews.io: ?apikey= (its own 400 says so)
 
 
 # api_id -> (settings field, the API's own base). A relay base set by the owner replaces it (v0.755: NIC's data centre

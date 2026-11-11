@@ -384,3 +384,123 @@ Recipes: news_india = newsdata.io /api/1/latest?country=in (+ optional q / langu
 gnews.io /api/v4/search?q=...&country=in&max=10 (+ lang), news_headlines = gnews.io /api/v4/top-headlines?country=in
 (+ category / lang). No key = skipped, naming the missing .env line. Tests: test_v0758_box_news.py 3; starter 15 -> 18.
 NOT VERIFIED: no live call with a real key yet - her first test on the VPS is it.
+
+
+## v0.759.0 NEWS SAAF (owner's v0.758 live test)
+
+Her first news test crashed in the test script because `data` was a STRING: newsdata / gnews answers run 30-60k chars,
+over service.MAX_OUT_CHARS (12k), so the box passed the model cut-off JSON text. A recipe may now carry
+`slim: {list, fields}`: the box calls service.call(full=True), takes the full answer (`_data`, never returned) and keeps
+the listed fields per item (a dict field -> its name / url, a list -> joined, text > 300 chars cut), at most 10 items, plus
+the scalar totals (`box._slim`). The three news recipes use it. Test: test_v0758_box_news.py +1.
+
+
+## v0.760.0 SHARE BHAV (owner: "proceed" on Twelve Data + Alpha Vantage)
+
+Third server-keyed family in the box. SERVER_KEYS gains finance-twelve-data (`twelvedata_api_key`) and
+finance-alpha-vantage (`alphavantage_api_key`), both query `apikey` (each API's own keyless error names it). Twelve
+Data's keyless symbol_search showed RELIANCE on NSE (XNSE) and BSE (XBOM). Recipes: stock_price (/quote, exchange
+NSE default), stock_search (/symbol_search), stock_history (/time_series, 1day x 30 default) on Twelve Data;
+stock_price_bse (GLOBAL_QUOTE symbol=<SYM>.BSE) on Alpha Vantage as the backup. Alpha Vantage answers a refusal with
+HTTP 200 ("Error Message" / "Information" / "Note"), Twelve Data / NewsData with status "error": `box._soft_error`
+reads those as failures so the next recipe answers instead of the model being handed a refusal as data.
+Tests: test_v0760_box_stocks.py 2; starter 18 -> 22. NOT VERIFIED: whether Twelve Data's FREE plan serves NSE / BSE
+quotes - her first live test says; Alpha Vantage free is about 25 calls a day.
+
+## v0.761.0 LANGGRAPH G0 — the chat turn loop on official LangGraph, behind a switch (10 Nov 2026; owner: "OUR PRODUCT IS IN DEVELOPMENT ... FIX THIS ALL NOW WITH LANGGRAPH ... DO DEEP RESEARCH, FIND THE HOOLA ISSUES AND FIX THIS PERFECTLY")
+
+RESEARCH (`docs/LANGGRAPH_TURN_PLAN.md`): the turn pipeline mapped stage by stage; 13 recurring bug classes (durability, delivery, false done, turn ends on text, guessed caps, two turns on one chat, card state, stop, repeated side effects, call vs chat, slow prompt, many models, scope leaks) each patched more than once with globals / regex / timing guesses; the in-house `app/aep` LangGraph copy found NOT production-capable (astream is a sync generator, async walk skips the checkpointer, interrupt breaks under to_thread, no cancel, lossy model adapter, bind_tools missing, `/api/aep/turn` fails on every real call - its tests only used a sync fake) -> decision: the OFFICIAL `langgraph` library (MIT), graph only, Hoola's own model + tool paths. Phases G0-G7.
+G0 BUILT: `santosh._steps_inner` (641 lines) split into `_turn_prepare` / `_turn_model` / `_turn_after_model` / `_turn_tools` / `_turn_capped` / `_turn_silent` sharing one `_Turn`, and `_steps` into `_steps_begin` / `_steps_end` - code moved, not copied, so both paths run the same steps. NEW `agent/turngraph.py`: StateGraph prepare -> model -> (tools -> model | check -> model / finish | finish), every tool still through `_run_tool` (approvals, money on her tap, redaction, logging), one shared contextvars Context per turn (LangGraph runs each node in its own task), plain-data state checkpointed by AsyncSqliteSaver at `<chat_graph_dir>/checkpoints.db` (thread = conversation:turn; resume after restart is G1), recursion limit from the step caps, `_with_deadline` still wraps the turn, langgraph missing = the old loop answers. Switch `chat_graph` default OFF; deps langgraph>=1.2.20, langgraph-checkpoint-sqlite>=3.1.3 (pip install on the VPS).
+- PROOF: `tests/test_g0_turngraph.py` 11 (the same scripted turn through both paths: identical saved rows, event sequence, reply, model calls and outcome for a plain answer, one tool, two parallel tools, a tool error, a false-sent nudge, a max_tokens continue, the step cap; checkpoint written; old path never touches the graph; contextvars survive nodes). harness2 / harness3 / routines / robust_chat / plain loop / long jobs / realtime / v0649 / v0657 / v0663 / v0664 / v0686 / v0691 / v0683 give the same counts with the switch off and on. Two reds (test_v0667 corrected reply, test_v0638 call memory) fail on the pristine tree too.
+- NOT VERIFIED: nothing live; streaming deltas not compared (tests run with streaming off; same function both paths); many concurrent turns on one checkpoint file not tested.
+
+
+
+## v0.762.0 SHARE BHAV 2 (owner's v0.760 live test)
+
+Live on the VPS: stock_search (Twelve Data) ok, stock_price + stock_history (Twelve Data) HTTP 404 - Indian exchange
+quotes are not on Twelve Data's free plan; stock_price_bse (Alpha Vantage) ok, RELIANCE.BSE 1323.90 (2026-11-09).
+- Starter recipes may carry `bonus` (added to the word score). stock_price_bse gets 2 and the wider need words, so
+  Alpha Vantage answers Indian price asks first; Twelve Data's stock_price stays as the fallback for a paid plan.
+- NEW stock_history_bse = Alpha Vantage TIME_SERIES_DAILY {symbol}.BSE compact; `_slim` gains a dict mode
+  (`{"dict": <key>, "n": N}`): the newest N dated rows with "1. open" -> "open" field names; her `days` sets N (<= 100).
+- An HTTP error in the box now appends the API's own message (`message` / `error` / the recipe's error_keys), so the
+  next live test says WHY (e.g. a plan limit), not only the code.
+Tests: test_v0760_box_stocks.py +1 (and the 200-refusal test re-pointed at the new order); starter 22 -> 23.
+Limits said plainly: Alpha Vantage free is about 25 calls a day for every user together; NSE is not on Alpha Vantage.
+
+
+## v0.763.0 ADALAT (owner: "eCourtsIndia")
+
+Read first (ecourtsindia.com/api/docs v4.0 + /api/pricing): base https://webapi.ecourtsindia.com, auth
+`Authorization: Bearer eci_live_...` (41 chars), JSON {data, meta.request_id}; PAID per successful call - pay-as-you-go
+(3x base) Case Detail Rs 1.50, Case Search v2 Rs 0.60, Cause List Search Rs 3.00; Rs 200 free credits on signup; failed
+requests and empty results are not charged; limits 100/min, 3,000/h, 50,000/day; commercial use = a paid plan.
+- SERVER_KEYS entries may carry a 4th element, a prefix ("Bearer ") - government-ecourtsindia -> header Authorization.
+- Recipes: court_case GET /api/partner/case/{cnr} (CNR checked against [A-Z]{4}\d{12} and upper-cased BEFORE the
+  call; answer slimmed by the new `obj` mode: scalars, 5 items a list, 300-char text); court_search GET
+  /api/partner/v2/search (litigants / advocates / judges / query, at least one); cause_list GET
+  /api/partner/causelist/search (q / advocate / litigant, at least one; date, state).
+- Money guard: `patterns` + `need_one_of` refuse an unusable call for free; `daily_cap` = ECOURTS_DAILY_CALLS successful
+  calls a day (IST) for ALL users together (table public_api_daily; 0 = switched off); the cap answer names the .env line;
+  every eCourts answer tells the model the call was paid and not to repeat it.
+Tests: test_v0763_box_courts.py 3 (Bearer header + slim + paid note, free refusals, the cap across tenants); starter 23 -> 26.
+NOT VERIFIED: no live call yet; the search / cause-list result field names in the slim lists are read from the docs'
+examples and the first live answer may name them differently (unknown fields simply drop out - the owner's test will show).
+
+
+## v0.764.0 ADALAT 2 (owner's v0.763 live test)
+
+Live on the VPS (Rs ~5 of the free credits): court_case DLHC010351552024 ok (Delhi HC record with its hearing history),
+court_search litigants=Ramesh Kumar ok (totalHits 100,150, facetMode full, 10 results with cnr / caseType / petitioners),
+cause_list advocate=Sharma state=MH ok (2026-11-16 lists, e.g. Wardha district court) - but each cause-list row carried
+only date / courtType / listType / caseNumber / judge / courtNo / state / district: the party and advocate fields were
+named differently live than in the docs' example, and the fixed slim list dropped them. A slim list with no `fields` now
+keeps every short field the API sent (`_flat`); cause_list uses it. Test: test_v0763_box_courts.py +1.
+
+## v0.765.0 GSTIN JAANCH (owner: "business-gstinapi")
+gstinapi.in in the API box on ONE server key (`GSTINAPI_API_KEY` in the VPS .env, header `x-api-key`; never in any app, never to the model).
+Recipes: `gstin_verify` (/v1/gstin/{gstin}), `gstin_compliance` (/compliance?fy=), `gstin_returns` (/returns?fy=), `hsn_code` (/v1/hsn/{code}).
+Paid per lookup (~Rs 0.40-0.80, 75 free credits): a GSTIN failing the check digit (appmaker.gst.valid_gstin; the sandbox 00AAAAA0000A1ZT allowed)
+is refused BEFORE the call, a daily cap for all users (`GSTIN_DAILY_CALLS`, default 50, the PublicApiDaily table), `fy` defaults to the current
+Indian financial year (`@fy`), a 200 with success:false counts as a failure. Tests test_v0765_box_gstin.py (3). NOT VERIFIED live until her key is in.
+
+## v0.766.0 GSTIN SACH
+Her live v0.765 test: gstin_verify works on her free gstinapi.in account; compliance / returns / HSN answer 403 "This endpoint is
+available to accounts that have bought a credit pack". 'gstin compliance' then fell back to gstin_verify and came back ok:true as if it
+were the compliance answer. box.call now adds `instead_of` (the failed recipes) and a NOT WHAT SHE ASKED FOR line with the reasons to
+note_for_you whenever an earlier recipe errored before the one that answered. Test in test_v0765_box_gstin.py.
+
+## v0.767.0 LANGGRAPH G1 — a graph turn resumes after a restart + the tool ledger (10 Nov 2026; owner: "GO G1")
+
+Phase G1 of `docs/LANGGRAPH_TURN_PLAN.md` (bug classes 1 and 9), only when `chat_graph` is on (default OFF; the old path is unchanged).
+- Stable thread id `"<conversation>:<inbox id>"`: `turn_inbox.run_owned` sets `GRAPH_TURN` / `GRAPH_RESUME`, `turngraph.run_steps` takes them once; a turn with no inbox row gets a random id; a conversation with no id falls back to the old loop.
+- Every node checkpoints the turn's working state as plain data (the `_steps_begin` dict minus the breaker / native tool list, breaker counters, admitted families, final text, prepared, last stop).
+- Sweep: a turn that began and was not answered is checked with `turngraph.resumable()` (next node model / tools / check / finish, prepare done) -> `run_owned(save_user=False, graph_resume=True)`, no RESUME_NOTE; else today's re-run. `resume()` restores history, state and breaker without re-running the hard-ask judge / hint lookup, re-runs prepare in the turn's shared context, then `ainvoke(None)`.
+- NEW `agent/toolledger.py` (table `turn_tool_ledger`, in `db.init_db` + `ensure_table`): `intent` before `_run_tool`, `done` with the output / `failed` with the error after. On resume: done = stored result reused (tool not called), failed = same error, intent with no end = re-run only if read-only (`draftcheck._is_read` + `santosh._parallel_ok`), otherwise `santosh.ToolAmbiguous` -> the model reads "may already have run, outcome unknown, check before any retry".
+- LangGraph's `NodeCancelledError` is turned back into CancelledError so a cut turn keeps its checkpoint. END or an error reply deletes the thread's checkpoints + ledger rows; ledger rows older than `chat_graph_ledger_keep_h` (24 h) go; daily inbox housekeeping deletes threads of removed rows. New settings `chat_graph_keep_finished`, `chat_graph_ledger_keep_h`.
+- TESTS: NEW `test_g1_turngraph.py` 9; g0 11, harness2 15, harness3 17, routines 3, v0657 14, v0664 kaam ek baar 10, v0649 11 and others same with the switch off and on.
+- NOT VERIFIED / STILL OPEN: the crash is simulated (CancelledError + cleared memory), not a real process kill; a crash inside the model node after the model answered re-runs that call (a second model call, maybe a second assistant row); a crash in prepare uses the old RESUME_NOTE path; tool_search results and narration state are rebuilt, not restored; a reused done tool skips event-log / coder-memory capture; timed-out turns keep checkpoints until the daily housekeeping. Next: G2 (one run per chat + Stop as state).
+
+
+## v0.768.0 IMAGE EDIT (built as 0.759.0, re-versioned twice as main moved; owner: "Image editing --- perfect work on it end to end deeply and perfectly for hoola", after the aixploria.com read mapped 4,863 AI tools to Hoola - 210 of them image editing)
+
+ONE new tool `image_edit` (registry 621 -> 622) in `server/app/imgedit/`; photo_banao / photo_clean / id_photo keep their specs.
+- LOCAL (`ops.py`, Pillow + numpy, no key, deterministic): resize (17 presets: Insta post / square / Story, YouTube thumb /
+  banner, FB cover, LinkedIn, WhatsApp DP, marketplace / Amazon, A4 150 / 300 dpi, visiting card; fit contain / cover / inside /
+  stretch), crop (box or aspect + gravity), rotate, flip, adjust, auto_enhance, filters (grayscale, sepia, invert, blur, sharpen,
+  denoise, pixelate, posterize, vignette, sketch, SCAN = photo of a paper -> flat white page), redact (blur / pixelate / black
+  regions), border, pad, round_corners, bg_color, text + watermark (each character drawn from a font that has it: Devanagari,
+  Latin, the rupee sign, dots), upscale_local (plain enlargement, said so), convert + compress to a target KB, collage,
+  before/after. Every output re-encoded: camera EXIF / GPS never travels. 50 MP input cap, 8192 px side, 12 steps.
+- AI (`ai.py`): remove_bg, upscale, remove_object, replace_bg, restyle, restore, colorize, edit. First engine REALLY set up runs and
+  is named: rembg (local) / Gemini via photogen / the zoo gateways (`ai.ROUTES`, every id pinned against zoo_catalog.json). No
+  engine = says which key to set; upscale alone falls back to a plain enlargement and says "no new detail". A failing engine
+  moves to the next, failures reported. Generative edits labelled "AI se bana".
+- SAFETY before any engine: photogen.problem + watermark / copyright / photographer's mark removal refused; an AI edit of a file
+  named like an Aadhaar / PAN / marksheet / cheque refused (resize / crop / compress of her own ID is fine); body edits on a
+  child's picture refused.
+- PIPELINE (`run.py`): local steps + at most ONE AI step per photo, validated before anything is paid for; up to 10 photos, 5 for an
+  AI step; one bad file never sinks the batch; routine / staff actors usage-gated for AI steps; collage action.
+- TESTS `test_imgedit.py` 38. NOT VERIFIED: no AI engine has answered a live call (no key in the sandbox, rembg not installed);
+  kie / muapi request shapes read from zoo_catalog.json only. The first real "background hata do" with ZOO_KIE_KEY set is the proof.

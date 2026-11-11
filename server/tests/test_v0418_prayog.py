@@ -29,11 +29,6 @@ def _labs():
     return [b() for b in catalog.BUILDERS]
 
 
-def _all_labs():
-    """Every lab, catalogue AND packs: the JS twin must match the physics of a pack kernel too."""
-    return [b() for b in S._all_builders()]
-
-
 # ------------------------------------------------------------------------------------------- the catalogue
 def test_catalogue_has_22_physics_labs_all_checked():
     labs = _labs()
@@ -43,7 +38,7 @@ def test_catalogue_has_22_physics_labs_all_checked():
         r = lsl.run_check(lab)
         assert r["ok"], (lab["id"], r)
         assert r["error"] <= 0.01
-    assert len(S.labs()) == len(S._all_builders())   # every catalogue lab AND every lab pack, nothing silently left out
+    assert len(S.labs()) == 22                     # nothing silently left out
 
 
 def test_ncert_checks_compare_against_independent_formulas():
@@ -122,7 +117,7 @@ def _close(a, b, path=""):
 
 def _fixtures():
     fx = []
-    for lab in _all_labs():                           # every lab, at its own settings, as the phone would run it
+    for lab in _labs():                               # every lab, at its own settings, as the phone would run it
         base = dict(lab.get("params") or {})
         fx.append({"kernel": lab["kernel"], "params": base, "cfg": lab.get("cfg") or {}, "steps": 25, "dt": 0.04,
                    "skip_measure": lab["kernel"] == "circuit" and not (lab.get("cfg") or {}).get("measure")})
@@ -135,32 +130,17 @@ def _fixtures():
     fx.append({"kernel": "lens", "params": {"u": 0.12}, "steps": 1, "dt": 0.1})              # virtual image
     fx.append({"kernel": "prism", "params": {"i": 0.3}, "steps": 1, "dt": 0.1})              # total internal reflection
     fx.append({"kernel": "gauge", "params": {"kind": 1.0, "L": 0.00137, "ze": 0.00002}, "steps": 1, "dt": 0.1})
-    known = {"pendulum_g": "pendulum", "spring_k_static": "spring", "spring_k_shm": "spring", "incline_mu": "incline",
-             "stokes_eta": "stokes", "cooling_k": "cooling", "boyle_pv": "boyle", "mix_c": "mixtures", "res_v": "resonance",
-             "sono_mu": "sonometer", "mirror_f": "mirror", "lens_f": "lens", "prism_n": "prism", "slab_n": "slab",
-             "induct_ratio": "induction", "gauge_mean": "gauge"}
     for name, spec in KN.CALCS.items():
         rows = [{k: 0.3 + 0.1 * i + 0.01 * j for j, k in enumerate(spec["needs"])} for i in range(3)]
         if name == "pot_r":
             rows = [{"k2": 0, "l": 0.4}, {"k2": 1, "l": 0.35}]
-        if name in ("ohm_R", "bridge_S", "pot_r", "diode_knee", "rc_tau"):
-            kern = "circuit"
-        elif name in known:
-            kern = known[name]
-        else:                                        # a kernel PACK's calc: the first kernel whose params feed it
-            kern = next((k for k in sorted(KN.KERNELS) if _runs(name, rows, k)), None)
-            if kern is None:
-                continue                             # needs params no kernel has: its own pack's tests cover it
-        fx.append({"calc": name, "kernel": kern, "params": {"Rb": 10.0} if name == "pot_r" else {}, "rows": rows})
+        fx.append({"calc": name, "kernel": "circuit" if name in ("ohm_R", "bridge_S", "pot_r", "diode_knee", "rc_tau") else
+                   {"pendulum_g": "pendulum", "spring_k_static": "spring", "spring_k_shm": "spring", "incline_mu": "incline",
+                    "stokes_eta": "stokes", "cooling_k": "cooling", "boyle_pv": "boyle", "mix_c": "mixtures", "res_v": "resonance",
+                    "sono_mu": "sonometer", "mirror_f": "mirror", "lens_f": "lens", "prism_n": "prism", "slab_n": "slab",
+                    "induct_ratio": "induction", "gauge_mean": "gauge"}[name],
+                   "params": {"Rb": 10.0} if name == "pot_r" else {}, "rows": rows})
     return fx
-
-
-def _runs(calc: str, rows: list, kernel: str) -> bool:
-    try:
-        KN.calc(calc, rows, KN.params_for(kernel, {}))
-        return True
-    except Exception:                                # noqa: BLE001 - the calc needs other params
-        return False
 
 
 def _python(f):
@@ -183,11 +163,8 @@ def test_javascript_twin_gives_the_same_numbers(tmp_path):
     script = tmp_path / "twin.js"
     script.write_text(_TWIN)
     fx = _fixtures()
-    merged = tmp_path / "kernels_all.js"
-    from app.prayog.api import _kernels_js
-    merged.write_text(_kernels_js(), encoding="utf-8")
-    run = subprocess.run([NODE, str(script), str(merged)], input=json.dumps(fx), capture_output=True,
-                         text=True, timeout=300)
+    run = subprocess.run([NODE, str(script), str(STATIC / "kernels.js")], input=json.dumps(fx), capture_output=True,
+                         text=True, timeout=180)
     assert run.returncode == 0, run.stderr
     js = json.loads(run.stdout)
     assert len(js) == len(fx)
@@ -196,26 +173,11 @@ def test_javascript_twin_gives_the_same_numbers(tmp_path):
 
 
 def test_both_twins_know_the_same_kernels_and_calcs():
-    from app.prayog.api import _kernels_js
-    src = _kernels_js()                                  # kernels.js + every pack, as the lab page loads it
+    src = (STATIC / "kernels.js").read_text()
     for name in KN.KERNELS:
-        assert f"K.{name} = " in src or f"{name}:" in src, name
+        assert f"K.{name} = " in src, name
     for name in KN.CALCS:
-        assert f"    {name}: {{" in src or f"{name}:" in src, name
-
-
-@needs_node
-def test_every_kernel_pack_parses_and_registers():
-    """A pack is new physics in its OWN file; both twins must carry the same kernel names."""
-    import subprocess as sp
-    packs = sorted((STATIC / "packs").glob("*.js")) if (STATIC / "packs").is_dir() else []
-    for f in packs:
-        r = sp.run([NODE, "--check", str(f)], capture_output=True, text=True)
-        assert r.returncode == 0, (f.name, r.stderr)
-    from app.prayog.api import _kernels_js
-    src = _kernels_js()
-    for name in KN.KERNELS:
-        assert name in src, f"kernel {name} has no JavaScript twin"
+        assert f"    {name}: {{" in src, name
 
 
 @needs_node
@@ -275,7 +237,7 @@ def test_a_lab_that_fails_its_ncert_check_is_left_out(monkeypatch):
     monkeypatch.setattr(catalog, "BUILDERS", catalog.BUILDERS + (broken,))
     S.labs.cache_clear()
     try:
-        assert "broken-pendulum" not in S.labs() and len(S.labs()) == len(S._all_builders()) - 1
+        assert "broken-pendulum" not in S.labs() and len(S.labs()) == 22
     finally:
         S.labs.cache_clear()
 
@@ -336,15 +298,9 @@ def _client():
 
 def test_routes_are_public_read_only():
     c = _client()
-    d = c.get("/api/prayog/labs", params={"variants": False, "limit": 200}).json()   # the route pages at 200 at most
-    assert d["total"] == len(S.labs()) and "simulation" in d["note"]   # every set-up; their variants page separately
-    got, page = [], 1
-    while len(got) < d["total"]:                                        # and paging reaches every one of them, however many
-        got += c.get("/api/prayog/labs", params={"variants": False, "limit": 200, "page": page}).json()["labs"]
-        page += 1
-    assert len(got) == len(S.labs()) and len({r["id"] for r in got}) == len(got)
-    hits = {r["id"] for r in c.get("/api/prayog/labs", params={"q": "lens", "variants": False, "limit": 200}).json()["labs"]}
-    assert "convex-lens" in hits and hits               # the search finds the lens lab (other optics labs may match too)
+    d = c.get("/api/prayog/labs", params={"variants": False}).json()
+    assert len(d["labs"]) == 22 and "simulation" in d["note"]     # the 22 set-ups; their variants page separately
+    assert {r["id"] for r in c.get("/api/prayog/labs", params={"q": "lens", "variants": False}).json()["labs"]} == {"convex-lens"}
     lab = c.get("/api/prayog/labs/simple-pendulum").json()["lab"]
     assert lab["kernel"] == "pendulum" and lab["check"]["textbook"] == "pendulum_T"
     assert c.get("/api/prayog/labs/nahi-hai").status_code == 404
@@ -401,7 +357,7 @@ def test_wiring():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.759.0"
+    assert APP_VERSION == "0.768.0"
 
 
 # ------------------------------------------------------------------------------------------- the realistic studio

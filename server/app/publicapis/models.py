@@ -45,3 +45,12 @@ class PublicApiHealth(Base):
     http: Mapped[int] = mapped_column(Integer, default=0)
     fails: Mapped[int] = mapped_column(Integer, default=0)              # failures in a row (any success resets)
     checked_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class PublicApiDaily(Base):
+    """v0.763: successful calls per API per IST day, for the paid APIs that carry a daily cap (one server key pays for
+    every user - eCourtsIndia charges per call)."""
+    __tablename__ = "public_api_daily"
+    day: Mapped[str] = mapped_column(String(10), primary_key=True)       # YYYY-MM-DD, Asia/Kolkata
+    api_id: Mapped[str] = mapped_column(String(80), primary_key=True)
+    calls: Mapped[int] = mapped_column(Integer, default=0)
