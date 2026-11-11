@@ -2801,3 +2801,11 @@ Ask: GO G1 (resume after restart + tool ledger).
 Built: turngraph resume, agent/toolledger.py, turn_inbox graph_resume sweep; chat_graph still off; 9 tests.
 Deploy: vps-ops deploy (langgraph pip install from v0.761 still needed if not done).
 
+
+Task ID: HI-PLAN — Hoola Interactive product plan (11 Nov 2026)
+Owner: "first check how HeyGen looks in design and all its features in all backend 100% every page and tools... deep
+research and make a same plan for Hoola Interactive end to end". Three research agents read HeyGen's public files
+(app string catalogue + design tokens, help centre, release posts, v3 OpenAPI, LiveAvatar docs); reports kept in
+docs/research/heygen/ (4 files). Plan written: docs/HOOLA_INTERACTIVE_CONSOLE_PLAN.md (12 pages, feature matrix,
+tables, routes, API, meter, safety rules, phases I0-I11, her decisions, not-verified list). Docs only: no code, no
+version bump. No credentials in this entry.
