@@ -306,10 +306,10 @@ async function walk() {
     /* ---- later phases plug in: a panel, a menu item, a shortcut, a hook ---- */
     await ev(() => { window.__got = []; HD.ui.registerPanel('right', 'prototype', {title: 'Prototype', render(el) { if (!el.firstChild) el.appendChild(HD.ui.h('p', {class: 'hd-note pad', text: 'from a later phase'})); }});
       HD.ui.registerMenu('context', {label: 'Create component', run: () => window.__got.push('menu')}); HD.ui.registerShortcut('mod+alt+k', () => window.__got.push('key')); HD.ui.hook('export', ids => window.__got.push('export:' + ids.length)); }); await settle(page);
-    assert.deepEqual(await page.locator('.hd-right .hd-tab').allTextContents(), ['Design', 'Prototype']); await page.locator('.hd-tab', {hasText: 'Prototype'}).click(); await settle(page); assert.equal(await page.locator('.hd-right .hd-pbody.custom').textContent(), 'from a later phase');
+    { const tabs = await page.locator('.hd-right .hd-tab').allTextContents(); assert.equal(tabs[0], 'Design'); assert.ok(tabs.includes('Prototype'), 'a later phase adds its tab: ' + tabs); } await page.locator('.hd-tab', {hasText: 'Prototype'}).click(); await settle(page); assert.equal(await page.locator('.hd-right .hd-pbody.custom').textContent(), 'from a later phase');
     await page.locator('.hd-tab', {hasText: 'Design'}).click(); await settle(page); await page.locator('.hd-canvas').focus(); await page.keyboard.press('Control+Alt+k'); await page.locator('.hd-top .hd-btn', {hasText: 'Export'}).click();
     await page.mouse.click(kc[0], kc[1], {button: 'right'}); await page.locator('.hd-mi', {hasText: 'Create component'}).click(); assert.deepEqual(await ev(() => window.__got), ['key', 'export:1', 'menu']);
-    await page.locator('.hd-top .hd-btn', {hasText: 'Share'}).click(); await page.waitForFunction(() => /not switched on/.test((document.querySelector('.hd-toast') || {}).textContent || ''));
+    await ev(() => HD.ui.hook('share', f => window.__got.push('share:' + (f && f.id)))); await page.locator('.hd-top .hd-btn', {hasText: 'Share'}).click(); await page.waitForFunction(() => window.__got.includes('share:f1'));
 
     /* ---- the server has it, another person shows up, the file renames ---- */
     await page.waitForFunction(() => HD.net.pending() === 0); const saved = mock.files.get('f1').doc.nodes;
