@@ -11,7 +11,7 @@ from typing import Any, Callable
 
 import pikepdf
 
-from ..dockit import convert, core, edit, optimize, organize, secure, stamp
+from ..dockit import archive, convert, core, edit, fromdoc, ocrlayer, optimize, organize, secure, stamp
 from ..dockit.core import DocError
 
 
@@ -146,13 +146,60 @@ def id_pdf() -> bytes:
     c.drawString(72, 760, f"Name: Ramesh Kumar   Aadhaar: {a[:4]} {a[4:8]} {a[8:]}")
     c.drawString(72, 740, "PAN: ABCPE1234F   Mobile: +91 98765 43210   GSTIN: 27AAPFU0939F1ZV")
     c.drawString(72, 720, "Card 4111 1111 1111 1111   A/c No: 123456789012   ramesh@example.com")
-    c.drawString(72, 700, "Order 1234 5678 9012 is not an Aadhaar number.")
+    c.drawString(72, 700, "Order 2345 6789 0125 is not an Aadhaar number.")
     c.showPage()
     c.drawString(72, 760, "Page two: nothing private here.")
     c.showPage()
     c.save()
     scan = convert.images_to_pdf([("s.jpg", noisy_photo(600, 800, 9))], page_size="a4")
     return organize.merge([("ids.pdf", b.getvalue()), ("scan.pdf", scan)], bookmarks=False)
+
+
+def scanned_text_pdf() -> bytes:
+    """A 'scan': a picture of a printed page (English + Hindi), no text inside."""
+    from PIL import Image, ImageDraw, ImageFont
+    from pathlib import Path
+    fonts = Path(__file__).resolve().parent.parent / "fonts"
+    lat = ImageFont.truetype(str(fonts / "print" / "Inter.ttf"), 44)
+    dev = ImageFont.truetype(str(fonts / "NotoSansDevanagari-Regular.ttf"), 44)
+    im = Image.new("RGB", (1240, 1754), "white")
+    d = ImageDraw.Draw(im)
+    d.text((110, 160), "Invoice from Sharma Traders", fill="black", font=lat)
+    d.text((110, 260), "Total amount 4650 rupees", fill="black", font=lat)
+    d.text((110, 360), "नमस्ते दुकान", fill="black", font=dev)
+    b = io.BytesIO()
+    im.save(b, "JPEG", quality=90)
+    return convert.images_to_pdf([("scan.jpg", b.getvalue())], page_size="a4")
+
+
+def table_pdf(total: str = "4,650.50") -> bytes:
+    from reportlab.lib.styles import getSampleStyleSheet
+    from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table
+    b = io.BytesIO()
+    ss = getSampleStyleSheet()
+    rows = [["Item", "Qty", "Amount"], ["Atta", "2", "1,200.00"], ["Rice", "1", "3,450.50"], ["Total", "", total]]
+    t = Table(rows)
+    t.setStyle([("GRID", (0, 0), (-1, -1), 0.5, (0, 0, 0))])
+    SimpleDocTemplate(b).build([Paragraph("Quotation 12", ss["Title"]),
+                                Paragraph("This is the body text of the quotation for the shop.", ss["Normal"]),
+                                Spacer(1, 12), t])
+    return b.getvalue()
+
+
+def embedded_font_pdf() -> bytes:
+    from pathlib import Path
+    from reportlab.pdfbase import pdfmetrics
+    from reportlab.pdfbase.ttfonts import TTFont
+    from reportlab.pdfgen import canvas
+    f = Path(__file__).resolve().parent.parent / "fonts" / "Poppins-Bold.ttf"
+    pdfmetrics.registerFont(TTFont("CardPoppins", str(f)))
+    b = io.BytesIO()
+    c = canvas.Canvas(b)
+    c.setFont("CardPoppins", 16)
+    c.drawString(72, 760, "Archive copy with the font inside")
+    c.showPage()
+    c.save()
+    return b.getvalue()
 
 
 # ---------------------------------------------------------------------------------------------------- scoring
@@ -460,6 +507,68 @@ def cases() -> list[dict[str, Any]]:
         pv = secure.preview(pdf, f["hits"])
         return "ABCPE1234F" in convert.page_texts(pv)[0] and "PREVIEW" in convert.page_texts(pv)[0], "preview removes nothing"
 
+    def ocr_scan():
+        r = ocrlayer.searchable(scanned_text_pdf(), "hindi")
+        t = convert.page_texts(r["bytes"])[0]
+        same = ink(r["bytes"], 1, lambda a, b, c: a < 80) == ink(scanned_text_pdf(), 1, lambda a, b, c: a < 80)
+        return r["done"] == [1] and "Sharma" in t and "Invoice" in t and same, f"read: {t.strip()[:50]!r}; page unchanged"
+
+    def ocr_skips_text():
+        r = ocrlayer.searchable(text_pdf(2))
+        return r["done"] == [] and r["skipped_text"] == [1, 2], "pages that have text are left alone"
+
+    def to_excel():
+        from openpyxl import load_workbook
+        good = fromdoc.to_xlsx(table_pdf())
+        ws = load_workbook(io.BytesIO(good["bytes"])).worksheets[0]
+        vals = [[c.value for c in r] for r in ws.iter_rows()]
+        bad = fromdoc.to_xlsx(table_pdf("4,999.00"))
+        ok = vals[1][2] == 1200 and vals[2][2] == 3450.5 and not good["notes"] and any("4650.5" in n for n in bad["notes"])
+        return ok, "numbers as numbers; a wrong Total is named"
+
+    def to_word():
+        from docx import Document
+        r = fromdoc.to_docx(table_pdf())
+        d = Document(io.BytesIO(r["bytes"]))
+        ok = r["headings"] >= 1 and len(d.tables) == 1 and d.tables[0].cell(1, 0).text == "Atta" and \
+            any("body text" in p.text for p in d.paragraphs)
+        return ok, f"{r['headings']} heading, {r['paragraphs']} paragraph, {r['tables']} table"
+
+    def to_word_scan():
+        r = fromdoc.to_docx(scanned_text_pdf())
+        from docx import Document
+        d = Document(io.BytesIO(r["bytes"]))
+        return r["ocr_pages"] == [1] and any("Sharma" in p.text for p in d.paragraphs), "a scan read with OCR first"
+
+    def to_powerpoint():
+        from pptx import Presentation
+        r = fromdoc.to_pptx(text_pdf(3))
+        prs = Presentation(io.BytesIO(r["bytes"]))
+        notes = prs.slides[1].notes_slide.notes_text_frame.text
+        return len(prs.slides) == 3 and "page 2" in notes, "3 slides, each page's words in its notes"
+
+    def pdfa_keep():
+        import pikepdf
+        r = archive.to_pdfa(embedded_font_pdf(), "2b")
+        with pikepdf.open(io.BytesIO(r["bytes"])) as p:
+            meta = str(p.open_metadata())
+            intent = "/OutputIntents" in p.Root
+        honest = r["validated"] or r["compliant"] is None
+        return ("pdfaid" in meta and intent and not r["notes"] and honest and "Archive copy" in
+                convert.page_texts(r["bytes"])[0]), "font inside -> kept as is + PDF/A identity; validation said plainly"
+
+    def pdfa_pages():
+        r = archive.to_pdfa(text_pdf(2), "2b")
+        t = convert.page_texts(r["bytes"])[1]
+        return (r["fonts_not_embedded"] and r["notes"] and "page 2" in t), "fonts not inside -> pages redrawn + text layer"
+
+    def redact_keeps_words():
+        pdf = id_pdf()
+        f = secure.find(pdf, ["pan"])
+        r = secure.redact(pdf, f["hits"], presets=["pan"])
+        t = convert.page_texts(r["bytes"])[0]
+        return "ABCPE1234F" not in t and "Name" in t and r["text_layer_pages"] == [1], "other words searchable again"
+
     return [
         _case("merge", "merge 2 PDFs + a photo, bookmarks", merge),
         _case("split_every", "split every 5 pages", split_every),
@@ -507,6 +616,17 @@ def cases() -> list[dict[str, Any]]:
         _case("redact", "true redaction, Indian presets", redact_presets),
         _case("redact_checksum", "redaction is not fooled by look-alikes", redact_not_fooled),
         _case("redact_preview", "preview removes nothing", redact_preview_keeps),
+        # D4
+        _case("ocr", "scan -> searchable (Hindi + English)", ocr_scan, ocrlayer.ready, "Tesseract not installed"),
+        _case("ocr_skips", "pages with text left alone", ocr_skips_text, ocrlayer.ready, "Tesseract not installed"),
+        _case("to_excel", "tables -> Excel, totals checked", to_excel),
+        _case("to_word", "PDF -> editable Word", to_word),
+        _case("to_word_scan", "scan -> Word via OCR", to_word_scan, ocrlayer.ready, "Tesseract not installed"),
+        _case("to_powerpoint", "PDF -> PowerPoint", to_powerpoint),
+        _case("pdfa_keep", "PDF/A-2b, fonts inside", pdfa_keep),
+        _case("pdfa_pages", "PDF/A-2b, fonts missing", pdfa_pages, ocrlayer.ready, "Tesseract not installed"),
+        _case("redact_text_layer", "redacted page stays searchable", redact_keeps_words, ocrlayer.ready,
+              "Tesseract not installed"),
     ]
 
 

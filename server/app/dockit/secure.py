@@ -411,13 +411,21 @@ def redact(data: bytes, hits: list[dict], dpi: int = 200, terms: list[str] | Non
     for s in keep:
         s.close()
     clean, stripped = edit.sanitize(out)
-    # 3) the proof: read it all again
+    ocr_pages: list[int] = []
+    try:                                                # the kept words on redrawn pages become searchable again
+        from . import ocrlayer
+        if ocrlayer.ready():
+            r = ocrlayer.searchable(clean, "", ",".join(str(p + 1) for p in sorted(redrawn)), auto_rotate=False)
+            clean, ocr_pages = r["bytes"], r["done"]
+    except Exception:
+        ocr_pages = []
+    # 3) the proof: read it all again (the text layer too)
     left = verify(clean, secrets_found, presets or [])
     if left:
         raise DocError(f"Check failed: {len(left)} found item(s) could still be read after redaction ({', '.join(mask(x) for x in left[:3])}); "
                        "nothing was delivered.")
     return {"bytes": clean, "pages_redrawn": sorted(p + 1 for p in redrawn), "boxes": sum(len(v) for v in by.values()),
-            "comments_removed": removed_notes, "stripped": stripped}
+            "comments_removed": removed_notes, "stripped": stripped, "text_layer_pages": ocr_pages}
 
 
 def _present(secret: str, blob: str) -> bool:

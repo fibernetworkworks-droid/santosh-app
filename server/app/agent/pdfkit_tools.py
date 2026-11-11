@@ -14,7 +14,7 @@ import zipfile
 from pathlib import Path
 from typing import Any
 
-from ..dockit import check, convert, core, edit, health, optimize, organize, secure, stamp, vault
+from ..dockit import archive, check, convert, core, edit, fromdoc, health, ocrlayer, optimize, organize, secure, stamp, vault
 from ..dockit.core import DocError
 from .tools import Ctx, ToolError
 
@@ -24,11 +24,13 @@ ACTIONS = ("guide", "info", "merge", "split", "remove", "extract", "organize", "
            "page_numbers", "watermark", "header_footer", "crop", "add", "highlight", "metadata", "bookmarks",
            "flatten", "nup", "booklet", "fit", "grayscale", "sanitize", "attachments",
            # D3 (v0.805): security
-           "protect", "unlock", "redact", "redact_apply")
+           "protect", "unlock", "redact", "redact_apply",
+           # D4 (v0.807): read + convert
+           "ocr", "to_word", "to_excel", "to_powerpoint", "pdfa", "web_to_pdf")
 ZIP_OVER = 10            # more output files than this arrive as one ZIP (plus the ZIP only)
-NOT_YET = ("searchable PDF / OCR layer, HTML -> PDF, PDF -> Word / Excel / PowerPoint, PDF/A (D4); fill forms, sign "
-           "(D5); compare two PDFs, translate keeping the layout (D6); changing the PDF's OWN existing words in place "
-           "(a white box + new text on top is offered, said as such); cracking or guessing any password (never)")
+NOT_YET = ("fill forms, sign (D5); compare two PDFs, translate keeping the layout (D6); changing the PDF's OWN "
+           "existing words in place (a white box + new text on top is offered, said as such); cracking or guessing any "
+           "password (never)")
 
 GUIDE = (
     "PDF_KIT GUIDE. Her own PDFs (and pictures / Office files) -> NEW files back in chat. Runs on the server: free, no "
@@ -89,6 +91,18 @@ GUIDE = (
     "boxes burned in (so the text there can no longer be selected - say so), other pages keep their text; comments / "
     "bookmarks / form values carrying a found item, metadata, attachments and scripts go; then the whole file is "
     "read again and must not contain any found item, or nothing is delivered.\n"
+    "D4 read + convert:\n"
+    "  ocr (scanned pages get an invisible text layer = searchable / copyable, the page looks the same; language "
+    "hindi|marathi|tamil|telugu|kannada|malayalam|bengali|gujarati|punjabi|odia|urdu|sanskrit|english, English always "
+    "added; pages; force=true re-reads pages that already have text; auto_rotate). Check names and numbers it read.\n"
+    "  to_word (editable .docx: headings, paragraphs, tables, pictures in reading order; scans read with OCR first; "
+    "layout approximate - say so) | to_excel (every table -> a sheet, numbers as numbers incl. 1,23,456 / Rs / "
+    "(negative); a 'Total' row is checked against the numbers above it and a mismatch is named; one_sheet=true) | "
+    "to_powerpoint (a slide per page that looks exactly like it, the page's words in the slide notes).\n"
+    "  pdfa (archival PDF/A, level 2b|3b|1b, pdfa_mode auto|keep|pages; called compliant ONLY when veraPDF validated "
+    "it - otherwise say 'made to PDF/A rules, not validated').\n"
+    "  web_to_pdf (url = a public web page printed by Hoola's own browser; page_size A4|Letter, landscape; private / "
+    "local addresses refused).\n"
     "Recipes: 'WhatsApp pe nahi ja rahi' = compress (or target_kb 15000 for email). 'Portal 200 KB maangta hai' = "
     "compress target_kb=200. 'Page 3 hata do' = remove pages=3. 'Sirf pehla aur aakhri page' = extract pages='first,last'. "
     "'Har page alag' = split mode=each. 'Ye photos ek PDF mein' = to_pdf page_size=a4 margin=small. 'Word ko PDF' = "
@@ -112,8 +126,9 @@ PDF_KIT_TOOLS = [
         "everywhere) | metadata | bookmarks | flatten | nup | booklet | fit (A4) | grayscale | sanitize | attachments. "
         "protect (password lock: Hoola's password shown on a one-time link, or hers typed there) | unlock | redact "
         "(Aadhaar / PAN / card / account / phone / email / GSTIN presets + words + boxes: preview first) | "
-        "redact_apply (true removal). Not yet (say so): OCR layer, PDF -> Word / Excel, sign, compare. A password "
-        "never goes through the chat."),
+        "redact_apply (true removal) | ocr (searchable scans, 13 Indian languages) | to_word | to_excel | "
+        "to_powerpoint | pdfa | web_to_pdf (a web page link -> PDF). Not yet (say so): fill forms, sign, compare. "
+        "A password never goes through the chat."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": list(ACTIONS)},
          "file_id": {"type": "string"},
@@ -125,7 +140,6 @@ PDF_KIT_TOOLS = [
          "every": {"type": "integer"}, "max_kb": {"type": "integer"},
          "merge_ranges": {"type": "boolean"},
          "degrees": {"type": "integer", "enum": [90, 180, 270]},
-         "level": {"type": "string", "enum": list(optimize.LEVELS)},
          "target_kb": {"type": "integer", "description": "compress until the file is at most this many KB"},
          "page_size": {"type": "string", "enum": ["fit", *convert.PAGE_SIZES]},
          "orientation": {"type": "string", "enum": ["auto", "portrait", "landscape"]},
@@ -171,7 +185,14 @@ PDF_KIT_TOOLS = [
          "presets": {"type": "array", "items": {"type": "string", "enum": list(secure.PRESETS)}},
          "find": {"type": "array", "items": {"type": "string"}, "description": "redact: exact words / names"},
          "areas": {"type": "array", "items": {"type": "object"}},
-         "redact_id": {"type": "string"}, "dpi": {"type": "integer"},
+         "redact_id": {"type": "string"},
+         "language": {"type": "string", "description": "ocr: hindi, marathi, tamil ... (English always added)"},
+         "force": {"type": "boolean"}, "auto_rotate": {"type": "boolean"}, "one_sheet": {"type": "boolean"},
+         "pictures": {"type": "boolean"},
+         "level": {"type": "string", "enum": [*optimize.LEVELS, *archive.LEVELS]},
+         "pdfa_mode": {"type": "string", "enum": ["auto", "keep", "pages"]},
+         "url": {"type": "string", "description": "web_to_pdf: the public page"},
+         "landscape": {"type": "boolean"},
      }, "required": ["action"]}},
 ]
 PDF_KIT_LABELS = {"pdf_kit": "PDF par kaam kar raha hoon"}
@@ -309,6 +330,11 @@ def _run(ctx: Ctx, action: str, a: dict) -> dict[str, Any]:
 
     if action == "redact_apply":
         return _redact_apply(ctx, a)
+    if action == "web_to_pdf":
+        size = {"a4": "A4", "letter": "Letter", "legal": "Legal", "a5": "A5"}.get(str(a.get("page_size") or "a4").lower(), "A4")
+        pdf, title = archive.url_to_pdf(str(a.get("url") or ""), size, bool(a.get("landscape")))
+        out = _deliver_pdf(ctx, pdf, _fname(title, ".pdf", custom))
+        return out | {"title": title, "note": "Printed by Hoola's own browser from the public page as it was now."}
     fid = _one(a)
     name, data = _pdf_in(ctx, fid)
     st = core.stem(name)
@@ -408,6 +434,8 @@ def _run(ctx: Ctx, action: str, a: dict) -> dict[str, Any]:
         return _d2(ctx, action, a, data, name, st, n_in, custom)
     if action in D3:
         return _d3(ctx, action, a, fid, data, name, st, n_in, custom)
+    if action in D4:
+        return _d4(ctx, action, a, data, name, st, n_in, custom)
     raise ToolError(f"action must be one of: {', '.join(ACTIONS)}.")
 
 
@@ -609,5 +637,71 @@ def _redact_apply(ctx: Ctx, a: dict) -> dict[str, Any]:
                        ["every found item read again: none left"])
     return out | {"pages_redrawn": r["pages_redrawn"], "boxes": r["boxes"], "comments_removed": r["comments_removed"],
                   "also_removed": r["stripped"],
-                  "say": f"Redacted for good: {r['boxes']} boxes. Pages {', '.join(map(str, r['pages_redrawn'][:20]))} are "
-                         "now pictures (their text can no longer be selected); the other pages keep their text."}
+                  "say": f"Redacted for good: {r['boxes']} boxes. Pages {', '.join(map(str, r['pages_redrawn'][:20]))} were "
+                         "redrawn as pictures with the boxes burned in" + (" and read again so their other words stay "
+                         "searchable" if r.get("text_layer_pages") else " (their text can no longer be selected)") +
+                         "; the other pages keep their text."}
+
+
+D4 = ("ocr", "to_word", "to_excel", "to_powerpoint", "pdfa")
+OFFICE_TYPES = {"to_word": ".docx", "to_excel": ".xlsx", "to_powerpoint": ".pptx"}
+
+
+def _d4(ctx: Ctx, action: str, a: dict, data: bytes, name: str, st: str, n_in: int, custom: str) -> dict[str, Any]:
+    lang = str(a.get("language") or "")
+    if action == "ocr":
+        r = ocrlayer.searchable(data, lang, a.get("pages") or "all", bool(a.get("force")),
+                                auto_rotate=a.get("auto_rotate") is not False)
+        if not r["done"]:
+            return {"name": name, "changed": False, "say": "Every page already has text; nothing to read "
+                    "(force=true reads them again)." if r["skipped_text"] else "No pages to read."}
+        out = _deliver_pdf(ctx, r["bytes"], _fname(f"{st} (searchable)", ".pdf", custom), n_in,
+                           [f"{len(r['done'])} pages now have text"])
+        extra = {"pages_read": r["done"], "languages": r["langs"], "characters": r["chars"],
+                 "say": "Searchable now: the pages look the same, their words can be searched and copied. Check names "
+                        "and numbers it read."}
+        if r.get("still_empty"):
+            extra["unreadable_pages"] = r["still_empty"]
+        if r["rotated"]:
+            extra["read_sideways"] = r["rotated"]
+        return out | extra
+    if action in OFFICE_TYPES:
+        ext = OFFICE_TYPES[action]
+        if action == "to_word":
+            r = fromdoc.to_docx(data, a.get("pages") or "all", lang, a.get("pictures") is not False)
+            meta = {k: r[k] for k in ("paragraphs", "headings", "tables", "pictures")}
+        elif action == "to_excel":
+            r = fromdoc.to_xlsx(data, a.get("pages") or "all", lang, bool(a.get("one_sheet")))
+            meta = {"tables": r["tables"], "numbers": r["numbers"]}
+        else:
+            r = fromdoc.to_pptx(data, a.get("pages") or "all")
+            meta = {"slides": r["slides"]}
+        _check_office(r["bytes"], ext)
+        view = _put(ctx, _fname(st, ext, custom), r["bytes"])
+        return {"file_id": view.get("file_id"), "name": view.get("name"), "kb": core.kb(len(r["bytes"])),
+                "checked": f"checked: the {ext[1:]} file opens", **meta, "notes": r.get("notes", []),
+                **({"ocr_pages": r["ocr_pages"]} if r.get("ocr_pages") else {})}
+    # pdfa
+    level = str(a.get("level") or "2b").lower()
+    r = archive.to_pdfa(data, level if level in archive.LEVELS else "2b", a.get("pdfa_mode") or "auto", lang)
+    out = _deliver_pdf(ctx, r["bytes"], _fname(f"{st} (PDF-A)", ".pdf", custom), n_in)
+    say = (f"{r['level']}: validated by veraPDF." if r["compliant"] else
+           f"Made to {r['level']} rules but NOT validated - do not call it compliant. {r['why']}" if not r["validated"]
+           else f"veraPDF says it is NOT {r['level']} compliant: {r['why'][:160]}")
+    return out | {"level": r["level"], "validated": r["validated"], "compliant": r["compliant"], "say": say,
+                  "notes": r["notes"]}
+
+
+def _check_office(blob: bytes, ext: str) -> None:
+    try:
+        if ext == ".docx":
+            from docx import Document
+            Document(io.BytesIO(blob))
+        elif ext == ".xlsx":
+            from openpyxl import load_workbook
+            load_workbook(io.BytesIO(blob), read_only=True).close()
+        else:
+            from pptx import Presentation
+            Presentation(io.BytesIO(blob))
+    except Exception as e:
+        raise DocError(f"Check failed: the {ext[1:]} file does not open ({type(e).__name__}); nothing was delivered.")

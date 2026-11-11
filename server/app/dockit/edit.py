@@ -461,7 +461,6 @@ def grayscale(data: bytes) -> tuple[bytes, dict]:
     """Colour pictures -> grey, colour text / lines -> grey (black-and-white printing, smaller file).
     Colours set through named colour spaces or patterns are left as they are (said in the result)."""
     import pikepdf
-    from PIL import Image
     pics = ops = 0
     with core.open_pdf(data) as pdf:
         done = set()
