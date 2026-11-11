@@ -503,6 +503,10 @@ def new(tenant: str, brief: str, conv: str = "", name: str = "", field: str = ""
     for k, v in (answers or {}).items():
         if k in ("name", "phone", "whatsapp", "email", "address", "city", "hours", "tagline", "about") and v:
             facts[k] = _tidy(v, 400)
+    from . import designq as DQ
+    mine = DQ.PENDING.get()                            # v0.784 SAWAAL CARD: her design answers = look 1, set before any job
+    if mine and not facts.get("design_ref"):
+        facts["design_ref"] = mine
     plan = make_plan(br, facts)
     if shape is not None:
         plan = shape(br, plan)
@@ -1445,13 +1449,20 @@ def _make_looks(r: Site) -> None:
     # wave 2: every look's hero + page-top sections at the same time
     hero_d = _home_hero(_j(r.plan, {}))       # v0.708 the plan's own front door, not the library's marketing hero
     app_look = is_app_plan(_j(r.plan, {}))    # v0.714 a system's look = its front door + its main screen
-    jobs = [(i, {"type": "hero", "design": hero_d or briefs[i]["designs"].get("hero") or T.HEROES[briefs[i]["hero"]]}, True)
+    mine_hero = T.HEROES.get((mine or {}).get("hero") or "", "")   # v0.784 the front she picked on the question card
+
+    def hero_of(i: int) -> str:
+        base = hero_d or briefs[i]["designs"].get("hero") or T.HEROES[briefs[i]["hero"]]
+        if i == 0 and mine_hero:
+            return f"{base} LAYOUT SHE CHOSE: {mine_hero}." if hero_d else mine_hero
+        return base
+    jobs = [(i, {"type": "hero", "design": hero_of(i)}, True)
             for i in range(len(styles))] + [(i, s, False) for i in range(len(styles)) for s in more]
     secs: list[dict[str, dict[str, Any]]] = [{} for _ in styles]
     cnt_lock, cnt = threading.Lock(), {"n": 0}
     ACT.step(r.tenant_id, r.id, "3 looks ban rahe hain", "", key="tops", done=0, total=len(jobs))
     ST.clear(r.id)                             # v0.664 the three looks' canvases: what each one is drawn with
-    ST.set_looks(r.id, [{"label": "Aapke design se" if (mine and i == 0) else T.STYLES[styles[i]]["label"],
+    ST.set_looks(r.id, [{"label": (("Your choices" if mine.get("source") == "answers" else "Aapke design se")) if (mine and i == 0) else T.STYLES[styles[i]]["label"],
                          "style": styles[i], "tokens": toks[i], "types": ["hero"] + [x["type"] for x in more]}
                         for i in range(len(styles))])
 
@@ -1497,7 +1508,7 @@ def _make_looks(r: Site) -> None:
             shots = rep["pages"].get("home", {}).get("shots", {})
         except C.CheckError as e:
             log.info("look screenshots skipped: %s", e)
-        return {"style": styles[i], "label": "Aapke design se" if (mine and i == 0) else T.STYLES[styles[i]]["label"],
+        return {"style": styles[i], "label": (("Your choices" if mine.get("source") == "answers" else "Aapke design se")) if (mine and i == 0) else T.STYLES[styles[i]]["label"],
                 "tokens": toks[i], "shots": shots, "dna": dnas[i], "mine": bool(mine and i == 0)}
     ACT.step(r.tenant_id, r.id, "Putting the 3 looks together and taking screenshots",
              "computer and phone views of each look", key="shots")

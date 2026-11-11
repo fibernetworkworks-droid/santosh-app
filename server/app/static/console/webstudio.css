@@ -480,3 +480,73 @@ dialog.tpld:not([open]){display:none}
 .doc .pgh b{overflow-wrap:anywhere}
 .doc .secs{margin:6px 0 0;padding-left:18px;font-size:13px;color:var(--lit,inherit)}
 .doc .secs li{margin:2px 0;overflow-wrap:anywhere}
+
+/* v0.777 CHAT JAISA (L1, docs/LOVABLE_STUDIO_PLAN.md): the live thread. Words land out of a soft focus (md.js wraps
+   only the newest words), "Thinking…" shimmers, queued messages wait greyed, attachments ride as chips, Details opens
+   the turn's Timeline + Changes where the preview sits. Every motion has a reduced-motion fallback. */
+.msgs{position:relative}
+.hist{display:flex;flex-direction:column;gap:14px}
+.livebox{display:flex;flex-direction:column;gap:14px}
+.ho .w{animation:ws-word .46s cubic-bezier(.25,.46,.45,.94) both}
+@keyframes ws-word{from{opacity:0;filter:blur(3px)}to{opacity:1;filter:none}}
+.thinking{background:linear-gradient(90deg,var(--mut) 0%,var(--mut) 15%,var(--ink) 50%,var(--mut) 85%,var(--mut) 100%);
+  background-size:200% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:ws-think 1.8s linear infinite}
+@keyframes ws-think{from{background-position:200% 0}to{background-position:-100% 0}}
+.turnhead{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.turnhead details{flex:1 1 auto;min-width:0}
+.ib.sm{width:26px;height:26px}
+.me.queued{opacity:.55;position:relative}
+.me.queued::before{content:'Runs after this step';display:block;font-size:11.5px;color:var(--mut);margin-bottom:4px}
+#wsQ{display:flex;flex-direction:column;gap:10px;margin-top:10px}.me .qacts{display:block;margin-top:6px;text-align:right}
+.mfiles,.tray{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.tray{margin:0 0 6px}
+.fchip{display:inline-flex;align-items:center;gap:6px;max-width:220px;font-size:12px;padding:4px 8px;border:1px solid var(--line);border-radius:999px;background:var(--bg);color:var(--ink)}
+.fchip.up{opacity:.6}.fchip.up::after{content:'';width:10px;height:10px;border-radius:50%;border:2px solid var(--pri-soft);border-top-color:var(--pri);animation:ws-spin .9s linear infinite}
+.fchip.bad{border-color:var(--bad);color:var(--bad)}
+.fchip .x{border:0;background:none;color:var(--mut);cursor:pointer;font-size:14px;line-height:1;padding:0 2px}
+.chat.drop{outline:2px dashed var(--pri);outline-offset:-6px}
+.jump{position:sticky;bottom:8px;align-self:center;display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:999px;border:1px solid var(--line);background:var(--raise);color:var(--ink);font-size:12.5px;box-shadow:0 4px 14px rgba(0,0,0,.08);cursor:pointer;animation:ws-in .2s ease both}
+.wcard .whead .b.sm{margin-left:6px}
+.dtop{display:flex;align-items:center;gap:10px;padding:12px 18px;border-bottom:1px solid var(--line)}
+.tline{list-style:none;margin:8px 0;padding:0 0 0 14px;border-left:1px solid var(--line)}
+.tline li{position:relative;padding:8px 0 8px 14px}
+.tline .tdot{position:absolute;left:-19px;top:14px;width:9px;height:9px;border-radius:50%;background:var(--ok)}
+.tline li.bad .tdot{background:var(--bad)}.tline li.run .tdot{background:var(--pri);animation:ws-pulse 1.4s ease-out infinite}
+@keyframes ws-pulse{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--pri) 45%,transparent)}100%{box-shadow:0 0 0 8px transparent}}
+.tline .tl1{display:flex;flex-direction:column;gap:2px}.tline .tl1 b{font-weight:500;font-size:14px;color:var(--ink)}
+@media (prefers-reduced-motion:reduce){.ho .w,.thinking,.tline li.run .tdot,.jump,.fchip.up::after{animation:none}.thinking{color:var(--ink);background:none}}
+.jump[hidden],.tray[hidden],.livebox[hidden]{display:none}
+
+/* v0.782 TEEN MODE (L2): plan cards, the Start building card, the plan document */
+.plancard,.sbcard{border:1px solid var(--line);border-radius:12px;background:var(--raise);padding:10px 12px;display:flex;flex-direction:column;gap:6px;animation:ws-in .24s ease both}
+.plancard .ph{display:flex;align-items:center;gap:8px}.plancard .ph b,.sbcard b{font-size:13.5px;font-weight:600;color:var(--ink)}
+.plancard p,.sbcard p{margin:0}
+.sbcard{border-color:var(--pri-ring);background:var(--pri-soft2)}
+.plandoc{font-size:15px;line-height:1.65}.plandoc h2{font-size:16px;margin:18px 0 6px}.plandoc :is(ol,ul){padding-left:22px}
+.plandoc ::selection{background:var(--pri-soft)}
+@media (prefers-reduced-motion:reduce){.plancard,.sbcard{animation:none}}
+/* v0.784 SAWAAL CARD (L3): a few design choices she can see before a Build */
+.wsq{max-width:980px;margin:0 auto;padding:28px 20px 110px;display:flex;flex-direction:column;gap:30px;animation:ws-in .32s ease both}
+.wsq .qhead h1{font-size:28px;margin:0 0 6px}.wsq .qhead p{margin:0;max-width:640px}
+.wsq .qask{margin:14px 0 0;padding:10px 14px;border-left:3px solid var(--pri-ring);background:var(--raise);border-radius:0 10px 10px 0;font-size:14px;color:var(--lit)}
+.qset{border:0;margin:0;padding:0;min-width:0}.qset legend{font-weight:600;font-size:15px;margin-bottom:10px;padding:0}
+.qopts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.qopt{position:relative;display:flex;flex-direction:column;gap:10px;padding:10px;border:1px solid var(--hair);border-radius:14px;background:var(--bg);cursor:pointer;transition:border-color .15s,box-shadow .15s,transform .15s}
+.qopt:hover{border-color:var(--hair2);transform:translateY(-1px)}
+.qopt input{position:absolute;opacity:0;pointer-events:none}
+.qopt:has(input:checked){border-color:var(--pri);box-shadow:0 0 0 3px var(--pri-soft)}
+.qopt:has(input:focus-visible){outline:2px solid var(--pri);outline-offset:2px}
+.qopt:has(input:checked)::after{content:"";position:absolute;top:10px;right:10px;width:18px;height:18px;border-radius:50%;background:var(--pri) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12l5 5 9-10'/%3E%3C/svg%3E") center/12px no-repeat}
+.qtxt{display:flex;flex-direction:column;gap:2px;min-width:0}.qtxt b{font-size:14px;font-weight:600}
+.qtxt .sm{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.qart{display:flex;height:76px;border-radius:10px;overflow:hidden;border:1px solid var(--hair)}
+.qstyle{align-items:flex-end;gap:8px;padding:10px}.qstyle b{font-size:30px;line-height:1;margin-right:auto}.qstyle i{display:block;width:34px;height:14px}.qstyle i.ac{width:14px;border-radius:50%}
+.qpal i{flex:1;display:block}.qpal i:nth-child(1){flex:1.4}
+.qfont{flex-direction:column;justify-content:center;gap:4px;padding:10px 12px;background:var(--raise)}.qfont b{flex:none;font-size:22px;font-weight:400;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ink)}.qfont span{flex:none;font-size:13px;line-height:1.35;color:var(--lit);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.qhero{background:var(--raise);align-items:center;justify-content:center;color:var(--dim)}
+.qhero .wire{width:100%;height:100%}.qhero .wire rect{fill:currentColor;opacity:.55}.qhero .wire .l{opacity:.3}.qhero .wire .p{opacity:.16}.qhero .wire .w{fill:var(--bg);opacity:.9}.qhero .wire .a{fill:var(--pri);opacity:.9}
+.qbar{position:fixed;left:0;right:0;bottom:0;display:flex;align-items:center;gap:10px;padding:12px max(20px,calc((100vw - 980px)/2 + 20px));background:var(--bg);border-top:1px solid var(--hair)}
+@media (max-width:820px){.qopts{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:560px){.qbar{flex-wrap:wrap}.qbar .sp{display:none}.qbar .b{flex:1 1 0;justify-content:center}.qbar .b.pri{flex:1 1 100%;order:-1}.wsq{padding-bottom:150px}}
+@media (max-width:380px){.qopts{grid-template-columns:1fr}}
+@media (prefers-reduced-motion:reduce){.wsq{animation:none}.qopt{transition:none}.qopt:hover{transform:none}}

@@ -45,11 +45,29 @@ its call when the flag is already set (it says the same line a Stop during the c
 the tools node runs none of the step's tools (`_turn_tools`' own Stop result), every node's update carries
 `stopped` into the checkpoint (never resumable), a tool cut by her Stop is `failed` / `stopped` in the ledger, and a
 stopped run keeps its ledger rows (its checkpoints still go).
+
+G4 (long jobs = ONE thread continuing). A long job (an open kaam_plan goal with steps left) has its own thread,
+"<conversation>:job-<goal id>". When a turn of HER job (her own words, a round of her job, a routine's job - never a
+wake, never a call's quick brain turn) reaches `finish` with steps still open, `finish` routes to the `carry` node and
+the graph is compiled with interrupt_before=["carry"]: the run stops right there, checkpointed. If that turn ran on
+another thread (her inbox turn, a fallback round), its newest checkpoint is copied onto the job thread (`_park`: the
+latest turn's state wins - its messages are the fullest -, the job's earlier tool facts are merged in, its ledger rows
+move with it). The job then continues through the existing round machinery (goal.maybe_continue -> _schedule ->
+_continuation: her authority, the rounds / minutes limits and their "Shall I carry on?" ask, the waiting-on-her pause,
+Rokiye), but the round does not start a fresh turn: `_continuation` sets JOB_RUN and `run_steps` resumes the job thread
+with ainvoke(None) - at `carry` that is the next SEGMENT (resume() rebuilds the round's fresh per-segment state - step
+budget, breaker, nudge budget, deadline - over the thread's own messages plus what the chat saved since the segment
+ended: her messages, the round's "[Goal jaari ...]" line); anywhere else (a restart or a segment deadline cut it
+mid-way) it is the SAME segment continuing from its last finished node, the tool ledger deciding an interrupted tool
+exactly as G1 (a done tool reused, a read run again, a send / order never re-sent). A segment cut by its deadline is
+parked the same way (`park_cut`), so a budget never throws the job away. A turn that reaches END cleans its own
+thread, and the job threads of this chat's finished / failed / stopped goals.
 """
 from __future__ import annotations
 
 import asyncio
 import contextvars
+import copy
 import json
 import logging
 import os
@@ -72,8 +90,15 @@ except Exception:   # noqa: BLE001
     class _NodeCancelled(Exception):   # an older langgraph re-raises CancelledError itself
         pass
 
-STATS = {"turns": 0, "fallback": 0, "no_checkpoint": 0, "resumed": 0, "cleaned": 0, "stopped_at_boundary": 0}
-_RESUMABLE = ("model", "tools", "check", "finish")
+STATS = {"turns": 0, "fallback": 0, "no_checkpoint": 0, "resumed": 0, "cleaned": 0, "stopped_at_boundary": 0,
+         "parked": 0, "copied": 0, "segments": 0, "job_resumed": 0, "job_fresh": 0, "job_gone": 0, "cut_parked": 0,
+         "jobs_forgotten": 0}
+_RESUMABLE = ("model", "tools", "check", "finish", "carry")
+
+# G4: the goal a round of a long job continues (set by goal._continuation around its run_turn; taken once by run_steps)
+JOB_RUN: contextvars.ContextVar = contextvars.ContextVar("turngraph_job_run", default=None)
+_CUT: dict[str, str] = {}      # G4: conversation -> the thread a cancelled run left behind (a segment deadline parks it)
+_FACTS_KEEP = 300              # G4: a job's tool facts across all its segments (newest kept)
 
 
 class TurnState(TypedDict, total=False):
@@ -91,6 +116,11 @@ class TurnState(TypedDict, total=False):
     stop: str               # G1: the last model step's stop reason (the check node needs it on resume)
     data: dict              # G1: the turn's plain-data state (see _data) - what resume rebuilds the live objects from
     stopped: bool           # G2: she stopped this run (Stop / stop words) - never resumable, checked at every node
+    facts: list             # G3: one fact per tool_use of the turn (agent/turnfacts.py: did / card / read / failed /
+                            # ambiguous / stopped / skipped + ledger state + object) - what the check node judges by
+    decision: dict          # G3: the check node's last decision (kind, why, back = the model was sent back to work)
+    decisions: list         # G3: every decision of the turn (newest last, capped)
+    nudges: dict            # G3: the check node's one budget, spent per kind (turnfacts.CAPS / TOTAL)
 
 
 class _Live:
@@ -103,6 +133,10 @@ class _Live:
         self.t = None                                  # santosh._Turn
         self.cv = contextvars.copy_context()           # the ONE context every node body runs in
         self.thread = ""                               # G1: the checkpoint thread (the ledger's key); '' = no ledger
+        self.facts: list = []                          # G3: the turn's facts / the check node's decisions + budget
+        self.decisions: list = []
+        self.used: dict = {}
+        self.job: dict = {}                            # G4: the long job's counters (goal, segments, steps, seconds, mark)
 
 
 _RUNS: dict[str, _Live] = {}
@@ -171,7 +205,52 @@ def _data(live: _Live) -> dict:
         out["__final_text"] = t.final_text or ""
         if t.adm is not None:
             out["__adm"] = sorted(t.adm.families)
+    if live.job:
+        out["__job"] = dict(live.job)
     return out
+
+
+def _g3(live: _Live) -> dict:
+    """G3: the facts + the check node's decisions as plain data for the checkpoint."""
+    j = getattr(live.t, "judge", None) if live.t is not None else None
+    return {"facts": _snapshot(live.facts), "decisions": _snapshot(live.decisions), "nudges": dict(live.used),
+            "decision": dict(j.last) if (j is not None and j.last) else {}}
+
+
+def _judge(live: _Live) -> None:
+    """G3: the graph's check node judges the answer from the turn's facts (santosh._turn_after_model asks t.judge)."""
+    from . import turnfacts
+    live.t.judge = turnfacts.Judge(live.t, live.facts, live.decisions, live.used, stopped=lambda: _stop_now(live))
+
+
+def _record_facts(live: _Live, n_calls: int) -> None:
+    """G3: after a tools step - one fact per tool_use of the step, from its call record, its tool_result and its G1
+    ledger row (never from the reply's words)."""
+    from . import toolledger as L
+    from . import turnfacts
+    t = live.t
+    try:
+        calls = (t.state.get("calls") or [])[n_calls:]
+        ids = {b.get("id") for b in t.blocks or [] if b.get("type") == "tool_use"}
+        results = []
+        for m in reversed(live.history):
+            c = m.get("content")
+            if m.get("role") == "user" and isinstance(c, list) and any(
+                    isinstance(b, dict) and b.get("type") == "tool_result" and b.get("tool_use_id") in ids for b in c):
+                results = c
+                break
+        rows = {}
+        if live.thread:
+            for i in ids:
+                try:
+                    r = L.get(live.thread, i)
+                except Exception:   # noqa: BLE001
+                    r = None
+                if r:
+                    rows[i] = r
+        live.facts.extend(turnfacts.step_facts(t.blocks, results, calls, t.ran_steps, rows))
+    except Exception:   # noqa: BLE001 - a fact that cannot be written never breaks her turn (the check then knows less)
+        log.exception("turn facts could not be recorded")
 
 
 def _node(fn):
@@ -191,9 +270,10 @@ async def _prepare(live: _Live, state: TurnState) -> dict:
                                    live.tenant_id, live.state)
     if live.thread:
         live.t.tool_runner = _ledger_runner(live.thread)
+    _judge(live)
     # a Stop that landed while preparing is seen at the model node's boundary (no model call is made)
     return _flag(live, {"messages": _snapshot(live.history), "ran_steps": 0, "route": "model", "prepared": True,
-                        "data": _data(live)})
+                        "data": _data(live), **_g3(live)})
 
 
 async def _model(live: _Live, state: TurnState) -> dict:
@@ -225,9 +305,18 @@ async def _check(live: _Live, state: TurnState) -> dict:
     t = live.t
     # G2: a stopped run still keeps the answer the model already gave (as the old loop does); a nudge that sends it
     # back to work ends at the model node's boundary instead
+    # G3: the one place that may send the model back to work (false claim, reminder promise, self-check, open plan
+    # step, promise without action, max_tokens) - t.judge decides from the turn's facts, inside the shared step
+    j = t.judge
+    if j is not None:
+        j.last = None
     route = await S._turn_after_model(t, t.blocks, t.stop)
+    if j is not None and j.last is None:   # sent back / ended by a step the judge does not own (the held hard answer)
+        j._record("hard_fix" if route == "model" else "stand",
+                  "the held hard answer failed its check: one fix round" if route == "model"
+                  else "the answer stands", back=(route == "model"))
     return _flag(live, {"route": route, "final_text": t.final_text or "", "messages": _snapshot(live.history),
-                        "data": _data(live)})
+                        "data": _data(live), **_g3(live)})
 
 
 async def _tools(live: _Live, state: TurnState) -> dict:
@@ -235,11 +324,15 @@ async def _tools(live: _Live, state: TurnState) -> dict:
     t = live.t
     # G2 boundary: a Stop already set = _turn_tools runs none of the step's tools (each gets the "tapped Stop" result,
     # the same rows as the old loop) and ends the turn with the stop line
-    done = await S._turn_tools(t, t.blocks)
+    n_calls = len(t.state.get("calls") or [])
+    try:
+        done = await S._turn_tools(t, t.blocks)
+    finally:
+        _record_facts(live, n_calls)       # G3: what each tool really did (also when the step ends the turn)
     if done is not None:                   # stuck (breaker) / stopped: the turn ends with this line
         return _flag(live, {"route": "finish", "done": True, "final_text": done, "messages": _snapshot(live.history),
-                            "data": _data(live)})
-    return _flag(live, {"route": "model", "messages": _snapshot(live.history), "data": _data(live)})
+                            "data": _data(live), **_g3(live)})
+    return _flag(live, {"route": "model", "messages": _snapshot(live.history), "data": _data(live), **_g3(live)})
 
 
 async def _finish(live: _Live, state: TurnState) -> dict:
@@ -251,10 +344,258 @@ async def _finish(live: _Live, state: TurnState) -> dict:
         text = S._turn_capped(t)
     else:
         text = S._turn_silent(t)
+    from . import turnfacts
+    note = turnfacts.left_note(live.facts)
+    if note and not live.state.get("left"):
+        live.state["left"] = note          # G3: a step whose outcome is unknown is never reported as done
     text = await S._steps_end(live.conversation_id, live.ctx, live.history, live.settings, live.tenant_id,
                               live.user_text, live.state, text)
     out = (S.LAST_OUTCOME.get(live.conversation_id) or {}).get("outcome", "") if live.user_text else ""
-    return {"final_text": text, "outcome": out, "route": "end", "messages": _snapshot(live.history)}
+    # G4: her long job still has open steps - this run stops at the segment boundary (interrupt before `carry`) and
+    # the job continues on its own thread instead of a fresh round turn
+    g = _job_goal(live) if not (state.get("stopped") or _stop_now(live)) else None
+    route = "end"
+    if g is not None:
+        live.job = _job_counts(live, g)
+        route = "carry"
+    return {"final_text": text, "outcome": out, "route": route, "messages": _snapshot(live.history),
+            "data": _data(live), **_g3(live)}
+
+
+async def _carry(live: _Live, state: TurnState) -> dict:
+    """G4: the next segment of the same long-job thread. resume() already rebuilt the turn for it (the round's fresh
+    per-segment state - step budget, breaker, nudge budget -, the thread's messages plus what the chat saved since the
+    last segment ended, the system prompt); this node clears the last segment's ending and sends the job back to work."""
+    STATS["segments"] += 1
+    return _flag(live, {"route": "model", "ran_steps": 0, "capped": False, "done": False, "final_text": "",
+                        "outcome": "", "stop": "", "messages": _snapshot(live.history), "data": _data(live),
+                        **_g3(live)})
+
+
+def _job_ok(live: _Live) -> bool:
+    """G4: may this turn's ending become a job segment? HER job's turns (her words, her tap, a round of her job) and a
+    routine's (the round rules of goal.maybe_continue), with a checkpoint to continue from; never a wake (it never
+    chains into the job), never a call's quick brain turn (it reads only the last few exchanges - a poor job context)."""
+    from . import goal as _goal
+    from . import santosh as S
+    if not live.thread or not getattr(live.settings, "agent_goal", False):
+        return False
+    actor = getattr(live.ctx, "actor", "owner") or "owner"
+    if actor == "wake" or not (_goal.hers(actor) or actor == "routine"):
+        return False
+    return not S.VOICE_BRAIN_NOW.get()
+
+
+def _job_goal(live: _Live) -> dict | None:
+    """G4: the chat's open long job (a working goal with steps left), when this turn may continue it."""
+    if not _job_ok(live):
+        return None
+    from . import goal as _goal
+    try:
+        g = _goal.active_for(live.conversation_id)
+    except Exception:   # noqa: BLE001
+        log.exception("job goal check failed")
+        return None
+    return g if (g is not None and _goal.steps_left(g)) else None
+
+
+def _max_msg_id(conversation_id: str) -> int:
+    from sqlalchemy import func, select
+    from ..db import Message, session
+    try:
+        with session() as s:
+            return int(s.scalar(select(func.max(Message.id)).where(Message.conversation_id == conversation_id)) or 0)
+    except Exception:   # noqa: BLE001
+        log.exception("message mark failed")
+        return 0
+
+
+def _job_counts(live: _Live, g: dict) -> dict:
+    """G4: the job's counters after this segment (they ride in the checkpoint's data, across every segment)."""
+    prev = dict(live.job or {})
+    if prev.get("goal") != g.get("id"):
+        prev = {"goal": g.get("id"), "segments": 0, "steps": 0, "seconds": 0.0}
+    t0 = float((live.state or {}).get("t0") or _time.time())
+    prev["segments"] = int(prev.get("segments") or 0) + 1
+    prev["steps"] = int(prev.get("steps") or 0) + int(getattr(live.t, "ran_steps", 0) or 0)
+    prev["seconds"] = round(float(prev.get("seconds") or 0) + max(0.0, _time.time() - t0), 1)
+    prev["mark"] = _max_msg_id(live.conversation_id)    # what the chat had saved when this segment ended
+    return prev
+
+
+def job_thread(conversation_id: str, goal_id: str) -> str:
+    """G4: the one thread of a long job."""
+    return thread_id(conversation_id, f"job-{goal_id}")
+
+
+def _take_job(conversation_id: str) -> str | None:
+    """The goal id a round of this chat's long job continues (once; another chat's nested turn never takes it)."""
+    v = JOB_RUN.get()
+    if not v or v[0] != conversation_id or not v[1]:
+        return None
+    JOB_RUN.set(None)
+    return str(v[1])
+
+
+def _job_messages(saved: list, conversation_id: str, mark: int) -> list:
+    """G4: the job thread's own messages + everything the chat saved (in history) since its last segment ended: her
+    messages in between, the round's own line. Repaired like a loaded history (same-role turns merged)."""
+    from sqlalchemy import select
+    from . import santosh as S
+    from ..db import Message, session
+    msgs = json.loads(json.dumps(saved or []))
+    try:
+        with session() as s:
+            rows = s.scalars(select(Message).where(Message.conversation_id == conversation_id,
+                                                   Message.in_history.is_(True), Message.id > int(mark or 0))
+                             .order_by(Message.id).limit(400)).all()
+            msgs += [{"role": r.role, "content": r.content} for r in rows if r.role in ("user", "assistant")]
+    except Exception:   # noqa: BLE001
+        log.exception("job messages since the last segment could not be read")
+    return S._sanitize(json.loads(json.dumps(msgs, ensure_ascii=False, default=str)))
+
+
+def _merge_facts(old: list | None, new: list | None) -> list:
+    """The job's facts: the earlier segments' + this run's (one per tool_use id, the newest kept)."""
+    out: dict = {}
+    for i, f in enumerate(list(old or []) + list(new or [])):
+        k = (f or {}).get("id") or f"_{i}"
+        out.pop(k, None)
+        out[k] = f
+    return list(out.values())[-_FACTS_KEEP:]
+
+
+def _merge_job(old: dict | None, new: dict | None, goal_id: str) -> dict:
+    o = dict(old or {}) if (old or {}).get("goal") == goal_id else {}
+    n = dict(new or {}) if (new or {}).get("goal") == goal_id else {}
+    out = {"goal": goal_id}
+    for k in ("segments", "steps"):
+        out[k] = int(o.get(k) or 0) + int(n.get(k) or 0)
+    out["seconds"] = round(float(o.get("seconds") or 0) + float(n.get("seconds") or 0), 1)
+    out["mark"] = int(n.get("mark") or o.get("mark") or 0)
+    return out
+
+
+async def _park(saver, src: str, conversation_id: str, goal_id: str) -> bool:
+    """G4: the job continues on its own thread. A run on the job thread already stopped there (nothing to do); a run
+    on another thread is copied onto it - its newest checkpoint exactly (so the next node is kept: `carry` at a
+    segment boundary, the cut node after a deadline), with the job's earlier facts / counters merged in, its ledger
+    rows moved, and its own thread deleted."""
+    from . import toolledger as L
+    jt = job_thread(conversation_id, goal_id)
+    if src == jt:
+        STATS["parked"] += 1
+        return True
+    try:
+        tup = await saver.aget_tuple({"configurable": {"thread_id": src, "checkpoint_ns": ""}})
+        if tup is None:
+            return False
+        old = await saver.aget_tuple({"configurable": {"thread_id": jt, "checkpoint_ns": ""}})
+        ck = copy.deepcopy(tup.checkpoint)
+        cv = ck.setdefault("channel_values", {})
+        cv["run_key"], cv["turn_id"] = jt, f"job-{goal_id}"
+        oldv = ((old.checkpoint or {}).get("channel_values") or {}) if old is not None else {}
+        odata = dict(oldv.get("data") or {})
+        if "facts" in cv:
+            cv["facts"] = _merge_facts(oldv.get("facts"), cv.get("facts"))
+        if isinstance(cv.get("data"), dict):
+            d = dict(cv["data"])
+            d["__job"] = _merge_job(odata.get("__job"), d.get("__job"), goal_id)
+            cv["data"] = d
+        await saver.setup()
+        await saver.adelete_thread(jt)
+        cfg = await saver.aput({"configurable": {"thread_id": jt, "checkpoint_ns": ""}}, ck, tup.metadata,
+                               dict(ck.get("channel_versions") or {}))
+        by_task: dict = {}
+        for task_id, channel, value in tup.pending_writes or []:
+            by_task.setdefault(task_id, []).append((channel, value))
+        for task_id, writes in by_task.items():
+            await saver.aput_writes(cfg, writes, task_id)
+        await _ledger(L.move, src, jt)
+        await saver.adelete_thread(src)
+        STATS["copied"] += 1
+        STATS["parked"] += 1
+        return True
+    except Exception:   # noqa: BLE001 - a job that cannot be parked falls back to today's fresh round
+        log.exception("turn graph: the long job could not be parked on its thread")
+        return False
+
+
+async def park_cut(conversation_id: str, settings, actor: str = "owner") -> bool:
+    """G4 (santosh._run_turn, a turn cut by its deadline): budgets do not kill - the cut run's checkpoint becomes the
+    job thread, so the next round continues from the node that was cut (the ledger decides the tool that was cut)."""
+    src = _CUT.pop(conversation_id, None)
+    if not AVAILABLE or not src or not getattr(settings, "agent_goal", False):
+        return False
+    from . import goal as _goal
+    from . import santosh as S
+    a = actor or "owner"
+    if a == "wake" or not (_goal.hers(a) or a == "routine") or S.VOICE_BRAIN_NOW.get():
+        return False
+    g = _goal.active_for(conversation_id)
+    if g is None or not _goal.steps_left(g):
+        return False
+    async with _saver(settings, create=False) as saver:
+        if saver is None:
+            return False
+        ok = await _park(saver, src, conversation_id, g["id"])
+    if ok:
+        STATS["cut_parked"] += 1
+        log.warning("turn graph: a cut segment of job %s is parked on its thread", g["id"])
+    return ok
+
+
+async def job_next(settings, conversation_id: str, goal_id: str) -> str | None:
+    """G4: the node a long job's thread continues at ('carry' = the next segment; another node = the segment a
+    restart / deadline cut), or None when it has nothing resumable."""
+    if not AVAILABLE or not goal_id:
+        return None
+    try:
+        async with _saver(settings, create=False) as saver:
+            if saver is None:
+                return None
+            snap = await _compile(saver).aget_state({"configurable": {"thread_id": job_thread(conversation_id,
+                                                                                               goal_id)}})
+            return snap.next[0] if _resumable_snap(snap) else None
+    except Exception:   # noqa: BLE001
+        log.exception("job thread check failed")
+        return None
+
+
+async def forget_job(settings, conversation_id: str, goal_id: str) -> None:
+    """G4: a job that is over (stopped / finished / replaced) leaves no thread behind."""
+    if not AVAILABLE or not goal_id:
+        return
+    await forget_threads(settings, [job_thread(conversation_id, goal_id)])
+    STATS["jobs_forgotten"] += 1
+
+
+async def _forget_ended_jobs(saver, conversation_id: str, keep: str = "") -> None:
+    """G4 housekeeping at a turn's END: the job threads of this chat's goals that are over (done / failed / stopped)
+    go. A goal held for her answer or her 'carry on' (blocked) keeps its thread - her yes continues it."""
+    from sqlalchemy import select
+    from . import goal as _goal
+    from . import toolledger as L
+    from ..db import session
+    try:
+        with session() as s:
+            ids = list(s.scalars(select(_goal.GoalRun.id).where(
+                _goal.GoalRun.conversation_id == conversation_id,
+                _goal.GoalRun.status.in_(("done", "failed", "stopped")))
+                .order_by(_goal.GoalRun.updated_at.desc()).limit(5)).all())
+    except Exception:   # noqa: BLE001
+        log.debug("ended jobs lookup failed", exc_info=True)
+        return
+    for gid in ids:
+        jt = job_thread(conversation_id, gid)
+        if jt == keep:
+            continue
+        try:
+            await saver.setup()
+            await saver.adelete_thread(jt)
+        except Exception:   # noqa: BLE001
+            log.debug("job thread forget failed", exc_info=True)
+        await _ledger(L.forget, jt, 0)
 
 
 def _route(state: TurnState) -> str:
@@ -269,13 +610,16 @@ def build():
     g.add_node("check", _node(_check))
     g.add_node("tools", _node(_tools))
     g.add_node("finish", _node(_finish))
+    g.add_node("carry", _node(_carry))      # G4: the next segment of a long job (the run stops before it)
     g.add_edge(START, "prepare")
     g.add_edge("prepare", "model")
     g.add_conditional_edges("model", _route, {"tools": "tools", "check": "check", "finish": "finish",
                                               "model": "model"})
     g.add_conditional_edges("check", _route, {"model": "model", "finish": "finish", "tools": "tools"})
     g.add_conditional_edges("tools", _route, {"model": "model", "finish": "finish"})
-    g.add_edge("finish", END)
+    g.add_conditional_edges("finish", lambda s: "carry" if s.get("route") == "carry" else "end",
+                            {"carry": "carry", "end": END})
+    g.add_edge("carry", "model")
     return g
 
 
@@ -287,6 +631,14 @@ def _builder():
     if _BUILDER is None:
         _BUILDER = build()
     return _BUILDER
+
+
+def _compile(saver):
+    """The compiled turn graph. With a checkpointer a run stops BEFORE `carry` (G4: a long job's segment boundary is
+    a checkpoint the next round continues from); without one `finish` never routes there."""
+    if saver is None:
+        return _builder().compile(checkpointer=None)
+    return _builder().compile(checkpointer=saver, interrupt_before=["carry"])
 
 
 def checkpoint_path(settings) -> str:
@@ -442,7 +794,7 @@ async def resumable(settings, conversation_id: str, inbox_id: str) -> bool:
     async with _saver(settings, create=False) as saver:
         if saver is None:
             return False
-        snap = await _builder().compile(checkpointer=saver).aget_state({"configurable": {"thread_id": th}})
+        snap = await _compile(saver).aget_state({"configurable": {"thread_id": th}})
         return _resumable_snap(snap)
 
 
@@ -481,15 +833,36 @@ def _restore_state(data: dict, conversation_id: str, ctx, settings, user_text: s
     return state
 
 
-async def resume(conversation_id: str, inbox_id: str, ctx, gender: str, history: list, settings, tenant_id: str,
-                 user_text: str = "") -> str | None:
+_JOB_KEEP = ("auto_plan",)   # G4: per-job keys a new segment keeps (the rest of the round state starts fresh)
+
+
+async def _after_run(saver, run_key: str, conversation_id: str, settings, out: dict) -> None:
+    """A run's ending. G4: stopped at a long job's segment boundary -> the job is parked on its thread; else the run
+    is over: its thread goes (as before), and so do the job threads of this chat's ended goals."""
+    if out.get("route") == "carry" and not out.get("stopped"):
+        gid = ((out.get("data") or {}).get("__job") or {}).get("goal")
+        if gid and saver is not None and await _park(saver, run_key, conversation_id, gid):
+            return
+        log.warning("turn graph: the long job of %s could not be parked - the next round starts fresh", run_key)
+    await _cleanup(saver, run_key, settings, keep_ledger=bool(out.get("stopped")))
+    if saver is not None:
+        await _forget_ended_jobs(saver, conversation_id, keep=run_key)
+
+
+async def resume(conversation_id: str, inbox_id: str | None, ctx, gender: str, history: list, settings,
+                 tenant_id: str, user_text: str = "", thread: str | None = None) -> str | None:
     """Continue an interrupted turn from its last checkpoint. None = nothing to resume (the caller runs it fresh).
 
     Rebuilds the live objects the nodes need (ctx comes from the new run_turn; settings; the breaker and the turn's
     state from the checkpoint's data; the santosh _Turn via _turn_prepare on the CHECKPOINTED messages; the live
-    reply of this run) - her message is not saved again and no finished node runs again - then ainvoke(None)."""
+    reply of this run) - her message is not saved again and no finished node runs again - then ainvoke(None).
+
+    G4 `thread` = a long job's thread. Stopped at `carry` = its NEXT SEGMENT: the round's fresh state (_steps_begin:
+    step budget, breaker, the goal caps), the thread's messages + what the chat saved since the last segment ended,
+    _turn_prepare as for any round, a fresh G3 nudge budget (the job's facts are kept). Anywhere else = the segment a
+    restart / deadline cut, continued exactly like a G1 resume."""
     from . import santosh as S
-    th = thread_id(conversation_id, inbox_id)
+    th = thread or thread_id(conversation_id, inbox_id)
     try:
         cm = _saver(settings, create=False)
         saver = await cm.__aenter__()
@@ -499,7 +872,7 @@ async def resume(conversation_id: str, inbox_id: str, ctx, gender: str, history:
     try:
         if saver is None:
             return None
-        app = _builder().compile(checkpointer=saver)
+        app = _compile(saver)
         snap = await app.aget_state({"configurable": {"thread_id": th}})
         if not _resumable_snap(snap):
             return None
@@ -507,20 +880,35 @@ async def resume(conversation_id: str, inbox_id: str, ctx, gender: str, history:
         nxt = snap.next[0]
         saved = list(vals.get("messages") or [])
         data = dict(vals.get("data") or {})
-        state = _restore_state(data, conversation_id, ctx, settings, user_text)
+        carry = nxt == "carry"
+        if carry:      # G4: the next segment of a long job
+            job0 = dict(data.get("__job") or {})
+            history[:] = _job_messages(saved, conversation_id, int(job0.get("mark") or 0))
+            state = await S._steps_begin(conversation_id, ctx, history, settings, tenant_id, user_text)
+            for k in _JOB_KEEP:
+                if k in data:
+                    state[k] = data[k]
+        else:
+            state = _restore_state(data, conversation_id, ctx, settings, user_text)
+            history[:] = json.loads(json.dumps(saved))
         live = _Live(conversation_id, ctx, gender, history, settings, tenant_id, user_text)   # cv taken after ASK_NOW
         live.thread = th
         live.state = state
-        history[:] = json.loads(json.dumps(saved))
+        live.job = dict(data.get("__job") or {})
         t = await asyncio.create_task(S._turn_prepare(conversation_id, ctx, gender, history, settings, tenant_id,
                                                       state), context=live.cv)
-        history[:] = json.loads(json.dumps(saved))      # _turn_prepare's memory notes are already in the checkpoint
-        if "turn_start" in data:
-            state["turn_start"] = data["turn_start"]
-        t.ran_steps = int(vals.get("ran_steps") or 0)
-        t.stop = vals.get("stop") or ""
-        t.final_text = data.get("__final_text") or ""
-        t.ran_tools = bool(state.get("calls"))
+        if carry:      # a new segment: its notes ride on the round's line, its step budget starts at 0
+            t.ran_steps, t.stop, t.final_text, t.ran_tools = 0, "", "", False
+        else:
+            history[:] = json.loads(json.dumps(saved))      # _turn_prepare's memory notes are already in the checkpoint
+            if "turn_start" in data:
+                state["turn_start"] = data["turn_start"]
+            # G4: a round that continues a job's cut segment is a new round - it gets the round's step budget again
+            # (the deadline is new too); a G1 inbox resume is the same turn, its count goes on
+            t.ran_steps = 0 if thread else int(vals.get("ran_steps") or 0)
+            t.stop = vals.get("stop") or ""
+            t.final_text = data.get("__final_text") or ""
+            t.ran_tools = bool(state.get("calls"))
         if nxt in ("tools", "check"):
             last = next((m for m in reversed(history) if m.get("role") == "assistant"), None)
             c = (last or {}).get("content")
@@ -533,19 +921,28 @@ async def resume(conversation_id: str, inbox_id: str, ctx, gender: str, history:
                 log.debug("re-admitting families failed", exc_info=True)
         t.tool_runner = _ledger_runner(th)
         live.t = t
+        live.facts[:] = list(vals.get("facts") or [])            # G3: the facts / decisions / budget so far
+        live.decisions[:] = list(vals.get("decisions") or [])
+        if not carry:                                             # G4: a new segment has its own nudge budget
+            live.used.update(dict(vals.get("nudges") or {}))
+        _judge(live)
         _RUNS[th] = live
-        STATS["resumed"] += 1
+        STATS["job_resumed" if thread else "resumed"] += 1
         log.warning("turn graph: resuming %s at node %s (step %s)", th, nxt, t.ran_steps)
         try:
             out = await _invoke(app, None, settings, th)
         except _NodeCancelled as e:   # a node body cancelled (the old loop let CancelledError through): keep it
+            _CUT[conversation_id] = th
             raise asyncio.CancelledError() from e
+        except asyncio.CancelledError:
+            _CUT[conversation_id] = th
+            raise
         except Exception:
             await _cleanup(saver, th, settings)     # the turn ended in an error reply: nothing left to resume
             raise
         finally:
             _RUNS.pop(th, None)
-        await _cleanup(saver, th, settings, keep_ledger=bool(out.get("stopped")))
+        await _after_run(saver, th, conversation_id, settings, out)
         return out.get("final_text") or ""
     finally:
         try:
@@ -568,18 +965,35 @@ async def run_steps(conversation_id: str, ctx, gender: str, history: list, setti
         return await S._steps_end(conversation_id, ctx, history, settings, tenant_id, user_text, state, text)
     from .. import turn_inbox
     from . import turnrun
+    _CUT.pop(conversation_id, None)
     inbox_id, want_resume = turn_inbox.take_graph_turn(conversation_id)
     _tk = turnrun.take_graph(conversation_id)    # G2: the chat's ticket knows its inbox row (task-checked) - it wins
     if _tk is not None:
         inbox_id, want_resume = _tk
+    job = _take_job(conversation_id) if not inbox_id else None   # G4: a round of this chat's long job
     if want_resume and inbox_id:
         got = await resume(conversation_id, inbox_id, ctx, gender, history, settings, tenant_id, user_text)
         if got is not None:
             STATS["turns"] += 1
             return got
         log.warning("turn graph: nothing to resume for %s:%s - running the turn fresh", conversation_id, inbox_id)
+    if job:
+        from . import goal as _goal
+        g = _goal.active_for(conversation_id) if getattr(settings, "agent_goal", False) else None
+        if g is None or g.get("id") != job or not _goal.steps_left(g):
+            # stopped / finished / replaced while this round waited for the chat: nothing of it runs
+            STATS["job_gone"] += 1
+            await forget_job(settings, conversation_id, job)
+            log.info("turn graph: job %s of %s is over - its round does nothing", job, conversation_id)
+            return ""
+        got = await resume(conversation_id, None, ctx, gender, history, settings, tenant_id, user_text,
+                           thread=job_thread(conversation_id, job))
+        if got is not None:
+            STATS["turns"] += 1
+            return got
+        STATS["job_fresh"] += 1   # no thread to continue (made on the old path, or lost): the round runs fresh ON it
     STATS["turns"] += 1
-    turn_id = inbox_id or uuid.uuid4().hex[:12]
+    turn_id = (f"job-{job}" if job else "") or inbox_id or uuid.uuid4().hex[:12]
     run_key = thread_id(conversation_id, turn_id)
     live = _Live(conversation_id, ctx, gender, history, settings, tenant_id, user_text)
     _RUNS[run_key] = live
@@ -596,19 +1010,25 @@ async def run_steps(conversation_id: str, ctx, gender: str, history: list, setti
             STATS["no_checkpoint"] += 1
             saver_cm, saver = None, None
         try:
-            app = _builder().compile(checkpointer=saver)
+            app = _compile(saver)
             if saver is not None:
                 live.thread = run_key           # the ledger only matters when a checkpoint can be resumed
-                if inbox_id:                    # an earlier attempt of this inbox row left a thread: start clean
+                if inbox_id or job:             # an earlier attempt of this inbox row / job left a thread: start clean
                     await _cleanup(saver, run_key, settings, force=True)
             try:
                 out = await _invoke(app, inp, settings, run_key)
             except _NodeCancelled as e:   # LangGraph wraps a node's own CancelledError; the old loop let it through -
+                if saver is not None:
+                    _CUT[conversation_id] = run_key
                 raise asyncio.CancelledError() from e   # the checkpoint stays for a resume
+            except asyncio.CancelledError:
+                if saver is not None:
+                    _CUT[conversation_id] = run_key   # G4: a segment deadline parks it (santosh._run_turn)
+                raise
             except Exception:
                 await _cleanup(saver, run_key, settings)   # an error reply ends the turn: nothing to resume
                 raise
-            await _cleanup(saver, run_key, settings, keep_ledger=bool(out.get("stopped")))
+            await _after_run(saver, run_key, conversation_id, settings, out)
         finally:
             if saver_cm is not None:
                 try:

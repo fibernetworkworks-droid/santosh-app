@@ -271,6 +271,8 @@ def public(row: CustomMcp, status: str) -> dict[str, Any]:
     from .logos import custom_logo
     out = {"pack_id": row.id, "name": row.name, "url": row.url, "auth": row.auth, "status": status,
            "directory_ref": row.directory_ref, "does": row.description[:300], "logo": custom_logo(row)}
+    from .oneline import oneline
+    out["line"] = oneline(row.description, row.name, category="MCP server")
     if row.caution:
         out["caution"] = True
     return out

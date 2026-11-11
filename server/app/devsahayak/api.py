@@ -12,6 +12,7 @@ import asyncio
 from typing import Any
 
 from fastapi import APIRouter, Body, Depends, HTTPException
+from fastapi.responses import Response
 
 
 def make_router(require_key, current_tenant) -> APIRouter:
@@ -39,7 +40,8 @@ def make_router(require_key, current_tenant) -> APIRouter:
     @r.put("/settings")
     async def put_settings(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
         b = _b(body)
-        keys = ("review_post", "ask_before_pr", "draft_pr", "allow_workflows", "merge_method", "max_files", "max_lines", "rules", "default_repo")
+        keys = ("review_post", "ask_before_pr", "draft_pr", "allow_workflows", "merge_method", "max_files", "max_lines", "rules", "default_repo",
+                "archive_after_merge")
         return await run(S.save_settings, tenant, **{k: b[k] for k in keys if k in b})
 
     @r.put("/token")
@@ -91,11 +93,19 @@ def make_router(require_key, current_tenant) -> APIRouter:
         b = _b(body)
         files = b.get("files") or []
         return await run(S.start_bg, tenant, str(b.get("kind") or "write"), str(b.get("text") or ""), str(b.get("repo") or ""),
-                         int(b.get("issue") or 0), [str(x) for x in files if x][:10], str(b.get("conv") or ""))
+                         int(b.get("issue") or 0), [str(x) for x in files if x][:10], str(b.get("conv") or ""),
+                         str(b.get("base") or ""), str(b.get("mode") or ""), str(b.get("model") or ""), str(b.get("effort") or ""),
+                         b.get("images"), b.get("docs"))
+
+    @r.get("/tasks/{tid}/attach/{index}")
+    async def attachment(tid: str, index: int, tenant: str = Depends(current_tenant)):
+        raw, kind = await run(S.attachment, tenant, tid, index)       # Phase 3: a picture she attached, for her own bubble
+        return Response(content=raw, media_type=kind, headers={"Cache-Control": "private, max-age=3600", "X-Content-Type-Options": "nosniff"})
 
     @r.post("/tasks/{tid}/note")
     async def note(tid: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
-        return await run(S.add_note, tenant, tid, str(_b(body).get("text") or ""))
+        b = _b(body)
+        return await run(S.add_note, tenant, tid, str(b.get("text") or ""), b.get("comments"))
 
     @r.post("/tasks/{tid}/stop")
     async def stop(tid: str, tenant: str = Depends(current_tenant)):
@@ -107,7 +117,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
         if what == "plan_ok":
             kw = {"hash_": str(b.get("hash") or ""), "by_tap": True, "note": str(b.get("note") or "")}
         elif what == "revise":
-            kw = {"words": str(b.get("text") or "")}
+            kw = {"words": str(b.get("text") or ""), "comments": b.get("comments")}
         elif what == "begin":
             kw = {"repo": str(b.get("repo") or "")}
         elif what == "fix_ci":
@@ -124,13 +134,28 @@ def make_router(require_key, current_tenant) -> APIRouter:
             out = await run(S.rename, tenant, tid, str(b.get("title") or ""))
         if "archived" in b:
             out = await run(S.archive, tenant, tid, bool(b.get("archived")))
+        if "auto_fix" in b:
+            out = await run(S.set_auto_fix, tenant, tid, bool(b.get("auto_fix")))
         if out is None:
-            raise HTTPException(400, "title | archived")
+            raise HTTPException(400, "title | archived | auto_fix")
         return out
 
     @r.delete("/tasks/{tid}")
     async def delete_task(tid: str, tenant: str = Depends(current_tenant)):
         return await run(S.delete_task, tenant, tid)
+
+    # ---- Phase 2: her answer to Hoola's one question, and the Changes pane's "Compare against"
+    @r.post("/tasks/{tid}/answer")
+    async def answer(tid: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        return await run(S.answer, tenant, tid, str(_b(body).get("text") or ""))
+
+    @r.get("/tasks/{tid}/compare")
+    async def compare(tid: str, base: str = "", tenant: str = Depends(current_tenant)):
+        return await run(S.compare, tenant, tid, base)
+
+    @r.get("/branches")
+    async def branches(repo: str = "", tenant: str = Depends(current_tenant)):
+        return {"branches": await run(S.branches, tenant, repo)}
 
     @r.delete("/tasks/{tid}/note/{index}")
     async def drop_note(tid: str, index: int, tenant: str = Depends(current_tenant)):
