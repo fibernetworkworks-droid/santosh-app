@@ -629,8 +629,70 @@ Phase 1 of the plan (the shell and the session) plus her mid-build ask. Nothing 
 - PROOF: `tests/test_v0768_hoola_code_shell.py` 8 - rename / archive / search (with % and _ as plain characters) / delete / another tenant refused; a running session not archived or deleted, a queued note taken back; the routes; and FOUR walks in a real browser against an API whose answers change between polls: typing survives a new step arriving (text, focus and the fold she opened all kept - this fails on the v0.748 page), steps fold, no rotating ring, a note comes back into the box; the layout at 1280 px (rail 300, chat >= 600, nothing off-screen), rail hide / show / overlay, sidebar collapse, Verbose, rename; the page on its own address with one sidebar, hash routes, Back, a deep link; the switch. `test_v0748` browser walk updated to the new page. Screenshots were looked at before shipping.
 - NOT DONE / NOT VERIFIED: no live GitHub repo has run through the new page yet; the Changes pane with line comments, Create PR on the card, the question dialog = Phase 2; mode / model / branch pickers, attachments = Phase 3; Terminal / Files / a continuing conversation = Phase 4; steps still arrive by a 2 s poll; the phone screen is unchanged; "Merge when ready" stays her tap (decision 1 of the plan, not yet answered).
 
+## v0.774.0 HOOLA INTERACTIVE, THE WHOLE PRODUCT (built as 0.772) — its own page, its own sidebar, twelve pages (owner: "GO - BUILD IT INTO CONSOLE END TO END")
 
-## v0.774.0 HOOLA CODE PHASE 2 - review and the pull request (11 Nov 2026; owner: "GO PHASE 2" on docs/HOOLA_CODE_WEB_PLAN.md)
+After the HeyGen research (`docs/research/heygen/`), the plan (`docs/HOOLA_INTERACTIVE_CONSOLE_PLAN.md`) and the
+clickable twelve-page design she approved. This is the build of that design into the real console.
+
+**The page.** `static/console/interactive.js` (rewritten); its styles are the `#hiRoot` block in `v2.css` (the console keeps ONE stylesheet - a test holds that). Hoola Interactive opens as a
+full-screen overlay `#hiRoot` with its own icon rail: Home · Avatars · Voices · Studio · Templates · Brand · Translate ·
+Live · Apps · Projects · Developers · Settings, and "Console" to go back to the chat (`back: () => go('chat')` from
+v2.js; `leave()` hides it). Console tokens only, so Light / Dark / System follow; the old `.hiv` block left v2.css.
+Sub-views: editor, making (real steps), video, avatar, proofread. One click / input / change / submit listener on the
+root; her text always through `esc()`.
+
+**Studio** is the script-first editor: script on the left (one block per scene, move / remove / add), a layout
+preview canvas with the scene strip, and tools on the right (Look · Avatar · Voice · Video · Brand). It saves through
+the same `/api/interactive/studio/project` as v0.747, shows what blocks the make in her words, and Generate opens a
+box with scenes, estimated length, size and sound before she taps. Nothing about the film pipeline changed.
+
+**NEW `interactive/hub.py` + `/api/interactive/hub/*` (17 routes)** — everything around the film that needs no GPU:
+- `brand` — name, closing line, colour (`#RRGGBB` or refused). New videos start with them; `studio.spec_for` now
+  passes the colour into the composition (`_brand_color`), so it is drawn, not just stored.
+- `glossary` — "keep exactly as written" or "always translate as X in language L".
+- `templates` — six starters that state no price or date (a test checks they contain no digit) + her own, saved from
+  any project. Blanks are `{name}`-style; `template_use` fills them ONLY from her values and refuses a missing one by
+  name. Her values become the project's `facts`, so her numbers are trusted the same way her edits are.
+- `batch` — up to 20 scripts → one draft each, cut into scenes at sentence ends by code (no model call, no rewrite).
+- `personalise` — a project that says `{name}` × up to 20 names → a draft each. Nothing is sent from here.
+- `translate` — a Hoola-made video into another language as a NEW draft: one model call for the words (spoken lines
+  and the words on screen), then CODE compares the digits of every line with its source and applies the glossary; a
+  line that fails is flagged (`tr[i].flag`) with the source kept beside it; a wrong line count refuses. The Proofread
+  page edits the lines and opens the draft in Studio.
+- `trash` / `restore` / `empty` — delete keeps the project and its video file for 30 days; restore brings both back;
+  a restored "ready" project whose file is gone becomes a draft instead of a dead player.
+- `duplicate`, `brains` (what a live avatar may know: name, facts ≥ 20 chars, opening line, http(s) links only),
+  `usage` (videos and minutes this month, read from the videos' own records), `voice` (a sample line; 503 with the
+  reason when the engine is off), `overview` (one call for the whole page).
+- `status().connected` — the honest switchboard. True today: video, photo avatar, templates, translate (words);
+  voice when the engine is set up. False and printed on the page as "Not connected on this server yet": twin,
+  AI-made faces, voice clone, lip-matched dubbing of outside videos, the live stream, the public API.
+
+**Not built, said on the page too:** real tables (still one JSON per tenant under `studio._LOCK` — plan phase I1),
+jobs that survive a restart, a rupee meter, share links and insights, an AI mark inside the file, pronunciation rules,
+logo and fonts in the brand kit, every GPU-backed app (talking photo, slides, link, podcast, series, clips, cleanup,
+lip sync, upscale), the Developers API. The Apps page shows those as "Not connected yet" with the button disabled.
+
+**Tests.** NEW `test_v0772_interactive_hub.py` (10): brand colour reaches the spec; a template takes only her values
+and names what is missing; own template + many names; batch cuts by code; a translation is checked not trusted (a
+changed number, a broken glossary rule, a missing line); trash keeps the file and the 30 days are real; usage counts
+this month only and status names what is off; brains; routes locked + switched; the page is wired with no sample
+data. `test_v0747`'s browser test rewritten to the new page: twelve rail items, every page opened with no script
+error and no sideways scroll, her `<b>` title shown as text, the unset voice engine said, a missing number disabling
+Generate, Console hiding the page. It runs in real Chromium with
+`HOOLA_CHROMIUM=/opt/pw-browsers/chromium-1243/chrome-linux64/chrome` (the Python Playwright's own browser build is
+not installed in the sandbox, so without that variable it skips).
+
+**NOT VERIFIED, said plainly:** not opened by her yet; no video has been made through the new page on the VPS
+(the make path is the unchanged v0.747 one); `translate` has only run against scripted model answers, never the
+live model; the phone-width layout was checked in the design prototype, not in the console build.
+
+REBASE PROTOCOL: built as 0.772.0; main took 0.772 and 0.773 meanwhile — merged, both kept, shipped as 0.774.0
+(pubspec 0.774.0+773, console stamps 0.774.0, pins swept). Mera PC freeze respected: nothing in `server/app/pc/`,
+`desktop/`, `lib/` touched. Server + console only; old APKs keep working.
+
+
+## v0.775.0 HOOLA CODE PHASE 2 (built as 0.774; their HOOLA INTERACTIVE took 0.774.0 - REBASE PROTOCOL, both kept) - review and the pull request (11 Nov 2026; owner: "GO PHASE 2" on docs/HOOLA_CODE_WEB_PLAN.md)
 
 Phase 2 of the plan, on the page built in v0.773 (`/console/code`). How Hoola codes is unchanged; this is how she REVIEWS what it did and steers the pull request.
 - CHANGES PANE (`code.js` `paneHTML` / `drawPane` / `openPane`, `.hcd-pane` in v2.css): opens BESIDE the chat from the Changes button, a file on the Changes card, or "Show in diff" - never a separate page. File list + one file's diff with old / new line numbers (`parseDiff`), "new file" mark, the file's reason, files over 600 lines capped with "Show all". While Hoola is still working it shows the edits so far from the steps (no line numbers yet, and says so). The rail hides while the pane is open; on a window under ~1100 px the sessions sidebar steps aside to its 52 px strip and comes back when the pane closes; under 700 px the pane covers the chat. Task views carry `file_diffs` (per file: path, added, removed, new, why, diff).

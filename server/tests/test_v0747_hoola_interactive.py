@@ -180,7 +180,18 @@ STATUS = {"enabled": True, "draw": True, "voice": False, "whisper": False, "busy
           "langs": {"hi": "Hindi", "en": "English"}, "shapes": ["talking_head", "product", "reel"]}
 
 
+OVERVIEW = {**LIST, "brand": {"name": "Sharma Traders", "closing": "", "color": "#7C3AED"}, "glossary": [], "trash": [], "brains": [],
+            "templates": [{"id": "tp_offer", "name": "Festival offer", "group": "Offers", "shape": "talking_head", "mine": False,
+                           "count": 3, "variables": ["shop", "price"], "scenes": []}],
+            "usage": {"month": "2026-11", "videos": 1, "minutes": 0.5, "stored": 1, "kept_max": 40, "by_language": [], "recent": []},
+            "limits": {"batch": 20, "trash_days": 30},
+            "status": {**STATUS, "connected": {"video": True, "voice": False, "twin": False, "ai_face": False, "voice_clone": False,
+                                               "dub_outside_video": False, "live_stream": False, "api": False}}}
+
+
 def test_the_page_in_a_real_browser(arena_server):  # noqa: F811
+    """v0.772: the page is its own full screen with its own sidebar. Every one of the twelve pages opens without a
+    script error, her text is never run as HTML, what is not connected is SAID, and a missing number blocks Generate."""
     base, browser, key = arena_server
     ctx = browser.new_context(viewport={"width": 1280, "height": 900})
     ctx.add_init_script(f"localStorage.setItem('hoola.console.token', '{key}')")
@@ -189,23 +200,40 @@ def test_the_page_in_a_real_browser(arena_server):  # noqa: F811
     pg.on("pageerror", lambda e: errs.append(str(e)))
     pg.route("**/api/console/config", lambda r: r.fulfill(json={"app": "Hoola", "v2": True, "stream": True, "sessions": True,
                                                                    "panel": True, "projects": True, "human": True, "interactive": True}))
-    pg.route("**/api/interactive/studio/status", lambda r: r.fulfill(json=STATUS))
-    pg.route("**/api/interactive/studio/list", lambda r: r.fulfill(json=LIST))
+    pg.route("**/api/interactive/hub/overview", lambda r: r.fulfill(json=OVERVIEW))
     pg.route("**/api/interactive/studio/project?id=iv_b", lambda r: r.fulfill(json=PROJ))
     pg.route("**/api/interactive/studio/photo?id=av_1", lambda r: r.fulfill(body=b"", content_type="image/png"))
     pg.goto(base + "/console/")
     pg.wait_for_selector("#composer")
     pg.wait_for_selector(".sn[data-v='interactive']")
     pg.locator(".sn[data-v='interactive']").click()
-    pg.wait_for_selector(".hiv-row")
-    home = pg.locator(".hiv").text_content()
+    pg.wait_for_selector("#hiRoot .hi-hero")
+    assert pg.locator("#hiRoot .hi-rb[data-p]").count() == 12                       # its own sidebar, twelve pages
+    import os
+    shots = os.environ.get("CONSOLE_SHOTS")
+    if shots:
+        pg.screenshot(path=f"{shots}/hi-home.png")
+    home = pg.locator("#hiRoot").text_content()
     assert "What video should Hoola make?" in home and "Diwali offer" in home and "<b>Menu</b>" in home
     assert "Voice engine is not set up" in home                                     # said, not hidden
-    assert pg.locator(".hiv-shape").count() == 3 and pg.locator(".hiv-av").count() >= 1
-    pg.locator(".hiv-row", has_text="Menu").click()
-    pg.wait_for_selector(".hiv-scene")
-    st = pg.locator(".hiv").text_content()
-    assert pg.locator(".hiv-scene").count() == 2 and "Needs your numbers" in st and "Scene 2 needs your numbers." in st
-    assert pg.locator("#hivMake").is_disabled()
+    assert pg.locator("#hiRoot b:has-text('Menu')").count() == 0                    # her title is text, never markup
+    for page, said in [("avatars", "Priya"), ("voices", "Not connected on this server yet"), ("studio", "Menu"),
+                       ("templates", "Festival offer"), ("brand", "Sharma Traders"), ("translate", "Translate the lines"),
+                       ("live", "Not connected on this server yet"), ("apps", "Not connected yet"), ("projects", "Diwali offer"),
+                       ("developers", "not open"), ("settings", "kept on this server")]:
+        pg.locator(f"#hiRoot .hi-rb[data-p='{page}']").click()
+        pg.wait_for_function("p => document.querySelector('#hiRoot .hi-rb[aria-current=page]')?.dataset.p === p", arg=page)
+        assert said in pg.locator("#hiView").text_content(), page
+        assert pg.evaluate("document.querySelector('#hiView').scrollWidth <= document.querySelector('#hiView').clientWidth + 1"), page
+    pg.locator("#hiRoot .hi-rb[data-p='studio']").click()
+    pg.locator("#hiRoot .hi-av", has_text="Menu").click()
+    pg.wait_for_selector("#hiRoot .hi-scene")
+    st = pg.locator("#hiRoot").text_content()
+    assert pg.locator("#hiRoot .hi-scene").count() == 2 and "Needs your numbers" in st and "Scene 2 needs your numbers." in st
+    assert pg.locator("#hiMake").is_disabled()
+    if shots:
+        pg.screenshot(path=f"{shots}/hi-editor.png")
+    pg.locator("#hiRoot .hi-rb[data-a='back']").click()                             # Console: back to the chat
+    pg.wait_for_function("document.querySelector('#hiRoot').hidden === true")
     assert not errs, errs
     ctx.close()
