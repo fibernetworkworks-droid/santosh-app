@@ -373,7 +373,7 @@ async function enter() {
         const back = IMP_BACK; reset(); msg.value = back; msg.dispatchEvent(new Event('input')); msg.focus(); return; }
       const mine = msg.value;
       if (!mine.trim()) { msg.focus(); toast('Write a few words first.'); return; }
-      IMP.open(mine, {useText: p => (p.out.run.to === 'chat' ? p.out.run.text : p.out.prompt), onUse: t => {
+      IMP.open(mine, {conversationId: () => CONV, useText: p => (p.out.run.to === 'chat' ? p.out.run.text : p.out.prompt), onUse: t => {
         msg.value = t; msg.dispatchEvent(new Event('input')); IMP_BACK = mine; IMP_DONE = msg.value;
         it.textContent = 'Undo'; ib.title = 'Put my own words back'; msg.focus(); }});
     });
@@ -1037,6 +1037,7 @@ function showWorkspace() {
 CREATE = window.HoolaCreate ? HoolaCreate({api, esc, toast, conv: () => CONV,
   newConv: async () => { const c = await api('POST', '/api/conversations'); await openConv(c.id, false, {noPush: true}); return c.id; },
   avatar: () => ME?.avatar?.gender === 'f' ? '/static/santosh-happy.png' : '/static/santosh-head.png',
+  cinema: () => !!CONFIG?.cinema,   // v0.807 Hoola Cinema inside Create
   artcraft: () => !!CONFIG?.artcraft,   // v0.752 ArtCraft in Create (the shilp lane's page door)
   owner: () => !!ME?.arena,   // v0.327 Create > Engines shows the services + server steps only to the owner
   version: (document.querySelector('script[src*="/studio.js"]')?.getAttribute('src') || '').split('v=')[1] || '',

@@ -254,7 +254,7 @@ def test_real_ffmpeg_decode_when_present(live_env):
 
 # ---------------------------------------------------------------- (4) the wiring + laws
 def test_actions_grew_registry_did_not():
-    assert len(tools.TOOLS) == 626, "625 + 1 hoola_design (v0.813 HOOLA DESIGN: the design editor's one tool). 623 + 1 video_kit (v0.772 VIDEO KIT: exact ffmpeg video edits). 617 + 1 shilp (v0.730 SHILP MANCH: the ArtCraft generation lane, their Omni API api.storyteller.ai, BYOK - owner 'MAKE A PLAN FOR HOOLA AI THUS HOOLA USER CAN USE THIS' -> the plan's W0). 616 + 1 seekh_video (v0.713 SEEKH MANCH: the learn-from-video bridge tool, owner 'GO' on the SEEKH MANCH plan). 608 + 1 kala (v0.681 KALA MANCH: the T5 knowledge-skill catalog family, owner 'GO' on the google/skills deploy plan). " "607 + 1 duniya (v0.667 DUNIYA MANCH: the T4 keyless-public-web family, owner 'T4'). " "606 + 1 jharokha (v0.665 JHAROKHA MANCH: the T3 local-browser family). " + PIN
+    assert len(tools.TOOLS) == 626, "625 + 1 hoola_design (v0.817.0 HOOLA DESIGN: the design editor's one tool). 623 + 1 video_kit (v0.772 VIDEO KIT: exact ffmpeg video edits). 617 + 1 shilp (v0.730 SHILP MANCH: the ArtCraft generation lane, their Omni API api.storyteller.ai, BYOK - owner 'MAKE A PLAN FOR HOOLA AI THUS HOOLA USER CAN USE THIS' -> the plan's W0). 616 + 1 seekh_video (v0.713 SEEKH MANCH: the learn-from-video bridge tool, owner 'GO' on the SEEKH MANCH plan). 608 + 1 kala (v0.681 KALA MANCH: the T5 knowledge-skill catalog family, owner 'GO' on the google/skills deploy plan). " "607 + 1 duniya (v0.667 DUNIYA MANCH: the T4 keyless-public-web family, owner 'T4'). " "606 + 1 jharokha (v0.665 JHAROKHA MANCH: the T3 local-browser family). " + PIN
     spec = [t for t in tools.TOOLS if t["name"] == "kaan"][0]
     acts = spec["input_schema"]["properties"]["action"]["enum"]
     assert acts == ["transcribe", "diarize", "minutes", "status", "list", "get", "search",
@@ -304,4 +304,4 @@ def test_live_module_purity_and_laziness():
 
 def test_version_pin_v0618():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.813.0"
+    assert APP_VERSION == "0.817.0"

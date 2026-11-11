@@ -59,7 +59,7 @@ def make(goal: str, screens: list[str], words: str = "", extra: dict[str, Any] |
     bp = {"v": 1, "goal": goal, "complex": cx, "archetype": g["label"] if cx else "", "modules": model["modules"],
           "module_labels": {m: DM.MODULES.get(m, m) for m in model["modules"]},
           "org": org, "login": login, "caps": capcheck, "caps_asked": asked, "caps_usable": CP.usable(wanted),
-          "data_extra": data_extra, "data": DM.summary(model), "sensitive": sensitive,
+          "caps_missing": CP.gaps(CP.usable(wanted)), "data_extra": data_extra, "data": DM.summary(model), "sensitive": sensitive,
           "offline": "offline_db" in wanted}
     bp["problems"] = list(org.get("problems") or []) + list(model.get("problems") or [])
     bp["hash"] = hash_of(bp)
@@ -127,7 +127,8 @@ def change(bp: dict[str, Any], ops: dict[str, Any], words: str = "") -> tuple[di
             done.append(f"cap - {c}")
     capcheck = CP.check(caps)
     b.update({"modules": model["modules"], "module_labels": {m: DM.MODULES.get(m, m) for m in model["modules"]}, "org": org,
-              "login": login, "caps": capcheck, "caps_usable": CP.usable(caps), "caps_asked": list(dict.fromkeys(
+              "login": login, "caps": capcheck, "caps_usable": CP.usable(caps),
+              "caps_missing": CP.gaps(CP.usable(caps)), "caps_asked": list(dict.fromkeys(
                   (b.get("caps_asked") or []) + CP.from_words(words))), "data_extra": data_extra, "data": DM.summary(model),
               "sensitive": sensitive})
     b["problems"] = list(org.get("problems") or []) + list(model.get("problems") or [])
@@ -147,13 +148,32 @@ def view(bp: dict[str, Any]) -> dict[str, Any]:
             "login": [{"id": m["id"], "label": m["label"], "kind": m["kind"]} for m in (bp.get("login") or {}).get("methods", [])],
             "login_rules": (bp.get("login") or {}).get("rules", []), "login_warnings": (bp.get("login") or {}).get("warnings", []),
             "caps": [{"id": c["id"], "label": c["label"], "play": c["play"], "play_label": c["play_label"], "ios": c["ios"],
-                      "ios_label": c["ios_label"]} for c in caps.get("caps", [])],
+                      "ios_label": c["ios_label"], "built": (CP.CAPS.get(c["id"]) or {}).get("built") or {},
+                      "built_note": (CP.CAPS.get(c["id"]) or {}).get("built_note", "")} for c in caps.get("caps", [])],
+            "caps_missing": missing_of(bp),
             "cap_problems": caps.get("problems", []), "cap_notes": caps.get("notes", [])[:6],
             "permissions": caps.get("permissions", []), "data": {k: (bp.get("data") or {}).get(k) for k in
                                                                ("tables", "columns", "relations", "sensitive", "geo")},
             "tables": {m: ts for m, ts in ((bp.get("data") or {}).get("modules") or {}).items()},
             "sensitive": bp.get("sensitive"), "offline": bp.get("offline"), "problems": bp.get("problems", []),
             "hash": bp.get("hash")}
+
+
+def missing_of(bp: dict[str, Any]) -> list[dict[str, Any]]:
+    """v0.802 What the plan wants that the built app does not fully have - read against the kit AS IT IS NOW, so an old plan
+    stored before a feature was built (or before this check existed) is still told the truth."""
+    ids = bp.get("caps_usable") or CP.usable([c["id"] for c in (bp.get("caps") or {}).get("caps", [])])
+    return CP.gaps(list(ids or []))
+
+
+def missing_line(v: dict[str, Any]) -> str:
+    """The honest chat line for a blueprint view (or a raw blueprint)."""
+    if not v:
+        return ""
+    miss = v.get("caps_missing")
+    if miss is None:
+        miss = missing_of(v)
+    return CP.gaps_line(miss or [])
 
 
 def say(bp: dict[str, Any]) -> str:
@@ -168,7 +188,8 @@ def say_view(v: dict[str, Any]) -> str:
     s = "Andar ka dhaancha: " + "; ".join(bits) + "."
     if v["cap_problems"]:
         s += " Store nahi dete: " + "; ".join(p["text"].split(":")[0] for p in v["cap_problems"]) + " (iski jagah doosra tareeka joda)."
-    return s
+    line = missing_line(v)
+    return s + (" " + line if line else "")
 
 
 def write_files(bp: dict[str, Any], out_dir, title: str = "") -> dict[str, str]:

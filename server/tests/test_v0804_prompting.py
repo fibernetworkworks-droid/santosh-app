@@ -252,7 +252,7 @@ def test_the_page_in_a_real_browser(arena_server, monkeypatch):  # noqa: F811
 
     pg.goto(base + "/console/prompting")
     pg.wait_for_selector("#hpText")
-    assert pg.locator(".hp-nav").count() == 7 and pg.locator(".hp-card").count() >= 3
+    assert pg.locator(".hp-nav").count() == 8 and pg.locator(".hp-card").count() >= 3
     snap("1_home")
     pg.fill("#hpText", "mere sweet shop ki website banao, Kaju Katli Rs 880 per kg")
     pg.click("#hpAsk button[type=submit]")
@@ -421,5 +421,5 @@ def test_first_visit_race_on_the_connectors_user_row(env):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.813.0"
-    assert "0.813.0+812" in (REPO / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.817.0"
+    assert "0.817.0+816" in (REPO / "pubspec.yaml").read_text()

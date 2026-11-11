@@ -1910,7 +1910,157 @@ What is new:
 NOT VERIFIED: no real model has driven an agent (scripted Claude only - the sandbox has no key); cost per round with
 agents is not measured (each agent is its own model conversation, so a reviewed round costs more); no browser walk of
 the new step kinds.
-## v0.813.0 HOOLA DESIGN (built as 0.777; their CHAT JAISA took 0.777.0 and the 0.778-0.812 chain landed meanwhile - REBASE PROTOCOL, both kept) — Hoola's own design editor on Figma's published architecture (11 Nov 2026; owner: "A HOOLA DESIGN --- DO EXTREEM DEEP RESEARCH HOW FIGMA WORKS IN BACKEND ... MAKE CLONE OF FIGMA FOR HOOLA END TO END" + "DEPOY SEVERAL AGENT")
+
+
+## v0.813.0 GAME ARENA RUNNABLE (owner: "GO ARENA" - the third of three, "ALL ONE BY ONE")
+
+The Game Arena (v0.454) was built to answer "is a Hoola game any good?" with numbers. It had never run on a real game.
+
+- **Found by reading it before running it:** `arena._one_card` - the function that takes a built game, lets the QA
+  bots play it and writes the score card - looked for the web build in `<version>/web`. No build has ever had that
+  folder: the exporter writes `<version>/build`. Every Arena test replaced `_one_card` with a stand-in, so nothing
+  ever executed the line. The first real run would have reported EVERY game as "no playable build" - 0 % started -
+  and that would have read as "Hoola's games do not work". `duel` had the same line. Both now go through
+  `arena._web`, and `test_v0813_game_arena_real.py` runs the REAL `_one_card` on a real game row.
+- **A free self-check** (`arena.selfcheck`, `python -m app.gamedesk arena check`, vps-ops `game_arena_check`): the
+  500 briefs are checked (500 unique, 20 genres), then Hoola's own proof game (v0.809, no model wrote it) is built
+  for real as the hidden Arena tenant and scored through the same path a run uses - the build is found, the QA bots
+  (idle / monkey / keys) play it, the card is written - with the judge left out (the only part that needs a model).
+  The game is deleted afterwards. A scorer that cannot measure a known-good game says NOT READY and why, before a
+  rupee is spent.
+- **Running it:** `python -m app.gamedesk arena run --n 3 --budget 150` (REAL: the model writes each game, so it
+  spends money and stops at the rupee ceiling), `arena status`; vps-ops `game_arena_try` (3 briefs, Rs 150 ceiling,
+  23-minute limit - starting it is her decision) and `game_arena_status`. `_one_card(..., judge_it=False)` exists
+  for the check.
+- Measured here (Godot 4.7.2 + Chromium, software graphics): the proof game started, loaded in 3.2 s, the bots'
+  inputs changed its state, 0 errors, 3 state keys reported, playable = true; `reached_end` false in 12 s of random
+  play (the game needs 5 coins and a climb, so a random bot not finishing it is expected); fun = NOT ASSESSED.
+
+Tests: `test_v0813_game_arena_real.py` 6 (one in the real engine + browser, run green here) beside the 12 older
+Arena tests. NOT VERIFIED: no real Arena run has happened yet - it needs her server, the model and her go-ahead on
+the spend - so there are still NO quality numbers for any Hoola version, and the 2D / 3D briefs' real pass rate is
+unknown. The brief set (SET_V 1) has no 3D briefs yet.
+
+## v0.814.0 HOOLA CINEMA - the Create studio's Cinema section (built as 0.807; their BAHI A0, WAPAS, HOOLA 3D KIT and PRAYOGSHALA WAVE 8 took 0.807.0-0.813.0 (also ECC AGENTS and GAME ARENA RUNNABLE) - REBASE PROTOCOL, all kept; owner: "https://github.com/Autom8AI/Open-Higgsfield-AI.git -- read this repo first" -> "GO BUILD THE WHOLE SET AS HOOLA CINEMA END TO END")
+
+**The read.** `Autom8AI/open-higgsfield-ai` is a fork (MATAI) of Anil-matcha's Open Higgsfield AI: a vanilla-JS page on Netlify
+functions with no models of its own - every generation is a paid call to kie.ai or fal.ai. No LICENSE file (README says MIT).
+Ideas only: zero code copied. Its real lesson was the product gap: Hoola had no video-to-video tools.
+
+**What shipped.** One view `cinema` in the Create studio (`static/console/cinema.js`, which the studio hands its own helpers:
+api, go, menu, upload, itemTile...; it lives in the studio's shadow root and uses its styles) with a hub and ten pages:
+Cinema still, Motion transfer, Character swap, Item swap / edit, Restyle, Talking photo, Lip sync, Picture to video, Content
+factory, Characters. Backend `server/app/cinema/`:
+- `specs.py`: 16 models, each request shape read from the engine's own OpenAPI pages (docs.kie.ai) on 2026-11-11 - which field
+  is a list and which a string, which durations are strings, which resolutions exist, size and length limits. `build()` is the
+  only place a request is shaped and refuses anything the spec does not have. Presets as plain prompt text in Hoola's own words:
+  27 camera rows (Auto + 26), 16 restyle looks, 8 looks, the Cinema still's camera / lens / focal / aperture / light.
+- `kie.py`: createTask, recordInfo, credits, file-stream-upload behind ONE seam `_http`; 401 / 402 final; a createTask is never
+  retried; the key scrubbed from every message.
+- `service.py`: characters (a real person only with a recorded yes), `start()` (every refusal before a file leaves: tool / model
+  match, word screen, rights tick, consent tick, confirm, daily cap, shape pre-check, then bytes-sniffed files, photos re-saved
+  as clean JPEGs, uploads, createTask), talking photo with typed words spoken by Hoola's own voice (`create.service.voice`),
+  the factory (scenes by the model, by rule when none answers; one confirmed batch that stops at the first refusal and keeps
+  what started), `check()` / `refresh()` (finished video fetched once through the shilp link wall, sniffed, kept on the Create
+  shelf with `ai_made`), `connected()` = what is not there, said on the hub.
+- `api.py`: `/api/cinema` (overview), `/start`, `/still/prompt`, `/factory/scenes`, `/factory/start`, `/jobs/{id}/check`,
+  `DELETE /jobs/{id}`, `/characters` (+ DELETE, photo). Behind `cinema_page`.
+Also: 26 camera moves on the Video page (were 8), "Use in Hoola Cinema" on My creations tiles (`CIN.send`).
+
+**Found while building.** (1) `HoolaCreate(...)` runs before `/api/console/config` answers, so `ctx.cinema()` is false at build
+time and the view was never mounted - a studio tool behind a switch is mounted always and gated in `go()`. (2) A missing restyle
+look raised ValueError past the route (a 500) - caught by its test. (3) Playwright's `document.querySelector` does not pierce the
+studio's shadow root, so two overflow checks were passing on nothing; they read `shadowRoot` now.
+
+**Safety note.** `image_edit` and `video_kit` refuse face swap. Cinema's character swap is behind two recorded ticks (her right
+to the video; the person is her or agreed) or a saved character that carries a recorded yes. Listed as an owner decision in
+`docs/HOOLA_CINEMA_PLAN.md`.
+
+**Tests.** `test_v0807_hoola_cinema.py` 14: every request shape, presets, bytes sniffing + clean photos, motion transfer end to
+end with the engine faked at `_http` (upload types, exact createTask body, tenant isolation, finish -> My creations once, no key
+or task id in any answer), result link must be a public https video, characters + consent, talking photo with a Hoola voice,
+restyle / edit refusals, the factory, the daily cap / 402 / no key, the key never in an error, routes + no foreign code, and a
+real-browser walk (hub, ten pages with no overflow and no script error, her text never run as HTML, rights tick blocks the send,
+typed words kept, exact bodies sent, factory scenes edited, 26 camera chips). Stamp count 34 -> 35.
+
+**NOT VERIFIED.** No live engine call; rupee cost per job unknown until one runs; all users share the one server key.
+
+## v0.815.0 APP KE PURZE (built as 0.802; other sessions took 0.802.0-0.814.0 meanwhile - REBASE PROTOCOL, all kept; owner: "GO DEEP IS ALL ANDROID AND IOS APP COMPONENT IS THERE" -> "GO 1 2 3 - DEPLOY PARALLEL AGENTS")
+
+The audit (both native kits read file by file, a capability grep across Kotlin and Swift) found the kits strong on accounts,
+data, money, maps, push and store work, and three kinds of gap. Four agents fixed them in parallel worktrees; merged here.
+
+1. HONEST PLAN (`appmaker/capabilities.py`, `blueprint.py`, `service.py`, `agent/app_tools.py`, App Studio Plan page).
+   The plan card listed 64 phone features by STORE POLICY only - nothing told it what the kit really builds, so a plan
+   could promise Face ID or a home-screen widget and the app came without it, and `three_d` claimed SceneView / RealityKit
+   while Android draws a server-rendered still and iPhone nothing. Every CAPS entry now carries `built` {android, ios} =
+   yes / partial / no + `built_note`, decided by reading the kit code; `CP.gaps(ids)` and `caps_missing` on every blueprint
+   (re-worked from the current table on view, so old plans are told too); the chat line says "Not in this version yet: ..."
+   and the app_banao tool text forbids promising those; the Plan page has a "Phone features" panel with an Android and an
+   iPhone pill per feature (Built / Partly / Not yet) - it replaced a chip line that never showed anything.
+2. IPHONE PARITY (`ios/template/Sources/Kit/Media.swift`): `CameraButton` (UIImagePickerController .camera, shown only on
+   a phone with a camera, photo sent through the same `local:` upload path) beside the photo picker in PhotoRow /
+   PhotosRow; `ShareButton(text:url:)` + `shareText(_:url:)` (twin of Android's Act.share); one `ImageCache` (NSCache,
+   150 images / 48 MB) for every kit photo download. NSCameraUsageDescription written for photo fields too.
+3. DEVICE FEATURES on both phones, same public names (`kit/Device.kt`, `Sources/Kit/Device.swift`): `BiometricLock` (an
+   Unlock card - Android's framework BiometricPrompt, no new library, screen-lock fallback on Android 8; iPhone
+   LAContext deviceOwnerAuthentication), `RateAppButton` (Play listing link / StoreKit requestReview), `AddToCalendarButton`
+   (calendar insert intent, no permission / EKEventEditViewController, iOS 16 asks first), `PickContactButton` (phone-number
+   picker, one row, no READ_CONTACTS / CNContactPickerViewController, no key); screen-reader labels on the kit's unlabelled
+   tap targets on both. Android USE_BIOMETRIC only when a screen uses it; iPhone Face ID + calendar purpose strings ALWAYS
+   (Device.swift is in every binary and Apple's upload scan flags a protected API with no string, ITMS-90683). The Android
+   CI fixture's dashboard uses all four parts so appgen-check compiles and taps them.
+
+Tests: NEW test_v0802_honest_caps.py (9), test_v0802_ios_media.py (7), test_v0802_ios_device.py, test_v0802_android_device.py (7).
+NOT VERIFIED: none of the new Kotlin / Swift had been compiled when this was written - no SDK in the sandbox; the
+appgen-check (Android) and ios-check (macOS) runs on this push are the first compile. No real phone has tapped any of it;
+the iPhone camera button is hidden on the simulator, so only a real iPhone proves it. Still not built: home-screen widgets,
+real 3D, deep links / app links, right-to-left, in-app tests in generated apps. Older red, not this work:
+test_v0338_app_store.py::test_push_and_submit_through_the_mac (KeyError 'status', red before this change).
+## v0.816.0 NATIJA KHATA (built as 0.806; their 0.806-0.815 took the numbers) - the outcome ledger of HOOLA PROMPTING (P4 of docs/HOOLA_PROMPTING_PLAN.md, owner: "GO")
+
+What it is: one row per prompt she takes OUT of Hoola Prompting, and what happened to the result afterwards. This is
+the measure the whole feature is judged by, and the data the later phases (recipe order, defaults, self-improvement)
+need.
+
+- `server/app/prompting/ledger.py`, tables `prompt_runs` + `prompt_prefs` (registered in db.init_db, self-heal).
+- A row holds SHAPE only: section, recipe id, slot names with their source, score, dialect, engine, model, rupees
+  (AI list price), seconds, status, grade. The prompt is stored as a SHA-256 of its normalised text plus up to 160
+  word hashes salted with the tenant id. No word, price, phone or name of hers is in the table (test).
+- Life of a run: `hand()` (POST /api/prompting/runs from the Improve sheet's Use button and the page's Open / Copy)
+  -> `claim(tenant, section, text, ref)` when an engine starts with that text: exact hash, or >= 60 % word overlap
+  inside 2 hours (= she edited the prompt first, `edited_before`). The same prompt started again inside 6 hours grades
+  the earlier run `redone` and opens a new run (origin `again`). -> `ready(ref, more_refs, model, usd, seconds)` ->
+  `event(tenant, ref, ev)`: published / downloaded / copied / sent / thumb_up = kept (kept_after_edit when the result
+  was edited), edited, deleted / thumb_down = dropped, redo = redone. Her own keep stands against a later redo; only
+  her delete undoes it. `failed(ref)` closes a run without a grade (an engine failure is not her verdict).
+- Hooks (all through `main._pled`, `_pled_site`, `_pled_sid`, `_pled_chat`; each swallows its own errors):
+  POST /api/sites (both the architect path and the plain path), site first build ready (`site/service.py`, with the
+  site's cost_usd), /change + /edit, /launch, DELETE; Create image jobs (`create/jobs.py`: run_meter cost, items as
+  extra refs, failure), item delete; the Script writer (/api/create/write, item text edit, delete); a chat message of
+  40+ characters (never in an incognito chat), reply thumbs, Ask again. Studio downloads call
+  POST /api/prompting/runs/event (only `downloaded` / `copied` are accepted from a page).
+- Silence, by rule (`settle`, run lazily when numbers are read): handed and never run in 24 hours = `unused`; copied
+  out of Hoola = closed with no grade (unknown); a result still there 3 days later, not redone and not deleted =
+  kept, marked quiet and counted apart from her own keeps.
+- The four numbers (`numbers`): kept rate, redos per kept result, rupees per kept result, minutes to a kept result -
+  overall and per section, shown only after 5 judged results. Score check per section: kept rate of runs at or above
+  the median score against those below, said only with 16 judged runs: predicts / no link / backwards.
+- Recipes: `recipe_rates()` (users who share, 5+ judged runs) orders the image / script recipes and shows
+  "kept 5 of 6 times".
+- Her controls: keep my record (off = nothing written), share shape for recipe order, Delete my record
+  (DELETE /api/prompting/ledger?confirm=DELETE). GET /api/prompting/ledger = her numbers + recent runs;
+  `everyone=1` only for the owner tenant (all users who share, no recent list). POST /api/prompting/runs/{id}/thumb.
+- Page: Results tab on /console/prompting (`prompting.js` results(), styles at the end of `prompting.css`).
+- Switch `prompting_ledger` (default on).
+- Tests: `server/tests/test_v0816_prompt_ledger.py`, 14 incl. a browser walk at 1360 and 390 px.
+
+NOT built / NOT verified: no real run has been recorded on the live server. Not hooked: Kalam, video, app builds,
+the architect's plan-only path. Rupees for a website are the site's running AI cost at first build, not the build
+alone. A chat run is marked ready when the message is sent (the reply's time and cost are not read). Decisions 2-5
+of plan part 7 (which questions to stop asking, slot defaults per business type, dialect health alerts, her
+personal defaults) need real rows first and are not built.
+## v0.817.0 HOOLA DESIGN (built as 0.777; their CHAT JAISA took 0.777.0 and the 0.778-0.816 chain landed meanwhile - REBASE PROTOCOL, both kept) — Hoola's own design editor on Figma's published architecture (11 Nov 2026; owner: "A HOOLA DESIGN --- DO EXTREEM DEEP RESEARCH HOW FIGMA WORKS IN BACKEND ... MAKE CLONE OF FIGMA FOR HOOLA END TO END" + "DEPOY SEVERAL AGENT")
 - RESEARCH (`docs/research/figma/`, every claim cited to Figma's own engineering blog / help / Evan Wallace): 01 backend + multiplayer (a file = a tree of objects, server-authoritative last-writer-wins PER PROPERTY - not OT, not a full CRDT; client id + counter node ids; fractional index child order; parent+position one property, the server refuses a cycle; one in-memory process per file, checkpoints + a write-ahead log; LiveGraph; dynamic page loading), 02 editor + rendering (C++ -> WebAssembly, own tile-based WebGL / WebGPU renderer, no DOM per layer; plugins in QuickJS), 03 feature inventory (~120 features in tiers) + open-source licences (tldraw: production licence + watermark -> not usable; Plasmic Studio AGPL -> not usable; Penpot MPL = reference only). Original product, original look: no Figma name / assets / code.
 - CONTRACT: `docs/HOOLA_DESIGN_PLAN.md` - data model (node props table), ops, WebSocket frames, REST routes, client module API, phases D1-D9, section 6 = as built. Ten builders worked in parallel against it (4 first wave, 6 second wave), each owning its own files.
 - SERVER `server/app/design/` (+ main.py page route `/console/design` behind `design_page`, router mount, shutdown flush; db.init_db; config `design_*`): `doc.py` the document rules (LWW per prop, null removes, create = set with type/parent/idx, delete = subtree, cycle refused, root protected, size caps), `fracidx.py`, `room.py` (one room per open file: snapshot + journal replay, cid per connection persisted and never reused, bounded per-connection send queue, ONE serialisation per broadcast, checkpoint every 200 ops / 20 s idle / last leave, journal trim, auto version every 30 min keep 50, `HUB.apply_ops` for server-made edits), `store.py` (all DB access, off the event loop), `api.py` (files CRUD + trash / restore / duplicate, doc, thumb, versions + restore + duplicate-as-file, comments, assets by content sniffing - SVG with script refused, view-only share token + public read routes + `?share=` socket, the WebSocket with the console's subprotocol auth), `assets.py` + a daily unused-image sweep (worker slot `design_asset_jobs`, 7 days), `limits.py` (comment 30/min, share reads 120/min, AI 20/hour), `ai.py` + `ailayout.py` + `icons.py` + `templates.py`.
