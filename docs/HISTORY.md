@@ -1492,7 +1492,7 @@ she had to notice it and describe it. Lovable's error collector + Try to fix, in
 - AGENT: `website_dekho what=errors` (+ all) - the open errors with the ledger; the description says read before fixing.
 NOT BUILT: the plan's "5 free fixes a day" (Hoola has no per-turn charge to waive, so nothing says free); ladder steps 3-6
 stay manual (History > restore a version already exists; rebuild one section = action=change; remix not built).
-Tests: test_v0802_galti_pakdo.py (9: one card per fingerprint + masking + caps + her sites only, the ladder two fixes then a
+Tests: test_v0802_galti_pakdo.py (8: one card per fingerprint + masking + caps + her sites only, the ladder two fixes then a
 plan with the ledger in the turn, not-seen-since / ignore / reopen, build problem + routes + the agent read + 413, section
 errors only in the preview, the preview link never kept, source wiring, and the PLANTED-ERROR walk: a section that throws ->
 the card names pages/home/hero.js -> Try to fix -> one exact edit -> the next preview is clean - fixed on try 1).
