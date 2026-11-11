@@ -2975,3 +2975,13 @@ Task ID: v0.806.0 HOOLA DOCUMENT KIT D3 (D0-D2 ride along)
 Ask: "GO D3".
 Built: dockit/secure.py + vault.py + api.py (/pdf/key/<token>), 4 actions, proof card 44/44, test_v0805_dockit_d3.py 12; merged main v0.805.0 (their base kept whole), pins re-applied (registry 626, 0.806.0+805).
 Deploy: vps-ops deploy, then docs_setup / docs_check / pdf_card. The one-time links need PUBLIC_BASE_URL (and SECRET_KEY to survive a restart) in the VPS .env - not checked from here.
+Task ID: v0.806.0 HOOLA CODE PHASE 6 (built as 0.799; re-versioned on merge: their v0.799-v0.805 took the numbers meanwhile)
+Ask: GO PHASE 6.
+Built: devlab/net.py + netproxy.py (network levels, allow-list proxy, outside secrets, `python -m app.devlab net`, vps-ops lab_net_check), devsahayak/events.py (signed GitHub webhook events start scheduled tasks), multi-repo (other_repo tool + linked sessions), settings / composer / scheduled page parts, phone screen redrawn by a parallel agent; closed dialogs emptied; 10 tests incl. a real proxy and a browser walk.
+Deploy: vps-ops deploy, then lab_check, lab_net_check, then DEV_NET=true if all ok. Not verified on real Docker, with a real GitHub delivery, or on a phone.
+
+---
+Task ID: v0.807.0 HOOLA DOCUMENT KIT D4 (D0-D3 ride along)
+Ask: "GO D4".
+Built: dockit/ocrlayer.py + fromdoc.py + archive.py, 6 actions, redacted pages OCR'd back, proof card 53/53, test_v0807_dockit_d4.py 11; merged main v0.806.0 (their base kept whole), pins re-applied (registry 626, 0.807.0+806).
+Deploy: vps-ops deploy, then docs_setup (apt line incl. tesseract + JRE), setup_ocr.sh for the Indian models, docs_check, pdf_card.

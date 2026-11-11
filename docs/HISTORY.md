@@ -1754,3 +1754,125 @@ The non-negotiable rule made into code: a PDF password never passes through the 
 NOT VERIFIED (honest): not on the VPS; the one-time page has not been opened on her phone (the link must use
 PUBLIC_BASE_URL; it falls back to a relative /pdf/key/... path); redacted pages lose their selectable text (an OCR
 layer for them comes with D4).
+## v0.806.0 HOOLA CODE PHASE 6 (built as 0.799; their v0.799-v0.805 took the numbers meanwhile) — network levels with an allow-list proxy, keys added outside the box, GitHub events, multi-repo sessions, the phone screen redrawn (owner: "GO PHASE 6")
+
+The last phase of `docs/HOOLA_CODE_WEB_PLAN.md`. Five parts. Nothing here changes who decides: opening a PR on a public
+repo, posting a review and merging are still her taps, and every new way to START work makes an ordinary session.
+
+**1. Network levels for the box** (`server/app/devlab/net.py`, `netproxy.py`; switch `dev_net`, default OFF).
+A command in the box had no network at all. Per repo (Settings > the repo > "Network for commands") she now picks:
+No network (default) / Package registries and her hosts / Any public website. At every level above none the box still
+has no route of its own: it is put on a Docker network made with `--internal`, and the one way out is a small allow-list
+proxy in its own container (`hoola-lab-proxy`: read-only, no capabilities, not root, 256 MB) which is also on the
+default bridge. Each command gets its own pass (`net.grant`: id + secret, a rule file the proxy reads, removed when the
+command ends, swept if a command died). The proxy serves only `CONNECT host:443` and `http://host:80`, refuses an IP
+address instead of a name, refuses a host off the list by name ("X is not on this repo's allowed list"), and after
+resolving refuses any private / loopback / link-local / CGNAT address - so a box can never reach her own server, the
+Docker host or a metadata address through it, even on "Any public website". "Limited" always allows 17 package
+registries (PyPI, npm, Maven, Gradle, pub.dev, crates, Go, RubyGems, NuGet, Packagist) and NOT GitHub. A proxy that is
+not running never turns into an open network: the command runs with none and says so. The one-time setup step is
+unchanged (it has the network, as before).
+
+**2. Keys added outside the box** ("network secrets"). Per repo, a key for ONE exact host (header name, optional word
+like Bearer). Typed only on the settings screen (`PUT /repos/{o}/{n}/secrets`), sealed with the vault, returned by no
+route. For that host the proxy answers the box's TLS itself with a certificate for that one host signed by this server's
+own lab CA (`data/devlab/net/ca.pem`; the box is told to trust a bundle, the CA key is never mounted into a box), adds
+the header - replacing whatever the box sent - and makes the real, verified TLS connection. Never on plain http. Other
+hosts are tunnelled untouched. If a host echoes the key back, the engine hides it before the model or the page see it.
+At most 5 a repo.
+
+**3. GitHub events** (`server/app/devsahayak/events.py`; switch `dev_events`, default on). Built as a signed REPOSITORY
+WEBHOOK, not a GitHub App: an App needs her to register one and keep its private key on the server; a webhook gives the
+same events with her existing token. Settings > the repo > "Connect GitHub events": Hoola adds the webhook with her
+token when the token may (Webhooks: write); when it may not, she is shown the address and the secret ONCE to add it
+herself. `POST /api/devsahayak/github/{id}` believes a delivery only when `X-Hub-Signature-256` matches (a wrong id and
+a wrong signature are the same 401), runs a redelivery once, ignores bots and Hoola's own `hoola/` branches. A scheduled
+task can now "start" on: an issue label, a new issue, a new pull request, a CI failure, a push (label / branch filter).
+By default only HER events count (the login the token belongs to); "Anyone in the repo" is honoured on a private repo
+only. The event's own words (an issue title) ride along inside `<trigger_payload>` as data. A new pull request from
+someone else gets a DRAFT review (the existing review flow; posting is her tap). 10 runs an hour per task.
+
+**4. Multi-repo sessions.** Composer "+" > "Add another repo…": "Read it" attaches up to 3 of her other repos to the
+session read-only (`DevTask.refs`; `engine.Session.ensure_ref` puts the default branch under the session's own folder
+with secrets hidden; the model gets ONE extra tool `other_repo` = ls / glob / grep / read; nothing there can be changed,
+committed, pushed or run). "Change it too" (up to 2) starts a LINKED session per repo (`DevTask.grp`), each with its own
+pull request and the same checks, each reading the others; the Session card shows "Same job in …".
+
+**5. The phone screen** (`lib/ui/devsahayak_screen.dart`, redrawn by a parallel agent): title Hoola Code; sessions
+grouped Working / Needs you / Earlier; New session box (text, repo, mode); the session page with folded steps, Thinking
+toggle, changed files + diff sheet, question choices, the suggestion chip, the message box (note / answer / revise),
+Stop, Open the PR, Fix CI, Fix reviewer comments; Scheduled tab with Run now + Pause. Merge keeps the old confirm card
+exactly. Compiled by CI only (no Flutter in the sandbox).
+
+**Also fixed (found by the browser test):** a closed dialog on the Hoola Code page kept its HTML, so a one-time trigger
+token or webhook secret stayed in the page after "Done". Every dialog is emptied when it closes.
+
+**Routes** (under `/api/devsahayak`): PATCH `/repos/{o}/{n}` takes `net_level`, `net_hosts`; PUT `/repos/{o}/{n}/secrets`,
+DELETE `/repos/{o}/{n}/secrets/{host}`; POST / DELETE `/repos/{o}/{n}/events`; GET `/net`; POST `/tasks/start` takes
+`refs`, `also`; schedules take `event`, `filter`; public: POST `/github/{id}`, GET `/labcheck`.
+**Columns** (nullable, self-heal): `DevRepo.net_level / net_hosts / net_secrets / hook_id / hook_secret / hook_gh /
+hook_seen`, `DevSchedule.event / event_filter`, `DevTask.refs / grp`.
+**On her server:** `python -m app.devlab net` (vps-ops job `lab_net_check`) proves the network walls for real: the
+inside-only network + proxy container, a registry reachable, a host off the list refused, no way around the proxy, no
+private address, "none" still sealed, "full" works, and a secret that reaches the host (her own server answers with a
+fingerprint at `/labcheck`) without being anywhere in the box. Only then set `DEV_NET=true`.
+
+**Tests** `server/tests/test_v0799_hoola_code_phase6.py` (10): host / header rules; the proxy run for real with sockets,
+TLS and curl (allow, refuse by name, IP refused, private address refused, no / wrong / expired pass, secret arrives,
+replaces the box's own header, never on http, other hosts untouched); the box argv with a pass (inside-only network,
+every other wall kept, setup never takes a pass); the proxy container's own walls; a pass per command, handed back,
+echoed key hidden, proxy down = no network, `dev_net` off = nothing changes; settings + sealed secret; GitHub events
+(signature, redelivery, hers only, anyone only on private, bots, Hoola's branches, CI failure, draft review, hourly
+limit, connect both ways, disconnect); another repo read and never changed + linked sessions; one browser walk.
+
+**NOT VERIFIED:** the inside-only Docker network and the proxy container have never run (no Docker in the sandbox) -
+that is exactly what `lab_net_check` is for, and why `dev_net` is off; no real GitHub delivery has arrived; the phone
+screen has not been seen on a phone. **Not built:** a GitHub App; one session that opens pull requests in two repos
+(linked sessions do that instead); reference repos are not mounted into the box (read through the tool only); secrets
+work for http(s) APIs only (not a database password); the phone has no settings for network / keys / events.
+Deploy: vps-ops deploy (server-only; no new pip; columns make themselves), then `lab_check`, then `lab_net_check`, then
+`DEV_NET=true` in .env if every line says ok. GitHub events need PUBLIC_BASE_URL (https) on the server.
+
+
+## v0.807.0 HOOLA DOCUMENT KIT D4 - read + convert (owner: "GO D4"; built as 0.806, shipped as 0.807 - their HOOLA CODE PHASE 6 took 0.806.0, REBASE PROTOCOL, their base kept whole; D0-D3 ride along, never on main before)
+
+- `app/dockit/ocrlayer.py` `searchable`: each page with no text is drawn by pypdfium2 (what she sees, 300 dpi, capped
+  at 40 MP), Tesseract's own orientation guess (osd, only when sure) turns a sideways scan upright, Tesseract writes a
+  TEXT-ONLY page (`-c textonly_pdf=1`, glyph-less font, invisible text) which pikepdf lays over the visible box -
+  the page she sees is untouched (no re-compression). Languages through `ocr.langs_for` (her language + English;
+  Hoola's tessdata_best when setup_ocr.sh placed them). Pages with text are skipped unless force=true; at most 300
+  pages a call; pages still empty after reading are named. No Ghostscript (owner decision D2), no ocrmypdf needed.
+- `app/dockit/fromdoc.py`: `to_docx` (pdfplumber words with sizes -> lines -> paragraphs; headings by size against
+  the body median or all-bold short lines; ruled tables -> Word tables, their words not repeated; pictures cropped from
+  a 150 dpi render; page breaks; a landscape PDF -> a landscape Word section; scans OCR'd first, unreadable scans go
+  in as pictures and are named; the card says the layout is approximate), `to_xlsx` (ruled tables, then text-aligned
+  ones; a sheet per table or one_sheet; numbers parsed the Indian way - 1,23,456.50 / Rs / (450) negative / 12.5% /
+  Dr - and anything that is not clearly a number stays text, dates included; a row saying Total / कुल is checked
+  column by column against the numbers above it and a mismatch is NAMED, never fixed; no table = every line a row),
+  `to_pptx` (a slide per page at the page's own shape, the page as a picture, its words in the notes).
+- `app/dockit/archive.py`: `to_pdfa` (levels 2b / 3b / 1b; `font_problems` counts only fonts that really draw text
+  - Tf followed by Tj / TJ - so ReportLab's unused Helvetica is not a false alarm; keep = sRGB output intent (Pillow
+  ImageCms) + PDF/A XMP identity + JavaScript / attachments out; pages = each page redrawn at 200 dpi + the OCR
+  layer when a drawing font is not embedded; `validate` runs veraPDF when installed and the answer says compliant
+  ONLY then, else 'made to PDF/A rules but NOT validated'), `url_to_pdf` (the house SSRF guard on the address AND on
+  every request the page makes via page.route, private ones aborted; HOOLA_CHROMIUM honoured; networkidle with a
+  45 s cap; A4 / Letter / Legal / A5, landscape, backgrounds printed).
+- Redaction: pages redrawn by `secure.redact` now get the OCR layer back for the words that were NOT boxed (the
+  black boxes cannot be read), and `verify` runs after it - a found item readable again = nothing delivered. The card's
+  fixture had an order number with the same digits as the account number, and the check rightly refused it once the
+  page became readable; the fixture was changed, not the check.
+- Tool: actions ocr / to_word / to_excel / to_powerpoint / pdfa / web_to_pdf (41 in all), parameters language, force,
+  auto_rotate, one_sheet, pictures, level (compress + PDF/A), pdfa_mode, url, landscape; every Office file is
+  reopened (python-docx / openpyxl / python-pptx) before delivery; NOT_YET = forms, sign, compare, translate.
+- Proof card +9 (53 total, 53/53 with Tesseract installed; the OCR cases SKIP without it): scan -> searchable with
+  the page's pixels unchanged, text pages left alone, Excel numbers + a wrong Total named, Word heading / paragraph /
+  table, a scan to Word via OCR, PowerPoint notes, PDF/A keep (font inside) with the validation said plainly, PDF/A
+  pages (font missing), a redacted page searchable again without the secret.
+- Tests `test_v0807_dockit_d4.py` 11 (Indian numbers, OCR through the tool, Excel / Word / PowerPoint, PDF/A never
+  'compliant' without veraPDF, used-fonts-only, private addresses refused, a REAL Chromium print of a local page
+  whose private image request is checked by the guard, the redaction layer never bringing the secret back, a plain
+  refusal without Tesseract).
+
+NOT VERIFIED (honest): not on the VPS; veraPDF is not installed anywhere yet, so no PDF/A has been validated; OCR
+accuracy was seen with the sandbox's basic models, not her tessdata_best ones; PDF -> Word on complex multi-column
+layouts reads in pdfplumber's order and may need tidying.

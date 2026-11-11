@@ -153,6 +153,8 @@ class Settings(BaseSettings):
     dev_think: bool = True                  # ... with adaptive thinking
     dev_hint: bool = True                   # Hoola Code Phase 5: one small model call when a round ends suggests her next message (ghost text)
     dev_hint_model: str = "claude-haiku-5-5"   # ... on this model
+    dev_net: bool = False                   # Hoola Code Phase 6: network levels + outside secrets for the box (allow-list proxy). OFF until `python -m app.devlab net` passes on the server
+    dev_events: bool = True                 # Hoola Code Phase 6: GitHub events (a signed repository webhook) may start a scheduled task
     dev_workspace: bool = True              # a real working copy per session + bash in the locked box + a conversation that continues
     dev_ws_live: int = 2                    # ... sessions that may RUN at once on the server (owner: 2); the rest wait their turn
     dev_ws_steps: int = 150                 # ... model steps in one round
