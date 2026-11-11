@@ -370,7 +370,7 @@ def activity_save(tenant: str, ref: str = "", actor: str = "owner", **kw: Any) -
                 setattr(a, k, R.scrub(v, 600))
         a.updated_at = now()
         s.flush()
-        return {"activity": _act_view(a, _vendor_names(s, tenant)), "say": f"{a.number} save."}
+        return {"activity": _act_view(a, _vendor_names(s, tenant)), "say": f"{a.number} saved."}
 
 
 def _activity(s, tenant: str, ref: str) -> DpoActivity:
@@ -717,7 +717,7 @@ def request_new(tenant: str, text_: str = "", name: str = "", phone: str = "", e
         v = _req_view(r, today(tenant))
     if kind == "withdraw" and p:
         try:
-            consent_withdraw(tenant, phone=p, how=f"maang {v['number']}")
+            consent_withdraw(tenant, phone=p, how=f"request {v['number']}")
         except DpoError:
             pass
     say = (f"{v['number']} ({v['kind_label']}) recorded: reply by {v['due_on']} (the law: no more than {R.RIGHTS_DAYS} days). "

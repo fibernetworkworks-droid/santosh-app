@@ -466,7 +466,7 @@ def take_order(tenant: str, party: str, text: str = "", lines: list | None = Non
     from ..net import deal
     asked = list(lines or []) or R.parse_order(text)
     if not asked:
-        raise ThokError("The items in the order were not understood. Write it like: 'atta 10 bori, cheeni 5 bag'.")
+        raise ThokError("The items in the order were not understood. Write it like: 'flour 10 bags, sugar 5 bags'.")
     cat = deal._catalog_items(tenant)
     if not cat:
         raise ThokError("Add your stock / price list first (item, price, GST).")
@@ -957,7 +957,7 @@ def purchase(tenant: str, supplier: str, text: str = "", lines: list | None = No
     from ..net import deal
     raw = list(lines or []) or R.parse_order(text)
     if not raw:
-        raise ThokError("The bill's items were not understood: 'atta 50 bori @ 1450'.")
+        raise ThokError("The bill's items were not understood. Write it like: 'flour 50 bags @ 1450'.")
     on = today(tenant)
     bd = _date(bill_date, on)
     cat = deal._catalog_items(tenant)

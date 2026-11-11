@@ -67,8 +67,8 @@ def test_rules():
     est = R.trip_estimate(300, 5, 92, toll=1200)
     assert est["fuel_l"] == 60 and est["fuel_rs"] == 5520 and est["total_rs"] == 6720
     miss = R.trip_estimate(300, 5, None)
-    assert miss["total_rs"] is None and "aapka diesel rate" in miss["missing"]
-    assert "8 ghante" in R.drive_hours_note(10) and R.drive_hours_note(5) == ""
+    assert miss["total_rs"] is None and "your diesel rate" in miss["missing"]
+    assert "8 hours" in R.drive_hours_note(10) and R.drive_hours_note(5) == ""
 
 
 def test_vehicle_docs_and_reminders(fl, monkeypatch):
@@ -222,17 +222,17 @@ def test_trips_loads_and_estimates(fl, monkeypatch):
     a = S.assign_trip(T, "1", vehicle="1234", driver="Ramesh", driver_phone="98220 12345")["trip"]
     assert a["status"] == "assigned" and a["driver_phone"] == "9822012345"
     assert any("national permit" in w for w in a["checks"]["warn"])          # MH -> MP goods without NP
-    assert any("8 ghante" in w for w in a["checks"]["warn"])                 # 360 km at her 40 km/h
+    assert any("8 hours" in w for w in a["checks"]["warn"])                 # 360 km at her 40 km/h
     est = a["estimate"]
     assert est["fuel_l"] == 72 and est["fuel_rs"] == 6624 and est["total_rs"] == 8424
     # same truck same day = busy
     b = S.plan_trip(T, "Akola", "Amravati", on.isoformat(), items=[{"name": "x", "weight_kg": 100}], vehicle="1234", km=100)["trip"]
-    assert b["status"] == "planned" and any("doosri trip" in x for x in b["checks"]["block"])
+    assert b["status"] == "planned" and any("another trip" in x for x in b["checks"]["block"])
     # overload never assigned; split suggestion
     big = S.plan_trip(T, "Akola", "Pune", (on + timedelta(days=1)).isoformat(),
                       items=[{"name": "steel coils", "weight_kg": 1000, "count": 11}], vehicle="1234", km=550)
     bt = big["trip"]
-    assert bt["status"] == "planned" and any("zyada" in x for x in bt["checks"]["block"]) and bt["checks"]["split"]["plan"]
+    assert bt["status"] == "planned" and any("too much" in x for x in bt["checks"]["block"]) and bt["checks"]["split"]["plan"]
     # expired insurance blocks
     S.save_doc(T, "5678", "insurance", (on - timedelta(days=1)).isoformat())
     t3 = S.plan_trip(T, "Akola", "Washim", on.isoformat(), items=[{"name": "boxes", "weight_kg": 500}], vehicle="5678", km=80)["trip"]

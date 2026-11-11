@@ -1141,7 +1141,7 @@ def nearest_vehicle(tenant: str, pickup: str, day: str = "", load_t=None, top: i
                 cands.append({"vehicle": v.reg, "capacity_t": v.capacity_t or None, "last_drop": last.destination})
     if not cands:
         return {"pickup": pickup, "ranked": [], "nearest": None, "no_known_position": unknown, "skipped": skipped,
-                "note": "The last drop place of no free vehicle is known (no completed trip)." if unknown
+                "note": "No free vehicle has a known last drop place (no completed trip)." if unknown
                 else "No free vehicle that day."}
 
     async def go():
@@ -1696,4 +1696,4 @@ def register_file(tenant: str, conv: str = "") -> dict:
     f = chatfiles.store(tenant, f"Fleet_register_{on.isoformat()}.xlsx", bio.getvalue(),
                         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
     _publish(tenant, "pc_file", {**f, "source": "fleet", "title": "Fleet register"}, conv)
-    return {"file": f, "say": "Gaadiyan, kaagaz, cost per km aur trips ka Excel."}
+    return {"file": f, "say": "Excel of vehicles, papers, cost per km and trips."}
