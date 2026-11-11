@@ -480,3 +480,39 @@ dialog.tpld:not([open]){display:none}
 .doc .pgh b{overflow-wrap:anywhere}
 .doc .secs{margin:6px 0 0;padding-left:18px;font-size:13px;color:var(--lit,inherit)}
 .doc .secs li{margin:2px 0;overflow-wrap:anywhere}
+
+/* v0.777 CHAT JAISA (L1, docs/LOVABLE_STUDIO_PLAN.md): the live thread. Words land out of a soft focus (md.js wraps
+   only the newest words), "Thinking…" shimmers, queued messages wait greyed, attachments ride as chips, Details opens
+   the turn's Timeline + Changes where the preview sits. Every motion has a reduced-motion fallback. */
+.msgs{position:relative}
+.hist{display:flex;flex-direction:column;gap:14px}
+.livebox{display:flex;flex-direction:column;gap:14px}
+.ho .w{animation:ws-word .46s cubic-bezier(.25,.46,.45,.94) both}
+@keyframes ws-word{from{opacity:0;filter:blur(3px)}to{opacity:1;filter:none}}
+.thinking{background:linear-gradient(90deg,var(--mut) 0%,var(--mut) 15%,var(--ink) 50%,var(--mut) 85%,var(--mut) 100%);
+  background-size:200% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:ws-think 1.8s linear infinite}
+@keyframes ws-think{from{background-position:200% 0}to{background-position:-100% 0}}
+.turnhead{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.turnhead details{flex:1 1 auto;min-width:0}
+.ib.sm{width:26px;height:26px}
+.me.queued{opacity:.55;position:relative}
+.me.queued::before{content:'Runs after this step';display:block;font-size:11.5px;color:var(--mut);margin-bottom:4px}
+#wsQ{display:flex;flex-direction:column;gap:10px;margin-top:10px}.me .qacts{display:block;margin-top:6px;text-align:right}
+.mfiles,.tray{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.tray{margin:0 0 6px}
+.fchip{display:inline-flex;align-items:center;gap:6px;max-width:220px;font-size:12px;padding:4px 8px;border:1px solid var(--line);border-radius:999px;background:var(--bg);color:var(--ink)}
+.fchip.up{opacity:.6}.fchip.up::after{content:'';width:10px;height:10px;border-radius:50%;border:2px solid var(--pri-soft);border-top-color:var(--pri);animation:ws-spin .9s linear infinite}
+.fchip.bad{border-color:var(--bad);color:var(--bad)}
+.fchip .x{border:0;background:none;color:var(--mut);cursor:pointer;font-size:14px;line-height:1;padding:0 2px}
+.chat.drop{outline:2px dashed var(--pri);outline-offset:-6px}
+.jump{position:sticky;bottom:8px;align-self:center;display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:999px;border:1px solid var(--line);background:var(--raise);color:var(--ink);font-size:12.5px;box-shadow:0 4px 14px rgba(0,0,0,.08);cursor:pointer;animation:ws-in .2s ease both}
+.wcard .whead .b.sm{margin-left:6px}
+.dtop{display:flex;align-items:center;gap:10px;padding:12px 18px;border-bottom:1px solid var(--line)}
+.tline{list-style:none;margin:8px 0;padding:0 0 0 14px;border-left:1px solid var(--line)}
+.tline li{position:relative;padding:8px 0 8px 14px}
+.tline .tdot{position:absolute;left:-19px;top:14px;width:9px;height:9px;border-radius:50%;background:var(--ok)}
+.tline li.bad .tdot{background:var(--bad)}.tline li.run .tdot{background:var(--pri);animation:ws-pulse 1.4s ease-out infinite}
+@keyframes ws-pulse{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--pri) 45%,transparent)}100%{box-shadow:0 0 0 8px transparent}}
+.tline .tl1{display:flex;flex-direction:column;gap:2px}.tline .tl1 b{font-weight:500;font-size:14px;color:var(--ink)}
+@media (prefers-reduced-motion:reduce){.ho .w,.thinking,.tline li.run .tdot,.jump,.fchip.up::after{animation:none}.thinking{color:var(--ink);background:none}}
+.jump[hidden],.tray[hidden],.livebox[hidden]{display:none}

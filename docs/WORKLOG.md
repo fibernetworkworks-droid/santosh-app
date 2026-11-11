@@ -2845,3 +2845,14 @@ Task ID: v0.776.0 HOOLA CODE PHASE 2 (built as 0.774; re-versioned twice on merg
 Ask: GO PHASE 2 (review and the pull request), then MERGE.
 Built: Changes pane + Compare against, line comments riding the next message, answer continues the session, own review card, per-PR auto-fix, archive after merge; 10 tests incl. 3 browser walks.
 Deploy: vps-ops deploy (server-only; no new pip; two nullable columns self-heal).
+
+---
+Task ID: v0.777.0 CHAT JAISA (L1)
+Task: owner "GO L1" - Lovable-grade Studio chat (live stream, soft words, thinking, past-tense steps, Details, rupees, queue, attachments).
+Work Log: webstudio.js thread rewritten on HoolaStream; turncost + usage.turn_meter + /costs; 5 new tests + older Studio suites green; re-versioned 0.771 -> 0.777 (other sessions took 0.771-0.776).
+Stage Summary: pushed; server deploy only (no APK needed). Next: L2 TEEN MODE on her GO.
+
+Task ID: v0.778.0 HOOLA CODE PHASE 3 (built as 0.777; their CHAT JAISA took 0.777.0)
+Ask: GO PHASE 3 (the composer).
+Built: one box + one row (branch, mode, model + effort, usage ring), kind from her words, slash commands, pictures + text files on the first message, per-session cost, link pre-fill; 8 tests incl. 2 browser walks.
+Deploy: vps-ops deploy (server-only; no new pip; five nullable columns self-heal; pictures under data/devsahayak/).
