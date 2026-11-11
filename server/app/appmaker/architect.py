@@ -521,7 +521,7 @@ def build(r: AppProject, key: str, run_tests: bool = True) -> dict[str, Any]:
             # v0.542 something not SET UP is not the module being broken: it is a next step, and the app still
             # works without it (here, the 15-minute check instead of instant push). Only a real failure is a
             # problem - otherwise every module would read as failed on a server that has no Firebase key.
-            if getattr(e, "code", 0) in (400, 409) or "nahi hai" in str(e):
+            if getattr(e, "code", 0) in (400, 409) or "nahi hai" in str(e) or "not on the server" in str(e):
                 next_steps.append(f"For instant notifications: {str(e)[:120]}")
             else:
                 problems.append(f"push: {str(e)[:80]}")

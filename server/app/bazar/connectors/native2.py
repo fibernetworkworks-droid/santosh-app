@@ -454,8 +454,9 @@ class Native2Executor(NativeExecutor):
         for r in rows:
             link = build_upi_intent(biz["upi_id"], shop, r["balance"], "Udhar payment") if biz.get("upi_id") else ""
             text = {"mr": f"नमस्कार {r['customer']}, {shop} कडे तुमची {rupees(r['balance'])} बाकी आहे. सोयीनुसार भरा.",
+                    "hi": f"Namaste {r['customer']} ji, {shop} par aapka {rupees(r['balance'])} baaki hai. Suvidha anusaar bhugtan kar dijiye.",
                     "en": f"Hello {r['customer']}, a balance of {rupees(r['balance'])} is pending at {shop}. Please pay when convenient."}.get(
-                lang, f"Namaste {r['customer']} ji, {shop} par aapka {rupees(r['balance'])} baaki hai. Suvidha anusaar bhugtan kar dijiye.")
+                lang, f"Hello {r['customer']}, a balance of {rupees(r['balance'])} is pending at {shop}. Please pay when convenient.")
             if link:
                 text += f" UPI: {link}"
             msgs.append({"name": r["customer"], "phone": r["phone"], "text": text})

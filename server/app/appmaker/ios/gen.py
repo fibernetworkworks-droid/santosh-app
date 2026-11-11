@@ -124,7 +124,7 @@ def tokens_swift(spec: dict[str, Any]) -> str:
     every = ids + list(CODE_SCREENS) + list(KIT_SCREENS) + ["hoola_security"] \
         + (["hoola_components"] if spec.get("custom") else []) + (["hoola_jobs"] if partner_kind(spec) else [])
     lang = str(app.get("language") or "en")
-    return f'''// Made by Hoola App Sahayak from the approved design's tokens. Do not edit: a new design version rewrites it.
+    return f'''// Made by Hoola App Assistant from the approved design's tokens. Do not edit: a new design version rewrites it.
 import SwiftUI
 
 enum AppTokens {{
@@ -165,7 +165,7 @@ def screens_swift(spec: dict[str, Any]) -> str:
     if partner_kind(spec):                                   # v0.435 PARIVAAR: the partner app's jobs screen
         cases.append('    case "hoola_jobs": return AnyView(PartnerScreen())')
     body = "\n".join(cases)
-    return f'''// Made by Hoola App Sahayak from the approved design: which screens exist and which view each id opens.
+    return f'''// Made by Hoola App Assistant from the approved design: which screens exist and which view each id opens.
 import SwiftUI
 
 @MainActor
@@ -180,7 +180,7 @@ func screenView(_ id: String) -> AnyView {{
 
 
 def app_swift(spec: dict[str, Any]) -> str:
-    return '''// Made by Hoola App Sahayak. The app's start: her server address + app key, saved data, the signed-in user, the outbox.
+    return '''// Made by Hoola App Assistant. The app's start: her server address + app key, saved data, the signed-in user, the outbox.
 import SwiftUI
 
 @main
@@ -299,7 +299,7 @@ def code_screen(s: dict[str, Any], ids: list[str], tabs: list[str], backend: dic
     for a in acts:
         rows.append(f"            MainButton(text: T({sstr(a.get('label') or a['go'])}), tonal: true) {{ Router.shared.go({sstr(a['go'])}) }}")
     body = "\n".join(rows)
-    return f'''// Made by Hoola App Sahayak (simple version made by code).
+    return f'''// Made by Hoola App Assistant (simple version made by code).
 import SwiftUI
 
 struct {swift_name(sid)}: View {{
@@ -478,7 +478,7 @@ def project_yml(spec: dict[str, Any]) -> str:
     if ents:
         lines = "".join(f"\n        {k}:{v}" if v.startswith("\n") else f"\n        {k}: {v}" for k, v in ents.items())
         push_ent = "\n    entitlements:\n      path: App.entitlements\n      properties:" + lines
-    return f'''# Made by Hoola App Sahayak. XcodeGen turns this into the Xcode project on the Mac (xcodegen generate).
+    return f'''# Made by Hoola App Assistant. XcodeGen turns this into the Xcode project on the Mac (xcodegen generate).
 name: {name}
 options:
   bundleIdPrefix: in.hoola
@@ -535,7 +535,7 @@ def flow_tests(screens: list[str], taps: int = 5) -> str:
     """v0.345 HAR RAASTA on the iPhone: an XCUITest that opens every screen, taps each button / link from a fresh start,
     and prints one HOOLA_TAP line per tap (screen, label, still running?, did the screen change?, n). Debug builds only."""
     ids = ", ".join(sstr(x) for x in screens)
-    return f'''// Made by Hoola App Sahayak (v0.345 HAR RAASTA). Every button / link on every screen, tapped from a fresh start.
+    return f'''// Made by Hoola App Assistant (v0.345 HAR RAASTA). Every button / link on every screen, tapped from a fresh start.
 import XCTest
 
 final class FlowTests: XCTestCase {{
