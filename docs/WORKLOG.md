@@ -2877,3 +2877,9 @@ Ask: GO G4 (long jobs continue on one thread).
 Built: turngraph job thread + carry node + park / park_cut, goal round resumes it, toolledger.move; chat_graph still off; 9 tests.
 Deploy: vps-ops deploy (langgraph pip install from v0.761 if not done).
 
+
+---
+Task ID: v0.784.0 SAWAAL CARD (built as 0.783; their LANGGRAPH G4 took 0.783.0; L3)
+Task: owner "GO L3" - design question cards with visual options before a Studio Build, skipped when her words name the design.
+Work Log: site/designq.py + 2 routes; S.new reads designq.PENDING; look 1 'Your choices' + her hero; Studio question card (webstudio.js/css); switch studio_design_questions; 6 new tests + older Studio suites.
+Stage Summary: pushed; server deploy only. Next: L4 CHHOTA BADLAAV (line edits + tiered checks) on her GO.

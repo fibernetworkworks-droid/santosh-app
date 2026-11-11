@@ -115,4 +115,4 @@ def test_turn_sets_its_chat():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION.startswith("0.783.0")
+    assert APP_VERSION.startswith("0.784.0")
