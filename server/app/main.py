@@ -1761,6 +1761,18 @@ def hoola_code_page():
         "X-Content-Type-Options": "nosniff", "Permissions-Policy": "microphone=(), camera=(), geolocation=()"})
 
 
+@app.get("/console/code/shared/{token}")
+def hoola_code_shared_page(token: str):
+    """Hoola Code Phase 5: the read-only page of ONE session she shared. No sign-in: the random token in the address is
+    the whole key, the page asks GET /api/devsahayak/shared/<token> and can do nothing else. Never indexed, never framed."""
+    if not getattr(get_settings(), "hoola_code_page", False):
+        raise HTTPException(404, "Not found")
+    return FileResponse(STATIC / "console" / "hoolacode.html", headers={
+        **_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP, "X-Frame-Options": "DENY",
+        "X-Content-Type-Options": "nosniff", "X-Robots-Tag": "noindex, nofollow",
+        "Permissions-Policy": "microphone=(), camera=(), geolocation=()"})
+
+
 @app.get("/console/flow")
 @app.get("/console/flow/")
 def hoola_flow_page():
@@ -5440,6 +5452,9 @@ from .product.api import make_router as _product_router  # noqa: E402
 for _mk in (_devsahayak_router, _qa_router, _itadmin_router, _ispnoc_router, _cyber_router, _devops_router,
             _docwriter_router, _appreview_router, _product_router):
     app.include_router(_mk(require_key, current_tenant))
+# Hoola Code Phase 5: the two doors with their own secret (a shared session's read-only view, her own program's trigger)
+from .devsahayak.api import make_public_router as _devsahayak_public_router  # noqa: E402
+app.include_router(_devsahayak_public_router())
 
 # v0.139 Safar suite: 7 Logistics, transport & travel Sahayaks (all routes key-protected under /api/<mod>/*; no public routes)
 from .customs.api import make_router as _customs_router  # noqa: E402
