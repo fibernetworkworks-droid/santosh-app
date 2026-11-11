@@ -145,7 +145,7 @@ def test_the_page_in_a_real_browser(arena_server, monkeypatch):  # noqa: F811
     errs = []
     pg.on("pageerror", lambda e: errs.append(f"{e} {getattr(e, 'stack', '')} @ {pg.url}"))
     shots = os.environ.get("HOOLA_SHOTS")
-    snap = (lambda n: pg.screenshot(path=f"{shots}/flow_{n}.png")) if shots else (lambda n: None)
+    snap = (lambda n: (pg.wait_for_timeout(400), pg.screenshot(path=f"{shots}/flow_{n}.png"))) if shots else (lambda n: None)
     pg.route("**/api/console/config", lambda r: r.fulfill(json={"app": "Hoola", "v2": True, "stream": True, "sessions": True,
                                                                    "panel": True, "projects": True, "human": True, "flow": True, "flow_mic": True}))
     pg.route("**/api/me", lambda r: r.fulfill(json={"signed_in": True, "name": "Meghana Ingle", "email": "m@example.com"}))
@@ -161,8 +161,8 @@ def test_the_page_in_a_real_browser(arena_server, monkeypatch):  # noqa: F811
     pg.wait_for_url("**/console/flow**")
     pg.wait_for_selector(".wf-row")
     home = pg.locator(".wf-main").text_content()
-    assert "Welcome back, Meghana" in home and "Hold Space to dictate" in home and "<b>Sharma</b>" in home
-    assert "Today" in home and "Yesterday" in home and "24 WPM" in home.replace("\n", "") and "2 days" in home
+    assert "Welcome back, Meghana" in home and "Hoola writes it." in home and "Hold to dictate" in home and "<b>Sharma</b>" in home
+    assert "Today" in home and "Yesterday" in home and "24 WPM" in home.replace("\n", "") and "2 day streak" in home
     assert "Click or hold Space to dictate" in pg.locator("#wfbar").text_content()
     assert pg.locator(".wf-nv.on").text_content() == "Home"
     snap("home")
@@ -207,13 +207,16 @@ def test_the_page_in_a_real_browser(arena_server, monkeypatch):  # noqa: F811
     pg.locator(".wf-side [data-go='settings']").click()
     pg.wait_for_selector(".wf-sets")
     s = pg.locator(".wf-main").text_content()
+    snap("settings")
     assert "Ready on this server" in s and "Default for files" in s and "Voiceprint is off." in s and "/api/kaan" in s and "As said" in s
     pg.locator(".wf-nv[data-go='live']").click()
     pg.wait_for_selector("#wfgo")
     assert pg.locator("#wfgo").is_enabled() and pg.locator("#wfbar").text_content().strip() != ""
+    snap("live")
     pg.locator(".wf-nv[data-go='files']").click()
     pg.wait_for_selector("#wfdrop")
     assert pg.locator("#wfmake").is_disabled()                     # nothing chosen yet
+    snap("files")
     # the Flow bar end to end: hold Space -> waveform + words so far -> release -> written in her Style, copied, on top
     ctx.grant_permissions(["clipboard-read", "clipboard-write"], origin=base)
     calls = []
@@ -256,6 +259,14 @@ def test_the_page_in_a_real_browser(arena_server, monkeypatch):  # noqa: F811
     pg.wait_for_selector(".wf-row")
     assert pg.evaluate("document.documentElement.scrollWidth <= window.innerWidth + 1")
     snap("phone")
+    pg.set_viewport_size({"width": 1360, "height": 900})
+    pg.emulate_media(color_scheme="dark")
+    pg.goto(base + "/console/flow#/dictionary")
+    pg.wait_for_selector(".wf-wr")
+    snap("dark_dictionary")
+    pg.locator(".wf-nv[data-go='home']").click()
+    pg.wait_for_selector(".wf-row")
+    snap("dark_home")
     assert not errs, errs
     ctx.close()
 

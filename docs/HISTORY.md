@@ -790,3 +790,15 @@ Phase 3 of the plan: how a session is STARTED on `/console/code`. The form (kind
 - FOUND BY ITS OWN TEST: after Send the box kept her old words (leaving the home screen saved the textarea back into the draft) - cleared now.
 - PROOF: `tests/test_v0777_hoola_code_composer.py` 8 - the kind rules; the model list with and without a forced model; one session on a picked branch / mode / model / effort (every brain call on her pick, the PR against her branch, `auto` over her setting, no pick = the server's, cost counted); plan-first makes a tiny job wait; a non-picture refused by its bytes, a picture and a scrubbed log reaching the model's first message, a long file cut, her pictures deleted with the session; the routes; and TWO walks in a real browser: the box and the ONE row measured, a picture + a log attached (a video refused in words), the "+" menu, `/tests` + `/plan`, Enter starts with exactly the right body, the session showing her picture (really loaded) and what it runs on, the box empty afterwards, `/review 12`; a forced model shown and not offered, a link pre-filling without starting, her words surviving a repo change.
 - NOT DONE / NOT VERIFIED: no live run - a picture has not been read by the live model through this path, and with SAB GLM on it goes to the GLM door's picture handling, not tested here; attachments on a FOLLOW-UP message (a note or a change request) are not built - only the first message takes them (Phase 4 makes the session a conversation); no ghost-text suggestion (Phase 5); effort is ignored by a model that does not take it (the loop already retries without it); multi-repo sessions are not built.
+
+
+## v0.780.0 HOOLA FLOW REDRAWN (owner: "YOU HAVE MAKE IT VERY STALE AND OLD DESIGN --- FIX THIS PROPERLY -- TEXT , BUTTON .. EVERY DESIGN --- LOOKS MESSY")
+
+v0.778's page copied Wispr's warm paper + serif look and read as dated. `flow.css` rewritten: Schibsted Grotesk only (h1 30 / 700
+/ -0.032em, body 15), white surfaces with hairlines and soft shadows, ONE accent (violet) and the house glow only in the hero and
+banners, every control on one scale (32 / 38 / 46 px; radius 10 / 12), spacing on 4 / 8 / 12 / 16 / 24. Home = greeting + stats
+pill, a hero ("Just speak. Hoola writes it.") with a big round mic button and key hints, three quick cards, history lists. Sidebar =
+logo, nav with accent icons on the active row, a Shortcuts card, Settings / Back, a profile chip. Tabs are segmented controls, meta
+are chips, the toast is a dark pill at the top, selects have a chevron, focus rings are violet. Dark mode redrawn. The page no
+longer loads v2.css. Bug found by looking at the screenshots: `.wf p{margin:0}` outranked every class margin - now `:where()`.
+Checked by eye: home, transcript, dictionary, snippets, style, files, settings, recording, phone, dark.

@@ -134,6 +134,9 @@ window.HoolaFlow = function ({api, esc, toast, say}) {
     search: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>',
     x: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>',
     ok: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg>',
+    mic: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>',
+    flame: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3c1 3 4 5 4 9a4 4 0 0 1-8 0c0-1 .3-2 1-3 0 2 1 3 2 3 0-3-1-5 1-9z"/></svg>',
+    right: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>',
   };
 
   async function load() {
@@ -178,17 +181,18 @@ window.HoolaFlow = function ({api, esc, toast, say}) {
   function shell() {
     if ($('.wf')) return;
     EL.innerHTML = `<div class="wf"><aside class="wf-side" aria-label="Main navigation">
-        <a class="wf-logo" href="#/"><img src="/static/hoola-mark.png" alt=""><b>Hoola Flow</b><span class="wf-badge">Your server</span></a>
+        <a class="wf-logo" href="#/"><img src="/static/hoola-mark.png" alt=""><b>Hoola Flow</b></a>
         <nav class="wf-nav" id="wfnav"></nav>
         <div class="wf-grow"></div>
-        <div class="wf-tip"><b>Speak anywhere in Hoola</b>Hold <kbd>Space</kbd> on this page, or press <kbd>Ctrl</kbd> + <kbd>Space</kbd> in the Hoola chat box.</div>
+        <div class="wf-tip"><b>Shortcuts</b><p>Dictate<span><kbd>Space</kbd></span></p><p>Cancel<span><kbd>Esc</kbd></span></p><p>In Hoola chat<span><kbd>Ctrl</kbd><kbd>Space</kbd></span></p></div>
         <nav class="wf-nav" aria-label="Secondary navigation">
           <button type="button" class="wf-nv" data-go="settings">${I.gear}Settings</button>
           <a class="wf-nv" href="/console/">${I.back}Back to Hoola</a></nav>
+        <div class="wf-user" id="wfuser" hidden></div>
       </aside>
       <main class="wf-main" id="wfmain" aria-label="Main content"></main>
       <div class="wf-flowbar" id="wfbar" aria-live="polite"></div></div>`;
-    EL.querySelector('.wf-side').addEventListener('click', e => { const b = e.target.closest('[data-go]'); if (b) show(b.dataset.go); });
+    EL.querySelector('.wf').addEventListener('click', e => { const b = e.target.closest('[data-go]'); if (b) show(b.dataset.go); });
   }
   function side() {
     const cur = VIEW === 't' ? 'home' : VIEW;
@@ -196,6 +200,8 @@ window.HoolaFlow = function ({api, esc, toast, say}) {
     $('#wfnav').innerHTML = item('home', 'Home', I.home) + item('words', 'Dictionary', I.dict) + item('snippets', 'Snippets', I.snip) +
       item('style', 'Style', I.style) + '<p class="wf-sec">Transcribe</p>' + item('files', 'A file to text', I.file) + item('live', 'Live captions', I.live);
     EL.querySelectorAll('.wf-side [data-go="settings"]').forEach(b => { b.classList.toggle('on', cur === 'settings'); });
+    const u = $('#wfuser'), nm = String(ME?.name || '').trim() || String(ME?.email || '').split('@')[0];
+    if (u && nm) { u.hidden = false; u.innerHTML = `<span class="wf-ava" aria-hidden="true">${esc(nm[0].toUpperCase())}</span><div><b>${esc(nm)}</b><small>${esc(ME?.email || 'Your own server')}</small></div>`; }
   }
   function main(html) { $('#wfmain').innerHTML = html; }
   function notReady() {
@@ -226,15 +232,22 @@ window.HoolaFlow = function ({api, esc, toast, say}) {
     main(`<div class="wf-in">
       <header class="wf-hd"><h1 class="wf-h1">Welcome back${nm ? ', ' + esc(nm) : ''}</h1>
         <div class="wf-stats" title="Counted from your last ${st.n} transcripts on this server">
-          <span>🔥 <b>${st.streak}</b> ${st.streak === 1 ? 'day' : 'days'}</span><span><b>${kfmt(st.words)}</b> words</span><span><b>${st.wpm ?? '-'}</b> WPM</span></div></header>
+          <span>${I.flame}<b>${st.streak}</b> day streak</span><span><b>${kfmt(st.words)}</b> words</span><span><b>${st.wpm ?? '-'}</b> WPM</span></div></header>
       ${notReady()}
-      <section class="wf-hero" aria-labelledby="wfhero"><div><h2 id="wfhero">Hold <kbd>Space</kbd> to dictate</h2>
-        <p>Speak in Hindi, Marathi, English or a mix. When you stop, the text is tidied in your Style, copied for you and saved below. Paste it anywhere with <kbd>Ctrl</kbd> + <kbd>V</kbd>.</p></div>
-        <button type="button" class="wf-btn dark big" id="wfgo"${canHear() ? '' : ' disabled'}>Start dictating</button></section>
+      <section class="wf-hero" aria-labelledby="wfhero"><div>
+        <span class="wf-chip"><i class="wf-dot ${canHear() ? 'ok' : 'bad'}"></i>${canHear() ? 'Ready on your server' : 'Not ready'}</span>
+        <h2 id="wfhero">Just speak.<br><em>Hoola writes it.</em></h2>
+        <p class="wf-lead">Hindi, Marathi, English or a mix. When you stop, your words are tidied, copied and saved here - paste them anywhere.</p>
+        <p class="wf-keys"><span><kbd>Space</kbd> Hold to dictate</span><span><kbd>Esc</kbd> Cancel</span><span><kbd>Ctrl</kbd><kbd>V</kbd> Paste</span></p></div>
+        <button type="button" class="wf-mic" id="wfgo"${canHear() ? '' : ' disabled'}><i>${I.mic}</i><b>Start dictating</b></button></section>
+      <div class="wf-quick">
+        <button type="button" class="wf-q" data-go="files"><i class="wf-tile">${I.file}</i><span><b>A file to text</b><small>Meetings, voice notes, videos</small></span></button>
+        <button type="button" class="wf-q" data-go="live"><i class="wf-tile b">${I.live}</i><span><b>Live captions</b><small>Words as people speak</small></span></button>
+        <button type="button" class="wf-q" data-go="words"><i class="wf-tile c">${I.dict}</i><span><b>Dictionary</b><small>Names and words, your way</small></span></button></div>
       <div class="wf-histbar"><h2 class="wf-h2">History</h2>
         <label class="wf-search">${I.search}<span class="wf-sr">Search what was said</span><input id="wfq" placeholder="Search what was said" value="${esc(Q)}"></label></div>
       ${groups.length ? groups.map(g => `<p class="wf-day">${esc(g.name)}</p><div class="wf-list">${g.items.map(row).join('')}</div>`).join('')
-        : `<div class="wf-list"><div class="wf-empty">${Q ? '<b>Nothing matches</b>Nothing said matches that search.' : '<b>Nothing here yet</b>Hold Space and say something - it shows up here.'}</div></div>`}
+        : `<div class="wf-list" style="margin-top:16px"><div class="wf-empty">${Q ? '<b>Nothing matches</b>Nothing said matches that search.' : '<b>Nothing here yet</b>Hold Space and say something - it shows up here.'}</div></div>`}
     </div>`);
     $('#wfgo').onclick = () => startDictation();
     const q = $('#wfq'); q.oninput = () => { Q = q.value; const p = q.selectionStart; home(); const n = $('#wfq'); n.focus(); n.setSelectionRange(p, p); };
@@ -280,7 +293,7 @@ window.HoolaFlow = function ({api, esc, toast, say}) {
     }
     if (BAR === 'starting') { w.innerHTML = '<div class="wf-pill writing" role="status"><i class="wf-spin" aria-hidden="true"></i>Starting the microphone…</div>'; return; }
     w.innerHTML = `<button type="button" class="wf-pill idle" id="wfpill"${canHear() ? '' : ' disabled'} aria-label="Start dictating">
-      <span class="wf-dots" aria-hidden="true">${'<i></i>'.repeat(7)}</span><span class="wf-hint">Click or hold <kbd>Space</kbd> to dictate</span></button>`;
+      <span class="wf-pmic" aria-hidden="true">${I.mic}</span><span class="wf-hintt">Click or hold <kbd>Space</kbd> to dictate</span></button>`;
     $('#wfpill').onclick = () => startDictation();
   }
   function tick() {
@@ -400,12 +413,12 @@ window.HoolaFlow = function ({api, esc, toast, say}) {
     const list = VTAB === 'hints' ? all.filter(w => !w.fix_to) : VTAB === 'fixes' ? all.filter(w => w.fix_to) : all;
     main(`<div class="wf-in">
       <header class="wf-hd"><div><h1 class="wf-h1">Dictionary</h1></div><button type="button" class="wf-btn dark" id="wfadd">Add new</button></header>
-      <section class="wf-banner"><div><h2>Hoola speaks the way you speak</h2><p>Names, brands, places and Hinglish words Hoola should spell your way. A word on its own is a listening hint. Add "always write it as" and it is corrected every time.</p></div></section>
+      <section class="wf-banner"><i class="wf-tile">${I.dict}</i><div><h2>Hoola spells it your way</h2><p>Names, brands, places and Hinglish words Hoola should spell your way. A word on its own is a listening hint. Add "always write it as" and it is corrected every time.</p></div></section>
       <div class="wf-tabs" role="tablist" aria-label="Show">${[['all', 'All'], ['hints', 'Listening hints'], ['fixes', 'Spelling fixes']].map(([k, n]) =>
         `<button type="button" class="wf-tab" role="tab" data-vt="${k}" aria-selected="${k === VTAB}">${n}</button>`).join('')}</div>
       ${VOC.error ? `<p class="wf-bad">${esc(VOC.error)}</p>` : ''}
       <div class="wf-list">${list.length ? list.map(w => `<div class="wf-wr"><span><span class="wf-word">${esc(w.term)}</span>${w.fix_to
-          ? `<span class="wf-arrow">→</span><span class="wf-word">${esc(w.fix_to)}</span>` : '<span class="wf-arrow"></span><span class="wf-dim">listening hint</span>'}</span>
+          ? `<span class="wf-arrow">→</span><span class="wf-word">${esc(w.fix_to)}</span>` : '<span class="wf-hint">listening hint</span>'}</span>
           <span class="wf-ra"><button type="button" class="wf-ic" data-rm="${esc(w.term)}" title="Remove" aria-label="Remove ${esc(w.term)}">${I.trash}</button></span></div>`).join('')
         : '<div class="wf-empty"><b>No words yet</b>Add the names and words you say often.</div>'}</div>
       <p class="wf-fine">Used by dictation, files and live captions. Hints share an 800-character space; each word up to 120 characters.</p></div>`);
@@ -421,7 +434,7 @@ window.HoolaFlow = function ({api, esc, toast, say}) {
     const list = (VOC.items || []).filter(w => w.note === 'snippet');
     main(`<div class="wf-in">
       <header class="wf-hd"><div><h1 class="wf-h1">Snippets</h1></div><button type="button" class="wf-btn dark" id="wfadd">Add new</button></header>
-      <section class="wf-banner"><div><h2>Say less, write more</h2><p>Say a short cue and Hoola writes the whole text - your UPI ID, address, timings, a link. Example: say "my upi" and it becomes your UPI ID.</p></div></section>
+      <section class="wf-banner"><i class="wf-tile">${I.snip}</i><div><h2>Say less, write more</h2><p>Say a short cue and Hoola writes the whole text - your UPI ID, address, timings, a link. Example: say "my upi" and it becomes your UPI ID.</p></div></section>
       ${VOC.error ? `<p class="wf-bad">${esc(VOC.error)}</p>` : ''}
       <div class="wf-list">${list.length ? list.map(w => `<div class="wf-sn"><span class="wf-cue">${esc(w.term)}</span><span>${esc(w.fix_to)}</span>
           <span class="wf-ra"><button type="button" class="wf-ic" data-rm="${esc(w.term)}" title="Remove" aria-label="Remove ${esc(w.term)}">${I.trash}</button></span></div>`).join('')
@@ -445,7 +458,7 @@ window.HoolaFlow = function ({api, esc, toast, say}) {
     main(`<div class="wf-in">
       <header class="wf-hd"><div><h1 class="wf-h1">Style</h1><p class="wf-sub">How your words read when you stop dictating. Hoola never adds words you did not say - each style only tidies or picks.</p></div></header>
       <div class="wf-styles" role="radiogroup" aria-label="Dictation style">${Object.entries(LOOK).map(([k, [n, d, ex]]) =>
-        `<button type="button" class="wf-sty" role="radio" data-sty="${k}" aria-checked="${k === STYLE}"><h3>${n}<i aria-hidden="true"></i></h3><p>${d}</p><div class="wf-bubble">${esc(ex)}</div></button>`).join('')}</div>
+        `<button type="button" class="wf-sty" role="radio" data-sty="${k}" aria-checked="${k === STYLE}"><h3>${n}<i aria-hidden="true">${I.ok}</i></h3><p>${d}</p><div class="wf-bubble">${esc(ex)}</div></button>`).join('')}</div>
       <p class="wf-fine">You said: "${esc(SAID)}". Your choice is kept in this browser. Every transcript can still be opened in any style.</p></div>`);
     EL.querySelectorAll('[data-sty]').forEach(b => b.onclick = () => { STYLE = b.dataset.sty; try { localStorage.setItem('hoola.flow.style', STYLE); } catch (e) {} style(); toast(`Style: ${LOOK[STYLE][0]}.`); });
   }
@@ -457,7 +470,7 @@ window.HoolaFlow = function ({api, esc, toast, say}) {
       <header class="wf-hd"><div><h1 class="wf-h1">A file to text</h1><p class="wf-sub">A meeting, a voice note or a video - every word with its time. Up to 5 GB, and the file never leaves your server.</p></div></header>
       ${notReady()}
       <div class="wf-two"><div class="wf-col">
-        <label class="wf-drop" for="wffile" id="wfdrop">${I.file}<b>Drop a recording here, or choose a file</b><span>mp3 · wav · m4a · mp4 · ogg · webm</span>
+        <label class="wf-drop" for="wffile" id="wfdrop"><i class="wf-tile">${I.file}</i><b>Drop a recording here, or choose a file</b><span>mp3 · wav · m4a · mp4 · ogg · webm</span>
           <input id="wffile" type="file" accept="audio/*,video/*,.m4a,.mp3,.wav,.ogg,.flac,.webm,.mp4,.mkv,.mov" class="wf-sr"></label>
         <p class="wf-mut" id="wfpicked" role="status"></p>
         <section class="wf-card" id="wfwork" hidden></section>
@@ -470,7 +483,7 @@ window.HoolaFlow = function ({api, esc, toast, say}) {
         <p class="wf-fine">Bigger is slower on this server. "turbo" cannot translate.</p>
         <label class="wf-ck"><input type="checkbox" id="wfvb" checked>Use my dictionary</label>
         <label class="wf-ck"><input type="checkbox" id="wfsp" checked>Split into speakers</label>
-        <button type="button" class="wf-btn dark" id="wfmake" style="width:100%;margin-top:6px" disabled>Make the transcript</button></aside></div></div>`);
+        <button type="button" class="wf-btn dark full" id="wfmake" style="margin-top:8px" disabled>Make the transcript</button></aside></div></div>`);
     wireRows();
     let FILE = null;
     const pick = f => { FILE = f || null; $('#wfpicked').textContent = FILE ? `${FILE.name} · ${(FILE.size / 1048576).toFixed(1)} MB` : '';
@@ -484,7 +497,7 @@ window.HoolaFlow = function ({api, esc, toast, say}) {
   async function makeFromFile(file) {
     const w = $('#wfwork'); w.hidden = false; $('#wfmake').disabled = true;
     const t0 = Date.now();
-    const draw = (step, bad) => { if (!document.body.contains(w)) return; w.innerHTML = `<div class="wf-hd" style="margin:0 0 6px"><b>${esc(file.name)}</b><span class="wf-mono wf-dim">${(file.size / 1048576).toFixed(1)} MB</span></div>
+    const draw = (step, bad) => { if (!document.body.contains(w)) return; w.innerHTML = `<div class="wf-work"><b>${esc(file.name)}</b><span class="wf-mono wf-dim">${(file.size / 1048576).toFixed(1)} MB</span></div>
       <p>${bad ? '<i class="wf-dot bad"></i>' : '<i class="wf-dot rec"></i>'}${esc(step)} <span class="wf-mono wf-dim">${clock((Date.now() - t0) / 1000)}</span></p>
       ${bad ? '' : '<p class="wf-fine">The server sends it back in one go when the whole recording is written. A long meeting can take several minutes.</p>'}`; };
     draw('Sending the file and writing the words');
@@ -510,26 +523,26 @@ window.HoolaFlow = function ({api, esc, toast, say}) {
     const sp = T.speakers && T.speakers.turns ? T.speakers.turns : null;
     const body = T.view === 'turns'
       ? (sp ? sp.map(t => `<div class="wf-turn"><div><b class="wf-who s${(t.turn - 1) % 4}">${esc(t.speaker || `Speaker ${t.turn}`)}</b><span class="wf-mono wf-dim">${clock(t.start)}</span>
-            <br><button type="button" class="wf-btn xs ghost" data-name="${t.turn}">${t.speaker ? 'Rename' : 'Name'}</button></div><p>${esc(t.text || '')}</p></div>`).join('')
+            <button type="button" class="wf-btn xs ghost" data-name="${t.turn}">${t.speaker ? 'Rename' : 'Name'}</button></div><p>${esc(t.text || '')}</p></div>`).join('')
           + '<p class="wf-fine">Speakers are split where the talking pauses. Hoola does not guess who they are - you name them.</p>'
         : (T.segments || []).map(s => `<div class="wf-turn"><div><span class="wf-mono wf-dim">${clock(s.start)}</span></div><p>${esc(s.text || '')}</p></div>`).join('')
           || `<p class="wf-dim">${esc(T.note || 'Nothing was heard.')}</p>`)
       : `<div class="wf-rend">${rendered(T.render)}</div>${T.render?.note ? `<p class="wf-fine">${esc(T.render.note)}</p>` : ''}`;
     const acts = MIN?.action_candidates || [];
     main(`<div class="wf-in wide">
-      <nav class="wf-crumb" aria-label="Breadcrumb"><button type="button" data-home>Home</button> / ${esc(T.title)}</nav>
+      <nav class="wf-crumb" aria-label="Breadcrumb"><button type="button" data-home>${I.back}Home</button><span>${esc(T.title)}</span></nav>
       <header class="wf-hd"><div><h1 class="wf-h1">${esc(T.title)}</h1>
-        <p class="wf-sub">${clock(T.duration_s)}${T.language ? ' · ' + esc(T.language) : ''}${sp ? ` · ${sp.length} turns by pauses` : ''}${T.task === 'translate' ? ' · translated to English' : ''}${T.model ? ` · model ${esc(T.model)}` : ''}</p></div>
-        <div class="wf-acts"><button type="button" class="wf-btn" id="wfcopy">${I.copy}Copy</button><button type="button" class="wf-btn" id="wfchat">Put in the Hoola chat</button><button type="button" class="wf-btn" id="wfgy">Save to Gyaan</button></div></header>
+        <p class="wf-meta"><span>${clock(T.duration_s)}</span>${T.language ? `<span>${esc(T.language)}</span>` : ''}${sp ? `<span>${sp.length} turns by pauses</span>` : ''}${T.task === 'translate' ? '<span>translated to English</span>' : ''}${T.model ? `<span>model ${esc(T.model)}</span>` : ''}</p></div>
+        <div class="wf-acts"><button type="button" class="wf-btn" id="wfcopy">${I.copy}Copy</button><button type="button" class="wf-btn" id="wfgy">Save to Gyaan</button><button type="button" class="wf-btn dark" id="wfchat">Put in the Hoola chat</button></div></header>
       <div class="wf-seg" role="tablist" aria-label="Show as" style="margin-bottom:16px"><button type="button" role="tab" data-tv="turns" aria-selected="${T.view === 'turns'}">${sp ? 'Speakers' : 'With times'}</button>
         ${STY.map(([k, n]) => `<button type="button" role="tab" data-tv="${k}" aria-selected="${T.view === k}">${n}</button>`).join('')}</div>
       <div class="wf-two"><section class="wf-body" aria-label="Transcript">${body}</section>
         <aside class="wf-col">
           <section class="wf-card"><h2>Action items found</h2>
-            ${MIN ? (acts.length ? acts.slice(0, 12).map(c => `<p class="wf-ai"><span>${esc(c.text)}</span>${c.speaker ? `<small>${esc(c.speaker)}</small>` : ''}</p>`).join('') + '<p class="wf-fine">Picked by the words used ("will", "by Friday", "karna hai"...), not decided. Check them.</p><button type="button" class="wf-btn" style="width:100%;margin-top:10px" id="wfrem">Make reminders from these</button>' : '<p class="wf-dim">None found in what was said.</p>') : '<p class="wf-dim">Reading…</p>'}
+            ${MIN ? (acts.length ? acts.slice(0, 12).map(c => `<p class="wf-ai"><span>${esc(c.text)}</span>${c.speaker ? `<small>${esc(c.speaker)}</small>` : ''}</p>`).join('') + '<p class="wf-fine">Picked by the words used ("will", "by Friday", "karna hai"...), not decided. Check them.</p><button type="button" class="wf-btn full" style="margin-top:12px" id="wfrem">Make reminders from these</button>' : '<p class="wf-dim">None found in what was said.</p>') : '<p class="wf-dim">Reading…</p>'}
             ${MIN?.keywords?.length ? `<p class="wf-fine">Key words: ${esc(MIN.keywords.join(', '))}</p>` : ''}</section>
           <section class="wf-card"><h2>Download as</h2><div class="wf-grid2">${['srt', 'vtt', 'txt', 'json'].map(f => `<button type="button" class="wf-btn" data-ex="${f}">${{srt: 'SRT subtitles', vtt: 'VTT subtitles', txt: 'Text', json: 'JSON'}[f]}</button>`).join('')}</div></section>
-          <section class="wf-card"><div class="wf-acts"><button type="button" class="wf-btn" id="wfask">Ask Hoola about it</button><button type="button" class="wf-btn" id="wfren">Rename</button>
+          <section class="wf-card"><h2>This transcript</h2><div class="wf-grid2"><button type="button" class="wf-btn" id="wfask">Ask Hoola</button><button type="button" class="wf-btn" id="wfren">Rename</button>
             <button type="button" class="wf-btn" id="wfpin">${T.pinned ? 'Kept for ever ✓' : 'Keep for ever'}</button><button type="button" class="wf-btn danger" id="wfdel">Delete</button></div></section>
         </aside></div></div>`);
     $('[data-home]').onclick = () => show('home');
