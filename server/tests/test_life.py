@@ -129,7 +129,7 @@ def test_morning_briefing_once_a_day(env, monkeypatch):
     monkeypatch.setattr(life, "weather_for", no_weather)
     asyncio.run(worker.morning_briefings())
     asyncio.run(worker.morning_briefings())
-    briefs = [x for x in notes(ctx.conversation_id) if x.startswith("Suprabhat")]
+    briefs = [x for x in notes(ctx.conversation_id) if x.startswith("Good morning")]
     assert len(briefs) == 1
     assert "Meghana!" in briefs[0] and "todo mein 1" in briefs[0]
 

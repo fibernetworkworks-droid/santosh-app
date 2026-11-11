@@ -77,7 +77,7 @@ def test_an_on_time_reminder_is_unchanged(env, monkeypatch):
     _chat("r2")
     _reminder("r2", 1)
     said, rang = _fire(monkeypatch, quiet=True)
-    assert said == ["Yaad dila raha hoon: Dawai lena"] and len(rang) == 1
+    assert said == ["Reminder: Dawai lena"] and len(rang) == 1
 
 
 # ---------------------------------------------------------------- 11 stop during preparation

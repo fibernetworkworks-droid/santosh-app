@@ -129,7 +129,7 @@ def test_rider_needs_two_real_thinking_pauses():
 
 
 def test_rider_is_a_small_clean_line():
-    assert "jaldi mat kaato" in voiceaffect.PAUSE_RIDER
+    assert "do not cut in early" in voiceaffect.PAUSE_RIDER
     assert "{" not in voiceaffect.PAUSE_RIDER and "}" not in voiceaffect.PAUSE_RIDER   # the format() contract
     assert len(voiceaffect.PAUSE_RIDER) < 300
 

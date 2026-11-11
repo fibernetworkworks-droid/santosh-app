@@ -328,7 +328,7 @@ def maybe_alert(tenant: str) -> bool:
     a = alert_state(tenant)
     if not a["on"] or (a["last_sent"] and time.time() - a["last_sent"] < ALERT_EVERY_S):
         return False
-    text = "Call check: " + "; ".join(a["why"]) + ". See Profile > Call check."
+    text = "Call quality: " + "; ".join(a["why"]) + ". See Profile > Call quality."
     try:
         from .events import bus
         from .net.service import home_conv
@@ -372,7 +372,7 @@ EAR_TESTS: list[dict[str, str]] = [
      "do": "Hold the whole call in one language, with a word or two of another mixed in.",
      "good": "It stays in that language for the whole call; no sudden switch to another language."},
     {"id": "yes_approve", "kind": "ear", "title": "Approving by voice",
-     "do": "Give a task that brings up a card (such as opening something on the PC), then say 'yes, do it'.",
+     "do": "Give a task that brings up a card (such as opening something on the PC), then say 'yes, go ahead'.",
      "good": "The card moves ahead without a tap; a money card never goes ahead by voice."},
     {"id": "net_switch", "kind": "phone", "title": "Wi-Fi se mobile data",
      "do": "Turn Wi-Fi off in the middle of a call.",

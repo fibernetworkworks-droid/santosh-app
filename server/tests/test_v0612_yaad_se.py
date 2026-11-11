@@ -47,7 +47,7 @@ def test_a_past_chat_is_named_by_its_title_and_the_note_is_published(env, monkey
     items = yaad.publish_used(c, "Pichhli baar Mehta Traders ko 200 boxes bheje gaye the, Bhosari godown se.")
     assert items and items[0]["source"] == "chat" and items[0]["label"] == "Mehta Traders ka order"
     kind, payload = events[-1][1], events[-1][2]
-    assert kind == "memory_used" and payload["say"].startswith("Yaad se: Mehta Traders ka order")
+    assert kind == "memory_used" and payload["say"].startswith("From memory: Mehta Traders ka order")
 
 
 def test_forgetting_a_past_chat_keeps_the_chat_but_never_recalls_it(env):

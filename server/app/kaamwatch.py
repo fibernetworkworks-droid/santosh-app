@@ -43,7 +43,7 @@ STOPPED = {"stopped", "cancelled", "canceled", "rejected"}
 # per-kind words: label, status -> state overrides, where the title / detail come from
 KINDS: dict[str, dict[str, Any]] = {
     "app_board": {"label": "App design", "map": {"ready": "waiting", "approved": "done", "draft": "working"},
-                  "waiting_say": "the design is ready: look at it and press 'Approve design'"},
+                  "waiting_say": "the design is ready: look at it and approve it"},
     "app_android": {"label": "Android app", "map": {"ready": "done", "zip": "done"}},
     "app_ios": {"label": "iPhone app", "map": {"ready": "done", "zip": "done", "uploading": "working"}},
     "site_board": {"label": "Website", "map": {"ready": "waiting", "building": "working", "live": "done"},
@@ -77,7 +77,7 @@ KINDS: dict[str, dict[str, Any]] = {
     # uski manzoori par atakti hai (needs_confirm), woh sun'ti hai 'aapki baari' aur bas 'haan karo' bol deti hai
     # (card khud resolve). Start lines shant (live card already dikhta hai); chat line bhi nahi — CARD hi kahani hai.
     "browser": {"label": "Browser job", "map": {"needs_confirm": "waiting"},
-                "waiting_say": "your approval is needed — yes on the card, or just say 'yes, do it'",
+                "waiting_say": "your approval is needed — yes on the card, or just say 'yes, go ahead'",
                 "no_start_say": True, "voice_only": True},
 }
 # quick results made inside one tool call (letters, posters, photos, lekh) are told by the turn itself: not watched

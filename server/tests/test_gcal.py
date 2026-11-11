@@ -278,7 +278,7 @@ def test_meeting_alert_once_and_briefing(g):
     assert any("minute mein: Client call" in (n or "") and "meet.google.com/zzz" in n for n in _notices(ctx.conversation_id))
     text = asyncio.run(compose_briefing("default"))
     if soon.date() == datetime.now(IST).date():
-        assert "Aaj calendar mein:" in text and "Client call" in text
+        assert "On your calendar today:" in text and "Client call" in text
     run("calendar_settings", {"meeting_alerts": 0}, ctx)
     assert cs.prefs("default")["alert_minutes"] == 0
 

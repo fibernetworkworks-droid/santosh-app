@@ -61,7 +61,7 @@ def test_a_turn_cut_after_a_tool_step_is_resumed_not_marked_done(env, monkeypatc
     assert len(ran) == 1
     a, k = ran[0]
     assert k.get("save_user") is False                    # her words are already in history
-    assert ti.RESUME_NOTE in k.get("context", "") and "DOBARA mat karo" in k["context"]
+    assert ti.RESUME_NOTE in k.get("context", "") and "NOT do it AGAIN" in k["context"]
 
 
 def test_a_really_answered_turn_is_still_skipped(env, monkeypatch):

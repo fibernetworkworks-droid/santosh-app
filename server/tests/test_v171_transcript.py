@@ -249,7 +249,7 @@ def test_export_markdown_reads_like_the_chat(env, monkeypatch):
         assert r.status_code == 200 and "text/markdown" in r.headers["content-type"]
         assert "attachment" in r.headers["content-disposition"] and r.headers["content-disposition"].endswith('.md"')
         md = r.text
-        assert "# " in md and "## Aap ·" in md and "Bijli ka bill bharo" in md
+        assert "# " in md and "## You ·" in md and "Bijli ka bill bharo" in md
         assert "Bill bhar diya, ₹1,240 gaya." in md
         assert "✓ Bill nikala `fetch_bill`" in md
         assert "••••8901" in md                                    # the masked account, not the raw one
