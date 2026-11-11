@@ -167,8 +167,8 @@ def test_version_pins():
     from pathlib import Path
     from app.main import APP_VERSION
     root = Path(__file__).resolve().parents[2]
-    assert APP_VERSION == "0.811.0"
-    assert "0.811.0+810" in (root / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.812.0"
+    assert "0.812.0+811" in (root / "pubspec.yaml").read_text()
     line = (root / "server" / "app" / "main.py").read_text().splitlines()[35]
     assert "HOOLA AEP 1.0" in line and "PARITY" in line.upper()
     assert "HOOLA HUB" in line  # the P7 name rides the Previous chain

@@ -22,6 +22,8 @@ EXT = {".py": "python", ".ts": "js", ".tsx": "js", ".js": "js", ".jsx": "js", ".
        ".dart": "dart", ".kt": "kotlin", ".kts": "kotlin", ".go": "go", ".java": "java", ".swift": "swift", ".rs": "rust",
        ".sql": "sql"}
 LOG_SIGNS = [
+    ("csharp", re.compile(r"error CS\d{4}|\.csproj|dotnet (build|test)", re.I)),            # v0.794 ECC fixers for more languages
+    ("cpp", re.compile(r"\.(c|cc|cpp|cxx|h|hpp):\d+:\d+: (fatal )?error|undefined reference to|CMake Error|ninja: build stopped", re.I)),
     ("dart", re.compile(r"\.dart:\d+|dart analyze|flutter (analyze|test)|Error: The (getter|method|name) '.+' isn't defined", re.I)),
     ("kotlin", re.compile(r"\.kts?:\d+|^e: |Unresolved reference|compileKotlin|kotlinc", re.I | re.M)),
     ("swift", re.compile(r"\.swift:\d+|xcodebuild|swiftc", re.I)),
@@ -147,10 +149,27 @@ RISKY = re.compile(r"(?i)\b(sql|sqlite\d?|query|select|insert|delete|execute|cur
                    r"upload|exec|subprocess|eval|deserial|pickle|customer_id|user_id|owner|phone|email|aadhaar|pan)\b")
 
 
+def _ecc_extra(paths: list[str]) -> str:
+    """v0.794 the adapted ECC reviewer for a language / framework the notes above do not cover (React, Vue, C#, C++,
+    PHP, Ruby, F#, Django ...) - one agent's text at most, so the PR review prompt stays small."""
+    try:
+        from . import ecc
+        for k in ecc.langs_of(paths, top=3):
+            if k in LANG_REVIEW:
+                continue
+            a = ecc.get(ecc.REVIEWER.get(k, ""))
+            if a:
+                return "\n\n" + a["prompt"]
+    except Exception:
+        return ""
+    return ""
+
+
 def review_addendum(paths: list[str]) -> str:
     """The extra reviewer instructions for a PR touching these files."""
     lang = lang_of(paths)
-    return REVIEW_CORE + ("\n\n" + LANG_REVIEW[lang] if lang in LANG_REVIEW else "")
+    return (REVIEW_CORE + ("\n\n" + LANG_REVIEW[lang] if lang in LANG_REVIEW else "")
+            + _ecc_extra(paths))
 
 
 def focus_passes(paths: list[str], diff_text: str, added: int, big: int = 150) -> list[str]:
@@ -240,4 +259,12 @@ warnings promoted to errors = remove the dead code, do not allow() it.""",
 def fix_addendum(log: str, paths: list[str]) -> str:
     """The extra instructions for a CI fix round, picked by the language the failure is in."""
     lang = lang_of_log(log, paths)
+    if lang not in LANG_FIX:                               # v0.794 ECC's resolver for a language without notes here
+        try:
+            from . import ecc
+            a = ecc.get(ecc.fixer_for(lang)) if lang else None
+            if a and a["name"] != "build-error-resolver":
+                return FIX_CORE + "\n\n" + a["prompt"]
+        except Exception:
+            pass
     return FIX_CORE + ("\n\n" + LANG_FIX[lang] if lang in LANG_FIX else "")

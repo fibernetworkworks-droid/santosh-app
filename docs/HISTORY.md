@@ -1856,3 +1856,57 @@ Tests: `test_v0811_game_library.py` 13 (packer, Kenney files, search with one li
 OK -> in the game and not AI, Poly Haven pack + size refusal, textures, routes, tool, real Godot loading a library
 model + texture through the kit, and the real libraries when HOOLA_LIVE_LIBRARY=1 - run green here). NOT built: Meshy
 (her key and her decision on vendor accounts first), HDRI skies, picture previews in the panel, Kenney 2D / audio packs.
+
+## v0.812.0 ECC AGENTS IN HOOLA CODE (built as 0.794; other sessions took 0.794-0.811 meanwhile (their HOOLA CODE PHASE 5 took 0.798.0, PHASE 6 0.806.0) - REBASE PROTOCOL, all kept)
+Owner (11 Nov 2026), after reading github.com/affaan-m/ECC: "ADD ALL MISSING ECC AGENTS TO HOOLA CODE --- MAKE HOOLA CODE
+MORE POWERFULL AND SMOOTH THUS CAN PERFROM ANY HARD CODING TASK SMOOTLY AND PERFECTLY LIKE CLAUDE CODE".
+
+Before: v0.402-v0.451 had adapted ~20 of ECC's agents as text inside `devsahayak/specialists.py`, used only AROUND a
+round (PR review, CI fix rounds, self-review, plan pass); the v0.787 working-copy engine itself never saw them.
+ECC checked at commit d2ef268 (v2.2.3): only 6 commits after the b38be6a snapshot, all its own CI - nothing to re-sync.
+
+What is new:
+- `server/app/devsahayak/ecc/` - the catalogue. 63 of ECC's 71 agent files condensed and rewritten as text (four
+  parallel agents, one per part file; each prompt 1.5-2.6k chars, credited in its own first line, Claude Code-only parts
+  and anything needing the internet dropped): `reviewers_lang.py` (17: python / typescript / react / vue / flutter /
+  kotlin / java / go / rust / swift / cpp / csharp / fsharp / php / ruby / django / fastapi), `reviewers_more.py` (19:
+  code / security / silent-failure / pr-test / database / commit reviewers, type-design, comment, performance, a11y,
+  agent-evaluator, mle, rag, healthcare, bengali, seo, network-config, opensource-sanitizer, harmonyos), `fixers.py` (16:
+  build-error-resolver + 10 language resolvers, tdd-guide, e2e-runner, refactor-cleaner, code-simplifier, doc-updater),
+  `planners.py` (11: planner, architect, code-architect, spec-miner, network / homelab architects, code-explorer,
+  docs-lookup rewritten for OFFLINE lookup in the box, network-troubleshooter, opensource forker / packager).
+  `ecc.NOT_ADDED` = the 8 left out with reasons (marketing-agent, chief-of-staff, conversation-analyzer,
+  harness-optimizer, loop-operator, gan-planner / generator / evaluator). `rules_text.py` = ECC's rules/ condensed
+  (common + 21 languages). Each agent has a tool level: read (look only) / run (+ bash in the box) / edit (+ edit /
+  write, with the coder's guards).
+- `server/app/devsahayak/subagent.py` - the engine's `agent` tool, Claude Code's subagent shape: a fresh conversation
+  with only the task the coder wrote, the agent's text + its level's tools, the SAME working copy through a copy of
+  `engine.Tools` (secrets hidden, links never followed, workflows refused, read before edit; an agent's reads are not
+  the coder's), ends with `report`. Several read / run agents asked in ONE reply run side by side (threads with the
+  session's model / effort and the copied context); edit agents one by one. Limits `dev_agent_steps` 30,
+  `dev_agent_minutes` 12, `dev_agent_max` 10 a round, `dev_agent_parallel` 4. An agent cannot start agents, push or end
+  the round.
+- `engine.py`: the coder's system prompt gets `AGENTS_HOWTO` (when to explore / plan / fix / review with an agent) +
+  `ecc.roster()` (all 63 in one line each, best fits for this repo first) + `ecc.rules_for()` (the repo's languages,
+  9k chars cap); tool list + `agent`; ECC's pre-commit hook as `ecc.gate` on the round's diff before `done` is accepted
+  (console.log / debugger / breakpoint / pdb / pry / var_dump outside tests and docs, `.only` focused tests, conflict
+  markers, key-looking lines) - ONE clean-up chance, then done is accepted.
+- `specialists.py`: the PR review prompt adds the ECC reviewer for a language / framework the old notes did not cover
+  (React, Vue, C++, C#, PHP, Ruby, F#, Django ...); a CI fix round on C++ / C# logs gets the ECC resolver (new log signs).
+- `GET /api/devsahayak/agents` (roster + left-out list); the page draws `agent` (asked / reported, the report folds
+  open) and `gate` steps, and an agent's edits / commands say "by <agent>".
+- Switches: `dev_ecc_agents`, `dev_ecc_rules`, `dev_ecc_rules_chars`, `dev_ecc_gate` (all on).
+- Tests `server/tests/test_v0812_ecc_agents.py` (11): every ECC agent in or left out with a reason, every prompt
+  adapted (no Claude Code-only words), rules per language, suggestions / roster, the gate, the old review / fix paths
+  on new languages, a REAL round through `engine.run` where the coder asks two agents in one reply (they run in two
+  threads with read / run tools only, their reports come back) and the gate stops a `breakpoint()` before done; an edit
+  agent must read first and cannot touch workflows; the round cap and the switch.
+  Older Hoola Code suites re-run green with it (v0402 x2, v0787 engine incl. real Docker, v0789 safety, tech
+  devsahayak, v0748 / v0768 / v0774 / v0777). test_v0473 `test_coder_routes_mounted` fails as before (an old red).
+  FOUND + FIXED while testing: the gate first judged EVERY file in the diff, so a key file a box command planted (hidden,
+  never shippable, the coder may not change it) refused `done` - the v0789 link / key test went 'explained' in long
+  runs. The gate now judges only files that would ship (not hidden / key files / binaries / links); a test holds it.
+  The roster's path matching was also made 0.08 s for a 4,000-file repo (compiled once, one pass).
+NOT VERIFIED: no real model has driven an agent (scripted Claude only - the sandbox has no key); cost per round with
+agents is not measured (each agent is its own model conversation, so a reviewed round costs more); no browser walk of
+the new step kinds.

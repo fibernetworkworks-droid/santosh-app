@@ -56,7 +56,13 @@ open-source project **ECC** by Affaan Mustafa (https://github.com/affaan-m/ECC, 
 `security-reviewer`, `silent-failure-hunter`, `pr-test-analyzer`, the `*-reviewer` and `*-build-resolver` agents for
 Python, TypeScript / JavaScript, Flutter / Dart, Kotlin, Go, Java, Swift and Rust, and `database-reviewer`. The text was
 condensed and re-written for Hoola's read-only tools, CI logs and safety rules; no code was copied and nothing from ECC
-runs inside Hoola. ECC is distributed under the MIT License:
+runs inside Hoola. v0.794 (owner: "ADD ALL MISSING ECC AGENTS TO HOOLA CODE") widened this to ECC's whole agent roster that fits a
+coding session: 63 of ECC's 71 agent files (ECC v2.2.3, commit d2ef268) and its `rules/` (common + 21 languages) were
+condensed and rewritten as text in `server/app/devsahayak/ecc/` (the 8 left out are listed with reasons in
+`ecc.NOT_ADDED`), and ECC's pre-commit quality hook was re-implemented as Hoola's own Python (`ecc.gate`). Hoola Code
+hands work to these agents with its own `agent` tool (`devsahayak/subagent.py`). Still no ECC code runs inside Hoola.
+
+ECC is distributed under the MIT License:
 
 ```
 MIT License
