@@ -56,7 +56,7 @@ def test_label_follows_the_setting(en, monkeypatch):
     monkeypatch.setenv("HOOLA_LANGUAGE", "auto")
     from app.config import get_settings
     get_settings.cache_clear()
-    assert lang.label("list_lead_lists") == "Contact lists dekh raha hoon"
+    assert lang.label("list_lead_lists") == "Checking contact lists"
 
 
 def test_a_call_is_locked_to_indian_english(en):
