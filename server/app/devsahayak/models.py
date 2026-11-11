@@ -39,6 +39,9 @@ class DevRepo(Base):
     deploy_workflow: Mapped[str] = mapped_column(String(200), default="")  # .github/workflows/deploy.yml (her own)
     deploy_ref: Mapped[str] = mapped_column(String(100), default="")       # '' = default branch
     notes: Mapped[str] = mapped_column(Text, default="")
+    setup_cmd: Mapped[str | None] = mapped_column(Text, nullable=True)        # her own dependency-install command for this repo (the box's one-time setup)
+    test_cmd: Mapped[str | None] = mapped_column(Text, nullable=True)         # her own test command for this repo (always wins, never needs a tap)
+    env_vars: Mapped[str | None] = mapped_column(Text, nullable=True)         # {NAME: value} set for every command in the box - NOT for secrets
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 
@@ -92,6 +95,7 @@ class DevTask(Base):
     effort: Mapped[str | None] = mapped_column(String(8), nullable=True)        # Phase 3: low | medium | high
     attach: Mapped[str | None] = mapped_column(Text, nullable=True)             # Phase 3: [{name, kind: image|text, size, file | text}] she attached
     cost: Mapped[str | None] = mapped_column(Text, nullable=True)               # Phase 3: {usd, calls, tok_in, tok_out} of this session's own model calls
+    job: Mapped[str | None] = mapped_column(Text, nullable=True)                # the background run in flight {what, words, beat, tries} - a restart picks it up again
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, index=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, onupdate=now)
 

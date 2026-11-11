@@ -2926,3 +2926,8 @@ Task ID: DOCUMENT KIT PLAN (11 Nov 2026)
 Ask: read every ilovepdf.com tool, compare with Hoola, make the ultimate backend plan.
 Built: docs/DOCUMENT_KIT_PLAN.md (32 tools mapped, gap table, pdf_kit + dockit engine design, laws, phases D0-D8, 5 owner decisions). No code changed.
 Next: owner picks D1-D5, then D0 (setup_docs.sh + pdf proof card).
+Task ID: v0.793.0 HOOLA CODE SAFETY + RESUME (built as 0.789; re-versioned on merge: CHHOTA BADLAAV took 0.789.0, HOOLA GAME DEV 0.790.0, KHUD PE NA RUKE 0.791.0, VIDEO LEARNER PREMIUM 0.792.0)
+Ask: GO PHASE 4 WITH 2 LIVE SESSIONS -> MERGE.
+What happened: another session shipped Phase 4 first (v0.787 HOOLA CODE ENGINE, proved on real Docker). This session's parallel engine (wsp.py) was withdrawn, not merged; its missing pieces were re-landed on the shipped engine.
+Built: link wall (the server never follows a link a box command planted), keys hidden after the clone + in output, restart pickup (job heartbeat + resume), per-repo setup / test / variables, question choices, the lost round-count save; 9 tests incl. a browser walk.
+Deploy: vps-ops deploy (server-only; no new pip; four nullable columns self-heal). Not verified on real Docker here.

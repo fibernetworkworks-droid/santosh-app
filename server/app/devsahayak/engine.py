@@ -192,6 +192,22 @@ class Session:
         self.save_meta()
         return {"reused": False, "refreshed": refreshed, "hidden": hidden}
 
+    def real(self, rel: str) -> Path | None:
+        """The path of `rel` INSIDE the working copy, or None. A command in the box can plant a link that points anywhere
+        on this server (the server's own .env, /etc/...): inside the box it leads nowhere, but the SERVER reading or
+        writing through it would reach the real file. So nothing here ever follows a link - not for reading, not for
+        writing, not for a listing, not for what goes into a pull request."""
+        if not rel:
+            return None
+        p = self.repo / rel
+        root = os.path.realpath(self.repo)
+        if os.path.islink(p):
+            return None
+        par = os.path.realpath(p.parent)
+        if not (par == root or par.startswith(root + os.sep)):
+            return None
+        return p
+
     def _protect(self) -> list[str]:
         """Files that hold secrets: their content never reaches the model, the box or a commit."""
         hidden = []
@@ -216,10 +232,14 @@ class Session:
 
     def walk(self, start: str = "") -> list[str]:
         base = self.repo / start if start else self.repo
+        if start and self.real(start) is None:
+            return []
         out: list[str] = []
-        for r, dirs, files in os.walk(base):
-            dirs[:] = sorted(d for d in dirs if d not in SKIP_DIRS)
+        for r, dirs, files in os.walk(base, followlinks=False):
+            dirs[:] = sorted(d for d in dirs if d not in SKIP_DIRS and not os.path.islink(os.path.join(r, d)))
             for f in sorted(files):
+                if os.path.islink(os.path.join(r, f)):
+                    continue                              # a link is never a file of the repo to the server
                 out.append(os.path.relpath(os.path.join(r, f), self.repo))
                 if len(out) >= 50000:
                     return out
@@ -315,6 +335,7 @@ TOOLS: list[dict[str, Any]] = [
      "(then put the ONE question in explain and end it with '?').",
      "input_schema": {"type": "object", "properties": {
          "explain": {"type": "string", "description": "for her: what you did / found, plain words"},
+         "choices": {"type": "array", "items": {"type": "string"}, "description": "only with a question: 2-4 short answers she can tap"},
          "cause": {"type": "string"}, "pr_title": {"type": "string"}, "pr_summary": {"type": "string"},
          "test_plan": {"type": "string", "description": "what you ran and what passed"}, "risk": {"type": "string"},
          "rules_followed": {"type": "string"}}}},
@@ -340,15 +361,36 @@ Rules that never bend:
 - Write to her in plain, short English."""
 
 
+def scrub(text: str) -> str:
+    """A command's output goes to the model and onto her page: a line that looks like a key or a password is hidden."""
+    try:
+        hits = R.secrets_in(text or "")
+    except Exception:
+        hits = []
+    if not hits:
+        return text or ""
+    lines = (text or "").splitlines()
+    for h in hits:
+        i = int(h.get("line") or 0) - 1
+        if 0 <= i < len(lines):
+            lines[i] = f"[line hidden: it looks like a {h.get('kind') or 'secret'}]"
+    return "\n".join(lines)
+
+
 class Tools:
     """The tool calls for one run of one session."""
 
-    def __init__(self, ses: Session, allow_workflows: bool, lab_spec: dict[str, Any] | None = None):
+    def __init__(self, ses: Session, allow_workflows: bool, lab_spec: dict[str, Any] | None = None,
+                 hers: dict[str, str] | None = None, env: dict[str, str] | None = None):
         self.s, self.allow_workflows = ses, allow_workflows
+        self.hers, self.env = dict(hers or {}), dict(env or {})
         self.read: set[str] = set(ses.meta.get("read") or [])
         self.hidden = set(ses.meta.get("hidden") or [])
         self.todos: list[dict[str, str]] = list(ses.meta.get("todos") or [])
         self.image = str(ses.meta.get("image") or "")
+        want = str((hers or {}).get("setup") or "")
+        if self.image and ses.meta.get("image_setup", "") != want:
+            self.image = ""                               # she changed this repo's setup command: build its box again
         self.spec = lab_spec
         self.bash_runs = 0
         self.trail: list[str] = []
@@ -364,6 +406,8 @@ class Tools:
             return "Refused: that path is outside the working copy."
         if rel in self.hidden:
             return "Refused: this file holds secrets; it cannot be changed."
+        if self.s.real(rel) is None:
+            return "Refused: that path is a link (or sits behind one). Hoola never writes through a link."
         why = R.path_problem(rel, self.allow_workflows)
         if why:
             return f"Refused: {why}"
@@ -372,10 +416,10 @@ class Tools:
     # ------------------------------------------------------------ file tools
     def t_read(self, path: str, offset: int = 0, limit: int = 0) -> str:
         rel = self._rel(path)
-        f = self.s.repo / rel if rel else None
+        f = self.s.real(rel) if rel else None
         if not f or not f.is_file():
-            return f"No file '{path}'. Use glob or ls to find it."
-        if rel in self.hidden:
+            return f"No file '{path}'. Use glob or ls to find it." + (" (A link is not followed.)" if rel and os.path.islink(self.s.repo / rel) else "")
+        if rel in self.hidden or R.SECRET_FILES.search(rel):
             self.read.add(rel)
             return "This file holds secrets: Hoola hid its content on purpose."
         if R.BINARY_EXT.search(rel):
@@ -384,6 +428,11 @@ class Tools:
             text = f.read_text("utf-8")
         except UnicodeDecodeError:
             return "That file is not UTF-8 text."
+        if rel not in self.hidden and R.secrets_in(text[:400_000]):      # a key that appeared AFTER the clone (a command wrote it)
+            self.hidden.add(rel)
+            self.s.meta["hidden"] = sorted(set(self.s.meta.get("hidden") or []) | {rel})
+            self.s.save_meta()
+            return "This file holds secrets: Hoola hid its content on purpose."
         lines = text.splitlines()
         start = max(1, int(offset or 1))
         n = max(1, min(int(limit or READ_LINES), READ_LINES))
@@ -495,12 +544,15 @@ class Tools:
 
     def t_ls(self, path: str = "") -> str:
         rel = self._rel(path) if path else ""
-        d = self.s.repo / rel if rel else self.s.repo
-        if not d.is_dir():
+        d = (self.s.real(rel) if rel else self.s.repo)
+        if d is None or not d.is_dir():
             return f"No folder '{path}'."
         rows = []
         for x in sorted(d.iterdir(), key=lambda q: (not q.is_dir(), q.name.lower())):
             if x.name in SKIP_DIRS:
+                continue
+            if x.is_symlink():
+                rows.append(x.name + " -> (a link; not followed)")
                 continue
             rows.append(x.name + ("/" if x.is_dir() else ""))
         self.trail.append(f"ls {rel or '/'}")
@@ -517,8 +569,11 @@ class Tools:
         sp = self.spec or {}
         note = ""
         img = box.BASE_IMAGE
-        if sp.get("setup") and not sp.get("confirm"):
-            snap = LS.snapshot(self.s.meta.get("repo", ""), str(self.s.repo), sp["setup"], sp.get("deps_key", ""))
+        mine = str(self.hers.get("setup") or "")           # her own setup command for this repo always counts as declared
+        if sp.get("setup") and (mine or not sp.get("confirm")):
+            import hashlib
+            key = str(sp.get("deps_key", "")) + ("-" + hashlib.sha1(mine.encode()).hexdigest()[:6] if mine else "")
+            snap = LS.snapshot(self.s.meta.get("repo", ""), str(self.s.repo), sp["setup"], key)
             if snap.get("ok"):
                 img = snap["image"]
             else:
@@ -528,6 +583,7 @@ class Tools:
                     "installed. Say so in risk if tests need them.]\n")
         self.image = img
         self.s.meta["image"] = img
+        self.s.meta["image_setup"] = mine
         self.s.save_meta()
         return img, note
 
@@ -540,6 +596,9 @@ class Tools:
         bad = SPEC.refuse_reason(cmd.replace("\n", " ; ")) if len(cmd) < 4000 else "command too long"
         if bad:
             return f"Refused: this command is not allowed in the box ({bad})."
+        if R.secrets_in(cmd):
+            return ("Refused: this command has a key or a password in it. It would sit in her terminal and in the log - "
+                    "read such a value from the environment instead.")
         if self.bash_runs >= int(_set("dev_ws_bash_runs", 80) or 80):
             return "Refused: the command limit for this round is used up. Finish with what you have."
         av = box.available()
@@ -549,8 +608,9 @@ class Tools:
         lim = max(5, min(int(timeout or 300), 600))
         self.bash_runs += 1
         STATS["bash"] += 1
-        r = box.run_in(img, str(self.s.repo), f"cd {box.WORK}; {cmd}", timeout=lim, network=False)
-        out = str(r.get("out") or "")
+        r = box.run_in(img, str(self.s.repo), f"cd {box.WORK}; {cmd}", timeout=lim, network=False, env=self.env or None)
+        out = scrub(str(r.get("out") or ""))
+        r = {**r, "out": out}
         if len(out) > OUT_CAP:
             out = out[:8000] + f"\n\n... [{len(out) - OUT_CAP} characters cut] ...\n\n" + out[-(OUT_CAP - 8000):]
         self.last_bash = {"cmd": cmd[:300], "rc": r.get("rc"), "secs": round(float(r.get("secs") or 0), 1),
@@ -710,7 +770,8 @@ def _first_message(t: Any, rules: str, issue_txt: str, plan_txt: str, attach_txt
 
 def run(g: Any, t: Any, token: str, rules: str, allow_workflows: bool = False, issue_txt: str = "",
         on_step: Any = None, plan_txt: str = "", attach: tuple[str, list[dict[str, Any]]] | None = None,
-        ref_sha: str = "", follow_up: str = "", system_extra: str = "") -> tuple[str, list[dict], dict[str, Any], dict[str, Any]]:
+        ref_sha: str = "", follow_up: str = "", system_extra: str = "", resume: bool = False,
+        hers: dict[str, str] | None = None, env: dict[str, str] | None = None) -> tuple[str, list[dict], dict[str, Any], dict[str, Any]]:
     """One round of a session. A new session clones; a follow-up (follow_up != '') continues the saved conversation in
     the same checkout. Returns the old loop's (base_sha, read, ctx, out)."""
     if not on():
@@ -728,7 +789,7 @@ def run(g: Any, t: Any, token: str, rules: str, allow_workflows: bool = False, i
         raise Unavailable(f"branch {t.base} not found")
     ses = Session(t.id)
     hook = lambda name: getattr(on_step, name, None) if on_step is not None else None   # noqa: E731
-    ev_fn, inbox, stopped = hook("event"), hook("inbox"), hook("stopped")
+    ev_fn, inbox, stopped, beat = hook("event"), hook("inbox"), hook("stopped"), hook("beat")
 
     def emit(ev: dict[str, Any]) -> None:
         if ev_fn:
@@ -745,17 +806,47 @@ def run(g: Any, t: Any, token: str, rules: str, allow_workflows: bool = False, i
         while not sem.acquire(timeout=2):
             if stopped and stopped():
                 raise Stopped("stopped while waiting")
+            if beat:
+                beat()
     LIVE.add(t.id)
+    alive = threading.Event()
+
+    def _heart() -> None:            # a steady heartbeat while the round lives: one long command says nothing for minutes
+        while not alive.wait(30):
+            if beat:
+                try:
+                    beat()
+                except Exception:
+                    pass
+    if beat:
+        threading.Thread(target=_heart, name=f"dev-beat-{t.id}", daemon=True).start()
     try:
         return _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped, plan_txt, attach, sha,
-                      follow_up, system_extra, ses)
+                      follow_up, system_extra, ses, resume=resume, hers=hers, env=env)
     finally:
+        alive.set()
         LIVE.discard(t.id)
         sem.release()
 
 
+def _said(msgs: list[dict], text: str) -> bool:
+    """Is this message of hers already in the saved conversation? (A restart can cut a round before or after it was saved.)"""
+    key = (text or "").strip()[:120]
+    if not key:
+        return True
+    for m in msgs[-6:]:
+        if m.get("role") != "user":
+            continue
+        c = m.get("content")
+        body = c if isinstance(c, str) else " ".join(str(b.get("text") or b.get("content") or "") for b in c if isinstance(b, dict))
+        if key in body:
+            return True
+    return False
+
+
 def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped, plan_txt, attach, sha, follow_up,
-           system_extra, ses: Session):
+           system_extra, ses: Session, resume: bool = False, hers: dict[str, str] | None = None,
+           env: dict[str, str] | None = None):
     STATS["runs"] += 1
     made = ses.ensure(t.repo, sha, token)
     if not made.get("reused"):
@@ -763,13 +854,26 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
               + (f" · {len(made.get('hidden') or [])} secret file(s) hidden" if made.get("hidden") else "")})
     from ..devlab import service as LS
     try:
-        sp = LS.spec_for(str(ses.repo), ses.walk())
+        sp = LS.spec_for(str(ses.repo), ses.walk(), hers or None)
     except Exception:
         sp = {}
-    tools = Tools(ses, allow_workflows, sp)
+    tools = Tools(ses, allow_workflows, sp, hers, env)
     msgs = ses.messages()
-    continuing = bool(msgs) and bool(follow_up)
-    if continuing:
+    ses.meta.pop("ask", None)                             # a new round: an earlier question of Hoola's is behind us
+    resumed = bool(resume) and bool(msgs) and not made.get("refreshed") and (not follow_up or _said(msgs, follow_up))
+    continuing = bool(msgs) and (bool(follow_up) or resumed)
+    if resumed:
+        # the server restarted in the middle of this round: the working copy and the conversation are on disk as the
+        # last finished step left them, so the round goes on from there instead of starting again
+        STATS["continued"] += 1
+        note = "[The server restarted in the middle of your work. The working copy is as you left it. Continue from where you were, or call done.]"
+        if msgs[-1].get("role") == "user":
+            c = msgs[-1].get("content")
+            msgs[-1]["content"] = (c if isinstance(c, list) else [{"type": "text", "text": str(c or "")}]) + [{"type": "text", "text": note}]
+        else:
+            msgs.append({"role": "user", "content": note})
+        emit({"k": "ws", "text": "The server restarted - going on from the last step"})
+    elif continuing:
         STATS["continued"] += 1
         msgs.append({"role": "user", "content": follow_up + "\n\n(The working copy is as you left it"
                      + (", refreshed to the PR branch's newest commit" if made.get("refreshed") else "") + ".)"})
@@ -840,6 +944,10 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
         finish = {"explain": "The step / time limit for this round was reached; what was done so far is below for review.",
                   "risk": "The round ended before Hoola called done - review the diff carefully."}
     ses.meta["read"] = sorted(tools.read)[-500:]
+    q = str(finish.get("explain") or "").strip()
+    ch = [str(c).strip()[:80] for c in (finish.get("choices") or []) if str(c).strip()][:4] if isinstance(finish.get("choices"), list) else []
+    if q.endswith("?") and len(ch) >= 2:
+        ses.meta["ask"] = {"q": q[:600], "choices": ch}
     ses.save_messages(msgs)
     label = (follow_up or t.text or "")[:120].replace("\n", " ")
     cp = ses.checkpoint(label, len(msgs))
@@ -858,8 +966,15 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
         if R.BINARY_EXT.search(p):
             skipped.append(f"{p} (binary)")
             continue
+        f = ses.real(p)
+        if f is None or not f.is_file():
+            skipped.append(f"{p} (a link - Hoola never follows one)")
+            continue
+        if R.SECRET_FILES.search(p):
+            skipped.append(f"{p} (a key file)")
+            continue
         try:
-            text = (ses.repo / p).read_text("utf-8")
+            text = f.read_text("utf-8")
         except (OSError, UnicodeDecodeError):
             skipped.append(f"{p} (not text)")
             continue
@@ -888,6 +1003,7 @@ def view(tid: str) -> dict[str, Any]:
         return {"exists": False}
     return {"exists": True, "checkpoints": ses.meta.get("checkpoints") or [], "todos": ses.meta.get("todos") or [],
             "hidden": ses.meta.get("hidden") or [], "changed": ses.changed(ses.meta.get("base", "")),
+            "choices": (ses.meta.get("ask") or {}).get("choices") or [],
             "live": tid in LIVE, "slots": slots(), "mb": ses.meta.get("mb", 0)}
 
 
@@ -897,19 +1013,27 @@ def files(tid: str, path: str = "") -> dict[str, Any]:
         raise ValueError("This session has no working copy.")
     from ..devlab import service as LS
     rel = LS.safe_rel(path) if path else ""
-    if rel and (ses.repo / rel).is_file():
-        if rel in set(ses.meta.get("hidden") or []):
+    if path and not rel:
+        raise ValueError("No such file or folder.")
+    target = ses.real(rel) if rel else ses.repo
+    if target is None:
+        raise ValueError("That is a link. Hoola never follows one.")
+    if rel and target.is_file():
+        if rel in set(ses.meta.get("hidden") or []) or R.SECRET_FILES.search(rel):
             return {"path": rel, "text": "This file holds secrets: Hoola hid its content on purpose.", "hidden": True}
         try:
-            return {"path": rel, "text": (ses.repo / rel).read_text("utf-8")[:300000]}
+            text = target.read_text("utf-8")[:300000]
         except UnicodeDecodeError:
             return {"path": rel, "text": "(not a text file)"}
-    d = ses.repo / rel if rel else ses.repo
+        if R.secrets_in(text):
+            return {"path": rel, "text": "This file holds secrets: Hoola hid its content on purpose.", "hidden": True}
+        return {"path": rel, "text": text}
+    d = target
     if not d.is_dir():
         raise ValueError("No such file or folder.")
     rows = []
     for x in sorted(d.iterdir(), key=lambda q: (not q.is_dir(), q.name.lower())):
-        if x.name in SKIP_DIRS:
+        if x.name in SKIP_DIRS or x.is_symlink():
             continue
         rows.append({"name": x.name, "dir": x.is_dir(), "path": (rel + "/" if rel else "") + x.name})
     changed = {c["path"]: c["st"] for c in ses.changed(ses.meta.get("base", ""))}
