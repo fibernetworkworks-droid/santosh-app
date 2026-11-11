@@ -1,0 +1,24 @@
+{
+ "base": "pm9-prop-counter",
+ "rig": "pm9-msc-bench",
+ "chapter": "Nuclear physics",
+ "variants": [
+  {
+   "key": "am241",
+   "title": "Proportional counter: resolution at the Np L X-rays of Am-241",
+   "sample": "Am-241 source (neptunium L-alpha 13.95 keV and L-beta 17.61 keV X-rays)",
+   "unknown": "the energy resolution of the counter at 13.95 keV",
+   "params": {
+    "E": 13.95,
+    "Vop": 1630.0,
+    "L2": 1.4,
+    "Ntot": 3000000.0
+   },
+   "note": "The 59.5 keV gamma rays mostly pass through the thin gas layer; the counter sees the L X-rays of the neptunium daughter. The resolution improves as 1/sqrt(E). Line energies and the L-beta / L-alpha ratio of about 1.4 are from memory - verify.",
+   "source": {
+    "title": "NNDC / ENSDF decay data",
+    "note": "from memory - verify"
+   }
+  }
+ ]
+}

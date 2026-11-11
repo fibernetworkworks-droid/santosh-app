@@ -2457,3 +2457,187 @@ built on Hoola's own pieces.
 - Still a fresh ~6 s build per change, not hot reload; the style panel edits one element's line (a list rendered by
   `.map` changes every item it draws - said by the "same line" behaviour, not yet counted on the panel); no colour
   picker outside the tokens (on purpose); errors are collected only while the Studio has the preview open.
+## v0.827.0 WHITEBOOKS ERROR WORDS + GST TEST GSTIN + API SETU (built as 0.825 / 0.826; their TEEN AWAAZEIN took 0.825.0 and APP ENGINE 2 0.826.0 - REBASE PROTOCOL, all kept)
+
+Live wb_check (11 Nov, 09:44 UTC) after her email fix: keys accepted, e-invoice + e-way bill sandbox logins PASS; GST public search
+"Public API Search Taxpayer Fail", filing track a bare refusal, OTP login SKIP (no GST username). She then shared ten WhiteBooks files
+(GST API doc, GST / e-invoice / e-way bill Postman collections, return-filing guide, released-API list, GSTN + e-invoice error lists,
+e-invoice + e-way bill preparation sheets). Read end to end (not committed - their documents; summary in
+`docs/research/accounts/05_whitebooks_files.md`):
+- Hoola's calls match the specs (public search / rettrack query + headers, e-invoice and e-way bill authenticate).
+- The GST doc's sign-up step 3: after creating credentials, "call customer support ask to enable the sandbox Account" - the GST sandbox
+  is a separate switch-on, and the shared sandbox PDF has no GST (returns) test GSTIN / username. That is the GST failure.
+- NEW `server/app/bahi/wb_errors.json`: 123 GSTN codes + 128 NIC IRP codes (message + fix), basis provider-spec, source + checked_on +
+  review_by; `wb.known_error(code)` -> "GST system: Invalid GSTIN." / "e-invoice system: <message>. <fix>"; `_message_of` uses it after
+  Hoola's own PLAIN lines. `wb_check` FAIL lines add WhiteBooks' own reply when ours is generic.
+Test: test_v0807_bahi_a0.py +1. NOT VERIFIED: the GST sandbox is still off until WhiteBooks enables it.
+
+GST TEST GSTIN (same release): WhiteBooks support replied - the GST sandbox public taxpayer search is tested with GSTIN
+27AAGCB1286QKZL and username MH_NT4.2823, a different GSTIN from the e-invoice / e-way bill one (27AAGCB1286Q005, their shared PDF).
+NEW setting `whitebooks_sandbox_gst_gstin` (WHITEBOOKS_SANDBOX_GST_GSTIN; empty = the shared one): wb_check's GSTIN search, filing
+track, OTP login (state code from it) and ledger use it; e-invoice + e-way bill keep the shared GSTIN; the paste check and vps-ops
+wb_check list the new line. Test: test_v0807_bahi_a0.py +1 (each product's request carries its own GSTIN, username header, 0 fails).
+Also started (not built yet): API Setu's GSTN Tax Payer API spec read (cf-media.api-setu.in/specfiles/gstn.yaml: GET
+https://apisetu.gov.in/gstn/v1/taxpayers/{gstin}, headers X-APISETU-CLIENTID + X-APISETU-APIKEY; v1 and v2 both answer 401 without keys).
+
+### v0.827.0 part 3 - API Setu GSTN Tax Payer lookup (owner: "i have api setu --- api lets check with it")
+
+The government's own free GSTIN lookup, from API Setu's published spec (https://cf-media.api-setu.in/specfiles/gstn.yaml, GSTN Tax
+Payer API 1.0.0; notes in `docs/research/accounts/06_apisetu_gstn.md`). `server/app/bahi/apisetu.py`: `taxpayer(gstin)` = one
+`GET https://apisetu.gov.in/gstn/v1/taxpayers/{gstin}` with headers `X-APISETU-CLIENTID` + `X-APISETU-APIKEY` (her API Setu partner
+app's values, `APISETU_CLIENT_ID` / `APISETU_API_KEY` in the VPS .env only, cleaned like the WhiteBooks values; base overridable by
+`APISETU_GSTN_BASE`). A GSTIN failing the check digit is refused before any call; no keys = refused naming the .env lines. The 200 is
+read into plain fields (legal name, status + active, registration / cancellation dates as ISO, taxpayer type, jurisdictions,
+activities, source "API Setu (GSTN)"). Every failure is ONE plain line: invalid_authentication (keys refused), invalid_authorization
+(keys accepted, the app is not subscribed to the GSTN Tax Payer API in the partner portal), record_not_found, a missing path, 5xx
+down / busy, unreachable; API Setu's own words appended when they add something. Read-only: a lookup writes nothing.
+
+`python -m app.bahi.apisetucheck [GSTIN]` + vps-ops `apisetu_check`: which APISETU_* names are set (never values), how the two keys
+LOOK (length, hidden dots, spaces), ONE lookup of `APISETU_TEST_GSTIN` (else WhiteBooks' GST test GSTIN, else 33AAACC1206D1ZN), PASS /
+FAIL with the reason (a 404 for that taxpayer still proves the keys), the public record printed, the reply SHAPE saved to
+data/bahi/apisetu_shape.json. Tests `test_v0827_apisetu.py` (9).
+
+Same release, live: her wb_check at 10:18 UTC on main b60b6694 (before this release) - GST OTP request + auth token + refresh PASS
+(the GST sandbox is on and MH_NT4.2823 logs in), e-invoice + e-way bill PASS; GSTIN search / filing track / ledger still used the
+shared 27AAGCB1286Q005 because the separate GST GSTIN line was not deployed yet (ledger = "Authentication Failed" for a GSTIN the
+token is not for) - exactly what part 2 fixes.
+
+NOT VERIFIED: API Setu has not answered a live call from her server; nothing uses the lookup yet beyond the check (next: supplier
+GSTIN status in the BAHI register, and a free official answer ahead of the paid gstin_verify).
+
+## v0.828.0 HOOLA CODE MEMORY (built as 0.826; other sessions took 0.826-0.827 meanwhile - REBASE PROTOCOL, all kept)
+Owner (11 Nov 2026): "https://github.com/thedotmack/claude-mem.git --- check this repo and devlope same for hoola code".
+claude-mem (Apache-2.0) read at 6b779c0: hooks hand every tool call to a local worker, an observer agent turns them into
+typed observations + a session summary (SQLite + FTS5, Chroma), the next session starts with a compact layered index
+fitted to a measured budget (ContextBudget: drop the costliest-loss-last items whole), and the agent reads more with three
+MCP steps (search -> timeline -> get_observations). Ideas only - no upstream code (TypeScript; Hoola is Python).
+FOUND FIRST: Hoola's CHAT already has claude-mem since v0.485 (HOOLA CODER, `server/app/coder/`: capture -> spool ->
+observer -> vault -> three-layer search -> primer), but it is tenant / chat scoped and the Hoola Code engine never used it.
+So this release is the coding engine's OWN memory, PER REPO (two repos' "fixed the login bug" must not merge):
+- `server/app/devsahayak/memory.py`: SQLite + FTS5 (LIKE fallback) at data/devsahayak/memory.db, rows scoped (tenant,
+  repo); the same title in the same repo = the same memory re-confirmed (hits + 1, newest wording).
+- CAPTURE (`capture`, from `engine.run` right after a round): the engine already has the whole round, so there is no live
+  per-tool observer - ONE call on `dev_memory_model` (Haiku, no thinking, effort low) reads her request, the steps, what
+  the coder said, its explain / test plan / risk, the files changed and the reality verdict, and answers JSON: up to 6
+  observations (claude-mem's types minus 'sensitive', which is never stored; its 7 concepts) + a summary (request /
+  investigated / learned / completed / next steps). `dev_memory_mode=chill` = only what is painful to rediscover (3 max).
+- PRIVACY: `coder.redact` (strip_private + redact_secrets) on the record BEFORE the model and on every field AFTER it; an
+  all-<private> ask = no call, nothing kept.
+- THE NEXT SESSION (`primer`, in `_first_message` of a NEW session only): `<repo_memory>` = the last session's summary,
+  earlier sessions in one line each, an index `#id [type] title - files xN`, and 3 decisions / alerts / fixes in full;
+  fitted to `dev_memory_primer_chars` (6000) by measuring and dropping full narratives, then the last-session block, then
+  older summaries, then the oldest index lines - whole items only, header + footer always kept.
+- THE TOOL (`memory`): search (index with ids) -> timeline (around one) -> get (full details, chosen ids) + save (a note
+  on purpose, typed). Page steps `memory` (remembered / searched / read / saved).
+- HER PAGE: Settings > a repo > "What Hoola remembers" - sessions + notes, Delete each, "Forget everything about this
+  repo"; routes GET /api/devsahayak/memory?repo=&q=, GET /memory/{id}, DELETE /memory/{id}?kind=obs|summary,
+  DELETE /memory?repo=.
+- Switches: `dev_memory` (pinned off in conftest so scripted rounds keep their turns), `dev_memory_model`,
+  `dev_memory_mode`, `dev_memory_primer_chars`.
+Tests `server/tests/test_v0828_code_memory.py` (7): store / dedupe / search / timeline / get / walls between repos and
+tenants / forget; private text and keys never kept; the primer fitted to its budget; the tool's three steps + save; the
+observer call (Haiku, no tools, key not sent) stores observations + summary, an all-private ask makes no call, bad JSON
+keeps nothing; END TO END session 2 starts with session 1's memory in its first message and finds it with the tool.
+NOT VERIFIED: no real model has been the observer (scripted only); its cost (one Haiku call per round) not measured;
+NOT built from claude-mem: Chroma vector search (FTS5 only), the live web viewer / My Work, TeamBrain, cloud sync,
+`/learn-codebase` front-loading, and a bridge into the chat's v0.485 vault.
+
+
+## v0.829.0 PRAYOGSHALA WAVE 9
+
+85 M.Sc physics set-ups built and walked within tolerance (the agents' walks, 300+ labs and variants, and the lead's final walk,
+85 / 85): pg_elec_w9 (21: regulators, converters, passive filters incl. band pass, resonance, op-amp linear / integrator /
+comparators / parameters, generators, tuned / power / CE amplifiers, counters, AM / FM, analogue computing, crystal oscillator,
+multivibrators; reused sn-ce-amplifier, u8-sample-hold, u8-pll), pg_optics_w9 (25: hyperfine and Zeeman by etalon, ellipsometry,
+birefringence, photoelasticity, Kerr, Pockels, EO and magneto-optic links, Faraday, 2-D / slit diffraction, constant deviation,
+Rowland, AlO bands, absorption bands, uranyl, solar (SIMULATED), film thickness and strain, photometry, acousto-optic, aerosol
+(SIMULATED); reused fibre-bending-loss), pg_matter_w9 (26: GM dead time and efficiency, Feather, K-40 vs UX2, spark counter,
+proportional counter, Kurie plots, angular correlation, Hall vs T, two-probe, diode ideality, photoconductivity, AC susceptibility,
+Stefan by cooling, Cu X-rays with Ni filter, LC lattice, pulse echo, CRO sound, Lecher wire, Fourier, transducers, microwave Bragg,
+horn pattern, normal modes, gas photocell; reused w8-em-focusing), pg_comp_w9 (13: NIST XCOM mixture rule from fetched tables,
+quantum-dot Brus / Tauc, BET, DSC, TGA, Williamson-Hall, Scherrer + fcc indexing, TEM / SEM grain size, gas sensor, XRR film
+thickness - SIMULATED characterisation data, stated). passive-filters un-revoked. Coverage 525 -> 610 of 807.
+Not built and constants from memory: docs/PRAYOG_PHYSICS_LAKH_PLAN.md, "Wave 9".
+## v0.830.0 API SETU RELAY + GST LOGIN HINT (built as 0.828; their HOOLA CODE MEMORY took 0.828.0 and PRAYOGSHALA WAVE 9 0.829.0 - REBASE PROTOCOL, all kept)
+
+Owner: "CHECK" after deploying v0.827 and running wb_check + apisetu_check (11 Nov 2026, 10:31 UTC).
+
+What her runs showed:
+- WhiteBooks (wb_check): ping, GSTIN search (now with the GST test GSTIN 27AAGCB1286QKZL), e-invoice and e-way bill logins PASS.
+  rettrack still a bare refusal (no reason in the reply). OTP request FAILED with "user name does not exists" - it had passed at
+  10:18 with the earlier username, so the name WhiteBooks gave (for the PUBLIC search, which needs no login at all) is not a GST
+  sandbox login. wb_check now prints that plainly and asks for the GST sandbox LOGIN (gst_username + the GSTIN it belongs to) in
+  WHITEBOOKS_SANDBOX_GST_USERNAME / WHITEBOOKS_SANDBOX_GST_GSTIN.
+- API Setu (apisetu_check): both keys set (10 / 64 characters), lookup = ReadTimeout from the VPS. From this sandbox the same URL
+  answers 401 "Authentication failed" in ~1.8 s (v1 and v2), so the API is up and NIC drops the VPS - the data.gov.in story (v0.756).
+
+The fix: her existing Cloudflare relay worker `deploy/datagov-relay/worker.js` also forwards ONLY `GET /gstn/v1|v2/taxpayers/<15
+characters>` to apisetu.gov.in with ONLY X-APISETU-CLIENTID / X-APISETU-APIKEY (nothing else passed on, nothing kept); data.gov.in
+paths unchanged. `apisetu.base()` = APISETU_GSTN_BASE if set, else DATA_GOV_IN_BASE + `/gstn/v1` when that relay is set, else
+apisetu.gov.in (config default for APISETU_GSTN_BASE is now empty). A timeout on the direct road names the relay fix; a 404 from a
+relay that has the old code says to paste the new worker. vps-ops apisetu_check also lists APISETU_GSTN_BASE / DATA_GOV_IN_BASE
+names. Tests in test_v0827_apisetu.py (+3) and the BAHI suite green.
+
+NOT VERIFIED: API Setu through the relay has not answered live; the GST sandbox login is still waiting on WhiteBooks.
+
+## v0.831.0 HOOLA CLOUD (L10 of docs/LOVABLE_STUDIO_PLAN.md, owner: "GO L10")
+
+Saved data, sign-in and server-checked rules for the Web Studio's React apps (App Engine), built on what exists.
+
+- **The core = the website-app backend** (`site/webapp.py`, unchanged): members with PBKDF2 passwords, roles member /
+  staff / admin in its own member table (never a field a user can edit), signed tokens, rows, and the fixed rule
+  vocabulary (create public | member | admin, read public | members | own | admin, update / delete own | admin) checked
+  on EVERY call. `admin_only` fields cannot be set by members; `private` fields are hidden from them.
+- **`appengine/cloud.py`** (NEW):
+  - the SCHEMA is server data (`<app>/cloud/schema.json` + `migrations.json`), not app code - restoring old code never
+    touches data;
+  - MIGRATIONS: additive ops only - add_list (seeds 3 marked sample rows in preview), add_field, add_option,
+    hide_field / show_field, hide_list / show_list, label, rules, signup - applied as ONE numbered run (any bad change =
+    nothing changes); drop_list / drop_field / rename_field / rename_list / change_type / remove_option are REFUSED with
+    the add-copy-hide way, queued as her data-loss card, and run only by her tap with confirm + accept_data_loss
+    (both datasets purged / rewritten);
+  - the RULE AUDIT: each list's rules in plain words (read / add / change / delete) + flags (high: anyone on the
+    internet reads personal fields; medium: every member reads everyone's personal fields; info: public on purpose,
+    public add); a change that makes personal fields (email, phone, name, address, city...) public is refused at plan
+    time unless it says confirm_public;
+  - `src/lib/cloud.types.ts` (locked) generated from the lists, so `hoola.db.collection("orders")` is typed and tsc
+    checks the app's code against the data;
+  - TWO DATASETS: core keys `ae:<app>:p` (preview, samples marked) and `ae:<app>:l` (live) - publish never copies a
+    preview row or a preview account; the live door exists only while the app is live;
+  - the public API `POST /api/cloud/<key>/<op>` (schema, signup, signin, me, signout, list, create, update, remove; CORS;
+    32 KB; English errors for her visitors), key `p-<preview token>` / `l-<slug>`.
+- **Every app now runs in a SEALED frame** under a Hoola **shell** page (`appengine/shell.js`, served at the app's
+  address; the app itself is under `__app/`): the shell keeps the visitor's sign-in (localStorage per app; in the
+  Studio only in memory) and makes the Cloud calls; the app asks through `src/lib/hoola.ts` (locked: postMessage RPC,
+  `hoola.auth` signUp / signIn / signOut / me / onChange, `hoola.db.collection(list).list / create / update / remove`).
+  Why: all live apps share Hoola's address (`/apps/<slug>/`), so an app holding tokens could read another app's; in a
+  sealed frame the app has no storage, no cookies and no token at all. `main.tsx` keeps the address bar in step
+  (`NavSync`). A rule now refuses `localStorage` / `sessionStorage` / `indexedDB` / `document.cookie` in app code (they do
+  not exist in the frame). The preview app page carries no frame-ancestors (a blank-origin shell cannot match one); a
+  live app keeps `frame-ancestors 'self'`.
+- Tool `app_engine`: `cloud` (lists + audit + counts), `cloud_change` (one run; a destructive ask = her card),
+  `cloud_rows` (PREVIEW data only - her visitors' live data is never read by the model); Plan / Chat refuse
+  `cloud_change`; the turn's `<app_engine_project>` block lists the lists, rules and flags.
+- Studio routes (her login): GET `/api/appengine/{id}/cloud`, POST `/cloud/changes` (additive, or the data-loss card),
+  POST `/cloud/pending/clear`, GET `/cloud/{ds}/rows/{list}`, GET `/cloud/{ds}/members`, POST
+  `/cloud/{ds}/members/{mid}/role`, POST `/cloud/preview/samples|clear`. Deleting an app deletes its Cloud data.
+- Studio **Cloud** tab: Preview data / Live data, every list with its fields, rules in words and flags, its rows (Sample
+  badge), members with a role select (her tap), fresh samples / clear preview data, the data-loss card (tick "I accept
+  data loss", then Apply), the history of changes, and what is not connected yet.
+
+### Measured here (real box + real Chromium)
+- Proof card 5/5 + 8/8: every app runs sealed (`localStorage` throws inside it), the shell page carries no app code;
+  the clinic app saves patients' requests through Hoola Cloud; the server held the rules (a visitor adds but cannot
+  read; a signed-up member cannot read others' or change status); after publish the live data held ONLY the live
+  visitor's request - no sample rows, no preview row, no preview account.
+- Tests `test_v0827_hoola_cloud.py` (6): migrations (5 destructive ops refused + nothing changes, one-run all-or-nothing,
+  the tool queues her card, her tap purges values in both datasets), hide keeps values, the rule audit + every rule on
+  the server (incl. a member trying to grant themselves a role - ignored), preview vs live, shell / sealed app / routes /
+  tool / Plan mode, and the Cloud tab in a browser. The v0.824 / v0.826 suites updated for the shell (the app is under
+  `__app/` now) and green: 28 passed with teen mode.
+
+### NOT built / NOT verified
+- NOT VERIFIED on her VPS or with a real model writing a Cloud app.
+- Not connected yet (said on the Cloud tab and in hoola.ts): files, server functions (DIMAAG), live updates, payments,
+  AI from the app, phone OTP / Google sign-in, a password-reset email.
+- Sign-in on a live app is per browser (the shell's storage); an app on its own domain is not built.

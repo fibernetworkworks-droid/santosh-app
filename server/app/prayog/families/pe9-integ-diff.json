@@ -1,0 +1,75 @@
+{
+ "base": "pe9-integ-diff",
+ "rig": "pe9-elec-bench",
+ "chapter": "Electronics",
+ "variants": [
+  {
+   "key": "int-sine",
+   "title": "Op-amp integrator: time constant from a sine-wave input",
+   "sample": "Integrator, R = 10 kohm, unknown C, sine input",
+   "method": "integrator",
+   "unknown": "the time constant RC",
+   "params": {
+    "wave": 1
+   },
+   "source": {
+    "title": "IEC 60063 preferred values (E12 series) for the resistors and capacitors"
+   }
+  },
+  {
+   "key": "int-triangle",
+   "title": "Op-amp integrator: time constant from a triangular-wave input",
+   "sample": "Integrator, R = 10 kohm, unknown C, triangle input",
+   "method": "integrator",
+   "unknown": "the time constant RC",
+   "params": {
+    "wave": 2
+   },
+   "source": {
+    "title": "IEC 60063 preferred values (E12 series) for the resistors and capacitors"
+   }
+  },
+  {
+   "key": "diff-square",
+   "title": "Op-amp differentiator: time constant from a square-wave input",
+   "sample": "Differentiator, R = 10 kohm, R_s = 1 kohm, unknown C, square input",
+   "method": "differentiator",
+   "unknown": "the decay time constant R_s C and so RC",
+   "params": {
+    "kind": 1,
+    "wave": 0
+   },
+   "source": {
+    "title": "IEC 60063 preferred values (E12 series) for the resistors and capacitors"
+   }
+  },
+  {
+   "key": "diff-sine",
+   "title": "Op-amp differentiator: time constant from a sine-wave input",
+   "sample": "Differentiator, R = 10 kohm, R_s = 1 kohm, unknown C, sine input",
+   "method": "differentiator",
+   "unknown": "the time constant RC",
+   "params": {
+    "kind": 1,
+    "wave": 1
+   },
+   "source": {
+    "title": "IEC 60063 preferred values (E12 series) for the resistors and capacitors"
+   }
+  },
+  {
+   "key": "diff-triangle",
+   "title": "Op-amp differentiator: time constant from a triangular-wave input",
+   "sample": "Differentiator, R = 10 kohm, R_s = 1 kohm, unknown C, triangle input",
+   "method": "differentiator",
+   "unknown": "the time constant RC",
+   "params": {
+    "kind": 1,
+    "wave": 2
+   },
+   "source": {
+    "title": "IEC 60063 preferred values (E12 series) for the resistors and capacitors"
+   }
+  }
+ ]
+}

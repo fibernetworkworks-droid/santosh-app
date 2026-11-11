@@ -1,0 +1,57 @@
+{
+ "base": "pc9-qd-evap",
+ "rig": "pc9-workstation",
+ "chapter": "Materials synthesis and characterisation",
+ "variants": [
+  {
+   "key": "cds-shift",
+   "title": "Evaporated CdS dots: blue shift of the band gap",
+   "sample": "CdS dots in an evaporated film",
+   "unknown": "blue shift E1 - Eg",
+   "params": {
+    "what": 1
+   },
+   "source": {
+    "title": "Bulk gap, effective masses and dielectric constant",
+    "note": "from memory - verify against a semiconductor data handbook (O. Madelung, Semiconductors: Data Handbook); the dot radius is an illustrative SIMULATED value"
+   }
+  },
+  {
+   "key": "znse",
+   "title": "Evaporated ZnSe dots: dot size by the Brus equation",
+   "sample": "ZnSe dots in an evaporated film",
+   "unknown": "dot radius",
+   "params": {
+    "Eg": 2.7,
+    "me": 0.16,
+    "mh": 0.6,
+    "eps": 8.6,
+    "R": 3.0,
+    "seed": 37
+   },
+   "source": {
+    "title": "Bulk gap, effective masses and dielectric constant",
+    "note": "from memory - verify against a semiconductor data handbook (O. Madelung, Semiconductors: Data Handbook); the dot radius is an illustrative SIMULATED value"
+   }
+  },
+  {
+   "key": "znse-shift",
+   "title": "Evaporated ZnSe dots: blue shift of the band gap",
+   "sample": "ZnSe dots in an evaporated film",
+   "unknown": "blue shift E1 - Eg",
+   "params": {
+    "Eg": 2.7,
+    "me": 0.16,
+    "mh": 0.6,
+    "eps": 8.6,
+    "R": 3.0,
+    "seed": 37,
+    "what": 1
+   },
+   "source": {
+    "title": "Bulk gap, effective masses and dielectric constant",
+    "note": "from memory - verify against a semiconductor data handbook (O. Madelung, Semiconductors: Data Handbook); the dot radius is an illustrative SIMULATED value"
+   }
+  }
+ ]
+}

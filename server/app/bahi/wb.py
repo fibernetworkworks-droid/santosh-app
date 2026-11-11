@@ -186,9 +186,37 @@ def _code_of(env_: dict[str, Any]) -> str:
     return "WB_ERR_9001" if _INVALID.search(desc) else "refused"     # the e-way bill login says it without the code
 
 
+_ERRS: dict[str, Any] | None = None
+
+
+def known_error(code: str) -> str:
+    """The GST / e-invoice system's own words for a code, from WhiteBooks' published error lists (bahi/wb_errors.json):
+    'Invalid GSTIN', 'OTP is either expired or incorrect', an e-invoice code's message + its fix. '' when unknown."""
+    global _ERRS
+    if _ERRS is None:
+        try:
+            import json
+            from pathlib import Path
+            _ERRS = json.loads((Path(__file__).resolve().parent / "wb_errors.json").read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            _ERRS = {}
+    c = str(code or "").strip()
+    g = (_ERRS.get("gst") or {}).get(c)
+    if g:
+        return f"GST system: {g}."
+    e = (_ERRS.get("einv") or {}).get(c)
+    if e and e.get("message"):
+        fix = e.get("fix") or ""
+        return f"e-invoice system: {e['message']}." + (f" {fix}" if fix else "")
+    return ""
+
+
 def _message_of(env_: dict[str, Any], code: str) -> str:
     if code in PLAIN:
         return PLAIN[code]
+    k = known_error(code)
+    if k:
+        return k[:400]
     err = env_.get("error") if isinstance(env_.get("error"), dict) else {}
     for m in (err.get("message"), err.get("desc"), env_.get("message"), env_.get("status_desc")):
         if m:

@@ -1,0 +1,20 @@
+{
+ "base": "po9-eo-modulation",
+ "rig": "po9-optics-bench",
+ "chapter": "Electro-optics",
+ "source": {
+  "title": "Yariv and Yeh, Photonics: LiNbO3 r33 30.8 pm/V; the link bandwidth is illustrative"
+ },
+ "variants": [
+  {
+   "key": "audio",
+   "title": "Electro-optic modulation: frequency response of the link across the audio band",
+   "sample": "Audio signal: test tones across the audio band",
+   "unknown": "the bandwidth of the link",
+   "params": {
+    "mode": 3
+   },
+   "method": "audio frequency sweep"
+  }
+ ]
+}

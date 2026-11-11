@@ -86,6 +86,15 @@ export default function Tasks() {
     {"key": "clinic", "name": "Clinic appointment request", "palette": "fresh",
      "brief": "A page where patients ask for an appointment: name, 10-digit mobile, date, morning or evening. We call back to confirm.",
      "must": ["Ask for an appointment", "we call you back"], "click": ("Send request", "Enter your name"),
+     # v0.827 HOOLA CLOUD: patients' requests are saved; only she (and her staff) can read them
+     "cloud": [{"op": "add_list", "key": "requests", "label": "Appointment requests", "fields": [
+         {"key": "name", "label": "Name", "type": "text", "required": True},
+         {"key": "mobile", "label": "Mobile", "type": "phone", "required": True},
+         {"key": "date", "label": "Date", "type": "date", "required": True},
+         {"key": "slot", "label": "Time", "type": "choice", "options": ["morning", "evening"], "required": True},
+         {"key": "status", "label": "Status", "type": "choice", "options": ["new", "called", "booked"], "default": "new", "admin_only": True}],
+         "rules": {"create": "public", "read": "admin", "update": "admin", "delete": "admin"}}],
+     "fill": {"#name": "Asha Patil", "#mobile": "9876543210", "#date": "2026-12-01"}, "after_fill": "Request received",
      "files": {
          "src/App.tsx": '''import { Routes, Route } from "react-router-dom";
 import Book from "./pages/Book";
@@ -100,10 +109,12 @@ export default function App() {
   );
 }
 ''',
-         "src/pages/Book.tsx": '''import { useForm } from "react-hook-form";
+         "src/pages/Book.tsx": '''import { useState } from "react";
+import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useNavigate } from "react-router-dom";
+import { hoola } from "@/lib/hoola";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -119,10 +130,24 @@ type Form = z.infer<typeof schema>;
 
 export default function Book() {
   const nav = useNavigate();
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
   const { register, handleSubmit, formState: { errors } } = useForm<Form>({
     resolver: zodResolver(schema),
     defaultValues: { name: "", mobile: "", date: "", slot: "morning" },
   });
+  async function send(v: Form) {
+    setBusy(true);
+    setErr("");
+    try {
+      await hoola.db.collection("requests").create(v);
+      nav("/thanks");
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
   return (
     <main className="mx-auto max-w-lg px-4 py-10">
       <Card>
@@ -131,7 +156,7 @@ export default function Book() {
           <CardDescription>This is a request - we call you back to confirm the time.</CardDescription>
         </CardHeader>
         <CardContent>
-          <form className="space-y-4" noValidate onSubmit={handleSubmit(() => nav("/thanks"))}>
+          <form className="space-y-4" noValidate onSubmit={handleSubmit(send)}>
             <div className="space-y-1">
               <Label htmlFor="name">Name</Label>
               <Input id="name" {...register("name")} />
@@ -152,7 +177,8 @@ export default function Book() {
               <label className="mr-4 text-sm"><input type="radio" value="morning" {...register("slot")} /> Morning</label>
               <label className="text-sm"><input type="radio" value="evening" {...register("slot")} /> Evening</label>
             </fieldset>
-            <Button type="submit" className="w-full">Send request</Button>
+            {err && <p className="text-sm text-bad">{err}</p>}
+            <Button type="submit" className="w-full" disabled={busy}>Send request</Button>
           </form>
         </CardContent>
       </Card>

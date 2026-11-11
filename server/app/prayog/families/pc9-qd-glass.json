@@ -1,0 +1,25 @@
+{
+ "base": "pc9-qd-glass",
+ "rig": "pc9-workstation",
+ "chapter": "Materials synthesis and characterisation",
+ "variants": [
+  {
+   "key": "cdse-polymer",
+   "title": "CdSe quantum dots in a polymer film: size from the absorption edge",
+   "sample": "CdSe dots in a PMMA film",
+   "unknown": "dot radius",
+   "params": {
+    "Eg": 1.74,
+    "me": 0.13,
+    "mh": 0.45,
+    "eps": 10.6,
+    "R": 2.2,
+    "seed": 29
+   },
+   "source": {
+    "title": "Bulk gap, effective masses and dielectric constant",
+    "note": "from memory - verify against a semiconductor data handbook (O. Madelung, Semiconductors: Data Handbook); the dot radius is an illustrative SIMULATED value"
+   }
+  }
+ ]
+}

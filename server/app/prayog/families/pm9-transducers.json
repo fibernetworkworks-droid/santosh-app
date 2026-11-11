@@ -1,0 +1,52 @@
+{
+ "base": "pm9-transducers",
+ "rig": "pm9-msc-bench",
+ "chapter": "Waves, oscillations and electronics",
+ "variants": [
+  {
+   "key": "strain-gauge",
+   "title": "Characteristics of a strain gauge",
+   "sample": "Foil strain gauge, 120 ohm, in a quarter bridge on a cantilever",
+   "unknown": "the gauge factor and the linearity",
+   "params": {
+    "typ": 1.0,
+    "x": 0.0
+   },
+   "note": "Strain is set by loading the cantilever; the quarter bridge gives V = Vex GF e / (4 + 2 GF e). Gauge factor 2.0 is a typical datasheet value of a constantan foil gauge (illustrative).",
+   "source": {
+    "title": "Foil strain gauge datasheet",
+    "note": "illustrative"
+   }
+  },
+  {
+   "key": "lvdt",
+   "title": "Characteristics of an LVDT",
+   "sample": "LVDT on a micrometer stage, plus or minus 5 mm",
+   "unknown": "the sensitivity and the linear range",
+   "params": {
+    "typ": 2.0,
+    "x": 0.0
+   },
+   "note": "The output is linear near the centre and falls away towards the ends; the sensitivity is fitted over the central plus or minus 2 mm. 50 mV/mm is an illustrative datasheet value.",
+   "source": {
+    "title": "LVDT datasheet",
+    "note": "illustrative"
+   }
+  },
+  {
+   "key": "thermocouple",
+   "title": "Characteristics of a type K thermocouple",
+   "sample": "Type K thermocouple, cold junction in melting ice",
+   "unknown": "the mean sensitivity and the linearity from 0 to 100 C",
+   "params": {
+    "typ": 3.0,
+    "x": 0.0
+   },
+   "note": "Almost linear; the mean Seebeck coefficient over 0-100 C is E(100) / 100 = 40.96 microvolt per kelvin (NIST ITS-90 table, from memory - verify).",
+   "source": {
+    "title": "NIST ITS-90 thermocouple tables, type K",
+    "note": "from memory - verify"
+   }
+  }
+ ]
+}

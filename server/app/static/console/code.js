@@ -473,6 +473,10 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
         if (s.state === 'start') return `<div class="hcd-step">${svg('dot')}<span><b>Asked ${esc(s.title || s.name)}</b> (${esc(s.tools || 'read')}) · ${esc(s.task || '')}</span>${at}</div>`;
         const lab = `<b>${esc(s.title || s.name)}</b> reported · ${plural(s.steps || 0, 'step')}${s.edits ? ` · changed ${plural(s.edits, 'file')}` : ''}${s.secs ? ` · ${esc(String(s.secs))} s` : ''}`;
         return s.report ? fold('a' + i, lab, `<pre class="hcd-term">${esc(s.report)}</pre>`, 'row', verbose) : `<div class="hcd-step ok">${svg('ok')}<span>${lab}</span>${at}</div>`; }
+      case 'memory': { /* Hoola Code memory: the repo's notes from earlier sessions */
+        const what = s.action === 'remembered' ? `Wrote ${plural(s.n || 0, 'note')} to this repo's memory` : s.action === 'save' ? `Saved a note to this repo's memory${s.title ? ': ' + esc(s.title) : ''}`
+          : s.action === 'search' ? `Searched this repo's memory${s.q ? ' for ' + p(s.q) : ''} · ${plural(s.n || 0, 'note')}` : `Read ${plural(s.n || 0, 'note')} from this repo's memory`;
+        return `<div class="hcd-step dim">${svg('list')}<span>${what}</span>${at}</div>`; }
       case 'reality': { /* v0.814 The Agency's reality checker, the last look before a round finishes */
         const ok = s.verdict === 'ready', lab = `<b>Reality check</b> · <span class="${ok ? 'add' : s.verdict === 'needs_work' ? 'del' : ''}">${ok ? 'ready' : s.verdict === 'needs_work' ? 'needs work - back to it' : 'no clear verdict'}</span>`;
         return s.text ? fold('r' + i, lab, `<pre class="hcd-term">${esc(s.text)}</pre>`, 'row', verbose || !ok) : `<div class="hcd-step">${svg(ok ? 'ok' : 'bad')}<span>${lab}</span>${at}</div>`; }
@@ -1074,6 +1078,9 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
               <form class="hcd-inline hcd-secf" data-secretf="${esc(r.repo)}"><input name="host" placeholder="api.example.com" maxlength="200" aria-label="Host" required>
                 <input name="header" value="Authorization" maxlength="40" aria-label="Header name" class="sm"><input name="prefix" value="Bearer" maxlength="16" aria-label="Word before the key" class="xs">
                 <input name="value" type="password" autocomplete="off" placeholder="the key" maxlength="4000" aria-label="The key" required><button class="hcd-btn sm" type="submit">Save key</button></form></div>
+            <div class="hcd-rsec" data-mem="${esc(r.repo)}"><h3>What Hoola remembers</h3>
+              <p class="hcd-mut">Notes Hoola keeps from earlier sessions on this repo; a new session starts with them. Your &lt;private&gt; text and anything that looks like a key are never kept.</p>
+              <div class="hcd-acts"><button type="button" class="hcd-btn sm" data-memshow="${esc(r.repo)}">Show</button></div><div data-memlist></div></div>
             <div class="hcd-rsec"><h3>GitHub events</h3>
               <p class="hcd-mut">${(r.events || {}).on ? `<span class="hcd-c ok">Connected</span>${(r.events.last || {}).at ? ' · last event ' + esc(ago(r.events.last.at)) : ' · nothing received yet'}${r.events.by_hoola ? '' : ' · webhook added by you'}` : 'GitHub can tell Hoola when an issue is labelled, a pull request is opened, a CI run fails or something is pushed - to start one of your scheduled tasks.'}</p>
               <div class="hcd-acts"><button type="button" class="hcd-btn sm" data-events="${esc(r.repo)}" data-on="${(r.events || {}).on ? 1 : 0}">${(r.events || {}).on ? 'Disconnect' : 'Connect GitHub events'}</button></div></div></details>`).join('') || '<p class="hcd-mut">No repos yet.</p>'}
@@ -1101,6 +1108,20 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
         f.value.value = ''; toast('Saved. The key is not shown again.'); await load(); settings(); } catch (e) { toast(e.message, true); } }));
     EL.querySelectorAll('[data-rmsecret]').forEach(b => b.addEventListener('click', async () => { if (!confirm(`Remove the key for ${b.dataset.rmsecret}?`)) return;
       try { await api('DELETE', `/api/devsahayak/repos/${rp(b.dataset.repo)}/secrets/${encodeURIComponent(b.dataset.rmsecret)}`); await load(); settings(); } catch (e) { toast(e.message, true); } }));
+    // Hoola Code memory (claude-mem's idea): what Hoola remembers about each repo - see, delete one, forget all
+    const memPaint = async box => { const full = box.dataset.mem, list = box.querySelector('[data-memlist]');
+      try { const m = await api('GET', `/api/devsahayak/memory?repo=${encodeURIComponent(full)}`);
+        const obs = m.observations || [], sums = m.summaries || [];
+        list.innerHTML = (!obs.length && !sums.length) ? '<p class="hcd-mut">Nothing yet. Hoola writes notes when a session on this repo ends.</p>' :
+          sums.slice(0, 3).map(x => `<div class="hcd-srow"><span><b>Session</b> ${esc(x.request || '')}<small class="hcd-mut"> · ${esc(x.completed || '')}</small></span><button type="button" class="hcd-btn sm" data-memdel="${x.id}" data-kind="summary">Delete</button></div>`).join('')
+          + obs.map(o => `<div class="hcd-srow"><span><code>#${o.id}</code> <b>${esc(o.type)}</b> ${esc(o.title)}${o.hits > 1 ? ` <small class="hcd-mut">×${o.hits}</small>` : ''}${(o.files || []).length ? `<small class="hcd-mut"> · ${esc(o.files.slice(0, 3).join(', '))}</small>` : ''}</span><button type="button" class="hcd-btn sm" data-memdel="${o.id}" data-kind="obs">Delete</button></div>`).join('')
+          + `<div class="hcd-acts"><span class="hcd-flex"></span><button type="button" class="hcd-btn sm" data-memall>Forget everything about this repo</button></div>`;
+        list.querySelectorAll('[data-memdel]').forEach(b => b.addEventListener('click', async () => {
+          try { await api('DELETE', `/api/devsahayak/memory/${b.dataset.memdel}?kind=${b.dataset.kind}`); await memPaint(box); } catch (e) { toast(e.message, true); } }));
+        list.querySelector('[data-memall]')?.addEventListener('click', async () => { if (!confirm(`Forget everything Hoola remembers about ${full}?`)) return;
+          try { await api('DELETE', `/api/devsahayak/memory?repo=${encodeURIComponent(full)}`); toast('Forgotten.'); await memPaint(box); } catch (e) { toast(e.message, true); } });
+      } catch (e) { toast(e.message, true); } };
+    EL.querySelectorAll('[data-memshow]').forEach(b => b.addEventListener('click', () => memPaint(b.closest('[data-mem]'))));
     EL.querySelectorAll('[data-events]').forEach(b => b.addEventListener('click', async () => { const full = b.dataset.events; b.disabled = true;
       try {
         if (b.dataset.on === '1') { if (!confirm(`Stop GitHub events for ${full}? Tasks that start on an event will no longer start.`)) { b.disabled = false; return; }

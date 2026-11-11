@@ -3005,3 +3005,33 @@ Task ID: v0.826.0 APP ENGINE 2 (L9)
 Task: owner "GO L9" on docs/LOVABLE_STUDIO_PLAN.md.
 Work Log: hoola.plugin.mjs (preview-only source tags + hidden maps), clean build at publish, preview.js (errors / select / live style), appengine/pick.py (free edits, undo, error collector + source-map lookup), theme.json + @theme static, template refresh, the HMR gate (TURN_CONV / held), 6 routes, Studio Select + style panel + error bar + code line; 6 tests incl. a browser walk.
 Stage Summary: pushed. Server deploy (no new pip; the image needs no rebuild - @babel/parser + magic-string are in it). Next: L10 Hoola Cloud on her GO.
+
+---
+Task ID: v0.827.0 WHITEBOOKS ERROR WORDS (built as 0.825)
+Task: owner shared WhiteBooks files after wb_check (e-invoice + e-way bill PASS, GST search fails).
+Work Log: files read in the scratchpad (not committed); calls match specs; GST sandbox needs WhiteBooks support switch-on; error codes as data + known_error; research note 05.
+Stage Summary: on branch claude/exciting-hawking-113x8i. Next: she asks WhiteBooks to enable the GST sandbox + share its test GSTIN / gst_username.
+
+---
+Task ID: v0.827.0 GST TEST GSTIN (same release as ERROR WORDS; their TEEN AWAAZEIN took 0.825.0, APP ENGINE 2 0.826.0)
+Task: WhiteBooks support gave the GST sandbox test GSTIN 27AAGCB1286QKZL + username MH_NT4.2823.
+Work Log: WHITEBOOKS_SANDBOX_GST_GSTIN for the GST steps; e-invoice / e-way bill keep the shared GSTIN; vps-ops lists the line; 1 test; merged main (0.825 collision), re-versioned 0.826.
+Stage Summary: on branch claude/exciting-hawking-113x8i. Next: she adds the two lines to the VPS .env, deploy, wb_check. API Setu GST lookup spec read, not built.
+
+---
+Task ID: v0.827.0 API SETU GSTN CHECK (same release; their APP ENGINE 2 took 0.826.0 - merged, re-versioned)
+Task: owner "i have api setu --- api lets check with it" + read her wb_check run.
+Work Log: bahi/apisetu.py (GSTN Tax Payer API per its spec, keys from the VPS .env only) + apisetucheck + vps-ops apisetu_check; 9 tests. wb_check 10:18 UTC: GST OTP + token + refresh PASS, einv + ewb PASS; GSTIN steps still on the shared GSTIN (fix not deployed yet).
+Stage Summary: on branch claude/exciting-hawking-113x8i. Next: MERGE TO MAIN, deploy, her APISETU_CLIENT_ID / APISETU_API_KEY + WHITEBOOKS_SANDBOX_GST_GSTIN in the .env, wb_check + apisetu_check.
+
+---
+Task ID: v0.830.0 API SETU RELAY + GST LOGIN HINT (built as 0.828; their HOOLA CODE MEMORY took 0.828.0, PRAYOGSHALA WAVE 9 0.829.0)
+Task: owner "CHECK" on the v0.827 wb_check + apisetu_check runs.
+Work Log: read runs 43003949634 (deploy), 43004320897 (wb_check: search PASS, OTP 'user name does not exists', rettrack bare refusal), 43004363250 (apisetu_check: ReadTimeout); apisetu.gov.in answers 401 in 2 s from outside -> NIC drops the VPS; relay worker extended to API Setu; base() falls back to DATA_GOV_IN_BASE; wb_check GST-login hint; 3 tests; merged main.
+Stage Summary: on branch claude/exciting-hawking-113x8i. Next: she pastes the new worker.js into her Cloudflare worker, deploy, apisetu_check; asks WhiteBooks for the GST sandbox login (username + GSTIN).
+
+---
+Task ID: v0.831.0 HOOLA CLOUD (L10)
+Task: owner "GO L10" on docs/LOVABLE_STUDIO_PLAN.md.
+Work Log: appengine/cloud.py (schema, additive one-run migrations, data-loss card, rule audit, typed lists, preview vs live, public API on site/webapp.py), sealed app frame + shell.js + hoola.ts RPC, tool cloud / cloud_change / cloud_rows, 8 Studio routes + Cloud tab, proof clinic app on Cloud; 6 tests incl. a browser walk; v0.824 / v0.826 tests moved to __app/.
+Stage Summary: pushed. Server deploy (no new pip; the image needs no rebuild). Next: L11 SABOOT (auto tests + browser check before done, scans, publish block) on her GO.

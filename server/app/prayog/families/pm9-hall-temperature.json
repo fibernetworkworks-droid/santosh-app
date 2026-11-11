@@ -1,0 +1,21 @@
+{
+ "base": "pm9-hall-temperature",
+ "rig": "pm9-msc-bench",
+ "chapter": "Solid state and materials",
+ "variants": [
+  {
+   "key": "n-ge",
+   "title": "Hall effect in n-type germanium from 77 K to 420 K",
+   "sample": "Lightly doped n-type germanium slab (2e19 donors per m^3, a property of this crystal)",
+   "unknown": "the band gap from the intrinsic region and the mobility against temperature",
+   "params": {
+    "typ": -1.0
+   },
+   "note": "The Hall voltage is negative at every temperature (electrons dominate and are the more mobile carriers); it shrinks as the intrinsic carriers take over. Germanium data from Sze, from memory - verify.",
+   "source": {
+    "title": "S. M. Sze, Physics of Semiconductor Devices: germanium data",
+    "note": "from memory - verify"
+   }
+  }
+ ]
+}

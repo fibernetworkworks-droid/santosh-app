@@ -1,0 +1,21 @@
+{
+ "base": "pm9-horn-pattern",
+ "rig": "pm9-msc-bench",
+ "chapter": "Microwaves",
+ "variants": [
+  {
+   "key": "h-plane",
+   "title": "Radiation pattern of a horn antenna in the H-plane",
+   "sample": "Pyramidal horn 7.0 x 5.2 cm at 10.5 GHz",
+   "unknown": "the H-plane beam width and the gain",
+   "params": {
+    "pl": 1.0
+   },
+   "note": "In the H-plane the aperture field is cosine-tapered across the 7.0 cm width, so the beam is wider for its size than in the E-plane and the side lobes are lower. Horn dimensions are illustrative.",
+   "source": {
+    "title": "C. A. Balanis, Antenna Theory: the pyramidal horn",
+    "note": "cited from memory - verify"
+   }
+  }
+ ]
+}

@@ -213,15 +213,15 @@ def test_build_in_the_box_preview_failures_and_publish(ae_env):
     b1 = _tool(action="build", app=aid)
     assert b1["built"] and b1["version"] == 1 and "Built version 1" in b1["say"]
     r = AE._load(T, aid)
-    data, ctype, hdr = AE.preview_file(r.preview_token, "")
+    data, ctype, hdr = AE.preview_file(r.preview_token, "__app/")       # v0.827: the app itself is under __app/ (its shell is at /)
     html = data.decode()
-    assert ctype.startswith("text/html") and f'<base href="/api/app-preview/{r.preview_token}/">' in html
+    assert ctype.startswith("text/html") and f'<base href="/api/app-preview/{r.preview_token}/__app/">' in html
     assert "script-src 'self'" in hdr["Content-Security-Policy"] and hdr["X-Robots-Tag"].startswith("noindex")
     assert AE.preview_file(r.preview_token, "some/route")[1].startswith("text/html")          # an app route -> the app
     js = [p for p in (AE.ver_dir(r, 1) / "dist" / "assets").iterdir() if p.suffix == ".js"][0]
-    assert AE.preview_file(r.preview_token, f"assets/{js.name}")[1] == "application/javascript"
+    assert AE.preview_file(r.preview_token, f"__app/assets/{js.name}")[1] == "application/javascript"
     with pytest.raises(AE.AppEngineError):
-        AE.preview_file(r.preview_token, "assets/nope.js")
+        AE.preview_file(r.preview_token, "__app/assets/nope.js")
     # a TypeScript problem: it builds (the preview moves) but it cannot go live
     _tool(action="write", app=aid, path="src/pages/Home.tsx", code='export default function Home() { const n: number = "x"; return <p>{n}</p>; }\n')
     b2 = _tool(action="build", app=aid)
@@ -243,12 +243,12 @@ def test_build_in_the_box_preview_failures_and_publish(ae_env):
     assert "Nothing changed" in _tool(action="build", app=aid)["say"]
     pub = AE.publish(T, aid, 3, confirm=True)
     assert pub["live_version"] == 3 and pub["live_url"] == "/apps/shop-staff-tasks/"
-    live = AE.live_file("shop-staff-tasks", "")
-    assert '<base href="/apps/shop-staff-tasks/">' in live[0].decode() and "X-Robots-Tag" not in live[2]
+    live = AE.live_file("shop-staff-tasks", "__app/")                    # v0.827: the sealed app under its shell
+    assert '<base href="/apps/shop-staff-tasks/__app/">' in live[0].decode() and "X-Robots-Tag" not in live[2]
     with pytest.raises(AE.AppEngineError, match="live"):
         AE.delete_app(T, aid)
     assert [v["version"] for v in AE.get(T, aid)["versions"]][:3] == [3, 2, 1]
-    assert AE.preview_file(r.preview_token, "__v/1/")[0].decode().count("/__v/1/") == 1      # an earlier version still opens
+    assert AE.preview_file(r.preview_token, "__v/1/__app/")[0].decode().count("/__v/1/__app/") == 1   # an earlier version still opens
     AE.unpublish(T, aid, confirm=True)
     with pytest.raises(AE.AppEngineError):
         AE.live_file("shop-staff-tasks", "")
@@ -314,7 +314,7 @@ def test_studio_app_pages_in_a_browser(arena_server, ae_env, monkeypatch):
     a = AE.list_(T)[0]
     assert a["palette"] if "palette" in a else True
     assert sent and f"(app id {a['id']})" in sent[0] and sent[0].startswith("Build this app: A task list")
-    frame = page.frame_locator("#aeFrame")
+    frame = page.frame_locator("#aeFrame").frame_locator("iframe")       # v0.827: Studio -> the app's shell -> the sealed app
     frame.locator("text=Shop staff tasks").first.wait_for(timeout=20000)
     frame.get_by_role("button", name="Add task").click()
     frame.locator("text=Count the cash drawer").first.wait_for()
@@ -343,7 +343,7 @@ def test_studio_app_pages_in_a_browser(arena_server, ae_env, monkeypatch):
     assert AE.get(T, a["id"])["live_version"] == 2
     live = ctx.new_page()
     live.goto(f"{base}/apps/{a['slug']}/")
-    live.locator("text=Shop staff tasks").first.wait_for()
+    live.frame_locator("iframe").locator("text=Shop staff tasks").first.wait_for()   # v0.827: inside its shell
     phone = browser.new_context(viewport={"width": 390, "height": 820})
     phone.add_init_script(f"try {{ localStorage.setItem('hoola.console.token', '{key}') }} catch (e) {{}}")
     pp = phone.new_page()

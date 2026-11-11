@@ -397,3 +397,52 @@ def test_v0814_the_ewb_refusal_without_a_code_is_named(env):
     from app.bahi import wb
     assert wb._code_of({"status_cd": "0", "status_desc": "Invalid credentials provided or your account is not active"}) == "WB_ERR_9001"
     assert wb._code_of({"status_cd": "0", "status_desc": "something else"}) == "refused"
+
+
+# ---------------------------------------------------------------- v0.825 WhiteBooks' published error lists as data
+def test_v0825_error_codes_are_said_in_the_systems_own_words(env):
+    import json
+    from app.bahi import wb
+    data = json.loads((Path(wb.__file__).resolve().parent / "wb_errors.json").read_text(encoding="utf-8"))
+    assert data["basis"] == "provider-spec" and data["checked_on"] and data["review_by"] and data["source"]["gst"]
+    assert len(data["gst"]) >= 100 and len(data["einv"]) >= 100
+    assert wb.known_error("RET11410") == "GST system: Invalid GSTIN."
+    assert "OTP is either expired or incorrect" in wb.known_error("RET13509")
+    assert wb.known_error("2148").startswith("e-invoice system: Requested IRN data is not available.")
+    assert wb.known_error("nope") == ""
+    # a reply carrying a GSTN code now reads in words, our own plain lines still win
+    assert wb._message_of({"status_cd": "0", "error": {"error_cd": "RET11409"}}, "RET11409") == "GST system: Username is not Valid."
+    assert "already has an IRN" in wb._message_of({}, "2150")
+
+
+# ---------------------------------------------------------------- v0.826 the GST sandbox has its own test GSTIN
+def test_v0826_gst_steps_use_the_gst_test_gstin_and_einvoice_keeps_the_shared_one(wbenv, monkeypatch, tmp_path):
+    monkeypatch.chdir(tmp_path)
+    for k, v in {"WHITEBOOKS_SANDBOX_GSTIN": "27AAGCB1286Q005", "WHITEBOOKS_SANDBOX_GST_GSTIN": "27aagcb1286qkzl ",
+                 "WHITEBOOKS_SANDBOX_GST_USERNAME": "MH_NT4.2823", "WHITEBOOKS_SANDBOX_EINV_USERNAME": "BVMMH",
+                 "WHITEBOOKS_SANDBOX_EINV_PASSWORD": "pw-1", "WHITEBOOKS_SANDBOX_EWB_USERNAME": "BVMMH",
+                 "WHITEBOOKS_SANDBOX_EWB_PASSWORD": "pw-2"}.items():
+        monkeypatch.setenv(k, v)
+    from app.config import get_settings
+    get_settings.cache_clear()
+    from app.bahi import wb, wbcheck
+    seen = []
+
+    def h(req: httpx.Request):
+        seen.append((req.url.path, str(req.url), dict(req.headers)))
+        if req.url.path == "/":
+            return httpx.Response(200, json={"message": "up"})
+        if req.url.path.endswith("otprequest"):
+            return httpx.Response(200, json={"status_cd": "1", "header": {"txn": "t-9"}})
+        return httpx.Response(200, json={"status_cd": "1", "data": {}})
+    wb.TRANSPORT = _transport(h)
+    res = wbcheck.run()
+    by = {p: (u, hd) for p, u, hd in seen}
+    assert "gstin=27AAGCB1286QKZL" in by["/public/search"][0] and "gstin=27AAGCB1286QKZL" in by["/public/rettrack"][0]
+    assert by["/authentication/otprequest"][1]["gst_username"] == "MH_NT4.2823"
+    assert by["/authentication/otprequest"][1]["state_cd"] == "27"
+    assert by["/einvoice/authenticate"][1]["gstin"] == "27AAGCB1286Q005"
+    assert by["/ewaybillapi/v1.03/authenticate"][1]["gstin"] == "27AAGCB1286Q005"
+    rows = {r["name"]: r for r in res["paste"]}
+    assert rows["WHITEBOOKS_SANDBOX_GST_GSTIN"]["ok"]
+    assert res["failed"] == 0, res["steps"]

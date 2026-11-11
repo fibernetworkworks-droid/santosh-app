@@ -110,4 +110,4 @@ def test_switch_off_keeps_the_old_quiet_reminder(env, monkeypatch):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.826.0"
+    assert APP_VERSION == "0.831.0"

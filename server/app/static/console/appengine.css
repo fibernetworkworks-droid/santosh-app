@@ -95,3 +95,18 @@
 .ae-pill button{border:0;background:none;color:inherit;font-size:15px;width:20px;height:20px;border-radius:50%;cursor:pointer}
 .ae-src .ln{display:block}.ae-src .ln.hot{background:var(--pri-soft);border-radius:4px}
 .ae-x{font-size:18px;line-height:1;width:30px;padding:0}
+
+/* v0.827 HOOLA CLOUD tab */
+.ae-cloud{max-width:960px}
+.ae-cl{border:1px solid var(--hair);border-radius:14px;background:var(--bg);padding:14px;display:flex;flex-direction:column;gap:8px}
+.ae-cl h3{margin:0;font-size:15.5px}
+.ae-who{margin:0;color:var(--lit)}
+.ae-flag{margin:0;padding:6px 10px;border-radius:9px;background:var(--sunk);color:var(--lit)}
+.ae-flag.bad{background:var(--bad-soft);color:var(--bad)}.ae-flag.warn{background:var(--warn-soft);color:var(--warn)}
+.ae-tbl{overflow-x:auto;border:1px solid var(--line);border-radius:10px}
+.ae-tbl table{width:100%;border-collapse:collapse;font-size:13px}
+.ae-tbl th,.ae-tbl td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+.ae-tbl th{font-weight:600;color:var(--mut);background:var(--raise)}
+.ae-tbl select{height:30px;border:1px solid var(--hair);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit}
+.ae-loss{border:1px solid var(--bad);background:var(--bad-soft);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:6px;color:var(--ink)}
+.ae-loss ul{margin:0;padding-left:18px}.ae-loss p{margin:0}

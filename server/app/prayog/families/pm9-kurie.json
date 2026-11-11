@@ -1,0 +1,102 @@
+{
+ "base": "pm9-kurie",
+ "rig": "pm9-msc-bench",
+ "chapter": "Nuclear physics",
+ "variants": [
+  {
+   "key": "cs137-magnetic",
+   "title": "Kurie plot of Cs-137 with a magnetic spectrometer",
+   "sample": "Cs-137 source (Cs-137 to Ba-137m, 514 keV end point, K conversion line 624 keV)",
+   "method": "magnetic spectrometer",
+   "unknown": "the end-point energy and the conversion-electron energy",
+   "params": {
+    "m": 1.0
+   },
+   "note": "The magnet's current selects the momentum p = kI x I (calibrated with the conversion line); the window dp/p is fixed, so the counts follow F p^3 (W0 - W)^2 and the Kurie function is sqrt(N / (F p^3)). The 5.6 % branch to the Ba-137 ground state is left out.",
+   "source": {
+    "title": "NNDC / ENSDF decay data",
+    "note": "from memory - verify"
+   }
+  },
+  {
+   "key": "tl204-scint",
+   "title": "Kurie plot of Tl-204 with an anthracene spectrometer",
+   "sample": "Tl-204 source (Tl-204 to Pb-204, 763.7 keV end point)",
+   "method": "anthracene scintillation spectrometer",
+   "unknown": "the end-point energy",
+   "params": {
+    "T1": 763.7,
+    "Z1": 82.0,
+    "fc": 0.0
+   },
+   "note": "Tl-204 is a first-forbidden unique decay; its true Kurie plot curves unless the shape factor is applied. This simulation uses the allowed shape, so the plot is straight. End point from NNDC, from memory - verify.",
+   "source": {
+    "title": "NNDC / ENSDF decay data",
+    "note": "from memory - verify"
+   }
+  },
+  {
+   "key": "tl204-magnetic",
+   "title": "Kurie plot of Tl-204 with a magnetic spectrometer",
+   "sample": "Tl-204 source (Tl-204 to Pb-204, 763.7 keV end point)",
+   "method": "magnetic spectrometer",
+   "unknown": "the end-point energy",
+   "params": {
+    "T1": 763.7,
+    "Z1": 82.0,
+    "fc": 0.0,
+    "m": 1.0
+   },
+   "note": "The allowed shape is used (the forbidden shape factor is left out). End point from NNDC, from memory - verify.",
+   "source": {
+    "title": "NNDC / ENSDF decay data",
+    "note": "from memory - verify"
+   }
+  },
+  {
+   "key": "sr90-scint",
+   "title": "Kurie plot of Sr-90/Y-90 with an anthracene spectrometer",
+   "sample": "Sr-90/Y-90 source in equilibrium (545.9 and 2278.5 keV end points)",
+   "method": "anthracene scintillation spectrometer",
+   "unknown": "the end-point energy of the Y-90 betas",
+   "params": {
+    "T1": 2278.5,
+    "Z1": 40.0,
+    "f1": 0.5,
+    "T2": 545.9,
+    "Z2": 39.0,
+    "f2": 0.5,
+    "fc": 0.0,
+    "dT": 40.0
+   },
+   "note": "Two beta groups of equal activity; above 0.6 MeV only the Y-90 group is left, and its straight Kurie line gives the end point. Allowed shapes are used. End points from NNDC, from memory - verify.",
+   "source": {
+    "title": "NNDC / ENSDF decay data",
+    "note": "from memory - verify"
+   }
+  },
+  {
+   "key": "sr90-magnetic",
+   "title": "Kurie plot of Sr-90/Y-90 with a magnetic spectrometer",
+   "sample": "Sr-90/Y-90 source in equilibrium (545.9 and 2278.5 keV end points)",
+   "method": "magnetic spectrometer",
+   "unknown": "the end-point energy of the Y-90 betas",
+   "params": {
+    "T1": 2278.5,
+    "Z1": 40.0,
+    "f1": 0.5,
+    "T2": 545.9,
+    "Z2": 39.0,
+    "f2": 0.5,
+    "fc": 0.0,
+    "m": 1.0,
+    "kI": 1.0
+   },
+   "note": "The upper part of the spectrum is pure Y-90. Allowed shapes are used. End points from NNDC, from memory - verify.",
+   "source": {
+    "title": "NNDC / ENSDF decay data",
+    "note": "from memory - verify"
+   }
+  }
+ ]
+}

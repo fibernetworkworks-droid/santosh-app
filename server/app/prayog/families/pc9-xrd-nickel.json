@@ -1,0 +1,33 @@
+{
+ "base": "pc9-xrd-nickel",
+ "rig": "pc9-workstation",
+ "chapter": "Materials synthesis and characterisation",
+ "variants": [
+  {
+   "key": "wh",
+   "title": "Nickel nanoparticles: crystallite size by Williamson-Hall",
+   "sample": "nickel nanoparticles (urea decomposition)",
+   "unknown": "particle size",
+   "params": {
+    "what": 0
+   },
+   "source": {
+    "title": "Lattice parameter from the ICDD card (alpha-Fe 0.28665 nm, ZnO 0.32498 / 0.52066 nm, Ni 0.35238 nm)",
+    "note": "from memory - verify; the crystallite sizes and strains are illustrative SIMULATED values, not a model of milling"
+   }
+  },
+  {
+   "key": "phase",
+   "title": "Nickel nanoparticles: phase and lattice parameter by XRD",
+   "sample": "nickel nanoparticles (urea decomposition)",
+   "unknown": "lattice parameter (fcc phase)",
+   "params": {
+    "what": 2
+   },
+   "source": {
+    "title": "Lattice parameter from the ICDD card (alpha-Fe 0.28665 nm, ZnO 0.32498 / 0.52066 nm, Ni 0.35238 nm)",
+    "note": "from memory - verify; the crystallite sizes and strains are illustrative SIMULATED values, not a model of milling"
+   }
+  }
+ ]
+}

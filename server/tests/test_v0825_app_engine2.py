@@ -148,8 +148,8 @@ def test_preview_is_tagged_live_is_clean_and_errors_map_to_the_line(ae_env):
     assert f'"data-hs":"{_hs(r, "<CardTitle>")}"' in code                                     # the page's own line for a kit part
     assert (dist / "assets" / (js.name + ".map")).exists()
     with pytest.raises(AE.AppEngineError):
-        AE.preview_file(r.preview_token, f"assets/{js.name}.map")                            # maps stay on the server
-    html = AE.preview_file(r.preview_token, "")[0].decode()
+        AE.preview_file(r.preview_token, f"__app/assets/{js.name}.map")                      # maps stay on the server
+    html = AE.preview_file(r.preview_token, "__app/")[0].decode()                             # v0.827: the app under its shell
     assert '<script src="__hoola/preview.js"></script>' in html
     assert b"ae-cmd" in AE.preview_file(r.preview_token, "__hoola/preview.js")[0]
     # an error at a real position of the built file maps back to the page's line
@@ -172,7 +172,7 @@ def test_preview_is_tagged_live_is_clean_and_errors_map_to_the_line(ae_env):
     live = list(AE.live_dir(r).rglob("*"))
     assert not any(p.suffix == ".map" for p in live)
     assert not any(b"data-hs" in p.read_bytes() for p in live if p.is_file())
-    assert b"preview.js" not in AE.live_file(r.slug, "")[0]
+    assert b"preview.js" not in AE.live_file(r.slug, "")[0] and b"preview.js" not in AE.live_file(r.slug, "__app/")[0]
 
 
 def test_a_half_written_change_is_never_shown(ae_env, monkeypatch):
@@ -242,7 +242,7 @@ def test_select_style_undo_and_try_to_fix_in_a_browser(arena_server, ae_env, mon
     page = ctx.new_page()
     page.on("pageerror", lambda e: errors.append(str(e)))
     page.goto(f"{base}/console/web#/app/{aid}")
-    frame = page.frame_locator("#aeFrame")
+    frame = page.frame_locator("#aeFrame").frame_locator("iframe")       # v0.827: Studio -> shell -> the sealed app
     frame.locator("h1", has_text="Shop staff tasks").wait_for(timeout=30000)
     page.keyboard.press("s")                                                                 # S = Select
     page.locator("[data-ae=select][aria-pressed=true]").wait_for()
@@ -250,7 +250,7 @@ def test_select_style_undo_and_try_to_fix_in_a_browser(arena_server, ae_env, mon
     page.locator("#aeSel", has_text="src/pages/Home.tsx:").wait_for()
     page.locator("#aeSel [data-ae=pk-chip][data-ae-f=color][data-ae-v=accent]").click()
     accent = AE.get(T, aid)["theme"]["colors"]["accent"]
-    fr = next((f for f in page.frames if "/api/app-preview/" in f.url), None)          # the sandboxed preview frame
+    fr = next((f for f in page.frames if "/__app/" in f.url), None)                     # the sealed app frame (v0.827)
     assert fr is not None
     rgb = fr.evaluate("getComputedStyle(document.querySelector('h1')).color")
     want = "rgb(%d, %d, %d)" % tuple(int(accent[i:i + 2], 16) for i in (1, 3, 5))

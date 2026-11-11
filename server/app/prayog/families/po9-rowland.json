@@ -1,0 +1,60 @@
+{
+ "base": "po9-rowland",
+ "rig": "po9-optics-bench",
+ "chapter": "Atomic spectroscopy",
+ "source": {
+  "title": "NIST ASD wavelengths in air: Hg I 546.0750, 576.9610, 579.0670 nm (from memory - verify)"
+ },
+ "variants": [
+  {
+   "key": "hg-unknown",
+   "title": "Rowland concave grating: wavelength of a mercury line by interpolation",
+   "sample": "Mercury lamp plate",
+   "unknown": "the wavelength (calibration)",
+   "params": {
+    "mode": 1
+   }
+  },
+  {
+   "key": "hg-resolving",
+   "title": "Rowland concave grating: resolving power from a line's width",
+   "sample": "Mercury lamp plate",
+   "unknown": "the resolving power",
+   "params": {
+    "mode": 2
+   }
+  },
+  {
+   "key": "fe-unknown",
+   "title": "Rowland concave grating: wavelength of an iron line by interpolation",
+   "sample": "Iron arc plate",
+   "unknown": "the wavelength (calibration)",
+   "params": {
+    "la": 4.383545e-07,
+    "lb": 4.40475e-07,
+    "lu": 4.415122e-07,
+    "mode": 1
+   },
+   "source": {
+    "title": "Iron arc lines Fe I 438.3545, 440.4750, 441.5122 nm (NIST ASD, in air)",
+    "note": "from memory - verify"
+   }
+  },
+  {
+   "key": "fe-plate-factor",
+   "title": "Rowland concave grating: plate factor in the iron spectrum",
+   "sample": "Iron arc plate",
+   "unknown": "the dispersion",
+   "params": {
+    "la": 4.383545e-07,
+    "lb": 4.40475e-07,
+    "lu": 4.415122e-07,
+    "mode": 0
+   },
+   "source": {
+    "title": "Iron arc lines Fe I 438.3545, 440.4750, 441.5122 nm (NIST ASD, in air)",
+    "note": "from memory - verify"
+   }
+  }
+ ]
+}

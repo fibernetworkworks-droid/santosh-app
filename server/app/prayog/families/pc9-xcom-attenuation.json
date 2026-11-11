@@ -1,0 +1,63 @@
+{
+ "base": "pc9-xcom-attenuation",
+ "rig": "pc9-workstation",
+ "chapter": "Computational physics",
+ "variants": [
+  {
+   "key": "bone",
+   "title": "Mass attenuation coefficient of cortical bone (ICRU-44) from NIST's tables",
+   "sample": "bone, cortical (ICRU-44)",
+   "unknown": "mu/rho at 662 keV",
+   "method": "mixture rule",
+   "params": {
+    "mat": 1
+   },
+   "source": {
+    "title": "NIST X-Ray Mass Attenuation Coefficients (Hubbell and Seltzer, NISTIR 5632)",
+    "note": "element and compound tables fetched from physics.nist.gov/PhysRefData/XrayMassCoef on 11 Nov 2026; composition from its table 2"
+   }
+  },
+  {
+   "key": "tissue",
+   "title": "Mass attenuation coefficient of soft tissue (ICRU-44) from NIST's tables",
+   "sample": "tissue, soft (ICRU-44)",
+   "unknown": "mu/rho at 662 keV",
+   "method": "mixture rule",
+   "params": {
+    "mat": 2
+   },
+   "source": {
+    "title": "NIST X-Ray Mass Attenuation Coefficients (Hubbell and Seltzer, NISTIR 5632)",
+    "note": "element and compound tables fetched from physics.nist.gov/PhysRefData/XrayMassCoef on 11 Nov 2026; composition from its table 2"
+   }
+  },
+  {
+   "key": "a150",
+   "title": "Mass attenuation coefficient of A-150 tissue-equivalent plastic",
+   "sample": "A-150 tissue-equivalent plastic",
+   "unknown": "mu/rho at 662 keV",
+   "method": "mixture rule",
+   "params": {
+    "mat": 3
+   },
+   "source": {
+    "title": "NIST X-Ray Mass Attenuation Coefficients (Hubbell and Seltzer, NISTIR 5632)",
+    "note": "element and compound tables fetched from physics.nist.gov/PhysRefData/XrayMassCoef on 11 Nov 2026; composition from its table 2"
+   }
+  },
+  {
+   "key": "lead",
+   "title": "Mass attenuation coefficient of lead from NIST's table",
+   "sample": "lead (a single element)",
+   "unknown": "mu/rho at 662 keV",
+   "method": "elemental table",
+   "params": {
+    "mat": 4
+   },
+   "source": {
+    "title": "NIST X-Ray Mass Attenuation Coefficients (Hubbell and Seltzer, NISTIR 5632)",
+    "note": "element and compound tables fetched from physics.nist.gov/PhysRefData/XrayMassCoef on 11 Nov 2026; composition from its table 2"
+   }
+  }
+ ]
+}

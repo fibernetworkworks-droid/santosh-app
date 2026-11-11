@@ -103,6 +103,39 @@ def make_router(require_key, current_tenant) -> APIRouter:
         return {"on": SA.on(), "agents": sorted(rows, key=lambda a: (a["group"], a["name"])),
                 "not_added": [{"name": k, "why": v} for k, v in sorted(ecc.NOT_ADDED.items())], "credit": ecc.CREDIT}
 
+    @r.get("/memory")
+    async def memory_list(repo: str = "", q: str = "", tenant: str = Depends(current_tenant)):
+        """Hoola Code memory: what Hoola remembers about one repo (newest first), or a search in it."""
+        from . import memory as M
+        if not repo:
+            raise HTTPException(400, "Name the repo (owner/name).")
+        rows = await run(M.search, tenant, repo, q, "", 50)
+        return {"on": M.on(), "repo": repo, "observations": rows, "summaries": await run(M.summaries, tenant, repo, 10),
+                "counts": await run(M.counts, tenant, repo)}
+
+    @r.get("/memory/{oid}")
+    async def memory_one(oid: int, repo: str = "", tenant: str = Depends(current_tenant)):
+        from . import memory as M
+        rows = await run(M.get, tenant, repo, [oid])
+        if not rows:
+            raise HTTPException(404, "No such memory.")
+        return rows[0]
+
+    @r.delete("/memory/{oid}")
+    async def memory_forget(oid: int, kind: str = "obs", tenant: str = Depends(current_tenant)):
+        from . import memory as M
+        ok = await run(M.forget_summary if kind == "summary" else M.forget, tenant, oid)
+        if not ok:
+            raise HTTPException(404, "No such memory.")
+        return {"ok": True}
+
+    @r.delete("/memory")
+    async def memory_forget_repo(repo: str = "", tenant: str = Depends(current_tenant)):
+        from . import memory as M
+        if not repo:
+            raise HTTPException(400, "Name the repo (owner/name).")
+        return {"ok": True, "removed": await run(M.forget_repo, tenant, repo)}
+
     @r.get("/settings")
     async def get_settings(tenant: str = Depends(current_tenant)):
         return await run(S.settings, tenant)

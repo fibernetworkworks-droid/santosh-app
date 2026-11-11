@@ -1,0 +1,119 @@
+{
+ "base": "po9-zeeman",
+ "rig": "po9-optics-bench",
+ "chapter": "Atomic spectroscopy",
+ "source": {
+  "title": "CODATA 2018 e/m and h; Lande g factors from the LS-coupling formula; Hg 546.0750 nm (NIST ASD)"
+ },
+ "variants": [
+  {
+   "key": "hg-fp-longitudinal",
+   "title": "Zeeman effect: e/m from the mercury green line seen along the field",
+   "sample": "Mercury 546.1 nm line, longitudinal view",
+   "unknown": "e/m",
+   "params": {
+    "view": 1
+   },
+   "method": "Fabry-Perot etalon"
+  },
+  {
+   "key": "hg-fp-bohr",
+   "title": "Zeeman effect: the Bohr magneton from the mercury green line",
+   "sample": "Mercury 546.1 nm line, transverse view",
+   "unknown": "the Bohr magneton",
+   "params": {
+    "mode": 1
+   },
+   "method": "Fabry-Perot etalon"
+  },
+  {
+   "key": "hg-fp-g",
+   "title": "Zeeman effect: Lande g of the 7s 3S1 level of mercury",
+   "sample": "Mercury 546.1 nm line, transverse view",
+   "unknown": "the Lande g factor of the upper level",
+   "params": {
+    "mode": 2
+   },
+   "method": "Fabry-Perot etalon"
+  },
+  {
+   "key": "hg-lg-transverse",
+   "title": "Zeeman effect: e/m with a Lummer-Gehrcke plate (mercury green line)",
+   "sample": "Mercury 546.1 nm line, transverse view",
+   "unknown": "e/m",
+   "params": {
+    "meth": 1
+   },
+   "method": "Lummer-Gehrcke plate"
+  },
+  {
+   "key": "hg-lg-longitudinal",
+   "title": "Zeeman effect: the Bohr magneton with a Lummer-Gehrcke plate, along the field",
+   "sample": "Mercury 546.1 nm line, longitudinal view",
+   "unknown": "the Bohr magneton",
+   "params": {
+    "meth": 1,
+    "view": 1,
+    "mode": 1
+   },
+   "method": "Lummer-Gehrcke plate"
+  },
+  {
+   "key": "cd-fp-transverse",
+   "title": "Normal Zeeman effect: e/m from the cadmium red line",
+   "sample": "Cadmium 643.8 nm line, transverse view",
+   "unknown": "e/m",
+   "params": {
+    "lam": 6.43847e-07,
+    "gu": 1.0,
+    "gl": 1.0,
+    "ju": 2.0,
+    "jl": 1.0
+   },
+   "method": "Fabry-Perot etalon",
+   "source": {
+    "title": "Cadmium 643.8470 nm line, 5s5d 1D2 - 5s5p 1P1 (NIST ASD, in air)",
+    "note": "from memory - verify"
+   }
+  },
+  {
+   "key": "cd-fp-bohr",
+   "title": "Normal Zeeman effect: the Bohr magneton from the cadmium red line",
+   "sample": "Cadmium 643.8 nm line, transverse view",
+   "unknown": "the Bohr magneton",
+   "params": {
+    "lam": 6.43847e-07,
+    "gu": 1.0,
+    "gl": 1.0,
+    "ju": 2.0,
+    "jl": 1.0,
+    "mode": 1
+   },
+   "method": "Fabry-Perot etalon",
+   "source": {
+    "title": "Cadmium 643.8470 nm line, 5s5d 1D2 - 5s5p 1P1 (NIST ASD, in air)",
+    "note": "from memory - verify"
+   }
+  },
+  {
+   "key": "cd-lg-longitudinal",
+   "title": "Normal Zeeman effect: e/m with a Lummer-Gehrcke plate, along the field (cadmium)",
+   "sample": "Cadmium 643.8 nm line, longitudinal view",
+   "unknown": "e/m",
+   "params": {
+    "lam": 6.43847e-07,
+    "gu": 1.0,
+    "gl": 1.0,
+    "ju": 2.0,
+    "jl": 1.0,
+    "meth": 1,
+    "view": 1
+   },
+   "method": "Lummer-Gehrcke plate",
+   "source": {
+    "title": "Cadmium 643.8470 nm line, 5s5d 1D2 - 5s5p 1P1 (NIST ASD, in air)",
+    "note": "from memory - verify"
+   }
+  }
+ ]
+}

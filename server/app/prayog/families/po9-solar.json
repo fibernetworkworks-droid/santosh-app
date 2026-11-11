@@ -1,0 +1,74 @@
+{
+ "base": "po9-solar",
+ "rig": "po9-optics-bench",
+ "chapter": "Atomic spectroscopy",
+ "source": {
+  "title": "Laboratory wavelengths of the Fraunhofer lines (NIST ASD, in air; from memory - verify); SIMULATED spectrum"
+ },
+ "variants": [
+  {
+   "key": "h-alpha",
+   "title": "Fraunhofer lines: the hydrogen alpha line in sunlight (simulated)",
+   "sample": "Sunlight (SIMULATED spectrum)",
+   "unknown": "the Fraunhofer line wavelength",
+   "params": {
+    "c1": 6.56281e-07,
+    "c2": 0.0,
+    "tb": 1.0
+   },
+   "source": {
+    "note": "from memory - verify",
+    "title": "H alpha 656.281 nm (laboratory wavelength in air)"
+   },
+   "note": "SIMULATED DATA"
+  },
+  {
+   "key": "h-beta",
+   "title": "Fraunhofer lines: the hydrogen beta line in sunlight (simulated)",
+   "sample": "Sunlight (SIMULATED spectrum)",
+   "unknown": "the Fraunhofer line wavelength",
+   "params": {
+    "c1": 4.86133e-07,
+    "c2": 0.0,
+    "tb": 1.0
+   },
+   "source": {
+    "note": "from memory - verify",
+    "title": "H beta 486.133 nm (laboratory wavelength in air)"
+   },
+   "note": "SIMULATED DATA"
+  },
+  {
+   "key": "mg-b1",
+   "title": "Fraunhofer lines: the magnesium b1 line in sunlight (simulated)",
+   "sample": "Sunlight (SIMULATED spectrum)",
+   "unknown": "the Fraunhofer line wavelength",
+   "params": {
+    "c1": 5.18362e-07,
+    "c2": 0.0,
+    "tb": 1.0
+   },
+   "source": {
+    "note": "from memory - verify",
+    "title": "Mg I b1 518.362 nm (laboratory wavelength in air)"
+   },
+   "note": "SIMULATED DATA"
+  },
+  {
+   "key": "ca-k",
+   "title": "Fraunhofer lines: the ionised calcium K line in sunlight (simulated)",
+   "sample": "Sunlight (SIMULATED spectrum)",
+   "unknown": "the Fraunhofer line wavelength",
+   "params": {
+    "c1": 3.93366e-07,
+    "c2": 0.0,
+    "tb": 1.0
+   },
+   "source": {
+    "note": "from memory - verify",
+    "title": "Ca II K 393.366 nm (laboratory wavelength in air)"
+   },
+   "note": "SIMULATED DATA"
+  }
+ ]
+}

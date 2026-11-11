@@ -18,7 +18,7 @@ import re
 from typing import Any
 
 LOCKED = {"package.json", "package-lock.json", "vite.config.ts", "hoola.plugin.mjs", "tsconfig.json", "src/main.tsx", "src/index.css",
-          "src/lib/hoola.ts", "src/lib/utils.ts", "src/styles/tokens.css"}
+          "src/lib/hoola.ts", "src/lib/utils.ts", "src/styles/tokens.css", "src/lib/cloud.types.ts"}
 TEXT_EXT = {".tsx", ".ts", ".css", ".json", ".svg", ".md", ".txt", ".html", ".webmanifest"}
 CODE_EXT = {".tsx", ".ts", ".css"}
 MAX_FILE = 200_000
@@ -43,8 +43,9 @@ RX_UNSAFE = [
     (re.compile(r"""\bimport\s*\(\s*[`'"]https?:"""), "code is never loaded from an outside address"),
     (re.compile(r"""\bfrom\s+[`'"]https?:"""), "code is never loaded from an outside address"),
     (re.compile(r"\bXMLHttpRequest\b"), "the app reaches data only through src/lib/hoola.ts (Hoola Cloud)"),
-    (re.compile(r"\blocalStorage\.setItem\([^)]*(?:password|token|otp|pin|cvv)", re.I),
-     "a password / token / OTP is never kept in the browser"),
+    (re.compile(r"\b(?:localStorage|sessionStorage|indexedDB)\b|\bdocument\.cookie\b"),
+     "the app runs in a sealed frame where browser storage and cookies do not exist - keep data in Hoola Cloud "
+     "(hoola.db) or in React state; sign-in is hoola.auth"),
 ]
 RX_IMPORT = re.compile(r"""(?:^|[\s;])(?:import|export)\s+(?:[^'"`;]*?\s+from\s+)?['"]([^'"]+)['"]|\bimport\s*\(\s*['"]([^'"]+)['"]\s*\)""",
                        re.M)
