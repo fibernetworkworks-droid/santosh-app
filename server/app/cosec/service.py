@@ -86,10 +86,10 @@ def _iso(v) -> str:
 def _clean(text, n: int = 500) -> str:
     """Her / outside words: secrets never kept; Aadhaar / PAN only by the locker reference."""
     t = str(text or "")
-    t = re.sub(r"\b(otp|pin|cvv|password|upi pin)\b\s*(?:is|hai|:|=)?\s*\S+", lambda m: f"{m.group(1)} [hataya]", t, flags=re.I)
-    t = re.sub(r"\b(?:\d[ -]?){13,19}\b", "[hataya]", t)
-    t = re.sub(r"\b\d{4}\s?\d{4}\s?\d{4}\b", "[hataya]", t)
-    t = re.sub(r"\b[A-Z]{5}\d{4}[A-Z]\b", "[PAN hataya]", t)
+    t = re.sub(r"\b(otp|pin|cvv|password|upi pin)\b\s*(?:is|hai|:|=)?\s*\S+", lambda m: f"{m.group(1)} [removed]", t, flags=re.I)
+    t = re.sub(r"\b(?:\d[ -]?){13,19}\b", "[removed]", t)
+    t = re.sub(r"\b\d{4}\s?\d{4}\s?\d{4}\b", "[removed]", t)
+    t = re.sub(r"\b[A-Z]{5}\d{4}[A-Z]\b", "[PAN removed]", t)
     return t.strip()[:n]
 
 
@@ -108,7 +108,7 @@ def _num(v) -> float | None:
     s = str(v).lower().replace(",", "").replace("rs", "").replace("₹", "").strip()
     m = re.match(r"^([\d.]+)\s*(crore|cr|lakh|lac|l)?$", s)
     if not m:
-        raise CosecError(f"'{v}' number nahi samjha.")
+        raise CosecError(f"'{v}' is not a number I understand.")
     x = float(m.group(1))
     mult = {"crore": 1e7, "cr": 1e7, "lakh": 1e5, "lac": 1e5, "l": 1e5}.get(m.group(2) or "", 1)
     return x * mult
@@ -211,11 +211,11 @@ def save_settings(tenant: str, **kw) -> dict:
                 continue
             v = str(kw[k]).strip()
             if k == "phone" and v and not _phone(v):
-                raise CosecError("Mobile 10 ankon ka chahiye.")
+                raise CosecError("Mobile number must be 10 digits.")
             if k == "morning_time" and v and not re.match(r"^\d{1,2}:\d{2}$", v):
-                raise CosecError("Samay HH:MM mein.")
+                raise CosecError("Time must be HH:MM.")
             if k == "membership_no" and v and not re.match(r"^[AF]CS\s*\d{1,6}$", v.upper()):
-                raise CosecError("Membership no. jaise ACS 12345 / FCS 1234.")
+                raise CosecError("Membership no. like ACS 12345 / FCS 1234.")
             setattr(r, k, _phone(v) if k == "phone" else (v.upper() if k == "membership_no" else _clean(v, 500)))
         v = _set_view(r)
     v["say"] = "Settings save."
@@ -229,7 +229,7 @@ def _ent(s, tenant: str, ref: str) -> CosecEntity:
         rows = s.scalars(select(CosecEntity).where(CosecEntity.tenant_id == tenant, CosecEntity.status == "active")).all()
         if len(rows) == 1:
             return rows[0]
-        raise CosecError("Kaunsi company / LLP? Naam ya E-number batao.")
+        raise CosecError("Which company / LLP? Give the name or E-number.")
     e = s.get(CosecEntity, ref)
     if e is not None and e.tenant_id == tenant:
         return e
@@ -242,8 +242,8 @@ def _ent(s, tenant: str, ref: str) -> CosecEntity:
     if len(hits) == 1:
         return hits[0]
     if len(hits) > 1:
-        raise CosecError("Ek se zyada mili: " + ", ".join(f"{e.number} {e.name}" for e in hits[:5]))
-    raise CosecError(f"'{ref}' naam ki company / LLP nahi mili.")
+        raise CosecError("More than one match: " + ", ".join(f"{e.number} {e.name}" for e in hits[:5]))
+    raise CosecError(f"'{ref}' company / LLP not found.")
 
 
 def _light(e: CosecEntity) -> bool:
@@ -271,7 +271,7 @@ def save_entity(tenant: str, name: str = "", ref: str = "", **kw) -> dict:
             e = _ent(s, tenant, ref)
         else:
             if not str(name or "").strip():
-                raise CosecError("Company / LLP ka naam chahiye.")
+                raise CosecError("Company / LLP name is needed.")
             e = CosecEntity(tenant_id=tenant, number=f"E-{_next(s, tenant, 'entity'):03d}")
             s.add(e)
         if name:
@@ -295,13 +295,13 @@ def save_entity(tenant: str, name: str = "", ref: str = "", **kw) -> dict:
         if kw.get("email") is not None:
             v = str(kw["email"]).strip()
             if v and "@" not in v:
-                raise CosecError("Email sahi nahi.")
+                raise CosecError("Email is not valid.")
             e.email = v[:120]
         for k in ("incorporated_on", "last_agm"):
             if kw.get(k) is not None:
                 v = _iso(kw[k])
                 if kw[k] and not v:
-                    raise CosecError(f"{k}: tareekh YYYY-MM-DD ya DD-MM-YYYY mein.")
+                    raise CosecError(f"{k}: date as YYYY-MM-DD or DD-MM-YYYY.")
                 setattr(e, k, v)
         for k in ("paid_up", "turnover"):
             if k in kw and kw[k] is not None:
@@ -325,7 +325,7 @@ def save_entity(tenant: str, name: str = "", ref: str = "", **kw) -> dict:
         if kw.get("auditor_term_to_agm") not in (None, ""):
             y = R.fy_end_year(kw["auditor_term_to_agm"])
             if not y:
-                raise CosecError("Auditor term: kis FY ke AGM tak (jaise 2029-30).")
+                raise CosecError("Auditor term: up to the AGM of which FY (for example 2029-30).")
             aud["term_to_agm"] = y
         e.auditor = _d(aud)
         fl = _j(e.flags, {})
@@ -339,17 +339,17 @@ def save_entity(tenant: str, name: str = "", ref: str = "", **kw) -> dict:
                 raise CosecError("status = active | closed | struck_off")
             e.status = st
         if e.kind == "llp" and e.cin:
-            raise CosecError("LLP ka LLPIN hota hai, CIN nahi.")
+            raise CosecError("An LLP has an LLPIN, not a CIN.")
         s.flush()
         v = _ent_view(e)
     warn = []
     if v["kind"] == "llp" and not v["llpin"]:
-        warn.append("LLPIN baaki")
+        warn.append("LLPIN pending")
     if v["kind"] != "llp" and not v["cin"]:
-        warn.append("CIN baaki")
+        warn.append("CIN pending")
     if v["kind"] == "private" and v["small"] is None:
         warn.append(v["small_check"]["why"])
-    v["say"] = f"{v['number']} {v['name']} ({v['kind_label']}) save." + (f" Baaki: {'; '.join(warn)}." if warn else "")
+    v["say"] = f"{v['number']} {v['name']} ({v['kind_label']}) saved." + (f" Pending: {'; '.join(warn)}." if warn else "")
     return v
 
 
@@ -399,7 +399,7 @@ def person(tenant: str, entity_ref: str, name: str = "", role: str = "director",
         p = _find_person(s, e, ref or name, role) if (ref or name) else None
         if p is None:
             if not str(name or "").strip():
-                raise CosecError("Naam chahiye.")
+                raise CosecError("Name is needed.")
             p = CosecPerson(tenant_id=tenant, entity_id=e.id, role=role)
             s.add(p)
         if name:
@@ -412,7 +412,7 @@ def person(tenant: str, entity_ref: str, name: str = "", role: str = "director",
         except ValueError as ex:
             raise CosecError(str(ex))
         if e.kind == "llp" and role == "director":
-            raise CosecError("LLP mein director nahi, designated partner (role=partner).")
+            raise CosecError("An LLP has no directors, only designated partners (role=partner).")
         for k in ("designation", "address", "share_class", "folio"):
             if kw.get(k) is not None:
                 setattr(p, k, _clean(kw[k], 300))
@@ -420,31 +420,31 @@ def person(tenant: str, entity_ref: str, name: str = "", role: str = "director",
             if kw.get(k) is not None:
                 v = _iso(kw[k])
                 if kw[k] and not v:
-                    raise CosecError(f"{k}: tareekh samajh nahi aayi.")
+                    raise CosecError(f"{k}: date not understood.")
                 setattr(p, k, v)
         if kw.get("email") is not None:
             v = str(kw["email"]).strip()
             if v and "@" not in v:
-                raise CosecError("Email sahi nahi.")
+                raise CosecError("Email is not valid.")
             p.email = v[:120]
         if kw.get("phone") is not None:
             v = _phone(kw["phone"])
             if kw["phone"] and not v:
-                raise CosecError("Mobile 10 ankon ka chahiye.")
+                raise CosecError("Mobile number must be 10 digits.")
             p.phone = v
         if kw.get("id_ref") is not None:
             v = str(kw["id_ref"]).strip()
             if v and not re.fullmatch(r"\{id:[A-Za-z0-9_-]{3,40}\}", v):
-                raise CosecError("Aadhaar / PAN yahan nahi: Pehchaan Locker mein daaliye, yahan sirf {id:...} reference.")
+                raise CosecError("No Aadhaar / PAN here: put it in the ID Locker; only an {id:...} reference goes here.")
             p.id_ref = v
         for k in ("shares", "nominal"):
             if kw.get(k) is not None:
                 x = _num(kw[k])
                 if x is not None and x < 0:
-                    raise CosecError(f"{k} minus nahi ho sakta.")
+                    raise CosecError(f"{k} cannot be negative.")
                 setattr(p, k, (x or 0.0) if k == "shares" else x)
         if p.role == "director" and not p.din and kw.get("need_din", False):
-            raise CosecError("Director ka DIN chahiye.")
+            raise CosecError("The director's DIN is needed.")
         s.flush()
         v = _person_view(p)
     v["say"] = f"{v['name']} ({v['role']}) save" + (f", DIN {v['din']}" if v["din"] else "") + "."
@@ -508,10 +508,10 @@ def _calendar(s, e: CosecEntity, fy_end: int) -> None:
         f = _upsert(s, e, r["form"], r["period"], r["due"], r["basis"], r["est"], r["note"], "annual", {"fy": lab})
         keys.add(f.key)
         if r["form"] == "AGM" and agm_on and f.status in ("todo", "stale"):
-            f.status, f.filed_on, f.reason = "filed", agm_on.isoformat(), "AGM ho gaya"
+            f.status, f.filed_on, f.reason = "filed", agm_on.isoformat(), "AGM held"
     for f in s.scalars(select(CosecFiling).where(CosecFiling.entity_id == e.id, CosecFiling.source == "annual")).all():
         if _j(f.event, {}).get("fy") == lab and f.key not in keys and f.status == "todo":
-            f.status, f.reason = "not_needed", "Ab lagoo nahi (company ki jaankari badli)"
+            f.status, f.reason = "not_needed", "No longer applies (company details changed)"
     if e.kind != "llp":
         for p in s.scalars(select(CosecPerson).where(CosecPerson.entity_id == e.id, CosecPerson.role == "director", CosecPerson.ceased_on == "")).all():
             if not p.din:
@@ -519,7 +519,7 @@ def _calendar(s, e: CosecEntity, fy_end: int) -> None:
             k = R.kyc_due(_date(p.kyc_on), _date(p.din_on))
             if k["due"]:
                 _upsert(s, e, "DIR-3 KYC", f"{p.name} DIN {p.din} · {k['due'].isoformat()}", k["due"], k["basis"], k["est"],
-                        "DIN deactivate na ho - har director khud apne DSC / OTP se bharta hai", "kyc", {"person": p.id})
+                        "So the DIN is not deactivated - each director files it with their own DSC / OTP", "kyc", {"person": p.id})
 
 
 def calendar(tenant: str, ref: str, fy: str = "") -> dict:
@@ -529,7 +529,7 @@ def calendar(tenant: str, ref: str, fy: str = "") -> dict:
         on = today(tenant)
         y = R.fy_end_year(fy) if fy else (on.year if on.month >= 4 else on.year - 1)
         if not y:
-            raise CosecError("FY jaise 2025-26.")
+            raise CosecError("FY like 2025-26.")
         _calendar(s, e, y)
         s.flush()
         rows = [_filing_view(f, on) for f in s.scalars(select(CosecFiling).where(CosecFiling.entity_id == e.id)).all()]
@@ -537,8 +537,8 @@ def calendar(tenant: str, ref: str, fy: str = "") -> dict:
     rows.sort(key=lambda x: (x["status"] in ("filed", "not_needed"), x["due"] or "9999"))
     late = [r for r in rows if r["late"]]
     soon = [r for r in rows if not r["late"] and r["days_left"] is not None and r["days_left"] <= 30 and r["status"] not in ("filed", "not_needed")]
-    say = f"{name} FY {R.fy_label(y)}: {len(rows)} kaam." + (f" Der: {', '.join(r['form'] for r in late[:4])}." if late else "") + (
-        f" 30 din mein: {', '.join(r['form'] + ' ' + r['due'] for r in soon[:4])}." if soon else "") + f" {R.DRAFT_LINE}"
+    say = f"{name} FY {R.fy_label(y)}: {len(rows)} tasks." + (f" Late: {', '.join(r['form'] for r in late[:4])}." if late else "") + (
+        f" within 30 days: {', '.join(r['form'] + ' ' + r['due'] for r in soon[:4])}." if soon else "") + f" {R.DRAFT_LINE}"
     return {"entity": name, "fy": R.fy_label(y), "filings": rows, "say": say}
 
 
@@ -577,16 +577,16 @@ def filings(tenant: str, ref: str = "", status: str = "", within_days: int | Non
 def event(tenant: str, ref: str, kind: str = "", on: str = "", words: str = "", details: dict | None = None, conv: str = "") -> dict:
     kind = (kind or R.guess_event(words)).strip()
     if kind not in R.EVENTS:
-        raise CosecError("Kaunsa badlav? " + " | ".join(f"{k} ({v['label']})" for k, v in R.EVENTS.items()))
+        raise CosecError("Which change? " + " | ".join(f"{k} ({v['label']})" for k, v in R.EVENTS.items()))
     d0 = _date(on) or today(tenant)
     det = {k: v for k, v in (details or {}).items() if v not in (None, "", [], {})}
     notes: list[str] = []
     with _LOCK, session() as s:
         e = _ent(s, tenant, ref)
         if kind in ("director_appoint", "director_resign", "kyc_change") and e.kind == "llp":
-            raise CosecError("LLP mein partner badlav = partner_change.")
+            raise CosecError("A partner change in an LLP = partner_change.")
         if kind == "partner_change" and e.kind != "llp":
-            raise CosecError("partner_change sirf LLP ke liye.")
+            raise CosecError("partner_change is for an LLP only.")
         # register effects
         if kind in ("director_appoint", "partner_change") and det.get("name"):
             role = "partner" if e.kind == "llp" else ("kmp" if str(det.get("role", "")).lower() == "kmp" else "director")
@@ -605,17 +605,17 @@ def event(tenant: str, ref: str, kind: str = "", on: str = "", words: str = "", 
             else:
                 p.appointed_on, p.ceased_on = d0.isoformat(), ""
             if role == "director" and not p.din:
-                notes.append("Naye director ka DIN chahiye (DIN nahi to pehle DIR-3 / SPICe+ se DIN).")
+                notes.append("The new director's DIN is needed (no DIN yet: get one first through DIR-3 / SPICe+).")
         if kind == "director_resign":
             p = _find_person(s, e, det.get("din") or det.get("name") or "")
             if p is None:
-                raise CosecError("Kis director ne istifa diya? naam / DIN batao.")
+                raise CosecError("Which director resigned? Give the name / DIN.")
             p.ceased_on = d0.isoformat()
             det["name"] = p.name
             left = s.scalars(select(CosecPerson).where(CosecPerson.entity_id == e.id, CosecPerson.role == "director", CosecPerson.ceased_on == "")).all()
             need = 1 if e.kind == "opc" else 3 if e.kind in ("public", "listed") else 2
             if len(left) < need:
-                notes.append(f"Ab sirf {len(left)} director: {R.KINDS[e.kind]} mein kam se kam {need} chahiye - jaldi naya director (CS se pakka).")
+                notes.append(f"Only {len(left)} director(s) left: a {R.KINDS[e.kind]} needs at least {need} - appoint a new director soon (confirm with your CS).")
         if kind == "allotment":
             allottees = det.get("allottees") or ([{"name": det["name"], "shares": det.get("shares")}] if det.get("name") else [])
             if not allottees:
@@ -624,7 +624,7 @@ def event(tenant: str, ref: str, kind: str = "", on: str = "", words: str = "", 
             for a in allottees:
                 n = _num(a.get("shares"))
                 if not a.get("name") or not n or n <= 0:
-                    raise CosecError("Har allottee ka naam aur shares chahiye.")
+                    raise CosecError("Each allottee's name and shares are needed.")
                 p = _find_person(s, e, a.get("folio") or a["name"], "member") or CosecPerson(tenant_id=tenant, entity_id=e.id, role="member")
                 if p.id is None:
                     s.add(p)
@@ -641,14 +641,14 @@ def event(tenant: str, ref: str, kind: str = "", on: str = "", words: str = "", 
                 total += n
             det["total_shares"] = total
             if e.kind in ("private", "opc"):
-                notes.append("Private company mein Rule 9B (demat) lagoo ho to naye shares demat mein - CS se pakka.")
+                notes.append("If Rule 9B (demat) applies to the private company, the new shares go in demat - confirm with your CS.")
         if kind == "transfer":
             src = _find_person(s, e, det.get("from") or "", "member")
             n = _num(det.get("shares"))
             if src is None or not n or n <= 0 or not det.get("to"):
-                raise CosecError("Transfer: from (member), to (naam), shares chahiye.")
+                raise CosecError("Transfer: from (member), to (name) and shares are needed.")
             if (src.shares or 0) < n:
-                raise CosecError(f"{src.name} ke paas sirf {src.shares:g} shares.")
+                raise CosecError(f"{src.name} holds only {src.shares:g} shares.")
             dst = _find_person(s, e, det["to"], "member") or CosecPerson(tenant_id=tenant, entity_id=e.id, role="member")
             if dst.id is None:
                 s.add(dst)
@@ -674,14 +674,14 @@ def event(tenant: str, ref: str, kind: str = "", on: str = "", words: str = "", 
                             property=_clean(det.get("property"), 300), created_on=d0.isoformat(), charge_id=_clean(det.get("charge_id"), 30))
             s.add(c)
             if not c.holder:
-                notes.append("Charge holder (bank) ka naam batao.")
+                notes.append("Give the charge holder's (bank's) name.")
         if kind == "charge_satisfy":
             cs = [c for c in s.scalars(select(CosecCharge).where(CosecCharge.entity_id == e.id, CosecCharge.satisfied_on == "")).all()
                   if not det.get("holder") or str(det["holder"]).lower() in c.holder.lower() or det.get("charge_id") == c.charge_id]
             if len(cs) == 1:
                 cs[0].satisfied_on = d0.isoformat()
             else:
-                notes.append("Kaunsa charge chuka? holder / charge id batao (register mein mark karna hai).")
+                notes.append("Which charge was satisfied? Give the holder / charge id (it gets marked in the register).")
         if kind == "auditor_appoint" and det.get("name"):
             aud = _j(e.auditor, {})
             aud |= {"name": _clean(det["name"], 120), "frn": _clean(det.get("frn"), 30), "appointed_on": d0.isoformat()}
@@ -700,8 +700,8 @@ def event(tenant: str, ref: str, kind: str = "", on: str = "", words: str = "", 
             made.append(_filing_view(f, today(tenant)))
         name = f"{e.number} {e.name}"
     if any(m["days_left"] is not None and m["days_left"] < 0 for m in made):
-        notes.append("Tareekh pehle hi nikal chuki: extra fee lagegi, jaldi file karwaiye.")
-    say = (f"{name}: {R.EVENTS[kind]['label']} ({d0.isoformat()}) note kiya. "
+        notes.append("The due date has already passed: extra fees apply, get it filed soon.")
+    say = (f"{name}: {R.EVENTS[kind]['label']} ({d0.isoformat()}) noted. "
            + (("Filing: " + ", ".join(f"{m['form']} {m['due'] or '(RD / vakil)'}" for m in made) + ". ") if made else "")
            + (" ".join(notes) + " " if notes else "") + R.DRAFT_LINE)
     out = {"event": kind, "label": R.EVENTS[kind]["label"], "on": d0.isoformat(), "filings": made, "notes": notes, "say": say}
@@ -710,13 +710,13 @@ def event(tenant: str, ref: str, kind: str = "", on: str = "", words: str = "", 
 
 
 # ---------------------------------------------------------------- filing card (HER tap, fingerprint once a key is active)
-_STEPS = ["mca.gov.in par apne MCA V3 business user ID se login (aap / director khud)",
+_STEPS = ["Log in on mca.gov.in with your MCA V3 business user ID (you / the director yourself)",
           "MCA Services -> E-Filing -> {group} Forms -> {form}",
-          "CIN / LLPIN daal kar prefill dekhiye; neeche ki jaankari milaiye",
-          "Attachments lagaiye; jahan zaroori ho PCS / CA certification",
-          "Director / designated partner ka DSC lagaiye (Hoola DSC nahi chhoota)",
-          "Submit -> fee portal par khud bhariye -> SRN aur challan sambhaliye",
-          "SRN yahan 'Ho gaya' mein bataiye"]
+          "Enter the CIN / LLPIN and check the prefill; match it against the details below",
+          "Add the attachments; PCS / CA certification where needed",
+          "Attach the DSC of the director / designated partner (Hoola never touches a DSC)",
+          "Submit -> pay the fee on the portal yourself -> keep the SRN and challan",
+          "Give the SRN here under 'Done'"]
 
 
 def _filing_card(s, f: CosecFiling, tenant: str) -> dict:
@@ -727,35 +727,35 @@ def _filing_card(s, f: CosecFiling, tenant: str) -> dict:
     blockers, checks = [], []
     if e.kind == "llp":
         if not e.llpin:
-            blockers.append("LLPIN entity mein daaliye.")
+            blockers.append("Add the LLPIN to the entity.")
     elif not e.cin and f.form not in ("INC-20A",):
-        blockers.append("CIN entity mein daaliye.")
+        blockers.append("Add the CIN to the entity.")
     signers = s.scalars(select(CosecPerson).where(CosecPerson.entity_id == e.id, CosecPerson.role.in_(("director", "partner")),
                                                   CosecPerson.ceased_on == "")).all()
     if not [p for p in signers if p.din]:
-        blockers.append("Sign karne wale director / designated partner ka DIN chahiye.")
+        blockers.append("The DIN of the signing director / designated partner is needed.")
     if f.form in ("AOC-4", "MGT-7", "MGT-7A") and v["est"]:
-        blockers.append("AGM abhi hua nahi (ya meeting mein darj nahi): AGM ke baad hi yeh form.")
+        blockers.append("The AGM has not happened yet (or is not recorded in meetings): this form comes only after the AGM.")
     if f.form in ("AOC-4", "AOC-4 OPC", "ADT-1") and not _j(e.auditor, {}).get("name"):
-        blockers.append("Auditor ka naam entity mein daaliye.")
+        blockers.append("Add the auditor's name to the entity.")
     if f.form == "ADT-1" and not _j(e.auditor, {}).get("frn"):
-        checks.append("Auditor ka FRN (firm registration no.) bhi rakhiye.")
+        checks.append("Also keep the auditor's FRN (firm registration no.).")
     if f.form in ("MGT-7",) and R.mgt8_needed(e.kind, e.paid_up, e.turnover):
-        checks.append("MGT-8 (PCS ka certificate) chahiye.")
+        checks.append("MGT-8 (PCS certificate) is needed.")
     if f.form == "DIR-12" and ev.get("kind") == "director_appoint" and not ev.get("din"):
-        blockers.append("Naye director ka DIN chahiye.")
+        blockers.append("The new director's DIN is needed.")
     if f.form == "PAS-3" and not ev.get("allottees") and not ev.get("total_shares"):
-        blockers.append("Allottees ki list chahiye.")
+        blockers.append("The list of allottees is needed.")
     if f.form in ("AGM", "FIRST-BOARD", "FIRST-AUDITOR"):
-        blockers.append("Yeh MCA form nahi, meeting / Board ka kaam hai: Meetings mein darj kijiye.")
+        blockers.append("This is not an MCA form, it is meeting / Board work: record it under Meetings.")
     if f.form == "INC-23":
-        blockers.append("Doosre state ka shift Regional Director ke paas jaata hai: vakil / CS ka kaam.")
+        blockers.append("A shift to another state goes to the Regional Director: work for a lawyer / CS.")
     if v["late"]:
-        checks.append(f"{-v['days_left']} din der: {v['fee']['text']}")
+        checks.append(f"{-v['days_left']} days late: {v['fee']['text']}")
         if f.form in ("AOC-4", "MGT-7", "MGT-7A", "AOC-4 OPC") and -v["days_left"] > 365:
-            checks.append("Lambi der: s.164(2) (3 saal non-filing par directors disqualify) ka khatra - CS se baat kijiye.")
+            checks.append("Long delay: risk under s.164(2) (directors disqualified after 3 years of non-filing) - talk to your CS.")
     if v["est"]:
-        checks.append("Tareekh andaaza hai: " + f.basis)
+        checks.append("The date is an estimate: " + f.basis)
     group = "LLP" if e.kind == "llp" else "Company"
     show = {"entity": f"{e.number} {e.name}", "cin": e.cin or e.llpin, "form": f.form, "label": v["label"], "law": v["law"],
             "period": f.period, "due": f.due, "basis": f.basis, "event": ev, "blockers": blockers, "checks": checks,
@@ -769,15 +769,15 @@ def filing_request(tenant: str, fid: str, conv: str = "") -> dict:
     with _LOCK, session() as s:
         f = s.get(CosecFiling, fid)
         if f is None or f.tenant_id != tenant:
-            raise CosecError("Filing nahi mili.")
+            raise CosecError("Filing not found.")
         if f.status in ("filed", "not_needed"):
-            raise CosecError(f"{f.form} pehle hi '{f.status}' hai.")
+            raise CosecError(f"{f.form} is already '{f.status}'.")
         show = _filing_card(s, f, tenant)
         f.card, f.hash, f.status = _d(show), _hash(show), "waiting"
         s.flush()
         v = _filing_view(f, today(tenant))
-    v["say"] = (f"{v['form']} ({v['period']}): " + (f"{len(show['blockers'])} rukawat - pehle: {show['blockers'][0]}" if show["blockers"]
-                                                       else "card taiyaar, aapki haan chahiye. MCA par login / DSC / fee aap khud.")) + f" {R.DRAFT_LINE}"
+    v["say"] = (f"{v['form']} ({v['period']}): " + (f"{len(show['blockers'])} blocker(s) - first: {show['blockers'][0]}" if show["blockers"]
+                                                       else "card ready, your approval is needed. You do the MCA login / DSC / fee yourself.")) + f" {R.DRAFT_LINE}"
     _publish(tenant, "cosec_filing", {"filing": v, "say": v["say"]}, conv)
     return v
 
@@ -788,7 +788,7 @@ def filing_challenge(tenant: str, fid: str) -> dict:
     with session() as s:
         f = s.get(CosecFiling, fid)
         if f is None or f.tenant_id != tenant or f.status != "waiting":
-            raise CosecError("Yeh card ab baaki nahi hai.")
+            raise CosecError("This card is no longer pending.")
         digest, form, period = f.hash, f.form, f.period
         ent = _j(f.card, {}).get("entity", "")
     nonce = secrets.token_urlsafe(18)
@@ -799,7 +799,7 @@ def filing_challenge(tenant: str, fid: str) -> dict:
         s.add(ch)
         s.flush()
         chid = ch.id
-    return {"challenge_id": chid, "message": msg, "show": {"title": f"{form} file karo", "subtitle": f"{ent} · {period}"[:120]},
+    return {"challenge_id": chid, "message": msg, "show": {"title": f"File {form}", "subtitle": f"{ent} · {period}"[:120]},
             "expires_at": exp.isoformat()}
 
 
@@ -817,21 +817,21 @@ def _verify_fingerprint(tenant: str, fid: str, digest: str, proof: dict | None) 
 def decide_filing(tenant: str, fid: str, yes: bool, card_hash: str = "", reason: str = "", proof: dict | None = None,
                   by_tap: bool = False) -> dict:
     if not by_tap:
-        raise CosecError("Filing ki haan sirf aapke tap se (app ka card).")
+        raise CosecError("Filing is approved only by your tap (the card in the app).")
     with _LOCK, session() as s:
         f = s.get(CosecFiling, fid)
         if f is None or f.tenant_id != tenant:
-            raise CosecError("Card nahi mila.")
+            raise CosecError("Card not found.")
         if f.status != "waiting":
-            return {"filing": _filing_view(f, today(tenant)), "say": f"{f.form} pehle hi '{f.status}' hai."}
+            return {"filing": _filing_view(f, today(tenant)), "say": f"{f.form} is already '{f.status}'."}
         now_show = _filing_card(s, f, tenant)
         stale = not card_hash or card_hash != f.hash or _hash(now_show) != f.hash
         if stale:
             f.status, f.hash = "todo", ""
     if stale:
-        raise CosecError("Jaankari badal gayi hai; naya card banaiye.")
+        raise CosecError("The details have changed; make a new card.")
     if yes and now_show["blockers"]:
-        raise CosecError("Rukawat baaki hai: " + now_show["blockers"][0])
+        raise CosecError("A blocker is still open: " + now_show["blockers"][0])
     if yes:
         from .. import approvekey as ak
         if ak.active_on(tenant):
@@ -843,9 +843,9 @@ def decide_filing(tenant: str, fid: str, yes: bool, card_hash: str = "", reason:
         f.decided_at = now()
         v = _filing_view(f, today(tenant))
     if yes:
-        v["say"] = f"{v['form']} maana. Ab MCA V3 par aap login karke: " + " -> ".join(v["card"].get("steps", [])[1:6]) + f". {R.DRAFT_LINE}"
+        v["say"] = f"{v['form']} approved. Now log in on MCA V3 yourself: " + " -> ".join(v["card"].get("steps", [])[1:6]) + f". {R.DRAFT_LINE}"
     else:
-        v["say"] = f"{v['form']}: abhi nahi; list mein wapas."
+        v["say"] = f"{v['form']}: not now; back on the list."
     return v
 
 
@@ -853,31 +853,31 @@ def filing_done(tenant: str, fid: str, srn: str = "", filed_on: str = "", fee=No
     with _LOCK, session() as s:
         f = s.get(CosecFiling, fid)
         if f is None or f.tenant_id != tenant:
-            raise CosecError("Filing nahi mili.")
+            raise CosecError("Filing not found.")
         if f.status != "approved" and f.form not in ("AGM", "FIRST-BOARD", "FIRST-AUDITOR", "DIR-3 KYC", "DIR-3 KYC WEB", "ADT-3"):
-            raise CosecError(f"{f.form}: pehle card par aapki haan (tap), phir 'ho gaya'.")
+            raise CosecError(f"{f.form}: first your approval on the card (tap), then 'done'.")
         f.status = "filed"
         f.srn = _clean(srn, 40)
         f.filed_on = _iso(filed_on) or today(tenant).isoformat()
         f.fee_paid = _num(fee) if fee not in (None, "") else None
         v = _filing_view(f, today(tenant))
-    v["say"] = f"{v['form']} file hua" + (f" (SRN {v['srn']})" if v["srn"] else "") + "." + (
-        f" Der hui: {v['fee']['text']}" if v.get("fee") and v["fee"].get("days") else "")
+    v["say"] = f"{v['form']} filed" + (f" (SRN {v['srn']})" if v["srn"] else "") + "." + (
+        f" Late: {v['fee']['text']}" if v.get("fee") and v["fee"].get("days") else "")
     return v
 
 
 def filing_skip(tenant: str, fid: str, reason: str) -> dict:
     if not str(reason or "").strip():
-        raise CosecError("Kyun zaroori nahi? wajah likhiye (record ke liye).")
+        raise CosecError("Why is it not needed? Write the reason (for the record).")
     with _LOCK, session() as s:
         f = s.get(CosecFiling, fid)
         if f is None or f.tenant_id != tenant:
-            raise CosecError("Filing nahi mili.")
+            raise CosecError("Filing not found.")
         if f.status == "filed":
-            raise CosecError("File ho chuki filing ko 'zaroori nahi' nahi kar sakte.")
+            raise CosecError("A filing already filed cannot be marked 'not needed'.")
         f.status, f.reason = "not_needed", _clean(reason, 300)
         v = _filing_view(f, today(tenant))
-    v["say"] = f"{v['form']} ({v['period']}): zaroori nahi - '{v['reason']}'."
+    v["say"] = f"{v['form']} ({v['period']}): not needed - '{v['reason']}'."
     return v
 
 
@@ -902,7 +902,7 @@ def _meeting(s, tenant: str, mid: str) -> CosecMeeting:
         rows = s.scalars(select(CosecMeeting).where(CosecMeeting.tenant_id == tenant, CosecMeeting.number == str(mid or "").upper())).all()
         if len(rows) == 1:
             return rows[0]
-        raise CosecError("Meeting nahi mili.")
+        raise CosecError("Meeting not found.")
     return m
 
 
@@ -913,23 +913,23 @@ def meeting_new(tenant: str, ref: str, kind: str = "board", on: str = "", time: 
         raise CosecError("kind = board | agm | egm | committee")
     d = _date(on)
     if not d:
-        raise CosecError("Meeting ki tareekh chahiye.")
+        raise CosecError("The meeting date is needed.")
     if mode not in ("physical", "vc", "hybrid"):
         raise CosecError("mode = physical | vc | hybrid")
     if time and not re.match(r"^\d{1,2}:\d{2}(\s?[ap]m)?$", str(time).strip(), re.I):
-        raise CosecError("Samay jaise 11:00 ya 4:30 pm.")
+        raise CosecError("Time like 11:00 or 4:30 pm.")
     with _LOCK, session() as s:
         e = _ent(s, tenant, ref)
         if e.kind == "llp":
-            raise CosecError("LLP mein Board meeting / AGM ka kanooni dhaancha nahi (LLP agreement dekhiye).")
+            raise CosecError("An LLP has no legal framework for Board meetings / AGMs (see the LLP agreement).")
         if e.kind == "opc" and kind in ("agm",):
-            raise CosecError("OPC ko AGM nahi karna hota (s.96).")
+            raise CosecError("An OPC does not have to hold an AGM (s.96).")
         items = [_clean(x, 400) for x in (agenda or []) if str(x).strip()] or list(R.AGENDA[kind])
         fyl = ""
         if kind == "agm":
             y = R.fy_end_year(fy) if fy else R.fy_end_year(d) - 1
             if not y:
-                raise CosecError("AGM kis FY ke accounts ke liye? (jaise 2025-26)")
+                raise CosecError("AGM for the accounts of which FY? (for example 2025-26)")
             fyl = R.fy_label(y)
         pre = {"board": "BM", "agm": "AGM", "egm": "EGM", "committee": "CM"}[kind]
         m = CosecMeeting(tenant_id=tenant, entity_id=e.id, number=f"{pre}-{_next(s, tenant, pre + ':' + e.id):03d}", kind=kind, fy=fyl,
@@ -943,11 +943,11 @@ def meeting_new(tenant: str, ref: str, kind: str = "board", on: str = "", time: 
     if kind == "agm" and fyl:
         last = R.add_months(date(R.fy_end_year(fyl), 3, 31), 6)
         if d > last:
-            checks.append(f"AGM ki aam aakhri tareekh {last.isoformat()} (pehle AGM ko 9 mahine): yeh baad mein hai - "
-                          "ROC se extension ya der ka asar, CS se pakka.")
+            checks.append(f"The usual AGM deadline is {last.isoformat()} (first AGM: 9 months): this is after it - "
+                          "ROC extension or late effects, confirm with your CS.")
     v["checks"] = checks
-    v["say"] = (f"{ename}: {v['number']} {v['kind_label']} {v['on']} banayi. Notice {v.get('latest_notice', '')} tak jaana chahiye "
-                f"({R.notice_need(kind)} clear din)." + (" " + checks[0] if checks else ""))
+    v["say"] = (f"{ename}: {v['number']} {v['kind_label']} {v['on']} created. The notice should go out by {v.get('latest_notice', '')} "
+                f"({R.notice_need(kind)} clear days)." + (" " + checks[0] if checks else ""))
     return v
 
 
@@ -955,11 +955,11 @@ def meeting_update(tenant: str, mid: str, **kw) -> dict:
     with _LOCK, session() as s:
         m = _meeting(s, tenant, mid)
         if m.status not in ("draft", "notice_waiting"):
-            raise CosecError(f"{m.number} ka notice ja chuka: tareekh / agenda badalna = naya notice (nayi meeting banaiye).")
+            raise CosecError(f"{m.number} notice has already gone: changing the date / agenda = a new notice (create a new meeting).")
         if kw.get("on"):
             d = _date(kw["on"])
             if not d:
-                raise CosecError("Tareekh samajh nahi aayi.")
+                raise CosecError("Date not understood.")
             m.on = d.isoformat()
         for k in ("time", "place", "chair"):
             if kw.get(k) is not None:
@@ -972,7 +972,7 @@ def meeting_update(tenant: str, mid: str, **kw) -> dict:
             m.status = "draft"
             m.notice_hash = ""
         v = _meet_view(m, today(tenant))
-    v["say"] = f"{v['number']} badli." + (" Purana notice card ab bekaar: naya card banaiye." if kw else "")
+    v["say"] = f"{v['number']} changed." + (" The old notice card is no longer valid: make a new card." if kw else "")
     return v
 
 
@@ -988,14 +988,14 @@ def _recipients(s, e: CosecEntity, kind: str) -> list[dict]:
 
 def _notice_text(e: CosecEntity, m: CosecMeeting, st: CosecSettings) -> str:
     d = _date(m.on)
-    when = d.strftime("%A, %d %B %Y") if d else "[tareekh]"
+    when = d.strftime("%A, %d %B %Y") if d else "[date]"
     place = ("through Video Conferencing (VC) / Other Audio Visual Means; deemed venue: Registered Office" if m.mode == "vc"
-             else (m.place or "[jagah]"))
+             else (m.place or "[place]"))
     head = {"board": "Meeting of the Board of Directors", "committee": "Committee Meeting", "agm": "Annual General Meeting",
             "egm": "Extra-ordinary General Meeting"}[m.kind]
     lines = [f"{e.name}", f"CIN: {e.cin or '[CIN]'}", f"Regd. Office: {e.registered_office or '[registered office]'}", "",
              f"NOTICE of {head} ({m.number})", "",
-             f"NOTICE is hereby given that the {head} of {e.name} will be held on {when} at {m.time or '[samay]'} {place}, "
+             f"NOTICE is hereby given that the {head} of {e.name} will be held on {when} at {m.time or '[time]'} {place}, "
              "to transact the following business:", ""]
     for i, a in enumerate(_j(m.agenda, []), 1):
         lines.append(f"{i}. {a}")
@@ -1003,11 +1003,11 @@ def _notice_text(e: CosecEntity, m: CosecMeeting, st: CosecSettings) -> str:
         lines += ["", "Notes:",
                   "1. A member entitled to attend and vote is entitled to appoint a proxy to attend and vote instead of himself / herself; "
                   "a proxy need not be a member. [Check: proxy rules for this company / VC meeting]",
-                  "2. Explanatory statement under Section 102 for special business: [chahiye, agar special business hai]"]
+                  "2. Explanatory statement under Section 102 for special business: [needed if there is special business]"]
     if m.shorter_consent:
         lines += ["", "This meeting is being convened at a shorter notice. [Consent on record]"]
     lines += ["", "By order of the Board", f"For {e.name}", "", f"{st.cs_name or '[Company Secretary / Director]'}"
-              + (f" ({st.membership_no})" if st.membership_no else ""), f"Date: [notice ki tareekh]", "",
+              + (f" ({st.membership_no})" if st.membership_no else ""), f"Date: [notice date]", "",
               f"[{R.DRAFT_LINE}]"]
     return "\n".join(lines)
 
@@ -1019,18 +1019,18 @@ def _notice_show(s, tenant: str, m: CosecMeeting, send_on: date) -> dict:
     chk = R.notice_check(m.kind, d, send_on, m.notice_mode, m.shorter_consent)
     text = _notice_text(e, m, st)
     blockers = []
-    for ph in ("[samay]", "[jagah]", "[CIN]", "[registered office]"):
+    for ph in ("[time]", "[place]", "[CIN]", "[registered office]"):
         if ph in text:
-            blockers.append(f"Notice mein {ph} khaali hai.")
+            blockers.append(f"In the notice, {ph} is empty.")
     if not chk["ok"]:
         blockers.append(chk["note"])
     if send_on > d:
-        blockers.append("Meeting ki tareekh nikal chuki.")
+        blockers.append("The meeting date has passed.")
     rec = _recipients(s, e, m.kind)
     if not rec:
-        blockers.append("Directors / members ki list khaali: pehle log jodiye.")
+        blockers.append("The list of directors / members is empty: add people first.")
     no_contact = [r["name"] for r in rec if not r["email"] and not r["phone"] and r["role"] != "auditor"]
-    checks = [chk["note"]] + ([f"Contact nahi: {', '.join(no_contact[:5])} (haath se notice)"] if no_contact else [])
+    checks = [chk["note"]] + ([f"No contact: {', '.join(no_contact[:5])} (notice by hand)"] if no_contact else [])
     return {"meeting": m.number, "entity": f"{e.number} {e.name}", "kind": m.kind, "on": m.on, "send_on": send_on.isoformat(),
             "mode": m.notice_mode, "text": text, "recipients": rec, "blockers": blockers, "checks": checks, "draft_line": R.DRAFT_LINE}
 
@@ -1039,7 +1039,7 @@ def notice_request(tenant: str, mid: str, send_on: str = "", mode: str = "", sho
     with _LOCK, session() as s:
         m = _meeting(s, tenant, mid)
         if m.status not in ("draft", "notice_waiting"):
-            raise CosecError(f"{m.number} ka notice pehle hi '{m.status}'.")
+            raise CosecError(f"{m.number} notice is already '{m.status}'.")
         if mode:
             if mode not in ("email", "hand", "post", "courier"):
                 raise CosecError("mode = email | hand | post | courier")
@@ -1052,19 +1052,19 @@ def notice_request(tenant: str, mid: str, send_on: str = "", mode: str = "", sho
         m.notice_plan_on = sd.isoformat()
         s.flush()
         v = _meet_view(m, today(tenant)) | {"card": show}
-    v["say"] = (f"{v['number']} ka notice: " + (f"rukawat - {show['blockers'][0]}" if show["blockers"] else
-                                                  f"taiyaar ({len(show['recipients'])} logon ko). Aapki haan ka card bheja.") + f" {R.DRAFT_LINE}")
+    v["say"] = (f"{v['number']} notice: " + (f"blocker - {show['blockers'][0]}" if show["blockers"] else
+                                                  f"ready ({len(show['recipients'])} people). Your approval card has been sent.") + f" {R.DRAFT_LINE}")
     _publish(tenant, "cosec_notice", {"meeting": v, "say": v["say"]}, conv)
     return v
 
 
 def decide_notice(tenant: str, mid: str, yes: bool, card_hash: str = "", send_on: str = "", by_tap: bool = False, conv: str = "") -> dict:
     if not by_tap:
-        raise CosecError("Notice bhejne ki haan sirf aapke tap se (app ka card).")
+        raise CosecError("Sending the notice is approved only by your tap (the card in the app).")
     with _LOCK, session() as s:
         m = _meeting(s, tenant, mid)
         if m.status != "notice_waiting":
-            return {"meeting": _meet_view(m), "say": f"{m.number} pehle hi '{m.status}'."}
+            return {"meeting": _meet_view(m), "say": f"{m.number} is already '{m.status}'."}
         sd = _date(send_on) or _date(m.notice_plan_on) or today(tenant)
         show = _notice_show(s, tenant, m, sd)
         stale = not card_hash or card_hash != m.notice_hash or _hash(show) != m.notice_hash
@@ -1072,12 +1072,12 @@ def decide_notice(tenant: str, mid: str, yes: bool, card_hash: str = "", send_on
             m.status = "draft"
         if not stale and not yes:
             m.status = "draft"
-            return {"meeting": _meet_view(m), "say": f"{m.number}: notice abhi nahi."}
+            return {"meeting": _meet_view(m), "say": f"{m.number}: no notice for now."}
         text, number, ent = m.notice_text, m.number, show["entity"]
     if stale:
-        raise CosecError("Notice badal gaya (ya tareekh) - naya card banaiye.")
+        raise CosecError("The notice (or the date) has changed - make a new card.")
     if show["blockers"]:
-        raise CosecError("Rukawat: " + show["blockers"][0])
+        raise CosecError("Blocker: " + show["blockers"][0])
     from .. import officegen
     f = _store(tenant, f"Notice_{number}.docx", officegen.make_docx(f"Notice {number}", text), DOCX, conv, f"Notice {number}")
     subj = f"Notice: {ent.split(' ', 1)[-1]} {number} on {show['on']}"
@@ -1088,22 +1088,22 @@ def decide_notice(tenant: str, mid: str, yes: bool, card_hash: str = "", send_on
         m.notice_sent_on, m.notice_file, m.status = sd.isoformat(), f.get("file_id", ""), "notice_sent"
         v = _meet_view(m)
     return {"meeting": v, "file": f, "drafts": drafts, "text": text,
-            "say": f"{number} notice taiyaar (Word file). Har director / member ko aap bhejiye (email / WhatsApp drafts); Hoola khud nahi bhejta."}
+            "say": f"{number} notice ready (Word file). You send it to each director / member (email / WhatsApp drafts); Hoola does not send it."}
 
 
 def attendance(tenant: str, mid: str, present: list | None = None, interested: list | None = None, chair: str = "",
                members_count: int | None = None, held: bool = True) -> dict:
     present = [str(x).strip() for x in (present or []) if str(x).strip()]
     if not present:
-        raise CosecError("Kaun maujood tha? naam / DIN ki list.")
+        raise CosecError("Who was present? A list of names / DINs.")
     interested_set = {str(x).strip().lower() for x in (interested or [])}
     with _LOCK, session() as s:
         m = _meeting(s, tenant, mid)
         e = s.get(CosecEntity, m.entity_id)
         if m.status in ("minutes_waiting", "minuted", "cancelled"):
-            raise CosecError(f"{m.number} '{m.status}': attendance ab nahi badlegi.")
+            raise CosecError(f"{m.number} '{m.status}': attendance can no longer change.")
         if m.status in ("draft", "notice_waiting") and not m.shorter_consent:
-            raise CosecError("Notice abhi gaya nahi (card par aapki haan). Shorter notice ho to notice card mein bataiye.")
+            raise CosecError("The notice has not gone yet (your approval on the card). If it is a shorter notice, say so in the notice card.")
         dirs = s.scalars(select(CosecPerson).where(CosecPerson.entity_id == e.id, CosecPerson.role == "director", CosecPerson.ceased_on == "")).all()
         rows, unknown = [], []
         for name in present:
@@ -1134,7 +1134,7 @@ def attendance(tenant: str, mid: str, present: list | None = None, interested: l
     if kind == "agm" and fyl and held:
         calendar(tenant, eref, fyl)
     v["say"] = (f"{v['number']}: {len([r for r in rows if r['present']])} maujood, quorum {q['need']} - " + ("poora." if q["ok"] else
-                "POORA NAHI: meeting adjourn / dobara (s.103 / s.174), resolutions mat likhiye.") + (f" Anjaan naam: {', '.join(unknown)}." if unknown else ""))
+                "NOT MET: adjourn / reconvene the meeting (s.103 / s.174), do not record resolutions.") + (f" Unknown names: {', '.join(unknown)}." if unknown else ""))
     return v
 
 
@@ -1144,33 +1144,33 @@ def resolution(tenant: str, mid: str = "", ref: str = "", kind: str = "board", t
     if kind not in ("board", "ordinary", "special", "circular"):
         raise CosecError("kind = board | ordinary | special | circular")
     if not str(text or "").strip():
-        raise CosecError("Resolution ka text chahiye.")
+        raise CosecError("The resolution text is needed.")
     with _LOCK, session() as s:
         m = None
         if mid:
             m = _meeting(s, tenant, mid)
             e = s.get(CosecEntity, m.entity_id)
             if m.status != "held":
-                raise CosecError(f"{m.number} abhi '{m.status}': resolution meeting hone ke baad (attendance + quorum) aur minutes se pehle.")
+                raise CosecError(f"{m.number} is now '{m.status}': resolutions come after the meeting is held (attendance + quorum) and before the minutes.")
             if not _j(m.quorum, {}).get("ok"):
-                raise CosecError("Quorum poora nahi tha: resolution nahi.")
+                raise CosecError("There was no quorum: no resolution.")
             if kind in ("ordinary", "special") and m.kind not in ("agm", "egm"):
-                raise CosecError("Ordinary / special resolution general meeting mein; Board mein 'board'.")
+                raise CosecError("Ordinary / special resolutions go in a general meeting; in a Board meeting use 'board'.")
             if kind == "board" and m.kind not in ("board", "committee"):
-                raise CosecError("General meeting mein 'ordinary' ya 'special'.")
+                raise CosecError("In a general meeting: 'ordinary' or 'special'.")
         else:
             e = _ent(s, tenant, ref)
             if kind != "circular":
-                raise CosecError("Meeting ke bina sirf circular resolution (Board).")
+                raise CosecError("Without a meeting, only a circular resolution (Board).")
         d0 = _date(passed_on) or (_date(m.on) if m else today(tenant))
         vf, va = (_num(votes_for) if votes_for not in (None, "") else None), (_num(votes_against) if votes_against not in (None, "") else None)
         result = "passed"
         note = ""
         if vf is not None and va is not None:
             if kind == "special" and vf < 3 * va:
-                result, note = "failed", "Special resolution ko 'against' ke kam se kam teen guna 'for' chahiye (s.114(2))."
+                result, note = "failed", "A special resolution needs at least three times as many 'for' votes as 'against' (s.114(2))."
             elif kind in ("ordinary", "board", "circular") and vf <= va:
-                result, note = "failed", "'For' 'against' se zyada nahi."
+                result, note = "failed", "'For' is not more than 'against'."
         y = d0.year
         r = CosecResolution(tenant_id=tenant, entity_id=e.id, meeting_id=m.id if m else "", kind=kind, text=_clean(text, 3000),
                             passed_on=d0.isoformat(), votes_for=vf, votes_against=va, result=result,
@@ -1188,7 +1188,7 @@ def resolution(tenant: str, mid: str = "", ref: str = "", kind: str = "board", t
     v = {"id": rid, "number": rnum, "kind": kind, "result": result, "passed_on": d0.isoformat(), "filing": filing}
     v["say"] = (f"{rnum} ({kind}) {'pass' if result == 'passed' else 'FAIL'}." + (f" {note}" if note else "")
                 + (f" MGT-14 {filing['due']} tak." if filing else "")
-                + (" Private company ki kuch Board resolutions par MGT-14 nahi lagta - CS se pakka." if kind == "board" and not mgt14 else ""))
+                + (" Some Board resolutions of a private company do not need MGT-14 - confirm with your CS." if kind == "board" and not mgt14 else ""))
     return v
 
 
@@ -1205,8 +1205,8 @@ def _minutes_text(s, m: CosecMeeting) -> str:
     att = _j(m.attendance, [])
     q = _j(m.quorum, {})
     head = R.MEETING_KINDS.get(m.kind, m.kind)
-    lines = [f"MINUTES of the {head} ({m.number}) of {e.name} held on {m.on} at {m.time or '[samay]'} "
-             f"{'through VC' if m.mode == 'vc' else ('at ' + (m.place or '[jagah]'))}", "",
+    lines = [f"MINUTES of the {head} ({m.number}) of {e.name} held on {m.on} at {m.time or '[time]'} "
+             f"{'through VC' if m.mode == 'vc' else ('at ' + (m.place or '[place]'))}", "",
              "Present: " + (", ".join(r["name"] for r in att if r.get("present")) or "[ ]")]
     absent = [r["name"] for r in att if not r.get("present")]
     if absent:
@@ -1217,7 +1217,7 @@ def _minutes_text(s, m: CosecMeeting) -> str:
     res = s.scalars(select(CosecResolution).where(CosecResolution.meeting_id == m.id).order_by(CosecResolution.created_at)).all()
     for i, a in enumerate(_j(m.agenda, []), 1):
         lines.append(f"{i}. {a}")
-        lines.append("   [Discussion: kya baat hui]")
+        lines.append("   [Discussion: what was discussed]")
     if res:
         lines += ["", "Resolutions:"]
         for r in res:
@@ -1232,37 +1232,37 @@ def minutes_draft(tenant: str, mid: str) -> dict:
     with _LOCK, session() as s:
         m = _meeting(s, tenant, mid)
         if m.status not in ("held", "minutes_waiting"):
-            raise CosecError(f"{m.number} '{m.status}': minutes meeting hone ke baad (attendance).")
+            raise CosecError(f"{m.number} '{m.status}': minutes come after the meeting is held (attendance).")
         if not m.minutes:
             m.minutes = _minutes_text(s, m)
         v = _meet_view(m, today(tenant))
     dl = v.get("deadlines", {})
-    v["say"] = (f"{v['number']} minutes ka draft. " + (f"Draft directors ko {dl.get('draft_by')} tak, comments {dl.get('comments_by')} tak, "
-                                                       if "draft_by" in dl else "") + f"sign {dl.get('sign_by')} tak. [..] wali jagah bhariye.")
+    v["say"] = (f"{v['number']} minutes drafted. " + (f"Draft to directors by {dl.get('draft_by')}, comments by {dl.get('comments_by')}, "
+                                                       if "draft_by" in dl else "") + f"sign by {dl.get('sign_by')}. Fill in the [..] places.")
     return v
 
 
 def minutes_edit(tenant: str, mid: str, text: str) -> dict:
     if not str(text or "").strip():
-        raise CosecError("Minutes ka text chahiye.")
+        raise CosecError("The minutes text is needed.")
     with _LOCK, session() as s:
         m = _meeting(s, tenant, mid)
         if m.status not in ("held", "minutes_waiting"):
-            raise CosecError(f"{m.number} '{m.status}': signed minutes badle nahi jaate.")
+            raise CosecError(f"{m.number} '{m.status}': signed minutes cannot be changed.")
         m.minutes = _clean(text, 20000)
         if m.status == "minutes_waiting":
             m.status = "held"
             m.minutes_hash = ""
         v = _meet_view(m)
-    v["say"] = f"{v['number']} minutes badle." + (" Purana sign card bekaar." if v["status"] == "held" else "")
+    v["say"] = f"{v['number']} minutes badle." + (" The old sign card is no longer valid." if v["status"] == "held" else "")
     return v
 
 
 def _minutes_show(s, m: CosecMeeting) -> dict:
     e = s.get(CosecEntity, m.entity_id)
-    blockers = [f"Minutes mein '{ph}' khaali" for ph in ("[samay]", "[jagah]", "[Chairperson]", "[Discussion: kya baat hui]") if ph in (m.minutes or "")]
+    blockers = [f"In the minutes, '{ph}' is empty" for ph in ("[time]", "[place]", "[Chairperson]", "[Discussion: what was discussed]") if ph in (m.minutes or "")]
     if not m.minutes:
-        blockers.append("Minutes ka draft nahi bana.")
+        blockers.append("The minutes draft has not been made.")
     return {"meeting": m.number, "entity": f"{e.number} {e.name}", "on": m.on, "text": m.minutes, "blockers": blockers, "draft_line": R.DRAFT_LINE}
 
 
@@ -1276,14 +1276,14 @@ def minutes_request(tenant: str, mid: str, conv: str = "") -> dict:
         show = _minutes_show(s, m)
         m.minutes_hash, m.status = _hash(show), "minutes_waiting"
         v = _meet_view(m, today(tenant)) | {"card": show}
-    v["say"] = f"{v['number']} minutes: " + (f"rukawat - {show['blockers'][0]}" if show["blockers"] else "chairperson ke sign ke liye taiyaar, aapki haan ka card.")
+    v["say"] = f"{v['number']} minutes: " + (f"blocker - {show['blockers'][0]}" if show["blockers"] else "ready for the chairperson's signature, your approval card.")
     _publish(tenant, "cosec_minutes", {"meeting": v, "say": v["say"]}, conv)
     return v
 
 
 def decide_minutes(tenant: str, mid: str, yes: bool, card_hash: str = "", signed_on: str = "", by_tap: bool = False, conv: str = "") -> dict:
     if not by_tap:
-        raise CosecError("Minutes pakke sirf aapke tap se (app ka card).")
+        raise CosecError("Minutes are made final only by your tap (the card in the app).")
     with _LOCK, session() as s:
         m = _meeting(s, tenant, mid)
         if m.status != "minutes_waiting":
@@ -1293,13 +1293,13 @@ def decide_minutes(tenant: str, mid: str, yes: bool, card_hash: str = "", signed
         if stale or not yes:
             m.status = "held"
         if not stale and not yes:
-            return {"meeting": _meet_view(m), "say": f"{m.number}: minutes abhi pakke nahi."}
+            return {"meeting": _meet_view(m), "say": f"{m.number}: minutes not final yet."}
         text, number = m.minutes, m.number
         held = _date(m.on)
     if stale:
-        raise CosecError("Minutes badal gaye - naya card banaiye.")
+        raise CosecError("The minutes have changed - make a new card.")
     if show["blockers"]:
-        raise CosecError("Rukawat: " + show["blockers"][0])
+        raise CosecError("Blocker: " + show["blockers"][0])
     sd = _date(signed_on) or today(tenant)
     late = (sd - held).days > 30 if held else False
     from .. import officegen
@@ -1308,8 +1308,8 @@ def decide_minutes(tenant: str, mid: str, yes: bool, card_hash: str = "", signed
         m = _meeting(s, tenant, mid)
         m.minutes_signed_on, m.minutes_file, m.status = sd.isoformat(), f.get("file_id", ""), "minuted"
         v = _meet_view(m)
-    return {"meeting": v, "file": f, "say": f"{number} minutes pakke (Word file). Chairperson har page initial + aakhri page sign kare; minutes book mein lagaiye."
-            + (" Dhyaan: meeting ke 30 din baad sign ho rahe hain (s.118 / SS)." if late else "")}
+    return {"meeting": v, "file": f, "say": f"{number} minutes final (Word file). The chairperson initials every page and signs the last page; put them in the minutes book."
+            + (" Note: these are being signed more than 30 days after the meeting (s.118 / SS)." if late else "")}
 
 
 def meetings(tenant: str, ref: str = "", status: str = "") -> list[dict]:
@@ -1380,10 +1380,10 @@ def registers_file(tenant: str, ref: str, conv: str = "") -> dict:
     ws = wb.create_sheet("Filings")
     ws.append(["Form", "Period", "Due", "Basis", "Andaaza", "Status", "SRN", "Filed on"])
     for f in v["filings"]:
-        ws.append([f["form"], f["period"], f["due"], f["basis"], "haan" if f["est"] else "", f["status"], f["srn"], f["filed_on"]])
+        ws.append([f["form"], f["period"], f["due"], f["basis"], "yes" if f["est"] else "", f["status"], f["srn"], f["filed_on"]])
     ws = wb.create_sheet("Note")
     ws.append([R.DRAFT_LINE])
-    ws.append(["Statutory registers ka format Companies (Management and Administration) Rules 2014 ke hisaab se CS milaye; yeh working copy hai."])
+    ws.append(["Have your CS match the statutory register format to the Companies (Management and Administration) Rules 2014; this is a working copy."])
     bio = io.BytesIO()
     wb.save(bio)
     f = _store(tenant, f"Registers_{v['number']}.xlsx", bio.getvalue(), XLSX, conv, f"Registers {v['number']}")
@@ -1395,7 +1395,7 @@ def forget(tenant: str, ref: str) -> dict:
     with _LOCK, session() as s:
         e = _ent(s, tenant, ref)
         if e.status == "active":
-            raise CosecError("Pehle entity ka status 'closed' / 'struck_off' kijiye; chalu client ka data nahi mitta.")
+            raise CosecError("First set the entity status to 'closed' / 'struck_off'; an active client's data is not erased.")
         n = 0
         for i, p in enumerate(s.scalars(select(CosecPerson).where(CosecPerson.entity_id == e.id)).all(), 1):
             p.name, p.email, p.phone, p.address, p.id_ref, p.din = f"Purane {p.role} {i}", "", "", "", "", ""
@@ -1404,7 +1404,7 @@ def forget(tenant: str, ref: str) -> dict:
         for m in s.scalars(select(CosecMeeting).where(CosecMeeting.entity_id == e.id)).all():
             m.attendance, m.notice_text, m.minutes = "[]", "", ""
         name = f"{e.number} {e.name}"
-    return {"forgotten": n, "say": f"{name}: {n} logon ki niji jaankari mita di (filing / tareekh ka record bacha)."}
+    return {"forgotten": n, "say": f"{name}: {n} people's personal details erased (filing / date record kept)."}
 
 
 # ---------------------------------------------------------------- day note + tick
@@ -1422,7 +1422,7 @@ def day(tenant: str) -> dict:
             if f.status == "waiting":
                 out["waiting"].append(f"{e.number} {f.form} card")
             if due < on:
-                out["overdue"].append(tag + f" {(on - due).days} din der")
+                out["overdue"].append(tag + f" {(on - due).days} days late")
             elif (due - on).days <= 30:
                 out["soon"].append(tag)
         for m in s.scalars(select(CosecMeeting).where(CosecMeeting.tenant_id == tenant)).all():
@@ -1435,11 +1435,11 @@ def day(tenant: str) -> dict:
             if m.status in ("draft", "notice_waiting") and d >= on:
                 ls = R.notice_check(m.kind, d, on, m.notice_mode)["latest_send"]
                 if (ls - on).days <= 3:
-                    out["meetings"].append(f"{e.number} {m.number} {m.on}: notice {ls.isoformat()} tak bhejna" + (" (nikal gaya)" if ls < on else ""))
+                    out["meetings"].append(f"{e.number} {m.number} {m.on}: send notice by {ls.isoformat()}" + (" (passed)" if ls < on else ""))
             if m.status in ("held", "minutes_waiting"):
                 sign = R.minutes_deadlines(m.kind, d)["sign_by"]
                 if (sign - on).days <= 10:
-                    out["minutes"].append(f"{e.number} {m.number} minutes {sign.isoformat()} tak sign")
+                    out["minutes"].append(f"{e.number} {m.number} minutes: sign by {sign.isoformat()}")
         for e in ents.values():
             if e.kind == "llp":
                 continue
@@ -1447,13 +1447,13 @@ def day(tenant: str) -> dict:
                                                                              CosecMeeting.status.in_(("held", "minutes_waiting", "minuted")))).all()]
             nb = R.next_board_by(max([d for d in boards if d], default=None), _light(e))
             if nb and (nb - on).days <= 15:
-                out["board"].append(f"{e.number} agli Board meeting {nb.isoformat()} se pehle (120 din)")
+                out["board"].append(f"{e.number} next Board meeting before {nb.isoformat()} (120 days)")
     bits = []
-    for key, title in (("overdue", "Der ho gayi"), ("waiting", "Aapki haan baaki"), ("soon", "30 din mein"), ("meetings", "Notice"),
+    for key, title in (("overdue", "Overdue"), ("waiting", "Your approval pending"), ("soon", "Within 30 days"), ("meetings", "Notice"),
                        ("minutes", "Minutes"), ("board", "Board")):
         if out[key]:
             bits.append(f"{title}: {', '.join(out[key][:4])}" + (f" +{len(out[key]) - 4}" if len(out[key]) > 4 else ""))
-    out["say"] = ". ".join(bits) + "." if bits else "Company secretary desk par aaj sab theek."
+    out["say"] = ". ".join(bits) + "." if bits else "All clear on the company secretary desk today."
     return out
 
 
@@ -1487,12 +1487,12 @@ def tick(when: datetime | None = None) -> dict:
                     if left < 0:
                         if _once(s, tenant, f"late:{f.id}:{(-left) // 7}"):
                             fee = R.additional_fee(f.form, -left)
-                            alerts.append(f"{e.number} {e.name}: {f.form} ({f.period}) {-left} din der. {fee['text']}")
+                            alerts.append(f"{e.number} {e.name}: {f.form} ({f.period}) {-left} days late. {fee['text']}")
                         continue
                     win = next((w for w in wins if left <= w), None)
                     if win is not None and _once(s, tenant, f"due:{f.id}:{f.due}:{win}"):
-                        alerts.append(f"{e.number} {e.name}: {f.form} ({f.period}) " + ("aaj aakhri din" if left == 0 else f"{left} din mein ({f.due})")
-                                      + (" - tareekh andaaza" if f.est else "") + ".")
+                        alerts.append(f"{e.number} {e.name}: {f.form} ({f.period}) " + ("last day today" if left == 0 else f"in {left} days ({f.due})")
+                                      + (" - date estimated" if f.est else "") + ".")
                 try:
                     hh, mm = (int(x) for x in (st.morning_time or "09:00").split(":"))
                 except ValueError:
@@ -1507,7 +1507,7 @@ def tick(when: datetime | None = None) -> dict:
                 out["alerts"] += 1
             if morning:
                 d = day(tenant)
-                if d["say"] != "Company secretary desk par aaj sab theek.":
+                if d["say"] != "All clear on the company secretary desk today.":
                     _publish(tenant, "cosec_day", {"say": d["say"], "overdue": len(d["overdue"]), "soon": len(d["soon"]), "waiting": len(d["waiting"])})
                     out["morning"] += 1
         except Exception:
