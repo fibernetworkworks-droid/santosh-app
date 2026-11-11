@@ -796,7 +796,7 @@ def hold(tenant: str, ref: str, hours=None, actor: str = "owner") -> dict:
             h = min(h, st.hold_hours)
         h = max(1, min(24 * 14, h))
         x.status, x.hold_until = "hold", clock() + timedelta(hours=h)
-        _log(x, f"Hold {h} ghante", actor_name(tenant, actor))
+        _log(x, f"Hold {h} h", actor_name(tenant, actor))
         v = _brief(x)
     until = _aware(datetime.fromisoformat(v["hold_until"])).astimezone(_tz(tenant)).strftime("%d-%m %H:%M")
     return {"shoot": v, "say": f"{v['number']} {v['day']} on hold until {until}. To confirm it, create a 'confirm' card."}

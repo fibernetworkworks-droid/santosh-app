@@ -179,7 +179,7 @@ def credit_exposure(retailers: list[dict], limit_multiple: Any = 1.5, overdue_da
         sug = round(avg * m, 2)
         flags = []
         if lim and out_ > lim:
-            flags.append("limit paar")
+            flags.append("over the limit")
         if _f(r.get("oldest_days")) > od:
             flags.append(f"{_f(r.get('oldest_days')):g} days old and still unpaid")
         out.append({"retailer": r.get("retailer"), "outstanding": out_, "limit": lim, "utilisation_pct": round(100 * out_ / lim, 1) if lim else None,

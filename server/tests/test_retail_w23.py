@@ -13,7 +13,7 @@ def test_growth_markdown_price_rule_and_loyalty_respect_her_limits():
     m = G.markdown([{"name": "milk", "stock": 10, "cost": 20, "price": 30, "mrp": 35, "expiry": "2026-11-08", "floor_margin_pct": 5},
                     {"name": "bread", "stock": 4, "cost": 10, "price": 20, "mrp": 22, "expiry": "2026-11-20", "floor_margin_pct": 0}], "2026-11-05")
     a = {r["name"]: r for r in m["items"]}
-    assert a["milk"]["proposed_price"] == 21.0 and "Floor" in a["milk"]["note"] and a["milk"]["waste_risk_at_cost"] == 200.0 and a["bread"]["discount_pct"] == 0
+    assert a["milk"]["proposed_price"] == 21.0 and "floor" in a["milk"]["note"] and a["milk"]["waste_risk_at_cost"] == 200.0 and a["bread"]["discount_pct"] == 0
     p = G.price_rule([{"name": "x", "cost": 80, "price": 100, "mrp": 120, "competitor_prices": [70, 95], "floor_margin_pct": 10, "target": "match_lowest"},
                       {"name": "y", "cost": 10, "price": 50, "mrp": 55, "competitor_prices": [90], "floor_margin_pct": 0, "target": "median"}])["items"]
     assert p[0]["proposed"] == 88.0 and p[0]["needs_second_look"] and p[1]["proposed"] == 55.0          # floor held, MRP held
@@ -35,7 +35,7 @@ def test_growth_numbers():
     r = {x["retailer"]: x for x in s["retailers"]}
     assert r["r"]["accrual"] == 40 and r["r"]["status"] == "dispute" and r["q"]["accrual"] == 0 and "finance" in s["decider"]
     cr = G.credit_exposure([{"retailer": "A", "outstanding": 150, "limit": 100, "oldest_days": 45, "avg_monthly_purchase": 100}])["retailers"][0]
-    assert cr["suggested_limit"] == 150.0 and set(cr["flags"]) >= {"limit paar"} and "jaati" in G.credit_exposure([{"retailer": "A"}])["basis"]
+    assert cr["suggested_limit"] == 150.0 and set(cr["flags"]) >= {"over the limit"} and "caste" in G.credit_exposure([{"retailer": "A"}])["basis"]
     b = G.beat_route({"lat": 0, "lng": 0}, [{"name": "far", "lat": 0, "lng": 2}, {"name": "near", "lat": 0, "lng": 1}])
     assert [x["name"] for x in b["order"]] == ["near", "far"] and abs(b["straight_line_km"] - 222.4) < 1
     w = G.working_capital(100, 1000, 50, 1200, 60)

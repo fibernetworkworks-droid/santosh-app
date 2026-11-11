@@ -301,9 +301,9 @@ def _shop(tenant: str, r: MShopSettings) -> str:
         return r.shop_name
     try:
         from ..employee import service as emp
-        return (emp.profile(tenant) or {}).get("business_name") or "dukaan"
+        return (emp.profile(tenant) or {}).get("business_name") or "the shop"
     except Exception:
-        return "dukaan"
+        return "the shop"
 
 
 def save_settings(tenant: str, **kw: Any) -> dict[str, Any]:
@@ -938,7 +938,7 @@ def update_job(tenant: str, job: str, promised_on: str = "", notes: str = "", te
             changed.append("saboot")
         if estimate not in (None, ""):
             j.estimate_paise = _paise(estimate)
-            changed.append(f"andaza {_rs(j.estimate_paise)}")
+            changed.append(f"estimate {_rs(j.estimate_paise)}")
         _log(j, "Changed: " + ", ".join(changed or ["nothing"]), by)
         v = _job_view(s, j, False)
     return {"saved": True, "job": v, "say": f"{v['number']}: {', '.join(changed) or 'nothing changed'}."}

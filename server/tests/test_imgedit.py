@@ -182,9 +182,9 @@ def test_plan_reports_readiness_without_a_network(monkeypatch):
     ("edit", "face swap with my friend", "a.jpg", "face swap"),
     ("remove_object", "remove the watermark", "a.jpg", "Watermark"),
     ("remove_object", "remove the Shutterstock mark in the corner", "a.jpg", "Watermark"),
-    ("edit", "change the name on it", "aadhaar_front.jpg", "kaagaz"),
-    ("edit", "make the girl's body bigger", "a.jpg", "Bachchon") ,
-    ("edit", "", "a.jpg", "Kya badalna"),
+    ("edit", "change the name on it", "aadhaar_front.jpg", "document"),
+    ("edit", "make the girl's body bigger", "a.jpg", "children") ,
+    ("edit", "", "a.jpg", "what should change"),
     ("edit", "make this look like Virat Kohli", "a.jpg", "jaane-maane"),
 ])
 def test_check_words_refuses(op, words, fname, needle):
@@ -205,9 +205,9 @@ def test_check_words_allows_the_ordinary_jobs():
 def test_validate_rejects_before_any_engine():
     with pytest.raises(ops.EditError):
         P.validate([])
-    with pytest.raises(ops.EditError, match="nahi hai"):
+    with pytest.raises(ops.EditError, match="does not exist"):
         P.validate([{"op": "teleport"}])
-    with pytest.raises(ops.EditError, match="EK AI step"):
+    with pytest.raises(ops.EditError, match="ONE AI step"):
         P.validate([{"op": "remove_bg"}, {"op": "upscale"}])
     with pytest.raises(ai.AIError):
         P.validate([{"op": "remove_object", "what": "the watermark"}])
@@ -236,7 +236,7 @@ def test_upscale_without_an_engine_is_an_honest_plain_enlargement(monkeypatch):
     monkeypatch.setattr(ai, "run_op", none)
     r = run(P.process(_png(100, 80), [{"op": "upscale", "factor": 3}]))
     assert r["size_out"] == "300x240" and r["ai"] is False
-    assert "naya detail nahi" in " ".join(r["notes"]) and "local enlargement" in r["report"][0]["engine"]
+    assert "no new detail" in " ".join(r["notes"]) and "local enlargement" in r["report"][0]["engine"]
     with pytest.raises(ai.NoEngine):                                                       # background removal never fakes it
         run(P.process(_png(100, 80), [{"op": "remove_bg"}]))
 
@@ -261,7 +261,7 @@ def test_a_failing_engine_falls_through_to_the_next_and_failures_are_reported(mo
     res = run(ai.run_op("restyle", Image.new("RGB", (20, 20)), {"what": "watercolour"}))
     assert calls == ["a", "b"] and res["engine"] == "zoo:b" and res["label"] is True
     monkeypatch.setattr(ai, "_zoo_run", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("boom")))
-    with pytest.raises(ai.AIError, match="sab fail"):
+    with pytest.raises(ai.AIError, match="all failed"):
         run(ai.run_op("restyle", Image.new("RGB", (20, 20)), {"what": "watercolour"}))
 
 
@@ -337,7 +337,7 @@ def test_run_refuses_before_any_work_and_says_so(tool_env):
         with pytest.raises(T.ToolError):
             run(T.image_edit(tool_env.ctx, "run", file_ids=["f1"], steps=steps))
     assert tool_env.out == []
-    with pytest.raises(T.ToolError, match="kaagaz"):                                       # AI edit of an ID-looking file
+    with pytest.raises(T.ToolError, match="document"):                                       # AI edit of an ID-looking file
         run(T.image_edit(tool_env.ctx, "run", file_ids=["id"], steps=[{"op": "edit", "what": "change the date of birth"}]))
     ok = run(T.image_edit(tool_env.ctx, "run", file_ids=["id"], steps=[{"op": "resize", "width": 200}, {"op": "adjust", "brightness": 10}]))
     assert ok["status"] == "done"                                                          # resizing her own ID photo is fine
@@ -365,7 +365,7 @@ def test_one_bad_file_does_not_sink_the_batch(tool_env, monkeypatch):
         return ("junk.png", b"not an image") if fid == "bad" else store_bad(ctx, fid)
     monkeypatch.setattr(T, "_owner_file", files)
     r = run(T.image_edit(tool_env.ctx, "run", file_ids=["f1", "bad"], steps=[{"op": "resize", "width": 50}]))
-    assert r["edited"] == 1 and r["results"][1]["ok"] is False and "photo nahi" in r["results"][1]["error"]
+    assert r["edited"] == 1 and r["results"][1]["ok"] is False and "does not look like a photo" in r["results"][1]["error"]
 
 
 def test_routine_actor_is_gated_for_ai_steps(tool_env, monkeypatch):
