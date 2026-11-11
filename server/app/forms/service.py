@@ -410,7 +410,7 @@ def edit(tenant: str, conv: str, form: str, title: str | None = None, descriptio
             names = [qs[i]["title"] for i in sorted(to_remove)]
             pending_id = pend(tenant, conv, "delete_questions",
                               {"account": c.key, "form": fid, "requests": dels, "titles": names},
-                              {"title": view(f)["title"], "what": f"{len(names)} questions will be removed: " + ", ".join(names)[:300],
+                              {"title": view(f)["title"], "what": f"{len(names)} question(s) will be removed: " + ", ".join(names)[:300],
                                "note": "Old answers to these questions will no longer show in the form."})
         else:
             reqs += dels
@@ -735,7 +735,7 @@ def run_pending(tenant: str, pid: str) -> dict[str, Any]:
                     raise FormError("The form changed after the card was made; pick the questions again.")
             f = c.batch(pl["form"], pl["requests"]).get("form") or c.get(pl["form"])
             _card(p["conversation_id"], view(f), "updated")
-            msg = f"Form '{p['summary']['title']}': {len(pl['requests'])} questions removed."
+            msg = f"Form '{p['summary']['title']}': {len(pl['requests'])} question(s) removed."
         elif p["action"] == "delete_form":
             c.trash(pl["form"])
             msg = f"Form '{p['summary']['title']}' moved to Drive's Trash. (You can restore it from Drive > Trash.)"

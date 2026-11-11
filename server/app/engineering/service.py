@@ -174,15 +174,15 @@ def runs_today(tenant: str) -> int:
 def _gate(tenant: str) -> None:
     from ..employee import hire
     if not hire.is_working(tenant, HIRE_KEY):
-        raise EngError("CAD Engineer abhi hired nahi hai (ya paused hai). Employees mein 'Hire CAD Engineer' dabaiye.")
+        raise EngError("The CAD Engineer is not hired yet (or is paused). In Employees, tap 'Hire CAD Engineer'.")
     cap = int(os.environ.get("ENG_DAILY_PARTS", "20") or 0)
     if cap and runs_today(tenant) >= cap:
-        raise EngError(f"Aaj ke {cap} CAD parts ho gaye; kal phir banenge.")
+        raise EngError(f"Today's {cap} CAD parts are done; more can be made tomorrow.")
     with session() as s:
         busy = s.scalars(select(EngProject.id).where(EngProject.tenant_id == tenant,
                                                      EngProject.status.in_(("queued", "designing", "building", "checking", "drawing")))).first()
     if busy:
-        raise EngError("Ek part abhi ban raha hai; uske poora hote hi agla shuru karenge.")
+        raise EngError("One part is being made right now; the next starts as soon as it is done.")
 
 
 # ---------------------------------------------------------------- public actions
@@ -191,20 +191,20 @@ def _clean_inputs(images: list[bytes] | None, files: list[tuple[str, bytes]] | N
     out: list[tuple[str, str, bytes]] = []
     for i, b in enumerate((images or [])[:MAX_IMAGES]):
         if not b or len(b) > MAX_IMAGE_BYTES:
-            raise EngError("Photo 6 MB se chhoti honi chahiye.")
+            raise EngError("The photo must be smaller than 6 MB.")
         ext = "png" if b[:4] == b"\x89PNG" else "jpg" if b[:2] == b"\xff\xd8" else "webp" if b[8:12] == b"WEBP" else ""
         if not ext:
-            raise EngError("Sketch / photo PNG, JPG ya WEBP ho.")
+            raise EngError("The sketch / photo must be PNG, JPG or WEBP.")
         out.append((f"sketch_{i + 1}.{ext}", "image", b))
     for name, b in (files or [])[:MAX_FILES]:
         base = re.sub(r"[^\w\-. ]", "_", str(name or "")).strip()[:70] or "file"
         if not re.search(r"\.(step|stp|stl)$", base, re.I):
-            raise EngError("CAD file .step / .stp / .stl honi chahiye.")
+            raise EngError("The CAD file must be .step / .stp / .stl.")
         if not b or len(b) > MAX_FILE_BYTES:
-            raise EngError("CAD file 40 MB se chhoti honi chahiye.")
+            raise EngError("The CAD file must be smaller than 40 MB.")
         head = b[:400].upper()
         if base.lower().endswith((".step", ".stp")) and b"ISO-10303-21" not in head:
-            raise EngError(f"{base} asli STEP file nahi lagti.")
+            raise EngError(f"{base} does not look like a real STEP file.")
         out.append((base, "cad", b))
     return out
 
@@ -213,13 +213,13 @@ def start(tenant: str, conv: str, brief: str, images: list[bytes] | None = None,
           files: list[tuple[str, bytes]] | None = None) -> dict[str, Any]:
     brief = (brief or "").strip()
     if len(brief) < 4:
-        raise EngError("Part ke baare mein likhiye: kya hai, size (mm), holes, material.")
+        raise EngError("Describe the part: what it is, size (mm), holes, material.")
     ins = _clean_inputs(images, files)
     ensure_table()
     _gate(tenant)
     with session() as s:
         r = EngProject(tenant_id=tenant, conversation_id=conv or "", brief=brief[:6000], status="queued",
-                       stage="Shuru ho raha hai", pending={"mode": "new"},
+                       stage="Starting", pending={"mode": "new"},
                        inputs=[{"name": n, "kind": k} for n, k, _ in ins])
         s.add(r)
         s.flush()
@@ -235,13 +235,13 @@ def start(tenant: str, conv: str, brief: str, images: list[bytes] | None = None,
 def change(tenant: str, pid: str, words: str, conv: str = "") -> dict[str, Any]:
     words = (words or "").strip()
     if len(words) < 2:
-        raise EngError("Kya badalna hai, likhiye (jaise 'holes 10 mm karo').")
+        raise EngError("Write what to change (for example 'make the holes 10 mm').")
     ensure_table()
     r = _own(tenant, pid)
     if not r.versions:
-        raise EngError("Is part ka pehla version abhi bana nahi.")
+        raise EngError("The first version of this part has not been made yet.")
     _gate(tenant)
-    _save(pid, status="queued", stage="Badlav shuru", error="", pending={"mode": "change", "words": words[:1500]},
+    _save(pid, status="queued", stage="Starting the change", error="", pending={"mode": "change", "words": words[:1500]},
           **({"conversation_id": conv} if conv else {}))
     _submit(pid)
     return get(tenant, pid)
@@ -251,7 +251,7 @@ def _own(tenant: str, pid: str) -> EngProject:
     with session() as s:
         r = s.get(EngProject, pid)
         if r is None or r.tenant_id != tenant:
-            raise EngError("Yeh project nahi mila.")
+            raise EngError("This project was not found.")
         s.expunge(r)
         return r
 
@@ -620,8 +620,8 @@ def run_job(pid: str) -> None:
 
 
 def _fail(pid: str, why: str) -> None:
-    r = _save(pid, status="failed", stage="Nahi bana", error=why[:600], pending={})
-    _note(r, f"CAD part '{r.title or 'part'}' nahi ban paya: {why[:200]}")
+    r = _save(pid, status="failed", stage="Not made", error=why[:600], pending={})
+    _note(r, f"CAD part '{r.title or 'part'}' could not be made: {why[:200]}")
 
 
 def _note(r: EngProject, text: str) -> None:
@@ -639,7 +639,7 @@ def _run(pid: str) -> None:
     mode = (r.pending or {}).get("mode", "new")
     words = (r.pending or {}).get("words", "")
     imgs, files = _inputs(r)
-    _save(pid, status="designing", stage="Design soch raha hoon", error="")
+    _save(pid, status="designing", stage="Thinking through the design", error="")
     last = (r.versions or [])[-1] if r.versions else None
     if mode == "change" and last:
         code_prev = (_pdir(r.tenant_id, pid) / f"v{last['n']}" / "part.py").read_text(encoding="utf-8")
@@ -663,7 +663,7 @@ def _run(pid: str) -> None:
         probs = guard.problems(d.get("code", ""))
         views = {}
         if not probs:
-            _save(pid, status="building", stage="Part bana raha hoon" + (f" (sudhaar {attempt})" if attempt else ""))
+            _save(pid, status="building", stage="Building the part" + (f" (fix {attempt})" if attempt else ""))
             res = sandbox.run(vdir, d["code"], material=d.get("material") or "")
             probs = list(res.get("errors") or [])
             if res.get("ok"):
@@ -691,7 +691,7 @@ def _run(pid: str) -> None:
                     if probs:
                         dfm_rounds -= 1
         if not probs and look_rounds > 0 and attempt < MAX_FIXES:
-            _save(pid, status="checking", stage="Opus model ko dekh kar jaanch raha hai")
+            _save(pid, status="checking", stage="Opus is looking at the model and checking it")
             mesh = json.loads((vdir / "mesh.json").read_text(encoding="utf-8"))
             views = render.views(mesh, 600)
             review = ai.look(ask_txt, [views[k] for k in ("iso", "front", "top", "right")])
@@ -700,8 +700,8 @@ def _run(pid: str) -> None:
                 probs = [f"design review: {p}" for p in review.get("problems") or []]
         ana = {}
         if not probs and res.get("ok") and (res.get("studies") or res.get("cam")):
-            _save(pid, status="analysing", stage="Stress / heat / vibration jaanch (FEA)" if res.get("studies")
-                  else "CNC G-code bana raha hoon")
+            _save(pid, status="analysing", stage="Stress / heat / vibration check (FEA)" if res.get("studies")
+                  else "Making the CNC G-code")
             ana = _analyse(vdir, res, d.get("material") or "")
             weak = _weak(ana)
             if weak and strengthen > 0 and attempt < MAX_FIXES:
@@ -712,14 +712,14 @@ def _run(pid: str) -> None:
         if attempt == MAX_FIXES:
             if res.get("ok"):
                 break                               # keep it; failed checks / review show on the desk
-            raise EngError("Part chaar koshish mein nahi bana: " + "; ".join(probs)[:300])
-        _save(pid, status="designing", stage=f"Galti theek kar raha hoon ({attempt + 1}/{MAX_FIXES})")
+            raise EngError("The part could not be made in four tries: " + "; ".join(probs)[:300])
+        _save(pid, status="designing", stage=f"Fixing the problem ({attempt + 1}/{MAX_FIXES})")
         fixed = ai.fix(ask_txt, d.get("code", ""), probs, files,
                        [views[k] for k in ("iso", "front", "top", "right")] if views else None)
         d = {**fixed, "title": fixed.get("title") or d.get("title", ""), "size": fixed.get("size") or d.get("size") or [],
              "material": fixed.get("material") or d.get("material", ""), "plan": fixed.get("plan") or d.get("plan", "")}
     (vdir / "part.py").write_text(d["code"], encoding="utf-8")
-    _save(pid, status="drawing", stage="Views aur drawing bana raha hoon")
+    _save(pid, status="drawing", stage="Making the views and the drawing")
     mesh = json.loads((vdir / "mesh.json").read_text(encoding="utf-8"))
     for name, data in render.views(mesh).items():
         (vdir / f"{name}.png").write_bytes(data)
@@ -767,20 +767,20 @@ def _run(pid: str) -> None:
            "cam": {k: v for k, v in (ana.get("cam") or {}).items() if k != "paths"} or None,
            "files": [f for f in FILES if (vdir / f).exists()], "seconds": round(time.time() - t0, 1),
            "at": now().isoformat(), "day": _ist_day(datetime.now(timezone.utc))}
-    rr = _save(pid, status="done", stage="Taiyaar", title=title[:120], versions=[*(r.versions or []), ver], pending={})
+    rr = _save(pid, status="done", stage="Ready", title=title[:120], versions=[*(r.versions or []), ver], pending={})
     bb = res.get("bbox") or {}
     bad = [c["name"] for c in chk if not c["ok"]] + (["design review"] if review and not review.get("ok") else [])
-    _note(rr, f"CAD {'assembly' if parts else 'part'} taiyaar: {title}, {bb.get('x', 0):g} x {bb.get('y', 0):g} x "
+    _note(rr, f"CAD {'assembly' if parts else 'part'} ready: {title}, {bb.get('x', 0):g} x {bb.get('y', 0):g} x "
               f"{bb.get('z', 0):g} mm" + (f", {len(parts)} parts" if parts else "")
               + (f", about {mass:,.0f} g ({material})" if mass else "")
               + "".join(f", {line}" for line in _ana_lines(ana))
-              + (f", banane ki jaanch ({res['dfm']['process']}): {res['dfm']['fails']} fail / {res['dfm']['reviews']} dekhna"
+              + (f", manufacturing check ({res['dfm']['process']}): {res['dfm']['fails']} fail / {res['dfm']['reviews']} to review"
                  if (res.get("dfm") or {}).get("rows") else "")
-              + "".join(f", gear {g['pinion_teeth']}/{g['wheel_teeth']}T: daant {g['bending_sf']:.2f}, "
-                        f"ghisav {g['pitting_sf']:.2f} safety" for g in (res.get("gear_duty") or [])[:2]
+              + "".join(f", gear {g['pinion_teeth']}/{g['wheel_teeth']}T: tooth bending {g['bending_sf']:.2f}, "
+                        f"pitting {g['pitting_sf']:.2f} safety" for g in (res.get("gear_duty") or [])[:2]
                         if not g.get("error"))
-              + (f" (jaanch mein dikkat: {', '.join(bad)})" if bad else "")
-              + ". STEP, STL, 3MF, drawing CAD Desk par hain.")
+              + (f" (problems in checks: {', '.join(bad)})" if bad else "")
+              + ". STEP, STL, 3MF and the drawing are on the CAD Desk.")
 
 
 def _ana_card(st: dict[str, Any]) -> dict[str, Any]:
@@ -803,31 +803,31 @@ def _ana_lines(ana: dict[str, Any]) -> list[str]:
     out = []
     for st in ana.get("studies") or []:
         if not st.get("ok"):
-            out.append(f"{st.get('kind')} analysis nahi chala")
+            out.append(f"{st.get('kind')} analysis did not run")
         elif st["kind"] == "static" and st.get("contacts") is not None:
             out.append(f"assembly safety factor {st['safety_factor']:g}"
                        + "".join(f", {b['bolt'].split(' at ')[0]} {b['loaded_N']:,} N" for b in (st.get('bolts') or [])[:3])
-                       + (", joint khulta hai" if st.get("separated") else ""))
+                       + (", the joint opens" if st.get("separated") else ""))
         elif st["kind"] == "static":
-            out.append(f"safety factor {st['safety_factor']:g} (max jhukav {st['max_disp_mm']:.3g} mm)"
+            out.append(f"safety factor {st['safety_factor']:g} (max deflection {st['max_disp_mm']:.3g} mm)"
                        + (f", fatigue SF {st['fatigue']['fatigue_sf']:g}" if st.get("fatigue") else ""))
         elif st["kind"] == "plastic":
             hl = st.get("at_her_load") or {}
-            out.append(f"pakka jhukav {hl.get('permanent_set_mm', '-')} mm, collapse x"
+            out.append(f"permanent set {hl.get('permanent_set_mm', '-')} mm, collapse x"
                        f"{st.get('collapse_factor') or st.get('collapse_at_least')}")
         elif st["kind"] == "buckling":
             out.append(f"buckling factor {st['load_factor']:.3g}" if st.get("load_factor")
-                       else "buckling: compression mein nahi hai")
+                       else "buckling: not in compression")
         elif st["kind"] == "thermal":
-            out.append(f"max garmi {st['t_max_C']:.3g} °C")
+            out.append(f"max temperature {st['t_max_C']:.3g} °C")
         elif st["kind"] == "flow":
             out.append(f"pressure drop {st['pressure_drop_Pa']:.3g} Pa (Re {st['reynolds']:.0f}"
-                       + ("" if st.get("valid") else ", turbulent: laminar result valid nahi") + ")")
+                       + ("" if st.get("valid") else ", turbulent: the laminar result is not valid") + ")")
         else:
-            out.append("pehli frequency " + (f"{st['frequencies_hz'][0]:g} Hz" if st.get("frequencies_hz") else "-"))
+            out.append("first frequency " + (f"{st['frequencies_hz'][0]:g} Hz" if st.get("frequencies_hz") else "-"))
     cam = ana.get("cam")
     if cam:
-        out.append(f"CNC G-code taiyaar (~{cam['minutes']:g} min)" if cam.get("ok") else "G-code nahi bana")
+        out.append(f"CNC G-code ready (~{cam['minutes']:g} min)" if cam.get("ok") else "G-code was not made")
     return out
 
 

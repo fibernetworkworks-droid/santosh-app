@@ -57,7 +57,7 @@ def test_true_cost_apr_is_the_stated_rate_without_fees_and_higher_with_them():
     assert fee["fee_before_gst"] == 10000.0 and fee["fee_gst"] == 1800.0 and fee["upfront_total"] == 16800.0
     assert fee["money_received"] == 483200.0 and fee["apr_nominal_pct"] > 13 and fee["apr_effective_pct"] > fee["apr_nominal_pct"]
     assert fee["total_cost"] == round(fee["total_paid"] - 500000 + 16800, 2)
-    assert "maani hui" in fee["gst_note"] or fee["gst_note"] == ""                                  # the 18% is shown as assumed unless she gave it
+    assert "assumed" in fee["gst_note"] or fee["gst_note"] == ""                                  # the 18% is shown as assumed unless she gave it
     assert LN.true_cost(500000, 12, 60, fee_pct=2, fee_gst_pct=0)["fee_gst"] == 0
     kinds = {f["kind"] for f in fee["flags"]}
     assert kinds <= {"measured", "heuristic"} and any("Insurance" in f["text"] for f in fee["flags"])
@@ -79,7 +79,7 @@ def test_compare_needs_two_and_says_when_not_like_for_like():
     with pytest.raises(ValueError):
         LN.compare([{"name": "A"}])
     c = LN.compare([{"name": "A", "amount": 500000, "rate": 11, "months": 60, "fee_pct": 2}, {"name": "B", "amount": 500000, "rate": 12, "months": 60}])
-    assert c["like_for_like"] and c["lowest_apr"] in ("A", "B") and "aapka faisla" in c["note"]
+    assert c["like_for_like"] and c["lowest_apr"] in ("A", "B") and "your decision" in c["note"]
     d = LN.compare([{"name": "A", "amount": 500000, "rate": 11, "months": 60}, {"name": "B", "amount": 300000, "rate": 12, "months": 36}])
     assert not d["like_for_like"] and "APR" in d["note"]
 
@@ -99,9 +99,9 @@ def test_debt_plan_orders_and_flags():
     assert d["avalanche"]["total_interest"] <= d["snowball"]["total_interest"] < d["minimums_only"]["total_interest"]
     assert d["interest_saved_avalanche_vs_snowball"] >= 0 and d["snowball"]["payoff_month"]["Gadget"] <= d["snowball"]["payoff_month"]["PL"]
     tough = LN.debt_plan([{"name": "Card", "balance": 100000, "rate": 42, "min_payment": 1000}], 0, 0)
-    assert any("byaaj se bhi kam" in f["text"] for f in tough["flags"]) and tough["minimums_only"]["debt_free"] is False
+    assert any("less than even the interest" in f["text"] for f in tough["flags"]) and tough["minimums_only"]["debt_free"] is False
     stress = LN.debt_plan([{"name": "A", "balance": 50000, "rate": 20, "min_payment": 3000}], 0, 30)
-    assert any("minimum bhi poore nahi" in f["text"] for f in stress["flags"])
+    assert any("even the minimums are not covered" in f["text"] for f in stress["flags"])
     with pytest.raises(ValueError):
         LN.debt_plan([])
 
@@ -117,7 +117,7 @@ def test_csv_parse_and_charges_audit():
     text = " | ".join(f["text"] for f in c["flags"])
     assert "SMS / alert charges: 3 baar" in text and "do baar" in text and "NETFLIX" in text      # repeated fee + double debit
     assert "30.0%" in text or "GST Rs 150.00" in text                                           # a GST line far from ~18% of that day's fee
-    assert {f["kind"] for f in c["flags"]} <= {"measured", "heuristic"} and "galat kehna nahi" in c["note"]
+    assert {f["kind"] for f in c["flags"]} <= {"measured", "heuristic"} and "not a claim that any charge is wrong" in c["note"]
     assert c["yearly_projection"] and c["yearly_projection"] > c["all_in_total"]
 
 
@@ -137,7 +137,7 @@ def test_fake_kyc_with_otp_ask_and_bad_link_is_critical():
     r = SC.check("Dear customer your SBI KYC will expire today. Update now http://sbi-kyc-update.xyz/login and share OTP received immediately")
     assert r["verdict"] == "critical-pattern" and {"fake_kyc", "otp_share"} <= {f["id"] for f in r["families"]}
     assert r["links"][0]["verdict"] == "high-risk" and r["pressure_words"] and r["secrets_mentioned"] == ["otp"]
-    assert any("OTP" in x for x in r["always"]) and "kabhi paise nahi bhejta" in r["note"]
+    assert any("OTP" in x for x in r["always"]) and "never sends money" in r["note"]
 
 
 def test_each_family_catches_its_classic_wording():
@@ -155,7 +155,7 @@ def test_each_family_catches_its_classic_wording():
 
 def test_no_pattern_is_never_called_safe():
     r = SC.check("Hi, are we still on for lunch at 1 tomorrow?")
-    assert r["verdict"] == "no-known-pattern" and "safe nahi" in r["note"]
+    assert r["verdict"] == "no-known-pattern" and "does not mean safe" in r["note"]
     with pytest.raises(ValueError):
         SC.check("hi")
 
@@ -182,16 +182,16 @@ def test_complaint_letter_has_blanks_masks_numbers_and_never_sends():
                   "txn_date": "2026-11-01", "narrative": "Card 4111 1111 1111 1111 was used abroad", "prior_complaint_no": "C123", "prior_date": "2026-10-01"},
                  date(2026, 11, 5))
     assert d["masked"] and "XXXX1111 was used" in d["letter"] and "4111 1111" not in d["letter"] and "123456789012" not in d["letter"] and "ending 9012" in d["letter"]
-    assert "35 din" in d["escalation"] and d["urgent"] and "1930" in d["urgent_note"] and len(d["evidence_checklist"]) >= 4
+    assert "35 days" in d["escalation"] and d["urgent"] and "1930" in d["urgent_note"] and len(d["evidence_checklist"]) >= 4
     assert [x["step"] for x in d["ladder"]] == [1, 2, 3, 4] and any(x["verify"] for x in d["ladder"])
     blank = CP.draft({"issue_type": "charges"}, date(2026, 11, 5))
-    assert "[bank / NBFC ka naam]" in blank["letter"] and "[date]" in blank["letter"] and blank["blanks"] and "bhejna aapka kaam" in blank["note"]
+    assert "[bank / NBFC name]" in blank["letter"] and "[date]" in blank["letter"] and blank["blanks"] and "sending it is up to you" in blank["note"]
     assert "smtp" not in inspect.getsource(CP) and "requests" not in inspect.getsource(CP)
 
 
 def test_young_complaint_is_told_to_wait_for_the_reply_window():
     d = CP.draft({"issue_type": "charges", "prior_complaint_no": "X1", "prior_date": "2026-11-01"}, date(2026, 11, 5))
-    assert "din aur" in d["escalation"]
+    assert "more days" in d["escalation"]
 
 
 # ---------------------------------------------------------------- tool + registry + hub

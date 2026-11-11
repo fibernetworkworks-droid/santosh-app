@@ -91,7 +91,7 @@ def test_rules():
     assert b and w
     assert R.gst_split("27AAA", "29BBB") == "inter" and R.gst_split("27AAA", "27BBB") == "intra" and R.gst_split("27AAA", "") == "intra"
     st = R.round_state(2, 2)
-    assert st["left"] == 0 and "paise" in st["say"]
+    assert st["left"] == 0 and "paid" in st["say"]
     assert R.color("laal") == "#D32F2F" and R.color("#abcdef") == "#ABCDEF" and R.num("12k") == 12000
 
 
@@ -202,7 +202,7 @@ def test_licences_final_and_handover(md):
     S.use_asset(T, j["number"], mystery["id"])
     with pytest.raises(S.MotiondeskError) as e:
         S.final_request(T, j["number"])
-    assert "licence pata nahi" in str(e.value)
+    assert "licence not known" in str(e.value)
     S.asset_save(T, "Desi beat", source="envato", licence_ref="ENV-123", asset=mystery["id"])
     f = S.final_request(T, j["number"])
     sh = f["card"]["show"]
@@ -227,7 +227,7 @@ def test_licences_final_and_handover(md):
     S.use_asset(T, j2["number"], mystery["id"])
     with pytest.raises(S.MotiondeskError) as e:
         S.final_request(T, j2["number"])
-    assert "naya register" in str(e.value)
+    assert "needs a new registration" in str(e.value)
     with pytest.raises(S.MotiondeskError):
         S.template_save(T, j2["number"], "Diwali offer")
 

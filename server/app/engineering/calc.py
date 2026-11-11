@@ -139,7 +139,7 @@ def bolt(m: float, grade: str = "8.8", count: int = 1, shear_N: float = 0.0, ten
          k: float = 0.2, shear_planes: int = 1) -> dict[str, Any]:
     m = int(m) if float(m).is_integer() else m
     if m not in AS:
-        raise CalcError(f"bolt M{m} table mein nahi ({', '.join(f'M{x}' for x in AS)})")
+        raise CalcError(f"bolt M{m} is not in the table ({', '.join(f'M{x}' for x in AS)})")
     if grade not in GRADES:
         raise CalcError(f"grade {', '.join(GRADES)}")
     fub, fyb, sp = GRADES[grade]
@@ -167,10 +167,10 @@ def weld(force_N: float, length_mm: float, leg_mm: float = 0.0, throat_mm: float
          fu: float = 360, beta_w: float = 0.8, gamma: float = 1.25) -> dict[str, Any]:
     a = float(throat_mm) or 0.707 * float(leg_mm)
     if a <= 0 or length_mm <= 0:
-        raise CalcError("leg_mm (ya throat_mm) aur length_mm do")
+        raise CalcError("give leg_mm (or throat_mm) and length_mm")
     l_eff = max(float(length_mm) - 2 * a, 0.0)
     if l_eff <= 0:
-        raise CalcError("weld bahut chhota hai")
+        raise CalcError("the weld is too small")
     tau = float(force_N) / (a * l_eff)
     f_vw = fu / (math.sqrt(3) * beta_w * gamma)
     return {"throat_mm": round(a, 3), "effective_length_mm": round(l_eff, 2), "stress_MPa": round(tau, 2),
@@ -320,7 +320,7 @@ def joint(m: float, grade: str = "8.8", grip_mm: float = 20.0, plates: str = "st
     joint and split over `bolts`."""
     m = int(m) if float(m).is_integer() else m
     if m not in AS:
-        raise CalcError(f"bolt M{m} table mein nahi")
+        raise CalcError(f"bolt M{m} is not in the table")
     if grade not in GRADES:
         raise CalcError(f"grade {', '.join(GRADES)}")
     plates = str(plates).lower().replace("aluminum", "aluminium")

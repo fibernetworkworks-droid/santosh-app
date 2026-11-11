@@ -42,7 +42,7 @@ def eng(env, monkeypatch, tmp_path):
 
 
 def test_needs_the_hire_first(eng):
-    with pytest.raises(eng["svc"].EngError, match="hired nahi"):
+    with pytest.raises(eng["svc"].EngError, match="not hired"):
         eng["svc"].start("default", "", "L bracket 80 x 40 mm")
 
 
@@ -114,7 +114,7 @@ def test_other_tenant_cannot_see_or_change_her_part(eng):
     eng["hire"].hire("default", "cad")
     eng["replies"].append(GOOD)
     p = eng["svc"].start("default", "", "L bracket")
-    with pytest.raises(eng["svc"].EngError, match="nahi mila"):
+    with pytest.raises(eng["svc"].EngError, match="was not found"):
         eng["svc"].get("other", p["id"])
     assert eng["svc"].projects("other") == []
 
@@ -134,7 +134,7 @@ def test_guard_rules():
     assert guard.problems("import cadquery as cq\nresult = cq.Workplane('XY').box(1, 2, 3)\n") == []
     p = guard.problems("import subprocess\nresult = cq.exporters.export(1, '/etc/x')\n")
     assert any("subprocess" in x for x in p) and any("export" in x for x in p)
-    assert guard.problems("import cadquery as cq\nx = 1\n") == ["script ke end mein `result = ...` (cadquery Workplane / Shape) set karo"]
+    assert guard.problems("import cadquery as cq\nx = 1\n") == ["set `result = ...` (cadquery Workplane / Shape) at the end of the script"]
     assert any("__class__" in x for x in guard.problems("result = ().__class__\n"))
 
 

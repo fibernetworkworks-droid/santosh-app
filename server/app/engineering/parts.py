@@ -64,7 +64,7 @@ EXTRUSIONS = {"2020": (20, 6.2, 4.2), "2040": (20, 6.2, 4.2), "3030": (30, 8.2, 
 def _m(m) -> tuple:
     key = float(m) if float(m) not in (2.0, 3.0, 4.0, 5.0, 6.0, 8.0, 10.0, 12.0, 16.0, 20.0, 24.0) else int(m)
     if key not in METRIC:
-        raise ValueError(f"M{m} table mein nahi (M2, M2.5, M3, M4, M5, M6, M8, M10, M12, M16, M20, M24)")
+        raise ValueError(f"M{m} is not in the table (M2, M2.5, M3, M4, M5, M6, M8, M10, M12, M16, M20, M24)")
     return METRIC[key]
 
 
@@ -148,7 +148,7 @@ def spur_gear(module, teeth, width, bore=0.0, pressure_angle=20.0, shift=0.0):
     coefficient x (used to rescue a pinion with few teeth). Raises for teeth < 8."""
     teeth = int(teeth)
     if teeth < 8:
-        raise ValueError("gear ke kam se kam 8 daante")
+        raise ValueError("a gear needs at least 8 teeth")
     try:
         import gears as _g
     except ImportError:
@@ -174,7 +174,7 @@ def spur_gear(module, teeth, width, bore=0.0, pressure_angle=20.0, shift=0.0):
 def bearing(code):
     code = str(code)
     if code not in BEARINGS:
-        raise ValueError(f"bearing {code} table mein nahi ({', '.join(BEARINGS)})")
+        raise ValueError(f"bearing {code} is not in the table ({', '.join(BEARINGS)})")
     d, D, b = BEARINGS[code]
     ring = (D - d) / 2
     outer = cq.Workplane("XY").circle(D / 2).circle(D / 2 - ring * 0.3).extrude(b)
@@ -187,7 +187,7 @@ def shaft(d, length, keyway=False, key_length=None):
     if keyway:
         row = next((k for k in KEYS if k[0] < d <= k[1]), None)
         if row is None:
-            raise ValueError(f"shaft {d} mm ke liye DIN 6885 key table mein nahi (6-75 mm)")
+            raise ValueError(f"no DIN 6885 key in the table for a {d} mm shaft (6-75 mm)")
         b, t1 = row[2], row[4]
         kl = key_length or min(length * 0.6, 4 * d)
         cut = cq.Workplane("XY").box(b, t1 * 2, kl).translate((0, d / 2, length / 2))
@@ -198,7 +198,7 @@ def shaft(d, length, keyway=False, key_length=None):
 def extrusion(size, length):
     size = str(size)
     if size not in EXTRUSIONS:
-        raise ValueError(f"extrusion {size} nahi ({', '.join(EXTRUSIONS)})")
+        raise ValueError(f"no extrusion {size} ({', '.join(EXTRUSIONS)})")
     a, slot, bore = EXTRUSIONS[size]
     w = a * (2 if size == "2040" else 1)
     p = cq.Workplane("XY").rect(w, a).extrude(length)
@@ -281,7 +281,7 @@ def _thread_size(m, length, pitch):
     p = float(pitch or _m(m)[0])
     THREADS[0] += 1
     if THREADS[0] > 6:
-        raise ValueError("ek part mein 6 real threads tak (baaki holes + H.thread_note)")
+        raise ValueError("up to 6 real threads in one part (the rest as holes + H.thread_note)")
     return p, m / 2 - 5 / 8 * 0.866025 * p, m / 2
 
 
@@ -327,7 +327,7 @@ def sheet(segments, width, t, r=None, k=0.44):
         s_len = L - (sb[i - 1] if i else 0.0) - (sb[i] if a else 0.0)
         pieces.append(["flat", round(s_len, 4)])
         if s_len <= 0.05:
-            raise ValueError(f"sheet: flange {i + 1} ({L} mm) bend ke liye chhota hai")
+            raise ValueError(f"sheet: flange {i + 1} ({L} mm) is too short for the bend")
         flat += s_len
         x, z = x + s_len * math.cos(hd), z + s_len * math.sin(hd)
         wp = wp.lineTo(x, z)
@@ -423,7 +423,7 @@ def expect(**kw):
     allowed = {"size", "holes", "volume", "tol", "name", "max_size", "solids"}
     bad = set(kw) - allowed
     if bad:
-        raise ValueError(f"expect: {', '.join(sorted(bad))} nahi ({', '.join(sorted(allowed))})")
+        raise ValueError(f"expect: no {', '.join(sorted(bad))} ({', '.join(sorted(allowed))})")
     EXPECT.append(kw)
 
 
@@ -433,9 +433,9 @@ def analyze(kind="static", **kw):
     if kind not in ("static", "thermal", "modal", "flow", "buckling", "plastic"):
         raise ValueError("analyze kind: static / thermal / modal / flow / buckling / plastic")
     if kind == "flow" and kw.get("domain") is None:
-        raise ValueError("flow: domain=<the FLUID body> chahiye (channel / cavity / box minus the part)")
+        raise ValueError("flow: domain=<the FLUID body> is needed (channel / cavity / box minus the part)")
     if len(STUDIES) >= 4:
-        raise ValueError("ek part par 4 analysis tak")
+        raise ValueError("up to 4 analyses on one part")
     STUDIES.append({"kind": kind, **kw})
 
 
@@ -486,7 +486,7 @@ def joint(name, parent, child, kind="revolute", origin=(0, 0, 0), axis=(0, 0, 1)
     if kind == "slot" and not direction:
         raise ValueError(f"slot {name}: direction=(dx, dy, dz) of the slot's length is needed (pin on child, slot in parent)")
     if len(JOINTS) >= 40:
-        raise ValueError("40 joints tak")
+        raise ValueError("up to 40 joints")
     if limits is not None and (len(limits) != 2 or not float(limits[0]) < float(limits[1])):
         raise ValueError(f"joint {name}: limits (low, high)")
     JOINTS.append({"name": str(name), "parent": str(parent), "child": str(child), "kind": kind,
@@ -546,7 +546,7 @@ def gear_duty(module, pinion_teeth, wheel_teeth, width, torque_Nm, rpm, material
     8 hobbed, 10 ground); life_hours = how long it must run; mounting = 'rigid' | 'good' | 'commercial' |
     'overhung' | 'poor'. A failing check comes back to you: bigger module, wider face, more teeth, harder steel."""
     if len(GEAR_DUTY) >= 4:
-        raise ValueError("4 gear pair tak")
+        raise ValueError("up to 4 gear pairs")
     GEAR_DUTY.append({"module": float(module), "pinion_teeth": int(pinion_teeth), "wheel_teeth": int(wheel_teeth),
                       "width_mm": float(width), "torque_Nm": float(torque_Nm), "rpm": float(rpm),
                       "material": material, "wheel_material": wheel_material, "alpha_deg": float(pressure_angle),

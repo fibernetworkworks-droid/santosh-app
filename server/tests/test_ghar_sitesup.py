@@ -169,9 +169,9 @@ def test_safety_stop_incident(ss):
     S = ss
     make_site(S)
     t = S.toolbox(T, "", "Unchai par harness", 20)
-    assert "20 log" in t["say"]
+    assert "20 people" in t["say"]
     r = S.checklist(T, "", "height", {"edge": False, "openings": True, "harness": True, "ladder": True}, area="2nd floor slab edge")
-    assert r["result"]["unsafe"] == ["edge"] and r["stop"]["status"] == "waiting" and "door hataiye" in r["say"]
+    assert r["result"]["unsafe"] == ["edge"] and r["stop"]["status"] == "waiting" and "move people away" in r["say"]
     stop = r["stop"]
     with pytest.raises(S.SiteError):
         S.decide_stop(T, stop["id"], True, stop["hash"])

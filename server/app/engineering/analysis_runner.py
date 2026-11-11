@@ -18,7 +18,7 @@ def _contact(out: Path, spec: dict, cq) -> dict:
     import contact
     names = json.loads((out / "aparts.json").read_text(encoding="utf-8")) if (out / "aparts.json").exists() else []
     if len(names) < 2:
-        raise ValueError("contact analysis assembly par hoti hai (result = cq.Assembly, 2+ parts)")
+        raise ValueError("contact analysis runs on an assembly (result = cq.Assembly, 2+ parts)")
     skip = set(spec.get("skip") or [])
     shapes = []
     for i, n in enumerate(names):
@@ -60,7 +60,7 @@ def main() -> None:
                     ds = dsh.Solids()
                     target = ds[0] if len(ds) == 1 else dsh
                 elif spec.get("kind") in ("flow", "cfd"):
-                    raise ValueError("flow ke liye H.analyze('flow', domain=<fluid body>, ...) chahiye")
+                    raise ValueError("flow needs H.analyze('flow', domain=<fluid body>, ...)")
                 if spec.get("kind", "static") in ("static", "stress") and (spec.get("contact") or spec.get("bolts")):
                     r = _contact(out, spec, cq)                 # v0.386 parts that touch, open, slide, with bolts
                     (out / f"fea_{i}.json").write_text(json.dumps(r.pop("surface")), encoding="utf-8")

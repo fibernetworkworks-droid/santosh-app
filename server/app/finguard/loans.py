@@ -116,7 +116,7 @@ def true_cost(principal: Any, annual_rate_pct: Any, months: Any, *, fee_pct: Any
     if ins:
         flags.append({"kind": "measured", "text": f"Insurance Rs {ins:,.2f} is bundled with the loan: ask whether it is required or whether you can buy your own insurance."})
     if bal:
-        flags.append({"kind": "measured", "text": f"Balloon payment at the end Rs {bal:,.2f}: until then the EMIs do not fully pay off the loan."})
+        flags.append({"kind": "measured", "text": f"At the end, a balloon payment of Rs {bal:,.2f}: until then the EMIs do not fully pay off the loan."})
     if upfront and fees_deducted:
         flags.append({"kind": "measured", "text": f"Rs {upfront:,.2f} is deducted upfront: you receive Rs {received:,.2f} in hand, but interest runs on Rs {p:,.2f}."})
     return {"principal": _r2(p), "emi": pay, "months": n, "stated_rate_pct": r, "fee_before_gst": _r2(fee_base), "fee_gst": _r2(fee_gst),

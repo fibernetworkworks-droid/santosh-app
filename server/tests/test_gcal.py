@@ -354,5 +354,5 @@ def test_owner_caldav_route(bz, monkeypatch):  # noqa: F811
     assert not dav.events[1].deleted
     bz["svc"].decide("default", _events(bz["conv"], "bazar_approval")[-1]["id"], "approve")
     assert dav.events[1].deleted
-    with pytest.raises(ToolError, match="juda nahi"):                   # not for other users
+    with pytest.raises(ToolError, match="no longer connected"):                   # not for other users
         run("calendar_agenda", {}, Ctx("usr_other", "c"))
