@@ -3554,161 +3554,325 @@ html.human #app .landing .halo{display:none}
   #app .skv-side{max-width:none}
 }
 
-/* v0.772 HOOLA INTERACTIVE - the whole product as its own full page (interactive.js): an icon rail, a quiet top bar,
-   one scrolling work area. Console tokens only (v2.css :root), so Light / Dark / System follow. The saffron ->
-   magenta -> violet glow is used for three things: the Hoola mark, the avatar ring and progress. The stage keeps
-   the video's own night colour in both themes, because that is what the film looks like. */
-#hiRoot{position:fixed;inset:0;z-index:60;background:var(--bg);color:var(--ink);font:400 14px/1.45 var(--fd);
-  display:grid;grid-template-columns:88px minmax(0,1fr);--hi-stage:#101426;--hi-stage-ink:#FFFFFF;--hi-stage-mut:#B8C0D9}
+/* v0.775 HOOLA INTERACTIVE, PREMIUM PASS - the whole product as its own full page (interactive.js). An icon rail with
+   Create on top, no second title bar (each page has ONE heading), one scrolling work area. Console tokens only
+   (v2.css :root), so Light / Dark / System follow. One control scale: buttons 40 / 32, fields 42, corners 10 / 16.
+   Dropdowns are drawn (no raw browser select). Motion is ONE-TIME: a page rises in when it opens, a tab or scene
+   fades when it changes, cards lift under the pointer - nothing loops except the step being made right now, and
+   Reduce motion / calm switch all of it off. No blur, no weight above 600, no capitals (CRISP TEXT). The stage keeps
+   the film's own night colour in both themes, tinted with HER brand colour. */
+#hiRoot{position:fixed;inset:0;z-index:60;background:var(--bg);color:var(--ink);font:400 14px/1.5 var(--fd);
+  display:grid;grid-template-columns:232px minmax(0,1fr);transition:grid-template-columns .3s var(--hi-ease);--hi-stage:#0E1122;--hi-stage-ink:#FFFFFF;--hi-stage-mut:#B4BCD8;--hi-brand:#7C5CFF;
+  --hi-ease:cubic-bezier(.2,.8,.2,1);--hi-sh1:0 1px 2px rgb(20 16 50 / .05);--hi-sh2:0 1px 2px rgb(20 16 50 / .05),0 14px 32px -18px rgb(60 44 150 / .32);
+  --hi-ring:0 0 0 3px color-mix(in srgb,var(--pri) 22%,transparent)}
 #hiRoot[hidden]{display:none}
 #hiRoot *{box-sizing:border-box}
 #hiRoot button,#hiRoot input,#hiRoot select,#hiRoot textarea{font:inherit;color:inherit}
 #hiRoot button{cursor:pointer}
-#hiRoot button:disabled{opacity:.5;cursor:not-allowed}
-#hiRoot :focus-visible{outline:2px solid var(--pri);outline-offset:2px;border-radius:6px}
+#hiRoot button:disabled{cursor:not-allowed}
+#hiRoot :focus-visible{outline:2px solid var(--pri);outline-offset:2px}
 #hiRoot h1,#hiRoot h2,#hiRoot h3,#hiRoot p{margin:0}
-#hiRoot h1{font-size:26px;font-weight:600;letter-spacing:-.02em;text-wrap:balance}
-#hiRoot h2{font-size:18px;font-weight:600;letter-spacing:-.01em}
-#hiRoot h3{font-size:15px;font-weight:600}
-#hiRoot .hi-mut{color:var(--mut)} #hiRoot .hi-dim{color:var(--dim)} #hiRoot .hi-sm{font-size:12.5px}
+#hiRoot h1{font-size:28px;line-height:1.15;font-weight:600;letter-spacing:-.022em;text-wrap:balance}
+#hiRoot h2{font-size:18px;line-height:1.3;font-weight:600;letter-spacing:-.012em}
+#hiRoot h3{font-size:15px;line-height:1.35;font-weight:600;letter-spacing:-.005em}
+#hiRoot b{font-weight:600}
+#hiRoot .hi-mut{color:var(--mut)} #hiRoot .hi-dim{color:var(--dim)} #hiRoot .hi-sm{font-size:12.5px;line-height:1.45}
 #hiRoot .hi-num{font-variant-numeric:tabular-nums}
-#hiRoot svg.hi-i{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;flex:none}
+#hiRoot .hi-fill{flex:1;min-width:0}
+#hiRoot .hi-start{justify-self:start}
+#hiRoot svg.hi-i{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;flex:none;display:block}
 
-/* shell */
-#hiRoot .hi-rail{background:var(--side-bg);border-right:1px solid var(--line);display:flex;flex-direction:column;align-items:center;gap:2px;padding:14px 6px 12px;overflow-y:auto}
-#hiRoot .hi-mark{font:700 15px var(--logo);letter-spacing:-.02em;margin-bottom:8px;display:grid;justify-items:center;gap:6px;text-align:center;line-height:1.1;border:0;background:none}
-#hiRoot .hi-mark i{width:34px;height:34px;border-radius:11px;background:var(--grad);display:block}
-#hiRoot .hi-mark small{font:500 10.5px var(--fd);color:var(--mut);letter-spacing:0}
-#hiRoot .hi-rb{width:74px;border:0;background:none;border-radius:12px;padding:5px 2px 4px;display:grid;justify-items:center;gap:3px;color:var(--mut);font-size:11px;font-weight:500}
-#hiRoot .hi-rb .hi-tile{width:40px;height:32px;border-radius:11px;display:grid;place-items:center;transition:background .15s,color .15s}
-#hiRoot .hi-rb:hover .hi-tile{background:var(--sunk);color:var(--ink)}
-#hiRoot .hi-rb[aria-current="page"]{color:var(--ink);font-weight:600}
-#hiRoot .hi-rb[aria-current="page"] .hi-tile{background:var(--pri);color:var(--on-acc)}
-#hiRoot .hi-rail hr{width:40px;border:0;border-top:1px solid var(--line);margin:6px 0}
-#hiRoot .hi-sp{flex:1}
-#hiRoot .hi-main{display:grid;grid-template-rows:auto minmax(0,1fr);min-width:0;min-height:0}
-#hiRoot .hi-top{display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--line);padding:12px 24px}
-#hiRoot .hi-top h1{font-size:18px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-#hiRoot .hi-view{overflow-y:auto;overflow-x:hidden;min-height:0;padding:24px 24px 48px}
-#hiRoot .hi-wrap{max-width:1180px;margin:0 auto;display:grid;gap:26px}
-#hiRoot .hi-wrap.wide{max-width:1320px}
+/* shell: its own sidebar - rows of 36, folds to icons (the editor opens folded to give the canvas room) */
+#hiRoot .hi-rail{background:var(--side-bg);border-right:1px solid var(--line);display:flex;flex-direction:column;align-items:stretch;gap:2px;padding:14px 12px 12px;overflow-x:hidden;overflow-y:auto;scrollbar-width:none}
+#hiRoot .hi-rail::-webkit-scrollbar{display:none}
+#hiRoot .hi-rail>*{flex:none}
+#hiRoot .hi-rhead{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:14px}
+#hiRoot .hi-mark{border:0;background:none;padding:0;display:flex;align-items:center;gap:10px;text-align:left;font:600 15px/1.1 var(--logo);letter-spacing:-.02em;min-width:0}
+#hiRoot .hi-mark i{width:34px;height:34px;border-radius:11px;background:var(--grad);display:grid;place-items:center;color:#fff;flex:none;box-shadow:0 8px 18px -10px rgb(192 85 245 / .7);transition:transform .25s var(--hi-ease)}
+#hiRoot .hi-mark i svg{width:16px;height:16px;stroke-width:0;fill:currentColor;margin-left:1px}
+#hiRoot .hi-mark:hover i{transform:rotate(-6deg) scale(1.06)}
+#hiRoot .hi-mark span{display:grid;gap:3px} #hiRoot .hi-mark small{font:500 12px/1 var(--fd);color:var(--mut);letter-spacing:0}
+#hiRoot .hi-new{height:40px;width:100%;margin:0 0 12px;border-radius:10px;border:0;background:var(--pri);color:var(--on-acc);font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px;white-space:nowrap;
+  box-shadow:inset 0 1px 0 rgb(255 255 255 / .16),0 10px 20px -12px var(--pri);transition:transform .18s var(--hi-ease),background .15s}
+#hiRoot .hi-new svg.hi-i{width:18px;height:18px}
+#hiRoot .hi-new:hover{background:var(--pri-hover);transform:translateY(-1px)}
+#hiRoot .hi-new:active{transform:scale(.98)}
+#hiRoot .hi-rb{position:relative;height:36px;width:100%;border:0;background:none;border-radius:9px;padding:0 10px;display:flex;align-items:center;gap:11px;color:var(--mut);font-size:14px;font-weight:500;white-space:nowrap;text-align:left;transition:background .15s,color .15s}
+#hiRoot .hi-rb .hi-tile{display:grid;place-items:center;width:20px;height:20px;flex:none;transition:transform .2s var(--hi-ease)}
+#hiRoot .hi-rb svg.hi-i{width:19px;height:19px}
+#hiRoot .hi-rb:hover{background:var(--sunk);color:var(--ink)}
+#hiRoot .hi-rb:hover .hi-tile{transform:scale(1.1)}
+#hiRoot .hi-rb[aria-current="page"]{background:var(--pri-soft);color:var(--pri-ink);font-weight:600}
+#hiRoot .hi-rb[aria-current="page"]::before{content:"";position:absolute;left:-12px;top:8px;width:3px;height:20px;border-radius:0 3px 3px 0;background:var(--pri);animation:hiBar .28s var(--hi-ease) both}
+#hiRoot .hi-rail hr{border:0;border-top:1px solid var(--line);margin:8px 4px}
+#hiRoot .hi-sp{flex:1 1 8px!important;min-height:8px}
+#hiRoot .hi-rs{border:0;background:none;height:32px;width:100%;padding:0 15px;display:flex;align-items:center;gap:16px;font-size:12.5px;color:var(--mut);white-space:nowrap;border-radius:9px;text-align:left}
+#hiRoot .hi-rs:hover{background:var(--sunk);color:var(--ink)}
+#hiRoot .hi-rs i{width:9px;height:9px;border-radius:50%;background:currentColor;box-shadow:0 0 0 4px color-mix(in srgb,currentColor 16%,transparent);color:var(--dim);flex:none}
+#hiRoot .hi-rs.ok i{color:var(--ok)} #hiRoot .hi-rs.warn i{color:var(--warn)} #hiRoot .hi-rs.bad i{color:var(--bad)}
+#hiRoot[data-slim="1"]{grid-template-columns:68px minmax(0,1fr)}
+#hiRoot[data-slim="1"] .hi-rail{align-items:center;padding:14px 0 12px}
+#hiRoot[data-slim="1"] :is(.hi-rl,.hi-mark span,.hi-new span){display:none}
+#hiRoot[data-slim="1"] .hi-rhead{flex-direction:column;gap:8px;margin-bottom:10px}
+#hiRoot[data-slim="1"] :is(.hi-new,.hi-rb,.hi-rs){width:40px;height:40px;padding:0;justify-content:center}
+#hiRoot[data-slim="1"] .hi-rb[aria-current="page"]::before{left:-14px;top:10px}
+#hiRoot[data-slim="1"] .hi-rail hr{width:28px}
+#hiRoot .hi-main{min-width:0;min-height:0;display:grid}
+#hiRoot .hi-view{overflow-y:auto;overflow-x:hidden;min-height:0;padding:32px 32px 56px}
+#hiRoot .hi-wrap{max-width:1160px;margin:0 auto;display:grid;gap:28px}
+#hiRoot .hi-wrap.wide{max-width:1360px;gap:18px}
+#hiRoot .hi-wrap.narrow{max-width:720px}
 #hiRoot .hi-wrap>*,#hiRoot .hi-grid>*,#hiRoot .hi-cols>*,#hiRoot .hi-ed>*,#hiRoot .hi-card>*{min-width:0}
 
-/* pieces */
-#hiRoot .hi-btn{border:0;border-radius:999px;padding:9px 16px;font-weight:600;background:var(--pri);color:var(--on-acc);display:inline-flex;align-items:center;gap:7px;white-space:nowrap}
-#hiRoot .hi-btn:hover:not(:disabled){background:var(--pri-hover)}
-#hiRoot .hi-btn.q{background:var(--sunk);color:var(--ink)} #hiRoot .hi-btn.q:hover:not(:disabled){background:var(--line)}
-#hiRoot .hi-btn.s{padding:6px 12px;font-size:12.5px}
-#hiRoot .hi-btn.danger{background:none;color:var(--bad);padding-left:4px;padding-right:4px}
-#hiRoot .hi-pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:6px 12px;background:var(--sunk);font-size:12.5px;font-weight:500;white-space:nowrap}
-#hiRoot .hi-pill i{width:8px;height:8px;border-radius:50%;background:var(--dim)}
-#hiRoot .hi-pill.ok i{background:var(--ok)} #hiRoot .hi-pill.warn i{background:var(--warn)} #hiRoot .hi-pill.bad i{background:var(--bad)}
-#hiRoot .hi-card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px}
-#hiRoot .hi-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-#hiRoot .hi-sh{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap}
-#hiRoot .hi-grid{display:grid;gap:14px}
-#hiRoot .hi-g3{grid-template-columns:repeat(auto-fill,minmax(230px,1fr))}
-#hiRoot .hi-g4{grid-template-columns:repeat(auto-fill,minmax(168px,1fr))}
-#hiRoot .hi-cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;align-items:start}
-#hiRoot .hi-tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);overflow-x:auto}
-#hiRoot .hi-tab{border:0;background:none;padding:9px 12px;color:var(--mut);font-weight:500;border-bottom:2px solid transparent;white-space:nowrap}
-#hiRoot .hi-tab[aria-selected="true"]{color:var(--ink);border-color:var(--pri);font-weight:600}
-#hiRoot .hi-chip{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:3px 9px;font-size:11.5px;font-weight:600;background:var(--sunk);color:var(--mut);white-space:nowrap}
-#hiRoot .hi-chip.ok{background:var(--ok-soft);color:var(--ok)} #hiRoot .hi-chip.warn{background:var(--warn-soft);color:var(--warn)}
-#hiRoot .hi-chip.bad{background:rgb(var(--bad-rgb) / .12);color:var(--bad)} #hiRoot .hi-chip.pri{background:var(--pri-soft);color:var(--pri-ink)}
-#hiRoot .hi-sel{border:1px solid var(--hair);background:var(--surface);border-radius:999px;padding:6px 12px;font-size:12.5px;font-weight:500}
-#hiRoot .hi-sel[aria-pressed="true"]{background:var(--pri-soft);border-color:var(--pri);color:var(--pri-ink)}
-#hiRoot .hi-f{display:grid;gap:5px;font-size:12.5px;color:var(--mut);font-weight:500}
-#hiRoot .hi-f input,#hiRoot .hi-f select,#hiRoot .hi-f textarea{border:1px solid var(--hair);border-radius:8px;padding:8px 10px;background:var(--surface);color:var(--ink);font-size:14px;width:100%}
-#hiRoot .hi-check{display:flex;gap:8px;align-items:flex-start}
-#hiRoot table{width:100%;border-collapse:collapse;font-size:13.5px}
-#hiRoot th{text-align:left;font-size:12px;color:var(--mut);font-weight:500;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
-#hiRoot td{padding:10px;border-bottom:1px solid var(--line);vertical-align:top}
-#hiRoot .hi-scroll{overflow-x:auto}
-#hiRoot .hi-note{background:var(--sunk);border-radius:12px;padding:12px 14px;color:var(--mut);font-size:13px}
-#hiRoot .hi-note.warn{background:var(--warn-soft);color:var(--warn)}
-#hiRoot .hi-empty{border:1.5px dashed var(--hair);border-radius:16px;padding:26px;text-align:center;display:grid;gap:8px;justify-items:center;background:var(--raise);color:var(--mut)}
-#hiRoot .hi-empty b{color:var(--ink)}
+/* buttons: one scale */
+#hiRoot .hi-btn{height:40px;border:1px solid transparent;border-radius:10px;padding:0 16px;font-size:14px;font-weight:600;line-height:1;background:var(--pri);color:var(--on-acc);
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;white-space:nowrap;flex:none;
+  box-shadow:inset 0 1px 0 rgb(255 255 255 / .16),0 8px 18px -12px var(--pri);transition:transform .18s var(--hi-ease),background .15s,box-shadow .18s,border-color .15s}
+#hiRoot .hi-btn svg.hi-i{width:17px;height:17px}
+#hiRoot .hi-btn:hover:not(:disabled){background:var(--pri-hover);transform:translateY(-1px)}
+#hiRoot .hi-btn:active:not(:disabled){transform:translateY(0) scale(.98)}
+#hiRoot .hi-btn:disabled{opacity:.45;box-shadow:none}
+#hiRoot .hi-btn.q{background:var(--surface);color:var(--ink);border-color:var(--hair);box-shadow:var(--hi-sh1)}
+#hiRoot .hi-btn.q:hover:not(:disabled){background:var(--raise);border-color:color-mix(in srgb,var(--pri) 35%,var(--hair))}
+#hiRoot .hi-btn.s{height:32px;padding:0 12px;font-size:13px;border-radius:9px}
+#hiRoot .hi-btn.lg{height:46px;padding:0 20px;font-size:15px;border-radius:12px}
+#hiRoot .hi-btn.ico{width:40px;padding:0} #hiRoot .hi-btn.ico.s{width:32px}
+#hiRoot .hi-btn.danger{background:none;color:var(--bad);box-shadow:none}
+#hiRoot .hi-btn.danger:hover:not(:disabled){background:rgb(var(--bad-rgb) / .1)}
+#hiRoot .hi-link{border:0;background:none;padding:0;color:var(--pri-ink);font-weight:600;font-size:13px}
+#hiRoot .hi-link:hover{text-decoration:underline}
 
-/* avatars, video tiles */
-#hiRoot .hi-av{border:1px solid var(--line);border-radius:16px;padding:8px;background:var(--surface);text-align:left;display:grid;gap:8px;width:100%}
-#hiRoot button.hi-av:hover{border-color:var(--hair);box-shadow:var(--sh2)}
-#hiRoot .hi-face{aspect-ratio:4/5;border-radius:12px;overflow:hidden;background:var(--sunk);display:grid;place-items:center;width:100%;max-width:100%;color:var(--dim);font:600 28px var(--fd)}
+/* small pieces */
+#hiRoot .hi-chip{display:inline-flex;align-items:center;gap:6px;height:24px;border-radius:999px;padding:0 10px;font-size:12px;font-weight:600;line-height:1;background:var(--sunk);color:var(--mut);white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+#hiRoot .hi-chip.ok,#hiRoot .hi-chip.warn,#hiRoot .hi-chip.bad,#hiRoot .hi-chip.hi-now{padding-left:8px}
+#hiRoot .hi-chip.ok::before,#hiRoot .hi-chip.warn::before,#hiRoot .hi-chip.bad::before,#hiRoot .hi-chip.hi-now::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;flex:none}
+#hiRoot .hi-chip.ok{background:var(--ok-soft);color:var(--ok)} #hiRoot .hi-chip.warn{background:var(--warn-soft);color:var(--warn)}
+#hiRoot .hi-chip.bad{background:rgb(var(--bad-rgb) / .12);color:var(--bad)} #hiRoot .hi-chip.pri,#hiRoot .hi-chip.hi-now{background:var(--pri-soft);color:var(--pri-ink)}
+#hiRoot .hi-chip.hi-now::before{animation:hiPulse 1.4s ease-in-out infinite}
+#hiRoot .hi-card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:20px;box-shadow:var(--hi-sh1)}
+#hiRoot .hi-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+#hiRoot .hi-row.nw{flex-wrap:nowrap}
+#hiRoot .hi-sh{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+#hiRoot .hi-head{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap}
+#hiRoot .hi-head>div:first-child{display:grid;gap:6px;min-width:0;flex:1 1 320px}
+#hiRoot .hi-head p{font-size:15px;color:var(--mut);max-width:62ch}
+#hiRoot .hi-grid{display:grid;gap:14px}
+#hiRoot .hi-g3{grid-template-columns:repeat(auto-fill,minmax(224px,1fr));gap:16px}
+#hiRoot .hi-g4{grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:16px}
+#hiRoot .hi-cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;align-items:start}
+#hiRoot .hi-tabs{display:inline-flex;gap:2px;padding:4px;border-radius:12px;background:var(--sunk);justify-self:start;max-width:100%;overflow-x:auto;scrollbar-width:none}
+#hiRoot .hi-tab{border:0;background:none;height:32px;padding:0 14px;border-radius:9px;color:var(--mut);font-size:13.5px;font-weight:500;white-space:nowrap;transition:color .15s,background .15s}
+#hiRoot .hi-tab:hover{color:var(--ink)}
+#hiRoot .hi-tab[aria-selected="true"],#hiRoot .hi-tab[aria-pressed="true"]{background:var(--surface);color:var(--ink);font-weight:600;box-shadow:0 1px 2px rgb(20 16 50 / .1),0 0 0 1px var(--line)}
+#hiRoot .hi-tab svg.hi-i{width:16px;height:16px}
+#hiRoot .hi-sel{height:32px;border:1px solid var(--hair);background:var(--surface);border-radius:999px;padding:0 14px;font-size:13px;font-weight:500;color:var(--mut);transition:border-color .15s,background .15s,color .15s,transform .18s var(--hi-ease)}
+#hiRoot .hi-sel:hover{color:var(--ink);border-color:color-mix(in srgb,var(--pri) 35%,var(--hair));transform:translateY(-1px)}
+#hiRoot .hi-sel[aria-pressed="true"]{background:var(--pri-soft);border-color:color-mix(in srgb,var(--pri) 45%,transparent);color:var(--pri-ink);font-weight:600}
+
+/* fields + drawn dropdowns */
+#hiRoot .hi-f{position:relative;display:grid;gap:6px;font-size:13px;color:var(--mut);font-weight:500}
+#hiRoot .hi-f input:not([type=checkbox]):not([type=color]):not([type=file]),#hiRoot .hi-f select,#hiRoot .hi-f textarea,#hiRoot .hi-area{border:1px solid var(--hair);border-radius:10px;padding:0 12px;height:42px;background:var(--surface);color:var(--ink);font-size:14px;font-weight:400;width:100%;outline:0;transition:border-color .15s,box-shadow .15s}
+#hiRoot .hi-f textarea,#hiRoot .hi-area{height:auto;padding:10px 12px;line-height:1.5;resize:vertical}
+#hiRoot .hi-f input:hover,#hiRoot .hi-f select:hover,#hiRoot .hi-f textarea:hover,#hiRoot .hi-area:hover{border-color:color-mix(in srgb,var(--pri) 30%,var(--hair))}
+#hiRoot .hi-f input:focus,#hiRoot .hi-f select:focus,#hiRoot .hi-f textarea:focus,#hiRoot .hi-area:focus{border-color:var(--pri);box-shadow:var(--hi-ring)}
+#hiRoot .hi-f ::placeholder,#hiRoot .hi-ask ::placeholder,#hiRoot .hi-scene ::placeholder{color:var(--dim)}
+#hiRoot .hi-f select,#hiRoot .hi-pick select{appearance:none;-webkit-appearance:none;cursor:pointer;padding-right:34px}
+#hiRoot .hi-f:has(>select)::after,#hiRoot .hi-pick::after{content:"";position:absolute;right:14px;width:7px;height:7px;border-right:1.7px solid var(--mut);border-bottom:1.7px solid var(--mut);transform:rotate(45deg);pointer-events:none}
+#hiRoot .hi-f:has(>select)::after{bottom:18px}
+#hiRoot .hi-pick{position:relative;display:inline-flex;align-items:center;height:36px;border:1px solid var(--hair);border-radius:10px;background:var(--surface);color:var(--mut);padding-left:10px;gap:6px;max-width:100%;transition:border-color .15s,box-shadow .15s}
+#hiRoot .hi-pick::after{top:50%;margin-top:-6px;right:13px}
+#hiRoot .hi-pick svg.hi-i{width:16px;height:16px}
+#hiRoot .hi-pick select{border:0;background:none;height:100%;padding-left:0;font-size:13px;font-weight:500;color:var(--ink);outline:0;min-width:0;max-width:190px;text-overflow:ellipsis}
+#hiRoot .hi-pick:hover{border-color:color-mix(in srgb,var(--pri) 35%,var(--hair))}
+#hiRoot .hi-pick:focus-within{border-color:var(--pri);box-shadow:var(--hi-ring)}
+#hiRoot .hi-f input[type=file]{font-size:13px;color:var(--mut);border:1px dashed var(--hair);border-radius:10px;padding:10px;background:var(--raise);width:100%}
+#hiRoot .hi-f input[type=file]::file-selector-button{font:inherit;font-weight:600;border:1px solid var(--hair);border-radius:8px;background:var(--surface);color:var(--ink);height:30px;padding:0 12px;margin-right:10px;cursor:pointer}
+#hiRoot .hi-f input[type=color]{width:52px;height:42px;border:1px solid var(--hair);border-radius:10px;padding:4px;background:var(--surface);cursor:pointer}
+#hiRoot .hi-check{display:flex;gap:10px;align-items:flex-start;line-height:1.45}
+#hiRoot .hi-check input{width:17px;height:17px;margin:2px 0 0;accent-color:var(--pri);flex:none}
+#hiRoot table{width:100%;border-collapse:collapse;font-size:14px}
+#hiRoot th{text-align:left;font-size:12.5px;color:var(--mut);font-weight:500;padding:10px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
+#hiRoot td{padding:12px;border-bottom:1px solid var(--line);vertical-align:middle}
+#hiRoot tbody tr:last-child td{border-bottom:0}
+#hiRoot tbody tr{transition:background .12s} #hiRoot tbody tr:hover{background:var(--raise)}
+#hiRoot .hi-scroll{overflow-x:auto}
+#hiRoot .hi-card.hi-scroll{padding:6px 8px}
+#hiRoot .hi-note{background:var(--sunk);border-radius:12px;padding:12px 14px;color:var(--mut);font-size:13px;line-height:1.5}
+#hiRoot .hi-note.warn{background:var(--warn-soft);color:var(--warn);border:1px solid color-mix(in srgb,var(--warn) 20%,transparent)}
+#hiRoot .hi-empty{border:1.5px dashed var(--hair);border-radius:18px;padding:40px 24px;text-align:center;display:grid;gap:8px;justify-items:center;background:var(--raise);color:var(--mut)}
+#hiRoot .hi-empty::before{content:"";width:46px;height:46px;border-radius:15px;margin-bottom:6px;background:var(--pri-soft);box-shadow:inset 0 0 0 9px var(--raise),inset 0 0 0 11px color-mix(in srgb,var(--pri) 45%,transparent)}
+#hiRoot .hi-empty b{color:var(--ink);font-size:15px}
+#hiRoot .hi-empty .hi-btn,#hiRoot .hi-empty .hi-row{margin-top:8px}
+
+/* avatars + video tiles */
+#hiRoot .hi-av{border:1px solid var(--line);border-radius:16px;padding:8px 8px 12px;background:var(--surface);text-align:left;display:grid;gap:10px;width:100%;box-shadow:var(--hi-sh1);align-content:start;
+  transition:transform .2s var(--hi-ease),box-shadow .2s,border-color .15s}
+#hiRoot .hi-av>:not(.hi-thumb):not(.hi-face){padding:0 6px}
+#hiRoot button.hi-av:hover,#hiRoot .hi-av.hov:hover{transform:translateY(-3px);box-shadow:var(--hi-sh2);border-color:color-mix(in srgb,var(--pri) 30%,var(--line))}
+#hiRoot .hi-face{aspect-ratio:4/5;border-radius:11px;overflow:hidden;display:grid;place-items:center;width:100%;max-width:100%;color:var(--pri-ink);font:600 30px/1 var(--fd);letter-spacing:-.02em;
+  background:linear-gradient(160deg,var(--pri-soft),color-mix(in srgb,var(--mag) 16%,var(--surface)))}
 #hiRoot .hi-face img{width:100%;height:100%;object-fit:cover;display:block}
-#hiRoot .hi-dot{width:44px;height:44px;border-radius:50%;padding:2px;background:var(--grad);flex:none;display:block}
-#hiRoot .hi-dot .hi-face{aspect-ratio:1;border-radius:50%;font-size:15px;background:var(--surface)}
-#hiRoot .hi-thumb{aspect-ratio:16/9;border-radius:12px;background:var(--hi-stage);position:relative;overflow:hidden;display:block;color:var(--hi-stage-mut)}
-#hiRoot .hi-thumb .cap{position:absolute;left:10px;bottom:8px;right:10px;color:var(--hi-stage-ink);font-weight:600;font-size:13px;text-align:left}
-#hiRoot .hi-thumb .len{position:absolute;right:8px;top:8px;background:rgb(0 0 0 / .55);color:#fff;border-radius:6px;padding:1px 6px;font-size:11px}
+#hiRoot .hi-dot{width:46px;height:46px;border-radius:50%;padding:2px;background:var(--grad);flex:none;display:block}
+#hiRoot .hi-dot .hi-face{aspect-ratio:1;border-radius:50%;font-size:15px;background:var(--surface);color:var(--ink);border:2px solid var(--surface)}
+#hiRoot .hi-thumb{aspect-ratio:16/9;border-radius:11px;position:relative;overflow:hidden;display:block;color:var(--hi-stage-mut);
+  background:radial-gradient(90% 120% at 88% -10%,color-mix(in srgb,var(--t,#7C5CFF) 55%,transparent),transparent 62%),linear-gradient(160deg,#1A1D38,#0C0E1C)}
+#hiRoot .hi-thumb::after{content:"";position:absolute;inset:auto 0 0 0;height:60%;background:linear-gradient(transparent,rgb(6 7 16 / .72))}
+#hiRoot .hi-thumb .cap{position:absolute;left:12px;bottom:10px;right:12px;z-index:1;color:var(--hi-stage-ink);font-weight:600;font-size:14px;line-height:1.3;text-align:left;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+#hiRoot .hi-thumb .len,#hiRoot .hi-thumb .cnt{position:absolute;top:8px;z-index:1;height:22px;display:inline-flex;align-items:center;background:rgb(6 7 16 / .6);color:#fff;border-radius:7px;padding:0 7px;font-size:12px;font-weight:500}
+#hiRoot .hi-thumb .len{right:8px} #hiRoot .hi-thumb .cnt{left:8px}
+#hiRoot .hi-thumb .play{position:absolute;left:50%;top:44%;width:42px;height:42px;margin:-21px 0 0 -21px;border-radius:50%;background:rgb(255 255 255 / .16);box-shadow:inset 0 0 0 1px rgb(255 255 255 / .28);display:grid;place-items:center;color:#fff;z-index:1;transition:transform .22s var(--hi-ease),background .2s}
+#hiRoot .hi-thumb .play svg{width:16px;height:16px;fill:currentColor;stroke:none;margin-left:2px}
+#hiRoot .hi-av:hover .play{transform:scale(1.12);background:var(--pri)}
 #hiRoot .hi-bar{height:6px;border-radius:99px;background:var(--line);overflow:hidden}
-#hiRoot .hi-bar i{display:block;height:100%;background:var(--grad)}
+#hiRoot .hi-bar i{display:block;height:100%;border-radius:99px;background:var(--grad);transition:width .6s var(--hi-ease)}
+#hiRoot .hi-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+#hiRoot .hi-stat{background:var(--raise);border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:grid;gap:2px}
+#hiRoot .hi-stat b{font-size:24px;line-height:1.15;letter-spacing:-.02em}
 
 /* home */
-#hiRoot .hi-hero{border-radius:22px;padding:28px;background:var(--side-bg);border:1px solid var(--line);display:grid;gap:16px}
-#hiRoot .hi-ask{background:var(--surface);border:1px solid var(--hair);border-radius:18px;padding:14px;display:grid;gap:12px;box-shadow:var(--sh2)}
-#hiRoot .hi-ask textarea{border:0;outline:0;resize:none;background:none;font-size:16px;width:100%;min-height:54px}
-#hiRoot .hi-flow{border:1px solid var(--line);border-radius:16px;padding:16px;background:var(--surface);text-align:left;display:grid;gap:8px;align-content:start}
-#hiRoot button.hi-flow:hover:not(:disabled){border-color:var(--pri);box-shadow:var(--sh2)}
-#hiRoot .hi-flow .ic{width:38px;height:38px;border-radius:11px;background:var(--pri-soft);color:var(--pri-ink);display:grid;place-items:center}
-#hiRoot .hi-steps{display:grid;gap:8px;list-style:none;margin:0;padding:0}
-#hiRoot .hi-step{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;background:var(--sunk)}
-#hiRoot .hi-step .n{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:600;background:var(--surface);border:1px solid var(--hair);flex:none}
-#hiRoot .hi-step.done .n{background:var(--ok);border-color:var(--ok);color:var(--on-acc)}
-#hiRoot .hi-step.on{background:var(--pri-soft)} #hiRoot .hi-step.on .n{border-color:var(--pri);color:var(--pri-ink)}
-#hiRoot .hi-step .t{margin-left:auto;color:var(--mut);font-size:12.5px}
+#hiRoot .hi-hero{position:relative;border-radius:24px;padding:36px;border:1px solid var(--line);display:grid;gap:18px;box-shadow:var(--hi-sh1);
+  background:radial-gradient(46% 110% at 0% 0%,color-mix(in srgb,var(--saf) 15%,transparent),transparent 70%),radial-gradient(52% 120% at 100% 0%,color-mix(in srgb,var(--mag) 13%,transparent),transparent 70%),
+    radial-gradient(70% 90% at 55% 120%,color-mix(in srgb,var(--vio) 16%,transparent),transparent 72%),var(--surface)}
+#hiRoot .hi-hero h1{font-size:34px;letter-spacing:-.028em}
+#hiRoot .hi-eye{display:inline-flex;align-items:center;gap:8px;justify-self:start;height:28px;padding:0 12px 0 10px;border-radius:999px;background:var(--surface);border:1px solid var(--line);font-size:12.5px;font-weight:600;color:var(--mut)}
+#hiRoot .hi-eye i{width:8px;height:8px;border-radius:50%;background:var(--grad)}
+#hiRoot .hi-ask{background:var(--surface);border:1px solid var(--hair);border-radius:18px;padding:16px 16px 14px;display:grid;gap:12px;box-shadow:var(--hi-sh2);transition:border-color .15s,box-shadow .2s}
+#hiRoot .hi-ask:focus-within{border-color:var(--pri);box-shadow:var(--hi-sh2),var(--hi-ring)}
+#hiRoot .hi-ask textarea{border:0;outline:0;resize:none;background:none;font-size:17px;line-height:1.45;width:100%;min-height:58px;padding:2px 4px}
+#hiRoot .hi-ask .hi-askrow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding-top:12px;border-top:1px solid var(--line)}
+#hiRoot .hi-flow{position:relative;border:1px solid var(--line);border-radius:16px;padding:18px;background:var(--surface);text-align:left;display:grid;gap:6px;align-content:start;box-shadow:var(--hi-sh1);
+  transition:transform .2s var(--hi-ease),box-shadow .2s,border-color .15s}
+#hiRoot .hi-flow .hi-ftop{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+#hiRoot .hi-flow .ic{width:40px;height:40px;border-radius:12px;background:var(--pri-soft);color:var(--pri-ink);display:grid;place-items:center;transition:background .2s,color .2s,transform .22s var(--hi-ease)}
+#hiRoot .hi-flow .arr{color:var(--pri-ink);opacity:0;transform:translateX(-6px);transition:opacity .18s,transform .22s var(--hi-ease)}
+#hiRoot .hi-flow .arr svg{width:18px;height:18px}
+#hiRoot button.hi-flow:hover:not(:disabled){transform:translateY(-3px);box-shadow:var(--hi-sh2);border-color:color-mix(in srgb,var(--pri) 40%,var(--line))}
+#hiRoot button.hi-flow:hover:not(:disabled) .ic{background:var(--pri);color:var(--on-acc);transform:scale(1.05)}
+#hiRoot button.hi-flow:hover:not(:disabled) .arr{opacity:1;transform:none}
+#hiRoot .hi-flow:disabled{box-shadow:none;background:var(--raise);border-style:dashed}
+#hiRoot .hi-flow:disabled .ic{background:var(--sunk);color:var(--dim)} #hiRoot .hi-flow:disabled h3{color:var(--mut)}
+#hiRoot .hi-steps{display:grid;list-style:none;margin:0;padding:0}
+#hiRoot .hi-step{display:flex;align-items:center;gap:12px;padding:11px 2px;border-bottom:1px solid var(--line);line-height:1.4}
+#hiRoot .hi-step:last-child{border-bottom:0}
+#hiRoot .hi-step .n{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-size:12.5px;font-weight:600;background:var(--sunk);color:var(--mut);flex:none}
+#hiRoot .hi-step .n svg{width:14px;height:14px;stroke-width:2.2}
+#hiRoot .hi-step.done .n{background:var(--ok-soft);color:var(--ok)}
+#hiRoot .hi-step.off .n{background:var(--sunk);color:var(--dim)}
+#hiRoot .hi-step.on .n{background:var(--pri);color:var(--on-acc);animation:hiRing 1.5s ease-out infinite}
+#hiRoot .hi-step .t{margin-left:auto;color:var(--mut);font-size:12.5px;white-space:nowrap}
+#hiRoot .hi-strap{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 14px;border-radius:12px;background:var(--raise);border:1px solid var(--line);font-size:13px;color:var(--mut)}
+#hiRoot .hi-strap i{width:8px;height:8px;border-radius:50%;background:var(--dim);flex:none}
+#hiRoot .hi-strap.ok i{background:var(--ok)} #hiRoot .hi-strap.warn i{background:var(--warn)} #hiRoot .hi-strap.bad i{background:var(--bad)}
 
 /* studio editor */
-#hiRoot .hi-ed{display:grid;grid-template-columns:minmax(240px,300px) minmax(0,1fr) minmax(250px,290px);gap:14px;align-items:start}
-#hiRoot .hi-scene{border:1px solid var(--line);border-radius:12px;padding:10px;background:var(--surface);display:grid;gap:6px}
-#hiRoot .hi-scene[data-on="1"]{border-color:var(--pri);box-shadow:0 0 0 3px var(--pri-soft)}
-#hiRoot .hi-scene textarea{border:0;outline:0;resize:none;background:none;width:100%;font-size:14px;min-height:58px}
-#hiRoot .hi-ib{width:26px;height:26px;border-radius:8px;border:0;background:var(--sunk);display:grid;place-items:center;color:var(--mut);padding:0}
-#hiRoot .hi-ib svg{width:14px;height:14px}
-#hiRoot .hi-stage{aspect-ratio:16/9;border-radius:16px;background:var(--hi-stage);position:relative;overflow:hidden;max-width:100%}
-#hiRoot .hi-stage.tall{aspect-ratio:9/16;max-height:520px;margin:0 auto}
-#hiRoot .hi-stage.sq{aspect-ratio:1;max-height:520px;margin:0 auto}
-#hiRoot .hi-stage .who{position:absolute;left:6%;bottom:0;width:30%}
-#hiRoot .hi-stage .who .hi-face{border-radius:14px 14px 0 0;background:#1E293B;color:var(--hi-stage-mut)}
-#hiRoot .hi-stage .look{position:absolute;right:6%;top:12%;width:52%;color:var(--hi-stage-ink);display:grid;gap:6px}
-#hiRoot .hi-stage .look .big{font:700 clamp(20px,4vw,44px)/1.05 var(--fd);letter-spacing:-.02em;overflow-wrap:anywhere}
+#hiRoot .hi-edhead{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+#hiRoot .hi-title{flex:1 1 220px;min-width:0;height:40px;border:1px solid transparent;border-radius:10px;background:none;padding:0 10px;font-size:20px;font-weight:600;letter-spacing:-.015em;outline:0;transition:border-color .15s,background .15s,box-shadow .15s}
+#hiRoot .hi-title:hover{border-color:var(--hair)} #hiRoot .hi-title:focus{border-color:var(--pri);background:var(--surface);box-shadow:var(--hi-ring)}
+#hiRoot .hi-saved{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;color:var(--mut);white-space:nowrap;padding-right:6px}
+#hiRoot .hi-saved::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--ok)}
+#hiRoot .hi-ed{display:grid;grid-template-columns:minmax(260px,320px) minmax(0,1fr) minmax(280px,312px);gap:18px;align-items:start}
+#hiRoot .hi-edcol{display:grid;gap:10px;align-content:start}
+#hiRoot .hi-edcol>h3{font-size:13px;font-weight:600;color:var(--mut);padding:2px 2px 0}
+#hiRoot .hi-scene{border:1px solid var(--line);border-radius:14px;padding:10px 12px 12px;background:var(--surface);display:grid;gap:6px;box-shadow:var(--hi-sh1);transition:border-color .15s,box-shadow .2s}
+#hiRoot .hi-scene:hover{border-color:var(--hair)}
+#hiRoot .hi-scene[data-on="1"]{border-color:var(--pri);box-shadow:var(--hi-ring)}
+#hiRoot .hi-scene .hd{display:flex;align-items:center;gap:8px;min-height:28px}
+#hiRoot .hi-scene .ft{display:flex;align-items:center;justify-content:space-between;gap:8px}
+#hiRoot .hi-sn{width:22px;height:22px;border-radius:7px;background:var(--sunk);color:var(--mut);display:grid;place-items:center;font-size:12px;font-weight:600;flex:none;font-variant-numeric:tabular-nums}
+#hiRoot .hi-scene[data-on="1"] .hi-sn{background:var(--pri);color:var(--on-acc)}
+#hiRoot .hi-scene textarea{border:0;outline:0;resize:none;background:none;width:100%;font-size:14.5px;line-height:1.5;min-height:60px;padding:2px 0}
+#hiRoot .hi-ib{width:28px;height:28px;border-radius:8px;border:0;background:none;display:grid;place-items:center;color:var(--mut);padding:0;flex:none;transition:background .12s,color .12s}
+#hiRoot .hi-ib svg{width:15px;height:15px}
+#hiRoot .hi-ib:hover:not(:disabled){background:var(--sunk);color:var(--ink)}
+#hiRoot .hi-ib:disabled{opacity:.3}
+#hiRoot .hi-add{height:44px;border:1.5px dashed var(--hair);border-radius:14px;background:none;color:var(--mut);font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px;transition:border-color .15s,color .15s,background .15s}
+#hiRoot .hi-add svg.hi-i{width:17px;height:17px}
+#hiRoot .hi-add:hover{border-color:var(--pri);color:var(--pri-ink);background:var(--pri-soft)}
+#hiRoot .hi-stage{aspect-ratio:16/9;border-radius:18px;position:relative;overflow:hidden;max-width:100%;box-shadow:0 24px 48px -28px rgb(20 14 60 / .55),0 0 0 1px rgb(255 255 255 / .06) inset;
+  background:radial-gradient(80% 110% at 92% -8%,color-mix(in srgb,var(--hi-brand) 48%,transparent),transparent 62%),radial-gradient(60% 70% at 0% 110%,color-mix(in srgb,var(--hi-brand) 22%,transparent),transparent 70%),linear-gradient(160deg,#181B36,var(--hi-stage))}
+#hiRoot .hi-stage.tall{aspect-ratio:9/16;max-height:540px;margin:0 auto}
+#hiRoot .hi-stage.sq{aspect-ratio:1;max-height:540px;margin:0 auto}
+#hiRoot .hi-stage .hi-stag{position:absolute;left:14px;top:12px;height:24px;display:inline-flex;align-items:center;padding:0 9px;border-radius:7px;background:rgb(6 7 16 / .5);color:var(--hi-stage-mut);font-size:12px;font-weight:500}
+#hiRoot .hi-stage .who{position:absolute;left:6%;bottom:0;width:28%}
+#hiRoot .hi-stage .who .hi-face{border-radius:16px 16px 0 0;background:linear-gradient(180deg,#2A3050,#1B2038);color:var(--hi-stage-mut)}
+#hiRoot .hi-stage .look{position:absolute;right:6%;top:18%;width:54%;color:var(--hi-stage-ink);display:grid;gap:8px}
+#hiRoot .hi-stage .look .big{font:600 clamp(22px,4.2vw,48px)/1.04 var(--fd);letter-spacing:-.03em;overflow-wrap:anywhere}
 #hiRoot .hi-stage .look .old{color:var(--hi-stage-mut);text-decoration:line-through}
-#hiRoot .hi-stage .look .ph{color:var(--hi-stage-mut);border:1px dashed var(--hi-stage-mut);border-radius:8px;padding:6px 10px;font-size:13px}
-#hiRoot .hi-stage .bars{display:flex;align-items:flex-end;gap:8px;height:90px}
-#hiRoot .hi-stage .bars span{flex:1;background:var(--pri);border-radius:6px 6px 2px 2px;min-height:6px;position:relative}
-#hiRoot .hi-stage .sub{position:absolute;left:40%;right:6%;bottom:7%;color:var(--hi-stage-ink);font-weight:500;font-size:clamp(11px,1.5vw,15px);background:rgb(0 0 0 / .45);border-radius:8px;padding:6px 10px}
+#hiRoot .hi-stage .look .ph{justify-self:start;color:var(--hi-stage-mut);border:1px dashed rgb(180 188 216 / .6);border-radius:10px;padding:8px 12px;font-size:13px}
+#hiRoot .hi-stage .bars{display:flex;align-items:flex-end;gap:10px;height:96px}
+#hiRoot .hi-stage .bars span{flex:1;background:linear-gradient(180deg,#fff,var(--hi-brand));border-radius:7px 7px 2px 2px;min-height:6px;transform-origin:bottom}
+#hiRoot .hi-stage .sub{position:absolute;left:40%;right:6%;bottom:8%;color:var(--hi-stage-ink);font-weight:500;font-size:clamp(12px,1.5vw,15px);line-height:1.4;background:rgb(6 7 16 / .6);border-radius:10px;padding:8px 12px}
+#hiRoot .hi-stage .sub:empty{display:none}
 #hiRoot .hi-stage.tall .sub,#hiRoot .hi-stage.tall .look{left:8%;right:8%;width:auto}
-#hiRoot .hi-strip{display:flex;gap:8px;overflow-x:auto;padding:4px 2px 8px}
-#hiRoot .hi-sc{flex:none;width:118px;border:1px solid var(--line);border-radius:8px;background:var(--surface);padding:6px;text-align:left;font-size:11.5px;display:grid;gap:4px}
-#hiRoot .hi-sc[data-on="1"]{border-color:var(--pri)}
-#hiRoot .hi-sc i{display:block;aspect-ratio:16/9;border-radius:5px;background:var(--hi-stage)}
-#hiRoot .hi-tools{display:grid;gap:12px}
-#hiRoot .hi-tt{display:flex;flex-wrap:wrap;gap:4px}
-#hiRoot .hi-tt button{border:0;background:var(--sunk);border-radius:8px;padding:5px 9px;font-size:12px;font-weight:500;color:var(--mut)}
-#hiRoot .hi-tt button[aria-pressed="true"]{background:var(--pri);color:var(--on-acc)}
-#hiRoot .hi-block{background:var(--warn-soft);color:var(--warn);border-radius:12px;padding:10px 12px;font-size:13px;display:grid;gap:2px}
+#hiRoot .hi-trans{display:flex;align-items:center;gap:6px;color:var(--mut);font-size:13px}
+#hiRoot .hi-strip{display:flex;gap:10px;overflow-x:auto;padding:4px 4px 10px;scrollbar-width:thin}
+#hiRoot .hi-sc{flex:none;width:136px;border:1px solid var(--line);border-radius:12px;background:var(--surface);padding:6px 6px 8px;text-align:left;font-size:12.5px;display:grid;gap:6px;transition:transform .18s var(--hi-ease),border-color .15s,box-shadow .2s}
+#hiRoot .hi-sc:hover{transform:translateY(-2px);border-color:var(--hair)}
+#hiRoot .hi-sc[data-on="1"]{border-color:var(--pri);box-shadow:var(--hi-ring)}
+#hiRoot .hi-sc .mini{aspect-ratio:16/9;border-radius:7px;position:relative;overflow:hidden;display:grid;place-items:center;padding:8px;color:#fff;
+  background:radial-gradient(90% 120% at 90% -10%,color-mix(in srgb,var(--hi-brand) 50%,transparent),transparent 62%),linear-gradient(160deg,#181B36,var(--hi-stage))}
+#hiRoot .hi-sc .mini b{font-size:12px;line-height:1.15;text-align:center;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow-wrap:anywhere}
+#hiRoot .hi-sc .mini .mb{display:flex;align-items:flex-end;gap:3px;height:60%;width:60%} #hiRoot .hi-sc .mini .mb u{flex:1;background:#fff;border-radius:2px 2px 0 0;opacity:.9}
+#hiRoot .hi-sc .mini .ml{display:grid;gap:4px;width:70%} #hiRoot .hi-sc .mini .ml u{height:4px;border-radius:3px;background:rgb(255 255 255 / .55)} #hiRoot .hi-sc .mini .ml u+u{width:62%}
+#hiRoot .hi-sc .mini .wn{position:absolute;right:5px;top:5px;width:8px;height:8px;border-radius:50%;background:#F2B661;box-shadow:0 0 0 2px rgb(6 7 16 / .5)}
+#hiRoot .hi-sc .lb{display:flex;gap:6px;align-items:baseline;padding:0 2px;white-space:nowrap;overflow:hidden}
+#hiRoot .hi-sc .lb span{overflow:hidden;text-overflow:ellipsis}
+#hiRoot .hi-tools{display:grid;gap:14px;padding:14px;position:sticky;top:0}
+#hiRoot .hi-tt{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:2px;padding:3px;border-radius:11px;background:var(--sunk)}
+#hiRoot .hi-tt button{border:0;background:none;height:30px;border-radius:8px;padding:0;font-size:12.5px;font-weight:500;color:var(--mut);transition:color .15s,background .15s}
+#hiRoot .hi-tt button:hover{color:var(--ink)}
+#hiRoot .hi-tt button[aria-pressed="true"]{background:var(--surface);color:var(--ink);font-weight:600;box-shadow:0 1px 2px rgb(20 16 50 / .1),0 0 0 1px var(--line)}
+#hiRoot .hi-panel{display:grid;gap:14px}
+#hiRoot .hi-block{display:flex;gap:12px;align-items:flex-start;background:var(--warn-soft);color:var(--warn);border:1px solid color-mix(in srgb,var(--warn) 22%,transparent);border-radius:14px;padding:12px 14px;font-size:13.5px;line-height:1.5}
+#hiRoot .hi-block>svg{margin-top:1px} #hiRoot .hi-block>div{display:grid;gap:1px}
 
-/* video page, dialog, live */
-#hiRoot .hi-player{border-radius:16px;background:var(--hi-stage);overflow:hidden;display:grid;place-items:center;aspect-ratio:16/9;color:var(--hi-stage-mut)}
-#hiRoot .hi-player.tall{aspect-ratio:9/16;max-height:560px;margin:0 auto}
+/* video page, dialog */
+#hiRoot .hi-player{border-radius:18px;background:var(--hi-stage);overflow:hidden;display:grid;place-items:center;aspect-ratio:16/9;color:var(--hi-stage-mut);box-shadow:0 24px 48px -28px rgb(20 14 60 / .55)}
+#hiRoot .hi-player.tall{aspect-ratio:9/16;max-height:580px;margin:0 auto}
 #hiRoot .hi-player video{width:100%;height:100%;display:block}
-#hiRoot .hi-kv{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid var(--line)}
-#hiRoot .hi-ov{position:absolute;inset:0;background:rgb(10 8 24 / .5);display:grid;place-items:center;padding:16px;z-index:5}
-#hiRoot .hi-dlg{background:var(--surface);border-radius:20px;padding:22px;width:min(480px,100%);display:grid;gap:14px;box-shadow:var(--sh);max-height:90%;overflow:auto}
-#hiRoot .hi-sw{width:34px;height:34px;border-radius:9px;border:1px solid var(--line);flex:none}
-#hiRoot pre{background:var(--sunk);border-radius:12px;padding:14px;overflow-x:auto;margin:0;max-width:100%;font:12.5px/1.5 ui-monospace,'SF Mono',Menlo,Consolas,monospace}
+#hiRoot .hi-kv{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}
+#hiRoot .hi-kv:last-child{border-bottom:0}
+#hiRoot .hi-ov{position:fixed;inset:0;background:rgb(10 8 24 / .5);display:grid;place-items:center;padding:16px;z-index:70;animation:hiFade .18s ease both}
+#hiRoot .hi-dlg{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:24px;width:min(480px,100%);display:grid;gap:16px;box-shadow:0 32px 64px -24px rgb(10 8 40 / .5);max-height:90%;overflow:auto;animation:hiPop .26s var(--hi-ease) both}
+#hiRoot .hi-sw{width:34px;height:34px;border-radius:10px;border:1px solid var(--line);flex:none}
+#hiRoot pre{background:var(--hi-stage);color:#D9DEF2;border-radius:12px;padding:16px;overflow-x:auto;margin:0;max-width:100%;font:13px/1.6 ui-monospace,'SF Mono',Menlo,Consolas,monospace}
 
-@media (max-width:1040px){ #hiRoot .hi-ed{grid-template-columns:minmax(0,1fr)} }
+/* motion: once, when something opens or changes */
+@keyframes hiUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+@keyframes hiFade{from{opacity:0}to{opacity:1}}
+@keyframes hiPop{from{opacity:0;transform:translateY(8px) scale(.97)}to{opacity:1;transform:none}}
+@keyframes hiBar{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+@keyframes hiGrow{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+@keyframes hiPulse{0%,100%{opacity:1}50%{opacity:.35}}
+@keyframes hiRing{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--pri) 45%,transparent)}100%{box-shadow:0 0 0 9px transparent}}
+#hiRoot .hi-view.hi-in .hi-wrap>*{animation:hiUp .46s var(--hi-ease) both}
+#hiRoot .hi-view.hi-in .hi-wrap>:nth-child(2){animation-delay:.05s} #hiRoot .hi-view.hi-in .hi-wrap>:nth-child(3){animation-delay:.1s}
+#hiRoot .hi-view.hi-in .hi-wrap>:nth-child(4){animation-delay:.15s} #hiRoot .hi-view.hi-in .hi-wrap>:nth-child(n+5){animation-delay:.2s}
+#hiRoot .hi-view.hi-in :is(.hi-g3,.hi-g4)>*{animation:hiUp .46s var(--hi-ease) both;animation-delay:calc(.08s + var(--i,0) * .035s)}
+#hiRoot .hi-view.hi-in :is(.hi-g3,.hi-g4)>:nth-child(2){--i:1} #hiRoot .hi-view.hi-in :is(.hi-g3,.hi-g4)>:nth-child(3){--i:2}
+#hiRoot .hi-view.hi-in :is(.hi-g3,.hi-g4)>:nth-child(4){--i:3} #hiRoot .hi-view.hi-in :is(.hi-g3,.hi-g4)>:nth-child(5){--i:4}
+#hiRoot .hi-view.hi-in :is(.hi-g3,.hi-g4)>:nth-child(6){--i:5} #hiRoot .hi-view.hi-in :is(.hi-g3,.hi-g4)>:nth-child(7){--i:6}
+#hiRoot .hi-view.hi-in :is(.hi-g3,.hi-g4)>:nth-child(n+8){--i:7}
+#hiRoot .hi-view.hi-tabin .hi-wrap>.hi-tabs~*{animation:hiUp .3s var(--hi-ease) both}
+#hiRoot .hi-view.hi-tabin .hi-panel{animation:hiFade .22s ease both}
+#hiRoot .hi-view:is(.hi-in,.hi-scin) .hi-stage :is(.look,.sub){animation:hiUp .36s var(--hi-ease) both}
+#hiRoot .hi-view:is(.hi-in,.hi-scin) .hi-stage .sub{animation-delay:.08s}
+#hiRoot .hi-view:is(.hi-in,.hi-scin) .hi-stage .bars span{animation:hiGrow .5s var(--hi-ease) both}
+#hiRoot .hi-view:is(.hi-in,.hi-scin) .hi-stage .bars span:nth-child(2){animation-delay:.06s} #hiRoot .hi-view:is(.hi-in,.hi-scin) .hi-stage .bars span:nth-child(n+3){animation-delay:.12s}
+
+@media (max-width:1100px){ #hiRoot .hi-ed{grid-template-columns:minmax(0,1fr)} #hiRoot .hi-tools{position:static} }
 @media (max-width:760px){
-  #hiRoot{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto}
-  #hiRoot .hi-rail{order:2;flex-direction:row;overflow-x:auto;overflow-y:hidden;border-right:0;border-top:1px solid var(--line);padding:6px 8px;align-items:stretch}
-  #hiRoot .hi-rail hr,#hiRoot .hi-sp{display:none}
-  #hiRoot .hi-mark{flex:none;margin:0 6px 0 0;font-size:11px} #hiRoot .hi-mark i{width:26px;height:26px} #hiRoot .hi-mark small{display:none}
-  #hiRoot .hi-rb{width:66px;flex:none}
-  #hiRoot .hi-top{padding:10px 16px} #hiRoot .hi-top .hi-pill{display:none}
-  #hiRoot .hi-view{padding:18px 16px 32px}
-  #hiRoot .hi-hero{padding:18px} #hiRoot h1{font-size:22px}
+  #hiRoot,#hiRoot[data-slim="1"]{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto}
+  #hiRoot .hi-rail,#hiRoot[data-slim="1"] .hi-rail{order:2;flex-direction:row;overflow-x:auto;overflow-y:hidden;border-right:0;border-top:1px solid var(--line);padding:6px 8px;align-items:center;gap:2px}
+  #hiRoot .hi-rail :is(hr,.hi-sp,.hi-rs,.hi-rhead){display:none}
+  #hiRoot .hi-rail .hi-new{margin:0 6px 0 0;width:40px;height:40px;padding:0} #hiRoot .hi-rail .hi-new span{display:none}
+  #hiRoot .hi-rail .hi-rb{width:68px;height:auto;flex-direction:column;gap:3px;padding:6px 0;font-size:12px;justify-content:center}
+  #hiRoot .hi-rail .hi-rb .hi-rl{display:block} #hiRoot .hi-rail .hi-rb[aria-current="page"]::before{display:none}
+  #hiRoot .hi-view{padding:20px 16px 32px}
+  #hiRoot .hi-hero{padding:20px;border-radius:20px} #hiRoot .hi-hero h1{font-size:26px} #hiRoot h1{font-size:24px}
+  #hiRoot .hi-stats{grid-template-columns:minmax(0,1fr)}
 }
-@media (prefers-reduced-motion:reduce){ #hiRoot *{transition:none!important} }
+@media (prefers-reduced-motion:reduce){ #hiRoot *,#hiRoot *::before,#hiRoot *::after{animation:none!important;transition:none!important} }
 
 /* v0.748 HOOLA CODE - Developer Sahayak as a console page (code.js). Console tokens only, so dark mode follows. */
 /* v0.748 HOOLA CODE; v0.768 the shell and the session laid out like Claude Code on the web (code.js). Console tokens only, so dark mode follows.

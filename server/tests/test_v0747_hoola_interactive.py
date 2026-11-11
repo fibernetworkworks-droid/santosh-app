@@ -197,7 +197,7 @@ def test_the_page_in_a_real_browser(arena_server):  # noqa: F811
     ctx.add_init_script(f"localStorage.setItem('hoola.console.token', '{key}')")
     pg = ctx.new_page()
     errs = []
-    pg.on("pageerror", lambda e: errs.append(str(e)))
+    pg.on("pageerror", lambda e: errs.append(str(getattr(e, "stack", "") or e)[:400]))
     pg.route("**/api/console/config", lambda r: r.fulfill(json={"app": "Hoola", "v2": True, "stream": True, "sessions": True,
                                                                    "panel": True, "projects": True, "human": True, "interactive": True}))
     pg.route("**/api/interactive/hub/overview", lambda r: r.fulfill(json=OVERVIEW))
@@ -212,7 +212,8 @@ def test_the_page_in_a_real_browser(arena_server):  # noqa: F811
     import os
     shots = os.environ.get("CONSOLE_SHOTS")
     if shots:
-        pg.screenshot(path=f"{shots}/hi-home.png")
+        pg.wait_for_timeout(1000)
+        pg.screenshot(path=f"{shots}/hi-home.png", full_page=False)
     home = pg.locator("#hiRoot").text_content()
     assert "What video should Hoola make?" in home and "Diwali offer" in home and "<b>Menu</b>" in home
     assert "Voice engine is not set up" in home                                     # said, not hidden
@@ -225,6 +226,9 @@ def test_the_page_in_a_real_browser(arena_server):  # noqa: F811
         pg.wait_for_function("p => document.querySelector('#hiRoot .hi-rb[aria-current=page]')?.dataset.p === p", arg=page)
         assert said in pg.locator("#hiView").text_content(), page
         assert pg.evaluate("document.querySelector('#hiView').scrollWidth <= document.querySelector('#hiView').clientWidth + 1"), page
+        if shots:
+            pg.wait_for_timeout(1000)
+            pg.screenshot(path=f"{shots}/hi-{page}.png")
     pg.locator("#hiRoot .hi-rb[data-p='studio']").click()
     pg.locator("#hiRoot .hi-av", has_text="Menu").click()
     pg.wait_for_selector("#hiRoot .hi-scene")
@@ -232,7 +236,28 @@ def test_the_page_in_a_real_browser(arena_server):  # noqa: F811
     assert pg.locator("#hiRoot .hi-scene").count() == 2 and "Needs your numbers" in st and "Scene 2 needs your numbers." in st
     assert pg.locator("#hiMake").is_disabled()
     if shots:
+        pg.wait_for_timeout(1000)
         pg.screenshot(path=f"{shots}/hi-editor.png")
+        pg.locator("#hiRoot .hi-sc").nth(1).click()
+        pg.wait_for_timeout(800)
+        pg.screenshot(path=f"{shots}/hi-editor2.png")
+        pg.evaluate("document.documentElement.setAttribute('data-theme','dark')")
+        pg.wait_for_timeout(300)
+        pg.screenshot(path=f"{shots}/hi-editor-dark.png")
+        pg.locator("#hiRoot .hi-rb[data-p='home']").click()
+        pg.wait_for_timeout(1000)
+        pg.screenshot(path=f"{shots}/hi-home-dark.png")
+        pg.evaluate("document.querySelector('#hiView').scrollTop = 620")
+        pg.wait_for_timeout(200)
+        pg.screenshot(path=f"{shots}/hi-home2-dark.png")
+        pg.evaluate("document.documentElement.removeAttribute('data-theme')")
+        pg.set_viewport_size({"width": 1366, "height": 660})
+        pg.wait_for_timeout(300)
+        pg.screenshot(path=f"{shots}/hi-home-laptop.png")
+        pg.set_viewport_size({"width": 400, "height": 800})
+        pg.wait_for_timeout(300)
+        pg.screenshot(path=f"{shots}/hi-home-phone.png")
+        pg.set_viewport_size({"width": 1280, "height": 900})
     pg.locator("#hiRoot .hi-rb[data-a='back']").click()                             # Console: back to the chat
     pg.wait_for_function("document.querySelector('#hiRoot').hidden === true")
     assert not errs, errs
