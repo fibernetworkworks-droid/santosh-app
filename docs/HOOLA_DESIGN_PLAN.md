@@ -279,3 +279,61 @@ C. DESIGN -> APP STUDIO (`server/app/design/toapp.py`, client `hd-bridge-app.js`
   build follows them. Returns the App Studio address. Nothing is built or published without her tap there.
 
 All three: tenant-checked, view-only refused, one undo-free server action each (the editor shows what happened and links to it).
+
+## 8. D8 PLUGINS + D9 SPEED - contract (owner, 11 Nov: "D8 Plugins and D9 Speed")
+
+Five builders in parallel. Each owns its files; shared files get only small, re-read-first, additive edits.
+
+### D8a PLUGIN RUNTIME (`hd-plugins.js`, `design-plugins.css`, `server/app/design/plugins.py`, route page `plugin-frame`)
+- A plugin = `{manifest: {id, name, version, description, permissions: [...], ui: bool, menu: [{label, command}]}, code: "<js>"}`.
+  Permissions: `read` (document + selection), `edit` (create / set / remove / move nodes), `export` (render a node to PNG / SVG),
+  `net:<https host>` (fetch to that host only), `storage` (its own small key-value store). Nothing else exists.
+- Runs ONLY in a sandboxed iframe with an OPAQUE origin (`sandbox="allow-scripts"`, never `allow-same-origin`), loaded from
+  `GET /api/design/plugin-frame` - a tiny runner page with its OWN strict CSP (no network except what the host proxies), so plugin
+  code can never touch the console's token, cookies, DOM or storage. The console CSP stays unchanged.
+- The host talks to it by `postMessage` with a JSON-RPC-like protocol; every call is checked against the granted permissions;
+  `edit` calls run inside ONE `HD.store.tx` per plugin command (one undo step, normal multiplayer ops). `net:` fetches are made by
+  the SERVER (`POST /api/design/plugins/{id}/fetch`), host-allowlisted, size + time capped, SSRF-guarded (house guard), never with
+  her credentials. Per-command time limit (the iframe is destroyed on overrun) and a memory-friendly message size cap.
+- The plugin API surface (inside the iframe, global `hoola`): `hoola.selection()`, `hoola.get(id)`, `hoola.children(id)`,
+  `hoola.page()`, `hoola.find(query)`, `hoola.create(type, parent, props)`, `hoola.set(id, props)`, `hoola.remove(ids)`,
+  `hoola.notify(text)`, `hoola.exportPNG(id, scale)`, `hoola.exportSVG(id)`, `hoola.fetch(url, opts)`, `hoola.storage.get/set`,
+  `hoola.ui.show(html)` (its own panel, rendered inside the same sandbox), `hoola.close()`. Node shapes = section 2 props.
+- Install: per tenant, server table `design_plugins` (manifest, code, enabled, granted permissions, created_by). She sees the
+  permissions and approves them at install (the grant is stored with the code hash; a code change asks again). Plugins menu in the
+  editor: run, manage (enable / disable / remove / see permissions), "Write a plugin" opens a code editor.
+
+### D8b PLUGINS BY HOOLA + TEMPLATES (`hd-plugins-ai.js`, `server/app/design/plugin_ai.py`, `server/app/design/gallery.py`)
+- "Ask Hoola to make a plugin": one sentence -> the model writes manifest + code against the API above (smallest permissions),
+  code checked statically (no eval / Function / import / DOM escape tricks / network outside declared hosts), shown to her with the
+  permissions BEFORE install; never auto-installed. Built-in starter plugins shipped as data (rename layers by pattern, tidy grid,
+  contrast checker for every text, find and replace text, colour palette from selection, Indian-number / rupee formatter, export
+  CSS variables, swap fonts).
+- Community templates: a gallery of ready design files (posters, social posts, app screens, business cards, invitations in
+  Indian languages) built as Hoola Design documents in code (no copyrighted assets), "Use template" = duplicate into her files;
+  tenants may publish their OWN file as a template only by her explicit action (owner-only, reviewed flag, never public by default).
+
+### D9a WEBGL2 RENDERER (`hd-render-gl.js`; the only builder allowed to change `hd-render.js`, for the switch)
+- Same `HD.render` contract; WebGL2 draws the scene, Canvas2D stays as the fallback (no WebGL2, context lost, or a setting).
+  Tile-based: the visible world is cut into tiles cached as textures per zoom level; a pan re-uses tiles, only dirty tiles redraw.
+  Shapes, paints, strokes, text (glyph atlas or Canvas2D-rasterised text into tiles), images, effects (blur / shadow passes),
+  masks, booleans - anything the GL path cannot draw exactly is drawn by the Canvas2D path INTO that tile (correct first, fast second).
+  Target, MEASURED in headless Chromium at 1280x800: 100,000 layers on a page, pan + zoom under 16 ms a frame; say the real numbers.
+
+### D9b SPEED INFRASTRUCTURE (`hd-index.js`, `hd-worker-layout.js`, edits to `hd-net.js` / `server/app/design/room.py` / `api.py`)
+- `HD.index`: a spatial index (R-tree or grid) of world bounds per page, kept up to date from store change events:
+  `HD.index.query(rect, pageId) -> ids`, `HD.index.at(x, y, pageId) -> ids` (top-most first). Both renderers and hit-testing use it.
+- Dynamic page loading: the server can send a document PAGE BY PAGE (`init` carries the current page + the page list; other pages
+  stream in the background / on open), so a huge file opens fast; ops for pages not yet loaded are kept and applied on load.
+- Compact wire format: op batches may be sent as a compact encoding (keys interned, numbers packed) when both sides support it;
+  JSON stays valid. Measure bytes and parse time before / after.
+- A performance harness `server/tests/web/design_perf_test.js` (100k-node generator, load time, first paint, pan / zoom frame
+  times for both renderers, op round trip) whose numbers are printed and asserted against budgets.
+
+### D9c BRANCHES (`server/app/design/branches.py`, `hd-branches.js`, `design-branches.css`)
+- A branch = a full copy of a file linked to its main file (`design_files.branch_of`, `branch_base_seq`), edited normally.
+  Merge = three-way per node + property (base = main at branch time, theirs = main now, ours = branch): non-conflicting changes
+  apply; a property changed on both sides to different values is a CONFLICT shown to her with both values (pick one per conflict);
+  structure conflicts (deleted on one side, edited on the other; moved to different parents) shown the same way. Merge applies
+  through the room as normal ops (one batch), saves a version of main first, and archives the branch. Review view: a list of
+  changed layers with before / after thumbnails. Routes under `/api/design/files/{id}/branches`.
