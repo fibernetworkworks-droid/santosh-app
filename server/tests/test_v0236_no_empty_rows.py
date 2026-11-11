@@ -32,5 +32,5 @@ def test_plain_strips_console_notes():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.799.0"
-    assert "0.799.0+798" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.805.0"
+    assert "0.805.0+804" in (ROOT / "pubspec.yaml").read_text()

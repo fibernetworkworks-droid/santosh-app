@@ -84,4 +84,4 @@ def test_every_call_is_on_gemini_even_if_she_had_picked_real_voice(env, monkeypa
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.799.0"
+    assert APP_VERSION == "0.805.0"

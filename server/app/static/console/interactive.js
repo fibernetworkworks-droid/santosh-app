@@ -50,7 +50,7 @@ window.HoolaInteractive = function ({api, esc, toast, upload, back}) {
   const chip = p => { const [c, t] = state(p); return `<span class="hi-chip ${c}">${t}</span>`; };
   const estimate = p => (p.scenes || []).reduce((n, s) => n + Math.max(2, (s.say || '').split(/\s+/).filter(Boolean).length / 2.6) + .35, 0);
   const tabs = (id, names) => { const on = UI.tab[id] || names[0];
-    return `<div class="hi-tabs" role="tablist">${names.map(n => `<button class="hi-tab" role="tab" aria-selected="${n === on}" data-a="tab" data-k="${id}" data-v="${esc(n)}">${esc(n)}</button>`).join('')}</div>`; };
+    return `<div class="hi-tabs" role="tablist">${names.map(n => `<button class="hi-tab" role="tab" aria-selected="${n === on}" data-a="tab" data-k="${id}" data-val="${esc(n)}">${esc(n)}</button>`).join('')}</div>`; };
   const cur = (id, d) => UI.tab[id] || d;
   const opts = (o, on) => Object.entries(o).map(([k, n]) => `<option value="${esc(k)}"${k === on ? ' selected' : ''}>${esc(n)}</option>`).join('');
   const avOpts = on => `<option value="">Brand mark (no face)</option>${(D.avatars || []).map(a => `<option value="${esc(a.id)}"${a.id === on ? ' selected' : ''}>${esc(a.name)}</option>`).join('')}`;
@@ -179,11 +179,11 @@ window.HoolaInteractive = function ({api, esc, toast, upload, back}) {
 
     avatars() {
       const t = cur('av', 'My avatars'), c = con();
-      return `<div class="hi-wrap">${head('Avatars', 'A photo avatar appears beside your words in every scene. Every real face needs a yes.', `<button class="hi-btn" data-a="tab" data-k="av" data-v="New avatar">${ic('plus')}New avatar</button>`)}
+      return `<div class="hi-wrap">${head('Avatars', 'A photo avatar appears beside your words in every scene. Every real face needs a yes.', `<button class="hi-btn" data-a="tab" data-k="av" data-val="New avatar">${ic('plus')}New avatar</button>`)}
         ${tabs('av', ['My avatars', 'Hoola faces', 'New avatar'])}
         ${t === 'My avatars' ? (D.avatars.length ? `<div class="hi-grid hi-g4">${D.avatars.map(a => `<button class="hi-av" data-a="go" data-p="avatar" data-arg="${esc(a.id)}">${face(a)}<span><b>${esc(a.name)}</b><br><span class="hi-sm hi-mut">${esc(langs()[a.lang] || a.lang)}</span></span>
             <span class="hi-row" style="gap:6px"><span class="hi-chip pri">Photo</span><span class="hi-chip ok">Consent given</span></span></button>`).join('')}</div>`
-            : `<div class="hi-empty"><b>No avatars yet</b>Add a clear photo of a face looking at the camera.<button class="hi-btn" data-a="tab" data-k="av" data-v="New avatar">Add a photo avatar</button></div>`)
+            : `<div class="hi-empty"><b>No avatars yet</b>Add a clear photo of a face looking at the camera.<button class="hi-btn" data-a="tab" data-k="av" data-val="New avatar">Add a photo avatar</button></div>`)
         : t === 'Hoola faces' ? `<div class="hi-empty"><b>No Hoola faces on this server yet</b>Ready-made presenters are AI-made on the GPU lab, each with a record that says it is not a real person. None has been published here.</div>`
         : `<div class="hi-cols"><form class="hi-card hi-grid" data-f="avatar"><h3>Photo avatar</h3>
               <label class="hi-f">Name<input id="hiAvName" maxlength="40" required placeholder="e.g. Priya"></label>
@@ -318,7 +318,7 @@ window.HoolaInteractive = function ({api, esc, toast, upload, back}) {
             <div class="hi-cols">${t.variables.map(v => `<label class="hi-f">${esc(v.replace(/_/g, ' '))}<input data-var="${esc(v)}" maxlength="60" required></label>`).join('')}
               <label class="hi-f">Language<select id="hiTLang">${opts(langs(), 'hi')}</select></label><label class="hi-f">Avatar<select id="hiTAv">${avOpts('')}</select></label></div>
             <button class="hi-btn hi-start">Make the draft</button></form>` : ''}
-        <div class="hi-row">${groups.map(x => `<button class="hi-sel" aria-pressed="${x === g}" data-a="tab" data-k="tpg" data-v="${esc(x)}">${esc(x)}</button>`).join('')}</div>
+        <div class="hi-row">${groups.map(x => `<button class="hi-sel" aria-pressed="${x === g}" data-a="tab" data-k="tpg" data-val="${esc(x)}">${esc(x)}</button>`).join('')}</div>
         <div class="hi-grid hi-g3">${list.map(x => `<div class="hi-av hov">${thumb(x.id, x.name, `<span class="cnt">${esc(x.mine ? 'Yours' : x.group || '')}</span>`)}<span class="hi-sm hi-mut">${x.count} scenes · ${esc(KIND[x.shape] || '')}</span>
           <span class="hi-row" style="gap:6px">${x.variables.map(v => `<span class="hi-chip pri">{${esc(v)}}</span>`).join('') || '<span class="hi-chip">no blanks</span>'}</span>
           <span class="hi-row" style="gap:6px"><button class="hi-btn s" data-a="use" data-id="${esc(x.id)}">Use this</button>${x.mine ? `<button class="hi-btn danger s" data-a="rmtpl" data-id="${esc(x.id)}">Remove</button>` : ''}</span></div>`).join('')}</div>
@@ -394,18 +394,18 @@ window.HoolaInteractive = function ({api, esc, toast, upload, back}) {
       const t = cur('ap', ''), withName = D.projects.filter(p => JSON.stringify(p.scenes).includes('{name}'));
       const card = (i, n, d, ok, a) => `<button class="hi-flow" ${ok ? a : 'disabled'}><span class="hi-ftop"><span class="ic">${ic(i)}</span>${ok ? '<span class="hi-chip ok">Ready</span>' : '<span class="hi-chip">Not connected yet</span>'}</span><h3>${n}</h3><span class="hi-mut hi-sm">${d}</span></button>`;
       return `<div class="hi-wrap">${head('Apps', 'Small tools that each do one job.')}
-        ${t === 'Batch' ? `<form class="hi-card hi-grid" data-f="batch"><div class="hi-sh"><h3>Batch</h3><button type="button" class="hi-btn q s" data-a="tab" data-k="ap" data-v="">Close</button></div>
+        ${t === 'Batch' ? `<form class="hi-card hi-grid" data-f="batch"><div class="hi-sh"><h3>Batch</h3><button type="button" class="hi-btn q s" data-a="tab" data-k="ap" data-val="">Close</button></div>
             <label class="hi-f">Scripts - leave an empty line between two videos (up to ${D.limits?.batch || 20})<textarea id="hiBatch" rows="8" required placeholder="Aaj ka cement rate teen sau assi rupaye hai.&#10;&#10;Kal dukaan band rahegi."></textarea></label>
             <div class="hi-row"><label class="hi-pick"><select id="hiBLang" aria-label="Language">${opts(langs(), 'hi')}</select></label><label class="hi-pick"><select id="hiBAv" aria-label="Avatar">${avOpts('')}</select></label><button class="hi-btn">Make the drafts</button></div>
             <p class="hi-sm hi-mut">Each script becomes one draft, cut into scenes at sentence ends. Your words are not rewritten.</p></form>` : ''}
-        ${t === 'Names' ? `<form class="hi-card hi-grid" data-f="names"><div class="hi-sh"><h3>One video, many names</h3><button type="button" class="hi-btn q s" data-a="tab" data-k="ap" data-v="">Close</button></div>
+        ${t === 'Names' ? `<form class="hi-card hi-grid" data-f="names"><div class="hi-sh"><h3>One video, many names</h3><button type="button" class="hi-btn q s" data-a="tab" data-k="ap" data-val="">Close</button></div>
             ${withName.length ? `<label class="hi-f">Video that says {name}<select id="hiNPick">${withName.map(p => `<option value="${esc(p.id)}">${esc(p.title)}</option>`).join('')}</select></label>
               <label class="hi-f">Names, one per line (up to ${D.limits?.batch || 20})<textarea id="hiNames" rows="6" required placeholder="Sunita&#10;Rahul"></textarea></label><button class="hi-btn hi-start">Make a draft for each</button>
               <p class="hi-sm hi-mut">Only for people who agreed to hear from you. Nothing is sent from here.</p>`
               : `<p class="hi-mut">First write {name} in a video's script where the person's name should be said. The "Thank-you to a customer" template has it.</p><button type="button" class="hi-btn q hi-start" data-a="go" data-p="templates">Open Templates</button>`}</form>` : ''}
         <section class="hi-grid"><h2>Make a video</h2><div class="hi-grid hi-g3">
           ${card('film', 'Quick video', 'One line in, scenes out.', true, 'data-a="go" data-p="home"')}${card('grid', 'From a template', 'Fill the blanks, get the draft.', true, 'data-a="go" data-p="templates"')}
-          ${card('apps', 'Batch', 'Many scripts at once, one draft each.', true, 'data-a="tab" data-k="ap" data-v="Batch"')}${card('user', 'One video, many names', 'Each person hears their own name.', true, 'data-a="tab" data-k="ap" data-v="Names"')}
+          ${card('apps', 'Batch', 'Many scripts at once, one draft each.', true, 'data-a="tab" data-k="ap" data-val="Batch"')}${card('user', 'One video, many names', 'Each person hears their own name.', true, 'data-a="tab" data-k="ap" data-val="Names"')}
           ${card('globe', 'Translate', 'A video you made, in another language.', true, 'data-a="go" data-p="translate"')}${card('user', 'Talking photo', 'A photo whose lips move with the words.', false)}
           ${card('grid', 'Slides to video', 'A deck or PDF, one scene per slide.', false)}${card('globe', 'Link to video', 'A web page becomes a script.', false)}
           ${card('mic', 'Podcast', 'Two hosts talk through your topic.', false)}${card('film', 'Series', 'The same kind of video, on a schedule.', false)}</div></section>
@@ -535,7 +535,7 @@ Idempotency-Key: diwali-offer-01
     switch (d.a) {
       case 'back': return back ? back() : leave();
       case 'go': if (PAGE === 'editor') { clearTimeout(SAVE_T); persist(false); } return go(d.p, d.arg);
-      case 'tab': UI.tab[d.k] = d.v; draw(); return flash('hi-tabin', 400);
+      case 'tab': UI.tab[d.k] = d.val; draw(); return flash('hi-tabin', 400);
       case 'slim': UI.slim = ROOT.dataset.slim !== '1'; return rail();
       case 'view': UI.list = d.l === '1'; return draw();
       case 'open': return openProject(id);

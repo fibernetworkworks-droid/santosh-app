@@ -935,6 +935,7 @@ def init_db(url: str | None = None):
     from .agent import goal as _goal  # noqa: F401  (v0.186 goal_runs: lamba kaam pakka)
     from .agent import compact as _compact  # noqa: F401  (v0.242 chat_compact: Claude-style chat checkpoints)
     from . import aboutme as _aboutme  # noqa: F401  (v0.250 about_me: her memory page)
+    from .prompting import store as _prompt_store  # noqa: F401  (HOOLA PROMPTING: prompt_saved)
     from . import kaamwatch as _kaamwatch  # noqa: F401  (v0.136 live job watch)
     from . import kaam_followup as _kaam_followup  # noqa: F401  (v0.190.1 P0: this model only ever had LAZY
         # imports - worker.tick and kaamwatch.enqueue both import it inside the function - so create_all()
@@ -950,6 +951,7 @@ def init_db(url: str | None = None):
         # HERE AND self-healing via turndeliver.ensure_table())
     from .site import plans as _site_plans  # noqa: F401  (v0.782 TEEN MODE site plans + instructions - registered here AND self-healing)
     from .site import yehwala as _site_yehwala  # noqa: F401  (v0.795 YEH WALA site comments - registered here AND self-healing)
+    from .site import galti as _site_galti  # noqa: F401  (v0.802 GALTI PAKDO preview errors + fix ledger - registered here AND self-healing)
     from . import turncost as _turncost  # noqa: F401  (v0.777 CHAT JAISA each turn's rupees - registered here AND self-healing)
     from . import reqdump as _reqdump  # noqa: F401  (v0.732 PARITY Phase 0 the request dump - registered here AND self-healing)
     from . import home as _home  # noqa: F401  (v0.479.0 HOOLA SMART HOME the home_audit table - registered
